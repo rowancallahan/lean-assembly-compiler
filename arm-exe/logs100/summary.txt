@@ -7,3 +7,5 @@ Armv9.DecodeEnd rc=0 wall=1467s peak_kb=11770664
 Armv9.Fetch rc=0 wall=6s peak_kb=1817832
 Armv9.Elfmain rc=0 wall=3s peak_kb=
 Armv9 rc=0 wall=227s peak_kb=3823660
+Armv9.Instrs64:o rc=0 wall=112s peak_kb=660064
+Armv9.V8Base:o rc=1 wall=2s peak_kb=

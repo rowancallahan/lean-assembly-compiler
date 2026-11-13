@@ -68,3 +68,26 @@ SysOpsWrite 2, SysOpsWrite128 1.
 Build tree for the experiment: a copy of `arm-exe-gen/armv9` with ONLY `Armv9/SysregsAutogen.lean` replaced by
 `arm-exe/gen100/SysregsAutogen.lean` (V8Base and MapClauses kept from the threshold-1000 output, already built).
 Logs: `arm-exe/logs100/`.
+
+### Experiment results: Lean stage (tree = arm-exe-gen/armv9 + threshold-100 SysregsAutogen.lean)
+| Module | result | wall | peak RSS |
+|---|---|---|---|
+| SysregsAutogen (split, 25 helpers) | built | 1527 s | 11.9 GB |
+| Sysregs | built | 19 s | 1.9 GB |
+| Reset | built | 1 s | - |
+| Instrs32 | built | 243 s | 3.6 GB |
+| Instrs64 | built | 221 s | 3.2 GB |
+| DecodeEnd (threshold-1000 file, unchanged) | built | 1467 s | 11.8 GB |
+| Fetch, Elfmain | built | 6 s, 3 s | 1.8 GB |
+| Armv9 (root, has `main`) | built | 227 s | 3.8 GB |
+Every Lean module of the runnable model is accepted as computable; 0 errors; only warning is the known
+`sorry` in `Reduce__1` (V8Base). No `--lean-noncomputable-function` needed.
+`arm-exe/Run.lean` + `ArmRun/Model.lean` also compile (Model 230 s).
+Note: the model uses lean-sail's `ConcurrencyInterfaceV1` (`SailM` = `EStateM` over a state with `regs`, `mem`).
+
+### C stage (lake `:o` facet, clang -O3 from the Lean toolchain, one module at a time)
+Generated C sizes: SysregsAutogen.c 225 MB, V8Base.c 87 MB, DecodeEnd.c 60 MB, Instrs64Sve.c 49 MB,
+Instrs32.c 28 MB, Instrs64.c 22 MB, Instrs64Sme.c 22 MB, Defs.c 12 MB.
+New error class: `V8Base.c:168754:1: fatal error: bracket nesting level exceeded maximum of 500`.
+The generated lakefile passes `-fbracket-depth=500`. EDIT TO GENERATED OUTPUT (recorded in
+`arm-exe/gen100/lakefile-bracket-depth.patch`): 500 -> 100000 in `lakefile.toml`. No generator flag sets this.
