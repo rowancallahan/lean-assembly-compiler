@@ -25,3 +25,24 @@ Sail C emulator run 25.2 s (74%, instruction-limited trace-mem run), Sail log pa
 Generation (Lean, interpreted): 4.7 s for 10,000 pairs, mostly import/startup. Easy speedups: run cases in parallel (4 cores here), drop `--trace-mem` text parsing.
 
 No mismatches found; nothing to minimise.
+
+## Round 2: main 898126f (shifts, ult/slt/eq, ite; depth < 11)
+`genExp` now covers `var`, `const`, `bin` with all 11 ops, and `ite`. Edge constants additionally include 63, 64, 65, 127, 128, 31, 32;
+1 in 12 nodes is a shift whose right operand is a constant from {0,1,63,64,65,127,2^64-1,32}; `ite` conditions are biased to
+const 0, const 1..3, an ult/slt/eq comparison, or an arbitrary term. Depth limit `< 11`, rejection-sampled and `assert!`ed.
+Code length per term: 3..3399 RV64 words (median ~130).
+
+Checker changes: `asm/fuzzpar.py cases.txt [J]` splits cases round-robin over J (default: all cores) parallel `triple.py` runs, each with its
+own `WORK` dir (new env var of `triple.py`). `triple.py` linker script moved `.tohost`/`.data` to 0x80100000/0x80200000: the old 0x80001000
+overlapped the code once a term exceeded ~1000 RV64 words (gcc link error, not a compiler bug).
+
+| seed | cases x inputs | pairs | mismatches | gen | check (4 procs) |
+|---|---|---|---|---|---|
+| 21 | 300 x 100 | 30,000 | 0 | 34 s | 71 s |
+| 22 | 300 x 100 | 30,000 | 0 | 36 s | 88 s |
+| 23 | 300 x 100 | 30,000 | 0 | 36 s | 75 s |
+| 24 | 300 x 100 | 30,000 | 0 | 38 s | 78 s |
+
+Total 120,000 pairs / 1,200 cases, 0 mismatches. Checker ~390 pairs/s with 4 procs (long terms dominate: Sail emulator
+time scales with instructions executed); generation ~850 pairs/s (interpreted Lean, now the larger share per pair than before).
+Reproduce: `SEED=21 NCASES=300 K=100 lake env lean asm/fuzz.lean > x.txt && python3 asm/fuzzpar.py x.txt 4`.

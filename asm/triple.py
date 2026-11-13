@@ -3,7 +3,7 @@
 For every case and input: Lean `Exp.denote` == RV64 code on QEMU == RV64 code on Sail C emulator == AArch64 code on QEMU.
 usage: triple.py ctest/triple.txt"""
 import os, re, subprocess, sys, time
-D = os.path.dirname(os.path.abspath(__file__)); W = os.path.join(D, "ctest"); p = lambda f: os.path.join(W, f)
+D = os.path.dirname(os.path.abspath(__file__)); W = os.environ.get("WORK") or os.path.join(D, "ctest"); os.makedirs(W, exist_ok=True); p = lambda f: os.path.join(W, f)
 SAIL = os.environ.get("SAIL", "/home/user/deps/sailsim/sail-riscv-Linux-x86_64/bin/sail_riscv_sim")
 sh = lambda c: subprocess.run(c, shell=True, check=True)
 cases = []
@@ -74,7 +74,7 @@ def qemu(cmd, elf, nm, pcfmt, n):
     hmp(f'pmemsave {res:#x} {8*n} "{p("o.bin")}"'); q.stdin.write("quit\n"); q.wait()
     b = open(p("o.bin"), "rb").read(); assert len(b) == 8 * n
     return [int.from_bytes(b[8*i:8*i+8], "little") for i in range(n)], res
-open(p("rv.ld"), "w").write("ENTRY(_start)\nSECTIONS { . = 0x80000000; .text : { *(.text.start) *(.text) }\n . = 0x80001000; .tohost : { *(.tohost) }\n . = 0x80002000; .data : { *(.data) } }\n")
+open(p("rv.ld"), "w").write("ENTRY(_start)\nSECTIONS { . = 0x80000000; .text : { *(.text.start) *(.text) }\n . = 0x80100000; .tohost : { *(.tohost) }\n . = 0x80200000; .data : { *(.data) } }\n")
 open(p("arm.ld"), "w").write("ENTRY(_start)\nSECTIONS { . = 0x40200000; .text : { *(.text.start) *(.text) } .data : { *(.data) } }\n")
 for c in cases:
     ts, n = c["t"], len(c["t"]); lean = [t[4] for t in ts]
