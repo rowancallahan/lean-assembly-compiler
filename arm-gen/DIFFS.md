@@ -61,3 +61,13 @@ one function, `__DecodeA64_SVE` (11 helper definitions, all in `DecodeEnd.lean`)
 `V8Base.lean`, `SysregsAutogen.lean` and `MapClauses.lean` are back to what the generator
 emits without the split. Rebuilt in full with this version: 34/34 modules, 0 errors, the same single `sorry`
 (`Reduce__1` termination). DecodeEnd took about 20 min here.
+
+## Update: `Reduce__1` generated as `partial` (2026-11-13, evening)
+
+Generation flag added: `--lean-partial-function Reduce__1` (passed via `SAIL_FLAGS`). No source change.
+Only `V8Base.lean` differs: `def Reduce__1` becomes `partial def Reduce__1`.
+Reason: its termination proof was the model's one `sorry`, and it is false as generated (for input
+width 0 or 1 the recursive call is not smaller; the Sail width constraint is not in the Lean type).
+Through `__DecodeA64` the `sorryAx` reached every theorem mentioning the top-level decoder.
+Result, rebuilt in full: 34/34 modules, 0 errors, 0 `sorry`; `#print axioms __DecodeA64` is
+`propext, Classical.choice, Quot.sound`. Cost: `Reduce__1` is opaque, nothing can be proved about it.

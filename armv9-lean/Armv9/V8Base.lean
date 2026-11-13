@@ -72879,7 +72879,7 @@ def DecodePredCount (pattern : (BitVec 5)) (esize : Int) : SailM Int := do
   (pure numElem)
 
 /-- Type quantifiers: k_ex8453729_ : Bool, k_N : Nat, esize : Nat, List.elem k_N [8, 16, 32, 64, 128, 256, 512, 1024, 2048] ∧ List.elem esize [8, 16, 32, 64] ∧ k_N ≥ esize -/
-def Reduce__1 (op : ReduceOp) (input : (BitVec k_N)) (esize : Nat) (altfp : Bool) : SailM (BitVec esize) := do
+partial def Reduce__1 (op : ReduceOp) (input : (BitVec k_N)) (esize : Nat) (altfp : Bool) : SailM (BitVec esize) := do
   sail_assert ((esize == 8) || ((esize == 16) || ((esize == 32) || (esize == 64)))) "src/v8_base.sail:30829.63-30829.64"
   let result ← (( do (undefined_bitvector esize) ) : SailM (BitVec esize) )
   if (((Sail.BitVec.length input) == esize) : Bool)
