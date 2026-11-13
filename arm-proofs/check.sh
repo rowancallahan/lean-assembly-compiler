@@ -7,6 +7,6 @@ cd /home/user/armv9-lean
 BASE=$(lake env printenv LEAN_PATH)
 export LEAN_PATH="$D/build:$BASE"
 mkdir -p "$D/build/Proven" "$D/build/Arm"
-for f in ${@:-Proven/Code Proven/CompilerArm}; do
+for f in ${@:-Proven/Code Proven/CompilerArm Arm/Base Arm/Exec Arm/Flags Arm/Small Arm/Words Arm/Compiler Arm/Axioms}; do
   echo "== $f"; S=$(date +%s.%N); lean --root="$D" --tstack=400000 -o "$D/build/$f.olean" "$D/$f.lean"; echo "  $(echo "$(date +%s.%N) - $S" | bc) s"
 done
