@@ -22,6 +22,11 @@ theorem bind_err {ε σ α β : Type u} {x : EStateM ε σ α} (f : α → EStat
   show EStateM.bind x f s = _
   unfold EStateM.bind; rw [h]
 
+theorem add_neg_lit {w : Nat} (x c : BitVec w) (m : Nat) (h : c + BitVec.ofNat w m = 0) :
+    x + c = x - BitVec.ofNat w m := by
+  have hc : c = 0 - BitVec.ofNat w m := by rw [← h, BitVec.add_sub_cancel]
+  rw [hc, BitVec.sub_eq_add_neg, BitVec.sub_eq_add_neg]; simp
+
 /-- trace output goes straight to a file: Lean captures stderr until the command ends -/
 def traceLine (s : String) : IO Unit :=
   IO.FS.withFile "/tmp/sail_eval.trace" .append fun h => h.putStrLn s
@@ -56,6 +61,20 @@ def kernelWhnf? (e : Expr) : MetaM (Option Expr) := do
 /-- simp pre-pass: evaluate closed `Bool` terms and closed decidable `Prop`s with the kernel
 (handles `_get_Mstatus_MIE 0x..#64 == 1#1`, enum `==`, ... that simp lemmas cannot). -/
 def closedPre : Simp.Simproc := fun e => do
+  -- `x + c` with a closed "negative" `c` becomes `x - m`: a sum of a symbolic value and a
+  -- 64-bit literal `≥ 2^63` makes the kernel recurse deeply (`Nat.add` unfolds its literal arg)
+  if e.isAppOfArity ``HAdd.hAdd 6 && !e.appArg!.hasFVar && !e.appArg!.hasMVar then
+    let ty ← whnfR (← inferType e)
+    if ty.isAppOfArity ``BitVec 1 then
+      if let some (.lit (.natVal w)) ← kernelWhnf? ty.appArg! then
+        if let some (.lit (.natVal n)) ← kernelWhnf? (mkApp2 (mkConst ``BitVec.toNat) ty.appArg! e.appArg!) then
+          if 2 ^ w < 2 * n then
+            let m := mkNatLit (2 ^ w - n)
+            let c := e.appArg!
+            let h ← mkDecideProof (← mkEq (← mkAppM ``HAdd.hAdd #[c, mkApp2 (mkConst ``BitVec.ofNat) (mkNatLit w) m])
+              (← mkAppOptM ``OfNat.ofNat #[ty, mkNatLit 0, none]))
+            let e' ← mkAppM ``HSub.hSub #[e.appFn!.appArg!, mkApp2 (mkConst ``BitVec.ofNat) (mkNatLit w) m]
+            return .visit { expr := e', proof? := ← mkAppM ``add_neg_lit #[e.appFn!.appArg!, c, m, h] }
   if e.hasFVar || e.hasMVar || e.hasLooseBVars || e.isConstOf ``true || e.isConstOf ``false
     || e.isConstOf ``True || e.isConstOf ``False then return .continue
   let ty ← inferType e
@@ -125,8 +144,14 @@ register_option sail_eval.aux : Bool := { defValue := false, descr := "kernel-ch
 def auxCheck (what : Unit → String) (ty pf : Expr) : MetaM Expr := do
   unless sail_eval.aux.get (← getOptions) do return pf
   traceLine s!"aux check {what ()}: {← ppExpr ty}"
-  try mkAuxTheorem ty pf (zetaDelta := true)
-  catch ex => throwError "sail_eval.aux: kernel rejects {what ()}{indentExpr ty}\n{ex.toMessageData}"
+  -- synchronous kernel check (`addDecl` may defer the kernel to a background task)
+  let fvars := (← getLCtx).getFVars
+  let ty' ← instantiateMVars (← mkForallFVars fvars ty)
+  let pf' ← instantiateMVars (← mkLambdaFVars fvars pf)
+  let decl := Declaration.thmDecl { name := ← mkFreshUserName `sailEvalAux, levelParams := [], type := ty', value := pf' }
+  match Kernel.Environment.addDecl (← getEnv).toKernelEnv (← getOptions) decl none with
+  | .ok _ => traceLine "  ok"; return pf
+  | .error ex => throwError "sail_eval.aux: kernel rejects {what ()}{indentExpr ty}\n{ex.toMessageData (← getOptions)}"
 
 def decideProp (c inst : Expr) : M (Bool × Expr) := do
   let (b, pf) ← decidePropCore c inst
@@ -180,6 +205,18 @@ def isResult (e : Expr) : Option Bool :=
   else if e.isAppOf ``EStateM.Result.error then some false else none
 
 def trans (r₁ r₂ : Simp.Result) : MetaM Simp.Result := r₁.mkEqTrans r₂
+
+/-- debugging: kernel-check one rewrite `e = r.expr` (only with `sail_eval.aux`) -/
+def checkR (what : String) (e : Expr) (r : Simp.Result) : MetaM Simp.Result := do
+  match r.proof? with
+  | none => return r
+  | some p => return { r with proof? := ← auxCheck (fun _ => what) (← mkEq e r.expr) p }
+
+/-- `e = e'` by `rfl`, stated: keeps every definitional step local, so the kernel compares
+adjacent terms only (merged defeq gaps made it evaluate discriminants, e.g. `Nat.add` on a
+symbolic value and a 64-bit literal, and hit "deep recursion") -/
+def rflStep (e e' : Expr) : MetaM Simp.Result := do
+  return { expr := e', proof? := ← mkExpectedTypeHint (← mkEqRefl e') (← mkEq e e') }
 
 def isCtorApp (e : Expr) : MetaM Bool := do
   if e.isRawNatLit || e.nat?.isSome then return true
@@ -236,10 +273,11 @@ partial def evalCore (e : Expr) : M Simp.Result := do
   let args := e.getAppArgs
   match fn with
   | .mdata _ b => eval (mkAppN b args)
-  | .letE _ _ v b _ => eval (mkAppN (b.instantiate1 v) args)
+  | .letE _ _ v b _ => let e' := mkAppN (b.instantiate1 v) args; trans (← rflStep e e') (← eval e')
   | .proj .. =>
     let fn' ← whnfCore fn
-    if fn' == fn then stuck e else eval (mkAppN fn' args)
+    if fn' == fn then stuck e else
+      let e' := mkAppN fn' args; trans (← rflStep e e') (← eval e')
   | .const n _ =>
     if n == ``Bind.bind && args.size == 7 && (← isEStateM args[0]!) then
       tick "bind" args[4]!
@@ -278,7 +316,7 @@ partial def evalCore (e : Expr) : M Simp.Result := do
       -- reducible transparency only: default `whnf` on e.g. 64-bit `BitVec` arithmetic in a
       -- discriminant can take forever / blow the recursion limit
       match ← withReducible (reduceMatcher? e) with
-      | .reduced e' => eval e'
+      | .reduced e' => trans (← rflStep e e') (← eval e')
       | _ =>
         -- normalise discriminants: kernel whnf if closed, `eval` if a monadic result, else simp
         let mut args' := args
@@ -298,20 +336,22 @@ partial def evalCore (e : Expr) : M Simp.Result := do
         unless changed do return ← stuck e
         let e' := mkAppN fn args'
         match ← withReducible (reduceMatcher? e') with
-        | .reduced e'' => trans { expr := e', proof? := pf? } (← eval e'')
+        | .reduced e'' =>
+          let r₁ ← checkR "discriminants" e { expr := e', proof? := pf? }
+          trans r₁ (← trans (← rflStep e' e'') (← eval e''))
         | _ => match ← reduceMatcher? e' with
-          | .reduced e'' => trans { expr := e', proof? := pf? } (← eval e'')
+          | .reduced e'' => trans { expr := e', proof? := pf? } (← trans (← rflStep e' e'') (← eval e''))
           | _ => stuck e'
     else
       tick "call" (mkAppN fn (args.extract 0 (args.size - 1)))
       -- 1. user lemma / simp at the root
-      let r ← simpE e (root := true)
+      let r ← checkR "root simp" e (← simpE e (root := true))
       if r.expr != e then return ← trans r (← eval r.expr)
       if (← read).noUnfold.contains n then return ← stuck e
       -- 2. unfold
       if let some r ← unfoldEqn? e then return ← trans r (← eval r.expr)
-      if let some e' ← withDefault (unfoldDefinition? e) then return ← eval e'
-      if let some e' ← delta? e then return ← eval e'
+      if let some e' ← withDefault (unfoldDefinition? e) then return ← trans (← rflStep e e') (← eval e')
+      if let some e' ← delta? e then return ← trans (← rflStep e e') (← eval e')
       stuck e
   | _ => stuck e
 end

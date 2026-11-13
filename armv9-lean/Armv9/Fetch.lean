@@ -203,7 +203,7 @@ def ExecuteA64 (instr : (BitVec 32)) : SailM Unit := do
               (do
                 if ((((IsSEE exn) || (IsUNDEFINED exn)) || (IsUNPREDICTABLE exn)) : Bool)
                 then (AArch64_UndefinedFault ())
-                else sailThrow (exn))))
+                else (sailThrow (exn) : SailM Unit))))
   else (__DecodeA64 (BitVec.toNat (← readReg _PC)) instr)
 
 def ExecuteA32 (instr : (BitVec 32)) : SailM Unit := do
@@ -224,7 +224,7 @@ def ExecuteT32__1 (instr : (BitVec 32)) : SailM Unit := do
               (do
                 if ((((IsSEE exn) || (IsUNDEFINED exn)) || (IsUNPREDICTABLE exn)) : Bool)
                 then (UnallocatedT32_32_Instruction instr)
-                else sailThrow (exn))))
+                else (sailThrow (exn) : SailM Unit))))
   else (__DecodeT32 (BitVec.toNat (← readReg _PC)) instr)
 
 def ExecuteT16 (instr : (BitVec 16)) : SailM Unit := do
@@ -293,7 +293,7 @@ def __DecodeExecute (enc : __InstrEnc) (instr : (BitVec 32)) : SailM Unit := do
         (do
           if ((IsSEE exn) : Bool)
           then (__TryDecodeExecute enc instr)
-          else sailThrow (exn)))
+          else (sailThrow (exn) : SailM Unit)))
 
 def __CheckForEmulatorTermination (enc : __InstrEnc) (instr : (BitVec 32)) : SailM Unit := do
   match (← readReg __emulator_termination_opcode) with
@@ -356,7 +356,7 @@ def __InstructionExecute (_ : Unit) : SailM Unit := do
             (do
               if ((IsExceptionTaken exn) : Bool)
               then (pure ())
-              else sailThrow (exn))))
+              else (sailThrow (exn) : SailM Unit))))
   (SPEPostExecution ())
   writeReg InGuardedPage false
   if ((! (← (AArch64_ExecutingERETInstr ()))) : Bool)
@@ -405,7 +405,7 @@ def __TopLevel (_ : Unit) : SailM Unit := do
               then (AArch32_TakePhysicalSErrorException iesb_req)
               else (AArch64_TakePhysicalSErrorException iesb_req))
           | .Error_ExceptionTaken () => (pure ())
-          | e => sailThrow (e)))
+          | e => (sailThrow (e) : SailM Unit)))
 
 def __EndCycle (_ : Unit) : SailM Unit := do
   writeReg __cycle_count ((← readReg __cycle_count) +i 1)

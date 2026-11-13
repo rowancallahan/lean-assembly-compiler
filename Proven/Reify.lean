@@ -5,6 +5,19 @@ import Proven.Compiler
 namespace Proven
 open Lean Meta Elab Term
 
+/-- `Exp` syntax for `e`, whose free variables are among the arguments `xs` -/
+partial def reifyGo (xs : Array Expr) (e : Expr) : TermElabM Term := do
+  if let some i := xs.idxOf? e then
+    return ← `(Exp.var $(Syntax.mkNumLit (toString i)))
+  let op? : Option Name := match e.getAppFn.constName?, e.getAppNumArgs with
+    | some ``HAdd.hAdd, 6 => some ``Op.add | some ``HSub.hSub, 6 => some ``Op.sub
+    | some ``HAnd.hAnd, 6 => some ``Op.and | some ``HOr.hOr, 6 => some ``Op.or
+    | some ``HXor.hXor, 6 => some ``Op.xor | _, _ => none
+  if let some op := op? then
+    return ← `(Exp.bin $(mkIdent op) $(← reifyGo xs e.appFn!.appArg!) $(← reifyGo xs e.appArg!))
+  if e.hasFVar then throwError "reify%: unsupported subterm{indentExpr e}"
+  `(Exp.const $(← exprToSyntax e))
+
 /-- `reify% f` for `f : BitVec 64 → … → BitVec 64` (at most 4 arguments) built from
 `+ - &&& ||| ^^^` and closed constants: the `Exp` `e` with `e.denote env = f (env 0) …` by `rfl`.
 Anything else is an error. -/
@@ -16,18 +29,7 @@ elab "reify% " t:term : term => do
     | none => throwError "reify%: expected a lambda or a definition, got{indentExpr f}"
   lambdaTelescope f fun xs body => do
     unless xs.size ≤ 4 do throwError "reify%: at most 4 arguments"
-    let rec go (e : Expr) : TermElabM Term := do
-      if let some i := xs.idxOf? e then
-        return ← `(Exp.var $(Syntax.mkNumLit (toString i.val)))
-      let op? := match e.getAppFn.constName?, e.getAppNumArgs with
-        | some ``HAdd.hAdd, 6 => some (← `(Op.add)) | some ``HSub.hSub, 6 => some (← `(Op.sub))
-        | some ``HAnd.hAnd, 6 => some (← `(Op.and)) | some ``HOr.hOr, 6 => some (← `(Op.or))
-        | some ``HXor.hXor, 6 => some (← `(Op.xor)) | _, _ => none
-      if let some op := op? then
-        return ← `(Exp.bin $op $(← go e.appFn!.appArg!) $(← go e.appArg!))
-      if e.hasFVar then throwError "reify%: unsupported subterm{indentExpr e}"
-      return ← `(Exp.const $(← exprToSyntax e))
-    elabTerm (← go body) (some (mkConst ``Exp))
+    elabTerm (← reifyGo xs body) (some (mkConst ``Exp))
 
 /-! ## Example -/
 
@@ -45,6 +47,6 @@ theorem demo_ok {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = s
     runsTo s fun s' => s'.regs.get? .PC = some (getX s 1) ∧
       getX s' 10 = demo (getX s 10) (getX s 11) (getX s 12) (getX s 13) ∧ Cfg s' ∧ s'.mem = s.mem ∧
       calleeSavedKept s s' :=
-  compile_ok demoE (by decide) h hpc hc hok hra
+  compile_ok demoE (by unfold demoE; decide) h hpc hc hok hra
 
 end Proven

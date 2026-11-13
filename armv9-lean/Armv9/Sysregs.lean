@@ -265,7 +265,7 @@ def AArch64_SysRegRead (op0 : Int) (op1 : Int) (crn : Int) (crm : Int) (op2 : In
       then
         (do
           if ((n ≥b (BitVec.toNat (_get_AMCGCR_EL0_Type_CG0NC (← readReg AMCGCR_EL0)))) : Bool)
-          then sailThrow ((Error_Undefined ()))
+          then (sailThrow ((Error_Undefined ())) : SailM Unit)
           else (pure ()))
       else
         (do
@@ -273,7 +273,7 @@ def AArch64_SysRegRead (op0 : Int) (op1 : Int) (crn : Int) (crm : Int) (op2 : In
           then
             (do
               if ((n ≥b (BitVec.toNat (_get_AMCGCR_EL0_Type_CG1NC (← readReg AMCGCR_EL0)))) : Bool)
-              then sailThrow ((Error_Undefined ()))
+              then (sailThrow ((Error_Undefined ())) : SailM Unit)
               else (pure ()))
           else (pure ())))
   else (pure ())
@@ -292,7 +292,7 @@ def AArch64_SysRegRead (op0 : Int) (op1 : Int) (crn : Int) (crm : Int) (op2 : In
       then
         (do
           if (((BitVec.toNat ((integer_subrange crm 1 0) +++ (integer_subrange op2 2 0))) >b ((← (GetNumEventCounters ())) -i 1)) : Bool)
-          then sailThrow ((Error_Undefined ()))
+          then (sailThrow ((Error_Undefined ())) : SailM Unit)
           else (AArch64_SystemAccessTrap EL2 (BitVec.toNat 0x18#8)))
       else (pure ()))
   else (pure ())
@@ -312,7 +312,7 @@ def AArch64_SysRegRead (op0 : Int) (op1 : Int) (crn : Int) (crm : Int) (op2 : In
       then
         (do
           if (((BitVec.toNat (_get_PMSELR_EL0_Type_SEL (← readReg PMSELR_EL0))) >b ((← (GetNumEventCounters ())) -i 1)) : Bool)
-          then sailThrow ((Error_Undefined ()))
+          then (sailThrow ((Error_Undefined ())) : SailM Unit)
           else (AArch64_SystemAccessTrap EL2 (BitVec.toNat 0x18#8)))
       else (pure ()))
   else (pure ())
@@ -372,7 +372,7 @@ def AArch64_SysRegRead (op0 : Int) (op1 : Int) (crn : Int) (crm : Int) (op2 : In
               then
                 (do
                   (X_set t 64 temp)
-                  sailThrow ((Error_Undefined ())))
+                  (sailThrow ((Error_Undefined ())) : SailM Unit))
               else
                 (do
                   (X_set t 64 temp)
@@ -402,7 +402,7 @@ def AArch64_SysRegRead (op0 : Int) (op1 : Int) (crn : Int) (crm : Int) (op2 : In
               then
                 (do
                   (X_set t 64 temp)
-                  sailThrow ((Error_Undefined ())))
+                  (sailThrow ((Error_Undefined ())) : SailM Unit))
               else
                 (do
                   (X_set t 64 temp)
@@ -428,7 +428,7 @@ def AArch64_SysRegRead (op0 : Int) (op1 : Int) (crn : Int) (crm : Int) (op2 : In
       then
         (do
           if (((BitVec.toNat ((integer_subrange crm 1 0) +++ (integer_subrange op2 2 0))) >b ((← (GetNumEventCounters ())) -i 1)) : Bool)
-          then sailThrow ((Error_Undefined ()))
+          then (sailThrow ((Error_Undefined ())) : SailM Unit)
           else
             (do
               (X_set t 64 temp)
@@ -801,7 +801,7 @@ def AArch64_SysRegWrite (op0 : Int) (op1 : Int) (crn : Int) (crm : Int) (op2 : I
       then
         (do
           if ((n ≥b (BitVec.toNat (_get_AMCGCR_EL0_Type_CG0NC (← readReg AMCGCR_EL0)))) : Bool)
-          then sailThrow ((Error_Undefined ()))
+          then (sailThrow ((Error_Undefined ())) : SailM Unit)
           else (pure ()))
       else
         (do
@@ -809,7 +809,7 @@ def AArch64_SysRegWrite (op0 : Int) (op1 : Int) (crn : Int) (crm : Int) (op2 : I
           then
             (do
               if ((n ≥b (BitVec.toNat (_get_AMCGCR_EL0_Type_CG1NC (← readReg AMCGCR_EL0)))) : Bool)
-              then sailThrow ((Error_Undefined ()))
+              then (sailThrow ((Error_Undefined ())) : SailM Unit)
               else (pure ()))
           else (pure ())))
   else (pure ())
@@ -870,7 +870,7 @@ def AArch64_SysRegWrite (op0 : Int) (op1 : Int) (crn : Int) (crm : Int) (op2 : I
       then
         (do
           if (((BitVec.toNat ((integer_subrange crm 1 0) +++ (integer_subrange op2 2 0))) >b ((← (GetNumEventCounters ())) -i 1)) : Bool)
-          then sailThrow ((Error_Undefined ()))
+          then (sailThrow ((Error_Undefined ())) : SailM Unit)
           else (AArch64_SystemAccessTrap EL2 (BitVec.toNat 0x18#8)))
       else (pure ()))
   else (pure ())
@@ -890,7 +890,7 @@ def AArch64_SysRegWrite (op0 : Int) (op1 : Int) (crn : Int) (crm : Int) (op2 : I
       then
         (do
           if (((BitVec.toNat (_get_PMSELR_EL0_Type_SEL (← readReg PMSELR_EL0))) >b ((← (GetNumEventCounters ())) -i 1)) : Bool)
-          then sailThrow ((Error_Undefined ()))
+          then (sailThrow ((Error_Undefined ())) : SailM Unit)
           else (AArch64_SystemAccessTrap EL2 (BitVec.toNat 0x18#8)))
       else (pure ()))
   else (pure ())
@@ -1126,14 +1126,14 @@ def AArch32_SysRegRead__1 (cp_num : Int) (instr : (BitVec 32)) (t : Int) : SailM
       then
         (do
           if ((n ≥b (BitVec.toNat (_get_AMCGCR_Type_CG0NC (← (AMCGCR_read ()))))) : Bool)
-          then sailThrow ((Error_Undefined ()))
+          then (sailThrow ((Error_Undefined ())) : SailM Unit)
           else (pure ()))
       else (pure ())
       if (((Sail.BitVec.extractLsb CRm 3 1) == 0b111#3) : Bool)
       then
         (do
           if ((n ≥b (BitVec.toNat (_get_AMCGCR_Type_CG1NC (← (AMCGCR_read ()))))) : Bool)
-          then sailThrow ((Error_Undefined ()))
+          then (sailThrow ((Error_Undefined ())) : SailM Unit)
           else (pure ()))
       else (pure ()))
   else (pure ())
@@ -1152,7 +1152,7 @@ def AArch32_SysRegRead__1 (cp_num : Int) (instr : (BitVec 32)) (t : Int) : SailM
       then
         (do
           if (((BitVec.toNat ((Sail.BitVec.extractLsb CRm 1 0) +++ (Sail.BitVec.extractLsb opc2 2 0))) >b ((← (GetNumEventCounters ())) -i 1)) : Bool)
-          then sailThrow ((Error_Undefined ()))
+          then (sailThrow ((Error_Undefined ())) : SailM Unit)
           else
             (do
               if ((← (ELUsingAArch32 EL2)) : Bool)
@@ -1176,7 +1176,7 @@ def AArch32_SysRegRead__1 (cp_num : Int) (instr : (BitVec 32)) (t : Int) : SailM
       then
         (do
           if (((BitVec.toNat (_get_PMSELR_Type_SEL (← (PMSELR_read ())))) >b ((← (GetNumEventCounters ())) -i 1)) : Bool)
-          then sailThrow ((Error_Undefined ()))
+          then (sailThrow ((Error_Undefined ())) : SailM Unit)
           else
             (do
               if ((← (ELUsingAArch32 EL2)) : Bool)
@@ -1210,7 +1210,7 @@ def AArch32_SysRegRead__1 (cp_num : Int) (instr : (BitVec 32)) (t : Int) : SailM
               then
                 (do
                   (R_set t temp)
-                  sailThrow ((Error_Undefined ())))
+                  (sailThrow ((Error_Undefined ())) : SailM Unit))
               else
                 (do
                   if ((← (ELUsingAArch32 EL2)) : Bool)
@@ -1242,7 +1242,7 @@ def AArch32_SysRegRead__1 (cp_num : Int) (instr : (BitVec 32)) (t : Int) : SailM
               then
                 (do
                   (R_set t temp)
-                  sailThrow ((Error_Undefined ())))
+                  (sailThrow ((Error_Undefined ())) : SailM Unit))
               else
                 (do
                   if ((← (ELUsingAArch32 EL2)) : Bool)
@@ -1278,7 +1278,7 @@ def AArch32_SysRegRead__1 (cp_num : Int) (instr : (BitVec 32)) (t : Int) : SailM
           then
             (do
               (R_set t temp)
-              sailThrow ((Error_Undefined ())))
+              (sailThrow ((Error_Undefined ())) : SailM Unit))
           else
             (do
               if ((← (ELUsingAArch32 EL2)) : Bool)
@@ -1403,7 +1403,7 @@ def AArch32_SysRegRead64 (cp_num : Int) (instr : (BitVec 32)) (t : Int) (t2 : In
       then
         (do
           if ((n ≥b (BitVec.toNat (_get_AMCGCR_Type_CG0NC (← (AMCGCR_read ()))))) : Bool)
-          then sailThrow ((Error_Undefined ()))
+          then (sailThrow ((Error_Undefined ())) : SailM Unit)
           else (pure ()))
       else
         (do
@@ -1411,7 +1411,7 @@ def AArch32_SysRegRead64 (cp_num : Int) (instr : (BitVec 32)) (t : Int) (t2 : In
           then
             (do
               if ((n ≥b (BitVec.toNat (_get_AMCGCR_Type_CG1NC (← (AMCGCR_read ()))))) : Bool)
-              then sailThrow ((Error_Undefined ()))
+              then (sailThrow ((Error_Undefined ())) : SailM Unit)
               else (pure ()))
           else (pure ())))
   else (pure ())
@@ -1496,7 +1496,7 @@ def AArch32_SysRegWrite (cp_num : Int) (instr : (BitVec 32)) (t : Int) : SailM U
       then
         (do
           if (((BitVec.toNat ((Sail.BitVec.extractLsb CRm 1 0) +++ (Sail.BitVec.extractLsb opc2 2 0))) >b ((← (GetNumEventCounters ())) -i 1)) : Bool)
-          then sailThrow ((Error_Undefined ()))
+          then (sailThrow ((Error_Undefined ())) : SailM Unit)
           else
             (do
               if ((← (ELUsingAArch32 EL2)) : Bool)
@@ -1518,7 +1518,7 @@ def AArch32_SysRegWrite (cp_num : Int) (instr : (BitVec 32)) (t : Int) : SailM U
       then
         (do
           if (((BitVec.toNat (_get_PMSELR_Type_SEL (← (PMSELR_read ())))) >b ((← (GetNumEventCounters ())) -i 1)) : Bool)
-          then sailThrow ((Error_Undefined ()))
+          then (sailThrow ((Error_Undefined ())) : SailM Unit)
           else
             (do
               if ((← (ELUsingAArch32 EL2)) : Bool)
@@ -1662,7 +1662,7 @@ def AArch32_SysRegWrite64 (cp_num : Int) (instr : (BitVec 32)) (t : Int) (t2 : I
       then
         (do
           if ((n ≥b (BitVec.toNat (_get_AMCGCR_Type_CG0NC (← (AMCGCR_read ()))))) : Bool)
-          then sailThrow ((Error_Undefined ()))
+          then (sailThrow ((Error_Undefined ())) : SailM Unit)
           else (pure ()))
       else
         (do
@@ -1670,7 +1670,7 @@ def AArch32_SysRegWrite64 (cp_num : Int) (instr : (BitVec 32)) (t : Int) (t2 : I
           then
             (do
               if ((n ≥b (BitVec.toNat (_get_AMCGCR_Type_CG1NC (← (AMCGCR_read ()))))) : Bool)
-              then sailThrow ((Error_Undefined ()))
+              then (sailThrow ((Error_Undefined ())) : SailM Unit)
               else (pure ()))
           else (pure ())))
   else (pure ())

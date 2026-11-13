@@ -40,8 +40,6 @@ def Steps : Nat → St → St → Prop
 
 def runsTo (s : St) (P : St → Prop) : Prop := ∃ n s', Steps n s s' ∧ P s'
 
-def reg (s : St) (r : Register) : Option (RegisterType r) := s.regs.get? r
-
 def bytesAt (s : St) (a n : Nat) : List (Option (BitVec 8)) := (List.range n).map (s.mem[a + ·]?)
 
 structure Region where
@@ -57,5 +55,32 @@ def unchangedOutside (s s' : St) (rs : List Region) : Prop :=
 def calleeSavedKept (s s' : St) : Prop :=
   ∀ r ∈ [Register.x2, .x8, .x9, .x18, .x19, .x20, .x21, .x22, .x23, .x24, .x25, .x26, .x27],
     s'.regs.get? r = s.regs.get? r
+
+/-- the little-endian bytes of `code` -/
+def codeBytes (code : List (BitVec 32)) : List (Option (BitVec 8)) :=
+  code.flatMap fun w => [w.extractLsb' 0 8, w.extractLsb' 8 8, w.extractLsb' 16 8, w.extractLsb' 24 8].map some
+
+/-- `code`, placed anywhere, implements `f` on byte lists of length `≤ maxLen`: called with
+`a0 = input, a1 = length, a2 = scratch, a3 = output, sp = stack top, ra`, it runs to `ra` with
+`f x` in `output`, other memory and callee-saved registers unchanged, `Cfg` kept. -/
+def Implements (code : List (BitVec 32)) (f : List UInt8 → List UInt8)
+    (maxLen : Nat := 2 ^ 20) (stackLen : Nat := 0) : Prop :=
+  ∀ (x : List UInt8) (s : St) (entry ra : BitVec 64) (input scratch output stack : Region),
+    let codeR : Region := ⟨entry.toNat, 4 * code.length⟩
+    x.length ≤ maxLen → Cfg s → s.regs.get? .PC = some entry → entry.toNat % 4 = 0 →
+    bytesAt s entry.toNat (4 * code.length) = codeBytes code →
+    s.regs.get? .x10 = some (BitVec.ofNat 64 input.base) →
+    s.regs.get? .x11 = some (BitVec.ofNat 64 x.length) →
+    s.regs.get? .x12 = some (BitVec.ofNat 64 scratch.base) →
+    s.regs.get? .x13 = some (BitVec.ofNat 64 output.base) →
+    s.regs.get? .x2 = some (BitVec.ofNat 64 (stack.base + stack.len)) →
+    s.regs.get? .x1 = some ra → ra.toNat % 4 = 0 → disjoint ⟨ra.toNat, 4⟩ codeR →
+    bytesAt s input.base x.length = x.map (some ·.toBitVec) →
+    input.len = x.length → x.length ≤ scratch.len → (f x).length ≤ output.len →
+    stackLen ≤ stack.len → (∀ r ∈ [input, scratch, output, stack, codeR], r.inRAM) →
+    [input, scratch, output, stack, codeR].Pairwise disjoint →
+    runsTo s fun s' => s'.regs.get? .PC = some ra ∧
+      bytesAt s' output.base (f x).length = (f x).map (some ·.toBitVec) ∧
+      unchangedOutside s s' [input, scratch, output, stack] ∧ calleeSavedKept s s' ∧ Cfg s'
 
 end Proven

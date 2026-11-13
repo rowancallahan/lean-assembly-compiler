@@ -2,6 +2,8 @@
 import Proven.Spec
 open LeanRV64D LeanRV64D.Functions Sail Sail.ConcurrencyInterfaceV1
 
+set_option linter.unusedSimpArgs false
+
 namespace Proven
 
 abbrev Regs := Std.ExtDHashMap Register RegisterType

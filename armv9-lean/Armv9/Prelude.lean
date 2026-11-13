@@ -233,10 +233,10 @@ def IsSError (ex : exception) : Bool :=
 
 /-- Type quantifiers: k_ex8452660_ : Bool -/
 def ThrowSError (iesb_req : Bool) : SailM Unit := do
-  sailThrow ((Error_SError iesb_req))
+  (sailThrow ((Error_SError iesb_req)) : SailM Unit)
 
 def ReservedEncoding (_ : Unit) : SailM Unit := do
-  sailThrow ((Error_ReservedEncoding ()))
+  (sailThrow ((Error_ReservedEncoding ())) : SailM Unit)
 
 /-- Type quantifiers: k_ex8452663_ : Bool -/
 def BoolStr (b : Bool) : String :=

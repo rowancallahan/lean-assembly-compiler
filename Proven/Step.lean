@@ -34,6 +34,16 @@ namespace Proven
 @[simp] theorem insert_insert_same {m : Regs} {r : Register} {v w : RegisterType r} :
     (m.insert r v).insert r w = m.insert r w := by
   ext k; simp only [Std.ExtDHashMap.get?_insert]; split <;> rfl
+@[simp] theorem shift_bits_left_eq {n m} (x : BitVec n) (y : BitVec m) :
+    shift_bits_left x y = x <<< y.toNat := rfl
+/-- big constants (negative offsets) as subtraction: keeps `BitVec` literals `< 2^(w-1)`.  (The
+kernel hits "deep recursion" checking some `simp` proofs about `x + c#64` with `c ≥ 2^63`.) -/
+@[simp] theorem add_big {w : Nat} (x : BitVec w) (n : Nat) (h : 2 ^ w < 2 * n ∧ n < 2 ^ w) :
+    x + BitVec.ofNat w n = x - BitVec.ofNat w (2 ^ w - n) := by
+  apply BitVec.eq_of_toNat_eq
+  simp only [BitVec.toNat_add, BitVec.toNat_sub, BitVec.toNat_ofNat]
+  rw [Nat.mod_eq_of_lt h.2, Nat.mod_eq_of_lt (by omega : 2 ^ w - n < 2 ^ w)]
+  congr 1; omega
 @[simp] theorem subInt_eq {w} (x : BitVec w) (i : Int) : BitVec.subInt x i = x - BitVec.ofInt w i := rfl
 @[simp] theorem not_eq (b : Bool) : Functions.not b = !b := rfl
 @[simp] theorem pm_transform_PA_0 (x : BitVec 64) : pm_transform_PA (.Virtaddr x) 0 = .Virtaddr x := by
@@ -338,17 +348,18 @@ set_option hygiene false in
 /-- the `run_hart_active` part of `step_word` -/
 macro "step_word_core" : tactic => `(tactic| (
   · intro s h hpc hi hQ
-    simp only [getX_eq] at hQ
+    simp only [Proven.getX_eq] at hQ
     have hok' := hok; obtain ⟨_, _, _⟩ := hok'
-    have hf := fetch_cfg h hpc hok hi (by decide)
-    have hd := dispatch_cfg h
+    have hf := Proven.fetch_cfg h hpc hok hi (by decide)
+    have hd := Proven.dispatch_cfg h
     cfg_facts h
     obtain ⟨_, _, _, _, _, _⟩ := h.pma
     have := h.present .pmpaddr_n (by simp)
-    sail_eval frozen[fetch, dispatchInterrupt, pmpCheck] [*, pmp_none, Std.ExtDHashMap.contains_insert, BitVec.add_sub_cancel, matching_pma_region,
-      matching_pma_region_bits_range, override_PMA, hartSupports, range_subset, zopz0zIzJ_u,
+    sail_eval frozen[LeanRV64D.Functions.fetch, LeanRV64D.Functions.dispatchInterrupt, LeanRV64D.Functions.pmpCheck] [*, Proven.pmp_none, Std.ExtDHashMap.contains_insert, BitVec.add_sub_cancel, LeanRV64D.Functions.matching_pma_region,
+      LeanRV64D.Functions.matching_pma_region_bits_range, LeanRV64D.Functions.override_PMA, LeanRV64D.Functions.hartSupports, LeanRV64D.Functions.range_subset, LeanRV64D.Functions.zopz0zIzJ_u,
+      LeanRV64D.Functions.zopz0zI_u, LeanRV64D.Functions.zopz0zKzJ_u, LeanRV64D.Functions.zopz0zK_u, LeanRV64D.Functions.zopz0zI_s, LeanRV64D.Functions.zopz0zKzJ_s,
       BitVec.toNat_sub, BitVec.toNat_add]
-    all_goals simp [stepF, xset, update0_even, BitVec.sub_eq_add_neg, *]
+    all_goals simp [Proven.stepF, Proven.xset, Proven.update0_even, *]
   all_goals simp))
 
 open Lean Meta Elab Tactic in
@@ -376,7 +387,7 @@ elab "step_word" : tactic => withMainContext do
   let q ← Term.exprToSyntax (← mkLambdaFVars #[s] qBody)
   let hq ← Term.exprToSyntax qPf
   let sT ← Term.exprToSyntax s
-  evalTactic (← `(tactic| refine next_of (s := $sT) (npc := $npc) (v := $v) (mem := $mem)
+  evalTactic (← `(tactic| refine Proven.next_of (s := $sT) (npc := $npc) (v := $v) (mem := $mem)
     (Q := $q) ?_ $(mkIdent `h) $(mkIdent `hpc) $(mkIdent `hi) $hq
     (by set_option linter.unnecessarySimpa false in simpa using $hq) ?_ ?_ ?_))
   evalTactic (← `(tactic| step_word_core))

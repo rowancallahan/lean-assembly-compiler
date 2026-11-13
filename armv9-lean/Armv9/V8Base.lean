@@ -36140,7 +36140,7 @@ def PMUCountValue (n : Nat) (Vb : Int) : SailM Int := do
           (do
             sail_assert ((0 ≤b n) && (n <b 31)) "src/v8_base.sail:5457.46-5457.47"
             let Vp ← (( do (pure (GetElem?.getElem! (← readReg PMULastThresholdValue) n)) ) : SailM Bool )
-            let tc ← (( (pure (Sail.BitVec.extractLsb (_get_PMEVTYPER_EL0_Type_TC (GetElem?.getElem! (← readReg PMEVTYPER_EL0) n)) 1 0)) ) : SailM (BitVec 2) )
+            let tc ← (( do (pure (Sail.BitVec.extractLsb (_get_PMEVTYPER_EL0_Type_TC (GetElem?.getElem! (← readReg PMEVTYPER_EL0) n)) 1 0)) ) : SailM (BitVec 2) )
             let tc ← (( do
               if ((tc == 0b00#2) : Bool)
               then
@@ -36314,7 +36314,7 @@ def BRBETimeStamp (_ : Unit) : SailM TimeStamp := SailME.run do
     if ((HaveEL EL2) : Bool)
     then
       (do
-        let TS_el2 ← (( (pure (_get_BRBCR_EL2_Type_TS (← readReg BRBCR_EL2))) ) : SailME TimeStamp (BitVec 2) )
+        let TS_el2 ← (( do (pure (_get_BRBCR_EL2_Type_TS (← readReg BRBCR_EL2))) ) : SailME TimeStamp (BitVec 2) )
         let TS_el2 ← (( do
           if (((! (← (HaveECVExt ()))) && (TS_el2 == 0b10#2)) : Bool)
           then
@@ -58570,7 +58570,7 @@ def AArch64_CheckTimerConditions (_ : Unit) : SailM Unit := do
     if (((_get_CNTV_CTL_EL0_Type_ENABLE (← readReg CNTV_CTL_EL0)) == 1#1) : Bool)
     then
       (do
-        let imask ← (( (pure (_get_CNTV_CTL_EL0_Type_IMASK (← readReg CNTV_CTL_EL0))) ) : SailM (BitVec 1) )
+        let imask ← (( do (pure (_get_CNTV_CTL_EL0_Type_IMASK (← readReg CNTV_CTL_EL0))) ) : SailM (BitVec 1) )
         let imask ← (( do
           if ((←((pure ((← (HaveRME ())) && ((BEq.beq ss SS_Root) || (BEq.beq ss SS_Realm)))) <&&> (do
                (pure ((_get_CNTHCTL_EL2_Type_CNTVMASK (← readReg CNTHCTL_EL2)) == 1#1))))) : Bool)
@@ -58717,7 +58717,7 @@ def TestEventCNTP (prev_physical_count : (BitVec 64)) (current_physical_count : 
     if (((_get_CNTHCTL_EL2_Type_EVNTEN (← readReg CNTHCTL_EL2)) == 1#1) : Bool)
     then
       (do
-        let n ← (( (pure (BitVec.toNat (_get_CNTHCTL_EL2_Type_EVNTI (← readReg CNTHCTL_EL2)))) ) : SailM Int )
+        let n ← (( do (pure (BitVec.toNat (_get_CNTHCTL_EL2_Type_EVNTI (← readReg CNTHCTL_EL2)))) ) : SailM Int )
         let n ← (( do
           if ((←((HaveECVExt ()) <&&> (do
                (pure ((_get_CNTHCTL_EL2_Type_EVNTIS (← readReg CNTHCTL_EL2)) == 1#1))))) : Bool)
@@ -58769,7 +58769,7 @@ def TestEventCNTV (prev_physical_count : (BitVec 64)) (current_physical_count : 
          (pure ((_get_CNTKCTL_EL1_Type_EVNTEN (← readReg CNTKCTL_EL1)) == 1#1))))) : Bool)
     then
       (do
-        let n ← (( (pure (BitVec.toNat (_get_CNTKCTL_EL1_Type_EVNTI (← readReg CNTKCTL_EL1)))) ) : SailM Int )
+        let n ← (( do (pure (BitVec.toNat (_get_CNTKCTL_EL1_Type_EVNTI (← readReg CNTKCTL_EL1)))) ) : SailM Int )
         let n ← (( do
           if ((←((HaveECVExt ()) <&&> (do
                (pure ((_get_CNTKCTL_EL1_Type_EVNTIS (← readReg CNTKCTL_EL1)) == 1#1))))) : Bool)
@@ -61494,22 +61494,22 @@ def ComputePACQARMA (data : (BitVec 64)) (modifier : (BitVec 64)) (key0 : (BitVe
     (pure loop_vars) ) : SailM ((BitVec 64) × (BitVec 64) × (BitVec 64)) )
   let roundkey : (BitVec 64) := (modk0 ^^^ runningmod)
   let workingval : (BitVec 64) := (workingval ^^^ roundkey)
-  let workingval ← (( (PACCellShuffle workingval) ) : SailM (BitVec 64) )
-  let workingval ← (( (PACMult workingval) ) : SailM (BitVec 64) )
+  let workingval ← (( do (PACCellShuffle workingval) ) : SailM (BitVec 64) )
+  let workingval ← (( do (PACMult workingval) ) : SailM (BitVec 64) )
   let workingval ← (( do
     if (isqarma3 : Bool)
     then (do (PACSub1 workingval))
     else (do (PACSub workingval)) ) : SailM (BitVec 64) )
-  let workingval ← (( (PACCellShuffle workingval) ) : SailM (BitVec 64) )
-  let workingval ← (( (PACMult workingval) ) : SailM (BitVec 64) )
+  let workingval ← (( do (PACCellShuffle workingval) ) : SailM (BitVec 64) )
+  let workingval ← (( do (PACMult workingval) ) : SailM (BitVec 64) )
   let workingval : (BitVec 64) := (key1 ^^^ workingval)
-  let workingval ← (( (PACCellInvShuffle workingval) ) : SailM (BitVec 64) )
+  let workingval ← (( do (PACCellInvShuffle workingval) ) : SailM (BitVec 64) )
   let workingval ← (( do
     if (isqarma3 : Bool)
     then (do (PACSub1 workingval))
     else (do (PACInvSub workingval)) ) : SailM (BitVec 64) )
-  let workingval ← (( (PACMult workingval) ) : SailM (BitVec 64) )
-  let workingval ← (( (PACCellInvShuffle workingval) ) : SailM (BitVec 64) )
+  let workingval ← (( do (PACMult workingval) ) : SailM (BitVec 64) )
+  let workingval ← (( do (PACCellInvShuffle workingval) ) : SailM (BitVec 64) )
   let workingval : (BitVec 64) := (workingval ^^^ key0)
   let workingval : (BitVec 64) := (workingval ^^^ runningmod)
   let (roundkey, runningmod, workingval) ← (( do
@@ -66333,7 +66333,7 @@ def AArch64_S1DisabledOutput (fault_in : FaultRecord) (regime : Regime) (va_in :
   then (pure (fault, (← (__UNKNOWN_AddressDescriptor ()))))
   else
     (do
-      let ipa ← (( (CreateAddressDescriptor va_in oa memattrs) ) : SailM AddressDescriptor )
+      let ipa ← (( do (CreateAddressDescriptor va_in oa memattrs) ) : SailM AddressDescriptor )
       let ipa ← (pure { ipa with mecid := ← (do (AArch64_S1DisabledOutputMECID walkparams regime ipa.paddress.paspace)) })
       (pure (fault, ipa)))
 
@@ -70349,7 +70349,7 @@ def AArch64_MemSingle_set__1 (address : (BitVec 64)) (size : Nat) (accdesc_in : 
             let highhalf : (BitVec (halfsize * 8)) := (Sail.BitVec.extractLsb value_name ((size *i 8) -i 1) ((((size *i 8) -i 1) -i (halfsize *i 8)) +i 1))
             let lowhalf : (BitVec (halfsize * 8)) := (Sail.BitVec.extractLsb value_name (((size *i 8) -i 1) -i (halfsize *i 8)) (((((size *i 8) -i 1) -i (halfsize *i 8)) -i (halfsize *i 8)) +i 1))
             (highhalf, lowhalf)
-          let memstatus ← (( (PhysMemWrite memaddrdesc halfsize accdesc none lowhalf) ) : SailM PhysMemRetStatus )
+          let memstatus ← (( do (PhysMemWrite memaddrdesc halfsize accdesc none lowhalf) ) : SailM PhysMemRetStatus )
           if ((IsFault__2 memstatus) : Bool)
           then (HandleExternalWriteAbort memstatus memaddrdesc halfsize accdesc)
           else (pure ())
@@ -71690,7 +71690,7 @@ def AArch64_AdvSIMDFPAccessTrap (target_el : (BitVec 2)) : SailM Unit := do
       (AArch64_TakeException EL2 except preferred_exception_return vect_offset))
   else
     (do
-      let except ← (( (ExceptionSyndrome Exception_AdvSIMDFPAccessTrap) ) : SailM ExceptionRecord )
+      let except ← (( do (ExceptionSyndrome Exception_AdvSIMDFPAccessTrap) ) : SailM ExceptionRecord )
       let except ← (pure { except with syndrome := ← (do (pure (Sail.BitVec.updateSubrange except.syndrome 24 20 (← (ConditionSyndrome ()))))) })
       (AArch64_TakeException target_el except preferred_exception_return vect_offset))
 
@@ -71711,7 +71711,7 @@ def CheckOriginalSVEEnabled (_ : Unit) : SailM Unit := do
        (pure ((_get_CPTR_EL3_Type_EZ (← readReg CPTR_EL3)) == 0#1)) <||> (do
          (pure ((_get_CPTR_EL3_Type_TFP (← readReg CPTR_EL3)) == 1#1)))) <&&> (do
        (EL3SDDUndefPriority ())))) : Bool)
-  then sailThrow ((Error_Undefined ()))
+  then (sailThrow ((Error_Undefined ())) : SailM Unit)
   else (pure ())
   let disabled ← (( do
     if ((←((pure ((← readReg PSTATE).EL == EL0)) <||> (do
@@ -71795,14 +71795,14 @@ def CheckOriginalSVEEnabled (_ : Unit) : SailM Unit := do
       then
         (do
           if ((← (EL3SDDUndef ())) : Bool)
-          then sailThrow ((Error_Undefined ()))
+          then (sailThrow ((Error_Undefined ())) : SailM Unit)
           else (SVEAccessTrap EL3))
       else (pure ())
       if (((_get_CPTR_EL3_Type_TFP (← readReg CPTR_EL3)) == 1#1) : Bool)
       then
         (do
           if ((← (EL3SDDUndef ())) : Bool)
-          then sailThrow ((Error_Undefined ()))
+          then (sailThrow ((Error_Undefined ())) : SailM Unit)
           else (AArch64_AdvSIMDFPAccessTrap EL3))
       else (pure ()))
   else (pure ())
@@ -72954,13 +72954,13 @@ def ReducePredicated (op : ReduceOp) (input : (BitVec k_N)) (mask : (BitVec k_M)
 def DecodeBitMasks (immN : (BitVec 1)) (imms : (BitVec 6)) (immr : (BitVec 6)) (immediate : Bool) (M : Nat) : SailM ((BitVec M) × (BitVec M)) := do
   let len := (HighestSetBit (immN +++ (Complement.complement imms)))
   if ((len <b 1) : Bool)
-  then sailThrow ((Error_Undefined ()))
+  then (sailThrow ((Error_Undefined ())) : SailM Unit)
   else (pure ())
   sail_assert (M ≥b (Int.shiftl 1 len)) "src/v8_base.sail:30900.26-30900.27"
   sail_assert (6 ≥b len) "src/v8_base.sail:30901.32-30901.33"
   let levels : (BitVec 6) := (Sail.BitVec.zeroExtend (Ones (n := len)) 6)
   if ((immediate && ((imms &&& levels) == levels)) : Bool)
-  then sailThrow ((Error_Undefined ()))
+  then (sailThrow ((Error_Undefined ())) : SailM Unit)
   else (pure ())
   let s := (BitVec.toNat (imms &&& levels))
   let r := (BitVec.toNat (immr &&& levels))
@@ -74438,19 +74438,19 @@ def CheckMOPSEnabled (_ : Unit) : SailM Unit := do
          (pure ((_get_HCR_EL2_Type_E2H (← readReg HCR_EL2)) == 0#1)))) <&&> (do
        (pure (! (← (IsHCRXEL2Enabled ())))) <||> (do
          (pure ((_get_HCRX_EL2_Type_MSCEn (← readReg HCRX_EL2)) == 0#1)))))) : Bool)
-  then sailThrow ((Error_Undefined ()))
+  then (sailThrow ((Error_Undefined ())) : SailM Unit)
   else (pure ())
   if ((←((pure ((← readReg PSTATE).EL == EL0)) <&&> (do
        (pure ((_get_SCTLR_EL1_Type_MSCEn (← readReg SCTLR_EL1)) == 0#1))) <&&> (do
        (pure (! (← (EL2Enabled ())))) <||> (do
          (pure ((_get_HCR_EL2_Type_TGE (← readReg HCR_EL2)) == 0#1))) <||> (do
          (pure ((_get_HCR_EL2_Type_E2H (← readReg HCR_EL2)) == 0#1)))))) : Bool)
-  then sailThrow ((Error_Undefined ()))
+  then (sailThrow ((Error_Undefined ())) : SailM Unit)
   else (pure ())
   if ((←((pure ((← readReg PSTATE).EL == EL0)) <&&> (do
        (IsInHost ())) <&&> (do
        (pure ((_get_SCTLR_EL2_Type_MSCEn (← readReg SCTLR_EL2)) == 0#1))))) : Bool)
-  then sailThrow ((Error_Undefined ()))
+  then (sailThrow ((Error_Undefined ())) : SailM Unit)
   else (pure ())
 
 def MismatchedCpySetTargetEL (_ : Unit) : SailM (BitVec 2) := do
@@ -83799,7 +83799,7 @@ def CheckST64BV0Enabled (_ : Unit) : SailM Unit := do
   if ((←((pure (((← readReg PSTATE).EL != EL3) && (HaveEL EL3))) <&&> (do
        (pure ((_get_SCR_EL3_Type_EnAS0 (← readReg SCR_EL3)) == 0#1))) <&&> (do
        (EL3SDDUndefPriority ())))) : Bool)
-  then sailThrow ((Error_Undefined ()))
+  then (sailThrow ((Error_Undefined ())) : SailM Unit)
   else (pure ())
   let (target_el, trap) ← (( do
     if (((← readReg PSTATE).EL == EL0) : Bool)
@@ -83849,7 +83849,7 @@ def CheckST64BV0Enabled (_ : Unit) : SailM Unit := do
     (do
       if ((←((pure (target_el == EL3)) <&&> (do
            (EL3SDDUndef ())))) : Bool)
-      then sailThrow ((Error_Undefined ()))
+      then (sailThrow ((Error_Undefined ())) : SailM Unit)
       else (LDST64BTrap target_el iss))
   else (pure ())
 
@@ -83897,7 +83897,7 @@ def AArch64_CheckForSVCTrap (immediate : (BitVec 16)) : SailM Unit := do
         if (route_to_el2 : Bool)
         then
           (do
-            let except ← (( (ExceptionSyndrome Exception_SupervisorCall) ) : SailM ExceptionRecord )
+            let except ← (( do (ExceptionSyndrome Exception_SupervisorCall) ) : SailM ExceptionRecord )
             let except : ExceptionRecord := { except with syndrome := (Sail.BitVec.updateSubrange except.syndrome 15 0 immediate) }
             let except : ExceptionRecord := { except with trappedsyscallinst := true }
             let preferred_exception_return ← (( do (ThisInstrAddr 64) ) : SailM (BitVec 64) )
@@ -83913,11 +83913,11 @@ def AArch64_CheckForSMCUndefOrTrap (imm : (BitVec 16)) : SailM Unit := do
   let except ← (( do (undefined_ExceptionRecord ()) ) : SailM ExceptionRecord )
   let vect_offset ← (( do (undefined_int ()) ) : SailM Int )
   if (((← readReg PSTATE).EL == EL0) : Bool)
-  then sailThrow ((Error_Undefined ()))
+  then (sailThrow ((Error_Undefined ())) : SailM Unit)
   else (pure ())
   if ((←((pure ((! (←((pure ((← readReg PSTATE).EL == EL1)) <&&> (do (EL2Enabled ())) <&&> (do (pure ((_get_HCR_EL2_Type_TSC (← readReg HCR_EL2)) == 1#1)))))) && (HaveEL EL3))) <&&> (do
        (pure ((_get_SCR_EL3_Type_SMD (← readReg SCR_EL3)) == 1#1))))) : Bool)
-  then sailThrow ((Error_Undefined ()))
+  then (sailThrow ((Error_Undefined ())) : SailM Unit)
   else (pure ())
   let route_to_el2 : Bool := false
   let route_to_el2 ← (( do
@@ -83940,7 +83940,7 @@ def AArch64_CheckForSMCUndefOrTrap (imm : (BitVec 16)) : SailM Unit := do
     (do
       let preferred_exception_return ← (( do (ThisInstrAddr 64) ) : SailM (BitVec 64) )
       let vect_offset := (BitVec.toNat 0x0#4)
-      let except ← (( (ExceptionSyndrome Exception_MonitorCall) ) : SailM ExceptionRecord )
+      let except ← (( do (ExceptionSyndrome Exception_MonitorCall) ) : SailM ExceptionRecord )
       let except : ExceptionRecord := { except with syndrome := (Sail.BitVec.updateSubrange except.syndrome 15 0 imm) }
       let except : ExceptionRecord := { except with trappedsyscallinst := true }
       (AArch64_TakeException EL2 except preferred_exception_return vect_offset))
@@ -84095,7 +84095,7 @@ def AArch64_CheckFPAdvSIMDTrap (_ : Unit) : SailM Unit := do
   if ((←((pure (HaveEL EL3)) <&&> (do
        (pure ((_get_CPTR_EL3_Type_TFP (← readReg CPTR_EL3)) == 1#1))) <&&> (do
        (EL3SDDUndefPriority ())))) : Bool)
-  then sailThrow ((Error_Undefined ()))
+  then (sailThrow ((Error_Undefined ())) : SailM Unit)
   else (pure ())
   if ((←((pure ((← readReg PSTATE).EL == EL0)) <||> (do
        (pure ((← readReg PSTATE).EL == EL1)) <||> (do
@@ -84134,7 +84134,7 @@ def AArch64_CheckFPAdvSIMDTrap (_ : Unit) : SailM Unit := do
       then
         (do
           if ((← (EL3SDDUndef ())) : Bool)
-          then sailThrow ((Error_Undefined ()))
+          then (sailThrow ((Error_Undefined ())) : SailM Unit)
           else (AArch64_AdvSIMDFPAccessTrap EL3))
       else (pure ()))
   else (pure ())
@@ -84453,7 +84453,7 @@ def AArch64_CheckCP15InstrCoarseTraps (CRn : Int) (nreg : Int) (CRm : Int) : Sai
         (do
           if ((←((pure ((← readReg PSTATE).EL == EL0)) <&&> (do
                (__IMPDEF_boolean "UNDEF unallocated CP15 access at EL0")))) : Bool)
-          then sailThrow ((Error_Undefined ()))
+          then (sailThrow ((Error_Undefined ())) : SailM Unit)
           else (pure ())
           (AArch64_AArch32SystemAccessTrap EL2 (BitVec.toNat 0x3#4)))
       else (pure ()))
@@ -85112,7 +85112,7 @@ def SPEGetRandomInterval (_ : Unit) : SailM (BitVec 8) := do
       (pure ()))
   else
     (do
-      let new_byte ← (( (pure (((Sail.BitVec.extractLsb (← readReg __SPE_LFSR) 16 9) ^^^ (Sail.BitVec.extractLsb (← readReg __SPE_LFSR) 21 14)) ^^^ (Sail.BitVec.extractLsb (← readReg __SPE_LFSR) 22 15))) ) : SailM (BitVec 8) )
+      let new_byte ← (( do (pure (((Sail.BitVec.extractLsb (← readReg __SPE_LFSR) 16 9) ^^^ (Sail.BitVec.extractLsb (← readReg __SPE_LFSR) 21 14)) ^^^ (Sail.BitVec.extractLsb (← readReg __SPE_LFSR) 22 15))) ) : SailM (BitVec 8) )
       let new_byte ← (( do (pure (new_byte ^^^ (Sail.BitVec.extractLsb (← readReg __SPE_LFSR) 23 16))) ) : SailM (BitVec 8) )
       writeReg __SPE_LFSR ((Sail.BitVec.extractLsb (← readReg __SPE_LFSR) 15 0) +++ new_byte))
   (pure (Sail.BitVec.extractLsb (← readReg __SPE_LFSR) 23 16))
@@ -88298,7 +88298,7 @@ def AArch64_ExceptionReturn (new_pc_in : (BitVec 64)) (spsr : (BitVec 64)) : Sai
     if ((← (HaveIESB ())) : Bool)
     then
       (do
-        let sync_errors ← (( (pure ((_get_SCTLRType_IESB (← (SCTLR_read__1 ()))) == 1#1)) ) : SailM Bool )
+        let sync_errors ← (( do (pure ((_get_SCTLRType_IESB (← (SCTLR_read__1 ()))) == 1#1)) ) : SailM Bool )
         let sync_errors ← (( do
           if ((← (HaveDoubleFaultExt ())) : Bool)
           then (do (pure sync_errors) <||> (do (pure (((_get_SCR_EL3_Type_EA (← readReg SCR_EL3)) +++ (_get_SCR_EL3_Type_NMEA (← readReg SCR_EL3))) == 0b11#2)) <&&> (do (pure ((← readReg PSTATE).EL == EL3)))))
@@ -92371,7 +92371,7 @@ def AArch32_S1TranslateSD (fault_in : FaultRecord) (regime : Regime) (va : (BitV
   if ((! (← (AArch32_S1Enabled regime accdesc.ss))) : Bool)
   then
     (do
-      let ipa ← (( (undefined_AddressDescriptor ()) ) : SailM AddressDescriptor )
+      let ipa ← (( do (undefined_AddressDescriptor ()) ) : SailM AddressDescriptor )
       let (fault, ipa) ← (( do
         let (tup__0, tup__1) ← do (AArch32_S1DisabledOutput fault regime va aligned accdesc)
         let fault : FaultRecord := tup__0
@@ -92731,7 +92731,7 @@ def AArch64_AT (address : (BitVec 64)) (stage_in : TranslationStage) (el_in : (B
   let effective_nse_ns ← (( do (pure ((← (EffectiveSCR_EL3_NSE ())) +++ (← (EffectiveSCR_EL3_NS ())))) ) : SailM (BitVec 2) )
   if ((((←((HaveRME ()) <&&> (do
            (pure ((← readReg PSTATE).EL == EL3))))) && (effective_nse_ns == 0b10#2)) && (el != EL3)) : Bool)
-  then sailThrow ((Error_Undefined ()))
+  then (sailThrow ((Error_Undefined ())) : SailM Unit)
   else (pure ())
   let el ← (( do
     if ((((((_get_HCR_EL2_Type_E2H (← readReg HCR_EL2)) +++ (_get_HCR_EL2_Type_TGE (← readReg HCR_EL2))) == 0b11#2) && (el == EL1)) && (BEq.beq stage TranslationStage_1)) : Bool)
@@ -95426,7 +95426,7 @@ def AArch32_CheckCP15InstrCoarseTraps (CRn : Int) (nreg : Int) (CRm : Int) : Sai
         (do
           if ((←((pure ((← readReg PSTATE).EL == EL0)) <&&> (do
                (__IMPDEF_boolean "UNDEF unallocated CP15 access at EL0")))) : Bool)
-          then sailThrow ((Error_Undefined ()))
+          then (sailThrow ((Error_Undefined ())) : SailM Unit)
           else (pure ())
           if ((← (ELUsingAArch32 EL2)) : Bool)
           then (AArch32_SystemAccessTrap M32_Hyp (BitVec.toNat 0x3#4))
@@ -95449,14 +95449,14 @@ def AArch32_CheckFPAdvSIMDTrap (advsimd : Bool) : SailM Unit := do
            (pure (! (← (ELUsingAArch32 EL3))))) <&&> (do
            (pure ((_get_CPTR_EL3_Type_TFP (← readReg CPTR_EL3)) == 1#1))) <&&> (do
            (EL3SDDUndefPriority ())))) : Bool)
-      then sailThrow ((Error_Undefined ()))
+      then (sailThrow ((Error_Undefined ())) : SailM Unit)
       else (pure ())
       let ss ← (( do (CurrentSecurityState ()) ) : SailM SecurityState )
       if (((HaveEL EL2) && (bne ss SS_Secure)) : Bool)
       then
         (do
-          let hcptr_tase ← (( (pure (_get_HCPTR_Type_TASE (← (HCPTR_read ())))) ) : SailM (BitVec 1) )
-          let hcptr_cp10 ← (( (pure (_get_HCPTR_Type_TCP10 (← (HCPTR_read ())))) ) : SailM (BitVec 1) )
+          let hcptr_tase ← (( do (pure (_get_HCPTR_Type_TASE (← (HCPTR_read ())))) ) : SailM (BitVec 1) )
+          let hcptr_cp10 ← (( do (pure (_get_HCPTR_Type_TCP10 (← (HCPTR_read ())))) ) : SailM (BitVec 1) )
           let (hcptr_cp10, hcptr_tase) ← (( do
             if ((←((pure (HaveEL EL3)) <&&> (do
                  (ELUsingAArch32 EL3)))) : Bool)
@@ -95475,7 +95475,7 @@ def AArch32_CheckFPAdvSIMDTrap (advsimd : Bool) : SailM Unit := do
           if (((advsimd && (hcptr_tase == 1#1)) || (hcptr_cp10 == 1#1)) : Bool)
           then
             (do
-              let except ← (( (ExceptionSyndrome Exception_AdvSIMDFPAccessTrap) ) : SailM ExceptionRecord )
+              let except ← (( do (ExceptionSyndrome Exception_AdvSIMDFPAccessTrap) ) : SailM ExceptionRecord )
               let except ← (pure { except with syndrome := ← (do (pure (Sail.BitVec.updateSubrange except.syndrome 24 20 (← (ConditionSyndrome ()))))) })
               let except : ExceptionRecord :=
                 if (advsimd : Bool)
@@ -95496,7 +95496,7 @@ def AArch32_CheckFPAdvSIMDTrap (advsimd : Bool) : SailM Unit := do
           then
             (do
               if ((← (EL3SDDUndef ())) : Bool)
-              then sailThrow ((Error_Undefined ()))
+              then (sailThrow ((Error_Undefined ())) : SailM Unit)
               else (AArch64_AdvSIMDFPAccessTrap EL3))
           else (pure ()))
       else (pure ()))
@@ -95530,14 +95530,14 @@ def AArch32_CheckAdvSIMDOrFPEnabled (fpexc_check : Bool) (advsimd : Bool) : Sail
             (do
               let fpexc_en ← (( do (__IMPDEF_bits 1 "FPEXC.EN value when TGE==1 and RW==0") ) : SailM (BitVec 1) )
               if ((fpexc_en == 0#1) : Bool)
-              then sailThrow ((Error_Undefined ()))
+              then (sailThrow ((Error_Undefined ())) : SailM Unit)
               else (pure ()))
           else (pure ())
           (AArch64_CheckFPEnabled ()))
       else
         (do
-          let cpacr_asedis ← (( (pure (_get_CPACR_Type_ASEDIS (← (CPACR_read__1 ())))) ) : SailM (BitVec 1) )
-          let cpacr_cp10 ← (( (pure (_get_CPACR_Type_cp10 (← (CPACR_read__1 ())))) ) : SailM (BitVec 2) )
+          let cpacr_asedis ← (( do (pure (_get_CPACR_Type_ASEDIS (← (CPACR_read__1 ())))) ) : SailM (BitVec 1) )
+          let cpacr_cp10 ← (( do (pure (_get_CPACR_Type_cp10 (← (CPACR_read__1 ())))) ) : SailM (BitVec 2) )
           let (cpacr_asedis, cpacr_cp10) ← (( do
             if ((←((pure (HaveEL EL3)) <&&> (do
                  (ELUsingAArch32 EL3)) <&&> (do
@@ -95558,7 +95558,7 @@ def AArch32_CheckAdvSIMDOrFPEnabled (fpexc_check : Bool) (advsimd : Bool) : Sail
           then
             (do
               if ((advsimd && (cpacr_asedis == 1#1)) : Bool)
-              then sailThrow ((Error_Undefined ()))
+              then (sailThrow ((Error_Undefined ())) : SailM Unit)
               else (pure ())
               let disabled ← (( do (undefined_bool ()) ) : SailM Bool )
               let disabled ← (( do
@@ -95569,12 +95569,12 @@ def AArch32_CheckAdvSIMDOrFPEnabled (fpexc_check : Bool) (advsimd : Bool) : Sail
                 | _ => (pure false) ) : SailM Bool )
               let disabled := disabled
               if (disabled : Bool)
-              then sailThrow ((Error_Undefined ()))
+              then (sailThrow ((Error_Undefined ())) : SailM Unit)
               else (pure ()))
           else (pure ())
           if ((←((pure fpexc_check) <&&> (do
                (pure ((_get_FPEXC_Type_EN (← (FPEXC_read ()))) == 0#1))))) : Bool)
-          then sailThrow ((Error_Undefined ()))
+          then (sailThrow ((Error_Undefined ())) : SailM Unit)
           else (pure ())
           (AArch32_CheckFPAdvSIMDTrap advsimd)))
 
@@ -96185,7 +96185,7 @@ def AArch32_ExceptionReturn (new_pc_in : (BitVec 32)) (spsr : (BitVec 32)) : Sai
 
 def ALUExceptionReturn (address : (BitVec 32)) : SailM Unit := do
   if (((← readReg PSTATE).EL == EL2) : Bool)
-  then sailThrow ((Error_Undefined ()))
+  then (sailThrow ((Error_Undefined ())) : SailM Unit)
   else
     (do
       if ((←((pure ((← readReg PSTATE).M == M32_User)) <||> (do
@@ -96195,7 +96195,7 @@ def ALUExceptionReturn (address : (BitVec 32)) : SailM Unit := do
           let c ← (( do (ConstrainUnpredictable Unpredictable_ALUEXCEPTIONRETURN) ) : SailM Constraint )
           sail_assert ((BEq.beq c Constraint_UNDEF) || (BEq.beq c Constraint_NOP)) "src/v8_base.sail:42343.58-42343.59"
           match c with
-          | .Constraint_UNDEF => sailThrow ((Error_Undefined ()))
+          | .Constraint_UNDEF => (sailThrow ((Error_Undefined ())) : SailM Unit)
           | .Constraint_NOP => (EndOfInstruction ())
           | _ => (pure ()))
       else (AArch32_ExceptionReturn address (← (SPSR_read (N := 32)))))
@@ -96308,7 +96308,7 @@ def BankedRegisterAccessValid (SYSm : (BitVec 5)) (mode : (BitVec 5)) : SailM Un
   then
     (do
       if ((mode != M32_FIQ) : Bool)
-      then sailThrow ((Error_Unpredictable ()))
+      then (sailThrow ((Error_Unpredictable ())) : SailM Unit)
       else (pure ()))
   else
     (do
@@ -96316,7 +96316,7 @@ def BankedRegisterAccessValid (SYSm : (BitVec 5)) (mode : (BitVec 5)) : SailM Un
       then
         (do
           if ((mode != M32_FIQ) : Bool)
-          then sailThrow ((Error_Unpredictable ()))
+          then (sailThrow ((Error_Unpredictable ())) : SailM Unit)
           else (pure ()))
       else
         (do
@@ -96324,7 +96324,7 @@ def BankedRegisterAccessValid (SYSm : (BitVec 5)) (mode : (BitVec 5)) : SailM Un
           then
             (do
               if ((mode == M32_System) : Bool)
-              then sailThrow ((Error_Unpredictable ()))
+              then (sailThrow ((Error_Unpredictable ())) : SailM Unit)
               else (pure ()))
           else
             (do
@@ -96332,7 +96332,7 @@ def BankedRegisterAccessValid (SYSm : (BitVec 5)) (mode : (BitVec 5)) : SailM Un
               then
                 (do
                   if (((mode == M32_Hyp) || (mode == M32_System)) : Bool)
-                  then sailThrow ((Error_Unpredictable ()))
+                  then (sailThrow ((Error_Unpredictable ())) : SailM Unit)
                   else (pure ()))
               else
                 (do
@@ -96340,7 +96340,7 @@ def BankedRegisterAccessValid (SYSm : (BitVec 5)) (mode : (BitVec 5)) : SailM Un
                   then
                     (do
                       if ((mode == M32_FIQ) : Bool)
-                      then sailThrow ((Error_Unpredictable ()))
+                      then (sailThrow ((Error_Unpredictable ())) : SailM Unit)
                       else (pure ()))
                   else
                     (do
@@ -96348,7 +96348,7 @@ def BankedRegisterAccessValid (SYSm : (BitVec 5)) (mode : (BitVec 5)) : SailM Un
                       then
                         (do
                           if ((mode == M32_FIQ) : Bool)
-                          then sailThrow ((Error_Unpredictable ()))
+                          then (sailThrow ((Error_Unpredictable ())) : SailM Unit)
                           else (pure ()))
                       else
                         (do
@@ -96356,7 +96356,7 @@ def BankedRegisterAccessValid (SYSm : (BitVec 5)) (mode : (BitVec 5)) : SailM Un
                           then
                             (do
                               if ((mode == M32_FIQ) : Bool)
-                              then sailThrow ((Error_Unpredictable ()))
+                              then (sailThrow ((Error_Unpredictable ())) : SailM Unit)
                               else (pure ()))
                           else
                             (do
@@ -96364,7 +96364,7 @@ def BankedRegisterAccessValid (SYSm : (BitVec 5)) (mode : (BitVec 5)) : SailM Un
                               then
                                 (do
                                   if ((mode == M32_IRQ) : Bool)
-                                  then sailThrow ((Error_Unpredictable ()))
+                                  then (sailThrow ((Error_Unpredictable ())) : SailM Unit)
                                   else (pure ()))
                               else
                                 (do
@@ -96372,7 +96372,7 @@ def BankedRegisterAccessValid (SYSm : (BitVec 5)) (mode : (BitVec 5)) : SailM Un
                                   then
                                     (do
                                       if ((mode == M32_Svc) : Bool)
-                                      then sailThrow ((Error_Unpredictable ()))
+                                      then (sailThrow ((Error_Unpredictable ())) : SailM Unit)
                                       else (pure ()))
                                   else
                                     (do
@@ -96380,7 +96380,7 @@ def BankedRegisterAccessValid (SYSm : (BitVec 5)) (mode : (BitVec 5)) : SailM Un
                                       then
                                         (do
                                           if ((mode == M32_Abort) : Bool)
-                                          then sailThrow ((Error_Unpredictable ()))
+                                          then (sailThrow ((Error_Unpredictable ())) : SailM Unit)
                                           else (pure ()))
                                       else
                                         (do
@@ -96388,7 +96388,7 @@ def BankedRegisterAccessValid (SYSm : (BitVec 5)) (mode : (BitVec 5)) : SailM Un
                                           then
                                             (do
                                               if ((mode == M32_Undef) : Bool)
-                                              then sailThrow ((Error_Unpredictable ()))
+                                              then (sailThrow ((Error_Unpredictable ())) : SailM Unit)
                                               else (pure ()))
                                           else
                                             (do
@@ -96397,7 +96397,7 @@ def BankedRegisterAccessValid (SYSm : (BitVec 5)) (mode : (BitVec 5)) : SailM Un
                                                 (do
                                                   if (((←((pure (! (HaveEL EL3))) <||> (do
                                                          (pure (bne (← (CurrentSecurityState ())) SS_Secure))))) || (mode == M32_Monitor)) : Bool)
-                                                  then sailThrow ((Error_Unpredictable ()))
+                                                  then (sailThrow ((Error_Unpredictable ())) : SailM Unit)
                                                   else (pure ()))
                                               else
                                                 (do
@@ -96405,7 +96405,7 @@ def BankedRegisterAccessValid (SYSm : (BitVec 5)) (mode : (BitVec 5)) : SailM Un
                                                   then
                                                     (do
                                                       if (((! (HaveEL EL2)) || (! ((mode == M32_Monitor) || (mode == M32_Hyp)))) : Bool)
-                                                      then sailThrow ((Error_Unpredictable ()))
+                                                      then (sailThrow ((Error_Unpredictable ())) : SailM Unit)
                                                       else (pure ()))
                                                   else
                                                     (do
@@ -96413,9 +96413,9 @@ def BankedRegisterAccessValid (SYSm : (BitVec 5)) (mode : (BitVec 5)) : SailM Un
                                                       then
                                                         (do
                                                           if (((! (HaveEL EL2)) || (mode != M32_Monitor)) : Bool)
-                                                          then sailThrow ((Error_Unpredictable ()))
+                                                          then (sailThrow ((Error_Unpredictable ())) : SailM Unit)
                                                           else (pure ()))
-                                                      else sailThrow ((Error_Unpredictable ())))))))))))))))
+                                                      else (sailThrow ((Error_Unpredictable ())) : SailM Unit))))))))))))))
 
 def ConditionPassed (_ : Unit) : SailM Bool := do
   (ConditionHolds (← (AArch32_CurrentCond ())))
@@ -96480,40 +96480,40 @@ def SPSRaccessValid (SYSm : (BitVec 5)) (mode : (BitVec 5)) : SailM Unit := do
   | 0b01110 =>
     (do
       if ((mode == M32_FIQ) : Bool)
-      then sailThrow ((Error_Unpredictable ()))
+      then (sailThrow ((Error_Unpredictable ())) : SailM Unit)
       else (pure ()))
   | 0b10000 =>
     (do
       if ((mode == M32_IRQ) : Bool)
-      then sailThrow ((Error_Unpredictable ()))
+      then (sailThrow ((Error_Unpredictable ())) : SailM Unit)
       else (pure ()))
   | 0b10010 =>
     (do
       if ((mode == M32_Svc) : Bool)
-      then sailThrow ((Error_Unpredictable ()))
+      then (sailThrow ((Error_Unpredictable ())) : SailM Unit)
       else (pure ()))
   | 0b10100 =>
     (do
       if ((mode == M32_Abort) : Bool)
-      then sailThrow ((Error_Unpredictable ()))
+      then (sailThrow ((Error_Unpredictable ())) : SailM Unit)
       else (pure ()))
   | 0b10110 =>
     (do
       if ((mode == M32_Undef) : Bool)
-      then sailThrow ((Error_Unpredictable ()))
+      then (sailThrow ((Error_Unpredictable ())) : SailM Unit)
       else (pure ()))
   | 0b11100 =>
     (do
       if ((←((pure ((! (HaveEL EL3)) || (mode == M32_Monitor))) <||> (do
            (pure (bne (← (CurrentSecurityState ())) SS_Secure))))) : Bool)
-      then sailThrow ((Error_Unpredictable ()))
+      then (sailThrow ((Error_Unpredictable ())) : SailM Unit)
       else (pure ()))
   | 0b11110 =>
     (do
       if (((! (HaveEL EL2)) || (mode != M32_Monitor)) : Bool)
-      then sailThrow ((Error_Unpredictable ()))
+      then (sailThrow ((Error_Unpredictable ())) : SailM Unit)
       else (pure ()))
-  | _ => sailThrow ((Error_Unpredictable ()))
+  | _ => (sailThrow ((Error_Unpredictable ())) : SailM Unit)
 
 def SPSRWriteByInstr (value_name : (BitVec 32)) (bytemask : (BitVec 4)) : SailM Unit := do
   let new_spsr ← (( do (SPSR_read (N := 32)) ) : SailM (BitVec 32) )
@@ -96775,7 +96775,7 @@ def AArch32_TakeSVCException (immediate : (BitVec 16)) : SailM Unit := do
   if ((((← readReg PSTATE).EL == EL2) || route_to_hyp) : Bool)
   then
     (do
-      let except ← (( (ExceptionSyndrome Exception_SupervisorCall) ) : SailM ExceptionRecord )
+      let except ← (( do (ExceptionSyndrome Exception_SupervisorCall) ) : SailM ExceptionRecord )
       let except : ExceptionRecord := { except with syndrome := (Sail.BitVec.updateSubrange except.syndrome 15 0 immediate) }
       if (((← readReg PSTATE).EL == EL2) : Bool)
       then (AArch32_EnterHypMode except preferred_exception_return vect_offset)
@@ -96849,7 +96849,7 @@ def AArch32_CheckForSVCTrap (immediate : (BitVec 16)) : SailM Unit := do
         if (route_to_el2 : Bool)
         then
           (do
-            let except ← (( (ExceptionSyndrome Exception_SupervisorCall) ) : SailM ExceptionRecord )
+            let except ← (( do (ExceptionSyndrome Exception_SupervisorCall) ) : SailM ExceptionRecord )
             let except : ExceptionRecord := { except with syndrome := (Sail.BitVec.updateSubrange except.syndrome 15 0 immediate) }
             let except : ExceptionRecord := { except with trappedsyscallinst := true }
             let preferred_exception_return ← (( do (ThisInstrAddr 64) ) : SailM (BitVec 64) )
@@ -96866,7 +96866,7 @@ def AArch32_CheckForSMCUndefOrTrap (_ : Unit) : SailM Unit := do
   let route_to_hyp ← (( do (undefined_bool ()) ) : SailM Bool )
   if ((←((pure (! (HaveEL EL3))) <||> (do
        (pure ((← readReg PSTATE).EL == EL0))))) : Bool)
-  then sailThrow ((Error_Undefined ()))
+  then (sailThrow ((Error_Undefined ())) : SailM Unit)
   else (pure ())
   if ((←((EL2Enabled ()) <&&> (do
        (pure (! (← (ELUsingAArch32 EL2))))))) : Bool)
@@ -96934,7 +96934,7 @@ def AArch32_CheckForWFxTrap (target_el : (BitVec 2)) (wfxtype : WFxType) : SailM
               if ((target_el == EL2) : Bool)
               then
                 (do
-                  let except ← (( (ExceptionSyndrome Exception_WFxTrap) ) : SailM ExceptionRecord )
+                  let except ← (( do (ExceptionSyndrome Exception_WFxTrap) ) : SailM ExceptionRecord )
                   let except ← (pure { except with syndrome := ← (do (pure (Sail.BitVec.updateSubrange except.syndrome 24 20 (← (ConditionSyndrome ()))))) })
                   let except : ExceptionRecord :=
                     match wfxtype with
@@ -96962,7 +96962,7 @@ def AArch32_CheckITEnabled (mask : (BitVec 4)) : SailM Unit := do
   then
     (do
       if ((mask != 0b1000#4) : Bool)
-      then sailThrow ((Error_Undefined ()))
+      then (sailThrow ((Error_Undefined ())) : SailM Unit)
       else (pure ())
       let accdesc ← (( do (CreateAccDescIFetch ()) ) : SailM AccessDescriptor )
       let aligned : Bool := true
@@ -96986,7 +96986,7 @@ def AArch32_CheckITEnabled (mask : (BitVec 4)) : SailM Unit := do
                    (if ((((Sail.BitVec.extractLsb b__0 15 10) == (0b010001#6 : (BitVec 6))) && (((Sail.BitVec.extractLsb b__0 7 7) == (1#1 : (BitVec 1))) && ((Sail.BitVec.extractLsb b__0 2 0) == (0b111#3 : (BitVec 3))))) : Bool)
                    then true
                    else false))))) : Bool) : Bool)
-      then sailThrow ((Error_Undefined ()))
+      then (sailThrow ((Error_Undefined ())) : SailM Unit)
       else (pure ()))
   else (pure ())
 
@@ -97001,7 +97001,7 @@ def AArch32_CheckSETENDEnabled (_ : Unit) : SailM Unit := do
         then (pure (_get_SCTLR_Type_SED (← (SCTLR_read__2 ()))))
         else (pure (_get_SCTLRType_SED (← (SCTLR_read__1 ()))))) ) : SailM (BitVec 1) )
   if ((setend_disabled == 1#1) : Bool)
-  then sailThrow ((Error_Undefined ()))
+  then (sailThrow ((Error_Undefined ())) : SailM Unit)
   else (pure ())
   let setend_disabled := setend_disabled
   (pure ())

@@ -107,7 +107,7 @@ open AccessType
 open ATAccess
 
 def EndOfInstruction (_ : Unit) : SailM Unit := do
-  sailThrow ((Error_ExceptionTaken ()))
+  (sailThrow ((Error_ExceptionTaken ())) : SailM Unit)
 
 def EncodingSpecificOperations (_ : Unit) : Unit :=
   ()
