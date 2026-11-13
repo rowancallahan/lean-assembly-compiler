@@ -168,7 +168,7 @@ movz, lslv/lsrv/asrv, subs/cmp, cset/csel/csinc, ret); this says nothing about t
 RV64 half of triple.py was not run here.
 
 Throughput of the model runner (executable compiled at -O0, one core): 17099 inputs in 177.5 s = 96 inputs/s,
-= 5,409 model steps/s (960,098 instructions incl. `ret`), including process start and the one reset.
+= 2,185 model steps/s (387,920 instructions incl. `ret`), including process start and the one reset.
 
 ## ALL deviations from the checked model on main needed for the runnable build
 1. Generator flags: `-lean-noncomputable` dropped, `--lean-executable` added, `src/elfmain.sail` added (coordinator's `arm-exe-gen`).
