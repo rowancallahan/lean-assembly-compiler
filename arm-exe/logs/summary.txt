@@ -5,3 +5,6 @@ Armv9.Devices rc=0 wall=2s peak_kb=
 Armv9.Interface rc=0 wall=2s peak_kb=
 Armv9.Impdefs rc=0 wall=1s peak_kb=
 Armv9.SysregsAutogen rc=1 wall=498s peak_kb=13360080
+Armv9.MapClauses rc=0 wall=5s peak_kb=1848752
+Armv9.Instrs64Sme rc=0 wall=147s peak_kb=3383796
+Armv9.Instrs64Sve rc=0 wall=473s peak_kb=5190900
