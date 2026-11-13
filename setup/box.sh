@@ -24,4 +24,5 @@ git -C $D/sail-riscv-lean checkout 51c635c460125ac87955d061fcd902ce03b8011f
 S=$D/sailsim; mkdir -p $S
 curl -fsSL https://github.com/riscv/sail-riscv/releases/download/0.9/sail-riscv-Linux-x86_64.tar.gz | tar xz -C $S
 test -x $S/sail-riscv-Linux-x86_64/bin/sail_riscv_sim
-# Then (slow, tracked background job): lake build Proven.CompilerArm
+# Then (slow, tracked background job): lake build Proven.CompilerArm Proven.Reify
+# Verify: lake env lean asm/triple-data/triple.lean > /tmp/t.txt && python3 asm/triple.py /tmp/t.txt
