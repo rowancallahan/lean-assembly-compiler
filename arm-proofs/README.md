@@ -14,10 +14,11 @@ Build/check everything in order: `./check.sh` (oleans go to `build/`, not commit
 | `Arm/Small.lean` | `AState`, `armStep` (the small machine), `ArmCfg`, `Abs`, `Frame`, `Step`, family lemmas | L2 machinery | ~2 s |
 | `Arm/Words.lean` (generated) | for each of the 216 emitted words: `dec_*` (`__DecodeA64 pc w s` = the decode call, SEE < 1), `word_*` (L1: `__DecodeA64 pc w s = .ok () {s with regs := xset (s.regs.insert .SEE k) d v}`), `step_*` (L2); `emitted`, `armStep_ok` (L2) | top-level A64 decoder + decode + execute | ~550 s |
 | `Arm/Compiler.lean` | `compile_ok_exec` (L3) | decode+execute of `gen e 0 ++ [iRes]` | ~24 s |
+| `Arm/Ret.lean` | `ret_word` (L4, partial): under `RetCfg` (AArch64, EL1 or EL3, GCS/BRBE/SPE/PAuth/VHE not implemented, AA64 at EL0, SCR_EL3 present, TBI off for the regime), `__DecodeA64 pc Arm.iRet s` = ok with `_PC := X30`, `BTypeNext := 0`, `Branchtypetaken := RET`, `__BranchTaken := true`, SEE := 94, nothing else | top-level A64 decoder + decode + execute (incl. `BranchTo`, `AArch64_BranchAddr`) | ~22 s |
 | `Arm/Axioms.lean` | `#print axioms` | | ~1 s |
 
-Total clean check ~645 s (one process). Axioms of everything (`Arm/Axioms.lean`): `propext`, `Classical.choice`, `Quot.sound`. No `sorry`.
-`ArmCfg s := s.regs.get? .SPESampleInFlight = some false`. Not covered: fetch, PC update, interrupts, `ret`, `__TopLevel`.
+Total clean check ~670 s (one process). Axioms of everything (`Arm/Axioms.lean`): `propext`, `Classical.choice`, `Quot.sound`. No `sorry`.
+`ArmCfg s := s.regs.get? .SPESampleInFlight = some false`. Not covered: fetch, PC update, interrupts, `__TopLevel`; `ret` is proved separately (`Arm/Ret.lean`) and not yet chained after `compile_ok_exec`.
 
 ## Earlier single-word experiments (hand-written)
 

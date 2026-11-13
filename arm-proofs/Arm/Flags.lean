@@ -4,8 +4,6 @@ open Armv9 Armv9.Functions Sail Sail.ConcurrencyInterfaceV1
 set_option maxRecDepth 100000
 namespace ArmProof
 
-
-
 /-- the flag vector `AddWithCarry` computes, as a function of its result `r` (same text as the model) -/
 def awcFlags {k_N : Nat} (x y : BitVec k_N) (carry_in : BitVec 1) (result : BitVec k_N) : BitVec 4 :=
   let unsigned_sum := (((BitVec.toNat x) +i (BitVec.toNat y)) +i (BitVec.toNat carry_in))
