@@ -1,0 +1,134 @@
+diff --git a/src/sail_lean_backend/pretty_print_lean.ml b/src/sail_lean_backend/pretty_print_lean.ml
+index 0b195d913..86aef320e 100644
+--- a/src/sail_lean_backend/pretty_print_lean.ml
++++ b/src/sail_lean_backend/pretty_print_lean.ml
+@@ -816,6 +816,10 @@ let add_bitvector_type_hint env typ pp_discr =
+   | Some doc -> parens (pp_discr ^^ string " : " ^^ doc)
+   | None -> pp_discr
+ 
++(* Else-branches of very deep if/else chains that are printed as calls to auxiliary definitions
++   (see [doc_funcl]).  Lean runs out of memory elaborating a single definition nested ~1000 deep. *)
++let hoisted_tails : (tannot exp * document) list ref = ref []
++
+ let rec doc_match_clause (is_bv : bool) (as_monadic : bool) ctx (Pat_aux (cl, l) as p) typ =
+   match cl with
+   | Pat_exp (pat, branch) ->
+@@ -926,6 +930,9 @@ and doc_loop l as_monadic ctx loop_kind args =
+    to communicate size information, such as values returned by functions or embedded in tuples. *)
+ 
+ and doc_exp (as_monadic : bool) ctx (E_aux (e, (l, annot)) as full_exp) =
++  match List.assq_opt full_exp !hoisted_tails with
++  | Some call -> if as_monadic then call else parens (leftarrow ^^ call)
++  | None ->
+   let env = env_of_tannot annot in
+   let d_of_arg_with_typ ?(with_arrow = true) ctx (E_aux (_, lannot) as arg) arg_typ =
+     (* First, do we need to make a dependent pair? *)
+@@ -1135,7 +1142,7 @@ and doc_exp (as_monadic : bool) ctx (E_aux (e, (l, annot)) as full_exp) =
+             | false, Some asc ->
+                 pp_let_line_f
+                   ([
+-                     separate space [string "let"; id_typ; leftarrow; string "(("];
++                     separate space [string "let"; id_typ; leftarrow; string "(("; string "do"];
+                      doc_exp true ctx lexp;
+                      string ")";
+                      colon;
+@@ -1192,7 +1199,10 @@ and doc_exp (as_monadic : bool) ctx (E_aux (e, (l, annot)) as full_exp) =
+   | E_exit _ -> string "throw Error.Exit"
+   | E_throw e ->
+       let arrow = if as_monadic then empty else leftarrow in
+-      arrow ^^ string "sailThrow " ^^ parens (doc_exp false ctx e)
++      let d = string "sailThrow " ^^ parens (doc_exp false ctx e) in
++      (* A throw in statement position has no other source for its result type. *)
++      if as_monadic && ctx.in_sail_monad && is_unit (typ_of full_exp) then parens (d ^^ string " : SailM Unit")
++      else arrow ^^ d
+   | E_try (e, cases) ->
+       let x = E_aux (E_id (Id_aux (Id "the_exception", Unknown)), (Unknown, mk_tannot env exc_typ)) in
+       let cases = nest 2 (doc_exp true ctx (E_aux (E_match (x, cases), (Unknown, annot)))) in
+@@ -1251,7 +1261,7 @@ let rec add_path_renamings ~path ctx (P_aux (pat, pat_annot)) (Typ_aux (typ, typ
+     )
+   | _ -> ctx
+ 
+-let doc_funcl_init global (FCL_aux (FCL_funcl (id, pexp), annot)) =
++let doc_funcl_init ?(suffix = "") global (FCL_aux (FCL_funcl (id, pexp), annot)) =
+   let env = env_of_tannot (snd annot) in
+   let tq, typ = Env.get_val_spec_orig id env in
+   let arg_typs, ret_typ, _ =
+@@ -1277,6 +1287,7 @@ let doc_funcl_init global (FCL_aux (FCL_funcl (id, pexp), annot)) =
+         (*failwith "Argument pattern not translatable yet."*)
+     )
+   in
++  let binder_ids = List.map (fun (_, i, _) -> i) binders in
+   let ctx = context_init env global in
+   let ctx, binders, fixup_binders =
+     List.fold_left
+@@ -1314,9 +1325,12 @@ let doc_funcl_init global (FCL_aux (FCL_funcl (id, pexp), annot)) =
+   let computability = if IdSet.mem id !opt_noncomputable_functions then string "noncomputable" else empty in
+   ( typ_quant_comment,
+     separate space
+-      (remove_empties [partiality; computability; string "def"; doc_id_ctor ctx id] @ binders @ [colon] @ decl_val),
++      (remove_empties [partiality; computability; string "def"; doc_id_ctor ctx id ^^ string suffix]
++      @ binders @ [colon] @ decl_val
++      ),
+     ctx,
+-    fixup_binders
++    fixup_binders,
++    binder_ids
+   )
+ 
+ let mapping_regex = Str.regexp "_\\(forward\\|backwards\\)\\(_matches\\)?$"
+@@ -1368,11 +1382,53 @@ let doc_termination fixup_binders ctx fnpat (Rec_aux (meas, _)) =
+ let pat_of_funcl (FCL_aux (FCL_funcl (_, funcl), _)) =
+   match funcl with Pat_aux (Pat_exp (pat, _), _) -> pat | Pat_aux (Pat_when (pat, _, _), _) -> pat
+ 
++(* An if/else chain along the body of a function is cut every [if_chain_split] levels: the rest of
++   the chain becomes an auxiliary definition [f_tailK] with the same parameters, called in tail
++   position.  No binder is crossed along the chain, so the tail only mentions the parameters. *)
++let if_chain_split = 100
++
++(* Only chains at least [if_chain_min] levels deep are cut; shallower ones are emitted unchanged. *)
++let if_chain_min = 100
++
+ let doc_funcl ctx meas funcl =
+-  let comment, signature, ctx, fixup_binders = doc_funcl_init ctx.global funcl in
++  let comment, signature, ctx, fixup_binders, binder_ids = doc_funcl_init ctx.global funcl in
+   let fnpat = pat_of_funcl funcl in
+   let termination = doc_termination fixup_binders ctx fnpat meas in
+-  comment ^^ nest 2 (signature ^^ hardline ^^ doc_funcl_body fixup_binders ctx funcl) ^^ termination
++  let (FCL_aux (FCL_funcl (id, pexp), annot)) = funcl in
++  let _, _, exp, _ = destruct_pexp pexp in
++  let exp = fixup_binders exp in
++  let splittable =
++    (not (Effects.function_is_pure id ctx.global.effect_info))
++    && (not (has_early_return exp))
++    && match meas with Rec_aux (Rec_nonrec, _) -> true | _ -> false
++  in
++  let rec cuts depth (E_aux (e, _) as full) =
++    match e with
++    | E_if (_, _, els) ->
++        let rest = cuts (depth + 1) els in
++        if depth > 0 && depth mod if_chain_split = 0 then full :: rest else rest
++    | E_typ (_, e') | E_block [e'] -> cuts depth e'
++    | _ -> []
++  in
++  let cut_nodes = if splittable then cuts 0 exp else [] in
++  let cut_nodes = if List.length cut_nodes * if_chain_split < if_chain_min then [] else cut_nodes in
++  if cut_nodes = [] then comment ^^ nest 2 (signature ^^ hardline ^^ doc_funcl_body fixup_binders ctx funcl) ^^ termination
++  else (
++    let suffix k = "_tail" ^ string_of_int k in
++    let call k = parens (separate space ((doc_id_ctor ctx id ^^ string (suffix k)) :: List.map (doc_id_ctor ctx) binder_ids)) in
++    let table = List.mapi (fun k n -> (n, call (k + 1))) cut_nodes in
++    let body_ctx = context_with_env ctx (env_of_tannot (snd annot)) in
++    let tail k node =
++      hoisted_tails := List.filter (fun (n, _) -> n != node) table;
++      let _, sig_k, _, _, _ = doc_funcl_init ~suffix:(suffix k) ctx.global funcl in
++      nest 2 (sig_k ^^ hardline ^^ doc_exp true body_ctx node)
++    in
++    let tails = List.rev (List.mapi (fun k n -> tail (k + 1) n) cut_nodes) in
++    hoisted_tails := table;
++    let main = comment ^^ nest 2 (signature ^^ hardline ^^ doc_funcl_body fixup_binders ctx funcl) ^^ termination in
++    hoisted_tails := [];
++    separate (twice hardline) (tails @ [main])
++  )
+ 
+ let string_of_pexp p =
+   let pat, guard, exp, _ = destruct_pexp p in

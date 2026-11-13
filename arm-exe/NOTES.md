@@ -47,3 +47,24 @@ Blocked behind it: Sysregs, Reset, Instrs32, Instrs64, DecodeEnd, Fetch, Elfmain
 - `arm-exe/lakefile.toml`: separate package requiring `../arm-exe-gen/armv9` by path.
 - No stubs for C primitives were needed so far: `cycle_count`, `get_cycle_count` come from lean-sail,
   `__GetVerbosity` is generated. There is no ELF loader; `Run.lean` replaces it.
+
+More step-4 numbers (unmodified `arm-exe-gen/armv9`):
+| MapClauses | built | 5 s | 1.8 GB |
+| Instrs64Sme | built | 147 s | 3.4 GB |
+| Instrs64Sve | built | 473 s | 5.2 GB |
+
+Confirmed culprit: the first 65665 lines of `SysregsAutogen.lean` (everything before
+`AArch64_AutoGen_SysRegRead`) compile alone in 483 s at 4.2 GB peak. The full file is killed ~15 s later.
+
+## EXPERIMENT (not the pinned generator): `if_chain_min = 100`
+Coordinator approved, runnable variant only. Generator = pinned Sail + repo patch + one constant changed
+(`if_chain_min` 1000 -> 100; full diff vs upstream: `arm-exe/gen100/sail-if_chain_min-100.patch`). Sail sources
+unchanged. Flags as for `arm-exe-gen` (`--lean-executable`, no `-lean-noncomputable`, `src/elfmain.sail` added).
+Generation: rc=0, 1248 s, Sail peak RSS 8.6 GB.
+Files that differ from `arm-exe-gen/armv9`: exactly 4. `_tailK` helper definitions per file (threshold 100 / 1000):
+DecodeEnd 32 / 11, SysregsAutogen 25 / 0, V8Base 3 / 0, MapClauses 1 / 0.
+SysregsAutogen helpers by function: SysRegRead 8, SysRegWrite 6, AArch32 SysRegRead32 4, SysRegWrite32 4,
+SysOpsWrite 2, SysOpsWrite128 1.
+Build tree for the experiment: a copy of `arm-exe-gen/armv9` with ONLY `Armv9/SysregsAutogen.lean` replaced by
+`arm-exe/gen100/SysregsAutogen.lean` (V8Base and MapClauses kept from the threshold-1000 output, already built).
+Logs: `arm-exe/logs100/`.
