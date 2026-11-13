@@ -18,3 +18,16 @@ Setup: apt `opam z3 libgmp-dev bubblewrap`; `opam init --bare --disable-sandboxi
 - Result: regeneration is byte-identical.
 
 regen.sh changes: the patch loop failed on re-run (`git apply` of an already applied patch, with `-e`); made it idempotent (`apply --reverse --check || apply`). Also note `eval $(opam env)` uses the current opam switch; I used a switch named `sail` (`opam env --switch=sail`). regen.sh was not run end to end (my gen.sh ran the same make steps); the idempotency edit is only syntax-checked (`sh -n`).
+
+## Task 3: unpatched Sail comparison
+Same sail commit (ef5dca5ac) with the patch reversed (`git status` clean), `make install`, then the same `make gen_lean` on sail-arm 5416ef6 (1321 s, rc=0). Compared with run1 (patched == committed).
+
+Files that differ (11 of 39): `Builtins, DecodeEnd, Fetch, Instrs32, Instrs64, Instrs64Sme, Instrs64Sve, Prelude, Sysregs, SysregsAutogen, V8Base` (all under `Armv9/`). Identical: the other 23 `Armv9/*.lean` plus `Armv9.lean`, lakefile, toolchain.
+
+The claim "only DecodeEnd.lean differs structurally" holds, but "small typing fixes" touch 10 other files, and DecodeEnd also carries them (so more than "small" by line count: ~67k differing diff-lines total, mostly DecodeEnd and SysregsAutogen):
+- Two textual classes, mechanical:
+  1. patched `(sailThrow (X) : SailM Unit)` vs unpatched `sailThrow (X)` (type ascription added).
+  2. patched `let x ← (( do (E) ) : T )` / `(( do` + newline vs unpatched `let x ← (( (E) ) : T )` / `((`.
+- Check: after normalising both classes with sed (`\(sailThrow (.*) : SailM Unit\)` -> `sailThrow \1`, `\(\( do \(` -> `(( (`), residual diffs are 0 in Builtins, Fetch, Instrs64Sme, Instrs64Sve, Prelude, Sysregs, SysregsAutogen, V8Base; 8 lines in Instrs32 and 4 in Instrs64 remain, which for Instrs64 I inspected: they are class 2 with `(( do` at end of line (`let fltval ← (( do` vs `let fltval ← ((`). Instrs32 residual was not inspected.
+- DecodeEnd.lean structural: patched has 22 `_tail` identifiers (helper defs split out of `__DecodeA64_SVE`); unpatched has 0 (single large function; the diff spans ~29k lines). The unpatched DecodeEnd was not compiled by me, so I do not know whether it type-checks.
+- Counts per file (differing diff lines): Builtins 2, DecodeEnd 29495, Fetch 10, Instrs32 4046, Instrs64 2962, Instrs64Sme 1260, Instrs64Sve 3004, Prelude 4, Sysregs 48, SysregsAutogen 26470, V8Base 160.
