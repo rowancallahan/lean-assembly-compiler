@@ -8,7 +8,7 @@ mkdir -p "$W"; cd "$W"
 [ -d sail ] || git clone https://github.com/rems-project/sail.git
 [ -d sail-arm ] || git clone https://github.com/rems-project/sail-arm.git
 git -C sail checkout -q $SAIL_REV; git -C sail-arm checkout -q $ARM_REV
-for p in "$(dirname "$0")"/patches/sail/*.patch; do [ -e "$p" ] && git -C sail apply "$p"; done
+for p in "$(dirname "$0")"/patches/sail/*.patch; do [ -e "$p" ] && { git -C sail apply --reverse --check "$p" 2>/dev/null || git -C sail apply "$p"; }; done
 eval $(opam env); (cd sail && opam install . --deps-only --yes && make install)
 (cd sail-arm/arm-v9.4-a && make clean && make gen_lean VERBOSE_FLAG=)
 rm -rf "$OUT"; cp -r sail-arm/arm-v9.4-a/lean/armv9 "$OUT"
