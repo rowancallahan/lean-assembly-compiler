@@ -91,3 +91,50 @@ Instrs32.c 28 MB, Instrs64.c 22 MB, Instrs64Sme.c 22 MB, Defs.c 12 MB.
 New error class: `V8Base.c:168754:1: fatal error: bracket nesting level exceeded maximum of 500`.
 The generated lakefile passes `-fbracket-depth=500`. EDIT TO GENERATED OUTPUT (recorded in
 `arm-exe/gen100/lakefile-bracket-depth.patch`): 500 -> 100000 in `lakefile.toml`. No generator flag sets this.
+Second edit in the same patch: `-O0` appended. Reason: clang on `DecodeEnd.c` did not finish at `-O3`
+(stopped by hand after ~2300 s) nor at `-O1` (stopped after ~700 s); it has single C functions of ~300,000
+lines (`__DecodeT32`, `__DecodeA64_SME`, `__DecodeA64_DataProcFPSIMD`). At `-O0` it takes 45 s.
+`arm-exe/gen100/lakefile.patch` is the whole edit: `["-fbracket-depth=500"]` -> `["-fbracket-depth=100000", "-O0"]`.
+
+| C file | level | result | wall | clang peak RSS |
+|---|---|---|---|---|
+| V8Base.c | -O3, depth 500 | FAILED bracket depth | 2 s | - |
+| V8Base.c | -O3 | built | 665 s | 2.5 GB |
+| Instrs64.c / Instrs32.c / Instrs64Sme.c / Instrs64Sve.c | -O3 | built | 112 / 148 / 141 / 350 s | 0.7 / 0.9 / 0.8 / 1.7 GB |
+| DecodeEnd.c | -O3, -O1 | not finished (stopped) | >2300 s, >700 s | 2.2 GB |
+| DecodeEnd.c | -O0 | built | 45 s | 3.5 GB |
+| SysregsAutogen.c | -O0 | built | 123 s | 7.3 GB |
+| V8Base.c | -O0 | built | 47 s | 2.7 GB |
+`SysregsAutogen.c` at -O3 was never attempted. The linked executable is all `-O0`.
+
+## Step 5: RESULT
+Executable `armrun` linked (461 MB; link + remaining C files 40 s). Tree: `arm-exe-gen/armv9` + threshold-100
+`SysregsAutogen.lean` + `lakefile.patch`, driver `arm-exe/Run.lean`. Reproduce: `arm-exe/build-exe100.sh`
+(written after the fact from the commands used; the script itself has not been run end to end).
+
+    $ armrun 21 aa0003e9 aa0003ea 8b0a0129 aa0903e0 d65f03c0
+    x0 = 42                                  (0.08 s wall, exit 0)
+    $ armrun 5 aa0003e9 aa0003ea 8b0a0129 aa0903e0 d65f03c0      -> x0 = 10
+    $ armrun 1000000007 <same 5 words>                           -> x0 = 2000000014
+    $ armrun 5 aa0003e9 aa0003ea 8b0a0129                        -> x0 = 5   (stops before `mov x0,x9`)
+    $ armrun 5                                                   -> x0 = 5   (reset only)
+
+What ran: `sail_model_init`, `__InitSystem` (cold reset; CPU at EL3 AArch64, PC = 0), `R0 := arg`, then the
+model's `step_model` 5 times, i.e. full fetch/decode/execute through `__TopLevel`, then read `R0`.
+NOT done: comparison against QEMU on this box (no qemu installed here); `ret` jumps to x30 = reset value 0.
+
+The generated `main` (exe `run`, unmodified entry point `sail_model_init >=> sail_main`) also links and runs:
+    $ run
+    Error while running the sail program!: 0 Out of Memory Range        (exit 1)
+i.e. reset succeeds and the first instruction fetch at address 0 fails because memory is empty. `sail_main`
+itself has no way to receive a program in the Lean build (the C emulator's ELF loader has no Lean counterpart).
+
+## Summary for the owner
+- Runnable: yes, with (a) generator constant `if_chain_min` 1000 -> 100 for `SysregsAutogen` only,
+  (b) lakefile `-fbracket-depth` raised and `-O0`, (c) a 22-line hand-written driver. No `.sail` change,
+  no stubs, no hand edit of any generated `.lean` file.
+- With the pinned generator (threshold 1000) on 15 GB without swap: fails at one definition,
+  `AArch64_AutoGen_SysRegRead` in `SysregsAutogen`, RSS > 13.2 GB when killed. Whether a bigger machine alone
+  suffices is not known from this box.
+- Peak memory seen (Lean): V8Base 13.8 GB, SysregsAutogen (split) 11.9 GB, DecodeEnd 11.8 GB; all else <= 5.2 GB.
+- Sum of wall times for a from-scratch build as done here: about 1 h 45 min (Lean ~1 h 35, C at -O0 ~6 min).

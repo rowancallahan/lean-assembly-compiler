@@ -1,0 +1,5 @@
+⚠ [26/29] Replayed Armv9.V8Base
+warning: Armv9/V8Base.lean:72881:4: declaration uses `sorry`
+warning: Armv9/V8Base.lean:72880:0: declaration uses `sorry`
+✔ [29/29] Built Armv9.SysregsAutogen:c.o (123s)
+Build completed successfully (29 jobs).

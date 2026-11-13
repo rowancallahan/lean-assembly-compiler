@@ -1,0 +1,5 @@
+⚠ [26/28] Replayed Armv9.V8Base
+warning: Armv9/V8Base.lean:72881:4: declaration uses `sorry`
+warning: Armv9/V8Base.lean:72880:0: declaration uses `sorry`
+✔ [28/28] Built Armv9.Instrs64Sve:c.o (349s)
+Build completed successfully (28 jobs).
