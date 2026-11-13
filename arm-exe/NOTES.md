@@ -137,4 +137,12 @@ itself has no way to receive a program in the Lean build (the C emulator's ELF l
   `AArch64_AutoGen_SysRegRead` in `SysregsAutogen`, RSS > 13.2 GB when killed. Whether a bigger machine alone
   suffices is not known from this box.
 - Peak memory seen (Lean): V8Base 13.8 GB, SysregsAutogen (split) 11.9 GB, DecodeEnd 11.8 GB; all else <= 5.2 GB.
-- Sum of wall times for a from-scratch build as done here: about 1 h 45 min (Lean ~1 h 35, C at -O0 ~6 min).
+- Sum of wall times for a from-scratch build as done here: about 1 h 55 min on 4 cores (Lean modules ~1 h 46, driver model 4 min, C at -O0 ~5 min).
+
+## Elaborator or code generator? (unsplit SysregsAutogen, threshold 1000)
+Same file with `noncomputable section` inserted after the imports (scratch copy, compiled against the runnable
+build's dependencies, no `-c`): `rc=137` (OOM kill) at 491 s, last RSS sample 10.7 GB (5 s sampling).
+The computable run died at 498 s. So on this box (15 GB, no swap) the kill happens at the same point with code
+generation off: the elaboration of `AArch64_AutoGen_SysRegRead` alone exceeds available memory here. Whether
+code generation adds memory on top cannot be measured on this box. (Coordinator reports the unsplit file passes
+the checked build on a box with 12 GB swap.)
