@@ -1,0 +1,9 @@
+⚠ [26/28] Replayed Armv9.V8Base
+warning: Armv9/V8Base.lean:72881:4: declaration uses `sorry`
+warning: Armv9/V8Base.lean:72880:0: declaration uses `sorry`
+✖ [28/28] Building Armv9.SysregsAutogen (497s)
+trace: .> LEAN_PATH=/home/user/lean-assembly-compiler/arm-exe-gen/armv9/.lake/packages/Sail/.lake/build/lib/lean:/home/user/lean-assembly-compiler/arm-exe-gen/armv9/.lake/build/lib/lean /root/.elan/toolchains/leanprover--lean4---v4.34.1/bin/lean --tstack=400000 /home/user/lean-assembly-compiler/arm-exe-gen/armv9/Armv9/SysregsAutogen.lean -o /home/user/lean-assembly-compiler/arm-exe-gen/armv9/.lake/build/lib/lean/Armv9/SysregsAutogen.olean -i /home/user/lean-assembly-compiler/arm-exe-gen/armv9/.lake/build/lib/lean/Armv9/SysregsAutogen.ilean -c /home/user/lean-assembly-compiler/arm-exe-gen/armv9/.lake/build/ir/Armv9/SysregsAutogen.c --setup /home/user/lean-assembly-compiler/arm-exe-gen/armv9/.lake/build/ir/Armv9/SysregsAutogen.setup.json --json
+error: Lean exited with code 137
+Some required targets logged failures:
+- Armv9.SysregsAutogen
+error: build failed

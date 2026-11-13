@@ -1,1 +1,7 @@
 Armv9.V8Base rc=0 wall=1874s peak_kb=13764656
+Armv9.Stubs rc=0 wall=17s peak_kb=1519048
+Armv9.Interrupts rc=0 wall=3s peak_kb=
+Armv9.Devices rc=0 wall=2s peak_kb=
+Armv9.Interface rc=0 wall=2s peak_kb=
+Armv9.Impdefs rc=0 wall=1s peak_kb=
+Armv9.SysregsAutogen rc=1 wall=498s peak_kb=13360080

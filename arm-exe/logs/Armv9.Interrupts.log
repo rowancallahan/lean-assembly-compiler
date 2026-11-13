@@ -1,0 +1,5 @@
+⚠ [26/27] Replayed Armv9.V8Base
+warning: Armv9/V8Base.lean:72881:4: declaration uses `sorry`
+warning: Armv9/V8Base.lean:72880:0: declaration uses `sorry`
+✔ [27/27] Built Armv9.Interrupts (3.3s)
+Build completed successfully (27 jobs).

@@ -1,0 +1,14 @@
+name = "armrun"
+defaultTargets = ["armrun"]
+moreLeanArgs = ["--tstack=400000"]
+
+[[require]]
+name = "armv9"
+path = "../arm-exe-gen/armv9"
+
+[[lean_lib]]
+name = "ArmRun"
+
+[[lean_exe]]
+name = "armrun"
+root = "Run"
