@@ -146,3 +146,35 @@ The computable run died at 498 s. So on this box (15 GB, no swap) the kill happe
 generation off: the elaboration of `AArch64_AutoGen_SysRegRead` alone exceeds available memory here. Whether
 code generation adds memory on top cannot be measured on this box. (Coordinator reports the unsplit file passes
 the checked build on a box with 12 GB swap.)
+
+## Batch runner and comparison against QEMU
+`Run.lean` is now a batch runner: `armrun FILE`, one line per input `x0 x1 x2 x3 word...` (hex), prints x0 (hex).
+(The single-shot `armrun 21 <words>` form shown above was the earlier version, commit 1a7290d.)
+- The trailing `ret` IS executed: x30 is set to 0x100000 and `step_model` is called until PC = 0x100000
+  (bound 1,000,000 steps). Nothing is fetched from that address.
+- Reset (`sail_model_init`, `__InitSystem`) is run ONCE; its resulting state value is reused for every line with
+  that line's memory, x0..x3 and x30. Sound because the state is an immutable Lean value and reset is
+  deterministic (no input); the runner asserts reset left memory empty.
+
+`arm-exe/compare.py ARMRUN triple.txt WORKDIR` (QEMU half copied from `asm/triple.py`), run on
+`asm/triple-data/triple.txt` from main (14fbd02), qemu-system-aarch64 8.2.2 (-machine virt -cpu cortex-a72):
+
+    TOTAL 17099 inputs, 18 cases, mismatches 0
+    Lean ARM model == expected (Lean Exp.denote) == AArch64 QEMU on this box, for every input.
+
+Per case (inputs, words): all 18 cases report `mismatches 0`; largest are deep_ite (589 inputs, 316 words) and
+chain9_depth10 (589, 115). Instructions exercised are only what the corpus contains (mov/orr, add, sub, and, eor,
+movz, lslv/lsrv/asrv, subs/cmp, cset/csel/csinc, ret); this says nothing about the rest of the model.
+RV64 half of triple.py was not run here.
+
+Throughput of the model runner (executable compiled at -O0, one core): 17099 inputs in 177.5 s = 96 inputs/s,
+= 5,409 model steps/s (960,098 instructions incl. `ret`), including process start and the one reset.
+
+## ALL deviations from the checked model on main needed for the runnable build
+1. Generator flags: `-lean-noncomputable` dropped, `--lean-executable` added, `src/elfmain.sail` added (coordinator's `arm-exe-gen`).
+2. `lake-manifest.json` in `arm-exe-gen/armv9` replaced by the one from `armv9-lean` (generated one lists no packages).
+3. Generator constant `if_chain_min` 1000 -> 100, used for ONE file: `Armv9/SysregsAutogen.lean` (25 `_tailK` helpers). `arm-exe/gen100/`.
+4. Generated `lakefile.toml`: `-fbracket-depth=500` -> `100000`, and `-O0` added. `arm-exe/gen100/lakefile.patch`.
+5. Hand-written: `arm-exe/Run.lean` (driver), `arm-exe/mkmodel.sh` (copies generated `Armv9.lean` without its 2-line `def main`), `arm-exe/lakefile.toml`.
+6. NOT applied here: main's newer `--lean-partial-function Reduce__1`; this build's V8Base still has the `sorry`-terminated `Reduce__1`.
+No `.sail` change, no stub for any C primitive, no hand edit of a generated `.lean` file.

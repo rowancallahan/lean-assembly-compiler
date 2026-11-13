@@ -10,4 +10,4 @@ for m in DecodeEnd SysregsAutogen V8Base; do D=$T $H/build.sh Armv9.$m:o; done  
 $H/mkmodel.sh
 mkdir -p $R; cp -r $H/Run.lean $H/ArmRun $H/lean-toolchain $R/; sed "s|path = .*|path = \"$T\"|" $H/lakefile.toml > $R/lakefile.toml
 cd $R && lake build armrun
-./.lake/build/bin/armrun 21 aa0003e9 aa0003ea 8b0a0129 aa0903e0 d65f03c0 | grep -qx 'x0 = 42'
+printf "15 0 0 0 aa0003e9 aa0003ea 8b0a0129 aa0903e0 d65f03c0\n" > t.txt && [ "$(./.lake/build/bin/armrun t.txt)" = 2a ]
