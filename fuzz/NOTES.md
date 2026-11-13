@@ -30,7 +30,7 @@ No mismatches found; nothing to minimise.
 `genExp` now covers `var`, `const`, `bin` with all 11 ops, and `ite`. Edge constants additionally include 63, 64, 65, 127, 128, 31, 32;
 1 in 12 nodes is a shift whose right operand is a constant from {0,1,63,64,65,127,2^64-1,32}; `ite` conditions are biased to
 const 0, const 1..3, an ult/slt/eq comparison, or an arbitrary term. Depth limit `< 11`, rejection-sampled and `assert!`ed.
-Code length per term: 3..3399 RV64 words (median ~130).
+Code length per term: 3..4571 RV64 words (median ~185); 700 of 1,200 terms contain `ite`, each op appears in 550-610.
 
 Checker changes: `asm/fuzzpar.py cases.txt [J]` splits cases round-robin over J (default: all cores) parallel `triple.py` runs, each with its
 own `WORK` dir (new env var of `triple.py`). `triple.py` linker script moved `.tohost`/`.data` to 0x80100000/0x80200000: the old 0x80001000
