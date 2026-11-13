@@ -4,5 +4,8 @@ import Proven.Regs
 import Proven.Step
 import Proven.SortSteps
 import Proven.Sort
+import Proven.Code
+import Proven.Words
 import Proven.Compiler
+import Proven.CompilerArm
 import Proven.Reify
