@@ -1,0 +1,5 @@
+.lake/
+work/
+*.elf
+*.o
+scratch/

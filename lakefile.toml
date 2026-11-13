@@ -1,0 +1,10 @@
+name = "proven"
+defaultTargets = ["Proven"]
+moreLeanArgs = ["--tstack=400000"]
+
+[[lean_lib]]
+name = "Proven"
+
+[[require]]
+name = "Lean_RV64D"
+path = "../deps/sail-riscv-lean"

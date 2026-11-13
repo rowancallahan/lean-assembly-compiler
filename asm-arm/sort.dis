@@ -1,0 +1,110 @@
+
+sort.elf:     file format elf64-littleaarch64
+
+
+Disassembly of section .text:
+
+0000000040200000 <_start>:
+    40200000:	580000c0 	ldr	x0, 40200018 <halt+0x4>
+    40200004:	f85f8001 	ldur	x1, [x0, #-8]
+    40200008:	580000c2 	ldr	x2, 40200020 <halt+0xc>
+    4020000c:	580000e3 	ldr	x3, 40200028 <halt+0x14>
+    40200010:	94000008 	bl	40200030 <sort>
+
+0000000040200014 <halt>:
+    40200014:	14000000 	b	40200014 <halt>
+    40200018:	40300000 	.word	0x40300000
+    4020001c:	00000000 	.word	0x00000000
+    40200020:	44000000 	.word	0x44000000
+    40200024:	00000000 	.word	0x00000000
+    40200028:	48000000 	.word	0x48000000
+    4020002c:	00000000 	.word	0x00000000
+
+0000000040200030 <sort>:
+    40200030:	d2800004 	mov	x4, #0x0                   	// #0
+
+0000000040200034 <copy_in>:
+    40200034:	eb01009f 	cmp	x4, x1
+    40200038:	540000a2 	b.cs	4020004c <copy_in_done>  // b.hs, b.nlast
+    4020003c:	38646805 	ldrb	w5, [x0, x4]
+    40200040:	38246865 	strb	w5, [x3, x4]
+    40200044:	91000484 	add	x4, x4, #0x1
+    40200048:	17fffffb 	b	40200034 <copy_in>
+
+000000004020004c <copy_in_done>:
+    4020004c:	aa0303e6 	mov	x6, x3
+    40200050:	aa0203e7 	mov	x7, x2
+    40200054:	d2800028 	mov	x8, #0x1                   	// #1
+
+0000000040200058 <outer>:
+    40200058:	eb01011f 	cmp	x8, x1
+    4020005c:	54000502 	b.cs	402000fc <done>  // b.hs, b.nlast
+    40200060:	d2800009 	mov	x9, #0x0                   	// #0
+
+0000000040200064 <pass>:
+    40200064:	eb01013f 	cmp	x9, x1
+    40200068:	54000402 	b.cs	402000e8 <pass_done>  // b.hs, b.nlast
+    4020006c:	8b08012a 	add	x10, x9, x8
+    40200070:	eb0a003f 	cmp	x1, x10
+    40200074:	54000042 	b.cs	4020007c <pass+0x18>  // b.hs, b.nlast
+    40200078:	aa0103ea 	mov	x10, x1
+    4020007c:	8b08014b 	add	x11, x10, x8
+    40200080:	eb0b003f 	cmp	x1, x11
+    40200084:	54000042 	b.cs	4020008c <pass+0x28>  // b.hs, b.nlast
+    40200088:	aa0103eb 	mov	x11, x1
+    4020008c:	aa0903ec 	mov	x12, x9
+    40200090:	aa0a03ed 	mov	x13, x10
+    40200094:	aa0903ee 	mov	x14, x9
+
+0000000040200098 <merge>:
+    40200098:	eb0b01df 	cmp	x14, x11
+    4020009c:	54000222 	b.cs	402000e0 <merge_done>  // b.hs, b.nlast
+    402000a0:	eb0a019f 	cmp	x12, x10
+    402000a4:	54000142 	b.cs	402000cc <take_r>  // b.hs, b.nlast
+    402000a8:	eb0b01bf 	cmp	x13, x11
+    402000ac:	540000a2 	b.cs	402000c0 <take_l>  // b.hs, b.nlast
+    402000b0:	386c68c4 	ldrb	w4, [x6, x12]
+    402000b4:	386d68c5 	ldrb	w5, [x6, x13]
+    402000b8:	6b0400bf 	cmp	w5, w4
+    402000bc:	54000083 	b.cc	402000cc <take_r>  // b.lo, b.ul, b.last
+
+00000000402000c0 <take_l>:
+    402000c0:	386c68c4 	ldrb	w4, [x6, x12]
+    402000c4:	9100058c 	add	x12, x12, #0x1
+    402000c8:	14000003 	b	402000d4 <store>
+
+00000000402000cc <take_r>:
+    402000cc:	386d68c4 	ldrb	w4, [x6, x13]
+    402000d0:	910005ad 	add	x13, x13, #0x1
+
+00000000402000d4 <store>:
+    402000d4:	382e68e4 	strb	w4, [x7, x14]
+    402000d8:	910005ce 	add	x14, x14, #0x1
+    402000dc:	17ffffef 	b	40200098 <merge>
+
+00000000402000e0 <merge_done>:
+    402000e0:	aa0b03e9 	mov	x9, x11
+    402000e4:	17ffffe0 	b	40200064 <pass>
+
+00000000402000e8 <pass_done>:
+    402000e8:	aa0603e4 	mov	x4, x6
+    402000ec:	aa0703e6 	mov	x6, x7
+    402000f0:	aa0403e7 	mov	x7, x4
+    402000f4:	d37ff908 	lsl	x8, x8, #1
+    402000f8:	17ffffd8 	b	40200058 <outer>
+
+00000000402000fc <done>:
+    402000fc:	eb0300df 	cmp	x6, x3
+    40200100:	54000100 	b.eq	40200120 <finish>  // b.none
+    40200104:	d2800004 	mov	x4, #0x0                   	// #0
+
+0000000040200108 <copy_out>:
+    40200108:	eb01009f 	cmp	x4, x1
+    4020010c:	540000a2 	b.cs	40200120 <finish>  // b.hs, b.nlast
+    40200110:	386468c5 	ldrb	w5, [x6, x4]
+    40200114:	38246865 	strb	w5, [x3, x4]
+    40200118:	91000484 	add	x4, x4, #0x1
+    4020011c:	17fffffb 	b	40200108 <copy_out>
+
+0000000040200120 <finish>:
+    40200120:	d65f03c0 	ret
