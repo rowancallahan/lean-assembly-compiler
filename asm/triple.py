@@ -4,12 +4,13 @@ For every case and input: Lean `Exp.denote` == RV64 code on QEMU == RV64 code on
 usage: triple.py ctest/triple.txt"""
 import os, re, subprocess, sys, time
 D = os.path.dirname(os.path.abspath(__file__)); W = os.path.join(D, "ctest"); p = lambda f: os.path.join(W, f)
-SAIL = "/home/user/deps/sailsim/sail-riscv-Linux-x86_64/bin/sail_riscv_sim"
+SAIL = os.environ.get("SAIL", "/home/user/deps/sailsim/sail-riscv-Linux-x86_64/bin/sail_riscv_sim")
 sh = lambda c: subprocess.run(c, shell=True, check=True)
 cases = []
 for l in open(sys.argv[1]):
     k, *r = l.split()
     if k == "case": cases.append({"name": r[0], "t": []})
+    elif k == "exp": cases[-1]["exp"] = l.strip()
     elif k in ("rv", "arm"): cases[-1][k] = [int(x, 16) for x in r]
     else: assert k == "t" and len(r) == 5, l; cases[-1]["t"].append([int(x, 16) for x in r])
 words = lambda ws: "".join(f"  .word 0x{w:08x}\n" for w in ws)
@@ -92,5 +93,5 @@ for c in cases:
     armq, _ = qemu(f"qemu-system-aarch64 -machine virt -cpu cortex-a72 -m 1G -display none -serial none -monitor stdio -device loader,file={p('arm.elf')},cpu-num=0",
                    p("arm.elf"), "aarch64-linux-gnu-nm", "PC=%016x", n)
     for i in range(n):
-        assert lean[i] == rvq[i] == sail[i] == armq[i], (c["name"], ts[i], lean[i], rvq[i], sail[i], armq[i])
+        assert lean[i] == rvq[i] == sail[i] == armq[i], (c["name"], c.get("exp"), ts[i], lean[i], rvq[i], sail[i], armq[i])
     print(f"{c['name']}: {n} inputs, Lean == RV64 QEMU == RV64 Sail emulator == AArch64 QEMU ({len(c['rv'])} / {len(c['arm'])} words)")
