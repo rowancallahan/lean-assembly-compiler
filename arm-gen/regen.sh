@@ -10,6 +10,6 @@ mkdir -p "$W"; cd "$W"
 git -C sail checkout -q $SAIL_REV; git -C sail-arm checkout -q $ARM_REV
 for p in "$(dirname "$0")"/patches/sail/*.patch; do [ -e "$p" ] && git -C sail apply "$p"; done
 eval $(opam env); (cd sail && opam install . --deps-only --yes && make install)
-(cd sail-arm/arm-v9.4-a && make clean && make lean VERBOSE_FLAG=)
+(cd sail-arm/arm-v9.4-a && make clean && make gen_lean VERBOSE_FLAG= VERBOSE_FLAG=)
 rm -rf "$OUT"; cp -r sail-arm/arm-v9.4-a/lean/armv9 "$OUT"
 find "$OUT" -name '*.lean' | sort | xargs sha256sum | sha256sum

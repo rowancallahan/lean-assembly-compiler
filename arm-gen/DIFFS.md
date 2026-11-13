@@ -38,3 +38,18 @@ Three printing changes. None touches the ARM Sail sources.
 ## Not yet verified
 - Byte-identical regeneration (rule 1): needs a second run of `regen.sh` from a clean checkout.
 - Complete build of all 34 modules.
+
+## Build status (2026-11-13)
+
+All 34 modules of `armv9-lean/Armv9/` compile with Lean 4.34.1 (`lake build`, then
+`lake build Armv9.<M>` for each module not imported by `Armv9.lean`). Log: 0 errors.
+
+One `sorry` in the whole model: the termination proof of `Reduce__1`
+(`Armv9/V8Base.lean`). It recurses on the two halves of a bitvector whose width is
+only known through the type-level `k_N`; `ArmExtras.lean` (shipped unmodified by
+sail-arm) extends `decreasing_trivial` with a `sorry` fallback, and that fallback
+fires here. No definition body is a `sorry`. Not fixed: fixing means either a
+generator-side termination measure or a hand proof.
+
+Not yet checked: byte-identical regeneration on a second run; a stated equality
+theorem between each split chain and its unsplit original.
