@@ -1,5 +1,5 @@
-/- A tiny verified compiler: expressions over `BitVec 64` to RV64I code, run on the Sail model. -/
-import Proven.Step
+/- A tiny verified compiler: the proof that `compile` (`Proven/Code.lean`) is correct on the Sail RV64 model. -/
+import Proven.Words
 open LeanRV64D LeanRV64D.Functions Sail Sail.ConcurrencyInterfaceV1
 
 set_option maxRecDepth 1000000
@@ -8,343 +8,6 @@ set_option linter.unusedVariables false
 set_option linter.unusedSimpArgs false
 
 namespace Proven
-
-/-! ## Source language -/
-
-inductive Op where | add | sub | and | or | xor
-  deriving DecidableEq, Repr
-
-def Op.eval : Op → BitVec 64 → BitVec 64 → BitVec 64
-  | .add, a, b => a + b
-  | .sub, a, b => a - b
-  | .and, a, b => a &&& b
-  | .or, a, b => a ||| b
-  | .xor, a, b => a ^^^ b
-
-/-- Expressions over four 64-bit inputs (passed in `a0..a3`). -/
-inductive Exp where
-  | var (i : Fin 4)
-  | const (c : BitVec 64)
-  | bin (op : Op) (a b : Exp)
-  deriving Repr
-
-def Exp.denote (env : Fin 4 → BitVec 64) : Exp → BitVec 64
-  | .var i => env i
-  | .const c => c
-  | .bin op a b => op.eval (a.denote env) (b.denote env)
-
-/-- registers needed beyond the result register -/
-def Exp.depth : Exp → Nat
-  | .var _ | .const _ => 0
-  | .bin _ a b => max a.depth (b.depth + 1)
-
-/-! ## Target: RV64I words over a fixed register stack `t0 t1 t2 t3 t4` -/
-
-/-- the register stack: `t0 t1 t2 t3 t4` -/
-def T : Nat → Fin 32
-  | 0 => 5 | 1 => 6 | 2 => 7 | 3 => 28 | _ => 29
-/-- argument registers `a0..a3` -/
-def A : Nat → Fin 32
-  | 0 => 10 | 1 => 11 | 2 => 12 | _ => 13
-
-def encR (f7 f3 : Nat) (rd rs1 rs2 : Fin 32) : BitVec 32 :=
-  BitVec.ofNat 32 (f7 <<< 25 ||| rs2.val <<< 20 ||| rs1.val <<< 15 ||| f3 <<< 12 ||| rd.val <<< 7 ||| 0x33)
-def encI (f3 imm : Nat) (rd rs1 : Fin 32) : BitVec 32 :=
-  BitVec.ofNat 32 (imm <<< 20 ||| rs1.val <<< 15 ||| f3 <<< 12 ||| rd.val <<< 7 ||| 0x13)
-
-def Op.f7 : Op → Nat | .sub => 0x20 | _ => 0
-def Op.f3 : Op → Nat | .add => 0 | .sub => 0 | .and => 7 | .or => 6 | .xor => 4
-
-def iOp (op : Op) (k : Nat) : BitVec 32 := encR op.f7 op.f3 (T k) (T k) (T (k + 1)) -- op tk, tk, tk+1
-def iVar (i k : Nat) : BitVec 32 := encR 0 0 (T k) 0 (A i)    -- add tk, x0, ai
-def iZero (k : Nat) : BitVec 32 := encI 0 0 (T k) 0           -- addi tk, x0, 0
-def iShl (k : Nat) : BitVec 32 := encI 1 1 (T k) (T k)        -- slli tk, tk, 1
-def iInc (k : Nat) : BitVec 32 := encI 0 1 (T k) (T k)        -- addi tk, tk, 1
-def iRes : BitVec 32 := encR 0 0 10 0 5                        -- add a0, x0, t0
-def iRet : BitVec 32 := 0x00008067#32                          -- jalr x0, 0(ra)
-
-/-- build the constant `n` in `t_k`, most significant bit first -/
-def genConst (k n : Nat) : List (BitVec 32) :=
-  if n = 0 then [iZero k] else genConst k (n / 2) ++ [iShl k] ++ (if n % 2 = 1 then [iInc k] else [])
-
-/-- code leaving the value of `e` in `t_k`, clobbering only `t_k ..` -/
-def gen : Exp → Nat → List (BitVec 32)
-  | .var i, k => [iVar i k]
-  | .const c, k => genConst k c.toNat
-  | .bin op a b, k => gen a k ++ gen b (k + 1) ++ [iOp op k]
-
-/-- the compiled function: result in `a0`, then `ret` -/
-def compile (e : Exp) : List (BitVec 32) := gen e 0 ++ [iRes, iRet]
-
-/-! ## Step lemmas for every word the compiler emits
-
-One lemma per concrete word, each by `step_word`; the family lemmas dispatch on the indices. -/
-
-namespace W
-
-theorem op_add_0 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iOp .add 0)) :
-    ∃ s', Next s s' (pc + 4) (T 0) (Op.eval .add (getX s (T 0)) (getX s (T (0 + 1)))) s.mem := by
-  rw [show iOp .add 0 = 0x006282b3#32 by decide] at hi; simp only [T, Op.eval]; step_word
-theorem op_sub_0 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iOp .sub 0)) :
-    ∃ s', Next s s' (pc + 4) (T 0) (Op.eval .sub (getX s (T 0)) (getX s (T (0 + 1)))) s.mem := by
-  rw [show iOp .sub 0 = 0x406282b3#32 by decide] at hi; simp only [T, Op.eval]; step_word
-theorem op_and_0 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iOp .and 0)) :
-    ∃ s', Next s s' (pc + 4) (T 0) (Op.eval .and (getX s (T 0)) (getX s (T (0 + 1)))) s.mem := by
-  rw [show iOp .and 0 = 0x0062f2b3#32 by decide] at hi; simp only [T, Op.eval]; step_word
-theorem op_or_0 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iOp .or 0)) :
-    ∃ s', Next s s' (pc + 4) (T 0) (Op.eval .or (getX s (T 0)) (getX s (T (0 + 1)))) s.mem := by
-  rw [show iOp .or 0 = 0x0062e2b3#32 by decide] at hi; simp only [T, Op.eval]; step_word
-theorem op_xor_0 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iOp .xor 0)) :
-    ∃ s', Next s s' (pc + 4) (T 0) (Op.eval .xor (getX s (T 0)) (getX s (T (0 + 1)))) s.mem := by
-  rw [show iOp .xor 0 = 0x0062c2b3#32 by decide] at hi; simp only [T, Op.eval]; step_word
-theorem op_add_1 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iOp .add 1)) :
-    ∃ s', Next s s' (pc + 4) (T 1) (Op.eval .add (getX s (T 1)) (getX s (T (1 + 1)))) s.mem := by
-  rw [show iOp .add 1 = 0x00730333#32 by decide] at hi; simp only [T, Op.eval]; step_word
-theorem op_sub_1 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iOp .sub 1)) :
-    ∃ s', Next s s' (pc + 4) (T 1) (Op.eval .sub (getX s (T 1)) (getX s (T (1 + 1)))) s.mem := by
-  rw [show iOp .sub 1 = 0x40730333#32 by decide] at hi; simp only [T, Op.eval]; step_word
-theorem op_and_1 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iOp .and 1)) :
-    ∃ s', Next s s' (pc + 4) (T 1) (Op.eval .and (getX s (T 1)) (getX s (T (1 + 1)))) s.mem := by
-  rw [show iOp .and 1 = 0x00737333#32 by decide] at hi; simp only [T, Op.eval]; step_word
-theorem op_or_1 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iOp .or 1)) :
-    ∃ s', Next s s' (pc + 4) (T 1) (Op.eval .or (getX s (T 1)) (getX s (T (1 + 1)))) s.mem := by
-  rw [show iOp .or 1 = 0x00736333#32 by decide] at hi; simp only [T, Op.eval]; step_word
-theorem op_xor_1 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iOp .xor 1)) :
-    ∃ s', Next s s' (pc + 4) (T 1) (Op.eval .xor (getX s (T 1)) (getX s (T (1 + 1)))) s.mem := by
-  rw [show iOp .xor 1 = 0x00734333#32 by decide] at hi; simp only [T, Op.eval]; step_word
-theorem op_add_2 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iOp .add 2)) :
-    ∃ s', Next s s' (pc + 4) (T 2) (Op.eval .add (getX s (T 2)) (getX s (T (2 + 1)))) s.mem := by
-  rw [show iOp .add 2 = 0x01c383b3#32 by decide] at hi; simp only [T, Op.eval]; step_word
-theorem op_sub_2 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iOp .sub 2)) :
-    ∃ s', Next s s' (pc + 4) (T 2) (Op.eval .sub (getX s (T 2)) (getX s (T (2 + 1)))) s.mem := by
-  rw [show iOp .sub 2 = 0x41c383b3#32 by decide] at hi; simp only [T, Op.eval]; step_word
-theorem op_and_2 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iOp .and 2)) :
-    ∃ s', Next s s' (pc + 4) (T 2) (Op.eval .and (getX s (T 2)) (getX s (T (2 + 1)))) s.mem := by
-  rw [show iOp .and 2 = 0x01c3f3b3#32 by decide] at hi; simp only [T, Op.eval]; step_word
-theorem op_or_2 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iOp .or 2)) :
-    ∃ s', Next s s' (pc + 4) (T 2) (Op.eval .or (getX s (T 2)) (getX s (T (2 + 1)))) s.mem := by
-  rw [show iOp .or 2 = 0x01c3e3b3#32 by decide] at hi; simp only [T, Op.eval]; step_word
-theorem op_xor_2 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iOp .xor 2)) :
-    ∃ s', Next s s' (pc + 4) (T 2) (Op.eval .xor (getX s (T 2)) (getX s (T (2 + 1)))) s.mem := by
-  rw [show iOp .xor 2 = 0x01c3c3b3#32 by decide] at hi; simp only [T, Op.eval]; step_word
-theorem op_add_3 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iOp .add 3)) :
-    ∃ s', Next s s' (pc + 4) (T 3) (Op.eval .add (getX s (T 3)) (getX s (T (3 + 1)))) s.mem := by
-  rw [show iOp .add 3 = 0x01de0e33#32 by decide] at hi; simp only [T, Op.eval]; step_word
-theorem op_sub_3 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iOp .sub 3)) :
-    ∃ s', Next s s' (pc + 4) (T 3) (Op.eval .sub (getX s (T 3)) (getX s (T (3 + 1)))) s.mem := by
-  rw [show iOp .sub 3 = 0x41de0e33#32 by decide] at hi; simp only [T, Op.eval]; step_word
-theorem op_and_3 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iOp .and 3)) :
-    ∃ s', Next s s' (pc + 4) (T 3) (Op.eval .and (getX s (T 3)) (getX s (T (3 + 1)))) s.mem := by
-  rw [show iOp .and 3 = 0x01de7e33#32 by decide] at hi; simp only [T, Op.eval]; step_word
-theorem op_or_3 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iOp .or 3)) :
-    ∃ s', Next s s' (pc + 4) (T 3) (Op.eval .or (getX s (T 3)) (getX s (T (3 + 1)))) s.mem := by
-  rw [show iOp .or 3 = 0x01de6e33#32 by decide] at hi; simp only [T, Op.eval]; step_word
-theorem op_xor_3 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iOp .xor 3)) :
-    ∃ s', Next s s' (pc + 4) (T 3) (Op.eval .xor (getX s (T 3)) (getX s (T (3 + 1)))) s.mem := by
-  rw [show iOp .xor 3 = 0x01de4e33#32 by decide] at hi; simp only [T, Op.eval]; step_word
-theorem var_0_0 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iVar 0 0)) :
-    ∃ s', Next s s' (pc + 4) (T 0) (getX s (A 0)) s.mem := by
-  rw [show iVar 0 0 = 0x00a002b3#32 by decide] at hi; simp only [T, A]; step_word
-theorem var_1_0 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iVar 1 0)) :
-    ∃ s', Next s s' (pc + 4) (T 0) (getX s (A 1)) s.mem := by
-  rw [show iVar 1 0 = 0x00b002b3#32 by decide] at hi; simp only [T, A]; step_word
-theorem var_2_0 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iVar 2 0)) :
-    ∃ s', Next s s' (pc + 4) (T 0) (getX s (A 2)) s.mem := by
-  rw [show iVar 2 0 = 0x00c002b3#32 by decide] at hi; simp only [T, A]; step_word
-theorem var_3_0 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iVar 3 0)) :
-    ∃ s', Next s s' (pc + 4) (T 0) (getX s (A 3)) s.mem := by
-  rw [show iVar 3 0 = 0x00d002b3#32 by decide] at hi; simp only [T, A]; step_word
-theorem var_0_1 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iVar 0 1)) :
-    ∃ s', Next s s' (pc + 4) (T 1) (getX s (A 0)) s.mem := by
-  rw [show iVar 0 1 = 0x00a00333#32 by decide] at hi; simp only [T, A]; step_word
-theorem var_1_1 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iVar 1 1)) :
-    ∃ s', Next s s' (pc + 4) (T 1) (getX s (A 1)) s.mem := by
-  rw [show iVar 1 1 = 0x00b00333#32 by decide] at hi; simp only [T, A]; step_word
-theorem var_2_1 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iVar 2 1)) :
-    ∃ s', Next s s' (pc + 4) (T 1) (getX s (A 2)) s.mem := by
-  rw [show iVar 2 1 = 0x00c00333#32 by decide] at hi; simp only [T, A]; step_word
-theorem var_3_1 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iVar 3 1)) :
-    ∃ s', Next s s' (pc + 4) (T 1) (getX s (A 3)) s.mem := by
-  rw [show iVar 3 1 = 0x00d00333#32 by decide] at hi; simp only [T, A]; step_word
-theorem var_0_2 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iVar 0 2)) :
-    ∃ s', Next s s' (pc + 4) (T 2) (getX s (A 0)) s.mem := by
-  rw [show iVar 0 2 = 0x00a003b3#32 by decide] at hi; simp only [T, A]; step_word
-theorem var_1_2 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iVar 1 2)) :
-    ∃ s', Next s s' (pc + 4) (T 2) (getX s (A 1)) s.mem := by
-  rw [show iVar 1 2 = 0x00b003b3#32 by decide] at hi; simp only [T, A]; step_word
-theorem var_2_2 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iVar 2 2)) :
-    ∃ s', Next s s' (pc + 4) (T 2) (getX s (A 2)) s.mem := by
-  rw [show iVar 2 2 = 0x00c003b3#32 by decide] at hi; simp only [T, A]; step_word
-theorem var_3_2 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iVar 3 2)) :
-    ∃ s', Next s s' (pc + 4) (T 2) (getX s (A 3)) s.mem := by
-  rw [show iVar 3 2 = 0x00d003b3#32 by decide] at hi; simp only [T, A]; step_word
-theorem var_0_3 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iVar 0 3)) :
-    ∃ s', Next s s' (pc + 4) (T 3) (getX s (A 0)) s.mem := by
-  rw [show iVar 0 3 = 0x00a00e33#32 by decide] at hi; simp only [T, A]; step_word
-theorem var_1_3 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iVar 1 3)) :
-    ∃ s', Next s s' (pc + 4) (T 3) (getX s (A 1)) s.mem := by
-  rw [show iVar 1 3 = 0x00b00e33#32 by decide] at hi; simp only [T, A]; step_word
-theorem var_2_3 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iVar 2 3)) :
-    ∃ s', Next s s' (pc + 4) (T 3) (getX s (A 2)) s.mem := by
-  rw [show iVar 2 3 = 0x00c00e33#32 by decide] at hi; simp only [T, A]; step_word
-theorem var_3_3 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iVar 3 3)) :
-    ∃ s', Next s s' (pc + 4) (T 3) (getX s (A 3)) s.mem := by
-  rw [show iVar 3 3 = 0x00d00e33#32 by decide] at hi; simp only [T, A]; step_word
-theorem var_0_4 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iVar 0 4)) :
-    ∃ s', Next s s' (pc + 4) (T 4) (getX s (A 0)) s.mem := by
-  rw [show iVar 0 4 = 0x00a00eb3#32 by decide] at hi; simp only [T, A]; step_word
-theorem var_1_4 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iVar 1 4)) :
-    ∃ s', Next s s' (pc + 4) (T 4) (getX s (A 1)) s.mem := by
-  rw [show iVar 1 4 = 0x00b00eb3#32 by decide] at hi; simp only [T, A]; step_word
-theorem var_2_4 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iVar 2 4)) :
-    ∃ s', Next s s' (pc + 4) (T 4) (getX s (A 2)) s.mem := by
-  rw [show iVar 2 4 = 0x00c00eb3#32 by decide] at hi; simp only [T, A]; step_word
-theorem var_3_4 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iVar 3 4)) :
-    ∃ s', Next s s' (pc + 4) (T 4) (getX s (A 3)) s.mem := by
-  rw [show iVar 3 4 = 0x00d00eb3#32 by decide] at hi; simp only [T, A]; step_word
-theorem zero_0 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iZero 0)) :
-    ∃ s', Next s s' (pc + 4) (T 0) (0) s.mem := by
-  rw [show iZero 0 = 0x00000293#32 by decide] at hi; simp only [T]; step_word
-theorem zero_1 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iZero 1)) :
-    ∃ s', Next s s' (pc + 4) (T 1) (0) s.mem := by
-  rw [show iZero 1 = 0x00000313#32 by decide] at hi; simp only [T]; step_word
-theorem zero_2 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iZero 2)) :
-    ∃ s', Next s s' (pc + 4) (T 2) (0) s.mem := by
-  rw [show iZero 2 = 0x00000393#32 by decide] at hi; simp only [T]; step_word
-theorem zero_3 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iZero 3)) :
-    ∃ s', Next s s' (pc + 4) (T 3) (0) s.mem := by
-  rw [show iZero 3 = 0x00000e13#32 by decide] at hi; simp only [T]; step_word
-theorem zero_4 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iZero 4)) :
-    ∃ s', Next s s' (pc + 4) (T 4) (0) s.mem := by
-  rw [show iZero 4 = 0x00000e93#32 by decide] at hi; simp only [T]; step_word
-theorem shl_0 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iShl 0)) :
-    ∃ s', Next s s' (pc + 4) (T 0) (getX s (T 0) <<< 1) s.mem := by
-  rw [show iShl 0 = 0x00129293#32 by decide] at hi; simp only [T]; step_word
-theorem shl_1 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iShl 1)) :
-    ∃ s', Next s s' (pc + 4) (T 1) (getX s (T 1) <<< 1) s.mem := by
-  rw [show iShl 1 = 0x00131313#32 by decide] at hi; simp only [T]; step_word
-theorem shl_2 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iShl 2)) :
-    ∃ s', Next s s' (pc + 4) (T 2) (getX s (T 2) <<< 1) s.mem := by
-  rw [show iShl 2 = 0x00139393#32 by decide] at hi; simp only [T]; step_word
-theorem shl_3 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iShl 3)) :
-    ∃ s', Next s s' (pc + 4) (T 3) (getX s (T 3) <<< 1) s.mem := by
-  rw [show iShl 3 = 0x001e1e13#32 by decide] at hi; simp only [T]; step_word
-theorem shl_4 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iShl 4)) :
-    ∃ s', Next s s' (pc + 4) (T 4) (getX s (T 4) <<< 1) s.mem := by
-  rw [show iShl 4 = 0x001e9e93#32 by decide] at hi; simp only [T]; step_word
-theorem inc_0 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iInc 0)) :
-    ∃ s', Next s s' (pc + 4) (T 0) (getX s (T 0) + 1) s.mem := by
-  rw [show iInc 0 = 0x00128293#32 by decide] at hi; simp only [T]; step_word
-theorem inc_1 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iInc 1)) :
-    ∃ s', Next s s' (pc + 4) (T 1) (getX s (T 1) + 1) s.mem := by
-  rw [show iInc 1 = 0x00130313#32 by decide] at hi; simp only [T]; step_word
-theorem inc_2 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iInc 2)) :
-    ∃ s', Next s s' (pc + 4) (T 2) (getX s (T 2) + 1) s.mem := by
-  rw [show iInc 2 = 0x00138393#32 by decide] at hi; simp only [T]; step_word
-theorem inc_3 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iInc 3)) :
-    ∃ s', Next s s' (pc + 4) (T 3) (getX s (T 3) + 1) s.mem := by
-  rw [show iInc 3 = 0x001e0e13#32 by decide] at hi; simp only [T]; step_word
-theorem inc_4 {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc) (hi : instrAt s pc (iInc 4)) :
-    ∃ s', Next s s' (pc + 4) (T 4) (getX s (T 4) + 1) s.mem := by
-  rw [show iInc 4 = 0x001e8e93#32 by decide] at hi; simp only [T]; step_word
-
-end W
-
-variable {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc)
-include h hpc hok
-
-theorem step_op (op : Op) (k : Nat) (hk : k < 4) (hi : instrAt s pc (iOp op k)) :
-    ∃ s', Next s s' (pc + 4) (T k) (op.eval (getX s (T k)) (getX s (T (k + 1)))) s.mem := by
-  obtain rfl | rfl | rfl | rfl : k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 3 := by omega
-  · cases op with
-    | add => exact W.op_add_0 h hpc hok hi
-    | sub => exact W.op_sub_0 h hpc hok hi
-    | and => exact W.op_and_0 h hpc hok hi
-    | or => exact W.op_or_0 h hpc hok hi
-    | xor => exact W.op_xor_0 h hpc hok hi
-  · cases op with
-    | add => exact W.op_add_1 h hpc hok hi
-    | sub => exact W.op_sub_1 h hpc hok hi
-    | and => exact W.op_and_1 h hpc hok hi
-    | or => exact W.op_or_1 h hpc hok hi
-    | xor => exact W.op_xor_1 h hpc hok hi
-  · cases op with
-    | add => exact W.op_add_2 h hpc hok hi
-    | sub => exact W.op_sub_2 h hpc hok hi
-    | and => exact W.op_and_2 h hpc hok hi
-    | or => exact W.op_or_2 h hpc hok hi
-    | xor => exact W.op_xor_2 h hpc hok hi
-  · cases op with
-    | add => exact W.op_add_3 h hpc hok hi
-    | sub => exact W.op_sub_3 h hpc hok hi
-    | and => exact W.op_and_3 h hpc hok hi
-    | or => exact W.op_or_3 h hpc hok hi
-    | xor => exact W.op_xor_3 h hpc hok hi
-
-theorem step_var (i k : Nat) (hk : k < 5) (hi4 : i < 4) (hi : instrAt s pc (iVar i k)) :
-    ∃ s', Next s s' (pc + 4) (T k) (getX s (A i)) s.mem := by
-  obtain rfl | rfl | rfl | rfl | rfl : k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 3 ∨ k = 4 := by omega
-  · obtain rfl | rfl | rfl | rfl : i = 0 ∨ i = 1 ∨ i = 2 ∨ i = 3 := by omega
-    · exact W.var_0_0 h hpc hok hi
-    · exact W.var_1_0 h hpc hok hi
-    · exact W.var_2_0 h hpc hok hi
-    · exact W.var_3_0 h hpc hok hi
-  · obtain rfl | rfl | rfl | rfl : i = 0 ∨ i = 1 ∨ i = 2 ∨ i = 3 := by omega
-    · exact W.var_0_1 h hpc hok hi
-    · exact W.var_1_1 h hpc hok hi
-    · exact W.var_2_1 h hpc hok hi
-    · exact W.var_3_1 h hpc hok hi
-  · obtain rfl | rfl | rfl | rfl : i = 0 ∨ i = 1 ∨ i = 2 ∨ i = 3 := by omega
-    · exact W.var_0_2 h hpc hok hi
-    · exact W.var_1_2 h hpc hok hi
-    · exact W.var_2_2 h hpc hok hi
-    · exact W.var_3_2 h hpc hok hi
-  · obtain rfl | rfl | rfl | rfl : i = 0 ∨ i = 1 ∨ i = 2 ∨ i = 3 := by omega
-    · exact W.var_0_3 h hpc hok hi
-    · exact W.var_1_3 h hpc hok hi
-    · exact W.var_2_3 h hpc hok hi
-    · exact W.var_3_3 h hpc hok hi
-  · obtain rfl | rfl | rfl | rfl : i = 0 ∨ i = 1 ∨ i = 2 ∨ i = 3 := by omega
-    · exact W.var_0_4 h hpc hok hi
-    · exact W.var_1_4 h hpc hok hi
-    · exact W.var_2_4 h hpc hok hi
-    · exact W.var_3_4 h hpc hok hi
-
-theorem step_zero (k : Nat) (hk : k < 5) (hi : instrAt s pc (iZero k)) :
-    ∃ s', Next s s' (pc + 4) (T k) (0) s.mem := by
-  obtain rfl | rfl | rfl | rfl | rfl : k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 3 ∨ k = 4 := by omega
-  · exact W.zero_0 h hpc hok hi
-  · exact W.zero_1 h hpc hok hi
-  · exact W.zero_2 h hpc hok hi
-  · exact W.zero_3 h hpc hok hi
-  · exact W.zero_4 h hpc hok hi
-
-theorem step_shl (k : Nat) (hk : k < 5) (hi : instrAt s pc (iShl k)) :
-    ∃ s', Next s s' (pc + 4) (T k) (getX s (T k) <<< 1) s.mem := by
-  obtain rfl | rfl | rfl | rfl | rfl : k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 3 ∨ k = 4 := by omega
-  · exact W.shl_0 h hpc hok hi
-  · exact W.shl_1 h hpc hok hi
-  · exact W.shl_2 h hpc hok hi
-  · exact W.shl_3 h hpc hok hi
-  · exact W.shl_4 h hpc hok hi
-
-theorem step_inc (k : Nat) (hk : k < 5) (hi : instrAt s pc (iInc k)) :
-    ∃ s', Next s s' (pc + 4) (T k) (getX s (T k) + 1) s.mem := by
-  obtain rfl | rfl | rfl | rfl | rfl : k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 3 ∨ k = 4 := by omega
-  · exact W.inc_0 h hpc hok hi
-  · exact W.inc_1 h hpc hok hi
-  · exact W.inc_2 h hpc hok hi
-  · exact W.inc_3 h hpc hok hi
-  · exact W.inc_4 h hpc hok hi
-
-theorem step_res (hi : instrAt s pc iRes) : ∃ s', Next s s' (pc + 4) 10 (getX s 5) s.mem := by
-  rw [show iRes = 0x00500533#32 by decide] at hi; step_word
-
-theorem step_ret (hi : instrAt s pc iRet) (he : (getX s 1).toNat % 2 = 0) :
-    ∃ s', Next s s' (getX s 1) 0 0 s.mem := by
-  rw [show iRet = 0x00008067#32 by decide] at hi; step_word
-
-omit h hpc hok
 
 /-! ## Running code -/
 
@@ -401,7 +64,7 @@ structure Ran (s s' : St) (pc : BitVec 64) (n k : Nat) : Prop where
   cfg : Cfg s'
   pc : s'.regs.get? .PC = some (pc + BitVec.ofNat 64 (4 * n))
   mem : s'.mem = s.mem
-  keep : ∀ j, (∀ i, k ≤ i → i < 5 → j ≠ T i) → getX s' j = getX s j
+  keep : ∀ j, (∀ i, k ≤ i → i < 11 → j ≠ T i) → getX s' j = getX s j
 
 theorem Ran.trans {s₁ s₂ s₃ : St} {pc n₁ n₂ k k' k''} (r₁ : Ran s₁ s₂ pc n₁ k)
     (r₂ : Ran s₂ s₃ (pc + BitVec.ofNat 64 (4 * n₁)) n₂ k') (hk : k'' ≤ k) (hk' : k'' ≤ k') :
@@ -409,22 +72,22 @@ theorem Ran.trans {s₁ s₂ s₃ : St} {pc n₁ n₂ k k' k''} (r₁ : Ran s₁
   ⟨r₂.cfg, by rw [r₂.pc, pc_add], by rw [r₂.mem, r₁.mem],
     fun j hj => by rw [r₂.keep j (fun i hi => hj i (by omega)), r₁.keep j (fun i hi => hj i (by omega))]⟩
 
-theorem T_ne_0' : ∀ k < 5, T k ≠ 0 := by decide
-theorem T_ne_1' : ∀ k < 5, T k ≠ 1 := by decide
-theorem T_ne_0 (k : Nat) (hk : k < 5) : T k ≠ 0 := T_ne_0' k hk
+theorem T_ne_0' : ∀ k < 11, T k ≠ 0 := by decide
+theorem T_ne_1' : ∀ k < 11, T k ≠ 1 := by decide
+theorem T_ne_0 (k : Nat) (hk : k < 11) : T k ≠ 0 := T_ne_0' k hk
 
-theorem Ran.ofNext {s s' : St} {pc k v} (hk : k < 5) (hn : Next s s' (pc + 4) (T k) v s.mem) :
+theorem Ran.ofNext {s s' : St} {pc k v} (hk : k < 11) (hn : Next s s' (pc + 4) (T k) v s.mem) :
     Ran s s' pc 1 k ∧ getX s' (T k) = v := by
   refine ⟨⟨hn.cfg, by rw [hn.pc]; rfl, hn.mem, fun j hj => ?_⟩, ?_⟩
   · rw [hn.x j]; have := hj k (by omega) hk; simp [this]
   · have : T k ≠ 0 := T_ne_0 k hk
     rw [hn.x]; simp [this]
 
-theorem T_ne_A' : ∀ k < 5, ∀ i < 4, T k ≠ A i := by decide
+theorem T_ne_A' : ∀ k < 11, ∀ i < 4, T k ≠ A i := by decide
 
-theorem T_inj' : ∀ i < 5, ∀ j < 5, T i = T j → i = j := by decide
+theorem T_inj' : ∀ i < 11, ∀ j < 11, T i = T j → i = j := by decide
 
-theorem T_inj {i j : Nat} (hi : i < 5) (hj : j < 5) (h : T i = T j) : i = j := T_inj' i hi j hj h
+theorem T_inj {i j : Nat} (hi : i < 11) (hj : j < 11) (h : T i = T j) : i = j := T_inj' i hi j hj h
 
 theorem Steps.trans : ∀ {n₁ n₂ : Nat} {s₁ s₂ s₃ : St}, Steps n₁ s₁ s₂ → Steps n₂ s₂ s₃ → Steps (n₁ + n₂) s₁ s₃
   | 0, _, _, _, _, h₁, h₂ => by cases h₁; simpa using h₂
@@ -445,13 +108,13 @@ theorem inc_ofNat (m : Nat) : BitVec.ofNat 64 m + 1 = BitVec.ofNat 64 (m + 1) :=
   apply BitVec.eq_of_toNat_eq; simp [BitVec.toNat_add]
 
 /-- one emitted word that writes `t_k` -/
-theorem run_one {s : St} {pc : BitVec 64} {k : Nat} {w : BitVec 32} {v : BitVec 64} (hk : k < 5)
+theorem run_one {s : St} {pc : BitVec 64} {k : Nat} {w : BitVec 32} {v : BitVec 64} (hk : k < 11)
     (hstep : ∃ s', Next s s' (pc + 4) (T k) v s.mem) :
     ∃ s', Reach s s' ∧ Ran s s' pc [w].length k ∧ getX s' (T k) = v := by
   obtain ⟨s', hn⟩ := hstep
   exact ⟨s', Reach.next hn, (Ran.ofNext hk hn).1, (Ran.ofNext hk hn).2⟩
 
-theorem const_ok (k : Nat) (hk : k < 5) : ∀ (n : Nat) {s : St} (h : Cfg s) {pc : BitVec 64}
+theorem const_ok (k : Nat) (hk : k < 11) : ∀ (n : Nat) {s : St} (h : Cfg s) {pc : BitVec 64}
     (hpc : s.regs.get? .PC = some pc) (hc : codeAt s pc (genConst k n))
     (hok : codeOK pc (genConst k n).length),
     ∃ s', Reach s s' ∧ Ran s s' pc (genConst k n).length k ∧ getX s' (T k) = BitVec.ofNat 64 n := by
@@ -490,7 +153,93 @@ theorem const_ok (k : Nat) (hk : k < 5) : ∀ (n : Nat) {s : St} (h : Cfg s) {pc
       refine ⟨s₂, r₁.trans (Reach.next hn₂), R₁₂, ?_⟩
       rw [v₂]; congr 1; omega
 
-theorem gen_ok (env : Fin 4 → BitVec 64) : ∀ (e : Exp) (k : Nat) (hk : k + e.depth < 5) {s : St}
+theorem Ran.refl {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (k : Nat) :
+    Ran s s pc 0 k := ⟨h, by simpa using hpc, rfl, fun _ _ => rfl⟩
+
+/-- run one word writing `t_j` (`k ≤ j`), then the rest `ws` -/
+theorem run_cons {s : St} {pc : BitVec 64} {k j : Nat} {w : BitVec 32} {ws : List (BitVec 32)}
+    {v : BitVec 64} {P : St → Prop} (hkj : k ≤ j) (hj : j < 11) (h : Cfg s)
+    (hpc : s.regs.get? .PC = some pc) (hc : codeAt s pc (w :: ws)) (hok : codeOK pc (w :: ws).length)
+    (hstep : pcOK pc → instrAt s pc w → ∃ s', Next s s' (pc + 4) (T j) v s.mem)
+    (hrest : ∀ s', Cfg s' → s'.regs.get? .PC = some (pc + BitVec.ofNat 64 (4 * 1)) →
+      codeAt s' (pc + BitVec.ofNat 64 (4 * 1)) ws → codeOK (pc + BitVec.ofNat 64 (4 * 1)) ws.length →
+      (∀ r, getX s' r = if r = T j then v else getX s r) →
+      ∃ s'', Reach s' s'' ∧ Ran s' s'' (pc + BitVec.ofNat 64 (4 * 1)) ws.length k ∧ P s'') :
+    ∃ s'', Reach s s'' ∧ Ran s s'' pc (w :: ws).length k ∧ P s'' := by
+  change codeAt s pc ([w] ++ ws) at hc
+  rw [show (w :: ws).length = [w].length + ws.length by simp [Nat.add_comm]] at hok
+  rw [codeAt_append] at hc
+  obtain ⟨ok1, ok2⟩ := codeOK_append hok
+  obtain ⟨s₁, hn⟩ := hstep (codeOK_pcOK ok1 (by simp)) (codeAt_one hc.1)
+  obtain ⟨R₁, -⟩ := Ran.ofNext hj hn
+  obtain ⟨s₂, r₂, R₂, p₂⟩ := hrest s₁ R₁.cfg R₁.pc (codeAt_mem R₁.mem hc.2) ok2
+    (fun r => by rw [hn.x]; by_cases hr : r = T j <;> simp [hr, T_ne_0 j hj])
+  refine ⟨s₂, (Reach.next hn).trans r₂, ?_, p₂⟩
+  have := R₁.trans R₂ hkj (Nat.le_refl _)
+  simpa [Nat.add_comm] using this
+
+theorem run_nil {s : St} {pc : BitVec 64} {k : Nat} {P : St → Prop} (h : Cfg s)
+    (hpc : s.regs.get? .PC = some pc) (hp : P s) :
+    ∃ s', Reach s s' ∧ Ran s s' pc ([] : List (BitVec 32)).length k ∧ P s' :=
+  ⟨s, ⟨0, rfl⟩, Ran.refl h hpc k, hp⟩
+
+theorem xor_eq_zero (a b : BitVec 64) : a ^^^ b = 0 ↔ a = b :=
+  ⟨fun e => by simpa [BitVec.xor_assoc] using congrArg (· ^^^ b) e, fun e => by simp [e]⟩
+
+theorem op_ok (op : Op) (k : Nat) (hk : k + 1 < 11) {s : St} (h : Cfg s) {pc : BitVec 64}
+    (hpc : s.regs.get? .PC = some pc) (hc : codeAt s pc (opCode op k)) (hok : codeOK pc (opCode op k).length) :
+    ∃ s', Reach s s' ∧ Ran s s' pc (opCode op k).length k ∧
+      getX s' (T k) = op.eval (getX s (T k)) (getX s (T (k + 1))) := by
+  unfold opCode at *
+  by_cases he : op = .eq
+  · subst he; simp only [↓reduceIte] at *
+    refine run_cons (Nat.le_refl _) (by omega) h hpc hc hok (fun ok hi => step_op h hpc ok .eq k (by omega) hi) ?_
+    intro s₁ h₁ hpc₁ hc₁ ok₁ hx₁
+    refine run_cons (Nat.le_refl _) (by omega) h₁ hpc₁ hc₁ ok₁ (fun ok hi => step_seqz h₁ hpc₁ ok k (by omega) hi) ?_
+    intro s₂ h₂ hpc₂ hc₂ ok₂ hx₂
+    refine run_nil h₂ hpc₂ ?_
+    simp only [hx₂, hx₁, if_pos rfl, Op.raw, Op.eval, xor_eq_zero, ↓reduceIte]
+  · simp only [he, ↓reduceIte] at hc hok ⊢
+    refine run_cons (Nat.le_refl _) (by omega) h hpc hc hok (fun ok hi => step_op h hpc ok op k (by omega) hi) ?_
+    intro s₁ h₁ hpc₁ hc₁ ok₁ hx₁
+    refine run_nil h₁ hpc₁ ?_
+    simp only [hx₁, if_pos rfl, Op.raw, if_neg he, ↓reduceIte]
+
+theorem sel_val (c a b : BitVec 64) :
+    (-(if c = 0 then 0 else 1) &&& (a ^^^ b)) ^^^ b = if c = 0 then b else a := by
+  by_cases hc : c = 0
+  · rw [if_pos hc, if_pos hc]; simp
+  · rw [if_neg hc, if_neg hc, show -(1 : BitVec 64) = BitVec.allOnes 64 by decide, BitVec.allOnes_and,
+      BitVec.xor_assoc, BitVec.xor_self, BitVec.xor_zero]
+
+theorem sel_ok (k : Nat) (hk : k + 2 < 11) {s : St} (h : Cfg s) {pc : BitVec 64}
+    (hpc : s.regs.get? .PC = some pc) (hc : codeAt s pc (selCode k)) (hok : codeOK pc (selCode k).length) :
+    ∃ s', Reach s s' ∧ Ran s s' pc (selCode k).length k ∧
+      getX s' (T k) = if getX s (T k) = 0 then getX s (T (k + 2)) else getX s (T (k + 1)) := by
+  have ne : ∀ {i j}, i < j → j < 11 → T j ≠ T i := fun hij hj he => by
+    have := T_inj hj (by omega) he; omega
+  have n10 : T (k + 1) ≠ T k := ne (by omega) (by omega)
+  have n20 : T (k + 2) ≠ T k := ne (by omega) (by omega)
+  have n21 : T (k + 2) ≠ T (k + 1) := ne (by omega) (by omega)
+  unfold selCode at *
+  refine run_cons (Nat.le_refl _) (by omega) h hpc hc hok (fun ok hi => step_snez h hpc ok k (by omega) hi) ?_
+  intro s₁ h₁ hpc₁ hc₁ ok₁ hx₁
+  refine run_cons (Nat.le_refl _) (by omega) h₁ hpc₁ hc₁ ok₁ (fun ok hi => step_neg h₁ hpc₁ ok k (by omega) hi) ?_
+  intro s₂ h₂ hpc₂ hc₂ ok₂ hx₂
+  refine run_cons (Nat.le_succ _) (by omega) h₂ hpc₂ hc₂ ok₂
+    (fun ok hi => step_op h₂ hpc₂ ok .xor (k + 1) (by omega) hi) ?_
+  intro s₃ h₃ hpc₃ hc₃ ok₃ hx₃
+  refine run_cons (Nat.le_refl _) (by omega) h₃ hpc₃ hc₃ ok₃ (fun ok hi => step_op h₃ hpc₃ ok .and k (by omega) hi) ?_
+  intro s₄ h₄ hpc₄ hc₄ ok₄ hx₄
+  refine run_cons (Nat.le_refl _) (by omega) h₄ hpc₄ hc₄ ok₄ (fun ok hi => step_xor2 h₄ hpc₄ ok k (by omega) hi) ?_
+  intro s₅ h₅ hpc₅ hc₅ ok₅ hx₅
+  refine run_nil h₅ hpc₅ ?_
+  simp only [Nat.add_assoc, Nat.reduceAdd] at hx₃
+  simp only [hx₅, hx₄, hx₃, hx₂, hx₁, n10, n20, n21, Ne.symm n10, if_pos rfl, if_false, Op.raw, Op.eval,
+    reduceCtorEq, ↓reduceIte]
+  exact sel_val _ _ _
+
+theorem gen_ok (env : Fin 4 → BitVec 64) : ∀ (e : Exp) (k : Nat) (hk : k + e.depth < 11) {s : St}
     (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hc : codeAt s pc (gen e k))
     (hok : codeOK pc (gen e k).length) (henv : ∀ i : Fin 4, getX s (A i) = env i),
     ∃ s', Reach s s' ∧ Ran s s' pc (gen e k).length k ∧ getX s' (T k) = e.denote env
@@ -520,16 +269,46 @@ theorem gen_ok (env : Fin 4 → BitVec 64) : ∀ (e : Exp) (k : Nat) (hk : k + e
     have hc3 := codeAt_mem R₁₂.mem hc.2
     rw [List.length_append] at hc3
     rw [pc_add] at ok3
-    obtain ⟨s₃, hn₃⟩ := step_op R₁₂.cfg R₁₂.pc (codeOK_pcOK ok3 (by simp)) op k (by omega) (codeAt_one hc3)
-    obtain ⟨R₃, v₃⟩ := Ran.ofNext (by omega) hn₃
-    refine ⟨s₃, (r₁.trans r₂).trans (Reach.next hn₃), ?_, by rw [v₃, va, v₂]⟩
+    obtain ⟨s₃, r₃, R₃, v₃⟩ := op_ok op k (by omega) R₁₂.cfg R₁₂.pc hc3 ok3
+    refine ⟨s₃, (r₁.trans r₂).trans r₃, ?_, by rw [v₃, va, v₂]⟩
     have := R₁₂.trans R₃ (Nat.le_refl _) (Nat.le_refl _)
+    simpa [Nat.add_assoc] using this
+  | .ite c a b, k, hk, s, h, pc, hpc, hc, hok, henv => by
+    simp only [gen, Exp.depth, Exp.denote] at *
+    rw [codeAt_append, codeAt_append, codeAt_append] at hc
+    rw [List.length_append, List.length_append, List.length_append] at hok ⊢
+    obtain ⟨ok123, ok4⟩ := codeOK_append hok
+    obtain ⟨ok12, ok3⟩ := codeOK_append ok123
+    obtain ⟨ok1, ok2⟩ := codeOK_append ok12
+    have keepA : ∀ {s s' : St} {pc n j}, Ran s s' pc n j → ∀ i : Fin 4, getX s' (A i) = getX s (A i) :=
+      fun R i => R.keep _ (fun j _ hj => (T_ne_A' j hj i i.2).symm)
+    obtain ⟨s₁, r₁, R₁, v₁⟩ := gen_ok env c k (by omega) h hpc hc.1.1.1 ok1 henv
+    obtain ⟨s₂, r₂, R₂, v₂⟩ := gen_ok env a (k + 1) (by omega) R₁.cfg R₁.pc
+      (codeAt_mem R₁.mem hc.1.1.2) ok2 (fun i => by rw [keepA R₁, henv])
+    have R₁₂ := R₁.trans R₂ (Nat.le_refl _) (Nat.le_succ _)
+    have hc3 := codeAt_mem R₁₂.mem hc.1.2
+    rw [List.length_append] at hc3
+    obtain ⟨s₃, r₃, R₃, v₃⟩ := gen_ok env b (k + 2) (by omega) R₁₂.cfg R₁₂.pc hc3 ok3
+      (fun i => by rw [keepA R₁₂, henv])
+    have R₁₂₃ := R₁₂.trans R₃ (Nat.le_refl _) (by omega)
+    have ne : ∀ {i j}, i < j → j < 11 → T j ≠ T i := fun hij hj he => by
+      have := T_inj hj (by omega) he; omega
+    have vc : getX s₃ (T k) = c.denote env := by
+      rw [R₃.keep _ (fun j hj hj11 => (ne (by omega) hj11).symm),
+        R₂.keep _ (fun j hj hj11 => (ne (by omega) hj11).symm), v₁]
+    have va : getX s₃ (T (k + 1)) = a.denote env := by
+      rw [R₃.keep _ (fun j hj hj11 => (ne (by omega) hj11).symm), v₂]
+    have hc4 := codeAt_mem R₁₂₃.mem hc.2
+    rw [List.length_append, List.length_append] at hc4
+    obtain ⟨s₄, r₄, R₄, v₄⟩ := sel_ok k (by omega) R₁₂₃.cfg R₁₂₃.pc hc4 ok4
+    refine ⟨s₄, ((r₁.trans r₂).trans r₃).trans r₄, ?_, by rw [v₄, vc, va, v₃]⟩
+    have := R₁₂₃.trans R₄ (Nat.le_refl _) (Nat.le_refl _)
     simpa [Nat.add_assoc] using this
 
 /-- **Compiler correctness**: from any `Cfg` state with the code at `pc` and the return address
 in `ra`, the Sail model runs (without traps) to `ra` with `a0 = e.denote (a0, a1, a2, a3)`,
 memory unchanged and callee-saved registers kept. -/
-theorem compile_ok (e : Exp) (he : e.depth < 5) {s : St} (h : Cfg s) {pc : BitVec 64}
+theorem compile_ok (e : Exp) (he : e.depth < 11) {s : St} (h : Cfg s) {pc : BitVec 64}
     (hpc : s.regs.get? .PC = some pc) (hc : codeAt s pc (compile e))
     (hok : codeOK pc (compile e).length) (hra : (getX s 1).toNat % 2 = 0) :
     runsTo s fun s' => s'.regs.get? .PC = some (getX s 1) ∧
@@ -552,12 +331,12 @@ theorem compile_ok (e : Exp) (he : e.depth < 5) {s : St} (h : Cfg s) {pc : BitVe
   · rw [hn₃.pc, hra₂]
   · rw [hn₃.x, if_neg (by decide), hn₂.x, if_pos (by decide)]; exact v₁
   · rw [hn₃.mem, hn₂.mem, R₁.mem]
-  · have keep : ∀ j : Fin 32, (∀ i, i < 5 → j ≠ T i) → j ≠ 10 → getX s₃ j = getX s j := by
+  · have keep : ∀ j : Fin 32, (∀ i, i < 11 → j ≠ T i) → j ≠ 10 → getX s₃ j = getX s j := by
       intro j hj h10
       rw [hn₃.x, if_neg (by simp), hn₂.x, if_neg (by simp [h10])]
       exact R₁.keep j (fun i _ hi => hj i hi)
     have ne : ∀ j ∈ ([2, 8, 9, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27] : List (Fin 32)),
-        (∀ i, i < 5 → j ≠ T i) ∧ j ≠ 10 := by decide
+        (∀ i, i < 11 → j ≠ T i) ∧ j ≠ 10 := by decide
     have h₃ := hn₃.cfg
     intro r hr
     simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
