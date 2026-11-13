@@ -1,0 +1,5 @@
+⚠ [25/28] Replayed Armv9.V8Base
+warning: Armv9/V8Base.lean:72881:4: declaration uses `sorry`
+warning: Armv9/V8Base.lean:72880:0: declaration uses `sorry`
+✔ [39/39] Built Armv9.Fetch (5.5s)
+Build completed successfully (39 jobs).

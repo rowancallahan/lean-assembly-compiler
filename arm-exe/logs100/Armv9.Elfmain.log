@@ -1,0 +1,5 @@
+⚠ [25/27] Replayed Armv9.V8Base
+warning: Armv9/V8Base.lean:72881:4: declaration uses `sorry`
+warning: Armv9/V8Base.lean:72880:0: declaration uses `sorry`
+✔ [41/41] Built Armv9.Elfmain (2.1s)
+Build completed successfully (41 jobs).
