@@ -1,5 +1,6 @@
 import Proven.CompilerArm
 import Proven.Reify
+import Proven.Stats
 open Proven
 def hex (w : Nat) : String := String.ofList (Nat.toDigits 16 w)
 def rnd (i j : Nat) : Nat := (i * 0x9E3779B97F4A7C15 + j * 0xD1B54A32D192ED03 + i * i * j) % 2^64
@@ -35,12 +36,19 @@ def cases : List (String × Exp × List (List Nat)) := [
   ("demo2", demo2E, pairs edge amts 300),
   ("chain9_depth10", chain 9, pairs edge edge 300),
   ("deep_ite", deepIte, pairs edge edge 300)]
+/- `BACKEND=fast` selects the fast backends (default: the proved std RV64 backend and the std ARM backend);
+`MODE=stats` prints the code-size table for these cases instead -/
 #eval show IO Unit from do
+  let fast := (← IO.getEnv "BACKEND") == some "fast"
+  if (← IO.getEnv "MODE") == some "stats" then
+    Proven.Stats.report "triple.lean cases" (cases.map fun (_, e, _) => e)
+    return
   for (name, e, ins) in cases do
     assert! e.depth < 11
     IO.println s!"case {name}"
-    IO.println s!"rv {" ".intercalate ((compile e).map (hex ·.toNat))}"
-    IO.println s!"arm {" ".intercalate ((Arm.compile e).map (hex ·.toNat))}"
+    let (rv, arm) := if fast then (Proven.Fast.compile e, Proven.Arm.Fast.compile e) else (compile e, Arm.compile e)
+    IO.println s!"rv {" ".intercalate (rv.map (hex ·.toNat))}"
+    IO.println s!"arm {" ".intercalate (arm.map (hex ·.toNat))}"
     for a in ins do
       let env : Fin 4 → BitVec 64 := fun i => BitVec.ofNat 64 (a[i.val]!)
       IO.println s!"t {" ".intercalate (a.map hex)} {hex (e.denote env).toNat}"
