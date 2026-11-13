@@ -1,5 +1,5 @@
 diff --git a/src/sail_lean_backend/pretty_print_lean.ml b/src/sail_lean_backend/pretty_print_lean.ml
-index 0b195d913..80ca66edc 100644
+index 0b195d913..a0519e887 100644
 --- a/src/sail_lean_backend/pretty_print_lean.ml
 +++ b/src/sail_lean_backend/pretty_print_lean.ml
 @@ -816,6 +816,10 @@ let add_bitvector_type_hint env typ pp_discr =
@@ -76,7 +76,7 @@ index 0b195d913..80ca66edc 100644
    )
  
  let mapping_regex = Str.regexp "_\\(forward\\|backwards\\)\\(_matches\\)?$"
-@@ -1368,11 +1382,49 @@ let doc_termination fixup_binders ctx fnpat (Rec_aux (meas, _)) =
+@@ -1368,11 +1382,53 @@ let doc_termination fixup_binders ctx fnpat (Rec_aux (meas, _)) =
  let pat_of_funcl (FCL_aux (FCL_funcl (_, funcl), _)) =
    match funcl with Pat_aux (Pat_exp (pat, _), _) -> pat | Pat_aux (Pat_when (pat, _, _), _) -> pat
  
@@ -84,6 +84,9 @@ index 0b195d913..80ca66edc 100644
 +   the chain becomes an auxiliary definition [f_tailK] with the same parameters, called in tail
 +   position.  No binder is crossed along the chain, so the tail only mentions the parameters. *)
 +let if_chain_split = 100
++
++(* Only chains at least [if_chain_min] levels deep are cut; shallower ones are emitted unchanged. *)
++let if_chain_min = 1000
 +
  let doc_funcl ctx meas funcl =
 -  let comment, signature, ctx, fixup_binders = doc_funcl_init ctx.global funcl in
@@ -108,6 +111,7 @@ index 0b195d913..80ca66edc 100644
 +    | _ -> []
 +  in
 +  let cut_nodes = if splittable then cuts 0 exp else [] in
++  let cut_nodes = if List.length cut_nodes * if_chain_split < if_chain_min then [] else cut_nodes in
 +  if cut_nodes = [] then comment ^^ nest 2 (signature ^^ hardline ^^ doc_funcl_body fixup_binders ctx funcl) ^^ termination
 +  else (
 +    let suffix k = "_tail" ^ string_of_int k in
