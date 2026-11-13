@@ -53,3 +53,11 @@ generator-side termination measure or a hand proof.
 
 Not yet checked: byte-identical regeneration on a second run; a stated equality
 theorem between each split chain and its unsplit original.
+
+## Update: chain splitting restricted (2026-11-13, later)
+
+Only if/else chains at least 1000 levels deep are cut (`if_chain_min`). In this model that is
+one function, `__DecodeA64_SVE` (11 helper definitions, all in `DecodeEnd.lean`).
+`V8Base.lean`, `SysregsAutogen.lean` and `MapClauses.lean` are back to what the generator
+emits without the split. The build status above was for the earlier, wider split; the rebuild
+of this version is in progress.
