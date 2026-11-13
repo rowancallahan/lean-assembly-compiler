@@ -119,7 +119,20 @@ def omega? (p : Expr) : MetaM (Option Expr) := do
   catch _ => return none
 
 /-- decide a proposition: returns `(true, proof of c)` or `(false, proof of ¬c)` -/
+register_option sail_eval.aux : Bool := { defValue := false, descr := "kernel-check each leaf proof separately (debugging)" }
+
+/-- debugging: kernel-check `pf : ty` now, as an auxiliary theorem -/
+def auxCheck (what : Unit → String) (ty pf : Expr) : MetaM Expr := do
+  unless sail_eval.aux.get (← getOptions) do return pf
+  traceLine s!"aux check {what ()}: {← ppExpr ty}"
+  try mkAuxTheorem ty pf (zetaDelta := true)
+  catch ex => throwError "sail_eval.aux: kernel rejects {what ()}{indentExpr ty}\n{ex.toMessageData}"
+
 def decideProp (c inst : Expr) : M (Bool × Expr) := do
+  let (b, pf) ← decidePropCore c inst
+  return (b, ← auxCheck (fun _ => "decision") (if b then c else mkNot c) pf)
+where decidePropCore (c inst : Expr) : M (Bool × Expr) := do
+  if sail_eval.trace.get (← getOptions) then traceLine s!"decide: {← ppExpr c}"
   if let some r ← kernelWhnf? (mkApp2 (mkConst ``Decidable.decide) c inst) then
     if r.isConstOf ``true then
       return (true, mkApp3 (mkConst ``of_decide_eq_true) c inst (← mkEqRefl (mkConst ``true)))
@@ -129,6 +142,7 @@ def decideProp (c inst : Expr) : M (Bool × Expr) := do
   if r.expr.isTrue then return (true, ← mkOfEqTrue (← r.getProof))
   if r.expr.isFalse then return (false, ← mkAppM ``of_eq_false #[← r.getProof])
   -- linear arithmetic over the goal's hypotheses
+  if sail_eval.trace.get (← getOptions) then traceLine s!"omega on: {← ppExpr r.expr}"
   if let some p ← omega? r.expr then return (true, ← mkAppM ``Eq.mpr #[← r.getProof, p])
   if let some p ← omega? (mkNot r.expr) then
     return (false, ← mkAppM ``Eq.mpr #[← mkAppM ``congrArg #[mkConst ``Not, ← r.getProof], p])
@@ -177,7 +191,8 @@ simp, else unfold the head one step and retry (bounded). -/
 partial def normPure (d : Expr) (fuel : Nat := 16) : M Simp.Result := do
   if ← isCtorApp d then return { expr := d }
   if let some d' ← kernelWhnf? d then
-    return { expr := d', proof? := ← mkExpectedTypeHint (← mkEqRefl d') (← mkEq d d') }
+    let ty ← mkEq d d'
+    return { expr := d', proof? := ← auxCheck (fun _ => "closed whnf") ty (← mkExpectedTypeHint (← mkEqRefl d') ty) }
   let r ← simpE d
   if r.expr != d then
     return ← trans r (← normPure r.expr (fuel - 1))
@@ -208,7 +223,9 @@ partial def eval (e : Expr) : M Simp.Result := do
   let r ← evalCore e
   match r.proof? with
   | none => return r
-  | some p => return { r with proof? := ← mkExpectedTypeHint p (← mkEq e r.expr) }
+  | some p =>
+    let ty ← mkEq e r.expr
+    return { r with proof? := ← auxCheck (fun _ => s!"step {e.getAppFn.constName?}") ty (← mkExpectedTypeHint p ty) }
 
 partial def evalCore (e : Expr) : M Simp.Result := do
   -- `headBeta` does not re-reduce a head that becomes a lambda after substitution: iterate

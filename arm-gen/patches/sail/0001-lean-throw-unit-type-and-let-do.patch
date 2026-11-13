@@ -1,0 +1,25 @@
+diff --git a/src/sail_lean_backend/pretty_print_lean.ml b/src/sail_lean_backend/pretty_print_lean.ml
+index 0b195d913..bf6311064 100644
+--- a/src/sail_lean_backend/pretty_print_lean.ml
++++ b/src/sail_lean_backend/pretty_print_lean.ml
+@@ -1135,7 +1135,7 @@ and doc_exp (as_monadic : bool) ctx (E_aux (e, (l, annot)) as full_exp) =
+             | false, Some asc ->
+                 pp_let_line_f
+                   ([
+-                     separate space [string "let"; id_typ; leftarrow; string "(("];
++                     separate space [string "let"; id_typ; leftarrow; string "(("; string "do"];
+                      doc_exp true ctx lexp;
+                      string ")";
+                      colon;
+@@ -1192,7 +1192,10 @@ and doc_exp (as_monadic : bool) ctx (E_aux (e, (l, annot)) as full_exp) =
+   | E_exit _ -> string "throw Error.Exit"
+   | E_throw e ->
+       let arrow = if as_monadic then empty else leftarrow in
+-      arrow ^^ string "sailThrow " ^^ parens (doc_exp false ctx e)
++      let d = string "sailThrow " ^^ parens (doc_exp false ctx e) in
++      (* A throw in statement position has no other source for its result type. *)
++      if as_monadic && ctx.in_sail_monad && is_unit (typ_of full_exp) then parens (d ^^ string " : SailM Unit")
++      else arrow ^^ d
+   | E_try (e, cases) ->
+       let x = E_aux (E_id (Id_aux (Id "the_exception", Unknown)), (Unknown, mk_tannot env exc_typ)) in
+       let cases = nest 2 (doc_exp true ctx (E_aux (E_match (x, cases), (Unknown, annot)))) in

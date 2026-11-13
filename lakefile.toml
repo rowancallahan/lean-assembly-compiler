@@ -1,6 +1,6 @@
 name = "proven"
 defaultTargets = ["Proven"]
-moreLeanArgs = ["--tstack=400000"]
+moreLeanArgs = ["--tstack=400000", "--threads=2"]
 
 [[lean_lib]]
 name = "Proven"
