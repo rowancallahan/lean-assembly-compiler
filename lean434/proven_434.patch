@@ -1,0 +1,73 @@
+--- Proven/SailEval.lean	2026-11-13 17:31:24.826585177 +0000
++++ /home/user/p434/proven/Proven/SailEval.lean	2026-11-13 22:29:24.008736647 +0000
+@@ -333,7 +333,10 @@
+             let step ← mkCongrArg ctxLam (← r.getProof)
+             args' := args'.set! i r.expr
+             pf? := some (← match pf? with | none => pure step | some p => mkEqTrans p step)
+-        unless changed do return ← stuck e
++        unless changed do
++          match ← reduceMatcher? e with
++          | .reduced e' => return ← trans (← rflStep e e') (← eval e')
++          | _ => return ← stuck e
+         let e' := mkAppN fn args'
+         match ← withReducible (reduceMatcher? e') with
+         | .reduced e'' =>
+--- Proven/Step.lean	2026-11-13 17:31:24.826585177 +0000
++++ /home/user/p434/proven/Proven/Step.lean	2026-11-13 22:43:48.222619367 +0000
+@@ -2,6 +2,7 @@
+ import Proven.Regs
+ import Proven.SailEval
+ open LeanRV64D LeanRV64D.Functions Sail Sail.ConcurrencyInterfaceV1
++attribute [local implicit_reducible] EStateM LeanRV64D.Functions.regidx_bit_width LeanRV64D.Functions.log2_xlen
+ 
+ set_option maxRecDepth 1000000
+ set_option maxHeartbeats 0
+@@ -348,7 +349,7 @@
+ /-- the `run_hart_active` part of `step_word` -/
+ macro "step_word_core" : tactic => `(tactic| (
+   · intro s h hpc hi hQ
+-    simp only [Proven.getX_eq] at hQ
++    try simp only [Proven.getX_eq] at hQ
+     have hok' := hok; obtain ⟨_, _, _⟩ := hok'
+     have hf := Proven.fetch_cfg h hpc hok hi (by decide)
+     have hd := Proven.dispatch_cfg h
+--- Proven/Words.lean	2026-11-13 20:37:25.933715114 +0000
++++ /home/user/p434/proven/Proven/Words.lean	2026-11-13 22:43:48.223157345 +0000
+@@ -3,6 +3,7 @@
+ import Proven.Code
+ import Proven.Step
+ open LeanRV64D LeanRV64D.Functions Sail Sail.ConcurrencyInterfaceV1
++attribute [local implicit_reducible] EStateM LeanRV64D.Functions.regidx_bit_width LeanRV64D.Functions.log2_xlen
+ 
+ set_option maxRecDepth 1000000
+ set_option maxHeartbeats 0
+--- Proven/Compiler.lean	2026-11-13 20:37:25.933715114 +0000
++++ /home/user/p434/proven/Proven/Compiler.lean	2026-11-13 22:43:48.223575036 +0000
+@@ -1,6 +1,7 @@
+ /- A tiny verified compiler: the proof that `compile` (`Proven/Code.lean`) is correct on the Sail RV64 model. -/
+ import Proven.Words
+ open LeanRV64D LeanRV64D.Functions Sail Sail.ConcurrencyInterfaceV1
++attribute [local implicit_reducible] EStateM LeanRV64D.Functions.regidx_bit_width LeanRV64D.Functions.log2_xlen
+ 
+ set_option maxRecDepth 1000000
+ set_option maxHeartbeats 0
+--- Proven/Reify.lean	2026-11-13 20:37:25.933715114 +0000
++++ /home/user/p434/proven/Proven/Reify.lean	2026-11-13 22:43:48.223779429 +0000
+@@ -28,6 +28,7 @@
+     | some ``HXor.hXor, 6 => some ``Op.xor | _, _ => none
+   if let some op := op? then
+     return ← bin op e.appFn!.appArg! e.appArg!
++attribute [local implicit_reducible] EStateM LeanRV64D.Functions.regidx_bit_width LeanRV64D.Functions.log2_xlen
+   -- shifts by `b.toNat % 64`
+   let sh? : Option Name := match e.getAppFn.constName?, e.getAppNumArgs with
+     | some ``HShiftLeft.hShiftLeft, 6 => some ``Op.shl | some ``HShiftRight.hShiftRight, 6 => some ``Op.lshr
+--- Proven/gen_words.py	2026-11-13 20:37:25.933715114 +0000
++++ /home/user/p434/proven/Proven/gen_words.py	2026-11-13 22:43:48.223937960 +0000
+@@ -28,6 +28,7 @@
+ import Proven.Code
+ import Proven.Step
+ open LeanRV64D LeanRV64D.Functions Sail Sail.ConcurrencyInterfaceV1
++attribute [local implicit_reducible] EStateM LeanRV64D.Functions.regidx_bit_width LeanRV64D.Functions.log2_xlen
+ 
+ set_option maxRecDepth 1000000
+ set_option maxHeartbeats 0
