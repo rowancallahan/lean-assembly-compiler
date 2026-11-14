@@ -1,2 +1,0 @@
-ENTRY(_start)
-SECTIONS { . = 0x40200000; .text : { *(.text.start) *(.text) } .data : { *(.data) } }

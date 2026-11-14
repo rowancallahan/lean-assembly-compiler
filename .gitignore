@@ -7,3 +7,4 @@ regen-work/
 *.ilean
 *.elf
 *.o
+ctest/
