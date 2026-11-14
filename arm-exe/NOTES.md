@@ -178,3 +178,37 @@ Throughput of the model runner (executable compiled at -O0, one core): 17099 inp
 5. Hand-written: `arm-exe/Run.lean` (driver), `arm-exe/mkmodel.sh` (copies generated `Armv9.lean` without its 2-line `def main`), `arm-exe/lakefile.toml`.
 6. NOT applied here: main's newer `--lean-partial-function Reduce__1`; this build's V8Base still has the `sorry`-terminated `Reduce__1`.
 No `.sail` change, no stub for any C primitive, no hand edit of a generated `.lean` file.
+
+## Heavy testing round (2026-11-14)
+Model variant that ran: the SAME build as above (threshold-100 SysregsAutogen, V8Base from `arm-exe-gen` f6cdd89, i.e. it
+predates main's `--lean-partial-function Reduce__1`). Runner binary: `arm-exe/o3.sh` relink, same generated C, every file at
+clang -O3 except `DecodeEnd.c` and `SysregsAutogen.c` (-O0 objects reused). Output of the -O0 and -O3 binaries is identical
+on the one sample compared (300 lines, md5 equal); -O3 is about 3x faster.
+`Run.lean` modes now: `run` (as before), `step` / `stepA0` / `stepdbg` (ONE `step_model` from a full state), `reset`.
+
+### 2. Instruction-level differential test (`arm-exe/insn_test.py`, log `logs-test/insn_seed1_n1000.txt`)
+One instruction, random state, QEMU 8.2.2 (virt, cortex-a72, EL1, MMU off) vs model (EL3 after reset, MMU off), same PC,
+same x0..x30, same NZCV, same 64-byte memory buffer at the same address. Compared after the instruction: x0..x30, NZCV,
+PC, the 64 buffer bytes. Values: 1/3 edge list, 2/3 uniform 64-bit; NZCV uniform 0..15; registers uniform incl. 31 (xzr)
+where 31 is xzr; shift amounts / immediates biased to edges. Seed 1, 1000 states per form.
+
+    TOTAL 47 forms, 47000 states, mismatches 0        (42 s wall, -O0 binary)
+
+Forms (1000 states each, 0 mismatches each): `add_shifted` `sub_shifted` `and_shifted` `orr_shifted` `eor_shifted` `subs_shifted` `cmp_shifted` `mov_orr_xzr` `lslv` `lsrv` `asrv` `cmp_imm` `subs_imm` `add_imm` `sub_imm` `csinc_lo_lt_eq` `cset_lo_lt_eq` `csel_ne` `csel_allcond` `csinc_allcond` `movz` `movk` `movn` `ret` `b` `cbz` `cbnz` `b.eq` `b.ne` `b.hs` `b.lo` `b.ge` `b.lt` `b.cond_all` `ldr_x` `str_x` `ldrb` `ldr_x_unaligned` `str_x_unaligned` `strb` `lsl_imm` `lsr_imm` `asr_imm` `ubfm_any` `sbfm_any` `madd` `msub`
+
+Limits of this test:
+- PC on QEMU is observed as taken / not taken (branch targets are always insn+8), not read directly.
+- `ret`: target register holds insn+8. `cbz`/`cbnz`: register forced to 0 in half the states.
+- `add_imm`/`sub_imm`/`subs_imm`/`cmp_imm` and load/store bases never use register 31 (sp is the harness's table pointer).
+- Load/store: base register points into the buffer; unsigned-offset forms only (imm12), no writeback forms, 64-bit and byte only.
+- 64-bit (sf=1) forms only; no 32-bit W forms.
+
+FINDING (model vs QEMU; the two `_unaligned` forms above check the model's behaviour only, QEMU is not compared there):
+unaligned 8-byte `ldr`/`str`. With the MMU off the model gives data accesses memory type Device, and
+`AArch64_S1HasAlignmentFault` returns `memtype == Device && !aligned`, so the model takes a Data Abort
+(ESR_EL3 = 0x96000021 = alignment fault, PC = 0x200, FAR = the address; registers and memory unchanged) although
+SCTLR_EL3.A = 0 (SCTLR_EL3 after reset = 0x30850030; clearing bit 1 changes nothing). QEMU performs the access.
+`ldr_x_unaligned` / `str_x_unaligned` check that the model faults with state unchanged: 1000/1000 each.
+On the first smoke run (unaligned not yet separated) these were the only mismatches of any form: ldr 9/20, str 6/20, all with
+address % 8 != 0. Consequence for the next layers: `ldr`/`str` on this model with the MMU off need 8-byte-aligned addresses
+(or an enabled MMU mapping Normal memory); byte accesses are unaffected.
