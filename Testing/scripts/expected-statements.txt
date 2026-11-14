@@ -14,11 +14,11 @@ Proven.Mach.Riscv.inc_implements1 stmt=10050955506141442730 closure=104367354778
 Proven.Mach.Riscv.sum_implements1 stmt=18089160371672498348 closure=17601802638271258327 consts=7137 local=274
 Proven.Mach.MachineF.compBF_ok stmt=16296363139527742158 closure=10482124163673434797 consts=629 local=164
 Proven.compileP_implements1 stmt=2055703373662072791 closure=3928397518059090548 consts=7122 local=230
-Proven.compileO_ok stmt=4068974793820612752 closure=18399690969876314767 consts=7290 local=429
-Proven.compileFO_ok stmt=14868048629439109942 closure=2548585352084586032 consts=7328 local=467
-Proven.compileAFO_ok stmt=14624345412206531986 closure=13494359066029939061 consts=7341 local=473
-Proven.compileBFO_ok stmt=8243695667856467076 closure=5883367802791906190 consts=7532 local=599
-Proven.Mach.WideF.optB_ok stmt=9387870850665521879 closure=10499307227823331044 consts=842 local=335
+Proven.compileO_ok stmt=4068974793820612752 closure=15598265348779969974 consts=7296 local=435
+Proven.compileFO_ok stmt=14868048629439109942 closure=5493979499826174801 consts=7334 local=473
+Proven.compileAFO_ok stmt=14624345412206531986 closure=4734258460650914680 consts=7347 local=479
+Proven.compileBFO_ok stmt=8243695667856467076 closure=6767649124162257707 consts=7538 local=605
+Proven.Mach.WideF.optB_ok stmt=9387870850665521879 closure=3952254751151727167 consts=846 local=339
 Proven.Mach.MachineC.compP_ok stmt=8361283843696894200 closure=4868817762248427494 consts=708 local=239
 Proven.Mach.Riscv.callsCode_implements stmt=366038495112626304 closure=10765964521739040263 consts=7249 local=385
 Proven.Mach.Riscv.sumTo_implements stmt=15861549661262505672 closure=2678232534579236816 consts=7215 local=350
