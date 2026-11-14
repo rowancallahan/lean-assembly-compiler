@@ -86,6 +86,38 @@ theorem exists_le8 (l0 : List (BitVec 8)) (h0 : l0.length = 8) : ∃ w : BitVec 
    simp only [BitVec.extractLsb'_toNat, BitVec.toNat_ofNat, Nat.shiftRight_eq_div_pow]
    omega)
 
+/-! ## Checking well-formedness of a concrete program -/
+
+/-- the length of `genConst k n`, by structural recursion on fuel (so that it evaluates) -/
+def glF : Nat → Nat → Nat
+  | 0, _ => 1
+  | f + 1, n => if n = 0 then 1 else glF f (n / 2) + 1 + (if n % 2 = 1 then 1 else 0)
+
+theorem glF_eq (k : Nat) : ∀ (f n : Nat), n ≤ f → (genConst k n).length = glF f n
+  | 0, n, h => by
+    obtain rfl : n = 0 := by omega
+    rw [genConst]; rfl
+  | f + 1, n, h => by
+    rw [genConst, glF]
+    by_cases h0 : n = 0
+    · rw [if_pos h0, if_pos h0]; rfl
+    · rw [if_neg h0, if_neg h0, List.length_append, List.length_append, glF_eq k f (n / 2) (by omega)]
+      by_cases h1 : n % 2 = 1
+      · rw [if_pos h1, if_pos h1]; rfl
+      · rw [if_neg h1, if_neg h1]; rfl
+
+theorem gcLen (k n : Nat) : (genConst k n).length = glF n n := glF_eq k n n (Nat.le_refl _)
+
+/-- `wf_calls [defs]`: prove `wfF` / `wfC` of a concrete function for `rvC` by evaluation -/
+syntax "wf_calls" "[" Lean.Parser.Tactic.simpLemma,* "]" : tactic
+macro_rules
+  | `(tactic| wf_calls [$ls,*]) => `(tactic|
+    (simp [$ls,*, MachineC.wfF, MachineC.wfC, MachineF.wfB, Mach.BExp.depth, Mach.BExp.vlt, nlOf,
+      MachineC.progOff, MachineC.offs, MachineC.lenF, MachineC.lenC, MachineC.lenStub, MachineC.posS,
+      MachineC.lenArgs, MachineC.lenLi, argsC, padArgs, mgenB, Mach.setV, MachineF.compB, MachineF.codeF,
+      MachineC.codeC, MachineC.encY, MachineF.encF, rvC, rvF, rv, core, base, Riscv.enc, encX, encC, prologue,
+      opCode, selCode, Mach.addrB, Mach.addrW, rk, avar, List.replicate, gcLen, NS] <;> decide))
+
 /-- the source-level specification of a program: on input `x` (with `pre x`) the entry call runs within
 `need |x|` bytes of stack and leaves `f x` in the output word -/
 def Computes (P : Prog) (main : Nat) (f : List UInt8 → BitVec 64) (pre : List UInt8 → Prop) (need : Nat → Nat) :
