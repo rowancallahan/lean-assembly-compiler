@@ -6,3 +6,11 @@ Proven.compileP_ok stmt=4020493605287552158 closure=12205617647750360832 consts=
 Proven.compileAF_ok stmt=18086425543131790904 closure=8919922566753771105 consts=6956 local=132
 Proven.sortCode_implements stmt=13488743112830641784 closure=1620505108602461077 consts=6986 local=117
 Proven.msortCode_implements stmt=7291103267768118053 closure=16103548103689063356 consts=6992 local=123
+Proven.Crc.crc32_implements1 stmt=14347590981524942820 closure=1789375523970535780 consts=7137 local=277
+Proven.sortCode_implements1 stmt=717014879999192513 closure=11021428346904621349 consts=6989 local=120
+Proven.msortCode_implements1 stmt=6463220374652488624 closure=17394380616549951855 consts=6995 local=126
+Proven.Mach.Riscv.take_implements1 stmt=11259499206116706661 closure=3122796547318485128 consts=7123 local=263
+Proven.Mach.Riscv.inc_implements1 stmt=10050955506141442730 closure=1043673547785064337 consts=7122 local=262
+Proven.Mach.Riscv.sum_implements1 stmt=18089160371672498348 closure=17601802638271258327 consts=7137 local=274
+Proven.Mach.MachineF.compBF_ok stmt=16296363139527742158 closure=10482124163673434797 consts=629 local=164
+Proven.compileP_implements1 stmt=2055703373662072791 closure=3928397518059090548 consts=7122 local=230

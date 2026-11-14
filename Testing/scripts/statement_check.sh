@@ -16,6 +16,11 @@ run() {
   lake env lean --run "$H/stmt_hash.lean" $L Compiler.Front.PipeMachine Proven.compileP_ok
   lake env lean --run "$H/stmt_hash.lean" $L Riscv.Direct.SortMergeMachine \
     Proven.compileAF_ok Proven.sortCode_implements Proven.msortCode_implements
+  lake env lean --run "$H/stmt_hash.lean" $L Riscv.Examples.Crc,Riscv.Examples.Implements1Ex \
+    Proven.Crc.crc32_implements1 Proven.sortCode_implements1 Proven.msortCode_implements1 \
+    Proven.Mach.Riscv.take_implements1 Proven.Mach.Riscv.inc_implements1 Proven.Mach.Riscv.sum_implements1 \
+    Proven.Mach.MachineF.compBF_ok
+  lake env lean --run "$H/stmt_hash.lean" $L Riscv.Examples.Implements1Pipe Proven.compileP_implements1
 }
 if [ -n "$L" ]; then run; exit 0; fi
 T=$(mktemp); trap 'rm -f "$T"' EXIT
