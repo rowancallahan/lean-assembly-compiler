@@ -5,7 +5,26 @@ Branch `pipe`. Files: `Proven/Pipe.lean`, `PipeSrc.lean`, `PipeMachine.lean`, `P
 
 ## Status
 
-STATUS_PLACEHOLDER
+Kernel-checked (`lake build Proven.PipeExamples Proven.PipeEncode` passes; no `sorry`, no new `axiom`, no
+`native_decide`, no `bv_decide` in `Proven/Pipe*.lean`; `#print axioms`):
+
+- `Pipe.prog_exec`, `leBytes_eq_enc`: `propext`, `Classical.choice`, `Quot.sound`.
+- `compileP_of_ok`, and each `compile%` example value (e.g. `PipeEx.revinc5`, `PipeEx.twosort`): `propext`, `Quot.sound`.
+- `compileP_ok` (hence `Compiled.ok`, `compileP_mapped`, `compileP_view`): the same set as the existing
+  `sortCode_implements` (the three above + the 7 model constants + the 67 `riscv_*` externs).
+
+Done: P1 (DSL), P2 (`compileP`, generic theorem, `Pipe.ok`), P3 (`compile%`, 11 accepted + 6 rejected
+examples), P4 (tests), P5 (this file).
+
+Partial / deviations from the brief:
+- The generic theorem is `compileP p = .ok code → ImplementsPipe code p.denote p.space`, not
+  `ImplementsMapped` (difference below). `ImplementsMapped` is proved under `∀ n, p.space n ≤ p.len n`
+  (`compileP_mapped`), and unconditionally for pipes without `sort`/`fold` (`compileP_view`).
+- No scratch block and no ping-pong buffers: everything is done in the output block (reason below).
+- `compile%` is a term elaborator returning a `Compiled` structure; the code words are the term
+  `c.code = compileAF [0,3] c.pipe.prog` (evaluated by `#eval`), not a literal list.
+- For `sort`-containing pipes `ImplementsMapped` is shown per example (`mapsort_mapped`), no general lemma.
+- Nothing failed that is left in the tree.
 
 ## Usage
 
@@ -145,11 +164,34 @@ The condition is sufficient, not necessary (`compileP` checks the real depth and
 
 ## Tests (`asm/pipe_test.py NAME N`)
 
-TESTS_PLACEHOLDER
+Words: `lake env lean asm/emit_pipe.lean` → `asm/pipe-words/NAME.words`, and `NAME.space` (`Pipe.space` for
+`n = 0..64`, computed by Lean). Per input: `a0` = input, `a1` = length, `a2` = random word, `a3` = 128-byte
+output slot filled with `0x55`. Checked on QEMU and on the Sail C emulator against a Python model of the
+Lean function: the first `|result|` output bytes; output bytes from `Pipe.space |xs|` on untouched; input
+slot unchanged; every Sail data write inside `out[0, space)`. Inputs: `[]`, five fixed short lists, then
+random lists of length 0..64 (random, few-valued, sorted, reverse-sorted). The Python models were also
+compared with `Pipe.denote` (`#eval`) on 5 inputs per example. Result (300 inputs each, all pass):
+
+```
+revinc5: 300/300 ok (QEMU == Sail == model, 81 words)
+mapsum: 300/300 ok (QEMU == Sail == model, 127 words)
+revtake5: 300/300 ok (QEMU == Sail == model, 82 words)
+mapsort: 300/300 ok (QEMU == Sail == model, 117 words)
+sort: 300/300 ok (QEMU == Sail == model, 99 words)
+sum64: 300/300 ok (QEMU == Sail == model, 64 words)
+hash64: 300/300 ok (QEMU == Sail == model, 91 words)
+sortdesc: 300/300 ok (QEMU == Sail == model, 220 words)
+mid: 300/300 ok (QEMU == Sail == model, 179 words)
+foldsorted: 300/300 ok (QEMU == Sail == model, 233 words)
+twosort: 300/300 ok (QEMU == Sail == model, 379 words)
+```
+(`sort` here is 99 words; the hand-written `sortCode` is 104.)
 
 ## Check times
 
-TIMES_PLACEHOLDER
+`lake env lean Proven/X.lean`, imports prebuilt, 4-core box: `Pipe` 1.2 s, `PipeSrc` 4.4 s, `PipeMachine` 1.2 s,
+`PipeOk` 2.2 s, `PipeFront` 1.2 s, `PipeExamples` 1.1 s (11 `compile%` + 6 rejected + 4 `Pipe.ok`),
+`PipeEncode` 0.7 s. Lines: 254 / 815 / 220 / 308 / 226 / 129 / 23.
 
 ## What the language needs next (target: SHA-256 of a byte list)
 
