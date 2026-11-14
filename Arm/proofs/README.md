@@ -25,7 +25,21 @@ Build/check everything in order: `./check.sh` (oleans go to `build/`, not commit
 | `Arm/Axioms.lean` | `#print axioms` | | ~1 s |
 
 Total clean check ~1000 s (one process; `Words` alone ~775 s on this box). Axioms of everything (`Arm/Axioms.lean`): `propext`, `Classical.choice`, `Quot.sound`. No `sorry`.
-`ArmCfg s := s.regs.get? .SPESampleInFlight = some false`. Not covered: fetch, PC update, interrupts, `__TopLevel`; `ret` is proved separately (`Arm/Ret.lean`) and not yet chained after `compile_ok_exec`.
+`ArmCfg s := s.regs.get? .SPESampleInFlight = some false`. Full steps (`Hooks`..`Machine`): fetch, PC update,
+interrupt check, `__TopLevel`, `__CycleEnd` are covered under `ArmFull`. `Frame` now also says PSTATE changes only in NZCV.
+
+**Assumptions of the full-step layer** (all hypotheses, no axioms): `ArmFull` pins, at concrete values (see
+`gen/pins.py`): EL3, AArch64, `PSTATE.IL = 0`; `FeatureImpl` = only `FEAT_AA64EL0` (every optional feature off);
+`SCR_EL3 = SCTLR_EL3 = TCR_EL3 = MAIR_EL3 = 0` (MMU off, secure, no TBI); `__GIC_Pending = none`; debug off
+(`EDSCR` STATUS = Non-debug, `OSLSR_EL1 = MDSCR_EL1 = MDCR_EL3 = MDCR_EL2 = 0`, `DBGEN = SPIDEN = LOW`,
+`EDESR = 0`); PMU/SPE/BRBE/timers off (`PMCR_EL0 = 0`, `SPESampleInFlight = false`, `CNTCR = 0`, all timer CTLs 0,
+`PhysicalCount = 0`, `CNTHP_CVAL_EL2 = 1`); `__supported_pa_size = 48`; `MPAM3_EL3 = MPAM2_EL2 = 0`;
+no emulator-termination opcode. Hosting: code at 4-aligned addresses below `2^29` (outside the GIC/UART windows),
+stored little-endian (`MemWord`/`CodeAt`). `Arm/Witness.lean` shows `ArmFull` is satisfiable; it is NOT shown that
+the model's cold reset (`__InitSystem`) establishes it (reset enables many features, which `ArmFull` turns off).
+Model finding: in `AArch64_CheckTimerConditions` the EL2 physical timer (`CNTHP`) is consulted whenever EL3 is
+implemented, regardless of `CNTHP_CTL_EL2.ENABLE` (operator grouping of `||`/`&&` in the generated code), so
+`ArmFull` pins `PhysicalCount`/`CNTHP_CVAL_EL2` to keep that timer from firing.
 
 ## Earlier single-word experiments (hand-written)
 

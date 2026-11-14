@@ -1,6 +1,8 @@
 import Arm.Compiler
 import Arm.Ret
 import Arm.Machine
+import Arm.Witness
+import Arm.Branch
 #print axioms ArmProof.compile_ok_exec
 #print axioms ArmProof.armStep_ok
 #print axioms ArmProof.word_add_0
@@ -12,3 +14,7 @@ import Arm.Machine
 #print axioms ArmProof.full_word
 #print axioms ArmProof.full_ret
 #print axioms ArmProof.compile_ok
+#print axioms ArmProof.witness_full
+#print axioms ArmProof.b_exec
+#print axioms ArmProof.cbz_taken
+#print axioms ArmProof.cbnz_not
