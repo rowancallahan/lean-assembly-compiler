@@ -99,7 +99,7 @@ RV64I code (base ISA only): R-type `add sub and or xor sll srl sra slt sltu`, `s
   is rewritten by the existing `in_ram` lemma; `split_on_page_boundary` is replaced by summaries
   (`page1`, `page8`). Each load/store lemma then checks in ~6 s.
 
-### Byte arrays: loops + memory (RISC-V; `Proven/Arr*.lean`)
+### Byte arrays: loops + memory (RISC-V; `Proven/Arr*.lean`; details: `Proven/ARRAYS.md`)
 
 - Source (`Proven/ArrCode.lean`): `AExp` = `Exp` over 8 variables `v0..v7` (= `a0..a7`); `AStmt` = `assign v e`,
   `load v b i` (`v := zero-extended byte i of block b`), `store b i e` (`byte i of block b := low byte of e`), `seq`,
