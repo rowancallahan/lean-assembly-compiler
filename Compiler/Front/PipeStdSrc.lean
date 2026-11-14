@@ -299,4 +299,239 @@ theorem all_core (p : UInt8 → Bool) (q : BPred) (hq : q.noAcc = true) (hpq : �
   refine ⟨σ', h, ?_⟩
   simpa only [if_true, foldl_all, Bool.true_and, leBytes_b01] using hI'
 
+theorem Inv.len_lt {L cs xs cur σ out fs} (h : Inv L cs xs cur σ out fs) (hx : xs.length < 2 ^ 32)
+    (hL : L < 2 ^ 32) : cur.length < 2 ^ 32 := by
+  have := h.len; have := h.bound; have := h.olen
+  split at *  <;> omega
+
+theorem InvE.len_lt {L cs xs cur σ} (h : InvE L cs xs cur σ) (hx : xs.length < 2 ^ 32) (hL : L < 2 ^ 32) :
+    cur.length < 2 ^ 32 := by obtain ⟨_, _, h⟩ := h; exact h.len_lt hx hL
+
+theorem oSome (m : UInt8) : (1 : BitVec 64) + zx m <<< ((8 : BitVec 64).toNat % 64) = oW (some m) := by
+  have := some_val (env := fun i => if i = 6 then zx m else 0) (x := m) (by simp)
+  simpa [optSomeE, AExp.denote, Op.eval] using this
+
+theorem foldl_head (l : List UInt8) (o : Option UInt8) : l.foldl (fun o x => o.or (some x)) o = o.or l.head? := by
+  induction l generalizing o with
+  | nil => cases o <;> rfl
+  | cons x l ih => rw [List.foldl_cons, ih]; cases o <;> rfl
+
+theorem foldl_find (p : UInt8 → Bool) (l : List UInt8) (o : Option UInt8) :
+    l.foldl (fun o x => o.or (if p x then some x else none)) o = o.or (l.find? p) := by
+  induction l generalizing o with
+  | nil => cases o <;> rfl
+  | cons x l ih =>
+    rw [List.foldl_cons, ih, List.find?_cons]
+    cases o <;> cases p x <;> rfl
+
+theorem foldl_minO (l : List UInt8) (a : UInt8) :
+    l.foldl (fun o x => some (o.elim x fun v => min v x)) (some a) = some (l.foldl min a) := by
+  induction l generalizing a with
+  | nil => rfl
+  | cons x l ih => rw [List.foldl_cons, List.foldl_cons, ← ih]; rfl
+
+theorem foldl_maxO (l : List UInt8) (a : UInt8) :
+    l.foldl (fun o x => some (o.elim x fun v => max v x)) (some a) = some (l.foldl max a) := by
+  induction l generalizing a with
+  | nil => rfl
+  | cons x l ih => rw [List.foldl_cons, List.foldl_cons, ← ih]; rfl
+
+theorem foldl_min_none (l : List UInt8) : l.foldl (fun o x => some (o.elim x fun v => min v x)) none = l.min? := by
+  cases l with
+  | nil => rfl
+  | cons x l => rw [List.foldl_cons]; exact foldl_minO l x
+
+theorem foldl_max_none (l : List UInt8) : l.foldl (fun o x => some (o.elim x fun v => max v x)) none = l.max? := by
+  cases l with
+  | nil => rfl
+  | cons x l => rw [List.foldl_cons]; exact foldl_maxO l x
+
+/-- the result of an option-valued reduction with step `F` (code `S`) -/
+theorem opt_core (F : Option UInt8 → UInt8 → Option UInt8) (S : AExp)
+    (hS : ∀ (env : AEnv) (a : Option UInt8) (x : UInt8), env 5 = oW a → env 6 = zx x → S.denote env = oW (F a x))
+    {L : Nat} {cs : CS} {xs cur : List UInt8} {σ : AState} (hI : InvE L cs xs cur σ) (hkL : 2 ≤ L)
+    (hx : xs.length < 2 ^ 32) (hL : L < 2 ^ 32) :
+    ∃ σ', ExecL (redC cs ⟨.const 0, true, S, none, 2, some (.bin .add optTagE (.const 1))⟩) σ σ' ∧
+      InvE L csClean xs (enc (cur.foldl F none)) σ' := by
+  obtain ⟨σ', h, hI'⟩ := red_exec (α := Option UInt8) oW F (fun _ => none) oW (fun o => if o.isSome then 2 else 1)
+    ⟨.const 0, true, S, none, 2, some (.bin .add optTagE (.const 1))⟩
+    (fun env => rfl) (fun _ => hS) (fun env a h5 => h5) (fun env a h5 h1 => tag1_val h5)
+    (fun o => by dsimp only; split <;> omega) (by dsimp only; omega) hI hkL hx hL
+  refine ⟨σ', h, ?_⟩
+  simpa only [if_true, oW_bytes] using hI'
+
+theorem ite_tag {env : AEnv} {o : Option UInt8} (h5 : env 5 = oW o) (a b : AExp) :
+    (AExp.ite optTagE a b).denote env = if o.isSome then a.denote env else b.denote env := by
+  simp only [AExp.denote, tag_val h5, ite_b01]
+
+theorem zx_ult (a b : UInt8) : Op.eval .ult (zx a) (zx b) = b01 (decide (a < b)) := by
+  simp only [Op.eval, zx_lt]; by_cases h : a < b <;> simp [h, b01]
+
+theorem findIdx_tag (i : Nat) (f : Bool) :
+    BitVec.ofNat 64 (2 * i + if f then 1 else 0) &&& 1 = b01 f := by
+  apply BitVec.eq_of_toNat_eq
+  simp only [BitVec.toNat_and, BitVec.toNat_ofNat]
+  rw [show (1 : BitVec 64).toNat = 1 from rfl, Nat.and_one_is_mod]
+  cases f <;> simp [b01] <;> omega
+
+def fiF (p : UInt8 → Bool) (a : Nat × Bool) (x : UInt8) : Nat × Bool :=
+  if a.2 then a else if p x then (a.1, true) else (a.1 + 1, false)
+
+def fiW (a : Nat × Bool) : BitVec 64 := .ofNat 64 (2 * a.1 + if a.2 then 1 else 0)
+
+theorem foldl_fi_true (p : UInt8 → Bool) (l : List UInt8) (i : Nat) : l.foldl (fiF p) (i, true) = (i, true) := by
+  induction l with
+  | nil => rfl
+  | cons x l ih => rw [List.foldl_cons]; exact ih
+
+theorem foldl_fi (p : UInt8 → Bool) (l : List UInt8) (i : Nat) :
+    (l.foldl (fiF p) (i, false)).1 = i + l.findIdx p := by
+  induction l generalizing i with
+  | nil => simp
+  | cons x l ih =>
+    rw [List.foldl_cons, List.findIdx_cons]
+    by_cases h : p x
+    · simp [fiF, h, foldl_fi_true]
+    · simp only [fiF, h, Bool.false_eq_true, if_false, ih, cond_false]; omega
+
+theorem findIdx_core (p : UInt8 → Bool) (q : BPred) (hq : q.noAcc = true) (hpq : ∀ x, q.denote x = p x)
+    {L : Nat} {cs : CS} {xs cur : List UInt8} {σ : AState} (hI : InvE L cs xs cur σ) (hkL : 8 ≤ L)
+    (hx : xs.length < 2 ^ 32) (hL : L < 2 ^ 32) :
+    ∃ σ', ExecL (redC cs ⟨.const 0, true,
+      .ite optTagE (.var 5) (.ite q.bit.tr (.bin .add (.var 5) (.const 1)) (.bin .add (.var 5) (.const 2))),
+      some (.bin .lshr (.var 5) (.const 1)), 8, none⟩) σ σ' ∧
+      InvE L csClean xs (enc (BitVec.ofNat 64 (cur.findIdx p))) σ' := by
+  have hcl := hI.len_lt hx hL
+  obtain ⟨σ', h, hI'⟩ := red_exec (α := Nat × Bool) fiW (fiF p) (fun _ => (0, false)) (fun a => fiW a >>> 1)
+    (fun _ => 8) ⟨.const 0, true,
+      .ite optTagE (.var 5) (.ite q.bit.tr (.bin .add (.var 5) (.const 1)) (.bin .add (.var 5) (.const 2))),
+      some (.bin .lshr (.var 5) (.const 1)), 8, none⟩
+    (fun env => rfl)
+    (fun _ env a x h5 h6 => by
+      obtain ⟨i, f⟩ := a
+      have ht : optTagE.denote env = b01 f := by simp only [optTagE, AExp.denote, Op.eval, h5]; exact findIdx_tag i f
+      simp only [AExp.denote, ht, ite_b01, BPred.bit_tr hq env x h6, hpq, h5]
+      cases f <;> cases hp : p x <;> simp only [fiF, fiW, if_true, Bool.false_eq_true, if_false, Op.eval, hp] <;>
+        (apply BitVec.eq_of_toNat_eq; simp only [BitVec.toNat_add, BitVec.toNat_ofNat]; simp only [show (1 : BitVec 64).toNat = 1 from rfl, show (2 : BitVec 64).toNat = 2 from rfl]; omega))
+    (fun env a h5 => by simp only [Option.getD_some, AExp.denote, Op.eval, h5]; rfl)
+    (fun env a h5 h1 => h1) (fun _ => Nat.le_refl _) (by dsimp only; omega) hI hkL hx hL
+  refine ⟨σ', h, ?_⟩
+  have hfi := foldl_fi p cur 0
+  have hle := List.findIdx_le_length (p := p) (xs := cur)
+  have e : fiW (cur.foldl (fiF p) (0, false)) >>> 1 = BitVec.ofNat 64 (cur.findIdx p) := by
+    generalize cur.foldl (fiF p) (0, false) = A at hfi
+    obtain ⟨i, f⟩ := A
+    simp only [Nat.zero_add] at hfi; subst hfi
+    apply BitVec.eq_of_toNat_eq
+    simp only [fiW, BitVec.toNat_ushiftRight, BitVec.toNat_ofNat, Nat.shiftRight_eq_div_pow]
+    cases f <;> simp <;> omega
+  simpa only [if_true, e, leBytes_w8] using hI'
+
+theorem min_sel (v x : UInt8) : (if x < v then zx x else zx v) = zx (min v x) := by
+  show _ = zx (if v ≤ x then v else x)
+  by_cases h : x < v
+  · simp [h, UInt8.not_le.mpr h]
+  · simp [h, UInt8.not_lt.mp h]
+
+theorem max_sel (v x : UInt8) : (if v < x then zx x else zx v) = zx (max v x) := by
+  show _ = zx (if v ≤ x then x else v)
+  by_cases h : v < x
+  · simp [h, UInt8.le_of_lt h]
+  · by_cases h' : v ≤ x
+    · have : v = x := UInt8.le_antisymm h' (UInt8.not_lt.mp h)
+      simp [h, h', this]
+    · simp [h, h']
+
+theorem minmax_step (sel : UInt8 → UInt8 → UInt8) (C : AExp)
+    (hC : ∀ (env : AEnv) (v x : UInt8), env 5 = oW (some v) → env 6 = zx x → C.denote env = zx (sel v x))
+    (env : AEnv) (a : Option UInt8) (x : UInt8) (h5 : env 5 = oW a) (h6 : env 6 = zx x) :
+    (AExp.bin .add (.const 1) (.bin .shl (.ite optTagE C (.var 6)) (.const 8))).denote env =
+      oW (some (a.elim x fun v => sel v x)) := by
+  have : (AExp.ite optTagE C (.var 6)).denote env = zx (a.elim x fun v => sel v x) := by
+    rw [ite_tag h5]
+    cases a with
+    | none => exact h6
+    | some v => exact hC env v x h5 h6
+  simp only [AExp.denote, Op.eval, this]; exact oSome _
+
+/-- every reduction, on the view after its `pre` stages -/
+theorem Red.core_exec (r : Red) (hc : r.chk = none) {L : Nat} {cs : CS} {xs cur : List UInt8} {σ : AState}
+    (hI : InvE L cs xs cur σ) (hkL : r.code.k ≤ L) (hx : xs.length < 2 ^ 32) (hL : L < 2 ^ 32) :
+    ∃ σ', ExecL (redC cs r.code) σ σ' ∧ InvE L csClean xs (r.core cur) σ' := by
+  have hp : ∀ p : BPred, (if p.noAcc then (none : Option String) else some "predicate mentions the fold accumulator") = none →
+      p.noAcc = true := fun p h => by by_cases hp : p.noAcc = true
+                                      · exact hp
+                                      · simp [hp] at h
+  cases r with
+  | length =>
+    obtain ⟨σ', h, hI'⟩ := red_exec (α := Nat) (fun n => BitVec.ofNat 64 n) (fun a _ => a) id
+      (fun n => .ofNat 64 n) (fun _ => 8) Red.length.code (fun env => by simp [Red.code, AExp.denote])
+      (fun h => by simp [Red.code] at h) (fun env a h5 => h5) (fun env a h5 h1 => h1) (fun _ => Nat.le_refl _)
+      (by decide) hI hkL hx hL
+    exact ⟨σ', h, by simpa only [Red.code, Bool.false_eq_true, if_false, id, leBytes_w8] using hI'⟩
+  | isEmpty =>
+    obtain ⟨σ', h, hI'⟩ := red_exec (α := Bool) b01 (fun a _ => a) (fun n => n == 0) b01 (fun _ => 1)
+      Red.isEmpty.code (fun env => by
+        simp only [Red.code, AExp.denote, Op.eval]
+        by_cases h0 : env 1 = 0
+        · simp [h0, b01]
+        · have : (env 1).toNat ≠ 0 := fun e => h0 (BitVec.eq_of_toNat_eq (by simpa using e))
+          simp [h0, this, b01])
+      (fun h => by simp [Red.code] at h) (fun env a h5 => h5) (fun env a h5 h1 => h1) (fun _ => Nat.le_refl _)
+      (by decide) hI hkL hx hL
+    refine ⟨σ', h, ?_⟩
+    simp only [Red.code, Bool.false_eq_true, if_false, leBytes_b01] at hI'
+    show InvE L csClean xs (enc cur.isEmpty) σ'
+    cases cur <;> exact hI'
+  | sum8 =>
+    obtain ⟨σ', h, hI'⟩ := red_exec (α := UInt8) zx (· + ·) (fun _ => 0) zx (fun _ => 1) Red.sum8.code
+      (fun env => rfl) (fun _ env a x h5 h6 => BExp.tr_ok a x env h6 _ (.inr h5)) (fun env a h5 => h5)
+      (fun env a h5 h1 => h1) (fun _ => Nat.le_refl _) (by decide) hI hkL hx hL
+    refine ⟨σ', h, ?_⟩
+    simpa only [Red.code, if_true, leBytes_zx, foldl_u8sum, UInt8.zero_add] using hI'
+  | sum64 =>
+    obtain ⟨σ', h, hI'⟩ := red_exec (α := Nat) (fun n => BitVec.ofNat 64 n) (fun a x => a + x.toNat) (fun _ => 0)
+      (fun n => .ofNat 64 n) (fun _ => 8) Red.sum64.code (fun env => rfl)
+      (fun _ env a x h5 h6 => by simp only [Red.code, AExp.denote, Op.eval, h5, h6, zx_ofNat, BitVec.ofNat_add])
+      (fun env a h5 => h5) (fun env a h5 h1 => h1) (fun _ => Nat.le_refl _) (by decide) hI hkL hx hL
+    refine ⟨σ', h, ?_⟩
+    simpa only [Red.code, if_true, leBytes_w8, foldl_natsum, Nat.zero_add] using hI'
+  | countP p => exact countP_core p.denote p (hp p hc) (fun _ => rfl) hI hkL hx hL
+  | count b => exact countP_core (· == b) (eqB b) rfl (fun _ => rfl) hI hkL hx hL
+  | any p => exact any_core p.denote p (hp p hc) (fun _ => rfl) hI hkL hx hL
+  | all p => exact all_core p.denote p (hp p hc) (fun _ => rfl) hI hkL hx hL
+  | contains b =>
+    obtain ⟨σ', h, hI'⟩ := any_core (· == b) (eqB b) rfl (fun _ => rfl) hI hkL hx hL
+    refine ⟨σ', h, ?_⟩
+    show InvE L csClean xs (enc (cur.contains b)) σ'
+    rw [contains_eq]; exact hI'
+  | head | getLast =>
+    obtain ⟨σ', h, hI'⟩ := opt_core (fun o x => o.or (some x)) _ (fun env a x h5 h6 => by
+      rw [ite_tag h5, some_val h6]; simp only [AExp.denote, h5]; cases a <;> rfl) hI hkL hx hL
+    refine ⟨σ', h, ?_⟩
+    rw [foldl_head] at hI'; exact hI'
+  | find p =>
+    have hq := hp p hc
+    obtain ⟨σ', h, hI'⟩ := opt_core (fun o x => o.or (if p.denote x then some x else none)) _ (fun env a x h5 h6 => by
+      rw [ite_tag h5]; simp only [AExp.denote, h5, BPred.bit_tr hq env x h6, ite_b01, some_val h6]
+      cases a <;> cases p.denote x <;> rfl) hI hkL hx hL
+    refine ⟨σ', h, ?_⟩
+    rw [foldl_find] at hI'; exact hI'
+  | min =>
+    obtain ⟨σ', h, hI'⟩ := opt_core (fun o x => some (o.elim x fun v => Min.min v x)) _
+      (minmax_step (fun v x => Min.min v x) _ (fun env v x h5 h6 => by
+        rw [ite_tag h5]; simp only [AExp.denote, h6, val_val h5, zx_ult, ite_b01, Option.isSome_some, if_true]
+        exact min_sel v x)) hI hkL hx hL
+    refine ⟨σ', h, ?_⟩
+    rw [foldl_min_none] at hI'; exact hI'
+  | max =>
+    obtain ⟨σ', h, hI'⟩ := opt_core (fun o x => some (o.elim x fun v => Max.max v x)) _
+      (minmax_step (fun v x => Max.max v x) _ (fun env v x h5 h6 => by
+        rw [ite_tag h5]; simp only [AExp.denote, h6, val_val h5, zx_ult, ite_b01, Option.isSome_some, if_true]
+        exact max_sel v x)) hI hkL hx hL
+    refine ⟨σ', h, ?_⟩
+    rw [foldl_max_none] at hI'; exact hI'
+  | findIdx p => exact findIdx_core p.denote p (hp p hc) (fun _ => rfl) hI hkL hx hL
+  | idxOf b => exact findIdx_core (· == b) (eqB b) rfl (fun _ => rfl) hI hkL hx hL
+
 end Proven

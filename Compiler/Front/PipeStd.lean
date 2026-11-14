@@ -140,10 +140,10 @@ def Red.code : Red → RedC
       .bin .add (.const 1) (.bin .shl (.ite optTagE (.ite (.bin .ult optValE (.var 6)) (.var 6) optValE) (.var 6)) (.const 8)),
       none, 2, some (.bin .add optTagE (.const 1))⟩
   | .findIdx p => ⟨.const 0, true,
-      .ite optTagE (.var 5) (.ite p.bit.tr (.bin .or (.var 5) (.const 1)) (.bin .add (.var 5) (.const 2))),
+      .ite optTagE (.var 5) (.ite p.bit.tr (.bin .add (.var 5) (.const 1)) (.bin .add (.var 5) (.const 2))),
       some (.bin .lshr (.var 5) (.const 1)), 8, none⟩
   | .idxOf b => ⟨.const 0, true,
-      .ite optTagE (.var 5) (.ite (eqB b).bit.tr (.bin .or (.var 5) (.const 1)) (.bin .add (.var 5) (.const 2))),
+      .ite optTagE (.var 5) (.ite (eqB b).bit.tr (.bin .add (.var 5) (.const 1)) (.bin .add (.var 5) (.const 2))),
       some (.bin .lshr (.var 5) (.const 1)), 8, none⟩
 
 /-- old stages run first (`head?` on one element; `getLast?` = `head?` of the reversal) -/
