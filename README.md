@@ -31,6 +31,34 @@ RV64I code (base ISA only): R-type `add sub and or xor sll srl sra slt sltu`, `s
   `riscv_f16Add` ... `riscv_ui64ToF64` from `LeanRV64D/RiscvExtras.lean` (they enter through `try_step` in
   `Proven/Step.lean`, already before the operators above were added; no float instruction is executed). No `sorryAx`.
 
+### Loops (RISC-V; `Proven/Branch*.lean`, `Proven/Loop*.lean`)
+
+- Branch/jump step lemmas with a **symbolic** offset (`Proven/Branch.lean`, generated `Proven/BranchWords.lean` by
+  `Proven/gen_branch.py`): `b<op> rs1, rs2, 2*o` for `op ∈ beq bne blt bge bltu bgeu`, `rs1 ∈ {t0,t1,a0..a3}`,
+  `rs2 ∈ {x0,t0,t1}` (84 instances; `bltu/bgeu` with `x0` omitted), any `o : BitVec 12`, and `jal x0, 2*o` for any
+  `o : BitVec 20`. Each: one retired step, `PC = if bcond op x[rs1] x[rs2] then pc + signExtend(o++0) else pc + 4`
+  (`step_<op>_<rs1>_<rs2>`, `step_jal_0`), registers and memory unchanged (`jal` writes `rd = x0`), `Cfg` kept.
+  The model has C (`misa` bit 2) enabled, so `jump_to` only requires target bit 0 = 0 (2-alignment); our offsets
+  are multiples of 4 (`boff_fwd`, `joff_back`). The decoder is run on `c ||| imm o` with bit-range lemmas
+  (`B_known`/`B_mismatch`/`B_imm`); all bit-level side lemmas are proved by kernel-checked bit enumeration
+  (`bits`), not `bv_decide`.
+- `runsTo` rules (`Proven/LoopRule.lean`): `runsTo_mono`, `runsTo_trans`, and the loop rule `runsTo_loop`
+  (invariant + `Nat` measure; `runsTo_while` with explicit head/exit PCs).
+- `Proven.compileS_ok` (`Proven/Loop.lean`): source `Stmt` = `assign (v : Fin 4) (e : Exp) | seq | loop c body`
+  (`while c ≠ 0`), variables `a0..a3` (`gen` never uses them as temporaries), big-step semantics `Exec`
+  (`Exec.loop_of`: loops via a user-supplied measure). If `Exec p σ σ'` and `p.wf` (expression depth < 11, each loop
+  fits the `beq` range), the code `compileS p` (expressions by `gen`, `beq t0,x0` exit, `jal x0` back edge) placed
+  anywhere in RAM runs to its end with `a0..a3 = σ'`, memory unchanged, callee-saved registers and `Cfg` kept.
+  `compileF_ok`: same for `compileF p = compileS p ++ [ret]`, returning to `ra`.
+- `Proven.sum_ok`, `Proven.gcd_ok` (`Proven/LoopExamples.lean`): the ordinary Lean functions
+  `sumDown n acc = if n = 0 then acc else sumDown (n-1) (acc+n)` and
+  `gcdSub a b = if a = 0 then b else if b = 0 then a else if a < b then gcdSub a (b-a) else gcdSub (a-b) b`
+  (well-founded recursion), `Stmt` programs `sumProg`, `gcdProg`, proofs `sumProg_exec`/`gcdProg_exec` that they
+  compute them (`Exec.det`: the result is unique), and the machine theorems (`a0 := f a0 a1`, return to `ra`).
+- Axioms: the same list as `compile_ok` above (no `sorryAx`, no `bv_decide`/`native_decide` axioms).
+- Check times: `BranchWords` ~7 min (one `bstep` per lemma, ~1.6 s), `Branch` 7 s, `Loop` 7.5 s,
+  `LoopExamples` 1.2 s, `LoopRule` 0.7 s. Build with `lake build Proven.LoopExamples`.
+
 ## Tested only
 
 - `Proven/CompilerArm.lean`: AArch64 backend for the same `Exp` (`lslv/lsrv/asrv`, `cmp` + `cset lo/lt/eq`,
@@ -39,6 +67,10 @@ RV64I code (base ISA only): R-type `add sub and or xor sll srl sra slt sltu`, `s
   operator, edge inputs 0, 1, 2^63, 2^64-1, shift amounts 0, 63, 64, 65, 127, 128, 2^64-1, nested `ite`, a depth-10
   expression using all 11 temporaries) and 17099 inputs in total: Lean `Exp.denote` == RV64 code on QEMU ==
   RV64 code on the Sail C emulator == AArch64 code on QEMU.
+
+- `asm/loop_test.py` (words from `asm/emit_loops.lean` in `asm/loop-words/`): `compileF sumProg` and
+  `compileF gcdProg`, 300 inputs each (sum: n < 400, any acc; gcd: small values, big multiples of a big gcd,
+  consecutive Fibonacci numbers up to 2^64, zeros, a = b), QEMU == Sail C emulator == Python model.
 
 ## Not proved
 
