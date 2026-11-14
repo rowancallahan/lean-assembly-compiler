@@ -15,12 +15,14 @@ PINS = [
   ("mair3", "MAIR_EL3", "0"),
   ("mdscr", "MDSCR_EL1", "0"),
   ("spe", "SPESampleInFlight", "false"),
+  ("dbgen", "DBGEN", ".Signal_Low"),
+  ("spiden", "SPIDEN", ".Signal_Low"),
 ]
 import sys
 out = []
 out.append("/-- the pinned configuration registers (and the PSTATE fields) the full step relies on -/")
 out.append("structure Pins (m : Regs) : Prop where")
-out.append("  ps : ∃ p : ProcState, m.get? .PSTATE = some p ∧ p.EL = 3#2 ∧ p.nRW = 0#1")
+out.append("  ps : ∃ p : ProcState, m.get? .PSTATE = some p ∧ p.EL = 3#2 ∧ p.nRW = 0#1 ∧ p.IL = 0#1")
 for f, r, v in PINS:
   out.append(f"  {f} : m.get? .{r} = some {v}")
 out.append("")
@@ -38,4 +40,8 @@ for d in range(2):
   out.append("    · obtain ⟨p, hp, hpp⟩ := hc.ps; exact ⟨p, by simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .PSTATE) h rfl)] using hp, hpp⟩")
   for i, (f, r, v) in enumerate(PINS):
     out.append(f"    · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .{r}) h rfl)] using hc.{f}")
+out.append("")
+out.append("set_option hygiene false in")
+out.append("/-- unpack `Pins s.regs` (named `hc`) into the atomic facts `esimp` rewrites with -/")
+out.append("macro \"pins\" : tactic => `(tactic| (obtain ⟨⟨p, hp, hel, hrw, hil⟩, " + ", ".join("h_"+f for f,_,_ in PINS) + "⟩ := id hc))")
 print("\n".join(out))
