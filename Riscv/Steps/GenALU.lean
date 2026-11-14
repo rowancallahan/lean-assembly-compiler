@@ -73,7 +73,7 @@ macro "genc" : tactic => `(tactic| (
 
 /-- `add rd, rs1, rs2` (`rd ≠ 0`: `add x0, x0, x2..x5` decode as the `ntl.*` hints) -/
 theorem step_add (rd rs1 rs2 : Fin 32) (hrd : rd ≠ 0) (hi : instrAt s pc (encR 0 0 rd rs1 rs2)) :
-    ∃ s', Next s s' (pc + 4) rd (getX s rs1 + getX s rs2) s.mem := by sorry
+    ∃ s', Next s s' (pc + 4) rd (getX s rs1 + getX s rs2) s.mem := by genc; gstep
 theorem step_sub (rd rs1 rs2 : Fin 32) (hi : instrAt s pc (encR 0x20 0 rd rs1 rs2)) :
     ∃ s', Next s s' (pc + 4) rd (getX s rs1 - getX s rs2) s.mem := by genc; gstep
 theorem step_and (rd rs1 rs2 : Fin 32) (hi : instrAt s pc (encR 0 7 rd rs1 rs2)) :
@@ -109,7 +109,6 @@ theorem step_slti (rd rs1 : Fin 32) (imm : BitVec 12) (hi : instrAt s pc (encI 2
 theorem step_sltiu (rd rs1 : Fin 32) (imm : BitVec 12) (hi : instrAt s pc (encI 3 imm.toNat rd rs1)) :
     ∃ s', Next s s' (pc + 4) rd (if getX s rs1 < imm.signExtend 64 then 1 else 0) s.mem := by genc; gstep
 
-#exit
 /-! ## Shifts by an immediate (6-bit `shamt`) -/
 
 theorem step_slli (rd rs1 : Fin 32) (sh : BitVec 6) (hi : instrAt s pc (encI 1 (0 <<< 6 ||| sh.toNat) rd rs1)) :

@@ -64,3 +64,12 @@ hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read 
 - con-leche / con-ron compiled to proved ARM and RISC-V code.
 - lean-svg's `render : Options → ByteArray → Except String ByteArray` as a large pure client.
 - A tiny real-time operating system on RISC-V proved on the same model.
+
+- Signal: (a) a new implementation of the Signal protocol written in Lean, specified by PROPERTIES only (security
+  statements; the implementation is free to change), compiled by this compiler; (b) compile DeepMind's existing
+  byte-level Lean model of libsignal (AlphaProof Code, github.com/google-deepmind/code-verification, Apache-2.0)
+  with this compiler, so their security proofs apply to our binary. Needs constant-time code generation for secrets
+  (our theorems say nothing about timing). Ideas to adopt from that paper now: frozen held-out spec + `comparator`
+  gate, non-vacuity proofs for configuration predicates, mutation tests of the spec, single integrator commits.
+- DeepMind's small hand-written AArch64 user-mode Linux semantics as an additional ARM target (Sail stays the reference);
+  experiment pending (their package: Lean 4.34.0, no dependencies, Apache-2.0).

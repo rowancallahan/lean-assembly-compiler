@@ -208,6 +208,9 @@ theorem rvc_or {c m : BitVec 32} (hc : c.extractLsb' 0 2 = 3#2) (hm : m.extractL
 /-- an R-type word: `c` concrete (opcode `0x33`, funct3, funct7) -/
 def wR (c : BitVec 32) (rd rs1 rs2 : Fin 32) : BitVec 32 := c ||| fR rd rs1 rs2
 
+@[simp] theorem sign_extend_eq {n : Nat} (x : BitVec n) : sign_extend (m := 64) x = x.signExtend 64 := by
+  simp [sign_extend, Sail.BitVec.signExtend]
+
 /-! ## Register-field decoding -/
 
 @[simp] theorem reg_matches (x : BitVec 5) : encdec_reg_backwards_matches x = true := by
@@ -230,7 +233,7 @@ macro "gstep_core" : tactic => `(tactic| (
   · intro s h hpc hi hQ
     simp only [Proven.getX_eq] at hQ
     have hok' := hok; obtain ⟨_, _, _⟩ := hok'
-    have hf := Proven.fetch_cfg h hpc hok hi (Proven.G.rvc_or (by decide) (by first | exact Proven.G.fR_low2 .. | exact Proven.G.fI_low2 .. | exact Proven.G.fSh_low2 .. | exact Proven.G.fU_low2 .. | exact Proven.G.fS_low2 .. | exact Proven.G.fB_low2 .. | exact Proven.G.fJ_low2 ..))
+    have hf := Proven.fetch_cfg h hpc hok hi (Proven.G.rvc_or (by decide) (by first | with_reducible exact Proven.G.fR_low2 .. | with_reducible exact Proven.G.fI_low2 .. | with_reducible exact Proven.G.fSh_low2 .. | with_reducible exact Proven.G.fU_low2 .. | with_reducible exact Proven.G.fS_low2 .. | with_reducible exact Proven.G.fB_low2 .. | with_reducible exact Proven.G.fJ_low2 ..))
     rw [Proven.bytes_eq] at hf
     have hd := Proven.dispatch_cfg h
     have hxp := h.xpresent
