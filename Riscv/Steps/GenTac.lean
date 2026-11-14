@@ -239,6 +239,10 @@ theorem add_joff_even' (a : Nat) (o : BitVec 20) :
 
 /-! ## Finishing: the model's final register map as `xset` of `stepF` -/
 
+/-- an even address (a def, so `simp` leaves a side condition `evenB x` alone) -/
+def evenB (x : BitVec 64) : Prop := x.toNat % 2 = 0
+theorem update0_evenB {x : BitVec 64} (h : evenB x) : Sail.BitVec.update x 0 0#1 = x := update0_even x h
+
 @[simp] theorem xset_zero (m : Regs) (v : BitVec 64) : xset m 0 v = m := rfl
 
 theorem xval_ins {m : Regs} {r : Register} {v} (hr : r ∉ xregs := by decide) (j : Fin 32) :
@@ -270,7 +274,7 @@ macro "gstep_core" : tactic => `(tactic| (
       Proven.G.fR_rd, Proven.G.fR_rs1, Proven.G.fR_rs2, Proven.G.fR_zero, Proven.G.fR_rdne, Proven.G.fR_known, Proven.G.fR_mismatch, Proven.G.fR_ne, Proven.G.fI_rd, Proven.G.fI_rs1, Proven.G.fI_imm, Proven.G.fI_zero, Proven.G.fI_rdne, Proven.G.fI_known, Proven.G.fI_mismatch, Proven.G.fI_ne, Proven.G.fSh_rd, Proven.G.fSh_rs1, Proven.G.fSh_sh, Proven.G.fSh_zero, Proven.G.fSh_rdne, Proven.G.fSh_known, Proven.G.fSh_mismatch, Proven.G.fSh_ne, Proven.G.fU_rd, Proven.G.fU_imm, Proven.G.fU_zero, Proven.G.fU_rdne, Proven.G.fU_known, Proven.G.fU_mismatch, Proven.G.fU_ne, Proven.G.fS_rs1, Proven.G.fS_rs2, Proven.G.fS_hi, Proven.G.fS_lo, Proven.G.fS_zero, Proven.G.fS_known, Proven.G.fS_mismatch, Proven.G.fS_ne, Proven.G.fB_rs1, Proven.G.fB_rs2, Proven.G.fB_zero, Proven.G.fB_known, Proven.G.fB_mismatch, Proven.G.fB_ne, Proven.G.fJ_rd, Proven.G.fJ_zero, Proven.G.fJ_rdne, Proven.G.fJ_known, Proven.G.fJ_mismatch, Proven.G.fJ_ne,
       Proven.sail_ext, Proven.setw_ext,
       Proven.rX_bits_ok, Proven.wX_bits_ok, Proven.G.reg_matches, Proven.G.reg_back, Proven.xpresent_insert]
-    all_goals simp [Proven.stepF, Proven.update0_even, Proven.ze32, Proven.boff, Proven.joff, *]
+    all_goals simp [Proven.stepF, Proven.update0_even, Proven.ze32, Proven.boff, Proven.joff, Proven.G.update0_evenB, *]
   all_goals simp))
 
 open Lean Meta Elab Tactic in
