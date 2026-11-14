@@ -13,12 +13,12 @@ open IR Sel
 
 /-- IR code (virtual registers) of an array statement -/
 def irA (bv : List (Fin 8)) : AStmt → Code Nat
-  | .assign v e => into e v.val 0
-  | .load v b i => .seq (into (addrE bv b i) (tk 0) 0) (.ins (.lbu v.val (.r (tk 0)) 0))
-  | .store b i e => .seq (into (addrE bv b i) (tk 0) 0) (.seq (opnd e 1 (into e (tk 1) 1)).1
-      (.ins (.sb (opnd e 1 (into e (tk 1) 1)).2.1 (.r (tk 0)) 0)))
+  | .assign v e => into (ofA e) v.val 0
+  | .load v b i => .seq (into (ofA (addrE bv b i)) (tk 0) 0) (.ins (.lbu v.val (.r (tk 0)) 0))
+  | .store b i e => .seq (into (ofA (addrE bv b i)) (tk 0) 0) (.seq (opnd (ofA e) 1 (into (ofA e) (tk 1) 1)).1
+      (.ins (.sb (opnd (ofA e) 1 (into (ofA e) (tk 1) 1)).2.1 (.r (tk 0)) 0)))
   | .seq p q => .seq (irA bv p) (irA bv q)
-  | .loop c body => loopCode c (irA bv body)
+  | .loop c body => loopCode (ofA c) (irA bv body)
 
 /-- block variables are never assigned, block numbers are in range (checked) -/
 def okA (bv : List (Fin 8)) : AStmt → Bool
@@ -40,7 +40,8 @@ structure RelA (bv : List (Fin 8)) (R : List Region) (σ : AState) (τ : St Nat)
   blen : ∀ b (hb : b < R.length), (σ.heap[b]?.getD []).length = R[b].len
   bytes : ∀ b (hb : b < R.length), bytes τ.mem R[b].base R[b].len = (σ.heap[b]?.getD []).map some
 
-theorem RelA.agree {bv R σ τ} (r : RelA bv R σ τ) (e : AExp) : Agree σ.env e τ := fun i _ => r.env i
+theorem RelA.agree {ram : Nat → Prop} {fp : Nat} {bv R σ τ} (r : RelA bv R σ τ) (e : AExp) :
+    Agree ram fp (envA σ.env) (fun _ => 0) (ofA e) τ := agreeA e fun i _ => r.env i
 
 theorem RelA.setVar {bv R σ τ} (r : RelA bv R σ τ) {τ' : St Nat} (hm : τ'.mem = τ.mem) {v : Fin 8}
     (hv : v ∉ bv) {x : BitVec 64} (hx : τ'.reg v.val = x)
@@ -54,8 +55,8 @@ theorem RelA.setVar {bv R σ τ} (r : RelA bv R σ τ) {τ' : St Nat} (hm : τ'.
     show (if bv.getD b 0 = v then x else σ.env (bv.getD b 0)) = _
     rw [ite_neg this]; exact r.base b hb
 
-theorem RelA.frame {bv R σ τ} (r : RelA bv R σ τ) {τ' : St Nat} (f : Frame 8 τ τ') : RelA bv R σ τ' :=
-  ⟨fun i => (f.2 i.val i.2).trans (r.env i), r.hlen, r.bvlen, r.base, r.blen, fun b hb => by
+theorem RelA.frame {bv R σ τ} (r : RelA bv R σ τ) {τ' : St Nat} (f : Frame 32 τ τ') : RelA bv R σ τ' :=
+  ⟨fun i => (f.2 i.val (by omega)).trans (r.env i), r.hlen, r.bvlen, r.base, r.blen, fun b hb => by
     rw [f.1]; exact r.bytes b hb⟩
 
 /-- the address of an in-bounds element -/
@@ -79,13 +80,15 @@ theorem irA_ok (fp : Nat) (bv : List (Fin 8)) {R : List Region} (hR : ∀ r ∈ 
   induction h with
   | @assign v e σ =>
     intro hp τ r
-    obtain ⟨τ', hx, hv, hm, hf⟩ := into_ok (ram := ramR R) e v.val 0 τ (r.agree e)
+    obtain ⟨τ', hx, hv, hm, hf⟩ := into_ok (ram := ramR R) (fp := fp) (ofA e) v.val 0 τ (r.agree e)
+    rw [ofA_denote] at hv
     exact ⟨τ', hx, r.setVar hm (of_decide_eq_true hp) hv fun y hy h8 => hf y hy (by omega)⟩
   | @load v b i σ hb hi =>
     intro hp τ r
     obtain ⟨hv, _⟩ := Wide.and2 hp
     obtain ⟨hbR, ha, hil⟩ := r.addr hR hb hi
-    obtain ⟨τ₁, x₁, v₁, m₁, f₁⟩ := into_ok (ram := ramR R) (addrE bv b i) (tk 0) 0 τ (r.agree _)
+    obtain ⟨τ₁, x₁, v₁, m₁, f₁⟩ := into_ok (ram := ramR R) (fp := fp) (ofA (addrE bv b i)) (tk 0) 0 τ (r.agree _)
+    rw [ofA_denote] at v₁
     have hB : bytes τ.mem R[b].base R[b].len = σ.heap[b].map some := by
       rw [← getD_get _ hb]; exact r.bytes b hbR
     have hbyte := get_of_bytes hB hi
@@ -101,9 +104,12 @@ theorem irA_ok (fp : Nat) (bv : List (Fin 8)) {R : List Region} (hR : ∀ r ∈ 
   | @store b i e σ hb hi =>
     intro hp τ r
     obtain ⟨hbR, ha, hil⟩ := r.addr hR hb hi
-    obtain ⟨τ₁, x₁, v₁, m₁, f₁⟩ := into_ok (ram := ramR R) (addrE bv b i) (tk 0) 0 τ (r.agree _)
-    have g₁ : Agree σ.env e τ₁ := fun j _ => (f₁ j.val (by unfold tk; omega) (by omega)).trans (r.env j)
-    obtain ⟨τ₂, x₂, v₂, f₂, _, _⟩ := opnd_ok (k := 1) (into_ok (ram := ramR R) e (tk 1) 1 τ₁ g₁) g₁
+    obtain ⟨τ₁, x₁, v₁, m₁, f₁⟩ := into_ok (ram := ramR R) (fp := fp) (ofA (addrE bv b i)) (tk 0) 0 τ (r.agree _)
+    rw [ofA_denote] at v₁
+    have g₁ : Agree (ramR R) fp (envA σ.env) (fun _ => 0) (ofA e) τ₁ :=
+      agreeA e fun j _ => (f₁ j.val (by unfold tk; omega) (by omega)).trans (r.env j)
+    obtain ⟨τ₂, x₂, v₂, f₂, _, _⟩ := opnd_ok (k := 1) (into_ok (ram := ramR R) (ofA e) (tk 1) 1 τ₁ g₁) g₁
+    rw [ofA_denote] at v₂
     have ea : (τ₂.reg (tk 0) + 0).toNat = R[b].base + (i.denote σ.env).toNat := by
       rw [show τ₂.reg (tk 0) + 0 = τ₂.reg (tk 0) from BitVec.add_zero _, f₂.2 (tk 0) (by unfold tk; omega), v₁, ha]
     refine ⟨_, .seq x₁ (.seq x₂ (.ins (.sb ?_))), ?_⟩
@@ -133,11 +139,11 @@ theorem irA_ok (fp : Nat) (bv : List (Fin 8)) {R : List Region} (hR : ∀ r ∈ 
     exact ⟨τ₂, .seq x₁ x₂, r₂⟩
   | @loopF c body σ hc =>
     intro hp τ r
-    obtain ⟨τ₁, x₁, f₁⟩ := loopCode_exit (ram := ramR R) (body := irA bv body) (r.agree c) hc
+    obtain ⟨τ₁, x₁, f₁⟩ := loopCode_exit (ram := ramR R) (fp := fp) (body := irA bv body) (r.agree c) (by rw [ofA_denote]; exact hc)
     exact ⟨τ₁, x₁, r.frame f₁⟩
   | @loopT c body σ _ _ hc _ _ ihb ihl =>
     intro hp τ r
-    obtain ⟨τ₁, f₁, hx⟩ := loopCode_iter (ram := ramR R) (body := irA bv body) (r.agree c) hc
+    obtain ⟨τ₁, f₁, hx⟩ := loopCode_iter (ram := ramR R) (fp := fp) (body := irA bv body) (r.agree c) (by rw [ofA_denote]; exact hc)
     obtain ⟨τ₂, x₂, r₂⟩ := ihb hp τ₁ (r.frame f₁)
     obtain ⟨τ₃, x₃, r₃⟩ := ihl hp τ₂ r₂
     exact ⟨τ₃, hx τ₂ τ₃ x₂ x₃, r₃⟩
@@ -147,7 +153,7 @@ def scA : Reg := ⟨6, by decide⟩
 
 /-- register assignment: variable `i ↦ avar i`, temporary `k` (virtual `8 + k`) `↦ r k` for `k < 6` -/
 def fA (x : Nat) : Reg :=
-  if h : x < 8 then avar ⟨x, h⟩ else if h : x < 14 then ⟨x - 8, by omega⟩ else scA
+  if h : x < 8 then avar ⟨x, h⟩ else if h : 32 ≤ x ∧ x < 38 then ⟨x - 32, by omega⟩ else scA
 
 namespace Wide
 variable (M : Wide)

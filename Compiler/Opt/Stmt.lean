@@ -9,9 +9,9 @@ open IR
 
 /-- IR code (virtual registers) of a statement -/
 def irS : Stmt → Code Nat
-  | .assign v e => Sel.into (toA e) v.val 0
+  | .assign v e => Sel.into (Sel.ofA (toA e)) v.val 0
   | .seq a b => .seq (irS a) (irS b)
-  | .loop c b => Sel.loopCode (toA c) (irS b)
+  | .loop c b => Sel.loopCode (Sel.ofA (toA c)) (irS b)
 
 /-- selection preserves the statement semantics -/
 theorem irS_ok (ram : Nat → Prop) (fp : Nat) : ∀ {p : Stmt} {σe σe' : Env}, Exec p σe σe' → ∀ (σ : St Nat),
@@ -21,8 +21,8 @@ theorem irS_ok (ram : Nat → Prop) (fp : Nat) : ∀ {p : Stmt} {σe σe' : Env}
   induction h with
   | @assign v e σe =>
     intro σ hσ
-    obtain ⟨σ', hx, hv, hm, hf⟩ := Sel.into_ok (ram := ram) (toA e) v.val 0 σ (agree_toA e hσ)
-    rw [toA_denote] at hv
+    obtain ⟨σ', hx, hv, hm, hf⟩ := Sel.into_ok (ram := ram) (fp := fp) (sv := fun _ => 0) (Sel.ofA (toA e)) v.val 0 σ (agree_toA e hσ)
+    rw [Sel.ofA_denote, toA_denote] at hv
     refine ⟨σ', hx, fun i => ?_, hm⟩
     unfold Env.set
     by_cases hi : i = v
@@ -35,13 +35,13 @@ theorem irS_ok (ram : Nat → Prop) (fp : Nat) : ∀ {p : Stmt} {σe σe' : Env}
     exact ⟨σ₂, .seq x₁ x₂, v₂, m₂.trans m₁⟩
   | @loopF c b σe hc =>
     intro σ hσ
-    obtain ⟨σ₁, x₁, f₁⟩ := Sel.loopCode_exit (ram := ram) (body := irS b) (agree_toA c hσ)
-      (by rw [toA_denote]; exact hc)
+    obtain ⟨σ₁, x₁, f₁⟩ := Sel.loopCode_exit (ram := ram) (fp := fp) (sv := fun _ => 0) (body := irS b) (agree_toA c hσ)
+      (by rw [Sel.ofA_denote, toA_denote]; exact hc)
     exact ⟨σ₁, x₁, fun i => (f₁.2 i.val (by omega)).trans (hσ i), f₁.1⟩
   | @loopT c b σe _ _ hc _ _ ihb ihl =>
     intro σ hσ
-    obtain ⟨σ₁, f₁, hx⟩ := Sel.loopCode_iter (ram := ram) (body := irS b) (agree_toA c hσ)
-      (by rw [toA_denote]; exact hc)
+    obtain ⟨σ₁, f₁, hx⟩ := Sel.loopCode_iter (ram := ram) (fp := fp) (sv := fun _ => 0) (body := irS b) (agree_toA c hσ)
+      (by rw [Sel.ofA_denote, toA_denote]; exact hc)
     obtain ⟨σ₂, x₂, v₂, m₂⟩ := ihb σ₁ fun i => (f₁.2 i.val (by omega)).trans (hσ i)
     obtain ⟨σ₃, x₃, v₃, m₃⟩ := ihl σ₂ v₂
     exact ⟨σ₃, hx σ₂ σ₃ x₂ x₃, v₃, m₃.trans (m₂.trans f₁.1)⟩
