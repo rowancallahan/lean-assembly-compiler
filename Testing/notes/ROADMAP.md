@@ -73,3 +73,7 @@ hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read 
   gate, non-vacuity proofs for configuration predicates, mutation tests of the spec, single integrator commits.
 - DeepMind's small hand-written AArch64 user-mode Linux semantics as an additional ARM target (Sail stays the reference);
   experiment pending (their package: Lean 4.34.0, no dependencies, Apache-2.0).
+  Owner's plan for Signal (decided): write a FRESH short property spec S (human-readable, target < 1k lines without
+  wire formats); write our Lean implementation F; prove (1) F satisfies S and (2) F = M (DeepMind's model) on all inputs.
+  Validate S by mutation: mutants of F that break F = M should mostly break S too; a security-relevant mutant that
+  breaks F = M but still satisfies S marks a gap in S.
