@@ -68,17 +68,26 @@ theorem Next.store_cell {s s' : St} {pc rd v} {L : Layout} (hL : L.ok) {k i : Na
     (∀ a, a ∉ L[k] → s'.mem[a]? = s.mem[a]?) := by
   simp only [bytesOf, hn.mem]; exact layout_write hL hk hi b
 
+/-- an 8-byte store filling block `L[k] = [a, a + 8)` (memory form) -/
+theorem store_block8_mem {s s' : St} {L : Layout} (hL : L.ok) {k : Nat} (hk : k < L.length)
+    {a : Nat} (hout : L[k] = Region.cells ⟨a, 8⟩) {x : BitVec 64}
+    (hmem : s'.mem = storeBytes s.mem a (le8 x)) :
+    bytesOf s' L[k] = (le8 x).map some ∧
+    (∀ j (hj : j < L.length), j ≠ k → bytesOf s' L[j] = bytesOf s L[j]) ∧
+    (∀ a, a ∉ L[k] → s'.mem[a]? = s.mem[a]?) := by
+  have hm : s'.mem = writeCells s.mem L[k] (le8 x) := by
+    rw [hmem, storeBytes_eq, hout]; rfl
+  simp only [bytesOf, hm]
+  exact layout_writeAll hL hk (by rw [hout]; simp [Region.cells, le8])
+
 /-- an 8-byte store filling block `L[k] = [a, a + 8)` -/
 theorem Next.store_block8 {s s' : St} {pc rd v} {L : Layout} (hL : L.ok) {k : Nat} (hk : k < L.length)
     {a : Nat} (hout : L[k] = Region.cells ⟨a, 8⟩) {x : BitVec 64}
     (hn : Next s s' pc rd v (storeBytes s.mem a (le8 x))) :
     bytesOf s' L[k] = (le8 x).map some ∧
     (∀ j (hj : j < L.length), j ≠ k → bytesOf s' L[j] = bytesOf s L[j]) ∧
-    (∀ a, a ∉ L[k] → s'.mem[a]? = s.mem[a]?) := by
-  have hm : s'.mem = writeCells s.mem L[k] (le8 x) := by
-    rw [hn.mem, storeBytes_eq, hout]; rfl
-  simp only [bytesOf, hm]
-  exact layout_writeAll hL hk (by rw [hout]; simp [Region.cells, le8])
+    (∀ a, a ∉ L[k] → s'.mem[a]? = s.mem[a]?) :=
+  store_block8_mem hL hk hout hn.mem
 
 /-! ## The same for contiguous regions (`bytesAt`, `unchangedOutside`) -/
 

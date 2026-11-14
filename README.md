@@ -76,6 +76,20 @@ RV64I code (base ISA only): R-type `add sub and or xor sll srl sra slt sltu`, `s
   `s'.mem = storeBytes s.mem a (le8 x[rs2])` (little-endian); `lbu`: `x[rd] = b.setWidth 64` if `s.mem[a]? = some b`;
   `ld`: `x[rd] = v` if `bytesAt s a 8 = (le8 v).map some`. Layout/region forms: `Next.store_cell`,
   `Next.store_block8`, `Next.store_region`, `Next.store_region8`.
+- `Proven.compileStore_ok` / `Proven.compileStore_regions` (`Proven/MemCompiler.lean`): `compileStore e =
+  gen e 0 ++ [sd t0, 0(s1), ret]` (the existing `gen`, reused through `gen_ok`). The output pointer is in `s1`
+  (x9): every other caller-saved register except the inputs `a0..a3` is a temporary of `gen`, and `gen_ok` only
+  guarantees that non-temporaries are kept. For `e.depth < 11`, `Cfg`, code at `pc`, even `ra`, output block
+  `L[k] = [s1, s1 + 8)` of an ok layout `L` (resp. region `rs[k] = ⟨s1, 8⟩` of a list of in-RAM pairwise
+  disjoint regions), `s1` 8-aligned, code not overlapping the output: the Sail model runs to `ra` with
+  `bytesAt s' s1 8 = (le8 (e.denote (a0, a1, a2, a3))).map some`, every other block/region unchanged, every
+  address outside the output unchanged (`unchangedOutside s s' [rs[k]]`), callee-saved registers and `Cfg` kept.
+  Axioms: the same list as `compile_ok`. Check times: `MemModel` 1.2 s, `MemStep` 1.4 s, `MemWords` ~23 min
+  (220 lemmas, ~6 s each), `MemSteps` 1.9 s, `MemCompiler` 1.5 s (each including imports).
+- Tested: `asm/memtest.py asm/memtest-data/memtest.txt` (input from `asm/memtest-data/memtest.lean`): 5
+  expressions x 99 inputs, the code called with `s1` = 16-byte slots pre-filled with `0x55`: Lean `Exp.denote` ==
+  8 bytes stored on QEMU == on the Sail C emulator, the guard bytes after each slot intact, and the Sail
+  emulator's only data writes are the 8-byte stores to the slots.
 - Why `Proven/SortSteps.lean`'s load/store lemmas failed with `(kernel) deep recursion detected`:
   `step_word` unfolds `range_subset` (the PMA range check) on the symbolic data address; `simp` with
   `BitVec.toNat_sub` turns it into `(18446744071562067968 + x.toNat) % 2^64 ≤ 2147483648`, partly through
