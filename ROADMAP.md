@@ -35,3 +35,27 @@ knapsack, edit distance, Floyd–Warshall, Dijkstra, max-flow.
 ## Order
 merge sort → word arrays (CRC-32) → calls + stack (tree evaluator) → allocator (linked list) →
 hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read con-leche / con-ron and fill gaps.
+
+# Standing decisions (from the owner)
+
+- Scope: a SUB-compiler for pure functions, bytes in → bytes out (`Proven/Encode.lean`). No IO, no OS interaction.
+  The OS (or a boot stub) only loads blocks and reads the result; "a correctly functioning OS hosts the process" is a stated assumption.
+- The compiler is one pure Lean function. Any number of internal passes/optimisations is fine if proved:
+  no `sorry`, no `axiom`, no `extern`, no `native_decide`/`bv_decide`.
+- Front end: translate Lean definitions ourselves with a kernel-checked equation per function; do not use Lean's compiler IR.
+- Structure: front (Lean → program) / middle (program → abstract ops + all Hoare logic, machine-independent) / back (per target, thin).
+  Design on RISC-V; ARM follows in the background.
+- Two backends with separate proofs, each equal to the Lean function; no combined ARM = RISC-V theorem needed.
+- Arithmetic: integers and modular arithmetic only. NO floats, nothing over the rationals/reals.
+  Candidate clients: Mathlib-defined number theory computed modularly (after big numbers); SHA-256; CRC-32.
+- Speed matters: generated code should aim to match or beat Lean's native compiler.
+- Memory: blocks are lists of cells; layouts of pairwise-disjoint blocks; owner reviews byte layouts in `Encode.lean`.
+
+# Far future (noted, not planned)
+
+- Self-hosting: compile the compiler's core (program bytes → machine code bytes) with itself.
+- Multi-core: each core gets its own writable block, shared blocks are read-only, one coordinating core
+  only reads the others' "done" state; results are interleaving-independent by the separation theorem.
+- con-leche / con-ron compiled to proved ARM and RISC-V code.
+- lean-svg's `render : Options → ByteArray → Except String ByteArray` as a large pure client.
+- A tiny real-time operating system on RISC-V proved on the same model.
