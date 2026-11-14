@@ -386,4 +386,65 @@ theorem step_call {t : Tree} {σ : BState} {r : BitVec 64} (σ₁ : BState) (hs 
 theorem step_ret {t : Tree} {σ : BState} {r : BitVec 64} (σ' : BState) (hs : t.step σ = some (.ret r σ')) :
     ∃ σ', t.Runs σ r σ' := ⟨σ', .ret hs⟩
 
+/-! ## One iteration against a Lean-side outcome (used by the certifying translator)
+
+The translator turns the body of `f` into a term `out : LOut A` of the same `if` structure whose leaves are
+`ret (rep e)` and `call args'`, and proves `Sim R tree σ out` node by node with the lemmas below. -/
+
+inductive LOut (A : Type) where
+  | ret (r : BitVec 64)
+  | call (a : A)
+
+/-- the step of `k` from `σ` is the Lean outcome: the same result, or a call whose new state holds the new
+arguments (`R`) -/
+def Sim {A : Type} (R : A → BState → Prop) (k : Tree) (σ : BState) : LOut A → Prop
+  | .ret r => ∃ σ', k.step σ = some (.ret r σ')
+  | .call a => ∃ σ₁, k.step σ = some (.call σ₁) ∧ R a σ₁
+
+section
+variable {A : Type} (R : A → BState → Prop)
+
+theorem sim_ret (e : BExp) (env : BEnv) (heap : Heap) (r : BitVec 64) (h : e.denote env = r) :
+    Sim R (.ret e) ⟨env, heap⟩ (.ret r) := ⟨⟨env, heap⟩, by simp only [Tree.step, h]⟩
+
+theorem sim_call (as : List (Nat × BExp)) (env : BEnv) (heap : Heap) (a : A)
+    (h : R a ⟨parSet env env as, heap⟩) : Sim R (.call as) ⟨env, heap⟩ (.call a) := ⟨_, rfl, h⟩
+
+theorem sim_let (v : Nat) (e : BExp) (k : Tree) (env : BEnv) (heap : Heap) (x : BitVec 64) (o : LOut A)
+    (hx : e.denote env = x) (h : Sim R k ⟨env.set v x, heap⟩ o) : Sim R (.let_ v e k) ⟨env, heap⟩ o := by
+  subst hx; cases o <;> exact h
+
+theorem sim_load (v b : Nat) (i : BExp) (k : Tree) (env : BEnv) (heap : Heap) (j : Nat) (y : BitVec 8)
+    (o : LOut A) (hj : (i.denote env).toNat = j) (hr : rd heap b j = some y)
+    (h : Sim R k ⟨env.set v (y.setWidth 64), heap⟩ o) : Sim R (.load v b i k) ⟨env, heap⟩ o := by
+  have e : (Tree.load v b i k).step ⟨env, heap⟩ = k.step ⟨env.set v (y.setWidth 64), heap⟩ := by
+    simp only [Tree.step, hj, hr, Option.bind_some]
+  cases o <;> simp only [Sim, e] <;> exact h
+
+theorem sim_dite (c : BExp) (a b : Tree) (env : BEnv) (heap : Heap) (P : Prop) [Decidable P]
+    (o₁ : P → LOut A) (o₂ : ¬P → LOut A) (hc : c.denote env ≠ 0 ↔ P)
+    (ht : ∀ h : P, Sim R a ⟨env, heap⟩ (o₁ h)) (hf : ∀ h : ¬P, Sim R b ⟨env, heap⟩ (o₂ h)) :
+    Sim R (.ite c a b) ⟨env, heap⟩ (dite P o₁ o₂) := by
+  by_cases hp : P
+  · have e : (Tree.ite c a b).step ⟨env, heap⟩ = a.step ⟨env, heap⟩ := by
+      simp only [Tree.step, if_neg (hc.2 hp)]
+    rw [dif_pos hp]; have := ht hp
+    cases h : o₁ hp <;> rw [h] at this <;> simp only [Sim, e] <;> exact this
+  · have e : (Tree.ite c a b).step ⟨env, heap⟩ = b.step ⟨env, heap⟩ := by
+      have : c.denote env = 0 := Classical.byContradiction fun h => hp (hc.1 h)
+      simp only [Tree.step, if_pos this]
+    rw [dif_neg hp]; have := hf hp
+    cases h : o₂ hp <;> rw [h] at this <;> simp only [Sim, e] <;> exact this
+
+theorem sim_pos {k : Tree} {σ : BState} {P : Prop} [Decidable P] {o₁ : P → LOut A} {o₂ : ¬P → LOut A} (h : P)
+    (hs : Sim R k σ (dite P o₁ o₂)) : Sim R k σ (o₁ h) := by rwa [dif_pos h] at hs
+theorem sim_neg {k : Tree} {σ : BState} {P : Prop} [Decidable P] {o₁ : P → LOut A} {o₂ : ¬P → LOut A} (h : ¬P)
+    (hs : Sim R k σ (dite P o₁ o₂)) : Sim R k σ (o₂ h) := by rwa [dif_neg h] at hs
+
+theorem sim_call_elim {k : Tree} {σ : BState} {a : A} (hs : Sim R k σ (.call a)) :
+    ∃ σ₁, k.step σ = some (.call σ₁) ∧ R a σ₁ := hs
+theorem sim_ret_elim {k : Tree} {σ : BState} {r : BitVec 64} (hs : Sim R k σ (.ret r)) :
+    ∃ σ', k.step σ = some (.ret r σ') := hs
+end
+
 end Proven.Frontx
