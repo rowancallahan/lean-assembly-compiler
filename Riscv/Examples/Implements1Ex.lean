@@ -6,6 +6,7 @@ sorts reuse their region-form theorems (`sortCode_ok_m`, `msortCode_ok_m`, both 
 import Riscv.Back.Implements1
 import Riscv.Back.SortMerge
 import Riscv.Back.Arr
+import Riscv.Back.Keep
 
 set_option linter.unusedVariables false
 
@@ -126,7 +127,7 @@ theorem enc64 (w : BitVec 64) :
 
 /-- the stores: the first `j + 1` output bytes are the bytes of `v4` -/
 theorem store8_exec (w : BitVec 64) : ∀ (j : Nat), j < 8 → ∀ (σ : Mach.BState) (xs out : List (BitVec 8)),
-    σ.heap = [xs, out] → σ.env 4 = w → 8 ≤ out.length → σ.env 3 = σ.env 3 →
+    σ.heap = [xs, out] → σ.env 4 = w → j < out.length → σ.env 3 = σ.env 3 →
     ∃ out', Mach.BExec (store8 j) σ ⟨σ.env, [xs, out'], σ.wheap⟩ ∧ out'.length = out.length ∧
       (∀ i (hi : i ≤ j), out'[i]? = some (BitVec.ofNat 8 (w.toNat / 256 ^ i))) ∧
       ∀ i, j < i → out'[i]? = out[i]?
@@ -140,7 +141,7 @@ theorem store8_exec (w : BitVec 64) : ∀ (j : Nat), j < 8 → ∀ (σ : Mach.BS
       rw [List.getElem?_set_self (by omega)]; congr 1
       apply BitVec.eq_of_toNat_eq; simp
   | j + 1, hj, σ, xs, out, hh, h4, hl, _ => by
-    obtain ⟨out₁, he, hl₁, hb, hu⟩ := store8_exec w j (by omega) σ xs out hh h4 hl rfl
+    obtain ⟨out₁, he, hl₁, hb, hu⟩ := store8_exec w j (by omega) σ xs out hh h4 (by omega) rfl
     refine ⟨out₁.set (j + 1) ((Op.eval .lshr w (BitVec.ofNat 64 (8 * (j + 1)))).setWidth 8), .seq he ?_,
       by simp [hl₁], fun i hi => ?_, fun i hi => by rw [List.getElem?_set_ne (by omega)]; exact hu i (by omega)⟩
     · have := Mach.BExec.store (b := 1) (i := .const (BitVec.ofNat 64 (j + 1)))
@@ -192,7 +193,7 @@ theorem sumP_exec (σ : Mach.BState) (xs out : List (BitVec 8)) (hh : σ.heap = 
       rw [hs, List.take_of_length_le (by omega)])
     ⟨(σ.env.set 4 0).set 5 0, σ.heap, σ.wheap⟩
     ⟨hh, by simpa [Mach.BEnv.set] using h1, by simp [Mach.BEnv.set], by simp [Mach.BEnv.set, sumBytes]⟩
-  obtain ⟨out', hst, hl', hb, hu⟩ := store8_exec (sumBytes xs) 7 (by omega) σ₁ xs out hq.1 hq.2 hl rfl
+  obtain ⟨out', hst, hl', hb, hu⟩ := store8_exec (sumBytes xs) 7 (by omega) σ₁ xs out hq.1 hq.2 (by omega) rfl
   refine ⟨_, out', .seq (BExec.assign' rfl) (.seq (BExec.assign' rfl) (.seq hlp hst)), rfl, ?_,
     List.ext_getElem? fun i => by rw [List.getElem?_drop, List.getElem?_drop]; exact hu _ (by omega)⟩
   apply List.ext_getElem? ; intro i
@@ -243,13 +244,13 @@ theorem take_implements1 (k : Nat) (hk : k < 2 ^ 64) :
     (by rw [hK]; simp at hout ⊢; omega)
   rw [hK] at hh h4
   simp only [List.length_map] at hh h4
-  refine ⟨_, _, .seq hex (BExec.assign' rfl), hh, ?_, ?_, fun _ => ?_⟩
+  refine ⟨_, _, .seq hex (BExec.assign' (v := 1) (e := .var 4) rfl), hh, ?_, ?_, fun _ => ?_⟩
   · simp only [List.map_id, List.length_take]
     rw [List.take_append_of_le_length (by simp), List.take_of_length_le (by simp), List.map_take]
   · simp only [List.map_id, List.length_take]
     exact drop_tail _ (by simp)
-  · show (if 1 = 1 then σ'.env 4 else _) = _
-    rw [if_pos rfl, List.length_take]
+  · show Mach.BEnv.set σ'.env 1 ((Mach.BExp.var 4).denote σ'.env) 1 = _
+    simp only [Mach.BEnv.set, if_pos, Mach.BExp.denote, List.length_take]
     apply BitVec.eq_of_toNat_eq; rw [h4, BitVec.toNat_ofNat]; omega
 
 /-- **`List.map (· + 1)`** in `Implements1` form -/
@@ -323,17 +324,17 @@ theorem sortCode_implements1 : Implements1Raw sortCode (fun x => x.mergeSort leU
     simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
     rcases hr with rfl | rfl <;> (unfold disjoint; dsimp only; omega)
   have hra' : getX s 1 = ra := getX_of (h.x1.symm.trans h1) rfl
-  refine runsTo_mono (sortCode_ok_m h hpc (codeAt_of_codeBytes hok hcode) hok (by rw [hra']; omega) hR hcd
+  refine runsTo_mono (sortCode_ok_k h hpc (codeAt_of_codeBytes hok hcode) hok (by rw [hra']; omega) hR hcd
     (getX_of (h.x10.symm.trans h10) rfl) (by rw [getX_of (h.x11.symm.trans h11) rfl, hxl])
     (getX_of (h.x13.symm.trans h13) rfl) (by simpa [List.map_map, Function.comp_def] using hx)
     (bytesAt_hosted (fun i hi => hmapO i (by rw [hxl] at hi; omega)))) ?_
   rintro s' ⟨p1, p2, p3, p4, p5, p6⟩
-  refine ⟨by rw [p1, hra'], ?_, ?_, p6, p5⟩
+  refine ⟨by rw [p1, hra'], ?_, ?_, Mach.Riscv.abi_of_keep h p5 p6, p5, fun h => nomatch h⟩
   · rw [← hxl, p2, ← mergeSort_toBitVec]; simp [List.map_map]
   · intro q hq
     apply p4 q
     intro r hr
-    have a2 := hq output (by simp)
+    have a2 := hq ⟨output.base, a.length⟩ (by simp)
     simp only [List.mem_singleton] at hr; subst hr; dsimp only; rw [hxl]; omega
 
 /-- **Merge sort** in `Implements1` form: `space n = n + 71` (an `n`-byte scratch block at the bottom of the
@@ -382,19 +383,19 @@ theorem msortCode_implements1 : Implements1Raw msortCode (fun x => x.mergeSort l
     simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
     rcases hr with rfl | rfl | rfl | rfl <;> (unfold disjoint; dsimp only; omega)
   have hra' : getX s 1 = ra := getX_of (h.x1.symm.trans h1) rfl
-  refine runsTo_mono (msortCode_ok_m h hpc (codeAt_of_codeBytes hok hcode) hok (by rw [hra']; omega) hR hf hfd hcd
+  refine runsTo_mono (msortCode_ok_k h hpc (codeAt_of_codeBytes hok hcode) hok (by rw [hra']; omega) hR hf hfd hcd
     (getX_of (h.x10.symm.trans h10) rfl) (by rw [getX_of (h.x11.symm.trans h11) rfl, hxl])
     (getX_of (h.x12.symm.trans h12) rfl) (getX_of (h.x13.symm.trans h13) rfl)
     (by simpa [List.map_map, Function.comp_def] using hx)
     (bytesAt_hosted (fun i hi => hmapW i (by rw [hxl] at hi; omega)))
     (bytesAt_hosted (fun i hi => hmapO i (by rw [hxl] at hi; omega)))) ?_
-  rintro s' ⟨p1, p2, p3, p4, p5, p6, p7⟩
-  refine ⟨by rw [p1, hra'], ?_, ?_, p6, p5⟩
+  rintro s' ⟨p1, p2, p3, p4, p5, p6⟩
+  refine ⟨by rw [p1, hra'], ?_, ?_, Mach.Riscv.abi_of_keep h p5 p6, p5, fun h => nomatch h⟩
   · rw [← hxl, p2, ← mergeSort_toBitVec]; simp [List.map_map]
   · intro q hq
     apply p4 q
     intro r hr
-    have a2 := hq output (by simp); have a3 := hq work (by simp)
+    have a2 := hq ⟨output.base, a.length⟩ (by simp); have a3 := hq work (by simp)
     simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
     rw [hxl, hfb] at hr
     rcases hr with rfl | rfl | rfl <;> (dsimp only; omega)

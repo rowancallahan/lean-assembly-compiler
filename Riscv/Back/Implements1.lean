@@ -114,7 +114,7 @@ theorem implements1_of_exec {α β : Type} (encA : α → List UInt8) (encB : β
   let W : List Region := [⟨work.base, 8 * wn x.length⟩]
   have hL : rvF.Lay N (rvF.frameAt s N) R W := by
     refine ⟨fun r hr => ?_, fun r hr => ?_, ?_, List.pairwise_singleton _ _, fun r hr w hw => ?_, fun r hr => ?_,
-      fun w hw => ?_, fun w hw => ?_⟩
+      fun w hw => ?_, fun w hw => ?_, fun r hr q h1 h2 _ _ => ?_⟩
     · simp only [R, List.mem_cons, List.not_mem_nil, or_false] at hr
       rcases hr with rfl | rfl <;> (show _ ∧ _; dsimp only; show 0x80000000 ≤ _ ∧ _ ≤ 0x100000000; omega)
     · simp only [W, List.mem_singleton] at hr; subst hr
@@ -132,6 +132,9 @@ theorem implements1_of_exec {α β : Type} (encA : α → List UInt8) (encB : β
       show Mach.disjoint ⟨frameBase N (getX s 2), _⟩ _
       unfold Mach.disjoint; dsimp only; omega
     · simp only [W, List.mem_singleton] at hw; subst hw; exact hwal
+    · simp only [R, List.mem_cons, List.not_mem_nil, or_false] at hr
+      show 0x80000000 ≤ q ∧ q + 1 ≤ 0x100000000
+      rcases hr with rfl | rfl <;> (dsimp only at h1 h2; omega)
   have hok : codeOK entry (rvF.codeF (rvF.compBF N [0, 3] [2] prog)).length := ⟨hal, rc.1, rc.2⟩
   have hcd : ∀ r ∈ R ++ W ++ [⟨rvF.frameAt s N, 8 * (N + 1)⟩],
       Mach.disjoint ⟨entry.toNat, 4 * (rvF.codeF (rvF.compBF N [0, 3] [2] prog)).length⟩ r := by

@@ -19,6 +19,10 @@ BACK (per target)   AOp ──► List (BitVec 32)       + one law per AOp, prov
 | `Stmt.lean` | middle | model-free copy of `Stmt`/`Exec`, `compS`, `compF`, `wf`, `execS_ok`, `compF_ok` | 142 | 0.9 s |
 | `Mem.lean` | middle | `Region`, `disjoint`, `bytes`, `Out`, `Mem.upd` lemmas, list-of-blocks lemmas | 112 | 0.5 s |
 | `Arr.lean` | middle | `compA`, `compAF`, `wfA`, `RegOK`, `Rel`, `execA_ok`, `compAF_ok` | 279 | 1.8 s |
+| `Frame.lean` | middle | `FOp`, `XOp`, `le8`, `Mem.wr`, `MachineF` (frame + 8-byte laws), `codeF`, `DoneF` | ~190 | 0.8 s |
+| `BLang.lean` | middle | model-free `BExp`/`BStmt`/`BExec` + word arrays (`load64`/`store64`) | ~100 | 0.5 s |
+| `BExp.lean` | middle | `mgenB`, `Frm`, `EnvB`, `genB_ok` | ~130 | 1.3 s |
+| `BStmt.lean` | middle | `wbytes`, `compB`, `compBF`, `wfB`, `Lay`, `RelB`, `HeapB`, `execB_ok`, `compBF_ok` | ~650 | 5.7 s |
 | `Riscv.lean` | back | `phys`, `enc`, `base`, `core`, the 9 law proofs, `rv : Machine` | 364 | 1.7 s |
 | `RiscvExp.lean` | back (corollary) | `code_compile` (same words), `compile_ok'` | 83 | 1.1 s |
 | `RiscvStmt.lean` | back (corollary) | `toM`, `code_compS`, `compileS_ok'`, `compileF_ok'`, `gcd_ok'`, `sum_ok'` | 105 | 1.1 s |
@@ -149,21 +153,75 @@ type_of% @old := rfl` at the end of each file). The code is identical, not just 
 `Testing/asm/triple-data/triple_mach.lean` (asserts the words equal `compile e`) → `Testing/asm/triple.py`: 18/18 cases,
 Lean == RV64 QEMU == RV64 Sail emulator == AArch64 QEMU.
 
-## What does not fit yet
+## The extended interface `MachineF` (`Frame.lean`): spill slots, frames, 8-byte memory
 
-- **Spill slots / merge sort (`BStmt`, `Riscv/Direct/Arr2*.lean`, `compileBF_ok`, `msortCode_implements`)**: not
-  done. `Arr2Code.lean` imports `Riscv/Direct/Loop.lean` (model), and, more importantly, the interface lacks:
-  (1) 8-byte loads/stores at a frame offset (`ld t_k, 8(j+1)(gp)`, `sd t0, 8(j+1)(gp)`): new ops
-  `ldS (d : Reg) (j : Nat)` / `stS (j : Nat) (v : Reg)` with laws over a target value `fp s` (frame base)
-  and `bytes (mem s) (fp s + 8(j+1)) 8 = le8 v`; (2) the frame itself: ops `enter N` / `leave` whose laws
-  read `sp`, compute `fp' = alignDown(sp, 8) - 8(N+1)`, save/restore the register holding `fp` (RISC-V
-  `gp`, callee-saved) in memory at `fp'`, zero the slots, and a `keep` that is *temporarily* broken for
-  that register between `enter` and `leave` (so `keep` would need a frame-aware variant, e.g.
-  `keepF fp`); (3) an extra region (the frame) in the separation side conditions. With those four laws
-  the `BStmt` middle proof would follow `Arr.lean` (variables `≥ 8` related to slot bytes instead of
-  registers).
-- `compileStore_ok` (`MemCompiler.lean`) needs an 8-byte store op (`sd t0, 0(s1)`) and `s1` as an abstract
-  register; not attempted.
+`Machine` is unchanged; `MachineF extends Machine` (so every old corollary and `rv` are untouched). New
+abstract operations `FOp`, encoded by the target's `encX`; programs are `List XOp` (`.a : AOp → XOp`,
+`.f : FOp → XOp`; `codeF`, `codeF_map : codeF (os.map .a) = code os`). New target data:
+
+| field | meaning (RISC-V `rvF`, `Riscv/Back/Frame.lean`) |
+|---|---|
+| `fr : S → BitVec 64` | the frame register, NOT an abstract register (`gp` = `x3`) |
+| `keepF : S → S → Prop` | `keep` without the frame register (all of `x` except `phys` image and `x3`) |
+| `frameAt s n` | base of a frame of `n` slots opened in `s` (`alignDown(sp, 8) - 8 (n + 1)`) |
+| `enterOK s n` | target conditions for `enter n` (`FrOK n (frameBase n sp)`: in RAM, 8-aligned, `n ≤ 16`) |
+| `maxSlots` | addressable slots (`16`) |
+
+Generic laws (`Core`-like): `keepF_of_keep`, `keepF_trans`, `keep_fr` (`keep → fr` unchanged),
+`keep_of_keepF` (`keepF` + `fr` back to its value `→ keep`), `keepF_ra`, `enterOK_frame` (`enterOK s n →
+n ≤ maxSlots ∧ inRAM (frameAt s n) (8(n+1)) ∧ frameAt s n % 8 = 0`).
+
+One law per new operation (all start from `At s pc (encX o)`; `F = ⟨frameAt s n, 8(n+1)⟩`, slot `j` is the
+8 bytes at `fr + 8(j+1)`, `wr m a l` writes the list `l` at `a`, `le8` = little-endian bytes):
+
+| law | side conditions | end state |
+|---|---|---|
+| `law_enter n` | `enterOK s n`, code disjoint from `F` | `ok`, `keepF`, PC after, `fr' = frameAt s n`, registers `≥ r7` kept, `Out [F]`, cell 0 = `le8 (fr s)`, slots `< n` = `le8 0` |
+| `law_leave` | cell 0 at `fr s` in RAM, 8-aligned, holds `le8 w` | `ok`, `keepF`, PC after, `fr' = w`, `Same`, memory unchanged |
+| `law_ldS d j` | `d < 7`, `j < maxSlots`, slot in RAM, aligned, holds `le8 v` | `Done`, `Set1 d v`, memory unchanged |
+| `law_stS j v` | `v = r0`, `j < maxSlots`, slot in RAM, aligned | `Done`, `Same`, `mem' = wr mem slot (le8 v)` |
+| `law_ld d a` | `d = a = r0`, `[a, a+8)` in RAM, `a % 8 = 0`, holds `le8 v` | `Done`, `Set1 d v`, memory unchanged |
+| `law_sd v a` | `v = r1`, `a = r0`, in RAM, aligned | `Done`, `Same`, `mem' = wr mem a (le8 v)` |
+
+RISC-V proofs: `enter n` = `prologue n` (from `prologue_ok`), `leave` = `ld gp, 0(gp)`, `ldS`/`stS` =
+`iLdS`/`iSdS` (`step_ldS`/`step_sdS`), `ld`/`sd` = `ld t0, 0(t0)` / `sd t1, 0(t0)` (`W2.ldT`/`W2.sdT`), all
+from `Riscv/Steps/Arr2Words.lean` (~200 lines). The code-stability side condition of `law_enter` (code
+disjoint from the frame) and the store laws are separate fields, so the planned "code frozen" law and a
+per-store `writable` hypothesis can be added to them one field at a time. The `apc` change (`Base.writable`,
+`law_sb` with `writable s a`) is merged: `Lay` carries the matching `wr` field for byte blocks; `law_stS`,
+`law_sd`, `law_enter` still use "in RAM" (to do: give them `writable` too).
+
+**What an ARM instance must now prove** (on top of the `Machine` list above): the five generic `MachineF`
+laws (trivial for a `keep` that is "all registers outside `phys` and the frame register"), and the six
+operation laws: `enter n` = `sub x?, sp, #…; and …; str fp, [x?]; mov fp, x?; str xzr, [fp, #8(j+1)]…`,
+`leave` = `ldr fp, [fp]`, `ldS` = `ldr xd, [fp, #8(j+1)]`, `stS` = `str x, [fp, #8(j+1)]`, `ld`/`sd` =
+`ldr x0, [x0]` / `str x1, [x0]`; `fr` = a callee-saved register the instance reserves (e.g. `x28`).
+
+## `BStmt` in the middle (`BLang.lean`, `BExp.lean`, `BStmt.lean`)
+
+`BLang.lean`: model-free copy of `Proven.BExp`/`BStmt`/`BExec` (`Riscv/Direct/Arr2Code.lean` imports the
+model) plus WORD ARRAYS: `BState.wheap : List (List (BitVec 64))`, `load64 v b i` (`v := wheap[b][i]`),
+`store64 b i e`. A word block of `k` words is `8k` bytes at an 8-aligned base, word `i` = `le8` bytes at
+`8i` (`wbytes`). `BExp.lean`: `mgenB` (slot variable = one `ldS`), `genB_ok`. `BStmt.lean`: `compB bv wv`,
+`compBF N bv wv p = [enter N] ++ compB p ++ [leave, ret]`, `wfB`, `Lay` (regions in RAM, disjoint, disjoint
+from the frame, word blocks aligned, byte blocks writable), `RelB`, `execB_ok`, **`compBF_ok`** (from the laws
+only; axioms `propext`, `Classical.choice`, `Quot.sound`):
+
+```
+compBF_ok N bv wv … (hp : wfB N bv wv p) (hex : BExec p σ σ') (hA : At s pc (codeF (compBF N bv wv p)))
+  (hen : enterOK s N) (hL : Lay N (frameAt s N) R W) (code disjoint from R ++ W ++ [F])
+  (vars < 8 in avar) (slots of σ = 0) (hheap : HeapB bv wv R W σ s) (retOK (ra s)) :
+  runsTo s fun s' => pcIs s' (ra s) ∧ (vars < 8 = σ') ∧ HeapB bv wv R W σ' s' ∧
+    Out (R ++ W ++ [F]) (mem s) (mem s') ∧ ok s' ∧ keep s s'
+```
+
+RISC-V (`Riscv/Back/BStmt.lean`, `SortMerge.lean`): `code_compBF : rvF.codeF (rvF.compBF N bv [] (toMS p)) =
+compileBF N bv p` (same words), `compileBF_ok'`, `msortCode_ok_m`, `msortCode_implements_m` with
+`type_of% = type_of%` checks against `compileBF_ok`, `msortCode_ok`, `msortCode_implements`.
+All 4 middle files of this section and `Frame.lean` compile unchanged under Lean 4.34.1.
+
+Limits: as `BStmt.wf` (7 temporaries, ≤ 16 slots, 8 register variables); word blocks addressed by their
+base variable, which must hold the region base at entry (no computed bases).
 
 ## Room for optimisation passes
 

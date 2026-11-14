@@ -123,6 +123,116 @@ theorem msortCode_implements_m : ImplementsMapped2 msortCode (fun x => x.mergeSo
     rw [hxl, hfb] at hr
     rcases hr with rfl | rfl | rfl <;> (dsimp only; omega)
 
+namespace Mach.Riscv
+
+/-- `compileBF_ok'` with the full register frame `rv.keep` in the conclusion -/
+theorem compileBF_okK (N : Nat) (bv : List Nat) (hbv : ∀ x ∈ bv, x < 8 + N) {p : Proven.BStmt} (hp : p.wf N bv)
+    {R : List Proven.Region} (hR : RegOK R) {σ σ' : Proven.BState} (hex : Proven.BExec p σ σ') {s : St} (h : Cfg s) {pc : BitVec 64}
+    (hpc : s.regs.get? .PC = some pc) (hc : codeAt s pc (compileBF N bv p)) (hok : codeOK pc (compileBF N bv p).length)
+    (hf : FrOK N (frameBase N (getX s 2))) (hfd : ∀ r ∈ R, Proven.disjoint ⟨frameBase N (getX s 2), 8 * (N + 1)⟩ r)
+    (hcd : ∀ r ∈ (⟨frameBase N (getX s 2), 8 * (N + 1)⟩ : Proven.Region) :: R,
+      Proven.disjoint ⟨pc.toNat, 4 * (compileBF N bv p).length⟩ r)
+    (hreg : ∀ i : Fin 8, getX s (A8 i) = σ.env i.val) (hslot : ∀ j < N, σ.env (8 + j) = 0)
+    (hheap : HeapRel bv R σ s) (hra : (getX s 1).toNat % 2 = 0) :
+    runsTo s fun s' => s'.regs.get? .PC = some (getX s 1) ∧ (∀ i : Fin 8, getX s' (A8 i) = σ'.env i.val) ∧
+      HeapRel bv R σ' s' ∧ unchangedOutside s s' ((⟨frameBase N (getX s 2), 8 * (N + 1)⟩ : Proven.Region) :: R) ∧
+      Cfg s' ∧ rv.keep s s' := by
+  have ec := code_compBF N bv p hp
+  rw [← ec] at hc hok hcd
+  have hw := (code_compB N bv p hp).2
+  have hL : rvF.Lay N (rvF.frameAt s N) (R.map toR) [] :=
+    ⟨fun r hr => by obtain ⟨r', hr', rfl⟩ := toR_mem hr; exact hR.1 r' hr', fun r hr => (nomatch hr),
+      List.pairwise_map.2 (hR.2.imp id), List.Pairwise.nil, fun _ _ w hw => (nomatch hw),
+      fun r hr => by obtain ⟨r', hr', rfl⟩ := toR_mem hr; exact hfd r' hr', fun w hw => (nomatch hw),
+      fun w hw => (nomatch hw), fun r hr a h1 h2 _ _ => by
+        obtain ⟨r', hr', rfl⟩ := toR_mem hr
+        have := hR.1 r' hr'; unfold Proven.Region.inRAM at this
+        exact ⟨Nat.le_trans this.1 h1, by have := this.2; dsimp only [toR] at h2; omega⟩⟩
+  have hcd' : ∀ r ∈ R.map toR ++ [] ++ [⟨rvF.frameAt s N, 8 * (N + 1)⟩],
+      disjoint ⟨pc.toNat, 4 * (rvF.codeF (rvF.compBF N bv [] (toMS p))).length⟩ r := fun r hr => by
+    rcases List.mem_append.1 hr with hr | hr
+    · rw [List.append_nil] at hr
+      obtain ⟨r', hr', rfl⟩ := toR_mem hr; exact hcd r' (List.mem_cons_of_mem _ hr')
+    · simp only [List.mem_singleton] at hr; subst hr; exact hcd _ (List.mem_cons_self ..)
+  have hheap' : rvF.HeapB bv [] (R.map toR) [] (toMSt σ) s :=
+    ⟨by simpa using hheap.hlen, by simpa using hheap.bvlen, fun b hb => by simpa [toR] using hheap.base b (by simpa using hb),
+      fun b hb => by simpa [toR] using hheap.blen b (by simpa using hb),
+      fun b hb => by
+        have hb' : b < R.length := by simpa using hb
+        rw [getR hb']; exact (bytes_eq s _ _).trans (hheap.bytes b hb'), rfl, rfl,
+      fun b hb => (nomatch hb), fun b hb => (nomatch hb), fun b hb => (nomatch hb)⟩
+  refine runsTo_mono (rvF.compBF_ok N bv [] hbv (fun x hx => (nomatch hx)) hw (exec_toM hex) ⟨h, hpc, hc, hok⟩
+    hf hL hcd' (fun i => by show getX s (phys (avar i)) = _; rw [phys_avar]; exact hreg i) hslot hheap' hra) ?_
+  rintro s' ⟨p1, p2, p3, p4, p5, p6⟩
+  refine ⟨p1, fun i => by have := p2 i; rwa [show rvF.get s' (avar i) = getX s' (A8 i) by
+      show getX s' (phys (avar i)) = _; rw [phys_avar]] at this, ⟨by simpa using p3.hlen, by simpa using p3.bvlen,
+      fun b hb => by have := p3.base b (by simpa using hb); rw [getR hb] at this; exact this,
+      fun b hb => by have := p3.blen b (by simpa using hb); rw [getR hb] at this; exact this,
+      fun b hb => by
+        have := p3.rbytes b (by simpa using hb); rw [getR hb] at this; exact (bytes_eq s' _ _).symm.trans this⟩,
+    fun a ha => p4 a fun r hr => ?_, p5, p6⟩
+  rcases List.mem_append.1 hr with hr | hr
+  · rw [List.append_nil] at hr
+    obtain ⟨r', hr', rfl⟩ := toR_mem hr; exact ha r' (List.mem_cons_of_mem _ hr')
+  · simp only [List.mem_singleton] at hr; subst hr; exact ha _ (List.mem_cons_self ..)
+
+end Mach.Riscv
+
+/-- `msortCode_ok_m` with the full register frame `keep` -/
+theorem msortCode_ok_k {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc)
+    (hc : codeAt s pc msortCode) (hok : codeOK pc msortCode.length) (hra : (getX s 1).toNat % 2 = 0)
+    {xs scr out : List (BitVec 8)} {inb scb outb : Nat}
+    (hR : RegOK [⟨inb, xs.length⟩, ⟨scb, xs.length⟩, ⟨outb, xs.length⟩])
+    (hf : FrOK 7 (frameBase 7 (getX s 2)))
+    (hfd : ∀ r ∈ [(⟨inb, xs.length⟩ : Region), ⟨scb, xs.length⟩, ⟨outb, xs.length⟩],
+      disjoint ⟨frameBase 7 (getX s 2), 8 * (7 + 1)⟩ r)
+    (hcd : ∀ r ∈ [(⟨frameBase 7 (getX s 2), 8 * (7 + 1)⟩ : Region), ⟨inb, xs.length⟩, ⟨scb, xs.length⟩,
+      ⟨outb, xs.length⟩], disjoint ⟨pc.toNat, 4 * msortCode.length⟩ r)
+    (h0 : getX s 10 = BitVec.ofNat 64 inb) (h1 : getX s 11 = BitVec.ofNat 64 xs.length)
+    (h2 : getX s 12 = BitVec.ofNat 64 scb) (h3 : getX s 13 = BitVec.ofNat 64 outb)
+    (hx : bytesAt s inb xs.length = xs.map some) (hs : bytesAt s scb xs.length = scr.map some)
+    (ho : bytesAt s outb xs.length = out.map some) :
+    runsTo s fun s' => s'.regs.get? .PC = some (getX s 1) ∧
+      bytesAt s' outb xs.length = (xs.mergeSort leB).map some ∧ bytesAt s' inb xs.length = xs.map some ∧
+      unchangedOutside s s' [⟨frameBase 7 (getX s 2), 8 * (7 + 1)⟩, ⟨scb, xs.length⟩, ⟨outb, xs.length⟩] ∧
+      Cfg s' ∧ Mach.Riscv.rv.keep s s' := by
+  have hn : xs.length < 2 ^ 32 := by
+    have := hR.1 _ (List.mem_cons_self ..); unfold Region.inRAM at this; dsimp only at this; omega
+  have hsl : scr.length = xs.length := by simpa [bytesAt] using (congrArg List.length hs).symm
+  have hol : out.length = xs.length := by simpa [bytesAt] using (congrArg List.length ho).symm
+  obtain ⟨σ', hex, scr', hh⟩ := msortProg_mergeSort xs scr out ⟨envOf s, [xs, scr, out]⟩ rfl
+    (by simpa [envOf] using h1) hn hsl hol
+  have hheap : HeapRel [0, 2, 3] [⟨inb, xs.length⟩, ⟨scb, xs.length⟩, ⟨outb, xs.length⟩]
+      ⟨envOf s, [xs, scr, out]⟩ s :=
+    ⟨rfl, rfl, fun b hb => by
+        obtain _ | _ | _ | b := b
+        · simpa [envOf] using h0
+        · simpa [envOf] using h2
+        · simpa [envOf] using h3
+        · simp at hb; omega,
+      fun b hb => by
+        obtain _ | _ | _ | b := b
+        · rfl
+        · simpa using hsl
+        · simpa using hol
+        · simp at hb; omega,
+      fun b hb => by
+        obtain _ | _ | _ | b := b
+        · simpa using hx
+        · simpa using hs
+        · simpa using ho
+        · simp at hb; omega⟩
+  refine runsTo_mono (Mach.Riscv.compileBF_okK 7 [0, 2, 3] (by decide) msortProg_wf hR hex h hpc hc hok hf hfd hcd
+    (fun i => by simp [envOf]) (fun j hj => by simp [envOf]; omega) hheap hra) ?_
+  rintro s' ⟨p1, p2, p3, p4, p5, p6⟩
+  have e0 := p3.bytes 0 (by simp); have e2 := p3.bytes 2 (by simp)
+  simp only [hh] at e0 e2
+  have e0' : bytesAt s' inb xs.length = xs.map some := by simpa using e0
+  have hu : unchangedOutside s s' ((⟨inb, xs.length⟩ : Region) :: [⟨frameBase 7 (getX s 2), 8 * (7 + 1)⟩,
+      ⟨scb, xs.length⟩, ⟨outb, xs.length⟩]) := fun a ha => p4 a fun r hr => ha r (by
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hr ⊢; rcases hr with e | e | e | e <;> simp [e])
+  exact ⟨p1, by simpa using e2, e0', unchanged_drop hu (by rw [e0', hx]), p5, p6⟩
+
 example : type_of% @msortCode_ok_m = type_of% @msortCode_ok := rfl
 example : type_of% @msortCode_implements_m = type_of% @msortCode_implements := rfl
 

@@ -5,6 +5,7 @@ pipe with `space n > |f x|` does not fit `Implements1` with the same code; `a2`,
 temporary for it).  `compileP_implements1`: every accepted `compileP` pipe with `Pipe.space ≤ Pipe.len`. -/
 import Compiler.Front.PipeMachine
 import Spec.Implements1
+import Riscv.Back.Keep
 
 set_option linter.unusedVariables false
 
@@ -80,7 +81,7 @@ theorem implements1_of_exec {prog : AStmt} (hwf : prog.wf [0, 3]) {f : List UInt
         · simpa [tbs, List.map_map, Function.comp_def] using hx
         · exact ho
         · simp at hb; omega⟩
-  refine runsTo_mono (compileAF_ok [0, 3] hwf hR hexec h hpc (codeAt_of_codeBytes hok hcode) hok hcd hrel
+  refine runsTo_mono (Mach.Riscv.compileAF_okK [0, 3] hwf hR hexec h hpc (codeAt_of_codeBytes hok hcode) hok hcd hrel
     (by rw [hra']; omega)) ?_
   rintro s' ⟨p1, p2, p3, p4, p5⟩
   have e1 := p2.bytes 1 (by simp)
@@ -89,7 +90,7 @@ theorem implements1_of_exec {prog : AStmt} (hwf : prog.wf [0, 3]) {f : List UInt
   have hfl : (f x).length ≤ L := by
     have := congrArg List.length htk
     simp only [List.length_take, List.length_map] at this; omega
-  refine ⟨by rw [p1, hra'], ?_, ?_, p5, p4⟩
+  refine ⟨by rw [p1, hra'], ?_, ?_, Mach.Riscv.abi_of_keep h p4 p5, p4, fun h => nomatch h⟩
   · rw [← bytesAt_take s' output.base hfl, e1', ← List.map_take, htk]; simp [tbs, List.map_map]
   · have e0 := p2.bytes 0 (by simp)
     simp only [hh] at e0
@@ -105,7 +106,8 @@ theorem implements1_of_exec {prog : AStmt} (hwf : prog.wf [0, 3]) {f : List UInt
     · apply p3 a
       intro r hr
       simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
-      have hoo := ha output (by simp)
+      have hoo := ha ⟨output.base, (f x).length⟩ (by simp)
+      dsimp only at hoo
       rcases hr with rfl | rfl <;> (dsimp only; omega)
 
 

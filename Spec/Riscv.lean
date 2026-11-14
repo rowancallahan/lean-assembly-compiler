@@ -60,7 +60,9 @@ def calleeSavedKept (s s' : St) : Prop :=
 def codeBytes (code : List (BitVec 32)) : List (Option (BitVec 8)) :=
   code.flatMap fun w => [w.extractLsb' 0 8, w.extractLsb' 8 8, w.extractLsb' 16 8, w.extractLsb' 24 8].map some
 
-/-- `code`, placed anywhere, implements `f` on byte lists of length `≤ maxLen`: called with
+/-- OLD statement, superseded by `Implements1` (`Spec/Implements1.lean`: one work block, input unchanged,
+`gp`/`tp` kept, hosting as a named hypothesis); kept because existing theorems are stated with it.
+`code`, placed anywhere, implements `f` on byte lists of length `≤ maxLen`: called with
 `a0 = input, a1 = length, a2 = scratch, a3 = output, sp = stack top, ra`, it runs to `ra` with
 `f x` in `output`, other memory and callee-saved registers unchanged, `Cfg` kept. -/
 def Implements (code : List (BitVec 32)) (f : List UInt8 → List UInt8)

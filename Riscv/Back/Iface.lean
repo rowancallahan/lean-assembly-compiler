@@ -46,6 +46,7 @@ def base : Base where
   ra s := getX s 1
   retOK v := v.toNat % 2 = 0
   instrAt := Proven.instrAt
+  writable _ a := 0x80000000 ≤ a ∧ a + 1 ≤ 0x100000000
   ramLo := 0x80000000
   ramHi := 0x100000000
   bzOK n := 2 * n < 2048

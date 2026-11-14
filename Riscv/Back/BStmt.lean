@@ -168,7 +168,10 @@ theorem compileBF_ok' (N : Nat) (bv : List Nat) (hbv : ∀ x ∈ bv, x < 8 + N) 
     ⟨fun r hr => by obtain ⟨r', hr', rfl⟩ := toR_mem hr; exact hR.1 r' hr', fun r hr => (nomatch hr),
       List.pairwise_map.2 (hR.2.imp id), List.Pairwise.nil, fun _ _ w hw => (nomatch hw),
       fun r hr => by obtain ⟨r', hr', rfl⟩ := toR_mem hr; exact hfd r' hr', fun w hw => (nomatch hw),
-      fun w hw => (nomatch hw)⟩
+      fun w hw => (nomatch hw), fun r hr a h1 h2 _ _ => by
+        obtain ⟨r', hr', rfl⟩ := toR_mem hr
+        have := hR.1 r' hr'; unfold Proven.Region.inRAM at this
+        exact ⟨Nat.le_trans this.1 h1, by have := this.2; dsimp only [toR] at h2; omega⟩⟩
   have hcd' : ∀ r ∈ R.map toR ++ [] ++ [⟨rvF.frameAt s N, 8 * (N + 1)⟩],
       disjoint ⟨pc.toNat, 4 * (rvF.codeF (rvF.compBF N bv [] (toMS p))).length⟩ r := fun r hr => by
     rcases List.mem_append.1 hr with hr | hr

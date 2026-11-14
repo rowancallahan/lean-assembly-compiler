@@ -78,6 +78,9 @@ structure Base where
   ra : S → BitVec 64
   retOK : BitVec 64 → Prop
   instrAt : S → BitVec 64 → BitVec 32 → Prop
+  /-- the byte at this address may be stored to (`sb`).  Supplied by the caller of a store; a target with
+  plain RAM takes "in RAM", a target with page permissions takes "mapped writable". -/
+  writable : S → Nat → Prop
   /-- RAM `[ramLo, ramHi)`: code and data live here -/
   ramLo : Nat
   ramHi : Nat
@@ -168,7 +171,7 @@ structure Machine extends Core where
     runsTo s fun s' => toBase.Done s s' (next pc (enc (.lbu d a)).length) ∧
       toBase.Set1 s s' d (v.setWidth 64) ∧ mem s' = mem s
   law_sb : ∀ {v a : Reg} {s : S} {pc : BitVec 64}, v.val = 1 → a.val = 0 →
-    toBase.At s pc (enc (.sb v a)) → toBase.inRAM (get s a).toNat 1 →
+    toBase.At s pc (enc (.sb v a)) → writable s (get s a).toNat →
     runsTo s fun s' => toBase.Done s s' (next pc (enc (.sb v a)).length) ∧
       toBase.Same s s' ∧ mem s' = (mem s).upd (get s a).toNat ((get s v).setWidth 8)
   law_bz : ∀ {c : Reg} {n : Nat} {s : S} {pc : BitVec 64}, c.val = 0 → bzOK n → toBase.At s pc (enc (.bz c n)) →

@@ -40,7 +40,8 @@ def wfA (bv : List (Fin 8)) : AStmt → Prop
       M.jmpOK ((M.code (mgen8 c 0)).length + M.lenBz + (M.code (M.compA bv body)).length)
 
 /-- data regions: in RAM, pairwise disjoint -/
-def RegOK (R : List Region) : Prop := (∀ r ∈ R, M.inRAM r.base r.len) ∧ R.Pairwise disjoint
+def RegOK (R : List Region) : Prop := (∀ r ∈ R, M.inRAM r.base r.len) ∧ R.Pairwise disjoint ∧
+  ∀ r ∈ R, ∀ a, r.base ≤ a → a < r.base + r.len → ∀ s, M.ok s → M.writable s a
 
 /-- the machine state represents `σ` -/
 structure Rel (bv : List (Fin 8)) (R : List Region) (σ : AState) (s : M.S) : Prop where
@@ -166,7 +167,8 @@ theorem execA_ok (bv : List (Fin 8)) {R : List Region} (hR : M.RegOK R) :
     have a₂ : M.get s₂ (rk 0) = (addrE bv b i).denote σ.env := by
       rw [k₂ _ (.inl (by rw [rk_val (by omega)]; omega)), v₁]
     refine M.runsTo_mono (M.law_sb (rk_val (by omega)) (rk_val (by omega))
-      (Core.Done.at _ d₂ (M.codeAt_mem (m₂.trans m₁) hc3) ho3) (by rw [a₂, ha]; exact hram))
+      (Core.Done.at _ d₂ (M.codeAt_mem (m₂.trans m₁) hc3) ho3)
+      (by rw [a₂, ha]; exact hR.2.2 _ (List.getElem_mem hbR) _ (Nat.le_add_right _ _) (Nat.add_lt_add_left hil _) s₂ d₂.ok))
       fun s₃ ⟨d₃, st₃, m₃⟩ => ⟨Core.Done.trans _ d₁ (Core.Done.trans _ d₂ d₃), ?_, ?_⟩
     · rw [a₂, ha, v₂, m₂, m₁] at m₃
       intro x hx
@@ -183,7 +185,7 @@ theorem execA_ok (bv : List (Fin 8)) {R : List Region} (hR : M.RegOK R) :
       · by_cases hbb : b' = b
         · subst hbb
           rw [m₃, bytes_upd_in hil, hrel.bytes b' hb', getD_set_self _ _ hb, map_set, getD_get _ hb]
-        · have hd := pairwise_get hR.2 hb' hbR hbb
+        · have hd := pairwise_get hR.2.1 hb' hbR hbb
           have hil' : (i.denote σ.env).toNat < R[b].len := hil
           unfold disjoint at hd
           rw [m₃, bytes_upd_out (fun j hj => by omega), hrel.bytes b' hb', getD_set_ne _ _ hbb]

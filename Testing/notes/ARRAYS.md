@@ -289,3 +289,26 @@ Bench (QEMU 8.2.2 with `-icount shift=0`, random bytes; instructions per call):
 |---|---|---|---|
 | 1000 | 920 308 | 10 556 636 | 166 171 |
 | 100000 | 139 400 605 | not run (O(n²), ~10^11) | 28 146 287 |
+
+## Word arrays and the middle-layer `BStmt` (`Compiler/BLang.lean`, `BStmt.lean`, `Riscv/Back/BStmt.lean`)
+
+`BStmt` now lives (model-free) in the middle layer, compiled against the extended interface `MachineF`
+(`Testing/notes/MACH.md`), and has WORD ARRAYS: a second heap `wheap` of blocks of 64-bit words,
+`load64 v b i` / `store64 b i e` (word `i` of word block `b`; the block is `8 · length` bytes at an 8-aligned
+base held in variable `wv[b]`; word `i` is the little-endian 8 bytes at `base + 8 i`; address computed as
+`base + (i << 3)`; out of bounds = no derivation). Middle theorem `MachineF.compBF_ok`; RISC-V words for
+`ld`/`sd`: `ld t0, 0(t0)`, `sd t1, 0(t0)`. The old `compileBF_ok` and `msortCode_implements` are re-derived
+through it with the same statements and the same words.
+
+Limits (`wfB N bv wv`): as before (7 temporaries, `N ≤ 16` slots, 8 register variables) plus: `load64`/`store64`
+index depth `< 6`; base variables (byte and word) are never assigned; word blocks 8-aligned (`Lay.wal`).
+
+### CRC-32 (`Riscv/Examples/Crc.lean`)
+
+Reference `crc32`: BITWISE (8 shift/xor steps per byte, polynomial `0xEDB88320`, init/final `0xFFFFFFFF`).
+Program `crcP`: TABLE-DRIVEN; the 256-entry table of 64-bit words is BUILT AT RUN TIME in word block 0, the
+first 2048 bytes of the work block (no constant data block is needed, so the calling convention is unchanged),
+then one table lookup per byte. `byteStep_tab` (linearity of the bit step) is the identity
+`byteStep c b = step8 (lo8 (c ^ b)) ^ (c >> 8)`. Machine theorem: `crc32_implements1` (`Implements1` form,
+`space n = 2063`). Tests: `Testing/asm/crc_test.py check N` (QEMU and the Sail C emulator against
+`zlib.crc32`, including `"123456789" → 0xCBF43926`), words from `Testing/asm/emit_crc.lean`.

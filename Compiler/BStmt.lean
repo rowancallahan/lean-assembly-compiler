@@ -134,6 +134,8 @@ structure Lay (N fp : Nat) (R W : List Region) : Prop where
   fr : ∀ r ∈ R, disjoint ⟨fp, 8 * (N + 1)⟩ r
   fw : ∀ w ∈ W, disjoint ⟨fp, 8 * (N + 1)⟩ w
   wal : ∀ w ∈ W, w.base % 8 = 0
+  /-- byte blocks may be stored to (`sb`; `Base.writable`) -/
+  wr : ∀ r ∈ R, ∀ a, r.base ≤ a → a < r.base + r.len → ∀ s, M.ok s → M.writable s a
 
 /-- the machine state represents `σ` -/
 structure RelB (N fp : Nat) (bv wv : List Nat) (R W : List Region) (σ : BState) (s : M.S) : Prop where
@@ -378,7 +380,8 @@ theorem execB_ok {N fp : Nat} (hF : M.Frm N fp) (bv wv : List Nat) (hbv : ∀ x 
     have a₂ : M.get s₂ (rk 0) = (addrB bv b i).denote σ.env := by
       rw [k₂ _ (.inl (by rw [rk_val (by omega)]; omega)), v₁]
     refine M.runsTo_mono (M.law_sb (rk_val (by omega)) (rk_val (by omega))
-      (Core.Done.at _ d₂ (M.codeAt_mem (m₂.trans m₁) hc3) ho3) (by rw [a₂, ha]; exact hram))
+      (Core.Done.at _ d₂ (M.codeAt_mem (m₂.trans m₁) hc3) ho3)
+      (by rw [a₂, ha]; exact hL.wr _ (List.getElem_mem hbR) _ (Nat.le_add_right _ _) (by omega) s₂ d₂.ok))
       fun s₃ ⟨d₃, st₃, m₃⟩ => ⟨Core.Done.trans _ d₁ (Core.Done.trans _ d₂ d₃), ?_, ?_⟩
     · rw [a₂, ha, v₂, m₂, m₁] at m₃
       intro x hx
