@@ -30,15 +30,19 @@ theorem timesProg_exec (σ : Env) : ∃ σ', Exec timesProg σ σ' ∧ σ' 0 = t
   exact ⟨_, .seq hl .assign, by simp [Env.set, Exp.denote, hq]⟩
 
 /-- the 64-bit loop computes the product mod 2^64 (so the book's `times` while n*k < 2^64) -/
-theorem timesDown_eq (n k acc : BitVec 64) : timesDown n k acc = acc + n * k := by
-  induction' h : k.toNat using Nat.strong_induction_on with m ih generalizing k acc
-  rw [timesDown.eq_def]
-  by_cases hk : k = 0
-  · simp [hk]
-  · rw [if_neg hk, ih (k - 1).toNat (by rw [← h]; exact sub_one_lt hk) (k - 1) (acc + n) rfl]
-    have : k = (k - 1) + 1 := by simp
-    conv_rhs => rw [this]
-    rw [BitVec.mul_add, BitVec.mul_one]; ac_rfl
+theorem timesDown_eq' : ∀ (m : Nat) (n k acc : BitVec 64), k.toNat = m → timesDown n k acc = acc + n * k := by
+  intro m
+  induction m using Nat.strongRecOn with
+  | _ m ih =>
+    intro n k acc h
+    rw [timesDown.eq_def]
+    by_cases hk : k = 0
+    · simp [hk]
+    · rw [if_neg hk, ih (k - 1).toNat (by rw [← h]; exact sub_one_lt hk) n (k - 1) (acc + n) rfl]
+      have h1 : n * k = n * (k - 1 + 1) := by rw [BitVec.sub_add_cancel]
+      rw [h1, BitVec.mul_add, show n * (1 : BitVec 64) = n from by simp, BitVec.add_assoc, BitVec.add_comm n]
+
+theorem timesDown_eq (n k acc : BitVec 64) : timesDown n k acc = acc + n * k := timesDown_eq' _ n k acc rfl
 
 theorem timesProg_wf : timesProg.wf := by simp only [timesProg, Stmt.wf]; decide +kernel
 
