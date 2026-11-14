@@ -21,7 +21,7 @@ namespace Proven
 
 inductive BOp where | add | sub | and | or | xor
   deriving DecidableEq, Repr
-inductive BCmp where | lt | le | eq
+inductive BCmp where | lt | le | eq | ne
   deriving DecidableEq, Repr
 
 def BOp.eval : BOp → UInt8 → UInt8 → UInt8
@@ -49,6 +49,7 @@ def BExp.denote (acc x : UInt8) : BExp → UInt8
   | .ite .lt a b t e => if a.denote acc x < b.denote acc x then t.denote acc x else e.denote acc x
   | .ite .le a b t e => if a.denote acc x ≤ b.denote acc x then t.denote acc x else e.denote acc x
   | .ite .eq a b t e => if a.denote acc x = b.denote acc x then t.denote acc x else e.denote acc x
+  | .ite .ne a b t e => if a.denote acc x ≠ b.denote acc x then t.denote acc x else e.denote acc x
 
 def BExp.noAcc : BExp → Bool
   | .x | .lit _ => true
@@ -75,6 +76,7 @@ def BExp.tr : BExp → AExp
   | .ite .lt a b t e => .ite (.bin .ult a.tr b.tr) t.tr e.tr
   | .ite .le a b t e => .ite (.bin .ult b.tr a.tr) e.tr t.tr
   | .ite .eq a b t e => .ite (.bin .eq a.tr b.tr) t.tr e.tr
+  | .ite .ne a b t e => .ite (.bin .eq a.tr b.tr) e.tr t.tr
 
 /-! ## Word expressions (fold steps with a 64-bit accumulator) -/
 

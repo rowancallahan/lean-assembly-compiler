@@ -72,6 +72,7 @@ theorem BExp.tr_ok (a x : UInt8) (env : AEnv) (h6 : env 6 = zx x) :
       · simp [hc, UInt8.not_lt.mpr hc]
       · simp [hc, UInt8.not_le.mp hc]
     · by_cases hc : p.denote a x = q.denote a x <;> simp [hc]
+    · by_cases hc : p.denote a x = q.denote a x <;> simp [hc]
 
 theorem WExp.tr_ok (a : BitVec 64) (x : UInt8) (env : AEnv) (h5 : env 5 = a) (h6 : env 6 = zx x) :
     ∀ w : WExp, w.tr.denote env = w.denote a x
