@@ -54,6 +54,11 @@ hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read 
 - Resources in the spec: ONE bound, `space n` = extra bytes of memory the code may use for an input of n bytes
   (a single work block; the compiler carves it into scratch/frame/spill slots as it likes). No separate "stack"/"scratch"
   in the user-facing statement. Registers: a fixed convention (which are preserved), not a counted resource.
+- Unbounded `Nat` and termination (owner): three accepted ways, chosen per function, all visible in the statement:
+  (1) bounds as explicit ARGUMENTS/hypotheses of the function or theorem (e.g. `(h : n < 2^64)`, a bound parameter);
+  (2) bounded types in the signature (`BitVec 64`, `UInt8`, `Fin n`), so no side condition is needed;
+  (3) FUEL: the function takes a step budget and returns `none`/a default when it runs out — termination is then
+  trivial and the machine code has a proved step bound. Out-of-range results use `Option`/`Except` through `Encode`.
 - Memory: blocks are lists of cells; layouts of pairwise-disjoint blocks; owner reviews byte layouts in `Encode.lean`.
 
 # Far future (noted, not planned)
