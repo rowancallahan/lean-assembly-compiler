@@ -30,3 +30,9 @@ compiled to proved ARM and RISC-V code; lean-svg's `render` as a large client; a
 - The repo is now the working directory; `/home/user/proven` is retired.
 - `Arm/proofs/check.sh` stages `Spec/Code.lean` / `Arm/CompilerArm.lean` instead of keeping copies.
 - New `Testing/scripts/check.sh` (build, axioms vs `expected-axioms.txt`, forbidden-word grep).
+- Clean rebuild from the repo: `lake build Spec Compiler Riscv Arm`, 194 jobs, 2745 s (Words 406 s, BranchWords
+  527 s, ArrWords 74 s, MemWords 1728 s, Arr2Words 933 s; lake ran two modules in parallel). `Testing/scripts/check.sh`:
+  all nine axiom lists identical to the pre-move build, no forbidden words. Harnesses re-run from `Testing/asm/`
+  (triple.py on 3 cases / 10101 inputs, loop_test sum+gcd 20, arr_test sort 20, msort_test check 10,
+  pipe_test mapsort 10): all pass; `emit_*.lean` and `triple-data/triple.lean` re-emit byte-identical words.
+  `Arm/proofs/check.sh Proven/Code Proven/CompilerArm Arm/Base Arm/Flags` OK from the new location.
