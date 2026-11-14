@@ -74,4 +74,90 @@ theorem full_ret {s : St} {a : AState} (hf : ArmFull s) (ha : Abs s a)
   show ((postRegs m1 p 0 true (a.x 30)).insert .__cycle_count (c + 1)).get? ._PC = _
   simp [postRegs, m1, Std.ExtDHashMap.get?_insert]
 
+/-! ## Runs of full machine steps -/
+
+/-- `n` full machine steps (`stepModel`) from `s` to `s'` -/
+def ArmSteps : Nat → St → St → Prop
+  | 0, s, s' => s' = s
+  | n + 1, s, s' => ∃ s₁, stepModel s = .ok () s₁ ∧ ArmSteps n s₁ s'
+
+/-- the machine reaches a state satisfying `P` (the ARM analogue of the RISC-V `runsTo`) -/
+def armRunsTo (s : St) (P : St → Prop) : Prop := ∃ n s', ArmSteps n s s' ∧ P s'
+
+theorem ArmSteps.append : ∀ {m n : Nat} {s₁ s₂ s₃ : St}, ArmSteps m s₁ s₂ → ArmSteps n s₂ s₃ → ArmSteps (m + n) s₁ s₃
+  | 0, n, s₁, s₂, s₃, h₁, h₂ => by cases h₁; simpa using h₂
+  | m + 1, n, s₁, s₂, s₃, ⟨t, ht, h₁⟩, h₂ => by
+    rw [show m + 1 + n = (m + n) + 1 by omega]; exact ⟨t, ht, ArmSteps.append h₁ h₂⟩
+
+/-- the words `ws` sit at consecutive word addresses from byte address `a` -/
+def CodeAt (m : Std.ExtHashMap Nat (BitVec 8)) (a : Nat) (ws : List (BitVec 32)) : Prop :=
+  ∀ i (h : i < ws.length), MemWord m (a + 4 * i) ws[i]
+
+theorem pc_add (pc : BitVec 64) (k : Nat) : pc + 4 + BitVec.ofNat 64 (4 * k) = pc + BitVec.ofNat 64 (4 * (k + 1)) := by
+  apply BitVec.eq_of_toNat_eq; simp [BitVec.toNat_add]; omega
+
+/-- **simulation by full steps**: on emitted words laid out from the PC, the machine follows the small machine -/
+theorem run_full : ∀ (ws : List (BitVec 32)) (s : St) (a : AState) (pc : BitVec 64), (∀ w ∈ ws, w ∈ emitted) →
+    ArmFull s → Abs s a → s.regs.get? ._PC = some pc → pc.toNat % 4 = 0 → pc.toNat + 4 * ws.length < 2 ^ 29 →
+    CodeAt s.mem pc.toNat ws →
+    ∃ s', ArmSteps ws.length s s' ∧ Abs s' (runA ws a) ∧ ArmFull s' ∧
+      s'.regs.get? ._PC = some (pc + BitVec.ofNat 64 (4 * ws.length)) ∧ s'.mem = s.mem
+  | [], s, a, pc, _, hf, ha, hpc, _, _, _ => ⟨s, rfl, ha, hf, by simpa using hpc, rfl⟩
+  | w :: ws, s, a, pc, hw, hf, ha, hpc, hal, hlt, hcode => by
+    have h0 : MemWord s.mem pc.toNat w := by have := hcode 0 (by simp); simpa using this
+    obtain ⟨s₁, h₁, ha₁, hf₁, hpc₁, hm₁⟩ :=
+      full_word (hw w (List.mem_cons_self ..)) hf ha hpc (by simp at hlt; omega) hal h0
+    have e : (pc + 4).toNat = pc.toNat + 4 := by simp [BitVec.toNat_add]; simp at hlt; omega
+    obtain ⟨s₂, h₂, ha₂, hf₂, hpc₂, hm₂⟩ := run_full ws s₁ (armStep w a) (pc + 4)
+      (fun w' h => hw w' (List.mem_cons_of_mem _ h)) hf₁ ha₁ hpc₁ (by omega) (by simp at hlt; omega)
+      (fun i hi => by rw [hm₁, e, show pc.toNat + 4 + 4 * i = pc.toNat + 4 * (i + 1) by omega]
+                      exact hcode (i + 1) (by simp; omega))
+    refine ⟨s₂, ⟨s₁, h₁, h₂⟩, ha₂, hf₂, ?_, hm₂.trans hm₁⟩
+    rw [hpc₂, pc_add]; rfl
+
+theorem T30 : ∀ i < 11, (30 : Nat) ≠ Arm.T i := by decide
+
+/-- the value of `X[i]` in a state (`0` if missing) -/
+def xv (s : St) (i : Nat) : BitVec 64 := (xget s.regs i).getD 0
+
+/-- **F2: the AArch64 backend is correct at the level of full machine steps.** From a state satisfying `ArmFull`
+whose memory holds `Arm.compile e` (little-endian words) at the 4-aligned PC (code below `2^29`), the machine reaches
+`PC = x30` with `x0 = e.denote` of the inputs `x0..x3`, `ArmFull` again, memory unchanged, and every `X` register other
+than `x0` and the backend's temporaries unchanged. The ARM analogue of the RISC-V `compile_ok`. -/
+theorem compile_ok (e : Exp) (he : e.depth < 11) {s : St} (hf : ArmFull s) {pc : BitVec 64}
+    (hpc : s.regs.get? ._PC = some pc) (hal : pc.toNat % 4 = 0) (hlt : pc.toNat + 4 * (Arm.compile e).length < 2 ^ 29)
+    (hcode : CodeAt s.mem pc.toNat (Arm.compile e)) :
+    armRunsTo s fun s' => s'.regs.get? ._PC = some (xv s 30) ∧
+      xget s'.regs 0 = some (e.denote (fun i => xv s i)) ∧ ArmFull s' ∧ s'.mem = s.mem ∧
+      (∀ j < 31, (∀ i < 11, j ≠ Arm.T i) → j ≠ 0 → xget s'.regs j = xget s.regs j) := by
+  obtain ⟨p, hp, -⟩ := hf.pins.ps
+  let env : Fin 4 → BitVec 64 := fun i => xv s i
+  let a : AState := ⟨fun i => xv s i, p.N == 1#1, p.Z == 1#1, p.C == 1#1, p.V == 1#1⟩
+  have hxa : ∀ i < 31, xget s.regs i = some (a.x i) := fun i hi => by
+    obtain ⟨v, hv⟩ := Option.isSome_iff_exists.mp (hf.x i hi); simp [a, xv, hv]
+  have ha : Abs s a := ⟨hxa, p, hp, (ofBool_beq_one _).symm, (ofBool_beq_one _).symm, (ofBool_beq_one _).symm,
+    (ofBool_beq_one _).symm⟩
+  let ws := Arm.gen e 0 ++ [Arm.iRes]
+  have hc : Arm.compile e = ws ++ [Arm.iRet] := by simp [ws, Arm.compile]
+  have hmem : ∀ w ∈ ws, w ∈ emitted := fun w hw => by
+    rcases List.mem_append.mp hw with hw | hw
+    · exact gen_mem e 0 (by omega) w hw
+    · rw [List.mem_singleton.mp hw]; exact res_mem
+  have hlen : (Arm.compile e).length = ws.length + 1 := by rw [hc]; simp
+  obtain ⟨s₁, h₁, ha₁, hf₁, hpc₁, hm₁⟩ := run_full ws s a pc hmem hf ha hpc hal (by omega)
+    (fun i hi => by have := hcode i (by omega); rwa [List.getElem_of_eq hc, List.getElem_append_left hi] at this)
+  have e1 : (pc + BitVec.ofNat 64 (4 * ws.length)).toNat = pc.toNat + 4 * ws.length := by
+    simp [BitVec.toNat_add]; omega
+  obtain ⟨s₂, h₂, ha₂, hf₂, hpc₂, hm₂⟩ := full_ret hf₁ ha₁ hpc₁ (by omega) (by omega) (by
+    rw [hm₁, e1]; have := hcode ws.length (by omega)
+    rw [List.getElem_of_eq hc, List.getElem_append_right (by omega)] at this; simpa using this)
+  have henv' : ∀ i : Fin 4, a.x i = env i := fun i => rfl
+  obtain ⟨v, kp⟩ := gen_small env e 0 a (by omega) henv'
+  have hres := res_small (runA (Arm.gen e 0) a)
+  have hra : runA ws a = runA [Arm.iRes] (runA (Arm.gen e 0) a) := runA_append _ _ _
+  refine ⟨ws.length + 1, s₂, ArmSteps.append h₁ ⟨s₂, h₂, rfl⟩, ?_, ?_, hf₂, hm₂.trans hm₁, fun j hj hT h0 => ?_⟩
+  · rw [hpc₂, hra, hres, if_neg (by decide), kp 30 (fun i _ hi => T30 i hi)]
+  · rw [ha₂.x 0 (by decide), hra, hres, if_pos rfl, show (9 : Nat) = Arm.T 0 from rfl, v]
+  · rw [ha₂.x j hj, hra, hres, if_neg h0, kp j (fun i _ hi h => hT i hi h), hxa j hj]
+
 end ArmProof
