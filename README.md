@@ -165,7 +165,8 @@ RV64I code (base ISA only): R-type `add sub and or xor sll srl sra slt sltu`, `s
   hypotheses (output and scratch bytes present in the memory map); `stackLen = 71` = 64-byte frame + 7 bytes of
   `sp` alignment.
 - Axioms of `compileBF_ok` and `msortCode_implements`: exactly those of `compile_ok`.
-- Tested: `asm/msort_test.py check 300` (QEMU == Sail C emulator == `sorted`, lengths 0..3, 2^k ± 1 up to 2049,
+- Tested: `asm/msort_test.py check 300` was stopped by a 30-minute session limit after 240 cases, all passing
+  (the first 40 were also run on their own and passed) (QEMU == Sail C emulator == `sorted`, lengths 0..3, 2^k ± 1 up to 2049,
   random up to 3000; guard bytes, stack outside the frame, `gp`, `sp` intact; every Sail data write in
   scratch/output/frame). Instructions retired (`asm/msort_test.py bench`, QEMU `-icount`, random bytes):
   n = 1000: merge sort 920 308, insertion sort 10 556 636, hand-written `asm/sort.S` 166 171;

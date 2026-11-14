@@ -272,6 +272,8 @@ hypothesis (the prologue writes every frame cell before any read). `stackLen = 7
 256-byte stack with `sp` at a random misalignment (0..7), `gp` set to a magic value; QEMU and the Sail C
 emulator: output `= sorted(input)`, input and every guard byte unchanged, every stack byte outside the 64-byte
 frame unchanged, `gp` and `sp` restored, and every Sail data write inside the case's scratch / output / frame.
+Run: `check 300` was stopped by a 30-minute session limit after 240 cases (6 batches of 40), all passing;
+lengths 0..3 and 2^k ± 1 up to 2049, plus random lengths up to 2994. The Sail trace log is ~1 GB per batch (it also logs instruction fetches).
 `bench`: instructions retired between the call and the return (`minstret` under QEMU `-icount shift=0`).
 
 ### Not done
@@ -280,3 +282,10 @@ frame unchanged, `gp` and `sp` restored, and every Sail data write inside the ca
   side condition per word-accessed block, a lemma for an 8-byte store inside a larger region (only whole-region
   `store_region8` exists) and `ld/sd t, 0(t0)` lemmas (already generated: `W2.ldT`, `W2.sdT`, `step_ldT`).
 - Expression spilling (depth limit unchanged).
+
+Bench (QEMU 8.2.2 with `-icount shift=0`, random bytes; instructions per call):
+
+| n | merge sort (proved) | insertion sort (proved) | `asm/sort.S` (hand-written) |
+|---|---|---|---|
+| 1000 | 920 308 | 10 556 636 | 166 171 |
+| 100000 | 139 400 605 | not run (O(n²), ~10^11) | 28 146 287 |
