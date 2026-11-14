@@ -239,6 +239,8 @@ theorem add_joff_even' (a : Nat) (o : BitVec 20) :
 
 /-! ## Finishing: the model's final register map as `xset` of `stepF` -/
 
+@[simp] theorem xset_zero (m : Regs) (v : BitVec 64) : xset m 0 v = m := rfl
+
 theorem xval_ins {m : Regs} {r : Register} {v} (hr : r ∉ xregs := by decide) (j : Fin 32) :
     xval (m.insert r v) j = xval m j := xval_insert_other hr j
 
