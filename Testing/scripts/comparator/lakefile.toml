@@ -1,0 +1,14 @@
+# Minimal comparator setup (see Testing/notes/SPEC_AUDIT.md): Challenge = held-out statement (proof `sorry`),
+# Solution = the same statement proved by the project theorem.
+name = "speccheck"
+version = "0.1.0"
+
+[[require]]
+name = "proven"
+path = "../../.."
+
+[[lean_lib]]
+name = "Challenge"
+
+[[lean_lib]]
+name = "Solution"

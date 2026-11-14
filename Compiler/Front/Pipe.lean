@@ -32,16 +32,16 @@ def BOp.eval : BOp → UInt8 → UInt8 → UInt8
   | .xor, a, b => a ^^^ b
 
 /-- byte expressions over the element `x` and (in a `fold`) the accumulator `acc` -/
-inductive BExp where
+inductive ByteExp where
   | x
   | acc
   | lit (c : UInt8)
-  | bin (op : BOp) (a b : BExp)
+  | bin (op : BOp) (a b : ByteExp)
   /-- `if a ⋈ b then t else e` -/
-  | ite (c : BCmp) (a b t e : BExp)
+  | ite (c : BCmp) (a b t e : ByteExp)
   deriving Repr
 
-def BExp.denote (acc x : UInt8) : BExp → UInt8
+def ByteExp.denote (acc x : UInt8) : ByteExp → UInt8
   | .x => x
   | .acc => acc
   | .lit c => c
@@ -51,7 +51,7 @@ def BExp.denote (acc x : UInt8) : BExp → UInt8
   | .ite .eq a b t e => if a.denote acc x = b.denote acc x then t.denote acc x else e.denote acc x
   | .ite .ne a b t e => if a.denote acc x ≠ b.denote acc x then t.denote acc x else e.denote acc x
 
-def BExp.noAcc : BExp → Bool
+def ByteExp.noAcc : ByteExp → Bool
   | .x | .lit _ => true
   | .acc => false
   | .bin _ a b => a.noAcc && b.noAcc
@@ -64,7 +64,7 @@ def zx (u : UInt8) : BitVec 64 := u.toBitVec.setWidth 64
 def mask8 (e : AExp) : AExp := .bin .and e (.const 255)
 
 /-- the word expression computing `zx (e.denote acc x)` from `a5 = zx acc`, `a6 = zx x` -/
-def BExp.tr : BExp → AExp
+def ByteExp.tr : ByteExp → AExp
   | .x => .var 6
   | .acc => .var 5
   | .lit c => .const (zx c)
@@ -111,13 +111,13 @@ def leBytes (a : BitVec 64) (k : Nat) : List UInt8 :=
   (List.range k).map fun j => ⟨(a >>> (8 * j)).setWidth 8⟩
 
 inductive Stage where
-  | map (e : BExp)
+  | map (e : ByteExp)
   | take (n : Nat)
   | drop (n : Nat)
   | reverse
   | sort
   /-- byte fold: the one-byte list `[foldl step init]` -/
-  | fold (step : BExp) (init : UInt8)
+  | fold (step : ByteExp) (init : UInt8)
   /-- word fold: the 8 little-endian bytes of `foldl step init` -/
   | foldW (step : WExp) (init : BitVec 64)
   deriving Repr
@@ -171,7 +171,7 @@ def csClean : CS := ⟨true, false, true, []⟩
 def CS.clean (cs : CS) : Bool := cs.onOut && !cs.rev && cs.s0 && cs.gs.isEmpty
 
 /-- `min n m` -/
-def minE (n : Nat) : AExp := .ite (.bin .ult (.const (.ofNat 64 n)) (.var 1)) (.const (.ofNat 64 n)) (.var 1)
+def minN (n : Nat) : AExp := .ite (.bin .ult (.const (.ofNat 64 n)) (.var 1)) (.const (.ofNat 64 n)) (.var 1)
 
 /-- block index of view element `a2`: `s + i`, or `s + m - 1 - i` -/
 def vIdx (rev : Bool) : AExp :=
@@ -217,11 +217,11 @@ def stageC : Stage → CS → List AStmt × CS
   | .map e, cs => ([], { cs with gs := cs.gs ++ [e.tr] })
   | .take n, cs =>
     if cs.rev then
-      ([.assign 4 (.bin .add (.var 4) (.bin .sub (.var 1) (minE n))), .assign 1 (minE n)], { cs with s0 := false })
-    else ([.assign 1 (minE n)], cs)
+      ([.assign 4 (.bin .add (.var 4) (.bin .sub (.var 1) (minN n))), .assign 1 (minN n)], { cs with s0 := false })
+    else ([.assign 1 (minN n)], cs)
   | .drop n, cs =>
-    if cs.rev then ([.assign 1 (.bin .sub (.var 1) (minE n))], cs)
-    else ([.assign 4 (.bin .add (.var 4) (minE n)), .assign 1 (.bin .sub (.var 1) (minE n))], { cs with s0 := false })
+    if cs.rev then ([.assign 1 (.bin .sub (.var 1) (minN n))], cs)
+    else ([.assign 4 (.bin .add (.var 4) (minN n)), .assign 1 (.bin .sub (.var 1) (minN n))], { cs with s0 := false })
   | .reverse, cs => ([], { cs with rev := !cs.rev })
   | .sort, cs => (mat cs ++ [insProg, .assign 4 (.const 0)], csClean)
   | .fold e i, cs => (foldC cs e.tr (zx i) 1, csClean)

@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Wrapper around the real landrun (LANDRUN_REAL): newer landrun releases swallow the first `--` after the
+# command, which breaks comparator's `lean4export <Module> -- <decls>`; re-insert an explicit `--` before the command.
+set -euo pipefail
+REAL=${LANDRUN_REAL:?set LANDRUN_REAL to the landrun binary}
+flags=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --ro|--rox|--rw|--rwx|--env|--bind-tcp|--connect-tcp|--log-level) flags+=("$1" "$2"); shift 2 ;;
+    -*) flags+=("$1"); shift ;;
+    *) break ;;
+  esac
+done
+exec "$REAL" "${flags[@]}" -- "$@"
