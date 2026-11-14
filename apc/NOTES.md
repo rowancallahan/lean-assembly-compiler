@@ -192,3 +192,70 @@ This would be a theorem about 216 enumerated words; for arbitrary registers thei
   expression subset a proved consequence of the Sail result; for memory and branches that bridge does not exist yet.
 - Suggested order: (1) decide the interface change for W^X / `instrAt_frame`; (2) finish the 9 laws on their semantics;
   (3) keep Sail as reference by extending the bridge theorem form of section 4 class by class.
+
+# Round 2 (2026-11-14): items A-E of the coordinator's follow-up
+
+Sections 3 and 5 above describe the first prototype (`Apc/Inst.lean`) and an interface proposal with a separate data
+range; both are SUPERSEDED by this round (the owner chose the `writable` variant, see B). Branch `apc` has `main`
+merged in (no rebase: a force-push was refused here).
+
+## A. `agree_emitted` without `bv_decide`: DONE
+`Apc/Flags.lean` proves the NZCV identities by hand (`toNat` / `toInt` + `omega`, the formulation of
+`Arm/proofs/Arm/Flags.lean`): `sub_res`, `sub_c`, `sub_v`, `sub_vflag`, and the `cmp x, #0` forms `imm0_*`.
+`#print axioms agree_emitted`: `propext, Classical.choice, Quot.sound`. Check time 2 min 51 s (216 words).
+`bv_omega` is used (kernel-checked, no axiom); no `bv_decide`, no `native_decide`, no `sorry` anywhere in `apc/`.
+
+## B. Interface change (owner's variant): DONE in this branch, RISC-V side: see end of file
+Diff against main, 14 changed lines in 4 files:
+- `Compiler/Iface.lean`: `Base` gets `writable : S → Nat → Prop`; `law_sb` takes `writable s (get s a).toNat` instead of
+  `inRAM (get s a).toNat 1`. Nothing else: one byte memory, one RAM range, `instrAt_frame` unchanged.
+- `Compiler/Arr.lean`: `RegOK` gets a third conjunct `∀ r ∈ R, ∀ a ∈ r, ∀ s, ok s → writable s a`; the one `law_sb` call
+  site uses it (the caller supplies writability of the data blocks; the middle layer threads nothing new).
+- `Riscv/Back/Iface.lean`: `writable _ a := 0x80000000 ≤ a ∧ a + 1 ≤ 0x100000000` (definitionally the old hypothesis).
+- `Riscv/Back/Arr.lean`: `regOK_toR` supplies the third conjunct from `Region.inRAM`.
+Point (1) of the owner's decision ("code is frozen") needed NO interface change: on their semantics I define
+`instrAt L s pc w := pc inside the code range ∧ the 4 bytes (through mem)`, so `instrAt_frame` holds as stated, and
+executability of the code range is part of `ok` (preserved by every op because permissions never change).
+The six middle files compile under Lean 4.34.0 and 4.34.1 with this change (4 s).
+
+## C. The instance and the stack on their semantics: DONE
+`Apc/Mach.lean` (705 lines): `def apc (L : Lay) : Machine` with all 9 laws; `Lay` = code range `[cLo, cHi)` and data
+range `[dLo, dHi)`; `ok s := status Running ∧ code range executable ∧ data range readable+writable`;
+`mem s a := some (read8 a)` iff the byte is readable; `writable _ a := dLo ≤ a < dHi`; `keep` = x30 and sp unchanged.
+`#print axioms apc`: `propext, Classical.choice, Quot.sound`. Check: 30 s (Lean 4.34.0), also checks under 4.34.1.
+| law | encoding | how the decode fact is proved |
+|---|---|---|
+| mov | `orr xd, xzr, xa` | `decide`, 15 x 15 registers |
+| li | `movz xd,#0` then per bit `add xd,xd,xd` (+ `add xd,xd,#1`): the `genConst` scheme of `Arm/CompilerArm.lean`, fuel 64 | `decide` per word; correctness by induction (`gc_ok`) |
+| bin (11 ops) | as `Arm/CompilerArm.lean` `opCode` (`cmp` + `cset` for ult/slt/eq) | `decide`, d < 10 |
+| sel | `cmp xc,#0; csel xd,xa,xb,ne` | `decide`, d < 9 |
+| lbu / sb | `ldrb w9,[x9]` / `strb w10,[x9]` | `decide` (one word each) |
+| bz | `cbz x9, +4n` | `decide +kernel` over n < 1024 |
+| jmp | `b -4n` | `decide +kernel` over n < 1024 |
+| ret | `ret` | `decide` |
+DEVIATIONS from what was asked: `li` is the doubling chain, not movz/movk; `bzOK n` / `jmpOK n` are `n < 1024` words.
+Reason for both: a decode fact with a SYMBOLIC immediate needs bit-level reasoning through their 1300-line `decode`
+if-chain, which I did not build; enumeration is kernel-checked and costs 13 s. Raising the bound is a constant change
+(time grows linearly); a symbolic imm16/imm19/imm26 decode lemma is the proper fix.
+
+`Apc/Stack.lean` (middle layer instantiated; axioms `propext, Classical.choice, Quot.sound` for all three; 1.6 s):
+- `compile_apc` (expressions, from `Machine.compile_ok`): code of `e` at pc, args x0..x3: `Steps` to a state with
+  pc = x30, x0 = `e.denote`, status Running, memory and sp unchanged.
+- `gcd_apc` (loops, from `Machine.compF_ok`): x0 := `gcdSub x0 x1`.
+- `sort_apc` (arrays, from `Machine.compAF_ok`), the shape of `sortCode_ok_m`: code inside the executable range; input
+  `xs` at x0 (length x1) and an output block at x3 inside the writable data range (`dHi < 2^63`), disjoint from each
+  other and from the code: `Steps` to pc = x30, output block = `(xs.mergeSort leB).map some`, input unchanged, every
+  byte outside the two blocks unchanged (`Out`), status Running, sp unchanged.
+  NOT done: the `List UInt8` / `ImplementsMapped` wrapper (5 regions, stack, `maxLen`); `sort_apc` is the region form.
+Source-level facts (`gcdProg_exec`, `sortProg_mergeSort`, ...) live on main in files that import the RISC-V Sail model.
+`apc/stage.sh` copies their model-free parts unchanged into `Apc/Src/` (not committed), with FOUR one-line edits
+needed for Lean 4.34 `simp` (three `simpa using h` -> `simpa [AExp.denote] using h`, one `simp ... at hc; exact hc ha`
+in `gcdProg_exec`). Those four lines are version-fragile on main too.
+
+## E. Tests of the code this instance emits (`apc/test/`, words from `Apc/Emit.lean` in `test/words.txt`)
+- `sort_test.py`: insertion sort (100 words) on QEMU 8.2.2 system mode, 300 inputs, lengths 0..79, duplicates included:
+  output = sorted input, input unchanged, guard bytes around each output block unchanged: mismatches 0.
+- `loop_test.py`: gcd (33 words) and sum (16 words), 300 inputs each: Python reference == AArch64 QEMU == runnable Lean
+  ARM (Sail) model (`armrun run`, full `step_model` steps): mismatches 0. Model runner: 600 inputs in 105.5 s.
+These are the words of THIS instance's encoding (`apc L0`), which is what `gcd_apc` / `sort_apc` are about. If main has
+a separate ARM loop/array generator, it was not tested here.
