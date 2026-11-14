@@ -46,5 +46,7 @@ ONE resource bound: `space n`, the bytes of work memory the code may use for an 
 | `Mach.Riscv.sum_implements1` | byte sum, 8-byte LE word | `15` | false |
 | `Proven.compileP_implements1` | any accepted pipe with `Pipe.space ≤ Pipe.len` | `0` | false |
 | `Mach.Riscv.crc32_implements1` | CRC-32 | `2048 + 15` | false |
+| `…_implements1O` (`Riscv/Examples/Implements1Opt.lean`) | the six above (take, inc, sum, CRC-32, both sorts) on the OPTIMISED words (`…CodeO`) | as above | as above |
+| `Proven.compileX1_ok`, `Compiled.implements1` | every `compile%` pipe (`XPipe`, incl. filter/any/min?/sort/...) | `2 (n + XPipe.extra p) + 79` | **true** |
 
 `15` = the 8-byte frame cell in which `compBF` saves `gp`, plus up to 7 bytes of alignment below `sp`.

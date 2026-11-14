@@ -5,6 +5,11 @@ For each input: a0 = &in (bytes xs), a1 = len xs, a2 = junk (scratch is unused),
 pre-filled with 0x55).  Checked against a Python model of the Lean function: the first |result| output bytes
 are the result, the output bytes from `Pipe.space |xs|` on are untouched, the input slot is unchanged; on
 Sail, every data write lands in out[0, space).
+I1=1 (environment): the `Implements1` code `Compiled.code1` (words, `XPipe.extra` in `Testing/asm/pipe-words1/`):
+a2 = work base (8-aligned), sp = work base + `XPipe.space1 |xs|` (exactly that many work bytes, 0x77-filled);
+checked: the result is the first |result| output bytes, every other output byte untouched, a1 = |result|, gp
+restored, input unchanged, the old scratch slot unused, no work byte beyond `space1` written; on Sail, every data
+write lands in out[0, |result|) or in the work block.
 usage: pipe_test.py NAME NTESTS"""
 import itertools, os, random, re, subprocess, sys, time
 D = os.path.dirname(os.path.abspath(__file__)); W = os.path.join(D, "ctest"); os.makedirs(W, exist_ok=True)
@@ -12,10 +17,15 @@ SAIL = "/home/user/deps/sailsim/sail-riscv-Linux-x86_64/bin/sail_riscv_sim"
 p = lambda f: os.path.join(W, f)
 sh = lambda c: subprocess.run(c, shell=True, check=True)
 which, N = sys.argv[1], int(sys.argv[2])
-words = [int(l, 16) for l in open(os.path.join(D, "pipe-words", which + ".words")) if l.strip()]
+I1 = os.environ.get("I1") == "1"
+WDIR = "pipe-words1" if I1 else "pipe-words"
+words = [int(l, 16) for l in open(os.path.join(D, WDIR, which + ".words")) if l.strip()]
+EXTRA = int(open(os.path.join(D, "pipe-words1", which + ".extra")).read()) if I1 else 0
+space1 = lambda n: 2 * (n + EXTRA) + 79
 space = [int(x) for x in open(os.path.join(D, "pipe-words", which + ".space")).read().split()]
 sspace = [int(x) for x in open(os.path.join(D, "pipe-words", which + ".sspace")).read().split()]
-ST, MAGIC, E = 256, 0x1234567890ABCDEF, 56  # stack bytes per case, gp value, table entry size
+ST, MAGIC, E = 256, 0x1234567890ABCDEF, 56
+if I1: ST = (space1(64) + 7) // 8 * 8 + 16  # stack bytes per case, gp value, table entry size
 S = 128  # slot size
 M64 = 2**64 - 1
 def fold(f, a, xs):
@@ -119,8 +129,9 @@ while done < N:
     k = min(B, N - done)
     cases = [cases0.pop() if cases0 else rand_case() for _ in range(k)]
     ins = "\n".join(f"  .byte {', '.join(str(x) for x in xs + [0xAA] * (S - len(xs)))}" for xs in cases)
-    sps = [ST * i + ST - 8 - rng.randrange(8) for i in range(k)]
-    tab = "\n".join(f"  .quad ins+{S*i}, {len(xs)}, scrs+{S*i}, outs+{S*i}, 0, stks+{sps[i]}, 0" for i, xs in enumerate(cases))
+    sps = [ST * i + ST - 8 - rng.randrange(8) for i in range(k)] if not I1 else [ST * i + space1(len(xs)) for i, xs in enumerate(cases)]
+    a2s = [f"scrs+{S*i}" for i in range(k)] if not I1 else [f"stks+{ST*i}" for i in range(k)]
+    tab = "\n".join(f"  .quad ins+{S*i}, {len(xs)}, {a2s[i]}, outs+{S*i}, 0, stks+{sps[i]}, 0" for i, xs in enumerate(cases))
     open(p("pipe.S"), "w").write(DRIVER % (k, MAGIC, "".join(f"  .word 0x{w:08x}\n" for w in words), ins, S * k, S * k, ST * k, tab))
     sh(f"riscv64-linux-gnu-gcc -march=rv64i -mabi=lp64 -nostdlib -static -Wl,-T,{p('pipe.ld')} -Wl,--no-relax -Wl,--build-id=none {p('pipe.S')} -o {p('pipe.elf')}")
     syms = subprocess.check_output(f"riscv64-linux-gnu-nm {p('pipe.elf')}", shell=True, text=True)
@@ -152,6 +163,10 @@ while done < N:
     init += tab0
     allowed = set(range(tab_a, tabend))
     for i, xs in enumerate(cases):
+        if I1:
+            allowed |= set(range(outs_a + S * i, outs_a + S * i + len(model(xs))))
+            allowed |= set(range(stks_a + ST * i, stks_a + ST * i + space1(len(xs))))
+            continue
         assert len(model(xs)) <= space[len(xs)] <= S and sspace[len(xs)] <= S
         allowed |= set(range(outs_a + S * i, outs_a + S * i + space[len(xs)]))
         allowed |= set(range(scrs_a + S * i, scrs_a + S * i + sspace[len(xs)]))
@@ -169,7 +184,7 @@ while done < N:
             smem[a + j - ins_a] = int(v[2 * (nb - 1 - j):2 * (nb - j)], 16)
     for name, mem in (("qemu", qmem), ("sail", smem)):
         for i, xs in enumerate(cases):
-            out = model(xs); sp = space[len(xs)]
+            out = model(xs); sp = len(out) if I1 else space[len(xs)]
             got_in = list(mem[S * i:S * i + S]); got_out = list(mem[S * k + S * i:][:S])
             assert got_in == xs + [0xAA] * (S - len(xs)), (name, "input changed", xs)
             assert got_out[:len(out)] == out, (name, xs, got_out[:len(out) + 2], out)
@@ -178,9 +193,13 @@ while done < N:
             assert a1 == len(out), (name, "a1 is not the result length", xs, a1, len(out))
             gp = int.from_bytes(mem[tab_a - ins_a + E * i + 48:][:8], "little")
             assert gp == MAGIC, (name, "gp not restored", hex(gp))
-            ss = sspace[len(xs)]; got_scr = list(mem[2 * S * k + S * i:][:S])
+            ss = 0 if I1 else sspace[len(xs)]; got_scr = list(mem[2 * S * k + S * i:][:S])
             assert got_scr[ss:] == [0x66] * (S - ss), (name, "scratch write beyond sspace", xs, ss)
-            stk = list(mem[3 * S * k + ST * i:][:ST]); fp = (stks_a + sps[i]) // 8 * 8 - 64 - stks_a - ST * i
+            stk = list(mem[3 * S * k + ST * i:][:ST])
+            if I1:
+                assert stk[space1(len(xs)):] == [0x77] * (ST - space1(len(xs))), (name, "work write beyond space1")
+                continue
+            fp = (stks_a + sps[i]) // 8 * 8 - 64 - stks_a - ST * i
             assert all(b == 0x77 for j, b in enumerate(stk) if not (fp <= j < fp + 64)), (name, "stack outside frame")
     done += k
-    print(f"{which}: {done}/{N} ok (QEMU == Sail == model, {len(words)} words)", flush=True)
+    print(f"{which}{' [Implements1]' if I1 else ''}: {done}/{N} ok (QEMU == Sail == model, {len(words)} words)", flush=True)
