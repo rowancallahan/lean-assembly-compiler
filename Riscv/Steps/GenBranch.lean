@@ -22,6 +22,13 @@ theorem wJ_eq (rd : Fin 32) (o : BitVec 20) : wJ (BitVec.ofFin rd) o = 0x6f#32 |
 theorem slt_iff (a b : BitVec 64) : a.slt b = true ↔ a.toInt < b.toInt := by simp [BitVec.slt_iff_toInt_lt]
 theorem ult_iff (a b : BitVec 64) : a.ult b = true ↔ a.toNat < b.toNat := by simp [BitVec.ult_iff_lt, BitVec.lt_def]
 
+/-- the `jalr` word (opcode `0x67`, funct3 0) -/
+theorem jalr_eq (rd rs1 : Fin 32) (imm : BitVec 12) :
+    BitVec.ofNat 32 (imm.toNat <<< 20 ||| rs1.val <<< 15 ||| rd.val <<< 7 ||| 0x67) = 0x67#32 ||| fI rd rs1 imm := by
+  apply BitVec.eq_of_getLsbD_eq; intro i hi
+  simp only [fI, BitVec.getLsbD_ofNat, BitVec.getLsbD_or, Nat.testBit_or, Nat.testBit_shiftLeft]
+  enc_bits
+
 variable {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc)
 include h hpc hok
 
@@ -68,12 +75,9 @@ theorem step_jalr (rd rs1 : Fin 32) (imm : BitVec 12) (hi : instrAt s pc (BitVec
     rs1.val <<< 15 ||| rd.val <<< 7 ||| 0x67)))
     (he : (getX s rs1 + imm.signExtend 64).toNat % 2 = 0) :
     ∃ s', Next s s' (getX s rs1 + imm.signExtend 64) rd (pc + 4) s.mem := by
-  have e : BitVec.ofNat 32 (imm.toNat <<< 20 ||| rs1.val <<< 15 ||| rd.val <<< 7 ||| 0x67) =
-      0x67#32 ||| fI rd rs1 imm := by
-    apply BitVec.eq_of_getLsbD_eq; intro i hi
-    simp only [fI, BitVec.getLsbD_ofNat, BitVec.getLsbD_or, Nat.testBit_or, Nat.testBit_shiftLeft]
-    enc_bits
-  rw [e] at hi; gstep
+  rw [jalr_eq] at hi
+  replace he : evenB (getX s rs1 + imm.signExtend 64) := he
+  gstep
 
 end G
 end Proven
