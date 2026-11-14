@@ -138,9 +138,21 @@ structure Pins (m : Regs) : Prop where
   spe : m.get? .SPESampleInFlight = some false
   dbgen : m.get? .DBGEN = some .Signal_Low
   spiden : m.get? .SPIDEN = some .Signal_Low
+  edesr : m.get? .EDESR = some 0
+  emu : m.get? .__emulator_termination_opcode = some none
+  pmcr : m.get? .PMCR_EL0 = some 0
+  mdcr2 : m.get? .MDCR_EL2 = some 0
+  cntcr : m.get? .CNTCR = some 0
+  cntp : m.get? .CNTP_CTL_EL0 = some 0
+  cnthp : m.get? .CNTHP_CTL_EL2 = some 0
+  cntps : m.get? .CNTPS_CTL_EL1 = some 0
+  cntv : m.get? .CNTV_CTL_EL0 = some 0
+  brbfcr : m.get? .BRBFCR_EL1 = some 0
+  pcount : m.get? .PhysicalCount = some 0
+  cnthpcv : m.get? .CNTHP_CVAL_EL2 = some 1
 
 /-- `true` on registers outside `Pins` -/
-def NotPinned (r : Register) : Bool := !(r == .PSTATE || r == .FeatureImpl || r == .SCR_EL3 || r == ._EDSCR || r == .MDCCSR_EL0 || r == .OSLSR_EL1 || r == .MDCR_EL3 || r == .__GIC_Pending || r == ._MPAM3_EL3 || r == .MPAM2_EL2 || r == .__supported_pa_size || r == .TCR_EL3 || r == .SCTLR_EL3 || r == .MAIR_EL3 || r == .MDSCR_EL1 || r == .SPESampleInFlight || r == .DBGEN || r == .SPIDEN)
+def NotPinned (r : Register) : Bool := !(r == .PSTATE || r == .FeatureImpl || r == .SCR_EL3 || r == ._EDSCR || r == .MDCCSR_EL0 || r == .OSLSR_EL1 || r == .MDCR_EL3 || r == .__GIC_Pending || r == ._MPAM3_EL3 || r == .MPAM2_EL2 || r == .__supported_pa_size || r == .TCR_EL3 || r == .SCTLR_EL3 || r == .MAIR_EL3 || r == .MDSCR_EL1 || r == .SPESampleInFlight || r == .DBGEN || r == .SPIDEN || r == .EDESR || r == .__emulator_termination_opcode || r == .PMCR_EL0 || r == .MDCR_EL2 || r == .CNTCR || r == .CNTP_CTL_EL0 || r == .CNTHP_CTL_EL2 || r == .CNTPS_CTL_EL1 || r == .CNTV_CTL_EL0 || r == .BRBFCR_EL1 || r == .PhysicalCount || r == .CNTHP_CVAL_EL2)
 
 theorem np_ne {r r' : Register} (h : NotPinned r = true) (h' : NotPinned r' = false) : ¬ (r == r') = true := by
   intro e; rw [beq_iff_eq] at e; subst e; rw [h] at h'; cases h'
@@ -148,7 +160,7 @@ theorem np_ne {r r' : Register} (h : NotPinned r = true) (h' : NotPinned r' = fa
 theorem pins_insert {m : Regs} {r : Register} (v : RegisterType r) (h : NotPinned r = true) :
     Pins (m.insert r v) ↔ Pins m := by
   constructor <;> intro hc
-  · refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
     · obtain ⟨p, hp, hpp⟩ := hc.ps; exact ⟨p, by simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .PSTATE) h rfl)] using hp, hpp⟩
     · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .FeatureImpl) h rfl)] using hc.feat
     · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .SCR_EL3) h rfl)] using hc.scr
@@ -167,7 +179,19 @@ theorem pins_insert {m : Regs} {r : Register} (v : RegisterType r) (h : NotPinne
     · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .SPESampleInFlight) h rfl)] using hc.spe
     · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .DBGEN) h rfl)] using hc.dbgen
     · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .SPIDEN) h rfl)] using hc.spiden
-  · refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .EDESR) h rfl)] using hc.edesr
+    · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .__emulator_termination_opcode) h rfl)] using hc.emu
+    · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .PMCR_EL0) h rfl)] using hc.pmcr
+    · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .MDCR_EL2) h rfl)] using hc.mdcr2
+    · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .CNTCR) h rfl)] using hc.cntcr
+    · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .CNTP_CTL_EL0) h rfl)] using hc.cntp
+    · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .CNTHP_CTL_EL2) h rfl)] using hc.cnthp
+    · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .CNTPS_CTL_EL1) h rfl)] using hc.cntps
+    · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .CNTV_CTL_EL0) h rfl)] using hc.cntv
+    · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .BRBFCR_EL1) h rfl)] using hc.brbfcr
+    · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .PhysicalCount) h rfl)] using hc.pcount
+    · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .CNTHP_CVAL_EL2) h rfl)] using hc.cnthpcv
+  · refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
     · obtain ⟨p, hp, hpp⟩ := hc.ps; exact ⟨p, by simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .PSTATE) h rfl)] using hp, hpp⟩
     · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .FeatureImpl) h rfl)] using hc.feat
     · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .SCR_EL3) h rfl)] using hc.scr
@@ -186,11 +210,63 @@ theorem pins_insert {m : Regs} {r : Register} (v : RegisterType r) (h : NotPinne
     · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .SPESampleInFlight) h rfl)] using hc.spe
     · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .DBGEN) h rfl)] using hc.dbgen
     · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .SPIDEN) h rfl)] using hc.spiden
+    · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .EDESR) h rfl)] using hc.edesr
+    · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .__emulator_termination_opcode) h rfl)] using hc.emu
+    · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .PMCR_EL0) h rfl)] using hc.pmcr
+    · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .MDCR_EL2) h rfl)] using hc.mdcr2
+    · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .CNTCR) h rfl)] using hc.cntcr
+    · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .CNTP_CTL_EL0) h rfl)] using hc.cntp
+    · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .CNTHP_CTL_EL2) h rfl)] using hc.cnthp
+    · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .CNTPS_CTL_EL1) h rfl)] using hc.cntps
+    · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .CNTV_CTL_EL0) h rfl)] using hc.cntv
+    · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .BRBFCR_EL1) h rfl)] using hc.brbfcr
+    · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .PhysicalCount) h rfl)] using hc.pcount
+    · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .CNTHP_CVAL_EL2) h rfl)] using hc.cnthpcv
+
+theorem pins_pstate {m : Regs} (q : ProcState) (hq : q.EL = 3#2 ∧ q.nRW = 0#1 ∧ q.IL = 0#1) (hc : Pins m) :
+    Pins (m.insert .PSTATE q) := by
+  refine ⟨⟨q, by simp [Std.ExtDHashMap.get?_insert], hq⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register.FeatureImpl) = true by decide)] using hc.feat
+  · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register.SCR_EL3) = true by decide)] using hc.scr
+  · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register._EDSCR) = true by decide)] using hc.edscr
+  · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register.MDCCSR_EL0) = true by decide)] using hc.mdccsr
+  · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register.OSLSR_EL1) = true by decide)] using hc.oslsr
+  · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register.MDCR_EL3) = true by decide)] using hc.mdcr3
+  · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register.__GIC_Pending) = true by decide)] using hc.gic
+  · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register._MPAM3_EL3) = true by decide)] using hc.mpam3
+  · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register.MPAM2_EL2) = true by decide)] using hc.mpam2
+  · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register.__supported_pa_size) = true by decide)] using hc.pa
+  · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register.TCR_EL3) = true by decide)] using hc.tcr3
+  · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register.SCTLR_EL3) = true by decide)] using hc.sctlr3
+  · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register.MAIR_EL3) = true by decide)] using hc.mair3
+  · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register.MDSCR_EL1) = true by decide)] using hc.mdscr
+  · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register.SPESampleInFlight) = true by decide)] using hc.spe
+  · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register.DBGEN) = true by decide)] using hc.dbgen
+  · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register.SPIDEN) = true by decide)] using hc.spiden
+  · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register.EDESR) = true by decide)] using hc.edesr
+  · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register.__emulator_termination_opcode) = true by decide)] using hc.emu
+  · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register.PMCR_EL0) = true by decide)] using hc.pmcr
+  · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register.MDCR_EL2) = true by decide)] using hc.mdcr2
+  · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register.CNTCR) = true by decide)] using hc.cntcr
+  · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register.CNTP_CTL_EL0) = true by decide)] using hc.cntp
+  · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register.CNTHP_CTL_EL2) = true by decide)] using hc.cnthp
+  · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register.CNTPS_CTL_EL1) = true by decide)] using hc.cntps
+  · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register.CNTV_CTL_EL0) = true by decide)] using hc.cntv
+  · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register.BRBFCR_EL1) = true by decide)] using hc.brbfcr
+  · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register.PhysicalCount) = true by decide)] using hc.pcount
+  · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register.CNTHP_CVAL_EL2) = true by decide)] using hc.cnthpcv
 
 set_option hygiene false in
 /-- unpack `Pins s.regs` (named `hc`) into the atomic facts `esimp` rewrites with -/
-macro "pins" : tactic => `(tactic| (obtain ⟨⟨p, hp, hel, hrw, hil⟩, h_feat, h_scr, h_edscr, h_mdccsr, h_oslsr, h_mdcr3, h_gic, h_mpam3, h_mpam2, h_pa, h_tcr3, h_sctlr3, h_mair3, h_mdscr, h_spe, h_dbgen, h_spiden⟩ := id hc))
+macro "pins" : tactic => `(tactic| (obtain ⟨⟨p, hp, hel, hrw, hil⟩, h_feat, h_scr, h_edscr, h_mdccsr, h_oslsr, h_mdcr3, h_gic, h_mpam3, h_mpam2, h_pa, h_tcr3, h_sctlr3, h_mair3, h_mdscr, h_spe, h_dbgen, h_spiden, h_edesr, h_emu, h_pmcr, h_mdcr2, h_cntcr, h_cntp, h_cnthp, h_cntps, h_cntv, h_brbfcr, h_pcount, h_cnthpcv⟩ := id hc))
 -- END generated
+
+/-- re-inserting the value a register already holds changes nothing -/
+theorem insert_self {m : Regs} {r : Register} {v : RegisterType r} (h : m.get? r = some v) : m.insert r v = m :=
+  Std.ExtDHashMap.ext_get? fun k => by
+    simp only [Std.ExtDHashMap.get?_insert]; split
+    · rename_i e; have := eq_of_beq e; subst this; simp [h]
+    · rfl
 
 /-- the monad plumbing of the model (EStateM, the early-return `SailME` layer, try/catch) -/
 macro "esimp" : tactic => `(tactic| (simp (config := {decide := true}) [*, featOn, feat_ok,
@@ -235,31 +311,33 @@ macro "esimp" : tactic => `(tactic| (simp (config := {decide := true}) [*, featO
   HaveSME2p1, HaveSMEB16B16, HaveSMEF16F16]))
 
 /-- `esimp` plus the field getters of the pinned system registers -/
-macro "gsimp" : tactic => `(tactic| (simp only [
-  _get_CNTCR_Type_bits, _get_EDSCR_Type_bits, _get_HCR_EL2_Type_bits, _get_MAIRType_bits,
-  _get_MDCR_EL2_Type_bits, _get_MDCR_EL3_Type_bits, _get_MDSCR_EL1_Type_bits, _get_MPAM3_EL3_Type_bits,
-  _get_OSLSR_EL1_Type_bits, _get_PMBSR_EL1_Type_bits, _get_PMCR_EL0_Type_bits, _get_SCRType_bits,
-  _get_SCR_EL3_Type_bits, _get_SCTLRType_bits, _get_SCTLR_EL3_Type_bits, _get_TCR_EL3_Type_bits,
-  _get_TTBR0_EL3_Type_bits, _get_EDSCR_Type_RW, _get_HCR_EL2_Type_RW, _get_SCRType_RW, _get_SCR_EL3_Type_RW,
-  _get_SCRType_AW, _get_SCRType_EA, _get_PMBSR_EL1_Type_EA, _get_SCR_EL3_Type_EA, _get_SCRType_FIQ,
-  _get_SCR_EL3_Type_FIQ, _get_SCRType_FW, _get_SCRType_HCE, _get_SCR_EL3_Type_HCE, _get_SCRType_IRQ,
-  _get_SCR_EL3_Type_IRQ, _get_SCRType_NS, _get_EDSCR_Type_NS, _get_SCR_EL3_Type_NS, _get_SCRType_SCD,
-  _get_SCRType_SIF, _get_SCR_EL3_Type_SIF, _get_SCRType_SMD, _get_SCR_EL3_Type_SMD, _get_SCRType_ST,
-  _get_SCR_EL3_Type_ST, _get_SCRType_TWE, _get_HCR_EL2_Type_TWE, _get_SCR_EL3_Type_TWE, _get_SCRType_TWI,
-  _get_HCR_EL2_Type_TWI, _get_SCR_EL3_Type_TWI, _get_SCRType_nET, _get_SCTLRType_A, _get_EDSCR_Type_A,
-  _get_SCTLR_EL3_Type_A, _get_SCTLRType_C, _get_PMCR_EL0_Type_C, _get_SCTLR_EL3_Type_C, _get_SCTLRType_CP15BEN,
-  _get_SCTLRType_DSSBS, _get_SCTLR_EL3_Type_DSSBS, _get_SCTLRType_DZE, _get_SCTLRType_E0E, _get_SCTLRType_EE,
-  _get_SCTLR_EL3_Type_EE, _get_SCTLRType_EPAN, _get_SCTLRType_I, _get_SCTLR_EL3_Type_I, _get_SCTLRType_IESB,
-  _get_SCTLR_EL3_Type_IESB, _get_SCTLRType_ITD, _get_SCTLRType_M, _get_SCTLR_EL3_Type_M, _get_SCTLRType_NMI,
-  _get_SCTLR_EL3_Type_NMI, _get_SCTLRType_SA, _get_SCTLR_EL3_Type_SA, _get_SCTLRType_SA0, _get_SCTLRType_SED,
-  _get_SCTLRType_SPAN, _get_SCTLRType_SPINTMASK, _get_SCTLR_EL3_Type_SPINTMASK, _get_SCTLRType_TIDCP,
-  _get_HCR_EL2_Type_TIDCP, _get_SCTLRType_TME, _get_HCR_EL2_Type_TME, _get_SCR_EL3_Type_TME,
-  _get_SCTLR_EL3_Type_TME, _get_SCTLRType_TME0, _get_SCTLRType_TMT, _get_SCTLR_EL3_Type_TMT,
-  _get_SCTLRType_TMT0, _get_SCTLRType_TSCXT, _get_SCTLRType_UCI, _get_SCTLRType_UCT, _get_SCTLRType_UMA,
-  _get_SCTLRType_WXN, _get_SCTLR_EL3_Type_WXN, _get_SCTLRType_nAA, _get_SCTLR_EL3_Type_nAA, _get_SCTLRType_nTWE,
-  _get_SCTLRType_nTWI, _get_MAIRType_Attr0, _get_MAIRType_Attr1, _get_MAIRType_Attr2, _get_MAIRType_Attr3,
-  _get_MAIRType_Attr4, _get_MAIRType_Attr5, _get_MAIRType_Attr6, _get_MAIRType_Attr7, _get_PMBSR_EL1_Type_EC,
-  _get_EDSCR_Type_EL, _get_PMCR_EL0_Type_N, _get_HCR_EL2_Type_AMO, _get_HCR_EL2_Type_AMVOFFEN,
+macro "gsimp" : tactic => `(tactic| ((try simp only [
+  _get_BRBFCR_EL1_Type_bits, _get_CNTCR_Type_bits, _get_CNTHP_CTL_EL2_Type_bits, _get_CNTPS_CTL_EL1_Type_bits,
+  _get_CNTP_CTL_EL0_Type_bits, _get_CNTV_CTL_EL0_Type_bits, _get_EDESR_Type_bits, _get_EDSCR_Type_bits,
+  _get_HCR_EL2_Type_bits, _get_MAIRType_bits, _get_MDCR_EL2_Type_bits, _get_MDCR_EL3_Type_bits,
+  _get_MDSCR_EL1_Type_bits, _get_MPAM3_EL3_Type_bits, _get_OSLSR_EL1_Type_bits, _get_PMBSR_EL1_Type_bits,
+  _get_PMCR_EL0_Type_bits, _get_SCRType_bits, _get_SCR_EL3_Type_bits, _get_SCTLRType_bits,
+  _get_SCTLR_EL3_Type_bits, _get_TCR_EL3_Type_bits, _get_TTBR0_EL3_Type_bits, _get_EDSCR_Type_RW,
+  _get_HCR_EL2_Type_RW, _get_SCRType_RW, _get_SCR_EL3_Type_RW, _get_SCRType_AW, _get_SCRType_EA,
+  _get_PMBSR_EL1_Type_EA, _get_SCR_EL3_Type_EA, _get_SCRType_FIQ, _get_SCR_EL3_Type_FIQ, _get_SCRType_FW,
+  _get_SCRType_HCE, _get_SCR_EL3_Type_HCE, _get_SCRType_IRQ, _get_SCR_EL3_Type_IRQ, _get_SCRType_NS,
+  _get_EDSCR_Type_NS, _get_SCR_EL3_Type_NS, _get_SCRType_SCD, _get_SCRType_SIF, _get_SCR_EL3_Type_SIF,
+  _get_SCRType_SMD, _get_SCR_EL3_Type_SMD, _get_SCRType_ST, _get_SCR_EL3_Type_ST, _get_SCRType_TWE,
+  _get_HCR_EL2_Type_TWE, _get_SCR_EL3_Type_TWE, _get_SCRType_TWI, _get_HCR_EL2_Type_TWI, _get_SCR_EL3_Type_TWI,
+  _get_SCRType_nET, _get_SCTLRType_A, _get_EDSCR_Type_A, _get_SCTLR_EL3_Type_A, _get_SCTLRType_C,
+  _get_PMCR_EL0_Type_C, _get_SCTLR_EL3_Type_C, _get_SCTLRType_CP15BEN, _get_SCTLRType_DSSBS,
+  _get_SCTLR_EL3_Type_DSSBS, _get_SCTLRType_DZE, _get_SCTLRType_E0E, _get_SCTLRType_EE, _get_SCTLR_EL3_Type_EE,
+  _get_SCTLRType_EPAN, _get_SCTLRType_I, _get_SCTLR_EL3_Type_I, _get_SCTLRType_IESB, _get_SCTLR_EL3_Type_IESB,
+  _get_SCTLRType_ITD, _get_SCTLRType_M, _get_SCTLR_EL3_Type_M, _get_SCTLRType_NMI, _get_SCTLR_EL3_Type_NMI,
+  _get_SCTLRType_SA, _get_SCTLR_EL3_Type_SA, _get_SCTLRType_SA0, _get_SCTLRType_SED, _get_SCTLRType_SPAN,
+  _get_SCTLRType_SPINTMASK, _get_SCTLR_EL3_Type_SPINTMASK, _get_SCTLRType_TIDCP, _get_HCR_EL2_Type_TIDCP,
+  _get_SCTLRType_TME, _get_HCR_EL2_Type_TME, _get_SCR_EL3_Type_TME, _get_SCTLR_EL3_Type_TME,
+  _get_SCTLRType_TME0, _get_SCTLRType_TMT, _get_SCTLR_EL3_Type_TMT, _get_SCTLRType_TMT0, _get_SCTLRType_TSCXT,
+  _get_SCTLRType_UCI, _get_SCTLRType_UCT, _get_SCTLRType_UMA, _get_SCTLRType_WXN, _get_SCTLR_EL3_Type_WXN,
+  _get_SCTLRType_nAA, _get_SCTLR_EL3_Type_nAA, _get_SCTLRType_nTWE, _get_SCTLRType_nTWI, _get_MAIRType_Attr0,
+  _get_MAIRType_Attr1, _get_MAIRType_Attr2, _get_MAIRType_Attr3, _get_MAIRType_Attr4, _get_MAIRType_Attr5,
+  _get_MAIRType_Attr6, _get_MAIRType_Attr7, _get_EDESR_Type_EC, _get_PMBSR_EL1_Type_EC, _get_EDSCR_Type_EL,
+  _get_BRBFCR_EL1_Type_LASTFAILED, _get_PMCR_EL0_Type_N, _get_HCR_EL2_Type_AMO, _get_HCR_EL2_Type_AMVOFFEN,
   _get_SCR_EL3_Type_AMVOFFEN, _get_HCR_EL2_Type_API, _get_SCR_EL3_Type_API, _get_HCR_EL2_Type_APK,
   _get_SCR_EL3_Type_APK, _get_HCR_EL2_Type_AT, _get_HCR_EL2_Type_ATA, _get_SCR_EL3_Type_ATA,
   _get_SCTLR_EL3_Type_ATA, _get_HCR_EL2_Type_BSU, _get_HCR_EL2_Type_CD, _get_HCR_EL2_Type_DC,
@@ -305,7 +383,10 @@ macro "gsimp" : tactic => `(tactic| (simp only [
   _get_MDCR_EL3_Type_EnPM2, _get_MDCR_EL3_Type_EnPMS3, _get_MDCR_EL3_Type_EnPMSN, _get_MDCR_EL3_Type_EnPMSS,
   _get_MDCR_EL3_Type_MCCD, _get_MDCR_EL3_Type_MPMX, _get_MDCR_EL3_Type_NSPB, _get_MDCR_EL3_Type_NSPBE,
   _get_MDCR_EL3_Type_RLTE, _get_MDCR_EL3_Type_SBRBE, _get_MDCR_EL3_Type_SCCD, _get_MDCR_EL3_Type_SPD32,
-  _get_MDCR_EL3_Type_SPME, _get_MDCR_EL3_Type_STE, _get_MDSCR_EL1_Type_SS, _get_TCR_EL3_Type_DS,
+  _get_MDCR_EL3_Type_SPME, _get_MDCR_EL3_Type_STE, _get_BRBFCR_EL1_Type_BANK, _get_BRBFCR_EL1_Type_CONDDIR,
+  _get_BRBFCR_EL1_Type_DIRCALL, _get_BRBFCR_EL1_Type_DIRECT, _get_BRBFCR_EL1_Type_EnI,
+  _get_BRBFCR_EL1_Type_INDCALL, _get_BRBFCR_EL1_Type_INDIRECT, _get_BRBFCR_EL1_Type_PAUSED,
+  _get_BRBFCR_EL1_Type_RTN, _get_EDESR_Type_SS, _get_MDSCR_EL1_Type_SS, _get_TCR_EL3_Type_DS,
   _get_TCR_EL3_Type_HA, _get_TCR_EL3_Type_HD, _get_TCR_EL3_Type_IRGN0, _get_TCR_EL3_Type_ORGN0,
   _get_TCR_EL3_Type_SH0, _get_TCR_EL3_Type_T0SZ, _get_TCR_EL3_Type_TG0, _get_TCR_EL3_Type_HPD,
   _get_TCR_EL3_Type_HWU59, _get_TCR_EL3_Type_HWU60, _get_TCR_EL3_Type_HWU61, _get_TCR_EL3_Type_HWU62,
@@ -318,12 +399,16 @@ macro "gsimp" : tactic => `(tactic| (simp only [
   _get_OSLSR_EL1_Type_OSLK, _get_OSLSR_EL1_Type_OSLM, _get_OSLSR_EL1_Type_nTT, _get_SCTLR_EL3_Type_BT,
   _get_SCTLR_EL3_Type_EIS, _get_SCTLR_EL3_Type_EOS, _get_SCTLR_EL3_Type_EnDA, _get_SCTLR_EL3_Type_EnDB,
   _get_SCTLR_EL3_Type_EnIA, _get_SCTLR_EL3_Type_EnIB, _get_SCTLR_EL3_Type_ITFSB, _get_SCTLR_EL3_Type_TCF,
-  _get_SCTLR_EL3_Type_TCSO, _get_MPAM3_EL3_Type_ALTSP_HFC, _get_MPAM3_EL3_Type_MPAMEN,
-  _get_MPAM3_EL3_Type_PARTID_D, _get_MPAM3_EL3_Type_PARTID_I, _get_MPAM3_EL3_Type_PMG_D,
-  _get_MPAM3_EL3_Type_PMG_I, _get_MPAM3_EL3_Type_ALTSP_EL3, _get_MPAM3_EL3_Type_ALTSP_HEN,
-  _get_MPAM3_EL3_Type_FORCE_NS, _get_MPAM3_EL3_Type_RT_ALTSP_NS, _get_MPAM3_EL3_Type_SDEFLT,
-  _get_MPAM3_EL3_Type_TRAPLOWER, _get_TTBR0_EL3_Type_CnP, _get_TTBR0_EL3_Type_SKL, _get_CNTCR_Type_EN,
-  _get_CNTCR_Type_FCREQ, _get_CNTCR_Type_HDBG, _get_CNTCR_Type_SCEN] at *; esimp))
+  _get_SCTLR_EL3_Type_TCSO, _get_EDESR_Type_OSUC, _get_EDESR_Type_RC, _get_MPAM3_EL3_Type_ALTSP_HFC,
+  _get_MPAM3_EL3_Type_MPAMEN, _get_MPAM3_EL3_Type_PARTID_D, _get_MPAM3_EL3_Type_PARTID_I,
+  _get_MPAM3_EL3_Type_PMG_D, _get_MPAM3_EL3_Type_PMG_I, _get_MPAM3_EL3_Type_ALTSP_EL3,
+  _get_MPAM3_EL3_Type_ALTSP_HEN, _get_MPAM3_EL3_Type_FORCE_NS, _get_MPAM3_EL3_Type_RT_ALTSP_NS,
+  _get_MPAM3_EL3_Type_SDEFLT, _get_MPAM3_EL3_Type_TRAPLOWER, _get_TTBR0_EL3_Type_CnP, _get_TTBR0_EL3_Type_SKL,
+  _get_CNTCR_Type_EN, _get_CNTHP_CTL_EL2_Type_ENABLE, _get_CNTPS_CTL_EL1_Type_ENABLE,
+  _get_CNTP_CTL_EL0_Type_ENABLE, _get_CNTV_CTL_EL0_Type_ENABLE, _get_CNTHP_CTL_EL2_Type_IMASK,
+  _get_CNTPS_CTL_EL1_Type_IMASK, _get_CNTP_CTL_EL0_Type_IMASK, _get_CNTV_CTL_EL0_Type_IMASK,
+  _get_CNTHP_CTL_EL2_Type_ISTATUS, _get_CNTPS_CTL_EL1_Type_ISTATUS, _get_CNTP_CTL_EL0_Type_ISTATUS,
+  _get_CNTV_CTL_EL0_Type_ISTATUS, _get_CNTCR_Type_FCREQ, _get_CNTCR_Type_HDBG, _get_CNTCR_Type_SCEN] at *); esimp))
 
 
 section

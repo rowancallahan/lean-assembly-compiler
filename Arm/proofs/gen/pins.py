@@ -17,6 +17,18 @@ PINS = [
   ("spe", "SPESampleInFlight", "false"),
   ("dbgen", "DBGEN", ".Signal_Low"),
   ("spiden", "SPIDEN", ".Signal_Low"),
+  ("edesr", "EDESR", "0"),
+  ("emu", "__emulator_termination_opcode", "none"),
+  ("pmcr", "PMCR_EL0", "0"),
+  ("mdcr2", "MDCR_EL2", "0"),
+  ("cntcr", "CNTCR", "0"),
+  ("cntp", "CNTP_CTL_EL0", "0"),
+  ("cnthp", "CNTHP_CTL_EL2", "0"),
+  ("cntps", "CNTPS_CTL_EL1", "0"),
+  ("cntv", "CNTV_CTL_EL0", "0"),
+  ("brbfcr", "BRBFCR_EL1", "0"),
+  ("pcount", "PhysicalCount", "0"),
+  ("cnthpcv", "CNTHP_CVAL_EL2", "1"),
 ]
 import sys
 out = []
@@ -40,6 +52,12 @@ for d in range(2):
   out.append("    · obtain ⟨p, hp, hpp⟩ := hc.ps; exact ⟨p, by simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .PSTATE) h rfl)] using hp, hpp⟩")
   for i, (f, r, v) in enumerate(PINS):
     out.append(f"    · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (np_ne (r' := .{r}) h rfl)] using hc.{f}")
+out.append("")
+out.append("theorem pins_pstate {m : Regs} (q : ProcState) (hq : q.EL = 3#2 ∧ q.nRW = 0#1 ∧ q.IL = 0#1) (hc : Pins m) :")
+out.append("    Pins (m.insert .PSTATE q) := by")
+out.append("  refine ⟨⟨q, by simp [Std.ExtDHashMap.get?_insert], hq⟩, " + ", ".join(["?_"] * len(PINS)) + "⟩")
+for i, (f, r, v) in enumerate(PINS):
+  out.append(f"  · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register.{r}) = true by decide)] using hc.{f}")
 out.append("")
 out.append("set_option hygiene false in")
 out.append("/-- unpack `Pins s.regs` (named `hc`) into the atomic facts `esimp` rewrites with -/")
