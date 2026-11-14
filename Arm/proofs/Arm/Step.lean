@@ -30,6 +30,8 @@ def postRegs (m : Regs) (p1 : ProcState) (btn : BitVec 2) (bt : Bool) (pc1 : Bit
 
 theorem addInt4 (x : BitVec 64) : BitVec.addInt x (fdiv_int 32 8) = x + 4 := rfl
 
+theorem u_InterruptReq (s : St) : undefined_InterruptReq () s = .ok (uval (undefined_InterruptReq ())) s := rfl
+
 section
 variable {s : St} (hc : Pins s.regs)
 include hc
@@ -93,6 +95,39 @@ theorem ie_ok (pc : BitVec 64) (w : BitVec 32) (hpc : s.regs.get? ._PC = some pc
     __DefaultCond, __DecodeExecute, __TryDecodeExecute, ExecuteA64, ThisInstrAddr, AArch64_ExecutingERETInstr,
     ThisInstr, ThisInstrLength]
   cases bt <;> gsimp <;> simp only [addInt4, postRegs, ite_true, ite_false, Bool.false_eq_true] <;> first | exact hs1 | exact hs2
+
+/-- **one full machine step** (`stepModel`, i.e. `step_model`) around a decode+execute result `s1`: if the
+decode of the fetched word on the state `__InstructionExecute` has prepared succeeds with `s1`, the whole step
+succeeds with `s1` plus the post-execute bookkeeping and the cycle count. -/
+theorem step_ok (pc : BitVec 64) (w : BitVec 32) (hpc : s.regs.get? ._PC = some pc) (hlt : pc.toNat < 2 ^ 29)
+    (hal : pc.toNat % 4 = 0) (hw : MemWord s.mem pc.toNat w) {b : BranchType}
+    (hb : s.regs.get? .Branchtypetaken = some b) (hbr : (b == .BranchType_RESET) = false) (s1 : St)
+    (hdec : __DecodeA64 pc.toNat w { s with regs := preRegs (s.regs.insert .SEE (-1 : Int)) w } = .ok () s1)
+    (hc1 : Pins s1.regs) {p1 : ProcState} {bt : Bool} {pc1 : BitVec 64} {btn : BitVec 2} {c : Int}
+    (hp1 : s1.regs.get? .PSTATE = some p1) (hbt : s1.regs.get? .__BranchTaken = some bt)
+    (hpc1 : s1.regs.get? ._PC = some pc1) (hbtn : s1.regs.get? .BTypeNext = some btn)
+    (hti : s1.regs.get? .__ThisInstr = some w) (hte : s1.regs.get? .__ThisInstrEnc = some .__A64)
+    (hsi : s1.regs.get? .ShouldAdvanceIT = some false) (hss : s1.regs.get? .ShouldAdvanceSS = some true)
+    (hcc : s1.regs.get? .__cycle_count = some c)
+    (heret : BitVec.ofNat 20 (w.toNat >>> 12) ≠ 879088#20) :
+    stepModel s = .ok () { s1 with regs := (postRegs s1.regs p1 btn bt pc1).insert .__cycle_count (c + 1) } := by
+  have hc0 : Pins (s.regs.insert .SEE (-1 : Int)) := (pins_insert _ rfl).2 hc
+  have hie := ie_ok (s := { s with regs := s.regs.insert .SEE (-1 : Int) }) hc0 pc w
+    (by simpa [Std.ExtDHashMap.get?_insert] using hpc) hlt hal hw s1 hdec hc1 hp1 hbt hpc1 hbtn hti hte hsi hss heret
+  have hpost : Pins (postRegs s1.regs p1 btn bt pc1) := by
+    have hq : p1.EL = 3#2 ∧ p1.nRW = 0#1 ∧ p1.IL = 0#1 := by
+      obtain ⟨q, hq, h⟩ := hc1.ps; rw [hp1] at hq; cases hq; exact h
+    have := pins_pstate { p1 with BTYPE := btn } hq ((pins_insert (r := .InGuardedPage) (m := s1.regs) false rfl).2 hc1)
+    unfold postRegs; split
+    · exact this
+    · exact (pins_insert (r := ._PC) _ rfl).2 this
+  have hce := cycleEnd_ok (s := { s1 with regs := postRegs s1.regs p1 btn bt pc1 }) hpost (c := c) (by
+    unfold postRegs; split <;> simp [Std.ExtDHashMap.get?_insert, hcc])
+  have := halted_ok (s := { s with regs := s.regs.insert .SEE (-1 : Int) }) hc0
+  have := take_ok (s := { s with regs := s.regs.insert .SEE (-1 : Int) }) hc0; have := u_InterruptReq
+  simp only [choice_unit] at *
+  simp only [stepModel, __TopLevel]
+  esimp
 
 end
 end ArmProof
