@@ -521,3 +521,38 @@ done for a single loop. In order of what blocks the most lean-svg code now:
 Not rebased: this branch is still on `9310b1a`; the reorganised `main` renames the modules (`Proven.X` →
 `Riscv.Direct.X`), so a rebase is a rename of the imports of five files plus a full rebuild.
 
+
+## 10. Round 3 (book functions over `Nat`; in progress)
+
+`Proven/Frontx/BookExamples.lean`: 14 functions of "Functional Programming in Lean" (survey verdict "B", branch
+`booksurvey`) with the book's own definitions, all with automatic `exec` theorems (axioms `propext`,
+`Classical.choice`, `Quot.sound`): `add1`, `maximum`, `isZero`, `pred`, `Nat.double`, `triple`, `quadruple` (no
+recursion); `even`, `plus`, `times`, `minus`, `double` (structural recursion on `Nat`, the call NOT in tail
+position); `div` (well-founded, `1 + div (n - k) k ok`, with its proof argument `ok : k ≠ 0`), `halve`
+(patterns `0`, `1`, `n + 2`).
+
+New in the translator:
+- **Primitive recursion on `Nat` as a loop** (`natRec_forIn` in `For.lean`, once and for all): `f 0 = b`,
+  `f (k'+1) = E[f k']` with the other arguments unchanged is the loop `acc := b; for j in [0:k] do acc := E[acc]`.
+  This is the accumulator transformation with no algebra on the result; the per-function part is
+  `∀ j, f (j+1) = h j (f j)` by `rfl`.
+- **Accumulator mode** for `f x = g + f x'` under arbitrary tests (any recursion Lean accepts, `Nat` result):
+  the tree carries `acc`, `f.runs` is stated for `acc + f x` and proved by `fun_induction`; the reassociation at
+  each recursive call is `omega`. Chosen automatically when the plain translation finds a non-tail call. Not
+  mechanical (and rejected) when the context of the call is not `· + g`: e.g. `f x' * 2`, two recursive calls.
+- `match` on a `Nat` with several patterns (`0`, `1`, `n + 2`): tests `n = c` in order, then `n - c`.
+- truncated `Nat` subtraction (`rN_sub'`): plain `sub` when `b ≤ a` follows from the context by `omega`, else a
+  select; proof-valued parameters (`ok : k ≠ 0`) are passed through and carry no variable.
+- `frontx_compile f with inv using eq₁, eq₂`: `using` gives equations `g args = closed form` used instead of
+  unfolding `g` (needed because there are no calls: `times` calls `plus`, `minus` calls `pred` inside the
+  recursion). Human input for the 14 functions: `plus_eq`, `pred_eq`, and the invariant `acc ≤ n` of `minus`.
+
+Bounds: form (1)/(2) of the owner's list as hypotheses of the generated theorem (`n < 2^64` per `Nat` parameter in
+`f.Rep`), in the function's own signature for `div` (`ok`). Results are stated as `BitVec.ofNat 64 (f args)`:
+for `add1`, `plus`, `times`, `double`… no no-overflow hypothesis is needed for that statement (it is the value mod
+2^64); `minus` needs `acc ≤ n` because `pred` tests its argument against 0. Fuel form (3): fuel recursion already
+works (`adlerA`, `b64Sum`); a step bound in terms of fuel is not proved.
+
+Not done from the "B" list: everything over `List` (`length`, `take`, `drop`, `reverse`, `sum`, `filter`,
+`mergeSort`, `insertionSort`: a list parameter needs the array-view representation, the existing `compile%`
+pipeline covers `take/drop/reverse/map/fold` on `List UInt8`), `timesTwelve`, `Pos.plus`/`Even.plus` (structures).

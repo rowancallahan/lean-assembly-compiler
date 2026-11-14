@@ -471,6 +471,9 @@ theorem step_call {t : Tree} {σ : BState} {r : BitVec 64} (σ₁ : BState) (hs 
     (h : ∃ σ', t.Runs σ₁ r σ') : ∃ σ', t.Runs σ r σ' :=
   h.elim fun σ' h1 => ⟨σ', .call hs h1⟩
 
+theorem Tree.Runs.congr {t : Tree} {σ σ' : BState} {r r' : BitVec 64} (h : t.Runs σ r σ') (e : r = r') :
+    t.Runs σ r' σ' := e ▸ h
+
 theorem step_ret {t : Tree} {σ : BState} {r : BitVec 64} (σ' : BState) (hs : t.step σ = some (.ret r σ')) :
     ∃ σ', t.Runs σ r σ' := ⟨σ', .ret hs⟩
 
