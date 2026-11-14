@@ -19,3 +19,8 @@ Proven.compileFO_ok stmt=14868048629439109942 closure=2548585352084586032 consts
 Proven.compileAFO_ok stmt=14624345412206531986 closure=13494359066029939061 consts=7341 local=473
 Proven.compileBFO_ok stmt=8243695667856467076 closure=5883367802791906190 consts=7532 local=599
 Proven.Mach.WideF.optB_ok stmt=9387870850665521879 closure=10499307227823331044 consts=842 local=335
+Proven.Mach.MachineC.compP_ok stmt=8361283843696894200 closure=4868817762248427494 consts=708 local=239
+Proven.Mach.Riscv.callsCode_implements stmt=366038495112626304 closure=10765964521739040263 consts=7249 local=385
+Proven.Mach.Riscv.sumTo_implements stmt=15861549661262505672 closure=2678232534579236816 consts=7215 local=350
+Proven.Mach.Riscv.fib_implements stmt=9013821045924404382 closure=11221605431454052771 consts=7215 local=350
+Proven.Mach.Riscv.isEven_implements stmt=1282900750994143482 closure=3664269718350078755 consts=7217 local=352
