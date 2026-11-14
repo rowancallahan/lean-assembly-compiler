@@ -1,0 +1,23 @@
+name = "apc"
+defaultTargets = ["Apc"]
+
+# our own interface files, taken from the repo root (unchanged)
+[[lean_lib]]
+name = "Spec"
+srcDir = "../.."
+globs = ["Spec.Code", "Spec.ArrCode"]
+
+[[lean_lib]]
+name = "Compiler"
+srcDir = "../.."
+globs = ["Compiler.Iface", "Compiler.Logic", "Compiler.Exp", "Compiler.Stmt", "Compiler.Mem", "Compiler.Arr"]
+
+[[lean_lib]]
+name = "Apc"
+globs = ["Apc.+"]
+
+# google-deepmind/code-verification at b0f729a (Apache-2.0), cloned next to the repo, NOT vendored:
+# /home/user/deps/code-verification (see Arm/apc/check.sh)
+[[require]]
+name = "arm64"
+path = "../../../deps/code-verification/arm64-semantics/Arm64"

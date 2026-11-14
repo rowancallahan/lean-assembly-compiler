@@ -19,6 +19,7 @@ Read this first. The top-level `README.md` is for people; this file is for agent
   (`compBFO`) and `g.implements1 : Implements1With …` (8 examples in `Riscv/Frontx/Machine.lean`; axiom file
   `axioms_m.lean`; QEMU/Sail test `python3 Testing/asm/frontx_test.py check 40 crcraw`).
 - Calls (`CALLS.md`): `Spec/Tree.lean`, `treeEval_implements` (`Riscv/Examples/TreeEval.lean`), `calls_test.py`.
+- ARM on DeepMind's AArch64 semantics (`Arm/apc/README.md`, `Arm/apc/check.sh`): `apc : Machine` (9 laws), `compile_apc`/`gcd_apc`/`sort_apc`, bridge `apc_eq_sail` to Sail for the 216 expression words.
 - ARM (Lean 4.34.1, generated model `Arm/model/`, built copy `/home/user/armv9-lean`): AArch64 backend for `Exp`
   proved at the decode+execute layer (`Arm/proofs/README.md`); fetch / full step / `ret` chaining in progress.
 - Not proved: `Riscv/Legacy/Sort.lean` (`sorry`, hand-written merge sort), `Riscv/Legacy/SortSteps.lean` (kernel
