@@ -49,6 +49,11 @@ hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read 
 - Arithmetic: integers and modular arithmetic only. NO floats, nothing over the rationals/reals.
   Candidate clients: Mathlib-defined number theory computed modularly (after big numbers); SHA-256; CRC-32.
 - Speed matters: generated code should aim to match or beat Lean's native compiler.
+- Tier 1 = the explicit compiler: one pure function with several proved optimisation passes inside, invisible in the spec.
+  Tier 2 = hand/agent-optimised code for a specific function, proved against the same spec; interchangeable with tier 1.
+- Resources in the spec: ONE bound, `space n` = extra bytes of memory the code may use for an input of n bytes
+  (a single work block; the compiler carves it into scratch/frame/spill slots as it likes). No separate "stack"/"scratch"
+  in the user-facing statement. Registers: a fixed convention (which are preserved), not a counted resource.
 - Memory: blocks are lists of cells; layouts of pairwise-disjoint blocks; owner reviews byte layouts in `Encode.lean`.
 
 # Far future (noted, not planned)
