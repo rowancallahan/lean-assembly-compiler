@@ -8,6 +8,7 @@ becomes `v7`, `a7` becomes the slot `v8`, the others stay; so `v2` keeps the scr
 A `sort` stage is: the view materialized to `out[0..m)` (as before), copied to `scr[0..m)`, then the merge
 sort `scr → out` (`msortG 2 1 2`); a sort of the input itself (`cs0`) is `msortG 0 1 2` directly. -/
 import Compiler.Front.PipeStdMachine
+import Riscv.Back.OptB
 import Riscv.Direct.SortMergeMachine
 import Riscv.Direct.Arr2F
 import Riscv.Direct.SortMergeGen

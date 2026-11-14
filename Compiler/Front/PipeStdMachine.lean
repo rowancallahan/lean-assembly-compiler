@@ -31,10 +31,10 @@ def compileXA (p : XPipe) : Except String (List (BitVec 32)) :=
   | some m => .error m
   | none => match wfErr [0, 3] (XPipe.prog p) with
     | some m => .error m
-    | none => .ok (compileAF [0, 3] (XPipe.prog p))
+    | none => .ok (compileAFO [0, 3] (XPipe.prog p))
 
 theorem compileXA_inv {p : XPipe} {code : List (BitVec 32)} (h : compileXA p = .ok code) :
-    (∀ st ∈ p, st.chk = none) ∧ (XPipe.prog p).wf [0, 3] ∧ code = compileAF [0, 3] (XPipe.prog p) := by
+    (∀ st ∈ p, st.chk = none) ∧ (XPipe.prog p).wf [0, 3] ∧ code = compileAFO [0, 3] (XPipe.prog p) := by
   unfold compileXA at h
   cases hc : XPipe.chkErr p with
   | some m => simp [hc] at h
@@ -91,7 +91,7 @@ theorem implementsLen_of_exec {prog : AStmt} (hwf : prog.wf [0, 3]) {f : List UI
       xs.length < 2 ^ 32 → space xs.length ≤ out.length → out.length < 2 ^ 32 →
       ∃ σ' out', AExec prog ⟨env, [tbs xs, out]⟩ σ' ∧ σ'.heap = [tbs xs, out'] ∧ out'.length = out.length ∧
         out'.take (f xs).length = tbs (f xs) ∧ σ'.env 1 = .ofNat 64 (f xs).length) :
-    ImplementsPipeLen (compileAF [0, 3] prog) f space := by
+    ImplementsPipeLen (compileAFO [0, 3] prog) f space := by
   intro x s entry ra input scratch output stack codeR hmax h hpc hal hcode h10 h11 h12 h13 h2 h1 hra hrad hx
     hil hol hram hdis hmap
   have hin : ∀ r ∈ [input, scratch, output, stack, codeR], r.inRAM := hram
@@ -126,9 +126,9 @@ theorem implementsLen_of_exec {prog : AStmt} (hwf : prog.wf [0, 3]) {f : List UI
     · simp only [List.pairwise_cons, List.mem_cons, List.not_mem_nil, or_false, forall_eq, List.Pairwise.nil,
         and_true, false_implies, implies_true]
       unfold disjoint; dsimp only; omega
-  have hok : codeOK entry (compileAF [0, 3] prog).length := ⟨hal, rc.1, rc.2⟩
+  have hok : codeOK entry (compileAFO [0, 3] prog).length := ⟨hal, rc.1, rc.2⟩
   have hcd : ∀ r ∈ [(⟨input.base, x.length⟩ : Region), ⟨output.base, L⟩],
-      disjoint ⟨entry.toNat, 4 * (compileAF [0, 3] prog).length⟩ r := by
+      disjoint ⟨entry.toNat, 4 * (compileAFO [0, 3] prog).length⟩ r := by
     intro r hr
     simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
     rcases hr with rfl | rfl <;> (unfold disjoint; dsimp only; omega)
@@ -152,7 +152,7 @@ theorem implementsLen_of_exec {prog : AStmt} (hwf : prog.wf [0, 3]) {f : List UI
         · simpa [tbs, List.map_map, Function.comp_def] using hx
         · exact ho
         · simp at hb; omega⟩
-  refine runsTo_mono (compileAF_ok [0, 3] hwf hR hexec h hpc (codeAt_of_codeBytes hok hcode) hok hcd hrel
+  refine runsTo_mono (compileAFO_ok [0, 3] hwf hR hexec h hpc (codeAt_of_codeBytes hok hcode) hok hcd hrel
     (by rw [hra']; omega)) ?_
   rintro s' ⟨p1, p2, p3, p4, p5⟩
   have e1 := p2.bytes 1 (by simp)

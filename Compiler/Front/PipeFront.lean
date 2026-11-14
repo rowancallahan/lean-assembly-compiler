@@ -12,7 +12,7 @@ open Lean Meta Elab Term
 
 /-- the code `compileX` produces when it succeeds -/
 def codeX (p : XPipe) : List (BitVec 32) :=
-  if p.hasSort then compileBF 7 [0, 3, 2] (XPipe.progB p) else compileAF [0, 3] (XPipe.prog p)
+  if p.hasSort then compileBFO 7 [0, 3, 2] (XPipe.progB p) else compileAFO [0, 3] (XPipe.prog p)
 
 theorem compileX_of_toBool {p : XPipe} (h : (compileX p).toBool = true) : compileX p = .ok (codeX p) := by
   cases hc : compileX p with

@@ -60,10 +60,10 @@ def compileXB (p : XPipe) : Except String (List (BitVec 32)) :=
   | some m => .error m
   | none => match wfErrB 7 [0, 3, 2] (XPipe.progB p) with
     | some m => .error m
-    | none => .ok (compileBF 7 [0, 3, 2] (XPipe.progB p))
+    | none => .ok (compileBFO 7 [0, 3, 2] (XPipe.progB p))
 
 theorem compileXB_inv {p : XPipe} {code : List (BitVec 32)} (h : compileXB p = .ok code) :
-    (∀ st ∈ p, st.chk = none) ∧ (XPipe.progB p).wf 7 [0, 3, 2] ∧ code = compileBF 7 [0, 3, 2] (XPipe.progB p) := by
+    (∀ st ∈ p, st.chk = none) ∧ (XPipe.progB p).wf 7 [0, 3, 2] ∧ code = compileBFO 7 [0, 3, 2] (XPipe.progB p) := by
   unfold compileXB at h
   cases hc : XPipe.chkErr p with
   | some m => simp [hc] at h
@@ -132,7 +132,7 @@ theorem implementsS_of_execB {prog : BStmt} (hwf : prog.wf 7 [0, 3, 2]) {f : Lis
       sspace xs.length ≤ scr.length → scr.length < 2 ^ 32 →
       ∃ τ' out' scr', BExec prog ⟨env, [tbs xs, out, scr]⟩ τ' ∧ τ'.heap = [tbs xs, out', scr'] ∧
         out'.length = out.length ∧ out'.take (f xs).length = tbs (f xs) ∧ τ'.env 1 = .ofNat 64 (f xs).length) :
-    ImplementsPipeS (compileBF 7 [0, 3, 2] prog) f space sspace 71 := by
+    ImplementsPipeS (compileBFO 7 [0, 3, 2] prog) f space sspace 71 := by
   intro x s entry ra input scratch output stack codeR hmax h hpc hal hcode h10 h11 h12 h13 h2 h1 hra hrad hx
     hil hol hsl hstk hram hdis hmap hmapS
   have hin : ∀ r ∈ [input, scratch, output, stack, codeR], r.inRAM := hram
@@ -168,13 +168,13 @@ theorem implementsS_of_execB {prog : BStmt} (hwf : prog.wf 7 [0, 3, 2]) {f : Lis
     · simp only [R, List.pairwise_cons, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq,
         List.Pairwise.nil, and_true, false_implies, implies_true]
       unfold disjoint; dsimp only; omega
-  have hok : codeOK entry (compileBF 7 [0, 3, 2] prog).length := ⟨hal, rc.1, rc.2⟩
+  have hok : codeOK entry (compileBFO 7 [0, 3, 2] prog).length := ⟨hal, rc.1, rc.2⟩
   have hfd : ∀ r ∈ R, disjoint ⟨frameBase 7 (getX s 2), 8 * (7 + 1)⟩ r := by
     rw [hfb]; intro r hr
     simp only [R, List.mem_cons, List.not_mem_nil, or_false] at hr
     rcases hr with rfl | rfl | rfl <;> (unfold disjoint; dsimp only; omega)
   have hcd : ∀ r ∈ (⟨frameBase 7 (getX s 2), 8 * (7 + 1)⟩ : Region) :: R,
-      disjoint ⟨entry.toNat, 4 * (compileBF 7 [0, 3, 2] prog).length⟩ r := by
+      disjoint ⟨entry.toNat, 4 * (compileBFO 7 [0, 3, 2] prog).length⟩ r := by
     rw [hfb]; intro r hr
     simp only [R, List.mem_cons, List.not_mem_nil, or_false] at hr
     rcases hr with rfl | rfl | rfl | rfl <;> (unfold disjoint; dsimp only; omega)
@@ -201,7 +201,7 @@ theorem implementsS_of_execB {prog : BStmt} (hwf : prog.wf 7 [0, 3, 2]) {f : Lis
         · simpa [R] using ho
         · simpa [R] using hs
         · simp [R] at hb; omega⟩
-  refine runsTo_mono (compileBF_ok 7 [0, 3, 2] (by decide) hwf hR hexec h hpc (codeAt_of_codeBytes hok hcode) hok
+  refine runsTo_mono (compileBFO_ok 7 [0, 3, 2] (by decide) hwf hR hexec h hpc (codeAt_of_codeBytes hok hcode) hok
     hf hfd hcd (fun i => by simp [envOf]) (fun j hj => by simp [envOf]; omega) hheap (by rw [hra']; omega)) ?_
   rintro s' ⟨p1, p2, p3, p4, p5, p6, p7⟩
   have eo := p3.bytes 1 (by simp [R])
