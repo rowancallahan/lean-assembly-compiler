@@ -40,7 +40,7 @@ def wfA (bv : List (Fin 8)) : AStmt → Prop
       M.jmpOK ((M.code (mgen8 c 0)).length + M.lenBz + (M.code (M.compA bv body)).length)
 
 /-- data regions: in RAM, pairwise disjoint -/
-def RegOK (R : List Region) : Prop := (∀ r ∈ R, M.inRAM r.base r.len) ∧ R.Pairwise disjoint
+def RegOK (R : List Region) : Prop := (∀ r ∈ R, M.inDat r.base r.len) ∧ R.Pairwise disjoint
 
 /-- the machine state represents `σ` -/
 structure Rel (bv : List (Fin 8)) (R : List Region) (σ : AState) (s : M.S) : Prop where
@@ -80,14 +80,14 @@ theorem disj_sub {R : List Region} {p n p' n' : Nat} (hd : ∀ r ∈ R, disjoint
 theorem addr_ok {bv R σ} {s : M.S} (r : M.Rel bv R σ s) (hR : M.RegOK R) {b : Nat} (hb : b < σ.heap.length)
     {i : AExp} (hi : (i.denote σ.env).toNat < σ.heap[b].length) :
     ∃ hbR : b < R.length, ((addrE bv b i).denote σ.env).toNat = R[b].base + (i.denote σ.env).toNat ∧
-      M.inRAM (R[b].base + (i.denote σ.env).toNat) 1 := by
+      M.inDat (R[b].base + (i.denote σ.env).toNat) 1 := by
   have hbR : b < R.length := r.hlen ▸ hb
   have hl := r.blen b hbR; rw [getD_get _ hb] at hl
   have hram := hR.1 _ (List.getElem_mem hbR)
-  have hlt := M.ramHi_lt
+  have hlt := M.datHi_lt
   obtain ⟨h1, h2⟩ := hram
-  have h1' : M.ramLo ≤ R[b].base := h1
-  have h2' : R[b].base + R[b].len ≤ M.ramHi := h2
+  have h1' : M.datLo ≤ R[b].base := h1
+  have h2' : R[b].base + R[b].len ≤ M.datHi := h2
   refine ⟨hbR, ?_, ⟨by omega, by omega⟩⟩
   show (σ.env (bv.getD b 0) + i.denote σ.env).toNat = _
   rw [r.base b hbR, BitVec.toNat_add, BitVec.toNat_ofNat, Nat.mod_eq_of_lt (a := R[b].base) (by omega),

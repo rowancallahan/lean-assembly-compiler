@@ -5,12 +5,12 @@ defaultTargets = ["Apc"]
 [[lean_lib]]
 name = "Spec"
 srcDir = ".."
-globs = ["Spec.Code"]
+globs = ["Spec.Code", "Spec.ArrCode"]
 
 [[lean_lib]]
 name = "Compiler"
 srcDir = ".."
-globs = ["Compiler.Iface"]
+globs = ["Compiler.Iface", "Compiler.Logic", "Compiler.Exp", "Compiler.Stmt", "Compiler.Mem", "Compiler.Arr"]
 
 [[lean_lib]]
 name = "Apc"
