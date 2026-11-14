@@ -189,4 +189,28 @@ error: compile%: unsupported list expression (use map, take, drop, reverse, merg
 #guard_msgs in
 example := compile% fun xs : List UInt8 => List.zipWith (· + ·) xs xs.reverse
 
+/-! ## `Implements1` form (`Compiled.implements1`: working space in the work block, `code1`) -/
+
+theorem revinc5_implements1 : Implements1Raw revinc5.code1 (fun xs => ((xs.take 5).map (· + 1)).reverse)
+    (XPipe.space1 revinc5.pipe) (retLen := true) := revinc5.implements1
+
+theorem filtsort_implements1 : Implements1Raw filtsort.code1 (fun xs => (xs.filter (· > 3)).mergeSort)
+    (XPipe.space1 filtsort.pipe) (retLen := true) := filtsort.implements1
+
+theorem twosort_implements1 : Implements1Raw twosort.code1 (fun xs =>
+    (((xs.drop 3).mergeSort.take 10).reverse.map fun x => if x ≥ 0x80 then x ||| 1 else 0xff - x).mergeSort)
+    (XPipe.space1 twosort.pipe) (retLen := true) := twosort.implements1
+
+theorem any3_implements1 : Implements1With encRaw enc any3.code1 (fun xs => xs.any fun x => x == 3)
+    (XPipe.space1 any3.pipe) (retLen := true) := any3.implements1
+
+theorem min_implements1 : Implements1With encRaw enc min.code1 (fun xs => xs.min?)
+    (XPipe.space1 min.pipe) (retLen := true) := min.implements1
+
+theorem sum64_implements1 : Implements1With encRaw enc sum64.code1
+    (fun xs => xs.foldl (fun (a : BitVec 64) x => a + x.toBitVec.setWidth 64) 0)
+    (XPipe.space1 sum64.pipe) (retLen := true) := sum64.implements1
+
+example : XPipe.space1 filtsort.pipe 100 = 279 := by decide
+
 end Proven.PipeEx

@@ -5,14 +5,16 @@ For each input: a0 = &in (bytes xs), a1 = len xs, a2 = n, a3 = &out (128-byte sl
 after the call the driver stores a2.  Checked against a Python model: the whole output slot (result bytes,
 then untouched 0x55 guard bytes), the input slot unchanged, a2 for `sum`; on Sail, every data write lands in
 the expected output bytes (or the a2 result word).
-usage: arr_test.py {sum,take,inc,sort} NTESTS"""
+usage: [WDIR=opt-words] arr_test.py {sum,take,inc,sort} NTESTS"""
 import os, random, re, subprocess, sys, time
 D = os.path.dirname(os.path.abspath(__file__)); W = os.path.join(D, "ctest"); os.makedirs(W, exist_ok=True)
 SAIL = "/home/user/deps/sailsim/sail-riscv-Linux-x86_64/bin/sail_riscv_sim"
 p = lambda f: os.path.join(W, f)
 sh = lambda c: subprocess.run(c, shell=True, check=True)
 which, N = sys.argv[1], int(sys.argv[2])
-words = [int(l, 16) for l in open(os.path.join(D, "arr-words", which + ".words")) if l.strip()]
+WD = os.environ.get("WDIR", "arr-words")  # opt-words: the optimised words (`emit_opt_arr.lean`; sort = insertion.words)
+fn = "insertion" if WD == "opt-words" and which == "sort" else which
+words = [int(l, 16) for l in open(os.path.join(D, WD, fn + ".words")) if l.strip()]
 S = 128  # slot size
 def model(xs, n):
     """(output bytes, a2 or None)"""

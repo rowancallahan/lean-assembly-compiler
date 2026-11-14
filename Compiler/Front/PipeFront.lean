@@ -5,6 +5,7 @@ kernel-checked proof that `compileP` accepts the pipe.  `Compiled.ok` is then th
 subterm or the limit.  No `native_decide`: the proofs are `rfl`/`simp` and `decide +kernel`. -/
 import Compiler.Front.PipeOk
 import Compiler.Front.PipeStdBMachine
+import Compiler.Front.PipeIMachine
 import Lean
 
 namespace Proven
@@ -37,6 +38,8 @@ structure Compiled {α : Type} (enc : α → List UInt8) (f : List UInt8 → α)
   pipe : XPipe
   denote : ∀ xs, enc (f xs) = XPipe.denote pipe xs
   check : (compileX pipe).toBool = true
+  /-- the compiler in the `Implements1` convention (`compileX1`) accepts the pipe too -/
+  check1 : (compileX1 pipe).toBool = true
 
 namespace Compiled
 variable {α : Type} {enc : α → List UInt8} {f : List UInt8 → α}
@@ -45,6 +48,22 @@ variable {α : Type} {enc : α → List UInt8} {f : List UInt8 → α}
 def code (c : Compiled enc f) : List (BitVec 32) := codeX c.pipe
 
 theorem compiles (c : Compiled enc f) : compileX c.pipe = .ok c.code := compileX_of_toBool c.check
+
+/-- the machine code in the `Implements1` convention (working space in the work block) -/
+def code1 (c : Compiled enc f) : List (BitVec 32) := compileBFO 8 [0, 2, 3] (progI c.pipe)
+
+theorem compiles1 (c : Compiled enc f) : compileX1 c.pipe = .ok c.code1 := by
+  have h := c.check1
+  cases hc : compileX1 c.pipe with
+  | error m => simp [hc, Except.toBool] at h
+  | ok code => obtain ⟨-, -, -, -, rfl⟩ := compileX1_inv hc; rfl
+
+/-- **the `Implements1` theorem for the user's function** (`Spec/Implements1.lean`): input = the raw bytes,
+result encoded by `enc`, its length in `a1`, ONE resource bound: `XPipe.space1 p n = 2 (n + XPipe.extra p) + 79`
+bytes of work block -/
+theorem implements1 (c : Compiled enc f) :
+    Implements1With encRaw enc c.code1 f (XPipe.space1 c.pipe) (retLen := true) :=
+  Implements1Raw.enc c.denote (compileX1_ok c.compiles1)
 
 /-- **the code implements the user's function** (result encoded by `enc`; result length in `a1`), given
 an output block of `space |x|` bytes, a scratch block of `sspace |x|` bytes and `XPipe.stack` stack bytes -/
@@ -104,7 +123,9 @@ theorem Compiled.implements {f : List UInt8 → List UInt8} (c : Compiled encL f
 
 def compileErr (p : XPipe) : Option String :=
   match compileX p with
-  | .ok _ => none
+  | .ok _ => match compileX1 p with
+    | .ok _ => none
+    | .error m => some s!"(Implements1 form) {m}"
   | .error m => some m
 
 unsafe def evalErrUnsafe (e : Expr) : MetaM (Option String) :=
@@ -368,7 +389,7 @@ elab "compile% " t:term : term => do
       | (intro xs; simp [XPipe.denote, XStage.denote, Red.denote, Stage.denote, ByteExp.denote, WExp.denote, BOp.eval,
           Op.eval, List.head?_drop, List.reverse_append, show leU = (fun a b => decide (a ≤ b)) from rfl])
       | fail "compile%: could not prove that the function equals the reified pipe")
-    (by decide +kernel))
+    (by decide +kernel) (by decide +kernel))
   elabTerm stx none
 
 end Proven
