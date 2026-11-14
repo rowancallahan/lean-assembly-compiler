@@ -148,6 +148,9 @@ structure Ctx where
   acc? : Option (Expr × Nat) := none
   /-- positions of the parameters that are data (not proofs); `Rep` and the argument tuples range over these -/
   dataIdx : Option (Array Nat) := none
+  /-- a result with several components: the first projection, and for the others (projection, type, variable) -/
+  res0 : Option Expr := none
+  resExtra : Array (Expr × Ty × Nat) := #[]
 
 /-- a load or a temporary, emitted before the node being translated, with the Lean term it holds -/
 inductive Item where
@@ -521,7 +524,7 @@ def inBranch {α : Type} (x : TrM α) : TrM α := do
 def simpNames : Array Name :=
   #[``Tree.step, ``denote_var, ``denote_const, ``denote_bin, ``denote_ite, ``sel_c, ``sel_c', ``Op.eval, ``parSet, ``BEnv.set,
     ``seqSet, ``rB_def, ``rd0, ``rd1, ``rd2, ``blk_get, ``r8_fold, ``ba_get!, ``c_not, ``c_and, ``c_or, ``c_eq0, ``c_not', ``c_and', ``c_or', ``c_eq0',
-    ``rN_lit, ``r8_lit, ``r32_lit, ``r64_lit, ``rN_toNat, ``rN_add, ``rN_sub', ``nat_ite_lt_neg, ``rN_lt, ``rN_or, ``rN_and, ``rN_shl, ``rN_inj, ``rN_eq_lit, ``rN_lt_lit, ``rN_lit_lt, ``rN_ite,
+    ``rN_lit, ``r8_lit, ``r32_lit, ``r64_lit, ``rN_toNat, ``rN_add, ``r8_toNat_sub, ``r32_toNat_sub, ``rN_sub', ``nat_ite_lt_neg, ``rN_lt, ``rN_or, ``rN_and, ``rN_shl, ``rN_inj, ``rN_eq_lit, ``rN_lt_lit, ``rN_lit_lt, ``rN_ite,
     ``r64_add, ``r64_sub, ``r64_and, ``r64_or, ``r64_xor, ``r64_ite, ``r64_eq', ``r64_lt', ``r64_le', ``r64_toNat, ``r64_ofNat,
     ``r32_add, ``r32_sub, ``r32_and, ``r32_or, ``r32_xor, ``r32_ite, ``r32_eq', ``r32_lt', ``r32_le', ``r32_toNat, ``r32_shr,
     ``r8_add, ``r8_sub, ``r8_and, ``r8_or, ``r8_xor, ``r8_ite, ``r8_eq', ``r8_lt', ``r8_le', ``r8_toNat,
@@ -777,6 +780,76 @@ def natPats (ma : MatcherApp) : MetaM (Array (Nat × Bool)) := do
       out := out.push r
     return out
 
+/-- `Prod.fst (a, b) ↦ a`, `(some v).isSome ↦ true`, `(some v).getD d ↦ v`, … -/
+def projNorm (e : Expr) : MetaM Expr :=
+  Meta.transform e.headBeta (post := fun e => do
+    let e := e.headBeta
+    if e.isAppOfArity ``Prod.fst 3 || e.isAppOfArity ``Prod.snd 3 then
+      let p ← whnfR e.appArg!
+      if p.isAppOfArity ``Prod.mk 4 then
+        return .done (if e.isAppOfArity ``Prod.fst 3 then p.getArg! 2 else p.getArg! 3)
+    if e.isAppOfArity ``Option.isSome 2 then
+      let o ← whnfR e.appArg!
+      if o.isAppOfArity ``Option.some 2 then return .done (mkConst ``Bool.true)
+      if o.isAppOfArity ``Option.none 1 then return .done (mkConst ``Bool.false)
+    if e.isAppOfArity ``Option.getD 3 then
+      let o ← whnfR (e.getArg! 1)
+      if o.isAppOfArity ``Option.some 2 then return .done o.appArg!
+      if o.isAppOfArity ``Option.none 1 then return .done (e.getArg! 2)
+    return .done e)
+
+/-- the components of a result type: per component, the projection `fun x => …` and its scalar type -/
+partial def resultComps (ty : Expr) : MetaM (Option (Array (Expr × Ty))) := do
+  let ty ← whnfR ty
+  if let some t ← classify ty then
+    return some #[(← withLocalDeclD `x ty fun x => mkLambdaFVars #[x] x, t)]
+  if ty.isAppOfArity ``Prod 2 then
+    let some ta ← classify (ty.getArg! 0) | return none
+    let some rest ← resultComps (ty.getArg! 1) | return none
+    let fstL ← withLocalDeclD `p ty fun p => do mkLambdaFVars #[p] (← mkAppM ``Prod.fst #[p])
+    let rest' ← rest.mapM fun (π, t) => do
+      let l ← withLocalDeclD `p ty fun p => do mkLambdaFVars #[p] (mkApp π (← mkAppM ``Prod.snd #[p])).headBeta
+      return (l, t)
+    return some (#[(fstL, ta)] ++ rest')
+  if ty.isAppOfArity ``Option 1 then
+    let α := ty.appArg!
+    let some ta ← classify α | return none
+    let zero ← if ta == .bool then pure (Lean.mkConst ``Bool.false) else mkAppOptM ``OfNat.ofNat #[α, mkRawNatLit 0, none]
+    let isS ← withLocalDeclD `o ty fun o => do mkLambdaFVars #[o] (← mkAppM ``Option.isSome #[o])
+    let getL ← withLocalDeclD `o ty fun o => do mkLambdaFVars #[o] (← mkAppM ``Option.getD #[o, zero])
+    return some #[(isS, .bool), (getL, ta)]
+  return none
+
+/-- the list `[(v, x), …]` of extra result variables and their values -/
+def mkRs (rs : Array (Nat × Expr)) : MetaM Expr :=
+  mkListLit (mkApp2 (mkConst ``Prod [0, 0]) (mkConst ``Nat) bv64)
+    (rs.toList.map fun (v, x) => mkApp4 (mkConst ``Prod.mk [0, 0]) (mkConst ``Nat) bv64 (toExpr v) x)
+
+/-- a `ret` leaf of a function whose result has several components -/
+def retLeafM (ctx : Ctx) (env : Expr) (e : Expr) : TrM (MT × Expr × Expr) := do
+  let e0 ← projNorm (mkApp ctx.res0.get! e)
+  let mut rs := #[]
+  for (π, ty, rv) in ctx.resExtra do
+    let ej ← projNorm (mkApp π e)
+    let (m, ej') ← trE ctx ej
+    let m ← fit m
+    modify fun s => { s with pend := s.pend.push (.let_ rv m ej ej' ty s.temps) }
+    rs := rs.push (rv, ty.rep ej)
+  let (m, e0') ← trE ctx e0
+  let m ← fit m
+  wrapItems ctx (← takePend) env fun env => do
+    let h ← oblig (← mkEq (denoteE env m) (ctx.rty.rep e0'))
+    let mut hr := mkApp (mkConst ``allEnv_nil) env
+    let mut tail : Array (Nat × Expr) := #[]
+    for (v, x) in rs.reverse do
+      let hv ← oblig (← mkEq (mkApp env (toExpr v)) x)
+      hr := mkAppN (mkConst ``allEnv_cons) #[env, toExpr v, x, ← mkRs tail.reverse, hv, hr]
+      tail := tail.push (v, x)
+    let r := ctx.rty.rep e0
+    let rsE ← mkRs rs
+    return (.ret m, mkApp3 (mkConst ``LOut.retm) ctx.A r rsE,
+      mkAppN (mkConst ``sim_retm) #[ctx.A, ctx.R, m.toExpr, env, ctx.heap, r, rsE, h, hr])
+
 /-- a term in tail position, in the environment `env`: its tree, its Lean outcome `o : LOut A`, and a proof of
 `Sim R tree ⟨env, heap⟩ o` -/
 partial def trT (ctx : Ctx) (nconj : Nat) (env : Expr) (e : Expr) : TrM (MT × Expr × Expr) := do
@@ -925,6 +998,7 @@ partial def trT (ctx : Ctx) (nconj : Nat) (env : Expr) (e : Expr) : TrM (MT × E
       return r
     let (_, a) ← mkTuple (← (ctx.data args).toList.mapM fun x => do return (x, ← inferType x))
     return ← callLeaf ctx nconj env as repArgs a (mkApp2 (mkConst ``LOut.call) ctx.A a)
+  if ctx.res0.isSome then return ← retLeafM ctx env e
   let r := ctx.rty.rep e
   retLeaf ctx env e r (mkApp2 (mkConst ``LOut.ret) ctx.A r)
 
@@ -1395,9 +1469,12 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
   let stepN := fn ++ `step1
   let bstate := Lean.mkConst ``BState
   forallTelescope info.type fun xs resTy => do
-    let some rty ← classify resTy | throwError "frontx: unsupported result type{indentExpr resTy}"
+    let some resInfo ← resultComps resTy | throwError "frontx: unsupported result type{indentExpr resTy}"
+    let rty := resInfo[0]!.2
+    let multi := resInfo.size > 1
     let some (_, lhs, body) := (← instantiateForall eqnTy xs).eq? | throwError "frontx: bad equation"
     if let some (forE, post?) ← findFor fn (stripPre body) then
+      if multi then throwError "frontx: a result with several components is not supported for loops yet"
       return ← compileLoop fn xs rty lhs forE post? inv? lemmas t0 (pre? := pre?)
     -- a test before the loop: `if c then v else loop` (or the other way round)
     let b0 := stripPre body
@@ -1472,6 +1549,11 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
           scal := scal.push (x, ty, next)
           next := next + 1
       let xsD := dataIdx.map (xs[·]!)
+      -- variables for the extra components of the result
+      let mut resExtra : Array (Expr × Ty × Nat) := #[]
+      for (π, t) in resInfo.extract 1 resInfo.size do
+        resExtra := resExtra.push (π, t, next)
+        next := next + 1
       let out : Nat := match scal[0]? with | some (_, _, v) => v | none => next
       let two64 ← mkAppM ``HPow.hPow #[toExpr (2 : Nat), toExpr (64 : Nat)]
       -- `f.Rep`: the state holds the arguments
@@ -1517,7 +1599,8 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
         let hyps ← hypsOf σ
         let decls := hyps.mapIdx fun i h => (Name.mkSimple s!"h{i}", h)
         let ctx : Ctx := { fn, params := xs, blocks, A, R, heap := mkApp (mkConst ``BState.heap) σ, repN, rty, lemmas,
-                           acc? := acc?.map fun acc => (acc, scal.back!.2.2), dataIdx := some dataIdx }
+                           acc? := acc?.map fun acc => (acc, scal.back!.2.2), dataIdx := some dataIdx,
+                           res0 := if multi then some resInfo[0]!.1 else none, resExtra }
         let ((mt, outE, proof), st) ← withLocalDeclsDND decls fun hs => do
           let ((mt, outE, proof), st) ← (trT ctx nconj (mkApp (mkConst ``BState.env) σ) body).run { next, memo }
           return ((mt, outE, ← mkLambdaFVars hs proof), st)
@@ -1599,6 +1682,52 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
              exact ⟨σ', initS_exec _ _ h1, h2, h3⟩)))
           let t4 ← IO.monoMsNow
           logInfo m!"frontx: {fn} (accumulator introduced): {nvars} variables ({M} user), {nvars - 8} slots, result in variable {out}, {st.nObl} obligations; translate + step proof {t1 - t0} ms, kernel check of step {t2 - t1} ms, induction {t3 - t2} ms, exec theorem {t4 - t3} ms"
+          return
+        if multi then
+          -- several result components: `runs`/`exec` also give the extra result variables
+          let as := (List.range xs.size).toArray.map fun i => mkIdent (Name.mkSimple s!"a{i}")
+          let holes ← xs.mapM fun x => do if ← isProof x then `((by assumption)) else `(_)
+          let fI := mkIdent fn
+          let tI := mkIdent treeN
+          let lI := mkIdent layN
+          let sI := mkIdent stepN
+          let runsI := mkIdent (fn ++ `runs)
+          let r0 := rty.rep (mkApp resInfo[0]!.1 lhs).headBeta
+          let rsL ← mkRs (resExtra.map fun (π, t, v) => (v, t.rep (mkApp π lhs).headBeta))
+          let ind ← if (body.find? (·.isConstOf fn)).isSome then `(tactic| fun_induction $fI:ident $as*)
+            else `(tactic| first | fun_cases $fI:ident $as* | unfold $fI:ident)
+          let runsTy ← mkForallFVars (xs.push σ) (← mkArrow (mkAppN (mkConst repN) (xsD.push σ))
+            (← withLocalDeclD `σ' bstate fun σ' => do
+              mkAppM ``Exists #[← mkLambdaFVars #[σ'] (mkAnd (mkApp4 (mkConst ``Tree.Runs) (mkConst treeN) σ r0 σ')
+                (mkApp2 (mkConst ``AllEnv) (mkApp (mkConst ``BState.env) σ') rsL))]))
+          addThm (fn ++ `runs) runsTy (← `(tactic|
+            (intro $as*
+             $ind:tactic <;> intro σ hR <;>
+              (have hs := $sI:ident $holes* σ hR
+               frontx_path hs
+               first
+               | (obtain ⟨σ₁, hs₁, hR₁⟩ := sim_call_elim _ hs
+                  refine step_callQ σ₁ hs₁ ?_
+                  frontx_ih
+                  exact hR₁)
+               | (obtain ⟨σ₁, hs₁, hq⟩ := sim_retm_elim _ hs
+                  exact step_retQ σ₁ hs₁ hq)))))
+          let t3 ← IO.monoMsNow
+          let progE := mkApp3 (mkConst ``prog) (mkConst layN) (mkConst treeN) (toExpr out)
+          let execTy ← mkForallFVars (xs.push σ) (← mkArrow (mkAppN (mkConst repN) (xsD.push σ))
+            (← withLocalDeclD `σ' bstate fun σ' => do
+              let env' := mkApp (mkConst ``BState.env) σ'
+              let c1 := mkApp3 (mkConst ``BExec) progE σ σ'
+              let c2 ← mkEq (mkApp env' (toExpr out)) r0
+              let c3 ← mkEq (mkApp (mkConst ``BState.heap) σ') (mkApp (mkConst ``BState.heap) σ)
+              mkAppM ``Exists #[← mkLambdaFVars #[σ'] (mkAnd c1 (mkAnd c2 (mkAnd c3 (mkApp2 (mkConst ``AllEnv) env' rsL))))]))
+          let outS := Syntax.mkNumLit (toString out)
+          addThm (fn ++ `exec) execTy (← `(tactic|
+            (intro $as* σ hR
+             exact prog_okQ $lI (by simp [$tI:ident, $lI:ident, Tree.wf, BExp.vlt]) (by rfl) ($runsI:ident $as* σ hR) $outS
+               (by simp [$lI:ident]))))
+          let t4 ← IO.monoMsNow
+          logInfo m!"frontx: {fn} ({resInfo.size} result components): {nvars} variables ({M} user), {nvars - 8} slots, results in variables {out}, {resExtra.map (·.2.2)}, {st.nObl} obligations; translate + step proof {t1 - t0} ms, kernel check of step {t2 - t1} ms, induction {t3 - t2} ms, exec theorem {t4 - t3} ms"
           return
         -- f.runs
         let mkStmt (concl : Expr) : MetaM Expr := do

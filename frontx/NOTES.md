@@ -574,3 +574,18 @@ alternative containing `t <;> omega` inside a `simp` discharger logs errors inst
 on there); `ite` reached the `Bool` translator before the value-level `if` rule.
 Still open from the sequencing item: two loops in sequence and a loop inside a loop body (`findSeq` calls
 `startsWith` per iteration): these need a call or a nested-loop node; not started.
+
+### 10.2 Results with several components (pairs, `Option`)
+
+lean-svg `Svg.hexVal : UInt8 → Option Nat` and `Png.adlerChunk : … → UInt64 × UInt64` compile verbatim
+(`ForExamples.lean`), with automatic `exec` theorems of the form
+`∃ σ', BExec (prog …) σ σ' ∧ σ'.env out = rep (π₀ (f xs)) ∧ σ'.heap = σ.heap ∧ AllEnv σ'.env [(v₁, rep (π₁ (f xs))), …]`.
+- A result type `α × β × …` or `Option α` over scalars is a list of components `π_j` (`Prod.fst/snd` chains;
+  `Option.isSome` as a 0/1 word and `fun o => o.getD 0`); component 0 is the result variable, the others get their
+  own variables, assigned just before the `ret` leaf.
+- Once and for all (`Tree.lean`): outcome `LOut.retm r rs`, `sim_retm`, `step_callQ`/`step_retQ`, `prog_okQ`,
+  `AllEnv`. Per function: the same obligations as before plus one per extra component and leaf.
+- Limits: recursion / non-recursive path only (not `for` loops, not accumulator mode); a leaf must be a
+  constructor application (`(a, b)`, `some v`, `none`) after unfolding; tuple/`Option`/structure *parameters* and
+  `match` on them are not done; results are not yet laid out as bytes per `Encode.lean` (they are in variables).
+- New lemma family for `c.toNat - n` on fixed-width `c` (`r8_toNat_sub`, `r32_toNat_sub`).

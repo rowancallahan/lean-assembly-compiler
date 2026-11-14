@@ -183,6 +183,18 @@ theorem r8_le' (a b : UInt8) : (a ≤ b) = ¬(r8 b < r8 a) := by rw [r8_lt]; exa
 theorem r8_toNat (a : UInt8) : rN a.toNat = r8 a := by
   apply BitVec.eq_of_toNat_eq; have := a.toNat_lt; rw [r8_nat]; simp [rN]
 
+/-- truncated subtraction from a fixed-width value seen as a `Nat` -/
+theorem r8_toNat_sub (a : UInt8) {b : Nat} (hb : b < 2 ^ 64) :
+    rN (a.toNat - b) = if r8 a < rN b then 0#64 else r8 a - rN b := by
+  have := a.toNat_lt
+  rw [rN_sub' (by omega) hb, ← r8_toNat a]
+  simp only [rN_lt (show a.toNat < 2 ^ 64 by omega) hb]
+theorem r32_toNat_sub (a : UInt32) {b : Nat} (hb : b < 2 ^ 64) :
+    rN (a.toNat - b) = if r32 a < rN b then 0#64 else r32 a - rN b := by
+  have := a.toNat_lt
+  rw [rN_sub' (by omega) hb, ← r32_toNat a]
+  simp only [rN_lt (show a.toNat < 2 ^ 64 by omega) hb]
+
 /-! ## conversions -/
 theorem r32_of8 (a : UInt8) : r32 a.toUInt32 = r8 a := by
   apply BitVec.eq_of_toNat_eq; rw [r32_nat, r8_nat, UInt8.toNat_toUInt32]

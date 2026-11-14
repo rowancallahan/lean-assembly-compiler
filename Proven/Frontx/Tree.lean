@@ -477,6 +477,31 @@ theorem Tree.Runs.congr {t : Tree} {σ σ' : BState} {r r' : BitVec 64} (h : t.R
 theorem step_ret {t : Tree} {σ : BState} {r : BitVec 64} (σ' : BState) (hs : t.step σ = some (.ret r σ')) :
     ∃ σ', t.Runs σ r σ' := ⟨σ', .ret hs⟩
 
+/-- the variables `rs` hold the given values -/
+def AllEnv (env : BEnv) (rs : List (Nat × BitVec 64)) : Prop := ∀ p ∈ rs, env p.1 = p.2
+theorem allEnv_nil (env : BEnv) : AllEnv env [] := fun _ h => nomatch h
+theorem allEnv_cons {env : BEnv} {v : Nat} {x : BitVec 64} {rs : List (Nat × BitVec 64)} (h : env v = x)
+    (hr : AllEnv env rs) : AllEnv env ((v, x) :: rs) := fun p hp => by
+  rcases List.mem_cons.1 hp with e | e
+  · subst e; exact h
+  · exact hr p e
+
+theorem step_callQ {t : Tree} {σ : BState} {r : BitVec 64} {Q : BState → Prop} (σ₁ : BState)
+    (hs : t.step σ = some (.call σ₁)) (h : ∃ σ', t.Runs σ₁ r σ' ∧ Q σ') : ∃ σ', t.Runs σ r σ' ∧ Q σ' :=
+  h.elim fun σ' h1 => ⟨σ', .call hs h1.1, h1.2⟩
+
+theorem step_retQ {t : Tree} {σ : BState} {r : BitVec 64} {Q : BState → Prop} (σ' : BState)
+    (hs : t.step σ = some (.ret r σ')) (hq : Q σ') : ∃ σ', t.Runs σ r σ' ∧ Q σ' := ⟨σ', .ret hs, hq⟩
+
+/-- `prog_ok` with extra result variables (read-only tree, started in the very state `σ`) -/
+theorem prog_okQ (L : Lay) {t : Tree} (hw : t.wf L) (hr : t.ro = true) {σ : BState} {r : BitVec 64}
+    {rs : List (Nat × BitVec 64)} (h : ∃ σ', t.Runs σ r σ' ∧ ∀ p ∈ rs, σ'.env p.1 = p.2) (out : Nat)
+    (hlt : ∀ p ∈ rs, p.1 < L.M ∧ p.1 ≠ out) :
+    ∃ τ', BExec (prog L t out) σ τ' ∧ τ'.env out = r ∧ τ'.heap = σ.heap ∧ ∀ p ∈ rs, τ'.env p.1 = p.2 := by
+  obtain ⟨σ', h, hq⟩ := h
+  obtain ⟨τ', h1, h2, h3, h4⟩ := prog_ok L hw h out σ ⟨fun _ _ => rfl, rfl⟩
+  exact ⟨τ', h1, h2, h3.trans (h.heap_ro hr), fun p hp => (h4 p.1 (hlt p hp).1 (hlt p hp).2).trans (hq p hp)⟩
+
 /-! ## One iteration against a Lean-side outcome (used by the certifying translator)
 
 The translator turns the body of `f` into a term `out : LOut A` of the same `if` structure whose leaves are
@@ -485,12 +510,15 @@ The translator turns the body of `f` into a term `out : LOut A` of the same `if`
 inductive LOut (A : Type) where
   | ret (r : BitVec 64)
   | call (a : A)
+  /-- a result with several components: `r`, and the values of the extra result variables -/
+  | retm (r : BitVec 64) (rs : List (Nat × BitVec 64))
 
 /-- the step of `k` from `σ` is the Lean outcome: the same result, or a call whose new state holds the new
 arguments (`R`) -/
 def Sim {A : Type} (R : A → BState → Prop) (k : Tree) (σ : BState) : LOut A → Prop
   | .ret r => ∃ σ', k.step σ = some (.ret r σ')
   | .call a => ∃ σ₁, k.step σ = some (.call σ₁) ∧ R a σ₁
+  | .retm r rs => ∃ σ', k.step σ = some (.ret r σ') ∧ ∀ p ∈ rs, σ'.env p.1 = p.2
 
 section
 variable {A : Type} (R : A → BState → Prop)
@@ -556,6 +584,13 @@ theorem sim_pos {k : Tree} {σ : BState} {P : Prop} [Decidable P] {o₁ : P → 
     (hs : Sim R k σ (dite P o₁ o₂)) : Sim R k σ (o₁ h) := by rwa [dif_pos h] at hs
 theorem sim_neg {k : Tree} {σ : BState} {P : Prop} [Decidable P] {o₁ : P → LOut A} {o₂ : ¬P → LOut A} (h : ¬P)
     (hs : Sim R k σ (dite P o₁ o₂)) : Sim R k σ (o₂ h) := by rwa [dif_neg h] at hs
+
+theorem sim_retm (e : BExp) (env : BEnv) (heap : Heap) (r : BitVec 64) (rs : List (Nat × BitVec 64))
+    (h : e.denote env = r) (hr : ∀ p ∈ rs, env p.1 = p.2) : Sim R (.ret e) ⟨env, heap⟩ (.retm r rs) :=
+  ⟨⟨env, heap⟩, by simp only [Tree.step, h], hr⟩
+
+theorem sim_retm_elim {k : Tree} {σ : BState} {r : BitVec 64} {rs : List (Nat × BitVec 64)}
+    (hs : Sim R k σ (.retm r rs)) : ∃ σ', k.step σ = some (.ret r σ') ∧ ∀ p ∈ rs, σ'.env p.1 = p.2 := hs
 
 theorem sim_call_elim {k : Tree} {σ : BState} {a : A} (hs : Sim R k σ (.call a)) :
     ∃ σ₁, k.step σ = some (.call σ₁) ∧ R a σ₁ := hs

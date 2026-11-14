@@ -103,4 +103,27 @@ frontx_compile eqAsciiCI
 -- `requires`: a precondition on the parameters (here: the sum computed by the test does not overflow)
 frontx_compile startsWith requires fun _ i s => i + s.toUTF8.size < 2 ^ 64
 
+/-! ## results with several components (lean-svg, verbatim)
+
+An `Option α` result is two variables (`isSome` as 0/1, and the payload, 0 for `none`); a pair is two variables.
+The first component is the result variable, the others are listed in the `AllEnv` part of `f.exec`. -/
+
+/-- lean-svg `Svg.hexVal` -/
+def hexVal (c : UInt8) : Option Nat :=
+  if isDigit c then some (c.toNat - 48)
+  else if 97 ≤ c && c ≤ 102 then some (c.toNat - 87)
+  else if 65 ≤ c && c ≤ 70 then some (c.toNat - 55)
+  else none
+
+/-- lean-svg `Png.adlerChunk` (the Adler-32 inner loop: two accumulators, a pair result) -/
+def adlerChunk (rgba : ByteArray) (i fuel : Nat) (a b : UInt64) : UInt64 × UInt64 :=
+  match fuel with
+  | 0 => (a, b)
+  | fuel' + 1 =>
+    let a' := a + (if _ : i < rgba.size then rgba[i].toUInt64 else 0)
+    adlerChunk rgba (i + 1) fuel' a' (b + a')
+
+frontx_compile hexVal
+frontx_compile adlerChunk requires fun _ i fuel _ _ => i + fuel < 2 ^ 64
+
 end Proven.Frontx.Ex
