@@ -81,6 +81,14 @@ theorem page2G (s : St) {x : BitVec 64} (h : x.toNat % 2 = 0) :
     split_on_page_boundary (bits_of_virtaddr (pm_transform_PA (.Virtaddr x) 0)) 2 s = .ok ((2 : Int), (0 : Int)) s :=
   pageG s 1 rfl (by decide) h
 
+@[simp] theorem extend_false_n {k : Nat} (x : BitVec k) : extend_value false x = x.signExtend 64 := by
+  simp [extend_value, sign_extend, Sail.BitVec.signExtend]
+@[simp] theorem upd_full16 (x : BitVec 16) : Sail.BitVec.updateSubrange (0#16) 15 0 x = x := by
+  ext i hi; simp [Sail.BitVec.updateSubrange, Sail.BitVec.updateSubrange']
+@[simp] theorem ext8_setWidth {n w : Nat} (x : BitVec n) (i : Nat) (h : i + 8 ≤ w) :
+    (x.setWidth w).extractLsb' i 8 = x.extractLsb' i 8 := by
+  ext j hj; simp; omega
+
 /-! ## Encodings -/
 
 /-- `l<f3> rd, imm(rs1)` (`f3`: 0 lb, 1 lh, 2 lw, 3 ld, 4 lbu, 5 lhu, 6 lwu) -/
@@ -180,6 +188,31 @@ theorem step_ld (rd rs1 : Fin 32) (imm : BitVec 12) (hi : instrAt s pc (encL 3 i
     (h6 : s.mem[A.toNat + 6]? = some b6) (h7 : s.mem[A.toNat + 7]? = some b7) :
     ∃ s', Next s s' (pc + 4) rd (b7 ++ b6 ++ b5 ++ b4 ++ b3 ++ b2 ++ b1 ++ b0) s.mem := by genm; gmem
 
+theorem step_lb (rd rs1 : Fin 32) (imm : BitVec 12) (hi : instrAt s pc (encL 0 imm rd rs1)) {A : BitVec 64}
+    (hA : getX s rs1 + imm.signExtend 64 = A) (ha : 0x80000000 ≤ A.toNat ∧ A.toNat + 1 ≤ 0x100000000)
+    {b0 : BitVec 8} (h0 : s.mem[A.toNat]? = some b0) :
+    ∃ s', Next s s' (pc + 4) rd (b0.signExtend 64) s.mem := by genm; gmem
+theorem step_lh (rd rs1 : Fin 32) (imm : BitVec 12) (hi : instrAt s pc (encL 1 imm rd rs1)) {A : BitVec 64}
+    (hA : getX s rs1 + imm.signExtend 64 = A) (ha : 0x80000000 ≤ A.toNat ∧ A.toNat + 2 ≤ 0x100000000)
+    (hal : A.toNat % 2 = 0)
+    {b0 b1 : BitVec 8} (h0 : s.mem[A.toNat]? = some b0) (h1 : s.mem[A.toNat + 1]? = some b1) :
+    ∃ s', Next s s' (pc + 4) rd ((b1 ++ b0 : BitVec 16).signExtend 64) s.mem := by genm; gmem
+theorem step_lhu (rd rs1 : Fin 32) (imm : BitVec 12) (hi : instrAt s pc (encL 5 imm rd rs1)) {A : BitVec 64}
+    (hA : getX s rs1 + imm.signExtend 64 = A) (ha : 0x80000000 ≤ A.toNat ∧ A.toNat + 2 ≤ 0x100000000)
+    (hal : A.toNat % 2 = 0)
+    {b0 b1 : BitVec 8} (h0 : s.mem[A.toNat]? = some b0) (h1 : s.mem[A.toNat + 1]? = some b1) :
+    ∃ s', Next s s' (pc + 4) rd ((b1 ++ b0 : BitVec 16).setWidth 64) s.mem := by genm; gmem
+theorem step_lw (rd rs1 : Fin 32) (imm : BitVec 12) (hi : instrAt s pc (encL 2 imm rd rs1)) {A : BitVec 64}
+    (hA : getX s rs1 + imm.signExtend 64 = A) (ha : 0x80000000 ≤ A.toNat ∧ A.toNat + 4 ≤ 0x100000000)
+    (hal : A.toNat % 4 = 0)
+    {b0 b1 b2 b3 : BitVec 8} (h0 : s.mem[A.toNat]? = some b0) (h1 : s.mem[A.toNat + 1]? = some b1) (h2 : s.mem[A.toNat + 2]? = some b2) (h3 : s.mem[A.toNat + 3]? = some b3) :
+    ∃ s', Next s s' (pc + 4) rd ((b3 ++ b2 ++ b1 ++ b0 : BitVec 32).signExtend 64) s.mem := by genm; gmem
+theorem step_lwu (rd rs1 : Fin 32) (imm : BitVec 12) (hi : instrAt s pc (encL 6 imm rd rs1)) {A : BitVec 64}
+    (hA : getX s rs1 + imm.signExtend 64 = A) (ha : 0x80000000 ≤ A.toNat ∧ A.toNat + 4 ≤ 0x100000000)
+    (hal : A.toNat % 4 = 0)
+    {b0 b1 b2 b3 : BitVec 8} (h0 : s.mem[A.toNat]? = some b0) (h1 : s.mem[A.toNat + 1]? = some b1) (h2 : s.mem[A.toNat + 2]? = some b2) (h3 : s.mem[A.toNat + 3]? = some b3) :
+    ∃ s', Next s s' (pc + 4) rd ((b3 ++ b2 ++ b1 ++ b0 : BitVec 32).setWidth 64) s.mem := by genm; gmem
+
 /-! ## Stores -/
 
 theorem step_sb (rs2 rs1 : Fin 32) (imm : BitVec 12) (hi : instrAt s pc (encS 0 imm rs2 rs1)) {A : BitVec 64}
@@ -190,6 +223,15 @@ theorem step_sd (rs2 rs1 : Fin 32) (imm : BitVec 12) (hi : instrAt s pc (encS 3 
     (hA : getX s rs1 + imm.signExtend 64 = A) (ha : 0x80000000 ≤ A.toNat ∧ A.toNat + 8 ≤ 0x100000000)
     (hal : A.toNat % 8 = 0) :
     ∃ s', Next s s' (pc + 4) 0 0 (storeBytes s.mem A.toNat (le8 (getX s rs2))) := by genm; gmem
+
+theorem step_sh (rs2 rs1 : Fin 32) (imm : BitVec 12) (hi : instrAt s pc (encS 1 imm rs2 rs1)) {A : BitVec 64}
+    (hA : getX s rs1 + imm.signExtend 64 = A) (ha : 0x80000000 ≤ A.toNat ∧ A.toNat + 2 ≤ 0x100000000)
+    (hal : A.toNat % 2 = 0) :
+    ∃ s', Next s s' (pc + 4) 0 0 ((s.mem.insert (A.toNat) ((getX s rs2).extractLsb' 0 8)).insert (A.toNat + 1) ((getX s rs2).extractLsb' 8 8)) := by genm; gmem
+theorem step_sw (rs2 rs1 : Fin 32) (imm : BitVec 12) (hi : instrAt s pc (encS 2 imm rs2 rs1)) {A : BitVec 64}
+    (hA : getX s rs1 + imm.signExtend 64 = A) (ha : 0x80000000 ≤ A.toNat ∧ A.toNat + 4 ≤ 0x100000000)
+    (hal : A.toNat % 4 = 0) :
+    ∃ s', Next s s' (pc + 4) 0 0 ((((s.mem.insert (A.toNat) ((getX s rs2).extractLsb' 0 8)).insert (A.toNat + 1) ((getX s rs2).extractLsb' 8 8)).insert (A.toNat + 2) ((getX s rs2).extractLsb' 16 8)).insert (A.toNat + 3) ((getX s rs2).extractLsb' 24 8)) := by genm; gmem
 
 end G
 end Proven
