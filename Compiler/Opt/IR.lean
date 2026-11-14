@@ -34,6 +34,10 @@ inductive Ins (ρ : Type) where
   | ldS (d : ρ) (j : Nat)
   /-- `slot j := v` -/
   | stS (j : Nat) (v : ρ)
+  /-- `d := 8 bytes at a + off` -/
+  | ld (d : ρ) (a : ρ) (off : BitVec 64)
+  /-- `8 bytes at a + off := v` -/
+  | sd (v : ρ) (a : ρ) (off : BitVec 64)
   deriving Repr
 
 inductive Code (ρ : Type) where
@@ -82,6 +86,10 @@ inductive Step : Ins ρ → St ρ → St ρ → Prop
       Step (.ldS d j) s ⟨upd s.reg d v, s.mem⟩
   | stS {j v s} : fp % 8 = 0 → (∀ i, i < 8 → ram (fp + 8 * (j + 1) + i)) →
       Step (.stS j v) s ⟨s.reg, s.mem.wr (fp + 8 * (j + 1)) (le8 (s.reg v))⟩
+  | ld {d a off s v} : (∀ i, i < 8 → ram ((s.reg a + off).toNat + i)) → (s.reg a + off).toNat % 8 = 0 →
+      bytes s.mem (s.reg a + off).toNat 8 = (le8 v).map some → Step (.ld d a off) s ⟨upd s.reg d v, s.mem⟩
+  | sd {v a off s} : (∀ i, i < 8 → ram ((s.reg a + off).toNat + i)) → (s.reg a + off).toNat % 8 = 0 →
+      Step (.sd v a off) s ⟨s.reg, s.mem.wr (s.reg a + off).toNat (le8 (s.reg v))⟩
 
 inductive Exec : Code ρ → St ρ → St ρ → Prop
   | skip {s} : Exec .skip s s
@@ -99,6 +107,14 @@ inductive Exec : Code ρ → St ρ → St ρ → Prop
       t₂.eval s₂.reg = true → Exec body s₂ s₃ → Exec (.loop2 p₁ t₁ p₂ t₂ body) s₃ s₄ →
       Exec (.loop2 p₁ t₁ p₂ t₂ body) s s₄
 
+theorem wr_out_ram {ram : Nat → Prop} {A a : Nat} {m : Mem} {v : BitVec 64} (hr : ∀ i, i < 8 → ram (A + i))
+    (ha : ¬ram a) : Mem.wr m A (le8 v) a = m a := by
+  refine Mem.wr_out ?_
+  rw [length_le8]
+  by_cases h : A ≤ a ∧ a < A + 8
+  · exact absurd (by have := hr (a - A) (by omega); rwa [Nat.add_sub_cancel' h.1] at this) ha
+  · omega
+
 /-- memory changes only at `ram` addresses -/
 theorem Exec.mem_out {c : Code ρ} {s s' : St ρ} (h : Exec ram fp c s s') : ∀ a, ¬ram a → s'.mem a = s.mem a := by
   induction h with
@@ -111,12 +127,9 @@ theorem Exec.mem_out {c : Code ρ} {s s' : St ρ} (h : Exec ram fp c s s') : ∀
     | lbu _ _ => rfl
     | sb hr => exact ite_neg fun e => ha (e ▸ hr)
     | ldS _ _ _ => rfl
-    | @stS j _ _ _ hr =>
-      refine Mem.wr_out ?_
-      rw [length_le8]
-      by_cases h : fp + 8 * (j + 1) ≤ a ∧ a < fp + 8 * (j + 1) + 8
-      · exact absurd (by have := hr (a - (fp + 8 * (j + 1))) (by omega); rwa [Nat.add_sub_cancel' h.1] at this) ha
-      · omega
+    | stS _ hr => exact wr_out_ram hr ha
+    | ld _ _ _ => rfl
+    | sd hr _ => exact wr_out_ram hr ha
   | seq _ _ iha ihb => exact fun a ha => (ihb a ha).trans (iha a ha)
   | whenT _ _ ih => exact ih
   | whenF _ => exact fun _ _ => rfl

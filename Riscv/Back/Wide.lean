@@ -167,6 +167,8 @@ def wenc : WOp → List (BitVec 32)
   | .ret => [iRet]
   | .ldS d j => [encL 3 (BitVec.ofNat 12 (8 * (j + 1))) (phys d) 3]
   | .stS j v => [encS 3 (BitVec.ofNat 12 (8 * (j + 1))) (phys v) 3]
+  | .ld d a off => [encL 3 (off.setWidth 12) (phys d) (phys a)]
+  | .sd v a off => [encS 3 (off.setWidth 12) (phys v) (phys a)]
 
 def brOK (k : Bool) (n : Nat) : Bool := if k then decide (0 < n ∧ 2 * n ≤ 2 ^ 11) else decide (2 * n < 2048)
 def jOK (k : Bool) (n : Nat) : Bool := if k then decide (0 < n ∧ 2 * n ≤ 2 ^ 19) else decide (2 * n < 2 ^ 19)
@@ -467,6 +469,32 @@ theorem w_stS {j : Nat} {v : Reg} {s : St} {pc : BitVec 64} (hj : j < 16)
   rw [hn.mem, e2, storeBytes_wr']
   rfl
 
+theorem w_ld {d a : Reg} {off : BitVec 64} {s : St} {pc : BitVec 64} {v : BitVec 64} (ho : fits12 off = true)
+    (hA : core.At s pc (wenc (.ld d a off))) (hr : core.inRAM (core.get s a + off).toNat 8)
+    (hal : (core.get s a + off).toNat % 8 = 0)
+    (hb : bytes (core.mem s) (core.get s a + off).toNat 8 = (le8 v).map some) :
+    core.runsTo s fun s' => core.Done s s' (next pc (wenc (.ld d a off)).length) ∧ core.Set1 s s' d v ∧
+      core.mem s' = core.mem s := by
+  obtain ⟨h0, h1, h2, h3, h4, h5, h6, h7⟩ := bytesAt_le8 (bytes_le8' hb)
+  refine one hA fun h hpc hok hi => ?_
+  have := G.step_ld h hpc hok (phys d) (phys a) _ hi (A := core.get s a + off) (by rw [fits12_eq ho]; rfl) hr hal
+    h0 h1 h2 h3 h4 h5 h6 h7
+  rwa [le8_cat] at this
+
+theorem w_sd {v a : Reg} {off : BitVec 64} {s : St} {pc : BitVec 64} (ho : fits12 off = true)
+    (hA : core.At s pc (wenc (.sd v a off))) (hr : core.inRAM (core.get s a + off).toNat 8)
+    (hal : (core.get s a + off).toNat % 8 = 0) :
+    core.runsTo s fun s' => core.Done s s' (next pc (wenc (.sd v a off)).length) ∧ core.Same s s' ∧
+      core.mem s' = (core.mem s).wr (core.get s a + off).toNat (le8 (core.get s v)) := by
+  obtain ⟨h, hpc, hok, hi⟩ := first1 hA
+  obtain ⟨s', hn⟩ := G.step_sd h hpc hok (phys v) (phys a) _ hi (A := core.get s a + off)
+    (by rw [fits12_eq ho]; rfl) hr hal
+  refine run1 hn ⟨ofNext hn (.inl rfl), sameOf hn, ?_⟩
+  funext x
+  show s'.mem[x]? = _
+  rw [hn.mem, storeBytes_wr']
+  rfl
+
 /-- **The Sail RV64 model is a `Wide` machine.** -/
 def rvw : Wide where
   toCore := core
@@ -493,5 +521,7 @@ def rvw : Wide where
   keep_fr h := h 3 phys_ne3'
   w_ldS := w_ldS
   w_stS := w_stS
+  w_ld := w_ld
+  w_sd := w_sd
 
 end Proven.Mach.Riscv

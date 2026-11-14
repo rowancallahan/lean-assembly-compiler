@@ -19,6 +19,8 @@ def Ins.map (f : α → β) : Ins α → Ins β
   | .sb v a off => .sb (v.map f) (a.map f) off
   | .ldS d j => .ldS (f d) j
   | .stS j v => .stS j (f v)
+  | .ld d a off => .ld (f d) (f a) off
+  | .sd v a off => .sd (f v) (f a) off
 
 def Code.map (f : α → β) : Code α → Code β
   | .skip => .skip
@@ -41,6 +43,8 @@ def Ins.regs : Ins α → List α
   | .sb v a _ => v.regs ++ a.regs
   | .ldS d _ => [d]
   | .stS _ v => [v]
+  | .ld d a _ => [d, a]
+  | .sd v a _ => [v, a]
 
 def Code.regs : Code α → List α
   | .skip => []
@@ -127,6 +131,15 @@ theorem map_ok (ram : Nat → Prop) (fp : Nat) (inj : ∀ x y, U x → U y → f
       refine ⟨_, .ins (.stS hal hra), ?_, hr.2⟩
       show Mem.wr _ _ _ = Mem.wr _ _ _
       rw [hr.1, hr.2 v (hu v (List.mem_singleton.2 rfl))]
+    | @ld d a off _ v hra hal hb =>
+      have ea := hr.2 a (hu a (by simp [Code.regs, Ins.regs]))
+      exact ⟨_, .ins (.ld (v := v) (by rw [ea]; exact hra) (by rw [ea]; exact hal) (by rw [ea, hr.1]; exact hb)),
+        hr.upd inj (hu d (by simp [Code.regs, Ins.regs])) _⟩
+    | @sd v a off _ hra hal =>
+      have ea := hr.2 a (hu a (by simp [Code.regs, Ins.regs]))
+      refine ⟨_, .ins (.sd (by rw [ea]; exact hra) (by rw [ea]; exact hal)), ?_, hr.2⟩
+      show Mem.wr _ _ _ = Mem.wr _ _ _
+      rw [hr.1, ea, hr.2 v (hu v (by simp [Code.regs, Ins.regs]))]
   | seq _ _ iha ihb =>
     intro hu τ hr
     obtain ⟨τ₁, x₁, r₁⟩ := iha (fun x hx => hu x (List.mem_append.2 (.inl hx))) hr

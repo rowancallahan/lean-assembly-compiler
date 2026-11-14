@@ -28,6 +28,8 @@ def lowIns : Ins Reg → List WOp
   | .sb _ (.i _) _ => []
   | .ldS d j => [.ldS d j]
   | .stS j v => [.stS j v]
+  | .ld d a off => [.ld d a off]
+  | .sd v a off => [.sd v a off]
 
 /-- a test as (setup, condition, register, register or zero) -/
 def lowT (t : Tst Reg) : List WOp × Cond × Reg × Option Reg :=
@@ -72,6 +74,8 @@ def legalIns : Ins Reg → Bool
   | .sb _ (.i _) _ => false
   | .ldS d j => decide (d ≠ sc) && decide (j < M.maxSlots)
   | .stS j v => decide (v ≠ sc) && decide (j < M.maxSlots)
+  | .ld d a off => decide (d ≠ sc) && decide (a ≠ sc) && M.offOK off
+  | .sd v a off => decide (v ≠ sc) && decide (a ≠ sc) && M.offOK off
 
 def legalT (t : Tst Reg) : Bool := argOK sc t.a && argOK sc t.b
 
@@ -311,6 +315,25 @@ theorem lowIns_ok (hram : ∀ a, ram a → M.inRAM a 1) (hwr : ∀ a, ram a → 
       · exact absurd (by have := hra (y - (fp + 8 * (j + 1))) (by omega); rwa [Nat.add_sub_cancel' h.1] at this) hy
       · omega
     · rw [m, hf.fr, hr.2, hr.1 v (of_decide_eq_true hv)]
+  | @ld d a off _ v hra hal hb =>
+    obtain ⟨hd, ha, ho⟩ := and3 hl
+    have ea : M.get s a = σ.reg a := hr.1 a (of_decide_eq_true ha)
+    simp only [lowIns, wcode_one] at hf ⊢
+    have h0 := hram _ (hra 0 (by omega))
+    have h7 := hram _ (hra 7 (by omega))
+    refine M.runsTo_mono (M.w_ld (v := v) ho (hf.at hok hpc) (by rw [ea]; exact ⟨h0.1, by have := h7.2; omega⟩)
+      (by rw [ea]; exact hal) (by rw [ea, hr.2]; exact hb)) fun s' ⟨dn, st, m⟩ => ⟨dn, MF.of_eq dn m, hr.set st m⟩
+  | @sd v a off _ hra hal =>
+    obtain ⟨hv, ha, ho⟩ := and3 hl
+    have ea : M.get s a = σ.reg a := hr.1 a (of_decide_eq_true ha)
+    simp only [lowIns, wcode_one] at hf ⊢
+    have h0 := hram _ (hra 0 (by omega))
+    have h7 := hram _ (hra 7 (by omega))
+    refine M.runsTo_mono (M.w_sd ho (hf.at hok hpc) (by rw [ea]; exact ⟨h0.1, by have := h7.2; omega⟩)
+      (by rw [ea]; exact hal))
+      fun s' ⟨dn, st, m⟩ => ⟨dn, ⟨fun y hy => ?_, M.keep_fr dn.keep⟩, fun r hrs => by rw [st r]; exact hr.1 r hrs, ?_⟩
+    · rw [m, ea]; exact wr_out_ram hra hy
+    · rw [m, ea, hr.2, hr.1 v (of_decide_eq_true hv)]
 
 theorem lowT_ok {t : Tst Reg} {σ : St Reg} (hl : legalT sc t = true) {s : M.S} {pc : BitVec 64}
     {rest : List (BitVec 32)} (hok : M.ok s) (hpc : M.pcIs s pc)
