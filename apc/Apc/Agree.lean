@@ -1,6 +1,7 @@
 /- PROTOTYPE: the AlphaProof-Code semantics agrees with our small machine `armStep` on emitted words. -/
 import Arm64
 import Apc.Small
+import Apc.Flags
 namespace Proven.Apc
 open Proven.Arm
 
@@ -25,19 +26,6 @@ theorem ofNat5 (i : Nat) (v : BitVec 5) (h : i < 31) : (BitVec.ofNat 5 i = v) = 
   · intro e; subst e; simp; omega
   · intro e; subst e; simp
 
-theorem vflag (x y : BitVec 64) : decide ((x.toInt - y.toInt).bmod 18446744073709551616 = x.toInt - y.toInt) =
-    !BitVec.ssubOverflow x y := by
-  have h1 := BitVec.toInt_lt (x := x); have h2 := BitVec.le_toInt (x := x)
-  have h3 := BitVec.toInt_lt (x := y); have h4 := BitVec.le_toInt (x := y)
-  have key : ((x.toInt - y.toInt).bmod 18446744073709551616 = x.toInt - y.toInt) ↔
-      ¬ (x.toInt - y.toInt ≥ 2 ^ (64 - 1) ∨ x.toInt - y.toInt < -2 ^ (64 - 1)) := by
-    simp only [Int.bmod]
-    constructor <;> intro hh <;> (try split at hh) <;> (try split) <;> omega
-  simp only [BitVec.ssubOverflow, key]
-  simp
-  by_cases a : x.toInt - y.toInt < 9223372036854775808 <;> by_cases b : -9223372036854775808 ≤ x.toInt - y.toInt <;>
-    simp [a, b] <;> omega
-
 macro "agree" : tactic => `(tactic| (
   refine ⟨_, rfl, fun s => ?_⟩
   simp +decide [Arm64.Program.evalInst, Arm64.execInstWithSvc, abs, armStep, AState.setX, AState.rd, AState.setSub, AState.cond,
@@ -45,15 +33,14 @@ macro "agree" : tactic => `(tactic| (
     Arm64.CondSelectOp.ofBits, Arm64.CondCode.ofBits, Arm64.ConditionHolds,
     Arm64.State.readReg, Arm64.State.readReg64, Arm64.State.writeReg, Arm64.State.writeReg64, Arm64.State.setPState,
     Arm64.State.advancePC, Arm64.RegFile.read, Arm64.RegFile.write, Arm64.evalAddSub, Arm64.evalLogical, Arm64.shiftVal, Arm64.shift64,
-    Arm64.AddWithCarry64]
+    Arm64.AddWithCarry64, sub_res, sub_c, imm0_res, imm0_c, imm0_v]
   all_goals try (refine ⟨?_, ?_⟩)
   all_goals try (refine ⟨?_, ?_⟩)
   all_goals try (refine ⟨?_, ?_⟩)
   all_goals try (refine ⟨?_, ?_⟩)
   all_goals try bv_omega
-  all_goals try (simp only [BitVec.le_def.symm, decide_eq_true_eq]; bv_decide)
-  all_goals try (rw [vflag]; bv_decide)
-  all_goals try bv_decide
+  all_goals try (rw [sub_vflag])
+  all_goals try (exact beq_dec _ _)
   all_goals try (funext i; by_cases h : i < 31 <;> (try simp +decide [h, ofNat5 i _ h]) <;> (try split) <;> (try simp_all) <;> (try bv_omega))))
 
 theorem agree_add : Agree 0x8B0A0129#32 := by agree   -- 21 emitted words of this class
