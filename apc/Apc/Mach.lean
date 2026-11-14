@@ -389,4 +389,170 @@ theorem law_bin {L : Lay} {op : Op} {d a b : Mach.Reg} {s : Arm64.State} {pc : B
     refine run2 h (dec_cmp k) (dec_cset_eq k) (ev_cmp _ _ s) ?_
     rw [ev_cset, show (flg s (subF (getR s (toR k)) (getR s (sucR k)))).pstate = subF (getR s (toR k)) (getR s (sucR k)) from rfl, eq_val]
     exact fin1 (post_flg_upd hok hpc _ _ _ _)
+
+/-! ## `sel` -/
+def r9 (d : Fin 9) (j : Fin 3) : Mach.Reg := ⟨d.val + j.val, by omega⟩
+/-- NZCV after `cmp x, #0` -/
+def zF (x : BitVec 64) : Arm64.PState := { n := x.msb, z := x == 0#64, c := true, v := false }
+theorem dec_cmp0 : ∀ d : Fin 9, Arm64.decode (BitVec.ofNat 32 (0xF100001F ||| xn (r9 d 0) <<< 5)) =
+    some (.addSubImm .W64 .SUBS .xzr (.gpr (xr (r9 d 0))) 0#12 false) := by decide
+theorem dec_csel : ∀ d : Fin 9, Arm64.decode (rrr 0x9A801000 (xn (r9 d 0)) (xn (r9 d 1)) (xn (r9 d 2))) =
+    some (.condSelect .W64 .CSEL (.gpr (xr (r9 d 0))) (.gpr (xr (r9 d 1))) (.gpr (xr (r9 d 2))) .NE) := by decide
+theorem ev_cmp0 (c : Mach.Reg) (s : Arm64.State) :
+    P.evalInst (.addSubImm .W64 .SUBS .xzr (.gpr (xr c)) 0#12 false) s = flg s (zF (getR s c)) := by
+  simp [Arm64.Program.evalInst, Arm64.execInstWithSvc, Arm64.State.readReg, Arm64.State.readReg64,
+    Arm64.State.writeReg, Arm64.State.writeReg64, Arm64.State.advancePC, Arm64.State.setPState,
+    Arm64.evalAddSub, Arm64.AddWithCarry64, flg, zF, getR, xr_ne31,
+    Arm64.RegFile.read, imm0_res, imm0_c, imm0_v]
+theorem ev_csel (d a b : Mach.Reg) (s : Arm64.State) :
+    P.evalInst (.condSelect .W64 .CSEL (.gpr (xr d)) (.gpr (xr a)) (.gpr (xr b)) .NE) s =
+      upd s d (if Arm64.ConditionHolds .NE s.pstate then getR s a else getR s b) s.pstate := by
+  simp [Arm64.Program.evalInst, Arm64.execInstWithSvc, Arm64.State.readReg, Arm64.State.readReg64,
+    Arm64.State.writeReg, Arm64.State.writeReg64, Arm64.State.advancePC, upd, getR, xr_ne31, Arm64.RegFile.read]
+
+theorem law_sel {L : Lay} {d c a b : Mach.Reg} {s : Arm64.State} {pc : BitVec 64} (hd : d.val < 9) (hc : c = d)
+    (ha : a.val = d.val + 1) (hb : b.val = d.val + 2) (h : (base L).At s pc ((base L).enc (.sel d c a b))) :
+    (base L).runsTo s fun s' => (base L).Done s s' (next pc ((base L).enc (.sel d c a b)).length) ∧
+      (base L).get s' d = (if (base L).get s c = 0 then (base L).get s b else (base L).get s a) ∧
+      (∀ r, r ≠ d → r ≠ a → (base L).get s' r = (base L).get s r) ∧ (base L).mem s' = (base L).mem s := by
+  obtain ⟨k, rfl⟩ : ∃ k : Fin 9, d = r9 k 0 := ⟨⟨d.val, hd⟩, rfl⟩
+  obtain rfl : a = r9 k 1 := Fin.ext ha
+  obtain rfl : b = r9 k 2 := Fin.ext hb
+  subst hc
+  have hok : okS L s := h.ok
+  have hpc : s.pc = pc := h.hpc
+  refine run2 h (dec_cmp0 k) (dec_csel k) (ev_cmp0 _ s) ?_
+  rw [ev_csel]
+  obtain ⟨⟨a1, a2, a3⟩, a4, a5⟩ := post_flg_upd hok hpc (r9 k 0)
+    (if Arm64.ConditionHolds .NE (flg s (zF (getR s (r9 k 0)))).pstate then getR (flg s (zF (getR s (r9 k 0)))) (r9 k 1)
+      else getR (flg s (zF (getR s (r9 k 0)))) (r9 k 2)) (zF (getR s (r9 k 0))) (flg s (zF (getR s (r9 k 0)))).pstate
+  refine ⟨⟨a1, a2, a3⟩, ?_, fun r hr _ => by rw [show (base L).get = getR from rfl, a4 r, Mach.ite_neg hr], a5⟩
+  rw [show (base L).get = getR from rfl, a4 (r9 k 0), Mach.ite_pos rfl]
+  show (if Arm64.ConditionHolds .NE (zF (getR s (r9 k 0))) then getR s (r9 k 1) else getR s (r9 k 2)) = _
+  simp only [Arm64.ConditionHolds, zF]
+  by_cases hz : getR s (r9 k 0) = 0#64 <;> simp [hz]
+
+/-! ## memory: `lbu`, `sb` -/
+theorem perm_w8 (m : Arm64.Memory) (a b : BitVec 64) (v : BitVec 8) : (m.write8 a v).perm b = m.perm b := by
+  by_cases h : b = a
+  · subst h
+    simp only [Arm64.Memory.perm, Arm64.Memory.write8, Arm64.Memory.rawPerm]
+    cases hc : m.cells b with
+    | none => simp
+    | some pv =>
+      obtain ⟨p, x⟩ := pv
+      cases p <;> simp [Arm64.Perm.rwx]
+  · simp [Arm64.Memory.perm, Arm64.Memory.write8, h]
+theorem lazy_w8 (m : Arm64.Memory) (a b : BitVec 64) (v : BitVec 8) (h : m.isLazyFree b = false) :
+    (m.write8 a v).isLazyFree b = false := by
+  by_cases hb : b = a
+  · subst hb
+    simp only [Arm64.Memory.isLazyFree, Arm64.Memory.write8, Arm64.Memory.rawPerm]
+    cases hc : m.cells b with
+    | none => simp
+    | some pv =>
+      obtain ⟨p, x⟩ := pv
+      cases p <;> simp
+  · simpa [Arm64.Memory.isLazyFree, Arm64.Memory.write8, hb] using h
+theorem read_w8 (m : Arm64.Memory) (a b : BitVec 64) (v : BitVec 8) :
+    (m.write8 a v).read8 b = if b = a then v else m.read8 b := by
+  by_cases h : b = a <;> simp [Arm64.Memory.read8, Arm64.Memory.write8, h]
+
+theorem canExec_w8 (m : Arm64.Memory) (a b : BitVec 64) (v : BitVec 8) : (m.write8 a v).canExec b 1 = m.canExec b 1 := by
+  simp [Arm64.Memory.canExec, Arm64.Memory.allPerm, perm_w8]
+theorem canWrite_w8 (m : Arm64.Memory) (a b : BitVec 64) (v : BitVec 8) : (m.write8 a v).canWrite b 1 = m.canWrite b 1 := by
+  simp [Arm64.Memory.canWrite, Arm64.Memory.allPerm, perm_w8]
+theorem canRead_w8 (m : Arm64.Memory) (a b : BitVec 64) (v : BitVec 8) (h : m.canRead b 1 = true) :
+    (m.write8 a v).canRead b 1 = true := by
+  simp [Arm64.Memory.canRead, Arm64.Memory.allPerm, Arm64.Memory.allNoLazyFree, perm_w8] at h ⊢
+  exact ⟨h.1, lazy_w8 m a b v h.2⟩
+theorem lazy_w8_ne (m : Arm64.Memory) (a b : BitVec 64) (v : BitVec 8) (h : b ≠ a) :
+    (m.write8 a v).isLazyFree b = m.isLazyFree b := by
+  simp [Arm64.Memory.isLazyFree, Arm64.Memory.write8, h]
+/-- conversely, away from the written byte readability is unchanged -/
+theorem canRead_w8_ne (m : Arm64.Memory) (a b : BitVec 64) (v : BitVec 8) (h : b ≠ a) :
+    (m.write8 a v).canRead b 1 = m.canRead b 1 := by
+  simp only [Arm64.Memory.canRead, Arm64.Memory.allPerm, Arm64.Memory.allNoLazyFree, perm_w8, lazy_w8_ne _ _ _ _ h]
+
+/-- memory := one byte written, PC + 4 -/
+def stb (s : Arm64.State) (a : BitVec 64) (v : BitVec 8) : Arm64.State :=
+  { s with mem := s.mem.write8 a v, pc := s.pc + 4#64 }
+
+theorem memV_stb (s : Arm64.State) (a : BitVec 64) (v : BitVec 8) (hr : s.mem.canRead a 1 = true) :
+    memV (stb s a v) = (memV s).upd a.toNat v := by
+  funext x
+  unfold memV Mem.upd stb
+  by_cases hx : x = a.toNat
+  · subst hx
+    have : BitVec.ofNat 64 a.toNat = a := by simp
+    simp [this, canRead_w8 _ _ _ _ hr, read_w8, a.isLt]
+  · have hne : x < 2 ^ 64 → BitVec.ofNat 64 x ≠ a := fun hlt e => hx (by rw [← e]; simp; omega)
+    by_cases hlt : x < 2 ^ 64
+    · simp [hx, hlt, canRead_w8_ne _ _ _ _ (hne hlt), read_w8, hne hlt]
+    · simp [hx, hlt]
+
+theorem okS_stb {L : Lay} {s : Arm64.State} (h : okS L s) (a : BitVec 64) (v : BitVec 8) : okS L (stb s a v) := by
+  refine ⟨h.1, fun x h1 h2 => ?_, fun x h1 h2 => ⟨?_, ?_⟩⟩
+  · show (s.mem.write8 a v).canExec _ 1 = true; rw [canExec_w8]; exact h.2.1 x h1 h2
+  · exact canRead_w8 _ _ _ _ (h.2.2 x h1 h2).1
+  · show (s.mem.write8 a v).canWrite _ 1 = true; rw [canWrite_w8]; exact (h.2.2 x h1 h2).2
+
+theorem dec_ldrb : Arm64.decode (BitVec.ofNat 32 (0x39400000 ||| xn 0 <<< 5 ||| xn 0)) =
+    some (.ldr .W32 .B8 false (.gpr (xr 0)) (.Offset (.gpr (xr 0)) 0#64)) := by decide
+theorem dec_strb : Arm64.decode (BitVec.ofNat 32 (0x39000000 ||| xn 0 <<< 5 ||| xn 1)) =
+    some (.str .B8 (.gpr (xr 1)) (.Offset (.gpr (xr 0)) 0#64)) := by decide
+
+theorem ev_ldrb (s : Arm64.State) (hr : s.mem.canRead (getR s 0) 1 = true) :
+    P.evalInst (.ldr .W32 .B8 false (.gpr (xr 0)) (.Offset (.gpr (xr 0)) 0#64)) s =
+      upd s 0 ((s.mem.read8 (getR s 0)).setWidth 64) s.pstate := by
+  have hr' : s.mem.canRead (s.regs.regs (xr 0)) 1 = true := hr
+  simp [Arm64.Program.evalInst, Arm64.execInstWithSvc, Arm64.checkAddrSPAligned, Arm64.evalAddrMode,
+    Arm64.State.readReg64, Arm64.State.writeReg, Arm64.State.writeReg64, Arm64.State.writeReg32,
+    Arm64.State.advancePC, Arm64.Memory.readSized, upd, getR, xr_ne31, Arm64.RegFile.read, hr', Arm64.MemWidth.bytes, Arm64.checkRegSPAligned, Arm64.AddrMode.baseReg]
+
+theorem ev_strb (s : Arm64.State) (hw : s.mem.canWrite (getR s 0) 1 = true) :
+    P.evalInst (.str .B8 (.gpr (xr 1)) (.Offset (.gpr (xr 0)) 0#64)) s =
+      stb s (getR s 0) ((getR s 1).setWidth 8) := by
+  have hw' : s.mem.canWrite (s.regs.regs (xr 0)) 1 = true := hw
+  simp [Arm64.Program.evalInst, Arm64.execInstWithSvc, Arm64.checkAddrSPAligned, Arm64.evalAddrMode,
+    Arm64.State.readReg64, Arm64.State.setMem, Arm64.State.advancePC, Arm64.Memory.writeSized, stb, getR, xr_ne31,
+    Arm64.RegFile.read, hw', Arm64.MemWidth.bytes, Arm64.checkRegSPAligned, Arm64.AddrMode.baseReg]
+
+
+theorem dat_ok {L : Lay} {s : Arm64.State} (hok : okS L s) {x : BitVec 64} (hr : (base L).inDat x.toNat 1) :
+    s.mem.canRead x 1 = true ∧ s.mem.canWrite x 1 = true := by
+  have h1 : L.dLo ≤ x.toNat := hr.1
+  have h2 : x.toNat + 1 ≤ L.dHi := hr.2
+  have := hok.2.2 x.toNat h1 (by omega)
+  rwa [show BitVec.ofNat 64 x.toNat = x by simp] at this
+
+theorem law_lbu {L : Lay} {d a : Mach.Reg} {s : Arm64.State} {pc : BitVec 64} {v : BitVec 8} (hd : d.val = 0)
+    (ha : a.val = 0) (h : (base L).At s pc ((base L).enc (.lbu d a)))
+    (hr : (base L).inDat ((base L).get s a).toNat 1) (hm : (base L).mem s ((base L).get s a).toNat = some v) :
+    (base L).runsTo s fun s' => (base L).Done s s' (next pc ((base L).enc (.lbu d a)).length) ∧
+      (base L).Set1 s s' d (v.setWidth 64) ∧ (base L).mem s' = (base L).mem s := by
+  obtain rfl : d = 0 := Fin.ext hd
+  obtain rfl : a = 0 := Fin.ext ha
+  have hok : okS L s := h.ok
+  have hpc : s.pc = pc := h.hpc
+  have hv : s.mem.read8 (getR s 0) = v := by
+    have := memV_read hm
+    rwa [show BitVec.ofNat 64 ((base L).get s 0).toNat = getR s 0 by simp [base]] at this
+  refine run1 h dec_ldrb ?_
+  rw [ev_ldrb s (dat_ok hok hr).1, hv]
+  exact fin1 (post_upd hok hpc _ _ _)
+
+theorem law_sb {L : Lay} {v a : Mach.Reg} {s : Arm64.State} {pc : BitVec 64} (hv : v.val = 1) (ha : a.val = 0)
+    (h : (base L).At s pc ((base L).enc (.sb v a))) (hr : (base L).inDat ((base L).get s a).toNat 1) :
+    (base L).runsTo s fun s' => (base L).Done s s' (next pc ((base L).enc (.sb v a)).length) ∧
+      (base L).Same s s' ∧ (base L).mem s' = ((base L).mem s).upd ((base L).get s a).toNat (((base L).get s v).setWidth 8) := by
+  obtain rfl : v = 1 := Fin.ext hv
+  obtain rfl : a = 0 := Fin.ext ha
+  have hok : okS L s := h.ok
+  have hpc : s.pc = pc := h.hpc
+  refine run1 h dec_strb ?_
+  rw [ev_strb s (dat_ok hok hr).2]
+  refine ⟨⟨okS_stb hok _ _, ⟨rfl, rfl⟩, ?_⟩, fun r => rfl, memV_stb s _ _ (dat_ok hok hr).1⟩
+  show s.pc + 4#64 = next pc 1
+  simp [next, hpc]
 end Proven.Apc
