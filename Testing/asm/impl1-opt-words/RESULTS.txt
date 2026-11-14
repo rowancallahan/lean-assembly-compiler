@@ -1,0 +1,8 @@
+take5 [impl1-words]: 100/100 cases ok (QEMU == Sail == model, 66 words; lengths up to 2961)
+take5 [impl1-opt-words]: 100/100 cases ok (QEMU == Sail == model, 33 words; lengths up to 2961)
+inc [impl1-words]: 100/100 cases ok (QEMU == Sail == model, 58 words; lengths up to 2961)
+inc [impl1-opt-words]: 100/100 cases ok (QEMU == Sail == model, 32 words; lengths up to 2961)
+sum [impl1-words]: 100/100 cases ok (QEMU == Sail == model, 177 words; lengths up to 2961)
+sum [impl1-opt-words]: 100/100 cases ok (QEMU == Sail == model, 51 words; lengths up to 2961)
+crc [impl1-words]: 100/100 cases ok (QEMU == Sail == model, 823 words; lengths up to 2961)
+crc [impl1-opt-words]: 100/100 cases ok (QEMU == Sail == model, 141 words; lengths up to 2961)
