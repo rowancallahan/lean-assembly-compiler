@@ -124,6 +124,25 @@ RV64I code (base ISA only): R-type `add sub and or xor sll srl sra slt sltu`, `s
   (lengths 0..64, n up to 2^64-1), QEMU == Sail C emulator == Python model on the output slot and its 0x55 guard
   bytes, input unchanged, every Sail data write inside the expected output bytes.
 
+### Sort (RISC-V; `Proven/SortIns.lean`, `Proven/SortMachine.lean`)
+
+- `sortProg` (an `AStmt`): copy input to output (`mapProg`), then insertion sort in place on the output block
+  (nested loops; the inner loop is branch-free: `out[j] := c ? out[j-1] : key`, `j := j - c`).
+- Source level: `sortProg_exec`: the output block ends as a permutation of the input that is sorted
+  (`List.Pairwise (· ≤ ·)`); `sortProg_mergeSort`: it equals `xs.mergeSort leB` (`leB a b = decide (a ≤ b)`),
+  by uniqueness of sorted permutations (`List.Perm.eq_of_pairwise` from core, antisymmetry of `≤` on `BitVec 8`).
+- `Proven.sortCode_ok` (`sortCode = compileAF [0, 3] sortProg`, 104 words): input `xs` at `a0` (length `a1`), output
+  block of `|xs|` bytes at `a3`: returns to `ra` with the output block `= xs.mergeSort leB`, input unchanged, all
+  memory outside the output block unchanged, callee-saved registers and `Cfg` kept.
+- `Proven.sortCode_implements : ImplementsMapped sortCode (fun x => x.mergeSort leU)`: `ImplementsMapped` is
+  `Implements` of `Proven/Spec.lean` (code placed anywhere, `a0..a3`, `sp`, `ra`, regions, `List UInt8`) with ONE extra
+  hypothesis: the output bytes `[output.base, output.base + |x|)` are present in the memory map (`s.mem[_]?` is
+  `some`). `sortProg` uses no stack and never touches the scratch region.
+- Axioms: the same list as `compile_ok`. Check times: `SortIns` 1.9 s, `SortMachine` 1.3 s.
+- Tested: `asm/arr_test.py sort 300`: QEMU == Sail C emulator == Python `sorted`, guards and input intact.
+- The old `Proven/Sort.lean` (`sort_ok` with `sorry`, hand-written merge sort `asm/sort.S`) and
+  `Proven/SortSteps.lean` are superseded and remain unproved.
+
 ## Tested only
 
 - `Proven/CompilerArm.lean`: AArch64 backend for the same `Exp` (`lslv/lsrv/asrv`, `cmp` + `cset lo/lt/eq`,
@@ -139,7 +158,8 @@ RV64I code (base ISA only): R-type `add sub and or xor sll srl sra slt sltu`, `s
 
 ## Not proved
 
-- `Proven.sort_ok` (`Proven/Sort.lean`): stated with `sorry`.
+- `Proven.sort_ok` (`Proven/Sort.lean`, hand-written merge sort): stated with `sorry` (superseded by
+  `sortCode_implements`, insertion sort, see Sort above).
 - `Proven/SortSteps.lean`: per-instruction lemmas for the sort; 5 of them currently fail with
   `(kernel) deep recursion detected` (cause and fix: see Memory above; the file itself is not updated).
 - Nothing is proved against the ARM model yet.
