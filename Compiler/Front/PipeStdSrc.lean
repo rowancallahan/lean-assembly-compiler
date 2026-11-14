@@ -243,7 +243,7 @@ theorem contains_eq (l : List UInt8) (b : UInt8) : l.contains b = l.any (fun x =
   have : (fun x => b == x) = (fun x => x == b) := by
     funext x; by_cases h : x = b
     · subst h; rfl
-    · simp [h, Ne.symm h]
+    · rw [Bool.eq_iff_iff, beq_iff_eq, beq_iff_eq]; exact ⟨fun e => (h e.symm).elim, fun e => (h e).elim⟩
   rw [this]
 
 /-! ## Reductions: per function -/
