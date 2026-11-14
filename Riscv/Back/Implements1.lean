@@ -69,6 +69,7 @@ theorem implements1_of_exec {α β : Type} (encA : α → List UInt8) (encB : β
       ∃ σ' out', Mach.BExec prog ⟨env, [(encA a).map (·.toBitVec), out], [tbl]⟩ σ' ∧
         σ'.heap = [(encA a).map (·.toBitVec), out'] ∧
         out'.take (encB (f a)).length = (encB (f a)).map (·.toBitVec) ∧
+        out'.drop (encB (f a)).length = out.drop (encB (f a)).length ∧
         (retLen = true → σ'.env 1 = BitVec.ofNat 64 (encB (f a)).length)) :
     Implements1With encA encB (rvF.codeF (rvF.compBF N [0, 3] [2] prog)) f space maxLen retLen := by
   intro a s entry ra input output work x y codeR hmax h hpc hal hcode h10 h11 h12 h13 h2 h1 hra hrad hx
@@ -105,7 +106,7 @@ theorem implements1_of_exec {α β : Type} (encA : α → List UInt8) (encB : β
     obtain ⟨ws, hl, hw⟩ := exists_wbytes (wn x.length) ((bytesAt s work.base (8 * wn x.length)).map (·.getD 0))
       (by simp [bytesAt])
     exact ⟨ws, hl, by rw [hw]; exact bytesAt_hosted fun i hi => hmapW i (by omega)⟩
-  obtain ⟨σ', out', hexec, hh, htk, hrl⟩ := hex a out0 tbl0 (envOf s)
+  obtain ⟨σ', out', hexec, hh, htk, hdr, hrl⟩ := hex a out0 tbl0 (envOf s)
     (by simpa [envOf] using getX_of (h.x11.symm.trans h11) rfl) (fun j hj => by simp [envOf]; omega)
     hmax (by show x.length < 2 ^ 32; omega) (by show y.length ≤ out0.length; omega) (by omega) htl
   -- the layout
@@ -183,13 +184,10 @@ theorem implements1_of_exec {α β : Type} (encA : α → List UInt8) (encB : β
   have e1' : bytesAt s' output.base output.len = out'.map some := by
     have := (bytes_eq s' _ _).symm.trans e1; simpa using this
   refine ⟨by rw [← hra']; exact p1, ?_, ?_, abi_of_keep h p5 p6, p5, fun hr => ?_⟩
-  rotate_left
-  · have := p2 ⟨1, by decide⟩
-    rw [show rvF.get s' (avar ⟨1, by decide⟩) = getX s' 11 from rfl, hrl hr] at this
-    rw [p5.x11, this]
   · rw [← bytesAt_take' s' output.base hol', e1', ← List.map_take, htk]; simp [List.map_map, y]
   · intro q hq
-    have a2 := hq output (by simp); have a3 := hq work (by simp)
+    have a2 := hq ⟨output.base, y.length⟩ (by simp); have a3 := hq work (by simp)
+    dsimp only at a2
     by_cases hqi : input.base ≤ q ∧ q < input.base + input.len
     · have e0x : bytesAt s' input.base x.length = bytesAt s input.base x.length := by
         rw [e0', hx, List.map_map]; rfl
@@ -197,6 +195,17 @@ theorem implements1_of_exec {α β : Type} (encA : α → List UInt8) (encB : β
       simp only [bytesAt, List.getElem?_map, List.getElem?_range (show q - input.base < x.length by omega),
         Option.map_some, Option.some.injEq] at this
       rwa [Nat.add_sub_cancel' hqi.1] at this
+    by_cases hqo : output.base ≤ q ∧ q < output.base + output.len
+    · have e1x : (bytesAt s' output.base output.len)[q - output.base]? =
+          (bytesAt s output.base output.len)[q - output.base]? := by
+        rw [e1', ho, List.getElem?_map, List.getElem?_map]
+        have := congrArg (·[q - output.base - y.length]?) hdr
+        simp only [List.getElem?_drop] at this
+        rw [show y.length + (q - output.base - y.length) = q - output.base by omega] at this
+        rw [this]
+      simp only [bytesAt, List.getElem?_map, List.getElem?_range (show q - output.base < output.len by omega),
+        Option.map_some, Option.some.injEq] at e1x
+      rwa [Nat.add_sub_cancel' hqo.1] at e1x
     · apply p4 q
       intro r hr
       simp only [R, W, List.cons_append, List.nil_append, List.mem_cons, List.not_mem_nil, or_false] at hr

@@ -46,7 +46,8 @@ theorem compileXA_inv {p : XPipe} {code : List (BitVec 32)} (h : compileXA p = .
       exact ⟨XPipe.chkErr_none hc, (wfErr_iff _ _).1 hw, h.symm⟩
 
 /-- `ImplementsPipe` plus: at the return, `a1` holds the result length `|f x|` (the second ABI return
-register). This is how a caller learns the length of a data-dependent result (`filter`, ...). -/
+register; the convention of `Spec/Implements1.lean`), so the result is exactly the first `a1` output bytes;
+and only the first `space |x|` output bytes may change (the output block beyond them is unchanged). -/
 def ImplementsPipeLen (code : List (BitVec 32)) (f : List UInt8 → List UInt8) (space : Nat → Nat)
     (maxLen : Nat := 2 ^ 20) : Prop :=
   ∀ (x : List UInt8) (s : St) (entry ra : BitVec 64) (input scratch output stack : Region),
@@ -66,14 +67,25 @@ def ImplementsPipeLen (code : List (BitVec 32)) (f : List UInt8 → List UInt8) 
     (∀ i < space x.length, (s.mem[output.base + i]?).isSome) →
     runsTo s fun s' => s'.regs.get? .PC = some ra ∧
       bytesAt s' output.base (f x).length = (f x).map (some ·.toBitVec) ∧
-      unchangedOutside s s' [input, scratch, output, stack] ∧ calleeSavedKept s s' ∧ Cfg s' ∧
-      s'.regs.get? .x11 = some (BitVec.ofNat 64 (f x).length)
+      unchangedOutside s s' [input, scratch, ⟨output.base, space x.length⟩, stack] ∧ calleeSavedKept s s' ∧
+      Cfg s' ∧ s'.regs.get? .x11 = some (BitVec.ofNat 64 (f x).length)
+
+theorem unchanged_sub {s s' : St} {rs rs' : List Region} (h : unchangedOutside s s' rs)
+    (hs : ∀ a, (∀ r ∈ rs', a < r.base ∨ r.base + r.len ≤ a) → ∀ r ∈ rs, a < r.base ∨ r.base + r.len ≤ a) :
+    unchangedOutside s s' rs' := fun a ha => h a (hs a ha)
 
 theorem ImplementsPipeLen.toPipe {code : List (BitVec 32)} {f : List UInt8 → List UInt8} {space : Nat → Nat}
     (h : ImplementsPipeLen code f space) : ImplementsPipe code f space := by
   intro x s entry ra input scratch output stack codeR hmax h1 h2 h3 h4 h5 h6 h7 h8 h9 h10 h11 h12 h13 h14 h15 h16 h17 h18
   exact runsTo_mono (h x s entry ra input scratch output stack hmax h1 h2 h3 h4 h5 h6 h7 h8 h9 h10 h11 h12 h13 h14 h15
-    h16 h17 h18) fun s' ⟨a, b, c, d, e, _⟩ => ⟨a, b, c, d, e⟩
+    h16 h17 h18) fun s' ⟨a, b, c, d, e, _⟩ => ⟨a, b, unchanged_sub c (fun a ha r hr => by
+      simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
+      have := ha output (by simp)
+      rcases hr with rfl | rfl | rfl | rfl
+      · exact ha _ (by simp)
+      · exact ha _ (by simp)
+      · dsimp only; omega
+      · exact ha _ (by simp)), d, e⟩
 
 /-- from a source-level run to the machine-level specification -/
 theorem implementsLen_of_exec {prog : AStmt} (hwf : prog.wf [0, 3]) {f : List UInt8 → List UInt8} {space : Nat → Nat}
@@ -157,8 +169,8 @@ theorem implementsLen_of_exec {prog : AStmt} (hwf : prog.wf [0, 3]) {f : List UI
     apply p3 a
     intro r hr
     simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
-    have hi := ha input (by simp); have hoo := ha output (by simp)
-    rcases hr with rfl | rfl <;> (dsimp only; omega)
+    have hi := ha input (by simp); have hoo := ha ⟨output.base, space x.length⟩ (by simp)
+    rcases hr with rfl | rfl <;> (dsimp only at hoo ⊢; omega)
 
 /-- **Correctness of the extended pipe compiler**: `ImplementsPipe` (the statement of `compileP_ok`) and the
 result length in `a1` -/
