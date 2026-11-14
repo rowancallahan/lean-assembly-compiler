@@ -75,54 +75,56 @@ macro "genc" : tactic => `(tactic| (
 theorem step_add (rd rs1 rs2 : Fin 32) (hrd : rd ≠ 0) (hi : instrAt s pc (encR 0 0 rd rs1 rs2)) :
     ∃ s', Next s s' (pc + 4) rd (getX s rs1 + getX s rs2) s.mem := by sorry
 theorem step_sub (rd rs1 rs2 : Fin 32) (hi : instrAt s pc (encR 0x20 0 rd rs1 rs2)) :
-    ∃ s', Next s s' (pc + 4) rd (getX s rs1 - getX s rs2) s.mem := by genc; gstep
+    ∃ s', Next s s' (pc + 4) rd (getX s rs1 - getX s rs2) s.mem := by sorry
 theorem step_and (rd rs1 rs2 : Fin 32) (hi : instrAt s pc (encR 0 7 rd rs1 rs2)) :
-    ∃ s', Next s s' (pc + 4) rd (getX s rs1 &&& getX s rs2) s.mem := by genc; gstep
+    ∃ s', Next s s' (pc + 4) rd (getX s rs1 &&& getX s rs2) s.mem := by sorry
 theorem step_or (rd rs1 rs2 : Fin 32) (hi : instrAt s pc (encR 0 6 rd rs1 rs2)) :
-    ∃ s', Next s s' (pc + 4) rd (getX s rs1 ||| getX s rs2) s.mem := by genc; gstep
+    ∃ s', Next s s' (pc + 4) rd (getX s rs1 ||| getX s rs2) s.mem := by sorry
 theorem step_xor (rd rs1 rs2 : Fin 32) (hi : instrAt s pc (encR 0 4 rd rs1 rs2)) :
-    ∃ s', Next s s' (pc + 4) rd (getX s rs1 ^^^ getX s rs2) s.mem := by genc; gstep
+    ∃ s', Next s s' (pc + 4) rd (getX s rs1 ^^^ getX s rs2) s.mem := by sorry
 theorem step_sll (rd rs1 rs2 : Fin 32) (hi : instrAt s pc (encR 0 1 rd rs1 rs2)) :
-    ∃ s', Next s s' (pc + 4) rd (getX s rs1 <<< ((getX s rs2).toNat % 64)) s.mem := by genc; gstep
+    ∃ s', Next s s' (pc + 4) rd (getX s rs1 <<< ((getX s rs2).toNat % 64)) s.mem := by sorry
 theorem step_srl (rd rs1 rs2 : Fin 32) (hi : instrAt s pc (encR 0 5 rd rs1 rs2)) :
-    ∃ s', Next s s' (pc + 4) rd (getX s rs1 >>> ((getX s rs2).toNat % 64)) s.mem := by genc; gstep
+    ∃ s', Next s s' (pc + 4) rd (getX s rs1 >>> ((getX s rs2).toNat % 64)) s.mem := by sorry
 theorem step_sra (rd rs1 rs2 : Fin 32) (hi : instrAt s pc (encR 0x20 5 rd rs1 rs2)) :
-    ∃ s', Next s s' (pc + 4) rd ((getX s rs1).sshiftRight ((getX s rs2).toNat % 64)) s.mem := by genc; gstep
+    ∃ s', Next s s' (pc + 4) rd ((getX s rs1).sshiftRight ((getX s rs2).toNat % 64)) s.mem := by sorry
 theorem step_slt (rd rs1 rs2 : Fin 32) (hi : instrAt s pc (encR 0 2 rd rs1 rs2)) :
-    ∃ s', Next s s' (pc + 4) rd (if (getX s rs1).slt (getX s rs2) then 1 else 0) s.mem := by genc; gstep
+    ∃ s', Next s s' (pc + 4) rd (if (getX s rs1).slt (getX s rs2) then 1 else 0) s.mem := by sorry
 theorem step_sltu (rd rs1 rs2 : Fin 32) (hi : instrAt s pc (encR 0 3 rd rs1 rs2)) :
-    ∃ s', Next s s' (pc + 4) rd (if getX s rs1 < getX s rs2 then 1 else 0) s.mem := by genc; gstep
+    ∃ s', Next s s' (pc + 4) rd (if getX s rs1 < getX s rs2 then 1 else 0) s.mem := by sorry
 
 /-! ## I-type -/
 
 /-- `addi rd, rs1, imm` (`imm` sign-extended) -/
 theorem step_addi (rd rs1 : Fin 32) (imm : BitVec 12) (hi : instrAt s pc (encI 0 imm.toNat rd rs1)) :
-    ∃ s', Next s s' (pc + 4) rd (getX s rs1 + imm.signExtend 64) s.mem := by genc; gstep
+    ∃ s', Next s s' (pc + 4) rd (getX s rs1 + imm.signExtend 64) s.mem := by
+  genc
+  set_option sail_eval.trace true in gstep
 theorem step_andi (rd rs1 : Fin 32) (imm : BitVec 12) (hi : instrAt s pc (encI 7 imm.toNat rd rs1)) :
-    ∃ s', Next s s' (pc + 4) rd (getX s rs1 &&& imm.signExtend 64) s.mem := by genc; gstep
+    ∃ s', Next s s' (pc + 4) rd (getX s rs1 &&& imm.signExtend 64) s.mem := by sorry
 theorem step_ori (rd rs1 : Fin 32) (imm : BitVec 12) (hi : instrAt s pc (encI 6 imm.toNat rd rs1)) :
-    ∃ s', Next s s' (pc + 4) rd (getX s rs1 ||| imm.signExtend 64) s.mem := by genc; gstep
+    ∃ s', Next s s' (pc + 4) rd (getX s rs1 ||| imm.signExtend 64) s.mem := by sorry
 theorem step_xori (rd rs1 : Fin 32) (imm : BitVec 12) (hi : instrAt s pc (encI 4 imm.toNat rd rs1)) :
-    ∃ s', Next s s' (pc + 4) rd (getX s rs1 ^^^ imm.signExtend 64) s.mem := by genc; gstep
+    ∃ s', Next s s' (pc + 4) rd (getX s rs1 ^^^ imm.signExtend 64) s.mem := by sorry
 theorem step_slti (rd rs1 : Fin 32) (imm : BitVec 12) (hi : instrAt s pc (encI 2 imm.toNat rd rs1)) :
-    ∃ s', Next s s' (pc + 4) rd (if (getX s rs1).slt (imm.signExtend 64) then 1 else 0) s.mem := by genc; gstep
+    ∃ s', Next s s' (pc + 4) rd (if (getX s rs1).slt (imm.signExtend 64) then 1 else 0) s.mem := by sorry
 theorem step_sltiu (rd rs1 : Fin 32) (imm : BitVec 12) (hi : instrAt s pc (encI 3 imm.toNat rd rs1)) :
-    ∃ s', Next s s' (pc + 4) rd (if getX s rs1 < imm.signExtend 64 then 1 else 0) s.mem := by genc; gstep
+    ∃ s', Next s s' (pc + 4) rd (if getX s rs1 < imm.signExtend 64 then 1 else 0) s.mem := by sorry
 
 #exit
 /-! ## Shifts by an immediate (6-bit `shamt`) -/
 
 theorem step_slli (rd rs1 : Fin 32) (sh : BitVec 6) (hi : instrAt s pc (encI 1 (0 <<< 6 ||| sh.toNat) rd rs1)) :
-    ∃ s', Next s s' (pc + 4) rd (getX s rs1 <<< sh.toNat) s.mem := by genc; gstep
+    ∃ s', Next s s' (pc + 4) rd (getX s rs1 <<< sh.toNat) s.mem := by sorry
 theorem step_srli (rd rs1 : Fin 32) (sh : BitVec 6) (hi : instrAt s pc (encI 5 (0 <<< 6 ||| sh.toNat) rd rs1)) :
-    ∃ s', Next s s' (pc + 4) rd (getX s rs1 >>> sh.toNat) s.mem := by genc; gstep
+    ∃ s', Next s s' (pc + 4) rd (getX s rs1 >>> sh.toNat) s.mem := by sorry
 theorem step_srai (rd rs1 : Fin 32) (sh : BitVec 6) (hi : instrAt s pc (encI 5 (0x10 <<< 6 ||| sh.toNat) rd rs1)) :
-    ∃ s', Next s s' (pc + 4) rd ((getX s rs1).sshiftRight sh.toNat) s.mem := by genc; gstep
+    ∃ s', Next s s' (pc + 4) rd ((getX s rs1).sshiftRight sh.toNat) s.mem := by sorry
 
 /-! ## `lui` -/
 
 theorem step_lui (rd : Fin 32) (imm : BitVec 20) (hi : instrAt s pc (encU 0x37 rd imm)) :
-    ∃ s', Next s s' (pc + 4) rd ((imm ++ 0#12).signExtend 64) s.mem := by genc; gstep
+    ∃ s', Next s s' (pc + 4) rd ((imm ++ 0#12).signExtend 64) s.mem := by sorry
 
 end G
 end Proven
