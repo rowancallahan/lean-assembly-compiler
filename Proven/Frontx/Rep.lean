@@ -36,6 +36,26 @@ theorem c_or (p q : Prop) [Decidable p] [Decidable q] :
 theorem c_eq0 (p : Prop) [Decidable p] : ((if p then 1 else 0 : BitVec 64) = 0) = ¬p := by
   by_cases h : p <;> simp [h]
 
+/-- the same with the literals in `simp` normal form -/
+theorem c_not' (p : Prop) [Decidable p] : (if p then 1#64 else 0#64) ^^^ 1#64 = if ¬p then 1#64 else 0#64 := c_not p
+theorem c_and' (p q : Prop) [Decidable p] [Decidable q] :
+    (if p then 1#64 else 0#64) &&& (if q then 1#64 else 0#64) = if p ∧ q then 1#64 else 0#64 := c_and p q
+theorem c_or' (p q : Prop) [Decidable p] [Decidable q] :
+    (if p then 1#64 else 0#64) ||| (if q then 1#64 else 0#64) = if p ∨ q then 1#64 else 0#64 := c_or p q
+theorem c_eq0' (p : Prop) [Decidable p] : ((if p then 1#64 else 0#64) = 0#64) = ¬p := c_eq0 p
+
+/-! ## expression evaluation (used instead of unfolding `BExp.denote`, so that a select is rewritten in one
+step and its condition is never negated) -/
+def sel (c a b : BitVec 64) : BitVec 64 := if c = 0 then b else a
+theorem denote_var (env : BEnv) (i : Nat) : (BExp.var i).denote env = env i := rfl
+theorem denote_const (env : BEnv) (c : BitVec 64) : (BExp.const c).denote env = c := rfl
+theorem denote_bin (env : BEnv) (op : Op) (a b : BExp) :
+    (BExp.bin op a b).denote env = op.eval (a.denote env) (b.denote env) := rfl
+theorem denote_ite (env : BEnv) (c a b : BExp) :
+    (BExp.ite c a b).denote env = sel (c.denote env) (a.denote env) (b.denote env) := rfl
+theorem sel_c (p : Prop) [Decidable p] (a b : BitVec 64) : sel (if p then 1#64 else 0#64) a b = if p then a else b := by
+  by_cases h : p <;> simp [sel, h]
+
 /-! ## Nat (needs bounds: discharged by `omega` from the hypotheses) -/
 theorem rN_toNat {n : Nat} (h : n < 2 ^ 64) : (rN n).toNat = n := by simp [rN]; omega
 theorem rN_add (a b : Nat) : rN (a + b) = rN a + rN b := BitVec.ofNat_add a b
@@ -45,6 +65,9 @@ theorem rN_lt {a b : Nat} (ha : a < 2 ^ 64) (hb : b < 2 ^ 64) : (rN a < rN b) = 
   simp [rN, BitVec.lt_def, Nat.mod_eq_of_lt ha, Nat.mod_eq_of_lt hb]
 theorem rN_inj {a b : Nat} (ha : a < 2 ^ 64) (hb : b < 2 ^ 64) : (rN a = rN b) = (a = b) := by
   simp [rN, ← BitVec.toNat_inj, Nat.mod_eq_of_lt ha, Nat.mod_eq_of_lt hb]
+theorem rN_eq_lit {a n : Nat} (ha : a < 2 ^ 64) (hn : n < 2 ^ 64) : (rN a = BitVec.ofNat 64 n) = (a = n) := rN_inj ha hn
+theorem rN_lt_lit {a n : Nat} (ha : a < 2 ^ 64) (hn : n < 2 ^ 64) : (rN a < BitVec.ofNat 64 n) = (a < n) := rN_lt ha hn
+theorem rN_lit_lt {a n : Nat} (ha : a < 2 ^ 64) (hn : n < 2 ^ 64) : (BitVec.ofNat 64 n < rN a) = (n < a) := rN_lt hn ha
 theorem rN_ite (p : Prop) [Decidable p] (a b : Nat) : rN (if p then a else b) = if p then rN a else rN b := by
   split <;> rfl
 
@@ -144,6 +167,16 @@ theorem r8_ofNat (n : Nat) : r8 n.toUInt8 = rN n &&& 0xff#64 := by
   apply BitVec.eq_of_toNat_eq; rw [and_mask8, r8_nat]; simp [rN]
 theorem r32_ofNat (n : Nat) : r32 n.toUInt32 = rN n &&& 0xffffffff#64 := by
   apply BitVec.eq_of_toNat_eq; rw [and_mask32, r32_nat]; simp [rN]
+
+/-! ## dependent `if` -/
+theorem r8_dite (p : Prop) [Decidable p] (a : p → UInt8) (b : ¬p → UInt8) :
+    r8 (dite p a b) = dite p (fun h => r8 (a h)) (fun h => r8 (b h)) := by split <;> rfl
+theorem r32_dite (p : Prop) [Decidable p] (a : p → UInt32) (b : ¬p → UInt32) :
+    r32 (dite p a b) = dite p (fun h => r32 (a h)) (fun h => r32 (b h)) := by split <;> rfl
+theorem r64_dite (p : Prop) [Decidable p] (a : p → UInt64) (b : ¬p → UInt64) :
+    r64 (dite p a b) = dite p (fun h => r64 (a h)) (fun h => r64 (b h)) := by split <;> rfl
+theorem rN_dite (p : Prop) [Decidable p] (a : p → Nat) (b : ¬p → Nat) :
+    rN (dite p a b) = dite p (fun h => rN (a h)) (fun h => rN (b h)) := by split <;> rfl
 
 /-! ## literals -/
 theorem rN_lit (n : Nat) : rN (no_index (OfNat.ofNat n)) = BitVec.ofNat 64 n := rfl

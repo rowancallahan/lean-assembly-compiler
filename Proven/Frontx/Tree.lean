@@ -18,6 +18,8 @@ inductive Tree where
   | ite (c : BExp) (t e : Tree)
   | let_ (v : Nat) (e : BExp) (k : Tree)
   | load (v b : Nat) (i : BExp) (k : Tree)
+  /-- guarded load: `v := if c ≠ 0 then block b [i] else d` -/
+  | cload (v b : Nat) (i c d : BExp) (k : Tree)
   | store (b : Nat) (i e : BExp) (k : Tree)
 
 inductive Out where
@@ -42,6 +44,9 @@ def Tree.step : Tree → BState → Option Out
   | .let_ v e k, σ => k.step ⟨σ.env.set v (e.denote σ.env), σ.heap⟩
   | .load v b i k, σ => (rd σ.heap b (i.denote σ.env).toNat).bind fun x =>
       k.step ⟨σ.env.set v (x.setWidth 64), σ.heap⟩
+  | .cload v b i c d k, σ =>
+    if c.denote σ.env = 0 then k.step ⟨σ.env.set v (d.denote σ.env), σ.heap⟩
+    else (rd σ.heap b (i.denote σ.env).toNat).bind fun x => k.step ⟨σ.env.set v (x.setWidth 64), σ.heap⟩
   | .store b i e k, σ => (wr σ.heap b (i.denote σ.env).toNat ((e.denote σ.env).setWidth 8)).bind fun H =>
       k.step ⟨σ.env, H⟩
 
@@ -82,6 +87,10 @@ def comp (L : Lay) : Tree → Nat → BStmt
         (.loop (.var (L.cv d + 1)) (.seq (comp L e (d + 1)) (.assign (L.cv d + 1) (.const 0))))))
   | .let_ v e k, d => .seq (.assign v e) (comp L k d)
   | .load v b i k, d => .seq (.load v b i) (comp L k d)
+  | .cload v b i c e k, d =>
+    .seq (.assign (L.cv d) c) (.seq (.assign (L.cv d + 1) (.bin .eq (.var (L.cv d)) (.const 0)))
+      (.seq (.loop (.var (L.cv d)) (.seq (.load v b i) (.assign (L.cv d) (.const 0))))
+        (.seq (.loop (.var (L.cv d + 1)) (.seq (.assign v e) (.assign (L.cv d + 1) (.const 0)))) (comp L k d))))
   | .store b i e k, d => .seq (.store b i e) (comp L k d)
 
 /-- the whole function: result in variable `out` -/
@@ -94,6 +103,7 @@ def Tree.wf (L : Lay) : Tree → Prop
   | .ite c t e => c.vlt L.M ∧ t.wf L ∧ e.wf L
   | .let_ v e k => v < L.M ∧ e.vlt L.M ∧ k.wf L
   | .load v _ i k => v < L.M ∧ i.vlt L.M ∧ k.wf L
+  | .cload v _ i c d k => v < L.M ∧ i.vlt L.M ∧ c.vlt L.M ∧ d.vlt L.M ∧ k.wf L
   | .store _ i e k => i.vlt L.M ∧ e.vlt L.M ∧ k.wf L
 
 /-! ## Correctness -/
@@ -287,6 +297,76 @@ theorem comp_ok (L : Lay) : ∀ (t : Tree) (d : Nat) (σ τ : BState) (o : Out),
           fun y h1 h2 => ?_, ?_⟩
         · rw [hk y h1 h2]; exact set_ne _ _ (by have := hw.1; omega)
         · exact hp.mono (set_ne _ _ (by have := hw.1; simp only [Lay.fl]; omega)) rfl (fun _ _ => rfl)
+  | .cload v b i c e k, d, σ, τ, o, hw, hA, hs => by
+    simp only [Tree.step] at hs
+    obtain ⟨hv, hwi, hwc, hwe, hwk⟩ := hw
+    have hc := denote_agree hA.1 c hwc
+    have hcv : L.M + 2 + L.K ≤ L.cv d := by simp [Lay.cv]
+    let τ₁ : BState := ⟨τ.env.set (L.cv d) (c.denote τ.env), τ.heap⟩
+    let τ₂ : BState := ⟨τ₁.env.set (L.cv d + 1) ((BExp.bin .eq (.var (L.cv d)) (.const 0)).denote τ₁.env), τ₁.heap⟩
+    have hlow : ∀ x, x < L.cv d → τ₂.env x = τ.env x := fun x hx => by
+      show BEnv.set (BEnv.set _ _ _) _ _ x = _
+      rw [set_ne _ _ (by omega), set_ne _ _ (by omega)]
+    have hA2 : ∀ x, x < L.M → τ₂.env x = σ.env x := fun x hx => (hlow x (by omega)).trans (hA.1 x hx)
+    have ha : τ₂.env (L.cv d) = c.denote σ.env := by
+      show BEnv.set (BEnv.set _ _ _) _ _ _ = _
+      rw [set_ne _ _ (by omega), set_eq, hc]
+    have hb : τ₂.env (L.cv d + 1) = if c.denote σ.env = 0 then 1 else 0 := by
+      show BEnv.set (BEnv.set _ _ _) _ _ _ = _
+      have h1 : τ₁.env (L.cv d) = c.denote σ.env := by
+        show BEnv.set _ _ _ _ = _
+        rw [set_eq, hc]
+      rw [set_eq]; simp only [BExp.denote, Op.eval, h1]
+    have h12 : BExec (.assign (L.cv d) c) τ τ₁ := .assign
+    have h23 : BExec (.assign (L.cv d + 1) (.bin .eq (.var (L.cv d)) (.const 0))) τ₁ τ₂ := .assign
+    by_cases h0 : c.denote σ.env = 0
+    · rw [if_pos h0] at hs
+      -- else branch: `v := e`
+      let τ₃ : BState := ⟨τ₂.env.set v (e.denote τ₂.env), τ₂.heap⟩
+      let τ₄ : BState := ⟨τ₃.env.set (L.cv d + 1) 0, τ₃.heap⟩
+      have hA4 : Agree L.M ⟨σ.env.set v (e.denote σ.env), σ.heap⟩ τ₄ := ⟨fun x hx => by
+        show BEnv.set (BEnv.set _ _ _) _ _ x = BEnv.set _ _ _ x
+        rw [set_ne _ _ (by omega), denote_agree hA2 e hwe]
+        by_cases h : x = v <;> simp [BEnv.set, h, hA2 x hx], hA.2⟩
+      obtain ⟨τ', hx, hk, hp⟩ := comp_ok L k d _ τ₄ o hwk hA4 hs
+      have h4 : ∀ x, L.M ≤ x → x < L.cv d → τ₄.env x = τ.env x := fun x h1 h2 => by
+        show BEnv.set (BEnv.set _ _ _) _ _ x = _
+        rw [set_ne _ _ (by omega), set_ne _ _ (by omega), hlow x h2]
+      refine ⟨τ', .seq h12 (.seq h23 (.seq (.loopF (by simp [BExp.denote, ha, h0]))
+        (.seq (.loopT (by simp [BExp.denote, hb, h0]) (.seq .assign .assign) (.loopF (by simp [BExp.denote, set_eq])))
+          hx))), fun x h1 h2 => ?_, ?_⟩
+      · rw [hk x h1 h2, h4 x (by omega) h2]
+      · exact hp.mono (h4 _ (by simp only [Lay.fl]; omega) (by simp only [Lay.fl]; omega)) rfl (fun _ _ => rfl)
+    · rw [if_neg h0] at hs
+      have hi := denote_agree hA2 i hwi
+      cases hr : rd σ.heap b (i.denote σ.env).toNat with
+      | none => rw [hr] at hs; cases hs
+      | some x =>
+        rw [hr] at hs; simp only [Option.bind_some] at hs
+        cases hB : σ.heap[b]? with
+        | none => simp [rd, hB] at hr
+        | some B =>
+          have hx : B[(i.denote σ.env).toNat]? = some x := by simpa [rd, hB] using hr
+          let τ₃ : BState := ⟨τ₂.env.set v (x.setWidth 64), τ₂.heap⟩
+          let τ₄ : BState := ⟨τ₃.env.set (L.cv d) 0, τ₃.heap⟩
+          have hA4 : Agree L.M ⟨σ.env.set v (x.setWidth 64), σ.heap⟩ τ₄ := ⟨fun y hy => by
+            show BEnv.set (BEnv.set _ _ _) _ _ y = BEnv.set _ _ _ y
+            rw [set_ne _ _ (by omega)]
+            by_cases h : y = v <;> simp [BEnv.set, h, hA2 y hy], hA.2⟩
+          obtain ⟨τ', hx', hk, hp⟩ := comp_ok L k d _ τ₄ o hwk hA4 hs
+          have h4 : ∀ y, L.M ≤ y → y < L.cv d → τ₄.env y = τ.env y := fun y h1 h2 => by
+            show BEnv.set (BEnv.set _ _ _) _ _ y = _
+            rw [set_ne _ _ (by omega), set_ne _ _ (by omega), hlow y h2]
+          have hb4 : τ₄.env (L.cv d + 1) = 0 := by
+            show BEnv.set (BEnv.set _ _ _) _ _ _ = _
+            rw [set_ne _ _ (by omega), set_ne _ _ (by omega), hb, if_neg h0]
+          have hl : BExec (.load v b i) τ₂ τ₃ :=
+            BExec.load' (B := B) (by show τ.heap[b]? = _; rw [hA.2]; exact hB) (congrArg BitVec.toNat hi) hx
+          refine ⟨τ', .seq h12 (.seq h23 (.seq
+            (.loopT (by simp only [BExp.denote, ha]; exact h0) (.seq hl .assign) (.loopF (by simp [BExp.denote, set_eq])))
+            (.seq (.loopF hb4) hx'))), fun y h1 h2 => ?_, ?_⟩
+          · rw [hk y h1 h2, h4 y (by omega) h2]
+          · exact hp.mono (h4 _ (by simp only [Lay.fl]; omega) (by simp only [Lay.fl]; omega)) rfl (fun _ _ => rfl)
   | .store b i e k, d, σ, τ, o, hw, hA, hs => by
     simp only [Tree.step] at hs
     have hi := denote_agree hA.1 i hw.1
@@ -342,7 +422,7 @@ theorem prog_ok (L : Lay) {t : Tree} (hw : t.wf L) {σ σ' : BState} {r : BitVec
 def Tree.ro : Tree → Bool
   | .ret _ | .call _ => true
   | .ite _ t e => t.ro && e.ro
-  | .let_ _ _ k | .load _ _ _ k => k.ro
+  | .let_ _ _ k | .load _ _ _ k | .cload _ _ _ _ _ k => k.ro
   | .store .. => false
 
 theorem Tree.step_ro : ∀ (t : Tree) (σ : BState) (o : Out), t.ro = true → t.step σ = some o →
@@ -361,6 +441,14 @@ theorem Tree.step_ro : ∀ (t : Tree) (σ : BState) (o : Out), t.ro = true → t
     cases h : rd σ.heap b (i.denote σ.env).toNat with
     | none => rw [h] at hs; cases hs
     | some x => rw [h] at hs; exact step_ro k ⟨σ.env.set v (x.setWidth 64), σ.heap⟩ o hr hs
+  | .cload v b i c d k, σ, o, hr, hs => by
+    simp only [Tree.step] at hs
+    by_cases h0 : c.denote σ.env = 0
+    · rw [if_pos h0] at hs; exact step_ro k ⟨σ.env.set v (d.denote σ.env), σ.heap⟩ o hr hs
+    · rw [if_neg h0] at hs
+      cases h : rd σ.heap b (i.denote σ.env).toNat with
+      | none => rw [h] at hs; cases hs
+      | some x => rw [h] at hs; exact step_ro k ⟨σ.env.set v (x.setWidth 64), σ.heap⟩ o hr hs
   | .store .., _, _, hr, _ => by cases hr
 
 theorem Tree.Runs.heap_ro {t : Tree} (hr : t.ro = true) {σ σ' : BState} {r : BitVec 64} (h : t.Runs σ r σ') :
@@ -419,6 +507,21 @@ theorem sim_load (v b : Nat) (i : BExp) (k : Tree) (env : BEnv) (heap : Heap) (j
     (h : Sim R k ⟨env.set v (y.setWidth 64), heap⟩ o) : Sim R (.load v b i k) ⟨env, heap⟩ o := by
   have e : (Tree.load v b i k).step ⟨env, heap⟩ = k.step ⟨env.set v (y.setWidth 64), heap⟩ := by
     simp only [Tree.step, hj, hr, Option.bind_some]
+  cases o <;> simp only [Sim, e] <;> exact h
+
+theorem sim_cload (v b : Nat) (i c d : BExp) (k : Tree) (env : BEnv) (heap : Heap) (j : Nat) (z : BitVec 64)
+    (o : LOut A) (hj : (i.denote env).toNat = j)
+    (hc : c.denote env ≠ 0 → (rd heap b j).map (·.setWidth 64) = some z) (hd : c.denote env = 0 → d.denote env = z)
+    (h : Sim R k ⟨env.set v z, heap⟩ o) : Sim R (.cload v b i c d k) ⟨env, heap⟩ o := by
+  have e : (Tree.cload v b i c d k).step ⟨env, heap⟩ = k.step ⟨env.set v z, heap⟩ := by
+    by_cases h0 : c.denote env = 0
+    · simp only [Tree.step, if_pos h0, hd h0]
+    · have := hc h0
+      cases hr : rd heap b j with
+      | none => rw [hr] at this; cases this
+      | some x =>
+        rw [hr] at this; simp only [Option.map_some, Option.some.injEq] at this
+        simp only [Tree.step, if_neg h0, hj, hr, Option.bind_some, this]
   cases o <;> simp only [Sim, e] <;> exact h
 
 theorem sim_dite (c : BExp) (a b : Tree) (env : BEnv) (heap : Heap) (P : Prop) [Decidable P]

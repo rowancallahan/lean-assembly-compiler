@@ -73,6 +73,7 @@ inductive MT where
   | ite (c : ME) (t e : MT)
   | let_ (v : Nat) (e : ME) (k : MT)
   | load (v b : Nat) (i : ME) (k : MT)
+  | cload (v b : Nat) (i c d : ME) (k : MT)
   deriving Inhabited
 
 def ME.toExpr : ME → Expr
@@ -92,12 +93,15 @@ def MT.toExpr : MT → MetaM Expr
   | .ite c t e => return mkApp3 (mkConst ``Tree.ite) c.toExpr (← t.toExpr) (← e.toExpr)
   | .let_ v e k => return mkApp3 (mkConst ``Tree.let_) (Lean.toExpr v) e.toExpr (← k.toExpr)
   | .load v b i k => return mkApp4 (mkConst ``Tree.load) (Lean.toExpr v) (Lean.toExpr b) i.toExpr (← k.toExpr)
+  | .cload v b i c d k => do
+    let kE ← k.toExpr
+    return mkAppN (mkConst ``Tree.cload) #[Lean.toExpr v, Lean.toExpr b, i.toExpr, c.toExpr, d.toExpr, kE]
 
 def MT.maxK : MT → Nat
   | .ret _ => 0
   | .call as => as.length
   | .ite _ t e => max t.maxK e.maxK
-  | .let_ _ _ k | .load _ _ _ k => k.maxK
+  | .let_ _ _ k | .load _ _ _ k | .cload _ _ _ _ _ k => k.maxK
 
 /-! ## translation -/
 
@@ -116,6 +120,7 @@ structure Ctx where
 /-- a load or a temporary, emitted before the node being translated, with the Lean term it holds -/
 inductive Item where
   | load (v b : Nat) (i : ME) (r : Expr) (idx : Expr) (temps : List Expr)
+  | cload (v b : Nat) (i c d : ME) (r : Expr) (idx : Expr) (temps : List Expr)
   | let_ (v : Nat) (e : ME) (L L' : Expr) (ty : Ty) (temps : List Expr)
 
 structure St where
@@ -185,6 +190,39 @@ partial def trE (ctx : Ctx) (e : Expr) : TrM (ME × Expr) := do
   if !e.hasFVar then return (.const (← litBV (ty.rep e)), e)
   let args := e.getAppArgs
   let f := e.getAppFn
+  -- a read of a byte array: a load into a fresh variable
+  if let some (xs, i) := read? e then
+    if let some (b, _) := ctx.block? xs then
+      let (idx, i') ← trE ctx i
+      let v ← fresh
+      modify fun s => { s with memo := (e, v) :: s.memo, pend := s.pend.push (.load v b idx e i' s.temps) }
+      return (.var v, e)
+  -- a guarded read `if h : i < xs.size then xs[i] else d` (`d` closed): a guarded load
+  if e.isAppOfArity ``dite 5 && args[3]!.isLambda && args[4]!.isLambda then
+    let P := args[1]!
+    let t := args[3]!.bindingBody!
+    let d := args[4]!.bindingBody!
+    if P.isAppOfArity ``LT.lt 4 && P.appArg!.isAppOfArity ``ByteArray.size 1 && !d.hasLooseBVars && !d.hasFVar then
+      let i := P.appFn!.appArg!
+      let xs := P.appArg!.appArg!
+      -- also `(xs[i]).toUInt64` etc. with `d = 0`: the byte is loaded with default `0`
+      let isConv := (t.isAppOfArity ``UInt8.toUInt32 1 || t.isAppOfArity ``UInt8.toUInt64 1 ||
+        t.isAppOfArity ``UInt8.toNat 1) && (d.nat? == some 0 || d.rawNatLit? == some 0)
+      let rd := if isConv then t.appArg! else t
+      match ctx.block? xs, read? rd with
+      | some (b, len), some (xs', i') =>
+        if xs' == xs && i' == i then
+          let r ← if isConv then
+              pure (mkAppN (mkConst ``dite [levelOne]) #[mkConst ``UInt8, P, args[2]!, .lam `h P rd .default,
+                .lam `h (mkNot P) (toExpr (0 : UInt8)) .default])
+            else pure e
+          let (idx, i'') ← trE ctx i
+          let v ← fresh
+          let c := ME.bin ``Op.ult idx (.var len)
+          let dm := ME.const (← litBV (mkApp (mkConst ``r8) (if isConv then toExpr (0 : UInt8) else d)))
+          modify fun s => { s with memo := (e, v) :: s.memo, pend := s.pend.push (.cload v b idx c dm r i'' s.temps) }
+          return (.var v, e)
+      | _, _ => pure ()
   let masked (m : Option Nat) (r : ME) : ME :=
     match m with
     | some m => .bin ``Op.and r (.const (mkBV m))
@@ -232,7 +270,6 @@ partial def trE (ctx : Ctx) (e : Expr) : TrM (ME × Expr) := do
     | none => throwError "frontx: size of an unknown array{indentExpr e}"
   | some c, _ =>
     if c == ctx.fn then throwError "frontx: recursive call not in tail position{indentExpr e}"
-    if (read? e).isSome then throwError "frontx: array read not hoisted{indentExpr e}"
     -- a helper function: its compound scalar arguments go to temporaries, then it is inlined
     for a in args do
       if a.hasFVar && !a.isFVar && (← find? a).isNone then
@@ -345,12 +382,13 @@ def inBranch {α : Type} (x : TrM α) : TrM α := do
 /-! ## the rewriting set -/
 
 def simpNames : Array Name :=
-  #[``Tree.step, ``BExp.denote, ``Op.eval, ``parSet, ``BEnv.set,
-    ``rd0, ``rd1, ``rd2, ``blk_get, ``r8_fold, ``ba_get!, ``c_not, ``c_and, ``c_or, ``c_eq0,
-    ``rN_lit, ``r8_lit, ``r32_lit, ``r64_lit, ``rN_toNat, ``rN_add, ``rN_sub, ``rN_lt, ``rN_inj, ``rN_ite,
+  #[``Tree.step, ``denote_var, ``denote_const, ``denote_bin, ``denote_ite, ``sel_c, ``Op.eval, ``parSet, ``BEnv.set,
+    ``rd0, ``rd1, ``rd2, ``blk_get, ``r8_fold, ``ba_get!, ``c_not, ``c_and, ``c_or, ``c_eq0, ``c_not', ``c_and', ``c_or', ``c_eq0',
+    ``rN_lit, ``r8_lit, ``r32_lit, ``r64_lit, ``rN_toNat, ``rN_add, ``rN_sub, ``rN_lt, ``rN_inj, ``rN_eq_lit, ``rN_lt_lit, ``rN_lit_lt, ``rN_ite,
     ``r64_add, ``r64_sub, ``r64_and, ``r64_or, ``r64_xor, ``r64_ite, ``r64_eq', ``r64_lt', ``r64_le', ``r64_toNat, ``r64_ofNat,
     ``r32_add, ``r32_sub, ``r32_and, ``r32_or, ``r32_xor, ``r32_ite, ``r32_eq', ``r32_lt', ``r32_le', ``r32_toNat, ``r32_shr,
     ``r8_add, ``r8_sub, ``r8_and, ``r8_or, ``r8_xor, ``r8_ite, ``r8_eq', ``r8_lt', ``r8_le', ``r8_toNat,
+    ``r8_dite, ``r32_dite, ``r64_dite, ``rN_dite,
     ``r32_of8, ``r64_of8, ``r64_of32, ``r8_of32, ``r32_of64, ``r8_of64, ``r8_ofNat, ``r32_ofNat]
 
 /-- expression evaluation, and every supported operation pushed through its representation function -/
@@ -378,7 +416,8 @@ def oblig (type : Expr) (temps? : Option (List Expr) := none) : TrM Expr := do
       let (_, g') ← g.generalize #[{ expr := L }]
       g := g'
   let us := st.unfolded.map mkIdent
-  let tac ← `(tactic| first | rfl | omega | (frontx_simp [$us,*] <;> first | done | omega | rfl))
+  let tac ← `(tactic| first | rfl | omega | (frontx_simp [$us,*] <;> first | done | omega | rfl |
+    (intro hq; frontx_simp [$us,*] <;> first | done | omega | rfl)))
   let rest ← try Tactic.run g (Tactic.withoutRecover (Tactic.evalTactic tac)) catch e =>
     throwError "frontx: could not prove{indentExpr type}\n{e.toMessageData}"
   unless rest.isEmpty do
@@ -408,6 +447,20 @@ partial def wrapItems (ctx : Ctx) (items : List Item) (env : Expr)
     return (.load v b i t, o, mkAppN (mkConst ``sim_load)
       #[ctx.A, ctx.R, toExpr v, toExpr b, i.toExpr, ← t.toExpr, env, ctx.heap, idx, y, o, hj, hr, p])
 
+  | .cload v b i c d r idx temps :: rest => do
+    let z := mkApp (mkConst ``r8) r
+    let hj ← oblig (← mkEq (mkApp2 (mkConst ``BitVec.toNat) (toExpr (64 : Nat)) (denoteE env i)) idx) temps
+    let rdE := mkApp3 (mkConst ``rd) ctx.heap (toExpr b) idx
+    let bv8 := mkApp (mkConst ``BitVec) (toExpr (8 : Nat))
+    let mapped := mkApp4 (mkConst ``Option.map [0, 0]) bv8 bv64
+      (mkApp2 (mkConst ``BitVec.setWidth) (toExpr (8 : Nat)) (toExpr (64 : Nat))) rdE
+    let hc ← oblig (← mkArrow (← mkAppM ``Ne #[denoteE env c, bv0]) (← mkEq mapped (← mkAppM ``some #[z]))) temps
+    let hd ← oblig (← mkArrow (← mkEq (denoteE env c) bv0) (← mkEq (denoteE env d) z)) temps
+    let (t, o, p) ← wrapItems ctx rest (setE env v z) k
+    return (.cload v b i c d t, o, mkAppN (mkConst ``sim_cload)
+      #[ctx.A, ctx.R, toExpr v, toExpr b, i.toExpr, c.toExpr, d.toExpr, ← t.toExpr, env, ctx.heap, idx, z, o,
+        hj, hc, hd, p])
+
 /-- the conjuncts of a right-nested conjunction of `n` propositions -/
 def splitAnd : Nat → Expr → List Expr
   | 0, _ => []
@@ -430,30 +483,47 @@ partial def trT (ctx : Ctx) (nconj : Nat) (env : Expr) (e : Expr) : TrM (MT × E
     let v := e.letValue!
     if v.hasFVar && !v.isFVar && (← find? v).isNone then
       if let some ty ← classify e.letType! then
-        hoist ctx v
         let (m, v') ← trE ctx v
         let x ← fresh
         modify fun s => { s with memo := (v, x) :: s.memo, temps := v :: s.temps,
                                  pend := s.pend.push (.let_ x m v v' ty s.temps) }
     return ← trT ctx nconj env (e.letBody!.instantiate1 v)
   let args := e.getAppArgs
-  if e.isAppOfArity ``ite 5 || e.isAppOfArity ``dite 5 then
-    let dep := e.isAppOfArity ``dite 5
-    let P := args[1]!
-    hoist ctx P
+  -- a two-way branch on `P`
+  let branch (P inst : Expr) (mkT mkF : Expr → Expr) : TrM (MT × Expr × Expr) := do
     let (c, P') ← trC ctx P
-    return ← wrapItems ctx (← takePend) env fun env => do
+    wrapItems ctx (← takePend) env fun env => do
       let hc ← oblig (mkIff (← mkAppM ``Ne #[denoteE env c, bv0]) P')
-      let br (hty body : Expr) : TrM (MT × Expr × Expr) := inBranch do
+      let br (hty : Expr) (mk : Expr → Expr) : TrM (MT × Expr × Expr) := inBranch do
         withLocalDeclD `h hty fun h => do
-          let (t, o, p) ← trT ctx nconj env (if dep then body.beta #[h] else body)
+          let (t, o, p) ← trT ctx nconj env (mk h)
           return (t, ← mkLambdaFVars #[h] o, ← mkLambdaFVars #[h] p)
-      let (t, o₁, p₁) ← br P args[3]!
-      let (f, o₂, p₂) ← br (mkNot P) args[4]!
-      let out := mkAppN (mkConst ``dite [levelOne]) #[lout, P, args[2]!, o₁, o₂]
+      let (t, o₁, p₁) ← br P mkT
+      let (f, o₂, p₂) ← br (mkNot P) mkF
+      let out := mkAppN (mkConst ``dite [levelOne]) #[lout, P, inst, o₁, o₂]
       let pf := mkAppN (mkConst ``sim_dite)
-        #[ctx.A, ctx.R, c.toExpr, ← t.toExpr, ← f.toExpr, env, ctx.heap, P, args[2]!, o₁, o₂, hc, p₁, p₂]
+        #[ctx.A, ctx.R, c.toExpr, ← t.toExpr, ← f.toExpr, env, ctx.heap, P, inst, o₁, o₂, hc, p₁, p₂]
       return (.ite c t f, out, pf)
+  if e.isAppOfArity ``ite 5 then
+    return ← branch args[1]! args[2]! (fun _ => args[3]!) (fun _ => args[4]!)
+  if e.isAppOfArity ``dite 5 then
+    return ← branch args[1]! args[2]! (fun h => args[3]!.beta #[h]) (fun h => args[4]!.beta #[h])
+  -- `match n with | 0 => A | m + 1 => B` on a `Nat`: a test `n = 0`, with `m := n - 1`
+  if let some ma ← matchMatcherApp? e then
+    if ma.discrs.size == 1 && ma.alts.size == 2 && ma.remaining.isEmpty then
+      let n := ma.discrs[0]!
+      if (← whnfR (← inferType n)).isConstOf ``Nat then
+        let (iz, is) ← (do
+          if ma.altNumParams[1]! == 1 && ma.altNumParams[0]! ≤ 1 then pure (0, 1)
+          else if ma.altNumParams[0]! == 1 && ma.altNumParams[1]! ≤ 1 then pure (1, 0)
+          else throwError "frontx: unsupported match{indentExpr e}" : TrM (Nat × Nat))
+        let zero := ma.alts[iz]!
+        let zero := if zero.isLambda then zero.beta #[mkConst ``Unit.unit] else zero
+        let pred ← mkAppM ``HSub.hSub #[n, toExpr (1 : Nat)]
+        let P ← mkEq n (toExpr (0 : Nat))
+        let inst ← synthInstance (mkApp (mkConst ``Decidable) P)
+        return ← branch P inst (fun _ => zero) (fun _ => ma.alts[is]!.beta #[pred])
+    throwError "frontx: unsupported match{indentExpr e}"
   if e.getAppFn.isConstOf ctx.fn && args.size == ctx.params.size then
     let mut as := #[]
     let mut args' := args
@@ -462,7 +532,6 @@ partial def trT (ctx : Ctx) (nconj : Nat) (env : Expr) (e : Expr) : TrM (MT × E
       if args[j]! == p then continue
       if (ctx.block? p).isSome then throwError "frontx: array argument changed in the call{indentExpr e}"
       let some v ← find? p | throwError "frontx: parameter without a variable{indentExpr p}"
-      hoist ctx args[j]!
       let (m, a') ← trE ctx args[j]!
       as := as.push (v, m)
       args' := args'.set! j a'
@@ -484,7 +553,6 @@ partial def trT (ctx : Ctx) (nconj : Nat) (env : Expr) (e : Expr) : TrM (MT × E
       let (_, a) ← mkTuple (← args.toList.mapM fun x => do return (x, ← inferType x))
       return (mt, mkApp2 (mkConst ``LOut.call) ctx.A a,
         mkAppN (mkConst ``sim_call) #[ctx.A, ctx.R, asE, env, ctx.heap, a, h])
-  hoist ctx e
   let (m, e') ← trE ctx e
   return ← wrapItems ctx (← takePend) env fun env => do
     let h ← oblig (← mkEq (denoteE env m) (ctx.rty.rep e'))
@@ -538,6 +606,21 @@ elab "frontx_path " h:ident : tactic => withMainContext do
           pf := mkAppN (mkConst ``sim_pos) #[a[0]!, a[1]!, a[2]!, a[3]!, P, oa[2]!, oa[3]!, oa[4]!, ← mkEqRefl x, pf]
           found := true
       | none => pure ()
+    unless found do
+      -- or the test is decided by arithmetic (a `match` on a `Nat` turned into `n = 0`)
+      let tryProve (ty : Expr) : TacticM (Option Expr) := do
+        let s ← saveState
+        try
+          let mv ← mkFreshExprSyntheticOpaqueMVar ty
+          let rest ← Tactic.run mv.mvarId! (Tactic.withoutRecover (Tactic.evalTactic (← `(tactic| first | rfl | omega | simp))))
+          if rest.isEmpty then return some (← instantiateMVars mv) else s.restore; return none
+        catch _ => s.restore; return none
+      if let some h ← tryProve P then
+        pf := mkAppN (mkConst ``sim_pos) #[a[0]!, a[1]!, a[2]!, a[3]!, P, oa[2]!, oa[3]!, oa[4]!, h, pf]
+        found := true
+      else if let some h ← tryProve (mkNot P) then
+        pf := mkAppN (mkConst ``sim_neg) #[a[0]!, a[1]!, a[2]!, a[3]!, P, oa[2]!, oa[3]!, oa[4]!, h, pf]
+        found := true
     unless found do throwError "frontx_path: no hypothesis decides{indentExpr P}"
   let ty ← inferType pf
   let a := ty.getAppArgs
@@ -561,9 +644,7 @@ def addDef (name : Name) (type value : Expr) : TermElabM Unit := do
   setReducibleAttribute name
   enableRealizationsForConst name
 
-/-- `frontx_compile f` or `frontx_compile f with inv` (`inv : params → Prop`, an extra precondition that the
-recursive calls must preserve; needed for `Nat` arguments whose bounds are not implied by the tests) -/
-elab "frontx_compile " f:ident inv?:(" with " term)? : command => liftTermElabM do
+def compileCmd (f : Ident) (inv? : Option Term) : TermElabM Unit := do
   let t0 ← IO.monoMsNow
   let fn ← realizeGlobalConstNoOverloadWithInfo f
   let info ← getConstInfo fn
@@ -612,7 +693,7 @@ elab "frontx_compile " f:ident inv?:(" with " term)? : command => liftTermElabM 
         hyps := hyps.push (← mkEq (mkApp env (toExpr v)) (ty.rep x))
         if ty == .nat then hyps := hyps.push (← mkAppM ``LT.lt #[x, two64])
       if let some inv := inv? then
-        let invE ← elabTerm inv.raw[1] (some (← mkForallFVars xs (mkSort 0)))
+        let invE ← elabTerm inv (some (← mkForallFVars xs (mkSort 0)))
         synthesizeSyntheticMVarsNoPostponing
         hyps := hyps.push (mkAppN (← instantiateMVars invE) xs).headBeta
       if hyps.isEmpty then hyps := #[mkConst ``True]
@@ -701,5 +782,10 @@ elab "frontx_compile " f:ident inv?:(" with " term)? : command => liftTermElabM 
          exact prog_ok_ro $lI (by simp [$tI:ident, $lI:ident, Tree.wf, BExp.vlt]) (by rfl) ($runsI:ident $as* $σi hR) _)))
       let t4 ← IO.monoMsNow
       logInfo m!"frontx: {fn}: {M} variables (+{2 + mt.maxK} control), result in variable {out}, {st.nObl} obligations; translate + step proof {t1 - t0} ms, kernel check of step {t2 - t1} ms, induction {t3 - t2} ms, exec theorem {t4 - t3} ms"
+
+/-- `frontx_compile f` or `frontx_compile f with inv` (`inv : params → Prop`, an extra precondition that the
+recursive calls must preserve; needed for `Nat` arguments whose bounds are not implied by the tests) -/
+elab "frontx_compile " f:ident : command => liftTermElabM (compileCmd f none)
+elab "frontx_compile " f:ident " with " inv:term : command => liftTermElabM (compileCmd f (some inv))
 
 end Proven.Frontx
