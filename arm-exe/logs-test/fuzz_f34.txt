@@ -1,0 +1,5 @@
+TOTAL 7500 inputs, 75 cases, mismatches 0; model runner 287.44 s = 26 inputs/s (incl. startup and reset)
+TOTAL 7500 inputs, 75 cases, mismatches 0; model runner 363.33 s = 21 inputs/s (incl. startup and reset)
+TOTAL 7500 inputs, 75 cases, mismatches 0; model runner 343.62 s = 22 inputs/s (incl. startup and reset)
+TOTAL 7500 inputs, 75 cases, mismatches 0; model runner 242.26 s = 31 inputs/s (incl. startup and reset)
+GRAND TOTAL /root/fuzz/f34.txt: 300 cases, 30000 pairs, mismatches 0, 370 s wall with 4 procs = 81 pairs/s; model == expected == QEMU: True

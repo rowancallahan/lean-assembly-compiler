@@ -212,3 +212,33 @@ SCTLR_EL3.A = 0 (SCTLR_EL3 after reset = 0x30850030; clearing bit 1 changes noth
 On the first smoke run (unaligned not yet separated) these were the only mismatches of any form: ldr 9/20, str 6/20, all with
 address % 8 != 0. Consequence for the next layers: `ldr`/`str` on this model with the MMU off need 8-byte-aligned addresses
 (or an enabled MMU mapping Normal memory); byte accesses are unaffected.
+
+### 1. Fuzz corpus through the model (`arm-exe/fuzzpar_arm.py` -> `compare.py`, logs `logs-test/fuzz_f*.txt`)
+Generator: `asm/fuzz.lean` from main ae9c7d4 (Lean 4.29.0; `lake build Proven.CompilerArm Proven.Reify` here: 846 s,
+peak 7.5 GB, no swap), `SEED=s NCASES=300 K=100`, seeds 21 22 23 24 31 32 33 34, 4 in parallel: 155 s.
+All 11 ops and `ite`, depth < 11. ARM code per case: mean 498 words, max 4499. Corpus files are not committed
+(reproducible from seed; sha256 prefixes: f21 cb7e0477349f67d0, f22 d03fc168a40aea3f, f23 98efa7cc27b3d30e,
+f24 cd3c4983a892bad1, f31 881944e696cffde7, f32 5a12bcece27e0167, f33 1fd6874a666a126a, f34 efeb3cb3eac30ebf).
+Every pair: `expected` (Lean `Exp.denote`) vs AArch64 QEMU 8.2.2 vs the Lean ARM model (full `step_model` steps
+through the trailing `ret`, -O3 relinked runner).
+
+| seed | cases | pairs | mismatches | wall (4 procs) |
+|---|---|---|---|---|
+| 21 | 300 | 30,000 | 0 | 368 s |
+| 22 | 300 | 30,000 | 0 | 480 s |
+| 23 | 300 | 30,000 | 0 | 394 s |
+| 24 | 300 | 30,000 | 0 | 412 s |
+| 31 | 300 | 30,000 | 0 | 357 s |
+| 32 | 300 | 30,000 | 0 | 414 s |
+| 33 | 300 | 30,000 | 0 | 375 s |
+| 34 | 300 | 30,000 | 0 | 370 s |
+
+    TOTAL 2,400 cases, 240,000 pairs, mismatches 0: model == expected == QEMU on every pair.
+
+Throughput: 3,170 s wall for 240,000 pairs on 4 cores = 76 pairs/s end to end (QEMU + gcc + model).
+Model alone: 119,458,400 `step_model` steps in 10,368 process-seconds = 11,500 steps/s per core (the -O0 binary measured
+2,185 steps/s on the earlier corpus). The model runner is the dominant cost.
+RV64 half (`asm/triple.py`) not run here.
+Instruction words in this corpus by class: add shifted-reg 687,597; add imm 378,644; orr (mov) 43,381; movz 20,967;
+csel/csinc 19,645; subs shifted-reg 11,243; subs imm 8,402; lslv 4,507; lsrv 4,452; asrv 4,364; sub 3,044; eor 3,015;
+and 2,923; ret 2,400.
