@@ -91,3 +91,41 @@ arbitrary registers. Encodings that satisfy the laws: `bin` = the 3-register ins
 `cmp a, b; b.cond` (`lenBr = 2`) with `b = none` as `cmp a, #0` (or `cbz/cbnz` for `eq/ne`, but `lenBr` must not
 depend on the operands), `jmp` = `b`, `ret`. Flags are not part of `get`/`keep`, as for `Machine`. Nothing in
 `Compiler/Opt/` changes.
+
+Short-circuit loop tests: a loop condition `ite c a (const 0)` (i.e. `c ≠ 0 ∧ a ≠ 0`) becomes IR `loop2 pre₁ t₁ pre₂ t₂
+body`, lowered as `jmp test; body; test: pre₁; br ¬t₁ exit; pre₂; br t₂ body` (`Sel.loopCode`, `loopCode_exit`,
+`loopCode_iter`; `low_ok'` third component).
+
+## Status (commit of this file)
+
+Kernel-checked (`lake build Riscv.Back.Opt Riscv.Back.OptArr`, no `sorry`/`axiom`/`native_decide`/`bv_decide`):
+- middle layer, from the `Wide` laws only: `Wide.low_ok`, `Sel.gen_ok`, `IR.map_ok`, `Wide.fn_ok`, `Wide.optE_ok`,
+  `Wide.optS_ok`, `Wide.optA_ok` (`#print axioms Wide.low_ok`: `propext`, `Classical.choice`, `Quot.sound`);
+- RISC-V: `rvw : Wide` (all nine laws), `compileOpt_ok`, `compileOptS_ok`, `compileOptA_ok`; `#print axioms` of each
+  is the same 77-axiom list as `Proven.compile_ok` (compared by hash).
+Not proved / not done: `BStmt` (spill slots, merge sort), the pipe front end on the new pipeline, a liveness-based
+allocator, DCE, strength reduction, ARM instance of `Wide`.
+
+Tested: `Testing/asm/triple-data/triple_opt.lean` 18/18 cases four-way (Lean == RV64 QEMU == RV64 Sail emulator ==
+AArch64 QEMU; the ARM words are the unoptimised ARM backend's); `Testing/asm/fuzz_opt.lean` seeds 31–34, 300 cases ×
+100 inputs each = 120,000 pairs, 0 mismatches (the emitter falls back to `compile e` when `compileOpt e` is an
+error; how often was not counted); `loop_test.py` on `opt-words/{gcd,loopsum}.words` 300/300 each (QEMU + Sail
+emulator); array programs: outputs checked against the Python model by `bench/bench.py` on QEMU only.
+
+Measured (`python3 bench/bench.py sum take inc gcd loopsum insertion demo demo2 --opt-only`; RV64 QEMU `-icount`,
+instructions inside the function; words from `Testing/asm/emit_opt_{loops,arr}.lean` → `Testing/asm/opt-words/`):
+
+| function | ours before | ours optimised | gcc -O2 (bench/NOTES.md) | opt / gcc |
+|---|---|---|---|---|
+| sumBytes, per element (n = 100000) | 20.0 | 5.0 | 4.0 | 1.25 |
+| take, per element | 21.0 | 6.0 | 5.0 | 1.2 |
+| map (+1), per element | 25.0 | 7.0 | 6.0 | 1.17 |
+| loop sum (`sumDown`), per iteration | 13.0 | 3.0 | 3.0 | 1.0 |
+| gcd (100000, 3), per step | 36.0 | 6.0 | 3.0 | 2.0 |
+| gcd (832040, 514229), whole call | 1058 | 178 | 77 | 2.3 |
+| insertion sort, per element, n = 1000 | 10520 | 3911 | 1715 | 2.3 |
+| `demo` expression, whole call | 47 | 8 | 8 | 1.0 |
+| `demo2` expression, whole call | 29 | 9–13 | 9 | 1.0–1.4 |
+
+Code size (words): loopsum 6, gcd 10, demo 8, demo2 13, sum 9, take 12, inc 13, insertion sort 38.
+Merge sort: not measured (needs `BStmt`).
