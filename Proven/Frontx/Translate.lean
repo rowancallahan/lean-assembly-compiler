@@ -103,6 +103,13 @@ def MT.maxK : MT → Nat
   | .ite _ t e => max t.maxK e.maxK
   | .let_ _ _ k | .load _ _ _ k | .cload _ _ _ _ _ k => k.maxK
 
+/-- nesting depth of the condition variables `comp` uses -/
+def MT.cdepth : MT → Nat
+  | .ret _ | .call _ => 0
+  | .ite _ t e => 1 + max t.cdepth e.cdepth
+  | .let_ _ _ k | .load _ _ _ k => k.cdepth
+  | .cload _ _ _ _ _ k => max 1 k.cdepth
+
 /-! ## translation -/
 
 structure Ctx where
@@ -122,6 +129,8 @@ inductive Item where
   | load (v b : Nat) (i : ME) (r : Expr) (idx : Expr) (temps : List Expr)
   | cload (v b : Nat) (i c d : ME) (r : Expr) (idx : Expr) (temps : List Expr)
   | let_ (v : Nat) (e : ME) (L L' : Expr) (ty : Ty) (temps : List Expr)
+  /-- a temporary introduced only to keep expressions shallow: `v := e`, no Lean term attached -/
+  | raw (v : Nat) (e : ME)
 
 structure TrSt where
   next : Nat
@@ -177,6 +186,28 @@ def litBV (c : Expr) : MetaM Expr := do
   | some n => return mkBV n
   | none => return c
 
+def ME.depth : ME → Nat
+  | .var _ | .const _ => 0
+  | .bin _ a b => max a.depth (b.depth + 1)
+  | .ite c a b => max c.depth (max (a.depth + 1) (b.depth + 2))
+
+/-- the expression depth the translator allows itself (`BStmt.wf` needs `< 6` for indices and stored values,
+`< 7` elsewhere) -/
+def maxDepth : Nat := 5
+
+/-- an expression of depth `≤ d` with the same value: subexpressions that do not fit go to fresh temporaries -/
+partial def fit (m : ME) (d : Nat := maxDepth) : TrM ME := do
+  if m.depth ≤ d then return m
+  let tmp : TrM ME := do
+    let m' ← fit m maxDepth
+    let v ← fresh
+    modify fun s => { s with pend := s.pend.push (.raw v m') }
+    return .var v
+  match m with
+  | .bin op a b => if d == 0 then tmp else return .bin op (← fit a d) (← fit b (d - 1))
+  | .ite c a b => if d < 2 then tmp else return .ite (← fit c d) (← fit a (d - 1)) (← fit b (d - 2))
+  | m => return m
+
 def cNot (c : ME) : ME := .bin ``Op.xor c (.const (mkBV 1))
 
 mutual
@@ -194,6 +225,7 @@ partial def trE (ctx : Ctx) (e : Expr) : TrM (ME × Expr) := do
   if let some (xs, i) := read? e then
     if let some (b, _) := ctx.block? xs then
       let (idx, i') ← trE ctx i
+      let idx ← fit idx
       let v ← fresh
       modify fun s => { s with memo := (e, v) :: s.memo, pend := s.pend.push (.load v b idx e i' s.temps) }
       return (.var v, e)
@@ -217,6 +249,7 @@ partial def trE (ctx : Ctx) (e : Expr) : TrM (ME × Expr) := do
                 .lam `h (mkNot P) (toExpr (0 : UInt8)) .default])
             else pure e
           let (idx, i'') ← trE ctx i
+          let idx ← fit idx
           let v ← fresh
           let c := ME.bin ``Op.ult idx (.var len)
           let dm := ME.const (← litBV (mkApp (mkConst ``r8) (if isConv then toExpr (0 : UInt8) else d)))
@@ -275,6 +308,7 @@ partial def trE (ctx : Ctx) (e : Expr) : TrM (ME × Expr) := do
       if a.hasFVar && !a.isFVar && (← find? a).isNone then
         if let some aty ← classify (← inferType a) then
           let (m, a') ← trE ctx a
+          let m ← fit m
           let v ← fresh
           modify fun s => { s with memo := (a, v) :: s.memo, temps := a :: s.temps,
                                    pend := s.pend.push (.let_ v m a a' aty s.temps) }
@@ -439,6 +473,11 @@ partial def wrapItems (ctx : Ctx) (items : List Item) (env : Expr)
     let (t, o, p) ← wrapItems ctx rest (setE env v x) k
     return (.let_ v m t, o, mkAppN (mkConst ``sim_let)
       #[ctx.A, ctx.R, toExpr v, m.toExpr, ← t.toExpr, env, ctx.heap, x, o, hx, p])
+  | .raw v m :: rest => do
+    let x := denoteE env m
+    let (t, o, p) ← wrapItems ctx rest (setE env v x) k
+    return (.let_ v m t, o, mkAppN (mkConst ``sim_let)
+      #[ctx.A, ctx.R, toExpr v, m.toExpr, ← t.toExpr, env, ctx.heap, x, o, ← mkEqRefl x, p])
   | .load v b i r idx temps :: rest => do
     let y := mkApp (mkConst ``UInt8.toBitVec) r
     let hj ← oblig (← mkEq (mkApp2 (mkConst ``BitVec.toNat) (toExpr (64 : Nat)) (denoteE env i)) idx) temps
@@ -484,6 +523,7 @@ partial def trT (ctx : Ctx) (nconj : Nat) (env : Expr) (e : Expr) : TrM (MT × E
     if v.hasFVar && !v.isFVar && (← find? v).isNone then
       if let some ty ← classify e.letType! then
         let (m, v') ← trE ctx v
+        let m ← fit m
         let x ← fresh
         modify fun s => { s with memo := (v, x) :: s.memo, temps := v :: s.temps,
                                  pend := s.pend.push (.let_ x m v v' ty s.temps) }
@@ -492,6 +532,7 @@ partial def trT (ctx : Ctx) (nconj : Nat) (env : Expr) (e : Expr) : TrM (MT × E
   -- a two-way branch on `P`
   let branch (P inst : Expr) (mkT mkF : Expr → Expr) : TrM (MT × Expr × Expr) := do
     let (c, P') ← trC ctx P
+    let c ← fit c
     wrapItems ctx (← takePend) env fun env => do
       let hc ← oblig (mkIff (← mkAppM ``Ne #[denoteE env c, bv0]) P')
       let br (hty : Expr) (mk : Expr → Expr) : TrM (MT × Expr × Expr) := inBranch do
@@ -533,7 +574,7 @@ partial def trT (ctx : Ctx) (nconj : Nat) (env : Expr) (e : Expr) : TrM (MT × E
       if (ctx.block? p).isSome then throwError "frontx: array argument changed in the call{indentExpr e}"
       let some v ← find? p | throwError "frontx: parameter without a variable{indentExpr p}"
       let (m, a') ← trE ctx args[j]!
-      as := as.push (v, m)
+      as := as.push (v, ← fit m)
       args' := args'.set! j a'
     return ← wrapItems ctx (← takePend) env fun env => do
       let mt := MT.call as.toList
@@ -554,6 +595,7 @@ partial def trT (ctx : Ctx) (nconj : Nat) (env : Expr) (e : Expr) : TrM (MT × E
       return (mt, mkApp2 (mkConst ``LOut.call) ctx.A a,
         mkAppN (mkConst ``sim_call) #[ctx.A, ctx.R, asE, env, ctx.heap, a, h])
   let (m, e') ← trE ctx e
+  let m ← fit m
   return ← wrapItems ctx (← takePend) env fun env => do
     let h ← oblig (← mkEq (denoteE env m) (ctx.rty.rep e'))
     let r := ctx.rty.rep e
@@ -726,6 +768,8 @@ def compileCmd (f : Ident) (inv? : Option Term) : TermElabM Unit := do
       let t1 ← IO.monoMsNow
       addDef treeN (mkConst ``Tree) (← mt.toExpr) (compile := true)
       addDef layN (mkConst ``Lay) (mkApp2 (mkConst ``Lay.mk) (toExpr M) (toExpr mt.maxK)) (compile := true)
+      let nvars := M + 2 + mt.maxK + 2 * mt.cdepth
+      addDef (fn ++ `slots) (mkConst ``Nat) (toExpr (nvars - 8)) (compile := true)
       let lout := mkApp (mkConst ``LOut) A
       addDef outN (← mkForallFVars xs lout) (← mkLambdaFVars xs outE)
       -- f.step1
@@ -782,7 +826,7 @@ def compileCmd (f : Ident) (inv? : Option Term) : TermElabM Unit := do
         (intro $as* $σi:ident hR
          exact prog_ok_ro $lI (by simp [$tI:ident, $lI:ident, Tree.wf, BExp.vlt]) (by rfl) ($runsI:ident $as* $σi hR) _)))
       let t4 ← IO.monoMsNow
-      logInfo m!"frontx: {fn}: {M} variables (+{2 + mt.maxK} control), result in variable {out}, {st.nObl} obligations; translate + step proof {t1 - t0} ms, kernel check of step {t2 - t1} ms, induction {t3 - t2} ms, exec theorem {t4 - t3} ms"
+      logInfo m!"frontx: {fn}: {nvars} variables ({M} user), {nvars - 8} slots, result in variable {out}, {st.nObl} obligations; translate + step proof {t1 - t0} ms, kernel check of step {t2 - t1} ms, induction {t3 - t2} ms, exec theorem {t4 - t3} ms"
 
 /-- `frontx_compile f` or `frontx_compile f with inv` (`inv : params → Prop`, an extra precondition that the
 recursive calls must preserve; needed for `Nat` arguments whose bounds are not implied by the tests) -/
