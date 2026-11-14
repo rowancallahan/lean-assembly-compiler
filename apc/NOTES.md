@@ -28,7 +28,8 @@ Nothing of theirs is copied into this repo; `apc/lakefile.toml` requires their `
   | Spec (SepLogic 581, Hoare 525, Rust/alloc contracts) | 9 | 1,967 |
   | Surface (spec DSL elaborators) | 6 | 1,779 |
 - Build on this box (4 cores, 15 GB, no swap): `lake -d Arm64 build` (trusted semantics, incl. native precompile):
-  192 jobs, 50 s wall, peak RSS 1.07 GB. `lake -d ProofLib build`: see end of file.
+  192 jobs, 50 s wall, peak RSS 1.07 GB. `lake -d ProofLib build` (program logic, on top of the built `arm64`):
+  757 jobs, 761 s wall, peak RSS 6.0 GB (sum over parallel lean/clang processes, 5 s sampling).
 
 ## 2. The semantics (quotes from `Arm64/Trusted/ISA/*.lean`)
 State (`State.lean`): one record, total functions, no monad.
@@ -129,8 +130,10 @@ What blocks or needs a decision:
 4. PC / branches: PC is a `BitVec 64`, branch offsets are decoded sign-extended 64-bit values added to the PC. `bz n`
    = `cbz` (imm19, so `bzOK n := n < 2^18`), `jmp n` = `b` backwards (imm26). No PC bound like `pc < 2^29` (Sail route).
 5. Flags: `bin ult/slt/eq` and `sel` change NZCV; the interface frame `keep` must not mention flags (ours does not).
-6. Lean version: theirs 4.34.0; our middle layer is known on 4.29 and 4.34.1. Not tried: the rest of `Compiler/*` on
-   4.34.0, and their `arm64` package on 4.34.1 (needed to put it in one environment with the Sail model).
+6. Lean version: theirs 4.34.0; our middle layer is known on 4.29 and 4.34.1. Their `arm64` package (a copy of
+   `Arm64.lean`, `Arm64/Trusted`, `Arm64/Legacy` with `lean-toolchain` set to 4.34.1, nothing else changed) BUILDS under
+   4.34.1: 192 jobs, 52 s. So the version is not a blocker in either direction. Not tried: the rest of `Compiler/*`
+   on 4.34.0; `ProofLib` on 4.34.1; `apc/Apc/*` on 4.34.1.
 7. No control-state pins are needed (compare `ArmFull`: EL3, MMU off, SPE, branch-type registers ... on the Sail route).
 Not blockers: state type (plain record, `simp` unfolds one instruction in < 1 s), `ret` convention (x30).
 
@@ -161,7 +164,8 @@ Can agreement with the Sail model be PROVED by composition: yes, the two halves 
 
 proof = `full_word` (main, `Arm/proofs/Arm/Full.lean`) for the Sail side, `agree_emitted` + `step_of` (here) for theirs,
 glued through `armStep w (abs t)`. Missing:
-(a) one Lean environment holding both: the Sail model is built with 4.34.1, their package pins 4.34.0 (untested either way);
+(a) one Lean environment holding both: not set up. Their trusted package builds under 4.34.1 (the Sail model's version,
+    see 3.6), so this is build plumbing, not a known obstacle; the combined import has not been tried;
 (b) `ret` is not in `armStep`/`emitted` (needs its own Sail lemma; `Arm/proofs/Arm/Ret.lean` exists on main, not looked at);
 (c) a stated relation between the two memories beyond the instruction bytes (Sail `mem` vs their `Memory` + permissions),
     needed as soon as loads/stores are in the subset; and the Sail model's alignment fault on unaligned 8-byte accesses
