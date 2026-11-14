@@ -9,3 +9,4 @@ regen-work/
 *.o
 ctest/
 Testing/asm/work/
+__pycache__/
