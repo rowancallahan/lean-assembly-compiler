@@ -2,6 +2,7 @@
 `compileP p = .ok code → ImplementsPipe code p.denote p.space` (`compileP_ok`), and the `ImplementsMapped`
 form when the pipe needs no more output space than its result (`compileP_mapped`). -/
 import Compiler.Front.PipeSrc
+import Riscv.Back.OptArr
 
 set_option linter.unusedVariables false
 
@@ -65,10 +66,10 @@ def compileP (p : Pipe) : Except String (List (BitVec 32)) :=
   | some m => .error m
   | none => match wfErr [0, 3] (Pipe.prog p) with
     | some m => .error m
-    | none => .ok (compileAF [0, 3] (Pipe.prog p))
+    | none => .ok (compileAFO [0, 3] (Pipe.prog p))
 
 theorem compileP_inv {p : Pipe} {code : List (BitVec 32)} (h : compileP p = .ok code) :
-    (∀ st ∈ p, st.chk = none) ∧ (Pipe.prog p).wf [0, 3] ∧ code = compileAF [0, 3] (Pipe.prog p) := by
+    (∀ st ∈ p, st.chk = none) ∧ (Pipe.prog p).wf [0, 3] ∧ code = compileAFO [0, 3] (Pipe.prog p) := by
   unfold compileP at h
   cases hc : Pipe.chkErr p with
   | some m => simp [hc] at h
@@ -126,7 +127,7 @@ theorem implements_of_exec {prog : AStmt} (hwf : prog.wf [0, 3]) {f : List UInt8
       xs.length < 2 ^ 32 → space xs.length ≤ out.length → out.length < 2 ^ 32 →
       ∃ σ' out', AExec prog ⟨env, [tbs xs, out]⟩ σ' ∧ σ'.heap = [tbs xs, out'] ∧ out'.length = out.length ∧
         out'.take (f xs).length = tbs (f xs)) :
-    ImplementsPipe (compileAF [0, 3] prog) f space := by
+    ImplementsPipe (compileAFO [0, 3] prog) f space := by
   intro x s entry ra input scratch output stack codeR hmax h hpc hal hcode h10 h11 h12 h13 h2 h1 hra hrad hx
     hil hol hram hdis hmap
   have hin : ∀ r ∈ [input, scratch, output, stack, codeR], r.inRAM := hram
@@ -161,9 +162,9 @@ theorem implements_of_exec {prog : AStmt} (hwf : prog.wf [0, 3]) {f : List UInt8
     · simp only [List.pairwise_cons, List.mem_cons, List.not_mem_nil, or_false, forall_eq, List.Pairwise.nil,
         and_true, false_implies, implies_true]
       unfold disjoint; dsimp only; omega
-  have hok : codeOK entry (compileAF [0, 3] prog).length := ⟨hal, rc.1, rc.2⟩
+  have hok : codeOK entry (compileAFO [0, 3] prog).length := ⟨hal, rc.1, rc.2⟩
   have hcd : ∀ r ∈ [(⟨input.base, x.length⟩ : Region), ⟨output.base, L⟩],
-      disjoint ⟨entry.toNat, 4 * (compileAF [0, 3] prog).length⟩ r := by
+      disjoint ⟨entry.toNat, 4 * (compileAFO [0, 3] prog).length⟩ r := by
     intro r hr
     simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
     rcases hr with rfl | rfl <;> (unfold disjoint; dsimp only; omega)
@@ -187,7 +188,7 @@ theorem implements_of_exec {prog : AStmt} (hwf : prog.wf [0, 3]) {f : List UInt8
         · simpa [tbs, List.map_map, Function.comp_def] using hx
         · exact ho
         · simp at hb; omega⟩
-  refine runsTo_mono (compileAF_ok [0, 3] hwf hR hexec h hpc (codeAt_of_codeBytes hok hcode) hok hcd hrel
+  refine runsTo_mono (compileAFO_ok [0, 3] hwf hR hexec h hpc (codeAt_of_codeBytes hok hcode) hok hcd hrel
     (by rw [hra']; omega)) ?_
   rintro s' ⟨p1, p2, p3, p4, p5⟩
   have e1 := p2.bytes 1 (by simp)

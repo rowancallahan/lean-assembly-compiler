@@ -5,7 +5,7 @@ pipe with `space n > |f x|` does not fit `Implements1` with the same code; `a2`,
 temporary for it).  `compileP_implements1`: every accepted `compileP` pipe with `Pipe.space ≤ Pipe.len`. -/
 import Compiler.Front.PipeMachine
 import Spec.Implements1
-import Riscv.Back.Keep
+import Riscv.Back.Implements1Opt
 
 set_option linter.unusedVariables false
 
@@ -17,11 +17,11 @@ theorem implements1_of_exec {prog : AStmt} (hwf : prog.wf [0, 3]) {f : List UInt
       xs.length < 2 ^ 32 → space xs.length ≤ out.length → out.length < 2 ^ 32 →
       ∃ σ' out', AExec prog ⟨env, [tbs xs, out]⟩ σ' ∧ σ'.heap = [tbs xs, out'] ∧ out'.length = out.length ∧
         out'.take (f xs).length = tbs (f xs)) :
-    Implements1Raw (compileAF [0, 3] prog) f (fun _ => 0) := by
+    Implements1Raw (compileAFO [0, 3] prog) f (fun _ => 0) := by
   intro x s entry ra input output work
   dsimp only [encRaw]
   intro hmax h hpc hal hcode h10 h11 h12 h13 h2 h1 hra hrad hx hil hol hws hwal hram hdis hmapO hmapW
-  have hin : ∀ r ∈ [input, output, work, (⟨entry.toNat, 4 * (compileAF [0, 3] prog).length⟩ : Region)],
+  have hin : ∀ r ∈ [input, output, work, (⟨entry.toNat, 4 * (compileAFO [0, 3] prog).length⟩ : Region)],
     r.inRAM := hram
   simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq] at hin
   simp only [List.pairwise_cons, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq,
@@ -55,9 +55,9 @@ theorem implements1_of_exec {prog : AStmt} (hwf : prog.wf [0, 3]) {f : List UInt
     · simp only [List.pairwise_cons, List.mem_cons, List.not_mem_nil, or_false, forall_eq, List.Pairwise.nil,
         and_true, false_implies, implies_true]
       unfold disjoint; dsimp only; omega
-  have hok : codeOK entry (compileAF [0, 3] prog).length := ⟨hal, rc.1, rc.2⟩
+  have hok : codeOK entry (compileAFO [0, 3] prog).length := ⟨hal, rc.1, rc.2⟩
   have hcd : ∀ r ∈ [(⟨input.base, x.length⟩ : Region), ⟨output.base, L⟩],
-      disjoint ⟨entry.toNat, 4 * (compileAF [0, 3] prog).length⟩ r := by
+      disjoint ⟨entry.toNat, 4 * (compileAFO [0, 3] prog).length⟩ r := by
     intro r hr
     simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
     rcases hr with rfl | rfl <;> (unfold disjoint; dsimp only; omega)
@@ -81,7 +81,7 @@ theorem implements1_of_exec {prog : AStmt} (hwf : prog.wf [0, 3]) {f : List UInt
         · simpa [tbs, List.map_map, Function.comp_def] using hx
         · exact ho
         · simp at hb; omega⟩
-  refine runsTo_mono (Mach.Riscv.compileAF_okK [0, 3] hwf hR hexec h hpc (codeAt_of_codeBytes hok hcode) hok hcd hrel
+  refine runsTo_mono (compileAFO_okK [0, 3] hwf hR hexec h hpc (codeAt_of_codeBytes hok hcode) hok hcd hrel
     (by rw [hra']; omega)) ?_
   rintro s' ⟨p1, p2, p3, p4, p5⟩
   have e1 := p2.bytes 1 (by simp)

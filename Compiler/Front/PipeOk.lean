@@ -281,7 +281,7 @@ theorem compileP_of_ok {p : Pipe} (h : Pipe.ok p = true) : ∃ code, compileP p 
   have hw : wfErr bv2 (Pipe.prog p) = none := (wfErr_iff _ _).2
     (foldl_seq_wf _ _ (assign_const_wf 4 (by decide) _)
       (stmts_wf p cs0 (fun st hs => (h.1 st hs).2) (by simp [cs0]) (by simp only [cs0, gsW]; omega)))
-  exact ⟨compileAF [0, 3] (Pipe.prog p), by simp only [compileP, hc, hw]⟩
+  exact ⟨compileAFO [0, 3] (Pipe.prog p), by simp only [compileP, hc, hw]⟩
 
 /-! ## Pipes without `sort`/`fold` need exactly the result size -/
 
