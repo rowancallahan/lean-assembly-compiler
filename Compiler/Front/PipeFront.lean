@@ -81,7 +81,18 @@ theorem mapped2 (c : Compiled enc f)
   exact runsTo_mono (c.ok x s entry ra input scratch output stack hmax h hpc hal hcode h10 h11 h12 h13 h2 h1 hra
     hrad hx hil (Nat.le_trans (hsp x) hol) (Nat.le_trans (hss x) hsl) (Nat.le_trans hst hstk) hram hdis
     (fun i hi => hmap i (Nat.lt_of_lt_of_le hi (hsp x))) (fun i hi => hmapS i (Nat.lt_of_lt_of_le hi (hss x))))
-    fun s' ⟨a, b, c, d, e, _⟩ => ⟨a, b, c, d, e⟩
+    fun s' ⟨a, b, u, d, e, _⟩ => ⟨a, b, unchanged_sub u (fun a ha r hr => by
+      have h1 := ha input (by simp); have h2 := ha scratch (by simp); have h3 := ha output (by simp)
+      have h4 := ha stack (by simp)
+      have := hss x; have := hsp x
+      have hol' : (enc (f x)).length ≤ output.len := hol
+      have hsl' : x.length ≤ scratch.len := hsl
+      simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
+      rcases hr with rfl | rfl | rfl | rfl
+      · exact h1
+      · show a < scratch.base ∨ scratch.base + XPipe.sspace c.pipe x.length ≤ a; omega
+      · show a < output.base ∨ output.base + XPipe.space c.pipe x.length ≤ a; omega
+      · exact h4), d, e⟩
 
 end Compiled
 

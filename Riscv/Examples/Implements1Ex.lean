@@ -128,9 +128,10 @@ theorem enc64 (w : BitVec 64) :
 theorem store8_exec (w : BitVec 64) : ∀ (j : Nat), j < 8 → ∀ (σ : Mach.BState) (xs out : List (BitVec 8)),
     σ.heap = [xs, out] → σ.env 4 = w → 8 ≤ out.length → σ.env 3 = σ.env 3 →
     ∃ out', Mach.BExec (store8 j) σ ⟨σ.env, [xs, out'], σ.wheap⟩ ∧ out'.length = out.length ∧
-      ∀ i (hi : i ≤ j), out'[i]? = some (BitVec.ofNat 8 (w.toNat / 256 ^ i))
+      (∀ i (hi : i ≤ j), out'[i]? = some (BitVec.ofNat 8 (w.toNat / 256 ^ i))) ∧
+      ∀ i, j < i → out'[i]? = out[i]?
   | 0, _, σ, xs, out, hh, h4, hl, _ => by
-    refine ⟨out.set 0 (w.setWidth 8), ?_, by simp, fun i hi => ?_⟩
+    refine ⟨out.set 0 (w.setWidth 8), ?_, by simp, fun i hi => ?_, fun i hi => List.getElem?_set_ne (by omega)⟩
     · have := Mach.BExec.store (b := 1) (i := .const 0) (e := .var 4) (σ := σ) (by simp [hh])
         (by simp [hh, Mach.BExp.denote]; omega)
       simp only [hh, Mach.BExp.denote, h4] at this
@@ -139,9 +140,9 @@ theorem store8_exec (w : BitVec 64) : ∀ (j : Nat), j < 8 → ∀ (σ : Mach.BS
       rw [List.getElem?_set_self (by omega)]; congr 1
       apply BitVec.eq_of_toNat_eq; simp
   | j + 1, hj, σ, xs, out, hh, h4, hl, _ => by
-    obtain ⟨out₁, he, hl₁, hb⟩ := store8_exec w j (by omega) σ xs out hh h4 hl rfl
+    obtain ⟨out₁, he, hl₁, hb, hu⟩ := store8_exec w j (by omega) σ xs out hh h4 hl rfl
     refine ⟨out₁.set (j + 1) ((Op.eval .lshr w (BitVec.ofNat 64 (8 * (j + 1)))).setWidth 8), .seq he ?_,
-      by simp [hl₁], fun i hi => ?_⟩
+      by simp [hl₁], fun i hi => ?_, fun i hi => by rw [List.getElem?_set_ne (by omega)]; exact hu i (by omega)⟩
     · have := Mach.BExec.store (b := 1) (i := .const (BitVec.ofNat 64 (j + 1)))
         (e := .bin .lshr (.var 4) (.const (BitVec.ofNat 64 (8 * (j + 1))))) (σ := ⟨σ.env, [xs, out₁], σ.wheap⟩)
         (by simp) (by simp [Mach.BExp.denote]; omega)
@@ -160,7 +161,8 @@ theorem sumBytesU_eq (xs : List UInt8) : sumBytesU xs = sumBytes (xs.map (·.toB
 theorem sumP_exec (σ : Mach.BState) (xs out : List (BitVec 8)) (hh : σ.heap = [xs, out])
     (h1 : σ.env 1 = BitVec.ofNat 64 xs.length) (hn : xs.length < 2 ^ 64) (hl : 8 ≤ out.length) :
     ∃ σ' out', Mach.BExec sumP σ σ' ∧ σ'.heap = [xs, out'] ∧
-      out'.take 8 = (List.range 8).map fun j => BitVec.ofNat 8 ((sumBytes xs).toNat / 256 ^ j) := by
+      out'.take 8 = (List.range 8).map (fun j => BitVec.ofNat 8 ((sumBytes xs).toNat / 256 ^ j)) ∧
+      out'.drop 8 = out.drop 8 := by
   obtain ⟨σ₁, hlp, hq⟩ := BExec.loop_inv (c := .bin .ult (.var 5) (.var 1))
     (b := .seq (.load 6 0 (.var 5)) (.seq (.assign 4 (.bin .add (.var 4) (.var 6)))
       (.assign 5 (.bin .add (.var 5) (.const 1)))))
@@ -190,8 +192,9 @@ theorem sumP_exec (σ : Mach.BState) (xs out : List (BitVec 8)) (hh : σ.heap = 
       rw [hs, List.take_of_length_le (by omega)])
     ⟨(σ.env.set 4 0).set 5 0, σ.heap, σ.wheap⟩
     ⟨hh, by simpa [Mach.BEnv.set] using h1, by simp [Mach.BEnv.set], by simp [Mach.BEnv.set, sumBytes]⟩
-  obtain ⟨out', hst, hl', hb⟩ := store8_exec (sumBytes xs) 7 (by omega) σ₁ xs out hq.1 hq.2 hl rfl
-  refine ⟨_, out', .seq (BExec.assign' rfl) (.seq (BExec.assign' rfl) (.seq hlp hst)), rfl, ?_⟩
+  obtain ⟨out', hst, hl', hb, hu⟩ := store8_exec (sumBytes xs) 7 (by omega) σ₁ xs out hq.1 hq.2 hl rfl
+  refine ⟨_, out', .seq (BExec.assign' rfl) (.seq (BExec.assign' rfl) (.seq hlp hst)), rfl, ?_,
+    List.ext_getElem? fun i => by rw [List.getElem?_drop, List.getElem?_drop]; exact hu _ (by omega)⟩
   apply List.ext_getElem? ; intro i
   by_cases hi : i < 8
   · rw [List.getElem?_take_of_lt hi, hb i (by omega), List.getElem?_map, List.getElem?_range hi]; rfl
@@ -202,13 +205,15 @@ theorem sumP_exec (σ : Mach.BState) (xs out : List (BitVec 8)) (hh : σ.heap = 
 theorem bzOK_iff {n : Nat} : rvF.bzOK n ↔ 2 * n < 2048 := Iff.rfl
 theorem jmpOK_iff {n : Nat} : rvF.jmpOK n ↔ 0 < n ∧ 2 * n ≤ 2 ^ 19 := Iff.rfl
 
-def takeCode1 (k : Nat) : List (BitVec 32) :=
-  rvF.codeF (rvF.compBF 0 [0, 3] [2] (mapK (.const (BitVec.ofNat 64 k)) (.var 6)))
+/-- `List.take k` with the result length returned in `a1` -/
+def takeP (k : Nat) : Mach.BStmt := .seq (mapK (.const (BitVec.ofNat 64 k)) (.var 6)) (.assign 1 (.var 4))
+
+def takeCode1 (k : Nat) : List (BitVec 32) := rvF.codeF (rvF.compBF 0 [0, 3] [2] (takeP k))
 def incCode1 : List (BitVec 32) := rvF.codeF (rvF.compBF 0 [0, 3] [2] (mapK (.var 1) (.bin .add (.var 6) (.const 1))))
 def sumCode1 : List (BitVec 32) := rvF.codeF (rvF.compBF 0 [0, 3] [2] sumP)
 
-theorem take_wf (k : Nat) : rvF.wfB 0 [0, 3] [2] (mapK (.const (BitVec.ofNat 64 k)) (.var 6)) := by
-  simp [mapK, MachineF.wfB, Mach.BExp.depth, Mach.BExp.vlt, bzOK_iff, jmpOK_iff]
+theorem take_wf (k : Nat) : rvF.wfB 0 [0, 3] [2] (takeP k) := by
+  simp [takeP, mapK, MachineF.wfB, Mach.BExp.depth, Mach.BExp.vlt, bzOK_iff, jmpOK_iff]
   decide +kernel
 
 theorem inc_wf : rvF.wfB 0 [0, 3] [2] (mapK (.var 1) (.bin .add (.var 6) (.const 1))) := by
@@ -219,51 +224,67 @@ theorem sum_wf : rvF.wfB 0 [0, 3] [2] sumP := by
   simp [sumP, sumLoop, store8, MachineF.wfB, Mach.BExp.depth, Mach.BExp.vlt, bzOK_iff, jmpOK_iff]
   decide +kernel
 
+theorem drop_tail {α : Type} {l out : List α} (m : Nat) (h : l.length = m) : (l ++ out.drop m).drop m = out.drop m := by
+  rw [List.drop_append_of_le_length (by omega), List.drop_of_length_le (by omega), List.nil_append]
+
 /-- **`List.take k`** in `Implements1` form: 15 bytes of work space (the frame cell saving `gp`, plus
-alignment). -/
+alignment); a variable-length result, so its length is returned in `a1` (`retLen = true`). -/
 theorem take_implements1 (k : Nat) (hk : k < 2 ^ 64) :
-    Implements1Raw (takeCode1 k) (fun xs => xs.take k) (fun _ => 15) := by
-  refine implements1_of_exec encRaw encRaw _ 0 (by omega) _ (take_wf k) (fun _ => 0) _ (fun n => by dsimp only; omega) _ ?_
+    Implements1Raw (takeCode1 k) (fun xs => xs.take k) (fun _ => 15) (retLen := true) := by
+  refine implements1_of_exec encRaw encRaw _ 0 (by omega) _ (take_wf k) (fun _ => 0) (fun _ => 15)
+    (fun n => by dsimp only; omega) _ true ?_
   intro a out tbl env h1 h8 hmax hlt hout hol htl
+  simp only [encRaw] at h1 hlt hout ⊢
   have hK : (Mach.BExp.denote env (.const (BitVec.ofNat 64 k))).toNat = k := by
     simp [Mach.BExp.denote]; omega
-  obtain ⟨σ', hex, hh⟩ := mapK_exec (.const (BitVec.ofNat 64 k)) (.var 6) id
-    (fun env x he => by simp [Mach.BExp.denote, he, setWidth_setWidth8]) ⟨env, [a.map (·.toBitVec), out], [tbl]⟩
-    (a.map (·.toBitVec)) out rfl (by simpa [encRaw] using h1) (by simp [encRaw] at hlt ⊢; omega)
-    (by rw [hK]; simp [encRaw] at hout ⊢; omega)
-  refine ⟨σ', _, hex, hh, ?_⟩
-  rw [hK]
-  simp only [encRaw, List.map_id]
-  rw [List.take_append_of_le_length (by simp), List.take_of_length_le (by simp), List.map_take]
+  obtain ⟨σ', hex, hh, h4, h1'⟩ := mapK_exec (.const (BitVec.ofNat 64 k)) (.var 6) id
+    (fun env x he => by simp [Mach.BExp.denote, he]) ⟨env, [a.map (·.toBitVec), out], [tbl]⟩
+    (a.map (·.toBitVec)) out rfl (by simpa using h1) (by simp at hlt ⊢; omega)
+    (by rw [hK]; simp at hout ⊢; omega)
+  rw [hK] at hh h4
+  simp only [List.length_map] at hh h4
+  refine ⟨_, _, .seq hex (BExec.assign' rfl), hh, ?_, ?_, fun _ => ?_⟩
+  · simp only [List.map_id, List.length_take]
+    rw [List.take_append_of_le_length (by simp), List.take_of_length_le (by simp), List.map_take]
+  · simp only [List.map_id, List.length_take]
+    exact drop_tail _ (by simp)
+  · show (if 1 = 1 then σ'.env 4 else _) = _
+    rw [if_pos rfl, List.length_take]
+    apply BitVec.eq_of_toNat_eq; rw [h4, BitVec.toNat_ofNat]; omega
 
 /-- **`List.map (· + 1)`** in `Implements1` form -/
 theorem inc_implements1 : Implements1Raw incCode1 (List.map (· + 1)) (fun _ => 15) := by
-  refine implements1_of_exec encRaw encRaw _ 0 (by omega) _ inc_wf (fun _ => 0) _ (fun n => by dsimp only; omega) _ ?_
+  refine implements1_of_exec encRaw encRaw _ 0 (by omega) _ inc_wf (fun _ => 0) (fun _ => 15)
+    (fun n => by dsimp only; omega) _ false ?_
   intro a out tbl env h1 h8 hmax hlt hout hol htl
   simp only [encRaw] at h1 hlt hout ⊢
   have hK : (Mach.BExp.denote env (.var 1)).toNat = a.length := by
     simp only [Mach.BExp.denote, h1, BitVec.toNat_ofNat]; omega
-  obtain ⟨σ', hex, hh⟩ := mapK_exec (.var 1) (.bin .add (.var 6) (.const 1)) (· + 1)
+  obtain ⟨σ', hex, hh, -⟩ := mapK_exec (.var 1) (.bin .add (.var 6) (.const 1)) (· + 1)
     (fun env x he => by simp only [Mach.BExp.denote, Op.eval, he]; exact Proven.setWidth_inc x)
     ⟨env, [a.map (·.toBitVec), out], [tbl]⟩ (a.map (·.toBitVec)) out rfl (by simpa using h1) (by simp; omega)
     (by rw [hK]; simp at hout ⊢; omega)
-  refine ⟨σ', _, hex, hh, ?_⟩
-  rw [hK]
-  simp only [List.length_map] at hout ⊢
-  rw [List.take_append_of_le_length (by simp), List.take_of_length_le (by simp),
-    List.take_of_length_le (by simp), List.map_map, List.map_map]
-  apply List.map_congr_left; intro u _; simp
+  rw [hK] at hh
+  simp only [List.length_map] at hout hh
+  refine ⟨σ', _, hex, hh, ?_, ?_, fun h => nomatch h⟩
+  · simp only [List.length_map]
+    rw [List.take_append_of_le_length (by simp), List.take_of_length_le (by simp),
+      List.take_of_length_le (by simp), List.map_map, List.map_map]
+    apply List.map_congr_left; intro u _; simp
+  · simp only [List.length_map, Nat.min_self]
+    exact drop_tail _ (by simp)
 
 theorem length_enc64 (w : BitVec 64) : (Proven.enc w).length = 8 := leN_length 8 w.toNat
 
 /-- **The byte sum** (a 64-bit word, `enc` = 8 little-endian bytes) in `Implements1` form -/
 theorem sum_implements1 : Implements1With encRaw Proven.enc sumCode1 sumBytesU (fun _ => 15) := by
-  refine implements1_of_exec encRaw Proven.enc _ 0 (by omega) _ sum_wf (fun _ => 0) _ (fun n => by dsimp only; omega) _ ?_
+  refine implements1_of_exec encRaw Proven.enc _ 0 (by omega) _ sum_wf (fun _ => 0) (fun _ => 15)
+    (fun n => by dsimp only; omega) _ false ?_
   intro a out tbl env h1 h8 hmax hlt hout hol htl
   simp only [encRaw, length_enc64] at h1 hlt hout ⊢
-  obtain ⟨σ', out', hex, hh, ht⟩ := sumP_exec ⟨env, [a.map (·.toBitVec), out], [tbl]⟩ (a.map (·.toBitVec)) out rfl
-    (by simpa using h1) (by simp; omega) hout
-  exact ⟨σ', out', hex, hh, by rw [ht, enc64, sumBytesU_eq]⟩
+  obtain ⟨σ', out', hex, hh, ht, hd⟩ := sumP_exec ⟨env, [a.map (·.toBitVec), out], [tbl]⟩ (a.map (·.toBitVec)) out
+    rfl (by simpa using h1) (by simp; omega) hout
+  exact ⟨σ', out', hex, hh, by rw [ht, enc64, sumBytesU_eq], hd, fun h => nomatch h⟩
 
 end Proven.Mach.Riscv
 
