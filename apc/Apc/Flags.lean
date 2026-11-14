@@ -1,6 +1,8 @@
 namespace Proven.Apc
 theorem beq_dec (a b : BitVec 64) : (a == b) = decide (a = b) := by
   by_cases h : a = b <;> simp [h]
+theorem add_res (x y : BitVec 64) :
+    BitVec.setWidth 64 (BitVec.setWidth 65 y + BitVec.setWidth 65 x) = x + y := by bv_omega
 theorem sub_res (x y : BitVec 64) :
     BitVec.setWidth 64 (1#65 + (BitVec.setWidth 65 (~~~y) + BitVec.setWidth 65 x)) = x - y := by bv_omega
 theorem sub_c (x y : BitVec 64) :

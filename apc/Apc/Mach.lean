@@ -170,6 +170,11 @@ theorem post_upd {L : Lay} {s : Arm64.State} {pc : BitVec 64} (hok : okS L s) (h
     · have : xr r ≠ xr d := fun e => h (xr_inj _ _ e)
       simp [getR, upd, Arm64.RegFile.read, Arm64.RegFile.write, h, this]
 
+theorem fin1 {L : Lay} {s s' : Arm64.State} {pc' : BitVec 64} {d : Mach.Reg} {v : BitVec 64}
+    (h : (okS L s' ∧ keepS s s' ∧ s'.pc = pc') ∧ (∀ r, getR s' r = if r = d then v else getR s r) ∧ memV s' = memV s) :
+    (base L).Done s s' pc' ∧ (base L).Set1 s s' d v ∧ (base L).mem s' = (base L).mem s :=
+  ⟨⟨h.1.1, h.1.2.1, h.1.2.2⟩, h.2.1, h.2.2⟩
+
 /-- unpack `At` for a one-word operation -/
 theorem at1 {L : Lay} {s : Arm64.State} {pc : BitVec 64} {w : BitVec 32} (h : (base L).At s pc [w]) :
     okS L s ∧ s.pc = pc ∧ pc.toNat % 4 = 0 ∧ L.cLo ≤ pc.toNat ∧ pc.toNat + 4 ≤ L.cHi ∧ instrAt s pc w := by
@@ -203,8 +208,7 @@ theorem law_mov {L : Lay} {d a : Mach.Reg} {s : Arm64.State} {pc : BitVec 64} (_
   obtain ⟨hok, hpc, -⟩ := at1 h
   refine run1 h (dec_mov d a) ?_
   rw [ev_mov]
-  obtain ⟨⟨a1, a2, a3⟩, a4, a5⟩ := post_upd hok hpc d (getR s a) s.pstate
-  exact ⟨⟨a1, a2, a3⟩, a4, a5⟩
+  exact fin1 (post_upd hok hpc d (getR s a) s.pstate)
 
 theorem law_ret {L : Lay} {s : Arm64.State} {pc : BitVec 64} (_ : (base L).retOK ((base L).ra s))
     (h : (base L).At s pc ((base L).enc .ret)) :
@@ -214,4 +218,175 @@ theorem law_ret {L : Lay} {s : Arm64.State} {pc : BitVec 64} (_ : (base L).retOK
   refine run1 h dec_ret ?_
   refine ⟨⟨hok, ⟨rfl, rfl⟩, ?_⟩, fun r => rfl, rfl⟩
   simp [base, Arm64.Program.evalInst, Arm64.execInstWithSvc, Arm64.State.readReg64, Arm64.State.setPC, Arm64.RegFile.read]
+
+/-! ## `bin` -/
+def toR (d : Fin 10) : Mach.Reg := ⟨d.val, by omega⟩
+def sucR (d : Fin 10) : Mach.Reg := ⟨d.val + 1, by omega⟩
+
+/-- NZCV after `cmp x, y` -/
+def subF (x y : BitVec 64) : Arm64.PState :=
+  { n := (x - y).msb, z := x - y == 0#64, c := decide (y.toNat ≤ x.toNat),
+    v := (1#65 + (~~~BitVec.signExtend 65 y + BitVec.signExtend 65 x)).msb != (x - y).msb }
+/-- flags := `ps`, PC + 4 -/
+def flg (s : Arm64.State) (ps : Arm64.PState) : Arm64.State := { s with pstate := ps, pc := s.pc + 4#64 }
+
+macro "evsimp" : tactic => `(tactic|
+  simp [Arm64.Program.evalInst, Arm64.execInstWithSvc, Arm64.State.readReg, Arm64.State.readReg64,
+    Arm64.State.writeReg, Arm64.State.writeReg64, Arm64.State.advancePC, Arm64.State.setPState, Arm64.evalLogical,
+    Arm64.evalAddSub, Arm64.AddWithCarry64, Arm64.shiftVal, Arm64.shift64, upd, flg, subF, getR, xr_ne31,
+    Arm64.RegFile.read, add_res, sub_res, sub_c, imm0_res, imm0_c, imm0_v, Op.eval])
+
+theorem dec_add : ∀ d : Fin 10, Arm64.decode (rrr 0x8B000000 (xn (toR d)) (xn (toR d)) (xn (sucR d))) =
+    some (.addSubShift .W64 .ADD (.gpr (xr (toR d))) (.gpr (xr (toR d))) (.gpr (xr (sucR d))) .LSL 0) := by decide
+theorem dec_sub : ∀ d : Fin 10, Arm64.decode (rrr 0xCB000000 (xn (toR d)) (xn (toR d)) (xn (sucR d))) =
+    some (.addSubShift .W64 .SUB (.gpr (xr (toR d))) (.gpr (xr (toR d))) (.gpr (xr (sucR d))) .LSL 0) := by decide
+theorem dec_and : ∀ d : Fin 10, Arm64.decode (rrr 0x8A000000 (xn (toR d)) (xn (toR d)) (xn (sucR d))) =
+    some (.logicalShift .W64 .AND (.gpr (xr (toR d))) (.gpr (xr (toR d))) (.gpr (xr (sucR d))) .LSL 0) := by decide
+theorem dec_or : ∀ d : Fin 10, Arm64.decode (rrr 0xAA000000 (xn (toR d)) (xn (toR d)) (xn (sucR d))) =
+    some (.logicalShift .W64 .ORR (.gpr (xr (toR d))) (.gpr (xr (toR d))) (.gpr (xr (sucR d))) .LSL 0) := by decide
+theorem dec_xor : ∀ d : Fin 10, Arm64.decode (rrr 0xCA000000 (xn (toR d)) (xn (toR d)) (xn (sucR d))) =
+    some (.logicalShift .W64 .EOR (.gpr (xr (toR d))) (.gpr (xr (toR d))) (.gpr (xr (sucR d))) .LSL 0) := by decide
+theorem dec_shl : ∀ d : Fin 10, Arm64.decode (rrr 0x9AC02000 (xn (toR d)) (xn (toR d)) (xn (sucR d))) =
+    some (.dataProc2 .W64 .LSLV (.gpr (xr (toR d))) (.gpr (xr (toR d))) (.gpr (xr (sucR d)))) := by decide
+theorem dec_lshr : ∀ d : Fin 10, Arm64.decode (rrr 0x9AC02400 (xn (toR d)) (xn (toR d)) (xn (sucR d))) =
+    some (.dataProc2 .W64 .LSRV (.gpr (xr (toR d))) (.gpr (xr (toR d))) (.gpr (xr (sucR d)))) := by decide
+theorem dec_ashr : ∀ d : Fin 10, Arm64.decode (rrr 0x9AC02800 (xn (toR d)) (xn (toR d)) (xn (sucR d))) =
+    some (.dataProc2 .W64 .ASRV (.gpr (xr (toR d))) (.gpr (xr (toR d))) (.gpr (xr (sucR d)))) := by decide
+theorem dec_cmp : ∀ d : Fin 10, Arm64.decode (wCmp (toR d) (sucR d)) =
+    some (.addSubShift .W64 .SUBS .xzr (.gpr (xr (toR d))) (.gpr (xr (sucR d))) .LSL 0) := by decide
+theorem dec_cset_lo : ∀ d : Fin 10, Arm64.decode (wCset 2 (toR d)) =
+    some (.condSelect .W64 .CSINC (.gpr (xr (toR d))) .xzr .xzr .CS) := by decide
+theorem dec_cset_lt : ∀ d : Fin 10, Arm64.decode (wCset 10 (toR d)) =
+    some (.condSelect .W64 .CSINC (.gpr (xr (toR d))) .xzr .xzr .GE) := by decide
+theorem dec_cset_eq : ∀ d : Fin 10, Arm64.decode (wCset 1 (toR d)) =
+    some (.condSelect .W64 .CSINC (.gpr (xr (toR d))) .xzr .xzr .NE) := by decide
+
+theorem ev_add (d a b : Mach.Reg) (s : Arm64.State) :
+    P.evalInst (.addSubShift .W64 .ADD (.gpr (xr d)) (.gpr (xr a)) (.gpr (xr b)) .LSL 0) s =
+      upd s d (Op.add.eval (getR s a) (getR s b)) s.pstate := by
+  evsimp
+theorem ev_sub (d a b : Mach.Reg) (s : Arm64.State) :
+    P.evalInst (.addSubShift .W64 .SUB (.gpr (xr d)) (.gpr (xr a)) (.gpr (xr b)) .LSL 0) s =
+      upd s d (Op.sub.eval (getR s a) (getR s b)) s.pstate := by evsimp
+theorem ev_and (d a b : Mach.Reg) (s : Arm64.State) :
+    P.evalInst (.logicalShift .W64 .AND (.gpr (xr d)) (.gpr (xr a)) (.gpr (xr b)) .LSL 0) s =
+      upd s d (Op.and.eval (getR s a) (getR s b)) s.pstate := by evsimp
+theorem ev_or (d a b : Mach.Reg) (s : Arm64.State) :
+    P.evalInst (.logicalShift .W64 .ORR (.gpr (xr d)) (.gpr (xr a)) (.gpr (xr b)) .LSL 0) s =
+      upd s d (Op.or.eval (getR s a) (getR s b)) s.pstate := by evsimp
+theorem ev_xor (d a b : Mach.Reg) (s : Arm64.State) :
+    P.evalInst (.logicalShift .W64 .EOR (.gpr (xr d)) (.gpr (xr a)) (.gpr (xr b)) .LSL 0) s =
+      upd s d (Op.xor.eval (getR s a) (getR s b)) s.pstate := by evsimp
+theorem ev_shl (d a b : Mach.Reg) (s : Arm64.State) :
+    P.evalInst (.dataProc2 .W64 .LSLV (.gpr (xr d)) (.gpr (xr a)) (.gpr (xr b))) s =
+      upd s d (Op.shl.eval (getR s a) (getR s b)) s.pstate := by evsimp
+theorem ev_lshr (d a b : Mach.Reg) (s : Arm64.State) :
+    P.evalInst (.dataProc2 .W64 .LSRV (.gpr (xr d)) (.gpr (xr a)) (.gpr (xr b))) s =
+      upd s d (Op.lshr.eval (getR s a) (getR s b)) s.pstate := by evsimp
+theorem ev_ashr (d a b : Mach.Reg) (s : Arm64.State) :
+    P.evalInst (.dataProc2 .W64 .ASRV (.gpr (xr d)) (.gpr (xr a)) (.gpr (xr b))) s =
+      upd s d (Op.ashr.eval (getR s a) (getR s b)) s.pstate := by evsimp
+theorem ev_cmp (a b : Mach.Reg) (s : Arm64.State) :
+    P.evalInst (.addSubShift .W64 .SUBS .xzr (.gpr (xr a)) (.gpr (xr b)) .LSL 0) s =
+      flg s (subF (getR s a) (getR s b)) := by
+  evsimp
+  first | rfl | (apply propext; exact Iff.rfl) | (congr 1) | (apply Bool.decide_congr; exact Iff.rfl)
+theorem ev_cset (d : Mach.Reg) (c : Arm64.CondCode) (s : Arm64.State) :
+    P.evalInst (.condSelect .W64 .CSINC (.gpr (xr d)) .xzr .xzr c) s =
+      upd s d (if Arm64.ConditionHolds c s.pstate then 0#64 else 1#64) s.pstate := by evsimp
+
+theorem okS_of {L : Lay} {s s' : Arm64.State} (h : okS L s) (hm : s'.mem = s.mem) (hs : s'.status = s.status) :
+    okS L s' := by unfold okS at *; rw [hm, hs]; exact h
+theorem instrAt_of {s s' : Arm64.State} {pc : BitVec 64} {w : BitVec 32} (hm : s'.mem = s.mem) (h : instrAt s pc w) :
+    instrAt s' pc w := by unfold instrAt memV at *; rw [hm]; exact h
+
+/-- unpack `At` for a two-word operation -/
+theorem at2 {L : Lay} {s : Arm64.State} {pc : BitVec 64} {w₁ w₂ : BitVec 32} (h : (base L).At s pc [w₁, w₂]) :
+    okS L s ∧ s.pc = pc ∧ pc.toNat % 4 = 0 ∧ L.cLo ≤ pc.toNat ∧ pc.toNat + 8 ≤ L.cHi ∧ instrAt s pc w₁ ∧
+      instrAt s (pc + 4#64) w₂ := by
+  obtain ⟨hok, hpc, hc, hal, hlo, hhi⟩ := h
+  have h0 := hc 0 (by simp)
+  have h1 := hc 1 (by simp)
+  have hlo' : L.cLo ≤ pc.toNat := hlo
+  have hhi' : pc.toNat + 4 * 2 ≤ L.cHi := hhi
+  simp at h0 h1
+  exact ⟨hok, hpc, hal, hlo', by omega, h0, h1⟩
+
+/-- two steps, the first of which only changes flags and PC -/
+theorem run2 {L : Lay} {s : Arm64.State} {pc : BitVec 64} {w₁ w₂ : BitVec 32} {i₁ i₂ : Arm64.Instr}
+    (h : (base L).At s pc [w₁, w₂]) (hd₁ : Arm64.decode w₁ = some i₁) (hd₂ : Arm64.decode w₂ = some i₂)
+    {ps : Arm64.PState} (e₁ : P.evalInst i₁ s = flg s ps) {Q : Arm64.State → Prop}
+    (hq : Q (P.evalInst i₂ (flg s ps))) : runsTo s Q := by
+  obtain ⟨hok, hpc, hal, hlo, hhi, hi₁, hi₂⟩ := at2 h
+  have hlt := L.hc
+  have e4 : (pc + 4#64).toNat = pc.toNat + 4 := by rw [BitVec.toNat_add]; simp; omega
+  have s1 := exec_ok hok hpc hal hlo (by omega) hi₁ hd₁
+  rw [e₁] at s1
+  have s2 := exec_ok (s := flg s ps) (pc := pc + 4#64) (okS_of hok rfl rfl) (by simp [flg, hpc]) (by omega) (by omega)
+    (by omega) (instrAt_of rfl hi₂) hd₂
+  exact ⟨_, .step s1 (.step s2 (.refl _)), hq⟩
+
+theorem post_flg_upd {L : Lay} {s : Arm64.State} {pc : BitVec 64} (hok : okS L s) (hpc : s.pc = pc) (d : Mach.Reg)
+    (v : BitVec 64) (ps ps' : Arm64.PState) :
+    (okS L (upd (flg s ps) d v ps') ∧ keepS s (upd (flg s ps) d v ps') ∧ (upd (flg s ps) d v ps').pc = next pc 2) ∧
+      (∀ r, getR (upd (flg s ps) d v ps') r = if r = d then v else getR s r) ∧ memV (upd (flg s ps) d v ps') = memV s := by
+  obtain ⟨⟨a1, a2, a3⟩, a4, a5⟩ := post_upd (L := L) (s := flg s ps) (pc := pc + 4#64) (okS_of hok rfl rfl)
+    (by simp [flg, hpc]) d v ps'
+  refine ⟨⟨a1, a2, ?_⟩, a4, a5⟩
+  rw [a3]; simp only [next]; bv_omega
+
+theorem ult_val (x y : BitVec 64) :
+    (if Arm64.ConditionHolds .CS (subF x y) then 0#64 else 1#64) = Op.ult.eval x y := by
+  simp only [Arm64.ConditionHolds, subF, Op.eval]
+  by_cases h : y.toNat ≤ x.toNat
+  · simp [h, BitVec.lt_def]
+  · simp [h, BitVec.lt_def]
+theorem eq_val (x y : BitVec 64) :
+    (if Arm64.ConditionHolds .NE (subF x y) then 0#64 else 1#64) = Op.eq.eval x y := by
+  simp only [Arm64.ConditionHolds, subF, Op.eval]
+  by_cases h : x = y
+  · subst h; simp
+  · have : x - y ≠ 0#64 := fun e => h (by bv_omega)
+    simp [h, this]
+theorem slt_val (x y : BitVec 64) :
+    (if Arm64.ConditionHolds .GE (subF x y) then 0#64 else 1#64) = Op.slt.eval x y := by
+  have h1 := BitVec.toInt_lt (x := x); have h2 := BitVec.le_toInt (x := x)
+  have h3 := BitVec.toInt_lt (x := y); have h4 := BitVec.le_toInt (x := y)
+  simp only [Arm64.ConditionHolds, subF, Op.eval, sub_v, BitVec.slt]
+  by_cases h : x.toInt < y.toInt
+  · have : x.toInt - y.toInt < 0 := by omega
+    cases (x - y).msb <;> simp [h, this]
+  · have : ¬ x.toInt - y.toInt < 0 := by omega
+    cases (x - y).msb <;> simp [h, this]
+
+theorem law_bin {L : Lay} {op : Op} {d a b : Mach.Reg} {s : Arm64.State} {pc : BitVec 64} (hd : d.val < 10)
+    (ha : a = d) (hb : b.val = d.val + 1) (h : (base L).At s pc ((base L).enc (.bin op d a b))) :
+    (base L).runsTo s fun s' => (base L).Done s s' (next pc ((base L).enc (.bin op d a b)).length) ∧
+      (base L).Set1 s s' d (op.eval ((base L).get s a) ((base L).get s b)) ∧ (base L).mem s' = (base L).mem s := by
+  obtain ⟨k, rfl⟩ : ∃ k : Fin 10, d = toR k := ⟨⟨d.val, hd⟩, rfl⟩
+  obtain rfl : b = sucR k := Fin.ext hb
+  subst ha
+  have hok : okS L s := h.ok
+  have hpc : s.pc = pc := h.hpc
+  cases op
+  case add => exact run1 h (dec_add k) (by rw [ev_add]; exact fin1 (post_upd hok hpc _ _ _))
+  case sub => exact run1 h (dec_sub k) (by rw [ev_sub]; exact fin1 (post_upd hok hpc _ _ _))
+  case and => exact run1 h (dec_and k) (by rw [ev_and]; exact fin1 (post_upd hok hpc _ _ _))
+  case or => exact run1 h (dec_or k) (by rw [ev_or]; exact fin1 (post_upd hok hpc _ _ _))
+  case xor => exact run1 h (dec_xor k) (by rw [ev_xor]; exact fin1 (post_upd hok hpc _ _ _))
+  case shl => exact run1 h (dec_shl k) (by rw [ev_shl]; exact fin1 (post_upd hok hpc _ _ _))
+  case lshr => exact run1 h (dec_lshr k) (by rw [ev_lshr]; exact fin1 (post_upd hok hpc _ _ _))
+  case ashr => exact run1 h (dec_ashr k) (by rw [ev_ashr]; exact fin1 (post_upd hok hpc _ _ _))
+  case ult =>
+    refine run2 h (dec_cmp k) (dec_cset_lo k) (ev_cmp _ _ s) ?_
+    rw [ev_cset, show (flg s (subF (getR s (toR k)) (getR s (sucR k)))).pstate = subF (getR s (toR k)) (getR s (sucR k)) from rfl, ult_val]
+    exact fin1 (post_flg_upd hok hpc _ _ _ _)
+  case slt =>
+    refine run2 h (dec_cmp k) (dec_cset_lt k) (ev_cmp _ _ s) ?_
+    rw [ev_cset, show (flg s (subF (getR s (toR k)) (getR s (sucR k)))).pstate = subF (getR s (toR k)) (getR s (sucR k)) from rfl, slt_val]
+    exact fin1 (post_flg_upd hok hpc _ _ _ _)
+  case eq =>
+    refine run2 h (dec_cmp k) (dec_cset_eq k) (ev_cmp _ _ s) ?_
+    rw [ev_cset, show (flg s (subF (getR s (toR k)) (getR s (sucR k)))).pstate = subF (getR s (toR k)) (getR s (sucR k)) from rfl, eq_val]
+    exact fin1 (post_flg_upd hok hpc _ _ _ _)
 end Proven.Apc
