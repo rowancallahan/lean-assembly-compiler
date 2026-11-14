@@ -24,6 +24,7 @@ def Code.map (f : α → β) : Code α → Code β
   | .seq a b => .seq (a.map f) (b.map f)
   | .when t b => .when (t.map f) (b.map f)
   | .loop p t b => .loop (p.map f) (t.map f) (b.map f)
+  | .loop2 p₁ t₁ p₂ t₂ b => .loop2 (p₁.map f) (t₁.map f) (p₂.map f) (t₂.map f) (b.map f)
 
 def Arg.regs : Arg α → List α
   | .r x => [x]
@@ -43,6 +44,7 @@ def Code.regs : Code α → List α
   | .seq a b => a.regs ++ b.regs
   | .when t b => t.regs ++ b.regs
   | .loop p t b => p.regs ++ (t.regs ++ b.regs)
+  | .loop2 p₁ t₁ p₂ t₂ b => p₁.regs ++ (t₁.regs ++ (p₂.regs ++ (t₂.regs ++ b.regs)))
 
 /-- `f` is injective on the list `l` (checked) -/
 def injOn [DecidableEq α] [DecidableEq β] (f : α → β) (l : List α) : Bool :=
@@ -78,6 +80,11 @@ theorem Ren.tst {σ : St α} {τ : St β} (h : Ren f U σ τ) {t : Tst α} (ht :
     (t.map f).eval τ.reg = t.eval σ.reg := by
   unfold Tst.eval Tst.map
   rw [h.arg fun x hx => ht x (List.mem_append.2 (.inl hx)), h.arg fun x hx => ht x (List.mem_append.2 (.inr hx))]
+
+omit [DecidableEq α] [DecidableEq β] in
+theorem mem5 {x : α} {a b c d e : List α} (h : x ∈ a ∨ x ∈ b ∨ x ∈ c ∨ x ∈ d ∨ x ∈ e) :
+    x ∈ a ++ (b ++ (c ++ (d ++ e))) := by
+  simp only [List.mem_append]; exact h
 
 /-- **Renaming preserves executions** when `f` is injective on the registers used. -/
 theorem map_ok (ram : Nat → Prop) (inj : ∀ x y, U x → U y → f x = f y → x = y) :
@@ -133,6 +140,24 @@ theorem map_ok (ram : Nat → Prop) (inj : ∀ x y, U x → U y → f x = f y �
     obtain ⟨τ₃, x₃, r₃⟩ := ihl hu r₂
     exact ⟨τ₃, .loopT x₁ ((r₁.tst fun x hx => hu x (List.mem_append.2 (.inr (List.mem_append.2 (.inl hx))))).trans ht)
       x₂ x₃, r₃⟩
+  | loop2A _ ht ih₁ =>
+    intro hu τ hr
+    obtain ⟨τ₁, x₁, r₁⟩ := ih₁ (fun x hx => hu x (List.mem_append.2 (.inl hx))) hr
+    exact ⟨τ₁, .loop2A x₁ ((r₁.tst fun x hx => hu x (mem5 (.inr (.inl hx)))).trans ht), r₁⟩
+  | loop2B _ ht₁ _ ht₂ ih₁ ih₂ =>
+    intro hu τ hr
+    obtain ⟨τ₁, x₁, r₁⟩ := ih₁ (fun x hx => hu x (mem5 (.inl hx))) hr
+    obtain ⟨τ₂, x₂, r₂⟩ := ih₂ (fun x hx => hu x (mem5 (.inr (.inr (.inl hx))))) r₁
+    exact ⟨τ₂, .loop2B x₁ ((r₁.tst fun x hx => hu x (mem5 (.inr (.inl hx)))).trans ht₁) x₂
+      ((r₂.tst fun x hx => hu x (mem5 (.inr (.inr (.inr (.inl hx)))))).trans ht₂), r₂⟩
+  | loop2T _ ht₁ _ ht₂ _ _ ih₁ ih₂ ihb ihl =>
+    intro hu τ hr
+    obtain ⟨τ₁, x₁, r₁⟩ := ih₁ (fun x hx => hu x (mem5 (.inl hx))) hr
+    obtain ⟨τ₂, x₂, r₂⟩ := ih₂ (fun x hx => hu x (mem5 (.inr (.inr (.inl hx))))) r₁
+    obtain ⟨τ₃, x₃, r₃⟩ := ihb (fun x hx => hu x (mem5 (.inr (.inr (.inr (.inr hx)))))) r₂
+    obtain ⟨τ₄, x₄, r₄⟩ := ihl hu r₃
+    exact ⟨τ₄, .loop2T x₁ ((r₁.tst fun x hx => hu x (mem5 (.inr (.inl hx)))).trans ht₁) x₂
+      ((r₂.tst fun x hx => hu x (mem5 (.inr (.inr (.inr (.inl hx)))))).trans ht₂) x₃ x₄, r₄⟩
 
 end
 end Proven.Mach.IR

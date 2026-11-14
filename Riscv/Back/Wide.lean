@@ -211,7 +211,7 @@ theorem sltiu1 (x : BitVec 64) :
 theorem w_mov {d a : Reg} {s : St} {pc : BitVec 64} (hA : core.At s pc (wenc (.mov d a))) :
     core.runsTo s fun s' => core.Done s s' (next pc (wenc (.mov d a)).length) ∧
       core.Set1 s s' d (core.get s a) ∧ core.mem s' = core.mem s :=
-  one hA fun h hpc hok hi => step_mv h hpc hok _ _ (phys_ne0 d) hi
+  one hA fun h hpc hok hi => G.step_mv h hpc hok _ _ (phys_ne0 d) hi
 
 theorem li_run (d : Reg) : ∀ (p : List LiStep) {s : St} {pc : BitVec 64},
     core.At s pc (p.map (LiStep.word (phys d))) →
@@ -242,7 +242,7 @@ theorem w_li {d : Reg} {c : BitVec 64} {s : St} {pc : BitVec 64} (hA : core.At s
 theorem w_bin {op : Op} {d a b : Reg} {s : St} {pc : BitVec 64} (hA : core.At s pc (wenc (.bin op d a b))) :
     core.runsTo s fun s' => core.Done s s' (next pc (wenc (.bin op d a b)).length) ∧
       core.Set1 s s' d (op.eval (core.get s a) (core.get s b)) ∧ core.mem s' = core.mem s := by
-  unfold wenc at hA ⊢
+  simp only [wenc] at hA ⊢
   by_cases he : op = .eq
   · subst he
     rw [ite_pos rfl] at hA ⊢
@@ -259,8 +259,7 @@ theorem w_bini {op : Op} {d a : Reg} {c : BitVec 64} {s : St} {pc : BitVec 64} (
     (hA : core.At s pc (wenc (.bini op d a c))) :
     core.runsTo s fun s' => core.Done s s' (next pc (wenc (.bini op d a c)).length) ∧
       core.Set1 s s' d (op.eval (core.get s a) c) ∧ core.mem s' = core.mem s := by
-  unfold wenc at hA ⊢
-  cases op <;> simp only [immWords, immOK] at hA hc ⊢
+  cases op <;> simp only [wenc, immWords, immOK] at hA hc ⊢
   · exact one hA fun h hpc hok hi => by
       have := step_addi h hpc hok (phys d) (phys a) _ hi; rwa [fits12_eq hc] at this
   · exact one hA fun h hpc hok hi => by
@@ -292,22 +291,24 @@ theorem w_lbu {d a : Reg} {off : BitVec 64} {s : St} {pc : BitVec 64} {v : BitVe
     (hm : core.mem s (core.get s a + off).toNat = some v) :
     core.runsTo s fun s' => core.Done s s' (next pc (wenc (.lbu d a off)).length) ∧
       core.Set1 s s' d (v.setWidth 64) ∧ core.mem s' = core.mem s :=
-  one hA fun h hpc hok hi => step_lbu h hpc hok (phys d) (phys a) _ hi (by rw [fits12_eq ho]) hr hm
+  one hA fun h hpc hok hi => G.step_lbu h hpc hok (phys d) (phys a) _ hi (by rw [fits12_eq ho]; rfl) hr hm
 
 theorem w_sb {v a : Reg} {off : BitVec 64} {s : St} {pc : BitVec 64} (ho : fits12 off = true)
     (hA : core.At s pc (wenc (.sb v a off))) (hr : core.inRAM (core.get s a + off).toNat 1) :
     core.runsTo s fun s' => core.Done s s' (next pc (wenc (.sb v a off)).length) ∧
       core.Same s s' ∧ core.mem s' = (core.mem s).upd (core.get s a + off).toNat ((core.get s v).setWidth 8) := by
   obtain ⟨h, hpc, hok, hi⟩ := first1 hA
-  obtain ⟨s', hn⟩ := step_sb h hpc hok (phys v) (phys a) _ hi (A := getX s (phys a) + off) (by rw [fits12_eq ho]) hr
+  obtain ⟨s', hn⟩ := G.step_sb h hpc hok (phys v) (phys a) _ hi (A := getX s (phys a) + off) (by rw [fits12_eq ho]) hr
   refine run1 hn ⟨ofNext hn (.inl rfl), sameOf hn, ?_⟩
   funext x
   show s'.mem[x]? = Mem.upd (fun y => s.mem[y]?) (getX s (phys a) + off).toNat ((getX s (phys v)).setWidth 8) x
   rw [hn.mem, Std.ExtHashMap.getElem?_insert]
   unfold Mem.upd
-  by_cases hx : x = (getX s (phys a) + off).toNat
+  generalize (getX s (phys a) + off).toNat = A
+  by_cases hx : x = A
   · subst hx; simp
-  · simp only [getX_eq] at hx; simp [Ne.symm hx, hx]
+  · have : ¬A = x := fun e => hx e.symm
+    simp [hx, this]
 
 theorem boff_back (n : Nat) (h0 : 0 < n) (hn : 2 * n ≤ 2 ^ 11) :
     boff (BitVec.ofNat 12 (2 ^ 12 - 2 * n)) = 0 - BitVec.ofNat 64 (4 * n) := by
@@ -325,16 +326,16 @@ theorem joff_fwd (n : Nat) (hn : 2 * n < 2 ^ 19) : joff (BitVec.ofNat 20 (2 * n)
 theorem br_tgt {k : Bool} {n : Nat} (h : brOK k n = true) (pc : BitVec 64) : pc + boff (brOff k n) = tgt pc k n := by
   cases k
   · have hn : 2 * n < 2048 := of_decide_eq_true h
-    simp only [brOff, tgt]; rw [boff_fwd n hn]; rfl
+    simp only [brOff, tgt, Bool.false_eq_true, ↓reduceIte]; rw [boff_fwd n hn]; rfl
   · have hn : 0 < n ∧ 2 * n ≤ 2 ^ 11 := of_decide_eq_true h
-    simp only [brOff, tgt, ite_true]; rw [boff_back n hn.1 hn.2]; bv_omega
+    simp only [brOff, tgt, ↓reduceIte]; rw [boff_back n hn.1 hn.2]; bv_omega
 
 theorem j_tgt {k : Bool} {n : Nat} (h : jOK k n = true) (pc : BitVec 64) : pc + joff (jOff k n) = tgt pc k n := by
   cases k
   · have hn : 2 * n < 2 ^ 19 := of_decide_eq_true h
-    simp only [jOff, tgt]; rw [joff_fwd n hn]; rfl
+    simp only [jOff, tgt, Bool.false_eq_true, ↓reduceIte]; rw [joff_fwd n hn]; rfl
   · have hn : 0 < n ∧ 2 * n ≤ 2 ^ 19 := of_decide_eq_true h
-    simp only [jOff, tgt, ite_true]; rw [joff_back n hn.1 hn.2]; bv_omega
+    simp only [jOff, tgt, ↓reduceIte]; rw [joff_back n hn.1 hn.2]; bv_omega
 
 theorem getO_phys (s : St) (b : Option Reg) : core.getO s b = getX s (physO b) := by cases b <;> rfl
 

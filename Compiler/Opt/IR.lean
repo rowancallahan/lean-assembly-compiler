@@ -40,6 +40,8 @@ inductive Code (ρ : Type) where
   | when (t : Tst ρ) (body : Code ρ)
   /-- `while (pre; t) do body` -/
   | loop (pre : Code ρ) (t : Tst ρ) (body : Code ρ)
+  /-- `while (pre₁; t₁) && (pre₂; t₂) do body` (short-circuit) -/
+  | loop2 (pre₁ : Code ρ) (t₁ : Tst ρ) (pre₂ : Code ρ) (t₂ : Tst ρ) (body : Code ρ)
   deriving Repr
 
 variable {ρ : Type}
@@ -82,6 +84,12 @@ inductive Exec : Code ρ → St ρ → St ρ → Prop
   | loopF {pre t body s s₁} : Exec pre s s₁ → t.eval s₁.reg = false → Exec (.loop pre t body) s s₁
   | loopT {pre t body s s₁ s₂ s₃} : Exec pre s s₁ → t.eval s₁.reg = true → Exec body s₁ s₂ →
       Exec (.loop pre t body) s₂ s₃ → Exec (.loop pre t body) s s₃
+  | loop2A {p₁ t₁ p₂ t₂ body s s₁} : Exec p₁ s s₁ → t₁.eval s₁.reg = false → Exec (.loop2 p₁ t₁ p₂ t₂ body) s s₁
+  | loop2B {p₁ t₁ p₂ t₂ body s s₁ s₂} : Exec p₁ s s₁ → t₁.eval s₁.reg = true → Exec p₂ s₁ s₂ →
+      t₂.eval s₂.reg = false → Exec (.loop2 p₁ t₁ p₂ t₂ body) s s₂
+  | loop2T {p₁ t₁ p₂ t₂ body s s₁ s₂ s₃ s₄} : Exec p₁ s s₁ → t₁.eval s₁.reg = true → Exec p₂ s₁ s₂ →
+      t₂.eval s₂.reg = true → Exec body s₂ s₃ → Exec (.loop2 p₁ t₁ p₂ t₂ body) s₃ s₄ →
+      Exec (.loop2 p₁ t₁ p₂ t₂ body) s s₄
 
 /-- memory changes only at `ram` addresses -/
 theorem Exec.mem_out {c : Code ρ} {s s' : St ρ} (h : Exec ram c s s') : ∀ a, ¬ram a → s'.mem a = s.mem a := by
@@ -99,6 +107,10 @@ theorem Exec.mem_out {c : Code ρ} {s s' : St ρ} (h : Exec ram c s s') : ∀ a,
   | whenF _ => exact fun _ _ => rfl
   | loopF _ _ ih => exact ih
   | loopT _ _ _ _ ihp ihb ihl => exact fun a ha => (ihl a ha).trans ((ihb a ha).trans (ihp a ha))
+  | loop2A _ _ ih => exact ih
+  | loop2B _ _ _ _ ih₁ ih₂ => exact fun a ha => (ih₂ a ha).trans (ih₁ a ha)
+  | loop2T _ _ _ _ _ _ ih₁ ih₂ ihb ihl =>
+    exact fun a ha => (ihl a ha).trans ((ihb a ha).trans ((ih₂ a ha).trans (ih₁ a ha)))
 
 end
 
