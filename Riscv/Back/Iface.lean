@@ -46,10 +46,9 @@ def base : Base where
   ra s := getX s 1
   retOK v := v.toNat % 2 = 0
   instrAt := Proven.instrAt
+  writable _ a := 0x80000000 ≤ a ∧ a + 1 ≤ 0x100000000
   ramLo := 0x80000000
   ramHi := 0x100000000
-  datLo := 0x80000000
-  datHi := 0x100000000
   bzOK n := 2 * n < 2048
   jmpOK n := 0 < n ∧ 2 * n ≤ 2 ^ 19
   enc := enc
@@ -65,7 +64,6 @@ def core : Core where
   keep_ra h := h 1 phys_ne1
   instrAt_frame hm hi := instrAt_frame hi hm
   ramHi_lt := by decide
-  datHi_lt := by decide
   len_bz _ _ := rfl
   len_jmp _ := rfl
 
@@ -287,7 +285,7 @@ theorem law_sel {d c a b : Reg} {s : St} {pc : BitVec 64} (hd : d.val < 9) (hc :
     rw [o S₅ h1, o S₄ h1, o S₃ h2, o S₂ h1, o S₁ h1]
 
 theorem law_lbu {d a : Reg} {s : St} {pc : BitVec 64} {v : BitVec 8} (hd : d.val = 0) (ha : a.val = 0)
-    (hA : core.At s pc (enc (.lbu d a))) (hr : core.inDat (core.get s a).toNat 1)
+    (hA : core.At s pc (enc (.lbu d a))) (hr : core.inRAM (core.get s a).toNat 1)
     (hm : core.mem s (core.get s a).toNat = some v) :
     core.runsTo s fun s' => core.Done s s' (next pc (enc (.lbu d a)).length) ∧
       core.Set1 s s' d (v.setWidth 64) ∧ core.mem s' = core.mem s := by
@@ -301,7 +299,7 @@ theorem law_lbu {d a : Reg} {s : St} {pc : BitVec 64} {v : BitVec 8} (hd : d.val
   exact run1 hn ⟨ofNext hn (.inr ⟨d, rfl⟩), set1Of hn, memOf hn⟩
 
 theorem law_sb {v a : Reg} {s : St} {pc : BitVec 64} (hv : v.val = 1) (ha : a.val = 0)
-    (hA : core.At s pc (enc (.sb v a))) (hr : core.inDat (core.get s a).toNat 1) :
+    (hA : core.At s pc (enc (.sb v a))) (hr : core.inRAM (core.get s a).toNat 1) :
     core.runsTo s fun s' => core.Done s s' (next pc (enc (.sb v a)).length) ∧
       core.Same s s' ∧ core.mem s' = (core.mem s).upd (core.get s a).toNat ((core.get s v).setWidth 8) := by
   have ev : phys v = 6 := by rw [phys_T v (by omega), hv]; rfl

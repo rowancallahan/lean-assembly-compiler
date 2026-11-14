@@ -78,13 +78,12 @@ structure Base where
   ra : S → BitVec 64
   retOK : BitVec 64 → Prop
   instrAt : S → BitVec 64 → BitVec 32 → Prop
-  /-- code lives in `[ramLo, ramHi)` -/
+  /-- the byte at this address may be stored to (`sb`).  Supplied by the caller of a store; a target with
+  plain RAM takes "in RAM", a target with page permissions takes "mapped writable". -/
+  writable : S → Nat → Prop
+  /-- RAM `[ramLo, ramHi)`: code and data live here -/
   ramLo : Nat
   ramHi : Nat
-  /-- data (what `lbu` / `sb` may address) lives in `[datLo, datHi)`.  A target without W^X takes the
-  same range as for code (RISC-V); a target with W^X takes a disjoint, writable one. -/
-  datLo : Nat
-  datHi : Nat
   /-- which forward branch / backward jump distances (in words) the target supports -/
   bzOK : Nat → Prop
   jmpOK : Nat → Prop
@@ -107,7 +106,7 @@ def codeAt (s : B.S) (pc : BitVec 64) (ws : List (BitVec 32)) : Prop :=
 def codeOK (pc : BitVec 64) (n : Nat) : Prop :=
   pc.toNat % 4 = 0 ∧ B.ramLo ≤ pc.toNat ∧ pc.toNat + 4 * n ≤ B.ramHi
 
-def inDat (a n : Nat) : Prop := B.datLo ≤ a ∧ a + n ≤ B.datHi
+def inRAM (a n : Nat) : Prop := B.ramLo ≤ a ∧ a + n ≤ B.ramHi
 
 /-- about to run the words `ws` -/
 structure At (s : B.S) (pc : BitVec 64) (ws : List (BitVec 32)) : Prop where
@@ -145,7 +144,6 @@ structure Core extends Base where
   instrAt_frame : ∀ {s s' : S} {pc : BitVec 64} {w : BitVec 32},
     (∀ j, j < 4 → mem s' (pc.toNat + j) = mem s (pc.toNat + j)) → instrAt s pc w → instrAt s' pc w
   ramHi_lt : ramHi < 2 ^ 64
-  datHi_lt : datHi < 2 ^ 64
   len_bz : ∀ c n, (enc (.bz c n)).length = lenBz
   len_jmp : ∀ n, (enc (.jmp n)).length = lenJmp
 
@@ -169,11 +167,11 @@ structure Machine extends Core where
       get s' d = (if get s c = 0 then get s b else get s a) ∧
       (∀ r, r ≠ d → r ≠ a → get s' r = get s r) ∧ mem s' = mem s
   law_lbu : ∀ {d a : Reg} {s : S} {pc : BitVec 64} {v : BitVec 8}, d.val = 0 → a.val = 0 →
-    toBase.At s pc (enc (.lbu d a)) → toBase.inDat (get s a).toNat 1 → mem s (get s a).toNat = some v →
+    toBase.At s pc (enc (.lbu d a)) → toBase.inRAM (get s a).toNat 1 → mem s (get s a).toNat = some v →
     runsTo s fun s' => toBase.Done s s' (next pc (enc (.lbu d a)).length) ∧
       toBase.Set1 s s' d (v.setWidth 64) ∧ mem s' = mem s
   law_sb : ∀ {v a : Reg} {s : S} {pc : BitVec 64}, v.val = 1 → a.val = 0 →
-    toBase.At s pc (enc (.sb v a)) → toBase.inDat (get s a).toNat 1 →
+    toBase.At s pc (enc (.sb v a)) → writable s (get s a).toNat →
     runsTo s fun s' => toBase.Done s s' (next pc (enc (.sb v a)).length) ∧
       toBase.Same s s' ∧ mem s' = (mem s).upd (get s a).toNat ((get s v).setWidth 8)
   law_bz : ∀ {c : Reg} {n : Nat} {s : S} {pc : BitVec 64}, c.val = 0 → bzOK n → toBase.At s pc (enc (.bz c n)) →

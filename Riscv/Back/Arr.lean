@@ -62,7 +62,10 @@ theorem bytes_eq (s : St) : ∀ a n, bytes (rv.mem s) a n = bytesAt s a n
 theorem regOK_toR {R : List Proven.Region} (h : Proven.RegOK R) : rv.RegOK (R.map toR) :=
   ⟨fun r hr => by
     obtain ⟨r', hr', rfl⟩ := List.mem_map.1 hr
-    exact h.1 r' hr', List.pairwise_map.2 (h.2.imp id)⟩
+    exact h.1 r' hr', List.pairwise_map.2 (h.2.imp id), fun r hr a h1 h2 _ _ => by
+    obtain ⟨r', hr', rfl⟩ := List.mem_map.1 hr
+    have := h.1 r' hr'; unfold Region.inRAM at this
+    exact ⟨Nat.le_trans this.1 h1, Nat.le_trans h2 this.2⟩⟩
 
 theorem rel_toR {bv R σ} {s : St} (h : Proven.Rel bv R σ s) : rv.Rel bv (R.map toR) σ s :=
   ⟨fun i => by show getX s (phys (avar i)) = _; rw [phys_avar]; exact h.env i, by simpa using h.hlen,

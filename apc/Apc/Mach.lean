@@ -13,7 +13,6 @@ structure Lay where
   dLo : Nat
   dHi : Nat
   hc : cHi < 2 ^ 64
-  hd : dHi < 2 ^ 64
 
 /-- hook-free program, every `svc` traps -/
 def P : Arm64.Program := Arm64.Program.ofSvc Arm64.noSyscalls
@@ -30,8 +29,9 @@ theorem xr_ne31 : ∀ a : Mach.Reg, (xr a == 31#5) = false := by decide
 /-- the bytes our interface sees: readable bytes -/
 def memV (s : Arm64.State) : Mem := fun a =>
   if a < 2 ^ 64 ∧ s.mem.canRead (BitVec.ofNat 64 a) 1 = true then some (s.mem.read8 (BitVec.ofNat 64 a)) else none
-def instrAt (s : Arm64.State) (pc : BitVec 64) (w : BitVec 32) : Prop :=
-  ∀ j, j < 4 → memV s (pc.toNat + j) = some (w.extractLsb' (8 * j) 8)
+/-- the word `w` sits at `pc`, inside the code range -/
+def instrAt (L : Lay) (s : Arm64.State) (pc : BitVec 64) (w : BitVec 32) : Prop :=
+  (L.cLo ≤ pc.toNat ∧ pc.toNat + 4 ≤ L.cHi) ∧ ∀ j, j < 4 → memV s (pc.toNat + j) = some (w.extractLsb' (8 * j) 8)
 def okS (L : Lay) (s : Arm64.State) : Prop :=
   s.status = .Running ∧ (∀ a, L.cLo ≤ a → a < L.cHi → s.mem.canExec (BitVec.ofNat 64 a) 1 = true) ∧
   (∀ a, L.dLo ≤ a → a < L.dHi → s.mem.canRead (BitVec.ofNat 64 a) 1 = true ∧ s.mem.canWrite (BitVec.ofNat 64 a) 1 = true)
@@ -64,7 +64,8 @@ theorem memV_read {s : Arm64.State} {a : Nat} {b : BitVec 8} (h : memV s a = som
   · exact Option.some.inj h
   · exact absurd h (by simp)
 
-theorem instr_read32 {s : Arm64.State} {pc : BitVec 64} {w : BitVec 32} (h : instrAt s pc w) : s.mem.read32 pc = w := by
+theorem instr_read32 {L : Lay} {s : Arm64.State} {pc : BitVec 64} {w : BitVec 32} (h : instrAt L s pc w) : s.mem.read32 pc = w := by
+  have h := h.2
   have e : ∀ j : Nat, pc + BitVec.ofNat 64 j = BitVec.ofNat 64 (pc.toNat + j) := fun j => by
     apply BitVec.eq_of_toNat_eq; simp
   have h0 := memV_read (h 0 (by omega)); have h1 := memV_read (h 1 (by omega))
@@ -84,14 +85,18 @@ def opW (op : Op) (d a b : Mach.Reg) : List (BitVec 32) :=
   | .add => r 0x8B000000 | .sub => r 0xCB000000 | .and => r 0x8A000000 | .or => r 0xAA000000
   | .xor => r 0xCA000000 | .shl => r 0x9AC02000 | .lshr => r 0x9AC02400 | .ashr => r 0x9AC02800
   | .ult => [wCmp a b, wCset 2 d] | .slt => [wCmp a b, wCset 10 d] | .eq => [wCmp a b, wCset 1 d]
-/-- `movz` / `movk` with halfword index in the 11-bit opcode -/
-def wMov (opc : BitVec 11) (d : Mach.Reg) (imm : BitVec 16) : BitVec 32 := opc ++ imm ++ xr d
+def iZero (d : Mach.Reg) : BitVec 32 := BitVec.ofNat 32 (0xD2800000 ||| xn d)                 -- movz xd, #0
+def iShl (d : Mach.Reg) : BitVec 32 := rrr 0x8B000000 (xn d) (xn d) (xn d)                    -- add xd, xd, xd
+def iInc (d : Mach.Reg) : BitVec 32 := BitVec.ofNat 32 (0x91000400 ||| xn d <<< 5 ||| xn d)   -- add xd, xd, #1
+/-- load the constant `n` by doubling (the scheme of `Arm/CompilerArm.lean` `genConst`), `f` = fuel -/
+def gc (d : Mach.Reg) : Nat → Nat → List (BitVec 32)
+  | 0, _ => [iZero d]
+  | f + 1, n => if n = 0 then [iZero d] else gc d f (n / 2) ++ ([iShl d] ++ (if n % 2 = 1 then [iInc d] else []))
 def wCbz (c : Mach.Reg) (n : Nat) : BitVec 32 := 0xB4#8 ++ BitVec.ofNat 19 n ++ xr c       -- cbz xc, +4n
 def wB (n : Nat) : BitVec 32 := 0x05#6 ++ BitVec.ofNat 26 (2 ^ 26 - n)                      -- b -4n
 def enc : AOp → List (BitVec 32)
   | .mov d a => [rrr 0xAA000000 (xn d) 31 (xn a)]
-  | .li d c => [wMov 0x694#11 d (c.extractLsb' 0 16), wMov 0x795#11 d (c.extractLsb' 16 16),
-      wMov 0x796#11 d (c.extractLsb' 32 16), wMov 0x797#11 d (c.extractLsb' 48 16)]
+  | .li d c => gc d 64 c.toNat
   | .bin op d a b => opW op d a b
   | .sel d c a b => [BitVec.ofNat 32 (0xF100001F ||| xn c <<< 5), rrr 0x9A801000 (xn d) (xn a) (xn b)]
   | .lbu d a => [BitVec.ofNat 32 (0x39400000 ||| xn a <<< 5 ||| xn d)]
@@ -111,13 +116,12 @@ def base (L : Lay) : Base where
   mem := memV
   ra s := s.regs.read 30#5
   retOK _ := True
-  instrAt := instrAt
-  ramLo := L.cLo
-  ramHi := L.cHi
-  datLo := L.dLo
-  datHi := L.dHi
-  bzOK n := n < 2 ^ 18
-  jmpOK n := 0 < n ∧ n ≤ 2 ^ 25
+  instrAt := instrAt L
+  writable _ a := L.dLo ≤ a ∧ a < L.dHi
+  ramLo := 0
+  ramHi := 2 ^ 64 - 1
+  bzOK n := n < 4096
+  jmpOK n := n < 4096
   enc := enc
   lenBz := 1
   lenJmp := 1
@@ -129,16 +133,16 @@ def core (L : Lay) : Core where
   keep_refl _ := ⟨rfl, rfl⟩
   keep_trans h₁ h₂ := ⟨h₂.1.trans h₁.1, h₂.2.trans h₁.2⟩
   keep_ra h := h.1
-  instrAt_frame h hi := fun j hj => (h j hj).trans (hi j hj)
-  ramHi_lt := L.hc
-  datHi_lt := L.hd
+  instrAt_frame h hi := ⟨hi.1, fun j hj => (h j hj).trans (hi.2 j hj)⟩
+  ramHi_lt := (by decide : 2 ^ 64 - 1 < 2 ^ 64)
   len_bz _ _ := rfl
   len_jmp _ := rfl
 
 /-! ## One step -/
 theorem exec_ok {L : Lay} {s : Arm64.State} {pc : BitVec 64} {w : BitVec 32} {i : Arm64.Instr}
-    (hok : okS L s) (hpc : s.pc = pc) (hal : pc.toNat % 4 = 0) (hlo : L.cLo ≤ pc.toNat) (hhi : pc.toNat + 4 ≤ L.cHi)
-    (hi : instrAt s pc w) (hd : Arm64.decode w = some i) : Arm64.Step P s (P.evalInst i s) := by
+    (hok : okS L s) (hpc : s.pc = pc) (hal : pc.toNat % 4 = 0)
+    (hi : instrAt L s pc w) (hd : Arm64.decode w = some i) : Arm64.Step P s (P.evalInst i s) := by
+  obtain ⟨hlo, hhi⟩ := hi.1
   refine .exec hok.1 ?_
   have he : P.externAt? s.pc = none := rfl
   have e : ∀ j : Nat, pc + BitVec.ofNat 64 j = BitVec.ofNat 64 (pc.toNat + j) := fun j => by
@@ -177,19 +181,17 @@ theorem fin1 {L : Lay} {s s' : Arm64.State} {pc' : BitVec 64} {d : Mach.Reg} {v 
 
 /-- unpack `At` for a one-word operation -/
 theorem at1 {L : Lay} {s : Arm64.State} {pc : BitVec 64} {w : BitVec 32} (h : (base L).At s pc [w]) :
-    okS L s ∧ s.pc = pc ∧ pc.toNat % 4 = 0 ∧ L.cLo ≤ pc.toNat ∧ pc.toNat + 4 ≤ L.cHi ∧ instrAt s pc w := by
-  obtain ⟨hok, hpc, hc, hal, hlo, hhi⟩ := h
+    okS L s ∧ s.pc = pc ∧ pc.toNat % 4 = 0 ∧ instrAt L s pc w := by
+  obtain ⟨hok, hpc, hc, hal, -, -⟩ := h
   have h0 := hc 0 (by simp)
-  have hlo' : L.cLo ≤ pc.toNat := hlo
-  have hhi' : pc.toNat + 4 * 1 ≤ L.cHi := hhi
   simp at h0
-  exact ⟨hok, hpc, hal, hlo', by omega, h0⟩
+  exact ⟨hok, hpc, hal, h0⟩
 
 theorem run1 {L : Lay} {s : Arm64.State} {pc : BitVec 64} {w : BitVec 32} {i : Arm64.Instr}
     (h : (base L).At s pc [w]) (hd : Arm64.decode w = some i) {Q : Arm64.State → Prop} (hq : Q (P.evalInst i s)) :
     runsTo s Q := by
-  obtain ⟨hok, hpc, hal, hlo, hhi, hi⟩ := at1 h
-  exact ⟨_, .step (exec_ok hok hpc hal hlo hhi hi hd) (.refl _), hq⟩
+  obtain ⟨hok, hpc, hal, hi⟩ := at1 h
+  exact ⟨_, .step (exec_ok hok hpc hal hi hd) (.refl _), hq⟩
 
 theorem dec_mov : ∀ d a : Mach.Reg, Arm64.decode (rrr 0xAA000000 (xn d) 31 (xn a)) =
     some (.logicalShift .W64 .ORR (.gpr (xr d)) .xzr (.gpr (xr a)) .LSL 0) := by decide
@@ -297,33 +299,31 @@ theorem ev_cset (d : Mach.Reg) (c : Arm64.CondCode) (s : Arm64.State) :
 
 theorem okS_of {L : Lay} {s s' : Arm64.State} (h : okS L s) (hm : s'.mem = s.mem) (hs : s'.status = s.status) :
     okS L s' := by unfold okS at *; rw [hm, hs]; exact h
-theorem instrAt_of {s s' : Arm64.State} {pc : BitVec 64} {w : BitVec 32} (hm : s'.mem = s.mem) (h : instrAt s pc w) :
-    instrAt s' pc w := by unfold instrAt memV at *; rw [hm]; exact h
+theorem instrAt_of {L : Lay} {s s' : Arm64.State} {pc : BitVec 64} {w : BitVec 32} (hm : s'.mem = s.mem)
+    (h : instrAt L s pc w) : instrAt L s' pc w := by unfold instrAt memV at *; rw [hm]; exact h
 
 /-- unpack `At` for a two-word operation -/
 theorem at2 {L : Lay} {s : Arm64.State} {pc : BitVec 64} {w₁ w₂ : BitVec 32} (h : (base L).At s pc [w₁, w₂]) :
-    okS L s ∧ s.pc = pc ∧ pc.toNat % 4 = 0 ∧ L.cLo ≤ pc.toNat ∧ pc.toNat + 8 ≤ L.cHi ∧ instrAt s pc w₁ ∧
-      instrAt s (pc + 4#64) w₂ := by
-  obtain ⟨hok, hpc, hc, hal, hlo, hhi⟩ := h
+    okS L s ∧ s.pc = pc ∧ pc.toNat % 4 = 0 ∧ instrAt L s pc w₁ ∧ instrAt L s (pc + 4#64) w₂ := by
+  obtain ⟨hok, hpc, hc, hal, -, -⟩ := h
   have h0 := hc 0 (by simp)
   have h1 := hc 1 (by simp)
-  have hlo' : L.cLo ≤ pc.toNat := hlo
-  have hhi' : pc.toNat + 4 * 2 ≤ L.cHi := hhi
   simp at h0 h1
-  exact ⟨hok, hpc, hal, hlo', by omega, h0, h1⟩
+  exact ⟨hok, hpc, hal, h0, h1⟩
 
 /-- two steps, the first of which only changes flags and PC -/
 theorem run2 {L : Lay} {s : Arm64.State} {pc : BitVec 64} {w₁ w₂ : BitVec 32} {i₁ i₂ : Arm64.Instr}
     (h : (base L).At s pc [w₁, w₂]) (hd₁ : Arm64.decode w₁ = some i₁) (hd₂ : Arm64.decode w₂ = some i₂)
     {ps : Arm64.PState} (e₁ : P.evalInst i₁ s = flg s ps) {Q : Arm64.State → Prop}
     (hq : Q (P.evalInst i₂ (flg s ps))) : runsTo s Q := by
-  obtain ⟨hok, hpc, hal, hlo, hhi, hi₁, hi₂⟩ := at2 h
+  obtain ⟨hok, hpc, hal, hi₁, hi₂⟩ := at2 h
   have hlt := L.hc
+  have := hi₁.1
   have e4 : (pc + 4#64).toNat = pc.toNat + 4 := by rw [BitVec.toNat_add]; simp; omega
-  have s1 := exec_ok hok hpc hal hlo (by omega) hi₁ hd₁
+  have s1 := exec_ok hok hpc hal hi₁ hd₁
   rw [e₁] at s1
-  have s2 := exec_ok (s := flg s ps) (pc := pc + 4#64) (okS_of hok rfl rfl) (by simp [flg, hpc]) (by omega) (by omega)
-    (by omega) (instrAt_of rfl hi₂) hd₂
+  have s2 := exec_ok (s := flg s ps) (pc := pc + 4#64) (okS_of hok rfl rfl) (by simp [flg, hpc]) (by omega)
+    (instrAt_of rfl hi₂) hd₂
   exact ⟨_, .step s1 (.step s2 (.refl _)), hq⟩
 
 theorem post_flg_upd {L : Lay} {s : Arm64.State} {pc : BitVec 64} (hok : okS L s) (hpc : s.pc = pc) (d : Mach.Reg)
@@ -519,16 +519,19 @@ theorem ev_strb (s : Arm64.State) (hw : s.mem.canWrite (getR s 0) 1 = true) :
     Arm64.RegFile.read, hw', Arm64.MemWidth.bytes, Arm64.checkRegSPAligned, Arm64.AddrMode.baseReg]
 
 
-theorem dat_ok {L : Lay} {s : Arm64.State} (hok : okS L s) {x : BitVec 64} (hr : (base L).inDat x.toNat 1) :
+theorem wr_ok {L : Lay} {s : Arm64.State} (hok : okS L s) {x : BitVec 64} (hw : (base L).writable s x.toNat) :
     s.mem.canRead x 1 = true ∧ s.mem.canWrite x 1 = true := by
-  have h1 : L.dLo ≤ x.toNat := hr.1
-  have h2 : x.toNat + 1 ≤ L.dHi := hr.2
-  have := hok.2.2 x.toNat h1 (by omega)
+  have := hok.2.2 x.toNat hw.1 hw.2
   rwa [show BitVec.ofNat 64 x.toNat = x by simp] at this
+theorem memV_canRead {s : Arm64.State} {x : BitVec 64} {v : BitVec 8} (h : memV s x.toNat = some v) :
+    s.mem.canRead x 1 = true := by
+  unfold memV at h; split at h
+  · rename_i hc; rw [show BitVec.ofNat 64 x.toNat = x by simp] at hc; exact hc.2
+  · exact absurd h (by simp)
 
 theorem law_lbu {L : Lay} {d a : Mach.Reg} {s : Arm64.State} {pc : BitVec 64} {v : BitVec 8} (hd : d.val = 0)
     (ha : a.val = 0) (h : (base L).At s pc ((base L).enc (.lbu d a)))
-    (hr : (base L).inDat ((base L).get s a).toNat 1) (hm : (base L).mem s ((base L).get s a).toNat = some v) :
+    (_ : (base L).inRAM ((base L).get s a).toNat 1) (hm : (base L).mem s ((base L).get s a).toNat = some v) :
     (base L).runsTo s fun s' => (base L).Done s s' (next pc ((base L).enc (.lbu d a)).length) ∧
       (base L).Set1 s s' d (v.setWidth 64) ∧ (base L).mem s' = (base L).mem s := by
   obtain rfl : d = 0 := Fin.ext hd
@@ -539,11 +542,11 @@ theorem law_lbu {L : Lay} {d a : Mach.Reg} {s : Arm64.State} {pc : BitVec 64} {v
     have := memV_read hm
     rwa [show BitVec.ofNat 64 ((base L).get s 0).toNat = getR s 0 by simp [base]] at this
   refine run1 h dec_ldrb ?_
-  rw [ev_ldrb s (dat_ok hok hr).1, hv]
+  rw [ev_ldrb s (memV_canRead hm), hv]
   exact fin1 (post_upd hok hpc _ _ _)
 
 theorem law_sb {L : Lay} {v a : Mach.Reg} {s : Arm64.State} {pc : BitVec 64} (hv : v.val = 1) (ha : a.val = 0)
-    (h : (base L).At s pc ((base L).enc (.sb v a))) (hr : (base L).inDat ((base L).get s a).toNat 1) :
+    (h : (base L).At s pc ((base L).enc (.sb v a))) (hr : (base L).writable s ((base L).get s a).toNat) :
     (base L).runsTo s fun s' => (base L).Done s s' (next pc ((base L).enc (.sb v a)).length) ∧
       (base L).Same s s' ∧ (base L).mem s' = ((base L).mem s).upd ((base L).get s a).toNat (((base L).get s v).setWidth 8) := by
   obtain rfl : v = 1 := Fin.ext hv
@@ -551,8 +554,9 @@ theorem law_sb {L : Lay} {v a : Mach.Reg} {s : Arm64.State} {pc : BitVec 64} (hv
   have hok : okS L s := h.ok
   have hpc : s.pc = pc := h.hpc
   refine run1 h dec_strb ?_
-  rw [ev_strb s (dat_ok hok hr).2]
-  refine ⟨⟨okS_stb hok _ _, ⟨rfl, rfl⟩, ?_⟩, fun r => rfl, memV_stb s _ _ (dat_ok hok hr).1⟩
+  rw [ev_strb s (wr_ok hok hr).2]
+  refine ⟨⟨okS_stb hok _ _, ⟨rfl, rfl⟩, ?_⟩, fun r => rfl, memV_stb s _ _ (wr_ok hok hr).1⟩
   show s.pc + 4#64 = next pc 1
   simp [next, hpc]
+
 end Proven.Apc
