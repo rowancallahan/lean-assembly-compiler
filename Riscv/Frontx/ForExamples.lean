@@ -1,7 +1,7 @@
 /- `frontx_compile` on `Id.run do … for … ` loops with mutable locals and on non-recursive functions, mostly
 lean-svg code copied verbatim (`LeanSvg/Bytes.lean`, `LeanSvg/PngDecode.lean`, `LeanSvg/GifDecode.lean`).
 Nothing in this file is proved by hand; the `with` clauses are the only human input. -/
-import Proven.Frontx.Examples
+import Riscv.Frontx.Examples
 
 namespace Proven.Frontx.Ex
 open Proven Proven.Frontx

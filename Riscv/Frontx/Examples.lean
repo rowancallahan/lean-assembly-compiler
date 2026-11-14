@@ -1,27 +1,37 @@
 /- `frontx_compile` on ordinary tail-recursive Lean definitions.  Each command adds, kernel-checked:
 `f.tree`, `f.lay`, `f.Rep`, `f.out`, `f.step1`, `f.runs`, `f.exec` (see `Translate.lean`).
 Nothing in this file is proved by hand. -/
-import Proven.LoopExamples
-import Proven.Frontx.Translate
+import Riscv.Frontx.Translate
 
 namespace Proven
 open Proven.Frontx
+namespace Frontx.Ex
 
-/-! ## The two hand-proved loops of `LoopExamples.lean`, now automatic -/
+/-! ## The two hand-proved loops of `Riscv/Examples/LoopExamples.lean` (definitions copied: that module cannot be
+imported together with `Riscv.Examples.ArrExamples`, which the `Implements1` glue needs), now automatic -/
+
+def sumDown (n acc : BitVec 64) : BitVec 64 := if n = 0 then acc else sumDown (n - 1) (acc + n)
+termination_by n.toNat
+decreasing_by
+  have : n.toNat ≠ 0 := fun e => ‹¬n = 0› (BitVec.eq_of_toNat_eq (by simpa using e))
+  rw [BitVec.toNat_sub]; simp; omega
+
+def gcdSub (a b : BitVec 64) : BitVec 64 :=
+  if a = 0 then b else if b = 0 then a else if a < b then gcdSub a (b - a) else gcdSub (a - b) b
+termination_by a.toNat + b.toNat
+decreasing_by
+  all_goals have ha : a.toNat ≠ 0 := fun e => ‹¬a = 0› (BitVec.eq_of_toNat_eq (by simpa using e))
+  all_goals have hb : b.toNat ≠ 0 := fun e => ‹¬b = 0› (BitVec.eq_of_toNat_eq (by simpa using e))
+  · have := ‹a < b›; rw [BitVec.lt_def] at this; rw [BitVec.toNat_sub]; omega
+  · have := ‹¬a < b›; rw [BitVec.lt_def] at this; rw [BitVec.toNat_sub]; omega
 
 frontx_compile sumDown
 frontx_compile gcdSub
 
-/-- the statement `sumProg_exec` of `LoopExamples.lean`, for the generated program -/
-example (n acc : BitVec 64) (σ : BState) (h : σ.env 0 = n ∧ σ.env 1 = acc) :
-    ∃ σ', BExec (prog sumDown.lay sumDown.tree 0) σ σ' ∧ σ'.env 0 = sumDown n acc ∧ σ'.heap = σ.heap :=
-  sumDown.exec n acc σ h
-
-example (a b : BitVec 64) (σ : BState) (h : σ.env 0 = a ∧ σ.env 1 = b) :
-    ∃ σ', BExec (prog gcdSub.lay gcdSub.tree 0) σ σ' ∧ σ'.env 0 = gcdSub a b ∧ σ'.heap = σ.heap :=
+example (a b : BitVec 64) (σ : BState) (h : σ.env 4 = a ∧ σ.env 5 = b) :
+    ∃ σ', BExec (prog gcdSub.lay gcdSub.tree 4) σ σ' ∧ σ'.env 4 = gcdSub a b ∧ σ'.heap = σ.heap :=
   gcdSub.exec a b σ h
 
-namespace Frontx.Ex
 
 /-! ## Byte arrays -/
 

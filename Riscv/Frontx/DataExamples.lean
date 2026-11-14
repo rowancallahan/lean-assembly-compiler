@@ -1,7 +1,7 @@
 /- Tagged data without allocation: structures, tuples and `Option` of scalars as parameters and results.
 One variable per scalar component (`Option α`: `isSome` as a 0/1 word and the payload `getD 0`); a `match` on a
 structure is field access, a `match` on an `Option` is a test of the tag variable.  All theorems are generated. -/
-import Proven.Frontx.Translate
+import Riscv.Frontx.Translate
 
 namespace Proven.Frontx.Data
 open Proven Proven.Frontx

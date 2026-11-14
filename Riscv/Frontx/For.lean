@@ -4,7 +4,7 @@ A loop `forIn [a:b] init F` (with `F : Nat → S → Id (ForInStep S)`, `S` the 
 tree whose state holds `i` and the locals: one iteration of the tree is "if `i < b` then the body, `yield s'`
 being a call with `(i + 1, s')` and `done s'` a return, else return".  `for_exec` turns a proof of that single
 step (`Sim`, built by the translator) into the theorem about the compiled program, initialisation included. -/
-import Proven.Frontx.Tree
+import Riscv.Frontx.Tree
 
 namespace Proven.Frontx
 open Proven
@@ -113,6 +113,10 @@ theorem initS_exec {p : BStmt} {heap : Heap} {σ' : BState} : ∀ (l : List (Nat
     BExec p ⟨seqSet env l, heap⟩ σ' → BExec (initS l p) ⟨env, heap⟩ σ'
   | [], _, h => h
   | (v, e) :: l, env, h => .seq .assign (initS_exec l (env.set v (e.denote env)) h)
+
+theorem entry_exec {l : List (Nat × BExp)} {p : BStmt} {env : BEnv} {heap : Heap} {Q : BState → Prop}
+    (h : ∃ σ', BExec p ⟨seqSet env l, heap⟩ σ' ∧ Q σ') : ∃ σ', BExec (initS l p) ⟨env, heap⟩ σ' ∧ Q σ' :=
+  h.imp fun _ h => ⟨initS_exec _ _ h.1, h.2⟩
 
 /-- **`for` loop, once and for all** (read-only tree): the single-step simulation and the loop relation at the
 initialised state give the compiled program's theorem. -/

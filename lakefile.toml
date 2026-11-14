@@ -28,3 +28,8 @@ globs = ["Arm.CompilerArm"]
 [[require]]
 name = "Lean_RV64D"
 path = "../deps/sail-riscv-lean"
+
+# front end for ordinary recursive definitions (branch frontx; notes in Testing/notes/frontx); not a default target
+[[lean_lib]]
+name = "Frontx"
+globs = ["Riscv.Frontx.+"]

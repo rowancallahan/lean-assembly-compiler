@@ -17,8 +17,8 @@ temporaries have been generalised to variables (so the cost is linear in the siz
 `f.runs` is functional induction on `f` (the recursion's own termination argument is reused; no measure is
 ever stated): in each case the path conditions select the leaf of `f.step1`. -/
 import Lean
-import Proven.Frontx.Rep
-import Proven.Frontx.For
+import Riscv.Frontx.Rep
+import Riscv.Frontx.For
 
 namespace Proven.Frontx
 open Lean Meta Elab Term Command Tactic
@@ -551,8 +551,37 @@ elab "frontx_ite_facts" : tactic => withMainContext do
     g := g'
   replaceMainGoal [g]
 
+/-- `x.toNat < 2 ^ 8` for the bytes `x` whose `toNat` occurs in the goal or the hypotheses -/
+elab "frontx_u8_facts" : tactic => withMainContext do
+  let mut g ← getMainGoal
+  let mut seen : Array Expr := #[]
+  let mut tys := #[← instantiateMVars (← g.getType)]
+  for d in ← getLCtx do
+    unless d.isImplementationDetail do tys := tys.push (← instantiateMVars d.type)
+  let collect (e : Expr) (acc : Array Expr) : Array Expr := Id.run do
+    let mut acc := acc
+    let mut todo := #[e]
+    while h : todo.size > 0 do
+      let t := todo[todo.size - 1]
+      todo := todo.pop
+      if t.isAppOfArity ``UInt8.toNat 1 && !t.hasLooseBVars && !acc.contains t.appArg! then acc := acc.push t.appArg!
+      match t with
+      | .app f x => todo := (todo.push f).push x
+      | .lam _ d b _ | .forallE _ d b _ => todo := (todo.push d).push b
+      | .letE _ d v b _ => todo := ((todo.push d).push v).push b
+      | .mdata _ b | .proj _ _ b => todo := todo.push b
+      | _ => pure ()
+    return acc
+  for ty in tys do seen := collect ty seen
+  if seen.isEmpty then throwError "frontx_u8_facts: no byte"
+  for x in seen do
+    let pf := mkApp (mkConst ``UInt8.toNat_lt) x
+    let (_, g') ← (← g.assert `hu8 (← inferType pf) pf).intro1P
+    g := g'
+  replaceMainGoal [g]
+
 macro "frontx_disch" : tactic =>
-  `(tactic| first | omega | (frontx_ite_facts; omega) | (subst_vars; split; omega; omega))
+  `(tactic| first | omega | (frontx_ite_facts; omega) | (subst_vars; split; omega; omega) | (frontx_u8_facts; omega))
 
 /-- expression evaluation, and every supported operation pushed through its representation function -/
 macro "frontx_simp" "[" ts:ident,* "]" : tactic => do
@@ -1085,8 +1114,21 @@ elab "frontx_ih_acc " h:ident : tactic => withMainContext do
     try
       let (ms, _, _) ← forallMetaTelescope (← instantiateMVars d.type)
       unless ms.size ≥ 3 do throwError "arity"
-      unless ← isDefEq (← inferType ms[2]!) (← inferType hR) do throwError "no match"
-      let pf := mkApp3 d.toExpr (← instantiateMVars ms[0]!) (← instantiateMVars ms[1]!) hR
+      unless ← isDefEq (← inferType ms.back!) (← inferType hR) do throwError "no match"
+      ms.back!.mvarId!.assign hR
+      -- measure induction: the hypotheses `μ args' = m` (by `rfl`) and `m < n` (arithmetic)
+      for m in ms.pop.reverse do
+        if ← m.mvarId!.isAssigned then continue
+        let mty ← instantiateMVars (← inferType m)
+        unless ← isProp mty do continue
+        if let some (_, x, _) := mty.eq? then
+          unless ← isDefEq m (← mkEqRefl x) do throwError "measure equation"
+        else
+          let rest ← Tactic.run m.mvarId! (Tactic.withoutRecover (Tactic.evalTactic
+            (← `(tactic| (subst_vars; dsimp only; omega)))))
+          unless rest.isEmpty do throwError "measure does not decrease{indentExpr mty}"
+      let pf ← instantiateMVars (mkAppN d.toExpr ms)
+      if pf.hasMVar then throwError "unassigned"
       let g ← getMainGoal
       let (_, g) ← (← g.assert `ihx (← inferType pf) pf).intro1P
       replaceMainGoal [g]
@@ -1096,6 +1138,32 @@ elab "frontx_ih_acc " h:ident : tactic => withMainContext do
       return
     catch e => s.restore; errs := errs ++ m!"\n{e.toMessageData}"
   throwError "frontx_ih_acc: no hypothesis applies{errs}"
+
+/-- in `h : Sim R k σ (dite P o₁ o₂)`: case split on `P` (hypothesis `hc`), in both `h` and the goal; fails if the
+outcome is not an `if` -/
+elab "frontx_cases " h:ident : tactic => withMainContext do
+  let hd ← getLocalDeclFromUserName h.getId
+  let ty ← whnfR (← instantiateMVars hd.type)
+  unless ty.isAppOfArity ``Sim 5 do throwError "frontx_cases: not a `Sim`"
+  let a := ty.getAppArgs
+  let o ← whnfR a[4]!
+  unless o.isAppOfArity ``dite 5 do throwError "frontx_cases: not an `if`"
+  let oa := o.getAppArgs
+  let P := oa[1]!
+  let (pos, neg) ← (← getMainGoal).byCases P `hc
+  let hcI := mkIdent `hc
+  let mut gs := []
+  for (sub, lem, r1, r2) in [(pos, ``sim_pos, ``dif_pos, ``if_pos), (neg, ``sim_neg, ``dif_neg, ``if_neg)] do
+    let g ← sub.mvarId.withContext do
+      let pf := mkAppN (mkConst lem) #[a[0]!, a[1]!, a[2]!, a[3]!, P, oa[2]!, oa[3]!, oa[4]!, mkFVar sub.fvarId, hd.toExpr]
+      let ty' ← whnfR (← inferType pf)
+      let ty' := mkAppN ty'.getAppFn (ty'.getAppArgs.set! 4 (← whnfR ty'.getAppArgs[4]!))
+      let (_, g) ← (← sub.mvarId.assert h.getId ty' pf).intro1P
+      pure g
+    let r1I := mkIdent r1; let r2I := mkIdent r2
+    let rest ← Tactic.run g (evalTactic (← `(tactic| first | simp only [$r1I:ident $hcI:ident, $r2I:ident $hcI:ident] | skip)))
+    gs := gs ++ rest
+  replaceMainGoal gs
 
 /-- in `h : Sim R k σ o`, follow the `if`s of `o` with the path conditions of the context -/
 elab "frontx_path " h:ident : tactic => withMainContext do
@@ -1251,9 +1319,11 @@ def compileLoop (fn : Name) (xs : Array Expr) (rty : Ty) (lhs forE : Expr) (post
       next := next + 2
     else
       let some ty ← classify xty | throwError "frontx: unsupported parameter type{indentExpr xty}"
+      if next < 4 then next := 4
       memo := (x, next) :: memo
       scal := scal.push (x, ty, next)
       next := next + 1
+  if next < 4 then next := 4
   let iv := next
   let ctys ← flattenS S
   -- per local: its kind (`none` = an `Option` that stays `none`) and its variable
@@ -1512,12 +1582,16 @@ def primRec? (fn : Name) (xs : Array Expr) (lhs body : Expr) : MetaM (Option (Na
       return some (ki, zero, ← mkLambdaFVars #[ys[0]!, acc] E')
 
 def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (accMode := false)
-    (pre? : Option Term := none) : TermElabM Unit := do
+    (pre? : Option Term := none) (from? : Option (Name × Term) := none) : TermElabM Unit := do
   let t0 ← IO.monoMsNow
   let fn ← realizeGlobalConstNoOverloadWithInfo f
   let info ← getConstInfo fn
-  let some eqn ← getUnfoldEqnFor? fn (nonRec := true) | throwError "frontx: no unfolding equation for {fn}"
-  let eqnTy := (← getConstInfo eqn).type
+  -- the equation `f xs = body`: the unfolding equation, or a proved one (`from`)
+  let eqnTy ← match from? with
+    | some (e, _) => pure (← getConstInfo e).type
+    | none =>
+      let some eqn ← getUnfoldEqnFor? fn (nonRec := true) | throwError "frontx: no unfolding equation for {fn}"
+      pure (← getConstInfo eqn).type
   let repN := fn ++ `Rep
   let treeN := fn ++ `tree
   let layN := fn ++ `lay
@@ -1602,6 +1676,8 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
         else
           -- a scalar, or a structure / tuple / `Option` of scalars: one variable per component
           let some comps ← resultComps xty | throwError "frontx: unsupported parameter type{indentExpr xty}"
+          -- variables 2 and 3 stay free (work and output base in the `Implements1` calling convention)
+          if next < 4 then next := 4
           for (π, ty) in comps do
             let key := (mkApp π x).headBeta
             memo := (key, next) :: memo
@@ -1610,6 +1686,7 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
       let xsD := dataIdx.map (xs[·]!)
       -- variables for the extra components of the result
       let mut resExtra : Array (Expr × Ty × Nat) := #[]
+      if next < 4 then next := 4
       for (π, t) in resInfo.extract 1 resInfo.size do
         resExtra := resExtra.push (π, t, next)
         next := next + 1
@@ -1704,17 +1781,36 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
           let runsTy ← mkForallFVars (xs.push σ) (← mkArrow (mkAppN (mkConst repN) (xsD.push σ))
             (← withLocalDeclD `σ' bstate fun σ' => do
               mkAppM ``Exists #[← mkLambdaFVars #[σ'] (mkApp4 (mkConst ``Tree.Runs) (mkConst treeN) σ accLhs σ')]))
-          addThm (fn ++ `runs) runsTy (← `(tactic|
-            (intro $as0*
-             fun_induction $fI:ident $as0* <;> intro acc σ hR <;>
-              (have hs := $sI:ident $holes0* acc σ hR
-               frontx_path hs
-               first
-               | (obtain ⟨σ₁, hs₁, hR₁⟩ := sim_call_elim _ hs
-                  refine step_call σ₁ hs₁ ?_
-                  frontx_ih_acc hR₁)
-               | (obtain ⟨σ₁, hs₁⟩ := sim_ret_elim _ hs
-                  exact step_ret σ₁ hs₁)))))
+          match from? with
+          | none =>
+            addThm (fn ++ `runs) runsTy (← `(tactic|
+              (intro $as0*
+               fun_induction $fI:ident $as0* <;> intro acc σ hR <;>
+                (have hs := $sI:ident $holes0* acc σ hR
+                 frontx_path hs
+                 first
+                 | (obtain ⟨σ₁, hs₁, hR₁⟩ := sim_call_elim _ hs
+                    refine step_call σ₁ hs₁ ?_
+                    frontx_ih_acc hR₁)
+                 | (obtain ⟨σ₁, hs₁⟩ := sim_ret_elim _ hs
+                    exact step_ret σ₁ hs₁)))))
+          | some (eqN, μ) =>
+            let eqI := mkIdent eqN
+            addThm (fn ++ `runs) runsTy (← `(tactic|
+              (intro $as0*
+               generalize hμ : ($μ $as0*) = n
+               induction n using Nat.strongRecOn generalizing $as0* with
+               | _ n ih =>
+                 intro acc σ hR
+                 rw [$eqI:ident $as0*]
+                 have hs := $sI:ident $holes0* acc σ hR
+                 (repeat' (frontx_cases hs)) <;>
+                 first
+                 | (obtain ⟨σ₁, hs₁, hR₁⟩ := sim_call_elim _ hs
+                    refine step_call σ₁ hs₁ ?_
+                    frontx_ih_acc hR₁)
+                 | (obtain ⟨σ₁, hs₁⟩ := sim_ret_elim _ hs
+                    exact step_ret σ₁ hs₁))))
           let t3 ← IO.monoMsNow
           -- `Rep0`: the parameters only
           let hyps0 := hyps.filter fun h => !(h.find? (· == acc)).isSome
@@ -1803,18 +1899,39 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
         -- a function that does not call itself: case analysis instead of induction
         let ind ← if (body.find? (·.isConstOf fn)).isSome then `(tactic| fun_induction $fI:ident $as*)
           else `(tactic| first | fun_cases $fI:ident $as* | unfold $fI:ident)
-        addThm (fn ++ `runs) runsTy (← `(tactic|
-          (intro $as*
-           $ind:tactic <;> intro $σi:ident hR <;>
-            (have hs := $sI:ident $holes* $σi hR
-             frontx_path hs
-             first
-             | (obtain ⟨σ₁, hs₁, hR₁⟩ := sim_call_elim _ hs
-                refine step_call σ₁ hs₁ ?_
-                frontx_ih
-                exact hR₁)
-             | (obtain ⟨σ₁, hs₁⟩ := sim_ret_elim _ hs
-                exact step_ret σ₁ hs₁)))))
+        match from? with
+        | none =>
+          addThm (fn ++ `runs) runsTy (← `(tactic|
+            (intro $as*
+             $ind:tactic <;> intro $σi:ident hR <;>
+              (have hs := $sI:ident $holes* $σi hR
+               frontx_path hs
+               first
+               | (obtain ⟨σ₁, hs₁, hR₁⟩ := sim_call_elim _ hs
+                  refine step_call σ₁ hs₁ ?_
+                  frontx_ih
+                  exact hR₁)
+               | (obtain ⟨σ₁, hs₁⟩ := sim_ret_elim _ hs
+                  exact step_ret σ₁ hs₁)))))
+        | some (eqN, μ) =>
+          -- a proved equation: well-founded induction on the measure `μ`, case analysis along the outcome
+          let eqI := mkIdent eqN
+          let us ← xs.mapM fun _ => `(_)
+          addThm (fn ++ `runs) runsTy (← `(tactic|
+            (intro $as*
+             generalize hμ : ($μ $as*) = n
+             induction n using Nat.strongRecOn generalizing $as* with
+             | _ n ih =>
+               intro $σi:ident hR
+               rw [$eqI:ident $as*]
+               have hs := $sI:ident $holes* $σi hR
+               (repeat' (frontx_cases hs)) <;>
+               first
+               | (obtain ⟨σ₁, hs₁, hR₁⟩ := sim_call_elim _ hs
+                  refine step_call σ₁ hs₁ ?_
+                  exact ih _ (by subst hμ; dsimp only; omega) $us* rfl _ hR₁)
+               | (obtain ⟨σ₁, hs₁⟩ := sim_ret_elim _ hs
+                  exact step_ret σ₁ hs₁))))
         let t3 ← IO.monoMsNow
         -- f.exec
         let prog := mkApp3 (mkConst ``prog) (mkConst layN) (mkConst treeN) (toExpr out)
@@ -1836,8 +1953,22 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
 
 /-- `frontx_compile f` or `frontx_compile f with inv` (`inv : params → Prop`, an extra precondition that the
 recursive calls must preserve; needed for `Nat` arguments whose bounds are not implied by the tests) -/
-syntax "frontx_compile " ident (" requires " term)? (" with " term)? (" using " ident,+)? : command
+syntax "frontx_compile " ident (" from " ident " measure " term)? (" requires " term)? (" with " term)?
+  (" using " ident,+)? : command
 elab_rules : command
+  | `(frontx_compile $f:ident from $e:ident measure $μ:term $[requires $pre?]? $[with $inv?]? $[using $ls?,*]?) =>
+    liftTermElabM do
+    let lemmas ← match ls? with
+      | some ls => ls.getElems.mapM fun l => realizeGlobalConstNoOverloadWithInfo l
+      | none => pure #[]
+    let from? := some (← realizeGlobalConstNoOverloadWithInfo e, μ)
+    let s ← saveState
+    try compileCmd f inv? lemmas (pre? := pre?) (from? := from?)
+    catch ex =>
+      if ((← ex.toMessageData.toString).splitOn "not in tail position").length > 1 then
+        s.restore
+        compileCmd f inv? lemmas (accMode := true) (pre? := pre?) (from? := from?)
+      else throw ex
   | `(frontx_compile $f:ident $[requires $pre?]? $[with $inv?]? $[using $ls?,*]?) => liftTermElabM do
     let lemmas ← match ls? with
       | some ls => ls.getElems.mapM fun l => realizeGlobalConstNoOverloadWithInfo l
@@ -1850,5 +1981,170 @@ elab_rules : command
         s.restore
         compileCmd f inv? lemmas (accMode := true) (pre? := pre?)
       else throw e
+
+/-! ## List parameters as views of the input
+
+`frontx_view f` for `f … (xs : List UInt8 | List Nat) … : T` defined by `match xs with | [] => a | x :: t => b`
+(type parameters are instantiated with `UInt8`): adds
+
+  `f.view B i … := f … (view B i) …`   and
+  `f.view_eq : f.view B i … = if h : i < B.size then b[x := B[i], t := view B (i + 1)] else a`
+
+with the recursive calls on `t` folded to `f.view B (i + 1) …`; then
+`frontx_compile f.view from f.view_eq measure fun B i … => B.size - i`. -/
+
+partial def viewTele {α : Type} (ty : Expr) (args others : Array Expr) (pos : Array Nat)
+    (lst? : Option (Expr × Expr × Name × Nat))
+    (k : Array Expr → Array Expr → Array Nat → Option (Expr × Expr × Name × Nat) → Expr → TermElabM α) :
+    TermElabM α := do
+  let ty ← whnf ty
+  match ty with
+  | .forallE n d b info =>
+    let d' ← whnfR d
+    if d'.isSort then
+      viewTele (b.instantiate1 (mkConst ``UInt8)) (args.push (mkConst ``UInt8)) others pos lst? k
+    else if info.isInstImplicit then
+      let inst ← synthInstance d
+      viewTele (b.instantiate1 inst) (args.push inst) others pos lst? k
+    else if lst?.isNone && d'.isAppOfArity ``List 1 then
+      let el ← whnfR d'.appArg!
+      let vw ← if el.isConstOf ``UInt8 then pure ``view else if el.isConstOf ``Nat then pure ``viewN
+        else throwError "frontx_view: unsupported element type{indentExpr el}"
+      withLocalDeclD `B (mkConst ``ByteArray) fun B => withLocalDeclD `i (mkConst ``Nat) fun i => do
+        let v := mkApp2 (mkConst vw) B i
+        viewTele (b.instantiate1 v) (args.push v) others pos (some (B, i, vw, args.size)) k
+    else
+      withLocalDecl n info d fun x =>
+        viewTele (b.instantiate1 x) (args.push x) (others.push x) (pos.push args.size) lst? k
+  | _ => k args others pos lst? ty
+
+elab "frontx_view " f:ident : command => liftTermElabM do
+  let fn ← realizeGlobalConstNoOverloadWithInfo f
+  let info ← getConstInfo fn
+  let some eqn ← getUnfoldEqnFor? fn (nonRec := true) | throwError "frontx_view: no unfolding equation for {fn}"
+  let eqnInfo ← getConstInfo eqn
+  let lvls := info.levelParams.map fun _ => levelZero
+  let gN := fn ++ `view
+  let fty := info.type.instantiateLevelParams info.levelParams lvls
+  let eqnTy := eqnInfo.type.instantiateLevelParams eqnInfo.levelParams (eqnInfo.levelParams.map fun _ => levelZero)
+  let vwEq ← viewTele fty #[] #[] #[] none fun args others pos lst? resTy => do
+    let some (B, i, vw, lpos) := lst? | throwError "frontx_view: no list parameter"
+    let ps := #[B, i] ++ others
+    let fC := Lean.mkConst fn lvls
+    let gTy ← mkForallFVars ps resTy
+    let gVal ← mkLambdaFVars ps (mkAppN fC args)
+    addAndCompile (.defnDecl (mkDefinitionValEx gN [] gTy gVal (.regular 1) .safe [gN]))
+    enableRealizationsForConst gN
+    let some (_, _, rhs) := (← instantiateForall eqnTy args).eq? | throwError "frontx_view: bad equation"
+    let some ma ← matchMatcherApp? rhs | throwError "frontx_view: the body is not a `match`{indentExpr rhs}"
+    unless ma.discrs.size == 1 && ma.discrs[0]! == args[lpos]! && ma.alts.size == 2 && ma.remaining.isEmpty do
+      throwError "frontx_view: expected a `match` on the list only"
+    let (inil, icons) ← if ma.altNumParams[1]! == 2 then pure (0, 1) else if ma.altNumParams[0]! == 2 then pure (1, 0)
+      else throwError "frontx_view: expected the patterns `[]` and `x :: t`"
+    let nilB := ma.alts[inil]!
+    let nilB := if nilB.isLambda then nilB.beta #[mkConst ``Unit.unit] else nilB
+    let nat := Lean.mkConst ``Nat
+    let i1 ← mkAppM ``HAdd.hAdd #[i, toExpr (1 : Nat)]
+    let tl := mkApp2 (mkConst vw) B i1
+    let c ← mkAppM ``LT.lt #[i, mkApp (mkConst ``ByteArray.size) B]
+    let inst ← synthInstance (mkApp (mkConst ``Decidable) c)
+    let thenB ← withLocalDeclD `h c fun h => do
+      let x ← Term.elabTerm (← `($(← Term.exprToSyntax B)[$(← Term.exprToSyntax i)]'$(← Term.exprToSyntax h))) none
+      synthesizeSyntheticMVarsNoPostponing
+      let x ← instantiateMVars x
+      let x := if vw == ``viewN then mkApp (mkConst ``UInt8.toNat) x else x
+      let body := (ma.alts[icons]!.beta #[x, tl])
+      let body := body.replace fun e =>
+        if e.isAppOfArity fn args.size && e.getAppArgs[lpos]! == tl then
+          some (mkAppN (mkConst gN) (#[B, i1] ++ pos.map (e.getAppArgs[·]!)))
+        else none
+      if (body.find? (·.isConstOf fn)).isSome then
+        throwError "frontx_view: a recursive call that is not on the tail of the list{indentExpr body}"
+      mkLambdaFVars #[h] body
+    let elseB ← withLocalDeclD `h (mkNot c) fun h => mkLambdaFVars #[h] nilB
+    let rhs' := mkAppN (mkConst ``dite [levelOne]) #[resTy, c, inst, thenB, elseB]
+    let ty ← mkForallFVars ps (← mkEq (mkAppN (mkConst gN) ps) rhs')
+    pure (ty, vw)
+  let (eqTy, vw) := vwEq
+  let gI := mkIdent gN
+  let fI := mkIdent fn
+  let vI := mkIdent (if vw == ``viewN then ``viewN_eq else ``view_eq)
+  addThm (gN ++ `eq) eqTy (← `(tactic|
+    (intros
+     unfold $gI:ident
+     rw [$vI:ident]
+     split <;> first | rfl | simp only [$fI:ident] | (rw [$fI:ident]))))
+  let eqName := gN ++ `eq
+  logInfo m!"frontx: {gN}, {eqName} : {eqTy}"
+
+/-! ## Entry points
+
+`frontx_entry g` for `def g (xs : ByteArray) : T := f xs a₁ … aₙ`, `f` compiled by `frontx_compile` (first
+parameter the byte array, the others scalars from variable 4 on), each `aᵢ` a closed term or `xs.size`.  Adds
+`g.prog` (parameter initialisation, then `f`'s program), `g.slots` and
+
+  `g.exec : ∀ xs env, env 1 = rN xs.size → xs.size < 2 ^ 32 → (∀ j, 8 ≤ j → env j = 0) →
+     ∃ σ', BExec g.prog ⟨env, [blk xs]⟩ σ' ∧ σ'.env 4 = rep (g xs) ∧ σ'.heap = [blk xs]`,
+
+the hypothesis of `implements1_of_frontx` (`Impl1.lean`). -/
+
+def Ty.repName : Ty → Name
+  | .bv => ``id | .u8 => ``r8 | .u32 => ``r32 | .u64 => ``r64 | .nat => ``rN | .bool => ``rB
+
+elab "frontx_entry " g:ident : command => liftTermElabM do
+  let gN ← realizeGlobalConstNoOverloadWithInfo g
+  let info ← getConstInfoDefn gN
+  let (fN, inits, rty) ← lambdaTelescope info.value fun xs body => do
+    unless xs.size == 1 && (← whnfR (← inferType xs[0]!)).isConstOf ``ByteArray do
+      throwError "frontx_entry: expected one ByteArray parameter"
+    let .const fN _ := body.getAppFn | throwError "frontx_entry: the body must be an application of a compiled function"
+    let args := body.getAppArgs
+    unless args[0]! == xs[0]! do throwError "frontx_entry: the first argument must be the byte array"
+    let some rty ← classify (← inferType body) | throwError "frontx_entry: unsupported result type"
+    let mut inits : Array Expr := #[]
+    let mut next := 4
+    for a in args.extract 1 args.size do
+      let aty ← inferType a
+      if ← isProp aty then continue
+      let some ty ← classify aty | throwError "frontx_entry: unsupported argument type{indentExpr aty}"
+      let e ← if a.isAppOfArity ``ByteArray.size 1 && a.appArg! == xs[0]! then
+          pure (mkApp (mkConst ``BExp.var) (toExpr (1 : Nat)))
+        else
+          if a.hasFVar then throwError "frontx_entry: argument is neither closed nor `xs.size`{indentExpr a}"
+          pure (mkApp (mkConst ``BExp.const) (ty.rep a))
+      inits := inits.push (← mkAppM ``Prod.mk #[toExpr next, e])
+      next := next + 1
+    return (fN, inits, rty)
+  let env ← getEnv
+  let hasInits := env.contains (fN ++ `inits)
+  let base := mkAppN (mkConst ``prog) #[mkConst (fN ++ `lay), mkConst (fN ++ `tree), toExpr (4 : Nat)]
+  let base := if hasInits then mkAppN (mkConst ``initS) #[mkConst (fN ++ `inits), base] else base
+  let pairTy ← mkAppM ``Prod #[mkConst ``Nat, mkConst ``BExp]
+  addDef (gN ++ `prog) (mkConst ``BStmt) (mkAppN (mkConst ``initS) #[← mkListLit pairTy inits.toList, base])
+    (compile := true)
+  addDef (gN ++ `slots) (mkConst ``Nat) (mkConst (fN ++ `slots)) (compile := true)
+  let progI := mkIdent (gN ++ `prog)
+  let gI := mkIdent gN
+  let repI := mkIdent rty.repName
+  let execI := mkIdent (fN ++ `exec)
+  let repNI := mkIdent (fN ++ (if hasInits then `Rep0 else `Rep))
+  let ty ← elabTerm (← `(∀ (xs : ByteArray) (env : BEnv), env 1 = rN xs.size → xs.size < 2 ^ 32 →
+    (∀ j, 8 ≤ j → env j = 0) →
+    ∃ σ', BExec $progI ⟨env, [blk xs]⟩ σ' ∧ σ'.env 4 = $repI ($gI xs) ∧ σ'.heap = [blk xs])) none
+  synthesizeSyntheticMVarsNoPostponing
+  let ty ← instantiateMVars ty
+  if ty.hasMVar then throwError "frontx_entry: statement has metavariables{indentExpr ty}"
+  addThm (gN ++ `exec) ty (← `(tactic| (
+    intro xs env h1 hs h8
+    refine entry_exec ?_
+    apply $execI
+    unfold $repNI
+    and_intros <;> first
+      | rfl
+      | exact h1
+      | omega
+      | (simp [seqSet, BEnv.set, BExp.denote, h1]; done)
+      | (simp [seqSet, BEnv.set, BExp.denote, h1]; omega))))
+  logInfo m!"frontx: {gN}.prog, {gN}.exec"
 
 end Proven.Frontx

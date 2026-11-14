@@ -1,7 +1,7 @@
 /- How Lean scalars and byte arrays sit in `BitVec 64` variables and heap blocks, and the lemma set the
 generated per-function proofs rewrite with: every supported Lean operation, pushed through the
 representation function (`r8`, `r32`, `r64`, `rN`), becomes a `BitVec 64` term over representations. -/
-import Proven.Frontx.Tree
+import Riscv.Frontx.Tree
 
 namespace Proven.Frontx
 open Proven
@@ -233,5 +233,30 @@ theorem r32_lit (n : Nat) : r32 (no_index (OfNat.ofNat n)) = BitVec.ofNat 64 (n 
   exact (Nat.mod_eq_of_lt (Nat.lt_trans (Nat.mod_lt n (by decide)) (by decide))).symm
 theorem r64_lit (n : Nat) : r64 (no_index (OfNat.ofNat n)) = BitVec.ofNat 64 n := by
   apply BitVec.eq_of_toNat_eq; simp [r64, OfNat.ofNat, UInt64.toNat_ofNat']
+
+/-! ## Lists as views of a byte array
+
+A `List UInt8` (or `List Nat` with elements `< 256`) parameter is the input block from an index on. -/
+
+/-- the list a byte array holds from index `i` on -/
+def view (B : ByteArray) (i : Nat) : List UInt8 := B.data.toList.drop i
+
+/-- the same, the bytes as numbers -/
+def viewN (B : ByteArray) (i : Nat) : List Nat := (view B i).map (·.toNat)
+
+theorem view_eq (B : ByteArray) (i : Nat) :
+    view B i = if h : i < B.size then B[i] :: view B (i + 1) else [] := by
+  unfold view
+  split
+  · rename_i h
+    rw [List.drop_eq_getElem_cons (by simpa using h)]; rfl
+  · rename_i h
+    exact List.drop_of_length_le (by simp at h ⊢; simpa using h)
+
+theorem viewN_eq (B : ByteArray) (i : Nat) :
+    viewN B i = if h : i < B.size then B[i].toNat :: viewN B (i + 1) else [] := by
+  unfold viewN; rw [view_eq]; split <;> rfl
+
+theorem view_zero (B : ByteArray) : view B 0 = B.data.toList := rfl
 
 end Proven.Frontx

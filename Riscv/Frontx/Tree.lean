@@ -6,7 +6,7 @@ A conditional is two loops that run at most once (`BStmt` has no `if`):
 `a := c; b := (a == 0); while a { T; a := 0 }; while b { E; b := 0 }`.
 The function is `fl := 1; while fl { body }`: a `ret e` leaf does `res := e; fl := 0`, a `call` leaf
 assigns the new arguments in parallel (through temporaries). -/
-import Proven.Arr2Src
+import Riscv.Direct.Arr2Src
 
 namespace Proven.Frontx
 open Proven

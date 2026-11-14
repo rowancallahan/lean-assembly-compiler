@@ -11,7 +11,7 @@ How each recursion is handled (all automatic):
   `acc + f x` and proved by `fun_induction` + `omega`.
 Human input: the two equations `plus_eq`, `pred_eq` (a call to another recursive function is replaced by its closed
 form; there are no calls yet) and the invariant `acc ≤ n` of `minus`. -/
-import Proven.Frontx.Translate
+import Riscv.Frontx.Translate
 
 namespace Proven.Frontx.Book
 open Proven Proven.Frontx
