@@ -45,7 +45,8 @@ theorem mapK_exec (K g : Mach.BExp) (f : BitVec 8 → BitVec 8)
     (h1 : σ.env 1 = BitVec.ofNat 64 xs.length) (hn : xs.length < 2 ^ 64)
     (hout : min (K.denote σ.env).toNat xs.length ≤ out.length) :
     ∃ σ', Mach.BExec (mapK K g) σ σ' ∧
-      σ'.heap = [xs, (xs.take (K.denote σ.env).toNat).map f ++ out.drop (min (K.denote σ.env).toNat xs.length)] := by
+      σ'.heap = [xs, (xs.take (K.denote σ.env).toNat).map f ++ out.drop (min (K.denote σ.env).toNat xs.length)] ∧
+      (σ'.env 4).toNat = min (K.denote σ.env).toNat xs.length ∧ σ'.env 1 = σ.env 1 := by
   let m := min (K.denote σ.env).toNat xs.length
   let v4 := (Mach.BExp.ite (.bin .ult K (.var 1)) K (.var 1)).denote σ.env
   have hm : v4.toNat = m := by
@@ -56,17 +57,17 @@ theorem mapK_exec (K g : Mach.BExp) (f : BitVec 8 → BitVec 8)
   obtain ⟨σ₁, hl, hq⟩ := BExec.loop_inv (c := .bin .ult (.var 5) (.var 4))
     (b := .seq (.load 6 0 (.var 5)) (.seq (.store 1 (.var 5) g) (.assign 5 (.bin .add (.var 5) (.const 1)))))
     (fun τ => τ.heap = [xs, (xs.take (τ.env 5).toNat).map f ++ out.drop (τ.env 5).toNat] ∧
-      (τ.env 4).toNat = m ∧ (τ.env 5).toNat ≤ m)
-    (fun τ => τ.heap = [xs, (xs.take m).map f ++ out.drop m])
+      (τ.env 4).toNat = m ∧ (τ.env 5).toNat ≤ m ∧ τ.env 1 = σ.env 1)
+    (fun τ => τ.heap = [xs, (xs.take m).map f ++ out.drop m] ∧ (τ.env 4).toNat = m ∧ τ.env 1 = σ.env 1)
     (fun τ => m - (τ.env 5).toNat)
-    (fun ⟨env, heap, wheap⟩ ⟨hh, h4, hle⟩ hc => by
-      dsimp only at hh h4 hle; subst hh
+    (fun ⟨env, heap, wheap⟩ ⟨hh, h4, hle, he1⟩ hc => by
+      dsimp only at hh h4 hle he1; subst hh
       simp only [Mach.BExp.denote, ult_ne, h4] at hc
       have hx : (env 5).toNat < xs.length := by omega
       have ho : (env 5).toNat < out.length := by omega
       have e5 := toNat_inc (show (env 5).toNat < m by omega) (show m < 2 ^ 64 by omega)
       refine ⟨_, .seq (.load (by simp) (by simpa using hx))
-        (.seq (.store (by simp) (by simp [Mach.BEnv.set, Mach.BExp.denote]; omega)) .assign), ⟨?_, ?_, ?_⟩, ?_⟩
+        (.seq (.store (by simp) (by simp [Mach.BEnv.set, Mach.BExp.denote]; omega)) .assign), ⟨?_, ?_, ?_, ?_⟩, ?_⟩
       all_goals simp only [Mach.BEnv.set, Mach.BExp.denote, Op.eval]
       all_goals simp only [show (5 : Nat) ≠ 6 by decide, show (4 : Nat) ≠ 5 by decide,
         show (4 : Nat) ≠ 6 by decide, if_false, if_true]
@@ -74,20 +75,22 @@ theorem mapK_exec (K g : Mach.BExp) (f : BitVec 8 → BitVec 8)
         rw [hg _ xs[(env 5).toNat] (by simp [Mach.BEnv.set]), map_take_set f hx ho, e5]
       · exact h4
       · rw [e5]; omega
+      · exact he1
       · rw [e5]; omega)
-    (fun ⟨env, heap, wheap⟩ ⟨hh, h4, hle⟩ hc => by
-      dsimp only at hh h4 hle ⊢
+    (fun ⟨env, heap, wheap⟩ ⟨hh, h4, hle, he1⟩ hc => by
+      dsimp only at hh h4 hle he1 ⊢
       have : ¬ (env 5).toNat < m := fun hlt => (ult_ne (a := env 5) (b := env 4)).2 (by rw [h4]; exact hlt) hc
-      rw [hh, show (env 5).toNat = m by omega])
+      exact ⟨by rw [hh, show (env 5).toNat = m by omega], h4, he1⟩)
     ⟨(σ.env.set 4 v4).set 5 0, σ.heap, σ.wheap⟩
-    ⟨by simpa [Mach.BEnv.set] using hh, by simpa [Mach.BEnv.set] using hm, by simp [Mach.BEnv.set]⟩
+    ⟨by simpa [Mach.BEnv.set] using hh, by simpa [Mach.BEnv.set] using hm, by simp [Mach.BEnv.set],
+      by simp [Mach.BEnv.set]⟩
   refine ⟨σ₁, .seq (BExec.assign' rfl) (.seq (BExec.assign' rfl) hl), ?_⟩
   have : xs.take m = xs.take (K.denote σ.env).toNat := by
     simp only [m]; by_cases hle : (K.denote σ.env).toNat ≤ xs.length
     · rw [Nat.min_eq_left hle]
     · rw [Nat.min_eq_right (by omega), List.take_of_length_le (Nat.le_refl _),
         List.take_of_length_le (by omega)]
-  rw [hq, this]
+  exact ⟨by rw [hq.1, this], hq.2.1, hq.2.2⟩
 
 /-! ## The byte sum, stored as 8 little-endian bytes -/
 

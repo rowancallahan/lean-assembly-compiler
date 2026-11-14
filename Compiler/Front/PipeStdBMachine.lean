@@ -86,7 +86,8 @@ def compileX (p : XPipe) : Except String (List (BitVec 32)) :=
 /-! ## The specification -/
 
 /-- `ImplementsPipeLen` with a scratch block of `sspace |x|` bytes (present in the memory map) and a stack of
-`stackLen` bytes below `sp` -/
+`stackLen` bytes below `sp`.  The result is the first `a1` output bytes; memory changes only in the first
+`space |x|` output bytes, the first `sspace |x|` scratch bytes and the stack block. -/
 def ImplementsPipeS (code : List (BitVec 32)) (f : List UInt8 → List UInt8) (space sspace : Nat → Nat)
     (stackLen : Nat) (maxLen : Nat := 2 ^ 20) : Prop :=
   ∀ (x : List UInt8) (s : St) (entry ra : BitVec 64) (input scratch output stack : Region),
@@ -107,16 +108,20 @@ def ImplementsPipeS (code : List (BitVec 32)) (f : List UInt8 → List UInt8) (s
     (∀ i < sspace x.length, (s.mem[scratch.base + i]?).isSome) →
     runsTo s fun s' => s'.regs.get? .PC = some ra ∧
       bytesAt s' output.base (f x).length = (f x).map (some ·.toBitVec) ∧
-      unchangedOutside s s' [input, scratch, output, stack] ∧ calleeSavedKept s s' ∧ Cfg s' ∧
-      s'.regs.get? .x11 = some (BitVec.ofNat 64 (f x).length)
+      unchangedOutside s s' [input, ⟨scratch.base, sspace x.length⟩, ⟨output.base, space x.length⟩, stack] ∧
+      calleeSavedKept s s' ∧ Cfg s' ∧ s'.regs.get? .x11 = some (BitVec.ofNat 64 (f x).length)
 
 theorem ImplementsPipeLen.toS {code : List (BitVec 32)} {f : List UInt8 → List UInt8} {space : Nat → Nat}
     (h : ImplementsPipeLen code f space) (sspace : Nat → Nat) (stackLen : Nat) :
     ImplementsPipeS code f space sspace stackLen := by
   intro x s entry ra input scratch output stack codeR hmax h1 h2 h3 h4 h5 h6 h7 h8 h9 h10 h11 h12 h13 h14 h15
     hs hk h16 h17 h18 hm
-  exact h x s entry ra input scratch output stack hmax h1 h2 h3 h4 h5 h6 h7 h8 h9 h10 h11 h12 h13 h14 h15
-    h16 h17 h18
+  exact runsTo_mono (h x s entry ra input scratch output stack hmax h1 h2 h3 h4 h5 h6 h7 h8 h9 h10 h11 h12 h13
+    h14 h15 h16 h17 h18) fun s' ⟨a, b, c, d, e, f⟩ => ⟨a, b, unchanged_sub c (fun a ha r hr => by
+      simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
+      rcases hr with rfl | rfl
+      · exact ha _ (by simp)
+      · exact ha _ (by simp)), d, e, f⟩
 
 /-! ## From a `BStmt` run to the specification -/
 
@@ -210,10 +215,11 @@ theorem implementsS_of_execB {prog : BStmt} (hwf : prog.wf 7 [0, 3, 2]) {f : Lis
   · intro a ha
     apply p4 a
     intro r hr
-    have a1 := ha input (by simp); have a2 := ha scratch (by simp); have a3 := ha output (by simp)
-    have a4 := ha stack (by simp)
+    have a1 := ha input (by simp); have a2 := ha ⟨scratch.base, L2⟩ (by simp [hL2e])
+    have a3 := ha ⟨output.base, L⟩ (by simp [hLe]); have a4 := ha stack (by simp)
     simp only [R, List.mem_cons, List.not_mem_nil, or_false] at hr
     rw [hfb] at hr
+    dsimp only at a2 a3
     rcases hr with rfl | rfl | rfl | rfl <;> (dsimp only; omega)
   · rw [p5.x11]; show some (getX s' (A8 1)) = _; rw [p2 1]; exact congrArg some he1
 

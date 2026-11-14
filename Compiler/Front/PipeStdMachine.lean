@@ -47,7 +47,7 @@ theorem compileXA_inv {p : XPipe} {code : List (BitVec 32)} (h : compileXA p = .
 
 /-- `ImplementsPipe` plus: at the return, `a1` holds the result length `|f x|` (the second ABI return
 register; the convention of `Spec/Implements1.lean`), so the result is exactly the first `a1` output bytes;
-and only the first `space |x|` output bytes may change (the output block beyond them is unchanged). -/
+and memory changes only in the first `space |x|` output bytes (no scratch, no stack). -/
 def ImplementsPipeLen (code : List (BitVec 32)) (f : List UInt8 → List UInt8) (space : Nat → Nat)
     (maxLen : Nat := 2 ^ 20) : Prop :=
   ∀ (x : List UInt8) (s : St) (entry ra : BitVec 64) (input scratch output stack : Region),
@@ -67,7 +67,7 @@ def ImplementsPipeLen (code : List (BitVec 32)) (f : List UInt8 → List UInt8) 
     (∀ i < space x.length, (s.mem[output.base + i]?).isSome) →
     runsTo s fun s' => s'.regs.get? .PC = some ra ∧
       bytesAt s' output.base (f x).length = (f x).map (some ·.toBitVec) ∧
-      unchangedOutside s s' [input, scratch, ⟨output.base, space x.length⟩, stack] ∧ calleeSavedKept s s' ∧
+      unchangedOutside s s' [input, ⟨output.base, space x.length⟩] ∧ calleeSavedKept s s' ∧
       Cfg s' ∧ s'.regs.get? .x11 = some (BitVec.ofNat 64 (f x).length)
 
 theorem unchanged_sub {s s' : St} {rs rs' : List Region} (h : unchangedOutside s s' rs)
@@ -81,11 +81,9 @@ theorem ImplementsPipeLen.toPipe {code : List (BitVec 32)} {f : List UInt8 → L
     h16 h17 h18) fun s' ⟨a, b, c, d, e, _⟩ => ⟨a, b, unchanged_sub c (fun a ha r hr => by
       simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
       have := ha output (by simp)
-      rcases hr with rfl | rfl | rfl | rfl
+      rcases hr with rfl | rfl
       · exact ha _ (by simp)
-      · exact ha _ (by simp)
-      · dsimp only; omega
-      · exact ha _ (by simp)), d, e⟩
+      · dsimp only; omega), d, e⟩
 
 /-- from a source-level run to the machine-level specification -/
 theorem implementsLen_of_exec {prog : AStmt} (hwf : prog.wf [0, 3]) {f : List UInt8 → List UInt8} {space : Nat → Nat}
