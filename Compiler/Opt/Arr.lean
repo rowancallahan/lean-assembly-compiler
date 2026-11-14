@@ -18,7 +18,7 @@ def irA (bv : List (Fin 8)) : AStmt → Code Nat
   | .store b i e => .seq (into (addrE bv b i) (tk 0) 0) (.seq (opnd e 1 (into e (tk 1) 1)).1
       (.ins (.sb (opnd e 1 (into e (tk 1) 1)).2.1 (.r (tk 0)) 0)))
   | .seq p q => .seq (irA bv p) (irA bv q)
-  | .loop c body => .loop (tst c 0).1 (tst c 0).2.1 (irA bv body)
+  | .loop c body => loopCode c (irA bv body)
 
 /-- block variables are never assigned, block numbers are in range (checked) -/
 def okA (bv : List (Fin 8)) : AStmt → Bool
@@ -133,14 +133,14 @@ theorem irA_ok (bv : List (Fin 8)) {R : List Region} (hR : ∀ r ∈ R, r.base +
     exact ⟨τ₂, .seq x₁ x₂, r₂⟩
   | @loopF c body σ hc =>
     intro hp τ r
-    obtain ⟨τ₁, x₁, t₁, f₁, _, _⟩ := tst_ok (ram := ramR R) c 0 τ (r.agree c)
-    exact ⟨τ₁, .loopF x₁ (t₁.trans (nz_false hc)), r.frame f₁⟩
+    obtain ⟨τ₁, x₁, f₁⟩ := loopCode_exit (ram := ramR R) (body := irA bv body) (r.agree c) hc
+    exact ⟨τ₁, x₁, r.frame f₁⟩
   | @loopT c body σ _ _ hc _ _ ihb ihl =>
     intro hp τ r
-    obtain ⟨τ₁, x₁, t₁, f₁, _, _⟩ := tst_ok (ram := ramR R) c 0 τ (r.agree c)
+    obtain ⟨τ₁, f₁, hx⟩ := loopCode_iter (ram := ramR R) (body := irA bv body) (r.agree c) hc
     obtain ⟨τ₂, x₂, r₂⟩ := ihb hp τ₁ (r.frame f₁)
     obtain ⟨τ₃, x₃, r₃⟩ := ihl hp τ₂ r₂
-    exact ⟨τ₃, .loopT x₁ (t₁.trans (nz_true hc)) x₂ x₃, r₃⟩
+    exact ⟨τ₃, hx τ₂ τ₃ x₂ x₃, r₃⟩
 
 /-- scratch register of the array pipeline -/
 def scA : Reg := ⟨6, by decide⟩

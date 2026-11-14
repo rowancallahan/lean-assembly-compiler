@@ -92,6 +92,30 @@ def into (e : AExp) (d : Nat) (k : Nat) : Code Nat := (gen e).1 d k
 /-- code and test for `e ≠ 0` -/
 def tst (e : AExp) (k : Nat) : Code Nat × Tst Nat × Nat := (gen e).2 k
 
+/-- `e` as a short-circuit conjunction `c ≠ 0 ∧ a ≠ 0` -/
+def cond2 : AExp → Option (AExp × AExp)
+  | .ite c a (.const z) => if z = 0 then some (c, a) else none
+  | _ => none
+
+theorem cond2_eq : ∀ {e c a : AExp}, cond2 e = some (c, a) → e = .ite c a (.const 0)
+  | .ite c' a' (.const z), c, a, h => by
+    simp only [cond2] at h
+    by_cases hz : z = 0
+    · rw [if_pos hz] at h; cases h; rw [hz]
+    · rw [if_neg hz] at h; exact nomatch h
+  | .ite _ _ (.var _), _, _, h => nomatch h
+  | .ite _ _ (.bin _ _ _), _, _, h => nomatch h
+  | .ite _ _ (.ite _ _ _), _, _, h => nomatch h
+  | .var _, _, _, h => nomatch h
+  | .const _, _, _, h => nomatch h
+  | .bin _ _ _, _, _, h => nomatch h
+
+/-- loop code for `while e do body` -/
+def loopCode (e : AExp) (body : Code Nat) : Code Nat :=
+  match cond2 e with
+  | some (c, a) => .loop2 (tst c 0).1 (tst c 0).2.1 (tst a 0).1 (tst a 0).2.1 body
+  | none => .loop (tst e 0).1 (tst e 0).2.1 body
+
 /-! ## Correctness -/
 
 variable (ram : Nat → Prop) (env : AEnv)
@@ -341,5 +365,46 @@ theorem into_ok (e : AExp) (d : Nat) (k : Nat) (σ : St Nat) (h : Agree env e σ
 
 theorem tst_ok (e : AExp) (k : Nat) (σ : St Nat) (h : Agree env e σ) :
     TstSpec ram (tst e k) k σ (e.denote env) := (gen_ok e).2 k σ h
+
+/-- the loop exits when the condition is zero (`R`: what the loop preserves; implied by `Frame 8`) -/
+theorem loopCode_exit {e : AExp} {body : Code Nat} {σ : St Nat} (hg : Agree env e σ) (h0 : e.denote env = 0) :
+    ∃ σ', Exec ram (loopCode e body) σ σ' ∧ Frame 8 σ σ' := by
+  unfold loopCode
+  cases hc : cond2 e with
+  | none =>
+    obtain ⟨σ₁, x₁, t₁, f₁, _, _⟩ := tst_ok (ram := ram) e 0 σ hg
+    exact ⟨σ₁, .loopF x₁ (t₁.trans (nz_false h0)), f₁⟩
+  | some ca =>
+    obtain ⟨c, a⟩ := ca
+    have he := cond2_eq hc
+    subst he
+    obtain ⟨gc, ga, _⟩ := agree_ite hg
+    obtain ⟨σ₁, x₁, t₁, f₁, _, _⟩ := tst_ok (ram := ram) c 0 σ gc
+    by_cases hc0 : c.denote env = 0
+    · exact ⟨σ₁, .loop2A x₁ (t₁.trans (nz_false hc0)), f₁⟩
+    · obtain ⟨σ₂, x₂, t₂, f₂, _, _⟩ := tst_ok (ram := ram) a 0 σ₁ (ga.frame f₁)
+      have ha0 : a.denote env = 0 := by simpa only [AExp.denote, if_neg hc0] using h0
+      exact ⟨σ₂, .loop2B x₁ (t₁.trans (nz_true hc0)) x₂ (t₂.trans (nz_false ha0)), f₁.trans f₂ (Nat.le_refl _)⟩
+
+/-- one iteration when the condition is nonzero -/
+theorem loopCode_iter {e : AExp} {body : Code Nat} {σ : St Nat} (hg : Agree env e σ) (h0 : e.denote env ≠ 0) :
+    ∃ σ₁, Frame 8 σ σ₁ ∧ ∀ σ₂ σ₃, Exec ram body σ₁ σ₂ → Exec ram (loopCode e body) σ₂ σ₃ →
+      Exec ram (loopCode e body) σ σ₃ := by
+  unfold loopCode
+  cases hc : cond2 e with
+  | none =>
+    obtain ⟨σ₁, x₁, t₁, f₁, _, _⟩ := tst_ok (ram := ram) e 0 σ hg
+    exact ⟨σ₁, f₁, fun σ₂ σ₃ xb xl => .loopT x₁ (t₁.trans (nz_true h0)) xb xl⟩
+  | some ca =>
+    obtain ⟨c, a⟩ := ca
+    have he := cond2_eq hc
+    subst he
+    obtain ⟨gc, ga, _⟩ := agree_ite hg
+    obtain ⟨σ₁, x₁, t₁, f₁, _, _⟩ := tst_ok (ram := ram) c 0 σ gc
+    have hc0 : ¬c.denote env = 0 := fun h => h0 (by simp only [AExp.denote, if_pos h])
+    obtain ⟨σ₂, x₂, t₂, f₂, _, _⟩ := tst_ok (ram := ram) a 0 σ₁ (ga.frame f₁)
+    have ha0 : ¬a.denote env = 0 := fun h => h0 (by simp only [AExp.denote, if_neg hc0]; exact h)
+    exact ⟨σ₂, f₁.trans f₂ (Nat.le_refl _), fun σ₃ σ₄ xb xl =>
+      .loop2T x₁ (t₁.trans (nz_true hc0)) x₂ (t₂.trans (nz_true ha0)) xb xl⟩
 
 end Proven.Mach.Sel

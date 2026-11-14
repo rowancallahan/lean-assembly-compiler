@@ -11,7 +11,7 @@ open IR
 def irS : Stmt → Code Nat
   | .assign v e => Sel.into (toA e) v.val 0
   | .seq a b => .seq (irS a) (irS b)
-  | .loop c b => .loop (Sel.tst (toA c) 0).1 (Sel.tst (toA c) 0).2.1 (irS b)
+  | .loop c b => Sel.loopCode (toA c) (irS b)
 
 /-- selection preserves the statement semantics -/
 theorem irS_ok (ram : Nat → Prop) : ∀ {p : Stmt} {σe σe' : Env}, Exec p σe σe' → ∀ (σ : St Nat),
@@ -35,16 +35,16 @@ theorem irS_ok (ram : Nat → Prop) : ∀ {p : Stmt} {σe σe' : Env}, Exec p σ
     exact ⟨σ₂, .seq x₁ x₂, v₂, m₂.trans m₁⟩
   | @loopF c b σe hc =>
     intro σ hσ
-    obtain ⟨σ₁, x₁, t₁, f₁, _, _⟩ := Sel.tst_ok (ram := ram) (toA c) 0 σ (agree_toA c hσ)
-    rw [toA_denote] at t₁
-    exact ⟨σ₁, .loopF x₁ (t₁.trans (Sel.nz_false hc)), fun i => (f₁.2 i.val (by omega)).trans (hσ i), f₁.1⟩
+    obtain ⟨σ₁, x₁, f₁⟩ := Sel.loopCode_exit (ram := ram) (body := irS b) (agree_toA c hσ)
+      (by rw [toA_denote]; exact hc)
+    exact ⟨σ₁, x₁, fun i => (f₁.2 i.val (by omega)).trans (hσ i), f₁.1⟩
   | @loopT c b σe _ _ hc _ _ ihb ihl =>
     intro σ hσ
-    obtain ⟨σ₁, x₁, t₁, f₁, _, _⟩ := Sel.tst_ok (ram := ram) (toA c) 0 σ (agree_toA c hσ)
-    rw [toA_denote] at t₁
+    obtain ⟨σ₁, f₁, hx⟩ := Sel.loopCode_iter (ram := ram) (body := irS b) (agree_toA c hσ)
+      (by rw [toA_denote]; exact hc)
     obtain ⟨σ₂, x₂, v₂, m₂⟩ := ihb σ₁ fun i => (f₁.2 i.val (by omega)).trans (hσ i)
     obtain ⟨σ₃, x₃, v₃, m₃⟩ := ihl σ₂ v₂
-    exact ⟨σ₃, .loopT x₁ (t₁.trans (Sel.nz_true hc)) x₂ x₃, v₃, m₃.trans (m₂.trans f₁.1)⟩
+    exact ⟨σ₃, hx σ₂ σ₃ x₂ x₃, v₃, m₃.trans (m₂.trans f₁.1)⟩
 
 namespace Wide
 variable (M : Wide)
