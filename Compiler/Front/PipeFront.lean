@@ -41,10 +41,13 @@ def code (c : Compiled enc f) : List (BitVec 32) := codeX c.pipe
 
 theorem compiles (c : Compiled enc f) : compileX c.pipe = .ok c.code := compileX_of_toBool c.check
 
-/-- the code implements the user's function (result encoded by `enc`) -/
-theorem ok (c : Compiled enc f) : ImplementsPipe c.code (fun xs => enc (f xs)) (XPipe.space c.pipe) := by
+/-- the code implements the user's function (result encoded by `enc`), and returns the result length in `a1` -/
+theorem okLen (c : Compiled enc f) : ImplementsPipeLen c.code (fun xs => enc (f xs)) (XPipe.space c.pipe) := by
   have : (fun xs => enc (f xs)) = XPipe.denote c.pipe := funext c.denote
   rw [this]; exact compileXA_ok c.compiles
+
+/-- the code implements the user's function (result encoded by `enc`) -/
+theorem ok (c : Compiled enc f) : ImplementsPipe c.code (fun xs => enc (f xs)) (XPipe.space c.pipe) := c.okLen.toPipe
 
 /-- `ImplementsMapped` form, when the output block needs no more than the result -/
 theorem mapped (c : Compiled enc f) (hs : ∀ x : List UInt8, XPipe.space c.pipe x.length ≤ (enc (f x)).length) :
@@ -55,6 +58,10 @@ end Compiled
 /-- list-valued functions: the statement is about `f` itself -/
 theorem Compiled.implements {f : List UInt8 → List UInt8} (c : Compiled encL f) :
     ImplementsPipe c.code f (XPipe.space c.pipe) := c.ok
+
+/-- list-valued functions with the length in `a1` (for data-dependent lengths: `filter`, `takeWhile`, ...) -/
+theorem Compiled.implementsLen {f : List UInt8 → List UInt8} (c : Compiled encL f) :
+    ImplementsPipeLen c.code f (XPipe.space c.pipe) := c.okLen
 
 /-! ## Reification -/
 

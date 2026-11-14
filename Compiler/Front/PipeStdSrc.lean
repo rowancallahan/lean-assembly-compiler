@@ -919,7 +919,8 @@ theorem XPipe.prog_exec (p : XPipe) (hc : ∀ st ∈ p, st.chk = none) (xs : Lis
     (env : AEnv) (h1 : env 1 = .ofNat 64 xs.length) (hx : xs.length < 2 ^ 32)
     (hsp : XPipe.space p xs.length ≤ out.length) (hL : out.length < 2 ^ 32) :
     ∃ σ' out', AExec (XPipe.prog p) ⟨env, [tbs xs, out]⟩ σ' ∧ σ'.heap = [tbs xs, out'] ∧
-      out'.length = out.length ∧ out'.take (XPipe.denote p xs).length = tbs (XPipe.denote p xs) := by
+      out'.length = out.length ∧ out'.take (XPipe.denote p xs).length = tbs (XPipe.denote p xs) ∧
+      σ'.env 1 = .ofNat 64 (XPipe.denote p xs).length := by
   have ho : out = tbs (out.map fun b => ⟨b⟩) := by simp [tbs, List.map_map, Function.comp_def]
   generalize out.map (fun b => (⟨b⟩ : UInt8)) = o at ho; subst ho
   have e1 : (env 1).toNat = xs.length := by rw [h1]; exact ofNat_toNat_lt (by omega)
@@ -929,8 +930,9 @@ theorem XPipe.prog_exec (p : XPipe) (hc : ∀ st ∈ p, st.chk = none) (xs : Lis
   obtain ⟨⟨env', heap'⟩, hex, out', fs, hI⟩ := xstmts_exec hx hL p hc hI0 hsp
   obtain ⟨rfl, h4, hcur, hm⟩ := hI.clean
   have hh := hI.heap; dsimp only at hh hcur; subst hh
-  refine ⟨_, tbs out', ExecL.foldl (AExec.assign' rfl) hex, rfl, by simpa using hI.olen, ?_⟩
   have : (XPipe.denote p xs).length = (env' 1).toNat := hI.len
-  rw [this, hcur]; simp [tbs]
+  refine ⟨_, tbs out', ExecL.foldl (AExec.assign' rfl) hex, rfl, by simpa using hI.olen, ?_, ?_⟩
+  · rw [this, hcur]; simp [tbs]
+  · rw [this]; simp
 
 end Proven
