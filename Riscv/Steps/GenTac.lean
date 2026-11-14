@@ -280,7 +280,7 @@ macro "gstep_core" : tactic => `(tactic| (
 open Lean Meta Elab Tactic in
 /-- `step_word` for words with symbolic fields (same interface) -/
 elab "gstep" : tactic => withMainContext do
-  let ty ← instantiateMVars (← (← getMainGoal).getType)
+  let ty := (← instantiateMVars (← (← getMainGoal).getType)).consumeMData
   let .app _ (.lam _ _ body _) := ty | throwError "gstep: expected ∃ s', Next s s' .."
   let args := body.getAppArgs
   unless body.isAppOfArity ``Next 6 do throwError "gstep: expected ∃ s', Next s s' .."
