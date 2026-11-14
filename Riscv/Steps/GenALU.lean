@@ -69,7 +69,7 @@ set_option hygiene false in
 macro "genc" : tactic => `(tactic| (
   first | rw [Proven.G.encR_eq] at hi | rw [Proven.G.encI_eq] at hi | rw [Proven.G.encSh_eq] at hi |
     rw [Proven.G.encU_eq _ (by decide)] at hi
-  simp only [Nat.reduceShiftLeft, Nat.reduceOr, Nat.reduceMod] at hi))
+  try simp only [Nat.reduceShiftLeft, Nat.reduceOr, Nat.reduceMod] at hi))
 
 /-- `add rd, rs1, rs2` (`rd ≠ 0`: `add x0, x0, x2..x5` decode as the `ntl.*` hints) -/
 theorem step_add (rd rs1 rs2 : Fin 32) (hrd : rd ≠ 0) (hi : instrAt s pc (encR 0 0 rd rs1 rs2)) :
@@ -100,7 +100,8 @@ theorem step_addi (rd rs1 : Fin 32) (imm : BitVec 12) (hi : instrAt s pc (encI 0
     ∃ s', Next s s' (pc + 4) rd (getX s rs1 + imm.signExtend 64) s.mem := by genc; gstep
 theorem step_andi (rd rs1 : Fin 32) (imm : BitVec 12) (hi : instrAt s pc (encI 7 imm.toNat rd rs1)) :
     ∃ s', Next s s' (pc + 4) rd (getX s rs1 &&& imm.signExtend 64) s.mem := by genc; gstep
-theorem step_ori (rd rs1 : Fin 32) (imm : BitVec 12) (hi : instrAt s pc (encI 6 imm.toNat rd rs1)) :
+/-- `ori` (`rd ≠ 0`: `ori x0, rs1, imm` with `imm[4:0] ∈ {0,1,3}` decode as the Zicbop `prefetch.*` hints) -/
+theorem step_ori (rd rs1 : Fin 32) (imm : BitVec 12) (hrd : rd ≠ 0) (hi : instrAt s pc (encI 6 imm.toNat rd rs1)) :
     ∃ s', Next s s' (pc + 4) rd (getX s rs1 ||| imm.signExtend 64) s.mem := by genc; gstep
 theorem step_xori (rd rs1 : Fin 32) (imm : BitVec 12) (hi : instrAt s pc (encI 4 imm.toNat rd rs1)) :
     ∃ s', Next s s' (pc + 4) rd (getX s rs1 ^^^ imm.signExtend 64) s.mem := by genc; gstep
