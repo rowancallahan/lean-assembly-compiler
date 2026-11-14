@@ -27,6 +27,15 @@ NI void c_insertion(const u8 *in, u64 n, u8 *scr, u8 *out) { for (u64 i = 0; i <
 NI u64 c_sum(const u8 *in, u64 n, u8 *scr, u8 *out) { u64 s = 0; for (u64 i = 0; i < n; i++) s += in[i]; return s; }
 NI void c_take(const u8 *in, u64 n, u8 *scr, u8 *out) { for (u64 i = 0; i < n; i++) out[i] = in[i]; }   /* take n (= len) */
 NI void c_inc(const u8 *in, u64 n, u8 *scr, u8 *out) { for (u64 i = 0; i < n; i++) out[i] = in[i] + 1; }   /* map (+1) */
+/* CRC-32 (zlib), table of 256 64-bit words built in scr on every call, as the compiled crcP */
+NI void c_crc(const u8 *in, u64 n, u8 *scr, u8 *out) {
+  u64 *t = (u64 *)scr;
+  for (u64 i = 0; i < 256; i++) { u64 c = i; for (int k = 0; k < 8; k++) c = (c >> 1) ^ ((c & 1) ? 0xEDB88320u : 0); t[i] = c; }
+  u64 c = 0xFFFFFFFFu;
+  for (u64 i = 0; i < n; i++) c = t[(c ^ in[i]) & 255] ^ (c >> 8);
+  c ^= 0xFFFFFFFFu;
+  for (int k = 0; k < 4; k++) out[k] = (u8)(c >> (8 * k));
+}
 
 /* ---- loops on numbers ---- */
 NI u64 c_gcd(u64 a, u64 b) { while (a && b) { if (a < b) b -= a; else a -= b; } return a ? a : b; }

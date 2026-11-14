@@ -24,6 +24,7 @@ MODEL = {
   "revtake5": lambda xs: (xs[::-1][:5], None), "mapsort": lambda xs: (sorted(x & 0x7f for x in xs), None),
   "sort": lambda xs: (sorted(xs), None), "sum64": lambda xs: (le8(sum(xs)), None),
   "hash64": lambda xs: (le8(fold(lambda a, x: ((a ^ x) + (a << 5)) & M64, 5381, xs)), None),
+  "crc": lambda xs: (list(__import__("zlib").crc32(bytes(xs)).to_bytes(4, "little")), None),
   "sortdesc": lambda xs: ([x if x != 3 else 0 for x in sorted(xs)[::-1][2:]], None), "mid": lambda xs: (sorted(xs)[1:4], None),
   "foldsorted": lambda xs: ([fold(lambda a, x: ((a - x) & 255) ^ 1, 7, sorted(xs)[::-1][:4])], None),
   "twosort": lambda xs: (sorted((x | 1) if x >= 0x80 else (0xff - x) for x in sorted(xs[3:])[:10][::-1]), None),
@@ -47,7 +48,7 @@ QUAD = {"insertion"}
 # ---- what exists: ours words (RV), hand-written sources
 OURS = {"msort": wfile("arr-words", "msort"), "insertion": wfile("arr-words", "sort"), "sum": wfile("arr-words", "sum"),
         "take": wfile("arr-words", "take"), "inc": wfile("arr-words", "inc"),
-        "gcd": wfile("loop-words", "gcd"), "loopsum": wfile("loop-words", "sum")}
+        "crc": wfile("arr-words", "crc"), "gcd": wfile("loop-words", "gcd"), "loopsum": wfile("loop-words", "sum")}
 for n in ARR:
     if os.path.exists(wfile("pipe-words", n)) and n not in OURS: OURS[n] = wfile("pipe-words", n)
 OURS["sort"] = wfile("pipe-words", "sort")
@@ -119,7 +120,7 @@ def layout(func, cases):
         o = len(blob); blob.extend(b); return o
     for c in cases:
         if "xs" in c:
-            n = len(c["xs"]); i0 = alloc(bytes(c["xs"]) + b"\xAA" * 64); s0 = alloc(b"\x33" * (3 * n + 256)); o0 = alloc(b"\x55" * (2 * n + 256)); k0 = alloc(b"\x77" * 8192)
+            n = len(c["xs"]); i0 = alloc(bytes(c["xs"]) + b"\xAA" * 64); s0 = alloc(b"\x33" * max(3 * n + 256, 4096)); o0 = alloc(b"\x55" * (2 * n + 256)); k0 = alloc(b"\x77" * 8192)
             a2 = f"base+{i0 if False else (n if func in A2N else s0)}" if func not in A2N else str(n)
             a2 = str(n) if func in A2N else f"base+{s0}"
             lines.append(f"  .quad base+{i0}, {n}, {a2}, base+{o0}, base+{k0 + 8192 - 16}, 0, 0, 0")
