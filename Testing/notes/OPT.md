@@ -228,3 +228,46 @@ model `zlib.crc32`, C version `c_crc` added to `bench/bench.c`), RV64 QEMU, outp
 | old `rvF.compBF` | 823 | 142,053 | 58.0 |
 | optimised `compBFO` | 141 | 18,477 | 11.0 |
 | gcc -O2 | — | 15,891 | 10.0 |
+
+## Integration on `main` (2026-11-14): `Implements1` on the optimised words, front end switched
+
+Kernel-checked (`Riscv/Back/Implements1Opt.lean`, `Riscv/Examples/Implements1Opt.lean`; `#print axioms`: the 77 of
+`crc32_implements1`, `Testing/scripts/axioms_k.lean`):
+- `compileAFO_okK`, `compileBFO_okK`: `compileAFO_ok` / `compileBFO_ok` concluding `rv.keep` (as `compileAF_okK`,
+  `compileBF_okK`); `implements1_of_execO`: `implements1_of_exec` with the same hypotheses for `compBFO N [0, 3] [2]`.
+- optimised codes `takeCodeO k`, `incCodeO`, `sumCodeO`, `Crc.crcCodeO` (`compBFO`), `sortCodeO` (`compileAFO`),
+  `msortCodeO` (`compileBFO`), with `take_implements1O`, `inc_implements1O`, `sum_implements1O`,
+  `Crc.crc32_implements1O`, `sortCode_implements1O`, `msortCode_implements1O`: the statements of the unoptimised
+  theorems with the code names suffixed `O` (same `space`, `retLen`). All six take the optimised path (words:
+  take 66 → 33, inc 58 → 32, sum 177 → 51, CRC-32 823 → 141, insertion sort 104 → 38, merge sort 442 → 215).
+- Tested: `Testing/asm/impl1_test.py NAME 100` (QEMU == Sail == model in the `Implements1` convention, exact-size
+  output and work blocks with guards, gp/sp restored, a1 for `take5`), unoptimised and `WDIR=impl1-opt-words`:
+  see `Testing/asm/impl1-opt-words/RESULTS.txt`.
+- The list front end: `compileP`, `compileXA` emit `compileAFO`, `compileXB` emits `compileBFO`; `compileP_ok`,
+  `compileXA_ok`, `compileX_ok`, `compileP_implements1` re-proved with unchanged statements. 36/36 examples
+  `pipe_test.py NAME 300` pass (`Testing/asm/pipe-words/RESULTS.txt`; e.g. `sort` 446 → 168 words, `twosort` 1144 → 476).
+
+Measured (`python3 bench/bench.py sum take inc gcd loopsum insertion msort crc --quick`, RV64 QEMU `-icount`,
+instructions inside the function; "unoptimised" = the words in `Testing/asm/{arr,loop}-words/`, "optimised" =
+`Testing/asm/opt-words/` (the same programs through the optimising back end; merge sort and CRC-32 are exactly
+`msortCodeO`, `crcCodeO`); gcc -O2 = `riscv64-linux-gnu-gcc -O2` of `bench/bench.c`, measured in the same run and
+equal to `bench/NOTES.md`):
+
+| function | unoptimised | optimised | gcc -O2 | opt / gcc |
+|---|---|---|---|---|
+| sum of bytes, per element (n = 100000) | 20.0 | 5.0 | 4.0 | 1.25 |
+| take, per element (n = 100000) | 21.0 | 6.0 | 5.0 | 1.20 |
+| map (+1), per element (n = 100000) | 25.0 | 7.0 | 6.0 | 1.17 |
+| loop sum (`sumDown`), per iteration (n = 100000) | 13.0 | 3.0 | 3.0 | 1.00 |
+| gcd (100000, 3), per step | 12.0 | 2.0 | 1.0 | 2.0 |
+| gcd (832040, 514229), whole call | 1058 | 178 | 77 | 2.3 |
+| insertion sort, n = 1000, per element | 10520 | 3911 | 1715 | 2.28 |
+| insertion sort, n = 10000, per element | 107833 | 40120 | 17557 | 2.29 |
+| merge sort, n = 100, per element | 606.4 | 193.7 | 101.8 | 1.90 |
+| merge sort, n = 1000, per element | 920.3 | 285.9 | 132.2 | 2.16 |
+| merge sort, n = 100000, per element | 1394.0 | 427.5 | 221.2 | 1.93 |
+| CRC-32, n = 100000, per byte (incl. building the table) | 59.4 | 11.2 | 10.2 | 1.10 |
+| CRC-32, n = 100, whole call | 147853 | 19577 | 16898 | 1.16 |
+
+(gcd (100000, 3): whole call 1200110 / 200020 / 100010 instructions, divided by 100000 loop iterations here; the
+earlier table above divides differently; the whole-call numbers agree with it.)
