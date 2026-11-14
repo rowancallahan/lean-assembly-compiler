@@ -3,7 +3,7 @@
 ## AArch64 backend correctness (`Arm/`, Lean 4.34.1)
 
 Build/check everything in order: `./check.sh` (oleans go to `build/`, not committed). Needs the built model in
-`/home/user/armv9-lean`. `Proven/Code.lean` and `Proven/CompilerArm.lean` are byte-identical copies of the 4.29 sources.
+`/home/user/armv9-lean`. `Proven.Code` / `Proven.CompilerArm` are staged by `check.sh` from `Spec/Code.lean` and `Arm/CompilerArm.lean` (single copy).
 `Arm/Words.lean` is generated: `python3 gen/gen_words.py > Arm/Words.lean`.
 
 | File | Statement | Layer | Time |
