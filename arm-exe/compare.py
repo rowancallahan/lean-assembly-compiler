@@ -9,10 +9,11 @@ for l in open(src):
     k, *r = l.split()
     if k == "case": cases.append({"name": r[0], "t": []})
     elif k in ("rv", "arm"): cases[-1][k] = r
+    elif k == "exp": cases[-1]["exp"] = " ".join(r)
     else: assert k == "t" and len(r) == 5, l; cases[-1]["t"].append(r)
 N = sum(len(c["t"]) for c in cases)
 open(p("in.txt"), "w").write("".join(" ".join(t[:4] + c["arm"]) + "\n" for c in cases for t in c["t"]))
-t0 = time.time(); out = subprocess.check_output([armrun, p("in.txt")], text=True).split(); dt = time.time() - t0
+t0 = time.time(); out = subprocess.check_output([armrun, "run", p("in.txt")], text=True).split(); dt = time.time() - t0
 assert len(out) == N
 model = [int(x, 16) for x in out]
 ARM = """.section .text.start
@@ -57,7 +58,7 @@ for c in cases:
     b = 0
     for i, t in enumerate(ts):
         e, m = int(t[4], 16), model[k + i]
-        if not e == m == q[i]: b += 1; print(f"MISMATCH {c['name']} words={' '.join(c['arm'])} inputs={t[:4]} expected={e:x} model={m:x} qemu={q[i]:x}")
+        if not e == m == q[i]: b += 1; print(f"MISMATCH {c['name']} exp={c.get('exp')} words={' '.join(c['arm'])} inputs={t[:4]} expected={e:x} model={m:x} qemu={q[i]:x}")
     print(f"{c['name']}: {n} inputs, {len(c['arm'])} words, mismatches {b}"); bad += b; k += n
 print(f"TOTAL {N} inputs, {len(cases)} cases, mismatches {bad}; model runner {dt:.2f} s = {N/dt:.0f} inputs/s (incl. startup and reset)")
 assert bad == 0

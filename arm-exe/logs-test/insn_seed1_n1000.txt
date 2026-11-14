@@ -1,0 +1,52 @@
+add_shifted: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+sub_shifted: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+and_shifted: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+orr_shifted: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+eor_shifted: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+subs_shifted: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+cmp_shifted: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+mov_orr_xzr: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+lslv: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+lsrv: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+asrv: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+cmp_imm: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+subs_imm: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+add_imm: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+sub_imm: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+csinc_lo_lt_eq: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+cset_lo_lt_eq: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+csel_ne: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+csel_allcond: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+csinc_allcond: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+movz: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+movk: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+movn: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+ret: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+b: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+cbz: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+cbnz: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+b.eq: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+b.ne: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+b.hs: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+b.lo: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+b.ge: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+b.lt: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+b.cond_all: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+ldr_x: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+str_x: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+ldrb: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+ldr_x_unaligned: 1000 states, mismatches 0, model PC outside insn+4/+8: 1000
+str_x_unaligned: 1000 states, mismatches 0, model PC outside insn+4/+8: 1000
+strb: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+lsl_imm: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+lsr_imm: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+asr_imm: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+ubfm_any: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+sbfm_any: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+madd: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+msub: 1000 states, mismatches 0, model PC outside insn+4/+8: 0
+TOTAL 47 forms, 47000 states, mismatches 0
+
+real	0m42.504s
+user	0m40.099s
+sys	0m2.099s
