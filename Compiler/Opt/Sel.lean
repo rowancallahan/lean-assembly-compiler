@@ -1,0 +1,333 @@
+/- Instruction selection: `AExp` (and through it `Exp`) to IR code over VIRTUAL registers (`Nat`):
+variable `i` is virtual register `i` (`< 8`), temporary `k` is `8 + k`.
+
+The selection does, at the tree level: operands in place (a variable or constant is used directly, never
+copied into a temporary), results written straight to their destination, constants as immediate operands,
+comparison/branch fusion (`tst`: a comparison used as a condition becomes the branch condition, no 0/1 value),
+and `ite` as a conditional assignment (a forward branch over the assignment) instead of a mask sequence.
+
+`gen e = (into, tst)`: `into d k` is code for `d := e` using temporaries `≥ k`; `tst k` is code and a test
+equivalent to `e ≠ 0`. -/
+import Compiler.Opt.IR
+import Spec.ArrCode
+
+namespace Proven.Mach.Sel
+open IR
+
+/-- temporary `k` -/
+def tk (k : Nat) : Nat := 8 + k
+
+def leaf : AExp → Option (Arg Nat)
+  | .var i => some (.r i.val)
+  | .const c => some (.i c)
+  | _ => none
+
+def cmpOf : Op → Option Cond
+  | .ult => some .ltu
+  | .slt => some .lt
+  | .eq => some .eq
+  | _ => none
+
+/-- `e` reads virtual register `x` -/
+def uses : AExp → Nat → Bool
+  | .var i, x => decide (i.val = x)
+  | .const _, _ => false
+  | .bin _ a b, x => uses a x || uses b x
+  | .ite c a b, x => uses c x || uses a x || uses b x
+
+def argUses : Arg Nat → Nat → Bool
+  | .r y, x => decide (y = x)
+  | .i _, _ => false
+
+def tstUses (t : Tst Nat) (x : Nat) : Bool := argUses t.a x || argUses t.b x
+
+def isVar : AExp → Nat → Bool
+  | .var i, x => decide (i.val = x)
+  | _, _ => false
+
+/-- an operand: a leaf in place, otherwise computed into temporary `k` by `code`;
+returns (code, operand, next free temporary) -/
+def opnd (e : AExp) (k : Nat) (code : Code Nat) : Code Nat × Arg Nat × Nat :=
+  match leaf e with
+  | some a => (.skip, a, k)
+  | none => (code, .r (tk k), k + 1)
+
+def ops2 (a b : AExp) (ia ib : Nat → Nat → Code Nat) (k : Nat) : Code Nat × Arg Nat × Arg Nat × Nat :=
+  ((opnd a k (ia (tk k) k)).1.seq (opnd b (opnd a k (ia (tk k) k)).2.2
+      (ib (tk (opnd a k (ia (tk k) k)).2.2) (opnd a k (ia (tk k) k)).2.2)).1,
+   (opnd a k (ia (tk k) k)).2.1,
+   (opnd b (opnd a k (ia (tk k) k)).2.2 (ib (tk (opnd a k (ia (tk k) k)).2.2) (opnd a k (ia (tk k) k)).2.2)).2.1,
+   (opnd b (opnd a k (ia (tk k) k)).2.2 (ib (tk (opnd a k (ia (tk k) k)).2.2) (opnd a k (ia (tk k) k)).2.2)).2.2)
+
+/-- `d := if T then a else b` -/
+def iteCode (T : Code Nat × Tst Nat × Nat) (a b : AExp) (ia ib : Nat → Nat → Code Nat) (d : Nat) : Code Nat :=
+  if isVar b d = true then .seq T.1 (.when T.2.1 (ia d T.2.2))
+  else if (tstUses T.2.1 d || uses a d) = false then .seq T.1 (.seq (ib d T.2.2) (.when T.2.1 (ia d T.2.2)))
+  else .seq T.1 (.seq (ib (tk T.2.2) (T.2.2 + 1)) (.seq (.when T.2.1 (ia (tk T.2.2) (T.2.2 + 1)))
+    (.ins (.set d (.r (tk T.2.2))))))
+
+/-- a value in temporary `k` as a test -/
+def tstOf (c : Code Nat) (k : Nat) : Code Nat × Tst Nat × Nat := (c, ⟨.ne, .r (tk k), .i 0⟩, k + 1)
+
+def gen : AExp → (Nat → Nat → Code Nat) × (Nat → Code Nat × Tst Nat × Nat)
+  | .var i => (fun d _ => if i.val = d then .skip else .ins (.set d (.r i.val)),
+      fun k => (.skip, ⟨.ne, .r i.val, .i 0⟩, k))
+  | .const c => (fun d _ => .ins (.set d (.i c)), fun k => (.skip, ⟨.ne, .i c, .i 0⟩, k))
+  | .bin op a b =>
+      (fun d k => (ops2 a b (gen a).1 (gen b).1 k).1.seq
+          (.ins (.bin op d (ops2 a b (gen a).1 (gen b).1 k).2.1 (ops2 a b (gen a).1 (gen b).1 k).2.2.1)),
+       fun k => match cmpOf op with
+        | some cnd => ((ops2 a b (gen a).1 (gen b).1 k).1,
+            ⟨cnd, (ops2 a b (gen a).1 (gen b).1 k).2.1, (ops2 a b (gen a).1 (gen b).1 k).2.2.1⟩,
+            (ops2 a b (gen a).1 (gen b).1 k).2.2.2)
+        | none => tstOf ((ops2 a b (gen a).1 (gen b).1 k).1.seq
+            (.ins (.bin op (tk k) (ops2 a b (gen a).1 (gen b).1 k).2.1 (ops2 a b (gen a).1 (gen b).1 k).2.2.1))) k)
+  | .ite c a b =>
+      (fun d k => iteCode ((gen c).2 k) a b (gen a).1 (gen b).1 d,
+       fun k => tstOf (iteCode ((gen c).2 k) a b (gen a).1 (gen b).1 (tk k)) k)
+
+/-- code for `d := e`, temporaries `≥ k` -/
+def into (e : AExp) (d : Nat) (k : Nat) : Code Nat := (gen e).1 d k
+/-- code and test for `e ≠ 0` -/
+def tst (e : AExp) (k : Nat) : Code Nat × Tst Nat × Nat := (gen e).2 k
+
+/-! ## Correctness -/
+
+variable (ram : Nat → Prop) (env : AEnv)
+
+/-- the registers `e` reads hold the environment -/
+def Agree (e : AExp) (σ : St Nat) : Prop := ∀ i : Fin 8, uses e i.val = true → σ.reg i.val = env i
+
+/-- memory and registers below `n` unchanged -/
+def Frame (n : Nat) (σ σ' : St Nat) : Prop := σ'.mem = σ.mem ∧ ∀ x, x < n → σ'.reg x = σ.reg x
+
+/-- `c` sets `d` to `v`, changing otherwise only temporaries `≥ k` -/
+def IntoSpec (c : Code Nat) (d : Nat) (k : Nat) (σ : St Nat) (v : BitVec 64) : Prop :=
+  ∃ σ', Exec ram c σ σ' ∧ σ'.reg d = v ∧ σ'.mem = σ.mem ∧ ∀ x, x ≠ d → x < 8 + k → σ'.reg x = σ.reg x
+
+def argBelow (a : Arg Nat) (n : Nat) : Prop := ∀ x, argUses a x = true → x < n
+def tstBelow (t : Tst Nat) (n : Nat) : Prop := ∀ x, tstUses t x = true → x < n
+
+/-- `T` tests `v ≠ 0`, changing only temporaries `≥ k`; its operands live below its next free temporary -/
+def TstSpec (T : Code Nat × Tst Nat × Nat) (k : Nat) (σ : St Nat) (v : BitVec 64) : Prop :=
+  ∃ σ', Exec ram T.1 σ σ' ∧ T.2.1.eval σ'.reg = !decide (v = 0) ∧ Frame (8 + k) σ σ' ∧
+    tstBelow T.2.1 (8 + T.2.2) ∧ k ≤ T.2.2
+
+variable {ram env}
+
+theorem Frame.refl (n : Nat) (σ : St Nat) : Frame n σ σ := ⟨rfl, fun _ _ => rfl⟩
+
+theorem Frame.trans {n m : Nat} {σ₁ σ₂ σ₃ : St Nat} (h₁ : Frame n σ₁ σ₂) (h₂ : Frame m σ₂ σ₃) (hnm : n ≤ m) :
+    Frame n σ₁ σ₃ := ⟨h₂.1.trans h₁.1, fun x hx => (h₂.2 x (by omega)).trans (h₁.2 x hx)⟩
+
+theorem Agree.frame {e : AExp} {σ σ' : St Nat} {n : Nat} (h : Agree env e σ) (f : Frame (8 + n) σ σ') :
+    Agree env e σ' := fun i hi => (f.2 i.val (by omega)).trans (h i hi)
+
+theorem or_false2 {a b : Bool} (h : (a || b) = false) : a = false ∧ b = false := by
+  cases a <;> cases b <;> simp_all
+
+theorem argEval_congr {a : Arg Nat} {σ σ' : Regs Nat} (h : ∀ x, argUses a x = true → σ' x = σ x) :
+    a.eval σ' = a.eval σ := by
+  cases a with
+  | r y => exact h y (decide_eq_true rfl)
+  | i c => rfl
+
+theorem tstEval_congr {t : Tst Nat} {σ σ' : Regs Nat} (h : ∀ x, tstUses t x = true → σ' x = σ x) :
+    t.eval σ' = t.eval σ := by
+  unfold Tst.eval
+  rw [argEval_congr (a := t.a) fun x hx => h x (by unfold tstUses; rw [hx]; rfl),
+    argEval_congr (a := t.b) fun x hx => h x (by unfold tstUses; rw [hx, Bool.or_true])]
+
+theorem upd_same (σ : Regs Nat) (d : Nat) (v : BitVec 64) : upd σ d v d = v := ite_pos rfl
+theorem upd_other (σ : Regs Nat) {d x : Nat} (v : BitVec 64) (h : x ≠ d) : upd σ d v x = σ x := ite_neg h
+
+theorem cmp_eval {op : Op} {cnd : Cond} (h : cmpOf op = some cnd) (x y : BitVec 64) :
+    cnd.eval x y = !decide (op.eval x y = 0) := by
+  cases op <;> simp [cmpOf] at h <;> (subst h; simp only [Cond.eval, Op.eval]; split <;> simp_all)
+
+theorem nz_false {v : BitVec 64} (h : v = 0) : (!decide (v = 0)) = false := by rw [decide_eq_true h]; rfl
+theorem nz_true {v : BitVec 64} (h : ¬v = 0) : (!decide (v = 0)) = true := by rw [decide_eq_false h]; rfl
+
+theorem ne0_eval (σ : Regs Nat) (x : Nat) : (⟨.ne, .r x, .i 0⟩ : Tst Nat).eval σ = !decide (σ x = 0) := rfl
+
+/-- an operand from the `into` specification of its expression -/
+theorem opnd_ok {e : AExp} {ie : Nat → Nat → Code Nat} {k : Nat} {σ : St Nat}
+    (hi : IntoSpec ram (ie (tk k) k) (tk k) k σ (e.denote env)) (ha : Agree env e σ) :
+    ∃ σ', Exec ram (opnd e k (ie (tk k) k)).1 σ σ' ∧ (opnd e k (ie (tk k) k)).2.1.eval σ'.reg = e.denote env ∧
+      Frame (8 + k) σ σ' ∧ argBelow (opnd e k (ie (tk k) k)).2.1 (8 + (opnd e k (ie (tk k) k)).2.2) ∧
+      k ≤ (opnd e k (ie (tk k) k)).2.2 := by
+  have gen : leaf e = none → ∃ σ', Exec ram (ie (tk k) k) σ σ' ∧ (Arg.r (tk k)).eval σ'.reg = e.denote env ∧
+      Frame (8 + k) σ σ' ∧ argBelow (.r (tk k)) (8 + (k + 1)) ∧ k ≤ k + 1 := fun _ => by
+    obtain ⟨σ', hx, hv, hm, hf⟩ := hi
+    refine ⟨σ', hx, hv, ⟨hm, fun x hx => hf x (by unfold tk; omega) hx⟩, fun x hx => ?_, by omega⟩
+    have := of_decide_eq_true hx; unfold tk at this; omega
+  cases e with
+  | var i =>
+    refine ⟨σ, .skip, ha i (decide_eq_true rfl), Frame.refl _ _, fun x hx => ?_, Nat.le_refl _⟩
+    have := of_decide_eq_true hx; show x < 8 + k; omega
+  | const c => exact ⟨σ, .skip, rfl, Frame.refl _ _, fun x hx => (Bool.false_ne_true hx).elim, Nat.le_refl _⟩
+  | bin op a b => exact gen rfl
+  | ite c a b => exact gen rfl
+
+theorem agree_bin {op : Op} {a b : AExp} {σ : St Nat} (h : Agree env (.bin op a b) σ) :
+    Agree env a σ ∧ Agree env b σ :=
+  ⟨fun i hi => h i (by simp only [uses, hi, Bool.true_or]), fun i hi => h i (by simp only [uses, hi, Bool.or_true])⟩
+
+theorem agree_ite {c a b : AExp} {σ : St Nat} (h : Agree env (.ite c a b) σ) :
+    Agree env c σ ∧ Agree env a σ ∧ Agree env b σ :=
+  ⟨fun i hi => h i (by simp only [uses, hi, Bool.true_or]),
+   fun i hi => h i (by simp only [uses, hi, Bool.true_or, Bool.or_true]),
+   fun i hi => h i (by simp only [uses, hi, Bool.or_true])⟩
+
+theorem ops2_ok {a b : AExp} {ia ib : Nat → Nat → Code Nat} {k : Nat} {σ : St Nat}
+    (ha : ∀ k σ, Agree env a σ → IntoSpec ram (ia (tk k) k) (tk k) k σ (a.denote env))
+    (hb : ∀ k σ, Agree env b σ → IntoSpec ram (ib (tk k) k) (tk k) k σ (b.denote env))
+    (ga : Agree env a σ) (gb : Agree env b σ) :
+    ∃ σ', Exec ram (ops2 a b ia ib k).1 σ σ' ∧ (ops2 a b ia ib k).2.1.eval σ'.reg = a.denote env ∧
+      (ops2 a b ia ib k).2.2.1.eval σ'.reg = b.denote env ∧ Frame (8 + k) σ σ' ∧
+      argBelow (ops2 a b ia ib k).2.1 (8 + (ops2 a b ia ib k).2.2.2) ∧
+      argBelow (ops2 a b ia ib k).2.2.1 (8 + (ops2 a b ia ib k).2.2.2) ∧ k ≤ (ops2 a b ia ib k).2.2.2 := by
+  obtain ⟨σ₁, x₁, v₁, f₁, b₁, k₁⟩ := opnd_ok (ha k σ ga) ga
+  obtain ⟨σ₂, x₂, v₂, f₂, b₂, k₂⟩ := opnd_ok (hb _ σ₁ (gb.frame f₁)) (gb.frame f₁)
+  refine ⟨σ₂, .seq x₁ x₂, ?_, v₂, f₁.trans f₂ (Nat.add_le_add_left k₁ 8), fun x hx => ?_, b₂, Nat.le_trans k₁ k₂⟩
+  · rw [← v₁]; exact argEval_congr fun x hx => f₂.2 x (b₁ x hx)
+  · have := b₁ x hx; show x < 8 + _; simp only [ops2]; omega
+
+theorem tstOf_ok {c : Code Nat} {k : Nat} {σ : St Nat} {v : BitVec 64} (h : IntoSpec ram c (tk k) k σ v) :
+    TstSpec ram (tstOf c k) k σ v := by
+  obtain ⟨σ', hx, hv, hm, hf⟩ := h
+  refine ⟨σ', hx, by rw [← hv]; rfl, ⟨hm, fun x hx => hf x (by unfold tk; omega) hx⟩, fun x hx => ?_, by
+    show k ≤ k + 1; omega⟩
+  have : tk k = x := by
+    simp only [tstOf, tstUses, argUses, Bool.or_false] at hx; exact of_decide_eq_true hx
+  show x < 8 + (k + 1); unfold tk at this; omega
+
+theorem iteCode_ok {T : Code Nat × Tst Nat × Nat} {c a b : AExp} {ia ib : Nat → Nat → Code Nat} {d : Nat} {k : Nat}
+    {σ : St Nat} (hT : TstSpec ram T k σ (c.denote env))
+    (ha : ∀ d k σ, Agree env a σ → IntoSpec ram (ia d k) d k σ (a.denote env))
+    (hb : ∀ d k σ, Agree env b σ → IntoSpec ram (ib d k) d k σ (b.denote env))
+    (ga : Agree env a σ) (gb : Agree env b σ) :
+    IntoSpec ram (iteCode T a b ia ib d) d k σ (if c.denote env = 0 then b.denote env else a.denote env) := by
+  obtain ⟨σ₁, x₁, v₁, f₁, b₁, k₁⟩ := hT
+  unfold iteCode
+  by_cases h1 : isVar b d = true
+  · rw [ite_pos h1]
+    by_cases hc : c.denote env = 0
+    · rw [ite_pos hc]
+      replace v₁ := v₁.trans (nz_false hc)
+      refine ⟨σ₁, .seq x₁ (.whenF v₁), ?_, f₁.1, fun x _ hx => f₁.2 x hx⟩
+      cases b with
+      | var i =>
+        have e : i.val = d := of_decide_eq_true h1
+        subst e
+        rw [f₁.2 i.val (by omega)]; exact gb i (decide_eq_true rfl)
+      | const _ => exact nomatch h1
+      | bin _ _ _ => exact nomatch h1
+      | ite _ _ _ => exact nomatch h1
+    · rw [ite_neg hc]
+      obtain ⟨σ₂, x₂, v₂, m₂, f₂⟩ := ha d T.2.2 σ₁ (ga.frame f₁)
+      refine ⟨σ₂, .seq x₁ (.whenT (v₁.trans (nz_true hc)) x₂), v₂, m₂.trans f₁.1, fun x hd hx => ?_⟩
+      rw [f₂ x hd (by omega), f₁.2 x hx]
+  · rw [ite_neg h1]
+    by_cases h2 : (tstUses T.2.1 d || uses a d) = false
+    · rw [ite_pos h2]
+      obtain ⟨hu, hua⟩ := or_false2 h2
+      obtain ⟨σ₂, x₂, v₂, m₂, f₂⟩ := hb d T.2.2 σ₁ (gb.frame f₁)
+      have t₂ : T.2.1.eval σ₂.reg = T.2.1.eval σ₁.reg := tstEval_congr fun x hx =>
+        f₂ x (fun e => by subst e; rw [hu] at hx; exact nomatch hx) (b₁ x hx)
+      by_cases hc : c.denote env = 0
+      · rw [ite_pos hc]
+        replace v₁ := v₁.trans (nz_false hc)
+        exact ⟨σ₂, .seq x₁ (.seq x₂ (.whenF (t₂.trans v₁))), v₂, m₂.trans f₁.1, fun x hd hx => by
+          rw [f₂ x hd (by omega), f₁.2 x hx]⟩
+      · rw [ite_neg hc]
+        have ga₂ : Agree env a σ₂ := fun i hi => by
+          rw [f₂ i.val (fun e => by rw [e, hua] at hi; exact nomatch hi) (by omega)]
+          exact ga.frame f₁ i hi
+        obtain ⟨σ₃, x₃, v₃, m₃, f₃⟩ := ha d T.2.2 σ₂ ga₂
+        refine ⟨σ₃, .seq x₁ (.seq x₂ (.whenT (t₂.trans (v₁.trans (nz_true hc))) x₃)), v₃, m₃.trans (m₂.trans f₁.1),
+          fun x hd hx => ?_⟩
+        rw [f₃ x hd (by omega), f₂ x hd (by omega), f₁.2 x hx]
+    · rw [ite_neg h2]
+      obtain ⟨σ₂, x₂, v₂, m₂, f₂⟩ := hb (tk T.2.2) (T.2.2 + 1) σ₁ (gb.frame f₁)
+      have lt : ∀ x, x < 8 + T.2.2 → x ≠ tk T.2.2 ∧ x < 8 + (T.2.2 + 1) := fun x hx => by unfold tk; omega
+      have t₂ : T.2.1.eval σ₂.reg = T.2.1.eval σ₁.reg := tstEval_congr fun x hx =>
+        f₂ x (lt x (b₁ x hx)).1 (lt x (b₁ x hx)).2
+      by_cases hc : c.denote env = 0
+      · rw [ite_pos hc]
+        replace v₁ := v₁.trans (nz_false hc)
+        refine ⟨⟨upd σ₂.reg d (σ₂.reg (tk T.2.2)), σ₂.mem⟩, .seq x₁ (.seq x₂ (.seq (.whenF (t₂.trans v₁))
+          (.ins .set))), ?_, m₂.trans f₁.1, fun x hd hx => ?_⟩
+        · show upd σ₂.reg d _ d = _; rw [upd_same, v₂]
+        · show upd σ₂.reg d _ x = _
+          rw [upd_other _ _ hd, f₂ x (lt x (by omega)).1 (lt x (by omega)).2, f₁.2 x hx]
+      · rw [ite_neg hc]
+        have ga₂ : Agree env a σ₂ := fun i hi => by
+          rw [f₂ i.val (lt _ (by omega)).1 (lt _ (by omega)).2]; exact ga.frame f₁ i hi
+        obtain ⟨σ₃, x₃, v₃, m₃, f₃⟩ := ha (tk T.2.2) (T.2.2 + 1) σ₂ ga₂
+        refine ⟨⟨upd σ₃.reg d (σ₃.reg (tk T.2.2)), σ₃.mem⟩, .seq x₁ (.seq x₂ (.seq (.whenT (t₂.trans (v₁.trans (nz_true hc))) x₃) (.ins .set))), ?_, m₃.trans (m₂.trans f₁.1), fun x hd hx => ?_⟩
+        · show upd σ₃.reg d _ d = _; rw [upd_same, v₃]
+        · show upd σ₃.reg d _ x = _
+          rw [upd_other _ _ hd, f₃ x (lt x (by omega)).1 (lt x (by omega)).2,
+            f₂ x (lt x (by omega)).1 (lt x (by omega)).2, f₁.2 x hx]
+
+/-- **Selection is correct** (both components of `gen`). -/
+theorem gen_ok : ∀ e : AExp,
+    (∀ d k σ, Agree env e σ → IntoSpec ram ((gen e).1 d k) d k σ (e.denote env)) ∧
+    (∀ k σ, Agree env e σ → TstSpec ram ((gen e).2 k) k σ (e.denote env))
+  | .var i => by
+    refine ⟨fun d k σ hg => ?_, fun k σ hg => ⟨σ, .skip, ?_, Frame.refl _ _, fun x hx => ?_, Nat.le_refl _⟩⟩
+    · simp only [gen]
+      by_cases h : i.val = d
+      · rw [ite_pos h]; exact ⟨σ, .skip, h ▸ hg i (decide_eq_true rfl), rfl, fun _ _ _ => rfl⟩
+      · rw [ite_neg h]
+        exact ⟨_, .ins .set, (upd_same _ _ _).trans (hg i (decide_eq_true rfl)), rfl,
+          fun x hx _ => upd_other _ _ hx⟩
+    · simp only [gen, ne0_eval, AExp.denote]; rw [hg i (decide_eq_true rfl)]; rfl
+    · have : i.val = x := by
+        simp only [gen, tstUses, argUses, Bool.or_false] at hx; exact of_decide_eq_true hx
+      show x < 8 + k; omega
+  | .const c => ⟨fun d k σ _ => ⟨_, .ins .set, upd_same _ _ _, rfl, fun x hx _ => upd_other _ _ hx⟩,
+      fun k σ _ => ⟨σ, .skip, rfl, Frame.refl _ _, fun x hx => (Bool.false_ne_true hx).elim, Nat.le_refl _⟩⟩
+  | .bin op a b => by
+    have iha := gen_ok a
+    have ihb := gen_ok b
+    have into : ∀ d k σ, Agree env (.bin op a b) σ → IntoSpec ram ((gen (.bin op a b)).1 d k) d k σ
+        ((AExp.bin op a b).denote env) := fun d k σ hg => by
+      obtain ⟨ga, gb⟩ := agree_bin hg
+      obtain ⟨σ₁, x₁, va, vb, f₁, _, _, _⟩ := ops2_ok (k := k) (fun k σ => iha.1 (tk k) k σ)
+        (fun k σ => ihb.1 (tk k) k σ) ga gb
+      refine ⟨_, .seq x₁ (.ins .bin), ?_, f₁.1, fun x hd hx => ?_⟩
+      · show upd σ₁.reg d _ d = _; rw [upd_same, va, vb]; rfl
+      · show upd σ₁.reg d _ x = _; rw [upd_other _ _ hd, f₁.2 x hx]
+    refine ⟨into, fun k σ hg => ?_⟩
+    simp only [gen]
+    cases hc : cmpOf op with
+    | none => exact tstOf_ok (into (tk k) k σ hg)
+    | some cnd =>
+      obtain ⟨ga, gb⟩ := agree_bin hg
+      obtain ⟨σ₁, x₁, va, vb, f₁, ba, bb, kk⟩ := ops2_ok (k := k) (fun k σ => iha.1 (tk k) k σ)
+        (fun k σ => ihb.1 (tk k) k σ) ga gb
+      refine ⟨σ₁, x₁, ?_, f₁, fun x hx => ?_, kk⟩
+      · show cnd.eval _ _ = _; rw [va, vb]; exact cmp_eval hc _ _
+      · simp only [tstUses] at hx
+        cases h : argUses (ops2 a b (gen a).1 (gen b).1 k).2.1 x
+        · rw [h, Bool.false_or] at hx; exact bb x hx
+        · exact ba x h
+  | .ite c a b => by
+    have ihc := gen_ok c
+    have iha := gen_ok a
+    have ihb := gen_ok b
+    have into : ∀ d k σ, Agree env (.ite c a b) σ → IntoSpec ram ((gen (.ite c a b)).1 d k) d k σ
+        ((AExp.ite c a b).denote env) := fun d k σ hg => by
+      obtain ⟨gc, ga, gb⟩ := agree_ite hg
+      exact iteCode_ok (ihc.2 k σ gc) iha.1 ihb.1 ga gb
+    exact ⟨into, fun k σ hg => tstOf_ok (into (tk k) k σ hg)⟩
+
+theorem into_ok (e : AExp) (d : Nat) (k : Nat) (σ : St Nat) (h : Agree env e σ) :
+    IntoSpec ram (into e d k) d k σ (e.denote env) := (gen_ok e).1 d k σ h
+
+theorem tst_ok (e : AExp) (k : Nat) (σ : St Nat) (h : Agree env e σ) :
+    TstSpec ram (tst e k) k σ (e.denote env) := (gen_ok e).2 k σ h
+
+end Proven.Mach.Sel
