@@ -21,6 +21,9 @@ run() {
     Proven.Mach.Riscv.take_implements1 Proven.Mach.Riscv.inc_implements1 Proven.Mach.Riscv.sum_implements1 \
     Proven.Mach.MachineF.compBF_ok
   lake env lean --run "$H/stmt_hash.lean" $L Riscv.Examples.Implements1Pipe Proven.compileP_implements1
+  lake env lean --run "$H/stmt_hash.lean" $L Riscv.Back.Opt Proven.compileO_ok Proven.compileFO_ok
+  lake env lean --run "$H/stmt_hash.lean" $L Riscv.Back.OptArr,Riscv.Back.OptB \
+    Proven.compileAFO_ok Proven.compileBFO_ok Proven.Mach.WideF.optB_ok
 }
 if [ -n "$L" ]; then run; exit 0; fi
 T=$(mktemp); trap 'rm -f "$T"' EXIT

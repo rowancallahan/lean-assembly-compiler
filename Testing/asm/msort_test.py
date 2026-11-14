@@ -15,7 +15,7 @@ D = os.path.dirname(os.path.abspath(__file__)); W = os.path.join(D, "ctest"); os
 SAIL = "/home/user/deps/sailsim/sail-riscv-Linux-x86_64/bin/sail_riscv_sim"
 p = lambda f: os.path.join(W, f)
 sh = lambda c: subprocess.run(c, shell=True, check=True)
-words = lambda n: [int(l, 16) for l in open(os.path.join(D, "arr-words", n + ".words")) if l.strip()]
+words = lambda n: [int(l, 16) for l in open(os.path.join(D, os.environ.get("WDIR", "arr-words"), n + ".words")) if l.strip()]
 G, ST, E = 16, 256, 72        # guard bytes, stack per case, table entry size
 MAGIC = 0x0123456789ABCDEF
 LD = "ENTRY(_start)\nSECTIONS { . = 0x80000000; .text : { *(.text.start) *(.text) }\n . = 0x80100000; .tohost : { *(.tohost) }\n . = 0x80200000; .data : { *(.data) } }\n"
