@@ -259,3 +259,48 @@ in `gcdProg_exec`). Those four lines are version-fragile on main too.
   ARM (Sail) model (`armrun run`, full `step_model` steps): mismatches 0. Model runner: 600 inputs in 105.5 s.
 These are the words of THIS instance's encoding (`apc L0`), which is what `gcd_apc` / `sort_apc` are about. If main has
 a separate ARM loop/array generator, it was not tested here.
+
+## B (continued). RISC-V side with the interface change
+`lake build Riscv.Back.Iface Riscv.Back.Exp Riscv.Back.Stmt Riscv.Back.Arr` on this box (Lean 4.29.0, branch `apc`):
+Build completed successfully, 169 jobs, 1336 s wall, peak RSS 13.0 GB (no swap). So the RISC-V instance and its
+corollaries still hold with the 14-line change. NOT run here: `bash Testing/scripts/check.sh` (the full build, the
+axiom comparison and the forbidden-word scan), and the modules outside the import closure of `Riscv/Back/*`.
+
+## D. Bridge to Sail in one environment: DONE, with one caveat about this box's model build
+Environment: Lean 4.34.1; our `Arm/proofs` checked by `Arm/proofs/check.sh` against the ARM model build on this box
+(`/home/user/armv9-lean` -> the runnable build of round 1): all modules pass, 0 errors, 753 s (`Arm/Words` 504 s);
+their `arm64` package built under 4.34.1; `apc/bridge.sh` stages `Apc/Flags`, `Apc/Agree`, `Apc/AgreeAll` with
+`armStep` / `AState` / `emitted` taken from OUR `Arm/Small.lean` / `Arm/Words.lean` (not the copy `Apc/Small.lean`) and
+checks `apc/Bridge.lean.txt`. Times: Agree 10 s, AgreeAll 175 s, Bridge 1 s. The whole `apc/` package also builds
+under 4.34.1 unchanged (200 s).
+
+    theorem ArmProof.apc_eq_sail {w : BitVec 32} (hw : w ∈ emitted) {s : St} {t : Arm64.State} (hf : ArmFull s)
+        (ha : Abs s (Proven.Apc.abs t)) (hpc : s.regs.get? ._PC = some t.pc) (hlt : t.pc.toNat < 2 ^ 29)
+        (hal : t.pc.toNat % 4 = 0) (hm : MemWord s.mem t.pc.toNat w)
+        (hrun : t.status = .Running) (hx : t.mem.canExec t.pc 4 = true) (hr : t.mem.read32 t.pc = w) :
+        ∃ s' t', stepModel s = .ok () s' ∧ Arm64.Step Pg t t' ∧ Abs s' (Proven.Apc.abs t') ∧ ArmFull s' ∧
+          s'.regs.get? ._PC = some t'.pc ∧ s'.mem = s.mem ∧ t'.mem = t.mem
+
+In words: for each of the 216 emitted words, from a Sail state `s` (under `ArmFull`) and an AlphaProof-Code state `t`
+that agree on x0..x30, NZCV and the PC and both hold the word at the PC, one full Sail step and one step of their
+semantics succeed and end in states that again agree on x0..x30, NZCV and the PC, with both memories unchanged.
+AXIOMS as printed HERE: `propext, sorryAx, Classical.choice, Quot.sound`. The `sorryAx` is inherited from this box's
+model build, which predates main's `--lean-partial-function Reduce__1`: `#print axioms` of the model's own
+`Armv9.Functions.Reduce__1`, `__DecodeA64` and `__TopLevel` already lists `sorryAx` here, and so do `step_ok` /
+`full_word` when checked here. There is no `sorry` in `Arm/proofs` or in `apc/`; `agree_emitted` (the half that is new)
+has `propext, Classical.choice, Quot.sound`. To get the clean axiom list, run `apc/bridge.sh` on a box with main's model
+build (set `A=` to their package built under 4.34.1); I could not do that here.
+Not in the bridge: `ret`, loads/stores, branches (the Sail-side word list `emitted` is the expression subset), and
+any relation between the two memories beyond the instruction word.
+
+## Status per item
+| item | status | axioms | check time |
+|---|---|---|---|
+| A `agree_emitted` without `bv_decide` | proved | propext, Classical.choice, Quot.sound | 171 s |
+| B interface change (`writable`) | done in branch; middle layer + `Riscv/Back/*` build | - | middle 4 s; RISC-V 1336 s |
+| C `apc L : Machine` (9 laws) | proved; `li` = doubling chain, branch distance < 1024 words | same three | 30 s |
+| C `compile_apc`, `gcd_apc`, `sort_apc` | proved; `sort_apc` in region form, no `ImplementsMapped`/UInt8 wrapper | same three | 2 s (+ staged sources) |
+| D `apc_eq_sail` | proved in one environment; `sorryAx` from this box's model build only | see above | 187 s (+ 753 s Arm/proofs) |
+| E QEMU tests | sort 300, gcd 300, sum 300 inputs: 0 mismatches (gcd/sum also on the Lean Sail model) | - | - |
+Reproduce: `apc/stage.sh && (cd apc && lake build Apc.Axioms Apc.Stack)`; `apc/bridge.sh`; `apc/test/*.py`.
+Their code is referenced by path (`../deps/code-verification` at b0f729a), not copied.
