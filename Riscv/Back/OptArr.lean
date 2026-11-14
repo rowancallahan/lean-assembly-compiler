@@ -59,4 +59,21 @@ theorem compileOptA_ok (bv : List (Fin 8)) {p : AStmt} {ws : List (BitVec 32)} (
           · exact h1 i.val i.2 (e.trans hi)
           · exact h2 i (e.trans hi)⟩⟩
 
+/-- drop-in for `compileAF`: optimised words when the optimiser succeeds, the old words otherwise -/
+def compileAFO (bv : List (Fin 8)) (p : AStmt) : List (BitVec 32) :=
+  match compileOptA bv p with | .ok ws => ws | .error _ => compileAF bv p
+
+/-- the statement of `compileAF_ok` for `compileAFO` -/
+theorem compileAFO_ok (bv : List (Fin 8)) {p : AStmt} (hp : p.wf bv) {R : List Proven.Region} (hR : Proven.RegOK R)
+    {σ σ' : AState} (hex : AExec p σ σ') {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc)
+    (hc : codeAt s pc (compileAFO bv p)) (hok : codeOK pc (compileAFO bv p).length)
+    (hcd : ∀ r ∈ R, Proven.disjoint ⟨pc.toNat, 4 * (compileAFO bv p).length⟩ r) (hrel : Proven.Rel bv R σ s)
+    (hra : (getX s 1).toNat % 2 = 0) :
+    runsTo s fun s' => s'.regs.get? .PC = some (getX s 1) ∧
+      Proven.Rel bv R σ' s' ∧ unchangedOutside s s' R ∧ Cfg s' ∧ calleeSavedKept s s' := by
+  unfold compileAFO at hc hok hcd
+  cases hx : compileOptA bv p with
+  | ok ws => rw [hx] at hc hok hcd; exact compileOptA_ok bv hx hR hex h hpc hc hok hcd hrel hra
+  | error _ => rw [hx] at hc hok hcd; exact compileAF_ok' bv hp hR hex h hpc hc hok hcd hrel hra
+
 end Proven

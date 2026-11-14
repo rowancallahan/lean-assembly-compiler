@@ -129,3 +129,14 @@ instructions inside the function; words from `Testing/asm/emit_opt_{loops,arr}.l
 
 Code size (words): loopsum 6, gcd 10, demo 8, demo2 13, sum 9, take 12, inc 13, insertion sort 38.
 Merge sort: not measured (needs `BStmt`).
+
+## Drop-in entry points (kernel-checked)
+
+`compileO : Exp → List (BitVec 32)`, `compileFO : Stmt → List (BitVec 32)` (`Riscv/Back/Opt.lean`),
+`compileAFO : List (Fin 8) → AStmt → List (BitVec 32)` (`Riscv/Back/OptArr.lean`): the optimised words when
+`compileOpt…` succeeds, the old words otherwise. `compileO_ok`, `compileFO_ok`, `compileAFO_ok` have the statements
+of `compile_ok`, `compileF_ok`, `compileAF_ok` with the function name replaced (same hypotheses `depth < 11` / `wf`,
+used only in the fallback case). A front end switches by replacing the function and theorem names; if it relies on
+`compileAF bv p` definitionally (e.g. on its length), those facts must be restated for `compileAFO`.
+`compileBF` (spill slots) has no optimised counterpart yet: the frame/slot interface `MachineF`
+(`Compiler/Frame.lean`) has no RISC-V instance on branch `stable` at the time of writing.

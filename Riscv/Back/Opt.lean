@@ -60,4 +60,37 @@ theorem compileOptS_ok {p : Proven.Stmt} {ws : List (BitVec 32)} (hc : compileOp
   have := v i
   rwa [show rvw.get s' (v4 i) = getX s' (A i) by show getX s' (phys (v4 i)) = _; rw [phys_v4]] at this
 
+/-! ## Drop-in replacements: total functions with the statements of the unoptimised theorems
+(optimised words when the optimiser succeeds, the old words otherwise) -/
+
+/-- drop-in for `compile` -/
+def compileO (e : Exp) : List (BitVec 32) := match compileOpt e with | .ok ws => ws | .error _ => compile e
+
+/-- the statement of `compile_ok` for `compileO` -/
+theorem compileO_ok (e : Exp) (he : e.depth < 11) {s : St} (h : Cfg s) {pc : BitVec 64}
+    (hpc : s.regs.get? .PC = some pc) (hc : codeAt s pc (compileO e))
+    (hok : codeOK pc (compileO e).length) (hra : (getX s 1).toNat % 2 = 0) :
+    runsTo s fun s' => s'.regs.get? .PC = some (getX s 1) ∧
+      getX s' 10 = e.denote (fun i => getX s (A i)) ∧ Cfg s' ∧ s'.mem = s.mem ∧
+      calleeSavedKept s s' := by
+  unfold compileO at hc hok
+  cases hx : compileOpt e with
+  | ok ws => rw [hx] at hc hok; exact compileOpt_ok e hx h hpc hc hok hra
+  | error _ => rw [hx] at hc hok; exact compile_ok' e he h hpc hc hok hra
+
+/-- drop-in for `compileF` -/
+def compileFO (p : Proven.Stmt) : List (BitVec 32) := match compileOptS p with | .ok ws => ws | .error _ => compileF p
+
+/-- the statement of `compileF_ok` for `compileFO` -/
+theorem compileFO_ok {p : Proven.Stmt} (hp : p.wf) {σ' : Proven.Env} {s : St}
+    (hex : Proven.Exec p (fun i => getX s (A i)) σ') (h : Cfg s) {pc : BitVec 64}
+    (hpc : s.regs.get? .PC = some pc) (hc : codeAt s pc (compileFO p))
+    (hok : codeOK pc (compileFO p).length) (hra : (getX s 1).toNat % 2 = 0) :
+    runsTo s fun s' => s'.regs.get? .PC = some (getX s 1) ∧ (∀ i : Fin 4, getX s' (A i) = σ' i) ∧ Cfg s' ∧
+      s'.mem = s.mem ∧ calleeSavedKept s s' := by
+  unfold compileFO at hc hok
+  cases hx : compileOptS p with
+  | ok ws => rw [hx] at hc hok; exact compileOptS_ok hx hex h hpc hc hok hra
+  | error _ => rw [hx] at hc hok; exact compileF_ok' hp hex h hpc hc hok hra
+
 end Proven
