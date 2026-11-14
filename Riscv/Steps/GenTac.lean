@@ -211,6 +211,24 @@ def wR (c : BitVec 32) (rd rs1 rs2 : Fin 32) : BitVec 32 := c ||| fR rd rs1 rs2
 @[simp] theorem sign_extend_eq {n : Nat} (x : BitVec n) : sign_extend (m := 64) x = x.signExtend 64 := by
   simp [sign_extend, Sail.BitVec.signExtend]
 
+/-! ## Branch / jump offsets -/
+
+theorem fB_dec (rs1 rs2 : Fin 32) (o : BitVec 12) :
+    (BitVec.extractLsb' 31 1 (fB rs1 rs2 o) +++ BitVec.extractLsb' 7 1 (fB rs1 rs2 o) +++
+      BitVec.extractLsb' 25 6 (fB rs1 rs2 o) +++ BitVec.extractLsb' 8 4 (fB rs1 rs2 o) +++ (0#1 : BitVec 1) :
+      BitVec 13) = o +++ (0#1 : BitVec 1) := by
+  simp only [fB]; bits
+theorem fJ_dec (rd : Fin 32) (o : BitVec 20) :
+    (BitVec.extractLsb' 31 1 (fJ rd o) +++ BitVec.extractLsb' 12 8 (fJ rd o) +++ BitVec.extractLsb' 20 1 (fJ rd o) +++
+      BitVec.extractLsb' 21 10 (fJ rd o) +++ (0#1 : BitVec 1) : BitVec 21) = o +++ (0#1 : BitVec 1) := by
+  simp only [fJ]; bits
+theorem add_boff_even' (a : Nat) (o : BitVec 12) :
+    (a + ((o +++ (0#1 : BitVec 1)).signExtend 64).toNat) % 2 = a % 2 := by
+  have := add_boff_even a o; simpa [sign_extend, Sail.BitVec.signExtend] using this
+theorem add_joff_even' (a : Nat) (o : BitVec 20) :
+    (a + ((o +++ (0#1 : BitVec 1)).signExtend 64).toNat) % 2 = a % 2 := by
+  have := add_joff_even a o; simpa [sign_extend, Sail.BitVec.signExtend] using this
+
 /-! ## Register-field decoding -/
 
 @[simp] theorem reg_matches (x : BitVec 5) : encdec_reg_backwards_matches x = true := by
@@ -245,11 +263,12 @@ macro "gstep_core" : tactic => `(tactic| (
       [*, Proven.pmp_none, Std.ExtDHashMap.contains_insert, BitVec.add_sub_cancel, LeanRV64D.Functions.matching_pma_region,
       LeanRV64D.Functions.matching_pma_region_bits_range, LeanRV64D.Functions.override_PMA, LeanRV64D.Functions.hartSupports, LeanRV64D.Functions.range_subset, LeanRV64D.Functions.zopz0zIzJ_u,
       LeanRV64D.Functions.zopz0zI_u, LeanRV64D.Functions.zopz0zKzJ_u, LeanRV64D.Functions.zopz0zK_u, LeanRV64D.Functions.zopz0zI_s, LeanRV64D.Functions.zopz0zKzJ_s,
-      BitVec.toNat_sub, BitVec.toNat_add, Proven.G.F_imm,
+      BitVec.toNat_sub, BitVec.toNat_add, Proven.G.F_imm, Proven.G.fB_dec, Proven.G.fJ_dec,
+      Proven.G.add_boff_even', Proven.G.add_joff_even', Proven.add_boff_even, Proven.add_joff_even,
       Proven.G.fR_rd, Proven.G.fR_rs1, Proven.G.fR_rs2, Proven.G.fR_zero, Proven.G.fR_rdne, Proven.G.fR_known, Proven.G.fR_mismatch, Proven.G.fR_ne, Proven.G.fI_rd, Proven.G.fI_rs1, Proven.G.fI_imm, Proven.G.fI_zero, Proven.G.fI_rdne, Proven.G.fI_known, Proven.G.fI_mismatch, Proven.G.fI_ne, Proven.G.fSh_rd, Proven.G.fSh_rs1, Proven.G.fSh_sh, Proven.G.fSh_zero, Proven.G.fSh_rdne, Proven.G.fSh_known, Proven.G.fSh_mismatch, Proven.G.fSh_ne, Proven.G.fU_rd, Proven.G.fU_imm, Proven.G.fU_zero, Proven.G.fU_rdne, Proven.G.fU_known, Proven.G.fU_mismatch, Proven.G.fU_ne, Proven.G.fS_rs1, Proven.G.fS_rs2, Proven.G.fS_hi, Proven.G.fS_lo, Proven.G.fS_zero, Proven.G.fS_known, Proven.G.fS_mismatch, Proven.G.fS_ne, Proven.G.fB_rs1, Proven.G.fB_rs2, Proven.G.fB_zero, Proven.G.fB_known, Proven.G.fB_mismatch, Proven.G.fB_ne, Proven.G.fJ_rd, Proven.G.fJ_zero, Proven.G.fJ_rdne, Proven.G.fJ_known, Proven.G.fJ_mismatch, Proven.G.fJ_ne,
       Proven.sail_ext, Proven.setw_ext,
       Proven.rX_bits_ok, Proven.wX_bits_ok, Proven.G.reg_matches, Proven.G.reg_back, Proven.xpresent_insert]
-    all_goals simp [Proven.stepF, Proven.update0_even, Proven.ze32, *]
+    all_goals simp [Proven.stepF, Proven.update0_even, Proven.ze32, Proven.boff, Proven.joff, *]
   all_goals simp))
 
 open Lean Meta Elab Tactic in
