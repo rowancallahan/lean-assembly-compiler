@@ -239,8 +239,12 @@ theorem foldl_all (p : UInt8 → Bool) (l : List UInt8) (a : Bool) : l.foldl (fu
   | cons x l ih => rw [List.foldl_cons, ih, List.all_cons, Bool.and_assoc]
 
 theorem contains_eq (l : List UInt8) (b : UInt8) : l.contains b = l.any (fun x => x == b) := by
-  rw [List.contains_eq_any_beq]; congr; funext x
-  by_cases h : x = b <;> simp [h, eq_comm]
+  rw [List.contains_eq_any_beq]
+  have : (fun x => b == x) = (fun x => x == b) := by
+    funext x; by_cases h : x = b
+    · subst h; rfl
+    · simp [h, Ne.symm h]
+  rw [this]
 
 /-! ## Reductions: per function -/
 
@@ -265,7 +269,7 @@ theorem countP_core (p : UInt8 → Bool) (q : BPred) (hq : q.noAcc = true) (hpq 
     (fun env => rfl)
     (fun _ env a x h5 h6 => by
       simp only [AExp.denote, Op.eval, h5, BPred.bit_tr hq env x h6, b01_ofNat, hpq, BitVec.ofNat_add])
-    (fun env a h5 => h5) (fun env a h5 h1 => h1) (fun _ => Nat.le_refl _) (by decide) hI hkL hx hL
+    (fun env a h5 => h5) (fun env a h5 h1 => h1) (fun _ => Nat.le_refl _) (by dsimp only; omega) hI hkL hx hL
   refine ⟨σ', h, ?_⟩
   simpa only [if_true, foldl_countP, Nat.zero_add, leBytes_w8] using hI'
 
@@ -278,7 +282,7 @@ theorem any_core (p : UInt8 → Bool) (q : BPred) (hq : q.noAcc = true) (hpq : �
     (fun _ => false) b01 (fun _ => 1) ⟨.const 0, true, .bin .or (.var 5) q.bit.tr, none, 1, none⟩
     (fun env => rfl)
     (fun _ env a x h5 h6 => by simp only [AExp.denote, Op.eval, h5, BPred.bit_tr hq env x h6, b01_or, hpq])
-    (fun env a h5 => h5) (fun env a h5 h1 => h1) (fun _ => Nat.le_refl _) (by decide) hI hkL hx hL
+    (fun env a h5 => h5) (fun env a h5 h1 => h1) (fun _ => Nat.le_refl _) (by dsimp only; omega) hI hkL hx hL
   refine ⟨σ', h, ?_⟩
   simpa only [if_true, foldl_any, Bool.false_or, leBytes_b01] using hI'
 
@@ -291,7 +295,7 @@ theorem all_core (p : UInt8 → Bool) (q : BPred) (hq : q.noAcc = true) (hpq : �
     (fun _ => true) b01 (fun _ => 1) ⟨.const 1, true, .bin .and (.var 5) q.bit.tr, none, 1, none⟩
     (fun env => rfl)
     (fun _ env a x h5 h6 => by simp only [AExp.denote, Op.eval, h5, BPred.bit_tr hq env x h6, b01_and, hpq])
-    (fun env a h5 => h5) (fun env a h5 h1 => h1) (fun _ => Nat.le_refl _) (by decide) hI hkL hx hL
+    (fun env a h5 => h5) (fun env a h5 h1 => h1) (fun _ => Nat.le_refl _) (by dsimp only; omega) hI hkL hx hL
   refine ⟨σ', h, ?_⟩
   simpa only [if_true, foldl_all, Bool.true_and, leBytes_b01] using hI'
 
