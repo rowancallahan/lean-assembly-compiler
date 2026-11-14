@@ -13,7 +13,7 @@ namespace Proven.Mach
 def rk (k : Nat) : Reg := if h : k < 15 then ⟨k, h⟩ else ⟨0, by decide⟩
 
 theorem rk_val {k : Nat} (h : k < 15) : (rk k).val = k := by
-  unfold rk; rw [dif_pos h]
+  unfold rk; rw [dite_pos' h]
 
 /-- variable `v_i`: `v0 .. v3` in `r11 .. r14`, `v4 .. v7` in `r7 .. r10` -/
 def avar (i : Fin 8) : Reg := if h : i.val < 4 then ⟨11 + i.val, by omega⟩ else ⟨3 + i.val, by omega⟩
@@ -25,7 +25,7 @@ theorem avar_inj {i j : Fin 8} (h : avar i = avar j) : i = j := by revert i j; d
 def v4 (i : Fin 4) : Reg := avar ⟨i.val, by omega⟩
 
 theorem v4_val (i : Fin 4) : (v4 i).val = 11 + i.val := by
-  unfold v4 avar; rw [dif_pos i.2]
+  unfold v4 avar; rw [dite_pos' i.2]
 
 /-- every variable of `e` lives at or above `r_K` -/
 def varsOK (K : Nat) : AExp → Prop
@@ -148,7 +148,7 @@ def toA : Exp → AExp
 def ext (env : Fin 4 → BitVec 64) : AEnv := fun j => if h : j.val < 4 then env ⟨j.val, h⟩ else 0
 
 theorem toA_denote (env : Fin 4 → BitVec 64) : ∀ e : Exp, (toA e).denote (ext env) = e.denote env
-  | .var i => by simp only [toA, AExp.denote, Exp.denote, ext]; rw [dif_pos i.2]
+  | .var i => by simp only [toA, AExp.denote, Exp.denote, ext]; rw [dite_pos' i.2]
   | .const _ => rfl
   | .bin op a b => by simp only [toA, AExp.denote, Exp.denote, toA_denote env a, toA_denote env b]
   | .ite c a b => by
@@ -184,10 +184,10 @@ theorem genE_ok (env : Fin 4 → BitVec 64) (e : Exp) (k : Nat) (hk : k + e.dept
       have hi4 : i.val < 4 := by
         unfold avar at hi; by_cases h : i.val < 4
         · exact h
-        · rw [dif_neg h] at hi; dsimp only at hi; omega
+        · rw [dite_neg' h] at hi; dsimp only at hi; omega
       have := henv ⟨i.val, hi4⟩
       simp only [v4] at this
-      rw [this]; unfold ext; rw [dif_pos hi4])
+      rw [this]; unfold ext; rw [dite_pos' hi4])
   rwa [toA_denote] at this
 
 /-- **`Exp` compiler correctness from the interface laws**: from `At` (code at `pc`) with a valid return

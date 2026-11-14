@@ -45,6 +45,18 @@ theorem ite_neg {α : Type} {p : Prop} [h : Decidable p] {a b : α} (hp : ¬p) :
   | isTrue h' => exact absurd h' hp
   | isFalse _ => rfl
 
+theorem dite_pos' {α : Type} {p : Prop} [h : Decidable p] {a : p → α} {b : ¬p → α} (hp : p) :
+    dite p a b = a hp := by
+  cases h with
+  | isTrue _ => rfl
+  | isFalse hn => exact absurd hp hn
+
+theorem dite_neg' {α : Type} {p : Prop} [h : Decidable p] {a : p → α} {b : ¬p → α} (hp : ¬p) :
+    dite p a b = b hp := by
+  cases h with
+  | isTrue h' => exact absurd h' hp
+  | isFalse _ => rfl
+
 /-- byte memory -/
 abbrev Mem := Nat → Option (BitVec 8)
 
