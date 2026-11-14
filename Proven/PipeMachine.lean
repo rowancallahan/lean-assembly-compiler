@@ -138,7 +138,8 @@ theorem implements_of_exec {prog : AStmt} (hwf : prog.wf [0, 3]) {f : List UInt8
   unfold Region.inRAM at ri ro rc
   unfold disjoint at d13 d15 d35
   simp only [codeR] at d15 d35
-  generalize space x.length = L at *
+  obtain ⟨L, hLe⟩ : ∃ L, L = space x.length := ⟨_, rfl⟩
+  rw [← hLe] at hol hmap
   have hil' : input.len = x.length := hil
   have hol' : L ≤ output.len := hol
   have hxl : (tbs x).length = x.length := by simp
@@ -168,7 +169,7 @@ theorem implements_of_exec {prog : AStmt} (hwf : prog.wf [0, 3]) {f : List UInt8
     rcases hr with rfl | rfl <;> (unfold disjoint; dsimp only; omega)
   have hra' : getX s 1 = ra := getX_of (h.x1.symm.trans h1) rfl
   obtain ⟨σ', out', hexec, hh, hlen, htk⟩ := hex x out0 (fun i => getX s (A8 i))
-    (getX_of (h.x11.symm.trans h11) rfl) (by omega) (by omega) (by omega)
+    (getX_of (h.x11.symm.trans h11) rfl) (by omega) (by rw [← hLe, hout0]; exact Nat.le_refl _) (by omega)
   have hrel : Rel [0, 3] [⟨input.base, x.length⟩, ⟨output.base, L⟩] ⟨fun i => getX s (A8 i), [tbs x, out0]⟩ s :=
     ⟨fun _ => rfl, rfl, rfl,
       fun b hb => by

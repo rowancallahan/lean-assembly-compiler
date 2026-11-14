@@ -78,7 +78,7 @@ example : Pipe.ok twosort.pipe = true := by decide
 
 /--
 error: compile%: unsupported list expression (use map, take, drop, reverse, mergeSort, foldl on the argument)
-  List.filter (fun x => decide (x > 3)) xs
+  List.filter (fun x => x>b3) xs
 -/
 #guard_msgs in
 example := compile% fun xs : List UInt8 => xs.filter (· > 3)
@@ -121,7 +121,7 @@ example := compile% fun xs : List UInt8 => xs.take (2 ^ 64)
 
 /--
 error: compile%: mergeSort is supported only with the default order `fun a b => a ≤ b`, got
-  fun a b => decide (a ≥ b)
+  fun a b => a≥bb
 -/
 #guard_msgs in
 example := compile% fun xs : List UInt8 => xs.mergeSort (fun a b => a ≥ b)
