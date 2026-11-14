@@ -539,6 +539,16 @@ theorem sim_dite (c : BExp) (a b : Tree) (env : BEnv) (heap : Heap) (P : Prop) [
     rw [dif_neg hp]; have := hf hp
     cases h : o₂ hp <;> rw [h] at this <;> simp only [Sim, e] <;> exact this
 
+/-- `sim_dite` under a function of the leaves (for bodies whose leaves are not `LOut` terms themselves) -/
+theorem sim_dite_g {T : Type} (g : T → LOut A) (c : BExp) (a b : Tree) (env : BEnv) (heap : Heap) (P : Prop)
+    [Decidable P] (x : P → T) (y : ¬P → T) (hc : c.denote env ≠ 0 ↔ P)
+    (ht : ∀ h : P, Sim R a ⟨env, heap⟩ (g (x h))) (hf : ∀ h : ¬P, Sim R b ⟨env, heap⟩ (g (y h))) :
+    Sim R (.ite c a b) ⟨env, heap⟩ (g (dite P x y)) := by
+  have := sim_dite R c a b env heap P (fun h => g (x h)) (fun h => g (y h)) hc ht hf
+  by_cases hp : P
+  · rw [dif_pos hp] at this ⊢; exact this
+  · rw [dif_neg hp] at this ⊢; exact this
+
 theorem sim_pos {k : Tree} {σ : BState} {P : Prop} [Decidable P] {o₁ : P → LOut A} {o₂ : ¬P → LOut A} (h : P)
     (hs : Sim R k σ (dite P o₁ o₂)) : Sim R k σ (o₁ h) := by rwa [dif_pos h] at hs
 theorem sim_neg {k : Tree} {σ : BState} {P : Prop} [Decidable P] {o₁ : P → LOut A} {o₂ : ¬P → LOut A} (h : ¬P)

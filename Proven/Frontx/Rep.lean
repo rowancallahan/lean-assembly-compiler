@@ -10,6 +10,9 @@ def rN (n : Nat) : BitVec 64 := BitVec.ofNat 64 n
 def r8 (x : UInt8) : BitVec 64 := x.toBitVec.setWidth 64
 def r32 (x : UInt32) : BitVec 64 := x.toBitVec.setWidth 64
 def r64 (x : UInt64) : BitVec 64 := x.toBitVec
+/-- a `Bool` is `1` or `0` -/
+def rB (b : Bool) : BitVec 64 := if b = true then 1 else 0
+theorem rB_def (b : Bool) : rB b = if b = true then 1#64 else 0#64 := rfl
 /-- the heap block of a byte array -/
 def blk (xs : ByteArray) : List (BitVec 8) := xs.data.toList.map (·.toBitVec)
 
@@ -44,6 +47,10 @@ theorem c_and' (p q : Prop) [Decidable p] [Decidable q] :
 theorem c_or' (p q : Prop) [Decidable p] [Decidable q] :
     (if p then 1#64 else 0#64) ||| (if q then 1#64 else 0#64) = if p ∨ q then 1#64 else 0#64 := c_or p q
 theorem c_eq0' (p : Prop) [Decidable p] : ((if p then 1#64 else 0#64) = 0#64) = ¬p := c_eq0 p
+
+/-- a test is discharged in this form: the condition expression *is* the 0/1 value of the proposition -/
+theorem ne0_of_c {x : BitVec 64} {p : Prop} [Decidable p] (h : x = if p then 1#64 else 0#64) : x ≠ 0#64 ↔ p := by
+  subst h; by_cases hp : p <;> simp [hp]
 
 /-! ## expression evaluation (used instead of unfolding `BExp.denote`, so that a select is rewritten in one
 step and its condition is never negated) -/
