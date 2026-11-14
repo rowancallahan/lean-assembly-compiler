@@ -50,6 +50,10 @@ inductive WOp where
   | ldS (d : Reg) (j : Nat)
   /-- `slot j := v`, any register -/
   | stS (j : Nat) (v : Reg)
+  /-- `d := the 8 bytes at a + off` (little-endian, 8-aligned) -/
+  | ld (d a : Reg) (off : BitVec 64)
+  /-- `the 8 bytes at a + off := v` -/
+  | sd (v a : Reg) (off : BitVec 64)
   deriving Repr
 
 /-- the target of a jump over `n` words from `pc` -/
@@ -121,6 +125,14 @@ structure Wide extends Core where
     ((fr s).toNat + 8 * (j + 1)) % 8 = 0 →
     runsTo s fun s' => toBase.Done s s' (next pc (wenc (.stS j v)).length) ∧ toBase.Same s s' ∧
       mem s' = (mem s).wr ((fr s).toNat + 8 * (j + 1)) (le8 (get s v))
+  w_ld : ∀ {d a : Reg} {off : BitVec 64} {s : S} {pc : BitVec 64} {v : BitVec 64}, offOK off = true →
+    toBase.At s pc (wenc (.ld d a off)) → toBase.inRAM (get s a + off).toNat 8 → (get s a + off).toNat % 8 = 0 →
+    bytes (mem s) (get s a + off).toNat 8 = (le8 v).map some →
+    runsTo s fun s' => toBase.Done s s' (next pc (wenc (.ld d a off)).length) ∧ toBase.Set1 s s' d v ∧ mem s' = mem s
+  w_sd : ∀ {v a : Reg} {off : BitVec 64} {s : S} {pc : BitVec 64}, offOK off = true →
+    toBase.At s pc (wenc (.sd v a off)) → toBase.inRAM (get s a + off).toNat 8 → (get s a + off).toNat % 8 = 0 →
+    runsTo s fun s' => toBase.Done s s' (next pc (wenc (.sd v a off)).length) ∧ toBase.Same s s' ∧
+      mem s' = (mem s).wr (get s a + off).toNat (le8 (get s v))
 
 namespace Wide
 variable (M : Wide)
