@@ -52,10 +52,10 @@ theorem optE_ok (e : Exp) {ws : List (BitVec 32)} (hc : M.optE e = some ws) {s :
     (hA : M.At s pc ws) (hra : M.retOK (M.ra s)) :
     M.runsTo s fun s' => M.pcIs s' (M.ra s) ∧ M.get s' (rk 11) = e.denote (fun i => M.get s (v4 i)) ∧
       M.ok s' ∧ M.mem s' = M.mem s ∧ M.keep s s' := by
-  obtain ⟨σ', hx, hv, hm, -⟩ := Sel.into_ok (ram := fun _ => False) (toA e) 0 0 ⟨fun x => M.get s (fE x), M.mem s⟩
+  obtain ⟨σ', hx, hv, hm, -⟩ := Sel.into_ok (ram := fun _ => False) (fp := (M.fr s).toNat) (toA e) 0 0 ⟨fun x => M.get s (fE x), M.mem s⟩
     (agree_toA e (env := fun i => M.get s (v4 i)) fun i => congrArg _ (fE_v4 i))
   rw [toA_denote] at hv
-  refine M.runsTo_mono (fn_ok (fun _ h => h.elim) hc hA.ok hA.hpc ⟨hA.code, hA.codeOK, fun _ h => h.elim⟩ hra hx)
+  refine M.runsTo_mono (fn_ok (fun _ h => h.elim) hc hA.ok hA.hpc ⟨hA.code, hA.codeOK, fun _ h => h.elim, rfl⟩ hra hx)
     fun s' ⟨p, v, o, m, k⟩ => ⟨p, ?_, o, m.trans hm, k⟩
   rw [← hv]; exact v 0 (List.mem_cons_self ..) (by decide)
 

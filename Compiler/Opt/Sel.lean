@@ -118,7 +118,7 @@ def loopCode (e : AExp) (body : Code Nat) : Code Nat :=
 
 /-! ## Correctness -/
 
-variable (ram : Nat → Prop) (env : AEnv)
+variable (ram : Nat → Prop) (fp : Nat) (env : AEnv)
 
 /-- the registers `e` reads hold the environment -/
 def Agree (e : AExp) (σ : St Nat) : Prop := ∀ i : Fin 8, uses e i.val = true → σ.reg i.val = env i
@@ -128,17 +128,17 @@ def Frame (n : Nat) (σ σ' : St Nat) : Prop := σ'.mem = σ.mem ∧ ∀ x, x < 
 
 /-- `c` sets `d` to `v`, changing otherwise only temporaries `≥ k` -/
 def IntoSpec (c : Code Nat) (d : Nat) (k : Nat) (σ : St Nat) (v : BitVec 64) : Prop :=
-  ∃ σ', Exec ram c σ σ' ∧ σ'.reg d = v ∧ σ'.mem = σ.mem ∧ ∀ x, x ≠ d → x < 8 + k → σ'.reg x = σ.reg x
+  ∃ σ', Exec ram fp c σ σ' ∧ σ'.reg d = v ∧ σ'.mem = σ.mem ∧ ∀ x, x ≠ d → x < 8 + k → σ'.reg x = σ.reg x
 
 def argBelow (a : Arg Nat) (n : Nat) : Prop := ∀ x, argUses a x = true → x < n
 def tstBelow (t : Tst Nat) (n : Nat) : Prop := ∀ x, tstUses t x = true → x < n
 
 /-- `T` tests `v ≠ 0`, changing only temporaries `≥ k`; its operands live below its next free temporary -/
 def TstSpec (T : Code Nat × Tst Nat × Nat) (k : Nat) (σ : St Nat) (v : BitVec 64) : Prop :=
-  ∃ σ', Exec ram T.1 σ σ' ∧ T.2.1.eval σ'.reg = !decide (v = 0) ∧ Frame (8 + k) σ σ' ∧
+  ∃ σ', Exec ram fp T.1 σ σ' ∧ T.2.1.eval σ'.reg = !decide (v = 0) ∧ Frame (8 + k) σ σ' ∧
     tstBelow T.2.1 (8 + T.2.2) ∧ k ≤ T.2.2
 
-variable {ram env}
+variable {ram fp env}
 
 theorem Frame.refl (n : Nat) (σ : St Nat) : Frame n σ σ := ⟨rfl, fun _ _ => rfl⟩
 
@@ -177,11 +177,11 @@ theorem ne0_eval (σ : Regs Nat) (x : Nat) : (⟨.ne, .r x, .i 0⟩ : Tst Nat).e
 
 /-- an operand from the `into` specification of its expression -/
 theorem opnd_ok {e : AExp} {ie : Nat → Nat → Code Nat} {k : Nat} {σ : St Nat}
-    (hi : IntoSpec ram (ie (tk k) k) (tk k) k σ (e.denote env)) (ha : Agree env e σ) :
-    ∃ σ', Exec ram (opnd e k (ie (tk k) k)).1 σ σ' ∧ (opnd e k (ie (tk k) k)).2.1.eval σ'.reg = e.denote env ∧
+    (hi : IntoSpec ram fp (ie (tk k) k) (tk k) k σ (e.denote env)) (ha : Agree env e σ) :
+    ∃ σ', Exec ram fp (opnd e k (ie (tk k) k)).1 σ σ' ∧ (opnd e k (ie (tk k) k)).2.1.eval σ'.reg = e.denote env ∧
       Frame (8 + k) σ σ' ∧ argBelow (opnd e k (ie (tk k) k)).2.1 (8 + (opnd e k (ie (tk k) k)).2.2) ∧
       k ≤ (opnd e k (ie (tk k) k)).2.2 := by
-  have gen : leaf e = none → ∃ σ', Exec ram (ie (tk k) k) σ σ' ∧ (Arg.r (tk k)).eval σ'.reg = e.denote env ∧
+  have gen : leaf e = none → ∃ σ', Exec ram fp (ie (tk k) k) σ σ' ∧ (Arg.r (tk k)).eval σ'.reg = e.denote env ∧
       Frame (8 + k) σ σ' ∧ argBelow (.r (tk k)) (8 + (k + 1)) ∧ k ≤ k + 1 := fun _ => by
     obtain ⟨σ', hx, hv, hm, hf⟩ := hi
     refine ⟨σ', hx, hv, ⟨hm, fun x hx => hf x (by unfold tk; omega) hx⟩, fun x hx => ?_, by omega⟩
@@ -205,10 +205,10 @@ theorem agree_ite {c a b : AExp} {σ : St Nat} (h : Agree env (.ite c a b) σ) :
    fun i hi => h i (by simp only [uses, hi, Bool.or_true])⟩
 
 theorem ops2_ok {a b : AExp} {ia ib : Nat → Nat → Code Nat} {k : Nat} {σ : St Nat}
-    (ha : ∀ k σ, Agree env a σ → IntoSpec ram (ia (tk k) k) (tk k) k σ (a.denote env))
-    (hb : ∀ k σ, Agree env b σ → IntoSpec ram (ib (tk k) k) (tk k) k σ (b.denote env))
+    (ha : ∀ k σ, Agree env a σ → IntoSpec ram fp (ia (tk k) k) (tk k) k σ (a.denote env))
+    (hb : ∀ k σ, Agree env b σ → IntoSpec ram fp (ib (tk k) k) (tk k) k σ (b.denote env))
     (ga : Agree env a σ) (gb : Agree env b σ) :
-    ∃ σ', Exec ram (ops2 a b ia ib k).1 σ σ' ∧ (ops2 a b ia ib k).2.1.eval σ'.reg = a.denote env ∧
+    ∃ σ', Exec ram fp (ops2 a b ia ib k).1 σ σ' ∧ (ops2 a b ia ib k).2.1.eval σ'.reg = a.denote env ∧
       (ops2 a b ia ib k).2.2.1.eval σ'.reg = b.denote env ∧ Frame (8 + k) σ σ' ∧
       argBelow (ops2 a b ia ib k).2.1 (8 + (ops2 a b ia ib k).2.2.2) ∧
       argBelow (ops2 a b ia ib k).2.2.1 (8 + (ops2 a b ia ib k).2.2.2) ∧ k ≤ (ops2 a b ia ib k).2.2.2 := by
@@ -218,8 +218,8 @@ theorem ops2_ok {a b : AExp} {ia ib : Nat → Nat → Code Nat} {k : Nat} {σ : 
   · rw [← v₁]; exact argEval_congr fun x hx => f₂.2 x (b₁ x hx)
   · have := b₁ x hx; show x < 8 + _; simp only [ops2]; omega
 
-theorem tstOf_ok {c : Code Nat} {k : Nat} {σ : St Nat} {v : BitVec 64} (h : IntoSpec ram c (tk k) k σ v) :
-    TstSpec ram (tstOf c k) k σ v := by
+theorem tstOf_ok {c : Code Nat} {k : Nat} {σ : St Nat} {v : BitVec 64} (h : IntoSpec ram fp c (tk k) k σ v) :
+    TstSpec ram fp (tstOf c k) k σ v := by
   obtain ⟨σ', hx, hv, hm, hf⟩ := h
   refine ⟨σ', hx, by rw [← hv]; rfl, ⟨hm, fun x hx => hf x (by unfold tk; omega) hx⟩, fun x hx => ?_, by
     show k ≤ k + 1; omega⟩
@@ -228,11 +228,11 @@ theorem tstOf_ok {c : Code Nat} {k : Nat} {σ : St Nat} {v : BitVec 64} (h : Int
   show x < 8 + (k + 1); unfold tk at this; omega
 
 theorem iteCode_ok {T : Code Nat × Tst Nat × Nat} {c a b : AExp} {ia ib : Nat → Nat → Code Nat} {d : Nat} {k : Nat}
-    {σ : St Nat} (hT : TstSpec ram T k σ (c.denote env))
-    (ha : ∀ d k σ, Agree env a σ → IntoSpec ram (ia d k) d k σ (a.denote env))
-    (hb : ∀ d k σ, Agree env b σ → IntoSpec ram (ib d k) d k σ (b.denote env))
+    {σ : St Nat} (hT : TstSpec ram fp T k σ (c.denote env))
+    (ha : ∀ d k σ, Agree env a σ → IntoSpec ram fp (ia d k) d k σ (a.denote env))
+    (hb : ∀ d k σ, Agree env b σ → IntoSpec ram fp (ib d k) d k σ (b.denote env))
     (ga : Agree env a σ) (gb : Agree env b σ) :
-    IntoSpec ram (iteCode T a b ia ib d) d k σ (if c.denote env = 0 then b.denote env else a.denote env) := by
+    IntoSpec ram fp (iteCode T a b ia ib d) d k σ (if c.denote env = 0 then b.denote env else a.denote env) := by
   obtain ⟨σ₁, x₁, v₁, f₁, b₁, k₁⟩ := hT
   unfold iteCode
   have var_of : ∀ {e : AExp} {σ₀ : St Nat}, isVar e d = true → Agree env e σ₀ → σ₀.reg d = e.denote env := by
@@ -309,8 +309,8 @@ theorem iteCode_ok {T : Code Nat × Tst Nat × Nat} {c a b : AExp} {ia ib : Nat 
 
 /-- **Selection is correct** (both components of `gen`). -/
 theorem gen_ok : ∀ e : AExp,
-    (∀ d k σ, Agree env e σ → IntoSpec ram ((gen e).1 d k) d k σ (e.denote env)) ∧
-    (∀ k σ, Agree env e σ → TstSpec ram ((gen e).2 k) k σ (e.denote env))
+    (∀ d k σ, Agree env e σ → IntoSpec ram fp ((gen e).1 d k) d k σ (e.denote env)) ∧
+    (∀ k σ, Agree env e σ → TstSpec ram fp ((gen e).2 k) k σ (e.denote env))
   | .var i => by
     refine ⟨fun d k σ hg => ?_, fun k σ hg => ⟨σ, .skip, ?_, Frame.refl _ _, fun x hx => ?_, Nat.le_refl _⟩⟩
     · simp only [gen]
@@ -328,7 +328,7 @@ theorem gen_ok : ∀ e : AExp,
   | .bin op a b => by
     have iha := gen_ok a
     have ihb := gen_ok b
-    have into : ∀ d k σ, Agree env (.bin op a b) σ → IntoSpec ram ((gen (.bin op a b)).1 d k) d k σ
+    have into : ∀ d k σ, Agree env (.bin op a b) σ → IntoSpec ram fp ((gen (.bin op a b)).1 d k) d k σ
         ((AExp.bin op a b).denote env) := fun d k σ hg => by
       obtain ⟨ga, gb⟩ := agree_bin hg
       obtain ⟨σ₁, x₁, va, vb, f₁, _, _, _⟩ := ops2_ok (k := k) (fun k σ => iha.1 (tk k) k σ)
@@ -354,21 +354,21 @@ theorem gen_ok : ∀ e : AExp,
     have ihc := gen_ok c
     have iha := gen_ok a
     have ihb := gen_ok b
-    have into : ∀ d k σ, Agree env (.ite c a b) σ → IntoSpec ram ((gen (.ite c a b)).1 d k) d k σ
+    have into : ∀ d k σ, Agree env (.ite c a b) σ → IntoSpec ram fp ((gen (.ite c a b)).1 d k) d k σ
         ((AExp.ite c a b).denote env) := fun d k σ hg => by
       obtain ⟨gc, ga, gb⟩ := agree_ite hg
       exact iteCode_ok (ihc.2 k σ gc) iha.1 ihb.1 ga gb
     exact ⟨into, fun k σ hg => tstOf_ok (into (tk k) k σ hg)⟩
 
 theorem into_ok (e : AExp) (d : Nat) (k : Nat) (σ : St Nat) (h : Agree env e σ) :
-    IntoSpec ram (into e d k) d k σ (e.denote env) := (gen_ok e).1 d k σ h
+    IntoSpec ram fp (into e d k) d k σ (e.denote env) := (gen_ok e).1 d k σ h
 
 theorem tst_ok (e : AExp) (k : Nat) (σ : St Nat) (h : Agree env e σ) :
-    TstSpec ram (tst e k) k σ (e.denote env) := (gen_ok e).2 k σ h
+    TstSpec ram fp (tst e k) k σ (e.denote env) := (gen_ok e).2 k σ h
 
 /-- the loop exits when the condition is zero (`R`: what the loop preserves; implied by `Frame 8`) -/
 theorem loopCode_exit {e : AExp} {body : Code Nat} {σ : St Nat} (hg : Agree env e σ) (h0 : e.denote env = 0) :
-    ∃ σ', Exec ram (loopCode e body) σ σ' ∧ Frame 8 σ σ' := by
+    ∃ σ', Exec ram fp (loopCode e body) σ σ' ∧ Frame 8 σ σ' := by
   unfold loopCode
   cases hc : cond2 e with
   | none =>
@@ -388,8 +388,8 @@ theorem loopCode_exit {e : AExp} {body : Code Nat} {σ : St Nat} (hg : Agree env
 
 /-- one iteration when the condition is nonzero -/
 theorem loopCode_iter {e : AExp} {body : Code Nat} {σ : St Nat} (hg : Agree env e σ) (h0 : e.denote env ≠ 0) :
-    ∃ σ₁, Frame 8 σ σ₁ ∧ ∀ σ₂ σ₃, Exec ram body σ₁ σ₂ → Exec ram (loopCode e body) σ₂ σ₃ →
-      Exec ram (loopCode e body) σ σ₃ := by
+    ∃ σ₁, Frame 8 σ σ₁ ∧ ∀ σ₂ σ₃, Exec ram fp body σ₁ σ₂ → Exec ram fp (loopCode e body) σ₂ σ₃ →
+      Exec ram fp (loopCode e body) σ σ₃ := by
   unfold loopCode
   cases hc : cond2 e with
   | none =>

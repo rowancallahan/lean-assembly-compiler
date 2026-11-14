@@ -17,6 +17,8 @@ def Ins.map (f : α → β) : Ins α → Ins β
   | .bin op d a b => .bin op (f d) (a.map f) (b.map f)
   | .lbu d a off => .lbu (f d) (a.map f) off
   | .sb v a off => .sb (v.map f) (a.map f) off
+  | .ldS d j => .ldS (f d) j
+  | .stS j v => .stS j (f v)
 
 def Code.map (f : α → β) : Code α → Code β
   | .skip => .skip
@@ -37,6 +39,8 @@ def Ins.regs : Ins α → List α
   | .bin _ d a b => d :: (a.regs ++ b.regs)
   | .lbu d a _ => d :: a.regs
   | .sb v a _ => v.regs ++ a.regs
+  | .ldS d _ => [d]
+  | .stS _ v => [v]
 
 def Code.regs : Code α → List α
   | .skip => []
@@ -87,9 +91,9 @@ theorem mem5 {x : α} {a b c d e : List α} (h : x ∈ a ∨ x ∈ b ∨ x ∈ c
   simp only [List.mem_append]; exact h
 
 /-- **Renaming preserves executions** when `f` is injective on the registers used. -/
-theorem map_ok (ram : Nat → Prop) (inj : ∀ x y, U x → U y → f x = f y → x = y) :
-    ∀ {c : Code α} {σ σ' : St α}, Exec ram c σ σ' → (∀ x, x ∈ c.regs → U x) → ∀ {τ : St β}, Ren f U σ τ →
-    ∃ τ', Exec ram (c.map f) τ τ' ∧ Ren f U σ' τ' := by
+theorem map_ok (ram : Nat → Prop) (fp : Nat) (inj : ∀ x y, U x → U y → f x = f y → x = y) :
+    ∀ {c : Code α} {σ σ' : St α}, Exec ram fp c σ σ' → (∀ x, x ∈ c.regs → U x) → ∀ {τ : St β}, Ren f U σ τ →
+    ∃ τ', Exec ram fp (c.map f) τ τ' ∧ Ren f U σ' τ' := by
   intro c σ σ' h
   induction h with
   | skip => exact fun _ τ hr => ⟨τ, .skip, hr⟩
@@ -117,6 +121,12 @@ theorem map_ok (ram : Nat → Prop) (inj : ∀ x y, U x → U y → f x = f y �
       refine ⟨_, .ins (.sb (by rw [hr.arg ha]; exact hra)), ?_, hr.2⟩
       show Mem.upd _ _ _ = Mem.upd _ _ _
       rw [hr.arg ha, hr.arg hv, hr.1]
+    | @ldS d j _ v hal hra hb =>
+      exact ⟨_, .ins (.ldS (v := v) hal hra (by rw [hr.1]; exact hb)), hr.upd inj (hu d (List.mem_singleton.2 rfl)) _⟩
+    | @stS j v _ hal hra =>
+      refine ⟨_, .ins (.stS hal hra), ?_, hr.2⟩
+      show Mem.wr _ _ _ = Mem.wr _ _ _
+      rw [hr.1, hr.2 v (hu v (List.mem_singleton.2 rfl))]
   | seq _ _ iha ihb =>
     intro hu τ hr
     obtain ⟨τ₁, x₁, r₁⟩ := iha (fun x hx => hu x (List.mem_append.2 (.inl hx))) hr

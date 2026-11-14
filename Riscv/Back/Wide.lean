@@ -165,6 +165,8 @@ def wenc : WOp → List (BitVec 32)
   | .br c a b k n => [wB (condF3 c) (.ofFin (phys a)) (.ofFin (physO b)) (brOff k n)]
   | .jmp k n => [wJ 0 (jOff k n)]
   | .ret => [iRet]
+  | .ldS d j => [encL 3 (BitVec.ofNat 12 (8 * (j + 1))) (phys d) 3]
+  | .stS j v => [encS 3 (BitVec.ofNat 12 (8 * (j + 1))) (phys v) 3]
 
 def brOK (k : Bool) (n : Nat) : Bool := if k then decide (0 < n ∧ 2 * n ≤ 2 ^ 11) else decide (2 * n < 2048)
 def jOK (k : Bool) (n : Nat) : Bool := if k then decide (0 < n ∧ 2 * n ≤ 2 ^ 19) else decide (2 * n < 2 ^ 19)
@@ -386,6 +388,85 @@ theorem w_ret {s : St} {pc : BitVec 64} (hr : core.retOK (core.ra s)) (hA : core
   obtain ⟨s', hx⟩ := step_ret h hpc hok hi hr
   exact run1 hx ⟨ofNext hx (.inl rfl), sameOf hx, memOf hx⟩
 
+
+/-! ## Slot helpers (copies of those in `Riscv/Back/Frame.lean`, which cannot be imported next to
+`Riscv.Back.Stmt`) -/
+
+theorem phys_ne3' : ∀ r : Reg, (3 : Fin 32) ≠ phys r := by decide
+
+theorem toNat_ofNat_lt' {n : Nat} (h : n < 2 ^ 64) : (BitVec.ofNat 64 n).toNat = n := by
+  simp only [BitVec.toNat_ofNat]; exact Nat.mod_eq_of_lt h
+
+/-- the model's byte memory after `storeBytes` is `Mem.wr` -/
+theorem storeBytes_wr' : ∀ (m : Proven.Mem) (a : Nat) (l : List (BitVec 8)) (x : Nat),
+    (storeBytes m a l)[x]? = Mem.wr (fun y => m[y]?) a l x
+  | m, a, [], x => rfl
+  | m, a, v :: l, x => by
+    show (writeCells (m.insert a v) (List.range' (a + 1) l.length) l)[x]? = _
+    have := storeBytes_wr' (m.insert a v) (a + 1) l x
+    unfold storeBytes at this; rw [this]
+    show _ = Mem.wr (Mem.upd (fun y => m[y]?) a v) (a + 1) l x
+    congr 1; funext y; unfold Mem.upd
+    rw [Std.ExtHashMap.getElem?_insert]
+    by_cases hy : y = a
+    · subst hy; simp
+    · rw [ite_neg hy]; simp [Ne.symm hy]
+
+theorem bytes_eq' (s : St) : ∀ a n, bytes (core.mem s) a n = bytesAt s a n
+  | _, 0 => rfl
+  | a, n + 1 => by
+    show s.mem[a]? :: bytes (core.mem s) (a + 1) n = _
+    rw [bytes_eq' s (a + 1) n]
+    simp only [bytesAt, List.range_succ_eq_map, List.map_cons, List.map_map, Nat.add_zero]
+    congr 1; apply List.map_congr_left; intro j _; simp only [Function.comp]; rw [Nat.add_assoc, Nat.add_comm 1 j]
+
+theorem bytes_le8' {s : St} {a : Nat} {v : BitVec 64} (h : bytes (core.mem s) a 8 = (le8 v).map some) :
+    bytesAt s a 8 = (Proven.le8 v).map some := (bytes_eq' s a 8).symm.trans h
+
+theorem slotA' {s : St} {j : Nat} (hr : core.inRAM ((getX s 3).toNat + 8 * (j + 1)) 8) :
+    getX s 3 + BitVec.ofNat 64 (8 * (j + 1)) = BitVec.ofNat 64 ((getX s 3).toNat + 8 * (j + 1)) ∧
+    (BitVec.ofNat 64 ((getX s 3).toNat + 8 * (j + 1))).toNat = (getX s 3).toNat + 8 * (j + 1) := by
+  obtain ⟨_, h2⟩ := hr
+  have h2' : (getX s 3).toNat + 8 * (j + 1) + 8 ≤ 0x100000000 := h2
+  have e := toNat_ofNat_lt' (n := (getX s 3).toNat + 8 * (j + 1)) (by omega)
+  refine ⟨BitVec.eq_of_toNat_eq ?_, e⟩
+  rw [e, BitVec.toNat_add, BitVec.toNat_ofNat, Nat.mod_eq_of_lt (a := 8 * (j + 1)) (by omega)]
+  exact Nat.mod_eq_of_lt (by omega)
+
+
+theorem slotImm : ∀ j : Fin 16, (BitVec.ofNat 12 (8 * (j.val + 1))).signExtend 64 = BitVec.ofNat 64 (8 * (j.val + 1)) := by
+  decide
+
+theorem w_ldS {d : Reg} {j : Nat} {s : St} {pc : BitVec 64} {v : BitVec 64} (hj : j < 16)
+    (hA : core.At s pc (wenc (.ldS d j))) (hr : core.inRAM ((getX s 3).toNat + 8 * (j + 1)) 8)
+    (hal : ((getX s 3).toNat + 8 * (j + 1)) % 8 = 0)
+    (hb : bytes (core.mem s) ((getX s 3).toNat + 8 * (j + 1)) 8 = (le8 v).map some) :
+    core.runsTo s fun s' => core.Done s s' (next pc (wenc (.ldS d j)).length) ∧ core.Set1 s s' d v ∧
+      core.mem s' = core.mem s := by
+  obtain ⟨e1, e2⟩ := slotA' hr
+  obtain ⟨h0, h1, h2, h3, h4, h5, h6, h7⟩ := bytesAt_le8 (bytes_le8' hb)
+  refine one hA fun h hpc hok hi => ?_
+  have := G.step_ld h hpc hok (phys d) 3 _ hi (A := BitVec.ofNat 64 ((getX s 3).toNat + 8 * (j + 1)))
+    (by rw [slotImm ⟨j, hj⟩]; exact e1) (by rw [e2]; exact hr) (by rw [e2]; exact hal)
+    (by rw [e2]; exact h0) (by rw [e2]; exact h1) (by rw [e2]; exact h2) (by rw [e2]; exact h3)
+    (by rw [e2]; exact h4) (by rw [e2]; exact h5) (by rw [e2]; exact h6) (by rw [e2]; exact h7)
+  rwa [le8_cat] at this
+
+theorem w_stS {j : Nat} {v : Reg} {s : St} {pc : BitVec 64} (hj : j < 16)
+    (hA : core.At s pc (wenc (.stS j v))) (hr : core.inRAM ((getX s 3).toNat + 8 * (j + 1)) 8)
+    (hal : ((getX s 3).toNat + 8 * (j + 1)) % 8 = 0) :
+    core.runsTo s fun s' => core.Done s s' (next pc (wenc (.stS j v)).length) ∧ core.Same s s' ∧
+      core.mem s' = (core.mem s).wr ((getX s 3).toNat + 8 * (j + 1)) (le8 (core.get s v)) := by
+  obtain ⟨h, hpc, hok, hi⟩ := first1 hA
+  obtain ⟨e1, e2⟩ := slotA' hr
+  obtain ⟨s', hn⟩ := G.step_sd h hpc hok (phys v) 3 _ hi (A := BitVec.ofNat 64 ((getX s 3).toNat + 8 * (j + 1)))
+    (by rw [slotImm ⟨j, hj⟩]; exact e1) (by rw [e2]; exact hr) (by rw [e2]; exact hal)
+  refine run1 hn ⟨ofNext hn (.inl rfl), sameOf hn, ?_⟩
+  funext x
+  show s'.mem[x]? = _
+  rw [hn.mem, e2, storeBytes_wr']
+  rfl
+
 /-- **The Sail RV64 model is a `Wide` machine.** -/
 def rvw : Wide where
   toCore := core
@@ -407,5 +488,10 @@ def rvw : Wide where
   w_br := w_br
   w_jmp := w_jmp
   w_ret := w_ret
+  fr s := getX s 3
+  maxSlots := 16
+  keep_fr h := h 3 phys_ne3'
+  w_ldS := w_ldS
+  w_stS := w_stS
 
 end Proven.Mach.Riscv

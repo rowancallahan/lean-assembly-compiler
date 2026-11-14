@@ -30,6 +30,10 @@ inductive Ins (ρ : Type) where
   | lbu (d : ρ) (a : Arg ρ) (off : BitVec 64)
   /-- `mem[a + off] := low byte of v` -/
   | sb (v : Arg ρ) (a : Arg ρ) (off : BitVec 64)
+  /-- `d := slot j` (8 bytes at `fp + 8 (j + 1)`) -/
+  | ldS (d : ρ) (j : Nat)
+  /-- `slot j := v` -/
+  | stS (j : Nat) (v : ρ)
   deriving Repr
 
 inductive Code (ρ : Type) where
@@ -65,7 +69,7 @@ structure St (ρ : Type) where
   mem : Mem
 
 section
-variable [DecidableEq ρ] (ram : Nat → Prop)
+variable [DecidableEq ρ] (ram : Nat → Prop) (fp : Nat)
 
 inductive Step : Ins ρ → St ρ → St ρ → Prop
   | set {d a s} : Step (.set d a) s ⟨upd s.reg d (a.eval s.reg), s.mem⟩
@@ -74,10 +78,14 @@ inductive Step : Ins ρ → St ρ → St ρ → Prop
       Step (.lbu d a off) s ⟨upd s.reg d (v.setWidth 64), s.mem⟩
   | sb {v a off s} : ram (a.eval s.reg + off).toNat →
       Step (.sb v a off) s ⟨s.reg, s.mem.upd (a.eval s.reg + off).toNat ((v.eval s.reg).setWidth 8)⟩
+  | ldS {d j s v} : fp % 8 = 0 → (∀ i, i < 8 → ram (fp + 8 * (j + 1) + i)) → bytes s.mem (fp + 8 * (j + 1)) 8 = (le8 v).map some →
+      Step (.ldS d j) s ⟨upd s.reg d v, s.mem⟩
+  | stS {j v s} : fp % 8 = 0 → (∀ i, i < 8 → ram (fp + 8 * (j + 1) + i)) →
+      Step (.stS j v) s ⟨s.reg, s.mem.wr (fp + 8 * (j + 1)) (le8 (s.reg v))⟩
 
 inductive Exec : Code ρ → St ρ → St ρ → Prop
   | skip {s} : Exec .skip s s
-  | ins {i s s'} : Step ram i s s' → Exec (.ins i) s s'
+  | ins {i s s'} : Step ram fp i s s' → Exec (.ins i) s s'
   | seq {a b s s₁ s₂} : Exec a s s₁ → Exec b s₁ s₂ → Exec (.seq a b) s s₂
   | whenT {t body s s'} : t.eval s.reg = true → Exec body s s' → Exec (.when t body) s s'
   | whenF {t body s} : t.eval s.reg = false → Exec (.when t body) s s
@@ -92,7 +100,7 @@ inductive Exec : Code ρ → St ρ → St ρ → Prop
       Exec (.loop2 p₁ t₁ p₂ t₂ body) s s₄
 
 /-- memory changes only at `ram` addresses -/
-theorem Exec.mem_out {c : Code ρ} {s s' : St ρ} (h : Exec ram c s s') : ∀ a, ¬ram a → s'.mem a = s.mem a := by
+theorem Exec.mem_out {c : Code ρ} {s s' : St ρ} (h : Exec ram fp c s s') : ∀ a, ¬ram a → s'.mem a = s.mem a := by
   induction h with
   | skip => exact fun _ _ => rfl
   | ins hst =>
@@ -102,6 +110,13 @@ theorem Exec.mem_out {c : Code ρ} {s s' : St ρ} (h : Exec ram c s s') : ∀ a,
     | bin => rfl
     | lbu _ _ => rfl
     | sb hr => exact ite_neg fun e => ha (e ▸ hr)
+    | ldS _ _ _ => rfl
+    | @stS j _ _ _ hr =>
+      refine Mem.wr_out ?_
+      rw [length_le8]
+      by_cases h : fp + 8 * (j + 1) ≤ a ∧ a < fp + 8 * (j + 1) + 8
+      · exact absurd (by have := hr (a - (fp + 8 * (j + 1))) (by omega); rwa [Nat.add_sub_cancel' h.1] at this) ha
+      · omega
   | seq _ _ iha ihb => exact fun a ha => (ihb a ha).trans (iha a ha)
   | whenT _ _ ih => exact ih
   | whenF _ => exact fun _ _ => rfl

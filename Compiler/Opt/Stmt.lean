@@ -14,9 +14,9 @@ def irS : Stmt → Code Nat
   | .loop c b => Sel.loopCode (toA c) (irS b)
 
 /-- selection preserves the statement semantics -/
-theorem irS_ok (ram : Nat → Prop) : ∀ {p : Stmt} {σe σe' : Env}, Exec p σe σe' → ∀ (σ : St Nat),
+theorem irS_ok (ram : Nat → Prop) (fp : Nat) : ∀ {p : Stmt} {σe σe' : Env}, Exec p σe σe' → ∀ (σ : St Nat),
     (∀ i : Fin 4, σ.reg i.val = σe i) →
-    ∃ σ', IR.Exec ram (irS p) σ σ' ∧ (∀ i : Fin 4, σ'.reg i.val = σe' i) ∧ σ'.mem = σ.mem := by
+    ∃ σ', IR.Exec ram fp (irS p) σ σ' ∧ (∀ i : Fin 4, σ'.reg i.val = σe' i) ∧ σ'.mem = σ.mem := by
   intro p σe σe' h
   induction h with
   | @assign v e σe =>
@@ -58,9 +58,9 @@ theorem optS_ok {p : Stmt} {ws : List (BitVec 32)} (hc : M.optS p = some ws) {σ
     (hex : Exec p (fun i => M.get s (v4 i)) σ') {pc : BitVec 64} (hA : M.At s pc ws) (hra : M.retOK (M.ra s)) :
     M.runsTo s fun s' => M.pcIs s' (M.ra s) ∧ (∀ i, M.get s' (v4 i) = σ' i) ∧ M.ok s' ∧ M.mem s' = M.mem s ∧
       M.keep s s' := by
-  obtain ⟨τ', hx, hv, hm⟩ := irS_ok (fun _ => False) hex ⟨fun x => M.get s (fE x), M.mem s⟩
+  obtain ⟨τ', hx, hv, hm⟩ := irS_ok (fun _ => False) (M.fr s).toNat hex ⟨fun x => M.get s (fE x), M.mem s⟩
     fun i => congrArg _ (fE_v4 i)
-  refine M.runsTo_mono (fn_ok (fun _ h => h.elim) hc hA.ok hA.hpc ⟨hA.code, hA.codeOK, fun _ h => h.elim⟩ hra hx)
+  refine M.runsTo_mono (fn_ok (fun _ h => h.elim) hc hA.ok hA.hpc ⟨hA.code, hA.codeOK, fun _ h => h.elim, rfl⟩ hra hx)
     fun s' ⟨p, v, o, m, k⟩ => ⟨p, fun i => ?_, o, m.trans hm, k⟩
   rw [← hv, ← fE_v4]
   exact v i.val (by revert i; decide) (by revert i; decide)

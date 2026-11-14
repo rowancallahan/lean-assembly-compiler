@@ -4,7 +4,7 @@ immediate forms, base+offset byte loads/stores, compare-and-branch on two regist
 and jumps in both directions.  A target is a `Wide`: the generic `Core` laws plus one law per `WOp`.
 
 Pure Lean (core only), like `Iface.lean`. -/
-import Compiler.Logic
+import Compiler.Frame
 
 namespace Proven.Mach
 
@@ -46,6 +46,10 @@ inductive WOp where
   | jmp (back : Bool) (n : Nat)
   /-- jump to the return address -/
   | ret
+  /-- `d := slot j` (the 8 bytes at `fr + 8 (j + 1)`), any register -/
+  | ldS (d : Reg) (j : Nat)
+  /-- `slot j := v`, any register -/
+  | stS (j : Nat) (v : Reg)
   deriving Repr
 
 /-- the target of a jump over `n` words from `pc` -/
@@ -104,6 +108,19 @@ structure Wide extends Core where
     runsTo s fun s' => toBase.Done s s' (tgt pc k n) ∧ toBase.Same s s' ∧ mem s' = mem s
   w_ret : ∀ {s : S} {pc : BitVec 64}, retOK (ra s) → toBase.At s pc (wenc .ret) →
     runsTo s fun s' => toBase.Done s s' (ra s) ∧ toBase.Same s s' ∧ mem s' = mem s
+  /-- the frame register (as `MachineF.fr`); not an abstract register, unchanged by every wide operation -/
+  fr : S → BitVec 64
+  maxSlots : Nat
+  keep_fr : ∀ {s s' : S}, keep s s' → fr s' = fr s
+  w_ldS : ∀ {d : Reg} {j : Nat} {s : S} {pc : BitVec 64} {v : BitVec 64}, j < maxSlots →
+    toBase.At s pc (wenc (.ldS d j)) → toBase.inRAM ((fr s).toNat + 8 * (j + 1)) 8 →
+    ((fr s).toNat + 8 * (j + 1)) % 8 = 0 → bytes (mem s) ((fr s).toNat + 8 * (j + 1)) 8 = (le8 v).map some →
+    runsTo s fun s' => toBase.Done s s' (next pc (wenc (.ldS d j)).length) ∧ toBase.Set1 s s' d v ∧ mem s' = mem s
+  w_stS : ∀ {j : Nat} {v : Reg} {s : S} {pc : BitVec 64}, j < maxSlots →
+    toBase.At s pc (wenc (.stS j v)) → toBase.inRAM ((fr s).toNat + 8 * (j + 1)) 8 →
+    ((fr s).toNat + 8 * (j + 1)) % 8 = 0 →
+    runsTo s fun s' => toBase.Done s s' (next pc (wenc (.stS j v)).length) ∧ toBase.Same s s' ∧
+      mem s' = (mem s).wr ((fr s).toNat + 8 * (j + 1)) (le8 (get s v))
 
 namespace Wide
 variable (M : Wide)

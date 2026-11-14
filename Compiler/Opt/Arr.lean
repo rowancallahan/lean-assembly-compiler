@@ -72,9 +72,9 @@ theorem RelA.addr {bv R σ τ} (r : RelA bv R σ τ) (hR : ∀ r ∈ R, r.base +
     Nat.mod_eq_of_lt (by omega)]
 
 /-- selection preserves the array-statement semantics -/
-theorem irA_ok (bv : List (Fin 8)) {R : List Region} (hR : ∀ r ∈ R, r.base + r.len < 2 ^ 64)
+theorem irA_ok (fp : Nat) (bv : List (Fin 8)) {R : List Region} (hR : ∀ r ∈ R, r.base + r.len < 2 ^ 64)
     (hP : R.Pairwise disjoint) : ∀ {p : AStmt} {σ σ' : AState}, AExec p σ σ' → okA bv p = true →
-    ∀ (τ : St Nat), RelA bv R σ τ → ∃ τ', IR.Exec (ramR R) (irA bv p) τ τ' ∧ RelA bv R σ' τ' := by
+    ∀ (τ : St Nat), RelA bv R σ τ → ∃ τ', IR.Exec (ramR R) fp (irA bv p) τ τ' ∧ RelA bv R σ' τ' := by
   intro p σ σ' h
   induction h with
   | @assign v e σ =>
@@ -184,20 +184,20 @@ theorem optA_ok (bv : List (Fin 8)) {p : AStmt} {ws : List (BitVec 32)} (hc : M.
       have : r.base + r.len ≤ M.ramHi := (hR.1 r hr).2
       omega
     have fAv : ∀ i : Fin 8, fA i.val = avar i := by decide
-    obtain ⟨τ', hx, r'⟩ := irA_ok bv hR64 hR.2 hex hk ⟨fun x => M.get s (fA x), M.mem s⟩
+    obtain ⟨τ', hx, r'⟩ := irA_ok (M.fr s).toNat bv hR64 hR.2 hex hk ⟨fun x => M.get s (fA x), M.mem s⟩
       ⟨fun i => (congrArg _ (fAv i)).trans (hrel.env i), hrel.hlen, hrel.bvlen, hrel.base, hrel.blen, hrel.bytes⟩
     have hram : ∀ a, ramR R a → M.inRAM a 1 := fun a ⟨r, hr, h1, h2⟩ => by
       have : M.ramLo ≤ r.base ∧ r.base + r.len ≤ M.ramHi := hR.1 r hr
       exact ⟨by omega, by omega⟩
-    have hf : M.Frag (ramR R) s pc ws := ⟨hA.code, hA.codeOK, fun a ⟨r, hr, h1, h2⟩ h' => by
-      have := hcd r hr; unfold disjoint at this; dsimp only at this; omega⟩
+    have hf : M.Frag (ramR R) (M.fr s).toNat s pc ws := ⟨hA.code, hA.codeOK, fun a ⟨r, hr, h1, h2⟩ h' => by
+      have := hcd r hr; unfold disjoint at this; dsimp only at this; omega, rfl⟩
     refine M.runsTo_mono (fn_ok hram hc hA.ok hA.hpc hf hra hx) fun s' ⟨pc', v, o, m, k⟩ =>
       ⟨pc', ⟨fun i => ?_, r'.hlen, r'.bvlen, r'.base, r'.blen, fun b hb => by rw [m]; exact r'.bytes b hb⟩, ?_, o, k⟩
     · rw [← r'.env i, ← fAv i]
       exact v i.val (by revert i; decide) (by revert i; decide)
     · intro a ha
       rw [m]
-      exact Exec.mem_out _ hx a fun ⟨r, hr, h1, h2⟩ => by have := ha r hr; omega
+      exact Exec.mem_out _ _ hx a fun ⟨r, hr, h1, h2⟩ => by have := ha r hr; omega
   · rw [ite_neg hk] at hc; exact nomatch hc
 
 end Wide

@@ -15,10 +15,10 @@ def fn (vars : List Nat) (c : Code Nat) : Option (List (BitVec 32)) :=
 
 variable {M sc f}
 
-theorem fn_ok {ram : Nat → Prop} (hram : ∀ a, ram a → M.inRAM a 1) {vars : List Nat} {c : Code Nat}
+theorem fn_ok {ram : Nat → Prop} {fp : Nat} (hram : ∀ a, ram a → M.inRAM a 1) {vars : List Nat} {c : Code Nat}
     {ws : List (BitVec 32)} (hc : M.fn sc f vars c = some ws) {s : M.S} {pc : BitVec 64} (hok : M.ok s)
-    (hpc : M.pcIs s pc) (hf : M.Frag ram s pc ws) (hra : M.retOK (M.ra s)) {σ' : St Nat}
-    (hex : Exec ram c ⟨fun x => M.get s (f x), M.mem s⟩ σ') :
+    (hpc : M.pcIs s pc) (hf : M.Frag ram fp s pc ws) (hra : M.retOK (M.ra s)) {σ' : St Nat}
+    (hex : Exec ram fp c ⟨fun x => M.get s (f x), M.mem s⟩ σ') :
     M.runsTo s fun s' => M.pcIs s' (M.ra s) ∧ (∀ x, x ∈ vars → f x ≠ sc → M.get s' (f x) = σ'.reg x) ∧
       M.ok s' ∧ M.mem s' = σ'.mem ∧ M.keep s s' := by
   unfold fn at hc
@@ -26,7 +26,7 @@ theorem fn_ok {ram : Nat → Prop} (hram : ∀ a, ram a → M.inRAM a 1) {vars :
   · rw [ite_pos hchk] at hc
     cases hc
     obtain ⟨hinj, hwf⟩ := and2 hchk
-    obtain ⟨τ', hx', hr'⟩ := map_ok (f := f) (U := fun x => x ∈ vars ++ c.regs) ram
+    obtain ⟨τ', hx', hr'⟩ := map_ok (f := f) (U := fun x => x ∈ vars ++ c.regs) ram fp
       (fun x y hx hy => injOn_ok hinj hx hy) hex (fun x hx => List.mem_append.2 (.inr hx))
       (τ := ⟨M.get s, M.mem s⟩) ⟨rfl, fun _ _ => rfl⟩
     refine M.runsTo_trans (low_ok hram hx' hwf hok hpc hf.left ⟨fun _ _ => rfl, rfl⟩) fun s₁ ⟨d₁, m₁, r₁⟩ => ?_
