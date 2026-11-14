@@ -158,7 +158,7 @@ The condition is sufficient, not necessary (`compileP` checks the real depth and
 - All pending maps of a `map`/`take`/`drop`/`reverse` chain share one loop body; body + loop overhead
   `< 1024` words (`beq` reach). Constants are built bit by bit (17 words for a byte literal, up to 129 for a
   word constant), so about 40 byte-literal operations per chain.
-- `sort` is the proved insertion sort: quadratic.
+- `sort` is the proved merge sort (since PipeStd; before: the quadratic insertion sort).
 - Not optimal code: each byte `+`/`-` is masked (19 words); a fold result is stored by a loop;
   `take`/`drop` evaluate `min` twice.
 
@@ -192,6 +192,111 @@ twosort: 300/300 ok (QEMU == Sail == model, 379 words)
 `lake env lean Proven/X.lean`, imports prebuilt, 4-core box: `Pipe` 1.2 s, `PipeSrc` 4.4 s, `PipeMachine` 1.2 s,
 `PipeOk` 2.2 s, `PipeFront` 1.2 s, `PipeExamples` 1.1 s (11 `compile%` + 6 rejected + 4 `Pipe.ok`),
 `PipeEncode` 0.7 s. Lines: 254 / 815 / 220 / 308 / 226 / 129 / 23.
+
+## Standard-library functions (`Compiler/Front/PipeStd*.lean`, 2026-11-14)
+
+`compile%` now builds an `XPipe` (list of `XStage`: every old `Stage` via `XStage.base`, plus `red r`,
+`filter p`, `takeWhile p`, `dropWhile p`, `appendC c`) and compiles it with `compileX`
+(`Compiler/Front/PipeStdBMachine.lean`). `List.mergeSort` is now the proved bottom-up merge sort
+(O(n log n), `msortG`, `Riscv/Direct/SortMergeGen.lean`), no longer the insertion sort.
+
+### Theorems
+
+```lean
+-- Compiler/Front/PipeStdMachine.lean  (pipes without a sort: two blocks, no stack, as compileP)
+def ImplementsPipeLen code f space :=   -- hypotheses exactly those of ImplementsPipe; conclusion:
+  ... runsTo s fun s' => PC = ra ∧ bytesAt s' output.base (f x).length = (f x).map some ∧
+      unchangedOutside s s' [input, ⟨output.base, space x.length⟩] ∧ calleeSavedKept s s' ∧ Cfg s' ∧
+      s'.regs.get? .x11 = some (BitVec.ofNat 64 (f x).length)
+theorem compileXA_ok (h : compileXA p = .ok code) : ImplementsPipeLen code (XPipe.denote p) (XPipe.space p)
+-- Compiler/Front/PipeStdBMachine.lean (all pipes; a sort uses BStmt with 7 slots and a scratch block)
+def ImplementsPipeS code f space sspace stackLen :=  -- ImplementsPipeLen's hypotheses plus
+  --   sspace x.length ≤ scratch.len, stackLen ≤ stack.len, scratch bytes [0, sspace) present; conclusion:
+  ... unchangedOutside s s' [input, ⟨scratch.base, sspace x.length⟩, ⟨output.base, space x.length⟩, stack] ∧
+      calleeSavedKept s s' ∧ Cfg s' ∧ s'.regs.get? .x11 = some (BitVec.ofNat 64 (f x).length)
+theorem compileX_ok (h : compileX p = .ok code) :
+    ImplementsPipeS code (XPipe.denote p) (XPipe.space p) (XPipe.sspace p) (XPipe.stack p)
+-- XPipe.stack p = 71 if p has a sort (64-byte frame + alignment), else 0; XPipe.sspace = largest view at a sort
+```
+Axioms of `compileXA_ok`, `compileX_ok`: the 77 of `compileP_ok` (checked by `Testing/scripts/axioms_c.lean`).
+`Compiled.ok` (ImplementsPipeS for `fun xs => enc (f xs)`), `Compiled.okLen`/`okPipe` (sort-free:
+`ImplementsPipeLen`/`ImplementsPipe`), `Compiled.mapped` (ImplementsMapped), `Compiled.mapped2`
+(ImplementsMapped2, stack 71).
+
+**Variable-length results (one convention, the same as `Spec/Implements1.lean`'s `retLen`):** the result is
+the first `a1` bytes of the output block (`a1` = `x11`, the second ABI return register, holds `|f x|` at the
+return; proved for every pipe). Output bytes in `[|f x|, space |x|)` are unspecified (used as a buffer);
+output bytes from `space |x|` on are unchanged (proved: `unchangedOutside … ⟨output.base, space x.length⟩`).
+Fixed-length results are unchanged (`a1` is just their constant length). Bytes beyond the result are NOT
+restored to their old value: filter/sort/Option results use the output block as a buffer.
+
+Result encodings (`Spec/Encode.lean`, nothing added there): `List UInt8` raw (+ length in `a1`), `UInt8` 1
+byte, `Bool` 1 byte 0/1, `BitVec 64` 8 bytes LE, `Option UInt8` `[0]` or `[1, v]`; a `Nat` result is written
+`BitVec.ofNat 64 n` (or `(n : BitVec 64)`).
+
+### Stdlib function table
+
+| Lean function (on `List UInt8`) | stage | status | notes / limits |
+|---|---|---|---|
+| `map f` `take n` `drop n` `reverse` `foldl` | old `Stage` | proved, tested | as before |
+| `mergeSort` (default order) | `base .sort` → `msortG` | proved, tested | O(n log n); scratch `n` bytes, 71 stack bytes |
+| `length` (as `BitVec.ofNat 64`) | `red .length` | proved, tested | O(1) (`a1`) |
+| `sum : UInt8` | `red .sum8` | proved, tested | mod 256 |
+| `(l.map UInt8.toNat).sum` (as `BitVec 64`) | `red .sum64` | proved, tested | |
+| `countP p`, `count b` | `red .countP/.count` | proved, tested | `p` a byte condition, `b` closed |
+| `any p`, `all p`, `contains b`, `elem b`, `isEmpty` | `red` | proved, tested | `Bool` |
+| `head?`, `getLast?`, `l[i]?` (closed `i`) | `take 1`/`reverse`/`drop i` + `red .head` | proved, tested | `Option UInt8` |
+| `find? p`, `min?`, `max?` | `red` | proved, tested | `Option UInt8`, full pass |
+| `findIdx p`, `idxOf b` (as `BitVec 64`) | `red .findIdx/.idxOf` | proved, tested | |
+| `filter p`, `takeWhile p`, `dropWhile p` | stateful-filter loop | proved, tested | length in `a1`; in place on the output block |
+| `l ++ c`, `c ++ l` (`c` closed, e.g. `List.replicate 3 0`) | `appendC` (prepend = reverse, append, reverse) | proved, tested (`suffix`, `prefixRev`) | stores unrolled: ~20 words per constant byte |
+| compositions of all the above | `XPipe` | proved, tested | e.g. `(xs.filter (· > 3)).mergeSort`, `((xs.dropWhile …).filter …).length` |
+
+Predicates `p` (`BPred`): `<, ≤, >, ≥, =, ≠` (as `decide`), `==`, `!=`, `&&`, `||`, `!`, `true`, `false` over byte
+expressions (`+ - &&& ||| ^^^`, `if`, literals).
+
+### Not done / does not fit (why)
+
+- `zipWith f xs xs.reverse`, `zipWith f xs (xs.drop k)`, `mapIdx`/`enum`-style maps: fit the scheme (one
+  loop, in-place pair swap / forward read-ahead / index in `a2`), not implemented in this round (each needs
+  a new loop proof).
+- `xs ++ xs.reverse`, `xs ++ ys` with both sides from the input: needs a second view of the input (one more
+  view register pair); not implemented. `++` of two non-constant lists is rejected with a message.
+- `List.range n |>.map f`: the result does not depend on `xs` (constant output); not implemented.
+- `rotateLeft k`: needs `k % length` at run time — a modulus (no `rem` in `Op`).
+- `eraseDups`: quadratic (nested loop) or a 256-bit seen table in scratch; not implemented.
+- `replicate n b` with `n` from the input, `take xs.length` etc.: counts must be closed (`Nat` from data).
+- byte `*`, `/`, `%`, shifts in byte expressions: not in `ByteExp` (no multiply / divide in `Op`).
+- `zip`, `product`, two-list functions (`isPrefixOf ys`, `diff`): need two inputs (the spec has one).
+- `sum`/`length` as unbounded `Nat`: must be `BitVec.ofNat 64` (no `Bytes Nat` encoding).
+- `List.sort`/`mergeSort` with a custom order, `insertionSort`: only the default `≤`.
+- `findIdx?`/`idxOf?` (`Option Nat`), `lookup`, `partition` (pair of lists), `splitAt`, `groupBy`: result
+  encodings (`Option Nat`, pairs of variable-length lists) not provided.
+- Not provided: a decidable `XPipe.ok` success condition for the new stages (the compiler's own check,
+  run by `compile%` with `decide +kernel`, is the criterion; `Pipe.ok` still covers old-stage pipes).
+
+### Compilation of the new stages
+
+- Reductions (`redC`): `a5 := init` (over `a1`), optional loop `a6 := view[i]; a5 := step`, optional
+  `a5 := fin`, store the `k ≤ 8` low bytes of `a5`, optional `a1 := len`. Option words: `none ↦ 0`,
+  `some v ↦ 1 + 256 v` (stored as `[tag, v]`, `a1 := tag + 1`); `findIdx` state `2 i + found`.
+- Filters (`sfC`): view on the output block is first materialized; then `a5 := s0; a7 := 0; for i < m:
+  a6 := view[i]; out[a7] := a6; a7 += (K ≠ 0); a5 := N`; `a1 := a7`. `filter`: `K = p`; `takeWhile`:
+  `K = N = s &&& p`, `s0 = 1`; `dropWhile`: `K = (s &&& p) ^^^ 1`, `N = s &&& p`, `s0 = 1`.
+- Sort (`sortB`): view = input itself (`cs0`): `msortG 0 1 2` (input → output, scratch); else materialize
+  to `out[0..m)`, copy to `scr[0..m)`, `msortG 2 1 2`. The `AStmt` stages run renamed (`a2 ↦ v7`,
+  `a7 ↦ slot v8`) inside the `BStmt` program (`AExec.rB`), so `a2` keeps the scratch base.
+- Renames for importing `Arr2Code`/`SortMerge*` together with `Pipe`: Pipe's `BExp` is now `ByteExp`,
+  `minE` is `minN` (no other change to the old files).
+
+### Tests (300 random cases each incl. `[]`, length 1, all-equal, sorted lists; QEMU == Sail == model)
+
+The harness now passes a real scratch slot (`a2`, 0x66-filled) and a per-case 256-byte stack (`sp` at a
+random misalignment, 0x77-filled) and sets `gp`; it checks `a1 = |result|`, `gp` restored, no scratch write
+beyond `sspace`, no stack write outside the 64-byte frame, no output write beyond `space`. All 36 examples
+pass 300/300: old 11 (`sort` 446 words with the merge sort, `twosort` 1144), and `len sum8 sumNat countLt
+count7 any3 allRange has5 empty head last get3 findBig min max idxZero idx42 evens ascii unpad suffix
+prefixRev filtmap filtsort countBig`.
 
 ## What the language needs next (target: SHA-256 of a byte list)
 
