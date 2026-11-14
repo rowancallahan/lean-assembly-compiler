@@ -20,6 +20,9 @@ namespace Proven
 
 def rn (i : Fin 8) : Nat := if i.val = 2 then 7 else if i.val = 7 then 8 else i.val
 
+@[simp] theorem rn1 : rn 1 = 1 := rfl
+@[simp] theorem rn4 : rn 4 = 4 := rfl
+
 theorem rn_inj : ∀ {i j : Fin 8}, rn i = rn j → i = j := by decide
 theorem rn_ne2 : ∀ i : Fin 8, rn i ≠ 2 := by decide
 theorem rn_lt : ∀ i : Fin 8, rn i < 9 := by decide
@@ -233,5 +236,192 @@ theorem msortB_exec (s0 : Nat) (hs0 : s0 = 0 ∨ s0 = 2) {A0 J0 out scr : List (
   subst hK
   refine ⟨_, T ++ scr.drop m, hexK, rfl, by simp [hT, hl]; omega, fun v hv => ?_⟩
   exact hex.env_keep (fun hm' => hv (msortG_assigns s0 1 2 v hm'))
+
+/-! ## The `BStmt` program -/
+
+def XStage.isSort : XStage → Bool
+  | .base .sort => true
+  | _ => false
+
+theorem XStage.eq_of_isSort {st : XStage} (h : st.isSort = true) : st = .base .sort := by
+  cases st with
+  | base st => cases st <;> first | rfl | simp [XStage.isSort] at h
+  | _ => simp [XStage.isSort] at h
+
+/-- the view is the input itself, from 0, without pending maps -/
+def CS.isIn (cs : CS) : Bool := !cs.onOut && !cs.rev && cs.s0 && cs.gs.isEmpty
+
+def sortB (cs : CS) : List BStmt :=
+  if cs.isIn then [msortG 0 1 2, (AStmt.assign 4 (.const 0)).rB]
+  else (mat cs).map AStmt.rB ++ [copyC.rB, msortG 2 1 2, (AStmt.assign 4 (.const 0)).rB]
+
+def xstageB (st : XStage) (cs : CS) : List BStmt × CS :=
+  if st.isSort then (sortB cs, csClean) else ((xstageC st cs).1.map AStmt.rB, (xstageC st cs).2)
+
+theorem xstageB_snd (st : XStage) (cs : CS) : (xstageB st cs).2 = (xstageC st cs).2 := by
+  unfold xstageB; split
+  · rename_i h; rw [XStage.eq_of_isSort h]; rfl
+  · rfl
+
+def xstmtsB : XPipe → CS → List BStmt
+  | [], cs => (mat cs).map AStmt.rB
+  | st :: r, cs => (xstageB st cs).1 ++ xstmtsB r (xstageB st cs).2
+
+/-- the program with spill slots: `List.mergeSort` is the merge sort -/
+def XPipe.progB (p : XPipe) : BStmt := (xstmtsB p cs0).foldl .seq (AStmt.assign 4 (.const 0)).rB
+
+/-- scratch bytes needed: the largest view length at a sort -/
+def XPipe.sneed : XPipe → CS → Nat → Nat
+  | [], _, _ => 0
+  | st :: r, cs, n => max (if st.isSort then n else 0) (XPipe.sneed r (xstageC st cs).2 (st.len n))
+
+def XPipe.sspace (p : XPipe) (n : Nat) : Nat := XPipe.sneed p cs0 n
+
+theorem XPipe.sneed_mono : ∀ (p : XPipe) (cs : CS) {n n' : Nat}, n ≤ n' → XPipe.sneed p cs n ≤ XPipe.sneed p cs n'
+  | [], cs, n, n', h => Nat.le_refl _
+  | st :: r, cs, n, n', h => by
+    simp only [XPipe.sneed]
+    have := XPipe.sneed_mono r (xstageC st cs).2 (st.len_mono h)
+    split <;> omega
+
+/-! ## Stages in the `BStmt` world -/
+
+/-- the view invariant, through the renaming, with a scratch block of `L2` bytes -/
+def InvB (L L2 : Nat) (cs : CS) (xs cur : List UInt8) (τ : BState) : Prop :=
+  ∃ σ scr, InvE L cs xs cur σ ∧ Corr [scr] σ τ ∧ scr.length = L2
+
+theorem sort_finish {L L2 : Nat} {xs cur out : List UInt8} {m : Nat} {τ : BState} {T : List (BitVec 8)}
+    (hh : τ.heap = [tbs xs, tbs (cur.mergeSort leU) ++ tbs (out.drop m), T]) (hT : T.length = L2)
+    (hol : out.length = L) (hm : cur.length = m) (hmL : m ≤ L) (h1 : τ.env 1 = .ofNat 64 m)
+    (hn : m < 2 ^ 64) :
+    InvB L L2 csClean xs (cur.mergeSort leU) ⟨τ.env.set 4 0, τ.heap⟩ := by
+  refine ⟨⟨fun i => (τ.env.set 4 0) (rn i), [tbs xs, tbs (cur.mergeSort leU ++ out.drop m)]⟩, T,
+    ⟨_, [], Inv.ofClean (by simp [List.length_mergeSort, hm, hol]; omega) ?_ ?_ ?_⟩,
+    ⟨fun i => rfl, by rw [hh, tbs_append]; rfl⟩, hT⟩
+  · show (τ.env.set 4 0) 4 = 0; simp [BEnv.set]
+  · show (cur.mergeSort leU ++ out.drop m).take ((τ.env.set 4 0) 1).toNat = _
+    simp only [BEnv.set, Nat.reduceEqDiff, if_false, h1, ofNat_toNat_lt hn]
+    exact List.take_left' (by simp [List.length_mergeSort, hm])
+  · show ((τ.env.set 4 0) 1).toNat ≤ L
+    simp only [BEnv.set, Nat.reduceEqDiff, if_false, h1, ofNat_toNat_lt hn]; exact hmL
+
+theorem keep1 {τ τ' : BState} (h : ∀ v, v ∉ [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14] → τ'.env v = τ.env v) :
+    τ'.env 1 = τ.env 1 := h 1 (by decide)
+
+theorem sortB_exec {L L2 : Nat} {xs : List UInt8} (hx : xs.length < 2 ^ 32) (hL : L < 2 ^ 32) (hL2 : L2 < 2 ^ 32)
+    {cs : CS} {cur : List UInt8} {τ : BState} (hI : InvB L L2 cs xs cur τ)
+    (hsp : Stage.space .sort cs cur.length ≤ L) (hsc : cur.length ≤ L2) :
+    ∃ τ', ExecLB (sortB cs) τ τ' ∧ InvB L L2 csClean xs (cur.mergeSort leU) τ' := by
+  obtain ⟨σ, scr, hIE, ⟨he, hh⟩, hsl⟩ := hI
+  by_cases hin : cs.isIn = true
+  · -- sort the input block directly
+    obtain ⟨out, fs, hI⟩ := hIE
+    obtain ⟨onOut, rev, s0, gs⟩ := cs
+    simp only [CS.isIn, Bool.and_eq_true, Bool.not_eq_true', List.isEmpty_iff] at hin
+    obtain ⟨⟨⟨rfl, rfl⟩, rfl⟩, rfl⟩ := hin
+    have hf := hI.fsok; cases hf
+    have h4 := hI.s0 rfl
+    have hcur := hI.cur; have hlen := hI.len; have hbd := hI.bound; have hol := hI.olen
+    simp only [h4, dirL, applyAll_nil, Bool.false_eq_true, if_false] at hcur hbd
+    have hsp' : cur.length ≤ L := by simpa [Stage.space, CS.clean] using hsp
+    generalize hmm : (σ.env 1).toNat = m at *
+    have h1 : τ.env 1 = .ofNat 64 m := by rw [show (1 : Nat) = rn 1 from rfl, he, ← hmm]; simp
+    have hσh := hI.heap
+    rw [hσh] at hh
+    obtain ⟨τ₁, T, hex, hh₁, hT, hk⟩ := msortB_exec 0 (.inl rfl) (A0 := tbs (xs.take m)) (J0 := tbs (xs.drop m))
+      (out := tbs out) (scr := scr) (cur := cur) τ (by rw [hh, ← tbs_append, List.take_append_drop]; rfl) h1
+      (by omega) (by simp; omega) (by omega) (by simp [hcur]) (by omega)
+    refine ⟨_, ⟨τ₁, hex, _, BExec.assign, rfl⟩, ?_⟩
+    have := sort_finish (τ := τ₁) (T := T) (L := L) (L2 := L2) (xs := xs) (cur := cur) (out := out) (m := m)
+      (by rw [hh₁, ← tbs_append, List.take_append_drop]; simp only [tbs, List.map_drop]) (by rw [hT, hsl]) hol (by omega) (by omega)
+      (by rw [keep1 hk, h1]) (by omega)
+    exact this
+  · -- materialize to out, copy to scratch, sort scratch → out
+    have hsp' : cs.clean = true ∨ cur.length ≤ L := by
+      by_cases hcl : cs.clean = true
+      · exact .inl hcl
+      · simp only [Stage.space, hcl, Bool.false_eq_true, if_false] at hsp; exact .inr hsp
+    obtain ⟨σ₁, hex₁, out₁, fs₁, hI₁⟩ := mat_exec hx hL hIE hsp'
+    obtain ⟨τ₁, hexB₁, ⟨he₁, hh₁⟩, -⟩ := ExecL.rB hex₁ (X := [scr]) ⟨he, hh⟩
+    obtain ⟨rfl, h4, hcur, hm⟩ := hI₁.clean
+    have hol := hI₁.olen; have hlen := hI₁.len; have hσh := hI₁.heap
+    generalize hmm : (σ₁.env 1).toNat = m at *
+    have e1 : σ₁.env 1 = .ofNat 64 m := by rw [← hmm]; simp
+    obtain ⟨σ₂, scr', hcp, hh₂, hl₂, htk, k₂⟩ := copy_exec (a := tbs xs) (o := tbs out₁) (scr := scr) (env := σ₁.env)
+      e1 (by simp; omega) (by omega) (by omega)
+    obtain ⟨τ₂, hexB₂, ⟨he₂, hh₂'⟩, -⟩ := hcp.rB (X := []) (τ := τ₁) ⟨he₁, by rw [hh₁, hσh]; rfl⟩
+    rw [hh₂, List.append_nil] at hh₂'
+    have h1 : τ₂.env 1 = .ofNat 64 m := by rw [show (1 : Nat) = rn 1 from rfl, he₂, k₂, e1]
+    obtain ⟨τ₃, T, hex₃, hh₃, hT, hk⟩ := msortB_exec 2 (.inr rfl) (A0 := tbs xs) (J0 := []) (out := tbs out₁)
+      (scr := scr') (cur := cur) τ₂ (by rw [hh₂', List.append_nil]) h1 (by omega) (by simp; omega) (by omega)
+      (by simp only [Nat.reduceEqDiff, if_false]; rw [htk, hcur]; simp [tbs, List.map_take]) (by omega)
+    refine ⟨_, ?_, sort_finish (τ := τ₃) (T := T) (L := L) (L2 := L2) (xs := xs) (cur := cur) (out := out₁) (m := m)
+      (by rw [hh₃, List.append_nil]; simp only [tbs, List.map_drop]) (by rw [hT, hl₂, hsl]) hol (by omega) (by omega)
+      (by rw [keep1 hk, h1]) (by omega)⟩
+    simp only [sortB, hin, Bool.false_eq_true, if_false]
+    exact ExecLB.append hexB₁ ⟨τ₂, hexB₂, τ₃, hex₃, _, BExec.assign, rfl⟩
+
+theorem xstageB_exec {L L2 : Nat} {xs : List UInt8} (hx : xs.length < 2 ^ 32) (hL : L < 2 ^ 32) (hL2 : L2 < 2 ^ 32)
+    (st : XStage) {cs : CS} {cur : List UInt8} {τ : BState} (hc : st.chk = none) (hI : InvB L L2 cs xs cur τ)
+    (hsp : st.space cs cur.length ≤ L) (hsc : st.isSort = true → cur.length ≤ L2) :
+    ∃ τ', ExecLB (xstageB st cs).1 τ τ' ∧ InvB L L2 (xstageB st cs).2 xs (st.denote cur) τ' := by
+  by_cases hs : st.isSort = true
+  · have e := XStage.eq_of_isSort hs; subst e
+    simp only [xstageB, hs, if_true]
+    exact sortB_exec hx hL hL2 hI hsp (hsc hs)
+  · simp only [xstageB, hs, Bool.false_eq_true, if_false]
+    obtain ⟨σ, scr, hIE, hcr, hsl⟩ := hI
+    obtain ⟨σ', hex, hI'⟩ := xstage_exec hx hL st hc hIE hsp
+    obtain ⟨τ', hexB, hcr', -⟩ := ExecL.rB hex hcr
+    exact ⟨τ', hexB, σ', scr, hI', hcr', hsl⟩
+
+theorem xstmtsB_exec {L L2 : Nat} {xs : List UInt8} (hx : xs.length < 2 ^ 32) (hL : L < 2 ^ 32) (hL2 : L2 < 2 ^ 32) :
+    ∀ (p : XPipe) {cs : CS} {cur : List UInt8} {τ : BState}, (∀ st ∈ p, st.chk = none) → InvB L L2 cs xs cur τ →
+    XPipe.need p cs cur.length ≤ L → XPipe.sneed p cs cur.length ≤ L2 →
+    ∃ τ', ExecLB (xstmtsB p cs) τ τ' ∧ InvB L L2 csClean xs (XPipe.denote p cur) τ'
+  | [], cs, cur, τ, _, ⟨σ, scr, hIE, hcr, hsl⟩, hsp, _ => by
+    obtain ⟨σ', hex, hI'⟩ := mat_exec hx hL hIE (by
+      simp only [XPipe.need] at hsp
+      by_cases h : cs.clean = true
+      · exact .inl h
+      · simp only [h, Bool.false_eq_true, if_false] at hsp; exact .inr hsp)
+    obtain ⟨τ', hexB, hcr', -⟩ := ExecL.rB hex hcr
+    exact ⟨τ', hexB, σ', scr, hI', hcr', hsl⟩
+  | st :: r, cs, cur, τ, hc, hI, hsp, hsc => by
+    simp only [XPipe.need, XPipe.sneed] at hsp hsc
+    have hst := hc st (List.mem_cons_self ..)
+    obtain ⟨τ₁, hex₁, hI₁⟩ := xstageB_exec hx hL hL2 st hst hI (by omega) (fun h => by simp [h] at hsc; omega)
+    rw [xstageB_snd] at hI₁
+    obtain ⟨τ₂, hex₂, hI₂⟩ := xstmtsB_exec hx hL hL2 r (fun s hs => hc s (List.mem_cons_of_mem _ hs)) hI₁
+      (Nat.le_trans (XPipe.need_mono r _ (st.denote_len hst cur)) (by omega))
+      (Nat.le_trans (XPipe.sneed_mono r _ (st.denote_len hst cur)) (by omega))
+    refine ⟨τ₂, ExecLB.append hex₁ ?_, hI₂⟩
+    rw [xstageB_snd]; exact hex₂
+
+/-- **Source-level correctness of the `BStmt` translation**: on the heap `[input, out, scr]` -/
+theorem XPipe.progB_exec (p : XPipe) (hc : ∀ st ∈ p, st.chk = none) (xs : List UInt8) (out scr : List (BitVec 8))
+    (env : BEnv) (h1 : env 1 = .ofNat 64 xs.length) (hx : xs.length < 2 ^ 32)
+    (hsp : XPipe.space p xs.length ≤ out.length) (hL : out.length < 2 ^ 32)
+    (hss : XPipe.sspace p xs.length ≤ scr.length) (hL2 : scr.length < 2 ^ 32) :
+    ∃ τ' out' scr', BExec (XPipe.progB p) ⟨env, [tbs xs, out, scr]⟩ τ' ∧ τ'.heap = [tbs xs, out', scr'] ∧
+      out'.length = out.length ∧ out'.take (XPipe.denote p xs).length = tbs (XPipe.denote p xs) ∧
+      τ'.env 1 = .ofNat 64 (XPipe.denote p xs).length := by
+  have ho : out = tbs (out.map fun b => ⟨b⟩) := by simp [tbs, List.map_map, Function.comp_def]
+  generalize out.map (fun b => (⟨b⟩ : UInt8)) = o at ho; subst ho
+  have e1 : (env 1).toNat = xs.length := by rw [h1]; exact ofNat_toNat_lt (by omega)
+  let τ0 : BState := ⟨env.set 4 0, [tbs xs, tbs o, scr]⟩
+  have hI0 : InvB (tbs o).length scr.length cs0 xs xs τ0 :=
+    ⟨⟨fun i => τ0.env (rn i), [tbs xs, tbs o]⟩, scr,
+      ⟨o, [], rfl, by simp, .nil, by simp [τ0, cs0, BEnv.set, rn1, rn4, e1],
+        by simp [τ0, rn1, rn4, cs0, BEnv.set, e1, dirL, applyAll_nil], fun _ => by simp [τ0, rn4, BEnv.set]⟩,
+      ⟨fun i => rfl, rfl⟩, rfl⟩
+  obtain ⟨τ', hex, σ', scr', ⟨out', fs, hI⟩, ⟨he, hh⟩, hsl⟩ := xstmtsB_exec hx hL hL2 p hc hI0 hsp hss
+  obtain ⟨rfl, h4, hcur, hm⟩ := hI.clean
+  have hσh := hI.heap
+  have : (XPipe.denote p xs).length = (σ'.env 1).toNat := hI.len
+  refine ⟨τ', tbs out', scr', ExecLB.foldl (BExec.assign' rfl) hex, by rw [hh, hσh]; rfl, by simpa using hI.olen,
+    ?_, ?_⟩
+  · rw [this, hcur]; simp [tbs]
+  · rw [show (1 : Nat) = rn 1 from rfl, he, this]; simp
 
 end Proven

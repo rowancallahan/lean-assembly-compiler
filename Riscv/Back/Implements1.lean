@@ -172,7 +172,7 @@ theorem implements1_of_exec {α β : Type} (encA : α → List UInt8) (encB : β
   refine runsTo_mono (rvF.compBF_ok N [0, 3] [2] (by intro x hx; simp at hx; omega)
     (by intro x hx; simp at hx; omega) hwf hexec ⟨h, hpc, codeAt_of_codeBytes hok hcode, hok⟩ hf hL hcd
     (fun i => by show getX s (phys (avar i)) = _; rw [phys_avar]; simp [envOf])
-    (fun j hj => by simp [envOf]) hheap (by show (getX s 1).toNat % 2 = 0; rw [hra']; omega)) ?_
+    (fun j hj => by simp only [envOf]; rw [dite_neg' (by omega)]) hheap (by show (getX s 1).toNat % 2 = 0; rw [hra']; omega)) ?_
   rintro s' ⟨p1, p2, p3, p4, p5, p6⟩
   have e0 := p3.rbytes 0 (by simp [R]); have e1 := p3.rbytes 1 (by simp [R])
   simp only [hh] at e0 e1
@@ -181,11 +181,13 @@ theorem implements1_of_exec {α β : Type} (encA : α → List UInt8) (encB : β
   have e1' : bytesAt s' output.base output.len = out'.map some := by
     have := (bytes_eq s' _ _).symm.trans e1; simpa using this
   refine ⟨by rw [← hra']; exact p1, ?_, ?_, keep_calleeSaved h p5 p6, p5⟩
-  · rw [← bytesAt_take' s' output.base hol', e1', ← List.map_take, htk]; simp [List.map_map]
+  · rw [← bytesAt_take' s' output.base hol', e1', ← List.map_take, htk]; simp [List.map_map, y]
   · intro q hq
     have a2 := hq output (by simp); have a3 := hq work (by simp)
     by_cases hqi : input.base ≤ q ∧ q < input.base + input.len
-    · have := congrArg (·[q - input.base]?) (e0'.trans (by rw [← List.map_map]; exact hx.symm))
+    · have e0x : bytesAt s' input.base x.length = bytesAt s input.base x.length := by
+        rw [e0', hx, List.map_map]; rfl
+      have := congrArg (·[q - input.base]?) e0x
       simp only [bytesAt, List.getElem?_map, List.getElem?_range (show q - input.base < x.length by omega),
         Option.map_some, Option.some.injEq] at this
       rwa [Nat.add_sub_cancel' hqi.1] at this

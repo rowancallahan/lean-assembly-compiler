@@ -60,9 +60,9 @@ def main (args : List String) : IO UInt32 := do
   for t in thms do
     let n := t.toName
     let some c := env.find? n | IO.eprintln s!"unknown theorem {t}"; rc := 1; continue
-    let ctx : Core.Context := { fileName := "<stmt_hash>", fileMap := default, maxHeartbeats := 0,
-      options := ({} : Options).setNat `format.width 100 }
-    let (fmt, _) ← (MetaM.run' (ppExpr c.type)).toIO ctx { env }
+    let opts : Options := {}
+    let ctx : Core.Context := { fileName := "<stmt_hash>", fileMap := default, maxHeartbeats := 0, options := opts }
+    let (fmt, _) ← (MetaM.run' (ppExpr c.type)).toIO ctx { env := env }
     let stmt := toString fmt
     -- the closure of the statement: the constants in the type of `n` (not its proof)
     let cl := closure env (c.type.getUsedConstants)

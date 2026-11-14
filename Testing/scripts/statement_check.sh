@@ -1,4 +1,5 @@
 #!/bin/bash
+# (three runs: LoopExamples / ArrExamples and Pipe / Arr2Code cannot be imported together)
 # Statement fingerprints of the headline theorems (cheap comparator substitute; Testing/scripts/stmt_hash.lean):
 # the pretty-printed statement and the dependency closure of the statement (definitions' bodies, theorems' types)
 # are hashed and compared with Testing/scripts/expected-statements.txt.
@@ -10,8 +11,9 @@ H=$(cd "$(dirname "$0")" && pwd); R=$(cd "$H/../.." && pwd); cd "$R"
 export PATH=$HOME/.elan/bin:$PATH
 L=""; [ "${1:-}" = "--list" ] && L="--list"
 run() {
-  lake env lean --run "$H/stmt_hash.lean" $L Riscv.Examples.LoopExamples,Riscv.Direct.MemCompiler,Compiler.Front.PipeMachine \
-    Proven.compile_ok Proven.compileS_ok Proven.gcd_ok Proven.compileStore_ok Proven.compileP_ok
+  lake env lean --run "$H/stmt_hash.lean" $L Riscv.Examples.LoopExamples,Riscv.Direct.MemCompiler \
+    Proven.compile_ok Proven.compileS_ok Proven.gcd_ok Proven.compileStore_ok
+  lake env lean --run "$H/stmt_hash.lean" $L Compiler.Front.PipeMachine Proven.compileP_ok
   lake env lean --run "$H/stmt_hash.lean" $L Riscv.Direct.SortMergeMachine \
     Proven.compileAF_ok Proven.sortCode_implements Proven.msortCode_implements
 }
