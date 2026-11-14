@@ -78,8 +78,9 @@ def candidates (p : Mach.BStmt) (N : Nat) : List (Nat × List Nat) :=
   ([1, 2, 3, 4, 5, 6].flatMap fun T => (choose (min (6 - T) top.length) top).map fun r => (T, r)).mergeSort
     fun a b => cost a ≤ cost b
 
-def tryB (N : Nat) (bv : List Nat) (p : Mach.BStmt) (c : Nat × List Nat) : Option (List (BitVec 32)) :=
-  rvwF.optB scB (gB c.1 c.2) (fun j => !c.2.contains j) N bv p
+def tryB (N : Nat) (bv : List Nat) (p : Mach.BStmt) (c : Nat × List Nat) (wv : List Nat := []) :
+    Option (List (BitVec 32)) :=
+  rvwF.optB scB (gB c.1 c.2) (fun j => !c.2.contains j) N bv wv p
 
 def firstB {α : Type} (f : α → Option (List (BitVec 32))) : List α → Option (List (BitVec 32))
   | [] => none
@@ -124,21 +125,24 @@ theorem compileOptB_ok (N : Nat) (bv : List Nat) {p : Proven.BStmt} {ws : List (
     | none => rw [hfb] at hcmp; exact nomatch hcmp
     | some w => rw [hfb] at hcmp; cases hcmp; exact firstB_ok hfb
   obtain ⟨T, hT⟩ := hopt
-  have hcd' : ∀ r ∈ R.map toR ++ [⟨rvwF.frameAt s N, 8 * (N + 1)⟩],
+  have hcd' : ∀ r ∈ R.map toR ++ [] ++ [⟨rvwF.frameAt s N, 8 * (N + 1)⟩],
       Mach.disjoint ⟨pc.toNat, 4 * ws.length⟩ r := fun r hr => by
     rcases List.mem_append.1 hr with hr | hr
-    · obtain ⟨r', hr', rfl⟩ := toR_mem hr; exact hcd r' (List.mem_cons_of_mem _ hr')
+    · rw [List.append_nil] at hr
+      obtain ⟨r', hr', rfl⟩ := toR_mem hr; exact hcd r' (List.mem_cons_of_mem _ hr')
     · simp only [List.mem_singleton] at hr; subst hr; exact hcd _ (List.mem_cons_self ..)
-  have hheap' : HeapI rvwF.toWide bv (R.map toR) (toMSt σ) s :=
+  have hheap' : HeapI rvwF.toWide bv [] (R.map toR) [] (toMSt σ) s :=
     ⟨by simpa using hheap.hlen, by simpa using hheap.bvlen, fun b hb => by simpa [toR] using hheap.base b (by simpa using hb),
       fun b hb => by simpa [toR] using hheap.blen b (by simpa using hb),
       fun b hb => by
         have hb' : b < R.length := by simpa using hb
-        rw [getR hb']; exact (Mach.Riscv.bytes_eq s _ _).trans (hheap.bytes b hb')⟩
+        rw [getR hb']; exact (Mach.Riscv.bytes_eq s _ _).trans (hheap.bytes b hb'), rfl, rfl,
+      fun b hb => (nomatch hb), fun b hb => (nomatch hb), fun b hb => (nomatch hb)⟩
   refine runsTo_mono (rvwF.optB_ok hT (exec_toM hex) ⟨h, hpc, hc, hok⟩ hf
-    (fun r hr => by obtain ⟨r', hr', rfl⟩ := toR_mem hr; exact hR.1 r' hr') (List.pairwise_map.2 (hR.2.imp id))
-    (Mach.Riscv.regOK_toR hR).2.2
-    (fun r hr => by obtain ⟨r', hr', rfl⟩ := toR_mem hr; exact hfd r' hr') hcd'
+    (fun r hr => by rw [List.append_nil] at hr; obtain ⟨r', hr', rfl⟩ := toR_mem hr; exact hR.1 r' hr')
+    (fun r hr => by rw [List.append_nil] at hr; exact (Mach.Riscv.regOK_toR hR).2.2 r hr)
+    (List.pairwise_map.2 (hR.2.imp id)) List.Pairwise.nil (fun _ _ _ hw => (nomatch hw)) (fun _ hw => (nomatch hw))
+    (fun r hr => by rw [List.append_nil] at hr; obtain ⟨r', hr', rfl⟩ := toR_mem hr; exact hfd r' hr') hcd'
     (fun i => by show getX s (phys (avar i)) = _; rw [phys_avar]; exact hreg i) hslot hheap' hra) ?_
   rintro s' ⟨p1, p2, p3, p4, p5, p6⟩
   refine ⟨p1, fun i => by have := p2 i; rwa [show rvwF.get s' (avar i) = getX s' (A8 i) by
@@ -149,7 +153,8 @@ theorem compileOptB_ok (N : Nat) (bv : List Nat) {p : Proven.BStmt} {ws : List (
         have := p3.rbytes b (by simpa using hb); rw [getR hb] at this; exact (Mach.Riscv.bytes_eq s' _ _).symm.trans this⟩,
     fun a ha => p4 a fun r hr => ?_, p5, keep_calleeSaved h p5 p6, p6 3 phys_ne3⟩
   rcases List.mem_append.1 hr with hr | hr
-  · obtain ⟨r', hr', rfl⟩ := toR_mem hr; exact ha r' (List.mem_cons_of_mem _ hr')
+  · rw [List.append_nil] at hr
+    obtain ⟨r', hr', rfl⟩ := toR_mem hr; exact ha r' (List.mem_cons_of_mem _ hr')
   · simp only [List.mem_singleton] at hr; subst hr; exact ha _ (List.mem_cons_self ..)
 
 /-- drop-in for `compileBF`: optimised words when the optimiser succeeds, the old words otherwise -/
@@ -175,3 +180,47 @@ theorem compileBFO_ok (N : Nat) (bv : List Nat) (hbv : ∀ x ∈ bv, x < 8 + N) 
   | error _ => rw [hx] at hc hok hcd; exact compileBF_ok' N bv hbv hp hR hex h hpc hc hok hf hfd hcd hreg hslot hheap hra
 
 end Proven
+
+namespace Proven.Mach.Riscv
+
+/-! ## Drop-in for the middle compiler `rvF.compBF` (byte and word blocks) -/
+
+/-- the optimised words for `rvF.compBF N bv wv p`, or the old words -/
+def compBFO (N : Nat) (bv wv : List Nat) (p : Mach.BStmt) : List (BitVec 32) :=
+  match firstB (fun c => tryB N bv p c wv) (candidates p N) with
+  | some ws => ws
+  | none => rvF.codeF (rvF.compBF N bv wv p)
+
+/-- **the statement of `rvF.compBF_ok` for `compBFO`** -/
+theorem compBFO_ok' (N : Nat) (bv wv : List Nat) (hbv : ∀ x ∈ bv, x < 8 + N) (hwv : ∀ x ∈ wv, x < 8 + N)
+    {p : Mach.BStmt} (hp : rvF.wfB N bv wv p) {R W : List Region} {σ σ' : Mach.BState} (hex : Mach.BExec p σ σ')
+    {s : St} {pc : BitVec 64} (hA : rvF.At s pc (compBFO N bv wv p)) (hen : rvF.enterOK s N)
+    (hL : rvF.Lay N (rvF.frameAt s N) R W)
+    (hcd : ∀ r ∈ R ++ W ++ [⟨rvF.frameAt s N, 8 * (N + 1)⟩],
+      Mach.disjoint ⟨pc.toNat, 4 * (compBFO N bv wv p).length⟩ r)
+    (hreg : ∀ i : Fin 8, rvF.get s (avar i) = σ.env i.val) (hslot : ∀ j, j < N → σ.env (8 + j) = 0)
+    (hheap : rvF.HeapB bv wv R W σ s) (hra : rvF.retOK (rvF.ra s)) :
+    rvF.runsTo s fun s' => rvF.pcIs s' (rvF.ra s) ∧ (∀ i : Fin 8, rvF.get s' (avar i) = σ'.env i.val) ∧
+      rvF.HeapB bv wv R W σ' s' ∧ Out (R ++ W ++ [⟨rvF.frameAt s N, 8 * (N + 1)⟩]) (rvF.mem s) (rvF.mem s') ∧
+      rvF.ok s' ∧ rvF.keep s s' := by
+  unfold compBFO at hA hcd
+  cases hx : firstB (fun c => tryB N bv p c wv) (candidates p N) with
+  | none => rw [hx] at hA hcd; exact rvF.compBF_ok N bv wv hbv hwv hp hex hA hen hL hcd hreg hslot hheap hra
+  | some ws =>
+    rw [hx] at hA hcd
+    obtain ⟨c, hc⟩ := firstB_ok hx
+    have := rvwF.optB_ok hc hex hA hen
+      (fun r hr => (List.mem_append.1 hr).elim (hL.ram r) (hL.wram r))
+      (fun r hr a h1 h2 _ _ => by
+        have h' : 0x80000000 ≤ r.base ∧ r.base + r.len ≤ 0x100000000 :=
+          (List.mem_append.1 hr).elim (hL.ram r) (hL.wram r)
+        show 0x80000000 ≤ a ∧ a + 1 ≤ 0x100000000; omega)
+      hL.rp hL.wp hL.rw hL.wal
+      (fun r hr => (List.mem_append.1 hr).elim (hL.fr r) (hL.fw r)) hcd hreg hslot
+      ⟨hheap.hlen, hheap.bvlen, hheap.base, hheap.blen, hheap.rbytes, hheap.whlen, hheap.wvlen, hheap.wbase,
+        hheap.wblen, hheap.wbyts⟩ hra
+    exact runsTo_mono this fun s' ⟨p1, p2, p3, p4, p5, p6⟩ =>
+      ⟨p1, p2, ⟨p3.hlen, p3.bvlen, p3.base, p3.blen, p3.rbytes, p3.whlen, p3.wvlen, p3.wbase, p3.wblen, p3.wbyts⟩,
+        p4, p5, p6⟩
+
+end Proven.Mach.Riscv

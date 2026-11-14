@@ -70,12 +70,17 @@ theorem initL_ok (sp : Nat → Bool) (ram : Nat → Prop) (fp : Nat) : ∀ (l : 
 def fB (g : Nat → Reg) (x : Nat) : Reg := if h : x < 8 then avar ⟨x, h⟩ else g x
 
 /-- the blocks in machine memory -/
-structure HeapI (M : Wide) (bv : List Nat) (R : List Region) (σ : BState) (s : M.S) : Prop where
+structure HeapI (M : Wide) (bv wv : List Nat) (R W : List Region) (σ : BState) (s : M.S) : Prop where
   hlen : σ.heap.length = R.length
   bvlen : bv.length = R.length
   base : ∀ b (hb : b < R.length), σ.env (bv.getD b 0) = BitVec.ofNat 64 R[b].base
   blen : ∀ b (hb : b < R.length), (σ.heap[b]?.getD []).length = R[b].len
   rbytes : ∀ b (hb : b < R.length), bytes (M.mem s) R[b].base R[b].len = (σ.heap[b]?.getD []).map some
+  whlen : σ.wheap.length = W.length
+  wvlen : wv.length = W.length
+  wbase : ∀ b (hb : b < W.length), σ.env (wv.getD b 0) = BitVec.ofNat 64 W[b].base
+  wblen : ∀ b (hb : b < W.length), 8 * (σ.wheap[b]?.getD []).length = W[b].len
+  wbyts : ∀ b (hb : b < W.length), bytes (M.mem s) W[b].base W[b].len = (wbytes (σ.wheap[b]?.getD [])).map some
 
 theorem Core.codeAt_out' (C : Core) {s s' : C.S} {pc ws} {A : List Region} (hc : C.codeAt s pc ws)
     (hok : C.codeOK pc ws.length) (hd : ∀ r ∈ A, disjoint ⟨pc.toNat, 4 * ws.length⟩ r)
@@ -91,9 +96,9 @@ namespace WideF
 variable (M : WideF) (sc : Reg) (g : Nat → Reg) (sp : Nat → Bool) (N : Nat)
 
 /-- **The optimising spill-slot compiler** (byte blocks only) -/
-def optB (bv : List Nat) (p : BStmt) : Option (List (BitVec 32)) :=
-  if (okB N bv p && decide (N ≤ 16) && decide (∀ i : Fin 8, avar i ≠ sc)) = true then
-    match M.body sc (fB g) [0, 1, 2, 3, 4, 5, 6, 7] (.seq (initL sp (List.range N)) (irB sp bv p)) with
+def optB (bv wv : List Nat) (p : BStmt) : Option (List (BitVec 32)) :=
+  if (okB N bv wv p && decide (N ≤ 16) && decide (∀ i : Fin 8, avar i ≠ sc)) = true then
+    match M.body sc (fB g) [0, 1, 2, 3, 4, 5, 6, 7] (.seq (initL sp (List.range N)) (irB sp bv wv p)) with
     | some w => some (M.encE N ++ (w ++ (M.encL ++ M.wenc .ret)))
     | none => none
   else none
@@ -101,25 +106,26 @@ def optB (bv : List Nat) (p : BStmt) : Option (List (BitVec 32)) :=
 variable {M sc g sp N}
 
 /-- **Correctness of the optimising spill-slot compiler** (the shape of `MachineF.compBF_ok`, byte blocks). -/
-theorem optB_ok {bv : List Nat} {p : BStmt} {ws : List (BitVec 32)} (hc : M.optB sc g sp N bv p = some ws)
-    {R : List Region} {σ σ' : BState} (hex : BExec p σ σ') {s : M.S} {pc : BitVec 64} (hA : M.At s pc ws)
-    (hen : M.enterOK s N) (hRram : ∀ r ∈ R, M.inRAM r.base r.len) (hRp : R.Pairwise disjoint)
-    (hRw : ∀ r ∈ R, ∀ a, r.base ≤ a → a < r.base + r.len → ∀ s, M.ok s → M.writable s a)
-    (hRf : ∀ r ∈ R, disjoint ⟨M.frameAt s N, 8 * (N + 1)⟩ r)
-    (hcd : ∀ r ∈ R ++ [⟨M.frameAt s N, 8 * (N + 1)⟩], disjoint ⟨pc.toNat, 4 * ws.length⟩ r)
+theorem optB_ok {bv wv : List Nat} {p : BStmt} {ws : List (BitVec 32)} (hc : M.optB sc g sp N bv wv p = some ws)
+    {R W : List Region} {σ σ' : BState} (hex : BExec p σ σ') {s : M.S} {pc : BitVec 64} (hA : M.At s pc ws)
+    (hen : M.enterOK s N) (hRram : ∀ r ∈ R ++ W, M.inRAM r.base r.len)
+    (hRw : ∀ r ∈ R ++ W, ∀ a, r.base ≤ a → a < r.base + r.len → ∀ s, M.ok s → M.writable s a) (hRp : R.Pairwise disjoint)
+    (hWp : W.Pairwise disjoint) (hRW : ∀ r ∈ R, ∀ w ∈ W, disjoint r w) (hWal : ∀ w ∈ W, w.base % 8 = 0)
+    (hRf : ∀ r ∈ R ++ W, disjoint ⟨M.frameAt s N, 8 * (N + 1)⟩ r)
+    (hcd : ∀ r ∈ R ++ W ++ [⟨M.frameAt s N, 8 * (N + 1)⟩], disjoint ⟨pc.toNat, 4 * ws.length⟩ r)
     (hreg : ∀ i : Fin 8, M.get s (avar i) = σ.env i.val) (hslot : ∀ j, j < N → σ.env (8 + j) = 0)
-    (hheap : HeapI M.toWide bv R σ s) (hra : M.retOK (M.ra s)) :
+    (hheap : HeapI M.toWide bv wv R W σ s) (hra : M.retOK (M.ra s)) :
     M.runsTo s fun s' => M.pcIs s' (M.ra s) ∧ (∀ i : Fin 8, M.get s' (avar i) = σ'.env i.val) ∧
-      HeapI M.toWide bv R σ' s' ∧ Out (R ++ [⟨M.frameAt s N, 8 * (N + 1)⟩]) (M.mem s) (M.mem s') ∧
+      HeapI M.toWide bv wv R W σ' s' ∧ Out (R ++ W ++ [⟨M.frameAt s N, 8 * (N + 1)⟩]) (M.mem s) (M.mem s') ∧
       M.ok s' ∧ M.keep s s' := by
   unfold optB at hc
-  have hchk : (okB N bv p && decide (N ≤ 16) && decide (∀ i : Fin 8, avar i ≠ sc)) = true :=
+  have hchk : (okB N bv wv p && decide (N ≤ 16) && decide (∀ i : Fin 8, avar i ≠ sc)) = true :=
     Decidable.byContradiction fun h => by rw [if_neg h] at hc; exact nomatch hc
   rw [if_pos hchk] at hc
   obtain ⟨hokB, hN16, hsc⟩ := Wide.and3 hchk
   replace hN16 : N ≤ 16 := of_decide_eq_true hN16
   replace hsc : ∀ i : Fin 8, avar i ≠ sc := of_decide_eq_true hsc
-  cases hb : M.body sc (fB g) [0, 1, 2, 3, 4, 5, 6, 7] (.seq (initL sp (List.range N)) (irB sp bv p)) with
+  cases hb : M.body sc (fB g) [0, 1, 2, 3, 4, 5, 6, 7] (.seq (initL sp (List.range N)) (irB sp bv wv p)) with
   | none => rw [hb] at hc; exact nomatch hc
   | some w =>
   rw [hb] at hc
@@ -130,7 +136,7 @@ theorem optB_ok {bv : List Nat} {p : BStmt} {ws : List (BitVec 32)} (hc : M.optB
   have hok := hA.codeOK
   simp only [List.length_append] at hok hcd
   obtain ⟨hA1, hc2, ho2⟩ := Core.At.split _ hA
-  have hFm : (⟨M.frameAt s N, 8 * (N + 1)⟩ : Region) ∈ R ++ [⟨M.frameAt s N, 8 * (N + 1)⟩] :=
+  have hFm : (⟨M.frameAt s N, 8 * (N + 1)⟩ : Region) ∈ R ++ W ++ [⟨M.frameAt s N, 8 * (N + 1)⟩] :=
     List.mem_append_right _ (List.mem_singleton_self _)
   have e1 := M.pc_toNat hok (a := (M.encE N).length) (by omega)
   have hcdF := hcd _ hFm
@@ -139,11 +145,13 @@ theorem optB_ok {bv : List Nat} {p : BStmt} {ws : List (BitVec 32)} (hc : M.optB
   generalize hfp : M.frameAt s N = fp at *
   have frn : (M.fr s₁).toNat = fp := by
     rw [fr₁, BitVec.toNat_ofNat]; exact Nat.mod_eq_of_lt (by omega)
-  have L : LayI N fp R := ⟨hal, fun r hr => by
-    have : M.ramLo ≤ r.base ∧ r.base + r.len ≤ M.ramHi := hRram r hr
-    omega, hRp, hRf, hN16⟩
+  have L : LayI N fp R W := ⟨hal, fun r hr => by
+    have : M.ramLo ≤ r.base ∧ r.base + r.len ≤ M.ramHi := hRram r (List.mem_append_left _ hr)
+    omega, hRp, fun r hr => hRf r (List.mem_append_left _ hr), hN16, fun r hr => by
+    have : M.ramLo ≤ r.base ∧ r.base + r.len ≤ M.ramHi := hRram r (List.mem_append_right _ hr)
+    omega, hWp, hRW, fun r hr => hRf r (List.mem_append_right _ hr), hWal⟩
   -- writable addresses are in RAM, outside the code, outside cell 0
-  have hramF : ∀ a, ramB N fp R a → (∃ r ∈ R, r.base ≤ a ∧ a < r.base + r.len) ∨
+  have hramF : ∀ a, ramB N fp R W a → (∃ r ∈ R ++ W, r.base ≤ a ∧ a < r.base + r.len) ∨
       (fp + 8 ≤ a ∧ a < fp + 8 * (N + 1)) := fun a ⟨r, hr, h1, h2⟩ => by
     rcases List.mem_append.1 hr with hr | hr
     · exact .inl ⟨r, hr, h1, h2⟩
@@ -152,16 +160,16 @@ theorem optB_ok {bv : List Nat} {p : BStmt} {ws : List (BitVec 32)} (hc : M.optB
       have : a < fp + 8 * (j + 1) + 8 := h2
       have : 8 * (j + 1) + 8 ≤ 8 * (N + 1) := by omega
       omega
-  have hram : ∀ a, ramB N fp R a → M.inRAM a 1 := fun a ha => by
+  have hram : ∀ a, ramB N fp R W a → M.inRAM a 1 := fun a ha => by
     rcases hramF a ha with ⟨r, hr, h1, h2⟩ | ⟨h1, h2⟩
     · have : M.ramLo ≤ r.base ∧ r.base + r.len ≤ M.ramHi := hRram r hr
       exact ⟨by omega, by omega⟩
     · exact ⟨by omega, by omega⟩
-  have hwr : ∀ a, ramB N fp R a → ∀ s, M.ok s → M.writable s a := fun a ha => by
+  have hwr : ∀ a, ramB N fp R W a → ∀ s, M.ok s → M.writable s a := fun a ha => by
     rcases hramF a ha with ⟨r, hr, h1, h2⟩ | ⟨h1, h2⟩
     · exact hRw r hr a h1 h2
     · exact hfw a (by omega) (by omega)
-  have hnc : ∀ a, ramB N fp R a → ¬(pc.toNat ≤ a ∧ a < pc.toNat + 4 * ((M.encE N).length +
+  have hnc : ∀ a, ramB N fp R W a → ¬(pc.toNat ≤ a ∧ a < pc.toNat + 4 * ((M.encE N).length +
       (w.length + (M.encL.length + (M.wenc .ret).length)))) := fun a ha h' => by
     rcases hramF a ha with ⟨r, hr, h1, h2⟩ | ⟨h1, h2⟩
     · have := hcd r (List.mem_append_left _ hr); unfold disjoint at this; dsimp only at this; omega
@@ -171,18 +179,19 @@ theorem optB_ok {bv : List Nat} {p : BStmt} {ws : List (BitVec 32)} (hc : M.optB
       rw [List.mem_singleton.1 hr]
       unfold disjoint at hcdF ⊢; dsimp only at hcdF ⊢
       simp only [List.length_append]; rw [e1]; omega) out₁
-  have fg : M.Frag (ramB N fp R) fp s₁ (next pc (M.encE N).length) (w ++ (M.encL ++ M.wenc .ret)) :=
+  have fg : M.Frag (ramB N fp R W) fp s₁ (next pc (M.encE N).length) (w ++ (M.encL ++ M.wenc .ret)) :=
     ⟨c2, ho2, fun a ha h' => hnc a ha (by
       simp only [List.length_append] at h'; rw [e1] at h'; omega), frn⟩
   -- the IR run
-  obtain ⟨τ₂, xi, mi, zi, ki⟩ := initL_ok sp (ramB N fp R) fp (List.range N)
+  obtain ⟨τ₂, xi, mi, zi, ki⟩ := initL_ok sp (ramB N fp R W) fp (List.range N)
     ⟨fun x => M.get s₁ (fB g x), M.mem s₁⟩
-  have hdisjR : ∀ b (hb : b < R.length), ∀ r ∈ [(⟨fp, 8 * (N + 1)⟩ : Region)],
-      disjoint ⟨R[b].base, R[b].len⟩ r := fun b hb r hr => by
+  have hdisjR : ∀ r₀ ∈ R ++ W, ∀ r ∈ [(⟨fp, 8 * (N + 1)⟩ : Region)],
+      disjoint ⟨r₀.base, r₀.len⟩ r := fun r₀ hr₀ r hr => by
     rw [List.mem_singleton.1 hr]
-    have := hRf _ (List.getElem_mem hb); unfold disjoint at this ⊢; dsimp only at this ⊢; omega
-  have r₂ : RelBI sp N fp bv R σ τ₂ := by
-    refine ⟨fun i hi hs => ?_, fun j hj hs => ?_, hheap.hlen, hheap.bvlen, hheap.base, hheap.blen, fun b hb => ?_⟩
+    have := hRf _ hr₀; unfold disjoint at this ⊢; dsimp only at this ⊢; omega
+  have r₂ : RelBI sp N fp bv wv R W σ τ₂ := by
+    refine ⟨fun i hi hs => ?_, fun j hj hs => ?_, hheap.hlen, hheap.bvlen, hheap.base, hheap.blen, fun b hb => ?_,
+      hheap.whlen, hheap.wvlen, hheap.wbase, hheap.wblen, fun b hb => ?_⟩
     · by_cases h8 : i < 8
       · rw [ki i fun j _ => by omega]
         show M.get s₁ (fB g i) = _
@@ -194,8 +203,10 @@ theorem optB_ok {bv : List Nat} {p : BStmt} {ws : List (BitVec 32)} (hc : M.optB
         rw [this, ← hslot (i - 8) (by omega), show 8 + (i - 8) = i by omega]
     · rw [mi, hslot j hj]; exact sl₁ j hj
     · rw [mi]; show bytes (M.mem s₁) _ _ = _
-      rw [MachineF.bytes_out out₁ (hdisjR b hb)]; exact hheap.rbytes b hb
-  obtain ⟨τ₃, xb, r₃⟩ := irB_ok bv L hex hokB τ₂ r₂
+      rw [MachineF.bytes_out out₁ (hdisjR _ (List.mem_append_left _ (List.getElem_mem hb)))]; exact hheap.rbytes b hb
+    · rw [mi]; show bytes (M.mem s₁) _ _ = _
+      rw [MachineF.bytes_out out₁ (hdisjR _ (List.mem_append_right _ (List.getElem_mem hb)))]; exact hheap.wbyts b hb
+  obtain ⟨τ₃, xb, r₃⟩ := irB_ok bv wv L hex hokB τ₂ r₂
   refine M.runsTo_trans (Wide.body_ok hram hwr hb ok₁ pc₁ fg.left (.seq xi xb)) fun s₂ ⟨d₂, m₂, v₂, e₂⟩ => ?_
   -- leave
   have fr₂ : M.fr s₂ = M.fr s₁ := m₂.2
@@ -220,7 +231,8 @@ theorem optB_ok {bv : List Nat} {p : BStmt} {ws : List (BitVec 32)} (hc : M.optB
     (by rw [M.keep_fr d₄.keep, fr₃])
   have hmem : M.mem s₄ = τ₃.mem := by rw [m₄, m₃, e₂]
   refine ⟨ra₃ ▸ d₄.hpc, fun i => ?_, ⟨r₃.hlen, r₃.bvlen, r₃.base, r₃.blen, fun b hb => by
-    rw [hmem]; exact r₃.rbytes b hb⟩, fun a ha => ?_, d₄.ok, hkeep⟩
+    rw [hmem]; exact r₃.rbytes b hb, r₃.whlen, r₃.wvlen, r₃.wbase, r₃.wblen, fun b hb => by
+    rw [hmem]; exact r₃.wbyts b hb⟩, fun a ha => ?_, d₄.ok, hkeep⟩
   · rw [same₄, same₃]
     have := v₂ i.val (by revert i; decide) (by unfold fB; rw [dif_pos i.2]; exact hsc i)
     unfold fB at this; rw [dif_pos i.2] at this
@@ -228,7 +240,7 @@ theorem optB_ok {bv : List Nat} {p : BStmt} {ws : List (BitVec 32)} (hc : M.optB
     exact r₃.reg i.val (by omega) (by unfold isS; rw [decide_eq_false (by omega : ¬8 ≤ i.val)]; rfl)
   · rw [m₄, m₃]
     have hfa := ha _ hFm
-    have hnr : ¬ramB N fp R a := fun hr => by
+    have hnr : ¬ramB N fp R W a := fun hr => by
       rcases hramF a hr with ⟨r, hr, h1, h2⟩ | ⟨h1, h2⟩
       · have := ha r (List.mem_append_left _ hr); omega
       · dsimp only at hfa; omega

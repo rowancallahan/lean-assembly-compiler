@@ -210,3 +210,21 @@ gcd 6.0/step, insertion 3911/elt at 1000). Axioms of `compileOptB_ok`, `compileB
 traffic left in it; remaining spills (`12, 13, 14`) are in the outer loops.
 Fuzz of aff977e: seeds 41–44, 1200/1200 cases optimised, 0 fallbacks, 120,000 pairs four-way 0 mismatches;
 triple_opt 18/18; loop_test gcd/sum 300/300 (QEMU + Sail).
+
+## Word arrays (kernel-checked)
+
+`Wide` + IR + renaming + lowering: `ld d a off` / `sd v a off` (8 bytes, 8-aligned, any registers; RISC-V laws
+`w_ld`/`w_sd` from `G.step_ld`/`G.step_sd`). Selection: `irB_ok` covers `load64`/`store64` (`RelBI` carries the word
+heap, writable addresses `R ++ W ++ slots`); `WideF.optB_ok` takes byte and word blocks. Drop-in for the middle
+compiler: `Mach.Riscv.compBFO N bv wv p` with `compBFO_ok'`, the statement of `rvF.compBF_ok` with
+`rvF.codeF (rvF.compBF N bv wv p)` replaced by `compBFO N bv wv p` (`Riscv/Back/OptB.lean`).
+
+CRC-32 (`crcP` copied from main's `Riscv/Examples/Crc.lean`, `Testing/asm/emit_opt_crc.lean`; `bench/bench.py`
+model `zlib.crc32`, C version `c_crc` added to `bench/bench.c`), RV64 QEMU, outputs checked at n = 0, 1, 100, 1000,
+100000 (not run on the Sail emulator):
+
+| | words | n = 0 (table build) | per byte (n = 100000) |
+|---|---|---|---|
+| old `rvF.compBF` | 823 | 142,053 | 58.0 |
+| optimised `compBFO` | 141 | 18,477 | 11.0 |
+| gcc -O2 | — | 15,891 | 10.0 |
