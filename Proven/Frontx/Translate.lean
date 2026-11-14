@@ -123,7 +123,7 @@ inductive Item where
   | cload (v b : Nat) (i c d : ME) (r : Expr) (idx : Expr) (temps : List Expr)
   | let_ (v : Nat) (e : ME) (L L' : Expr) (ty : Ty) (temps : List Expr)
 
-structure St where
+structure TrSt where
   next : Nat
   /-- Lean scalar terms that already live in a variable (newest first) -/
   memo : List (Expr × Nat) := []
@@ -135,7 +135,7 @@ structure St where
   nObl : Nat := 0
   deriving Inhabited
 
-abbrev TrM := StateRefT St TermElabM
+abbrev TrM := StateRefT TrSt TermElabM
 
 def fresh : TrM Nat := modifyGet fun s => (s.next, { s with next := s.next + 1 })
 
@@ -639,8 +639,9 @@ def addThm (name : Name) (type : Expr) (tac : TSyntax `tactic) : TermElabM Unit 
   if pf.hasSorry || pf.hasMVar then throwError "frontx: could not prove {name}"
   addDecl (.thmDecl { name, levelParams := [], type, value := pf })
 
-def addDef (name : Name) (type value : Expr) : TermElabM Unit := do
-  addDecl (.defnDecl (mkDefinitionValEx name [] type value .abbrev .safe [name]))
+def addDef (name : Name) (type value : Expr) (compile := false) : TermElabM Unit := do
+  let d := Declaration.defnDecl (mkDefinitionValEx name [] type value .abbrev .safe [name])
+  if compile then addAndCompile d else addDecl d
   setReducibleAttribute name
   enableRealizationsForConst name
 
@@ -723,8 +724,8 @@ def compileCmd (f : Ident) (inv? : Option Term) : TermElabM Unit := do
         return ((mt, outE, ← mkLambdaFVars hs proof), st)
       let M := st.next
       let t1 ← IO.monoMsNow
-      addDef treeN (mkConst ``Tree) (← mt.toExpr)
-      addDef layN (mkConst ``Lay) (mkApp2 (mkConst ``Lay.mk) (toExpr M) (toExpr mt.maxK))
+      addDef treeN (mkConst ``Tree) (← mt.toExpr) (compile := true)
+      addDef layN (mkConst ``Lay) (mkApp2 (mkConst ``Lay.mk) (toExpr M) (toExpr mt.maxK)) (compile := true)
       let lout := mkApp (mkConst ``LOut) A
       addDef outN (← mkForallFVars xs lout) (← mkLambdaFVars xs outE)
       -- f.step1

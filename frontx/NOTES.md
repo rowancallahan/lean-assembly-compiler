@@ -1,7 +1,8 @@
 # frontx: from list pipelines to ordinary recursive Lean definitions
 
 Branch `frontx`, started from `9310b1a` (not tracking `main`). No existing file is changed.
-Files: `Proven/Frontx/{Tree,Rep,Translate,Examples,Machine}.lean`, `frontx/NOTES.md`, `frontx/SURVEY.md`.
+Files: `Proven/Frontx/{Tree,Rep,Translate,Examples,Machine}.lean`, `asm/emit_frontx.lean`, `asm/frontx_test.py`,
+`asm/arr-words/crc.words`, `frontx/NOTES.md`, `frontx/SURVEY.md`.
 
 ## 1. Status
 
@@ -14,10 +15,16 @@ Kernel-checked (no `sorry`, no `axiom`, no `native_decide`, no `bv_decide`, no `
 | `Sim` and the per-node rules `sim_ret/call/let/load/cload/dite` | `Tree.lean` | same |
 | representation lemmas (`r8`, `r32`, `r64`, `rN`, `blk`) | `Rep.lean` | same |
 | `frontx_compile f`: for each `f` below, `f.step1`, `f.runs`, `f.exec`, all generated | `Examples.lean` | same |
-| `crcCode_ok`: the generated CRC-32 loop on the Sail RISC-V model through the existing `compileBF_ok` | `Machine.lean` | MACHINE_AXIOMS |
+| `crcCode_ok`: the generated CRC-32 loop on the Sail RISC-V model through the existing `compileBF_ok` | `Machine.lean` | the 77 of `msortCode_ok` (the three above + 7 model constants + 67 `riscv_*` externs); the two sets were compared and are equal |
 
-Sketch only (not built): everything in sections 6 and 7 that is not in the table above; the `for`-loop route (6.6);
-no QEMU/Sail-emulator run of the generated words was made.
+Tested, not proved: `asm/frontx_test.py check 40` runs the 686 words of `crcCode` on QEMU and on the Sail C emulator
+(40 inputs, lengths 0..562, own stack per case with misaligned `sp`): `a2 ^ 0xFFFFFFFF = zlib.crc32(input)` on both,
+input and guard bytes unchanged, `gp`/`sp` restored, stack unchanged outside the 104-byte frame, every Sail data
+write inside a frame. 638.5 instructions per input byte (3 944 444 for 6 178 bytes). `#eval crc32 "123456789".toUTF8`
+gives `0xCBF43926` (interpreter, not a proof).
+
+Sketch only (not built): everything in sections 6 and 7 that is not in the table above, including the `for`-loop
+route (6.6).
 
 `frontx_compile` succeeds, with no hand proof, on:
 
@@ -25,7 +32,7 @@ no QEMU/Sail-emulator run of the generated words was made.
 |---|---|---|---|---|---|---|
 | `sumDown` (`LoopExamples.lean`, was hand-proved) | 2 × `BitVec 64`, WF recursion | 2 + 4 | 4 | 0.05 s | 0.01 s | 0.09 s |
 | `gcdSub` (`LoopExamples.lean`, was hand-proved) | 3 nested `if`, 2 recursive calls | 2 + 3 | 9 | 0.10 s | 0.02 s | 0.01 s |
-| `byteSum` | `ByteArray`, `Nat` index, `UInt64` acc, `xs[i]` under `if h :` | 5 + 4 | 8 | 0.1 s | 0.02 s | 0.02 s |
+| `byteSum` | `ByteArray`, `Nat` index, `UInt64` acc, `xs[i]` under `if h :` | 5 + 4 | 10 | 0.12 s | 0.02 s | 0.02 s |
 | `find` | early exit on a loaded byte | 5 + 3 | 12 | 0.11 s | 0.01 s | 0.01 s |
 | `count` | value-level `if` | 6 + 4 | 11 | 0.15 s | 0.02 s | 0.02 s |
 | `xorAll` | `xs[i]!`, `UInt8` arithmetic (masked) | 5 + 4 | 10 | 0.10 s | 0.01 s | 0.1 s |
@@ -35,7 +42,7 @@ no QEMU/Sail-emulator run of the generated words was made.
 | `b64Sum` (uses lean-svg `Bytes.at'` and `Font.b64Digit` verbatim) | helpers, `&&`, `==`, `≤` on `UInt8` | 7 + 5 | 15 | 0.71 s | 0.02 s | 0.02 s |
 
 Times are wall-clock milliseconds reported by the command itself (4 cores, unloaded), per function; the kernel check
-of each generated `step1` term is 1–7 ms. `Examples.lean` as a whole: EXAMPLES_TIME.
+of each generated `step1` term is 1–7 ms. `Examples.lean` as a whole (12 functions): 5.5 s in `lake build`.
 
 Rejected, with the message shown (each is a correct rejection, see section 6):
 
@@ -54,7 +61,7 @@ Rejected, with the message shown (each is a correct rejection, see section 6):
 `setup/box.sh` ran to completion (exit 0). `swapon /swapfile` did not activate swap in this container (`free`
 shows 0 swap); 15 GB RAM was enough. `lake build Proven.PipeExamples Proven.LoopExamples Proven.Arr2Src`: 167 jobs,
 about 51 minutes wall-clock from a cold start (the Sail model is most of it; largest single file 1223 s).
-`lake build Proven.Arr2F` (needed only for `Machine.lean`): ARR2F_TIME.
+`lake build Proven.Arr2F` (needed only for `Machine.lean`): 12 more minutes (`Arr2Words` 696 s). `Machine.lean` itself: 1.1 s.
 The front end itself needs none of the machine files: `Tree.lean`, `Rep.lean`, `Translate.lean` only use the
 source-level definitions of `Arr2Code.lean`/`Arr2Src.lean`. They were developed against a copy of those definitions
 without the Sail import (compile times: `Tree` 1.8 s, `Rep` 0.7 s, `Translate` 5 s). In the tree they import
@@ -130,7 +137,7 @@ theorem prog_ok (L : Lay) {t : Tree} (hw : t.wf L) {σ σ' : BState} {r : BitVec
 
 The existing `compileBF_ok` then takes `BExec` to the machine, unchanged.
 
-**(b) `Rep.lean` (once per (type, operation), 178 lines).** How a Lean scalar sits in a 64-bit variable:
+**(b) `Rep.lean` (once per (type, operation), about 180 lines).** How a Lean scalar sits in a 64-bit variable:
 `BitVec 64` as is, `r64 x = x.toBitVec`, `r32`/`r8` zero-extended, `rN n = BitVec.ofNat 64 n`; a `ByteArray` is a
 heap block `blk xs`. One lemma per supported operation pushes the representation through it, e.g.
 `r32 (a + b) = (r32 a + r32 b) &&& 0xffffffff`, `r32 (a >>> b) = r32 a >>> ((r32 b &&& 31).toNat % 64)`,
@@ -139,7 +146,7 @@ heap block `blk xs`. One lemma per supported operation pushes the representation
 `>>>` (and `<<<` in the translator, lemma only for `r32 >>>`), `= ≠ < ≤ > ≥`, `∧ ∨ ¬`, `== != && || !`, `decide`,
 value-level `if`, the conversions `toUInt8/32/64`, `toNat`, `Nat.toUIntN`, `xs.size`, `xs[i]`, `xs[i]!`, literals.
 
-**(c) `frontx_compile f` (`Translate.lean`, 735 lines, untrusted).** Reads `f` through its unfolding equation
+**(c) `frontx_compile f` (`Translate.lean`, about 740 lines, untrusted).** Reads `f` through its unfolding equation
 (`getUnfoldEqnFor?`, i.e. `f.eq_def`; never the compiler IR), walks the body:
 `if`/`dite`/`match n with | 0 | m+1` in tail position → `ite`; `let` and compound arguments of helper functions →
 temporaries; other constants → unfolded (inlined); array reads → `load`/`cload`; a full application of `f` →
@@ -214,10 +221,19 @@ naming, so a `for` body translates with the same node rules; what (ii) needs in 
    `enableRealizationsForConst` is needed after `addDecl` before `simp` can unfold a new definition; the optional
    `with` clause had to be two `elab` rules.
 
-Not hit, but visible in the generated code (performance, not correctness): the compiled conditional costs two loop
-headers; a `call` leaf copies through temporaries even when the assignments are independent; `skip` is an
-assignment; expression depth is not bounded by the translator (`BStmt.wf` needs depth < 7: `crcGo` passes,
-`b64Sum`'s 5-deep `if` chain was not checked against `wf`).
+8. **`BStmt.wf` (the existing compiler's limits)** is checked per program by `decide +kernel` (a `Decidable`
+   instance for `BStmt.wf` is in `Machine.lean`). `crcGo` passes with 12 slots (20 variables). `b64Sum` does not:
+   the 5-deep `if` chain of `b64Digit` is one expression of depth 11 (limit 6). The translator does not split
+   expressions; it has the mechanism (temporaries) but no depth criterion. So `b64Sum.exec` holds at source level
+   and has no machine theorem.
+9. A name clash unrelated to this work: `Proven.ArrExamples` and `Proven.LoopExamples` both define
+   `Proven.sumProg_wf`, so `SortMergeMachine` and `LoopExamples` cannot be imported together.
+
+Code quality of the generated programs (measured, not optimised): `sumDown` is 71 words (prologue included) against
+16 for the hand-written `sumProg` of `LoopExamples.lean`; the CRC loop is 686 words and 638.5 instructions per byte.
+Known causes: a conditional is two loop headers plus two flag assignments; every leaf sets `res`/`fl` or copies all
+changed arguments through temporaries; `skip` is an assignment; variables above 7 live in stack slots (CRC uses 12);
+constants are rebuilt at each use (`0xEDB88320` is 47 words, 8 times); tests produce a 0/1 value that is tested again.
 
 ## 6. The hard parts (task 4)
 
@@ -342,7 +358,12 @@ Once-and-for-all = proved once, generic in the function. Per function = generate
 Evidence behind the ordering:
 
 - Stage 0 cost: about 1 400 lines of Lean for the three files, of which 500 are the generic layer. Per function the
-  marginal human cost was zero for 10 functions; the marginal machine cost is under 1.1 s.
+  marginal human cost was zero for 12 functions (one line `with …` for the two fuel loops); the marginal machine cost
+  is under 1.2 s. The machine theorem for one of them (`crcCode_ok`) is 25 lines of glue of the kind
+  `msortCode_ok` has, not generated yet (generating it is mechanical: `envOf`, `HeapRel` from `bytesAt`).
+- Speed is a standing requirement (`ROADMAP.md`); at 638 instructions per byte the generated CRC is far from it.
+  The causes listed in section 5 are all in `prog`/`comp` (once-and-for-all code): a conditional statement in
+  `BStmt`, direct loop conditions, and register allocation would be proved once and change no per-function proof.
 - Stage 1 items are each a local extension of what exists (estimates in section 6: 60–150 lines each); none needs a
   new middle-layer mechanism. They are what separates the current examples from compiling lean-svg's small
   functions verbatim.
@@ -362,6 +383,7 @@ Evidence behind the ordering:
 bash setup/box.sh                               # once
 lake build Proven.Frontx.Examples               # source-level theorems (needs Proven.Arr2Src built)
 lake build Proven.Frontx.Machine                # + crcCode_ok on the Sail model (needs Proven.Arr2F, slow)
+lake env lean asm/emit_frontx.lean && python3 asm/frontx_test.py check 40   # QEMU + Sail C emulator, ~50 s
 ```
 
 `frontx_compile f` prints one line per function: variables, obligations, times.
