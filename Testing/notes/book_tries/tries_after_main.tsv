@@ -1,0 +1,38 @@
+c_append	ERR	Testing/notes/book_tries/c_append.lean:3:9: error: compile%: `++` is supported with one constant side only   xs +++ xs 
+c_arraymap	ERR	Testing/notes/book_tries/c_arraymap.lean:3:9: error: compile%: unsupported result type   Array UInt8 (supported: List UInt8, UInt8, BitVec 64, Bool, Option UInt8) 
+c_drop	OK	
+c_filter	OK	
+c_findFirst	OK	
+c_head	OK	
+c_insertionSort_array	ERR	Testing/notes/book_tries/c_insertionSort_array.lean:3:9: error: compile%: unsupported result type   Array UInt8 (supported: List UInt8, UInt8, BitVec 64, Bool, Option UInt8) 
+c_length	ERR	Testing/notes/book_tries/c_length.lean:3:9: error: compile%: unsupported result type   Nat (supported: List UInt8, UInt8, BitVec 64, Bool, Option UInt8) 
+c_map	OK	
+c_mergeSort	OK	
+c_reverse	OK	
+c_reverse_book	ERR	Testing/notes/book_tries/c_reverse_book.lean:4:9: error: compile%: unsupported list expression (use map, take, drop, reverse, mergeSort, filter, takeWhile, dropWhile, ++ a constant list, foldl on the argument)   reverse xs 
+c_sum	OK	
+c_sum_book	ERR	Testing/notes/book_tries/c_sum_book.lean:9:9: error: compile%: unsupported result type   Nat (supported: List UInt8, UInt8, BitVec 64, Bool, Option UInt8) 
+c_sum_nat	ERR	Testing/notes/book_tries/c_sum_nat.lean:3:11: error: compile%: unsupported result type   Nat (supported: List UInt8, UInt8, BitVec 64, Bool, Option UInt8) 
+c_take	OK	
+c_zip	ERR	Testing/notes/book_tries/c_zip.lean:3:9: error: compile%: unsupported result type   List (UInt8 × UInt8) (supported: List UInt8, UInt8, BitVec 64, Bool, Option UInt8) 
+r_add1	OK	
+r_add1_nat	ERR	Testing/notes/book_tries/r_add1_nat.lean:4:9: error: reify%: not a `BitVec 64`   n + 1 
+r_double	OK	
+r_even	OK	
+r_halve	OK	
+r_halve_nat	ERR	Testing/notes/book_tries/r_halve_nat.lean:4:9: error: reify%: unsupported subterm   n >>> 1 
+r_isZero	OK	
+r_isZero_nat	ERR	Testing/notes/book_tries/r_isZero_nat.lean:4:9: error: reify%: not a `BitVec 64`   n == 0 
+r_maximum	OK	
+r_maximum_nat	ERR	Testing/notes/book_tries/r_maximum_nat.lean:4:9: error: reify%: unsupported subterm   if a < b then b else a 
+r_minus	OK	
+r_minus_nat	ERR	Testing/notes/book_tries/r_minus_nat.lean:4:9: error: reify%: unsupported subterm   if a < b then 0 else a - b 
+r_plus	OK	
+r_pred	OK	
+r_quadruple	OK	
+r_times12	OK	
+r_times12_mul	ERR	Testing/notes/book_tries/r_times12_mul.lean:4:9: error: reify%: unsupported subterm   x * 12 
+r_triple	OK	
+r_volume_mul	ERR	Testing/notes/book_tries/r_volume_mul.lean:4:9: error: reify%: unsupported subterm   a * b * c 
+c_length_bv	OK	
+c_last	OK	

@@ -3,15 +3,16 @@ sys.path.insert(0,'/tmp/claude-0/s/scr')
 from overrides import O
 R=json.load(open('/tmp/claude-0/s/rows2.json'))
 tries={}
-tp='/tmp/claude-0/s/tries.tsv'
-if os.path.exists(tp):
+before={}
+for tp,dst in (('/tmp/claude-0/s/tries.tsv',before),('/tmp/claude-0/s/after/tries.tsv',tries)):
     for l in open(tp):
         p=l.rstrip('\n').split('\t')
-        if len(p)>=2: tries[p[0]]=(p[1],p[2] if len(p)>2 else '')
+        if len(p)>=2: dst[p[0]]=(p[1],p[2] if len(p)>2 else '')
+for k,v in before.items(): tries.setdefault(k,v)
 CH={'Intro':'1 Getting to Know Lean','HelloWorld':'2 Hello, World!','Cat':'2 Hello, World!','feline':'2 Hello, World!','first-lake':'2 Hello, World!','second-lake':'2 Hello, World!','Props':'3 Interlude: Propositions, Proofs, Indexing','Induction':'3 Interlude: Propositions, Proofs, Indexing','Classes':'4 Overloading and Type Classes','Monads':'5 Monads','FunctorApplicativeMonad':'6 Functor, Applicative, Monad','MonadTransformers':'7 Monad Transformers','DependentTypes':'8 Programming with Dependent Types','Universes':'8 Programming with Dependent Types','ProgramsProofs':'9 Programming, Proving, Performance','douglib':'7 Monad Transformers','Doug1':'7 Monad Transformers','Examples.lean':'(support)','ExampleSupport.lean':'(support)','SpecialTypes':'(special types)','Strings':'(strings)'}
 MAP={'tagged data/structures':'tagged data','Option/Prod/Sum results (tagged data / output encoding)':'tagged data (Option/Prod/Sum encoding)','Int (signed, unbounded)':'big numbers (Int/unbounded Nat)','multiply-divide':'multiply-divide','non-tail recursion (calls + stack)':'calls+stack / non-tail recursion','polymorphism by monomorphisation':'polymorphism by monomorphisation','polymorphism by monomorphisation (type class)':'polymorphism by monomorphisation','higher-order by specialisation':'higher-order by specialisation','two list inputs':'two list inputs','strings':'strings','allocator (new data)':'allocator'}
 TW={'add1':('add1',784,'expr'),'double':('double',661,'expr'),'Nat.double':('double',661,'expr'),'NewNamespace.triple':('triple',624,'expr'),'NewNamespace.quadruple':('quadruple',589,'expr'),'timesTwelve':('timesTwelve',589,'expr'),'maximum':('maximum',829,'expr'),'isZero':('isZero',829,'expr'),'pred':('pred',829,'expr'),'even':('even_small+even_large_vs_mod',12829,'expr'),'Match.even':('even_small+even_large_vs_mod',12829,'expr'),'halve':('halve_small+halve_large_vs_div',12829,'expr'),'Match.halve':('halve_small+halve_large_vs_div',12829,'expr'),'plus':('plus_small+plus_large_vs_add',4261,'expr'),'minus':('minus_small+minus_large_vs_sub',4429,'expr'),
-'Tail.sum':('sum64_vs_Tail.sum',310,'list'),'NonTail.sum':('sum64_vs_NonTail.sum',310,'list'),'Tail.reverse':('reverse_vs_Tail.reverse',310,'list'),'NonTail.reverse':('reverse_vs_NonTail.reverse',310,'list'),'take':('take5_vs_Book.take',310,'list'),'drop':('drop5_vs_Book.drop',310,'list'),'mergeSort':('sort_vs_Book.mergeSort',310,'list'),'insertionSort':('sort_vs_Book.insertionSort',310,'list'),'times':('times_vs_book_times',672,'loop'),'div':('div_vs_book_div',557,'loop')}
+'Tail.sum':('sum64_vs_Tail.sum',310,'list'),'NonTail.sum':('sum64_vs_NonTail.sum',310,'list'),'Tail.reverse':('reverse_vs_Tail.reverse',310,'list'),'NonTail.reverse':('reverse_vs_NonTail.reverse',310,'list'),'take':('take5_vs_Book.take',310,'list'),'drop':('drop5_vs_Book.drop',310,'list'),'mergeSort':('sort_vs_Book.mergeSort',310,'list'),'insertionSort':('sort_vs_Book.insertionSort',310,'list'),'times':('times_vs_book_times',672,'loop'),'Tail.length':('len_Tail.length',310,'list'),'NonTail.length':('len_NonTail.length',310,'list'),'length':('len_Tail.length',310,'list'),'Tail.filter':('filter_Tail.filter',310,'list'),'NonTail.filter':('filter_NonTail.filter',310,'list'),'head?':('head_Book.head?',310,'list'),'final?':('last_Book.final?',310,'list'),'findFirst?':('find_Book.findFirst?',310,'list'),'div':('div_vs_book_div',557,'loop')}
 out=[]
 for r in R:
     if not r['pure']: continue
@@ -23,13 +24,15 @@ for r in R:
     needs=list(dict.fromkeys(needs))
     v=r.get('verdict');why=r.get('why','');rest='';bnd='';tid='';basis='auto'
     if v in('X','D'): pass
-    elif key and r['kind']!='instance' and not (r['feat'] and 'strings' in r['feat']) :
+    elif key and r['chapter'] in ('Intro','ProgramsProofs') and r['kind']!='instance' and not (r['feat'] and 'strings' in r['feat']) :
         v,rest,bnd,tid=O[key]; basis='curated'; needs=[] if v=='B' else needs
+        if nm in ('CPS.reverse','TailRec.Array.map','Array.map') or last in ('CPS.reverse',):
+            v='C'; basis='curated'; needs=['higher-order by specialisation (continuation)'] if 'CPS' in nm else ['Array result type in compile% (the List version of map is accepted: c_map OK; c_arraymap ERR)']; tid='map' if 'Array' in nm else ''; rest=''
     elif r['kind']=='instance':
         v='C'; needs=needs or ['tagged data']; 
         if 'higher-order by specialisation' not in needs and re.search(r'Functor|Monad|Applicative|Alternative|Seq|Bind|Pure',r['sig']): needs.append('higher-order by specialisation')
     else:
-        if re.search(r'Schema|\bRow\b|Vect|DBType|asType|Fin [a-z]|plusR|Subtype|\{n : Nat\}',r['sig']): needs.append('dependent types')
+        if re.search(r'Schema|Table|\bRow\b|Vect|DBType|asType|Fin [a-z]|plusR|Subtype|\{n : Nat\}',r['sig']): needs.append('dependent types')
         isconst=not re.search(r'[({]|→',r['sig'].split(':')[0]+r['sig'][len(r['sig'].split(':')[0]):]) 
         if r['file'].startswith(('ExampleSupport','Examples.lean')): v='X'; why='Lean meta-programming support code'
         elif r['name'].endswith('evenLoops'): v='X'; why='rejected by Lean (non-terminating book example)'
@@ -44,7 +47,7 @@ for r in R:
     if tid:
         ids=[tid] if tid in tries or not any(k.startswith(tid) for k in tries) else [tid]
         cand=[k for k in tries if k.split('_',1)[-1]==tid or k.split('_',1)[-1].startswith(tid+'_')]
-        rows['try_results']='; '.join(f'{k}:{tries[k][0]}' for k in cand)
+        rows['try_results']='; '.join(f'{k}:{tries[k][0]}'+(f' (before main pull: {before[k][0]})' if k in before and before[k][0]!=tries[k][0] else '') for k in cand)
         rows['try_msg']=' | '.join(f'{k}: {tries[k][1][:140]}' for k in cand if tries[k][0]=='ERR')
     else: rows['try_results']='';rows['try_msg']=''
     rows['threeway']='';rows['threeway_inputs']='';rows['mismatches']=''
