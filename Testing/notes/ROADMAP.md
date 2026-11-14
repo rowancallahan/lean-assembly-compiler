@@ -59,6 +59,12 @@ hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read 
   (2) bounded types in the signature (`BitVec 64`, `UInt8`, `Fin n`), so no side condition is needed;
   (3) FUEL: the function takes a step budget and returns `none`/a default when it runs out — termination is then
   trivial and the machine code has a proved step bound. Out-of-range results use `Option`/`Except` through `Encode`.
+- Every compiled function goes through `Spec/Encode.lean`: the input block holds `enc a`, the output block ends holding
+  `enc (f a)`; functions over `Nat`/`List α`/structures are compiled via their byte encodings (that is the normal case,
+  not a "restatement").
+- Floats and IO: not now. When floats are added, the float library is taken as an AXIOM set: the trusted base is then
+  exactly two things, the machine (assembly) semantics and the float library. (The Sail RISC-V model already exposes
+  its floating point as 67 uninterpreted `riscv_f*` constants — the natural place to connect.)
 - Memory: blocks are lists of cells; layouts of pairwise-disjoint blocks; owner reviews byte layouts in `Encode.lean`.
 
 # Far future (noted, not planned)
