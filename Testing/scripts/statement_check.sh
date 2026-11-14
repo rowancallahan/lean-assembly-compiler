@@ -24,6 +24,9 @@ run() {
   lake env lean --run "$H/stmt_hash.lean" $L Riscv.Back.Opt Proven.compileO_ok Proven.compileFO_ok
   lake env lean --run "$H/stmt_hash.lean" $L Riscv.Back.OptArr,Riscv.Back.OptB \
     Proven.compileAFO_ok Proven.compileBFO_ok Proven.Mach.WideF.optB_ok
+  lake env lean --run "$H/stmt_hash.lean" $L Riscv.Examples.Implements1Opt \
+    Proven.Crc.crc32_implements1O Proven.sortCode_implements1O Proven.msortCode_implements1O \
+    Proven.Mach.Riscv.take_implements1O Proven.Mach.Riscv.inc_implements1O Proven.Mach.Riscv.sum_implements1O
   lake env lean --run "$H/stmt_hash.lean" $L Riscv.Examples.CallExamples Proven.Mach.MachineC.compP_ok \
     Proven.Mach.Riscv.callsCode_implements Proven.Mach.Riscv.sumTo_implements Proven.Mach.Riscv.fib_implements \
     Proven.Mach.Riscv.isEven_implements
