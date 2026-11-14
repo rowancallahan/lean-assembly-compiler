@@ -5,6 +5,7 @@ the input length; `N` slots in a frame at the top of the work block, below `sp`)
 `space n ≥ 8 · wn n + 8 (N + 1) + 7`, as soon as its source-level run computes `f` (`implements1_of_exec`).
 Also the conversion of the older statements' proofs. -/
 import Riscv.Back.BStmt
+import Riscv.Back.Keep
 import Riscv.Direct.SortMergeMachine
 import Spec.Implements1
 
@@ -60,15 +61,16 @@ theorem bytesAt_take' (s : St) (a : Nat) {k n : Nat} (h : k ≤ n) : (bytesAt s 
 /-- from a source-level run of a `BStmt` program to `Implements1` -/
 theorem implements1_of_exec {α β : Type} (encA : α → List UInt8) (encB : β → List UInt8) (f : α → β)
     (N : Nat) (hN : N ≤ 16) (prog : Mach.BStmt) (hwf : rvF.wfB N [0, 3] [2] prog) (wn : Nat → Nat)
-    (space : Nat → Nat) (hsp : ∀ n, 8 * wn n + 8 * (N + 1) + 7 ≤ space n) (maxLen : Nat)
+    (space : Nat → Nat) (hsp : ∀ n, 8 * wn n + 8 * (N + 1) + 7 ≤ space n) (maxLen : Nat) (retLen : Bool)
     (hex : ∀ (a : α) (out : List (BitVec 8)) (tbl : List (BitVec 64)) (env : Mach.BEnv),
       env 1 = BitVec.ofNat 64 (encA a).length → (∀ j, 8 ≤ j → env j = 0) → (encA a).length ≤ maxLen →
       (encA a).length < 2 ^ 32 → (encB (f a)).length ≤ out.length → out.length < 2 ^ 32 →
       tbl.length = wn (encA a).length →
       ∃ σ' out', Mach.BExec prog ⟨env, [(encA a).map (·.toBitVec), out], [tbl]⟩ σ' ∧
         σ'.heap = [(encA a).map (·.toBitVec), out'] ∧
-        out'.take (encB (f a)).length = (encB (f a)).map (·.toBitVec)) :
-    Implements1With encA encB (rvF.codeF (rvF.compBF N [0, 3] [2] prog)) f space maxLen := by
+        out'.take (encB (f a)).length = (encB (f a)).map (·.toBitVec) ∧
+        (retLen = true → σ'.env 1 = BitVec.ofNat 64 (encB (f a)).length)) :
+    Implements1With encA encB (rvF.codeF (rvF.compBF N [0, 3] [2] prog)) f space maxLen retLen := by
   intro a s entry ra input output work x y codeR hmax h hpc hal hcode h10 h11 h12 h13 h2 h1 hra hrad hx
     hil hol hws hwal hram hdis hmapO hmapW
   have hin : ∀ r ∈ [input, output, work, codeR], r.inRAM := hram
@@ -103,7 +105,7 @@ theorem implements1_of_exec {α β : Type} (encA : α → List UInt8) (encB : β
     obtain ⟨ws, hl, hw⟩ := exists_wbytes (wn x.length) ((bytesAt s work.base (8 * wn x.length)).map (·.getD 0))
       (by simp [bytesAt])
     exact ⟨ws, hl, by rw [hw]; exact bytesAt_hosted fun i hi => hmapW i (by omega)⟩
-  obtain ⟨σ', out', hexec, hh, htk⟩ := hex a out0 tbl0 (envOf s)
+  obtain ⟨σ', out', hexec, hh, htk, hrl⟩ := hex a out0 tbl0 (envOf s)
     (by simpa [envOf] using getX_of (h.x11.symm.trans h11) rfl) (fun j hj => by simp [envOf]; omega)
     hmax (by show x.length < 2 ^ 32; omega) (by show y.length ≤ out0.length; omega) (by omega) htl
   -- the layout
@@ -180,7 +182,11 @@ theorem implements1_of_exec {α β : Type} (encA : α → List UInt8) (encB : β
     have := (bytes_eq s' _ _).symm.trans e0; simpa using this
   have e1' : bytesAt s' output.base output.len = out'.map some := by
     have := (bytes_eq s' _ _).symm.trans e1; simpa using this
-  refine ⟨by rw [← hra']; exact p1, ?_, ?_, keep_calleeSaved h p5 p6, p5⟩
+  refine ⟨by rw [← hra']; exact p1, ?_, ?_, abi_of_keep h p5 p6, p5, fun hr => ?_⟩
+  rotate_left
+  · have := p2 ⟨1, by decide⟩
+    rw [show rvF.get s' (avar ⟨1, by decide⟩) = getX s' 11 from rfl, hrl hr] at this
+    rw [p5.x11, this]
   · rw [← bytesAt_take' s' output.base hol', e1', ← List.map_take, htk]; simp [List.map_map, y]
   · intro q hq
     have a2 := hq output (by simp); have a3 := hq work (by simp)

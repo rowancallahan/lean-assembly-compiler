@@ -14,6 +14,8 @@ sh = lambda c: subprocess.run(c, shell=True, check=True)
 which, N = sys.argv[1], int(sys.argv[2])
 words = [int(l, 16) for l in open(os.path.join(D, "pipe-words", which + ".words")) if l.strip()]
 space = [int(x) for x in open(os.path.join(D, "pipe-words", which + ".space")).read().split()]
+sspace = [int(x) for x in open(os.path.join(D, "pipe-words", which + ".sspace")).read().split()]
+ST, MAGIC, E = 256, 0x1234567890ABCDEF, 56  # stack bytes per case, gp value, table entry size
 S = 128  # slot size
 M64 = 2**64 - 1
 def fold(f, a, xs):
@@ -80,9 +82,12 @@ _start: lla s0, tab
   ld a1, 8(s0)
   ld a2, 16(s0)
   ld a3, 24(s0)
+  ld sp, 40(s0)
+  li gp, %d
   jal ra, func
   sd a1, 32(s0)
-  addi s0, s0, 40
+  sd gp, 48(s0)
+  addi s0, s0, 56
   addi s2, s2, -1
   bnez s2, 1b
   lla t0, tohost
@@ -101,6 +106,8 @@ fromhost: .dword 0
 ins:
 %s
 outs: .fill %d, 1, 0x55
+scrs: .fill %d, 1, 0x66
+stks: .fill %d, 1, 0x77
 tab:
 %s
 tabend:
@@ -112,12 +119,14 @@ while done < N:
     k = min(B, N - done)
     cases = [cases0.pop() if cases0 else rand_case() for _ in range(k)]
     ins = "\n".join(f"  .byte {', '.join(str(x) for x in xs + [0xAA] * (S - len(xs)))}" for xs in cases)
-    tab = "\n".join(f"  .quad ins+{S*i}, {len(xs)}, {rng.getrandbits(64)}, outs+{S*i}, 0" for i, xs in enumerate(cases))
-    open(p("pipe.S"), "w").write(DRIVER % (k, "".join(f"  .word 0x{w:08x}\n" for w in words), ins, S * k, tab))
+    sps = [ST * i + ST - 8 - rng.randrange(8) for i in range(k)]
+    tab = "\n".join(f"  .quad ins+{S*i}, {len(xs)}, scrs+{S*i}, outs+{S*i}, 0, stks+{sps[i]}, 0" for i, xs in enumerate(cases))
+    open(p("pipe.S"), "w").write(DRIVER % (k, MAGIC, "".join(f"  .word 0x{w:08x}\n" for w in words), ins, S * k, S * k, ST * k, tab))
     sh(f"riscv64-linux-gnu-gcc -march=rv64i -mabi=lp64 -nostdlib -static -Wl,-T,{p('pipe.ld')} -Wl,--no-relax -Wl,--build-id=none {p('pipe.S')} -o {p('pipe.elf')}")
     syms = subprocess.check_output(f"riscv64-linux-gnu-nm {p('pipe.elf')}", shell=True, text=True)
     sym = lambda s: int(re.search(rf"(\w+) \w {s}\n", syms).group(1), 16)
     halt, ins_a, outs_a, tab_a, tabend = sym("halt"), sym("ins"), sym("outs"), sym("tab"), sym("tabend")
+    scrs_a, stks_a = sym("scrs"), sym("stks")
     size = tabend - ins_a
     # QEMU
     q = subprocess.Popen(f"qemu-system-riscv64 -machine virt -m 1G -bios {p('pipe.elf')} -display none -serial none -monitor stdio",
@@ -137,14 +146,17 @@ while done < N:
     assert "SUCCESS" in r.stdout + r.stderr, (r.stdout + r.stderr)[-500:]
     init = bytearray()
     for xs in cases: init += bytes(xs + [0xAA] * (S - len(xs)))
-    init += bytes([0x55] * (S * k))
-    tab0 = bytearray(qmem[tab_a - ins_a:])  # the table; the driver writes a1 into word 4 of each entry
-    for i in range(k): tab0[40 * i + 32:40 * i + 40] = bytes(8)
+    init += bytes([0x55] * (S * k)) + bytes([0x66] * (S * k)) + bytes([0x77] * (ST * k))
+    tab0 = bytearray(qmem[tab_a - ins_a:])  # the table; the driver writes a1 and gp into words 4 and 6
+    for i in range(k): tab0[E * i + 32:E * i + 40] = bytes(8); tab0[E * i + 48:E * i + 56] = bytes(8)
     init += tab0
     allowed = set(range(tab_a, tabend))
     for i, xs in enumerate(cases):
-        assert len(model(xs)) <= space[len(xs)] <= S
+        assert len(model(xs)) <= space[len(xs)] <= S and sspace[len(xs)] <= S
         allowed |= set(range(outs_a + S * i, outs_a + S * i + space[len(xs)]))
+        allowed |= set(range(scrs_a + S * i, scrs_a + S * i + sspace[len(xs)]))
+        fp = (stks_a + sps[i]) // 8 * 8 - 64
+        allowed |= set(range(fp, fp + 64))
     smem = bytearray(init)
     for l in open(p("sail.log")):
         m = re.match(r"mem\[(?:W,)?0x([0-9A-F]+)\] <- 0x([0-9A-F]+)", l)
@@ -162,7 +174,13 @@ while done < N:
             assert got_in == xs + [0xAA] * (S - len(xs)), (name, "input changed", xs)
             assert got_out[:len(out)] == out, (name, xs, got_out[:len(out) + 2], out)
             assert got_out[sp:] == [0x55] * (S - sp), (name, "write beyond space", xs, sp)
-            a1 = int.from_bytes(mem[tab_a - ins_a + 40 * i + 32:][:8], "little")
+            a1 = int.from_bytes(mem[tab_a - ins_a + E * i + 32:][:8], "little")
             assert a1 == len(out), (name, "a1 is not the result length", xs, a1, len(out))
+            gp = int.from_bytes(mem[tab_a - ins_a + E * i + 48:][:8], "little")
+            assert gp == MAGIC, (name, "gp not restored", hex(gp))
+            ss = sspace[len(xs)]; got_scr = list(mem[2 * S * k + S * i:][:S])
+            assert got_scr[ss:] == [0x66] * (S - ss), (name, "scratch write beyond sspace", xs, ss)
+            stk = list(mem[3 * S * k + ST * i:][:ST]); fp = (stks_a + sps[i]) // 8 * 8 - 64 - stks_a - ST * i
+            assert all(b == 0x77 for j, b in enumerate(stk) if not (fp <= j < fp + 64)), (name, "stack outside frame")
     done += k
     print(f"{which}: {done}/{N} ok (QEMU == Sail == model, {len(words)} words)", flush=True)

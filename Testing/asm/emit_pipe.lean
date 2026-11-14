@@ -7,6 +7,8 @@ def emit {α : Type} {enc : α → List UInt8} {f : List UInt8 → α} (n : Stri
   IO.FS.writeFile s!"Testing/asm/pipe-words/{n}.words" (String.intercalate "\n" (c.code.map hex8) ++ "\n")
   IO.FS.writeFile s!"Testing/asm/pipe-words/{n}.space"
     (String.intercalate " " ((List.range 65).map fun k => toString (XPipe.space c.pipe k)) ++ "\n")
+  IO.FS.writeFile s!"Testing/asm/pipe-words/{n}.sspace"
+    (String.intercalate " " ((List.range 65).map fun k => toString (XPipe.sspace c.pipe k)) ++ "\n")
 #eval do
   emit "revinc5" revinc5; emit "mapsum" mapsum; emit "revtake5" revtake5; emit "mapsort" mapsort
   emit "sort" sort; emit "sum64" sum64; emit "hash64" hash64; emit "sortdesc" sortdesc; emit "mid" mid

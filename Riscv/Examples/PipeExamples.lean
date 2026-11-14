@@ -11,21 +11,22 @@ def revinc5 := compile% fun xs : List UInt8 => ((xs.take 5).map (· + 1)).revers
 
 /-- the machine-code theorem is about the function as written -/
 theorem revinc5_ok : ImplementsPipe revinc5.code (fun xs => ((xs.take 5).map (· + 1)).reverse)
-    (XPipe.space revinc5.pipe) := revinc5.implements
+    (XPipe.space revinc5.pipe) := revinc5.okPipe rfl
 
 def mapsum := compile% fun xs : List UInt8 =>
   (xs.map fun x => if x < 10 then x ^^^ 0x20 else x - 1).foldl (· + ·) 0
 
 theorem mapsum_ok : ImplementsPipe mapsum.code
     (fun xs => [(xs.map fun x => if x < 10 then x ^^^ 0x20 else x - 1).foldl (· + ·) 0]) (XPipe.space mapsum.pipe) :=
-  mapsum.ok
+  mapsum.okPipe rfl
 
 def revtake5 := compile% fun xs : List UInt8 => xs.reverse.take 5
 
 def mapsort := compile% fun xs : List UInt8 => (xs.map (· &&& 0x7f)).mergeSort
 
-theorem mapsort_ok : ImplementsPipe mapsort.code (fun xs => (xs.map (· &&& 0x7f)).mergeSort)
-    (XPipe.space mapsort.pipe) := mapsort.implements
+/-- with a sort: the merge sort, a scratch block of `sspace |x|` bytes and 71 stack bytes -/
+theorem mapsort_ok : ImplementsPipeS mapsort.code (fun xs => (xs.map (· &&& 0x7f)).mergeSort)
+    (XPipe.space mapsort.pipe) (XPipe.sspace mapsort.pipe) 71 := mapsort.implements
 
 def sort := compile% fun xs : List UInt8 => xs.mergeSort
 
@@ -34,7 +35,7 @@ def sum64 := compile% fun xs : List UInt8 => xs.foldl (fun (a : BitVec 64) x => 
 
 theorem sum64_ok : ImplementsPipe sum64.code
     (fun xs => enc (xs.foldl (fun (a : BitVec 64) x => a + x.toBitVec.setWidth 64) 0)) (XPipe.space sum64.pipe) :=
-  sum64.ok
+  sum64.okPipe rfl
 
 /-- a 64-bit hash: `a := (a ^ x) + (a << 5)`, from 5381 -/
 def hash64 := compile% fun xs : List UInt8 =>
@@ -61,7 +62,7 @@ def twosort := compile% fun xs : List UInt8 =>
 
 def len := compile% fun xs : List UInt8 => BitVec.ofNat 64 xs.length
 
-theorem len_ok : ImplementsPipe len.code (fun xs => enc (BitVec.ofNat 64 xs.length)) (XPipe.space len.pipe) := len.ok
+theorem len_ok : ImplementsPipe len.code (fun xs => enc (BitVec.ofNat 64 xs.length)) (XPipe.space len.pipe) := len.okPipe rfl
 
 def sum8 := compile% fun xs : List UInt8 => xs.sum
 def sumNat := compile% fun xs : List UInt8 => BitVec.ofNat 64 (xs.map UInt8.toNat).sum
@@ -72,7 +73,7 @@ def allRange := compile% fun xs : List UInt8 => xs.all fun x => x ≥ 3 && x != 
 def has5 := compile% fun xs : List UInt8 => xs.contains 5
 def empty := compile% fun xs : List UInt8 => xs.isEmpty
 
-theorem any3_ok : ImplementsPipe any3.code (fun xs => enc (xs.any fun x => x == 3)) (XPipe.space any3.pipe) := any3.ok
+theorem any3_ok : ImplementsPipe any3.code (fun xs => enc (xs.any fun x => x == 3)) (XPipe.space any3.pipe) := any3.okPipe rfl
 
 /-! ### `Option UInt8` results (tag byte, then the value) -/
 
@@ -85,7 +86,7 @@ def max := compile% fun xs : List UInt8 => xs.max?
 def idxZero := compile% fun xs : List UInt8 => BitVec.ofNat 64 (xs.findIdx fun x => x == 0)
 def idx42 := compile% fun xs : List UInt8 => BitVec.ofNat 64 (xs.idxOf 42)
 
-theorem min_ok : ImplementsPipe min.code (fun xs => enc xs.min?) (XPipe.space min.pipe) := min.ok
+theorem min_ok : ImplementsPipe min.code (fun xs => enc xs.min?) (XPipe.space min.pipe) := min.okPipe rfl
 
 /-! ### Data-dependent lengths: the result length is returned in `a1` (`ImplementsPipeLen`) -/
 
@@ -99,24 +100,26 @@ def filtsort := compile% fun xs : List UInt8 => (xs.filter (· > 3)).mergeSort
 def countBig := compile% fun xs : List UInt8 => BitVec.ofNat 64 ((xs.dropWhile (· < 5)).filter (· > 200)).length
 
 theorem evens_ok : ImplementsPipeLen evens.code (fun xs => xs.filter fun x => x &&& 1 == 0)
-    (XPipe.space evens.pipe) := evens.implementsLen
+    (XPipe.space evens.pipe) := evens.okLen rfl
 
 /-! ### `ImplementsMapped` (output block of exactly the result size) where no intermediate is longer -/
 
 theorem revinc5_mapped : ImplementsMapped revinc5.code (fun xs => ((xs.take 5).map (· + 1)).reverse) :=
-  revinc5.mapped fun x => by
+  revinc5.mapped rfl fun x => by
     simp [revinc5, XPipe.space, XPipe.need, xstageC, XStage.space, XStage.len, stageC, Stage.space, Stage.len,
       CS.clean, cs0, csClean]
 
 theorem revtake5_mapped : ImplementsMapped revtake5.code (fun xs => xs.reverse.take 5) :=
-  revtake5.mapped fun x => by
+  revtake5.mapped rfl fun x => by
     simp [revtake5, XPipe.space, XPipe.need, xstageC, XStage.space, XStage.len, stageC, Stage.space, Stage.len,
       CS.clean, cs0, csClean]
 
-theorem mapsort_mapped : ImplementsMapped mapsort.code (fun xs => (xs.map (· &&& 0x7f)).mergeSort) :=
-  mapsort.mapped fun x => by
+theorem mapsort_mapped : ImplementsMapped2 mapsort.code (fun xs => (xs.map (· &&& 0x7f)).mergeSort) (stackLen := 71) :=
+  mapsort.mapped2 (fun x => by
     simp [mapsort, XPipe.space, XPipe.need, xstageC, XStage.space, XStage.len, stageC, Stage.space, Stage.len,
-      CS.clean, cs0, csClean, List.length_mergeSort]
+      CS.clean, cs0, csClean, List.length_mergeSort])
+    (fun x => by simp [mapsort, XPipe.sspace, XPipe.sneed, XStage.isSort, xstageC, stageC, XStage.len, Stage.len])
+    (by decide)
 
 /-! ## Rejected, with the reason -/
 

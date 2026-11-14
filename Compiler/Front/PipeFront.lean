@@ -4,20 +4,25 @@ kernel-checked proof that `compileP` accepts the pipe.  `Compiled.ok` is then th
 `f` itself.  Anything the reifier or the compiler does not accept is an elaboration error naming the
 subterm or the limit.  No `native_decide`: the proofs are `rfl`/`simp` and `decide +kernel`. -/
 import Compiler.Front.PipeOk
-import Compiler.Front.PipeStdMachine
+import Compiler.Front.PipeStdBMachine
 import Lean
 
 namespace Proven
 open Lean Meta Elab Term
 
-/-- the compiler used by `compile%` (`Compiler/Front/PipeStdMachine.lean`) -/
-abbrev compileX := compileXA
-abbrev codeX (p : XPipe) : List (BitVec 32) := compileAF [0, 3] (XPipe.prog p)
+/-- the code `compileX` produces when it succeeds -/
+def codeX (p : XPipe) : List (BitVec 32) :=
+  if p.hasSort then compileBF 7 [0, 3, 2] (XPipe.progB p) else compileAF [0, 3] (XPipe.prog p)
 
 theorem compileX_of_toBool {p : XPipe} (h : (compileX p).toBool = true) : compileX p = .ok (codeX p) := by
   cases hc : compileX p with
   | error m => simp [hc, Except.toBool] at h
-  | ok code => obtain ⟨-, -, rfl⟩ := compileXA_inv hc; rfl
+  | ok code =>
+    have hc' := hc
+    unfold compileX at hc'; unfold codeX
+    split at hc'
+    · rename_i hs; obtain ⟨-, -, rfl⟩ := compileXB_inv hc'; rw [if_pos hs]
+    · rename_i hs; obtain ⟨-, -, rfl⟩ := compileXA_inv hc'; rw [if_neg hs]
 
 /-- result encodings: a list is itself, a byte is a one-byte list, everything else the `Bytes` encoding of
 `Spec/Encode.lean` (`BitVec 64`: 8 bytes little-endian; `Bool`: one byte 0/1; `Option UInt8`: tag byte, value) -/
@@ -41,27 +46,48 @@ def code (c : Compiled enc f) : List (BitVec 32) := codeX c.pipe
 
 theorem compiles (c : Compiled enc f) : compileX c.pipe = .ok c.code := compileX_of_toBool c.check
 
-/-- the code implements the user's function (result encoded by `enc`), and returns the result length in `a1` -/
-theorem okLen (c : Compiled enc f) : ImplementsPipeLen c.code (fun xs => enc (f xs)) (XPipe.space c.pipe) := by
+/-- **the code implements the user's function** (result encoded by `enc`; result length in `a1`), given
+an output block of `space |x|` bytes, a scratch block of `sspace |x|` bytes and `XPipe.stack` stack bytes -/
+theorem ok (c : Compiled enc f) :
+    ImplementsPipeS c.code (fun xs => enc (f xs)) (XPipe.space c.pipe) (XPipe.sspace c.pipe) (XPipe.stack c.pipe) := by
   have : (fun xs => enc (f xs)) = XPipe.denote c.pipe := funext c.denote
-  rw [this]; exact compileXA_ok c.compiles
+  rw [this]; exact compileX_ok c.compiles
 
-/-- the code implements the user's function (result encoded by `enc`) -/
-theorem ok (c : Compiled enc f) : ImplementsPipe c.code (fun xs => enc (f xs)) (XPipe.space c.pipe) := c.okLen.toPipe
+/-- pipes without a sort use no scratch block and no stack: `ImplementsPipeLen` -/
+theorem okLen (c : Compiled enc f) (hs : c.pipe.hasSort = false) :
+    ImplementsPipeLen c.code (fun xs => enc (f xs)) (XPipe.space c.pipe) := by
+  have : (fun xs => enc (f xs)) = XPipe.denote c.pipe := funext c.denote
+  have h := c.compiles
+  unfold compileX at h; rw [if_neg (by simp [hs])] at h
+  rw [this]; exact compileXA_ok h
 
-/-- `ImplementsMapped` form, when the output block needs no more than the result -/
-theorem mapped (c : Compiled enc f) (hs : ∀ x : List UInt8, XPipe.space c.pipe x.length ≤ (enc (f x)).length) :
-    ImplementsMapped c.code (fun xs => enc (f xs)) := c.ok.mapped hs
+/-- pipes without a sort, in the form of `compileP_ok` -/
+theorem okPipe (c : Compiled enc f) (hs : c.pipe.hasSort = false) :
+    ImplementsPipe c.code (fun xs => enc (f xs)) (XPipe.space c.pipe) := (c.okLen hs).toPipe
+
+/-- `ImplementsMapped` form (no sort; the output block needs no more than the result) -/
+theorem mapped (c : Compiled enc f) (hs : c.pipe.hasSort = false)
+    (hsp : ∀ x : List UInt8, XPipe.space c.pipe x.length ≤ (enc (f x)).length) :
+    ImplementsMapped c.code (fun xs => enc (f xs)) := (c.okPipe hs).mapped hsp
+
+/-- `ImplementsMapped2` form (scratch block of `|x|` bytes, 71 stack bytes), when the output and scratch
+blocks need no more than the result and the input -/
+theorem mapped2 (c : Compiled enc f)
+    (hsp : ∀ x : List UInt8, XPipe.space c.pipe x.length ≤ (enc (f x)).length)
+    (hss : ∀ x : List UInt8, XPipe.sspace c.pipe x.length ≤ x.length) (hst : XPipe.stack c.pipe ≤ 71) :
+    ImplementsMapped2 c.code (fun xs => enc (f xs)) (stackLen := 71) := by
+  intro x s entry ra input scratch output stack codeR hmax h hpc hal hcode h10 h11 h12 h13 h2 h1 hra hrad hx
+    hil hsl hol hstk hram hdis hmap hmapS
+  exact runsTo_mono (c.ok x s entry ra input scratch output stack hmax h hpc hal hcode h10 h11 h12 h13 h2 h1 hra
+    hrad hx hil (Nat.le_trans (hsp x) hol) (Nat.le_trans (hss x) hsl) (Nat.le_trans hst hstk) hram hdis
+    (fun i hi => hmap i (Nat.lt_of_lt_of_le hi (hsp x))) (fun i hi => hmapS i (Nat.lt_of_lt_of_le hi (hss x))))
+    fun s' ⟨a, b, c, d, e, _⟩ => ⟨a, b, c, d, e⟩
 
 end Compiled
 
 /-- list-valued functions: the statement is about `f` itself -/
 theorem Compiled.implements {f : List UInt8 → List UInt8} (c : Compiled encL f) :
-    ImplementsPipe c.code f (XPipe.space c.pipe) := c.ok
-
-/-- list-valued functions with the length in `a1` (for data-dependent lengths: `filter`, `takeWhile`, ...) -/
-theorem Compiled.implementsLen {f : List UInt8 → List UInt8} (c : Compiled encL f) :
-    ImplementsPipeLen c.code f (XPipe.space c.pipe) := c.okLen
+    ImplementsPipeS c.code f (XPipe.space c.pipe) (XPipe.sspace c.pipe) (XPipe.stack c.pipe) := c.ok
 
 /-! ## Reification -/
 
