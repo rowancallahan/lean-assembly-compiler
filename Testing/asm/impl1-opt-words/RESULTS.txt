@@ -6,3 +6,5 @@ sum [impl1-words]: 100/100 cases ok (QEMU == Sail == model, 177 words; lengths u
 sum [impl1-opt-words]: 100/100 cases ok (QEMU == Sail == model, 51 words; lengths up to 2961)
 crc [impl1-words]: 100/100 cases ok (QEMU == Sail == model, 823 words; lengths up to 2961)
 crc [impl1-opt-words]: 100/100 cases ok (QEMU == Sail == model, 141 words; lengths up to 2961)
+sort [impl1-words]: 100/100 cases ok (QEMU == Sail == model, 104 words; lengths up to 298)
+sort [impl1-opt-words]: 100/100 cases ok (QEMU == Sail == model, 38 words; lengths up to 298)
