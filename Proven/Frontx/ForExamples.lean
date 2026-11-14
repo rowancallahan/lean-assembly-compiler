@@ -66,4 +66,41 @@ frontx_compile skipWs with fun _ _ i j => j ≤ i
 frontx_compile skipWsComma with fun _ _ i j => j ≤ i
 frontx_compile findByte with fun _ _ _ i _ j => j ≤ i
 
+/-! ## a test before the loop, `String` arguments (lean-svg `Bytes`, verbatim)
+
+A `String` parameter is the block of its UTF-8 bytes (`s.toUTF8`).  The test before the loop needs no sequencing:
+`pretest_eq` (`For.lean`) turns `if c then v else loop` into the loop over `[a : if c then a else b]`. -/
+
+/-- Does `bs` at `i` start with the ASCII string `s`? -/
+def startsWith (bs : ByteArray) (i : Nat) (s : String) : Bool :=
+  let sb := s.toUTF8
+  if i + sb.size > bs.size then false
+  else Id.run do
+    for k in [0:sb.size] do
+      if at' bs (i + k) != at' sb k then return false
+    return true
+
+/-- Byte-wise equality with an ASCII string. -/
+def eqAscii (bs : ByteArray) (s : String) : Bool :=
+  let sb := s.toUTF8
+  if bs.size != sb.size then false
+  else Id.run do
+    for k in [0:sb.size] do
+      if at' bs k != at' sb k then return false
+    return true
+
+/-- Case-insensitive byte-wise equality with a lowercase ASCII string. -/
+def eqAsciiCI (bs : ByteArray) (s : String) : Bool :=
+  let sb := s.toUTF8
+  if bs.size != sb.size then false
+  else Id.run do
+    for k in [0:sb.size] do
+      if toLower (at' bs k) != at' sb k then return false
+    return true
+
+frontx_compile eqAscii
+frontx_compile eqAsciiCI
+-- `requires`: a precondition on the parameters (here: the sum computed by the test does not overflow)
+frontx_compile startsWith requires fun _ i s => i + s.toUTF8.size < 2 ^ 64
+
 end Proven.Frontx.Ex

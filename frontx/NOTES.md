@@ -556,3 +556,21 @@ works (`adlerA`, `b64Sum`); a step bound in terms of fuel is not proved.
 Not done from the "B" list: everything over `List` (`length`, `take`, `drop`, `reverse`, `sum`, `filter`,
 `mergeSort`, `insertionSort`: a list parameter needs the array-view representation, the existing `compile%`
 pipeline covers `take/drop/reverse/map/fold` on `List UInt8`), `timesTwelve`, `Pos.plus`/`Even.plus` (structures).
+
+### 10.1 A test before the loop, `String` arguments (lean-svg `startsWith`, `eqAscii`, `eqAsciiCI` verbatim)
+
+All three compile with automatic `exec` theorems (`ForExamples.lean`; 27–35 obligations, about 2 s each).
+- `if c then v else loop` needs no sequencing of programs: `pretest_eq` (`For.lean`, once) rewrites it to the loop
+  over `[a : if c then a else b]` followed by `if c then v else post`; the existing loop path does the rest
+  (the test is evaluated again at each iteration and at the exit: a code-quality cost, not a proof cost).
+- A `String` parameter is the heap block `blk s.toUTF8` (two variables, base and length), read through
+  `s.toUTF8` exactly as lean-svg does.
+- `frontx_compile f requires pre with inv using eqs`: `requires` is a precondition on the parameters (for
+  `startsWith`: `i + s.toUTF8.size < 2^64`, the sum the test computes); `with` stays the loop invariant.
+- Compound `Nat` comparisons (`i + sb.size > bs.size`) now work: a compound side goes to a temporary whose
+  defining equation is kept for `omega`; a temporary defined by an `if` contributes `x = a ∨ x = b`.
+What broke: `simp` rewrites `s.toUTF8.size` to `s.utf8ByteSize` (two library simp lemmas, now excluded); a `first`
+alternative containing `t <;> omega` inside a `simp` discharger logs errors instead of failing (error recovery is
+on there); `ite` reached the `Bool` translator before the value-level `if` rule.
+Still open from the sequencing item: two loops in sequence and a loop inside a loop body (`findSeq` calls
+`startsWith` per iteration): these need a call or a nested-loop node; not started.

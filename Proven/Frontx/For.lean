@@ -86,6 +86,19 @@ theorem natRec_forIn {β : Type} (f : Nat → β) (h : Nat → β → β) (hs : 
     f k = (forIn (m := Id) [0:k] (f 0) (fun j acc => pure (ForInStep.yield (h j acc)))).run := by
   rw [forIn_range_eq, natRec_forFrom f h hs]; simp
 
+/-! ## a test before the loop
+
+`if c then v else (loop; post)` is the loop over the range `[a : if c then a else b]` (empty when `c` holds)
+followed by `if c then v else post`.  So a pre-test needs no sequencing of programs. -/
+
+theorem pretest_eq {S β : Type} (c : Prop) [Decidable c] (v : β) (a b : Nat) (init : S)
+    (F : Nat → S → Id (ForInStep S)) (post : S → β) :
+    (if c then v else post (forIn (m := Id) [a:b] init F).run) =
+      (fun s => if c then v else post s) (forIn (m := Id) [a : if c then a else b] init F).run := by
+  by_cases h : c
+  · simp only [if_pos h]
+  · simp only [if_neg h]
+
 /-! ## initialisation of the loop variables -/
 
 def initS : List (Nat × BExp) → BStmt → BStmt

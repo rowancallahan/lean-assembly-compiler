@@ -64,6 +64,13 @@ theorem denote_ite (env : BEnv) (c a b : BExp) :
 theorem sel_c (p : Prop) [Decidable p] (a b : BitVec 64) : sel (if p then 1#64 else 0#64) a b = if p then a else b := by
   by_cases h : p <;> simp [sel, h]
 
+theorem sel_c' (p : Prop) [Decidable p] (a b : BitVec 64) : sel (if p then 0#64 else 1#64) a b = if p then b else a := by
+  by_cases h : p <;> simp [sel, h]
+
+/-- what `omega` is told about a temporary defined by an `if` -/
+theorem ite_eq_or {c : Prop} [Decidable c] {a b x : Nat} (h : (if c then a else b) = x) : x = a ∨ x = b := by
+  split at h <;> simp [← h]
+
 /-! ## Nat (needs bounds: discharged by `omega` from the hypotheses) -/
 theorem rN_toNat {n : Nat} (h : n < 2 ^ 64) : (rN n).toNat = n := by simp [rN]; omega
 theorem rN_add (a b : Nat) : rN (a + b) = rN a + rN b := BitVec.ofNat_add a b

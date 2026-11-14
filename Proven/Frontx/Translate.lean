@@ -391,6 +391,16 @@ partial def trC (ctx : Ctx) (p : Expr) : TrM (ME × Expr) := do
   let args := p.getAppArgs
   let f := p.getAppFn
   let cmp (i j : Nat) (neg : Bool) : TrM (ME × Expr) := do
+    -- a compound `Nat` side goes to a temporary: the test is then between variables (and `omega` has its equation)
+    for k in [i, j] do
+      let x := args[k]!
+      if x.hasFVar && !x.isFVar && !x.isAppOfArity ``ByteArray.size 1 && (← find? x).isNone &&
+          (← whnfR (← inferType x)).isConstOf ``Nat then
+        let (m, x') ← trE ctx x
+        let m ← fit m
+        let v ← fresh
+        modify fun s => { s with memo := (x, v) :: s.memo, temps := x :: s.temps,
+                                 pend := s.pend.push (.let_ v m x x' .nat s.temps) }
     let (a, a') ← trE ctx args[i]!
     let (b, b') ← trE ctx args[j]!
     let r := ME.bin ``Op.ult a b
@@ -455,6 +465,11 @@ partial def trB (ctx : Ctx) (b : Expr) : TrM (ME × Expr) := do
   | some ``not, 1 =>
     let (x, x') ← trB ctx args[0]!
     return (cNot x, mkAppN f #[x'])
+  | some ``ite, 5 =>
+    let (c, p') ← trC ctx args[1]!
+    let (x, x') ← trB ctx args[3]!
+    let (y, y') ← trB ctx args[4]!
+    return (.ite c x y, ← mkAppOptM ``ite #[args[0]!, p', none, x', y'])
   | some ``Decidable.decide, 2 =>
     let (c, q) ← trC ctx args[0]!
     return (c, ← mkAppOptM ``Decidable.decide #[q, none])
@@ -504,7 +519,7 @@ def inBranch {α : Type} (x : TrM α) : TrM α := do
 /-! ## the rewriting set -/
 
 def simpNames : Array Name :=
-  #[``Tree.step, ``denote_var, ``denote_const, ``denote_bin, ``denote_ite, ``sel_c, ``Op.eval, ``parSet, ``BEnv.set,
+  #[``Tree.step, ``denote_var, ``denote_const, ``denote_bin, ``denote_ite, ``sel_c, ``sel_c', ``Op.eval, ``parSet, ``BEnv.set,
     ``seqSet, ``rB_def, ``rd0, ``rd1, ``rd2, ``blk_get, ``r8_fold, ``ba_get!, ``c_not, ``c_and, ``c_or, ``c_eq0, ``c_not', ``c_and', ``c_or', ``c_eq0',
     ``rN_lit, ``r8_lit, ``r32_lit, ``r64_lit, ``rN_toNat, ``rN_add, ``rN_sub', ``nat_ite_lt_neg, ``rN_lt, ``rN_or, ``rN_and, ``rN_shl, ``rN_inj, ``rN_eq_lit, ``rN_lt_lit, ``rN_lit_lt, ``rN_ite,
     ``r64_add, ``r64_sub, ``r64_and, ``r64_or, ``r64_xor, ``r64_ite, ``r64_eq', ``r64_lt', ``r64_le', ``r64_toNat, ``r64_ofNat,
@@ -513,11 +528,27 @@ def simpNames : Array Name :=
     ``r8_dite, ``r32_dite, ``r64_dite, ``rN_dite,
     ``r32_of8, ``r64_of8, ``r64_of32, ``r8_of32, ``r32_of64, ``r8_of64, ``r8_ofNat, ``r32_ofNat]
 
+/-- side conditions (bounds): `omega`, also through the defining equation of a temporary that is an `if` -/
+elab "frontx_ite_facts" : tactic => withMainContext do
+  let mut g ← getMainGoal
+  for d in ← getLCtx do
+    if d.isImplementationDetail then continue
+    let ty ← instantiateMVars d.type
+    let some (α, lhs, _) := ty.eq? | continue
+    unless α.isConstOf ``Nat && lhs.isAppOfArity ``ite 5 do continue
+    let pf ← mkAppM ``ite_eq_or #[d.toExpr]
+    let (_, g') ← (← g.assert `hite (← inferType pf) pf).intro1P
+    g := g'
+  replaceMainGoal [g]
+
+macro "frontx_disch" : tactic =>
+  `(tactic| first | omega | (frontx_ite_facts; omega) | (subst_vars; split; omega; omega))
+
 /-- expression evaluation, and every supported operation pushed through its representation function -/
 macro "frontx_simp" "[" ts:ident,* "]" : tactic => do
   let ids := ts.getElems ++ simpNames.map mkIdent
   let ls ← ids.mapM fun t => `(Lean.Parser.Tactic.simpLemma| $t:ident)
-  `(tactic| simp +zetaDelta (disch := omega) [$ls,*, *])
+  `(tactic| simp +zetaDelta (disch := frontx_disch) [$ls,*, *, -String.toUTF8_eq_toByteArray, -String.size_toByteArray])
 
 /-- prove one obligation: generalise the Lean terms held in temporaries, then `frontx_simp` / `omega` -/
 def oblig (type : Expr) (temps? : Option (List Expr) := none) : TrM Expr := do
@@ -542,8 +573,11 @@ def oblig (type : Expr) (temps? : Option (List Expr) := none) : TrM Expr := do
       let (_, g') ← g.generalize #[arg]
       g := g'
   let us := st.unfolded.map mkIdent
-  let tac ← `(tactic| first | rfl | omega | (frontx_simp [$us,*] <;> first | done | omega | rfl |
-    (intro hq; frontx_simp [$us,*] <;> first | done | omega | rfl)))
+  -- last resort: both sides are `if`s over equivalent (not identical) arithmetic conditions
+  let tac ← `(tactic| first | rfl | frontx_disch |
+    (frontx_simp [$us,*] <;> (first | done | frontx_disch | rfl |
+      (intro hq; frontx_simp [$us,*] <;> (first | done | frontx_disch | rfl)) |
+      (split <;> split <;> (first | rfl | (exfalso; frontx_disch))))))
   let rest ← try Tactic.run g (Tactic.withoutRecover (Tactic.evalTactic tac)) catch e =>
     throwError "frontx: could not prove{indentExpr type}\n{e.toMessageData}"
   unless rest.isEmpty do
@@ -670,6 +704,9 @@ partial def mkState (S : Expr) (xs : List Expr) : MetaM Expr := do
 partial def valNorm (v : Expr) (fuel : Nat := 16) : MetaM Expr := do
   let v ← idNorm v
   if fuel == 0 then return v
+  if v.isAppOfArity ``ite 5 then
+    let a := v.getAppArgs
+    return mkAppN v.getAppFn #[a[0]!, a[1]!, a[2]!, ← valNorm a[3]! (fuel - 1), ← valNorm a[4]! (fuel - 1)]
   if v.isLet then return ← valNorm (v.letBody!.instantiate1 v.letValue!) (fuel - 1)
   if (← matchMatcherApp? v).isSome then
     let v' ← whnfCore v
@@ -1047,8 +1084,8 @@ the mutable locals and `i` become variables, the loop becomes the tree loop (`fo
 `f.slots`, `f.inits`, `f.Rep0` (the state holds the parameters), `f.Rep` (… and `i` and the locals), `f.step1`,
 `f.exec`. -/
 def compileLoop (fn : Name) (xs : Array Expr) (rty : Ty) (lhs forE : Expr) (post? : Option Expr)
-    (inv? : Option Term) (lemmas : Array Name) (t0 : Nat) (eq? : Option Expr := none) (kind : String := "for loop") :
-    TermElabM Unit := do
+    (inv? : Option Term) (lemmas : Array Name) (t0 : Nat) (eq? : Option Expr := none) (kind : String := "for loop")
+    (pre? : Option Term := none) : TermElabM Unit := do
   let fa := forE.getAppArgs
   let S := fa[4]!
   let init := fa[6]!
@@ -1078,6 +1115,10 @@ def compileLoop (fn : Name) (xs : Array Expr) (rty : Ty) (lhs forE : Expr) (post
     if (← whnfR xty).isConstOf ``ByteArray then
       blocks := blocks ++ [(x, blocks.length, next + 1)]
       next := next + 2
+    else if (← whnfR xty).isConstOf ``String then
+      -- a `String` is the block of its UTF-8 bytes (`s.toUTF8`)
+      blocks := blocks ++ [(mkApp (mkConst ``String.toUTF8) x, blocks.length, next + 1)]
+      next := next + 2
     else
       let some ty ← classify xty | throwError "frontx: unsupported parameter type{indentExpr xty}"
       memo := (x, next) :: memo
@@ -1098,6 +1139,10 @@ def compileLoop (fn : Name) (xs : Array Expr) (rty : Ty) (lhs forE : Expr) (post
       ctyK := ctyK.push (some ty)
       cvars := cvars.push (some next')
       next' := next' + 1
+  let preE? ← pre?.mapM fun pre => do
+    let e ← elabTerm pre (some (← mkForallFVars xs (mkSort 0)))
+    synthesizeSyntheticMVarsNoPostponing
+    instantiateMVars e
   let invE? ← inv?.mapM fun inv => do
     let ty ← mkForallFVars xs (← (#[Lean.mkConst ``Nat] ++ ctys.toArray).foldrM (fun d acc => mkArrow d acc) (mkSort 0))
     let e ← elabTerm inv (some ty)
@@ -1120,6 +1165,7 @@ def compileLoop (fn : Name) (xs : Array Expr) (rty : Ty) (lhs forE : Expr) (post
     for (x, ty, v) in scal do
       hyps := hyps.push (← mkEq (mkApp env (toExpr v)) (ty.rep x))
       if ty == .nat then hyps := hyps.push (← mkAppM ``LT.lt #[x, two64])
+    if let some preE := preE? then hyps := hyps.push (preE.beta xs)
     if hyps.isEmpty then hyps := #[mkConst ``True]
     return hyps
   let hypsL (σ i : Expr) (cs : Array Expr) : TermElabM (Array Expr) := do
@@ -1335,8 +1381,8 @@ def primRec? (fn : Name) (xs : Array Expr) (lhs body : Expr) : MetaM (Option (Na
       if (E'.find? (·.isConstOf fn)).isSome || E' == acc || E' == E then return none
       return some (ki, zero, ← mkLambdaFVars #[ys[0]!, acc] E')
 
-def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (accMode := false) :
-    TermElabM Unit := do
+def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (accMode := false)
+    (pre? : Option Term := none) : TermElabM Unit := do
   let t0 ← IO.monoMsNow
   let fn ← realizeGlobalConstNoOverloadWithInfo f
   let info ← getConstInfo fn
@@ -1352,7 +1398,36 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
     let some rty ← classify resTy | throwError "frontx: unsupported result type{indentExpr resTy}"
     let some (_, lhs, body) := (← instantiateForall eqnTy xs).eq? | throwError "frontx: bad equation"
     if let some (forE, post?) ← findFor fn (stripPre body) then
-      return ← compileLoop fn xs rty lhs forE post? inv? lemmas t0
+      return ← compileLoop fn xs rty lhs forE post? inv? lemmas t0 (pre? := pre?)
+    -- a test before the loop: `if c then v else loop` (or the other way round)
+    let b0 := stripPre body
+    if b0.isAppOfArity ``ite 5 then
+      let ba := b0.getAppArgs
+      let pick ← (do
+        if let some r ← findFor fn (stripPre ba[4]!) then pure (some (ba[1]!, ba[3]!, r))
+        else if let some r ← findFor fn (stripPre ba[3]!) then pure (some (mkNot ba[1]!, ba[4]!, r))
+        else pure none : TermElabM _)
+      if let some (c, v, (forE, post?)) := pick then
+        let fa := forE.getAppArgs
+        let S := fa[4]!
+        let range ← whnfR fa[5]!
+        unless range.isAppOfArity ``Std.Legacy.Range.mk 4 do throwError "frontx: unsupported range{indentExpr range}"
+        let a := range.getArg! 0
+        let b := range.getArg! 1
+        let inst ← synthInstance (mkApp (mkConst ``Decidable) c)
+        let natE := Lean.mkConst ``Nat
+        let b' := mkAppN (mkConst ``ite [levelOne]) #[natE, c, inst, a, b]
+        let range' := mkAppN range.getAppFn #[a, b', range.getArg! 2, range.getArg! 3]
+        let forE' := mkAppN forE.getAppFn (fa.set! 5 range')
+        let postL ← match post? with
+          | some p => pure p
+          | none => withLocalDeclD `s S fun s => mkLambdaFVars #[s] s
+        let post' ← withLocalDeclD `s S fun s => do
+          mkLambdaFVars #[s] (mkAppN (mkConst ``ite [levelOne]) #[resTy, c, inst, v, (mkApp postL s).headBeta])
+        let eq ← mkExpectedTypeHint (mkAppN (mkConst ``pretest_eq) #[S, resTy, c, inst, v, a, b, fa[6]!, fa[7]!, postL])
+          (← mkEq lhs (mkApp post' (mkApp2 (mkConst ``Id.run [levelZero]) S forE')))
+        return ← compileLoop fn xs rty lhs forE' (some post') inv? lemmas t0 (eq? := some eq)
+          (kind := "test, then for loop") (pre? := pre?)
     -- primitive recursion on a `Nat` (recursive call not in tail position): the loop counting up
     if let some (ki, b, h) ← primRec? fn xs lhs body then
       let k := xs[ki]!
@@ -1372,7 +1447,7 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
         mkLambdaFVars #[j] (← byTac ty (← `(tactic| first | rfl | simp only [$fI:ident] | (rw [$fI:ident]))))
       let eq := mkAppN (mkConst ``natRec_forIn) #[β, fK, h, hs, k]
       return ← compileLoop fn xs rty lhs forE none inv? lemmas t0 (eq? := some eq)
-        (kind := "primitive recursion as a loop")
+        (kind := "primitive recursion as a loop") (pre? := pre?)
     let xs0 := xs
     let restK (xs : Array Expr) (acc? : Option Expr) : TermElabM Unit := do
       -- variables for the parameters
@@ -1387,6 +1462,9 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
         dataIdx := dataIdx.push j
         if (← whnfR xty).isConstOf ``ByteArray then
           blocks := blocks ++ [(x, blocks.length, next + 1)]
+          next := next + 2
+        else if (← whnfR xty).isConstOf ``String then
+          blocks := blocks ++ [(mkApp (mkConst ``String.toUTF8) x, blocks.length, next + 1)]
           next := next + 2
         else
           let some ty ← classify xty | throwError "frontx: unsupported parameter type{indentExpr xty}"
@@ -1412,10 +1490,11 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
         for (x, ty, v) in scal do
           hyps := hyps.push (← mkEq (mkApp env (toExpr v)) (ty.rep x))
           if ty == .nat && some x != acc? then hyps := hyps.push (← mkAppM ``LT.lt #[x, two64])
-        if let some inv := inv? then
-          let invE ← elabTerm inv (some (← mkForallFVars xs0 (mkSort 0)))
-          synthesizeSyntheticMVarsNoPostponing
-          hyps := hyps.push (mkAppN (← instantiateMVars invE) xs0).headBeta
+        for t? in [inv?, pre?] do
+          if let some inv := t? then
+            let invE ← elabTerm inv (some (← mkForallFVars xs0 (mkSort 0)))
+            synthesizeSyntheticMVarsNoPostponing
+            hyps := hyps.push (mkAppN (← instantiateMVars invE) xs0).headBeta
         if hyps.isEmpty then hyps := #[mkConst ``True]
         return hyps
       let mkConjE (hs : Array Expr) : Expr := hs.pop.foldr mkAnd hs.back!
@@ -1569,19 +1648,19 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
 
 /-- `frontx_compile f` or `frontx_compile f with inv` (`inv : params → Prop`, an extra precondition that the
 recursive calls must preserve; needed for `Nat` arguments whose bounds are not implied by the tests) -/
-syntax "frontx_compile " ident (" with " term)? (" using " ident,+)? : command
+syntax "frontx_compile " ident (" requires " term)? (" with " term)? (" using " ident,+)? : command
 elab_rules : command
-  | `(frontx_compile $f:ident $[with $inv?]? $[using $ls?,*]?) => liftTermElabM do
+  | `(frontx_compile $f:ident $[requires $pre?]? $[with $inv?]? $[using $ls?,*]?) => liftTermElabM do
     let lemmas ← match ls? with
       | some ls => ls.getElems.mapM fun l => realizeGlobalConstNoOverloadWithInfo l
       | none => pure #[]
     let s ← saveState
-    try compileCmd f inv? lemmas
+    try compileCmd f inv? lemmas (pre? := pre?)
     catch e =>
       -- a recursive call that is not a tail call (and not primitive recursion): try an accumulator
       if ((← e.toMessageData.toString).splitOn "not in tail position").length > 1 then
         s.restore
-        compileCmd f inv? lemmas (accMode := true)
+        compileCmd f inv? lemmas (accMode := true) (pre? := pre?)
       else throw e
 
 end Proven.Frontx
