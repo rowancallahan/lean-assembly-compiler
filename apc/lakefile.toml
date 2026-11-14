@@ -1,0 +1,22 @@
+name = "apc"
+defaultTargets = ["Apc"]
+
+# our own interface files, taken from the repo root (unchanged)
+[[lean_lib]]
+name = "Spec"
+srcDir = ".."
+globs = ["Spec.Code"]
+
+[[lean_lib]]
+name = "Compiler"
+srcDir = ".."
+globs = ["Compiler.Iface"]
+
+[[lean_lib]]
+name = "Apc"
+globs = ["Apc.+"]
+
+# google-deepmind/code-verification at b0f729a, cloned next to the repo (NOT vendored): ../deps/code-verification
+[[require]]
+name = "arm64"
+path = "../../deps/code-verification/arm64-semantics/Arm64"

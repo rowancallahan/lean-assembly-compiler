@@ -1,0 +1,13 @@
+{"version": "1.2.0",
+ "packagesDir": ".lake/packages",
+ "packages":
+ [{"type": "path",
+   "scope": "",
+   "name": "arm64",
+   "manifestFile": "lake-manifest.json",
+   "inherited": false,
+   "dir": "../../deps/code-verification/arm64-semantics/Arm64",
+   "configFile": "lakefile.toml"}],
+ "name": "apc",
+ "lakeDir": ".lake",
+ "fixedToolchain": false}
