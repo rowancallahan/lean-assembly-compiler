@@ -21,6 +21,7 @@ theorem rd2 (B B' B'' : List (BitVec 8)) (H : Heap) (j : Nat) : rd (B :: B' :: B
 theorem blk_get {xs : ByteArray} {i : Nat} (h : i < xs.size) : (blk xs)[i]? = some (xs[i]'h).toBitVec := by
   have h' : i < xs.data.toList.length := by simpa using h
   simp only [blk, List.getElem?_map, List.getElem?_eq_getElem h']; rfl
+@[simp] theorem blk_length (xs : ByteArray) : (blk xs).length = xs.size := by simp [blk]
 theorem r8_fold (x : UInt8) : x.toBitVec.setWidth 64 = r8 x := rfl
 theorem ba_get! {xs : ByteArray} {i : Nat} (h : i < xs.size) : xs[i]! = xs[i]'h := getElem!_pos xs i h
 

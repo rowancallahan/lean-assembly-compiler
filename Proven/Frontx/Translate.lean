@@ -156,7 +156,7 @@ def read? (e : Expr) : Option (Expr × Expr) :=
   let args := e.getAppArgs
   match e.getAppFn.constName?, args.size with
   | some ``GetElem.getElem, 8 => some (args[5]!, args[6]!)
-  | some ``GetElem?.getElem!, 9 => some (args[7]!, args[8]!)
+  | some ``GetElem?.getElem!, 8 => some (args[6]!, args[7]!)
   | _, _ => none
 
 /-- the byte-array reads inside `e`, innermost first (not under binders) -/
