@@ -118,4 +118,120 @@ theorem ImplementsPipeLen.toS {code : List (BitVec 32)} {f : List UInt8 → List
   exact h x s entry ra input scratch output stack hmax h1 h2 h3 h4 h5 h6 h7 h8 h9 h10 h11 h12 h13 h14 h15
     h16 h17 h18
 
+/-! ## From a `BStmt` run to the specification -/
+
+theorem implementsS_of_execB {prog : BStmt} (hwf : prog.wf 7 [0, 3, 2]) {f : List UInt8 → List UInt8}
+    {space sspace : Nat → Nat}
+    (hex : ∀ (xs : List UInt8) (out scr : List (BitVec 8)) (env : BEnv), env 1 = .ofNat 64 xs.length →
+      xs.length < 2 ^ 32 → space xs.length ≤ out.length → out.length < 2 ^ 32 →
+      sspace xs.length ≤ scr.length → scr.length < 2 ^ 32 →
+      ∃ τ' out' scr', BExec prog ⟨env, [tbs xs, out, scr]⟩ τ' ∧ τ'.heap = [tbs xs, out', scr'] ∧
+        out'.length = out.length ∧ out'.take (f xs).length = tbs (f xs) ∧ τ'.env 1 = .ofNat 64 (f xs).length) :
+    ImplementsPipeS (compileBF 7 [0, 3, 2] prog) f space sspace 71 := by
+  intro x s entry ra input scratch output stack codeR hmax h hpc hal hcode h10 h11 h12 h13 h2 h1 hra hrad hx
+    hil hol hsl hstk hram hdis hmap hmapS
+  have hin : ∀ r ∈ [input, scratch, output, stack, codeR], r.inRAM := hram
+  simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq] at hin
+  simp only [List.pairwise_cons, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq,
+    List.Pairwise.nil, and_true] at hdis
+  obtain ⟨⟨d12, d13, d14, d15⟩, ⟨d23, d24, d25⟩, ⟨d34, d35⟩, d45⟩ := hdis
+  obtain ⟨ri, rs, ro, rst, rc⟩ := hin
+  unfold Region.inRAM at ri rs ro rst rc
+  unfold disjoint at d12 d13 d14 d15 d23 d24 d25 d34 d35 d45
+  simp only [codeR] at d15 d25 d35 d45 rc
+  obtain ⟨L, hLe⟩ : ∃ L, L = space x.length := ⟨_, rfl⟩
+  obtain ⟨L2, hL2e⟩ : ∃ L2, L2 = sspace x.length := ⟨_, rfl⟩
+  rw [← hLe] at hol hmap
+  rw [← hL2e] at hsl hmapS
+  have hil' : input.len = x.length := hil
+  have hxl : (tbs x).length = x.length := by simp
+  have hsp : getX s 2 = BitVec.ofNat 64 (stack.base + stack.len) := getX_of (h.x2.symm.trans h2) rfl
+  have hspn : (getX s 2).toNat = stack.base + stack.len := by rw [hsp]; exact toNat_ofNat' (by omega)
+  have hfb : frameBase 7 (getX s 2) = (stack.base + stack.len) / 8 * 8 - 64 := by unfold frameBase; rw [hspn]
+  have hf : FrOK 7 (frameBase 7 (getX s 2)) := ⟨by rw [hfb]; omega, by rw [hfb]; omega, by rw [hfb]; omega, by decide⟩
+  have ho := bytesAt_hosted (s := s) (a := output.base) (n := L) hmap
+  have hs := bytesAt_hosted (s := s) (a := scratch.base) (n := L2) hmapS
+  generalize hO : (bytesAt s output.base L).map (·.getD 0) = out0 at ho
+  generalize hS : (bytesAt s scratch.base L2).map (·.getD 0) = scr0 at hs
+  have hout0 : out0.length = L := by rw [← hO]; simp [bytesAt]
+  have hscr0 : scr0.length = L2 := by rw [← hS]; simp [bytesAt]
+  let R : List Region := [⟨input.base, x.length⟩, ⟨output.base, L⟩, ⟨scratch.base, L2⟩]
+  have hR : RegOK R := by
+    refine ⟨fun r hr => ?_, ?_⟩
+    · simp only [R, List.mem_cons, List.not_mem_nil, or_false] at hr
+      rcases hr with rfl | rfl | rfl <;> (unfold Region.inRAM; dsimp only; omega)
+    · simp only [R, List.pairwise_cons, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq,
+        List.Pairwise.nil, and_true, false_implies, implies_true]
+      unfold disjoint; dsimp only; omega
+  have hok : codeOK entry (compileBF 7 [0, 3, 2] prog).length := ⟨hal, rc.1, rc.2⟩
+  have hfd : ∀ r ∈ R, disjoint ⟨frameBase 7 (getX s 2), 8 * (7 + 1)⟩ r := by
+    rw [hfb]; intro r hr
+    simp only [R, List.mem_cons, List.not_mem_nil, or_false] at hr
+    rcases hr with rfl | rfl | rfl <;> (unfold disjoint; dsimp only; omega)
+  have hcd : ∀ r ∈ (⟨frameBase 7 (getX s 2), 8 * (7 + 1)⟩ : Region) :: R,
+      disjoint ⟨entry.toNat, 4 * (compileBF 7 [0, 3, 2] prog).length⟩ r := by
+    rw [hfb]; intro r hr
+    simp only [R, List.mem_cons, List.not_mem_nil, or_false] at hr
+    rcases hr with rfl | rfl | rfl | rfl <;> (unfold disjoint; dsimp only; omega)
+  have hra' : getX s 1 = ra := getX_of (h.x1.symm.trans h1) rfl
+  have e1 : envOf s 1 = .ofNat 64 x.length := by simpa [envOf] using getX_of (h.x11.symm.trans h11) rfl
+  obtain ⟨τ', out', scr', hexec, hh, hlen, htk, he1⟩ := hex x out0 scr0 (envOf s) e1 (by omega)
+    (by omega) (by omega) (by omega) (by omega)
+  have hheap : HeapRel [0, 3, 2] R ⟨envOf s, [tbs x, out0, scr0]⟩ s :=
+    ⟨rfl, rfl, fun b hb => by
+        obtain _ | _ | _ | b := b
+        · simpa [envOf] using getX_of (h.x10.symm.trans h10) rfl
+        · simpa [envOf] using getX_of (h.x13.symm.trans h13) rfl
+        · simpa [envOf] using getX_of (h.x12.symm.trans h12) rfl
+        · simp [R] at hb; omega,
+      fun b hb => by
+        obtain _ | _ | _ | b := b
+        · simp [R]
+        · simpa [R] using hout0
+        · simpa [R] using hscr0
+        · simp [R] at hb; omega,
+      fun b hb => by
+        obtain _ | _ | _ | b := b
+        · simpa [R, tbs, List.map_map, Function.comp_def] using hx
+        · simpa [R] using ho
+        · simpa [R] using hs
+        · simp [R] at hb; omega⟩
+  refine runsTo_mono (compileBF_ok 7 [0, 3, 2] (by decide) hwf hR hexec h hpc (codeAt_of_codeBytes hok hcode) hok
+    hf hfd hcd (fun i => by simp [envOf]) (fun j hj => by simp [envOf]; omega) hheap (by rw [hra']; omega)) ?_
+  rintro s' ⟨p1, p2, p3, p4, p5, p6, p7⟩
+  have eo := p3.bytes 1 (by simp [R])
+  simp only [hh] at eo
+  have eo' : bytesAt s' output.base L = out'.map some := by simpa [R] using eo
+  have hfl : (f x).length ≤ L := by
+    have := congrArg List.length htk
+    simp only [List.length_take, List.length_map] at this; omega
+  refine ⟨by rw [p1, hra'], ?_, ?_, p6, p5, ?_⟩
+  · rw [← bytesAt_take s' output.base hfl, eo', ← List.map_take, htk]; simp [tbs, List.map_map]
+  · intro a ha
+    apply p4 a
+    intro r hr
+    have a1 := ha input (by simp); have a2 := ha scratch (by simp); have a3 := ha output (by simp)
+    have a4 := ha stack (by simp)
+    simp only [R, List.mem_cons, List.not_mem_nil, or_false] at hr
+    rw [hfb] at hr
+    rcases hr with rfl | rfl | rfl | rfl <;> (dsimp only; omega)
+  · rw [p5.x11]; show some (getX s' (A8 1)) = _; rw [p2 1]; exact congrArg some he1
+
+/-! ## Correctness -/
+
+theorem compileXB_ok {p : XPipe} {code : List (BitVec 32)} (h : compileXB p = .ok code) :
+    ImplementsPipeS code (XPipe.denote p) (XPipe.space p) (XPipe.sspace p) 71 := by
+  obtain ⟨hc, hwf, rfl⟩ := compileXB_inv h
+  exact implementsS_of_execB hwf fun xs out scr env h1 hx hsp hL hss hL2 =>
+    XPipe.progB_exec p hc xs out scr env h1 hx hsp hL hss hL2
+
+/-- **Correctness of the pipe compiler with the merge sort** -/
+theorem compileX_ok {p : XPipe} {code : List (BitVec 32)} (h : compileX p = .ok code) :
+    ImplementsPipeS code (XPipe.denote p) (XPipe.space p) (XPipe.sspace p) (XPipe.stack p) := by
+  unfold compileX at h
+  unfold XPipe.stack
+  split at h
+  · rename_i hs; rw [if_pos hs]; exact compileXB_ok h
+  · rename_i hs; rw [if_neg hs]; exact (compileXA_ok h).toS _ _
+
 end Proven

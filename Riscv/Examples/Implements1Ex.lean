@@ -263,3 +263,116 @@ theorem sum_implements1 : Implements1With encRaw Proven.enc sumCode1 sumBytesU (
   exact ⟨σ', out', hex, hh, by rw [ht, enc64, sumBytesU_eq]⟩
 
 end Proven.Mach.Riscv
+
+namespace Proven
+
+/-- **Insertion sort** in `Implements1` form: no work space (`space n = 0`) -/
+theorem sortCode_implements1 : Implements1Raw sortCode (fun x => x.mergeSort leU) (fun _ => 0) := by
+  intro a s entry ra input output work
+  dsimp only [encRaw]
+  intro hmax h hpc hal hcode h10 h11 h12 h13 h2 h1 hra hrad hx hil hol hws hwal hram hdis hmapO hmapW
+  simp only [List.length_mergeSort] at hol ⊢
+  have hin : ∀ r ∈ [input, output, work, (⟨entry.toNat, 4 * sortCode.length⟩ : Region)], r.inRAM := hram
+  simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq] at hin
+  simp only [List.pairwise_cons, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq,
+    List.Pairwise.nil, and_true] at hdis
+  obtain ⟨⟨d12, d13, d14⟩, ⟨d23, d24⟩, d34⟩ := hdis
+  obtain ⟨ri, ro, rw', rc⟩ := hin
+  unfold Region.inRAM at ri ro rc
+  unfold disjoint at d12 d14 d24
+  dsimp only at d12 d14 d24 ri ro rc
+  have hxl : (a.map (·.toBitVec)).length = a.length := by simp
+  have hil' : input.len = a.length := hil
+  have hol' : a.length ≤ output.len := hol
+  have hR : RegOK [⟨input.base, (a.map (·.toBitVec)).length⟩, ⟨output.base, (a.map (·.toBitVec)).length⟩] := by
+    rw [hxl]
+    refine ⟨fun r hr => ?_, ?_⟩
+    · simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
+      rcases hr with rfl | rfl <;> (unfold Region.inRAM; dsimp only; omega)
+    · simp only [List.pairwise_cons, List.mem_cons, List.not_mem_nil, or_false, forall_eq, List.Pairwise.nil,
+        and_true, false_implies, implies_true]
+      unfold disjoint; dsimp only; omega
+  have hok : codeOK entry sortCode.length := ⟨hal, rc.1, rc.2⟩
+  have hcd : ∀ r ∈ [(⟨input.base, (a.map (·.toBitVec)).length⟩ : Region), ⟨output.base, (a.map (·.toBitVec)).length⟩],
+      disjoint ⟨entry.toNat, 4 * sortCode.length⟩ r := by
+    rw [hxl]; intro r hr
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
+    rcases hr with rfl | rfl <;> (unfold disjoint; dsimp only; omega)
+  have hra' : getX s 1 = ra := getX_of (h.x1.symm.trans h1) rfl
+  refine runsTo_mono (sortCode_ok_m h hpc (codeAt_of_codeBytes hok hcode) hok (by rw [hra']; omega) hR hcd
+    (getX_of (h.x10.symm.trans h10) rfl) (by rw [getX_of (h.x11.symm.trans h11) rfl, hxl])
+    (getX_of (h.x13.symm.trans h13) rfl) (by simpa [List.map_map, Function.comp_def] using hx)
+    (bytesAt_hosted (fun i hi => hmapO i (by rw [hxl] at hi; omega)))) ?_
+  rintro s' ⟨p1, p2, p3, p4, p5, p6⟩
+  refine ⟨by rw [p1, hra'], ?_, ?_, p6, p5⟩
+  · rw [← hxl, p2, ← mergeSort_toBitVec]; simp [List.map_map]
+  · intro q hq
+    apply p4 q
+    intro r hr
+    have a2 := hq output (by simp)
+    simp only [List.mem_singleton] at hr; subst hr; dsimp only; rw [hxl]; omega
+
+/-- **Merge sort** in `Implements1` form: `space n = n + 71` (an `n`-byte scratch block at the bottom of the
+work block, the 64-byte frame below `sp` at its top, up to 7 bytes of alignment) -/
+theorem msortCode_implements1 : Implements1Raw msortCode (fun x => x.mergeSort leU) (fun n => n + 71) := by
+  intro a s entry ra input output work
+  dsimp only [encRaw]
+  intro hmax h hpc hal hcode h10 h11 h12 h13 h2 h1 hra hrad hx hil hol hws hwal hram hdis hmapO hmapW
+  simp only [List.length_mergeSort] at hol ⊢
+  have hin : ∀ r ∈ [input, output, work, (⟨entry.toNat, 4 * msortCode.length⟩ : Region)], r.inRAM := hram
+  simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq] at hin
+  simp only [List.pairwise_cons, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq,
+    List.Pairwise.nil, and_true] at hdis
+  obtain ⟨⟨d12, d13, d14⟩, ⟨d23, d24⟩, d34⟩ := hdis
+  obtain ⟨ri, ro, rw', rc⟩ := hin
+  unfold Region.inRAM at ri ro rw' rc
+  unfold disjoint at d12 d13 d14 d23 d24 d34
+  dsimp only at d12 d13 d14 d23 d24 d34 ri ro rw' rc
+  have hxl : (a.map (·.toBitVec)).length = a.length := by simp
+  have hil' : input.len = a.length := hil
+  have hol' : a.length ≤ output.len := hol
+  have hws' : a.length + 71 ≤ work.len := hws
+  have hsp : getX s 2 = BitVec.ofNat 64 (work.base + work.len) := getX_of (h.x2.symm.trans h2) rfl
+  have hspn : (getX s 2).toNat = work.base + work.len := by rw [hsp]; exact toNat_ofNat' (by omega)
+  have hfb : frameBase 7 (getX s 2) = (work.base + work.len) / 8 * 8 - 64 := by unfold frameBase; rw [hspn]
+  have hf : FrOK 7 (frameBase 7 (getX s 2)) := ⟨by rw [hfb]; omega, by rw [hfb]; omega, by rw [hfb]; omega, by decide⟩
+  have hR : RegOK [⟨input.base, (a.map (·.toBitVec)).length⟩, ⟨work.base, (a.map (·.toBitVec)).length⟩,
+      ⟨output.base, (a.map (·.toBitVec)).length⟩] := by
+    rw [hxl]
+    refine ⟨fun r hr => ?_, ?_⟩
+    · simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
+      rcases hr with rfl | rfl | rfl <;> (unfold Region.inRAM; dsimp only; omega)
+    · simp only [List.pairwise_cons, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq,
+        List.Pairwise.nil, and_true, false_implies, implies_true]
+      unfold disjoint; dsimp only; omega
+  have hok : codeOK entry msortCode.length := ⟨hal, rc.1, rc.2⟩
+  have hfd : ∀ r ∈ [(⟨input.base, (a.map (·.toBitVec)).length⟩ : Region), ⟨work.base, (a.map (·.toBitVec)).length⟩,
+      ⟨output.base, (a.map (·.toBitVec)).length⟩], disjoint ⟨frameBase 7 (getX s 2), 8 * (7 + 1)⟩ r := by
+    rw [hxl, hfb]; intro r hr
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
+    rcases hr with rfl | rfl | rfl <;> (unfold disjoint; dsimp only; omega)
+  have hcd : ∀ r ∈ [(⟨frameBase 7 (getX s 2), 8 * (7 + 1)⟩ : Region), ⟨input.base, (a.map (·.toBitVec)).length⟩,
+      ⟨work.base, (a.map (·.toBitVec)).length⟩, ⟨output.base, (a.map (·.toBitVec)).length⟩],
+      disjoint ⟨entry.toNat, 4 * msortCode.length⟩ r := by
+    rw [hxl, hfb]; intro r hr
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
+    rcases hr with rfl | rfl | rfl | rfl <;> (unfold disjoint; dsimp only; omega)
+  have hra' : getX s 1 = ra := getX_of (h.x1.symm.trans h1) rfl
+  refine runsTo_mono (msortCode_ok_m h hpc (codeAt_of_codeBytes hok hcode) hok (by rw [hra']; omega) hR hf hfd hcd
+    (getX_of (h.x10.symm.trans h10) rfl) (by rw [getX_of (h.x11.symm.trans h11) rfl, hxl])
+    (getX_of (h.x12.symm.trans h12) rfl) (getX_of (h.x13.symm.trans h13) rfl)
+    (by simpa [List.map_map, Function.comp_def] using hx)
+    (bytesAt_hosted (fun i hi => hmapW i (by rw [hxl] at hi; omega)))
+    (bytesAt_hosted (fun i hi => hmapO i (by rw [hxl] at hi; omega)))) ?_
+  rintro s' ⟨p1, p2, p3, p4, p5, p6, p7⟩
+  refine ⟨by rw [p1, hra'], ?_, ?_, p6, p5⟩
+  · rw [← hxl, p2, ← mergeSort_toBitVec]; simp [List.map_map]
+  · intro q hq
+    apply p4 q
+    intro r hr
+    have a2 := hq output (by simp); have a3 := hq work (by simp)
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
+    rw [hxl, hfb] at hr
+    rcases hr with rfl | rfl | rfl <;> (dsimp only; omega)
+
+end Proven
