@@ -183,3 +183,7 @@ Update (operand order + assignment search): `Sel.ops2` computes the operand need
 subsets of the 8 most used locals), cheapest first, first passing the proved checks wins. Merge sort: T = 3, locals
 `11, 8, 10` in registers; 231 words; 60/60 `msort_test.py check`; instructions per element n = 100 / 1000 / 100000:
 221.8 / 329.9 / 495.5 (gcc -O2 101.8 / 132.2 / 221.2: 2.2 / 2.5 / 2.2×). Emitting takes 15 s (interpreted).
+
+Fuzz path count (coordinator item 2): `Testing/asm/fuzz_opt.lean` now tags each case `_opt` / `_fb`. Seeds 31–34
+(300 cases × 100 inputs each), compiler at 7f96615: 1200/1200 cases on the optimised path, 0 fallbacks; four-way
+check 120,000 pairs, 0 mismatches; triple_opt 18/18.

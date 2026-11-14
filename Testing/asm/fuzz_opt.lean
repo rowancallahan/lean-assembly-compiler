@@ -53,7 +53,7 @@ def fuzz : IO Unit := do
     let (e, s') := genOk.run s
     s := s'
     assert! e.depth < 11
-    IO.println s!"case f{seed}_{i}"
+    IO.println s!"case f{seed}_{i}_{match compileOpt e with | .ok _ => "opt" | .error _ => "fb"}"
     IO.println s!"exp {(repr e).pretty 100000 |>.replace "\n" " "}"
     IO.println s!"rv {" ".intercalate ((optW e).map (hex ·.toNat))}"
     IO.println s!"arm {" ".intercalate ((Arm.compile e).map (hex ·.toNat))}"
