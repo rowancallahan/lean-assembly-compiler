@@ -16,11 +16,11 @@ p, sh, G, E, MAGIC = M.p, M.sh, M.G, M.E, M.MAGIC
 words = lambda n: [int(l, 16) for l in open(os.path.join(D, "calls-words", n + ".words")) if l.strip()]
 MASK = 2 ** 64 - 1
 
-def build(name, cases, func, ST):
+def build(name, cases, func, STf):
     data, tab, lay, off = bytearray(), [], [], 0
     rng = random.Random(len(cases))
     for xs in cases:
-        i0 = off; o0 = (i0 + len(xs) + G + 7) // 8 * 8; k0 = o0 + 8 + G + rng.randrange(8); top = k0 + ST
+        ST = STf(xs); i0 = off; o0 = (i0 + len(xs) + G + 7) // 8 * 8; k0 = o0 + 8 + G + rng.randrange(8); top = k0 + ST
         off = (top + G + 7) // 8 * 8
         lay.append((i0, o0, k0, top))
         tab.append(f"  .quad base+{i0}, {len(xs)}, 0, base+{o0}, base+{top}, {MAGIC}, 0, 0, 0")
@@ -35,11 +35,11 @@ def build(name, cases, func, ST):
     sym = lambda s: int(re.search(rf"(\w+) \w {s}\n", syms).group(1), 16)
     return lay, sym("halt"), sym("base"), sym("tab"), off
 
-def run(name, allc, ref, ST, B=64):
-    func = "".join(f"  .word 0x{w:08x}\n" for w in words(name)); done = 0; deepest = 0
+def run(name, allc, ref, STf, B=64):
+    func = "".join(f"  .word 0x{w:08x}\n" for w in words(name)); done = 0; deepest = (0, 0)
     while done < len(allc):
         cases = allc[done:done + B]
-        lay, halt, base, tab, size = build("cl", cases, func, ST)
+        lay, halt, base, tab, size = build("cl", cases, func, STf)
         qmem, _ = M.qemu("cl", halt, base, tab + E * len(cases) - base)
         r = subprocess.run(f"{M.SAIL} --inst-limit 2000000000 --trace-mem --trace-output {p('sail.log')} {p('cl.elf')}",
                            shell=True, capture_output=True, text=True)
@@ -67,18 +67,40 @@ def run(name, allc, ref, ST, B=64):
                 e = tab - base + E * c
                 gp, spo = (int.from_bytes(mem[e + o:e + o + 8], "little") for o in (48, 56))
                 assert gp == MAGIC and spo == base + top, (nm, "gp/sp", hex(gp), spo)
-                used = next((j for j, b in enumerate(mem[k0:top]) if b != 0x77), ST)
-                deepest = max(deepest, ST - used)
+                ST = top - k0; used = next((j for j, b in enumerate(mem[k0:top]) if b != 0x77), ST)
+                if ST - used > deepest[0]: deepest = (ST - used, ST)
         done += len(cases)
-    print(f"{name}: {len(allc)} cases OK on QEMU and Sail (stack block {ST} bytes, deepest use {deepest})")
+    print(f"{name}: {len(allc)} cases OK on QEMU and Sail (deepest stack use {deepest[0]} of a {deepest[1]}-byte block)")
 
 def fib(n):
     a, b = 0, 1
     for _ in range(n): a, b = b, a + b
     return a
 
+OPS = {1: lambda a, b: a + b, 2: lambda a, b: a - b, 3: lambda a, b: a ^ b}
+def tenc(t): return [0, t] if isinstance(t, int) else [t[0]] + tenc(t[1]) + tenc(t[2])
+def teval(t): return t if isinstance(t, int) else OPS[t[0]](teval(t[1]), teval(t[2])) & MASK
+def tdec(xs, i=0):
+    if xs[i] == 0: return xs[i + 1], i + 2
+    l, j = tdec(xs, i + 1); r, k = tdec(xs, j); return (xs[i], l, r), k
+def tgen(rng, d, shape):
+    if d == 0 or (shape == 0 and rng.random() < 0.3): return rng.randrange(256)
+    op = rng.randrange(1, 4); sub = tgen(rng, d - 1, shape); leaf = rng.randrange(256)
+    if shape == 0: return (op, tgen(rng, d - 1, 0), tgen(rng, d - 1, 0))
+    return (op, sub, leaf) if shape == 1 else (op, leaf, sub) if shape == 2 else ((op, sub, leaf) if rng.random() < 0.5 else (op, leaf, sub))
+
 if __name__ == "__main__":
-    which = sys.argv[1:] or ["sumto", "fib", "even"]
-    if "sumto" in which: run("sumto", [[n] for n in range(256)], lambda x: x[0] * (x[0] + 1) // 2, 16 + 24 + 24 * 255 + 24)
-    if "fib" in which: run("fib", [[n] for n in range(25)], lambda x: fib(x[0]), 16 + 32 + 32 * 255 + 24)
-    if "even" in which: run("even", [[n] for n in range(256)], lambda x: 1 - x[0] % 2, 16 + 24 + 24 * 255 + 24)
+    sys.setrecursionlimit(100000)
+    which = sys.argv[1:] or ["sumto", "fib", "even", "tree"]
+    K = lambda c: (lambda xs: c)
+    if "sumto" in which: run("sumto", [[n] for n in range(256)], lambda x: x[0] * (x[0] + 1) // 2, K(16 + 24 + 24 * 255 + 24))
+    if "fib" in which: run("fib", [[n] for n in range(25)], lambda x: fib(x[0]), K(16 + 32 + 32 * 255 + 24))
+    if "even" in which: run("even", [[n] for n in range(256)], lambda x: 1 - x[0] % 2, K(16 + 24 + 24 * 255 + 24))
+    if "tree" in which:
+        rng = random.Random(11)
+        ts = [rng.randrange(256) for _ in range(8)] + [tgen(rng, rng.randrange(1, 11), 0) for _ in range(200)]
+        ts += [tgen(rng, d, sh) for d in (1, 2, 3, 50, 200, 400, 700) for sh in (1, 2, 3) for _ in range(4)]
+        run("tree", [tenc(t) for t in ts], lambda xs: teval(tdec(xs)[0]), lambda xs: 32 * len(xs) + 72, B=48)
+        # the same trees with the stack block of the general theorem (`compP_ok`: need 32 depth + 48, + 23 for the stub)
+        tdep = lambda t: 0 if isinstance(t, int) else 1 + max(tdep(t[1]), tdep(t[2]))
+        run("tree", [tenc(t) for t in ts], lambda xs: teval(tdec(xs)[0]), lambda xs: 32 * tdep(tdec(xs)[0]) + 71, B=48)
