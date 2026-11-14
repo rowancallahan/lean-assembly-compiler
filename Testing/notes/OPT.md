@@ -205,3 +205,5 @@ the test's temporaries are dead there. Effect on merge sort: 2 temporaries suffi
 gcd 6.0/step, insertion 3911/elt at 1000). Axioms of `compileOptB_ok`, `compileBFO_ok`, `compileOptA_ok`: the same 77 as
 `compileBF_ok` (hash). Callee-saved registers not added: after this change the merge-sort inner loop has no slot
 traffic left in it; remaining spills (`12, 13, 14`) are in the outer loops.
+Fuzz of aff977e: seeds 41–44, 1200/1200 cases optimised, 0 fallbacks, 120,000 pairs four-way 0 mismatches;
+triple_opt 18/18; loop_test gcd/sum 300/300 (QEMU + Sail).
