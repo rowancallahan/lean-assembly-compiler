@@ -283,4 +283,26 @@ theorem compileP_of_ok {p : Pipe} (h : Pipe.ok p = true) : ∃ code, compileP p 
       (stmts_wf p cs0 (fun st hs => (h.1 st hs).2) (by simp [cs0]) (by simp only [cs0, gsW]; omega)))
   exact ⟨compileAF [0, 3] (Pipe.prog p), by simp only [compileP, hc, hw]⟩
 
+/-! ## Pipes without `sort`/`fold` need exactly the result size -/
+
+def Stage.isView : Stage → Bool
+  | .map _ | .take _ | .drop _ | .reverse => true
+  | _ => false
+
+theorem Pipe.need_view : ∀ (p : Pipe) (cs : CS) (n : Nat), (∀ st ∈ p, st.isView = true) → cs.onOut = false →
+    Pipe.need p cs n = Pipe.len p n
+  | [], cs, n, _, hO => by simp [Pipe.need, Pipe.len, CS.clean, hO]
+  | st :: r, cs, n, hv, hO => by
+    have h1 := hv st (List.mem_cons_self ..)
+    have ih := fun cs' h => Pipe.need_view r cs' (st.len n) (fun s hs => hv s (List.mem_cons_of_mem _ hs)) h
+    cases st <;> simp only [Stage.isView, Bool.false_eq_true] at h1 <;>
+      simp only [Pipe.need, Stage.space, Pipe.len, List.foldl_cons, Nat.zero_max] <;> apply ih <;>
+      simp only [stageC] <;> (try split) <;> exact hO
+
+/-- a `map`/`take`/`drop`/`reverse` pipe is an `ImplementsMapped`: output block of the result size -/
+theorem compileP_view {p : Pipe} {code : List (BitVec 32)} (h : compileP p = .ok code)
+    (hv : p.all Stage.isView = true) : ImplementsMapped code (Pipe.denote p) :=
+  compileP_mapped h fun n => by
+    rw [Pipe.space, Pipe.need_view p cs0 n (by simpa [List.all_eq_true] using hv) rfl]; exact Nat.le_refl _
+
 end Proven

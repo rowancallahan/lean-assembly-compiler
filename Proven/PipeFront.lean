@@ -3,7 +3,7 @@
 kernel-checked proof that `compileP` accepts the pipe.  `Compiled.ok` is then the machine-code theorem for
 `f` itself.  Anything the reifier or the compiler does not accept is an elaboration error naming the
 subterm or the limit.  No `native_decide`: the proofs are `rfl`/`simp` and `decide +kernel`. -/
-import Proven.PipeMachine
+import Proven.PipeOk
 import Lean
 
 namespace Proven
@@ -44,6 +44,12 @@ theorem mapped (c : Compiled enc f) (hs : ∀ n, Pipe.space c.pipe n ≤ Pipe.le
     ImplementsMapped c.code (fun xs => enc (f xs)) := by
   have : (fun xs => enc (f xs)) = Pipe.denote c.pipe := funext c.denote
   rw [this]; exact compileP_mapped c.compiles hs
+
+/-- pipes of `map`/`take`/`drop`/`reverse` only: output block of exactly the result size -/
+theorem mapped_view (c : Compiled enc f) (hv : c.pipe.all Stage.isView = true) :
+    ImplementsMapped c.code (fun xs => enc (f xs)) := by
+  have : (fun xs => enc (f xs)) = Pipe.denote c.pipe := funext c.denote
+  rw [this]; exact compileP_view c.compiles hv
 
 end Compiled
 

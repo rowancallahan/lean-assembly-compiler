@@ -58,11 +58,21 @@ def twosort := compile% fun xs : List UInt8 =>
 /-! ### `ImplementsMapped` (output block of exactly the result size) where no intermediate is longer -/
 
 theorem revinc5_mapped : ImplementsMapped revinc5.code (fun xs => ((xs.take 5).map (· + 1)).reverse) :=
-  revinc5.mapped fun n => by simp [revinc5, Pipe.space, Pipe.need, Pipe.len, stageC, Stage.space, Stage.len, CS.clean, cs0]
+  revinc5.mapped_view (by decide)
+
+theorem revtake5_mapped : ImplementsMapped revtake5.code (fun xs => xs.reverse.take 5) :=
+  revtake5.mapped_view (by decide)
 
 theorem mapsort_mapped : ImplementsMapped mapsort.code (fun xs => (xs.map (· &&& 0x7f)).mergeSort) :=
   mapsort.mapped fun n => by
     simp [mapsort, Pipe.space, Pipe.need, Pipe.len, stageC, Stage.space, Stage.len, CS.clean, cs0, csClean]
+
+/-! ### The syntactic success condition holds for these pipes -/
+
+example : Pipe.ok revinc5.pipe = true := by decide
+example : Pipe.ok mapsum.pipe = true := by decide
+example : Pipe.ok hash64.pipe = true := by decide
+example : Pipe.ok twosort.pipe = true := by decide
 
 /-! ## Rejected, with the reason -/
 
