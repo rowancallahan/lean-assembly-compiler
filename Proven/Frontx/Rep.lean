@@ -58,6 +58,10 @@ theorem r64_ite (p : Prop) [Decidable p] (a b : UInt64) : r64 (if p then a else 
   split <;> rfl
 theorem r64_inj (a b : UInt64) : (r64 a = r64 b) = (a = b) := by simp [r64, UInt64.toBitVec_inj]
 theorem r64_lt (a b : UInt64) : (r64 a < r64 b) = (a < b) := by simp [r64, UInt64.lt_iff_toBitVec_lt]
+/-- comparisons of fixed-width values are moved to the `BitVec 64` level (hypotheses and goal alike) -/
+theorem r64_eq' (a b : UInt64) : (a = b) = (r64 a = r64 b) := (r64_inj a b).symm
+theorem r64_lt' (a b : UInt64) : (a < b) = (r64 a < r64 b) := (r64_lt a b).symm
+theorem r64_le' (a b : UInt64) : (a ≤ b) = ¬(r64 b < r64 a) := by rw [r64_lt]; exact propext UInt64.not_lt.symm
 theorem r64_toNat (a : UInt64) : rN a.toNat = r64 a := by simp [rN, r64]
 theorem r64_ofNat (n : Nat) : r64 n.toUInt64 = rN n := by simp [rN, r64, Nat.toUInt64, UInt64.ofNat]
 
@@ -88,6 +92,9 @@ theorem r32_inj (a b : UInt32) : (r32 a = r32 b) = (a = b) := by
   rw [← BitVec.toNat_inj, r32_nat, r32_nat, UInt32.toNat_inj]
 theorem r32_lt (a b : UInt32) : (r32 a < r32 b) = (a < b) := by
   rw [BitVec.lt_def, r32_nat, r32_nat, UInt32.lt_iff_toNat_lt]
+theorem r32_eq' (a b : UInt32) : (a = b) = (r32 a = r32 b) := (r32_inj a b).symm
+theorem r32_lt' (a b : UInt32) : (a < b) = (r32 a < r32 b) := (r32_lt a b).symm
+theorem r32_le' (a b : UInt32) : (a ≤ b) = ¬(r32 b < r32 a) := by rw [r32_lt]; exact propext UInt32.not_lt.symm
 theorem r32_toNat (a : UInt32) : rN a.toNat = r32 a := by
   apply BitVec.eq_of_toNat_eq; have := a.toNat_lt; rw [r32_nat]; simp [rN]
 theorem r32_shr (a b : UInt32) : r32 (a >>> b) = r32 a >>> ((r32 b &&& 31#64).toNat % 64) := by
@@ -114,6 +121,9 @@ theorem r8_inj (a b : UInt8) : (r8 a = r8 b) = (a = b) := by
   rw [← BitVec.toNat_inj, r8_nat, r8_nat, UInt8.toNat_inj]
 theorem r8_lt (a b : UInt8) : (r8 a < r8 b) = (a < b) := by
   rw [BitVec.lt_def, r8_nat, r8_nat, UInt8.lt_iff_toNat_lt]
+theorem r8_eq' (a b : UInt8) : (a = b) = (r8 a = r8 b) := (r8_inj a b).symm
+theorem r8_lt' (a b : UInt8) : (a < b) = (r8 a < r8 b) := (r8_lt a b).symm
+theorem r8_le' (a b : UInt8) : (a ≤ b) = ¬(r8 b < r8 a) := by rw [r8_lt]; exact propext UInt8.not_lt.symm
 theorem r8_toNat (a : UInt8) : rN a.toNat = r8 a := by
   apply BitVec.eq_of_toNat_eq; have := a.toNat_lt; rw [r8_nat]; simp [rN]
 
@@ -134,5 +144,16 @@ theorem r8_ofNat (n : Nat) : r8 n.toUInt8 = rN n &&& 0xff#64 := by
   apply BitVec.eq_of_toNat_eq; rw [and_mask8, r8_nat]; simp [rN]
 theorem r32_ofNat (n : Nat) : r32 n.toUInt32 = rN n &&& 0xffffffff#64 := by
   apply BitVec.eq_of_toNat_eq; rw [and_mask32, r32_nat]; simp [rN]
+
+/-! ## literals -/
+theorem rN_lit (n : Nat) : rN (no_index (OfNat.ofNat n)) = BitVec.ofNat 64 n := rfl
+theorem r8_lit (n : Nat) : r8 (no_index (OfNat.ofNat n)) = BitVec.ofNat 64 (n % 256) := by
+  apply BitVec.eq_of_toNat_eq; rw [r8_nat]; simp [OfNat.ofNat, UInt8.toNat_ofNat']
+  exact (Nat.mod_eq_of_lt (Nat.lt_trans (Nat.mod_lt n (by decide)) (by decide))).symm
+theorem r32_lit (n : Nat) : r32 (no_index (OfNat.ofNat n)) = BitVec.ofNat 64 (n % 4294967296) := by
+  apply BitVec.eq_of_toNat_eq; rw [r32_nat]; simp [OfNat.ofNat, UInt32.toNat_ofNat']
+  exact (Nat.mod_eq_of_lt (Nat.lt_trans (Nat.mod_lt n (by decide)) (by decide))).symm
+theorem r64_lit (n : Nat) : r64 (no_index (OfNat.ofNat n)) = BitVec.ofNat 64 n := by
+  apply BitVec.eq_of_toNat_eq; simp [r64, OfNat.ofNat, UInt64.toNat_ofNat']
 
 end Proven.Frontx
