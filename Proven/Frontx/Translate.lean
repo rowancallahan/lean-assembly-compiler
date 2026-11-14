@@ -261,6 +261,13 @@ mutual
 the terms held in temporaries occur in it syntactically) -/
 partial def trE (ctx : Ctx) (e : Expr) : TrM (ME × Expr) := do
   let e := e.consumeMData.headBeta
+  -- a raw projection `p.2` is written with its projection function (the form the variables are keyed by)
+  let e ← match e with
+    | .proj sn i s =>
+      match (getStructureFields (← getEnv) sn)[i]? with
+      | some fld => mkProjection s fld
+      | none => pure e
+    | _ => pure e
   if let some v ← find? e then return (.var v, e)
   let some ty ← classify (← inferType e) | throwError "frontx: not a scalar:{indentExpr e}"
   if !e.hasFVar then return (.const (← litBV (ty.rep e)), e)
@@ -788,6 +795,11 @@ def projNorm (e : Expr) : MetaM Expr :=
       let p ← whnfR e.appArg!
       if p.isAppOfArity ``Prod.mk 4 then
         return .done (if e.isAppOfArity ``Prod.fst 3 then p.getArg! 2 else p.getArg! 3)
+    if let some c := e.getAppFn.constName? then
+      if let some info ← getProjectionFnInfo? c then
+        if e.getAppNumArgs == info.numParams + 1 then
+          let sArg ← whnfR e.appArg!
+          if sArg.isAppOf info.ctorName then return .done (← whnfR (mkApp e.appFn! sArg))
     if e.isAppOfArity ``Option.isSome 2 then
       let o ← whnfR e.appArg!
       if o.isAppOfArity ``Option.some 2 then return .done (mkConst ``Bool.true)
@@ -811,6 +823,19 @@ partial def resultComps (ty : Expr) : MetaM (Option (Array (Expr × Ty))) := do
       let l ← withLocalDeclD `p ty fun p => do mkLambdaFVars #[p] (mkApp π (← mkAppM ``Prod.snd #[p])).headBeta
       return (l, t)
     return some (#[(fstL, ta)] ++ rest')
+  if let .const sn _ := ty.getAppFn then
+    if isStructure (← getEnv) sn && sn != ``Prod then
+      -- a structure: its fields, each a scalar or again such a structure
+      let mut out := #[]
+      for fld in getStructureFields (← getEnv) sn do
+        let (fty, projL) ← withLocalDeclD `p ty fun p => do
+          let pr ← mkProjection p fld
+          return (← inferType pr, ← mkLambdaFVars #[p] pr)
+        let some sub ← resultComps fty | return none
+        for (π, t) in sub do
+          let l ← withLocalDeclD `p ty fun p => do mkLambdaFVars #[p] (mkApp π (mkApp projL p).headBeta).headBeta
+          out := out.push (l, t)
+      return some out
   if ty.isAppOfArity ``Option 1 then
     let α := ty.appArg!
     let some ta ← classify α | return none
@@ -917,6 +942,26 @@ partial def trT (ctx : Ctx) (nconj : Nat) (env : Expr) (e : Expr) : TrM (MT × E
             let inst ← synthInstance (mkApp (mkConst ``Decidable) P)
             branch P inst (fun env _ => trT ctx nconj env body) (fun env _ => go env (i + 1))
         return ← go env 0
+    if ma.discrs.size == 1 && ma.remaining.isEmpty then
+      let d := ma.discrs[0]!
+      let dty ← whnfR (← inferType d)
+      -- `match p with | ⟨a, b⟩ => B`: the fields of `p` (no test)
+      if let .const sn _ := dty.getAppFn then
+        if isStructure (← getEnv) sn && ma.alts.size == 1 then
+          let flds ← (getStructureFields (← getEnv) sn).mapM fun f => mkProjection d f
+          return ← trT ctx nconj env (ma.alts[0]!.beta flds)
+      -- `match o with | none => A | some v => B v`: the test `o.isSome`, with `v := o.getD 0`
+      if dty.isAppOfArity ``Option 1 && ma.alts.size == 2 then
+        let α := dty.appArg!
+        let (iN, iS) := if ma.altNumParams[0]! == 1 && ma.altNumParams[1]! != 1 then (1, 0) else (0, 1)
+        let zero ← if (← whnfR α).isConstOf ``Bool then pure (Lean.mkConst ``Bool.false)
+          else mkAppOptM ``OfNat.ofNat #[α, mkRawNatLit 0, none]
+        let P ← mkEq (← mkAppM ``Option.isSome #[d]) (Lean.mkConst ``Bool.true)
+        let inst ← synthInstance (mkApp (mkConst ``Decidable) P)
+        let noneB := ma.alts[iN]!
+        let noneB := if noneB.isLambda then noneB.beta #[mkConst ``Unit.unit] else noneB
+        let someB := ma.alts[iS]!.beta #[← mkAppM ``Option.getD #[d, zero]]
+        return ← branch P inst (fun env _ => trT ctx nconj env someB) (fun env _ => trT ctx nconj env noneB)
     throwError "frontx: unsupported match{indentExpr e}"
   if let some li := ctx.loop then
     -- the leaves of a loop body
@@ -988,13 +1033,24 @@ partial def trT (ctx : Ctx) (nconj : Nat) (env : Expr) (e : Expr) : TrM (MT × E
       let p := ctx.params[j]!
       if args[j]! == p || (← isProof p) then continue
       if (ctx.block? p).isSome then throwError "frontx: array argument changed in the call{indentExpr e}"
-      let some v ← find? p | throwError "frontx: parameter without a variable{indentExpr p}"
-      as := as.push (v, args[j]!)
-      idx := idx.push j
+      match ← find? p with
+      | some v =>
+        as := as.push (v, args[j]!)
+        idx := idx.push (some j)
+      | none =>
+        -- a parameter with several components: assign the components that change
+        let some comps ← resultComps (← inferType p) | throwError "frontx: parameter without a variable{indentExpr p}"
+        for (π, _) in comps do
+          let old := (mkApp π p).headBeta
+          let new ← projNorm (mkApp π args[j]!)
+          if new == old then continue
+          let some v ← find? old | throwError "frontx: parameter without a variable{indentExpr old}"
+          as := as.push (v, new)
+          idx := idx.push none
     let repArgs (vals : Array Expr) : Array Expr := Id.run do
       let mut r := args
-      for (j, k) in idx.zipIdx do
-        r := r.set! j vals[k]!
+      for (j?, k) in idx.zipIdx do
+        if let some j := j? then r := r.set! j vals[k]!
       return r
     let (_, a) ← mkTuple (← (ctx.data args).toList.mapM fun x => do return (x, ← inferType x))
     return ← callLeaf ctx nconj env as repArgs a (mkApp2 (mkConst ``LOut.call) ctx.A a)
@@ -1544,10 +1600,13 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
           blocks := blocks ++ [(mkApp (mkConst ``String.toUTF8) x, blocks.length, next + 1)]
           next := next + 2
         else
-          let some ty ← classify xty | throwError "frontx: unsupported parameter type{indentExpr xty}"
-          memo := (x, next) :: memo
-          scal := scal.push (x, ty, next)
-          next := next + 1
+          -- a scalar, or a structure / tuple / `Option` of scalars: one variable per component
+          let some comps ← resultComps xty | throwError "frontx: unsupported parameter type{indentExpr xty}"
+          for (π, ty) in comps do
+            let key := (mkApp π x).headBeta
+            memo := (key, next) :: memo
+            scal := scal.push (key, ty, next)
+            next := next + 1
       let xsD := dataIdx.map (xs[·]!)
       -- variables for the extra components of the result
       let mut resExtra : Array (Expr × Ty × Nat) := #[]

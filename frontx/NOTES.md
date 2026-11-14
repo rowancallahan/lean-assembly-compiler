@@ -589,3 +589,21 @@ lean-svg `Svg.hexVal : UInt8 → Option Nat` and `Png.adlerChunk : … → UInt6
   constructor application (`(a, b)`, `some v`, `none`) after unfolding; tuple/`Option`/structure *parameters* and
   `match` on them are not done; results are not yet laid out as bytes per `Encode.lean` (they are in variables).
 - New lemma family for `c.toNat - n` on fixed-width `c` (`r8_toNat_sub`, `r32_toNat_sub`).
+
+### 10.3 Structures, tuples and `Option` as parameters; `match` on them
+
+`Proven/Frontx/DataExamples.lean` (all generated): `addPoints (p1 p2 : Point) : Point` (structure of two `Nat`),
+`swap : UInt64 × UInt64 → UInt64 × UInt64` (`match p with | (a, b)`), `getOr : Option Nat → Nat → Nat`
+(`match o with | none | some v`), `fst3 : Nat × UInt8 × Bool → UInt8`, `zeroX` (`{ p with x := 0 }`),
+`countdown` (recursion whose state is a `Point`; needs `with fun p => p.y + 2 * p.x < 2^64`: `Nat` fields carry the
+usual 64-bit bound).
+- A parameter of a structure type whose fields are scalars (nested allowed, `Prod` included) is one variable per
+  field, keyed by the projection terms; `f.Rep` has `σ.env v = rep (p.f)` per field; a `match p with | ⟨a, b⟩` is
+  `B p.1 p.2` (accepted by the kernel through structure eta), no test is emitted.
+- `Option α`: variables for `o.isSome` and `o.getD 0`; `match o` is a test of the first with `v := o.getD 0`.
+  The representation requires payload 0 for `none`.
+- Results of any such structure type use the same component list (10.2).
+- No allocation, no layout yet: components are variables (registers/slots). Writing/reading them as bytes per
+  `Encode.lean` (`Bytes` instances) is the missing link to the `Implements`-style statement.
+Not done: enum-like inductives (tag word; needs per-type lemmas), sums with payloads other than `Option`,
+recursive inductives (allocation), these types inside `for` loops or accumulator mode.
