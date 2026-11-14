@@ -78,3 +78,6 @@ theorem compile_ok' (e : Exp) (he : e.depth < 11) {s : St} (h : Cfg s) {pc : Bit
   rwa [e1, e2] at this
 
 end Proven.Mach.Riscv
+
+/-- Same statement as the original (checked by the elaborator). -/
+example : type_of% @Proven.Mach.Riscv.compile_ok' = type_of% @Proven.compile_ok := rfl

@@ -97,3 +97,9 @@ theorem sum_ok' {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = s
     ⟨h1, (h2 0).trans hv, h3⟩
 
 end Proven.Mach.Riscv
+
+/-! Same statements as the originals (checked by the elaborator): -/
+example : type_of% @Proven.Mach.Riscv.compileS_ok' = type_of% @Proven.compileS_ok := rfl
+example : type_of% @Proven.Mach.Riscv.compileF_ok' = type_of% @Proven.compileF_ok := rfl
+example : type_of% @Proven.Mach.Riscv.gcd_ok' = type_of% @Proven.gcd_ok := rfl
+example : type_of% @Proven.Mach.Riscv.sum_ok' = type_of% @Proven.sum_ok := rfl
