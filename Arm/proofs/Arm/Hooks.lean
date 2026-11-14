@@ -256,6 +256,47 @@ theorem pins_pstate {m : Regs} (q : ProcState) (hq : q.EL = 3#2 ∧ q.nRW = 0#1 
   · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register.PhysicalCount) = true by decide)] using hc.pcount
   · simpa only [Std.ExtDHashMap.get?_insert, dif_neg (show ¬ (Register.PSTATE == Register.CNTHP_CVAL_EL2) = true by decide)] using hc.cnthpcv
 
+theorem xreg_ne' {r : Register} (h : r.ctorIdx < 1059 ∨ 1089 < r.ctorIdx) : ∀ i < 31, xreg i ≠ r := by
+  intro i hi e; have := xreg_idx i hi; rw [e] at this; omega
+
+/-- `Pins` survives any change that leaves every pinned register except PSTATE alone and keeps EL/nRW/IL -/
+theorem pins_frame {m m' : Regs} (hc : Pins m)
+    (hfr : ∀ r : Register, (∀ i < 31, xreg i ≠ r) → r ≠ .PSTATE → r ≠ .SEE → m'.get? r = m.get? r)
+    (hps : ∀ p, m.get? .PSTATE = some p → ∃ q, m'.get? .PSTATE = some q ∧ q.EL = p.EL ∧ q.nRW = p.nRW ∧ q.IL = p.IL) :
+    Pins m' := by
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · obtain ⟨p, hp, h1, h2, h3⟩ := hc.ps; obtain ⟨q, hq, e1, e2, e3⟩ := hps p hp
+    exact ⟨q, hq, e1 ▸ h1, e2 ▸ h2, e3 ▸ h3⟩
+  · rw [hfr .FeatureImpl (xreg_ne' (by decide)) (by decide) (by decide)]; exact hc.feat
+  · rw [hfr .SCR_EL3 (xreg_ne' (by decide)) (by decide) (by decide)]; exact hc.scr
+  · rw [hfr ._EDSCR (xreg_ne' (by decide)) (by decide) (by decide)]; exact hc.edscr
+  · rw [hfr .MDCCSR_EL0 (xreg_ne' (by decide)) (by decide) (by decide)]; exact hc.mdccsr
+  · rw [hfr .OSLSR_EL1 (xreg_ne' (by decide)) (by decide) (by decide)]; exact hc.oslsr
+  · rw [hfr .MDCR_EL3 (xreg_ne' (by decide)) (by decide) (by decide)]; exact hc.mdcr3
+  · rw [hfr .__GIC_Pending (xreg_ne' (by decide)) (by decide) (by decide)]; exact hc.gic
+  · rw [hfr ._MPAM3_EL3 (xreg_ne' (by decide)) (by decide) (by decide)]; exact hc.mpam3
+  · rw [hfr .MPAM2_EL2 (xreg_ne' (by decide)) (by decide) (by decide)]; exact hc.mpam2
+  · rw [hfr .__supported_pa_size (xreg_ne' (by decide)) (by decide) (by decide)]; exact hc.pa
+  · rw [hfr .TCR_EL3 (xreg_ne' (by decide)) (by decide) (by decide)]; exact hc.tcr3
+  · rw [hfr .SCTLR_EL3 (xreg_ne' (by decide)) (by decide) (by decide)]; exact hc.sctlr3
+  · rw [hfr .MAIR_EL3 (xreg_ne' (by decide)) (by decide) (by decide)]; exact hc.mair3
+  · rw [hfr .MDSCR_EL1 (xreg_ne' (by decide)) (by decide) (by decide)]; exact hc.mdscr
+  · rw [hfr .SPESampleInFlight (xreg_ne' (by decide)) (by decide) (by decide)]; exact hc.spe
+  · rw [hfr .DBGEN (xreg_ne' (by decide)) (by decide) (by decide)]; exact hc.dbgen
+  · rw [hfr .SPIDEN (xreg_ne' (by decide)) (by decide) (by decide)]; exact hc.spiden
+  · rw [hfr .EDESR (xreg_ne' (by decide)) (by decide) (by decide)]; exact hc.edesr
+  · rw [hfr .__emulator_termination_opcode (xreg_ne' (by decide)) (by decide) (by decide)]; exact hc.emu
+  · rw [hfr .PMCR_EL0 (xreg_ne' (by decide)) (by decide) (by decide)]; exact hc.pmcr
+  · rw [hfr .MDCR_EL2 (xreg_ne' (by decide)) (by decide) (by decide)]; exact hc.mdcr2
+  · rw [hfr .CNTCR (xreg_ne' (by decide)) (by decide) (by decide)]; exact hc.cntcr
+  · rw [hfr .CNTP_CTL_EL0 (xreg_ne' (by decide)) (by decide) (by decide)]; exact hc.cntp
+  · rw [hfr .CNTHP_CTL_EL2 (xreg_ne' (by decide)) (by decide) (by decide)]; exact hc.cnthp
+  · rw [hfr .CNTPS_CTL_EL1 (xreg_ne' (by decide)) (by decide) (by decide)]; exact hc.cntps
+  · rw [hfr .CNTV_CTL_EL0 (xreg_ne' (by decide)) (by decide) (by decide)]; exact hc.cntv
+  · rw [hfr .BRBFCR_EL1 (xreg_ne' (by decide)) (by decide) (by decide)]; exact hc.brbfcr
+  · rw [hfr .PhysicalCount (xreg_ne' (by decide)) (by decide) (by decide)]; exact hc.pcount
+  · rw [hfr .CNTHP_CVAL_EL2 (xreg_ne' (by decide)) (by decide) (by decide)]; exact hc.cnthpcv
+
 set_option hygiene false in
 /-- unpack `Pins s.regs` (named `hc`) into the atomic facts `esimp` rewrites with -/
 macro "pins" : tactic => `(tactic| (obtain ⟨⟨p, hp, hel, hrw, hil⟩, h_feat, h_scr, h_edscr, h_mdccsr, h_oslsr, h_mdcr3, h_gic, h_mpam3, h_mpam2, h_pa, h_tcr3, h_sctlr3, h_mair3, h_mdscr, h_spe, h_dbgen, h_spiden, h_edesr, h_emu, h_pmcr, h_mdcr2, h_cntcr, h_cntp, h_cnthp, h_cntps, h_cntv, h_brbfcr, h_pcount, h_cnthpcv⟩ := id hc))

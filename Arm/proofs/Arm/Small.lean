@@ -76,9 +76,13 @@ structure Abs (s : St) (a : AState) : Prop where
   p : ∃ p : ProcState, s.regs.get? .PSTATE = some p ∧
     p.N = .ofBool a.n ∧ p.Z = .ofBool a.z ∧ p.C = .ofBool a.c ∧ p.V = .ofBool a.v
 
-/-- `s'` differs from `s` at most in `x0..x30`, PSTATE and SEE; memory is unchanged -/
+/-- `q` agrees with `p` outside the condition flags NZCV -/
+def PKeep (p q : ProcState) : Prop := { q with N := p.N, Z := p.Z, C := p.C, V := p.V } = p
+
+/-- `s'` differs from `s` at most in `x0..x30`, PSTATE.NZCV and SEE; memory is unchanged -/
 def Frame (s s' : St) : Prop :=
-  s'.mem = s.mem ∧ ∀ r : Register, (∀ i < 31, xreg i ≠ r) → r ≠ .PSTATE → r ≠ .SEE → s'.regs.get? r = s.regs.get? r
+  s'.mem = s.mem ∧ (∀ r : Register, (∀ i < 31, xreg i ≠ r) → r ≠ .PSTATE → r ≠ .SEE → s'.regs.get? r = s.regs.get? r) ∧
+  ∀ p, s.regs.get? .PSTATE = some p → ∃ q, s'.regs.get? .PSTATE = some q ∧ PKeep p q
 
 /-- what `step_model` does before decoding: `SEE := -1` -/
 def reset (s : St) : St := { s with regs := s.regs.insert .SEE (-1 : Int) }
@@ -137,8 +141,9 @@ theorem step_x {d : Nat} {v : BitVec 64} (hd : d < 31) (hdec : DecodeTo pc w f k
   · rw [hdec _ (see_get s)]; exact hexec _ (seen_abs ha k) (seen_cfg hc k)
   · rw [hstep]; exact (seen_abs ha k).xset hd v
   · have := seen_cfg hc k; simp only [ArmCfg] at this ⊢; rw [xset_get_ne _ _ _ _ (by decide)]; exact this
-  · intro r hr hp hs
-    simp [seen, reset, xset_get_ne _ _ _ _ hr, Std.ExtDHashMap.get?_insert, Ne.symm hs]
+  · refine ⟨fun r hr hp hs => ?_, fun p hp => ⟨p, ?_, rfl⟩⟩
+    · simp [seen, reset, xset_get_ne _ _ _ _ hr, Std.ExtDHashMap.get?_insert, Ne.symm hs]
+    · simp [seen, reset, xset_get_ne _ _ _ .PSTATE (by decide), Std.ExtDHashMap.get?_insert, hp]
 
 /-- a flag-setting `subs xzr, x, y` (`cmp`): writes PSTATE.NZCV and nothing else (besides SEE) -/
 theorem step_cmp {x y : BitVec 64} (hdec : DecodeTo pc w f k)
@@ -152,8 +157,12 @@ theorem step_cmp {x y : BitVec 64} (hdec : DecodeTo pc w f k)
   · rw [hstep, sub_flags]
     exact Abs.pstate (a := a.setSub x y) (seen_abs ha k).x _ rfl rfl rfl rfl
   · exact cfg_insert (seen_cfg hc k) .PSTATE _ (by decide)
-  · intro r hr hp hs
-    simp [seen, reset, Std.ExtDHashMap.get?_insert, Ne.symm hs, Ne.symm hp]
+  · refine ⟨fun r hr hp hs => ?_, fun p' hp' => ⟨setFlags p (AddWithCarry x (~~~y) 1#1).2, by simp [seen, reset, Std.ExtDHashMap.get?_insert], ?_⟩⟩
+    · simp [seen, reset, Std.ExtDHashMap.get?_insert, Ne.symm hs, Ne.symm hp]
+    · have : p = p' := by
+        have h2 : (seen s k).regs.get? .PSTATE = s.regs.get? .PSTATE := by simp [seen, reset, Std.ExtDHashMap.get?_insert]
+        rw [h2, hp'] at hp; exact (Option.some.inj hp).symm
+      subst this; rfl
 
 theorem cond_cs (a : AState) : a.cond 2#4 = a.c := by simp [AState.cond]
 theorem cond_ge (a : AState) : a.cond 10#4 = (a.n == a.v) := by simp [AState.cond]

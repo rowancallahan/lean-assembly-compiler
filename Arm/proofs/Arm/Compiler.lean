@@ -24,10 +24,14 @@ def RunM : Int → List (BitVec 32) → St → St → Prop
 /-- the small machine runs `ws` -/
 def runA (ws : List (BitVec 32)) (a : AState) : AState := ws.foldl (fun a w => armStep w a) a
 
-theorem Frame.refl (s : St) : Frame s s := ⟨rfl, fun _ _ _ _ => rfl⟩
+theorem Frame.refl (s : St) : Frame s s := ⟨rfl, fun _ _ _ _ => rfl, fun p hp => ⟨p, hp, rfl⟩⟩
+
+theorem PKeep.trans {p q r : ProcState} (h₁ : PKeep p q) (h₂ : PKeep q r) : PKeep p r := by
+  unfold PKeep at *; rw [← h₁]; rw [← h₂]
 
 theorem Frame.trans {s₁ s₂ s₃ : St} (h₁ : Frame s₁ s₂) (h₂ : Frame s₂ s₃) : Frame s₁ s₃ :=
-  ⟨h₂.1.trans h₁.1, fun r hr hp hs => (h₂.2 r hr hp hs).trans (h₁.2 r hr hp hs)⟩
+  ⟨h₂.1.trans h₁.1, fun r hr hp hs => (h₂.2.1 r hr hp hs).trans (h₁.2.1 r hr hp hs), fun p hp => by
+    obtain ⟨q, hq, hpq⟩ := h₁.2.2 p hp; obtain ⟨r, hr, hqr⟩ := h₂.2.2 q hq; exact ⟨r, hr, hpq.trans hqr⟩⟩
 
 /-- simulation: on emitted words the model follows the small machine -/
 theorem run_sim : ∀ (ws : List (BitVec 32)) (pc : Int) (s : St) (a : AState), (∀ w ∈ ws, w ∈ emitted) →
