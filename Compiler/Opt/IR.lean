@@ -83,6 +83,23 @@ inductive Exec : Code ρ → St ρ → St ρ → Prop
   | loopT {pre t body s s₁ s₂ s₃} : Exec pre s s₁ → t.eval s₁.reg = true → Exec body s₁ s₂ →
       Exec (.loop pre t body) s₂ s₃ → Exec (.loop pre t body) s s₃
 
+/-- memory changes only at `ram` addresses -/
+theorem Exec.mem_out {c : Code ρ} {s s' : St ρ} (h : Exec ram c s s') : ∀ a, ¬ram a → s'.mem a = s.mem a := by
+  induction h with
+  | skip => exact fun _ _ => rfl
+  | ins hst =>
+    intro a ha
+    cases hst with
+    | set => rfl
+    | bin => rfl
+    | lbu _ _ => rfl
+    | sb hr => exact ite_neg fun e => ha (e ▸ hr)
+  | seq _ _ iha ihb => exact fun a ha => (ihb a ha).trans (iha a ha)
+  | whenT _ _ ih => exact ih
+  | whenF _ => exact fun _ _ => rfl
+  | loopF _ _ ih => exact ih
+  | loopT _ _ _ _ ihp ihb ihl => exact fun a ha => (ihl a ha).trans ((ihb a ha).trans (ihp a ha))
+
 end
 
 /-- `seq` of a list -/

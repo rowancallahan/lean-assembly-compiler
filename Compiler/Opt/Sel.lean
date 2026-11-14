@@ -61,7 +61,8 @@ def ops2 (a b : AExp) (ia ib : Nat → Nat → Code Nat) (k : Nat) : Code Nat ×
 
 /-- `d := if T then a else b` -/
 def iteCode (T : Code Nat × Tst Nat × Nat) (a b : AExp) (ia ib : Nat → Nat → Code Nat) (d : Nat) : Code Nat :=
-  if isVar b d = true then .seq T.1 (.when T.2.1 (ia d T.2.2))
+  if isVar a d = true then .seq T.1 (.when T.2.1.neg (ib d T.2.2))
+  else if isVar b d = true then .seq T.1 (.when T.2.1 (ia d T.2.2))
   else if (tstUses T.2.1 d || uses a d) = false then .seq T.1 (.seq (ib d T.2.2) (.when T.2.1 (ia d T.2.2)))
   else .seq T.1 (.seq (ib (tk T.2.2) (T.2.2 + 1)) (.seq (.when T.2.1 (ia (tk T.2.2) (T.2.2 + 1)))
     (.ins (.set d (.r (tk T.2.2))))))
@@ -210,20 +211,31 @@ theorem iteCode_ok {T : Code Nat × Tst Nat × Nat} {c a b : AExp} {ia ib : Nat 
     IntoSpec ram (iteCode T a b ia ib d) d k σ (if c.denote env = 0 then b.denote env else a.denote env) := by
   obtain ⟨σ₁, x₁, v₁, f₁, b₁, k₁⟩ := hT
   unfold iteCode
+  have var_of : ∀ {e : AExp} {σ₀ : St Nat}, isVar e d = true → Agree env e σ₀ → σ₀.reg d = e.denote env := by
+    intro e σ₀ h g
+    cases e with
+    | var i => have e : i.val = d := of_decide_eq_true h; subst e; exact g i (decide_eq_true rfl)
+    | const _ => exact nomatch h
+    | bin _ _ _ => exact nomatch h
+    | ite _ _ _ => exact nomatch h
+  by_cases h0 : isVar a d = true
+  · rw [ite_pos h0]
+    by_cases hc : c.denote env = 0
+    · rw [ite_pos hc]
+      obtain ⟨σ₂, x₂, v₂, m₂, f₂⟩ := hb d T.2.2 σ₁ (gb.frame f₁)
+      refine ⟨σ₂, .seq x₁ (.whenT (by rw [Tst.eval_neg, v₁, nz_false hc]; rfl) x₂), v₂, m₂.trans f₁.1,
+        fun x hd hx => ?_⟩
+      rw [f₂ x hd (by omega), f₁.2 x hx]
+    · rw [ite_neg hc]
+      exact ⟨σ₁, .seq x₁ (.whenF (by rw [Tst.eval_neg, v₁, nz_true hc]; rfl)), var_of h0 (ga.frame f₁), f₁.1,
+        fun x _ hx => f₁.2 x hx⟩
+  rw [ite_neg h0]
   by_cases h1 : isVar b d = true
   · rw [ite_pos h1]
     by_cases hc : c.denote env = 0
     · rw [ite_pos hc]
       replace v₁ := v₁.trans (nz_false hc)
-      refine ⟨σ₁, .seq x₁ (.whenF v₁), ?_, f₁.1, fun x _ hx => f₁.2 x hx⟩
-      cases b with
-      | var i =>
-        have e : i.val = d := of_decide_eq_true h1
-        subst e
-        rw [f₁.2 i.val (by omega)]; exact gb i (decide_eq_true rfl)
-      | const _ => exact nomatch h1
-      | bin _ _ _ => exact nomatch h1
-      | ite _ _ _ => exact nomatch h1
+      exact ⟨σ₁, .seq x₁ (.whenF v₁), var_of h1 (gb.frame f₁), f₁.1, fun x _ hx => f₁.2 x hx⟩
     · rw [ite_neg hc]
       obtain ⟨σ₂, x₂, v₂, m₂, f₂⟩ := ha d T.2.2 σ₁ (ga.frame f₁)
       refine ⟨σ₂, .seq x₁ (.whenT (v₁.trans (nz_true hc)) x₂), v₂, m₂.trans f₁.1, fun x hd hx => ?_⟩
