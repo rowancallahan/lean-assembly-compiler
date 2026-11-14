@@ -8,3 +8,4 @@ regen-work/
 *.elf
 *.o
 ctest/
+Testing/asm/work/
