@@ -1,5 +1,9 @@
 .lake/
+build/
 work/
+scratch/
+regen-work/
+*.olean
+*.ilean
 *.elf
 *.o
-scratch/

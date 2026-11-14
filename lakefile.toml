@@ -1,9 +1,29 @@
 name = "proven"
-defaultTargets = ["Proven"]
+defaultTargets = ["Spec", "Compiler", "Riscv", "Arm"]
 moreLeanArgs = ["--tstack=400000", "--threads=2"]
 
+# Module names follow the folders; no lib root files (globs only).
 [[lean_lib]]
-name = "Proven"
+name = "Spec"
+globs = ["Spec.+"]
+
+[[lean_lib]]
+name = "Compiler"
+globs = ["Compiler.+"]
+
+[[lean_lib]]
+name = "Riscv"
+globs = ["Riscv.Steps.+", "Riscv.Direct.+", "Riscv.Back.+", "Riscv.Examples.+"]
+
+# superseded, does not build (sorry / kernel deep recursion); not a default target
+[[lean_lib]]
+name = "RiscvLegacy"
+globs = ["Riscv.Legacy.+"]
+
+# the AArch64 code generator (Lean 4.29 side; its proofs are in Arm/proofs, Lean 4.34)
+[[lean_lib]]
+name = "Arm"
+globs = ["Arm.CompilerArm"]
 
 [[require]]
 name = "Lean_RV64D"
