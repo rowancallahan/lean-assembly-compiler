@@ -9,6 +9,7 @@ For each entry point `g : ByteArray → T` (`g xs := f xs constants…`, `f` com
 Nothing in this file is proved by hand. -/
 import Riscv.Frontx.Impl1
 import Riscv.Frontx.ForExamples
+import Riscv.Frontx.ListExamples
 
 namespace Proven.Frontx.Ex
 open Proven Proven.Frontx
@@ -32,5 +33,16 @@ frontx_implements findNL
 def be32At0 (xs : ByteArray) : Nat := be32 xs 0
 frontx_entry be32At0
 frontx_implements be32At0
+
+/-! ## Book list functions ("Functional Programming in Lean", `ListExamples.lean`) on the input bytes -/
+
+open Proven.Frontx.BookList in
+frontx_implements tailSum
+open Proven.Frontx.BookList in
+frontx_implements nonTailSum
+open Proven.Frontx.BookList in
+frontx_implements tailLength
+open Proven.Frontx.BookList in
+frontx_implements bookLength
 
 end Proven.Frontx.Ex

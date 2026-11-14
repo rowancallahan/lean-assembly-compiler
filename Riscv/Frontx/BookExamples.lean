@@ -4,7 +4,7 @@ theorem has the hypothesis `n < 2^64` for each `Nat` parameter (in `f.Rep` / `f.
 `result variable = BitVec.ofNat 64 (f args)`.
 
 How each recursion is handled (all automatic):
-* no recursion (`add1`, `maximum`, `isZero`, `pred`, `Nat.double`, `triple`, `quadruple`): one pass, `fun_cases`;
+* no recursion (`add1`, `maximum`, `isZero`, `pred`, `Nat.double`, `triple`, `quadruple`, `timesTwelve`): one pass, `fun_cases`;
 * `match k with | 0 => b | k' + 1 => E[f … k']`, the call not in tail position (`even`, `plus`, `times`, `minus`,
   `double`): the loop counting up, by `natRec_forIn` (`For.lean`), no accumulator algebra needed;
 * `f x = g + f x'` under tests (`div`, `halve`): an accumulator is introduced; `f.runs` is stated for
@@ -48,16 +48,23 @@ def double (n : Nat) : Nat :=
   | Nat.zero => 0
   | Nat.succ k => double k + 2
 def Nat.double (x : Nat) : Nat := x + x
-def triple (x : Nat) : Nat := x + x + x
-def quadruple (x : Nat) : Nat := x + x + x + x
+namespace NewNamespace
+def triple (x : Nat) : Nat := 3 * x
+def quadruple (x : Nat) : Nat := 2 * x + 2 * x
+end NewNamespace
+def timesTwelve (x : Nat) :=
+  open NewNamespace in
+  quadruple (triple x)
 
 frontx_compile add1
 frontx_compile maximum
 frontx_compile isZero
 frontx_compile pred
 frontx_compile Nat.double
-frontx_compile triple
-frontx_compile quadruple
+-- multiplication by a literal: shifts and adds, through a generated equation `mulLitL_c` (proved by `omega`)
+frontx_compile NewNamespace.triple
+frontx_compile NewNamespace.quadruple
+frontx_compile timesTwelve
 frontx_compile even
 frontx_compile plus
 frontx_compile double

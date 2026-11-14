@@ -14,7 +14,7 @@ import Riscv.Frontx.Rep
 set_option linter.unusedVariables false
 
 namespace Proven.Frontx
-open Proven Proven.Mach.Riscv LeanRV64D
+open Proven Proven.Mach Proven.Mach.Riscv LeanRV64D
 
 /-! ## `BStmt.wf` is decidable (well-formedness of a generated program is one `decide`) -/
 
@@ -94,8 +94,10 @@ theorem wfB_up (N : Nat) (bv wv : List Nat) : ∀ p : Proven.BStmt, p.wf N bv �
     · rw [compB_wv]; exact h5
 
 theorem store8_wf (N : Nat) : ∀ k, k < 8 → rvF.wfB N [0, 3] [2] (store8 k)
-  | 0, _ => by simp [store8, MachineF.wfB, Mach.BExp.depth, Mach.BExp.vlt]
-  | k + 1, h => ⟨store8_wf N k (by omega), by simp [MachineF.wfB, Mach.BExp.depth, Mach.BExp.vlt]⟩
+  | 0, _ => by simp [store8, MachineF.wfB, Mach.BExp.depth, Mach.BExp.vlt]; omega
+  | k + 1, h => by
+    show rvF.wfB N [0, 3] [2] (store8 k) ∧ _
+    exact ⟨store8_wf N k (by omega), by simp [MachineF.wfB, Mach.BExp.depth, Mach.BExp.vlt]; omega⟩
 
 /-- **Generated program ⇒ `Implements1`.** -/
 theorem implements1_of_frontx {β : Type} (f : ByteArray → β) (encB : β → List UInt8) (repr : β → BitVec 64)
@@ -107,10 +109,10 @@ theorem implements1_of_frontx {β : Type} (f : ByteArray → β) (encB : β → 
       ∃ σ', Proven.BExec p ⟨env, [blk xs]⟩ σ' ∧ σ'.env 4 = repr (f xs) ∧ σ'.heap = [blk xs]) :
     Implements1With (fun xs : ByteArray => xs.data.toList) encB
       (rvF.codeF (rvF.compBF N [0, 3] [2] (.seq (toMS p) (store8 k)))) f (fun _ => 8 * (N + 1) + 7) := by
-  refine implements1_of_exec _ encB f N hN _ ⟨wfB_up N _ _ p hwf hnw, store8_wf N k hk⟩ (fun _ => 0) _
+  refine implements1_of_exec _ encB f N hN (.seq (toMS p) (store8 k)) (show rvF.wfB N [0, 3] [2] (toMS p) ∧ _ from ⟨wfB_up N _ _ p hwf hnw, store8_wf N k hk⟩) (fun _ => 0) _
     (fun n => by dsimp only; omega) _ false ?_
   intro a out tbl env h1 h8 hmax hlt hout hol htl
-  have hsz : a.data.toList.length = a.size := by simp [ByteArray.size]
+  have hsz : a.data.toList.length = a.size := Array.length_toList
   obtain ⟨σ', hx, h4, hh⟩ := hex a env (by rw [h1, hsz]; rfl) (by rw [← hsz]; exact hlt) h8
   have hx' := exec_up hx [out] [tbl]
   rw [hh] at hx'
@@ -159,6 +161,10 @@ instance : Res Bool := ⟨rB, 0, by decide, fun b => [if b then 1 else 0], fun b
 def entryCode (β : Type) [Res β] (N : Nat) (p : Proven.BStmt) : List (BitVec 32) :=
   rvF.codeF (rvF.compBF N [0, 3] [2] (.seq (toMS p) (store8 (Res.k β))))
 
+/-- the code of the entry point `f` (its result type picks the encoding) -/
+def entryCodeOf {β : Type} [Res β] (_f : ByteArray → β) (N : Nat) (p : Proven.BStmt) : List (BitVec 32) :=
+  entryCode β N p
+
 theorem implements1_res {β : Type} [Res β] (f : ByteArray → β) (N : Nat) (hN : N ≤ 16) (p : Proven.BStmt)
     (hwf : p.wf N [0, 3]) (hnw : ∀ v ∈ avars p, v ∉ [2])
     (hex : ∀ (xs : ByteArray) (env : BEnv), env 1 = rN xs.size → xs.size < 2 ^ 32 → (∀ j, 8 ≤ j → env j = 0) →
@@ -172,7 +178,7 @@ macro "frontx_implements " g:ident : command => do
   let prog := Lean.mkIdent (n ++ `prog); let slots := Lean.mkIdent (n ++ `slots)
   let exec := Lean.mkIdent (n ++ `exec); let code := Lean.mkIdent (n ++ `code)
   let thm := Lean.mkIdent (n ++ `implements1)
-  `(def $code : List (BitVec 32) := entryCode _ $slots $prog
+  `(def $code : List (BitVec 32) := entryCodeOf $g $slots $prog
     theorem $thm : Implements1With (fun xs : ByteArray => xs.data.toList) Res.enc $code $g
         (fun _ => 8 * ($slots + 1) + 7) :=
       implements1_res $g $slots (by decide) $prog (by decide +kernel) (by decide +kernel) $exec)

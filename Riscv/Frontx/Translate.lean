@@ -255,6 +255,15 @@ def Ctx.data (ctx : Ctx) (as : Array Expr) : Array Expr :=
 
 def cNot (c : ME) : ME := .bin ``Op.xor c (.const (mkBV 1))
 
+def addThm (name : Name) (type : Expr) (tac : TSyntax `tactic) : TermElabM Unit := do
+  let type ← instantiateMVars type
+  let pf ← elabTermEnsuringType (← `(by $tac:tactic)) type
+  synthesizeSyntheticMVarsNoPostponing
+  let pf ← instantiateMVars pf
+  if pf.hasSorry || pf.hasMVar then throwError "frontx: could not prove {name}"
+  addDecl (.thmDecl { name, levelParams := [], type, value := pf })
+  unless (← getConstInfo name) matches .thmInfo _ do throwError "frontx: {name} was not added as a theorem"
+
 mutual
 
 /-- a scalar term `e`: its expression, and `e` with the inlined helpers unfolded (definitionally equal to `e`;
@@ -333,6 +342,33 @@ partial def trE (ctx : Ctx) (e : Expr) : TrM (ME × Expr) := do
   let conv (m : Option Nat) : TrM (ME × Expr) := do
     let (a, a') ← trE ctx args[0]!
     return (masked m a, mkAppN f #[a'])
+  -- `c * x` / `x * c` with a `Nat` literal `c`: shifts and adds, through a proved equation `mulLit_c`
+  if f.isConstOf ``HMul.hMul && args.size == 6 && ty == .nat then
+    let lit? (t : Expr) : Option Nat := (t.nat?).orElse fun _ => t.rawNatLit?
+    let (c?, x) := match lit? args[4]!, lit? args[5]! with
+      | some c, _ => (some c, args[5]!)
+      | none, some c => (some c, args[4]!)
+      | none, none => (none, args[4]!)
+    if let some c := c? then
+      let left := lit? args[4]! |>.isSome
+      let lN := Name.mkStr `Proven.Frontx (s!"mulLit{if left then "L" else "R"}_{c}")
+      unless (← getEnv).contains lN do
+        let nat := Lean.mkConst ``Nat
+        let ty ← withLocalDeclD `x nat fun xv => do
+          let cE := mkNatLit c
+          let lhs ← if left then mkAppM ``HMul.hMul #[cE, xv] else mkAppM ``HMul.hMul #[xv, cE]
+          let bits := (List.range (Nat.log2 c + 1)).filter fun k => c.testBit k
+          let terms ← bits.mapM fun k => mkAppM ``HShiftLeft.hShiftLeft #[xv, mkNatLit k]
+          let rhs ← match terms with
+            | [] => pure (mkNatLit 0)
+            | t :: ts => ts.foldlM (fun a b => mkAppM ``HAdd.hAdd #[a, b]) t
+          mkForallFVars #[xv] (← mkEq lhs rhs)
+        let tac ← `(tactic| (intro x; simp only [Nat.shiftLeft_eq]; omega))
+        withLCtx {} #[] (addThm lN ty tac)
+      modify fun s => if s.unfolded.contains lN then s else { s with unfolded := s.unfolded.push lN }
+      let some (_, _, rhs) := (← instantiateForall (← getConstInfo lN).type #[x]).eq? | unreachable!
+      let (m, _) ← trE ctx rhs
+      return (m, e)
   match f.constName?, args.size with
   | some ``HAdd.hAdd, 6 => bin ``Op.add ty.mask
   | some ``HSub.hSub, 6 =>
@@ -1220,13 +1256,11 @@ elab "frontx_path " h:ident : tactic => withMainContext do
 
 /-! ## the command -/
 
-def addThm (name : Name) (type : Expr) (tac : TSyntax `tactic) : TermElabM Unit := do
-  let type ← instantiateMVars type
-  let pf ← elabTermEnsuringType (← `(by $tac:tactic)) type
-  synthesizeSyntheticMVarsNoPostponing
-  let pf ← instantiateMVars pf
-  if pf.hasSorry || pf.hasMVar then throwError "frontx: could not prove {name}"
-  addDecl (.thmDecl { name, levelParams := [], type, value := pf })
+/-- fail unless `name` depends on the three standard axioms only -/
+def checkAxioms (name : Name) : TermElabM Unit := do
+  let axs ← Lean.collectAxioms name
+  let bad := axs.filter fun a => !(a == ``propext || a == ``Classical.choice || a == ``Quot.sound)
+  unless bad.isEmpty do throwError "frontx: {name} depends on {bad}"
 
 def addDef (name : Name) (type value : Expr) (compile := false) : TermElabM Unit := do
   let d := Declaration.defnDecl (mkDefinitionValEx name [] type value .abbrev .safe [name])
@@ -1855,18 +1889,38 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
             (← withLocalDeclD `σ' bstate fun σ' => do
               mkAppM ``Exists #[← mkLambdaFVars #[σ'] (mkAnd (mkApp4 (mkConst ``Tree.Runs) (mkConst treeN) σ r0 σ')
                 (mkApp2 (mkConst ``AllEnv) (mkApp (mkConst ``BState.env) σ') rsL))]))
-          addThm (fn ++ `runs) runsTy (← `(tactic|
-            (intro $as*
-             $ind:tactic <;> intro σ hR <;>
-              (have hs := $sI:ident $holes* σ hR
-               frontx_path hs
-               first
-               | (obtain ⟨σ₁, hs₁, hR₁⟩ := sim_call_elim _ hs
-                  refine step_callQ σ₁ hs₁ ?_
-                  frontx_ih
-                  exact hR₁)
-               | (obtain ⟨σ₁, hs₁, hq⟩ := sim_retm_elim _ hs
-                  exact step_retQ σ₁ hs₁ hq)))))
+          match from? with
+          | none =>
+            addThm (fn ++ `runs) runsTy (← `(tactic|
+              (intro $as*
+               $ind:tactic <;> intro σ hR <;>
+                (have hs := $sI:ident $holes* σ hR
+                 frontx_path hs
+                 first
+                 | (obtain ⟨σ₁, hs₁, hR₁⟩ := sim_call_elim _ hs
+                    refine step_callQ σ₁ hs₁ ?_
+                    frontx_ih
+                    exact hR₁)
+                 | (obtain ⟨σ₁, hs₁, hq⟩ := sim_retm_elim _ hs
+                    exact step_retQ σ₁ hs₁ hq)))))
+          | some (eqN, μ) =>
+            let eqI := mkIdent eqN
+            let us ← xs.mapM fun _ => `(_)
+            addThm (fn ++ `runs) runsTy (← `(tactic|
+              (intro $as*
+               generalize hμ : ($μ $as*) = n
+               induction n using Nat.strongRecOn generalizing $as* with
+               | _ n ih =>
+                 intro σ hR
+                 rw [$eqI:ident $as*]
+                 have hs := $sI:ident $holes* σ hR
+                 (repeat' (frontx_cases hs)) <;>
+                 first
+                 | (obtain ⟨σ₁, hs₁, hR₁⟩ := sim_call_elim _ hs
+                    refine step_callQ σ₁ hs₁ ?_
+                    exact ih _ (by subst hμ; dsimp only; omega) $us* rfl _ hR₁)
+                 | (obtain ⟨σ₁, hs₁, hq⟩ := sim_retm_elim _ hs
+                    exact step_retQ σ₁ hs₁ hq))))
           let t3 ← IO.monoMsNow
           let progE := mkApp3 (mkConst ``prog) (mkConst layN) (mkConst treeN) (toExpr out)
           let execTy ← mkForallFVars (xs.push σ) (← mkArrow (mkAppN (mkConst repN) (xsD.push σ))
@@ -1969,6 +2023,7 @@ elab_rules : command
         s.restore
         compileCmd f inv? lemmas (accMode := true) (pre? := pre?) (from? := from?)
       else throw ex
+    checkAxioms ((← realizeGlobalConstNoOverloadWithInfo f) ++ `exec)
   | `(frontx_compile $f:ident $[requires $pre?]? $[with $inv?]? $[using $ls?,*]?) => liftTermElabM do
     let lemmas ← match ls? with
       | some ls => ls.getElems.mapM fun l => realizeGlobalConstNoOverloadWithInfo l
@@ -1981,6 +2036,7 @@ elab_rules : command
         s.restore
         compileCmd f inv? lemmas (accMode := true) (pre? := pre?)
       else throw e
+    checkAxioms ((← realizeGlobalConstNoOverloadWithInfo f) ++ `exec)
 
 /-! ## List parameters as views of the input
 
@@ -2018,10 +2074,50 @@ partial def viewTele {α : Type} (ty : Expr) (args others : Array Expr) (pos : A
         viewTele (b.instantiate1 x) (args.push x) (others.push x) (pos.push args.size) lst? k
   | _ => k args others pos lst? ty
 
-elab "frontx_view " f:ident : command => liftTermElabM do
+/-! `frontx_spec g` for `def g ys := f a₁ … aₙ` (each `aⱼ` one of the `ys`, or a fixed term: a type, an instance,
+a function): `g.eq : g ys = body of f`, the recursive calls with the same fixed arguments folded to `g`
+(specialisation of polymorphic and higher-order definitions). -/
+elab "frontx_spec " g:ident : command => liftTermElabM do
+  let gN ← realizeGlobalConstNoOverloadWithInfo g
+  let info ← getConstInfoDefn gN
+  lambdaTelescope info.value fun ys body => do
+    let body := body.headBeta
+    let .const fN lvls := body.getAppFn | throwError "frontx_spec: the body must be an application of a definition"
+    let args := body.getAppArgs
+    let some eqn ← getUnfoldEqnFor? fN (nonRec := true) | throwError "frontx_spec: no unfolding equation for {fN}"
+    let eqnInfo ← getConstInfo eqn
+    let eqTy := eqnInfo.type.instantiateLevelParams eqnInfo.levelParams lvls
+    let some (_, _, rhs) := (← instantiateForall eqTy args).eq? | throwError "frontx_spec: bad equation"
+    let mut posOf : Array Nat := #[]
+    for y in ys do
+      let some j := args.findIdx? (· == y) | throwError "frontx_spec: parameter {y} is not passed on directly"
+      posOf := posOf.push j
+    let rhs' := rhs.replace fun e =>
+      if e.isAppOfArity fN args.size then
+        let ea := e.getAppArgs
+        if (List.range args.size).all fun j => posOf.contains j || ea[j]! == args[j]! then
+          some (mkAppN (mkConst gN) (posOf.map (ea[·]!)))
+        else none
+      else none
+    let rhs' ← Core.betaReduce rhs'
+    if (rhs'.find? (·.isConstOf fN)).isSome then
+      throwError "frontx_spec: a recursive call changes a fixed argument{indentExpr rhs'}"
+    let ty ← mkForallFVars ys (← mkEq (mkAppN (mkConst gN) ys) rhs')
+    let pf ← mkLambdaFVars ys (mkAppN (mkConst eqn lvls) args)
+    addDecl (.thmDecl { name := gN ++ `eq, levelParams := [], type := ty, value := pf })
+    let eqName := gN ++ `eq
+    logInfo m!"frontx: {eqName} : {ty}"
+
+syntax "frontx_view " ident (" from " ident)? : command
+elab_rules : command
+  | `(frontx_view $f:ident $[from $e?]?) => liftTermElabM do
   let fn ← realizeGlobalConstNoOverloadWithInfo f
   let info ← getConstInfo fn
-  let some eqn ← getUnfoldEqnFor? fn (nonRec := true) | throwError "frontx_view: no unfolding equation for {fn}"
+  let eqn ← match e? with
+    | some e => realizeGlobalConstNoOverloadWithInfo e
+    | none =>
+      let some eqn ← getUnfoldEqnFor? fn (nonRec := true) | throwError "frontx_view: no unfolding equation for {fn}"
+      pure eqn
   let eqnInfo ← getConstInfo eqn
   let lvls := info.levelParams.map fun _ => levelZero
   let gN := fn ++ `view
@@ -2069,11 +2165,12 @@ elab "frontx_view " f:ident : command => liftTermElabM do
   let gI := mkIdent gN
   let fI := mkIdent fn
   let vI := mkIdent (if vw == ``viewN then ``viewN_eq else ``view_eq)
+  let eI := mkIdent eqn
   addThm (gN ++ `eq) eqTy (← `(tactic|
     (intros
      unfold $gI:ident
      rw [$vI:ident]
-     split <;> first | rfl | simp only [$fI:ident] | (rw [$fI:ident]))))
+     split <;> first | rfl | simp only [$fI:ident] | (rw [$fI:ident]) | (rw [$eI:ident]; rfl) | (rw [$eI:ident]))))
   let eqName := gN ++ `eq
   logInfo m!"frontx: {gN}, {eqName} : {eqTy}"
 
@@ -2091,10 +2188,19 @@ the hypothesis of `implements1_of_frontx` (`Impl1.lean`). -/
 def Ty.repName : Ty → Name
   | .bv => ``id | .u8 => ``r8 | .u32 => ``r32 | .u64 => ``r64 | .nat => ``rN | .bool => ``rB
 
-elab "frontx_entry " g:ident : command => liftTermElabM do
+syntax "frontx_entry " ident (" from " ident)? : command
+elab_rules : command
+  | `(frontx_entry $g:ident $[from $e?]?) => liftTermElabM do
   let gN ← realizeGlobalConstNoOverloadWithInfo g
   let info ← getConstInfoDefn gN
-  let (fN, inits, rty) ← lambdaTelescope info.value fun xs body => do
+  -- `g xs = f xs a₁ … aₙ`: the definition of `g`, or a proved equation (`from`)
+  let eqN? ← e?.mapM fun e => realizeGlobalConstNoOverloadWithInfo e
+  let val ← match eqN? with
+    | none => pure info.value
+    | some eqN => forallTelescope (← getConstInfo eqN).type fun xs ty => do
+        let some (_, _, rhs) := ty.eq? | throwError "frontx_entry: `from` needs an equation"
+        mkLambdaFVars xs rhs
+  let (fN, inits, rty) ← lambdaTelescope val fun xs body => do
     unless xs.size == 1 && (← whnfR (← inferType xs[0]!)).isConstOf ``ByteArray do
       throwError "frontx_entry: expected one ByteArray parameter"
     let .const fN _ := body.getAppFn | throwError "frontx_entry: the body must be an application of a compiled function"
@@ -2134,8 +2240,12 @@ elab "frontx_entry " g:ident : command => liftTermElabM do
   synthesizeSyntheticMVarsNoPostponing
   let ty ← instantiateMVars ty
   if ty.hasMVar then throwError "frontx_entry: statement has metavariables{indentExpr ty}"
+  let rwTac ← match eqN? with
+    | none => `(tactic| skip)
+    | some eqN => `(tactic| rw [$(mkIdent eqN):ident xs])
   addThm (gN ++ `exec) ty (← `(tactic| (
     intro xs env h1 hs h8
+    $rwTac:tactic
     refine entry_exec ?_
     apply $execI
     unfold $repNI
@@ -2145,6 +2255,7 @@ elab "frontx_entry " g:ident : command => liftTermElabM do
       | omega
       | (simp [seqSet, BEnv.set, BExp.denote, h1]; done)
       | (simp [seqSet, BEnv.set, BExp.denote, h1]; omega))))
+  checkAxioms (gN ++ `exec)
   logInfo m!"frontx: {gN}.prog, {gN}.exec"
 
 end Proven.Frontx

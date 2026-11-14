@@ -37,10 +37,11 @@ Translator (recursion / non-recursive path of `compileCmd` only, not loops yet):
 - then: tuple/Option *parameters* (one variable per component; `match p with | (a, b)`, `match o with | none | some v`
   as tests on the tag variable), structures of scalars the same way, enum-like inductives as a tag word.
 
-## Not started / deferred
-- loop inside a loop body, two loops in sequence (= calls: `sub` node, variable renaming of the callee) — see
-  the message to the coordinator; NOTES §10.1.
-- list parameters as array views (`length`, `sum`, … of the book).
-- generated machine-theorem statement; rebase onto reorganised `main` (module renames `Proven.X → Riscv.Direct.X`).
-- monomorphisation / specialisation of polymorphic and higher-order definitions (only head-unfolding with a known
-  function argument exists: `skipWhile … isWs`).
+## Not started / deferred (after round 4, NOTES §11)
+- output buffers: list results (`take`, `drop`, `reverse`, `filter`, `map`, sorts of the book) — a `push` node
+  writing block 1 at a counter variable, `Implements1` with `retLen = true` (length in `a1`).
+- `List.final?` (3-pattern list match), user inductives (`Pos`, `Even`), enum-like inductives (tag word).
+- entry points with several inputs (`Bytes` decoding of `α × β`), non-scalar results (`Res` for pairs/`Option`
+  via `Encode.lean`).
+- loops inside loops / calls: wait for the `calls` box (call/return + stack in the middle layer).
+- multiply (variable × variable): needs an `Op` (Spec frozen).

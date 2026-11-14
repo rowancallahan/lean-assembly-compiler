@@ -4,7 +4,7 @@ from `Testing/asm/emit_frontx.lean` in `Testing/asm/frontx-words/`, first line =
 emulator, in the `Implements1` calling convention (`Spec/Implements1.lean`): a0 = input, a1 = length, a2 = work
 base (8-aligned), a3 = output, sp = work end.
 
-check N [crcraw|b64all|findnl|be32at0]: fixed inputs and random ones (lengths up to 3000).  Each case gets its own
+check N [crcraw|b64all|findnl|be32at0|tailsum|nontailsum|taillength|booklength]: fixed inputs and random ones (lengths up to 3000).  Each case gets its own
 input / output (R result bytes) / work block (`8 * (slots + 1) + 7` bytes = `space n`, at an 8-aligned base), each
 followed by 16 guard bytes; the driver sets gp to a magic value before the call and stores gp, sp after it.
 Checked on QEMU and Sail: output = the Python reference (little-endian), input, guards unchanged, gp and sp
@@ -27,6 +27,10 @@ FUNCS = {
     "b64all": (4, lambda xs: sum(b64digit(c) for c in xs) % 2 ** 32),
     "findnl": (8, lambda xs: next((k for k, c in enumerate(xs) if c == 10), len(xs))),
     "be32at0": (8, lambda xs: at(xs, 0) << 24 | at(xs, 1) << 16 | at(xs, 2) << 8 | at(xs, 3)),
+    "tailsum": (8, lambda xs: sum(xs)),
+    "nontailsum": (8, lambda xs: sum(xs)),
+    "taillength": (8, lambda xs: len(xs)),
+    "booklength": (8, lambda xs: len(xs)),
 }
 FN = sys.argv[3] if len(sys.argv) > 3 else "crcraw"
 R, REF = FUNCS[FN]
