@@ -10,12 +10,6 @@ set_option maxRecDepth 100000
 
 namespace Proven.Vacuity
 
-/-- where the code goes -/
-def pc0 : BitVec 64 := 0x80000000#64
-/-- the return address: a `jal x0, 0` ("park") sits there -/
-def ra0 : BitVec 64 := 0x80001000#64
-def sp0 : BitVec 64 := 0x80002000#64
-
 /-- memory: `code` at `pc0`, `park` at `ra0` -/
 def memC (code : List (BitVec 32)) : Mem :=
   loadBytes (loadBytes ∅ ra0.toNat (codeBytes8 [park])) pc0.toNat (codeBytes8 code)
@@ -32,9 +26,6 @@ theorem sC_x (code a0 a1) (i : Fin 32) : getX (sC code a0 a1) i =
 theorem sC_ra (code a0 a1) : getX (sC code a0 a1) 1 = ra0 := by rw [sC_x]; rfl
 theorem sC_ra_even (code a0 a1) : (getX (sC code a0 a1) 1).toNat % 2 = 0 := by rw [sC_ra]; decide
 
-theorem codeOK_pc0 {n : Nat} (hn : n ≤ 1000) : codeOK pc0 n := by
-  refine ⟨by decide, by decide, ?_⟩; have : pc0.toNat = 0x80000000 := rfl; omega
-
 theorem sC_code {code : List (BitVec 32)} (hn : code.length ≤ 1000) (a0 a1) : codeAt (sC code a0 a1) pc0 code :=
   codeAt_load _ code (codeOK_pc0 hn) rfl
 
@@ -45,8 +36,6 @@ theorem sC_park {code : List (BitVec 32)} (hn : code.length ≤ 1000) (a0 a1) : 
   show (memC code)[_]? = _
   rw [memC, load_get_other]
   rw [codeBytes8_length]; simp only [pc0, ra0]; simp; omega
-
-theorem pcOK_ra0 : pcOK ra0 := ⟨by decide, by decide, by decide⟩
 
 /-! ## `compile_ok`: `1 + 1` -/
 
@@ -107,11 +96,11 @@ theorem after {s s' : St} {pc : BitVec 64} {rd v} {w : BitVec 32} {ws : List (Bi
   have hok' := (codeOK_append (a := 1) (b := ws.length) (by simpa [Nat.add_comm] using hok)).2
   exact ⟨codeAt_mem hn.mem (by simpa using hc'.2), by simpa using hok'⟩
 
+set_option maxHeartbeats 0 in
 /-- **Execution witness**: from `sC (compile e11) 0 0`, nine retired instructions reach a state with
 `PC = ra0` and `a0 = 2`.  Each step is a step lemma of the Sail model (`step_zero`, `step_shl`, `step_inc`,
 `step_op`, `step_res`, `step_ret`, proved by symbolic evaluation of `run_hart_active`); the proof does not use
 `compile_ok`, `gen_ok` or any compiler lemma. -/
-set_option maxHeartbeats 0 in
 theorem exec_e11 : ∃ s', Steps 9 (sC (compile e11) 0 0) s' ∧ s'.regs.get? .PC = some ra0 ∧
     getX s' 10 = 2#64 ∧ s'.mem = (sC (compile e11) 0 0).mem := by
   have h0 := sC_cfg (compile e11) 0 0
@@ -119,6 +108,8 @@ theorem exec_e11 : ∃ s', Steps 9 (sC (compile e11) 0 0) s' ∧ s'.regs.get? .P
   have hn : (compile e11).length ≤ 1000 := by rw [compile_e11]; decide
   have hc0 := sC_code hn 0 0
   have hok0 := codeOK_pc0 hn
+  have hra0 := sC_ra (compile e11) 0 0
+  generalize sC (compile e11) 0 0 = S at h0 hpc0 hc0 hok0 hra0 ⊢
   rw [compile_e11] at hc0 hok0
   obtain ⟨ok, hi⟩ := step_on hc0 hok0
   obtain ⟨s1, n1⟩ := step_zero h0 hpc0 ok 0 (by decide) hi
@@ -138,11 +129,11 @@ theorem exec_e11 : ∃ s', Steps 9 (sC (compile e11) 0 0) s' ∧ s'.regs.get? .P
   obtain ⟨s8, n8⟩ := step_res n7.cfg n7.pc ok hi
   obtain ⟨hc, hok⟩ := after n8 hc hok; obtain ⟨ok, hi⟩ := step_on hc hok
   have hra : getX s8 1 = ra0 := by
-    simp only [n8.x, n7.x, n6.x, n5.x, n4.x, n3.x, n2.x, n1.x]; simp [T, sC_x]
+    simp only [n8.x, n7.x, n6.x, n5.x, n4.x, n3.x, n2.x, n1.x]; simp only [getX_eq] at hra0; simp [T, hra0]
   obtain ⟨s9, n9⟩ := step_ret n8.cfg n8.pc ok hi (by rw [hra]; decide)
   refine ⟨s9, ⟨s1, n1.ret, s2, n2.ret, s3, n3.ret, s4, n4.ret, s5, n5.ret, s6, n6.ret, s7, n7.ret, s8, n8.ret,
     s9, n9.ret, rfl⟩, by rw [n9.pc, hra], ?_, ?_⟩
-  · simp only [n9.x, n8.x, n7.x, n6.x, n5.x, n4.x, n3.x, n2.x, n1.x]; simp [T, Op.raw, Op.eval]; decide
+  · simp only [n9.x, n8.x, n7.x, n6.x, n5.x, n4.x, n3.x, n2.x, n1.x]; simp [T, Op.raw, Op.eval]
   · rw [n9.mem, n8.mem, n7.mem, n6.mem, n5.mem, n4.mem, n3.mem, n2.mem, n1.mem]
 
 end Proven.Vacuity

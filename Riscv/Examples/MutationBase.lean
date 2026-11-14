@@ -43,6 +43,19 @@ def park : BitVec 32 := wJ 0 0
 
 theorem park_eq : park = 0x0000006f#32 := by decide
 
+/-! ## The fixed placement used by the witnesses -/
+
+/-- where the code goes -/
+def pc0 : BitVec 64 := 0x80000000#64
+/-- the return address: a `jal x0, 0` ("park") sits there -/
+def ra0 : BitVec 64 := 0x80001000#64
+def sp0 : BitVec 64 := 0x80002000#64
+
+theorem codeOK_pc0 {n : Nat} (hn : n ≤ 1000) : codeOK pc0 n := by
+  refine ⟨by decide, by decide, ?_⟩; have : pc0.toNat = 0x80000000 := rfl; omega
+
+theorem pcOK_ra0 : pcOK ra0 := ⟨by decide, by decide, by decide⟩
+
 theorem joff_zero : joff 0 = 0 := by decide
 
 /-- from a parked state, every later state has the same memory, `x` registers, PC, and `Cfg` -/
