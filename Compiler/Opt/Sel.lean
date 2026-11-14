@@ -77,12 +77,26 @@ def opnd (e : SExp) (k : Nat) (code : Code Nat) : Code Nat × Arg Nat × Nat :=
   | some a => (.skip, a, k)
   | none => (code, .r (tk k), k + 1)
 
-def ops2 (a b : SExp) (ia ib : Nat → Nat → Code Nat) (k : Nat) : Code Nat × Arg Nat × Arg Nat × Nat :=
+def ops2' (a b : SExp) (ia ib : Nat → Nat → Code Nat) (k : Nat) : Code Nat × Arg Nat × Arg Nat × Nat :=
   ((opnd a k (ia (tk k) k)).1.seq (opnd b (opnd a k (ia (tk k) k)).2.2
       (ib (tk (opnd a k (ia (tk k) k)).2.2) (opnd a k (ia (tk k) k)).2.2)).1,
    (opnd a k (ia (tk k) k)).2.1,
    (opnd b (opnd a k (ia (tk k) k)).2.2 (ib (tk (opnd a k (ia (tk k) k)).2.2) (opnd a k (ia (tk k) k)).2.2)).2.1,
    (opnd b (opnd a k (ia (tk k) k)).2.2 (ib (tk (opnd a k (ia (tk k) k)).2.2) (opnd a k (ia (tk k) k)).2.2)).2.2)
+
+/-- temporaries an expression needs (a heuristic, used only to order operands) -/
+def need : SExp → Nat
+  | .var _ => 0
+  | .const _ => 0
+  | .slot _ => 1
+  | .bin _ a b => if need a = need b then need a + 1 else max (need a) (need b)
+  | .ite c a b => max (need c) (max (need a) (need b)) + 1
+
+/-- two operands; the one needing more temporaries is computed first (expressions are pure) -/
+def ops2 (a b : SExp) (ia ib : Nat → Nat → Code Nat) (k : Nat) : Code Nat × Arg Nat × Arg Nat × Nat :=
+  if need a < need b then
+    ((ops2' b a ib ia k).1, (ops2' b a ib ia k).2.2.1, (ops2' b a ib ia k).2.1, (ops2' b a ib ia k).2.2.2)
+  else ops2' a b ia ib k
 
 /-- `d := if T then a else b` -/
 def iteCode (T : Code Nat × Tst Nat × Nat) (a b : SExp) (ia ib : Nat → Nat → Code Nat) (d : Nat) : Code Nat :=
@@ -242,6 +256,20 @@ theorem agree_ite {c a b : SExp} {σ : St Nat} (h : Agree ram fp env sv (.ite c 
    ⟨fun i hi => h.1 i (by simp only [uses, hi, Bool.or_true]),
     fun j hj => h.2 j (by simp only [usesS, hj, Bool.or_true])⟩⟩
 
+theorem ops2'_ok {a b : SExp} {ia ib : Nat → Nat → Code Nat} {k : Nat} {σ : St Nat}
+    (ha : ∀ k σ, Agree ram fp env sv a σ → IntoSpec ram fp (ia (tk k) k) (tk k) k σ (a.denote env sv))
+    (hb : ∀ k σ, Agree ram fp env sv b σ → IntoSpec ram fp (ib (tk k) k) (tk k) k σ (b.denote env sv))
+    (ga : Agree ram fp env sv a σ) (gb : Agree ram fp env sv b σ) :
+    ∃ σ', Exec ram fp (ops2' a b ia ib k).1 σ σ' ∧ (ops2' a b ia ib k).2.1.eval σ'.reg = a.denote env sv ∧
+      (ops2' a b ia ib k).2.2.1.eval σ'.reg = b.denote env sv ∧ Frame (32 + k) σ σ' ∧
+      argBelow (ops2' a b ia ib k).2.1 (32 + (ops2' a b ia ib k).2.2.2) ∧
+      argBelow (ops2' a b ia ib k).2.2.1 (32 + (ops2' a b ia ib k).2.2.2) ∧ k ≤ (ops2' a b ia ib k).2.2.2 := by
+  obtain ⟨σ₁, x₁, v₁, f₁, b₁, k₁⟩ := opnd_ok (ha k σ ga) ga
+  obtain ⟨σ₂, x₂, v₂, f₂, b₂, k₂⟩ := opnd_ok (hb _ σ₁ (gb.frame f₁)) (gb.frame f₁)
+  refine ⟨σ₂, .seq x₁ x₂, ?_, v₂, f₁.trans f₂ (Nat.add_le_add_left k₁ 32), fun x hx => ?_, b₂, Nat.le_trans k₁ k₂⟩
+  · rw [← v₁]; exact argEval_congr fun x hx => f₂.2 x (b₁ x hx)
+  · have := b₁ x hx; show x < 32 + _; simp only [ops2']; omega
+
 theorem ops2_ok {a b : SExp} {ia ib : Nat → Nat → Code Nat} {k : Nat} {σ : St Nat}
     (ha : ∀ k σ, Agree ram fp env sv a σ → IntoSpec ram fp (ia (tk k) k) (tk k) k σ (a.denote env sv))
     (hb : ∀ k σ, Agree ram fp env sv b σ → IntoSpec ram fp (ib (tk k) k) (tk k) k σ (b.denote env sv))
@@ -250,11 +278,13 @@ theorem ops2_ok {a b : SExp} {ia ib : Nat → Nat → Code Nat} {k : Nat} {σ : 
       (ops2 a b ia ib k).2.2.1.eval σ'.reg = b.denote env sv ∧ Frame (32 + k) σ σ' ∧
       argBelow (ops2 a b ia ib k).2.1 (32 + (ops2 a b ia ib k).2.2.2) ∧
       argBelow (ops2 a b ia ib k).2.2.1 (32 + (ops2 a b ia ib k).2.2.2) ∧ k ≤ (ops2 a b ia ib k).2.2.2 := by
-  obtain ⟨σ₁, x₁, v₁, f₁, b₁, k₁⟩ := opnd_ok (ha k σ ga) ga
-  obtain ⟨σ₂, x₂, v₂, f₂, b₂, k₂⟩ := opnd_ok (hb _ σ₁ (gb.frame f₁)) (gb.frame f₁)
-  refine ⟨σ₂, .seq x₁ x₂, ?_, v₂, f₁.trans f₂ (Nat.add_le_add_left k₁ 32), fun x hx => ?_, b₂, Nat.le_trans k₁ k₂⟩
-  · rw [← v₁]; exact argEval_congr fun x hx => f₂.2 x (b₁ x hx)
-  · have := b₁ x hx; show x < 32 + _; simp only [ops2]; omega
+  unfold ops2
+  by_cases h : need a < need b
+  · rw [if_pos h]
+    obtain ⟨σ', hx, vb, va, f, bb, ba, kk⟩ := ops2'_ok (k := k) hb ha gb ga
+    exact ⟨σ', hx, va, vb, f, ba, bb, kk⟩
+  · rw [if_neg h]
+    exact ops2'_ok ha hb ga gb
 
 theorem tstOf_ok {c : Code Nat} {k : Nat} {σ : St Nat} {v : BitVec 64} (h : IntoSpec ram fp c (tk k) k σ v) :
     TstSpec ram fp (tstOf c k) k σ v := by

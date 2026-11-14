@@ -177,3 +177,9 @@ Code size 245 words (before: 442). Tested: `WDIR=opt-words python3 Testing/asm/m
 (QEMU == Sail emulator == sorted; guard bytes, gp, sp, frame writes checked by that script).
 Open: only 2 of 7 locals fit in registers because the expressions need 4 temporaries; callee-saved registers
 (saved in the frame) or a liveness-based assignment would remove the remaining slot traffic.
+
+Update (operand order + assignment search): `Sel.ops2` computes the operand needing more temporaries first
+(`need`, Sethi–Ullman style; `ops2_ok` proved); `Riscv/Back/OptB.lean` tries 120 candidate assignments (T temporaries ×
+subsets of the 8 most used locals), cheapest first, first passing the proved checks wins. Merge sort: T = 3, locals
+`11, 8, 10` in registers; 231 words; 60/60 `msort_test.py check`; instructions per element n = 100 / 1000 / 100000:
+221.8 / 329.9 / 495.5 (gcc -O2 101.8 / 132.2 / 221.2: 2.2 / 2.5 / 2.2×). Emitting takes 15 s (interpreted).

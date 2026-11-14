@@ -2,7 +2,7 @@
 statement of `compileBF_ok` for the words it returns) and the total drop-in `compileBFO`.
 
 Which locals live in registers is chosen by an untrusted heuristic (`pickRegs`: most used first, loops
-weighted); every choice is checked by the proved pipeline (`WideF.optB`), and the first that passes is used. -/
+weighted); every choice is checked by the proved pipeline (`WideF.optB`), and the first that passes (cheapest candidate first) is used. -/
 import Riscv.Back.Wide
 import Riscv.Back.BStmt
 import Compiler.Opt.BFn
@@ -58,15 +58,29 @@ def gB (T : Nat) (regs : List Nat) (x : Nat) : Reg :=
   if 32 ≤ x then (if x - 32 < T then rk (x - 32) else scB)
   else if regs.idxOf (x - 8) < regs.length ∧ T + regs.idxOf (x - 8) < 6 then rk (T + regs.idxOf (x - 8)) else scB
 
-def tryB (N : Nat) (bv : List Nat) (p : Mach.BStmt) (T : Nat) : Option (List (BitVec 32)) :=
-  rvwF.optB scB (gB T (pickRegs p N (6 - T))) (fun j => !(pickRegs p N (6 - T)).contains j) N bv p
+/-- all sublists of `l` with `k` elements -/
+def choose : Nat → List Nat → List (List Nat)
+  | 0, _ => [[]]
+  | _ + 1, [] => []
+  | k + 1, x :: l => (choose k l).map (x :: ·) ++ choose (k + 1) l
 
-def firstB (f : Nat → Option (List (BitVec 32))) : List Nat → Option (List (BitVec 32))
+/-- candidate assignments `(T, locals in registers)`: the locals are among the 8 most used; cheapest
+(least weighted uses left in slots) first -/
+def candidates (p : Mach.BStmt) (N : Nat) : List (Nat × List Nat) :=
+  let top := pickRegs p N 8
+  let cost := fun (c : Nat × List Nat) => ((List.range N).filter fun j => !c.2.contains j).foldl (fun a j => a + score p (8 + j)) 0
+  ([1, 2, 3, 4, 5, 6].flatMap fun T => (choose (min (6 - T) top.length) top).map fun r => (T, r)).mergeSort
+    fun a b => cost a ≤ cost b
+
+def tryB (N : Nat) (bv : List Nat) (p : Mach.BStmt) (c : Nat × List Nat) : Option (List (BitVec 32)) :=
+  rvwF.optB scB (gB c.1 c.2) (fun j => !c.2.contains j) N bv p
+
+def firstB {α : Type} (f : α → Option (List (BitVec 32))) : List α → Option (List (BitVec 32))
   | [] => none
   | T :: l => match f T with | some ws => some ws | none => firstB f l
 
-theorem firstB_ok {f : Nat → Option (List (BitVec 32))} {ws : List (BitVec 32)} :
-    ∀ {l : List Nat}, firstB f l = some ws → ∃ T, f T = some ws
+theorem firstB_ok {α : Type} {f : α → Option (List (BitVec 32))} {ws : List (BitVec 32)} :
+    ∀ {l : List α}, firstB f l = some ws → ∃ T, f T = some ws
   | [], h => nomatch h
   | T :: l, h => by
     unfold firstB at h
@@ -81,7 +95,7 @@ open Mach Mach.Riscv
 
 /-- **The optimising spill-slot compiler** (byte blocks). -/
 def compileOptB (N : Nat) (bv : List Nat) (p : Proven.BStmt) : Except String (List (BitVec 32)) :=
-  match firstB (tryB N bv (toMS p)) [1, 2, 3, 4, 5, 6] with
+  match firstB (tryB N bv (toMS p)) (candidates (toMS p) N) with
   | some ws => .ok ws
   | none => .error "compileOptB: no register assignment passed the checks"
 
@@ -100,7 +114,7 @@ theorem compileOptB_ok (N : Nat) (bv : List Nat) {p : Proven.BStmt} {ws : List (
       Cfg s' ∧ calleeSavedKept s s' ∧ getX s' 3 = getX s 3 := by
   have hopt : ∃ T, tryB N bv (toMS p) T = some ws := by
     unfold compileOptB at hcmp
-    cases hfb : firstB (tryB N bv (toMS p)) [1, 2, 3, 4, 5, 6] with
+    cases hfb : firstB (tryB N bv (toMS p)) (candidates (toMS p) N) with
     | none => rw [hfb] at hcmp; exact nomatch hcmp
     | some w => rw [hfb] at hcmp; cases hcmp; exact firstB_ok hfb
   obtain ⟨T, hT⟩ := hopt
