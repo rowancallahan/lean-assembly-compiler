@@ -192,10 +192,13 @@ theorem tableLoop_exec (σ : Mach.BState) (tbl : List (BitVec 64)) (hw : σ.whea
     (fun τ => 256 - (τ.env 4).toNat)
     (fun ⟨env, heap, wheap⟩ ⟨hh, hw', hle, h1⟩ hc => by
       dsimp only at hh hw' hle h1
-      simp only [Mach.BExp.denote, ult_ne, show (BitVec.ofNat 64 256).toNat = 256 from rfl] at hc
-      generalize hkdef : (env 4).toNat = k at hw' hle hc
+      have e256 : (256 : BitVec 64).toNat = 256 := rfl
+      simp only [Mach.BExp.denote, ult_ne, e256] at hc
+      obtain ⟨k, hkdef⟩ : ∃ k, (env 4).toNat = k := ⟨_, rfl⟩
+      rw [hkdef] at hw' hle hc
       have ek : env 4 = w64 (BitVec.ofNat 32 k) := by
-        apply BitVec.eq_of_toNat_eq; rw [toNat_w64, BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
+        apply BitVec.eq_of_toNat_eq; rw [toNat_w64, BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]; exact hkdef
+      have e5 : (env 4 + 1).toNat = k + 1 := by rw [toNat_inc (n := 256) (by omega) (by omega)]; omega
       obtain ⟨e', hrep, h5', hk⟩ := rep_exec (BitVec.ofNat 32 k) 7 ⟨env.set 5 (env 4), heap, wheap⟩
         (by simp [Mach.BEnv.set, ek])
       rw [step8_iter] at h5'
@@ -205,18 +208,17 @@ theorem tableLoop_exec (σ : Mach.BState) (tbl : List (BitVec 64)) (hw : σ.whea
         .assign)), ⟨?_, ?_, ?_, ?_⟩, ?_⟩
       all_goals simp only [Mach.BEnv.set, Mach.BExp.denote, Op.eval, if_pos, if_true]
       · exact hh
-      · have e5 := toNat_inc (show (e' 4).toNat < 256 by rw [e4]; omega) (by omega)
-        simp only [e5, e4, hw', List.getElem_cons_zero, List.set_cons_zero, h5']
-        rw [table_set (by omega) hl]
-      · rw [toNat_inc (show (e' 4).toNat < 256 by rw [e4]; omega) (by omega), e4]; omega
+      · simp only [e4, hw', List.getElem_cons_zero, List.set_cons_zero, h5', hkdef]
+        rw [e5, table_set (by omega) hl]
+      · rw [e4, e5]; omega
       · rw [hk 1 (by decide)]; simp [Mach.BEnv.set, h1]
-      · rw [toNat_inc (show (e' 4).toNat < 256 by rw [e4]; omega) (by omega), e4]; omega)
+      · rw [e4, e5, hkdef]; omega)
     (fun ⟨env, heap, wheap⟩ ⟨hh, hw', hle, h1⟩ hc => by
       dsimp only at hh hw' hle h1 ⊢
-      have : ¬ (env 4).toNat < 256 := fun hlt => (ult_ne (a := env 4) (b := BitVec.ofNat 64 256)).2 hlt hc
+      have : ¬ (env 4).toNat < 256 := fun hlt => (ult_ne (a := env 4) (b := 256)).2 hlt hc
       refine ⟨hh, ?_, h1⟩
-      rw [hw', show (env 4).toNat = 256 by omega, List.take_of_length_le (by rw [length_tab64]),
-        List.drop_of_length_le (by rw [hl]), List.append_nil])
+      rw [hw', show (env 4).toNat = 256 by omega, List.take_of_length_le (by rw [length_tab64]; exact Nat.le_refl _),
+        List.drop_of_length_le (by rw [hl]; exact Nat.le_refl _), List.append_nil])
     σ ⟨rfl, by rw [hw, h4]; simp, by rw [h4]; simp, rfl⟩
   exact ⟨σ₁, hl', hq⟩
 
@@ -245,30 +247,53 @@ theorem mainLoop_exec (σ : Mach.BState) (xs : List UInt8) (out : List (BitVec 8
       simp only [Mach.BExp.denote, ult_ne, h1', h1, toNat_ofNat_lt (show xs.length < 2 ^ 64 by omega)] at hc
       generalize hj : (env 4).toNat = j at hle h5' hc
       generalize hcd : (xs.take j).foldl byteStep 0xFFFFFFFF#32 = c at h5'
-      have hb : j < (xs.map (·.toBitVec)).length := by simp; omega
-      have e6 : (xs.map (·.toBitVec))[j].setWidth 64 = w64 (xs[j].toBitVec.setWidth 32) := by
-        apply BitVec.eq_of_toNat_eq; simp [toNat_w64]
-      let env6 := env.set 6 ((xs.map (·.toBitVec))[j].setWidth 64)
-      have hidx : ((Mach.BExp.bin .and (.bin .xor (.var 5) (.var 6)) (.const 255)).denote env6).toNat =
-          (c ^^^ xs[j].toBitVec.setWidth 32).toNat % 256 := by
-        simp only [Mach.BExp.denote, Op.eval, env6, Mach.BEnv.set, show (5 : Nat) ≠ 6 by decide, if_false, if_true,
-          h5', e6, w64_xor, BitVec.toNat_and, toNat_w64]
-        rw [show (255#64).toNat = 2 ^ 8 - 1 from rfl, Nat.and_two_pow_sub_one_eq_mod]
-      have hidx' : ((Mach.BExp.bin .and (.bin .xor (.var 5) (.var 6)) (.const 255)).denote env6).toNat < 256 := by
-        rw [hidx]; omega
-      refine ⟨_, .seq (.load (by rw [hh', hh]; simp) (by rw [hh, hh'] at *; simpa using hb)) (.seq (.load64 (by simp [hw'])
-        (by simp only [hw']; simpa [length_tab64] using hidx')) (.seq .assign .assign)), ⟨?_, ?_, ?_, ?_, ?_⟩, ?_⟩
-      all_goals simp only [Mach.BEnv.set, Mach.BExp.denote, Op.eval]
-      all_goals simp only [show (4 : Nat) ≠ 5 by decide, show (4 : Nat) ≠ 6 by decide, show (4 : Nat) ≠ 7 by decide,
-        show (1 : Nat) ≠ 4 by decide, show (1 : Nat) ≠ 5 by decide, show (1 : Nat) ≠ 6 by decide,
-        show (1 : Nat) ≠ 7 by decide, show (5 : Nat) ≠ 6 by decide, show (5 : Nat) ≠ 7 by decide,
-        show (5 : Nat) ≠ 4 by decide, show (6 : Nat) ≠ 7 by decide, if_false, if_true]
-      · exact hh'
-      · exact hw'
-      · exact h1'
-      · rw [toNat_inc (show (env 4).toNat < xs.length by omega) (by omega)]; omega
-      · sorry
-      · rw [toNat_inc (show (env 4).toNat < xs.length by omega) (by omega)]; omega)
+      subst hh'
+      subst hw'
+      have hjx : j < (xs.map (fun x : UInt8 => x.toBitVec)).length := by simp; omega
+      let X6 : BitVec 64 := w64 (xs[j].toBitVec.setWidth 32)
+      let y := c ^^^ xs[j].toBitVec.setWidth 32
+      let T : BitVec 64 := w64 (step8 (lo8 y))
+      let e1 := env.set 6 X6
+      let e2 := e1.set 7 T
+      let e3 := e2.set 5 (w64 (byteStep c xs[j]))
+      let e4 := e3.set 4 (env 4 + 1)
+      have hX6 : ((xs.map (fun x : UInt8 => x.toBitVec))[j]'hjx).setWidth 64 = X6 := by
+        apply BitVec.eq_of_toNat_eq; simp [X6, toNat_w64]
+      have hidx : ((Mach.BExp.bin .and (.bin .xor (.var 5) (.var 6)) (.const 255)).denote e1).toNat = y.toNat % 256 := by
+        simp only [Mach.BExp.denote, Op.eval, e1, X6, y]
+        simp only [Mach.BEnv.set, if_pos, show (5 : Nat) ≠ 6 by decide, if_false, h5', w64_xor, BitVec.toNat_and,
+          toNat_w64, ite_true]
+        rw [show BitVec.toNat (255 : BitVec 64) = 2 ^ 8 - 1 from rfl, Nat.and_two_pow_sub_one_eq_mod]
+      have hT : tab64[(y.toNat % 256)]'(by rw [length_tab64]; omega) = T := by
+        rw [getElem_tab64 (by omega)]; rfl
+      have step1 : Mach.BExec (.load 6 0 (.var 4)) ⟨env, σ.heap, [tab64]⟩ ⟨e1, σ.heap, [tab64]⟩ := by
+        have := Mach.BExec.load (v := 6) (b := 0) (i := .var 4) (σ := ⟨env, σ.heap, [tab64]⟩) (by rw [hh]; simp)
+          (by simp [hh, Mach.BExp.denote, hj]; omega)
+        simp only [hh, Mach.BExp.denote, hj] at this
+        rw [show e1 = env.set 6 X6 from rfl, ← hX6]; simpa [hh] using this
+      have step2 : Mach.BExec (.load64 7 0 (.bin .and (.bin .xor (.var 5) (.var 6)) (.const 255))) ⟨e1, σ.heap, [tab64]⟩
+          ⟨e2, σ.heap, [tab64]⟩ := by
+        have := Mach.BExec.load64 (v := 7) (b := 0) (i := .bin .and (.bin .xor (.var 5) (.var 6)) (.const 255))
+          (σ := ⟨e1, σ.heap, [tab64]⟩) (by simp) (by rw [hidx]; simp [length_tab64]; omega)
+        simp only [hidx] at this
+        rw [show e2 = e1.set 7 T from rfl, ← hT]; simpa using this
+      have hv5 : (Mach.BExp.bin .xor (.var 7) (.bin .lshr (.var 5) (.const 8))).denote e2 = w64 (byteStep c xs[j]) := by
+        simp only [Mach.BExp.denote, Op.eval, e2, e1]
+        simp only [Mach.BEnv.set, ite_true, show (5 : Nat) ≠ 7 by decide, show (5 : Nat) ≠ 6 by decide, if_false, h5']
+        rw [show BitVec.toNat (8 : BitVec 64) % 64 = 8 from rfl, w64_shr, w64_xor, byteStep_tab]
+      have step3 : Mach.BExec (.assign 5 (.bin .xor (.var 7) (.bin .lshr (.var 5) (.const 8)))) ⟨e2, σ.heap, [tab64]⟩
+          ⟨e3, σ.heap, [tab64]⟩ := Mach.Riscv.BExec.assign' (by rw [hv5])
+      have e34 : e3 4 = env 4 := by simp [e3, e2, e1, Mach.BEnv.set]
+      have step4 : Mach.BExec (.assign 4 (.bin .add (.var 4) (.const 1))) ⟨e3, σ.heap, [tab64]⟩ ⟨e4, σ.heap, [tab64]⟩ :=
+        Mach.Riscv.BExec.assign' (by simp only [Mach.BExp.denote, Op.eval, e34]; rfl)
+      have hinc : (env 4 + 1).toNat = j + 1 := by rw [toNat_inc (n := xs.length) (by omega) (by omega), hj]
+      refine ⟨⟨e4, σ.heap, [tab64]⟩, .seq step1 (.seq step2 (.seq step3 step4)), ⟨rfl, rfl, ?_, ?_, ?_⟩, ?_⟩
+      · show e4 1 = _; simp [e4, e3, e2, e1, Mach.BEnv.set, h1']
+      · show (e4 4).toNat ≤ _; simp only [e4, Mach.BEnv.set, ite_true]; omega
+      · show e4 5 = _; simp only [e4, e3, Mach.BEnv.set, show (5 : Nat) ≠ 4 by decide, if_false, ite_true]
+        simp only [ite_true, hinc, foldl_take_succ _ _ hc, hcd]
+      · show xs.length - (e4 4).toNat < xs.length - (env 4).toNat
+        simp only [e4, Mach.BEnv.set, ite_true]; omega)
     (fun ⟨env, heap, wheap⟩ ⟨hh', hw', h1', hle, h5'⟩ hc => by
       dsimp only at hh' hw' h1' hle h5' ⊢
       have : ¬ (env 4).toNat < xs.length := fun hlt =>
@@ -294,13 +319,13 @@ theorem crcP_exec (σ : Mach.BState) (xs : List UInt8) (out : List (BitVec 8)) (
   let σc : Mach.BState := ⟨(σb.env.set 5 0xFFFFFFFF).set 4 0, σb.heap, σb.wheap⟩
   obtain ⟨σe, he, heh, he5⟩ := mainLoop_exec σc xs out (by simp [σc, hbh, σa, hh]) (by simp [σc, hbw])
     (by simp [σc, Mach.BEnv.set, hb1, σa, h1]) hn (by simp [σc, Mach.BEnv.set])
-    (by simp [σc, Mach.BEnv.set]; rfl)
+    (by simp [σc, Mach.BEnv.set])
   have hw4 : (Mach.BExp.bin .xor (.var 5) (.const 0xFFFFFFFF)).denote σe.env = w64 (crc32 xs) := by
     simp only [Mach.BExp.denote, Op.eval, he5, crc32]
     rw [show (4294967295 : BitVec 64) = w64 0xFFFFFFFF#32 from rfl, w64_xor]
   obtain ⟨out', hst, hl', hb', hu⟩ := store8_exec (w64 (crc32 xs)) 3 (by omega)
-    ⟨σe.env.set 4 ((Mach.BExp.bin .xor (.var 5) (.const 0xFFFFFFFF)).denote σe.env), σe.heap, σe.wheap⟩ _ out
-    (by simp [heh, σc, hbh, σa, hh]) (by simp [Mach.BEnv.set, hw4]) (by omega) rfl
+    ⟨σe.env.set 4 ((Mach.BExp.bin .xor (.var 5) (.const 0xFFFFFFFF)).denote σe.env), σe.heap, σe.wheap⟩ (xs.map (fun x => x.toBitVec)) out
+    (by simp [heh, σc, hbh, σa, hh]) (by show Mach.BEnv.set σe.env 4 _ 4 = _; simp only [Mach.BEnv.set, if_pos]; exact hw4) (by omega) rfl
   refine ⟨_, out', .seq (Mach.Riscv.BExec.assign' rfl) (.seq hb (.seq (Mach.Riscv.BExec.assign' rfl) (.seq (Mach.Riscv.BExec.assign' rfl)
     (.seq he (.seq (Mach.Riscv.BExec.assign' rfl) hst))))), rfl, ?_, ?_⟩
   · apply List.ext_getElem?; intro i
