@@ -456,7 +456,7 @@ def inBranch {α : Type} (x : TrM α) : TrM α := do
 def simpNames : Array Name :=
   #[``Tree.step, ``denote_var, ``denote_const, ``denote_bin, ``denote_ite, ``sel_c, ``Op.eval, ``parSet, ``BEnv.set,
     ``seqSet, ``rB_def, ``rd0, ``rd1, ``rd2, ``blk_get, ``r8_fold, ``ba_get!, ``c_not, ``c_and, ``c_or, ``c_eq0, ``c_not', ``c_and', ``c_or', ``c_eq0',
-    ``rN_lit, ``r8_lit, ``r32_lit, ``r64_lit, ``rN_toNat, ``rN_add, ``rN_sub, ``rN_lt, ``rN_inj, ``rN_eq_lit, ``rN_lt_lit, ``rN_lit_lt, ``rN_ite,
+    ``rN_lit, ``r8_lit, ``r32_lit, ``r64_lit, ``rN_toNat, ``rN_add, ``rN_sub, ``rN_lt, ``rN_or, ``rN_and, ``rN_shl, ``rN_inj, ``rN_eq_lit, ``rN_lt_lit, ``rN_lit_lt, ``rN_ite,
     ``r64_add, ``r64_sub, ``r64_and, ``r64_or, ``r64_xor, ``r64_ite, ``r64_eq', ``r64_lt', ``r64_le', ``r64_toNat, ``r64_ofNat,
     ``r32_add, ``r32_sub, ``r32_and, ``r32_or, ``r32_xor, ``r32_ite, ``r32_eq', ``r32_lt', ``r32_le', ``r32_toNat, ``r32_shr,
     ``r8_add, ``r8_sub, ``r8_and, ``r8_or, ``r8_xor, ``r8_ite, ``r8_eq', ``r8_lt', ``r8_le', ``r8_toNat,
@@ -1043,10 +1043,10 @@ def compileLoop (fn : Name) (xs : Array Expr) (rty : Ty) (lhs forE : Expr) (post
               return (t, ← mkLambdaFVars #[h] o, ← mkLambdaFVars #[h] p)
             let (f, o₂, p₂) ← inBranch <| withLocalDeclD `h (mkNot P) fun h => do
               -- the `Option` locals are `none` here: evaluate the code after the loop at `none`, then transport
-              let frozen := (cs.zip ctyK).filter (·.2.isNone) |>.map (·.1)
+              let frz := (cs.zip ctyK).filter (·.2.isNone) |>.map (·.1)
               let mut sN := sT
               let mut eqs := #[]
-              for x in frozen do
+              for x in frz do
                 let some d ← (← getLCtx).findDeclM? fun d => do
                     let ty ← instantiateMVars d.type
                     return if ty.isAppOfArity ``Eq 3 && ty.getArg! 1 == x then some d else none
@@ -1272,9 +1272,12 @@ def compileCmd (f : Ident) (inv? : Option Term) : TermElabM Unit := do
       let tI := mkIdent treeN
       let lI := mkIdent layN
       let sI := mkIdent stepN
+      -- a function that does not call itself: case analysis instead of induction
+      let ind ← if (body.find? (·.isConstOf fn)).isSome then `(tactic| fun_induction $fI:ident $as*)
+        else `(tactic| first | fun_cases $fI:ident $as* | unfold $fI:ident)
       addThm (fn ++ `runs) runsTy (← `(tactic|
         (intro $as*
-         fun_induction $fI:ident $as* <;> intro $σi:ident hR <;>
+         $ind:tactic <;> intro $σi:ident hR <;>
           (have hs := $sI:ident $holes* $σi hR
            frontx_path hs
            first

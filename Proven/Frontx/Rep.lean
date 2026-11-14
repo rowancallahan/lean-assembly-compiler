@@ -76,6 +76,14 @@ theorem rN_inj {a b : Nat} (ha : a < 2 ^ 64) (hb : b < 2 ^ 64) : (rN a = rN b) =
 theorem rN_eq_lit {a n : Nat} (ha : a < 2 ^ 64) (hn : n < 2 ^ 64) : (rN a = BitVec.ofNat 64 n) = (a = n) := rN_inj ha hn
 theorem rN_lt_lit {a n : Nat} (ha : a < 2 ^ 64) (hn : n < 2 ^ 64) : (rN a < BitVec.ofNat 64 n) = (a < n) := rN_lt ha hn
 theorem rN_lit_lt {a n : Nat} (ha : a < 2 ^ 64) (hn : n < 2 ^ 64) : (BitVec.ofNat 64 n < rN a) = (n < a) := rN_lt hn ha
+theorem rN_or (a b : Nat) : rN (a ||| b) = rN a ||| rN b := by
+  apply BitVec.eq_of_toNat_eq; simp [rN, Nat.or_mod_two_pow]
+theorem rN_and (a b : Nat) : rN (a &&& b) = rN a &&& rN b := by
+  apply BitVec.eq_of_toNat_eq; simp [rN, Nat.and_mod_two_pow]
+theorem rN_shl (a b : Nat) : rN (a <<< b) = rN a <<< b := by
+  apply BitVec.eq_of_toNat_eq
+  simp only [rN, BitVec.toNat_ofNat, BitVec.toNat_shiftLeft, Nat.shiftLeft_eq]
+  exact (Nat.mod_mul_mod ..).symm
 theorem rN_ite (p : Prop) [Decidable p] (a b : Nat) : rN (if p then a else b) = if p then rN a else rN b := by
   split <;> rfl
 
