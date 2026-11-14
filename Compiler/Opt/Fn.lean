@@ -10,10 +10,32 @@ open IR
 namespace Wide
 variable (M : Wide) (sc : Reg) (f : Nat → Reg)
 
+/-- the lowered body only (no `ret`) -/
+def body (vars : List Nat) (c : Code Nat) : Option (List (BitVec 32)) :=
+  if (injOn f (vars ++ c.regs) && M.wf sc (c.map f)) = true then some (M.W sc (c.map f)) else none
+
 def fn (vars : List Nat) (c : Code Nat) : Option (List (BitVec 32)) :=
   if (injOn f (vars ++ c.regs) && M.wf sc (c.map f)) = true then some (M.W sc (c.map f) ++ M.wenc .ret) else none
 
 variable {M sc f}
+
+theorem body_ok {ram : Nat → Prop} {fp : Nat} (hram : ∀ a, ram a → M.inRAM a 1) {vars : List Nat} {c : Code Nat}
+    {ws : List (BitVec 32)} (hc : M.body sc f vars c = some ws) {s : M.S} {pc : BitVec 64} (hok : M.ok s)
+    (hpc : M.pcIs s pc) (hf : M.Frag ram fp s pc ws) {σ' : St Nat}
+    (hex : Exec ram fp c ⟨fun x => M.get s (f x), M.mem s⟩ σ') :
+    M.RunTo ram s (next pc ws.length) fun s' =>
+      (∀ x, x ∈ vars → f x ≠ sc → M.get s' (f x) = σ'.reg x) ∧ M.mem s' = σ'.mem := by
+  unfold body at hc
+  by_cases hchk : (injOn f (vars ++ c.regs) && M.wf sc (c.map f)) = true
+  · rw [ite_pos hchk] at hc
+    cases hc
+    obtain ⟨hinj, hwf⟩ := and2 hchk
+    obtain ⟨τ', hx', hr'⟩ := map_ok (f := f) (U := fun x => x ∈ vars ++ c.regs) ram fp
+      (fun x y hx hy => injOn_ok hinj hx hy) hex (fun x hx => List.mem_append.2 (.inr hx))
+      (τ := ⟨M.get s, M.mem s⟩) ⟨rfl, fun _ _ => rfl⟩
+    exact (low_ok hram hx' hwf hok hpc hf ⟨fun _ _ => rfl, rfl⟩).mono fun s₁ _ _ r₁ =>
+      ⟨fun x hx hs => (r₁.1 _ hs).trans (hr'.2 x (List.mem_append.2 (.inl hx))), r₁.2.trans hr'.1⟩
+  · rw [ite_neg hchk] at hc; exact nomatch hc
 
 theorem fn_ok {ram : Nat → Prop} {fp : Nat} (hram : ∀ a, ram a → M.inRAM a 1) {vars : List Nat} {c : Code Nat}
     {ws : List (BitVec 32)} (hc : M.fn sc f vars c = some ws) {s : M.S} {pc : BitVec 64} (hok : M.ok s)
