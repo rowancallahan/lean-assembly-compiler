@@ -187,3 +187,21 @@ subsets of the 8 most used locals), cheapest first, first passing the proved che
 Fuzz path count (coordinator item 2): `Testing/asm/fuzz_opt.lean` now tags each case `_opt` / `_fb`. Seeds 31–34
 (300 cases × 100 inputs each), compiler at 7f96615: 1200/1200 cases on the optimised path, 0 fallbacks; four-way
 check 120,000 pairs, 0 mismatches; triple_opt 18/18.
+
+## Simplification in selection (kernel-checked: `Sel.simpS`, `simpS_denote`, `Agree.simp`; `into`/`tst` apply it)
+
+Two pure rewrites, bottom-up: `x + x ↦ x << 1`; `op x (ite c a b) ↦ ite c (op x a) (op x b)` when `x`, `a`, `b` are
+leaves. And a conditional-assignment arm (inside the `when`) now reuses the caller's temporaries (`iteCode … d k`):
+the test's temporaries are dead there. Effect on merge sort: 2 temporaries suffice, so the 4 hottest locals
+(`11, 8, 9, 10`) are in registers (search picks `(2, [3, 0, 1, 2])`), 215 words.
+
+| merge sort, per element | n = 100 | 1000 | 100000 |
+|---|---|---|---|
+| ours optimised | 193.7 | 285.9 | 427.5 |
+| gcc -O2 | 101.8 | 132.2 | 221.2 |
+| ratio | 1.90 | 2.16 | 1.93 |
+
+`msort_test.py check 60`: 60/60 (QEMU == Sail). Other rows unchanged (sum 5.0, take 6.0, map 7.0, loop sum 3.0,
+gcd 6.0/step, insertion 3911/elt at 1000). Axioms of `compileOptB_ok`, `compileBFO_ok`, `compileOptA_ok`: the same 77 as
+`compileBF_ok` (hash). Callee-saved registers not added: after this change the merge-sort inner loop has no slot
+traffic left in it; remaining spills (`12, 13, 14`) are in the outer loops.

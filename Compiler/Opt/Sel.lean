@@ -22,6 +22,7 @@ inductive SExp where
   | const (c : BitVec 64)
   | bin (op : Op) (a b : SExp)
   | ite (c a b : SExp)
+  deriving DecidableEq
 
 def SExp.denote (env : Fin 32 → BitVec 64) (sv : Nat → BitVec 64) : SExp → BitVec 64
   | .var i => env i
@@ -99,10 +100,10 @@ def ops2 (a b : SExp) (ia ib : Nat → Nat → Code Nat) (k : Nat) : Code Nat ×
   else ops2' a b ia ib k
 
 /-- `d := if T then a else b` -/
-def iteCode (T : Code Nat × Tst Nat × Nat) (a b : SExp) (ia ib : Nat → Nat → Code Nat) (d : Nat) : Code Nat :=
-  if isVar a d = true then .seq T.1 (.when T.2.1.neg (ib d T.2.2))
-  else if isVar b d = true then .seq T.1 (.when T.2.1 (ia d T.2.2))
-  else if (tstUses T.2.1 d || uses a d) = false then .seq T.1 (.seq (ib d T.2.2) (.when T.2.1 (ia d T.2.2)))
+def iteCode (T : Code Nat × Tst Nat × Nat) (a b : SExp) (ia ib : Nat → Nat → Code Nat) (d k : Nat) : Code Nat :=
+  if isVar a d = true then .seq T.1 (.when T.2.1.neg (ib d k))
+  else if isVar b d = true then .seq T.1 (.when T.2.1 (ia d k))
+  else if (tstUses T.2.1 d || uses a d) = false then .seq T.1 (.seq (ib d T.2.2) (.when T.2.1 (ia d k)))
   else .seq T.1 (.seq (ib (tk T.2.2) (T.2.2 + 1)) (.seq (.when T.2.1 (ia (tk T.2.2) (T.2.2 + 1)))
     (.ins (.set d (.r (tk T.2.2))))))
 
@@ -124,13 +125,32 @@ def gen : SExp → (Nat → Nat → Code Nat) × (Nat → Code Nat × Tst Nat ×
         | none => tstOf ((ops2 a b (gen a).1 (gen b).1 k).1.seq
             (.ins (.bin op (tk k) (ops2 a b (gen a).1 (gen b).1 k).2.1 (ops2 a b (gen a).1 (gen b).1 k).2.2.1))) k)
   | .ite c a b =>
-      (fun d k => iteCode ((gen c).2 k) a b (gen a).1 (gen b).1 d,
-       fun k => tstOf (iteCode ((gen c).2 k) a b (gen a).1 (gen b).1 (tk k)) k)
+      (fun d k => iteCode ((gen c).2 k) a b (gen a).1 (gen b).1 d k,
+       fun k => tstOf (iteCode ((gen c).2 k) a b (gen a).1 (gen b).1 (tk k) k) k)
+
+/-- an operand that needs no computation -/
+def isLeaf : SExp → Bool
+  | .var _ | .slot _ | .const _ => true
+  | _ => false
+
+/-- one rewrite at the root (children already simplified) -/
+def simpBin (op : Op) (a b : SExp) : SExp :=
+  if op = .add ∧ a = b then .bin .shl a (.const 1)
+  else match b with
+    | .ite c x y => if (isLeaf a && isLeaf x && isLeaf y) = true then .ite c (.bin op a x) (.bin op a y)
+        else .bin op a b
+    | _ => .bin op a b
+
+/-- expression simplification (pure rewrites, bottom-up) -/
+def simpS : SExp → SExp
+  | .bin op a b => simpBin op (simpS a) (simpS b)
+  | .ite c a b => .ite (simpS c) (simpS a) (simpS b)
+  | e => e
 
 /-- code for `d := e`, temporaries `≥ k` -/
-def into (e : SExp) (d : Nat) (k : Nat) : Code Nat := (gen e).1 d k
+def into (e : SExp) (d : Nat) (k : Nat) : Code Nat := (gen (simpS e)).1 d k
 /-- code and test for `e ≠ 0` -/
-def tst (e : SExp) (k : Nat) : Code Nat × Tst Nat × Nat := (gen e).2 k
+def tst (e : SExp) (k : Nat) : Code Nat × Tst Nat × Nat := (gen (simpS e)).2 k
 
 /-- `e` as a short-circuit conjunction `c ≠ 0 ∧ a ≠ 0` -/
 def cond2 : SExp → Option (SExp × SExp)
@@ -300,7 +320,7 @@ theorem iteCode_ok {T : Code Nat × Tst Nat × Nat} {c a b : SExp} {ia ib : Nat 
     (ha : ∀ d k σ, Agree ram fp env sv a σ → IntoSpec ram fp (ia d k) d k σ (a.denote env sv))
     (hb : ∀ d k σ, Agree ram fp env sv b σ → IntoSpec ram fp (ib d k) d k σ (b.denote env sv))
     (ga : Agree ram fp env sv a σ) (gb : Agree ram fp env sv b σ) :
-    IntoSpec ram fp (iteCode T a b ia ib d) d k σ (if c.denote env sv = 0 then b.denote env sv else a.denote env sv) := by
+    IntoSpec ram fp (iteCode T a b ia ib d k) d k σ (if c.denote env sv = 0 then b.denote env sv else a.denote env sv) := by
   obtain ⟨σ₁, x₁, v₁, f₁, b₁, k₁⟩ := hT
   unfold iteCode
   have var_of : ∀ {e : SExp} {σ₀ : St Nat}, isVar e d = true → Agree ram fp env sv e σ₀ → σ₀.reg d = e.denote env sv := by
@@ -315,7 +335,7 @@ theorem iteCode_ok {T : Code Nat × Tst Nat × Nat} {c a b : SExp} {ia ib : Nat 
   · rw [ite_pos h0]
     by_cases hc : c.denote env sv = 0
     · rw [ite_pos hc]
-      obtain ⟨σ₂, x₂, v₂, m₂, f₂⟩ := hb d T.2.2 σ₁ (gb.frame f₁)
+      obtain ⟨σ₂, x₂, v₂, m₂, f₂⟩ := hb d k σ₁ (gb.frame f₁)
       refine ⟨σ₂, .seq x₁ (.whenT (by rw [Tst.eval_neg, v₁, nz_false hc]; rfl) x₂), v₂, m₂.trans f₁.1,
         fun x hd hx => ?_⟩
       rw [f₂ x hd (by omega), f₁.2 x hx]
@@ -330,7 +350,7 @@ theorem iteCode_ok {T : Code Nat × Tst Nat × Nat} {c a b : SExp} {ia ib : Nat 
       replace v₁ := v₁.trans (nz_false hc)
       exact ⟨σ₁, .seq x₁ (.whenF v₁), var_of h1 (gb.frame f₁), f₁.1, fun x _ hx => f₁.2 x hx⟩
     · rw [ite_neg hc]
-      obtain ⟨σ₂, x₂, v₂, m₂, f₂⟩ := ha d T.2.2 σ₁ (ga.frame f₁)
+      obtain ⟨σ₂, x₂, v₂, m₂, f₂⟩ := ha d k σ₁ (ga.frame f₁)
       refine ⟨σ₂, .seq x₁ (.whenT (v₁.trans (nz_true hc)) x₂), v₂, m₂.trans f₁.1, fun x hd hx => ?_⟩
       rw [f₂ x hd (by omega), f₁.2 x hx]
   · rw [ite_neg h1]
@@ -349,7 +369,7 @@ theorem iteCode_ok {T : Code Nat × Tst Nat × Nat} {c a b : SExp} {ia ib : Nat 
         have ga₂ : Agree ram fp env sv a σ₂ := ⟨fun i hi => by
           rw [f₂ i.val (fun e => by rw [e, hua] at hi; exact nomatch hi) (by omega)]
           exact (ga.frame f₁).1 i hi, fun j hj => by rw [m₂]; exact (ga.frame f₁).2 j hj⟩
-        obtain ⟨σ₃, x₃, v₃, m₃, f₃⟩ := ha d T.2.2 σ₂ ga₂
+        obtain ⟨σ₃, x₃, v₃, m₃, f₃⟩ := ha d k σ₂ ga₂
         refine ⟨σ₃, .seq x₁ (.seq x₂ (.whenT (t₂.trans (v₁.trans (nz_true hc))) x₃)), v₃, m₃.trans (m₂.trans f₁.1),
           fun x hd hx => ?_⟩
         rw [f₃ x hd (by omega), f₂ x hd (by omega), f₁.2 x hx]
@@ -436,11 +456,87 @@ theorem gen_ok : ∀ e : SExp,
       exact iteCode_ok (ihc.2 k σ gc) iha.1 ihb.1 ga gb
     exact ⟨into, fun k σ hg => tstOf_ok (into (tk k) k σ hg)⟩
 
+theorem add_self_shl (x : BitVec 64) : x + x = x <<< 1 := by
+  apply BitVec.eq_of_toNat_eq
+  simp only [BitVec.toNat_add, BitVec.toNat_shiftLeft, Nat.shiftLeft_eq, Nat.pow_one]
+  congr 1; omega
+
+theorem simpBin_denote (op : Op) (a b : SExp) :
+    (simpBin op a b).denote env sv = op.eval (a.denote env sv) (b.denote env sv) := by
+  unfold simpBin
+  by_cases h : op = .add ∧ a = b
+  · rw [if_pos h]; obtain ⟨rfl, rfl⟩ := h
+    simp only [SExp.denote, Op.eval]; rw [add_self_shl]; rfl
+  · rw [if_neg h]
+    cases b with
+    | ite c x y =>
+      simp only
+      by_cases hl : (isLeaf a && isLeaf x && isLeaf y) = true
+      · rw [if_pos hl]; simp only [SExp.denote]; split <;> rfl
+      · rw [if_neg hl]; rfl
+    | _ => rfl
+
+theorem simpS_denote : ∀ e : SExp, (simpS e).denote env sv = e.denote env sv
+  | .bin op a b => by simp only [simpS]; rw [simpBin_denote, simpS_denote a, simpS_denote b]; rfl
+  | .ite c a b => by simp only [simpS, SExp.denote, simpS_denote c, simpS_denote a, simpS_denote b]
+  | .var _ | .slot _ | .const _ => rfl
+
+theorem simpBin_uses (op : Op) (a b : SExp) (x : Nat) :
+    (uses (simpBin op a b) x = true → uses a x = true ∨ uses b x = true) ∧
+    (usesS (simpBin op a b) x = true → usesS a x = true ∨ usesS b x = true) := by
+  unfold simpBin
+  by_cases h : op = .add ∧ a = b
+  · rw [if_pos h]; obtain ⟨rfl, rfl⟩ := h
+    exact ⟨fun hu => .inl (by simpa only [uses, Bool.or_false] using hu),
+      fun hu => .inl (by simpa only [usesS, Bool.or_false] using hu)⟩
+  · rw [if_neg h]
+    cases b with
+    | ite c y z =>
+      show (uses (if (isLeaf a && isLeaf y && isLeaf z) = true then _ else _) x = true → _) ∧
+        (usesS (if (isLeaf a && isLeaf y && isLeaf z) = true then _ else _) x = true → _)
+      by_cases hl : (isLeaf a && isLeaf y && isLeaf z) = true
+      · rw [if_pos hl]
+        simp only [uses, usesS]
+        constructor
+        · cases uses a x <;> cases uses c x <;> cases uses y x <;> cases uses z x <;> decide
+        · cases usesS a x <;> cases usesS c x <;> cases usesS y x <;> cases usesS z x <;> decide
+      · rw [if_neg hl]
+        exact ⟨fun hu => by simpa only [uses, Bool.or_eq_true] using hu,
+          fun hu => by simpa only [usesS, Bool.or_eq_true] using hu⟩
+    | _ => exact ⟨fun hu => by simpa only [uses, Bool.or_eq_true] using hu,
+          fun hu => by simpa only [usesS, Bool.or_eq_true] using hu⟩
+
+theorem simpS_uses : ∀ (e : SExp) (x : Nat),
+    (uses (simpS e) x = true → uses e x = true) ∧ (usesS (simpS e) x = true → usesS e x = true)
+  | .bin op a b, x => by
+    simp only [simpS]
+    obtain ⟨h1, h2⟩ := simpBin_uses op (simpS a) (simpS b) x
+    obtain ⟨a1, a2⟩ := simpS_uses a x
+    obtain ⟨b1, b2⟩ := simpS_uses b x
+    refine ⟨fun hu => ?_, fun hu => ?_⟩ <;> simp only [uses, usesS, Bool.or_eq_true]
+    · exact (h1 hu).elim (fun h => .inl (a1 h)) (fun h => .inr (b1 h))
+    · exact (h2 hu).elim (fun h => .inl (a2 h)) (fun h => .inr (b2 h))
+  | .ite c a b, x => by
+    obtain ⟨c1, c2⟩ := simpS_uses c x
+    obtain ⟨a1, a2⟩ := simpS_uses a x
+    obtain ⟨b1, b2⟩ := simpS_uses b x
+    refine ⟨fun hu => ?_, fun hu => ?_⟩ <;> simp only [simpS, uses, usesS, Bool.or_eq_true] at hu ⊢
+    · exact hu.elim (fun h => .inl (h.elim (fun h => .inl (c1 h)) (fun h => .inr (a1 h)))) (fun h => .inr (b1 h))
+    · exact hu.elim (fun h => .inl (h.elim (fun h => .inl (c2 h)) (fun h => .inr (a2 h)))) (fun h => .inr (b2 h))
+  | .var _, _ | .slot _, _ | .const _, _ => ⟨id, id⟩
+
+theorem Agree.simp {e : SExp} {σ : St Nat} (h : Agree ram fp env sv e σ) : Agree ram fp env sv (simpS e) σ :=
+  ⟨fun i hi => h.1 i ((simpS_uses e i.val).1 hi), fun j hj => h.2 j ((simpS_uses e j).2 hj)⟩
+
 theorem into_ok (e : SExp) (d : Nat) (k : Nat) (σ : St Nat) (h : Agree ram fp env sv e σ) :
-    IntoSpec ram fp (into e d k) d k σ (e.denote env sv) := (gen_ok e).1 d k σ h
+    IntoSpec ram fp (into e d k) d k σ (e.denote env sv) := by
+  have := (gen_ok (simpS e)).1 d k σ h.simp
+  rwa [simpS_denote] at this
 
 theorem tst_ok (e : SExp) (k : Nat) (σ : St Nat) (h : Agree ram fp env sv e σ) :
-    TstSpec ram fp (tst e k) k σ (e.denote env sv) := (gen_ok e).2 k σ h
+    TstSpec ram fp (tst e k) k σ (e.denote env sv) := by
+  have := (gen_ok (simpS e)).2 k σ h.simp
+  rwa [simpS_denote] at this
 
 /-- the loop exits when the condition is zero (`R`: what the loop preserves; implied by `Frame 8`) -/
 theorem loopCode_exit {e : SExp} {body : Code Nat} {σ : St Nat} (hg : Agree ram fp env sv e σ) (h0 : e.denote env sv = 0) :
