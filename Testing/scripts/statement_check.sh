@@ -33,6 +33,11 @@ run() {
   lake env lean --run "$H/stmt_hash.lean" $L Riscv.Examples.CallExamples Proven.Mach.MachineC.compP_ok \
     Proven.Mach.Riscv.callsCode_implements Proven.Mach.Riscv.sumTo_implements Proven.Mach.Riscv.fib_implements \
     Proven.Mach.Riscv.isEven_implements
+  lake env lean --run "$H/stmt_hash.lean" $L Riscv.Examples.TreeEval Proven.Mach.MachineC.execC_ok \
+    Proven.Mach.Riscv.treeEval_implements
+  lake env lean --run "$H/stmt_hash.lean" $L Riscv.Frontx.Machine Proven.Frontx.implements1_res \
+    Proven.Frontx.Ex.crcRaw.implements1 Proven.Frontx.Ex.b64All.implements1 Proven.Frontx.Ex.findNL.implements1 Proven.Frontx.Ex.be32At0.implements1 \
+    Proven.Frontx.Ex.tailSum.implements1 Proven.Frontx.Ex.nonTailSum.implements1 Proven.Frontx.Ex.tailLength.implements1 Proven.Frontx.Ex.bookLength.implements1
 }
 if [ -n "$L" ]; then run; exit 0; fi
 T=$(mktemp); trap 'rm -f "$T"' EXIT

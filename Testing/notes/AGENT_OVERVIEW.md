@@ -14,6 +14,11 @@ Read this first. The top-level `README.md` is for people; this file is for agent
 - Optimising back end (`OPT.md`): the front end (`compileP`, `compileXA`, `compileXB`) emits the optimised words;
   the `Implements1` examples have optimised versions (`Riscv/Examples/Implements1Opt.lean`, `…_implements1O`);
   every `compile%` pipe also has an `Implements1` theorem (`compileX1_ok`, `Compiled.implements1`, `PIPE.md`).
+- Automatic front end (`Riscv/Frontx/`, lib `Frontx`, a default target; notes `Testing/notes/frontx/`): Lean
+  definitions → `BStmt` programs with automatic equation proofs; `frontx_implements g` emits optimised code
+  (`compBFO`) and `g.implements1 : Implements1With …` (8 examples in `Riscv/Frontx/Machine.lean`; axiom file
+  `axioms_m.lean`; QEMU/Sail test `python3 Testing/asm/frontx_test.py check 40 crcraw`).
+- Calls (`CALLS.md`): `Spec/Tree.lean`, `treeEval_implements` (`Riscv/Examples/TreeEval.lean`), `calls_test.py`.
 - ARM (Lean 4.34.1, generated model `Arm/model/`, built copy `/home/user/armv9-lean`): AArch64 backend for `Exp`
   proved at the decode+execute layer (`Arm/proofs/README.md`); fetch / full step / `ret` chaining in progress.
 - Not proved: `Riscv/Legacy/Sort.lean` (`sorry`, hand-written merge sort), `Riscv/Legacy/SortSteps.lean` (kernel

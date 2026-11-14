@@ -36,3 +36,14 @@ Proven.Mach.Riscv.callsCode_implements stmt=366038495112626304 closure=107659645
 Proven.Mach.Riscv.sumTo_implements stmt=15861549661262505672 closure=2678232534579236816 consts=7215 local=350
 Proven.Mach.Riscv.fib_implements stmt=9013821045924404382 closure=11221605431454052771 consts=7215 local=350
 Proven.Mach.Riscv.isEven_implements stmt=1282900750994143482 closure=3664269718350078755 consts=7217 local=352
+Proven.Mach.MachineC.execC_ok stmt=6195511041556654398 closure=15333557367195752895 consts=707 local=236
+Proven.Mach.Riscv.treeEval_implements stmt=457006674999012968 closure=2565867742406254515 consts=7251 local=385
+Proven.Frontx.implements1_res stmt=9215905211691148881 closure=7124858106645931604 consts=7563 local=630
+Proven.Frontx.Ex.crcRaw.implements1 stmt=15130651732432621203 closure=13648207637766495263 consts=7584 local=645
+Proven.Frontx.Ex.b64All.implements1 stmt=11047799588107056248 closure=8674487766710358488 consts=7583 local=644
+Proven.Frontx.Ex.findNL.implements1 stmt=8627697545814634631 closure=5752880862501072670 consts=7601 local=644
+Proven.Frontx.Ex.be32At0.implements1 stmt=670349737700636068 closure=9363769855287475331 consts=7574 local=641
+Proven.Frontx.Ex.tailSum.implements1 stmt=3118509450649746036 closure=17825399500226299575 consts=7575 local=642
+Proven.Frontx.Ex.nonTailSum.implements1 stmt=2726391046083328411 closure=16875950119684228839 consts=7575 local=642
+Proven.Frontx.Ex.tailLength.implements1 stmt=4903579719899627172 closure=1008950351638162642 consts=7575 local=642
+Proven.Frontx.Ex.bookLength.implements1 stmt=5143222234408465192 closure=12296639998684043305 consts=7575 local=642
