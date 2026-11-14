@@ -69,6 +69,16 @@ theorem rN_toNat {n : Nat} (h : n < 2 ^ 64) : (rN n).toNat = n := by simp [rN]; 
 theorem rN_add (a b : Nat) : rN (a + b) = rN a + rN b := BitVec.ofNat_add a b
 theorem rN_sub {a b : Nat} (h : b ≤ a) : rN (a - b) = rN a - rN b := by
   simp only [rN]; apply BitVec.eq_of_toNat_eq; simp only [BitVec.toNat_sub, BitVec.toNat_ofNat]; omega
+/-- truncated subtraction, in general: a select -/
+theorem rN_sub' {a b : Nat} (ha : a < 2 ^ 64) (hb : b < 2 ^ 64) :
+    rN (a - b) = if a < b then 0#64 else rN a - rN b := by
+  by_cases h : a < b
+  · rw [if_pos h, Nat.sub_eq_zero_of_le (Nat.le_of_lt h)]; rfl
+  · rw [if_neg h]; exact rN_sub (by omega)
+/-- … and when `b ≤ a` is known the select disappears -/
+theorem nat_ite_lt_neg {a b : Nat} (h : b ≤ a) (x y : BitVec 64) : (if a < b then x else y) = y :=
+  if_neg (by omega)
+theorem rN_succ (a : Nat) : rN (Nat.succ a) = rN a + 1#64 := rN_add a 1
 theorem rN_lt {a b : Nat} (ha : a < 2 ^ 64) (hb : b < 2 ^ 64) : (rN a < rN b) = (a < b) := by
   simp [rN, BitVec.lt_def, Nat.mod_eq_of_lt ha, Nat.mod_eq_of_lt hb]
 theorem rN_inj {a b : Nat} (ha : a < 2 ^ 64) (hb : b < 2 ^ 64) : (rN a = rN b) = (a = b) := by

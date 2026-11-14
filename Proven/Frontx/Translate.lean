@@ -142,6 +142,8 @@ structure Ctx where
   repN : Name
   rty : Ty
   loop : Option LoopInfo := none
+  /-- user-supplied equations `g args = closed form` (`using`), applied instead of unfolding `g` -/
+  lemmas : Array Name := #[]
 
 /-- a load or a temporary, emitted before the node being translated, with the Lean term it holds -/
 inductive Item where
@@ -227,6 +229,18 @@ partial def fit (m : ME) (d : Nat := maxDepth) : TrM ME := do
   | .ite c a b => if d < 2 then tmp else return .ite (← fit c d) (← fit a (d - 1)) (← fit b (d - 2))
   | m => return m
 
+/-- `e` rewritten by one of the user's equations whose left-hand side matches it -/
+def userRw? (lemmas : Array Name) (e : Expr) : MetaM (Option (Name × Expr)) := do
+  for l in lemmas do
+    let s ← saveState
+    let (_, _, ty) ← forallMetaTelescope (← getConstInfo l).type
+    if let some (_, lhs, rhs) := ty.eq? then
+      if ← isDefEq lhs e then
+        let rhs ← instantiateMVars rhs
+        unless rhs.hasMVar do return some (l, rhs)
+    s.restore
+  return none
+
 def cNot (c : ME) : ME := .bin ``Op.xor c (.const (mkBV 1))
 
 mutual
@@ -302,7 +316,24 @@ partial def trE (ctx : Ctx) (e : Expr) : TrM (ME × Expr) := do
     return (masked m a, mkAppN f #[a'])
   match f.constName?, args.size with
   | some ``HAdd.hAdd, 6 => bin ``Op.add ty.mask
-  | some ``HSub.hSub, 6 => bin ``Op.sub ty.mask
+  | some ``HSub.hSub, 6 =>
+    if ty == .nat then
+      -- truncated subtraction: plain if `b ≤ a` follows from the context, else a select
+      let (a, a') ← trE ctx args[4]!
+      let (b, b') ← trE ctx args[5]!
+      let e' := mkAppN f ((args.set! 4 a').set! 5 b')
+      let le ← (withoutModifyingState do
+        try
+          let mv ← mkFreshExprSyntheticOpaqueMVar (← mkAppM ``LE.le #[args[5]!, args[4]!])
+          let rest ← Tactic.run mv.mvarId! (Tactic.withoutRecover (Tactic.evalTactic (← `(tactic| omega))))
+          pure rest.isEmpty
+        catch _ => pure false : TermElabM Bool)
+      if le then return (.bin ``Op.sub a b, e')
+      else return (.ite (.bin ``Op.ult a b) (.const (mkBV 0)) (.bin ``Op.sub a b), e')
+    else bin ``Op.sub ty.mask
+  | some ``Nat.succ, 1 =>
+    let (a, a') ← trE ctx args[0]!
+    return (.bin ``Op.add a (.const (mkBV 1)), mkAppN f #[a'])
   | some ``HAnd.hAnd, 6 => bin ``Op.and none
   | some ``HOr.hOr, 6 => bin ``Op.or none
   | some ``HXor.hXor, 6 => bin ``Op.xor none
@@ -325,6 +356,10 @@ partial def trE (ctx : Ctx) (e : Expr) : TrM (ME × Expr) := do
     | none => throwError "frontx: size of an unknown array{indentExpr e}"
   | some c, _ =>
     if c == ctx.fn then throwError "frontx: recursive call not in tail position{indentExpr e}"
+    if let some (l, rhs) ← userRw? ctx.lemmas e then
+      modify fun s => if s.unfolded.contains l then s else { s with unfolded := s.unfolded.push l }
+      let (m, _) ← trE ctx rhs
+      return (m, e)
     -- a helper function: its compound scalar arguments go to temporaries, then it is inlined
     for a in args do
       if a.hasFVar && !a.isFVar && (← find? a).isNone then
@@ -387,6 +422,8 @@ partial def trC (ctx : Ctx) (p : Expr) : TrM (ME × Expr) := do
 /-- a `Bool`, as a `0`/`1` value -/
 partial def trB (ctx : Ctx) (b : Expr) : TrM (ME × Expr) := do
   let b := b.consumeMData.headBeta
+  if let some v ← find? b then return (.var v, b)
+  if !b.hasFVar then return (.const (← litBV (mkApp (mkConst ``rB) b)), b)
   let args := b.getAppArgs
   let f := b.getAppFn
   match f.constName?, args.size with
@@ -415,6 +452,10 @@ partial def trB (ctx : Ctx) (b : Expr) : TrM (ME × Expr) := do
   | some c, _ =>
     if let some v ← find? b then return (.var v, b)
     if c == ctx.fn then throwError "frontx: recursive call not in tail position{indentExpr b}"
+    if let some (l, rhs) ← userRw? ctx.lemmas b then
+      modify fun s => if s.unfolded.contains l then s else { s with unfolded := s.unfolded.push l }
+      let (m, _) ← trB ctx rhs
+      return (m, b)
     for a in args do
       if a.hasFVar && !a.isFVar && (← find? a).isNone then
         if let some aty ← classify (← inferType a) then
@@ -456,7 +497,7 @@ def inBranch {α : Type} (x : TrM α) : TrM α := do
 def simpNames : Array Name :=
   #[``Tree.step, ``denote_var, ``denote_const, ``denote_bin, ``denote_ite, ``sel_c, ``Op.eval, ``parSet, ``BEnv.set,
     ``seqSet, ``rB_def, ``rd0, ``rd1, ``rd2, ``blk_get, ``r8_fold, ``ba_get!, ``c_not, ``c_and, ``c_or, ``c_eq0, ``c_not', ``c_and', ``c_or', ``c_eq0',
-    ``rN_lit, ``r8_lit, ``r32_lit, ``r64_lit, ``rN_toNat, ``rN_add, ``rN_sub, ``rN_lt, ``rN_or, ``rN_and, ``rN_shl, ``rN_inj, ``rN_eq_lit, ``rN_lt_lit, ``rN_lit_lt, ``rN_ite,
+    ``rN_lit, ``r8_lit, ``r32_lit, ``r64_lit, ``rN_toNat, ``rN_add, ``rN_sub', ``nat_ite_lt_neg, ``rN_lt, ``rN_or, ``rN_and, ``rN_shl, ``rN_inj, ``rN_eq_lit, ``rN_lt_lit, ``rN_lit_lt, ``rN_ite,
     ``r64_add, ``r64_sub, ``r64_and, ``r64_or, ``r64_xor, ``r64_ite, ``r64_eq', ``r64_lt', ``r64_le', ``r64_toNat, ``r64_ofNat,
     ``r32_add, ``r32_sub, ``r32_and, ``r32_or, ``r32_xor, ``r32_ite, ``r32_eq', ``r32_lt', ``r32_le', ``r32_toNat, ``r32_shr,
     ``r8_add, ``r8_sub, ``r8_and, ``r8_or, ``r8_xor, ``r8_ite, ``r8_eq', ``r8_lt', ``r8_le', ``r8_toNat,
@@ -906,7 +947,8 @@ the mutable locals and `i` become variables, the loop becomes the tree loop (`fo
 `f.slots`, `f.inits`, `f.Rep0` (the state holds the parameters), `f.Rep` (… and `i` and the locals), `f.step1`,
 `f.exec`. -/
 def compileLoop (fn : Name) (xs : Array Expr) (rty : Ty) (lhs forE : Expr) (post? : Option Expr)
-    (inv? : Option Term) (t0 : Nat) : TermElabM Unit := do
+    (inv? : Option Term) (lemmas : Array Name) (t0 : Nat) (eq? : Option Expr := none) (kind : String := "for loop") :
+    TermElabM Unit := do
   let fa := forE.getAppArgs
   let S := fa[4]!
   let init := fa[6]!
@@ -988,8 +1030,8 @@ def compileLoop (fn : Name) (xs : Array Expr) (rty : Ty) (lhs forE : Expr) (post
     for ((x, ty?), v?) in (cs.zip ctyK).zip cvars do
       match ty?, v? with
       | some ty, some v =>
+        -- no bound for a `Nat` local: operations that need one get it from the invariant (`with`)
         hyps := hyps.push (← mkEq (mkApp env (toExpr v)) (ty.rep x))
-        if ty == .nat then hyps := hyps.push (← mkAppM ``LT.lt #[x, two64])
       | _, _ =>
         let xty ← whnfR (← inferType x)
         hyps := hyps.push (← mkEq x (mkApp (mkConst ``Option.none xty.getAppFn.constLevels!) xty.appArg!))
@@ -1026,7 +1068,7 @@ def compileLoop (fn : Name) (xs : Array Expr) (rty : Ty) (lhs forE : Expr) (post
       let li : LoopInfo := { g := mkAppN (mkConst ``cvt) #[S, postBV, i], T, S, postBV, postLean, i, iv,
                              comps := cs.zip cvars }
       let ctx : Ctx := { fn, params := xs, blocks, A, R, heap := mkApp (mkConst ``BState.heap) σ, repN, rty,
-                         loop := some li }
+                         loop := some li, lemmas }
       let P ← mkAppM ``LT.lt #[i, b]
       let inst ← synthInstance (mkApp (mkConst ``Decidable) P)
       let memo' := (i, iv) :: (cs.zip cvars).toList.filterMap (fun (x, v?) => v?.map (x, ·)) ++ memo
@@ -1109,7 +1151,7 @@ def compileLoop (fn : Name) (xs : Array Expr) (rty : Ty) (lhs forE : Expr) (post
     let decls := hyps.mapIdx fun k h => (Name.mkSimple s!"h{k}", h)
     let env0 := mkApp (mkConst ``BState.env) σ
     let heap := mkApp (mkConst ``BState.heap) σ
-    let ctx : Ctx := { fn, params := xs, blocks, A, R, heap, repN, rty }
+    let ctx : Ctx := { fn, params := xs, blocks, A, R, heap, repN, rty, lemmas }
     let inits0 := (← stateComps S (← whnfR init)).toArray
     let (pfBody, initsE, nObl) ← withLocalDeclsDND decls fun hs => do
       let go : TrM (Expr × Expr) := do
@@ -1136,6 +1178,21 @@ def compileLoop (fn : Name) (xs : Array Expr) (rty : Ty) (lhs forE : Expr) (post
       let roPf ← byTac (← mkEq (mkApp (mkConst ``Tree.ro) (mkConst treeN)) (mkConst ``Bool.true)) (← `(tactic| rfl))
       let pf := mkAppN (mkConst ``for_exec) #[S, mkConst layN, mkConst treeN, wfPf, roPf, R, F, postBV, a, b, init,
         mkConst initsN, toExpr out, mkAppN (mkConst stepN) xs, env0, heap, h0]
+      -- the function is the loop only up to a proved equation: transport the statement along it
+      let pf ← match eq? with
+        | none => pure pf
+        | some eq => do
+          let β ← inferType lhs
+          let motive ← withLocalDeclD `v β fun v => do
+            let progE := mkApp2 (mkConst ``initS) (mkConst initsN)
+              (mkApp3 (mkConst ``prog) (mkConst layN) (mkConst treeN) (toExpr out))
+            let c ← withLocalDeclD `σ' bstate fun σ' => do
+              let c1 := mkApp3 (mkConst ``BExec) progE σ σ'
+              let c2 ← mkEq (mkApp (mkApp (mkConst ``BState.env) σ') (toExpr out)) (rty.rep v)
+              let c3 ← mkEq (mkApp (mkConst ``BState.heap) σ') heap
+              mkAppM ``Exists #[← mkLambdaFVars #[σ'] (mkAnd c1 (mkAnd c2 c3))]
+            mkLambdaFVars #[v] c
+          mkEqMPR (← mkCongrArg motive eq) pf
       return (← mkLambdaFVars hs pf, initsE, st'.nObl)
     addDef initsN (← mkAppM ``List #[pairTy]) initsE (compile := true)
     let prog := mkApp2 (mkConst ``initS) (mkConst initsN)
@@ -1153,10 +1210,32 @@ def compileLoop (fn : Name) (xs : Array Expr) (rty : Ty) (lhs forE : Expr) (post
   if execPf.hasSorry || execPf.hasMVar then throwError "frontx: exec proof incomplete"
   addDecl (.thmDecl { name := fn ++ `exec, levelParams := [], type := execTy, value := execPf })
   let t3 ← IO.monoMsNow
-  logInfo m!"frontx: {fn} (for loop): {nvars} variables ({M} user), {nvars - 8} slots, result in variable {out}, {st.nObl + nObl} obligations; translate + step proof {t1 - t0} ms, kernel check of step {t2 - t1} ms, init + exec theorem {t3 - t2} ms"
+  logInfo m!"frontx: {fn} ({kind}): {nvars} variables ({M} user), {nvars - 8} slots, result in variable {out}, {st.nObl + nObl} obligations; translate + step proof {t1 - t0} ms, kernel check of step {t2 - t1} ms, init + exec theorem {t3 - t2} ms"
 
 
-def compileCmd (f : Ident) (inv? : Option Term) : TermElabM Unit := do
+/-- `(position of k, b, h)` if the body is `match k with | 0 => b | k' + 1 => E` where every recursive call in `E`
+is `f … k' …` with the other arguments unchanged; `h = fun k' acc => E[f … k' … := acc]` -/
+def primRec? (fn : Name) (xs : Array Expr) (lhs body : Expr) : MetaM (Option (Nat × Expr × Expr)) := do
+  let some ma ← matchMatcherApp? body | return none
+  unless ma.discrs.size == 1 && ma.alts.size == 2 && ma.remaining.isEmpty do return none
+  let some ki := xs.findIdx? (· == ma.discrs[0]!) | return none
+  unless (← whnfR (← inferType xs[ki]!)).isConstOf ``Nat do return none
+  let (iz, is) ←
+    if ma.altNumParams[1]! == 1 && ma.altNumParams[0]! ≤ 1 then pure (0, 1)
+    else if ma.altNumParams[0]! == 1 && ma.altNumParams[1]! ≤ 1 then pure (1, 0)
+    else return none
+  let zero := ma.alts[iz]!
+  let zero := if zero.isLambda then zero.beta #[mkConst ``Unit.unit] else zero
+  let β ← inferType lhs
+  lambdaTelescope ma.alts[is]! fun ys E => do
+    unless ys.size == 1 do return none
+    let call := mkAppN lhs.getAppFn (xs.set! ki ys[0]!)
+    withLocalDeclD `acc β fun acc => do
+      let E' := E.replace fun e => if e == call then some acc else none
+      if (E'.find? (·.isConstOf fn)).isSome || E' == acc || E' == E then return none
+      return some (ki, zero, ← mkLambdaFVars #[ys[0]!, acc] E')
+
+def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) : TermElabM Unit := do
   let t0 ← IO.monoMsNow
   let fn ← realizeGlobalConstNoOverloadWithInfo f
   let info ← getConstInfo fn
@@ -1172,7 +1251,27 @@ def compileCmd (f : Ident) (inv? : Option Term) : TermElabM Unit := do
     let some rty ← classify resTy | throwError "frontx: unsupported result type{indentExpr resTy}"
     let some (_, lhs, body) := (← instantiateForall eqnTy xs).eq? | throwError "frontx: bad equation"
     if let some (forE, post?) ← findFor fn (stripPre body) then
-      return ← compileLoop fn xs rty lhs forE post? inv? t0
+      return ← compileLoop fn xs rty lhs forE post? inv? lemmas t0
+    -- primitive recursion on a `Nat` (recursive call not in tail position): the loop counting up
+    if let some (ki, b, h) ← primRec? fn xs lhs body then
+      let k := xs[ki]!
+      let β := resTy
+      let nat := Lean.mkConst ``Nat
+      let idM := Lean.mkConst ``Id [levelZero]
+      let F ← withLocalDeclD `j nat fun j => withLocalDeclD `acc β fun acc => do
+        let y := mkApp2 (mkConst ``ForInStep.yield [levelZero]) β (mkApp2 h j acc).headBeta
+        mkLambdaFVars #[j, acc] (← mkAppOptM ``Pure.pure #[idM, none, none, y])
+      let range := mkAppN (mkConst ``Std.Legacy.Range.mk) #[toExpr (0 : Nat), k, toExpr (1 : Nat), mkConst ``Nat.zero_lt_one]
+      let forE ← mkAppOptM ``forIn #[idM, mkConst ``Std.Legacy.Range, nat, none, β, range, b, F]
+      let fK ← mkLambdaFVars #[k] lhs
+      let fI := mkIdent fn
+      let hs ← withLocalDeclD `j nat fun j => do
+        let ty ← mkEq (mkApp fK (← mkAppM ``HAdd.hAdd #[j, toExpr (1 : Nat)])).headBeta
+          (mkApp2 h j (mkApp fK j).headBeta).headBeta
+        mkLambdaFVars #[j] (← byTac ty (← `(tactic| first | rfl | simp only [$fI:ident] | (rw [$fI:ident]))))
+      let eq := mkAppN (mkConst ``natRec_forIn) #[β, fK, h, hs, k]
+      return ← compileLoop fn xs rty lhs forE none inv? lemmas t0 (eq? := some eq)
+        (kind := "primitive recursion as a loop")
     -- variables for the parameters
     let mut blocks : List (Expr × Nat × Nat) := []
     let mut next := 0
@@ -1231,7 +1330,7 @@ def compileCmd (f : Ident) (inv? : Option Term) : TermElabM Unit := do
     withLocalDeclD `σ bstate fun σ => do
       let hyps ← hypsOf σ
       let decls := hyps.mapIdx fun i h => (Name.mkSimple s!"h{i}", h)
-      let ctx : Ctx := { fn, params := xs, blocks, A, R, heap := mkApp (mkConst ``BState.heap) σ, repN, rty }
+      let ctx : Ctx := { fn, params := xs, blocks, A, R, heap := mkApp (mkConst ``BState.heap) σ, repN, rty, lemmas }
       let ((mt, outE, proof), st) ← withLocalDeclsDND decls fun hs => do
         let ((mt, outE, proof), st) ← (trT ctx nconj (mkApp (mkConst ``BState.env) σ) body).run { next, memo }
         return ((mt, outE, ← mkLambdaFVars hs proof), st)
@@ -1304,7 +1403,12 @@ def compileCmd (f : Ident) (inv? : Option Term) : TermElabM Unit := do
 
 /-- `frontx_compile f` or `frontx_compile f with inv` (`inv : params → Prop`, an extra precondition that the
 recursive calls must preserve; needed for `Nat` arguments whose bounds are not implied by the tests) -/
-elab "frontx_compile " f:ident : command => liftTermElabM (compileCmd f none)
-elab "frontx_compile " f:ident " with " inv:term : command => liftTermElabM (compileCmd f (some inv))
+syntax "frontx_compile " ident (" with " term)? (" using " ident,+)? : command
+elab_rules : command
+  | `(frontx_compile $f:ident $[with $inv?]? $[using $ls?,*]?) => liftTermElabM do
+    let lemmas ← match ls? with
+      | some ls => ls.getElems.mapM fun l => realizeGlobalConstNoOverloadWithInfo l
+      | none => pure #[]
+    compileCmd f inv? lemmas
 
 end Proven.Frontx

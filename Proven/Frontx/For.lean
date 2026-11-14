@@ -70,6 +70,22 @@ theorem for_runs
       exact step_call σ₁ hs (for_runs hstep n (i + 1) s' σ₁ (by omega) hR₁)
 end
 
+/-! ## primitive recursion on a `Nat` is a loop counting up
+
+`f 0 = b`, `f (j + 1) = h j (f j)` (the recursive call need not be in tail position): `f k` is the loop
+`acc := b; for j in [0:k] do acc := h j acc`.  This is the accumulator transformation, proved once. -/
+
+theorem natRec_forFrom {β : Type} (f : Nat → β) (h : Nat → β → β) (hs : ∀ j, f (j + 1) = h j (f j)) :
+    ∀ (n i : Nat), forFrom (fun j acc => pure (ForInStep.yield (h j acc))) n i (f i) = f (i + n)
+  | 0, _ => rfl
+  | n + 1, i => by
+    show forFrom _ n (i + 1) (h i (f i)) = _
+    rw [← hs i, natRec_forFrom f h hs n (i + 1)]; congr 1; omega
+
+theorem natRec_forIn {β : Type} (f : Nat → β) (h : Nat → β → β) (hs : ∀ j, f (j + 1) = h j (f j)) (k : Nat) :
+    f k = (forIn (m := Id) [0:k] (f 0) (fun j acc => pure (ForInStep.yield (h j acc)))).run := by
+  rw [forIn_range_eq, natRec_forFrom f h hs]; simp
+
 /-! ## initialisation of the loop variables -/
 
 def initS : List (Nat × BExp) → BStmt → BStmt
