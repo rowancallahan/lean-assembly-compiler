@@ -103,7 +103,7 @@ Kernel-checked (`lake build Riscv.Back.Opt Riscv.Back.OptArr`, no `sorry`/`axiom
   `Wide.optS_ok`, `Wide.optA_ok` (`#print axioms Wide.low_ok`: `propext`, `Classical.choice`, `Quot.sound`);
 - RISC-V: `rvw : Wide` (all nine laws), `compileOpt_ok`, `compileOptS_ok`, `compileOptA_ok`; `#print axioms` of each
   is the same 77-axiom list as `Proven.compile_ok` (compared by hash).
-Not proved / not done: `BStmt` (spill slots, merge sort), the pipe front end on the new pipeline, a liveness-based
+Not proved / not done: word arrays (`load64`/`store64`) in the optimised pipeline, the pipe front end on the new pipeline, a liveness-based
 allocator, DCE, strength reduction, ARM instance of `Wide`.
 
 Tested: `Testing/asm/triple-data/triple_opt.lean` 18/18 cases four-way (Lean == RV64 QEMU == RV64 Sail emulator ==
@@ -128,7 +128,7 @@ instructions inside the function; words from `Testing/asm/emit_opt_{loops,arr}.l
 | `demo2` expression, whole call | 29 | 9–13 | 9 | 1.0–1.4 |
 
 Code size (words): loopsum 6, gcd 10, demo 8, demo2 13, sum 9, take 12, inc 13, insertion sort 38.
-Merge sort: not measured (needs `BStmt`).
+Merge sort: see the spill-slot section below.
 
 ## Drop-in entry points (kernel-checked)
 
@@ -140,3 +140,40 @@ used only in the fallback case). A front end switches by replacing the function 
 `compileAF bv p` definitionally (e.g. on its length), those facts must be restated for `compileAFO`.
 `compileBF` (spill slots) has no optimised counterpart yet: the frame/slot interface `MachineF`
 (`Compiler/Frame.lean`) has no RISC-V instance on branch `stable` at the time of writing.
+
+## Spill slots: `BStmt`, merge sort (kernel-checked)
+
+Added for the spill-slot language (`Compiler/BLang.lean`, byte blocks; `load64`/`store64` are rejected, i.e. the
+drop-in falls back to the old compiler):
+- `Wide`: two more operations `ldS d j`, `stS j v` (ANY register; laws `w_ldS`, `w_stS` shaped as `MachineF.law_ldS`
+  / `law_stS` without the register restrictions), a frame register `fr` with `keep_fr`, `maxSlots`. RISC-V:
+  `ld d, 8(j+1)(gp)` / `sd v, 8(j+1)(gp)` from `G.step_ld` / `G.step_sd`. IR: `Ins.ldS`, `Ins.stS` (slot contents live
+  in IR memory at `fp + 8 (j + 1)`; `Exec` takes the frame base `fp`).
+- Selection now works on `Sel.SExp` (a variable is `var i`, register-resident, or `slot j`); `AExp` goes through
+  `Sel.ofA`, `BExp` through `toS sp` (`Compiler/Opt/BSel.lean`) where `sp j` says that variable `8 + j` is spilled. A
+  spilled variable costs one `ldS` per read and one `stS` per write; the others are virtual registers.
+  `irB_ok : BExec p σ σ' → okB N bv p → RelBI sp N fp bv R σ τ → ∃ τ', IR.Exec (ramB N fp R) fp (irB sp bv p) τ τ' ∧
+  RelBI sp N fp bv R σ' τ'`.
+- `Compiler/Opt/BFn.lean`: `WideF extends Wide` (+ `enter`/`leave` laws, copied in shape from `MachineF`), code
+  `enter N; locals-in-registers := 0; body; leave; ret`, `WideF.optB_ok` (the shape of `MachineF.compBF_ok`).
+- `Riscv/Back/OptB.lean`: `rvwF : WideF` (frame laws taken from `rvF`), `compileOptB N bv p : Except String …`,
+  `compileOptB_ok` (conclusion and hypotheses of `compileBF_ok`, minus `hbv`/`wf`, plus `compileOptB … = .ok ws`),
+  drop-in `compileBFO` / `compileBFO_ok` (statement of `compileBF_ok` with the name replaced).
+  `#print axioms`: the same 77 as `compileBF_ok`; `WideF.optB_ok`: the 3 standard ones.
+- Register choice (untrusted, checked): `T` temporaries `r0..r(T-1)`, scratch `r6`, the `6 - T` most used locals
+  (loop bodies weighted 8) in `rT..r5`, the rest in slots; `T = 1, 2, …` tried in order, the first that passes
+  `injOn`/`wf` wins. Merge sort (`compileOptB 7 [0, 2, 3] msortProg`): `T = 4`, locals `11` and `8` in registers,
+  5 locals in slots.
+
+Merge sort measured (`bench/bench.py msort --opt-only`, instructions per element):
+
+| n | ours before | ours optimised | hand (`sort.S`) | gcc -O2 | opt / gcc |
+|---|---|---|---|---|---|
+| 100 | 606.4 | 244.8 | 127.1 | 101.8 | 2.4 |
+| 1000 | 920.3 | 364.9 | 166.1 | 132.2 | 2.8 |
+| 100000 | 1394.0 | 548.5 | 281.4 | 221.2 | 2.5 |
+
+Code size 245 words (before: 442). Tested: `WDIR=opt-words python3 Testing/asm/msort_test.py check 60`: 60/60
+(QEMU == Sail emulator == sorted; guard bytes, gp, sp, frame writes checked by that script).
+Open: only 2 of 7 locals fit in registers because the expressions need 4 temporaries; callee-saved registers
+(saved in the frame) or a liveness-based assignment would remove the remaining slot traffic.
