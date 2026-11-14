@@ -366,3 +366,38 @@ Against the current stack (`AExp`/`AStmt`/`compileA`, `Pipe`):
     with a 32-bit accumulator and a 256-entry table — a `foldW` step with a table lookup), `count`/`min`/
     `max` (already expressible as `fold`/`foldW` with `ite`; `Option` result encoding missing), `filter`
     (needs an output index different from the input index: one more variable, which exists).
+
+## `Implements1` form of the list front end (2026-11-14; `Compiler/Front/PipeI.lean`, `PipeIMachine.lean`)
+
+Every `compile%` value now also carries the code in the `Implements1` convention (`Spec/Implements1.lean`):
+working space in the WORK block (`a2` = work base, `sp` = work top), the output block needs only the result.
+
+```lean
+def compileX1 (p : XPipe) : Except String (List (BitVec 32))      -- compileBFO 8 [0, 2, 3] (progI p), checked
+theorem compileX1_ok (h : compileX1 p = .ok code) :
+    Implements1Raw code (XPipe.denote p) (XPipe.space1 p) (retLen := true)
+def XPipe.space1 (p : XPipe) (n : Nat) : Nat := 2 * (n + XPipe.extra p) + 79
+theorem Compiled.implements1 (c : Compiled enc f) :
+    Implements1With encRaw enc c.code1 f (XPipe.space1 c.pipe) (retLen := true)
+```
+`XPipe.extra p` = the sum over stages of the constant bytes a stage can add (`appendC c`: `|c|`; a fold or
+reduction: its 1 or 8 result bytes); `XPipe.space_le`, `XPipe.sspace_le`: `space p n, sspace p n ≤ n + extra p`.
+For `Bool`, `BitVec 64`, `Option UInt8`, `UInt8` results the statement is about `f` through `enc`
+(`Implements1Raw.enc`); examples `PipeEx.revinc5_implements1`, `filtsort_implements1`, `twosort_implements1`,
+`any3_implements1`, `min_implements1`, `sum64_implements1`.
+
+Scheme (`progI p`, one `BStmt` on blocks input `v0` / work `v2` / output `v3`, 8 slots):
+`v15 := v1 + E; relB (XPipe.progB p); for v5 < v1: out[v5] := work[v5]`. `relB` relocates the old output block
+to `work[0, L)` and the old scratch block to `work[L, 2L)` (`L = n + E` in slot `v15`; index `i ↦ i + v15`);
+`relB_exec` (a run of `p` gives a run of `relB p`) holds for programs passing the decidable `okR` (no read or
+write of `v2`, `v3`, `v15`; blocks `< 3`), which `compileX1` checks (all 36 examples pass). The copy loop writes
+exactly `|result|` output bytes; `progI_exec` gives the whole run. `implements1_of_execB` turns such a run into
+`Implements1Raw` for `compileBFO N [0, 2, 3]` (via `compileBFO_okK`). Axioms: 77 (`compileX1_ok`), the source
+lemmas 2–3 (`Testing/scripts/axioms_l.lean`).
+
+`compile%` also checks `compileX1` by `decide +kernel` (`Compiled.check1`); `Compiled.code` / `Compiled.ok` (old
+convention, `ImplementsPipeS`) are unchanged. Words: `Testing/asm/pipe-words1/NAME.words` (+ `NAME.extra`) from
+`emit_pipe.lean`; tested by `I1=1 python3 Testing/asm/pipe_test.py NAME 300` (exact `space1` work block, output
+bytes beyond the result untouched, a1, gp; Sail writes only into the result bytes or the work block):
+`Testing/asm/pipe-words1/RESULTS.txt`. The code is longer than the old-convention code (frame with 8 slots, the
+copy loop, relocated indices): e.g. `revinc5` 64 words vs 19, `sort` 237 vs 168.

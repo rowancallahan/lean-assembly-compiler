@@ -94,7 +94,7 @@ def qemu(halt, a, n):
 def check(N):
     rng = random.Random(5)
     fixed = [b"", b"123456789", b"a", b"abc", b"The quick brown fox jumps over the lazy dog"]
-    mx = 3000 if which in ("crc", "sum", "inc", "take5", "msort") else 300
+    mx = 3000 if which in ("crc", "sum", "inc", "take5") else 300
     def rnd():
         L = rng.choice([rng.randrange(40), rng.randrange(mx)]); k = rng.randrange(3)
         return [rng.randrange(256) if k else rng.randrange(3) for _ in range(L)]

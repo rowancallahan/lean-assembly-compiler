@@ -11,6 +11,9 @@ Read this first. The top-level `README.md` is for people; this file is for agent
   `propext`/`Classical.choice`/`Quot.sound`) re-deriving the RISC-V theorems through an interface (`Riscv/Back/`).
   Full list with statements: `DETAILS.md`; middle layer: `MACH.md`; arrays: `ARRAYS.md`; loops: `LOOPS.md`;
   front end: `PIPE.md`; fuzzing: `FUZZ.md`; targets and plans: `ROADMAP.md`.
+- Optimising back end (`OPT.md`): the front end (`compileP`, `compileXA`, `compileXB`) emits the optimised words;
+  the `Implements1` examples have optimised versions (`Riscv/Examples/Implements1Opt.lean`, `…_implements1O`);
+  every `compile%` pipe also has an `Implements1` theorem (`compileX1_ok`, `Compiled.implements1`, `PIPE.md`).
 - ARM (Lean 4.34.1, generated model `Arm/model/`, built copy `/home/user/armv9-lean`): AArch64 backend for `Exp`
   proved at the decode+execute layer (`Arm/proofs/README.md`); fetch / full step / `ret` chaining in progress.
 - Not proved: `Riscv/Legacy/Sort.lean` (`sorry`, hand-written merge sort), `Riscv/Legacy/SortSteps.lean` (kernel

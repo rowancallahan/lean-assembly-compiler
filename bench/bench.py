@@ -3,7 +3,7 @@
 Count = instructions retired between `jal/bl func` and return, measured with QEMU `-icount shift=0`:
 RV64: csrr minstret before/after; AArch64: PMU INST_RETIRED (pmevcntr0) before/after. A call to an empty `ret` function is measured
 and subtracted, so the number is "instructions executed inside the function" (including its final ret).
-usage: bench.py [FUNC ...] [--sizes 100,1000,100000]   results appended to bench/results.json"""
+usage: bench.py [FUNC ...] [--sizes 100,1000,100000] [--opt-only | --quick (ours, ours-opt, gcc -O2 RV64)]   results appended to bench/results.json"""
 import json, os, random, re, subprocess, sys, time
 D = os.path.dirname(os.path.abspath(__file__)); R = os.path.dirname(D); W = os.path.join(D, "work"); os.makedirs(W, exist_ok=True)
 p = lambda f: os.path.join(W, f)
@@ -227,6 +227,13 @@ if __name__ == "__main__":
         if f in OURS: variants.append(("rv", "ours", ("ours", OURS[f])))
         if os.path.exists(wfile("opt-words", f)): variants.append(("rv", "ours-opt", ("ours", wfile("opt-words", f))))
         if "--opt-only" in sys.argv: variants = [v for v in variants if v[1] == "ours-opt"]
+        if "--quick" in sys.argv:  # ours, ours-opt and gcc -O2 (RV64) only
+            for isa, label, v in variants + [("rv", "c-O2", ("c", "O2"))]:
+                t0 = time.time(); r = measure(isa, f, v, sizes)
+                out.setdefault(f, {})[f"{isa}/{label}"] = {str(k): list(x) for k, x in r.items()}
+                print(f"{f:10s} {isa}/{label:10s} " + "  ".join(f"{k}:{x[0]}{'' if x[1] else ' WRONG'}" for k, x in r.items()) + f"   ({time.time()-t0:.0f}s)", flush=True)
+                json.dump(out, open(p("results.json"), "w"), indent=1)
+            continue
         if f in HAND_RV and "--opt-only" not in sys.argv: variants.append(("rv", "hand", ("hand", HAND_RV[f])))
         if f in ("demo", "demo2") and "--opt-only" not in sys.argv:
             for isa in ("rv", "arm"):

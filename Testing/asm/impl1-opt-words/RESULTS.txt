@@ -8,3 +8,5 @@ crc [impl1-words]: 100/100 cases ok (QEMU == Sail == model, 823 words; lengths u
 crc [impl1-opt-words]: 100/100 cases ok (QEMU == Sail == model, 141 words; lengths up to 2961)
 sort [impl1-words]: 100/100 cases ok (QEMU == Sail == model, 104 words; lengths up to 298)
 sort [impl1-opt-words]: 100/100 cases ok (QEMU == Sail == model, 38 words; lengths up to 298)
+AssertionError: unexpected Sail write mem[W,0x0000000080208EB0] <- 0x0123456789ABCDEF
+AssertionError: unexpected Sail write mem[W,0x0000000080234C51] <- 0x29
