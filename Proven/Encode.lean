@@ -29,6 +29,6 @@ example : enc (some (5 : UInt8)) = [1, 5] := rfl
 example : enc (none : Option UInt8) = [0] := rfl
 example : enc ((7 : UInt8), true) = [7, 1] := rfl
 example : enc ([1, 2, 3] : List UInt8) = [1, 2, 3] := rfl
-example : enc [(1 : UInt8, true), (2, false)] = [2, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 0] := by decide
+example : enc [((1 : UInt8), true), (2, false)] = [2, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 0] := by decide
 
 end Proven
