@@ -147,27 +147,27 @@ theorem implements1_of_exec {α β : Type} (encA : α → List UInt8) (encB : β
     · obtain _ | _ | b := b
       · simpa [envOf] using getX_of (h.x10.symm.trans h10) rfl
       · simpa [envOf] using getX_of (h.x13.symm.trans h13) rfl
-      · simp [R] at hb
+      · exact absurd hb (by show ¬(b + 1 + 1 < 2); omega)
     · obtain _ | _ | b := b
       · simp [R]
       · simpa [R] using hout0l
-      · simp [R] at hb
+      · exact absurd hb (by show ¬(b + 1 + 1 < 2); omega)
     · obtain _ | _ | b := b
       · show bytes (rvF.mem s) input.base x.length = _
-        rw [bytes_eq]; simpa [List.map_map, Function.comp_def] using hx
+        exact (bytes_eq s _ _).trans (by simpa [List.map_map, Function.comp_def] using hx)
       · show bytes (rvF.mem s) output.base output.len = _
-        rw [bytes_eq]; simpa using ho
-      · simp [R] at hb
+        exact (bytes_eq s _ _).trans (by simpa using ho)
+      · exact absurd hb (by show ¬(b + 1 + 1 < 2); omega)
     · obtain _ | b := b
       · simpa [envOf] using getX_of (h.x12.symm.trans h12) rfl
-      · simp [W] at hb
+      · exact absurd hb (by show ¬(b + 1 < 1); omega)
     · obtain _ | b := b
       · show 8 * tbl0.length = 8 * wn x.length; rw [htl]
-      · simp [W] at hb
+      · exact absurd hb (by show ¬(b + 1 < 1); omega)
     · obtain _ | b := b
       · show bytes (rvF.mem s) work.base (8 * wn x.length) = _
-        rw [bytes_eq]; exact htb
-      · simp [W] at hb
+        exact (bytes_eq s _ _).trans htb
+      · exact absurd hb (by show ¬(b + 1 < 1); omega)
   have hra' : getX s 1 = ra := getX_of (h.x1.symm.trans h1) rfl
   refine runsTo_mono (rvF.compBF_ok N [0, 3] [2] (by intro x hx; simp at hx; omega)
     (by intro x hx; simp at hx; omega) hwf hexec ⟨h, hpc, codeAt_of_codeBytes hok hcode, hok⟩ hf hL hcd
