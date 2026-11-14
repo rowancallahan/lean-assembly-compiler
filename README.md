@@ -143,6 +143,34 @@ RV64I code (base ISA only): R-type `add sub and or xor sll srl sra slt sltu`, `s
 - The old `Proven/Sort.lean` (`sort_ok` with `sorry`, hand-written merge sort `asm/sort.S`) and
   `Proven/SortSteps.lean` are superseded and remain unproved.
 
+### Spill slots and merge sort (RISC-V; `Proven/Arr2*.lean`, `Proven/SortMerge*.lean`; details: `Proven/ARRAYS.md`)
+
+- Language `BExp`/`BStmt` (`Proven/Arr2Code.lean`): `AExp`/`AStmt` with variables `Nat`; variables `0..7` in
+  `a0..a7`, variables `8..8+N-1` in 8-byte stack slots (`N ≤ 16` per program). Embedding of the old language:
+  `AExec.toB : AExec p σ σ' → BExec p.toB (σ.toB ρ) (σ'.toB ρ)` (old files untouched).
+- Compiler `compileBF N bv p`: prologue (frame `fp = alignDown(sp, 8) - 8(N+1)` below `sp`, `gp` saved at `fp`,
+  `gp := fp`, slots zeroed), body (a slot read is `ld t_k, 8(j+1)(gp)`, a slot write `sd t0, 8(j+1)(gp)`),
+  epilogue (`ld gp, 0(gp)`, `ret`). New per-word lemmas with immediate offsets (`Proven/Arr2Words.lean`, generated
+  by `Proven/gen_arr2.py`, 134 lemmas, 776 s; tactic `mem_word2` in `Proven/Arr2Step.lean`).
+- `Proven.compileBF_ok` (`Proven/Arr2F.lean`): as `compileAF_ok`, plus the frame region
+  `⟨frameBase N sp, 8(N+1)⟩` (in RAM, disjoint from the data regions and the code) in the layout; slots start at
+  0; conclusion: return to `ra`, `a0..a7` and the regions hold `σ'`, memory outside frame and regions unchanged,
+  callee-saved registers, `gp` and `Cfg` kept. Limits: expression depth unchanged (< 7; not lifted), loop
+  bodies < 1024 words, no 8-byte block accesses (S2 not done).
+- Bottom-up merge sort `msortProg` (input → output via the scratch block, ping-pong, odd number of passes,
+  branch-free merge step, 7 slots): `msortProg_mergeSort` (source: output `= xs.mergeSort leB`, via
+  `MS.runs`/`runs_CS`/`runs_perm` in `Proven/SortMergeList.lean` and `sorted_perm_eq`);
+  `Proven.msortCode_implements : ImplementsMapped2 msortCode (fun x => x.mergeSort leU) (stackLen := 71)`
+  (`msortCode = compileBF 7 [0, 2, 3] msortProg`, 442 words). `ImplementsMapped2` = `Implements` plus two hosting
+  hypotheses (output and scratch bytes present in the memory map); `stackLen = 71` = 64-byte frame + 7 bytes of
+  `sp` alignment.
+- Axioms of `compileBF_ok` and `msortCode_implements`: exactly those of `compile_ok`.
+- Tested: `asm/msort_test.py check 300` (QEMU == Sail C emulator == `sorted`, lengths 0..3, 2^k ± 1 up to 2049,
+  random up to 3000; guard bytes, stack outside the frame, `gp`, `sp` intact; every Sail data write in
+  scratch/output/frame). Instructions retired (`asm/msort_test.py bench`, QEMU `-icount`, random bytes):
+  n = 1000: merge sort 920 308, insertion sort 10 556 636, hand-written `asm/sort.S` 166 171;
+  n = 100000: merge sort 139 400 605, `asm/sort.S` 28 146 287, insertion sort not run (O(n²), ~10^11).
+
 ## Tested only
 
 - `Proven/CompilerArm.lean`: AArch64 backend for the same `Exp` (`lslv/lsrv/asrv`, `cmp` + `cset lo/lt/eq`,

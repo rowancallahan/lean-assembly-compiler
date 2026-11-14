@@ -5,7 +5,8 @@ Status (all kernel-checked, no `sorry`, axioms = those of `compile_ok`: `propext
 `compileA_ok`, `compileAF_ok` (`Proven/Arr.lean`), `sumCode_ok`, `takeCode_ok`, `incCode_ok`, `mapCode_ok`
 (`Proven/ArrExamples.lean`), `sortProg_mergeSort` (`Proven/SortIns.lean`, pure Lean, axioms `propext`,
 `Classical.choice`, `Quot.sound` only), `sortCode_ok`, `sortCode_implements` (`Proven/SortMachine.lean`).
-Not done: bottom-up merge sort (see the end).
+Bottom-up merge sort: done in the extended language with spill slots, see
+"Spill slots and merge sort" at the end (the analysis just before it is the earlier, superseded, status).
 
 ## Files
 
@@ -129,7 +130,7 @@ The ARM side needs step lemmas for: the `Exp` operator words (`CompilerArm.lean`
 with the register map changed. ARM has 31 general registers, so the 8-variable / 7-temporary limits can be
 raised there.
 
-## Merge sort: not done, and why
+## Merge sort: why it did not fit the 8-variable language (superseded, see below)
 
 Bottom-up merge sort over `input`, `scratch`, `output` needs three base variables plus the length, which leaves
 4 of the 8 variables (`a4..a7`). A branch-free merge step needs at least the width `w`, the output index `k`,
@@ -138,3 +139,144 @@ i.e. 5 variables, and its selection condition `p < mid ∧ (q ≥ end ∨ x ≤ 
 `i = k &&& -(2w)` exceeds expression depth 6. Needed first: more variables (e.g. spill slots in the stack
 block with `ld/sd` lemmas on base `sp`, or a larger register set with fewer temporaries) or expression
 spilling, then the source-level merge proof (per pass: runs of width `2w` sorted, permutation).
+
+## Spill slots and merge sort (`Arr2*.lean`, `SortMerge*.lean`)
+
+Status: all kernel-checked, no `sorry`; `#print axioms` of `compileBF_ok` and `msortCode_implements` is exactly
+that of `compile_ok` (77 entries: `propext`, `Classical.choice`, `Quot.sound`, the 7 model constants, the 67
+`riscv_*` externs); `msortProg_mergeSort` uses only `propext`, `Classical.choice`, `Quot.sound`;
+`AExec.toB` only `propext`, `Quot.sound`. The old files (`ArrCode` .. `SortMachine`) are unchanged.
+
+| file | what | check time |
+|---|---|---|
+| `Arr2Code.lean` | `BExp`, `BStmt`, `BExec`, `genB`, `compileB`, `prologue`, `compileBF`, `BStmt.wf`; embedding `AStmt.toB`, `AExec.toB` | ~1 s |
+| `Arr2Step.lean` | `mem_word2`: `mem_word` for loads/stores with an immediate offset | ~1 s |
+| `gen_arr2.py` → `Arr2Words.lean` | 134 step lemmas: `ld t_k, 8(j+1)(gp)` (k < 7, j < 16), `sd t0, 8(j+1)(gp)`, `sd gp, 0(t0)`, `ld gp, 0(gp)`, `ld t0, 0(t0)`, `sd t1, 0(t0)`, `add t0, x0, sp`, `add gp, x0, t0`; families `step_ldS`, `step_sdS`, `step_ldGp` | 776 s |
+| `Arr2Exp.lean` | `FrOK`, `EnvRel`, `slot_addr`, `genB_ok` | ~2 s |
+| `Arr2.lean` | `slotRegs`, `HeapRel`, `Rel2`, `setV_ok`, `execB_ok` | ~3 s |
+| `Arr2F.lean` | `zero_slots`, `prologue_ok`, `compileBF_ok` | ~5 s |
+| `Arr2Src.lean` | `BExec.loop_inv`, `env_keep`, `load'`/`store'`/`asg`, `ofNat` value lemmas (no machine) | ~1 s |
+| `SortMergeList.lean` | `MS.runs` (one pass), `MS.CS` (aligned chunks sorted), `runs_perm`, `runs_CS`, `CS_sorted` (generic in `le`, no machine) | 0.7 s |
+| `SortMergeSrc.lean` | `msortProg`, `inner_step`, `merge_inner_exec`, `run_exec`, `pass_exec`, `msortProg_mergeSort` | ~10 s |
+| `SortMergeMachine.lean` | `msortProg_wf`, `msortCode`, `msortCode_ok`, `ImplementsMapped2`, `msortCode_implements` | ~5 s |
+
+Times: `lake env lean` per file including imports, on a loaded machine.
+
+### Language (superset of `AStmt`)
+
+- `BExp`: as `AExp` with `var (i : Nat)`; `BEnv = Nat → BitVec 64`. Variables `0..7` live in `a0..a7`,
+  variables `8..8+N-1` in stack slots (`N ≤ NS = 16`, fixed per program by `compileBF N`).
+- `BStmt`: `assign v e | load v b i | store b i e | seq | loop` with `v : Nat`; `BExec` exactly as `AExec`.
+- Embedding: `AStmt.toB`, `AExec.toB : AExec p σ σ' → BExec p.toB (σ.toB ρ) (σ'.toB ρ)` (variables `≥ 8` taken
+  from any `ρ` and untouched). Old programs and their theorems stay as they are.
+
+### Compiler
+
+- Slot `j` is the 8 bytes at `gp + 8(j+1)`. A slot variable in an expression is one `ld t_k, 8(j+1)(gp)`
+  (expression depth unchanged: a slot read costs no extra temporary); `v := t0` for a slot is `sd t0, 8(j+1)(gp)`
+  (`setV`). Everything else is `compileA` (`genB` = `gen8` + the slot case).
+- `prologue N`: `t0 := sp; t0 := (t0 >> 3) << 3; t0 := t0 - 8(N+1); sd gp, 0(t0); gp := t0; t0 := 0;
+  sd t0, 8(j+1)(gp)` for `j < N`. So the frame is `[fp, fp + 8(N+1))` with `fp = frameBase N sp =
+  alignDown(sp, 8) - 8(N+1)` (cell 0: saved `gp`), and the slots start at `0`.
+- `compileBF N bv p = prologue N ++ compileB bv p ++ [ld gp, 0(gp); ret]`: `gp` is restored.
+- `gp` (`x3`) is used as frame pointer because every caller-saved register is a variable or a temporary;
+  it is saved and restored, so the function keeps it (stated in the theorems).
+
+### Limits (`BStmt.wf N bv`)
+
+- Variables `< 8 + N`, `N ≤ 16` (the generated `ld/sd` lemmas cover 16 slots; more slots = rerun
+  `gen_arr2.py` with a larger count, ~6 s per extra slot ✕ 8 lemmas).
+- Expression depth: unchanged (`assign`: `< 7`; `load`/`store` index and value `< 6`). Not lifted: a deep
+  expression must be split by the programmer into assignments to (slot) variables.
+- Loops: body within the `beq` range (`(genB c 0).length + (compileB bv body).length + 2 < 1024`); no
+  far-branch form was needed (the merge sort's largest loop body is 270 words).
+- Base variables are never assigned; blocks are byte lists; no 8-byte block accesses (S2 not done, see below).
+
+### Main theorems
+
+```lean
+structure FrOK (N fp : Nat) : Prop where
+  al : fp % 8 = 0
+  lo : 0x80000000 ≤ fp
+  hi : fp + 8 * (N + 1) ≤ 0x100000000
+  ns : N ≤ NS
+
+structure HeapRel (bv : List Nat) (R : List Region) (σ : BState) (s : St) : Prop where
+  hlen : σ.heap.length = R.length
+  bvlen : bv.length = R.length
+  base : ∀ b (hb : b < R.length), σ.env (bv.getD b 0) = BitVec.ofNat 64 R[b].base
+  blen : ∀ b (hb : b < R.length), (σ.heap[b]?.getD []).length = R[b].len
+  bytes : ∀ b (hb : b < R.length), bytesAt s R[b].base R[b].len = (σ.heap[b]?.getD []).map some
+
+theorem compileBF_ok (N : Nat) (bv : List Nat) (hbv : ∀ x ∈ bv, x < 8 + N) {p : BStmt} (hp : p.wf N bv)
+    {R : List Region} (hR : RegOK R) {σ σ' : BState} (hex : BExec p σ σ') {s : St} (h : Cfg s) {pc : BitVec 64}
+    (hpc : s.regs.get? .PC = some pc) (hc : codeAt s pc (compileBF N bv p)) (hok : codeOK pc (compileBF N bv p).length)
+    (hf : FrOK N (frameBase N (getX s 2))) (hfd : ∀ r ∈ R, disjoint ⟨frameBase N (getX s 2), 8 * (N + 1)⟩ r)
+    (hcd : ∀ r ∈ (⟨frameBase N (getX s 2), 8 * (N + 1)⟩ : Region) :: R,
+      disjoint ⟨pc.toNat, 4 * (compileBF N bv p).length⟩ r)
+    (hreg : ∀ i : Fin 8, getX s (A8 i) = σ.env i.val) (hslot : ∀ j < N, σ.env (8 + j) = 0)
+    (hheap : HeapRel bv R σ s) (hra : (getX s 1).toNat % 2 = 0) :
+    runsTo s fun s' => s'.regs.get? .PC = some (getX s 1) ∧ (∀ i : Fin 8, getX s' (A8 i) = σ'.env i.val) ∧
+      HeapRel bv R σ' s' ∧ unchangedOutside s s' ((⟨frameBase N (getX s 2), 8 * (N + 1)⟩ : Region) :: R) ∧
+      Cfg s' ∧ calleeSavedKept s s' ∧ getX s' 3 = getX s 3
+```
+
+The body induction `execB_ok` carries `Rel2 N fp bv R σ s` (`EnvRel`: `a_i = σ.env i`, `gp = fp`, slot `j`
+bytes `= le8 (σ.env (8+j))`; plus `HeapRel`) and `AF (R ++ slotRegs N fp)`: each slot is an 8-byte region of
+the layout, so a slot store is `Next.store_region8` and a byte store `Next.store_region` on the same list.
+
+### Merge sort
+
+Program `msortProg` (`SortMergeSrc.lean`): blocks input (0, base `v0`), scratch (1, base `v2`), output (2,
+base `v3`), `v1 = n`; registers `v4..v7 = k, p, q, t`, slots `v8..v14 = x, y, mid, e, i, w, ww` (`N = 7`).
+`pass(src, dst)` merges runs `[i, i+w)`, `[i+w, i+2w)` for `i = 0, 2w, ...` with a branch-free inner loop
+(`t := (p < mid) & ((q < e & y < x) ^ 1)`, `dst[k] := t ? x : y`, `p += t`, `q += t ^ 1`; loads use index
+`p < mid ? p : k` so they are always in bounds). Main: `w := 1; pass(in, out); ww := 2; while ww < n
+{ w := ww; pass(out, scr); w := 2ww; pass(scr, out); ww := 4ww }` (an odd number of passes, so the result is
+in the output block; no final copy). O(n log n): `1 + 2m` passes of O(n) each, `m` = number of `ww ∈ {2, 8, 32, …}`
+below `n`, i.e. `⌈log₂ n⌉` or `⌈log₂ n⌉ + 1` passes (11 for n = 1000).
+
+Source proof: one pass computes `MS.runs leB w S 0` (`pass_exec`, via `run_exec`, `merge_inner_exec`,
+`inner_step`: invariant `W ++ merge (L.drop (p-i)) (R.drop (q-mid)) = merge L R` with core's `List.merge`);
+`runs_perm` (permutation), `runs_CS` (if every aligned `w`-chunk is sorted, every aligned `2w`-chunk of the
+result is: core's `List.pairwise_merge`); at the end `ww ≥ n`, so the output is sorted (`CS_sorted`), and by
+uniqueness of sorted permutations (`sorted_perm_eq`) it is `xs.mergeSort leB`:
+
+```lean
+theorem msortProg_mergeSort (xs scr out : List (BitVec 8)) (σ : BState) (hh : σ.heap = [xs, scr, out])
+    (h1 : σ.env 1 = BitVec.ofNat 64 xs.length) (hn : xs.length < 2 ^ 32) (hscr : scr.length = xs.length)
+    (hout : out.length = xs.length) :
+    ∃ σ', BExec msortProg σ σ' ∧ ∃ scr', σ'.heap = [xs, scr', xs.mergeSort leB]
+```
+
+Machine (`SortMergeMachine.lean`): `msortCode = compileBF 7 [0, 2, 3] msortProg` (442 words).
+`msortCode_ok` (region form: output `= xs.mergeSort leB`, input unchanged, memory outside frame/scratch/output
+unchanged, callee-saved and `gp` kept) and
+
+```lean
+theorem msortCode_implements : ImplementsMapped2 msortCode (fun x => x.mergeSort leU) (stackLen := 71)
+```
+
+`ImplementsMapped2` is `Implements` (`Spec.lean`) with exactly two extra hypotheses, the hosting assumptions
+`∀ i < (f x).length, (s.mem[output.base + i]?).isSome` and `∀ i < x.length, (s.mem[scratch.base + i]?).isSome`
+(the Sail `lbu` lemma needs a present byte, and `HeapRel` asks every block byte to be present at the start,
+also for the scratch and output blocks, which the program writes before reading). The stack needs no hosting
+hypothesis (the prologue writes every frame cell before any read). `stackLen = 71`: 64 bytes of frame (saved
+`gp` + 7 slots) plus up to 7 bytes lost to aligning `sp` down to 8 (`Implements` does not promise an aligned
+`sp`). Everything else is literally `Implements`: code anywhere, `a0..a3`/`sp`/`ra` as specified, conclusion
+`PC = ra`, output bytes, `unchangedOutside [input, scratch, output, stack]`, `calleeSavedKept`, `Cfg`.
+
+### Tests (`asm/msort_test.py`, words from `asm/emit_arr2.lean` in `asm/arr-words/msort.words`)
+
+`check N`: per case its own input / scratch / output slots (each followed by 16 guard bytes) and its own
+256-byte stack with `sp` at a random misalignment (0..7), `gp` set to a magic value; QEMU and the Sail C
+emulator: output `= sorted(input)`, input and every guard byte unchanged, every stack byte outside the 64-byte
+frame unchanged, `gp` and `sp` restored, and every Sail data write inside the case's scratch / output / frame.
+`bench`: instructions retired between the call and the return (`minstret` under QEMU `-icount shift=0`).
+
+### Not done
+
+- S2 (8-byte `load64`/`store64` on blocks): not started. It needs two `BStmt` constructors, an alignment
+  side condition per word-accessed block, a lemma for an 8-byte store inside a larger region (only whole-region
+  `store_region8` exists) and `ld/sd t, 0(t0)` lemmas (already generated: `W2.ldT`, `W2.sdT`, `step_ldT`).
+- Expression spilling (depth limit unchanged).
