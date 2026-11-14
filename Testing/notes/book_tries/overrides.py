@@ -16,8 +16,8 @@ O={
  'halve':('B','reify% fun n => n >>> 1',W64,'halve'),
  'minus':('B','reify% fun a b => if a<b then 0 else a-b (truncated subtraction)',W64,'minus'),
  'plus':('B','reify% fun a b => a+b (book def: recursion on b; lemma)',W64,'plus'),
- 'times':('B','hand-written loop Stmt: acc:=0; while k≠0: acc+=n; k-=1 (or C: multiply)',W64+'; loop runs k times','loop'),
- 'div':('B','hand-written loop Stmt: subtract repeatedly (n<k terminates; k>0 needed)',W64+'; k>0','loop'),
+ 'times':('B','hand-written loop Stmt: acc:=0; while k≠0: acc+=n; k-=1 (or C: multiply)',W64+'; loop runs k times','X'),
+ 'div':('B','hand-written loop Stmt: subtract repeatedly (n<k terminates; k>0 needed)',W64+'; k>0','X'),
  # lists
  'Tail.sum':('B','compile% fun xs:List UInt8 => foldl (fun a x => a + x.toBitVec.setWidth 64) 0 ; List Nat -> bytes','list elements < 256, |xs| < 2^20 (sum < 2^64)','sum'),
  'NonTail.sum':('B','as Tail.sum (non-tail recursion replaced by foldl; equality lemma)','list elements < 256','sum'),
