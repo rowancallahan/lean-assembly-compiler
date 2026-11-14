@@ -27,28 +27,28 @@ theorem u8or01 : ∀ a b : Bool, ((if a then 1 else 0 : UInt8) ||| (if b then 1 
 theorem u8xor01 : ∀ a : Bool, ((if a then 1 else 0 : UInt8) ^^^ 1) = if (!a) then 1 else 0 := by decide
 
 theorem BPred.bit_denote (x : UInt8) : ∀ p : BPred, p.bit.denote 0 x = if p.denote x then 1 else 0
-  | .cmp c a b => by cases c <;> simp [BPred.bit, BPred.denote, BExp.denote, BCmp.eval]
+  | .cmp c a b => by cases c <;> simp [BPred.bit, BPred.denote, ByteExp.denote, BCmp.eval]
   | .and p q => by
-    simp only [BPred.bit, BPred.denote, BExp.denote, BOp.eval, p.bit_denote x, q.bit_denote x]
+    simp only [BPred.bit, BPred.denote, ByteExp.denote, BOp.eval, p.bit_denote x, q.bit_denote x]
     exact u8and01 _ _
   | .or p q => by
-    simp only [BPred.bit, BPred.denote, BExp.denote, BOp.eval, p.bit_denote x, q.bit_denote x]
+    simp only [BPred.bit, BPred.denote, ByteExp.denote, BOp.eval, p.bit_denote x, q.bit_denote x]
     exact u8or01 _ _
   | .not p => by
-    simp only [BPred.bit, BPred.denote, BExp.denote, BOp.eval, p.bit_denote x]
+    simp only [BPred.bit, BPred.denote, ByteExp.denote, BOp.eval, p.bit_denote x]
     exact u8xor01 _
   | .tt => rfl
   | .ff => rfl
 
 theorem BPred.bit_noAcc : ∀ p : BPred, p.noAcc = true → p.bit.noAcc = true
-  | .cmp c a b, h => by simpa [BPred.bit, BPred.noAcc, BExp.noAcc] using h
+  | .cmp c a b, h => by simpa [BPred.bit, BPred.noAcc, ByteExp.noAcc] using h
   | .and p q, h => by
     simp only [BPred.noAcc, Bool.and_eq_true] at h
-    simp [BPred.bit, BExp.noAcc, p.bit_noAcc h.1, q.bit_noAcc h.2]
+    simp [BPred.bit, ByteExp.noAcc, p.bit_noAcc h.1, q.bit_noAcc h.2]
   | .or p q, h => by
     simp only [BPred.noAcc, Bool.and_eq_true] at h
-    simp [BPred.bit, BExp.noAcc, p.bit_noAcc h.1, q.bit_noAcc h.2]
-  | .not p, h => by simp [BPred.bit, BExp.noAcc, p.bit_noAcc h]
+    simp [BPred.bit, ByteExp.noAcc, p.bit_noAcc h.1, q.bit_noAcc h.2]
+  | .not p, h => by simp [BPred.bit, ByteExp.noAcc, p.bit_noAcc h]
   | .tt, _ | .ff, _ => rfl
 
 def b01 (b : Bool) : BitVec 64 := if b then 1 else 0
@@ -56,7 +56,7 @@ def b01 (b : Bool) : BitVec 64 := if b then 1 else 0
 /-- the bit expression computes the predicate as a 0/1 word, whatever the accumulator -/
 theorem BPred.bit_tr {p : BPred} (hp : p.noAcc = true) (env : AEnv) (x : UInt8) (h6 : env 6 = zx x) :
     p.bit.tr.denote env = b01 (p.denote x) := by
-  rw [BExp.tr_ok 0 x env h6 _ (.inl (p.bit_noAcc hp)), p.bit_denote]
+  rw [ByteExp.tr_ok 0 x env h6 _ (.inl (p.bit_noAcc hp)), p.bit_denote]
   unfold b01; split <;> rfl
 
 theorem eqB_noAcc (b : UInt8) : (eqB b).noAcc = true := rfl
@@ -486,7 +486,7 @@ theorem Red.core_exec (r : Red) (hc : r.chk = none) {L : Nat} {cs : CS} {xs cur 
     cases cur <;> exact hI'
   | sum8 =>
     obtain ⟨σ', h, hI'⟩ := red_exec (α := UInt8) zx (· + ·) (fun _ => 0) zx (fun _ => 1) Red.sum8.code
-      (fun env => rfl) (fun _ env a x h5 h6 => BExp.tr_ok a x env h6 _ (.inr h5)) (fun env a h5 => h5)
+      (fun env => rfl) (fun _ env a x h5 h6 => ByteExp.tr_ok a x env h6 _ (.inr h5)) (fun env a h5 => h5)
       (fun env a h5 h1 => h1) (fun _ => Nat.le_refl _) (by decide) hI hkL hx hL
     refine ⟨σ', h, ?_⟩
     simpa only [Red.code, if_true, leBytes_zx, foldl_u8sum, UInt8.zero_add] using hI'
@@ -573,7 +573,7 @@ theorem zx_eq0 (u : UInt8) : zx u = 0 ↔ u = 0 := by
 
 theorem sf_loop_exec {L : Nat} {cs : CS} {xs cur : List UInt8} {σ : AState} {out : List UInt8}
     {fs : List (UInt8 → UInt8)} (hI : Inv L cs xs cur σ out fs) (hrev : cs.onOut = true → cs.rev = false)
-    (Kb Nb : BExp) (s0 : UInt8) (hsp : cur.length ≤ L) (hx : xs.length < 2 ^ 32) (hL : L < 2 ^ 32) :
+    (Kb Nb : ByteExp) (s0 : UInt8) (hsp : cur.length ≤ L) (hx : xs.length < 2 ^ 32) (hL : L < 2 ^ 32) :
     ∃ σ', ExecL [.assign 5 (.const (zx s0)), .assign 7 (.const 0),
       loopV 1 (.seq (fetch cs) (.seq (.store 1 (.var 7) (.var 6))
         (.seq (.assign 7 (.bin .add (.var 7) (.ite Kb.tr (.const 1) (.const 0)))) (.assign 5 Nb.tr)))),
@@ -632,10 +632,10 @@ theorem sf_loop_exec {L : Nat} {cs : CS} {xs cur : List UInt8} {σ : AState} {ou
       simp only [e6, AExp.denote, AEnv.set, if_true, zx_setWidth] at hst
       rw [heap_set1] at hst
       have hKv : Kb.tr.denote e6 = zx (K st u) := by
-        rw [← hK]; exact BExp.tr_ok st u e6 (by simp [e6, AEnv.set]) Kb (.inr (by simp [e6, AEnv.set, h5]))
+        rw [← hK]; exact ByteExp.tr_ok st u e6 (by simp [e6, AEnv.set]) Kb (.inr (by simp [e6, AEnv.set, h5]))
       let e7' := e6.set 7 ((AExp.bin .add (.var 7) (.ite Kb.tr (.const 1) (.const 0))).denote e6)
       have hNv : Nb.tr.denote e7' = zx (N st u) := by
-        rw [← hN]; exact BExp.tr_ok st u e7' (by simp [e7', e6, AEnv.set]) Nb
+        rw [← hN]; exact ByteExp.tr_ok st u e7' (by simp [e7', e6, AEnv.set]) Nb
           (.inr (by simp [e7', e6, AEnv.set, h5]))
       refine ⟨_, .seq hf (.seq hst (.seq (AExec.assign (v := 7) (σ := ⟨e6, _⟩)) AExec.assign)), ?_, ?_, ?_, ?_⟩
       · simp only [e6, AEnv.set, Fin.reduceEq, if_false]; exact h2
@@ -688,7 +688,7 @@ theorem sf_loop_exec {L : Nat} {cs : CS} {xs cur : List UInt8} {σ : AState} {ou
   · simp only [AEnv.set, Fin.reduceEq, if_false, if_true, AExp.denote, e7]; omega
 
 theorem sf_exec {L : Nat} {cs : CS} {xs cur : List UInt8} {σ : AState} (hI : InvE L cs xs cur σ)
-    (Kb Nb : BExp) (s0 : UInt8) (hsp : cur.length ≤ L) (hx : xs.length < 2 ^ 32) (hL : L < 2 ^ 32) :
+    (Kb Nb : ByteExp) (s0 : UInt8) (hsp : cur.length ≤ L) (hx : xs.length < 2 ^ 32) (hL : L < 2 ^ 32) :
     ∃ σ', ExecL (sfC cs Kb Nb s0) σ σ' ∧
       InvE L csClean xs (sfilt (fun s x => Kb.denote s x) (fun s x => Nb.denote s x) s0 cur) σ' := by
   cases hO : cs.onOut
@@ -699,14 +699,14 @@ theorem sf_exec {L : Nat} {cs : CS} {xs cur : List UInt8} {σ : AState} (hI : In
     obtain ⟨σ', hex, hI'⟩ := sf_loop_exec hI₁ (fun _ => rfl) Kb Nb s0 hsp hx hL
     exact ⟨σ', by simpa [sfC, hO] using ExecL.append hex₁ hex, hI'⟩
 
-theorem BExp.denote_noAcc {e : BExp} (h : e.noAcc = true) (a x : UInt8) : e.denote a x = e.denote 0 x := by
+theorem ByteExp.denote_noAcc {e : ByteExp} (h : e.noAcc = true) (a x : UInt8) : e.denote a x = e.denote 0 x := by
   let env : AEnv := fun i => if i = 5 then zx a else zx x
-  have h1 := BExp.tr_ok a x env (by simp [env]) e (.inr (by simp [env]))
-  have h2 := BExp.tr_ok 0 x env (by simp [env]) e (.inl h)
+  have h1 := ByteExp.tr_ok a x env (by simp [env]) e (.inr (by simp [env]))
+  have h2 := ByteExp.tr_ok 0 x env (by simp [env]) e (.inl h)
   exact zx_inj.1 (h1.symm.trans h2)
 
 theorem bit_any {p : BPred} (hp : p.noAcc = true) (s x : UInt8) : p.bit.denote s x = if p.denote x then 1 else 0 := by
-  rw [BExp.denote_noAcc (p.bit_noAcc hp), p.bit_denote]
+  rw [ByteExp.denote_noAcc (p.bit_noAcc hp), p.bit_denote]
 
 theorem sfilt_filter (K N : UInt8 → UInt8 → UInt8) (p : UInt8 → Bool) (hK : ∀ s x, K s x = if p x then 1 else 0) :
     ∀ (s : UInt8) (l : List UInt8), sfilt K N s l = l.filter p
@@ -853,13 +853,13 @@ theorem XStage.denote_len (st : XStage) (hc : st.chk = none) (l : List UInt8) :
   | takeWhile p =>
     show (l.takeWhile p.denote).length ≤ l.length
     rw [← sfilt_takeWhile (fun s x => (takeK p).denote s x) p.denote (fun s x => by
-      simp [takeK, BExp.denote, BOp.eval, bit_any (hp p hc)])]
+      simp [takeK, ByteExp.denote, BOp.eval, bit_any (hp p hc)])]
     exact sfilt_len _ _ _ _
   | dropWhile p =>
     show (l.dropWhile p.denote).length ≤ l.length
     rw [← sfilt_dropWhile (fun s x => (dropK p).denote s x) (fun s x => (takeK p).denote s x) p.denote
-      (fun s x => by simp [dropK, BExp.denote, BOp.eval, bit_any (hp p hc)])
-      (fun s x => by simp [takeK, BExp.denote, BOp.eval, bit_any (hp p hc)])]
+      (fun s x => by simp [dropK, ByteExp.denote, BOp.eval, bit_any (hp p hc)])
+      (fun s x => by simp [takeK, ByteExp.denote, BOp.eval, bit_any (hp p hc)])]
     exact sfilt_len _ _ _ _
   | appendC c => simp [XStage.denote, XStage.len]
 
@@ -887,13 +887,13 @@ theorem xstage_exec {L : Nat} {xs : List UInt8} (hx : xs.length < 2 ^ 32) (hL : 
   | takeWhile p =>
     obtain ⟨σ', hex, hI'⟩ := sf_exec hI (takeK p) (takeK p) 1 hsp hx hL
     refine ⟨σ', hex, ?_⟩
-    rw [sfilt_takeWhile _ p.denote (fun s x => by simp [takeK, BExp.denote, BOp.eval, bit_any (hp p hc)])] at hI'
+    rw [sfilt_takeWhile _ p.denote (fun s x => by simp [takeK, ByteExp.denote, BOp.eval, bit_any (hp p hc)])] at hI'
     exact hI'
   | dropWhile p =>
     obtain ⟨σ', hex, hI'⟩ := sf_exec hI (dropK p) (takeK p) 1 hsp hx hL
     refine ⟨σ', hex, ?_⟩
-    rw [sfilt_dropWhile _ _ p.denote (fun s x => by simp [dropK, BExp.denote, BOp.eval, bit_any (hp p hc)])
-      (fun s x => by simp [takeK, BExp.denote, BOp.eval, bit_any (hp p hc)])] at hI'
+    rw [sfilt_dropWhile _ _ p.denote (fun s x => by simp [dropK, ByteExp.denote, BOp.eval, bit_any (hp p hc)])
+      (fun s x => by simp [takeK, ByteExp.denote, BOp.eval, bit_any (hp p hc)])] at hI'
     exact hI'
   | appendC c => exact app_exec hI c hsp hx hL
 

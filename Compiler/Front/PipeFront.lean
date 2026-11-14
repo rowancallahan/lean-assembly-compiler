@@ -85,15 +85,15 @@ def w64 : Expr := mkApp (mkConst ``BitVec) (mkNatLit 64)
 partial def reifyB (acc? : Option Expr) (x : Expr) (e : Expr) : MetaM Expr := do
   let e ← instantiateMVars e
   unless ← isTy e u8 do throwError "compile%: expected a `UInt8` expression, got{indentExpr e}"
-  if e == x then return mkConst ``BExp.x
-  if acc? == some e then return mkConst ``BExp.acc
-  if !e.hasFVar then return mkApp (mkConst ``BExp.lit) e
+  if e == x then return mkConst ``ByteExp.x
+  if acc? == some e then return mkConst ``ByteExp.acc
+  if !e.hasFVar then return mkApp (mkConst ``ByteExp.lit) e
   let args := e.getAppArgs
   let r := reifyB acc? x
   let bin (op : Name) : MetaM Expr := do
-    return mkApp3 (mkConst ``BExp.bin) (mkConst op) (← r args[4]!) (← r args[5]!)
+    return mkApp3 (mkConst ``ByteExp.bin) (mkConst op) (← r args[4]!) (← r args[5]!)
   let ite (cmp : Name) (a b t f : Expr) : MetaM Expr := do
-    return mkApp5 (mkConst ``BExp.ite) (mkConst cmp) (← r a) (← r b) (← r t) (← r f)
+    return mkApp5 (mkConst ``ByteExp.ite) (mkConst cmp) (← r a) (← r b) (← r t) (← r f)
   match e.getAppFn.constName?, args.size with
   | some ``HAdd.hAdd, 6 => bin ``BOp.add
   | some ``HSub.hSub, 6 => bin ``BOp.sub
@@ -328,7 +328,7 @@ elab "compile% " t:term : term => do
     (by first
       | exact fun _ => rfl
       | exact fun _ => (leBytes_eq_enc _).symm
-      | (intro xs; simp [XPipe.denote, XStage.denote, Red.denote, Stage.denote, BExp.denote, WExp.denote, BOp.eval,
+      | (intro xs; simp [XPipe.denote, XStage.denote, Red.denote, Stage.denote, ByteExp.denote, WExp.denote, BOp.eval,
           Op.eval, List.head?_drop, List.reverse_append, show leU = (fun a b => decide (a ≤ b)) from rfl])
       | fail "compile%: could not prove that the function equals the reified pipe")
     (by decide +kernel))

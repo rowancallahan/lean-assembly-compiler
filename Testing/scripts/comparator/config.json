@@ -82,5 +82,6 @@
   "valid_reservation",
   "Classical.choice",
   "Quot.sound"
- ]
+ ],
+ "enable_nanoda": false
 }

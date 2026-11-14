@@ -28,7 +28,7 @@ def BCmp.eval : BCmp → UInt8 → UInt8 → Bool
 
 /-- Boolean conditions on the element `x` -/
 inductive BPred where
-  | cmp (c : BCmp) (a b : BExp)
+  | cmp (c : BCmp) (a b : ByteExp)
   | and (p q : BPred)
   | or (p q : BPred)
   | not (p : BPred)
@@ -51,7 +51,7 @@ def BPred.noAcc : BPred → Bool
   | .tt | .ff => true
 
 /-- the predicate as a 0/1 byte expression -/
-def BPred.bit : BPred → BExp
+def BPred.bit : BPred → ByteExp
   | .cmp c a b => .ite c a b (.lit 1) (.lit 0)
   | .and p q => .bin .and p.bit q.bit
   | .or p q => .bin .or p.bit q.bit
@@ -122,7 +122,7 @@ structure RedC where
 def Red.code : Red → RedC
   | .length => ⟨.var 1, false, .var 5, none, 8, none⟩
   | .isEmpty => ⟨.bin .eq (.var 1) (.const 0), false, .var 5, none, 1, none⟩
-  | .sum8 => ⟨.const 0, true, (BExp.bin .add .acc .x).tr, none, 1, none⟩
+  | .sum8 => ⟨.const 0, true, (ByteExp.bin .add .acc .x).tr, none, 1, none⟩
   | .sum64 => ⟨.const 0, true, .bin .add (.var 5) (.var 6), none, 8, none⟩
   | .countP p => ⟨.const 0, true, .bin .add (.var 5) p.bit.tr, none, 8, none⟩
   | .count b => ⟨.const 0, true, .bin .add (.var 5) (eqB b).bit.tr, none, 8, none⟩
@@ -213,7 +213,7 @@ def preC : Pipe → CS → List AStmt × CS
   | st :: r, cs => ((stageC st cs).1 ++ (preC r (stageC st cs).2).1, (preC r (stageC st cs).2).2)
 
 /-- stateful filter: state `a5` (from `s0`), keep `x` iff `K ≠ 0`, next state `N`; written to `out[a7]` -/
-def sfC (cs : CS) (K N : BExp) (s0 : UInt8) : List AStmt :=
+def sfC (cs : CS) (K N : ByteExp) (s0 : UInt8) : List AStmt :=
   (if cs.onOut then mat cs else []) ++
   [.assign 5 (.const (zx s0)), .assign 7 (.const 0),
    loopV 1 (.seq (fetch (if cs.onOut then csClean else cs))
@@ -229,8 +229,8 @@ def appStores : Nat → List UInt8 → List AStmt
 def appC (cs : CS) (c : List UInt8) : List AStmt :=
   mat cs ++ appStores 0 c ++ [.assign 1 (.bin .add (.var 1) (.const (.ofNat 64 c.length)))]
 
-def takeK (p : BPred) : BExp := .bin .and .acc p.bit
-def dropK (p : BPred) : BExp := .bin .xor (.bin .and .acc p.bit) (.lit 1)
+def takeK (p : BPred) : ByteExp := .bin .and .acc p.bit
+def dropK (p : BPred) : ByteExp := .bin .xor (.bin .and .acc p.bit) (.lit 1)
 
 def xstageC : XStage → CS → List AStmt × CS
   | .base st, cs => stageC st cs

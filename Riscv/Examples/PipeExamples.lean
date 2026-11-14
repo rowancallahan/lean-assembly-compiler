@@ -145,12 +145,13 @@ example := compile% fun xs : List UInt8 => xs.take xs.length
 error: compile%: the pipe
   [XStage.base
       (Stage.map
-        (BExp.bin BOp.add BExp.x
-          (BExp.bin BOp.add BExp.x
-            (BExp.bin BOp.add BExp.x
-              (BExp.bin BOp.add BExp.x
-                (BExp.bin BOp.add BExp.x
-                  (BExp.bin BOp.add BExp.x (BExp.bin BOp.add BExp.x (BExp.bin BOp.add BExp.x BExp.x)))))))))]
+        (ByteExp.bin BOp.add ByteExp.x
+          (ByteExp.bin BOp.add ByteExp.x
+            (ByteExp.bin BOp.add ByteExp.x
+              (ByteExp.bin BOp.add ByteExp.x
+                (ByteExp.bin BOp.add ByteExp.x
+                  (ByteExp.bin BOp.add ByteExp.x
+                    (ByteExp.bin BOp.add ByteExp.x (ByteExp.bin BOp.add ByteExp.x ByteExp.x)))))))))]
 is rejected by the compiler: assignment to a6: expression needs 9 temporaries (limit 7), or a6 is a block base
 -/
 #guard_msgs in

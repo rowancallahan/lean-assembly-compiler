@@ -1,6 +1,6 @@
 /- What compiles: a decidable syntactic condition `Pipe.ok` that implies `compileP` succeeds
 (`compileP_of_ok`).  `Pipe.ok p`: every stage passes `Stage.chk` (take/drop counts `< 2^64`), every
-map/fold expression translates to depth `≤ 6` (`BExp.tr_depth_le`: nesting height `≤ 3` is enough for byte
+map/fold expression translates to depth `≤ 6` (`ByteExp.tr_depth_le`: nesting height `≤ 3` is enough for byte
 expressions), and the total expression size `Pipe.cost p` (a bound on the words of all map/fold
 expressions) is `≤ 950`, so every loop body is within the `beq` range. -/
 import Compiler.Front.PipeMachine
@@ -27,46 +27,46 @@ theorem opCode_len (op : Op) (k : Nat) : (opCode op k).length ≤ 2 := by
   unfold opCode; split <;> simp
 
 /-- a bound on the number of words of `e.tr` -/
-def BExp.size : BExp → Nat
+def ByteExp.size : ByteExp → Nat
   | .x | .acc => 1
   | .lit _ => 17
   | .bin op a b => a.size + b.size + (if op = .add ∨ op = .sub then 19 else 1)
   | .ite _ a b t e => a.size + b.size + t.size + e.size + 7
 
-theorem BExp.gen_len : ∀ (e : BExp) (k : Nat), (gen8 e.tr k).length ≤ e.size
-  | .x, k => by simp [BExp.tr, gen8, BExp.size]
-  | .acc, k => by simp [BExp.tr, gen8, BExp.size]
+theorem ByteExp.gen_len : ∀ (e : ByteExp) (k : Nat), (gen8 e.tr k).length ≤ e.size
+  | .x, k => by simp [ByteExp.tr, gen8, ByteExp.size]
+  | .acc, k => by simp [ByteExp.tr, gen8, ByteExp.size]
   | .lit c, k => by
-    simp only [BExp.tr, gen8, BExp.size]
+    simp only [ByteExp.tr, gen8, ByteExp.size]
     exact genConst_len 8 _ k (by rw [zx_toNat]; exact c.toNat_lt)
   | .bin op a b, k => by
-    have := BExp.gen_len a k; have := BExp.gen_len b (k + 1)
+    have := ByteExp.gen_len a k; have := ByteExp.gen_len b (k + 1)
     have h255 := genConst_len 8 255 (k + 1) (by decide)
-    cases op <;> simp [BExp.tr, mask8, gen8, BExp.size, opCode] <;> omega
+    cases op <;> simp [ByteExp.tr, mask8, gen8, ByteExp.size, opCode] <;> omega
   | .ite c a b t e, k => by
-    have := BExp.gen_len a k; have := BExp.gen_len b (k + 1)
-    have := BExp.gen_len b k; have := BExp.gen_len a (k + 1)
-    have := BExp.gen_len t (k + 1); have := BExp.gen_len e (k + 2)
-    have := BExp.gen_len e (k + 1); have := BExp.gen_len t (k + 2)
-    cases c <;> simp [BExp.tr, gen8, BExp.size, opCode, selCode] <;> omega
+    have := ByteExp.gen_len a k; have := ByteExp.gen_len b (k + 1)
+    have := ByteExp.gen_len b k; have := ByteExp.gen_len a (k + 1)
+    have := ByteExp.gen_len t (k + 1); have := ByteExp.gen_len e (k + 2)
+    have := ByteExp.gen_len e (k + 1); have := ByteExp.gen_len t (k + 2)
+    cases c <;> simp [ByteExp.tr, gen8, ByteExp.size, opCode, selCode] <;> omega
 
-def BExp.height : BExp → Nat
+def ByteExp.height : ByteExp → Nat
   | .x | .acc | .lit _ => 0
   | .bin _ a b => max a.height b.height + 1
   | .ite _ a b t e => max (max a.height b.height) (max t.height e.height) + 1
 
 /-- temporaries needed by a byte expression: at most twice its nesting height (plus the result) -/
-theorem BExp.tr_depth_le : ∀ e : BExp, e.tr.depth ≤ 2 * e.height
-  | .x => by simp [BExp.tr, AExp.depth]
-  | .acc => by simp [BExp.tr, AExp.depth]
-  | .lit c => by simp [BExp.tr, AExp.depth]
+theorem ByteExp.tr_depth_le : ∀ e : ByteExp, e.tr.depth ≤ 2 * e.height
+  | .x => by simp [ByteExp.tr, AExp.depth]
+  | .acc => by simp [ByteExp.tr, AExp.depth]
+  | .lit c => by simp [ByteExp.tr, AExp.depth]
   | .bin op a b => by
-    have := BExp.tr_depth_le a; have := BExp.tr_depth_le b
-    cases op <;> simp only [BExp.tr, mask8, AExp.depth, BExp.height] <;> omega
+    have := ByteExp.tr_depth_le a; have := ByteExp.tr_depth_le b
+    cases op <;> simp only [ByteExp.tr, mask8, AExp.depth, ByteExp.height] <;> omega
   | .ite c a b t e => by
-    have := BExp.tr_depth_le a; have := BExp.tr_depth_le b
-    have := BExp.tr_depth_le t; have := BExp.tr_depth_le e
-    cases c <;> simp only [BExp.tr, AExp.depth, BExp.height] <;> omega
+    have := ByteExp.tr_depth_le a; have := ByteExp.tr_depth_le b
+    have := ByteExp.tr_depth_le t; have := ByteExp.tr_depth_le e
+    cases c <;> simp only [ByteExp.tr, AExp.depth, ByteExp.height] <;> omega
 
 /-- a bound on the number of words of `w.tr` -/
 def WExp.size : WExp → Nat
@@ -198,7 +198,7 @@ theorem foldC_wf (cs : CS) (hg : ∀ g ∈ cs.gs, g.depth < 7) (S : AExp) (hS : 
 
 theorem insProg_wf : insProg.wf bv2 := sortProg_wf.2.2
 
-theorem minE_depth (n : Nat) : (minE n).depth = 2 := by simp [minE, AExp.depth]
+theorem minN_depth (n : Nat) : (minN n).depth = 2 := by simp [minN, AExp.depth]
 
 theorem stage_wf (st : Stage) (cs : CS) (hs : st.shallow = true) (hg : ∀ g ∈ cs.gs, g.depth < 7)
     (hW : gsW cs.gs + st.cost ≤ 950) :
@@ -212,7 +212,7 @@ theorem stage_wf (st : Stage) (cs : CS) (hs : st.shallow = true) (hg : ∀ g ∈
       rcases hgm with h | rfl
       · exact hg g h
       · omega
-    · have := BExp.gen_len e 0
+    · have := ByteExp.gen_len e 0
       simp only [stageC, gsW_append, gsW, Stage.cost]; omega
   | reverse => exact ⟨by simp [stageC], hg, by simp [stageC]⟩
   | take n =>
@@ -220,19 +220,19 @@ theorem stage_wf (st : Stage) (cs : CS) (hs : st.shallow = true) (hg : ∀ g ∈
     split
     · refine ⟨fun s hs => ?_, hg, by simp⟩
       simp only [List.mem_cons, List.not_mem_nil, or_false] at hs
-      rcases hs with rfl | rfl <;> simp [AStmt.wf, AExp.depth, minE_depth]
+      rcases hs with rfl | rfl <;> simp [AStmt.wf, AExp.depth, minN_depth]
     · refine ⟨fun s hs => ?_, hg, by simp⟩
       simp only [List.mem_cons, List.not_mem_nil, or_false] at hs
-      subst hs; simp [AStmt.wf, minE_depth]
+      subst hs; simp [AStmt.wf, minN_depth]
   | drop n =>
     simp only [stageC]
     split
     · refine ⟨fun s hs => ?_, hg, by simp⟩
       simp only [List.mem_cons, List.not_mem_nil, or_false] at hs
-      subst hs; simp [AStmt.wf, AExp.depth, minE_depth]
+      subst hs; simp [AStmt.wf, AExp.depth, minN_depth]
     · refine ⟨fun s hs => ?_, hg, by simp⟩
       simp only [List.mem_cons, List.not_mem_nil, or_false] at hs
-      rcases hs with rfl | rfl <;> simp [AStmt.wf, AExp.depth, minE_depth]
+      rcases hs with rfl | rfl <;> simp [AStmt.wf, AExp.depth, minN_depth]
   | sort =>
     refine ⟨fun s hs => ?_, by simp [stageC, csClean], by simp [stageC, csClean, gsW]⟩
     simp only [stageC, List.mem_append, List.mem_cons, List.not_mem_nil, or_false] at hs
@@ -242,7 +242,7 @@ theorem stage_wf (st : Stage) (cs : CS) (hs : st.shallow = true) (hg : ∀ g ∈
     · exact assign_const_wf 4 (by decide) _
   | fold e i =>
     simp only [Stage.shallow, decide_eq_true_eq] at hs
-    have := BExp.gen_len e 0
+    have := ByteExp.gen_len e 0
     exact ⟨foldC_wf cs hg _ hs _ _ (by simp only [Stage.cost] at hW; omega), by simp [stageC, csClean],
       by simp [stageC, csClean, gsW]⟩
   | foldW w i =>

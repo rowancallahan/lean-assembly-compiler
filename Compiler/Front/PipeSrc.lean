@@ -41,18 +41,18 @@ theorem ite01 (p : Prop) [Decidable p] : ((if p then 1 else 0 : BitVec 64) = 0) 
   by_cases h : p <;> simp [h]
 
 /-- `e.tr` computes `zx (e.denote a x)` exactly -/
-theorem BExp.tr_ok (a x : UInt8) (env : AEnv) (h6 : env 6 = zx x) :
-    ∀ e : BExp, (e.noAcc = true ∨ env 5 = zx a) → e.tr.denote env = zx (e.denote a x)
+theorem ByteExp.tr_ok (a x : UInt8) (env : AEnv) (h6 : env 6 = zx x) :
+    ∀ e : ByteExp, (e.noAcc = true ∨ env 5 = zx a) → e.tr.denote env = zx (e.denote a x)
   | .x, _ => h6
-  | .acc, h => by simpa [BExp.noAcc] using h
+  | .acc, h => by simpa [ByteExp.noAcc] using h
   | .lit c, _ => rfl
   | .bin op p q, h => by
     have h' : (p.noAcc = true ∨ env 5 = zx a) ∧ (q.noAcc = true ∨ env 5 = zx a) := by
       rcases h with h | h
-      · simp only [BExp.noAcc, Bool.and_eq_true] at h; exact ⟨.inl h.1, .inl h.2⟩
+      · simp only [ByteExp.noAcc, Bool.and_eq_true] at h; exact ⟨.inl h.1, .inl h.2⟩
       · exact ⟨.inr h, .inr h⟩
-    have ip := BExp.tr_ok a x env h6 p h'.1; have iq := BExp.tr_ok a x env h6 q h'.2
-    cases op <;> simp only [BExp.tr, mask8, AExp.denote, Op.eval, ip, iq, BExp.denote, BOp.eval]
+    have ip := ByteExp.tr_ok a x env h6 p h'.1; have iq := ByteExp.tr_ok a x env h6 q h'.2
+    cases op <;> simp only [ByteExp.tr, mask8, AExp.denote, Op.eval, ip, iq, ByteExp.denote, BOp.eval]
     · exact zx_add _ _
     · exact zx_sub _ _
     · exact zx_and _ _
@@ -62,11 +62,11 @@ theorem BExp.tr_ok (a x : UInt8) (env : AEnv) (h6 : env 6 = zx x) :
     have h' : (p.noAcc = true ∨ env 5 = zx a) ∧ (q.noAcc = true ∨ env 5 = zx a) ∧
         (t.noAcc = true ∨ env 5 = zx a) ∧ (e.noAcc = true ∨ env 5 = zx a) := by
       rcases h with h | h
-      · simp only [BExp.noAcc, Bool.and_eq_true] at h; exact ⟨.inl h.1.1.1, .inl h.1.1.2, .inl h.1.2, .inl h.2⟩
+      · simp only [ByteExp.noAcc, Bool.and_eq_true] at h; exact ⟨.inl h.1.1.1, .inl h.1.1.2, .inl h.1.2, .inl h.2⟩
       · exact ⟨.inr h, .inr h, .inr h, .inr h⟩
-    have ip := BExp.tr_ok a x env h6 p h'.1; have iq := BExp.tr_ok a x env h6 q h'.2.1
-    have it := BExp.tr_ok a x env h6 t h'.2.2.1; have ie := BExp.tr_ok a x env h6 e h'.2.2.2
-    cases c <;> simp only [BExp.tr, AExp.denote, Op.eval, ip, iq, it, ie, BExp.denote, ite01, zx_lt, zx_inj]
+    have ip := ByteExp.tr_ok a x env h6 p h'.1; have iq := ByteExp.tr_ok a x env h6 q h'.2.1
+    have it := ByteExp.tr_ok a x env h6 t h'.2.2.1; have ie := ByteExp.tr_ok a x env h6 e h'.2.2.2
+    cases c <;> simp only [ByteExp.tr, AExp.denote, Op.eval, ip, iq, it, ie, ByteExp.denote, ite01, zx_lt, zx_inj]
     · by_cases hc : p.denote a x < q.denote a x <;> simp [hc]
     · by_cases hc : p.denote a x ≤ q.denote a x
       · simp [hc, UInt8.not_lt.mpr hc]
@@ -614,8 +614,8 @@ theorem sort_exec {L : Nat} {xs cur : List UInt8} {σ : AState} {out : List UInt
     exact List.take_left' (by simp [List.length_mergeSort, hlen])
   · simp only [AEnv.set, Fin.reduceEq, if_false, k1, hmm]; exact hm
 
-theorem minE_val {env : AEnv} {n : Nat} (hn : n < 2 ^ 64) : ((minE n).denote env).toNat = min n (env 1).toNat := by
-  simp only [minE, AExp.denote, Op.eval]
+theorem minN_val {env : AEnv} {n : Nat} (hn : n < 2 ^ 64) : ((minN n).denote env).toNat = min n (env 1).toNat := by
+  simp only [minN, AExp.denote, Op.eval]
   by_cases h : BitVec.ofNat 64 n < env 1
   · have h' := h; rw [BitVec.lt_def, ofNat_toNat_lt hn] at h'
     simp [h, ofNat_toNat_lt hn]; omega
@@ -664,7 +664,7 @@ theorem stage_exec {L : Nat} {xs : List UInt8} (hx : xs.length < 2 ^ 32) (hL : L
       · exact h
       · simp [h] at hc
     refine ⟨σ, rfl, out, fs ++ [fun x => e.denote 0 x], hI.heap, hI.olen,
-      hI.fsok.snoc fun env x h6 => BExp.tr_ok 0 x env h6 e (.inl hna), hI.bound, ?_, hI.s0⟩
+      hI.fsok.snoc fun env x h6 => ByteExp.tr_ok 0 x env h6 e (.inl hna), hI.bound, ?_, hI.s0⟩
     simp only [Stage.denote, stageC]
     rw [hI.cur, List.map_map]
     congr 1; funext x; simp [applyAll, List.foldl_append]
@@ -685,7 +685,7 @@ theorem stage_exec {L : Nat} {xs : List UInt8} (hx : xs.length < 2 ^ 32) (hL : L
     exact ⟨σ₂, ExecL.append hex₁ hex₂, hI₂⟩
   | fold e i =>
     obtain ⟨σ', hex, hI'⟩ := fold_exec zx (fun a x => e.denote a x) e.tr
-      (fun env a x h5 h6 => BExp.tr_ok a x env h6 e (.inr h5)) hI i (k := 1) (by omega) hsp hx hL
+      (fun env a x h5 h6 => ByteExp.tr_ok a x env h6 e (.inr h5)) hI i (k := 1) (by omega) hsp hx hL
     refine ⟨σ', hex, ?_⟩
     have : leBytes (zx (cur.foldl (fun a x => e.denote a x) i)) 1 = [cur.foldl (fun a x => e.denote a x) i] := by
       simp [leBytes, zx_setWidth]
@@ -701,9 +701,9 @@ theorem stage_exec {L : Nat} {xs : List UInt8} (hx : xs.length < 2 ^ 32) (hL : L
       · exact h
       · simp [h] at hc
     have hbd := hI.bound; have hcur := hI.cur; dsimp only at hbd hcur
-    have hk := minE_val (env := env) hn
-    have hset : ∀ a, (minE n).denote (env.set 4 a) = (minE n).denote env := fun a => by
-      simp [minE, AExp.denote, AEnv.set]
+    have hk := minN_val (env := env) hn
+    have hset : ∀ a, (minN n).denote (env.set 4 a) = (minN n).denote env := fun a => by
+      simp [minN, AExp.denote, AEnv.set]
     have hBl : (if cs.onOut then out else xs).length < 2 ^ 32 := by have := hI.olen; split <;> omega
     generalize hB : (if cs.onOut then out else xs) = B at *
     generalize hs : (env 4).toNat = s at *
@@ -717,7 +717,7 @@ theorem stage_exec {L : Nat} {xs : List UInt8} (hx : xs.length < 2 ^ 32) (hL : L
         rw [← List.map_take, List.take_take]
       · intro h; simp only [AEnv.set, Fin.reduceEq, if_false]; exact hI.s0 h
     · simp only [stageC, hr, if_true]
-      have e4 : (env 4 + (env 1 - (minE n).denote env)).toNat = s + (m - min n m) := by
+      have e4 : (env 4 + (env 1 - (minN n).denote env)).toNat = s + (m - min n m) := by
         rw [BitVec.toNat_add, BitVec.toNat_sub, hk, hs, hm]; omega
       refine ⟨_, ⟨_, AExec.assign' rfl, ExecL.one (AExec.assign' rfl)⟩, out, fs, hI.heap, hI.olen, hI.fsok, ?_, ?_, ?_⟩
       · simp only [AEnv.set, Fin.reduceEq, if_false, if_true, hB, AExp.denote, Op.eval, hset, e4, hk]
@@ -735,18 +735,18 @@ theorem stage_exec {L : Nat} {xs : List UInt8} (hx : xs.length < 2 ^ 32) (hL : L
       · exact h
       · simp [h] at hc
     have hbd := hI.bound; have hcur := hI.cur; dsimp only at hbd hcur
-    have hk := minE_val (env := env) hn
-    have hset : ∀ a, (minE n).denote (env.set 4 a) = (minE n).denote env := fun a => by
-      simp [minE, AExp.denote, AEnv.set]
+    have hk := minN_val (env := env) hn
+    have hset : ∀ a, (minN n).denote (env.set 4 a) = (minN n).denote env := fun a => by
+      simp [minN, AExp.denote, AEnv.set]
     have hBl : (if cs.onOut then out else xs).length < 2 ^ 32 := by have := hI.olen; split <;> omega
     generalize hB : (if cs.onOut then out else xs) = B at *
     generalize hs : (env 4).toNat = s at *
     generalize hm : (env 1).toNat = m at *
-    have e1 : (env 1 - (minE n).denote env).toNat = m - min n m := by
+    have e1 : (env 1 - (minN n).denote env).toNat = m - min n m := by
       rw [BitVec.toNat_sub, hk, hm]; omega
     cases hr : cs.rev
     · simp only [stageC, hr, Bool.false_eq_true, if_false]
-      have e4 : (env 4 + (minE n).denote env).toNat = s + min n m := by
+      have e4 : (env 4 + (minN n).denote env).toNat = s + min n m := by
         rw [BitVec.toNat_add, hk, hs]; omega
       refine ⟨_, ⟨_, AExec.assign' rfl, ExecL.one (AExec.assign' rfl)⟩, out, fs, hI.heap, hI.olen, hI.fsok, ?_, ?_, ?_⟩
       · simp only [AEnv.set, Fin.reduceEq, if_false, if_true, hB, AExp.denote, Op.eval, hset, e4, e1]; omega
