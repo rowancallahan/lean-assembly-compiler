@@ -115,7 +115,7 @@ def qemu(d, halt, size):
         return buf
     hmp("info version"); t0 = time.time()
     while "pc       %016x" % halt not in hmp("info registers"):
-        assert time.time() - t0 < 600, "QEMU did not reach halt"; time.sleep(0.01)
+        assert time.time() - t0 < float(os.environ.get("FUZZ_TMO", "600")), "QEMU did not reach halt (program hangs or crashes)"; time.sleep(0.01)
     hmp(f'pmemsave {BASE:#x} {size} "{d}/q.bin"'); q.stdin.write("quit\n"); q.wait()
     return bytearray(open(f"{d}/q.bin", "rb").read())
 

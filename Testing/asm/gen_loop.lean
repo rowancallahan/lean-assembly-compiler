@@ -40,7 +40,7 @@ def inc (c : Fin 4) : Stmt := asg c (.bin .add (.var c) (.const 1))
 def genS : Nat → List (Fin 4) → G Stmt
   | d, forb => do
     let allowed := (List.range 4).map fin4 |>.filter (!forb.contains ·)
-    let n := 1 + (← below 3)
+    let n := 1 + (← below (if d ≥ 2 then 5 else 3))
     let mut out : List Stmt := []
     for _ in [0:n] do
       let r ← below 6
@@ -60,38 +60,50 @@ def genS : Nat → List (Fin 4) → G Stmt
       else out := out ++ [asg allowed[← below allowed.length]! (← genE (← below 4))]
     return seqs out
 
-def Stmt.okB : Stmt → Bool
+def Proven.Stmt.okB : Stmt → Bool
   | .assign _ e => e.depth < 11
   | .seq a b => a.okB && b.okB
   | .loop c b => c.depth < 11 && b.okB && (gen c 0).length + (compileS b).length + 2 < 1024
 
-def exec : Nat → Stmt → (Fin 4 → BitVec 64) → Option (Fin 4 → BitVec 64)
-  | 0, _, _ => none
-  | _ + 1, .assign v e, σ => some (Env.set σ v (e.denote σ))
-  | f + 1, .seq a b, σ => do exec f b (← exec f a σ)
-  | f + 1, .loop c b, σ => if c.denote σ = 0 then some σ else do exec f (.loop c b) (← exec f b σ)
+/-- interpreter of the `Exec` semantics with a step budget (each statement execution costs 1) -/
+partial def exec : Stmt → (Fin 4 → BitVec 64) → Nat → Option ((Fin 4 → BitVec 64) × Nat)
+  | _, _, 0 => none
+  | .assign v e, σ, f + 1 => some (Env.set σ v (e.denote σ), f)
+  | .seq a b, σ, f => do let (σ1, f1) ← exec a σ f; exec b σ1 f1
+  | .loop c b, σ, f + 1 => if c.denote σ = 0 then some (σ, f) else do let (σ1, f1) ← exec b σ f; exec (.loop c b) σ1 f1
+def bucket (n : Nat) : String :=
+  if n ≤ 50 then "<=50" else if n ≤ 100 then "<=100" else if n ≤ 200 then "<=200" else if n ≤ 400 then "<=400" else ">400"
+def bump (a : Array (String × Nat)) (k : String) : Array (String × Nat) :=
+  match a.findIdx? (·.1 == k) with
+  | some i => a.modify i fun (k, n) => (k, n + 1)
+  | none => a.push (k, 1)
+def showStat (a : Array (String × Nat)) : String := ", ".intercalate (a.toList.map fun (k, n) => s!"{k}:{n}")
 def hex32 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
 
-def gen : IO Unit := do
+def genMain : IO Unit := do
   let env := fun v => do return (← IO.getEnv v).get!
   let seed ← env "SEED"; let np ← env "NPROG"; let k ← env "K"
   let mut s : UInt64 := seed.toNat!.toUInt64
-  let mut made := 0; let mut tried := 0; let mut loops := 0
+  let mut hist : Array (String × Nat) := #[]; let mut steps : Array (String × Nat) := #[]
+  let mut made := 0; let mut tried := 0
   while made < np.toNat! do
     tried := tried + 1
-    let (p, s') := (genS 2 []).run s
+    let (p, s') := (genS 3 []).run s
     s := s'
     if !p.okB then continue
     let mut ins : List String := []
-    let mut good := true
+    let mut good := true; let mut st := 0
     for _ in [0:k.toNat!] do
       let (a, s') := (do let a ← word; let b ← word; let c ← word; let d ← word; pure [a, b, c, d] : G (List Nat)).run s
       s := s'
       let σ : Fin 4 → BitVec 64 := fun i => BitVec.ofNat 64 a[i.val]!
-      match exec 200000 p σ with
+      match exec p σ 8000 with
       | none => good := false
-      | some r => ins := ins ++ [s!"in v={",".intercalate (a.map toString)},1,2,3,4 ev={",".intercalate ((List.range 4).map fun i => toString (r (fin4 i)).toNat)},?,?,?,?"]
+      | some (r, f) =>
+        st := max st (8000 - f)
+        ins := ins ++ [s!"in v={",".intercalate (a.map toString)},1,2,3,4 ev={",".intercalate ((List.range 4).map fun i => toString (r (fin4 i)).toNat)},?,?,?,?"]
     if !good then continue
+    hist := bump hist (bucket (compileF p).length); steps := bump steps (if st ≤ 100 then "<=100" else if st ≤ 1000 then "<=1000" else "<=8000")
     IO.println s!"prog loop_{seed}_{made}"
     IO.println "kind var8"
     IO.println s!"words {" ".intercalate ((compileF p).map hex32)}"
@@ -99,5 +111,5 @@ def gen : IO Unit := do
     IO.println "rw"
     for l in ins do IO.println l
     made := made + 1
-  IO.eprintln s!"loop programs: {made} accepted of {tried} generated"
-#eval gen
+  IO.println s!"# STAT loop: accepted {made} of {tried} generated; code words {showStat hist}; max statements executed {showStat steps}"
+#eval genMain

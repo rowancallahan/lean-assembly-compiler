@@ -9,11 +9,11 @@ out = []; seen = 0; done_exp = False
 for l in open(src):
     k, _, r = l.rstrip("\n").partition(" ")
     if k in ("prog", "case"): seen += 1
-    first = seen <= 1
+    first = seen <= 1 or mode == "exp"   # wrong expected values: every program; wrong word: first program only
     if mode == "word" and first and k in ("words", "rv"):
         ws = r.split(); ws = [("%08x" % (int(w, 16) ^ 0x00100000)) if i % 5 == 2 else w for i, w in enumerate(ws)]
         l = f"{k} {' '.join(ws)}\n"
-    if mode == "exp" and first and k in ("in", "t"):
+    if mode == "exp" and k in ("in", "t") and (k == "t" or True):
         if k == "t":
             f = r.split(); f[-1] = "%x" % (int(f[-1], 16) ^ 1); l = f"t {' '.join(f)}\n"
         else:

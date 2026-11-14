@@ -36,7 +36,7 @@ for ((r = 0; r < ROUNDS; r++)); do
     else N[$g]=$(eval "$4"); fi
   }
   NE=$((300 * SCALE))
-  run_gen exp  "SEED=$seed NCASES=$NE K=100 lake env lean Testing/asm/fuzz_exp.lean" "python3 Testing/asm/fuzzpar.py $T/exp.txt $JOBS" "grep -c '^t ' $T/exp.txt"
+  run_gen exp  "LEAN_PATH=$LP SEED=$seed NCASES=$NE K=100 lake env lean Testing/asm/fuzz_exp.lean" "python3 Testing/asm/fuzzpar.py $T/exp.txt $JOBS" "grep -c '^t ' $T/exp.txt"
   run_gen fast "LEAN_PATH=$LP BACKEND=fast SEED=$seed NCASES=$NE K=100 lake env lean Testing/asm/fuzz_exp.lean" "python3 Testing/asm/fuzzpar.py $T/fast.txt $JOBS" "grep -c '^t ' $T/fast.txt"
   run_gen pipe "SEED=$seed NPROG=$((60 * SCALE)) K=24 lake env lean Testing/asm/gen_pipe.lean" "python3 Testing/asm/fuzz_run.py $T/pipe.txt $JOBS" "grep -c '^in ' $T/pipe.txt"
   run_gen loop "SEED=$seed NPROG=$((100 * SCALE)) K=16 lake env lean Testing/asm/gen_loop.lean" "python3 Testing/asm/fuzz_run.py $T/loop.txt $JOBS" "grep -c '^in ' $T/loop.txt"

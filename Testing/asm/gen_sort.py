@@ -24,7 +24,7 @@ if "--random" in a:
     ins += [(pat(rng.randrange(6), rng.choice([rng.randrange(m + 1), rng.randrange(40), m])), rng.randrange(8)) for _ in range(n)]
 mut = a[a.index("--mutate") + 1] if "--mutate" in a else None
 f = open(out, "w"); B = 40
-for name, w, a2, frame, maxl in (("msort", "msort", "scr", 64, 10**9), ("insertion", "sort", "junk", 0, 800)):
+for name, w, a2, frame, maxl in (("msort", "msort", "scr", 64, 10**9), ("insertion", "sort", "junk", 0, 300)):
     ws = words(w)
     if mut == "word": ws[len(ws) // 2] = "%08x" % (int(ws[len(ws) // 2], 16) ^ 0x00100000)
     use = [x for x in ins if len(x[0]) <= maxl]
