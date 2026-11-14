@@ -214,5 +214,8 @@ theorem implements1_of_exec {α β : Type} (encA : α → List UInt8) (encB : β
       · omega
       · omega
       · show q < frameBase N (getX s 2) ∨ frameBase N (getX s 2) + _ ≤ q; omega
+  · have := p2 ⟨1, by decide⟩
+    rw [show rvF.get s' (avar ⟨1, by decide⟩) = getX s' 11 from rfl, hrl hr] at this
+    rw [p5.x11, this]
 
 end Proven.Mach.Riscv
