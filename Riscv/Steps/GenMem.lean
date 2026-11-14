@@ -85,7 +85,7 @@ theorem page2G (s : St) {x : BitVec 64} (h : x.toNat % 2 = 0) :
   simp [extend_value, sign_extend, Sail.BitVec.signExtend]
 @[simp] theorem upd_full16 (x : BitVec 16) : Sail.BitVec.updateSubrange (0#16) 15 0 x = x := by
   ext i hi; simp [Sail.BitVec.updateSubrange, Sail.BitVec.updateSubrange']
-@[simp] theorem ext8_setWidth {n w : Nat} (x : BitVec n) (i : Nat) (h : i + 8 ≤ w) :
+@[simp] theorem ext8_setWidth {n w : Nat} (x : BitVec n) (i : Nat) (h : i + 8 ≤ w ∧ 8 < w) :
     (x.setWidth w).extractLsb' i 8 = x.extractLsb' i 8 := by
   ext j hj; simp; omega
 
