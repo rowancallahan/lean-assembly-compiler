@@ -439,7 +439,7 @@ theorem max_sel (v x : UInt8) : (if v < x then zx x else zx v) = zx (max v x) :=
   · simp [h, UInt8.le_of_lt h]
   · by_cases h' : v ≤ x
     · have : v = x := UInt8.le_antisymm h' (UInt8.not_lt.mp h)
-      simp [h, h', this]
+      simp [this]
     · simp [h, h']
 
 theorem minmax_step (sel : UInt8 → UInt8 → UInt8) (C : AExp)
@@ -452,7 +452,8 @@ theorem minmax_step (sel : UInt8 → UInt8 → UInt8) (C : AExp)
     cases a with
     | none => exact h6
     | some v => exact hC env v x h5 h6
-  simp only [AExp.denote, Op.eval, this]; exact oSome _
+  show (1 : BitVec 64) + ((AExp.ite optTagE C (.var 6)).denote env) <<< (((8 : BitVec 64)).toNat % 64) = _
+  rw [this]; exact oSome _
 
 /-- every reduction, on the view after its `pre` stages -/
 theorem Red.core_exec (r : Red) (hc : r.chk = none) {L : Nat} {cs : CS} {xs cur : List UInt8} {σ : AState}
@@ -476,7 +477,7 @@ theorem Red.core_exec (r : Red) (hc : r.chk = none) {L : Nat} {cs : CS} {xs cur 
         by_cases h0 : env 1 = 0
         · simp [h0, b01]
         · have : (env 1).toNat ≠ 0 := fun e => h0 (BitVec.eq_of_toNat_eq (by simpa using e))
-          simp [h0, this, b01])
+          rw [if_neg h0]; simp [this, b01])
       (fun h => by simp [Red.code] at h) (fun env a h5 => h5) (fun env a h5 h1 => h1) (fun _ => Nat.le_refl _)
       (by decide) hI hkL hx hL
     refine ⟨σ', h, ?_⟩
@@ -506,32 +507,430 @@ theorem Red.core_exec (r : Red) (hc : r.chk = none) {L : Nat} {cs : CS} {xs cur 
     show InvE L csClean xs (enc (cur.contains b)) σ'
     rw [contains_eq]; exact hI'
   | head | getLast =>
-    obtain ⟨σ', h, hI'⟩ := opt_core (fun o x => o.or (some x)) _ (fun env a x h5 h6 => by
-      rw [ite_tag h5, some_val h6]; simp only [AExp.denote, h5]; cases a <;> rfl) hI hkL hx hL
+    obtain ⟨σ', h, hI'⟩ := opt_core (fun o x => o.or (some x)) (.ite optTagE (.var 5) optSomeE) (fun env a x h5 h6 => by
+      rw [ite_tag h5, some_val h6]; simp only [AExp.denote, h5]; cases a <;> simp [Option.or]) hI hkL hx hL
     refine ⟨σ', h, ?_⟩
     rw [foldl_head] at hI'; exact hI'
   | find p =>
     have hq := hp p hc
-    obtain ⟨σ', h, hI'⟩ := opt_core (fun o x => o.or (if p.denote x then some x else none)) _ (fun env a x h5 h6 => by
+    obtain ⟨σ', h, hI'⟩ := opt_core (fun o x => o.or (if p.denote x then some x else none))
+      (.ite optTagE (.var 5) (.ite p.bit.tr optSomeE (.const 0))) (fun env a x h5 h6 => by
       rw [ite_tag h5]; simp only [AExp.denote, h5, BPred.bit_tr hq env x h6, ite_b01, some_val h6]
       cases a <;> cases p.denote x <;> rfl) hI hkL hx hL
     refine ⟨σ', h, ?_⟩
     rw [foldl_find] at hI'; exact hI'
   | min =>
     obtain ⟨σ', h, hI'⟩ := opt_core (fun o x => some (o.elim x fun v => Min.min v x)) _
-      (minmax_step (fun v x => Min.min v x) _ (fun env v x h5 h6 => by
-        rw [ite_tag h5]; simp only [AExp.denote, h6, val_val h5, zx_ult, ite_b01, Option.isSome_some, if_true]
+      (minmax_step (fun v x => Min.min v x) (.ite (.bin .ult (.var 6) optValE) (.var 6) optValE) (fun env v x h5 h6 => by
+        simp only [AExp.denote, h6, val_val h5, zx_ult, ite_b01, decide_eq_true_eq]
         exact min_sel v x)) hI hkL hx hL
     refine ⟨σ', h, ?_⟩
     rw [foldl_min_none] at hI'; exact hI'
   | max =>
     obtain ⟨σ', h, hI'⟩ := opt_core (fun o x => some (o.elim x fun v => Max.max v x)) _
-      (minmax_step (fun v x => Max.max v x) _ (fun env v x h5 h6 => by
-        rw [ite_tag h5]; simp only [AExp.denote, h6, val_val h5, zx_ult, ite_b01, Option.isSome_some, if_true]
+      (minmax_step (fun v x => Max.max v x) (.ite (.bin .ult optValE (.var 6)) (.var 6) optValE) (fun env v x h5 h6 => by
+        simp only [AExp.denote, h6, val_val h5, zx_ult, ite_b01, decide_eq_true_eq]
         exact max_sel v x)) hI hkL hx hL
     refine ⟨σ', h, ?_⟩
     rw [foldl_max_none] at hI'; exact hI'
   | findIdx p => exact findIdx_core p.denote p (hp p hc) (fun _ => rfl) hI hkL hx hL
   | idxOf b => exact findIdx_core (· == b) (eqB b) rfl (fun _ => rfl) hI hkL hx hL
+
+/-! ## Old stages before a reduction -/
+
+theorem preC_exec {L : Nat} {xs : List UInt8} (hx : xs.length < 2 ^ 32) (hL : L < 2 ^ 32) :
+    ∀ (p : Pipe) {cs : CS} {cur : List UInt8} {σ : AState},
+    (∀ st ∈ p, st.chk = none ∧ ∀ cs n, st.space cs n = 0) → InvE L cs xs cur σ →
+    ∃ σ', ExecL (preC p cs).1 σ σ' ∧ InvE L (preC p cs).2 xs (Pipe.denote p cur) σ'
+  | [], cs, cur, σ, _, hI => ⟨σ, rfl, hI⟩
+  | st :: r, cs, cur, σ, hc, hI => by
+    have h0 := hc st (List.mem_cons_self ..)
+    obtain ⟨σ₁, hex₁, hI₁⟩ := stage_exec hx hL st h0.1 hI (by rw [h0.2]; exact Nat.zero_le _)
+    obtain ⟨σ₂, hex₂, hI₂⟩ := preC_exec hx hL r (fun s hs => hc s (List.mem_cons_of_mem _ hs)) hI₁
+    exact ⟨σ₂, ExecL.append hex₁ hex₂, hI₂⟩
+
+/-! ## Stateful filter -/
+
+/-- keep `x` iff `K s x ≠ 0`; the state goes `s ↦ N s x` -/
+def sfilt (K N : UInt8 → UInt8 → UInt8) : UInt8 → List UInt8 → List UInt8
+  | _, [] => []
+  | s, x :: l => (if K s x = 0 then [] else [x]) ++ sfilt K N (N s x) l
+
+theorem sfilt_append (K N : UInt8 → UInt8 → UInt8) :
+    ∀ (s : UInt8) (a b : List UInt8), sfilt K N s (a ++ b) = sfilt K N s a ++ sfilt K N (a.foldl N s) b
+  | s, [], b => rfl
+  | s, x :: a, b => by
+    simp only [List.cons_append, sfilt, sfilt_append K N (N s x) a b, List.append_assoc, List.foldl_cons]
+
+theorem sfilt_len (K N : UInt8 → UInt8 → UInt8) : ∀ s l, (sfilt K N s l).length ≤ l.length
+  | s, [] => Nat.le_refl _
+  | s, x :: l => by
+    have := sfilt_len K N (N s x) l
+    simp only [sfilt, List.length_append, List.length_cons]; split <;> simp <;> omega
+
+theorem zx_eq0 (u : UInt8) : zx u = 0 ↔ u = 0 := by
+  rw [show (0 : BitVec 64) = zx 0 from rfl, zx_inj]
+
+theorem sf_loop_exec {L : Nat} {cs : CS} {xs cur : List UInt8} {σ : AState} {out : List UInt8}
+    {fs : List (UInt8 → UInt8)} (hI : Inv L cs xs cur σ out fs) (hrev : cs.onOut = true → cs.rev = false)
+    (Kb Nb : BExp) (s0 : UInt8) (hsp : cur.length ≤ L) (hx : xs.length < 2 ^ 32) (hL : L < 2 ^ 32) :
+    ∃ σ', ExecL [.assign 5 (.const (zx s0)), .assign 7 (.const 0),
+      loopV 1 (.seq (fetch cs) (.seq (.store 1 (.var 7) (.var 6))
+        (.seq (.assign 7 (.bin .add (.var 7) (.ite Kb.tr (.const 1) (.const 0)))) (.assign 5 Nb.tr)))),
+      .assign 1 (.var 7), .assign 4 (.const 0)] σ σ' ∧
+      InvE L csClean xs (sfilt (fun s x => Kb.denote s x) (fun s x => Nb.denote s x) s0 cur) σ' := by
+  generalize hK : (fun s x => Kb.denote s x) = K
+  generalize hN : (fun s x => Nb.denote s x) = N
+  obtain ⟨env, heap⟩ := σ
+  have hh := hI.heap; dsimp only at hh; subst hh
+  have hlen := hI.len; dsimp only at hlen
+  have hbd := hI.bound; dsimp only at hbd
+  have hcur := hI.cur; dsimp only at hcur
+  have hol0 := hI.olen
+  generalize hs : (env 4).toNat = s at *
+  generalize hm : (env 1).toNat = m at *
+  have hBl : (if cs.onOut then out else xs).length < 2 ^ 32 := by split <;> omega
+  let env₀ := (env.set 5 (zx s0)).set 7 0
+  obtain ⟨σ', hex, ⟨h4, o, hho, hol, h7, hpre, hR, h5, -⟩, h1⟩ := loopV_exec (c := 1) (by decide) (m := m) (by omega)
+    (body := .seq (fetch cs) (.seq (.store 1 (.var 7) (.var 6))
+        (.seq (.assign 7 (.bin .add (.var 7) (.ite Kb.tr (.const 1) (.const 0)))) (.assign 5 Nb.tr))))
+    (fun i τ => τ.env 4 = env 4 ∧ ∃ o : List UInt8, τ.heap = [tbs xs, tbs o] ∧ o.length = L ∧
+      τ.env 7 = .ofNat 64 (sfilt K N s0 (cur.take i)).length ∧
+      (∀ k, k < (sfilt K N s0 (cur.take i)).length → o[k]? = (sfilt K N s0 (cur.take i))[k]?) ∧
+      (sfilt K N s0 (cur.take i)).length ≤ i ∧
+      τ.env 5 = zx ((cur.take i).foldl N s0) ∧
+      (∀ j, i ≤ j → j < m → (if cs.onOut then o else xs)[idxN cs.rev s m j]? =
+        (if cs.onOut then out else xs)[idxN cs.rev s m j]?))
+    (fun i ⟨env', heap'⟩ hi ⟨h4, o, hho, hol, h7, hpre, hR, h5, hsrc⟩ h2 h1 => by
+      dsimp only at h4 hho h2 h1 h7 h5; subst hho
+      have ht := vIdx_val cs.rev (env := env') (s := s) (m := m) (by rw [h4]; exact hs)
+        (by rw [h1]; exact ofNat_toNat_lt (by omega)) h2 hi (by omega)
+      have hsi := hsrc i (Nat.le_refl _) hi
+      have hidx : idxN cs.rev s m i < s + m := by unfold idxN; split <;> omega
+      have hlt : idxN cs.rev s m i < (if cs.onOut then o else xs).length := by
+        have : (if cs.onOut then o else xs).length = (if cs.onOut then out else xs).length := by split <;> omega
+        omega
+      have hci : cur[i]? = some (applyAll fs ((if cs.onOut then o else xs)[idxN cs.rev s m i])) := by
+        rw [hcur, List.getElem?_map, view_get _ hbd hi, ← hsi, getElem?_some_of hlt]; rfl
+      obtain ⟨⟨env'', heap''⟩, hf, hfh, hfe⟩ := fetch_exec hI.fsok ht hlt
+      dsimp only at hfh hfe; subst hfh hfe
+      generalize applyAll fs ((if cs.onOut then o else xs)[idxN cs.rev s m i]) = u at *
+      generalize hRi : sfilt K N s0 (cur.take i) = R at *
+      generalize hSi : (cur.take i).foldl N s0 = st at *
+      have hti : cur.take (i + 1) = cur.take i ++ [u] := by
+        rw [List.take_add_one, hci]; rfl
+      have hR1 : sfilt K N s0 (cur.take (i + 1)) = R ++ (if K st u = 0 then [] else [u]) := by
+        rw [hti, sfilt_append, hRi, hSi]; simp [sfilt]
+      have hS1 : (cur.take (i + 1)).foldl N s0 = N st u := by rw [hti, List.foldl_append, hSi]; rfl
+      have hko : R.length < o.length := by omega
+      let e6 := env'.set 6 (zx u)
+      have e7 : ((AExp.var 7).denote e6).toNat = R.length := by
+        simp only [e6, AExp.denote, AEnv.set, Fin.reduceEq, if_false, h7]; exact ofNat_toNat_lt (by omega)
+      have hst := AExec.store (b := 1) (i := .var 7) (e := .var 6) (σ := ⟨e6, [tbs xs, tbs o]⟩)
+        (by simp) (by rw [e7]; simpa using hko)
+      simp only [e7, List.getElem_cons_succ, List.getElem_cons_zero] at hst
+      simp only [e6, AExp.denote, AEnv.set, if_true, zx_setWidth] at hst
+      rw [heap_set1] at hst
+      have hKv : Kb.tr.denote e6 = zx (K st u) := by
+        rw [← hK]; exact BExp.tr_ok st u e6 (by simp [e6, AEnv.set]) Kb (.inr (by simp [e6, AEnv.set, h5]))
+      let e7' := e6.set 7 ((AExp.bin .add (.var 7) (.ite Kb.tr (.const 1) (.const 0))).denote e6)
+      have hNv : Nb.tr.denote e7' = zx (N st u) := by
+        rw [← hN]; exact BExp.tr_ok st u e7' (by simp [e7', e6, AEnv.set]) Nb
+          (.inr (by simp [e7', e6, AEnv.set, h5]))
+      refine ⟨_, .seq hf (.seq hst (.seq (AExec.assign (v := 7) (σ := ⟨e6, _⟩)) AExec.assign)), ?_, ?_, ?_, ?_⟩
+      · simp only [e6, AEnv.set, Fin.reduceEq, if_false]; exact h2
+      · simp only [e6, AEnv.set, Fin.reduceEq, if_false]; exact h1
+      · simp only [e6, AEnv.set, Fin.reduceEq, if_false]; exact h4
+      · refine ⟨o.set R.length u, rfl, by simpa using hol, ?_, ?_, ?_, ?_, ?_⟩
+        · simp only [AEnv.set, Fin.reduceEq, if_false, if_true, hR1]
+          simp only [e6, AExp.denote, Op.eval, AEnv.set, Fin.reduceEq, if_false, h7] at hKv ⊢
+          rw [hKv]
+          by_cases hk : K st u = 0
+          · simp [hk]; rfl
+          · have : zx (K st u) ≠ 0 := fun e => hk ((zx_eq0 _).1 e)
+            simp only [this, hk, if_false, List.length_append, List.length_singleton, BitVec.ofNat_add]; rfl
+        · intro k hk
+          rw [hR1] at hk ⊢
+          by_cases hkr : k = R.length
+          · subst hkr
+            rw [List.getElem?_set_self hko]
+            by_cases hk0 : K st u = 0
+            · simp [hk0] at hk
+            · simp [hk0]
+          · have hkl : k < R.length := by
+              by_cases hk0 : K st u = 0 <;> simp [hk0] at hk <;> omega
+            rw [List.getElem?_set_ne (Ne.symm hkr), List.getElem?_append_left hkl]; exact hpre k hkl
+        · rw [hR1]; by_cases hk0 : K st u = 0 <;> simp [hk0] <;> omega
+        · simp only [AEnv.set, Fin.reduceEq, if_false, if_true, hS1]; exact hNv
+        · intro j hj hjm
+          have := hsrc j (by omega) hjm
+          cases hO : cs.onOut
+          · simpa [hO] using this
+          · simp only [hO, if_true] at this ⊢
+            rw [hrev hO] at this ⊢
+            simp only [idxN, Bool.false_eq_true, if_false] at this ⊢
+            rw [List.getElem?_set_ne (by omega)]; exact this)
+    ⟨env₀, [tbs xs, tbs out]⟩ (by rw [← hm]; simp [env₀, AEnv.set])
+    ⟨by simp [env₀, AEnv.set], out, rfl, hol0, by simp [env₀, AEnv.set, sfilt], fun k hk => by simp [sfilt] at hk,
+      by simp [sfilt], by simp [env₀, AEnv.set], fun j _ _ => rfl⟩
+  obtain ⟨env', heap'⟩ := σ'
+  dsimp only at hho h7 h1 h4; subst hho
+  rw [List.take_of_length_le (by omega)] at h7 hpre hR
+  have e7 : (env' 7).toNat = (sfilt K N s0 cur).length := by rw [h7]; exact ofNat_toNat_lt (by omega)
+  refine ⟨_, ⟨_, AExec.assign' rfl, _, AExec.assign' rfl, _, hex, _, AExec.assign' rfl, ExecL.one (AExec.assign' rfl)⟩,
+    o, [], Inv.ofClean hol (by simp [AEnv.set, AExp.denote]) ?_ ?_⟩
+  · simp only [AEnv.set, Fin.reduceEq, if_false, if_true, AExp.denote, e7]
+    apply List.ext_getElem?; intro k
+    rw [List.getElem?_take]
+    split
+    · exact hpre k (by omega)
+    · exact (List.getElem?_eq_none (by omega)).symm
+  · simp only [AEnv.set, Fin.reduceEq, if_false, if_true, AExp.denote, e7]; omega
+
+theorem sf_exec {L : Nat} {cs : CS} {xs cur : List UInt8} {σ : AState} (hI : InvE L cs xs cur σ)
+    (Kb Nb : BExp) (s0 : UInt8) (hsp : cur.length ≤ L) (hx : xs.length < 2 ^ 32) (hL : L < 2 ^ 32) :
+    ∃ σ', ExecL (sfC cs Kb Nb s0) σ σ' ∧
+      InvE L csClean xs (sfilt (fun s x => Kb.denote s x) (fun s x => Nb.denote s x) s0 cur) σ' := by
+  cases hO : cs.onOut
+  · obtain ⟨out, fs, hI⟩ := hI
+    obtain ⟨σ', hex, hI'⟩ := sf_loop_exec hI (by simp [hO]) Kb Nb s0 hsp hx hL
+    exact ⟨σ', by simpa [sfC, hO] using hex, hI'⟩
+  · obtain ⟨σ₁, hex₁, out, fs, hI₁⟩ := mat_exec hx hL hI (.inr hsp)
+    obtain ⟨σ', hex, hI'⟩ := sf_loop_exec hI₁ (fun _ => rfl) Kb Nb s0 hsp hx hL
+    exact ⟨σ', by simpa [sfC, hO] using ExecL.append hex₁ hex, hI'⟩
+
+theorem BExp.denote_noAcc {e : BExp} (h : e.noAcc = true) (a x : UInt8) : e.denote a x = e.denote 0 x := by
+  let env : AEnv := fun i => if i = 5 then zx a else zx x
+  have h1 := BExp.tr_ok a x env (by simp [env]) e (.inr (by simp [env]))
+  have h2 := BExp.tr_ok 0 x env (by simp [env]) e (.inl h)
+  exact zx_inj.1 (h1.symm.trans h2)
+
+theorem bit_any {p : BPred} (hp : p.noAcc = true) (s x : UInt8) : p.bit.denote s x = if p.denote x then 1 else 0 := by
+  rw [BExp.denote_noAcc (p.bit_noAcc hp), p.bit_denote]
+
+theorem sfilt_filter (K N : UInt8 → UInt8 → UInt8) (p : UInt8 → Bool) (hK : ∀ s x, K s x = if p x then 1 else 0) :
+    ∀ (s : UInt8) (l : List UInt8), sfilt K N s l = l.filter p
+  | s, [] => rfl
+  | s, x :: l => by
+    rw [sfilt, hK, sfilt_filter K N p hK _ l, List.filter_cons]
+    cases p x <;> simp
+
+theorem sfilt_take0 (K : UInt8 → UInt8 → UInt8) (p : UInt8 → Bool) (hK : ∀ s x, K s x = s &&& if p x then 1 else 0) :
+    ∀ l : List UInt8, sfilt K K 0 l = []
+  | [] => rfl
+  | x :: l => by rw [sfilt, hK, UInt8.zero_and, sfilt_take0 K p hK l]; simp
+
+theorem sfilt_takeWhile (K : UInt8 → UInt8 → UInt8) (p : UInt8 → Bool) (hK : ∀ s x, K s x = s &&& if p x then 1 else 0) :
+    ∀ l : List UInt8, sfilt K K 1 l = l.takeWhile p
+  | [] => rfl
+  | x :: l => by
+    rw [sfilt, hK, List.takeWhile_cons]
+    cases hx : p x
+    · simp only [Bool.false_eq_true, if_false, show (1 : UInt8) &&& 0 = 0 from rfl, if_true, List.nil_append]
+      exact sfilt_take0 K p hK l
+    · simp only [if_true, show (1 : UInt8) &&& 1 = 1 from rfl, show (1 : UInt8) = 0 ↔ False from by decide]
+      rw [sfilt_takeWhile K p hK l]; rfl
+
+theorem sfilt_drop0 (K N : UInt8 → UInt8 → UInt8) (p : UInt8 → Bool)
+    (hK : ∀ s x, K s x = (s &&& if p x then 1 else 0) ^^^ 1) (hN : ∀ s x, N s x = s &&& if p x then 1 else 0) :
+    ∀ l : List UInt8, sfilt K N 0 l = l
+  | [] => rfl
+  | x :: l => by
+    rw [sfilt, hK, hN, UInt8.zero_and, sfilt_drop0 K N p hK hN l]; rfl
+
+theorem sfilt_dropWhile (K N : UInt8 → UInt8 → UInt8) (p : UInt8 → Bool)
+    (hK : ∀ s x, K s x = (s &&& if p x then 1 else 0) ^^^ 1) (hN : ∀ s x, N s x = s &&& if p x then 1 else 0) :
+    ∀ l : List UInt8, sfilt K N 1 l = l.dropWhile p
+  | [] => rfl
+  | x :: l => by
+    rw [sfilt, hK, hN, List.dropWhile_cons]
+    cases hx : p x
+    · simp only [Bool.false_eq_true, if_false, show (1 : UInt8) &&& 0 = 0 from rfl]
+      rw [sfilt_drop0 K N p hK hN l]; rfl
+    · simp only [if_true, show (1 : UInt8) &&& 1 = 1 from rfl]
+      rw [sfilt_dropWhile K N p hK hN l]; rfl
+
+/-! ## Appending a constant list -/
+
+theorem appStores_exec {xs : List UInt8} {env : AEnv} {m L : Nat} (h1 : env 1 = .ofNat 64 m) (hL : L < 2 ^ 32) :
+    ∀ (c : List UInt8) (j : Nat) (o : List UInt8), o.length = L → m + j + c.length ≤ L →
+    ∃ o', ExecL (appStores j c) ⟨env, [tbs xs, tbs o]⟩ ⟨env, [tbs xs, tbs o']⟩ ∧ o'.length = L ∧
+      (∀ k, k < m + j → o'[k]? = o[k]?) ∧ (∀ i, i < c.length → o'[m + j + i]? = c[i]?)
+  | [], j, o, hol, _ => ⟨o, rfl, hol, fun _ _ => rfl, fun i hi => by simp at hi⟩
+  | b :: c, j, o, hol, hle => by
+    simp only [List.length_cons] at hle
+    have e : ((AExp.bin .add (.var 1) (.const (.ofNat 64 j))).denote env).toNat = m + j := by
+      simp only [AExp.denote, Op.eval, h1, ← BitVec.ofNat_add]; exact ofNat_toNat_lt (by omega)
+    have hst := AExec.store (b := 1) (i := .bin .add (.var 1) (.const (.ofNat 64 j))) (e := .const (zx b))
+      (σ := ⟨env, [tbs xs, tbs o]⟩) (by simp) (by rw [e]; simp; omega)
+    simp only [List.getElem_cons_succ, List.getElem_cons_zero] at hst
+    rw [e] at hst
+    simp only [AExp.denote, zx_setWidth] at hst
+    rw [heap_set1] at hst
+    obtain ⟨o', hex, hol', hlo, hhi⟩ := appStores_exec h1 hL c (j + 1) (o.set (m + j) b) (by simpa using hol)
+      (by omega)
+    refine ⟨o', ⟨_, hst, hex⟩, hol', fun k hk => ?_, fun i hi => ?_⟩
+    · rw [hlo k (by omega), List.getElem?_set_ne (by omega)]
+    · cases i with
+      | zero =>
+        rw [hlo _ (by omega), Nat.add_zero, List.getElem?_set_self (by omega)]; rfl
+      | succ i =>
+        rw [show m + j + (i + 1) = m + (j + 1) + i by omega, hhi i (by simp at hi; omega)]; rfl
+
+theorem app_exec {L : Nat} {cs : CS} {xs cur : List UInt8} {σ : AState} (hI : InvE L cs xs cur σ)
+    (c : List UInt8) (hsp : cur.length + c.length ≤ L) (hx : xs.length < 2 ^ 32) (hL : L < 2 ^ 32) :
+    ∃ σ', ExecL (appC cs c) σ σ' ∧ InvE L csClean xs (cur ++ c) σ' := by
+  obtain ⟨σ₁, hex₁, out, fs, hI₁⟩ := mat_exec hx hL hI (.inr (by omega))
+  obtain ⟨rfl, h4, hcur, hm⟩ := hI₁.clean
+  have hol := hI₁.olen
+  obtain ⟨env, heap⟩ := σ₁
+  have hh := hI₁.heap; dsimp only at hh h4 hcur hm; subst hh
+  have hlen := hI₁.len; dsimp only at hlen
+  generalize hmm : (env 1).toNat = m at *
+  have h1 : env 1 = .ofNat 64 m := by rw [← hmm]; simp
+  obtain ⟨o', hex, hol', hlo, hhi⟩ := appStores_exec (xs := xs) h1 hL c 0 out hol (by omega)
+  have e1 : ((env.set 1 ((AExp.bin .add (.var 1) (.const (.ofNat 64 c.length))).denote env)) 1).toNat =
+      m + c.length := by
+    simp only [AEnv.set, if_true, AExp.denote, Op.eval, h1, ← BitVec.ofNat_add]; exact ofNat_toNat_lt (by omega)
+  refine ⟨_, ExecL.append (ExecL.append hex₁ hex) (ExecL.one (AExec.assign' rfl)), o', [],
+    Inv.ofClean hol' (by simp only [AEnv.set, Fin.reduceEq, if_false]; exact h4) ?_ (by rw [e1]; omega)⟩
+  rw [e1]
+  apply List.ext_getElem?; intro k
+  rw [List.getElem?_take]
+  split
+  · by_cases hk : k < m
+    · rw [hlo k (by omega), List.getElem?_append_left (by omega), hcur, List.getElem?_take, if_pos hk]
+    · have := hhi (k - m) (by omega)
+      rw [show m + 0 + (k - m) = k by omega] at this
+      rw [this, List.getElem?_append_right (by omega), hlen]
+  · exact (List.getElem?_eq_none (by simp; omega)).symm
+
+/-! ## Stages and pipes -/
+
+theorem Stage.len_mono (st : Stage) {n n' : Nat} (h : n ≤ n') : st.len n ≤ st.len n' := by
+  cases st <;> simp only [Stage.len] <;> omega
+
+theorem XStage.len_mono (st : XStage) {n n' : Nat} (h : n ≤ n') : st.len n ≤ st.len n' := by
+  cases st with
+  | base st => exact st.len_mono h
+  | _ => simp only [XStage.len] <;> omega
+
+theorem XStage.space_mono (st : XStage) (cs : CS) {n n' : Nat} (h : n ≤ n') : st.space cs n ≤ st.space cs n' := by
+  cases st with
+  | base st => cases st <;> simp only [XStage.space, Stage.space] <;> (try split) <;> omega
+  | _ => simp only [XStage.space] <;> omega
+
+theorem XPipe.need_mono : ∀ (p : XPipe) (cs : CS) {n n' : Nat}, n ≤ n' → XPipe.need p cs n ≤ XPipe.need p cs n'
+  | [], cs, n, n', h => by simp only [XPipe.need]; split <;> omega
+  | st :: r, cs, n, n', h => by
+    simp only [XPipe.need]
+    have := st.space_mono cs h
+    have := XPipe.need_mono r (xstageC st cs).2 (st.len_mono h)
+    omega
+
+theorem enc_w64_len (w : BitVec 64) : (enc w).length = 8 := leN_length 8 _
+theorem enc_opt_len (o : Option UInt8) : (enc o).length ≤ 2 := by
+  cases o with
+  | none => decide
+  | some v => exact Nat.le_refl _
+
+theorem Red.denote_len (r : Red) (l : List UInt8) : (r.denote l).length ≤ r.code.k := by
+  cases r <;> simp only [Red.denote, Red.code, enc_w64_len, Nat.le_refl] <;>
+    first | exact enc_opt_len _ | (cases (l.isEmpty) <;> decide) | skip
+  all_goals first | rfl | exact Nat.le_refl _ | (cases (List.any _ _) <;> decide) | (cases (List.all _ _) <;> decide) |
+    (cases (List.contains _ _) <;> decide) | decide
+
+theorem XStage.denote_len (st : XStage) (hc : st.chk = none) (l : List UInt8) :
+    (st.denote l).length ≤ st.len l.length := by
+  have hp : ∀ p : BPred, (if p.noAcc then (none : Option String) else some "predicate mentions the fold accumulator") = none →
+      p.noAcc = true := fun p h => by by_cases hp : p.noAcc = true
+                                      · exact hp
+                                      · simp [hp] at h
+  cases st with
+  | base st => exact Nat.le_of_eq (st.denote_len l)
+  | red r => exact r.denote_len l
+  | filter p => exact List.length_filter_le _ _
+  | takeWhile p =>
+    show (l.takeWhile p.denote).length ≤ l.length
+    rw [← sfilt_takeWhile (fun s x => (takeK p).denote s x) p.denote (fun s x => by
+      simp [takeK, BExp.denote, BOp.eval, bit_any (hp p hc)])]
+    exact sfilt_len _ _ _ _
+  | dropWhile p =>
+    show (l.dropWhile p.denote).length ≤ l.length
+    rw [← sfilt_dropWhile (fun s x => (dropK p).denote s x) (fun s x => (takeK p).denote s x) p.denote
+      (fun s x => by simp [dropK, BExp.denote, BOp.eval, bit_any (hp p hc)])
+      (fun s x => by simp [takeK, BExp.denote, BOp.eval, bit_any (hp p hc)])]
+    exact sfilt_len _ _ _ _
+  | appendC c => simp [XStage.denote, XStage.len]
+
+theorem xstage_exec {L : Nat} {xs : List UInt8} (hx : xs.length < 2 ^ 32) (hL : L < 2 ^ 32) (st : XStage) {cs : CS}
+    {cur : List UInt8} {σ : AState} (hc : st.chk = none) (hI : InvE L cs xs cur σ)
+    (hsp : st.space cs cur.length ≤ L) :
+    ∃ σ', ExecL (xstageC st cs).1 σ σ' ∧ InvE L (xstageC st cs).2 xs (st.denote cur) σ' := by
+  have hp : ∀ p : BPred, (if p.noAcc then (none : Option String) else some "predicate mentions the fold accumulator") = none →
+      p.noAcc = true := fun p h => by by_cases hp : p.noAcc = true
+                                      · exact hp
+                                      · simp [hp] at h
+  cases st with
+  | base st => exact stage_exec hx hL st hc hI hsp
+  | red r =>
+    have hpre : ∀ st ∈ r.pre, st.chk = none ∧ ∀ cs n, st.space cs n = 0 := by
+      cases r <;> simp [Red.pre, Stage.chk, Stage.space]
+    obtain ⟨σ₁, hex₁, hI₁⟩ := preC_exec hx hL r.pre hpre hI
+    obtain ⟨σ₂, hex₂, hI₂⟩ := r.core_exec hc hI₁ hsp hx hL
+    refine ⟨σ₂, ExecL.append hex₁ hex₂, ?_⟩
+    simp only [xstageC, XStage.denote]; rw [Red.denote_pre]; exact hI₂
+  | filter p =>
+    obtain ⟨σ', hex, hI'⟩ := sf_exec hI p.bit (.lit 0) 0 hsp hx hL
+    refine ⟨σ', hex, ?_⟩
+    rw [sfilt_filter _ _ p.denote (fun s x => bit_any (hp p hc) s x)] at hI'; exact hI'
+  | takeWhile p =>
+    obtain ⟨σ', hex, hI'⟩ := sf_exec hI (takeK p) (takeK p) 1 hsp hx hL
+    refine ⟨σ', hex, ?_⟩
+    rw [sfilt_takeWhile _ p.denote (fun s x => by simp [takeK, BExp.denote, BOp.eval, bit_any (hp p hc)])] at hI'
+    exact hI'
+  | dropWhile p =>
+    obtain ⟨σ', hex, hI'⟩ := sf_exec hI (dropK p) (takeK p) 1 hsp hx hL
+    refine ⟨σ', hex, ?_⟩
+    rw [sfilt_dropWhile _ _ p.denote (fun s x => by simp [dropK, BExp.denote, BOp.eval, bit_any (hp p hc)])
+      (fun s x => by simp [takeK, BExp.denote, BOp.eval, bit_any (hp p hc)])] at hI'
+    exact hI'
+  | appendC c => exact app_exec hI c hsp hx hL
+
+theorem xstmts_exec {L : Nat} {xs : List UInt8} (hx : xs.length < 2 ^ 32) (hL : L < 2 ^ 32) :
+    ∀ (p : XPipe) {cs : CS} {cur : List UInt8} {σ : AState}, (∀ st ∈ p, st.chk = none) → InvE L cs xs cur σ →
+    XPipe.need p cs cur.length ≤ L → ∃ σ', ExecL (xstmts p cs) σ σ' ∧ InvE L csClean xs (XPipe.denote p cur) σ'
+  | [], cs, cur, σ, _, hI, hsp => by
+    refine mat_exec hx hL hI ?_
+    simp only [XPipe.need] at hsp
+    by_cases h : cs.clean = true
+    · exact .inl h
+    · simp only [h, Bool.false_eq_true, if_false] at hsp; exact .inr hsp
+  | st :: r, cs, cur, σ, hc, hI, hsp => by
+    simp only [XPipe.need] at hsp
+    have hst := hc st (List.mem_cons_self ..)
+    obtain ⟨σ₁, hex₁, hI₁⟩ := xstage_exec hx hL st hst hI (by omega)
+    obtain ⟨σ₂, hex₂, hI₂⟩ := xstmts_exec hx hL r (fun s hs => hc s (List.mem_cons_of_mem _ hs)) hI₁
+      (Nat.le_trans (XPipe.need_mono r _ (st.denote_len hst cur)) (by omega))
+    exact ⟨σ₂, ExecL.append hex₁ hex₂, hI₂⟩
+
+/-- **Source-level correctness of the `XPipe` translation** (as `Pipe.prog_exec`) -/
+theorem XPipe.prog_exec (p : XPipe) (hc : ∀ st ∈ p, st.chk = none) (xs : List UInt8) (out : List (BitVec 8))
+    (env : AEnv) (h1 : env 1 = .ofNat 64 xs.length) (hx : xs.length < 2 ^ 32)
+    (hsp : XPipe.space p xs.length ≤ out.length) (hL : out.length < 2 ^ 32) :
+    ∃ σ' out', AExec (XPipe.prog p) ⟨env, [tbs xs, out]⟩ σ' ∧ σ'.heap = [tbs xs, out'] ∧
+      out'.length = out.length ∧ out'.take (XPipe.denote p xs).length = tbs (XPipe.denote p xs) := by
+  have ho : out = tbs (out.map fun b => ⟨b⟩) := by simp [tbs, List.map_map, Function.comp_def]
+  generalize out.map (fun b => (⟨b⟩ : UInt8)) = o at ho; subst ho
+  have e1 : (env 1).toNat = xs.length := by rw [h1]; exact ofNat_toNat_lt (by omega)
+  have hI0 : InvE (tbs o).length cs0 xs xs ⟨env.set 4 0, [tbs xs, tbs o]⟩ :=
+    ⟨o, [], rfl, by simp, .nil, by simp [cs0, AEnv.set, e1], by simp [cs0, AEnv.set, e1, dirL, applyAll_nil],
+      fun _ => by simp [AEnv.set]⟩
+  obtain ⟨⟨env', heap'⟩, hex, out', fs, hI⟩ := xstmts_exec hx hL p hc hI0 hsp
+  obtain ⟨rfl, h4, hcur, hm⟩ := hI.clean
+  have hh := hI.heap; dsimp only at hh hcur; subst hh
+  refine ⟨_, tbs out', ExecL.foldl (AExec.assign' rfl) hex, rfl, by simpa using hI.olen, ?_⟩
+  have : (XPipe.denote p xs).length = (env' 1).toNat := hI.len
+  rw [this, hcur]; simp [tbs]
 
 end Proven
