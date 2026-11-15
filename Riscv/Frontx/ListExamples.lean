@@ -121,4 +121,8 @@ def bookLength (xs : ByteArray) : Nat := MatchDef.length xs.data.toList
 theorem bookLength_eq (xs : ByteArray) : bookLength xs = MatchDef.length.view xs 0 := rfl
 frontx_entry bookLength from bookLength_eq
 
+def nonTailLength (xs : ByteArray) : Nat := NonTail.length xs.data.toList
+theorem nonTailLength_eq (xs : ByteArray) : nonTailLength xs = NonTail.length.view xs 0 := rfl
+frontx_entry nonTailLength from nonTailLength_eq
+
 end Proven.Frontx.BookList

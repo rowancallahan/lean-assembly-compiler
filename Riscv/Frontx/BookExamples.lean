@@ -74,7 +74,9 @@ theorem plus_eq (n k : Nat) : plus n k = n + k := by
   | succ k ih => simp [plus, ih]; omega
 theorem pred_eq (n : Nat) : pred n = n - 1 := by cases n <;> rfl
 frontx_compile times using plus_eq
-frontx_compile minus with (fun n _ _ acc => acc ≤ n) using pred_eq
+-- `pred` is called (its program inlined as a sub-program, `Tree.sub`); no closed form.  The invariant `acc ≤ n`
+-- is still needed: `pred`'s argument must be `< 2^64` (`pred x ≤ n` is proved by unfolding `pred` in the obligation)
+frontx_compile minus with (fun n _ _ acc => acc ≤ n)
 
 /-- the book's `div` (Examples/ProgramsProofs/Div.lean): the bound is a hypothesis in the signature -/
 def div (n k : Nat) (ok : k ≠ 0) : Nat :=
@@ -90,5 +92,66 @@ def halve : Nat → Nat
 
 frontx_compile div
 frontx_compile halve
+
+namespace Match
+def even : Nat → Bool
+  | 0 => true
+  | n + 1 => not (even n)
+namespace Explicit
+def halve : Nat → Nat
+  | Nat.zero => 0
+  | Nat.succ Nat.zero => 0
+  | Nat.succ (Nat.succ n) => halve n + 1
+end Explicit
+frontx_compile even
+frontx_compile Explicit.halve
+end Match
+
+/-! ## Entry points: the arguments are 16-bit little-endian numbers in the input bytes
+
+`fAt xs i := f (u16 xs i) …` calls the compiled `f` (a recursive `f` is a call: its program runs as a sub-program
+of `fAt`'s, `Tree.sub`; a non-recursive one is inlined); `fE xs := fAt xs 0` is the entry point. -/
+
+/-- byte `i` of the input, `0` past the end -/
+@[inline] def byteAt (xs : ByteArray) (i : Nat) : UInt8 := if h : i < xs.size then xs[i] else 0
+/-- the 16-bit little-endian number at byte `i` -/
+def u16 (xs : ByteArray) (i : Nat) : Nat := (byteAt xs i).toNat + 256 * (byteAt xs (i + 1)).toNat
+
+def add1At (xs : ByteArray) (i : Nat) : Nat := add1 (u16 xs i)
+def maximumAt (xs : ByteArray) (i : Nat) : Nat := maximum (u16 xs i) (u16 xs (i + 2))
+def isZeroAt (xs : ByteArray) (i : Nat) : Bool := isZero (u16 xs i)
+def predAt (xs : ByteArray) (i : Nat) : Nat := pred (u16 xs i)
+def evenAt (xs : ByteArray) (i : Nat) : Bool := even (u16 xs i)
+def plusAt (xs : ByteArray) (i : Nat) : Nat := plus (u16 xs i) (u16 xs (i + 2))
+def timesAt (xs : ByteArray) (i : Nat) : Nat := times (u16 xs i) (u16 xs (i + 2))
+def minusAt (xs : ByteArray) (i : Nat) : Nat := minus (u16 xs i) (u16 xs (i + 2))
+def doubleAt (xs : ByteArray) (i : Nat) : Nat := double (u16 xs i)
+def natDoubleAt (xs : ByteArray) (i : Nat) : Nat := Nat.double (u16 xs i)
+def tripleAt (xs : ByteArray) (i : Nat) : Nat := NewNamespace.triple (u16 xs i)
+def quadrupleAt (xs : ByteArray) (i : Nat) : Nat := NewNamespace.quadruple (u16 xs i)
+def timesTwelveAt (xs : ByteArray) (i : Nat) : Nat := timesTwelve (u16 xs i)
+/-- the divisor is `u16 + 1` (the book's `div` takes the proof `k ≠ 0`) -/
+def divAt (xs : ByteArray) (i : Nat) : Nat := div (u16 xs i) (u16 xs (i + 2) + 1) (Nat.succ_ne_zero _)
+def halveAt (xs : ByteArray) (i : Nat) : Nat := halve (u16 xs i)
+def matchEvenAt (xs : ByteArray) (i : Nat) : Bool := Match.even (u16 xs i)
+def explicitHalveAt (xs : ByteArray) (i : Nat) : Nat := Match.Explicit.halve (u16 xs i)
+
+frontx_compile add1At requires fun _ i => i + 8 < 2 ^ 64
+frontx_compile maximumAt requires fun _ i => i + 8 < 2 ^ 64
+frontx_compile isZeroAt requires fun _ i => i + 8 < 2 ^ 64
+frontx_compile predAt requires fun _ i => i + 8 < 2 ^ 64
+frontx_compile evenAt requires fun _ i => i + 8 < 2 ^ 64
+frontx_compile plusAt requires fun _ i => i + 8 < 2 ^ 64
+frontx_compile timesAt requires fun _ i => i + 8 < 2 ^ 64
+frontx_compile minusAt requires fun _ i => i + 8 < 2 ^ 64
+frontx_compile doubleAt requires fun _ i => i + 8 < 2 ^ 64
+frontx_compile natDoubleAt requires fun _ i => i + 8 < 2 ^ 64
+frontx_compile tripleAt requires fun _ i => i + 8 < 2 ^ 64
+frontx_compile quadrupleAt requires fun _ i => i + 8 < 2 ^ 64
+frontx_compile timesTwelveAt requires fun _ i => i + 8 < 2 ^ 64
+frontx_compile divAt requires fun _ i => i + 8 < 2 ^ 64
+frontx_compile halveAt requires fun _ i => i + 8 < 2 ^ 64
+frontx_compile matchEvenAt requires fun _ i => i + 8 < 2 ^ 64
+frontx_compile explicitHalveAt requires fun _ i => i + 8 < 2 ^ 64
 
 end Proven.Frontx.Book

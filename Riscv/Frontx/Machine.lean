@@ -11,6 +11,8 @@ import Riscv.Frontx.Impl1
 import Riscv.Frontx.ForExamples
 import Riscv.Frontx.ListExamples
 import Riscv.Frontx.ListOutExamples
+import Riscv.Frontx.BookExamples
+import Riscv.Frontx.CallExamples
 
 namespace Proven.Frontx.Ex
 open Proven Proven.Frontx
@@ -72,5 +74,73 @@ open Proven.Frontx.BookOut in
 frontx_implements finalOf
 open Proven.Frontx.BookOut in
 frontx_implements findFirstGt3
+
+/-! ## Book functions over `Nat` (`BookExamples.lean`): arguments are 16-bit little-endian numbers in the input
+
+`fE xs := fAt xs 0`; `fAt` calls the compiled book function (a sub-program, `Tree.sub`, for the recursive ones). -/
+
+namespace BookNat
+open Proven.Frontx.Book
+def add1E (xs : ByteArray) := add1At xs 0
+frontx_entry add1E
+frontx_implements add1E
+def maximumE (xs : ByteArray) := maximumAt xs 0
+frontx_entry maximumE
+frontx_implements maximumE
+def isZeroE (xs : ByteArray) := isZeroAt xs 0
+frontx_entry isZeroE
+frontx_implements isZeroE
+def predE (xs : ByteArray) := predAt xs 0
+frontx_entry predE
+frontx_implements predE
+def evenE (xs : ByteArray) := evenAt xs 0
+frontx_entry evenE
+frontx_implements evenE
+def plusE (xs : ByteArray) := plusAt xs 0
+frontx_entry plusE
+frontx_implements plusE
+def timesE (xs : ByteArray) := timesAt xs 0
+frontx_entry timesE
+frontx_implements timesE
+def minusE (xs : ByteArray) := minusAt xs 0
+frontx_entry minusE
+frontx_implements minusE
+def doubleE (xs : ByteArray) := doubleAt xs 0
+frontx_entry doubleE
+frontx_implements doubleE
+def natDoubleE (xs : ByteArray) := natDoubleAt xs 0
+frontx_entry natDoubleE
+frontx_implements natDoubleE
+def tripleE (xs : ByteArray) := tripleAt xs 0
+frontx_entry tripleE
+frontx_implements tripleE
+def quadrupleE (xs : ByteArray) := quadrupleAt xs 0
+frontx_entry quadrupleE
+frontx_implements quadrupleE
+def timesTwelveE (xs : ByteArray) := timesTwelveAt xs 0
+frontx_entry timesTwelveE
+frontx_implements timesTwelveE
+def divE (xs : ByteArray) := divAt xs 0
+frontx_entry divE
+frontx_implements divE
+def halveE (xs : ByteArray) := halveAt xs 0
+frontx_entry halveE
+frontx_implements halveE
+def matchEvenE (xs : ByteArray) := matchEvenAt xs 0
+frontx_entry matchEvenE
+frontx_implements matchEvenE
+def explicitHalveE (xs : ByteArray) := explicitHalveAt xs 0
+frontx_entry explicitHalveE
+frontx_implements explicitHalveE
+end BookNat
+
+/-! ## Nested loops through a call (`CallExamples.lean`) -/
+
+open Proven.Frontx.Calls in
+frontx_implements dupCount
+open Proven.Frontx.Calls in
+frontx_implements sameLen
+open Proven.Frontx.BookList in
+frontx_implements nonTailLength
 
 end Proven.Frontx.Ex

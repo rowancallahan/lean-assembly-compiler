@@ -78,6 +78,7 @@ inductive MT where
   | load (v b : Nat) (i : ME) (k : MT)
   | cload (v b : Nat) (i c d : ME) (k : MT)
   | store (b : Nat) (i e : ME) (k : MT)
+  | sub (p : Expr) (k : MT)
   deriving Inhabited
 
 def ME.toExpr : ME → Expr
@@ -101,18 +102,19 @@ def MT.toExpr : MT → MetaM Expr
     let kE ← k.toExpr
     return mkAppN (mkConst ``Tree.cload) #[Lean.toExpr v, Lean.toExpr b, i.toExpr, c.toExpr, d.toExpr, kE]
   | .store b i e k => return mkApp4 (mkConst ``Tree.store) (Lean.toExpr b) i.toExpr e.toExpr (← k.toExpr)
+  | .sub p k => return mkApp2 (mkConst ``Tree.sub) p (← k.toExpr)
 
 def MT.maxK : MT → Nat
   | .ret _ => 0
   | .call as => as.length
   | .ite _ t e => max t.maxK e.maxK
-  | .let_ _ _ k | .load _ _ _ k | .cload _ _ _ _ _ k | .store _ _ _ k => k.maxK
+  | .let_ _ _ k | .load _ _ _ k | .cload _ _ _ _ _ k | .store _ _ _ k | .sub _ k => k.maxK
 
 /-- nesting depth of the condition variables `comp` uses -/
 def MT.cdepth : MT → Nat
   | .ret _ | .call _ => 0
   | .ite _ t e => 1 + max t.cdepth e.cdepth
-  | .let_ _ _ k | .load _ _ _ k | .store _ _ _ k => k.cdepth
+  | .let_ _ _ k | .load _ _ _ k | .store _ _ _ k | .sub _ k => k.cdepth
   | .cload _ _ _ _ _ k => max 1 k.cdepth
 
 /-! ## translation -/
@@ -176,6 +178,9 @@ inductive Item where
   | let_ (v : Nat) (e : ME) (L L' : Expr) (ty : Ty) (temps : List Expr)
   /-- a temporary introduced only to keep expressions shallow: `v := e`, no Lean term attached -/
   | raw (v : Nat) (e : ME)
+  /-- a call: the callee's program `P` renamed to base `b` (`n` temporaries), its `Rep` (name, data arguments),
+  its `exec` applied to the arguments, and the result `r` (the callee's `rep` of the call) -/
+  | sub (b n : Nat) (P : Expr) (repN : Name) (dargs : Array Expr) (exec : Expr) (r : Expr) (temps : List Expr)
 
 structure TrSt where
   next : Nat
@@ -183,6 +188,8 @@ structure TrSt where
   memo : List (Expr × Nat) := []
   /-- the Lean terms held in temporaries (newest first); generalised in every obligation -/
   temps : List Expr := []
+  /-- a temporary's term with its helpers unfolded (when different): its `Nat` bounds for `omega` -/
+  tempsU : List (Expr × Expr) := []
   pend : Array Item := #[]
   /-- helper definitions that were inlined (the proofs unfold them, one layer at a time) -/
   unfolded : Array Name := #[]
@@ -252,6 +259,58 @@ partial def fit (m : ME) (d : Nat := maxDepth) : TrM ME := do
   | .bin op a b => if d == 0 then tmp else return .bin op (← fit a d) (← fit b (d - 1))
   | .ite c a b => if d < 2 then tmp else return .ite (← fit c d) (← fit a (d - 1)) (← fit b (d - 2))
   | m => return m
+
+/-- a call to a translated function `c` (it has `c.exec` of the plain form, result in its variable 4): its
+program, `Rep` name, number of slots, and per parameter whether it is data, a block, or its variable -/
+structure CallInfo where
+  P : Expr
+  repN : Name
+  slots : Nat
+  /-- per parameter of `c.exec`: `none` = a proof, `some none` = a byte array (block 0), `some (some v)` = a scalar
+  in variable `v` -/
+  kinds : Array (Option (Option Nat))
+
+def callInfo? (c : Name) : MetaM (Option CallInfo) := do
+  let env ← getEnv
+  unless env.contains (c ++ `exec) && env.contains (c ++ `slots) do return none
+  let some sl := (← getConstInfo (c ++ `slots)).value? | return none
+  let some slots := (← whnf sl).nat? <|> (← whnf sl).rawNatLit? | return none
+  forallTelescope (← getConstInfo (c ++ `exec)).type fun ys concl => do
+    unless ys.size ≥ 2 do return none
+    let hR ← inferType ys.back!
+    let some repN := hR.getAppFn.constName? | return none
+    let .app (.app (.const ``Exists _) _) (.lam _ _ body _) := concl | return none
+    -- `BExec P σ σ' ∧ σ'.env 4 = … ∧ σ'.heap = σ.heap`
+    unless body.isAppOfArity ``And 2 do return none
+    let bx := body.getArg! 0
+    unless bx.isAppOfArity ``BExec 3 do return none
+    let rest := body.getArg! 1
+    unless rest.isAppOfArity ``And 2 && (rest.getArg! 1).isAppOfArity ``Eq 3 do return none
+    let c2 := rest.getArg! 0
+    let some (_, l2, _) := c2.eq? | return none
+    let .app _ l2a := l2 | return none
+    unless l2a.nat? == some 4 || l2a.rawNatLit? == some 4 do return none
+    let P := bx.getArg! 0
+    if P.hasLooseBVars then return none
+    let mut kinds := #[]
+    let mut nextV := 4
+    for y in ys.pop.pop do
+      let yty ← whnfR (← inferType y)
+      if ← isProp yty then kinds := kinds.push none
+      else if yty.isConstOf ``ByteArray then kinds := kinds.push (some none)
+      else if (← classify yty).isSome then
+        kinds := kinds.push (some (some nextV)); nextV := nextV + 1
+      else return none
+    -- at most one block, and it comes first
+    if (kinds.filter (· == some none)).size > 1 then return none
+    return some { P, repN, slots, kinds }
+
+/-- `c` calls itself (its unfolding equation mentions it) -/
+def isRecFn (c : Name) : MetaM Bool := do
+  let some eqn ← (try getUnfoldEqnFor? c (nonRec := true) catch _ => pure none) | return false
+  forallTelescope (← getConstInfo eqn).type fun _ ty => do
+    let some (_, _, rhs) := ty.eq? | return false
+    return (rhs.find? (·.isConstOf c)).isSome
 
 /-- `e` rewritten by one of the user's equations whose left-hand side matches it -/
 def userRw? (lemmas : Array Name) (e : Expr) : MetaM (Option (Name × Expr)) := do
@@ -432,6 +491,9 @@ partial def trE (ctx : Ctx) (e : Expr) : TrM (ME × Expr) := do
       modify fun s => if s.unfolded.contains l then s else { s with unfolded := s.unfolded.push l }
       let (m, _) ← trE ctx rhs
       return (m, e)
+    -- a recursive translated function: a call (no inlining attempt)
+    if ← isRecFn c then
+      if let some r ← trCall ctx e c args ty then return r
     -- a helper function: its compound scalar arguments go to temporaries, then it is inlined
     for a in args do
       if a.hasFVar && !a.isFVar && (← find? a).isNone then
@@ -440,12 +502,22 @@ partial def trE (ctx : Ctx) (e : Expr) : TrM (ME × Expr) := do
           let m ← fit m
           let v ← fresh
           modify fun s => { s with memo := (a, v) :: s.memo, temps := a :: s.temps,
+                                   tempsU := if a' == a then s.tempsU else (a, a') :: s.tempsU,
                                    pend := s.pend.push (.let_ v m a a' aty s.temps) }
-    match ← unfoldDefinition? e with
-    | some e' =>
-      modify fun s => if s.unfolded.contains c then s else { s with unfolded := s.unfolded.push c }
-      trE ctx e'
-    | none => throwError "frontx: unsupported term{indentExpr e}"
+    let st0 ← get
+    let ms ← (saveState : TermElabM Term.SavedState)
+    try
+      match ← unfoldDefinition? e with
+      | some e' =>
+        modify fun s => if s.unfolded.contains c then s else { s with unfolded := s.unfolded.push c }
+        trE ctx e'
+      | none => throwError "frontx: unsupported term{indentExpr e}"
+    catch ex =>
+      (ms.restore : TermElabM Unit)
+      set st0
+      match ← trCall ctx e c args ty with
+      | some r => return r
+      | none => throw ex
   | none, _ => throwError "frontx: unsupported term{indentExpr e}"
 
 /-- a decidable proposition, as a `0`/`1` value; and the proposition with helpers unfolded -/
@@ -543,6 +615,8 @@ partial def trB (ctx : Ctx) (b : Expr) : TrM (ME × Expr) := do
       modify fun s => if s.unfolded.contains l then s else { s with unfolded := s.unfolded.push l }
       let (m, _) ← trB ctx rhs
       return (m, b)
+    if ← isRecFn c then
+      if let some r ← trCall ctx b c args .bool then return r
     for a in args do
       if a.hasFVar && !a.isFVar && (← find? a).isNone then
         if let some aty ← classify (← inferType a) then
@@ -550,13 +624,71 @@ partial def trB (ctx : Ctx) (b : Expr) : TrM (ME × Expr) := do
           let m ← fit m
           let v ← fresh
           modify fun s => { s with memo := (a, v) :: s.memo, temps := a :: s.temps,
+                                   tempsU := if a' == a then s.tempsU else (a, a') :: s.tempsU,
                                    pend := s.pend.push (.let_ v m a a' aty s.temps) }
-    match ← unfoldDefinition? b with
-    | some b' =>
-      modify fun s => if s.unfolded.contains c then s else { s with unfolded := s.unfolded.push c }
-      trB ctx b'
-    | none => throwError "frontx: unsupported Bool{indentExpr b}"
+    let st0 ← get
+    let ms ← (saveState : TermElabM Term.SavedState)
+    try
+      match ← unfoldDefinition? b with
+      | some b' =>
+        modify fun s => if s.unfolded.contains c then s else { s with unfolded := s.unfolded.push c }
+        trB ctx b'
+      | none => throwError "frontx: unsupported Bool{indentExpr b}"
+    catch ex =>
+      (ms.restore : TermElabM Unit)
+      set st0
+      match ← trCall ctx b c args .bool with
+      | some r => return r
+      | none => throw ex
   | _, _ => throwError "frontx: unsupported Bool{indentExpr b}"
+
+
+/-- a call to a translated function `c` (`e = c args`, scalar type `ty`): its program as a sub-program
+(`Tree.sub`), the arguments assigned to the callee's variables, the result in a fresh variable -/
+partial def trCall (ctx : Ctx) (e : Expr) (c : Name) (args : Array Expr) (ty : Ty) : TrM (Option (ME × Expr)) := do
+    let some ci ← callInfo? c | return none
+    unless args.size == ci.kinds.size && ctx.lo?.isNone do return none
+    let n := ci.slots + 3
+    -- the callee's range is `b .. b + n`; the temporaries of the arguments go into it, above its parameters
+    let b := (← get).next
+    let np := (ci.kinds.filter fun k => k matches some (some _)).size
+    modify fun s => { s with next := b + np }
+    let mut dargs := #[]
+    let mut assigns := #[]
+    for (a, k) in args.zip ci.kinds do
+      match k with
+      | none => pure ()
+      | some none =>
+        unless (ctx.block? a).map (·.1) == some 0 do
+          throwError "frontx: a call whose array argument is not the first block{indentExpr e}"
+        dargs := dargs.push a
+      | some (some v) =>
+        dargs := dargs.push a
+        let some aty ← classify (← inferType a) | throwError "frontx: argument type{indentExpr a}"
+        let (m, a') ← trE ctx a
+        let m ← fit m
+        assigns := assigns.push (b + (v - 4), m, a, a', aty)
+    -- after the call, the range holds the result in `b`, zeros elsewhere: forget what was kept there
+    modify fun s => { s with next := max s.next (b + n + 1),
+                             memo := s.memo.filter fun (_, v) => v < b || b + n < v }
+    for (v, m, a, a', aty) in assigns do
+      modify fun s => { s with pend := s.pend.push (.let_ v m a a' aty s.temps) }
+    let exec := mkAppN (mkConst (c ++ `exec)) args
+    let isRec ← isRecFn c
+    modify fun s => { s with memo := (e, b) :: s.memo,
+                             pend := s.pend.push (.sub b n ci.P ci.repN dargs exec (ty.rep e) s.temps),
+                             -- the obligations may unfold a non-recursive callee (facts about its result)
+                             unfolded := if s.unfolded.contains c || isRec then s.unfolded else s.unfolded.push c }
+    -- the variables of the callee's program (for `Tree.wf`, `simp`)
+    let vN := c ++ `callvars
+    unless (← getEnv).contains vN do
+      let vty ← mkEq (mkApp2 (mkConst ``BStmt.vltF) (toExpr (5 + n)) ci.P) (mkConst ``Bool.true)
+      let mv ← mkFreshExprSyntheticOpaqueMVar vty
+      let rest ← Tactic.run mv.mvarId! (Tactic.evalTactic (← `(tactic| decide)))
+      unless rest.isEmpty do throwError "frontx: callee variables"
+      addDecl (.thmDecl { name := vN, levelParams := [], type := vty, value := ← instantiateMVars mv })
+      addSimpTheorem simpExtension vN (post := true) (inv := false) .global 1000
+    return some (.var b, e)
 
 end
 
@@ -583,7 +715,7 @@ def inBranch {α : Type} (x : TrM α) : TrM α := do
 
 def simpNames : Array Name :=
   #[``Tree.step, ``denote_var, ``denote_const, ``denote_bin, ``denote_ite, ``sel_c, ``sel_c', ``Op.eval, ``parSet, ``BEnv.set,
-    ``seqSet, ``rB_def, ``rd0, ``rd1, ``rd2, ``blk_get, ``r8_fold, ``ba_get!, ``c_not, ``c_and, ``c_or, ``c_eq0, ``c_not', ``c_and', ``c_or', ``c_eq0',
+    ``seqSet, ``rB_def, ``callEnv, ``rho, ``rd0, ``rd1, ``rd2, ``blk_get, ``r8_fold, ``ba_get!, ``c_not, ``c_and, ``c_or, ``c_eq0, ``c_not', ``c_and', ``c_or', ``c_eq0',
     ``rN_lit, ``r8_lit, ``r32_lit, ``r64_lit, ``rN_toNat, ``rN_add, ``r8_toNat_sub, ``r32_toNat_sub, ``rN_sub', ``nat_ite_lt_neg, ``rN_lt, ``rN_or, ``rN_and, ``rN_shl, ``rN_inj, ``rN_eq_lit, ``rN_lt_lit, ``rN_lit_lt, ``rN_ite,
     ``r64_add, ``r64_sub, ``r64_and, ``r64_or, ``r64_xor, ``r64_ite, ``r64_eq', ``r64_lt', ``r64_le', ``r64_toNat, ``r64_ofNat,
     ``r32_add, ``r32_sub, ``r32_and, ``r32_or, ``r32_xor, ``r32_ite, ``r32_eq', ``r32_lt', ``r32_le', ``r32_toNat, ``r32_shr,
@@ -649,6 +781,14 @@ def oblig (type : Expr) (temps? : Option (List Expr) := none) : TrM Expr := do
   modify fun s => { s with nObl := s.nObl + 1 }
   let mv ← mkFreshExprSyntheticOpaqueMVar type
   let mut g := mv.mvarId!
+  -- `Nat` temporaries defined by a helper: also their unfolded form (`L = L'`, definitional)
+  for L in temps do
+    if let some (_, L') := st.tempsU.find? (·.1 == L) then
+      if (← whnfR (← inferType L)).isConstOf ``Nat then
+        let ty ← mkEq L L'
+        let pf ← mkExpectedTypeHint (← mkEqRefl L) ty
+        let (_, g') ← (← g.assert (← mkFreshUserName `hu) ty pf).intro1P
+        g := g'
   for L in temps do
     let hyps ← g.withContext do
       (← getLCtx).foldlM (init := #[]) fun acc d => do
@@ -662,14 +802,19 @@ def oblig (type : Expr) (temps? : Option (List Expr) := none) : TrM Expr := do
       let (_, _, g') ← g.generalizeHyp #[arg] hyps
       g := g'
     catch _ =>
-      let (_, g') ← g.generalize #[arg]
-      g := g'
+      -- (a term under a proof whose type depends on it cannot be generalised: kept as it is)
+      try
+        let (_, g') ← g.generalize #[arg]
+        g := g'
+      catch _ => pure ()
   let us := st.unfolded.map mkIdent
+  let usL ← us.mapM fun t => `(Lean.Parser.Tactic.simpLemma| $t:ident)
   -- last resort: both sides are `if`s over equivalent (not identical) arithmetic conditions
   let tac ← `(tactic| first | rfl | frontx_disch |
     (frontx_simp [$us,*] <;> (first | done | frontx_disch | rfl |
       (intro hq; frontx_simp [$us,*] <;> (first | done | frontx_disch | rfl)) |
-      (split <;> split <;> (first | rfl | (exfalso; frontx_disch))))))
+      (split <;> split <;> (first | rfl | (exfalso; frontx_disch))))) |
+    ((simp only [$usL,*] at *) <;> first | omega | (frontx_u8_facts; omega)))
   let rest ← try Tactic.run g (Tactic.withoutRecover (Tactic.evalTactic tac)) catch e =>
     throwError "frontx: could not prove{indentExpr type}\n{e.toMessageData}"
   unless rest.isEmpty do
@@ -687,6 +832,13 @@ def testOblig (env : Expr) (c : ME) (P : Expr) : TrM Expr := do
   let h ← oblig (← mkEq (denoteE env c) rhs)
   return mkAppN (mkConst ``ne0_of_c) #[denoteE env c, P, inst, h]
 
+def mkConjPf : List Expr → List Expr → MetaM Expr
+  | [_], [p] => pure p
+  | c :: cs, p :: ps => do
+    let q ← mkConjPf cs ps
+    return mkApp4 (mkConst ``And.intro) c (← inferType q) p q
+  | _, _ => pure (mkConst ``True.intro)
+
 /-- emit the pending items around the node built by `k` (which receives the environment after them) -/
 partial def wrapItems (ctx : Ctx) (items : List Item) (env : Expr)
     (k : Expr → TrM (MT × Expr × Expr)) : TrM (MT × Expr × Expr) :=
@@ -703,6 +855,36 @@ partial def wrapItems (ctx : Ctx) (items : List Item) (env : Expr)
     let (t, o, p) ← wrapItems ctx rest (setE env v x) k
     return (.let_ v m t, o, mkAppN (mkConst ``sim_let)
       #[ctx.A, ctx.R, toExpr v, m.toExpr, ← t.toExpr, env, ctx.heap, x, o, ← mkEqRefl x, p])
+  | .sub b n P repN dargs exec r temps :: rest => do
+    let bS := toExpr b
+    let rhoE := mkApp (mkConst ``rho) bS
+    let envG ← withLocalDeclD `v (mkConst ``Nat) fun v => mkLambdaFVars #[v] (mkApp env (mkApp rhoE v))
+    let σg := mkApp2 (mkConst ``BState.mk) envG ctx.heap
+    let some conj ← unfoldDefinition? (mkAppN (mkConst repN) (dargs.push σg))
+      | throwError "frontx: cannot unfold {repN}"
+    let conj := conj.headBeta
+    let rec conjs (e : Expr) : List Expr :=
+      if e.isAppOfArity ``And 2 then e.getArg! 0 :: conjs (e.getArg! 1) else [e]
+    let cs := conjs conj
+    let ps ← cs.mapM (oblig · temps)
+    let hR ← mkConjPf cs ps
+    let hg := mkApp2 exec σg hR
+    let byDecide (ty : Expr) : TrM Expr := do
+      let mv ← mkFreshExprSyntheticOpaqueMVar ty
+      let rest ← Tactic.run mv.mvarId! (Tactic.evalTactic (← `(tactic| decide)))
+      unless rest.isEmpty do throwError "frontx: could not decide{indentExpr ty}"
+      instantiateMVars mv
+    let hb ← byDecide (← mkAppM ``LE.le #[toExpr (4 : Nat), bS])
+    let hpv ← byDecide (← mkEq (mkApp2 (mkConst ``BStmt.vltF) (toExpr (5 + n)) P) (mkConst ``Bool.true))
+    let hlow ← byDecide (← withLocalDeclD `v (mkConst ``Nat) fun v => do
+      mkForallFVars #[v] (← mkArrow (← mkAppM ``Membership.mem #[mkApp (mkConst ``BStmt.assigns) P, v])
+        (← mkAppM ``LE.le #[toExpr (4 : Nat), v])))
+    let hx := mkAppN (mkConst ``callP_exec) #[P, bS, toExpr n, hb, hpv, hlow, env, ctx.heap, r, hg]
+    let env' := mkApp4 (mkConst ``callEnv) env bS (toExpr n) r
+    let (t, o, p) ← wrapItems ctx rest env' k
+    let pE := mkApp3 (mkConst ``callP) P bS (toExpr n)
+    return (.sub pE t, o, mkAppN (mkConst ``sim_sub)
+      #[ctx.A, ctx.R, pE, ← t.toExpr, env, ctx.heap, env', o, hx, p])
   | .load v b i r idx temps :: rest => do
     let y := mkApp (mkConst ``UInt8.toBitVec) r
     let hj ← oblig (← mkEq (mkApp2 (mkConst ``BitVec.toNat) (toExpr (64 : Nat)) (denoteE env i)) idx) temps
@@ -804,13 +986,6 @@ partial def valNorm (v : Expr) (fuel : Nat := 16) : MetaM Expr := do
     let v' ← whnfCore v
     if v' != v then return ← valNorm v' (fuel - 1)
   return v
-
-def mkConjPf : List Expr → List Expr → MetaM Expr
-  | [_], [p] => pure p
-  | c :: cs, p :: ps => do
-    let q ← mkConjPf cs ps
-    return mkApp4 (mkConst ``And.intro) c (← inferType q) p q
-  | _, _ => pure (mkConst ``True.intro)
 
 /-- the capacity side condition of a store or a call in a function writing its list result: from
 `j + (f xs).length ≤ O.length`, the equation `f xs = body` and the path conditions -/
@@ -1726,7 +1901,7 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
   forallTelescope info.type fun xs resTy => do
     -- a `List UInt8` result: written to the output block (list mode)
     let resTyW ← whnfR resTy
-    let listRes := resTyW.isAppOfArity ``List 1 && (← whnfR resTyW.appArg!).isConstOf ``UInt8
+    let listRes ← if resTyW.isAppOfArity ``List 1 then pure ((← whnfR resTyW.appArg!).isConstOf ``UInt8) else pure false
     let some resInfo ← (if listRes then pure (some #[(Lean.mkConst ``id, Ty.nat)]) else resultComps resTy)
       | throwError "frontx: unsupported result type{indentExpr resTy}"
     let rty := resInfo[0]!.2
@@ -2621,7 +2796,7 @@ elab_rules : command
     unless args[0]! == xs[0]! do throwError "frontx_entry: the first argument must be the byte array"
     let bty ← whnfR (← inferType body)
     let isList := bty.isAppOfArity ``List 1
-    let isOpt := bty.isAppOfArity ``Option 1 && (← whnfR bty.appArg!).isConstOf ``UInt8
+    let isOpt ← if bty.isAppOfArity ``Option 1 then pure ((← whnfR bty.appArg!).isConstOf ``UInt8) else pure false
     let some rty ← (if isList || isOpt then pure (some Ty.nat) else classify bty)
       | throwError "frontx_entry: unsupported result type"
     let mut inits : Array Expr := #[]
