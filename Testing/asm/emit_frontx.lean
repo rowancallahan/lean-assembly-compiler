@@ -5,6 +5,7 @@ import Riscv.Frontx.ExceptExamples
 import Riscv.Frontx.ExceptBook
 import Riscv.Frontx.IndExamples
 import Riscv.Frontx.Ind2Examples
+import Riscv.Frontx.NameExamples
 import Riscv.Frontx.ScalarExamples
 open Proven Proven.Frontx Proven.Frontx.Ex
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
@@ -281,4 +282,51 @@ def smallT : BinTree Nat → Bool
     (LevelT.enc l, LevelT.enc l.simplify, spW 2 20 (ConLeche.Level.simplify.ind.pg.al (LevelT.emb l) 0 .z) (LevelT.enc l)))
 #eval (treePairs.all fun p => smallT p.1 && smallT p.2, (treePairs.map fun p => eqBinTree p.1 p.2).count true,
   (keyTrees.map fun p => containsK p.1 p.2).count true)
+end
+
+-- strings and names (NOTES section 23): names with `str` (ASCII, multi-byte UTF-8, empty) and `num` (0 to
+-- `2^64 - 1`) components; pairs: equal, one component changed, a prefix, unrelated; levels with `param` names
+section
+open Proven.Frontx.IndEx
+def strs : List String := ["", "a", "b", "x", "Nat", "succ", "é", "λ", "∀x", "foo_bar", "Nat.add", "ab", "ba", "a\x00b"]
+def genN : Nat → Nat → ConLeche.Name
+  | 0, _ => .anonymous
+  | d + 1, s => match rnd s d % 3 with
+    | 0 => .str (genN d (s + 1)) (strs.getD (rnd s 7 % strs.length) "")
+    | 1 => .num (genN d (s + 2)) (match rnd s 3 % 4 with | 0 => 0 | 1 => 2 ^ 64 - 1 | 2 => 7 | _ => rnd s 9)
+    | _ => if d = 0 then .anonymous else .str (genN d (s + 3)) (strs.getD (rnd s 11 % strs.length) "")
+/-- the last component changed (a string to the next one, a number plus one mod `2^64`) -/
+def bumpN : ConLeche.Name → ConLeche.Name
+  | .anonymous => .str .anonymous "a"
+  | .str p s => .str p (if s = "a" then "b" else "a")
+  | .num p n => .num p ((n + 1) % 2 ^ 64)
+def namePairs : List (ConLeche.Name × ConLeche.Name) := (List.range 60).map fun i =>
+  let n := genN (i % 5 + 1) (i + 1)
+  match i % 4 with
+  | 0 => (n, n) | 1 => (n, bumpN n) | 2 => (n, .str n "x") | _ => (n, genN (i % 4 + 1) (i + 5))
+def genLN : Nat → Nat → ConLeche.Level
+  | 0, s => if s % 2 = 0 then .zero else .param (genN (s % 3 + 1) s)
+  | d + 1, s => match rnd s d % 8 with
+    | 0 => .zero | 1 => .param (genN (s % 3 + 1) s) | 2 | 3 => .succ (genLN d (s + 1))
+    | 4 | 5 => .max (genLN d (2 * s)) (genLN d (2 * s + 1)) | _ => .imax (genLN d (2 * s)) (genLN d (2 * s + 1))
+/-- the leftmost `param` name bumped (or `zero` ↦ `succ zero`) -/
+def bumpL : ConLeche.Level → ConLeche.Level
+  | .zero => .succ .zero
+  | .param n => .param (bumpN n)
+  | .succ u => .succ (bumpL u)
+  | .max u v => .max (bumpL u) v
+  | .imax u v => .imax (bumpL u) v
+def levelPairs : List (ConLeche.Level × ConLeche.Level) := (List.range 60).map fun i =>
+  let l := genLN (i % 6) (i + 1)
+  match i % 3 with | 0 => (l, l) | 1 => (l, bumpL l) | _ => (l, genLN (i % 5) (i + 7))
+#eval do
+  emitIndW "name_beq" ConLeche.Name.beq.code false (namePairs.map fun p =>
+    (NameT.enc2 p, boolB (p.1.beq p.2), spW 2 16 0 (NameT.enc2 p)))
+  emitIndW "name_bbeq" nameBEq.code false (namePairs.map fun p =>
+    (NameT.enc2 p, boolB (nameBEq p.1 p.2), spW 2 16 0 (NameT.enc2 p)))
+  emitIndW "level_beq" ConLeche.Level.beq.code false (levelPairs.map fun p =>
+    (LevelN.enc2 p, boolB (p.1.beq p.2), spW 3 16 0 (LevelN.enc2 p)))
+  emitIndW "level_bbeq" levelBEq.code false (levelPairs.map fun p =>
+    (LevelN.enc2 p, boolB (levelBEq p.1 p.2), spW 3 16 0 (LevelN.enc2 p)))
+#eval ((namePairs.map fun p => p.1.beq p.2).count true, (levelPairs.map fun p => p.1.beq p.2).count true)
 end

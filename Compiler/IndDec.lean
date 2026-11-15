@@ -129,14 +129,14 @@ theorem dFlds_ok (hP1 : ∃ hf : 1 < P.length, P[1] = decFn sh) {K K' : Nat} (hK
       H[0]? = some I → I.length < 2 ^ 60 → At I q (fs.flatMap (encF x (l.enc sh) (r.enc sh))) → HI W h →
       env 4 = BitVec.ofNat 64 q → env 5 = BitVec.ofNat 64 h →
       h + 4 * (fs.flatMap (encF x (l.enc sh) (r.enc sh))).length ≤ W.length →
-      (Fld.l ∈ fs → l.wf sh) → (Fld.r ∈ fs → r.wf sh) →
-      (Fld.x ∈ fs ∨ env 9 = x) → (Fld.l ∈ fs ∨ Rp W h (env 10) l) → (Fld.r ∈ fs ∨ Rp W h (env 11) r) →
+      (Fld.l ∈ fs → l.wf sh) → (Fld.r ∈ fs → r.wf sh) → (Fld.b ∈ fs → x.toNat < 256) →
+      (Fld.x ∈ fs ∨ Fld.b ∈ fs ∨ env 9 = x) → (Fld.l ∈ fs ∨ Rp W h (env 10) l) → (Fld.r ∈ fs ∨ Rp W h (env 11) r) →
       ∃ E' W' h', CExec P K (dFlds fs) ⟨env, H, [W]⟩ ⟨E', H, [W']⟩ ∧
         W'.length = W.length ∧ Agree W W' h ∧ HI W' h' ∧ h ≤ h' ∧
         h' ≤ h + 4 * (fs.flatMap (encF x (l.enc sh) (r.enc sh))).length ∧
         E' 5 = BitVec.ofNat 64 h' ∧ E' 4 = BitVec.ofNat 64 (q + (fs.flatMap (encF x (l.enc sh) (r.enc sh))).length) ∧
         (∀ i, i ∉ [4, 5, 9, 10, 11, 12] → E' i = env i) ∧ E' 9 = x ∧ Rp W' h' (E' 10) l ∧ Rp W' h' (E' 11) r
-  | [], env, H, I, q, W, h, hH, hI, hA, hi, h4, h5, cap, wl, wr, ix, il, ir => by
+  | [], env, H, I, q, W, h, hH, hI, hA, hi, h4, h5, cap, wl, wr, wb, ix, il, ir => by
     simp only [List.flatMap_nil, List.length_nil, Nat.mul_zero, Nat.add_zero, List.not_mem_nil, false_or] at *
     refine ⟨_, W, h, .base (asg_exec _ _ _), rfl, Agree.refl _ _, hi, Nat.le_refl _, Nat.le_refl _, ?_, ?_,
       fun i hi' => ?_, ?_, ?_, ?_⟩ <;> simp only [vE, BExp.denote]
@@ -146,7 +146,7 @@ theorem dFlds_ok (hP1 : ∃ hf : 1 < P.length, P[1] = decFn sh) {K K' : Nat} (hK
     · rw [set_eq']; exact ix
     · rw [set_ne' _ _ (by omega)]; exact il
     · rw [set_ne' _ _ (by omega)]; exact ir
-  | f :: fs, env, H, I, q, W, h, hH, hI, hA, hi, h4, h5, cap, wl, wr, ix, il, ir => by
+  | f :: fs, env, H, I, q, W, h, hH, hI, hA, hi, h4, h5, cap, wl, wr, wb, ix, il, ir => by
     simp only [List.flatMap_cons] at hA cap ⊢
     obtain ⟨hA1, hA2⟩ := hA.app
     -- one field, then the rest
@@ -154,7 +154,8 @@ theorem dFlds_ok (hP1 : ∃ hf : 1 < P.length, P[1] = decFn sh) {K K' : Nat} (hK
         HI W₁ h₁ ∧ h ≤ h₁ ∧ h₁ ≤ h + 4 * (encF x (l.enc sh) (r.enc sh) f).length ∧ E₁ 5 = BitVec.ofNat 64 h₁ ∧
         E₁ 4 = BitVec.ofNat 64 (q + (encF x (l.enc sh) (r.enc sh) f).length) ∧
         (∀ i, i ∉ [4, 5, 9, 10, 11, 12] → E₁ i = env i) ∧
-        (Fld.x ∈ fs ∨ E₁ 9 = x) ∧ (Fld.l ∈ fs ∨ Rp W₁ h₁ (E₁ 10) l) ∧ (Fld.r ∈ fs ∨ Rp W₁ h₁ (E₁ 11) r) := by
+        (Fld.x ∈ fs ∨ Fld.b ∈ fs ∨ E₁ 9 = x) ∧ (Fld.l ∈ fs ∨ Rp W₁ h₁ (E₁ 10) l) ∧
+          (Fld.r ∈ fs ∨ Rp W₁ h₁ (E₁ 11) r) := by
       cases f with
       | x =>
         have hL : (leN 8 x.toNat).length = 8 := leN_length 8 _
@@ -166,7 +167,7 @@ theorem dFlds_ok (hP1 : ∃ hf : 1 < P.length, P[1] = decFn sh) {K K' : Nat} (hK
         · dsimp only; rw [set_ne' _ _ (by omega), k₁ 5 (by omega) (by omega)]; exact h5
         · dsimp only; rw [set_eq']; simp only [addE, kE, BExp.denote, Op.eval]; rw [k₁ 4 (by omega) (by omega), h4, BitVec.ofNat_add]
         · simp at hi'; dsimp only; rw [set_ne' _ _ (by omega), k₁ i (by omega) (by omega)]
-        · right; dsimp only; rw [set_ne' _ _ (by omega), v₁]; simp only [Nat.sub_self, List.drop_zero, unle_leN]
+        · right; right; dsimp only; rw [set_ne' _ _ (by omega), v₁]; simp only [Nat.sub_self, List.drop_zero, unle_leN]
           apply BitVec.eq_of_toNat_eq; simp; omega
         · rcases il with il | il
           · left; simpa using il
@@ -174,15 +175,38 @@ theorem dFlds_ok (hP1 : ∃ hf : 1 < P.length, P[1] = decFn sh) {K K' : Nat} (hK
         · rcases ir with ir | ir
           · left; simpa using ir
           · right; dsimp only; rw [set_ne' _ _ (by omega), k₁ 11 (by omega) (by omega)]; exact ir
+      | b =>
+        have hx := wb (List.mem_cons_self ..)
+        have hL : ((leN 8 x.toNat).take 1) = [UInt8.ofNat x.toNat] := by simp [leN, Nat.mod_eq_of_lt hx]
+        simp only [encF, hL] at hA1 cap ⊢
+        have hb := hA1.get 0 (by simp)
+        simp only [Nat.add_zero, List.getElem_cons_zero] at hb
+        have hix : ((vE 4).denote env).toNat = q := by
+          simp only [vE, BExp.denote, h4]; exact toNat_h (by have := hA1.lt (by simp); omega)
+        refine ⟨_, W, h, .base (.seq (load_exec hH hix hb) (asg_exec _ _ _)), rfl, Agree.refl _ _, hi, Nat.le_refl _,
+          by simp, ?_, ?_, fun i hi' => ?_, ?_, ?_, ?_⟩
+        · dsimp only; rw [set_ne' _ _ (by omega), set_ne' _ _ (by omega)]; exact h5
+        · dsimp only; rw [set_eq']; simp only [addE, kE, BExp.denote, Op.eval, List.length_singleton]
+          rw [set_ne' _ _ (by omega), h4, BitVec.ofNat_add]
+        · simp at hi'; dsimp only; rw [set_ne' _ _ (by omega), set_ne' _ _ (by omega)]
+        · right; right; dsimp only; rw [set_ne' _ _ (by omega), set_eq', zb]
+          apply BitVec.eq_of_toNat_eq; simp [Nat.mod_eq_of_lt hx]
+        · rcases il with il | il
+          · left; simpa using il
+          · right; dsimp only; rw [set_ne' _ _ (by omega), set_ne' _ _ (by omega)]; exact il
+        · rcases ir with ir | ir
+          · left; simpa using ir
+          · right; dsimp only; rw [set_ne' _ _ (by omega), set_ne' _ _ (by omega)]; exact ir
       | l =>
         simp only [encF, List.length_append] at hA1 cap ⊢
         obtain ⟨E₁, W₁, h₁, x₁, l1, a1, i1, b1, b2, e5, e4, gl, rv⟩ := dcall_ok hP1 hK (okl (wl (by simp)))
           (d := 10) (by omega) hH hI hA1 hi h4 h5 (by omega)
         refine ⟨E₁, W₁, h₁, x₁, l1, a1, i1, b1, b2, e5, e4, fun i hi' => gl i (by simp at hi'; omega)
           (by simp at hi'; omega) (by simp at hi'; omega), ?_, .inr rv, ?_⟩
-        · rcases ix with ix | ix
+        · rcases ix with ix | ix | ix
           · left; simpa using ix
-          · right; rw [gl 9 (by omega) (by omega) (by omega)]; exact ix
+          · right; left; simpa using ix
+          · right; right; rw [gl 9 (by omega) (by omega) (by omega)]; exact ix
         · rcases ir with ir | ir
           · left; simpa using ir
           · right; rw [gl 11 (by omega) (by omega) (by omega)]; exact ir.mono b1 a1
@@ -192,16 +216,18 @@ theorem dFlds_ok (hP1 : ∃ hf : 1 < P.length, P[1] = decFn sh) {K K' : Nat} (hK
           (d := 11) (by omega) hH hI hA1 hi h4 h5 (by omega)
         refine ⟨E₁, W₁, h₁, x₁, l1, a1, i1, b1, b2, e5, e4, fun i hi' => gl i (by simp at hi'; omega)
           (by simp at hi'; omega) (by simp at hi'; omega), ?_, ?_, .inr rv⟩
-        · rcases ix with ix | ix
+        · rcases ix with ix | ix | ix
           · left; simpa using ix
-          · right; rw [gl 9 (by omega) (by omega) (by omega)]; exact ix
+          · right; left; simpa using ix
+          · right; right; rw [gl 9 (by omega) (by omega) (by omega)]; exact ix
         · rcases il with il | il
           · left; simpa using il
           · right; rw [gl 10 (by omega) (by omega) (by omega)]; exact il.mono b1 a1
     obtain ⟨E₁, W₁, h₁, x₁, l1, a1, i1, b1, b2, e5, e4, gl, ix1, il1, ir1⟩ := step
     obtain ⟨E₂, W₂, h₂, x₂, l2, a2, i2, c1, c2, f5, f4, gl2, ix2, il2, ir2⟩ := dFlds_ok hP1 hK okl okr fs E₁ H I _ W₁ h₁
       hH hI hA2 i1 e4 e5 (by rw [l1]; simp only [List.length_append] at cap; omega)
-      (fun m => wl (List.mem_cons_of_mem _ m)) (fun m => wr (List.mem_cons_of_mem _ m)) ix1 il1 ir1
+      (fun m => wl (List.mem_cons_of_mem _ m)) (fun m => wr (List.mem_cons_of_mem _ m))
+      (fun m => wb (List.mem_cons_of_mem _ m)) ix1 il1 ir1
     refine ⟨E₂, W₂, h₂, .seq x₁ x₂, l2.trans l1, a1.trans a2 b1, i2, by omega, by simp only [List.length_append]; omega,
       f5, by rw [f4, List.length_append, Nat.add_assoc], fun i hi' => by rw [gl2 i hi', gl i hi'], ix2, il2, ir2⟩
 
@@ -270,10 +296,12 @@ theorem dec_ok (hP1 : ∃ hf : 1 < P.length, P[1] = decFn sh) (hsh : sh.length <
       (K' := 48 * max l.depth r.depth) (by omega) (x := x) (l := l) (r := r)
       (fun w => decOK_mono (ihl w) (by omega)) (fun w => decOK_mono (ihr w) (by omega)) fs e1 H I (c + 1) W h hH hI hA1 hi
       e14 (by rw [e1k 5 (by omega) (by omega)]; exact h5) (by omega)
-      (fun m => by simpa [m] using hlw) (fun m => by simpa [m] using hrw)
+      (fun m => by simpa [m] using hlw) (fun m => by simpa [m] using hrw) (fun m => hx0.2 m)
       (by by_cases m : Fld.x ∈ fs
           · exact .inl m
-          · right; simp [e1, set_eq', set_ne']; exact (hx0 m).symm)
+          · by_cases mb : Fld.b ∈ fs
+            · exact .inr (.inl mb)
+            · right; right; simp [e1, set_eq', set_ne']; exact (hx0.1 m mb).symm)
       (by by_cases m : Fld.l ∈ fs
           · exact .inl m
           · right; have : l = .z := by simpa [m] using hlw
@@ -453,6 +481,12 @@ theorem eFlds_ok (hP2 : ∃ hf : 2 < P.length, P[2] = encFn sh) {K K' : Nat} (hK
         simp only [encF, hL] at cap ⊢
         have hw := wrB_ok x q I O hO 8 (by omega) (by omega) env [W] h6 h10
         rw [List.take_of_length_le (by omega)] at hw
+        refine ⟨_, .base (.seq hw (asg_exec _ _ _)), ?_, fun i n6 _ => set_ne' _ _ n6⟩
+        rw [set_eq']; exact addE_den' h6
+      | b =>
+        have hL : ((leN 8 x.toNat).take 1).length = 1 := by simp [leN_length]
+        simp only [encF, hL] at cap ⊢
+        have hw := wrB_ok x q I O hO 1 (by omega) (by omega) env [W] h6 h10
         refine ⟨_, .base (.seq hw (asg_exec _ _ _)), ?_, fun i n6 _ => set_ne' _ _ n6⟩
         rw [set_eq']; exact addE_den' h6
       | l =>

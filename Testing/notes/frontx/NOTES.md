@@ -1372,6 +1372,66 @@ tree(s), `inBytesA`; read in `main` by `rdB`), an output format other than the i
 
 ## 23. Strings and Names (branch `speed-ind`)
 
+Scope changed by the owner (features first, speed later); the speed finding is kept at the end of this section.
+
+**Inductive path: `String` fields, nested types, `Decidable` functions.**  Files: `Compiler/Ind.lean` (new field kind
+`Fld.b`: the scalar `x` as ONE byte, `x < 256`; `C.wf` asks `Fld.b ∈ fs → x.toNat < 256`), `Compiler/IndDec.lean`,
+`IndSup.lean` (decoder/encoder/`dec_enc` cases for `.b`: `.load` of one byte, `wrB 1`), `Riscv/Frontx/IndStr.lean`
+(new: `Bytes8`, `Bytes8.ofString s = ofList s.toUTF8.data.toList`, `Bytes8.eqb`, `eqb_ofString : eqb (ofString s)
+(ofString t) = decide (s = t)`), `Riscv/Frontx/IndCmd.lean` (front end), `Riscv/Frontx/NameExamples.lean` (targets).
+
+- **Byte format** (stated by `C.enc` of the generated shape): a `String` field is the chain `Bytes8.ofString s` of
+  its UTF-8 bytes: per byte the tag of `cons` and the byte, then the tag of `nil` (no length prefix: it is the
+  Encode-style format of `List UInt8` as an inductive, tag + fields; a `UInt8` field is one byte).  E.g. `Name.str
+  .anonymous "ab"` = `01 00 04 61 04 62 03`.
+- **Shapes of several types** (`frontx_ind_type T := ty nesting U₁, …`): the constructors of `ty`, then of the types
+  of its fields given in `nesting` and of `Bytes8` (for `String` fields), numbered on: `LevelN := Level nesting Name`
+  has tags 0-4 `Level`, 5-7 `Name`, 8-9 the bytes.  Generated per type `T`, `T.N1`, `T.N2`, …: `emb`, `small`,
+  `fold`, `emb_wf`, and `off` (first tag).  A function over a nested type gets `off` empty arms below its tags.
+  Without `nesting`, a field of another inductive is dropped as before (`LevelT` unchanged).
+- **Front end**: `s = t`, `s ≠ t`, `s == t` on strings ↦ a call of `Bytes8.eqb` (added to the program);
+  `a = b` / `decide (a = b)` on two non-constant values of a declared type ↦ a call of the function of the
+  `DecidableEq` instance; a function with result `Decidable p` is a word (`isTrue` 1, `isFalse` 0; its `sem`:
+  `= bw (@decide _ (g a b))`); a `match` on a `Decidable` value is a match on an enumeration (proof fields ignored);
+  `if h : c then … else …` (`dite`); an entry `f a b := decide (a = b)` or `a == b` (a `BEq` instance, a definition
+  that is `decide …`) unfolds to the instance's function.  `Nat` comparisons are now allowed in programs of several
+  functions (a caller of a function with range hypotheses gets them too).  In shapes of several types a `match`
+  tests only the constructors whose branch differs from the most frequent one (`Level.decEq`'s loop body was 1036
+  words, over the 1024-word reach of a forward branch of the plain back end; now 754).
+- `wf`: `wf_calls_ind` (as `wf_calls`, with a `simp [glF]` fallback when `decide` cannot be synthesized for a large
+  length expression).
+
+Compiled verbatim (con-leche @6810492 `Kernel/Name.lean`, `Kernel/Expr.lean`), machine theorem `f.implements1` (the
+Sail axiom set), `sem` 3 axioms; input: two values one after the other (`T.enc2`) in the range subtype (`Nat`
+components `< 2^64`), output one byte:
+
+| entry | function | program | test |
+|---|---|---|---|
+| `name_beq` | `Name.beq` (`Name.lean:115`) = `decide (a = b)` → `Name.decEq` (`:47-61`) | `Name.decEq`, `Bytes8.eqb` | 60 cases |
+| `name_bbeq` | `nameBEq a b := a == b` (`instance : BEq Name`, `:117`) | same | 60 cases |
+| `level_beq` | `Level.beq` (`Expr.lean:133`) → `Level.decEq` (`:59-83`) → `Name.decEq` for `param` | `Level.decEq`, `Name.decEq`, `Bytes8.eqb` | 60 cases |
+| `level_bbeq` | `levelBEq a b := a == b` (`instance : BEq Level`, `:135`) | same | 60 cases |
+
+Test inputs (`emit_frontx.lean`): names of depth ≤ 5 with ASCII, empty, multi-byte UTF-8 (`é`, `λ`, `∀x`) and NUL
+strings and numbers `0`, `7`, `2^64 - 1`, random; pairs equal / last component changed / one more component /
+unrelated; levels of depth ≤ 5 with such `param` names, equal / leftmost name changed / unrelated.
+
+**List front end (`frontx_compile`): `String` arguments of calls.**  `Riscv/Frontx/Translate.lean`: a call of a
+translated function may pass byte-array and `String` parameters when each is the caller's block in the same position
+(`s` ↦ `s.toUTF8`); the length variable of a block other than block 0 is passed like a scalar argument (it is in the
+callee's renamed range); a call with a `String` argument is not inlined.  lean-svg @df8e663 `findSeq`
+(`Bytes.lean:55-60`, calls `startsWith` per iteration) compiles verbatim with an `exec` theorem
+(`StringExamples.lean`; `requires bs.size + s.toUTF8.size < 2^64`, loop invariant `j ≤ k`).  No machine entry: the
+machine convention has one input block, and a `String` argument needs a second byte block (or a view into the input).
+
+Not done (strings): `String` values computed by a function (`append`, results), `String.length` (`utf8ByteSize` is
+the chain length; not wired), `get`/`Char` and iteration over characters, `startsWith` on a `String` field, a string
+literal as a value (a constant chain), `Name.hash`/`mixHash` (opaque), the `@[csimp]` pointer versions
+(`decEqPtr`: `ptrDecEq`, `withPtrEqDecEq` are unsafe/opaque, the verbatim `decEq` is the specification they are proved
+equal to).  An entry for `findSeq`/`startsWith` needs a second input block or `String` views into the input.
+
+### Speed finding (before the scope change)
+
 **Finding: why `Level.simplify` is 169× gcc** (profile of `level_simplify.words` on an RV64I interpreter, input of
 `ind-bench/bench.py`, 205 bytes / 205 nodes): `simplify`'s function is called **12 223 times** for 205 nodes
 (`combining` 1 679), ~197 instructions per call. Lean's equation `simplify.eq_5` has the `let ls := simplify l` /

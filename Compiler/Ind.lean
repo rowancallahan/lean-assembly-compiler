@@ -33,7 +33,9 @@ def C.nodes : C → Nat
   | .z => 0
   | .c _ _ l r => l.nodes + r.nodes + 1
 
-inductive Fld where | x | l | r
+/-- a field of a constructor: the scalar `x` as 8 bytes (`x`) or as 1 byte (`b`, `x < 256`: a `UInt8`, e.g. a
+byte of a `String`), the children `l`, `r` -/
+inductive Fld where | x | l | r | b
   deriving DecidableEq, Repr
 
 /-- per tag, the fields in the order of the byte format -/
@@ -43,6 +45,7 @@ def encF (x : BitVec 64) (el er : List UInt8) : Fld → List UInt8
   | .x => leN 8 x.toNat
   | .l => el
   | .r => er
+  | .b => (leN 8 x.toNat).take 1
 
 /-- the byte format: tag byte, then the fields of the shape (`x` 8 bytes little-endian); `z` is `[255]` -/
 def C.enc (sh : Shape) : C → List UInt8
@@ -52,7 +55,8 @@ def C.enc (sh : Shape) : C → List UInt8
 /-- well-formed for the shape: tags of the shape, absent fields `0` / `z`, present children well-formed -/
 def C.wf (sh : Shape) : C → Prop
   | .z => False
-  | .c t x l r => t < sh.length ∧ (Fld.x ∉ sh.getD t [] → x = 0) ∧
+  | .c t x l r => t < sh.length ∧ ((Fld.x ∉ sh.getD t [] → Fld.b ∉ sh.getD t [] → x = 0) ∧
+      (Fld.b ∈ sh.getD t [] → x.toNat < 256)) ∧
       (if Fld.l ∈ sh.getD t [] then l.wf sh else l = .z) ∧ (if Fld.r ∈ sh.getD t [] then r.wf sh else r = .z)
 
 def Shape.ok (sh : Shape) : Prop := sh.length < 255 ∧ ∀ fs ∈ sh, fs.Nodup
@@ -429,6 +433,7 @@ def dFld : Fld → CStmt
   | .x => .base (.seq (rdB 8) (asg 4 (addE 4 8)))
   | .l => .call 10 1 []
   | .r => .call 11 1 []
+  | .b => .base (.seq (.load 9 0 (vE 4)) (asg 4 (addE 4 1)))
 
 def dFlds : List Fld → CStmt
   | [] => .base (asg 9 (vE 9))
@@ -453,6 +458,7 @@ def eFld : Fld → CStmt
   | .x => .base (.seq (wrB 8) (asg 6 (addE 6 8)))
   | .l => .call 13 2 [vE 11]
   | .r => .call 13 2 [vE 12]
+  | .b => .base (.seq (wrB 1) (asg 6 (addE 6 1)))
 
 def eFlds : List Fld → CStmt
   | [] => .base (asg 10 (vE 10))
