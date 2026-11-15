@@ -13,8 +13,7 @@ Source: `github.com/leanprover/fp-lean` @0abeea5, `examples/` (57 `.lean` files,
 | **pure functions (the survey's population)** | **359** | **352** |
 | &nbsp;&nbsp;compiled verbatim, default command of the right front end (this survey's harness) | 56 | 55 |
 | &nbsp;&nbsp;compiled verbatim on `main` with a hand-given directive or entry (`using`, `with`, `from`, `frontx_ind … using`, wrapper entry), found in `Riscv/Frontx/*.lean` | 29 | 28 |
-| &nbsp;&nbsp;standalone attempt fails, but the def is inlined into a compiled function | 0 | 1 |
-| **compiled (the three lines above)** | **85** | **83** |
+| **compiled (the two lines above)** | **85** | **83** |
 | blocked: a front end rejects it (message and blocker below) | 213 | 208 |
 | not run: the verbatim def does not elaborate in isolation (book's own broken/illustrative examples, or context my extractor did not carry; see below) | 61 | 61 |
 
