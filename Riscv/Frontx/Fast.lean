@@ -344,7 +344,8 @@ theorem strip_calls (K : List Nat) : ∀ S : Tree, S.calls = true → (S.strip K
   | .ret _, h | .sub _ _, h => nomatch h
 
 theorem strip_wf (L : Lay) (K : List Nat) : ∀ S : Tree, S.wf L → (S.strip K).wf L
-  | .call as, h => ⟨Nat.le_trans (List.length_filter_le _ _) h.1, fun p hp => h.2 p (List.mem_filter.1 hp).1⟩
+  | .call as, h => ⟨h.1.imp (seqOK_filter _ as) (Nat.le_trans (List.length_filter_le _ _)),
+      fun p hp => h.2 p (List.mem_filter.1 hp).1⟩
   | .ite _ a b, h => ⟨h.1, strip_wf L K a h.2.1, strip_wf L K b h.2.2⟩
   | .let_ _ _ k, h => ⟨h.1, h.2.1, strip_wf L K k h.2.2⟩
   | .load _ _ _ k, h => ⟨h.1, h.2.1, strip_wf L K k h.2.2⟩
@@ -960,7 +961,8 @@ theorem fastExit_ok (L : Lay) (t : Tree) (Gi Gv : List BExp) (X : Tree) (c' : BE
 
 /-! ## The fast loops of `fastOf` keep the invariant -/
 
-theorem leaves_wf (L : Lay) : ∀ (S : Tree), S.wf L → ∀ l ∈ S.leaves, l.length ≤ L.K ∧ ∀ p ∈ l, p.1 < L.M ∧ p.2.vlt L.M
+theorem leaves_wf (L : Lay) : ∀ (S : Tree), S.wf L → ∀ l ∈ S.leaves, (seqOK l = true ∨ l.length ≤ L.K) ∧
+    ∀ p ∈ l, p.1 < L.M ∧ p.2.vlt L.M
   | .call as, hw, l, hl => by simp only [Tree.leaves, List.mem_singleton] at hl; subst hl; exact hw
   | .ite _ a b, hw, l, hl => by
     simp only [Tree.leaves, List.mem_append] at hl
@@ -1023,7 +1025,7 @@ theorem pre_wv : ∀ xs : List Pre, (Pre.app xs (.call [])).wv = xs.map Pre.tgt
     simp only [Pre.app, Tree.wv, List.map_cons, Pre.tgt, pre_wv xs]
 
 theorem pre_wf (L : Lay) (k : Tree) : ∀ xs : List Pre, (Pre.app xs k).wf L → (Pre.app xs (.call [])).wf L ∧ k.wf L
-  | [], h => ⟨⟨Nat.zero_le _, fun _ h => nomatch h⟩, h⟩
+  | [], h => ⟨⟨.inr (Nat.zero_le _), fun _ h => nomatch h⟩, h⟩
   | .let_ _ _ :: xs, h => ⟨⟨h.1, h.2.1, (pre_wf L k xs h.2.2).1⟩, (pre_wf L k xs h.2.2).2⟩
   | .load _ _ _ :: xs, h => ⟨⟨h.1, h.2.1, (pre_wf L k xs h.2.2).1⟩, (pre_wf L k xs h.2.2).2⟩
   | .cload _ _ _ _ _ :: xs, h =>
@@ -1032,13 +1034,14 @@ theorem pre_wf (L : Lay) (k : Tree) : ∀ xs : List Pre, (Pre.app xs k).wf L →
 theorem common_wf (L : Lay) (S : Tree) (hw : S.wf L) : (Tree.call (common S)).wf L := by
   unfold common
   split
-  · exact ⟨Nat.zero_le _, fun _ h => nomatch h⟩
+  · exact ⟨.inr (Nat.zero_le _), fun _ h => nomatch h⟩
   · rename_i as ls hls
     dsimp only
     split
     · have := leaves_wf L S hw as (by rw [hls]; exact List.mem_cons_self)
-      exact ⟨Nat.le_trans (List.length_filter_le _ _) this.1, fun p hp => this.2 p (List.mem_filter.1 hp).1⟩
-    · exact ⟨Nat.zero_le _, fun _ h => nomatch h⟩
+      exact ⟨this.1.imp (seqOK_filter _ as) (Nat.le_trans (List.length_filter_le _ _)),
+        fun p hp => this.2 p (List.mem_filter.1 hp).1⟩
+    · exact ⟨.inr (Nat.zero_le _), fun _ h => nomatch h⟩
 
 /-- the conditions of `splitG` -/
 theorem splitG_K (W : List Nat) (K : List (Nat × BitVec 64)) (cs : List (BExp × Bool)) (env : BEnv)

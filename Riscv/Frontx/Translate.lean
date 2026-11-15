@@ -20,11 +20,12 @@ import Lean
 import Riscv.Frontx.Rep
 import Riscv.Frontx.For
 import Riscv.Frontx.Bytes
+import Riscv.Frontx.Exc
 
 namespace Proven.Frontx
 open Lean Meta Elab Term Command Tactic
 
-inductive Ty where | bv | u8 | u32 | u64 | nat | bool
+inductive Ty where | bv | u8 | u32 | u64 | nat | bool | u16
   deriving BEq, Repr, Inhabited
 
 def bv64 : Expr := mkApp (mkConst ``BitVec) (toExpr (64 : Nat))
@@ -34,6 +35,7 @@ def classify (t : Expr) : MetaM (Option Ty) := do
   let t ← whnfR t
   if t.isConstOf ``UInt8 then return some .u8
   if t.isConstOf ``UInt32 then return some .u32
+  if t.isConstOf ``UInt16 then return some .u16
   if t.isConstOf ``UInt64 then return some .u64
   if t.isConstOf ``Nat then return some .nat
   if t.isConstOf ``Bool then return some .bool
@@ -46,6 +48,7 @@ def Ty.rep (ty : Ty) (e : Expr) : Expr :=
   | .bv => e
   | .u8 => mkApp (mkConst ``r8) e
   | .u32 => mkApp (mkConst ``r32) e
+  | .u16 => mkApp (mkConst ``r16) e
   | .u64 => mkApp (mkConst ``r64) e
   | .nat => mkApp (mkConst ``rN) e
   | .bool => mkApp (mkConst ``rB) e
@@ -53,12 +56,14 @@ def Ty.rep (ty : Ty) (e : Expr) : Expr :=
 def Ty.mask : Ty → Option Nat
   | .u8 => some 0xff
   | .u32 => some 0xffffffff
+  | .u16 => some 0xffff
   | _ => none
 
 /-- mask for shift amounts -/
 def Ty.shMask : Ty → Option Nat
   | .u8 => some 7
   | .u32 => some 31
+  | .u16 => some 15
   | .u64 => some 63
   | _ => none
 
@@ -105,9 +110,20 @@ def MT.toExpr : MT → MetaM Expr
   | .store b i e k => return mkApp4 (mkConst ``Tree.store) (Lean.toExpr b) i.toExpr e.toExpr (← k.toExpr)
   | .sub p k => return mkApp2 (mkConst ``Tree.sub) p (← k.toExpr)
 
+def ME.vs : ME → List Nat
+  | .var n => [n]
+  | .const _ => []
+  | .bin _ a b => a.vs ++ b.vs
+  | .ite c a b => c.vs ++ a.vs ++ b.vs
+
+/-- `seqOK` of `Tree.lean` (the pairs can be assigned in order: no call temporaries) -/
+def seqOKm : List (Nat × ME) → Bool
+  | [] => true
+  | (v, _) :: as => as.all (fun p => !p.2.vs.contains v) && seqOKm as
+
 def MT.maxK : MT → Nat
   | .ret _ => 0
-  | .call as => as.length
+  | .call as => if seqOKm as then 0 else as.length
   | .ite _ t e => max t.maxK e.maxK
   | .let_ _ _ k | .load _ _ _ k | .cload _ _ _ _ _ k | .store _ _ _ k | .sub _ k => k.maxK
 
@@ -377,6 +393,13 @@ def projCtor? (e : Expr) : MetaM (Option Expr) := do
   let .ctorInfo ci := ci | return none
   return s'.getArg! (ci.numParams + i)
 
+/-- a byte-array term as the term its block is keyed by: `⟨xs, …⟩.data ↦ xs` -/
+partial def blkNorm (ctx : Ctx) (xs : Expr) (fuel : Nat := 4) : MetaM Expr := do
+  if (ctx.block? xs).isSome || fuel == 0 then return xs
+  match ← projCtor? xs with
+  | some f => blkNorm ctx f (fuel - 1)
+  | none => return xs
+
 mutual
 
 /-- a scalar term `e`: its expression, and `e` with the inlined helpers unfolded (definitionally equal to `e`;
@@ -408,7 +431,16 @@ partial def trE (ctx : Ctx) (e : Expr) : TrM (ME × Expr) := do
   let f := e.getAppFn
   -- a read of a byte array: a load into a fresh variable
   if let some (xs, i) := read? e then
-    if let some (b, _) := ctx.block? xs then
+    if let some (b, _) := ctx.block? (← blkNorm ctx xs) then
+      -- an index that is an `if` (a projection of an `if` of structures), `%`, `/` goes to a temporary first
+      if (i.find? fun t => t.isAppOfArity ``ite 5 || t.isAppOfArity ``HMod.hMod 6 || t.isAppOfArity ``HDiv.hDiv 6).isSome &&
+          (← find? i).isNone then
+        let (m, i') ← trE ctx i
+        let m ← fit m
+        let v ← fresh
+        modify fun s => { s with memo := (i, v) :: s.memo, temps := i :: s.temps,
+                                 tempsU := if i' == i then s.tempsU else (i, i') :: s.tempsU,
+                                 pend := s.pend.push (.let_ v m i i' .nat s.temps) }
       let (idx, i') ← trE ctx i
       let idx ← fit idx
       let v ← fresh
@@ -421,14 +453,14 @@ partial def trE (ctx : Ctx) (e : Expr) : TrM (ME × Expr) := do
     let d := args[4]!.bindingBody!
     if P.isAppOfArity ``LT.lt 4 && P.appArg!.isAppOfArity ``ByteArray.size 1 && !d.hasLooseBVars && !d.hasFVar then
       let i := P.appFn!.appArg!
-      let xs := P.appArg!.appArg!
+      let xs ← blkNorm ctx P.appArg!.appArg!
       -- also `(xs[i]).toUInt64` etc. with `d = 0`: the byte is loaded with default `0`
       let isConv := (t.isAppOfArity ``UInt8.toUInt32 1 || t.isAppOfArity ``UInt8.toUInt64 1 ||
         t.isAppOfArity ``UInt8.toNat 1) && (d.nat? == some 0 || d.rawNatLit? == some 0)
       let rd := if isConv then t.appArg! else t
       match ctx.block? xs, read? rd with
       | some (b, len), some (xs', i') =>
-        if xs' == xs && i' == i then
+        if (← blkNorm ctx xs') == xs && i' == i then
           let r ← if isConv then
               pure (mkAppN (mkConst ``dite [levelOne]) #[mkConst ``UInt8, P, args[2]!, .lam `h P rd .default,
                 .lam `h (mkNot P) (toExpr (0 : UInt8)) .default])
@@ -602,13 +634,16 @@ partial def trE (ctx : Ctx) (e : Expr) : TrM (ME × Expr) := do
     return (.ite c a b, ← mkAppOptM ``ite #[args[0]!, p', none, a', b'])
   | some ``UInt8.toUInt32, 1 | some ``UInt8.toUInt64, 1 | some ``UInt32.toUInt64, 1
   | some ``UInt8.toNat, 1 | some ``UInt32.toNat, 1 | some ``UInt64.toNat, 1 | some ``Nat.toUInt64, 1 => conv none
+  | some ``UInt8.toUInt16, 1 | some ``UInt16.toUInt32, 1 | some ``UInt16.toUInt64, 1 | some ``UInt16.toNat, 1 => conv none
+  | some ``UInt32.toUInt16, 1 | some ``Nat.toUInt16, 1 | some ``UInt16.ofNat, 1 => conv (some 0xffff)
+  | some ``UInt16.toUInt8, 1 => conv (some 0xff)
   | some ``UInt32.toUInt8, 1 | some ``UInt64.toUInt8, 1 | some ``Nat.toUInt8, 1 => conv (some 0xff)
   | some ``UInt64.toUInt32, 1 | some ``Nat.toUInt32, 1 => conv (some 0xffffffff)
   | some ``UInt8.ofNat, 1 => conv (some 0xff)
   | some ``UInt32.ofNat, 1 => conv (some 0xffffffff)
   | some ``UInt64.ofNat, 1 => conv none
   | some ``ByteArray.size, 1 =>
-    match ctx.block? args[0]! with
+    match ctx.block? (← blkNorm ctx args[0]!) with
     | some (_, len) => return (.var len, e)
     | none => throwError "frontx: size of an unknown array{indentExpr e}"
   | some c, _ =>
@@ -666,6 +701,15 @@ partial def trC (ctx : Ctx) (p : Expr) : TrM (ME × Expr) := do
     let (b, b') ← trE ctx args[j]!
     let r := ME.bin ``Op.ult a b
     return (if neg then cNot r else r, mkAppN f ((args.set! i a').set! j b'))
+  -- `a = b`, `a ≠ b` on `Nat`: a compound side goes to a temporary (as for `<`)
+  if (f.isConstOf ``Eq || f.isConstOf ``Ne) && args.size == 3 && (← whnfR args[0]!).isConstOf ``Nat then
+    for x in [args[1]!, args[2]!] do
+      if x.hasFVar && !x.isFVar && !x.isAppOfArity ``ByteArray.size 1 && (← find? x).isNone then
+        let (m, x') ← trE ctx x
+        let m ← fit m
+        let v ← fresh
+        modify fun s => { s with memo := (x, v) :: s.memo, temps := x :: s.temps,
+                                 pend := s.pend.push (.let_ v m x x' .nat s.temps) }
   match f.constName?, args.size with
   | some ``Eq, 3 =>
     if args[0]!.isConstOf ``Bool then
@@ -707,6 +751,15 @@ partial def trB (ctx : Ctx) (b : Expr) : TrM (ME × Expr) := do
   if !b.hasFVar then return (.const (← litBV (mkApp (mkConst ``rB) b)), b)
   let args := b.getAppArgs
   let f := b.getAppFn
+  -- `a == b` on `Nat`: a compound side goes to a temporary (as for `<`)
+  if (f.isConstOf ``BEq.beq || f.isConstOf ``bne) && args.size == 4 && (← whnfR args[0]!).isConstOf ``Nat then
+    for x in [args[2]!, args[3]!] do
+      if x.hasFVar && !x.isFVar && !x.isAppOfArity ``ByteArray.size 1 && (← find? x).isNone then
+        let (m, x') ← trE ctx x
+        let m ← fit m
+        let v ← fresh
+        modify fun s => { s with memo := (x, v) :: s.memo, temps := x :: s.temps,
+                                 pend := s.pend.push (.let_ v m x x' .nat s.temps) }
   match f.constName?, args.size with
   | some ``BEq.beq, 4 =>
     let (x, x') ← trE ctx args[2]!
@@ -849,7 +902,10 @@ def simpNames : Array Name :=
     ``r8_add, ``r8_sub, ``r8_and, ``r8_or, ``r8_xor, ``r8_ite, ``r8_eq', ``r8_lt', ``r8_le', ``r8_toNat,
     ``r8_dite, ``r32_dite, ``r64_dite, ``rN_dite,
     ``r32_of8, ``r64_of8, ``r64_of32, ``r8_of32, ``r32_of64, ``r8_of64, ``r8_ofNat, ``r32_ofNat,
-    ``r8_ofNatU, ``r32_ofNatU, ``r64_ofNatU, ``r32_shl, ``rN_shr]
+    ``r8_ofNatU, ``r32_ofNatU, ``r64_ofNatU, ``r32_shl, ``rN_shr,
+    ``r16_add, ``r16_sub, ``r16_and, ``r16_or, ``r16_xor, ``r16_ite, ``r16_dite, ``r16_eq', ``r16_lt', ``r16_le', ``r16_toNat,
+    ``r16_shr, ``r16_shl, ``r16_of8, ``r32_of16, ``r64_of16, ``r16_of32, ``r8_of16, ``r16_ofNat, ``r16_ofNatU, ``r16_lit, ``r8_shr,
+    ``excTag_ok, ``excTag_error, ``excGet_ok, ``excGet_error, ``optGet_some, ``optGet_none]
 
 /-- side conditions (bounds): `omega`, also through the defining equation of a temporary that is an `if` -/
 elab "frontx_ite_facts" : tactic => withMainContext do
@@ -1192,6 +1248,18 @@ def callLeaf (ctx : Ctx) (nconj : Nat) (env : Expr) (as : Array (Nat × Expr)) (
     let (m, e') ← trE ctx e
     ms := ms.push (v, ← fit m)
     vals := vals.push e'
+  -- an order in which the pairs can be assigned one after another (no call temporaries), if there is one
+  let mut rest := ms.toList
+  let mut ord : Array (Nat × ME) := #[]
+  while !rest.isEmpty do
+    match rest.find? fun (v, _) => rest.all fun (w, e) => w == v || !e.vs.contains v with
+    | some p =>
+      ord := ord.push p
+      rest := rest.filter (·.1 != p.1)
+    | none =>
+      ord := ord ++ rest.toArray
+      rest := []
+  if seqOKm ord.toList then ms := ord
   wrapItems ctx (← takePend) env fun env => do
     let mt := MT.call ms.toList
     let asE := (← mt.toExpr).appArg!
@@ -1263,7 +1331,31 @@ def projNorm (e : Expr) : MetaM Expr :=
       let o ← whnfR (e.getArg! 1)
       if o.isAppOfArity ``Option.some 2 then return .done o.appArg!
       if o.isAppOfArity ``Option.none 1 then return .done (e.getArg! 2)
+    -- the components of an `Except` / `Option` constructor: `excTag (ok a) ↦ true`, `excGet π z (ok a) ↦ π a`, …
+    if e.isAppOfArity ``excTag 3 then
+      let o ← whnf e.appArg!
+      if o.isAppOfArity ``Except.ok 3 then return .done (mkConst ``Bool.true)
+      if o.isAppOfArity ``Except.error 3 then return .done (mkConst ``Bool.false)
+    if e.isAppOfArity ``excGet 6 then
+      let o ← whnf e.appArg!
+      if o.isAppOfArity ``Except.ok 3 then return .visit (mkApp (e.getArg! 3) o.appArg!).headBeta
+      if o.isAppOfArity ``Except.error 3 then return .done (e.getArg! 4)
+    if e.isAppOfArity ``optGet 5 then
+      let o ← whnf e.appArg!
+      if o.isAppOfArity ``Option.some 2 then return .visit (mkApp (e.getArg! 2) o.appArg!).headBeta
+      if o.isAppOfArity ``Option.none 1 then return .done (e.getArg! 3)
     return .done e)
+
+/-- the `ByteArray` fields of a structure type -/
+def baFields (ty : Expr) : MetaM (Array Name) := do
+  let ty ← whnfR ty
+  let .const sn _ := ty.getAppFn | return #[]
+  unless isStructure (← getEnv) sn && sn != ``Prod do return #[]
+  let mut out := #[]
+  for fld in getStructureFields (← getEnv) sn do
+    let fty ← withLocalDeclD `p ty fun p => do inferType (← mkProjection p fld)
+    if (← whnfR fty).isConstOf ``ByteArray then out := out.push fld
+  return out
 
 /-- the components of a result type: per component, the projection `fun x => …` and its scalar type -/
 partial def resultComps (ty : Expr) : MetaM (Option (Array (Expr × Ty))) := do
@@ -1288,11 +1380,28 @@ partial def resultComps (ty : Expr) : MetaM (Option (Array (Expr × Ty))) := do
         let (fty, projL) ← withLocalDeclD `p ty fun p => do
           let pr ← mkProjection p fld
           return (← inferType pr, ← mkLambdaFVars #[p] pr)
+        -- a `ByteArray` field is a block (the input), not a component
+        if (← whnfR fty).isConstOf ``ByteArray then continue
         let some sub ← resultComps fty | return none
         for (π, t) in sub do
           let l ← withLocalDeclD `p ty fun p => do mkLambdaFVars #[p] (mkApp π (mkApp projL p).headBeta).headBeta
           out := out.push (l, t)
       return some out
+  -- `Except ε α` / `Option α` with a compound payload: the tag, then the payload's components (`0` when absent)
+  let payload (tag : Expr → MetaM Expr) (get : Expr → Expr → Expr → MetaM Expr) (α : Expr) :
+      MetaM (Option (Array (Expr × Ty))) := do
+    let some sub ← resultComps α | return none
+    let tagL ← withLocalDeclD `o ty fun o => do mkLambdaFVars #[o] (← tag o)
+    let mut out := #[(tagL, Ty.bool)]
+    for (π, t) in sub do
+      let cty ← withLocalDeclD `a α fun a => inferType (mkApp π a).headBeta
+      let z ← if t == .bool then pure (Lean.mkConst ``Bool.false) else mkAppOptM ``OfNat.ofNat #[cty, mkRawNatLit 0, none]
+      out := out.push (← withLocalDeclD `o ty fun o => do mkLambdaFVars #[o] (← get π z o), t)
+    return some out
+  if ty.isAppOfArity ``Except 2 then
+    return ← payload (fun o => mkAppM ``excTag #[o]) (fun π z o => mkAppM ``excGet #[π, z, o]) ty.appArg!
+  if ty.isAppOfArity ``Option 1 && (← classify ty.appArg!).isNone then
+    return ← payload (fun o => mkAppM ``Option.isSome #[o]) (fun π z o => mkAppM ``optGet #[π, z, o]) ty.appArg!
   if ty.isAppOfArity ``Option 1 then
     let α := ty.appArg!
     let some ta ← classify α | return none
@@ -1479,6 +1588,12 @@ partial def trT (ctx : Ctx) (nconj : Nat) (env : Expr) (e : Expr) : TrM (MT × E
       | none =>
         -- a parameter with several components: assign the components that change
         let some comps ← resultComps (← inferType p) | throwError "frontx: parameter without a variable{indentExpr p}"
+        -- its `ByteArray` fields (blocks) must be passed on unchanged
+        for fld in ← baFields (← inferType p) do
+          let old ← mkProjection p fld
+          let new ← projNorm (← mkProjection args[j]! fld)
+          unless new == old || (← withReducible (isDefEq new old)) do
+            throwError "frontx: array field changed in the call{indentExpr new}"
         for (π, _) in comps do
           let old := (mkApp π p).headBeta
           let new ← projNorm (mkApp π args[j]!)
@@ -2040,7 +2155,7 @@ def compileLoop (fn : Name) (xs : Array Expr) (rty : Ty) (lhs forE : Expr) (post
         return (← mkConjPf cs ps, initsE)
       let ((h0, initsE), st') ← go.run { next := M, memo }
       let wfPf ← byTac (mkApp2 (mkConst ``Tree.wf) (mkConst layN) (mkConst treeN))
-        (← `(tactic| simp [$tI:ident, $lI:ident, Tree.wf, BExp.vlt]))
+        (← `(tactic| simp [$tI:ident, $lI:ident, Tree.wf, BExp.vlt, seqOK, BExp.vs]))
       let roPf ← byTac (← mkEq (mkApp (mkConst ``Tree.ro) (mkConst treeN)) (mkConst ``Bool.true)) (← `(tactic| decide +kernel))
       let pf ← if multi then do
           let hvs ← byTac (← mkEq (← mkAppM ``List.all #[vsE, ← withLocalDeclD `v (mkConst ``Nat) fun v => do
@@ -2162,11 +2277,131 @@ def foldFor? (fn : Name) (xs : Array Expr) (lhs body eqPf : Expr) : MetaM (Optio
   let _ := resTy
   return some (r.appArg!, post, eq)
 
+/-! ## `Except` / `Option` results: the normalised equation
+
+For a function returning `Except ε α` or `Option α`, the unfolding equation is rewritten (`simp`, so it comes with
+its proof) before translation: the non-recursive helpers that are bound (`x ← h …`) or projected (`(h …).pos`) are
+unfolded, `bind` is pushed into the branches (`exc_bind_ite`, `… (ok a) >>= f = f a`, `error e >>= f = error e`),
+projections into `if`s, and a `match` on a `Nat` parameter becomes `if n = 0 then … else … (n - 1)`.  The result is
+compiled through `from` with the structural argument (or `0`) as the measure. -/
+
+/-- the non-recursive user helpers that are bound or projected in `e`, and the projections applied to non-variables -/
+def normTargets (fn : Name) (e : Expr) : MetaM (Array Name × Array Expr) := do
+  let mut hs : Array Name := #[]
+  let mut ps : Array Expr := #[]
+  let env ← getEnv
+  let isHelper (t : Expr) : MetaM (Option Name) := do
+    let some c := t.getAppFn.constName? | return none
+    if c == fn || env.isConstructor c || env.isProjectionFn c then return none
+    unless (← getConstInfo c) matches .defnInfo _ do return none
+    unless ← userConst c do return none
+    if ← isRecFn c then return none
+    if (← matchMatcherApp? t).isSome then return none
+    return some c
+  let mut todo := #[e]
+  while h : todo.size > 0 do
+    let t := todo[todo.size - 1]
+    todo := todo.pop
+    if t.isAppOfArity ``Bind.bind 6 then
+      if let some c ← isHelper (t.getArg! 4) then
+        unless hs.contains c do hs := hs.push c
+    -- a helper returning `Except` / `Option` (e.g. the whole body)
+    if let some c ← isHelper t then
+      let rt ← forallTelescope (← getConstInfo c).type fun ys r => do
+        pure (if ys.size == t.getAppNumArgs then some r else none)
+      if let some rt := rt then
+        let rt ← whnfR rt
+        if (rt.isAppOfArity ``Except 2 || rt.isAppOfArity ``Option 1 || !(← baFields rt).isEmpty) && !hs.contains c then
+          hs := hs.push c
+    if let some c := t.getAppFn.constName? then
+      if let some pi := env.getProjectionFnInfo? c then
+        if t.getAppNumArgs == pi.numParams + 1 && !pi.fromClass && !t.appArg!.isFVar then
+          if let some h ← isHelper t.appArg! then
+            unless hs.contains h do hs := hs.push h
+          unless ps.contains t.appFn! do ps := ps.push t.appFn!
+    match t with
+    | .app f x => todo := (todo.push f).push x
+    | .lam _ d b _ | .forallE _ d b _ => todo := (todo.push d).push b
+    | .letE _ d v b _ => todo := ((todo.push d).push v).push b
+    | .mdata _ b | .proj _ _ b => todo := todo.push b
+    | _ => pure ()
+  return (hs, ps)
+
+/-- the normalised equation of `fn` (`fn.eqx`) and the measure, if `fn` returns `Except` / `Option` and the
+equation changes -/
+def normEq (fn : Name) : TermElabM (Option (Name × Term)) := do
+  let some eqn ← getUnfoldEqnFor? fn (nonRec := true) | return none
+  let eqTy := (← getConstInfo eqn).type
+  let r? ← forallTelescope eqTy fun xs ty => do
+    let some (_, lhs, rhs) := ty.eq? | return none
+    let rty ← whnfR (← inferType lhs)
+    unless rty.isAppOfArity ``Except 2 || rty.isAppOfArity ``Option 1 || !(← baFields rty).isEmpty do return none
+    let mut cur := rhs
+    let mut pf ← mkEqRefl rhs
+    for _ in [0:8] do
+      let (hs, ps) ← normTargets fn cur
+      let mut th : SimpTheorems := {}
+      for n in [``exc_bind_ok, ``exc_bind_error, ``exc_bind_ite, ``exc_bind_dite, ``exc_pure, ``exc_throw,
+                ``opt_bind_some, ``opt_bind_none, ``opt_bind_ite, ``opt_bind_dite, ``opt_pure, ``ite_self, ``dite_eq_ite,
+                ``eq_self_iff_true, ``ite_true, ``ite_false, ``dite_true, ``dite_false] do
+        th ← th.addConst n
+      for h in hs do th ← th.addDeclToUnfold h
+      for p in ps do
+        th ← th.add (.other `frontx_proj_ite) #[] (← mkAppM ``apply_ite #[p])
+        th ← th.add (.other `frontx_proj_dite) #[] (← mkAppM ``apply_dite #[p])
+      let sctx ← Simp.mkContext (simpTheorems := #[th]) (congrTheorems := ← getSimpCongrTheorems)
+      let (r, _) ← simp cur sctx (simprocs := #[← Simp.getSimprocs])
+      let mut next := r.expr
+      let mut p' ← r.getProof
+      -- a `match` on a `Nat` parameter: an `if`
+      for x in xs do
+        unless (← whnfR (← inferType x)).isConstOf ``Nat do continue
+        let env ← getEnv
+        let some m := next.find? fun t => t.isApp && t.getAppNumArgs ≥ 4 && t.getAppArgs.contains x &&
+            (t.getAppFn.constName?.any fun c => (getMatcherInfoCore? env c).isSome) | continue
+        let some ma ← matchMatcherApp? m | continue
+        unless ma.discrs.size == 1 && ma.discrs[0]! == x && ma.alts.size == 2 && ma.remaining.isEmpty do continue
+        let A := if ma.alts[0]!.isLambda then ma.alts[0]!.beta #[mkConst ``Unit.unit] else ma.alts[0]!
+        let B := ma.alts[1]!.beta #[← mkAppM ``HSub.hSub #[x, toExpr (1 : Nat)]]
+        let P ← mkEq x (toExpr (0 : Nat))
+        let ite ← mkAppM ``ite #[P, A, B]
+        let goal ← mkEq m ite
+        let mv ← mkFreshExprSyntheticOpaqueMVar goal
+        let rest ← Tactic.run mv.mvarId! (Tactic.evalTactic (← `(tactic|
+          (cases $(mkIdent (← x.fvarId!.getUserName)):ident <;> rfl))))
+        unless rest.isEmpty do throwError "frontx: could not turn the match into an if{indentExpr m}"
+        let hm ← instantiateMVars mv
+        let abst ← kabstract next m
+        let motive := Expr.lam `t (← inferType m) abst .default
+        p' ← mkEqTrans p' (← mkCongrArg motive hm)
+        next := abst.instantiate1 ite
+      if next == cur then break
+      pf ← mkEqTrans pf p'
+      cur := next
+    if cur == rhs then return none
+    let ty' ← mkForallFVars xs (← mkEq lhs cur)
+    let val ← mkLambdaFVars xs (← mkEqTrans (mkAppN (mkConst eqn) xs) pf)
+    return some (ty', val, xs.size)
+  let some (ty', val, n) := r? | return none
+  let eqx := fn ++ `eqx
+  addDecl (.thmDecl { name := eqx, levelParams := [], type := ty', value := ← instantiateMVars val })
+  let bs := (List.range n).toArray.map fun i => mkIdent (Name.mkSimple s!"m{i}")
+  let μ ← match ← getStructuralRecArgPos? fn with
+    | some k => `(fun $bs* => $(bs[k]!))
+    | none =>
+      if ← isRecFn fn then throwError "frontx: {fn} is not structurally recursive: give `from eq measure μ`"
+      `(fun $bs* => 0)
+  return some (eqx, μ)
+
 def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (accMode := false)
     (pre? : Option Term := none) (from? : Option (Name × Term) := none) : TermElabM Unit := do
   let t0 ← IO.monoMsNow
   let fn ← realizeGlobalConstNoOverloadWithInfo f
   let info ← getConstInfo fn
+  -- `Except` / `Option` results: the normalised equation (`normEq`)
+  let from? ← match from? with
+    | some x => pure (some x)
+    | none => normEq fn
   -- the equation `f xs = body`: the unfolding equation, or a proved one (`from`)
   let (eqnN, eqnTy) ← match from? with
     | some (e, _) => pure (e, (← getConstInfo e).type)
@@ -2253,6 +2488,8 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
       let mut memo : List (Expr × Nat) := []
       let mut scal : Array (Expr × Ty × Nat) := #[]
       let mut dataIdx := #[]
+      let mut compIdx := 0
+      let mut dropped : Array Nat := #[]
       -- the first byte array is block 0 (length in variable 1) wherever it stands
       let ba0 := (← hoistBA xs)[0]?
       let ba0 ← match ba0 with
@@ -2275,15 +2512,33 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
           blocks := blocks ++ [(mkApp (mkConst ``String.toUTF8) x, blocks.length, next + 1)]
           next := next + 2
         else
+          -- a structure with a `ByteArray` field (`BitReader`): the field is a block (block 0 if it is the first)
+          for fld in ← baFields xty do
+            let pr ← mkProjection x fld
+            if blocks.isEmpty then
+              blocks := [(pr, 0, 1)]
+              next := max next 2
+            else
+              blocks := blocks ++ [(pr, blocks.length, next + 1)]
+              next := next + 2
           -- a scalar, or a structure / tuple / `Option` of scalars: one variable per component
           let some comps ← resultComps xty | throwError "frontx: unsupported parameter type{indentExpr xty}"
           -- variables 2 and 3 stay free (work and output base in the `Implements1` calling convention)
           if next < 4 then next := 4
+          let env0 ← getEnv
+          let isStruct := (← whnfR xty).getAppFn.constName?.any fun sn => isStructure env0 sn && sn != ``Prod
           for (π, ty) in comps do
             let key := (mkApp π x).headBeta
+            compIdx := compIdx + 1
+            -- a field of a structure parameter that the body never reads gets no variable (`f.dropped`)
+            if isStruct && comps.size > 1 && (body.find? (· == key)).isNone then
+              dropped := dropped.push (compIdx - 1)
+              continue
             memo := (key, next) :: memo
             scal := scal.push (key, ty, next)
             next := next + 1
+      unless dropped.isEmpty do
+        addDef (fn ++ `dropped) (← mkAppM ``List #[mkConst ``Nat]) (← mkListLit (mkConst ``Nat) (dropped.toList.map toExpr))
       let xsD := dataIdx.map (xs[·]!)
       -- variables for the extra components of the result
       let mut resExtra : Array (Expr × Ty × Nat) := #[]
@@ -2458,7 +2713,7 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
                (by simp only [$r0I:ident] at hR; simp [$rI:ident, $iI:ident, seqSet, BEnv.set, BExp.denote, rN, hR])
              rw [Nat.zero_add] at hr
              obtain ⟨σ', hx, hh⟩ := hr
-             obtain ⟨τ', h1, h2, h3, _⟩ := prog_ok $lI (by simp [$tI:ident, $lI:ident, Tree.wf, BExp.vlt]) hx $outS _
+             obtain ⟨τ', h1, h2, h3, _⟩ := prog_ok $lI (by simp [$tI:ident, $lI:ident, Tree.wf, BExp.vlt, seqOK, BExp.vs]) hx $outS _
                ⟨fun _ _ => rfl, rfl⟩
              exact ⟨τ', initS_exec _ _ h1, h2, h3.trans hh⟩)))
           checkAxioms (fn ++ `exec)
@@ -2533,7 +2788,7 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
              have hr := $runsI:ident $as0* 0 ⟨seqSet σ.env $iI, σ.heap⟩
                (by simp only [$r0I:ident] at hR; simp [$rI:ident, $iI:ident, seqSet, BEnv.set, BExp.denote, rN, hR])
              rw [Nat.zero_add] at hr
-             obtain ⟨σ', h1, h2, h3⟩ := prog_ok_ro $lI (by simp [$tI:ident, $lI:ident, Tree.wf, BExp.vlt]) (by decide +kernel) hr $outS
+             obtain ⟨σ', h1, h2, h3⟩ := prog_ok_ro $lI (by simp [$tI:ident, $lI:ident, Tree.wf, BExp.vlt, seqOK, BExp.vs]) (by decide +kernel) hr $outS
              exact ⟨σ', initS_exec _ _ h1, h2, h3⟩)))
           let t4 ← IO.monoMsNow
           logInfo m!"frontx: {fn} (accumulator introduced): {nvars} variables ({M} user), {nvars - 8} slots, result in variable {out}, {st.nObl} obligations; translate + step proof {t1 - t0} ms, kernel check of step {t2 - t1} ms, induction {t3 - t2} ms, exec theorem {t4 - t3} ms"
@@ -2601,7 +2856,7 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
           let outS := Syntax.mkNumLit (toString out)
           addThm (fn ++ `exec) execTy (← `(tactic|
             (intro $as* σ hR
-             exact prog_okQ $lI (by simp [$tI:ident, $lI:ident, Tree.wf, BExp.vlt]) (by decide +kernel) ($runsI:ident $as* σ hR) $outS
+             exact prog_okQ $lI (by simp [$tI:ident, $lI:ident, Tree.wf, BExp.vlt, seqOK, BExp.vs]) (by decide +kernel) ($runsI:ident $as* σ hR) $outS
                (by simp [$lI:ident]))))
           let t4 ← IO.monoMsNow
           logInfo m!"frontx: {fn} ({resInfo.size} result components): {nvars} variables ({M} user), {nvars - 8} slots, results in variables {out}, {resExtra.map (·.2.2)}, {st.nObl} obligations; translate + step proof {t1 - t0} ms, kernel check of step {t2 - t1} ms, induction {t3 - t2} ms, exec theorem {t4 - t3} ms"
@@ -2665,7 +2920,7 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
         let runsI := mkIdent (fn ++ `runs)
         addThm (fn ++ `exec) execTy (← `(tactic|
           (intro $as* $σi:ident hR
-           exact prog_ok_ro $lI (by simp [$tI:ident, $lI:ident, Tree.wf, BExp.vlt]) (by decide +kernel) ($runsI:ident $as* $σi hR) _)))
+           exact prog_ok_ro $lI (by simp [$tI:ident, $lI:ident, Tree.wf, BExp.vlt, seqOK, BExp.vs]) (by decide +kernel) ($runsI:ident $as* $σi hR) _)))
         let t4 ← IO.monoMsNow
         logInfo m!"frontx: {fn}: {nvars} variables ({M} user), {nvars - 8} slots, result in variable {out}, {st.nObl} obligations; translate + step proof {t1 - t0} ms, kernel check of step {t2 - t1} ms, induction {t3 - t2} ms, exec theorem {t4 - t3} ms"
     if listRes then
@@ -2795,9 +3050,20 @@ equation is proved by following the tests (`veqGo`). -/
 def isView (vw : Name) (B e : Expr) : Option Expr :=
   if e.isAppOfArity vw 2 && e.getArg! 0 == B then some (e.getArg! 1) else none
 
+/-- a user helper applied at the head whose body is a `match` (`andThen x f`, `get xs i`): unfolded -/
+partial def unfoldToMatch (e : Expr) (fuel : Nat := 4) : MetaM Expr := do
+  let e := e.headBeta
+  if fuel == 0 || (← matchMatcherApp? e).isSome then return e
+  let some c := e.getAppFn.constName? | return e
+  unless (← userConst c) && (← getConstInfo c) matches .defnInfo _ do return e
+  if ← isRecFn c then return e
+  let some u ← unfoldDefinition? e | return e
+  let u ← unfoldToMatch u (fuel - 1)
+  return if (← matchMatcherApp? u).isSome then u else e
+
 /-- split a stuck `match` and reduce: the decision tree of the body on the known parts of the list -/
 partial def vnorm (vw : Name) (B : Expr) (e : Expr) (fuel : Nat := 32) : TermElabM Expr := do
-  let e := e.headBeta
+  let e ← unfoldToMatch e.headBeta
   if fuel == 0 then throwError "frontx_view: the match does not reduce{indentExpr e}"
   let some ma ← matchMatcherApp? e | return e
   match ← reduceMatcher? e with
@@ -2917,6 +3183,7 @@ elab_rules : command
     addAndCompile (.defnDecl (mkDefinitionValEx gN [] gTy gVal (.regular 1) .safe [gN]))
     enableRealizationsForConst gN
     let some (_, _, rhs) := (← instantiateForall eqnTy args).eq? | throwError "frontx_view: bad equation"
+    let rhs ← unfoldToMatch rhs
     let some ma ← matchMatcherApp? rhs | throwError "frontx_view: the body is not a `match`{indentExpr rhs}"
     let simple := pos.all (fun p => (isView vw B args[p]!).isNone) &&
       ma.discrs.size == 1 && ma.discrs[0]! == args[lpos]! && ma.alts.size == 2 && ma.remaining.isEmpty &&
@@ -3069,7 +3336,7 @@ parameter the byte array, the others scalars from variable 4 on), each `aᵢ` a 
 the hypothesis of `implements1_of_frontx` (`Impl1.lean`). -/
 
 def Ty.repName : Ty → Name
-  | .bv => ``id | .u8 => ``r8 | .u32 => ``r32 | .u64 => ``r64 | .nat => ``rN | .bool => ``rB
+  | .bv => ``id | .u8 => ``r8 | .u32 => ``r32 | .u64 => ``r64 | .nat => ``rN | .bool => ``rB | .u16 => ``r16
 
 syntax "frontx_entry " ident (" from " ident)? : command
 elab_rules : command
@@ -3089,7 +3356,9 @@ elab_rules : command
     let .const fN _ := body.getAppFn | throwError "frontx_entry: the body must be an application of a compiled function"
     let args := body.getAppArgs
     -- the byte array: an argument of `f` anywhere (it is `f`'s block 0)
-    unless args.contains xs[0]! do throwError "frontx_entry: the byte array must be an argument"
+    -- (or the `ByteArray` field of a structure argument, `⟨xs, …⟩`)
+    unless args.any (fun a => (a.find? (· == xs[0]!)).isSome) do
+      throwError "frontx_entry: the byte array must be an argument"
     let args := #[xs[0]!] ++ args.filter (· != xs[0]!)
     let bty ← whnfR (← inferType body)
     let isList := bty.isAppOfArity ``List 1
@@ -3104,13 +3373,21 @@ elab_rules : command
       | throwError "frontx_entry: unsupported result type"
     let mut inits : Array Expr := #[]
     let mut next := 4
+    -- the components of `f`'s parameters without a variable (`f.dropped`)
+    let dropped : List Nat ← if (← getEnv).contains (fN ++ `dropped) then do
+        let some v := (← getConstInfo (fN ++ `dropped)).value? | pure []
+        pure (((← whnf v).listLit?.map (·.2.filterMap fun e => e.nat? <|> e.rawNatLit?)).getD [])
+      else pure []
+    let mut ci := 0
     for a in args.extract 1 args.size do
       let aty ← inferType a
       if ← isProp aty then continue
       -- a scalar, or a closed tuple / structure (one variable per component)
       let some acs ← resultComps aty | throwError "frontx_entry: unsupported argument type{indentExpr aty}"
       for (π, ty) in acs do
-        let a' := (mkApp π a).headBeta
+        ci := ci + 1
+        if dropped.contains (ci - 1) then continue
+        let a' ← projNorm (mkApp π a).headBeta
         let e ← if a'.isAppOfArity ``ByteArray.size 1 && a'.appArg! == xs[0]! then
             pure (mkApp (mkConst ``BExp.var) (toExpr (1 : Nat)))
           else
@@ -3147,7 +3424,7 @@ elab_rules : command
     let bty ← lambdaTelescope info.value fun _ b => inferType b
     let cty ← mkAppM ``Prod #[mkConst ``Nat, ← mkAppM ``Prod #[mkConst ``Nat, ← mkArrow bty bv64]]
     let cs ← (rcomps.zip (#[4] ++ rv)).mapM fun ((π, t), v) => do
-      let k : Nat := match t with | .u8 | .bool => 1 | .u32 => 4 | _ => 8
+      let k : Nat := match t with | .u8 | .bool => 1 | .u16 => 2 | .u32 => 4 | _ => 8
       let r ← withLocalDeclD `b bty fun b => do mkLambdaFVars #[b] (t.rep (mkApp π b).headBeta)
       mkAppM ``Prod.mk #[toExpr v, ← mkAppM ``Prod.mk #[toExpr k, r]]
     addDef (gN ++ `comps) (← mkAppM ``List #[cty]) (← mkListLit cty cs.toList) (compile := true)
