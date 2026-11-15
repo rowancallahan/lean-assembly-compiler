@@ -191,6 +191,7 @@ def _root_.Proven.BStmt.dOK : BStmt → Bool
   | .store _ i e => decide (i.depth < 5) && decide (e.depth < 5)
   | .seq p q => p.dOK && q.dOK
   | .loop c b => decide (c.depth < 6) && b.dOK
+  | .mop _ _ a b => decide (a.depth < 5) && decide (b.depth < 5)
 
 def seqs : List BStmt → BStmt
   | [] => .loop (.const 0) (.loop (.const 0) (.assign 1 (.var 1)))

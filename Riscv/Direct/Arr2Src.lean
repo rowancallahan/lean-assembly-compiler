@@ -18,7 +18,7 @@ theorem BExec.loop_inv {c : BExp} {b : BStmt} (I Q : BState → Prop) (μ : BSta
       exact ⟨σ', .loopT hc hb hl, hQ⟩
 
 def BStmt.assigns : BStmt → List Nat
-  | .assign v _ | .load v _ _ => [v]
+  | .assign v _ | .load v _ _ | .mop _ v _ _ => [v]
   | .store .. => []
   | .seq p q => p.assigns ++ q.assigns
   | .loop _ b => b.assigns
@@ -33,6 +33,7 @@ theorem BExec.env_keep {p : BStmt} {σ σ' : BState} (h : BExec p σ σ') {v : N
     simp only [BStmt.assigns, List.mem_append, not_or] at hv; rw [ih2 hv.2, ih1 hv.1]
   | loopF => rfl
   | loopT _ _ _ ih1 ih2 => simp only [BStmt.assigns] at ih1 hv ih2; rw [ih2 hv, ih1 hv]
+  | mop => simp only [BStmt.assigns, List.mem_singleton] at hv; simp [BEnv.set, hv]
 
 theorem BExec.heap_length {p : BStmt} {σ σ' : BState} (h : BExec p σ σ') : σ'.heap.length = σ.heap.length := by
   induction h with

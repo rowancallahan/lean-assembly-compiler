@@ -127,6 +127,7 @@ theorem BExec.frame {J : Nat → List (BitVec 8)} {p : BStmt} {σ σ' : BState} 
     ∀ {H' : Heap}, Ext J σ.heap H' → ∃ K', BExec p ⟨σ.env, H'⟩ ⟨σ'.env, K'⟩ ∧ Ext J σ'.heap K' := by
   induction h with
   | assign => intro H' hE; exact ⟨H', .assign, hE⟩
+  | mop => intro H' hE; exact ⟨H', .mop, hE⟩
   | @load v b i σ hb hi =>
     intro H' hE
     have hb' : b < H'.length := hE.1 ▸ hb

@@ -74,6 +74,7 @@ def okR : BStmt → Bool
   | .store b i e => i.av && e.av && decide (b < 3)
   | .seq p q => okR p && okR q
   | .loop c b => c.av && okR b
+  | .mop .. => false
 
 /-- old block 2 (scratch) ↦ work block at offset `v15`; old block 1 (output) ↦ work block at offset 0 -/
 def relB : BStmt → BStmt
@@ -82,6 +83,7 @@ def relB : BStmt → BStmt
   | .store b i e => if b = 2 then .store 1 (.bin .add i (.var 15)) e else .store b i e
   | .seq p q => .seq (relB p) (relB q)
   | .loop c b => .loop c (relB b)
+  | .mop m v a b => .mop m v a b
 
 /-- environments agreeing outside `v2`, `v3`, `v15` -/
 def AgR (E₁ E₂ : BEnv) : Prop := ∀ v, v ≠ 2 → v ≠ 3 → v ≠ 15 → E₁ v = E₂ v
@@ -136,6 +138,7 @@ theorem get3_mid {α : Type} (o sc t : List α) (j : Nat) (h : j < sc.length)
 theorem relB_exec {L : Nat} {r t : List (BitVec 8)} {p : BStmt} {σ σ' : BState} (h : BExec p σ σ') :
     okR p = true → ∀ {τ : BState}, RelR L r t σ τ → ∃ τ', BExec (relB p) τ τ' ∧ RelR L r t σ' τ' := by
   induction h with
+  | mop => intro hok; simp [okR] at hok
   | @assign v e σ =>
     intro hok τ hr
     simp only [okR, Bool.and_eq_true, bne_iff_ne, ne_eq] at hok
