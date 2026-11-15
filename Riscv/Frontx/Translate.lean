@@ -499,6 +499,53 @@ partial def trE (ctx : Ctx) (e : Expr) : TrM (ME × Expr) := do
     return (masked m a, mkAppN f #[a'])
   if (← matchMatcherApp? e).isSome then
     if let .reduced e' ← reduceMatcher? e then return ← trE ctx e'
+  -- `min` / `max` on `Nat`: a select, through `Nat.min_def` / `Nat.max_def`
+  if (f.isConstOf ``Min.min || f.isConstOf ``Max.max) && args.size == 4 && ty == .nat then
+    let isMin := f.isConstOf ``Min.min
+    let lN := if isMin then ``Nat.min_def else ``Nat.max_def
+    modify fun s => if s.unfolded.contains lN then s else { s with unfolded := s.unfolded.push lN }
+    let some (_, _, rhs) := (← instantiateForall (← inferType (mkConst lN)) #[args[2]!, args[3]!]).eq? | unreachable!
+    let (m, _) ← trE ctx rhs
+    return (m, e)
+  -- `UInt64`: `x % 2^k`, `x / 2^k`, `x * 2^k`, `2^k * x` with a literal: a mask / shift, through a generated
+  -- equation on `r64` (the arithmetic wraps like the word)
+  if (f.isConstOf ``HMod.hMod || f.isConstOf ``HDiv.hDiv || f.isConstOf ``HMul.hMul) && args.size == 6 && ty == .u64 then
+    let lit? (t : Expr) : Option Nat :=
+      if t.isAppOfArity ``OfNat.ofNat 3 then (t.getArg! 1).rawNatLit? else none
+    let isMul := f.isConstOf ``HMul.hMul
+    let (c?, x, left) := match lit? args[5]!, lit? args[4]! with
+      | some c, _ => (some c, args[4]!, false)
+      | none, some c => if isMul then (some c, args[5]!, true) else (none, args[4]!, false)
+      | none, none => (none, args[4]!, false)
+    if let some c := c? then
+      let k := Nat.log2 c
+      if c != 0 && 2 ^ k == c && k < 64 then
+        let isMod := f.isConstOf ``HMod.hMod
+        let kind := if isMul then (if left then "mulL" else "mulR") else if isMod then "mod" else "div"
+        let lN := Name.mkStr `Proven.Frontx (s!"{kind}Lit64_{c}")
+        unless (← getEnv).contains lN do
+          let u64 := Lean.mkConst ``UInt64
+          let ty ← withLocalDeclD `x u64 fun xv => do
+            let cE ← mkAppOptM ``OfNat.ofNat #[u64, mkRawNatLit c, none]
+            let lhs ← if left then mkAppM ``HMul.hMul #[cE, xv]
+              else mkAppM (if isMul then ``HMul.hMul else if isMod then ``HMod.hMod else ``HDiv.hDiv) #[xv, cE]
+            let rx := mkApp (mkConst ``r64) xv
+            let rhs ← if isMod then mkAppM ``HAnd.hAnd #[rx, mkBV (c - 1)]
+              else if isMul then mkAppM ``HShiftLeft.hShiftLeft #[rx, mkNatLit k]
+              else mkAppM ``HShiftRight.hShiftRight #[rx, mkNatLit k]
+            mkForallFVars #[xv] (← mkEq (mkApp (mkConst ``r64) lhs) rhs)
+          let cq := Lean.quote c; let kq := Lean.quote k
+          let tac ← if isMod then `(tactic| exact fun x => r64_modPow x $cq $kq rfl (by decide))
+            else if isMul && left then `(tactic| exact fun x => r64_mulPowL x $cq $kq rfl)
+            else if isMul then `(tactic| exact fun x => r64_mulPow x $cq $kq rfl)
+            else `(tactic| exact fun x => r64_divPow x $cq $kq rfl (by decide))
+          withLCtx {} #[] (addThm lN ty tac)
+        modify fun s => if s.unfolded.contains lN then s else { s with unfolded := s.unfolded.push lN }
+        let (mx, x') ← trE ctx x
+        let m := if isMod then ME.bin ``Op.and mx (.const (mkBV (c - 1)))
+          else ME.bin (if isMul then ``Op.shl else ``Op.lshr) mx (.const (mkBV k))
+        let e' := if left then mkAppN f (args.set! 5 x') else mkAppN f (args.set! 4 x')
+        return (m, e')
   -- `x % c`, `x / c` with a literal (or constant) `c`: mask / shift for `c = 2^k`, else one conditional
   -- subtraction, which needs `x < 2 * c` from the context (checked here by `omega`)
   if (f.isConstOf ``HMod.hMod || f.isConstOf ``HDiv.hDiv) && args.size == 6 && ty == .nat && !args[5]!.hasFVar then
@@ -902,7 +949,7 @@ def simpNames : Array Name :=
     ``r8_add, ``r8_sub, ``r8_and, ``r8_or, ``r8_xor, ``r8_ite, ``r8_eq', ``r8_lt', ``r8_le', ``r8_toNat,
     ``r8_dite, ``r32_dite, ``r64_dite, ``rN_dite,
     ``r32_of8, ``r64_of8, ``r64_of32, ``r8_of32, ``r32_of64, ``r8_of64, ``r8_ofNat, ``r32_ofNat,
-    ``r8_ofNatU, ``r32_ofNatU, ``r64_ofNatU, ``r32_shl, ``rN_shr,
+    ``r8_ofNatU, ``r32_ofNatU, ``r64_ofNatU, ``r32_shl, ``r64_shl, ``r64_shr, ``rN_shr,
     ``r16_add, ``r16_sub, ``r16_and, ``r16_or, ``r16_xor, ``r16_ite, ``r16_dite, ``r16_eq', ``r16_lt', ``r16_le', ``r16_toNat,
     ``r16_shr, ``r16_shl, ``r16_of8, ``r32_of16, ``r64_of16, ``r16_of32, ``r8_of16, ``r16_ofNat, ``r16_ofNatU, ``r16_lit, ``r8_shr,
     ``excTag_ok, ``excTag_error, ``excGet_ok, ``excGet_error, ``optGet_some, ``optGet_none]

@@ -4,6 +4,8 @@ import Riscv.Frontx.PairExamples
 import Riscv.Frontx.ExceptExamples
 import Riscv.Frontx.ExceptBook
 import Riscv.Frontx.IndExamples
+import Riscv.Frontx.IndCmpExamples
+import Riscv.Frontx.ScalarExamples
 open Proven Proven.Frontx Proven.Frontx.Ex
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
 def hex2 (b : UInt8) : String := let s := String.ofList (Nat.toDigits 16 b.toNat); if s.length < 2 then "0" ++ s else s
@@ -170,6 +172,53 @@ def boolB (b : Bool) : List UInt8 := [if b then 1 else 0]
     (levels.map fun l => (LevelT.enc l, boolB (ConLeche.levelHasParam l)))
   emitInd "level_isneverzero" ConLeche.Level.isNeverZero.code ConLeche.Level.isNeverZero.ind.pg.M false
     (levels.map fun l => (LevelT.enc l, boolB (ConLeche.Level.isNeverZero l)))
+end
+-- conditionals and comparisons (`IndCmpExamples.lean`, NOTES section 19): inputs in the subtype (every `Nat` field
+-- below `2^64`); keys small (the key `5` is often present) and some near `2^64` (unsigned comparisons)
+section
+open Proven.Frontx.IndCmp
+def key (i : Nat) : Nat := match i % 9 with
+  | 0 => 2 ^ 64 - 1 - rnd i 4 % 3 | 1 => rnd i 1 % 2 ^ 63 + 2 ^ 63 | _ => rnd i 2 % 12
+/-- binary search trees built by the book's own `insert` -/
+def bsts : List (Tree Unit) := [.leaf, Tree.leaf.insert 5 ()] ++ (List.range 48).map fun i =>
+  (List.range (rnd i 8 % 40)).foldl (fun t j => t.insert (key (i * 53 + j)) ()) .leaf
+def keyLists : List (List Nat) := [[], [5], [2 ^ 64 - 1, 5, 5]] ++ (List.range 47).map fun i =>
+  (List.range (rnd i 9 % 30)).map fun j => key (i * 31 + j)
+#eval do
+  emitInd "tree_contains5" contains5.code contains5.ind.pg.M false (bsts.map fun t => (TU.enc t, boolB (contains5 t)))
+  emitInd "tree_insert5" insert5.code insert5.ind.pg.M true (bsts.map fun t => (TU.enc t, TU.enc (insert5 t)))
+  emitInd "list_elem5" elem5.code elem5.ind.pg.M false (keyLists.map fun l => (LN.enc l, boolB (elem5 l)))
+  emitInd "list_erase5" erase5.code erase5.ind.pg.M true (keyLists.map fun l => (LN.enc l, LN.enc (erase5 l)))
+-- enumerations: every value (every pair), repeated to 50 cases
+def days : List Weekday := [.monday, .tuesday, .wednesday, .thursday, .friday, .saturday, .sunday]
+def ords : List Ordering := [.lt, .eq, .gt]
+def cyc {α : Type} (xs : List α) : List α := (List.range 50).flatMap fun i => (xs.drop (i % xs.length)).take 1
+#eval do
+  emitInd "weekday_isweekend_a" A.Weekday.isWeekend.code A.Weekday.isWeekend.ind.pg.M false
+    ((cyc days).map fun d => (WD.enc d, boolB (A.Weekday.isWeekend d)))
+  emitInd "weekday_isweekend_b" B.Weekday.isWeekend.code B.Weekday.isWeekend.ind.pg.M false
+    ((cyc days).map fun d => (WD.enc d, boolB (B.Weekday.isWeekend d)))
+  emitInd "ordering_swap" Ordering.swap.code Ordering.swap.ind.pg.M true ((cyc ords).map fun o => (OrdT.enc o, OrdT.enc o.swap))
+  emitInd "ordering_then" Ordering.then.code Ordering.then.ind.pg.M true
+    ((cyc (ords.flatMap fun a => ords.map fun b => (a, b))).map fun p => (OrdT.enc2 p, OrdT.enc (p.1.then p.2)))
+  emitInd "ordering_isle" Ordering.isLE.code Ordering.isLE.ind.pg.M false ((cyc ords).map fun o => (OrdT.enc o, boolB o.isLE))
+  emitInd "ordering_iseq" Ordering.isEq.code Ordering.isEq.ind.pg.M false ((cyc ords).map fun o => (OrdT.enc o, boolB o.isEq))
+end
+-- fixed-width scalars (`ScalarExamples.lean`): 64-bit words at byte 0, the saturation edges, then the random inputs
+section
+open Proven.Frontx.Scal
+def le8b (n : Nat) : List UInt8 := (List.range 8).map fun j => UInt8.ofNat (n / 256 ^ j)
+def wordInputs : List (List UInt8) :=
+  ([0, 1, 2, 32766, 32767, 32768, 65535, 2 ^ 32 - 1, 2 ^ 32, 2 ^ 63, 2 ^ 64 - 1].map le8b) ++ inputs
+#eval do
+  emit "hashofdatae" hashOfDataE.slots hashOfDataE.code (enc hashOfDataE) wordInputs
+  emit "bvarofdatae" bvarOfDataE.slots bvarOfDataE.code (enc bvarOfDataE) wordInputs
+  emit "fvarofdatae" fvarOfDataE.slots fvarOfDataE.code (enc fvarOfDataE) wordInputs
+  emit "lpofdatae" lpOfDataE.slots lpOfDataE.code (enc lpOfDataE) wordInputs
+  emit "hash32e" hash32E.slots hash32E.code (enc hash32E) wordInputs
+  emit "satprede" satPredE.slots satPredE.code (enc satPredE) wordInputs
+  emit "satsucce" satSuccE.slots satSuccE.code (enc satSuccE) wordInputs
+  emit "packdatae" packDataE.slots packDataE.code (enc packDataE) wordInputs
 end
 -- over 16 slots (19 / 27 / 17; `NS` raised to 254)
 open Proven.Frontx.ExcBook in

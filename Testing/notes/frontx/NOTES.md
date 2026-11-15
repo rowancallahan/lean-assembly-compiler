@@ -1125,3 +1125,118 @@ slots: the prologue still zeroes every slot, and locals `≥ 24` are always spil
 Reproduce: `lake build Frontx`; `lake env lean --tstack=4000000 Testing/asm/emit_frontx.lean`;
 `lake env lean --tstack=400000 Testing/asm/emit_tiny.lean`; `bash Testing/scripts/frontx_tests.sh`;
 `python3 Testing/asm/tiny/selfhost_test.py`; axioms `Testing/scripts/axioms_u.lean`.
+
+## 19. Scalars and conditionals (branch `feat-scalars`)
+
+Files: `Compiler/Ind.lean`, `IndOk.lean`, `IndMain.lean` (`E.ite`, once), `Riscv/Frontx/Ind.lean` (comparison lemmas),
+`Riscv/Frontx/IndCmd.lean` (front end), `Riscv/Frontx/IndCmpExamples.lean` (targets, user inductives),
+`Riscv/Frontx/Translate.lean`, `Rep.lean` (list front end: `UInt64` shifts, `*`/`/`/`%` by powers of two, `min`/`max`),
+`Riscv/Frontx/ScalarExamples.lean` (targets, fixed-width words), `Testing/asm/ind-bench/` (speed), axioms
+`Testing/scripts/axioms_v.lean`.
+
+**`if` in the inductive path.** `E` (`Compiler/Ind.lean`) has a new constructor `ite (c : E rk .w) (e₁ e₂ : E rk k)`:
+`ev` evaluates only the chosen branch, `alE` counts only its cells, `E.calls`/`E.mks` take the `max` of the branches
+(so `Pg.lin`, "each child called at most once per arm", still bounds the cells: `alE_le`), `comp` evaluates `c` into a
+temporary, then a `CStmt.ite`. Proved once: the `ite` case of `comp_ok` (`IndOk.lean`) and of `alE_le` (`IndMain.lean`);
+`ind_ok`'s statement is unchanged. Comparisons are the existing `Op`s (`ult`, `eq`, `xor 1` for `¬`, `and`, `or`).
+A call in a branch is a real call (the stack bound `136 · depth` already covers it); only a whole arm that is a call
+is a loop (see "not done").
+
+**Front end** (`IndCmd.lean`): `if`/`ite`, `cond`, `decide`, `<`, `≤`, `>`, `≥`, `=`, `≠`, `==`, `!=`, `¬`, `∧`, `∨`,
+`&&`, `||`, `!`, and a `match` on a `Bool` (`List.elem`'s `match a == b with | true => … | false => …`: reduced per
+constructor). Comparisons on `Nat`, `UInt64`, `Bool`; `UInt64` `+ - &&& ||| ^^^` (wrap like the word). A function
+with overlapping patterns (`| _ => false`, the equations carry hypotheses) is read from its unfolding equation with
+the argument replaced by each constructor and the `match` reduced (`armsOfCases`): enumerations with wildcards.
+A constructor may now fill a dropped field (not in the byte format, e.g. a `Unit` value), and a `Unit` parameter
+is allowed (`Tree.insert t k ()`).
+
+**Theorem shape for comparisons (range hypothesis, owner's way (1)).** A `Nat` field is stored mod `2^64`, which
+commutes with `+` but not with `<`/`=`. `frontx_ind_type T := ty` now also generates `T.small : ty → Prop` (every `Nat`
+field `< 2^64`, by structural recursion). When an arm compares `Nat`s, the generated theorems carry it:
+`f.ind.sem : ∀ t a b, T.small t → a < 2^64 → [T.small b →] pg.sem (T.emb t) (ofNat a) … = …` and the machine
+theorem takes its input in the subtype:
+
+    insert5.implements1 : Implements1With (fun g => TU.enc g.val) TU.enc insert5.code
+      (fun g : {g : Tree Unit // TU.small g} => insert5 g.val) (Ind.space insert5.ind.pg.M) (2 ^ 20) true
+
+(two inputs: `{g // T.small g.1 ∧ T.small g.2}`). Functions comparing only `UInt64`/`Bool`/tags keep the plain
+statement. The sem proof: unfold, `nat_ult`/`nat_eq` (`Riscv/Frontx/Ind.lean`, side conditions by `omega` from
+`T.small`), `bw_eq0`, `split`, `simp_all`.
+
+**Compiled verbatim, inductive path** (`frontx_ind`; machine theorem with the standard 77 axioms, `sem` 3; tests
+`frontx_test.py check 50`, QEMU + Sail against executed Lean; trees built by the library's own `insert`, keys small
+(5 often present) and near `2^64`; enumerations: every value, every pair, repeated to 50 cases):
+
+| function | source | entry | words | test |
+|---|---|---|---|---|
+| `Tree.contains` | Lean 4 v4.29.0 `doc/examples/bintree.lean:26` (type `:18`; `β := Unit`) | `contains5 t = t.contains 5` | 1003 | `tree_contains5` |
+| `Tree.insert` | `doc/examples/bintree.lean:54` | `insert5 t = t.insert 5 ()` | 1462 | `tree_insert5` |
+| `List.elem` | core `Init/Data/List/Basic.lean:785` | `elem5 xs = List.elem 5 xs` | 928 | `list_elem5` |
+| `List.erase` | core `Init/Data/List/Basic.lean:1511` | `erase5 xs = xs.erase 5` | 1081 | `list_erase5` |
+| `Weekday.isWeekend` (A and B) | fp-lean @0abeea5 `Monads/Conveniences.lean:85,94` (type `:71`) | the function | 710, 710 | `weekday_isweekend_a/b` |
+| `Ordering.swap`, `then` (two inputs), `isLE`, `isEq` | core `Init/Data/Ord/Basic.lean:45,100,123,107` | the function | 769, 702, 540, 538 | `ordering_*` |
+
+Human input: none; entry glue: the literal key (`frontx_ind`'s scalar argument must be an entry literal).
+
+**List front end (`frontx_compile`)**: `if`, `<`, `≤`, `=`, `≠`, `==`, `&&`, `||`, `!` on `Nat`/`UIntN` were already
+there (sections 9–16). New: `UInt64` `<<<`/`>>>` (`r64_shl`/`r64_shr`: before, `x <<< 16` on a `UInt64` timed out in
+`rfl`), `UInt64` `x * 2^k`, `2^k * x`, `x / 2^k`, `x % 2^k` as shifts / a mask (`r64_mulPow`, `r64_divPow`,
+`r64_modPow`, per constant a one-line instance), `min`/`max` on `Nat` (`Nat.min_def`). Compiled verbatim (con-leche
+@6810492 `ConLeche/Kernel/Expr.lean`, the packed `Expr` data word), each with `g.implements1` (77 axioms) and
+`frontx_test.py` on 61 cases (the saturation edges `32766/32767/32768`, `0`, `2^32`, `2^63`, `2^64 - 1`, then the
+random inputs):
+
+| function | source line | entry (input) | words |
+|---|---|---|---|
+| `hashOfData` (`w / 4294967296`) | 251 | `hashOfDataE` (word at 0) | 106 |
+| `bvarOfData` (`w / 65536 % 32768`) | 254 | `bvarOfDataE` | 109 |
+| `fvarOfData` (`w / 2 % 32768`) | 257 | `fvarOfDataE` | 109 |
+| `lpOfData` (`w % 2 == 1`) | 260 | `lpOfDataE` | 87 |
+| `hash32` (`w % 4294967296`) | 263 | `hash32E` | 109 |
+| `satPred` (`if x == 32767 … else x - 1`) | 271 | `satPredE` | 113 |
+| `satSucc` (`UInt64.ofNat (min (n + 1) satRange)`) | 266 | `satSuccE` (16-bit `n`) | 81 |
+| `packData` (`h * 4294967296 + b * 65536 + f * 2 + if lp …`) | 247 | `packDataE` (bytes 0–3) | 106 |
+
+Entry glue: `rdLE` (a loop reading `k` little-endian bytes, called as a sub-program) and the byte readers of
+`BookExamples`. `packDataE` reads its three words as single bytes (three `rdLE` calls need 22 slots; the word
+readers above exercise the full range).
+
+**Speed** (`python3 Testing/asm/ind-bench/bench.py`: one call, `minstret` under `qemu -icount`, bytes in → bytes out
+on both sides; C = `ind-bench/ind.c`, `riscv64-linux-gnu-gcc -march=rv64i -O2`, decoding into nodes, running the same
+algorithm (persistent insert / erase), encoding):
+
+| entry | input | ours | gcc -O2 | ratio |
+|---|---|---|---|---|
+| `tree_contains5` | balanced BST, 255 keys (2551 bytes) | 108 864 | 27 631 | 3.9 |
+| `tree_insert5` | same | 203 747 | 44 776 | 4.6 |
+| `list_elem5` | 201 elements, 5 last (1810 bytes) | 89 707 | 14 716 | 6.1 |
+| `list_erase5` | same | 158 793 | 27 936 | 5.7 |
+| `satPredE` / `bvarOfDataE` / `packDataE` | one word | 171 / 170 / 104 | 111 / 108 / 65 | 1.5 / 1.6 / 1.6 |
+
+Most of the inductive-path cost is decoding/encoding through the plain back end (every variable in a stack slot,
+four functions with frames); the scalar entries go through the optimiser (`compBFO`).
+
+**Not done / why:**
+- var × var `*`, `/`, `%` (RISC-V M): `Op` (`Spec/Code.lean`) has no multiply/divide, so it needs a new `Op`, its
+  code in every back end and the register allocator, and per-instruction lemmas on the Sail model. Checked the model
+  (`LeanRV64D/InstsEnd.lean`): `execute_MUL` is `mult_to_bits_half` (low part = `a * b` mod `2^64`); `execute_DIV`
+  unsigned by zero gives `-1` (all ones) where Lean's `x / 0 = 0`, so `/` needs a guard (`if b = 0 then 0 else divu`);
+  `execute_REM` unsigned by zero gives `rs1`, which is Lean's `x % 0 = x`. Not started.
+- `Int` scalars, `BitVec w` for `w ≠ 64`, `UInt8/16/32` fields in the inductive path (only `Nat`/`UInt64`/`Bool`).
+- enumerations as fields or as a `match` inside an arm other than `Bool` (`match compare a b with | .lt …`, fp-lean's
+  `merge`): `reifyMatch` handles `Bool` only; an enum-valued field would need its own scalar kind.
+- a call in an `ite` branch is a real call, not a loop (`contains`, `elem` recurse in both branches of the test):
+  making `arm` recurse through `ite`s needs `loop_ok`'s arm case generalised over the branch; not done (would mostly
+  remove a frame per level).
+- fp-lean @0abeea5 has no binary-search-tree `insert` (searched `examples/` and `book/`): the Lean 4 doc example is
+  used instead. `Tree.find?` (`Option β` result) and a key from the input (the scalar argument is an entry literal)
+  are not supported.
+- the generic `frontx_compile` path fails on `(u16 xs i).toUInt64` (a compound `Nat` under `Nat.toUInt64`): the
+  entry points read words with `rdLE` instead.
+
+Reproduce: `lake build Frontx`; `lake env lean --tstack=4000000 Testing/asm/emit_frontx.lean`;
+`bash Testing/scripts/frontx_tests.sh`; `python3 Testing/asm/ind-bench/bench.py`.
+
+Statement fingerprints: `ind_ok` and the eleven section-17 `implements1` theorems keep their `stmt` hashes; only their
+closures changed (`E` gained `ite`). Not re-frozen here (left to the owner: `statement_check.sh --freeze`); the new
+theorems are not in the fingerprint list yet. `check.sh`: ALL CHECKS PASSED (with that warning).

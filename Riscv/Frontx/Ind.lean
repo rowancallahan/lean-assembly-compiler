@@ -80,4 +80,33 @@ theorem outBool (b : Bool) : [if b then (1 : UInt8) else 0] = (leN 8 (bw b).toNa
 @[simp] theorem nat_add (a b : Nat) : Op.eval .add (BitVec.ofNat 64 a) (BitVec.ofNat 64 b) = BitVec.ofNat 64 (a + b) := by
   simp [Op.eval, BitVec.ofNat_add]
 
+/-! ## comparisons (`frontx_ind` with `ite`): `Nat`s below `2^64`, `UInt64`, `Bool` -/
+
+theorem nat_ult {x y : Nat} (hx : x < 2 ^ 64) (hy : y < 2 ^ 64) :
+    Op.eval .ult (BitVec.ofNat 64 x) (BitVec.ofNat 64 y) = bw (decide (x < y)) := by
+  simp only [Op.eval, bw, BitVec.lt_def, BitVec.toNat_ofNat, Nat.mod_eq_of_lt hx, Nat.mod_eq_of_lt hy]
+  by_cases h : x < y <;> simp [h]
+theorem nat_eq {x y : Nat} (hx : x < 2 ^ 64) (hy : y < 2 ^ 64) :
+    Op.eval .eq (BitVec.ofNat 64 x) (BitVec.ofNat 64 y) = bw (decide (x = y)) := by
+  have e : BitVec.ofNat 64 x = BitVec.ofNat 64 y ↔ x = y := by
+    constructor
+    · intro h; have := congrArg BitVec.toNat h
+      simp only [BitVec.toNat_ofNat, Nat.mod_eq_of_lt hx, Nat.mod_eq_of_lt hy] at this; exact this
+    · intro h; rw [h]
+  simp only [Op.eval, bw]
+  by_cases h : x = y <;> simp [h, e]
+theorem u64_ult (x y : UInt64) : Op.eval .ult x.toBitVec y.toBitVec = bw (decide (x < y)) := by
+  have e : (x.toBitVec < y.toBitVec) ↔ x < y := Iff.rfl
+  simp only [Op.eval, bw]; by_cases h : x < y <;> simp [e, h]
+theorem u64_eq (x y : UInt64) : Op.eval .eq x.toBitVec y.toBitVec = bw (decide (x = y)) := by
+  simp only [Op.eval, bw]; by_cases h : x = y <;> simp [h, UInt64.toBitVec_inj]
+theorem bool_eq (x y : Bool) : Op.eval .eq (bw x) (bw y) = bw (decide (x = y)) := by
+  cases x <;> cases y <;> rfl
+theorem u64_ops (x y : UInt64) : Op.eval .add x.toBitVec y.toBitVec = (x + y).toBitVec ∧
+    Op.eval .sub x.toBitVec y.toBitVec = (x - y).toBitVec ∧ Op.eval .and x.toBitVec y.toBitVec = (x &&& y).toBitVec ∧
+    Op.eval .or x.toBitVec y.toBitVec = (x ||| y).toBitVec ∧ Op.eval .xor x.toBitVec y.toBitVec = (x ^^^ y).toBitVec := by
+  simp [Op.eval]
+@[simp] theorem bw_eq0 (c : Bool) : (bw c = 0) = (c = false) := by cases c <;> decide
+@[simp] theorem bw_eq0' (c : Bool) : (bw c = 0#64) = (c = false) := by cases c <;> decide
+
 end Proven.Frontx.Ind
