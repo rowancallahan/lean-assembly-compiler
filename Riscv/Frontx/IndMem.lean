@@ -249,4 +249,34 @@ theorem compile_correct : CompileCorrect riscv compile := by
     exact List.map_id' _
   · exact absurd enoughMemory (Nat.not_le.2 hlt)
 
+/-- **The old bound bounds the new one**: the work space of the inductive-path theorems (`Ind.spaceA` with the
+worst-case cell count `cellsSup`, `implements1_indS`) is at least `memoryNeeded`, so their hypothesis
+`space ≤ workLength` gives `memoryNeeded ≤ workLength` (`compile_correct`'s hypothesis). -/
+theorem memoryNeeded_le {p : IndProg} {c : CompiledA} (hc : compile p = some c) {input o : List UInt8}
+    (hrun : p.run input = some o) (hI : input.length ≤ 2 ^ 20) (ho : o.length < 2 ^ 60) :
+    memoryNeeded c input ≤
+      Proven.Frontx.Ind.spaceA (1 + p.hs.length) p.nl (cellsSup p.sh p.pg p.bi p.ain p.a0) input.length := by
+  obtain ⟨hg, rfl⟩ := compile_inv hc
+  obtain ⟨x, hv, rfl, rfl⟩ := run_some hrun
+  obtain ⟨E, σ', hx, -, hpk⟩ := run_ok hg hv hI (fun i => if i = 1 then BitVec.ofNat 64 (p.bytes x).length else 0)
+    (List.replicate (p.out x).length 0) (by simp) (by simpa using ho)
+  have hev := events_eq hg hv hI hrun ho (env := fun i => if i = 1 then BitVec.ofNat 64 (p.bytes x).length else 0)
+    (by simp) (fun i hi => by simp; omega) hx
+  show 8 * peak (p.events (p.bytes x)) ≤ _
+  rw [hev]
+  have hA := al_le_cellsSup p.sh hg.1 p.pg p.bi p.ain p.a0 x.1 x.2.1 x.2.2 hv.1 hv.2
+  generalize p.pg.al x.1 (if p.ain then x.2.2 else p.a0) (p.bi.val x.2.1) = al at hpk hA
+  generalize hn : (p.bytes x).length = n at hpk hA ⊢
+  unfold IndProg.bytes at hn
+  rw [hn] at hA
+  unfold Proven.Frontx.Ind.spaceA Proven.Frontx.Ind.wnA
+  generalize cellsSup p.sh p.pg p.bi p.ain p.a0 n = A at hA ⊢
+  have h1 : (p.nl + 1) * (n + (1 + p.hs.length) * (1 + (8 + 4 * n + 4 * al))) ≤
+      (p.nl + 1) * (n + (1 + p.hs.length) * (1 + (8 + 4 * n + 4 * A))) :=
+    Nat.mul_le_mul_left _ (Nat.add_le_add_left (Nat.mul_le_mul_left _ (by omega)) _)
+  have h2 : 8 * (p.nl + 1) * (n + (1 + p.hs.length) * (1 + (8 + 4 * n + 4 * al))) ≤
+      8 * (p.nl + 1) * (n + (1 + p.hs.length) * (1 + (8 + 4 * n + 4 * A))) := by
+    rw [Nat.mul_assoc, Nat.mul_assoc]; exact Nat.mul_le_mul_left _ h1
+  omega
+
 end Proven.Frontx.IndMem
