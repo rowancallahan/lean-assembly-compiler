@@ -4,7 +4,10 @@
 #     (default /home/user/deps/code-verification; blobless clone, see README.md), built with Lean 4.34.1.
 #  2. `stage.sh` (model-free source facts from Riscv/, into Apc/Src, not committed), then `lake build` of this package:
 #     the instance `apc L : Machine`, `compile_apc`, `gcd_apc`, `sort_apc`, `agree_emitted` (against a verbatim copy
-#     `Apc/Small.lean` of our small machine).
+#     `Apc/Small.lean` of our small machine); `apcF : MachineF`, `msort_apc`; `apcC : MachineC`,
+#     `callsCode_implements_apc`, `sumTo_apc`/`fib_apc`/`isEven_apc`/`treeEval_apc`; `apcw`/`apcwF : Wide`/`WideF`,
+#     `compBFOA_ok`, `msortO_apc`, `crc_apc_of`/`crc_apc`/`crcO_apc` (all printed by `Apc/Axioms.lean`).
+#     stage.sh also applies `mid.patch` (writable hypotheses on the store laws) to copies of eight Compiler files.
 #  3. The bridge, in ONE environment with the Sail ARM model (/home/user/armv9-lean, read only, never rebuilt):
 #     `Arm/proofs/check.sh` (skip with SKIP_ARM=1 if Arm/proofs/build is current), then Br/Flags, Br/Agree,
 #     Br/AgreeAll (= Apc/* with `armStep`/`emitted` imported from OUR Arm/proofs/Arm/{Small,Words}.lean) and Bridge.lean.

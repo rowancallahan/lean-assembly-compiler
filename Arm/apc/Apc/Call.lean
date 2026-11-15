@@ -1,6 +1,6 @@
 /- The call interface `MachineC` (`Compiler/Call.lean`, with `mid.patch`) on DeepMind's AArch64 semantics:
 `apcC L : MachineC` over `apcF L`.  Link register x30, frame register x28.
-`call d` = `bl #4d` (`|d| ≤ 512`, decode by enumeration), `enterC n` = `sub x28, x28, #8(n+1); str x30, [x28]`,
+`call d` = `bl #4d` (`-2^25 ≤ d < 2^25`, symbolic decoding), `enterC n` = `sub x28, x28, #8(n+1); str x30, [x28]`,
 `leaveC n` = `ldr x30, [x28]; add x28, x28, #8(n+1)`, `stA m v` = `stur xv, [x28, #-8m]`. -/
 import Apc.Frame
 import Compiler.CProg
@@ -20,9 +20,18 @@ def encC : COp → List (BitVec 32)
   | .stA m v => [wStur (xn v) m]
 
 /-! ## Decoding -/
-set_option maxRecDepth 100000 in
-theorem dec_bl : ∀ k : Fin 1024, Arm64.decode (wBl ((k.val : Int) - 512)) =
-    some (.bl (BitVec.ofInt 64 (4 * ((k.val : Int) - 512)))) := by decide +kernel
+theorem dec_bl (d : Int) (hd : -2 ^ 25 ≤ d ∧ d < 2 ^ 25) :
+    Arm64.decode (wBl d) = some (.bl (BitVec.ofInt 64 (4 * d))) := by
+  rw [wBl, dec_blsym]
+  by_cases h0 : 0 ≤ d
+  · have e : BitVec.ofInt 26 d = BitVec.ofNat 26 d.toNat := by
+      apply BitVec.eq_of_toNat_eq; simp [BitVec.toNat_ofInt]; omega
+    rw [e, off_fwd (w := 26) (by decide) (by decide) (by omega)]
+    congr 2; apply BitVec.eq_of_toNat_eq; simp [BitVec.toNat_ofInt]; omega
+  · have e : BitVec.ofInt 26 d = BitVec.ofNat 26 (2 ^ 26 - (-d).toNat) := by
+      apply BitVec.eq_of_toNat_eq; simp [BitVec.toNat_ofInt]; omega
+    rw [e, off_back (w := 26) (by decide) (by decide) (by omega) (by omega)]
+    congr 2; apply BitVec.eq_of_toNat_eq; simp [BitVec.toNat_ofInt]; omega
 theorem dec_subfr : ∀ n : Fin 17, Arm64.decode (wSubFr n.val) =
     some (.addSubImm .W64 .SUB (.gpr 28#5) (.gpr 28#5) (BitVec.ofNat 12 (8 * (n.val + 1))) false) := by decide +kernel
 theorem dec_addfr : ∀ n : Fin 17, Arm64.decode (wAddFr n.val) =
@@ -68,16 +77,13 @@ theorem ev_stur (t n : BitVec 5) (off : BitVec 64) (s : Arm64.State) (ht : (t ==
 /-! ## Laws -/
 def keepCS : Arm64.State → Arm64.State → Prop := keepX fun x => x = 28#5 ∨ x = 30#5
 
-theorem law_call {L : Lay} {d : Int} {s : Arm64.State} {pc : BitVec 64} (hd : -512 ≤ d ∧ d < 512)
+theorem law_call {L : Lay} {d : Int} {s : Arm64.State} {pc : BitVec 64} (hd : -2 ^ 25 ≤ d ∧ d < 2 ^ 25)
     (h : (base L).At s pc (encC (.call d))) :
     (base L).runsTo s fun s' => (base L).ok s' ∧ keepCS s s' ∧ (base L).pcIs s' (pc + BitVec.ofInt 64 (4 * d)) ∧
       s'.regs.read 30#5 = next pc 1 ∧ s'.regs.read 28#5 = s.regs.read 28#5 ∧ (base L).Same s s' ∧
       (base L).mem s' = (base L).mem s := by
-  have e : d = (((d + 512).toNat : Nat) : Int) - 512 := by omega
-  have hk : (d + 512).toNat < 1024 := by omega
-  have h' := h; rw [show encC (.call d) = [wBl d] from rfl, e] at h'
-  refine run1 h' (dec_bl ⟨_, hk⟩) ?_
-  rw [ev_bl, ← e]
+  refine run1 h (dec_bl d hd) ?_
+  rw [ev_bl]
   refine ⟨okS_of h.ok rfl rfl, ⟨fun x _ hx => ?_, rfl⟩, ?_, ?_, ?_, fun r => ?_, rfl⟩
   · have : x ≠ 30#5 := fun e => hx (.inr e)
     simp [Arm64.RegFile.read, Arm64.RegFile.write, this]
@@ -175,7 +181,7 @@ def apcC (L : Lay) : MachineC where
   toMachineF := apcF L
   encC := encC
   keepC := keepCS
-  callOK d := -512 ≤ d ∧ d < 512
+  callOK d := -2 ^ 25 ≤ d ∧ d < 2 ^ 25
   lenCall := 1
   len_call _ := rfl
   keepC_of_keepF h := ⟨fun x hx he => h.1 x hx (fun e => he (.inl e)), h.2⟩

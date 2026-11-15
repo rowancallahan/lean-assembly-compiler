@@ -16,7 +16,7 @@ theorem msortB_wf0 : (apcF L0).wfB 7 [0, 2, 3] [] msortB := by
   simp only [msortB, Riscv.toMS, Riscv.toMB, msortProgB, mainBodyB, passB, runB, mergeB, mergeA, tailL, tailR, condA,
     lt98, one, minE, addE, ltE, MachineF.wfB, Mach.BExp.depth, Mach.BExp.vlt]
   repeat' apply And.intro
-  all_goals first | decide | (show _ < 1024; decide +kernel)
+  all_goals first | decide | (show _ < 2 ^ 18; decide +kernel) | (show 0 < _ ∧ _ ≤ 2 ^ 25; decide +kernel)
 set_option maxRecDepth 100000 in
 theorem msortB_wf (L : Lay) : (apcF L).wfB 7 [0, 2, 3] [] msortB := msortB_wf0
 

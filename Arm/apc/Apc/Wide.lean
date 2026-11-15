@@ -1,10 +1,9 @@
 /- The wide interface `Wide` / `WideF` (`Compiler/Wide.lean`, `Compiler/Opt/BFn.lean`, with `mid.patch`) on
 DeepMind's AArch64 semantics: `apcw L : Wide`, `apcwF L : WideF`.  Every operation takes ARBITRARY abstract
-registers (decoding by enumeration, `Apc/WideDec.lean`).  Encodings: `mov` = `orr d, xzr, a`; `li` = the doubling
-chain of `Machine` (`movz`, `add d,d,d`, `add d,d,#1`); `bin` = the 3-register instruction (`ult/slt/eq` = `cmp;
+registers (decoding by enumeration, `Apc/WideDec.lean`).  Encodings: `mov` = `orr d, xzr, a`; `li` = `movz` (+ 3 `movk`); `bin` = the 3-register instruction (`ult/slt/eq` = `cmp;
 cset`); `bini`: no immediate forms (`immOK = false`: the lowering puts the constant into the scratch register);
 `lbu/sb/ld/sd` = `ldrb/strb/ldr/str [a]` (`offOK off := off = 0`, the only offset the selection emits);
-`br c a b` = `cmp a, b|xzr; b.cond` (forward `1 ≤ n ≤ 512`, back `n < 512`); `jmp` = `b` (`n < 1024`); `ret`;
+`br c a b` = `cmp a, b|xzr; b.cond` (forward `1 ≤ n ≤ 2^18`, back `n < 2^18`); `jmp` = `b` (`n < 2^25` / back `0 < n ≤ 2^25`); `ret`;
 `ldS/stS` = `ldr/str [x28, #8(j+1)]`; `enter`/`leave` as `apcF`. -/
 import Apc.Frame
 import Apc.WideDec
@@ -12,9 +11,27 @@ import Compiler.Opt.BFn
 namespace Proven.Apc
 open Proven Proven.Mach
 
+/-- `b.cond` with a 19-bit word offset `imm` (two's complement) -/
+def wBc (c : Cond) (imm : Nat) : BitVec 32 := 0x54#8 ++ BitVec.ofNat 19 imm ++ 0#1 ++ BitVec.ofNat 4 (ccN c)
+/-- `b +4n` -/
+def wBf (n : Nat) : BitVec 32 := 0x05#6 ++ BitVec.ofNat 26 n
+
+theorem decBc (c : Cond) (imm : Nat) :
+    Arm64.decode (wBc c imm) = some (.bCond (ccC c) (((BitVec.ofNat 19 imm).signExtend 64) <<< 2)) := by
+  rw [wBc, dec_bcsym _ _ (by cases c <;> decide)]
+  cases c <;> rfl
+theorem decBcF (c : Cond) (n : Nat) (hn : n < 2 ^ 18) :
+    Arm64.decode (wBc c n) = some (.bCond (ccC c) (BitVec.ofNat 64 (4 * n))) := by
+  rw [decBc, off_fwd (w := 19) (by decide) (by decide) hn]
+theorem decBcB (c : Cond) (n : Nat) (hn : n < 2 ^ 18) :
+    Arm64.decode (wBc c (2 ^ 19 - (n + 1))) = some (.bCond (ccC c) (BitVec.ofNat 64 (2 ^ 64 - 4 * (n + 1)))) := by
+  rw [decBc, off_back (w := 19) (by decide) (by decide) (by omega) (by omega)]
+theorem decBf (n : Nat) (hn : n < 2 ^ 25) : Arm64.decode (wBf n) = some (.b (BitVec.ofNat 64 (4 * n))) := by
+  rw [wBf, dec_bsym, off_fwd (w := 26) (by decide) (by decide) hn]
+
 def wencA : WOp → List (BitVec 32)
   | .mov d a => [rrr 0xAA000000 (xn d) 31 (xn a)]
-  | .li d c => gc d 64 c.toNat
+  | .li d c => liA d c
   | .bin op d a b => opW op d a b
   | .bini _ _ _ _ => []
   | .lbu d a _ => [wLdrb d a]
@@ -26,67 +43,6 @@ def wencA : WOp → List (BitVec 32)
   | .stS j v => [wStr (xn v) 28 (j + 1)]
   | .ld d a _ => [wLdr (xn d) (xn a) 0]
   | .sd v a _ => [wStr (xn v) (xn a) 0]
-
-/-! ## `li` for any register -/
-theorem zeroW_ok {L : Lay} (d : Mach.Reg) {s : Arm64.State} {pc : BitVec 64} (h : (base L).At s pc [iZero d]) :
-    (base L).runsTo s fun s' => (base L).Done s s' (next pc 1) ∧ (base L).Set1 s s' d 0#64 ∧
-      (base L).mem s' = (base L).mem s :=
-  run1 h (decZeroW d) (by rw [ev_zero]; exact fin1 (post_upd h.ok h.hpc _ _ _))
-theorem dblW_ok {L : Lay} (d : Mach.Reg) {s : Arm64.State} {pc : BitVec 64} (h : (base L).At s pc [iShl d]) :
-    (base L).runsTo s fun s' => (base L).Done s s' (next pc 1) ∧
-      (base L).Set1 s s' d (getR s d + getR s d) ∧ (base L).mem s' = (base L).mem s :=
-  run1 h (decDblW d) (by rw [ev_add]; exact fin1 (post_upd h.ok h.hpc _ _ _))
-theorem incW_ok {L : Lay} (d : Mach.Reg) {s : Arm64.State} {pc : BitVec 64} (h : (base L).At s pc [iInc d]) :
-    (base L).runsTo s fun s' => (base L).Done s s' (next pc 1) ∧
-      (base L).Set1 s s' d (getR s d + 1#64) ∧ (base L).mem s' = (base L).mem s :=
-  run1 h (decIncW d) (by rw [ev_inc]; exact fin1 (post_upd h.ok h.hpc _ _ _))
-
-theorem gcW_ok {L : Lay} (d : Mach.Reg) : ∀ (f n : Nat), n < 2 ^ f → ∀ {s : Arm64.State} {pc : BitVec 64},
-    (base L).At s pc (gc d f n) →
-    (base L).runsTo s fun s' => (base L).Done s s' (next pc (gc d f n).length) ∧
-      (base L).Set1 s s' d (BitVec.ofNat 64 n) ∧ (base L).mem s' = (base L).mem s
-  | 0, n, hn, s, pc, h => by
-    have : n = 0 := by simpa using hn
-    subst this; exact zeroW_ok d h
-  | f + 1, n, hn, s, pc, h => by
-    by_cases h0 : n = 0
-    · subst h0
-      have e : gc d (f + 1) 0 = [iZero d] := by simp [gc]
-      rw [e] at h ⊢; exact zeroW_ok d h
-    · have e : gc d (f + 1) n =
-          gc d f (n / 2) ++ ([iShl d] ++ (if n % 2 = 1 then [iInc d] else [])) := by simp [gc, h0]
-      rw [e] at h ⊢
-      obtain ⟨h1, hc2, ho2⟩ := Core.At.split (core L) h
-      rw [List.length_append, ← next_add]
-      refine (core L).seq_run (pc₁ := next pc (gc d f (n / 2)).length)
-        (P := fun s₁ => (base L).Set1 s s₁ d (BitVec.ofNat 64 (n / 2)) ∧ (base L).mem s₁ = (base L).mem s)
-        (gcW_ok d f (n / 2) (by rw [Nat.pow_succ] at hn; omega) h1) fun s₁ d₁ ⟨v₁, m₁⟩ => ?_
-      have hA2 := Core.Done.at (core L) d₁ ((core L).codeAt_mem m₁ hc2) ho2
-      obtain ⟨hA3, hc4, ho4⟩ := Core.At.split (core L) hA2
-      have g1 : getR s₁ d = BitVec.ofNat 64 (n / 2) := Core.Set1.same (core L) v₁
-      by_cases hodd : n % 2 = 1
-      · simp only [hodd, if_true] at hc4 ho4 ⊢
-        rw [show ([iShl d] ++ [iInc d]).length = 1 + 1 from rfl, ← next_add]
-        refine (core L).seq_run (pc₁ := next (next pc (gc d f (n / 2)).length) 1)
-          (P := fun s₂ => (base L).Set1 s₁ s₂ d (BitVec.ofNat 64 (n / 2) + BitVec.ofNat 64 (n / 2)) ∧
-            (base L).mem s₂ = (base L).mem s₁)
-          ((core L).runsTo_mono (dblW_ok d hA3) fun s₂ ⟨a, b, c⟩ => ⟨a, by rw [g1] at b; exact b, c⟩)
-          fun s₂ d₂ ⟨v₂, m₂⟩ => ?_
-        have hA5 := Core.Done.at (core L) d₂ ((core L).codeAt_mem m₂ hc4) ho4
-        have g2 : getR s₂ d = BitVec.ofNat 64 (n / 2) + BitVec.ofNat 64 (n / 2) := Core.Set1.same (core L) v₂
-        refine (core L).runsTo_mono (incW_ok d hA5) fun s₃ ⟨a, b, c⟩ => ⟨a, ?_, c.trans (m₂.trans m₁)⟩
-        rw [g2] at b
-        have ev : BitVec.ofNat 64 (n / 2) + BitVec.ofNat 64 (n / 2) + 1#64 = BitVec.ofNat 64 n := by
-          apply BitVec.eq_of_toNat_eq; simp; omega
-        rw [ev] at b
-        exact Core.Set1.trans (core L) v₁ (Core.Set1.trans (core L) v₂ b)
-      · simp only [hodd, if_false, List.append_nil] at hc4 ho4 ⊢
-        refine (core L).runsTo_mono (dblW_ok d hA3) fun s₂ ⟨a, b, c⟩ => ⟨a, ?_, c.trans m₁⟩
-        rw [g1] at b
-        have ev : BitVec.ofNat 64 (n / 2) + BitVec.ofNat 64 (n / 2) = BitVec.ofNat 64 n := by
-          apply BitVec.eq_of_toNat_eq; simp; omega
-        rw [ev] at b
-        exact Core.Set1.trans (core L) v₁ b
 
 /-! ## Evaluation, any registers -/
 theorem ev_ldrbW (d a : Mach.Reg) (s : Arm64.State) (hr : s.mem.canRead (getR s a) 1 = true) :
@@ -131,8 +87,8 @@ theorem cc_eval (c : Cond) (x y : BitVec 64) : Arm64.ConditionHolds (ccC c) (sub
 /-! ## The laws -/
 def immOKA (_ : Op) (_ : BitVec 64) : Bool := false
 def offOKA (off : BitVec 64) : Bool := off == 0
-def brOKA (k : Bool) (n : Nat) : Bool := if k then decide (n < 512) else decide (1 ≤ n ∧ n ≤ 512)
-def jOKA (_ : Bool) (n : Nat) : Bool := decide (n < 1024)
+def brOKA (k : Bool) (n : Nat) : Bool := if k then decide (n < 2 ^ 18) else decide (1 ≤ n ∧ n ≤ 2 ^ 18)
+def jOKA (k : Bool) (n : Nat) : Bool := if k then decide (0 < n ∧ n ≤ 2 ^ 25) else decide (n < 2 ^ 25)
 
 theorem w_mov {L : Lay} {d a : Mach.Reg} {s : Arm64.State} {pc : BitVec 64} (h : (base L).At s pc (wencA (.mov d a))) :
     (base L).runsTo s fun s' => (base L).Done s s' (next pc (wencA (.mov d a)).length) ∧
@@ -143,8 +99,7 @@ theorem w_li {L : Lay} {d : Mach.Reg} {c : BitVec 64} {s : Arm64.State} {pc : Bi
     (h : (base L).At s pc (wencA (.li d c))) :
     (base L).runsTo s fun s' => (base L).Done s s' (next pc (wencA (.li d c)).length) ∧
       (base L).Set1 s s' d c ∧ (base L).mem s' = (base L).mem s := by
-  have := gcW_ok (L := L) d 64 c.toNat c.isLt (s := s) (pc := pc) h
-  rwa [show BitVec.ofNat 64 c.toNat = c by simp] at this
+  exact li_ok d c h
 
 theorem w_bin {L : Lay} {op : Op} {d a b : Mach.Reg} {s : Arm64.State} {pc : BitVec 64}
     (h : (base L).At s pc (wencA (.bin op d a b))) :
@@ -233,8 +188,8 @@ theorem w_br {L : Lay} {c : Cond} {a : Mach.Reg} {b : Option Mach.Reg} {k : Bool
   have pc1 : (flg s F).pc = pc + 4#64 := by show s.pc + 4#64 = _; rw [hpc]
   have al1 : (pc + 4#64).toNat % 4 = 0 := by rw [e4]; omega
   cases k
-  · have hn : 1 ≤ n ∧ n ≤ 512 := by simpa [brOKA] using hb
-    have st2 := exec_ok ok1 pc1 al1 (instrAt_of rfl i2) (decBcF c ⟨n - 1, by omega⟩)
+  · have hn : 1 ≤ n ∧ n ≤ 2 ^ 18 := by simpa [brOKA] using hb
+    have st2 := exec_ok ok1 pc1 al1 (instrAt_of rfl i2) (decBcF c (n - 1) (by omega))
     rw [ev_bc] at st2
     refine ⟨_, .step st1 (.step st2 (.refl _)), ⟨okS_of hok rfl rfl, ⟨fun _ _ _ => rfl, rfl⟩, ?_⟩, fun r => rfl, rfl⟩
     show (if Arm64.ConditionHolds (ccC c) F = true then (flg s F).pc + _ else (flg s F).pc + 4#64) = _
@@ -243,8 +198,8 @@ theorem w_br {L : Lay} {c : Cond} {a : Mach.Reg} {b : Option Mach.Reg} {k : Bool
     · simp only [Bool.false_eq_true, ite_false]; unfold next; rw [BitVec.add_assoc]; rfl
     · simp only [ite_true, tgt, Bool.false_eq_true, ite_false]; unfold next; rw [BitVec.add_assoc]; congr 1
       apply BitVec.eq_of_toNat_eq; simp; omega
-  · have hn : n < 512 := by simpa [brOKA] using hb
-    have st2 := exec_ok ok1 pc1 al1 (instrAt_of rfl i2) (decBcB c ⟨n, hn⟩)
+  · have hn : n < 2 ^ 18 := by simpa [brOKA] using hb
+    have st2 := exec_ok ok1 pc1 al1 (instrAt_of rfl i2) (decBcB c n hn)
     rw [ev_bc] at st2
     refine ⟨_, .step st1 (.step st2 (.refl _)), ⟨okS_of hok rfl rfl, ⟨fun _ _ _ => rfl, rfl⟩, ?_⟩, fun r => rfl, rfl⟩
     show (if Arm64.ConditionHolds (ccC c) F = true then (flg s F).pc + _ else (flg s F).pc + 4#64) = _
@@ -256,20 +211,21 @@ theorem w_br {L : Lay} {c : Cond} {a : Mach.Reg} {b : Option Mach.Reg} {k : Bool
 theorem w_jmp {L : Lay} {k : Bool} {n : Nat} {s : Arm64.State} {pc : BitVec 64} (hj : jOKA k n = true)
     (h : (base L).At s pc (wencA (.jmp k n))) :
     (base L).runsTo s fun s' => (base L).Done s s' (tgt pc k n) ∧ (base L).Same s s' ∧ (base L).mem s' = (base L).mem s := by
-  have hn : n < 1024 := by simpa [jOKA] using hj
   have hok : okS L s := h.ok
   have hpc : s.pc = pc := h.hpc
   cases k
-  · have h' : (base L).At s pc [wBf n] := h
-    refine run1 h' (decBf ⟨n, hn⟩) ?_
+  · have hn : n < 2 ^ 25 := by simpa [jOKA] using hj
+    have h' : (base L).At s pc [wBf n] := h
+    refine run1 h' (decBf n hn) ?_
     refine ⟨⟨hok, ⟨fun _ _ _ => rfl, rfl⟩, ?_⟩, fun r => rfl, rfl⟩
     show s.pc + BitVec.ofNat 64 (4 * n) = next pc n
     rw [hpc]; rfl
-  · have h' : (base L).At s pc [wB n] := h
-    refine run1 h' (dec_b ⟨n, hn⟩) ?_
+  · have hn : 0 < n ∧ n ≤ 2 ^ 25 := by simpa [jOKA] using hj
+    have h' : (base L).At s pc [wB n] := h
+    refine run1 h' (dec_b n hn.1 hn.2) ?_
     refine ⟨⟨hok, ⟨fun _ _ _ => rfl, rfl⟩, ?_⟩, fun r => rfl, rfl⟩
     show s.pc + BitVec.ofNat 64 (2 ^ 64 - 4 * n) = pc - BitVec.ofNat 64 (4 * n)
-    rw [hpc]; bv_omega
+    have := hn.2; rw [hpc]; bv_omega
 
 theorem w_ld {L : Lay} {d a : Mach.Reg} {off : BitVec 64} {s : Arm64.State} {pc : BitVec 64} {v : BitVec 64}
     (ho : offOKA off = true) (h : (base L).At s pc (wencA (.ld d a off))) (hr : (base L).inRAM ((base L).get s a + off).toNat 8)

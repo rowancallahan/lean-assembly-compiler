@@ -172,7 +172,7 @@ set_option maxRecDepth 100000 in
 theorem crc_wf0 : (apcF L0).wfB 0 [0, 3] [2] crcP := by
   simp only [crcP, tableLoop, mainLoop, rep, stepE, Riscv.store8, MachineF.wfB, Mach.BExp.depth, Mach.BExp.vlt]
   repeat' apply And.intro
-  all_goals first | decide | (show _ < 1024; decide +kernel)
+  all_goals first | decide | (show _ < 2 ^ 18; decide +kernel) | (show 0 < _ ∧ _ ≤ 2 ^ 25; decide +kernel)
 
 /-- the compiled CRC-32, unoptimised and optimised -/
 def crcCode : List (BitVec 32) := (apcF L0).codeF ((apcF L0).compBF 0 [0, 3] [2] Crc.crcP)
