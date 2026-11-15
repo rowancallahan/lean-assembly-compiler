@@ -106,4 +106,6 @@ hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read 
   the run uses, DEFINED from the run (not calculated, not an explicit formula). It replaces `compiled.space n` /
   `cellsSup` in the statement (those become ways to prove the hypothesis). Being a Nat it is always satisfiable
   for a large enough block, so the theorem is not vacuous. One work block per top-level call; callees allocate
-  inside it. No separate out-of-memory theorem for now.
+  inside it. No separate out-of-memory theorem for now. OUT OF MEMORY is a property of the run (the program
+  needs more of the work block than it has), not a register value; a register would only report it. The owner
+  will define it; do not invent one.
