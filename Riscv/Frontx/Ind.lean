@@ -169,3 +169,50 @@ theorem u64_ops (x y : UInt64) : Op.eval .add x.toBitVec y.toBitVec = (x + y).to
 @[simp] theorem bw_eq0' (c : Bool) : (bw c = 0#64) = (c = false) := by cases c <;> decide
 
 end Proven.Frontx.Ind
+
+namespace Proven.Frontx.Ind
+open Proven Proven.Mach Proven.Mach.Ind Proven.Mach.Riscv
+
+/-- **User inductives ⇒ `Implements1`**, one function at most `M` cells per input node (`lin`), with the input
+word and the output shape of `implements1_indM` -/
+theorem implements1_indL {rk : Kd} {γ β : Type} (sh shO : Shape) (pg : Pg rk) (bi : BIn) (ain : Bool)
+    (a0 : BitVec 64) (nb : Nat)
+    (encA : γ → List UInt8) (encB : β → List UInt8) (f : γ → β) (v₁ v₂ : γ → C) (av : γ → BitVec 64)
+    (henc : ∀ g, encA g = inBytesA sh bi ain (v₁ g) (v₂ g) (av g)) (hw1 : ∀ g, (v₁ g).wf sh)
+    (hw2 : bi = .inp → ∀ g, (v₂ g).wf sh)
+    (hout : ∀ g, encB (f g) = Kd.out shO nb rk (pg.sem (v₁ g) (if ain then av g else a0) (bi.val (v₂ g))))
+    (hsh : sh.length < 255) (hshO : shO.length < 255) (hn : pg.arms.length ≤ 255)
+    (htg : ∀ e ∈ pg.arms, e.tags < 256) (hlin : pg.lin) (hbi : ∀ t, bi = .ctor t → t < 256) (hnb : nb ≤ 8)
+    (hwf : WfProg1W (indProgM sh shO pg [] bi ain a0 nb 16) (if rk = .t then 1 else 7) 0) :
+    Implements1With encA encB (callsCode1W (indProgM sh shO pg [] bi ain a0 nb 16) (if rk = .t then 1 else 7) 0) f
+      (spaceA 1 16 (fun n => pg.M * n)) (2 ^ 20) (decide (rk = .t)) :=
+  implements1_indM sh shO pg [] bi ain a0 nb 16 encA encB f v₁ v₂ av (fun n => pg.M * n) henc hw1 hw2 hout
+    (fun g => by
+      have h1 := al_le pg hlin (v₁ g) (if ain then av g else a0) (bi.val (v₂ g))
+      have h2 := nodes_le sh (v₁ g) (hw1 g)
+      have h3 : (v₁ g).nodes ≤ (encA g).length := by
+        rw [henc]; simp only [inBytesA, List.length_append]; cases bi <;> simp [inBytes] <;> omega
+      exact Nat.le_trans h1 (Nat.mul_le_mul_left _ h3))
+    hsh hshO (by omega) ⟨fun j hj => absurd hj (by simp), trivial⟩
+    (by simp only [okL, Bool.and_eq_true, decide_eq_true_eq, List.all_eq_true]
+        exact ⟨⟨hn, fun e he => ⟨htg e he, by simpa using (hlin e he).2.2.2⟩⟩, trivial⟩) hbi hnb hwf
+
+/-- an 8-byte word argument of the input -/
+theorem leN8_ofNat (n : Nat) : leN 8 (BitVec.ofNat 64 n).toNat = leN 8 n := by
+  rw [BitVec.toNat_ofNat, show 2 ^ 64 = 256 ^ 8 from rfl, leN_mod]
+
+end Proven.Frontx.Ind
+
+namespace Proven.Frontx.Ind
+
+theorem beq_dec {α : Type} [BEq α] [LawfulBEq α] [DecidableEq α] (a b : α) : (a == b) = decide (a = b) := by
+  by_cases h : a = b <;> simp [h]
+
+end Proven.Frontx.Ind
+
+namespace Proven.Frontx.Ind
+
+theorem leN8_mod (n : Nat) : leN 8 (n % 18446744073709551616) = leN 8 n := by
+  rw [show 18446744073709551616 = 256 ^ 8 from rfl, leN_mod]
+
+end Proven.Frontx.Ind
