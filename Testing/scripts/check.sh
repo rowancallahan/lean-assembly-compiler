@@ -13,6 +13,7 @@ cat "$T"/{a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v}.txt | tr -d '\n' | sed "s
 if diff "$H/expected-axioms.txt" "$T/got.txt" > "$T/diff.txt"; then
   awk -F'dependsonaxioms:' '{n=split($2,a,","); print "  ok", $1, n, "axioms"}' "$T/got.txt"
 else cat "$T/diff.txt"; fail "axioms differ from Testing/scripts/expected-axioms.txt"; fi
+echo "== word-array theorems (NOTES section 20)"; "$H/wa_check.sh" || fail "wa_check.sh"
 echo "== forbidden words (comments/strings ignored; Riscv/Legacy excluded: Sort.lean is stated with sorry)"
 BAD=$(git ls-files 'Spec/*.lean' 'Compiler/*.lean' 'Riscv/*.lean' 'Arm/CompilerArm.lean' 'Arm/proofs/*.lean' 'Arm/shrink/*.lean' \
   | grep -v '^Riscv/Legacy/' | xargs python3 "$H/nocomment.py")
