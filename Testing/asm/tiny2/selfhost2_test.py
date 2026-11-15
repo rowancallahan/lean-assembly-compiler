@@ -25,9 +25,33 @@ def run_stack(code, x):
         elif t == 2: s.append(x)
         else: b = s.pop(); a = s.pop(); s.append(apply(n, a, b))
     return s[-1] if s else 0
-def run_code(code, x): return run_stack(decode(code), x)
-if STEP >= "s5":
-    run_code = None  # defined in step 5
+def apply2(k, a, b):
+    return (a + b) & M if k == 0 else (a - b) & M if k == 1 else a ^ b if k == 2 else int(a < b) if k == 3 else int(a == b)
+sys.setrecursionlimit(100000)
+def parse(b):  # step 2 type T: 0 nil | 1 lit n | 2 var | 3 bin k a b | 4 op k rest  (prefix, scalar 8 bytes LE first)
+    def go(i):
+        t = b[i]; i += 1
+        if t == 0: return ("nil",), i
+        if t == 2: return ("var",), i
+        n = int.from_bytes(b[i:i + 8], "little"); i += 8
+        if t == 1: return ("lit", n), i
+        a, i = go(i)
+        if t == 4: return ("op", n, a), i
+        c, i = go(i); return ("bin", n, a, c), i
+    r, i = go(0); assert i == len(b); return r
+def run_s2(code, x):
+    s = []; node = parse(code)
+    while node[0] != "nil":
+        if node[0] == "bin":  # push imm (k = 9) or load x (k = 10)
+            s.append(node[3][1] if node[1] == 9 else x); node = node[2]
+        else:
+            _, k, node = node
+            if k < 5: b = s.pop(); a = s.pop(); s.append(apply2(k, a, b))
+            elif k == 5: b = s.pop(); s.pop(); s.append(b)
+            elif k == 6: x = s[-1]
+            elif k == 7: c = s.pop(); e = s.pop(); t = s.pop(); s.append(t if c else e)
+    return s[-1] if s else 0
+run_code = (lambda code, x: run_stack(decode(code), x)) if STEP == "s1" else run_s2
 cases = F.CASES
 lay, halt, base, tab, size = F.build([(c[0], [0] * (len(c[1]) + 64), c[2]) for c in cases], "".join(f"  .word 0x{w:08x}\n" for w in F.words))
 mem = F.qemu(halt, base, tab + F.E * len(cases) - base)
