@@ -101,16 +101,16 @@ theorem store8_wf (N : Nat) : ∀ k, k < 8 → rvF.wfB N [0, 3] [2] (store8 k)
     exact ⟨store8_wf N k (by omega), by simp [MachineF.wfB, Mach.BExp.depth, Mach.BExp.vlt]; omega⟩
 
 /-- **Generated program ⇒ `Implements1`.** -/
-theorem implements1_of_frontx {β : Type} (f : ByteArray → β) (encB : β → List UInt8) (repr : β → BitVec 64)
+theorem implements1_of_frontxW {β : Type} (f : ByteArray → β) (encB : β → List UInt8) (repr : β → BitVec 64)
     (k : Nat) (hk : k < 8)
     (henc : ∀ b, (encB b).map (·.toBitVec) =
       (List.range (k + 1)).map fun j => BitVec.ofNat 8 ((repr b).toNat / 256 ^ j))
-    (N : Nat) (hN : N ≤ 16) (p : Proven.BStmt) (hwf : p.wf N [0, 3]) (hnw : ∀ v ∈ avars p, v ∉ [2])
+    (N : Nat) (hN : N ≤ NS) (p : Proven.BStmt) (hwf : p.wf N [0, 3]) (hnw : ∀ v ∈ avars p, v ∉ [2])
     (hex : ∀ (xs : ByteArray) (env : BEnv), env 1 = rN xs.size → xs.size < 2 ^ 32 → (∀ j, 8 ≤ j → env j = 0) →
       ∃ σ', Proven.BExec p ⟨env, [blk xs]⟩ σ' ∧ σ'.env 4 = repr (f xs) ∧ σ'.heap = [blk xs]) :
     Implements1With (fun xs : ByteArray => xs.data.toList) encB
       (compBFO N [0, 3] [2] (.seq (toMS p) (store8 k))) f (fun _ => 8 * (N + 1) + 7) := by
-  refine implements1_of_execO _ encB f N hN (.seq (toMS p) (store8 k)) (show rvF.wfB N [0, 3] [2] (toMS p) ∧ _ from ⟨wfB_up N _ _ p hwf hnw, store8_wf N k hk⟩) (fun _ => 0) _
+  refine implements1_of_execOW _ encB f N hN (.seq (toMS p) (store8 k)) (show rvF.wfB N [0, 3] [2] (toMS p) ∧ _ from ⟨wfB_up N _ _ p hwf hnw, store8_wf N k hk⟩) (fun _ => 0) _
     (fun n => by dsimp only; omega) _ false ?_
   intro a out tbl env h1 h8 hmax hlt hout hol htl
   have hsz : a.data.toList.length = a.size := Array.length_toList
@@ -145,7 +145,7 @@ theorem wrO_drop (O : List (BitVec 8)) (L : List UInt8) : (wrO O 0 L).drop L.len
   simp [wrO]
 
 /-- **Generated program with a list result ⇒ `Implements1` with `retLen`.** -/
-theorem implements1_list (f : ByteArray → List UInt8) (N : Nat) (hN : N ≤ 16) (p : Proven.BStmt)
+theorem implements1_listW (f : ByteArray → List UInt8) (N : Nat) (hN : N ≤ NS) (p : Proven.BStmt)
     (hwf : p.wf N [0, 3]) (hnw : ∀ v ∈ avars p, v ∉ [2])
     (hex : ∀ (xs : ByteArray) (out : List (BitVec 8)) (env : BEnv), env 1 = rN xs.size → xs.size < 2 ^ 32 →
       (∀ j, 8 ≤ j → env j = 0) → (f xs).length ≤ out.length → out.length < 2 ^ 32 →
@@ -153,7 +153,7 @@ theorem implements1_list (f : ByteArray → List UInt8) (N : Nat) (hN : N ≤ 16
         σ'.heap = [blk xs, wrO out 0 (f xs)]) :
     Implements1With (fun xs : ByteArray => xs.data.toList) (fun l => l) (listCode N p) f (fun _ => 8 * (N + 1) + 7)
       (retLen := true) := by
-  refine implements1_of_execO _ (fun l => l) f N hN (.seq (toMS p) (.assign 1 (.var 4)))
+  refine implements1_of_execOW _ (fun l => l) f N hN (.seq (toMS p) (.assign 1 (.var 4)))
     (show rvF.wfB N [0, 3] [2] (toMS p) ∧ _ from ⟨wfB_up N _ _ p hwf hnw, by
       simp [MachineF.wfB, Mach.BExp.depth, Mach.BExp.vlt]; omega⟩) (fun _ => 0) _
     (fun n => by dsimp only; omega) _ true ?_
@@ -171,14 +171,14 @@ theorem implements1_list (f : ByteArray → List UInt8) (N : Nat) (hN : N ≤ 16
 /-! ## Results of several components (tuples, structures): the bytes `encB` written to the output block -/
 
 /-- **Generated program with a result written as bytes ⇒ `Implements1`** (no length in `a1`) -/
-theorem implements1_bytes {β : Type} (f : ByteArray → β) (encB : β → List UInt8) (N : Nat) (hN : N ≤ 16)
+theorem implements1_bytesW {β : Type} (f : ByteArray → β) (encB : β → List UInt8) (N : Nat) (hN : N ≤ NS)
     (p : Proven.BStmt) (hwf : p.wf N [0, 3]) (hnw : ∀ v ∈ avars p, v ∉ [2])
     (hex : ∀ (xs : ByteArray) (out : List (BitVec 8)) (env : BEnv), env 1 = rN xs.size → xs.size < 2 ^ 32 →
       (∀ j, 8 ≤ j → env j = 0) → (encB (f xs)).length ≤ out.length → out.length < 2 ^ 32 →
       ∃ σ', Proven.BExec p ⟨env, [blk xs, out]⟩ σ' ∧ σ'.heap = [blk xs, wrO out 0 (encB (f xs))]) :
     Implements1With (fun xs : ByteArray => xs.data.toList) encB (compBFO N [0, 3] [2] (toMS p)) f
       (fun _ => 8 * (N + 1) + 7) := by
-  refine implements1_of_execO _ encB f N hN (toMS p) (wfB_up N _ _ p hwf hnw) (fun _ => 0) _
+  refine implements1_of_execOW _ encB f N hN (toMS p) (wfB_up N _ _ p hwf hnw) (fun _ => 0) _
     (fun n => by dsimp only; omega) _ false ?_
   intro a out tbl env h1 h8 hmax hlt hout hol htl
   have hsz : a.data.toList.length = a.size := Array.length_toList
@@ -203,7 +203,7 @@ macro "frontx_implements_bytes " g:ident : command => do
   `(def $code : List (BitVec 32) := bytesCodeOf $g $slots $prog
     theorem $thm : Implements1With (fun xs : ByteArray => xs.data.toList) $enc $code $g
         (fun _ => 8 * ($slots + 1) + 7) :=
-      implements1_bytes $g $enc $slots (by decide) $prog (by decide +kernel) (by decide +kernel) $exec)
+      implements1_bytesW $g $enc $slots (by decide) $prog (by decide +kernel) (by decide +kernel) $exec)
 
 /-! ## Result encodings -/
 
@@ -250,12 +250,12 @@ def entryCode (β : Type) [Res β] (N : Nat) (p : Proven.BStmt) : List (BitVec 3
 def entryCodeOf {β : Type} [Res β] (_f : ByteArray → β) (N : Nat) (p : Proven.BStmt) : List (BitVec 32) :=
   entryCode β N p
 
-theorem implements1_res {β : Type} [Res β] (f : ByteArray → β) (N : Nat) (hN : N ≤ 16) (p : Proven.BStmt)
+theorem implements1_resW {β : Type} [Res β] (f : ByteArray → β) (N : Nat) (hN : N ≤ NS) (p : Proven.BStmt)
     (hwf : p.wf N [0, 3]) (hnw : ∀ v ∈ avars p, v ∉ [2])
     (hex : ∀ (xs : ByteArray) (env : BEnv), env 1 = rN xs.size → xs.size < 2 ^ 32 → (∀ j, 8 ≤ j → env j = 0) →
       ∃ σ', Proven.BExec p ⟨env, [blk xs]⟩ σ' ∧ σ'.env 4 = Res.repr (f xs) ∧ σ'.heap = [blk xs]) :
     Implements1With (fun xs : ByteArray => xs.data.toList) Res.enc (entryCode β N p) f (fun _ => 8 * (N + 1) + 7) :=
-  implements1_of_frontx f Res.enc Res.repr (Res.k β) Res.hk Res.henc N hN p hwf hnw hex
+  implements1_of_frontxW f Res.enc Res.repr (Res.k β) Res.hk Res.henc N hN p hwf hnw hex
 
 /-- the code of an entry point with a list result -/
 def listCodeOf (_f : ByteArray → List UInt8) (N : Nat) (p : Proven.BStmt) : List (BitVec 32) := listCode N p
@@ -269,7 +269,7 @@ macro "frontx_implements_list " g:ident : command => do
   `(def $code : List (BitVec 32) := listCodeOf $g $slots $prog
     theorem $thm : Implements1With (fun xs : ByteArray => xs.data.toList) (fun l => l) $code $g
         (fun _ => 8 * ($slots + 1) + 7) (retLen := true) :=
-      implements1_list $g $slots (by decide) $prog (by decide +kernel) (by decide +kernel) $exec)
+      implements1_listW $g $slots (by decide) $prog (by decide +kernel) (by decide +kernel) $exec)
 
 /-- `frontx_implements g` (after `frontx_entry g`): `g.code` and the machine theorem `g.implements1` -/
 macro "frontx_implements " g:ident : command => do
@@ -280,6 +280,45 @@ macro "frontx_implements " g:ident : command => do
   `(def $code : List (BitVec 32) := entryCodeOf $g $slots $prog
     theorem $thm : Implements1With (fun xs : ByteArray => xs.data.toList) Res.enc $code $g
         (fun _ => 8 * ($slots + 1) + 7) :=
-      implements1_res $g $slots (by decide) $prog (by decide +kernel) (by decide +kernel) $exec)
+      implements1_resW $g $slots (by decide) $prog (by decide +kernel) (by decide +kernel) $exec)
+
+/-! ## The statements for at most 16 slots (as before the slot limit was raised) -/
+
+theorem implements1_of_frontx {β : Type} (f : ByteArray → β) (encB : β → List UInt8) (repr : β → BitVec 64)
+    (k : Nat) (hk : k < 8)
+    (henc : ∀ b, (encB b).map (·.toBitVec) =
+      (List.range (k + 1)).map fun j => BitVec.ofNat 8 ((repr b).toNat / 256 ^ j))
+    (N : Nat) (hN : N ≤ 16) (p : Proven.BStmt) (hwf : p.wf N [0, 3]) (hnw : ∀ v ∈ avars p, v ∉ [2])
+    (hex : ∀ (xs : ByteArray) (env : BEnv), env 1 = rN xs.size → xs.size < 2 ^ 32 → (∀ j, 8 ≤ j → env j = 0) →
+      ∃ σ', Proven.BExec p ⟨env, [blk xs]⟩ σ' ∧ σ'.env 4 = repr (f xs) ∧ σ'.heap = [blk xs]) :
+    Implements1With (fun xs : ByteArray => xs.data.toList) encB
+      (compBFO N [0, 3] [2] (.seq (toMS p) (store8 k))) f (fun _ => 8 * (N + 1) + 7) :=
+  implements1_of_frontxW f encB repr k hk henc N (by unfold NS; omega) p hwf hnw hex
+
+theorem implements1_list (f : ByteArray → List UInt8) (N : Nat) (hN : N ≤ 16) (p : Proven.BStmt)
+    (hwf : p.wf N [0, 3]) (hnw : ∀ v ∈ avars p, v ∉ [2])
+    (hex : ∀ (xs : ByteArray) (out : List (BitVec 8)) (env : BEnv), env 1 = rN xs.size → xs.size < 2 ^ 32 →
+      (∀ j, 8 ≤ j → env j = 0) → (f xs).length ≤ out.length → out.length < 2 ^ 32 →
+      ∃ σ', Proven.BExec p ⟨env, [blk xs, out]⟩ σ' ∧ σ'.env 4 = rN (f xs).length ∧
+        σ'.heap = [blk xs, wrO out 0 (f xs)]) :
+    Implements1With (fun xs : ByteArray => xs.data.toList) (fun l => l) (listCode N p) f (fun _ => 8 * (N + 1) + 7)
+      (retLen := true) :=
+  implements1_listW f N (by unfold NS; omega) p hwf hnw hex
+
+theorem implements1_bytes {β : Type} (f : ByteArray → β) (encB : β → List UInt8) (N : Nat) (hN : N ≤ 16)
+    (p : Proven.BStmt) (hwf : p.wf N [0, 3]) (hnw : ∀ v ∈ avars p, v ∉ [2])
+    (hex : ∀ (xs : ByteArray) (out : List (BitVec 8)) (env : BEnv), env 1 = rN xs.size → xs.size < 2 ^ 32 →
+      (∀ j, 8 ≤ j → env j = 0) → (encB (f xs)).length ≤ out.length → out.length < 2 ^ 32 →
+      ∃ σ', Proven.BExec p ⟨env, [blk xs, out]⟩ σ' ∧ σ'.heap = [blk xs, wrO out 0 (encB (f xs))]) :
+    Implements1With (fun xs : ByteArray => xs.data.toList) encB (compBFO N [0, 3] [2] (toMS p)) f
+      (fun _ => 8 * (N + 1) + 7) :=
+  implements1_bytesW f encB N (by unfold NS; omega) p hwf hnw hex
+
+theorem implements1_res {β : Type} [Res β] (f : ByteArray → β) (N : Nat) (hN : N ≤ 16) (p : Proven.BStmt)
+    (hwf : p.wf N [0, 3]) (hnw : ∀ v ∈ avars p, v ∉ [2])
+    (hex : ∀ (xs : ByteArray) (env : BEnv), env 1 = rN xs.size → xs.size < 2 ^ 32 → (∀ j, 8 ≤ j → env j = 0) →
+      ∃ σ', Proven.BExec p ⟨env, [blk xs]⟩ σ' ∧ σ'.env 4 = Res.repr (f xs) ∧ σ'.heap = [blk xs]) :
+    Implements1With (fun xs : ByteArray => xs.data.toList) Res.enc (entryCode β N p) f (fun _ => 8 * (N + 1) + 7) :=
+  implements1_resW f N (by unfold NS; omega) p hwf hnw hex
 
 end Proven.Frontx

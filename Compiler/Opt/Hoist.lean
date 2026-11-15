@@ -193,9 +193,18 @@ theorem sets_ok : ∀ (L : List (BitVec 64)) (m : Nat) (τ : St Nat), ∃ τ', E
       have := hk j (by simp only [List.length_cons] at hj; omega)
       rw [show m + (j + 1) = m + 1 + j by omega]; exact this
 
+/-- stable insertion sort (structural: the kernel evaluates it; the order `mergeSort` gives) -/
+def insS {α : Type} (le : α → α → Bool) (a : α) : List α → List α
+  | [] => [a]
+  | b :: l => if le a b then a :: b :: l else b :: insS le a l
+
+def isort {α : Type} (le : α → α → Bool) : List α → List α
+  | [] => []
+  | a :: l => insS le a (isort le l)
+
 /-- the `k` constants of `c` used most often -/
 def kSel (k : Nat) (c : Code Nat) : List (BitVec 64) :=
-  ((kC c).eraseDups.mergeSort fun a b => (kC c).count b ≤ (kC c).count a).take k
+  ((kC c).eraseDups |> isort fun a b => (kC c).count b ≤ (kC c).count a).take k
 
 /-- one loop with its (at most `k`) constants loaded first -/
 def hoistL (k m : Nat) (c : Code Nat) : Code Nat :=

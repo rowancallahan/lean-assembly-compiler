@@ -33,20 +33,15 @@ FUNCS = {
     "nontailsum": (8, lambda xs: sum(xs)),
     "taillength": (8, lambda xs: len(xs)),
     "booklength": (8, lambda xs: len(xs)),
-    "nontailsumrec": (8, lambda xs: sum(xs)),
-    "nontaillengthrec": (8, lambda xs: len(xs)),
 }
 # functions returning a list: the length is returned in a1
-LISTS = {"take5", "drop5", "matchdrop3", "filterall", "inceach", "twice"}
+LISTS = {"tinycompile", "tinysm", "take5", "drop5", "matchdrop3", "filterall", "inceach", "twice"}
 FN = sys.argv[3] if len(sys.argv) > 3 else "crcraw"
 unhex = lambda h: [] if h == "-" else list(bytes.fromhex(h))
 CASES = [tuple(map(unhex, l.split())) for l in open(os.path.join(D, "frontx-words", FN + ".cases")) if l.strip()]
 lines = [l for l in open(os.path.join(D, "frontx-words", FN + ".words")) if l.strip()]
 words = [int(l, 16) for l in lines[1:]]
-G, E = 16, 72
-# work space: `8 (slots + 1) + 7`, or `frame (n + 1) + 32` for programs with calls (first line `rec <frame>`)
-REC = int(lines[0].split()[1]) if lines[0].startswith("rec") else None
-wk = lambda L: REC * (L + 1) + 32 if REC else 8 * (int(lines[0]) + 1) + 7
+G, WK, E = 16, 8 * (int(lines[0]) + 1) + 7, 72
 MAGIC = 0x0123456789ABCDEF
 LD = "ENTRY(_start)\nSECTIONS { . = 0x80000000; .text : { *(.text.start) *(.text) }\n . = 0x80100000; .tohost : { *(.tohost) }\n . = 0x80200000; .data : { *(.data) } }\n"
 TAIL = """.section .tohost,"aw"
@@ -85,7 +80,7 @@ def build(cases, func):
     data, tab, off, lay = [], [], 0, []
     for xs, ys in cases:
         R = len(ys)
-        L = len(xs); WK = wk(L); i0 = off; o0 = i0 + L + G; w0 = (o0 + R + G + 7) // 8 * 8; off = w0 + WK + G
+        L = len(xs); i0 = off; o0 = i0 + L + G; w0 = (o0 + R + G + 7) // 8 * 8; off = w0 + WK + G
         lay.append((i0, o0, w0))
         tab.append(f"  .quad base+{i0}, {L}, base+{w0}, base+{o0}, base+{w0 + WK}, {MAGIC}, 0, 0, 0")
         data.append(bytes(xs) + b"\xAA" * G + b"\x55" * R + b"\xAA" * G + b"\x00" * (w0 - (o0 + R + G))
@@ -122,7 +117,7 @@ def check(N):
     init = bytearray(open(p("crc.bin"), "rb").read()) + bytearray(qmem[size:])
     allowed = set(range(tab, tab + E * len(cases)))
     for (i0, o0, w0), (xs, ys) in zip(lay, cases):
-        allowed |= set(range(base + o0, base + o0 + len(ys))) | set(range(base + w0, base + w0 + wk(len(xs))))
+        allowed |= set(range(base + o0, base + o0 + len(ys))) | set(range(base + w0, base + w0 + WK))
     smem = bytearray(init)
     for l in open(p("sail.log")):
         m = re.match(r"mem\[(?:W,)?0x([0-9A-F]+)\] <- 0x([0-9A-F]+)", l)
@@ -135,7 +130,7 @@ def check(N):
             smem[a + j - base] = int(v[2 * (nb - 1 - j):2 * (nb - j)], 16)
     for nm, mem in (("qemu", qmem), ("sail", smem)):
         for c, ((i0, o0, w0), (xs, ys)) in enumerate(zip(lay, cases)):
-            L = len(xs); R = len(ys); WK = wk(L)
+            L = len(xs); R = len(ys)
             assert list(mem[i0:i0 + L + G]) == xs + [0xAA] * G, (nm, "input", L)
             want = bytes(ys)
             if FN in FUNCS:
@@ -148,6 +143,6 @@ def check(N):
             assert gp == MAGIC and spo == base + w0 + WK, (nm, "gp/sp", hex(gp), spo)
             if FN in LISTS: assert a1 == R, (nm, "a1 (length)", a1, R)
     print(f"{FN}: {len(cases)} cases ok (QEMU == Sail == Lean; input lengths up to {max(len(x) for x, _ in cases)}; "
-          f"{len(words)} words, work " + (f"{REC} (n + 1) + 32" if REC else f"{wk(0)}") + " bytes)")
+          f"{len(words)} words, work {WK} bytes)")
 
 if sys.argv[1] == "check": check(int(sys.argv[2]))

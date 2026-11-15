@@ -114,6 +114,9 @@ frontx_compile swapAt requires fun _ i => i + 8 < 2 ^ 64
 frontx_compile addPointsAt requires fun _ i => i + 8 < 2 ^ 64
 frontx_compile zeroXAt requires fun _ i => i + 8 < 2 ^ 64
 frontx_compile nestAt requires fun _ i => i + 8 < 2 ^ 64
+/-- `addPoints` on four 16-bit numbers (17 slots) -/
+def addPoints16At (xs : ByteArray) (i : Nat) : Point := addPoints ⟨u16 xs i, u16 xs (i + 2)⟩ ⟨u16 xs (i + 4), u16 xs (i + 6)⟩
+frontx_compile addPoints16At requires fun _ i => i + 8 < 2 ^ 64
 
 def swapE (xs : ByteArray) : UInt64 × UInt64 := swapAt xs 0
 frontx_entry swapE
@@ -121,6 +124,9 @@ frontx_implements_bytes swapE
 def addPointsE (xs : ByteArray) : Point := addPointsAt xs 0
 frontx_entry addPointsE
 frontx_implements_bytes addPointsE
+def addPoints16E (xs : ByteArray) : Point := addPoints16At xs 0
+frontx_entry addPoints16E
+frontx_implements_bytes addPoints16E
 def zeroXE (xs : ByteArray) : Point := zeroXAt xs 0
 frontx_entry zeroXE
 frontx_implements_bytes zeroXE

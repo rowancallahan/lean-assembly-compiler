@@ -5,6 +5,7 @@ import Riscv.Direct.Arr2Code
 import Riscv.Steps.Arr2Step
 import Riscv.Steps.Compat
 import Riscv.Steps.MemSteps
+import Riscv.Steps.Imm12
 open LeanRV64D LeanRV64D.Functions Sail Sail.ConcurrencyInterfaceV1
 
 set_option linter.unusedVariables false
@@ -40,26 +41,21 @@ end W2
 
 namespace Compat
 
-/-- the slot offsets `8 (j + 1)`, `j < 16`, as 12-bit immediates -/
+/-- the slot offsets `8 (j + 1)`, `j < NS`, as 12-bit immediates -/
 theorem slot_se (j : Nat) (hj : j < NS) :
     (BitVec.ofNat 12 (8 * (j + 1))).signExtend 64 = BitVec.ofNat 64 (8 * (j + 1)) := by
-  simp only [NS] at hj
-  obtain rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl :
-    j = 0 ∨ j = 1 ∨ j = 2 ∨ j = 3 ∨ j = 4 ∨ j = 5 ∨ j = 6 ∨ j = 7 ∨ j = 8 ∨ j = 9 ∨ j = 10 ∨ j = 11 ∨
-    j = 12 ∨ j = 13 ∨ j = 14 ∨ j = 15 := by omega
-  all_goals decide
+  simp only [NS] at hj; exact sx12_pos _ (by omega)
 
 theorem iLdS_eq (j k : Nat) (hj : j < NS) : iLdS j k = G.encL 3 (BitVec.ofNat 12 (8 * (j + 1))) (T k) 3 := by
   simp only [NS] at hj
   simp only [iLdS, G.encL, BitVec.toNat_ofNat]
   rw [Nat.mod_eq_of_lt (by omega)]; rfl
 
-theorem iSdS_eq (j : Nat) (hj : j < NS) : iSdS j = G.encS 3 (BitVec.ofNat 12 (8 * (j + 1))) 5 3 := by
-  simp only [NS] at hj
-  obtain rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl :
-    j = 0 ∨ j = 1 ∨ j = 2 ∨ j = 3 ∨ j = 4 ∨ j = 5 ∨ j = 6 ∨ j = 7 ∨ j = 8 ∨ j = 9 ∨ j = 10 ∨ j = 11 ∨
-    j = 12 ∨ j = 13 ∨ j = 14 ∨ j = 15 := by omega
-  all_goals decide
+set_option maxRecDepth 100000 in
+theorem iSdS_all : ∀ j : Fin 254, iSdS j.val = G.encS 3 (BitVec.ofNat 12 (8 * (j.val + 1))) 5 3 := by decide
+
+theorem iSdS_eq (j : Nat) (hj : j < NS) : iSdS j = G.encS 3 (BitVec.ofNat 12 (8 * (j + 1))) 5 3 :=
+  iSdS_all ⟨j, hj⟩
 
 end Compat
 
