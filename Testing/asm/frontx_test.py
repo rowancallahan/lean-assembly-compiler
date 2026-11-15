@@ -27,6 +27,7 @@ at = lambda xs, i: xs[i] if i < len(xs) else 0
 FUNCS = {
     "crcraw": (4, lambda xs: zlib.crc32(bytes(xs)) ^ 0xFFFFFFFF),
     "wa_crc32": (4, lambda xs: zlib.crc32(bytes(xs))),
+    "wa_crcupdate": (4, lambda xs: zlib.crc32(bytes(xs)) ^ 0xFFFFFFFF),
     "b64all": (4, lambda xs: sum(b64digit(c) for c in xs) % 2 ** 32),
     "findnl": (8, lambda xs: next((k for k, c in enumerate(xs) if c == 10), len(xs))),
     "be32at0": (8, lambda xs: at(xs, 0) << 24 | at(xs, 1) << 16 | at(xs, 2) << 8 | at(xs, 3)),

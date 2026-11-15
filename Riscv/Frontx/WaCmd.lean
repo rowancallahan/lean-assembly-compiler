@@ -39,7 +39,7 @@ theorem foldl_foldGo {α β : Type} [Inhabited α] (g : β → α → β) (a : A
 /-! ## Closing the side conditions -/
 
 macro "wa_close" : tactic => `(tactic| (
-  simp only [true_and, and_true, true_implies, Bool.false_eq_true, false_implies, decide_eq_true_eq, implies_true,
+  simp (config := { failIfUnchanged := false }) only [true_and, and_true, true_implies, Bool.false_eq_true, false_implies, decide_eq_true_eq, implies_true,
     and_self, ite_true, ite_false, Bool.true_eq_false] at ⊢
   repeat' (first | (apply And.intro) | split | intro)
   all_goals (first | trivial | assumption | omega | simp_all | skip)))
@@ -541,7 +541,7 @@ theorem size_ite_set {α : Type} (c : Prop) [Decidable c] (a : Array α) (i : Na
 theorem size_set' {α : Type} (a : Array α) (i : Nat) (x : α) : (a.set! i x).size = a.size := by simp
 
 /-- the simp set of the meanings -/
-macro "wa_dsimp" : tactic => `(tactic| simp only [T.ok, T.out, T.den, E.ok, E.den, A.den, A.ok, AK.set, AK.push, Args.ok, Args.den, Arg.den,
+macro "wa_dsimp" : tactic => `(tactic| simp (config := { failIfUnchanged := false }) only [T.ok, T.out, T.den, E.ok, E.den, A.den, A.ok, AK.set, AK.push, Args.ok, Args.den, Arg.den,
   Ini.ok, Ini.den, Inis.ok, Inis.den, F.ok, F.den, Vals.app, Mem.get, AK.size, AK.get, Op2.den, Cmp.den, WA.cast,
   Ty.small, Op2.exact, decide_eq_true_eq, AK.el, size_ite_set, size_set', Array.size_replicate, u8_lt64, u16_lt64, u32_lt64, u64_lt64, u8_lt64', u16_lt64', u32_lt64',
   u64_lt64'] at *)
@@ -696,14 +696,14 @@ elab_rules : command
             runs_of _ _ ($g $xsI) ($P $xsI) ($μ $xsI) (by $(← sq heq)) (by $(← sq step)) _ (by $(← sq p0)),
             $(← good rest)⟩)
     let pf ← good stages.toList
-    let goodN := mkIdent (fn ++ `good)
+    let goodN := mkIdent (`_root_ ++ fn ++ `good)
     elabCommand (← `(set_option maxRecDepth 100000 in
       theorem $goodN:ident : ∀ (xs : ByteArray), xs.size < 2 ^ 32 → ($wa).Good (xs, ()) ($fI xs) := by
         intro xs hx
         have hds : xs.data.size = xs.size := rfl
         exact $pf))
-    let code := mkIdent (fn ++ `code)
-    let impl := mkIdent (fn ++ `implements1)
+    let code := mkIdent (`_root_ ++ fn ++ `code)
+    let impl := mkIdent (`_root_ ++ fn ++ `implements1)
     match R with
     | .sc t =>
       let βT ← liftTermElabM (tyTypeSyn t)

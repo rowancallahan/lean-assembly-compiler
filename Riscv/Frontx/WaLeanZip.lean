@@ -43,6 +43,22 @@ def crc32 (init : UInt32 := 0) (data : ByteArray) : UInt32 :=
   result ^^^ 0xFFFFFFFF
 end Crc32.Native
 
+/-! ## Code-length histogram (mutable `Array Nat` in the work block) -/
+
+namespace Zip.Native
+-- Zip/Native/Inflate.lean:536@7e10583
+def countLengthsFast (lengths : Array UInt8) (maxBits : Nat) : Array Nat :=
+  go lengths maxBits 0 (Array.replicate (maxBits + 1) 0)
+where
+  go (lengths : Array UInt8) (maxBits i : Nat) (count : Array Nat) : Array Nat :=
+    if h : i < lengths.size then
+      let ln := lengths[i].toNat
+      let count := if 0 < ln ∧ ln ≤ maxBits then count.set! ln (count[ln]! + 1) else count
+      go lengths maxBits (i + 1) count
+    else count
+  termination_by lengths.size - i
+end Zip.Native
+
 namespace Proven.WA.LeanZip
 open Proven.WA
 
@@ -53,5 +69,20 @@ wa_compile crc32E
 /-- the running state from `0xFFFFFFFF` (`Crc32.Native.updateBytes`, no final complement) -/
 def crcUpdateE (xs : ByteArray) : UInt32 := Crc32.Native.updateBytes 0xFFFFFFFF xs
 wa_compile crcUpdateE
+
+/-- the histogram of the input bytes as code lengths, `maxBits = 15` (DEFLATE's literal/length and distance codes):
+16 counts, 8 bytes each -/
+def countLengthsE (xs : ByteArray) : Array Nat := Zip.Native.countLengthsFast xs.data 15
+wa_compile countLengthsE
+  invariant fun (lengths : Array UInt8) (maxBits i : Nat) (count : Array Nat) =>
+    i ≤ lengths.size ∧ lengths.size < 2 ^ 32 ∧ maxBits = 15 ∧ count.size = 16
+  measure fun (lengths : Array UInt8) (_maxBits i : Nat) (_count : Array Nat) => lengths.size - i
+
+/-- the same with `maxBits = 7` (code-length alphabet) -/
+def countLengths7E (xs : ByteArray) : Array Nat := Zip.Native.countLengthsFast xs.data 7
+wa_compile countLengths7E
+  invariant fun (lengths : Array UInt8) (maxBits i : Nat) (count : Array Nat) =>
+    i ≤ lengths.size ∧ lengths.size < 2 ^ 32 ∧ maxBits = 7 ∧ count.size = 8
+  measure fun (lengths : Array UInt8) (_maxBits i : Nat) (_count : Array Nat) => lengths.size - i
 
 end Proven.WA.LeanZip
