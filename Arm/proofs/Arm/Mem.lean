@@ -45,6 +45,14 @@ theorem writeBytes1 (s : St) (a : Nat) (v : BitVec (8 * 1)) :
   simp [PreSail.writeBytes, PreSail.writeByte, List.ofFn, List.forM, bind, pure, EStateM.bind, EStateM.pure, modify,
     modifyGet, MonadStateOf.modifyGet, EStateM.modifyGet, Fin.foldr, Fin.foldr.loop]
 
+theorem u_MemOp (s : St) : undefined_MemOp () s = .ok (uval (undefined_MemOp ())) s := rfl
+theorem sz1 : ((((Int.shiftl 8 0).toNat : Int)).ediv 8).toNat = 1 := rfl
+theorem sz8 : ((((Int.shiftl 8 3).toNat : Int)).ediv 8).toNat = 8 := rfl
+theorem w8 : (Int.shiftl 8 0).toNat = 8 := rfl
+theorem sz1' : (Int.ediv 8 8).toNat = 1 := rfl
+theorem sz8' : (Int.ediv 64 8).toNat = 8 := rfl
+theorem w64 : (Int.shiftl 8 3).toNat = 64 := rfl
+
 section
 variable {s : St} (hc : Pins s.regs)
 include hc
@@ -162,6 +170,33 @@ theorem memsetG1 (va : BitVec 64) (v : BitVec 8) (hva : va.toNat < 2 ^ 29) :
   have e8 : BitVec.extractLsb' 0 8 v = v := by apply BitVec.eq_of_toNat_eq; simp
   rw [e8] at hwb; simp only [choice_unit] at hwb
   simp only [ConcurrencyInterfaceV1.sail_mem_write, PreSail.sail_mem_write, write_request, CreatePhysMemRetStatus] at *
+  esimp
+
+
+theorem spe_ld (s' : St) (h : s'.regs.get? .SPESampleInFlight = some false) : True := trivial
+
+theorem ldrb_exec {t n : Nat} (ht : t < 31) (hn : n < 31) (imm : BitVec 12) {a : BitVec 64} (ha : xget s.regs n = some a)
+    {b : BitVec 8} (hlt : (a + imm.setWidth 64).toNat < 2 ^ 29) (hb : s.mem.get? (a + imm.setWidth 64).toNat = some b) :
+    decode_ldrb_imm_aarch64_instrs_memory_single_general_immediate_unsigned (BitVec.ofNat 5 t) (BitVec.ofNat 5 n) imm 1#2 0#2 s =
+      .ok () { s with regs := xset (s.regs.insert .InGuardedPage false) t (b.setWidth 64) } := by
+  idx t; idx n
+  have hg := gpr_ok hc .MemOp_LOAD (.inl rfl)
+  have hm := memreadG1 hc (a + imm.setWidth 64) b hlt hb
+  simp only [decode_ldrb_imm_aarch64_instrs_memory_single_general_immediate_unsigned,
+    execute_aarch64_instrs_memory_single_general_immediate_signed_post_idx]
+  have := u_MemOp; have := u_Constraint; have := read_gpr_ok ha
+  have hn31 : (n == 31) = false := by simp; omega
+  have hspe : (xset (s.regs.insert .InGuardedPage false) t (b.setWidth 64)).get? .SPESampleInFlight = some false := by
+    rw [xset_get_ne _ _ _ _ (xreg_ne' (by decide))]; simp [Std.ExtDHashMap.get?_insert]; exact hc.spe
+  pins
+  exec_simp
+  have hb31 : (n != 31) = true := by simp; omega
+  simp only [choice_unit] at hm
+  have hel0 : (3#2 != EL0) = true := by decide
+  have hpf : (MemOp.MemOp_LOAD != MemOp.MemOp_PREFETCH) = true := by decide
+  simp only [sz1, sz1', w8, hb31, hel0, hpf, Bool.and_true, BitVec.setWidth_eq]
+  esimp
+  simp only [sz1', hm, BitVec.setWidth_eq]
   esimp
 
 end
