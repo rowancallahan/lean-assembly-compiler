@@ -96,6 +96,9 @@ def tyRepName : Ty → String
   | .bv => "id" | .u8 => "Proven.Frontx.r8" | .u32 => "Proven.Frontx.r32" | .u64 => "Proven.Frontx.r64"
   | .nat => "Proven.Frontx.rN" | .bool => "Proven.Frontx.rB"
 
+/-- a closed statement, fully evaluated (so that well-formedness is checked on the literal program) -/
+def normS (e : Expr) : MetaM Expr := withTransparency .all (reduce e)
+
 syntax "frontx_rec " ident (" from " ident)? " measure " term : command
 elab_rules : command
   | `(frontx_rec $f:ident $[from $e?]? measure $μ:term) => liftTermElabM do
@@ -208,9 +211,12 @@ elab_rules : command
   let mstmt := Lean.mkConst ``Mach.BStmt
   addDef (R ++ `L) (Lean.mkConst ``Mach.RecLay) (mkAppN (Lean.mkConst ``Mach.RecLay.mk) #[toExpr p, toExpr m, toExpr N, toExpr S])
     (compile := true)
-  addDef (R ++ `GO) mstmt (← elabOf (stmtOf (Rn "go") copiesP) mstmt) (compile := true)
-  addDef (R ++ `COMB) mstmt (← elabOf (stmtOf (Rn "comb") (copiesP ++ copiesR)) mstmt) (compile := true)
-  let rows := (List.range m).map fun j => "[" ++ sep ((List.range p).map fun k => stmtOf (argN j k) copiesP) ", " ++ "]"
+  addDef (R ++ `GO) mstmt (← normS (← elabOf (stmtOf (Rn "go") copiesP) mstmt)) (compile := true)
+  addDef (R ++ `COMB) mstmt (← normS (← elabOf (stmtOf (Rn "comb") (copiesP ++ copiesR)) mstmt)) (compile := true)
+  for j in [0:m] do
+    for k in [0:p] do
+      addDef (R ++ Name.mkSimple s!"ARG{j}_{k}") mstmt (← normS (← elabOf (stmtOf (argN j k) copiesP) mstmt)) (compile := true)
+  let rows := (List.range m).map fun j => "[" ++ sep ((List.range p).map fun k => Rn s!"ARG{j}_{k}") ", " ++ "]"
   let argTy ← mkArrow (Lean.mkConst ``Nat) (← mkArrow (Lean.mkConst ``Nat) mstmt)
   addDef (R ++ `ARG) argTy (← elabOf s!"fun j k => List.getD (List.getD [{sep rows ", "}] j []) k (Proven.Mach.bskip {SL})" argTy) (compile := true)
   -- the specs: heap `H0 ++ X` (`H0 = [blk B]` or `[]`), word heap `[]`, globals `g`
@@ -359,7 +365,8 @@ elab_rules : command
     "Proven.Frontx.copies", "Proven.Frontx.initS", "Proven.Mach.Riscv.toMS", "Proven.Mach.Riscv.toMB",
     "Proven.Frontx.Lay.res", "Proven.Frontx.Lay.fl", "Proven.Frontx.Lay.tmp", "Proven.Frontx.Lay.cv",
     "Proven.Mach.Riscv.store8", "Proven.Mach.Riscv.glF"] ++
-    (pieces.toList.foldl (fun acc n => acc ++ [nm (n ++ `tree), nm (n ++ `lay)]) [])
+    (pieces.toList.foldl (fun acc n => acc ++ [nm (n ++ `tree), nm (n ++ `lay)]) []) ++
+    ((List.range m).foldl (fun acc j => acc ++ (List.range p).map fun kk => Rn s!"ARG{j}_{kk}") [])
   let wfT := s!"wf_calls [{", ".intercalate defs}]"
   thmS (gN ++ `wf) s!"Proven.Mach.Riscv.WfProg1 {PS} 4 1"
     s!"(

@@ -1,7 +1,7 @@
 /- How Lean scalars and byte arrays sit in `BitVec 64` variables and heap blocks, and the lemma set the
 generated per-function proofs rewrite with: every supported Lean operation, pushed through the
 representation function (`r8`, `r32`, `r64`, `rN`), becomes a `BitVec 64` term over representations. -/
-import Riscv.Frontx.Tree
+import Riscv.Frontx.Fast
 
 namespace Proven.Frontx
 open Proven
@@ -292,5 +292,23 @@ theorem opt_join {p : BStmt} {σ : BState} {H : Heap} {o : Option UInt8} {v : Na
   simp only [BEnv.set, BExp.denote, Op.eval, h4]
   rw [show σ'.env v = r8 (o.getD 0) from hv]
   rfl
+
+
+/-! ## round 6: `ofNat`, `UInt32 <<<`, `Nat >>>` -/
+theorem r32_ofNatU (n : Nat) : r32 (UInt32.ofNat n) = rN n &&& 0xffffffff#64 := r32_ofNat n
+theorem r8_ofNatU (n : Nat) : r8 (UInt8.ofNat n) = rN n &&& 0xff#64 := r8_ofNat n
+theorem r64_ofNatU (n : Nat) : r64 (UInt64.ofNat n) = rN n := r64_ofNat n
+theorem r32_shl (a b : UInt32) :
+    r32 (a <<< b) = (r32 a <<< ((r32 b &&& 31#64).toNat % 64)) &&& 0xffffffff#64 := by
+  apply BitVec.eq_of_toNat_eq
+  have h : (r32 b &&& 31#64).toNat = b.toNat % 2 ^ 5 := by
+    rw [BitVec.toNat_and, r32_nat]; exact Nat.and_two_pow_sub_one_eq_mod _ 5
+  rw [and_mask32, BitVec.toNat_shiftLeft, h, r32_nat, r32_nat, UInt32.toNat_shiftLeft]
+  have : b.toNat % 2 ^ 5 % 64 = b.toNat % 32 := by omega
+  rw [this, Nat.mod_mod_of_dvd _ (by decide)]
+theorem rN_shr {a : Nat} (h : a < 2 ^ 64) (b : Nat) : rN (a >>> b) = rN a >>> b := by
+  apply BitVec.eq_of_toNat_eq
+  simp only [rN, BitVec.toNat_ofNat, BitVec.toNat_ushiftRight, Nat.mod_eq_of_lt h]
+  exact Nat.mod_eq_of_lt (Nat.lt_of_le_of_lt (Nat.shiftRight_le a b) h)
 
 end Proven.Frontx

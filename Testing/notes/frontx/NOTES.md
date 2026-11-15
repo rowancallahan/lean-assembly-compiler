@@ -804,8 +804,8 @@ their bytes with the length in `a1`.
 | `double`, `Nat.double` (1) | yes, yes | `doubleE`, `natDoubleE` | 131, 90 | – |
 | `triple`, `quadruple`, `timesTwelve` (1) | yes | `tripleE`, `quadrupleE`, `timesTwelveE` | 92, 91, 97 | – |
 | `length`: `Explicit` (= `Ooops`/`Oooops` text), `BetterPlicity`, `AutoImpl`, `MatchDef` (1) | `MatchDef`: yes; others source level (same shape) | `bookLength` | 73 | – |
-| `NonTail.length`, `Tail.length` (9) | yes, yes | `nonTailLength`, `tailLength` | 73, 73 | `Tail`: invariant `soFar + (size - i) < 2^64` |
-| `NonTail.sum`, `Tail.sum` (9) | yes, yes | `nonTailSum`, `tailSum` | 78, 77 | `Tail`: invariant `soFar + 255 (size - i) < 2^64` |
+| `NonTail.length`, `Tail.length` (9) | yes, yes | `nonTailLength`, `tailLength` | 73, 73 | `Tail`: invariant `soFar + (size - i) < 2^64`; `NonTail` also with real calls (`nonTailLengthRec`, section 15) |
+| `NonTail.sum`, `Tail.sum` (9) | yes, yes | `nonTailSum`, `tailSum` | 78, 77 | `Tail`: invariant `soFar + 255 (size - i) < 2^64`; `NonTail` also with real calls (`nonTailSumRec`, section 15) |
 | `List.head?` (1) | yes | `headOf` | 57 | – |
 | `List.final?` (1, 3 patterns) | yes | `finalOf` | 77 | – |
 | `List.findFirst?` (1) | yes | `findFirstGt3` | 76 | specialised to `(· > 3)` (`frontx_spec`) |
@@ -832,3 +832,147 @@ Count (distinct B functions, variants merged): 26 of 32 compile with a machine t
 
 Reproduce: `lake build Riscv.Frontx.Machine`; `lake env lean --tstack=4000000 Testing/asm/emit_frontx.lean`
 (the interpreter needs the stack for the book's non-tail recursions); `bash Testing/scripts/frontx_tests.sh`.
+
+## 13. Speed (branch `frontx-speed`): fast loops, plain loads, sequential calls
+
+Measured: `Testing/notes/BENCH_FRONTX.md`, last section (find 27 → 6, drop 26 → 6, sum 12 → 4, map 16 → 7,
+filter 22 → 7.95, append 47 → 14 instructions per byte; gcc -O2 5, 5, 4, 6, 6.97, 7).
+
+Why it was slow: one tree step per iteration of `while fl { comp t }`, every conditional two at-most-once loops
+over 0/1 flags, call arguments through temporaries, the `at'` guard tested again in the loop, a byte mask before
+each store; the optimiser's strength reduction needs `while i <u n` with a trivial head and an increment `i := i + 1`,
+which none of these loops had.
+
+What changed (all once and for all; the generated per-function proofs are untouched apart from three tactics):
+- `Fast.lean` (new; `prog`, `prog_ok`, `prog_ok_ro`, `prog_okQ` moved here, statements unchanged): an iteration is
+  now `fast loops; if fl { comp t }`. One fast loop per path of `ite`s from the root (`peel`) to a subtree `S`:
+  * `S` all `call`s: `while Gv { S }`; pairs common to all leaves are assigned after the step (`common`,
+    `hoist_step`, so `filter`'s `i := i + 1` is one increment); constant pairs `v := c` are dropped when `Gi` checks
+    `v = c` (`kOf`, `strip_step`; drop's mode flag);
+  * `S = X; if c then A else B` with `X` loads/lets and one branch all `call`s: `k := 1; while Gv ∧ k { X; k := c';
+    if k { call branch } }; if Gv ∧ ¬c' { other branch }` (find, findFirst?);
+  * conditions whose variables the loop does not write, `fl` and the constant checks are tested once outside (`Gi`).
+  `FastOK` (the iteration invariant `Inv`: `m` more `call` steps to the result, or returned; steps never increase) for
+  both shapes (`fastLoop_ok`, `fastExit_ok`, `fastOf_ok`), `iter_ok`, `loop_ok` by strong induction on `m`.
+  An iteration whose old-compiler code would exceed `BStmt.wf`'s 1000 words keeps the plain step (CRC-32).
+- `Tree.lean`: `call` leaves assigned in order when no later expression reads an earlier target (`seqOK`, `seqA_ok`);
+  a stored value's `&&& 255` dropped (`unmask`, `and255`).
+- `Translate.lean`: a guarded read whose guard follows from the path conditions and the invariant is a plain `load`
+  (obligations proved like those of `load`, else the `cload` as before; `findByte`: `j < size` from `i < size`,
+  `j ≤ i`). Proofs of `Tree.ro`, `prog_ok_ro`/`prog_okQ`'s `ro` and the callee `vltF` by `decide +kernel` (the new
+  `prog` is too big for elaborator `rfl`/`decide`).
+- `Compiler/Opt/Flow.lean` (`OPT.md`, last section) turns the at-most-once loops into `when`s, fuses the tests, moves
+  the exit test of the search loop into the `loop2` head; then the existing strength reduction fires.
+
+Not done: loop fusion (`twice`), merging the two counters of `for … in [i:n]` with `j` (find: 6 vs 5), strength
+reduction of `loop2` loops and of loops with two indices, registers for `twice`'s reduced loops (see BENCH_FRONTX).
+Tested: `frontx_tests.sh` (37 entry points, QEMU + Sail against Lean) all ok.
+
+## 14. Round 6: tuples and structures, `%` / `/` by constants, `foldl` over bytes
+
+Files: `Riscv/Frontx/PairExamples.lean` (targets, entry points, machine theorems), `Bytes.lean` (results as bytes,
+once), additions in `For.lean`, `Rep.lean`, `Impl1.lean`, `Translate.lean`.
+
+**Compiled verbatim** (source text copied, provenance in the file; no API edits were needed for Lean 4.29):
+
+| function | source | machine theorem / entry | words | test (QEMU + Sail vs Lean) |
+|---|---|---|---|---|
+| `Adler32.Native.adler32` (+ `Spec.unpack`, `updateBytes`, `updateByte`, `pack`) | lean-zip @7e10583 `Zip/Native/Adler32.lean:17` | `adlerE xs = adler32 1 xs`, `Res UInt32` | 121 | 50 ok, and = `zlib.adler32` on all cases |
+| `Adler32.Native.updateBytes` (pair result) | `Zip/Native/Adler32.lean:13` | `adlerStateE xs = updateBytes (1, 0) xs`, 16 bytes | 150 | 50 ok |
+| `Spec.updateByte`, `pack`, `unpack` | `Zip/Spec/Adler32.lean:29,39,47` | source level (`exec`) | – | – |
+| `BetterPlicity.replaceX` (`{ point with x := newX }`, `PPoint Nat`) | fp-lean @0abeea5 `Intro.lean:1203` | `replaceXE`, 16 bytes | 155 | 45 ok |
+| `fromOption` (`Option` parameter, match) | `Intro.lean:1879` | `fromOptionE` | 139 | 50 ok |
+| `MythicalCreature.small` (structure parameter) | `FunctorApplicativeMonad.lean:238` | `smallE` | 49 | 50 ok |
+| `DataExamples` `swap`, `addPoints`, `zeroX`, and a nested `(UInt8 × UInt32) × Nat` | this repo | `swapE`, `addPointsE`, `zeroXE`, `nestE` | 132, 149, 119, 130 | 50 ok each |
+
+Human input for Adler: `requires` = lean-zip's own `Spec.Valid (Spec.unpack init)` written out (`init.toNat % 65536 <
+65521 ∧ init.toNat / 65536 < 65521`), `with a < 65521 ∧ b < 65521` (`Spec.Valid` of the state). Entry glue (the `…At`
+functions reading bytes of the input) is not book code.
+
+What was added:
+- **`Array.foldl` over the bytes**: `foldFor?` finds `B.data.foldl g s` in the body (unfolding the user helpers that
+  contain it, e.g. `updateBytes` inside `adler32`); `bfoldl_forIn` (`For.lean`, once) makes it the `for` loop over
+  `[0:B.size]` with `g` inlined per byte; the code around it is the loop's post code (`pack`), its initial state is
+  translated before the loop (`unpack init`). `ByteArray.foldl` (no library lemma relating it to `Array.foldl`) is not done.
+- **Tuple loop state**: `flattenS`/`stateComps`/`mkState` flatten `Prod` (nested); `yield (g s b)` with a helper `g`
+  returning the tuple is unfolded and its `let`s become temporaries.
+- **Loops with several result components**: `cvtM`, `for_runsM`, `for_execM` (`For.lean`, once): the exit leaf sets the
+  extra result variables (`retm`); `break`/`return` in such loops is rejected.
+- **Structure / tuple parameters of loops and entries** (one variable per component, `resultComps`, now also with a tuple
+  as first component); the first `ByteArray` parameter is block 0 wherever it stands (`adler32 (init) (data)`).
+- **Results as bytes** (`Bytes.lean`): `storeC` writes the components after the program, `k` little-endian bytes each
+  (`UInt8`/`Bool` 1, `UInt32` 4, `UInt64`/`Nat` 8), one after another (the field order of `Bytes (α × β)` in
+  `Spec/Encode.lean`; `Nat` fixed 8 bytes mod `2^64`, not `encNat`); `storeC_exec`, `entry_bytes`. `frontx_entry g`
+  adds `g.comps`, `g.enc`; `frontx_implements_bytes g` gives
+  `Implements1With (fun xs => xs.data.toList) g.enc g.code g space` through `implements1_bytes` (`Impl1.lean`).
+- **`%`, `/` by a literal or a named constant** (`MOD_ADLER` is unfolded): `2^k` → mask / shift (lemmas on `rN`,
+  generated per constant); otherwise one conditional subtraction (`x < c ? x : x - c`, `x / c` as `x < c ? 0 : 1`), which
+  needs `x < 2 c`: checked at translation time by `omega`, else a loud error naming the missing bound. No division
+  routine for unbounded arguments.
+- `UInt8/32/64.ofNat`, `UInt32 <<<` (`r32_shl`, the G1 gap of the lean-zip survey), `Nat >>>` (`rN_shr`); projections of
+  constructor terms (`{ large := b }.1`); `match` on a constructor (an inlined helper applied to `none`) is reduced;
+  `frontx_u8_facts` also gives `UInt16/32/64.toNat` bounds.
+- `oblig` tries `with_reducible rfl` first and the full `rfl` last: a failing `rfl` on `UInt32` terms took 6 s (`pack`).
+
+Not done / why: lean-zip-common `BitReader` (`readBit`, `readBits`, `alignToByte`, `readUInt16LE`): the structure has a
+`ByteArray` field (a block inside a structure parameter, and a structure result containing the array) and the results are
+`Except String (UInt32 × BitReader)` (a `String` error payload); `alignToByte` alone needs the `ByteArray`-field
+structure. `Crc32.Native` needs a constant table. Book: `Prod.switch` has no body in the book (an exercise), `unzip`/`zip`
+are lists of pairs (needs output of several lists), the `Point` examples are `Float`. `addPoints` on `u16` inputs needs 17
+slots (> 16 of `compBFO`): the entry reads bytes instead.
+
+## 15. Non-tail recursion with real calls (`frontx_rec`, branch `calls-impl1`)
+
+Route: the PLAIN `MachineC` path (`Compiler/CStmt.lean` `compC`, `compP`), not the optimised `compBFO`: the
+optimiser's register allocation has no notion of calls, so extending it is far more work; on the plain path the
+call proof (`execC_ok`, `compP_ok`) already existed and only the `Implements1` bridge was missing.
+
+| what | where | axioms |
+|---|---|---|
+| `implements1_of_cexec`: `CExec P need (res := main())` writing the result bytes ⇒ `Implements1With` of `callsCode1 P` (blocks `a0` input, `a3` output, stack = work block below `sp`), `space n = need n + 24` | `Riscv/Back/CallsImpl1.lean` | the standard 77 |
+| `rec_ok`: the schema `f a = if go a then comb a (f c₀ a) … (f c_{m-1} a) else comb a 0 … 0` as a `CStmt` function `recFn` (pieces `GO`, `ARG j k`, `COMB`; locals: parameters, call results, argument staging); by strong induction on `μ`, a call runs in `frame · (μ a + 1)` bytes of stack | `Compiler/Rec.lean` | 3 |
+| `piece_lift`, `implements1_rec` (entry `main := v4 := f(args); store bytes`, `space n = need n + 32`) | `Riscv/Frontx/Rec.lean` | 77 |
+| `frontx_rec f [from eq] measure μ`, `frontx_rec_entry g [from eq]` | `Riscv/Frontx/RecCmd.lean` | – |
+| `nonTailSumRec`, `nonTailLengthRec`, `fibLen` `.implements1` | `Riscv/Frontx/RecExamples.lean` | 77 |
+
+`frontx_rec`: the equation must be an `if`/`dite` tree; each leaf has no recursive call or all of them (`f cⱼ`,
+arguments closed over the parameters, a byte array passed unchanged). Generated: the pieces `f.rec.go` (Bool: the
+leaf calls), `f.rec.a{j}_{k}` (argument components) and `f.rec.comb` (calls replaced by `r`s), each compiled by
+the existing translator with its variables from `S = 8 + 2p + m` on (new optional `start`/`noBound` arguments of
+`compileCmd`; the `r`s of `comb` carry no `< 2^64` bound, results are mod `2^64`), `f.rec.combEq` (`split <;>
+simp_all`), and the four hypotheses of `rec_ok` (copies into the piece's parameters, `piece_lift`, the pieces'
+`exec`). Tail calls are not touched: functions without non-tail calls keep the loop route. The stack bound comes
+from the measure: `frame · (μ(entry args) + 1)`; the entry checks `μ(entry args) ≤ |xs|` (`omega`), so
+`space n = 8 (N + 1) (n + 1) + 32` (N locals ≤ 16). Well-formedness (`g.wf`) is `wf_calls` (simp evaluation).
+
+Results (book text verbatim, through `frontx_view`; no accumulator; tests `frontx_test.py check 50` on QEMU + Sail
+against executed Lean, work block exactly `space n`, every Sail write in the result bytes or the work block):
+
+| entry point | function | words | locals / frame | space | test |
+|---|---|---|---|---|---|
+| `nonTailSumRec` | `NonTail.sum` (9) | 333 | 10 / 88 B | `88 (n+1) + 32` | 50 cases, lengths ≤ 2769 |
+| `nonTailLengthRec` | `NonTail.length` (9) | 326 | 9 / 80 B | `80 (n+1) + 32` | 50 cases, lengths ≤ 2769 |
+| `fibLen` | `fib n = if n < 2 then n else fib (n-1) + fib (n-2)` (not in the book; two calls) of the input length | 411 | 11 / 96 B | `96 (n+1) + 32` | 50 cases, n ≤ 16 |
+
+Speed (RV64, `minstret` under `qemu -icount`, one call; C = `riscv64-linux-gnu-gcc -march=rv64i -O2`):
+`NonTail.sum` n = 1000: 140 271 instructions (140 per element) vs 4 008 (gcc turns the recursion into a loop:
+35x); `fib 20`: 3 371 341 vs 225 885 (15x; ~154 instructions per call). Code: 333 / 411 words vs 11 / ~290
+(gcc unrolls `fib`). The cost is the plain back end (every variable in a stack slot) plus four whole frontx
+programs per activation (each with its own `fl` loop).
+
+Not done:
+- `times` without `plus_eq`: `times n (k+1) = plus n (times n k)` passes the recursive result as `plus`'s matched
+  argument, which must be exact (`< 2^64`); that is a fact about `times` (e.g. `times n k = n * k`), which nothing
+  generated provides (the call itself is not the obstacle). Also its `match k with | k'+1` binds the call argument
+  to a pattern variable (`frontx_rec` needs arguments in the parameters, e.g. via a `from` equation).
+- `NonTail.reverse` (`reverse xs ++ [x]`): needs list results in the schema (the call writes into the output block
+  and returns its end index; `rec_ok` keeps the heap fixed, the heap would have to be threaded through the calls
+  and `comb`, plus `wrO` composition and capacity obligations). Not built.
+- Match patterns with pattern variables in call arguments (`| n+2 => fib n + fib (n+1)`), leaves with a subset of
+  the calls, `Bool` results (`0` as the "no call" value), list/byte-array arguments other than the view's block.
+
+Speed numbers: `python3 Testing/asm/rec-bench/bench.py 1000 20`.
+
+Reproduce: `lake build Riscv.Frontx.RecExamples`; `lake env lean --tstack=4000000 Testing/asm/emit_frontx.lean`;
+`python3 Testing/asm/frontx_test.py check 50 nontailsumrec` (also `nontaillengthrec`, `fiblen`; note the Sail
+memory trace is ~150–320 MB per run).

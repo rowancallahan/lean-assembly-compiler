@@ -168,6 +168,43 @@ theorem implements1_list (f : ByteArray → List UInt8) (N : Nat) (hN : N ≤ 16
   simp only [Mach.BEnv.set, Mach.BExp.denote]
   rw [h4]; rfl
 
+/-! ## Results of several components (tuples, structures): the bytes `encB` written to the output block -/
+
+/-- **Generated program with a result written as bytes ⇒ `Implements1`** (no length in `a1`) -/
+theorem implements1_bytes {β : Type} (f : ByteArray → β) (encB : β → List UInt8) (N : Nat) (hN : N ≤ 16)
+    (p : Proven.BStmt) (hwf : p.wf N [0, 3]) (hnw : ∀ v ∈ avars p, v ∉ [2])
+    (hex : ∀ (xs : ByteArray) (out : List (BitVec 8)) (env : BEnv), env 1 = rN xs.size → xs.size < 2 ^ 32 →
+      (∀ j, 8 ≤ j → env j = 0) → (encB (f xs)).length ≤ out.length → out.length < 2 ^ 32 →
+      ∃ σ', Proven.BExec p ⟨env, [blk xs, out]⟩ σ' ∧ σ'.heap = [blk xs, wrO out 0 (encB (f xs))]) :
+    Implements1With (fun xs : ByteArray => xs.data.toList) encB (compBFO N [0, 3] [2] (toMS p)) f
+      (fun _ => 8 * (N + 1) + 7) := by
+  refine implements1_of_execO _ encB f N hN (toMS p) (wfB_up N _ _ p hwf hnw) (fun _ => 0) _
+    (fun n => by dsimp only; omega) _ false ?_
+  intro a out tbl env h1 h8 hmax hlt hout hol htl
+  have hsz : a.data.toList.length = a.size := Array.length_toList
+  obtain ⟨σ', hx, hh⟩ := hex a out env (by rw [h1, hsz]; rfl) (by rw [← hsz]; exact hlt) h8 hout hol
+  have hx' := exec_up hx [] [tbl]
+  rw [hh] at hx'
+  simp only [List.append_nil] at hx'
+  exact ⟨_, wrO out 0 (encB (f a)), hx', rfl, wrO_take _ _ hout, wrO_drop _ _, fun h => nomatch h⟩
+
+/-- the code of an entry point with a result written as bytes -/
+def bytesCodeOf {β : Type} (_f : ByteArray → β) (N : Nat) (p : Proven.BStmt) : List (BitVec 32) :=
+  compBFO N [0, 3] [2] (toMS p)
+
+/-- `frontx_implements_bytes g` (after `frontx_entry g` for a tuple / structure result): `g.code` and
+`g.implements1` with the encoding `g.enc` (the components' little-endian bytes, one after another) -/
+macro "frontx_implements_bytes " g:ident : command => do
+  let n := g.getId
+  let prog := Lean.mkIdent (n ++ `prog); let slots := Lean.mkIdent (n ++ `slots)
+  let exec := Lean.mkIdent (n ++ `exec); let code := Lean.mkIdent (n ++ `code)
+  let enc := Lean.mkIdent (n ++ `enc)
+  let thm := Lean.mkIdent (n ++ `implements1)
+  `(def $code : List (BitVec 32) := bytesCodeOf $g $slots $prog
+    theorem $thm : Implements1With (fun xs : ByteArray => xs.data.toList) $enc $code $g
+        (fun _ => 8 * ($slots + 1) + 7) :=
+      implements1_bytes $g $enc $slots (by decide) $prog (by decide +kernel) (by decide +kernel) $exec)
+
 /-! ## Result encodings -/
 
 /-- `k` little-endian bytes of a number -/

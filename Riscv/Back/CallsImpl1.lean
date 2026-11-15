@@ -77,7 +77,7 @@ theorem implements1_of_cexec {α β : Type} (encA : α → List UInt8) (encB : �
         and_true, false_implies, implies_true]
       unfold Mach.disjoint; dsimp only; omega
     · show 0x80000000 ≤ _ ∧ _ ≤ 0x100000000; omega
-    · simp only [R, List.append_nil, List.cons_append, List.nil_append, List.mem_cons, List.not_mem_nil, or_false] at hr
+    · simp only [R, List.append_nil, List.mem_cons, List.not_mem_nil, or_false] at hr
       rcases hr with rfl | rfl <;> (unfold Mach.disjoint; dsimp only; omega)
     · simp only [R, List.append_nil, List.cons_append, List.nil_append, List.mem_cons, List.not_mem_nil, or_false] at hr
       rcases hr with rfl | rfl | rfl <;> (unfold Mach.disjoint; dsimp only; omega)

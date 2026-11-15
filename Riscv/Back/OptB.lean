@@ -96,18 +96,18 @@ theorem firstB_ok {α : Type} {f : α → Option (List (BitVec 32))} {ws : List 
 def colsB : List Reg := ((List.range 8).map (7 + ·) ++ List.range 6).map rk
 
 /-- a colouring of the body `optB` builds, the locals `spl` in slots -/
-def colorB (N : Nat) (bv wv : List Nat) (p : Mach.BStmt) (spl : List Nat) (useSR : Bool := false) : Option (Nat → Reg) :=
+def colorB (N : Nat) (bv wv : List Nat) (p : Mach.BStmt) (spl : List Nat) (mode : Nat := 2) : Option (Nat → Reg) :=
   let sp := fun j => spl.contains j
   let c := IR.Code.seq (initL sp (List.range N)) (irB sp bv wv p)
-  IR.color (if useSR then IR.SR.sr [0, 1, 2, 3, 4, 5, 6, 7] c else c) [0, 1, 2, 3, 4, 5, 6, 7]
+  IR.color ((IR.cands [0, 1, 2, 3, 4, 5, 6, 7] c).getD mode c) [0, 1, 2, 3, 4, 5, 6, 7]
     (fun x => if h : x < 8 then some (avar ⟨x, h⟩) else none) colsB (fun _ => 0)
 
 /-- a colouring of the strength-reduced body first (`WideF.optB` tries that body first), then of the plain one -/
 def tryL (N : Nat) (bv : List Nat) (p : Mach.BStmt) (spl : List Nat) (wv : List Nat := []) :
     Option (List (BitVec 32)) :=
-  firstB (fun useSR => match colorB N bv wv p spl useSR with
+  firstB (fun mode => match colorB N bv wv p spl mode with
     | some g => rvwF.optB scB g (fun j => spl.contains j) N bv wv p
-    | none => none) [true, false]
+    | none => none) [0, 1, 2]
 
 /-- spill sets to try: none, then one local, then two (cheapest by `score` first) -/
 def spillSets (p : Mach.BStmt) (N : Nat) : List (List Nat) :=
