@@ -33,6 +33,9 @@ built nor used.
 | `Apc/Flags.lean`, `Apc/Agree.lean`, `Apc/AgreeAll.lean` | `agree_emitted`: on each of the 216 words of `emitted`, their `evalInst` = our small machine `armStep` (x0..x30, NZCV), PC + 4, mem/sp/status unchanged. NZCV identities by hand (no `bv_decide`) |
 | `Apc/Small.lean` | verbatim copy of `AState`/`armStep`/`emitted` (`Arm/proofs/Arm/Small.lean`, `Words.lean`) so the lake package needs no Sail model; the bridge does NOT use it |
 | `Bridge.lean` | `ArmProof.apc_eq_sail` (below); checked by `check.sh` in one environment with the Sail model |
+| `BridgeBr.lean` | `Rel`/`WordAt`/`Bridged`; bridge lemmas `br_b`, `br_bl`, `br_cbz`, `br_bc`, `br_ret`, `br_movz`, `br_movk`, `br_addi`, `br_subi`, `br_mov`, `br_emitted`; `brW` (the bridged words, decidable), `bridge_step`; `step_det`, `CodeOK`, **`sim`** (runs) |
+| `BridgeRun.lean` | `codeOK_of`, **`gcd_sail`**: `gcd_apc` on Sail, end to end |
+| `BridgeMem.lean` | `MemRel` (memory relation), `br_ldrb`, `br_strb`, `brM`, `bridgeM_step`, **`simM`** (runs with memory), **`sort_sail`**: `sort_apc` on Sail, end to end |
 | `stage.sh` | stages model-free source facts from `Riscv/` into `Apc/Src/` (not committed): gcd/sort `Exec` lemmas, `BStmt` + both merge sorts, `toMS`, `Computes` + call examples, `Implements1Ex`/`Crc` heads, the OptB search (over `apcwF L0`); one-line `simp`/`show` edits for 4.34 (listed in the script) |
 | `Apc/Emit.lean`, `test/{loop,sort}_test.py` | emitted words and the QEMU / Sail-runner tests of branch `apc` (not re-run here) |
 | `Apc/Emit2.lean`, `test/words2.txt`, `test/ext_test.py` | words of the new examples (`lake env lean Apc/Emit2.lean > test/words2.txt`) and their QEMU test |
@@ -49,6 +52,8 @@ Arr,BLang,CLang,Frame,BExp,BStmt,Call,CStmt,CProg,Wide}.lean`, `Compiler/Opt/*` 
 | `Proven.Apc.compile_apc`, `gcd_apc`, `sort_apc` | DeepMind `Arm64.Steps` | same three |
 | `Proven.Apc.agree_emitted` | DeepMind `evalInst` vs our `armStep` (in the bridge: `armStep`/`emitted` of `Arm/proofs`) | same three |
 | `ArmProof.apc_eq_sail` | DeepMind `Arm64.Step` and Sail ARMv9 `stepModel` (`/home/user/armv9-lean`, `Reduce__1` partial) | same three |
+| `ArmProof.bridge_step`, `br_*`, `sim`, `simM` | both (one step / runs) | same three |
+| `ArmProof.gcd_sail`, `sort_sail` | Sail ARMv9 `stepModel` runs (from the DeepMind proofs) | same three |
 
 `apc_eq_sail`: for each `w ∈ emitted`, from a Sail state `s` with `ArmFull s` and a DeepMind state `t` agreeing on
 x0..x30, NZCV and PC (PC 4-aligned, `< 2^29`), both holding `w` at the PC (`MemWord`; `canExec` + `read32`), `t`
@@ -56,15 +61,37 @@ Running: one full Sail step and one DeepMind step succeed and end in states that
 `ArmFull` holds again, and both memories are unchanged. Composition of `full_word` (`Arm/proofs/Arm/Full.lean`) and
 `agree_emitted`.
 
-**Scope of the bridge: the 216 expression words only** (`emitted`: add/sub/and/orr/eor/lsl/lsr/asr, cmp + cset,
-cmp + csel, movz, add-imm, mov, for the register patterns the `Exp` compiler emits). Not in it: `ret`, branches
-(`cbz`, `b`), loads/stores (`ldrb`/`strb`), `movk`; no relation between the two memories beyond the instruction word.
-So `compile_apc`/`gcd_apc`/`sort_apc` are results on DeepMind's semantics (a hand-written user-mode model, tested
-by them against Unicorn and Sail, not proved); only the expression words are tied to Sail by proof.
+**Scope of the bridge (2026-11-15, branch `br`).** One Sail full step (`stepModel` under `ArmFull`) and one DeepMind
+`Arm64.Step` from related states (`Rel`: x0..x30, NZCV, PC, `ArmFull`, DeepMind `Running`; `WordAt`: the word at the
+4-aligned PC below `2^29` on both sides) end in related states. Fields are symbolic (Sail decode from the opcode
+bits alone: `Arm/proofs/Arm/SymDec.lean`; DeepMind decode: `Apc/Sym.lean` method).
 
-Since 2026-11-15 `li` is `movz` (+ 3 `movk`), not the doubling chain of `Arm/CompilerArm.lean` that `emitted` holds:
-the `li` words of `compile_apc` / `gcd_apc` / `sort_apc` are no longer among the 216 bridged words (all other
-words are).
+| words | Sail full step (`Arm/proofs`) | bridged (`Arm/apc`) | memories |
+|---|---|---|---|
+| the 216 expression words (`emitted`) | `full_word` | `apc_eq_sail`, `br_emitted` | unchanged |
+| `ret` | `full_ret` | `br_ret` | unchanged |
+| `b`, `bl` (any 26-bit offset; `bl` sets x30) | `full_b`, `full_bl` | `br_b`, `br_bl` | unchanged |
+| `cbz xt` / `cbnz xt` (any 19-bit offset, `t < 31`) | `full_cbz`, `full_cbnz` | `br_cbz` (DeepMind emits no `cbnz`) | unchanged |
+| `b.cond` (any cond on Sail; EQ/NE/CS/CC/GE/LT bridged), taken / not taken | `full_bc` | `br_bc` (`cond_agree`: Sail `ConditionHolds` = theirs, all 16 codes) | unchanged |
+| `movz`/`movk xd, #imm16, lsl 16hw` | `full_movz`, `full_movk` | `br_movz`, `br_movk` | unchanged |
+| `add`/`sub xd, xn, #imm12` (`d n < 31`) | `full_addi`, `full_subi` | `br_addi`, `br_subi` | unchanged |
+| `mov xd, xm` (`orr xd, xzr, xm`) | `full_mov` | `br_mov` | unchanged |
+| `ldrb`/`strb wt, [xn, #imm12]` (`t n < 31`) | `full_ldrb`, `full_strb` (`Arm/Mem.lean`) | `br_ldrb`, `br_strb` | `MemRel` kept |
+| `ldr`/`str xt, [xn, #8·imm12]` (8-aligned), `stur xt, [xn, #simm9]` (8-aligned) | `full_ldr`, `full_str`, `full_stur` | **not bridged** | — |
+
+`MemRel s t`: every DeepMind byte that is readable or writable lies below `2^29` and the Sail memory holds the same byte
+at the same address. Sail data accesses go through the MMU-off EL3 path (`Mem_read`/`Mem_set`, translation, debug
+check, `PhysMemRead/Write`): `memreadG1/8`, `memsetG1/8` (8-byte accesses need 8-alignment: the Sail model faults on
+unaligned accesses with the MMU off; byte accesses need none).
+
+**Runs.** `sim` (no stores) and `simM` (with `ldrb`/`strb`): a DeepMind run `Arm64.Steps Pg t t'` ending `Running`,
+from `Rel s t` (and `MemRel s t`) with `CodeOK`/`CodeOKP brM` (every executable aligned DeepMind word is mirrored in Sail
+memory below `2^29` and is bridged), gives `ArmSteps n s s'` with `Rel s' t'` (and `MemRel s' t'`). A DeepMind step that
+faults (permission) cannot be followed by a `Running` end state, so faulting steps need no Sail counterpart.
+Instances: **`gcd_sail`** (33 words) and **`sort_sail`** (92 words, `ldrb`/`strb`): under the hypotheses of `gcd_apc` /
+`sort_apc`, with the code also in Sail memory and no other executable DeepMind memory, full Sail steps reach
+`PC = x30` with `x0 = gcdSub x0 x1` / the sorted bytes in the Sail memory at `outb`. Not instantiated: `msort*`,
+`crc*`, calls (they need `ldr`/`str`/`stur` and `sub x9, sp, #k`/`str xzr` in the bridge).
 
 ## Frames, calls, the optimising back end (2026-11-15)
 
@@ -115,8 +142,7 @@ skip with `SKIP_ARM=1` when `Arm/proofs/build` is current).
 
 - Symbolic decoding of the register fields (the `Apc/Sym.lean` method applies; would remove the 5-minute
   enumeration), immediate forms for `bini`, nonzero load/store offsets.
-- Bridge beyond expressions: Sail full-step lemmas for `cbz`, `b`, `bl`, `b.cond`, `ret` (`full_ret` exists),
-  `ldrb`/`strb`, `ldr`/`str`/`stur`, `movz`/`movk`, and a stated relation between the Sail memory and DeepMind's
-  `Memory` + permissions (byte or aligned accesses only: the Sail model faults on unaligned 8-byte accesses with the
-  MMU off).
+- Bridge for `ldr`/`str`/`stur` (Sail full steps exist, 8-aligned): DeepMind `read64`/`write64` against `MemRel`
+  (8 bytes), alignment as a hypothesis of the run (DeepMind does not need it); `str xzr` (t = 31) and the SP forms
+  (`sub x9, sp, #k`: Sail `SP_EL3` vs DeepMind `sp`) of the frame code; then `msort`/`crc`/call examples on Sail.
 - `ImplementsMapped` / `Implements1` statement forms on this model.

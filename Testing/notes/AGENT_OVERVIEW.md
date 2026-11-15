@@ -30,7 +30,7 @@ Read this first. The top-level `README.md` is for people; this file is for agent
 - Strength reduction of byte-loop indices (`Compiler/Opt/SR.lean`, `sr_ok`; with copy propagation and DCE), tried
   first by `optA`/`optB` (`fnSR`/`bodySR`, plain code as fallback): sum/take/map 4/5/6 per byte = gcc -O2 (`OPT.md`, last section).
 - Calls (`CALLS.md`): `Spec/Tree.lean`, `treeEval_implements` (`Riscv/Examples/TreeEval.lean`), `calls_test.py`.
-- ARM on DeepMind's AArch64 semantics (`Arm/apc/README.md`, `Arm/apc/check.sh`): `apc : Machine` (9 laws), `compile_apc`/`gcd_apc`/`sort_apc`, bridge `apc_eq_sail` to Sail for the 216 expression words.
+- ARM on DeepMind's AArch64 semantics (`Arm/apc/README.md`, `Arm/apc/check.sh`): `apc : Machine` (9 laws), `compile_apc`/`gcd_apc`/`sort_apc`, bridge to Sail (`apc_eq_sail`, `Arm/apc/Bridge{Br,Run,Mem}.lean`) for the 216 expression words, `ret`, `b`/`bl`/`cbz`/`b.cond`, `movz`/`movk`, `add`/`sub` imm, `mov`, `ldrb`/`strb` (memory relation `MemRel`); run-level `sim`/`simM`; `gcd_sail`, `sort_sail` = `gcd_apc`/`sort_apc` on Sail end to end. Sail full steps also for 8-aligned `ldr`/`str`/`stur` (not bridged yet).
   Since 2026-11-15 also `apcF : MachineF` (`msort_apc`), `apcC : MachineC` (`callsCode_implements_apc`, sumTo/fib/
   isEven/treeEval), `apcw`/`apcwF : Wide`/`WideF` (`compBFOA_ok`, `msortO_apc`, CRC-32 `crc_apc`/`crcO_apc`), `li` =
   movz/movk, branch ranges ±2^18/2^25 (symbolic decoding, `Arm/apc/Apc/Sym.lean`); every 8-byte store law of
