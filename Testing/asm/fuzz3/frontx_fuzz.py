@@ -43,7 +43,12 @@ REFS = {"take5": lambda x: bytes(x[:5]), "drop5": lambda x: bytes(x[5:]), "match
 LISTS = {"take5", "drop5", "matchdrop3", "filterall", "inceach", "twice"}
 FN = sys.argv[3] if len(sys.argv) > 3 else "crcraw"
 unhex = lambda h: [] if h == "-" else list(bytes.fromhex(h))
-CASES = [tuple(map(unhex, l.split())) for l in open(os.path.join(os.environ.get("CASESDIR", os.path.join(D, "frontx-words")), FN + ".cases")) if l.strip()]
+CASES = [tuple(map(unhex, l.split())) for l in open(os.path.join(os.environ.get("CASESDIR", os.path.join(D, "..", "frontx-words")), FN + ".cases")) if l.strip()]
+if os.environ.get("HUGE"):  # inputs up to maxLen = 2^20, expected results from the Python references only
+    rr = random.Random(7)
+    for xs in ([0] * 2 ** 20, [255] * 2 ** 20, [rr.randrange(8) for _ in range(2 ** 20)], [rr.randrange(256) for _ in range(65537)]):
+        ref = REFS[FN](xs) if FN in REFS else FUNCS[FN][1](xs).to_bytes(FUNCS[FN][0], "little")
+        CASES.append((xs, list(ref)))
 lines = [l for l in open(os.path.join(D, "frontx-words", FN + ".words")) if l.strip()]
 words = [int(l, 16) for l in lines[1:]]
 G, WK, E = 16, 8 * (int(lines[0]) + 1) + 7, 72
@@ -159,7 +164,7 @@ def check(N):
             gp, spo, a1 = (int.from_bytes(mem[e + o:e + o + 8], "little") for o in (48, 56, 64))
             assert gp == MAGIC and spo == base + w0 + WK, (nm, "gp/sp", hex(gp), spo)
             if FN in LISTS: assert a1 == R, (nm, "a1 (length)", a1, R)
-    print(f"{FN}: {len(cases)} cases ok (QEMU == Sail == Lean; input lengths up to {max(len(x) for x, _ in cases)}; "
+    print(f"{FN}: {len(cases)} cases ok (QEMU{"" if os.environ.get("NOSAIL") else " == Sail"} == Lean; input lengths up to {max(len(x) for x, _ in cases)}; "
           f"{len(words)} words, work {WK} bytes)")
 
 if sys.argv[1] == "check": check(int(sys.argv[2]))

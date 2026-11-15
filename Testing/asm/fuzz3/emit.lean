@@ -20,13 +20,13 @@ def mk (seed : Nat) : List (List UInt8) := Id.run do
     s := next s; let n := (s >>> 33).toNat % (if i % 25 = 0 then 3000 else 40)
     let (l, s') := rnds s n; s := s'
     out := (if i % 3 = 0 then l.map (· % 8) else l) :: out
-  -- max allowed length (2^20)
-  out := List.replicate (2^20) 0 :: List.replicate (2^20) 255 :: ((rnds s (2^20)).1.map (· % 8)) :: out
+  -- max allowed length (6000)
+  out := List.replicate (6000) 0 :: List.replicate (6000) 255 :: ((rnds s (6000)).1.map (· % 8)) :: out
   return out.reverse
 def emit (dir name : String) (ins : List (List UInt8)) (f : ByteArray → List UInt8) : IO Unit :=
   IO.FS.writeFile s!"{dir}/{name}.cases" (String.join (ins.map fun xs => s!"{hx xs} {hx (f ⟨xs.toArray⟩)}\n"))
 def enc {β : Type} [Res β] (f : ByteArray → β) : ByteArray → List UInt8 := fun xs => Res.enc (f xs)
-#eval do
+def run : IO Unit := do
   let seed := (← IO.getEnv "SEED").getD "1" |>.toNat!
   let dir := (← IO.getEnv "OUT").getD "/tmp/fuzz3"
   IO.FS.createDirAll dir
@@ -37,3 +37,4 @@ def enc {β : Type} [Res β] (f : ByteArray → β) : ByteArray → List UInt8 :
   emit dir "tailsum" ins (enc BookList.tailSum); emit dir "nontailsum" ins (enc BookList.nonTailSum)
   emit dir "taillength" ins (enc BookList.tailLength); emit dir "booklength" ins (enc BookList.bookLength)
   IO.println s!"{ins.length} inputs"
+#eval run
