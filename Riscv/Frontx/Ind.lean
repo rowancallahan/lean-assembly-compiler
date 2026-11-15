@@ -4,7 +4,7 @@ the command `frontx_ind` that compiles a structural recursive Lean function over
 `implements1_ind` (once): `indProg` + `ind_ok` (source level) + `implements1_of_cexecW` (word block at the bottom of
 the work block, stack above) give `Implements1With encA encB (callsCode1W …) f space` for any `f` whose meaning is
 the program's (`hout`), with `space n = 8 wn n + need n + 24`, `wn n = 8 + 4 (M + 1) n` words of cells. -/
-import Compiler.IndMain
+import Compiler.IndSup
 import Riscv.Back.CallsImpl1W
 
 set_option linter.unusedVariables false
@@ -18,12 +18,51 @@ def wn (M n : Nat) : Nat := 8 + 4 * (M + 1) * n
 /-- the work space: cells, then the stack -/
 def space (M n : Nat) : Nat := 8 * wn M n + (56 + 136 * (1 + n + wn M n)) + 24
 
+/-- words of the word block for `n` input bytes when the program allocates at most `A n` cells -/
+def wnA (A : Nat → Nat) (n : Nat) : Nat := 8 + 4 * n + 4 * A n
+
+/-- the work space of a program of `m` functions with `nl` locals each, allocating at most `A n` cells for `n`
+input bytes: the word block, then the stack (`8 (nl + 1)` bytes per activation, at most `n + m (1 + words)` deep) -/
+def spaceA (m nl : Nat) (A : Nat → Nat) (n : Nat) : Nat :=
+  8 * wnA A n + (56 + 8 * (nl + 1) * (n + m * (1 + wnA A n))) + 24
+
 theorem wr_take (O : List (BitVec 8)) (L : List UInt8) (h : L.length ≤ O.length) :
     (wr O 0 L).take L.length = L.map (·.toBitVec) := by simp [wr]
 theorem wr_drop (O : List (BitVec 8)) (L : List UInt8) (h : L.length ≤ O.length) :
     (wr O 0 L).drop L.length = O.drop L.length := by simp [wr]
 
-/-- **User inductives ⇒ `Implements1`.** -/
+/-- **User inductives, several functions ⇒ `Implements1`**, for any bound `A` on the cells allocated -/
+theorem implements1_indM {rk : Kd} {γ β : Type} (sh shO : Shape) (pg : Pg rk) (hs : List (Σ k : Kd, Pg k))
+    (bi : BIn) (ain : Bool) (a0 : BitVec 64) (nb nl : Nat)
+    (encA : γ → List UInt8) (encB : β → List UInt8) (f : γ → β) (v₁ v₂ : γ → C) (av : γ → BitVec 64) (A : Nat → Nat)
+    (henc : ∀ g, encA g = inBytesA sh bi ain (v₁ g) (v₂ g) (av g)) (hw1 : ∀ g, (v₁ g).wf sh)
+    (hw2 : bi = .inp → ∀ g, (v₂ g).wf sh)
+    (hout : ∀ g, encB (f g) = Kd.out shO nb rk (pg.sem (v₁ g) (if ain then av g else a0) (bi.val (v₂ g))))
+    (hA : ∀ g, pg.al (v₁ g) (if ain then av g else a0) (bi.val (v₂ g)) ≤ A (encA g).length)
+    (hsh : sh.length < 255) (hshO : shO.length < 255) (hnl : 16 ≤ nl) (hch : Chain (⟨rk, pg⟩ :: hs))
+    (hok : okL (⟨rk, pg⟩ :: hs) = true) (hbi : ∀ t, bi = .ctor t → t < 256) (hnb : nb ≤ 8)
+    (hwf : WfProg1W (indProgM sh shO pg hs bi ain a0 nb nl) (if rk = .t then 1 else 7) 0) :
+    Implements1With encA encB (callsCode1W (indProgM sh shO pg hs bi ain a0 nb nl) (if rk = .t then 1 else 7) 0) f
+      (spaceA (1 + hs.length) nl A) (2 ^ 20) (decide (rk = .t)) := by
+  have := implements1_of_cexecW encA encB f (indProgM sh shO pg hs bi ain a0 nb nl) (if rk = .t then 1 else 7) 0 hwf
+    (by split <;> omega) (fun n => 56 + 8 * (nl + 1) * (n + (1 + hs.length) * (1 + wnA A n))) (wnA A) (2 ^ 20)
+    (decide (rk = .t))
+    (fun g out W₀ env h1 hmax h32 hol hout32 hW hW32 => by
+      have hA' := hA g
+      rw [henc] at hmax h32 hW hW32 hA' ⊢
+      rw [hout] at hol ⊢
+      obtain ⟨σ', hx, hh, hr⟩ := ind_okM sh shO pg hs bi ain a0 nb nl hsh hshO hnl hch hok hbi hnb (v₁ g) (v₂ g) (av g)
+        (hw1 g) (fun h => hw2 h g) out W₀ env (if rk = .t then 1 else 7) (by split <;> omega) (by omega)
+        (by rw [hW]; unfold wnA at hW32 ⊢; omega)
+        (by rw [hW]; unfold wnA; omega) (by omega) hol
+      refine ⟨σ', _, by rw [hW] at hx; exact hx, hh, wr_take _ _ hol, wr_drop _ _ hol, fun ht => ?_⟩
+      have ht' : rk = .t := by simpa using ht
+      have := hr ht'
+      simp only [ht', if_true] at this
+      exact this)
+  simpa [spaceA] using this
+
+/-- **User inductives ⇒ `Implements1`** (one function: at most `M` cells per input node). -/
 theorem implements1_ind {rk : Kd} {γ β : Type} (sh : Shape) (pg : Pg rk) (bi : BIn) (a0 : BitVec 64) (nb : Nat)
     (encA : γ → List UInt8) (encB : β → List UInt8) (f : γ → β) (v₁ v₂ : γ → C)
     (henc : ∀ g, encA g = inBytes sh bi (v₁ g) (v₂ g)) (hw1 : ∀ g, (v₁ g).wf sh)
@@ -34,24 +73,44 @@ theorem implements1_ind {rk : Kd} {γ β : Type} (sh : Shape) (pg : Pg rk) (bi :
     (hwf : WfProg1W (indProg sh pg bi a0 nb) (if rk = .t then 1 else 7) 0) :
     Implements1With encA encB (callsCode1W (indProg sh pg bi a0 nb) (if rk = .t then 1 else 7) 0) f
       (space pg.M) (2 ^ 20) (decide (rk = .t)) := by
-  have := implements1_of_cexecW encA encB f (indProg sh pg bi a0 nb) (if rk = .t then 1 else 7) 0 hwf
-    (by split <;> omega) (fun n => 56 + 136 * (1 + n + wn pg.M n)) (wn pg.M) (2 ^ 20) (decide (rk = .t))
-    (fun g out W₀ env h1 hmax h32 hol hout32 hW => by
-      rw [henc] at hmax h32 hW ⊢
-      rw [hout] at hol ⊢
-      obtain ⟨σ', hx, hh, hr⟩ := ind_ok sh pg bi a0 nb hsh hn htg hlin hbi hnb (v₁ g) (v₂ g) (hw1 g)
-        (fun h => hw2 h g) out W₀ env (if rk = .t then 1 else 7) (by split <;> omega) (by omega) (by
-          rw [hW]; unfold wn
-          have : (pg.M + 1) * (inBytes sh bi (v₁ g) (v₂ g)).length ≤ 2 ^ 20 * 2 ^ 20 :=
-            Nat.mul_le_mul (by omega) (by omega)
-          rw [Nat.mul_assoc]; omega)
-        (by rw [hW]; unfold wn; omega) (by omega) hol
-      refine ⟨σ', _, by rw [hW] at hx; exact hx, hh, wr_take _ _ hol, wr_drop _ _ hol, fun ht => ?_⟩
-      have ht' : rk = .t := by simpa using ht
-      have := hr ht'
-      simp only [ht', if_true] at this
-      exact this)
-  simpa [space] using this
+  have hIA : ∀ v₁ v₂ : C, inBytesA sh bi false v₁ v₂ 0 = inBytes sh bi v₁ v₂ := fun _ _ => by simp [inBytesA]
+  have := implements1_indM sh sh pg [] bi false a0 nb 16 encA encB f v₁ v₂ (fun _ => 0) (fun n => pg.M * n)
+    (fun g => by rw [hIA]; exact henc g) hw1 hw2 (fun g => by simpa using hout g)
+    (fun g => by
+      have h1 := al_le pg hlin (v₁ g) a0 (bi.val (v₂ g))
+      have h2 := nodes_le sh (v₁ g) (hw1 g)
+      have h3 : (v₁ g).nodes ≤ (encA g).length := by rw [henc]; cases bi <;> simp [inBytes] <;> omega
+      simp only [Bool.false_eq_true, if_false]
+      exact Nat.le_trans h1 (Nat.mul_le_mul_left _ h3))
+    hsh hsh (by omega) ⟨fun j hj => absurd hj (by simp), trivial⟩
+    (by simp only [okL, Bool.and_eq_true, decide_eq_true_eq, List.all_eq_true]
+        exact ⟨⟨hn, fun e he => ⟨htg e he, by simpa using (hlin e he).2.2.2⟩⟩, trivial⟩) hbi hnb hwf
+  have hsp : spaceA (1 + ([] : List (Σ k : Kd, Pg k)).length) 16 (fun n => pg.M * n) = space pg.M := by
+    funext n
+    simp only [spaceA, space, wnA, wn, List.length_nil, Nat.add_zero, Nat.one_mul]
+    rw [show 4 * (pg.M + 1) * n = 4 * n + 4 * (pg.M * n) by rw [Nat.mul_assoc, Nat.add_mul, Nat.one_mul, Nat.mul_add]; omega]
+    omega
+  rw [hsp] at this
+  exact this
+
+/-- **User inductives, several functions ⇒ `Implements1`**, the space from the worst-case cell count over all
+inputs of each length (`cellsSup`, `Compiler/IndSup.lean`) -/
+theorem implements1_indS {rk : Kd} {γ β : Type} (sh shO : Shape) (pg : Pg rk) (hs : List (Σ k : Kd, Pg k))
+    (bi : BIn) (ain : Bool) (a0 : BitVec 64) (nb nl : Nat)
+    (encA : γ → List UInt8) (encB : β → List UInt8) (f : γ → β) (v₁ v₂ : γ → C) (av : γ → BitVec 64)
+    (henc : ∀ g, encA g = inBytesA sh bi ain (v₁ g) (v₂ g) (av g)) (hw1 : ∀ g, (v₁ g).wf sh)
+    (hw2 : bi = .inp → ∀ g, (v₂ g).wf sh)
+    (hout : ∀ g, encB (f g) = Kd.out shO nb rk (pg.sem (v₁ g) (if ain then av g else a0) (bi.val (v₂ g))))
+    (hsh : sh.length < 255) (hshO : shO.length < 255) (hnl : 16 ≤ nl) (hch : Chain (⟨rk, pg⟩ :: hs))
+    (hok : okL (⟨rk, pg⟩ :: hs) = true) (hbi : ∀ t, bi = .ctor t → t < 256) (hnb : nb ≤ 8)
+    (hwf : WfProg1W (indProgM sh shO pg hs bi ain a0 nb nl) (if rk = .t then 1 else 7) 0) :
+    Implements1With encA encB (callsCode1W (indProgM sh shO pg hs bi ain a0 nb nl) (if rk = .t then 1 else 7) 0) f
+      (spaceA (1 + hs.length) nl (cellsSup sh pg bi ain a0)) (2 ^ 20) (decide (rk = .t)) :=
+  implements1_indM sh shO pg hs bi ain a0 nb nl encA encB f v₁ v₂ av _ henc hw1 hw2 hout
+    (fun g => by
+      have := al_le_cellsSup sh hsh pg bi ain a0 (v₁ g) (v₂ g) (av g) (hw1 g) (fun h => hw2 h g)
+      rw [henc]; exact this)
+    hsh hshO hnl hch hok hbi hnb hwf
 
 /-! ## results and `Bool`s as words -/
 

@@ -400,7 +400,7 @@ def resKind (ti : TyInfo) (r : Expr) : MetaM (String × Option Sc) := do
   | some s => return (".w", some s)
   | none => throwError "frontx_ind: unsupported result type{indentExpr r}"
 
-def wfDefs : List String := ["Proven.Mach.Ind.indProg", "Proven.Mach.Ind.mainFn", "Proven.Mach.Ind.decFn",
+def wfDefs : List String := ["Proven.Mach.Ind.indProg", "Proven.Mach.Ind.indProgM", "Proven.Mach.Ind.aC", "Proven.Mach.Ind.mainFn", "Proven.Mach.Ind.decFn",
   "Proven.Mach.Ind.encFn", "Proven.Mach.Ind.fFn", "Proven.Mach.Ind.fLoop", "Proven.Mach.Ind.disp",
   "Proven.Mach.Ind.arm", "Proven.Mach.Ind.comp", "Proven.Mach.Ind.E.tail?", "Proven.Mach.Ind.loads",
   "Proven.Mach.Ind.dDisp", "Proven.Mach.Ind.dFlds", "Proven.Mach.Ind.dFld", "Proven.Mach.Ind.eDisp",
@@ -466,7 +466,7 @@ elab_rules : command
   let gS := toString gN
   let nargs ← liftTermElabM do forallTelescope (← getConstInfo gN).type fun xs _ => return xs.size
   let P := s!"{fS}.ind"
-  runCmd s!"def _root_.{P}.pg : Proven.Mach.Ind.Pg {rkS} := ⟨[{", ".intercalate arms.toList}]⟩"
+  runCmd s!"def _root_.{P}.pg : Proven.Mach.Ind.Pg {rkS} := \{ arms := [{", ".intercalate arms.toList}] }"
   runCmd s!"theorem _root_.{P}.arms : {P}.pg.arms = [{", ".intercalate arms.toList}] := rfl"
   -- the meaning: `g` applied to `t`, `a`, `b` in its own argument order (explicit arguments only)
   let gExpl ← liftTermElabM do forallTelescope (← getConstInfo gN).type fun xs _ => xs.mapM fun x => do
@@ -530,7 +530,7 @@ elab_rules : command
 set_option maxRecDepth 100000 in
 theorem _root_.{P}.wf : Proven.Mach.Riscv.WfProg1W {progS} (if {rkS} = Proven.Mach.Ind.Kd.t then 1 else 7) 0 := by
   refine ⟨fun f hf => ?_, ?_⟩
-  · have : f = 0 ∨ f = 1 ∨ f = 2 ∨ f = 3 := by simp [Proven.Mach.Ind.indProg] at hf; omega
+  · have : f = 0 ∨ f = 1 ∨ f = 2 ∨ f = 3 := by simp [Proven.Mach.Ind.indProg, Proven.Mach.Ind.indProgM] at hf; omega
     rcases this with rfl | rfl | rfl | rfl <;> {wfT}
   · {wfT}"
   runCmd s!"def _root_.{fS}.code : List (BitVec 32) := Proven.Mach.Riscv.callsCode1W {progS} {res} 0"

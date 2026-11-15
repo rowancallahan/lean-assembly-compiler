@@ -25,6 +25,7 @@ theorem implements1_of_cexecW {α β : Type} (encA : α → List UInt8) (encB : 
     (hex : ∀ (a : α) (out : List (BitVec 8)) (W₀ : List (BitVec 64)) (env : BEnv),
       env 1 = BitVec.ofNat 64 (encA a).length → (encA a).length ≤ maxLen → (encA a).length < 2 ^ 32 →
       (encB (f a)).length ≤ out.length → out.length < 2 ^ 32 → W₀.length = wn (encA a).length →
+      8 * wn (encA a).length < 2 ^ 32 →
       ∃ σ' out', CExec P (need (encA a).length) (.call res main []) ⟨env, [(encA a).map (·.toBitVec), out], [W₀]⟩ σ' ∧
         σ'.heap = [(encA a).map (·.toBitVec), out'] ∧
         out'.take (encB (f a)).length = (encB (f a)).map (·.toBitVec) ∧
@@ -59,7 +60,7 @@ theorem implements1_of_cexecW {α β : Type} (encA : α → List UInt8) (encB : 
     exact ⟨ws, hl, by rw [hw]; exact bytesAt_hosted fun i hi => hmapW i (by omega)⟩
   obtain ⟨σ', out', hexec, hh, htk, hdr, hrl⟩ := hex a out0 tbl0 (envOf s)
     (by simpa [envOf] using getX_of (h.x11.symm.trans h11) rfl) hmax (by show x.length < 2 ^ 32; omega)
-    (by show y.length ≤ out0.length; omega) (by omega) htl
+    (by show y.length ≤ out0.length; omega) (by omega) htl (by show 8 * wn x.length < 2 ^ 32; omega)
   have hen : rvC.enterOK s 0 := (⟨by rw [hfb]; omega, by rw [hfb]; omega, by rw [hfb]; omega, by decide⟩ :
     FrOK 0 (frameBase 0 (getX s 2)))
   have hfA : rvC.frameAt s 0 = (work.base + work.len) / 8 * 8 - 8 := hfb
