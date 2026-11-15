@@ -35,8 +35,23 @@ sed 's/^import Riscv.Direct.SortMergeSrc$/import Apc.Src.SortMergeSrc/; s/dsimp 
 python3 cut.py $R/Riscv/Examples/CallExamples.lean $O/CallExamples.lean 'Riscv.Back.Calls=>Apc.Src.CallsSrc'
 python3 cut.py $R/Riscv/Examples/TreeEval.lean $O/TreeEval.lean 'Riscv.Examples.CallExamples=>Apc.Src.CallExamples'
 sed -i 's/(by simpa \[encB\] using hlt)/(by simp only [encB, List.length_map]; exact hlt)/' $O/TreeEval.lean   # Lean 4.34
+# CRC-32 (source level): the model-free head of Implements1Ex.lean and of Crc.lean
+cut_before $R/Riscv/Examples/Implements1Ex.lean "/-! ## Machine theorems" > $O/i1.tmp
+python3 cut.py $O/i1.tmp $O/Implements1Ex.lean 'Riscv.Back.Implements1=>Apc.Src.ArrEx' 'Riscv.Back.SortMerge=>Compiler.BLang' \
+  'Riscv.Back.Arr=>Spec.Encode' 'Riscv.Back.Keep=>'; echo "end Proven.Mach.Riscv" >> $O/Implements1Ex.lean
+sed -i 's/(.load (by simp) (by simpa using \(h[a-z]*\)))/(.load (by simp) (by simpa [Mach.BExp.denote] using \1))/' $O/Implements1Ex.lean  # Lean 4.34
+cut_before $R/Riscv/Examples/Crc.lean "/-! ## The machine theorem" > $O/crc.tmp
+python3 cut.py $O/crc.tmp $O/Crc.lean 'Riscv.Examples.Implements1Ex=>Apc.Src.Implements1Ex'; echo "end Proven.Crc" >> $O/Crc.lean
+sed -i 's/      · show xs.length - (e4 4).toNat < xs.length - (env 4).toNat/      · show xs.length - (e4 4).toNat < _/' $O/Crc.lean  # Lean 4.34
+rm -f $O/i1.tmp $O/crc.tmp
+# the (untrusted) register-assignment search of Riscv/Back/OptB.lean, over `apcwF L0`
+{ echo "import Apc.Wide"; echo "import Apc.Stack"; echo "import Compiler.Opt.Color"; echo "namespace Proven.Mach.ApcS"
+  echo "open Proven.Apc"
+  sed -n '/^\/-! ## The (untrusted) choice of registers/,/^end Proven.Mach.Riscv/p' $R/Riscv/Back/OptB.lean | sed '$d' |
+    sed 's/rvwF/(apcwF L0)/g'
+  echo "end Proven.Mach.ApcS"; } > $O/Search.lean
 # middle files with `writable` hypotheses on the frame / 8-byte store laws (DeepMind's memory faults on stores to
 # non-writable, e.g. executable, bytes; "in RAM" alone cannot be proved there): repo-root copies + mid.patch
-M=Mid/Compiler; mkdir -p $M
-for f in Frame BExp BStmt Call CStmt CProg; do cp $R/Compiler/$f.lean $M/$f.lean; done
+M=Mid/Compiler; mkdir -p $M/Opt
+for f in Frame BExp BStmt Call CStmt CProg Wide Opt/Lower; do cp $R/Compiler/$f.lean $M/$f.lean; done
 patch -s -d Mid -p1 < mid.patch
