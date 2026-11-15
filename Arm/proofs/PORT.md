@@ -10,6 +10,12 @@
 - F3 (partial) Arm/Branch.lean: `b_exec`, `cbz_taken`/`cbz_not`, `cbnz_taken`/`cbnz_not` at the decode
   function + execute layer for symbolic register `t < 31` and symbolic immediate, under `Pins`.
 
+- F3 (2026-11-15) Arm/SymDec.lean, Arm/BrFull.lean: branch words through `__DecodeA64` with symbolic immediates
+  (decided from the opcode bits), full steps for `b`, `bl`, `cbz`, `cbnz`, `b.cond` (taken / not taken), `movz`,
+  `movk`, `add`/`sub` immediate, `mov`. F4 (partial) Arm/Mem.lean: data accesses (MMU off), full steps for `ldrb`,
+  `strb`, 8-aligned `ldr`/`str`/`stur`. Items 1, 2 and 4 below are done in this form; the bridge to DeepMind's
+  model and runs (`gcd_sail`, `sort_sail`) are in `Arm/apc/Bridge{Br,Run,Mem}.lean`.
+
 ## Not done, and what each piece needs
 1. **Branch words through `__DecodeA64`.** `dec_*` lemmas (as in Arm/Words.lean) for `cbz x9, #imm` and
    `b #imm` with the immediate symbolic (the loop compiler's offsets depend on code length). The Words
