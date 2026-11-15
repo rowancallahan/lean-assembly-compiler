@@ -83,7 +83,7 @@ lemma (`T k ≠ 0`, `A8 i ≠ 0` for the `add`-based moves; concrete words to `e
 provided (nothing used them): the per-word instances `W.*`, `MW.*`, the other `W8.*`/`W2.*`, and the branch
 dispatchers for register pairs other than `(x5, x0)`. Imports switched: `Riscv/Direct/{Compiler,Loop,ArrExp,
 Arr2Exp}.lean`, `Riscv/Steps/MemSteps.lean` (and `Branch.lean` → `WordsBase`). Clean `lake build Riscv`
-(incl. `Spec`/`Compiler`, 4 cores): 2438 s before, see `AGENT_OVERVIEW.md` for after.
+(incl. `Spec`/`Compiler`, 4 cores): 2438 s before, 456 s after.
 
 ## For the optimisation passes
 
