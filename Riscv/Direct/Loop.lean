@@ -3,7 +3,7 @@ expressions, `beq`/`jal` for loops) and the correctness proof on the Sail model.
 
 Variables: the four machine words `a0..a3` (`x10..x13`), which `gen` reads (`Exp.var i` is `a_i`) and
 never uses as temporaries; expression temporaries are `t0..t6, a4..a7` (`T`). -/
-import Riscv.Steps.BranchWords
+import Riscv.Steps.Compat
 import Riscv.Direct.LoopRule
 open LeanRV64D LeanRV64D.Functions Sail Sail.ConcurrencyInterfaceV1
 

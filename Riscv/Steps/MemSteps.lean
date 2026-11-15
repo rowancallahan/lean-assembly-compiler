@@ -1,7 +1,7 @@
 /- Load/store step lemmas in memory-model form: `ld` reads the little-endian value of 8 bytes,
 `sb`/`sd` effects on the blocks of an ok layout and on contiguous regions.  Built from the
-per-word lemmas of `Proven/MemWords.lean`; nothing here unfolds the Sail model. -/
-import Riscv.Steps.MemWords
+instances in `Riscv/Steps/Compat.lean` (from `GenMem.lean`); nothing here unfolds the Sail model. -/
+import Riscv.Steps.Compat
 
 set_option linter.unusedVariables false
 

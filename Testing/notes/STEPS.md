@@ -1,7 +1,9 @@
 # Register-generic step lemmas (`Riscv/Steps/Gen*.lean`)
 
 One lemma per RV64I instruction form, with register numbers (`Fin 32`) and immediates as variables. They
-replace the per-register-combination generated files (`Words`, `BranchWords`, `MemWords`, `Arr2Words`).
+replace the per-register-combination generated files (`Words`, `BranchWords`, `MemWords`, `ArrWords`, `Arr2Words`),
+which are no longer built: they and their generators moved to `Riscv/Legacy/Steps/` (lib `RiscvLegacy`, not a
+default target; they clash with `Compat.lean`, which defines the same names).
 
 | file | what | check time |
 |---|---|---|
@@ -11,8 +13,12 @@ replace the per-register-combination generated files (`Words`, `BranchWords`, `M
 | `GenBranch.lean` | 6 branches × taken/not-taken, `jal`, `jalr` | ~50 s |
 | `GenMem.lean` | `lb lbu lh lhu lw lwu ld sb sh sw sd`, `gmem` tactic | ~135 s |
 | `GenUse.lean` | `step_rop`, `step_mv`, re-derived generated lemmas, `law_mov_any` | ~5 s |
+| `WordsBase.lean` | the `@[simp]` ALU normal forms (`srl_eq`, `ite_ult`, ...; were the header of `Words.lean`) | ~5 s |
+| `Compat.lean` | drop-in replacements, same names and statements, for the used lemmas of `Words`/`BranchWords`/`MemWords`/`ArrWords` | ~5 s |
+| `CompatArr2.lean` | the same for `Arr2Words` (`W2.*`, `step_ldS`, `step_sdS`, `step_ldGp`, `step_ldT`; needs `Riscv/Direct/Arr2Code`) | ~5 s |
 
-Total ≈ 5 min, versus ≈ 59 min for the generated files (6 + 9 + 29 + 15). Axioms: identical to `compile_ok`
+Total ≈ 5 min, versus ≈ 52 min CPU for the generated files (measured: `MemWords` 1473 s, `Arr2Words` 820 s,
+`BranchWords` 465 s, `Words` 330 s, `ArrWords` 63 s). Axioms: identical to `compile_ok`
 (77, checked by `Testing/scripts/check.sh` for 8 of them).
 
 ## Statements
@@ -64,14 +70,20 @@ Loads/stores (`GenMem.lean`), words `encL f3 imm rd rs1` / `encS f3 imm rs2 rs1`
   `encU_eq`, `encL_eq`, `encS_eq`, `jalr_eq` (per-bit `enc_bits`).
 - New instruction forms: write the statement and `by genc; gstep` (ALU/branch) or `genm; gmem` (memory).
 
-## Subsumption (G5)
+## Subsumption (G5): done, the generated files are out of the build
 
-`GenUse.lean` re-derives `Words.step_res`, `Words.step_ret`, `W.inc_*`, `BranchWords.beq_5_6_t`,
-`step_jal_0`, `MemSteps.step_ld/step_sd/step_lbu` (without `memD`/`memB`), and the `mov` interface law for ANY
-abstract registers (`law_mov_any`, no `MovOK`), all without unfolding the model. Every generated lemma is an
-instance of a generic one (with `Next.rd0` for `rd = x0` jumps), so the generated `*Words.lean` files could be
-deleted once `Riscv/Direct` and `Riscv/Back/Iface.lean` are switched over (not done: those files are proved and
-used; the only extra care is `rd ≠ 0` for `add`/`ori`, which every compiler word satisfies).
+`GenUse.lean` re-derives samples (`Words.step_res`, `W.inc_*`, `BranchWords.beq_5_6_t`, `step_jal_0`,
+`MemSteps.step_ld/step_sd/step_lbu` without `memD`/`memB`) and the `mov` interface law for ANY abstract registers
+(`law_mov_any`, no `MovOK`). `Compat.lean`/`CompatArr2.lean` provide every generated name the proofs used
+(`step_op step_var step_zero step_shl step_inc step_seqz step_snez step_neg step_xor2 step_res step_ret`,
+`bcond_iff_*`, `beq_5_0_t/n`, `step_beq_5_0`, `beq_5_6_t`, `step_jal_0`, `memD memB iLbu iLd iSb iSd`,
+`step_{lbu,sb,ld,sd}_raw`, `W8.lbuT/sbT`, `step_var8`, `step_mv8`, `W2.{ldGp,ldT,sdT,sdGp,spT,gpT}`,
+`step_ldS`, `step_sdS`, `step_ldGp`, `step_ldT`) with unchanged statements, each a one-line instance of a `G.*`
+lemma (`T k ≠ 0`, `A8 i ≠ 0` for the `add`-based moves; concrete words to `encL`/`encS` by `decide`). Not
+provided (nothing used them): the per-word instances `W.*`, `MW.*`, the other `W8.*`/`W2.*`, and the branch
+dispatchers for register pairs other than `(x5, x0)`. Imports switched: `Riscv/Direct/{Compiler,Loop,ArrExp,
+Arr2Exp}.lean`, `Riscv/Steps/MemSteps.lean` (and `Branch.lean` → `WordsBase`). Clean `lake build Riscv`
+(incl. `Spec`/`Compiler`, 4 cores): 2438 s before, see `AGENT_OVERVIEW.md` for after.
 
 ## For the optimisation passes
 

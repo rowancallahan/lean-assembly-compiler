@@ -1,5 +1,5 @@
 /- A tiny verified compiler: the proof that `compile` (`Proven/Code.lean`) is correct on the Sail RV64 model. -/
-import Riscv.Steps.Words
+import Riscv.Steps.Compat
 open LeanRV64D LeanRV64D.Functions Sail Sail.ConcurrencyInterfaceV1
 
 set_option maxRecDepth 1000000

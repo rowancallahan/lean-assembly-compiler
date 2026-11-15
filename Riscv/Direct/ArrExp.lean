@@ -1,6 +1,7 @@
 /- Correctness of `gen8` (expressions over 8 variables `a0..a7`, temporaries `t0..t6`) on the Sail model.
 The same proof as `gen_ok` (`Proven/Compiler.lean`), with the frame `Ran7`: only `t_k .. t6` change. -/
-import Riscv.Steps.ArrWords
+import Riscv.Steps.Compat
+import Riscv.Direct.Loop
 
 set_option maxRecDepth 100000
 set_option linter.unusedVariables false

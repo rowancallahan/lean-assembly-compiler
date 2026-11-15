@@ -4,8 +4,9 @@ An instruction word is `c ||| imm o`: `c` holds the concrete fields (opcode, fun
 tests bit ranges of the word; a range inside the concrete fields evaluates to a literal (`B_known`),
 a test that disagrees with a concrete bit is `False` (`B_mismatch`), and a range inside the
 immediate fields is a slice of `imm o` (`B_imm`), which `immB_dec` reassembles to `o`.
-The per-word lemmas are generated into `Proven/BranchWords.lean` by `Proven/gen_branch.py`. -/
-import Riscv.Steps.Words
+The per-word instances for the compiler are in `Riscv/Steps/Compat.lean` (from `GenBranch.lean`); the old
+generated ones are `Riscv/Legacy/Steps/BranchWords.lean`. -/
+import Riscv.Steps.WordsBase
 open LeanRV64D LeanRV64D.Functions Sail Sail.ConcurrencyInterfaceV1
 
 set_option maxRecDepth 1000000

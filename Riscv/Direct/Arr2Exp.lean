@@ -1,7 +1,7 @@
 /- Correctness of `genB` (expressions over register variables `a0..a7` and stack slots, temporaries
 `t0..t6`) on the Sail model.  The proof of `gen8_ok` (`Proven/ArrExp.lean`) with one new case: a slot
 variable is one `ld t_k, 8(j+1)(gp)`. -/
-import Riscv.Steps.Arr2Words
+import Riscv.Steps.CompatArr2
 import Riscv.Direct.ArrExp
 
 set_option maxRecDepth 100000
