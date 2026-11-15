@@ -1882,7 +1882,8 @@ def primRec? (fn : Name) (xs : Array Expr) (lhs body : Expr) : MetaM (Option (Na
       return some (ki, zero, ← mkLambdaFVars #[ys[0]!, acc] E')
 
 def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (accMode := false)
-    (pre? : Option Term := none) (from? : Option (Name × Term) := none) : TermElabM Unit := do
+    (pre? : Option Term := none) (from? : Option (Name × Term) := none)
+    (start : Nat := 4) (noBound : Array Nat := #[]) : TermElabM Unit := do
   let t0 ← IO.monoMsNow
   let fn ← realizeGlobalConstNoOverloadWithInfo f
   let info ← getConstInfo fn
@@ -1983,7 +1984,7 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
           -- a scalar, or a structure / tuple / `Option` of scalars: one variable per component
           let some comps ← resultComps xty | throwError "frontx: unsupported parameter type{indentExpr xty}"
           -- variables 2 and 3 stay free (work and output base in the `Implements1` calling convention)
-          if next < 4 then next := 4
+          if next < start then next := start
           for (π, ty) in comps do
             let key := (mkApp π x).headBeta
             memo := (key, next) :: memo
@@ -1992,7 +1993,7 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
       let xsD := dataIdx.map (xs[·]!)
       -- variables for the extra components of the result
       let mut resExtra : Array (Expr × Ty × Nat) := #[]
-      if next < 4 then next := 4
+      if next < start then next := start
       for (π, t) in resInfo.extract 1 resInfo.size do
         resExtra := resExtra.push (π, t, next)
         next := next + 1
@@ -2013,7 +2014,7 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
           hyps := hyps.push (← mkAppM ``LT.lt #[sz, two64])
         for (x, ty, v) in scal do
           hyps := hyps.push (← mkEq (mkApp env (toExpr v)) (ty.rep x))
-          if ty == .nat && some x != acc? then hyps := hyps.push (← mkAppM ``LT.lt #[x, two64])
+          if ty == .nat && some x != acc? && !(noBound.any (xs0[·]? == some x)) then hyps := hyps.push (← mkAppM ``LT.lt #[x, two64])
         for t? in [inv?, pre?] do
           if let some inv := t? then
             let invE ← elabTerm inv (some (← mkForallFVars xs0 (mkSort 0)))

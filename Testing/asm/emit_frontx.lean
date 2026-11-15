@@ -1,4 +1,5 @@
 import Riscv.Frontx.Machine
+import Riscv.Frontx.RecExamples
 open Proven Proven.Frontx Proven.Frontx.Ex
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
 def hex2 (b : UInt8) : String := let s := String.ofList (Nat.toDigits 16 b.toNat); if s.length < 2 then "0" ++ s else s
@@ -73,3 +74,15 @@ open Proven.Frontx.Ex.BookNat in
 #eval do
   emit "matchevene" matchEvenE.slots matchEvenE.code (enc matchEvenE) (natInputs false)
   emit "explicithalvee" explicitHalveE.slots explicitHalveE.code (enc explicitHalveE) (natInputs false)
+
+-- real calls (`frontx_rec`, `RecExamples.lean`): first line `rec <frame bytes>`, work space `frame * (n + 1) + 32`
+def emitRec (name : String) (frame : Nat) (code : List (BitVec 32)) (f : ByteArray → List UInt8)
+    (inputs : List (List UInt8) := inputs) : IO Unit := do
+  IO.FS.writeFile s!"Testing/asm/frontx-words/{name}.words" (String.intercalate "\n" (s!"rec {frame}" :: code.map hex8) ++ "\n")
+  IO.FS.writeFile s!"Testing/asm/frontx-words/{name}.cases"
+    (String.join (inputs.map fun xs => s!"{hx xs} {hx (f ⟨xs.toArray⟩)}\n"))
+#eval emitRec "nontailsumrec" 88 Proven.Frontx.BookList.nonTailSumRec.code (enc Proven.Frontx.BookList.nonTailSumRec)
+#eval emitRec "nontaillengthrec" 80 Proven.Frontx.BookList.nonTailLengthRec.code (enc Proven.Frontx.BookList.nonTailLengthRec)
+-- `fib` of the length: lengths 0 .. 16 (the Sail memory trace of the test grows with the number of calls)
+#eval emitRec "fiblen" 96 Proven.Frontx.RecEx.fibLen.code (enc Proven.Frontx.RecEx.fibLen)
+  ((List.range 50).map fun i => List.replicate (i % 17) (UInt8.ofNat i))
