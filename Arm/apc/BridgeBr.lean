@@ -445,4 +445,9 @@ theorem sim {t t' : Arm64.State} (h : Arm64.Steps Pg t t') (ht' : t'.status = .R
         · simp [hal, hx] at hf'
       · simp [hal] at hf'
 
+
+#print axioms bridge_step
+#print axioms br_bl
+#print axioms br_bc
+#print axioms br_movk
 end ArmProof
