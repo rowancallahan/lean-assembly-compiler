@@ -49,7 +49,7 @@ if os.environ.get("HUGE"):  # inputs up to maxLen = 2^20, expected results from 
     for xs in ([0] * 2 ** 20, [255] * 2 ** 20, [rr.randrange(8) for _ in range(2 ** 20)], [rr.randrange(256) for _ in range(65537)]):
         ref = REFS[FN](xs) if FN in REFS else FUNCS[FN][1](xs).to_bytes(FUNCS[FN][0], "little")
         CASES.append((xs, list(ref)))
-lines = [l for l in open(os.path.join(D, "frontx-words", FN + ".words")) if l.strip()]
+lines = [l for l in open(os.path.join(D, "..", "frontx-words", FN + ".words")) if l.strip()]
 words = [int(l, 16) for l in lines[1:]]
 G, WK, E = 16, 8 * (int(lines[0]) + 1) + 7, 72
 MAGIC = 0x0123456789ABCDEF
