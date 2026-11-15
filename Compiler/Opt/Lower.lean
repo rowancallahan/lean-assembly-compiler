@@ -2,8 +2,8 @@
 correctness from the `Wide` laws: an IR big-step execution is simulated by the machine.
 
 One abstract register `sc` is the lowering's scratch (constants that have no immediate form); IR code
-must not mention it (`wf`).  `when` is a forward branch over the body; a loop is laid out bottom-tested,
-`jmp test; body; test: pre; br t body` (one branch per iteration). -/
+must not mention it (`wf`).  `when` is a forward branch over the body; a loop is inverted (gcc's layout): an entry test, then the body
+tested at the bottom, `pre; br ¬t exit; body: …; pre; br t body; exit:` (one branch per iteration, no jump). -/
 import Compiler.Opt.IR
 
 namespace Proven.Mach
@@ -47,9 +47,12 @@ def low : Code Reg → List WOp
       (lowT sc t.neg).1 ++ ([.br (lowT sc t.neg).2.1 (lowT sc t.neg).2.2.1 (lowT sc t.neg).2.2.2 false
         (M.lenBr + (M.wcode (low body)).length)] ++ low body)
   | .loop pre t body =>
-      [.jmp false (M.lenJ + (M.wcode (low body)).length)] ++ (low body ++ (low pre ++ ((lowT sc t).1 ++
+      low pre ++ ((lowT sc t.neg).1 ++ ([.br (lowT sc t.neg).2.1 (lowT sc t.neg).2.2.1 (lowT sc t.neg).2.2.2 false
+        (M.lenBr + (M.wcode (low body)).length + (M.wcode (low pre)).length + (M.wcode (lowT sc t).1).length +
+          M.lenBr)] ++
+      (low body ++ (low pre ++ ((lowT sc t).1 ++
         [.br (lowT sc t).2.1 (lowT sc t).2.2.1 (lowT sc t).2.2.2 true
-          ((M.wcode (low body)).length + (M.wcode (low pre)).length + (M.wcode (lowT sc t).1).length)])))
+          ((M.wcode (low body)).length + (M.wcode (low pre)).length + (M.wcode (lowT sc t).1).length)])))))
   | .loop2 p₁ t₁ p₂ t₂ body =>
       [.jmp false (M.lenJ + (M.wcode (low body)).length)] ++ (low body ++ (low p₁ ++ ((lowT sc t₁.neg).1 ++
         ([.br (lowT sc t₁.neg).2.1 (lowT sc t₁.neg).2.2.1 (lowT sc t₁.neg).2.2.2 false
@@ -85,7 +88,8 @@ def wf : Code Reg → Bool
   | .seq a b => wf a && wf b
   | .when t body => legalT sc t && wf body && M.brOK false (M.lenBr + (M.wcode (M.low sc body)).length)
   | .loop pre t body => legalT sc t && wf pre && wf body &&
-      M.jOK false (M.lenJ + (M.wcode (M.low sc body)).length) &&
+      M.brOK false (M.lenBr + (M.wcode (M.low sc body)).length + (M.wcode (M.low sc pre)).length +
+        (M.wcode (lowT sc t).1).length + M.lenBr) &&
       M.brOK true ((M.wcode (M.low sc body)).length + (M.wcode (M.low sc pre)).length +
         (M.wcode (lowT sc t).1).length)
   | .loop2 p₁ t₁ p₂ t₂ body => legalT sc t₁ && legalT sc t₂ && (wf p₁ && wf p₂ && wf body) &&
@@ -384,15 +388,32 @@ theorem W_when (t : Tst Reg) (body : Code Reg) : M.W sc (.when t body) = M.wcode
     (M.wenc (M.brOp sc t.neg false (M.lenBr + (M.W sc body).length)) ++ M.W sc body) := by
   simp only [W, low, wcode_append, wcode_one, brOp]
 
+/-- the length of a loop's entry test -/
+def gl (M : Wide) (sc : Reg) (pre : Code Reg) (t : Tst Reg) : Nat :=
+  (M.W sc pre).length + (M.wcode (lowT sc t.neg).1).length + M.lenBr
+
 theorem W_loop (pre : Code Reg) (t : Tst Reg) (body : Code Reg) : M.W sc (.loop pre t body) =
-    M.wenc (.jmp false (M.lenJ + (M.W sc body).length)) ++ (M.W sc body ++ (M.W sc pre ++
+    M.W sc pre ++ (M.wcode (lowT sc t.neg).1 ++ (M.wenc (M.brOp sc t.neg false (M.lenBr + (M.W sc body).length +
+      (M.W sc pre).length + (M.wcode (lowT sc t).1).length + M.lenBr)) ++
+    (M.W sc body ++ (M.W sc pre ++
       (M.wcode (lowT sc t).1 ++ M.wenc (M.brOp sc t true
-        ((M.W sc body).length + (M.W sc pre).length + (M.wcode (lowT sc t).1).length))))) := by
+        ((M.W sc body).length + (M.W sc pre).length + (M.wcode (lowT sc t).1).length))))))) := by
   simp only [W, low, wcode_append, wcode_one, brOp]
 
 theorem len_loop (pre : Code Reg) (t : Tst Reg) (body : Code Reg) : (M.W sc (.loop pre t body)).length =
-    M.lenJ + (M.W sc body).length + (M.W sc pre).length + (M.wcode (lowT sc t).1).length + M.lenBr := by
-  rw [W_loop]; simp only [List.length_append, M.len_j, brOp, M.len_br]; omega
+    M.gl sc pre t + (M.W sc body).length + (M.W sc pre).length + (M.wcode (lowT sc t).1).length + M.lenBr := by
+  rw [W_loop]; simp only [gl, List.length_append, brOp, M.len_br]; omega
+
+/-- the fragment of a loop from its body on -/
+theorem Frag.loopBody {pre : Code Reg} {t : Tst Reg} {body : Code Reg} {s : M.S} {pc : BitVec 64}
+    (hf : M.Frag ram fp s pc (M.W sc (.loop pre t body))) :
+    M.Frag ram fp s (next pc (M.gl sc pre t)) (M.W sc body ++ (M.W sc pre ++
+      (M.wcode (lowT sc t).1 ++ M.wenc (M.brOp sc t true
+        ((M.W sc body).length + (M.W sc pre).length + (M.wcode (lowT sc t).1).length))))) := by
+  rw [W_loop] at hf
+  have f := hf.right.right.right
+  simp only [next_add, brOp, M.len_br] at f
+  exact f
 
 theorem tgt_back (pc : BitVec 64) (a x b : Nat) (h : x = a + b) : tgt (next pc x) true b = next pc a := by
   subst h; simp only [tgt, ite_pos]; rw [← next_add, next_jmp]
@@ -400,23 +421,24 @@ theorem tgt_back (pc : BitVec 64) (a x b : Nat) (h : x = a + b) : tgt (next pc x
 theorem _root_.Proven.Mach.Base.Done.cast {B : Base} {s s' : B.S} {p q : BitVec 64} (d : B.Done s s' p) (h : p = q) :
     B.Done s s' q := h ▸ d
 
+theorem tgt_fwd (pc : BitVec 64) (n : Nat) : tgt pc false n = next pc n := ite_neg Bool.false_ne_true
+
 /-- a loop from its test: run `pre`, the test and the branch -/
 theorem loop_test {pre : Code Reg} {t : Tst Reg} {body : Code Reg} {σ σ₁ : St Reg}
     (hwf : M.wf sc (.loop pre t body) = true)
     (ihpre : ∀ {s : M.S} {pc : BitVec 64}, M.ok s → M.pcIs s pc → M.Frag ram fp s pc (M.W sc pre) → M.Rel sc s σ →
       M.RunTo ram s (next pc (M.W sc pre).length) (M.Rel sc · σ₁))
-    {s : M.S} {pc : BitVec 64} (hok : M.ok s) (hpc : M.pcIs s (next pc (M.lenJ + (M.W sc body).length)))
+    {s : M.S} {pc : BitVec 64} (hok : M.ok s) (hpc : M.pcIs s (next pc (M.gl sc pre t + (M.W sc body).length)))
     (hf : M.Frag ram fp s pc (M.W sc (.loop pre t body))) (hr : M.Rel sc s σ) :
-    M.RunTo ram s (if t.eval σ₁.reg = true then next pc M.lenJ else next pc (M.W sc (.loop pre t body)).length)
+    M.RunTo ram s (if t.eval σ₁.reg = true then next pc (M.gl sc pre t) else next pc (M.W sc (.loop pre t body)).length)
       (M.Rel sc · σ₁) := by
   simp only [wf] at hwf
   obtain ⟨hwf, hbr⟩ := and2 hwf
   obtain ⟨hwf, hj⟩ := and2 hwf
   obtain ⟨hlt, hwp, hwb⟩ := and3 hwf
   rw [len_loop]
-  rw [W_loop] at hf
-  have f1 := hf.right.right
-  rw [M.len_j, next_add] at f1
+  have f1 := (Frag.loopBody hf).right
+  rw [next_add] at f1
   refine (ihpre hok hpc f1.left hr).seq fun s₁ d₁ m₁ r₁ => ?_
   refine (lowT_ok hlt d₁.ok d₁.hpc (f1.right.mf m₁) r₁).seq fun s₂ d₂ m₂ ⟨r₂, _, v₂⟩ => ?_
   have f3 := (f1.right.right.mf m₁).mf m₂
@@ -425,12 +447,43 @@ theorem loop_test {pre : Code Reg} {t : Tst Reg} {body : Code Reg} {σ σ₁ : S
   simp only [W, next_add] at d₃ ⊢
   by_cases ht : t.eval σ₁.reg = true
   · rw [ite_pos ht] at d₃ ⊢
-    rw [tgt_back pc M.lenJ _ _ (by omega)] at d₃
+    rw [tgt_back pc (M.gl sc pre t) _ _ (by omega)] at d₃
     exact d₃
   · rw [ite_neg ht] at d₃ ⊢
     exact d₃.cast (congrArg (next pc) (by omega))
 
-theorem tgt_fwd (pc : BitVec 64) (n : Nat) : tgt pc false n = next pc n := ite_neg Bool.false_ne_true
+/-- a loop from its start: run `pre`, the entry test and its branch (to the body, or out of the loop) -/
+theorem loop_guard {pre : Code Reg} {t : Tst Reg} {body : Code Reg} {σ σ₁ : St Reg}
+    (hwf : M.wf sc (.loop pre t body) = true)
+    (ihpre : ∀ {s : M.S} {pc : BitVec 64}, M.ok s → M.pcIs s pc → M.Frag ram fp s pc (M.W sc pre) → M.Rel sc s σ →
+      M.RunTo ram s (next pc (M.W sc pre).length) (M.Rel sc · σ₁))
+    {s : M.S} {pc : BitVec 64} (hok : M.ok s) (hpc : M.pcIs s pc)
+    (hf : M.Frag ram fp s pc (M.W sc (.loop pre t body))) (hr : M.Rel sc s σ) :
+    M.RunTo ram s (if t.eval σ₁.reg = true then next pc (M.gl sc pre t) else next pc (M.W sc (.loop pre t body)).length)
+      (M.Rel sc · σ₁) := by
+  simp only [wf] at hwf
+  obtain ⟨hwf, hbr⟩ := and2 hwf
+  obtain ⟨hwf, hj⟩ := and2 hwf
+  obtain ⟨hlt, hwp, hwb⟩ := and3 hwf
+  rw [len_loop]
+  have f0 := hf
+  rw [W_loop] at f0
+  refine (ihpre hok hpc f0.left hr).seq fun s₁ d₁ m₁ r₁ => ?_
+  refine (lowT_ok (t := t.neg) hlt d₁.ok d₁.hpc (f0.right.mf m₁) r₁).seq fun s₂ d₂ m₂ ⟨r₂, _, v₂⟩ => ?_
+  have f3 := ((f0.right.mf m₁).right.mf m₂).left
+  refine M.runsTo_mono (M.w_br hj (f3.at d₂.ok d₂.hpc)) fun s₃ ⟨d₃, st, m₃⟩ => ⟨?_, MF.of_eq d₃ m₃, r₂.same st m₃⟩
+  rw [v₂, Tst.eval_neg] at d₃
+  simp only [W, next_add, gl] at d₃ ⊢
+  by_cases ht : t.eval σ₁.reg = true
+  · rw [ite_pos ht] at ⊢
+    rw [ht] at d₃
+    simp only [Bool.not_true, ite_neg Bool.false_ne_true] at d₃
+    exact d₃.cast (congrArg (next pc) (by simp only [brOp, M.len_br]))
+  · rw [ite_neg ht] at ⊢
+    rw [Bool.not_eq_true] at ht
+    rw [ht] at d₃
+    simp only [Bool.not_false, ite_pos, tgt_fwd, next_add] at d₃
+    exact d₃.cast (congrArg (next pc) (by omega))
 
 theorem Frag.cast {s : M.S} {p q : BitVec 64} {ws : List (BitVec 32)} (h : M.Frag ram fp s p ws) (e : p = q) :
     M.Frag ram fp s q ws := e ▸ h
@@ -545,14 +598,12 @@ theorem low_ok' (hram : ∀ a, ram a → M.inRAM a 1)
     (M.wf sc c = true → ∀ {s : M.S} {pc : BitVec 64}, M.ok s → M.pcIs s pc → M.Frag ram fp s pc (M.W sc c) →
       M.Rel sc s σ → M.RunTo ram s (next pc (M.W sc c).length) (M.Rel sc · σ')) ∧
     (∀ pre t body, c = .loop pre t body → M.wf sc c = true → ∀ {s : M.S} {pc : BitVec 64}, M.ok s →
-      M.pcIs s (next pc (M.lenJ + (M.W sc body).length)) → M.Frag ram fp s pc (M.W sc c) →
+      M.pcIs s (next pc (M.gl sc pre t + (M.W sc body).length)) → M.Frag ram fp s pc (M.W sc c) →
       M.Rel sc s σ → M.RunTo ram s (next pc (M.W sc c).length) (M.Rel sc · σ')) ∧
     (∀ p₁ t₁ p₂ t₂ body, c = .loop2 p₁ t₁ p₂ t₂ body → M.wf sc c = true → ∀ {s : M.S} {pc : BitVec 64}, M.ok s →
       M.pcIs s (next pc (M.lenJ + (M.W sc body).length)) → M.Frag ram fp s pc (M.W sc c) →
       M.Rel sc s σ → M.RunTo ram s (next pc (M.W sc c).length) (M.Rel sc · σ')) := by
   intro c σ σ' h
-  have jl : ∀ {pre t body}, M.wf sc (.loop pre t body) = true → M.jOK false (M.lenJ + (M.W sc body).length) = true :=
-    fun hwf => by simp only [wf] at hwf; exact (and2 (and2 hwf).1).2
   induction h with
   | skip => exact ⟨fun _ s pc hok hpc _ hr => by
       rw [show (M.W sc Code.skip).length = 0 from rfl, next_zero]; exact RunTo.here hok hpc hr,
@@ -590,37 +641,31 @@ theorem low_ok' (hram : ∀ a, ram a → M.inRAM a 1)
     rw [v₁, Tst.eval_neg, ht] at d₂
     simpa only [Bool.not_false, ite_pos, tgt, ite_neg Bool.false_ne_true] using d₂
   | @loopF pre t body σa σb _ ht ihpre =>
-    have h2 : M.wf sc (.loop pre t body) = true → ∀ {s : M.S} {pc : BitVec 64}, M.ok s →
-        M.pcIs s (next pc (M.lenJ + (M.W sc body).length)) → M.Frag ram fp s pc (M.W sc (.loop pre t body)) →
-        M.Rel sc s σa → M.RunTo ram s (next pc (M.W sc (.loop pre t body)).length) (M.Rel sc · σb) := by
-      intro hwf s pc hok hpc hf hr
-      have hwf' := hwf
-      simp only [wf] at hwf'
-      have hwp := (and3 (and2 (and2 hwf').1).1).2.1
-      have := loop_test hwf (ihpre.1 hwp) hok hpc hf hr
+    have hwp : M.wf sc (.loop pre t body) = true → M.wf sc pre = true := fun hwf => by
+      simp only [wf] at hwf; exact (and3 (and2 (and2 hwf).1).1).2.1
+    refine ⟨fun hwf s pc hok hpc hf hr => ?_, fun _ _ _ e => ?_, fun _ _ _ _ _ e => (by cases e)⟩
+    · have := loop_guard hwf (ihpre.1 (hwp hwf)) hok hpc hf hr
       rwa [ht, ite_neg Bool.false_ne_true] at this
-    exact ⟨fun hwf => loop_enter (W_loop pre t body) (jl hwf) (h2 hwf), fun _ _ _ e => (by cases e; exact h2),
-      fun _ _ _ _ _ e => (by cases e)⟩
+    · cases e; intro hwf s pc hok hpc hf hr
+      have := loop_test hwf (ihpre.1 (hwp hwf)) hok hpc hf hr
+      rwa [ht, ite_neg Bool.false_ne_true] at this
   | @loopT pre t body σa σb σc σd _ ht _ _ ihpre ihb ihl =>
-    have h2 : M.wf sc (.loop pre t body) = true → ∀ {s : M.S} {pc : BitVec 64}, M.ok s →
-        M.pcIs s (next pc (M.lenJ + (M.W sc body).length)) → M.Frag ram fp s pc (M.W sc (.loop pre t body)) →
-        M.Rel sc s σa → M.RunTo ram s (next pc (M.W sc (.loop pre t body)).length) (M.Rel sc · σd) := by
+    have hwp : M.wf sc (.loop pre t body) = true → M.wf sc pre = true ∧ M.wf sc body = true := fun hwf => by
+      simp only [wf] at hwf; have := and3 (and2 (and2 hwf).1).1; exact ⟨this.2.1, this.2.2⟩
+    have h3 : M.wf sc (.loop pre t body) = true → ∀ {s : M.S} {pc : BitVec 64}, M.ok s →
+        M.pcIs s (next pc (M.gl sc pre t)) → M.Frag ram fp s pc (M.W sc (.loop pre t body)) →
+        M.Rel sc s σb → M.RunTo ram s (next pc (M.W sc (.loop pre t body)).length) (M.Rel sc · σd) := by
       intro hwf s pc hok hpc hf hr
-      have hwf' := hwf
-      simp only [wf] at hwf'
-      obtain ⟨_, hwp, hwb⟩ := and3 (and2 (and2 hwf').1).1
-      have := loop_test hwf (ihpre.1 hwp) hok hpc hf hr
+      refine (ihb.1 (hwp hwf).2 hok hpc (Frag.loopBody hf).left hr).seq fun s₂ d₂ m₂ r₂ => ?_
+      exact ihl.2.1 pre t body rfl hwf d₂.ok (by rw [← next_add]; exact d₂.hpc) (hf.mf m₂) r₂
+    refine ⟨fun hwf s pc hok hpc hf hr => ?_, fun _ _ _ e => ?_, fun _ _ _ _ _ e => (by cases e)⟩
+    · have := loop_guard hwf (ihpre.1 (hwp hwf).1) hok hpc hf hr
       rw [ht, ite_pos rfl] at this
-      refine this.seq fun s₁ d₁ m₁ r₁ => ?_
-      have f1 := hf.mf m₁
-      have fb := f1
-      rw [W_loop] at fb
-      have fb := fb.right.left
-      rw [M.len_j] at fb
-      refine (ihb.1 hwb d₁.ok d₁.hpc fb r₁).seq fun s₂ d₂ m₂ r₂ => ?_
-      exact ihl.2.1 pre t body rfl hwf d₂.ok (by rw [← next_add]; exact d₂.hpc) (f1.mf m₂) r₂
-    exact ⟨fun hwf => loop_enter (W_loop pre t body) (jl hwf) (h2 hwf), fun _ _ _ e => (by cases e; exact h2),
-      fun _ _ _ _ _ e => (by cases e)⟩
+      exact this.seq fun s₁ d₁ m₁ r₁ => h3 hwf d₁.ok d₁.hpc (hf.mf m₁) r₁
+    · cases e; intro hwf s pc hok hpc hf hr
+      have := loop_test hwf (ihpre.1 (hwp hwf).1) hok hpc hf hr
+      rw [ht, ite_pos rfl] at this
+      exact this.seq fun s₁ d₁ m₁ r₁ => h3 hwf d₁.ok d₁.hpc (hf.mf m₁) r₁
   | @loop2A p₁ t₁ p₂ t₂ body σa σb _ ht ih₁ =>
     have h2 : M.wf sc (.loop2 p₁ t₁ p₂ t₂ body) = true → ∀ {s : M.S} {pc : BitVec 64}, M.ok s →
         M.pcIs s (next pc (M.lenJ + (M.W sc body).length)) → M.Frag ram fp s pc (M.W sc (.loop2 p₁ t₁ p₂ t₂ body)) →

@@ -24,6 +24,9 @@ Read this first. The top-level `README.md` is for people; this file is for agent
   `axioms_m.lean`; QEMU/Sail test `python3 Testing/asm/frontx_test.py check 40 crcraw`).
 - Branchy merge sort (`OPT.md`, last section): `msortProgB_mergeSort`, `msortCodeO2_implements1`
   (`Riscv/Examples/MsortB.lean`, `MsortBOpt.lean`), 1.06–1.17× gcc -O2 instructions.
+- Loop inversion in the optimised lowering (`Compiler/Opt/Lower.lean`, no entry jump); gcc-structured insertion sort
+  `insCodeO_implements1` (`Riscv/Examples/InsB.lean`) and gcd `gcdO_ok`/`gcdO_ok_nat` (`Riscv/Examples/GcdOpt.lean`),
+  1.00–1.04× gcc -O2 instructions (`OPT.md`, last section).
 - Calls (`CALLS.md`): `Spec/Tree.lean`, `treeEval_implements` (`Riscv/Examples/TreeEval.lean`), `calls_test.py`.
 - ARM on DeepMind's AArch64 semantics (`Arm/apc/README.md`, `Arm/apc/check.sh`): `apc : Machine` (9 laws), `compile_apc`/`gcd_apc`/`sort_apc`, bridge `apc_eq_sail` to Sail for the 216 expression words.
 - ARM (Lean 4.34.1, generated model `Arm/model/`, built copy `/home/user/armv9-lean`): AArch64 backend for `Exp`

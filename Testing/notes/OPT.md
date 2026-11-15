@@ -382,3 +382,59 @@ element (no change: nothing is spilled already); `msortProg` 195 → 172 words (
 pinned to their convention registers, so `irB` temporaries do not affect them. To do it for real: give `irB` a
 statement offset (proof: `irB_ok` with `0` generalised to the offset, the frame facts are already "temporaries
 `≥ k`"), and make `gB`'s temporaries `(x - 32) % 16` so the injective fallback still type-checks through `chk`.
+
+## Loop inversion, insertion sort and gcd source programs (2026-11-15)
+
+**Loop inversion** (`Compiler/Opt/Lower.lean`, kernel-checked): a `loop pre t body` is now lowered as gcc lays out a
+`while` loop, `pre; br ¬t exit; body: …; pre; br t body; exit:` (an entry test, then the bottom-tested body), instead of
+`jmp test; body: …; test: pre; br t body`. Each loop entry saves the jump (one instruction); `pre` and the test are
+emitted twice. `loop_guard` (new) runs the entry test, `loop_test` the bottom test; `low_ok`, `body_ok`, `fn_ok` and
+everything above them keep their statements (`loop2`, the short-circuit loop, keeps its entry jump). All optimised words
+change (re-emitted: `opt-words`, `impl1-opt-words`, `pipe-words`, `pipe-words1`, `frontx-words`); statement hashes
+unchanged, closures differ (fingerprints re-frozen).
+
+**Insertion sort** `insProgB` (`Riscv/Examples/InsB.lean`, a `Mach.BStmt` through `compBFO 0 [0, 3] [2]`, so the
+locals are coloured freely): copy `out := in` (`mapK`), then for `i = 1 ..< n`: `v := out[i]; t := out[0];
+out[0] := min v t; v := max v t` (now `out[0] ≤ key` is a sentinel), `j := i; t := out[j - 1];
+while v < t { out[j] := t; j := j - 1; t := out[j - 1] }; out[j] := v` — gcc's inner loop without the `j > 0` test
+(swapping the key with a smaller `out[0]` keeps the prefix a sorted permutation). Inner step: 7 instructions
+(`add; sb; addi; addi; add; lbu; bltu`), the same count as gcc -O2's. Kernel-checked: `insProgB_exec` (result
+`xs.mergeSort leB` via sorted + perm + `sorted_perm_eq`; `propext`, `Classical.choice`, `Quot.sound`) and
+`insCodeO_implements1 : Implements1Raw insCodeO (fun x => x.mergeSort leU) (fun _ => 15)` (60 words; the 77 axioms of
+the other `Implements1` theorems; `axioms_n.lean`). The old `sortProg` (`AStmt`) words are now
+`opt-words/insertion-a.words` (`arr_test.py sort` with `WDIR=opt-words`).
+
+**gcd** `gcdProg2` (`Riscv/Examples/GcdOpt.lean`, a `Stmt` through `compileFO`: two variables, so pinning costs nothing
+and there is no frame prologue): `a2 := a1 ? a0 : 0; a1 := a1 ? a1 : a0` (b = 0 → swap, so `a1 ≠ 0` inside the
+loop), `while a2 ≠ 0 { while a2 < a1 { a1 := a1 - a2 }; a2 := a2 - a1 }; a0 := a1` — gcc's structure (only the
+changed operand is tested). 13 words; the loop is `bgeu; [sub; bltu]; sub; bnez`, gcc's code exactly. Kernel-checked:
+`gcdProg2_exec` (= the reference `gcdSub`), `gcdSub_toNat : (gcdSub a b).toNat = Nat.gcd a.toNat b.toNat`
+(`propext`, `Quot.sound`), `gcdO_ok` (the statement of `gcd_ok` for `gcdCodeO`) and `gcdO_ok_nat` (the same with
+`Nat.gcd`) (`axioms_o.lean`; the axioms of `gcd_ok`). The old `compileOptS gcdProg` words: `opt-words/gcd-a.words`.
+
+Measured (`python3 bench/bench.py sum take inc gcd loopsum insertion msort msortb crc --quick`, RV64 QEMU `-icount`):
+
+| function | before (this file, above) | now | gcc -O2 | now / gcc |
+|---|---|---|---|---|
+| gcd (832040, 514229), whole call | 178 | 80 | 77 | 1.04 |
+| gcd (100000, 3), whole call | 200020 | 100013 | 100010 | 1.00 |
+| gcd (1000, 999), whole call | 6004 | 2009 | 2006 | 1.00 |
+| insertion sort, n = 100 / 1000 / 10000, per element | — / 3911 / 40120 | 189.3 / 1722.2 / 17563.9 | 182.3 / 1715.2 / 17556.9 | 1.04 / 1.004 / 1.0004 |
+| merge sort, branchy (`msortCodeO2`), n = 100 / 1000 / 100000, per element | 107.8 / 155.2 / 241.9 | 105.7 / 153.1 / 239.9 | 101.8 / 132.2 / 221.2 | 1.04 / 1.16 / 1.08 |
+| merge sort, branch-free (`msortCodeO`), n = 100 / 1000 / 100000 | 187.5 / 279.9 / 421.5 | 186.4 / 278.9 / 420.5 | | 1.83 / 2.11 / 1.90 |
+| loop sum, n = 100000, whole call | 300003 | 300003 | 300004 | 1.00 |
+| sum / take / inc, n = 100000, per element | 5.0 / 6.0 / 7.0 | 5.0 / 6.0 / 7.0 | 4.0 / 5.0 / 6.0 | 1.25 / 1.20 / 1.17 |
+| CRC-32, n = 100, whole call | 19577 | 19575 | 16898 | 1.16 |
+
+Tested (QEMU == Sail == model): `impl1_test.py` on `impl1-opt-words` take5/inc/sum/crc/sort/msort/msortb/insb
+100/100 each; `loop_test.py` `opt-words/{gcd,loopsum}.words` 300/300; `WDIR=opt-words arr_test.py` sum/take/inc/sort
+100/100; `msort_test.py check 60` on `opt-words` (msort, msortb) 60/60; `frontx_test.py check 40` on the 8 changed
+`frontx-words`; `pipe_test.py` on
+the 36 `pipe-words` (50 each) and the 36 `pipe-words1` (`I1=1`, 30 each).
+
+Callee-saved registers: not done. The condition for trying (both above ≤ 1.3×) holds, but nothing measured would
+gain: `insProgB`, `gcdProg2` and `msortProgB` have no local in a slot (no `ldS`/`stS` in any hot loop), so `s1..s11`
+would change no instruction count. The remaining gaps are address arithmetic, not registers: sum/take/inc pay one
+`add base, i` per access where gcc walks a pointer (5 vs 4 per byte for sum), and the branchy merge step (15) has three
+address adds. The next lever is strength reduction of `base + i` into a pointer variable (a source-level or `Sel`
+rewrite), not `Compiler/Iface.lean`.

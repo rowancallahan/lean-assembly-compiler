@@ -1,4 +1,5 @@
 import Riscv.Back.OptArr
+import Riscv.Examples.InsB
 import Riscv.Direct.SortMachine
 open Proven
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
@@ -12,4 +13,5 @@ def put (name : String) (r : Except String (List (BitVec 32))) : IO Unit :=
   put "sum" (compileOptA [0] sumProg)
   put "take" (compileOptA [0, 3] (mapProg (.var 6)))
   put "inc" (compileOptA [0, 3] (mapProg (.bin .add (.var 6) (.const 1))))
-  put "insertion" (compileOptA [0, 3] sortProg)
+  put "insertion-a" (compileOptA [0, 3] sortProg)
+  put "insertion" (.ok Proven.Mach.Riscv.insCodeO)  -- `insProgB`, `Riscv/Examples/InsB.lean`
