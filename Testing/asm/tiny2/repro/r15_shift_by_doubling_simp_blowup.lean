@@ -9,7 +9,7 @@ funct bits (add 0, sub 0x40000000, xor 0x4000, sltu 0x3000); the compiler adds t
 constant fields.  `mv a0, x16` (0x00080513) and `ret` (0x00008067) are appended by the harness. -/
 import Riscv.Frontx.IndCmd
 
-namespace Proven.Frontx.Tiny2S5
+namespace R15
 
 inductive T where
   | nil
@@ -45,4 +45,4 @@ frontx_ind_type TT := T
 set_option maxHeartbeats 0 in
 frontx_ind compile on TT
 
-end Proven.Frontx.Tiny2S5
+end R15

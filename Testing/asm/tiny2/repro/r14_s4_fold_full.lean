@@ -3,7 +3,7 @@
 entry does not go through (F11, see `TinyS4Pipe.lean`), so the two binaries are chained by the test harness. -/
 import Riscv.Frontx.IndCmd
 
-namespace Proven.Frontx.Tiny2S4
+namespace R14
 
 inductive T where
   | nil
@@ -29,4 +29,4 @@ frontx_ind_type TT := T
 set_option maxHeartbeats 0 in
 frontx_ind fold on TT
 
-end Proven.Frontx.Tiny2S4
+end R14
