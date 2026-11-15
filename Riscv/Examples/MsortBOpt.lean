@@ -60,6 +60,7 @@ theorem msortCodeO2_ok_k {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get
         · simpa using hs
         · simpa using ho
         · simp at hb; omega⟩
+  unfold msortCodeO2 at hc hok hcd
   refine runsTo_mono (compileBFO_okK 7 [0, 2, 3] (by decide) msortProgB_wf hR hex h hpc hc hok hf hfd hcd
     (fun i => by simp [envOf]) (fun j hj => by simp [envOf]; omega) hheap hra) ?_
   rintro s' ⟨p1, p2, p3, p4, p5, p6⟩

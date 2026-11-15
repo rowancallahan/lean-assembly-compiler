@@ -98,7 +98,7 @@ variable (M : WideF) (sc : Reg) (g : Nat → Reg) (sp : Nat → Bool) (N : Nat)
 /-- **The optimising spill-slot compiler** (byte blocks only) -/
 def optB (bv wv : List Nat) (p : BStmt) : Option (List (BitVec 32)) :=
   if (okB N bv wv p && decide (N ≤ 16) && decide (∀ i : Fin 8, avar i ≠ sc)) = true then
-    match M.body sc (fB g) [0, 1, 2, 3, 4, 5, 6, 7] (.seq (initL sp (List.range N)) (irB sp bv wv p)) with
+    match M.bodySR sc (fB g) [0, 1, 2, 3, 4, 5, 6, 7] (.seq (initL sp (List.range N)) (irB sp bv wv p)) with
     | some w => some (M.encE N ++ (w ++ (M.encL ++ M.wenc .ret)))
     | none => none
   else none
@@ -125,7 +125,7 @@ theorem optB_ok {bv wv : List Nat} {p : BStmt} {ws : List (BitVec 32)} (hc : M.o
   obtain ⟨hokB, hN16, hsc⟩ := Wide.and3 hchk
   replace hN16 : N ≤ 16 := of_decide_eq_true hN16
   replace hsc : ∀ i : Fin 8, avar i ≠ sc := of_decide_eq_true hsc
-  cases hb : M.body sc (fB g) [0, 1, 2, 3, 4, 5, 6, 7] (.seq (initL sp (List.range N)) (irB sp bv wv p)) with
+  cases hb : M.bodySR sc (fB g) [0, 1, 2, 3, 4, 5, 6, 7] (.seq (initL sp (List.range N)) (irB sp bv wv p)) with
   | none => rw [hb] at hc; exact nomatch hc
   | some w =>
   rw [hb] at hc
@@ -207,7 +207,7 @@ theorem optB_ok {bv wv : List Nat} {p : BStmt} {ws : List (BitVec 32)} (hc : M.o
     · rw [mi]; show bytes (M.mem s₁) _ _ = _
       rw [MachineF.bytes_out out₁ (hdisjR _ (List.mem_append_right _ (List.getElem_mem hb)))]; exact hheap.wbyts b hb
   obtain ⟨τ₃, xb, r₃⟩ := irB_ok bv wv L hex hokB τ₂ r₂
-  refine M.runsTo_trans (Wide.body_ok hram hwr hb ok₁ pc₁ fg.left (.seq xi xb)) fun s₂ ⟨d₂, m₂, v₂, e₂⟩ => ?_
+  refine M.runsTo_trans (Wide.bodySR_ok hram hwr hb ok₁ pc₁ fg.left (.seq xi xb)) fun s₂ ⟨d₂, m₂, v₂, e₂⟩ => ?_
   -- leave
   have fr₂ : M.fr s₂ = M.fr s₁ := m₂.2
   have cell₂ : bytes (M.mem s₂) (M.fr s₂).toNat 8 = (le8 (M.fr s)).map some := by

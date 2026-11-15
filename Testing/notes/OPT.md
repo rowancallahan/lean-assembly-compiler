@@ -79,7 +79,8 @@ variables pinned to registers by the calling convention this gives the same code
 `a`; `if ¬c then d := b` when `a` is `d`; `if c then d := a` when `b` is `d`).
 Not done: constant folding beyond `op c₁ c₂` (lowering folds that), dead-code elimination (all source variables are
 outputs in the current specs, so nothing is dead), a liveness-based allocator / spill slots (`BStmt`), strength
-reduction.
+reduction. (Later done: liveness checker, spill slots, and strength reduction with copy propagation and DCE of
+temporaries, see the last section.)
 
 Register assignment used: variable `i ↦` its convention register, temporary `k ↦ r k`; `Exp`/`Stmt`: 10 temporaries,
 scratch `r10`; `AStmt`: 6 temporaries, scratch `r6`. The assignment function is not trusted: `injOn` checks it on the
@@ -438,3 +439,67 @@ would change no instruction count. The remaining gaps are address arithmetic, no
 `add base, i` per access where gcc walks a pointer (5 vs 4 per byte for sum), and the branchy merge step (15) has three
 address adds. The next lever is strength reduction of `base + i` into a pointer variable (a source-level or `Sel`
 rewrite), not `Compiler/Iface.lean`.
+
+## Strength reduction of byte-loop indices (2026-11-15)
+
+`Compiler/Opt/SR.lean` (kernel-checked; `propext`, `Classical.choice`, `Quot.sound`): an IR → IR pass on virtual
+registers, run before register assignment. A loop `while i <u n do body` with trivial head code, whose index `i` is
+used in `body` only in address sums `d := b + i` / `d := i + b` (the bases `b` and `n` not written in the loop) and in
+one increment `i := i + 1` executed at most once per iteration (`inc1`), becomes
+```
+if i ≤u n { e := b₀ + n; p_b := b + i (each base); while p_{b₀} ≠ e { body' }; i := p_{b₀} - b₀ }
+```
+with `d := p_b` for the sums and `p_b := p_b + 1` (every base) for the increment; `e`, `p_b` are fresh (`≥ m`, above
+every register of the code and of the outputs). Then copy propagation (`cp`: `d := p; mem[d]` → `mem[p]`, same
+states) and dead-code elimination (`dce`: drops `set`/`bin` whose destination is dead; liveness as `chk`, loop
+invariants from `lvIter` checked by `subL`) remove the address temporaries. Loops that do not qualify are left as they
+are; when no loop qualifies `sr vars c = c` (all other words are unchanged).
+
+Proofs: `body_sim` (invariant `Inv`: registers `< m` other than `i` agree, `p_b = b + i`, `e = b₀ + n`), `loop_sim`
+(`i ≤ n` at every test, so `i <u n ↔ b₀ + i ≠ b₀ + n`), `srL_ok`, `srC_ok` (agreement below `m`), `cp_ok`, `dce_ok`, and
+
+`sr_ok : Exec ram fp c σ σ' → ∃ τ', Exec ram fp (sr vars c) σ τ' ∧ τ'.mem = σ'.mem ∧ ∀ x ∈ vars, τ'.reg x = σ'.reg x`.
+
+Drop-in (`Compiler/Opt/Fn.lean`): `Wide.fnSR`/`Wide.bodySR` try the reduced code first and fall back to the plain
+code when allocation or `wf` fails (`fnSR_ok`, `bodySR_ok`: the conclusions of `fn_ok`, `body_ok`). `optA` uses
+`fnSR`, `WideF.optB` uses `bodySR`; `colorB` (untrusted, `Riscv/Back/OptB.lean`) colours the reduced body first
+(`tryL` tries `useSR = true`, then `false`, per spill set). `optE`/`optS` unchanged (no address sums). Statements of
+all headline theorems unchanged (statement hashes equal; closures differ, fingerprints re-frozen). Two proofs needed
+help elaborating `hcd` against the bigger compiler (`unfold msortCodeO/msortCodeO2 at hc hok hcd`; `sortCodeO_ok_k`:
+`maxRecDepth 20000`).
+
+The sum loop is now gcc's: `lbu; add; addi p; bne p, e` (4); take `lbu; sb; addi; addi; bne` (5); map `lbu; addi;
+sb; addi; addi; bne` (6). Each reduced loop costs about 3 + (number of bases) instructions once (guard, `e`, the
+pointers, `i := p - b₀`), hence 3–4 more words.
+
+Measured (`python3 bench/bench.py sum take inc crc insertion msortb --opt-only`, RV64 QEMU `-icount`, whole call):
+
+| function | before | after | gcc -O2 | after / gcc |
+|---|---|---|---|---|
+| sum, n = 100 / 1000 / 100000 | 504 / 5004 / 500004 | 408 / 4008 / 400008 | 4.0 per byte | 1.00 |
+| take, n = 100 / 1000 / 100000 | 605 / 6005 / 600005 | 510 / 5010 / 500010 | 5.0 per byte | 1.00 |
+| map (+1), n = 100 / 1000 / 100000 | 705 / 7005 / 700005 | 610 / 6010 / 600010 | 6.0 per byte | 1.00 |
+| CRC-32, n = 100 / 1000 / 100000 | 19575 / 29475 / 1118475 | 19478 / 28478 / 1018478 | 16898 (n = 100) | 1.15 |
+| insertion sort (`insCodeO`), n = 100 / 1000 / 10000 | 18929 / 1722217 / 175638725 | 18834 / 1721222 / 175628730 | 182.3 / 1715.2 / 17556.9 per element | 1.03 / 1.004 / 1.0003 |
+| merge sort, branchy (`msortCodeO2`) | 10565 / 153147 / 23988825 | unchanged | | 1.04 / 1.16 / 1.08 |
+| merge sort, branch-free (`msortCodeO`) | | unchanged (no loop qualifies) | | |
+
+CRC: the byte loop is reduced (1 instruction per byte saved; the inner bit loop has no address). Insertion sort: only
+the initial copy loop (`mapK`) qualifies (the outer loop uses `i` in `j := i`, the inner one counts down).
+`msortCodeO2`: the two tail-copy loops qualify, but with the extra live `e`/pointer the colouring of the reduced body
+needs one register more than the 6 that are free (the outputs `a0..a7` are live throughout), so `tryL` takes the
+plain body without spills (taking a spill instead would cost more in the merge loop); words unchanged.
+
+Words re-emitted: `opt-words` (sum, take, inc, crc, insertion, insertion-a), `impl1-opt-words` (sum, take5, inc, crc,
+sort, insb), 24 `pipe-words` and 29 `pipe-words1` (map/filter/fold pipes); `frontx-words`, msort/msortb, gcd,
+loopsum, demo unchanged.
+
+Tested (QEMU == Sail == model): `WDIR=impl1-opt-words impl1_test.py` take5/inc/sum/crc/sort/msort/msortb/insb
+100/100 each; `WDIR=opt-words arr_test.py` sum/take/inc/sort 100/100 each; `WDIR=opt-words msort_test.py check 60` (msort, msortb) 60/60; `pipe_test.py` on the 24 changed
+`pipe-words` 50/50 each and the 29 changed `pipe-words1` (`I1=1`) 30/30 each. Fuzz (`fuzz_opt.lean`, seeds 71, 72,
+300 cases × 100 inputs; expressions, which `sr` does not touch): 600/600 cases on the optimised path, 0 fallbacks;
+60,000 pairs four-way (Lean == RV64 QEMU == Sail emulator == AArch64 QEMU), 0 mismatches.
+
+Not done: loops counting down or by other steps, `loop2` (short-circuit) loops, a second index in the same loop
+(`k` in the merge tails stays an index), dropping the `i ≤ n` guard when `i := 0` precedes the loop, an ARM run of
+the new words (the pass is target-independent; `Wide` has no ARM instance yet).

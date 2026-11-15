@@ -4,6 +4,7 @@ registers (read through `f`) is simulated up to the return. -/
 import Compiler.Opt.Lower
 import Compiler.Opt.Alloc
 import Compiler.Opt.Live
+import Compiler.Opt.SR
 
 namespace Proven.Mach
 open IR
@@ -82,6 +83,53 @@ theorem fn_ok {ram : Nat → Prop} {fp : Nat} (hram : ∀ a, ram a → M.inRAM a
     · rw [st₂, r₁.1 _ hs]; exact hr' x hx
     · rw [m₂, r₁.2, hm']
   · rw [ite_neg hchk] at hc; exact nomatch hc
+
+/-! ### With strength reduction (`SR.sr`) tried first -/
+
+variable (M sc f) in
+/-- the body of `SR.sr vars c` if it passes the checks, else that of `c` -/
+def bodySR (vars : List Nat) (c : Code Nat) : Option (List (BitVec 32)) :=
+  match M.body sc f vars (SR.sr vars c) with
+  | some w => some w
+  | none => M.body sc f vars c
+
+variable (M sc f) in
+def fnSR (vars : List Nat) (c : Code Nat) : Option (List (BitVec 32)) :=
+  match M.fn sc f vars (SR.sr vars c) with
+  | some w => some w
+  | none => M.fn sc f vars c
+
+theorem bodySR_ok {ram : Nat → Prop} {fp : Nat} (hram : ∀ a, ram a → M.inRAM a 1)
+    (hwr : ∀ a, ram a → ∀ s, M.ok s → M.writable s a) {vars : List Nat} {c : Code Nat}
+    {ws : List (BitVec 32)} (hc : M.bodySR sc f vars c = some ws) {s : M.S} {pc : BitVec 64} (hok : M.ok s)
+    (hpc : M.pcIs s pc) (hf : M.Frag ram fp s pc ws) {σ' : St Nat}
+    (hex : Exec ram fp c ⟨fun x => M.get s (f x), M.mem s⟩ σ') :
+    M.RunTo ram s (next pc ws.length) fun s' =>
+      (∀ x, x ∈ vars → f x ≠ sc → M.get s' (f x) = σ'.reg x) ∧ M.mem s' = σ'.mem := by
+  unfold bodySR at hc
+  cases hs : M.body sc f vars (SR.sr vars c) with
+  | some w =>
+    rw [hs] at hc; cases hc
+    obtain ⟨τ', hx', hm', hv'⟩ := SR.sr_ok vars hex
+    exact (body_ok hram hwr hs hok hpc hf hx').mono fun s₁ _ _ r₁ =>
+      ⟨fun x hx hs => (r₁.1 x hx hs).trans (hv' x hx), r₁.2.trans hm'⟩
+  | none => rw [hs] at hc; exact body_ok hram hwr hc hok hpc hf hex
+
+theorem fnSR_ok {ram : Nat → Prop} {fp : Nat} (hram : ∀ a, ram a → M.inRAM a 1)
+    (hwr : ∀ a, ram a → ∀ s, M.ok s → M.writable s a) {vars : List Nat} {c : Code Nat}
+    {ws : List (BitVec 32)} (hc : M.fnSR sc f vars c = some ws) {s : M.S} {pc : BitVec 64} (hok : M.ok s)
+    (hpc : M.pcIs s pc) (hf : M.Frag ram fp s pc ws) (hra : M.retOK (M.ra s)) {σ' : St Nat}
+    (hex : Exec ram fp c ⟨fun x => M.get s (f x), M.mem s⟩ σ') :
+    M.runsTo s fun s' => M.pcIs s' (M.ra s) ∧ (∀ x, x ∈ vars → f x ≠ sc → M.get s' (f x) = σ'.reg x) ∧
+      M.ok s' ∧ M.mem s' = σ'.mem ∧ M.keep s s' := by
+  unfold fnSR at hc
+  cases hs : M.fn sc f vars (SR.sr vars c) with
+  | some w =>
+    rw [hs] at hc; cases hc
+    obtain ⟨τ', hx', hm', hv'⟩ := SR.sr_ok vars hex
+    exact M.runsTo_mono (fn_ok hram hwr hs hok hpc hf hra hx') fun s₁ ⟨a, b, c, d, e⟩ =>
+      ⟨a, fun x hx hs => (b x hx hs).trans (hv' x hx), c, d.trans hm', e⟩
+  | none => rw [hs] at hc; exact fn_ok hram hwr hc hok hpc hf hra hex
 
 end Wide
 end Proven.Mach

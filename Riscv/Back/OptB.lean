@@ -85,26 +85,6 @@ def tryB (N : Nat) (bv : List Nat) (p : Mach.BStmt) (c : Nat × List Nat) (wv : 
 
 /-! ### Liveness-based choice (untrusted colouring, checked by `allocOK` inside `WideF.optB`) -/
 
-/-- the registers free for colouring: all but the scratch `r6`; the convention registers of the variables first (a short-lived register takes one where that variable is dead) -/
-def colsB : List Reg := ((List.range 8).map (7 + ·) ++ List.range 6).map rk
-
-/-- a colouring of the body `optB` builds, the locals `spl` in slots -/
-def colorB (N : Nat) (bv wv : List Nat) (p : Mach.BStmt) (spl : List Nat) : Option (Nat → Reg) :=
-  let sp := fun j => spl.contains j
-  IR.color (.seq (initL sp (List.range N)) (irB sp bv wv p)) [0, 1, 2, 3, 4, 5, 6, 7]
-    (fun x => if h : x < 8 then some (avar ⟨x, h⟩) else none) colsB (fun _ => 0)
-
-def tryL (N : Nat) (bv : List Nat) (p : Mach.BStmt) (spl : List Nat) (wv : List Nat := []) :
-    Option (List (BitVec 32)) :=
-  match colorB N bv wv p spl with
-  | some g => rvwF.optB scB g (fun j => spl.contains j) N bv wv p
-  | none => none
-
-/-- spill sets to try: none, then one local, then two (cheapest by `score` first) -/
-def spillSets (p : Mach.BStmt) (N : Nat) : List (List Nat) :=
-  let cost := fun (l : List Nat) => l.foldl (fun a j => a + score p (8 + j)) 0
-  [] :: (((List.range N).map fun j => [j]) ++ choose 2 (List.range N)).mergeSort fun a b => cost a ≤ cost b
-
 def firstB {α : Type} (f : α → Option (List (BitVec 32))) : List α → Option (List (BitVec 32))
   | [] => none
   | T :: l => match f T with | some ws => some ws | none => firstB f l
@@ -117,6 +97,28 @@ theorem firstB_ok {α : Type} {f : α → Option (List (BitVec 32))} {ws : List 
     cases hf : f T with
     | some w => rw [hf] at h; exact ⟨T, hf.trans h⟩
     | none => rw [hf] at h; exact firstB_ok h
+
+/-- the registers free for colouring: all but the scratch `r6`; the convention registers of the variables first (a short-lived register takes one where that variable is dead) -/
+def colsB : List Reg := ((List.range 8).map (7 + ·) ++ List.range 6).map rk
+
+/-- a colouring of the body `optB` builds, the locals `spl` in slots -/
+def colorB (N : Nat) (bv wv : List Nat) (p : Mach.BStmt) (spl : List Nat) (useSR : Bool := false) : Option (Nat → Reg) :=
+  let sp := fun j => spl.contains j
+  let c := IR.Code.seq (initL sp (List.range N)) (irB sp bv wv p)
+  IR.color (if useSR then IR.SR.sr [0, 1, 2, 3, 4, 5, 6, 7] c else c) [0, 1, 2, 3, 4, 5, 6, 7]
+    (fun x => if h : x < 8 then some (avar ⟨x, h⟩) else none) colsB (fun _ => 0)
+
+/-- a colouring of the strength-reduced body first (`WideF.optB` tries that body first), then of the plain one -/
+def tryL (N : Nat) (bv : List Nat) (p : Mach.BStmt) (spl : List Nat) (wv : List Nat := []) :
+    Option (List (BitVec 32)) :=
+  firstB (fun useSR => match colorB N bv wv p spl useSR with
+    | some g => rvwF.optB scB g (fun j => spl.contains j) N bv wv p
+    | none => none) [true, false]
+
+/-- spill sets to try: none, then one local, then two (cheapest by `score` first) -/
+def spillSets (p : Mach.BStmt) (N : Nat) : List (List Nat) :=
+  let cost := fun (l : List Nat) => l.foldl (fun a j => a + score p (8 + j)) 0
+  [] :: (((List.range N).map fun j => [j]) ++ choose 2 (List.range N)).mergeSort fun a b => cost a ≤ cost b
 
 /-- the choice used by the compilers: liveness-checked colourings first (fewest weighted slot uses), then
 the injective assignments -/
@@ -133,7 +135,8 @@ theorem pickB_ok {N : Nat} {bv wv : List Nat} {p : Mach.BStmt} {ws : List (BitVe
     rw [hfl] at h; cases h
     obtain ⟨spl, h⟩ := firstB_ok hfl
     unfold tryL at h
-    cases hg : colorB N bv wv p spl with
+    obtain ⟨u, h⟩ := firstB_ok h
+    cases hg : colorB N bv wv p spl u with
     | none => rw [hg] at h; exact nomatch h
     | some g => rw [hg] at h; exact ⟨g, _, h⟩
   | none =>

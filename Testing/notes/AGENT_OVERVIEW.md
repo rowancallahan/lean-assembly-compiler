@@ -27,6 +27,8 @@ Read this first. The top-level `README.md` is for people; this file is for agent
 - Loop inversion in the optimised lowering (`Compiler/Opt/Lower.lean`, no entry jump); gcc-structured insertion sort
   `insCodeO_implements1` (`Riscv/Examples/InsB.lean`) and gcd `gcdO_ok`/`gcdO_ok_nat` (`Riscv/Examples/GcdOpt.lean`),
   1.00–1.04× gcc -O2 instructions (`OPT.md`, last section).
+- Strength reduction of byte-loop indices (`Compiler/Opt/SR.lean`, `sr_ok`; with copy propagation and DCE), tried
+  first by `optA`/`optB` (`fnSR`/`bodySR`, plain code as fallback): sum/take/map 4/5/6 per byte = gcc -O2 (`OPT.md`, last section).
 - Calls (`CALLS.md`): `Spec/Tree.lean`, `treeEval_implements` (`Riscv/Examples/TreeEval.lean`), `calls_test.py`.
 - ARM on DeepMind's AArch64 semantics (`Arm/apc/README.md`, `Arm/apc/check.sh`): `apc : Machine` (9 laws), `compile_apc`/`gcd_apc`/`sort_apc`, bridge `apc_eq_sail` to Sail for the 216 expression words.
 - ARM (Lean 4.34.1, generated model `Arm/model/`, built copy `/home/user/armv9-lean`): AArch64 backend for `Exp`

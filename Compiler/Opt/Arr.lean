@@ -173,7 +173,7 @@ structure RelW (bv : List (Fin 8)) (R : List Region) (σ : AState) (s : M.S) : P
 
 /-- **The optimising array compiler** (as a function: run the statement, then return) -/
 def optA (bv : List (Fin 8)) (p : AStmt) : Option (List (BitVec 32)) :=
-  if okA bv p = true then M.fn scA fA [0, 1, 2, 3, 4, 5, 6, 7] (irA bv p) else none
+  if okA bv p = true then M.fnSR scA fA [0, 1, 2, 3, 4, 5, 6, 7] (irA bv p) else none
 
 /-- **Correctness of the optimising array compiler from the wide laws**; same conclusion as
 `Machine.compAF_ok`. -/
@@ -199,7 +199,7 @@ theorem optA_ok (bv : List (Fin 8)) {p : AStmt} {ws : List (BitVec 32)} (hc : M.
     have hwr : ∀ a, ramR R a → ∀ s, M.ok s → M.writable s a := fun a ⟨r, hr, h1, h2⟩ => hR.2.2 r hr a h1 h2
     have hf : M.Frag (ramR R) (M.fr s).toNat s pc ws := ⟨hA.code, hA.codeOK, fun a ⟨r, hr, h1, h2⟩ h' => by
       have := hcd r hr; unfold disjoint at this; dsimp only at this; omega, rfl⟩
-    refine M.runsTo_mono (fn_ok hram hwr hc hA.ok hA.hpc hf hra hx) fun s' ⟨pc', v, o, m, k⟩ =>
+    refine M.runsTo_mono (fnSR_ok hram hwr hc hA.ok hA.hpc hf hra hx) fun s' ⟨pc', v, o, m, k⟩ =>
       ⟨pc', ⟨fun i => ?_, r'.hlen, r'.bvlen, r'.base, r'.blen, fun b hb => by rw [m]; exact r'.bytes b hb⟩, ?_, o, k⟩
     · rw [← r'.env i, ← fAv i]
       exact v i.val (by revert i; decide) (by revert i; decide)
