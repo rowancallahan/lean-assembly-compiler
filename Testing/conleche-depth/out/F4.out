@@ -1,0 +1,404 @@
+Testing/conleche-depth/F4.lean:2457:8: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth/F4.lean:2465:8: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth/F4.lean:2473:8: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth/F4.lean:2829:33: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth/F4.lean:2831:31: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth/F4.lean:2839:33: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth/F4.lean:2840:31: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth/F4.lean:3163:25: error(lean.unknownIdentifier): Unknown identifier `ite_eq_left`
+Testing/conleche-depth/F4.lean:9011:0: error: unexpected token '#'; expected command
+Testing/conleche-depth/F4.lean:14765:54: error: Tactic `rewrite` failed: Did not find an occurrence of the pattern
+  p.fst.val
+in the target expression
+  (fun p => p.fst.val) p = (fun p => p.fst.val) q
+
+c : Expr
+M : Type
+s : Squash ({ r // r = c } × M)
+p q : { r // r = c } × M
+x✝ : p ≈ q
+⊢ (fun p => p.fst.val) p = (fun p => p.fst.val) q
+Testing/conleche-depth/F4.lean:15770:71: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth/F4.lean:15770:39: error: unsolved goals
+ks : List Name
+us : List Level
+memo : MemoXP0 (instLevelParamsP ks us)
+e : Expr
+i : Nat
+hcut : ¬(!(bvar i).hasLP) = true
+⊢ bvar i =
+    if (!(bvar i).hasLP) = true then bvar i
+    else
+      match bvar i with
+      | bvar i_1 => bvar i
+      | lit l => bvar i
+      | sort u => mkSort (Level.subst ks us u)
+      | const n vs => mkConst n (List.map (Level.subst ks us) vs)
+      | fvar idx ty => mkFVar idx (instLevelParamsP ks us ty)
+      | f.app a => (instLevelParamsP ks us f).mkApp (instLevelParamsP ks us a)
+      | ty.lam body => (instLevelParamsP ks us ty).mkLam (instLevelParamsP ks us body)
+      | ty.forallE body => (instLevelParamsP ks us ty).mkForallE (instLevelParamsP ks us body)
+      | ty.letE val body =>
+        (instLevelParamsP ks us ty).mkLetE (instLevelParamsP ks us val) (instLevelParamsP ks us body)
+      | proj s i sub => mkProj s i (instLevelParamsP ks us sub)
+Testing/conleche-depth/F4.lean:15771:69: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth/F4.lean:15771:37: error: unsolved goals
+ks : List Name
+us : List Level
+memo : MemoXP0 (instLevelParamsP ks us)
+e : Expr
+l : Literal
+hcut : ¬(!(lit l).hasLP) = true
+⊢ lit l =
+    if (!(lit l).hasLP) = true then lit l
+    else
+      match lit l with
+      | bvar i => lit l
+      | lit l_1 => lit l
+      | sort u => mkSort (Level.subst ks us u)
+      | const n vs => mkConst n (List.map (Level.subst ks us) vs)
+      | fvar idx ty => mkFVar idx (instLevelParamsP ks us ty)
+      | f.app a => (instLevelParamsP ks us f).mkApp (instLevelParamsP ks us a)
+      | ty.lam body => (instLevelParamsP ks us ty).mkLam (instLevelParamsP ks us body)
+      | ty.forallE body => (instLevelParamsP ks us ty).mkForallE (instLevelParamsP ks us body)
+      | ty.letE val body =>
+        (instLevelParamsP ks us ty).mkLetE (instLevelParamsP ks us val) (instLevelParamsP ks us body)
+      | proj s i sub => mkProj s i (instLevelParamsP ks us sub)
+Testing/conleche-depth/F4.lean:15773:78: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth/F4.lean:15773:46: error: unsolved goals
+ks : List Name
+us : List Level
+memo : MemoXP0 (instLevelParamsP ks us)
+e : Expr
+u : Level
+hcut : ¬(!(sort u).hasLP) = true
+⊢ mkSort (Level.subst ks us u) =
+    if (!(sort u).hasLP) = true then sort u
+    else
+      match sort u with
+      | bvar i => sort u
+      | lit l => sort u
+      | sort u => mkSort (Level.subst ks us u)
+      | const n vs => mkConst n (List.map (Level.subst ks us) vs)
+      | fvar idx ty => mkFVar idx (instLevelParamsP ks us ty)
+      | f.app a => (instLevelParamsP ks us f).mkApp (instLevelParamsP ks us a)
+      | ty.lam body => (instLevelParamsP ks us ty).mkLam (instLevelParamsP ks us body)
+      | ty.forallE body => (instLevelParamsP ks us ty).mkForallE (instLevelParamsP ks us body)
+      | ty.letE val body =>
+        (instLevelParamsP ks us ty).mkLetE (instLevelParamsP ks us val) (instLevelParamsP ks us body)
+      | proj s i sub => mkProj s i (instLevelParamsP ks us sub)
+Testing/conleche-depth/F4.lean:15776:38: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth/F4.lean:15776:6: error: unsolved goals
+ks : List Name
+us : List Level
+memo : MemoXP0 (instLevelParamsP ks us)
+e : Expr
+n : Name
+vs : List Level
+hcut : ¬(!(const n vs).hasLP) = true
+⊢ mkConst n (List.map (Level.subst ks us) vs) =
+    if (!(const n vs).hasLP) = true then const n vs
+    else
+      match const n vs with
+      | bvar i => const n vs
+      | lit l => const n vs
+      | sort u => mkSort (Level.subst ks us u)
+      | const n vs => mkConst n (List.map (Level.subst ks us) vs)
+      | fvar idx ty => mkFVar idx (instLevelParamsP ks us ty)
+      | f.app a => (instLevelParamsP ks us f).mkApp (instLevelParamsP ks us a)
+      | ty.lam body => (instLevelParamsP ks us ty).mkLam (instLevelParamsP ks us body)
+      | ty.forallE body => (instLevelParamsP ks us ty).mkForallE (instLevelParamsP ks us body)
+      | ty.letE val body =>
+        (instLevelParamsP ks us ty).mkLetE (instLevelParamsP ks us val) (instLevelParamsP ks us body)
+      | proj s i sub => mkProj s i (instLevelParamsP ks us sub)
+Testing/conleche-depth/F4.lean:15779:62: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth/F4.lean:15779:30: error: unsolved goals
+ks : List Name
+us : List Level
+memo✝ : MemoXP0 (instLevelParamsP ks us)
+e : Expr
+idx : Nat
+ty : Expr
+hcut : ¬(!(fvar idx ty).hasLP) = true
+x✝ : ResXP0 (instLevelParamsP ks us) ty
+t : Expr
+ht : t = instLevelParamsP ks us ty
+memo : MemoXP0 (instLevelParamsP ks us)
+⊢ mkFVar idx t =
+    if (!(fvar idx ty).hasLP) = true then fvar idx ty
+    else
+      match fvar idx ty with
+      | bvar i => fvar idx ty
+      | lit l => fvar idx ty
+      | sort u => mkSort (Level.subst ks us u)
+      | const n vs => mkConst n (List.map (Level.subst ks us) vs)
+      | fvar idx ty => mkFVar idx (instLevelParamsP ks us ty)
+      | f.app a => (instLevelParamsP ks us f).mkApp (instLevelParamsP ks us a)
+      | ty.lam body => (instLevelParamsP ks us ty).mkLam (instLevelParamsP ks us body)
+      | ty.forallE body => (instLevelParamsP ks us ty).mkForallE (instLevelParamsP ks us body)
+      | ty.letE val body =>
+        (instLevelParamsP ks us ty).mkLetE (instLevelParamsP ks us val) (instLevelParamsP ks us body)
+      | proj s i sub => mkProj s i (instLevelParamsP ks us sub)
+Testing/conleche-depth/F4.lean:15783:61: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth/F4.lean:15783:29: error: unsolved goals
+ks : List Name
+us : List Level
+memo✝¹ : MemoXP0 (instLevelParamsP ks us)
+e f a : Expr
+hcut : ¬(!(f.app a).hasLP) = true
+x✝¹ : ResXP0 (instLevelParamsP ks us) f
+f' : Expr
+hf : f' = instLevelParamsP ks us f
+memo✝ : MemoXP0 (instLevelParamsP ks us)
+x✝ : ResXP0 (instLevelParamsP ks us) a
+a' : Expr
+ha : a' = instLevelParamsP ks us a
+memo : MemoXP0 (instLevelParamsP ks us)
+⊢ f'.mkApp a' =
+    if (!(f.app a).hasLP) = true then f.app a
+    else
+      match f.app a with
+      | bvar i => f.app a
+      | lit l => f.app a
+      | sort u => mkSort (Level.subst ks us u)
+      | const n vs => mkConst n (List.map (Level.subst ks us) vs)
+      | fvar idx ty => mkFVar idx (instLevelParamsP ks us ty)
+      | f.app a => (instLevelParamsP ks us f).mkApp (instLevelParamsP ks us a)
+      | ty.lam body => (instLevelParamsP ks us ty).mkLam (instLevelParamsP ks us body)
+      | ty.forallE body => (instLevelParamsP ks us ty).mkForallE (instLevelParamsP ks us body)
+      | ty.letE val body =>
+        (instLevelParamsP ks us ty).mkLetE (instLevelParamsP ks us val) (instLevelParamsP ks us body)
+      | proj s i sub => mkProj s i (instLevelParamsP ks us sub)
+Testing/conleche-depth/F4.lean:15788:38: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth/F4.lean:15788:6: error: unsolved goals
+ks : List Name
+us : List Level
+memo✝¹ : MemoXP0 (instLevelParamsP ks us)
+e ty body : Expr
+hcut : ¬(!(ty.lam body).hasLP) = true
+x✝¹ : ResXP0 (instLevelParamsP ks us) ty
+ty' : Expr
+ht : ty' = instLevelParamsP ks us ty
+memo✝ : MemoXP0 (instLevelParamsP ks us)
+x✝ : ResXP0 (instLevelParamsP ks us) body
+b' : Expr
+hb : b' = instLevelParamsP ks us body
+memo : MemoXP0 (instLevelParamsP ks us)
+⊢ ty'.mkLam b' =
+    if (!(ty.lam body).hasLP) = true then ty.lam body
+    else
+      match ty.lam body with
+      | bvar i => ty.lam body
+      | lit l => ty.lam body
+      | sort u => mkSort (Level.subst ks us u)
+      | const n vs => mkConst n (List.map (Level.subst ks us) vs)
+      | fvar idx ty => mkFVar idx (instLevelParamsP ks us ty)
+      | f.app a => (instLevelParamsP ks us f).mkApp (instLevelParamsP ks us a)
+      | ty.lam body => (instLevelParamsP ks us ty).mkLam (instLevelParamsP ks us body)
+      | ty.forallE body => (instLevelParamsP ks us ty).mkForallE (instLevelParamsP ks us body)
+      | ty.letE val body =>
+        (instLevelParamsP ks us ty).mkLetE (instLevelParamsP ks us val) (instLevelParamsP ks us body)
+      | proj s i sub => mkProj s i (instLevelParamsP ks us sub)
+Testing/conleche-depth/F4.lean:15793:38: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth/F4.lean:15793:6: error: unsolved goals
+ks : List Name
+us : List Level
+memo✝¹ : MemoXP0 (instLevelParamsP ks us)
+e ty body : Expr
+hcut : ¬(!(ty.forallE body).hasLP) = true
+x✝¹ : ResXP0 (instLevelParamsP ks us) ty
+ty' : Expr
+ht : ty' = instLevelParamsP ks us ty
+memo✝ : MemoXP0 (instLevelParamsP ks us)
+x✝ : ResXP0 (instLevelParamsP ks us) body
+b' : Expr
+hb : b' = instLevelParamsP ks us body
+memo : MemoXP0 (instLevelParamsP ks us)
+⊢ ty'.mkForallE b' =
+    if (!(ty.forallE body).hasLP) = true then ty.forallE body
+    else
+      match ty.forallE body with
+      | bvar i => ty.forallE body
+      | lit l => ty.forallE body
+      | sort u => mkSort (Level.subst ks us u)
+      | const n vs => mkConst n (List.map (Level.subst ks us) vs)
+      | fvar idx ty => mkFVar idx (instLevelParamsP ks us ty)
+      | f.app a => (instLevelParamsP ks us f).mkApp (instLevelParamsP ks us a)
+      | ty.lam body => (instLevelParamsP ks us ty).mkLam (instLevelParamsP ks us body)
+      | ty.forallE body => (instLevelParamsP ks us ty).mkForallE (instLevelParamsP ks us body)
+      | ty.letE val body =>
+        (instLevelParamsP ks us ty).mkLetE (instLevelParamsP ks us val) (instLevelParamsP ks us body)
+      | proj s i sub => mkProj s i (instLevelParamsP ks us sub)
+Testing/conleche-depth/F4.lean:15798:66: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth/F4.lean:15798:34: error: unsolved goals
+ks : List Name
+us : List Level
+memo✝² : MemoXP0 (instLevelParamsP ks us)
+e ty val body : Expr
+hcut : ¬(!(ty.letE val body).hasLP) = true
+x✝² : ResXP0 (instLevelParamsP ks us) ty
+ty' : Expr
+ht : ty' = instLevelParamsP ks us ty
+memo✝¹ : MemoXP0 (instLevelParamsP ks us)
+x✝¹ : ResXP0 (instLevelParamsP ks us) val
+v' : Expr
+hv : v' = instLevelParamsP ks us val
+memo✝ : MemoXP0 (instLevelParamsP ks us)
+x✝ : ResXP0 (instLevelParamsP ks us) body
+b' : Expr
+hb : b' = instLevelParamsP ks us body
+memo : MemoXP0 (instLevelParamsP ks us)
+⊢ ty'.mkLetE v' b' =
+    if (!(ty.letE val body).hasLP) = true then ty.letE val body
+    else
+      match ty.letE val body with
+      | bvar i => ty.letE val body
+      | lit l => ty.letE val body
+      | sort u => mkSort (Level.subst ks us u)
+      | const n vs => mkConst n (List.map (Level.subst ks us) vs)
+      | fvar idx ty => mkFVar idx (instLevelParamsP ks us ty)
+      | f.app a => (instLevelParamsP ks us f).mkApp (instLevelParamsP ks us a)
+      | ty.lam body => (instLevelParamsP ks us ty).mkLam (instLevelParamsP ks us body)
+      | ty.forallE body => (instLevelParamsP ks us ty).mkForallE (instLevelParamsP ks us body)
+      | ty.letE val body =>
+        (instLevelParamsP ks us ty).mkLetE (instLevelParamsP ks us val) (instLevelParamsP ks us body)
+      | proj s i sub => mkProj s i (instLevelParamsP ks us sub)
+Testing/conleche-depth/F4.lean:15801:64: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth/F4.lean:15801:32: error: unsolved goals
+ks : List Name
+us : List Level
+memo✝ : MemoXP0 (instLevelParamsP ks us)
+e : Expr
+sn : Name
+i : Nat
+sub : Expr
+hcut : ¬(!(proj sn i sub).hasLP) = true
+x✝ : ResXP0 (instLevelParamsP ks us) sub
+s' : Expr
+hs : s' = instLevelParamsP ks us sub
+memo : MemoXP0 (instLevelParamsP ks us)
+⊢ mkProj sn i s' =
+    if (!(proj sn i sub).hasLP) = true then proj sn i sub
+    else
+      match proj sn i sub with
+      | bvar i_1 => proj sn i sub
+      | lit l => proj sn i sub
+      | sort u => mkSort (Level.subst ks us u)
+      | const n vs => mkConst n (List.map (Level.subst ks us) vs)
+      | fvar idx ty => mkFVar idx (instLevelParamsP ks us ty)
+      | f.app a => (instLevelParamsP ks us f).mkApp (instLevelParamsP ks us a)
+      | ty.lam body => (instLevelParamsP ks us ty).mkLam (instLevelParamsP ks us body)
+      | ty.forallE body => (instLevelParamsP ks us ty).mkForallE (instLevelParamsP ks us body)
+      | ty.letE val body =>
+        (instLevelParamsP ks us ty).mkLetE (instLevelParamsP ks us val) (instLevelParamsP ks us body)
+      | proj s i sub => mkProj s i (instLevelParamsP ks us sub)
+Testing/conleche-depth/F4.lean:16017:54: error: Tactic `rewrite` failed: Did not find an occurrence of the pattern
+  p.fst.val
+in the target expression
+  (fun p => p.fst.val) p = (fun p => p.fst.val) q
+
+c : Bool
+M : Type
+s : Squash ({ r // r = c } × M)
+p q : { r // r = c } × M
+x✝ : p ≈ q
+⊢ (fun p => p.fst.val) p = (fun p => p.fst.val) q
+Testing/conleche-depth/F4.lean:16535:54: error: Tactic `rewrite` failed: Did not find an occurrence of the pattern
+  p.fst.val
+in the target expression
+  (fun p => p.fst.val) p = (fun p => p.fst.val) q
+
+c : Nat
+M : Type
+s : Squash ({ r // r = c } × M)
+p q : { r // r = c } × M
+x✝ : p ≈ q
+⊢ (fun p => p.fst.val) p = (fun p => p.fst.val) q
+frontx_ind_type: TName := ConLeche.Name, shape [], [.l], [.l, .x]
+frontx_ind_type: TLevel := ConLeche.Level, shape [], [.l], [.l, .r], [.l, .r], []
+Testing/conleche-depth/F4.lean:22165:0: error: frontx_ind: unsupported parameter type
+  ConLeche.Name → ConLeche.Name
+Testing/conleche-depth/F4.lean:22166:0: error: frontx_ind: ConLeche.Expr.bvarBoundGo.match_3 has no equations
+Testing/conleche-depth/F4.lean:22167:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22168:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22169:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22170:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22171:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22172:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22173:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22174:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22175:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22176:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22177:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22178:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22179:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22180:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22181:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22182:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22183:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22184:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22185:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22186:0: error: frontx_ind: Bool.or has no argument of a declared type
+Testing/conleche-depth/F4.lean:22187:0: error: frontx_ind: Bool.or has no argument of a declared type
+Testing/conleche-depth/F4.lean:22188:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22189:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22190:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22191:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22192:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22193:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22194:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22195:0: error: frontx_ind: equation ite.eq_1 has no constructor pattern
+(by cases: frontx_ind: ite has no argument of the type)
+Testing/conleche-depth/F4.lean:22196:0: error: frontx_ind: ConLeche.ConstantVal.name has no argument of a declared type
+Testing/conleche-depth/F4.lean:22197:0: error: frontx_ind: unsupported parameter type
+  List ConLeche.Name
+frontx_ind: ConLeche.Level.isNeverZero on TLevel: 1 function(s) [ConLeche.Level.isNeverZero], 5 arms, result .w, 16 locals; 84 ms
+frontx_ind: ConLeche.Level.combining on TLevel: 1 function(s) [ConLeche.Level.combining], 5 arms, result .t, 16 locals; 146 ms
+frontx_ind: ConLeche.Level.simplify on TLevel: 2 function(s) [ConLeche.Level.simplify,
+ ConLeche.Level.combining], 5 arms, result .t, 20 locals; 221 ms
+Testing/conleche-depth/F4.lean:22201:0: error: frontx_ind: ConLeche.Level.leqCore._mutual has no argument of a declared type
+Testing/conleche-depth/F4.lean:22202:0: error: frontx_ind: unsupported parameter type
+  Int
+Testing/conleche-depth/F4.lean:22203:0: error: frontx_ind: unsupported parameter type
+  Int
+Testing/conleche-depth/F4.lean:22204:0: error: frontx_ind: ConLeche.Level.leqCore._mutual has no argument of a declared type
+Testing/conleche-depth/F4.lean:22205:0: error: frontx_ind: equation ite.eq_1 has no constructor pattern
+(by cases: frontx_ind: ite has no argument of the type)
+Testing/conleche-depth/F4.lean:22206:0: error: frontx_ind: ConLeche.Level.isAlwaysZero.match_1 has no equations
+Testing/conleche-depth/F4.lean:22207:0: error: frontx_ind: ConLeche.PropWhen.inter.match_1 has no equations
+Testing/conleche-depth/F4.lean:22208:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22209:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22210:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22211:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22212:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22213:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22214:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22215:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22216:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22217:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22218:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22219:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22220:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22221:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22222:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22223:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22224:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22225:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22226:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22227:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22228:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22229:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22230:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22231:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22232:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22233:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22234:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22235:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22236:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22237:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22238:0: error: frontx_ind: ConLeche.Name.str has no equations
+Testing/conleche-depth/F4.lean:22239:0: error: frontx_ind: equation ite.eq_1 has no constructor pattern
+(by cases: frontx_ind: ite has no argument of the type)
+Testing/conleche-depth/F4.lean:22240:0: error: frontx_ind: Bool.and has no argument of a declared type
+Testing/conleche-depth/F4.lean:22241:0: error: frontx_ind: ConLeche.Cached.NatBinOp.name.match_1 has no equations
+Testing/conleche-depth/F4.lean:22242:0: error: frontx_ind: Bool.and has no argument of a declared type
