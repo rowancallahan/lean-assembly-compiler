@@ -93,3 +93,15 @@ inductive Runs (machine : Machine) : machine.State → Ending machine → Prop
   blocks would need a placement rule / compaction / highest-address definition because of fragmentation);
   (2) "free" = what the program itself frees, not unreachability (that would require a garbage collector);
   (3) stack frames count: `alloc` on call, `free` on return, so recursion depth is part of `memoryNeeded`.
+- Later (owner, 2026-11-15): output overflow is just out of memory. To drop the output-fits hypothesis from both
+  CompileRuns and CompileCorrect: (1) StartCorrect passes the output capacity in a register on entry (a1, which
+  returns the output length); (2) OutOfMemory := workLength < memoryNeeded ∨ outputLength < |encodeOutput (f a)|;
+  (3) the code checks before writing (one compare when the output size is known before encoding; per write for
+  growing output). Until then the hypothesis stays (it is needed: the code is not told outputLength, so without it
+  CompileRuns' frame clause contradicts CompileCorrect).
+- Later (owner, 2026-11-15): ONE memory block instead of separate output and work blocks. Start: input block + one
+  memory block (address, length). End: registers give the output's address (a0) and length (a1), the output lies
+  inside the memory block and holds `encodeOutput (f a)`; out of memory = `blockLength < memoryNeeded` (output bytes
+  included), flagged by a0 = 2^64-1 (never a valid address); frame = nothing outside the memory block changes.
+  No output-fits hypothesis. The compiler may place the output anywhere in the block (build in place). Adapter
+  from today's theorems: split the block into an output part and a work part.

@@ -5,6 +5,9 @@ in declaration order; a field of type `ty` is a child (`l`, then `r`; at most tw
 field the scalar `x` (at most one), any other field is DROPPED (not in the byte format; a function reading it is
 rejected).  Generated: `T.sh` (the shape), `T.emb : ty → C`, `T.emb_wf`, `T.enc` (the input format: `C.enc T.sh ∘
 T.emb`: tag byte, then the fields, `x` 8 bytes little-endian mod `2^64`), `T.enc2` (two values one after another).
+A `UInt8` field is one byte (`Fld.b`); a `String` field, and with `nesting U, …` a field of type `U`, is a child of
+another type of the same shape (`String`: `Bytes8`, its UTF-8 bytes, `Riscv/Frontx/IndStr.lean`), whose constructor
+tags follow `ty`'s (`T.N1`, `T.N2`, … with `off`; NOTES section 23).
 
 `frontx_ind f on T`: `f` is either structurally recursive over `ty` (one equation per constructor, from the
 equation compiler), with at most one scalar parameter (`a`) and one more `ty` parameter (`b`, the second input), or
@@ -12,7 +15,7 @@ non-recursive with body `g c₁ …` for such a `g` (the scalar argument a liter
 constructor).  The arms are read off `g`'s equations (`E` terms: fields, parameters, literals, `+`, `||`, `&&`, `!`,
 constructors of `ty`, recursive calls on the children; calls in tail position become loops).  Generated, all proved
 automatically: `f.pg`, `f.sem` (the program's meaning is `g`'s), `f.wf`, `f.code` and `f.implements1`. -/
-import Riscv.Frontx.Ind
+import Riscv.Frontx.IndStr
 import Riscv.Back.Calls
 
 namespace Proven.Frontx.IndCmd
@@ -23,7 +26,7 @@ def runCmd (s : String) : CommandElabM Unit := do
   | .ok stx => elabCommand stx
   | .error e => throwError "frontx_ind: generated text does not parse ({e}):\n{s}"
 
-inductive Sc where | nat | u64 | bool
+inductive Sc where | nat | u64 | bool | u8
   deriving BEq, Inhabited
 
 def scOf? (t : Expr) : MetaM (Option Sc) := do
@@ -31,6 +34,7 @@ def scOf? (t : Expr) : MetaM (Option Sc) := do
   if t.isConstOf ``Nat then return some .nat
   if t.isConstOf ``UInt64 then return some .u64
   if t.isConstOf ``Bool then return some .bool
+  if t.isConstOf ``UInt8 then return some .u8
   return none
 
 /-- the word of a scalar `v` -/
@@ -38,6 +42,7 @@ def Sc.rep : Sc → String → String
   | .nat, v => s!"(BitVec.ofNat 64 {v})"
   | .u64, v => s!"({v}).toBitVec"
   | .bool, v => s!"(Proven.Frontx.Ind.bw {v})"
+  | .u8, v => s!"(BitVec.ofNat 64 ({v}).toNat)"
 
 /-- a field's role: child `l` / `r`, scalar `x`, dropped -/
 inductive Role where | l | r | x (s : Sc) | drop
@@ -50,9 +55,14 @@ structure TyInfo where
   ctors : Array Name
   roles : Array (Array Role)
   ftys : Array (Array String)
+  /-- per constructor and field: for a child of another type of the shape, that type (and whether the field is a
+  `String`, embedded as `Bytes8.ofString`) -/
+  kty : Array (Array (Option (Expr × Bool))) := #[]
   deriving Inhabited
 
-def analyze (ty : Expr) : MetaM TyInfo := do
+/-- `analyze ty nest`: the fields of `ty`'s constructors; a field of a type in `nest`, or a `String`, is a child of
+that type (`String`: `Bytes8`) -/
+def analyze (ty : Expr) (nest : Array Expr := #[]) : MetaM TyInfo := do
   let ty ← whnfR ty
   let .const ind _ := ty.getAppFn | throwError "frontx_ind_type: not an inductive type{indentExpr ty}"
   let some (.inductInfo iv) := (← getEnv).find? ind | throwError "frontx_ind_type: not an inductive type{indentExpr ty}"
@@ -60,33 +70,44 @@ def analyze (ty : Expr) : MetaM TyInfo := do
   unless params.size == iv.numParams && iv.numIndices == 0 do throwError "frontx_ind_type: indexed families are not supported"
   let mut roles := #[]
   let mut ftys := #[]
+  let mut ktys := #[]
   let us := ty.getAppFn.constLevels!
   for c in iv.ctors do
     let cty ← inferType (mkAppN (mkConst c us) params)
-    let (rs, fts) ← forallTelescope cty fun xs _ => do
+    let (rs, fts, ks) ← forallTelescope cty fun xs _ => do
       let mut rs := #[]
       let mut fts := #[]
+      let mut ks := #[]
       let mut kids := 0
       let mut scal := false
       for x in xs do
         let ft ← inferType x
         fts := fts.push (toString (← withOptions (fun o => o.setBool `pp.fullNames true) (ppExpr ft)))
-        if ← isDefEq ft ty then
+        let other ← do
+          if (← whnfR ft).isConstOf ``String then pure (some (Lean.mkConst ``Proven.Frontx.Ind.Bytes8, true))
+          else
+            let mut o := none
+            for n in nest do
+              if o.isNone then if ← isDefEq ft n then o := some (n, false)
+            pure o
+        if (← isDefEq ft ty) || other.isSome then
           rs := rs.push (if kids == 0 then Role.l else Role.r)
+          ks := ks.push other
           kids := kids + 1
           if kids > 2 then throwError "frontx_ind_type: {c}: more than two recursive fields"
         else match ← scOf? ft with
           | some s =>
             if scal then throwError "frontx_ind_type: {c}: more than one scalar field"
-            rs := rs.push (Role.x s); scal := true
-          | none => rs := rs.push Role.drop
-      return (rs, fts)
+            rs := rs.push (Role.x s); ks := ks.push none; scal := true
+          | none => rs := rs.push Role.drop; ks := ks.push none
+      return (rs, fts, ks)
     roles := roles.push rs
     ftys := ftys.push fts
-  return { ty, ind, params, ctors := iv.ctors.toArray, roles, ftys }
+    ktys := ktys.push ks
+  return { ty, ind, params, ctors := iv.ctors.toArray, roles, ftys, kty := ktys }
 
 def roleFld : Role → Option String
-  | .l => some ".l" | .r => some ".r" | .x _ => some ".x" | .drop => none
+  | .l => some ".l" | .r => some ".r" | .x .u8 => some ".b" | .x _ => some ".x" | .drop => none
 
 /-- the type of a constant, its universe parameters fresh metavariables -/
 def typeOfM (n : Name) : MetaM Expr := do
@@ -98,59 +119,144 @@ def ppFull (e : Expr) : MetaM String := do
   return toString (← withOptions (fun o => o.setBool `pp.fullNames true)
     (ppExpr e))
 
-/-- the cell of constructor `i` with field texts `fs` -/
-def cellS (ti : TyInfo) (i : Nat) (fs : Array String) (emb : String → String) : String := Id.run do
+/-- `wf_calls` (`Riscv/Back/Calls.lean`) for the larger programs of nested types: a length comparison whose
+`decide` instance is too large is evaluated by `simp` -/
+syntax "wf_calls_ind" "[" Lean.Parser.Tactic.simpLemma,* "]" : tactic
+macro_rules
+  | `(tactic| wf_calls_ind [$ls,*]) => `(tactic|
+    (simp [$ls,*, Proven.Mach.MachineC.wfF, Proven.Mach.MachineC.wfC, Proven.Mach.MachineF.wfB, Proven.Mach.BExp.depth,
+      Proven.Mach.BExp.vlt, Proven.Mach.nlOf, Proven.Mach.MachineC.progOff, Proven.Mach.MachineC.offs,
+      Proven.Mach.MachineC.lenF, Proven.Mach.MachineC.lenC, Proven.Mach.MachineC.lenStub, Proven.Mach.MachineC.posS,
+      Proven.Mach.MachineC.lenArgs, Proven.Mach.MachineC.lenLi, Proven.Mach.argsC, Proven.Mach.padArgs, Proven.Mach.mgenB,
+      Proven.Mach.setV, Proven.Mach.MachineF.compB, Proven.Mach.MachineF.codeF, Proven.Mach.MachineC.codeC,
+      Proven.Mach.MachineC.encY, Proven.Mach.MachineF.encF, Proven.Mach.Riscv.rvC, Proven.Mach.Riscv.rvF,
+      Proven.Mach.Riscv.rv, Proven.Mach.Riscv.core, Proven.Mach.Riscv.base, Proven.Mach.Riscv.enc,
+      Proven.Mach.Riscv.encX, Proven.Mach.Riscv.encC, Proven.prologue, Proven.opCode,
+      Proven.selCode, Proven.Mach.addrB, Proven.Mach.addrW, Proven.Mach.rk, Proven.Mach.avar,
+      List.replicate, Proven.Mach.Riscv.gcLen, Proven.NS] <;>
+      first | decide | simp [Proven.Mach.Riscv.glF]))
+
+/-- the cell of constructor `i` (tag `off + i`) with field texts `fs`; `emb j v` embeds child field `j` -/
+def cellS (ti : TyInfo) (i : Nat) (fs : Array String) (emb : Nat → String → String) (off : Nat := 0) : String := Id.run do
   let rs := ti.roles[i]!
   let mut x := "0"; let mut l := "Proven.Mach.Ind.C.z"; let mut r := "Proven.Mach.Ind.C.z"
   for j in [0:rs.size] do
     match rs[j]! with
-    | .l => l := emb fs[j]!
-    | .r => r := emb fs[j]!
+    | .l => l := emb j fs[j]!
+    | .r => r := emb j fs[j]!
     | .x s => x := s.rep fs[j]!
     | .drop => pure ()
-  return s!"(Proven.Mach.Ind.C.c {i} {x} {l} {r})"
+  return s!"(Proven.Mach.Ind.C.c {off + i} {x} {l} {r})"
 
-syntax "frontx_ind_type " ident " := " term : command
+/-- the name of the `k`-th type of the shape of `T` (`T` itself, then `T.N1`, `T.N2`, …) -/
+def unionName (Tn : Name) (k : Nat) : Name := if k == 0 then Tn else Tn ++ Name.mkSimple s!"N{k}"
+
+syntax "frontx_ind_type " ident " := " term (" nesting " term,+)? : command
 elab_rules : command
-  | `(frontx_ind_type $T:ident := $ty:term) => do
+  | `(frontx_ind_type $T:ident := $ty:term $[nesting $ns,*]?) => do
   let Tn := T.getId
-  let (tyS, ti) ← liftTermElabM do
+  -- the types of the shape: `ty`, then (depth first) the types of its fields given in `nesting` and `Bytes8`
+  -- for `String` fields; constructor tags are numbered through all of them
+  let r : String × Array (String × TyInfo) ← liftTermElabM do
     let tyE ← elabType ty
+    let mut nest0 : Array Expr := #[]
+    for n in ns.map (·.getElems) |>.getD #[] do
+      let e ← elabType n
+      nest0 := nest0.push (← instantiateMVars e)
     synthesizeSyntheticMVarsNoPostponing
     let tyE ← instantiateMVars tyE
-    return (← ppFull tyE, ← analyze tyE)
-  let shS := ", ".intercalate (ti.roles.toList.map fun rs =>
-    "[" ++ ", ".intercalate (rs.toList.filterMap roleFld) ++ "]")
+    let nest := nest0.push (Lean.mkConst ``Proven.Frontx.Ind.Bytes8)
+    let mut U : Array (Expr × TyInfo) := #[(tyE, ← analyze tyE nest)]
+    let mut k := 0
+    while h : k < U.size do
+      let ti := U[k].2
+      for ks in ti.kty do
+        for o in ks do
+          if let some (t, _) := o then
+            let mut known := false
+            for (u, _) in U do if ← isDefEq u t then known := true
+            unless known do U := U.push (t, ← analyze t nest)
+      k := k + 1
+    let mut out : Array (String × TyInfo) := #[]
+    for (t, ti) in U do out := out.push (← ppFull t, ti)
+    return (← ppFull tyE, out)
+  let us := r.2
+  -- union indices of the children
+  let idxOf (t : Expr) : CommandElabM Nat := liftTermElabM do
+    for k in [0:us.size] do
+      if ← isDefEq us[k]!.2.ty t then return k
+    throwError "frontx_ind_type: a child type not in the shape"
+  let mut offs := #[]
+  let mut o := 0
+  for (_, ti) in us do offs := offs.push o; o := o + ti.ctors.size
+  -- per type, per constructor, per field: the embedding of a child (`Tk.emb`, a `String` through `Bytes8.ofString`)
+  let mut kemb : Array (Array (Array (Option (String × Bool)))) := #[]
+  for k in [0:us.size] do
+    let ti := us[k]!.2
+    let mut a := #[]
+    for i in [0:ti.ctors.size] do
+      let mut b := #[]
+      for j in [0:ti.roles[i]!.size] do
+        match ti.kty[i]![j]! with
+        | some (t, str) =>
+          let kk ← idxOf t
+          b := b.push (some (s!"{unionName Tn kk}.emb", str))
+        | none => b := b.push (if ti.roles[i]![j]! matches .l | .r then some (s!"{unionName Tn k}.emb", false) else none)
+      a := a.push b
+    kemb := kemb.push a
+  let embF (k i : Nat) (j : Nat) (v : String) : String :=
+    match kemb[k]![i]![j]! with
+    | some (e, true) => s!"({e} (Proven.Frontx.Ind.Bytes8.ofString {v}))"
+    | some (e, false) => s!"({e} {v})"
+    | none => "?"
+  let mut shParts := #[]
+  for (_, ti) in us do
+    for rs in ti.roles do shParts := shParts.push ("[" ++ ", ".intercalate (rs.toList.filterMap roleFld) ++ "]")
+  let shS := ", ".intercalate shParts.toList
   runCmd s!"def {Tn}.sh : Proven.Mach.Ind.Shape := [{shS}]"
-  let mut alts := ""
-  for i in [0:ti.ctors.size] do
-    let fs := (List.range ti.roles[i]!.size).toArray.map fun j => s!"f{j}"
-    let pat := s!"@{ti.ctors[i]!} " ++ " ".intercalate ((List.replicate ti.params.size "_") ++ fs.toList)
-    alts := alts ++ s!"\n  | {pat} => {cellS ti i fs fun v => s!"({Tn}.emb {v})"}"
-  runCmd s!"def {Tn}.emb : {tyS} → Proven.Mach.Ind.C{alts}"
-  -- the range hypothesis of functions comparing `Nat`s: every `Nat` field is below `2^64`
-  let mut salts := ""
-  for i in [0:ti.ctors.size] do
-    let rs := ti.roles[i]!
-    let fs := (List.range rs.size).toArray.map fun j => s!"f{j}"
-    let pat := s!"@{ti.ctors[i]!} " ++ " ".intercalate ((List.replicate ti.params.size "_") ++ fs.toList)
-    let mut cs : Array String := #[]
-    for j in [0:rs.size] do
-      match rs[j]! with
-      | .l | .r => cs := cs.push s!"{Tn}.small {fs[j]!}"
-      | .x .nat => cs := cs.push s!"{fs[j]!} < 2 ^ 64"
-      | _ => pure ()
-    salts := salts ++ s!"\n  | {pat} => {if cs.isEmpty then "True" else " ∧ ".intercalate cs.toList}"
-  runCmd s!"/-- every `Nat` field of the value is below `2^64` -/
-def {Tn}.small : {tyS} → Prop{salts}"
-  for i in [0:ti.ctors.size] do
-    if ti.roles[i]!.contains .drop then continue
-    let fs := (List.range ti.roles[i]!.size).toArray.map fun j => s!"f{j}"
-    let bs := " ".intercalate ((List.range fs.size).map fun j => s!"({fs[j]!} : {ti.ftys[i]![j]!})")
-    let app := s!"(@{ti.ctors[i]!} " ++ " ".intercalate ((List.replicate ti.params.size "_") ++ fs.toList) ++ ")"
-    runCmd s!"theorem {Tn}.fold{i} : {if fs.isEmpty then "" else "∀ " ++ bs ++ ","} {cellS ti i fs fun v => s!"({Tn}.emb {v})"} = {Tn}.emb {app} := {if fs.isEmpty then "rfl" else "fun " ++ " ".intercalate fs.toList ++ " => rfl"}"
-  runCmd s!"theorem {Tn}.emb_wf : ∀ t : {tyS}, ({Tn}.emb t).wf {Tn}.sh := by
-  intro t; induction t <;> simp_all [{Tn}.emb, Proven.Mach.Ind.C.wf, {Tn}.sh]"
+  -- definitions per type, the types used by a type first
+  let order := (List.range us.size).reverse
+  for k in order do
+    let (tS, ti) := us[k]!
+    let Kn := unionName Tn k
+    if k > 0 then
+      runCmd s!"@[reducible] def {Kn}.sh : Proven.Mach.Ind.Shape := {Tn}.sh"
+      runCmd s!"@[reducible] def {Kn}.off : Nat := {offs[k]!}"
+    let mut alts := ""
+    for i in [0:ti.ctors.size] do
+      let fs := (List.range ti.roles[i]!.size).toArray.map fun j => s!"f{j}"
+      let pat := s!"@{ti.ctors[i]!} " ++ " ".intercalate ((List.replicate ti.params.size "_") ++ fs.toList)
+      alts := alts ++ s!"\n  | {pat} => {cellS ti i fs (embF k i) offs[k]!}"
+    runCmd s!"def {Kn}.emb : {tS} → Proven.Mach.Ind.C{alts}"
+    let mut salts := ""
+    for i in [0:ti.ctors.size] do
+      let rs := ti.roles[i]!
+      let fs := (List.range rs.size).toArray.map fun j => s!"f{j}"
+      let pat := s!"@{ti.ctors[i]!} " ++ " ".intercalate ((List.replicate ti.params.size "_") ++ fs.toList)
+      let mut cs : Array String := #[]
+      for j in [0:rs.size] do
+        match rs[j]!, ti.kty[i]![j]! with
+        | .l, none | .r, none => cs := cs.push s!"{Kn}.small {fs[j]!}"
+        | .l, some (t, str) | .r, some (t, str) =>
+          let kk ← idxOf t
+          cs := cs.push s!"{unionName Tn kk}.small {if str then s!"(Proven.Frontx.Ind.Bytes8.ofString {fs[j]!})" else fs[j]!}"
+        | .x .nat, _ => cs := cs.push s!"{fs[j]!} < 2 ^ 64"
+        | _, _ => pure ()
+      salts := salts ++ s!"\n  | {pat} => {if cs.isEmpty then "True" else " ∧ ".intercalate cs.toList}"
+    runCmd s!"/-- every `Nat` field of the value is below `2^64` -/
+def {Kn}.small : {tS} → Prop{salts}"
+    for i in [0:ti.ctors.size] do
+      if ti.roles[i]!.contains .drop then continue
+      let fs := (List.range ti.roles[i]!.size).toArray.map fun j => s!"f{j}"
+      let bs := " ".intercalate ((List.range fs.size).map fun j => s!"({fs[j]!} : {ti.ftys[i]![j]!})")
+      let app := s!"(@{ti.ctors[i]!} " ++ " ".intercalate ((List.replicate ti.params.size "_") ++ fs.toList) ++ ")"
+      runCmd s!"theorem {Kn}.fold{i} : {if fs.isEmpty then "" else "∀ " ++ bs ++ ","} {cellS ti i fs (embF k i) offs[k]!} = {Kn}.emb {app} := {if fs.isEmpty then "rfl" else "fun " ++ " ".intercalate fs.toList ++ " => rfl"}"
+    let wfs := ", ".intercalate ((List.range us.size).filter (· > k) |>.map fun kk => s!"{unionName Tn kk}.emb_wfL")
+    runCmd s!"theorem {Kn}.emb_wf : ∀ t : {tS}, ({Kn}.emb t).wf {Tn}.sh := by
+  intro t; induction t <;> simp_all [{Kn}.emb, Proven.Mach.Ind.C.wf, {Tn}.sh, Proven.Frontx.Ind.u8_lt, Proven.Frontx.Ind.u8_lt'{if wfs.isEmpty then "" else ", " ++ wfs}]"
+    if us.size > 1 then
+      runCmd s!"theorem {Kn}.emb_wfL : ∀ t : {tS}, ({Kn}.emb t).wf [{shS}] := {Kn}.emb_wf"
+  let tyS := us[0]!.1
   runCmd s!"/-- the input format of `{tyS}` -/
 def {Tn}.enc (t : {tyS}) : List UInt8 := ({Tn}.emb t).enc {Tn}.sh"
   runCmd s!"/-- two values of `{tyS}`, one after the other -/
@@ -163,6 +269,8 @@ def {Tn}.enc2 (p : {tyS} × {tyS}) : List UInt8 := ({Tn}.emb p.1).enc {Tn}.sh ++
 structure RTy where
   tn : Name
   ti : TyInfo
+  /-- the tag of the first constructor (a type nested in another type's shape, `T.Nk`) -/
+  off : Nat := 0
   deriving Inhabited
 
 /-- a function of the program: its structural argument (of type `ty`), word and tree parameters, result kind -/
@@ -177,6 +285,8 @@ structure FnI where
   rk : String
   rSc : Option Sc
   rTy : Option RTy
+  /-- the result is a `Decidable p` (a `Bool`: `isTrue` is `1`) -/
+  isDec : Bool := false
   deriving Inhabited
 
 structure Ctx where
@@ -222,6 +332,7 @@ def findCtor (tys : Array RTy) (cn : Name) : Option (RTy × Nat) := Id.run do
 /-- the kind of a value of type `t` -/
 def kindOf (c : Ctx) (t : Expr) : MetaM String := do
   if (← findTy c.tys t).isSome then return ".t"
+  if (← whnfR t).isConstOf ``String then return ".t"
   if (← scOf? t).isSome then return ".w"
   throwError "frontx_ind: a value of unsupported type{indentExpr t}"
 
@@ -235,6 +346,10 @@ def fieldAliases (r : RTy) (i : Nat) (fs : Array Expr) (d : Nat → String) : Ar
     | .r => out := out.push (fs[j]!, fun (D : Nat) => s!"(.ft true {d D})")
     | .x _ => out := out.push (fs[j]!, fun (D : Nat) => s!"(.fw true {d D})")
     | .drop => pure ()
+    -- a `String` field is its chain of bytes
+    if let some (some (_, true)) := r.ti.kty[i]?.bind (·[j]?) then
+      let t := if rs[j]! matches .l then "false" else "true"
+      out := out.push (mkApp (mkConst ``Proven.Frontx.Ind.Bytes8.ofString) fs[j]!, fun (D : Nat) => s!"(.ft {t} {d D})")
   return out
 
 /-- the explicit arguments of a call of `fi`: tree, word, tree -/
@@ -273,6 +388,7 @@ def extraArgs (tys : Array RTy) (args : Array Expr) (sIdx : Nat) :
 
 def resKind (tys : Array RTy) (r : Expr) : MetaM (String × Option Sc × Option RTy) := do
   if let some rt ← findTy tys r then return (".t", none, some rt)
+  if r.isAppOfArity ``Decidable 1 then return (".w", some .bool, none)
   match ← scOf? r with
   | some s => return (".w", some s, none)
   | none => throwError "frontx_ind: unsupported result type{indentExpr r}"
@@ -301,8 +417,10 @@ def fnInfo (tys : Array RTy) (g : Name) : MetaM FnI := do
   let some rty := rty? | throwError "frontx_ind: {g} has no argument of a declared type"
   unless ← isDefEq (← inferType xs[sIdx]!) rty.ti.ty do throwError "frontx_ind: {g}: type mismatch"
   let (aIdx, bIdx, aSc) ← extraArgs tys xs sIdx
-  let (rk, rSc, rTy) ← resKind tys (← instantiateMVars res)
-  return { name := g, ty := rty, sIdx, aIdx, bIdx, aSc, nargs := xs.size, rk, rSc, rTy }
+  let res ← instantiateMVars res
+  let (rk, rSc, rTy) ← resKind tys res
+  return { name := g, ty := rty, sIdx, aIdx, bIdx, aSc, nargs := xs.size, rk, rSc, rTy,
+           isDec := res.isAppOfArity ``Decidable 1 }
 
 mutual
 /-- a decidable proposition as a `0`/`1` word -/
@@ -315,15 +433,28 @@ partial def reifyP (c : Ctx) (p : Expr) : MetaM String := do
   | some ``LE.le, 4 => cmpTy c args[0]!; return s!"(.bin .xor (.bin .ult {← reify c args[3]!} {← reify c args[2]!}) (.k 1))"
   | some ``GE.ge, 4 => cmpTy c args[0]!; return s!"(.bin .xor (.bin .ult {← reify c args[2]!} {← reify c args[3]!}) (.k 1))"
   | some ``Eq, 3 =>
-    if (← findTy c.tys args[0]!).isSome then return ← treeEq c args[1]! args[2]!
+    if (← whnfR args[0]!).isConstOf ``String then return ← strEq c args[1]! args[2]!
+    if (← findTy c.tys args[0]!).isSome then
+      -- two values that are not constants: the program's function of the `DecidableEq` instance
+      if (closedCtor c.tys args[1]!).isNone && (closedCtor c.tys args[2]!).isNone then
+        let inst ← synthInstance (mkApp (mkConst ``Decidable) p)
+        return ← reify c (← withTransparency .instances (whnf inst)).headBeta
+      return ← treeEq c args[1]! args[2]!
     cmpTy c args[0]!; return s!"(.bin .eq {← reify c args[1]!} {← reify c args[2]!})"
   | some ``Ne, 3 =>
+    if (← whnfR args[0]!).isConstOf ``String then return s!"(.bin .xor {← strEq c args[1]! args[2]!} (.k 1))"
     if (← findTy c.tys args[0]!).isSome then return s!"(.bin .xor {← treeEq c args[1]! args[2]!} (.k 1))"
     cmpTy c args[0]!; return s!"(.bin .xor (.bin .eq {← reify c args[1]!} {← reify c args[2]!}) (.k 1))"
   | some ``Not, 1 => return s!"(.bin .xor {← reifyP c args[0]!} (.k 1))"
   | some ``And, 2 => return s!"(.bin .and {← reifyP c args[0]!} {← reifyP c args[1]!})"
   | some ``Or, 2 => return s!"(.bin .or {← reifyP c args[0]!} {← reifyP c args[1]!})"
   | _, _ => throwError "frontx_ind: unsupported condition{indentExpr p}"
+
+/-- `a = b` on `String`s: `Bytes8.eqb` on their byte chains (a function of the program) -/
+partial def strEq (c : Ctx) (a b : Expr) : MetaM String := do
+  let oa := mkApp (mkConst ``Proven.Frontx.Ind.Bytes8.ofString) a
+  let ob := mkApp (mkConst ``Proven.Frontx.Ind.Bytes8.ofString) b
+  reify c (mkApp2 (mkConst ``Proven.Frontx.Ind.Bytes8.eqb) oa ob)
 
 /-- `d = k` for a closed constructor term `k` (either side): the tags and the fields, recursively -/
 partial def treeEq (c : Ctx) (a b : Expr) : MetaM String := do
@@ -337,7 +468,7 @@ partial def treeEq (c : Ctx) (a b : Expr) : MetaM String := do
 partial def treeEqS (c : Ctx) (dS : String) (k : Expr) : MetaM String := do
   let some (r, i, fs) := closedCtor c.tys k | throwError "frontx_ind: not a constant{indentExpr k}"
   let rs := r.ti.roles[i]!
-  let mut acc := s!"(.bin .eq (.fw false {dS}) (.k (BitVec.ofNat 64 {i})))"
+  let mut acc := s!"(.bin .eq (.fw false {dS}) (.k (BitVec.ofNat 64 {r.off + i})))"
   for j in [0:rs.size] do
     match rs[j]! with
     | .l => acc := s!"(.bin .and {acc} {← treeEqS c s!"(.ft false {dS})" fs[j]!})"
@@ -383,23 +514,38 @@ partial def reifyMatch (c : Ctx) (e : Expr) : MetaM (Option String) := do
           let c' := { c1 with als := (c1.als ++ fieldAliases rt j fs dT).push (ce, dT) }
           branch c' (rebuild ce)
         bs := bs.push s
+      -- in a shape of several types: the most frequent branch is the default, tests only for the others
+      if c.tys.any (·.off > 0) then
+        let cnt := fun (x : String) => (bs.filter (· == x)).size
+        let dflt := bs.foldl (fun b x => if cnt x > cnt b then x else b) bs[bs.size - 1]!
+        let mut acc := dflt
+        for j' in [0:bs.size] do
+          let j := bs.size - 1 - j'
+          unless bs[j]! == dflt do
+            acc := s!"(.ite (.bin .eq (.fw false {dT c1.depth}) (.k (BitVec.ofNat 64 {rt.off + j}))) {bs[j]!} {acc})"
+        return some (wrap acc)
       let mut acc := bs[bs.size - 1]!
       for j' in [0:bs.size - 1] do
         let j := bs.size - 2 - j'
         -- the same branch as the rest: no test
         unless bs[j]! == acc do
-          acc := s!"(.ite (.bin .eq (.fw false {dT c1.depth}) (.k (BitVec.ofNat 64 {j}))) {bs[j]!} {acc})"
+          acc := s!"(.ite (.bin .eq (.fw false {dT c1.depth}) (.k (BitVec.ofNat 64 {rt.off + j}))) {bs[j]!} {acc})"
       return some (wrap acc)
     -- an enumeration (`Bool`: `true` is constructor 1)
+    -- (constructors whose fields are proofs count: `Decidable`, `isFalse` is constructor 0)
     let mut enum := true
     for cn in iv.ctors do
-      let some (.ctorInfo ci) := (← getEnv).find? cn | enum := false
-      unless ci.numFields == 0 do enum := false
+      let some (.ctorInfo _) := (← getEnv).find? cn | enum := false
+      let cty ← inferType (mkAppN (mkConst cn us) dt.getAppArgs)
+      let allProofs ← forallTelescope cty fun fs _ => fs.allM fun f => do isProp (← inferType f)
+      unless allProofs do enum := false
     unless enum do continue
     let dS ← reify c d
     let mut bs := #[]
     for cn in iv.ctors do
-      bs := bs.push (← branch c (rebuild (mkAppN (mkConst cn us) dt.getAppArgs)))
+      let cty ← inferType (mkAppN (mkConst cn us) dt.getAppArgs)
+      bs := bs.push (← forallTelescope cty fun fs _ =>
+        branch c (rebuild (mkAppN (mkConst cn us) (dt.getAppArgs ++ fs))))
     let mut acc := bs[bs.size - 1]!
     for j' in [0:bs.size - 1] do
       let j := bs.size - 2 - j'
@@ -445,8 +591,25 @@ partial def reify (c : Ctx) (e : Expr) : MetaM String := do
     return s!"(.ite {← reifyP c (e.getArg! 1)} {← reify c (e.getArg! 3)} {← reify c (e.getArg! 4)})"
   if e.isAppOfArity ``cond 4 then
     return s!"(.ite {← reify c (e.getArg! 1)} {← reify c (e.getArg! 2)} {← reify c (e.getArg! 3)})"
-  if e.isAppOfArity ``Decidable.decide 2 then return ← reifyP c (e.getArg! 0)
+  if e.isAppOfArity ``Decidable.decide 2 then
+    -- `a = b` of two values of a declared type: the program's function deciding it (`DecidableEq` instance)
+    let p := e.getArg! 0
+    if p.isAppOfArity ``Eq 3 then
+      if (← findTy c.tys (p.getArg! 0)).isSome && (closedCtor c.tys (p.getArg! 1)).isNone &&
+          (closedCtor c.tys (p.getArg! 2)).isNone then
+        let inst ← withTransparency .instances (whnf (e.getArg! 1))
+        return ← reify c inst.headBeta
+    return ← reifyP c p
+  if e.isAppOfArity ``Decidable.isTrue 2 then return "(.k 1)"
+  if e.isAppOfArity ``Decidable.isFalse 2 then return "(.k 0)"
+  if e.isAppOfArity ``dite 5 then
+    let cnd := e.getArg! 1
+    let cS ← reifyP c cnd
+    let t ← withLocalDeclD `h cnd fun h => reify c (mkApp (e.getArg! 3) h).headBeta
+    let f ← withLocalDeclD `h (mkNot cnd) fun h => reify c (mkApp (e.getArg! 4) h).headBeta
+    return s!"(.ite {cS} {t} {f})"
   if e.isAppOfArity ``BEq.beq 4 then
+    if (← whnfR (e.getArg! 0)).isConstOf ``String then return ← strEq c (e.getArg! 2) (e.getArg! 3)
     cmpTy c (e.getArg! 0); return s!"(.bin .eq {← reify c (e.getArg! 2)} {← reify c (e.getArg! 3)})"
   if e.isAppOfArity ``bne 4 then
     cmpTy c (e.getArg! 0); return s!"(.bin .xor (.bin .eq {← reify c (e.getArg! 2)} {← reify c (e.getArg! 3)}) (.k 1))"
@@ -486,7 +649,7 @@ partial def reify (c : Ctx) (e : Expr) : MetaM String := do
         | .r => r ← reify c fs[j]!
         | .x _ => x ← reify c fs[j]!
         | .drop => pure ()  -- not in the byte format (`T.emb` ignores it)
-      return s!"(.mk {i} {x} {l} {r})"
+      return s!"(.mk {rt.off + i} {x} {l} {r})"
   -- instances (`+` on `Pos`, `++` on lists): unfold to the function
   let e' ← withTransparency .instances (whnf e)
   if e' != e then return ← reify c e'
@@ -509,6 +672,9 @@ def nodeAliases (r : RTy) (i : Nat) (fs : Array Expr) : Array (Expr × (Nat → 
     | .r => al := al.push (fs[j]!, fun (_ : Nat) => ".r"); kids := kids.push (fs[j]!, true)
     | .x _ => al := al.push (fs[j]!, fun (_ : Nat) => ".x")
     | .drop => pure ()
+    if let some (some (_, true)) := r.ti.kty[i]?.bind (·[j]?) then
+      let t := if rs[j]! matches .l then ".l" else ".r"
+      al := al.push (mkApp (mkConst ``Proven.Frontx.Ind.Bytes8.ofString) fs[j]!, fun (_ : Nat) => t)
   return (al, kids)
 
 structure Arms where
@@ -627,12 +793,30 @@ def wfDefs : List String := ["Proven.Mach.Ind.indProg", "Proven.Mach.Ind.indProg
   "Proven.Mach.Ind.addE", "Proven.Mach.Ind.asg", "Proven.Mach.Ind.eqE", "List.mapIdx", "List.mapIdx.go",
   "List.getD"]
 
+/-- the types of the shape of `T` after `T` itself (`T.N1`, `T.N2`, …) -/
+def nestedNames (env : Environment) (tn : Name) : Array Name := Id.run do
+  let mut out := #[]
+  let mut k := 1
+  while env.contains (unionName tn k ++ `emb) && k < 64 do
+    out := out.push (unionName tn k); k := k + 1
+  return out
+
 def rTyOfName (tn : Name) : TermElabM RTy := do
+  let env ← getEnv
+  -- the root of a nested type `T.Nk` is `T`
+  let root := if (env.contains (tn ++ `off)) then tn.getPrefix else tn
+  let mut nest := #[]
+  for n in nestedNames env root do
+    nest := nest.push (← inferType (← mkConstWithLevelParams (n ++ `emb))).bindingDomain!
   let embTy ← inferType (← mkConstWithLevelParams (tn ++ `emb))
-  return { tn, ti := ← analyze embTy.bindingDomain! }
+  let off ← if env.contains (tn ++ `off) then do
+      let v ← whnf (← mkConstWithLevelParams (tn ++ `off))
+      pure ((v.rawNatLit? <|> v.nat?).getD 0)
+    else pure 0
+  return { tn, ti := ← analyze embTy.bindingDomain! nest, off }
 
 def scTy : Option Sc → String
-  | some .nat => "Nat" | some .u64 => "UInt64" | some .bool => "Bool" | none => "BitVec 64"
+  | some .nat => "Nat" | some .u64 => "UInt64" | some .bool => "Bool" | some .u8 => "UInt8" | none => "BitVec 64"
 
 
 /-- one step of the `sem` proofs of functions that match on computed values: generalize a value `T.emb e`
@@ -726,7 +910,8 @@ elab_rules : command
   let fN ← liftCoreM (realizeGlobalConstNoOverloadWithInfo f)
   let fS := toString fN
   let r ← liftTermElabM do
-    let tys ← (#[Tn] ++ uNs).mapM rTyOfName
+    let env ← getEnv
+    let tys ← (#[Tn] ++ nestedNames env Tn ++ uNs.flatMap (fun u => #[u] ++ nestedNames env u)).mapM rTyOfName
     let rT := tys[0]!
     let ti := rT.ti
     let tyS ← ppFull ti.ty
@@ -744,6 +929,17 @@ elab_rules : command
       forallTelescope finfo.type fun xs _ => do
         let some v := finfo.value? | throwError "frontx_ind: {fN} has no definition"
         let body := (← instantiateLambda v xs).consumeMData
+        -- `decide (a = b)`: the `DecidableEq` instance's function, its `Decidable` result as a `Bool`
+        -- `a == b` (a `BEq` instance) and a definition `f a b := decide (a = b)` are unfolded to it
+        let mut body := body
+        for _ in [0:4] do
+          if body.isAppOfArity ``Decidable.decide 2 then
+            body := (← withTransparency .instances (whnf (body.getArg! 1))).headBeta
+          else if body.isAppOfArity ``BEq.beq 4 then
+            body := (← withTransparency .instances (whnf body)).headBeta
+          else if let some b' ← unfoldDefinition? body then
+            let b' := b'.headBeta
+            if b'.isAppOfArity ``Decidable.decide 2 || b'.isAppOfArity ``BEq.beq 4 then body := b'
         let .const gN _ := body.getAppFn | throwError "frontx_ind: {fN} is neither recursive nor `g c₁ …`"
         unless (← getEqnsFor? gN).isSome do throwError "frontx_ind: {gN} has no equations"
         -- the entry's explicit parameters: the input value(s), the input word
@@ -821,7 +1017,7 @@ elab_rules : command
   let words0 := words
   let cmpW := "Proven.Frontx.Ind.nat_ult, Proven.Frontx.Ind.nat_eq, Proven.Frontx.Ind.bw_eq0, Proven.Frontx.Ind.bw_eq0', " ++
     "Proven.Frontx.Ind.u64_ult, Proven.Frontx.Ind.u64_eq, Proven.Frontx.Ind.bool_eq, Proven.Frontx.Ind.u64_ops, " ++
-    "Proven.Frontx.Ind.beq_dec"
+    "Proven.Frontx.Ind.beq_dec, Proven.Frontx.Ind.u8_eq, Proven.Frontx.Ind.Bytes8.eqb_ofString"
   let allFolds := ", ".intercalate (tys.toList.flatMap fun r => (List.range r.ti.ctors.size).filter
     (fun k => !r.ti.roles[k]!.contains .drop) |>.map fun k => s!"{r.tn}.fold{k}")
   let embs := ", ".intercalate (tys.toList.map fun r => s!"{r.tn}.emb")
@@ -841,15 +1037,18 @@ elab_rules : command
       s!"⟨{fns[i + 1 + j]!.rk}, {pre (i + 1 + j)}.pg⟩")
     let xf := if i + 1 < fns.size then
       s!", X := Proven.Mach.Ind.semX [{later}], XA := Proven.Mach.Ind.alX [{later}]" else ""
-    runCmd s!"def _root_.{P}.pg : Proven.Mach.Ind.Pg {fi.rk} := \{ arms := [{", ".intercalate A.arms.toList}]{xf} }"
-    runCmd s!"theorem _root_.{P}.arms : {P}.pg.arms = [{", ".intercalate A.arms.toList}] := rfl"
+    -- a function over a type nested in the shape: its tags start at the type's offset (no arms below)
+    let armsL := List.replicate fi.ty.off (if fi.rk == ".t" then ".nul" else "(.k 0)") ++ A.arms.toList
+    runCmd s!"def _root_.{P}.pg : Proven.Mach.Ind.Pg {fi.rk} := \{ arms := [{", ".intercalate armsL}]{xf} }"
+    runCmd s!"theorem _root_.{P}.arms : {P}.pg.arms = [{", ".intercalate armsL}] := rfl"
     if i + 1 < fns.size then
       runCmd s!"theorem _root_.{P}.X : {P}.pg.X = Proven.Mach.Ind.semX [{later}] := rfl"
     let laterSems := ", ".intercalate ((List.range (fns.size - i - 1)).map fun j => s!"{pre (i + 1 + j)}.sem")
     let extra := (if i + 1 < fns.size then s!", {P}.X, {laterSems}" else "") ++ s!", {cells}"
-    let small := A.small
+    -- a function calling a function that needs the range hypotheses needs them too
+    let small := (List.range (fns.size - i)).any fun j => armsA[i + j]!.small
     if small then anySmall := true
-    if small && multi then throwError "frontx_ind: comparisons of `Nat`s in a program of several functions"
+    -- (`Nat` comparisons with several functions: each function's meaning carries its own range hypotheses)
     let gS := toString fi.name
     let Ttn := fi.ty.tn
     let aTy := scTy fi.aSc
@@ -858,7 +1057,8 @@ elab_rules : command
       | some rb => (tyOf rb.tn, s!"({rb.tn}.emb b)")
       | none => ("Proven.Mach.Ind.C", "b")
     let gApp := s!"({gS} {" ".intercalate gArgsA[i]!.toList})"
-    let resRep := if fi.rk == ".t" then s!"({fi.rTy.get!.tn}.emb {gApp})" else fi.rSc.get!.rep gApp
+    let resRep := if fi.rk == ".t" then s!"({fi.rTy.get!.tn}.emb {gApp})"
+      else if fi.isDec then s!"(Proven.Frontx.Ind.bw (@decide _ {gApp}))" else fi.rSc.get!.rep gApp
     let folds := ", ".intercalate ((List.range fi.ty.ti.ctors.size).filter (fun k => !fi.ty.ti.roles[k]!.contains .drop) |>.map
       fun k => s!"{Ttn}.fold{k}")
     let hyps := if !small then "" else
@@ -866,7 +1066,8 @@ elab_rules : command
         (match bTys[i]! with | some rb => s!"{rb.tn}.small b → " | none => "")
     let words := (if small then words ++ s!", {smalls}, {cmpW}" else words ++ s!", {cmpW}") ++ extra
     let caseB := if bTys[i]!.isSome then "cases b <;> " else ""
-    runCmd s!"theorem _root_.{P}.sem : ∀ (t : {tyOf Ttn}) (a : {aTy}) (b : {bTy}), {hyps}{P}.pg.sem ({Ttn}.emb t) {aRep} {bRep} = {resRep} := by
+    runCmd s!"set_option maxHeartbeats 2000000 in
+theorem _root_.{P}.sem : ∀ (t : {tyOf Ttn}) (a : {aTy}) (b : {bTy}), {hyps}{P}.pg.sem ({Ttn}.emb t) {aRep} {bRep} = {resRep} := by
   intro t; induction t <;> intro a b <;> intros <;>
   first
   | (simp_all [{gS}, {P}.arms, Proven.Mach.Ind.Pg.sem, Proven.Mach.Ind.ev, {embs}, {words}]; done)
@@ -900,7 +1101,9 @@ elab_rules : command
      repeat' (first | (simp_all [{fnsS}, {embs}, {words}, Proven.Op.eval]; done) |
        (simp_all [{fnsS}, {embs}, {words}, Proven.Op.eval] <;> rfl) |
        simp_all [{fnsS}, {embs}, {words}, Proven.Op.eval] | frontx_emb_cases)
-     done)"
+     done)
+  | ({caseB}simp_all [{gS}, {P}.arms, Proven.Mach.Ind.Pg.sem, Proven.Mach.Ind.ev, {embs}, {smalls}, {words}, {cmpW}, Proven.Frontx.Ind.bw_eqz{extra}] <;>
+     (repeat' split) <;> simp_all [Proven.Frontx.Ind.bw]; done)"
   -- the machine program
   let fi0 := fns[0]!
   let gN := fi0.name
@@ -929,12 +1132,13 @@ elab_rules : command
     s!"(Proven.Mach.Ind.indProgM {Tn}.sh {shO} {P}.pg {hsList} {bi} {if ain then "true" else "false"} (BitVec.ofNat 64 {a0}) {nb} {nl})"
   let pgDefs := ", ".intercalate ((List.range fns.size).map fun i => s!"{pre i}.pg")
   let shDefs := ", ".intercalate (tys.toList.map fun r => s!"{r.tn}.sh")
-  let wfT := s!"wf_calls [{", ".intercalate (wfDefs ++ [shDefs, pgDefs])}]"
+  let wfT := s!"{if tys.any (·.off > 0) then "wf_calls_ind" else "wf_calls"} [{", ".intercalate (wfDefs ++ [shDefs, pgDefs])}]"
   let nP := 4 + fns.size - 1
   let fsDisj := " ∨ ".intercalate ((List.range nP).map fun k => s!"f = {k}")
   let rfls := " | ".intercalate ((List.range nP).map fun _ => "rfl")
   runCmd s!"set_option maxHeartbeats 4000000 in
 set_option maxRecDepth 100000 in
+set_option synthInstance.maxHeartbeats 4000000 in
 theorem _root_.{P}.wf : Proven.Mach.Riscv.WfProg1W {progS} (if {rkS} = Proven.Mach.Ind.Kd.t then 1 else 7) 0 := by
   refine ⟨fun f hf => ?_, ?_⟩
   · have : {fsDisj} := by simp [Proven.Mach.Ind.indProg, Proven.Mach.Ind.indProgM] at hf; omega
@@ -967,9 +1171,9 @@ theorem _root_.{P}.wf : Proven.Mach.Riscv.WfProg1W {progS} (if {rkS} = Proven.Ma
   let hencT := "fun g => rfl"
   let hencN := s!"fun g => by simp [Proven.Mach.Ind.inBytesA, Proven.Mach.Ind.inBytes, {Tn}.enc, {Tn}.enc2, {bTn}.enc, Proven.Frontx.Ind.leN8_ofNat, Proven.Frontx.Ind.leN8_mod]"
   let hw2T := if twoIn then s!"fun _ g => {bTn}.emb_wf g.{if ain then "1.2" else "2"}" else "fun h => nomatch h"
-  let unfoldEntry := if isEntry then s!"show {encB} ({gS} {" ".intercalate (gArgs.toList.map fun s =>
+  let unfoldEntry := if isEntry then s!"show {encB} ({if fi0.isDec then "@decide _ (" else ""}{gS} {" ".intercalate (gArgs.toList.map fun s =>
     if s == "t" then (if ain || twoIn then pT.replace "p" "g" else "g") else if s == "a" then (if ain then "g.2" else toString (aConst.getD 0))
-    else if s == "b" then (if twoIn then pB.replace "p" "g" else "_") else "_")}) = _; " else ""
+    else if s == "b" then (if twoIn then pB.replace "p" "g" else "_") else "_")}){if fi0.isDec then ")" else ""} = _; " else ""
   if fi0.aIdx.isSome && aConst.isNone && !ain then throwError "frontx_ind: a scalar parameter needs an entry `f xs = {gN} n xs`"
   let aS := if ain then "g.2" else match aConst with | some n => toString n | none => "(BitVec.ofNat 64 0)"
   let bS := if twoIn then pB.replace "p" "g" else match bConst with

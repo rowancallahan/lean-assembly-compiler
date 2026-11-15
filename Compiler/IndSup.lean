@@ -14,6 +14,7 @@ def decFlds (d : List UInt8 → Option (C × List UInt8)) : List Fld → BitVec 
     Option ((BitVec 64 × C × C) × List UInt8)
   | [], acc, L => some (acc, L)
   | .x :: fs, (_, l, r), L => decFlds d fs (BitVec.ofNat 64 (unle (L.take 8)), l, r) (L.drop 8)
+  | .b :: fs, (_, l, r), L => decFlds d fs (BitVec.ofNat 64 (unle (L.take 1)), l, r) (L.drop 1)
   | .l :: fs, (x, _, r), L => match d L with
     | some (v, L') => decFlds d fs (x, v, r) L'
     | none => none
@@ -38,24 +39,36 @@ theorem x_drop (x : BitVec 64) (R : List UInt8) : (leN 8 x.toNat ++ R).drop 8 = 
   rw [List.drop_append_of_le_length (by simp [leN_length]), List.drop_of_length_le (by simp [leN_length]),
     List.nil_append]
 
+theorem b_dec (x : BitVec 64) (hx : x.toNat < 256) (R : List UInt8) :
+    BitVec.ofNat 64 (unle (((leN 8 x.toNat).take 1 ++ R).take 1)) = x := by
+  apply BitVec.eq_of_toNat_eq
+  simp [leN, unle, Nat.mod_eq_of_lt hx]
+theorem b_drop (x : BitVec 64) (R : List UInt8) : ((leN 8 x.toNat).take 1 ++ R).drop 1 = R := by
+  simp [leN]
+
 theorem decFlds_ok (d : List UInt8 → Option (C × List UInt8)) (x : BitVec 64) (l r : C) (el er : List UInt8)
     (hl : ∀ R, d (el ++ R) = some (l, R)) (hr : ∀ R, d (er ++ R) = some (r, R)) :
     ∀ (fs : List Fld) (x0 : BitVec 64) (l0 r0 : C) (R : List UInt8),
-      (Fld.l ∈ fs → True) →
+      (Fld.b ∈ fs → x.toNat < 256) →
       decFlds d fs (x0, l0, r0) (fs.flatMap (encF x el er) ++ R) =
-        some ((if Fld.x ∈ fs then x else x0, if Fld.l ∈ fs then l else l0, if Fld.r ∈ fs then r else r0), R)
+        some ((if Fld.x ∈ fs ∨ Fld.b ∈ fs then x else x0, if Fld.l ∈ fs then l else l0,
+          if Fld.r ∈ fs then r else r0), R)
   | [], x0, l0, r0, R, _ => by simp [decFlds]
-  | .x :: fs, x0, l0, r0, R, _ => by
+  | .x :: fs, x0, l0, r0, R, hb => by
     simp only [List.flatMap_cons, encF, List.append_assoc, decFlds, x_dec, x_drop]
-    rw [decFlds_ok d x l r el er hl hr fs x l0 r0 R (fun _ => trivial)]
+    rw [decFlds_ok d x l r el er hl hr fs x l0 r0 R (fun m => hb (List.mem_cons_of_mem _ m))]
     simp
-  | .l :: fs, x0, l0, r0, R, _ => by
+  | .b :: fs, x0, l0, r0, R, hb => by
+    simp only [List.flatMap_cons, encF, List.append_assoc, decFlds, b_dec x (hb (by simp)), b_drop]
+    rw [decFlds_ok d x l r el er hl hr fs x l0 r0 R (fun m => hb (List.mem_cons_of_mem _ m))]
+    simp
+  | .l :: fs, x0, l0, r0, R, hb => by
     simp only [List.flatMap_cons, encF, List.append_assoc, decFlds, hl]
-    rw [decFlds_ok d x l r el er hl hr fs x0 l r0 R (fun _ => trivial)]
+    rw [decFlds_ok d x l r el er hl hr fs x0 l r0 R (fun m => hb (List.mem_cons_of_mem _ m))]
     simp
-  | .r :: fs, x0, l0, r0, R, _ => by
+  | .r :: fs, x0, l0, r0, R, hb => by
     simp only [List.flatMap_cons, encF, List.append_assoc, decFlds, hr]
-    rw [decFlds_ok d x l r el er hl hr fs x0 l0 r R (fun _ => trivial)]
+    rw [decFlds_ok d x l r el er hl hr fs x0 l0 r R (fun m => hb (List.mem_cons_of_mem _ m))]
     simp
 
 theorem dec_enc (sh : Shape) (hsh : sh.length < 255) :
@@ -77,7 +90,8 @@ theorem dec_enc (sh : Shape) (hsh : sh.length < 255) :
     -- the fields of the shape decode to `x`, `l`, `r` (absent ones are `0` / `z`)
     have key : ∀ (fs : List Fld), (∀ f ∈ fs, f ∈ sh.getD t []) → ∀ (x0 : BitVec 64) (l0 r0 : C) (R : List UInt8),
         decFlds (C.dec sh m) fs (x0, l0, r0) (fs.flatMap (encF x (l.enc sh) (r.enc sh)) ++ R) =
-          some ((if Fld.x ∈ fs then x else x0, if Fld.l ∈ fs then l else l0, if Fld.r ∈ fs then r else r0), R) := by
+          some ((if Fld.x ∈ fs ∨ Fld.b ∈ fs then x else x0, if Fld.l ∈ fs then l else l0,
+            if Fld.r ∈ fs then r else r0), R) := by
       intro fs
       induction fs with
       | nil => intro _ x0 l0 r0 R; simp [decFlds]
@@ -87,6 +101,10 @@ theorem dec_enc (sh : Shape) (hsh : sh.length < 255) :
         cases f with
         | x =>
           simp only [List.flatMap_cons, encF, List.append_assoc, decFlds, x_dec, x_drop]
+          rw [ih hsub']; simp
+        | b =>
+          have hm := hsub .b (by simp)
+          simp only [List.flatMap_cons, encF, List.append_assoc, decFlds, b_dec x (hx.2 hm), b_drop]
           rw [ih hsub']; simp
         | l =>
           have hm := hsub .l (by simp)
@@ -103,7 +121,7 @@ theorem dec_enc (sh : Shape) (hsh : sh.length < 255) :
     congr 3
     · split
       · rfl
-      · next h => exact (hx h).symm
+      · next h => exact (hx.1 (fun a => h (.inl a)) (fun a => h (.inr a))).symm
     · split
       · rfl
       · next h => rw [if_neg h] at hl; exact hl.symm
