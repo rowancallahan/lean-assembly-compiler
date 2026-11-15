@@ -83,6 +83,13 @@ inductive Runs (machine : Machine) : machine.State → Ending machine → Prop
   cells in use during the run with unlimited space; defined, not calculated) → ends `done` with the right output.
 - Adapter: today's `step : State → Option State` embeds as `some t ↦ .next t`, `none ↦ .halted`, never
   `outOfMemory`, so current theorems carry over.
-- Open (owner): the Sail RISC-V model has no in-use/free. Either (a) an allocator layer is part of the trusted
-  machine (like an OS malloc; RISC-V machine = Sail + that layer), or (b) the allocator is our proved code and
-  out of memory is defined over the compiler's abstract run. The owner's description matches (a).
+- Decided (owner): (b). In use / free are defined ABOVE RISC-V and ARM, machine-independent. The allocator is a
+  SPECIFICATION only (`AllocSpec`: `alloc` returns cells disjoint from all blocks in use and inside the work block,
+  or the run is out of memory; `free` releases a block), never a required implementation. `memoryNeeded` is defined
+  through it: the most cells in use at any point of the program's abstract run (its `alloc`/`free` events) with
+  unlimited space. Compiled code need not use any allocator ("fast and loose, with proofs": it proves its own
+  non-overlap); the implementation is fully beneath the specification. The real machine only halts with the flag.
+- Defaults until the owner fixes them: (1) fixed-size cells, so peak cells in use <= W suffices (variable-size
+  blocks would need a placement rule / compaction / highest-address definition because of fragmentation);
+  (2) "free" = what the program itself frees, not unreachability (that would require a garbage collector);
+  (3) stack frames count: `alloc` on call, `free` on return, so recursion depth is part of `memoryNeeded`.
