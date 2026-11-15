@@ -88,7 +88,7 @@ theorem law_getFr {d : Reg} {s : St} {pc : BitVec 64} (hd : d.val < 7) (hA : cor
   rw [sx_0, BitVec.add_zero] at hn
   exact run1 hn ⟨ofNext hn (.inr ⟨d, rfl⟩), set1Of hn, memOf hn⟩
 
-theorem law_getTop {d : Reg} {s : St} {pc : BitVec 64} (hd : d.val < 7) (hen : FrOK 0 (frameBase 0 (getX s 2)))
+theorem law_getTop {d : Reg} {s : St} {pc : BitVec 64} (hd : d.val < 7) (hen : 8 ≤ frameBase 0 (getX s 2))
     (hA : core.At s pc (encK (.getTop d))) :
     core.runsTo s fun s' => core.Done s s' (next pc (encK (.getTop d)).length) ∧
       core.Set1 s s' d (BitVec.ofNat 64 (frameBase 0 (getX s 2))) ∧ core.mem s' = core.mem s := by
@@ -113,8 +113,7 @@ theorem law_getTop {d : Reg} {s : St} {pc : BitVec 64} (hd : d.val < 7) (hen : F
   have g₂ : getX s₂ (phys d) = (getX s 2 >>> (3#6 : BitVec 6).toNat) <<< (3#6 : BitVec 6).toNat := by
     rw [hn₂.x, ite_pos ⟨rfl, phys_ne0 d⟩, g₁]
   rw [g₂] at hn₃
-  have hlo := hen.lo
-  have hfb : 8 ≤ (getX s 2).toNat / 8 * 8 := by unfold frameBase at hlo; omega
+  have hfb : 8 ≤ (getX s 2).toNat / 8 * 8 := by unfold frameBase at hen; omega
   rw [frameBase_bv _ hfb] at hn₃
   refine runsTo_next hn₁ (runsTo_next hn₂ (run1 hn₃ ⟨⟨hn₃.cfg, fun j hj => ?_, ?_⟩, fun r => ?_, ?_⟩))
   · show getX s₃ j = getX s j

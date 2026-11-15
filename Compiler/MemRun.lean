@@ -119,11 +119,12 @@ def BExp.vars : BExp → List Nat
 def BExp.clean (e : BExp) : Bool := e.vars.all fun x => !unread.contains x
 
 /-- the statement reads and writes no variable of `unread`, loads bytes only from block 0 (the input),
-accesses only word block 0, and has no multiply / divide (the plain back end has none) -/
+stores bytes only to blocks other than 0, accesses only word block 0, and has no multiply / divide (the plain
+back end has none) -/
 def BStmt.clean : BStmt → Bool
   | .assign v e => !unread.contains v && e.clean
   | .load v b i => !unread.contains v && b == 0 && i.clean
-  | .store _ i e => i.clean && e.clean
+  | .store b i e => b != 0 && i.clean && e.clean
   | .seq p q => p.clean && q.clean
   | .loop c b => c.clean && b.clean
   | .load64 v b i => !unread.contains v && b == 0 && i.clean
@@ -269,7 +270,7 @@ theorem texecB_of_bexec : ∀ {p : BStmt} {σb σb' : BState}, BExec p σb σb' 
   | @store b i e σ hb hi =>
     intro hc σs Wb Ws t
     simp only [BStmt.clean, Bool.and_eq_true] at hc
-    have hi' : i.denote σs.env = i.denote σ.env := BExp.denote_clean hc.1 t.envU
+    have hi' : i.denote σs.env = i.denote σ.env := BExp.denote_clean hc.1.2 t.envU
     have he : e.denote σs.env = e.denote σ.env := BExp.denote_clean hc.2 t.envU
     have hb' : b < σs.heap.length := by rw [t.heap]; exact hb
     have hi'' : (i.denote σs.env).toNat < (σs.heap[b]'hb').length := by simp only [t.heap, hi']; exact hi
@@ -513,7 +514,7 @@ theorem texecB_det : ∀ {p : BStmt} {σ₁ σ₁' : BState} {E₁ : List MemEve
     cases h2 with
     | store hb₂ hi₂ =>
       simp only [BStmt.clean, Bool.and_eq_true] at hc
-      have hi' := BExp.denote_clean hc.1 q.env
+      have hi' := BExp.denote_clean hc.1.2 q.env
       have he := BExp.denote_clean hc.2 q.env
       refine ⟨rfl, ⟨q.env, q.hv, ?_, q.wheap⟩⟩
       dsimp only
