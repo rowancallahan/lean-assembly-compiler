@@ -976,3 +976,62 @@ Speed numbers: `python3 Testing/asm/rec-bench/bench.py 1000 20`.
 Reproduce: `lake build Riscv.Frontx.RecExamples`; `lake env lean --tstack=4000000 Testing/asm/emit_frontx.lean`;
 `python3 Testing/asm/frontx_test.py check 50 nontailsumrec` (also `nontaillengthrec`, `fiblen`; note the Sail
 memory trace is ~150–320 MB per run).
+
+## 16. Round 7: `Except` / `Option` with payloads, `do` / `bind` / `throw`, `ByteArray` fields (branch `feat-except`)
+
+Files: `Riscv/Frontx/Exc.lean` (once: `r16`, the component functions, the `bind` lemmas), `ExceptExamples.lean`
+(lean-zip-common `BitReader`, lean-zip `readBitsFast`), `ExceptBook.lean` (fp-lean chapter 5); additions in
+`Translate.lean`, `Tree.lean`, `Fast.lean`.
+
+**Encoding.** A result `Except ε α` is `excTag r` (1 byte: `1` = `ok`, `0` = `error`: Sum's `inr`/`inl` of
+`Spec/Ty.lean` for `Except ε α ≅ ε ⊕ α`) followed by the components of `α` in the fixed-width layout of §14 (`UInt8`/`Bool` 1,
+`UInt16` 2, `UInt32` 4, `Nat`/`UInt64` 8 bytes, fields in order), all `0` on `error`; **the error value is dropped**
+(an `Except String α` result says only "error"). `Option α` the same (`Option.isSome`, zeros on `none`; the tag is
+`Spec/Encode.lean`'s `Option` tag; `Option UInt8` keeps its §12.2 word). A `ByteArray` field of a structure is not
+written: it is the input block (read-only). So `readBit : Except String (UInt32 × BitReader)` is 21 bytes
+`[tag, bit (4), pos (8), bitOff (8)]`. Encoding the message bytes was not done: results are fixed-width (`encC`).
+
+**Compiled verbatim, machine theorem + test** (QEMU + Sail vs executed Lean, 50 cases each, all ok):
+
+| function | source | entry | slots / words |
+|---|---|---|---|
+| `BitReader.readBit` | lean-zip-common @6b7d018 `ZipCommon/BitReader.lean:17` | `readBitE` (`pos`, `bitOff` from byte 0) | 11 / 156 |
+| `BitReader.readBits` (+ `go`, `do`/`←`) | `:29` | `readBitsE` (`⟨xs,1,3⟩ 20`), `readBits2E` (`⟨xs,0,0⟩ 25`) | 15 / 245 |
+| `BitReader.alignToByte` | `:39` | `alignE` | 4 / 96 |
+| `BitReader.readUInt16LE` | `:44` | `readUInt16LEE`, `readUInt16LE5E` (`bitOff` 0 / 5) | 10 / 128, 130 |
+| `Zip.Native.readBitsFast` (+ `go`) | lean-zip @7e10583 `Zip/Native/Inflate.lean:28` | `readBitsFastE` (`⟨xs,1,3⟩ 20`; same bytes as `readBitsE` on all cases) | 15 / 245 |
+| `Monads.Option.firstThird`, `M.firstThird`, `M.ExplicitParens.firstThird`, `M.firstThirdInfix` | fp-lean @0abeea5 `Monads.lean:25-127` | `opt…FirstThirdE` | 11 / 76 |
+| `Monads.Err.first`, `firstThird`, `AndThen.firstThird'`, `WithInfix.firstThird` (`get`, `andThen`, `~~>`, `ok` inlined) | `Monads.lean:166-292` | `err…E` | 3 / 46, 11 / 76 |
+| `readAligned` (this repo: `if … then throw …` in `do`) | – | `readAlignedE` | 14 / 182 |
+
+Source level only (`exec`, 3 axioms): `firstThirdFifth` (19 slots), `firstThirdFifthSeventh` (27) in `Option`,
+`Option.M`, `Err`, `Err.WithInfix`: over the 16 slots of `compBFO` (one nested test per list element).
+Human input: `readBit requires br.bitOff < 8` (lean-zip-common's own `hbo`), `readBits.go with br.bitOff < 8 ∧
+shift + k < 2^64` (no overflow of `shift + 1`), `readBitsFast.go` the same, `readUInt16LE requires br.pos + 3 < 2^64`
+(no overflow of `pos + 1 + 2`). The `readBits` → `go` wrapper is the entry's `rfl` equation (`frontx_entry … from`).
+
+What was added:
+- `resultComps`: `Except ε α` / `Option α` with compound payloads (`excTag`/`excGet π 0`, `isSome`/`optGet π 0`);
+  `ByteArray` fields skipped; `projNorm` reduces them on constructors.
+- **Normalised equation** (`normEq`, for `Except` / `Option` results and structures with a `ByteArray` field): `simp`
+  (so it is proved) unfolds the non-recursive helpers that are bound, projected or return `Except`/`Option`, pushes
+  `bind` into `if`s (`exc_bind_ite`, `ok a >>= f = f a`, `error e >>= f = error e`, `throw`, `pure`), projections
+  into `if`s (`apply_ite`), and a `match` on a `Nat` parameter becomes `if n = 0 … else … (n - 1)`; compiled via
+  `from fn.eqx measure` (the structural argument, or `0`).
+- Structure parameters with a `ByteArray` field: the field is block 0 (`Rep`: `heap = [blk br.data]`, `env 1 = size`),
+  checked unchanged in recursive calls; fields the body never reads get no variable (`f.dropped`, read by
+  `frontx_entry`); entries take `⟨xs, c₁, c₂⟩` arguments.
+- `UInt16` (`r16` lemmas), `UInt8 >>>`; compound `Nat` sides of `==`, `=`, `≠` and indices with `if`/`%`/`/` go to
+  temporaries.
+- **No call temporaries when a call leaf can be assigned in order**: the pairs are reordered (`seqOKm`) and
+  `Tree.wf` asks `seqOK as ∨ |as| ≤ K` (`Tree.lean`, `Fast.lean` adapted), `K` counts only the other leaves. This
+  brought `go` from 20 to 15 slots; all older entry points lost words (re-emitted, all tests ok).
+- `frontx_view` unfolds a helper at the head whose body is a `match` (`andThen`, `get`).
+
+Not done / why: error messages as bytes (fixed-width results); calls to a translated function with several result
+components (`callInfo` takes one result word; the callee range would not fit in 24 variables anyway), so a non-tail
+`readBits` use inside another function is not possible; `Err.get` / `Eff.get` (`xs[i]?` at a variable index on a view);
+`Monads.Option.first` (`xs[0]?` is not a `match`; same as `head?`); `readBytes` (`ByteArray` result, `extract`).
+
+Reproduce: `lake build Frontx`; `lake env lean --tstack=4000000 Testing/asm/emit_frontx.lean`;
+`bash Testing/scripts/frontx_tests.sh`; axioms: `Testing/scripts/axioms_s.lean`.

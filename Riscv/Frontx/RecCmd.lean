@@ -94,7 +94,7 @@ def rflPat (n : Nat) : String := sep (List.replicate n "rfl") " | "
 
 def tyRepName : Ty → String
   | .bv => "id" | .u8 => "Proven.Frontx.r8" | .u32 => "Proven.Frontx.r32" | .u64 => "Proven.Frontx.r64"
-  | .nat => "Proven.Frontx.rN" | .bool => "Proven.Frontx.rB"
+  | .nat => "Proven.Frontx.rN" | .bool => "Proven.Frontx.rB" | .u16 => "Proven.Frontx.r16"
 
 /-- a closed statement, fully evaluated (so that well-formedness is checked on the literal program) -/
 def normS (e : Expr) : MetaM Expr := withTransparency .all (reduce e)

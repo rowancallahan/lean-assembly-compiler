@@ -94,6 +94,16 @@ def seqOK : List (Nat × BExp) → Bool
   | [] => true
   | (v, _) :: as => as.all (fun p => !p.2.vs.contains v) && seqOK as
 
+theorem seqOK_filter (f : Nat × BExp → Bool) : ∀ as : List (Nat × BExp), seqOK as = true → seqOK (as.filter f) = true
+  | [], _ => rfl
+  | (v, e) :: as, h => by
+    simp only [seqOK, Bool.and_eq_true, List.all_eq_true] at h
+    simp only [List.filter_cons]
+    split
+    · simp only [seqOK, Bool.and_eq_true, List.all_eq_true]
+      exact ⟨fun p hp => h.1 p (List.mem_filter.1 hp).1, seqOK_filter f as h.2⟩
+    · exact seqOK_filter f as h.2
+
 def seqA (L : Lay) : List (Nat × BExp) → BStmt
   | [] => skip L
   | (v, e) :: as => .seq (.assign v e) (seqA L as)
@@ -137,7 +147,7 @@ def comp (L : Lay) : Tree → Nat → BStmt
 
 def Tree.wf (L : Lay) : Tree → Prop
   | .ret e => e.vlt L.M
-  | .call as => as.length ≤ L.K ∧ ∀ p ∈ as, p.1 < L.M ∧ p.2.vlt L.M
+  | .call as => (seqOK as = true ∨ as.length ≤ L.K) ∧ ∀ p ∈ as, p.1 < L.M ∧ p.2.vlt L.M
   | .ite c t e => c.vlt L.M ∧ t.wf L ∧ e.wf L
   | .let_ v e k => v < L.M ∧ e.vlt L.M ∧ k.wf L
   | .load v _ i k => v < L.M ∧ i.vlt L.M ∧ k.wf L
@@ -313,7 +323,7 @@ theorem comp_ok (L : Lay) : ∀ (t : Tree) (d : Nat) (σ τ : BState) (o : Out),
     obtain ⟨τ₁, hx1, hh1, hk1, hi1⟩ := tmps_ok L as 0 τ (fun p hp => (hw.2 p hp).2)
     obtain ⟨τ₂, hx2, hh2, hk2, hi2⟩ := copies_ok L τ.env as 0 τ₁ (fun p hp => (hw.2 p hp).1) hi1
     refine ⟨τ₂, .seq hx1 hx2, fun x h1 _ => ?_, ⟨fun v hv => ?_, by rw [hh2, hh1, hA.2]⟩, ?_⟩
-    · rw [hk2 x (by omega)]; exact hk1 x (Or.inr (by have := hw.1; simp only [Lay.tmp]; omega))
+    · rw [hk2 x (by omega)]; exact hk1 x (Or.inr (by have := hw.1.resolve_left hq; simp only [Lay.tmp]; omega))
     · rw [hi2 v hv, parSet_rho L.M hA.1 as _ (fun p hp => (hw.2 p hp).2)]
       exact parSet_congr _ _ as _ _ ((hk1 v (Or.inl (by simp only [Lay.tmp]; omega))).trans (hA.1 v hv))
     · rw [hk2 _ (by simp [Lay.fl]), hk1 _ (Or.inl (by simp [Lay.fl, Lay.tmp]))]

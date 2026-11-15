@@ -1,6 +1,8 @@
 import Riscv.Frontx.Machine
 import Riscv.Frontx.RecExamples
 import Riscv.Frontx.PairExamples
+import Riscv.Frontx.ExceptExamples
+import Riscv.Frontx.ExceptBook
 open Proven Proven.Frontx Proven.Frontx.Ex
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
 def hex2 (b : UInt8) : String := let s := String.ofList (Nat.toDigits 16 b.toNat); if s.length < 2 then "0" ++ s else s
@@ -99,3 +101,24 @@ open Proven.Frontx.Pairs in
   emit "addpointse" addPointsE.slots addPointsE.code (fun xs => addPointsE.enc (addPointsE xs))
   emit "zeroxe" zeroXE.slots zeroXE.code (fun xs => zeroXE.enc (zeroXE xs))
   emit "neste" nestE.slots nestE.code (fun xs => nestE.enc (nestE xs))
+-- round 7: `Except` / `Option` results with payloads (tag byte, payload; zeros when absent), lean-zip-common `BitReader`
+open Proven.Frontx.Exc in
+#eval do
+  emit "readbite" readBitE.slots readBitE.code (fun xs => readBitE.enc (readBitE xs))
+  emit "readbitse" readBitsE.slots readBitsE.code (fun xs => readBitsE.enc (readBitsE xs))
+  emit "readbits2e" readBits2E.slots readBits2E.code (fun xs => readBits2E.enc (readBits2E xs))
+  emit "readbitsfaste" readBitsFastE.slots readBitsFastE.code (fun xs => readBitsFastE.enc (readBitsFastE xs))
+  emit "aligne" alignE.slots alignE.code (fun xs => alignE.enc (alignE xs))
+  emit "readuint16lee" readUInt16LEE.slots readUInt16LEE.code (fun xs => readUInt16LEE.enc (readUInt16LEE xs))
+  emit "readuint16le5e" readUInt16LE5E.slots readUInt16LE5E.code (fun xs => readUInt16LE5E.enc (readUInt16LE5E xs))
+  emit "readalignede" readAlignedE.slots readAlignedE.code (fun xs => readAlignedE.enc (readAlignedE xs))
+open Proven.Frontx.ExcBook in
+#eval do
+  emit "optfirstthirde" optFirstThirdE.slots optFirstThirdE.code (fun xs => optFirstThirdE.enc (optFirstThirdE xs))
+  emit "optmfirstthirde" optMFirstThirdE.slots optMFirstThirdE.code (fun xs => optMFirstThirdE.enc (optMFirstThirdE xs))
+  emit "optparensfirstthirde" optParensFirstThirdE.slots optParensFirstThirdE.code (fun xs => optParensFirstThirdE.enc (optParensFirstThirdE xs))
+  emit "optinfixfirstthirde" optInfixFirstThirdE.slots optInfixFirstThirdE.code (fun xs => optInfixFirstThirdE.enc (optInfixFirstThirdE xs))
+  emit "errfirste" errFirstE.slots errFirstE.code (fun xs => errFirstE.enc (errFirstE xs))
+  emit "errfirstthirde" errFirstThirdE.slots errFirstThirdE.code (fun xs => errFirstThirdE.enc (errFirstThirdE xs))
+  emit "errandthenfirstthirde" errAndThenFirstThirdE.slots errAndThenFirstThirdE.code (fun xs => errAndThenFirstThirdE.enc (errAndThenFirstThirdE xs))
+  emit "errinfixfirstthirde" errInfixFirstThirdE.slots errInfixFirstThirdE.code (fun xs => errInfixFirstThirdE.enc (errInfixFirstThirdE xs))
