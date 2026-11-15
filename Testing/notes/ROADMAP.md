@@ -101,9 +101,12 @@ hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read 
 - Long-term goals: con-leche and self-hosting. The book, lean-zip and lean-svg are the way there. ARM is a slow
   side track (bridge to Sail ARM).
 - String representation: the owner will review the byte layout (as for Encode.lean).
-- Memory at run time (owner, replaces `cellsSup`): the caller gives a work block of W bytes, any W. The code never
-  writes outside output + work, always halts, and returns either the right output `enc (f a)` or OUT OF MEMORY,
-  signalled by a reserved value in `a1` (e.g. 2^64-1; output contents then unspecified). Allocation and calls check
-  the limit at run time. Each theorem also states an explicit, readable per-function bound `need f n` (e.g. 16 + 8n,
-  quadratic for Pos.mul): W >= need f n -> the right output. One bound per top-level call; callees allocate inside
-  the same work block. Compiling needs no bound; running does.
+- Memory at run time (owner): two theorems per compiled function.
+  (1) Main theorem, NO memory hypothesis: for a work block of any size W the code halts, never writes outside
+      output + work, and either returns the right output `enc (f a)` or OUT OF MEMORY (reserved value 2^64-1 in
+      `a1`, output contents then unspecified). Out of memory is the only possible failure. Allocation and calls
+      check the limit at run time.
+  (2) Non-vacuity theorem: a hypothesis `W >= need f n` gives the right output. `need` only has to be a defined
+      function (not a special or readable formula; `cellsSup` is fine); it exists so that code that always says
+      out of memory does not satisfy the spec.
+  One work block per top-level call; callees allocate inside it. Compiling needs no bound; running does.
