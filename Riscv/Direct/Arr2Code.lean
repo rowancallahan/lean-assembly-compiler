@@ -74,8 +74,8 @@ inductive BExec : BStmt → BState → BState → Prop
 
 /-! ## Words -/
 
-/-- maximal number of spill slots -/
-def NS : Nat := 16
+/-- maximal number of spill slots (slot offsets `8 (j + 1)` fit a 12-bit immediate) -/
+def NS : Nat := 254
 
 /-- `ld t_k, 8(j+1)(gp)` -/
 def iLdS (j k : Nat) : BitVec 32 :=

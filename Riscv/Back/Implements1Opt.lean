@@ -94,9 +94,20 @@ end Proven
 
 namespace Proven.Mach.Riscv
 
-/-- `implements1_of_exec` (same hypotheses) for the optimised words `compBFO N [0, 3] [2] prog` -/
-theorem implements1_of_execO {α β : Type} (encA : α → List UInt8) (encB : β → List UInt8) (f : α → β)
-    (N : Nat) (hN : N ≤ 16) (prog : Mach.BStmt) (hwf : rvF.wfB N [0, 3] [2] prog) (wn : Nat → Nat)
+/-- what `compBFO_ok'` says of the words `code` for `prog` (`Implements1` layout: blocks `[0, 3]`, words `[2]`) -/
+def BSpec (N : Nat) (prog : Mach.BStmt) (code : List (BitVec 32)) : Prop :=
+  ∀ {R W : List Region} {σ σ' : Mach.BState} {s : St} {pc : BitVec 64}, Mach.BExec prog σ σ' →
+    rvF.At s pc code → rvF.enterOK s N → rvF.Lay N (rvF.frameAt s N) R W →
+    (∀ r ∈ R ++ W ++ [⟨rvF.frameAt s N, 8 * (N + 1)⟩], Mach.disjoint ⟨pc.toNat, 4 * code.length⟩ r) →
+    (∀ i : Fin 8, rvF.get s (avar i) = σ.env i.val) → (∀ j, j < N → σ.env (8 + j) = 0) →
+    rvF.HeapB [0, 3] [2] R W σ s → rvF.retOK (rvF.ra s) →
+    rvF.runsTo s fun s' => rvF.pcIs s' (rvF.ra s) ∧ (∀ i : Fin 8, rvF.get s' (avar i) = σ'.env i.val) ∧
+      rvF.HeapB [0, 3] [2] R W σ' s' ∧ Out (R ++ W ++ [⟨rvF.frameAt s N, 8 * (N + 1)⟩]) (rvF.mem s) (rvF.mem s') ∧
+      rvF.ok s' ∧ rvF.keep s s'
+
+/-- `Implements1With` from a source-level run, for any words `code` with `BSpec` (up to `NS` slots) -/
+theorem implements1_of_spec {α β : Type} (encA : α → List UInt8) (encB : β → List UInt8) (f : α → β)
+    (N : Nat) (hN : N ≤ NS) (prog : Mach.BStmt) (code : List (BitVec 32)) (hspec : BSpec N prog code) (wn : Nat → Nat)
     (space : Nat → Nat) (hsp : ∀ n, 8 * wn n + 8 * (N + 1) + 7 ≤ space n) (maxLen : Nat) (retLen : Bool)
     (hex : ∀ (a : α) (out : List (BitVec 8)) (tbl : List (BitVec 64)) (env : Mach.BEnv),
       env 1 = BitVec.ofNat 64 (encA a).length → (∀ j, 8 ≤ j → env j = 0) → (encA a).length ≤ maxLen →
@@ -107,7 +118,7 @@ theorem implements1_of_execO {α β : Type} (encA : α → List UInt8) (encB : �
         out'.take (encB (f a)).length = (encB (f a)).map (·.toBitVec) ∧
         out'.drop (encB (f a)).length = out.drop (encB (f a)).length ∧
         (retLen = true → σ'.env 1 = BitVec.ofNat 64 (encB (f a)).length)) :
-    Implements1With encA encB (compBFO N [0, 3] [2] prog) f space maxLen retLen := by
+    Implements1With encA encB code f space maxLen retLen := by
   intro a s entry ra input output work x y codeR hmax h hpc hal hcode h10 h11 h12 h13 h2 h1 hra hrad hx
     hil hol hws hwal hram hdis hmapO hmapW
   have hin : ∀ r ∈ [input, output, work, codeR], r.inRAM := hram
@@ -132,7 +143,7 @@ theorem implements1_of_execO {α β : Type} (encA : α → List UInt8) (encB : �
   have hfb1 : work.base + 8 * wn x.length ≤ frameBase N (getX s 2) := by rw [hfb]; omega
   have hfb2 : frameBase N (getX s 2) + 8 * (N + 1) ≤ work.base + work.len := by rw [hfb]; omega
   have hf : FrOK N (frameBase N (getX s 2)) :=
-    ⟨by rw [hfb]; omega, by omega, by omega, by unfold NS; omega⟩
+    ⟨by rw [hfb]; omega, by omega, by omega, hN⟩
   -- the initial heap
   obtain ⟨out0, hout0l, ho⟩ : ∃ out0 : List (BitVec 8), out0.length = output.len ∧
       bytesAt s output.base output.len = out0.map some :=
@@ -173,9 +184,9 @@ theorem implements1_of_execO {α β : Type} (encA : α → List UInt8) (encB : �
       rcases hr with rfl | rfl <;> (dsimp only at h1 h2; omega)
     · simp only [W, List.mem_singleton] at hw; subst hw
       show 0x80000000 ≤ q ∧ q + 1 ≤ 0x100000000; dsimp only at h1 h2; omega
-  have hok : codeOK entry (compBFO N [0, 3] [2] prog).length := ⟨hal, rc.1, rc.2⟩
+  have hok : codeOK entry code.length := ⟨hal, rc.1, rc.2⟩
   have hcd : ∀ r ∈ R ++ W ++ [⟨rvF.frameAt s N, 8 * (N + 1)⟩],
-      Mach.disjoint ⟨entry.toNat, 4 * (compBFO N [0, 3] [2] prog).length⟩ r := by
+      Mach.disjoint ⟨entry.toNat, 4 * code.length⟩ r := by
     intro r hr
     simp only [R, W, List.cons_append, List.nil_append, List.mem_cons, List.not_mem_nil, or_false] at hr
     rw [show rvF.frameAt s N = frameBase N (getX s 2) from rfl] at hr
@@ -213,8 +224,7 @@ theorem implements1_of_execO {α β : Type} (encA : α → List UInt8) (encB : �
         exact (bytes_eq s _ _).trans htb
       · exact absurd hb (by show ¬(b + 1 < 1); omega)
   have hra' : getX s 1 = ra := getX_of (h.x1.symm.trans h1) rfl
-  refine runsTo_mono (compBFO_ok' N [0, 3] [2] (by intro x hx; simp at hx; omega)
-    (by intro x hx; simp at hx; omega) hwf hexec ⟨h, hpc, codeAt_of_codeBytes hok hcode, hok⟩ hf hL hcd
+  refine runsTo_mono (hspec hexec ⟨h, hpc, codeAt_of_codeBytes hok hcode, hok⟩ hf hL hcd
     (fun i => by show getX s (phys (avar i)) = _; rw [phys_avar]; simp [envOf])
     (fun j hj => by simp only [envOf]; rw [dite_neg' (by omega)]) hheap (by show (getX s 1).toNat % 2 = 0; rw [hra']; omega)) ?_
   rintro s' ⟨p1, p2, p3, p4, p5, p6⟩
@@ -258,5 +268,58 @@ theorem implements1_of_execO {α β : Type} (encA : α → List UInt8) (encB : �
   · have := p2 ⟨1, by decide⟩
     rw [show rvF.get s' (avar ⟨1, by decide⟩) = getX s' 11 from rfl, hrl hr] at this
     rw [p5.x11, this]
+
+/-- `implements1_of_execO` for up to `NS` slots -/
+theorem implements1_of_execOW {α β : Type} (encA : α → List UInt8) (encB : β → List UInt8) (f : α → β)
+    (N : Nat) (hN : N ≤ NS) (prog : Mach.BStmt) (hwf : rvF.wfB N [0, 3] [2] prog) (wn : Nat → Nat)
+    (space : Nat → Nat) (hsp : ∀ n, 8 * wn n + 8 * (N + 1) + 7 ≤ space n) (maxLen : Nat) (retLen : Bool)
+    (hex : ∀ (a : α) (out : List (BitVec 8)) (tbl : List (BitVec 64)) (env : Mach.BEnv),
+      env 1 = BitVec.ofNat 64 (encA a).length → (∀ j, 8 ≤ j → env j = 0) → (encA a).length ≤ maxLen →
+      (encA a).length < 2 ^ 32 → (encB (f a)).length ≤ out.length → out.length < 2 ^ 32 →
+      tbl.length = wn (encA a).length →
+      ∃ σ' out', Mach.BExec prog ⟨env, [(encA a).map (·.toBitVec), out], [tbl]⟩ σ' ∧
+        σ'.heap = [(encA a).map (·.toBitVec), out'] ∧
+        out'.take (encB (f a)).length = (encB (f a)).map (·.toBitVec) ∧
+        out'.drop (encB (f a)).length = out.drop (encB (f a)).length ∧
+        (retLen = true → σ'.env 1 = BitVec.ofNat 64 (encB (f a)).length)) :
+    Implements1With encA encB (compBFO N [0, 3] [2] prog) f space maxLen retLen :=
+  implements1_of_spec encA encB f N hN prog _
+    (fun hexec hA hen hL hcd hreg hslot hheap hra => compBFO_ok' N [0, 3] [2] (by intro x hx; simp at hx; omega)
+      (by intro x hx; simp at hx; omega) hwf hexec hA hen hL hcd hreg hslot hheap hra) wn space hsp maxLen retLen hex
+
+/-- **`implements1_of_execOW` for the checked words `compBFC`**: no `wfB`; `optB` accepts the choice instead -/
+theorem implements1_of_execC {α β : Type} (encA : α → List UInt8) (encB : β → List UInt8) (f : α → β)
+    (N : Nat) (hN : N ≤ NS) (prog : Mach.BStmt) (t : List (Nat × Reg)) (spl : List Nat)
+    (hc : (rvwF.optB scB (tblG t) (fun j => spl.contains j) N [0, 3] [2] prog).isSome = true) (wn : Nat → Nat)
+    (space : Nat → Nat) (hsp : ∀ n, 8 * wn n + 8 * (N + 1) + 7 ≤ space n) (maxLen : Nat) (retLen : Bool)
+    (hex : ∀ (a : α) (out : List (BitVec 8)) (tbl : List (BitVec 64)) (env : Mach.BEnv),
+      env 1 = BitVec.ofNat 64 (encA a).length → (∀ j, 8 ≤ j → env j = 0) → (encA a).length ≤ maxLen →
+      (encA a).length < 2 ^ 32 → (encB (f a)).length ≤ out.length → out.length < 2 ^ 32 →
+      tbl.length = wn (encA a).length →
+      ∃ σ' out', Mach.BExec prog ⟨env, [(encA a).map (·.toBitVec), out], [tbl]⟩ σ' ∧
+        σ'.heap = [(encA a).map (·.toBitVec), out'] ∧
+        out'.take (encB (f a)).length = (encB (f a)).map (·.toBitVec) ∧
+        out'.drop (encB (f a)).length = out.drop (encB (f a)).length ∧
+        (retLen = true → σ'.env 1 = BitVec.ofNat 64 (encB (f a)).length)) :
+    Implements1With encA encB (compBFC N [0, 3] [2] t spl prog) f space maxLen retLen :=
+  implements1_of_spec encA encB f N hN prog _
+    (fun hexec hA hen hL hcd hreg hslot hheap hra => compBFC_ok' N [0, 3] [2] hc hexec hA hen hL hcd hreg hslot
+      hheap hra) wn space hsp maxLen retLen hex
+
+/-- `implements1_of_exec` (same hypotheses) for the optimised words `compBFO N [0, 3] [2] prog` -/
+theorem implements1_of_execO {α β : Type} (encA : α → List UInt8) (encB : β → List UInt8) (f : α → β)
+    (N : Nat) (hN : N ≤ 16) (prog : Mach.BStmt) (hwf : rvF.wfB N [0, 3] [2] prog) (wn : Nat → Nat)
+    (space : Nat → Nat) (hsp : ∀ n, 8 * wn n + 8 * (N + 1) + 7 ≤ space n) (maxLen : Nat) (retLen : Bool)
+    (hex : ∀ (a : α) (out : List (BitVec 8)) (tbl : List (BitVec 64)) (env : Mach.BEnv),
+      env 1 = BitVec.ofNat 64 (encA a).length → (∀ j, 8 ≤ j → env j = 0) → (encA a).length ≤ maxLen →
+      (encA a).length < 2 ^ 32 → (encB (f a)).length ≤ out.length → out.length < 2 ^ 32 →
+      tbl.length = wn (encA a).length →
+      ∃ σ' out', Mach.BExec prog ⟨env, [(encA a).map (·.toBitVec), out], [tbl]⟩ σ' ∧
+        σ'.heap = [(encA a).map (·.toBitVec), out'] ∧
+        out'.take (encB (f a)).length = (encB (f a)).map (·.toBitVec) ∧
+        out'.drop (encB (f a)).length = out.drop (encB (f a)).length ∧
+        (retLen = true → σ'.env 1 = BitVec.ofNat 64 (encB (f a)).length)) :
+    Implements1With encA encB (compBFO N [0, 3] [2] prog) f space maxLen retLen :=
+  implements1_of_execOW encA encB f N (by unfold NS; omega) prog hwf wn space hsp maxLen retLen hex
 
 end Proven.Mach.Riscv

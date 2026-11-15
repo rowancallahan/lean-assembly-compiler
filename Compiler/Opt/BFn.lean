@@ -97,7 +97,7 @@ variable (M : WideF) (sc : Reg) (g : Nat → Reg) (sp : Nat → Bool) (N : Nat)
 
 /-- **The optimising spill-slot compiler** (byte blocks only) -/
 def optB (bv wv : List Nat) (p : BStmt) : Option (List (BitVec 32)) :=
-  if (okB N bv wv p && decide (N ≤ 16) && decide (∀ i : Fin 8, avar i ≠ sc)) = true then
+  if (okB N bv wv p && loB sp N && decide (∀ i : Fin 8, avar i ≠ sc)) = true then
     match M.bodySR sc (fB g) [0, 1, 2, 3, 4, 5, 6, 7] (.seq (initL sp (List.range N)) (irB sp bv wv p)) with
     | some w => some (M.encE N ++ (w ++ (M.encL ++ M.wenc .ret)))
     | none => none
@@ -119,11 +119,11 @@ theorem optB_ok {bv wv : List Nat} {p : BStmt} {ws : List (BitVec 32)} (hc : M.o
       HeapI M.toWide bv wv R W σ' s' ∧ Out (R ++ W ++ [⟨M.frameAt s N, 8 * (N + 1)⟩]) (M.mem s) (M.mem s') ∧
       M.ok s' ∧ M.keep s s' := by
   unfold optB at hc
-  have hchk : (okB N bv wv p && decide (N ≤ 16) && decide (∀ i : Fin 8, avar i ≠ sc)) = true :=
+  have hchk : (okB N bv wv p && loB sp N && decide (∀ i : Fin 8, avar i ≠ sc)) = true :=
     Decidable.byContradiction fun h => by rw [if_neg h] at hc; exact nomatch hc
   rw [if_pos hchk] at hc
   obtain ⟨hokB, hN16, hsc⟩ := Wide.and3 hchk
-  replace hN16 : N ≤ 16 := of_decide_eq_true hN16
+  replace hN16 : LoR sp N := loB_ok sp N hN16
   replace hsc : ∀ i : Fin 8, avar i ≠ sc := of_decide_eq_true hsc
   cases hb : M.bodySR sc (fB g) [0, 1, 2, 3, 4, 5, 6, 7] (.seq (initL sp (List.range N)) (irB sp bv wv p)) with
   | none => rw [hb] at hc; exact nomatch hc
@@ -145,7 +145,7 @@ theorem optB_ok {bv wv : List Nat} {p : BStmt} {ws : List (BitVec 32)} (hc : M.o
   generalize hfp : M.frameAt s N = fp at *
   have frn : (M.fr s₁).toNat = fp := by
     rw [fr₁, BitVec.toNat_ofNat]; exact Nat.mod_eq_of_lt (by omega)
-  have L : LayI N fp R W := ⟨hal, fun r hr => by
+  have L : LayI sp N fp R W := ⟨hal, fun r hr => by
     have : M.ramLo ≤ r.base ∧ r.base + r.len ≤ M.ramHi := hRram r (List.mem_append_left _ hr)
     omega, hRp, fun r hr => hRf r (List.mem_append_left _ hr), hN16, fun r hr => by
     have : M.ramLo ≤ r.base ∧ r.base + r.len ≤ M.ramHi := hRram r (List.mem_append_right _ hr)

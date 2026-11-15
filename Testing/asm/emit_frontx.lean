@@ -220,3 +220,15 @@ def wordInputs : List (List UInt8) :=
   emit "satsucce" satSuccE.slots satSuccE.code (enc satSuccE) wordInputs
   emit "packdatae" packDataE.slots packDataE.code (enc packDataE) wordInputs
 end
+-- over 16 slots (19 / 27 / 17; `NS` raised to 254)
+open Proven.Frontx.ExcBook in
+#eval do
+  emit "optfirstthirdfifthe" optFirstThirdFifthE.slots optFirstThirdFifthE.code (fun xs => optFirstThirdFifthE.enc (optFirstThirdFifthE xs))
+  emit "optfirstthirdfifthseventhe" optFirstThirdFifthSeventhE.slots optFirstThirdFifthSeventhE.code (fun xs => optFirstThirdFifthSeventhE.enc (optFirstThirdFifthSeventhE xs))
+  emit "optmfirstthirdfifthseventhe" optMFirstThirdFifthSeventhE.slots optMFirstThirdFifthSeventhE.code (fun xs => optMFirstThirdFifthSeventhE.enc (optMFirstThirdFifthSeventhE xs))
+  emit "errfirstthirdfifthe" errFirstThirdFifthE.slots errFirstThirdFifthE.code (fun xs => errFirstThirdFifthE.enc (errFirstThirdFifthE xs))
+  emit "errfirstthirdfifthseventhe" errFirstThirdFifthSeventhE.slots errFirstThirdFifthSeventhE.code (fun xs => errFirstThirdFifthSeventhE.enc (errFirstThirdFifthSeventhE xs))
+  emit "errinfixfirstthirdfifthseventhe" errInfixFirstThirdFifthSeventhE.slots errInfixFirstThirdFifthSeventhE.code (fun xs => errInfixFirstThirdFifthSeventhE.enc (errInfixFirstThirdFifthSeventhE xs))
+open Proven.Frontx.Pairs in
+#eval emit "addpoints16e" addPoints16E.slots addPoints16E.code (fun xs => addPoints16E.enc (addPoints16E xs))
+  (inputs ++ List.zipWith (· ++ ·) (natInputs true) (natInputs true).reverse)

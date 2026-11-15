@@ -53,4 +53,23 @@ def color (c : Code Nat) (out : List Nat) (pin : Nat → Option Reg) (cols : Lis
       | [] => none
   (order.foldl step (some [])).map fun asg x => match pin x with | some r => r | none => (asg.lookup x).getD ⟨6, by decide⟩
 
+/-- the nodes `color` leaves without a register (greedy, continuing past failures; untrusted, for spill choice) -/
+def uncol (c : Code Nat) (out : List Nat) (pin : Nat → Option Reg) (cols : List Reg) (weight : Nat → Nat) :
+    List Nat :=
+  let (E, Mv) := ig c out
+  let nodes := (c.regs ++ out).eraseDups.filter fun x => (pin x).isNone
+  let nbr := fun x => (E.filterMap fun (a, b) => if a = x then some b else if b = x then some a else none).eraseDups
+  let deg := fun x => (nbr x).length
+  let order := nodes.mergeSort fun a b => weight b < weight a || (weight b == weight a && deg b ≤ deg a)
+  let step := fun (acc : List (Nat × Reg) × List Nat) (x : Nat) =>
+    let colOf := fun y => match pin y with | some r => some r | none => acc.1.lookup y
+    let used := (nbr x).filterMap colOf
+    let free := cols.filter fun r => !used.contains r
+    let pref := (Mv.filterMap fun (a, b) => if a = x then colOf b else if b = x then colOf a else none).filter
+      fun r => free.contains r
+    match pref ++ free with
+    | r :: _ => ((x, r) :: acc.1, acc.2)
+    | [] => (acc.1, x :: acc.2)
+  (order.foldl step ([], [])).2
+
 end Proven.Mach.IR

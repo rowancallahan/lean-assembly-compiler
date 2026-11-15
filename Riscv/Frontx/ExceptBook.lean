@@ -229,4 +229,29 @@ def errInfixFirstThirdE (xs : ByteArray) : Except String (UInt8 × UInt8) := Mon
 frontx_entry errInfixFirstThirdE
 frontx_implements_bytes errInfixFirstThirdE
 
+
+/-! Over 16 slots (19 and 27; frames of `8 (slots + 1) + 7` bytes since the slot limit was raised to `NS`). -/
+def optFirstThirdFifthE (xs : ByteArray) : Option (UInt8 × UInt8 × UInt8) := Monads.Option.firstThirdFifth.view xs 0
+frontx_entry optFirstThirdFifthE
+frontx_implements_bytes optFirstThirdFifthE
+def optFirstThirdFifthSeventhE (xs : ByteArray) : Option (UInt8 × UInt8 × UInt8 × UInt8) :=
+  Monads.Option.firstThirdFifthSeventh.view xs 0
+frontx_entry optFirstThirdFifthSeventhE
+frontx_implements_bytes optFirstThirdFifthSeventhE
+def optMFirstThirdFifthSeventhE (xs : ByteArray) : Option (UInt8 × UInt8 × UInt8 × UInt8) :=
+  Monads.Option.M.firstThirdFifthSeventh.view xs 0
+frontx_entry optMFirstThirdFifthSeventhE
+frontx_implements_bytes optMFirstThirdFifthSeventhE
+def errFirstThirdFifthE (xs : ByteArray) : Except String (UInt8 × UInt8 × UInt8) := Monads.Err.firstThirdFifth.view xs 0
+frontx_entry errFirstThirdFifthE
+frontx_implements_bytes errFirstThirdFifthE
+def errFirstThirdFifthSeventhE (xs : ByteArray) : Except String (UInt8 × UInt8 × UInt8 × UInt8) :=
+  Monads.Err.firstThirdFifthSeventh.view xs 0
+frontx_entry errFirstThirdFifthSeventhE
+frontx_implements_bytes errFirstThirdFifthSeventhE
+def errInfixFirstThirdFifthSeventhE (xs : ByteArray) : Except String (UInt8 × UInt8 × UInt8 × UInt8) :=
+  Monads.Err.WithInfix.firstThirdFifthSeventh.view xs 0
+frontx_entry errInfixFirstThirdFifthSeventhE
+frontx_implements_bytes errInfixFirstThirdFifthSeventhE
+
 end Proven.Frontx.ExcBook

@@ -114,17 +114,55 @@ def spillSets (p : Mach.BStmt) (N : Nat) : List (List Nat) :=
   let cost := fun (l : List Nat) => l.foldl (fun a j => a + score p (8 + j)) 0
   [] :: (((List.range N).map fun j => [j]) ++ choose 2 (List.range N)).mergeSort fun a b => cost a ≤ cost b
 
+/-- the locals the colouring of mode 0 leaves without a register, with `spl` spilled -/
+def uncolB (N : Nat) (bv wv : List Nat) (p : Mach.BStmt) (spl : List Nat) : List Nat :=
+  let sp := fun j => spl.contains j
+  let c := IR.Code.seq (initL sp (List.range N)) (irB sp bv wv p)
+  ((IR.uncol ((IR.cands [0, 1, 2, 3, 4, 5, 6, 7] c).getD 0 c) [0, 1, 2, 3, 4, 5, 6, 7]
+    (fun x => if h : x < 8 then some (avar ⟨x, h⟩) else none) colsB (fun _ => 0)).filterMap
+    fun x => if 8 ≤ x ∧ x < 8 + N then some (x - 8) else none)
+
+/-- spill sets grown one local at a time: the least used local the colouring leaves without a register (or the
+least used one left) -/
+def spillGrow (p : Mach.BStmt) (N : Nat) (bv wv : List Nat) (spl : List Nat) : Nat → List (List Nat)
+  | 0 => []
+  | k + 1 =>
+    let by_ := fun (l : List Nat) => l.mergeSort fun a b => score p (8 + a) ≤ score p (8 + b)
+    let u := by_ ((uncolB N bv wv p spl).filter fun j => !spl.contains j)
+    let rest := by_ ((List.range N).filter fun j => !spl.contains j)
+    match u ++ rest with
+    | [] => [spl]
+    | j :: _ => spl :: spillGrow p N bv wv (spl ++ [j]) k
+
+/-- more than 16 locals: the locals `j ≥ 24` always spilled (`loB`); of the first set `spillGrow` finds and the
+first of none, one, or the `k` least used others (cheapest first) that colour, the one with fewer words first -/
+def spillSetsX (p : Mach.BStmt) (N : Nat) (bv wv : List Nat) : List (List Nat) :=
+  if N ≤ 16 then spillSets p N else
+  let cost := fun (l : List Nat) => l.foldl (fun a j => a + score p (8 + j)) 0
+  let forced := (List.range N).filter (24 ≤ ·)
+  let low := (List.range (min N 24)).mergeSort fun a b => score p (8 + a) ≤ score p (8 + b)
+  let grow := spillGrow p N bv wv forced (low.length + 1)
+  let greedy := (([] :: ((low.map fun j => [j]) ++ (List.range (low.length - 1)).map fun k => low.take (k + 2))).map
+      (· ++ forced)).mergeSort fun a b => cost a ≤ cost b
+  let first := fun (l : List (List Nat)) => l.findSome? fun spl => (tryL N bv p spl wv).map fun ws => (ws.length, spl)
+  let best := match first grow, first greedy with
+    | some (a, s), some (b, t) => if a ≤ b then [s] else [t]
+    | some (_, s), none => [s]
+    | none, some (_, t) => [t]
+    | none, none => []
+  best ++ grow ++ greedy
+
 /-- the choice used by the compilers: liveness-checked colourings first (fewest weighted slot uses), then
 the injective assignments -/
 def pickB (N : Nat) (bv wv : List Nat) (p : Mach.BStmt) : Option (List (BitVec 32)) :=
-  match firstB (fun spl => tryL N bv p spl wv) (spillSets p N) with
+  match firstB (fun spl => tryL N bv p spl wv) (spillSetsX p N bv wv) with
   | some ws => some ws
   | none => firstB (fun c => tryB N bv p c wv) (candidates p N)
 
 theorem pickB_ok {N : Nat} {bv wv : List Nat} {p : Mach.BStmt} {ws : List (BitVec 32)}
     (h : pickB N bv wv p = some ws) : ∃ g sp, rvwF.optB scB g sp N bv wv p = some ws := by
   unfold pickB at h
-  cases hfl : firstB (fun spl => tryL N bv p spl wv) (spillSets p N) with
+  cases hfl : firstB (fun spl => tryL N bv p spl wv) (spillSetsX p N bv wv) with
   | some w =>
     rw [hfl] at h; cases h
     obtain ⟨spl, h⟩ := firstB_ok hfl
@@ -253,6 +291,74 @@ theorem compBFO_ok' (N : Nat) (bv wv : List Nat) (hbv : ∀ x ∈ bv, x < 8 + N)
     rw [hx] at hA hcd
     obtain ⟨g, sp, hc⟩ := pickB_ok hx
     have := rvwF.optB_ok hc hex hA hen
+      (fun r hr => (List.mem_append.1 hr).elim (hL.ram r) (hL.wram r))
+      (fun r hr a h1 h2 _ _ => by
+        have h' : 0x80000000 ≤ r.base ∧ r.base + r.len ≤ 0x100000000 :=
+          (List.mem_append.1 hr).elim (hL.ram r) (hL.wram r)
+        show 0x80000000 ≤ a ∧ a + 1 ≤ 0x100000000; omega)
+      hL.rp hL.wp hL.rw hL.wal
+      (fun r hr => (List.mem_append.1 hr).elim (hL.fr r) (hL.fw r)) hcd hreg hslot
+      ⟨hheap.hlen, hheap.bvlen, hheap.base, hheap.blen, hheap.rbytes, hheap.whlen, hheap.wvlen, hheap.wbase,
+        hheap.wblen, hheap.wbyts⟩ hra
+    exact runsTo_mono this fun s' ⟨p1, p2, p3, p4, p5, p6⟩ =>
+      ⟨p1, p2, ⟨p3.hlen, p3.bvlen, p3.base, p3.blen, p3.rbytes, p3.whlen, p3.wvlen, p3.wbase, p3.wblen, p3.wbyts⟩,
+        p4, p5, p6⟩
+
+end Proven.Mach.Riscv
+
+namespace Proven.Mach.Riscv
+
+/-! ## Checked words without the fallback (`compBFC`)
+
+`compBFO` falls back to the plain words, so its theorem needs `rvF.wfB` (loop bodies under 1024 plain words).
+`compBFC` takes the choice `(t, spl)` found by `pickC` (a register table and the spilled locals) and keeps only the
+optimised words; its theorem needs only that `optB` accepts the choice (`decide +kernel`). -/
+
+/-- the register of `x` in table `t` (scratch for the rest) -/
+def tblG (t : List (Nat × Reg)) (x : Nat) : Reg := (t.lookup x).getD scB
+
+/-- the optimised words for the choice `(t, spl)` (`[]` if `optB` rejects it) -/
+def compBFC (N : Nat) (bv wv : List Nat) (t : List (Nat × Reg)) (spl : List Nat) (p : Mach.BStmt) :
+    List (BitVec 32) :=
+  (rvwF.optB scB (tblG t) (fun j => spl.contains j) N bv wv p).getD []
+
+/-- the table of `g` on `0 .. M - 1` (entries other than scratch) -/
+def tabulate (g : Nat → Reg) (M : Nat) : List (Nat × Reg) :=
+  (List.range M).filterMap fun x => if g x = scB then none else some (x, g x)
+
+/-- (untrusted) a choice in the order of `pickB`, tabulated on the virtual registers below `M` -/
+def pickC (N : Nat) (bv wv : List Nat) (p : Mach.BStmt) (M : Nat := 4096) : Option (List (Nat × Reg) × List Nat) :=
+  let ok := fun (t : List (Nat × Reg)) (spl : List Nat) =>
+    (rvwF.optB scB (tblG t) (fun j => spl.contains j) N bv wv p).isSome
+  let col := (spillSetsX p N bv wv).findSome? fun spl => [0, 1, 2, 3, 4, 5, 6].findSome? fun mode =>
+    match colorB N bv wv p spl mode with
+    | some g => let t := tabulate g M; if ok t spl then some (t, spl) else none
+    | none => none
+  match col with
+  | some r => some r
+  | none => (candidates p N).findSome? fun c =>
+      let t := tabulate (gB c.1 c.2) M; let spl := (List.range N).filter fun j => !c.2.contains j
+      if ok t spl then some (t, spl) else none
+
+/-- **the statement of `compBFO_ok'` for `compBFC`**, with "`optB` accepts" in place of `wfB` -/
+theorem compBFC_ok' (N : Nat) (bv wv : List Nat) {t : List (Nat × Reg)} {spl : List Nat} {p : Mach.BStmt}
+    (hc : (rvwF.optB scB (tblG t) (fun j => spl.contains j) N bv wv p).isSome = true)
+    {R W : List Region} {σ σ' : Mach.BState} (hex : Mach.BExec p σ σ')
+    {s : St} {pc : BitVec 64} (hA : rvF.At s pc (compBFC N bv wv t spl p)) (hen : rvF.enterOK s N)
+    (hL : rvF.Lay N (rvF.frameAt s N) R W)
+    (hcd : ∀ r ∈ R ++ W ++ [⟨rvF.frameAt s N, 8 * (N + 1)⟩],
+      Mach.disjoint ⟨pc.toNat, 4 * (compBFC N bv wv t spl p).length⟩ r)
+    (hreg : ∀ i : Fin 8, rvF.get s (avar i) = σ.env i.val) (hslot : ∀ j, j < N → σ.env (8 + j) = 0)
+    (hheap : rvF.HeapB bv wv R W σ s) (hra : rvF.retOK (rvF.ra s)) :
+    rvF.runsTo s fun s' => rvF.pcIs s' (rvF.ra s) ∧ (∀ i : Fin 8, rvF.get s' (avar i) = σ'.env i.val) ∧
+      rvF.HeapB bv wv R W σ' s' ∧ Out (R ++ W ++ [⟨rvF.frameAt s N, 8 * (N + 1)⟩]) (rvF.mem s) (rvF.mem s') ∧
+      rvF.ok s' ∧ rvF.keep s s' := by
+  unfold compBFC at hA hcd
+  cases hx : rvwF.optB scB (tblG t) (fun j => spl.contains j) N bv wv p with
+  | none => rw [hx] at hc; exact nomatch hc
+  | some ws =>
+    rw [hx] at hA hcd
+    have := rvwF.optB_ok hx hex hA hen
       (fun r hr => (List.mem_append.1 hr).elim (hL.ram r) (hL.wram r))
       (fun r hr a h1 h2 _ _ => by
         have h' : 0x80000000 ≤ r.base ∧ r.base + r.len ≤ 0x100000000 :=

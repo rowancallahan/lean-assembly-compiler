@@ -1096,3 +1096,32 @@ Codes are big (700–1100 words: the plain back end, four functions with stack f
 
 Reproduce: `lake build Riscv.Frontx.IndExamples`; `lake env lean --tstack=4000000 Testing/asm/emit_frontx.lean`;
 `bash Testing/scripts/frontx_tests.sh`; axioms: `Testing/scripts/axioms_t.lean`.
+
+## 18. More than 16 slots (branch `more-slots`)
+
+The 16-slot limit of `compBFO` is gone: `NS = 254` and `optB` only asks that locals `j ≥ 24` be spilled (back end:
+`Testing/notes/OPT.md`, "More than 16 locals"). `implements1_listW` / `_bytesW` / `_resW` (`Impl1.lean`) take
+`N ≤ NS`; the `frontx_implements*` macros use them; the `N ≤ 16` theorems stay, as wrappers. Entry points with
+`Implements1` theorems now (verbatim book / repo code; QEMU + Sail vs executed Lean, `frontx_test.py check 50`, all ok):
+
+| function | entry | slots / words |
+|---|---|---|
+| `Monads.Option.firstThirdFifth`, `Monads.Err.firstThirdFifth` | `optFirstThirdFifthE`, `errFirstThirdFifthE` | 19 / 109 |
+| `Monads.Option.firstThirdFifthSeventh`, `Option.M.…`, `Err.…`, `Err.WithInfix.…` | `opt…`, `optM…`, `err…`, `errInfix…FirstThirdFifthSeventhE` | 27 / 235 |
+| `addPoints` (`DataExamples`) on four 16-bit inputs | `addPoints16E` | 17 / 197 (95 cases) |
+| `tinyCompile` (`TinySelf.lean`, from branch `tinyself`) | `tinyCompile` | 17 / 305 |
+
+`tinyCompile`: its plain fallback is not well-formed (`wf` false: loops of 1166 and 1064 plain words, over the 1024 of
+`beqz`); that is also why the earlier 19-slot binary hung on QEMU and Sail (the fallback words were used and the loop
+branch offset was out of range). New `frontx_implements_listC g` (`Checked.lean`): at elaboration `pickC` finds the
+register choice (table + spilled locals), `g.code := compBFC …` keeps only the optimised words, and
+`implements1_listC` needs `optB` to accept that choice (`decide +kernel`, ~30 s) instead of `wf`. Self-hosting data
+point: `Testing/asm/tiny/selfhost_test.py` runs the `tinyCompile` binary on QEMU on the 5 tiny programs (code ==
+Lean's `tinyCompile`) and runs each code it produced on `qemu-riscv64` on 17 inputs: 85 / 85 == Lean `tinyRun`.
+
+Not done: lean-svg `findSeq` → `startsWith` (blocked by the front end, not the slots any more: the call to
+`startsWith`, a loop with a `String` block, is not a supported call, "frontx: unsupported Bool"). Code quality over 16
+slots: the prologue still zeroes every slot, and locals `≥ 24` are always spilled (no renumbering by use).
+Reproduce: `lake build Frontx`; `lake env lean --tstack=4000000 Testing/asm/emit_frontx.lean`;
+`lake env lean --tstack=400000 Testing/asm/emit_tiny.lean`; `bash Testing/scripts/frontx_tests.sh`;
+`python3 Testing/asm/tiny/selfhost_test.py`; axioms `Testing/scripts/axioms_u.lean`.

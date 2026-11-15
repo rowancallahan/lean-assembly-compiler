@@ -7,6 +7,7 @@ Encodings: `mov` = `add d,x0,a`; `bin` = the R-type word (`eq`: `xor; sltiu 1`);
 plan found by an untrusted search and CHECKED by evaluation (fallback: one bit at a time). -/
 import Compiler.Wide
 import Riscv.Steps.GenUse
+import Riscv.Steps.Imm12
 open LeanRV64D LeanRV64D.Functions Sail Sail.ConcurrencyInterfaceV1
 
 set_option linter.unusedVariables false
@@ -436,10 +437,10 @@ theorem slotA' {s : St} {j : Nat} (hr : core.inRAM ((getX s 3).toNat + 8 * (j + 
   exact Nat.mod_eq_of_lt (by omega)
 
 
-theorem slotImm : ∀ j : Fin 16, (BitVec.ofNat 12 (8 * (j.val + 1))).signExtend 64 = BitVec.ofNat 64 (8 * (j.val + 1)) := by
-  decide
+theorem slotImm (j : Fin 254) : (BitVec.ofNat 12 (8 * (j.val + 1))).signExtend 64 = BitVec.ofNat 64 (8 * (j.val + 1)) :=
+  sx12_pos _ (by omega)
 
-theorem w_ldS {d : Reg} {j : Nat} {s : St} {pc : BitVec 64} {v : BitVec 64} (hj : j < 16)
+theorem w_ldS {d : Reg} {j : Nat} {s : St} {pc : BitVec 64} {v : BitVec 64} (hj : j < 254)
     (hA : core.At s pc (wenc (.ldS d j))) (hr : core.inRAM ((getX s 3).toNat + 8 * (j + 1)) 8)
     (hal : ((getX s 3).toNat + 8 * (j + 1)) % 8 = 0)
     (hb : bytes (core.mem s) ((getX s 3).toNat + 8 * (j + 1)) 8 = (le8 v).map some) :
@@ -454,7 +455,7 @@ theorem w_ldS {d : Reg} {j : Nat} {s : St} {pc : BitVec 64} {v : BitVec 64} (hj 
     (by rw [e2]; exact h4) (by rw [e2]; exact h5) (by rw [e2]; exact h6) (by rw [e2]; exact h7)
   rwa [le8_cat] at this
 
-theorem w_stS {j : Nat} {v : Reg} {s : St} {pc : BitVec 64} (hj : j < 16)
+theorem w_stS {j : Nat} {v : Reg} {s : St} {pc : BitVec 64} (hj : j < 254)
     (hA : core.At s pc (wenc (.stS j v))) (hr : core.inRAM ((getX s 3).toNat + 8 * (j + 1)) 8)
     (hal : ((getX s 3).toNat + 8 * (j + 1)) % 8 = 0) :
     core.runsTo s fun s' => core.Done s s' (next pc (wenc (.stS j v)).length) ∧ core.Same s s' ∧
@@ -517,7 +518,7 @@ def rvw : Wide where
   w_jmp := w_jmp
   w_ret := w_ret
   fr s := getX s 3
-  maxSlots := 16
+  maxSlots := 254
   keep_fr h := h 3 phys_ne3'
   w_ldS := w_ldS
   w_stS hj hA hr hal _ := w_stS hj hA hr hal

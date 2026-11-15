@@ -5,6 +5,7 @@ Link register `ra` (`x1`), frame register `gp` (`x3`).  `call d` is `jal ra, 4d`
 import Compiler.Call
 import Riscv.Back.Frame
 import Riscv.Steps.GenUse
+import Riscv.Steps.Imm12
 open LeanRV64D LeanRV64D.Functions Sail Sail.ConcurrencyInterfaceV1
 
 set_option linter.unusedVariables false
@@ -23,9 +24,10 @@ def encC : COp → List (BitVec 32)
 theorem sx_negF : ∀ k : Fin 18, (immN (8 * k.val)).signExtend 64 = -(BitVec.ofNat 64 (8 * k.val)) := by decide
 theorem sx_posF : ∀ k : Fin 18, (BitVec.ofNat 12 (8 * k.val)).signExtend 64 = BitVec.ofNat 64 (8 * k.val) := by
   decide
-theorem sx_neg {k : Nat} (h : k < 18) : (immN (8 * k)).signExtend 64 = -(BitVec.ofNat 64 (8 * k)) := sx_negF ⟨k, h⟩
-theorem sx_pos {k : Nat} (h : k < 18) : (BitVec.ofNat 12 (8 * k)).signExtend 64 = BitVec.ofNat 64 (8 * k) :=
-  sx_posF ⟨k, h⟩
+theorem sx_neg {k : Nat} (h : k < 256) (h0 : 0 < k) : (immN (8 * k)).signExtend 64 = -(BitVec.ofNat 64 (8 * k)) :=
+  sx12_neg _ (by omega) (by omega)
+theorem sx_pos {k : Nat} (h : k < 256) : (BitVec.ofNat 12 (8 * k)).signExtend 64 = BitVec.ofNat 64 (8 * k) :=
+  sx12_pos _ (by omega)
 
 theorem subA {x : BitVec 64} {k : Nat} (h : k ≤ x.toNat) :
     x + -(BitVec.ofNat 64 k) = BitVec.ofNat 64 (x.toNat - k) ∧ (BitVec.ofNat 64 (x.toNat - k)).toNat = x.toNat - k := by
@@ -82,9 +84,9 @@ theorem law_stA {m : Nat} {v : Reg} {s : St} {pc : BitVec 64} (hv : v.val = 0) (
   have ev : phys v = 5 := by rw [phys_T v (by omega), hv]; rfl
   obtain ⟨h, hpc, hok, hi⟩ := first1 hA
   obtain ⟨e1, e2⟩ := subA hlo
-  have hm' : m < 18 := by simp only [NS] at hm; omega
+  have hm' : m < 256 := by simp only [NS] at hm; omega
   obtain ⟨s', hn⟩ := G.step_sd h hpc hok 5 3 (immN (8 * m)) hi (A := BitVec.ofNat 64 ((getX s 3).toNat - 8 * m))
-    (by rw [sx_neg hm']; exact e1) (by rw [e2]; exact hr) (by rw [e2]; omega)
+    (by rw [sx_neg hm' (by omega)]; exact e1) (by rw [e2]; exact hr) (by rw [e2]; omega)
   refine run1 hn ⟨ofNext hn (.inl rfl), sameOf hn, ?_⟩
   funext x
   show s'.mem[x]? = _
@@ -100,9 +102,9 @@ theorem law_enterC {n : Nat} {s : St} {pc : BitVec 64} (hn : n ≤ NS) (hA : cor
       core.mem s' = (core.mem s).wr ((getX s 3).toNat - 8 * (n + 1)) (le8 (getX s 1)) := by
   obtain ⟨h, hpc, hok, hi⟩ := first hA
   obtain ⟨e1, e2⟩ := subA hlo
-  have hn' : n + 1 < 18 := by simp only [NS] at hn; omega
+  have hn' : n + 1 < 256 := by simp only [NS] at hn; omega
   obtain ⟨s₁, hn₁⟩ := G.step_addi h hpc hok 3 3 (immN (8 * (n + 1))) hi
-  rw [sx_neg hn', e1] at hn₁
+  rw [sx_neg hn' (by omega), e1] at hn₁
   have sp := Core.At.split _ (l₁ := [encI 0 (immN (8 * (n + 1))).toNat 3 3]) (l₂ := [G.encS 3 0 1 3]) hA
   have hA₁ : core.At s₁ (next pc 1) [G.encS 3 0 1 3] :=
     ⟨hn₁.cfg, hn₁.pc, core.codeAt_mem (memOf hn₁) sp.2.1, sp.2.2⟩
@@ -129,7 +131,7 @@ theorem law_leaveC {n : Nat} {s : St} {pc : BitVec 64} {w : BitVec 64} (hn : n �
       getX s' 1 = w ∧ getX s' 3 = BitVec.ofNat 64 ((getX s 3).toNat + 8 * (n + 1)) ∧ core.Same s s' ∧
       core.mem s' = core.mem s := by
   obtain ⟨h, hpc, hok, hi⟩ := first hA
-  have hn' : n + 1 < 18 := by simp only [NS] at hn; omega
+  have hn' : n + 1 < 256 := by simp only [NS] at hn; omega
   obtain ⟨hr1, hr2⟩ := hr
   have hr2' : (getX s 3).toNat + 8 * (n + 1) ≤ 0x100000000 := hr2
   obtain ⟨h0, h1, h2, h3, h4, h5, h6, h7⟩ := bytesAt_le8 (bytes_le8 hb)

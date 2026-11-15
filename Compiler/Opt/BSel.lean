@@ -33,10 +33,23 @@ def okE : BExp → Bool
 def envB (env : BEnv) : Fin 32 → BitVec 64 := fun i => env i.val
 def svB (env : BEnv) : Nat → BitVec 64 := fun j => env (8 + j)
 
+/-- register-resident variables are below the temporaries (`< 32`); slot variables may be any -/
+def LoR : Prop := ∀ i, i < 8 + N → isS sp i = false → i < 32
+
+/-- checker for `LoR`: every local `j ≥ 24` is spilled -/
+def loB : Bool := (List.range N).all fun j => sp j || decide (j < 24)
+
+theorem loB_ok (h : loB sp N = true) : LoR sp N := fun i hi hs => by
+  by_cases h8 : 8 ≤ i
+  · have := List.all_eq_true.1 h (i - 8) (List.mem_range.2 (by omega))
+    have hs' : sp (i - 8) = false := by unfold isS at hs; rw [decide_eq_true h8, Bool.true_and] at hs; exact hs
+    rw [hs', Bool.false_or] at this; have := of_decide_eq_true this; omega
+  · omega
+
 theorem isS_ge {i : Nat} (h : isS sp i = true) : 8 ≤ i ∧ sp (i - 8) = true :=
   ⟨of_decide_eq_true (Wide.and2 h).1, (Wide.and2 h).2⟩
 
-theorem toS_denote (hN : N ≤ 16) (env : BEnv) : ∀ e : BExp, okE N e = true →
+theorem toS_denote (hN : LoR sp N) (env : BEnv) : ∀ e : BExp, okE N e = true →
     (toS sp e).denote (envB env) (svB env) = e.denote env
   | .var i, h => by
     have hi : i < 8 + N := of_decide_eq_true h
@@ -45,7 +58,7 @@ theorem toS_denote (hN : N ≤ 16) (env : BEnv) : ∀ e : BExp, okE N e = true �
     · rw [if_pos hs]
       show env (8 + (i - 8)) = env i
       rw [Nat.add_sub_cancel' (isS_ge sp hs).1]
-    · rw [if_neg hs, dif_pos (show i < 32 by omega)]; rfl
+    · rw [if_neg hs, dif_pos (hN i hi (Bool.eq_false_iff.2 hs))]; rfl
   | .const _, _ => rfl
   | .bin op a b, h => by
     obtain ⟨ha, hb⟩ := Wide.and2 h
@@ -92,7 +105,7 @@ structure LayI (R W : List Region) : Prop where
   lt : ∀ r ∈ R, r.base + r.len < 2 ^ 64
   rp : R.Pairwise disjoint
   fr : ∀ r ∈ R, disjoint ⟨fp, 8 * (N + 1)⟩ r
-  hN : N ≤ 16
+  hN : LoR sp N
   wlt : ∀ w ∈ W, w.base + w.len < 2 ^ 64
   wp : W.Pairwise disjoint
   rw : ∀ r ∈ R, ∀ w ∈ W, disjoint r w
@@ -138,7 +151,7 @@ theorem agree_mk_ite {ram : Nat → Prop} {env sv} {c a b : SExp} {σ : St Nat}
     simp only [usesS, Bool.or_eq_true] at hj; exact hj.elim (fun h => h.elim (hc.2 j) (ha.2 j)) (hb.2 j)⟩
 
 /-- a represented state agrees with every checked expression -/
-theorem RelBI.agree {bv wv R W σ τ} (r : RelBI sp N fp bv wv R W σ τ) (L : LayI N fp R W) : ∀ e : BExp, okE N e = true →
+theorem RelBI.agree {bv wv R W σ τ} (r : RelBI sp N fp bv wv R W σ τ) (L : LayI sp N fp R W) : ∀ e : BExp, okE N e = true →
     Agree (ramB N fp R W) fp (envB σ.env) (svB σ.env) (toS sp e) τ
   | .var i, h => by
     have hi : i < 8 + N := of_decide_eq_true h
@@ -151,7 +164,7 @@ theorem RelBI.agree {bv wv R W σ τ} (r : RelBI sp N fp bv wv R W σ τ) (L : L
       have e : i - 8 = j := of_decide_eq_true hj
       subst e
       exact ⟨L.al, ram_slot (by omega), r.slot (i - 8) (by omega) hsp⟩
-    · rw [if_neg hs, dif_pos (show i < 32 by omega)]
+    · rw [if_neg hs, dif_pos (hN i hi (Bool.eq_false_iff.2 hs))]
       refine ⟨fun x hx => ?_, fun j hj => (nomatch hj)⟩
       have e : i = x.val := of_decide_eq_true hx
       show τ.reg x.val = σ.env x.val
@@ -161,14 +174,14 @@ theorem RelBI.agree {bv wv R W σ τ} (r : RelBI sp N fp bv wv R W σ τ) (L : L
   | .ite c a b, h => agree_mk_ite (r.agree L c (Wide.and3 h).1) (r.agree L a (Wide.and3 h).2.1)
       (r.agree L b (Wide.and3 h).2.2)
 
-theorem RelBI.frame {bv wv R W σ τ} (r : RelBI sp N fp bv wv R W σ τ) (L : LayI N fp R W) {τ' : St Nat} (f : Frame 32 τ τ') :
+theorem RelBI.frame {bv wv R W σ τ} (r : RelBI sp N fp bv wv R W σ τ) (L : LayI sp N fp R W) {τ' : St Nat} (f : Frame 32 τ τ') :
     RelBI sp N fp bv wv R W σ τ' := by
   have hN := L.hN
-  exact ⟨fun i hi hs => (f.2 i (by omega)).trans (r.reg i hi hs), fun j hj hs => by rw [f.1]; exact r.slot j hj hs,
+  exact ⟨fun i hi hs => (f.2 i (hN i hi hs)).trans (r.reg i hi hs), fun j hj hs => by rw [f.1]; exact r.slot j hj hs,
     r.hlen, r.bvlen, r.base, r.blen, fun b hb => by rw [f.1]; exact r.rbytes b hb, r.whlen, r.wvlen, r.wbase, r.wblen, fun b hb => by rw [f.1]; exact r.wbyts b hb⟩
 
 /-- the address of an in-bounds element -/
-theorem RelBI.addr {bv wv R W σ τ} (r : RelBI sp N fp bv wv R W σ τ) (L : LayI N fp R W) {b : Nat}
+theorem RelBI.addr {bv wv R W σ τ} (r : RelBI sp N fp bv wv R W σ τ) (L : LayI sp N fp R W) {b : Nat}
     (hb : b < σ.heap.length) {i : BExp} (hi : (i.denote σ.env).toNat < σ.heap[b].length) :
     ∃ hbR : b < R.length, ((addrB bv b i).denote σ.env).toNat = R[b].base + (i.denote σ.env).toNat ∧
       (i.denote σ.env).toNat < R[b].len := by
@@ -181,7 +194,7 @@ theorem RelBI.addr {bv wv R W σ τ} (r : RelBI sp N fp bv wv R W σ τ) (L : La
     Nat.mod_eq_of_lt (by omega)]
 
 /-- the address of an in-bounds word -/
-theorem RelBI.waddr {bv wv R W σ τ} (r : RelBI sp N fp bv wv R W σ τ) (L : LayI N fp R W) {b : Nat}
+theorem RelBI.waddr {bv wv R W σ τ} (r : RelBI sp N fp bv wv R W σ τ) (L : LayI sp N fp R W) {b : Nat}
     (hb : b < σ.wheap.length) {i : BExp} (hi : (i.denote σ.env).toNat < σ.wheap[b].length) :
     ∃ hbW : b < W.length, ((addrW wv b i).denote σ.env).toNat = W[b].base + 8 * (i.denote σ.env).toNat ∧
       (W[b].base + 8 * (i.denote σ.env).toNat) % 8 = 0 ∧ 8 * (i.denote σ.env).toNat + 8 ≤ W[b].len := by
@@ -199,7 +212,7 @@ theorem RelBI.waddr {bv wv R W σ τ} (r : RelBI sp N fp bv wv R W σ τ) (L : L
   omega
 
 /-- assigning a variable (register or slot) -/
-theorem setB_ok {bv wv R W σ} {τ : St Nat} (r : RelBI sp N fp bv wv R W σ τ) (L : LayI N fp R W) {v : Nat} (hv : v < 8 + N)
+theorem setB_ok {bv wv R W σ} {τ : St Nat} (r : RelBI sp N fp bv wv R W σ τ) (L : LayI sp N fp R W) {v : Nat} (hv : v < 8 + N)
     (hvb : v ∉ bv) (hvw : v ∉ wv) {c : Nat → Code Nat} {x : BitVec 64}
     (hc : ∀ d, ∃ τ', Exec (ramB N fp R W) fp (c d) τ τ' ∧ τ'.reg d = x ∧ τ'.mem = τ.mem ∧
       ∀ y, y ≠ d → y < 32 → τ'.reg y = τ.reg y) :
@@ -223,7 +236,7 @@ theorem setB_ok {bv wv R W σ} {τ : St Nat} (r : RelBI sp N fp bv wv R W σ τ)
       hbase, r.blen, fun b hb => ?_, r.whlen, r.wvlen, hwbase, r.wblen, fun b hb => ?_⟩
     · have hiv : i ≠ v := fun e => by rw [e, hs] at hsi; exact nomatch hsi
       show τ₁.reg i = if i = v then x else σ.env i
-      rw [ite_neg hiv, f₁ i (by unfold tk; omega) (by omega)]; exact r.reg i hi hsi
+      rw [ite_neg hiv, f₁ i (by have := hN i hi hsi; unfold tk; omega) (hN i hi hsi)]; exact r.reg i hi hsi
     · show bytes (Mem.wr _ _ _) _ _ = (le8 (if 8 + j = v then x else σ.env (8 + j))).map some
       by_cases hjv : 8 + j = v
       · rw [ite_pos hjv, v₁, show v - 8 = j by omega]
@@ -245,14 +258,14 @@ theorem setB_ok {bv wv R W σ} {τ : St Nat} (r : RelBI sp N fp bv wv R W σ τ)
     · show τ₁.reg i = if i = v then x else σ.env i
       by_cases hiv : i = v
       · rw [ite_pos hiv, hiv, v₁]
-      · rw [ite_neg hiv, f₁ i hiv (by omega)]; exact r.reg i hi hsi
+      · rw [ite_neg hiv, f₁ i hiv (hN i hi hsi)]; exact r.reg i hi hsi
     · have hjv : ¬8 + j = v := fun e => hs (by
         unfold isS; rw [← e, show 8 + j - 8 = j by omega, hsj]; simp)
       show _ = (le8 (if 8 + j = v then x else σ.env (8 + j))).map some
       rw [ite_neg hjv, m₁]; exact r.slot j hj hsj
 
 /-- selection preserves the statement semantics -/
-theorem irB_ok (bv wv : List Nat) {R W : List Region} (L : LayI N fp R W) : ∀ {p : BStmt} {σ σ' : BState},
+theorem irB_ok (bv wv : List Nat) {R W : List Region} (L : LayI sp N fp R W) : ∀ {p : BStmt} {σ σ' : BState},
     BExec p σ σ' → okB N bv wv p = true → ∀ (τ : St Nat), RelBI sp N fp bv wv R W σ τ →
     ∃ τ', IR.Exec (ramB N fp R W) fp (irB sp bv wv p) τ τ' ∧ RelBI sp N fp bv wv R W σ' τ' := by
   intro p σ σ' h
@@ -312,7 +325,7 @@ theorem irB_ok (bv wv : List Nat) {R W : List Region} (L : LayI N fp R W) : ∀ 
       rw [ea]; exact ⟨R[b], List.mem_append_left _ (List.mem_append_left _ (List.getElem_mem hbR)), by omega, by omega⟩
     · have hm : ∀ m, Mem.upd m ((Arg.r (tk 0)).eval τ₂.reg + 0).toNat = Mem.upd m (R[b].base + (i.denote σ.env).toNat) :=
         fun m => by show Mem.upd m (τ₂.reg (tk 0) + 0).toNat = _; rw [ea]
-      refine ⟨fun j hj hs => (f₂.2 j (by omega)).trans (r₁.reg j hj hs), fun j hj hs => ?_,
+      refine ⟨fun j hj hs => (f₂.2 j (by have := hN j hj hs; omega)).trans (r₁.reg j hj hs), fun j hj hs => ?_,
         by rw [List.length_set, r.hlen], r.bvlen, r.base, fun b' hb' => ?_, fun b' hb' => ?_, r.whlen, r.wvlen,
         r.wbase, r.wblen, fun b' hb' => ?_⟩
       · show bytes (Mem.upd τ₂.mem _ _) _ _ = _
@@ -379,7 +392,7 @@ theorem irB_ok (bv wv : List Nat) {R W : List Region} (L : LayI N fp R W) : ∀ 
       (List.mem_append_right _ (List.getElem_mem hbW)), by omega, by omega⟩) (by rw [ea]; exact hal)))), ?_⟩
     have hwr : ∀ m, Mem.wr m (τ₂.reg (tk 0) + 0).toNat (le8 (τ₂.reg (tk 1))) =
         Mem.wr m (W[b].base + 8 * (i.denote σ.env).toNat) (le8 (e.denote σ.env)) := fun m => by rw [ea, v₂]
-    refine ⟨fun j hj hs => (f₂ j (by unfold tk; omega) (by omega)).trans (r₁.reg j hj hs), fun j hj hs => ?_,
+    refine ⟨fun j hj hs => (f₂ j (by have := hN j hj hs; unfold tk; omega) (by have := hN j hj hs; omega)).trans (r₁.reg j hj hs), fun j hj hs => ?_,
       r.hlen, r.bvlen, r.base, r.blen, fun b' hb' => ?_, by rw [List.length_set, r.whlen], r.wvlen, r.wbase,
       fun b' hb' => ?_, fun b' hb' => ?_⟩
     · show bytes (Mem.wr _ _ _) _ _ = _

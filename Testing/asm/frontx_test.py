@@ -37,7 +37,7 @@ FUNCS = {
     "nontaillengthrec": (8, lambda xs: len(xs)),
 }
 # functions returning a list: the length is returned in a1
-LISTS = {"take5", "drop5", "matchdrop3", "filterall", "inceach", "twice"}
+LISTS = {"tinycompile", "tinysm", "take5", "drop5", "matchdrop3", "filterall", "inceach", "twice"}
 FN = sys.argv[3] if len(sys.argv) > 3 else "crcraw"
 unhex = lambda h: [] if h == "-" else list(bytes.fromhex(h))
 CASES = [tuple(map(unhex, l.split())) for l in open(os.path.join(D, "frontx-words", FN + ".cases")) if l.strip()]
