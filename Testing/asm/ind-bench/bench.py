@@ -7,7 +7,8 @@ sh = lambda c: subprocess.run(c, shell=True, check=True)
 LD = "ENTRY(_start)\nSECTIONS { . = 0x80000000; .text : { *(.text.start) *(.text) }\n . = 0x80100000; .tohost : { *(.tohost) }\n . = 0x80200000; .data : { *(.data) } }\n"
 def run(name, cfunc, inp, desc):
     lines = open(os.path.join(D, "..", "frontx-words", name + ".words")).read().split("\n")
-    A, B = map(int, lines[0].split()[1:3]); ws = [int(l, 16) for l in lines[1:] if l.strip()]
+    hd = lines[0].split()
+    A, B = (int(hd[1]), int(hd[2])) if hd[0] == "ind" else (8 * (int(hd[0]) + 1) + 7, 0); ws = [int(l, 16) for l in lines[1:] if l.strip()]
     func = "".join(f"  .word 0x{w:08x}\n" for w in ws)
     n = len(inp); wk = A + B * n
     data = ",".join(str(b) for b in inp) or "0"
@@ -86,3 +87,7 @@ run("tree_insert5", "c_insert5", bst(keys), "balanced BST, 255 keys")
 xs = [i + 10 for i in range(200)] + [5]
 run("list_elem5", "c_elem5", lst(xs), "201 elements, 5 last")
 run("list_erase5", "c_erase5", lst(xs), "201 elements, 5 last")
+w = list((0x123456789ABCDEF0).to_bytes(8, "little"))
+run("satprede", "c_satpred", w, "satPred, one word")
+run("bvarofdatae", "c_bvarofdata", w, "bvarOfData, one word")
+run("packdatae", "c_packdata", w, "packData, four bytes")
