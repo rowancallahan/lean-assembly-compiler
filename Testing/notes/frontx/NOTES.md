@@ -1369,3 +1369,14 @@ proof, so a huge `cellsSup` only makes the theorem's precondition (`space ≤ wo
 **Other options of the whole program**: the word argument from the input (`ain`: 8 bytes little-endian after the
 tree(s), `inBytesA`; read in `main` by `rdB`), an output format other than the input's (`shO`: e.g. `Option Unit`,
 `Ordering`).
+
+## 23. Strings and Names (branch `speed-ind`)
+
+**Finding: why `Level.simplify` is 169× gcc** (profile of `level_simplify.words` on an RV64I interpreter, input of
+`ind-bench/bench.py`, 205 bytes / 205 nodes): `simplify`'s function is called **12 223 times** for 205 nodes
+(`combining` 1 679), ~197 instructions per call. Lean's equation `simplify.eq_5` has the `let ls := simplify l` /
+`let rs := …` substituted (zeta-reduced), so the `imax` arm evaluates `simplify l` up to 4 times and `simplify r` twice
+as real calls: exponential recomputation, not per-call cost. A fix is a common-subexpression `bind` in the front end
+(tried: one strict duplicated call → `E.bind`, the `sem` proof and `nl = 20` unchanged); not kept (speed deferred).
+The general per-node cost (3.9–9.9× elsewhere) is ~45 % constant building (`li` one bit at a time in the plain
+`rv` back end), slot traffic and 2 instructions per zero-initialised local per call.
