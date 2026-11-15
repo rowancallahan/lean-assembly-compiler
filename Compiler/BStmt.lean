@@ -136,6 +136,8 @@ structure Lay (N fp : Nat) (R W : List Region) : Prop where
   wal : ∀ w ∈ W, w.base % 8 = 0
   /-- byte blocks may be stored to (`sb`; `Base.writable`) -/
   wr : ∀ r ∈ R, ∀ a, r.base ≤ a → a < r.base + r.len → ∀ s, M.ok s → M.writable s a
+  /-- word blocks may be stored to (`sd`) -/
+  wwr : ∀ r ∈ W, ∀ a, r.base ≤ a → a < r.base + r.len → ∀ s, M.ok s → M.writable s a
 
 /-- the machine state represents `σ` -/
 structure RelB (N fp : Nat) (bv wv : List Nat) (R W : List Region) (σ : BState) (s : M.S) : Prop where
@@ -217,7 +219,8 @@ theorem setV_ok {N fp : Nat} (hF : M.Frm N fp) {bv wv : List Nat} {R W : List Re
     have hj : v - 8 < N := by omega
     obtain ⟨hr, hal, hjm⟩ := Frm.slot M hF hj
     have hfr := Frm.fr M hF hrel.env.fr
-    refine M.runsTo_mono (M.law_stS (rk_val (by omega)) hjm hA (by rw [hfr]; exact hr) (by rw [hfr]; exact hal))
+    refine M.runsTo_mono (M.law_stS (rk_val (by omega)) hjm hA (by rw [hfr]; exact hr) (by rw [hfr]; exact hal)
+      (fun i hi => by rw [hfr]; exact hF.wr _ (by omega) (by omega) _ hA.ok))
       fun s' ⟨d, st, m⟩ => ?_
     rw [hfr, hx] at m
     have hl8 := length_le8 x
@@ -454,7 +457,8 @@ theorem execB_ok {N fp : Nat} (hF : M.Frm N fp) (bv wv : List Nat) (hbv : ∀ x 
       rw [k₂ _ (.inl (by rw [rk_val (by omega)]; omega)), v₁]
     refine M.runsTo_mono (M.law_sd (rk_val (by omega)) (rk_val (by omega))
       (Core.Done.at _ d₂ (M.codeAt_mem (m₂.trans m₁) hc3) ho3) (by rw [a₂, ha]; exact hram)
-      (by rw [a₂, ha]; exact hal))
+      (by rw [a₂, ha]; exact hal)
+      (fun j hj => by rw [a₂, ha]; exact hL.wwr _ (List.getElem_mem hbW) _ (by omega) (by omega) _ d₂.ok))
       fun s₃ ⟨d₃, st₃, m₃⟩ => ⟨Core.Done.trans _ d₁ (Core.Done.trans _ d₂ d₃), ?_, ?_⟩
     · rw [a₂, ha, v₂, m₂, m₁] at m₃
       rw [m₃]
@@ -592,9 +596,9 @@ theorem compBF_ok (N : Nat) (bv wv : List Nat) (hbv : ∀ x ∈ bv, x < 8 + N) (
       M.HeapB bv wv R W σ' s' ∧ Out (R ++ W ++ [⟨M.frameAt s N, 8 * (N + 1)⟩]) (M.mem s) (M.mem s') ∧
       M.ok s' ∧ M.keep s s' := by
   generalize hfp : M.frameAt s N = fp at hL hcd ⊢
-  obtain ⟨hns, hram, hal⟩ := M.enterOK_frame hen
-  rw [hfp] at hram hal
-  have hF : M.Frm N fp := ⟨hram, hal, hns⟩
+  obtain ⟨hns, hram, hal, hwr⟩ := M.enterOK_frame hen
+  rw [hfp] at hram hal hwr
+  have hF : M.Frm N fp := ⟨hram, hal, hns, hwr⟩
   simp only [compBF, codeF_append, codeF_one, codeF_two, List.length_append] at hA hcd
   obtain ⟨hA12, hc3, ho3⟩ := Core.At.split _ hA
   obtain ⟨hA1, hc2, ho2⟩ := Core.At.split _ hA12

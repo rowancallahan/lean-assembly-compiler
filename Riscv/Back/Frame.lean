@@ -173,12 +173,17 @@ def rvF : MachineF where
     · subst h3; exact e
     · exact h j hj h3
   keepF_ra h := h 1 phys_ne1 (by decide)
-  enterOK_frame hf := ⟨hf.ns, ⟨hf.lo, hf.hi⟩, hf.al⟩
+  enterOK_frame hf := by
+    refine ⟨hf.ns, ⟨hf.lo, hf.hi⟩, hf.al, fun x h1 h2 _ _ => ?_⟩
+    have b1 := hf.lo
+    have b2 := hf.hi
+    show 0x80000000 ≤ x ∧ x + 1 ≤ 0x100000000
+    constructor <;> omega
   law_enter := law_enter
   law_leave := law_leave
   law_ldS := law_ldS
-  law_stS := law_stS
+  law_stS hv hj hA hr hal _ := law_stS hv hj hA hr hal
   law_ld := law_ld
-  law_sd := law_sd
+  law_sd hv ha hA hr hal _ := law_sd hv ha hA hr hal
 
 end Proven.Mach.Riscv

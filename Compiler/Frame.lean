@@ -60,7 +60,8 @@ structure MachineF extends Machine where
   keepF_ra : ∀ {s s' : S}, keepF s s' → ra s' = ra s
   /-- what the middle may assume of an opened frame -/
   enterOK_frame : ∀ {s : S} {n : Nat}, enterOK s n →
-    n ≤ maxSlots ∧ toBase.inRAM (frameAt s n) (8 * (n + 1)) ∧ frameAt s n % 8 = 0
+    n ≤ maxSlots ∧ toBase.inRAM (frameAt s n) (8 * (n + 1)) ∧ frameAt s n % 8 = 0 ∧
+    ∀ a, frameAt s n ≤ a → a < frameAt s n + 8 * (n + 1) → ∀ s', ok s' → writable s' a
   law_enter : ∀ {n : Nat} {s : S} {pc : BitVec 64}, enterOK s n → toBase.At s pc (encX (.enter n)) →
     disjoint ⟨pc.toNat, 4 * (encX (.enter n)).length⟩ ⟨frameAt s n, 8 * (n + 1)⟩ →
     runsTo s fun s' => ok s' ∧ keepF s s' ∧ pcIs s' (next pc (encX (.enter n)).length) ∧
@@ -78,7 +79,7 @@ structure MachineF extends Machine where
     runsTo s fun s' => toBase.Done s s' (next pc (encX (.ldS d j)).length) ∧ toBase.Set1 s s' d v ∧ mem s' = mem s
   law_stS : ∀ {j : Nat} {v : Reg} {s : S} {pc : BitVec 64}, v.val = 0 → j < maxSlots →
     toBase.At s pc (encX (.stS j v)) → toBase.inRAM ((fr s).toNat + 8 * (j + 1)) 8 →
-    ((fr s).toNat + 8 * (j + 1)) % 8 = 0 →
+    ((fr s).toNat + 8 * (j + 1)) % 8 = 0 → (∀ i, i < 8 → writable s ((fr s).toNat + 8 * (j + 1) + i)) →
     runsTo s fun s' => toBase.Done s s' (next pc (encX (.stS j v)).length) ∧ toBase.Same s s' ∧
       mem s' = (mem s).wr ((fr s).toNat + 8 * (j + 1)) (le8 (get s v))
   law_ld : ∀ {d a : Reg} {s : S} {pc : BitVec 64} {v : BitVec 64}, d.val = 0 → a.val = 0 →
@@ -87,6 +88,7 @@ structure MachineF extends Machine where
     runsTo s fun s' => toBase.Done s s' (next pc (encX (.ld d a)).length) ∧ toBase.Set1 s s' d v ∧ mem s' = mem s
   law_sd : ∀ {v a : Reg} {s : S} {pc : BitVec 64}, v.val = 1 → a.val = 0 →
     toBase.At s pc (encX (.sd v a)) → toBase.inRAM (get s a).toNat 8 → (get s a).toNat % 8 = 0 →
+    (∀ i, i < 8 → writable s ((get s a).toNat + i)) →
     runsTo s fun s' => toBase.Done s s' (next pc (encX (.sd v a)).length) ∧ toBase.Same s s' ∧
       mem s' = (mem s).wr (get s a).toNat (le8 (get s v))
 

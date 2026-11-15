@@ -28,7 +28,6 @@ built nor used.
 | `Apc/Call.lean`, `Apc/Calls.lean` | `apcC L : MachineC` (`call` = `bl` (±2^25 words), link x30; `enterC` = `sub x28, x28, #8(n+1); str x30, [x28]`; `leaveC` = `ldr x30, [x28]; add x28, …`; `stA` = `stur [x28, #-8m]`); `ImplementsA` (the ARM analogue of `ImplementsW`), `callsCode_implements_apc`, `sumTo_apc`, `fib_apc`, `isEven_apc`, `treeEval_apc` (source proofs of `Riscv/Examples/{CallExamples,TreeEval}.lean` staged unchanged; `wf_apc` checks well-formedness by evaluation) |
 | `Apc/WideDec.lean`, `Apc/Wide.lean` | `apcw L : Wide`, `apcwF L : WideF`: every wide operation with ARBITRARY registers (register fields decoded by enumeration, `decide +kernel`, ≈ 5 min; branch offsets symbolic). `immOK = false` (immediates go through the scratch register), `offOK off := off = 0` (the only offset the selection emits), `br` = `cmp; b.cond` (fwd `1 ≤ n ≤ 2^18`, back `n < 2^18`), `jmp` = `b` |
 | `Apc/Opt.lean` | `compBFOA L N bv wv p` = the optimised words (`WideF.optB` over `apcwF`, register assignment by the untrusted search of `Riscv/Back/OptB.lean`, staged) or the `compBF` words; `compBFOA_ok` (conclusion of `compBF_ok`); `optB_L` (optimised words independent of the layout); `msortO_apc`; CRC-32: `crc_apc_of`, `crc_apc` (unoptimised), `crcO_apc` (optimised; source proof `crcP_exec` staged) |
-| `mid.patch` | the middle-layer change ARM needs, applied by `stage.sh` to copies of `Compiler/{Frame,BExp,BStmt,Call,CStmt,CProg,Wide,Opt/Lower}.lean` in `Mid/` (not committed): `writable` hypotheses on the store laws (below) |
 | `cut.py` | stage helper: drops the RISC-V-only `_wf`/`_implements` theorems of an example file |
 | `Apc/Stack.lean` | `compile_apc` (expressions), `gcd_apc` (loop), `sort_apc` (insertion sort = `List.mergeSort`, region form) from `Machine.compile_ok` / `compF_ok` / `compAF_ok` |
 | `Apc/Flags.lean`, `Apc/Agree.lean`, `Apc/AgreeAll.lean` | `agree_emitted`: on each of the 216 words of `emitted`, their `evalInst` = our small machine `armStep` (x0..x30, NZCV), PC + 4, mem/sp/status unchanged. NZCV identities by hand (no `bv_decide`) |
@@ -38,9 +37,9 @@ built nor used.
 | `Apc/Emit.lean`, `test/{loop,sort}_test.py` | emitted words and the QEMU / Sail-runner tests of branch `apc` (not re-run here) |
 | `Apc/Emit2.lean`, `test/words2.txt`, `test/ext_test.py` | words of the new examples (`lake env lean Apc/Emit2.lean > test/words2.txt`) and their QEMU test |
 
-`lakefile.toml` takes `Spec/{Code,ArrCode,Encode,Tree}.lean`, `Compiler/{Iface,Logic,Exp,Stmt,Mem,Arr,BLang,CLang}.lean`
-and `Compiler/Opt/*` (except `Lower`) from the repo root unchanged, and the patched copies from `Mid/`. These files are identical on `main` and on branch `apc` (the `writable` change was already
-merged), so the 9 laws ported without any change.
+`lakefile.toml` takes `Spec/{Code,ArrCode,Encode,Tree}.lean` and the middle layer `Compiler/{Iface,Logic,Exp,Stmt,Mem,
+Arr,BLang,CLang,Frame,BExp,BStmt,Call,CStmt,CProg,Wide}.lean`, `Compiler/Opt/*` from the repo root unchanged (since
+2026-11-15 no patched copies: the `writable` change below is upstream).
 
 ## What is proved, on which model (checked here, 2026-11-14; re-checked 2026-11-15)
 
@@ -81,16 +80,15 @@ words are).
 | `Proven.Apc.msortO_apc` | optimised branchy merge sort = `List.mergeSort` | same three |
 | `Proven.Apc.crc_apc_of`, `crc_apc`, `crcO_apc` | CRC-32 (`crc32` of `Riscv/Examples/Crc.lean`), unoptimised and optimised words | same three |
 
-**The interface change (`mid.patch`).** DeepMind's memory refuses stores to bytes that are not `w ∧ ¬x`
+**The interface change (upstream since 2026-11-15; was `mid.patch`).** DeepMind's memory refuses stores to bytes that are not `w ∧ ¬x`
 (`Memory.canWrite`), so code bytes are never writable. The store laws of `MachineF` (`law_stS`, `law_sd`), `MachineC`
 (`law_enterC`, `law_stA`) and `Wide` (`w_stS`, `w_sd`) assume only "in RAM", and RAM must contain the code
 (`codeOK`); a store into the code would fault, so these laws cannot be proved on this model as stated (`law_sb` /
-`w_sb` already take `writable`). `mid.patch` adds `(∀ i < 8, writable s (addr + i))` to those six laws, writability
+`w_sb` already take `writable`). The change adds `(∀ i < 8, writable s (addr + i))` to those six laws, writability
 of the frame to `enterOK_frame` (as `WideF.enterOK_frame` already has) and to `Frm`, of word blocks to `Lay`/`PLay`/
-`Ctx` (`wwr`), of the stack area to `PLay`/`Ctx` (`stw`), and threads them through the proofs (≈ 40 changed lines,
-`Mid/` holds the patched copies). It is the "to do: give them `writable` too" of `Testing/notes/MACH.md`; RISC-V
-satisfies the new hypotheses trivially (its laws ignore them). Until it is upstreamed, `stage.sh` must find the
-root files as the patch expects (it fails loudly otherwise). One more hunk is a 4.34 `simpa` fix in `Opt/Lower.lean`.
+`Ctx` (`wwr`), of the stack area to `PLay`/`Ctx` (`stw`), and threads them through the proofs (≈ 40 changed lines). It is the "to do: give them `writable` too" of `Testing/notes/MACH.md`; RISC-V
+satisfies the new hypotheses trivially (its laws ignore them; writable = in RAM). Also a 4.34 `simpa` fix in
+`Opt/Lower.lean`.
 
 Code and layout: the theorems quantify over the layout `L` and state the code as `(apcF L).codeF …` /
 `callsCode L …` / `compBFOA L …`; the words do not depend on `L` (the encodings ignore it; `optB_L` proves it for the
@@ -115,7 +113,6 @@ skip with `SKIP_ARM=1` when `Arm/proofs/build` is current).
 
 ## What remains for ARM
 
-- Upstream `mid.patch` into `Compiler/` (RISC-V instances need only `_` for the new hypotheses).
 - Symbolic decoding of the register fields (the `Apc/Sym.lean` method applies; would remove the 5-minute
   enumeration), immediate forms for `bini`, nonzero load/store offsets.
 - Bridge beyond expressions: Sail full-step lemmas for `cbz`, `b`, `bl`, `b.cond`, `ret` (`full_ret` exists),

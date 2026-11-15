@@ -165,7 +165,8 @@ theorem callsCode_implements {P : Prog} {main : Nat} {f : List UInt8 → BitVec 
       [⟨output.base, 8⟩] stack.base (rvC.frameAt s 0 + 8) := by
     rw [hfA]
     refine ⟨fun r hr => ?_, fun r hr => ?_, List.pairwise_singleton _ _, List.pairwise_singleton _ _,
-      fun r hr w hw => ?_, fun w hw => ?_, ?_, fun r hr => ?_, fun r hr => ?_, fun r hr a h1 h2 _ _ => ?_⟩
+      fun r hr w hw => ?_, fun w hw => ?_, ?_, fun r hr => ?_, fun r hr => ?_, fun r hr a h1 h2 _ _ => ?_,
+      fun w hw a h1 h2 _ _ => ?_, fun a h1 h2 _ _ => ?_⟩
     · rw [List.mem_singleton] at hr; subst hr; show 0x80000000 ≤ _ ∧ _ ≤ 0x100000000; dsimp only; omega
     · rw [List.mem_singleton] at hr; subst hr; show 0x80000000 ≤ _ ∧ _ ≤ 0x100000000; dsimp only; omega
     · rw [List.mem_singleton] at hr hw; subst hr; subst hw; unfold disjoint; dsimp only; omega
@@ -178,6 +179,9 @@ theorem callsCode_implements {P : Prog} {main : Nat} {f : List UInt8 → BitVec 
       rcases hr with (rfl | rfl) | rfl <;> (unfold disjoint; dsimp only; rw [hcl]; omega)
     · rw [List.mem_singleton] at hr; subst hr; show 0x80000000 ≤ a ∧ a + 1 ≤ 0x100000000
       dsimp only at h1 h2; omega
+    · rw [List.mem_singleton] at hw; subst hw; show 0x80000000 ≤ a ∧ a + 1 ≤ 0x100000000
+      dsimp only at h1 h2; omega
+    · show 0x80000000 ≤ a ∧ a + 1 ≤ 0x100000000; omega
   have hheap : rvC.HeapB [0] [3] [⟨input.base, x.length⟩] [⟨output.base, 8⟩]
       ⟨env, [x.map (·.toBitVec)], [[w0]]⟩ s := by
     refine ⟨rfl, rfl, fun b hb => ?_, fun b hb => ?_, fun b hb => ?_, rfl, rfl, fun b hb => ?_, fun b hb => ?_,

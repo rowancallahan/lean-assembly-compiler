@@ -122,7 +122,7 @@ structure Wide extends Core where
     runsTo s fun s' => toBase.Done s s' (next pc (wenc (.ldS d j)).length) ∧ toBase.Set1 s s' d v ∧ mem s' = mem s
   w_stS : ∀ {j : Nat} {v : Reg} {s : S} {pc : BitVec 64}, j < maxSlots →
     toBase.At s pc (wenc (.stS j v)) → toBase.inRAM ((fr s).toNat + 8 * (j + 1)) 8 →
-    ((fr s).toNat + 8 * (j + 1)) % 8 = 0 →
+    ((fr s).toNat + 8 * (j + 1)) % 8 = 0 → (∀ i, i < 8 → writable s ((fr s).toNat + 8 * (j + 1) + i)) →
     runsTo s fun s' => toBase.Done s s' (next pc (wenc (.stS j v)).length) ∧ toBase.Same s s' ∧
       mem s' = (mem s).wr ((fr s).toNat + 8 * (j + 1)) (le8 (get s v))
   w_ld : ∀ {d a : Reg} {off : BitVec 64} {s : S} {pc : BitVec 64} {v : BitVec 64}, offOK off = true →
@@ -131,6 +131,7 @@ structure Wide extends Core where
     runsTo s fun s' => toBase.Done s s' (next pc (wenc (.ld d a off)).length) ∧ toBase.Set1 s s' d v ∧ mem s' = mem s
   w_sd : ∀ {v a : Reg} {off : BitVec 64} {s : S} {pc : BitVec 64}, offOK off = true →
     toBase.At s pc (wenc (.sd v a off)) → toBase.inRAM (get s a + off).toNat 8 → (get s a + off).toNat % 8 = 0 →
+    (∀ i, i < 8 → writable s ((get s a + off).toNat + i)) →
     runsTo s fun s' => toBase.Done s s' (next pc (wenc (.sd v a off)).length) ∧ toBase.Same s s' ∧
       mem s' = (mem s).wr (get s a + off).toNat (le8 (get s v))
 

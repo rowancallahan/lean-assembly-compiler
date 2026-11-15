@@ -188,8 +188,10 @@ RISC-V proofs: `enter n` = `prologue n` (from `prologue_ok`), `leave` = `ld gp, 
 from `Riscv/Steps/Arr2Words.lean` (~200 lines). The code-stability side condition of `law_enter` (code
 disjoint from the frame) and the store laws are separate fields, so the planned "code frozen" law and a
 per-store `writable` hypothesis can be added to them one field at a time. The `apc` change (`Base.writable`,
-`law_sb` with `writable s a`) is merged: `Lay` carries the matching `wr` field for byte blocks; `law_stS`,
-`law_sd`, `law_enter` still use "in RAM" (to do: give them `writable` too).
+`law_sb` with `writable s a`) is merged: `Lay` carries the matching `wr` field for byte blocks. Since 2026-11-15
+`law_stS`, `law_sd` (and `MachineC.law_enterC`/`law_stA`, `Wide.w_stS`/`w_sd`) also take
+`∀ i < 8, writable s (addr + i)`; `enterOK_frame` and `Frm` give writability of the frame, `Lay`/`PLay`/`Ctx` of
+word blocks (`wwr`), `PLay`/`Ctx` of the stack area (`stw`). `law_enter` itself is unchanged.
 
 **What an ARM instance must now prove** (on top of the `Machine` list above): the five generic `MachineF`
 laws (trivial for a `keep` that is "all registers outside `phys` and the frame register"), and the six

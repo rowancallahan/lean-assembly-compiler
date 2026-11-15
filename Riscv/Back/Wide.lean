@@ -520,8 +520,8 @@ def rvw : Wide where
   maxSlots := 16
   keep_fr h := h 3 phys_ne3'
   w_ldS := w_ldS
-  w_stS := w_stS
+  w_stS hj hA hr hal _ := w_stS hj hA hr hal
   w_ld := w_ld
-  w_sd := w_sd
+  w_sd ho hA hr hal _ := w_sd ho hA hr hal
 
 end Proven.Mach.Riscv

@@ -48,6 +48,7 @@ structure MachineC extends MachineF where
       ra s' = next pc lenCall ∧ fr s' = fr s ∧ toBase.Same s s' ∧ mem s' = mem s
   law_enterC : ∀ {n : Nat} {s : S} {pc : BitVec 64}, n ≤ maxSlots → toBase.At s pc (encC (.enterC n)) →
     8 * (n + 1) ≤ (fr s).toNat → toBase.inRAM ((fr s).toNat - 8 * (n + 1)) 8 → (fr s).toNat % 8 = 0 →
+    (∀ i, i < 8 → writable s ((fr s).toNat - 8 * (n + 1) + i)) →
     runsTo s fun s' => ok s' ∧ keepC s s' ∧ pcIs s' (next pc (encC (.enterC n)).length) ∧
       fr s' = BitVec.ofNat 64 ((fr s).toNat - 8 * (n + 1)) ∧ toBase.Same s s' ∧
       mem s' = (mem s).wr ((fr s).toNat - 8 * (n + 1)) (le8 (ra s))
@@ -58,7 +59,7 @@ structure MachineC extends MachineF where
       fr s' = BitVec.ofNat 64 ((fr s).toNat + 8 * (n + 1)) ∧ toBase.Same s s' ∧ mem s' = mem s
   law_stA : ∀ {m : Nat} {v : Reg} {s : S} {pc : BitVec 64}, v.val = 0 → 1 ≤ m → m ≤ maxSlots →
     toBase.At s pc (encC (.stA m v)) → 8 * m ≤ (fr s).toNat → toBase.inRAM ((fr s).toNat - 8 * m) 8 →
-    (fr s).toNat % 8 = 0 →
+    (fr s).toNat % 8 = 0 → (∀ i, i < 8 → writable s ((fr s).toNat - 8 * m + i)) →
     runsTo s fun s' => toBase.Done s s' (next pc (encC (.stA m v)).length) ∧ toBase.Same s s' ∧
       mem s' = (mem s).wr ((fr s).toNat - 8 * m) (le8 (get s v))
 
