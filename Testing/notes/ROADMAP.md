@@ -120,3 +120,6 @@ hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read 
   the port heavily against native `mixHash` (`#eval` runs the C) on random inputs and on real con-leche terms.
   Our theorems then say "computes con-leche with mixHash := mixHashLean". If con-leche's output provably does not
   depend on the hash function (only consistency), any Lean hash will do.
+- String byte layout (owner, 2026-11-15): a length followed by the raw UTF-8 bytes (replaces the §23 chain of tagged
+  byte cells). Both keep every symbol; this one is compact and standard. Length width to fix in the round (8-byte
+  little-endian like other scalars unless the owner says otherwise). To be done after the Expr round (same files).
