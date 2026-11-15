@@ -4,11 +4,13 @@ from `Testing/asm/emit_frontx.lean` in `Testing/asm/frontx-words/`, first line =
 emulator, in the `Implements1` calling convention (`Spec/Implements1.lean`): a0 = input, a1 = length, a2 = work
 base (8-aligned), a3 = output, sp = work end.
 
-check N [crcraw|b64all|findnl|be32at0|tailsum|nontailsum|taillength|booklength]: fixed inputs and random ones (lengths up to 3000).  Each case gets its own
-input / output (R result bytes) / work block (`8 * (slots + 1) + 7` bytes = `space n`, at an 8-aligned base), each
-followed by 16 guard bytes; the driver sets gp to a magic value before the call and stores gp, sp after it.
-Checked on QEMU and Sail: output = the Python reference (little-endian), input, guards unchanged, gp and sp
-restored, and (Sail) every data write lands in the result bytes or in the work block.
+check N [function]: the first N cases of `frontx-words/<function>.cases` (inputs and the result bytes computed by
+Lean, `#eval` of the function in `emit_frontx.lean`; lengths up to 3000), and for the functions in `FUNCS` also the
+Python reference.  Each case gets its own input / output (exactly the result's bytes) / work block
+(`8 * (slots + 1) + 7` bytes = `space n`, at an 8-aligned base), each followed by 16 guard bytes; the driver sets gp
+to a magic value before the call and stores gp, sp, a1 after it.  Checked on QEMU and Sail: output = Lean's result,
+input, guards unchanged, gp and sp restored, a1 = result length for list results (`retLen`), and (Sail) every data
+write lands in the result bytes or in the work block.
 usage: frontx_test.py check N [function]"""
 import os, random, re, subprocess, sys, zlib
 D = os.path.dirname(os.path.abspath(__file__)); W = os.path.join(D, "ctest"); os.makedirs(W, exist_ok=True)
@@ -32,8 +34,11 @@ FUNCS = {
     "taillength": (8, lambda xs: len(xs)),
     "booklength": (8, lambda xs: len(xs)),
 }
+# functions returning a list: the length is returned in a1
+LISTS = {"take5", "drop5", "matchdrop3", "filterall", "inceach", "twice"}
 FN = sys.argv[3] if len(sys.argv) > 3 else "crcraw"
-R, REF = FUNCS[FN]
+unhex = lambda h: [] if h == "-" else list(bytes.fromhex(h))
+CASES = [tuple(map(unhex, l.split())) for l in open(os.path.join(D, "frontx-words", FN + ".cases")) if l.strip()]
 lines = [l for l in open(os.path.join(D, "frontx-words", FN + ".words")) if l.strip()]
 words = [int(l, 16) for l in lines[1:]]
 G, WK, E = 16, 8 * (int(lines[0]) + 1) + 7, 72
@@ -59,6 +64,7 @@ _start: lla s0, tab
   jal ra, func
   sd gp, 48(s0)
   sd sp, 56(s0)
+  sd a1, 64(s0)
   addi s0, s0, %d
   addi s2, s2, -1
   bnez s2, 1b
@@ -70,9 +76,10 @@ func:
 %s""" + TAIL
 
 def build(cases, func):
-    """per case: [in | G][out R | G][pad to 8][work WK | G]"""
+    """per case: [in | G][out R | G][pad to 8][work WK | G], R = the length of Lean's result"""
     data, tab, off, lay = [], [], 0, []
-    for xs in cases:
+    for xs, ys in cases:
+        R = len(ys)
         L = len(xs); i0 = off; o0 = i0 + L + G; w0 = (o0 + R + G + 7) // 8 * 8; off = w0 + WK + G
         lay.append((i0, o0, w0))
         tab.append(f"  .quad base+{i0}, {L}, base+{w0}, base+{o0}, base+{w0 + WK}, {MAGIC}, 0, 0, 0")
@@ -100,10 +107,7 @@ def qemu(halt, a, n):
     return open(p("crc.q.bin"), "rb").read()
 
 def check(N):
-    rng = random.Random(5)
-    fixed = [b"", b"123456789", b"a", b"abc", b"The quick brown fox\njumps over the lazy dog"]
-    cases = [list(x) for x in fixed] + [[rng.randrange(256) for _ in range(rng.choice([rng.randrange(40),
-             rng.randrange(3000)]))] for _ in range(max(0, N - len(fixed)))]
+    cases = CASES[:N]
     func = "".join(f"  .word 0x{w:08x}\n" for w in words)
     lay, halt, base, tab, size = build(cases, func)
     qmem = qemu(halt, base, tab + E * len(cases) - base)
@@ -112,8 +116,8 @@ def check(N):
     assert "SUCCESS" in r.stdout + r.stderr, (r.stdout + r.stderr)[-500:]
     init = bytearray(open(p("crc.bin"), "rb").read()) + bytearray(qmem[size:])
     allowed = set(range(tab, tab + E * len(cases)))
-    for (i0, o0, w0) in lay:
-        allowed |= set(range(base + o0, base + o0 + R)) | set(range(base + w0, base + w0 + WK))
+    for (i0, o0, w0), (xs, ys) in zip(lay, cases):
+        allowed |= set(range(base + o0, base + o0 + len(ys))) | set(range(base + w0, base + w0 + WK))
     smem = bytearray(init)
     for l in open(p("sail.log")):
         m = re.match(r"mem\[(?:W,)?0x([0-9A-F]+)\] <- 0x([0-9A-F]+)", l)
@@ -125,17 +129,20 @@ def check(N):
             assert a + j in allowed, f"unexpected Sail write {l.strip()}"
             smem[a + j - base] = int(v[2 * (nb - 1 - j):2 * (nb - j)], 16)
     for nm, mem in (("qemu", qmem), ("sail", smem)):
-        for c, ((i0, o0, w0), xs) in enumerate(zip(lay, cases)):
-            L = len(xs)
+        for c, ((i0, o0, w0), (xs, ys)) in enumerate(zip(lay, cases)):
+            L = len(xs); R = len(ys)
             assert list(mem[i0:i0 + L + G]) == xs + [0xAA] * G, (nm, "input", L)
-            want = REF(xs).to_bytes(R, "little")
+            want = bytes(ys)
+            if FN in FUNCS:
+                assert want == FUNCS[FN][1](xs).to_bytes(FUNCS[FN][0], "little"), ("Lean != Python reference", FN, L)
             assert bytes(mem[o0:o0 + R]) == want, (nm, FN, L, bytes(mem[o0:o0 + R]).hex(), want.hex())
             assert list(mem[o0 + R:o0 + R + G]) == [0xAA] * G, (nm, "output guard", L)
             assert list(mem[w0 + WK:w0 + WK + G]) == [0xAA] * G, (nm, "work guard", L)
             e = tab - base + E * c
-            gp, spo = (int.from_bytes(mem[e + o:e + o + 8], "little") for o in (48, 56))
+            gp, spo, a1 = (int.from_bytes(mem[e + o:e + o + 8], "little") for o in (48, 56, 64))
             assert gp == MAGIC and spo == base + w0 + WK, (nm, "gp/sp", hex(gp), spo)
-    print(f"{FN}: {len(cases)} cases ok (QEMU == Sail == reference; lengths up to {max(map(len, cases))}; "
+            if FN in LISTS: assert a1 == R, (nm, "a1 (length)", a1, R)
+    print(f"{FN}: {len(cases)} cases ok (QEMU == Sail == Lean; input lengths up to {max(len(x) for x, _ in cases)}; "
           f"{len(words)} words, work {WK} bytes)")
 
 if sys.argv[1] == "check": check(int(sys.argv[2]))

@@ -1,4 +1,4 @@
-/- The extended interface `MachineF` (`Compiler/Frame.lean`, with `mid.patch`) on DeepMind's AArch64 semantics:
+/- The extended interface `MachineF` (`Compiler/Frame.lean`) on DeepMind's AArch64 semantics:
 `apcF L : MachineF`.  Frame register `x28` (not an abstract register; the abstract registers are x0..x7, x9..x15).
 `enter n` = `sub x9, sp, #8(n+1); str x28, [x9]; mov x28, x9; str xzr, [x28, #8(j+1)]` (j < n),
 `leave` = `ldr x28, [x28]`, slot `j` = `[x28, #8(j+1)]` (`ldr`/`str`), `ld`/`sd` = `ldr xd, [xa]` / `str xv, [xa]`.

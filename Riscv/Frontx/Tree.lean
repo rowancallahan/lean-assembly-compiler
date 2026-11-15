@@ -512,6 +512,8 @@ inductive LOut (A : Type) where
   | call (a : A)
   /-- a result with several components: `r`, and the values of the extra result variables -/
   | retm (r : BitVec 64) (rs : List (Nat × BitVec 64))
+  /-- a result `r` and the heap after the iteration (functions that write an output block) -/
+  | reth (r : BitVec 64) (H : Heap)
 
 /-- the step of `k` from `σ` is the Lean outcome: the same result, or a call whose new state holds the new
 arguments (`R`) -/
@@ -519,6 +521,7 @@ def Sim {A : Type} (R : A → BState → Prop) (k : Tree) (σ : BState) : LOut A
   | .ret r => ∃ σ', k.step σ = some (.ret r σ')
   | .call a => ∃ σ₁, k.step σ = some (.call σ₁) ∧ R a σ₁
   | .retm r rs => ∃ σ', k.step σ = some (.ret r σ') ∧ ∀ p ∈ rs, σ'.env p.1 = p.2
+  | .reth r H => ∃ σ', k.step σ = some (.ret r σ') ∧ σ'.heap = H
 
 section
 variable {A : Type} (R : A → BState → Prop)
@@ -596,6 +599,43 @@ theorem sim_call_elim {k : Tree} {σ : BState} {a : A} (hs : Sim R k σ (.call a
     ∃ σ₁, k.step σ = some (.call σ₁) ∧ R a σ₁ := hs
 theorem sim_ret_elim {k : Tree} {σ : BState} {r : BitVec 64} (hs : Sim R k σ (.ret r)) :
     ∃ σ', k.step σ = some (.ret r σ') := hs
+
+/-! ## Writing an output block (functions returning a list of bytes)
+
+The output block is block 1 of a heap `[A, O]`; the function's result `L` is written from index `j` on:
+`wrO O j L`.  A `ret` leaf of such a function is `reth` (the result and the heap). -/
+
+theorem sim_reth (e : BExp) (env : BEnv) (heap : Heap) (r : BitVec 64) (H : Heap)
+    (h : e.denote env = r) (hH : heap = H) : Sim R (.ret e) ⟨env, heap⟩ (.reth r H) :=
+  ⟨⟨env, heap⟩, by simp only [Tree.step, h], hH⟩
+
+theorem sim_reth_elim {k : Tree} {σ : BState} {r : BitVec 64} {H : Heap}
+    (hs : Sim R k σ (.reth r H)) : ∃ σ', k.step σ = some (.ret r σ') ∧ σ'.heap = H := hs
+
+theorem sim_store1 (A0 O : List (BitVec 8)) (i e : BExp) (k : Tree) (env : BEnv) (heap : Heap) (j : Nat) (y : UInt8)
+    (o : LOut A) (hH : heap = [A0, O]) (hj : (i.denote env).toNat = j) (hlt : j < O.length)
+    (hy : (e.denote env).setWidth 8 = y.toBitVec) (h : Sim R k ⟨env, [A0, O.set j y.toBitVec]⟩ o) :
+    Sim R (.store 1 i e k) ⟨env, heap⟩ o := by
+  have e1 : (Tree.store 1 i e k).step ⟨env, heap⟩ = k.step ⟨env, [A0, O.set j y.toBitVec]⟩ := by
+    subst hH; simp only [Tree.step, hj, hy, wr]
+    simp [hlt]
+  cases o <;> simp only [Sim, e1] <;> exact h
 end
+
+/-- `L` written into `O` from index `j` on -/
+def wrO (O : List (BitVec 8)) (j : Nat) (L : List UInt8) : List (BitVec 8) :=
+  O.take j ++ L.map (·.toBitVec) ++ O.drop (j + L.length)
+
+theorem wrO_nil (O : List (BitVec 8)) (j : Nat) : wrO O j [] = O := by
+  simp [wrO]
+
+theorem wrO_cons (O : List (BitVec 8)) (j : Nat) (y : UInt8) (L : List UInt8) (h : j < O.length) :
+    wrO O j (y :: L) = wrO (O.set j y.toBitVec) (j + 1) L := by
+  unfold wrO
+  have ht : (O.set j y.toBitVec).take (j + 1) = O.take j ++ [y.toBitVec] := by
+    rw [List.take_add_one, List.getElem?_set_self h, List.take_set_of_le (Nat.le_refl _)]; rfl
+  have hd : (O.set j y.toBitVec).drop (j + 1 + L.length) = O.drop (j + (L.length + 1)) := by
+    rw [List.drop_set_of_lt (by omega)]; congr 1; omega
+  simp only [List.map_cons, List.length_cons, ht, hd, List.append_assoc, List.cons_append, List.nil_append]
 
 end Proven.Frontx

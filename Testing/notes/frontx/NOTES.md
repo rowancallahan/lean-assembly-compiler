@@ -6,7 +6,8 @@ Branch `frontx`, rebased onto the reorganised `main` (round 4, section 11). File
 rebase and use the old paths (`Proven/Frontx/` = `Riscv/Frontx/`, `asm/` = `Testing/asm/`); where section 11
 supersedes a statement there (machine theorems: now `Implements1`), section 11 says so.
 
-**Round 2 is section 9, round 3 section 10, round 4 (rebase, `Implements1`, lists, specialisation) section 11.**
+**Round 2 is section 9, round 3 section 10, round 4 (rebase, `Implements1`, lists, specialisation) section 11, round 5
+(list results, `Option` results, general `match` shapes, inlined calls, the book table) section 12.**
 
 ## 1. Status
 
@@ -684,3 +685,62 @@ lake env lean Testing/asm/emit_frontx.lean
 for f in crcraw b64all findnl be32at0 tailsum nontailsum taillength booklength; do
   python3 Testing/asm/frontx_test.py check 40 $f; done
 ```
+
+
+## 12. Round 5: list results, general `match` shapes, `Option` results, calls
+
+### 12.1 List results (output block, length in `a1`)
+
+A function whose result type is `List UInt8` is compiled in **list mode** (chosen by the result type):
+destination passing with two hidden parameters, the output index `j` (a variable) and the output block `O`
+(heap block 1, no variable; `a3` in the `Implements1` convention). Once and for all (`Tree.lean`):
+`wrO O j L = O.take j ++ L.map toBitVec ++ O.drop (j + |L|)`, `wrO_nil`, `wrO_cons`, the outcome `LOut.reth r H`
+(result and heap), `sim_reth`, `sim_store1` (a `store` node into block 1). Per function, generated:
+- `f.Rep … j O σ`: heap `[blk B, O]`, `env jv = rN j`, `|O| < 2^64`, and the capacity `j + |f xs| ≤ |O|`;
+- tree leaves: `[]` → `ret j`; `y :: t` → `store 1 j y`, continue with `j + 1`, `O.set j y`; a recursive call →
+  tail call with the current `j`, `O` (so `x :: f xs'`, `f xs'` (filter), `a :: b :: f xs'` all work);
+- the store bound `j < |O|` and the capacity of a call are proved from the capacity hypothesis rewritten by the
+  function's equation and the path conditions (`capOblig`);
+- `f.runs : Rep … → ∃ σ', Runs σ (rN (j + |f xs|)) σ' ∧ σ'.heap = [blk B, wrO O j (f xs)]` (strong induction on
+  the measure; each leaf closes by `wrO_cons`/`wrO_nil` and `omega`), `f.exec` from `j = 0`.
+- `Impl1.lean`: `implements1_list` (once): such a program, then `a1 := v4`, compiled by `compBFO`, gives
+  `Implements1With (fun xs => xs.data.toList) (fun l => l) code f space (retLen := true)`;
+  `frontx_implements_list g` generates `g.code`, `g.implements1`.
+
+**General `match` shapes in `frontx_view`** (needed for `take`/`drop`, `match n, xs with …`, and `final?`,
+`[y]` / `y1 :: y2 :: ys`): the body of `f … (view B i) …` is normalised (`vnorm`): a stuck `match` is split on a
+discriminant that is a view (`if h : k < B.size`, `B[k] :: view B (k+1)` or `[]`), a `Nat` (`if n = 0`, `0` or
+`n - 1 + 1`) or a view inside a discriminant, and reduced (`reduceMatcher?`); `B[k] :: view B (k+1)` is folded
+back to `view B k` and recursive calls to `f.view`. The equation is proved by following the tests of the
+right-hand side (`veqGo`: `by_cases`, `view_eq`, `subst`, `rfl`). Several list parameters are views of the same
+block with their own indices (`append xs ys`).
+
+**Results that end with the rest of the input** (`drop 0 xs = xs`, `[] ++ ys = ys`):
+`frontx_tailcopy f.view measure μ` defines `f.view.cp … m k := bif m then view B k else f.view …`, its equation
+(copy loop when `m`, else the body with `view B k'` ↦ `cp … true k'`, recursive calls ↦ `cp … false k`) and the
+measure; the copy is a mode of the same loop, so nothing else changes.
+
+### 12.2 `Option UInt8` results as bytes
+
+`Res (Option UInt8)` (`Impl1.lean`): two bytes, tag and payload (`0` for `none`), the word `rOpt8 o = tag +
+(payload <<< 8)`; `frontx_entry` joins the two result variables (`opt_join`, `Rep.lean`). `head?`, `final?`,
+`findFirst?` now have machine theorems.
+
+### 12.3 Results (all generated; source level 3 axioms, machine level the 77)
+
+| entry point | book function | words | work bytes | QEMU + Sail vs Lean |
+|---|---|---|---|---|
+| `take5` | `take 5` (Intro, `match n, xs`, 3 patterns) | 80 | 87 | 50 cases ok |
+| `drop5` | `drop 5` (Intro, pattern definition) | 135 | 119 | 50 cases ok |
+| `matchDrop3` | `Match.drop 3` | 135 | 119 | 50 cases ok |
+| `filterAll` | `NonTail.filter (· > 3)` | 72 | 71 | 50 cases ok |
+| `incEach` | `List.map (· + 1)` | 59 | 55 | 50 cases ok |
+| `twice` | `xs ++ xs` (`List.append`, two views) | 108 | 111 | 50 cases ok |
+| `headOf` | `Floop.List.head?` | 57 | 39 | 50 cases ok |
+| `finalOf` | `Floop.List.final?` (patterns `[]`, `[y]`, `y1 :: y2 :: ys`) | 77 | 71 | 50 cases ok |
+| `findFirstGt3` | `List.findFirst? · (· > 3)` | 76 | 63 | 50 cases ok |
+
+Tests: `frontx_test.py` now takes the cases from `frontx-words/<f>.cases`, written by `emit_frontx.lean` with the
+result computed by Lean (`#eval` of the function: "executed Lean"); output block exactly the result's length, so the
+capacity hypothesis is tight; `a1` = length checked for list results; the Python references of the older entry
+points are kept as a second check.

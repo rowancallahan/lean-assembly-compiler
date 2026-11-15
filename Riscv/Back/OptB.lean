@@ -25,13 +25,7 @@ def rvwF : WideF where
   keepF_trans := rvF.keepF_trans
   keep_of_keepF := rvF.keep_of_keepF
   keepF_ra := rvF.keepF_ra
-  enterOK_frame hf := by
-    obtain ⟨a, b, c⟩ := rvF.enterOK_frame hf
-    refine ⟨a, b, c, fun x h1 h2 _ _ => ?_⟩
-    have b1 : 0x80000000 ≤ _ := b.1
-    have b2 : _ ≤ 0x100000000 := b.2
-    show 0x80000000 ≤ x ∧ x + 1 ≤ 0x100000000
-    constructor <;> omega
+  enterOK_frame := rvF.enterOK_frame
   f_enter := rvF.law_enter
   f_leave := rvF.law_leave
 

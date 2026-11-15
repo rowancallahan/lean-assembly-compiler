@@ -7,7 +7,6 @@
 #     `Apc/Small.lean` of our small machine); `apcF : MachineF`, `msort_apc`; `apcC : MachineC`,
 #     `callsCode_implements_apc`, `sumTo_apc`/`fib_apc`/`isEven_apc`/`treeEval_apc`; `apcw`/`apcwF : Wide`/`WideF`,
 #     `compBFOA_ok`, `msortO_apc`, `crc_apc_of`/`crc_apc`/`crcO_apc` (all printed by `Apc/Axioms.lean`).
-#     stage.sh also applies `mid.patch` (writable hypotheses on the store laws) to copies of eight Compiler files.
 #  3. The bridge, in ONE environment with the Sail ARM model (/home/user/armv9-lean, read only, never rebuilt), the
 #     Arm/proofs oleans and this package's lake oleans (Apc.Flags, Apc.Sym, Apc.Stack; Spec.Code is one module on both
 #     sides): `Arm/proofs/check.sh` (skip with SKIP_ARM=1 if Arm/proofs/build is current), then Br/Agree, Br/AgreeAll

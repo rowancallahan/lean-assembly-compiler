@@ -21,6 +21,8 @@ structure Frm (N fp : Nat) : Prop where
   ram : M.inRAM fp (8 * (N + 1))
   al : fp % 8 = 0
   ns : N ≤ M.maxSlots
+  /-- the frame may be stored to (`Base.writable`) -/
+  wr : ∀ a, fp ≤ a → a < fp + 8 * (N + 1) → ∀ s, M.ok s → M.writable s a
 
 /-- `s` holds `env`: variable `i < 8` in `avar i`, frame register `= fp`, variable `8 + j` in slot `j` -/
 structure EnvB (N fp : Nat) (env : BEnv) (s : M.S) : Prop where

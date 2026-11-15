@@ -16,6 +16,10 @@ theorem rB_def (b : Bool) : rB b = if b = true then 1#64 else 0#64 := rfl
 /-- the heap block of a byte array -/
 def blk (xs : ByteArray) : List (BitVec 8) := xs.data.toList.map (·.toBitVec)
 
+/-- the byte a stored value denotes -/
+theorem setw_of_r8 {x : BitVec 64} {y : UInt8} (h : x = r8 y) : x.setWidth 8 = y.toBitVec := by
+  subst h; unfold r8; apply BitVec.eq_of_toNat_eq; simp [BitVec.toNat_setWidth]
+
 /-! ## heap -/
 theorem rd0 (B : List (BitVec 8)) (H : Heap) (j : Nat) : rd (B :: H) 0 j = B[j]? := rfl
 theorem rdS (B : List (BitVec 8)) (H : Heap) (b j : Nat) : rd (B :: H) (b + 1) j = rd H b j := rfl
@@ -258,5 +262,35 @@ theorem viewN_eq (B : ByteArray) (i : Nat) :
   unfold viewN; rw [view_eq]; split <;> rfl
 
 theorem view_zero (B : ByteArray) : view B 0 = B.data.toList := rfl
+
+end Proven.Frontx
+
+namespace Proven.Frontx
+
+/-! ## `Option UInt8` results as one word: tag in byte 0, payload in byte 1 -/
+
+def rOpt8 (o : Option UInt8) : BitVec 64 := rB o.isSome + (r8 (o.getD 0) <<< 8)
+
+theorem rOpt8_toNat (o : Option UInt8) : (rOpt8 o).toNat = (if o.isSome then 1 else 0) + 256 * (o.getD 0).toNat := by
+  cases o with
+  | none => simp [rOpt8, rB, r8]
+  | some x =>
+    have h := x.toNat_lt
+    simp only [rOpt8, rB, r8, Option.isSome_some, if_true, Option.getD_some, BitVec.toNat_add, BitVec.toNat_shiftLeft,
+      Nat.shiftLeft_eq, BitVec.toNat_setWidth, UInt8.toNat_toBitVec]
+    simp
+    omega
+
+/-- the entry point of a function with an `Option UInt8` result: join the two result variables -/
+theorem opt_join {p : BStmt} {σ : BState} {H : Heap} {o : Option UInt8} {v : Nat}
+    (h : ∃ σ', BExec p σ σ' ∧ σ'.env 4 = rB o.isSome ∧ σ'.heap = H ∧ AllEnv σ'.env [(v, r8 (o.getD 0))]) :
+    ∃ σ', BExec (.seq p (.assign 4 (.bin .add (.var 4) (.bin .shl (.var v) (.const (BitVec.ofNat 64 8)))))) σ σ' ∧
+      σ'.env 4 = rOpt8 o ∧ σ'.heap = H := by
+  obtain ⟨σ', hx, h4, hh, ha⟩ := h
+  have hv := ha _ (List.mem_singleton_self _)
+  refine ⟨_, .seq hx (BExec.assign' rfl), ?_, hh⟩
+  simp only [BEnv.set, BExp.denote, Op.eval, h4]
+  rw [show σ'.env v = r8 (o.getD 0) from hv]
+  rfl
 
 end Proven.Frontx

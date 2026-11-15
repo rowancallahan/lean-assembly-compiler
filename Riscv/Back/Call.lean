@@ -168,8 +168,8 @@ def rvC : MachineC where
     · exact h j hj h3 h1
   retOK_al v h := by show v.toNat % 2 = 0; omega
   law_call := law_call
-  law_enterC := law_enterC
+  law_enterC hn hA h1 hr hal _ := law_enterC hn hA h1 hr hal
   law_leaveC := law_leaveC
-  law_stA := law_stA
+  law_stA hv h1 hm hA h2 hr hal _ := law_stA hv h1 hm hA h2 hr hal
 
 end Proven.Mach.Riscv

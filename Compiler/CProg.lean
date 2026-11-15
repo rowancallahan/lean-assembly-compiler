@@ -84,6 +84,9 @@ structure PLay (cb : BitVec 64) (n : Nat) (R Wr : List Region) (lo top : Nat) : 
   cd : ∀ r ∈ R ++ Wr ++ [⟨lo, top - lo⟩], disjoint ⟨cb.toNat, 4 * n⟩ r
   /-- byte blocks may be stored to (`Base.writable`) -/
   wr : ∀ r ∈ R, ∀ a, r.base ≤ a → a < r.base + r.len → ∀ s, M.ok s → M.writable s a
+  /-- word blocks and the stack area may be stored to -/
+  wwr : ∀ r ∈ Wr, ∀ a, r.base ≤ a → a < r.base + r.len → ∀ s, M.ok s → M.writable s a
+  stw : ∀ a, lo ≤ a → a < top → ∀ s, M.ok s → M.writable s a
 
 variable {P bv wv}
 
@@ -106,7 +109,7 @@ theorem compP_ok {res main : Nat} {R Wr : List Region} {lo k : Nat} {σ σ' : BS
     M.runsTo s fun s' => M.pcIs s' (M.ra s) ∧ (∀ i : Fin 8, M.get s' (avar i) = σ'.env i.val) ∧
       M.HeapB bv wv R Wr σ' s' ∧ Out (R ++ Wr ++ [⟨lo, M.frameAt s 0 + 8 - lo⟩]) (M.mem s) (M.mem s') ∧
       M.ok s' ∧ M.keep s s' := by
-  obtain ⟨hns, hram0, hal0⟩ := M.enterOK_frame hen
+  obtain ⟨hns, hram0, hal0, -⟩ := M.enterOK_frame hen
   have hsubS : Sub (M.codeC (M.compP P bv wv res main)) 0
       (M.codeC (M.stubC P bv wv (M.progOff P bv wv res main) res main)) :=
     ⟨[], M.codeC (M.fnsC P bv wv (M.progOff P bv wv res main) (M.lenStub P bv wv res main) P), by
@@ -147,7 +150,8 @@ theorem compP_ok {res main : Nat} {R Wr : List Region} {lo k : Nat} {σ σ' : BS
   -- 2. save the return address
   refine M.runsTo_trans (M.law_enterC (n := 0) (Nat.zero_le _)
     (M.at_sub hok hc₁ qec ok₁ (M.pcIs_cast pc₁ (by omega))) (by rw [hfr₁]; omega)
-    (by rw [hfr₁]; unfold Base.inRAM; omega) (by rw [hfr₁]; exact hal0))
+    (by rw [hfr₁]; unfold Base.inRAM; omega) (by rw [hfr₁]; exact hal0)
+    (fun i hi => by rw [hfr₁]; exact hL.stw _ (by omega) (by omega) _ ok₁))
     fun s₂ ⟨ok₂, kc₂, pc₂, fr₂, st₂, m₂⟩ => ?_
   rw [hfr₁] at fr₂ m₂
   rw [next_add] at pc₂
@@ -160,13 +164,15 @@ theorem compP_ok {res main : Nat} {R Wr : List Region} {lo k : Nat} {σ σ' : BS
   have C : M.Ctx P bv wv off cb W R Wr lo fp₀ :=
     { codeOK := hok, fns := hfns, wf := hwf, bvlt := hbv, wvlt := hwv, ram := hL.ram, wram := hL.wram,
       rp := hL.rp, wp := hL.wp, rw := hL.rw, wal := hL.wal, wr := hL.wr, lohi := by omega,
+      wwr := hL.wwr, stw := fun a h1 h2 => hL.stw a h1 (by omega),
       stk := by unfold Base.inRAM; omega,
       sR := fun r hr => by have := hL.sR r hr; unfold disjoint at this ⊢; dsimp only at this ⊢; omega,
       cd := fun r hr => by
         rcases List.mem_append.1 hr with hr | hr
         · exact hcd r (List.mem_append_left _ hr)
         · rw [List.mem_singleton] at hr; subst hr; unfold disjoint; dsimp only; omega }
-  have hF : M.Frm 0 (fp₀ - 8 * (0 + 1)) := ⟨by unfold Base.inRAM; omega, by omega, Nat.zero_le _⟩
+  have hF : M.Frm 0 (fp₀ - 8 * (0 + 1)) := ⟨by unfold Base.inRAM; omega, by omega, Nat.zero_le _,
+    fun a h1 h2 => hL.stw a (by omega) (by omega)⟩
   have byR : ∀ r ∈ R ++ Wr, bytes (M.mem s₂) r.base r.len = bytes (M.mem s) r.base r.len := fun r hr =>
     bytes_out oS₂ fun r' hr' => by
       rw [List.mem_singleton] at hr'; subst hr'; exact disj_symm (hL.sR r hr)

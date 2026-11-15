@@ -1,4 +1,4 @@
-/- The call interface `MachineC` (`Compiler/Call.lean`, with `mid.patch`) on DeepMind's AArch64 semantics:
+/- The call interface `MachineC` (`Compiler/Call.lean`) on DeepMind's AArch64 semantics:
 `apcC L : MachineC` over `apcF L`.  Link register x30, frame register x28.
 `call d` = `bl #4d` (`-2^25 ≤ d < 2^25`, symbolic decoding), `enterC n` = `sub x28, x28, #8(n+1); str x30, [x28]`,
 `leaveC n` = `ldr x30, [x28]; add x28, x28, #8(n+1)`, `stA m v` = `stur xv, [x28, #-8m]`. -/

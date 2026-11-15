@@ -50,8 +50,3 @@ rm -f $O/i1.tmp $O/crc.tmp
   sed -n '/^\/-! ## The (untrusted) choice of registers/,/^end Proven.Mach.Riscv/p' $R/Riscv/Back/OptB.lean | sed '$d' |
     sed 's/rvwF/(apcwF L0)/g'
   echo "end Proven.Mach.ApcS"; } > $O/Search.lean
-# middle files with `writable` hypotheses on the frame / 8-byte store laws (DeepMind's memory faults on stores to
-# non-writable, e.g. executable, bytes; "in RAM" alone cannot be proved there): repo-root copies + mid.patch
-M=Mid/Compiler; mkdir -p $M/Opt
-for f in Frame BExp BStmt Call CStmt CProg Wide Opt/Lower; do cp $R/Compiler/$f.lean $M/$f.lean; done
-patch -s -d Mid -p1 < mid.patch

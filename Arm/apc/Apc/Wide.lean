@@ -1,4 +1,4 @@
-/- The wide interface `Wide` / `WideF` (`Compiler/Wide.lean`, `Compiler/Opt/BFn.lean`, with `mid.patch`) on
+/- The wide interface `Wide` / `WideF` (`Compiler/Wide.lean`, `Compiler/Opt/BFn.lean`) on
 DeepMind's AArch64 semantics: `apcw L : Wide`, `apcwF L : WideF`.  Every operation takes ARBITRARY abstract
 registers (decoding by enumeration, `Apc/WideDec.lean`).  Encodings: `mov` = `orr d, xzr, a`; `li` = `movz` (+ 3 `movk`); `bin` = the 3-register instruction (`ult/slt/eq` = `cmp;
 cset`); `bini`: no immediate forms (`immOK = false`: the lowering puts the constant into the scratch register);

@@ -10,6 +10,7 @@ Nothing in this file is proved by hand. -/
 import Riscv.Frontx.Impl1
 import Riscv.Frontx.ForExamples
 import Riscv.Frontx.ListExamples
+import Riscv.Frontx.ListOutExamples
 
 namespace Proven.Frontx.Ex
 open Proven Proven.Frontx
@@ -44,5 +45,32 @@ open Proven.Frontx.BookList in
 frontx_implements tailLength
 open Proven.Frontx.BookList in
 frontx_implements bookLength
+
+/-! ## Book functions returning a list (`ListOutExamples.lean`): the bytes in the output block, the length in `a1`
+
+`g.implements1 : Implements1With (fun xs => xs.data.toList) (fun l => l) g.code g (fun _ => 8 * (g.slots + 1) + 7)
+(retLen := true)` -/
+
+open Proven.Frontx.BookOut in
+frontx_implements_list take5
+open Proven.Frontx.BookOut in
+frontx_implements_list drop5
+open Proven.Frontx.BookOut in
+frontx_implements_list matchDrop3
+open Proven.Frontx.BookOut in
+frontx_implements_list filterAll
+open Proven.Frontx.BookOut in
+frontx_implements_list incEach
+open Proven.Frontx.BookOut in
+frontx_implements_list twice
+
+/-! `Option UInt8` results (`head?`, `final?`, `findFirst?`): two bytes, tag and payload (`Res (Option UInt8)`) -/
+
+open Proven.Frontx.BookOut in
+frontx_implements headOf
+open Proven.Frontx.BookOut in
+frontx_implements finalOf
+open Proven.Frontx.BookOut in
+frontx_implements findFirstGt3
 
 end Proven.Frontx.Ex
