@@ -93,3 +93,9 @@ inductive Runs (machine : Machine) : machine.State → Ending machine → Prop
   blocks would need a placement rule / compaction / highest-address definition because of fragmentation);
   (2) "free" = what the program itself frees, not unreachability (that would require a garbage collector);
   (3) stack frames count: `alloc` on call, `free` on return, so recursion depth is part of `memoryNeeded`.
+- Later (owner, 2026-11-15): output overflow is just out of memory. To drop the output-fits hypothesis from both
+  CompileRuns and CompileCorrect: (1) StartCorrect passes the output capacity in a register on entry (a1, which
+  returns the output length); (2) OutOfMemory := workLength < memoryNeeded ∨ outputLength < |encodeOutput (f a)|;
+  (3) the code checks before writing (one compare when the output size is known before encoding; per write for
+  growing output). Until then the hypothesis stays (it is needed: the code is not told outputLength, so without it
+  CompileRuns' frame clause contradicts CompileCorrect).
