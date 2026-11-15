@@ -25,6 +25,7 @@ Proven.msortCode_implements1O stmt=12105188779019656614 closure=6850315739822860
 Proven.Mach.Riscv.take_implements1O stmt=7084414895906136298 closure=2585744836797706614 consts=7567 local=613
 Proven.Mach.Riscv.inc_implements1O stmt=16176383878793840395 closure=9967274331830864944 consts=7568 local=612
 Proven.Mach.Riscv.sum_implements1O stmt=1170070578314843460 closure=4531486936111950042 consts=7579 local=624
+Proven.msortCodeO2_implements1 stmt=15745823919235658116 closure=14134478934737236547 consts=7610 local=650
 Proven.compileX1_ok stmt=2056465456832297058 closure=6830067685754773842 consts=7909 local=917
 Proven.PipeEx.revinc5_implements1 stmt=17547880200175961095 closure=4040901681636085154 consts=7960 local=965
 Proven.PipeEx.filtsort_implements1 stmt=13230903789473623196 closure=10129372031276397727 consts=7960 local=965
