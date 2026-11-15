@@ -47,6 +47,9 @@ run() {
     Proven.Frontx.IndEx.Pos.plus.implements1 Proven.Frontx.IndEx.NonTail.sum.implements1 Proven.Frontx.IndEx.Tail.sum.implements1 \
     Proven.Frontx.IndEx.Tail.reverse.implements1 List.append.implements1 ConLeche.levelHasParam.implements1 \
     ConLeche.Level.isNeverZero.implements1
+  lake env lean --run "$H/stmt_hash.lean" $L Riscv.Frontx.TinySelf,Riscv.Frontx.ExceptBook,Riscv.Frontx.PairExamples \
+    Proven.Mach.Riscv.implements1_of_execC Proven.Frontx.Tiny.tinyCompile.implements1 \
+    Proven.Frontx.ExcBook.optFirstThirdFifthSeventhE.implements1 Proven.Frontx.Pairs.addPoints16E.implements1
 }
 if [ -n "$L" ]; then run; exit 0; fi
 T=$(mktemp); trap 'rm -f "$T"' EXIT

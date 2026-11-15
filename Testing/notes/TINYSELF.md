@@ -36,3 +36,11 @@ Run: `lake build Riscv.Frontx.TinySelf Riscv.Frontx.TinySmall; lake env lean --t
 
 ## What blocks self-hosting at this scale
 (i) the 16-slot limit (variable count) in the machine theorem and apparently in the generated code; a dispatch over ~10 ops with byte arithmetic needs ~19; (ii) no way to split a function into several non-tail pieces or to carry a phase through a list view (items 5–6); (iii) elaboration cost of wide `if` trees (heartbeats, ~1 min); (iv) UInt8 shifts and 64-bit sign extension unsupported (items 1–3). Not hit but expected next: a real compiler needs label/offset resolution (a second pass over its own output) — output is write-only (`List UInt8` destination passing), no read-back.
+
+## Update (branch `more-slots`): machine theorem and self-hosting run
+`tinyCompile` now has 17 slots (front end improvements on main) and a machine theorem `tinyCompile.implements1`
+(the usual 77 model axioms) via `frontx_implements_listC` (checked optimised words, 305 words; NOTES §18). The hang:
+over 16 slots `compBFO` fell back to the plain words, whose loop bodies (1166 / 1064 words) exceed the `beqz` range,
+so the branch offsets were wrong. `frontx_test.py check 50 tinycompile`: 47 cases QEMU == Sail == Lean.
+(b) with the front-end binary as compiler: `python3 Testing/asm/tiny/selfhost_test.py` — 5 programs compiled by the
+binary on QEMU (== Lean `tinyCompile`), 85 runs of the produced code on qemu-riscv64 == `tinyRun`.

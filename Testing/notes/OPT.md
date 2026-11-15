@@ -546,3 +546,29 @@ Statements unchanged (hashes equal), closures differ, fingerprints re-frozen. Nu
 Not done: register pressure stops hoisting in b64 beyond one constant (`fast 6`/`fast 3` do not colour: the outer
 loop's `fl`/result registers stay live through the fast loop); copies between `ite` arms (`v33 := v10`) are not
 coalesced; the duplicate `at'` guard test is still two branches; no CSE of `li t6,26` pairs.
+
+## More than 16 locals (branch `more-slots`, 2026-11-15)
+
+The limit was the frame: `NS = 16` (plain `FrOK`, `MachineF`/`Wide` `maxSlots`) and `N ≤ 16` in `optB`/`LayI` (so that
+every local `8 + j` stayed below the temporaries `tk k = 32 + k`). Now:
+- `NS = 254` (`Riscv/Direct/Arr2Code.lean`): slot offsets `8 (j + 1)` and `±8 (n + 1)` still fit a 12-bit immediate.
+  The per-slot case splits became general lemmas (`Riscv/Steps/Imm12.lean`: `sx12_pos`, `sx12_neg`; `iSdS_all` by
+  `decide` over `Fin 254`); `rvw.maxSlots = 254`. Proofs that used `NS = 16` (`Call.lean`: `k < 18`) use `k < 256`.
+- `optB` checks `loB sp N` instead of `N ≤ 16` (`Compiler/Opt/BSel.lean`): every local `j ≥ 24` is spilled, i.e.
+  register-resident variables are `< 32` (`LoR`, a field of `LayI`). Slot locals may be any `j < NS`.
+- Spill choice (untrusted, `Riscv/Back/OptB.lean`), only when `N > 16` (`spillSetsX`; `N ≤ 16` uses `spillSets` as
+  before): locals `≥ 24` forced into slots; candidates are the sets grown by `spillGrow` (spill the least used local
+  the mode-0 colouring leaves without a register, `IR.uncol`) and none / one / the `k` least used; of the first of
+  each that colours, the one with fewer words goes first.
+- `compBFC` / `implements1_of_execC` (`Riscv/Back/OptB.lean`, `Riscv/Back/Implements1Opt.lean`): the optimised words for
+  an explicit choice (register table `tblG t`, spill list), no fallback, so no `wfB`; the hypothesis is
+  `(rvwF.optB … ).isSome = true`, checked by `decide +kernel`. Needed when the plain fallback is not well-formed (a loop
+  body of ≥ 1024 plain words: `tinyCompile`, 1166). For the kernel to evaluate `optB`, `Hoist.kSel` sorts with a
+  structural stable insertion sort (`isort`, same order as `mergeSort`). `implements1_of_spec` is the common proof
+  (`BSpec`: what `compBFO_ok'` says of a word list); `implements1_of_execO`/`OW` are instances.
+
+Words of every program with ≤ 16 locals are unchanged (all `frontx-words/*.words` re-emitted: identical), so there is no
+speed cost there. Over 16 (words / slot `ld`/`sd` incl. the `N` prologue zero stores): `firstThirdFifth` 19 locals,
+109 / 20 (no local spilled); `firstThirdFifthSeventh` 27, 235 / 93 (12 spilled, 3 of them forced); `addPoints` on
+16-bit inputs 17, 197 / 53; `tinyCompile` 17, 305 / 47 (the plain words were 1235 and wrong, see `TINYSELF.md`).
+Statements unchanged; closures changed (`NS`, `optB`, `pickB`), fingerprints re-frozen.
