@@ -11,7 +11,7 @@ pre-filled with 0x55 (bytes beyond the result are guards, so "unchanged" is chec
 magic value before the call and stores gp, sp, a1 after it.  Checked on QEMU and Sail: output = the Python model,
 input, guards unchanged, gp and sp restored, a1 = |result| for `take5` (retLen), and (Sail) every data write lands
 in the result bytes or in the work block.
-usage: impl1_test.py NAME N   (NAME: take5 inc sum crc sort msort)"""
+usage: impl1_test.py NAME N   (NAME: take5 inc sum crc sort msort msortb)"""
 import os, random, re, subprocess, sys, zlib, time
 D = os.path.dirname(os.path.abspath(__file__)); W = os.path.join(D, "ctest"); os.makedirs(W, exist_ok=True)
 SAIL = "/home/user/deps/sailsim/sail-riscv-Linux-x86_64/bin/sail_riscv_sim"
@@ -23,9 +23,9 @@ words = [int(l, 16) for l in open(os.path.join(D, WD, which + ".words")) if l.st
 MODEL = {"take5": lambda xs: xs[:5], "inc": lambda xs: [(x + 1) & 255 for x in xs],
          "sum": lambda xs: list((sum(xs) % 2**64).to_bytes(8, "little")),
          "crc": lambda xs: list(zlib.crc32(bytes(xs)).to_bytes(4, "little")),
-         "sort": sorted, "msort": sorted}[which]
+         "sort": sorted, "msort": sorted, "msortb": sorted}[which]
 SPACE = {"take5": lambda n: 15, "inc": lambda n: 15, "sum": lambda n: 15, "crc": lambda n: 2063,
-         "sort": lambda n: 0, "msort": lambda n: n + 71}[which]
+         "sort": lambda n: 0, "msort": lambda n: n + 71, "msortb": lambda n: n + 71}[which]
 G, E = 16, 72
 MAGIC = 0x0123456789ABCDEF
 LD = "ENTRY(_start)\nSECTIONS { . = 0x80000000; .text : { *(.text.start) *(.text) }\n . = 0x80100000; .tohost : { *(.tohost) }\n . = 0x80200000; .data : { *(.data) } }\n"

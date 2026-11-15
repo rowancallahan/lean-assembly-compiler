@@ -27,6 +27,7 @@ run() {
   lake env lean --run "$H/stmt_hash.lean" $L Riscv.Examples.Implements1Opt \
     Proven.Crc.crc32_implements1O Proven.sortCode_implements1O Proven.msortCode_implements1O \
     Proven.Mach.Riscv.take_implements1O Proven.Mach.Riscv.inc_implements1O Proven.Mach.Riscv.sum_implements1O
+  lake env lean --run "$H/stmt_hash.lean" $L Riscv.Examples.MsortBOpt Proven.msortCodeO2_implements1
   lake env lean --run "$H/stmt_hash.lean" $L Riscv.Examples.PipeExamples Proven.compileX1_ok \
     Proven.PipeEx.revinc5_implements1 Proven.PipeEx.filtsort_implements1 Proven.PipeEx.any3_implements1 \
     Proven.PipeEx.min_implements1 Proven.PipeEx.sum64_implements1

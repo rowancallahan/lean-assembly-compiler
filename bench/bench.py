@@ -17,7 +17,7 @@ def fold(f, a, xs):
     return a
 # ---- models: xs -> (expected output bytes or None, expected result or None)
 MODEL = {
-  "msort": lambda xs: (sorted(xs), None), "insertion": lambda xs: (sorted(xs), None),
+  "msort": lambda xs: (sorted(xs), None), "msortb": lambda xs: (sorted(xs), None), "insertion": lambda xs: (sorted(xs), None),
   "sum": lambda xs: (None, sum(xs) & M64), "take": lambda xs: (xs, None), "inc": lambda xs: ([(x + 1) & 255 for x in xs], None),
   "revinc5": lambda xs: ([(x + 1) & 255 for x in xs[:5]][::-1], None),
   "mapsum": lambda xs: ([sum((x ^ 0x20) if x < 10 else (x - 1) & 255 for x in xs) & 255], None),
@@ -54,7 +54,7 @@ for n in ARR:
 OURS["sort"] = wfile("pipe-words", "sort")
 OURS_RES_A2 = {"sum"}            # our array sum returns in a2, everything else in a0
 A2N = {"take", "inc"}            # a2 = count n for these (ours), scratch pointer for the rest
-CNAME = {n: "c_" + n for n in ARR}; CNAME.update({"gcd": "c_gcd", "loopsum": "c_sumdown", "demo": "c_demo", "demo2": "c_demo2"})
+CNAME = {n: "c_" + n for n in ARR}; CNAME["msortb"] = "c_msort"; CNAME.update({"gcd": "c_gcd", "loopsum": "c_sumdown", "demo": "c_demo", "demo2": "c_demo2"})
 HAND_RV = {"msort": os.path.join(R, "Testing", "asm", "sort.S")}; HAND_ARM = {"msort": os.path.join(R, "Testing", "asm-arm", "sort.S")}
 
 TAIL = '.section .tohost,"aw"\n.globl tohost\n.globl fromhost\n.align 6\ntohost: .dword 0\nfromhost: .dword 0\n'
