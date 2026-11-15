@@ -60,6 +60,7 @@ structure MachineM extends MachineC where
     bytes (mem s) (frameAt s 0 - 8) 8 = (le8 w).map some → retOK w →
     runsTo s fun s' => ok s' ∧ pcIs s' w ∧ get s' (avar 0) = BitVec.allOnes 64 ∧ mem s' = mem s
   frameAt_keepC : ∀ {s s' : S} {n : Nat}, keepC s s' → frameAt s' n = frameAt s n
+  enterOK_keep : ∀ {s s' : S} {n : Nat}, keep s s' → enterOK s n → enterOK s' n
 
 namespace MachineM
 variable (M : MachineM)
@@ -1696,6 +1697,424 @@ theorem execCM_ok (C : M.CtxM P bv wb off hp cb Wc R wbase hi) (hP : progClean P
     · show (BEnv.set (retEnv σ.env σ₁.env) res (P[f].ret.denote σ₁.env)) hvar = _
       simp only [BEnv.set, retEnv, show hvar < 8 by decide, if_true]
       rw [if_neg (Ne.symm hres)]; exact inv₅.hv
+
+end MachineM
+end Proven.Mach
+
+namespace Proven.Mach
+open MachineF Proven.Top.Alloc
+
+namespace MachineM
+variable (M : MachineM) (P : Prog) (bv : List Nat) (wb : Fin 8)
+
+/-! ## whole programs -/
+
+/-- the word where function `f` of the table `Fs` (placed at `start`) begins -/
+def offsM (start : Nat) : List Fn → Nat → Nat
+  | [], _ => start
+  | _ :: _, 0 => start
+  | F :: Fs, f + 1 => offsM (start + M.lenFM P bv wb F) Fs f
+
+def fnsCM (off : Nat → Nat) (hp : Nat) : Nat → List Fn → List ZOp
+  | _, [] => []
+  | pos, F :: Fs => M.fnCM P bv wb off hp pos F ++ fnsCM off hp (pos + M.lenFM P bv wb F) Fs
+
+def lenFns (start : Nat) : List Fn → Nat
+  | [] => 0
+  | F :: Fs => M.lenFM P bv wb F + lenFns (start + M.lenFM P bv wb F) Fs
+
+theorem len_fnsCM (off : Nat → Nat) (hp : Nat) : ∀ (Fs : List Fn) (start : Nat),
+    (M.codeZ (M.fnsCM P bv wb off hp start Fs)).length = M.lenFns P bv wb start Fs
+  | [], _ => rfl
+  | F :: Fs, start => by
+    simp only [fnsCM, lenFns, codeZ_append, List.length_append, len_fnCM, len_fnsCM off hp Fs]
+
+theorem fnsM_sub (off : Nat → Nat) (hp : Nat) : ∀ (Fs : List Fn) (start : Nat) (pre post : List (BitVec 32)),
+    pre.length = start → ∀ f (hf : f < Fs.length),
+    Sub (pre ++ M.codeZ (M.fnsCM P bv wb off hp start Fs) ++ post) (M.offsM P bv wb start Fs f)
+      (M.codeZ (M.fnCM P bv wb off hp (M.offsM P bv wb start Fs f) Fs[f]))
+  | F :: Fs, start, pre, post, hp', 0, _ =>
+    ⟨pre, M.codeZ (M.fnsCM P bv wb off hp (start + M.lenFM P bv wb F) Fs) ++ post, by
+      show pre ++ M.codeZ (M.fnCM P bv wb off hp start F ++ _) ++ post = pre ++ M.codeZ (M.fnCM P bv wb off hp start F) ++ _
+      rw [codeZ_append]; simp only [List.append_assoc], hp'⟩
+  | F :: Fs, start, pre, post, hp', f + 1, hf => by
+    have hf' : f < Fs.length := by simp only [List.length_cons] at hf; omega
+    have := fnsM_sub off hp Fs (start + M.lenFM P bv wb F) (pre ++ M.codeZ (M.fnCM P bv wb off hp start F)) post
+      (by rw [List.length_append, len_fnCM, hp']) f hf'
+    show Sub (pre ++ M.codeZ (M.fnCM P bv wb off hp start F ++ M.fnsCM P bv wb off hp (start + M.lenFM P bv wb F) Fs) ++ post)
+      (M.offsM P bv wb (start + M.lenFM P bv wb F) Fs f)
+      (M.codeZ (M.fnCM P bv wb off hp (M.offsM P bv wb (start + M.lenFM P bv wb F) Fs f) Fs[f]))
+    rw [codeZ_append, ← List.append_assoc]; exact this
+
+/-- the stub's early check: the stub's two cells must fit above the heap base -/
+def pre1 : List ZOp :=
+  [.m (.getTop (rk 0)), opA (.li (rk 1) 8), opA (.bin .sub (rk 0) (rk 0) (rk 1)), opA (.mov (rk 1) (avar wb))]
+/-- the early exit: status `-1`, return -/
+def early : List ZOp := [opA (.li (rk 0) (BitVec.allOnes 64)), opA (.mov (avar 0) (rk 0)), opA .ret]
+/-- the globals the program owns start at 0, global 7 (the heap length) too -/
+def zeroG : List ZOp :=
+  [opA (.li (avar 4) 0), opA (.li (avar 5) 0), opA (.li (avar 6) 0), opA (.li regU 0)]
+
+def preLen : Nat := (M.codeZ (pre1 wb)).length + M.lenBr + (M.codeZ early).length
+
+/-- the word where the stub's call statement begins -/
+def posSM : Nat := M.preLen wb + (M.encX (.enter 0)).length + (M.encC (.enterC 0)).length + (M.codeZ zeroG).length
+
+def lenStubM (res main : Nat) : Nat :=
+  M.posSM wb + M.lenCM P bv wb (.call res main []) +
+    ((M.encC (.leaveC 0)).length + ((M.encX .leave).length + (M.enc .ret).length))
+
+def stubM (off : Nat → Nat) (hp res main : Nat) : List ZOp :=
+  pre1 wb ++ [.m (.bgeu (rk 0) (rk 1) (M.lenBr + (M.codeZ early).length))] ++ early ++
+    [opF (.enter 0), opC (.enterC 0)] ++ zeroG ++ M.compCM P bv wb off hp (M.posSM wb) (.call res main []) ++
+    [opC (.leaveC 0), opF .leave, opA .ret]
+
+def progOffM (res main : Nat) : Nat → Nat := M.offsM P bv wb (M.lenStubM P bv wb res main) P
+
+/-- the exit's word -/
+def hpM (res main : Nat) : Nat := M.lenStubM P bv wb res main + M.lenFns P bv wb (M.lenStubM P bv wb res main) P
+
+/-- **the compiler with run-time memory checks**: stub, functions, exit -/
+def compPM (res main : Nat) : List ZOp :=
+  M.stubM P bv wb (M.progOffM P bv wb res main) (M.hpM P bv wb res main) res main ++
+    M.fnsCM P bv wb (M.progOffM P bv wb res main) (M.hpM P bv wb res main) (M.lenStubM P bv wb res main) P ++
+    [.m .exit]
+
+theorem len_stubM (off : Nat → Nat) (hp res main : Nat) :
+    (M.codeZ (M.stubM P bv wb off hp res main)).length = M.lenStubM P bv wb res main := by
+  simp only [stubM, lenStubM, posSM, preLen, codeZ_append, codeZ_one, codeZ_cons, codeZ_nil, List.append_nil, encZ_m,
+    encZ_C, encZ_F, encZ_A, List.length_append, len_compCM, M.len_bgeu]
+  omega
+
+/-- the well-formedness of the whole program -/
+def WfPM (res main : Nat) : Prop :=
+  (∀ f (hf : f < P.length), M.wfFM P bv wb (M.progOffM P bv wb res main) (M.hpM P bv wb res main)
+    (M.progOffM P bv wb res main f) P[f]) ∧
+  M.wfCM P bv wb (M.progOffM P bv wb res main) (M.hpM P bv wb res main) 0 (M.posSM wb) (.call res main []) ∧
+  M.bzOK (M.lenBr + (M.codeZ early).length)
+
+end MachineM
+end Proven.Mach
+
+namespace Proven.Mach
+open MachineF Proven.Top.Alloc
+
+/-- the globals after the stub: the program's own globals `4 .. 6` and the heap length `7` are `0` -/
+def stubEnv (env : BEnv) : BEnv := (((env.set 4 0).set 5 0).set 6 0).set hvar 0
+
+theorem stubEnv_lt4 (env : BEnv) {i : Nat} (h : i < 4) : stubEnv env i = env i := by
+  simp only [stubEnv, BEnv.set, hvar]; rw [if_neg (by omega), if_neg (by omega), if_neg (by omega), if_neg (by omega)]
+
+namespace MachineM
+variable {M : MachineM} {P : Prog} {bv : List Nat} {wb : Fin 8}
+
+theorem pre1_simple (wb : Fin 8) : ∀ o ∈ pre1 wb, simpleOK o := by
+  intro o ho
+  simp only [pre1, List.mem_cons, List.not_mem_nil, or_false] at ho
+  rcases ho with rfl | rfl | rfl | rfl
+  all_goals first
+    | exact (show (rk 0).val < 7 from by decide)
+    | exact (show (rk 1).val < 11 from by decide)
+    | exact ⟨by decide, rfl, rfl⟩
+    | exact movOK_rk_avar (by decide) _
+
+theorem zeroG_simple : ∀ o ∈ zeroG, simpleOK o := by
+  intro o ho
+  simp only [zeroG, List.mem_cons, List.not_mem_nil, or_false] at ho
+  rcases ho with rfl | rfl | rfl | rfl
+  all_goals show (Fin.val _) < 11
+  all_goals decide
+
+theorem pre1_eff (wb : Fin 8) (f t : BitVec 64) (g : Reg → BitVec 64) :
+    sEffs f t (pre1 wb) g (rk 0) = t - 8 ∧ sEffs f t (pre1 wb) g (rk 1) = g (avar wb) ∧
+    ∀ r : Reg, 7 ≤ r.val → sEffs f t (pre1 wb) g r = g r := by
+  refine ⟨?_, ?_, fun r hr => ?_⟩
+  · simp [sEffs, sEff, pre1, avar_ne_rk, Op.eval, rk01, rk02, rk12, rk10, rk20, rk21]
+  · simp [sEffs, sEff, pre1, avar_ne_rk, Op.eval, rk01, rk02, rk12, rk10, rk20, rk21]
+  · have h0 : r ≠ rk 0 := fun e => by subst e; simp [rk] at hr
+    have h1 : r ≠ rk 1 := fun e => by subst e; simp [rk] at hr
+    simp [sEffs, sEff, pre1, h0, h1]
+
+theorem zeroG_eff (f t : BitVec 64) (g : Reg → BitVec 64) (i : Fin 8) :
+    sEffs f t zeroG g (avar i) = if 4 ≤ i.val then 0 else g (avar i) := by
+  match i with
+  | ⟨0, _⟩ | ⟨1, _⟩ | ⟨2, _⟩ | ⟨3, _⟩ | ⟨4, _⟩ | ⟨5, _⟩ | ⟨6, _⟩ | ⟨7, _⟩ =>
+    simp (config := {decide := true}) [sEffs, sEff, zeroG, regU, avar, Fin.ext_iff]
+
+end MachineM
+end Proven.Mach
+
+namespace Proven.Mach
+open MachineF Proven.Top.Alloc
+
+namespace MachineM
+variable {M : MachineM} {P : Prog} {bv : List Nat} {wb : Fin 8}
+
+/-- the layout of a run: the code at `cb`, the byte blocks `R`, the work area `[wbase, frameAt s 0 + 8)` -/
+structure PLayM (cb : BitVec 64) (n : Nat) (R : List Region) (wbase top : Nat) : Prop where
+  ram : ∀ r ∈ R, M.inRAM r.base r.len
+  rp : R.Pairwise disjoint
+  wal : wbase % 8 = 0
+  lotop : wbase ≤ top
+  stk : M.inRAM wbase (top - wbase)
+  sR : ∀ r ∈ R, disjoint ⟨wbase, top - wbase⟩ r
+  cd : ∀ r ∈ R ++ [⟨wbase, top - wbase⟩], disjoint ⟨cb.toNat, 4 * n⟩ r
+  wr : ∀ r ∈ R, ∀ a, r.base ≤ a → a < r.base + r.len → ∀ s, M.ok s → M.writable s a
+  stw : ∀ a, wbase ≤ a → a < top → ∀ s, M.ok s → M.writable s a
+  slotsLe : 8 * (M.maxSlots + 1) ≤ wbase
+
+/-- **Programs with run-time memory checks: compiler correctness from the `MachineM` laws.**  The run with
+events of `res := main()` from the globals with `4 .. 7` zeroed and an empty heap ends in `σ'` with
+events `E`.  If the entry stub's two cells and the events fit the cells of the work area (`peak ≤ cells`)
+the code returns to the caller with `σ'`'s globals and blocks; else it returns with `-1` in global 0.
+Either way it writes only the byte blocks and the work area. -/
+theorem compPM_ok (hP : progClean P = true) {res main : Nat} (hres : (!unread.contains res) = true)
+    {R : List Region} {wbase : Nat} {env : BEnv} {H : Heap} {σ' : BState} {E : List MemEvent} {s : M.S}
+    {cb : BitVec 64}
+    (hex : TExec P (.call res main []) ⟨stubEnv env, H, [[]]⟩ E σ')
+    (hA : M.At s cb (M.codeZ (M.compPM P bv wb res main))) (hwf : M.WfPM P bv wb res main)
+    (hbv4 : ∀ x ∈ bv, x < 4) (hwb4 : wb.val < 4) (hwbv : wb.val ∉ bv) (hen : M.enterOK s 0)
+    (hL : M.PLayM cb (M.codeZ (M.compPM P bv wb res main)).length R wbase (M.frameAt s 0 + 8))
+    (hreg : ∀ i : Fin 8, M.get s (avar i) = env i.val) (hwbase : env wb.val = BitVec.ofNat 64 wbase)
+    (hlen : H.length = R.length) (hbvl : bv.length = R.length)
+    (hbase : ∀ b (hb : b < R.length), env (bv.getD b 0) = BitVec.ofNat 64 R[b].base)
+    (hblen : ∀ b (hb : b < R.length), (H[b]?.getD []).length = R[b].len)
+    (hbytes : ∀ b (hb : b < R.length), bytes (M.mem s) R[b].base R[b].len = (H[b]?.getD []).map some)
+    (hra : M.retOK (M.ra s)) (htop8 : 8 ≤ M.frameAt s 0) :
+    M.runsTo s fun s' => M.pcIs s' (M.ra s) ∧ M.ok s' ∧
+      Out (R ++ [⟨wbase, M.frameAt s 0 + 8 - wbase⟩]) (M.mem s) (M.mem s') ∧
+      ((peak (E ++ [.alloc 2]) ≤ (M.frameAt s 0 + 8 - wbase) / 8 ∧
+          (∀ i : Fin 8, M.get s' (avar i) = σ'.env i.val) ∧
+          ∃ W' : List (BitVec 64), M.HeapB bv [wb.val] R [⟨wbase, 8 * W'.length⟩] σ' s') ∨
+        ((M.frameAt s 0 + 8 - wbase) / 8 < peak (E ++ [.alloc 2]) ∧ M.get s' (avar 0) = BitVec.allOnes 64)) := by
+  obtain ⟨hwfF, hwfS, hbzE⟩ := hwf
+  obtain ⟨hns, hram0, hal0, -⟩ := M.enterOK_frame hen
+  have hfns : ∀ f (hf : f < P.length), Sub (M.codeZ (M.compPM P bv wb res main)) (M.progOffM P bv wb res main f)
+      (M.codeZ (M.fnCM P bv wb (M.progOffM P bv wb res main) (M.hpM P bv wb res main)
+        (M.progOffM P bv wb res main f) P[f])) := fun f hf => by
+    unfold compPM; rw [codeZ_append, codeZ_append]
+    exact M.fnsM_sub P bv wb _ _ P _ _ _ (M.len_stubM P bv wb _ _ res main) f hf
+  have hsubS : Sub (M.codeZ (M.compPM P bv wb res main)) 0
+      (M.codeZ (M.stubM P bv wb (M.progOffM P bv wb res main) (M.hpM P bv wb res main) res main)) :=
+    ⟨[], _, by unfold compPM; rw [codeZ_append, codeZ_append, List.append_assoc]; rfl, rfl⟩
+  have hsubX : Sub (M.codeZ (M.compPM P bv wb res main)) (M.hpM P bv wb res main) (M.encM .exit) :=
+    ⟨_, [], by unfold compPM; rw [codeZ_append, codeZ_append, codeZ_one, encZ_m, List.append_nil],
+      by rw [List.length_append, len_stubM, len_fnsCM]; rfl⟩
+  generalize M.codeZ (M.compPM P bv wb res main) = Wc at hA hL hsubS hfns hsubX
+  generalize M.progOffM P bv wb res main = off at hwfF hwfS hsubS hfns
+  generalize M.hpM P bv wb res main = hp at hwfF hwfS hsubS hfns hsubX
+  generalize hfp : M.frameAt s 0 = fp₀ at *
+  unfold Base.inRAM at hram0
+  have hstk := hL.stk
+  unfold Base.inRAM at hstk
+  have hlt := M.ramHi_lt
+  have hsl := hL.slotsLe
+  simp only [stubM, codeZ_append, codeZ_cons, codeZ_nil, List.append_nil, encZ_m, encZ_C, encZ_F, encZ_A]
+    at hsubS
+  obtain ⟨q7, qend⟩ := hsubS.split
+  obtain ⟨q6, qcall⟩ := q7.split
+  obtain ⟨q5, qzero⟩ := q6.split
+  obtain ⟨q4, qecs⟩ := q5.split
+  obtain ⟨q3, qearly⟩ := q4.split
+  obtain ⟨qpre, qbge⟩ := q3.split
+  obtain ⟨qen, qec⟩ := qecs.split
+  obtain ⟨qlc, qlvr⟩ := qend.split
+  obtain ⟨qlv, qret⟩ := qlvr.split
+  simp only [List.length_append, len_compCM, M.len_bgeu] at qbge qearly qen qec qzero qcall qlc qlv qret
+  have hc := hA.code
+  have hok := hA.codeOK
+  have hpc0 : M.pcIs s (next cb 0) := by rw [next_zero]; exact hA.hpc
+  have hcd := hL.cd
+  have hcdS := hcd _ memLast
+  unfold disjoint at hcdS; dsimp only at hcdS
+  -- 1. `r0 := frameAt - 8`, `r1 := wbase`
+  refine M.runsTo_trans (M.run_simple (pre1 wb) (pre1_simple wb) (M.at_sub hok hc qpre hA.ok hpc0))
+    fun s₁ ⟨d₁, g₁, m₁⟩ => ?_
+  rw [next_add] at d₁
+  obtain ⟨e10, e11, e17⟩ := pre1_eff wb (M.fr s) (BitVec.ofNat 64 (M.frameAt s 0)) (M.get s)
+  have v0 : (M.get s₁ (rk 0)).toNat = fp₀ - 8 := by
+    rw [g₁, e10, hfp, show (8 : BitVec 64) = BitVec.ofNat 64 8 from rfl, bv_sub_toNat (by omega) (by omega)]
+  have v1 : (M.get s₁ (rk 1)).toNat = wbase := by
+    rw [g₁, e11, hreg, hwbase, BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
+  have hc₁ := M.codeAt_mem m₁ hc
+  refine M.runsTo_trans (M.law_bgeu hbzE (M.at_sub hok hc₁ qbge d₁.ok (M.pcIs_cast d₁.hpc (by omega))))
+    fun s₂ ⟨d₂, st₂, m₂⟩ => ?_
+  rw [v0, v1] at d₂
+  by_cases hfit0 : wbase ≤ fp₀ - 8
+  rotate_left
+  · -- the early exit
+    rw [if_neg hfit0, next_add] at d₂
+    simp only [early, codeZ_cons, codeZ_nil, List.append_nil, encZ_A] at qearly
+    obtain ⟨e1, e23⟩ := qearly.split
+    obtain ⟨e2, e3⟩ := e23.split
+    have hc₂ := M.codeAt_mem m₂ hc₁
+    refine M.runsTo_trans (M.law_li (d := rk 0) (c := BitVec.allOnes 64) (by decide)
+      (M.at_sub hok hc₂ e1 d₂.ok (M.pcIs_cast d₂.hpc (by omega)))) fun s₃ ⟨d₃, st₃, m₃⟩ => ?_
+    rw [next_add] at d₃
+    refine M.runsTo_trans (M.law_mov (movOK_avar_rk0 0) (M.at_sub hok (M.codeAt_mem m₃ hc₂) e2 d₃.ok d₃.hpc))
+      fun s₄ ⟨d₄, st₄, m₄⟩ => ?_
+    rw [next_add] at d₄
+    have era : M.ra s₄ = M.ra s := by
+      rw [M.keep_ra d₄.keep, M.keep_ra d₃.keep, M.keep_ra d₂.keep, M.keep_ra d₁.keep]
+    refine M.runsTo_mono (M.law_ret (by rw [era]; exact hra) (M.at_sub hok (M.codeAt_mem (m₄.trans m₃) hc₂) e3 d₄.ok
+      d₄.hpc)) fun s₅ ⟨d₅, st₅, m₅⟩ => ⟨by rw [← era]; exact d₅.hpc, d₅.ok,
+        Out.of_eq (by rw [m₅, m₄, m₃, m₂, m₁]), .inr ⟨?_, ?_⟩⟩
+    · have := peak_ge E 2; omega
+    · rw [st₅, Core.Set1.same _ st₄, Core.Set1.same _ st₃]
+  rw [if_pos hfit0, next_add] at d₂
+  have hc₂ := M.codeAt_mem m₂ hc₁
+  -- 2. enter
+  have hpc₂ : M.pcIs s₂ (next cb (0 + ((M.codeZ (pre1 wb)).length + M.lenBr + (M.codeZ early).length))) :=
+    M.pcIs_cast d₂.hpc (by omega)
+  have hk₂ := M.keep_trans d₁.keep d₂.keep
+  have hen₂ : M.enterOK s₂ 0 := M.enterOK_keep hk₂ hen
+  have hfp₂ : M.frameAt s₂ 0 = fp₀ := by rw [M.frameAt_keep hk₂, hfp]
+  refine M.runsTo_trans (M.law_enter hen₂ (M.at_sub hok hc₂ qen d₂.ok hpc₂) (by
+    rw [hfp₂]; have := qen.le; have e := M.pc_toNat hok (a := 0 + ((M.codeZ (pre1 wb)).length + M.lenBr +
+      (M.codeZ early).length)) (by omega)
+    rw [e]; unfold disjoint; dsimp only; omega))
+    fun s₃ ⟨ok₃, kf₃, pc₃, fr₃, rg₃, o₃, sv₃, z₃⟩ => ?_
+  rw [hfp₂] at fr₃ o₃ sv₃
+  rw [next_add] at pc₃
+  have hfr₃ : (M.fr s₃).toNat = fp₀ := by rw [fr₃, BitVec.toNat_ofNat]; exact Nat.mod_eq_of_lt (by omega)
+  have oS₃ : Out [⟨wbase, fp₀ + 8 - wbase⟩] (M.mem s₂) (M.mem s₃) := out1 o₃ (by omega) (by omega)
+  have hcdW : ∀ r ∈ [(⟨wbase, fp₀ + 8 - wbase⟩ : Region)], disjoint ⟨cb.toNat, 4 * Wc.length⟩ r := fun r hr => by
+    rw [List.mem_singleton] at hr; subst hr; exact hcd _ memLast
+  have hc₃ := M.codeAt_out hc₂ hok hcdW oS₃
+  -- 3. save the return address
+  refine M.runsTo_trans (M.law_enterC (n := 0) (Nat.zero_le _)
+    (M.at_sub hok hc₃ qec ok₃ (M.pcIs_cast pc₃ (by omega))) (by rw [hfr₃]; omega)
+    (by rw [hfr₃]; unfold Base.inRAM; omega) (by rw [hfr₃]; exact hal0)
+    (fun i hi => by rw [hfr₃]; exact hL.stw _ (by omega) (by omega) _ ok₃))
+    fun s₄ ⟨ok₄, kc₄, pc₄, fr₄, st₄, m₄⟩ => ?_
+  rw [hfr₃] at fr₄ m₄
+  rw [next_add] at pc₄
+  have o₄ : Out [⟨fp₀ - 8 * (0 + 1), 8⟩] (M.mem s₃) (M.mem s₄) := by
+    rw [m₄]; exact Out.wr (List.mem_singleton_self _) (Nat.le_refl _) (by rw [length_le8]; exact Nat.le_refl _)
+  have oS₄ : Out [⟨wbase, fp₀ + 8 - wbase⟩] (M.mem s₂) (M.mem s₄) := oS₃.trans (out1 o₄ (by omega) (by omega))
+  have hc₄ := M.codeAt_out hc₂ hok hcdW oS₄
+  -- 4. zero the program's globals
+  refine M.runsTo_trans (M.run_simple zeroG zeroG_simple (M.at_sub hok hc₄ qzero ok₄ (M.pcIs_cast pc₄ (by omega))))
+    fun s₅ ⟨d₅, g₅, m₅⟩ => ?_
+  rw [next_add] at d₅
+  have hc₅ := M.codeAt_mem m₅ hc₄
+  have m₅₂ : M.mem s₅ = M.mem s₄ := m₅
+  have hfr₅ : M.fr s₅ = BitVec.ofNat 64 (fp₀ - 8 * (0 + 1)) := by rw [M.keep_fr d₅.keep, fr₄]
+  -- 5. the context of the run
+  have C : M.CtxM P bv wb off hp cb Wc R wbase fp₀ :=
+    { codeOK := hok, fns := hfns, wf := hwfF, bvlt := fun x hx => by have := hbv4 x hx; omega,
+      wb7 := fun e => by rw [e] at hwb4; exact absurd hwb4 (by decide),
+      wbv := hwbv, hbv := fun h => by have := hbv4 _ h; simp [hvar] at this,
+      ram := hL.ram, rp := hL.rp, wr := hL.wr, wal := hL.wal, lohi := by omega,
+      stk := by unfold Base.inRAM; omega,
+      sR := fun r hr => by have := hL.sR r hr; unfold disjoint at this ⊢; dsimp only at this ⊢; omega,
+      cd := fun r hr => by
+        rcases List.mem_append.1 hr with hr | hr
+        · exact hcd r (List.mem_append_left _ hr)
+        · rw [List.mem_singleton] at hr; subst hr; unfold disjoint; dsimp only; omega,
+      stw := fun a h1 h2 => hL.stw a h1 (by omega), slotsLe := hsl }
+  have hF : M.Frm 0 (fp₀ - 8 * (0 + 1)) := ⟨by unfold Base.inRAM; omega, by omega, Nat.zero_le _,
+    fun a h1 h2 => hL.stw a (by omega) (by omega)⟩
+  have byR : ∀ r ∈ R, bytes (M.mem s₅) r.base r.len = bytes (M.mem s) r.base r.len := fun r hr => by
+    rw [m₅₂, bytes_out oS₄ fun r' hr' => by
+      rw [List.mem_singleton] at hr'; subst hr'; exact disj_symm (hL.sR r hr), m₂, m₁]
+  have hreg₅ : ∀ i : Fin 8, M.get s₅ (avar i) = stubEnv env i.val := fun i => by
+    rw [g₅, zeroG_eff, st₄, rg₃ _ (avar_ge i), st₂, g₁, e17 _ (avar_ge i), hreg]
+    simp only [stubEnv, BEnv.set, hvar]
+    match i with
+    | ⟨0, _⟩ | ⟨1, _⟩ | ⟨2, _⟩ | ⟨3, _⟩ | ⟨4, _⟩ | ⟨5, _⟩ | ⟨6, _⟩ | ⟨7, _⟩ => simp
+  have inv₅ : M.InvM bv wb 0 (fp₀ - 8 * (0 + 1)) R wbase ⟨stubEnv env, H, [[]]⟩ s₅ [] := by
+    refine ⟨rfl, by simp [stubEnv, BEnv.set], by simp; omega, ⟨⟨hreg₅, hfr₅, fun j hj => absurd hj (by omega)⟩,
+      hlen, hbvl, fun b hb => ?_, hblen, fun b hb => by rw [byR _ (List.getElem_mem hb)]; exact hbytes b hb, rfl, rfl,
+      fun b hb => ?_, fun b hb => ?_, fun b hb => ?_⟩⟩
+    · show stubEnv env (bv.getD b 0) = _
+      rw [stubEnv_lt4 _ (hbv4 _ (getD_memN (hbvl ▸ hb)))]; exact hbase b hb
+    · have hb0 : b = 0 := by simp at hb; omega
+      subst hb0; show stubEnv env ([wb.val].getD 0 0) = _
+      simp only [List.getD_cons_zero]; rw [stubEnv_lt4 _ hwb4, hwbase]; rfl
+    · have hb0 : b = 0 := by simp at hb; omega
+      subst hb0; rfl
+    · have hb0 : b = 0 := by simp at hb; omega
+      subst hb0; rfl
+  have kc₅ : M.keepC s s₅ := M.keepC_trans (M.kC d₁) (M.keepC_trans (M.kC d₂) (M.keepC_trans
+    (M.keepC_of_keepF kf₃) (M.keepC_trans kc₄ (M.kC d₅))))
+  have hcl : (CStmt.call res main []).clean = true := by
+    simp only [CStmt.clean, List.all_nil, Bool.and_true]; exact hres
+  have hA2 : 2 + (fp₀ - 8 * (0 + 1) - wbase) / 8 = (fp₀ + 8 - wbase) / 8 := by omega
+  -- 6. the call of `main`
+  refine M.runsTo_trans (M.execCM_ok C hP hex hcl hF (by omega) hwfS (qcall.cast (by unfold posSM preLen; omega))
+    hc₅ d₅.ok (M.pcIs_cast d₅.hpc (by unfold posSM preLen; omega)) inv₅ (b := 2)) fun s₆ h => ?_
+  rw [hA2] at h
+  simp only [List.length_nil, Nat.add_zero] at h
+  have hmS : M.mem s₅ = M.mem s₄ := m₅₂
+  have oT₅ : Out (R ++ [⟨wbase, fp₀ + 8 - wbase⟩]) (M.mem s) (M.mem s₅) := by
+    rw [hmS]; exact (Out.of_eq (by rw [m₂, m₁])).trans (Out.mono oS₄ fun r hr => by
+      rw [List.mem_singleton] at hr; subst hr; exact ⟨_, memLast, Nat.le_refl _, Nat.le_refl _⟩)
+  have hsvS : bytes (M.mem s₅) (fp₀ - 8 * (0 + 1)) 8 = (le8 (M.ra s)).map some := by
+    rw [hmS, m₄]
+    have := bytes_wr_self (m := M.mem s₃) (a := fp₀ - 8 * (0 + 1)) (l := le8 (M.ra s₃))
+    rw [length_le8] at this; rw [this, M.keepF_ra kf₃, M.keep_ra d₂.keep, M.keep_ra d₁.keep]
+  rcases h with ⟨pk₆, ok₆, kc₆, pc₆, hc₆, o₆, W₆, iu₆, inv₆⟩ | ⟨pk₆, ok₆, kc₆, pc₆, o₆⟩
+  rotate_left
+  · -- out of memory: the exit
+    have kc : M.keepC s s₆ := M.keepC_trans kc₅ kc₆
+    have hfa : M.frameAt s₆ 0 = fp₀ := by rw [M.frameAt_keepC kc, hfp]
+    have hcd₆ : ∀ r ∈ WrtM 0 (fp₀ - 8 * (0 + 1)) R wbase, disjoint ⟨fp₀ - 8, 8⟩ r := C.cell0M (by omega) (by omega)
+    refine M.runsTo_mono (M.law_exit (w := M.ra s) (M.at_sub hok (C.codeAt_W (by omega) (by omega) hc₅ o₆) hsubX
+      ok₆ pc₆) (by rw [hfa]; omega) (by rw [hfa]; unfold Base.inRAM; omega) (by rw [hfa]; omega)
+      (by rw [hfa, bytes_out o₆ hcd₆]; exact hsvS) hra) fun s₇ ⟨ok₇, pc₇, a₇, m₇⟩ =>
+        ⟨pc₇, ok₇, ?_, .inr ⟨pk₆, a₇⟩⟩
+    rw [m₇]
+    exact oT₅.trans (Out.mono o₆ fun r hr => by
+      unfold WrtM at hr
+      simp only [List.mem_append, List.mem_singleton] at hr
+      rcases hr with (hr | hr) | hr
+      · exact ⟨r, List.mem_append_left _ hr, Nat.le_refl _, Nat.le_refl _⟩
+      · obtain ⟨j, hj, -⟩ := mem_slots hr; exact absurd hj (by omega)
+      · subst hr; exact ⟨_, memLast, Nat.le_refl _, by dsimp only; omega⟩)
+  -- 7. restore the return address and the frame register, return
+  have hcdC : ∀ r ∈ WrtM 0 (fp₀ - 8 * (0 + 1)) R wbase, disjoint ⟨fp₀ - 8 * (0 + 1), 8⟩ r :=
+    C.cell0M (by omega) (by omega)
+  have hfr₆ : (M.fr s₆).toNat = fp₀ - 8 * (0 + 1) := MachineF.Frm.fr M.toMachineF hF inv₆.rel.env.fr
+  refine M.runsTo_trans (M.law_leaveC (n := 0) (w := M.ra s) (Nat.zero_le _)
+    (M.at_sub hok hc₆ qlc ok₆ (M.pcIs_cast pc₆ (by unfold posSM preLen; omega))) (by rw [hfr₆]; exact hF.ram)
+    (by rw [hfr₆]; exact hF.al) (by rw [hfr₆, bytes_out o₆ hcdC]; exact hsvS))
+    fun s₇ ⟨ok₇, kc₇, pc₇, ra₇, fr₇, st₇, m₇⟩ => ?_
+  rw [hfr₆, Nat.sub_add_cancel (by omega)] at fr₇
+  rw [next_add] at pc₇
+  have hfr₇ : (M.fr s₇).toNat = fp₀ := by rw [fr₇, BitVec.toNat_ofNat]; exact Nat.mod_eq_of_lt (by omega)
+  have hsv₇ : bytes (M.mem s₇) fp₀ 8 = (le8 (M.fr s)).map some := by
+    rw [m₇, bytes_out o₆ (fun r hr => by
+      unfold WrtM at hr
+      simp only [List.mem_append, List.mem_singleton] at hr
+      rcases hr with (hr | hr) | hr
+      · have := hL.sR r hr; unfold disjoint at this ⊢; dsimp only at this ⊢; omega
+      · obtain ⟨j, hj, -⟩ := mem_slots hr; exact absurd hj (by omega)
+      · subst hr; unfold disjoint; dsimp only; omega), hmS,
+      bytes_out o₄ (fun r hr => by rw [List.mem_singleton] at hr; subst hr; unfold disjoint; dsimp only; omega)]
+    rw [sv₃, M.keep_fr d₂.keep, M.keep_fr d₁.keep]
+  refine M.runsTo_trans (M.law_leave (w := M.fr s)
+    (M.at_sub hok (M.codeAt_mem m₇ hc₆) qlv ok₇ (M.pcIs_cast pc₇ (by omega)))
+    (by rw [hfr₇]; unfold Base.inRAM; omega) (by rw [hfr₇]; exact hal0) (by rw [hfr₇]; exact hsv₇))
+    fun s₈ ⟨ok₈, kf₈, pc₈, fr₈, st₈, m₈⟩ => ?_
+  rw [next_add] at pc₈
+  have era : M.ra s₈ = M.ra s := by rw [M.keepF_ra kf₈, ra₇]
+  refine M.runsTo_mono (M.law_ret (by rw [era]; exact hra)
+    (M.at_sub hok (M.codeAt_mem m₈ (M.codeAt_mem m₇ hc₆)) qret ok₈ (M.pcIs_cast pc₈ (by omega))))
+    fun s₉ ⟨d₉, st₉, m₉⟩ => ?_
+  have m₉₆ : M.mem s₉ = M.mem s₆ := by rw [m₉, m₈, m₇]
+  have r₆ := inv₆.rel
+  refine ⟨by rw [← era]; exact d₉.hpc, d₉.ok, ?_, .inl ⟨pk₆, fun i => by rw [st₉, st₈, st₇, r₆.env.reg], W₆,
+    ⟨r₆.hlen, r₆.bvlen, r₆.base, r₆.blen, fun b hb => by rw [m₉₆]; exact r₆.rbytes b hb, r₆.whlen, r₆.wvlen,
+      r₆.wbase, r₆.wblen, fun b hb => by rw [m₉₆]; exact r₆.wbyts b hb⟩⟩⟩
+  rw [m₉₆]
+  exact oT₅.trans (Out.mono o₆ fun r hr => by
+    unfold WrtM at hr
+    simp only [List.mem_append, List.mem_singleton] at hr
+    rcases hr with (hr | hr) | hr
+    · exact ⟨r, List.mem_append_left _ hr, Nat.le_refl _, Nat.le_refl _⟩
+    · obtain ⟨j, hj, -⟩ := mem_slots hr; exact absurd hj (by omega)
+    · subst hr; exact ⟨_, memLast, Nat.le_refl _, by dsimp only; omega⟩)
 
 end MachineM
 end Proven.Mach
