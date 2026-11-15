@@ -5,6 +5,7 @@ and jumps in both directions.  A target is a `Wide`: the generic `Core` laws plu
 
 Pure Lean (core only), like `Iface.lean`. -/
 import Compiler.Frame
+import Compiler.MOp
 
 namespace Proven.Mach
 
@@ -34,6 +35,8 @@ inductive WOp where
   | li (d : Reg) (c : BitVec 64)
   /-- `d := op.eval a b`, any registers -/
   | bin (op : Op) (d a b : Reg)
+  /-- `d := m.eval a b`, any registers -/
+  | mop (m : MOp) (d a b : Reg)
   /-- `d := op.eval a c` (law only for `immOK op c`) -/
   | bini (op : Op) (d a : Reg) (c : BitVec 64)
   /-- `d := zero-extended byte mem[a + off]` (law only for `offOK off`) -/
@@ -89,6 +92,9 @@ structure Wide extends Core where
   w_bin : ∀ {op : Op} {d a b : Reg} {s : S} {pc : BitVec 64}, toBase.At s pc (wenc (.bin op d a b)) →
     runsTo s fun s' => toBase.Done s s' (next pc (wenc (.bin op d a b)).length) ∧
       toBase.Set1 s s' d (op.eval (get s a) (get s b)) ∧ mem s' = mem s
+  w_mop : ∀ {m : MOp} {d a b : Reg} {s : S} {pc : BitVec 64}, toBase.At s pc (wenc (.mop m d a b)) →
+    runsTo s fun s' => toBase.Done s s' (next pc (wenc (.mop m d a b)).length) ∧
+      toBase.Set1 s s' d (m.eval (get s a) (get s b)) ∧ mem s' = mem s
   w_bini : ∀ {op : Op} {d a : Reg} {c : BitVec 64} {s : S} {pc : BitVec 64}, immOK op c = true →
     toBase.At s pc (wenc (.bini op d a c)) →
     runsTo s fun s' => toBase.Done s s' (next pc (wenc (.bini op d a c)).length) ∧

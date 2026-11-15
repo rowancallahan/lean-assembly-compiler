@@ -21,6 +21,10 @@ def lowIns : Ins Reg → List WOp
   | .bin op d (.r a) (.i c) => if M.immOK op c = true then [.bini op d a c] else [.li sc c, .bin op d a sc]
   | .bin op d (.i c) (.r b) => [.li sc c, .bin op d sc b]
   | .bin op d (.i c₁) (.i c₂) => [.li d (op.eval c₁ c₂)]
+  | .mop m d (.r a) (.r b) => [.mop m d a b]
+  | .mop m d (.r a) (.i c) => [.li sc c, .mop m d a sc]
+  | .mop m d (.i c) (.r b) => [.li sc c, .mop m d sc b]
+  | .mop m d (.i c₁) (.i c₂) => [.li d (m.eval c₁ c₂)]
   | .lbu d (.r a) off => [.lbu d a off]
   | .lbu _ (.i _) _ => []
   | .sb (.r v) (.r a) off => [.sb v a off]
@@ -71,6 +75,7 @@ def argOK : Arg Reg → Bool
 def legalIns : Ins Reg → Bool
   | .set d a => decide (d ≠ sc) && argOK sc a
   | .bin _ d a b => decide (d ≠ sc) && argOK sc a && argOK sc b
+  | .mop _ d a b => decide (d ≠ sc) && argOK sc a && argOK sc b
   | .lbu d (.r a) off => decide (d ≠ sc) && decide (a ≠ sc) && M.offOK off
   | .lbu _ (.i _) _ => false
   | .sb v (.r a) off => argOK sc v && decide (a ≠ sc) && M.offOK off
@@ -247,6 +252,36 @@ theorem lowIns_ok (hram : ∀ a, ram a → M.inRAM a 1) (hwr : ∀ a, ram a → 
         rw [List.length_append, ← next_add]
         refine (li_sc hok hpc hf hr).seq fun s₁ d₁ m₁ ⟨r₁, v₁, _⟩ => ?_
         refine M.runsTo_mono (M.w_bin ((hf.right.mf m₁).at d₁.ok d₁.hpc)) fun s' ⟨dn, st, m⟩ =>
+          ⟨dn, MF.of_eq dn m, ?_⟩
+        rw [r₁.arg hb, v₁] at st; exact r₁.set st m
+      | i c₂ =>
+        simp only [lowIns, wcode_one] at hf ⊢
+        exact M.runsTo_mono (M.w_li (hf.at hok hpc)) fun s' ⟨dn, st, m⟩ => ⟨dn, MF.of_eq dn m, hr.set st m⟩
+  | @mop m d a b =>
+    obtain ⟨hd, ha, hb⟩ := and3 hl
+    cases a with
+    | r a =>
+      cases b with
+      | r b =>
+        simp only [lowIns, wcode_one] at hf ⊢
+        refine M.runsTo_mono (M.w_mop (hf.at hok hpc)) fun s' ⟨dn, st, m⟩ => ⟨dn, MF.of_eq dn m, ?_⟩
+        rw [hr.arg ha, hr.arg hb] at st; exact hr.set st m
+      | i c =>
+        simp only [lowIns] at hf ⊢
+        rw [wcode2] at hf ⊢
+        rw [List.length_append, ← next_add]
+        refine (li_sc hok hpc hf hr).seq fun s₁ d₁ m₁ ⟨r₁, v₁, _⟩ => ?_
+        refine M.runsTo_mono (M.w_mop ((hf.right.mf m₁).at d₁.ok d₁.hpc)) fun s' ⟨dn, st, m⟩ =>
+          ⟨dn, MF.of_eq dn m, ?_⟩
+        rw [r₁.arg ha, v₁] at st; exact r₁.set st m
+    | i c =>
+      cases b with
+      | r b =>
+        simp only [lowIns] at hf ⊢
+        rw [wcode2] at hf ⊢
+        rw [List.length_append, ← next_add]
+        refine (li_sc hok hpc hf hr).seq fun s₁ d₁ m₁ ⟨r₁, v₁, _⟩ => ?_
+        refine M.runsTo_mono (M.w_mop ((hf.right.mf m₁).at d₁.ok d₁.hpc)) fun s' ⟨dn, st, m⟩ =>
           ⟨dn, MF.of_eq dn m, ?_⟩
         rw [r₁.arg hb, v₁] at st; exact r₁.set st m
       | i c₂ =>

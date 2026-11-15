@@ -159,6 +159,7 @@ theorem cpA_eval {K : Cp} {σ : Regs Nat} (h : CpOK K σ) (a : Arg Nat) : (cpA K
 def cpI (K : Cp) : Ins Nat → Ins Nat
   | .set d a => .set d (cpA K a)
   | .bin op d a b => .bin op d (cpA K a) (cpA K b)
+  | .mop m d a b => .mop m d (cpA K a) (cpA K b)
   | .lbu d a off => .lbu d (cpA K a) off
   | .sb v a off => .sb (cpA K v) (cpA K a) off
   | i => i
@@ -202,6 +203,7 @@ theorem after_upd {K : Cp} {σ : Regs Nat} (h : CpOK K σ) (i : Ins Nat) (d : Na
         · exact kill_ok h _ _ x y hm
     | i _ => exact kill_ok h _ _
   | bin => cases hd; exact kill_ok h _ _
+  | mop => cases hd; exact kill_ok h _ _
   | lbu => cases hd; exact kill_ok h _ _
   | ldS => cases hd; exact kill_ok h _ _
   | ld => cases hd; exact kill_ok h _ _
@@ -233,6 +235,11 @@ theorem cp_ok : ∀ {c : Code Nat} {σ σ' : St Nat}, Exec ram fp c σ σ' → �
       refine ⟨?_, after_upd hK (cpI K _) d rfl _ fun a' e => by simp [cpI] at e⟩
       show Exec ram fp (.ins (.bin op d (cpA K a) (cpA K b))) _ _
       have := Exec.ins (ram := ram) (fp := fp) (Step.bin (op := op) (d := d) (a := cpA K a) (b := cpA K b) (s := s))
+      rwa [cpA_eval hK, cpA_eval hK] at this
+    | @mop m d a b =>
+      refine ⟨?_, after_upd hK (cpI K _) d rfl _ fun a' e => by simp [cpI] at e⟩
+      show Exec ram fp (.ins (.mop m d (cpA K a) (cpA K b))) _ _
+      have := Exec.ins (ram := ram) (fp := fp) (Step.mop (m := m) (d := d) (a := cpA K a) (b := cpA K b) (s := s))
       rwa [cpA_eval hK, cpA_eval hK] at this
     | @lbu d a off _ v hr hv =>
       refine ⟨?_, after_upd hK (cpI K _) d rfl _ fun a' e => by simp [cpI] at e⟩

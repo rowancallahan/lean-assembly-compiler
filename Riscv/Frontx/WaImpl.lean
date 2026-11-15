@@ -23,6 +23,7 @@ def MS.maxv : MS → Nat
   | .store _ i e | .store64 _ i e => max (MB.maxv i) (MB.maxv e)
   | .seq p q => max (MS.maxv p) (MS.maxv q)
   | .loop c b => max (MB.maxv c) (MS.maxv b)
+  | .mop _ v a b => max (v + 1) (max (MB.maxv a) (MB.maxv b))
 
 /-! ## `wfB` is decidable -/
 
@@ -48,6 +49,7 @@ def wfBDec (N : Nat) (bv wv : List Nat) : (p : Mach.BStmt) → Decidable (rvF.wf
     inferInstanceAs (Decidable (i.depth < 6 ∧ i.vlt (8 + N) ∧ v < 8 + N ∧ v ∉ bv ∧ v ∉ wv ∧ b < wv.length))
   | .store64 b i e =>
     inferInstanceAs (Decidable (i.depth < 6 ∧ e.depth < 6 ∧ i.vlt (8 + N) ∧ e.vlt (8 + N) ∧ b < wv.length))
+  | .mop _ _ _ _ => inferInstanceAs (Decidable False)
 
 instance (N : Nat) (bv wv : List Nat) (p : Mach.BStmt) : Decidable (rvF.wfB N bv wv p) := wfBDec N bv wv p
 

@@ -106,6 +106,7 @@ def compB (bv wv : List Nat) : BStmt → List XOp
       compB bv wv body ++ [.a (.jmp ((M.codeF (mgenB c 0)).length + M.lenBz + (M.codeF (compB bv wv body)).length))]
   | .load64 v b i => mgenB (addrW wv b i) 0 ++ [.f (.ld (rk 0) (rk 0))] ++ setV v
   | .store64 b i e => mgenB (addrW wv b i) 0 ++ mgenB e 1 ++ [.f (.sd (rk 1) (rk 0))]
+  | .mop _ _ _ _ => []
 
 /-- the function: open a frame of `N` slots, run, close the frame, return -/
 def compBF (N : Nat) (bv wv : List Nat) (p : BStmt) : List XOp :=
@@ -123,6 +124,7 @@ def wfB (N : Nat) (bv wv : List Nat) : BStmt → Prop
       M.jmpOK ((M.codeF (mgenB c 0)).length + M.lenBz + (M.codeF (M.compB bv wv body)).length)
   | .load64 v b i => i.depth < 6 ∧ i.vlt (8 + N) ∧ v < 8 + N ∧ v ∉ bv ∧ v ∉ wv ∧ b < wv.length
   | .store64 b i e => i.depth < 6 ∧ e.depth < 6 ∧ i.vlt (8 + N) ∧ e.vlt (8 + N) ∧ b < wv.length
+  | .mop _ _ _ _ => False
 
 /-- the layout: regions in RAM, pairwise disjoint, disjoint from the frame; word blocks 8-aligned -/
 structure Lay (N fp : Nat) (R W : List Region) : Prop where
@@ -438,6 +440,7 @@ theorem execB_ok {N fp : Nat} (hF : M.Frm N fp) (bv wv : List Nat) (hbv : ∀ x 
     refine M.runsTo_mono (M.setV_ok hF hL hp3 hp4 hp5 (Core.Done.at _ d₂ (M.codeAt_mem (m₂.trans m₁) hc3) ho3)
       (Core.Set1.same _ st₂) hrel₂) fun s₃ ⟨d₃, o₃, r₃⟩ =>
       ⟨d₃, (Out.of_eq (m₂.trans m₁)).trans o₃, r₃⟩
+  | _, _, _, .mop, hp, _, _, _, _, _ => hp.elim
   | _, σ, _, .store64 (b := b) (i := i) (e := e) hb hi, hp, s, pc, hA, hcd, hrel => by
     simp only [compB, wfB, codeF_append, codeF_one, List.length_append] at hp hA hcd ⊢
     obtain ⟨hp1, hp2, hp3, hp4, hp5⟩ := hp

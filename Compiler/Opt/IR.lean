@@ -26,6 +26,8 @@ inductive Ins (ρ : Type) where
   | set (d : ρ) (a : Arg ρ)
   /-- `d := op.eval a b` -/
   | bin (op : Op) (d : ρ) (a b : Arg ρ)
+  /-- `d := m.eval a b` (multiply / divide) -/
+  | mop (m : MOp) (d : ρ) (a b : Arg ρ)
   /-- `d := zero-extended byte mem[a + off]` -/
   | lbu (d : ρ) (a : Arg ρ) (off : BitVec 64)
   /-- `mem[a + off] := low byte of v` -/
@@ -78,6 +80,7 @@ variable [DecidableEq ρ] (ram : Nat → Prop) (fp : Nat)
 inductive Step : Ins ρ → St ρ → St ρ → Prop
   | set {d a s} : Step (.set d a) s ⟨upd s.reg d (a.eval s.reg), s.mem⟩
   | bin {op d a b s} : Step (.bin op d a b) s ⟨upd s.reg d (op.eval (a.eval s.reg) (b.eval s.reg)), s.mem⟩
+  | mop {m d a b s} : Step (.mop m d a b) s ⟨upd s.reg d (m.eval (a.eval s.reg) (b.eval s.reg)), s.mem⟩
   | lbu {d a off s v} : ram (a.eval s.reg + off).toNat → s.mem (a.eval s.reg + off).toNat = some v →
       Step (.lbu d a off) s ⟨upd s.reg d (v.setWidth 64), s.mem⟩
   | sb {v a off s} : ram (a.eval s.reg + off).toNat →
@@ -124,6 +127,7 @@ theorem Exec.mem_out {c : Code ρ} {s s' : St ρ} (h : Exec ram fp c s s') : ∀
     cases hst with
     | set => rfl
     | bin => rfl
+    | mop => rfl
     | lbu _ _ => rfl
     | sb hr => exact ite_neg fun e => ha (e ▸ hr)
     | ldS _ _ _ => rfl

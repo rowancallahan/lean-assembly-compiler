@@ -35,6 +35,7 @@ theorem mem_lunion {a b : List α} {x : α} : x ∈ lunion a b ↔ x ∈ a ∨ x
 def Ins.uses : Ins α → List α
   | .set _ a => a.regs
   | .bin _ _ a b => a.regs ++ b.regs
+  | .mop _ _ a b => a.regs ++ b.regs
   | .lbu _ a _ => a.regs
   | .sb v a _ => v.regs ++ a.regs
   | .ldS _ _ => []
@@ -46,6 +47,7 @@ def Ins.uses : Ins α → List α
 def Ins.dst : Ins α → Option α
   | .set d _ => some d
   | .bin _ d _ _ => some d
+  | .mop _ d _ _ => some d
   | .lbu d _ _ => some d
   | .ldS d _ => some d
   | .ld d _ _ => some d
@@ -202,6 +204,13 @@ theorem chk_ok (ram : Nat → Prop) (fp : Nat) : ∀ {c : Code α} {σ σ' : St 
       have ha : ∀ x, x ∈ a.regs → x ∈ Lin := fun x hx => huse x (List.mem_append_left _ hx)
       have hb : ∀ x, x ∈ b.regs → x ∈ Lin := fun x hx => huse x (List.mem_append_right _ hx)
       refine ⟨_, .ins .bin, ?_⟩
+      rw [hr.arg ha, hr.arg hb]
+      exact hr.updL hs fun x hx hxd he => nomatch defOK_ok hk hx hxd he
+    | @mop m d a b =>
+      obtain ⟨hk, hs⟩ := hdef d rfl
+      have ha : ∀ x, x ∈ a.regs → x ∈ Lin := fun x hx => huse x (List.mem_append_left _ hx)
+      have hb : ∀ x, x ∈ b.regs → x ∈ Lin := fun x hx => huse x (List.mem_append_right _ hx)
+      refine ⟨_, .ins .mop, ?_⟩
       rw [hr.arg ha, hr.arg hb]
       exact hr.updL hs fun x hx hxd he => nomatch defOK_ok hk hx hxd he
     | @lbu d a off _ v hra hv =>
@@ -418,6 +427,7 @@ theorem dropMov_ok (ram : Nat → Prop) (fp : Nat) : ∀ {c : Code α} {σ σ' :
         · rw [if_neg e]; exact .ins .set
       | i c => exact .ins .set
     | bin => exact .ins .bin
+    | mop => exact .ins .mop
     | lbu h1 h2 => exact .ins (.lbu h1 h2)
     | sb h1 => exact .ins (.sb h1)
     | ldS h1 h2 h3 => exact .ins (.ldS h1 h2 h3)

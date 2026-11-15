@@ -84,6 +84,8 @@ def irB (bv wv : List Nat) : BStmt → Code Nat
   | .load64 v b i => .seq (into (toS sp (addrW wv b i)) (tk 0) 0) (setB sp v fun d => .ins (.ld d (tk 0) 0))
   | .store64 b i e => .seq (into (toS sp (addrW wv b i)) (tk 0) 0)
       (.seq (into (toS sp e) (tk 1) 1) (.ins (.sd (tk 1) (tk 0) 0)))
+  | .mop m v a b => .seq (into (toS sp a) (tk 0) 0)
+      (.seq (into (toS sp b) (tk 1) 1) (setB sp v fun d => .ins (.mop m d (.r (tk 0)) (.r (tk 1)))))
 
 /-- the checks selection needs (word arrays are not supported) -/
 def okB (bv wv : List Nat) : BStmt → Bool
@@ -96,6 +98,7 @@ def okB (bv wv : List Nat) : BStmt → Bool
   | .load64 v b i => okE N i && decide (v < 8 + N) && (decide (v ∉ bv) && decide (v ∉ wv)) &&
       (decide (b < wv.length) && decide (wv.getD b 0 < 8 + N))
   | .store64 b i e => okE N i && okE N e && (decide (b < wv.length) && decide (wv.getD b 0 < 8 + N))
+  | .mop _ v a b => okE N a && okE N b && decide (v < 8 + N) && (decide (v ∉ bv) && decide (v ∉ wv))
 
 variable (fp : Nat)
 
@@ -415,6 +418,23 @@ theorem irB_ok (bv wv : List Nat) {R W : List Region} (L : LayI sp N fp R W) : �
       · have hd' := pairwise_get L.wp hb' hbW hbb'
         unfold disjoint at hd'
         rw [bytes_wr_out (by rw [length_le8]; omega), r.wbyts b' hb', getD_set_ne _ _ hbb']
+  | @mop m v a b σ =>
+    intro hp τ r
+    obtain ⟨habc, hvb⟩ := Wide.and2 hp
+    obtain ⟨hae, hbe, hv⟩ := Wide.and3 habc
+    obtain ⟨τ₁, x₁, v₁, m₁, f₁⟩ := into_ok (toS sp a) (tk 0) 0 τ (r.agree L a hae)
+    rw [toS_denote sp N hN _ a hae] at v₁
+    have r₁ : RelBI sp N fp bv wv R W σ τ₁ := r.frame L ⟨m₁, fun x hx => f₁ x (by unfold tk; omega) (by omega)⟩
+    obtain ⟨τ₂, x₂, v₂, m₂, f₂⟩ := into_ok (toS sp b) (tk 1) 1 τ₁ (r₁.agree L b hbe)
+    rw [toS_denote sp N hN _ b hbe] at v₂
+    have r₂ : RelBI sp N fp bv wv R W σ τ₂ := r₁.frame L ⟨m₂, fun x hx => f₂ x (by unfold tk; omega) (by omega)⟩
+    have v₁' : τ₂.reg (tk 0) = a.denote σ.env := by
+      rw [f₂ (tk 0) (by unfold tk; omega) (by unfold tk; omega), v₁]
+    obtain ⟨τ₃, x₃, r₃⟩ := setB_ok r₂ L (of_decide_eq_true hv) (of_decide_eq_true (Wide.and2 hvb).1)
+      (of_decide_eq_true (Wide.and2 hvb).2) (c := fun d => .ins (.mop m d (.r (tk 0)) (.r (tk 1))))
+      (x := m.eval (a.denote σ.env) (b.denote σ.env)) fun d =>
+      ⟨_, .ins .mop, by simp only [Arg.eval, v₁', v₂, upd_same], rfl, fun y hy _ => upd_other _ _ hy⟩
+    exact ⟨τ₃, .seq x₁ (.seq x₂ x₃), r₃⟩
   | seq _ _ iha ihb =>
     intro hp τ r
     obtain ⟨pa, pb⟩ := Wide.and2 hp
