@@ -12,7 +12,7 @@ to a magic value before the call and stores gp, sp, a1 after it.  Checked on QEM
 input, guards unchanged, gp and sp restored, a1 = result length for list results (`retLen`), and (Sail) every data
 write lands in the result bytes or in the work block.
 usage: frontx_test.py check N [function]"""
-import os, random, re, subprocess, sys, zlib
+import math, os, random, re, subprocess, sys, zlib
 D = os.path.dirname(os.path.abspath(__file__)); W = os.path.join(D, "ctest"); os.makedirs(W, exist_ok=True)
 SAIL = "/home/user/deps/sailsim/sail-riscv-Linux-x86_64/bin/sail_riscv_sim"
 p = lambda f: os.path.join(W, f)
@@ -23,6 +23,14 @@ def b64digit(c):
     if 48 <= c <= 57: return c + 4
     return 62 if c == 43 else 63 if c == 47 else 64
 at = lambda xs, i: xs[i] if i < len(xs) else 0
+rdn = lambda xs, o, n: sum(at(xs, o + j) << (8 * j) for j in range(n))
+def ops(a, b, w, sh):
+    """`a * b ^^^ a / b ^^^ a % b ^^^ a <<< b ^^^ a >>> b` with Lean's semantics (`w = None`: `Nat`, mod 2^64)"""
+    M = 2 ** 64 if w is None else 2 ** w
+    q = a // b if b else 0; r = a % b if b else a
+    s = b % sh
+    hi = a >> b if w is None else a >> s
+    return ((a * b) ^ q ^ r ^ (a << s) ^ hi) % M
 # name -> (result bytes, reference)
 FUNCS = {
     "crcraw": (4, lambda xs: zlib.crc32(bytes(xs)) ^ 0xFFFFFFFF),
@@ -37,6 +45,12 @@ FUNCS = {
     "booklength": (8, lambda xs: len(xs)),
     "nontailsumrec": (8, lambda xs: sum(xs)),
     "nontaillengthrec": (8, lambda xs: len(xs)),
+    # NOTES section 22
+    "wa_gcd": (8, lambda xs: math.gcd(rdn(xs, 0, 4), rdn(xs, 4, 4))),
+    "wa_kraft": (8, lambda xs: sum(sum(1 for c in xs if c == b) << (15 - b) for b in range(1, 16))),
+    "wa_ops64": (8, lambda xs: ops(rdn(xs, 0, 8), rdn(xs, 8, 8), 64, 64)),
+    "wa_ops32": (4, lambda xs: ops(rdn(xs, 0, 4), rdn(xs, 4, 4), 32, 32)),
+    "wa_opsn": (8, lambda xs: ops(rdn(xs, 0, 4), rdn(xs, 4, 4), None, 64)),
 }
 # functions returning a list: the length is returned in a1
 LISTS = {"tinycompile", "tinysm", "take5", "drop5", "matchdrop3", "filterall", "inceach", "twice"}

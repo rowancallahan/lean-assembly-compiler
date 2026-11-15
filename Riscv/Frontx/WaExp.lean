@@ -35,13 +35,28 @@ def getCode (l : Loc) (chk : Bool) (d : Nat) : MS :=
       (.seq (when (d + 1) (ld (d + 2))) (.assign d (.var (d + 2)))))
   else ld d
 
+/-! ## Multiply / divide / remainder: `BStmt.mop` -/
+
+/-- `d := d o (d + 1)` with the M extension (temporary `d + 2`): `*` then the type's mask; `/` guarded (the
+machine's `divu` by zero is all ones, Lean's `/` is `0`); `%` unguarded (`remu` by zero is the dividend, as `%`) -/
+def mStmt (o : Op2) (t : Ty) (d : Nat) : MS :=
+  match o with
+  | .div => .seq (.mop .divu (d + 2) (.var d) (.var (d + 1)))
+      (.assign d (.ite (.bin .eq (.var (d + 1)) (.const 0)) (.const 0) (.var (d + 2))))
+  | .mod => .mop .remu d (.var d) (.var (d + 1))
+  | _ => .seq (.mop .mul d (.var d) (.var (d + 1))) (.assign d (mkMask t (.var d)))
+
+/-- `d := d o (d + 1)` -/
+def binS (o : Op2) (t : Ty) (d : Nat) : MS :=
+  if o.isM then mStmt o t d else .assign d (mop o t (.var d) (.var (d + 1)))
+
 /-! ## The compiler -/
 
 /-- a pure expression as one machine expression (no loads, no `if`) -/
 def E.toB (L : List Loc) {Γ : List Sl} : {t : Ty} → E Γ t → Option MB
   | _, .var m => some (.var (m.loc L).v)
   | t, .lit _ c => some (.const (t.rep c))
-  | t, .bin o a b => if o.sup t then (match a.toB L, b.toB L with
+  | t, .bin o a b => if o.sup t && !o.isM then (match a.toB L, b.toB L with
       | some x, some y => some (mop o t x y) | _, _ => none) else none
   | _, @E.cmp _ t o a b => if o.sup t then (match a.toB L, b.toB L with
       | some x, some y => some (mcmp o x y) | _, _ => none) else none
@@ -60,7 +75,7 @@ def E.comp (L : List Loc) {Γ : List Sl} : {t : Ty} → E Γ t → Nat → MS
   | _, .var m, d => .assign d (.var (m.loc L).v)
   | t, .lit _ c, d => .assign d (.const (t.rep c))
   | t, .bin o a b, d => pureOr L (.bin o a b) d
-    (.seq (a.comp L d) (.seq (b.comp L (d + 1)) (.assign d (mop o t (.var d) (.var (d + 1))))))
+    (.seq (a.comp L d) (.seq (b.comp L (d + 1)) (binS o t d)))
   | _, @E.cmp _ t o a b, d => pureOr L (.cmp o a b) d
     (.seq (a.comp L d) (.seq (b.comp L (d + 1)) (.assign d (mcmp o (.var d) (.var (d + 1))))))
   | t, @E.cast _ s _ a, d => pureOr L (.cast t a) d (.seq (a.comp L d) (.assign d (mcast s t (.var d))))
@@ -85,7 +100,8 @@ def E.wf (L : List Loc) {Γ : List Sl} : {t : Ty} → E Γ t → Bool
 /-- run-time conditions: exact `Nat` operands, in-range plain loads -/
 def E.ok {Γ : List Sl} : {t : Ty} → E Γ t → Vals Γ → Prop
   | _, .var _, _ | _, .lit _ _, _ | _, .size _, _ => True
-  | t, .bin o a b, v => a.ok v ∧ b.ok v ∧ (o.exact = true → t.small (a.den v) ∧ t.small (b.den v))
+  | t, .bin o a b, v => a.ok v ∧ b.ok v ∧ (o.exact = true → t.small (a.den v) ∧ t.small (b.den v)) ∧
+      o.side t (a.den v) (b.den v)
   | _, @E.cmp _ t _ a b, v => a.ok v ∧ b.ok v ∧ t.small (a.den v) ∧ t.small (b.den v)
   | _, .cast _ a, v => a.ok v
   | _, .ite c a b, v => c.ok v ∧ (if c.den v = true then a.ok v else b.ok v)
@@ -244,7 +260,9 @@ theorem E.toB_ok (L : List Loc) {Γ : List Sl} (v : Vals Γ) (σ : MSt) (hR : Re
       split at h
       · rename_i x y hx hy
         simp only [Option.some.injEq] at h; subst h
-        exact mop_ok o t _ _ _ _ _ (E.toB_ok L v σ hR a x hok.1 hx) (E.toB_ok L v σ hR c y hok.2.1 hy) hs hok.2.2
+        simp only [Bool.and_eq_true, Bool.not_eq_true'] at hs
+        exact mop_ok o t _ _ _ _ _ (E.toB_ok L v σ hR a x hok.1 hx) (E.toB_ok L v σ hR c y hok.2.1 hy) hs.1 hs.2
+          hok.2.2.1 hok.2.2.2
       · cases h
     · cases h
   | _, @E.cmp _ t o a c, b, hok, h => by
@@ -285,6 +303,108 @@ theorem pureOr_ok (L : List Loc) {Γ : List Sl} {t : Ty} (e : E Γ t) (v : Vals 
     · exact hS
   · exact hS
 
+theorem divu_ne {X Y : BitVec 64} (h : Y ≠ 0) : Mach.MOp.eval .divu X Y = X / Y := by simp only [Mach.MOp.eval, if_neg h]
+
+
+theorem r8_divM (x y : UInt8) : (if r8 y = 0 then 0 else if r8 y = 0 then BitVec.allOnes 64 else r8 x / r8 y) = r8 (x / y) := by
+  by_cases h : r8 y = 0
+  · have : y = 0 := UInt8.toNat_inj.1 (by have := congrArg BitVec.toNat h; rw [r8_nat] at this; simpa using this)
+    subst this; rw [if_pos h]; simp [r8]
+  · rw [if_neg h, if_neg h]; apply BitVec.eq_of_toNat_eq; rw [BitVec.toNat_udiv, r8_nat, r8_nat, r8_nat, UInt8.toNat_div]
+theorem r8_modM (x y : UInt8) : r8 x % r8 y = r8 (x % y) := by
+  apply BitVec.eq_of_toNat_eq; rw [BitVec.toNat_umod, r8_nat, r8_nat, r8_nat, UInt8.toNat_mod]
+theorem r16_divM (x y : UInt16) : (if r16 y = 0 then 0 else if r16 y = 0 then BitVec.allOnes 64 else r16 x / r16 y) = r16 (x / y) := by
+  by_cases h : r16 y = 0
+  · have : y = 0 := UInt16.toNat_inj.1 (by have := congrArg BitVec.toNat h; rw [r16_nat] at this; simpa using this)
+    subst this; rw [if_pos h]; simp [r16]
+  · rw [if_neg h, if_neg h]; apply BitVec.eq_of_toNat_eq; rw [BitVec.toNat_udiv, r16_nat, r16_nat, r16_nat, UInt16.toNat_div]
+theorem r16_modM (x y : UInt16) : r16 x % r16 y = r16 (x % y) := by
+  apply BitVec.eq_of_toNat_eq; rw [BitVec.toNat_umod, r16_nat, r16_nat, r16_nat, UInt16.toNat_mod]
+theorem r32_divM (x y : UInt32) : (if r32 y = 0 then 0 else if r32 y = 0 then BitVec.allOnes 64 else r32 x / r32 y) = r32 (x / y) := by
+  by_cases h : r32 y = 0
+  · have : y = 0 := UInt32.toNat_inj.1 (by have := congrArg BitVec.toNat h; rw [r32_nat] at this; simpa using this)
+    subst this; rw [if_pos h]; simp [r32]
+  · rw [if_neg h, if_neg h]; apply BitVec.eq_of_toNat_eq; rw [BitVec.toNat_udiv, r32_nat, r32_nat, r32_nat, UInt32.toNat_div]
+theorem r32_modM (x y : UInt32) : r32 x % r32 y = r32 (x % y) := by
+  apply BitVec.eq_of_toNat_eq; rw [BitVec.toNat_umod, r32_nat, r32_nat, r32_nat, UInt32.toNat_mod]
+theorem r64_divM (x y : UInt64) : (if r64 y = 0 then 0 else if r64 y = 0 then BitVec.allOnes 64 else r64 x / r64 y) = r64 (x / y) := by
+  by_cases h : r64 y = 0
+  · have : y = 0 := UInt64.toNat_inj.1 (by have := congrArg BitVec.toNat h; rw [r64_nat] at this; simpa using this)
+    subst this; rw [if_pos h]; simp [r64]
+  · rw [if_neg h, if_neg h]; apply BitVec.eq_of_toNat_eq; rw [BitVec.toNat_udiv, r64_nat, r64_nat, r64_nat, UInt64.toNat_div]
+theorem r64_modM (x y : UInt64) : r64 x % r64 y = r64 (x % y) := by
+  apply BitVec.eq_of_toNat_eq; rw [BitVec.toNat_umod, r64_nat, r64_nat, r64_nat, UInt64.toNat_mod]
+theorem rN_divM {x y : Nat} (hx : x < 2 ^ 64) (hy : y < 2 ^ 64) :
+    (if rN y = 0 then 0 else if rN y = 0 then BitVec.allOnes 64 else rN x / rN y) = rN (x / y) := by
+  by_cases h : rN y = 0
+  · have : y = 0 := by have := congrArg BitVec.toNat h; rw [rN_toNat hy] at this; simpa using this
+    subst this; rw [if_pos h]; simp [rN]
+  · rw [if_neg h, if_neg h]; apply BitVec.eq_of_toNat_eq
+    rw [BitVec.toNat_udiv, rN_toNat hx, rN_toNat hy, rN_toNat (Nat.lt_of_le_of_lt (Nat.div_le_self _ _) hx)]
+theorem rN_modM {x y : Nat} (hx : x < 2 ^ 64) (hy : y < 2 ^ 64) : rN x % rN y = rN (x % y) := by
+  apply BitVec.eq_of_toNat_eq
+  rw [BitVec.toNat_umod, rN_toNat hx, rN_toNat hy, rN_toNat (Nat.lt_of_le_of_lt (Nat.mod_le _ _) hx)]
+
+/-- the machine word of `x o y` from the words of `x` and `y`, as `mStmt` computes it -/
+theorem mword_ok (o : Op2) (t : Ty) (x y : t.T) (hs : o.sup t = true) (hm : o.isM = true)
+    (hx : o.exact = true → t.small x ∧ t.small y) :
+    (match o with
+      | .div => if t.rep y = 0 then 0 else Mach.MOp.eval .divu (t.rep x) (t.rep y)
+      | .mod => Mach.MOp.eval .remu (t.rep x) (t.rep y)
+      | _ => (match t.mask with | some m => Mach.MOp.eval .mul (t.rep x) (t.rep y) &&& m | none => Mach.MOp.eval .mul (t.rep x) (t.rep y)))
+      = t.rep (o.den t x y) := by
+  cases o <;> (try (exfalso; revert hm; decide)) <;> cases t <;> (try (exfalso; revert hs; decide)) <;>
+    simp only [Op2.exact, Ty.small, forall_const, true_implies] at hx <;>
+    simp only [Ty.mask, Ty.rep, Op2.den, Mach.MOp.eval]
+  · apply BitVec.eq_of_toNat_eq; rw [and_mask8, BitVec.toNat_mul, r8_nat, r8_nat, r8_nat, UInt8.toNat_mul,
+      Nat.mod_mod_of_dvd _ (by decide)]
+  · apply BitVec.eq_of_toNat_eq; rw [and_mask16, BitVec.toNat_mul, r16_nat, r16_nat, r16_nat, UInt16.toNat_mul,
+      Nat.mod_mod_of_dvd _ (by decide)]
+  · apply BitVec.eq_of_toNat_eq; rw [and_mask32, BitVec.toNat_mul, r32_nat, r32_nat, r32_nat, UInt32.toNat_mul,
+      Nat.mod_mod_of_dvd _ (by decide)]
+  · apply BitVec.eq_of_toNat_eq; rw [BitVec.toNat_mul, r64_nat, r64_nat, r64_nat, UInt64.toNat_mul]
+  · apply BitVec.eq_of_toNat_eq; simp [rN, BitVec.toNat_mul, Nat.mul_mod]
+  all_goals first
+    | exact r8_divM x y | exact r16_divM x y | exact r32_divM x y | exact r64_divM x y
+    | exact r8_modM x y | exact r16_modM x y | exact r32_modM x y | exact r64_modM x y
+    | exact rN_divM hx.1 hx.2 | exact rN_modM hx.1 hx.2
+
+/-- **`binS`**: the word of `x o y` lands in `d` -/
+theorem binS_ok (o : Op2) (t : Ty) (d : Nat) (σ : MSt) {x y : t.T} (ha : σ.env d = t.rep x)
+    (hb : σ.env (d + 1) = t.rep y) (hs : o.sup t = true) (hx : o.exact = true → t.small x ∧ t.small y)
+    (hsd : o.side t x y) : ERun (binS o t d) σ d (t.rep (o.den t x y)) := by
+  unfold binS
+  cases hm : o.isM
+  · rw [if_neg (by simp)]
+    refine ⟨_, .assign, ?_, fun j hj => set_ne (by omega), rfl, rfl⟩
+    dsimp only; rw [set_eq]; exact mop_ok o t _ _ _ _ _ (by simp only [Mach.BExp.denote]; exact ha)
+      (by simp only [Mach.BExp.denote]; exact hb) hs hm hx hsd
+  · rw [if_pos rfl]
+    cases o <;> (try exact absurd hm (by decide))
+    · -- mul
+      have hw := mword_ok .mul t x y hs hm hx
+      simp only [mStmt]
+      refine ⟨_, .seq .mop .assign, ?_, fun j hj => ?_, rfl, rfl⟩
+      · dsimp only; rw [set_eq, ← hw]
+        simp only [Mach.BExp.denote, set_eq]
+        unfold mkMask; split <;> simp_all [Mach.BExp.denote, Op.eval, set_eq]
+      · dsimp only; rw [set_ne (show j ≠ d by omega), set_ne (show j ≠ d by omega)]
+    · -- div
+      have hw := mword_ok .div t x y hs hm hx
+      simp only [mStmt]
+      refine ⟨_, .seq .mop .assign, ?_, fun j hj => ?_, rfl, rfl⟩
+      · dsimp only; rw [set_eq, ← hw]
+        simp only [Mach.BExp.denote, Op.eval, set_eq, set_ne (show d ≠ d + 2 by omega),
+          set_ne (show d + 1 ≠ d + 2 by omega), ha, hb]
+        by_cases h0 : t.rep y = 0 <;> simp [h0]
+      · dsimp only; rw [set_ne (show j ≠ d by omega), set_ne (show j ≠ d + 2 by omega)]
+    · -- mod
+      have hw := mword_ok .mod t x y hs hm hx
+      simp only [mStmt]
+      refine ⟨_, .mop, ?_, fun j hj => ?_, rfl, rfl⟩
+      · dsimp only; rw [set_eq, ← hw]; simp only [Mach.BExp.denote, ha, hb]
+      · dsimp only; rw [set_ne (show j ≠ d by omega)]
+
 set_option maxHeartbeats 1000000 in
 /-- **Expressions**: the code of `e` leaves the word of its value in `d`. -/
 theorem E.comp_ok (L : List Loc) : ∀ {Γ : List Sl} {t : Ty} (e : E Γ t) (v : Vals Γ) (σ : MSt) (d : Nat),
@@ -304,14 +424,13 @@ theorem E.comp_ok (L : List Loc) : ∀ {Γ : List Sl} {t : Ty} (e : E Γ t) (v :
     simp only [E.den]; simp only [E.ok] at hok
     simp only [E.wf, Bool.and_eq_true] at hwf
     obtain ⟨⟨hs, hwa⟩, hwb⟩ := hwf
-    obtain ⟨hoa, hob, hx⟩ := hok
+    obtain ⟨hoa, hob, hx, hsd⟩ := hok
     obtain ⟨σ1, e1, v1, k1, h1, w1, r1⟩ := (E.comp_ok L a v σ d hR hl hb hwa hoa).frame hR hb hl
     obtain ⟨σ2, e2, v2, k2, h2, w2, r2⟩ :=
       (E.comp_ok L b v σ1 (d + 1) r1 hl (hb.mono (by omega)) hwb hob).frame r1 (hb.mono (by omega)) hl
-    refine ⟨_, .seq e1 (.seq e2 .assign), ?_, fun j hj => ?_, h2.trans h1, w2.trans w1⟩
-    · simp only [set_eq]
-      exact mop_ok o t _ _ _ _ _ (by simp only [Mach.BExp.denote]; rw [k2 d (by omega), v1]) v2 hs hx
-    · simp only [set_ne (show j ≠ d by omega)]; rw [k2 j (by omega), k1 j hj]
+    obtain ⟨σ3, e3, v3, k3, h3, w3⟩ := binS_ok o t d σ2 (by rw [k2 d (by omega), v1]) v2 hs hx hsd
+    refine ⟨_, .seq e1 (.seq e2 e3), v3, fun j hj => ?_, h3.trans (h2.trans h1), w3.trans (w2.trans w1)⟩
+    rw [k3 j hj, k2 j (by omega), k1 j hj]
   | _, _, @E.cmp _ t o a b, v, σ, d, hR, hl, hb, hwf, hok => by
     simp only [E.comp]
     refine pureOr_ok L (.cmp o a b) v σ d _ hR hok ?_

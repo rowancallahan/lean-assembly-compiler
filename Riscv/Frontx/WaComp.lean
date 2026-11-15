@@ -37,13 +37,22 @@ def Ty.bits : Ty → Nat | .u8 => 8 | .u16 => 16 | .u32 => 32 | _ => 64
 def mkMask (t : Ty) (e : MB) : MB := match t.mask with | some m => .bin .and e (.const m) | none => e
 
 def Op2.sup : Op2 → Ty → Bool
-  | .add, t | .sub, t | .and, t | .or, t | .xor, t | .shr, t => t != .bool
-  | .shl, t => t != .bool && t != .nat
+  | .add, t | .sub, t | .and, t | .or, t | .xor, t | .shr, t | .shl, t => t != .bool
+  | .mul, t | .div, t | .mod, t => t != .bool
   | .band, .bool | .bor, .bool => true
   | _, _ => false
 
+/-- multiply / divide / remainder: compiled to the M-extension statement `BStmt.mop` (`mStmt`, `WaExp.lean`) -/
+def Op2.isM : Op2 → Bool | .mul | .div | .mod => true | _ => false
+
+/-- further run-time conditions: a `Nat` shift amount below 64 (`x <<< y = x * 2 ^ y` mod `2 ^ 64` is the machine's
+`sll` only then) -/
+def Op2.side : (o : Op2) → (t : Ty) → t.T → t.T → Prop
+  | .shl, .nat, _, y => @LT.lt Nat _ y 64
+  | _, _, _, _ => True
+
 /-- operations whose `Nat` operands must be exact (`< 2 ^ 64`): not homomorphic mod `2 ^ 64` -/
-def Op2.exact : Op2 → Bool | .sub | .shr | .mul | .div | .mod | .shl => true | _ => false
+def Op2.exact : Op2 → Bool | .sub | .shr | .div | .mod => true | _ => false
 
 /-- `a &&& b`, folded when both are constants -/
 def band : MB → MB → MB
@@ -188,15 +197,25 @@ macro "wa_op_close" : tactic => `(tactic| first
   | exact rN_subI (by assumption) (by assumption)
   | (cases ‹_ ∧ _›; exact rN_subI (by assumption) (by assumption))
   | (cases ‹_ ∧ _›; exact rN_shrI (by assumption) (by assumption))
+
   | (cases ‹Bool› <;> cases ‹Bool› <;> rfl))
+theorem rN_shlI {x y : Nat} (hy : y < 64) : rN x <<< ((rN y &&& 63#64).toNat % 64) = rN (x <<< y) := by
+  have h : (rN y &&& 63#64).toNat = y := by
+    rw [BitVec.toNat_and, rN_toNat (by omega)]
+    show y &&& (2 ^ 6 - 1) = y
+    rw [Nat.and_two_pow_sub_one_eq_mod _ 6]; omega
+  rw [h, Nat.mod_eq_of_lt hy]
+  apply BitVec.eq_of_toNat_eq; simp [rN, BitVec.toNat_shiftLeft, Nat.shiftLeft_eq, Nat.mul_mod]
+
 theorem mop_ok (o : Op2) (t : Ty) (env : Mach.BEnv) (a b : MB) (x y : t.T)
-    (ha : a.denote env = t.rep x) (hb : b.denote env = t.rep y) (hs : o.sup t = true)
-    (hx : o.exact = true → t.small x ∧ t.small y) :
+    (ha : a.denote env = t.rep x) (hb : b.denote env = t.rep y) (hs : o.sup t = true) (hm : o.isM = false)
+    (hx : o.exact = true → t.small x ∧ t.small y) (hside : o.side t x y) :
     (mop o t a b).denote env = t.rep (o.den t x y) := by
-  cases o <;> cases t <;> (try (exfalso; revert hs; decide)) <;> simp only [Op2.exact, Ty.small, forall_const] at hx <;>
+  cases o <;> cases t <;> (try (exfalso; revert hs; decide)) <;> (try (exfalso; revert hm; decide)) <;>
+    simp only [Op2.side] at hside <;> simp only [Op2.exact, Ty.small, forall_const] at hx <;>
     simp only [mop, mkMask, Ty.mask, Op2.den, Ty.rep, Mach.BExp.denote, band_denote, Op.eval, ha, hb, Ty.bits,
       Nat.reduceSub] <;>
-    wa_op_close
+    first | exact rN_shlI hside | wa_op_close
 
 theorem r16_of64' (a : UInt64) : r16 a.toUInt16 = r64 a &&& 0xffff#64 := by
   apply BitVec.eq_of_toNat_eq; rw [and_mask16, r16_nat, UInt64.toNat_toUInt16]; rfl

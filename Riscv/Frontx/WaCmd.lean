@@ -38,11 +38,75 @@ theorem foldl_foldGo {α β : Type} [Inhabited α] (g : β → α → β) (a : A
 
 /-! ## Closing the side conditions -/
 
+theorem wa_mul_lt64 {a b : Nat} (ha : a < 2 ^ 32) (hb : b < 2 ^ 32) : a * b < 2 ^ 64 :=
+  Nat.lt_of_lt_of_le (Nat.mul_lt_mul'' ha hb) (by decide)
+theorem wa_gcd_lt {a b B : Nat} (ha : a < B) (hb : b < B) : Nat.gcd a b < B := by
+  by_cases h : a = 0
+  · subst h; rw [Nat.gcd_zero_left]; exact hb
+  · exact Nat.lt_of_le_of_lt (Nat.gcd_le_left b (Nat.pos_of_ne_zero h)) ha
+
+open Lean Meta Elab Tactic in
+/-- facts `omega` cannot find by itself: the bounds of `%` and `/` by a variable (`Nat`) and of `UInt8.toNat`;
+`==` on `Nat` as `=` -/
+elab "wa_facts" : tactic => withMainContext do
+  let mut es : Array Expr := #[← getMainTarget]
+  for d in ← getLCtx do
+    if !d.isImplementationDetail then es := es.push (← instantiateMVars d.type)
+  let mut mods : Array (Expr × Expr) := #[]
+  let mut divs : Array (Expr × Expr) := #[]
+  let mut u8s : Array Expr := #[]
+  let mut muls : Array (Expr × Expr) := #[]
+  let mut gcds : Array (Expr × Expr) := #[]
+  let all ← es.foldlM (init := (#[] : Array Expr)) fun acc e => do
+    let mut acc := acc
+    let mut todo := #[e]
+    while h : todo.size > 0 do
+      let x := todo.back
+      todo := todo.pop
+      acc := acc.push x
+      match x with
+      | .app f a => todo := todo.push f |>.push a
+      | .lam _ t b _ | .forallE _ t b _ => todo := todo.push t |>.push b
+      | .letE _ t v b _ => todo := todo.push t |>.push v |>.push b
+      | .mdata _ b => todo := todo.push b
+      | _ => pure ()
+    return acc
+  for x in all do
+    if x.hasLooseBVars then continue
+    if x.isAppOfArity ``HMod.hMod 6 && (x.getArg! 0).isConstOf ``Nat then
+      unless mods.contains (x.getArg! 4, x.getArg! 5) do mods := mods.push (x.getArg! 4, x.getArg! 5)
+    if x.isAppOfArity ``HDiv.hDiv 6 && (x.getArg! 0).isConstOf ``Nat then
+      unless divs.contains (x.getArg! 4, x.getArg! 5) do divs := divs.push (x.getArg! 4, x.getArg! 5)
+    if x.isAppOfArity ``UInt8.toNat 1 then
+      unless u8s.contains (x.getArg! 0) do u8s := u8s.push (x.getArg! 0)
+    if x.isAppOfArity ``HMul.hMul 6 && (x.getArg! 0).isConstOf ``Nat && !(x.getArg! 4).isAppOf ``OfNat.ofNat &&
+        !(x.getArg! 5).isAppOf ``OfNat.ofNat then
+      unless muls.contains (x.getArg! 4, x.getArg! 5) do muls := muls.push (x.getArg! 4, x.getArg! 5)
+    if x.isAppOfArity ``Nat.gcd 2 then
+      unless gcds.contains (x.getArg! 0, x.getArg! 1) do gcds := gcds.push (x.getArg! 0, x.getArg! 1)
+  for (a, b) in mods do
+    let (a, b) := (← Term.exprToSyntax a, ← Term.exprToSyntax b)
+    evalTactic (← `(tactic| have := Nat.mod_le $a $b))
+    evalTactic (← `(tactic| have := fun h : 0 < $b => Nat.mod_lt $a h))
+  for (a, b) in divs do
+    let (a, b) := (← Term.exprToSyntax a, ← Term.exprToSyntax b)
+    evalTactic (← `(tactic| have := Nat.div_le_self $a $b))
+  for a in u8s do
+    let a ← Term.exprToSyntax a
+    evalTactic (← `(tactic| have := UInt8.toNat_lt $a))
+  evalTactic (← `(tactic| simp (config := { failIfUnchanged := false }) only [beq_iff_eq, bne_iff_ne, ne_eq] at *))
+  for (a, b) in muls do
+    let (a, b) := (← Term.exprToSyntax a, ← Term.exprToSyntax b)
+    evalTactic (← `(tactic| try have := wa_mul_lt64 (a := $a) (b := $b) (by omega) (by omega)))
+  for (a, b) in gcds do
+    let (a, b) := (← Term.exprToSyntax a, ← Term.exprToSyntax b)
+    evalTactic (← `(tactic| try have := wa_gcd_lt (a := $a) (b := $b) (B := 2 ^ 64) (by omega) (by omega)))
+
 macro "wa_close" : tactic => `(tactic| (
   simp (config := { failIfUnchanged := false }) only [true_and, and_true, true_implies, Bool.false_eq_true, false_implies, decide_eq_true_eq, implies_true,
     and_self, ite_true, ite_false, Bool.true_eq_false] at ⊢
   repeat' (first | (apply And.intro) | split | intro)
-  all_goals (first | trivial | assumption | omega | simp_all | skip)))
+  all_goals (first | trivial | assumption | omega | (wa_facts; omega) | simp_all | skip)))
 
 /-! ## Reflection -/
 
@@ -116,6 +180,9 @@ def castFns : List (Name × Ty) :=
    (``UInt32.toUInt8, .u8), (``UInt32.toUInt16, .u16), (``UInt32.toUInt64, .u64),
    (``UInt64.toUInt8, .u8), (``UInt64.toUInt16, .u16), (``UInt64.toUInt32, .u32)]
 
+/-- core library functions compiled as code (unfolded / loops) rather than treated as primitives -/
+def coreCode : List Name := [``Nat.gcd, ``Nat.lcm]
+
 /-- is `c` a definition we may unfold (not one of ours, not recursive) -/
 def unfoldable (c : Name) : MetaM Bool := do
   let env ← getEnv
@@ -125,7 +192,7 @@ def unfoldable (c : Name) : MetaM Bool := do
   -- library code of Lean itself (`Init`, `Std`, `Lean`) is a primitive here, never unfolded
   if let some idx := env.getModuleIdxFor? c then
     let m := env.header.moduleNames[idx.toNat]!
-    if (`Init).isPrefixOf m || (`Std).isPrefixOf m || (`Lean).isPrefixOf m then return false
+    if ((`Init).isPrefixOf m || (`Std).isPrefixOf m || (`Lean).isPrefixOf m) && !coreCode.contains c then return false
   -- structural / well-founded recursion leaves an equation mentioning the constant itself
   if env.contains (c ++ `_unary) then return false
   if let some (.defnInfo d) := env.find? c then
@@ -358,7 +425,7 @@ def userLoop? (e : Expr) : MetaM (Option Name) := do
   let some (.defnInfo _) := env.find? c | return none
   if let some idx := env.getModuleIdxFor? c then
     let m := env.header.moduleNames[idx.toNat]!
-    if (`Init).isPrefixOf m || (`Std).isPrefixOf m || (`Lean).isPrefixOf m then return none
+    if ((`Init).isPrefixOf m || (`Std).isPrefixOf m || (`Lean).isPrefixOf m) && !coreCode.contains c then return none
   if ← unfoldable c then return none
   return some c
 
@@ -410,6 +477,10 @@ partial def reifyPg (ctx : List Ent) (e : Expr) (R : Sl) (names : IO.Ref (Array 
   | .letE n t v b _ =>
     let some sl ← slOf? t | throwError "wa_compile: unsupported let type {t}"
     let v' ← prepTop v names
+    -- `let x := (let y := a; B); K` ⇒ `let y := a; let x := B; K` (a helper's arguments, then its loop)
+    if let .letE n2 t2 v2 b2 _ := v' then
+      return ← reifyPg ctx (.letE n2 t2 v2 (.letE n (t.liftLooseBVars 0 1) b2 (b.liftLooseBVars 1 1) false) false)
+        R names loops
     if v'.isAppOfArity ``Array.foldl 7 || (← userLoop? v').isSome then
       withLocalDeclD n t fun x => do
         let lp ← if v'.isAppOfArity ``Array.foldl 7 then reifyFold ctx v' names loops else reifyLoop ctx v' sl names loops
@@ -543,7 +614,7 @@ theorem size_set' {α : Type} (a : Array α) (i : Nat) (x : α) : (a.set! i x).s
 /-- the simp set of the meanings -/
 macro "wa_dsimp" : tactic => `(tactic| simp (config := { failIfUnchanged := false }) only [T.ok, T.out, T.den, E.ok, E.den, A.den, A.ok, AK.set, AK.push, Args.ok, Args.den, Arg.den,
   Ini.ok, Ini.den, Inis.ok, Inis.den, F.ok, F.den, Vals.app, Mem.get, AK.size, AK.get, Op2.den, Cmp.den, WA.cast,
-  Ty.small, Op2.exact, decide_eq_true_eq, AK.el, size_ite_set, size_set', Array.size_replicate, u8_lt64, u16_lt64, u32_lt64, u64_lt64, u8_lt64', u16_lt64', u32_lt64',
+  Ty.small, Op2.exact, Op2.side, decide_eq_true_eq, AK.el, size_ite_set, size_set', Array.size_replicate, u8_lt64, u16_lt64, u32_lt64, u64_lt64, u8_lt64', u16_lt64', u32_lt64',
   u64_lt64'] at *)
 
 macro "wa_okt" : tactic => `(tactic| (wa_dsimp <;> wa_close))
@@ -564,6 +635,13 @@ def introState (Δ : List Sl) (extra : Array Ident := #[]) : TermElabM (Array (T
     | .sc t => tacs := tacs.push (← `(tactic| change $(← tyTypeSyn t) at $nm:ident))
     | _ => pure ()
   return tacs
+
+unsafe def evalChoiceWU (stx : Syntax) : TermElabM (Option (List (Nat × Nat) × List Nat)) := do
+  Term.evalTerm _ (← Term.elabType (← `(Option (List (Nat × Nat) × List Nat)))) stx
+@[implemented_by evalChoiceWU] opaque evalChoiceW (stx : Syntax) : TermElabM (Option (List (Nat × Nat) × List Nat))
+unsafe def evalBoolWU (stx : Syntax) : TermElabM Bool := do
+  Term.evalTerm _ (← Term.elabType (← `(Bool))) stx
+@[implemented_by evalBoolWU] opaque evalBoolW (stx : Syntax) : TermElabM Bool
 
 syntax "wa_compile " ident (" invariant " term " measure " term)* : command
 
@@ -617,9 +695,9 @@ set_option hygiene false in
 macro "wa_step " P:ident μ:ident : tactic => `(tactic| (
   simp only [$P:ident, $μ:ident] at hP ⊢
   wa_dsimp
-  split at h
-  · injection h with h; subst h; wa_dsimp; omega
-  · cases h))
+  split at h <;> first
+    | (injection h with h; subst h; wa_dsimp; first | omega | (wa_facts; omega))
+    | cases h))
 
 def seqT (ts : Array (TSyntax `tactic)) : MacroM (TSyntax `tactic) := do
   let mut t ← `(tactic| skip)
@@ -704,9 +782,28 @@ elab_rules : command
         exact $pf))
     let code := mkIdent (`_root_ ++ fn ++ `code)
     let impl := mkIdent (`_root_ ++ fn ++ `implements1)
+    let tblI := mkIdent (`_root_ ++ fn ++ `tbl)
+    let splI := mkIdent (`_root_ ++ fn ++ `spl)
+    let choice (pick : Term) : CommandElabM Unit := do
+      let some (t, sp) ← liftTermElabM (evalChoiceW pick)
+        | throwError "wa_compile: no register choice passed optB"
+      let ts ← t.toArray.mapM fun (a, b) => `(($(quote a), $(quote b)))
+      let ss : Array Term := sp.toArray.map fun j => quote j
+      elabCommand (← `(def $tblI:ident : List (Nat × Nat) := [$ts,*]))
+      elabCommand (← `(def $splI:ident : List Nat := [$ss,*]))
     match R with
     | .sc t =>
       let βT ← liftTermElabM (tyTypeSyn t)
+      if ← liftTermElabM (evalBoolW (← `(MS.hasMop (wholeProg $wa (Proven.Frontx.Res.k $βT))))) then
+        choice (← `(waPick $wa (Proven.Frontx.Res.k $βT)))
+        elabCommand (← `(def $code:ident : List (BitVec 32) :=
+          waCodeC $wa (Proven.Frontx.Res.k $βT) (waTbl $tblI) $splI))
+        elabCommand (← `(set_option maxRecDepth 100000 in
+          theorem $impl:ident : Proven.Implements1With (fun xs : ByteArray => xs.data.toList) Proven.Frontx.Res.enc $code
+              $fI (fun _ => 8 * wholeW $wa [inLoc] + 8 * (wholeN $wa (Proven.Frontx.Res.k $βT) + 1) + 7) :=
+            implements1_waC (β := $βT) $fI $wa id (fun _ => rfl) (by decide) (by decide +kernel) (by decide +kernel)
+              (waTbl $tblI) $splI (by decide +kernel) (by decide +kernel) (fun xs hx => ⟨_, $goodN xs hx, rfl⟩)))
+        return
       elabCommand (← `(def $code:ident : List (BitVec 32) := waCode $wa (Proven.Frontx.Res.k $βT)))
       elabCommand (← `(set_option maxRecDepth 100000 in
         theorem $impl:ident : Proven.Implements1With (fun xs : ByteArray => xs.data.toList) Proven.Frontx.Res.enc $code
@@ -715,6 +812,15 @@ elab_rules : command
             (by decide +kernel) (by decide +kernel) (fun xs hx => ⟨_, $goodN xs hx, rfl⟩)))
     | .ar k =>
       let kT ← liftTermElabM (match k with | .ba => `(AK.ba) | .arr t => do `(AK.arr $(← tySyn t)))
+      if ← liftTermElabM (evalBoolW (← `(MS.hasMop (wholeProgA $wa)))) then
+        choice (← `(waPickA $wa))
+        elabCommand (← `(def $code:ident : List (BitVec 32) := waCodeAC $wa (waTbl $tblI) $splI))
+        elabCommand (← `(set_option maxRecDepth 100000 in
+          theorem $impl:ident : Proven.Implements1With (fun xs : ByteArray => xs.data.toList) (encArr $kT) $code
+              $fI (fun _ => 8 * wholeW $wa [inLoc] + 8 * (wholeNA $wa + 1) + 7) (retLen := true) :=
+            implements1_waAC (k := $kT) $fI $wa (by decide) (by decide +kernel) (waTbl $tblI) $splI
+              (by decide +kernel) (by decide +kernel) (by decide +kernel) $goodN))
+        return
       elabCommand (← `(def $code:ident : List (BitVec 32) := waCodeA $wa))
       elabCommand (← `(set_option maxRecDepth 100000 in
         theorem $impl:ident : Proven.Implements1With (fun xs : ByteArray => xs.data.toList) (encArr $kT) $code
