@@ -41,6 +41,12 @@ run() {
   lake env lean --run "$H/stmt_hash.lean" $L Riscv.Frontx.Machine Proven.Frontx.implements1_res \
     Proven.Frontx.Ex.crcRaw.implements1 Proven.Frontx.Ex.b64All.implements1 Proven.Frontx.Ex.findNL.implements1 Proven.Frontx.Ex.be32At0.implements1 \
     Proven.Frontx.Ex.tailSum.implements1 Proven.Frontx.Ex.nonTailSum.implements1 Proven.Frontx.Ex.tailLength.implements1 Proven.Frontx.Ex.bookLength.implements1
+  lake env lean --run "$H/stmt_hash.lean" $L Riscv.Frontx.IndExamples Proven.Mach.Ind.ind_ok \
+    Proven.Frontx.IndEx.BinTree.count.implements1 Proven.Frontx.IndEx.BinTree.mirror.implements1 \
+    Proven.Frontx.IndEx.BinTree.graftLeft.implements1 Proven.Frontx.IndEx.Pos.toNat.implements1 \
+    Proven.Frontx.IndEx.Pos.plus.implements1 Proven.Frontx.IndEx.NonTail.sum.implements1 Proven.Frontx.IndEx.Tail.sum.implements1 \
+    Proven.Frontx.IndEx.Tail.reverse.implements1 List.append.implements1 ConLeche.levelHasParam.implements1 \
+    ConLeche.Level.isNeverZero.implements1
 }
 if [ -n "$L" ]; then run; exit 0; fi
 T=$(mktemp); trap 'rm -f "$T"' EXIT

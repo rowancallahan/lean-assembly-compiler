@@ -3,6 +3,7 @@ import Riscv.Frontx.RecExamples
 import Riscv.Frontx.PairExamples
 import Riscv.Frontx.ExceptExamples
 import Riscv.Frontx.ExceptBook
+import Riscv.Frontx.IndExamples
 open Proven Proven.Frontx Proven.Frontx.Ex
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
 def hex2 (b : UInt8) : String := let s := String.ofList (Nat.toDigits 16 b.toNat); if s.length < 2 then "0" ++ s else s
@@ -122,3 +123,51 @@ open Proven.Frontx.ExcBook in
   emit "errfirstthirde" errFirstThirdE.slots errFirstThirdE.code (fun xs => errFirstThirdE.enc (errFirstThirdE xs))
   emit "errandthenfirstthirde" errAndThenFirstThirdE.slots errAndThenFirstThirdE.code (fun xs => errAndThenFirstThirdE.enc (errAndThenFirstThirdE xs))
   emit "errinfixfirstthirde" errInfixFirstThirdE.slots errInfixFirstThirdE.code (fun xs => errInfixFirstThirdE.enc (errInfixFirstThirdE xs))
+-- user inductives as cells (`frontx_ind`, `IndExamples.lean`): first line `ind <A> <B> <L>`, work space `A + B n`
+-- (`Proven.Frontx.Ind.space`), `L = 1` for tree results (length in `a1`); inputs: values of the type in its byte format
+section
+open Proven.Frontx.IndEx
+def emitInd (name : String) (code : List (BitVec 32)) (M : Nat) (retLen : Bool) (cases : List (List UInt8 × List UInt8)) :
+    IO Unit := do
+  let A := Proven.Frontx.Ind.space M 0
+  let B := Proven.Frontx.Ind.space M 1 - A
+  IO.FS.writeFile s!"Testing/asm/frontx-words/{name}.words"
+    (String.intercalate "\n" (s!"ind {A} {B} {if retLen then 1 else 0}" :: code.map hex8) ++ "\n")
+  IO.FS.writeFile s!"Testing/asm/frontx-words/{name}.cases" (String.join (cases.map fun (x, y) => s!"{hx x} {hx y}\n"))
+/-- payloads: small, and some at and above `2^64` (the format keeps them mod `2^64`) -/
+def payload (i : Nat) : Nat := match i % 7 with
+  | 0 => rnd i 1 % 2 ^ 64 | 1 => 2 ^ 64 - 1 | 2 => 2 ^ 64 + 5 | _ => rnd i 2 % 1000
+def genT : Nat → Nat → BinTree Nat
+  | 0, _ => .leaf
+  | d + 1, s => if rnd s d % 4 = 0 then .leaf else .branch (genT d (2 * s + 1)) (payload s) (genT d (2 * s + 2))
+def trees : List (BinTree Nat) := [.leaf, .branch .leaf 7 .leaf] ++ (List.range 48).map fun i => genT (i % 6 + 1) (i + 3)
+def genP : Nat → Pos | 0 => .one | n + 1 => .succ (genP n)
+def poss : List Pos := (List.range 50).map fun i => genP (rnd i 5 % 60)
+def lists : List (List Nat) := [[], [3], [2 ^ 64 - 1, 1]] ++ (List.range 47).map fun i =>
+  (List.range (rnd i 9 % 25)).map fun j => payload (i * 31 + j)
+def genL : Nat → Nat → ConLeche.Level
+  | 0, s => if s % 2 = 0 then .zero else .param .anonymous
+  | d + 1, s => match rnd s d % 8 with
+    | 0 => .zero | 1 => .param .anonymous | 2 | 3 => .succ (genL d (s + 1))
+    | 4 | 5 => .max (genL d (2 * s)) (genL d (2 * s + 1)) | _ => .imax (genL d (2 * s)) (genL d (2 * s + 1))
+def levels : List ConLeche.Level := (List.range 50).map fun i => genL (i % 9) (i + 1)
+def natB (n : Nat) : List UInt8 := leN 8 n
+def boolB (b : Bool) : List UInt8 := [if b then 1 else 0]
+#eval do
+  emitInd "bt_count" BinTree.count.code BinTree.count.ind.pg.M false (trees.map fun t => (BTN.enc t, natB t.count))
+  emitInd "bt_mirror" BinTree.mirror.code BinTree.mirror.ind.pg.M true (trees.map fun t => (BTN.enc t, BTN.enc t.mirror))
+  emitInd "bt_graftleft" BinTree.graftLeft.code BinTree.graftLeft.ind.pg.M true
+    ((List.range 50).map fun i => let p := (trees.getD i .leaf, trees.getD ((i * 7 + 3) % 50) .leaf); (BTN.enc2 p, BTN.enc (p.1.graftLeft p.2)))
+  emitInd "pos_tonat" Pos.toNat.code Pos.toNat.ind.pg.M false (poss.map fun p => (PosT.enc p, natB p.toNat))
+  emitInd "pos_plus" Pos.plus.code Pos.plus.ind.pg.M true
+    ((List.range 50).map fun i => let p := (poss.getD i .one, poss.getD ((i * 7 + 3) % 50) .one); (PosT.enc2 p, PosT.enc (p.1.plus p.2)))
+  emitInd "nontail_sum_ln" NonTail.sum.code NonTail.sum.ind.pg.M false (lists.map fun l => (LN.enc l, natB (NonTail.sum l)))
+  emitInd "tail_sum_ln" Tail.sum.code Tail.sum.ind.pg.M false (lists.map fun l => (LN.enc l, natB (Tail.sum l)))
+  emitInd "tail_reverse_ln" Tail.reverse.code Tail.reverse.ind.pg.M true (lists.map fun l => (LN.enc l, LN.enc (Tail.reverse l)))
+  emitInd "list_append_ln" List.append.code List.append.ind.pg.M true
+    ((List.range 50).map fun i => let p := (lists.getD i [], lists.getD ((i * 7 + 3) % 50) []); (LN.enc2 p, LN.enc (List.append p.1 p.2)))
+  emitInd "level_hasparam" ConLeche.levelHasParam.code ConLeche.levelHasParam.ind.pg.M false
+    (levels.map fun l => (LevelT.enc l, boolB (ConLeche.levelHasParam l)))
+  emitInd "level_isneverzero" ConLeche.Level.isNeverZero.code ConLeche.Level.isNeverZero.ind.pg.M false
+    (levels.map fun l => (LevelT.enc l, boolB (ConLeche.Level.isNeverZero l)))
+end

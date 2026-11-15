@@ -51,3 +51,15 @@ Proven.Frontx.Ex.tailSum.implements1 stmt=3118509450649746036 closure=1320095250
 Proven.Frontx.Ex.nonTailSum.implements1 stmt=2726391046083328411 closure=5255905868410525871 consts=7923 local=950
 Proven.Frontx.Ex.tailLength.implements1 stmt=4903579719899627172 closure=7823283039271110754 consts=7923 local=950
 Proven.Frontx.Ex.bookLength.implements1 stmt=5143222234408465192 closure=10102978647116749321 consts=7923 local=950
+Proven.Mach.Ind.ind_ok stmt=4261492165226410887 closure=11767339496064419596 consts=685 local=198
+Proven.Frontx.IndEx.BinTree.count.implements1 stmt=517496685114973924 closure=13197377628982246203 consts=7312 local=450
+Proven.Frontx.IndEx.BinTree.mirror.implements1 stmt=6389210720907846747 closure=14111529020812544335 consts=7312 local=450
+Proven.Frontx.IndEx.BinTree.graftLeft.implements1 stmt=11754140753833926528 closure=18166406270123562292 consts=7313 local=451
+Proven.Frontx.IndEx.Pos.toNat.implements1 stmt=12517758333105659343 closure=10531625377704702773 consts=7311 local=449
+Proven.Frontx.IndEx.Pos.plus.implements1 stmt=597725497982709342 closure=5821273925033459525 consts=7313 local=451
+Proven.Frontx.IndEx.NonTail.sum.implements1 stmt=17429129837451204669 closure=3022151918447376135 consts=7303 local=441
+Proven.Frontx.IndEx.Tail.sum.implements1 stmt=6963375172032726931 closure=15039800601997874715 consts=7304 local=442
+Proven.Frontx.IndEx.Tail.reverse.implements1 stmt=7155826605380142873 closure=1269174801104750971 consts=7305 local=443
+List.append.implements1 stmt=6386889180340060713 closure=2338929884391896341 consts=7303 local=441
+ConLeche.levelHasParam.implements1 stmt=18314031129143902597 closure=13168809661043273058 consts=7319 local=457
+ConLeche.Level.isNeverZero.implements1 stmt=10424011330731380399 closure=12308060487851603445 consts=7319 local=457
