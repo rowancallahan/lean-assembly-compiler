@@ -64,3 +64,49 @@ frontx_ind elem5 on LN
 frontx_ind erase5 on LN
 
 end Proven.Frontx.IndCmp
+
+/-! ## enumerations: fp-lean @0abeea5 `Weekday`, Lean 4 v4.29.0 core `Ordering` -/
+
+namespace Proven.Frontx.IndCmp
+
+-- examples/Examples/Monads/Conveniences.lean:71-79
+inductive Weekday where
+  | monday
+  | tuesday
+  | wednesday
+  | thursday
+  | friday
+  | saturday
+  | sunday
+deriving Repr
+
+namespace A
+-- examples/Examples/Monads/Conveniences.lean:85-89
+def Weekday.isWeekend (day : Weekday) : Bool :=
+  match day with
+  | Weekday.saturday => true
+  | Weekday.sunday => true
+  | _ => false
+end A
+
+namespace B
+-- examples/Examples/Monads/Conveniences.lean:94-98
+def Weekday.isWeekend (day : Weekday) : Bool :=
+  match day with
+  | .saturday => true
+  | .sunday => true
+  | _ => false
+end B
+
+frontx_ind_type WD := Weekday
+frontx_ind A.Weekday.isWeekend on WD
+frontx_ind B.Weekday.isWeekend on WD
+
+-- core `Init/Data/Ord/Basic.lean`: `swap` (:45), `then` (:100, two inputs), `isLE` (:123), `isEq` (:107)
+frontx_ind_type OrdT := Ordering
+frontx_ind Ordering.swap on OrdT
+frontx_ind Ordering.then on OrdT
+frontx_ind Ordering.isLE on OrdT
+frontx_ind Ordering.isEq on OrdT
+
+end Proven.Frontx.IndCmp

@@ -102,6 +102,10 @@ theorem u64_eq (x y : UInt64) : Op.eval .eq x.toBitVec y.toBitVec = bw (decide (
   simp only [Op.eval, bw]; by_cases h : x = y <;> simp [h, UInt64.toBitVec_inj]
 theorem bool_eq (x y : Bool) : Op.eval .eq (bw x) (bw y) = bw (decide (x = y)) := by
   cases x <;> cases y <;> rfl
+theorem u64_ops (x y : UInt64) : Op.eval .add x.toBitVec y.toBitVec = (x + y).toBitVec ∧
+    Op.eval .sub x.toBitVec y.toBitVec = (x - y).toBitVec ∧ Op.eval .and x.toBitVec y.toBitVec = (x &&& y).toBitVec ∧
+    Op.eval .or x.toBitVec y.toBitVec = (x ||| y).toBitVec ∧ Op.eval .xor x.toBitVec y.toBitVec = (x ^^^ y).toBitVec := by
+  simp [Op.eval]
 @[simp] theorem bw_eq0 (c : Bool) : (bw c = 0) = (c = false) := by cases c <;> decide
 @[simp] theorem bw_eq0' (c : Bool) : (bw c = 0#64) = (c = false) := by cases c <;> decide
 

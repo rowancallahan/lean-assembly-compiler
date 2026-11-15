@@ -188,4 +188,18 @@ def keyLists : List (List Nat) := [[], [5], [2 ^ 64 - 1, 5, 5]] ++ (List.range 4
   emitInd "tree_insert5" insert5.code insert5.ind.pg.M true (bsts.map fun t => (TU.enc t, TU.enc (insert5 t)))
   emitInd "list_elem5" elem5.code elem5.ind.pg.M false (keyLists.map fun l => (LN.enc l, boolB (elem5 l)))
   emitInd "list_erase5" erase5.code erase5.ind.pg.M true (keyLists.map fun l => (LN.enc l, LN.enc (erase5 l)))
+-- enumerations: every value (every pair), repeated to 50 cases
+def days : List Weekday := [.monday, .tuesday, .wednesday, .thursday, .friday, .saturday, .sunday]
+def ords : List Ordering := [.lt, .eq, .gt]
+def cyc {α : Type} (xs : List α) : List α := (List.range 50).flatMap fun i => (xs.drop (i % xs.length)).take 1
+#eval do
+  emitInd "weekday_isweekend_a" A.Weekday.isWeekend.code A.Weekday.isWeekend.ind.pg.M false
+    ((cyc days).map fun d => (WD.enc d, boolB (A.Weekday.isWeekend d)))
+  emitInd "weekday_isweekend_b" B.Weekday.isWeekend.code B.Weekday.isWeekend.ind.pg.M false
+    ((cyc days).map fun d => (WD.enc d, boolB (B.Weekday.isWeekend d)))
+  emitInd "ordering_swap" Ordering.swap.code Ordering.swap.ind.pg.M true ((cyc ords).map fun o => (OrdT.enc o, OrdT.enc o.swap))
+  emitInd "ordering_then" Ordering.then.code Ordering.then.ind.pg.M true
+    ((cyc (ords.flatMap fun a => ords.map fun b => (a, b))).map fun p => (OrdT.enc2 p, OrdT.enc (p.1.then p.2)))
+  emitInd "ordering_isle" Ordering.isLE.code Ordering.isLE.ind.pg.M false ((cyc ords).map fun o => (OrdT.enc o, boolB o.isLE))
+  emitInd "ordering_iseq" Ordering.isEq.code Ordering.isEq.ind.pg.M false ((cyc ords).map fun o => (OrdT.enc o, boolB o.isEq))
 end
