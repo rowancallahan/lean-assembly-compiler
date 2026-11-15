@@ -52,7 +52,7 @@ no `Except`/pairs, no constant data.
 | Adler-32 | **B** (done) | `% 65521` → one conditional subtraction (both operands `< 2·65521`); `Nat × Nat` state → two `UInt32`; pair `pack` → `Nat` `b*65536 + a`. Verbatim needs X1 (`%`/`/` by constant) and X2 (pair state) |
 | `readBitsFast`, `BitReader.readBits` | **B** value only (done); **C** verbatim | `Except` / pair result (X3), `BitReader` structure parameter (X4), `UInt32 <<<` lemma (X5) |
 | `decodeSym`, table hit path | **B** (done) | table as bytes in the input block, `le32` by four guarded loads; verbatim needs `Array UInt32` constant/argument (X6: word arrays), `Except`, and `walkTree` (X7: user inductive) |
-| `countMatch.go` | **B** (done) | hypotheses `h1 h2` replaced by run-time guards, index kept as running position (G2); verbatim: Prop parameters. `goU/goUW` need `USize` + 8-byte `extern` load (X6) |
+| `countMatch.go` | **A** (section 7: the verbatim original is accepted); the B restatement of section 4 was unnecessary | `goU/goUW` need `USize` + 8-byte `extern` load (X6) |
 | `Crc32.Native` table CRC | **C** | constant 256-word table (X8: static data) or word arrays (X6); `Array.foldl` closure over the table (X9: specialised fold) |
 | `deflateStored` | **C** | `Id.run`/`while` building a `ByteArray` with `push` and `++` (output with growth, X10), two nested loops, `UInt16` header bytes |
 | `decodeStored`, `storedCopyLoop` | **C** | `Except`, header-derived length passed to the copy (X11: calls or sequenced loops), `set!` into the output block (store node exists in `Tree`, not generated) |
@@ -91,7 +91,7 @@ Features, in the order that unlocks the most (no X is implemented by this branch
 | 2 | CRC-32 with table (`Crc32.Native.crc32`) | table lookup per byte | X8/X6 constant table or word array, X9 | C; not tried. (bitwise A: `crcRaw`) |
 | 3 | bit reader `readBits n` | `rbGo`, 8 lines | X3 `Except`, X4 structure, X5 `<<<` | **B done** (value only), tested |
 | 4 | Huffman decode, one symbol (`decodeSym`) | `huffAt`, 6 lines | X6 `Array UInt32` table, X3, X7 for the `walkTree` fallback | **B done** (hit path), tested |
-| 5 | LZ77 match length (`countMatch.go`) | `cmGo`, 5 lines | Prop parameters, G2; `USize` wide loads for the fast twin | **B done**, tested |
+| 5 | LZ77 match length (`countMatch.go`) | `cmGo`, 5 lines | none for the reference; `USize` wide loads for the fast twin | **A** (verbatim accepted, section 7); restatement also tested |
 | 6 | stored-block inflate (`decodeStored`) and back-reference copy (`copyLoopGo`) | header + `storedCopyLoop` | X11 sequencing/calls, X3, X10, X12 | C; not tried |
 
 ## 4. What was run
@@ -145,3 +145,37 @@ lake build Riscv.Frontx.LeanZip          # after the Sail build, about a minute 
 lake env lean Testing/asm/emit_leanzip.lean
 for f in lzadler:71 lzreadbits:67 lzhuffsym:40 lzmatch04:111; do python3 Testing/asm/frontx_test.py check ${f##*:} ${f%%:*}; done
 ```
+
+## 7. Unmodified originals (`Testing/leanzip/`)
+
+`Orig.lean`: the kernels copied **verbatim** by a script that slices the original files (each block has `file:lines @7e10583`;
+BitReader from lean-zip-common). Elaborates on Lean 4.29. Edits, complete list: **E1** `@[extern …]` removed from
+`copyWithin`, `extendWithin` (no C object; the reference bodies are kept); **E2** `countMatch.go`, a `where` function of
+`lz77Greedy`, is top-level `countMatchGo` (name only); **E3** everything inside `namespace Orig`.
+`Reject.lean`: `frontx_compile` on each, unmodified. `EmitCases.lean` → `cases/*.cases`: executed-Lean results of the originals,
+entry conventions in its header. `run.sh reject|cases`.
+
+| function (in `Orig`) | exact first message of `frontx_compile` | feature |
+|---|---|---|
+| `Adler32.Native.updateBytes` | `(deterministic) timeout at isDefEq` (400 000 heartbeats) | translator does not terminate on `Array.foldl` with a pair state: needs X9 specialisation first |
+| `Adler32.Native.adler32` | no answer in 120 s | same |
+| `Adler32.Spec.updateByte` (the step) | `unsupported term  instHMod.1 (s.fst + byte.toNat) Adler32.Spec.MOD_ADLER` | X1 `%`; also pair state X2 |
+| `Crc32.Spec.crcByteTable` | `unsupported parameter type  Array UInt32` | X6 word array |
+| `Crc32.Native.updateBytes` | `unsupported term  data.data.toList.length` | X9 (`Array.foldl` unfolds to `List` code) |
+| `Crc32.Native.crc32` | same | X9, X8 (`table` is `Array.ofFn`) |
+| `ZipCommon.BitReader.readBits` and `.go` | `unsupported result type  Except String (UInt32 × ZipCommon.BitReader)` | X3 + X2 + X4 |
+| `readBitsFast` and `.go` | same | X3 + X2 + X4 |
+| `InflateBuf.decodeSym` | `unsupported result type  Except String (UInt16 × UInt64 × Nat × Nat)` | X3 + X2 (then X6, X7) |
+| `InflateBuf.takeBits` | `unsupported result type  Except String (Nat × UInt64 × Nat)` | X3 + X2 |
+| `InflateBuf.walkTree` | `unsupported result type  Except String (UInt16 × UInt64 × Nat × Nat)` | X3 + X2 + X7 |
+| **`countMatchGo`** | **accepted**: 17 variables, 9 slots, 19 obligations, `exec` generated, 0.7 s | none (with `h1 h2` as proof parameters and `data[p1 + i]'(by omega)`; the restatement's G2/guards were not needed) |
+| `Inflate.copyLoopGo`, `copyLoop` | `unsupported result type  ByteArray` | X10, X12 (then `%` X1, `push`) |
+| `Inflate.decodeStored` | `unsupported result type  Except String (ByteArray × ZipCommon.BitReader)` | X3, X4, X10, X11 |
+| `ByteArray.fillDouble`, `copyWithin`, `extendWithin` | `unsupported result type  ByteArray` | X10 |
+
+The type check on the result comes first, so for the rows that stop there the next obstacle is **not** observed (the features
+in the last column beyond the first are inferred from reading the code, as in section 2). `countMatchGo` has no machine
+entry point: `frontx_entry` needs closed arguments, and `h1 h2` depend on the input size.
+Cases (`Testing/leanzip/cases/`, run through the originals; adler and crc agree with `zlib`, copyloop with a Python model):
+adler 71, crc 71, readbits 70 (67 ok), readbitsfast 70 (67 ok), decodesym 40 (27 hits), countmatch 102 (10 with length > 0),
+copyloop 60 (distance 1..n, lengths past the distance = overlapping), decodestored 40 (29 ok; bad NLEN and truncated otherwise).
