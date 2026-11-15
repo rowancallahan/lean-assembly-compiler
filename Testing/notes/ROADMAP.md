@@ -101,12 +101,13 @@ hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read 
 - Long-term goals: con-leche and self-hosting. The book, lean-zip and lean-svg are the way there. ARM is a slow
   side track (bridge to Sail ARM).
 - String representation: the owner will review the byte layout (as for Encode.lean).
-- Memory at run time (owner): two theorems per compiled function.
-  (1) Main theorem, NO memory hypothesis: for a work block of any size W the code halts, never writes outside
-      output + work, and either returns the right output `enc (f a)` or OUT OF MEMORY (reserved value 2^64-1 in
-      `a1`, output contents then unspecified). Out of memory is the only possible failure. Allocation and calls
-      check the limit at run time.
-  (2) Non-vacuity theorem: a hypothesis `W >= need f n` gives the right output. `need` only has to be a defined
-      function (not a special or readable formula; `cellsSup` is fine); it exists so that code that always says
-      out of memory does not satisfy the spec.
+- Memory at run time (owner). Running theorems per compiled function:
+  (1) `compile_runs`, NO memory hypothesis: for a work block of any size the code halts, never writes outside
+      output + work, and either returns `enc (f a)` or OUT OF MEMORY (reserved value 2^64-1 in `a1`). Out of
+      memory is the only possible failure. Allocation and calls check the limit at run time.
+  (2) `compile_runs_enough`, a sub-theorem with hypothesis `EnoughMemory compiled input W` -> right output, not
+      out of memory. `EnoughMemory` is a defined predicate ("the run never needs more than W bytes",
+      `peakMemory input <= W`), NOT a calculated or explicit bound; it may be hard to compute.
+  (3) `enough_exists : forall input, exists W, EnoughMemory compiled input W`, so (2) is not vacuous and code
+      that always says out of memory does not pass.
   One work block per top-level call; callees allocate inside it. Compiling needs no bound; running does.
