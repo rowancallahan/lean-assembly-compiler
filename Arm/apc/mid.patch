@@ -82,3 +82,146 @@
    simp only [compBF, codeF_append, codeF_one, codeF_two, List.length_append] at hA hcd
    obtain ⟨hA12, hc3, ho3⟩ := Core.At.split _ hA
    obtain ⟨hA1, hc2, ho2⟩ := Core.At.split _ hA12
+--- a/Compiler/Call.lean
++++ b/Compiler/Call.lean
+@@ -48,6 +48,7 @@
+       ra s' = next pc lenCall ∧ fr s' = fr s ∧ toBase.Same s s' ∧ mem s' = mem s
+   law_enterC : ∀ {n : Nat} {s : S} {pc : BitVec 64}, n ≤ maxSlots → toBase.At s pc (encC (.enterC n)) →
+     8 * (n + 1) ≤ (fr s).toNat → toBase.inRAM ((fr s).toNat - 8 * (n + 1)) 8 → (fr s).toNat % 8 = 0 →
++    (∀ i, i < 8 → writable s ((fr s).toNat - 8 * (n + 1) + i)) →
+     runsTo s fun s' => ok s' ∧ keepC s s' ∧ pcIs s' (next pc (encC (.enterC n)).length) ∧
+       fr s' = BitVec.ofNat 64 ((fr s).toNat - 8 * (n + 1)) ∧ toBase.Same s s' ∧
+       mem s' = (mem s).wr ((fr s).toNat - 8 * (n + 1)) (le8 (ra s))
+@@ -58,7 +59,7 @@
+       fr s' = BitVec.ofNat 64 ((fr s).toNat + 8 * (n + 1)) ∧ toBase.Same s s' ∧ mem s' = mem s
+   law_stA : ∀ {m : Nat} {v : Reg} {s : S} {pc : BitVec 64}, v.val = 0 → 1 ≤ m → m ≤ maxSlots →
+     toBase.At s pc (encC (.stA m v)) → 8 * m ≤ (fr s).toNat → toBase.inRAM ((fr s).toNat - 8 * m) 8 →
+-    (fr s).toNat % 8 = 0 →
++    (fr s).toNat % 8 = 0 → (∀ i, i < 8 → writable s ((fr s).toNat - 8 * m + i)) →
+     runsTo s fun s' => toBase.Done s s' (next pc (encC (.stA m v)).length) ∧ toBase.Same s s' ∧
+       mem s' = (mem s).wr ((fr s).toNat - 8 * m) (le8 (get s v))
+ 
+--- a/Compiler/CStmt.lean
++++ b/Compiler/CStmt.lean
+@@ -239,6 +239,9 @@
+   cd : ∀ r ∈ R ++ Wr ++ [⟨lo, hi - lo⟩], disjoint ⟨cb.toNat, 4 * W.length⟩ r
+   /-- byte blocks may be stored to (`Lay.wr`, `Base.writable`) -/
+   wr : ∀ r ∈ R, ∀ a, r.base ≤ a → a < r.base + r.len → ∀ s, M.ok s → M.writable s a
++  /-- word blocks and the stack area may be stored to -/
++  wwr : ∀ r ∈ Wr, ∀ a, r.base ≤ a → a < r.base + r.len → ∀ s, M.ok s → M.writable s a
++  stw : ∀ a, lo ≤ a → a < hi → ∀ s, M.ok s → M.writable s a
+ 
+ variable {P bv wv off}
+ variable {cb : BitVec 64} {W : List (BitVec 32)} {R Wr : List Region} {lo hi : Nat}
+@@ -281,7 +284,7 @@
+       have := C.sR r (List.mem_append_left _ hr); unfold disjoint at this ⊢; dsimp only at this ⊢; omega,
+     fun r hr => by
+       have := C.sR r (List.mem_append_right _ hr); unfold disjoint at this ⊢; dsimp only at this ⊢; omega,
+-    C.wal, C.wr⟩
++    C.wal, C.wr, C.wwr⟩
+ 
+ /-- the code is disjoint from every part of the stack area -/
+ theorem cd_in (C : M.Ctx P bv wv off cb W R Wr lo hi) {a l : Nat} (h1 : lo ≤ a) (h2 : a + l ≤ hi) :
+@@ -326,7 +329,8 @@
+ /-- the argument code: the values of `es` land in the 8-byte cells `fp - 8 (n - j), ..` below the frame -/
+ theorem args_ok (hok : M.codeOK cb W.length) {N fp : Nat} (hF : M.Frm N fp) (env : BEnv) (n : Nat)
+     (hn : n ≤ M.maxSlots) (hlo : 8 * n ≤ fp) (hram : M.inRAM (fp - 8 * n) (8 * n))
+-    (hcd : disjoint ⟨cb.toNat, 4 * W.length⟩ ⟨fp - 8 * n, 8 * n⟩) :
++    (hcd : disjoint ⟨cb.toNat, 4 * W.length⟩ ⟨fp - 8 * n, 8 * n⟩)
++    (hw : ∀ a, fp - 8 * n ≤ a → a < fp → ∀ s, M.ok s → M.writable s a) :
+     ∀ (es : List BExp) (j pos : Nat), j + es.length = n → (∀ e ∈ es, e.depth < 7 ∧ e.vlt (8 + N)) →
+     Sub W pos (M.codeC (argsC n j es)) → ∀ {s : M.S}, M.codeAt s cb W → M.ok s → M.pcIs s (next cb pos) →
+     M.EnvB N fp env s →
+@@ -352,7 +356,8 @@
+     have hc₁ := M.codeAt_mem m₁ hc
+     refine M.runsTo_trans (M.law_stA (m := n - j) (v := rk 0) (rk_val (by omega)) (by omega) (by omega)
+       (M.at_sub hok hc₁ h2 d₁.ok d₁.hpc) (by rw [hfp]; omega) (by rw [hfp]; unfold Base.inRAM; omega)
+-      (by rw [hfp]; exact hF.al)) fun s₂ ⟨d₂, st₂, m₂⟩ => ?_
++      (by rw [hfp]; exact hF.al) (fun i hi => by rw [hfp]; exact hw _ (by omega) (by omega) _ d₁.ok))
++      fun s₂ ⟨d₂, st₂, m₂⟩ => ?_
+     rw [next_add] at d₂
+     rw [hfp, v₁, m₁] at m₂
+     have henv₂ : M.EnvB N fp env s₂ :=
+@@ -362,7 +367,7 @@
+       rw [m₂]; exact Out.wr (List.mem_singleton_self _) (by dsimp only; omega) (by rw [length_le8]; dsimp only; omega)
+     have hc₂ : M.codeAt s₂ cb W := M.codeAt_out hc hok (fun r hr => by
+       rw [List.mem_singleton] at hr; subst hr; unfold disjoint at hcd ⊢; dsimp only at hcd ⊢; omega) ho₂
+-    refine M.runsTo_mono (args_ok hok hF env n hn hlo hram hcd es (j + 1) _ (by omega)
++    refine M.runsTo_mono (args_ok hok hF env n hn hlo hram hcd hw es (j + 1) _ (by omega)
+       (fun e' he' => hes e' (List.mem_cons_of_mem _ he')) (h3.cast (by omega)) hc₂ d₂.ok d₂.hpc henv₂)
+       fun s₃ ⟨d₃, e₃, o₃, b₃⟩ => ⟨?_, ?_, ?_, ?_⟩
+     · have d := Core.Done.trans _ d₁ (Core.Done.trans _ d₂ d₃)
+@@ -537,7 +542,8 @@
+     have hpad : (padArgs P[f].nlocals args).length = P[f].nlocals := padArgs_length hw2
+     -- 1. the arguments
+     refine M.runsTo_trans (M.args_ok C.codeOK hF σ.env P[f].nlocals hwN (by omega) (by unfold Base.inRAM; omega)
+-      (M.cd_in C (by omega) (by omega)) (padArgs P[f].nlocals args) 0 pos (by omega) (pad_wf hw3) h1 hc ho hpc
++      (M.cd_in C (by omega) (by omega)) (fun a h1 h2 => C.stw a (by omega) (by omega))
++      (padArgs P[f].nlocals args) 0 pos (by omega) (pad_wf hw3) h1 hc ho hpc
+       hrel.env) fun s₁ ⟨d₁, e₁, o₁, b₁⟩ => ?_
+     rw [Nat.sub_zero] at o₁
+     have hc₁ : M.codeAt s₁ cb W := M.codeAt_out hc C.codeOK (fun r hr => by
+@@ -556,12 +562,13 @@
+     obtain ⟨g4a, g4b⟩ := g4.split
+     simp only [List.length_append, len_compC] at g3 g4a g4b
+     refine M.runsTo_trans (M.law_enterC hwN (M.at_sub C.codeOK (M.codeAt_mem m₂ hc₁) g1 ok₂ pc₂)
+-      (by rw [hfr₂]; omega) (by rw [hfr₂]; unfold Base.inRAM; omega) (by rw [hfr₂]; exact hal))
++      (by rw [hfr₂]; omega) (by rw [hfr₂]; unfold Base.inRAM; omega) (by rw [hfr₂]; exact hal)
++      (fun i hi => by rw [hfr₂]; exact C.stw _ (by omega) (by omega) _ ok₂))
+       fun s₃ ⟨ok₃, kc₃, pc₃, fr₃, st₃, m₃⟩ => ?_
+     rw [hfr₂] at fr₃ m₃
+     rw [next_add] at pc₃
+     have hF' : M.Frm P[f].nlocals (fp - 8 * (P[f].nlocals + 1)) :=
+-      ⟨by unfold Base.inRAM; omega, by omega, hwN⟩
++      ⟨by unfold Base.inRAM; omega, by omega, hwN, fun a h1 h2 => C.stw a (by omega) (by omega)⟩
+     have o₃ : Out [⟨lo, fp - lo⟩] (M.mem s) (M.mem s₃) := by
+       refine (out1 o₁ (by omega) (by omega)).trans ?_
+       rw [m₃, m₂]
+--- a/Compiler/CProg.lean
++++ b/Compiler/CProg.lean
+@@ -84,6 +84,9 @@
+   cd : ∀ r ∈ R ++ Wr ++ [⟨lo, top - lo⟩], disjoint ⟨cb.toNat, 4 * n⟩ r
+   /-- byte blocks may be stored to (`Base.writable`) -/
+   wr : ∀ r ∈ R, ∀ a, r.base ≤ a → a < r.base + r.len → ∀ s, M.ok s → M.writable s a
++  /-- word blocks and the stack area may be stored to -/
++  wwr : ∀ r ∈ Wr, ∀ a, r.base ≤ a → a < r.base + r.len → ∀ s, M.ok s → M.writable s a
++  stw : ∀ a, lo ≤ a → a < top → ∀ s, M.ok s → M.writable s a
+ 
+ variable {P bv wv}
+ 
+@@ -106,7 +109,7 @@
+     M.runsTo s fun s' => M.pcIs s' (M.ra s) ∧ (∀ i : Fin 8, M.get s' (avar i) = σ'.env i.val) ∧
+       M.HeapB bv wv R Wr σ' s' ∧ Out (R ++ Wr ++ [⟨lo, M.frameAt s 0 + 8 - lo⟩]) (M.mem s) (M.mem s') ∧
+       M.ok s' ∧ M.keep s s' := by
+-  obtain ⟨hns, hram0, hal0⟩ := M.enterOK_frame hen
++  obtain ⟨hns, hram0, hal0, -⟩ := M.enterOK_frame hen
+   have hsubS : Sub (M.codeC (M.compP P bv wv res main)) 0
+       (M.codeC (M.stubC P bv wv (M.progOff P bv wv res main) res main)) :=
+     ⟨[], M.codeC (M.fnsC P bv wv (M.progOff P bv wv res main) (M.lenStub P bv wv res main) P), by
+@@ -147,7 +150,8 @@
+   -- 2. save the return address
+   refine M.runsTo_trans (M.law_enterC (n := 0) (Nat.zero_le _)
+     (M.at_sub hok hc₁ qec ok₁ (M.pcIs_cast pc₁ (by omega))) (by rw [hfr₁]; omega)
+-    (by rw [hfr₁]; unfold Base.inRAM; omega) (by rw [hfr₁]; exact hal0))
++    (by rw [hfr₁]; unfold Base.inRAM; omega) (by rw [hfr₁]; exact hal0)
++    (fun i hi => by rw [hfr₁]; exact hL.stw _ (by omega) (by omega) _ ok₁))
+     fun s₂ ⟨ok₂, kc₂, pc₂, fr₂, st₂, m₂⟩ => ?_
+   rw [hfr₁] at fr₂ m₂
+   rw [next_add] at pc₂
+@@ -160,13 +164,15 @@
+   have C : M.Ctx P bv wv off cb W R Wr lo fp₀ :=
+     { codeOK := hok, fns := hfns, wf := hwf, bvlt := hbv, wvlt := hwv, ram := hL.ram, wram := hL.wram,
+       rp := hL.rp, wp := hL.wp, rw := hL.rw, wal := hL.wal, wr := hL.wr, lohi := by omega,
++      wwr := hL.wwr, stw := fun a h1 h2 => hL.stw a h1 (by omega),
+       stk := by unfold Base.inRAM; omega,
+       sR := fun r hr => by have := hL.sR r hr; unfold disjoint at this ⊢; dsimp only at this ⊢; omega,
+       cd := fun r hr => by
+         rcases List.mem_append.1 hr with hr | hr
+         · exact hcd r (List.mem_append_left _ hr)
+         · rw [List.mem_singleton] at hr; subst hr; unfold disjoint; dsimp only; omega }
+-  have hF : M.Frm 0 (fp₀ - 8 * (0 + 1)) := ⟨by unfold Base.inRAM; omega, by omega, Nat.zero_le _⟩
++  have hF : M.Frm 0 (fp₀ - 8 * (0 + 1)) := ⟨by unfold Base.inRAM; omega, by omega, Nat.zero_le _,
++    fun a h1 h2 => hL.stw a (by omega) (by omega)⟩
+   have byR : ∀ r ∈ R ++ Wr, bytes (M.mem s₂) r.base r.len = bytes (M.mem s) r.base r.len := fun r hr =>
+     bytes_out oS₂ fun r' hr' => by
+       rw [List.mem_singleton] at hr'; subst hr'; exact disj_symm (hL.sR r hr)

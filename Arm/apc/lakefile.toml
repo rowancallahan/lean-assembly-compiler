@@ -5,20 +5,20 @@ defaultTargets = ["Apc"]
 [[lean_lib]]
 name = "Spec"
 srcDir = "../.."
-globs = ["Spec.Code", "Spec.ArrCode"]
+globs = ["Spec.Code", "Spec.ArrCode", "Spec.Encode", "Spec.Tree"]
 
 [[lean_lib]]
 name = "Compiler"
 srcDir = "../.."
 globs = ["Compiler.Iface", "Compiler.Logic", "Compiler.Exp", "Compiler.Stmt", "Compiler.Mem", "Compiler.Arr",
-  "Compiler.BLang"]
+  "Compiler.BLang", "Compiler.CLang"]
 
 # middle files with the `writable` hypotheses on the frame / 8-byte store laws: copies of the repo-root files
 # with `mid.patch` applied, staged by `stage.sh` into Mid/ (not committed)
 [[lean_lib]]
 name = "CompilerW"
 srcDir = "Mid"
-globs = ["Compiler.Frame", "Compiler.BExp", "Compiler.BStmt"]
+globs = ["Compiler.Frame", "Compiler.BExp", "Compiler.BStmt", "Compiler.Call", "Compiler.CStmt", "Compiler.CProg"]
 
 [[lean_lib]]
 name = "Apc"

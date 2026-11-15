@@ -27,8 +27,16 @@ sed 's/^import Riscv.Direct.SortMergeSrc$/import Apc.Src.SortMergeSrc/; s/dsimp 
 { echo "import Apc.Src.Arr2Code"; echo "import Compiler.BLang"; echo "namespace Proven.Mach.Riscv"
   sed -n '/^def toMB/,$p' $R/Riscv/Back/BStmt.lean | cut_before /dev/stdin "/-! ## Same words"
   echo "end Proven.Mach.Riscv"; } > $O/ToM.lean
+# calls: `Computes` and the le8 facts of Riscv/Back/Calls.lean, the source parts of the call examples
+{ echo "import Compiler.CLang"; echo "import Compiler.Frame"; echo "import Spec.Encode"; echo "namespace Proven.Mach.Riscv"
+  sed -n '/^theorem le8_byte/,$p' $R/Riscv/Back/Calls.lean | cut_before /dev/stdin "/-! ## Checking well-formedness"
+  sed -n '/^\/-- the source-level specification of a program/,$p' $R/Riscv/Back/Calls.lean | cut_before /dev/stdin "/-- the machine code"
+  echo "end Proven.Mach.Riscv"; } > $O/CallsSrc.lean
+python3 cut.py $R/Riscv/Examples/CallExamples.lean $O/CallExamples.lean 'Riscv.Back.Calls=>Apc.Src.CallsSrc'
+python3 cut.py $R/Riscv/Examples/TreeEval.lean $O/TreeEval.lean 'Riscv.Examples.CallExamples=>Apc.Src.CallExamples'
+sed -i 's/(by simpa \[encB\] using hlt)/(by simp only [encB, List.length_map]; exact hlt)/' $O/TreeEval.lean   # Lean 4.34
 # middle files with `writable` hypotheses on the frame / 8-byte store laws (DeepMind's memory faults on stores to
 # non-writable, e.g. executable, bytes; "in RAM" alone cannot be proved there): repo-root copies + mid.patch
 M=Mid/Compiler; mkdir -p $M
-for f in Frame BExp BStmt; do cp $R/Compiler/$f.lean $M/$f.lean; done
+for f in Frame BExp BStmt Call CStmt CProg; do cp $R/Compiler/$f.lean $M/$f.lean; done
 patch -s -d Mid -p1 < mid.patch
