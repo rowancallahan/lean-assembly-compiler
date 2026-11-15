@@ -8,8 +8,8 @@ fail() { echo "CHECK FAILED: $*" >&2; exit 1; }
 echo "== lake build"; lake build Spec Compiler Riscv Arm Frontx || fail "lake build"
 echo "== #print axioms"
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
-for g in a b c d e f g h i j k l m n o p q r s t u v; do lake env lean "$H/axioms_$g.lean" > "$T/$g.txt" 2>&1 || { cat "$T/$g.txt"; fail "axioms_$g.lean"; }; done
-cat "$T"/{a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v}.txt | tr -d '\n' | sed "s/'Proven/\n'Proven/g; s/'List\./\n'List./g; s/'ConLeche/\n'ConLeche/g; s/'Ordering/\n'Ordering/g; s/ //g" | grep -v '^$' > "$T/got.txt"
+for g in a b c d e f g h i j k l m n o p q r s t u v w; do lake env lean "$H/axioms_$g.lean" > "$T/$g.txt" 2>&1 || { cat "$T/$g.txt"; fail "axioms_$g.lean"; }; done
+cat "$T"/{a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w}.txt | tr -d '\n' | sed "s/'Proven/\n'Proven/g; s/'List\./\n'List./g; s/'ConLeche/\n'ConLeche/g; s/'Ordering/\n'Ordering/g; s/ //g" | grep -v '^$' > "$T/got.txt"
 if diff "$H/expected-axioms.txt" "$T/got.txt" > "$T/diff.txt"; then
   awk -F'dependsonaxioms:' '{n=split($2,a,","); print "  ok", $1, n, "axioms"}' "$T/got.txt"
 else cat "$T/diff.txt"; fail "axioms differ from Testing/scripts/expected-axioms.txt"; fi

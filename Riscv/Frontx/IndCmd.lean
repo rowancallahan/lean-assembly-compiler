@@ -826,7 +826,7 @@ elab_rules : command
     (fun k => !r.ti.roles[k]!.contains .drop) |>.map fun k => s!"{r.tn}.fold{k}")
   let embs := ", ".intercalate (tys.toList.map fun r => s!"{r.tn}.emb")
   let smalls := ", ".intercalate (tys.toList.map fun r => s!"{r.tn}.small")
-  let cells := "Proven.Op.eval, Proven.Mach.Ind.C.tag, Proven.Mach.Ind.C.xv, Proven.Mach.Ind.C.lv, Proven.Mach.Ind.C.rv, " ++
+  let cells := "Proven.Mach.Ind.C.tag, Proven.Mach.Ind.C.xv, Proven.Mach.Ind.C.lv, Proven.Mach.Ind.C.rv, " ++
     "Proven.Mach.Ind.Kd.pick, Proven.Mach.Ind.Kd.pair, Proven.Mach.Ind.semX, List.getD_cons_zero, List.getD_cons_succ"
   let multi := fns.size > 1
   let fnsS := ", ".intercalate (fns.toList.map fun f => toString f.name)
@@ -897,8 +897,9 @@ elab_rules : command
       List.getElem?_cons_succ, Bool.false_eq_true, if_true, if_false, {words}] at *
      try simp only [*{if i + 1 < fns.size then ", " ++ laterSems else ""}]
      simp only [{gS}]
-     repeat' (first | (simp_all [{fnsS}, {embs}, {words}]; done) | (simp_all [{fnsS}, {embs}, {words}] <;> rfl) |
-       simp_all [{fnsS}, {embs}, {words}] | frontx_emb_cases)
+     repeat' (first | (simp_all [{fnsS}, {embs}, {words}, Proven.Op.eval]; done) |
+       (simp_all [{fnsS}, {embs}, {words}, Proven.Op.eval] <;> rfl) |
+       simp_all [{fnsS}, {embs}, {words}, Proven.Op.eval] | frontx_emb_cases)
      done)"
   -- the machine program
   let fi0 := fns[0]!

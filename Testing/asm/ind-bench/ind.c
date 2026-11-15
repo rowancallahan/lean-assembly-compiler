@@ -37,3 +37,39 @@ u64 c_bvarofdata(const unsigned char *i, u64 n, N *w, unsigned char *o) {
 u64 c_packdata(const unsigned char *i, u64 n, N *w, unsigned char *o) {
   u64 h = n > 0 ? i[0] : 0, b = n > 1 ? i[1] : 0, f = n > 2 ? i[2] : 0; int lp = n > 3 && i[3] != 0;
   u64 r = h * 4294967296 + b * 65536 + f * 2 + (lp ? 1 : 0); for (int k = 0; k < 8; k++) o[k] = r >> 8 * k; return 0; }
+
+/* section 21: programs of several functions */
+static N *mk(u64 tag, u64 x, N *l, N *r) { N *n = hp++; n->tag = tag; n->x = x; n->l = l; n->r = r; return n; }
+/* Pos: one = 0; succ = 1, child */
+static N *decP(void) { N *n = hp++; n->tag = *in++; n->l = n->r = 0; if (n->tag == 1) n->l = decP(); return n; }
+static void encP(N *n) { while (n->tag == 1) { *out++ = 1; n = n->l; } *out++ = 0; }
+static N *plus(N *a, N *k) { return a->tag == 0 ? mk(1, 0, k, 0) : mk(1, 0, plus(a->l, k), 0); }
+static N *mul(N *a, N *k) { return a->tag == 0 ? k : plus(mul(a->l, k), k); }
+u64 c_posmul(const unsigned char *i, u64 len, N *w, unsigned char *o) {
+  in = i; hp = w; out = o; N *a = decP(); N *k = decP(); encP(mul(a, k)); return out - o; }
+/* List Nat: nil = 0; cons = 1, head (8 bytes), tail; `NonTail.reverse xs ++ [x]` (non-tail, persistent append) */
+static N *app(N *a, N *b) { return a->tag != 1 ? b : mk(1, a->x, app(a->l, b), 0); }
+static N *rev(N *l) { return l->tag != 1 ? mk(0, 0, 0, 0) : app(rev(l->l), mk(1, l->x, mk(0, 0, 0, 0), 0)); }
+u64 c_reverse(const unsigned char *i, u64 len, N *w, unsigned char *o) {
+  in = i; hp = w; out = o; encL(rev(decL())); return out - o; }
+/* Level: zero 0, succ 1 (l), max 2 (l r), imax 3 (l r), param 4 (the name is not in the format) */
+static N *decLv(void) { N *n = hp++; n->tag = *in++; n->l = n->r = 0;
+  if (n->tag >= 1 && n->tag <= 3) n->l = decLv(); if (n->tag == 2 || n->tag == 3) n->r = decLv(); return n; }
+static void encLv(N *n) { *out++ = n->tag; if (n->tag >= 1 && n->tag <= 3) encLv(n->l); if (n->tag == 2 || n->tag == 3) encLv(n->r); }
+static N *combining(N *l, N *r) {
+  if (l->tag == 0) return r; if (r->tag == 0) return l;
+  if (l->tag == 1 && r->tag == 1) return mk(1, 0, combining(l->l, r->l), 0);
+  return mk(2, 0, l, r); }
+static N *simplify(N *l) {
+  switch (l->tag) {
+  case 0: return mk(0, 0, 0, 0);
+  case 4: return mk(4, 0, 0, 0);
+  case 1: return mk(1, 0, simplify(l->l), 0);
+  case 2: return combining(simplify(l->l), simplify(l->r));
+  default: { N *ls = simplify(l->l), *rs = simplify(l->r);
+    if (ls->tag == 0 || (ls->tag == 1 && ls->l->tag == 0)) return rs;
+    if (rs->tag == 0) return mk(0, 0, 0, 0);
+    if (rs->tag == 1) return combining(ls, rs);
+    return mk(3, 0, ls, rs); } } }
+u64 c_simplify(const unsigned char *i, u64 len, N *w, unsigned char *o) {
+  in = i; hp = w; out = o; encLv(simplify(decLv())); return out - o; }

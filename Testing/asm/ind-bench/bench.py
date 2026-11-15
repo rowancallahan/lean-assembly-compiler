@@ -1,6 +1,6 @@
 # usage: python3 bench.py; instructions executed by one call (minstret, qemu -icount) of the `frontx_ind` words
 # (Testing/asm/frontx-words) vs gcc -O2 (rv64i) on the same input bytes (ind.c: decode, run, encode)
-import subprocess, os, re
+import subprocess, os, re, sys
 D = os.path.dirname(os.path.abspath(__file__)); C = os.path.join(D, "..", "ctest"); os.makedirs(C, exist_ok=True)
 p = lambda f: os.path.join(C, f)
 sh = lambda c: subprocess.run(c, shell=True, check=True)
@@ -8,9 +8,12 @@ LD = "ENTRY(_start)\nSECTIONS { . = 0x80000000; .text : { *(.text.start) *(.text
 def run(name, cfunc, inp, desc):
     lines = open(os.path.join(D, "..", "frontx-words", name + ".words")).read().split("\n")
     hd = lines[0].split()
-    A, B = (int(hd[1]), int(hd[2])) if hd[0] == "ind" else (8 * (int(hd[0]) + 1) + 7, 0); ws = [int(l, 16) for l in lines[1:] if l.strip()]
+    # `indw` (programs of several functions): a work block of 4 MiB (the theorem's bound is per input)
+    A, B = (int(hd[1]), int(hd[2])) if hd[0] == "ind" else (1 << 22, 0) if hd[0] == "indw" else (8 * (int(hd[0]) + 1) + 7, 0)
+    ws = [int(l, 16) for l in lines[1:] if l.strip()]
     func = "".join(f"  .word 0x{w:08x}\n" for w in ws)
     n = len(inp); wk = A + B * n
+    OUT = max(2 * n + 16, 1 << 16)
     data = ",".join(str(b) for b in inp) or "0"
     src = f""".section .text.start
 .globl _start
@@ -52,8 +55,8 @@ fromhost: .dword 0
 res: .dword 0, 0, 0
 inp: .byte {data}
 .align 4
-out: .fill {2 * n + 16}, 1, 0
-out2: .fill {2 * n + 16}, 1, 0
+out: .fill {OUT}, 1, 0
+out2: .fill {OUT}, 1, 0
 .align 4
 work: .fill {wk + 16}, 1, 0
 """
@@ -70,7 +73,7 @@ work: .fill {wk + 16}, 1, 0
     hmp("info version")
     while "pc       %016x" % sym("halt") not in hmp("info registers"): pass
     hmp(f'pmemsave {sym("res"):#x} 16 "{p("r.bin")}"')
-    hmp(f'pmemsave {sym("out"):#x} {2 * n + 16} "{p("o1.bin")}"'); hmp(f'pmemsave {sym("out2"):#x} {2 * n + 16} "{p("o2.bin")}"')
+    hmp(f'pmemsave {sym("out"):#x} {OUT} "{p("o1.bin")}"'); hmp(f'pmemsave {sym("out2"):#x} {OUT} "{p("o2.bin")}"')
     q.stdin.write("quit\n"); q.wait()
     r = open(p("r.bin"), "rb").read(); v = [int.from_bytes(r[8*i:8*i+8], "little") for i in range(2)]
     same = open(p("o1.bin"), "rb").read() == open(p("o2.bin"), "rb").read()
@@ -81,6 +84,10 @@ def bst(keys):  # balanced BST over sorted keys, encoded
     m = len(keys) // 2
     return [1] + bst(keys[:m]) + le8(keys[m]) + bst(keys[m+1:])
 lst = lambda xs: sum(([1] + le8(x) for x in xs), []) + [0]
+ONLY = sys.argv[1:]
+_run = run
+def run(name, *a):
+    if not ONLY or name in ONLY: _run(name, *a)
 keys = [2 * i for i in range(1, 256)]  # 255 keys, 5 absent
 run("tree_contains5", "c_contains5", bst(keys), "balanced BST, 255 keys")
 run("tree_insert5", "c_insert5", bst(keys), "balanced BST, 255 keys")
@@ -91,3 +98,14 @@ w = list((0x123456789ABCDEF0).to_bytes(8, "little"))
 run("satprede", "c_satpred", w, "satPred, one word")
 run("bvarofdatae", "c_bvarofdata", w, "bvarOfData, one word")
 run("packdatae", "c_packdata", w, "packData, four bytes")
+pos = lambda n: [1] * (n - 1) + [0]
+run("pos_mul", "c_posmul", pos(30) + pos(30), "Pos.mul 30 * 30")
+xs = [i + 10 for i in range(100)]
+run("nontail_reverse_ln", "c_reverse", lst(xs), "NonTail.reverse, 100 elements")
+def lv(d, s):  # a level of depth d: max / imax / succ / zero / param
+    if d == 0: return [0] if s % 2 == 0 else [4]
+    k = (s * 2654435761 + d) % 7
+    if k < 2: return [1] + lv(d - 1, s + 1)
+    if k < 4: return [2] + lv(d - 1, 2 * s) + lv(d - 1, 2 * s + 1)
+    return [3] + lv(d - 1, 2 * s + 3) + lv(d - 1, 2 * s + 1)
+run("level_simplify", "c_simplify", lv(9, 1), "Level.simplify, depth 9")

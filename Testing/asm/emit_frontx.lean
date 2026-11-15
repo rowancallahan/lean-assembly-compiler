@@ -4,7 +4,7 @@ import Riscv.Frontx.PairExamples
 import Riscv.Frontx.ExceptExamples
 import Riscv.Frontx.ExceptBook
 import Riscv.Frontx.IndExamples
-import Riscv.Frontx.IndCmpExamples
+import Riscv.Frontx.Ind2Examples
 import Riscv.Frontx.ScalarExamples
 open Proven Proven.Frontx Proven.Frontx.Ex
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
@@ -232,3 +232,53 @@ open Proven.Frontx.ExcBook in
 open Proven.Frontx.Pairs in
 #eval emit "addpoints16e" addPoints16E.slots addPoints16E.code (fun xs => addPoints16E.enc (addPoints16E xs))
   (inputs ++ List.zipWith (· ++ ·) (natInputs true) (natInputs true).reverse)
+-- inductives, part 2 (`Ind2Examples.lean`, NOTES section 21): first line `indw <L>`, the work block per case: the
+-- theorem's space with this input's cells (`Ind.spaceA m nl (fun _ => cells)`; the theorem's `cellsSup` is at
+-- least that), or `Ind.spaceA 1 16 (fun n => M * n)` for one function
+section
+open Proven.Frontx.IndEx Proven.Frontx.IndCmp
+def emitIndW (name : String) (code : List (BitVec 32)) (retLen : Bool) (cases : List (List UInt8 × List UInt8 × Nat)) :
+    IO Unit := do
+  IO.FS.writeFile s!"Testing/asm/frontx-words/{name}.words"
+    (String.intercalate "\n" (s!"indw {if retLen then 1 else 0}" :: code.map hex8) ++ "\n")
+  IO.FS.writeFile s!"Testing/asm/frontx-words/{name}.cases"
+    (String.join (cases.map fun (x, y, w) => s!"{hx x} {hx y} {w}\n"))
+def spW (m nl cells : Nat) (x : List UInt8) : Nat := Proven.Frontx.Ind.spaceA m nl (fun _ => cells) x.length
+def possS : List Pos := (List.range 50).map fun i => genP (rnd i 5 % 40)
+def posPairs : List (Pos × Pos) := (List.range 50).map fun i => (possS.getD i .one, possS.getD ((i * 7 + 3) % 50) .one)
+/-- trees with payloads below `2^64` (the subtype of `eqBinTree`); every third pair equal, every third one payload apart -/
+def genS : Nat → Nat → BinTree Nat
+  | 0, _ => .leaf
+  | d + 1, s => if rnd s d % 4 = 0 then .leaf else .branch (genS d (2 * s + 1)) (key s) (genS d (2 * s + 2))
+/-- the payload of the rightmost node, plus one -/
+def bump : BinTree Nat → BinTree Nat
+  | .leaf => .leaf
+  | .branch l x .leaf => .branch l ((x + 1) % 2 ^ 64) .leaf
+  | .branch l x r => .branch l x (bump r)
+def treePairs : List (BinTree Nat × BinTree Nat) := (List.range 50).map fun i =>
+  let t := genS (i % 6 + 1) (i + 3)
+  match i % 3 with | 0 => (t, t) | 1 => (t, genS (i % 5 + 1) (i + 11)) | _ => (t, bump t)
+def keyTrees : List (Tree Unit × Nat) := (List.range 50).map fun i => (bsts.getD i .leaf, if i % 3 = 0 then 5 else key (i * 17 + 1))
+def lvPairs : List (ConLeche.Level × ConLeche.Level) := (List.range 50).map fun i => (levels.getD i .zero, levels.getD ((i * 7 + 3) % 50) .zero)
+def ordB (o : Ordering) : List UInt8 := OrdT.enc o
+def smallT : BinTree Nat → Bool
+  | .leaf => true | .branch l x r => decide (x < 2 ^ 64) && smallT l && smallT r
+#eval do
+  emitIndW "pos_mul" Pos.mul.code true (posPairs.map fun p =>
+    (PosT.enc2 p, PosT.enc (p.1.mul p.2), spW 2 16 (Pos.mul.ind.pg.al (PosT.emb p.1) 0 (PosT.emb p.2)) (PosT.enc2 p)))
+  emitIndW "nontail_reverse_ln" NonTail.reverse.code true (lists.map fun l =>
+    (LN.enc l, LN.enc (NonTail.reverse l), spW 2 17 (NonTail.reverse.ind.pg.al (LN.emb l) 0 .z) (LN.enc l)))
+  emitInd "eq_bintree" eqBinTree.code eqBinTree.ind.pg.M false
+    (treePairs.map fun p => (BTN.enc2 p, boolB (eqBinTree p.1 p.2)))
+  emitInd "pos_comp" Pos.comp.code Pos.comp.ind.pg.M true (posPairs.map fun p => (PosT.enc2 p, ordB (p.1.comp p.2)))
+  emitIndW "tree_containsk" containsK.code false (keyTrees.map fun p =>
+    let x := TU.enc p.1 ++ leN 8 p.2; (x, boolB (containsK p.1 p.2), Proven.Frontx.Ind.spaceA 1 16 (fun n => containsK.ind.pg.M * n) x.length))
+  emitIndW "tree_findk" findK.code true (keyTrees.map fun p =>
+    let x := TU.enc p.1 ++ leN 8 p.2; (x, OU.enc (findK p.1 p.2), Proven.Frontx.Ind.spaceA 1 16 (fun n => findK.ind.pg.M * n) x.length))
+  emitInd "level_combining" ConLeche.Level.combining.code ConLeche.Level.combining.ind.pg.M true
+    (lvPairs.map fun p => (LevelT.enc2 p, LevelT.enc (p.1.combining p.2)))
+  emitIndW "level_simplify" ConLeche.Level.simplify.code true (levels.map fun l =>
+    (LevelT.enc l, LevelT.enc l.simplify, spW 2 20 (ConLeche.Level.simplify.ind.pg.al (LevelT.emb l) 0 .z) (LevelT.enc l)))
+#eval (treePairs.all fun p => smallT p.1 && smallT p.2, (treePairs.map fun p => eqBinTree p.1 p.2).count true,
+  (keyTrees.map fun p => containsK p.1 p.2).count true)
+end
