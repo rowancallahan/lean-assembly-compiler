@@ -648,3 +648,34 @@ theorem texec_det {P : Prog} (hP : progClean P = true) :
         exact q₁.hv
 
 end Proven.Mach
+
+namespace Proven.Mach
+
+/-- word blocks keep their lengths -/
+theorem bexec_wlen : ∀ {p : BStmt} {σ σ' : BState}, BExec p σ σ' → σ'.wheap.map List.length = σ.wheap.map List.length
+  | _, _, _, .assign | _, _, _, .load _ _ | _, _, _, .store _ _ | _, _, _, .loopF _ | _, _, _, .load64 _ _
+  | _, _, _, .mop => rfl
+  | _, _, _, .seq h₁ h₂ => (bexec_wlen h₂).trans (bexec_wlen h₁)
+  | _, _, _, .loopT _ h₁ h₂ => (bexec_wlen h₂).trans (bexec_wlen h₁)
+  | _, σ, _, .store64 (b := b) (i := i) hb hi => by
+    simp only [List.map_set, List.length_set]
+    apply List.ext_getElem (by simp)
+    intro j h1 h2
+    simp only [List.getElem_set, List.getElem_map]
+    split
+    · next h => subst h; rfl
+    · rfl
+
+theorem cexec_wlen {P : Prog} : ∀ {k : Nat} {p : CStmt} {σ σ' : BState}, CExec P k p σ σ' →
+    σ'.wheap.map List.length = σ.wheap.map List.length := by
+  intro k p σ σ' h
+  induction h with
+  | base h => exact bexec_wlen h
+  | seq _ _ ih₁ ih₂ => exact ih₂.trans ih₁
+  | iteT _ _ ih => exact ih
+  | iteF _ _ ih => exact ih
+  | loopF _ => rfl
+  | loopT _ _ _ ih₁ ih₂ => exact ih₂.trans ih₁
+  | call _ _ _ _ ih => exact ih
+
+end Proven.Mach
