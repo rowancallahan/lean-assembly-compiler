@@ -113,13 +113,3 @@ wa_compile opsNE
 
 end Proven.WA.Ops
 
-namespace Proven.WA.Core
-open Proven.WA WaGlue
-
-/-- core `Nat.lcm` (`Init/Data/Nat/Lcm.lean:34`: `m * n / gcd m n`) of two 32-bit numbers -/
-def lcmE (xs : ByteArray) : Nat := Nat.lcm (rd32 xs 0) (rd32 xs 4)
-wa_compile lcmE
-  invariant fun (m n : Nat) => m < 2 ^ 32 ∧ n < 2 ^ 32
-  measure fun (m _n : Nat) => m
-
-end Proven.WA.Core
