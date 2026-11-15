@@ -134,14 +134,33 @@ theorem Post.trans {W₁ W₂ W₃ : List (BitVec 64)} {h₁ h₂ h₃ : Nat} {g
 
 variable {rk : Kd} (P : Prog) (pg : Pg rk)
 
-/-- a call of `F` on `v` (at `pv`) runs within `K` bytes of stack -/
-def BodyOK (K : Nat) (v : C) (pv : BitVec 64) : Prop :=
+/-- the body of the function at index `fi` -/
+def fBody (fi : Nat) (pg : Pg rk) : CStmt := .seq (.base (asg 11 (kE 1))) (fLoop fi pg)
+
+/-- a call of `F` (index `fi`) on `v` (at `pv`) runs within `K` bytes of stack, in a word block of at most `Lw` words -/
+def BodyOK (fi K Lw : Nat) (v : C) (pv : BitVec 64) : Prop :=
   ∀ (a bp : BitVec 64) (b : C) (g : BEnv) (H : Heap) (W : List (BitVec 64)) (h : Nat),
-    HI W h → Rp W h pv v → Rp W h bp b → h + 4 * pg.al v a b ≤ W.length → g 5 = BitVec.ofNat 64 h →
-    ∃ E' W', CExec P K (fFn pg).body ⟨callEnv g [pv, a, bp], H, [W]⟩ ⟨E', H, [W']⟩ ∧
+    W.length ≤ Lw → HI W h → Rp W h pv v → Rp W h bp b → h + 4 * pg.al v a b ≤ W.length → g 5 = BitVec.ofNat 64 h →
+    ∃ E' W', CExec P K (fBody fi pg) ⟨callEnv g [pv, a, bp], H, [W]⟩ ⟨E', H, [W']⟩ ∧
       Post W h W' (h + 4 * pg.al v a b) g E' ∧ RelK W' (h + 4 * pg.al v a b) rk (E' 12) (pg.sem v a b)
 
+/-- a call of the function at index `q` (meaning `X`, cells `XA`, result kind `k`) within `K` bytes of stack -/
+def XOK (K q : Nat) (k : Kd) (X : C → BitVec 64 → C → BitVec 64 × C) (XA : C → BitVec 64 → C → Nat) (Lw : Nat) :
+    Prop :=
+  ∀ (v b : C) (pv a bp : BitVec 64) (d pvar avar bvar : Nat) (env : BEnv) (H : Heap) (W : List (BitVec 64)) (h : Nat),
+    8 ≤ d → W.length ≤ Lw → HI W h → env 5 = BitVec.ofNat 64 h → env pvar = pv → env avar = a → env bvar = bp →
+    Rp W h pv v → Rp W h bp b → h + 4 * XA v a b ≤ W.length →
+    ∃ E' W', CExec P K (.call d q [vE pvar, vE avar, vE bvar]) ⟨env, H, [W]⟩ ⟨E', H, [W']⟩ ∧
+      Post W h W' (h + 4 * XA v a b) env E' ∧ (∀ i, 8 ≤ i → i ≠ d → E' i = env i) ∧
+      RelK W' (h + 4 * XA v a b) k (E' d) (k.pick (X v a b))
+
 variable {P pg}
+
+theorem xok_mono {K K' q : Nat} {k : Kd} {X : C → BitVec 64 → C → BitVec 64 × C} {XA : C → BitVec 64 → C → Nat}
+    {Lw : Nat} (h : XOK P K q k X XA Lw) (hk : K ≤ K') : XOK P K' q k X XA Lw := by
+  intro v b pv a bp d pvar avar bvar env H W hh a1 a2 a3 a4 a5 a6 a7 a8 a9 a10
+  obtain ⟨E', W', hx, rest⟩ := h v b pv a bp d pvar avar bvar env H W hh a1 a2 a3 a4 a5 a6 a7 a8 a9 a10
+  exact ⟨E', W', hx.mono hk, rest⟩
 
 theorem call_body {f : Nat} (hf : f < P.length) {K K' : Nat} (hK : P[f].frame + K' ≤ K) {d : Nat}
     {args : List BExp} (ha : args.length = P[f].nparams) {σ σ₁ : BState}
@@ -150,12 +169,13 @@ theorem call_body {f : Nat} (hf : f < P.length) {K K' : Nat} (hK : P[f].frame + 
   .call hf ha hK hb
 
 /-- the closures `Pg.sem` / `Pg.al` pass to the arms -/
-def selfS (pg : Pg rk) (l r : C) : Bool → BitVec 64 → C → rk.den := fun ch a' b' => if ch then pg.sem r a' b' else pg.sem l a' b'
-def selfA (pg : Pg rk) (l r : C) : Bool → BitVec 64 → C → Nat := fun ch a' b' => if ch then pg.al r a' b' else pg.al l a' b'
+def selfS (pg : Pg rk) (l r me : C) (ρ : List (BitVec 64 × C)) : Cn rk :=
+  ⟨fun ch a' b' => if ch then pg.sem r a' b' else pg.sem l a' b', pg.X, me, ρ⟩
+def selfA (pg : Pg rk) (l r : C) : Ca := ⟨fun ch a' b' => if ch then pg.al r a' b' else pg.al l a' b', pg.XA⟩
 
 /-- the state an arm runs in -/
-structure Cx (K' : Nat) (x : BitVec 64) (l r : C) (a : BitVec 64) (b : C) (env : BEnv) (W : List (BitVec 64))
-    (h : Nat) : Prop where
+structure Cx (fi K' KX Lw : Nat) (nx : List Kd) (me : C) (ρ : List (BitVec 64 × C)) (sl : List Nat) (ks : List Kd)
+    (x : BitVec 64) (l r : C) (a : BitVec 64) (b : C) (env : BEnv) (W : List (BitVec 64)) (h : Nat) : Prop where
   hi : HI W h
   e5 : env 5 = BitVec.ofNat 64 h
   ex : env 14 = x
@@ -163,38 +183,49 @@ structure Cx (K' : Nat) (x : BitVec 64) (l r : C) (a : BitVec 64) (b : C) (env :
   rl : Rp W h (env 15) l
   rr : Rp W h (env 16) r
   rb : Rp W h (env 10) b
-  okl : BodyOK P pg K' l (env 15)
-  okr : BodyOK P pg K' r (env 16)
+  okl : BodyOK P pg fi K' Lw l (env 15)
+  okr : BodyOK P pg fi K' Lw r (env 16)
+  lw : W.length ≤ Lw
+  rme : Rp W h (env 8) me
+  sll : sl.length = ks.length
+  ρl : ρ.length = ks.length
+  rρ : ∀ i (h1 : i < ks.length) (h2 : i < sl.length) (h3 : i < ρ.length), RelK W h ks[i] (env sl[i]) (ks[i].pick ρ[i])
+  okx : ∀ j k, nx[j]? = some k → XOK P KX (fi + 1 + j) k (pg.X j) (pg.XA j) Lw
 
-theorem Cx.step {K' : Nat} {x : BitVec 64} {l r : C} {a : BitVec 64} {b : C} {env env' : BEnv}
-    {W W' : List (BitVec 64)} {h h' : Nat} (c : Cx (P := P) (pg := pg) K' x l r a b env W h) (p : Post W h W' h' env env')
-    (hk : ∀ i, i ∈ [9, 10, 14, 15, 16] → env' i = env i) : Cx (P := P) (pg := pg) K' x l r a b env' W' h' := by
+theorem Cx.step {fi K' KX Lw : Nat} {nx : List Kd} {me : C} {ρ : List (BitVec 64 × C)} {sl : List Nat} {ks : List Kd}
+    {x : BitVec 64} {l r : C} {a : BitVec 64} {b : C} {env env' : BEnv}
+    {W W' : List (BitVec 64)} {h h' : Nat} (c : Cx (P := P) (pg := pg) fi K' KX Lw nx me ρ sl ks x l r a b env W h)
+    (p : Post W h W' h' env env')
+    (hk : ∀ i, i ∈ [8, 9, 10, 14, 15, 16] → env' i = env i) (hs : ∀ s ∈ sl, env' s = env s) :
+    Cx (P := P) (pg := pg) fi K' KX Lw nx me ρ sl ks x l r a b env' W' h' := by
   simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq] at hk
-  obtain ⟨k9, k10, k14, k15, k16⟩ := hk
+  obtain ⟨k8, k9, k10, k14, k15, k16⟩ := hk
   exact ⟨p.hi, p.e5, by rw [k14]; exact c.ex, by rw [k9]; exact c.ea, by rw [k15]; exact c.rl.mono p.hle p.agr,
     by rw [k16]; exact c.rr.mono p.hle p.agr, by rw [k10]; exact c.rb.mono p.hle p.agr, by rw [k15]; exact c.okl,
-    by rw [k16]; exact c.okr⟩
+    by rw [k16]; exact c.okr, by rw [p.len]; exact c.lw, by rw [k8]; exact c.rme.mono p.hle p.agr, c.sll, c.ρl,
+    fun i h1 h2 h3 => by rw [hs _ (List.getElem_mem h2)]; exact (c.rρ i h1 h2 h3).mono p.hle p.agr, c.okx⟩
 
 theorem post_set {W : List (BitVec 64)} {h : Nat} (hi : HI W h) {env : BEnv} (h5 : env 5 = BitVec.ofNat 64 h)
     {d : Nat} (hd : 8 ≤ d) (y : BitVec 64) : Post W h W h env (env.set d y) :=
   ⟨rfl, Agree.refl _ _, hi, Nat.le_refl _, by rw [set_ne' _ _ (by omega)]; exact h5,
     fun i hi _ => set_ne' _ _ (by omega)⟩
 
-theorem fFn_body (pg : Pg rk) : (fFn pg).body = .seq (.base (asg 11 (kE 1))) (fLoop pg) := rfl
+theorem fFn_frame (fi nl : Nat) (pg : Pg rk) : (fFn fi nl pg).frame = 8 * (nl + 1) := rfl
 
-theorem call_ok (hP3 : ∃ hf : 3 < P.length, P[3] = fFn pg) {K K' : Nat} (hK : 136 + K' ≤ K) {v b' : C}
-    {pv a' bp : BitVec 64} {d pvar avar bvar : Nat} (ok : BodyOK P pg K' v pv) {env : BEnv} {H : Heap}
-    {W : List (BitVec 64)} {h : Nat} (hi : HI W h) (h5 : env 5 = BitVec.ofNat 64 h) (hp : env pvar = pv)
-    (ha : env avar = a') (hb : env bvar = bp) (rv : Rp W h pv v) (rb : Rp W h bp b')
+theorem call_ok {fi nl : Nat} (hPf : ∃ hf : fi < P.length, P[fi] = fFn fi nl pg) {K K' Lw : Nat}
+    (hK : 8 * (nl + 1) + K' ≤ K) {v b' : C}
+    {pv a' bp : BitVec 64} {d pvar avar bvar : Nat} (ok : BodyOK P pg fi K' Lw v pv) {env : BEnv} {H : Heap}
+    {W : List (BitVec 64)} {h : Nat} (hw : W.length ≤ Lw) (hi : HI W h) (h5 : env 5 = BitVec.ofNat 64 h)
+    (hp : env pvar = pv) (ha : env avar = a') (hb : env bvar = bp) (rv : Rp W h pv v) (rb : Rp W h bp b')
     (cap : h + 4 * pg.al v a' b' ≤ W.length) (hd : 8 ≤ d) :
-    ∃ E' W', CExec P K (.call d 3 [vE pvar, vE avar, vE bvar]) ⟨env, H, [W]⟩ ⟨E', H, [W']⟩ ∧
+    ∃ E' W', CExec P K (.call d fi [vE pvar, vE avar, vE bvar]) ⟨env, H, [W]⟩ ⟨E', H, [W']⟩ ∧
       Post W h W' (h + 4 * pg.al v a' b') env E' ∧ (∀ i, 8 ≤ i → i ≠ d → E' i = env i) ∧
       RelK W' (h + 4 * pg.al v a' b') rk (E' d) (pg.sem v a' b') := by
-  obtain ⟨hf3, hP⟩ := hP3
-  obtain ⟨E'', W', hx, hpost, hrel⟩ := ok a' bp b' env H W h hi rv rb cap h5
+  obtain ⟨hf3, hP⟩ := hPf
+  obtain ⟨E'', W', hx, hpost, hrel⟩ := ok a' bp b' env H W h hw hi rv rb cap h5
   have hargs : [vE pvar, vE avar, vE bvar].map (·.denote env) = [pv, a', bp] := by
     simp [vE, BExp.denote, hp, ha, hb]
-  have hc := call_body (P := P) (f := 3) (K := K) (K' := K') hf3 (by rw [hP]; exact hK) (d := d)
+  have hc := call_body (P := P) (f := fi) (K := K) (K' := K') hf3 (by rw [hP]; exact hK) (d := d)
     (args := [vE pvar, vE avar, vE bvar]) (by rw [hP]; rfl) (σ := ⟨env, H, [W]⟩) (σ₁ := ⟨E'', H, [W']⟩)
     (by rw [hP]; simp only [hargs]; exact hx)
   rw [hP] at hc
@@ -204,39 +235,88 @@ theorem call_ok (hP3 : ∃ hf : 3 < P.length, P[3] = fFn pg) {K K' : Nat} (hK : 
   · simp only; rw [set_ne' _ _ hid]; simp only [retEnv, if_neg (show ¬ i < 8 by omega)]
   · simp only; rw [set_eq']; exact hrel
 
-theorem selfS_eq (pg : Pg rk) (l r : C) (ch : Bool) (a' : BitVec 64) (b' : C) :
-    selfS pg l r ch a' b' = pg.sem (if ch then r else l) a' b' := by cases ch <;> rfl
+theorem selfS_eq (pg : Pg rk) (l r me : C) (ρ : List (BitVec 64 × C)) (ch : Bool) (a' : BitVec 64) (b' : C) :
+    (selfS pg l r me ρ).f ch a' b' = pg.sem (if ch then r else l) a' b' := by cases ch <;> rfl
 theorem selfA_eq (pg : Pg rk) (l r : C) (ch : Bool) (a' : BitVec 64) (b' : C) :
-    selfA pg l r ch a' b' = pg.al (if ch then r else l) a' b' := by cases ch <;> rfl
+    (selfA pg l r).f ch a' b' = pg.al (if ch then r else l) a' b' := by cases ch <;> rfl
+
+theorem rp_toNat {W : List (BitVec 64)} {h : Nat} {p : BitVec 64} {v : C} (hi : HI W h) (rv : Rp W h p v) :
+    p.toNat < 2 ^ 60 := by
+  have := rv.lt4 hi.h4; have := hi.hle; have := hi.big; omega
+
+theorem addE_ptr {env : BEnv} {n c : Nat} {p : BitVec 64} (hp : env n = p) (hl : p.toNat < 2 ^ 60) (hc : c < 4) :
+    ((addE n c).denote env).toNat = p.toNat + c := by
+  simp only [addE, kE, BExp.denote, Op.eval, hp, BitVec.toNat_add, BitVec.toNat_ofNat]; omega
+
+theorem load64_exec {v : Nat} {i : BExp} {env : BEnv} {H : Heap} {W : List (BitVec 64)} {j : Nat} {w : BitVec 64}
+    (hi : (i.denote env).toNat = j) (hw : W[j]? = some w) :
+    BExec (.load64 v 0 i) ⟨env, H, [W]⟩ ⟨env.set v w, H, [W]⟩ := by
+  obtain ⟨hj, rfl⟩ := List.getElem?_eq_some_iff.1 hw
+  have := BExec.load64 (v := v) (b := 0) (i := i) (σ := ⟨env, H, [W]⟩) (by simp) (by simp; omega)
+  simp only [List.getElem_cons_zero, hi] at this
+  exact this
+
+theorem getD_eq {α : Type} (L : List α) (i : Nat) (d : α) (h : i < L.length) : L.getD i d = L[i] := by
+  simp [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem h]
+
+theorem selfS_X (pg : Pg rk) (l r me : C) (ρ : List (BitVec 64 × C)) : (selfS pg l r me ρ).X = pg.X := rfl
+theorem selfA_X (pg : Pg rk) (l r : C) : (selfA pg l r).X = pg.XA := rfl
+theorem selfS_me (pg : Pg rk) (l r me : C) (ρ : List (BitVec 64 × C)) : (selfS pg l r me ρ).me = me := rfl
+theorem selfS_ρ (pg : Pg rk) (l r me : C) (ρ : List (BitVec 64 × C)) : (selfS pg l r me ρ).ρ = ρ := rfl
+theorem selfS_with (pg : Pg rk) (l r me : C) (ρ : List (BitVec 64 × C)) (q : BitVec 64 × C) :
+    (⟨(selfS pg l r me ρ).f, (selfS pg l r me ρ).X, (selfS pg l r me ρ).me, q :: (selfS pg l r me ρ).ρ⟩ : Cn rk) =
+      selfS pg l r me (q :: ρ) := rfl
 
 /-- **Expressions**: `comp e d n` leaves the value of `e` in `v_d`, allocates `alE e` cells, keeps the variables
 below `n` other than `d` -/
-theorem comp_ok (hP3 : ∃ hf : 3 < P.length, P[3] = fFn pg) {K K' : Nat} (hK : 136 + K' ≤ K)
-    {x : BitVec 64} {l r : C} {a : BitVec 64} {b : C} :
-    ∀ {k : Kd} (e : E rk k) (d n : Nat) (env : BEnv) (H : Heap) (W : List (BitVec 64)) (h : Nat),
-      8 ≤ d → d ∉ [9, 10, 14, 15, 16] → 17 ≤ n → e.tags < 256 → Cx (P := P) (pg := pg) K' x l r a b env W h →
-      h + 4 * alE (selfS pg l r) (selfA pg l r) x l r a b e ≤ W.length →
-      ∃ E' W', CExec P K (comp 3 e d n) ⟨env, H, [W]⟩ ⟨E', H, [W']⟩ ∧
-        Post W h W' (h + 4 * alE (selfS pg l r) (selfA pg l r) x l r a b e) env E' ∧
+theorem comp_ok {fi nl : Nat} (hPf : ∃ hf : fi < P.length, P[fi] = fFn fi nl pg) {K K' KX Lw : Nat}
+    (hK : 8 * (nl + 1) + K' ≤ K) (hKX : KX ≤ K) {nx : List Kd}
+    {x : BitVec 64} {l r me : C} {a : BitVec 64} {b : C} :
+    ∀ {k : Kd} (e : E rk k) (ρ : List (BitVec 64 × C)) (sl : List Nat) (ks : List Kd) (d n : Nat) (env : BEnv)
+      (H : Heap) (W : List (BitVec 64)) (h : Nat),
+      8 ≤ d → d ∉ [8, 9, 10, 14, 15, 16] → d ∉ sl → d < n → 17 ≤ n → (∀ s ∈ sl, 17 ≤ s ∧ s < n) →
+      e.tags < 256 → e.okc ks nx = true →
+      Cx (P := P) (pg := pg) fi K' KX Lw nx me ρ sl ks x l r a b env W h →
+      h + 4 * alE (selfS pg l r me ρ) (selfA pg l r) x l r a b e ≤ W.length →
+      ∃ E' W', CExec P K (comp fi sl e d n) ⟨env, H, [W]⟩ ⟨E', H, [W']⟩ ∧
+        Post W h W' (h + 4 * alE (selfS pg l r me ρ) (selfA pg l r) x l r a b e) env E' ∧
         (∀ i, i < n → i ≠ d → 8 ≤ i → E' i = env i) ∧
-        RelK W' (h + 4 * alE (selfS pg l r) (selfA pg l r) x l r a b e) k (E' d) (ev (selfS pg l r) x l r a b e) := by
-  obtain ⟨hf3, hP⟩ := hP3
+        RelK W' (h + 4 * alE (selfS pg l r me ρ) (selfA pg l r) x l r a b e) k (E' d)
+          (ev (selfS pg l r me ρ) x l r a b e) := by
+  obtain ⟨hf3, hP⟩ := hPf
   intro k e
   induction e with
-  | x | a | k _ | l | r | b | nul =>
-    intro d n env H W h hd hdk hn htg c hcap
+  | x | a | k _ | l | r | b | nul | me =>
+    intro ρ sl ks d n env H W h hd hdk hds hdn hn hsl htg hok c hcap
     simp only [List.mem_cons, List.not_mem_nil, or_false] at hdk
     refine ⟨_, W, .base (asg_exec _ _ _), post_set c.hi c.e5 hd _, fun i _ hi _ => set_ne' _ _ hi, ?_⟩
-    simp only [alE, Nat.mul_zero, Nat.add_zero, ev, set_eq', vE, kE, BExp.denote]
-    first | exact c.ex | exact c.ea | rfl | exact c.rl | exact c.rr | exact c.rb | exact .z
+    simp only [alE, Nat.mul_zero, Nat.add_zero, ev, set_eq', vE, kE, BExp.denote, selfS_me]
+    first | exact c.ex | exact c.ea | rfl | exact c.rl | exact c.rr | exact c.rb | exact .z | exact c.rme
+  | var i kk =>
+    intro ρ sl ks d n env H W h hd hdk hds hdn hn hsl htg hok c hcap
+    simp only [E.okc, beq_iff_eq] at hok
+    have hi1 : i < ks.length := (List.getElem?_eq_some_iff.1 hok).1
+    have hkk : ks[i] = kk := (List.getElem?_eq_some_iff.1 hok).2
+    have hi2 : i < sl.length := by rw [c.sll]; exact hi1
+    have hi3 : i < ρ.length := by rw [c.ρl]; exact hi1
+    refine ⟨_, W, .base (asg_exec _ _ _), post_set c.hi c.e5 hd _, fun i' _ hi _ => set_ne' _ _ hi, ?_⟩
+    simp only [alE, Nat.mul_zero, Nat.add_zero, ev, set_eq', vE, BExp.denote, selfS_ρ]
+    rw [getD_eq sl i 0 hi2, getD_eq ρ i _ hi3]
+    have := c.rρ i hi1 hi2 hi3
+    rw [hkk] at this; exact this
   | bin op e₁ e₂ ih₁ ih₂ =>
-    intro d n env H W h hd hdk hn htg c hcap
+    intro ρ sl ks d n env H W h hd hdk hds hdn hn hsl htg hok c hcap
     simp only [alE] at hcap ⊢
     simp only [E.tags] at htg
-    obtain ⟨E₁, W₁, x₁, p₁, k₁, v₁⟩ := ih₁ n (n + 1) env H W h (by omega) (by simp; omega) (by omega) (by omega) c (by omega)
+    simp only [E.okc, Bool.and_eq_true] at hok
+    obtain ⟨E₁, W₁, x₁, p₁, k₁, v₁⟩ := ih₁ ρ sl ks n (n + 1) env H W h (by omega) (by simp; omega)
+      (fun h' => by have := hsl _ h'; omega) (by omega) (by omega) (fun s hs => by have := hsl s hs; omega) (by omega)
+      hok.1 c (by omega)
     have c₁ := c.step p₁ (by intro i hi; simp at hi; exact k₁ i (by omega) (by omega) (by omega))
-    obtain ⟨E₂, W₂, x₂, p₂, k₂, v₂⟩ := ih₂ (n + 1) (n + 2) E₁ H W₁ _ (by omega) (by simp; omega) (by omega) (by omega) c₁
-      (by have := p₁.len; omega)
+      (fun s hs => by have := hsl s hs; exact k₁ s (by omega) (by omega) (by omega))
+    obtain ⟨E₂, W₂, x₂, p₂, k₂, v₂⟩ := ih₂ ρ sl ks (n + 1) (n + 2) E₁ H W₁ _ (by omega) (by simp; omega)
+      (fun h' => by have := hsl _ h'; omega) (by omega) (by omega) (fun s hs => by have := hsl s hs; omega) (by omega)
+      hok.2 c₁ (by have := p₁.len; omega)
     have p₂' := p₁.trans p₂
     refine ⟨_, W₂, .seq x₁ (.seq x₂ (.base (asg_exec _ _ _))), ?_, fun i hi hid h8 => ?_, ?_⟩
     · rw [Nat.mul_add, ← Nat.add_assoc]; exact p₂'.trans (post_set p₂.hi p₂.e5 hd _)
@@ -245,20 +325,27 @@ theorem comp_ok (hP3 : ∃ hf : 3 < P.length, P[3] = fFn pg) {K K' : Nat} (hK : 
       rw [k₂ n (by omega) (by omega) (by omega)]
       simp only [RelK] at v₁ v₂; rw [v₁, v₂]
   | mk t ex el er ihx ihl ihr =>
-    intro d n env H W h hd hdk hn htg c hcap
+    intro ρ sl ks d n env H W h hd hdk hds hdn hn hsl htg hok c hcap
     simp only [alE] at hcap ⊢
     simp only [E.tags] at htg
-    obtain ⟨E₁, W₁, x₁, p₁, k₁, v₁⟩ := ihx n (n + 1) env H W h (by omega) (by simp; omega) (by omega) (by omega) c (by omega)
+    simp only [E.okc, Bool.and_eq_true] at hok
+    obtain ⟨E₁, W₁, x₁, p₁, k₁, v₁⟩ := ihx ρ sl ks n (n + 1) env H W h (by omega) (by simp; omega)
+      (fun h' => by have := hsl _ h'; omega) (by omega) (by omega) (fun s hs => by have := hsl s hs; omega) (by omega)
+      hok.1.1 c (by omega)
     have c₁ := c.step p₁ (by intro i hi; simp at hi; exact k₁ i (by omega) (by omega) (by omega))
-    obtain ⟨E₂, W₂, x₂, p₂, k₂, v₂⟩ := ihl (n + 1) (n + 2) E₁ H W₁ _ (by omega) (by simp; omega) (by omega) (by omega) c₁
-      (by have := p₁.len; omega)
+      (fun s hs => by have := hsl s hs; exact k₁ s (by omega) (by omega) (by omega))
+    obtain ⟨E₂, W₂, x₂, p₂, k₂, v₂⟩ := ihl ρ sl ks (n + 1) (n + 2) E₁ H W₁ _ (by omega) (by simp; omega)
+      (fun h' => by have := hsl _ h'; omega) (by omega) (by omega) (fun s hs => by have := hsl s hs; omega) (by omega)
+      hok.1.2 c₁ (by have := p₁.len; omega)
     have c₂ := c₁.step p₂ (by intro i hi; simp at hi; exact k₂ i (by omega) (by omega) (by omega))
-    obtain ⟨E₃, W₃, x₃, p₃, k₃, v₃⟩ := ihr (n + 2) (n + 3) E₂ H W₂ _ (by omega) (by simp; omega) (by omega) (by omega) c₂
-      (by have := p₁.len; have := p₂.len; omega)
+      (fun s hs => by have := hsl s hs; exact k₂ s (by omega) (by omega) (by omega))
+    obtain ⟨E₃, W₃, x₃, p₃, k₃, v₃⟩ := ihr ρ sl ks (n + 2) (n + 3) E₂ H W₂ _ (by omega) (by simp; omega)
+      (fun h' => by have := hsl _ h'; omega) (by omega) (by omega) (fun s hs => by have := hsl s hs; omega) (by omega)
+      hok.2 c₂ (by have := p₁.len; have := p₂.len; omega)
     have p₃' := (p₁.trans p₂).trans p₃
-    generalize alE (selfS pg l r) (selfA pg l r) x l r a b ex = A1 at *
-    generalize alE (selfS pg l r) (selfA pg l r) x l r a b el = A2 at *
-    generalize alE (selfS pg l r) (selfA pg l r) x l r a b er = A3 at *
+    generalize alE (selfS pg l r me ρ) (selfA pg l r) x l r a b ex = A1 at *
+    generalize alE (selfS pg l r me ρ) (selfA pg l r) x l r a b el = A2 at *
+    generalize alE (selfS pg l r me ρ) (selfA pg l r) x l r a b er = A3 at *
     have hb3 : h + 4 * A1 + 4 * A2 + 4 * A3 + 4 ≤ W₃.length := by rw [p₃'.len]; omega
     rw [show h + 4 * (A1 + A2 + A3 + 1) = h + 4 * A1 + 4 * A2 + 4 * A3 + 4 by omega]
     refine ⟨_, _, .seq x₁ (.seq x₂ (.seq x₃ (.base (alloc_exec _ _ _ _ d (by omega) p₃.e5 hb3 p₃.hi.big)))),
@@ -270,82 +357,208 @@ theorem comp_ok (hP3 : ∃ hf : 3 < P.length, P[3] = fFn pg) {K K' : Nat} (hK : 
         k₁ i (by omega) (by omega) h8]
     · simp only [RelK, ev]
       rw [set_ne' _ _ (by omega), set_eq']
-      have e1 : E₃ n = ev (selfS pg l r) x l r a b ex := by
+      have e1 : E₃ n = ev (selfS pg l r me ρ) x l r a b ex := by
         rw [k₃ n (by omega) (by omega) (by omega), k₂ n (by omega) (by omega) (by omega)]; exact v₁
       have e2 := k₃ (n + 1) (by omega) (by omega) (by omega)
       have hkt : (kE t).denote E₃ = BitVec.ofNat 64 t := rfl
       rw [hkt, e1]
-      have r2 : Rp W₃ (h + 4 * A1 + 4 * A2 + 4 * A3) (E₃ (n + 1)) (ev (selfS pg l r) x l r a b el) := by
+      have r2 : Rp W₃ (h + 4 * A1 + 4 * A2 + 4 * A3) (E₃ (n + 1)) (ev (selfS pg l r me ρ) x l r a b el) := by
         rw [e2]; exact v₂.mono p₃.hle p₃.agr
-      exact Rp_put p₃.hi (by omega) hb3 (x := ev (selfS pg l r) x l r a b ex) r2 v₃
+      exact Rp_put p₃.hi (by omega) hb3 (x := ev (selfS pg l r me ρ) x l r a b ex) r2 v₃
   | call ch ea eb iha ihb =>
-    intro d n env H W h hd hdk hn htg c hcap
+    intro ρ sl ks d n env H W h hd hdk hds hdn hn hsl htg hok c hcap
     simp only [alE] at hcap ⊢
     simp only [E.tags] at htg
-    obtain ⟨E₁, W₁, x₁, p₁, k₁, v₁⟩ := iha n (n + 1) env H W h (by omega) (by simp; omega) (by omega) (by omega) c (by omega)
+    simp only [E.okc, Bool.and_eq_true] at hok
+    obtain ⟨E₁, W₁, x₁, p₁, k₁, v₁⟩ := iha ρ sl ks n (n + 1) env H W h (by omega) (by simp; omega)
+      (fun h' => by have := hsl _ h'; omega) (by omega) (by omega) (fun s hs => by have := hsl s hs; omega) (by omega)
+      hok.1 c (by omega)
     have c₁ := c.step p₁ (by intro i hi; simp at hi; exact k₁ i (by omega) (by omega) (by omega))
-    obtain ⟨E₂, W₂, x₂, p₂, k₂, v₂⟩ := ihb (n + 1) (n + 2) E₁ H W₁ _ (by omega) (by simp; omega) (by omega) (by omega) c₁
-      (by have := p₁.len; omega)
+      (fun s hs => by have := hsl s hs; exact k₁ s (by omega) (by omega) (by omega))
+    obtain ⟨E₂, W₂, x₂, p₂, k₂, v₂⟩ := ihb ρ sl ks (n + 1) (n + 2) E₁ H W₁ _ (by omega) (by simp; omega)
+      (fun h' => by have := hsl _ h'; omega) (by omega) (by omega) (fun s hs => by have := hsl s hs; omega) (by omega)
+      hok.2 c₁ (by have := p₁.len; omega)
     have c₂ := c₁.step p₂ (by intro i hi; simp at hi; exact k₂ i (by omega) (by omega) (by omega))
+      (fun s hs => by have := hsl s hs; exact k₂ s (by omega) (by omega) (by omega))
     have p₂' := p₁.trans p₂
-    generalize alE (selfS pg l r) (selfA pg l r) x l r a b ea = A1 at *
-    generalize alE (selfS pg l r) (selfA pg l r) x l r a b eb = A2 at *
+    generalize alE (selfS pg l r me ρ) (selfA pg l r) x l r a b ea = A1 at *
+    generalize alE (selfS pg l r me ρ) (selfA pg l r) x l r a b eb = A2 at *
     rw [selfA_eq] at hcap ⊢; simp only [ev]; rw [selfS_eq]
-    have hok : BodyOK P pg K' (if ch then r else l) (E₂ (if ch then 16 else 15)) := by cases ch <;>
+    have hok' : BodyOK P pg fi K' Lw (if ch then r else l) (E₂ (if ch then 16 else 15)) := by cases ch <;>
       first | exact c₂.okl | exact c₂.okr
     have hrv : Rp W₂ (h + 4 * A1 + 4 * A2) (E₂ (if ch then 16 else 15)) (if ch then r else l) := by
       cases ch <;> first | exact c₂.rl | exact c₂.rr
-    have ea' : E₂ n = ev (selfS pg l r) x l r a b ea := by
+    have ea' : E₂ n = ev (selfS pg l r me ρ) x l r a b ea := by
       rw [k₂ n (by omega) (by omega) (by omega)]; exact v₁
-    have rb' : Rp W₂ (h + 4 * A1 + 4 * A2) (E₂ (n + 1)) (ev (selfS pg l r) x l r a b eb) := v₂
-    obtain ⟨E₃, W₃, x₃, p₃, k₃, v₃⟩ := call_ok ⟨hf3, hP⟩ hK (d := d) hok p₂.hi p₂.e5 rfl ea' rfl hrv rb'
+    have rb' : Rp W₂ (h + 4 * A1 + 4 * A2) (E₂ (n + 1)) (ev (selfS pg l r me ρ) x l r a b eb) := v₂
+    obtain ⟨E₃, W₃, x₃, p₃, k₃, v₃⟩ := call_ok ⟨hf3, hP⟩ hK (d := d) hok' c₂.lw p₂.hi p₂.e5 rfl ea' rfl hrv rb'
       (by rw [p₂'.len]; omega) hd
     refine ⟨_, W₃, .seq x₁ (.seq x₂ x₃), ?_, fun i hi hid h8 => ?_, ?_⟩
-    · rw [show h + 4 * (A1 + A2 + pg.al (if ch then r else l) (ev (selfS pg l r) x l r a b ea)
-        (ev (selfS pg l r) x l r a b eb)) = h + 4 * A1 + 4 * A2 + 4 * pg.al (if ch then r else l)
-        (ev (selfS pg l r) x l r a b ea) (ev (selfS pg l r) x l r a b eb) by omega]
+    · rw [show h + 4 * (A1 + A2 + pg.al (if ch then r else l) (ev (selfS pg l r me ρ) x l r a b ea)
+        (ev (selfS pg l r me ρ) x l r a b eb)) = h + 4 * A1 + 4 * A2 + 4 * pg.al (if ch then r else l)
+        (ev (selfS pg l r me ρ) x l r a b ea) (ev (selfS pg l r me ρ) x l r a b eb) by omega]
       exact p₂'.trans p₃
     · rw [k₃ i h8 hid, k₂ i (by omega) (by omega) h8, k₁ i (by omega) (by omega) h8]
-    · rw [show h + 4 * (A1 + A2 + pg.al (if ch then r else l) (ev (selfS pg l r) x l r a b ea)
-        (ev (selfS pg l r) x l r a b eb)) = h + 4 * A1 + 4 * A2 + 4 * pg.al (if ch then r else l)
-        (ev (selfS pg l r) x l r a b ea) (ev (selfS pg l r) x l r a b eb) by omega]
+    · rw [show h + 4 * (A1 + A2 + pg.al (if ch then r else l) (ev (selfS pg l r me ρ) x l r a b ea)
+        (ev (selfS pg l r me ρ) x l r a b eb)) = h + 4 * A1 + 4 * A2 + 4 * pg.al (if ch then r else l)
+        (ev (selfS pg l r me ρ) x l r a b ea) (ev (selfS pg l r me ρ) x l r a b eb) by omega]
       exact v₃
   | ite c e₁ e₂ ihc ih₁ ih₂ =>
-    intro d n env H W h hd hdk hn htg cx hcap
+    intro ρ sl ks d n env H W h hd hdk hds hdn hn hsl htg hok cx hcap
     simp only [alE] at hcap ⊢
     simp only [E.tags] at htg
-    obtain ⟨E₁, W₁, x₁, p₁, k₁, v₁⟩ := ihc n (n + 1) env H W h (by omega) (by simp; omega) (by omega) (by omega) cx
-      (by omega)
+    simp only [E.okc, Bool.and_eq_true] at hok
+    obtain ⟨E₁, W₁, x₁, p₁, k₁, v₁⟩ := ihc ρ sl ks n (n + 1) env H W h (by omega) (by simp; omega)
+      (fun h' => by have := hsl _ h'; omega) (by omega) (by omega) (fun s hs => by have := hsl s hs; omega) (by omega)
+      hok.1.1 cx (by omega)
     have c₁ := cx.step p₁ (by intro i hi; simp at hi; exact k₁ i (by omega) (by omega) (by omega))
+      (fun s hs => by have := hsl s hs; exact k₁ s (by omega) (by omega) (by omega))
     simp only [RelK] at v₁
     simp only [ev]
-    generalize alE (selfS pg l r) (selfA pg l r) x l r a b c = A1 at *
-    by_cases hz : ev (selfS pg l r) x l r a b c = 0
+    generalize alE (selfS pg l r me ρ) (selfA pg l r) x l r a b c = A1 at *
+    by_cases hz : ev (selfS pg l r me ρ) x l r a b c = 0
     · rw [if_pos hz] at hcap ⊢; rw [if_pos hz]
-      obtain ⟨E₂, W₂, x₂, p₂, k₂, v₂⟩ := ih₂ d (n + 1) E₁ H W₁ _ hd hdk (by omega) (by omega) c₁
-        (by have := p₁.len; omega)
+      obtain ⟨E₂, W₂, x₂, p₂, k₂, v₂⟩ := ih₂ ρ sl ks d (n + 1) E₁ H W₁ _ hd hdk hds (by omega) (by omega)
+        (fun s hs => by have := hsl s hs; omega) (by omega) hok.2 c₁ (by have := p₁.len; omega)
       refine ⟨E₂, W₂, .seq x₁ (.iteF (by simp only [vE, BExp.denote]; rw [v₁, hz]) x₂), ?_, fun i hi hid h8 => ?_, ?_⟩
       · rw [Nat.mul_add, ← Nat.add_assoc]; exact p₁.trans p₂
       · rw [k₂ i (by omega) hid h8, k₁ i (by omega) (by omega) h8]
       · rw [Nat.mul_add, ← Nat.add_assoc]; exact v₂
     · rw [if_neg hz] at hcap ⊢; rw [if_neg hz]
-      obtain ⟨E₂, W₂, x₂, p₂, k₂, v₂⟩ := ih₁ d (n + 1) E₁ H W₁ _ hd hdk (by omega) (by omega) c₁
-        (by have := p₁.len; omega)
-      refine ⟨E₂, W₂, .seq x₁ (.iteT (by simp only [vE, BExp.denote]; rw [v₁]; exact hz) x₂), ?_, fun i hi hid h8 => ?_, ?_⟩
+      obtain ⟨E₂, W₂, x₂, p₂, k₂, v₂⟩ := ih₁ ρ sl ks d (n + 1) E₁ H W₁ _ hd hdk hds (by omega) (by omega)
+        (fun s hs => by have := hsl s hs; omega) (by omega) hok.1.2 c₁ (by have := p₁.len; omega)
+      refine ⟨E₂, W₂, .seq x₁ (.iteT (by simp only [vE, BExp.denote]; rw [v₁]; exact hz) x₂), ?_,
+        fun i hi hid h8 => ?_, ?_⟩
       · rw [Nat.mul_add, ← Nat.add_assoc]; exact p₁.trans p₂
       · rw [k₂ i (by omega) hid h8, k₁ i (by omega) (by omega) h8]
       · rw [Nat.mul_add, ← Nat.add_assoc]; exact v₂
-
+  | fw i e ih =>
+    intro ρ sl ks d n env H W h hd hdk hds hdn hn hsl htg hok c hcap
+    simp only [alE] at hcap ⊢
+    simp only [E.tags] at htg
+    simp only [E.okc] at hok
+    obtain ⟨E₁, W₁, x₁, p₁, k₁, v₁⟩ := ih ρ sl ks n (n + 1) env H W h (by omega) (by simp; omega)
+      (fun h' => by have := hsl _ h'; omega) (by omega) (by omega) (fun s hs => by have := hsl s hs; omega) (by omega)
+      hok c hcap
+    simp only [RelK] at v₁
+    obtain ⟨_, e0, e1, -, -⟩ := v₁.read p₁.hi.z0
+    have hl := rp_toNat p₁.hi v₁
+    have hw : W₁[(E₁ n).toNat + (if i then 1 else 0)]? = some (ev (selfS pg l r me ρ) x l r a b (.fw i e)) := by
+      cases i
+      · simpa [ev] using e0
+      · simpa [ev] using e1
+    refine ⟨_, W₁, .seq x₁ (.base (load64_exec (addE_ptr rfl hl (by split <;> omega)) hw)), ?_,
+      fun i' hi' hid h8 => ?_, ?_⟩
+    · exact p₁.trans (post_set p₁.hi p₁.e5 hd _)
+    · rw [set_ne' _ _ hid, k₁ i' (by omega) (by omega) h8]
+    · simp only [RelK]; rw [set_eq']
+  | ft ch e ih =>
+    intro ρ sl ks d n env H W h hd hdk hds hdn hn hsl htg hok c hcap
+    simp only [alE] at hcap ⊢
+    simp only [E.tags] at htg
+    simp only [E.okc] at hok
+    obtain ⟨E₁, W₁, x₁, p₁, k₁, v₁⟩ := ih ρ sl ks n (n + 1) env H W h (by omega) (by simp; omega)
+      (fun h' => by have := hsl _ h'; omega) (by omega) (by omega) (fun s hs => by have := hsl s hs; omega) (by omega)
+      hok c hcap
+    simp only [RelK] at v₁
+    obtain ⟨_, _, _, ⟨pl, e2, rl'⟩, ⟨pr, e3, rr'⟩⟩ := v₁.read p₁.hi.z0
+    have hl := rp_toNat p₁.hi v₁
+    obtain ⟨w, hw, rw'⟩ : ∃ w, W₁[(E₁ n).toNat + (if ch then 3 else 2)]? = some w ∧
+        Rp W₁ (h + 4 * alE (selfS pg l r me ρ) (selfA pg l r) x l r a b e) w
+          (ev (selfS pg l r me ρ) x l r a b (.ft ch e)) := by
+      cases ch
+      · exact ⟨pl, by simpa using e2, by simpa [ev] using rl'⟩
+      · exact ⟨pr, by simpa using e3, by simpa [ev] using rr'⟩
+    refine ⟨_, W₁, .seq x₁ (.base (load64_exec (addE_ptr rfl hl (by split <;> omega)) hw)), ?_,
+      fun i' hi' hid h8 => ?_, ?_⟩
+    · exact p₁.trans (post_set p₁.hi p₁.e5 hd _)
+    · rw [set_ne' _ _ hid, k₁ i' (by omega) (by omega) h8]
+    · simp only [RelK]; rw [set_eq']; exact rw'
+  | ext j kk et ea eb iht iha ihb =>
+    intro ρ sl ks d n env H W h hd hdk hds hdn hn hsl htg hok c hcap
+    simp only [alE] at hcap ⊢
+    simp only [E.tags] at htg
+    simp only [E.okc, Bool.and_eq_true, beq_iff_eq] at hok
+    obtain ⟨⟨⟨hj, hok1⟩, hok2⟩, hok3⟩ := hok
+    obtain ⟨E₁, W₁, x₁, p₁, k₁, v₁⟩ := iht ρ sl ks n (n + 1) env H W h (by omega) (by simp; omega)
+      (fun h' => by have := hsl _ h'; omega) (by omega) (by omega) (fun s hs => by have := hsl s hs; omega) (by omega)
+      hok1 c (by omega)
+    have c₁ := c.step p₁ (by intro i hi; simp at hi; exact k₁ i (by omega) (by omega) (by omega))
+      (fun s hs => by have := hsl s hs; exact k₁ s (by omega) (by omega) (by omega))
+    obtain ⟨E₂, W₂, x₂, p₂, k₂, v₂⟩ := iha ρ sl ks (n + 1) (n + 2) E₁ H W₁ _ (by omega) (by simp; omega)
+      (fun h' => by have := hsl _ h'; omega) (by omega) (by omega) (fun s hs => by have := hsl s hs; omega) (by omega)
+      hok2 c₁ (by have := p₁.len; omega)
+    have c₂ := c₁.step p₂ (by intro i hi; simp at hi; exact k₂ i (by omega) (by omega) (by omega))
+      (fun s hs => by have := hsl s hs; exact k₂ s (by omega) (by omega) (by omega))
+    obtain ⟨E₃, W₃, x₃, p₃, k₃, v₃⟩ := ihb ρ sl ks (n + 2) (n + 3) E₂ H W₂ _ (by omega) (by simp; omega)
+      (fun h' => by have := hsl _ h'; omega) (by omega) (by omega) (fun s hs => by have := hsl s hs; omega) (by omega)
+      hok3 c₂ (by have := p₁.len; have := p₂.len; omega)
+    have c₃ := c₂.step p₃ (by intro i hi; simp at hi; exact k₃ i (by omega) (by omega) (by omega))
+      (fun s hs => by have := hsl s hs; exact k₃ s (by omega) (by omega) (by omega))
+    have p₃' := (p₁.trans p₂).trans p₃
+    rw [selfA_X] at hcap ⊢; simp only [ev]; rw [selfS_X]
+    generalize alE (selfS pg l r me ρ) (selfA pg l r) x l r a b et = A1 at *
+    generalize alE (selfS pg l r me ρ) (selfA pg l r) x l r a b ea = A2 at *
+    generalize alE (selfS pg l r me ρ) (selfA pg l r) x l r a b eb = A3 at *
+    have et' : Rp W₃ (h + 4 * A1 + 4 * A2 + 4 * A3) (E₃ n) (ev (selfS pg l r me ρ) x l r a b et) := by
+      rw [k₃ n (by omega) (by omega) (by omega), k₂ n (by omega) (by omega) (by omega)]
+      exact (v₁.mono p₂.hle p₂.agr).mono p₃.hle p₃.agr
+    have ea' : E₃ (n + 1) = ev (selfS pg l r me ρ) x l r a b ea := by
+      rw [k₃ (n + 1) (by omega) (by omega) (by omega)]; exact v₂
+    obtain ⟨E₄, W₄, x₄, p₄, k₄, v₄⟩ := c₃.okx j kk hj _ _ _ _ _ d n (n + 1) (n + 2) E₃ H W₃ _ hd c₃.lw p₃.hi p₃.e5
+      rfl ea' rfl et' v₃ (by rw [p₃'.len]; omega)
+    refine ⟨_, W₄, .seq x₁ (.seq x₂ (.seq x₃ (x₄.mono hKX))), ?_, fun i hi hid h8 => ?_, ?_⟩
+    · rw [show h + 4 * (A1 + A2 + A3 + pg.XA j (ev (selfS pg l r me ρ) x l r a b et) (ev (selfS pg l r me ρ) x l r a b ea)
+        (ev (selfS pg l r me ρ) x l r a b eb)) = h + 4 * A1 + 4 * A2 + 4 * A3 + 4 * pg.XA j
+        (ev (selfS pg l r me ρ) x l r a b et) (ev (selfS pg l r me ρ) x l r a b ea) (ev (selfS pg l r me ρ) x l r a b eb)
+        by omega]
+      exact p₃'.trans p₄
+    · rw [k₄ i h8 hid, k₃ i (by omega) (by omega) h8, k₂ i (by omega) (by omega) h8, k₁ i (by omega) (by omega) h8]
+    · rw [show h + 4 * (A1 + A2 + A3 + pg.XA j (ev (selfS pg l r me ρ) x l r a b et) (ev (selfS pg l r me ρ) x l r a b ea)
+        (ev (selfS pg l r me ρ) x l r a b eb)) = h + 4 * A1 + 4 * A2 + 4 * A3 + 4 * pg.XA j
+        (ev (selfS pg l r me ρ) x l r a b et) (ev (selfS pg l r me ρ) x l r a b ea) (ev (selfS pg l r me ρ) x l r a b eb)
+        by omega]
+      exact v₄
+  | @bind k₁ k e₁ e₂ ih₁ ih₂ =>
+    intro ρ sl ks d n env H W h hd hdk hds hdn hn hsl htg hok c hcap
+    simp only [alE] at hcap ⊢
+    simp only [E.tags] at htg
+    simp only [E.okc, Bool.and_eq_true] at hok
+    simp only [ev]
+    rw [selfS_with] at hcap ⊢
+    obtain ⟨E₁, W₁, x₁, p₁, k₁', v₁⟩ := ih₁ ρ sl ks n (n + 1) env H W h (by omega) (by simp; omega)
+      (fun h' => by have := hsl _ h'; omega) (by omega) (by omega) (fun s hs => by have := hsl s hs; omega) (by omega)
+      hok.1 c (by omega)
+    have c₁ := c.step p₁ (by intro i hi; simp at hi; exact k₁' i (by omega) (by omega) (by omega))
+      (fun s hs => by have := hsl s hs; exact k₁' s (by omega) (by omega) (by omega))
+    have c₁' : Cx (P := P) (pg := pg) fi K' KX Lw nx me (k₁.pair (ev (selfS pg l r me ρ) x l r a b e₁) :: ρ) (n :: sl)
+        (k₁ :: ks) x l r a b E₁ W₁ (h + 4 * alE (selfS pg l r me ρ) (selfA pg l r) x l r a b e₁) :=
+      { c₁ with
+        sll := by simp [c₁.sll]
+        ρl := by simp [c₁.ρl]
+        rρ := fun i h1 h2 h3 => by
+          cases i with
+          | zero => simp only [List.getElem_cons_zero, Kd.pick_pair]; exact v₁
+          | succ i =>
+            simp only [List.getElem_cons_succ]
+            exact c₁.rρ i (by simp at h1; omega) (by simp at h2; omega) (by simp at h3; omega) }
+    obtain ⟨E₂, W₂, x₂, p₂, k₂, v₂⟩ := ih₂ _ (n :: sl) (k₁ :: ks) d (n + 1) E₁ H W₁ _ hd hdk
+      (fun h' => by
+        rcases List.mem_cons.1 h' with h' | h'
+        · omega
+        · exact hds h')
+      (by omega) (by omega)
+      (fun s hs => by
+        rcases List.mem_cons.1 hs with hs | hs
+        · omega
+        · have := hsl s hs; omega)
+      (by omega) hok.2 c₁' (by have := p₁.len; omega)
+    refine ⟨E₂, W₂, .seq x₁ x₂, ?_, fun i hi hid h8 => ?_, ?_⟩
+    · rw [Nat.mul_add, ← Nat.add_assoc]; exact p₁.trans p₂
+    · rw [k₂ i (by omega) hid h8, k₁' i (by omega) (by omega) h8]
+    · rw [Nat.mul_add, ← Nat.add_assoc]; exact v₂
 
 /-! ## the function -/
-
-theorem load64_exec {v : Nat} {i : BExp} {env : BEnv} {H : Heap} {W : List (BitVec 64)} {j : Nat} {w : BitVec 64}
-    (hi : (i.denote env).toNat = j) (hw : W[j]? = some w) :
-    BExec (.load64 v 0 i) ⟨env, H, [W]⟩ ⟨env.set v w, H, [W]⟩ := by
-  obtain ⟨hj, rfl⟩ := List.getElem?_eq_some_iff.1 hw
-  have := BExec.load64 (v := v) (b := 0) (i := i) (σ := ⟨env, H, [W]⟩) (by simp) (by simp; omega)
-  simp only [List.getElem_cons_zero, hi] at this
-  exact this
 
 theorem loads_exec {W : List (BitVec 64)} {h : Nat} {pv : BitVec 64} {v : C} (hi : HI W h) (rv : Rp W h pv v)
     {env : BEnv} {H : Heap} (hp : env 8 = pv) :
@@ -371,13 +584,14 @@ theorem eqE_den (env : BEnv) (v i t : Nat) (he : env v = BitVec.ofNat 64 t) (ht 
   · simp [h]
   · rw [if_neg (fun e => h (by have := congrArg BitVec.toNat e; simp at this; omega)), if_neg h]
 
+
 /-- the dispatch: the arm of tag `t`, else the default -/
-theorem disp_ok {K : Nat} {t : Nat} (ht : t < 256) {Q : BState → Prop} :
+theorem disp_ok {fi K : Nat} {t : Nat} (ht : t < 256) {Q : BState → Prop} :
     ∀ (es : List (E rk rk)) (i : Nat), i ≤ t → i + es.length ≤ 255 → ∀ (env : BEnv) (H : Heap) (Wh : WHeap),
       env 13 = BitVec.ofNat 64 t →
-      (∀ e, es[t - i]? = some e → ∃ σ', CExec P K (arm 3 e) ⟨env, H, Wh⟩ σ' ∧ Q σ') →
+      (∀ e, es[t - i]? = some e → ∃ σ', CExec P K (armT fi 8 e) ⟨env, H, Wh⟩ σ' ∧ Q σ') →
       (es[t - i]? = none → Q ⟨(env.set 12 0).set 11 0, H, Wh⟩) →
-      ∃ σ', CExec P K (disp 3 es i) ⟨env, H, Wh⟩ σ' ∧ Q σ'
+      ∃ σ', CExec P K (disp fi es i) ⟨env, H, Wh⟩ σ' ∧ Q σ'
   | [], i, _, _, env, H, Wh, _, _, hn => ⟨_, .base (.seq (asg_exec _ _ _) (asg_exec _ _ _)), hn rfl⟩
   | e :: es, i, hi, hl, env, H, Wh, he, hs, hn => by
     simp only [List.length_cons] at hl
@@ -390,39 +604,45 @@ theorem disp_ok {K : Nat} {t : Nat} (ht : t < 256) {Q : BState → Prop} :
         (fun h' => hn (by rw [show t - i = (t - (i + 1)) + 1 by omega]; simpa using h'))
       exact ⟨σ', .iteF (by show BExp.denote env (eqE 13 i) = 0; rw [eqE_den env 13 i t he ht (by omega), if_neg h]) hx, hq⟩
 
-/-- a run of the loop of `F` on `v` within `K` bytes of stack -/
-def LoopOK (P : Prog) (pg : Pg rk) (K : Nat) (v : C) : Prop :=
+/-- a run of the loop of `F` (index `fi`) on `v` within `K` bytes of stack -/
+def LoopOK (P : Prog) (fi : Nat) (pg : Pg rk) (K Lw : Nat) (v : C) : Prop :=
   ∀ (a bp : BitVec 64) (b : C) (pv : BitVec 64) (env : BEnv) (H : Heap) (W : List (BitVec 64)) (h : Nat),
-    HI W h → env 8 = pv → Rp W h pv v → env 9 = a → env 10 = bp → Rp W h bp b → env 11 = 1 →
+    W.length ≤ Lw → HI W h → env 8 = pv → Rp W h pv v → env 9 = a → env 10 = bp → Rp W h bp b → env 11 = 1 →
     env 5 = BitVec.ofNat 64 h → h + 4 * pg.al v a b ≤ W.length →
-    ∃ E' W', CExec P K (fLoop pg) ⟨env, H, [W]⟩ ⟨E', H, [W']⟩ ∧
+    ∃ E' W', CExec P K (fLoop fi pg) ⟨env, H, [W]⟩ ⟨E', H, [W']⟩ ∧
       Post W h W' (h + 4 * pg.al v a b) env E' ∧ RelK W' (h + 4 * pg.al v a b) rk (E' 12) (pg.sem v a b)
 
-theorem bodyOK_of_loopOK {K : Nat} {v : C} (hl : LoopOK P pg K v) (pv : BitVec 64) : BodyOK P pg K v pv := by
-  intro a bp b g H W h hi rv rb cap h5
+theorem bodyOK_of_loopOK {fi K Lw : Nat} {v : C} (hl : LoopOK P fi pg K Lw v) (pv : BitVec 64) :
+    BodyOK P pg fi K Lw v pv := by
+  intro a bp b g H W h hw hi rv rb cap h5
   let env := callEnv g [pv, a, bp]
   have e5 : env 5 = BitVec.ofNat 64 h := by simp only [env, callEnv, if_pos (show 5 < 8 by omega)]; exact h5
-  obtain ⟨E', W', hx, hp, hr⟩ := hl a bp b pv (env.set 11 ((kE 1).denote env)) H W h hi rfl rv rfl rfl rb
+  obtain ⟨E', W', hx, hp, hr⟩ := hl a bp b pv (env.set 11 ((kE 1).denote env)) H W h hw hi rfl rv rfl rfl rb
     (by rw [set_eq']; rfl) (by rw [set_ne' _ _ (by omega)]; exact e5) cap
   refine ⟨E', W', .seq (.base (asg_exec _ _ _)) hx, ⟨hp.len, hp.agr, hp.hi, hp.hle, hp.e5, fun i hi h5' => ?_⟩, hr⟩
   rw [hp.glob i hi h5', set_ne' _ _ (by omega)]
   simp only [env, callEnv, if_pos hi]
 
-theorem bodyOK_mono {K K' : Nat} {v : C} {pv : BitVec 64} (h : BodyOK P pg K v pv) (hk : K ≤ K') :
-    BodyOK P pg K' v pv := by
-  intro a bp b g H W hh hi rv rb cap h5
-  obtain ⟨E', W', hx, hp, hr⟩ := h a bp b g H W hh hi rv rb cap h5
+theorem bodyOK_mono {fi K K' Lw : Nat} {v : C} {pv : BitVec 64} (h : BodyOK P pg fi K Lw v pv) (hk : K ≤ K') :
+    BodyOK P pg fi K' Lw v pv := by
+  intro a bp b g H W hw hh hi rv rb cap h5
+  obtain ⟨E', W', hx, hp, hr⟩ := h a bp b g H W hw hh hi rv rb cap h5
   exact ⟨E', W', hx.mono hk, hp, hr⟩
 
 theorem E.tail?_some {e : E rk rk} {ch : Bool} {ea : E rk .w} {eb : E rk .t}
     (h : e.tail? = some (ch, ea, eb)) : e = .call ch ea eb := by
   cases e <;> simp_all [E.tail?]
 
+theorem E.ite?_some {k : Kd} {e : E rk k} {c : E rk .w} {e₁ e₂ : E rk k}
+    (h : e.ite? = some (c, e₁, e₂)) : e = .ite c e₁ e₂ := by
+  cases e <;> simp_all [E.ite?]
+
 theorem sem_c (pg : Pg rk) {t : Nat} {x : BitVec 64} {l r : C} {a : BitVec 64} {b : C} {e : E rk rk}
-    (he : pg.arms[t]? = some e) : pg.sem (.c t x l r) a b = ev (selfS pg l r) x l r a b e := by
+    (he : pg.arms[t]? = some e) : pg.sem (.c t x l r) a b = ev (selfS pg l r (.c t x l r) []) x l r a b e := by
   simp only [Pg.sem, he]; rfl
 theorem al_c (pg : Pg rk) {t : Nat} {x : BitVec 64} {l r : C} {a : BitVec 64} {b : C} {e : E rk rk}
-    (he : pg.arms[t]? = some e) : pg.al (.c t x l r) a b = alE (selfS pg l r) (selfA pg l r) x l r a b e := by
+    (he : pg.arms[t]? = some e) :
+    pg.al (.c t x l r) a b = alE (selfS pg l r (.c t x l r) []) (selfA pg l r) x l r a b e := by
   simp only [Pg.al, he]; rfl
 theorem sem_n (pg : Pg rk) {t : Nat} {x : BitVec 64} {l r : C} {a : BitVec 64} {b : C}
     (he : pg.arms[t]? = none) : pg.sem (.c t x l r) a b = rk.dflt := by simp only [Pg.sem, he]
@@ -430,90 +650,101 @@ theorem al_n (pg : Pg rk) {t : Nat} {x : BitVec 64} {l r : C} {a : BitVec 64} {b
     (he : pg.arms[t]? = none) : pg.al (.c t x l r) a b = 0 := by simp only [Pg.al, he]
 
 /-- the default exit of the loop -/
-theorem loop_dflt {K : Nat} {env : BEnv} {H : Heap} {W : List (BitVec 64)} {h : Nat} (hi : HI W h)
+theorem loop_dflt {fi K : Nat} {env : BEnv} {H : Heap} {W : List (BitVec 64)} {h : Nat} (hi : HI W h)
     (h5 : env 5 = BitVec.ofNat 64 h) :
-    ∃ E', CExec P K (fLoop pg) ⟨(env.set 12 0).set 11 0, H, [W]⟩ ⟨E', H, [W]⟩ ∧ Post W h W h env E' ∧
+    ∃ E', CExec P K (fLoop fi pg) ⟨(env.set 12 0).set 11 0, H, [W]⟩ ⟨E', H, [W]⟩ ∧ Post W h W h env E' ∧
       RelK W h rk (E' 12) rk.dflt :=
   ⟨_, .loopF (by simp [vE, BExp.denote, set_eq']), ⟨rfl, Agree.refl _ _, hi, Nat.le_refl _,
     by rw [set_ne' _ _ (by omega), set_ne' _ _ (by omega), h5],
     fun i hi _ => by rw [set_ne' _ _ (by omega), set_ne' _ _ (by omega)]⟩,
     by rw [set_ne' _ _ (by omega), set_eq']; exact RelK.dflt _ _ _⟩
 
-/-- **The function `F`**: the loop on `v` runs within `136 · depth v` bytes of stack -/
-theorem loop_ok (hP3 : ∃ hf : 3 < P.length, P[3] = fFn pg) (hpg : pg.arms.length ≤ 255)
-    (htg : ∀ e ∈ pg.arms, e.tags < 256) : ∀ v, LoopOK P pg (136 * v.depth) v := by
+/-- **The function `F`** (index `fi`, `nl` locals, the later functions' kinds `nx`): the loop on `v` runs within
+`8 (nl + 1) · depth v + KX` bytes of stack, `KX` the stack of a call of a later function -/
+theorem loop_ok {fi nl : Nat} (hPf : ∃ hf : fi < P.length, P[fi] = fFn fi nl pg) (hpg : pg.arms.length ≤ 255)
+    {nx : List Kd} (htg : ∀ e ∈ pg.arms, e.tags < 256 ∧ e.okc [] nx = true) {KX Lw : Nat}
+    (okx : ∀ j k, nx[j]? = some k → XOK P KX (fi + 1 + j) k (pg.X j) (pg.XA j) Lw) :
+    ∀ v, LoopOK P fi pg (8 * (nl + 1) * v.depth + KX) Lw v := by
   intro v
   induction v with
   | z =>
-    intro a bp b pv env H W h hi hp rv ha hb rb hgo h5 cap
+    intro a bp b pv env H W h hw hi hp rv ha hb rb hgo h5 cap
     obtain ⟨pl, pr, -, -, ht, hld⟩ := loads_exec hi rv hp (H := H)
     let env4 := (((env.set 13 (BitVec.ofNat 64 C.z.tag)).set 14 C.z.xv).set 15 pl).set 16 pr
     have k4 : ∀ i, i < 13 → env4 i = env i := fun i hi' => by
       simp only [env4]; rw [set_ne' _ _ (by omega), set_ne' _ _ (by omega), set_ne' _ _ (by omega),
         set_ne' _ _ (by omega)]
-    obtain ⟨σ', hx, E', W', hl, hpost, hrel⟩ := disp_ok (P := P) (K := 0) (Q := fun σ' =>
-        ∃ E' W', CExec P 0 (fLoop pg) σ' ⟨E', H, [W']⟩ ∧ Post W h W' h env E' ∧ RelK W' h rk (E' 12) rk.dflt)
+    obtain ⟨σ', hx, E', W', hl, hpost, hrel⟩ := disp_ok (P := P) (fi := fi) (K := 0) (Q := fun σ' =>
+        ∃ E' W', CExec P 0 (fLoop fi pg) σ' ⟨E', H, [W']⟩ ∧ Post W h W' h env E' ∧ RelK W' h rk (E' 12) rk.dflt)
       ht pg.arms 0 (Nat.zero_le _) (by omega) env4 H [W] (by simp [env4, set_ne', set_eq'])
       (fun e he => absurd he (by simp only [C.tag]; rw [List.getElem?_eq_none (by omega)]; simp))
       (fun _ => by
-        obtain ⟨E', hx, hp', hr⟩ := loop_dflt (P := P) (pg := pg) (K := 0) (env := env4) (H := H) hi
+        obtain ⟨E', hx, hp', hr⟩ := loop_dflt (P := P) (pg := pg) (fi := fi) (K := 0) (env := env4) (H := H) hi
           (by rw [k4 5 (by omega)]; exact h5)
         refine ⟨E', W, hx, ⟨rfl, Agree.refl _ _, hi, Nat.le_refl _, hp'.e5, fun i hi' h5' => ?_⟩, hr⟩
         rw [hp'.glob i hi' h5', k4 i (by omega)])
-    refine ⟨E', W', .loopT (by simp [vE, BExp.denote, hgo]) (.seq (.base hld) hx) hl, ?_, ?_⟩
+    refine ⟨E', W', .loopT (by simp [vE, BExp.denote, hgo]) (.seq (.base hld) (hx.mono (Nat.zero_le _)))
+      (hl.mono (Nat.zero_le _)), ?_, ?_⟩
     · simpa [Pg.al] using hpost
     · simpa [Pg.al, Pg.sem] using hrel
   | c t x l r ihl ihr =>
-    intro a bp b pv env H W h hi hp rv ha hb rb hgo h5 cap
+    intro a bp b pv env H W h hw hi hp rv ha hb rb hgo h5 cap
     obtain ⟨pl, pr, rl, rr, ht, hld⟩ := loads_exec hi rv hp (H := H)
     simp only [C.tag, C.xv, C.lv, C.rv] at rl rr ht hld
     let env4 := (((env.set 13 (BitVec.ofNat 64 t)).set 14 x).set 15 pl).set 16 pr
     have k4 : ∀ i, i < 13 → env4 i = env i := fun i hi' => by
       simp only [env4]; rw [set_ne' _ _ (by omega), set_ne' _ _ (by omega), set_ne' _ _ (by omega),
         set_ne' _ _ (by omega)]
-    have K1 : 136 * (C.c t x l r).depth = 136 + 136 * max l.depth r.depth := by simp only [C.depth]; omega
-    have okl : BodyOK P pg (136 * max l.depth r.depth) l pl :=
-      bodyOK_mono (bodyOK_of_loopOK ihl pl) (by omega)
-    have okr : BodyOK P pg (136 * max l.depth r.depth) r pr :=
-      bodyOK_mono (bodyOK_of_loopOK ihr pr) (by omega)
-    have cx : Cx (P := P) (pg := pg) (136 * max l.depth r.depth) x l r a b env4 W h :=
+    generalize hfr : 8 * (nl + 1) = fr at *
+    have K1 : fr * (C.c t x l r).depth + KX = fr + (fr * max l.depth r.depth + KX) := by
+      simp only [C.depth]; rw [Nat.mul_add, Nat.mul_one]; omega
+    have okl : BodyOK P pg fi (fr * max l.depth r.depth + KX) Lw l pl :=
+      bodyOK_mono (bodyOK_of_loopOK ihl pl) (by have := Nat.mul_le_mul_left fr (Nat.le_max_left l.depth r.depth); omega)
+    have okr : BodyOK P pg fi (fr * max l.depth r.depth + KX) Lw r pr :=
+      bodyOK_mono (bodyOK_of_loopOK ihr pr) (by have := Nat.mul_le_mul_left fr (Nat.le_max_right l.depth r.depth); omega)
+    have cx : Cx (P := P) (pg := pg) fi (fr * max l.depth r.depth + KX) KX Lw nx (.c t x l r) [] [] [] x l r a b env4 W h :=
       ⟨hi, by rw [k4 5 (by omega)]; exact h5, by simp [env4, set_eq', set_ne'], by rw [k4 9 (by omega)]; exact ha,
         by simp only [env4]; rw [set_ne' _ _ (by omega), set_eq']; exact rl, by simp only [env4]; rw [set_eq']; exact rr,
         by rw [k4 10 (by omega), hb]; exact rb, by simp only [env4]; rw [set_ne' _ _ (by omega), set_eq']; exact okl,
-        by simp only [env4]; rw [set_eq']; exact okr⟩
-    have harm : ∀ e, pg.arms[t - 0]? = some e → ∃ σ', CExec P (136 * (C.c t x l r).depth) (arm 3 e) ⟨env4, H, [W]⟩ σ' ∧
-        (∃ E' W', CExec P (136 * (C.c t x l r).depth) (fLoop pg) σ' ⟨E', H, [W']⟩ ∧
-          Post W h W' (h + 4 * pg.al (.c t x l r) a b) env E' ∧
-          RelK W' (h + 4 * pg.al (.c t x l r) a b) rk (E' 12) (pg.sem (.c t x l r) a b)) := by
-      intro e he
-      rw [Nat.sub_zero] at he
-      have htge := htg e (List.mem_of_getElem? he)
-      rw [al_c pg he] at cap ⊢; rw [sem_c pg he]
+        by simp only [env4]; rw [set_eq']; exact okr, hw, by rw [k4 8 (by omega), hp]; exact rv, rfl, rfl,
+        fun i h1 => absurd h1 (by simp), okx⟩
+    -- one arm (no split)
+    have harm1 : ∀ (e : E rk rk) (env' : BEnv) (W' : List (BitVec 64)) (h' : Nat), e.tags < 256 → e.okc [] nx = true →
+        Cx (P := P) (pg := pg) fi (fr * max l.depth r.depth + KX) KX Lw nx (.c t x l r) [] [] [] x l r a b env' W' h' →
+        env' 11 = 1 → h' + 4 * alE (selfS pg l r (.c t x l r) []) (selfA pg l r) x l r a b e ≤ W'.length →
+        ∃ σ', CExec P (fr * (C.c t x l r).depth + KX) (arm fi e) ⟨env', H, [W']⟩ σ' ∧
+          ∃ E' W'', CExec P (fr * (C.c t x l r).depth + KX) (fLoop fi pg) σ' ⟨E', H, [W'']⟩ ∧
+            Post W' h' W'' (h' + 4 * alE (selfS pg l r (.c t x l r) []) (selfA pg l r) x l r a b e) env' E' ∧
+            RelK W'' (h' + 4 * alE (selfS pg l r (.c t x l r) []) (selfA pg l r) x l r a b e) rk (E' 12) (ev (selfS pg l r (.c t x l r) []) x l r a b e) := by
+      intro e env' W' h' htge hoke cx' hgo cap
       match hta : e.tail? with
       | none =>
         simp only [arm, hta]
-        obtain ⟨E₁, W₁, x₁, p₁, k₁, v₁⟩ := comp_ok hP3 (K := 136 * (C.c t x l r).depth) (by omega) e 12 17 env4 H W h
-          (by omega) (by simp) (by omega) htge cx cap
+        obtain ⟨E₁, W₁, x₁, p₁, k₁, v₁⟩ := comp_ok hPf (K := fr * (C.c t x l r).depth + KX) (by omega) (by omega)
+          e [] [] [] 12 17 env' H W' h' (by omega) (by simp) (by simp) (by omega) (by omega) (by simp) htge hoke cx' cap
         refine ⟨_, .seq x₁ (.base (asg_exec _ _ _)), E₁.set 11 ((kE 0).denote _), W₁, .loopF (by simp [vE, BExp.denote, set_eq', kE]),
           ⟨p₁.len, p₁.agr, p₁.hi, p₁.hle, by rw [set_ne' _ _ (by omega)]; exact p₁.e5, fun i hi' h5' => ?_⟩, ?_⟩
-        · rw [set_ne' _ _ (by omega), p₁.glob i hi' h5', k4 i (by omega)]
+        · rw [set_ne' _ _ (by omega), p₁.glob i hi' h5']
         · rw [set_ne' _ _ (by omega)]; exact v₁
       | some (ch, ea, eb) =>
         have hee := E.tail?_some hta
         subst hee
         simp only [arm, hta]
         simp only [E.tags] at htge
+        simp only [E.okc, Bool.and_eq_true] at hoke
         simp only [alE] at cap ⊢
         simp only [ev]
-        obtain ⟨E₁, W₁, x₁, p₁, k₁, v₁⟩ := comp_ok hP3 (K := 136 * (C.c t x l r).depth) (by omega) ea 17 18 env4 H W h
-          (by omega) (by simp) (by omega) (by omega) cx (by omega)
-        have c₁ := cx.step p₁ (by intro i hi'; simp at hi'; exact k₁ i (by omega) (by omega) (by omega))
-        obtain ⟨E₂, W₂, x₂, p₂, k₂, v₂⟩ := comp_ok hP3 (K := 136 * (C.c t x l r).depth) (by omega) eb 18 19 E₁ H W₁ _
-          (by omega) (by simp) (by omega) (by omega) c₁ (by have := p₁.len; omega)
-        have c₂ := c₁.step p₂ (by intro i hi'; simp at hi'; exact k₂ i (by omega) (by omega) (by omega))
+        obtain ⟨E₁, W₁, x₁, p₁, k₁, v₁⟩ := comp_ok hPf (K := fr * (C.c t x l r).depth + KX) (by omega) (by omega)
+          ea [] [] [] 17 18 env' H W' h'
+          (by omega) (by simp) (by simp) (by omega) (by omega) (by simp) (by omega) hoke.1 cx' (by omega)
+        have c₁ := cx'.step p₁ (by intro i hi'; simp at hi'; exact k₁ i (by omega) (by omega) (by omega)) (by simp)
+        obtain ⟨E₂, W₂, x₂, p₂, k₂, v₂⟩ := comp_ok hPf (K := fr * (C.c t x l r).depth + KX) (by omega) (by omega)
+          eb [] [] [] 18 19 E₁ H W₁ _
+          (by omega) (by simp) (by simp) (by omega) (by omega) (by simp) (by omega) hoke.2 c₁ (by have := p₁.len; omega)
+        have c₂ := c₁.step p₂ (by intro i hi'; simp at hi'; exact k₂ i (by omega) (by omega) (by omega)) (by simp)
         have p₂' := p₁.trans p₂
-        generalize alE (selfS pg l r) (selfA pg l r) x l r a b ea = A1 at *
-        generalize alE (selfS pg l r) (selfA pg l r) x l r a b eb = A2 at *
+        generalize alE (selfS pg l r (.c t x l r) []) (selfA pg l r) x l r a b ea = A1 at *
+        generalize alE (selfS pg l r (.c t x l r) []) (selfA pg l r) x l r a b eb = A2 at *
         rw [selfA_eq] at cap ⊢; rw [selfS_eq]
         let E₃ := ((E₂.set 8 ((vE (if ch then 16 else 15)).denote E₂)).set 9 ((vE 17).denote (E₂.set 8
           ((vE (if ch then 16 else 15)).denote E₂)))).set 10 ((vE 18).denote ((E₂.set 8 ((vE (if ch then 16 else 15)).denote E₂)).set 9
@@ -521,55 +752,173 @@ theorem loop_ok (hP3 : ∃ hf : 3 < P.length, P[3] = fFn pg) (hpg : pg.arms.leng
         have k3 : ∀ i, i ≠ 8 → i ≠ 9 → i ≠ 10 → E₃ i = E₂ i := fun i a1 a2 a3 => by
           simp only [E₃]; rw [set_ne' _ _ a3, set_ne' _ _ a2, set_ne' _ _ a1]
         have e8 : E₃ 8 = E₂ (if ch then 16 else 15) := by simp [E₃, set_ne', set_eq', vE, BExp.denote]
-        have e9 : E₃ 9 = ev (selfS pg l r) x l r a b ea := by
+        have e9 : E₃ 9 = ev (selfS pg l r (.c t x l r) []) x l r a b ea := by
           simp only [E₃]; rw [set_ne' _ _ (by omega), set_eq']; simp only [vE, BExp.denote]
           rw [set_ne' _ _ (by omega), k₂ 17 (by omega) (by omega) (by omega)]; exact v₁
         have e10 : E₃ 10 = E₂ 18 := by simp only [E₃]; rw [set_eq']; simp only [vE, BExp.denote]; rw [set_ne' _ _ (by omega), set_ne' _ _ (by omega)]
         have hgo3 : E₃ 11 = 1 := by
           rw [k3 11 (by omega) (by omega) (by omega), k₂ 11 (by omega) (by omega) (by omega),
             k₁ 11 (by omega) (by omega) (by omega)]
-          simp [env4, set_ne', hgo]
-        have h53 : E₃ 5 = BitVec.ofNat 64 (h + 4 * A1 + 4 * A2) := by rw [k3 5 (by omega) (by omega) (by omega)]; exact p₂.e5
-        have hrv : Rp W₂ (h + 4 * A1 + 4 * A2) (E₂ (if ch then 16 else 15)) (if ch then r else l) := by
+          exact hgo
+        have h53 : E₃ 5 = BitVec.ofNat 64 (h' + 4 * A1 + 4 * A2) := by rw [k3 5 (by omega) (by omega) (by omega)]; exact p₂.e5
+        have hrv : Rp W₂ (h' + 4 * A1 + 4 * A2) (E₂ (if ch then 16 else 15)) (if ch then r else l) := by
           cases ch <;> first | exact c₂.rl | exact c₂.rr
-        have ihc : LoopOK P pg (136 * (C.c t x l r).depth) (if ch then r else l) := by
+        have ihc : LoopOK P fi pg (fr * (C.c t x l r).depth + KX) Lw (if ch then r else l) := by
           cases ch
-          · intro a1 b1 c1 d1 e1 f1 g1 h1 i1 j1 k1 l1 m1 n1 o1 p1 q1
-            obtain ⟨E', W', hx, hq, hr⟩ := ihl a1 b1 c1 d1 e1 f1 g1 h1 i1 j1 k1 l1 m1 n1 o1 p1 q1
-            exact ⟨E', W', hx.mono (by simp only [C.depth]; omega), hq, hr⟩
-          · intro a1 b1 c1 d1 e1 f1 g1 h1 i1 j1 k1 l1 m1 n1 o1 p1 q1
-            obtain ⟨E', W', hx, hq, hr⟩ := ihr a1 b1 c1 d1 e1 f1 g1 h1 i1 j1 k1 l1 m1 n1 o1 p1 q1
-            exact ⟨E', W', hx.mono (by simp only [C.depth]; omega), hq, hr⟩
-        obtain ⟨E', W', hl, hpost, hrel⟩ := ihc _ (E₂ 18) _ _ E₃ H W₂ _ p₂.hi e8 hrv e9 e10 (by rw [e10] at *; exact v₂)
+          · intro a1 b1 c1 d1 e1 f1 g1 h1 w1 i1 j1 k1 l1 m1 n1 o1 p1 q1
+            obtain ⟨E', W', hx, hq, hr⟩ := ihl a1 b1 c1 d1 e1 f1 g1 h1 w1 i1 j1 k1 l1 m1 n1 o1 p1 q1
+            exact ⟨E', W', hx.mono (by have := Nat.mul_le_mul_left fr (show l.depth ≤ (C.c t x l r).depth by
+              simp only [C.depth]; omega); omega), hq, hr⟩
+          · intro a1 b1 c1 d1 e1 f1 g1 h1 w1 i1 j1 k1 l1 m1 n1 o1 p1 q1
+            obtain ⟨E', W', hx, hq, hr⟩ := ihr a1 b1 c1 d1 e1 f1 g1 h1 w1 i1 j1 k1 l1 m1 n1 o1 p1 q1
+            exact ⟨E', W', hx.mono (by have := Nat.mul_le_mul_left fr (show r.depth ≤ (C.c t x l r).depth by
+              simp only [C.depth]; omega); omega), hq, hr⟩
+        obtain ⟨E', W', hl, hpost, hrel⟩ := ihc _ (E₂ 18) _ _ E₃ H W₂ _ c₂.lw p₂.hi e8 hrv e9 e10 (by rw [e10] at *; exact v₂)
           hgo3 h53 (by rw [p₂'.len]; omega)
         refine ⟨_, .seq x₁ (.seq x₂ (.base (.seq (asg_exec _ _ _) (.seq (asg_exec _ _ _) (asg_exec _ _ _))))), E', W', hl,
           ?_, ?_⟩
-        · rw [show h + 4 * (A1 + A2 + pg.al (if ch then r else l) (ev (selfS pg l r) x l r a b ea)
-            (ev (selfS pg l r) x l r a b eb)) = h + 4 * A1 + 4 * A2 + 4 * pg.al (if ch then r else l)
-            (ev (selfS pg l r) x l r a b ea) (ev (selfS pg l r) x l r a b eb) by omega]
+        · rw [show h' + 4 * (A1 + A2 + pg.al (if ch then r else l) (ev (selfS pg l r (.c t x l r) []) x l r a b ea)
+            (ev (selfS pg l r (.c t x l r) []) x l r a b eb)) = h' + 4 * A1 + 4 * A2 + 4 * pg.al (if ch then r else l)
+            (ev (selfS pg l r (.c t x l r) []) x l r a b ea) (ev (selfS pg l r (.c t x l r) []) x l r a b eb) by omega]
           refine ⟨hpost.len.trans p₂'.len, p₂'.agr.trans hpost.agr p₂'.hle, hpost.hi, Nat.le_trans p₂'.hle hpost.hle,
             hpost.e5, fun i hi' h5' => ?_⟩
-          rw [hpost.glob i hi' h5', k3 i (by omega) (by omega) (by omega), p₂'.glob i hi' h5', k4 i (by omega)]
-        · rw [show h + 4 * (A1 + A2 + pg.al (if ch then r else l) (ev (selfS pg l r) x l r a b ea)
-            (ev (selfS pg l r) x l r a b eb)) = h + 4 * A1 + 4 * A2 + 4 * pg.al (if ch then r else l)
-            (ev (selfS pg l r) x l r a b ea) (ev (selfS pg l r) x l r a b eb) by omega]
+          rw [hpost.glob i hi' h5', k3 i (by omega) (by omega) (by omega), p₂'.glob i hi' h5']
+        · rw [show h' + 4 * (A1 + A2 + pg.al (if ch then r else l) (ev (selfS pg l r (.c t x l r) []) x l r a b ea)
+            (ev (selfS pg l r (.c t x l r) []) x l r a b eb)) = h' + 4 * A1 + 4 * A2 + 4 * pg.al (if ch then r else l)
+            (ev (selfS pg l r (.c t x l r) []) x l r a b ea) (ev (selfS pg l r (.c t x l r) []) x l r a b eb) by omega]
           exact hrel
+    -- an arm, split at its `ite`s (a call in a branch continues the loop)
+    have harmT : ∀ (f : Nat) (e : E rk rk) (env' : BEnv) (W' : List (BitVec 64)) (h' : Nat), e.tags < 256 → e.okc [] nx = true →
+        Cx (P := P) (pg := pg) fi (fr * max l.depth r.depth + KX) KX Lw nx (.c t x l r) [] [] [] x l r a b env' W' h' →
+        env' 11 = 1 → h' + 4 * alE (selfS pg l r (.c t x l r) []) (selfA pg l r) x l r a b e ≤ W'.length →
+        ∃ σ', CExec P (fr * (C.c t x l r).depth + KX) (armT fi f e) ⟨env', H, [W']⟩ σ' ∧
+          ∃ E' W'', CExec P (fr * (C.c t x l r).depth + KX) (fLoop fi pg) σ' ⟨E', H, [W'']⟩ ∧
+            Post W' h' W'' (h' + 4 * alE (selfS pg l r (.c t x l r) []) (selfA pg l r) x l r a b e) env' E' ∧
+            RelK W'' (h' + 4 * alE (selfS pg l r (.c t x l r) []) (selfA pg l r) x l r a b e) rk (E' 12) (ev (selfS pg l r (.c t x l r) []) x l r a b e) := by
+      intro f
+      induction f with
+      | zero => intro e env' W' h' a1 a2 a3 a4 a5; exact harm1 e env' W' h' a1 a2 a3 a4 a5
+      | succ f ih =>
+        intro e env' W' h' htge hoke cx' hgo' cap
+        match hti : e.ite? with
+        | none =>
+          simp only [armT, hti]; exact harm1 e env' W' h' htge hoke cx' hgo' cap
+        | some (c, e₁, e₂) =>
+          have hee := E.ite?_some hti
+          subst hee
+          simp only [armT, hti]
+          simp only [E.tags] at htge
+          simp only [E.okc, Bool.and_eq_true] at hoke
+          simp only [alE] at cap ⊢
+          simp only [ev]
+          obtain ⟨E₁, W₁, x₁, p₁, k₁, v₁⟩ := comp_ok hPf (K := (fr * (C.c t x l r).depth + KX)) (by omega) (by omega)
+            c [] [] [] 17 18 env' H W' h'
+            (by omega) (by simp) (by simp) (by omega) (by omega) (by simp) (by omega) hoke.1.1 cx' (by omega)
+          have c₁ := cx'.step p₁ (by intro i hi'; simp at hi'; exact k₁ i (by omega) (by omega) (by omega)) (by simp)
+          have hgo1 : E₁ 11 = 1 := by rw [k₁ 11 (by omega) (by omega) (by omega)]; exact hgo'
+          simp only [RelK] at v₁
+          generalize alE (selfS pg l r (.c t x l r) []) (selfA pg l r) x l r a b c = A1 at *
+          by_cases hz : ev (selfS pg l r (.c t x l r) []) x l r a b c = 0
+          · rw [if_pos hz] at cap ⊢; rw [if_pos hz]
+            obtain ⟨σ', x₂, E', W'', hl, hpost, hrel⟩ := ih e₂ E₁ W₁ _ (by omega) hoke.2 c₁ hgo1
+              (by have := p₁.len; omega)
+            refine ⟨σ', .seq x₁ (.iteF (by simp only [vE, BExp.denote]; rw [v₁, hz]) x₂), E', W'', hl, ?_, ?_⟩
+            · rw [Nat.mul_add, ← Nat.add_assoc]; exact p₁.trans hpost
+            · rw [Nat.mul_add, ← Nat.add_assoc]; exact hrel
+          · rw [if_neg hz] at cap ⊢; rw [if_neg hz]
+            obtain ⟨σ', x₂, E', W'', hl, hpost, hrel⟩ := ih e₁ E₁ W₁ _ (by omega) hoke.1.2 c₁ hgo1
+              (by have := p₁.len; omega)
+            refine ⟨σ', .seq x₁ (.iteT (by simp only [vE, BExp.denote]; rw [v₁]; exact hz) x₂), E', W'', hl, ?_, ?_⟩
+            · rw [Nat.mul_add, ← Nat.add_assoc]; exact p₁.trans hpost
+            · rw [Nat.mul_add, ← Nat.add_assoc]; exact hrel
+    have harm : ∀ e, pg.arms[t - 0]? = some e → ∃ σ', CExec P (fr * (C.c t x l r).depth + KX) (armT fi 8 e) ⟨env4, H, [W]⟩ σ' ∧
+        (∃ E' W', CExec P (fr * (C.c t x l r).depth + KX) (fLoop fi pg) σ' ⟨E', H, [W']⟩ ∧
+          Post W h W' (h + 4 * pg.al (.c t x l r) a b) env E' ∧
+          RelK W' (h + 4 * pg.al (.c t x l r) a b) rk (E' 12) (pg.sem (.c t x l r) a b)) := by
+      intro e he
+      rw [Nat.sub_zero] at he
+      obtain ⟨htge, hoke⟩ := htg e (List.mem_of_getElem? he)
+      rw [al_c pg he] at cap ⊢; rw [sem_c pg he]
+      obtain ⟨σ', hx, E', W', hl, hpost, hrel⟩ := harmT 8 e env4 W h htge hoke cx (by simp [env4, set_ne', hgo]) cap
+      exact ⟨σ', hx, E', W', hl, ⟨hpost.len, hpost.agr, hpost.hi, hpost.hle, hpost.e5, fun i hi' h5' => by
+        rw [hpost.glob i hi' h5', k4 i (by omega)]⟩, hrel⟩
 
-    obtain ⟨σ', hx, E', W', hl, hpost, hrel⟩ := disp_ok (P := P) (K := 136 * (C.c t x l r).depth) (Q := fun σ' =>
-        ∃ E' W', CExec P (136 * (C.c t x l r).depth) (fLoop pg) σ' ⟨E', H, [W']⟩ ∧
+    obtain ⟨σ', hx, E', W', hl, hpost, hrel⟩ := disp_ok (P := P) (fi := fi) (K := fr * (C.c t x l r).depth + KX) (Q := fun σ' =>
+        ∃ E' W', CExec P (fr * (C.c t x l r).depth + KX) (fLoop fi pg) σ' ⟨E', H, [W']⟩ ∧
           Post W h W' (h + 4 * pg.al (.c t x l r) a b) env E' ∧
           RelK W' (h + 4 * pg.al (.c t x l r) a b) rk (E' 12) (pg.sem (.c t x l r) a b))
       ht pg.arms 0 (Nat.zero_le _) (by omega) env4 H [W] (by simp [env4, set_ne', set_eq'])
       harm
       (fun hn => by
         rw [Nat.sub_zero] at hn
-        obtain ⟨E', hx, hp', hr⟩ := loop_dflt (P := P) (pg := pg) (K := 136 * (C.c t x l r).depth) (env := env4) (H := H) hi
-          (by rw [k4 5 (by omega)]; exact h5)
+        obtain ⟨E', hx, hp', hr⟩ := loop_dflt (P := P) (pg := pg) (fi := fi) (K := fr * (C.c t x l r).depth + KX)
+          (env := env4) (H := H) hi (by rw [k4 5 (by omega)]; exact h5)
         refine ⟨E', W, hx, ?_, ?_⟩
         · rw [al_n pg hn, Nat.mul_zero, Nat.add_zero]
           exact ⟨rfl, Agree.refl _ _, hi, Nat.le_refl _, hp'.e5, fun i hi' h5' => by
             rw [hp'.glob i hi' h5', k4 i (by omega)]⟩
         · rw [al_n pg hn, sem_n pg hn, Nat.mul_zero, Nat.add_zero]; exact hr)
     exact ⟨E', W', .loopT (by simp [vE, BExp.denote, hgo]) (.seq (.base hld) hx) hl, hpost, hrel⟩
+
+/-- a call of `F` as a later function: its meaning and cells, within `8 (nl + 1) (Lw + 1) + KX` bytes of stack -/
+theorem xok_of {fi nl : Nat} (hPf : ∃ hf : fi < P.length, P[fi] = fFn fi nl pg) (hpg : pg.arms.length ≤ 255)
+    {nx : List Kd} (htg : ∀ e ∈ pg.arms, e.tags < 256 ∧ e.okc [] nx = true) {KX Lw : Nat}
+    (okx : ∀ j k, nx[j]? = some k → XOK P KX (fi + 1 + j) k (pg.X j) (pg.XA j) Lw) :
+    XOK P (8 * (nl + 1) * (Lw + 1) + KX) fi rk (fun v a b => rk.pair (pg.sem v a b)) pg.al Lw := by
+  intro v b pv a bp d pvar avar bvar env H W h hd hw hi h5 hp ha hb rv rb cap
+  obtain ⟨-, hdep⟩ := rv.depth
+  have hlt := rv.lt4 hi.h4
+  have hdl : v.depth ≤ Lw := by have := hi.hle; omega
+  have bok := bodyOK_of_loopOK (loop_ok hPf hpg htg okx v) pv
+  have hK : 8 * (nl + 1) + (8 * (nl + 1) * v.depth + KX) ≤ 8 * (nl + 1) * (Lw + 1) + KX := by
+    have := Nat.mul_le_mul_left (8 * (nl + 1)) (Nat.succ_le_succ hdl)
+    simp only [Nat.mul_add_one, Nat.mul_succ] at this ⊢; omega
+  obtain ⟨E', W', hx, hp', hk, hr⟩ := call_ok hPf (K := 8 * (nl + 1) * (Lw + 1) + KX) hK bok hw hi h5 hp ha hb rv rb
+    cap hd
+  exact ⟨E', W', hx, hp', hk, by rw [Kd.pick_pair]; exact hr⟩
+
+theorem semX_cons (k : Kd) (p : Pg k) (ps : List (Σ k : Kd, Pg k)) (j : Nat) :
+    semX (⟨k, p⟩ :: ps) (j + 1) = semX ps j := rfl
+theorem alX_cons (k : Kd) (p : Pg k) (ps : List (Σ k : Kd, Pg k)) (j : Nat) :
+    alX (⟨k, p⟩ :: ps) (j + 1) = alX ps j := rfl
+
+/-- **The functions of a program** (`ps` at indices `q, q + 1, …`, each calling only later ones): each call runs
+within `8 (nl + 1) (Lw + 1)` bytes of stack per function from it to the end -/
+theorem chain_ok {nl Lw : Nat} : ∀ (ps : List (Σ k : Kd, Pg k)) (q : Nat),
+    (∀ i (hi : i < ps.length), P[q + i]? = some (fFn (q + i) nl ps[i].2)) → Chain ps →
+    (∀ i (hi : i < ps.length), ps[i].2.arms.length ≤ 255 ∧
+      ∀ e : E ps[i].1 ps[i].1, e ∈ ps[i].2.arms → e.tags < 256 ∧ e.okc [] ((ps.drop (i + 1)).map (·.1)) = true) →
+    ∀ j (hj : j < ps.length), XOK P (8 * (nl + 1) * (Lw + 1) * (ps.length - j)) (q + j) ps[j].1 (semX ps j) (alX ps j) Lw
+  | [], _, _, _, _, j, hj => absurd hj (by simp)
+  | ⟨k, p⟩ :: ps, q, hP, hc, hw, j, hj => by
+    obtain ⟨hXX, hc'⟩ := hc
+    have ih := chain_ok (Lw := Lw) ps (q + 1) (fun i hi => by
+        have := hP (i + 1) (by simp; omega)
+        rw [show q + 1 + i = q + (i + 1) by omega]; simpa using this) hc'
+      (fun i hi => by
+        have := hw (i + 1) (by simp; omega)
+        simpa using this)
+    cases j with
+    | zero =>
+      have hP0 := hP 0 (by simp)
+      have hw0 := hw 0 (by simp)
+      simp only [List.getElem_cons_zero, List.drop_succ_cons, List.drop_zero, Nat.add_zero] at hw0 hP0
+      have hP0' : ∃ hf : q < P.length, P[q] = fFn q nl p := List.getElem?_eq_some_iff.1 hP0
+      have := xok_of hP0' hw0.1 hw0.2 (KX := 8 * (nl + 1) * (Lw + 1) * ps.length) (Lw := Lw) (fun j' k' hj' => by
+        obtain ⟨hlt, hk'⟩ := List.getElem?_eq_some_iff.1 hj'
+        simp only [List.length_map] at hlt
+        have := ih j' hlt
+        simp only [List.getElem_map] at hk'
+        rw [hk', ← (hXX j' hlt).1, ← (hXX j' hlt).2] at this
+        refine xok_mono (by rw [show q + 1 + j' = q + 1 + j' from rfl] at this; exact this) ?_
+        exact Nat.mul_le_mul_left _ (by omega))
+      simp only [List.getElem_cons_zero, List.length_cons, Nat.sub_zero, Nat.add_zero]
+      refine xok_mono this ?_
+      rw [Nat.mul_succ (8 * (nl + 1) * (Lw + 1)) ps.length]; omega
+    | succ j =>
+      have := ih j (by simp at hj; omega)
+      simp only [List.getElem_cons_succ, List.length_cons]
+      rw [semX_cons, alX_cons, show q + (j + 1) = q + 1 + j by omega, show ps.length + 1 - (j + 1) = ps.length - j by omega]
+      exact this
 
 end Proven.Mach.Ind

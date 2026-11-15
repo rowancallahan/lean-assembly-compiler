@@ -54,3 +54,42 @@ config's main-memory region only (the default also has boot-ROM/CLINT regions; `
 output/work `Present`.  `init_model`'s `config_is_valid` assertion is not evaluated (the start uses `reset`).
 Non-vacuity: `boot_example` (concrete `incCode1`, no hypotheses); `boot_revinc5` (XPipe) keeps only `codeFits`:
 the kernel cannot evaluate the optimiser's `List.mergeSort` (62 words by `#eval`).  QEMU: `Testing/asm/boot_test.py`.
+
+## Sketch: out of memory as a machine step (owner, 2026-11-15; the owner will fix the exact details)
+
+```lean
+inductive Step (State : Type) where
+  | next (state : State) | halted | outOfMemory
+
+structure Machine where
+  State : Type
+  step : State → Step State
+  observe : State → MachineState
+  inUse : State → Address → Bool      -- live work-block cells; the rest are free
+
+inductive Ending (machine : Machine) where
+  | done (state : machine.State) | outOfMemory   -- outOfMemory is final
+
+inductive Runs (machine : Machine) : machine.State → Ending machine → Prop
+  | halt {s}     : machine.step s = .halted → Runs machine s (.done s)
+  | oom  {s}     : machine.step s = .outOfMemory → Runs machine s .outOfMemory
+  | step {s t e} : machine.step s = .next t → Runs machine t e → Runs machine s e
+```
+
+- A step is `outOfMemory` when it needs a new cell and every work-block cell is in use; freeing marks a cell not
+  in use. No step leaves `outOfMemory`.
+- `compile_runs` (no memory hypothesis): every run ends `done` with the right output, or `outOfMemory`.
+- `compile_correct` (sub-theorem): hypothesis `memoryNeeded machine start ≤ call.workLength` (`memoryNeeded` = most
+  cells in use during the run with unlimited space; defined, not calculated) → ends `done` with the right output.
+- Adapter: today's `step : State → Option State` embeds as `some t ↦ .next t`, `none ↦ .halted`, never
+  `outOfMemory`, so current theorems carry over.
+- Decided (owner): (b). In use / free are defined ABOVE RISC-V and ARM, machine-independent. The allocator is a
+  SPECIFICATION only (`AllocSpec`: `alloc` returns cells disjoint from all blocks in use and inside the work block,
+  or the run is out of memory; `free` releases a block), never a required implementation. `memoryNeeded` is defined
+  through it: the most cells in use at any point of the program's abstract run (its `alloc`/`free` events) with
+  unlimited space. Compiled code need not use any allocator ("fast and loose, with proofs": it proves its own
+  non-overlap); the implementation is fully beneath the specification. The real machine only halts with the flag.
+- Defaults until the owner fixes them: (1) fixed-size cells, so peak cells in use <= W suffices (variable-size
+  blocks would need a placement rule / compaction / highest-address definition because of fragmentation);
+  (2) "free" = what the program itself frees, not unreachability (that would require a garbage collector);
+  (3) stack frames count: `alloc` on call, `free` on return, so recursion depth is part of `memoryNeeded`.

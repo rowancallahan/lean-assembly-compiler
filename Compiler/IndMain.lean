@@ -10,21 +10,32 @@ open Proven.Mach
 
 variable {rk : Kd}
 
-theorem alE_le (self : Bool → BitVec 64 → C → rk.den) (sal : Bool → BitVec 64 → C → Nat) (x : BitVec 64)
-    (l r : C) (a : BitVec 64) (b : C) (Bl Br : Nat) (hl : ∀ a' b', sal false a' b' ≤ Bl)
-    (hr : ∀ a' b', sal true a' b' ≤ Br) :
-    ∀ {k : Kd} (e : E rk k), alE self sal x l r a b e ≤ e.mks + e.calls false * Bl + e.calls true * Br := by
+theorem alE_le (sal : Ca) (x : BitVec 64)
+    (l r : C) (a : BitVec 64) (b : C) (Bl Br : Nat) (hl : ∀ a' b', sal.f false a' b' ≤ Bl)
+    (hr : ∀ a' b', sal.f true a' b' ≤ Br) :
+    ∀ {k : Kd} (e : E rk k) (self : Cn rk), e.exts = 0 →
+      alE self sal x l r a b e ≤ e.mks + e.calls false * Bl + e.calls true * Br := by
   intro k e
   induction e with
-  | x | a | k _ | l | r | b | nul => simp [alE, E.mks, E.calls]
-  | bin op e₁ e₂ ih₁ ih₂ => simp only [alE, E.mks, E.calls, Nat.add_mul]; omega
-  | mk t ex el er ihx ihl ihr => simp only [alE, E.mks, E.calls, Nat.add_mul]; omega
+  | x | a | k _ | l | r | b | nul | me | var _ _ => intro self _; simp [alE, E.mks, E.calls]
+  | bin op e₁ e₂ ih₁ ih₂ =>
+    intro self hx; simp only [E.exts] at hx
+    have := ih₁ self (by omega); have := ih₂ self (by omega)
+    simp only [alE, E.mks, E.calls, Nat.add_mul]; omega
+  | mk t ex el er ihx ihl ihr =>
+    intro self hx; simp only [E.exts] at hx
+    have := ihx self (by omega); have := ihl self (by omega); have := ihr self (by omega)
+    simp only [alE, E.mks, E.calls, Nat.add_mul]; omega
   | call ch ea eb iha ihb =>
+    intro self hx; simp only [E.exts] at hx
+    have := iha self (by omega); have := ihb self (by omega)
     simp only [alE, E.mks, E.calls, Nat.add_mul]
     cases ch
     · have := hl (ev self x l r a b ea) (ev self x l r a b eb); simp; omega
     · have := hr (ev self x l r a b ea) (ev self x l r a b eb); simp; omega
   | ite c e₁ e₂ ihc ih₁ ih₂ =>
+    intro self hx; simp only [E.exts] at hx
+    have := ihc self (by omega); have := ih₁ self (by omega); have := ih₂ self (by omega)
     simp only [alE, E.mks, E.calls]
     have m1 := Nat.mul_le_mul_right Bl (Nat.le_max_left (e₁.calls false) (e₂.calls false))
     have m2 := Nat.mul_le_mul_right Bl (Nat.le_max_right (e₁.calls false) (e₂.calls false))
@@ -33,6 +44,14 @@ theorem alE_le (self : Bool → BitVec 64 → C → rk.den) (sal : Bool → BitV
     have := Nat.le_max_left e₁.mks e₂.mks; have := Nat.le_max_right e₁.mks e₂.mks
     rw [Nat.add_mul, Nat.add_mul]
     split <;> omega
+  | fw _ e ih => intro self hx; simp only [E.exts] at hx; have := ih self hx; simp only [alE, E.mks, E.calls]; omega
+  | ft _ e ih => intro self hx; simp only [E.exts] at hx; have := ih self hx; simp only [alE, E.mks, E.calls]; omega
+  | ext _ _ _ _ _ => intro self hx; simp [E.exts] at hx
+  | @bind k₁ _ e₁ e₂ ih₁ ih₂ =>
+    intro self hx; simp only [E.exts] at hx
+    have := ih₁ self (by omega)
+    have := ih₂ ⟨self.f, self.X, self.me, k₁.pair (ev self x l r a b e₁) :: self.ρ⟩ (by omega)
+    simp only [alE, E.mks, E.calls, Nat.add_mul]; omega
 
 theorem mks_le (pg : Pg rk) {e : E rk rk} (he : e ∈ pg.arms) : e.mks ≤ pg.M := by
   unfold Pg.M
@@ -45,8 +64,8 @@ theorem mks_le (pg : Pg rk) {e : E rk rk} (he : e ∈ pg.arms) : e.mks ≤ pg.M 
     · omega
     · have := ih h; omega
 
-/-- every arm calls each child at most once -/
-def Pg.lin (pg : Pg rk) : Prop := ∀ e ∈ pg.arms, e.calls false ≤ 1 ∧ e.calls true ≤ 1
+/-- every arm calls each child at most once, and no later function; the kinds of its `var`s agree -/
+def Pg.lin (pg : Pg rk) : Prop := ∀ e ∈ pg.arms, e.calls false ≤ 1 ∧ e.calls true ≤ 1 ∧ e.exts = 0 ∧ e.okc [] [] = true
 
 theorem al_le (pg : Pg rk) (hl : pg.lin) : ∀ (v : C) (a : BitVec 64) (b : C), pg.al v a b ≤ pg.M * v.nodes := by
   intro v
@@ -60,10 +79,11 @@ theorem al_le (pg : Pg rk) (hl : pg.lin) : ∀ (v : C) (a : BitVec 64) (b : C), 
     | some e =>
       rw [al_c pg he]
       have hm := List.mem_of_getElem? he
-      have h1 := alE_le (selfS pg l r) (selfA pg l r) x l r a b (pg.M * l.nodes) (pg.M * r.nodes)
+      obtain ⟨c1, c2, c3, -⟩ := hl e hm
+      have h1 := alE_le (selfA pg l r) x l r a b (pg.M * l.nodes) (pg.M * r.nodes)
         (fun a' b' => by simp only [selfA]; exact ihl a' b') (fun a' b' => by simp only [selfA]; exact ihr a' b') e
+        (selfS pg l r (.c t x l r) []) c3
       have m1 := mks_le pg hm
-      obtain ⟨c1, c2⟩ := hl e hm
       have e1 := Nat.mul_le_mul_right (pg.M * l.nodes) c1
       have e2 := Nat.mul_le_mul_right (pg.M * r.nodes) c2
       rw [Nat.mul_add, Nat.mul_add, Nat.mul_one]; omega
@@ -139,31 +159,34 @@ theorem bi_ok {P : Prog} {sh : Shape} (hP1 : ∃ hf : 1 < P.length, P[1] = decFn
     (hA : bi = .inp → At I c (v₂.enc sh)) (cap : h + 4 * biLen sh bi v₂ ≤ W.length) :
     ∃ E' W' h', CExec P K (biC bi) ⟨env, [I, O], [W]⟩ ⟨E', [I, O], [W']⟩ ∧ W'.length = W.length ∧ Agree W W' h ∧
       HI W' h' ∧ h ≤ h' ∧ h' ≤ h + 4 * biLen sh bi v₂ ∧ E' 5 = BitVec.ofNat 64 h' ∧
-      (∀ i, i ∉ [4, 5, 9, 11] → E' i = env i) ∧ Rp W' h' (E' 9) (bi.val v₂) := by
+      (∀ i, i ∉ [4, 5, 9, 11] → E' i = env i) ∧ Rp W' h' (E' 9) (bi.val v₂) ∧
+      E' 4 = BitVec.ofNat 64 (c + if bi = .inp then (v₂.enc sh).length else 0) := by
   cases bi with
   | inp =>
     simp only [biLen] at cap ⊢
-    obtain ⟨E', W', h', x, l1, a1, i1, b1, b2, e5, -, gl, rv⟩ := dcall_ok hP1 (K' := 48 * v₂.depth) (hK rfl)
+    obtain ⟨E', W', h', x, l1, a1, i1, b1, b2, e5, e4, gl, rv⟩ := dcall_ok hP1 (K' := 48 * v₂.depth) (hK rfl)
       (dec_ok hP1 hsh v₂ (h2 rfl)) (d := 9) (by omega) (H := [I, O]) rfl hI (hA rfl) hi h4 h5 cap
     exact ⟨E', W', h', x, l1, a1, i1, b1, b2, e5, fun i hi' => gl i (by simp at hi'; omega) (by simp at hi'; omega)
-      (by simp at hi'; omega), rv⟩
+      (by simp at hi'; omega), rv, by simpa using e4⟩
   | ctor t =>
     simp only [biLen] at cap ⊢
     have ht := hbi t rfl
     have x := alloc_exec (H := [I, O]) (env := env.set 11 ((kE 0).denote env)) (kE t) 11 11 11 9 (by omega)
       (by rw [set_ne' _ _ (by omega)]; exact h5) (by omega) hi.big
     refine ⟨_, _, h + 4, .base (.seq (asg_exec _ _ _) x), by rw [put_length], put_agree W h _ _ _ _, HI_put hi (by omega) _ _ _ _,
-      by omega, by omega, by rw [set_eq'], fun i hi' => ?_, ?_⟩
+      by omega, by omega, by rw [set_eq'], fun i hi' => ?_, ?_, ?_⟩
     · simp at hi'; rw [set_ne' _ _ (by omega), set_ne' _ _ (by omega), set_ne' _ _ (by omega)]
     · show Rp _ _ (BEnv.set _ 5 _ 9) _
       rw [set_ne' _ _ (show (9 : Nat) ≠ 5 by omega), set_eq']
       simp only [set_eq', kE, BExp.denote, BIn.val]
       exact Rp_put hi ht (by omega) .z .z
+    · rw [set_ne' _ _ (by omega), set_ne' _ _ (by omega), set_ne' _ _ (by omega)]; simpa using h4
   | none =>
     simp only [biLen] at cap ⊢
     refine ⟨_, W, h, .base (asg_exec _ _ _), rfl, Agree.refl _ _, hi, by omega, by omega, by
-      rw [set_ne' _ _ (by omega)]; exact h5, fun i hi' => by simp at hi'; rw [set_ne' _ _ (by omega)], ?_⟩
-    rw [set_eq']; exact .z
+      rw [set_ne' _ _ (by omega)]; exact h5, fun i hi' => by simp at hi'; rw [set_ne' _ _ (by omega)], ?_, ?_⟩
+    · rw [set_eq']; exact .z
+    · rw [set_ne' _ _ (by omega)]; simpa using h4
 
 /-- the code of the output -/
 def outC (rk : Kd) (nb : Nat) : CStmt :=
@@ -191,12 +214,173 @@ theorem out_ok {P : Prog} {sh : Shape} (hP2 : ∃ hf : 2 < P.length, P[2] = encF
       (by rw [set_ne' _ _ (by omega)]; exact hy)
     exact ⟨_, .base (.seq (asg_exec _ _ _) this), ⟨(fun h => by cases h), fun i hi' n6 => set_ne' _ _ n6⟩⟩
 
-variable (sh : Shape) (pg : Pg rk) (bi : BIn) (a0 : BitVec 64) (nb : Nat)
+/-- the functions' well-formedness as a `Bool` (checked by `decide`): at most 255 arms, constructor tags below 256,
+the kinds of `var` / `ext` agree (`E.okc`, with the kinds of the functions after each one) -/
+def okL : List (Σ k : Kd, Pg k) → Bool
+  | [] => true
+  | ⟨_, p⟩ :: ps => decide (p.arms.length ≤ 255) &&
+      p.arms.all (fun e => decide (e.tags < 256) && e.okc [] (ps.map (·.1))) && okL ps
 
-/-- **The whole program**: on the bytes of `v₁` (and `v₂`), `main` leaves the bytes of `F v₁ a0 b` in the output
-block (`b` = `v₂`, a fresh nullary constructor, or `z`), using `56 + 136 (1 + n + |W|)` bytes of stack for `n` input
-bytes and a word block `W` of at least `8 + 4 (M + 1) n` words (`M` = cells allocated per call) -/
-theorem ind_ok (hsh : sh.length < 255) (hn : pg.arms.length ≤ 255) (htg : ∀ e ∈ pg.arms, e.tags < 256)
+theorem okL_spec : ∀ (fs : List (Σ k : Kd, Pg k)), okL fs = true → ∀ i (hi : i < fs.length),
+    fs[i].2.arms.length ≤ 255 ∧
+      ∀ e : E fs[i].1 fs[i].1, e ∈ fs[i].2.arms → e.tags < 256 ∧ e.okc [] ((fs.drop (i + 1)).map (·.1)) = true
+  | [], _, i, hi => absurd hi (by simp)
+  | ⟨k, p⟩ :: ps, h, i, hi => by
+    simp only [okL, Bool.and_eq_true, decide_eq_true_eq, List.all_eq_true] at h
+    obtain ⟨⟨h1, h2⟩, h3⟩ := h
+    cases i with
+    | zero => exact ⟨h1, fun e he => by have := h2 e he; simpa using this⟩
+    | succ i => have := okL_spec ps h3 i (by simp at hi; omega); simpa using this
+
+theorem indProgM_get (sh shO : Shape) (pg : Pg rk) (hs : List (Σ k : Kd, Pg k)) (bi : BIn) (ain : Bool)
+    (a0 : BitVec 64) (nb nl : Nat) : ∀ i (hi : i < (⟨rk, pg⟩ :: hs).length),
+    (indProgM sh shO pg hs bi ain a0 nb nl)[3 + i]? = some (fFn (3 + i) nl (⟨rk, pg⟩ :: hs)[i].2)
+  | 0, _ => rfl
+  | i + 1, hi => by
+    simp only [List.length_cons] at hi
+    simp only [indProgM, List.getElem_cons_succ]
+    rw [List.getElem?_append_right (by simp; omega)]
+    simp only [List.length_cons, List.length_nil, List.getElem?_mapIdx, show 3 + (i + 1) - (0 + 1 + 1 + 1 + 1) = i by omega,
+      List.getElem?_eq_getElem (show i < hs.length by omega), Option.map_some, show 4 + i = 3 + (i + 1) by omega]
+
+/-- the word argument -/
+theorem aC_exec (ain : Bool) (a0 av : BitVec 64) (env : BEnv) (I O : List (BitVec 8)) (Wh : WHeap) (c : Nat)
+    (h4 : env 4 = BitVec.ofNat 64 c) (hA : ain = true → At I c (leN 8 av.toNat)) (hc : c + 8 < 2 ^ 60) :
+    ∃ E', BExec (aC ain a0) ⟨env, [I, O], Wh⟩ ⟨E', [I, O], Wh⟩ ∧ E' 11 = (if ain then av else a0) ∧
+      ∀ i, i ≠ 11 → i ≠ 12 → i ≠ 13 → E' i = env i := by
+  cases ain with
+  | false =>
+    exact ⟨_, asg_exec _ _ _, by simp [set_eq', BExp.denote], fun i h _ _ => set_ne' _ _ h⟩
+  | true =>
+    obtain ⟨E₁, x₁, e9, k₁⟩ := rdB_ok (leN 8 av.toNat) (leN_length 8 _) c I (hA rfl) hc 8 (Nat.le_refl _)
+      (env.set 13 ((vE 9).denote env)) [I, O] Wh rfl (by rw [set_ne' _ _ (by omega)]; exact h4)
+    have hv : BitVec.ofNat 64 (unle (List.drop (8 - 8) (leN 8 av.toNat))) = av := by
+      rw [Nat.sub_self, List.drop_zero, unle_leN, show (256 : Nat) ^ 8 = 2 ^ 64 from rfl,
+        Nat.mod_eq_of_lt av.isLt, BitVec.ofNat_toNat, BitVec.setWidth_eq]
+    refine ⟨_, .seq (asg_exec _ _ _) (.seq x₁ (.seq (asg_exec _ _ _) (asg_exec _ _ _))), ?_, fun i h11 h12 h13 => ?_⟩
+    · simp only [if_true]; rw [set_ne' _ _ (by omega), set_eq']; simp only [vE, BExp.denote]; rw [e9, hv]
+    · simp only
+      by_cases h9 : i = 9
+      · subst h9; rw [set_eq']; simp only [vE, BExp.denote]
+        rw [set_ne' _ _ (by omega), k₁ 13 (by omega) (by omega), set_eq']; rfl
+      · rw [set_ne' _ _ h9, set_ne' _ _ h11, k₁ i h9 h12, set_ne' _ _ h13]
+
+/-- **The whole program** (several functions): on the bytes of `v₁` (then `v₂`, then the word `av` when `ain`),
+`main` leaves the bytes of `F v₁ a b` in the output block (`F` the entry `pg`, `a` = `av` or the literal `a0`, `b` =
+`v₂`, a fresh nullary constructor, or `z`), using `56 + 8 (nl + 1) (n + m (1 + |W|))` bytes of stack for `n` input
+bytes, `m` functions and a word block `W` of at least `8 + 4 n + 4 · (cells allocated)` words -/
+theorem ind_okM (sh shO : Shape) (pg : Pg rk) (hs : List (Σ k : Kd, Pg k)) (bi : BIn) (ain : Bool) (a0 : BitVec 64)
+    (nb nl : Nat) (hsh : sh.length < 255) (hshO : shO.length < 255) (hnl : 16 ≤ nl)
+    (hch : Chain (⟨rk, pg⟩ :: hs)) (hok : okL (⟨rk, pg⟩ :: hs) = true)
+    (hbi : ∀ t, bi = .ctor t → t < 256) (hnb : nb ≤ 8)
+    (v₁ v₂ : C) (av : BitVec 64) (h1 : v₁.wf sh) (h2 : bi = .inp → v₂.wf sh) (O : List (BitVec 8))
+    (W₀ : List (BitVec 64)) (env : BEnv) (res : Nat) (hres : res < 8)
+    (hI : (inBytesA sh bi ain v₁ v₂ av).length < 2 ^ 59) (hW : W₀.length < 2 ^ 60)
+    (cap : 8 + 4 * (inBytesA sh bi ain v₁ v₂ av).length + 4 * pg.al v₁ (if ain then av else a0) (bi.val v₂) ≤
+      W₀.length) (hO : O.length < 2 ^ 60)
+    (hout : (Kd.out shO nb rk (pg.sem v₁ (if ain then av else a0) (bi.val v₂))).length ≤ O.length) :
+    ∃ σ', CExec (indProgM sh shO pg hs bi ain a0 nb nl)
+        (56 + 8 * (nl + 1) * ((inBytesA sh bi ain v₁ v₂ av).length + (1 + hs.length) * (1 + W₀.length)))
+        (.call res 0 []) ⟨env, [(inBytesA sh bi ain v₁ v₂ av).map (·.toBitVec), O], [W₀]⟩ σ' ∧
+      σ'.heap = [(inBytesA sh bi ain v₁ v₂ av).map (·.toBitVec),
+        wr O 0 (Kd.out shO nb rk (pg.sem v₁ (if ain then av else a0) (bi.val v₂)))] ∧
+      (rk = .t → σ'.env res =
+        BitVec.ofNat 64 (Kd.out shO nb rk (pg.sem v₁ (if ain then av else a0) (bi.val v₂))).length) := by
+  have hP1 : ∃ hf : 1 < (indProgM sh shO pg hs bi ain a0 nb nl).length,
+      (indProgM sh shO pg hs bi ain a0 nb nl)[1] = decFn sh := ⟨by simp [indProgM], rfl⟩
+  have hP2 : ∃ hf : 2 < (indProgM sh shO pg hs bi ain a0 nb nl).length,
+      (indProgM sh shO pg hs bi ain a0 nb nl)[2] = encFn shO := ⟨by simp [indProgM], rfl⟩
+  have hP0 : ∃ hf : 0 < (indProgM sh shO pg hs bi ain a0 nb nl).length,
+      (indProgM sh shO pg hs bi ain a0 nb nl)[0] = mainFn bi ain a0 (rk = .t) nb := ⟨by simp [indProgM], rfl⟩
+  have xok := chain_ok (P := indProgM sh shO pg hs bi ain a0 nb nl) (nl := nl) (Lw := W₀.length) (⟨rk, pg⟩ :: hs) 3
+    (indProgM_get sh shO pg hs bi ain a0 nb nl) hch (okL_spec _ hok) 0 (by simp)
+  simp only [List.getElem_cons_zero, Nat.add_zero, List.length_cons, Nat.sub_zero] at xok
+  generalize indProgM sh shO pg hs bi ain a0 nb nl = P at hP0 hP1 hP2 xok
+  obtain ⟨hf0, hP0⟩ := hP0
+  generalize haa : (if ain then av else a0) = aa at *
+  -- the input
+  have hIA : inBytesA sh bi ain v₁ v₂ av = inBytes sh bi v₁ v₂ ++ (if ain then leN 8 av.toNat else []) := rfl
+  have hAll := At.map (inBytesA sh bi ain v₁ v₂ av)
+  rw [hIA] at hAll
+  obtain ⟨hAb, hAt⟩ := At.app hAll
+  rw [← hIA] at hAb hAt
+  have hIl : (inBytes sh bi v₁ v₂).length = (v₁.enc sh).length + (if bi = .inp then (v₂.enc sh).length else 0) := by
+    cases bi <;> simp [inBytes]
+  have hA1 : At ((inBytesA sh bi ain v₁ v₂ av).map (·.toBitVec)) 0 (v₁.enc sh) := by
+    cases bi
+    · exact (At.app hAb).1
+    all_goals exact hAb
+  have hA2 : bi = .inp → At ((inBytesA sh bi ain v₁ v₂ av).map (·.toBitVec)) (0 + (v₁.enc sh).length) (v₂.enc sh) := by
+    intro h; subst h; exact (At.app hAb).2
+  have hA3 : ain = true → At ((inBytesA sh bi ain v₁ v₂ av).map (·.toBitVec)) (0 + (inBytes sh bi v₁ v₂).length)
+      (leN 8 av.toNat) := by
+    intro h; subst h; simpa using hAt
+  have hIAl : (inBytesA sh bi ain v₁ v₂ av).length = (inBytes sh bi v₁ v₂).length + (if ain then 8 else 0) := by
+    rw [hIA]; cases ain <;> simp [leN_length]
+  have hbl : (v₁.enc sh).length + biLen sh bi v₂ ≤ (inBytes sh bi v₁ v₂).length + 1 := by
+    cases bi <;> simp [inBytes, biLen]
+  have hd2 : bi = .inp → v₂.depth ≤ (inBytes sh bi v₁ v₂).length := by
+    intro h; have := nodes_le sh v₂ (h2 h); subst h; simp [inBytes]; omega
+  have hn1 := nodes_le sh v₁ h1
+  generalize hIb : inBytes sh bi v₁ v₂ = Ib at *
+  generalize inBytesA sh bi ain v₁ v₂ av = I at *
+  have hIB : (I.map (·.toBitVec)).length = I.length := by simp
+  generalize hfr : 8 * (nl + 1) = fr at *
+  have hfr16 : 136 ≤ fr := by omega
+  generalize hK : fr * (I.length + (1 + hs.length) * (1 + W₀.length)) = K
+  have hKI : fr * I.length ≤ K := by rw [← hK, Nat.mul_add]; omega
+  have hKW : fr * (W₀.length + 1) * (hs.length + 1) ≤ K := by
+    have e : (W₀.length + 1) * (hs.length + 1) = (1 + hs.length) * (1 + W₀.length) := by
+      rw [Nat.mul_comm, Nat.add_comm 1 hs.length, Nat.add_comm 1 W₀.length]
+    rw [← hK, Nat.mul_assoc, e]
+    exact Nat.mul_le_mul_left fr (Nat.le_add_left _ _)
+  have hKW1 : fr * (1 + W₀.length) ≤ K := by
+    have := Nat.le_mul_of_pos_right (fr * (W₀.length + 1)) (show 0 < hs.length + 1 by omega)
+    rw [Nat.add_comm 1]; omega
+  have hK48 : 48 + 48 * I.length ≤ K := by
+    have := Nat.mul_le_mul_right I.length hfr16
+    have : 136 ≤ fr * (1 + W₀.length) := by
+      have := Nat.mul_le_mul hfr16 (show 1 ≤ 1 + W₀.length by omega); omega
+    omega
+  have hK56 : 56 + 56 * W₀.length ≤ K := by
+    have := Nat.mul_le_mul hfr16 (Nat.le_refl (1 + W₀.length)); rw [Nat.mul_add, Nat.mul_one] at this; omega
+  -- the run of `main`
+  let g := callEnv env []
+  obtain ⟨W₁, xi, l1, hi1⟩ := init_exec g [I.map (·.toBitVec), O] W₀ (by omega) hW
+  obtain ⟨E₂, W₂, h₂, x₂, l2, a2, i2, b21, b22, e25, e24, gl2, rv1⟩ := dcall_ok hP1 (K := K) (K' := 48 * v₁.depth)
+    (by omega) (dec_ok hP1 hsh v₁ h1) (d := 8) (by omega) (env := (g.set 4 0).set 5 4) (H := [I.map (·.toBitVec), O])
+    rfl (by omega) hA1 hi1 (by rw [set_ne' _ _ (by omega), set_eq']; rfl) (by rw [set_eq']; rfl) (by rw [l1]; omega)
+  obtain ⟨E₃, W₃, h₃, x₃, l3, a3, i3, b31, b32, e35, gl3, rv2, e34⟩ := bi_ok hP1 hsh bi v₂ (K := K)
+    (fun h => by have := hd2 h; omega) hbi h2 (I := I.map (·.toBitVec)) (O := O) (by omega) i2 e25 e24 hA2
+    (by rw [l2]; omega)
+  have hc3 : (0 + (v₁.enc sh).length + if bi = .inp then (v₂.enc sh).length else 0) = 0 + Ib.length := by omega
+  rw [hc3] at e34
+  obtain ⟨E₄, x₄, e411, k₄⟩ := aC_exec ain a0 av E₃ (I.map (·.toBitVec)) O [W₃] (0 + Ib.length) e34
+    (fun h => by rw [← haa] at *; exact hA3 h) (by omega)
+  rw [haa] at e411
+  have e48 : E₄ 8 = E₂ 8 := by rw [k₄ 8 (by omega) (by omega) (by omega), gl3 8 (by simp)]
+  have e49 : E₄ 9 = E₃ 9 := k₄ 9 (by omega) (by omega) (by omega)
+  have e45 : E₄ 5 = BitVec.ofNat 64 h₃ := by rw [k₄ 5 (by omega) (by omega) (by omega)]; exact e35
+  obtain ⟨E₅, W₅, x₅, p₅, k₅, v₅⟩ := xok v₁ (bi.val v₂) (E₄ 8) aa (E₄ 9) 10 8 11 9 E₄ [I.map (·.toBitVec), O] W₃ h₃
+    (by omega) (by rw [l3, l2, l1]; exact Nat.le_refl _) i3 e45 rfl e411 rfl (by rw [e48]; exact rv1.mono b31 a3) (by rw [e49]; exact rv2)
+    (by show h₃ + 4 * pg.al v₁ aa (bi.val v₂) ≤ W₃.length; rw [l3, l2, l1]; omega)
+  simp only [semX, Kd.pick_pair] at v₅
+  simp only [alX] at p₅ v₅
+  obtain ⟨E₆, x₆, e6, k₆⟩ := out_ok hP2 hshO nb hnb (K := K) (W := W₅) (by rw [p₅.len, l3, l2, l1]; omega) p₅.hi v₅
+    (I := I.map (·.toBitVec)) hO hout
+  have hb : CExec P K P[0].body ⟨callEnv env (([] : List BExp).map (·.denote env)), [I.map (·.toBitVec), O], [W₀]⟩
+      ⟨E₆, [I.map (·.toBitVec), wr O 0 (Kd.out shO nb rk (pg.sem v₁ aa (bi.val v₂)))], [W₅]⟩ := by
+    rw [hP0]
+    exact .seq (.base xi) (.seq x₂ (.seq x₃ (.seq (.base x₄) (.seq (x₅.mono (by omega)) x₆))))
+  refine ⟨_, CExec.call hf0 (by rw [hP0]; rfl) (by rw [hP0]; show 56 + K ≤ _; omega) hb, rfl, fun ht => ?_⟩
+  simp only [set_eq']
+  rw [hP0]; subst ht
+  simp only [mainFn, vE]
+  exact e6 rfl
+
+/-- **The whole program** (one function, the first input format; the statement of section 17) -/
+theorem ind_ok (sh : Shape) (pg : Pg rk) (bi : BIn) (a0 : BitVec 64) (nb : Nat)
+    (hsh : sh.length < 255) (hn : pg.arms.length ≤ 255) (htg : ∀ e ∈ pg.arms, e.tags < 256)
     (hlin : pg.lin) (hbi : ∀ t, bi = .ctor t → t < 256) (hnb : nb ≤ 8)
     (v₁ v₂ : C) (h1 : v₁.wf sh) (h2 : bi = .inp → v₂.wf sh) (O : List (BitVec 8)) (W₀ : List (BitVec 64))
     (env : BEnv) (res : Nat) (hres : res < 8)
@@ -207,62 +391,21 @@ theorem ind_ok (hsh : sh.length < 255) (hn : pg.arms.length ≤ 255) (htg : ∀ 
         ⟨env, [(inBytes sh bi v₁ v₂).map (·.toBitVec), O], [W₀]⟩ σ' ∧
       σ'.heap = [(inBytes sh bi v₁ v₂).map (·.toBitVec), wr O 0 (Kd.out sh nb rk (pg.sem v₁ a0 (bi.val v₂)))] ∧
       (rk = .t → σ'.env res = BitVec.ofNat 64 (Kd.out sh nb rk (pg.sem v₁ a0 (bi.val v₂))).length) := by
-  have hP1 : ∃ hf : 1 < (indProg sh pg bi a0 nb).length, (indProg sh pg bi a0 nb)[1] = decFn sh := ⟨by simp [indProg], rfl⟩
-  have hP2 : ∃ hf : 2 < (indProg sh pg bi a0 nb).length, (indProg sh pg bi a0 nb)[2] = encFn sh := ⟨by simp [indProg], rfl⟩
-  have hP3 : ∃ hf : 3 < (indProg sh pg bi a0 nb).length, (indProg sh pg bi a0 nb)[3] = fFn pg := ⟨by simp [indProg], rfl⟩
-  have hP0 : ∃ hf : 0 < (indProg sh pg bi a0 nb).length, (indProg sh pg bi a0 nb)[0] = mainFn bi a0 (rk = .t) nb :=
-    ⟨by simp [indProg], rfl⟩
-  generalize indProg sh pg bi a0 nb = P at hP0 hP1 hP2 hP3
-  obtain ⟨hf0, hP0⟩ := hP0
-  -- the input
-  have hIl : (inBytes sh bi v₁ v₂).length = (v₁.enc sh).length + (if bi = .inp then (v₂.enc sh).length else 0) := by
-    cases bi <;> simp [inBytes]
-  have hA1 : At ((inBytes sh bi v₁ v₂).map (·.toBitVec)) 0 (v₁.enc sh) := by
-    cases bi
-    · exact (At.app (At.map _)).1
-    all_goals exact At.map _
-  have hA2 : bi = .inp → At ((inBytes sh bi v₁ v₂).map (·.toBitVec)) (0 + (v₁.enc sh).length) (v₂.enc sh) := by
-    intro h; subst h; exact (At.app (At.map _)).2
-  have hbl : (v₁.enc sh).length + biLen sh bi v₂ ≤ (inBytes sh bi v₁ v₂).length + 1 := by
-    cases bi <;> simp [inBytes, biLen]
-  have hd2 : bi = .inp → v₂.depth ≤ (inBytes sh bi v₁ v₂).length := by
-    intro h; have := nodes_le sh v₂ (h2 h); subst h; simp [inBytes]; omega
-  have hn1 := nodes_le sh v₁ h1
   have hal := al_le pg hlin v₁ a0 (bi.val v₂)
-  have hMI : pg.M * v₁.nodes ≤ pg.M * (inBytes sh bi v₁ v₂).length := Nat.mul_le_mul_left _ (by omega)
+  have hn1 := nodes_le sh v₁ h1
+  have hI' : v₁.nodes ≤ (inBytes sh bi v₁ v₂).length := by cases bi <;> simp [inBytes] <;> omega
+  have hMI : pg.M * v₁.nodes ≤ pg.M * (inBytes sh bi v₁ v₂).length := Nat.mul_le_mul_left _ hI'
   have hcap : 4 * (pg.M + 1) * (inBytes sh bi v₁ v₂).length =
       4 * (pg.M * (inBytes sh bi v₁ v₂).length) + 4 * (inBytes sh bi v₁ v₂).length := by
     rw [Nat.mul_assoc, Nat.add_mul, Nat.one_mul, Nat.mul_add]
-  generalize inBytes sh bi v₁ v₂ = I at *
-  have hIB : (I.map (·.toBitVec)).length = I.length := by simp
-  generalize hK : 136 * (1 + I.length + W₀.length) = K
-  -- the run of `main`
-  let g := callEnv env []
-  obtain ⟨W₁, xi, l1, hi1⟩ := init_exec g [I.map (·.toBitVec), O] W₀ (by omega) hW
-  obtain ⟨E₂, W₂, h₂, x₂, l2, a2, i2, b21, b22, e25, e24, gl2, rv1⟩ := dcall_ok hP1 (K := K) (K' := 48 * v₁.depth)
-    (by omega) (dec_ok hP1 hsh v₁ h1) (d := 8) (by omega) (env := (g.set 4 0).set 5 4) (H := [I.map (·.toBitVec), O])
-    rfl (by omega) hA1 hi1 (by rw [set_ne' _ _ (by omega), set_eq']; rfl) (by rw [set_eq']; rfl) (by rw [l1]; omega)
-  obtain ⟨E₃, W₃, h₃, x₃, l3, a3, i3, b31, b32, e35, gl3, rv2⟩ := bi_ok hP1 hsh bi v₂ (K := K)
-    (fun h => by have := hd2 h; omega) hbi h2 (I := I.map (·.toBitVec)) (O := O) (by omega) i2 e25 e24 hA2
-    (by rw [l2]; omega)
-  let E₄ := E₃.set 11 ((BExp.const a0).denote E₃)
-  have e48 : E₄ 8 = E₂ 8 := by simp only [E₄]; rw [set_ne' _ _ (by omega), gl3 8 (by simp)]
-  have e49 : E₄ 9 = E₃ 9 := by simp only [E₄]; rw [set_ne' _ _ (by omega)]
-  have bok := bodyOK_of_loopOK (loop_ok hP3 hn htg v₁) (E₄ 8)
-  obtain ⟨E₅, W₅, x₅, p₅, k₅, v₅⟩ := call_ok hP3 (K := K) (K' := 136 * v₁.depth) (by omega) bok (d := 10)
-    (pvar := 8) (avar := 11) (bvar := 9) (a' := a0) (b' := bi.val v₂) (v := v₁) (env := E₄) (H := [I.map (·.toBitVec), O]) i3
-    (by simp only [E₄]; rw [set_ne' _ _ (by omega)]; exact e35) rfl (by simp only [E₄]; rw [set_eq']; first | rfl | skip) rfl
-    (by rw [e48]; exact rv1.mono b31 a3) (by rw [e49]; exact rv2) (by rw [l3, l2, l1]; omega) (by omega)
-  obtain ⟨E₆, x₆, e6, k₆⟩ := out_ok hP2 hsh nb hnb (K := K) (W := W₅) (by rw [p₅.len, l3, l2, l1]; omega) p₅.hi v₅
-    (I := I.map (·.toBitVec)) hO hout
-  have hb : CExec P K P[0].body ⟨callEnv env (([] : List BExp).map (·.denote env)), [I.map (·.toBitVec), O], [W₀]⟩
-      ⟨E₆, [I.map (·.toBitVec), wr O 0 (Kd.out sh nb rk (pg.sem v₁ a0 (bi.val v₂)))], [W₅]⟩ := by
-    rw [hP0]
-    exact .seq (.base xi) (.seq x₂ (.seq x₃ (.seq (.base (asg_exec _ _ _)) (.seq x₅ x₆))))
-  refine ⟨_, CExec.call hf0 (by rw [hP0]; rfl) (by rw [hP0]; show 56 + K ≤ _; omega) hb, rfl, fun ht => ?_⟩
-  simp only [set_eq']
-  rw [hP0]; subst ht
-  simp only [mainFn, vE]
-  exact e6 rfl
+  have hIA : inBytesA sh bi false v₁ v₂ 0 = inBytes sh bi v₁ v₂ := by simp [inBytesA]
+  have := ind_okM sh sh pg [] bi false a0 nb 16 hsh hsh (by omega) ⟨fun j hj => absurd hj (by simp), trivial⟩
+    (by simp only [okL, Bool.and_eq_true, decide_eq_true_eq, List.all_eq_true]
+        exact ⟨⟨hn, fun e he => ⟨htg e he, by simpa using (hlin e he).2.2.2⟩⟩, trivial⟩)
+    hbi hnb v₁ v₂ 0 h1 h2 O W₀ env res hres (by rw [hIA]; exact hI) hW
+    (by rw [hIA]; simp only [Bool.false_eq_true, if_false]; omega) hO (by simpa using hout)
+  simp only [hIA, Bool.false_eq_true, if_false, List.length_nil, Nat.add_zero] at this
+  obtain ⟨σ', hx, hh, hr⟩ := this
+  exact ⟨σ', hx.mono (by omega), hh, hr⟩
 
 end Proven.Mach.Ind
