@@ -20,6 +20,11 @@ theorem set_ne {env : Mach.BEnv} {v j : Nat} {x : BitVec 64} (h : j ≠ v) : env
   simp [Mach.BEnv.set, h]
 theorem set_eq {env : Mach.BEnv} {v : Nat} {x : BitVec 64} : env.set v x v = x := by simp [Mach.BEnv.set]
 
+/-- a scalar's location (no memory) -/
+def scLoc (v : Nat) : Loc := ⟨v, true, 0, none⟩
+
+def skipAt (d : Nat) : MS := .assign d (.const 0)
+
 /-! ## Loads -/
 
 /-- `d := a[var d]` (or `0` when out of range, `chk`) for an array at `l` -/

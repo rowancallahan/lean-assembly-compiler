@@ -129,14 +129,6 @@ theorem wset_get : ∀ (W : List (BitVec 64)) (p : Nat) (xs : List (BitVec 64)) 
         rw [show q - p = (q - (p + 1)) + 1 by omega, List.getElem?_cons_succ]
       · rw [if_neg h1, if_neg (by simp; omega)]
 
-theorem store64_at {σ : MSt} {W : List (BitVec 64)} (hW : σ.wheap = [W]) (i e : MB) (p : Nat)
-    (hp : (i.denote σ.env).toNat = p) (hpl : p < W.length) :
-    Mach.BExec (.store64 0 i e) σ ⟨σ.env, σ.heap, [W.set p (e.denote σ.env)]⟩ := by
-  have := Mach.BExec.store64 (b := 0) (i := i) (e := e) (σ := σ) (by rw [hW]; simp)
-    (by simp only [hW, List.getElem_cons_zero, hp]; exact hpl)
-  simp only [hW, List.getElem_cons_zero, hp, List.set_cons_zero] at this
-  exact this
-
 theorem tblStores_ok (t : Ty) (wo d : Nat) : ∀ (xs : List t.T) (j : Nat) (σ : MSt) (W : List (BitVec 64)),
     σ.wheap = [W] → wo + j + xs.length ≤ W.length → W.length < 2 ^ 32 →
     Mach.BExec (tblStores t wo d xs j) σ ⟨σ.env.set d 0, σ.heap, [wset W (wo + j) (xs.map t.rep)]⟩
@@ -408,6 +400,23 @@ def T.rl : {Γ Δ : List Sl} → {R : Sl} → T Γ Δ R → List Loc → Nat →
   | _, _, _, .ite _ a b, L, d => match a.rl L (d + 2) with | some l => some l | none => b.rl L (d + 2)
   | _, _, _, .let_ _ k, L, d => k.rl (scLoc d :: L) (d + 1)
 
+/-- the slot an in-place update writes (the first one found; `T.wf` checks that all agree) -/
+def Args.wloc {Γ : List Sl} : {Δ : List Sl} → Args Γ Δ → List Loc → Option Loc
+  | _, .nil, _ => none
+  | _, @Args.cons _ (.sc _) _ _ as, st => as.wloc st.tail
+  | _, @Args.cons _ (.ar _) _ a as, st => match a with
+    | .var _ => as.wloc st.tail
+    | _ => some (st.headD default)
+
+def T.wloc (st : List Loc) : {Γ Δ : List Sl} → {R : Sl} → T Γ Δ R → Option Loc
+  | _, _, _, .ret _ => none
+  | _, _, _, .call as => as.wloc st
+  | _, _, _, .ite _ a b => match a.wloc st with | some l => some l | none => b.wloc st
+  | _, _, _, .let_ _ k => k.wloc st
+
+/-- the written slot of a loop, or a location without words -/
+def T.w (st : List Loc) {Γ Δ : List Sl} {R : Sl} (b : T Γ Δ R) : Loc := (b.wloc st).getD (scLoc 0)
+
 /-- the result location of a loop: `res` for a scalar, the array's slot otherwise -/
 def resLoc : (s : Sl) → Nat → Loc → Loc
   | .sc _, res, _ => scLoc res
@@ -443,8 +452,11 @@ def Pg.wf (L : List Loc) {Γ : List Sl} : {R : Sl} → Pg Γ R → Nat → Nat �
     let res := d + Δ.length
     let d1 := res + 2
     let rl := (b.rl (st ++ L) d1).getD default
-    init.wf L && b.wf st rl (st ++ L) d1 && decide (rl.v < d1) && rl.v != res + 1 &&
+    let w := b.w st
+    init.wf L && b.wf st rl w (st ++ L) d1 && decide (rl.v < d1) && rl.v != res + 1 &&
       (!s.isAr || (st ++ L).contains rl) &&
+      st.all (fun l => l == w || (l.v != w.v && Loc.sep l w)) && decide (st.count w ≤ 1) && decide (w.v < d1) &&
+      L.all (fun l => Loc.sep l w) &&
       k.wf (resLoc s res rl :: L) d1 r.2.2
 
 /-- the meaning of a program together with its run-time conditions (per loop an invariant `P`) -/
@@ -511,7 +523,7 @@ theorem Pg.comp_ok (L : List Loc) : ∀ {Γ : List Sl} {R : Sl} (p : Pg Γ R) (v
     exact ⟨σ2, W2, .seq e1 e2, h2.trans h1, w2, s2⟩
   | Γ, _, .loop (s := s) Δ b init k, v, σ, d, wo, W, y, hR, hl, hb, hlo, hwf, hg, hW, hcap, h32 => by
     simp only [Pg.wf, Bool.and_eq_true, decide_eq_true_eq, bne_iff_ne, ne_eq] at hwf
-    obtain ⟨⟨⟨⟨⟨hwi, hwb⟩, hrl⟩, hrf⟩, hrc⟩, hwk⟩ := hwf
+    obtain ⟨⟨⟨⟨⟨⟨⟨⟨⟨hwi, hwb⟩, hrl⟩, hrf⟩, hrc⟩, hws⟩, hwc⟩, hwv⟩, hLs⟩, hwk⟩ := hwf
     simp only [Pg.Good] at hg
     obtain ⟨hoi, r, P, hP0, hPok, hPs, hruns, hgk⟩ := hg
     simp only [Pg.comp] at hcap ⊢
@@ -521,6 +533,7 @@ theorem Pg.comp_ok (L : List Loc) : ∀ {Γ : List Sl} {R : Sl} (p : Pg Γ R) (v
     have hmo := Inis.comp_mono L init d wo
     generalize hst : (init.comp L d wo).2.1 = st at *
     generalize hrl' : (b.rl (st ++ L) (d + Δ.length + 2)).getD default = rl at *
+    generalize hw' : b.w st = w at *
     have hlen : st.length = Δ.length := by
       have := congrArg List.length v1; simp only [vsOf, List.length_map, List.length_range'] at this; exact this
     have hin : ∀ l ∈ st, d ≤ l.v ∧ l.v < d + Δ.length := fun l h => by
@@ -528,20 +541,25 @@ theorem Pg.comp_ok (L : List Loc) : ∀ {Γ : List Sl} {R : Sl} (p : Pg Γ R) (v
       rw [v1, List.mem_range'] at this; omega
     have hnin : ∀ j, (j < d ∨ d + Δ.length ≤ j) → j ∉ vsOf st := fun j hj h => by
       obtain ⟨l, hl', e⟩ := List.mem_map.1 h; have := hin l hl'; omega
-    have hlay : LoopLay st (d + Δ.length) (d + Δ.length + 1) rl (d + Δ.length + 2) :=
+    have hlay : LoopLay st (d + Δ.length) (d + Δ.length + 1) rl w (d + Δ.length + 2) :=
       ⟨fun l h => by have := hin l h; omega, by omega, by omega, hrl, by rw [v1]; exact List.nodup_range',
-        hnin _ (by omega), hnin _ (by omega), by omega, hrf⟩
+        hnin _ (by omega), hnin _ (by omega), by omega, hrf, fun l h hne => by
+          have := List.all_eq_true.1 hws l h
+          simp only [Bool.or_eq_true, beq_iff_eq, Bool.and_eq_true, bne_iff_ne, ne_eq] at this
+          exact this.resolve_left hne, hwc, hwv⟩
     have rΓ1 : Rel Γ L v σ1 := Rel.wkeep hR (fun l hl' => f1 _ (hb l hl')) h1 (by rw [hW, w1]; exact k1) hlo hl
     have hR2 : Rel (Δ ++ Γ) (st ++ L) (Vals.app (init.den v) v) σ1 := by
       rw [Rel.app hlen]; exact ⟨r1, rΓ1⟩
-    obtain ⟨σ3, e3, h3, w3, k3, rr3⟩ := T.loopCode_ok b v st L (d + Δ.length) (d + Δ.length + 1) rl
+    have hLs' : ∀ l ∈ L, Loc.sep l w = true := fun l h => List.all_eq_true.1 hLs l h
+    obtain ⟨σ3, e3, h3, w3, k3, rr3⟩ := T.loopCode_ok b v st L (d + Δ.length) (d + Δ.length + 1) rl w
       (d + Δ.length + 2) hlay hlen hl (hb.mono (by omega))
-      (fun l h => ⟨hnin _ (.inl (hb l h)), by have := hb l h; omega, by have := hb l h; omega⟩) hwb P hPok hPs
-      (init.den v) r hruns hP0 σ1 hR2
-    have rΓ3 : Rel Γ L v σ3 := Rel.frame rΓ1 (fun l h => by
+      (fun l h => ⟨hnin _ (.inl (hb l h)), by have := hb l h; omega, by have := hb l h; omega, hLs' l h⟩) hwb P hPok hPs
+      (init.den v) r hruns hP0 σ1 hR2 ⟨W1, w1⟩
+    obtain ⟨W3, hW3, hWo3⟩ := w3 W1 w1
+    have rΓ3 : Rel Γ L v σ3 := Rel.wo rΓ1 (fun l h => by
         have := hb l h
         rw [k3 l.v (by omega) (hnin _ (.inl this)) (by omega) (by omega)])
-      (by rw [h3]) (by rw [w3]) hl
+      (by rw [h3]) ⟨W1, w1⟩ w3 hLs' hl
     have rk : Rel (s :: Γ) (resLoc s (d + Δ.length) rl :: L) (r, v) σ3 := by
       refine ⟨?_, rΓ3⟩
       cases s with
@@ -565,8 +583,8 @@ theorem Pg.comp_ok (L : List Loc) : ∀ {Γ : List Sl} {R : Sl} (p : Pg Γ R) (v
           · exact l1 _ h
           · exact (hlo _ h).elim .inl fun ⟨c, hc, hle⟩ => .inr ⟨c, hc, by omega⟩
       · exact (hlo _ h).elim .inl fun ⟨c, hc, hle⟩ => .inr ⟨c, hc, by omega⟩
-    obtain ⟨σ4, W4, e4, h4, w4, s4⟩ := Pg.comp_ok _ k (r, v) σ3 (d + Δ.length + 2) _ W1 y rk (by simp; omega) hbk
-      hlok hwk hgk (by rw [w3]; exact w1) (by rw [k1.1]; omega) (by rw [k1.1]; exact h32)
+    obtain ⟨σ4, W4, e4, h4, w4, s4⟩ := Pg.comp_ok _ k (r, v) σ3 (d + Δ.length + 2) _ W3 y rk (by simp; omega) hbk
+      hlok hwk hgk hW3 (by rw [hWo3.1, k1.1]; omega) (by rw [hWo3.1, k1.1]; exact h32)
     exact ⟨σ4, W4, .seq e1 (.seq e3 e4), by rw [h4, h3]; exact h1, w4, s4⟩
 
 end Proven.WA
