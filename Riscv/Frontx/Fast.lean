@@ -9,6 +9,9 @@ two at-most-once loops and every test a 0/1 value.  Before the plain step, each 
 Conditions whose variables the loop never writes are tested once, outside (`Gi`); a call argument that is a
 constant the variable already has (checked in `Gi`) is not assigned.  Each fast iteration is one step of the
 tree, so the result is unchanged (`fast_ok`); the plain step afterwards handles everything else.
+When fast loops plus plain step are too long for the old back end (`BStmt.wf`), an iteration is one exhaustive
+fast loop (`calls` path, no constant checks: on exit the state is off its path, `FastX`) and the plain step of the
+tree with that path pruned (`Tree.prune`, `iterX_ok`).
 
 `prog L t out` and `prog_ok` (and `prog_ok_ro`, `prog_okQ`) keep the statements they had. -/
 import Riscv.Frontx.Tree
@@ -198,16 +201,6 @@ def seqs : List BStmt → BStmt
 def fasts (L : Lay) (t : Tree) : List BStmt :=
   ((peel t).filterMap fun r => fastOf L r.1 r.2).filter Proven.BStmt.dOK
 
-/-- one iteration: the fast loops, then (if the function has not returned) one plain step -/
-def iter (L : Lay) (t : Tree) : BStmt :=
-  match fasts L t with
-  | [] => comp L t 0
-  | fs =>
-    -- the old back end bounds the code of a loop body (`BStmt.wf`)
-    if (compileB [0, 3] (.seq (seqs fs) (whenS (L.cv 0) (.var L.fl) (comp L t 0)))).length < 1000 then
-      .seq (seqs fs) (whenS (L.cv 0) (.var L.fl) (comp L t 0))
-    else comp L t 0
-
 /-! ## Facts about the pieces -/
 
 /-- `Runs` with the number of `call` steps -/
@@ -344,7 +337,8 @@ theorem strip_calls (K : List Nat) : ∀ S : Tree, S.calls = true → (S.strip K
   | .ret _, h | .sub _ _, h => nomatch h
 
 theorem strip_wf (L : Lay) (K : List Nat) : ∀ S : Tree, S.wf L → (S.strip K).wf L
-  | .call as, h => ⟨Nat.le_trans (List.length_filter_le _ _) h.1, fun p hp => h.2 p (List.mem_filter.1 hp).1⟩
+  | .call as, h => ⟨h.1.imp (seqOK_filter _ as) (Nat.le_trans (List.length_filter_le _ _)),
+      fun p hp => h.2 p (List.mem_filter.1 hp).1⟩
   | .ite _ a b, h => ⟨h.1, strip_wf L K a h.2.1, strip_wf L K b h.2.2⟩
   | .let_ _ _ k, h => ⟨h.1, h.2.1, strip_wf L K k h.2.2⟩
   | .load _ _ _ k, h => ⟨h.1, h.2.1, strip_wf L K k h.2.2⟩
@@ -960,7 +954,8 @@ theorem fastExit_ok (L : Lay) (t : Tree) (Gi Gv : List BExp) (X : Tree) (c' : BE
 
 /-! ## The fast loops of `fastOf` keep the invariant -/
 
-theorem leaves_wf (L : Lay) : ∀ (S : Tree), S.wf L → ∀ l ∈ S.leaves, l.length ≤ L.K ∧ ∀ p ∈ l, p.1 < L.M ∧ p.2.vlt L.M
+theorem leaves_wf (L : Lay) : ∀ (S : Tree), S.wf L → ∀ l ∈ S.leaves, (seqOK l = true ∨ l.length ≤ L.K) ∧
+    ∀ p ∈ l, p.1 < L.M ∧ p.2.vlt L.M
   | .call as, hw, l, hl => by simp only [Tree.leaves, List.mem_singleton] at hl; subst hl; exact hw
   | .ite _ a b, hw, l, hl => by
     simp only [Tree.leaves, List.mem_append] at hl
@@ -1023,7 +1018,7 @@ theorem pre_wv : ∀ xs : List Pre, (Pre.app xs (.call [])).wv = xs.map Pre.tgt
     simp only [Pre.app, Tree.wv, List.map_cons, Pre.tgt, pre_wv xs]
 
 theorem pre_wf (L : Lay) (k : Tree) : ∀ xs : List Pre, (Pre.app xs k).wf L → (Pre.app xs (.call [])).wf L ∧ k.wf L
-  | [], h => ⟨⟨Nat.zero_le _, fun _ h => nomatch h⟩, h⟩
+  | [], h => ⟨⟨.inr (Nat.zero_le _), fun _ h => nomatch h⟩, h⟩
   | .let_ _ _ :: xs, h => ⟨⟨h.1, h.2.1, (pre_wf L k xs h.2.2).1⟩, (pre_wf L k xs h.2.2).2⟩
   | .load _ _ _ :: xs, h => ⟨⟨h.1, h.2.1, (pre_wf L k xs h.2.2).1⟩, (pre_wf L k xs h.2.2).2⟩
   | .cload _ _ _ _ _ :: xs, h =>
@@ -1032,13 +1027,14 @@ theorem pre_wf (L : Lay) (k : Tree) : ∀ xs : List Pre, (Pre.app xs k).wf L →
 theorem common_wf (L : Lay) (S : Tree) (hw : S.wf L) : (Tree.call (common S)).wf L := by
   unfold common
   split
-  · exact ⟨Nat.zero_le _, fun _ h => nomatch h⟩
+  · exact ⟨.inr (Nat.zero_le _), fun _ h => nomatch h⟩
   · rename_i as ls hls
     dsimp only
     split
     · have := leaves_wf L S hw as (by rw [hls]; exact List.mem_cons_self)
-      exact ⟨Nat.le_trans (List.length_filter_le _ _) this.1, fun p hp => this.2 p (List.mem_filter.1 hp).1⟩
-    · exact ⟨Nat.zero_le _, fun _ h => nomatch h⟩
+      exact ⟨this.1.imp (seqOK_filter _ as) (Nat.le_trans (List.length_filter_le _ _)),
+        fun p hp => this.2 p (List.mem_filter.1 hp).1⟩
+    · exact ⟨.inr (Nat.zero_le _), fun _ h => nomatch h⟩
 
 /-- the conditions of `splitG` -/
 theorem splitG_K (W : List Nat) (K : List (Nat × BitVec 64)) (cs : List (BExp × Bool)) (env : BEnv)
@@ -1243,6 +1239,256 @@ theorem plain_ok (L : Lay) (t : Tree) (hw : t.wf L) {r : BitVec 64} {σf : BStat
     obtain ⟨τ', x, _, p⟩ := comp_ok L t 0 σ τ _ hw hA hs
     exact ⟨n, τ', x, .inl ⟨by rw [p.2]; exact hf, σ₁, hn, p.1⟩, fun _ => by omega⟩
 
+/-! ## A loop that leaves its path, and the plain step without that path -/
+
+/-- the tree with the subtree at the end of path `cs` replaced by an empty `call` -/
+def Tree.prune : List (BExp × Bool) → Tree → Tree
+  | [], _ => .call []
+  | (c, true) :: cs, .ite c' a b => if c = c' then .ite c' (prune cs a) b else .ite c' a b
+  | (c, false) :: cs, .ite c' a b => if c = c' then .ite c' a (prune cs b) else .ite c' a b
+  | _ :: _, t => t
+
+/-- off the path, the pruned tree steps as the tree -/
+theorem prune_step : ∀ (cs : List (BExp × Bool)) (t : Tree) (σ : BState),
+    ¬ (∀ p ∈ cs, (condE p).denote σ.env ≠ 0) → (t.prune cs).step σ = t.step σ
+  | [], _, _, h => absurd (fun _ h' => nomatch h') h
+  | (c, true) :: cs, .ite c' a b, σ, h => by
+    simp only [Tree.prune]
+    split
+    · rename_i e; subst e
+      simp only [Tree.step]
+      split
+      · rfl
+      · rename_i h0
+        exact prune_step cs a σ fun hp => h fun p hp' => (List.mem_cons.1 hp').elim
+          (fun e => e ▸ by simpa [condE] using h0) (hp p)
+    · rfl
+  | (c, false) :: cs, .ite c' a b, σ, h => by
+    simp only [Tree.prune]
+    split
+    · rename_i e; subst e
+      simp only [Tree.step]
+      split
+      · rename_i h0
+        exact prune_step cs b σ fun hp => h fun p hp' => (List.mem_cons.1 hp').elim
+          (fun e => e ▸ (eqz_ne _ _).2 h0) (hp p)
+      · rfl
+    · rfl
+  | (_, true) :: _, .ret _, _, _ | (_, true) :: _, .call _, _, _ | (_, true) :: _, .let_ _ _ _, _, _
+  | (_, true) :: _, .load _ _ _ _, _, _ | (_, true) :: _, .cload _ _ _ _ _ _, _, _
+  | (_, true) :: _, .store _ _ _ _, _, _ | (_, true) :: _, .sub _ _, _, _
+  | (_, false) :: _, .ret _, _, _ | (_, false) :: _, .call _, _, _ | (_, false) :: _, .let_ _ _ _, _, _
+  | (_, false) :: _, .load _ _ _ _, _, _ | (_, false) :: _, .cload _ _ _ _ _ _, _, _
+  | (_, false) :: _, .store _ _ _ _, _, _ | (_, false) :: _, .sub _ _, _, _ => rfl
+
+theorem prune_wf (L : Lay) : ∀ (cs : List (BExp × Bool)) (t : Tree), t.wf L → (t.prune cs).wf L
+  | [], _, _ => ⟨.inr (Nat.zero_le _), fun _ h => nomatch h⟩
+  | (c, true) :: cs, .ite c' a b, hw => by
+    simp only [Tree.prune]; split
+    · exact ⟨hw.1, prune_wf L cs a hw.2.1, hw.2.2⟩
+    · exact hw
+  | (c, false) :: cs, .ite c' a b, hw => by
+    simp only [Tree.prune]; split
+    · exact ⟨hw.1, hw.2.1, prune_wf L cs b hw.2.2⟩
+    · exact hw
+  | (_, true) :: _, .ret _, hw | (_, true) :: _, .call _, hw | (_, true) :: _, .let_ _ _ _, hw
+  | (_, true) :: _, .load _ _ _ _, hw | (_, true) :: _, .cload _ _ _ _ _ _, hw
+  | (_, true) :: _, .store _ _ _ _, hw | (_, true) :: _, .sub _ _, hw
+  | (_, false) :: _, .ret _, hw | (_, false) :: _, .call _, hw | (_, false) :: _, .let_ _ _ _, hw
+  | (_, false) :: _, .load _ _ _ _, hw | (_, false) :: _, .cload _ _ _ _ _ _, hw
+  | (_, false) :: _, .store _ _ _ _, hw | (_, false) :: _, .sub _ _, hw => hw
+
+/-- `FastOK`, and afterwards the function has returned or the state is off the path `cs` -/
+def FastX (L : Lay) (t : Tree) (cs : List (BExp × Bool)) (F : BStmt) : Prop :=
+  ∀ r σf m τ, Inv L t r σf m τ → ∃ m' τ', m' ≤ m ∧ BExec F τ τ' ∧ Inv L t r σf m' τ' ∧
+    (τ'.env L.fl = 0 ∨ ¬ ∀ p ∈ cs, (condE p).denote τ'.env ≠ 0)
+
+/-- `fastLoop_ok` with the exit: `fl = 0`, or some condition of `Gi ++ Gv` fails -/
+theorem fastLoopX_ok (L : Lay) (t : Tree) (Gi Gv : List BExp) (body : BStmt) (S : Tree) (cs : List (BExp × Bool))
+    (hvi : ∀ c ∈ Gi, c.vlt L.M) (hvv : ∀ c ∈ Gv, c.vlt L.M)
+    (hcs : ∀ env : BEnv, (∀ p ∈ cs, (condE p).denote env ≠ 0) → ∀ c ∈ Gi ++ Gv, c.denote env ≠ 0)
+    (hpath : ∀ σ : BState, (∀ c ∈ Gi, c.denote σ.env ≠ 0) → (∀ c ∈ Gv, c.denote σ.env ≠ 0) → t.step σ = S.step σ)
+    (hstep : ∀ σ o, (∀ c ∈ Gi, c.denote σ.env ≠ 0) → S.step σ = some o →
+      ∃ σ₁, o = .call σ₁ ∧ ∀ c ∈ Gi, c.denote σ₁.env ≠ 0)
+    (hbody : ∀ σ σ₁ τ, (∀ c ∈ Gi, c.denote σ.env ≠ 0) → S.step σ = some (.call σ₁) → Agree L.M σ τ →
+      ∃ τ₁, BExec body τ τ₁ ∧ Agree L.M σ₁ τ₁ ∧ τ₁.env L.fl = τ.env L.fl)
+    (g : Nat) (hg : L.M + 2 ≤ g) :
+    FastX L t cs (whenS g (conj (.var L.fl :: Gi)) (.loop (conj Gv) body)) := by
+  intro r σf
+  have key : ∀ m σ τ, t.RunsN m σ r σf → Agree L.M σ τ → τ.env L.fl ≠ 0 → (∀ c ∈ Gi, c.denote σ.env ≠ 0) →
+      ∃ m' τ', m' ≤ m ∧ BExec (.loop (conj Gv) body) τ τ' ∧ Inv L t r σf m' τ' ∧ (conj Gv).denote τ'.env = 0 := by
+    intro m σ τ h
+    induction h generalizing τ with
+    | @ret σ r' σ' hs =>
+      intro hA hf hgi
+      by_cases hv : (conj Gv).denote τ.env = 0
+      · exact ⟨0, τ, Nat.le_refl _, .loopF hv, .inl ⟨hf, σ, .ret hs, hA⟩, hv⟩
+      · have hv' := (conj_agree hA hvv).1 ((conj_ne _ _).1 hv)
+        obtain ⟨σ₁, e, _⟩ := hstep σ _ hgi ((hpath σ hgi hv').symm.trans hs)
+        cases e
+    | @call n σ σ₁ r' σ' hs hn ih =>
+      intro hA hf hgi
+      by_cases hv : (conj Gv).denote τ.env = 0
+      · exact ⟨n + 1, τ, Nat.le_refl _, .loopF hv, .inl ⟨hf, σ, .call hs hn, hA⟩, hv⟩
+      · have hv' := (conj_agree hA hvv).1 ((conj_ne _ _).1 hv)
+        have hs' := (hpath σ hgi hv').symm.trans hs
+        obtain ⟨σ₂, e, hgi'⟩ := hstep σ _ hgi hs'
+        have e' := Out.call.inj e
+        subst e'
+        obtain ⟨τ₁, hb, hA₁, hf₁⟩ := hbody σ σ₁ τ hgi hs' hA
+        obtain ⟨m', τ', hm, hl, hI', hz⟩ := ih τ₁ hA₁ (by rw [hf₁]; exact hf) hgi'
+        exact ⟨m', τ', by omega, .loopT hv hb hl, hI', hz⟩
+  have hset : ∀ (ρ : BState) (x : BitVec 64), Agree L.M ρ ⟨ρ.env.set g x, ρ.heap⟩ := fun ρ x =>
+    Agree.set ⟨fun _ _ => rfl, rfl⟩ (by omega) x
+  have hoff : ∀ ρ : BState, (¬ ∀ c ∈ Gi ++ Gv, c.denote ρ.env ≠ 0) → ¬ ∀ p ∈ cs, (condE p).denote ρ.env ≠ 0 :=
+    fun ρ h h' => h (hcs ρ.env h')
+  have hsetG : ∀ (ρ : BState) (x : BitVec 64), (¬ ∀ c ∈ Gi ++ Gv, c.denote ρ.env ≠ 0) →
+      ¬ ∀ c ∈ Gi ++ Gv, c.denote (ρ.env.set g x) ≠ 0 := fun ρ x h h' =>
+    h ((conj_agree (hset ρ x) (fun c hc => (List.mem_append.1 hc).elim (hvi c) (hvv c))).1 h')
+  have hflg : L.fl ≠ g := by simp only [Lay.fl]; omega
+  intro m τ hI
+  refine (whenS_ok g _ _ τ (fun τ' => ∃ m', m' ≤ m ∧ Inv L t r σf m' τ' ∧
+      (τ'.env L.fl = 0 ∨ ¬ ∀ p ∈ cs, (condE p).denote τ'.env ≠ 0))
+    (fun h0 => ⟨m, Nat.le_refl _, hI.set hg 0, ?_⟩) fun hc => ?_).elim
+    fun τ' ⟨hx, m', hm, hI', he⟩ => ⟨m', τ', hm, hx, hI', he⟩
+  · have h0' : ¬ (τ.env L.fl ≠ 0 ∧ ∀ c ∈ Gi, c.denote τ.env ≠ 0) := fun h => (conj_cons_ne τ.env (.var L.fl) Gi).2 h h0
+    by_cases hf : τ.env L.fl = 0
+    · exact .inl (by show BEnv.set _ _ _ _ = 0; rw [set_ne _ _ hflg]; exact hf)
+    · refine .inr (hoff _ (hsetG τ 0 fun h => h0' ⟨hf, fun c hc => h c (List.mem_append_left _ hc)⟩))
+  · obtain ⟨hf, hgi⟩ := (conj_cons_ne _ _ _).1 hc
+    rcases hI with ⟨_, σ, hR, hA⟩ | ⟨hf0, _⟩
+    · obtain ⟨m', τ', hm, hl, hI', hz⟩ := key m σ _ hR
+        (hA.set (g := g) (by omega) ((conj (.var L.fl :: Gi)).denote τ.env))
+        (by show BEnv.set _ _ _ _ ≠ 0; rw [set_ne _ _ (by simp only [Lay.fl]; omega)]; exact hf)
+        ((conj_agree hA hvi).1 hgi)
+      refine ⟨τ', hl, m', hm, hI'.set hg 0, ?_⟩
+      exact .inr (hoff _ (hsetG τ' 0 fun h => ((conj_ne _ _).2 fun c hc => h c (List.mem_append_right _ hc)) hz))
+    · exact absurd hf0 hf
+
+/-- an exhaustive fast loop: a path to a subtree of `call`s with no constant checks -/
+def exhOf (L : Lay) (t : Tree) : Option (List (BExp × Bool) × BStmt) :=
+  (peel t).findSome? fun r =>
+    if (r.2.calls && (kOf r.2 []).isEmpty) = true then
+      match fastOf L r.1 r.2 with
+      | some F => if F.dOK = true then some (r.1, F) else none
+      | none => none
+    else none
+
+theorem exhOf_ok (L : Lay) (t : Tree) (hw : t.wf L) {cs : List (BExp × Bool)} {F : BStmt}
+    (h : exhOf L t = some (cs, F)) : FastX L t cs F ∧ ∀ p ∈ cs, p.1.vlt L.M := by
+  unfold exhOf at h
+  obtain ⟨⟨cs', S⟩, hp, h⟩ := List.exists_of_findSome?_eq_some h
+  dsimp only at h
+  split at h
+  · rename_i hck
+    obtain ⟨hc, hK0⟩ := Bool.and_eq_true_iff.1 hck
+    have hK : kOf S [] = [] := List.isEmpty_iff.1 hK0
+    cases hF : fastOf L cs' S with
+    | none => rw [hF] at h; exact nomatch h
+    | some F' =>
+      rw [hF] at h; dsimp only at h
+      split at h
+      · cases h
+        obtain ⟨hSw, hcs⟩ := peel_wf L t hp hw
+        refine ⟨?_, hcs⟩
+        unfold fastOf at hF
+        rw [if_pos hc] at hF
+        dsimp only at hF
+        rw [hK] at hF
+        simp only [List.map_nil] at hF
+        split at hF
+        · exact nomatch hF
+        · cases hF
+          have hS' : S.strip [] = S := by
+            have : ∀ T : Tree, T.strip [] = T := by
+              intro T; induction T <;> simp_all [Tree.strip]
+            exact this S
+          rw [hS']
+          obtain ⟨hvi, hvv⟩ := splitG_vlt (M := L.M) S.wv [] cs (fun p hp => nomatch hp) hcs
+          refine fastLoopX_ok L t _ _ _ S cs hvi hvv ?_ (fun σ h1 h2 => peel_step t hp σ (splitG_ok _ _ _ _ h1 h2))
+            (fun σ o h1 hs => ?_) (fun σ σ₁ τ h1 hs hA => ?_) (L.cv 0) (by simp only [Lay.cv]; omega)
+          · intro env hpe c hc
+            simp only [splitG, List.map_nil, List.nil_append, List.mem_append, List.mem_map, List.mem_filter] at hc
+            rcases hc with ⟨p, ⟨hp', _⟩, rfl⟩ | ⟨p, ⟨hp', _⟩, rfl⟩ <;> exact hpe p hp'
+          · obtain ⟨σ₁, rfl, hkeep⟩ := calls_step S hc σ o hs
+            exact ⟨σ₁, rfl, splitG_keep S.wv [] cs σ.env σ₁.env (fun p hp => nomatch hp) hkeep h1⟩
+          · split
+            · obtain ⟨τ₁, x, a, f, _⟩ := comp_call L S 1 hSw σ σ₁ τ hA hs
+              exact ⟨τ₁, x, a, f⟩
+            · rename_i hne
+              rcases common_ok S with ⟨hl, hv⟩ | he
+              · obtain ⟨σ₂, h2, h3⟩ := hoist_step (common S) S hc hl hv σ σ₁ hs
+                obtain ⟨τ₂, x₂, a₂, f₂, _⟩ := comp_call L _ 1 (strip_wf L _ S hSw) σ σ₂ τ hA h2
+                obtain ⟨τ₃, x₃, a₃, f₃, _⟩ := comp_call L _ 1 (common_wf L S hSw) σ₂ σ₁ τ₂ a₂ h3
+                exact ⟨τ₃, .seq x₂ x₃, a₃, f₃.trans f₂⟩
+              · rw [he] at hne; exact absurd rfl hne
+      · exact nomatch h
+  · exact nomatch h
+
+/-- one plain step of the pruned tree, from a state that has not returned and is off the path -/
+theorem plainP_ok (L : Lay) (t : Tree) (hw : t.wf L) (cs : List (BExp × Bool)) (hcs : ∀ p ∈ cs, p.1.vlt L.M)
+    {r : BitVec 64} {σf : BState} {m : Nat} {τ : BState}
+    (hI : Inv L t r σf m τ) (hf : τ.env L.fl ≠ 0) (hoff : ¬ ∀ p ∈ cs, (condE p).denote τ.env ≠ 0) :
+    ∃ m' τ', BExec (comp L (t.prune cs) 0) τ τ' ∧ Inv L t r σf m' τ' ∧ (τ'.env L.fl ≠ 0 → m' < m) := by
+  obtain ⟨_, σ, hR, hA⟩ := hI.resolve_right fun h => hf h.1
+  have hoffσ : ¬ ∀ p ∈ cs, (condE p).denote σ.env ≠ 0 := fun h => hoff fun p hp => by
+    rw [denote_agree hA.1 _ (condE_vlt (hcs p hp))]; exact h p hp
+  have hw' := prune_wf L cs t hw
+  cases hR with
+  | ret hs =>
+    obtain ⟨τ', x, _, p⟩ := comp_ok L _ 0 σ τ _ hw' hA ((prune_step cs t σ hoffσ).trans hs)
+    exact ⟨0, τ', x, .inr ⟨p.2.2, p.2.1, p.1⟩, fun h => absurd p.2.2 h⟩
+  | @call n _ σ₁ _ _ hs hn =>
+    obtain ⟨τ', x, _, p⟩ := comp_ok L _ 0 σ τ _ hw' hA ((prune_step cs t σ hoffσ).trans hs)
+    exact ⟨n, τ', x, .inl ⟨by rw [p.2]; exact hf, σ₁, hn, p.1⟩, fun _ => by omega⟩
+
+/-- the iteration with one exhaustive fast loop and the plain step without its path -/
+def iterX (L : Lay) (cs : List (BExp × Bool)) (F : BStmt) (t : Tree) : BStmt :=
+  .seq F (whenS (L.cv 0) (.var L.fl) (comp L (t.prune cs) 0))
+
+theorem iterX_ok (L : Lay) (t : Tree) (hw : t.wf L) {cs : List (BExp × Bool)} {F : BStmt}
+    (hx : exhOf L t = some (cs, F)) {r : BitVec 64} {σf : BState} {m : Nat} {τ : BState}
+    (hI : Inv L t r σf m τ) :
+    ∃ m' τ', BExec (iterX L cs F t) τ τ' ∧ Inv L t r σf m' τ' ∧ (τ'.env L.fl ≠ 0 → m' < m) := by
+  obtain ⟨hF, hcs⟩ := exhOf_ok L t hw hx
+  obtain ⟨m₁, τ₁, h1, x₁, hI₁, hex⟩ := hF r σf m τ hI
+  have hg : L.M + 2 ≤ L.cv 0 := by simp only [Lay.cv]; omega
+  have hgf : L.fl ≠ L.cv 0 := by simp only [Lay.fl, Lay.cv]; omega
+  obtain ⟨τ', x', m', hI', hlt⟩ := whenS_ok (L.cv 0) (.var L.fl) (comp L (t.prune cs) 0) τ₁
+    (fun τ' => ∃ m', Inv L t r σf m' τ' ∧ (τ'.env L.fl ≠ 0 → m' < m))
+    (fun h0 => by
+      have e : (τ₁.env.set (L.cv 0) 0) L.fl = 0 := by rw [set_ne _ _ hgf]; exact h0
+      exact ⟨m₁, hI₁.set hg 0, fun h => absurd e h⟩)
+    (fun h1' => by
+      have e : (τ₁.env.set (L.cv 0) ((BExp.var L.fl).denote τ₁.env)) L.fl ≠ 0 := by
+        rw [set_ne _ _ hgf]; exact h1'
+      have hoff : ¬ ∀ p ∈ cs, (condE p).denote (τ₁.env.set (L.cv 0) ((BExp.var L.fl).denote τ₁.env)) ≠ 0 := by
+        have h1'' : τ₁.env L.fl ≠ 0 := h1'
+        rcases hex with h | h
+        · exact absurd h h1''
+        · intro h'; refine h fun p hp => ?_
+          have := h' p hp
+          rwa [denote_agree (ρ := τ₁.env) (fun v hv => set_ne _ _ (by omega)) _ (condE_vlt (hcs p hp))] at this
+      obtain ⟨m', τ', x, hI', hlt⟩ := plainP_ok L t hw cs hcs (hI₁.set hg ((BExp.var L.fl).denote τ₁.env)) e hoff
+      refine ⟨τ', x, m', hI'.set hg 0, fun h => ?_⟩
+      have e' : τ'.env L.fl ≠ 0 := fun h' => h (by show BEnv.set _ _ _ _ = 0; rw [set_ne _ _ hgf]; exact h')
+      have := hlt e'
+      omega)
+  exact ⟨m', τ', .seq x₁ x', hI', hlt⟩
+
+/-- one iteration: the fast loops, then (if the function has not returned) one plain step; when that is too
+long for the old back end (`BStmt.wf`), one exhaustive fast loop and the plain step without its path -/
+def iter (L : Lay) (t : Tree) : BStmt :=
+  match fasts L t with
+  | [] => comp L t 0
+  | fs =>
+    -- the old back end bounds the code of a loop body (`BStmt.wf`)
+    if (compileB [0, 3] (.seq (seqs fs) (whenS (L.cv 0) (.var L.fl) (comp L t 0)))).length < 1000 then
+      .seq (seqs fs) (whenS (L.cv 0) (.var L.fl) (comp L t 0))
+    else match exhOf L t with
+      | some (cs, F) => if (compileB [0, 3] (iterX L cs F t)).length < 1000 then iterX L cs F t else comp L t 0
+      | none => comp L t 0
+
 theorem iter_ok (L : Lay) (t : Tree) (hw : t.wf L) {r : BitVec 64} {σf : BState} {m : Nat} {τ : BState}
     (hI : Inv L t r σf m τ) (hf : τ.env L.fl ≠ 0) :
     ∃ m' τ', BExec (iter L t) τ τ' ∧ Inv L t r σf m' τ' ∧ (τ'.env L.fl ≠ 0 → m' < m) := by
@@ -1252,7 +1498,13 @@ theorem iter_ok (L : Lay) (t : Tree) (hw : t.wf L) {r : BitVec 64} {σf : BState
   | cons F fs' =>
     dsimp only
     split
-    case isFalse => exact plain_ok L t hw hI hf
+    case isFalse =>
+      split
+      · rename_i cs F hx
+        split
+        · exact iterX_ok L t hw hx hI
+        · exact plain_ok L t hw hI hf
+      · exact plain_ok L t hw hI hf
     obtain ⟨m₁, τ₁, h1, x₁, hI₁⟩ := seqs_ok L t (F :: fs') (List.cons_ne_nil _ _)
       (fun G hG => fasts_ok L t hw G (by rw [hfs]; exact hG)) r σf m τ hI
     have hg : L.M + 2 ≤ L.cv 0 := by simp only [Lay.cv]; omega

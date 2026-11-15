@@ -139,3 +139,31 @@ ours is the source's two passes (`xs ++ xs`), 7 per byte each (no loop fusion). 
 -O2, 5 + 5 per byte) it is 1.40. Strength reduction does not fire in its copy loops: with `res` and `fl` live across
 the whole function (liveness is path-insensitive) the reduced body needs 7 of the 6 free registers, and `pickB` takes
 the plain body before trying a spill.
+
+## After `speed2` (selection clean-ups, range tests, constants in registers; 2026-11-15)
+
+Same scripts (`python3 bench_frontx.py rv`, `results/rv.json` updated; 1 MiB, per byte, outputs checked against the
+model). What changed: `OPT.md`, last section.
+
+| function | before | after | gcc -O2 | before/gcc | after/gcc |
+|---|---|---|---|---|---|
+| adlere (Adler-32 verbatim) | 26.42 | 7.50 | 7.50 | 3.52 | **1.00** |
+| b64all | 43.22 | 24.49 | 11.12 | 3.89 | 2.20 |
+| findfirstgt3 | 6.00 | 5.00 | 4.00 | 1.50 | **1.25** |
+| filterall | 7.95 | 6.95 | 6.97 | 1.14 | 1.00 |
+| crcraw | 65.00 | 61.00 | 69.00 | 0.94 | 0.88 |
+| take5, whole call | 99 | 98 | 39 | 2.54 | 2.51 |
+| others (findnl, drop5, tailsum, nontailsum, inceach, twice, walks, headof, be32at0) | | unchanged | | | |
+
+Adler's loop is now gcc's (`lbu; add; bltu; add; bltu; sub; addi; bne`, the second `sub` taken 29% of bytes);
+findfirstgt3 `addi; bgeu; add; lbu; bgeu` (the `3` in a register). b64all now runs a fast loop (previously the
+iteration was over 1000 old-back-end words, so it kept the plain step) with each range test as `addi; bgeu`, but
+the `b64Digit` chain still evaluates every test (gcc decides with a tree of ranges, 11 per byte), and the
+constants `47`, `43`, `10`, `26` are loaded per use: only the `UInt32` mask fits in a register (24.49, 2.2×).
+
+Non-tail recursion (`python3 ../rec-bench/bench.py 1000 20`): unchanged, `NonTail.sum` n = 1000 140 271 vs 4 008
+(35×), `fib 20` 3 371 341 vs 225 885 (15×). Per element of `sum` (trace of `nontailsumrec.words`): the `go` piece
+≈ 40 instructions, argument staging + zeroing the callee's 10 locals ≈ 40, the `comb` piece ≈ 45, frame/call ≈ 15;
+every variable is a stack slot (`ld`/`sd` around each operation), each piece is a whole frontx program with its
+`fl` loop, and the constant 1 is 3 instructions (`li; slli; addi`). Reaching 3× needs the pieces (or the whole
+activation) on the optimised path, i.e. a `.base` law for `compBFO`-style code inside `compC` frames: not done.

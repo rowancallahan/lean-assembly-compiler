@@ -46,7 +46,10 @@ words = [int(l, 16) for l in lines[1:]]
 G, E = 16, 72
 # work space: `8 (slots + 1) + 7`, or `frame (n + 1) + 32` for programs with calls (first line `rec <frame>`)
 REC = int(lines[0].split()[1]) if lines[0].startswith("rec") else None
-wk = lambda L: REC * (L + 1) + 32 if REC else 8 * (int(lines[0]) + 1) + 7
+# user inductives (`frontx_ind`): first line `ind A B L`, work space `A + B n`, `L = 1`: tree result, length in a1
+IND = tuple(map(int, lines[0].split()[1:])) if lines[0].startswith("ind") else None
+if IND and IND[2]: LISTS.add(FN)
+wk = lambda L: IND[0] + IND[1] * L if IND else REC * (L + 1) + 32 if REC else 8 * (int(lines[0]) + 1) + 7
 MAGIC = 0x0123456789ABCDEF
 LD = "ENTRY(_start)\nSECTIONS { . = 0x80000000; .text : { *(.text.start) *(.text) }\n . = 0x80100000; .tohost : { *(.tohost) }\n . = 0x80200000; .data : { *(.data) } }\n"
 TAIL = """.section .tohost,"aw"
@@ -148,6 +151,6 @@ def check(N):
             assert gp == MAGIC and spo == base + w0 + WK, (nm, "gp/sp", hex(gp), spo)
             if FN in LISTS: assert a1 == R, (nm, "a1 (length)", a1, R)
     print(f"{FN}: {len(cases)} cases ok (QEMU == Sail == Lean; input lengths up to {max(len(x) for x, _ in cases)}; "
-          f"{len(words)} words, work " + (f"{REC} (n + 1) + 32" if REC else f"{wk(0)}") + " bytes)")
+          f"{len(words)} words, work " + (f"{IND[0]} + {IND[1]} n" if IND else f"{REC} (n + 1) + 32" if REC else f"{wk(0)}") + " bytes)")
 
 if sys.argv[1] == "check": check(int(sys.argv[2]))
