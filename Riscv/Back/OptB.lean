@@ -6,6 +6,7 @@ weighted); every choice is checked by the proved pipeline (`WideF.optB`), and th
 import Riscv.Back.Wide
 import Riscv.Back.BStmt
 import Compiler.Opt.BFn
+import Compiler.Opt.Color
 open LeanRV64D LeanRV64D.Functions Sail Sail.ConcurrencyInterfaceV1
 
 set_option linter.unusedVariables false
@@ -82,6 +83,28 @@ def tryB (N : Nat) (bv : List Nat) (p : Mach.BStmt) (c : Nat × List Nat) (wv : 
     Option (List (BitVec 32)) :=
   rvwF.optB scB (gB c.1 c.2) (fun j => !c.2.contains j) N bv wv p
 
+/-! ### Liveness-based choice (untrusted colouring, checked by `allocOK` inside `WideF.optB`) -/
+
+/-- the registers free for colouring: all but the scratch `r6`; the convention registers of the variables first (a short-lived register takes one where that variable is dead) -/
+def colsB : List Reg := ((List.range 8).map (7 + ·) ++ List.range 6).map rk
+
+/-- a colouring of the body `optB` builds, the locals `spl` in slots -/
+def colorB (N : Nat) (bv wv : List Nat) (p : Mach.BStmt) (spl : List Nat) : Option (Nat → Reg) :=
+  let sp := fun j => spl.contains j
+  IR.color (.seq (initL sp (List.range N)) (irB sp bv wv p)) [0, 1, 2, 3, 4, 5, 6, 7]
+    (fun x => if h : x < 8 then some (avar ⟨x, h⟩) else none) colsB (fun _ => 0)
+
+def tryL (N : Nat) (bv : List Nat) (p : Mach.BStmt) (spl : List Nat) (wv : List Nat := []) :
+    Option (List (BitVec 32)) :=
+  match colorB N bv wv p spl with
+  | some g => rvwF.optB scB g (fun j => spl.contains j) N bv wv p
+  | none => none
+
+/-- spill sets to try: none, then one local, then two (cheapest by `score` first) -/
+def spillSets (p : Mach.BStmt) (N : Nat) : List (List Nat) :=
+  let cost := fun (l : List Nat) => l.foldl (fun a j => a + score p (8 + j)) 0
+  [] :: (((List.range N).map fun j => [j]) ++ choose 2 (List.range N)).mergeSort fun a b => cost a ≤ cost b
+
 def firstB {α : Type} (f : α → Option (List (BitVec 32))) : List α → Option (List (BitVec 32))
   | [] => none
   | T :: l => match f T with | some ws => some ws | none => firstB f l
@@ -95,6 +118,29 @@ theorem firstB_ok {α : Type} {f : α → Option (List (BitVec 32))} {ws : List 
     | some w => rw [hf] at h; exact ⟨T, hf.trans h⟩
     | none => rw [hf] at h; exact firstB_ok h
 
+/-- the choice used by the compilers: liveness-checked colourings first (fewest weighted slot uses), then
+the injective assignments -/
+def pickB (N : Nat) (bv wv : List Nat) (p : Mach.BStmt) : Option (List (BitVec 32)) :=
+  match firstB (fun spl => tryL N bv p spl wv) (spillSets p N) with
+  | some ws => some ws
+  | none => firstB (fun c => tryB N bv p c wv) (candidates p N)
+
+theorem pickB_ok {N : Nat} {bv wv : List Nat} {p : Mach.BStmt} {ws : List (BitVec 32)}
+    (h : pickB N bv wv p = some ws) : ∃ g sp, rvwF.optB scB g sp N bv wv p = some ws := by
+  unfold pickB at h
+  cases hfl : firstB (fun spl => tryL N bv p spl wv) (spillSets p N) with
+  | some w =>
+    rw [hfl] at h; cases h
+    obtain ⟨spl, h⟩ := firstB_ok hfl
+    unfold tryL at h
+    cases hg : colorB N bv wv p spl with
+    | none => rw [hg] at h; exact nomatch h
+    | some g => rw [hg] at h; exact ⟨g, _, h⟩
+  | none =>
+    rw [hfl] at h; dsimp only at h
+    obtain ⟨c, h⟩ := firstB_ok h
+    exact ⟨_, _, h⟩
+
 end Proven.Mach.Riscv
 
 namespace Proven
@@ -102,7 +148,7 @@ open Mach Mach.Riscv
 
 /-- **The optimising spill-slot compiler** (byte blocks). -/
 def compileOptB (N : Nat) (bv : List Nat) (p : Proven.BStmt) : Except String (List (BitVec 32)) :=
-  match firstB (tryB N bv (toMS p)) (candidates (toMS p) N) with
+  match pickB N bv [] (toMS p) with
   | some ws => .ok ws
   | none => .error "compileOptB: no register assignment passed the checks"
 
@@ -119,12 +165,12 @@ theorem compileOptB_ok (N : Nat) (bv : List Nat) {p : Proven.BStmt} {ws : List (
     runsTo s fun s' => s'.regs.get? .PC = some (getX s 1) ∧ (∀ i : Fin 8, getX s' (A8 i) = σ'.env i.val) ∧
       HeapRel bv R σ' s' ∧ unchangedOutside s s' ((⟨frameBase N (getX s 2), 8 * (N + 1)⟩ : Proven.Region) :: R) ∧
       Cfg s' ∧ calleeSavedKept s s' ∧ getX s' 3 = getX s 3 := by
-  have hopt : ∃ T, tryB N bv (toMS p) T = some ws := by
+  have hopt : ∃ g sp, rvwF.optB scB g sp N bv [] (toMS p) = some ws := by
     unfold compileOptB at hcmp
-    cases hfb : firstB (tryB N bv (toMS p)) (candidates (toMS p) N) with
+    cases hfb : pickB N bv [] (toMS p) with
     | none => rw [hfb] at hcmp; exact nomatch hcmp
-    | some w => rw [hfb] at hcmp; cases hcmp; exact firstB_ok hfb
-  obtain ⟨T, hT⟩ := hopt
+    | some w => rw [hfb] at hcmp; cases hcmp; exact pickB_ok hfb
+  obtain ⟨g, sp, hT⟩ := hopt
   have hcd' : ∀ r ∈ R.map toR ++ [] ++ [⟨rvwF.frameAt s N, 8 * (N + 1)⟩],
       Mach.disjoint ⟨pc.toNat, 4 * ws.length⟩ r := fun r hr => by
     rcases List.mem_append.1 hr with hr | hr
@@ -187,7 +233,7 @@ namespace Proven.Mach.Riscv
 
 /-- the optimised words for `rvF.compBF N bv wv p`, or the old words -/
 def compBFO (N : Nat) (bv wv : List Nat) (p : Mach.BStmt) : List (BitVec 32) :=
-  match firstB (fun c => tryB N bv p c wv) (candidates p N) with
+  match pickB N bv wv p with
   | some ws => ws
   | none => rvF.codeF (rvF.compBF N bv wv p)
 
@@ -204,11 +250,11 @@ theorem compBFO_ok' (N : Nat) (bv wv : List Nat) (hbv : ∀ x ∈ bv, x < 8 + N)
       rvF.HeapB bv wv R W σ' s' ∧ Out (R ++ W ++ [⟨rvF.frameAt s N, 8 * (N + 1)⟩]) (rvF.mem s) (rvF.mem s') ∧
       rvF.ok s' ∧ rvF.keep s s' := by
   unfold compBFO at hA hcd
-  cases hx : firstB (fun c => tryB N bv p c wv) (candidates p N) with
+  cases hx : pickB N bv wv p with
   | none => rw [hx] at hA hcd; exact rvF.compBF_ok N bv wv hbv hwv hp hex hA hen hL hcd hreg hslot hheap hra
   | some ws =>
     rw [hx] at hA hcd
-    obtain ⟨c, hc⟩ := firstB_ok hx
+    obtain ⟨g, sp, hc⟩ := pickB_ok hx
     have := rvwF.optB_ok hc hex hA hen
       (fun r hr => (List.mem_append.1 hr).elim (hL.ram r) (hL.wram r))
       (fun r hr a h1 h2 _ _ => by
