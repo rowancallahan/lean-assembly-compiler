@@ -362,6 +362,21 @@ partial def ctorNorm (e : Expr) (fuel : Nat := 8) : MetaM Expr := do
   | some u => ctorNorm u.headBeta (fuel - 1)
   | none => return e
 
+/-- the field, if `e` is a projection (raw or by its function) of a term that reduces to a constructor -/
+def projCtor? (e : Expr) : MetaM (Option Expr) := do
+  let (s, i) ← match e with
+    | .proj _ i s => pure (s, i)
+    | _ =>
+      let some c := e.getAppFn.constName? | return none
+      let some pi := (← getEnv).getProjectionFnInfo? c | return none
+      unless e.getAppNumArgs == pi.numParams + 1 && !pi.fromClass do return none
+      pure (e.appArg!, pi.i)
+  let s' ← ctorNorm s
+  unless s'.isApp && s'.getAppFn.isConst && (← getEnv).isConstructor s'.getAppFn.constName! do return none
+  let some ci := (← getEnv).find? s'.getAppFn.constName! | return none
+  let .ctorInfo ci := ci | return none
+  return s'.getArg! (ci.numParams + i)
+
 mutual
 
 /-- a scalar term `e`: its expression, and `e` with the inlined helpers unfolded (definitionally equal to `e`;
@@ -450,6 +465,8 @@ partial def trE (ctx : Ctx) (e : Expr) : TrM (ME × Expr) := do
   let conv (m : Option Nat) : TrM (ME × Expr) := do
     let (a, a') ← trE ctx args[0]!
     return (masked m a, mkAppN f #[a'])
+  if (← matchMatcherApp? e).isSome then
+    if let .reduced e' ← reduceMatcher? e then return ← trE ctx e'
   -- `x % c`, `x / c` with a literal (or constant) `c`: mask / shift for `c = 2^k`, else one conditional
   -- subtraction, which needs `x < 2 * c` from the context (checked here by `omega`)
   if (f.isConstOf ``HMod.hMod || f.isConstOf ``HDiv.hDiv) && args.size == 6 && ty == .nat && !args[5]!.hasFVar then
@@ -460,50 +477,62 @@ partial def trE (ctx : Ctx) (e : Expr) : TrM (ME × Expr) := do
     let x := args[4]!
     let k := Nat.log2 c
     let pow2 := 2 ^ k == c
-    let lN := Name.mkStr `Proven.Frontx (s!"{if isMod then "mod" else "div"}Lit{if pow2 then "" else "2"}_{c}")
+    -- a named constant divisor (`MOD_ADLER`) is unfolded in the obligations
+    if let some cn := args[5]!.getAppFn.constName? then
+      if (← getConstInfo cn) matches .defnInfo _ then
+        modify fun s => if s.unfolded.contains cn then s else { s with unfolded := s.unfolded.push cn }
+    -- `c = 2 ^ k`: a mask / a shift, through `rN (x % c) = rN x &&& (c - 1)` resp. `rN (x / c) = rN x >>> k`
+    -- (stated on `rN`: a `Nat`-level `x / c = x >>> k` would loop against `simp`'s `Nat.shiftRight_eq_div_pow`)
+    if pow2 then
+      let lN := Name.mkStr `Proven.Frontx (s!"{if isMod then "mod" else "div"}LitR_{c}")
+      unless (← getEnv).contains lN do
+        let ty ← withLocalDeclD `x (Lean.mkConst ``Nat) fun xv => do
+          let lhs := mkApp (mkConst ``rN) (← mkAppM (if isMod then ``HMod.hMod else ``HDiv.hDiv) #[xv, mkNatLit c])
+          if isMod then
+            mkForallFVars #[xv] (← mkEq lhs (← mkAppM ``HAnd.hAnd #[mkApp (mkConst ``rN) xv, mkBV (c - 1)]))
+          else
+            let two64 ← mkAppM ``HPow.hPow #[toExpr (2 : Nat), toExpr (64 : Nat)]
+            mkForallFVars #[xv] (← mkArrow (← mkAppM ``LT.lt #[xv, two64])
+              (← mkEq lhs (← mkAppM ``HShiftRight.hShiftRight #[mkApp (mkConst ``rN) xv, mkNatLit k])))
+        let tac ← if isMod then `(tactic| (intro x; rw [show x % $(Lean.quote c) = x &&& (2 ^ $(Lean.quote k) - 1) from
+              (Nat.and_two_pow_sub_one_eq_mod x $(Lean.quote k)).symm, rN_and]; rfl))
+          else `(tactic| (intro x h; rw [show x / $(Lean.quote c) = x >>> $(Lean.quote k) by
+              rw [Nat.shiftRight_eq_div_pow], rN_shr h]))
+        withLCtx {} #[] (addThm lN ty tac)
+      modify fun s => if s.unfolded.contains lN then s else { s with unfolded := s.unfolded.push lN }
+      let (mx, x') ← trE ctx x
+      let m := if isMod then ME.bin ``Op.and mx (.const (mkBV (c - 1))) else ME.bin ``Op.lshr mx (.const (mkBV k))
+      return (m, mkAppN f ((args.set! 4 x').set! 5 (mkNatLit c)))
+    let lN := Name.mkStr `Proven.Frontx (s!"{if isMod then "mod" else "div"}Lit2_{c}")
     unless (← getEnv).contains lN do
       let nat := Lean.mkConst ``Nat
       let cE := mkNatLit c
       let ty ← withLocalDeclD `x nat fun xv => do
         let lhs ← mkAppM (if isMod then ``HMod.hMod else ``HDiv.hDiv) #[xv, cE]
-        if pow2 then
-          let rhs ← if isMod then mkAppM ``HAnd.hAnd #[xv, mkNatLit (c - 1)]
-            else mkAppM ``HShiftRight.hShiftRight #[xv, mkNatLit k]
-          mkForallFVars #[xv] (← mkEq lhs rhs)
-        else
-          let lt ← mkAppM ``LT.lt #[xv, cE]
-          let rhs ← if isMod then mkAppM ``ite #[lt, xv, ← mkAppM ``HSub.hSub #[xv, cE]]
-            else mkAppM ``ite #[lt, mkNatLit 0, mkNatLit 1]
-          mkForallFVars #[xv] (← mkArrow (← mkAppM ``LT.lt #[xv, mkNatLit (2 * c)]) (← mkEq lhs rhs))
-      let tac ← if pow2 then
-          if isMod then `(tactic| (intro x; rw [show ($(Lean.quote (c - 1)) : Nat) = 2 ^ $(Lean.quote k) - 1 from rfl,
-            Nat.and_two_pow_sub_one_eq_mod]))
-          else `(tactic| (intro x; rw [Nat.shiftRight_eq_div_pow]))
-        else `(tactic| (intro x h; split <;> omega))
+        let lt ← mkAppM ``LT.lt #[xv, cE]
+        let rhs ← if isMod then mkAppM ``ite #[lt, xv, ← mkAppM ``HSub.hSub #[xv, cE]]
+          else mkAppM ``ite #[lt, mkNatLit 0, mkNatLit 1]
+        mkForallFVars #[xv] (← mkArrow (← mkAppM ``LT.lt #[xv, mkNatLit (2 * c)]) (← mkEq lhs rhs))
+      let tac ← `(tactic| (intro x h; split <;> omega))
       withLCtx {} #[] (addThm lN ty tac)
-    -- a named constant divisor (`MOD_ADLER`) is unfolded in the obligations
-    if let some cn := args[5]!.getAppFn.constName? then
-      if (← getConstInfo cn) matches .defnInfo _ then
-        modify fun s => if s.unfolded.contains cn then s else { s with unfolded := s.unfolded.push cn }
-    unless pow2 do
-      -- closed `Nat` subterms as literals, for `omega`
-      let xl ← Meta.transform x (pre := fun t => do
-        if !t.hasFVar && !t.hasLooseBVars && t.getAppFn.isConst then
-          if (← whnfR (← inferType t)).isConstOf ``Nat then
-            let tv ← whnf t
-            if let some n := tv.rawNatLit? <|> tv.nat? then return .done (mkNatLit n)
-        return .continue)
-      let bnd ← mkAppM ``LT.lt #[xl, mkNatLit (2 * c)]
-      let ok ← (withoutModifyingState do
-        try
-          let mv ← mkFreshExprSyntheticOpaqueMVar bnd
-          -- (`frontx_u8_facts` is defined below: parsed at run time)
-          let .ok stx := Parser.runParserCategory (← getEnv) `tactic "first | omega | (frontx_u8_facts; omega)"
-            | throwError "frontx: parse"
-          let rest ← Tactic.run mv.mvarId! (Tactic.withoutRecover (Tactic.evalTactic stx))
-          pure rest.isEmpty
-        catch _ => pure false : TermElabM Bool)
-      unless ok do throwError "frontx: `{e}` is translated by one conditional subtraction and needs{indentExpr bnd}\nfrom the context (a `with` invariant or `requires`)"
+    -- closed `Nat` subterms as literals, for `omega`
+    let xl ← Meta.transform x (pre := fun t => do
+      if !t.hasFVar && !t.hasLooseBVars && t.getAppFn.isConst then
+        if (← whnfR (← inferType t)).isConstOf ``Nat then
+          let tv ← whnf t
+          if let some n := tv.rawNatLit? <|> tv.nat? then return .done (mkNatLit n)
+      return .continue)
+    let bnd ← mkAppM ``LT.lt #[xl, mkNatLit (2 * c)]
+    let ok ← (withoutModifyingState do
+      try
+        let mv ← mkFreshExprSyntheticOpaqueMVar bnd
+        -- (`frontx_u8_facts` is defined below: parsed at run time)
+        let .ok stx := Parser.runParserCategory (← getEnv) `tactic "first | omega | (frontx_u8_facts; omega)"
+          | throwError "frontx: parse"
+        let rest ← Tactic.run mv.mvarId! (Tactic.withoutRecover (Tactic.evalTactic stx))
+        pure rest.isEmpty
+      catch _ => pure false : TermElabM Bool)
+    unless ok do throwError "frontx: `{e}` is translated by one conditional subtraction and needs{indentExpr bnd}\nfrom the context (a `with` invariant or `requires`)"
     modify fun s => if s.unfolded.contains lN then s else { s with unfolded := s.unfolded.push lN }
     let lty ← instantiateForall (← getConstInfo lN).type #[x]
     let lty := if lty.isArrow then lty.bindingBody! else lty
@@ -674,6 +703,7 @@ partial def trC (ctx : Ctx) (p : Expr) : TrM (ME × Expr) := do
 partial def trB (ctx : Ctx) (b : Expr) : TrM (ME × Expr) := do
   let b := b.consumeMData.headBeta
   if let some v ← find? b then return (.var v, b)
+  if let some fld ← projCtor? b then return ← trB ctx fld
   if !b.hasFVar then return (.const (← litBV (mkApp (mkConst ``rB) b)), b)
   let args := b.getAppArgs
   let f := b.getAppFn
@@ -1321,6 +1351,9 @@ partial def trT (ctx : Ctx) (nconj : Nat) (env : Expr) (e : Expr) : TrM (MT × E
         let pf := mkAppN (mkConst ``sim_dite_g)
           #[ctx.A, ctx.R, li.T, li.g, c.toExpr, ← t.toExpr, ← f.toExpr, env, ctx.heap, P, inst, x₁, x₂, hc, p₁, p₂]
         return (.ite c t f, out, pf)
+  -- a `match` on a constructor (an inlined helper applied to `none`, `(a, b)`, …): reduced
+  if (← matchMatcherApp? e).isSome then
+    if let .reduced e' ← reduceMatcher? e then return ← trT ctx nconj env e'
   if e.isAppOfArity ``ite 5 then
     return ← branch args[1]! args[2]! (fun env _ => trT ctx nconj env args[3]!) (fun env _ => trT ctx nconj env args[4]!)
   if e.isAppOfArity ``dite 5 then

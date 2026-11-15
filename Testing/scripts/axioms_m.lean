@@ -1,4 +1,5 @@
 import Riscv.Frontx.Machine
+import Riscv.Frontx.PairExamples
 #print axioms Proven.Frontx.implements1_of_frontx
 #print axioms Proven.Frontx.implements1_res
 #print axioms Proven.Frontx.Ex.crcRaw.implements1
@@ -39,3 +40,13 @@ import Riscv.Frontx.Machine
 #print axioms Proven.Frontx.Ex.BookNat.explicitHalveE.implements1
 #print axioms Proven.Frontx.Ex.sameLen.implements1
 #print axioms Proven.Frontx.Ex.nonTailLength.implements1
+#print axioms Proven.Frontx.implements1_bytes
+#print axioms Proven.Frontx.Pairs.adlerE.implements1
+#print axioms Proven.Frontx.Pairs.adlerStateE.implements1
+#print axioms Proven.Frontx.Pairs.replaceXE.implements1
+#print axioms Proven.Frontx.Pairs.fromOptionE.implements1
+#print axioms Proven.Frontx.Pairs.smallE.implements1
+#print axioms Proven.Frontx.Pairs.swapE.implements1
+#print axioms Proven.Frontx.Pairs.addPointsE.implements1
+#print axioms Proven.Frontx.Pairs.zeroXE.implements1
+#print axioms Proven.Frontx.Pairs.nestE.implements1

@@ -1,4 +1,5 @@
 import Riscv.Frontx.Machine
+import Riscv.Frontx.PairExamples
 open Proven Proven.Frontx Proven.Frontx.Ex
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
 def hex2 (b : UInt8) : String := let s := String.ofList (Nat.toDigits 16 b.toNat); if s.length < 2 then "0" ++ s else s
@@ -73,3 +74,15 @@ open Proven.Frontx.Ex.BookNat in
 #eval do
   emit "matchevene" matchEvenE.slots matchEvenE.code (enc matchEvenE) (natInputs false)
   emit "explicithalvee" explicitHalveE.slots explicitHalveE.code (enc explicitHalveE) (natInputs false)
+-- round 6: tuples / structures (results as the components' bytes, `g.enc`), lean-zip Adler-32 verbatim
+open Proven.Frontx.Pairs in
+#eval do
+  emit "adlere" adlerE.slots adlerE.code (enc adlerE)
+  emit "adlerstatee" adlerStateE.slots adlerStateE.code (fun xs => adlerStateE.enc (adlerStateE xs))
+  emit "replacexe" replaceXE.slots replaceXE.code (fun xs => replaceXE.enc (replaceXE xs)) (natInputs true)
+  emit "fromoptione" fromOptionE.slots fromOptionE.code (enc fromOptionE)
+  emit "smalle" smallE.slots smallE.code (enc smallE)
+  emit "swape" swapE.slots swapE.code (fun xs => swapE.enc (swapE xs))
+  emit "addpointse" addPointsE.slots addPointsE.code (fun xs => addPointsE.enc (addPointsE xs))
+  emit "zeroxe" zeroXE.slots zeroXE.code (fun xs => zeroXE.enc (zeroXE xs))
+  emit "neste" nestE.slots nestE.code (fun xs => nestE.enc (nestE xs))
