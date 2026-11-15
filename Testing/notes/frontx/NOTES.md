@@ -1035,3 +1035,64 @@ components (`callInfo` takes one result word; the callee range would not fit in 
 
 Reproduce: `lake build Frontx`; `lake env lean --tstack=4000000 Testing/asm/emit_frontx.lean`;
 `bash Testing/scripts/frontx_tests.sh`; axioms: `Testing/scripts/axioms_s.lean`.
+
+## 17. User inductives with payload as cells in memory (branch `feat-inductive`)
+
+Files: `Compiler/Ind.lean` (values, programs, the compiler), `Compiler/IndOk.lean` (expressions, `F`),
+`Compiler/IndDec.lean` (decoder, encoder), `Compiler/IndMain.lean` (`ind_ok`, the whole program), all source level,
+3 axioms; `Riscv/Back/CallsImpl1W.lean` (`implements1_of_cexecW`: the `MachineC` bridge of §15 with a word block at the
+bottom of the work block), `Riscv/Frontx/Ind.lean` (`implements1_ind`), `Riscv/Frontx/IndCmd.lean` (the commands),
+`Riscv/Frontx/IndExamples.lean` (targets). Plain back end `compP` with real calls (as §15), not the optimiser.
+
+**Representation.** A value is a tree of 4-word cells `[tag, x, l, r]` (`C.c t x l r`: constructor index, one
+scalar word, two child pointers) in word block 0 = the bottom of the work block, bump-allocated (global `v5`) from word
+4; cell 0 is `[255, 0, 0, 0]` = `z` (absent child, pointer 0). Children are allocated before parents, so a pointer
+bounds the depth (`Rp.depth`) and cells are never written again (`Agree`, `Rp.mono`). A user type maps into `C`
+(`T.emb`, generated): per constructor at most two fields of the type (`l`, `r`) and one `Nat`/`UInt64`/`Bool` (`x`);
+other fields are dropped (e.g. `Level.param`'s `Name`). **Byte format** (`C.enc T.sh`, stated, prefix): tag byte, then
+the constructor's fields in declaration order, `x` 8 bytes little-endian mod `2^64`; two inputs one after the other.
+The program decodes the input into cells (`dec`, recursive descent with a cursor), runs `F`, and encodes a tree result
+back (`enc`, length in `a1`) or stores a word result (`Nat` 8 bytes mod `2^64`, `Bool` 1 byte).
+
+**Space** (`Proven.Frontx.Ind.space M n`): `wn = 8 + 4 (M + 1) n` words of cells (decoding allocates at most one cell
+per input byte; `F` at most `M` per node, `M` = constructors per arm, arms calling each child at most once, `al_le`),
+then the stack `56 + 136 (1 + n + wn)` (frames of 136 bytes, depth ≤ nodes ≤ n for `dec`/`F`, ≤ cells for `enc`):
+`1368 + 712 n` bytes for word results, `1368 + 1288 n` for one constructor per node. Loose but from the input length.
+
+**Programs.** `E rk k` (kind-indexed: word / tree): fields, the parameters `a` (word) and `b` (tree), literals, `bin`,
+`mk` (allocate), `call ch a b` (recursion on a child). `Pg.sem`/`Pg.al` are the meaning and the allocation count.
+`F`'s body is a loop over the arm of the current tag: an arm that is a call is a TAIL CALL (the loop continues on the
+child: `Tail.sum`, `Tail.reverse`, `levelHasParam`'s `succ`), other calls are real calls (`count`, `mirror`).
+`ind_ok` (once): for well-formed inputs, `main` writes the bytes of `pg.sem v₁ a0 b`.
+
+**Commands.** `frontx_ind_type T := ty` generates the shape, `T.emb`, `T.emb_wf`, fold lemmas, `T.enc`, `T.enc2`.
+`frontx_ind f on T` reads the arms off `f`'s equations (one per constructor; or `f xs = g lit xs` / `g [] xs` for an
+entry), generates `f.ind.pg`, `f.ind.sem` (by induction, `simp`), `f.ind.wf` (`wf_calls`), `f.code`, `f.implements1`.
+
+**Compiled verbatim, machine theorem (77 axioms) + test** (`frontx_test.py check 50`, QEMU + Sail vs executed Lean):
+
+| function | source | words | test entry |
+|---|---|---|---|
+| `BinTree.count` | fp-lean @0abeea5 `Induction.lean:318` (type `Classes.lean:1255`) | 1124 | `bt_count` |
+| `BinTree.mirror` | `Monads/Conveniences.lean:53` | 1123 | `bt_mirror` |
+| `BinTree.graftLeft` (two inputs) | `Induction.lean:516` | 1022 | `bt_graftleft` |
+| `Pos.toNat` | `Classes.lean:232` (type `:122`) | 712 | `pos_tonat` |
+| `Pos.plus` (two inputs) | `Classes.lean:181` | 727 | `pos_plus` |
+| `NonTail.sum` (`List Nat`) | `ProgramsProofs/TCO.lean:6` | 1054 | `nontail_sum_ln` |
+| `Tail.sum` → `Tail.sumHelper` (loop) | `TCO.lean:40-45` | 1024 | `tail_sum_ln` |
+| `Tail.reverse` → `Tail.reverseHelper` (loop, allocates) | `TCO.lean:102-107` | 1027 | `tail_reverse_ln` |
+| `List.append` (two inputs) | Lean 4.29 core `Init/Prelude.lean` | 996 | `list_append_ln` |
+| `levelHasParam` | con-leche @6810492 `Kernel/Expr.lean:187` (types `Kernel/Name.lean:28`, `Kernel/Expr.lean:38`) | 912 | `level_hasparam` |
+| `Level.isNeverZero` | `Kernel/Level.lean:55` | 834 | `level_isneverzero` |
+
+Human input: none (no invariants, no closed forms); entry glue: none (the theorems are about the functions themselves,
+`fun t => f t`, `fun p => f p.1 p.2`).
+
+Not done / why: `Pos.mul` (calls `Pos.plus`: one function per program), `eqBinTree` (match on two trees),
+`hashBinTree` / computed `hashData` (`mixHash` is opaque), `Level.combining`/`simplify` (overlapping patterns, `=` on
+levels, calls to another function), `BinTree` insert/`number` (comparisons, `ite`, state monads: no `ite` in `E` yet),
+`NonTail.reverse` (`++` of a call result: another function), payloads other than one scalar (`Name`, `String`, pairs).
+Codes are big (700–1100 words: the plain back end, four functions with stack frames) and slow (every variable in a slot).
+
+Reproduce: `lake build Riscv.Frontx.IndExamples`; `lake env lean --tstack=4000000 Testing/asm/emit_frontx.lean`;
+`bash Testing/scripts/frontx_tests.sh`; axioms: `Testing/scripts/axioms_t.lean`.
