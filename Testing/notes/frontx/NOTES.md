@@ -777,3 +777,58 @@ result of a callee is opaque: comparing it (`findByte … < bs.size`) needs its 
 theorem states. (1) and non-tail self-recursion need real calls with frames (`MachineC`, `Compiler/CStmt.lean`):
 that route has no `Implements1` bridge on the optimised back end yet (`callsCode_implements` is the `ImplementsW`
 form, unoptimised), so it is not used here.
+
+### 12.5 The book's "B" list (survey `book_survey.csv`, branch `booksurvey`) and some "C" functions
+
+"Machine theorem" = a generated `g.implements1 : Implements1With …` (single bound, optimised back end
+`compBFO`/`implements1_of_execO`, the standard 77 axioms) for an entry point `g` on the input bytes; all source-level
+theorems (`f.exec`) depend on `propext`, `Classical.choice`, `Quot.sound` only. "Test" = `frontx_test.py check 50`:
+QEMU and the Sail C emulator against the result computed by Lean (`#eval` of the book definition,
+`emit_frontx.lean`), all cases ok (`Testing/scripts/frontx_tests.sh` runs all 37 entry points).
+Book text verbatim unless noted. `Nat` arguments of entry points are 16-bit little-endian numbers in the input
+(`u16`, `BookExamples.lean`); `Nat` results are 8 bytes mod `2^64`, `Bool` 1 byte, `Option UInt8` 2 bytes, lists
+their bytes with the length in `a1`.
+
+| book function (chapter) | machine theorem | entry point | words | human input / reason if no |
+|---|---|---|---|---|
+| `add1` (1) | yes | `add1E` | 90 | – |
+| `maximum` (1) | yes | `maximumE` | 131 | – |
+| `isZero` (1) | yes | `isZeroE` | 102 | – (called: `match` in value position) |
+| `pred` (1) | yes | `predE` | 123 | – (called) |
+| `even` (1), `Match.even` (1) | yes, yes | `evenE`, `matchEvenE` | 110, 110 | – (loop, called) |
+| `plus` (1) | yes | `plusE` | 164 | – |
+| `times` (1) | yes | `timesE` | 164 | closed form `plus_eq` (`plus n acc` needs `acc < 2^64`: a fact about `times`) |
+| `minus` (1) | yes | `minusE` | 271 | invariant `acc ≤ n` (no closed form any more: calls `pred`) |
+| `div` (9, `Div.lean`; the Intro version is a non-terminating error example) | yes | `divE` | 163 | divisor `u16 + 1` (the book's `ok : k ≠ 0`) |
+| `halve`, `Match.Explicit.halve` (1) (`Match.Oops.halve` is an error example) | yes, yes | `halveE`, `explicitHalveE` | 145, 145 | – |
+| `double`, `Nat.double` (1) | yes, yes | `doubleE`, `natDoubleE` | 131, 90 | – |
+| `triple`, `quadruple`, `timesTwelve` (1) | yes | `tripleE`, `quadrupleE`, `timesTwelveE` | 92, 91, 97 | – |
+| `length`: `Explicit` (= `Ooops`/`Oooops` text), `BetterPlicity`, `AutoImpl`, `MatchDef` (1) | `MatchDef`: yes; others source level (same shape) | `bookLength` | 73 | – |
+| `NonTail.length`, `Tail.length` (9) | yes, yes | `nonTailLength`, `tailLength` | 73, 73 | `Tail`: invariant `soFar + (size - i) < 2^64` |
+| `NonTail.sum`, `Tail.sum` (9) | yes, yes | `nonTailSum`, `tailSum` | 78, 77 | `Tail`: invariant `soFar + 255 (size - i) < 2^64` |
+| `List.head?` (1) | yes | `headOf` | 57 | – |
+| `List.final?` (1, 3 patterns) | yes | `finalOf` | 77 | – |
+| `List.findFirst?` (1) | yes | `findFirstGt3` | 76 | specialised to `(· > 3)` (`frontx_spec`) |
+| `take` (1, `match n, xs`) | yes | `take5` | 80 | – |
+| `drop` (1), `Match.drop` (1) | yes, yes | `drop5`, `matchDrop3` | 135, 135 | – (`frontx_tailcopy`) |
+| `NonTail.filter` (9) | yes | `filterAll` | 72 | specialised to `(· > 3)` |
+| `reverse` (1, `let rec helper` with `soFar`), `Tail.reverse` (9) | no | – | – | a list accumulator (`soFar`): a list parameter that is not a view of the input |
+| `Tail.filter` (9, `filterHelper`) | no | – | – | list accumulator, then `accum.reverse` |
+| `NonTail.reverse` (9, `reverse xs ++ [x]`) | no | – | – | non-tail recursion whose result is used under `++`: needs real calls with a stack (or the length of the recursive result) |
+| `mergeSort` (9) | no | – | – | `splitList` returns a pair of lists, `merge` takes two lists that are not views: needs allocation / list values in memory |
+| `insertionSort` (9, `Array`, both versions) | no | – | – | in-place `Array.swap` and a `Fin` index: no array results / mutation in frontx |
+
+Also: `List.map (· + 1)` (`incEach`, 59 words), `xs ++ xs` (`twice`, 108 words, core `List.append`), and from class
+"C": `Both.sameLength` (two list inputs; `sameLen`, 131 words), and a nested loop `countDup` (`dupCount`, 144 words).
+Not attempted from "C": everything needing multiply of two variables (`volume`, `factorial`), enums / user
+inductives (`Weekday`, `BinTree`, `Pos`), strings as values, pair results as bytes (`Prod.switch`, `zip`, `unzip`),
+monadic code (chapters 4–7).
+
+Count (distinct B functions, variants merged): 26 of 32 compile with a machine theorem (`add1`, `maximum`, `isZero`,
+`pred`, `even`, `plus`, `times`, `minus`, `div`, `halve`, `double`, `Nat.double`, `triple`, `quadruple`,
+`timesTwelve`, `length`, `NonTail.length`, `Tail.length`, `NonTail.sum`, `Tail.sum`, `head?`, `final?`,
+`findFirst?`, `take`, `drop`, `NonTail.filter`); 6 do not (`reverse`, `Tail.reverse`, `Tail.filter`,
+`NonTail.reverse`, `mergeSort`, `insertionSort`).
+
+Reproduce: `lake build Riscv.Frontx.Machine`; `lake env lean --tstack=4000000 Testing/asm/emit_frontx.lean`
+(the interpreter needs the stack for the book's non-tail recursions); `bash Testing/scripts/frontx_tests.sh`.

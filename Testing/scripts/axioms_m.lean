@@ -35,3 +35,7 @@ import Riscv.Frontx.Machine
 #print axioms Proven.Frontx.Ex.BookNat.divE.implements1
 #print axioms Proven.Frontx.Ex.BookNat.halveE.implements1
 #print axioms Proven.Frontx.Ex.dupCount.implements1
+#print axioms Proven.Frontx.Ex.BookNat.matchEvenE.implements1
+#print axioms Proven.Frontx.Ex.BookNat.explicitHalveE.implements1
+#print axioms Proven.Frontx.Ex.sameLen.implements1
+#print axioms Proven.Frontx.Ex.nonTailLength.implements1

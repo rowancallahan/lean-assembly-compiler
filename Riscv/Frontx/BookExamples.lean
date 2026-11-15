@@ -93,6 +93,20 @@ def halve : Nat → Nat
 frontx_compile div
 frontx_compile halve
 
+namespace Match
+def even : Nat → Bool
+  | 0 => true
+  | n + 1 => not (even n)
+namespace Explicit
+def halve : Nat → Nat
+  | Nat.zero => 0
+  | Nat.succ Nat.zero => 0
+  | Nat.succ (Nat.succ n) => halve n + 1
+end Explicit
+frontx_compile even
+frontx_compile Explicit.halve
+end Match
+
 /-! ## Entry points: the arguments are 16-bit little-endian numbers in the input bytes
 
 `fAt xs i := f (u16 xs i) …` calls the compiled `f` (a recursive `f` is a call: its program runs as a sub-program
@@ -119,6 +133,8 @@ def timesTwelveAt (xs : ByteArray) (i : Nat) : Nat := timesTwelve (u16 xs i)
 /-- the divisor is `u16 + 1` (the book's `div` takes the proof `k ≠ 0`) -/
 def divAt (xs : ByteArray) (i : Nat) : Nat := div (u16 xs i) (u16 xs (i + 2) + 1) (Nat.succ_ne_zero _)
 def halveAt (xs : ByteArray) (i : Nat) : Nat := halve (u16 xs i)
+def matchEvenAt (xs : ByteArray) (i : Nat) : Bool := Match.even (u16 xs i)
+def explicitHalveAt (xs : ByteArray) (i : Nat) : Nat := Match.Explicit.halve (u16 xs i)
 
 frontx_compile add1At requires fun _ i => i + 8 < 2 ^ 64
 frontx_compile maximumAt requires fun _ i => i + 8 < 2 ^ 64
@@ -135,5 +151,7 @@ frontx_compile quadrupleAt requires fun _ i => i + 8 < 2 ^ 64
 frontx_compile timesTwelveAt requires fun _ i => i + 8 < 2 ^ 64
 frontx_compile divAt requires fun _ i => i + 8 < 2 ^ 64
 frontx_compile halveAt requires fun _ i => i + 8 < 2 ^ 64
+frontx_compile matchEvenAt requires fun _ i => i + 8 < 2 ^ 64
+frontx_compile explicitHalveAt requires fun _ i => i + 8 < 2 ^ 64
 
 end Proven.Frontx.Book

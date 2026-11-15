@@ -23,4 +23,25 @@ frontx_compile countDup with fun _ k acc => acc ≤ k
 def dupCount (xs : ByteArray) : Nat := countDup xs 0 0
 frontx_entry dupCount
 
+/-! ## Survey class "C": two list inputs (`sameLength`, 1 Getting to Know Lean, `Both` version)
+
+Both lists are views of the input block with their own indices; the entry point compares the suffixes from `1` and
+from `1 + xs[0]`. -/
+
+namespace Both
+def sameLength (xs : List α) (ys : List β) : Bool :=
+  match xs, ys with
+  | [], [] => true
+  | _ :: xs', _ :: ys' => sameLength xs' ys'
+  | _, _ => false
+end Both
+frontx_view Both.sameLength
+frontx_compile Both.sameLength.view from Both.sameLength.view.eq measure fun B i _ => B.size - i
+
+@[inline] def byteAt (xs : ByteArray) (i : Nat) : UInt8 := if h : i < xs.size then xs[i] else 0
+def sameLenAt (xs : ByteArray) (i : Nat) : Bool := Both.sameLength.view xs (i + 1) (i + 1 + (byteAt xs i).toNat)
+frontx_compile sameLenAt requires fun _ i => i + 300 < 2 ^ 64
+def sameLen (xs : ByteArray) : Bool := sameLenAt xs 0
+frontx_entry sameLen
+
 end Proven.Frontx.Calls

@@ -67,3 +67,9 @@ open Proven.Frontx.Ex.BookNat in
   emit "halvee" halveE.slots halveE.code (enc halveE) (natInputs false)
 
 #eval emit "dupcount" Proven.Frontx.Calls.dupCount.slots dupCount.code (enc Proven.Frontx.Calls.dupCount)
+#eval emit "samelen" Proven.Frontx.Calls.sameLen.slots sameLen.code (enc Proven.Frontx.Calls.sameLen)
+#eval emit "nontaillength" Proven.Frontx.BookList.nonTailLength.slots nonTailLength.code (enc Proven.Frontx.BookList.nonTailLength)
+open Proven.Frontx.Ex.BookNat in
+#eval do
+  emit "matchevene" matchEvenE.slots matchEvenE.code (enc matchEvenE) (natInputs false)
+  emit "explicithalvee" explicitHalveE.slots explicitHalveE.code (enc explicitHalveE) (natInputs false)

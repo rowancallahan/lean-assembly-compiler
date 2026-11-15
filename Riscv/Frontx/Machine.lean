@@ -126,11 +126,21 @@ frontx_implements divE
 def halveE (xs : ByteArray) := halveAt xs 0
 frontx_entry halveE
 frontx_implements halveE
+def matchEvenE (xs : ByteArray) := matchEvenAt xs 0
+frontx_entry matchEvenE
+frontx_implements matchEvenE
+def explicitHalveE (xs : ByteArray) := explicitHalveAt xs 0
+frontx_entry explicitHalveE
+frontx_implements explicitHalveE
 end BookNat
 
 /-! ## Nested loops through a call (`CallExamples.lean`) -/
 
 open Proven.Frontx.Calls in
 frontx_implements dupCount
+open Proven.Frontx.Calls in
+frontx_implements sameLen
+open Proven.Frontx.BookList in
+frontx_implements nonTailLength
 
 end Proven.Frontx.Ex
