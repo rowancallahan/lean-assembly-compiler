@@ -627,3 +627,127 @@ theorem zloop_ok {cb : BitVec 64} {Wc : List (BitVec 32)} (hok : M.codeOK cb Wc.
 
 end MachineM
 end Proven.Mach
+
+namespace Proven.Mach
+open MachineF
+
+namespace MachineM
+variable (M : MachineM)
+
+theorem set_self (env : BEnv) (v : Nat) : env.set v (env v) = env := by
+  funext x; simp only [BEnv.set]; split
+  · next h => rw [h]
+  · rfl
+
+/-- **the access check runs**: with the heap grown to cover word `i` (zeroed), or to the exit when that word
+would reach the current frame -/
+theorem chkA_ok {cb : BitVec 64} {Wc : List (BitVec 32)} (hok : M.codeOK cb Wc.length) {wb : Fin 8}
+    {hp pos : Nat} {i : BExp} (hsub : Sub Wc pos (M.codeZ (M.chkA wb hp pos i)))
+    (hcall : M.callOK ((hp : Int) - ((pos + (M.codeF (mgenB i 0)).length + M.lenBr + (M.codeZ (sh1 wb)).length +
+        M.lenBr : Nat) : Int)))
+    (hbz1 : M.bzOK (M.lenBr + M.lenSlow wb i)) (hbz2 : M.bzOK (M.lenBr + M.lenCall))
+    (hbz3 : M.bzOK (M.lenBr + (M.codeZ (zbody wb)).length + M.lenJmp))
+    (hjmp : M.jmpOK ((M.codeF (mgenB i 0)).length + M.lenBr + (M.codeZ (zbody wb)).length))
+    {N fp : Nat} (hF : M.Frm N fp) (hid : i.depth < 7) (hiv : i.vlt (8 + N)) (hic : i.clean = true)
+    {env : BEnv} {W : List (BitVec 64)} {wbase : Nat} (hwb7 : wb ≠ ⟨7, by decide⟩)
+    (hwbase : env wb.val = BitVec.ofNat 64 wbase) (hU : env hvar = BitVec.ofNat 64 W.length)
+    (hlay : wbase + 8 * W.length ≤ fp) (hal : wbase % 8 = 0) (hram : M.inRAM wbase (fp - wbase))
+    (hwr : ∀ a, wbase ≤ a → a < fp → ∀ s, M.ok s → M.writable s a)
+    (hcd : disjoint ⟨cb.toNat, 4 * Wc.length⟩ ⟨wbase, fp - wbase⟩)
+    {s : M.S} (hc : M.codeAt s cb Wc) (ho : M.ok s) (hpc : M.pcIs s (next cb pos)) (henv : M.EnvB N fp env s)
+    (hheap : bytes (M.mem s) wbase (8 * W.length) = (wbytes W).map some) :
+    M.runsTo s fun s' =>
+      (wbase + 8 * (grow W ((i.denote env).toNat + 1)).length ≤ fp ∧ M.ok s' ∧ M.keep s s' ∧
+        M.pcIs s' (next cb (pos + M.lenChkA wb i)) ∧ M.codeAt s' cb Wc ∧
+        M.EnvB N fp (env.set hvar (BitVec.ofNat 64 (grow W ((i.denote env).toNat + 1)).length)) s' ∧
+        bytes (M.mem s') wbase (8 * (grow W ((i.denote env).toNat + 1)).length) =
+          (wbytes (grow W ((i.denote env).toNat + 1))).map some ∧
+        Out [⟨wbase + 8 * W.length, fp - (wbase + 8 * W.length)⟩] (M.mem s) (M.mem s')) ∨
+      (fp < wbase + 8 * ((i.denote env).toNat + 1) ∧ M.ok s' ∧ M.keepC s s' ∧ M.pcIs s' (next cb hp) ∧
+        M.mem s' = M.mem s) := by
+  have hgl := grow_length W ((i.denote env).toNat + 1)
+  generalize hj : (i.denote env).toNat = j at *
+  have hj64 : j < 2 ^ 64 := by rw [← hj]; exact BitVec.isLt _
+  have hlt := M.ramHi_lt
+  have hfr := MachineF.Frm.fr M.toMachineF hF henv.fr
+  unfold Base.inRAM at hram
+  have hwl : W.length < 2 ^ 64 := by omega
+  rw [chkA] at hsub
+  simp only [codeZ_append, codeZ_xs, codeZ_cons, codeZ_nil, List.append_nil] at hsub
+  obtain ⟨hX, h6⟩ := hsub.split
+  obtain ⟨hABS, hBC⟩ := hX.split
+  obtain ⟨hAB, h3⟩ := hABS.split
+  obtain ⟨h1, h2⟩ := hAB.split
+  obtain ⟨h4, h5⟩ := hBC.split
+  simp only [encZ_m, encZ_C, M.len_bltu, M.len_call, List.length_append] at h2 h3 h4 h5 h6
+  -- 1. `r0 := i`
+  refine M.runsTo_trans (M.genB_ok hF env i 0 (by omega) hiv (M.at_sub hok hc h1 ho hpc) henv)
+    fun s₁ ⟨d₁, m₁, v₁, k₁⟩ => ?_
+  rw [next_add] at d₁
+  have hc₁ := M.codeAt_mem m₁ hc
+  have hU₁ : M.get s₁ regU = BitVec.ofNat 64 W.length := by
+    rw [k₁ _ (.inr (by decide)), show regU = avar ⟨7, by decide⟩ from rfl, henv.reg]; exact hU
+  have hr0 : (M.get s₁ (rk 0)).toNat = j := by rw [v₁, hj]
+  refine M.runsTo_trans (M.law_bltu hbz1 (M.at_sub hok hc₁ h2 d₁.ok d₁.hpc)) fun s₂ ⟨d₂, st₂, m₂⟩ => ?_
+  rw [hr0, hU₁, BitVec.toNat_ofNat, Nat.mod_eq_of_lt hwl] at d₂
+  by_cases hfast : j < W.length
+  · -- the word is in the heap
+    rw [if_pos hfast, next_add] at d₂
+    have hg : grow W (j + 1) = W := grow_of_le (by omega)
+    rw [hg]
+    refine M.runsTo_of (.inl ⟨hlay, d₂.ok, M.keep_trans d₁.keep d₂.keep,
+      M.pcIs_cast d₂.hpc (by simp only [lenChkA]; omega), M.codeAt_mem m₂ hc₁, ?_, by rw [m₂, m₁]; exact hheap,
+      Out.of_eq (by rw [m₂, m₁])⟩)
+    rw [← hU, set_self]
+    exact EnvB.of M.toMachineF henv (by rw [m₂, m₁]) (M.keep_trans d₁.keep d₂.keep)
+      (fun i' => by rw [st₂, k₁ _ (.inr (avar_ge i'))])
+  rw [if_neg hfast, next_add] at d₂
+  have hc₂ := M.codeAt_mem m₂ hc₁
+  -- 2. `r1 := (fr - wbase) >> 3`
+  refine M.runsTo_trans (M.run_simple (sh1 wb) (sh1_simple wb) (M.at_sub hok hc₂ h3 d₂.ok
+    (M.pcIs_cast d₂.hpc (by omega))))
+    fun s₃ ⟨d₃, g₃, m₃⟩ => ?_
+  rw [next_add] at d₃
+  obtain ⟨e31, e30, e37⟩ := sh1_eff wb (M.fr s₂) (BitVec.ofNat 64 (M.frameAt s₂ 0)) (M.get s₂)
+  have hfr₂ : M.fr s₂ = BitVec.ofNat 64 fp := by rw [M.keep_fr d₂.keep, M.keep_fr d₁.keep, henv.fr]
+  have hW₂ : M.get s₂ (avar wb) = BitVec.ofNat 64 wbase := by
+    rw [st₂, k₁ _ (.inr (avar_ge _)), henv.reg]; exact hwbase
+  have hq : (M.get s₃ (rk 1)).toNat = (fp - wbase) / 8 := by
+    rw [g₃, e31, hfr₂, hW₂, bv_lshr3_toNat, bv_sub_toNat (by omega) (by omega)]
+  have hr0₃ : (M.get s₃ (rk 0)).toNat = j := by rw [g₃, e30, st₂, hr0]
+  have hc₃ := M.codeAt_mem m₃ hc₂
+  refine M.runsTo_trans (M.law_bltu hbz2 (M.at_sub hok hc₃ h4 d₃.ok (M.pcIs_cast d₃.hpc (by omega))))
+    fun s₄ ⟨d₄, st₄, m₄⟩ => ?_
+  rw [hr0₃, hq] at d₄
+  by_cases hfit : j < (fp - wbase) / 8
+  · -- 3. zero the new words
+    rw [if_pos hfit, next_add] at d₄
+    have hfit' : wbase + 8 * (j + 1) ≤ fp := by omega
+    have hkk := M.keep_trans d₁.keep (M.keep_trans d₂.keep (M.keep_trans d₃.keep d₄.keep))
+    have hmm : M.mem s₄ = M.mem s := by rw [m₄, m₃, m₂, m₁]
+    have henv₄ : M.EnvB N fp (env.set hvar (BitVec.ofNat 64 W.length)) s₄ := by
+      rw [← hU, set_self]
+      exact EnvB.of M.toMachineF henv hmm hkk fun i' => by
+        rw [st₄, g₃, e37 _ (avar_ge i'), st₂, k₁ _ (.inr (avar_ge i'))]
+    have hz := M.zloop_ok hok (wb := wb) (i := i) (posL := pos + (M.codeF (mgenB i 0)).length + M.lenBr +
+      (M.codeZ (sh1 wb)).length + (M.lenBr + M.lenCall)) (h6.cast (by omega)) hbz3 hjmp hF hid hiv hic
+      (env := env) (W := W) hwb7 hwbase (by omega) (by omega) hal (by unfold Base.inRAM; omega) hwr hcd s
+    rw [hj] at hz
+    refine M.runsTo_mono (hz s₄ ⟨W.length, Nat.le_refl _, by omega, d₄.ok, M.pcIs_cast d₄.hpc (by omega),
+      M.codeAt_mem hmm hc, hkk, henv₄, by rw [hmm, grow_self]; exact hheap, Out.of_eq hmm⟩)
+      fun s₅ ⟨pc₅, ok₅, kp₅, hc₅, env₅, heap₅, out₅⟩ => .inl ⟨?_, ok₅, kp₅, M.pcIs_cast pc₅ ?_, hc₅, ?_, ?_, out₅⟩
+    · rw [hgl]; omega
+    · simp only [lenChkA, lenSlow]; omega
+    · rw [hgl, show max W.length (j + 1) = j + 1 by omega]; exact env₅
+    · rw [hgl, show max W.length (j + 1) = j + 1 by omega]; exact heap₅
+  · -- 4. out of memory
+    rw [if_neg hfit, next_add] at d₄
+    refine M.runsTo_mono (M.law_call hcall (M.at_sub hok (M.codeAt_mem m₄ hc₃) h5 d₄.ok d₄.hpc))
+      fun s₅ ⟨ok₅, kc₅, pc₅, _, _, _, m₅⟩ => .inr ⟨by omega, ok₅, ?_, ?_, by rw [m₅, m₄, m₃, m₂, m₁]⟩
+    · exact M.keepC_trans (M.kC d₁) (M.keepC_trans (M.kC d₂) (M.keepC_trans (M.kC d₃) (M.keepC_trans (M.kC d₄) kc₅)))
+    · rw [show pos + ((M.codeF (mgenB i 0)).length + M.lenBr + (M.codeZ (sh1 wb)).length) + M.lenBr =
+        pos + (M.codeF (mgenB i 0)).length + M.lenBr + (M.codeZ (sh1 wb)).length + M.lenBr by omega,
+        MachineC.next_call] at pc₅; exact pc₅
+
+end MachineM
+end Proven.Mach
