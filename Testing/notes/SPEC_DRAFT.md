@@ -39,3 +39,18 @@ gaps for a stub run from Sail's reset state: `Cfg.pma` fixes ONE PMA region `[0x
 `Cfg.mstatus`/`misa` fixed values, which may differ from what Sail's own reset/platform init leaves (to check
 against the model's init); `Present` needs every work/output byte to exist in the finite map, so the stub (or
 the loader) must write them (e.g. zero them) first. Everything else a stub sets with ordinary instructions.
+
+## Bare metal (2026-11-15): `Riscv/Back/BootReset.lean`, `BootV.lean`, `Boot.lean`, `Riscv/Examples/BootEx.lean`
+
+`boot_correct`: from `bootStart` (the model's `sail_model_init`, a board config, the model's `reset`; verbatim
+copy `resetWith`, `reset_eq`) a 21-word stub runs to `StartCorrect` (`boot_start`), then `compile_correct`.
+Trusted assumptions, all explicit: (1) board config `board`: reset vector `0x80000000`, PMA regions = the default
+config's main-memory region only (the default also has boot-ROM/CLINT regions; `Cfg.pma` wants exactly one);
+(2) `cancel_reservation` (a declared axiom with no body, called by `reset`) leaves the Sail state alone
+(`hcancel`; `boot_correct_with` takes any such hook, `pure ()` discharges it); (3) loaded image `Image`: stub at
+`0x80000000`, code at `0x80001000` (< `0xFF000` B), input length (8 B LE) at `0x80100000`, input at `0x80200000`
+(≤ 2^20 B); output ≤ `0x100000` B.  Work space fits automatically.  Not a gap after all: the model's reset sets
+`misa.V` (Cfg wants it clear): the stub clears it (`csrrc`, proved in `BootV.lean` from `CfgV`); zeroing makes
+output/work `Present`.  `init_model`'s `config_is_valid` assertion is not evaluated (the start uses `reset`).
+Non-vacuity: `boot_example` (concrete `incCode1`, no hypotheses); `boot_revinc5` (XPipe) keeps only `codeFits`:
+the kernel cannot evaluate the optimiser's `List.mergeSort` (62 words by `#eval`).  QEMU: `Testing/asm/boot_test.py`.
