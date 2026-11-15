@@ -9,3 +9,4 @@ regen-work/
 *.o
 ctest/
 Testing/asm/fuzz5/work/
+Testing/asm/fuzz5/work*/

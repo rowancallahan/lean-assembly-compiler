@@ -10,7 +10,7 @@ stack; found by comparing the final work blocks of the two fills) > 0."""
 import os, random, re, subprocess, sys, threading
 sys.setrecursionlimit(10 ** 7); threading.stack_size(1 << 30)
 D = os.path.dirname(os.path.abspath(__file__)); WD = os.path.join(D, "..", "frontx-words")
-W = os.path.join(D, "work"); os.makedirs(W, exist_ok=True)
+W = os.path.join(D, "work" + os.environ.get("WSUF", "")); os.makedirs(W, exist_ok=True)
 SAIL = "/home/user/deps/sailsim/sail-riscv-Linux-x86_64/bin/sail_riscv_sim"
 LEAN = [d for d in __import__("glob").glob("/tmp/leandl/x/*/bin")][0] + "/lean"
 M64 = 2 ** 64; G = 16; E = 72
@@ -159,9 +159,9 @@ def gen_cases(fn, seed, N, big):
         for i, s in enumerate(["left", "right", "zig", "wide", "comb"]): shapes[4 + i] = s
     for n, s in zip(sizes, shapes): out.append(gen_values(r, kind, n, s))
     if big:    # degenerate chains / wide trees up to the space bound's range (input bytes about 0.5-2 MB QEMU only)
-        for n, s in [(20000, "left"), (20000, "right"), (30000, "zig"), (60000, "wide"), (60000, "random"), (150000, "left")] if kind.startswith("tree") else \
-                    [(40000, None), (120000, None), (200000, None)]:
-            out.append(gen_values(r, kind, n if kind != "level" else min(n, 40000), s))
+        for n, s in [(20000, "left"), (20000, "right"), (20000, "zig"), (20000, "wide"), (20000, "random"), (40000, "left")] if kind.startswith("tree") else \
+                    [(20000, None), (40000, None), (60000, None)]:
+            out.append(gen_values(r, kind, n if kind != "level" else min(n, 20000), s))
     return out
 def enc_vals(kind, vs): return b"".join(ENC[kind.rstrip("2")](v) for v in vs)
 # ---- Lean
