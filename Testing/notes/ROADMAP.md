@@ -113,3 +113,10 @@ hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read 
   work changes; `memoryNeeded <= W` -> right output (`compile_correct`); `OutOfMemory` -> halts with `a1 = 2^64-1`
   (the reported flag; output contents unspecified). The two cases are complementary, so the flag appears exactly
   when the run does not fit, never earlier.
+- con-leche hashing (owner): `mixHash` is `@[extern "lean_uint64_mix_hash"] opaque` in Lean core (Init/Prelude.lean),
+  i.e. no Lean definition at all; `String.hash` is an extern too. Plan: port the C code exactly into Lean
+  (`mixHashLean`, 6 lines of UInt64 mul/xor/shift; `String.hash` = MurmurHash64A from the runtime), substitute it in
+  a copy of con-leche, re-check con-leche's proofs (they cannot depend on an opaque value), compile that, and fuzz
+  the port heavily against native `mixHash` (`#eval` runs the C) on random inputs and on real con-leche terms.
+  Our theorems then say "computes con-leche with mixHash := mixHashLean". If con-leche's output provably does not
+  depend on the hash function (only consistency), any Lean hash will do.
