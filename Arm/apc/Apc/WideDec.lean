@@ -1,5 +1,5 @@
 /- Decoding facts for the wide operations with ARBITRARY abstract registers (`Apc/Wide.lean`), checked by
-enumeration (`decide +kernel`): every register triple / pair, every supported branch distance. -/
+enumeration (`decide +kernel`): every register triple / pair (branch offsets: symbolic, `Apc/Sym.lean`). -/
 import Apc.Mach
 import Compiler.Wide
 namespace Proven.Apc
@@ -9,10 +9,6 @@ def ccN : Cond → Nat
   | .eq => 0 | .ne => 1 | .ltu => 3 | .geu => 2 | .lt => 11 | .ge => 10
 def ccC : Cond → Arm64.CondCode
   | .eq => .EQ | .ne => .NE | .ltu => .CC | .geu => .CS | .lt => .LT | .ge => .GE
-/-- `b.cond` with a 19-bit word offset `imm` (two's complement) -/
-def wBc (c : Cond) (imm : Nat) : BitVec 32 := BitVec.ofNat 32 (0x54000000 ||| (imm % 2 ^ 19) <<< 5 ||| ccN c)
-/-- `b +4n` -/
-def wBf (n : Nat) : BitVec 32 := 0x05#6 ++ BitVec.ofNat 26 n
 /-- `cmp xa, xb` / `cmp xa, xzr` -/
 def wCmpO (a : Mach.Reg) : Option Mach.Reg → BitVec 32
   | some b => rrr 0xEB000000 31 (xn a) (xn b)
@@ -72,68 +68,4 @@ theorem decDblW : ∀ d : Mach.Reg, Arm64.decode (iShl d) =
     some (.addSubShift .W64 .ADD (.gpr (xr d)) (.gpr (xr d)) (.gpr (xr d)) .LSL 0) := by decide +kernel
 theorem decIncW : ∀ d : Mach.Reg, Arm64.decode (iInc d) =
     some (.addSubImm .W64 .ADD (.gpr (xr d)) (.gpr (xr d)) 1#12 false) := by decide +kernel
-set_option maxRecDepth 100000 in
-theorem decBf : ∀ n : Fin 1024, Arm64.decode (wBf n.val) = some (.b (BitVec.ofNat 64 (4 * n.val))) := by decide +kernel
-
-set_option maxRecDepth 100000 in
-theorem decBcF_eq : ∀ n : Fin 512, Arm64.decode (wBc .eq n.val) = some (.bCond (ccC .eq) (BitVec.ofNat 64 (4 * n.val))) := by
-  decide +kernel
-set_option maxRecDepth 100000 in
-theorem decBcB_eq : ∀ n : Fin 512, Arm64.decode (wBc .eq (2 ^ 19 - (n.val + 1))) =
-    some (.bCond (ccC .eq) (BitVec.ofNat 64 (2 ^ 64 - 4 * (n.val + 1)))) := by decide +kernel
-
-set_option maxRecDepth 100000 in
-theorem decBcF_ne : ∀ n : Fin 512, Arm64.decode (wBc .ne n.val) = some (.bCond (ccC .ne) (BitVec.ofNat 64 (4 * n.val))) := by
-  decide +kernel
-set_option maxRecDepth 100000 in
-theorem decBcB_ne : ∀ n : Fin 512, Arm64.decode (wBc .ne (2 ^ 19 - (n.val + 1))) =
-    some (.bCond (ccC .ne) (BitVec.ofNat 64 (2 ^ 64 - 4 * (n.val + 1)))) := by decide +kernel
-
-set_option maxRecDepth 100000 in
-theorem decBcF_ltu : ∀ n : Fin 512, Arm64.decode (wBc .ltu n.val) = some (.bCond (ccC .ltu) (BitVec.ofNat 64 (4 * n.val))) := by
-  decide +kernel
-set_option maxRecDepth 100000 in
-theorem decBcB_ltu : ∀ n : Fin 512, Arm64.decode (wBc .ltu (2 ^ 19 - (n.val + 1))) =
-    some (.bCond (ccC .ltu) (BitVec.ofNat 64 (2 ^ 64 - 4 * (n.val + 1)))) := by decide +kernel
-
-set_option maxRecDepth 100000 in
-theorem decBcF_geu : ∀ n : Fin 512, Arm64.decode (wBc .geu n.val) = some (.bCond (ccC .geu) (BitVec.ofNat 64 (4 * n.val))) := by
-  decide +kernel
-set_option maxRecDepth 100000 in
-theorem decBcB_geu : ∀ n : Fin 512, Arm64.decode (wBc .geu (2 ^ 19 - (n.val + 1))) =
-    some (.bCond (ccC .geu) (BitVec.ofNat 64 (2 ^ 64 - 4 * (n.val + 1)))) := by decide +kernel
-
-set_option maxRecDepth 100000 in
-theorem decBcF_lt : ∀ n : Fin 512, Arm64.decode (wBc .lt n.val) = some (.bCond (ccC .lt) (BitVec.ofNat 64 (4 * n.val))) := by
-  decide +kernel
-set_option maxRecDepth 100000 in
-theorem decBcB_lt : ∀ n : Fin 512, Arm64.decode (wBc .lt (2 ^ 19 - (n.val + 1))) =
-    some (.bCond (ccC .lt) (BitVec.ofNat 64 (2 ^ 64 - 4 * (n.val + 1)))) := by decide +kernel
-
-set_option maxRecDepth 100000 in
-theorem decBcF_ge : ∀ n : Fin 512, Arm64.decode (wBc .ge n.val) = some (.bCond (ccC .ge) (BitVec.ofNat 64 (4 * n.val))) := by
-  decide +kernel
-set_option maxRecDepth 100000 in
-theorem decBcB_ge : ∀ n : Fin 512, Arm64.decode (wBc .ge (2 ^ 19 - (n.val + 1))) =
-    some (.bCond (ccC .ge) (BitVec.ofNat 64 (2 ^ 64 - 4 * (n.val + 1)))) := by decide +kernel
-
-
-theorem decBcF (c : Cond) (n : Fin 512) : Arm64.decode (wBc c n.val) = some (.bCond (ccC c) (BitVec.ofNat 64 (4 * n.val))) := by
-  cases c
-  · exact decBcF_eq n
-  · exact decBcF_ne n
-  · exact decBcF_ltu n
-  · exact decBcF_geu n
-  · exact decBcF_lt n
-  · exact decBcF_ge n
-theorem decBcB (c : Cond) (n : Fin 512) : Arm64.decode (wBc c (2 ^ 19 - (n.val + 1))) =
-    some (.bCond (ccC c) (BitVec.ofNat 64 (2 ^ 64 - 4 * (n.val + 1)))) := by
-  cases c
-  · exact decBcB_eq n
-  · exact decBcB_ne n
-  · exact decBcB_ltu n
-  · exact decBcB_geu n
-  · exact decBcB_lt n
-  · exact decBcB_ge n
-
 end Proven.Apc

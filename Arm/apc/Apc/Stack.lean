@@ -26,7 +26,7 @@ theorem compile_apc (L : Lay) (e : Exp) (he : e.depth < 11) {s : Arm64.State} {p
 
 theorem gcd_wf0 : (apc L0).wf gcdProg := by
   simp only [gcdProg, Machine.wf]
-  refine ⟨⟨by decide, ⟨by decide, by decide, by decide⟩, ?_, ?_⟩, by decide⟩ <;> (show _ < 1024; decide +kernel)
+  refine ⟨⟨by decide, ⟨by decide, by decide, by decide⟩, ?_, ?_⟩, by decide⟩ <;> first | (show _ < 2 ^ 18; decide +kernel) | (show 0 < _ ∧ _ ≤ 2 ^ 25; decide +kernel)
 theorem gcd_wf (L : Lay) : (apc L).wf gcdProg := gcd_wf0
 
 /-- **gcd** (a loop): x0 := gcd(x0, x1) by repeated subtraction. -/
@@ -42,7 +42,7 @@ theorem gcd_apc (L : Lay) {s : Arm64.State} {pc : BitVec 64}
 theorem sort_wf0 : (apc L0).wfA [0, 3] sortProg := by
   simp only [sortProg, insProg, outerBody, innerBody, mapProg, idxE, cE, valE, Machine.wfA]
   repeat' apply And.intro
-  all_goals first | decide | (show _ < 1024; decide +kernel)
+  all_goals first | decide | (show _ < 2 ^ 18; decide +kernel) | (show 0 < _ ∧ _ ≤ 2 ^ 25; decide +kernel)
 theorem sort_wf (L : Lay) : (apc L).wfA [0, 3] sortProg := sort_wf0
 
 /-- the compiled insertion sort for this target -/

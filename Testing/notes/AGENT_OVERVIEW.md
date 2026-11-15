@@ -31,6 +31,11 @@ Read this first. The top-level `README.md` is for people; this file is for agent
   first by `optA`/`optB` (`fnSR`/`bodySR`, plain code as fallback): sum/take/map 4/5/6 per byte = gcc -O2 (`OPT.md`, last section).
 - Calls (`CALLS.md`): `Spec/Tree.lean`, `treeEval_implements` (`Riscv/Examples/TreeEval.lean`), `calls_test.py`.
 - ARM on DeepMind's AArch64 semantics (`Arm/apc/README.md`, `Arm/apc/check.sh`): `apc : Machine` (9 laws), `compile_apc`/`gcd_apc`/`sort_apc`, bridge `apc_eq_sail` to Sail for the 216 expression words.
+  Since 2026-11-15 also `apcF : MachineF` (`msort_apc`), `apcC : MachineC` (`callsCode_implements_apc`, sumTo/fib/
+  isEven/treeEval), `apcw`/`apcwF : Wide`/`WideF` (`compBFOA_ok`, `msortO_apc`, CRC-32 `crc_apc`/`crcO_apc`), `li` =
+  movz/movk, branch ranges ±2^18/2^25 (symbolic decoding, `Arm/apc/Apc/Sym.lean`); needs `Arm/apc/mid.patch`
+  (writable hypotheses on the store laws of `Compiler/{Frame,Call,Wide}.lean`, not yet upstream); QEMU test
+  `Arm/apc/test/ext_test.py`.
 - ARM (Lean 4.34.1, generated model `Arm/model/`, built copy `/home/user/armv9-lean`): AArch64 backend for `Exp`
   proved at the decode+execute layer (`Arm/proofs/README.md`); fetch / full step / `ret` chaining in progress.
 - Not proved: `Riscv/Legacy/Sort.lean` (`sorry`, hand-written merge sort), `Riscv/Legacy/SortSteps.lean` (kernel
