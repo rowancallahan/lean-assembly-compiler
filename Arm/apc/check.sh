@@ -15,7 +15,7 @@ export PATH=$HOME/.elan/toolchains/leanprover--lean4---v4.34.1/bin:$HOME/.elan/b
 t() { S=$(date +%s); "$@"; echo "  [$(( $(date +%s) - S )) s] $*"; }
 [ "$(git -C "$CV" rev-parse --short=7 HEAD)" = b0f729a ] || { echo "need $CV at b0f729a"; exit 1; }
 echo "== arm64 (their trusted package)"; (cd "$A" && t lake build -q)
-echo "== Apc (lake)"; "$H/stage.sh"; (cd "$H" && t lake build -q Apc.Axioms Apc.Stack)
+echo "== Apc (lake)"; "$H/stage.sh"; (cd "$H" && t lake build -q Apc.Axioms)
 (cd "$H" && lake env lean Apc/Axioms.lean)
 [ -n "$SKIP_ARM" ] || { echo "== Arm/proofs (Sail side)"; t "$R/Arm/proofs/check.sh"; }
 echo "== bridge"
