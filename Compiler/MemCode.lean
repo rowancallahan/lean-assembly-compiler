@@ -1030,3 +1030,246 @@ theorem relB_grow (C : M.CtxM P bv wb off hp cb Wc R wbase hi) {N fp : Nat} {σ 
 
 end MachineM
 end Proven.Mach
+
+namespace Proven.Mach
+open MachineF Proven.Top.Alloc
+
+namespace MachineM
+variable {M : MachineM} {P : Prog} {bv : List Nat} {wb : Fin 8} {off : Nat → Nat} {hp : Nat}
+variable {cb : BitVec 64} {Wc : List (BitVec 32)} {R : List Region} {wbase hi : Nat}
+
+theorem peak_nil (c : Nat) : peak ([] ++ [MemEvent.alloc c]) = c := by simp [peak, inUse]
+theorem inUse_nil (c : Nat) : inUse ([] ++ [MemEvent.alloc c]) = c := by simp [inUse]
+
+/-- an atom (assignment, byte load or store) runs as before -/
+theorem atom_ok (C : M.CtxM P bv wb off hp cb Wc R wbase hi) {N fp : Nat} (hF : M.Frm N fp)
+    (hhi : fp + 8 * (N + 1) ≤ hi) {p : BStmt} {σ σ' : BState} (hb : BExec p σ σ') (hwf : M.wfB N bv [wb.val] p)
+    {pos : Nat} (hsub : Sub Wc pos (M.codeF (M.compB bv [wb.val] p))) {s : M.S} {W : List (BitVec 64)}
+    (hcode : M.codeAt s cb Wc) (ho : M.ok s) (hpc : M.pcIs s (next cb pos)) (inv : M.InvM bv wb N fp R wbase σ s W)
+    {W' : List (BitVec 64)} (hwh : σ'.wheap = [W']) (hl : W'.length = W.length)
+    (hhv : σ'.env hvar = σ.env hvar) :
+    M.runsTo s fun s' => M.ok s' ∧ M.keepC s s' ∧ M.pcIs s' (next cb (pos + (M.codeF (M.compB bv [wb.val] p)).length)) ∧
+      M.codeAt s' cb Wc ∧ Out (WrtM N fp R wbase) (M.mem s) (M.mem s') ∧ M.InvM bv wb N fp R wbase σ' s' W' := by
+  have hL := C.lay inv.below hhi
+  refine M.runsTo_mono (M.execB_ok hF bv [wb.val] (fun x hx => by have := C.bvlt x hx; omega)
+    (fun x hx => by simp at hx; omega) hL hb hwf (M.at_sub C.codeOK hcode hsub ho hpc)
+    (M.sub_disj C.codeOK hsub (C.cdAll inv.below hhi)) inv.rel) fun s' ⟨d, o, r⟩ => ?_
+  have o' := allR_wrtM inv.below o
+  exact ⟨d.ok, M.kC d, by rw [← next_add]; exact d.hpc, C.codeAt_W (by have := inv.below; omega) hhi hcode o', o',
+    ⟨hwh, by rw [hhv, hl]; exact inv.hv, by rw [hl]; exact inv.below, by rw [hl]; exact r⟩⟩
+
+end MachineM
+end Proven.Mach
+
+namespace Proven.Mach
+open MachineF Proven.Top.Alloc
+
+namespace MachineM
+variable {M : MachineM} {P : Prog} {bv : List Nat} {wb : Fin 8} {off : Nat → Nat} {hp : Nat}
+variable {cb : BitVec 64} {Wc : List (BitVec 32)} {R : List Region} {wbase hi : Nat}
+
+/-- a word access (`load64` / `store64` of word `i`): the check, then the access on the grown heap -/
+theorem acc_ok (C : M.CtxM P bv wb off hp cb Wc R wbase hi) {N fp : Nat} (hF : M.Frm N fp)
+    (hhi : fp + 8 * (N + 1) ≤ hi) {p : BStmt} {i : BExp} {env : BEnv} {H : Heap} {W : List (BitVec 64)}
+    {σ' : BState} (hic : i.clean = true) (hid : i.depth < 6) (hiv : i.vlt (8 + N))
+    (hb : BExec p ⟨env.set hvar (BitVec.ofNat 64 (grow W ((i.denote env).toNat + 1)).length), H,
+      [grow W ((i.denote env).toNat + 1)]⟩ σ')
+    (hwf : M.wfB N bv [wb.val] p) (hchk : M.chkOK wb hp pos i)
+    (hsub : Sub Wc pos (M.codeZ (M.chkA wb hp pos i ++ xs (M.compB bv [wb.val] p)))) {s : M.S}
+    (hcode : M.codeAt s cb Wc) (ho : M.ok s) (hpc : M.pcIs s (next cb pos))
+    (inv : M.InvM bv wb N fp R wbase ⟨env, H, [W]⟩ s W)
+    {W' : List (BitVec 64)} (hwh : σ'.wheap = [W']) (hl : W'.length = (grow W ((i.denote env).toNat + 1)).length)
+    (hhv : σ'.env hvar = BitVec.ofNat 64 (grow W ((i.denote env).toNat + 1)).length) (b : Nat) :
+    M.runsTo s fun s' =>
+      (peak (growE W ((i.denote env).toNat + 1) ++ [.alloc (b + W.length)]) ≤ b + (fp - wbase) / 8 ∧ M.ok s' ∧
+        M.keepC s s' ∧ M.pcIs s' (next cb (pos + (M.lenChkA wb i + (M.codeF (M.compB bv [wb.val] p)).length))) ∧
+        M.codeAt s' cb Wc ∧ Out (WrtM N fp R wbase) (M.mem s) (M.mem s') ∧
+        ∃ W', inUse (growE W ((i.denote env).toNat + 1) ++ [.alloc (b + W.length)]) = b + W'.length ∧
+          M.InvM bv wb N fp R wbase σ' s' W') ∨
+      (b + (fp - wbase) / 8 < peak (growE W ((i.denote env).toNat + 1) ++ [.alloc (b + W.length)]) ∧
+        M.ok s' ∧ M.keepC s s' ∧ M.pcIs s' (next cb hp) ∧ Out (WrtM N fp R wbase) (M.mem s) (M.mem s')) := by
+  obtain ⟨hk1, hk2, hk3, hk4, hk5⟩ := hchk
+  rw [codeZ_append, codeZ_xs] at hsub
+  obtain ⟨h1, h2⟩ := hsub.split
+  rw [len_chkA] at h2
+  have hstk := C.stk; unfold Base.inRAM at hstk
+  have hbel := inv.below
+  have hwbase : env wb.val = BitVec.ofNat 64 wbase := by
+    have := inv.rel.wbase 0 (by simp); simpa using this
+  have hheap : bytes (M.mem s) wbase (8 * W.length) = (wbytes W).map some := by
+    have := inv.rel.wbyts 0 (by simp); simpa using this
+  have hgl := grow_length W ((i.denote env).toNat + 1)
+  refine M.runsTo_trans (M.chkA_ok C.codeOK h1 hk1 hk2 hk3 hk4 hk5 hF (by omega) hiv hic C.wb7 hwbase inv.hv
+    inv.below C.wal (by unfold Base.inRAM; omega) (fun a h1 h2 s hs => C.stw a h1 (by omega) s hs)
+    (C.cd_in (Nat.le_refl _) (by omega)) hcode ho hpc inv.rel.env hheap) fun s₁ h => ?_
+  rcases h with ⟨hfit, ok₁, kp₁, pc₁, hc₁, env₁, heap₁, out₁⟩ | ⟨hno, ok₁, kc₁, pc₁, m₁⟩
+  · have r₁ := relB_grow C inv.rel env₁ heap₁ out₁ (by omega) inv.below
+    have inv₁ : M.InvM bv wb N fp R wbase ⟨env.set hvar (BitVec.ofNat 64 (grow W ((i.denote env).toNat + 1)).length),
+        H, [grow W ((i.denote env).toNat + 1)]⟩ s₁ (grow W ((i.denote env).toNat + 1)) :=
+      ⟨rfl, by simp [BEnv.set], hfit, r₁⟩
+    refine M.runsTo_mono (atom_ok C hF hhi hb hwf h2 hc₁ ok₁ pc₁ inv₁ hwh hl (by rw [hhv]; simp [BEnv.set]))
+      fun s₂ ⟨ok₂, kc₂, pc₂, hc₂, o₂, inv₂⟩ => .inl ⟨?_, ok₂, M.keepC_trans (M.keep_keepC kp₁) kc₂,
+        by rw [← Nat.add_assoc]; exact pc₂, hc₂, (grow_wrtM out₁ inv.below).trans o₂, _, ?_, inv₂⟩
+    · rw [peak_growE]; omega
+    · rw [inUse_growE, hl]; omega
+  · refine M.runsTo_of (.inr ⟨?_, ok₁, kc₁, pc₁, Out.of_eq m₁⟩)
+    rw [peak_growE, hgl]; omega
+
+theorem execBM_ok (C : M.CtxM P bv wb off hp cb Wc R wbase hi) {N fp : Nat} (hF : M.Frm N fp)
+    (hhi : fp + 8 * (N + 1) ≤ hi) :
+    ∀ {p : BStmt} {σ σ' : BState} {E : List MemEvent}, TExecB p σ E σ' → p.clean = true →
+    ∀ {pos : Nat} {s : M.S} {W : List (BitVec 64)} {b : Nat},
+    M.wfBM bv wb hp N pos p → Sub Wc pos (M.codeZ (M.compBM bv wb hp pos p)) →
+    M.codeAt s cb Wc → M.ok s → M.pcIs s (next cb pos) → M.InvM bv wb N fp R wbase σ s W →
+    M.runsTo s fun s' =>
+      (peak (E ++ [.alloc (b + W.length)]) ≤ b + (fp - wbase) / 8 ∧ M.ok s' ∧ M.keepC s s' ∧
+        M.pcIs s' (next cb (pos + M.lenBM bv wb p)) ∧ M.codeAt s' cb Wc ∧
+        Out (WrtM N fp R wbase) (M.mem s) (M.mem s') ∧
+        ∃ W', inUse (E ++ [.alloc (b + W.length)]) = b + W'.length ∧ M.InvM bv wb N fp R wbase σ' s' W') ∨
+      (b + (fp - wbase) / 8 < peak (E ++ [.alloc (b + W.length)]) ∧ M.ok s' ∧ M.keepC s s' ∧
+        M.pcIs s' (next cb hp) ∧ Out (WrtM N fp R wbase) (M.mem s) (M.mem s')) := by
+  intro p σ σ' E h
+  induction h with
+  | @assign v e σ =>
+    intro hc pos s W b hwf hsub hcode ho hpc inv
+    simp only [BStmt.clean, Bool.and_eq_true] at hc
+    have hv := ne_hvar (not_unread hc.1)
+    simp only [compBM, lenBM, codeZ_xs] at hsub ⊢
+    refine M.runsTo_mono (atom_ok C hF hhi .assign hwf hsub hcode ho hpc inv inv.wh rfl (by simp [BEnv.set, Ne.symm hv]))
+      fun s' ⟨ok', kc', pc', hc', o', inv'⟩ => .inl ⟨?_, ok', kc', pc', hc', o', W, by rw [inUse_nil], inv'⟩
+    rw [peak_nil]; have := inv.below; omega
+  | @load v b' i σ hb hi =>
+    intro hc pos s W b hwf hsub hcode ho hpc inv
+    simp only [BStmt.clean, Bool.and_eq_true] at hc
+    have hv := ne_hvar (not_unread hc.1.1)
+    simp only [compBM, lenBM, codeZ_xs] at hsub ⊢
+    refine M.runsTo_mono (atom_ok C hF hhi (.load hb hi) hwf hsub hcode ho hpc inv inv.wh rfl
+      (by simp [BEnv.set, Ne.symm hv])) fun s' ⟨ok', kc', pc', hc', o', inv'⟩ =>
+        .inl ⟨?_, ok', kc', pc', hc', o', W, by rw [inUse_nil], inv'⟩
+    rw [peak_nil]; have := inv.below; omega
+  | @store b' i e σ hb hi =>
+    intro hc pos s W b hwf hsub hcode ho hpc inv
+    simp only [compBM, lenBM, codeZ_xs] at hsub ⊢
+    refine M.runsTo_mono (atom_ok C hF hhi (.store hb hi) hwf hsub hcode ho hpc inv inv.wh rfl rfl)
+      fun s' ⟨ok', kc', pc', hc', o', inv'⟩ => .inl ⟨?_, ok', kc', pc', hc', o', W, by rw [inUse_nil], inv'⟩
+    rw [peak_nil]; have := inv.below; omega
+  | @seq p q σ σ₁ σ₂ E₁ E₂ _ _ ih₁ ih₂ =>
+    intro hc pos s W b hwf hsub hcode ho hpc inv
+    simp only [BStmt.clean, Bool.and_eq_true] at hc
+    simp only [compBM, codeZ_append, wfBM] at hsub hwf
+    obtain ⟨h1, h2⟩ := hsub.split
+    rw [len_compBM] at h2
+    refine M.runsTo_trans (ih₁ hc.1 hwf.1 h1 hcode ho hpc inv (b := b)) fun s₁ h => ?_
+    rcases h with ⟨pk₁, ok₁, kc₁, pc₁, hc₁, o₁, W₁, iu₁, inv₁⟩ | ⟨pk₁, ok₁, kc₁, pc₁, o₁⟩
+    · refine M.runsTo_mono (ih₂ hc.2 hwf.2 h2 hc₁ ok₁ pc₁ inv₁ (b := b)) fun s₂ h => ?_
+      rcases h with ⟨pk₂, ok₂, kc₂, pc₂, hc₂, o₂, W₂, iu₂, inv₂⟩ | ⟨pk₂, ok₂, kc₂, pc₂, o₂⟩
+      · refine .inl ⟨?_, ok₂, M.keepC_trans kc₁ kc₂, M.pcIs_cast pc₂ (by simp only [lenBM]; omega), hc₂, o₁.trans o₂,
+          W₂, ?_, inv₂⟩
+        · rw [peak_seq, iu₁]; omega
+        · rw [inUse_seq, iu₁, iu₂]
+      · refine .inr ⟨?_, ok₂, M.keepC_trans kc₁ kc₂, pc₂, o₁.trans o₂⟩
+        rw [peak_seq, iu₁]; omega
+    · refine M.runsTo_of (.inr ⟨?_, ok₁, kc₁, pc₁, o₁⟩)
+      rw [peak_seq]; omega
+  | @loopF c bd σ hc0 =>
+    intro hc pos s W b hwf hsub hcode ho hpc inv
+    simp only [compBM, codeZ_append, codeZ_xs, codeZ_one, encZ_A, wfBM] at hsub hwf
+    obtain ⟨hw1, hw2, hw3, hw4, hw5⟩ := hwf
+    obtain ⟨h123, h4⟩ := hsub.split
+    obtain ⟨h12, h3⟩ := h123.split
+    obtain ⟨h1, h2⟩ := h12.split
+    refine M.runsTo_trans (M.genB_ok hF σ.env c 0 (by omega) hw2 (M.at_sub C.codeOK hcode h1 ho hpc) inv.rel.env)
+      fun s₁ ⟨d₁, m₁, v₁, k₁⟩ => ?_
+    rw [next_add] at d₁
+    refine M.runsTo_mono (M.law_bz (rk_val (by omega)) hw3 (M.at_sub C.codeOK (M.codeAt_mem m₁ hcode) h2 d₁.ok d₁.hpc))
+      fun s₂ ⟨d₂, st₂, m₂⟩ => .inl ⟨?_, d₂.ok, M.keepC_trans (M.kC d₁) (M.kC d₂), ?_,
+        M.codeAt_mem (by rw [m₂, m₁]) hcode, Out.of_eq (by rw [m₂, m₁]), W, by rw [inUse_nil],
+        ⟨inv.wh, inv.hv, inv.below, RelB.same M.toMachineF inv.rel (by rw [m₂, m₁]) (M.keep_trans d₁.keep d₂.keep)
+          fun i => by rw [st₂, k₁ _ (.inr (avar_ge i))]⟩⟩
+    · rw [peak_nil]; have := inv.below; omega
+    · rw [v₁, ite_pos hc0, next_add] at d₂
+      exact M.pcIs_cast d₂.hpc (by simp only [lenBM]; omega)
+  | @loopT c bd σ σ₁ σ₂ E₁ E₂ hc0 _ _ ih₁ ih₂ =>
+    intro hc pos s W b hwf hsub hcode ho hpc inv
+    have hc' := hc
+    simp only [BStmt.clean, Bool.and_eq_true] at hc'
+    have hwf0 := hwf
+    have hsub0 := hsub
+    simp only [compBM, codeZ_append, codeZ_xs, codeZ_one, encZ_A, wfBM] at hsub hwf
+    obtain ⟨hw1, hw2, hw3, hw4, hw5⟩ := hwf
+    obtain ⟨h123, h4⟩ := hsub.split
+    obtain ⟨h12, h3⟩ := h123.split
+    obtain ⟨h1, h2⟩ := h12.split
+    simp only [List.length_append, M.len_bz, len_compBM] at h3 h4
+    refine M.runsTo_trans (M.genB_ok hF σ.env c 0 (by omega) hw2 (M.at_sub C.codeOK hcode h1 ho hpc) inv.rel.env)
+      fun s₁ ⟨d₁, m₁, v₁, k₁⟩ => ?_
+    rw [next_add] at d₁
+    refine M.runsTo_trans (M.law_bz (rk_val (by omega)) hw3 (M.at_sub C.codeOK (M.codeAt_mem m₁ hcode) h2 d₁.ok d₁.hpc))
+      fun s₂ ⟨d₂, st₂, m₂⟩ => ?_
+    rw [v₁, ite_neg hc0, M.len_bz, next_add] at d₂
+    have inv₂ : M.InvM bv wb N fp R wbase σ s₂ W :=
+      ⟨inv.wh, inv.hv, inv.below, RelB.same M.toMachineF inv.rel (by rw [m₂, m₁]) (M.keep_trans d₁.keep d₂.keep)
+        fun i => by rw [st₂, k₁ _ (.inr (avar_ge i))]⟩
+    refine M.runsTo_trans (ih₁ hc'.2 hw5 (h3.cast (by omega)) (M.codeAt_mem (by rw [m₂, m₁]) hcode) d₂.ok
+      (M.pcIs_cast d₂.hpc (by omega)) inv₂ (b := b)) fun s₃ h => ?_
+    rcases h with ⟨pk₃, ok₃, kc₃, pc₃, hc₃, o₃, W₃, iu₃, inv₃⟩ | ⟨pk₃, ok₃, kc₃, pc₃, o₃⟩
+    · refine M.runsTo_trans (M.law_jmp hw4 (M.at_sub C.codeOK hc₃ h4 ok₃ (M.pcIs_cast pc₃ (by omega))))
+        fun s₄ ⟨d₄, st₄, m₄⟩ => ?_
+      have pc₄ : M.pcIs s₄ (next cb pos) := M.pcIs_jmp d₄.hpc (by omega)
+      refine M.runsTo_mono (ih₂ hc hwf0 hsub0 (M.codeAt_mem m₄ hc₃) d₄.ok pc₄
+        ⟨inv₃.wh, inv₃.hv, inv₃.below, RelB.same M.toMachineF inv₃.rel m₄ d₄.keep fun i => st₄ _⟩ (b := b))
+        fun s₅ h => ?_
+      have kc := M.keepC_trans (M.kC d₁) (M.keepC_trans (M.kC d₂) (M.keepC_trans kc₃ (M.kC d₄)))
+      have o := (Out.of_eq (show M.mem s₂ = M.mem s by rw [m₂, m₁])).trans (o₃.trans (Out.of_eq m₄))
+      rcases h with ⟨pk₅, ok₅, kc₅, pc₅, hc₅, o₅, W₅, iu₅, inv₅⟩ | ⟨pk₅, ok₅, kc₅, pc₅, o₅⟩
+      · refine .inl ⟨?_, ok₅, M.keepC_trans kc kc₅, pc₅, hc₅, o.trans o₅, W₅, ?_, inv₅⟩
+        · rw [peak_seq, iu₃]; omega
+        · rw [inUse_seq, iu₃, iu₅]
+      · refine .inr ⟨?_, ok₅, M.keepC_trans kc kc₅, pc₅, o.trans o₅⟩
+        rw [peak_seq, iu₃]; omega
+    · refine M.runsTo_of (.inr ⟨?_, ok₃, M.keepC_trans (M.kC d₁) (M.keepC_trans (M.kC d₂) kc₃), pc₃,
+        (Out.of_eq (show M.mem s₂ = M.mem s by rw [m₂, m₁])).trans o₃⟩)
+      rw [peak_seq]; omega
+  | @load64 v i env H W₀ =>
+    intro hc pos s W b hwf hsub hcode ho hpc inv
+    obtain rfl : W = W₀ := by have := inv.wh; simp at this; exact this.symm
+    simp only [BStmt.clean, Bool.and_eq_true, beq_iff_eq] at hc
+    have hv := ne_hvar (not_unread hc.1.1)
+    simp only [compBM, lenBM, wfBM] at hsub hwf ⊢
+    obtain ⟨hwfa, hchk⟩ := hwf
+    have hie : i.denote (env.set hvar (BitVec.ofNat 64 (grow W ((i.denote env).toNat + 1)).length)) = i.denote env :=
+      BExp.denote_clean hc.2 fun x hx => by simp only [BEnv.set]; rw [if_neg (fun e => hx (by rw [e]; exact hvar_unread))]
+    have hjl : (i.denote env).toNat < (grow W ((i.denote env).toNat + 1)).length := by rw [grow_length]; omega
+    have hb : BExec (.load64 v 0 i) ⟨env.set hvar (BitVec.ofNat 64 (grow W ((i.denote env).toNat + 1)).length), H,
+        [grow W ((i.denote env).toNat + 1)]⟩
+        ⟨(env.set hvar (BitVec.ofNat 64 (grow W ((i.denote env).toNat + 1)).length)).set v
+          ((grow W ((i.denote env).toNat + 1)).getD (i.denote env).toNat 0), H, [grow W ((i.denote env).toNat + 1)]⟩ := by
+      have := BExec.load64 (v := v) (b := 0) (i := i) (σ := ⟨env.set hvar (BitVec.ofNat 64 (grow W ((i.denote env).toNat
+        + 1)).length), H, [grow W ((i.denote env).toNat + 1)]⟩) (by simp) (by simp only [hie]; simpa using hjl)
+      simp only [hie, List.getElem_singleton] at this
+      rwa [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem hjl, Option.getD_some]
+    exact acc_ok C hF hhi hc.2 hwfa.1 hwfa.2.1 hb hwfa hchk hsub hcode ho hpc inv rfl rfl
+      (by simp [BEnv.set, Ne.symm hv]) b
+  | @store64 i e env H W₀ =>
+    intro hc pos s W b hwf hsub hcode ho hpc inv
+    obtain rfl : W = W₀ := by have := inv.wh; simp at this; exact this.symm
+    simp only [BStmt.clean, Bool.and_eq_true, beq_iff_eq] at hc
+    simp only [compBM, lenBM, wfBM] at hsub hwf ⊢
+    obtain ⟨hwfa, hchk⟩ := hwf
+    have hu : ∀ x, x ∉ unread → env.set hvar (BitVec.ofNat 64 (grow W ((i.denote env).toNat + 1)).length) x = env x :=
+      fun x hx => by simp only [BEnv.set]; rw [if_neg (fun e => hx (by rw [e]; exact hvar_unread))]
+    have hie := BExp.denote_clean hc.1.2 hu
+    have hee := BExp.denote_clean hc.2 hu
+    have hjl : (i.denote env).toNat < (grow W ((i.denote env).toNat + 1)).length := by rw [grow_length]; omega
+    have hb : BExec (.store64 0 i e) ⟨env.set hvar (BitVec.ofNat 64 (grow W ((i.denote env).toNat + 1)).length), H,
+        [grow W ((i.denote env).toNat + 1)]⟩
+        ⟨env.set hvar (BitVec.ofNat 64 (grow W ((i.denote env).toNat + 1)).length), H,
+          [(grow W ((i.denote env).toNat + 1)).set (i.denote env).toNat (e.denote env)]⟩ := by
+      have := BExec.store64 (b := 0) (i := i) (e := e) (σ := ⟨env.set hvar (BitVec.ofNat 64 (grow W ((i.denote env).toNat
+        + 1)).length), H, [grow W ((i.denote env).toNat + 1)]⟩) (by simp) (by simp only [hie]; simpa using hjl)
+      simp only [hie, hee, List.getElem_singleton, List.set_cons_zero] at this
+      exact this
+    exact acc_ok C hF hhi hc.1.2 hwfa.1 hwfa.2.2.1 hb hwfa hchk hsub hcode ho hpc inv rfl (List.length_set ..) rfl b
+
+end MachineM
+end Proven.Mach
