@@ -1,0 +1,581 @@
+chapter,file,line,end_line,name,status,front_end_or_command,blocker,message,survey2_status,body_hash
+support,ExampleSupport.lean,12,20,mkExampleStx,"meta (Lean elaborator code, not book functions)",,,,,aca1035f
+support,ExampleSupport.lean,22,27,wrapExampleStx,"meta (Lean elaborator code, not book functions)",,,,,b30bdd1c
+support,ExampleSupport.lean,107,109,nats,"meta (Lean elaborator code, not book functions)",,,,,3fb596b1
+support,ExampleSupport.lean,114,115,List.containsBy,"meta (Lean elaborator code, not book functions)",,,,,32cf3866
+support,ExampleSupport.lean,118,124,withSavedState,"meta (Lean elaborator code, not book functions)",,,,,d78444aa
+support,ExampleSupport.lean,126,127,forgetMessages,"meta (Lean elaborator code, not book functions)",,,,,3e557cf1
+support,ExampleSupport.lean,129,134,withEmptyMessageLog,"meta (Lean elaborator code, not book functions)",,,,,19ce97c8
+support,ExampleSupport.lean,276,287,messageToStringWithoutPos,"meta (Lean elaborator code, not book functions)",,,,,334bf387
+support,ExampleSupport.lean,292,329,elabCheckMsgs,"meta (Lean elaborator code, not book functions)",,,,,f6fb70db
+support,ExampleSupport.lean,463,470,Steps.forM,"meta (Lean elaborator code, not book functions)",,,,,ca5addd2
+support,ExampleSupport.lean,480,486,getSteps,"meta (Lean elaborator code, not book functions)",,,,,77fa1b3d
+support,ExampleSupport.lean,490,508,Steps.asCmd,"meta (Lean elaborator code, not book functions)",,,,,e472b530
+support,ExampleSupport.lean,510,542,elabEquationalSteps,"meta (Lean elaborator code, not book functions)",,,,,96f7b87c
+other,Examples.lean,32,32,whatIsThis,not a function (constant / type),,,,,1b6077b7
+"2 Hello, World!",Examples/Cat.lean,24,24,Original.bufsize,not a function (constant / type),,,,,d585f5ae
+"2 Hello, World!",Examples/Cat.lean,26,33,Original.dump,IO (skipped),,,,,5c652272
+"2 Hello, World!",Examples/Cat.lean,35,43,Original.fileStream,IO (skipped),,,,,0f7bc6ca
+"2 Hello, World!",Examples/Cat.lean,45,59,Original.process,IO (skipped),,,,,86581705
+"2 Hello, World!",Examples/Cat.lean,61,64,Original.main,IO (skipped),,,,,ef97bcbc
+"2 Hello, World!",Examples/Cat.lean,69,69,Improved.bufsize,not a function (constant / type),,,,,d585f5ae
+"2 Hello, World!",Examples/Cat.lean,73,79,Improved.dump,IO (skipped),,,,,661fb2e5
+"2 Hello, World!",Examples/Cat.lean,83,89,Improved.fileStream,IO (skipped),,,,,e7875f93
+"2 Hello, World!",Examples/Cat.lean,94,106,Improved.process,IO (skipped),,,,,7ac6def9
+"2 Hello, World!",Examples/Cat.lean,109,112,Improved.main,IO (skipped),,,,,ef97bcbc
+"2 Hello, World!",Examples/Cat.lean,141,143,getNumA,IO (skipped),,,,,59b3cf76
+"2 Hello, World!",Examples/Cat.lean,148,150,getNumB,IO (skipped),,,,,edbd7c4e
+"2 Hello, World!",Examples/Cat.lean,154,156,getNums,IO (skipped),,,,,c0446eeb
+"2 Hello, World!",Examples/Cat.lean,163,165,test,IO (skipped),,,,,ed0ce9d4
+"2 Hello, World!",Examples/Cat.lean,171,175,Foo.test,IO (skipped),,,,,61557496
+"2 Hello, World!",Examples/Cat.lean,180,181,a,IO (skipped),,,,,b75357ab
+"2 Hello, World!",Examples/Cat.lean,183,187,b,IO (skipped),,,,,433b5053
+"2 Hello, World!",Examples/Cat.lean,189,193,c,IO (skipped),,,,,82436428
+"2 Hello, World!",Examples/Cat.lean,196,196,one,IO (skipped),,,,,a7d9da00
+"2 Hello, World!",Examples/Cat.lean,197,197,two,IO (skipped),,,,,ea797e49
+"2 Hello, World!",Examples/Cat.lean,202,208,HelloName1.main,IO (skipped),,,,,a4a8a7ec
+"2 Hello, World!",Examples/Cat.lean,215,222,HelloName2.main,IO (skipped),,,,,1e742f04
+"2 Hello, World!",Examples/Cat.lean,229,234,HelloName3.main,IO (skipped),,,,,56bcaaba
+4 Overloading and Type Classes,Examples/Classes.lean,150,151,seven,not a function (constant / type),,,,,fa251f79
+4 Overloading and Type Classes,Examples/Classes.lean,175,175,fortyNine,not a function (constant / type),,,,,6528b95d
+4 Overloading and Type Classes,Examples/Classes.lean,181,183,Pos.plus,compiled,ind,,,,caa35bdc
+4 Overloading and Type Classes,Examples/Classes.lean,188,188,fourteen,not a function (constant / type),,,,,070f5e4d
+4 Overloading and Type Classes,Examples/Classes.lean,199,199,Extra.fourteen,not a function (constant / type),,,,,9a8d4269
+4 Overloading and Type Classes,Examples/Classes.lean,221,228,fileDumper,IO (skipped),,,,,08722af4
+4 Overloading and Type Classes,Examples/Classes.lean,232,234,Pos.toNat,compiled,ind,,,,61b75471
+4 Overloading and Type Classes,Examples/Classes.lean,240,244,Argh.posToString,blocked,,String / Char,frontx_ind: unsupported result type String posToString : Bool → Pos → String EXIT 1,,2e6bfec3
+4 Overloading and Type Classes,Examples/Classes.lean,303,305,Pos.mul,compiled,ind,,,,0bd195e0
+4 Overloading and Type Classes,Examples/Classes.lean,435,435,eight,not a function (constant / type),,,,,0a480be7
+4 Overloading and Type Classes,Examples/Classes.lean,450,450,zero,not a function (constant / type),,,,,7c4f72df
+4 Overloading and Type Classes,Examples/Classes.lean,492,494,List.sumOfContents,not run: def does not elaborate in isolation,,other: Invalid field `sumOfContents`: The environment does not cont,"Invalid field `sumOfContents`: The environment does not contain `List.sumOfContents`, so it is not possible to project the field `sumOfConte",,6e25a37b
+4 Overloading and Type Classes,Examples/Classes.lean,499,499,fourNats,not a function (constant / type),,,,,95fb0f4e
+4 Overloading and Type Classes,Examples/Classes.lean,504,504,fourPos,not a function (constant / type),,,,,44dd4a8f
+4 Overloading and Type Classes,Examples/Classes.lean,757,759,addNatPos,blocked,,"inductive / structure shapes not supported (no equations, nested patterns, `brecOn`, projections, hash)",frontx_ind: Nat.brecOn has no argument of a declared type addNatPos : Nat → Pos → Pos EXIT 1,,cec24b73
+4 Overloading and Type Classes,Examples/Classes.lean,761,763,addPosNat,blocked,,"inductive / structure shapes not supported (no equations, nested patterns, `brecOn`, projections, hash)",frontx_ind: Nat.brecOn has no argument of a declared type addPosNat : Pos → Nat → Pos EXIT 1,,8737582e
+4 Overloading and Type Classes,Examples/Classes.lean,923,924,northernTrees,not a function (constant / type),,,,,3890be1c
+4 Overloading and Type Classes,Examples/Classes.lean,961,961,NonEmptyList.toList,blocked,,list of pairs / pair-of-lists / list of structures,frontx_ind: List.cons has no equations @NonEmptyList.toList : {α : Type} → NonEmptyList α → List α EXIT 1,,0fe4a36d
+4 Overloading and Type Classes,Examples/Classes.lean,968,976,idahoSpiders,not a function (constant / type),,,,,c114a208
+4 Overloading and Type Classes,Examples/Classes.lean,989,992,NonEmptyList.get?,blocked,,list of pairs / pair-of-lists / list of structures,frontx_ind: unsupported result type Option Nat @NonEmptyList.get? : {α : Type} → NonEmptyList α → Nat → Option α EXIT 1,,b82cc64d
+4 Overloading and Type Classes,Examples/Classes.lean,997,999,UseList.NonEmptyList.get?,blocked,,list of pairs / pair-of-lists / list of structures,frontx_ind: Proven.Frontx.Run.UseList.NonEmptyList.get?.match_1 has no equations @NonEmptyList.get? : {α : Type} → NonEmptyList α → Nat → Option α EXIT 1,,47391e57
+4 Overloading and Type Classes,Examples/Classes.lean,1004,1005,NonEmptyList.inBounds,blocked,,dependent types / type-valued functions,frontx_ind: unsupported result type Prop @NonEmptyList.inBounds : {α : Type} → NonEmptyList α → Nat → Prop EXIT 1,,20ac13f9
+4 Overloading and Type Classes,Examples/Classes.lean,1010,1014,NonEmptyList.get,blocked,,list of pairs / pair-of-lists / list of structures,frontx_ind: Proven.Frontx.Run.NonEmptyList.get.match_1 has no equations @NonEmptyList.get : {α : Type} → (xs : NonEmptyList α) → (i : Nat) → xs.inBounds i → α E,,37d5dd74
+4 Overloading and Type Classes,Examples/Classes.lean,1210,1214,Pos.comp,compiled on main (hand directive),frontx_ind Pos.comp on PosT using Proven.Frontx.IndCmp.OrdT  [Riscv/Frontx/Ind2Examples.lean:50],,,,28c68ab9
+4 Overloading and Type Classes,Examples/Classes.lean,1245,1247,hashPos,blocked,,"inductive / structure shapes not supported (no equations, nested patterns, `brecOn`, projections, hash)",frontx_ind: unsupported term mixHash 1 (hashPos ?n) (by cases: frontx_ind: unsupported term UInt64.ofNat 0) hashPos : Pos → UInt64 EXIT 1,,f1e0213c
+4 Overloading and Type Classes,Examples/Classes.lean,1259,1265,eqBinTree,compiled,ind,,,,49a3f273
+4 Overloading and Type Classes,Examples/Classes.lean,1270,1277,hashBinTree,blocked,,"inductive / structure shapes not supported (no equations, nested patterns, `brecOn`, projections, hash)",frontx_ind: unsupported term mixHash 1 (mixHash (hashBinTree ?left) (mixHash (hash ?x_1) (hashBinTree ?right))) (by cases: frontx_ind: unsupported term UInt64.o,,1025abbc
+4 Overloading and Type Classes,Examples/Classes.lean,1442,1446,concat,blocked,,list of pairs / pair-of-lists / list of structures,frontx_ind: unsupported parameter type List (NonEmptyList Nat) @concat : {α : Type} → [Append α] → NonEmptyList α → α EXIT 1,,a70449d8
+4 Overloading and Type Classes,Examples/Classes.lean,1534,1537,L.List.last?,compiled,view0,,,likely-untried,a5a0cd9e
+4 Overloading and Type Classes,Examples/Classes.lean,1544,1545,perhapsPerhapsPerhaps,not a function (constant / type),,,,,34d01ffc
+4 Overloading and Type Classes,Examples/Classes.lean,1567,1568,perhapsPerhapsPerhapsNat,not a function (constant / type),,,,,95997ffd
+4 Overloading and Type Classes,Examples/Classes.lean,1573,1574,Up.perhapsPerhapsPerhapsNat,not a function (constant / type),,,,,f18b58c1
+4 Overloading and Type Classes,Examples/Classes.lean,1636,1639,String.separate,blocked,,String / Char,frontx_view: unsupported element type String,,4f0c8286
+4 Overloading and Type Classes,Examples/Classes.lean,1671,1675,dropDecimals,blocked,,String / Char,unknown free variable `_fvar.1453` dropDecimals : String → String EXIT 1,,d25ae874
+4 Overloading and Type Classes,Examples/Classes.lean,1707,1719,JSON.asString,not run: def does not elaborate in isolation,,Float,"Invalid field `separate`: The environment does not contain `String.separate`, so it is not possible to project the field `separate` from an ",,60b7f753
+4 Overloading and Type Classes,Examples/Classes.lean,1728,1729,natMulMonoid,not a function (constant / type),,,,,7ce68cc2
+4 Overloading and Type Classes,Examples/Classes.lean,1731,1732,natAddMonoid,not a function (constant / type),,,,,247a47c2
+4 Overloading and Type Classes,Examples/Classes.lean,1734,1735,stringMonoid,not a function (constant / type),,,,,5993633a
+4 Overloading and Type Classes,Examples/Classes.lean,1737,1738,listMonoid,blocked,,higher-order argument (function/predicate parameter),frontx_ind: Proven.Frontx.Run.Monoid.mk has no equations listMonoid : Type → Monoid EXIT 1,,ec6ecbec
+4 Overloading and Type Classes,Examples/Classes.lean,1743,1747,MMM.foldMap,blocked,,dependent types / type-valued functions,frontx_ind: unsupported parameter type ?α → Monoid.Carrier ?M @foldMap : {α : Type u_1} → (M : Monoid) → (α → M.Carrier) → List α → M.Carrier EXIT 1,,3cb8f034
+4 Overloading and Type Classes,Examples/Classes.lean,1759,1763,foldMap,blocked,,dependent types / type-valued functions,frontx_ind: unsupported parameter type ?α → Monoid.Carrier ?M @foldMap : {α : Type u_1} → (M : Monoid) → (α → M.Carrier) → List α → M.Carrier EXIT 1,,d3bfb3e2
+4 Overloading and Type Classes,Examples/Classes.lean,1789,1789,add5,not a function (constant / type),,,,,7e0eee0f
+4 Overloading and Type Classes,Examples/Classes.lean,1831,1834,Ser.Str,not a function (constant / type),,,,,5b864d00
+4 Overloading and Type Classes,Examples/Classes.lean,1845,1851,Ser.buildResponse,not run: def does not elaborate in isolation,,Float,Function expected at R but this term has type Serializer Note: Expected a function because this term is being applied to the argument record,,a0d02f8e
+4 Overloading and Type Classes,Examples/Classes.lean,1891,1892,A.lastSpider,not a function (constant / type),,,,,b72c526d
+4 Overloading and Type Classes,Examples/Classes.lean,1909,1910,A.lastSpider,not a function (constant / type),,,,,7c2ecf96
+4 Overloading and Type Classes,Examples/Classes.lean,1934,1934,coercedToB,not a function (constant / type),,,,,7c4c2f6a
+4 Overloading and Type Classes,Examples/Classes.lean,1959,1959,oneInt,not a function (constant / type),,,,,e639bbd3
+4 Overloading and Type Classes,Examples/Classes.lean,1984,1985,oak,not a function (constant / type),,,,,0462ea3a
+4 Overloading and Type Classes,Examples/Classes.lean,1987,1990,birch,not a function (constant / type),,,,,a9256e15
+4 Overloading and Type Classes,Examples/Classes.lean,1992,1994,sloe,not a function (constant / type),,,,,d75ab42b
+4 Overloading and Type Classes,Examples/Classes/Even.lean,8,10,Even.Even.plus,compiled,ind,,,,a9655afb
+4 Overloading and Type Classes,Examples/Classes/Even.lean,15,16,Even.eight,not a function (constant / type),,,,,236e3cd8
+4 Overloading and Type Classes,Examples/Classes/Even.lean,18,19,Even.two,not a function (constant / type),,,,,a513c420
+4 Overloading and Type Classes,Examples/Classes/Even.lean,21,23,Even.Even.toNat,compiled,ind,,,,3822679a
+4 Overloading and Type Classes,Examples/Classes/Even.lean,32,35,Even.Even.mul,blocked,,"inductive / structure shapes not supported (no equations, nested patterns, `brecOn`, projections, hash)","frontx_ind: nested patterns are not supported (Proven.Frontx.Run.Even.Even.mul.eq_2) (by cases: frontx_ind: unsupported term match a✝.plusTwo, Even.zero with | ",,6bc77adf
+4 Overloading and Type Classes,Examples/Classes/Even.lean,96,97,Other.Even.add,blocked,,"inductive / structure shapes not supported (no equations, nested patterns, `brecOn`, projections, hash)",Application type mismatch: The argument p.fst has type Even.Even but is expected to have type Even in the application Even.add p.fst frontx_ind: Proven.Frontx.R,,c7686c55
+8 Dependent Types,Examples/DependentTypes.lean,6,9,natOrStringThree,blocked,,dependent types / type-valued functions,frontx: unsupported result type if b = true then Nat else String natOrStringThree : (b : Bool) → if b = true then Nat else String EXIT 1,,a84a4086
+8 Dependent Types,Examples/DependentTypes.lean,228,231,Vect.replicate,blocked,,dependent types / type-valued functions,"type expected, got (Vect Nat : Nat → Type)",,8bd84d44
+8 Dependent Types,Examples/DependentTypes.lean,237,240,Extras.List.replicate,blocked,,"list-view shapes not supported (non-`match` body, non-view recursive call, list result)",frontx_view: no list parameter,likely-untried,1e772369
+8 Dependent Types,Examples/DependentTypes.lean,274,276,Vect.zip,blocked,,dependent types / type-valued functions,"type expected, got (Vect Nat : Nat → Type)",,b9f58796
+8 Dependent Types,Examples/DependentTypes.lean,304,306,Other.List.zip,not run: def does not elaborate in isolation,,"other: Missing cases: (List.cons _ _), [] [], (List.cons _ _)","Missing cases: (List.cons _ _), [] [], (List.cons _ _)",,eeaf6a62
+8 Dependent Types,Examples/DependentTypes.lean,319,322,Other.Vect.zip,not run: def does not elaborate in isolation,,dependent types / type-valued functions,Type mismatch Vect.cons y ys has type Vect ?m.10 (?m.16 + 1) but is expected to have type Vect β 0,,cbe962fc
+8 Dependent Types,Examples/DependentTypes.lean,329,331,Details.Vect.zip,blocked,,dependent types / type-valued functions,"type expected, got (Vect Nat : Nat → Type)",,d593921c
+8 Dependent Types,Examples/DependentTypes.lean,337,340,oregonianPeaks,not a function (constant / type),,,,,56148798
+8 Dependent Types,Examples/DependentTypes.lean,342,345,danishPeaks,not a function (constant / type),,,,,cb2f0820
+8 Dependent Types,Examples/DependentTypes.lean,347,349,Vect.map,blocked,,dependent types / type-valued functions,"type expected, got (Vect Nat : Nat → Type)",,e2a7925a
+8 Dependent Types,Examples/DependentTypes.lean,351,353,Vect.zipWith,blocked,,dependent types / type-valued functions,"type expected, got (Vect Nat : Nat → Type)",,621a8664
+8 Dependent Types,Examples/DependentTypes.lean,355,359,Vect.unzip,blocked,,dependent types / type-valued functions,"type expected, got (Vect Nat : Nat → Type)",,54c1184b
+8 Dependent Types,Examples/DependentTypes.lean,362,364,Vect.push,blocked,,dependent types / type-valued functions,"type expected, got (Vect Nat : Nat → Type)",,fb468fef
+8 Dependent Types,Examples/DependentTypes.lean,366,368,Vect.drop,blocked,,dependent types / type-valued functions,"type expected, got (Vect Nat : Nat → Type)",,eab87361
+8 Dependent Types,Examples/DependentTypes.lean,370,372,Vect.reverse,blocked,,dependent types / type-valued functions,"type expected, got (Vect Nat : Nat → Type)",,67bec397
+8 Dependent Types,Examples/DependentTypes.lean,375,377,Vect.take,blocked,,dependent types / type-valued functions,"type expected, got (Vect Nat : Nat → Type)",,15d7193f
+8 Dependent Types,Examples/DependentTypes/DB.lean,10,13,DBType.asType,blocked,,dependent types / type-valued functions,frontx_ind: unsupported result type Type DBType.asType : DBType → Type EXIT 1,,d9142f75
+8 Dependent Types,Examples/DependentTypes/DB.lean,39,43,DBType.beq,blocked,,dependent types / type-valued functions,frontx_ind: unsupported parameter type DBType.asType ?t DBType.beq : (t : DBType) → t.asType → t.asType → Bool EXIT 1,,809c12fc
+8 Dependent Types,Examples/DependentTypes/DB.lean,78,78,Schema,not a function (constant / type),,,,,3380512c
+8 Dependent Types,Examples/DependentTypes/DB.lean,84,87,Row,blocked,,dependent types / type-valued functions,frontx: unsupported result type Type ,,e460f043
+8 Dependent Types,Examples/DependentTypes/DB.lean,104,104,Table,blocked,,dependent types / type-valued functions,frontx: unsupported result type Type ,,f4ba492a
+8 Dependent Types,Examples/DependentTypes/DB.lean,109,114,peak,not a function (constant / type),,,,,133ab2e0
+8 Dependent Types,Examples/DependentTypes/DB.lean,119,124,mountainDiary,not a function (constant / type),,,,,013ca95d
+8 Dependent Types,Examples/DependentTypes/DB.lean,129,133,waterfall,not a function (constant / type),,,,,8cd81551
+8 Dependent Types,Examples/DependentTypes/DB.lean,138,141,waterfallDiary,not a function (constant / type),,,,,558879b2
+8 Dependent Types,Examples/DependentTypes/DB.lean,167,174,Row.bEq,blocked,,dependent types / type-valued functions,frontx: unsupported parameter type Schema @Row.bEq : {s : Schema} → Row s → Row s → Bool EXIT 1,,03ffac7e
+8 Dependent Types,Examples/DependentTypes/DB.lean,193,197,Row.get,blocked,,dependent types / type-valued functions,"type expected, got (HasCol : Schema → String → DBType → Type)",,ef5b62e3
+8 Dependent Types,Examples/DependentTypes/DB.lean,221,222,travelDiary,not a function (constant / type),,,,,c202c4ca
+8 Dependent Types,Examples/DependentTypes/DB.lean,314,318,Subschema.addColumn,blocked,,dependent types / type-valued functions,"type expected, got (Subschema : Schema → Schema → Type)",,fc013060
+8 Dependent Types,Examples/DependentTypes/DB.lean,323,325,Subschema.reflexive,not run: def does not elaborate in isolation,,dependent types / type-valued functions,"Invalid field `addColumn`: The environment does not contain `Proven.Frontx.Run.Subschema.addColumn`, so it is not possible to project the fi",,ba1c624a
+8 Dependent Types,Examples/DependentTypes/DB.lean,330,333,addVal,blocked,,dependent types / type-valued functions,frontx: unsupported result type Row (c :: s) @addVal : {s : Schema} → {c : Column} → c.contains.asType → Row s → Row (c :: s) EXIT 1,,1dcf8879
+8 Dependent Types,Examples/DependentTypes/DB.lean,337,340,Row.project,blocked,,dependent types / type-valued functions,"type expected, got (Subschema : Schema → Schema → Type)",,ebf51ab4
+8 Dependent Types,Examples/DependentTypes/DB.lean,354,356,Fake.tallInDenmark,not a function (constant / type),,,,,6f0fc6a9
+8 Dependent Types,Examples/DependentTypes/DB.lean,365,367,tallInDenmark,not a function (constant / type),,,,,4643aeba
+8 Dependent Types,Examples/DependentTypes/DB.lean,372,377,DBExpr.evaluate,blocked,,dependent types / type-valued functions,Application type mismatch: The argument Nat has type Type of sort `Type 1` but is expected to have type Schema of sort `Type` in the application DBExpr Nat,,967707be
+8 Dependent Types,Examples/DependentTypes/DB.lean,412,413,disjoint,blocked,,"list-view shapes not supported (non-`match` body, non-view recursive call, list result)",frontx_view: the body is not a `match` !((view B i).any (view B k).contains || (view B k).any (view B i).contains),,adaedca9
+8 Dependent Types,Examples/DependentTypes/DB.lean,418,420,Schema.renameColumn,blocked,,dependent types / type-valued functions,"type expected, got (HasCol : Schema → String → DBType → Type)",,d8807372
+8 Dependent Types,Examples/DependentTypes/DB.lean,448,452,Row.append,blocked,,dependent types / type-valued functions,frontx: unsupported result type Row (s1 +++ s2) @Row.append : {s1 s2 : Schema} → Row s1 → Row s2 → Row (s1 +++ s2) EXIT 1,,471cfb29
+8 Dependent Types,Examples/DependentTypes/DB.lean,458,460,Mine.List.flatMap,blocked,,higher-order argument (function/predicate parameter),frontx: unsupported parameter type UInt8 → List UInt8 ,,a20f091f
+8 Dependent Types,Examples/DependentTypes/DB.lean,465,467,Table.cartesianProduct,blocked,,dependent types / type-valued functions,frontx: unsupported result type Table (s1 +++ s2) @Table.cartesianProduct : {s1 s2 : Schema} → Table s1 → Table s2 → Table (s1 +++ s2) EXIT 1,,ff7e7b6c
+8 Dependent Types,Examples/DependentTypes/DB.lean,472,478,OrElse.Table.cartesianProduct,blocked,,dependent types / type-valued functions,frontx: unsupported result type Table (s1 +++ s2) @Table.cartesianProduct : {s1 s2 : Schema} → Table s1 → Table s2 → Table (s1 +++ s2) EXIT 1,,7d0fe68d
+8 Dependent Types,Examples/DependentTypes/DB.lean,493,494,List.without,blocked,,"list-view shapes not supported (non-`match` body, non-view recursive call, list result)",frontx_view: the body is not a `match` List.filter (fun r => !(view B k).contains r) (view B i),,c21ff1dc
+8 Dependent Types,Examples/DependentTypes/DB.lean,499,504,Row.rename,blocked,,dependent types / type-valued functions,"type expected, got (HasCol : Schema → String → DBType → Type)",,df6e7163
+8 Dependent Types,Examples/DependentTypes/DB.lean,509,514,prefixRow,blocked,,dependent types / type-valued functions,"frontx: unsupported result type Row (List.map (fun c => { name := n +++ ""."" +++ c.name, contains := c.contains }) s) @prefixRow : {s : Schema} → {n : String} → ",,fdbecd58
+8 Dependent Types,Examples/DependentTypes/DB.lean,520,530,Query.exec,not run: def does not elaborate in isolation,,other: Invalid field `without`: The environment does not contain `L,"Invalid field `without`: The environment does not contain `List.without`, so it is not possible to project the field `without` from an expre",,007ba954
+8 Dependent Types,Examples/DependentTypes/DB.lean,535,539,example1,not a function (constant / type),,,,,ab45acc2
+8 Dependent Types,Examples/DependentTypes/DB.lean,552,559,example2,not a function (constant / type),,,,,5922f006
+8 Dependent Types,Examples/DependentTypes/DB.lean,632,639,Ooops.example2,not a function (constant / type),,,,,d58b12e6
+8 Dependent Types,Examples/DependentTypes/DB.lean,657,661,NDBType.asType,blocked,,dependent types / type-valued functions,frontx_ind: equation ite.eq_1 has no constructor pattern (by cases: frontx_ind: ite has no argument of the type) NDBType.asType : NDBType → Type EXIT 1,,d74e4b3a
+8 Dependent Types,Examples/DependentTypes/Finite.lean,20,23,NatOrBool.asType,blocked,,dependent types / type-valued functions,frontx_ind: unsupported result type Type NatOrBool.asType : NatOrBool → Type EXIT 1,,31baff8c
+8 Dependent Types,Examples/DependentTypes/Finite.lean,32,39,decode,blocked,,dependent types / type-valued functions,frontx_ind: unsupported parameter type String decode : (t : NatOrBool) → String → Option t.asType EXIT 1,,cbd603cc
+8 Dependent Types,Examples/DependentTypes/Finite.lean,48,50,NestedPairs.asType,blocked,,dependent types / type-valued functions,frontx_ind: unsupported result type Type NestedPairs.asType : NestedPairs → Type EXIT 1,,19edbde1
+8 Dependent Types,Examples/DependentTypes/Finite.lean,68,71,NestedPairs.beq,blocked,,dependent types / type-valued functions,frontx_ind: unsupported parameter type NestedPairs.asType ?t NestedPairs.beq : (t : NestedPairs) → t.asType → t.asType → Bool EXIT 1,,f10fc5f2
+8 Dependent Types,Examples/DependentTypes/Finite.lean,88,92,Finite.asType,blocked,,dependent types / type-valued functions,frontx_ind: unsupported result type Type Finite.asType : Finite → Type EXIT 1,,4968feb2
+8 Dependent Types,Examples/DependentTypes/Finite.lean,95,99,Finite.count,blocked,,dependent types / type-valued functions,frontx_ind: unsupported term (Finite.count ?t1).mul (Finite.count ?t2) (by cases: frontx_ind: unsupported term a✝¹.count.mul a✝.count) Finite.count : Finite → N,,271d66a9
+8 Dependent Types,Examples/DependentTypes/Finite.lean,103,108,List.product,blocked,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)",frontx_view: the body is not a `match` (have out := []; do let r ← forIn (view B i) out fun x r => have out := r; do let r ← forIn (view B k) out fun y r => hav,,6070b904
+8 Dependent Types,Examples/DependentTypes/Finite.lean,111,113,List.concatMap,not run: def does not elaborate in isolation,,other: Invalid field `concatMap`: The environment does not contain ,"Invalid field `concatMap`: The environment does not contain `List.concatMap`, so it is not possible to project the field `concatMap` from an",,56e5624e
+8 Dependent Types,Examples/DependentTypes/Finite.lean,118,120,ListExtras.List.foldr,blocked,,dependent types / type-valued functions,Tactic `rewrite` failed: motive is not type correct: fun _a => ⋯ = if h : i✝ < B✝.size then f✝ B✝[i✝] ⋯ else default✝ Error: Application type mismatch: The last,,455f664b
+8 Dependent Types,Examples/DependentTypes/Finite.lean,151,186,Finite.functions,not run: def does not elaborate in isolation,,dependent types / type-valued functions,"Invalid field `enumerate`: The environment does not contain `Proven.Frontx.Run.Finite.enumerate`, so it is not possible to project the field",,0845777b
+8 Dependent Types,Examples/DependentTypes/Finite.lean,194,200,Finite.beq,not run: def does not elaborate in isolation,,dependent types / type-valued functions,"Invalid field `enumerate`: The environment does not contain `Proven.Frontx.Run.Finite.enumerate`, so it is not possible to project the field",,cfc9825e
+8 Dependent Types,Examples/DependentTypes/Finite.lean,215,219,Finite.isSingleton,blocked,,dependent types / type-valued functions,"unsolved goals case pair a✝¹ a✝ : Finite a_ih✝¹ : ∀ (a : BitVec 64) (b : Mach.Ind.C), Finite.isSingleton.ind.pg.sem (TT320_0.emb a✝¹) a b = Ind.bw a✝¹.isSinglet",,2dfc04ba
+8 Dependent Types,Examples/DependentTypes/Finite.lean,222,228,Finite.print,not run: def does not elaborate in isolation,,dependent types / type-valued functions,"Invalid field `enumerate`: The environment does not contain `Proven.Frontx.Run.Finite.enumerate`, so it is not possible to project the field",,dfe3c55c
+8 Dependent Types,Examples/DependentTypes/Finite.lean,231,231,prop,not run: def does not elaborate in isolation,,dependent types / type-valued functions,"Invalid field `enumerate`: The environment does not contain `Proven.Frontx.Run.Finite.enumerate`, so it is not possible to project the field",,715e563f
+8 Dependent Types,Examples/DependentTypes/Pitfalls.lean,8,10,Nat.plusL,blocked,,compiler error (unknown free variable / universe levels / introN),"frontx: unsupported match match a✝¹, a✝ with | 0, k => k | n.succ, k => Nat.plusL n k + 1 Nat.plusL : Nat → Nat → Nat EXIT 1",likely-untried,637d01b5
+8 Dependent Types,Examples/DependentTypes/Pitfalls.lean,15,17,Nat.plusR,blocked,,compiler error (unknown free variable / universe levels / introN),"frontx: unsupported match match a✝¹, a✝ with | n, 0 => n | n, k.succ => Nat.plusR n k + 1 Nat.plusR : Nat → Nat → Nat EXIT 1",likely-untried,0c641366
+8 Dependent Types,Examples/DependentTypes/Pitfalls.lean,218,220,Almost.appendL,not run: def does not elaborate in isolation,,other: Invalid field `plusL`: The environment does not contain `Nat,"Invalid field `plusL`: The environment does not contain `Nat.plusL`, so it is not possible to project the field `plusL` from an expression n",,7e78b128
+8 Dependent Types,Examples/DependentTypes/Pitfalls.lean,227,229,appendL,not run: def does not elaborate in isolation,,other: Invalid field `plusL`: The environment does not contain `Nat,"Invalid field `plusL`: The environment does not contain `Nat.plusL`, so it is not possible to project the field `plusL` from an expression n",,b05026d4
+8 Dependent Types,Examples/DependentTypes/Pitfalls.lean,500,504,appendR,not run: def does not elaborate in isolation,,other: Invalid field `plusR`: The environment does not contain `Nat,"Invalid field `plusR`: The environment does not contain `Nat.plusR`, so it is not possible to project the field `plusR` from an expression n",,ae27ba31
+8 Dependent Types,Examples/DependentTypes/Pitfalls.lean,509,511,Impl.appendR,not run: def does not elaborate in isolation,,other: Invalid field `plusR`: The environment does not contain `Nat,"Invalid field `plusR`: The environment does not contain `Nat.plusR`, so it is not possible to project the field `plusR` from an expression n",,369b53a8
+8 Dependent Types,Examples/DependentTypes/Pitfalls.lean,515,517,plusRAdd,not run: def does not elaborate in isolation,,other: Invalid field `plusR`: The environment does not contain `Nat,"Invalid field `plusR`: The environment does not contain `Nat.plusR`, so it is not possible to project the field `plusR` from an expression n",,bfdb3b66
+other,Examples/Doug1.lean,3,3,main,IO (skipped),,,,,ef040d5e
+"6 Functor, Applicative, Monad",Examples/FunctorApplicativeMonad.lean,66,68,troll,not a function (constant / type),,,,,0a91cae6
+"6 Functor, Applicative, Monad",Examples/FunctorApplicativeMonad.lean,90,90,Blurble.troll,not a function (constant / type),,,,,54d4bf29
+"6 Functor, Applicative, Monad",Examples/FunctorApplicativeMonad.lean,114,114,Foo.troll,not a function (constant / type),,,,,06bf33e0
+"6 Functor, Applicative, Monad",Examples/FunctorApplicativeMonad.lean,149,152,nisse,not a function (constant / type),,,,,906bd937
+"6 Functor, Applicative, Monad",Examples/FunctorApplicativeMonad.lean,197,201,domesticatedTroll,not a function (constant / type),,,,,30282ef4
+"6 Functor, Applicative, Monad",Examples/FunctorApplicativeMonad.lean,217,219,nonsenseCreature,not a function (constant / type),,,,,62e4a2f2
+"6 Functor, Applicative, Monad",Examples/FunctorApplicativeMonad.lean,224,225,SizesMatch,not run: def does not elaborate in isolation,,other: failed to synthesize instance of type class BEq Size Hint: A,failed to synthesize instance of type class BEq Size Hint: Adding the command `deriving instance BEq for Proven.Frontx.Run.Size` may allow L,,61763a67
+"6 Functor, Applicative, Monad",Examples/FunctorApplicativeMonad.lean,230,231,huldre,not a function (constant / type),,,,,49be2621
+"6 Functor, Applicative, Monad",Examples/FunctorApplicativeMonad.lean,238,238,MythicalCreature.small,compiled,compile,,,likely-untried,bcb3d3d6
+"6 Functor, Applicative, Monad",Examples/FunctorApplicativeMonad.lean,482,482,Pair.pure,not run: def does not elaborate in isolation,,other: don't know how to synthesize placeholder for argument `first,don't know how to synthesize placeholder for argument `first` context: β α : Type x : β ⊢ α,,1a4069da
+"6 Functor, Applicative, Monad",Examples/FunctorApplicativeMonad.lean,557,558,ApplicativeToFunctor.map,blocked,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)",frontx: unsupported result type f β @map : {f : Type u_1 → Type u_2} → {α β : Type u_1} → [Applicative f] → (α → β) → f α → f β EXIT 1,,c5b1c199
+"6 Functor, Applicative, Monad",Examples/FunctorApplicativeMonad.lean,592,595,MonadApplicative.seq,blocked,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)",frontx: unsupported result type m β @seq : {m : Type u_1 → Type u_2} → {α β : Type u_1} → [Monad m] → m (α → β) → (Unit → m α) → m β EXIT 1,,49f6cce7
+"6 Functor, Applicative, Monad",Examples/FunctorApplicativeMonad.lean,602,605,MonadApplicativeDesugar.seq,blocked,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)",frontx: unsupported result type m β @seq : {m : Type u_1 → Type u_2} → {α β : Type u_1} → [Monad m] → m (α → β) → (Unit → m α) → m β EXIT 1,,400e93d7
+"6 Functor, Applicative, Monad",Examples/FunctorApplicativeMonad.lean,1246,1246,NonEmptyString,not a function (constant / type),,,,,f86ad3f1
+"6 Functor, Applicative, Monad",Examples/FunctorApplicativeMonad.lean,1268,1277,Validate.orElse,not run: def does not elaborate in isolation,,other: Function expected at Validate but this term has type ?m.1 No,Function expected at Validate but this term has type ?m.1 Note: Expected a function because this term is being applied to the argument ε Hin,,ad963c33
+"6 Functor, Applicative, Monad",Examples/FunctorApplicativeMonad.lean,1314,1317,checkThat,not run: def does not elaborate in isolation,,other: Function expected at Validate but this term has type ?m.2 No,Function expected at Validate but this term has type ?m.2 Note: Expected a function because this term is being applied to the argument (Fiel,,a85d13bb
+"6 Functor, Applicative, Monad",Examples/FunctorApplicativeMonad.lean,1324,1329,Provisional.checkCompany,not run: def does not elaborate in isolation,,other: Missing name after `end`: Expected the current scope name `P,"Missing name after `end`: Expected the current scope name `Provisional` Hint: To end the current scope `Provisional`, specify its name: i̵n̵",,3c9fa31d
+"6 Functor, Applicative, Monad",Examples/FunctorApplicativeMonad.lean,1365,1369,Provisional2.checkCompany,not run: def does not elaborate in isolation,,other: Missing name after `end`: Expected the current scope name `P,"Missing name after `end`: Expected the current scope name `Provisional2` Hint: To end the current scope `Provisional2`, specify its name: i̵",,ded01aed
+"6 Functor, Applicative, Monad",Examples/FunctorApplicativeMonad.lean,1376,1380,checkCompany,not run: def does not elaborate in isolation,,other: Function expected at Validate but this term has type ?m.2 No,Function expected at Validate but this term has type ?m.2 Note: Expected a function because this term is being applied to the argument (Fiel,,15ec6f8e
+"6 Functor, Applicative, Monad",Examples/FunctorApplicativeMonad.lean,1385,1390,checkSubtype,not run: def does not elaborate in isolation,,other: Function expected at Validate but this term has type ?m.2 No,Function expected at Validate but this term has type ?m.2 Note: Expected a function because this term is being applied to the argument ε Hin,,7f236388
+"6 Functor, Applicative, Monad",Examples/FunctorApplicativeMonad.lean,1395,1401,checkHumanAfter1970,not run: def does not elaborate in isolation,,other: Function expected at Validate but this term has type ?m.2 No,Function expected at Validate but this term has type ?m.2 Note: Expected a function because this term is being applied to the argument (Fiel,,b7b890f5
+"6 Functor, Applicative, Monad",Examples/FunctorApplicativeMonad.lean,1406,1412,checkHumanBefore1970,not run: def does not elaborate in isolation,,other: Function expected at Validate but this term has type ?m.2 No,Function expected at Validate but this term has type ?m.2 Note: Expected a function because this term is being applied to the argument (Fiel,,8caa0b33
+"6 Functor, Applicative, Monad",Examples/FunctorApplicativeMonad.lean,1417,1421,checkLegacyInput,not run: def does not elaborate in isolation,,other: Function expected at Validate but this term has type ?m.2 No,Function expected at Validate but this term has type ?m.2 Note: Expected a function because this term is being applied to the argument (Fiel,,4c48f21d
+"6 Functor, Applicative, Monad",Examples/FunctorApplicativeMonad.lean,1501,1503,Many.orElse,blocked,,higher-order argument (function/predicate parameter),frontx_ind: unsupported parameter type Unit → Many Nat @Many.orElse : {α : Type} → Many α → (Unit → Many α) → Many α EXIT 1,,cf645fdc
+"6 Functor, Applicative, Monad",Examples/FunctorApplicativeMonad.lean,1514,1517,Guard.guard,not run: def does not elaborate in isolation,,other: Missing name after `end`: Expected the current scope name `G,"Missing name after `end`: Expected the current scope name `Guard` Hint: To end the current scope `Guard`, specify its name: i̵n̵e̲n̲d̲ ̲G̲u̲",,23ccfb71
+"6 Functor, Applicative, Monad",Examples/FunctorApplicativeMonad.lean,1522,1524,Guard.Many.countdown,not run: def does not elaborate in isolation,,other: Missing name after `end`: Expected the current scope name `G,"Missing name after `end`: Expected the current scope name `Guard` Hint: To end the current scope `Guard`, specify its name: i̵n̵e̲n̲d̲ ̲G̲u̲",,ef91f545
+"6 Functor, Applicative, Monad",Examples/FunctorApplicativeMonad.lean,1526,1530,Guard.evenDivisors,not run: def does not elaborate in isolation,,other: Missing name after `end`: Expected the current scope name `G,"Missing name after `end`: Expected the current scope name `Guard` Hint: To end the current scope `Guard`, specify its name: i̵n̵e̲n̲d̲ ̲G̲u̲",,e7f2466d
+"6 Functor, Applicative, Monad",Examples/FunctorApplicativeMonad.lean,1585,1587,Validate.mapErrors,not run: def does not elaborate in isolation,,other: Function expected at Validate but this term has type ?m.1 No,Function expected at Validate but this term has type ?m.1 Note: Expected a function because this term is being applied to the argument ε Hin,,e38d83ff
+"6 Functor, Applicative, Monad",Examples/FunctorApplicativeMonad.lean,1588,1589,report,blocked,,other: Unknown identifier `TreeError`,Unknown identifier `TreeError`,,52b9b901
+"6 Functor, Applicative, Monad",Examples/FunctorApplicativeMonad/ActualDefs.lean,29,29,simpleConst,blocked,,"polymorphic result/parameter type (`α`, `Option α`, `Except ε α`) not instantiated",frontx: unsupported result type α ,likely-untried,63e15a5b
+"2 Hello, World!",Examples/HelloWorld.lean,34,36,twice,IO (skipped),,,,,7e872785
+"2 Hello, World!",Examples/HelloWorld.lean,57,61,nTimes,IO (skipped),,,,,aa91b5d1
+"2 Hello, World!",Examples/HelloWorld.lean,71,73,countdown,IO (skipped),,,,,e4c3cc39
+"2 Hello, World!",Examples/HelloWorld.lean,78,78,from5,IO (skipped),,,,,83d31711
+"2 Hello, World!",Examples/HelloWorld.lean,90,94,runActions,IO (skipped),,,,,2f0a0a4f
+"2 Hello, World!",Examples/HelloWorld.lean,99,99,main,IO (skipped),,,,,6599562f
+"2 Hello, World!",Examples/HelloWorld.lean,153,153,«def»,not a function (constant / type),,,,,f67ae515
+"2 Hello, World!",Examples/HelloWorld.lean,157,164,Exercises.main,IO (skipped),,,,,74732c16
+"9 Programming, Proving, Performance",Examples/Induction.lean,318,321,BinTree.count,compiled,ind,,,,b5eaa087
+"9 Programming, Proving, Performance",Examples/Induction.lean,516,519,BinTree.graftLeft,compiled,ind,,,,48001620
+1 Getting to Know Lean,Examples/Intro.lean,155,155,hello,not a function (constant / type),,,,,848aa5fc
+1 Getting to Know Lean,Examples/Intro.lean,167,167,lean,not a function (constant / type),,,,,bdc9a306
+1 Getting to Know Lean,Examples/Intro.lean,179,179,add1,compiled,compile,,,source-thm,ffd87929
+1 Getting to Know Lean,Examples/Intro.lean,231,231,foo,not a function (constant / type),,,,,bd5fe9d1
+1 Getting to Know Lean,Examples/Intro.lean,239,242,maximum,compiled,compile,,,source-thm,6f04d2ba
+1 Getting to Know Lean,Examples/Intro.lean,249,250,spaceBetween,blocked,,String / Char,unknown free variable `_fvar.574` spaceBetween : String → String → String EXIT 1,,ad522629
+1 Getting to Know Lean,Examples/Intro.lean,304,304,joinStringsWith,blocked,,String / Char,unknown free variable `_fvar.580` joinStringsWith : String → String → String → String EXIT 1,,b9fa16b6
+1 Getting to Know Lean,Examples/Intro.lean,316,319,volume,blocked,,multiply / divide by a variable (`unsupported term`),frontx: unsupported term instHMul.1 a✝² a✝¹ volume : Nat → Nat → Nat → Nat EXIT 1,,14e768f6
+1 Getting to Know Lean,Examples/Intro.lean,334,334,Str,not a function (constant / type),,,,,5d774827
+1 Getting to Know Lean,Examples/Intro.lean,341,341,aStr,not a function (constant / type),,,,,57b7978c
+1 Getting to Know Lean,Examples/Intro.lean,346,346,NaturalNumber,not a function (constant / type),,,,,d4ab4982
+1 Getting to Know Lean,Examples/Intro.lean,369,371,thirtyEight,not a function (constant / type),,,,,3ab7459e
+1 Getting to Know Lean,Examples/Intro.lean,375,375,N,not a function (constant / type),,,,,91593f08
+1 Getting to Know Lean,Examples/Intro.lean,379,379,thirtyNine,not a function (constant / type),,,,,e47f60b5
+1 Getting to Know Lean,Examples/Intro.lean,452,452,origin,not a function (constant / type),,,,,f3f64ad0
+1 Getting to Know Lean,Examples/Intro.lean,469,469,Oops.origin,not a function (constant / type),,,,,f3f64ad0
+1 Getting to Know Lean,Examples/Intro.lean,503,504,Oops.zeroX,blocked,,Float,frontx_ind: Proven.Frontx.Run.Point.mk has no equations zeroX : Point → Point EXIT 1,,da1ad206
+1 Getting to Know Lean,Examples/Intro.lean,509,510,zeroX,compiled on main (hand directive),frontx_compile zeroX  [Riscv/Frontx/DataExamples.lean:21],,,,93bbb130
+1 Getting to Know Lean,Examples/Intro.lean,519,520,fourAndThree,not a function (constant / type),,,,,7fef9a36
+1 Getting to Know Lean,Examples/Intro.lean,589,592,addPoints,blocked,,Float,frontx_ind: Proven.Frontx.Run.Point.mk has no equations addPoints : Point → Point → Point EXIT 1,,12556e6a
+1 Getting to Know Lean,Examples/Intro.lean,611,611,origin3D,not a function (constant / type),,,,,94a4efb6
+1 Getting to Know Lean,Examples/Intro.lean,651,652,Point.modifyBoth,blocked,,Float,frontx_ind: Proven.Frontx.Run.Point.mk has no equations Point.modifyBoth : (Float → Float) → Point → Point EXIT 1,,920c6d77
+1 Getting to Know Lean,Examples/Intro.lean,678,679,distance,blocked,,Float,frontx_ind: Float.sqrt has no equations distance : Point → Point → Float EXIT 1,,109cb178
+1 Getting to Know Lean,Examples/Intro.lean,779,784,isZero,compiled,compile,,,source-thm,9f2fa5a9
+1 Getting to Know Lean,Examples/Intro.lean,830,835,pred,compiled,compile,,,source-thm,a29ea1d2
+1 Getting to Know Lean,Examples/Intro.lean,882,884,depth,blocked,,Float,frontx_ind: unsupported result type Float depth : Point3D → Float EXIT 1,,e58b5f32
+1 Getting to Know Lean,Examples/Intro.lean,887,892,even,compiled,compile,,,source-thm,dea215f4
+1 Getting to Know Lean,Examples/Intro.lean,925,928,evenLoops,not run: def does not elaborate in isolation,,needs a loop/recursion invariant hint (`with`) or proof,fail to show termination for Proven.Frontx.Run.evenLoops with errors failed to infer structural recursion: Not considering parameter n of Pr,,91338731
+1 Getting to Know Lean,Examples/Intro.lean,931,936,plus,compiled,compile,,,source-thm,e4d756dd
+1 Getting to Know Lean,Examples/Intro.lean,971,974,times,compiled on main (hand directive),frontx_compile times using plus_eq  [Riscv/Frontx/BookExamples.lean:38],,,source-thm,1dbfe779
+1 Getting to Know Lean,Examples/Intro.lean,980,983,minus,compiled on main (hand directive),frontx_compile minus with (fun n _ _ acc => acc ≤ n)  [Riscv/Frontx/BookExamples.lean:42],,,source-thm,3a8ee3ed
+1 Getting to Know Lean,Examples/Intro.lean,1009,1012,div,not run: def does not elaborate in isolation,,needs a loop/recursion invariant hint (`with`) or proof,fail to show termination for Proven.Frontx.Run.div with errors failed to infer structural recursion: Not considering parameter k of Proven.F,source-thm,86e8be9c
+1 Getting to Know Lean,Examples/Intro.lean,1034,1035,natOrigin,not a function (constant / type),,,,,47fb7235
+1 Getting to Know Lean,Examples/Intro.lean,1046,1047,Point.toPPoint,blocked,,Float,"type expected, got (PPoint : Type → Type)",,ceda58a9
+1 Getting to Know Lean,Examples/Intro.lean,1050,1053,replaceX,blocked,,"inductive / structure shapes not supported (no equations, nested patterns, `brecOn`, projections, hash)","type expected, got (PPoint : Type → Type)",likely-untried,5d5e4b6a
+1 Getting to Know Lean,Examples/Intro.lean,1098,1098,primesUnder10,not a function (constant / type),,,,,f3917a8d
+1 Getting to Know Lean,Examples/Intro.lean,1125,1126,explicitPrimesUnder10,not a function (constant / type),,,,,181c815b
+1 Getting to Know Lean,Examples/Intro.lean,1136,1139,Ooops.length,compiled,view0,,,source-thm,bae6a808
+1 Getting to Know Lean,Examples/Intro.lean,1192,1195,Oooops.length,compiled,view0,,,source-thm,52e64368
+1 Getting to Know Lean,Examples/Intro.lean,1203,1204,BetterPlicity.replaceX,compiled on main (hand directive),inlined in / wrapped by hand-written entry  [Riscv/Frontx/PairExamples.lean:69],,,likely-untried,6bcea208
+1 Getting to Know Lean,Examples/Intro.lean,1217,1220,BetterPlicity.length,compiled,view0,,,source-thm,cf2a1bf9
+1 Getting to Know Lean,Examples/Intro.lean,1248,1248,x,not a function (constant / type),,,,,581cf858
+1 Getting to Know Lean,Examples/Intro.lean,1290,1295,StdLibNoUni.iso_Prod_PPoint,blocked,,"inductive / structure shapes not supported (no equations, nested patterns, `brecOn`, projections, hash)","type expected, got (PPoint : Type → Type) frontx_ind_type: TT498_1 := Proven.Frontx.Run.Iso Nat Nat, shape []",,887fd12a
+1 Getting to Know Lean,Examples/Intro.lean,1343,1343,PetName,not a function (constant / type),,,,,93e899a6
+1 Getting to Know Lean,Examples/Intro.lean,1350,1352,animals,not a function (constant / type),,,,,b4a47756
+1 Getting to Know Lean,Examples/Intro.lean,1356,1360,howManyDogs,blocked,,"list-view shapes not supported (non-`match` body, non-view recursive call, list result)",frontx_view: unsupported element type PetName,,0f6bb85f
+1 Getting to Know Lean,Examples/Intro.lean,1428,1431,Floop.List.head?,compiled,view0,,,machine-thm,bbadb142
+1 Getting to Know Lean,Examples/Intro.lean,1498,1502,Floop.List.final?,compiled,view0,,,machine-thm,5c5036bb
+1 Getting to Know Lean,Examples/Intro.lean,1513,1513,StructNotation.fives,not a function (constant / type),,,,,c98ca6bd
+1 Getting to Know Lean,Examples/Intro.lean,1518,1518,fives,not a function (constant / type),,,,,2fcacb51
+1 Getting to Know Lean,Examples/Intro.lean,1526,1526,Nested.sevens,not a function (constant / type),,,,,79453ec5
+1 Getting to Know Lean,Examples/Intro.lean,1531,1531,sevens,not a function (constant / type),,,,,b0b9eb8f
+1 Getting to Know Lean,Examples/Intro.lean,1541,1549,findString,blocked,,String / Char,frontx_view: unsupported element type String,,e9ee24af
+1 Getting to Know Lean,Examples/Intro.lean,1555,1558,List.findFirst?,compiled on main (hand directive),inlined in / wrapped by hand-written entry  [Riscv/Frontx/ListExamples.lean:94],,,machine-thm,76378681
+1 Getting to Know Lean,Examples/Intro.lean,1567,1573,posOrNegThree,blocked,,Int / signed arithmetic,frontx_ind: unsupported result type match ?s with | Sign.pos => Nat | Sign.neg => Int posOrNegThree : (s : Sign) → match s with | Sign.pos => Nat | Sign.neg => ,,1014a3b7
+1 Getting to Know Lean,Examples/Intro.lean,1605,1609,take,compiled,view1,,,machine-thm,93900c16
+1 Getting to Know Lean,Examples/Intro.lean,1633,1633,Exhausts,blocked,,"list-view shapes not supported (non-`match` body, non-view recursive call, list result)","frontx_view: the body is not a `match` ∀ (x : UInt8), x ∈ view B i",,f72459c4
+1 Getting to Know Lean,Examples/Intro.lean,1718,1718,ofFive,not a function (constant / type),,,,,70bf8bb8
+1 Getting to Know Lean,Examples/Intro.lean,1735,1739,allTools,not a function (constant / type),,,,,472127f9
+1 Getting to Know Lean,Examples/Intro.lean,1760,1764,allFirewood,not a function (constant / type),,,,,e41a96be
+1 Getting to Know Lean,Examples/Intro.lean,1776,1782,zip,blocked,,list of pairs / pair-of-lists / list of structures,frontx: unsupported result type List (UInt8 × UInt8) @zip : {α β : Type} → List α → List β → List (α × β) EXIT 1,,411e5c39
+1 Getting to Know Lean,Examples/Intro.lean,1813,1817,sameLength,not run: def does not elaborate in isolation,,needs a loop/recursion invariant hint (`with`) or proof,fail to show termination for Proven.Frontx.Run.sameLength with errors failed to infer structural recursion: Not considering parameter α of P,likely-untried,8188b847
+1 Getting to Know Lean,Examples/Intro.lean,1822,1831,Nested.sameLength,compiled,view1,,,likely-untried,eab47850
+1 Getting to Know Lean,Examples/Intro.lean,1837,1841,Both.sameLength,compiled,view1,,,likely-untried,a4bd542e
+1 Getting to Know Lean,Examples/Intro.lean,1847,1850,AutoImpl.length,compiled,view0,,,source-thm,bdfdc9b9
+1 Getting to Know Lean,Examples/Intro.lean,1860,1862,MatchDef.length,compiled,view0,,,machine-thm,4103da49
+1 Getting to Know Lean,Examples/Intro.lean,1868,1873,drop,compiled on main (hand directive),frontx_view drop  [Riscv/Frontx/ListOutExamples.lean:26],,,machine-thm,0cc5c7de
+1 Getting to Know Lean,Examples/Intro.lean,1879,1881,fromOption,compiled on main (hand directive),inlined in / wrapped by hand-written entry  [Riscv/Frontx/PairExamples.lean:71],,,likely-untried,f280d6f8
+1 Getting to Know Lean,Examples/Intro.lean,1908,1911,BadUnzip.unzip,blocked,,list of pairs / pair-of-lists / list of structures,frontx_view: unsupported element type UInt8 × UInt8,,a10ca4c3
+1 Getting to Know Lean,Examples/Intro.lean,1918,1922,unzip,blocked,,list of pairs / pair-of-lists / list of structures,frontx_view: unsupported element type UInt8 × UInt8,,aa95ed62
+1 Getting to Know Lean,Examples/Intro.lean,1928,1934,reverse,blocked,,"list-view shapes not supported (non-`match` body, non-view recursive call, list result)",frontx_view: the body is not a `match` reverse.helper (view B i) [],not-on-main,dbdaa265
+1 Getting to Know Lean,Examples/Intro.lean,1940,1944,WithPattern.unzip,blocked,,list of pairs / pair-of-lists / list of structures,frontx_view: unsupported element type UInt8 × UInt8,,5281ffc2
+1 Getting to Know Lean,Examples/Intro.lean,1952,1956,NT.unzip,blocked,,list of pairs / pair-of-lists / list of structures,frontx_view: unsupported element type UInt8 × UInt8,,e5d23ccd
+1 Getting to Know Lean,Examples/Intro.lean,1961,1961,NT.id,blocked,,"polymorphic result/parameter type (`α`, `Option α`, `Except ε α`) not instantiated",frontx: unsupported result type α ,likely-untried,7799f7b6
+1 Getting to Know Lean,Examples/Intro.lean,1970,1975,NRT.unzip,blocked,,list of pairs / pair-of-lists / list of structures,frontx_view: unsupported element type UInt8 × UInt8,,526c89ac
+1 Getting to Know Lean,Examples/Intro.lean,1979,1979,NRT.id,blocked,,"polymorphic result/parameter type (`α`, `Option α`, `Except ε α`) not instantiated",frontx: unsupported result type α ,likely-untried,5af06ea2
+1 Getting to Know Lean,Examples/Intro.lean,1997,1997,ReallyNoTypes.id,not a function (constant / type),,,,,e0cc1d10
+1 Getting to Know Lean,Examples/Intro.lean,2006,2011,ReallyNoTypes.unzip,not a function (constant / type),,,,,5e9d0d44
+1 Getting to Know Lean,Examples/Intro.lean,2036,2040,Match.drop,compiled on main (hand directive),frontx_view drop  [Riscv/Frontx/ListOutExamples.lean:35],,,machine-thm,9edf6179
+1 Getting to Know Lean,Examples/Intro.lean,2044,2046,Match.even,compiled,compile,,,source-thm,bc818a59
+1 Getting to Know Lean,Examples/Intro.lean,2051,2054,Match.Explicit.halve,compiled,compile,,,source-thm,47c0e2fa
+1 Getting to Know Lean,Examples/Intro.lean,2060,2063,Match.halve,compiled,compile,,,source-thm,e57bd46f
+1 Getting to Know Lean,Examples/Intro.lean,2081,2084,Match.Oops.halve,not run: def does not elaborate in isolation,,"other: Invalid pattern(s): `n` is an explicit pattern variable, but","Invalid pattern(s): `n` is an explicit pattern variable, but it only occurs in positions that are inaccessible to pattern matching: .(Nat.ad",source-thm,7299b2f6
+1 Getting to Know Lean,Examples/Intro.lean,2140,2142,Double.double,compiled,compile,,,source-thm,3bcf6be8
+1 Getting to Know Lean,Examples/Intro.lean,2188,2188,Nat.double,compiled,compile,,,source-thm,c9c2fb9f
+1 Getting to Know Lean,Examples/Intro.lean,2212,2212,NewNamespace.triple,compiled,compile,,,source-thm,b9543950
+1 Getting to Know Lean,Examples/Intro.lean,2213,2213,NewNamespace.quadruple,compiled,compile,,,source-thm,8c39a51d
+1 Getting to Know Lean,Examples/Intro.lean,2243,2245,timesTwelve,compiled,compile,,,source-thm,3e3b94c9
+1 Getting to Know Lean,Examples/Intro.lean,2296,2299,WithMatch.Inline.string?,blocked,,String / Char,frontx_ind: unsupported result type Option String Inline.string? : Inline → Option String EXIT 1,,3f4a26d4
+1 Getting to Know Lean,Examples/Intro.lean,2306,2309,Inline.string?,blocked,,String / Char,frontx_ind: unsupported result type Option String Inline.string? : Inline → Option String EXIT 1,,6f01d726
+1 Getting to Know Lean,Examples/Intro.lean,2489,2489,Oops.List.findFirst?,not run: def does not elaborate in isolation,,other: expected token,expected token,machine-thm,6091a127
+1 Getting to Know Lean,Examples/Intro.lean,2494,2494,Oops.Prod.switch,not run: def does not elaborate in isolation,,other: expected token,expected token,likely-untried,3cefe093
+1 Getting to Know Lean,Examples/Intro.lean,2499,2499,Oops.zip,not run: def does not elaborate in isolation,,other: expected token,expected token,,d61c8490
+1 Getting to Know Lean,Examples/Intro.lean,2564,2564,Ex.volume,blocked,,Float,frontx_ind: OfScientific.ofScientific has no argument of a declared type volume : RectangularPrism → Float EXIT 1,,a5e4f9c8
+1 Getting to Know Lean,Examples/Intro.lean,2569,2569,Ex.length,blocked,,Float,frontx_ind: OfScientific.ofScientific has no argument of a declared type length : Segment → Float EXIT 1,,1652e18d
+7 Monad Transformers,Examples/MonadTransformers.lean,12,12,Evaluator.Var,not a function (constant / type),,,,,27418b8b
+7 Monad Transformers,Examples/MonadTransformers.lean,22,22,Evaluator.Env,not a function (constant / type),,,,,4a0af6d9
+7 Monad Transformers,Examples/MonadTransformers.lean,24,25,Evaluator.Eval,blocked,,dependent types / type-valued functions,frontx: unsupported result type Type ,,3ad3bb53
+7 Monad Transformers,Examples/MonadTransformers.lean,34,34,Evaluator.currentEnv,not a function (constant / type),,,,,5d8b4212
+7 Monad Transformers,Examples/MonadTransformers.lean,36,38,Evaluator.bind,blocked,,Int / signed arithmetic,frontx: unsupported result type Eval α @bind : {α : Type} → Var → Int → Eval α → Eval α EXIT 1,,fc61d2c6
+7 Monad Transformers,Examples/MonadTransformers.lean,40,41,Evaluator.crash,blocked,,String / Char,frontx: unsupported result type Eval α @crash : {α : Type} → String → Eval α EXIT 1,,d7973bfe
+7 Monad Transformers,Examples/MonadTransformers.lean,43,47,Evaluator.lookup,blocked,,Int / signed arithmetic,frontx: unsupported result type Eval Int lookup : Var → Eval Int EXIT 1,,7291db37
+7 Monad Transformers,Examples/MonadTransformers.lean,49,58,Evaluator.applyPrim,blocked,,Int / signed arithmetic,frontx_ind: unsupported parameter type Int applyPrim : Prim → Int → Int → Eval Int EXIT 1,,ca8c5d8e
+7 Monad Transformers,Examples/MonadTransformers.lean,60,69,Evaluator.evaluate,blocked,,Int / signed arithmetic,frontx_ind: unsupported result type Eval Int evaluate : Expr → Eval Int EXIT 1,,752c1612
+7 Monad Transformers,Examples/MonadTransformers/Conveniences.lean,45,45,PipelineEx.times3,compiled,compile,,,likely-untried,304ff5c9
+7 Monad Transformers,Examples/MonadTransformers/Conveniences.lean,102,103,spam,IO (skipped),,,,,dfde94dd
+7 Monad Transformers,Examples/MonadTransformers/Conveniences.lean,107,107,bufsize,not a function (constant / type),,,,,d585f5ae
+7 Monad Transformers,Examples/MonadTransformers/Conveniences.lean,111,116,dump,IO (skipped),,,,,19cbb0d2
+7 Monad Transformers,Examples/MonadTransformers/Conveniences.lean,121,126,More.dump,IO (skipped),,,,,b3e32b80
+7 Monad Transformers,Examples/MonadTransformers/Defs.lean,18,19,Opt.OptionT,blocked,,dependent types / type-valued functions,frontx: unsupported result type Type v ,,cb844bfc
+7 Monad Transformers,Examples/MonadTransformers/Defs.lean,83,83,Opt.OptionT.mk,blocked,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)",frontx: unsupported result type OptionT m α @OptionT.mk : {m : Type u_1 → Type u_2} → {α : Type u_1} → m (Option α) → OptionT m α EXIT 1,,e29c9ac7
+7 Monad Transformers,Examples/MonadTransformers/Defs.lean,85,85,Opt.OptionT.run,blocked,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)",frontx: unsupported result type m (Option α) @OptionT.run : {m : Type u_1 → Type u_2} → {α : Type u_1} → OptionT m α → m (Option α) EXIT 1,,a23763e2
+7 Monad Transformers,Examples/MonadTransformers/Do.lean,44,56,StEx.FancyDo.countLetters,not run: def does not elaborate in isolation,,other: Unknown identifier `vowels.contains`,Unknown identifier `vowels.contains`,,a9c17761
+7 Monad Transformers,Examples/MonadTransformers/Do.lean,66,71,ThenDoUnless.count,blocked,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)",failed to synthesize Monad m Hint: Additional diagnostic information may be available using the `set_option diagnostics true` command.,,95473f62
+7 Monad Transformers,Examples/MonadTransformers/Do.lean,76,81,ThenDoUnless.countNot,blocked,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)",failed to synthesize Monad m Hint: Additional diagnostic information may be available using the `set_option diagnostics true` command.,,c87ed77e
+7 Monad Transformers,Examples/MonadTransformers/Do.lean,93,99,EarlyReturn.Non.List.find?,blocked,,higher-order argument (function/predicate parameter),frontx: unsupported parameter type UInt8 → Bool ,,326a46de
+7 Monad Transformers,Examples/MonadTransformers/Do.lean,105,109,EarlyReturn.List.find?,blocked,,higher-order argument (function/predicate parameter),frontx: unsupported parameter type UInt8 → Bool ,,115f7c4f
+7 Monad Transformers,Examples/MonadTransformers/Do.lean,114,117,EarlyReturn.runCatch,blocked,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)",frontx: unsupported result type m α @runCatch : {m : Type u_1 → Type u_2} → {α : Type u_1} → [Monad m] → ExceptT α m α → m α EXIT 1,,d356528e
+7 Monad Transformers,Examples/MonadTransformers/Do.lean,123,128,EarlyReturn.Desugared.List.find?,blocked,,higher-order argument (function/predicate parameter),frontx: unsupported parameter type UInt8 → Bool ,,5de1949a
+7 Monad Transformers,Examples/MonadTransformers/Do.lean,132,136,EarlyReturn.List.lookup,blocked,,list of pairs / pair-of-lists / list of structures,frontx_view: unsupported element type UInt8 × UInt8,,86117c87
+7 Monad Transformers,Examples/MonadTransformers/Do.lean,141,142,EarlyReturn.greet,blocked,,String / Char,unknown free variable `_fvar.680` greet : String → String EXIT 1,,d2c8a462
+7 Monad Transformers,Examples/MonadTransformers/Do.lean,161,165,Many.forM,blocked,,dependent types / type-valued functions,frontx_ind: unsupported parameter type Type → Type ?u.3198 @Many.forM : {m : Type → Type u_1} → {α : Type} → [Monad m] → Many α → (α → m PUnit) → m PUnit EXIT 1,,5f384090
+7 Monad Transformers,Examples/MonadTransformers/Do.lean,186,190,Loops.Fake.List.forM,blocked,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)",failed to synthesize Monad m Hint: Additional diagnostic information may be available using the `set_option diagnostics true` command.,,d2fbcb99
+7 Monad Transformers,Examples/MonadTransformers/Do.lean,200,207,Loops.Fake.countLetters,not run: def does not elaborate in isolation,,other: Unknown identifier `vowels.contains`,Unknown identifier `vowels.contains`,,f68704ef
+7 Monad Transformers,Examples/MonadTransformers/Do.lean,222,230,Loops.AllLessThan.forM,blocked,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)",frontx_ind: Proven.Frontx.Run.Loops.AllLessThan.forM.countdown has no argument of a declared type @AllLessThan.forM : {m : Type → Type u_1} → [Monad m] → AllLes,,201ccd26
+7 Monad Transformers,Examples/MonadTransformers/Do.lean,258,259,Loops.Transformed.OptionT.exec,blocked,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)",frontx: unsupported result type m Unit @OptionT.exec : {m : Type → Type u_1} → {α : Type} → [Applicative m] → OptionT m α → m Unit EXIT 1,,f76fe08f
+7 Monad Transformers,Examples/MonadTransformers/Do.lean,264,267,Loops.Transformed.countToThree,IO (skipped),,,,,8cb88a9e
+7 Monad Transformers,Examples/MonadTransformers/Do.lean,285,289,Loops.countToThree,IO (skipped),,,,,1be8422e
+7 Monad Transformers,Examples/MonadTransformers/Do.lean,307,309,Loops.parallelLoop,IO (skipped),,,,,b6ca44db
+7 Monad Transformers,Examples/MonadTransformers/Do.lean,324,327,Loops.List.find?,blocked,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)","frontx_view: the body is not a `match` do let r ← forIn (view B i) ⟨none, PUnit.unit⟩ fun x r => have r := r.snd; if p x = true then pure (ForInStep.done ⟨some ",,1cc966dd
+7 Monad Transformers,Examples/MonadTransformers/Do.lean,332,336,Loops.Cont.List.find?,blocked,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)","frontx_view: the body is not a `match` do let r ← forIn (view B i) ⟨none, PUnit.unit⟩ fun x r => have r := r.snd; have __do_jp := fun y => pure (ForInStep.done ",,f3b64938
+7 Monad Transformers,Examples/MonadTransformers/Do.lean,345,349,Loops.List.count,blocked,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)",frontx_view: the body is not a `match` (have found := 0; do let r ← forIn (view B i) found fun x r => have found := r; if p x = true then have found := found + ,,943dfd50
+7 Monad Transformers,Examples/MonadTransformers/Do.lean,358,362,Mut.two,not a function (constant / type),,,,,1b0199a2
+7 Monad Transformers,Examples/MonadTransformers/Do.lean,372,378,Mut.St.two,not a function (constant / type),,,,,14c50df0
+7 Monad Transformers,Examples/MonadTransformers/Do.lean,386,390,Mut.three,not a function (constant / type),,,,,4788a7c6
+7 Monad Transformers,Examples/MonadTransformers/Do.lean,396,400,Mut.six,not a function (constant / type),,,,,bb6ec6ed
+7 Monad Transformers,Examples/MonadTransformers/Do.lean,413,420,Mut.List.count,not run: def does not elaborate in isolation,,"other: `found` cannot be mutated, only variables declared using `le","`found` cannot be mutated, only variables declared using `let mut` can be mutated. If you did not intend to mutate but define `found`, consi",,b31fdf2a
+7 Monad Transformers,Examples/MonadTransformers/Do.lean,469,471,Ranges.fourToEight,IO (skipped),,,,,e1cf5d08
+7 Monad Transformers,Examples/MonadTransformers/Do.lean,509,513,printArray,IO (skipped),,,,,ba728a9b
+5 Monads,Examples/Monads.lean,23,24,Monads.Option.first,compiled on main (hand directive),inlined in / wrapped by hand-written entry  [Riscv/Frontx/ExceptBook.lean:12],,,likely-untried,d3c8688c
+5 Monads,Examples/Monads.lean,29,36,Monads.Option.firstThird,compiled,view0,,,likely-untried,d47d7315
+5 Monads,Examples/Monads.lean,41,51,Monads.Option.firstThirdFifth,compiled,view0,,,likely-untried,08e3272e
+5 Monads,Examples/Monads.lean,56,69,Monads.Option.firstThirdFifthSeventh,compiled,view0,,,likely-untried,83d70065
+5 Monads,Examples/Monads.lean,74,77,Monads.Option.M.andThen,compiled on main (hand directive),inlined in / wrapped by hand-written entry  [Riscv/Frontx/ExceptBook.lean:52],,,,c32ffdfc
+5 Monads,Examples/Monads.lean,82,85,Monads.Option.M.firstThird,compiled,view0,,,likely-untried,7ad992c7
+5 Monads,Examples/Monads.lean,90,93,Monads.Option.M.ExplicitParens.firstThird,compiled,view0,,,likely-untried,a87eb89d
+5 Monads,Examples/Monads.lean,127,130,Monads.Option.M.firstThirdInfix,compiled on main (hand directive),inlined in / wrapped by hand-written entry  [Riscv/Frontx/ExceptBook.lean:71],,,likely-untried,2eaa76b7
+5 Monads,Examples/Monads.lean,135,140,Monads.Option.M.firstThirdFifthSeventh,compiled on main (hand directive),inlined in / wrapped by hand-written entry  [Riscv/Frontx/ExceptBook.lean:76],,,likely-untried,222312d0
+5 Monads,Examples/Monads.lean,167,170,Monads.Err.get,compiled on main (hand directive),inlined in / wrapped by hand-written entry  [Riscv/Frontx/ExceptBook.lean:88],,,,1fe1f08c
+5 Monads,Examples/Monads.lean,175,176,Monads.Err.ediblePlants,not a function (constant / type),,,,,d2761249
+5 Monads,Examples/Monads.lean,197,198,Monads.Err.first,compiled,view0,,,,4f066271
+5 Monads,Examples/Monads.lean,203,210,Monads.Err.firstThird,compiled,view0,,,,15eeb34c
+5 Monads,Examples/Monads.lean,215,225,Monads.Err.firstThirdFifth,compiled,view0,,,,8c7eeec9
+5 Monads,Examples/Monads.lean,230,243,Monads.Err.firstThirdFifthSeventh,compiled,view0,,,,f610ef8b
+5 Monads,Examples/Monads.lean,248,251,Monads.Err.andThen,compiled on main (hand directive),inlined in / wrapped by hand-written entry  [Riscv/Frontx/ExceptBook.lean:132],,,,5f0c106b
+5 Monads,Examples/Monads.lean,256,259,Monads.Err.AndThen.firstThird',compiled,view0,,,,4c7fe915
+5 Monads,Examples/Monads.lean,270,270,Monads.Err.ok,compiled on main (hand directive),inlined in / wrapped by hand-written entry  [Riscv/Frontx/ExceptBook.lean:146],,,likely-untried,8f00fe7a
+5 Monads,Examples/Monads.lean,274,274,Monads.Err.fail,compiled on main (hand directive),inlined in / wrapped by hand-written entry  [Riscv/Frontx/ExceptBook.lean:148],,,likely-untried,d73c41ca
+5 Monads,Examples/Monads.lean,279,282,Monads.Err.Eff.get,compiled on main (hand directive),inlined in / wrapped by hand-written entry  [Riscv/Frontx/ExceptBook.lean:151],,,,8495ed3b
+5 Monads,Examples/Monads.lean,288,291,Monads.Err.WithInfix.firstThird,compiled on main (hand directive),frontx_view Monads.Option.firstThird  [Riscv/Frontx/ExceptBook.lean:158],,,,2d4df8b8
+5 Monads,Examples/Monads.lean,295,300,Monads.Err.WithInfix.firstThirdFifthSeventh,compiled on main (hand directive),frontx_view Monads.Option.firstThirdFifthSeventh  [Riscv/Frontx/ExceptBook.lean:163],,,,a7782d62
+5 Monads,Examples/Monads.lean,316,317,Monads.Writer.isEven,blocked,,Int / signed arithmetic,frontx: unsupported parameter type Int ,,163787aa
+5 Monads,Examples/Monads.lean,325,329,Monads.Writer.sumAndFindEvens,blocked,,Int / signed arithmetic,frontx_view: unsupported element type Int,,53215ea1
+5 Monads,Examples/Monads.lean,334,339,Monads.Writer.MoreMonadic.sumAndFindEvens,blocked,,Int / signed arithmetic,frontx_view: unsupported element type Int,,d09492a6
+5 Monads,Examples/Monads.lean,344,351,Monads.Writer.inorderSum,blocked,,Int / signed arithmetic,frontx_ind: Proven.Frontx.Run.Monads.Writer.inorderSum: type mismatch inorderSum : BinTree Int → List Int × Int EXIT 1,,c9c195c1
+5 Monads,Examples/Monads.lean,369,372,Monads.Writer.andThen,blocked,,higher-order argument (function/predicate parameter),frontx_ind: unsupported parameter type Nat → WithLog Nat ?γ @andThen : {α β γ : Type} → WithLog α β → (β → WithLog α γ) → WithLog α γ EXIT 1,,ac1875a9
+5 Monads,Examples/Monads.lean,377,377,Monads.Writer.ok,blocked,,"inductive / structure shapes not supported (no equations, nested patterns, `brecOn`, projections, hash)",frontx_ind: Proven.Frontx.Run.Monads.Writer.WithLog.mk has no equations @ok : {β α : Type} → β → WithLog α β EXIT 1,,12ce8df0
+5 Monads,Examples/Monads.lean,382,383,Monads.Writer.save,blocked,,"inductive / structure shapes not supported (no equations, nested patterns, `brecOn`, projections, hash)",frontx_ind: Proven.Frontx.Run.Monads.Writer.WithLog.mk has no equations @save : {α : Type} → α → WithLog α Unit EXIT 1,,368a8e99
+5 Monads,Examples/Monads.lean,390,395,Monads.Writer.WithAndThen.sumAndFindEvens,blocked,,Int / signed arithmetic,frontx_ind: List.brecOn has no argument of a declared type sumAndFindEvens : List Int → WithLog Int Int EXIT 1,,5cbc1720
+5 Monads,Examples/Monads.lean,400,406,Monads.Writer.WithAndThen.inorderSum,blocked,,Int / signed arithmetic,frontx_ind: Proven.Frontx.Run.Monads.Writer.WithAndThen.inorderSum: type mismatch inorderSum : BinTree Int → WithLog Int Int EXIT 1,,682e4083
+5 Monads,Examples/Monads.lean,421,426,Monads.Writer.WithInfix.sumAndFindEvens,not run: def does not elaborate in isolation,,Int / signed arithmetic,Application type mismatch: The argument save i has type WithLog Int Unit but is expected to have type WithLog Int Int in the application ite,,604cb037
+5 Monads,Examples/Monads.lean,428,434,Monads.Writer.WithInfix.inorderSum,not run: def does not elaborate in isolation,,other: expected token,expected token,,ffdd1708
+5 Monads,Examples/Monads.lean,445,453,Monads.State.aTree,not a function (constant / type),,,,,86996551
+5 Monads,Examples/Monads.lean,460,467,Monads.State.number,blocked,,"inductive / structure shapes not supported (no equations, nested patterns, `brecOn`, projections, hash)",frontx_ind: Prod.snd has no argument of a declared type @number : {α : Type} → BinTree α → BinTree (Nat × α) EXIT 1,,188be246
+5 Monads,Examples/Monads.lean,488,489,Monads.State.State,blocked,,dependent types / type-valued functions,frontx: unsupported result type Type ,,32ae89af
+5 Monads,Examples/Monads.lean,494,495,Monads.State.get,not a function (constant / type),,,,likely-untried,79cbab28
+5 Monads,Examples/Monads.lean,500,501,Monads.State.set,blocked,,"polymorphic result/parameter type (`α`, `Option α`, `Except ε α`) not instantiated",frontx: unsupported result type State σ Unit @set : {σ : Type} → σ → State σ Unit EXIT 1,likely-untried,1c813374
+5 Monads,Examples/Monads.lean,506,509,Monads.State.andThen,blocked,,"polymorphic result/parameter type (`α`, `Option α`, `Except ε α`) not instantiated",frontx: unsupported result type State σ β @andThen : {σ α β : Type} → State σ α → (α → State σ β) → State σ β EXIT 1,,5ba21cad
+5 Monads,Examples/Monads.lean,516,517,Monads.State.ok,blocked,,"polymorphic result/parameter type (`α`, `Option α`, `Except ε α`) not instantiated",frontx: unsupported result type State σ α @ok : {α σ : Type} → α → State σ α EXIT 1,likely-untried,8dbf1343
+5 Monads,Examples/Monads.lean,525,534,Monads.State.Monadicish.number,not run: def does not elaborate in isolation,,other: expected line break or token,expected line break or token,,801acbfc
+5 Monads,Examples/Monads/Class.lean,49,55,firstThirdFifthSeventh,blocked,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)",failed to synthesize Monad m Hint: Additional diagnostic information may be available using the `set_option diagnostics true` command.,,979fb5e0
+5 Monads,Examples/Monads/Class.lean,60,61,slowMammals,not a function (constant / type),,,,,21da6b61
+5 Monads,Examples/Monads/Class.lean,63,71,fastBirds,not a function (constant / type),,,,,122c67bd
+5 Monads,Examples/Monads/Class.lean,93,98,Errs.getOrExcept,compiled on main (hand directive),inlined in / wrapped by hand-written entry  [Riscv/Frontx/ExceptBook.lean:88],,,,1fe1f08c
+5 Monads,Examples/Monads/Class.lean,125,125,IdentMonad.Id,blocked,,dependent types / type-valued functions,frontx: unsupported result type Type ,,d866a2fa
+5 Monads,Examples/Monads/Class.lean,148,153,MyListStuff.mapM,blocked,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)",failed to synthesize Monad m Hint: Additional diagnostic information may be available using the `set_option diagnostics true` command.,,4b95e49e
+5 Monads,Examples/Monads/Class.lean,181,184,MyListStuff.increment,not run: def does not elaborate in isolation,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)",failed to synthesize instance of type class Pure (State Int) Hint: Type class instance resolution failures can be inspected with the `set_op,,6ee64ff2
+5 Monads,Examples/Monads/Class.lean,256,260,MyListStuff.saveIfEven,not run: def does not elaborate in isolation,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)",failed to synthesize instance of type class Pure (WithLog Int) Hint: Type class instance resolution failures can be inspected with the `set_,,b9b29404
+5 Monads,Examples/Monads/Class.lean,327,330,twoPlusThree,not a function (constant / type),,,,,eb4e2f74
+5 Monads,Examples/Monads/Class.lean,335,341,fourteenDivided,not a function (constant / type),,,,,791d3ab3
+5 Monads,Examples/Monads/Class.lean,346,355,One.evaluateOption,blocked,,Int / signed arithmetic,frontx_ind: Proven.Frontx.Run.One.evaluateOption: type mismatch evaluateOption : Expr Arith → Option Int EXIT 1,,32413f00
+5 Monads,Examples/Monads/Class.lean,362,366,Two.applyPrim,blocked,,Int / signed arithmetic,frontx_ind: unsupported parameter type Int applyPrim : Arith → Int → Int → Option Int EXIT 1,,52adc4aa
+5 Monads,Examples/Monads/Class.lean,368,373,Two.evaluateOption,blocked,,Int / signed arithmetic,frontx_ind: Proven.Frontx.Run.Two.evaluateOption: type mismatch evaluateOption : Expr Arith → Option Int EXIT 1,,d4955eb9
+5 Monads,Examples/Monads/Class.lean,391,398,Three.applyPrim,blocked,,Int / signed arithmetic,frontx_ind: unsupported parameter type Int applyPrim : Arith → Int → Int → Except String Int EXIT 1,,43448c5d
+5 Monads,Examples/Monads/Class.lean,400,405,Three.evaluateExcept,blocked,,Int / signed arithmetic,frontx_ind: Proven.Frontx.Run.Three.evaluateExcept: type mismatch evaluateExcept : Expr Arith → Except String Int EXIT 1,,da56621a
+5 Monads,Examples/Monads/Class.lean,414,421,Four.applyPrimOption,blocked,,Int / signed arithmetic,frontx_ind: unsupported parameter type Int applyPrimOption : Arith → Int → Int → Option Int EXIT 1,,52adc4aa
+5 Monads,Examples/Monads/Class.lean,423,430,Four.applyPrimExcept,blocked,,Int / signed arithmetic,frontx_ind: unsupported parameter type Int applyPrimExcept : Arith → Int → Int → Except String Int EXIT 1,,43448c5d
+5 Monads,Examples/Monads/Class.lean,432,439,Four.evaluateM,blocked,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)",frontx_ind: Proven.Frontx.Run.Four.evaluateM: type mismatch @evaluateM : {m : Type → Type u_1} → [Monad m] → (Arith → Int → Int → m Int) → Expr Arith → m Int EX,,334d627f
+5 Monads,Examples/Monads/Class.lean,464,467,FourPointFive.applyDivOption,blocked,,Int / signed arithmetic,frontx: unsupported result type Option Int ,,366554fd
+5 Monads,Examples/Monads/Class.lean,469,472,FourPointFive.applyDivExcept,blocked,,Int / signed arithmetic,frontx: unsupported result type Except String Int ,,20fd035b
+5 Monads,Examples/Monads/Class.lean,474,480,FourPointFive.applyPrim,blocked,,dependent types / type-valued functions,frontx_ind: unsupported parameter type Type → Type ?u.5563 @applyPrim : {m : Type → Type u_1} → [Monad m] → (Int → Int → m Int) → Arith → Int → Int → m Int EXIT,,34bb7607
+5 Monads,Examples/Monads/Class.lean,482,489,FourPointFive.evaluateM,blocked,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)",frontx_ind: Proven.Frontx.Run.FourPointFive.evaluateM: type mismatch @evaluateM : {m : Type → Type u_1} → [Monad m] → (Int → Int → m Int) → Expr Arith → m Int E,,c005dc1f
+5 Monads,Examples/Monads/Class.lean,525,526,divOption,blocked,,Int / signed arithmetic,frontx_ind: unsupported parameter type Int divOption : CanFail → Int → Int → Option Int EXIT 1,,019a58d0
+5 Monads,Examples/Monads/Class.lean,528,532,divExcept,blocked,,Int / signed arithmetic,frontx_ind: unsupported parameter type Int divExcept : CanFail → Int → Int → Except String Int EXIT 1,,208ed930
+5 Monads,Examples/Monads/Class.lean,534,540,applyPrim,blocked,,dependent types / type-valued functions,frontx_ind: unsupported parameter type Type → Type ?u.6249 @applyPrim : {m : Type → Type u_1} → {special : Type} → [Monad m] → (special → Int → Int → m Int) → P,,4f9a8a5f
+5 Monads,Examples/Monads/Class.lean,542,549,evaluateM,blocked,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)",frontx_ind: Proven.Frontx.Run.evaluateM: type mismatch @evaluateM : {m : Type → Type u_1} → {special : Type} → [Monad m] → (special → Int → Int → m Int) → Expr ,,bf82b526
+5 Monads,Examples/Monads/Class.lean,554,555,applyEmpty,blocked,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)",frontx: unsupported result type m Int @applyEmpty : {m : Type → Type u_1} → [Monad m] → Empty → Int → Int → m Int EXIT 1,,a6e40f02
+5 Monads,Examples/Monads/Class.lean,585,591,applySearch,blocked,,Int / signed arithmetic,frontx_ind: unsupported parameter type Int applySearch : NeedsSearch → Int → Int → Many Int EXIT 1,,e38c6ff7
+5 Monads,Examples/Monads/Class.lean,657,657,Reader,blocked,,dependent types / type-valued functions,frontx: unsupported result type Type ,,8a88029e
+5 Monads,Examples/Monads/Class.lean,659,659,read,not a function (constant / type),,,,likely-untried,f8c5fccc
+5 Monads,Examples/Monads/Class.lean,778,780,Temp.Reader.bind,blocked,,"polymorphic result/parameter type (`α`, `Option α`, `Except ε α`) not instantiated",frontx: unsupported result type β ,,184d9a60
+5 Monads,Examples/Monads/Class.lean,787,790,Reader.bind,blocked,,"polymorphic result/parameter type (`α`, `Option α`, `Except ε α`) not instantiated",frontx: unsupported result type Reader ρ β @Reader.bind : {ρ α β : Type} → Reader ρ α → (α → Reader ρ β) → Reader ρ β EXIT 1,,36f2a573
+5 Monads,Examples/Monads/Class.lean,808,808,Reader.pure,blocked,,"polymorphic result/parameter type (`α`, `Option α`, `Except ε α`) not instantiated",frontx: unsupported result type Reader ρ α @Reader.pure : {α ρ : Type} → α → Reader ρ α EXIT 1,likely-untried,1bd176c6
+5 Monads,Examples/Monads/Class.lean,921,921,Env,not a function (constant / type),,,,,dc600049
+5 Monads,Examples/Monads/Class.lean,926,930,applyPrimReader,not run: def does not elaborate in isolation,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)",failed to synthesize instance of type class Pure (Reader Env) Hint: Type class instance resolution failures can be inspected with the `set_o,,7eac39f9
+5 Monads,Examples/Monads/Class.lean,935,935,exampleEnv,not a function (constant / type),,,,,9cd9bef5
+5 Monads,Examples/Monads/Class.lean,954,960,Exercises.BinTree.mapM,blocked,,dependent types / type-valued functions,frontx_ind: unsupported parameter type Type → Type ?u.4314 @BinTree.mapM : {m : Type → Type u_1} → {α β : Type} → [Monad m] → (α → m β) → BinTree α → m (BinTree,,c3eebc32
+5 Monads,Examples/Monads/Class.lean,996,999,Exercises.applyTraced,not run: def does not elaborate in isolation,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)",failed to synthesize instance of type class Monad (WithLog (Prim Empty × Int × Int)) Hint: Type class instance resolution failures can be in,,40bc2504
+5 Monads,Examples/Monads/Class.lean,1025,1025,Exercises.ReaderOption,blocked,,dependent types / type-valued functions,frontx: unsupported result type Type ,,2f8a1431
+5 Monads,Examples/Monads/Class.lean,1027,1027,Exercises.ReaderExcept,blocked,,dependent types / type-valued functions,frontx: unsupported result type Type ,,35a51587
+5 Monads,Examples/Monads/Conveniences.lean,20,24,Old.equal?,blocked,,"polymorphic result/parameter type (`α`, `Option α`, `Except ε α`) not instantiated",frontx: unsupported result type Option α ,,63529414
+5 Monads,Examples/Monads/Conveniences.lean,32,36,New.equal?,blocked,,"polymorphic result/parameter type (`α`, `Option α`, `Except ε α`) not instantiated",frontx: unsupported result type Option α ,,c5f9ce98
+5 Monads,Examples/Monads/Conveniences.lean,45,47,Old.BinTree.mirror,compiled,ind,,,,76086829
+5 Monads,Examples/Monads/Conveniences.lean,53,55,BinTree.mirror,compiled,ind,,,,e5e3fb06
+5 Monads,Examples/Monads/Conveniences.lean,59,59,BinTree.empty,not a function (constant / type),,,,,4de5fe11
+5 Monads,Examples/Monads/Conveniences.lean,85,89,A.Weekday.isWeekend,compiled,ind,,,,eefd2549
+5 Monads,Examples/Monads/Conveniences.lean,95,99,B.Weekday.isWeekend,compiled,ind,,,,775601eb
+5 Monads,Examples/Monads/Conveniences.lean,105,108,C.Weekday.isWeekend,compiled,ind,,,,df869653
+5 Monads,Examples/Monads/Conveniences.lean,115,117,D.Weekday.isWeekend,compiled,ind,,,,458d14a6
+5 Monads,Examples/Monads/Conveniences.lean,124,125,condense,blocked,,"polymorphic result/parameter type (`α`, `Option α`, `Except ε α`) not instantiated",frontx: unsupported result type α ,,cb4647fe
+5 Monads,Examples/Monads/Conveniences.lean,130,131,stringy,not run: def does not elaborate in isolation,,other: failed to synthesize instance of type class Repr Weekday Hin,failed to synthesize instance of type class Repr Weekday Hint: Adding the command `deriving instance Repr for Proven.Frontx.Run.Weekday` may,,71e106db
+5 Monads,Examples/Monads/Conveniences.lean,139,140,getTheNat,blocked,,dependent types / type-valued functions,frontx: unsupported parameter type Type ,,ab5750c8
+5 Monads,Examples/Monads/Conveniences.lean,148,149,getTheAlpha,not run: def does not elaborate in isolation,,other: Unknown identifier `x`,Unknown identifier `x`,,038e3bdb
+5 Monads,Examples/Monads/Conveniences.lean,153,153,str,not a function (constant / type),,,,,2dcdfa59
+5 Monads,Examples/Monads/Conveniences.lean,155,156,getTheString,blocked,,compiler error (unknown free variable / universe levels / introN),unknown free variable `_fvar.1312`,,a4a383b3
+5 Monads,Examples/Monads/Do.lean,110,116,WithDo.firstThirdFifthSeventh,blocked,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)",failed to synthesize Monad m Hint: Additional diagnostic information may be available using the `set_option diagnostics true` command.,,70fc6586
+5 Monads,Examples/Monads/Do.lean,121,126,WithDo.mapM,blocked,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)",failed to synthesize Monad m Hint: Additional diagnostic information may be available using the `set_option diagnostics true` command.,,7a5b06c7
+5 Monads,Examples/Monads/Do.lean,133,136,mapM,blocked,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)",failed to synthesize Monad m Hint: Additional diagnostic information may be available using the `set_option diagnostics true` command.,,2475cf64
+5 Monads,Examples/Monads/Do.lean,151,160,Numbering.number,not run: def does not elaborate in isolation,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)",failed to synthesize instance of type class Pure (State Nat) Hint: Type class instance resolution failures can be inspected with the `set_op,,fa17a97e
+5 Monads,Examples/Monads/Do.lean,167,170,Numbering.Short.increment,not a function (constant / type),,,,,551e60ba
+5 Monads,Examples/Monads/Do.lean,172,181,Numbering.Short.number,not run: def does not elaborate in isolation,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)",failed to synthesize instance of type class Pure (State Nat) Hint: Type class instance resolution failures can be inspected with the `set_op,,537495a6
+5 Monads,Examples/Monads/Many.lean,11,11,Many.one,blocked,,"inductive / structure shapes not supported (no equations, nested patterns, `brecOn`, projections, hash)",frontx_ind: Proven.Frontx.Run.Many.more has no equations @Many.one : {α : Type} → α → Many α EXIT 1,,1fca5edf
+5 Monads,Examples/Monads/Many.lean,16,18,Many.union,compiled,ind,,,,8c4e9752
+5 Monads,Examples/Monads/Many.lean,24,26,Many.fromList,blocked,,"inductive / structure shapes not supported (no equations, nested patterns, `brecOn`, projections, hash)",frontx_ind: List.brecOn has no argument of a declared type @Many.fromList : {α : Type} → List α → Many α EXIT 1,,059163fd
+5 Monads,Examples/Monads/Many.lean,31,34,Many.take,blocked,,"inductive / structure shapes not supported (no equations, nested patterns, `brecOn`, projections, hash)",frontx_ind: unsupported result type List Nat @Many.take : {α : Type} → Nat → Many α → List α EXIT 1,,1eeec752
+5 Monads,Examples/Monads/Many.lean,36,38,Many.takeAll,blocked,,"inductive / structure shapes not supported (no equations, nested patterns, `brecOn`, projections, hash)",frontx_ind: unsupported result type List Nat @Many.takeAll : {α : Type} → Many α → List α EXIT 1,,ab60e422
+5 Monads,Examples/Monads/Many.lean,43,47,Many.bind,not run: def does not elaborate in isolation,,other: Invalid field `union`: The environment does not contain `Pro,"Invalid field `union`: The environment does not contain `Proven.Frontx.Run.Many.union`, so it is not possible to project the field `union` f",,03d04cda
+5 Monads,Examples/Monads/Many.lean,172,173,Many.range,blocked,,"inductive / structure shapes not supported (no equations, nested patterns, `brecOn`, projections, hash)",frontx_ind: Proven.Frontx.Run.Many.range._unary has no argument of a declared type Many.range : Nat → Nat → Many Nat EXIT 1,,5417f966
+5 Monads,Examples/Monads/Many.lean,270,282,addsTo,blocked,,"inductive / structure shapes not supported (no equations, nested patterns, `brecOn`, projections, hash)",frontx_ind: List.brecOn has no argument of a declared type addsTo : Nat → List Nat → Many (List Nat) EXIT 1,,6f91fce8
+5 Monads,Examples/Monads/Many.lean,286,290,printList,IO (skipped),,,,,3416843a
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/Arrays.lean,45,46,Orders.Nat.lt,not run: def does not elaborate in isolation,,"other: invalid `[inherit_doc]` attribute, declaration `LE` already ","invalid `[inherit_doc]` attribute, declaration `LE` already has an `[inherit_doc]` attribute",,2210ca5a
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/Arrays.lean,274,278,arrayMapHelper,blocked,,Array of non-bytes / generic Array code,wa_compile: expected a function of one ByteArray @arrayMapHelper : {α : Type u_1} → {β : Type u_2} → (α → β) → Array α → Array β → Nat → Array β EXIT 1,,22a3b3af
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/Arrays.lean,285,286,TailRec.Array.map,blocked,,Array of non-bytes / generic Array code,wa_compile: expected a function of one ByteArray @Array.map : {α : Type u_1} → {β : Type u_2} → (α → β) → Array α → Array β EXIT 1,,839a5866
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/Arrays.lean,293,300,findHelper,blocked,,higher-order argument (function/predicate parameter),wa_compile: expected a function of one ByteArray @findHelper : {α : Type u_1} → Array α → (α → Bool) → Nat → Option (Nat × α) EXIT 1,,02cfd34d
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/Arrays.lean,304,306,Array.find,blocked,,higher-order argument (function/predicate parameter),wa_compile: expected a function of one ByteArray @Array.find : {α : Type u_1} → Array α → (α → Bool) → Option (Nat × α) EXIT 1,,c6690a65
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/Arrays.lean,316,323,Huh.findHelper,blocked,,higher-order argument (function/predicate parameter),wa_compile: expected a function of one ByteArray @findHelper : {α : Type u_1} → Array α → (α → Bool) → Nat → Option (Nat × α) EXIT 1,,02cfd34d
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/Div.lean,45,49,div,compiled,compile,,,,c3a0513d
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/Fin.lean,48,52,Fin.next?,blocked,,dependent types / type-valued functions,frontx: unsupported result type Option (Fin n) @Fin.next? : {n : Nat} → Fin n → Option (Fin n) EXIT 1,likely-untried,2ca19b07
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/Fin.lean,82,89,Finny.findHelper,blocked,,dependent types / type-valued functions,wa_compile: expected a function of one ByteArray @findHelper : {α : Type u_1} → (arr : Array α) → (α → Bool) → Nat → Option (Fin arr.size × α) EXIT 1,,3d1c5643
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/Fin.lean,93,114,Finny.Array.find,blocked,,dependent types / type-valued functions,wa_compile: expected a function of one ByteArray @Array.find : {α : Type u_1} → (arr : Array α) → (α → Bool) → Option (Fin arr.size × α) EXIT 1,,06e4c309
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/Inequalities.lean,15,22,merge,blocked,,"list-view shapes not supported (non-`match` body, non-view recursive call, list result)",frontx_view: cannot reduce match compare B[i] B[k] with | Ordering.lt => B[i] :: merge (view B (i + 1)) (B[k] :: view B (k + 1)) | Ordering.eq => B[i] :: merge ,,a00a9e3c
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/Inequalities.lean,27,32,splitList,blocked,,list of pairs / pair-of-lists / list of structures,frontx: unsupported result type List UInt8 × List UInt8 @splitList : {α : Type u_1} → List α → List α × List α EXIT 1,,b3fb2e9f
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/Inequalities.lean,767,782,mergeSort,blocked,,list of pairs / pair-of-lists / list of structures,"frontx_view: the body is not a `match` if h : (view B i).length < 2 then match view B i, h with | [], h => [] | [x], h => [x] else let halves := splitList (view",,7a29fae5
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/InsertionSort.lean,49,56,insertSorted,blocked,,dependent types / type-valued functions,wa_compile: expected a function of one ByteArray @insertSorted : {α : Type u_1} → [Ord α] → (arr : Array α) → Fin arr.size → Array α EXIT 1,,52ab2266
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/InsertionSort.lean,328,332,Partial.insertionSortLoop,blocked,,Array of non-bytes / generic Array code,wa_compile: expected a function of one ByteArray @insertionSortLoop : {α : Type u_1} → [Ord α] → Array α → Nat → Array α EXIT 1,,d4be2f3a
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/InsertionSort.lean,430,436,insertionSortLoop,blocked,,Array of non-bytes / generic Array code,wa_compile: expected a function of one ByteArray @insertionSortLoop : {α : Type u_1} → [Ord α] → Array α → Nat → Array α EXIT 1,,3c39eb3f
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/InsertionSort.lean,441,442,insertionSort,blocked,,Array of non-bytes / generic Array code,wa_compile: expected a function of one ByteArray @insertionSort : {α : Type u_1} → [Ord α] → Array α → Array α EXIT 1,not-on-main,357b8624
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/InstrumentedInsertionSort.lean,6,19,insertSorted,blocked,,dependent types / type-valued functions,wa_compile: expected a function of one ByteArray @insertSorted : {α : Type u_1} → [Ord α] → (arr : Array α) → Fin arr.size → Array α EXIT 1,,aebbcb7d
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/InstrumentedInsertionSort.lean,26,32,insertionSortLoop,blocked,,Array of non-bytes / generic Array code,wa_compile: expected a function of one ByteArray @insertionSortLoop : {α : Type u_1} → [Ord α] → Array α → Nat → Array α EXIT 1,,3c39eb3f
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/InstrumentedInsertionSort.lean,35,36,insertionSort,blocked,,Array of non-bytes / generic Array code,wa_compile: expected a function of one ByteArray @insertionSort : {α : Type u_1} → [Ord α] → Array α → Array α EXIT 1,not-on-main,357b8624
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/InstrumentedInsertionSort.lean,40,48,getLines,IO (skipped),,,,,64d1aeaf
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/InstrumentedInsertionSort.lean,52,55,mainUnique,IO (skipped),,,,,5ee24821
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/InstrumentedInsertionSort.lean,57,66,mainShared,IO (skipped),,,,,f57c3dc5
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/InstrumentedInsertionSort.lean,70,76,main,IO (skipped),,,,,742efdeb
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/TCO.lean,6,8,NonTail.sum,compiled,view0,,,machine-thm,106d8d6a
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/TCO.lean,33,35,MoreClear.Tail.sumHelper,blocked,,Array of non-bytes / generic Array code,frontx: could not prove B[i].toNat + soFar < 2 ^ 64 goal: B : ByteArray i soFar : Nat σ : BState h0 : σ.heap = [blk B] h1 : σ.env 1 = rN B.size h2 : B.size < 2 ,machine-thm,cae99f7e
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/TCO.lean,40,42,Tail.sumHelper,compiled on main (hand directive),inlined in / wrapped by hand-written entry  [Riscv/Frontx/IndExamples.lean:62],,,machine-thm,b77303e7
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/TCO.lean,44,45,Tail.sum,compiled on main (hand directive),frontx_ind NonTail.sum on LN  [Riscv/Frontx/IndExamples.lean:66],,,machine-thm,2c500578
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/TCO.lean,74,76,NonTail.reverse,compiled on main (hand directive),frontx_ind NonTail.reverse on LN  [Riscv/Frontx/Ind2Examples.lean:30],,,not-on-main,98fcea49
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/TCO.lean,102,104,Tail.reverseHelper,compiled on main (hand directive),inlined in / wrapped by hand-written entry  [Riscv/Frontx/IndExamples.lean:70],,,,003f2291
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/TCO.lean,106,107,Tail.reverse,compiled on main (hand directive),frontx_ind Tail.reverse on LN  [Riscv/Frontx/IndExamples.lean:74],,,not-on-main,703484ae
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/TCO.lean,127,129,Slow.mirror,compiled,ind,,,,e5e3fb06
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/TCO.lean,131,134,CPS.mirror,blocked,,"inductive / structure shapes not supported (no equations, nested patterns, `brecOn`, projections, hash)",frontx_ind: unsupported parameter type BinTree Nat → ?β @CPS.mirror : {α : Type} → {β : Type u_1} → (BinTree α → β) → BinTree α → β EXIT 1,,403b4641
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/TCO.lean,136,138,CPS.reverse,blocked,,dependent types / type-valued functions,Tactic `rewrite` failed: motive is not type correct: fun _a => ⋯ = if h : i✝ < B✝.size then ⋯ else k✝ [] Error: Application type mismatch: The last UInt8 argume,,f1c1b91e
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/TCO.lean,157,159,NonTail.length,compiled,view0,,,source-thm,fe61191d
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/TCO.lean,162,164,Tail.lengthHelper,compiled on main (hand directive),frontx_view lengthHelper  [Riscv/Frontx/ListExamples.lean:74],,,machine-thm,521f95cd
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/TCO.lean,166,167,Tail.length,compiled on main (hand directive),inlined in / wrapped by hand-written entry  [Riscv/Frontx/ListExamples.lean:77],,,machine-thm,6cc0e521
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/TCO.lean,171,173,NonTail.factorial,blocked,,multiply / divide by a variable (`unsupported term`),frontx: unsupported term instHMul.1 x0 (i + 1) NonTail.factorial : Nat → Nat EXIT 1,,78e71795
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/TCO.lean,176,178,Tail.factHelper,blocked,,multiply / divide by a variable (`unsupported term`),frontx: unsupported term instHMul.1 soFar (a✝ - 1 + 1) Tail.factHelper : Nat → Nat → Nat EXIT 1,,27f5c5a8
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/TCO.lean,180,180,Tail.factorial,not a function (constant / type),,,,,256d06c6
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/TCO.lean,183,189,NonTail.filter,compiled on main (hand directive),inlined in / wrapped by hand-written entry  [Riscv/Frontx/ListOutExamples.lean:59],,,machine-thm,e85cd054
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/TCO.lean,192,198,Tail.filterHelper,blocked,,"list-view shapes not supported (non-`match` body, non-view recursive call, list result)",frontx_view: a recursive call that is not on a view of the list if h : k < B.size then if p B[k] = true then Tail.filterHelper (B[k] :: view B i) p (view B (k +,,5b996270
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/TCO.lean,200,200,Tail.filter,not run: def does not elaborate in isolation,,other: Unknown identifier `filterHelper`,Unknown identifier `filterHelper`,not-on-main,334ea723
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/TCO.lean,841,845,bigList,blocked,,list of pairs / pair-of-lists / list of structures,frontx_view: a recursive call that is not on a view of the list if h : n = 0 then viewN B i else bigList (n - 1) (2 * (n - 1).succ :: viewN B i),,ca5fa674
+"9 Programming, Proving, Performance",Examples/ProgramsProofs/TCOTest.lean,3,11,main,IO (skipped),,,,,ac458b31
+"3 Propositions, Proofs, Indexing",Examples/Props.lean,6,7,woodlandCritters,not a function (constant / type),,,,,0febafa7
+"3 Propositions, Proofs, Indexing",Examples/Props.lean,12,12,hedgehog,not a function (constant / type),,,,,f10749df
+"3 Propositions, Proofs, Indexing",Examples/Props.lean,13,13,deer,not a function (constant / type),,,,,0ec522ed
+"3 Propositions, Proofs, Indexing",Examples/Props.lean,14,14,snail,not a function (constant / type),,,,,3fe215c0
+"3 Propositions, Proofs, Indexing",Examples/Props.lean,27,27,oops,not a function (constant / type),,,,,b3051667
+"3 Propositions, Proofs, Indexing",Examples/Props.lean,31,31,onePlusOneIsTwo,not a function (constant / type),,,,,daed2dc6
+"3 Propositions, Proofs, Indexing",Examples/Props.lean,49,49,onePlusOneIsFifteen,not a function (constant / type),,,,,abf903b1
+"3 Propositions, Proofs, Indexing",Examples/Props.lean,56,56,Foo.OnePlusOneIsTwo,not a function (constant / type),,,,,23298878
+"3 Propositions, Proofs, Indexing",Examples/Props.lean,95,96,second,blocked,,"list-view shapes not supported (non-`match` body, non-view recursive call, list result)",frontx_view: the body is not a `match` (view B i)[2],likely-untried,8d79a7a4
+"3 Propositions, Proofs, Indexing",Examples/Props.lean,131,131,fooo,not a function (constant / type),,,,,2bfc3d4b
+"3 Propositions, Proofs, Indexing",Examples/Props.lean,132,132,bar,not a function (constant / type),,,,,960131d5
+"3 Propositions, Proofs, Indexing",Examples/Props.lean,246,246,third,blocked,,"list-view shapes not supported (non-`match` body, non-view recursive call, list result)",frontx_view: the body is not a `match` (view B i)[2],,34d01a7d
+"3 Propositions, Proofs, Indexing",Examples/Props.lean,278,278,thirdOption,blocked,,"list-view shapes not supported (non-`match` body, non-view recursive call, list result)",frontx_view: the body is not a `match` (view B i)[2]?,likely-untried,56abc2f2
+"3 Propositions, Proofs, Indexing",Examples/Props.lean,316,316,unsafeThird,not run: def does not elaborate in isolation,,other: failed to synthesize instance of type class Inhabited α Hint,failed to synthesize instance of type class Inhabited α Hint: Type class instance resolution failures can be inspected with the `set_option ,,0448fefc
+8 Dependent Types (universes),Examples/Universes.lean,106,107,MyList1.myListOfNat,not a function (constant / type),,,,,395a7495
+8 Dependent Types (universes),Examples/Universes.lean,127,128,MyList15.myListOfNat,not a function (constant / type),,,,,395a7495
+8 Dependent Types (universes),Examples/Universes.lean,165,166,MyList3.myListOfNumbers,not a function (constant / type),,,,,2b02460b
+8 Dependent Types (universes),Examples/Universes.lean,168,169,MyList3.myListOfNat,not a function (constant / type),,,,,395a7495
+8 Dependent Types (universes),Examples/Universes.lean,173,174,MyList3.myListOfList,blocked,,dependent types / type-valued functions,frontx_ind: Proven.Frontx.Run.MyList3.MyList.cons has no equations myListOfList : MyList (Type → Type) EXIT 1,,5a7b5094
+8 Dependent Types (universes),Examples/Universes.lean,191,192,MyList3.Explicit.myListOfNumbers,not a function (constant / type),,,,,330fe52a
+8 Dependent Types (universes),Examples/Universes.lean,194,195,MyList3.Explicit.myListOfNat,not a function (constant / type),,,,,b02d1119
+8 Dependent Types (universes),Examples/Universes.lean,197,198,MyList3.Explicit.myListOfList,blocked,,dependent types / type-valued functions,frontx_ind: Proven.Frontx.Run.MyList3.MyList.cons has no equations myListOfList : MyList (Type → Type) EXIT 1,,2d552f1b
+8 Dependent Types (universes),Examples/Universes.lean,220,220,MySum.Inflexible.stringOrNat,not a function (constant / type),,,,,ac53f1b7
+8 Dependent Types (universes),Examples/Universes.lean,222,222,MySum.Inflexible.typeOrType,not a function (constant / type),,,,,cae7505c
+8 Dependent Types (universes),Examples/Universes.lean,237,237,MySum.Inflexible.stringOrType,not a function (constant / type),,,,,2696542f
+8 Dependent Types (universes),Examples/Universes.lean,251,251,MySum.stringOrType,not a function (constant / type),,,,,2696542f
+8 Dependent Types (universes),Examples/Universes.lean,260,263,PropStuff.someTruePropositions,not a function (constant / type),,,,,45634e7c
+8 Dependent Types (universes),Examples/Universes.lean,269,272,PropStuff.Explicit.someTruePropositions,not a function (constant / type),,,,,c7403a3b
+other,ForMIO.lean,5,11,LinesOf.forM,IO (skipped),,,,,43863fc3
+other,ForMIO.lean,18,27,main,IO (skipped),,,,,3c587c22
+support / other,douglib/DirTree.lean,3,3,String.separate,not a function (constant / type),,,,,d5d6ae93
+support / other,douglib/DirTree.lean,6,7,dirLT,IO (skipped),,,,,7f3a7333
+support / other,douglib/DirTree.lean,24,25,DirTree.Config.preFile,blocked,,String / Char,frontx_ind: equation ite.eq_1 has no constructor pattern (by cases: frontx_ind: ite has no argument of the type) Config.preFile : Config → String EXIT 1,,174d249d
+support / other,douglib/DirTree.lean,27,28,DirTree.Config.preDir,blocked,,String / Char,frontx_ind: equation ite.eq_1 has no constructor pattern (by cases: frontx_ind: ite has no argument of the type) Config.preDir : Config → String EXIT 1,,dbd80f3a
+support / other,douglib/DirTree.lean,30,31,DirTree.Config.fileName,not run: def does not elaborate in isolation,,other: Invalid field `preFile`: The environment does not contain `P,"Invalid field `preFile`: The environment does not contain `Proven.Frontx.Run.DirTree.Config.preFile`, so it is not possible to project the f",,726c14c2
+support / other,douglib/DirTree.lean,33,34,DirTree.Config.dirName,not run: def does not elaborate in isolation,,other: Invalid field `preFile`: The environment does not contain `P,"Invalid field `preFile`: The environment does not contain `Proven.Frontx.Run.DirTree.Config.preFile`, so it is not possible to project the f",,87d8a86c
+support / other,douglib/DirTree.lean,39,40,DirTree.Config.inDirectory,blocked,,"inductive / structure shapes not supported (no equations, nested patterns, `brecOn`, projections, hash)",frontx_ind: Proven.Frontx.Run.DirTree.Config.mk has no equations Config.inDirectory : Config → Config EXIT 1,,170f6ca8
+support / other,douglib/DirTree.lean,44,47,DirTree.configFromArgs,blocked,,String / Char,frontx_ind: Proven.Frontx.Run.DirTree.configFromArgs.match_1 has no equations configFromArgs : List String → Option Config EXIT 1,,f5801fdd
+support / other,douglib/DirTree.lean,52,53,DirTree.usage,not a function (constant / type),,,,,21033c92
+support / other,douglib/DirTree.lean,67,72,DirTree.toEntry,IO (skipped),,,,,ecc7b3d0
+support / other,douglib/DirTree.lean,77,81,DirTree.doList,blocked,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)",failed to synthesize Applicative f Hint: Additional diagnostic information may be available using the `set_option diagnostics true` command.,,f607fa10
+support / other,douglib/DirTree.lean,88,89,DirTree.Old.showFileName,IO (skipped),,,,,155d7b7b
+support / other,douglib/DirTree.lean,91,92,DirTree.Old.showDirName,IO (skipped),,,,,53fb3e1d
+support / other,douglib/DirTree.lean,96,105,DirTree.Old.dirTree,IO (skipped),,,,,6131e43c
+support / other,douglib/DirTree.lean,109,117,DirTree.Old.main,IO (skipped),,,,,1fbc8b9a
+support / other,douglib/DirTree.lean,129,130,DirTree.Readerish.ConfigIO,IO (skipped),,,,,94b3c88e
+support / other,douglib/DirTree.lean,141,142,DirTree.Readerish.ConfigIO.run,IO (skipped),,,,,ad5156ef
+support / other,douglib/DirTree.lean,146,147,DirTree.Readerish.currentConfig,not a function (constant / type),,,,,1a1ad047
+support / other,douglib/DirTree.lean,152,153,DirTree.Readerish.locally,blocked,,"inductive / structure shapes not supported (no equations, nested patterns, `brecOn`, projections, hash)",frontx_ind: Proven.Frontx.Run.DirTree.Readerish.locally is neither recursive nor `g c₁ …` @locally : {α : Type} → (Config → Config) → ConfigIO α → ConfigIO α EX,,25b0c72e
+support / other,douglib/DirTree.lean,158,159,DirTree.Readerish.runIO,IO (skipped),,,,,be6ffffb
+support / other,douglib/DirTree.lean,164,165,DirTree.Readerish.showFileName,IO (skipped),,,,,8c8fdbb3
+support / other,douglib/DirTree.lean,167,168,DirTree.Readerish.showDirName,IO (skipped),,,,,adf96039
+support / other,douglib/DirTree.lean,172,181,DirTree.Readerish.dirTree,not run: def does not elaborate in isolation,,other: Invalid field `inDirectory`: The environment does not contai,"Invalid field `inDirectory`: The environment does not contain `Proven.Frontx.Run.DirTree.Config.inDirectory`, so it is not possible to proje",,85de7f92
+support / other,douglib/DirTree.lean,186,194,DirTree.Readerish.main,IO (skipped),,,,,3b465beb
+support / other,douglib/DirTree.lean,212,214,DirTree.T.ReaderT,blocked,,dependent types / type-valued functions,frontx: unsupported result type Type (max u v) ,,9a8cc177
+support / other,douglib/DirTree.lean,228,229,DirTree.T.R.read,blocked,,"monad / higher-kinded (`m α`, State/Reader/WithLog as functions, `do`)",frontx: unsupported result type ReaderT ρ m ρ @read : {m : Type u_1 → Type u_2} → {ρ : Type u_1} → [Monad m] → ReaderT ρ m ρ EXIT 1,,bf5672e2
+support / other,douglib/DirTree.lean,249,249,DirTree.T.ConfigIO,IO (skipped),,,,,0f793f7c
+support / other,douglib/DirTree.lean,260,261,DirTree.T.showFileName,IO (skipped),,,,,33bd8b67
+support / other,douglib/DirTree.lean,263,264,DirTree.T.showDirName,IO (skipped),,,,,cc7a527d
+support / other,douglib/DirTree.lean,286,295,DirTree.T.dirTree,not run: def does not elaborate in isolation,,other: Type mismatch toEntry path has type IO (Option Entry) but is,Type mismatch toEntry path has type IO (Option Entry) but is expected to have type ConfigIO ?m.7,,9911d48a
+support / other,douglib/DirTree.lean,299,307,DirTree.T.main,IO (skipped),,,,,32cbcb8c
+other,early-return/EarlyReturn.lean,2,21,main,IO (skipped),,,,,68f0e451
+other,early-return/EarlyReturn.lean,26,44,Nested.main,IO (skipped),,,,,04df0c1b
+other,feline/1/Main.lean,1,2,main,IO (skipped),,,,,7726a16e
+other,feline/2/FelineLib.lean,2,2,bufsize,not a function (constant / type),,,,,d585f5ae
+other,feline/2/FelineLib.lean,6,15,dump,IO (skipped),,,,,5c652272
+other,feline/2/FelineLib.lean,19,29,fileStream,IO (skipped),,,,,0f7bc6ca
+other,feline/2/FelineLib.lean,40,40,Main1.main,IO (skipped),,,,,0ce2b135
+other,feline/2/FelineLib.lean,43,43,Main2.main,IO (skipped),,,,,6d901d98
+other,feline/2/FelineLib.lean,46,46,Main3.main,IO (skipped),,,,,5ed513e2
+other,feline/2/FelineLib.lean,53,67,process,IO (skipped),,,,,86581705
+other,feline/2/FelineLib.lean,71,74,main,IO (skipped),,,,,ef97bcbc
+other,first-lake/expected/Greeting/Basic.lean,1,1,hello,not a function (constant / type),,,,,b8897a7b
+other,first-lake/expected/Main.lean,3,4,main,IO (skipped),,,,,66dc7e5f
+other,hello-name/HelloName.lean,3,17,main,IO (skipped),,,,,c3fae399
+other,hello-name/HelloName.lean,22,45,mainSplit,IO (skipped),,,,,c3fae399
+other,second-lake/greeting/Greeting.lean,1,1,hello,not a function (constant / type),,,,,b8897a7b
+other,second-lake/greeting/Greeting/Smile.lean,1,1,Expression.happy,not a function (constant / type),,,,,ed217c49
+other,second-lake/greeting/Main.lean,6,7,main,IO (skipped),,,,,33371cf3
+other,simple-hello/Hello.lean,1,1,main,IO (skipped),,,,,1df2bc8a
