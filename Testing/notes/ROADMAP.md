@@ -123,3 +123,7 @@ hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read 
 - String byte layout (owner, 2026-11-15): a length followed by the raw UTF-8 bytes (replaces the §23 chain of tagged
   byte cells). Both keep every symbol; this one is compact and standard. Length width to fix in the round (8-byte
   little-endian like other scalars unless the owner says otherwise). To be done after the Expr round (same files).
+- Pipelining (owner, 2026-11-15): start the next round on top of the previous round's unverified branch instead of
+  waiting for its checks; rebase if it fails (some redone work is accepted). Farm independent QEMU/Sail test runs out
+  to cloud boxes; keep one final combined `check.sh` before pushing to main/stable. Lean already reuses unchanged
+  modules' builds; no copying of build output between boxes.
