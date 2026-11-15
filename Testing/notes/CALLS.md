@@ -151,5 +151,7 @@ restored, every Sail data write inside the output word or the case's stack block
 - `ite` skips the else-branch with `li r0, 0; bz r0` (no forward unconditional jump in the interface).
 - Globals are shared mutable state: a function's effect on them must be stated in its source-level spec
   (`Spec1` covers the pure case; the tree evaluator's cursor is handled by hand in `ev_spec`).
-- Not yet re-based on the optimising back end (`Compiler/Opt`), nor used by the front end (`Compiler/Front`).
+- Not yet re-based on the optimising back end (`Compiler/Opt`). Used by the frontx front end for non-tail
+  recursion (`frontx_rec`, `Testing/notes/frontx/NOTES.md` section 15), with an `Implements1` bridge
+  (`Riscv/Back/CallsImpl1.lean`, `implements1_of_cexec`).
 - `calls_test.py` fib inputs stop at 24 (running time), so its stack use stays far below the bound.

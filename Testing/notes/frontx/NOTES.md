@@ -804,8 +804,8 @@ their bytes with the length in `a1`.
 | `double`, `Nat.double` (1) | yes, yes | `doubleE`, `natDoubleE` | 131, 90 | – |
 | `triple`, `quadruple`, `timesTwelve` (1) | yes | `tripleE`, `quadrupleE`, `timesTwelveE` | 92, 91, 97 | – |
 | `length`: `Explicit` (= `Ooops`/`Oooops` text), `BetterPlicity`, `AutoImpl`, `MatchDef` (1) | `MatchDef`: yes; others source level (same shape) | `bookLength` | 73 | – |
-| `NonTail.length`, `Tail.length` (9) | yes, yes | `nonTailLength`, `tailLength` | 73, 73 | `Tail`: invariant `soFar + (size - i) < 2^64` |
-| `NonTail.sum`, `Tail.sum` (9) | yes, yes | `nonTailSum`, `tailSum` | 78, 77 | `Tail`: invariant `soFar + 255 (size - i) < 2^64` |
+| `NonTail.length`, `Tail.length` (9) | yes, yes | `nonTailLength`, `tailLength` | 73, 73 | `Tail`: invariant `soFar + (size - i) < 2^64`; `NonTail` also with real calls (`nonTailLengthRec`, section 15) |
+| `NonTail.sum`, `Tail.sum` (9) | yes, yes | `nonTailSum`, `tailSum` | 78, 77 | `Tail`: invariant `soFar + 255 (size - i) < 2^64`; `NonTail` also with real calls (`nonTailSumRec`, section 15) |
 | `List.head?` (1) | yes | `headOf` | 57 | – |
 | `List.final?` (1, 3 patterns) | yes | `finalOf` | 77 | – |
 | `List.findFirst?` (1) | yes | `findFirstGt3` | 76 | specialised to `(· > 3)` (`frontx_spec`) |
@@ -920,3 +920,118 @@ Not done / why: lean-zip-common `BitReader` (`readBit`, `readBits`, `alignToByte
 structure. `Crc32.Native` needs a constant table. Book: `Prod.switch` has no body in the book (an exercise), `unzip`/`zip`
 are lists of pairs (needs output of several lists), the `Point` examples are `Float`. `addPoints` on `u16` inputs needs 17
 slots (> 16 of `compBFO`): the entry reads bytes instead.
+
+## 15. Non-tail recursion with real calls (`frontx_rec`, branch `calls-impl1`)
+
+Route: the PLAIN `MachineC` path (`Compiler/CStmt.lean` `compC`, `compP`), not the optimised `compBFO`: the
+optimiser's register allocation has no notion of calls, so extending it is far more work; on the plain path the
+call proof (`execC_ok`, `compP_ok`) already existed and only the `Implements1` bridge was missing.
+
+| what | where | axioms |
+|---|---|---|
+| `implements1_of_cexec`: `CExec P need (res := main())` writing the result bytes ⇒ `Implements1With` of `callsCode1 P` (blocks `a0` input, `a3` output, stack = work block below `sp`), `space n = need n + 24` | `Riscv/Back/CallsImpl1.lean` | the standard 77 |
+| `rec_ok`: the schema `f a = if go a then comb a (f c₀ a) … (f c_{m-1} a) else comb a 0 … 0` as a `CStmt` function `recFn` (pieces `GO`, `ARG j k`, `COMB`; locals: parameters, call results, argument staging); by strong induction on `μ`, a call runs in `frame · (μ a + 1)` bytes of stack | `Compiler/Rec.lean` | 3 |
+| `piece_lift`, `implements1_rec` (entry `main := v4 := f(args); store bytes`, `space n = need n + 32`) | `Riscv/Frontx/Rec.lean` | 77 |
+| `frontx_rec f [from eq] measure μ`, `frontx_rec_entry g [from eq]` | `Riscv/Frontx/RecCmd.lean` | – |
+| `nonTailSumRec`, `nonTailLengthRec`, `fibLen` `.implements1` | `Riscv/Frontx/RecExamples.lean` | 77 |
+
+`frontx_rec`: the equation must be an `if`/`dite` tree; each leaf has no recursive call or all of them (`f cⱼ`,
+arguments closed over the parameters, a byte array passed unchanged). Generated: the pieces `f.rec.go` (Bool: the
+leaf calls), `f.rec.a{j}_{k}` (argument components) and `f.rec.comb` (calls replaced by `r`s), each compiled by
+the existing translator with its variables from `S = 8 + 2p + m` on (new optional `start`/`noBound` arguments of
+`compileCmd`; the `r`s of `comb` carry no `< 2^64` bound, results are mod `2^64`), `f.rec.combEq` (`split <;>
+simp_all`), and the four hypotheses of `rec_ok` (copies into the piece's parameters, `piece_lift`, the pieces'
+`exec`). Tail calls are not touched: functions without non-tail calls keep the loop route. The stack bound comes
+from the measure: `frame · (μ(entry args) + 1)`; the entry checks `μ(entry args) ≤ |xs|` (`omega`), so
+`space n = 8 (N + 1) (n + 1) + 32` (N locals ≤ 16). Well-formedness (`g.wf`) is `wf_calls` (simp evaluation).
+
+Results (book text verbatim, through `frontx_view`; no accumulator; tests `frontx_test.py check 50` on QEMU + Sail
+against executed Lean, work block exactly `space n`, every Sail write in the result bytes or the work block):
+
+| entry point | function | words | locals / frame | space | test |
+|---|---|---|---|---|---|
+| `nonTailSumRec` | `NonTail.sum` (9) | 333 | 10 / 88 B | `88 (n+1) + 32` | 50 cases, lengths ≤ 2769 |
+| `nonTailLengthRec` | `NonTail.length` (9) | 326 | 9 / 80 B | `80 (n+1) + 32` | 50 cases, lengths ≤ 2769 |
+| `fibLen` | `fib n = if n < 2 then n else fib (n-1) + fib (n-2)` (not in the book; two calls) of the input length | 411 | 11 / 96 B | `96 (n+1) + 32` | 50 cases, n ≤ 16 |
+
+Speed (RV64, `minstret` under `qemu -icount`, one call; C = `riscv64-linux-gnu-gcc -march=rv64i -O2`):
+`NonTail.sum` n = 1000: 140 271 instructions (140 per element) vs 4 008 (gcc turns the recursion into a loop:
+35x); `fib 20`: 3 371 341 vs 225 885 (15x; ~154 instructions per call). Code: 333 / 411 words vs 11 / ~290
+(gcc unrolls `fib`). The cost is the plain back end (every variable in a stack slot) plus four whole frontx
+programs per activation (each with its own `fl` loop).
+
+Not done:
+- `times` without `plus_eq`: `times n (k+1) = plus n (times n k)` passes the recursive result as `plus`'s matched
+  argument, which must be exact (`< 2^64`); that is a fact about `times` (e.g. `times n k = n * k`), which nothing
+  generated provides (the call itself is not the obstacle). Also its `match k with | k'+1` binds the call argument
+  to a pattern variable (`frontx_rec` needs arguments in the parameters, e.g. via a `from` equation).
+- `NonTail.reverse` (`reverse xs ++ [x]`): needs list results in the schema (the call writes into the output block
+  and returns its end index; `rec_ok` keeps the heap fixed, the heap would have to be threaded through the calls
+  and `comb`, plus `wrO` composition and capacity obligations). Not built.
+- Match patterns with pattern variables in call arguments (`| n+2 => fib n + fib (n+1)`), leaves with a subset of
+  the calls, `Bool` results (`0` as the "no call" value), list/byte-array arguments other than the view's block.
+
+Speed numbers: `python3 Testing/asm/rec-bench/bench.py 1000 20`.
+
+Reproduce: `lake build Riscv.Frontx.RecExamples`; `lake env lean --tstack=4000000 Testing/asm/emit_frontx.lean`;
+`python3 Testing/asm/frontx_test.py check 50 nontailsumrec` (also `nontaillengthrec`, `fiblen`; note the Sail
+memory trace is ~150–320 MB per run).
+
+## 16. Round 7: `Except` / `Option` with payloads, `do` / `bind` / `throw`, `ByteArray` fields (branch `feat-except`)
+
+Files: `Riscv/Frontx/Exc.lean` (once: `r16`, the component functions, the `bind` lemmas), `ExceptExamples.lean`
+(lean-zip-common `BitReader`, lean-zip `readBitsFast`), `ExceptBook.lean` (fp-lean chapter 5); additions in
+`Translate.lean`, `Tree.lean`, `Fast.lean`.
+
+**Encoding.** A result `Except ε α` is `excTag r` (1 byte: `1` = `ok`, `0` = `error`: Sum's `inr`/`inl` of
+`Spec/Ty.lean` for `Except ε α ≅ ε ⊕ α`) followed by the components of `α` in the fixed-width layout of §14 (`UInt8`/`Bool` 1,
+`UInt16` 2, `UInt32` 4, `Nat`/`UInt64` 8 bytes, fields in order), all `0` on `error`; **the error value is dropped**
+(an `Except String α` result says only "error"). `Option α` the same (`Option.isSome`, zeros on `none`; the tag is
+`Spec/Encode.lean`'s `Option` tag; `Option UInt8` keeps its §12.2 word). A `ByteArray` field of a structure is not
+written: it is the input block (read-only). So `readBit : Except String (UInt32 × BitReader)` is 21 bytes
+`[tag, bit (4), pos (8), bitOff (8)]`. Encoding the message bytes was not done: results are fixed-width (`encC`).
+
+**Compiled verbatim, machine theorem + test** (QEMU + Sail vs executed Lean, 50 cases each, all ok):
+
+| function | source | entry | slots / words |
+|---|---|---|---|
+| `BitReader.readBit` | lean-zip-common @6b7d018 `ZipCommon/BitReader.lean:17` | `readBitE` (`pos`, `bitOff` from byte 0) | 11 / 156 |
+| `BitReader.readBits` (+ `go`, `do`/`←`) | `:29` | `readBitsE` (`⟨xs,1,3⟩ 20`), `readBits2E` (`⟨xs,0,0⟩ 25`) | 15 / 245 |
+| `BitReader.alignToByte` | `:39` | `alignE` | 4 / 96 |
+| `BitReader.readUInt16LE` | `:44` | `readUInt16LEE`, `readUInt16LE5E` (`bitOff` 0 / 5) | 10 / 128, 130 |
+| `Zip.Native.readBitsFast` (+ `go`) | lean-zip @7e10583 `Zip/Native/Inflate.lean:28` | `readBitsFastE` (`⟨xs,1,3⟩ 20`; same bytes as `readBitsE` on all cases) | 15 / 245 |
+| `Monads.Option.firstThird`, `M.firstThird`, `M.ExplicitParens.firstThird`, `M.firstThirdInfix` | fp-lean @0abeea5 `Monads.lean:25-127` | `opt…FirstThirdE` | 11 / 76 |
+| `Monads.Err.first`, `firstThird`, `AndThen.firstThird'`, `WithInfix.firstThird` (`get`, `andThen`, `~~>`, `ok` inlined) | `Monads.lean:166-292` | `err…E` | 3 / 46, 11 / 76 |
+| `readAligned` (this repo: `if … then throw …` in `do`) | – | `readAlignedE` | 14 / 182 |
+
+Source level only (`exec`, 3 axioms): `firstThirdFifth` (19 slots), `firstThirdFifthSeventh` (27) in `Option`,
+`Option.M`, `Err`, `Err.WithInfix`: over the 16 slots of `compBFO` (one nested test per list element).
+Human input: `readBit requires br.bitOff < 8` (lean-zip-common's own `hbo`), `readBits.go with br.bitOff < 8 ∧
+shift + k < 2^64` (no overflow of `shift + 1`), `readBitsFast.go` the same, `readUInt16LE requires br.pos + 3 < 2^64`
+(no overflow of `pos + 1 + 2`). The `readBits` → `go` wrapper is the entry's `rfl` equation (`frontx_entry … from`).
+
+What was added:
+- `resultComps`: `Except ε α` / `Option α` with compound payloads (`excTag`/`excGet π 0`, `isSome`/`optGet π 0`);
+  `ByteArray` fields skipped; `projNorm` reduces them on constructors.
+- **Normalised equation** (`normEq`, for `Except` / `Option` results and structures with a `ByteArray` field): `simp`
+  (so it is proved) unfolds the non-recursive helpers that are bound, projected or return `Except`/`Option`, pushes
+  `bind` into `if`s (`exc_bind_ite`, `ok a >>= f = f a`, `error e >>= f = error e`, `throw`, `pure`), projections
+  into `if`s (`apply_ite`), and a `match` on a `Nat` parameter becomes `if n = 0 … else … (n - 1)`; compiled via
+  `from fn.eqx measure` (the structural argument, or `0`).
+- Structure parameters with a `ByteArray` field: the field is block 0 (`Rep`: `heap = [blk br.data]`, `env 1 = size`),
+  checked unchanged in recursive calls; fields the body never reads get no variable (`f.dropped`, read by
+  `frontx_entry`); entries take `⟨xs, c₁, c₂⟩` arguments.
+- `UInt16` (`r16` lemmas), `UInt8 >>>`; compound `Nat` sides of `==`, `=`, `≠` and indices with `if`/`%`/`/` go to
+  temporaries.
+- **No call temporaries when a call leaf can be assigned in order**: the pairs are reordered (`seqOKm`) and
+  `Tree.wf` asks `seqOK as ∨ |as| ≤ K` (`Tree.lean`, `Fast.lean` adapted), `K` counts only the other leaves. This
+  brought `go` from 20 to 15 slots; all older entry points lost words (re-emitted, all tests ok).
+- `frontx_view` unfolds a helper at the head whose body is a `match` (`andThen`, `get`).
+
+Not done / why: error messages as bytes (fixed-width results); calls to a translated function with several result
+components (`callInfo` takes one result word; the callee range would not fit in 24 variables anyway), so a non-tail
+`readBits` use inside another function is not possible; `Err.get` / `Eff.get` (`xs[i]?` at a variable index on a view);
+`Monads.Option.first` (`xs[0]?` is not a `match`; same as `head?`); `readBytes` (`ByteArray` result, `extract`).
+
+Reproduce: `lake build Frontx`; `lake env lean --tstack=4000000 Testing/asm/emit_frontx.lean`;
+`bash Testing/scripts/frontx_tests.sh`; axioms: `Testing/scripts/axioms_s.lean`.
