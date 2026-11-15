@@ -124,7 +124,7 @@ theorem e_add {a : BitVec 64} {k : Nat} (h : (base L).inRAM (a.toNat + k) 8) : (
   bv_toNat_add (by have := h.2; simp only [base] at this; omega)
 
 /-! ## The one-word laws -/
-theorem law_ldS {L : Lay} {d : Mach.Reg} {j : Nat} {s : Arm64.State} {pc : BitVec 64} {v : BitVec 64} (_ : d.val < 7)
+theorem law_ldS {L : Lay} {d : Mach.Reg} {j : Nat} {s : Arm64.State} {pc : BitVec 64} {v : BitVec 64}
     (hj : j < 16) (h : (base L).At s pc (encX (.ldS d j)))
     (hr : (base L).inRAM ((s.regs.read 28#5).toNat + 8 * (j + 1)) 8) (_ : ((s.regs.read 28#5).toNat + 8 * (j + 1)) % 8 = 0)
     (hb : bytes ((base L).mem s) ((s.regs.read 28#5).toNat + 8 * (j + 1)) 8 = (le8 v).map some) :
@@ -135,7 +135,7 @@ theorem law_ldS {L : Lay} {d : Mach.Reg} {j : Nat} {s : Arm64.State} {pc : BitVe
     (by rw [e]; exact hb) ?_
   exact fin1 (post_upd h.ok h.hpc d v s.pstate)
 
-theorem law_ld {L : Lay} {d a : Mach.Reg} {s : Arm64.State} {pc : BitVec 64} {v : BitVec 64} (_ : d.val = 0) (_ : a.val = 0)
+theorem law_ld {L : Lay} {d a : Mach.Reg} {s : Arm64.State} {pc : BitVec 64} {v : BitVec 64}
     (h : (base L).At s pc (encX (.ld d a))) (hr : (base L).inRAM ((base L).get s a).toNat 8) (_ : ((base L).get s a).toNat % 8 = 0)
     (hb : bytes ((base L).mem s) ((base L).get s a).toNat 8 = (le8 v).map some) :
     (base L).runsTo s fun s' => (base L).Done s s' (next pc (encX (.ld d a)).length) ∧ (base L).Set1 s s' d v ∧
@@ -145,7 +145,7 @@ theorem law_ld {L : Lay} {d a : Mach.Reg} {s : Arm64.State} {pc : BitVec 64} {v 
     (by simp only [getR] at this; omega)) (by rw [e]; exact hb) ?_
   exact fin1 (post_upd h.ok h.hpc d v s.pstate)
 
-theorem law_stS {L : Lay} {j : Nat} {v : Mach.Reg} {s : Arm64.State} {pc : BitVec 64} (_ : v.val = 0) (hj : j < 16)
+theorem law_stS {L : Lay} {j : Nat} {v : Mach.Reg} {s : Arm64.State} {pc : BitVec 64} (hj : j < 16)
     (h : (base L).At s pc (encX (.stS j v))) (hr : (base L).inRAM ((s.regs.read 28#5).toNat + 8 * (j + 1)) 8)
     (_ : ((s.regs.read 28#5).toNat + 8 * (j + 1)) % 8 = 0)
     (hw : ∀ i, i < 8 → (base L).writable s ((s.regs.read 28#5).toNat + 8 * (j + 1) + i)) :
@@ -156,7 +156,7 @@ theorem law_stS {L : Lay} {j : Nat} {v : Mach.Reg} {s : Arm64.State} {pc : BitVe
     (by rw [e]; have := hr.2; simp only [base] at this; omega) (fun i hi => by rw [e]; exact hw i hi)
   rw [e] at this; exact this
 
-theorem law_sd {L : Lay} {v a : Mach.Reg} {s : Arm64.State} {pc : BitVec 64} (_ : v.val = 1) (_ : a.val = 0)
+theorem law_sd {L : Lay} {v a : Mach.Reg} {s : Arm64.State} {pc : BitVec 64}
     (h : (base L).At s pc (encX (.sd v a))) (hr : (base L).inRAM ((base L).get s a).toNat 8) (_ : ((base L).get s a).toNat % 8 = 0)
     (hw : ∀ i, i < 8 → (base L).writable s (((base L).get s a).toNat + i)) :
     (base L).runsTo s fun s' => (base L).Done s s' (next pc (encX (.sd v a)).length) ∧ (base L).Same s s' ∧
@@ -357,9 +357,9 @@ def apcF (L : Lay) : MachineF where
     by unfold frameAt; omega, fun a h1 h2 _ _ => ⟨by omega, by omega⟩⟩
   law_enter hen h _ := law_enter hen h
   law_leave := law_leave
-  law_ldS := law_ldS
-  law_stS := law_stS
-  law_ld := law_ld
-  law_sd := law_sd
+  law_ldS _ := law_ldS
+  law_stS _ := law_stS
+  law_ld _ _ := law_ld
+  law_sd _ _ := law_sd
 
 end Proven.Apc

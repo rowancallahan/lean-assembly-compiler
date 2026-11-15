@@ -225,3 +225,52 @@
    have byR : ∀ r ∈ R ++ Wr, bytes (M.mem s₂) r.base r.len = bytes (M.mem s) r.base r.len := fun r hr =>
      bytes_out oS₂ fun r' hr' => by
        rw [List.mem_singleton] at hr'; subst hr'; exact disj_symm (hL.sR r hr)
+--- a/Compiler/Wide.lean
++++ b/Compiler/Wide.lean
+@@ -122,7 +122,7 @@
+     runsTo s fun s' => toBase.Done s s' (next pc (wenc (.ldS d j)).length) ∧ toBase.Set1 s s' d v ∧ mem s' = mem s
+   w_stS : ∀ {j : Nat} {v : Reg} {s : S} {pc : BitVec 64}, j < maxSlots →
+     toBase.At s pc (wenc (.stS j v)) → toBase.inRAM ((fr s).toNat + 8 * (j + 1)) 8 →
+-    ((fr s).toNat + 8 * (j + 1)) % 8 = 0 →
++    ((fr s).toNat + 8 * (j + 1)) % 8 = 0 → (∀ i, i < 8 → writable s ((fr s).toNat + 8 * (j + 1) + i)) →
+     runsTo s fun s' => toBase.Done s s' (next pc (wenc (.stS j v)).length) ∧ toBase.Same s s' ∧
+       mem s' = (mem s).wr ((fr s).toNat + 8 * (j + 1)) (le8 (get s v))
+   w_ld : ∀ {d a : Reg} {off : BitVec 64} {s : S} {pc : BitVec 64} {v : BitVec 64}, offOK off = true →
+@@ -131,6 +131,7 @@
+     runsTo s fun s' => toBase.Done s s' (next pc (wenc (.ld d a off)).length) ∧ toBase.Set1 s s' d v ∧ mem s' = mem s
+   w_sd : ∀ {v a : Reg} {off : BitVec 64} {s : S} {pc : BitVec 64}, offOK off = true →
+     toBase.At s pc (wenc (.sd v a off)) → toBase.inRAM (get s a + off).toNat 8 → (get s a + off).toNat % 8 = 0 →
++    (∀ i, i < 8 → writable s ((get s a + off).toNat + i)) →
+     runsTo s fun s' => toBase.Done s s' (next pc (wenc (.sd v a off)).length) ∧ toBase.Same s s' ∧
+       mem s' = (mem s).wr (get s a + off).toNat (le8 (get s v))
+ 
+--- a/Compiler/Opt/Lower.lean
++++ b/Compiler/Opt/Lower.lean
+@@ -310,7 +310,8 @@
+     have h0 := hram _ (hra 0 (by omega))
+     have h7 := hram _ (hra 7 (by omega))
+     refine M.runsTo_mono (M.w_stS (of_decide_eq_true hj) (hf.at hok hpc) (by
+-      rw [hf.fr]; exact ⟨h0.1, by have := h7.2; omega⟩) (by rw [hf.fr]; omega))
++      rw [hf.fr]; exact ⟨h0.1, by have := h7.2; omega⟩) (by rw [hf.fr]; omega)
++      (fun i hi => by rw [hf.fr]; exact hwr _ (hra i hi) _ hok))
+       fun s' ⟨dn, st, m⟩ => ⟨dn, ⟨fun y hy => ?_, M.keep_fr dn.keep⟩, fun r hrs => by rw [st r]; exact hr.1 r hrs, ?_⟩
+     · rw [m, hf.fr]
+       refine Mem.wr_out ?_
+@@ -334,7 +335,7 @@
+     have h0 := hram _ (hra 0 (by omega))
+     have h7 := hram _ (hra 7 (by omega))
+     refine M.runsTo_mono (M.w_sd ho (hf.at hok hpc) (by rw [ea]; exact ⟨h0.1, by have := h7.2; omega⟩)
+-      (by rw [ea]; exact hal))
++      (by rw [ea]; exact hal) (fun i hi => by rw [ea]; exact hwr _ (hra i hi) _ hok))
+       fun s' ⟨dn, st, m⟩ => ⟨dn, ⟨fun y hy => ?_, M.keep_fr dn.keep⟩, fun r hrs => by rw [st r]; exact hr.1 r hrs, ?_⟩
+     · rw [m, ea]; exact wr_out_ram hra hy
+     · rw [m, ea, hr.2, hr.1 v (of_decide_eq_true hv)]
+@@ -639,7 +640,7 @@
+     refine M.runsTo_mono (M.w_br hbr (f2.left.at d₁.ok d₁.hpc)) fun s₂ ⟨d₂, st, m₂⟩ =>
+       ⟨?_, MF.of_eq d₂ m₂, r₁.same st m₂⟩
+     rw [v₁, Tst.eval_neg, ht] at d₂
+-    simpa only [Bool.not_false, ite_pos, tgt, ite_neg Bool.false_ne_true] using d₂
++    simpa only [Bool.not_false, ite_pos, tgt, ite_neg Bool.false_ne_true, W] using d₂
+   | @loopF pre t body σa σb _ ht ihpre =>
+     have hwp : M.wf sc (.loop pre t body) = true → M.wf sc pre = true := fun hwf => by
+       simp only [wf] at hwf; exact (and3 (and2 (and2 hwf).1).1).2.1

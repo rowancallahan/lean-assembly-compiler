@@ -11,14 +11,17 @@ globs = ["Spec.Code", "Spec.ArrCode", "Spec.Encode", "Spec.Tree"]
 name = "Compiler"
 srcDir = "../.."
 globs = ["Compiler.Iface", "Compiler.Logic", "Compiler.Exp", "Compiler.Stmt", "Compiler.Mem", "Compiler.Arr",
-  "Compiler.BLang", "Compiler.CLang"]
+  "Compiler.BLang", "Compiler.CLang",
+  "Compiler.Opt.IR", "Compiler.Opt.Alloc", "Compiler.Opt.Live", "Compiler.Opt.Color", "Compiler.Opt.Fn", "Compiler.Opt.Sel",
+  "Compiler.Opt.Exp", "Compiler.Opt.Stmt", "Compiler.Opt.Arr", "Compiler.Opt.BSel", "Compiler.Opt.BFn"]
 
 # middle files with the `writable` hypotheses on the frame / 8-byte store laws: copies of the repo-root files
 # with `mid.patch` applied, staged by `stage.sh` into Mid/ (not committed)
 [[lean_lib]]
 name = "CompilerW"
 srcDir = "Mid"
-globs = ["Compiler.Frame", "Compiler.BExp", "Compiler.BStmt", "Compiler.Call", "Compiler.CStmt", "Compiler.CProg"]
+globs = ["Compiler.Frame", "Compiler.BExp", "Compiler.BStmt", "Compiler.Call", "Compiler.CStmt", "Compiler.CProg",
+  "Compiler.Wide", "Compiler.Opt.Lower"]
 
 [[lean_lib]]
 name = "Apc"
