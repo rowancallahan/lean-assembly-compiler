@@ -101,3 +101,7 @@ hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read 
 - Long-term goals: con-leche and self-hosting. The book, lean-zip and lean-svg are the way there. ARM is a slow
   side track (bridge to Sail ARM).
 - String representation: the owner will review the byte layout (as for Encode.lean).
+- Memory of programs with several functions (owner): one bound, on the top-level call (`space n`); every callee
+  allocates inside the top-level work block and never outside it (the frame theorem: nothing outside output + work
+  changes). The current form `cellsSup n` (largest cell count over all inputs of n bytes) is accepted for now; a
+  readable closed form can come with the final spec.
