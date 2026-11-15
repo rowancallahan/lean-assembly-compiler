@@ -127,6 +127,11 @@ def unfoldable (c : Name) : MetaM Bool := do
     let m := env.header.moduleNames[idx.toNat]!
     if (`Init).isPrefixOf m || (`Std).isPrefixOf m || (`Lean).isPrefixOf m then return false
   -- structural / well-founded recursion leaves an equation mentioning the constant itself
+  if env.contains (c ++ `_unary) then return false
+  if let some (.defnInfo d) := env.find? c then
+    if (d.value.find? fun e => e.isConstOf ``WellFounded.fix ||
+        (e.constName?.map (fun n => n.isStr && (n.getString! == "brecOn" || n.getString! == "rec"))).getD false).isSome then
+      return false
   return !(← isRecursiveDefinition c)
 where
   isRecursiveDefinition (c : Name) : MetaM Bool := do
@@ -283,6 +288,28 @@ partial def prepTop (e : Expr) (names : IO.Ref (Array Name)) : MetaM Expr := do
   let us := e.getAppFn.constLevels!
   prepTop (letBeta (v.instantiateLevelParams info.levelParams us) e.getAppArgs.toList) names
 
+/-- an in-place update of an array of the environment -/
+partial def reifyA (ctx : List Ent) (e : Expr) : TermElabM Term := do
+  let e := (← instantiateMVars e).consumeMData
+  if let .letE _ _ v b _ := e then return ← reifyA ctx (b.instantiate1 v)
+  if let some (i, .ar _) ← Ent.find? ctx e then return ← `(A.var $(← memSyn i))
+  let f := e.getAppFn; let args := e.getAppArgs
+  let some c := f.constName? | throwError "wa_compile: unsupported array update {e}"
+  if (c == ``Array.set! && args.size == 4) || (c == ``ByteArray.set! && args.size == 3) then
+    let n := args.size
+    let a ← reifyA ctx args[n - 3]!
+    let (i, _) ← reifyE ctx args[n - 2]!
+    let (x, _) ← reifyE ctx args[n - 1]!
+    return ← `(A.set $a $i $x)
+  if (c == ``Array.push && args.size == 3) || (c == ``ByteArray.push && args.size == 2) then
+    let n := args.size
+    let a ← reifyA ctx args[n - 2]!
+    let (x, _) ← reifyE ctx args[n - 1]!
+    return ← `(A.push $a $x)
+  if c == ``ite && args.size == 5 then
+    return ← `(A.ite $(← reifyP ctx args[1]!) $(← reifyA ctx args[3]!) $(← reifyA ctx args[4]!))
+  throwError "wa_compile: unsupported array update {e}"
+
 /-- hoist the `let`s of the call arguments, then the call -/
 partial def reifyCall (ctx : List Ent) (Δ : List Sl) (args : List Expr) (names : IO.Ref (Array Name)) :
     TermElabM Term := do
@@ -294,8 +321,7 @@ partial def reifyCall (ctx : List Ent) (Δ : List Sl) (args : List Expr) (names 
         match sl with
         | .sc _ => let (t, _) ← reifyE ctx a; acc ← `(Args.cons $t $acc)
         | .ar _ =>
-          let (m, _) ← arr ctx a
-          acc ← `(Args.cons (A.var $(← memSyn m)) $acc)
+          acc ← `(Args.cons $(← reifyA ctx a) $acc)
       `(T.call $acc)
     | a :: rest => do
       let a' ← prepTop a names
@@ -317,7 +343,64 @@ structure LoopRec where
   P : Expr
   μ : Expr
   Δ : List Sl
+  /-- the function whose equation is the loop body -/
+  un : Name := ``foldGo
   deriving Inhabited
+
+/-- invariants and measures for the user loops (in order), as functions of the loop function's arguments -/
+initialize waHintsRef : IO.Ref (Array (Expr × Expr)) ← IO.mkRef #[]
+
+/-- a call of a recursive user definition (a loop) -/
+def userLoop? (e : Expr) : MetaM (Option Name) := do
+  let some c := e.getAppFn.constName? | return none
+  if (`Proven).isPrefixOf c then return none
+  let env ← getEnv
+  let some (.defnInfo _) := env.find? c | return none
+  if let some idx := env.getModuleIdxFor? c then
+    let m := env.header.moduleNames[idx.toNat]!
+    if (`Init).isPrefixOf m || (`Std).isPrefixOf m || (`Lean).isPrefixOf m then return none
+  if ← unfoldable c then return none
+  return some c
+
+/-- a loop body: the right-hand side of the equation of `fn` -/
+partial def reifyT (ctx : List Ent) (fn : Name) (Δ : List Sl) (R : Sl) (e : Expr) (names : IO.Ref (Array Name)) :
+    TermElabM Term := do
+  let e ← prepTop e names
+  match e with
+  | .letE n t v b _ =>
+    match ← slOf? t with
+    | some (.sc ty) =>
+      let (vt, _) ← reifyE ctx v
+      withLocalDeclD n t fun x => do
+        let k ← reifyT (⟨x, .sc ty⟩ :: ctx) fn Δ R (b.instantiate1 x) names
+        `(T.let_ $vt $k)
+    | _ => reifyT ctx fn Δ R (b.instantiate1 v) names
+  | _ =>
+    if e.isAppOf fn then return ← reifyCall ctx Δ e.getAppArgs.toList names
+    let args := e.getAppArgs
+    if e.isAppOfArity ``ite 5 then
+      return ← `(T.ite $(← reifyP ctx args[1]!) $(← reifyT ctx fn Δ R args[3]! names) $(← reifyT ctx fn Δ R args[4]! names))
+    if e.isAppOfArity ``dite 5 then
+      let a ← withLocalDeclD `h args[1]! fun h => reifyT ctx fn Δ R (args[3]!.beta #[h]) names
+      let b ← withLocalDeclD `h (mkNot args[1]!) fun h => reifyT ctx fn Δ R (args[4]!.beta #[h]) names
+      return ← `(T.ite $(← reifyP ctx args[1]!) $a $b)
+    match R with
+    | .sc _ => let (t, _) ← reifyE ctx e; `(T.ret $t)
+    | .ar _ => `(T.ret $(← reifyA ctx e))
+
+/-- the initial value of an array slot of a loop -/
+partial def reifyF (ctx : List Ent) (e : Expr) : TermElabM Term := do
+  let e := (← instantiateMVars e).consumeMData
+  if let some (i, .ar _) ← Ent.find? ctx e then return ← `(F.alias $(← memSyn i))
+  let args := e.getAppArgs
+  if e.isAppOfArity ``Array.replicate 3 then
+    let (n, _) ← reifyE ctx args[1]!; let (x, _) ← reifyE ctx args[2]!
+    return ← `(F.rep $n $x)
+  if e.isAppOfArity ``ByteArray.data 1 then
+    let (m, _) ← arr ctx args[0]!
+    return ← `(F.data $(← memSyn m))
+  let (m, _) ← arr ctx e
+  `(F.alias $(← memSyn m))
 
 /-- the stages of a program -/
 partial def reifyPg (ctx : List Ent) (e : Expr) (R : Sl) (names : IO.Ref (Array Name)) (loops : IO.Ref (Array LoopRec)) :
@@ -327,9 +410,9 @@ partial def reifyPg (ctx : List Ent) (e : Expr) (R : Sl) (names : IO.Ref (Array 
   | .letE n t v b _ =>
     let some sl ← slOf? t | throwError "wa_compile: unsupported let type {t}"
     let v' ← prepTop v names
-    if v'.isAppOfArity ``Array.foldl 7 then
+    if v'.isAppOfArity ``Array.foldl 7 || (← userLoop? v').isSome then
       withLocalDeclD n t fun x => do
-        let lp ← reifyFold ctx v' names loops
+        let lp ← if v'.isAppOfArity ``Array.foldl 7 then reifyFold ctx v' names loops else reifyLoop ctx v' sl names loops
         waStagesRef.modify (·.push (.loopS ((← loops.get).size - 1) [.sc .nat]))
         let k ← reifyPg (⟨x, sl⟩ :: ctx) (b.instantiate1 x) R names loops
         `($lp $k)
@@ -341,13 +424,20 @@ partial def reifyPg (ctx : List Ent) (e : Expr) (R : Sl) (names : IO.Ref (Array 
         withLocalDeclD n t fun x => do
           let k ← reifyPg (⟨x, .sc ty⟩ :: ctx) (b.instantiate1 x) R names loops
           `(Pg.let_ (s := $(← slSyn sl)) $vt $k)
-      | _ => throwError "wa_compile: unsupported array let {v}"
+      | _ => reifyPg ctx (b.instantiate1 v) R names loops
   | _ =>
     if e.isAppOfArity ``Array.foldl 7 then
       let lp ← reifyFold ctx e names loops
       waStagesRef.modify (·.push (.loopS ((← loops.get).size - 1) [.sc .nat]))
       waStagesRef.modify (·.push .retS)
       return ← `($lp (Pg.ret (E.var Mem.hd)))
+    if (← userLoop? e).isSome then
+      let lp ← reifyLoop ctx e R names loops
+      waStagesRef.modify (·.push (.loopS ((← loops.get).size - 1) [.sc .nat]))
+      waStagesRef.modify (·.push .retS)
+      match R with
+      | .sc _ => return ← `($lp (Pg.ret (E.var Mem.hd)))
+      | .ar _ => return ← `($lp (Pg.ret (A.var Mem.hd)))
     let (t, _) ← reifyE ctx e
     waStagesRef.modify (·.push .retS)
     `(Pg.ret $t)
@@ -380,8 +470,48 @@ where
       let i ← mkAppM ``Prod.fst #[← mkAppM ``Prod.snd #[s]]
       mkLambdaFVars #[s] (← mkAppOptM ``HSub.hSub #[mkConst ``Nat, mkConst ``Nat, mkConst ``Nat, none,
         ← mkAppM ``Array.size #[a], i])
-    loops.modify (·.push ⟨gE, PE, μE, Δ⟩)
+    loops.modify (·.push ⟨gE, PE, μE, Δ, ``foldGo⟩)
     `(Pg.loop $(← ctxSyn Δ) $body (Inis.cons $it (Inis.cons (E.lit Ty.nat 0) Inis.nil)))
+  /-- a call of a recursive user definition `fn args`: a loop over its arguments -/
+  reifyLoop (ctx : List Ent) (e : Expr) (R : Sl) (names : IO.Ref (Array Name)) (loops : IO.Ref (Array LoopRec)) :
+      TermElabM Term := do
+    let some fn ← userLoop? e | throwError "wa_compile: not a loop {e}"
+    let args := e.getAppArgs
+    let info ← getConstInfo fn
+    let us := e.getAppFn.constLevels!
+    let some eqn ← getUnfoldEqnFor? fn (nonRec := true) | throwError "wa_compile: no equation for {fn}"
+    let eqT := (← getConstInfo eqn).instantiateTypeLevelParams us
+    let hints ← waHintsRef.get
+    let k := (← loops.get).size
+    let some (Pu, μu) := hints[k]? | throwError "wa_compile: loop {k} ({fn}) needs `invariant … measure …`"
+    forallTelescope eqT fun ps eq => do
+      unless ps.size == args.size do throwError "wa_compile: {fn}: partial application"
+      let some (_, _, rhs) := eq.eq? | throwError "wa_compile: equation of {fn}"
+      let mut Δ : List Sl := []
+      for p in ps do
+        let some sl ← slOf? (← inferType p) | throwError "wa_compile: {fn}: unsupported parameter {p}"
+        Δ := Δ ++ [sl]
+      -- initial values
+      let mut init ← `(Inis.nil)
+      for (a, sl) in (args.toList.zip Δ).reverse do
+        match sl with
+        | .sc _ => let (t, _) ← reifyE ctx a; init ← `(Inis.cons $t $init)
+        | .ar _ => init ← `(Inis.cons $(← reifyF ctx a) $init)
+      -- the body over the state (first parameter innermost)
+      let ctx' := (ps.toList.zip Δ).map (fun (p, sl) => (⟨p, sl⟩ : Ent)) ++ ctx
+      let body ← reifyT ctx' fn Δ R rhs names
+      -- the function, invariant and measure on `Vals Δ`
+      let sT ← mkAppM ``Vals #[← toListSl Δ]
+      let comps (s : Expr) : MetaM (Array Expr) := do
+        let mut out := #[]; let mut cur := s
+        for _ in ps do
+          out := out.push (← mkAppM ``Prod.fst #[cur]); cur ← mkAppM ``Prod.snd #[cur]
+        return out
+      let gE ← withLocalDeclD `s sT fun s => do mkLambdaFVars #[s] (mkAppN e.getAppFn (← comps s))
+      let PE ← withLocalDeclD `s sT fun s => do mkLambdaFVars #[s] ((mkAppN Pu (← comps s)).headBeta)
+      let μE ← withLocalDeclD `s sT fun s => do mkLambdaFVars #[s] ((mkAppN μu (← comps s)).headBeta)
+      loops.modify (·.push ⟨gE, PE, μE, Δ, fn⟩)
+      `(Pg.loop $(← ctxSyn Δ) $body $init)
   toListSl (Δ : List Sl) : MetaM Expr := do
     let mut l ← mkAppOptM ``List.nil #[mkConst ``Sl]
     for s in Δ.reverse do
@@ -406,10 +536,14 @@ theorem u16_lt64' (x : UInt16) : x.toNat < 18446744073709551616 := u16_lt64 x
 theorem u32_lt64' (x : UInt32) : x.toNat < 18446744073709551616 := u32_lt64 x
 theorem u64_lt64' (x : UInt64) : x.toNat < 18446744073709551616 := u64_lt64 x
 
+theorem size_ite_set {α : Type} (c : Prop) [Decidable c] (a : Array α) (i : Nat) (x : α) :
+    (if c then a.set! i x else a).size = a.size := by split <;> simp
+theorem size_set' {α : Type} (a : Array α) (i : Nat) (x : α) : (a.set! i x).size = a.size := by simp
+
 /-- the simp set of the meanings -/
-macro "wa_dsimp" : tactic => `(tactic| simp only [T.ok, T.out, T.den, E.ok, E.den, A.den, Args.ok, Args.den, Arg.den,
+macro "wa_dsimp" : tactic => `(tactic| simp only [T.ok, T.out, T.den, E.ok, E.den, A.den, A.ok, AK.set, AK.push, Args.ok, Args.den, Arg.den,
   Ini.ok, Ini.den, Inis.ok, Inis.den, F.ok, F.den, Vals.app, Mem.get, AK.size, AK.get, Op2.den, Cmp.den, WA.cast,
-  Ty.small, Op2.exact, decide_eq_true_eq, u8_lt64, u16_lt64, u32_lt64, u64_lt64, u8_lt64', u16_lt64', u32_lt64',
+  Ty.small, Op2.exact, decide_eq_true_eq, AK.el, size_ite_set, size_set', Array.size_replicate, u8_lt64, u16_lt64, u32_lt64, u64_lt64, u8_lt64', u16_lt64', u32_lt64',
   u64_lt64'] at *)
 
 macro "wa_okt" : tactic => `(tactic| (wa_dsimp <;> wa_close))
@@ -431,10 +565,10 @@ def introState (Δ : List Sl) (extra : Array Ident := #[]) : TermElabM (Array (T
     | _ => pure ()
   return tacs
 
-syntax "wa_compile " ident : command
+syntax "wa_compile " ident (" invariant " term " measure " term)* : command
 
 /-- reify the body of `fn`; `hoisted` are terms over the input (bound variable 0) placed in front -/
-def reifyEntry (fn : Name) (t : Ty) (hoisted : Array Expr) (names : IO.Ref (Array Name))
+def reifyEntry (fn : Name) (R : Sl) (hoisted : Array Expr) (names : IO.Ref (Array Name))
     (loops : IO.Ref (Array LoopRec)) : TermElabM (Sum Expr (Term × Array LoopRec)) := do
   let info ← getConstInfo fn
   let ba := Lean.mkConst ``ByteArray
@@ -455,7 +589,7 @@ def reifyEntry (fn : Name) (t : Ty) (hoisted : Array Expr) (names : IO.Ref (Arra
       waStagesRef.modify (·.push .letS)
     let body := (info.value!.instantiateLevelParams info.levelParams (info.levelParams.map Level.param)).beta #[x]
     try
-      let mut prog ← reifyPg ctx body (.sc t) names loops
+      let mut prog ← reifyPg ctx body R names loops
       for (fT, sl) in fronts.reverse do
         prog ← `(Pg.let_ (s := $(← slSyn sl)) $fT $prog)
       let ls ← (← loops.get).mapM fun l => do
@@ -494,27 +628,33 @@ def seqT (ts : Array (TSyntax `tactic)) : MacroM (TSyntax `tactic) := do
 
 set_option hygiene false in
 elab_rules : command
-  | `(wa_compile $f:ident) => do
+  | `(wa_compile $f:ident $[invariant $Ps measure $μs]*) => do
     let fn ← liftCoreM <| realizeGlobalConstNoOverload f
-    let (t, stages, ls, names) ← liftTermElabM do
+    let (R, stages, ls, names) ← liftTermElabM do
       let info ← getConstInfo fn
       let ba := Lean.mkConst ``ByteArray
-      let t ← forallTelescope info.type fun xs b => do
+      let R ← forallTelescope info.type fun xs b => do
         unless xs.size == 1 && (← isDefEq (← inferType xs[0]!) ba) do
           throwError "wa_compile: expected a function of one ByteArray"
-        let some t ← tyOf? b | throwError "wa_compile: result type {b} is not a scalar"
-        return t
+        let some R ← slOf? b | throwError "wa_compile: unsupported result type {b}"
+        return R
+      let mut hints := #[]
+      for (P, μ) in Ps.zip μs do
+        let Pe ← instantiateMVars (← elabTerm P none); let μe ← instantiateMVars (← elabTerm μ none)
+        synthesizeSyntheticMVarsNoPostponing
+        hints := hints.push (← instantiateMVars Pe, ← instantiateMVars μe)
+      waHintsRef.set hints
       let names ← IO.mkRef (#[] : Array Name)
       let loops ← IO.mkRef (#[] : Array LoopRec)
       let mut hoisted : Array Expr := #[]
       let mut res : Option (Term × Array LoopRec) := none
       for _ in [0:16] do
         names.set #[]; loops.set #[]
-        match ← reifyEntry fn t hoisted names loops with
+        match ← reifyEntry fn R hoisted names loops with
         | .inl k => hoisted := hoisted.push k
         | .inr p => res := some p; break
       let some (prog, ls) := res | throwError "wa_compile: too many hoisted arrays"
-      let pty ← elabTerm (← `(Pg [Sl.ar AK.ba] (Sl.sc $(← tySyn t)))) none
+      let pty ← elabTerm (← `(Pg [Sl.ar AK.ba] $(← slSyn R))) none
       let progE ← elabTermEnsuringType prog pty
       synthesizeSyntheticMVarsNoPostponing
       addFn (fn ++ `wa) (← instantiateMVars progE)
@@ -524,7 +664,7 @@ elab_rules : command
         addFn (fn ++ Name.mkSimple s!"P{k}") l.P
         addFn (fn ++ Name.mkSimple s!"μ{k}") l.μ
       logInfo m!"wa_compile: {fn}: {hoisted.size} hoisted, {ls.size} loops, unfolded {← names.get}"
-      return (t, ← waStagesRef.get, ls, ← names.get)
+      return (R, ← waStagesRef.get, ls, ← names.get)
     let fI := mkIdent fn
     let wa := mkIdent (fn ++ `wa)
     let unf : Array (TSyntax `Lean.Parser.Tactic.simpLemma) ←
@@ -533,7 +673,9 @@ elab_rules : command
     -- the proof of `Good`, stage by stage
     let rec good : List Stage → CommandElabM Term
       | [] => throwError "wa_compile: no result"
-      | .retS :: _ => `(⟨by simp only [$unf,*, foldl_foldGo]; wa_dsimp; try rfl, by wa_okt⟩)
+      | .retS :: _ => match R with
+        | .sc _ => `(⟨by simp only [$unf,*, foldl_foldGo]; wa_dsimp; try rfl, by wa_okt⟩)
+        | .ar _ => `(by simp only [$unf,*, foldl_foldGo]; wa_dsimp; try rfl)
       | .letS :: rest => do `(⟨by wa_okt, $(← good rest)⟩)
       | .loopS k _ :: rest => do
         let l := ls[k]!
@@ -545,8 +687,9 @@ elab_rules : command
         let st3 ← liftTermElabM (introState l.Δ #[mkIdent `hP])
         let okall ← `(tactic| ($(← liftMacroM (seqT st)); simp only [$P:ident] at hP; wa_dsimp; wa_close))
         let step ← `(tactic| ($(← liftMacroM (seqT st2)); wa_step $P $μ))
-        let heq ← `(tactic| ($(← liftMacroM (seqT st3)); simp only [$g:ident]; rw [foldGo]; wa_dsimp; simp only [$g:ident, $unf,*, ← getElem!_pos, dite_eq_ite, decide_eq_true_eq]))
-        let p0 ← `(tactic| (simp only [$P:ident]; wa_dsimp; omega))
+        let unI := mkIdent l.un
+        let heq ← `(tactic| ($(← liftMacroM (seqT st3)); simp only [$g:ident]; rw [$unI:ident]; wa_dsimp; simp only [$g:ident, $unf,*, ← getElem!_pos, dite_eq_ite, decide_eq_true_eq, Bool.and_eq_true, Bool.or_eq_true, Bool.not_eq_true', decide_eq_false_iff_not, beq_iff_eq, bne_iff_ne]))
+        let p0 ← `(tactic| (simp only [$P:ident]; wa_dsimp; wa_close))
         let sq (t : TSyntax `tactic) : CommandElabM (TSyntax `Lean.Parser.Tactic.tacticSeq) :=
           `(Lean.Parser.Tactic.tacticSeq| $t:tactic)
         `(⟨by wa_okt, _, $P $xsI, by $(← sq p0), by $(← sq okall), by $(← sq step),
@@ -559,14 +702,24 @@ elab_rules : command
         intro xs hx
         have hds : xs.data.size = xs.size := rfl
         exact $pf))
-    let βT ← liftTermElabM (tyTypeSyn t)
     let code := mkIdent (fn ++ `code)
     let impl := mkIdent (fn ++ `implements1)
-    elabCommand (← `(def $code:ident : List (BitVec 32) := waCode $wa (Proven.Frontx.Res.k $βT)))
-    elabCommand (← `(set_option maxRecDepth 100000 in
-      theorem $impl:ident : Proven.Implements1With (fun xs : ByteArray => xs.data.toList) Proven.Frontx.Res.enc $code $fI
-          (fun _ => 8 * wholeW $wa [inLoc] + 8 * (wholeN $wa (Proven.Frontx.Res.k $βT) + 1) + 7) :=
-        implements1_wa (β := $βT) $fI $wa id (fun _ => rfl) (by decide) (by decide +kernel) (by decide +kernel)
-          (by decide +kernel) (by decide +kernel) (fun xs hx => ⟨_, $goodN xs hx, rfl⟩)))
+    match R with
+    | .sc t =>
+      let βT ← liftTermElabM (tyTypeSyn t)
+      elabCommand (← `(def $code:ident : List (BitVec 32) := waCode $wa (Proven.Frontx.Res.k $βT)))
+      elabCommand (← `(set_option maxRecDepth 100000 in
+        theorem $impl:ident : Proven.Implements1With (fun xs : ByteArray => xs.data.toList) Proven.Frontx.Res.enc $code
+            $fI (fun _ => 8 * wholeW $wa [inLoc] + 8 * (wholeN $wa (Proven.Frontx.Res.k $βT) + 1) + 7) :=
+          implements1_wa (β := $βT) $fI $wa id (fun _ => rfl) (by decide) (by decide +kernel) (by decide +kernel)
+            (by decide +kernel) (by decide +kernel) (fun xs hx => ⟨_, $goodN xs hx, rfl⟩)))
+    | .ar k =>
+      let kT ← liftTermElabM (match k with | .ba => `(AK.ba) | .arr t => do `(AK.arr $(← tySyn t)))
+      elabCommand (← `(def $code:ident : List (BitVec 32) := waCodeA $wa))
+      elabCommand (← `(set_option maxRecDepth 100000 in
+        theorem $impl:ident : Proven.Implements1With (fun xs : ByteArray => xs.data.toList) (encArr $kT) $code
+            $fI (fun _ => 8 * wholeW $wa [inLoc] + 8 * (wholeNA $wa + 1) + 7) (retLen := true) :=
+          implements1_waA (k := $kT) $fI $wa (by decide) (by decide +kernel) (by decide +kernel)
+            (by decide +kernel) (by decide +kernel) $goodN))
 
 end Proven.WA

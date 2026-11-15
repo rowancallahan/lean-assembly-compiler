@@ -13,10 +13,12 @@ open Proven Proven.Frontx
 /-! ## Static values -/
 
 /-- a closed `Nat` expression's value (capacities of `replicate`) -/
-def E.natVal {Γ : List Sl} : E Γ .nat → Option Nat
-  | .lit _ c => some c
-  | .bin .add a b => do let x ← a.natVal; let y ← b.natVal; pure (x + y)
-  | _ => none
+def E.natVal {Γ : List Sl} : {t : Ty} → E Γ t → Option Nat
+  | .nat, .lit _ c => some c
+  | .nat, .bin .add a b => match a.natVal, b.natVal with
+    | some x, some y => some (x + y)
+    | _, _ => none
+  | _, _ => none
 
 /-! ## Fresh arrays -/
 
@@ -57,9 +59,12 @@ def F.ok {Γ : List Sl} : {k : AK} → F Γ k → Vals Γ → Prop
 theorem E.natVal_den {Γ : List Sl} (v : Vals Γ) : ∀ (n : E Γ .nat) (c : Nat), n.natVal = some c → n.den v = c
   | .lit _ c', c, h => by simp only [E.natVal, Option.some.injEq] at h; subst h; rfl
   | .bin .add a b, c, h => by
-    simp only [E.natVal, Option.bind_eq_bind, Option.bind_eq_some_iff, Option.pure_def, Option.some.injEq] at h
-    obtain ⟨x, hx, y, hy, rfl⟩ := h
-    simp only [E.den, Op2.den, E.natVal_den v a x hx, E.natVal_den v b y hy]
+    simp only [E.natVal] at h
+    split at h
+    · rename_i x y hx hy
+      simp only [Option.some.injEq] at h; subst h
+      simp only [E.den, Op2.den, E.natVal_den v a x hx, E.natVal_den v b y hy]
+    · cases h
   | .var _, _, h | .bin .sub _ _, _, h | .bin .mul _ _, _, h | .bin .div _ _, _, h | .bin .mod _ _, _, h
   | .bin .and _ _, _, h | .bin .or _ _, _, h | .bin .xor _ _, _, h | .bin .shl _ _, _, h | .bin .shr _ _, _, h
   | .bin .band _ _, _, h | .bin .bor _ _, _, h | .cast _ _, _, h | .ite _ _ _, _, h | .getA _ _ _, _, h
