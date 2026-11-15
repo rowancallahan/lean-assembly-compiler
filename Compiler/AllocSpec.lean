@@ -4,7 +4,8 @@ See `Testing/notes/SPEC_DRAFT.md`, "Sketch: out of memory as a machine step".
 * No allocator implementation is required: `AllocSpec` only says what a valid allocation is.
 * A compiled program reports the memory events of its abstract run; `memoryNeeded` is the most cells in use at
   any point of that run, with unlimited space. Defined, not calculated.
-* `CompileRuns` (what happens): no memory hypothesis; the code returns to the caller, with `oomFlag` in the
+* `CompileRuns` (what happens): no memory hypothesis; the code returns to the caller, nothing outside the output
+  and work blocks changes, and `oomFlag` is in the
   status register exactly when the run is out of memory.
 * `CompileCorrect` (what comes out): with the hypothesis `memoryNeeded ≤ workLength` it returns with the right
   output and no flag.
@@ -66,6 +67,9 @@ def CompileRuns {P : Type} [Program P] (machine : Machine) (compile : P → Opti
     StartCorrect machine startState call compiled.code (encodeInput argument) →
     ∃ finishState, Runs machine startState finishState ∧
       (machine.observe finishState).programCounter = call.returnAddress ∧
+      (∀ address, Outside address (call.outputAddress, call.outputLength) →
+        Outside address (call.workAddress, call.workLength) →
+        (machine.observe finishState).memory address = (machine.observe startState).memory address) ∧
       ((machine.observe finishState).register machine.mapping.status = oomFlag ↔
         OutOfMemory compiled (encodeInput argument) call.workLength)
 
