@@ -411,6 +411,16 @@ theorem full_subi (hK : w &&& 0xFFC00000#32 = 0xD1000000#32) (hd31 : (Sail.BitVe
     subi_exec hd31 hn31 (s0_xk ha w _ hn31)] at hd
   exact full_x hf ha hpc hlt hal hm (noteret hK 26 (by decide) (by decide) (by decide)) hd31 hd
 
+/-- **`mov xd, xm`** (`orr xd, xzr, xm`, `d m < 31`) -/
+theorem full_mov (hK : w &&& 0xFFE0FFE0#32 = 0xAA0003E0#32) (hd31 : (Sail.BitVec.slice w 0 5).toNat < 31)
+    (hm31 : (Sail.BitVec.slice w 16 5).toNat < 31) :
+    ∃ s', stepModel s = .ok () s' ∧ Abs s' (a.setX (Sail.BitVec.slice w 0 5).toNat (a.x (Sail.BitVec.slice w 16 5).toNat)) ∧
+      ArmFull s' ∧ s'.regs.get? ._PC = some (pc + 4) ∧ s'.mem = s.mem := by
+  have hd := dec_movsym (s0of s w) pc.toNat (-1) (by decide) (s0_see s w) hK
+  rw [← ofNat_toNat5 (Sail.BitVec.slice w 0 5), ← ofNat_toNat5 (Sail.BitVec.slice w 16 5),
+    mov_exec hd31 hm31 (s0_xk ha w _ hm31)] at hd
+  exact full_x hf ha hpc hlt hal hm (noteret hK 26 (by decide) (by decide) (by decide)) hd31 hd
+
 /-- **`bl`** (any 26-bit offset): x30 := PC + 4, PC := PC + offset -/
 theorem full_bl (hK : w &&& 0xFC000000#32 = 0x94000000#32) :
     ∃ s', stepModel s = .ok () s' ∧ Abs s' (a.setX 30 (pc + 4)) ∧ ArmFull s' ∧

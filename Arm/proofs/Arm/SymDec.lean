@@ -207,4 +207,14 @@ theorem dec_stursym (s : St) (pc see : Int) (hs : see < 1) (h : s.regs.get? .SEE
   sfin hK h hs see
   all_goals rfl
 
+theorem dec_movsym (s : St) (pc see : Int) (hs : see < 1) (h : s.regs.get? .SEE = some see) {w : BitVec 32}
+    (hK : w &&& 0xFFE0FFE0#32 = 0xAA0003E0#32) :
+    __DecodeA64 pc w s = decode_orr_log_shift_aarch64_instrs_integer_logical_shiftedreg (Sail.BitVec.slice w 0 5) 31#5 0#6
+      (Sail.BitVec.slice w 16 5) 0#1 0#2 1#2 1#1
+      { s with regs := s.regs.insert .SEE (55 : Int) } := by
+  sprune hK __DecodeA64
+  sprune hK __DecodeA64_DataProcReg
+  sfin hK h hs see
+  all_goals rfl
+
 end ArmProof
