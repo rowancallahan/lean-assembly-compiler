@@ -371,4 +371,128 @@ theorem stur_exec {t n : Nat} (ht : t < 31) (hn : n < 31) (imm : BitVec 9) {a v 
   esimp
 
 end
+
+section
+variable {w : BitVec 32} {s : St} {a : AState} (hf : ArmFull s) (ha : Abs s a) {pc : BitVec 64}
+  (hpc : s.regs.get? ._PC = some pc) (hlt : pc.toNat < 2 ^ 29) (hal : pc.toNat % 4 = 0) (hm : MemWord s.mem pc.toNat w)
+  (heret : BitVec.ofNat 20 (w.toNat >>> 12) ≠ 879088#20)
+include hf ha hpc hlt hal hm heret
+
+theorem s0_igp : (s0of s w).regs.get? .InGuardedPage = some false := by simp [s0of, preRegs, Std.ExtDHashMap.get?_insert]
+
+/-- full step for a load: `X[d] := v`, `InGuardedPage := false` (already false), memory unchanged -/
+theorem full_ld {k : Int} {d : Nat} (hd : d < 31) {v : BitVec 64}
+    (hdec : __DecodeA64 pc.toNat w (s0of s w) = .ok () { s0of s w with regs := xset (((s0of s w).regs.insert .SEE k).insert .InGuardedPage false) d v }) :
+    ∃ s', stepModel s = .ok () s' ∧ Abs s' (a.setX d v) ∧ ArmFull s' ∧ s'.regs.get? ._PC = some (pc + 4) ∧
+      s'.mem = s.mem := by
+  obtain ⟨b0, hb0, hbr0⟩ := hf.bt
+  have hx : ∀ r : Register, (∀ i < 31, xreg i ≠ r) → r ≠ .SEE →
+      (xset (((s0of s w).regs.insert .SEE k).insert .InGuardedPage false) d v).get? r = (s0of s w).regs.get? r := fun r h1 h2 => by
+    rw [xset_get_ne _ _ _ _ h1]
+    by_cases e : r = .InGuardedPage
+    · subst e; simp [Std.ExtDHashMap.get?_insert]; exact (s0_igp hf ha hpc hlt hal hm heret).symm
+    · simp [Std.ExtDHashMap.get?_insert, Ne.symm h2, Ne.symm e]
+  obtain ⟨s', h1, h2, h3, h4, h5⟩ := full_gen hf hpc hlt hal hm heret hdec (bt := false) (pc1 := pc) (b := b0)
+    (fun r h1 h2 h3 _ _ _ _ => hx r h1 h3)
+    (fun p hp => ⟨p, by rw [hx _ (xreg_ne' (by decide)) (by decide)]; exact s0_ps hf ha hpc hlt hal hm heret p hp, pkeep_refl p⟩)
+    (by rw [hx _ (xreg_ne' (by decide)) (by decide)]; simp [s0of, preRegs, Std.ExtDHashMap.get?_insert])
+    (by rw [hx _ (xreg_ne' (by decide)) (by decide), s0_get _ _ _ (by decide) (by decide)]; exact hpc)
+    (by rw [hx _ (xreg_ne' (by decide)) (by decide), s0_get _ _ _ (by decide) (by decide)]; exact hb0) hbr0
+    (by rw [hx _ (xreg_ne' (by decide)) (by decide), s0_get _ _ _ (by decide) (by decide)]; exact hf.btn)
+    (Abs.xset (abs_ins (abs_ins (s0_abs ha w) .SEE (by decide) (by decide) k) .InGuardedPage (by decide) (by decide) false) hd v)
+  exact ⟨s', h1, h2, h3, by simpa using h4, h5⟩
+
+/-- full step for a store: memory := `M`, `InGuardedPage := false` (already false), registers unchanged -/
+theorem full_st {k : Int} {M : Std.ExtHashMap Nat (BitVec 8)}
+    (hdec : __DecodeA64 pc.toNat w (s0of s w) = .ok () { s0of s w with regs := ((s0of s w).regs.insert .SEE k).insert .InGuardedPage false, mem := M }) :
+    ∃ s', stepModel s = .ok () s' ∧ Abs s' a ∧ ArmFull s' ∧ s'.regs.get? ._PC = some (pc + 4) ∧ s'.mem = M := by
+  obtain ⟨b0, hb0, hbr0⟩ := hf.bt
+  have hx : ∀ r : Register, r ≠ .SEE →
+      (((s0of s w).regs.insert .SEE k).insert .InGuardedPage false).get? r = (s0of s w).regs.get? r := fun r h2 => by
+    by_cases e : r = .InGuardedPage
+    · subst e; simp [Std.ExtDHashMap.get?_insert]; exact (s0_igp hf ha hpc hlt hal hm heret).symm
+    · simp [Std.ExtDHashMap.get?_insert, Ne.symm h2, Ne.symm e]
+  obtain ⟨s', h1, h2, h3, h4, h5⟩ := full_gen hf hpc hlt hal hm heret hdec (bt := false) (pc1 := pc) (b := b0)
+    (fun r _ _ h3 _ _ _ _ => hx r h3)
+    (fun p hp => ⟨p, by rw [hx _ (by decide)]; exact s0_ps hf ha hpc hlt hal hm heret p hp, pkeep_refl p⟩)
+    (by rw [hx _ (by decide)]; simp [s0of, preRegs, Std.ExtDHashMap.get?_insert])
+    (by rw [hx _ (by decide), s0_get _ _ _ (by decide) (by decide)]; exact hpc)
+    (by rw [hx _ (by decide), s0_get _ _ _ (by decide) (by decide)]; exact hb0) hbr0
+    (by rw [hx _ (by decide), s0_get _ _ _ (by decide) (by decide)]; exact hf.btn)
+    ((fun h => ⟨h.1, h.2⟩) (abs_ins (abs_ins (s0_abs ha w) .SEE (by decide) (by decide) k) .InGuardedPage (by decide) (by decide) false))
+  exact ⟨s', h1, h2, h3, by simpa using h4, h5⟩
+
+end
+
+theorem s0_mem (s : St) (w : BitVec 32) (k : Int) : ({ s0of s w with regs := (s0of s w).regs.insert .SEE k } : St).mem = s.mem := rfl
+
+section
+variable {w : BitVec 32} {s : St} {a : AState} (hf : ArmFull s) (ha : Abs s a) {pc : BitVec 64}
+  (hpc : s.regs.get? ._PC = some pc) (hlt : pc.toNat < 2 ^ 29) (hal : pc.toNat % 4 = 0) (hm : MemWord s.mem pc.toNat w)
+include hf ha hpc hlt hal hm
+
+/-- **`ldrb wt, [xn, #imm12]`** (`t n < 31`, address below `2^29`) -/
+theorem full_ldrb (hK : w &&& 0xFFC00000#32 = 0x39400000#32) (ht : (Sail.BitVec.slice w 0 5).toNat < 31)
+    (hn : (Sail.BitVec.slice w 5 5).toNat < 31) {b : BitVec 8}
+    (hA : (a.x (Sail.BitVec.slice w 5 5).toNat + (Sail.BitVec.slice w 10 12).setWidth 64).toNat < 2 ^ 29)
+    (hb : s.mem.get? (a.x (Sail.BitVec.slice w 5 5).toNat + (Sail.BitVec.slice w 10 12).setWidth 64).toNat = some b) :
+    ∃ s', stepModel s = .ok () s' ∧ Abs s' (a.setX (Sail.BitVec.slice w 0 5).toNat (b.setWidth 64)) ∧ ArmFull s' ∧
+      s'.regs.get? ._PC = some (pc + 4) ∧ s'.mem = s.mem := by
+  have hd := dec_ldrbsym (s0of s w) pc.toNat (-1) (by decide) (s0_see s w) hK
+  rw [← ofNat_toNat5 (Sail.BitVec.slice w 0 5), ← ofNat_toNat5 (Sail.BitVec.slice w 5 5),
+    ldrb_exec (s := { s0of s w with regs := (s0of s w).regs.insert .SEE (633 : Int) }) (s0_pins' hf w _) ht hn _ (s0_xk ha w _ hn) hA hb] at hd
+  exact full_ld hf ha hpc hlt hal hm (noteret hK 31 (by decide) (by decide) (by decide)) ht hd
+
+/-- **`strb wt, [xn, #imm12]`** -/
+theorem full_strb (hK : w &&& 0xFFC00000#32 = 0x39000000#32) (ht : (Sail.BitVec.slice w 0 5).toNat < 31)
+    (hn : (Sail.BitVec.slice w 5 5).toNat < 31)
+    (hA : (a.x (Sail.BitVec.slice w 5 5).toNat + (Sail.BitVec.slice w 10 12).setWidth 64).toNat < 2 ^ 29) :
+    ∃ s', stepModel s = .ok () s' ∧ Abs s' a ∧ ArmFull s' ∧ s'.regs.get? ._PC = some (pc + 4) ∧
+      s'.mem = s.mem.insert (a.x (Sail.BitVec.slice w 5 5).toNat + (Sail.BitVec.slice w 10 12).setWidth 64).toNat
+        ((a.x (Sail.BitVec.slice w 0 5).toNat).setWidth 8) := by
+  have hd := dec_strbsym (s0of s w) pc.toNat (-1) (by decide) (s0_see s w) hK
+  rw [← ofNat_toNat5 (Sail.BitVec.slice w 0 5), ← ofNat_toNat5 (Sail.BitVec.slice w 5 5),
+    strb_exec (s := { s0of s w with regs := (s0of s w).regs.insert .SEE (651 : Int) }) (s0_pins' hf w _) ht hn _ (s0_xk ha w _ hn) (s0_xk ha w _ ht) hA] at hd
+  exact full_st hf ha hpc hlt hal hm (noteret hK 31 (by decide) (by decide) (by decide)) hd
+
+/-- **`ldr xt, [xn, #8*imm12]`** (aligned) -/
+theorem full_ldr (hK : w &&& 0xFFC00000#32 = 0xF9400000#32) (ht : (Sail.BitVec.slice w 0 5).toNat < 31)
+    (hn : (Sail.BitVec.slice w 5 5).toNat < 31) {v : BitVec 64}
+    (hA : (a.x (Sail.BitVec.slice w 5 5).toNat + (Sail.BitVec.slice w 10 12).setWidth 64 <<< 3).toNat < 2 ^ 29)
+    (hA8 : (a.x (Sail.BitVec.slice w 5 5).toNat + (Sail.BitVec.slice w 10 12).setWidth 64 <<< 3).toNat % 8 = 0)
+    (hv : MemD s.mem (a.x (Sail.BitVec.slice w 5 5).toNat + (Sail.BitVec.slice w 10 12).setWidth 64 <<< 3).toNat v) :
+    ∃ s', stepModel s = .ok () s' ∧ Abs s' (a.setX (Sail.BitVec.slice w 0 5).toNat v) ∧ ArmFull s' ∧
+      s'.regs.get? ._PC = some (pc + 4) ∧ s'.mem = s.mem := by
+  have hd := dec_ldrsym (s0of s w) pc.toNat (-1) (by decide) (s0_see s w) hK
+  rw [← ofNat_toNat5 (Sail.BitVec.slice w 0 5), ← ofNat_toNat5 (Sail.BitVec.slice w 5 5),
+    ldr_exec (s := { s0of s w with regs := (s0of s w).regs.insert .SEE (630 : Int) }) (s0_pins' hf w _) ht hn _ (s0_xk ha w _ hn) hA hA8 hv] at hd
+  exact full_ld hf ha hpc hlt hal hm (noteret hK 29 (by decide) (by decide) (by decide)) ht hd
+
+/-- **`str xt, [xn, #8*imm12]`** (aligned) -/
+theorem full_str (hK : w &&& 0xFFC00000#32 = 0xF9000000#32) (ht : (Sail.BitVec.slice w 0 5).toNat < 31)
+    (hn : (Sail.BitVec.slice w 5 5).toNat < 31)
+    (hA : (a.x (Sail.BitVec.slice w 5 5).toNat + (Sail.BitVec.slice w 10 12).setWidth 64 <<< 3).toNat < 2 ^ 29)
+    (hA8 : (a.x (Sail.BitVec.slice w 5 5).toNat + (Sail.BitVec.slice w 10 12).setWidth 64 <<< 3).toNat % 8 = 0) :
+    ∃ s', stepModel s = .ok () s' ∧ Abs s' a ∧ ArmFull s' ∧ s'.regs.get? ._PC = some (pc + 4) ∧
+      s'.mem = wrD s.mem (a.x (Sail.BitVec.slice w 5 5).toNat + (Sail.BitVec.slice w 10 12).setWidth 64 <<< 3).toNat
+        (a.x (Sail.BitVec.slice w 0 5).toNat) := by
+  have hd := dec_strsym (s0of s w) pc.toNat (-1) (by decide) (s0_see s w) hK
+  rw [← ofNat_toNat5 (Sail.BitVec.slice w 0 5), ← ofNat_toNat5 (Sail.BitVec.slice w 5 5),
+    str_exec (s := { s0of s w with regs := (s0of s w).regs.insert .SEE (648 : Int) }) (s0_pins' hf w _) ht hn _ (s0_xk ha w _ hn) (s0_xk ha w _ ht) hA hA8] at hd
+  exact full_st hf ha hpc hlt hal hm (noteret hK 29 (by decide) (by decide) (by decide)) hd
+
+/-- **`stur xt, [xn, #simm9]`** (aligned) -/
+theorem full_stur (hK : w &&& 0xFFE00C00#32 = 0xF8000000#32) (ht : (Sail.BitVec.slice w 0 5).toNat < 31)
+    (hn : (Sail.BitVec.slice w 5 5).toNat < 31)
+    (hA : (a.x (Sail.BitVec.slice w 5 5).toNat + (Sail.BitVec.slice w 12 9).signExtend 64).toNat < 2 ^ 29)
+    (hA8 : (a.x (Sail.BitVec.slice w 5 5).toNat + (Sail.BitVec.slice w 12 9).signExtend 64).toNat % 8 = 0) :
+    ∃ s', stepModel s = .ok () s' ∧ Abs s' a ∧ ArmFull s' ∧ s'.regs.get? ._PC = some (pc + 4) ∧
+      s'.mem = wrD s.mem (a.x (Sail.BitVec.slice w 5 5).toNat + (Sail.BitVec.slice w 12 9).signExtend 64).toNat
+        (a.x (Sail.BitVec.slice w 0 5).toNat) := by
+  have hd := dec_stursym (s0of s w) pc.toNat (-1) (by decide) (s0_see s w) hK
+  rw [← ofNat_toNat5 (Sail.BitVec.slice w 0 5), ← ofNat_toNat5 (Sail.BitVec.slice w 5 5),
+    stur_exec (s := { s0of s w with regs := (s0of s w).regs.insert .SEE (687 : Int) }) (s0_pins' hf w _) ht hn _ (s0_xk ha w _ hn) (s0_xk ha w _ ht) hA hA8] at hd
+  exact full_st hf ha hpc hlt hal hm (noteret hK 29 (by decide) (by decide) (by decide)) hd
+
+end
 end ArmProof
