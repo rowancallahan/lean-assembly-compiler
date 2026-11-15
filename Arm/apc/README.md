@@ -133,6 +133,11 @@ Remaining deviations: register fields of the wide operations are decoded by enum
 
 ## Times (this box, 4 cores, one process)
 
+2026-11-15 (branch `br`, after the merge of the upstreamed `writable` change): `Arm/proofs/check.sh` 1016 s (`Arm/Words`
+637 s, `Arm/SymDec` 40 s, `Arm/BrFull` 35 s, `Arm/Mem` 17 s); `SKIP_ARM=1 Arm/apc/check.sh` 665 s — Apc lake build 434 s
+(Compiler files rebuilt from the root) · bridge 229 s (`Br/AgreeAll` 204 s, `Br/BridgeBr` 3 s, `Br/BridgeRun` 3 s,
+`Br/BridgeMem` 4 s).
+
 2026-11-15, `SKIP_ARM=1 ./check.sh` with the `Apc`/`Compiler` oleans removed: 620 s — `arm64` 0 s (built) · Apc lake
 build 414 s (`Apc.WideDec` ≈ 345 s of it: the register enumerations) · bridge 205 s (`Br/AgreeAll` 190 s).
 Earlier (2026-11-14, total 1366 s): `arm64` 162 s on a first build, `Arm/proofs/check.sh` 938 s (`Arm/Words` 646 s;
