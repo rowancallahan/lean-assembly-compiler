@@ -306,6 +306,37 @@ theorem r32_shl (a b : UInt32) :
   rw [and_mask32, BitVec.toNat_shiftLeft, h, r32_nat, r32_nat, UInt32.toNat_shiftLeft]
   have : b.toNat % 2 ^ 5 % 64 = b.toNat % 32 := by omega
   rw [this, Nat.mod_mod_of_dvd _ (by decide)]
+/-- `UInt64` shifts: the amount mod 64 (round 8) -/
+theorem r64_shl (a b : UInt64) : r64 (a <<< b) = r64 a <<< ((r64 b &&& 63#64).toNat % 64) := by
+  apply BitVec.eq_of_toNat_eq
+  have h : (r64 b &&& 63#64).toNat = b.toNat % 2 ^ 6 := by
+    rw [BitVec.toNat_and]; exact Nat.and_two_pow_sub_one_eq_mod _ 6
+  rw [h, Nat.mod_mod_of_dvd _ (by decide)]
+  simp [r64, BitVec.toNat_shiftLeft]
+theorem r64_shr (a b : UInt64) : r64 (a >>> b) = r64 a >>> ((r64 b &&& 63#64).toNat % 64) := by
+  apply BitVec.eq_of_toNat_eq
+  have h : (r64 b &&& 63#64).toNat = b.toNat % 2 ^ 6 := by
+    rw [BitVec.toNat_and]; exact Nat.and_two_pow_sub_one_eq_mod _ 6
+  rw [h, Nat.mod_mod_of_dvd _ (by decide)]
+  simp [r64, BitVec.toNat_ushiftRight]
+/-- `UInt64` `*`, `/`, `%` by a power of two: shifts and a mask -/
+theorem r64_mulPow (x : UInt64) (c k : Nat) (h : c = 2 ^ k) : r64 (x * OfNat.ofNat c) = r64 x <<< k := by
+  subst h; apply BitVec.eq_of_toNat_eq
+  simp [r64, BitVec.toNat_shiftLeft, Nat.shiftLeft_eq]
+theorem r64_mulPowL (x : UInt64) (c k : Nat) (h : c = 2 ^ k) : r64 (OfNat.ofNat c * x) = r64 x <<< k := by
+  rw [UInt64.mul_comm]; exact r64_mulPow x c k h
+theorem r64_divPow (x : UInt64) (c k : Nat) (h : c = 2 ^ k) (hk : k < 64) :
+    r64 (x / OfNat.ofNat c) = r64 x >>> k := by
+  subst h; apply BitVec.eq_of_toNat_eq
+  have : (2 ^ k) % 2 ^ 64 = 2 ^ k := Nat.mod_eq_of_lt (Nat.pow_lt_pow_right (by decide) hk)
+  simp [r64, Nat.shiftRight_eq_div_pow, this]
+theorem r64_modPow (x : UInt64) (c k : Nat) (h : c = 2 ^ k) (hk : k < 64) :
+    r64 (x % OfNat.ofNat c) = r64 x &&& BitVec.ofNat 64 (c - 1) := by
+  subst h; apply BitVec.eq_of_toNat_eq
+  have : (2 ^ k) % 2 ^ 64 = 2 ^ k := Nat.mod_eq_of_lt (Nat.pow_lt_pow_right (by decide) hk)
+  have h2 : (2 ^ k - 1) % 2 ^ 64 = 2 ^ k - 1 := Nat.mod_eq_of_lt (by omega)
+  rw [BitVec.toNat_and, BitVec.toNat_ofNat, h2, Nat.and_two_pow_sub_one_eq_mod]
+  simp [r64, this]
 theorem rN_shr {a : Nat} (h : a < 2 ^ 64) (b : Nat) : rN (a >>> b) = rN a >>> b := by
   apply BitVec.eq_of_toNat_eq
   simp only [rN, BitVec.toNat_ofNat, BitVec.toNat_ushiftRight, Nat.mod_eq_of_lt h]

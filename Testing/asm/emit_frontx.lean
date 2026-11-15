@@ -5,6 +5,7 @@ import Riscv.Frontx.ExceptExamples
 import Riscv.Frontx.ExceptBook
 import Riscv.Frontx.IndExamples
 import Riscv.Frontx.IndCmpExamples
+import Riscv.Frontx.ScalarExamples
 open Proven Proven.Frontx Proven.Frontx.Ex
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
 def hex2 (b : UInt8) : String := let s := String.ofList (Nat.toDigits 16 b.toNat); if s.length < 2 then "0" ++ s else s
@@ -202,4 +203,20 @@ def cyc {α : Type} (xs : List α) : List α := (List.range 50).flatMap fun i =>
     ((cyc (ords.flatMap fun a => ords.map fun b => (a, b))).map fun p => (OrdT.enc2 p, OrdT.enc (p.1.then p.2)))
   emitInd "ordering_isle" Ordering.isLE.code Ordering.isLE.ind.pg.M false ((cyc ords).map fun o => (OrdT.enc o, boolB o.isLE))
   emitInd "ordering_iseq" Ordering.isEq.code Ordering.isEq.ind.pg.M false ((cyc ords).map fun o => (OrdT.enc o, boolB o.isEq))
+end
+-- fixed-width scalars (`ScalarExamples.lean`): 64-bit words at byte 0, the saturation edges, then the random inputs
+section
+open Proven.Frontx.Scal
+def le8b (n : Nat) : List UInt8 := (List.range 8).map fun j => UInt8.ofNat (n / 256 ^ j)
+def wordInputs : List (List UInt8) :=
+  ([0, 1, 2, 32766, 32767, 32768, 65535, 2 ^ 32 - 1, 2 ^ 32, 2 ^ 63, 2 ^ 64 - 1].map le8b) ++ inputs
+#eval do
+  emit "hashofdatae" hashOfDataE.slots hashOfDataE.code (enc hashOfDataE) wordInputs
+  emit "bvarofdatae" bvarOfDataE.slots bvarOfDataE.code (enc bvarOfDataE) wordInputs
+  emit "fvarofdatae" fvarOfDataE.slots fvarOfDataE.code (enc fvarOfDataE) wordInputs
+  emit "lpofdatae" lpOfDataE.slots lpOfDataE.code (enc lpOfDataE) wordInputs
+  emit "hash32e" hash32E.slots hash32E.code (enc hash32E) wordInputs
+  emit "satprede" satPredE.slots satPredE.code (enc satPredE) wordInputs
+  emit "satsucce" satSuccE.slots satSuccE.code (enc satSuccE) wordInputs
+  emit "packdatae" packDataE.slots packDataE.code (enc packDataE) wordInputs
 end
