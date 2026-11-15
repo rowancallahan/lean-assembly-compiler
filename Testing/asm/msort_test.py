@@ -99,7 +99,7 @@ def check(N):
         if rng.random() < 0.2: xs.sort(reverse=rng.random() < 0.5)
         return xs
     allc = [gen(L) for L in lens]
-    func = "".join(f"  .word 0x{w:08x}\n" for w in words("msort"))
+    func = "".join(f"  .word 0x{w:08x}\n" for w in words(os.environ.get("MSORT", "msort")))
     done, B = 0, 40
     while done < N:
         cases = allc[done:done + B]

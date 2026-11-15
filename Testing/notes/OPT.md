@@ -266,6 +266,7 @@ equal to `bench/NOTES.md`):
 | merge sort, n = 100, per element | 606.4 | 187.5 (was 193.7) | 101.8 | 1.84 |
 | merge sort, n = 1000, per element | 920.3 | 279.9 (was 285.9) | 132.2 | 2.12 |
 | merge sort, n = 100000, per element | 1394.0 | 421.5 (was 427.5) | 221.2 | 1.91 |
+| merge sort, branchy merge (`msortCodeO2`), n = 100 / 1000 / 100000, per element | — | 107.8 / 155.2 / 241.9 | 101.8 / 132.2 / 221.2 | 1.06 / 1.17 / 1.09 |
 | CRC-32, n = 100000, per byte (incl. building the table) | 59.4 | 11.2 | 10.2 | 1.10 |
 | CRC-32, n = 100, whole call | 147853 | 19577 | 16898 | 1.16 |
 
@@ -342,3 +343,42 @@ relation) would put `w` in a register too (est. a further ~6 per element). Teste
 `pipe_test.py` on the 7 changed `pipe-words` 100/100 each and the 29 changed `pipe-words1` (`I1=1`) 50/50 each.
 Fuzz (`fuzz_opt.lean`, seeds 61, 62, 300 cases × 100 inputs): 600/600 cases on the optimised path, 0 fallbacks;
 60,000 pairs four-way (Lean == RV64 QEMU == Sail emulator == AArch64 QEMU), 0 mismatches.
+
+## Branchy merge sort source program (2026-11-15)
+
+`Riscv/Examples/MsortB.lean`: `msortProgB`, the same bottom-up ping-pong program as `msortProg` with the merge of
+two runs replaced by three loops: `while p < mid ∧ q < e` (short-circuit, compiled as `loop2`) loads `x := src[p]`,
+`y := src[q]` and does `q := y < x ? q + 1 : q; p := y < x ? p : p + 1; x := y < x ? y : x; dst[k] := x; k++`
+(each conditional assignment with the destination as one arm is a compare-and-branch over one instruction, so this
+is branchy code without a statement-level `if`, which `BStmt` does not have), then the left and the right tail
+copies. Ties take the left run (`¬ y < x`), so the result is `List.mergeSort` (stable). Proof: one merge invariant
+`MI` (prefix `W` of `merge L R` written, `W ++ merge (L from p) (R from q) = merge L R`) with a per-loop extra fact
+(`True`, `p = mid ∨ q = e`, `p = mid`); outer loops and the `runs` lemmas (`SortMergeList.lean`) reused unchanged.
+Kernel-checked: `msortProgB_mergeSort` (`propext`, `Classical.choice`, `Quot.sound`) and, in
+`Riscv/Examples/MsortBOpt.lean`, `msortCodeO2 = compileBFO 7 [0, 2, 3] msortProgB` (196 words, optimised path,
+no local spilled) with `msortCodeO2_implements1`: the statement of `msortCode_implements1O` for `msortCodeO2`
+(`space n = n + 71`; the 77 axioms of the other `Implements1` theorems; `axioms_k.lean`).
+
+Merge step: 15 instructions (2 address adds, 2 `lbu`, 3 compare-and-branch + 3 single instructions for the
+conditional updates, address add + `sb`, `k++`, the two loop-test branches; the loop is rotated), tails 7 per
+byte; was 23.4 per step for `msortProg`. Words: `Testing/asm/opt-words/msortb.words`,
+`Testing/asm/impl1-opt-words/msortb.words` (`lake env lean Testing/asm/emit_opt_msortb.lean`).
+
+| merge sort, per element (RV64 QEMU `-icount`, `bench.py msortb msort --quick`) | n = 100 | 1000 | 100000 |
+|---|---|---|---|
+| `msortCodeO` (branch-free merge) | 187.5 | 279.9 | 421.5 |
+| `msortCodeO2` (branchy merge) | 107.8 | 155.2 | 241.9 |
+| gcc -O2 | 101.8 | 132.2 | 221.2 |
+| ratio `msortCodeO2` / gcc | 1.06 | 1.17 | 1.09 |
+
+Tested: `WDIR=opt-words MSORT=msortb msort_test.py check 60` 60/60 (QEMU == Sail == sorted, guards, gp/sp);
+`WDIR=impl1-opt-words impl1_test.py msortb 100` 100/100 (QEMU == Sail == model).
+
+Per-statement selection temporaries: NOT implemented. Measured with an unproved copy of `irB` that bases each
+statement's temporaries at `tk (16 · index)` (colouring and the `allocOK`/`chk` check of `Wide.body` unchanged,
+so the words were still validated by the checker): `msortProgB` 196 → 192 words, 107.6 / 155.1 / 241.9 per
+element (no change: nothing is spilled already); `msortProg` 195 → 172 words (local 6 = `ww` still spilled),
+174.5 / 262.9 / 398.5 (−7 %). Insertion sort and gcd go through the `AStmt`/`Stmt` selections, whose variables are
+pinned to their convention registers, so `irB` temporaries do not affect them. To do it for real: give `irB` a
+statement offset (proof: `irB_ok` with `0` generalised to the offset, the frame facts are already "temporaries
+`≥ k`"), and make `gB`'s temporaries `(x - 32) % 16` so the injective fallback still type-checks through `chk`.
