@@ -1240,3 +1240,92 @@ Reproduce: `lake build Frontx`; `lake env lean --tstack=4000000 Testing/asm/emit
 Statement fingerprints: `ind_ok` and the eleven section-17 `implements1` theorems keep their `stmt` hashes; only their
 closures changed (`E` gained `ite`). Not re-frozen here (left to the owner: `statement_check.sh --freeze`); the new
 theorems are not in the fingerprint list yet. `check.sh`: ALL CHECKS PASSED (with that warning).
+
+## 20. Word arrays, tables, mutable arrays (branch `feat-arrays`)
+
+A separate, reflective front end for programs over arrays, with its own compiler to the middle layer
+(`Proven.Mach.BStmt`, which already had word blocks: `load64`/`store64`) and the optimised back end `compBFO`.
+Files (all new, `Riscv/Frontx/Wa*.lean`, lake lib `Frontx`): `WaLang` (language, meaning, `Runs`, `runs_of`),
+`WaComp` (locations, representation `Rel`/`SR`/`AR`, operation lemmas `mop_ok`/`mcmp_ok`/`mcast_ok`), `WaExp`
+(expressions, `E.comp_ok`), `WaUpd` (in-place updates, `A.pre_ok`/`A.st_ok`), `WaStmt` (loop bodies `T.comp_ok`, loops:
+`comp_loop`, `fast_loop`, `loopCode_ok`), `WaPg` (fresh arrays, programs, `Pg.comp_ok`), `WaImpl` (bridges
+`implements1_wa` scalar result / `implements1_waA` array result), `WaCmd` (`wa_compile`), `WaLeanZip` (targets).
+Tests: `Testing/asm/emit_wa.lean` → `frontx-words/wa_*`, run by `frontx_tests.sh` (header `wa A N B L`, see
+`frontx_test.py`); axioms: `Testing/scripts/wa_check.sh` (`axioms_wa.lean`); speed: `Testing/asm/wa-bench/`.
+
+**Language** (`WaLang.lean`). Typed syntax over an environment of slots `Sl` = scalar (`UInt8/16/32/64`, `Nat`,
+`Bool`) or array (`ByteArray`, `Array t`); variables are typed de Bruijn indices `Mem Γ s`; values `Vals Γ` are nested
+pairs. `E` (scalars: `+ - * / % &&& ||| ^^^ <<< >>>`, `== != < ≤`, `&& || !`, casts `toNat`/`ofNat`/`toUIntN`, `if`,
+`a[i]!` / `a[i]'h`, `a.size`), `A` (in-place updates `set!`, `push`, `if`), `F` (fresh arrays: `Array.replicate`,
+a constant table, `xs.data`, alias), `T` (loop bodies: `if`, `let`, `call` = next state, `ret`), `Pg` (stages: `let`,
+loop, result). The meaning `den` is written with the very operations library code uses (per type, explicit instances),
+so a reflected Lean term equals the meaning of its syntax after `simp` unfolds `den` (no restatement). Loops are
+relational (`Runs`); `runs_of` turns "`g s = body.den s g` plus a measure and an invariant" into `Runs`.
+
+**Compiler and proof** (once, source level, `propext`/`Classical.choice`/`Quot.sound`). Locations: a scalar is a
+variable; an array is a size variable plus its elements: the input block (bytes, read only) or words `off ..` of the
+work block (`wheap[0]`, one 64-bit word per element, `cap` words). Expressions → three-address statements (a pure
+shallow expression is one assignment, `toB`/`pureOr`); `a[i]!` is a guarded load (`0` out of range, as `getElem!`),
+`a[i]'h` a plain load whose bound is an obligation. Constant tables are stored word by word before use (`tblStores`),
+`Array.replicate` is a fill loop. A loop `if c then (calls) else (results)` compiles to `t := c; while t { …; t := c }`
+(`fast_loop`), any other body to `fl := 1; while fl { body }`. At a `call` leaf the scalar components go through
+temporaries; at most one array component changes: its update evaluates all indices and values in the old state
+(`A.pre`), then stores (`A.st`; `set!` re-checks `i < size` at run time). The frame of a loop is "work words outside the
+written slot unchanged" (`WO`, `Loc.sep`), checked statically by `Pg.wf` (`decide +kernel`).
+Run-time conditions are an `ok` predicate per expression (`Nat` operands of non-homomorphic operations `< 2^64`, plain
+loads in range); a program's meaning together with them is `Pg.Good` (per loop: an invariant `P` and the `Runs`).
+
+**`wa_compile f [invariant P measure μ]*`** (`WaCmd.lean`, untrusted). For `f : ByteArray → β` (β scalar or array):
+unfolds non-recursive helpers (arguments become `let`s, `letBeta`, for sharing), hoists constant tables and `xs.data` to
+the front (restart on demand), turns `Array.foldl g init arr` into a loop over `(acc, i)` (`foldGo`, `foldl_foldGo`;
+invariant `i ≤ arr.size` and measure automatic) and a call of a recursive user definition into a loop over its
+arguments (body: its unfolding equation; `invariant`/`measure` given as functions of the arguments), and generates
+`f.wa`, `f.good : ∀ xs, xs.size < 2^32 → f.wa.Good (xs, ()) (f xs)` (stage by stage; per loop the equation by
+`rw [go]` + `simp` over `den`, the steps and side conditions by `simp` + `omega`), `f.code` and `f.implements1`.
+
+**Compiled verbatim** (lean-zip @7e10583, `WaLeanZip.lean`; `Implements1` with the 77 Sail axioms; QEMU + Sail vs
+executed Lean, 50 cases each, all ok; CRC results also = `zlib.crc32`):
+
+| entry | library code | words | work words (A) / slots (N) | human input |
+|---|---|---|---|---|
+| `crc32E xs = Crc32.Native.crc32 0 xs` | `Zip/Native/Crc32.lean:14,17,22`, `Zip/Spec/Crc32.lean:25,30,78,84` (`table := Spec.mkTable`, `Array.ofFn`; `crcByteTable` with `if h : index < table.size`) | 1631 | 256 / 12 | none |
+| `crcUpdateE xs = updateBytes 0xFFFFFFFF xs` | same | 1615 | 256 / 11 | none |
+| `countLengthsE xs = countLengthsFast xs.data 15` (`Array Nat` result, 16 × 8 bytes, `retLen`) | `Zip/Native/Inflate.lean:536` (`Array.replicate`, `count.set! ln (count[ln]! + 1)` under `if 0 < ln ∧ ln ≤ maxBits`) | 131 | 16 / 20 | `invariant i ≤ lengths.size ∧ lengths.size < 2^32 ∧ maxBits = 15 ∧ count.size = 16`, `measure lengths.size - i` |
+| `countLengths7E` (`maxBits = 7`) | same | 131 | 8 / 20 | same with 7 / 8 |
+
+Theorem shapes: `Implements1With (fun xs => xs.data.toList) Res.enc crc32E.code crc32E (fun _ => 8 * 256 + 8 * (12 + 1) + 7)`
+(constant work space: table words + frame); `Implements1With … (encArr (.arr .nat)) countLengthsE.code countLengthsE
+(fun _ => 8 * 16 + 8 * (20 + 1) + 7) (retLen := true)` (`encArr`: every element `width` bytes little-endian, `Nat` mod
+`2^64`; the result length is returned in `a1`; the output bound is `Implements1`'s own `|enc (f a)| ≤ output.len`).
+The table is not trusted: its words are `t.rep tb[j]` computed from `Spec.mkTable` inside `decide +kernel` (wf) and at
+emission; the source side reads `table[index]` through `den`.
+
+**Speed** (`python3 Testing/asm/wa-bench/bench.py wa_crc32 crc32c 0 1000 10000`, `minstret` under `qemu -icount`,
+gcc = `riscv64-linux-gnu-gcc -march=rv64i -O2` table CRC with a static table): 19.2 instructions per byte vs 11.0
+(1.74×), plus 1609 once per call (storing the 256 table words; gcc's table is in `.rodata`): n = 10000: 191 609 vs
+110 010; n = 1000: 20 609 vs 11 010. Remaining per-byte overhead: the verbatim `if h : index < table.size` test and
+the run-time bound check of `xs.data[i]!` are kept (no interval reasoning yet), copies of the call temporaries into the
+state variables, `UInt32.ofNat b.toNat` masks. Code is big (1631 words) because of the 256 unrolled stores.
+
+**Overlap with section 19** (`feat-scalars`): this front end has its own complete scalar operation set
+(`UInt8/16/32/64`, `Nat`, `Bool`: `Op2`/`Cmp`/`cast` with `mop_ok`/`mcmp_ok`/`mcast_ok`, reusing the `r8/r16/r32/r64/rN`
+lemmas of `Rep.lean`/`Exc.lean`); nothing in `Translate.lean`/`Ind*.lean` was changed.
+
+**Not done / why.**
+- Growing output (`ByteArray.push`, `Array.push`, `++`) and read-while-write (`copyLoopGo`): the syntax (`A.push`,
+  `F.empty`, `F.extract`) and the update phases exist, but `A.ok` rejects `push` and `F.wf` rejects `empty`/`extract`:
+  missing are (1) a capacity tied to the input for a growing array (the work block would be `A + B·n` words; the push
+  obligation `size < cap` needs the capacity in the source-level `Good`), (2) the copy loop of `extract`, (3) `%` / `/`
+  by a variable (`k % distance`, a subtraction loop), (4) `Prop` parameters of the loop function (`copyLoopGo`'s
+  `hd_pos hsd`: an invariant-guarded `g`), (5) a `ByteArray` result from the work block (bytes stored one per word:
+  `outLoop` handles it with width 1). (1)–(5) are each local to `WaPg`/`WaUpd`/`WaExp`/`WaCmd`.
+- `nextCodesFast` (`(code + count[bits-1]!) * 2`: `*` by a variable is not in the machine operations), `kraftSumFast`
+  (`*`, `<<<` by a variable), `fillEntries` (pair result), the Huffman tables of `Inflate` (built by these).
+- lean-zip's `Crc32.Native.updateBytes_eq_updateList` (table = bitwise spec) is proved with `bv_decide`; not copied, so
+  no chained `Spec.checksum` corollary.
+- One loop per stage reads only arrays of the input or earlier stages (a fold over an array computed by an earlier
+  loop is rejected: its `g` would mention the earlier result).
+
+Reproduce: `lake build Frontx` (WaLeanZip ~30 s); `lake env lean --tstack=400000 Testing/asm/emit_wa.lean`;
+`for f in wa_crc32 wa_crcupdate wa_countlengths wa_countlengths7; do python3 Testing/asm/frontx_test.py check 50 $f; done`;
+`bash Testing/scripts/wa_check.sh`.
