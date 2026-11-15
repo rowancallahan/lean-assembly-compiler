@@ -35,7 +35,7 @@ theorem wf_L (L L' : Lay) (sc : Reg) : ∀ c : IR.Code Reg, (apcwF L).toWide.wf 
   | loop2 p₁ t₁ p₂ t₂ b ih₁ ih₂ ihb => simp only [Wide.wf, ih₁, ih₂, ihb, low_L L L', wcode_L L L']; rfl
 theorem optB_L (L L' : Lay) (sc : Reg) (g : Nat → Reg) (sp : Nat → Bool) (N : Nat) (bv wv : List Nat) (p : Mach.BStmt) :
     (apcwF L).optB sc g sp N bv wv p = (apcwF L').optB sc g sp N bv wv p := by
-  simp only [WideF.optB, Wide.body, Wide.W, wf_L L L', low_L L L', wcode_L L L']; rfl
+  simp only [WideF.optB, Wide.bodySR, Wide.body, Wide.W, wf_L L L', low_L L L', wcode_L L L']; rfl
 
 /-- the optimised words when the search succeeds, the `compBF` words otherwise -/
 def compBFOA (L : Lay) (N : Nat) (bv wv : List Nat) (p : Mach.BStmt) : List (BitVec 32) :=

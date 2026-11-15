@@ -12,7 +12,7 @@ name = "Compiler"
 srcDir = "../.."
 globs = ["Compiler.Iface", "Compiler.Logic", "Compiler.Exp", "Compiler.Stmt", "Compiler.Mem", "Compiler.Arr",
   "Compiler.BLang", "Compiler.CLang",
-  "Compiler.Opt.IR", "Compiler.Opt.Alloc", "Compiler.Opt.Live", "Compiler.Opt.Color", "Compiler.Opt.Fn", "Compiler.Opt.Sel",
+  "Compiler.Opt.IR", "Compiler.Opt.Alloc", "Compiler.Opt.Live", "Compiler.Opt.SR", "Compiler.Opt.Color", "Compiler.Opt.Fn", "Compiler.Opt.Sel",
   "Compiler.Opt.Exp", "Compiler.Opt.Stmt", "Compiler.Opt.Arr", "Compiler.Opt.BSel", "Compiler.Opt.BFn"]
 
 # middle files with the `writable` hypotheses on the frame / 8-byte store laws: copies of the repo-root files
