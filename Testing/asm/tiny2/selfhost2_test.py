@@ -64,7 +64,15 @@ def run_s3(code, x):  # packed scalar kk = 16 opc + d; registers r0..
             elif k == 7: R[d] = R[d + 1] if R[d] else R[d + 2]
             elif k == 10: R[d] = x
     return R[0]
-run_code = {"s1": lambda code, x: run_stack(decode(code), x), "s2": run_s2, "s3": run_s3}[STEP]
+def code_words(b):  # step 5: chain of `op w rest` nodes; w low 32 bits = the instruction
+    node = parse(b); ws = []
+    while node[0] != "nil": _, w, node = node; ws.append(w & 0xFFFFFFFF)
+    return ws + [0x00080513, 0x00008067]  # mv a0, x16 ; ret
+def run_s5(code, x):
+    open(f"{W}/code5.bin", "wb").write(b"".join(w.to_bytes(4, "little") for w in code_words(code)))
+    return int(subprocess.run(f"qemu-riscv64 {W}/driver2 {W}/code5.bin {x}", shell=True, check=True, capture_output=True).stdout)
+if STEP == "s5": subprocess.run(f"riscv64-linux-gnu-gcc -O1 -static -march=rv64g -mabi=lp64d {D}/driver2.c -o {W}/driver2", shell=True, check=True)
+run_code = {"s1": lambda code, x: run_stack(decode(code), x), "s2": run_s2, "s3": run_s3, "s5": run_s5}[STEP]
 cases = F.CASES
 lay, halt, base, tab, size = F.build([(c[0], [0] * (len(c[1]) + 64), c[2]) for c in cases], "".join(f"  .word 0x{w:08x}\n" for w in F.words))
 mem = F.qemu(halt, base, tab + F.E * len(cases) - base)
