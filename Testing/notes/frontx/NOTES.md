@@ -833,7 +833,42 @@ Count (distinct B functions, variants merged): 26 of 32 compile with a machine t
 Reproduce: `lake build Riscv.Frontx.Machine`; `lake env lean --tstack=4000000 Testing/asm/emit_frontx.lean`
 (the interpreter needs the stack for the book's non-tail recursions); `bash Testing/scripts/frontx_tests.sh`.
 
-## 13. Round 6: tuples and structures, `%` / `/` by constants, `foldl` over bytes
+## 13. Speed (branch `frontx-speed`): fast loops, plain loads, sequential calls
+
+Measured: `Testing/notes/BENCH_FRONTX.md`, last section (find 27 → 6, drop 26 → 6, sum 12 → 4, map 16 → 7,
+filter 22 → 7.95, append 47 → 14 instructions per byte; gcc -O2 5, 5, 4, 6, 6.97, 7).
+
+Why it was slow: one tree step per iteration of `while fl { comp t }`, every conditional two at-most-once loops
+over 0/1 flags, call arguments through temporaries, the `at'` guard tested again in the loop, a byte mask before
+each store; the optimiser's strength reduction needs `while i <u n` with a trivial head and an increment `i := i + 1`,
+which none of these loops had.
+
+What changed (all once and for all; the generated per-function proofs are untouched apart from three tactics):
+- `Fast.lean` (new; `prog`, `prog_ok`, `prog_ok_ro`, `prog_okQ` moved here, statements unchanged): an iteration is
+  now `fast loops; if fl { comp t }`. One fast loop per path of `ite`s from the root (`peel`) to a subtree `S`:
+  * `S` all `call`s: `while Gv { S }`; pairs common to all leaves are assigned after the step (`common`,
+    `hoist_step`, so `filter`'s `i := i + 1` is one increment); constant pairs `v := c` are dropped when `Gi` checks
+    `v = c` (`kOf`, `strip_step`; drop's mode flag);
+  * `S = X; if c then A else B` with `X` loads/lets and one branch all `call`s: `k := 1; while Gv ∧ k { X; k := c';
+    if k { call branch } }; if Gv ∧ ¬c' { other branch }` (find, findFirst?);
+  * conditions whose variables the loop does not write, `fl` and the constant checks are tested once outside (`Gi`).
+  `FastOK` (the iteration invariant `Inv`: `m` more `call` steps to the result, or returned; steps never increase) for
+  both shapes (`fastLoop_ok`, `fastExit_ok`, `fastOf_ok`), `iter_ok`, `loop_ok` by strong induction on `m`.
+  An iteration whose old-compiler code would exceed `BStmt.wf`'s 1000 words keeps the plain step (CRC-32).
+- `Tree.lean`: `call` leaves assigned in order when no later expression reads an earlier target (`seqOK`, `seqA_ok`);
+  a stored value's `&&& 255` dropped (`unmask`, `and255`).
+- `Translate.lean`: a guarded read whose guard follows from the path conditions and the invariant is a plain `load`
+  (obligations proved like those of `load`, else the `cload` as before; `findByte`: `j < size` from `i < size`,
+  `j ≤ i`). Proofs of `Tree.ro`, `prog_ok_ro`/`prog_okQ`'s `ro` and the callee `vltF` by `decide +kernel` (the new
+  `prog` is too big for elaborator `rfl`/`decide`).
+- `Compiler/Opt/Flow.lean` (`OPT.md`, last section) turns the at-most-once loops into `when`s, fuses the tests, moves
+  the exit test of the search loop into the `loop2` head; then the existing strength reduction fires.
+
+Not done: loop fusion (`twice`), merging the two counters of `for … in [i:n]` with `j` (find: 6 vs 5), strength
+reduction of `loop2` loops and of loops with two indices, registers for `twice`'s reduced loops (see BENCH_FRONTX).
+Tested: `frontx_tests.sh` (37 entry points, QEMU + Sail against Lean) all ok.
+
+## 14. Round 6: tuples and structures, `%` / `/` by constants, `foldl` over bytes
 
 Files: `Riscv/Frontx/PairExamples.lean` (targets, entry points, machine theorems), `Bytes.lean` (results as bytes,
 once), additions in `For.lean`, `Rep.lean`, `Impl1.lean`, `Translate.lean`.

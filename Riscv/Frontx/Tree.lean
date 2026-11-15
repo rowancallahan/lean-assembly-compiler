@@ -82,9 +82,46 @@ def copies (L : Lay) : List (Nat × BExp) → Nat → BStmt
   | [], _ => skip L
   | (v, _) :: as, j => .seq (.assign v (.var (L.tmp j))) (copies L as (j + 1))
 
+/-- the variables an expression reads -/
+def _root_.Proven.BExp.vs : BExp → List Nat
+  | .var i => [i]
+  | .const _ => []
+  | .bin _ a b => a.vs ++ b.vs
+  | .ite c a b => c.vs ++ a.vs ++ b.vs
+
+/-- no expression reads the target of an earlier pair: the pairs can be assigned in order -/
+def seqOK : List (Nat × BExp) → Bool
+  | [] => true
+  | (v, _) :: as => as.all (fun p => !p.2.vs.contains v) && seqOK as
+
+def seqA (L : Lay) : List (Nat × BExp) → BStmt
+  | [] => skip L
+  | (v, e) :: as => .seq (.assign v e) (seqA L as)
+
+/-- a stored value without its byte mask (a store keeps the low byte) -/
+def unmask : BExp → BExp
+  | .bin .and e (.const c) => if c = 255 then e else .bin .and e (.const c)
+  | e => e
+
+theorem and255 (x : BitVec 64) : (x &&& 255#64).setWidth 8 = x.setWidth 8 := by
+  apply BitVec.eq_of_getLsbD_eq; intro i hi
+  simp only [BitVec.getLsbD_setWidth, BitVec.getLsbD_and]
+  have h : ∀ j, j < 8 → Nat.testBit 255 j = true := by decide
+  simp [BitVec.getLsbD_ofNat, hi, h i hi]
+  omega
+
+theorem unmask_denote (env : BEnv) (e : BExp) : ((unmask e).denote env).setWidth 8 = (e.denote env).setWidth 8 := by
+  unfold unmask
+  split
+  · rename_i e c
+    by_cases h : c = 255
+    · rw [if_pos h, h]; simp only [BExp.denote, Op.eval]; exact (and255 _).symm
+    · rw [if_neg h]
+  · rfl
+
 def comp (L : Lay) : Tree → Nat → BStmt
   | .ret e, _ => .seq (.assign L.res e) (.assign L.fl (.const 0))
-  | .call as, _ => .seq (tmps L as 0) (copies L as 0)
+  | .call as, _ => if seqOK as then seqA L as else .seq (tmps L as 0) (copies L as 0)
   | .ite c t e, d =>
     .seq (.assign (L.cv d) c) (.seq (.assign (L.cv d + 1) (.bin .eq (.var (L.cv d)) (.const 0)))
       (.seq (.loop (.var (L.cv d)) (.seq (comp L t (d + 1)) (.assign (L.cv d) (.const 0))))
@@ -95,12 +132,8 @@ def comp (L : Lay) : Tree → Nat → BStmt
     .seq (.assign (L.cv d) c) (.seq (.assign (L.cv d + 1) (.bin .eq (.var (L.cv d)) (.const 0)))
       (.seq (.loop (.var (L.cv d)) (.seq (.load v b i) (.assign (L.cv d) (.const 0))))
         (.seq (.loop (.var (L.cv d + 1)) (.seq (.assign v e) (.assign (L.cv d + 1) (.const 0)))) (comp L k d))))
-  | .store b i e k, d => .seq (.store b i e) (comp L k d)
+  | .store b i e k, d => .seq (.store b i (unmask e)) (comp L k d)
   | .sub p k, d => .seq p (comp L k d)
-
-/-- the whole function: result in variable `out` -/
-def prog (L : Lay) (t : Tree) (out : Nat) : BStmt :=
-  .seq (.assign L.fl (.const 1)) (.seq (.loop (.var L.fl) (comp L t 0)) (.assign out (.var L.res)))
 
 def Tree.wf (L : Lay) : Tree → Prop
   | .ret e => e.vlt L.M
@@ -190,6 +223,37 @@ theorem parSet_rho (M : Nat) {ρ ρ' : BEnv} (h : ∀ v, v < M → ρ' v = ρ v)
     simp only [parSet, denote_agree h e (hv _ List.mem_cons_self)]
     exact parSet_rho M h as _ (fun p hp => hv p (List.mem_cons_of_mem _ hp))
 
+theorem denote_vs {ρ ρ' : BEnv} : ∀ e : BExp, (∀ x ∈ e.vs, ρ' x = ρ x) → e.denote ρ' = e.denote ρ
+  | .var i, h => h i (List.mem_singleton_self _)
+  | .const _, _ => rfl
+  | .bin _ a b, h => by
+    simp only [BExp.denote, denote_vs a fun x hx => h x (by simp [BExp.vs, hx]),
+      denote_vs b fun x hx => h x (by simp [BExp.vs, hx])]
+  | .ite c a b, h => by
+    simp only [BExp.denote, denote_vs c fun x hx => h x (by simp [BExp.vs, hx]),
+      denote_vs a fun x hx => h x (by simp [BExp.vs, hx]), denote_vs b fun x hx => h x (by simp [BExp.vs, hx])]
+
+theorem parSet_out (ρ : BEnv) (x : Nat) : ∀ (as : List (Nat × BExp)) (env : BEnv), (∀ p ∈ as, p.1 ≠ x) →
+    parSet ρ env as x = env x
+  | [], _, _ => rfl
+  | (v, e) :: as, env, h => by
+    rw [parSet, parSet_out ρ x as _ fun p hp => h p (List.mem_cons_of_mem _ hp)]
+    exact set_ne _ _ (h _ List.mem_cons_self).symm
+
+/-- the pairs assigned in order -/
+theorem seqA_ok (L : Lay) (ρ : BEnv) (H : Heap) : ∀ (as : List (Nat × BExp)) (env : BEnv), seqOK as = true →
+    (∀ p ∈ as, ∀ x ∈ p.2.vs, env x = ρ x) →
+    BExec (seqA L as) ⟨env, H⟩ ⟨parSet ρ env as, H⟩
+  | [], env, _, _ => skip_ok L _
+  | (v, e) :: as, env, hs, hr => by
+    simp only [seqOK, Bool.and_eq_true, List.all_eq_true, Bool.not_eq_true', List.contains_eq_any_beq,
+      List.any_eq_false, beq_iff_eq] at hs
+    have he : e.denote env = e.denote ρ := denote_vs e fun x hx => hr _ List.mem_cons_self x hx
+    have h1 : BExec (.assign v e) ⟨env, H⟩ ⟨env.set v (e.denote ρ), H⟩ := by rw [← he]; exact .assign
+    refine .seq h1 (seqA_ok L ρ H as _ hs.2 fun p hp x hx => ?_)
+    rw [set_ne _ _ fun e' => hs.1 p hp x hx e'.symm]
+    exact hr p (List.mem_cons_of_mem _ hp) x hx
+
 /-- what one compiled iteration does, given one step of the tree -/
 def Post (L : Lay) (τ τ' : BState) : Out → Prop
   | .ret r σ' => Agree L.M σ' τ' ∧ τ'.env L.res = r ∧ τ'.env L.fl = 0
@@ -235,6 +299,17 @@ theorem comp_ok (L : Lay) : ∀ (t : Tree) (d : Nat) (σ τ : BState) (o : Out),
     · exact set_eq _ _ _
   | .call as, d, σ, τ, o, hw, hA, hs => by
     simp only [Tree.step, Option.some.injEq] at hs; subst hs
+    by_cases hq : seqOK as = true
+    · have hx := seqA_ok L τ.env τ.heap as τ.env hq fun _ _ _ _ => rfl
+      simp only [comp, if_pos hq]
+      have hout : ∀ x, L.M ≤ x → parSet τ.env τ.env as x = τ.env x := fun x hx =>
+        parSet_out _ _ as _ fun p hp e => by have := (hw.2 p hp).1; omega
+      refine ⟨_, hx, fun x h1 _ => hout x (by omega), ⟨fun v hv => ?_, hA.2⟩, ?_⟩
+      · show parSet τ.env τ.env as v = parSet σ.env σ.env as v
+        rw [parSet_rho L.M hA.1 as _ (fun p hp => (hw.2 p hp).2)]
+        exact parSet_congr _ _ as _ _ (hA.1 v hv)
+      · exact hout _ (by simp [Lay.fl])
+    simp only [comp, if_neg hq]
     obtain ⟨τ₁, hx1, hh1, hk1, hi1⟩ := tmps_ok L as 0 τ (fun p hp => (hw.2 p hp).2)
     obtain ⟨τ₂, hx2, hh2, hk2, hi2⟩ := copies_ok L τ.env as 0 τ₁ (fun p hp => (hw.2 p hp).1) hi1
     refine ⟨τ₂, .seq hx1 hx2, fun x h1 _ => ?_, ⟨fun v hv => ?_, by rw [hh2, hh1, hA.2]⟩, ?_⟩
@@ -407,39 +482,12 @@ theorem comp_ok (L : Lay) : ∀ (t : Tree) (d : Nat) (σ τ : BState) (o : Out),
               ⟨τ.env, τ.heap.set b (B.set (i.denote σ.env).toNat ((e.denote τ.env).setWidth 8))⟩ :=
             ⟨hA.1, by rw [he, hA.2]⟩
           obtain ⟨τ', hx', hk, hp⟩ := comp_ok L k d _ _ o hw.2.2 hA1 hs
-          exact ⟨τ', .seq (BExec.store' (B := B) (by rw [hA.2]; exact hB) (congrArg BitVec.toNat hi) hl) hx', hk,
-            hp.mono rfl rfl (fun _ _ => rfl)⟩
+          have hst := BExec.store' (e := unmask e) (B := B) (σ := τ) (by rw [hA.2]; exact hB) (congrArg BitVec.toNat hi) hl
+          rw [unmask_denote] at hst
+          exact ⟨τ', .seq hst hx', hk, hp.mono rfl rfl (fun _ _ => rfl)⟩
         · rw [if_neg hl] at hr; cases hr
   | .sub p k, d, σ, τ, o, hw, hA, hs =>
     comp_ok_sub L p k d σ τ o hw.1 hA hs fun σ₁ τ₁ hA₁ hs₁ => comp_ok L k d σ₁ τ₁ o hw.2 hA₁ hs₁
-
-theorem loop_ok (L : Lay) {t : Tree} (hw : t.wf L) {σ σ' : BState} {r : BitVec 64} (h : t.Runs σ r σ') :
-    ∀ τ, Agree L.M σ τ → τ.env L.fl ≠ 0 →
-    ∃ τ', BExec (.loop (.var L.fl) (comp L t 0)) τ τ' ∧ Agree L.M σ' τ' ∧ τ'.env L.res = r := by
-  induction h with
-  | ret hs =>
-    intro τ hA hf
-    obtain ⟨τ', hx, _, hA', hr, hf'⟩ := comp_ok L t 0 _ τ _ hw hA hs
-    exact ⟨τ', .loopT hf hx (.loopF hf'), hA', hr⟩
-  | call hs _ ih =>
-    intro τ hA hf
-    obtain ⟨τ₁, hx, _, hA', hf'⟩ := comp_ok L t 0 _ τ _ hw hA hs
-    obtain ⟨τ', hl, hq⟩ := ih τ₁ hA' (by rw [hf']; exact hf)
-    exact ⟨τ', .loopT hf hx hl, hq⟩
-
-/-- **Once and for all**: if the tree iterates from `σ` to the result `r`, the compiled program run from any
-state with the same user variables and heap ends with `r` in `out`, the same heap, and the other user
-variables as the tree left them. -/
-theorem prog_ok (L : Lay) {t : Tree} (hw : t.wf L) {σ σ' : BState} {r : BitVec 64} (h : t.Runs σ r σ')
-    (out : Nat) (τ : BState) (hA : Agree L.M σ τ) :
-    ∃ τ', BExec (prog L t out) τ τ' ∧ τ'.env out = r ∧ τ'.heap = σ'.heap ∧
-      ∀ v, v < L.M → v ≠ out → τ'.env v = σ'.env v := by
-  obtain ⟨τ₁, hl, hA', hr⟩ := loop_ok L hw h ⟨τ.env.set L.fl 1, τ.heap⟩
-    ⟨fun v hv => (set_ne _ _ (by simp only [Lay.fl]; omega)).trans (hA.1 v hv), hA.2⟩
-    (by show BEnv.set _ _ _ _ ≠ 0; rw [set_eq]; decide)
-  exact ⟨_, .seq .assign (.seq hl .assign), by simp [BEnv.set, BExp.denote, hr], hA'.2, fun v hv hne => by
-    show BEnv.set _ _ _ v = _
-    rw [set_ne _ _ hne]; exact hA'.1 v hv⟩
 
 /-! ## Trees without `store` keep the heap -/
 
@@ -489,14 +537,6 @@ theorem Tree.Runs.heap_ro {t : Tree} (hr : t.ro = true) {σ σ' : BState} {r : B
   | ret hs => exact Tree.step_ro t _ _ hr hs
   | call hs _ ih => exact ih.trans (Tree.step_ro t _ _ hr hs)
 
-/-- `prog_ok` for a read-only tree started in the very state `σ` -/
-theorem prog_ok_ro (L : Lay) {t : Tree} (hw : t.wf L) (hr : t.ro = true) {σ : BState} {r : BitVec 64}
-    (h : ∃ σ', t.Runs σ r σ') (out : Nat) :
-    ∃ τ', BExec (prog L t out) σ τ' ∧ τ'.env out = r ∧ τ'.heap = σ.heap := by
-  obtain ⟨σ', h⟩ := h
-  obtain ⟨τ', h1, h2, h3, _⟩ := prog_ok L hw h out σ ⟨fun _ _ => rfl, rfl⟩
-  exact ⟨τ', h1, h2, h3.trans (h.heap_ro hr)⟩
-
 /-! ## Building `Runs` (used by the generated per-function proofs) -/
 
 theorem step_call {t : Tree} {σ : BState} {r : BitVec 64} (σ₁ : BState) (hs : t.step σ = some (.call σ₁))
@@ -524,15 +564,6 @@ theorem step_callQ {t : Tree} {σ : BState} {r : BitVec 64} {Q : BState → Prop
 
 theorem step_retQ {t : Tree} {σ : BState} {r : BitVec 64} {Q : BState → Prop} (σ' : BState)
     (hs : t.step σ = some (.ret r σ')) (hq : Q σ') : ∃ σ', t.Runs σ r σ' ∧ Q σ' := ⟨σ', .ret hs, hq⟩
-
-/-- `prog_ok` with extra result variables (read-only tree, started in the very state `σ`) -/
-theorem prog_okQ (L : Lay) {t : Tree} (hw : t.wf L) (hr : t.ro = true) {σ : BState} {r : BitVec 64}
-    {rs : List (Nat × BitVec 64)} (h : ∃ σ', t.Runs σ r σ' ∧ ∀ p ∈ rs, σ'.env p.1 = p.2) (out : Nat)
-    (hlt : ∀ p ∈ rs, p.1 < L.M ∧ p.1 ≠ out) :
-    ∃ τ', BExec (prog L t out) σ τ' ∧ τ'.env out = r ∧ τ'.heap = σ.heap ∧ ∀ p ∈ rs, τ'.env p.1 = p.2 := by
-  obtain ⟨σ', h, hq⟩ := h
-  obtain ⟨τ', h1, h2, h3, h4⟩ := prog_ok L hw h out σ ⟨fun _ _ => rfl, rfl⟩
-  exact ⟨τ', h1, h2, h3.trans (h.heap_ro hr), fun p hp => (h4 p.1 (hlt p hp).1 (hlt p hp).2).trans (hq p hp)⟩
 
 /-! ## One iteration against a Lean-side outcome (used by the certifying translator)
 
