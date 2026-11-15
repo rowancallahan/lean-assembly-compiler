@@ -134,12 +134,25 @@ def isLeaf : SExp → Bool
   | _ => false
 
 /-- one rewrite at the root (children already simplified) -/
-def simpBin (op : Op) (a b : SExp) : SExp :=
+def simpBin0 (op : Op) (a b : SExp) : SExp :=
   if op = .add ∧ a = b then .bin .shl a (.const 1)
   else match b with
     | .ite c x y => if (isLeaf a && isLeaf x && isLeaf y) = true then .ite c (.bin op a x) (.bin op a y)
         else .bin op a b
     | _ => .bin op a b
+
+/-- a range test `¬(x < lo) && ¬(hi < x)` as one comparison `x - lo < hi - lo + 1` -/
+def rangeOf (op : Op) (a b : SExp) : Option SExp :=
+  match op, a, b with
+  | .and, .bin .xor (.bin .ult x (.const lo)) (.const o₁), .bin .xor (.bin .ult (.const hi) x') (.const o₂) =>
+    if (decide (x = x') && decide (o₁ = 1) && decide (o₂ = 1) && decide (lo ≤ hi) && decide (hi.toNat + 1 < 2 ^ 64)) = true
+    then some (.bin .ult (.bin .sub x (.const lo)) (.const (hi - lo + 1))) else none
+  | _, _, _ => none
+
+def simpBin (op : Op) (a b : SExp) : SExp :=
+  match rangeOf op a b with
+  | some e => e
+  | none => simpBin0 op a b
 
 /-- expression simplification (pure rewrites, bottom-up) -/
 def simpS : SExp → SExp
@@ -461,9 +474,9 @@ theorem add_self_shl (x : BitVec 64) : x + x = x <<< 1 := by
   simp only [BitVec.toNat_add, BitVec.toNat_shiftLeft, Nat.shiftLeft_eq, Nat.pow_one]
   congr 1; omega
 
-theorem simpBin_denote (op : Op) (a b : SExp) :
-    (simpBin op a b).denote env sv = op.eval (a.denote env sv) (b.denote env sv) := by
-  unfold simpBin
+theorem simpBin0_denote (op : Op) (a b : SExp) :
+    (simpBin0 op a b).denote env sv = op.eval (a.denote env sv) (b.denote env sv) := by
+  unfold simpBin0
   by_cases h : op = .add ∧ a = b
   · rw [if_pos h]; obtain ⟨rfl, rfl⟩ := h
     simp only [SExp.denote, Op.eval]; rw [add_self_shl]; rfl
@@ -476,15 +489,56 @@ theorem simpBin_denote (op : Op) (a b : SExp) :
       · rw [if_neg hl]; rfl
     | _ => rfl
 
+theorem range_eval (x lo hi : BitVec 64) (h1 : lo ≤ hi) (h2 : hi.toNat + 1 < 2 ^ 64) :
+    ((if x < lo then (1 : BitVec 64) else 0) ^^^ 1) &&& ((if hi < x then (1 : BitVec 64) else 0) ^^^ 1) =
+      if x - lo < hi - lo + 1 then 1 else 0 := by
+  have e : (x - lo < hi - lo + 1) ↔ (¬ x < lo ∧ ¬ hi < x) := by
+    rw [BitVec.le_def] at h1
+    have o : (1 : BitVec 64).toNat = 1 := rfl
+    simp only [BitVec.lt_def, BitVec.toNat_sub, BitVec.toNat_add, o]
+    have := x.isLt; have := lo.isLt; have := hi.isLt
+    generalize x.toNat = X at *; generalize lo.toNat = A at *; generalize hi.toNat = B at *
+    simp only [Nat.reducePow] at *
+    constructor
+    · intro h; constructor <;> intro h' <;> omega
+    · intro ⟨ha, hb⟩; omega
+  by_cases ha : x < lo <;> by_cases hb : hi < x
+  · rw [if_pos ha, if_pos hb, if_neg fun h => (e.1 h).1 ha]; decide
+  · rw [if_pos ha, if_neg hb, if_neg fun h => (e.1 h).1 ha]; decide
+  · rw [if_neg ha, if_pos hb, if_neg fun h => (e.1 h).2 hb]; decide
+  · rw [if_neg ha, if_neg hb, if_pos (e.2 ⟨ha, hb⟩)]; decide
+
+theorem rangeOf_denote {op : Op} {a b e : SExp} (h : rangeOf op a b = some e) :
+    e.denote env sv = op.eval (a.denote env sv) (b.denote env sv) := by
+  unfold rangeOf at h
+  split at h
+  · rename_i x lo o₁ hi x' o₂
+    split at h
+    · rename_i hc
+      simp only [Bool.and_eq_true, decide_eq_true_eq] at hc
+      obtain ⟨⟨⟨⟨rfl, rfl⟩, rfl⟩, h1⟩, h2⟩ := hc
+      cases h
+      simp only [SExp.denote, Op.eval]
+      exact (range_eval _ _ _ h1 h2).symm
+    · exact nomatch h
+  · exact nomatch h
+
+theorem simpBin_denote (op : Op) (a b : SExp) :
+    (simpBin op a b).denote env sv = op.eval (a.denote env sv) (b.denote env sv) := by
+  unfold simpBin
+  split
+  · rename_i e h; exact rangeOf_denote h
+  · exact simpBin0_denote op a b
+
 theorem simpS_denote : ∀ e : SExp, (simpS e).denote env sv = e.denote env sv
   | .bin op a b => by simp only [simpS]; rw [simpBin_denote, simpS_denote a, simpS_denote b]; rfl
   | .ite c a b => by simp only [simpS, SExp.denote, simpS_denote c, simpS_denote a, simpS_denote b]
   | .var _ | .slot _ | .const _ => rfl
 
-theorem simpBin_uses (op : Op) (a b : SExp) (x : Nat) :
-    (uses (simpBin op a b) x = true → uses a x = true ∨ uses b x = true) ∧
-    (usesS (simpBin op a b) x = true → usesS a x = true ∨ usesS b x = true) := by
-  unfold simpBin
+theorem simpBin0_uses (op : Op) (a b : SExp) (x : Nat) :
+    (uses (simpBin0 op a b) x = true → uses a x = true ∨ uses b x = true) ∧
+    (usesS (simpBin0 op a b) x = true → usesS a x = true ∨ usesS b x = true) := by
+  unfold simpBin0
   by_cases h : op = .add ∧ a = b
   · rw [if_pos h]; obtain ⟨rfl, rfl⟩ := h
     exact ⟨fun hu => .inl (by simpa only [uses, Bool.or_false] using hu),
@@ -505,6 +559,22 @@ theorem simpBin_uses (op : Op) (a b : SExp) (x : Nat) :
           fun hu => by simpa only [usesS, Bool.or_eq_true] using hu⟩
     | _ => exact ⟨fun hu => by simpa only [uses, Bool.or_eq_true] using hu,
           fun hu => by simpa only [usesS, Bool.or_eq_true] using hu⟩
+
+theorem simpBin_uses (op : Op) (a b : SExp) (x : Nat) :
+    (uses (simpBin op a b) x = true → uses a x = true ∨ uses b x = true) ∧
+    (usesS (simpBin op a b) x = true → usesS a x = true ∨ usesS b x = true) := by
+  unfold simpBin
+  split
+  · rename_i e h
+    unfold rangeOf at h
+    split at h
+    · split at h
+      · cases h
+        exact ⟨fun hu => .inl (by simp only [uses, Bool.or_false] at hu ⊢; simp [hu]),
+          fun hu => .inl (by simp only [usesS, Bool.or_false] at hu ⊢; simp [hu])⟩
+      · exact nomatch h
+    · exact nomatch h
+  · exact simpBin0_uses op a b x
 
 theorem simpS_uses : ∀ (e : SExp) (x : Nat),
     (uses (simpS e) x = true → uses e x = true) ∧ (usesS (simpS e) x = true → usesS e x = true)

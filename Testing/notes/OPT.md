@@ -519,3 +519,30 @@ no diff).
 
 `Wide.bodySR` now tries `IR.cands vars c = [sr (flow c), sr c, c]` in order (`cands_ok`); `colorB` takes the index
 (`mode`), `tryL` tries 0, 1, 2. Statements unchanged (hashes equal), closures differ, fingerprints re-frozen.
+
+## Speed round 2: selection clean-ups, range tests, constants in registers (branch `speed2`, 2026-11-15)
+
+Kernel-checked (`propext`, `Quot.sound`, `Classical.choice`); all IR → IR passes keep `sr_ok`'s shape.
+- `Compiler/Opt/Peep.lean`: `mergeC` (`if t A; if t B` ↦ `if t (A; B)` when `A` keeps `t`'s registers; dead-code
+  elimination then drops what `B` overwrites: `%` by a constant was `x < c ? x : (x < c ? 0 : x - c)`), `swapC`
+  (`d := x op y; if t then d := s` ↦ `d := s; if ¬t then d := x op y`, `d` not read by `t`, `x`, `y`; the copy is
+  the common case of a conditional subtraction, and the colouring then gives `add a,a,x; bltu a,K; sub a,a,K`).
+  Same states (`mergeC_ok`, `swapC_ok`).
+- `Compiler/Opt/Hoist.lean`: in every innermost loop, the `k` constants used most often that cost a load per use
+  (test operand ≠ 0, first `bin` operand, a second one outside 12 bits, stored constant, large `set`) are loaded once
+  into fresh registers (`≥ m`) before the loop (`repC_ok`: the loop does not write them, so it runs as before;
+  `hoistC_ok` by induction on the execution, agreement below `m`).
+- `Compiler/Opt/Sel.lean`: `simpBin` rewrites the range test `¬(x < lo) && ¬(hi < x)` (as the front end emits
+  `lo ≤ c && c ≤ hi`) to `x - lo <u hi - lo + 1` (`range_eval`, `lo ≤ hi < 2^64 - 1`). No other words changed
+  (all `emit_*.lean` re-run: only `frontx-words` differ).
+- `Peep.fast k vars c` = `hoist k (sr (peep (flow c)))` for code with at-most-once loops (else `sr c`);
+  `IR.cands` is now `[fast 6, fast 3, fast 1, fast 0, sr (flow c), sr c, c]` (`cands_ok`), `colorB`/`tryL`
+  try modes 0..6. Hand-written programs: `fast k c = sr c`, the first candidate as before, words unchanged.
+- `Riscv/Frontx/Fast.lean`: when fast loops + plain step exceed the old back end's 1000 words (b64), `iter` uses
+  one exhaustive fast loop and the plain step of the tree without that path (`Tree.prune`, `FastX`,
+  `fastLoopX_ok`, `exhOf_ok`, `plainP_ok`, `iterX_ok`); other programs keep their `iter`.
+Statements unchanged (hashes equal), closures differ, fingerprints re-frozen. Numbers: `BENCH_FRONTX.md`, last section.
+
+Not done: register pressure stops hoisting in b64 beyond one constant (`fast 6`/`fast 3` do not colour: the outer
+loop's `fl`/result registers stay live through the fast loop); copies between `ite` arms (`v33 := v10`) are not
+coalesced; the duplicate `at'` guard test is still two branches; no CSE of `li t6,26` pairs.
