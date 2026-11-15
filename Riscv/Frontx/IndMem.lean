@@ -156,3 +156,97 @@ theorem events_eq {p : IndProg} (hg : p.Good) {x : C × C × BitVec 64} (hv : p.
   have := (texec_det hg.2.2.2.2.2.2.2.2.1 hc (by simp [CStmt.clean, unread]) hx q).1
   rw [this]
 
+
+end Proven.Frontx.IndMem
+
+namespace Proven.Frontx.IndMem
+open Proven Proven.Mach Proven.Mach.Ind Proven.Mach.Riscv Proven.Top Proven.Top.Alloc
+
+theorem readMemory_take {st : MachineState} {a : UInt64} {n k : Nat} {l : List UInt8}
+    (h : readMemory st a n = some l) (hk : k ≤ n) : readMemory st a k = some (l.take k) := by
+  unfold readMemory at h ⊢
+  rw [mapM_some] at h ⊢
+  have e : List.range k = (List.range n).take k := by rw [List.take_range, Nat.min_eq_left hk]
+  rw [e, List.map_take, h, ← List.map_take]
+
+/-- the machine run of a compiled program: its source run (from the machine's output block and globals), the
+events of `compile`, the machine's facts -/
+theorem machine_run {p : IndProg} {compiled : CompiledA} {α β : Type} {f : α → β} {encodeInput : α → List UInt8}
+    {encodeOutput : β → List UInt8} {argument : α} {startState : riscv.State} {call : Call}
+    (compiles : compile p = some compiled) (computes : Computes p f encodeInput encodeOutput)
+    (startsRight : StartCorrect riscv startState call compiled.code (encodeInput argument))
+    (outputFits : (encodeOutput (f argument)).length ≤ call.outputLength) :
+    ∃ (σ' : Mach.BState) (out0 : List (BitVec 8)) (finishState : riscv.State),
+      σ'.heap = [(encodeInput argument).map (·.toBitVec), wr out0 0 (encodeOutput (f argument))] ∧
+      out0.length = call.outputLength ∧
+      Runs riscv startState finishState ∧ (riscv.observe finishState).programCounter = call.returnAddress ∧
+      (∀ address, Outside address (call.outputAddress, call.outputLength) →
+        Outside address (call.workAddress, call.workLength) →
+        (riscv.observe finishState).memory address = (riscv.observe startState).memory address) ∧
+      ((memoryNeeded compiled (encodeInput argument) ≤ call.workLength ∧
+          (riscv.observe finishState).register riscv.mapping.status ≠ oomFlag ∧
+          readMemory (riscv.observe finishState) call.outputAddress call.outputLength =
+            some ((σ'.heap[1]?.getD []).map UInt8.ofBitVec)) ∨
+        (call.workLength < memoryNeeded compiled (encodeInput argument) ∧
+          (riscv.observe finishState).register riscv.mapping.status = oomFlag)) := by
+  obtain ⟨hg, rfl⟩ := compile_inv compiles
+  have hrun := computes argument
+  obtain ⟨x, hv, hin, hout⟩ := run_some hrun
+  have hstart := startsRight
+  obtain ⟨env, out0, he1, he8, hl0, mach⟩ := memSpec hg.2.2.2.2.2.2.2.1 hg.2.2.2.2.2.2.2.2.1 res_clean hstart
+  have hsmall := hstart.inputSmall
+  have hram := hstart.inRam
+  simp only [Call.blocks, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq] at hram
+  have hol : call.outputLength < 2 ^ 32 := by
+    obtain ⟨h1, h2⟩ := hram.2.1
+    have e : riscv.ramEnd = 0x100000000 := rfl
+    have e' : riscv.ramStart = 0x80000000 := rfl
+    rw [e] at h2; rw [e'] at h1
+    have := call.outputAddress.toNat_lt
+    omega
+  rw [hin] at hsmall he1 mach hrun
+  rw [hout] at outputFits hrun ⊢
+  have hO : (p.out x).length ≤ out0.length := by omega
+  obtain ⟨E, σ', hx, hh, -⟩ := run_ok hg hv hsmall env out0 hO (by omega)
+  have hev := events_eq hg hv hsmall hrun (by omega) he1 he8 hx
+  obtain ⟨finishState, hruns, hpc, hframe, hcase⟩ := mach hx
+  refine ⟨σ', out0, finishState, by rw [hh, hin], hl0, hruns, hpc, hframe, ?_⟩
+  have hmn : memoryNeeded ⟨wordBytes (memCode p.P 1 0), 8, p.events⟩ (encodeInput argument) =
+      8 * peak (E ++ [.alloc 2]) := by
+    show 8 * peak (p.events (encodeInput argument)) = _
+    rw [hin, hev]
+  rw [hmn]
+  exact hcase
+
+/-- **What happens** (`CompileRuns`, `Compiler/AllocSpec.lean`) for the inductive path with run-time memory: the
+code returns to the caller, changes nothing outside the output and work blocks, and the status register holds
+`oomFlag` exactly when the run's memory (`memoryNeeded`, from its events) exceeds the work block. -/
+theorem compile_runs : CompileRuns riscv compile := by
+  intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
+    outputFits
+  obtain ⟨σ', out0, finishState, -, -, hruns, hpc, hframe, hcase⟩ :=
+    machine_run compiles computes startsRight outputFits
+  refine ⟨finishState, hruns, hpc, hframe, ?_⟩
+  unfold OutOfMemory
+  rcases hcase with ⟨hle, hne, -⟩ | ⟨hlt, heq⟩
+  · exact ⟨fun h => absurd h hne, fun h => absurd h (Nat.not_lt.2 hle)⟩
+  · exact ⟨fun _ => hlt, fun _ => heq⟩
+
+/-- **What comes out** (`CompileCorrect`, `Compiler/AllocSpec.lean`) for the inductive path with run-time memory:
+with `memoryNeeded ≤ workLength` the code returns with the right output and no flag. -/
+theorem compile_correct : CompileCorrect riscv compile := by
+  intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
+    outputFits enoughMemory
+  obtain ⟨σ', out0, finishState, hh, hl0, hruns, hpc, hframe, hcase⟩ :=
+    machine_run compiles computes startsRight outputFits
+  rcases hcase with ⟨-, hne, hread⟩ | ⟨hlt, -⟩
+  · refine ⟨finishState, hruns, hpc, hne, ?_⟩
+    have := readMemory_take hread outputFits
+    rw [this, hh]
+    congr 1
+    simp only [List.getElem?_cons_succ, List.getElem?_cons_zero, Option.getD_some]
+    rw [← List.map_take, Proven.Frontx.Ind.wr_take _ _ (by omega), List.map_map]
+    exact List.map_id' _
+  · exact absurd enoughMemory (Nat.not_le.2 hlt)
+
+end Proven.Frontx.IndMem
