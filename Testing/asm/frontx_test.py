@@ -51,6 +51,10 @@ FUNCS = {
     "wa_ops64": (8, lambda xs: ops(rdn(xs, 0, 8), rdn(xs, 8, 8), 64, 64)),
     "wa_ops32": (4, lambda xs: ops(rdn(xs, 0, 4), rdn(xs, 4, 4), 32, 32)),
     "wa_opsn": (8, lambda xs: ops(rdn(xs, 0, 4), rdn(xs, 4, 4), None, 64)),
+    "fx_ops64": (8, lambda xs: ops(rdn(xs, 0, 8), rdn(xs, 8, 8), 64, 64)),
+    "fx_ops32": (4, lambda xs: ops(rdn(xs, 0, 4), rdn(xs, 8, 4), 32, 32)),
+    "fx_opsn": (8, lambda xs: ops(rdn(xs, 0, 8), rdn(xs, 8, 8), None, 64)),
+    "fx_gcd": (8, lambda xs: math.gcd(rdn(xs, 0, 8), rdn(xs, 8, 8))),
 }
 # functions returning a list: the length is returned in a1
 LISTS = {"tinycompile", "tinysm", "take5", "drop5", "matchdrop3", "filterall", "inceach", "twice"}
