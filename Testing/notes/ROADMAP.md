@@ -126,4 +126,7 @@ hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read 
 - Pipelining (owner, 2026-11-15): start the next round on top of the previous round's unverified branch instead of
   waiting for its checks; rebase if it fails (some redone work is accepted). Farm independent QEMU/Sail test runs out
   to cloud boxes; keep one final combined `check.sh` before pushing to main/stable. Lean already reuses unchanged
-  modules' builds; no copying of build output between boxes.
+  modules' builds. Build cache (owner): branch `build-cache` holds prebuilt build output (zstd tarballs, README
+  there); cloud boxes restore it instead of building. First item: the Sail RISC-V model dependency (25 MB).
+  Next: this repo's own `.lake/build` at main after big merges (~750 MB raw). Split slow proof files into
+  independent lemma files so lake builds them in parallel (plan: branch build-profile, BUILD_PROFILE.md).
