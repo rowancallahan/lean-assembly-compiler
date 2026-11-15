@@ -1,7 +1,7 @@
 /- How Lean scalars and byte arrays sit in `BitVec 64` variables and heap blocks, and the lemma set the
 generated per-function proofs rewrite with: every supported Lean operation, pushed through the
 representation function (`r8`, `r32`, `r64`, `rN`), becomes a `BitVec 64` term over representations. -/
-import Riscv.Frontx.Tree
+import Riscv.Frontx.Fast
 
 namespace Proven.Frontx
 open Proven

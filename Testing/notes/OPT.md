@@ -503,3 +503,19 @@ Tested (QEMU == Sail == model): `WDIR=impl1-opt-words impl1_test.py` take5/inc/s
 Not done: loops counting down or by other steps, `loop2` (short-circuit) loops, a second index in the same loop
 (`k` in the merge tails stays an index), dropping the `i ≤ n` guard when `i := 0` precedes the loop, an ARM run of
 the new words (the pass is target-independent; `Wide` has no ARM instance yet).
+
+## Control-flow clean-ups (`Compiler/Opt/Flow.lean`, 2026-11-15)
+
+Kernel-checked (`propext`, `Quot.sound`): an IR → IR pass on virtual registers before strength reduction,
+`Flow.flow vars c` with `flow_ok` (the shape of `sr_ok`: same memory, same `vars`). Steps, each with its lemma:
+`once` (`while a ≠ 0 { B; a := 0 }` with trivial head ↦ `if a ≠ 0 then B; a := 0`; the front end's conditionals),
+`fuse` (facts `d = (x op y)` for 0/1 comparisons and `d = a` for copies, valid while `d`, `x`, `y` are not written;
+tests `d ≠ 0` / `d = 0` rewritten to the comparison, same states), `rot` (`k := c ≠ 0; while T₁ ∧ k ≠ 0 { Y; if tS
+then S }` with `tS ≡ k ≠ 0` after `Y`, checked by rewriting `k ≠ 0` with the facts of `Y`, and `S` not writing `k`
+↦ `while T₁ ∧ (Y; tS) do S`, the exit test of a search loop moves into the `loop2` head), `nrm` (flat `seq`s, no
+`skip`s / empty `when`s), and `SR.dce` twice. `flow vars c = c` when `c` has no at-most-once loop, so the words of the
+hand-written programs (`opt-words`, `impl1-opt-words`, `pipe-words`, msort, insb, gcd …) are unchanged (re-emitted,
+no diff).
+
+`Wide.bodySR` now tries `IR.cands vars c = [sr (flow c), sr c, c]` in order (`cands_ok`); `colorB` takes the index
+(`mode`), `tryL` tries 0, 1, 2. Statements unchanged (hashes equal), closures differ, fingerprints re-frozen.

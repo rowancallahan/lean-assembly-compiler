@@ -105,3 +105,37 @@ in the loops) and on `SR.lean`'s stated precondition.
 - `be32at0` Lean count is dispatch noise (the `main` string `match`), left out. Lean's `main` dispatch (≤16 string compares) is ~1000 Ir per call, negligible for the rest.
 - Instruction counts, not time: gcc's loads/stores per instruction are not modelled; no cycle-accurate model was used.
 - Only RV64 measured; ARM words for frontx do not exist yet.
+
+## After `frontx-speed` (fast loops, `Flow` clean-ups; 2026-11-15)
+
+Same scripts and inputs (`python3 bench_frontx.py rv`, `results/rv.json` now holds the new numbers; QEMU `-icount`,
+1 MiB, per byte; every output checked against the Python model). What changed: `Testing/notes/frontx/NOTES.md`
+section 13, `Testing/notes/OPT.md` last section.
+
+| function | before | after | gcc -O2 | before/gcc | after/gcc |
+|---|---|---|---|---|---|
+| findnl (find) | 27.00 | 6.00 | 5.00 | 5.40 | **1.20** |
+| drop5 | 26.00 | 6.00 | 5.00 | 5.20 | **1.20** |
+| twice (append) | 47.00 | 14.00 | 7.00 | 6.71 | 2.00 (1.40 vs a two-loop C, 10.0) |
+| tailsum (sum) | 12.00 | 4.00 | 4.00 | 3.00 | **1.00** |
+| inceach (map) | 16.00 | 7.00 | 6.00 | 2.67 | **1.17** |
+| filterall (filter) | 21.95 | 7.95 | 6.97 | 3.15 | **1.14** |
+| nontailsum | 13.00 | 5.00 | 4.00 | 3.25 | 1.25 |
+| findfirstgt3 | 19.00 | 6.00 | 4.00 | 4.75 | 1.50 |
+| crcraw | 70.00 | 65.00 | 69.00 | 1.01 | 0.94 |
+| b64all | 55.22 | 43.22 | 11.12 | 4.97 | 3.89 |
+| taillength / booklength (walk) | 10.00 | 3.00 | O(1) | – | – |
+| finalof (walk) | 17.00 | 4.00 | O(1) | – | – |
+| take5, whole call | 182 | 99 | 39 | 4.7 | 2.5 |
+| headof, whole call | 52 | 44 | 9 | 5.8 | 4.9 |
+| be32at0, whole call | 114 | 89 | 62 | 1.8 | 1.4 |
+
+The loops now: sum `lbu; add; addi p; bne p, e` (gcc's); map `lbu; addi; add; sb; addi; addi; bne`; find
+`addi; bgeu i, n; add; lbu; bne x, c` (+ the second counter `j` of the `for` translation: 6 vs 5); drop's copy
+`lbu; add; sb; addi; addi; bne`; filter `lbu; li; bgeu; add; sb; addi; addi; bne`.
+
+`twice` is not at 1.3: the C in `bench.c` is hand-fused (`out[i] = out[n + i] = xs[i]`, one loop storing two bytes);
+ours is the source's two passes (`xs ++ xs`), 7 per byte each (no loop fusion). Against the natural two-loop C (gcc
+-O2, 5 + 5 per byte) it is 1.40. Strength reduction does not fire in its copy loops: with `res` and `fl` live across
+the whole function (liveness is path-insensitive) the reduced body needs 7 of the 6 free registers, and `pickB` takes
+the plain body before trying a spill.

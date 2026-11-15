@@ -4,7 +4,7 @@ A loop `forIn [a:b] init F` (with `F : Nat → S → Id (ForInStep S)`, `S` the 
 tree whose state holds `i` and the locals: one iteration of the tree is "if `i < b` then the body, `yield s'`
 being a call with `(i + 1, s')` and `done s'` a return, else return".  `for_exec` turns a proof of that single
 step (`Sim`, built by the translator) into the theorem about the compiled program, initialisation included. -/
-import Riscv.Frontx.Tree
+import Riscv.Frontx.Fast
 
 namespace Proven.Frontx
 open Proven

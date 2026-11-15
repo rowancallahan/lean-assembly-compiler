@@ -684,7 +684,7 @@ partial def trCall (ctx : Ctx) (e : Expr) (c : Name) (args : Array Expr) (ty : T
     unless (← getEnv).contains vN do
       let vty ← mkEq (mkApp2 (mkConst ``BStmt.vltF) (toExpr (5 + n)) ci.P) (mkConst ``Bool.true)
       let mv ← mkFreshExprSyntheticOpaqueMVar vty
-      let rest ← Tactic.run mv.mvarId! (Tactic.evalTactic (← `(tactic| decide)))
+      let rest ← Tactic.run mv.mvarId! (Tactic.evalTactic (← `(tactic| decide +kernel)))
       unless rest.isEmpty do throwError "frontx: callee variables"
       addDecl (.thmDecl { name := vN, levelParams := [], type := vty, value := ← instantiateMVars mv })
       addSimpTheorem simpExtension vN (post := true) (inv := false) .global 1000
@@ -871,7 +871,7 @@ partial def wrapItems (ctx : Ctx) (items : List Item) (env : Expr)
     let hg := mkApp2 exec σg hR
     let byDecide (ty : Expr) : TrM Expr := do
       let mv ← mkFreshExprSyntheticOpaqueMVar ty
-      let rest ← Tactic.run mv.mvarId! (Tactic.evalTactic (← `(tactic| decide)))
+      let rest ← Tactic.run mv.mvarId! (Tactic.evalTactic (← `(tactic| decide +kernel)))
       unless rest.isEmpty do throwError "frontx: could not decide{indentExpr ty}"
       instantiateMVars mv
     let hb ← byDecide (← mkAppM ``LE.le #[toExpr (4 : Nat), bS])
@@ -894,6 +894,28 @@ partial def wrapItems (ctx : Ctx) (items : List Item) (env : Expr)
       #[ctx.A, ctx.R, toExpr v, toExpr b, i.toExpr, ← t.toExpr, env, ctx.heap, idx, y, o, hj, hr, p])
 
   | .cload v b i c d r idx temps :: rest => do
+    -- the guard follows from the path conditions (and the invariant): a plain load, no test in the code
+    -- (when its obligations are not proved, the guarded load below)
+    let bv8 := mkApp (mkConst ``BitVec) (toExpr (8 : Nat))
+    let y := mkApp (mkConst ``UInt8.toBitVec) r
+    let plain? : Option (Expr × Expr) ← if r.isAppOfArity ``dite 5 then
+        try
+          let P := r.getArg! 1
+          let hP ← oblig P temps
+          let t := (r.getArg! 3).bindingBody!.instantiate1 hP
+          let heq ← mkAppOptM ``dif_pos #[P, r.getArg! 2, hP, r.getArg! 0, r.getArg! 3, r.getArg! 4]
+          let fy := Expr.lam `x (mkConst ``UInt8)
+            (mkApp2 (mkConst ``Option.some [0]) bv8 (mkApp (mkConst ``UInt8.toBitVec) (.bvar 0))) .default
+          let hj ← oblig (← mkEq (mkApp2 (mkConst ``BitVec.toNat) (toExpr (64 : Nat)) (denoteE env i)) idx) temps
+          let hr' ← oblig (← mkEq (mkApp3 (mkConst ``rd) ctx.heap (toExpr b) idx)
+            (mkApp2 (mkConst ``Option.some [0]) bv8 (mkApp (mkConst ``UInt8.toBitVec) t))) temps
+          pure (some (hj, ← mkEqTrans hr' (← mkCongrArg fy (← mkEqSymm heq))))
+        catch _ => pure none
+      else pure none
+    if let some (hj, hr) := plain? then
+      let (tr, o, p) ← wrapItems ctx rest (setE env v (mkApp (mkConst ``r8) r)) k
+      return (.load v b i tr, o, mkAppN (mkConst ``sim_load)
+        #[ctx.A, ctx.R, toExpr v, toExpr b, i.toExpr, ← tr.toExpr, env, ctx.heap, idx, y, o, hj, hr, p])
     let z := mkApp (mkConst ``r8) r
     let hj ← oblig (← mkEq (mkApp2 (mkConst ``BitVec.toNat) (toExpr (64 : Nat)) (denoteE env i)) idx) temps
     let rdE := mkApp3 (mkConst ``rd) ctx.heap (toExpr b) idx
@@ -1821,7 +1843,7 @@ def compileLoop (fn : Name) (xs : Array Expr) (rty : Ty) (lhs forE : Expr) (post
       let ((h0, initsE), st') ← go.run { next := M, memo }
       let wfPf ← byTac (mkApp2 (mkConst ``Tree.wf) (mkConst layN) (mkConst treeN))
         (← `(tactic| simp [$tI:ident, $lI:ident, Tree.wf, BExp.vlt]))
-      let roPf ← byTac (← mkEq (mkApp (mkConst ``Tree.ro) (mkConst treeN)) (mkConst ``Bool.true)) (← `(tactic| rfl))
+      let roPf ← byTac (← mkEq (mkApp (mkConst ``Tree.ro) (mkConst treeN)) (mkConst ``Bool.true)) (← `(tactic| decide +kernel))
       let pf := mkAppN (mkConst ``for_exec) #[S, mkConst layN, mkConst treeN, wfPf, roPf, R, F, postBV, a, b, init,
         mkConst initsN, toExpr out, mkAppN (mkConst stepN) xs, env0, heap, h0]
       -- the function is the loop only up to a proved equation: transport the statement along it
@@ -2238,7 +2260,7 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
              have hr := $runsI:ident $as0* 0 ⟨seqSet σ.env $iI, σ.heap⟩
                (by simp only [$r0I:ident] at hR; simp [$rI:ident, $iI:ident, seqSet, BEnv.set, BExp.denote, rN, hR])
              rw [Nat.zero_add] at hr
-             obtain ⟨σ', h1, h2, h3⟩ := prog_ok_ro $lI (by simp [$tI:ident, $lI:ident, Tree.wf, BExp.vlt]) (by rfl) hr $outS
+             obtain ⟨σ', h1, h2, h3⟩ := prog_ok_ro $lI (by simp [$tI:ident, $lI:ident, Tree.wf, BExp.vlt]) (by decide +kernel) hr $outS
              exact ⟨σ', initS_exec _ _ h1, h2, h3⟩)))
           let t4 ← IO.monoMsNow
           logInfo m!"frontx: {fn} (accumulator introduced): {nvars} variables ({M} user), {nvars - 8} slots, result in variable {out}, {st.nObl} obligations; translate + step proof {t1 - t0} ms, kernel check of step {t2 - t1} ms, induction {t3 - t2} ms, exec theorem {t4 - t3} ms"
@@ -2306,7 +2328,7 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
           let outS := Syntax.mkNumLit (toString out)
           addThm (fn ++ `exec) execTy (← `(tactic|
             (intro $as* σ hR
-             exact prog_okQ $lI (by simp [$tI:ident, $lI:ident, Tree.wf, BExp.vlt]) (by rfl) ($runsI:ident $as* σ hR) $outS
+             exact prog_okQ $lI (by simp [$tI:ident, $lI:ident, Tree.wf, BExp.vlt]) (by decide +kernel) ($runsI:ident $as* σ hR) $outS
                (by simp [$lI:ident]))))
           let t4 ← IO.monoMsNow
           logInfo m!"frontx: {fn} ({resInfo.size} result components): {nvars} variables ({M} user), {nvars - 8} slots, results in variables {out}, {resExtra.map (·.2.2)}, {st.nObl} obligations; translate + step proof {t1 - t0} ms, kernel check of step {t2 - t1} ms, induction {t3 - t2} ms, exec theorem {t4 - t3} ms"
@@ -2370,7 +2392,7 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
         let runsI := mkIdent (fn ++ `runs)
         addThm (fn ++ `exec) execTy (← `(tactic|
           (intro $as* $σi:ident hR
-           exact prog_ok_ro $lI (by simp [$tI:ident, $lI:ident, Tree.wf, BExp.vlt]) (by rfl) ($runsI:ident $as* $σi hR) _)))
+           exact prog_ok_ro $lI (by simp [$tI:ident, $lI:ident, Tree.wf, BExp.vlt]) (by decide +kernel) ($runsI:ident $as* $σi hR) _)))
         let t4 ← IO.monoMsNow
         logInfo m!"frontx: {fn}: {nvars} variables ({M} user), {nvars - 8} slots, result in variable {out}, {st.nObl} obligations; translate + step proof {t1 - t0} ms, kernel check of step {t2 - t1} ms, induction {t3 - t2} ms, exec theorem {t4 - t3} ms"
     if listRes then
