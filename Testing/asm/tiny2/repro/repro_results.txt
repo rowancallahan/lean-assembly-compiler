@@ -1,0 +1,45 @@
+== r10_computed_match_on_two_calls_size.lean
+frontx_ind: R.fold on R.TT: 1 function(s) [R.fold], 5 arms, result .t, 21 locals; 131 ms
+Testing/asm/tiny2/repro/r10_computed_match_on_two_calls_size.lean:16:2: error: Tactic `decide` proved that the proposition
+== r11_tree_ite_on_uint64_eq_and_helper_size.lean
+frontx_ind: R.fold on R.TT: 2 function(s) [R.fold, R.mk2], 5 arms, result .t, 16 locals; 145 ms
+Testing/asm/tiny2/repro/r11_tree_ite_on_uint64_eq_and_helper_size.lean:22:11482: error: unsolved goals
+== r12_match_on_children_leaves_False.lean
+frontx_ind: R.fold on R.TT: 1 function(s) [R.fold], 5 arms, result .t, 18 locals; 119 ms
+Testing/asm/tiny2/repro/r12_match_on_children_leaves_False.lean:22:11478: error: unsolved goals
+== r13_nested_patterns.lean
+Testing/asm/tiny2/repro/r13_nested_patterns.lean:18:0: error: frontx_ind: nested patterns are not supported (R.fold.eq_5)
+(by cases: frontx_ind: unsupported term
+== r14_s4_fold_full.lean
+frontx_ind: R14.fold on R14.TT: 1 function(s) [R14.fold], 5 arms, result .t, 28 locals; 168 ms
+Testing/asm/tiny2/repro/r14_s4_fold_full.lean:33:11005: error: unsolved goals
+== r15_shift_by_doubling_simp_blowup.lean
+frontx_ind: R15.compile (entry of R15.comp) on R15.TT: 1 function(s) [R15.comp], 5 arms, result .t, 42 locals; 3302 ms
+Testing/asm/tiny2/repro/r15_shift_by_doubling_simp_blowup.lean:5:87: error: `simp` failed: maximum number of steps exceeded
+== r1_arm_count.lean
+frontx_ind: R.comp on R.ExT: 2 function(s) [R.comp, R.Ins.app], 4 arms, result .t, 20 locals; 188 ms
+Testing/asm/tiny2/repro/r1_arm_count.lean:27:12: error: Tactic `decide` proved that the proposition
+== r2_literal_scalar_in_ext_arg.lean
+frontx_ind: R.comp on R.ExT: 2 function(s) [R.comp, R.Ins.app], 2 arms, result .t, 17 locals; 122 ms
+Testing/asm/tiny2/repro/r2_literal_scalar_in_ext_arg.lean:21:12192: error: unsolved goals
+== r3_ctor_around_call_in_ext_arg.lean
+frontx_ind: R.comp on R.ExT: 2 function(s) [R.comp, R.Ins.app], 2 arms, result .t, 16 locals; 123 ms
+Testing/asm/tiny2/repro/r3_ctor_around_call_in_ext_arg.lean:23:12144: error: unsolved goals
+== r4_two_later_functions_in_one_arm.lean
+frontx_ind: R.comp on R.ExT: 2 function(s) [R.comp, R.Ins.app], 2 arms, result .t, 17 locals; 154 ms
+Testing/asm/tiny2/repro/r4_two_later_functions_in_one_arm.lean:26:12077: error: unsolved goals
+== r5_literal_scalar_in_call_arg_and_entry_nil.lean
+frontx_ind: R.compile (entry of R.comp) on R.ExT: 1 function(s) [R.comp], 2 arms, result .t, 16 locals; 59 ms
+Testing/asm/tiny2/repro/r5_literal_scalar_in_call_arg_and_entry_nil.lean:17:11785: error: unsolved goals
+== r6_two_inputs_of_different_types.lean
+Testing/asm/tiny2/repro/r6_two_inputs_of_different_types.lean:8:11: error: Application type mismatch: The argument
+frontx_ind: R.comp on R.ExT: 1 function(s) [R.comp], 2 arms, result .t, 16 locals; 61 ms
+== r7_helper_calling_helper_sem.lean
+frontx_ind: R.compile (entry of R.comp) on R.TT: 3 function(s) [R.comp,
+Testing/asm/tiny2/repro/r7_helper_calling_helper_sem.lean:33:11933: error: unsolved goals
+== r8_ite_in_call_arg.lean
+frontx_ind: R.compile (entry of R.comp) on R.TT: 1 function(s) [R.comp], 4 arms, result .t, 17 locals; 100 ms
+Testing/asm/tiny2/repro/r8_ite_in_call_arg.lean:18:11455: error: unsolved goals
+== r9_entry_with_input_word_and_tree_literal.lean
+Testing/asm/tiny2/repro/r9_entry_with_input_word_and_tree_literal.lean:10:4: error: Function expected at
+Testing/asm/tiny2/repro/r9_entry_with_input_word_and_tree_literal.lean:7:26: error: Function expected at

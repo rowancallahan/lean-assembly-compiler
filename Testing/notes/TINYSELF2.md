@@ -29,7 +29,7 @@ source is not a program of its language); `tinyCompile`'s self-hosting run (byte
 
 ## Failures, ranked by how much they limit the self-hoster
 
-Each has a standalone reproducer in `Testing/asm/tiny2/repro/` (`bash Testing/asm/tiny2/repro/run_repros.sh` prints each first error;
+Re-run of r1–r15 on the final tree: all fail as described (`repro/repro_results.txt`); r16, r17 were checked separately (same errors). Each has a standalone reproducer in `Testing/asm/tiny2/repro/` (`bash Testing/asm/tiny2/repro/run_repros.sh` prints each first error;
 `/tmp`-free, each file imports only `Riscv.Frontx.IndCmd`).
 
 **F1 — the dispatch function of `F` must fit one `beqz` range, so about 4–5 arms.** (`r1_arm_count.lean`; the checks that fail are
