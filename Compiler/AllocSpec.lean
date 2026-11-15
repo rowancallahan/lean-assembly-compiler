@@ -4,9 +4,10 @@ See `Testing/notes/SPEC_DRAFT.md`, "Sketch: out of memory as a machine step".
 * No allocator implementation is required: `AllocSpec` only says what a valid allocation is.
 * A compiled program reports the memory events of its abstract run; `memoryNeeded` is the most cells in use at
   any point of that run, with unlimited space. Defined, not calculated.
-* `CompileCorrect`: with the hypothesis `memoryNeeded ≤ workLength` the run returns the right output.
-* `CompileRuns`: no memory hypothesis; the run returns the right output exactly when there is enough memory,
-  and otherwise halts with `oomFlag` in the status register.
+* `CompileRuns` (what happens): no memory hypothesis; the code returns to the caller, with `oomFlag` in the
+  status register exactly when the run is out of memory.
+* `CompileCorrect` (what comes out): with the hypothesis `memoryNeeded ≤ workLength` it returns with the right
+  output and no flag.
 Only definitions and statements (as `Prop`s); no theorem is assumed. -/
 import Spec.Top
 
@@ -55,7 +56,20 @@ def oomFlag : UInt64 := 0xFFFFFFFFFFFFFFFF
 def OutOfMemory (compiled : CompiledA) (input : List UInt8) (workLength : Nat) : Prop :=
   workLength < memoryNeeded compiled input
 
-/-- The owner's statement with the memory hypothesis. -/
+/-- Running (what happens), no memory hypothesis: the code returns to the caller, and the status register holds
+`oomFlag` exactly when the run is out of memory. -/
+def CompileRuns {P : Type} [Program P] (machine : Machine) (compile : P → Option CompiledA) : Prop :=
+  ∀ {α β : Type} (program : P) (compiled : CompiledA) (f : α → β) (encodeInput : α → List UInt8)
+    (encodeOutput : β → List UInt8) (argument : α) (startState : machine.State) (call : Call),
+    compile program = some compiled →
+    Computes program f encodeInput encodeOutput →
+    StartCorrect machine startState call compiled.code (encodeInput argument) →
+    ∃ finishState, Runs machine startState finishState ∧
+      (machine.observe finishState).programCounter = call.returnAddress ∧
+      ((machine.observe finishState).register machine.mapping.status = oomFlag ↔
+        OutOfMemory compiled (encodeInput argument) call.workLength)
+
+/-- Correct (what comes out): with enough memory the code returns with the right output and no flag. -/
 def CompileCorrect {P : Type} [Program P] (machine : Machine) (compile : P → Option CompiledA) : Prop :=
   ∀ {α β : Type} (program : P) (compiled : CompiledA) (f : α → β) (encodeInput : α → List UInt8)
     (encodeOutput : β → List UInt8) (argument : α) (startState : machine.State) (call : Call),
@@ -66,23 +80,8 @@ def CompileCorrect {P : Type} [Program P] (machine : Machine) (compile : P → O
     memoryNeeded compiled (encodeInput argument) ≤ call.workLength →
     ∃ finishState, Runs machine startState finishState ∧
       (machine.observe finishState).programCounter = call.returnAddress ∧
+      (machine.observe finishState).register machine.mapping.status ≠ oomFlag ∧
       readMemory (machine.observe finishState) call.outputAddress (encodeOutput (f argument)).length
         = some (encodeOutput (f argument))
-
-/-- No memory hypothesis: the right output exactly when there is enough memory, otherwise the flag. -/
-def CompileRuns {P : Type} [Program P] (machine : Machine) (compile : P → Option CompiledA) : Prop :=
-  ∀ {α β : Type} (program : P) (compiled : CompiledA) (f : α → β) (encodeInput : α → List UInt8)
-    (encodeOutput : β → List UInt8) (argument : α) (startState : machine.State) (call : Call),
-    compile program = some compiled →
-    Computes program f encodeInput encodeOutput →
-    StartCorrect machine startState call compiled.code (encodeInput argument) →
-    (encodeOutput (f argument)).length ≤ call.outputLength →
-    ∃ finishState, Runs machine startState finishState ∧
-      (machine.observe finishState).programCounter = call.returnAddress ∧
-      ((¬ OutOfMemory compiled (encodeInput argument) call.workLength ∧
-          readMemory (machine.observe finishState) call.outputAddress (encodeOutput (f argument)).length
-            = some (encodeOutput (f argument))) ∨
-        (OutOfMemory compiled (encodeInput argument) call.workLength ∧
-          (machine.observe finishState).register machine.mapping.status = oomFlag))
 
 end Proven.Top.Alloc
