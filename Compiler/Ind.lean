@@ -398,9 +398,21 @@ def arm (fi : Nat) (e : E rk rk) : CStmt :=
       (.base (.seq (asg 8 (vE (if ch then 16 else 15))) (.seq (asg 9 (vE 17)) (asg 10 (vE 18))))))
   | none => .seq (comp fi [] e 12 17) (.base (asg 11 (kE 0)))
 
+/-- the parts of an `ite` -/
+def E.ite? : {k : Kd} → E rk k → Option (E rk .w × E rk k × E rk k)
+  | _, .ite c e₁ e₂ => some (c, e₁, e₂)
+  | _, _ => none
+
+/-- an arm that is an `ite` (up to `f` deep) is split at the top: a call in a branch is a tail call too -/
+def armT (fi : Nat) : Nat → E rk rk → CStmt
+  | 0, e => arm fi e
+  | f + 1, e => match e.ite? with
+    | some (c, e₁, e₂) => .seq (comp fi [] c 17 18) (.ite (vE 17) (armT fi f e₁) (armT fi f e₂))
+    | none => arm fi e
+
 def disp (fi : Nat) : List (E rk rk) → Nat → CStmt
   | [], _ => .base (.seq (asg 12 (kE 0)) (asg 11 (kE 0)))
-  | e :: es, i => .ite (eqE 13 i) (arm fi e) (disp fi es (i + 1))
+  | e :: es, i => .ite (eqE 13 i) (armT fi 8 e) (disp fi es (i + 1))
 
 def fLoop (fi : Nat) (pg : Pg rk) : CStmt := .loop (vE 11) (.seq (.base (loads 8 13 14 15 16)) (disp fi pg.arms 0))
 

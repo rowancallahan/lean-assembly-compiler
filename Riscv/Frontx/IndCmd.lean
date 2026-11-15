@@ -620,7 +620,7 @@ def armsOf (g : Name) (r : RTy) (tys : Array RTy) (fns : Array FnI) (cur : Nat) 
 def wfDefs : List String := ["Proven.Mach.Ind.indProg", "Proven.Mach.Ind.indProgM", "Proven.Mach.Ind.aC",
   "Proven.Mach.Ind.mainFn", "Proven.Mach.Ind.decFn",
   "Proven.Mach.Ind.encFn", "Proven.Mach.Ind.fFn", "Proven.Mach.Ind.fLoop", "Proven.Mach.Ind.disp",
-  "Proven.Mach.Ind.arm", "Proven.Mach.Ind.comp", "Proven.Mach.Ind.E.tail?", "Proven.Mach.Ind.loads",
+  "Proven.Mach.Ind.arm", "Proven.Mach.Ind.armT", "Proven.Mach.Ind.E.ite?", "Proven.Mach.Ind.comp", "Proven.Mach.Ind.E.tail?", "Proven.Mach.Ind.loads",
   "Proven.Mach.Ind.dDisp", "Proven.Mach.Ind.dFlds", "Proven.Mach.Ind.dFld", "Proven.Mach.Ind.eDisp",
   "Proven.Mach.Ind.eFlds", "Proven.Mach.Ind.eFld", "Proven.Mach.Ind.rdB", "Proven.Mach.Ind.wrB",
   "Proven.Mach.Ind.alloc", "Proven.Mach.Ind.stW", "Proven.Mach.Ind.vE", "Proven.Mach.Ind.kE",

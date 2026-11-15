@@ -276,7 +276,7 @@ def smallT : BinTree Nat → Bool
   emitIndW "tree_findk" findK.code true (keyTrees.map fun p =>
     let x := TU.enc p.1 ++ leN 8 p.2; (x, OU.enc (findK p.1 p.2), Proven.Frontx.Ind.spaceA 1 16 (fun n => findK.ind.pg.M * n) x.length))
   emitInd "level_combining" ConLeche.Level.combining.code ConLeche.Level.combining.ind.pg.M true
-    (lvPairs.map fun p => (LevelT.enc2 p, LevelT.enc (p.1.combining p.2)))
+    (lvPairs.map fun (p : ConLeche.Level × ConLeche.Level) => (LevelT.enc2 p, LevelT.enc (ConLeche.Level.combining p.1 p.2)))
   emitIndW "level_simplify" ConLeche.Level.simplify.code true (levels.map fun l =>
     (LevelT.enc l, LevelT.enc l.simplify, spW 2 20 (ConLeche.Level.simplify.ind.pg.al (LevelT.emb l) 0 .z) (LevelT.enc l)))
 #eval (treePairs.all fun p => smallT p.1 && smallT p.2, (treePairs.map fun p => eqBinTree p.1 p.2).count true,
