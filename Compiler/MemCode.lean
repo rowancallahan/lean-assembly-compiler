@@ -52,7 +52,7 @@ structure MachineM extends MachineC where
   law_getFr : ∀ {d : Reg} {s : S} {pc : BitVec 64}, d.val < 7 → toBase.At s pc (encM (.getFr d)) →
     runsTo s fun s' => toBase.Done s s' (next pc (encM (.getFr d)).length) ∧ toBase.Set1 s s' d (fr s) ∧
       mem s' = mem s
-  law_getTop : ∀ {d : Reg} {s : S} {pc : BitVec 64}, d.val < 7 → toBase.At s pc (encM (.getTop d)) →
+  law_getTop : ∀ {d : Reg} {s : S} {pc : BitVec 64}, d.val < 7 → enterOK s 0 → toBase.At s pc (encM (.getTop d)) →
     runsTo s fun s' => toBase.Done s s' (next pc (encM (.getTop d)).length) ∧
       toBase.Set1 s s' d (BitVec.ofNat 64 (frameAt s 0)) ∧ mem s' = mem s
   law_exit : ∀ {s : S} {pc w : BitVec 64}, toBase.At s pc (encM .exit) → 8 ≤ frameAt s 0 →
@@ -106,7 +106,6 @@ def simpleOK : ZOp → Prop
   | .y (.x (.a (.li d _))) => d.val < 11
   | .y (.x (.a (.bin _ d a b))) => d.val < 10 ∧ a = d ∧ b.val = d.val + 1
   | .m (.getFr d) => d.val < 7
-  | .m (.getTop d) => d.val < 7
   | _ => False
 
 /-- its effect on the registers (`f` the frame register, `t` the stub frame address) -/
@@ -134,8 +133,6 @@ theorem step_simple {o : ZOp} (ho : simpleOK o) {s : M.S} {pc : BitVec 64} (hA :
     exact M.runsTo_mono (M.law_bin h1 h2 h3 hA) fun s' ⟨d', st, m⟩ => ⟨d', fun r => by rw [st r]; rfl, m⟩
   | .m (.getFr d), ho =>
     exact M.runsTo_mono (M.law_getFr ho hA) fun s' ⟨d', st, m⟩ => ⟨d', fun r => by rw [st r]; rfl, m⟩
-  | .m (.getTop d), ho =>
-    exact M.runsTo_mono (M.law_getTop ho hA) fun s' ⟨d', st, m⟩ => ⟨d', fun r => by rw [st r]; rfl, m⟩
 
 theorem run_simple : ∀ (os : List ZOp), (∀ o ∈ os, simpleOK o) → ∀ {s : M.S} {pc : BitVec 64},
     M.At s pc (M.codeZ os) →
@@ -1748,14 +1745,14 @@ theorem fnsM_sub (off : Nat → Nat) (hp : Nat) : ∀ (Fs : List Fn) (start : Na
 
 /-- the stub's early check: the stub's two cells must fit above the heap base -/
 def pre1 : List ZOp :=
-  [.m (.getTop (rk 0)), opA (.li (rk 1) 8), opA (.bin .sub (rk 0) (rk 0) (rk 1)), opA (.mov (rk 1) (avar wb))]
+  [opA (.li (rk 1) 8), opA (.bin .sub (rk 0) (rk 0) (rk 1)), opA (.mov (rk 1) (avar wb))]
 /-- the early exit: status `-1`, return -/
 def early : List ZOp := [opA (.li (rk 0) (BitVec.allOnes 64)), opA (.mov (avar 0) (rk 0)), opA .ret]
 /-- the globals the program owns start at 0, global 7 (the heap length) too -/
 def zeroG : List ZOp :=
   [opA (.li (avar 4) 0), opA (.li (avar 5) 0), opA (.li (avar 6) 0), opA (.li regU 0)]
 
-def preLen : Nat := (M.codeZ (pre1 wb)).length + M.lenBr + (M.codeZ early).length
+def preLen : Nat := (M.encM (.getTop (rk 0))).length + (M.codeZ (pre1 wb)).length + M.lenBr + (M.codeZ early).length
 
 /-- the word where the stub's call statement begins -/
 def posSM : Nat := M.preLen wb + (M.encX (.enter 0)).length + (M.encC (.enterC 0)).length + (M.codeZ zeroG).length
@@ -1765,7 +1762,7 @@ def lenStubM (res main : Nat) : Nat :=
     ((M.encC (.leaveC 0)).length + ((M.encX .leave).length + (M.enc .ret).length))
 
 def stubM (off : Nat → Nat) (hp res main : Nat) : List ZOp :=
-  pre1 wb ++ [.m (.bgeu (rk 0) (rk 1) (M.lenBr + (M.codeZ early).length))] ++ early ++
+  [.m (.getTop (rk 0))] ++ pre1 wb ++ [.m (.bgeu (rk 0) (rk 1) (M.lenBr + (M.codeZ early).length))] ++ early ++
     [opF (.enter 0), opC (.enterC 0)] ++ zeroG ++ M.compCM P bv wb off hp (M.posSM wb) (.call res main []) ++
     [opC (.leaveC 0), opF .leave, opA .ret]
 
@@ -1811,9 +1808,8 @@ variable {M : MachineM} {P : Prog} {bv : List Nat} {wb : Fin 8}
 theorem pre1_simple (wb : Fin 8) : ∀ o ∈ pre1 wb, simpleOK o := by
   intro o ho
   simp only [pre1, List.mem_cons, List.not_mem_nil, or_false] at ho
-  rcases ho with rfl | rfl | rfl | rfl
+  rcases ho with rfl | rfl | rfl
   all_goals first
-    | exact (show (rk 0).val < 7 from by decide)
     | exact (show (rk 1).val < 11 from by decide)
     | exact ⟨by decide, rfl, rfl⟩
     | exact movOK_rk_avar (by decide) _
@@ -1826,7 +1822,7 @@ theorem zeroG_simple : ∀ o ∈ zeroG, simpleOK o := by
   all_goals decide
 
 theorem pre1_eff (wb : Fin 8) (f t : BitVec 64) (g : Reg → BitVec 64) :
-    sEffs f t (pre1 wb) g (rk 0) = t - 8 ∧ sEffs f t (pre1 wb) g (rk 1) = g (avar wb) ∧
+    sEffs f t (pre1 wb) g (rk 0) = g (rk 0) - 8 ∧ sEffs f t (pre1 wb) g (rk 1) = g (avar wb) ∧
     ∀ r : Reg, 7 ≤ r.val → sEffs f t (pre1 wb) g r = g r := by
   refine ⟨?_, ?_, fun r hr => ?_⟩
   · simp [sEffs, sEff, pre1, avar_ne_rk, Op.eval, rk01, rk02, rk12, rk10, rk20, rk21]
@@ -1916,7 +1912,8 @@ theorem compPM_ok (hP : progClean P = true) {res main : Nat} (hres : (!unread.co
   obtain ⟨q5, qzero⟩ := q6.split
   obtain ⟨q4, qecs⟩ := q5.split
   obtain ⟨q3, qearly⟩ := q4.split
-  obtain ⟨qpre, qbge⟩ := q3.split
+  obtain ⟨qGP, qbge⟩ := q3.split
+  obtain ⟨qtop, qpre⟩ := qGP.split
   obtain ⟨qen, qec⟩ := qecs.split
   obtain ⟨qlc, qlvr⟩ := qend.split
   obtain ⟨qlv, qret⟩ := qlvr.split
@@ -1928,14 +1925,23 @@ theorem compPM_ok (hP : progClean P = true) {res main : Nat} (hres : (!unread.co
   have hcdS := hcd _ memLast
   unfold disjoint at hcdS; dsimp only at hcdS
   -- 1. `r0 := frameAt - 8`, `r1 := wbase`
-  refine M.runsTo_trans (M.run_simple (pre1 wb) (pre1_simple wb) (M.at_sub hok hc qpre hA.ok hpc0))
-    fun s₁ ⟨d₁, g₁, m₁⟩ => ?_
-  rw [next_add] at d₁
-  obtain ⟨e10, e11, e17⟩ := pre1_eff wb (M.fr s) (BitVec.ofNat 64 (M.frameAt s 0)) (M.get s)
-  have v0 : (M.get s₁ (rk 0)).toNat = fp₀ - 8 := by
-    rw [g₁, e10, hfp, show (8 : BitVec 64) = BitVec.ofNat 64 8 from rfl, bv_sub_toNat (by omega) (by omega)]
-  have v1 : (M.get s₁ (rk 1)).toNat = wbase := by
-    rw [g₁, e11, hreg, hwbase, BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
+  refine M.runsTo_trans (M.law_getTop (d := rk 0) (by decide) hen (M.at_sub hok hc qtop hA.ok hpc0))
+    fun s₀ ⟨d₀, st₀, m₀⟩ => ?_
+  rw [next_add] at d₀
+  refine M.runsTo_trans (M.run_simple (pre1 wb) (pre1_simple wb) (M.at_sub hok (M.codeAt_mem m₀ hc) qpre d₀.ok
+    (M.pcIs_cast d₀.hpc (by omega)))) fun s₁' ⟨d₁', g₁, m₁'⟩ => ?_
+  rw [next_add] at d₁'
+  have d₁ := Core.Done.trans _ d₀ d₁'
+  have m₁ : M.mem s₁' = M.mem s := by rw [m₁', m₀]
+  rename_i s₁ _
+  clear d₁'
+  obtain ⟨e10, e11, e17⟩ := pre1_eff wb (M.fr s₀) (BitVec.ofNat 64 (M.frameAt s₀ 0)) (M.get s₀)
+  have v0 : (M.get s₁' (rk 0)).toNat = fp₀ - 8 := by
+    rw [g₁, e10, Core.Set1.same _ st₀, hfp, show (8 : BitVec 64) = BitVec.ofNat 64 8 from rfl,
+      bv_sub_toNat (by omega) (by omega)]
+  have v1 : (M.get s₁' (rk 1)).toNat = wbase := by
+    rw [g₁, e11, Core.Set1.other _ st₀ (avar_ne_rk _ (by decide)), hreg, hwbase, BitVec.toNat_ofNat,
+      Nat.mod_eq_of_lt (by omega)]
   have hc₁ := M.codeAt_mem m₁ hc
   refine M.runsTo_trans (M.law_bgeu hbzE (M.at_sub hok hc₁ qbge d₁.ok (M.pcIs_cast d₁.hpc (by omega))))
     fun s₂ ⟨d₂, st₂, m₂⟩ => ?_
@@ -1964,14 +1970,15 @@ theorem compPM_ok (hP : progClean P = true) {res main : Nat} (hres : (!unread.co
   rw [if_pos hfit0, next_add] at d₂
   have hc₂ := M.codeAt_mem m₂ hc₁
   -- 2. enter
-  have hpc₂ : M.pcIs s₂ (next cb (0 + ((M.codeZ (pre1 wb)).length + M.lenBr + (M.codeZ early).length))) :=
+  have hpc₂ : M.pcIs s₂ (next cb (0 + ((M.encM (KOp.getTop (rk 0))).length + (M.codeZ (pre1 wb)).length + M.lenBr +
+      (M.codeZ early).length))) :=
     M.pcIs_cast d₂.hpc (by omega)
   have hk₂ := M.keep_trans d₁.keep d₂.keep
   have hen₂ : M.enterOK s₂ 0 := M.enterOK_keep hk₂ hen
   have hfp₂ : M.frameAt s₂ 0 = fp₀ := by rw [M.frameAt_keep hk₂, hfp]
   refine M.runsTo_trans (M.law_enter hen₂ (M.at_sub hok hc₂ qen d₂.ok hpc₂) (by
-    rw [hfp₂]; have := qen.le; have e := M.pc_toNat hok (a := 0 + ((M.codeZ (pre1 wb)).length + M.lenBr +
-      (M.codeZ early).length)) (by omega)
+    rw [hfp₂]; have := qen.le; have e := M.pc_toNat hok (a := 0 + ((M.encM (KOp.getTop (rk 0))).length +
+      (M.codeZ (pre1 wb)).length + M.lenBr + (M.codeZ early).length)) (by omega)
     rw [e]; unfold disjoint; dsimp only; omega))
     fun s₃ ⟨ok₃, kf₃, pc₃, fr₃, rg₃, o₃, sv₃, z₃⟩ => ?_
   rw [hfp₂] at fr₃ o₃ sv₃
@@ -2019,7 +2026,7 @@ theorem compPM_ok (hP : progClean P = true) {res main : Nat} (hres : (!unread.co
     rw [m₅₂, bytes_out oS₄ fun r' hr' => by
       rw [List.mem_singleton] at hr'; subst hr'; exact disj_symm (hL.sR r hr), m₂, m₁]
   have hreg₅ : ∀ i : Fin 8, M.get s₅ (avar i) = stubEnv env i.val := fun i => by
-    rw [g₅, zeroG_eff, st₄, rg₃ _ (avar_ge i), st₂, g₁, e17 _ (avar_ge i), hreg]
+    rw [g₅, zeroG_eff, st₄, rg₃ _ (avar_ge i), st₂, g₁, e17 _ (avar_ge i), Core.Set1.other _ st₀ (avar_ne_rk _ (by decide)), hreg]
     simp only [stubEnv, BEnv.set, hvar]
     match i with
     | ⟨0, _⟩ | ⟨1, _⟩ | ⟨2, _⟩ | ⟨3, _⟩ | ⟨4, _⟩ | ⟨5, _⟩ | ⟨6, _⟩ | ⟨7, _⟩ => simp
