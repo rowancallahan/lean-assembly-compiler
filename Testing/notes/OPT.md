@@ -263,11 +263,82 @@ equal to `bench/NOTES.md`):
 | gcd (832040, 514229), whole call | 1058 | 178 | 77 | 2.3 |
 | insertion sort, n = 1000, per element | 10520 | 3911 | 1715 | 2.28 |
 | insertion sort, n = 10000, per element | 107833 | 40120 | 17557 | 2.29 |
-| merge sort, n = 100, per element | 606.4 | 193.7 | 101.8 | 1.90 |
-| merge sort, n = 1000, per element | 920.3 | 285.9 | 132.2 | 2.16 |
-| merge sort, n = 100000, per element | 1394.0 | 427.5 | 221.2 | 1.93 |
+| merge sort, n = 100, per element | 606.4 | 187.5 (was 193.7) | 101.8 | 1.84 |
+| merge sort, n = 1000, per element | 920.3 | 279.9 (was 285.9) | 132.2 | 2.12 |
+| merge sort, n = 100000, per element | 1394.0 | 421.5 (was 427.5) | 221.2 | 1.91 |
 | CRC-32, n = 100000, per byte (incl. building the table) | 59.4 | 11.2 | 10.2 | 1.10 |
 | CRC-32, n = 100, whole call | 147853 | 19577 | 16898 | 1.16 |
 
 (gcd (100000, 3): whole call 1200110 / 200020 / 100010 instructions, divided by 100000 loop iterations here; the
 earlier table above divides differently; the whole-call numbers agree with it.)
+
+## Profile against gcc -O2, and liveness-checked register assignment (2026-11-15)
+
+Profile (exact per-instruction counts from a small RV64I interpreter over the emitted words; same random bytes as
+`bench.py`; agrees with the QEMU `-icount` numbers to the instruction). Merge sort before this change
+(`msortCodeO`, 215 words), instructions per element:
+
+| n | total | inner merge loop | of which: ALU / address add / branch / compare / lbu / mov / sb | outer loops | of which slot ld/sd |
+|---|---|---|---|---|---|
+| 100 (7 passes) | 193.7 | 164.4 | 49.0 / 33.6 / 29.0 / 21.0 / 14.0 / 10.8 / 7.0 | 29.2 | 14.5 |
+| 1000 (11 passes) | 285.9 | 257.8 | 77.0 / 52.7 / 45.0 / 33.0 / 22.0 / 17.1 / 11.0 | 28.1 | 14.1 |
+| 100000 (17 passes) | 427.5 | 399.5 | 119.0 / 83.6 / 69.0 / 51.0 / 34.0 / 25.8 / 17.0 | 28.0 | 14.0 |
+
+So one merge step (one output byte of one pass) is 23.4 instructions, gcc -O2's `ms_buf` common path is ~11
+(14.5 per element-pass incl. its outer loops). Where the extra ~12 go: the SOURCE program `msortProg` is a
+branch-free merge (two loads per step, `src[p < mid ? p : k]` and `src[q < e ? q : k]`, the take flag
+`(p<mid) & ((q<e & y<x) ^ 1)` computed arithmetically, both indices updated with `t` / `t ^ 1`, a
+select for the stored value), while gcc compiles a branchy three-loop merge (one load per input byte, no flag).
+Counted against what this source needs, our step is within ~1.5 instructions of the best schedule (the remaining
+waste: `p<mid` and `q<e` are compared twice, once as the select branch and once as a value, and the stored-value
+select costs a `mov`); CSE of the two compares needs two more registers that are not free. Outer loops: 28
+per element, half of it slot traffic of `i`, `w`, `ww` (and `min(i + w, n)` evaluates `i + w` twice).
+Insertion sort (`sortCodeO`): 16 instructions per inner step (`0x4c..0x88`), 3911 per element at n = 1000;
+gcc ~7 per step: again the source (`innerBody`: index `j ? j-1 : 0`, flag `cE` computed with `and`,
+store of a select, `j -= t`) plus one `li 0` into the scratch register for `0 <u j` (no zero register in `Wide`).
+gcd: 6 per step vs gcc 3 (`a2 := a0 <u a1` is a source variable; two conditional assignments, loop test
+`a0 ≠ 0 ∧ a1 ≠ 0` re-tested in full each step; gcc tests only the operand that changed).
+Conclusion: the remaining factor ~2 is mostly in how the source programs are written (chosen for simple
+source-level proofs), not in the code generator. The large lever left is a branchy merge-sort source program
+(`BStmt`, proved equal to `List.mergeSort`), compiled by the same back end; on the compiler side, more
+registers (callee-saved `s1..s11`, see below).
+
+Callee-saved registers: not done. `Reg := Fin 15` (`Compiler/Iface.lean`) is the whole abstract register file
+(`rk 0..6` = t0–t2/t3–t6, `avar` = a0–a7) and every `Wide` law has `keep s s'` (callee-saved registers unchanged)
+inside `Done`, so `s1..s11` cannot be named by a `WOp` without changing `Iface.lean`/`Done` or giving `Wide` a
+second register type and per-function save/restore laws, i.e. reworking every law and the RISC-V instance. An
+`ldS`/`stS` slot moved into an `s` register would cost the same instruction count (`mv` instead of `ld`).
+
+Implemented (kernel-checked; `#print axioms`: `propext`, `Quot.sound`):
+- `Compiler/Opt/Live.lean`: `chk f c L` (registers live before `c` when `L` is live after; fails unless every
+  definition `d` leaves the live registers other than `d` (and the source of a move `d := a`) in registers
+  `≠ f d`; loop invariants from an untrusted bounded fixpoint `lv`, checked as a post-fixpoint), and
+  `chk_ok : Exec ram fp c σ σ' → chk f c L = some Lin → Ren f (· ∈ Lin) σ τ → ∃ τ', Exec ram fp (c.map f) τ τ' ∧
+  Ren f (· ∈ L) σ' τ'`; `dropMov` (removes `d := d`) with `dropMov_ok`.
+- `Compiler/Opt/Fn.lean`: `allocOK f vars c := injOn f (vars ++ c.regs) || (chk f c vars).isSome`, `allocOK_run`;
+  `Wide.body` and `Wide.fn` now check `allocOK` and lower `dropMov (c.map f)`. `body_ok`, `fn_ok` and everything
+  above them (`optE/S/A/B_ok`, `compileO/FO/AFO/BFO_ok`, `compBFO_ok'`, the `…_implements1O` theorems,
+  `compileP_ok`, `frontx_implements`) keep their statements unchanged (statement hashes equal; closures differ,
+  fingerprints re-frozen).
+- `Compiler/Opt/Color.lean` (untrusted): interference from the same liveness, greedy colouring (most constrained
+  first, move partners preferred, the variables' convention registers offered first). `Riscv/Back/OptB.lean`:
+  `pickB` tries liveness colourings first (no local spilled, then one, then two, cheapest by weighted uses), then
+  the old injective candidates; `pickB_ok`. Merge sort: `i` (dead during the merge loop) now shares a register;
+  `w`, `ww` stay in slots; 215 → 195 words.
+
+| merge sort, per element | n = 100 | 1000 | 100000 |
+|---|---|---|---|
+| before (this section's profile) | 193.7 | 285.9 | 427.5 |
+| liveness-checked assignment | 187.5 | 279.9 | 421.5 |
+| gcc -O2 | 101.8 | 132.2 | 221.2 |
+| ratio | 1.84 | 2.12 | 1.91 |
+
+Other rows unchanged (Exp/Stmt/AStmt pin every variable to its convention register, so there is nothing to
+share; only `d := d` moves disappear). Why not more: a selection temporary is ONE virtual register for the whole
+program (`tk k`), so it interferes with everything and cannot use a variable's register where that variable is
+dead; splitting temporaries per statement (or validating a per-occurrence assignment, i.e. `chk` over a pair
+relation) would put `w` in a register too (est. a further ~6 per element). Tested: `msort_test.py check 60` on
+`opt-words` 60/60; `impl1_test.py` take5/inc/sum/crc/sort/msort 100/100 each (QEMU == Sail == model);
+`pipe_test.py` on the 7 changed `pipe-words` 100/100 each and the 29 changed `pipe-words1` (`I1=1`) 50/50 each.
+Fuzz (`fuzz_opt.lean`, seeds 61, 62, 300 cases × 100 inputs): 600/600 cases on the optimised path, 0 fallbacks;
+60,000 pairs four-way (Lean == RV64 QEMU == Sail emulator == AArch64 QEMU), 0 mismatches.

@@ -52,12 +52,12 @@ theorem compileBFO_okK (N : Nat) (bv : List Nat) (hbv : ∀ x ∈ bv, x < 8 + N)
   | error _ => rw [hx] at hc hok hcd; exact Mach.Riscv.compileBF_okK N bv hbv hp hR hex h hpc hc hok hf hfd hcd hreg hslot hheap hra
   | ok ws =>
   rw [hx] at hc hok hcd
-  have hopt : ∃ T, tryB N bv (toMS p) T = some ws := by
+  have hopt : ∃ g sp, rvwF.optB scB g sp N bv [] (toMS p) = some ws := by
     unfold compileOptB at hx
-    cases hfb : firstB (tryB N bv (toMS p)) (candidates (toMS p) N) with
+    cases hfb : pickB N bv [] (toMS p) with
     | none => rw [hfb] at hx; exact nomatch hx
-    | some w => rw [hfb] at hx; cases hx; exact firstB_ok hfb
-  obtain ⟨T, hT⟩ := hopt
+    | some w => rw [hfb] at hx; cases hx; exact pickB_ok hfb
+  obtain ⟨g, sp, hT⟩ := hopt
   have hcd' : ∀ r ∈ R.map toR ++ [] ++ [⟨rvwF.frameAt s N, 8 * (N + 1)⟩],
       Mach.disjoint ⟨pc.toNat, 4 * ws.length⟩ r := fun r hr => by
     rcases List.mem_append.1 hr with hr | hr
