@@ -106,6 +106,10 @@ hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read 
   the run uses, DEFINED from the run (not calculated, not an explicit formula). It replaces `compiled.space n` /
   `cellsSup` in the statement (those become ways to prove the hypothesis). Being a Nat it is always satisfiable
   for a large enough block, so the theorem is not vacuous. One work block per top-level call; callees allocate
-  inside it. No separate out-of-memory theorem for now. OUT OF MEMORY is a property of the run (the program
-  needs more of the work block than it has), not a register value; a register would only report it. The owner
-  will define it; do not invent one.
+  inside it.
+  Out of memory (draft definition, owner asked for a stab): `memoryNeeded compiled input` = most work memory the
+  run uses with unlimited space (defined, not calculated); `OutOfMemory compiled input W := W < memoryNeeded
+  compiled input` (a property of the run, not of a register). Behaviour for any W: halts, nothing outside output +
+  work changes; `memoryNeeded <= W` -> right output (`compile_correct`); `OutOfMemory` -> halts with `a1 = 2^64-1`
+  (the reported flag; output contents unspecified). The two cases are complementary, so the flag appears exactly
+  when the run does not fit, never earlier.
