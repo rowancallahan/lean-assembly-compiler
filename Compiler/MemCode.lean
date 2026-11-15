@@ -917,6 +917,7 @@ structure CtxM (cb : BitVec 64) (Wc : List (BitVec 32)) (R : List Region) (wbase
   sR : ∀ r ∈ R, disjoint ⟨wbase, hi - wbase⟩ r
   cd : ∀ r ∈ R ++ [⟨wbase, hi - wbase⟩], disjoint ⟨cb.toNat, 4 * Wc.length⟩ r
   stw : ∀ a, wbase ≤ a → a < hi → ∀ s, M.ok s → M.writable s a
+  slotsLe : 8 * (M.maxSlots + 1) ≤ wbase
 
 /-- what a statement in the frame `(N, fp)` may write: the byte blocks, its slots, the work area below `fp` -/
 def WrtM (N fp : Nat) (R : List Region) (wbase : Nat) : List Region := R ++ slots N fp ++ [⟨wbase, fp - wbase⟩]
@@ -1270,6 +1271,431 @@ theorem execBM_ok (C : M.CtxM P bv wb off hp cb Wc R wbase hi) {N fp : Nat} (hF 
       simp only [hie, hee, List.getElem_singleton, List.set_cons_zero] at this
       exact this
     exact acc_ok C hF hhi hc.1.2 hwfa.1 hwfa.2.2.1 hb hwfa hchk hsub hcode ho hpc inv rfl (List.length_set ..) rfl b
+
+end MachineM
+end Proven.Mach
+
+namespace Proven.Mach
+open MachineF Proven.Top.Alloc
+
+namespace MachineM
+variable {M : MachineM} {P : Prog} {bv : List Nat} {wb : Fin 8} {off : Nat → Nat} {hp : Nat}
+variable {cb : BitVec 64} {Wc : List (BitVec 32)} {R : List Region} {wbase hi : Nat}
+
+/-- a callee's writes are writes of the caller -/
+theorem wrtM_callee {n fp' N fp : Nat} {m m' : Mem} (o : Out (WrtM n fp' R wbase) m m')
+    (h : fp' + 8 * (n + 1) ≤ fp) (hw : wbase ≤ fp') : Out (WrtM N fp R wbase) m m' :=
+  Out.mono o fun r hr => by
+    unfold WrtM at hr
+    simp only [List.mem_append, List.mem_singleton] at hr
+    rcases hr with (hr | hr) | hr
+    · exact ⟨r, List.mem_append_left _ (List.mem_append_left _ hr), Nat.le_refl _, Nat.le_refl _⟩
+    · obtain ⟨j, hj, rfl⟩ := mem_slots hr
+      exact ⟨_, memLast, by dsimp only; omega, by dsimp only; omega⟩
+    · subst hr; exact ⟨_, memLast, Nat.le_refl _, by dsimp only; omega⟩
+
+theorem out_wrtM {a l N fp : Nat} {m m' : Mem} (o : Out [⟨a, l⟩] m m') (h1 : wbase ≤ a) (h2 : a + l ≤ fp) :
+    Out (WrtM N fp R wbase) m m' :=
+  Out.mono o fun r hr => by
+    rw [List.mem_singleton] at hr; subst hr; exact ⟨_, memLast, h1, by dsimp only; omega⟩
+
+/-- the saved return address (cell 0) is not written by the body -/
+theorem CtxM.cell0M (C : M.CtxM P bv wb off hp cb Wc R wbase hi) {N fp : Nat} (h1 : wbase ≤ fp)
+    (h2 : fp + 8 * (N + 1) ≤ hi) : ∀ r ∈ WrtM N fp R wbase, disjoint ⟨fp, 8⟩ r := by
+  intro r hr
+  unfold WrtM at hr
+  simp only [List.mem_append, List.mem_singleton] at hr
+  rcases hr with (hr | hr) | hr
+  · have := C.sR r hr; unfold disjoint at this ⊢; dsimp only at this ⊢; omega
+  · obtain ⟨j, hj, rfl⟩ := mem_slots hr; unfold disjoint; dsimp only; omega
+  · subst hr; unfold disjoint; dsimp only; omega
+
+/-- the caller's slots are not written by a callee -/
+theorem CtxM.slotM (C : M.CtxM P bv wb off hp cb Wc R wbase hi) {n fp' N fp : Nat} (h1 : wbase ≤ fp')
+    (h2 : fp' + 8 * (n + 1) ≤ fp) (h3 : fp + 8 * (N + 1) ≤ hi) {j : Nat} (hj : j < N) :
+    ∀ r ∈ WrtM n fp' R wbase, disjoint ⟨fp + 8 * (j + 1), 8⟩ r := by
+  intro r hr
+  unfold WrtM at hr
+  simp only [List.mem_append, List.mem_singleton] at hr
+  rcases hr with (hr | hr) | hr
+  · have := C.sR r hr; unfold disjoint at this ⊢; dsimp only at this ⊢; omega
+  · obtain ⟨j', hj', rfl⟩ := mem_slots hr; unfold disjoint; dsimp only; omega
+  · subst hr; unfold disjoint; dsimp only; omega
+
+/-- the byte blocks are not in the work area -/
+theorem CtxM.rWrk (C : M.CtxM P bv wb off hp cb Wc R wbase hi) {a l : Nat} (h1 : wbase ≤ a) (h2 : a + l ≤ hi)
+    {r : Region} (hr : r ∈ R) : disjoint r ⟨a, l⟩ := by
+  have := C.sR r hr; unfold disjoint at this ⊢; dsimp only at this ⊢; omega
+
+end MachineM
+end Proven.Mach
+
+namespace Proven.Mach
+open MachineF Proven.Top.Alloc
+
+namespace MachineM
+variable {M : MachineM} {P : Prog} {bv : List Nat} {wb : Fin 8} {off : Nat → Nat} {hp : Nat}
+variable {cb : BitVec 64} {Wc : List (BitVec 32)} {R : List Region} {wbase hi : Nat}
+
+/-- **Statements with calls and run-time checks**, by induction on the run with events: from `b + |W|` cells
+in use (`b`: the frames above and the entry stub) in a work area of `b + (fp - wbase) / 8` cells, the code of
+`p` runs to its end with `σ'` (the events never exceed the cells), or to the exit (they do). -/
+theorem execCM_ok (C : M.CtxM P bv wb off hp cb Wc R wbase hi) (hP : progClean P = true) :
+    ∀ {p : CStmt} {σ σ' : BState} {E : List MemEvent}, TExec P p σ E σ' → p.clean = true →
+    ∀ {N fp pos : Nat} {s : M.S} {W : List (BitVec 64)} {b : Nat}, M.Frm N fp → fp + 8 * (N + 1) ≤ hi →
+    M.wfCM P bv wb off hp N pos p → Sub Wc pos (M.codeZ (M.compCM P bv wb off hp pos p)) →
+    M.codeAt s cb Wc → M.ok s → M.pcIs s (next cb pos) → M.InvM bv wb N fp R wbase σ s W →
+    M.runsTo s fun s' =>
+      (peak (E ++ [.alloc (b + W.length)]) ≤ b + (fp - wbase) / 8 ∧ M.ok s' ∧ M.keepC s s' ∧
+        M.pcIs s' (next cb (pos + M.lenCM P bv wb p)) ∧ M.codeAt s' cb Wc ∧
+        Out (WrtM N fp R wbase) (M.mem s) (M.mem s') ∧
+        ∃ W', inUse (E ++ [.alloc (b + W.length)]) = b + W'.length ∧ M.InvM bv wb N fp R wbase σ' s' W') ∨
+      (b + (fp - wbase) / 8 < peak (E ++ [.alloc (b + W.length)]) ∧ M.ok s' ∧ M.keepC s s' ∧
+        M.pcIs s' (next cb hp) ∧ Out (WrtM N fp R wbase) (M.mem s) (M.mem s')) := by
+  intro p σ σ' E h
+  induction h with
+  | base hx =>
+    intro hc N fp pos s W b hF hhi hwf hsub hcode ho hpc inv
+    exact execBM_ok C hF hhi hx hc hwf hsub hcode ho hpc inv
+  | @seq p q σ σ₁ σ₂ E₁ E₂ _ _ ih₁ ih₂ =>
+    intro hc N fp pos s W b hF hhi hwf hsub hcode ho hpc inv
+    simp only [CStmt.clean, Bool.and_eq_true] at hc
+    simp only [compCM, codeZ_append, wfCM] at hsub hwf
+    obtain ⟨h1, h2⟩ := hsub.split
+    rw [len_compCM] at h2
+    refine M.runsTo_trans (ih₁ hc.1 hF hhi hwf.1 h1 hcode ho hpc inv (b := b)) fun s₁ h => ?_
+    rcases h with ⟨pk₁, ok₁, kc₁, pc₁, hc₁, o₁, W₁, iu₁, inv₁⟩ | ⟨pk₁, ok₁, kc₁, pc₁, o₁⟩
+    · refine M.runsTo_mono (ih₂ hc.2 hF hhi hwf.2 h2 hc₁ ok₁ pc₁ inv₁ (b := b)) fun s₂ h => ?_
+      rcases h with ⟨pk₂, ok₂, kc₂, pc₂, hc₂, o₂, W₂, iu₂, inv₂⟩ | ⟨pk₂, ok₂, kc₂, pc₂, o₂⟩
+      · refine .inl ⟨?_, ok₂, M.keepC_trans kc₁ kc₂, M.pcIs_cast pc₂ (by simp only [lenCM]; omega), hc₂, o₁.trans o₂,
+          W₂, ?_, inv₂⟩
+        · rw [peak_seq, iu₁]; omega
+        · rw [inUse_seq, iu₁, iu₂]
+      · refine .inr ⟨?_, ok₂, M.keepC_trans kc₁ kc₂, pc₂, o₁.trans o₂⟩
+        rw [peak_seq, iu₁]; omega
+    · refine M.runsTo_of (.inr ⟨?_, ok₁, kc₁, pc₁, o₁⟩)
+      rw [peak_seq]; omega
+  | @iteT c p q σ E σ' hc0 _ ih =>
+    intro hc N fp pos s W b hF hhi hwf hsub hcode ho hpc inv
+    simp only [CStmt.clean, Bool.and_eq_true] at hc
+    simp only [compCM, codeZ_append, codeZ_xs, codeZ_one, codeZ_cons, codeZ_nil, List.append_nil, encZ_A, wfCM]
+      at hsub hwf
+    obtain ⟨hw1, hw2, hw3, hw4, hw5, hw6⟩ := hwf
+    obtain ⟨h1234, h5⟩ := hsub.split
+    obtain ⟨h123, h4⟩ := h1234.split
+    obtain ⟨h12, h3⟩ := h123.split
+    obtain ⟨h1, h2⟩ := h12.split
+    obtain ⟨h4a, h4b⟩ := h4.split
+    simp only [List.length_append, M.len_bz, len_compCM, MachineC.lenLi_eq] at h2 h3 h4a h4b h5
+    refine M.runsTo_trans (M.genB_ok hF σ.env c 0 (by omega) hw2 (M.at_sub C.codeOK hcode h1 ho hpc) inv.rel.env)
+      fun s₁ ⟨d₁, m₁, v₁, k₁⟩ => ?_
+    rw [next_add] at d₁
+    refine M.runsTo_trans (M.law_bz (rk_val (by omega)) hw3 (M.at_sub C.codeOK (M.codeAt_mem m₁ hcode) h2 d₁.ok d₁.hpc))
+      fun s₂ ⟨d₂, st₂, m₂⟩ => ?_
+    rw [v₁, ite_neg hc0, M.len_bz, next_add] at d₂
+    have inv₂ : M.InvM bv wb N fp R wbase σ s₂ W :=
+      ⟨inv.wh, inv.hv, inv.below, RelB.same M.toMachineF inv.rel (by rw [m₂, m₁]) (M.keep_trans d₁.keep d₂.keep)
+        fun i => by rw [st₂, k₁ _ (.inr (avar_ge i))]⟩
+    have kc₂ := M.keepC_trans (M.kC d₁) (M.kC d₂)
+    have om₂ : M.mem s₂ = M.mem s := by rw [m₂, m₁]
+    refine M.runsTo_trans (ih hc.1.2 hF hhi hw5 (h3.cast (by omega)) (M.codeAt_mem om₂ hcode) d₂.ok
+      (M.pcIs_cast d₂.hpc (by omega)) inv₂ (b := b)) fun s₃ h => ?_
+    rcases h with ⟨pk₃, ok₃, kc₃, pc₃, hc₃, o₃, W₃, iu₃, inv₃⟩ | ⟨pk₃, ok₃, kc₃, pc₃, o₃⟩
+    · refine M.runsTo_trans (M.law_li (d := rk 0) (c := 0) (by rw [rk_val (by omega)]; omega)
+        (M.at_sub C.codeOK hc₃ h4a ok₃ (M.pcIs_cast pc₃ (by omega)))) fun s₄ ⟨d₄, st₄, m₄⟩ => ?_
+      rw [next_add] at d₄
+      refine M.runsTo_mono (M.law_bz (c := rk 0) (rk_val (by omega)) hw4
+        (M.at_sub C.codeOK (M.codeAt_mem m₄ hc₃) h4b d₄.ok (M.pcIs_cast d₄.hpc (by rw [MachineC.lenLi_eq]))))
+        fun s₅ ⟨d₅, st₅, m₅⟩ => ?_
+      rw [Core.Set1.same _ st₄, ite_pos rfl, next_add] at d₅
+      refine .inl ⟨pk₃, d₅.ok, M.keepC_trans kc₂ (M.keepC_trans kc₃ (M.keepC_trans (M.kC d₄) (M.kC d₅))),
+        M.pcIs_cast d₅.hpc (by simp only [lenCM]; omega), M.codeAt_mem (by rw [m₅, m₄]) hc₃,
+        (Out.of_eq om₂).trans (o₃.trans (Out.of_eq (by rw [m₅, m₄]))), W₃, iu₃,
+        ⟨inv₃.wh, inv₃.hv, inv₃.below, RelB.same M.toMachineF inv₃.rel (by rw [m₅, m₄])
+          (M.keep_trans d₄.keep d₅.keep) fun i => by rw [st₅, Core.Set1.other _ st₄ (avar_ne_rk0 i)]⟩⟩
+    · exact M.runsTo_of (.inr ⟨pk₃, ok₃, M.keepC_trans kc₂ kc₃, pc₃, (Out.of_eq om₂).trans o₃⟩)
+  | @iteF c p q σ E σ' hc0 _ ih =>
+    intro hc N fp pos s W b hF hhi hwf hsub hcode ho hpc inv
+    simp only [CStmt.clean, Bool.and_eq_true] at hc
+    simp only [compCM, codeZ_append, codeZ_xs, codeZ_one, codeZ_cons, codeZ_nil, List.append_nil, encZ_A, wfCM]
+      at hsub hwf
+    obtain ⟨hw1, hw2, hw3, hw4, hw5, hw6⟩ := hwf
+    obtain ⟨h1234, h5⟩ := hsub.split
+    obtain ⟨h123, h4⟩ := h1234.split
+    obtain ⟨h12, h3⟩ := h123.split
+    obtain ⟨h1, h2⟩ := h12.split
+    simp only [List.length_append, M.len_bz, len_compCM, MachineC.lenLi_eq] at h2 h5
+    refine M.runsTo_trans (M.genB_ok hF σ.env c 0 (by omega) hw2 (M.at_sub C.codeOK hcode h1 ho hpc) inv.rel.env)
+      fun s₁ ⟨d₁, m₁, v₁, k₁⟩ => ?_
+    rw [next_add] at d₁
+    refine M.runsTo_trans (M.law_bz (rk_val (by omega)) hw3 (M.at_sub C.codeOK (M.codeAt_mem m₁ hcode) h2 d₁.ok d₁.hpc))
+      fun s₂ ⟨d₂, st₂, m₂⟩ => ?_
+    rw [v₁, ite_pos hc0, next_add] at d₂
+    have inv₂ : M.InvM bv wb N fp R wbase σ s₂ W :=
+      ⟨inv.wh, inv.hv, inv.below, RelB.same M.toMachineF inv.rel (by rw [m₂, m₁]) (M.keep_trans d₁.keep d₂.keep)
+        fun i => by rw [st₂, k₁ _ (.inr (avar_ge i))]⟩
+    have kc₂ := M.keepC_trans (M.kC d₁) (M.kC d₂)
+    have om₂ : M.mem s₂ = M.mem s := by rw [m₂, m₁]
+    refine M.runsTo_mono (ih hc.2 hF hhi hw6 (h5.cast (by omega)) (M.codeAt_mem om₂ hcode) d₂.ok
+      (M.pcIs_cast d₂.hpc (by omega)) inv₂ (b := b)) fun s₃ h => ?_
+    rcases h with ⟨pk₃, ok₃, kc₃, pc₃, hc₃, o₃, W₃, iu₃, inv₃⟩ | ⟨pk₃, ok₃, kc₃, pc₃, o₃⟩
+    · exact .inl ⟨pk₃, ok₃, M.keepC_trans kc₂ kc₃, M.pcIs_cast pc₃ (by simp only [lenCM]; omega), hc₃,
+        (Out.of_eq om₂).trans o₃, W₃, iu₃, inv₃⟩
+    · exact .inr ⟨pk₃, ok₃, M.keepC_trans kc₂ kc₃, pc₃, (Out.of_eq om₂).trans o₃⟩
+  | @loopF c bd σ hc0 =>
+    intro hc N fp pos s W b hF hhi hwf hsub hcode ho hpc inv
+    simp only [compCM, codeZ_append, codeZ_xs, codeZ_one, encZ_A, wfCM] at hsub hwf
+    obtain ⟨hw1, hw2, hw3, hw4, hw5⟩ := hwf
+    obtain ⟨h123, h4⟩ := hsub.split
+    obtain ⟨h12, h3⟩ := h123.split
+    obtain ⟨h1, h2⟩ := h12.split
+    refine M.runsTo_trans (M.genB_ok hF σ.env c 0 (by omega) hw2 (M.at_sub C.codeOK hcode h1 ho hpc) inv.rel.env)
+      fun s₁ ⟨d₁, m₁, v₁, k₁⟩ => ?_
+    rw [next_add] at d₁
+    refine M.runsTo_mono (M.law_bz (rk_val (by omega)) hw3 (M.at_sub C.codeOK (M.codeAt_mem m₁ hcode) h2 d₁.ok d₁.hpc))
+      fun s₂ ⟨d₂, st₂, m₂⟩ => .inl ⟨?_, d₂.ok, M.keepC_trans (M.kC d₁) (M.kC d₂), ?_,
+        M.codeAt_mem (by rw [m₂, m₁]) hcode, Out.of_eq (by rw [m₂, m₁]), W, by rw [inUse_nil],
+        ⟨inv.wh, inv.hv, inv.below, RelB.same M.toMachineF inv.rel (by rw [m₂, m₁]) (M.keep_trans d₁.keep d₂.keep)
+          fun i => by rw [st₂, k₁ _ (.inr (avar_ge i))]⟩⟩
+    · rw [peak_nil]; have := inv.below; omega
+    · rw [v₁, ite_pos hc0, next_add] at d₂
+      exact M.pcIs_cast d₂.hpc (by simp only [lenCM]; omega)
+  | @loopT c bd σ σ₁ σ₂ E₁ E₂ hc0 _ _ ih₁ ih₂ =>
+    intro hc N fp pos s W b hF hhi hwf hsub hcode ho hpc inv
+    have hc' := hc
+    simp only [CStmt.clean, Bool.and_eq_true] at hc'
+    have hwf0 := hwf
+    have hsub0 := hsub
+    simp only [compCM, codeZ_append, codeZ_xs, codeZ_one, encZ_A, wfCM] at hsub hwf
+    obtain ⟨hw1, hw2, hw3, hw4, hw5⟩ := hwf
+    obtain ⟨h123, h4⟩ := hsub.split
+    obtain ⟨h12, h3⟩ := h123.split
+    obtain ⟨h1, h2⟩ := h12.split
+    simp only [List.length_append, M.len_bz, len_compCM] at h3 h4
+    refine M.runsTo_trans (M.genB_ok hF σ.env c 0 (by omega) hw2 (M.at_sub C.codeOK hcode h1 ho hpc) inv.rel.env)
+      fun s₁ ⟨d₁, m₁, v₁, k₁⟩ => ?_
+    rw [next_add] at d₁
+    refine M.runsTo_trans (M.law_bz (rk_val (by omega)) hw3 (M.at_sub C.codeOK (M.codeAt_mem m₁ hcode) h2 d₁.ok d₁.hpc))
+      fun s₂ ⟨d₂, st₂, m₂⟩ => ?_
+    rw [v₁, ite_neg hc0, M.len_bz, next_add] at d₂
+    have inv₂ : M.InvM bv wb N fp R wbase σ s₂ W :=
+      ⟨inv.wh, inv.hv, inv.below, RelB.same M.toMachineF inv.rel (by rw [m₂, m₁]) (M.keep_trans d₁.keep d₂.keep)
+        fun i => by rw [st₂, k₁ _ (.inr (avar_ge i))]⟩
+    refine M.runsTo_trans (ih₁ hc'.2 hF hhi hw5 (h3.cast (by omega)) (M.codeAt_mem (by rw [m₂, m₁]) hcode) d₂.ok
+      (M.pcIs_cast d₂.hpc (by omega)) inv₂ (b := b)) fun s₃ h => ?_
+    rcases h with ⟨pk₃, ok₃, kc₃, pc₃, hc₃, o₃, W₃, iu₃, inv₃⟩ | ⟨pk₃, ok₃, kc₃, pc₃, o₃⟩
+    · refine M.runsTo_trans (M.law_jmp hw4 (M.at_sub C.codeOK hc₃ h4 ok₃ (M.pcIs_cast pc₃ (by omega))))
+        fun s₄ ⟨d₄, st₄, m₄⟩ => ?_
+      have pc₄ : M.pcIs s₄ (next cb pos) := M.pcIs_jmp d₄.hpc (by omega)
+      refine M.runsTo_mono (ih₂ hc hF hhi hwf0 hsub0 (M.codeAt_mem m₄ hc₃) d₄.ok pc₄
+        ⟨inv₃.wh, inv₃.hv, inv₃.below, RelB.same M.toMachineF inv₃.rel m₄ d₄.keep fun i => st₄ _⟩ (b := b))
+        fun s₅ h => ?_
+      have kc := M.keepC_trans (M.kC d₁) (M.keepC_trans (M.kC d₂) (M.keepC_trans kc₃ (M.kC d₄)))
+      have o := (Out.of_eq (show M.mem s₂ = M.mem s by rw [m₂, m₁])).trans (o₃.trans (Out.of_eq m₄))
+      rcases h with ⟨pk₅, ok₅, kc₅, pc₅, hc₅, o₅, W₅, iu₅, inv₅⟩ | ⟨pk₅, ok₅, kc₅, pc₅, o₅⟩
+      · refine .inl ⟨?_, ok₅, M.keepC_trans kc kc₅, pc₅, hc₅, o.trans o₅, W₅, ?_, inv₅⟩
+        · rw [peak_seq, iu₃]; omega
+        · rw [inUse_seq, iu₃, iu₅]
+      · refine .inr ⟨?_, ok₅, M.keepC_trans kc kc₅, pc₅, o.trans o₅⟩
+        rw [peak_seq, iu₃]; omega
+    · refine M.runsTo_of (.inr ⟨?_, ok₃, M.keepC_trans (M.kC d₁) (M.keepC_trans (M.kC d₂) kc₃), pc₃,
+        (Out.of_eq (show M.mem s₂ = M.mem s by rw [m₂, m₁])).trans o₃⟩)
+      rw [peak_seq]; omega
+  | @call res f args σ E σ₁ hf ha _ ih =>
+    intro hc N fp pos s W b hF hhi hwf hsub hcode ho hpc inv
+    simp only [CStmt.clean, Bool.and_eq_true, List.all_eq_true] at hc
+    obtain ⟨hres0, hargs⟩ := hc
+    have hres := ne_hvar (not_unread hres0)
+    obtain ⟨hbody, hret⟩ := fn_clean hP hf
+    have enl := nlOf_eq hf
+    simp only [compCM, MachineC.lenArgs, codeZ_append, codeZ_xs, codeZ_y, codeZ_one, encZ_C, wfCM, enl] at hsub hwf
+    obtain ⟨-, hw2, hw3, hw4, hw5, hw6, hw7, hw8, hw9⟩ := hwf
+    obtain ⟨hwN, hwr1, hwr2, hwb⟩ := C.wf f hf
+    obtain ⟨h123, h4⟩ := hsub.split
+    obtain ⟨h12, h3⟩ := h123.split
+    obtain ⟨h1, h2⟩ := h12.split
+    simp only [List.length_append, len_chkF, M.len_call] at h2 h3 h4
+    have hfrm : P[f].frame = 8 * (P[f].nlocals + 1) := rfl
+    have hstk := C.stk
+    unfold Base.inRAM at hstk
+    have hal := hF.al
+    have hfr0 := MachineF.Frm.fr M.toMachineF hF inv.rel.env.fr
+    have hlt := M.ramHi_lt
+    have hsl := C.slotsLe
+    have hwal := C.wal
+    have hbel := inv.below
+    have hfpR := hF.ram
+    unfold Base.inRAM at hfpR
+    have hpad : (padArgs P[f].nlocals args).length = P[f].nlocals := padArgs_length hw2
+    have hU0 : M.get s regU = BitVec.ofNat 64 W.length := by
+      rw [show regU = avar ⟨7, by decide⟩ from rfl, inv.rel.env.reg]; exact inv.hv
+    have hW0 : M.get s (avar wb) = BitVec.ofNat 64 wbase := by
+      rw [inv.rel.env.reg]; have := inv.rel.wbase 0 (by simp); simpa using this
+    -- 1. the call check
+    refine M.runsTo_trans (M.chkF_ok C.codeOK h1 hw8 hw9 hcode ho hpc hU0 hW0 inv.rel.env.fr (by omega)
+      (by omega) (by omega)) fun s₁ h => ?_
+    rcases h with ⟨hfit, d₁, k₁, m₁⟩ | ⟨hno, ok₁, kc₁, pc₁, m₁⟩
+    rotate_left
+    · refine M.runsTo_of (.inr ⟨?_, ok₁, kc₁, pc₁, Out.of_eq m₁⟩)
+      rw [peak_call]
+      have := peak_ge E (b + W.length + (P[f].nlocals + 1))
+      omega
+    have henv₁ : M.EnvB N fp σ.env s₁ :=
+      EnvB.of M.toMachineF inv.rel.env m₁ d₁.keep fun i => k₁ _ (avar_ge i)
+    have hc₁ := M.codeAt_mem m₁ hcode
+    -- 2. the arguments
+    refine M.runsTo_trans (M.args_ok C.codeOK hF σ.env P[f].nlocals hwN (by omega) (by unfold Base.inRAM; omega)
+      (C.cd_in (by omega) (by omega)) (fun a h1 h2 => C.stw a (by omega) (by omega))
+      (padArgs P[f].nlocals args) 0 (pos + M.lenChkF wb P[f].nlocals) (by omega) (pad_wf hw3) h2 hc₁ d₁.ok d₁.hpc
+      henv₁) fun s₂ ⟨d₂, e₂, o₂, b₂⟩ => ?_
+    rw [Nat.sub_zero] at o₂
+    have hc₂ : M.codeAt s₂ cb Wc := M.codeAt_out hc₁ C.codeOK (fun r hr => by
+      rw [List.mem_singleton] at hr; subst hr; exact C.cd_in (by omega) (by omega)) o₂
+    -- 3. the call
+    refine M.runsTo_trans (M.law_call hw7 (M.at_sub C.codeOK hc₂ (h3.cast (by omega)) d₂.ok d₂.hpc))
+      fun s₃ ⟨ok₃, kc₃, pc₃, ra₃, fr₃, st₃, m₃⟩ => ?_
+    rw [MachineC.next_call] at pc₃
+    have hfr₃ : (M.fr s₃).toNat = fp := by rw [fr₃, M.keep_fr d₂.keep, M.keep_fr d₁.keep]; exact hfr0
+    -- 4. the callee's prologue
+    have hfn := C.fns f hf
+    simp only [fnCM, codeZ_append, codeZ_xs, codeZ_one, codeZ_cons, codeZ_nil, List.append_nil, encZ_C, encZ_A]
+      at hfn
+    obtain ⟨g123, g4⟩ := hfn.split
+    obtain ⟨g12, g3⟩ := g123.split
+    obtain ⟨g1, g2⟩ := g12.split
+    obtain ⟨g4a, g4b⟩ := g4.split
+    simp only [List.length_append, len_compCM] at g3 g4a g4b
+    refine M.runsTo_trans (M.law_enterC hwN (M.at_sub C.codeOK (M.codeAt_mem m₃ hc₂) g1 ok₃ pc₃)
+      (by rw [hfr₃]; omega) (by rw [hfr₃]; unfold Base.inRAM; omega) (by rw [hfr₃]; exact hal)
+      (fun i hi => by rw [hfr₃]; exact C.stw _ (by omega) (by omega) _ ok₃))
+      fun s₄ ⟨ok₄, kc₄, pc₄, fr₄, st₄, m₄⟩ => ?_
+    rw [hfr₃] at fr₄ m₄
+    rw [next_add] at pc₄
+    have hF' : M.Frm P[f].nlocals (fp - 8 * (P[f].nlocals + 1)) :=
+      ⟨by unfold Base.inRAM; omega, by omega, hwN, fun a h1 h2 => C.stw a (by omega) (by omega)⟩
+    have o₄ : Out [⟨fp - 8 * (P[f].nlocals + 1), 8 * (P[f].nlocals + 1)⟩] (M.mem s) (M.mem s₄) := by
+      refine (Out.of_eq m₁).trans ((out1 o₂ (by omega) (by omega)).trans ?_)
+      rw [m₄, m₃]
+      exact Out.wr (List.mem_singleton_self _) (by dsimp only; omega) (by rw [length_le8]; dsimp only; omega)
+    have byR : ∀ (a l : Nat), (a + l ≤ fp - 8 * (P[f].nlocals + 1) ∨ fp ≤ a) →
+        bytes (M.mem s₄) a l = bytes (M.mem s) a l := fun a l h => bytes_out o₄ fun r' hr' => by
+          rw [List.mem_singleton] at hr'; subst hr'; unfold disjoint; dsimp only; omega
+    have hrel₄ : M.RelB P[f].nlocals (fp - 8 * (P[f].nlocals + 1)) bv [wb.val] R [⟨wbase, 8 * W.length⟩]
+        ⟨callEnv σ.env (args.map (·.denote σ.env)), σ.heap, σ.wheap⟩ s₄ := by
+      have r := inv.rel
+      refine ⟨⟨fun i => ?_, fr₄, fun j hj => ?_⟩, r.hlen, r.bvlen, fun b' hb' => ?_, r.blen,
+        fun b' hb' => ?_, r.whlen, r.wvlen, fun b' hb' => ?_, r.wblen, fun b' hb' => ?_⟩
+      · rw [st₄, st₃, e₂, henv₁.reg]
+        show _ = if i.val < 8 then _ else _
+        rw [ite_pos i.2]
+      · have hb := b₂ j (by rw [hpad]; exact hj)
+        rw [pad_denote] at hb
+        rw [m₄, bytes_wr_out (by rw [length_le8]; omega), m₃,
+          show fp - 8 * (P[f].nlocals + 1) + 8 * (j + 1) = fp - 8 * (P[f].nlocals - (0 + j)) by omega, hb]
+        show _ = (le8 (if 8 + j < 8 then _ else (args.map _).getD (8 + j - 8) 0)).map some
+        rw [ite_neg (by omega), Nat.add_sub_cancel_left]
+      · show (if bv.getD b' 0 < 8 then σ.env (bv.getD b' 0) else _) = _
+        rw [ite_pos (C.bvlt _ (getD_memN (r.bvlen ▸ hb')))]; exact r.base b' hb'
+      · have hd := C.rWrk (a := fp - 8 * (P[f].nlocals + 1)) (l := 8 * (P[f].nlocals + 1)) (by omega) (by omega)
+          (List.getElem_mem hb')
+        unfold disjoint at hd; dsimp only at hd
+        rw [byR _ _ (by omega)]; exact r.rbytes b' hb'
+      · have hb0 : b' = 0 := by simp at hb'; omega
+        subst hb0
+        show (if [wb.val].getD 0 0 < 8 then σ.env ([wb.val].getD 0 0) else _) = _
+        rw [ite_pos (by simp)]
+        exact r.wbase 0 hb'
+      · have : b' = 0 := by simp at hb'; omega
+        subst this
+        rw [show ([⟨wbase, 8 * W.length⟩] : List Region)[0] = ⟨wbase, 8 * W.length⟩ from rfl, byR _ _ (by
+          dsimp only; omega)]
+        exact r.wbyts 0 hb'
+    have inv₄ : M.InvM bv wb P[f].nlocals (fp - 8 * (P[f].nlocals + 1)) R wbase
+        ⟨callEnv σ.env (args.map (·.denote σ.env)), σ.heap, σ.wheap⟩ s₄ W :=
+      ⟨inv.wh, by simp only [callEnv, show hvar < 8 by decide, if_true]; exact inv.hv, by omega, hrel₄⟩
+    have hc₄ : M.codeAt s₄ cb Wc := M.codeAt_out hcode C.codeOK (fun r hr => by
+      rw [List.mem_singleton] at hr; subst hr; exact C.cd_in (by omega) (by omega)) o₄
+    have kc₄ := M.keepC_trans (M.kC d₁) (M.keepC_trans (M.kC d₂) (M.keepC_trans kc₃ kc₄))
+    have o₄W : Out (WrtM N fp R wbase) (M.mem s) (M.mem s₄) := out_wrtM o₄ (by omega) (by omega)
+    have hA' : b + (P[f].nlocals + 1) + (fp - 8 * (P[f].nlocals + 1) - wbase) / 8 = b + (fp - wbase) / 8 := by omega
+    -- 5. the body
+    refine M.runsTo_trans (ih hbody hF' (by omega) hwb g2 hc₄ ok₄ pc₄ inv₄ (b := b + (P[f].nlocals + 1)))
+      fun s₅ h => ?_
+    rw [hA', show b + (P[f].nlocals + 1) + W.length = b + W.length + (P[f].nlocals + 1) by omega] at h
+    rcases h with ⟨pk₅, ok₅, kc₅, pc₅, hc₅, o₅, W₅, iu₅, inv₅⟩ | ⟨pk₅, ok₅, kc₅, pc₅, o₅⟩
+    rotate_left
+    · refine M.runsTo_of (.inr ⟨?_, ok₅, M.keepC_trans kc₄ kc₅, pc₅, o₄W.trans (wrtM_callee o₅ (by omega) (by omega))⟩)
+      rw [peak_call]; omega
+    -- 6. the result
+    refine M.runsTo_trans (M.genB_ok hF' σ₁.env P[f].ret 0 (by omega) hwr2
+      (M.at_sub C.codeOK hc₅ g3 ok₅ (M.pcIs_cast pc₅ (by omega))) inv₅.rel.env) fun s₆ ⟨d₆, m₆, v₆, k₆⟩ => ?_
+    rw [next_add] at d₆
+    -- 7. the epilogue
+    have hfr₆ : (M.fr s₆).toNat = fp - 8 * (P[f].nlocals + 1) :=
+      MachineF.Frm.fr M.toMachineF hF' (by rw [M.keep_fr d₆.keep, inv₅.rel.env.fr])
+    have hsv : bytes (M.mem s₆) (fp - 8 * (P[f].nlocals + 1)) 8 = (le8 (M.ra s₃)).map some := by
+      rw [m₆, bytes_out o₅ (C.cell0M (by omega) (by omega)), m₄]
+      have := bytes_wr_self (m := M.mem s₃) (a := fp - 8 * (P[f].nlocals + 1)) (l := le8 (M.ra s₃))
+      rw [length_le8] at this; exact this
+    refine M.runsTo_trans (M.law_leaveC (w := M.ra s₃) hwN
+      (M.at_sub C.codeOK (M.codeAt_mem m₆ hc₅) g4a d₆.ok (M.pcIs_cast d₆.hpc (by omega)))
+      (by rw [hfr₆]; exact hF'.ram) (by rw [hfr₆]; exact hF'.al) (by rw [hfr₆]; exact hsv))
+      fun s₇ ⟨ok₇, kc₇, pc₇, ra₇, fr₇, st₇, m₇⟩ => ?_
+    rw [next_add] at pc₇
+    rw [hfr₆, Nat.sub_add_cancel (by omega)] at fr₇
+    have hret : M.retOK (M.ra s₇) := by
+      rw [ra₇, ra₃, next_add]
+      apply M.retOK_al
+      rw [M.pc_toNat C.codeOK (by have := h3.le; rw [M.len_call] at this; omega)]
+      have := C.codeOK.1; omega
+    refine M.runsTo_trans (M.law_ret hret (M.at_sub C.codeOK (M.codeAt_mem m₇ (M.codeAt_mem m₆ hc₅)) g4b ok₇
+      (M.pcIs_cast pc₇ (by omega)))) fun s₈ ⟨d₈, st₈, m₈⟩ => ?_
+    rw [ra₇, ra₃, next_add] at d₈
+    -- 8. back in the caller
+    have m₈₅ : M.mem s₈ = M.mem s₅ := by rw [m₈, m₇, m₆]
+    have o₈ : Out (WrtM N fp R wbase) (M.mem s) (M.mem s₈) := by
+      rw [m₈₅]; exact o₄W.trans (wrtM_callee o₅ (by omega) (by omega))
+    have hrel₈ : M.RelB N fp bv [wb.val] R [⟨wbase, 8 * W₅.length⟩] ⟨retEnv σ.env σ₁.env, σ₁.heap, σ₁.wheap⟩ s₈ := by
+      have r₅ := inv₅.rel
+      refine ⟨⟨fun i => ?_, ?_, fun j hj => ?_⟩, r₅.hlen, r₅.bvlen, fun b' hb' => ?_, r₅.blen,
+        fun b' hb' => by rw [m₈₅]; exact r₅.rbytes b' hb', r₅.whlen, r₅.wvlen, fun b' hb' => ?_, r₅.wblen,
+        fun b' hb' => by rw [m₈₅]; exact r₅.wbyts b' hb'⟩
+      · rw [st₈, st₇, k₆ _ (.inr (avar_ge i)), r₅.env.reg]
+        show _ = if i.val < 8 then _ else _
+        rw [ite_pos i.2]
+      · rw [M.keep_fr d₈.keep, fr₇]
+      · have hs := C.slotM (n := P[f].nlocals) (fp' := fp - 8 * (P[f].nlocals + 1)) (by omega) (by omega) hhi hj
+        rw [m₈₅, bytes_out o₅ hs, bytes_out o₄ (fun r' hr' => by
+          rw [List.mem_singleton] at hr'; subst hr'; unfold disjoint; dsimp only; omega), inv.rel.env.slot j hj]
+        show _ = (le8 (if 8 + j < 8 then _ else _)).map some
+        rw [ite_neg (by omega)]
+      · show (if bv.getD b' 0 < 8 then σ₁.env (bv.getD b' 0) else _) = _
+        rw [ite_pos (C.bvlt _ (getD_memN (r₅.bvlen ▸ hb')))]; exact r₅.base b' hb'
+      · have hb0 : b' = 0 := by simp at hb'; omega
+        subst hb0
+        show (if [wb.val].getD 0 0 < 8 then σ₁.env ([wb.val].getD 0 0) else _) = _
+        rw [ite_pos (by simp)]
+        exact r₅.wbase 0 hb'
+    -- 9. the result variable
+    have hx : M.get s₈ (rk 0) = P[f].ret.denote σ₁.env := by rw [st₈, st₇, v₆]
+    have hL := C.lay (N := N) (fp := fp) (u := W₅.length) (by have := inv₅.below; omega) hhi
+    have hc₈ := C.codeAt_W (by omega) hhi hcode o₈
+    refine M.runsTo_mono (M.setV_ok hF hL hw4 hw5 hw6
+      (M.at_sub C.codeOK hc₈ h4 d₈.ok (M.pcIs_cast d₈.hpc (by omega))) hx hrel₈) fun s₉ ⟨d₉, o₉, r₉⟩ => ?_
+    rw [next_add] at d₉
+    refine .inl ⟨?_, d₉.ok, ?_, M.pcIs_cast d₉.hpc (by simp only [lenCM, MachineC.lenArgs, enl]; omega),
+      C.codeAt_W (by omega) hhi hc₈ (allR_wrtM (by have := inv₅.below; omega) o₉),
+      o₈.trans (allR_wrtM (by have := inv₅.below; omega) o₉), W₅, ?_,
+      ⟨inv₅.wh, ?_, by have := inv₅.below; omega, r₉⟩⟩
+    · rw [peak_call]
+      have := inUse_le_peak (E ++ [.alloc (b + W.length + (P[f].nlocals + 1))])
+      omega
+    · exact M.keepC_trans kc₄ (M.keepC_trans kc₅ (M.keepC_trans (M.kC d₆) (M.keepC_trans kc₇
+        (M.keepC_trans (M.kC d₈) (M.kC d₉)))))
+    · rw [inUse_call, iu₅]; omega
+    · show (BEnv.set (retEnv σ.env σ₁.env) res (P[f].ret.denote σ₁.env)) hvar = _
+      simp only [BEnv.set, retEnv, show hvar < 8 by decide, if_true]
+      rw [if_neg (Ne.symm hres)]; exact inv₅.hv
 
 end MachineM
 end Proven.Mach
