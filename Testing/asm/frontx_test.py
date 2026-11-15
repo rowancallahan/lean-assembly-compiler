@@ -26,6 +26,8 @@ at = lambda xs, i: xs[i] if i < len(xs) else 0
 # name -> (result bytes, reference)
 FUNCS = {
     "crcraw": (4, lambda xs: zlib.crc32(bytes(xs)) ^ 0xFFFFFFFF),
+    "wa_crc32": (4, lambda xs: zlib.crc32(bytes(xs))),
+    "wa_crcupdate": (4, lambda xs: zlib.crc32(bytes(xs)) ^ 0xFFFFFFFF),
     "b64all": (4, lambda xs: sum(b64digit(c) for c in xs) % 2 ** 32),
     "findnl": (8, lambda xs: next((k for k, c in enumerate(xs) if c == 10), len(xs))),
     "be32at0": (8, lambda xs: at(xs, 0) << 24 | at(xs, 1) << 16 | at(xs, 2) << 8 | at(xs, 3)),
@@ -51,11 +53,16 @@ REC = int(lines[0].split()[1]) if lines[0].startswith("rec") else None
 # user inductives (`frontx_ind`): first line `ind A B L`, work space `A + B n`, `L = 1`: tree result, length in a1
 IND = tuple(map(int, lines[0].split()[1:])) if lines[0].startswith("ind ") else None
 if IND and IND[2]: LISTS.add(FN)
+# word arrays (`Riscv/Frontx/Wa*.lean`): first line `wa A N B L`: work space `8 (A + B n) + 8 (N + 1) + 7` (A + B n
+# words of arrays, N slots); L = 1: byte-list result, length in a1
+WA = tuple(map(int, lines[0].split()[1:])) if lines[0].startswith("wa") else None
+if WA and WA[3]: LISTS.add(FN)
 # programs of several functions (`frontx_ind`, section 21): first line `indw L`, the work block per case (the
 # space of the theorem for the cells this input allocates, `Ind.spaceA m nl (fun _ => cells)`)
 INDW = int(lines[0].split()[1]) if lines[0].startswith("indw") else None
 if INDW: LISTS.add(FN)
-wk0 = lambda L: IND[0] + IND[1] * L if IND else REC * (L + 1) + 32 if REC else 8 * (int(lines[0]) + 1) + 7
+wk0 = lambda L: (8 * (WA[0] + WA[2] * L) + 8 * (WA[1] + 1) + 7 if WA else
+                 IND[0] + IND[1] * L if IND else REC * (L + 1) + 32 if REC else 8 * (int(lines[0]) + 1) + 7)
 wkc = lambda case: case[2] if INDW is not None else wk0(len(case[0]))
 MAGIC = 0x0123456789ABCDEF
 LD = "ENTRY(_start)\nSECTIONS { . = 0x80000000; .text : { *(.text.start) *(.text) }\n . = 0x80100000; .tohost : { *(.tohost) }\n . = 0x80200000; .data : { *(.data) } }\n"
@@ -163,7 +170,8 @@ def check(N):
             assert gp == MAGIC and spo == base + w0 + WK, (nm, "gp/sp", hex(gp), spo)
             if FN in LISTS: assert a1 == R, (nm, "a1 (length)", a1, R)
     print(f"{FN}: {len(cases)} cases ok (QEMU == Sail == Lean; input lengths up to {max(len(x) for x, *_ in cases)}; "
-          f"{len(words)} words, work " + (f"{IND[0]} + {IND[1]} n" if IND else f"{REC} (n + 1) + 32" if REC else
+          f"{len(words)} words, work " + (f"8 (A + B n) + 8 (N + 1) + 7, (A, N, B) = {WA[:3]}" if WA else
+          f"{IND[0]} + {IND[1]} n" if IND else f"{REC} (n + 1) + 32" if REC else
           f"per case, up to {max(c[2] for c in cases)}" if INDW is not None else f"{wk0(0)}") + " bytes)")
 
 if sys.argv[1] == "check": check(int(sys.argv[2]))
