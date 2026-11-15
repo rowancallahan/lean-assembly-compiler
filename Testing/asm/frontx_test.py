@@ -127,9 +127,12 @@ def check(N):
     func = "".join(f"  .word 0x{w:08x}\n" for w in words)
     lay, halt, base, tab, size = build(cases, func)
     qmem = qemu(halt, base, tab + E * len(cases) - base)
-    r = subprocess.run(f"{SAIL} --inst-limit 2000000000 --trace-mem --trace-output {p('sail.log')} {p('crc.elf')}",
-                       shell=True, capture_output=True, text=True)
-    assert "SUCCESS" in r.stdout + r.stderr, (r.stdout + r.stderr)[-500:]
+    # keep only memory writes and the result line: a full fetch trace can fill the disk
+    r = subprocess.run(f"set -o pipefail; {SAIL} --inst-limit 2000000000 --trace-mem --trace-output /dev/stdout {p('crc.elf')}"
+                       f" 2>&1 | grep -E 'mem\\[W|SUCCESS|FAIL|limit' > {p('sail.log')}",
+                       shell=True, capture_output=True, text=True, executable="/bin/bash")
+    out = open(p("sail.log")).read()
+    assert "SUCCESS" in out, out[-500:]
     init = bytearray(open(p("crc.bin"), "rb").read()) + bytearray(qmem[size:])
     allowed = set(range(tab, tab + E * len(cases)))
     for (i0, o0, w0), case in zip(lay, cases):
@@ -159,7 +162,7 @@ def check(N):
             gp, spo, a1 = (int.from_bytes(mem[e + o:e + o + 8], "little") for o in (48, 56, 64))
             assert gp == MAGIC and spo == base + w0 + WK, (nm, "gp/sp", hex(gp), spo)
             if FN in LISTS: assert a1 == R, (nm, "a1 (length)", a1, R)
-    print(f"{FN}: {len(cases)} cases ok (QEMU == Sail == Lean; input lengths up to {max(len(x) for x, _ in cases)}; "
+    print(f"{FN}: {len(cases)} cases ok (QEMU == Sail == Lean; input lengths up to {max(len(x) for x, *_ in cases)}; "
           f"{len(words)} words, work " + (f"{IND[0]} + {IND[1]} n" if IND else f"{REC} (n + 1) + 32" if REC else
           f"per case, up to {max(c[2] for c in cases)}" if INDW is not None else f"{wk0(0)}") + " bytes)")
 

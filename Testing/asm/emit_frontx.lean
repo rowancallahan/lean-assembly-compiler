@@ -267,13 +267,13 @@ def smallT : BinTree Nat → Bool
   emitIndW "pos_mul" Pos.mul.code true (posPairs.map fun p =>
     (PosT.enc2 p, PosT.enc (p.1.mul p.2), spW 2 16 (Pos.mul.ind.pg.al (PosT.emb p.1) 0 (PosT.emb p.2)) (PosT.enc2 p)))
   emitIndW "nontail_reverse_ln" NonTail.reverse.code true (lists.map fun l =>
-    (LN.enc l, LN.enc (NonTail.reverse l), spW 2 17 (NonTail.reverse.ind.pg.al (LN.emb l) 0 .z) (LN.enc l)))
+    (Proven.Frontx.IndEx.LN.enc l, Proven.Frontx.IndEx.LN.enc (NonTail.reverse l), spW 2 17 (NonTail.reverse.ind.pg.al (Proven.Frontx.IndEx.LN.emb l) 0 .z) (Proven.Frontx.IndEx.LN.enc l)))
   emitInd "eq_bintree" eqBinTree.code eqBinTree.ind.pg.M false
     (treePairs.map fun p => (BTN.enc2 p, boolB (eqBinTree p.1 p.2)))
   emitInd "pos_comp" Pos.comp.code Pos.comp.ind.pg.M true (posPairs.map fun p => (PosT.enc2 p, ordB (p.1.comp p.2)))
-  emitIndW "tree_containsk" containsK.code false (keyTrees.map fun p =>
+  emitIndW "tree_containsk" containsK.code false (keyTrees.map fun (p : Tree Unit × Nat) =>
     let x := TU.enc p.1 ++ leN 8 p.2; (x, boolB (containsK p.1 p.2), Proven.Frontx.Ind.spaceA 1 16 (fun n => containsK.ind.pg.M * n) x.length))
-  emitIndW "tree_findk" findK.code true (keyTrees.map fun p =>
+  emitIndW "tree_findk" findK.code true (keyTrees.map fun (p : Tree Unit × Nat) =>
     let x := TU.enc p.1 ++ leN 8 p.2; (x, OU.enc (findK p.1 p.2), Proven.Frontx.Ind.spaceA 1 16 (fun n => findK.ind.pg.M * n) x.length))
   emitInd "level_combining" ConLeche.Level.combining.code ConLeche.Level.combining.ind.pg.M true
     (lvPairs.map fun (p : ConLeche.Level × ConLeche.Level) => (LevelT.enc2 p, LevelT.enc (ConLeche.Level.combining p.1 p.2)))

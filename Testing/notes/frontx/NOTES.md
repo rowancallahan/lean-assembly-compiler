@@ -1240,3 +1240,43 @@ Reproduce: `lake build Frontx`; `lake env lean --tstack=4000000 Testing/asm/emit
 Statement fingerprints: `ind_ok` and the eleven section-17 `implements1` theorems keep their `stmt` hashes; only their
 closures changed (`E` gained `ite`). Not re-frozen here (left to the owner: `statement_check.sh --freeze`); the new
 theorems are not in the fingerprint list yet. `check.sh`: ALL CHECKS PASSED (with that warning).
+
+
+## 21. Inductives, part 2: several functions, two-value match, Option results, input keys (branch `feat-ind2`)
+
+Files: `Compiler/Ind.lean`, `IndOk.lean`, `IndMain.lean` (generalised, source level, 3 axioms), `Compiler/IndSup.lean`
+(new: decoder, `cellsSup`), `Riscv/Back/CallsImpl1W.lean` (one more premise), `Riscv/Frontx/Ind.lean`
+(`implements1_indM`, `implements1_indL`, `implements1_indS`), `Riscv/Frontx/IndCmd.lean` (front end rewritten),
+`Riscv/Frontx/Ind2Examples.lean` (targets), tests and bench as before; axioms `Testing/scripts/axioms_w.lean`.
+
+**Language** (`E`, once, proved in `comp_ok` / `loop_ok`):
+
+| new | meaning | code |
+|---|---|---|
+| `ext j k et ea eb` | call of the `j`-th function after this one (result kind `k`) on any tree, word, tree | `call (fi+1+j)` |
+| `me` | the current node | its pointer (`v8`) |
+| `fw i e`, `ft ch e` | tag / scalar, left / right child of any tree value (`z`: `255`, `0`, `z`) | one `ld` |
+| `bind e₁ e₂`, `var i k` | `let` (de Bruijn; the values in temporaries above the arm's) | `v_n := e₁` |
+
+`Pg` gets `X` / `XA` (meaning / cell count of the later functions, default none); a program is the entry and a
+list of later functions (`indProgM`: `main, dec, enc, F₀, F₁, …`), each calling only functions after it
+(`Chain`: `Fᵢ.X j = semX (later) j`, checked by `rfl`), so the meaning is plain structural recursion per
+function, defined function by function.  `chain_ok` (once, by induction on the list): a call of the function at
+position `i` runs within `8 (nl+1) (|W|+1) · (m - i)` bytes of stack (`XOK`, the call's contract: the heap
+grows, the cells below stay, the result relates to `semX`).  `loop_ok` takes the later functions' `XOK` as a
+hypothesis; `ind_okM` the whole program.  The old `ind_ok` / `implements1_ind` keep their statements (now
+corollaries; `Pg.lin` also asks "no `ext`, `var` kinds agree").
+
+**Space.**  One function with at most `M` cells per input node: the old linear bound (`Ind.space M`, or
+`Ind.spaceA 1 16 (fun n => M * n)` with the new input/output options, `implements1_indL`).  With calls of other
+functions the cells are not bounded by a fixed number per node (`Pos.mul` allocates `|n|·|k|` cells,
+`NonTail.reverse` `n²/2`); there the statement is
+`Ind.spaceA m nl (cellsSup sh pg bi ain a0)`: `cellsSup … n` is the largest number of cells (`Pg.al`, the
+constructor applications the Lean function evaluates) over all inputs of `n` bytes (a definition over all
+`256^n` byte strings and the format's decoder `C.dec`, proved inverse to `C.enc`: `dec_enc`, `al_le_cellsSup`).
+No hypothesis on the size: `implements1_of_cexecW` now hands the RAM bound (`8 · words < 2^32`) to the program
+proof, so a huge `cellsSup` only makes the theorem's precondition (`space ≤ work`) unsatisfiable.
+
+**Other options of the whole program**: the word argument from the input (`ain`: 8 bytes little-endian after the
+tree(s), `inBytesA`; read in `main` by `rdB`), an output format other than the input's (`shO`: e.g. `Option Unit`,
+`Ordering`).
