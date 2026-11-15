@@ -832,3 +832,56 @@ Count (distinct B functions, variants merged): 26 of 32 compile with a machine t
 
 Reproduce: `lake build Riscv.Frontx.Machine`; `lake env lean --tstack=4000000 Testing/asm/emit_frontx.lean`
 (the interpreter needs the stack for the book's non-tail recursions); `bash Testing/scripts/frontx_tests.sh`.
+
+## 13. Round 6: tuples and structures, `%` / `/` by constants, `foldl` over bytes
+
+Files: `Riscv/Frontx/PairExamples.lean` (targets, entry points, machine theorems), `Bytes.lean` (results as bytes,
+once), additions in `For.lean`, `Rep.lean`, `Impl1.lean`, `Translate.lean`.
+
+**Compiled verbatim** (source text copied, provenance in the file; no API edits were needed for Lean 4.29):
+
+| function | source | machine theorem / entry | words | test (QEMU + Sail vs Lean) |
+|---|---|---|---|---|
+| `Adler32.Native.adler32` (+ `Spec.unpack`, `updateBytes`, `updateByte`, `pack`) | lean-zip @7e10583 `Zip/Native/Adler32.lean:17` | `adlerE xs = adler32 1 xs`, `Res UInt32` | 121 | 50 ok, and = `zlib.adler32` on all cases |
+| `Adler32.Native.updateBytes` (pair result) | `Zip/Native/Adler32.lean:13` | `adlerStateE xs = updateBytes (1, 0) xs`, 16 bytes | 150 | 50 ok |
+| `Spec.updateByte`, `pack`, `unpack` | `Zip/Spec/Adler32.lean:29,39,47` | source level (`exec`) | – | – |
+| `BetterPlicity.replaceX` (`{ point with x := newX }`, `PPoint Nat`) | fp-lean @0abeea5 `Intro.lean:1203` | `replaceXE`, 16 bytes | 155 | 45 ok |
+| `fromOption` (`Option` parameter, match) | `Intro.lean:1879` | `fromOptionE` | 139 | 50 ok |
+| `MythicalCreature.small` (structure parameter) | `FunctorApplicativeMonad.lean:238` | `smallE` | 49 | 50 ok |
+| `DataExamples` `swap`, `addPoints`, `zeroX`, and a nested `(UInt8 × UInt32) × Nat` | this repo | `swapE`, `addPointsE`, `zeroXE`, `nestE` | 132, 149, 119, 130 | 50 ok each |
+
+Human input for Adler: `requires` = lean-zip's own `Spec.Valid (Spec.unpack init)` written out (`init.toNat % 65536 <
+65521 ∧ init.toNat / 65536 < 65521`), `with a < 65521 ∧ b < 65521` (`Spec.Valid` of the state). Entry glue (the `…At`
+functions reading bytes of the input) is not book code.
+
+What was added:
+- **`Array.foldl` over the bytes**: `foldFor?` finds `B.data.foldl g s` in the body (unfolding the user helpers that
+  contain it, e.g. `updateBytes` inside `adler32`); `bfoldl_forIn` (`For.lean`, once) makes it the `for` loop over
+  `[0:B.size]` with `g` inlined per byte; the code around it is the loop's post code (`pack`), its initial state is
+  translated before the loop (`unpack init`). `ByteArray.foldl` (no library lemma relating it to `Array.foldl`) is not done.
+- **Tuple loop state**: `flattenS`/`stateComps`/`mkState` flatten `Prod` (nested); `yield (g s b)` with a helper `g`
+  returning the tuple is unfolded and its `let`s become temporaries.
+- **Loops with several result components**: `cvtM`, `for_runsM`, `for_execM` (`For.lean`, once): the exit leaf sets the
+  extra result variables (`retm`); `break`/`return` in such loops is rejected.
+- **Structure / tuple parameters of loops and entries** (one variable per component, `resultComps`, now also with a tuple
+  as first component); the first `ByteArray` parameter is block 0 wherever it stands (`adler32 (init) (data)`).
+- **Results as bytes** (`Bytes.lean`): `storeC` writes the components after the program, `k` little-endian bytes each
+  (`UInt8`/`Bool` 1, `UInt32` 4, `UInt64`/`Nat` 8), one after another (the field order of `Bytes (α × β)` in
+  `Spec/Encode.lean`; `Nat` fixed 8 bytes mod `2^64`, not `encNat`); `storeC_exec`, `entry_bytes`. `frontx_entry g`
+  adds `g.comps`, `g.enc`; `frontx_implements_bytes g` gives
+  `Implements1With (fun xs => xs.data.toList) g.enc g.code g space` through `implements1_bytes` (`Impl1.lean`).
+- **`%`, `/` by a literal or a named constant** (`MOD_ADLER` is unfolded): `2^k` → mask / shift (lemmas on `rN`,
+  generated per constant); otherwise one conditional subtraction (`x < c ? x : x - c`, `x / c` as `x < c ? 0 : 1`), which
+  needs `x < 2 c`: checked at translation time by `omega`, else a loud error naming the missing bound. No division
+  routine for unbounded arguments.
+- `UInt8/32/64.ofNat`, `UInt32 <<<` (`r32_shl`, the G1 gap of the lean-zip survey), `Nat >>>` (`rN_shr`); projections of
+  constructor terms (`{ large := b }.1`); `match` on a constructor (an inlined helper applied to `none`) is reduced;
+  `frontx_u8_facts` also gives `UInt16/32/64.toNat` bounds.
+- `oblig` tries `with_reducible rfl` first and the full `rfl` last: a failing `rfl` on `UInt32` terms took 6 s (`pack`).
+
+Not done / why: lean-zip-common `BitReader` (`readBit`, `readBits`, `alignToByte`, `readUInt16LE`): the structure has a
+`ByteArray` field (a block inside a structure parameter, and a structure result containing the array) and the results are
+`Except String (UInt32 × BitReader)` (a `String` error payload); `alignToByte` alone needs the `ByteArray`-field
+structure. `Crc32.Native` needs a constant table. Book: `Prod.switch` has no body in the book (an exercise), `unzip`/`zip`
+are lists of pairs (needs output of several lists), the `Point` examples are `Float`. `addPoints` on `u16` inputs needs 17
+slots (> 16 of `compBFO`): the entry reads bytes instead.

@@ -478,7 +478,7 @@ partial def trE (ctx : Ctx) (e : Expr) : TrM (ME × Expr) := do
     let k := Nat.log2 c
     let pow2 := 2 ^ k == c
     -- a named constant divisor (`MOD_ADLER`) is unfolded in the obligations
-    if let some cn := args[5]!.getAppFn.constName? then
+    if let .const cn _ := args[5]!.consumeMData then
       if (← getConstInfo cn) matches .defnInfo _ then
         modify fun s => if s.unfolded.contains cn then s else { s with unfolded := s.unfolded.push cn }
     -- `c = 2 ^ k`: a mask / a shift, through `rN (x % c) = rN x &&& (c - 1)` resp. `rN (x / c) = rN x >>> k`
