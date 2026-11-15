@@ -51,7 +51,20 @@ def run_s2(code, x):
             elif k == 6: x = s[-1]
             elif k == 7: c = s.pop(); e = s.pop(); t = s.pop(); s.append(t if c else e)
     return s[-1] if s else 0
-run_code = (lambda code, x: run_stack(decode(code), x)) if STEP == "s1" else run_s2
+def run_s3(code, x):  # packed scalar kk = 16 opc + d; registers r0..
+    R = [0] * 32; node = parse(code)
+    while node[0] != "nil":
+        if node[0] == "bin":
+            kk = node[1]; d = kk % 16; k = kk // 16; R[d] = node[3][1] if k == 9 else 0; node = node[2]
+        else:
+            _, kk, node = node; d = kk % 16; k = kk // 16
+            if k < 5: R[d] = apply2(k, R[d], R[d + 1])
+            elif k == 5: R[d] = R[d + 1]
+            elif k == 6: x = R[d]
+            elif k == 7: R[d] = R[d + 1] if R[d] else R[d + 2]
+            elif k == 10: R[d] = x
+    return R[0]
+run_code = {"s1": lambda code, x: run_stack(decode(code), x), "s2": run_s2, "s3": run_s3}[STEP]
 cases = F.CASES
 lay, halt, base, tab, size = F.build([(c[0], [0] * (len(c[1]) + 64), c[2]) for c in cases], "".join(f"  .word 0x{w:08x}\n" for w in F.words))
 mem = F.qemu(halt, base, tab + F.E * len(cases) - base)
