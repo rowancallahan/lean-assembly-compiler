@@ -751,3 +751,282 @@ theorem chkA_ok {cb : BitVec 64} {Wc : List (BitVec 32)} (hok : M.codeOK cb Wc.l
 
 end MachineM
 end Proven.Mach
+
+namespace Proven.Mach
+open MachineF
+
+namespace MachineM
+variable (M : MachineM) (P : Prog) (bv : List Nat) (wb : Fin 8) (off : Nat → Nat) (hp : Nat)
+
+/-! ## the compiler with checks -/
+
+/-- the words of a call-free statement with the access checks -/
+def lenBM : BStmt → Nat
+  | .assign v e => (M.codeF (M.compB bv [wb.val] (.assign v e))).length
+  | .load v b i => (M.codeF (M.compB bv [wb.val] (.load v b i))).length
+  | .store b i e => (M.codeF (M.compB bv [wb.val] (.store b i e))).length
+  | .seq p q => lenBM p + lenBM q
+  | .loop c b => (M.codeF (mgenB c 0)).length + M.lenBz + lenBM b + M.lenJmp
+  | .load64 v b i => M.lenChkA wb i + (M.codeF (M.compB bv [wb.val] (.load64 v b i))).length
+  | .store64 b i e => M.lenChkA wb i + (M.codeF (M.compB bv [wb.val] (.store64 b i e))).length
+  | .mop m v a b => (M.codeF (M.compB bv [wb.val] (.mop m v a b))).length
+
+/-- a call-free statement with the access checks, placed at word `pos` -/
+def compBM : Nat → BStmt → List ZOp
+  | _, .assign v e => xs (M.compB bv [wb.val] (.assign v e))
+  | _, .load v b i => xs (M.compB bv [wb.val] (.load v b i))
+  | _, .store b i e => xs (M.compB bv [wb.val] (.store b i e))
+  | pos, .seq p q => compBM pos p ++ compBM (pos + M.lenBM bv wb p) q
+  | pos, .loop c b => xs (mgenB c 0) ++ [opA (.bz (rk 0) (M.lenBz + M.lenBM bv wb b + M.lenJmp))] ++
+      compBM (pos + (M.codeF (mgenB c 0)).length + M.lenBz) b ++
+      [opA (.jmp ((M.codeF (mgenB c 0)).length + M.lenBz + M.lenBM bv wb b))]
+  | pos, .load64 v b i => M.chkA wb hp pos i ++ xs (M.compB bv [wb.val] (.load64 v b i))
+  | pos, .store64 b i e => M.chkA wb hp pos i ++ xs (M.compB bv [wb.val] (.store64 b i e))
+  | _, .mop m v a b => xs (M.compB bv [wb.val] (.mop m v a b))
+
+theorem len_compBM : ∀ (p : BStmt) (pos : Nat), (M.codeZ (M.compBM bv wb hp pos p)).length = M.lenBM bv wb p
+  | .assign .., _ | .load .., _ | .store .., _ | .mop .., _ => by simp only [compBM, lenBM, codeZ_xs]
+  | .seq p q, pos => by
+    simp only [compBM, lenBM, codeZ_append, List.length_append, len_compBM p, len_compBM q]
+  | .loop c b, pos => by
+    simp only [compBM, lenBM, codeZ_append, codeZ_xs, codeZ_one, encZ_A, List.length_append, len_compBM b,
+      M.len_bz, M.len_jmp]
+  | .load64 v b i, pos => by
+    simp only [compBM, lenBM, codeZ_append, codeZ_xs, List.length_append, len_chkA]
+  | .store64 b i e, pos => by
+    simp only [compBM, lenBM, codeZ_append, codeZ_xs, List.length_append, len_chkA]
+
+/-- the access check is well formed -/
+def chkOK (pos : Nat) (i : BExp) : Prop :=
+  M.callOK ((hp : Int) - ((pos + (M.codeF (mgenB i 0)).length + M.lenBr + (M.codeZ (sh1 wb)).length +
+    M.lenBr : Nat) : Int)) ∧ M.bzOK (M.lenBr + M.lenSlow wb i) ∧ M.bzOK (M.lenBr + M.lenCall) ∧
+  M.bzOK (M.lenBr + (M.codeZ (zbody wb)).length + M.lenJmp) ∧
+  M.jmpOK ((M.codeF (mgenB i 0)).length + M.lenBr + (M.codeZ (zbody wb)).length)
+
+def wfBM (N : Nat) : Nat → BStmt → Prop
+  | _, .assign v e => M.wfB N bv [wb.val] (.assign v e)
+  | _, .load v b i => M.wfB N bv [wb.val] (.load v b i)
+  | _, .store b i e => M.wfB N bv [wb.val] (.store b i e)
+  | pos, .seq p q => wfBM N pos p ∧ wfBM N (pos + M.lenBM bv wb p) q
+  | pos, .loop c b => c.depth < 7 ∧ c.vlt (8 + N) ∧ M.bzOK (M.lenBz + M.lenBM bv wb b + M.lenJmp) ∧
+      M.jmpOK ((M.codeF (mgenB c 0)).length + M.lenBz + M.lenBM bv wb b) ∧
+      wfBM N (pos + (M.codeF (mgenB c 0)).length + M.lenBz) b
+  | pos, .load64 v b i => M.wfB N bv [wb.val] (.load64 v b i) ∧ M.chkOK wb hp pos i
+  | pos, .store64 b i e => M.wfB N bv [wb.val] (.store64 b i e) ∧ M.chkOK wb hp pos i
+  | _, .mop m v a b => False
+
+/-- the words of a statement with calls -/
+def lenCM : CStmt → Nat
+  | .base p => M.lenBM bv wb p
+  | .seq p q => lenCM p + lenCM q
+  | .ite c p q => (M.codeF (mgenB c 0)).length + M.lenBz + lenCM p + (M.lenLi + M.lenBz) + lenCM q
+  | .loop c b => (M.codeF (mgenB c 0)).length + M.lenBz + lenCM b + M.lenJmp
+  | .call res f args => M.lenChkF wb (nlOf P f) + M.lenArgs (nlOf P f) args + M.lenCall + (M.codeF (setV res)).length
+
+/-- a statement with calls and checks, placed at word `pos`; function `f` at word `off f` -/
+def compCM : Nat → CStmt → List ZOp
+  | pos, .base p => M.compBM bv wb hp pos p
+  | pos, .seq p q => compCM pos p ++ compCM (pos + M.lenCM P bv wb p) q
+  | pos, .ite c p q =>
+      xs (mgenB c 0) ++ [opA (.bz (rk 0) (M.lenBz + M.lenCM P bv wb p + (M.lenLi + M.lenBz)))] ++
+      compCM (pos + (M.codeF (mgenB c 0)).length + M.lenBz) p ++
+      [opA (.li (rk 0) 0), opA (.bz (rk 0) (M.lenBz + M.lenCM P bv wb q))] ++
+      compCM (pos + (M.codeF (mgenB c 0)).length + M.lenBz + M.lenCM P bv wb p + (M.lenLi + M.lenBz)) q
+  | pos, .loop c b =>
+      xs (mgenB c 0) ++ [opA (.bz (rk 0) (M.lenCM P bv wb b + M.lenBz + M.lenJmp))] ++
+      compCM (pos + (M.codeF (mgenB c 0)).length + M.lenBz) b ++
+      [opA (.jmp ((M.codeF (mgenB c 0)).length + M.lenBz + M.lenCM P bv wb b))]
+  | pos, .call res f args =>
+      M.chkF wb hp pos (nlOf P f) ++
+      (argsC (nlOf P f) 0 (padArgs (nlOf P f) args)).map .y ++
+      [opC (.call ((off f : Int) - ((pos + M.lenChkF wb (nlOf P f) + M.lenArgs (nlOf P f) args : Nat) : Int)))] ++
+      xs (setV res)
+
+theorem len_compCM : ∀ (p : CStmt) (pos : Nat), (M.codeZ (M.compCM P bv wb off hp pos p)).length = M.lenCM P bv wb p
+  | .base p, pos => by simp only [compCM, lenCM, len_compBM]
+  | .seq p q, pos => by
+    simp only [compCM, lenCM, codeZ_append, List.length_append, len_compCM p, len_compCM q]
+  | .ite c p q, pos => by
+    simp only [compCM, lenCM, codeZ_append, codeZ_xs, codeZ_one, codeZ_cons, codeZ_nil, List.append_nil, encZ_A,
+      List.length_append, len_compCM p, len_compCM q, M.len_bz, MachineC.lenLi_eq]
+  | .loop c b, pos => by
+    simp only [compCM, lenCM, codeZ_append, codeZ_xs, codeZ_one, encZ_A, List.length_append, len_compCM b,
+      M.len_bz, M.len_jmp]
+  | .call res f args, pos => by
+    simp only [compCM, lenCM, MachineC.lenArgs, codeZ_append, codeZ_xs, codeZ_y, codeZ_one, encZ_C, List.length_append,
+      M.len_call, len_chkF]
+
+def wfCM (N : Nat) : Nat → CStmt → Prop
+  | pos, .base p => M.wfBM bv wb hp N pos p
+  | pos, .seq p q => wfCM N pos p ∧ wfCM N (pos + M.lenCM P bv wb p) q
+  | pos, .ite c p q => c.depth < 7 ∧ c.vlt (8 + N) ∧
+      M.bzOK (M.lenBz + M.lenCM P bv wb p + (M.lenLi + M.lenBz)) ∧ M.bzOK (M.lenBz + M.lenCM P bv wb q) ∧
+      wfCM N (pos + (M.codeF (mgenB c 0)).length + M.lenBz) p ∧
+      wfCM N (pos + (M.codeF (mgenB c 0)).length + M.lenBz + M.lenCM P bv wb p + (M.lenLi + M.lenBz)) q
+  | pos, .loop c b => c.depth < 7 ∧ c.vlt (8 + N) ∧ M.bzOK (M.lenCM P bv wb b + M.lenBz + M.lenJmp) ∧
+      M.jmpOK ((M.codeF (mgenB c 0)).length + M.lenBz + M.lenCM P bv wb b) ∧
+      wfCM N (pos + (M.codeF (mgenB c 0)).length + M.lenBz) b
+  | pos, .call res f args => f < P.length ∧ args.length ≤ nlOf P f ∧ (∀ e ∈ args, e.depth < 7 ∧ e.vlt (8 + N)) ∧
+      res < 8 + N ∧ res ∉ bv ∧ res ∉ [wb.val] ∧
+      M.callOK ((off f : Int) - ((pos + M.lenChkF wb (nlOf P f) + M.lenArgs (nlOf P f) args : Nat) : Int)) ∧
+      M.callOK ((hp : Int) - ((pos + (M.codeZ (cc1 wb (nlOf P f))).length + M.lenBr : Nat) : Int)) ∧
+      M.bzOK (M.lenBr + M.lenCall)
+
+/-- a function with checks, placed at word `pos` -/
+def fnCM (pos : Nat) (F : Fn) : List ZOp :=
+  [opC (.enterC F.nlocals)] ++ M.compCM P bv wb off hp (pos + (M.encC (.enterC F.nlocals)).length) F.body ++
+    xs (mgenB F.ret 0) ++ [opC (.leaveC F.nlocals), opA .ret]
+
+def lenFM (F : Fn) : Nat :=
+  (M.encC (.enterC F.nlocals)).length + M.lenCM P bv wb F.body + (M.codeF (mgenB F.ret 0)).length +
+    ((M.encC (.leaveC F.nlocals)).length + (M.enc .ret).length)
+
+theorem len_fnCM (pos : Nat) (F : Fn) : (M.codeZ (M.fnCM P bv wb off hp pos F)).length = M.lenFM P bv wb F := by
+  simp only [fnCM, lenFM, codeZ_append, codeZ_xs, codeZ_one, codeZ_cons, codeZ_nil, List.append_nil, encZ_A,
+    encZ_C, List.length_append, len_compCM]
+
+def wfFM (pos : Nat) (F : Fn) : Prop :=
+  F.nlocals ≤ M.maxSlots ∧ F.ret.depth < 7 ∧ F.ret.vlt (8 + F.nlocals) ∧
+    M.wfCM P bv wb off hp F.nlocals (pos + (M.encC (.enterC F.nlocals)).length) F.body
+
+end MachineM
+end Proven.Mach
+
+namespace Proven.Mach
+open MachineF
+
+namespace MachineM
+variable (M : MachineM) (P : Prog) (bv : List Nat) (wb : Fin 8) (off : Nat → Nat) (hp : Nat)
+
+/-- the static context of a run: the program's words `Wc` at `cb`, the byte blocks `R`, the work area
+`[wbase, hi)` (heap from the bottom, frames from the top); the exit at word `hp` -/
+structure CtxM (cb : BitVec 64) (Wc : List (BitVec 32)) (R : List Region) (wbase hi : Nat) : Prop where
+  codeOK : M.codeOK cb Wc.length
+  fns : ∀ f (hf : f < P.length), Sub Wc (off f) (M.codeZ (M.fnCM P bv wb off hp (off f) P[f]))
+  wf : ∀ f (hf : f < P.length), M.wfFM P bv wb off hp (off f) P[f]
+  bvlt : ∀ x ∈ bv, x < 8
+  wb7 : wb ≠ ⟨7, by decide⟩
+  wbv : wb.val ∉ bv
+  hbv : hvar ∉ bv
+  ram : ∀ r ∈ R, M.inRAM r.base r.len
+  rp : R.Pairwise disjoint
+  wr : ∀ r ∈ R, ∀ a, r.base ≤ a → a < r.base + r.len → ∀ s, M.ok s → M.writable s a
+  wal : wbase % 8 = 0
+  lohi : wbase ≤ hi
+  stk : M.inRAM wbase (hi - wbase)
+  sR : ∀ r ∈ R, disjoint ⟨wbase, hi - wbase⟩ r
+  cd : ∀ r ∈ R ++ [⟨wbase, hi - wbase⟩], disjoint ⟨cb.toNat, 4 * Wc.length⟩ r
+  stw : ∀ a, wbase ≤ a → a < hi → ∀ s, M.ok s → M.writable s a
+
+/-- what a statement in the frame `(N, fp)` may write: the byte blocks, its slots, the work area below `fp` -/
+def WrtM (N fp : Nat) (R : List Region) (wbase : Nat) : List Region := R ++ slots N fp ++ [⟨wbase, fp - wbase⟩]
+
+/-- the machine holds `σ` with its heap `W` (length in global 7) below the frame -/
+structure InvM (N fp : Nat) (R : List Region) (wbase : Nat) (σ : BState) (s : M.S) (W : List (BitVec 64)) : Prop where
+  wh : σ.wheap = [W]
+  hv : σ.env hvar = BitVec.ofNat 64 W.length
+  below : wbase + 8 * W.length ≤ fp
+  rel : M.RelB N fp bv [wb.val] R [⟨wbase, 8 * W.length⟩] σ s
+
+variable {M P bv wb off hp}
+variable {cb : BitVec 64} {Wc : List (BitVec 32)} {R : List Region} {wbase hi : Nat}
+
+theorem CtxM.lay (C : M.CtxM P bv wb off hp cb Wc R wbase hi) {N fp u : Nat} (h1 : wbase + 8 * u ≤ fp)
+    (h2 : fp + 8 * (N + 1) ≤ hi) : M.Lay N fp R [⟨wbase, 8 * u⟩] := by
+  have hstk := C.stk; unfold Base.inRAM at hstk
+  refine ⟨C.ram, fun r hr => ?_, C.rp, List.pairwise_singleton _ _, fun r hr w hw => ?_, fun r hr => ?_,
+    fun w hw => ?_, fun w hw => ?_, C.wr, fun w hw a ha1 ha2 => ?_⟩
+  · rw [List.mem_singleton] at hr; subst hr; unfold Base.inRAM; dsimp only; omega
+  · rw [List.mem_singleton] at hw; subst hw
+    have := C.sR r hr; unfold disjoint at this ⊢; dsimp only at this ⊢; omega
+  · have := C.sR r hr; unfold disjoint at this ⊢; dsimp only at this ⊢; omega
+  · rw [List.mem_singleton] at hw; subst hw; unfold disjoint; dsimp only; omega
+  · rw [List.mem_singleton] at hw; subst hw; exact C.wal
+  · rw [List.mem_singleton] at hw; subst hw; dsimp only at ha1 ha2; exact C.stw a ha1 (by omega)
+
+/-- the code is disjoint from every part of the work area -/
+theorem CtxM.cd_in (C : M.CtxM P bv wb off hp cb Wc R wbase hi) {a l : Nat} (h1 : wbase ≤ a) (h2 : a + l ≤ hi) :
+    disjoint ⟨cb.toNat, 4 * Wc.length⟩ ⟨a, l⟩ := by
+  have := C.cd _ memLast; unfold disjoint at this ⊢; dsimp only at this ⊢; omega
+
+theorem CtxM.cdW (C : M.CtxM P bv wb off hp cb Wc R wbase hi) {N fp : Nat} (h1 : wbase ≤ fp)
+    (h2 : fp + 8 * (N + 1) ≤ hi) : ∀ r ∈ WrtM N fp R wbase, disjoint ⟨cb.toNat, 4 * Wc.length⟩ r := by
+  intro r hr
+  unfold WrtM at hr
+  simp only [List.mem_append, List.mem_singleton] at hr
+  rcases hr with (hr | hr) | hr
+  · exact C.cd r (List.mem_append_left _ hr)
+  · obtain ⟨j, hj, rfl⟩ := mem_slots hr; exact C.cd_in (by omega) (by omega)
+  · subst hr; exact C.cd_in (Nat.le_refl _) (by omega)
+
+theorem CtxM.codeAt_W (C : M.CtxM P bv wb off hp cb Wc R wbase hi) {N fp : Nat} (h1 : wbase ≤ fp)
+    (h2 : fp + 8 * (N + 1) ≤ hi) {s s' : M.S} (hc : M.codeAt s cb Wc)
+    (o : Out (WrtM N fp R wbase) (M.mem s) (M.mem s')) : M.codeAt s' cb Wc :=
+  M.codeAt_out hc C.codeOK (C.cdW h1 h2) o
+
+theorem allR_wrtM {N fp wbase u : Nat} {R : List Region} {m m' : Mem} (h : wbase + 8 * u ≤ fp)
+    (o : Out (AllR N fp R [⟨wbase, 8 * u⟩]) m m') : Out (WrtM N fp R wbase) m m' :=
+  Out.mono o fun r hr => by
+    unfold AllR at hr
+    simp only [List.mem_append, List.mem_singleton] at hr
+    rcases hr with (hr | hr) | hr
+    · exact ⟨r, List.mem_append_left _ (List.mem_append_left _ hr), Nat.le_refl _, Nat.le_refl _⟩
+    · subst hr; exact ⟨_, memLast, Nat.le_refl _, by dsimp only; omega⟩
+    · exact ⟨r, List.mem_append_left _ (List.mem_append_right _ hr), Nat.le_refl _, Nat.le_refl _⟩
+
+theorem grow_wrtM {N fp wbase u : Nat} {R : List Region} {m m' : Mem}
+    (o : Out [⟨wbase + 8 * u, fp - (wbase + 8 * u)⟩] m m') (h : wbase + 8 * u ≤ fp) :
+    Out (WrtM N fp R wbase) m m' :=
+  Out.mono o fun r hr => by
+    rw [List.mem_singleton] at hr; subst hr; exact ⟨_, memLast, by dsimp only; omega, by dsimp only; omega⟩
+
+end MachineM
+end Proven.Mach
+
+namespace Proven.Mach
+open MachineF
+
+namespace MachineM
+variable {M : MachineM} {P : Prog} {bv : List Nat} {wb : Fin 8} {off : Nat → Nat} {hp : Nat}
+variable {cb : BitVec 64} {Wc : List (BitVec 32)} {R : List Region} {wbase hi : Nat}
+
+theorem CtxM.cdAll (C : M.CtxM P bv wb off hp cb Wc R wbase hi) {N fp u : Nat} (h0 : wbase + 8 * u ≤ fp)
+    (h2 : fp + 8 * (N + 1) ≤ hi) : ∀ r ∈ AllR N fp R [⟨wbase, 8 * u⟩], disjoint ⟨cb.toNat, 4 * Wc.length⟩ r := by
+  intro r hr
+  unfold AllR at hr
+  simp only [List.mem_append, List.mem_singleton] at hr
+  rcases hr with (hr | hr) | hr
+  · exact C.cd r (List.mem_append_left _ hr)
+  · subst hr; exact C.cd_in (Nat.le_refl _) (by omega)
+  · obtain ⟨j, hj, rfl⟩ := mem_slots hr; exact C.cd_in (by omega) (by omega)
+
+/-- the relation after the heap grew: the environment with the new length, the heap image, the rest as before -/
+theorem relB_grow (C : M.CtxM P bv wb off hp cb Wc R wbase hi) {N fp : Nat} {σ : BState} {s s' : M.S}
+    {W W' : List (BitVec 64)} (r : M.RelB N fp bv [wb.val] R [⟨wbase, 8 * W.length⟩] σ s)
+    (henv : M.EnvB N fp (σ.env.set hvar (BitVec.ofNat 64 W'.length)) s')
+    (hheap : bytes (M.mem s') wbase (8 * W'.length) = (wbytes W').map some)
+    (ho : Out [⟨wbase + 8 * W.length, fp - (wbase + 8 * W.length)⟩] (M.mem s) (M.mem s'))
+    (hfp : fp ≤ hi) (hlay : wbase + 8 * W.length ≤ fp) :
+    M.RelB N fp bv [wb.val] R [⟨wbase, 8 * W'.length⟩]
+      ⟨σ.env.set hvar (BitVec.ofNat 64 W'.length), σ.heap, [W']⟩ s' := by
+  refine ⟨henv, r.hlen, r.bvlen, fun b hb => ?_, r.blen, fun b hb => ?_, rfl, rfl, fun b hb => ?_,
+    fun b hb => ?_, fun b hb => ?_⟩
+  · have : bv.getD b 0 ≠ hvar := fun e => C.hbv (e ▸ getD_memN (r.bvlen ▸ hb))
+    show (if bv.getD b 0 = hvar then _ else σ.env (bv.getD b 0)) = _
+    rw [ite_neg this]; exact r.base b hb
+  · rw [bytes_out ho (fun r' hr' => by
+      rw [List.mem_singleton] at hr'; subst hr'
+      have := C.sR _ (List.getElem_mem hb); unfold disjoint at this ⊢; dsimp only at this ⊢; omega)]
+    exact r.rbytes b hb
+  · have hb0 : b = 0 := by simp at hb; omega
+    subst hb0
+    show (if wb.val = hvar then _ else σ.env wb.val) = _
+    rw [ite_neg (fun e => C.wb7 (Fin.ext (by rw [e]; rfl)))]
+    exact r.wbase 0 (by simp)
+  · have hb0 : b = 0 := by simp at hb; omega
+    subst hb0; simp [length_wbytes]
+  · have hb0 : b = 0 := by simp at hb; omega
+    subst hb0; simpa using hheap
+
+end MachineM
+end Proven.Mach
