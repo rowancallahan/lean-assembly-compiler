@@ -4,6 +4,7 @@ import Riscv.Frontx.PairExamples
 import Riscv.Frontx.ExceptExamples
 import Riscv.Frontx.ExceptBook
 import Riscv.Frontx.IndExamples
+import Riscv.Frontx.IndCmpExamples
 open Proven Proven.Frontx Proven.Frontx.Ex
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
 def hex2 (b : UInt8) : String := let s := String.ofList (Nat.toDigits 16 b.toNat); if s.length < 2 then "0" ++ s else s
@@ -170,4 +171,21 @@ def boolB (b : Bool) : List UInt8 := [if b then 1 else 0]
     (levels.map fun l => (LevelT.enc l, boolB (ConLeche.levelHasParam l)))
   emitInd "level_isneverzero" ConLeche.Level.isNeverZero.code ConLeche.Level.isNeverZero.ind.pg.M false
     (levels.map fun l => (LevelT.enc l, boolB (ConLeche.Level.isNeverZero l)))
+end
+-- conditionals and comparisons (`IndCmpExamples.lean`, NOTES section 19): inputs in the subtype (every `Nat` field
+-- below `2^64`); keys small (the key `5` is often present) and some near `2^64` (unsigned comparisons)
+section
+open Proven.Frontx.IndCmp
+def key (i : Nat) : Nat := match i % 9 with
+  | 0 => 2 ^ 64 - 1 - rnd i 4 % 3 | 1 => rnd i 1 % 2 ^ 63 + 2 ^ 63 | _ => rnd i 2 % 12
+/-- binary search trees built by the book's own `insert` -/
+def bsts : List (Tree Unit) := [.leaf, Tree.leaf.insert 5 ()] ++ (List.range 48).map fun i =>
+  (List.range (rnd i 8 % 40)).foldl (fun t j => t.insert (key (i * 53 + j)) ()) .leaf
+def keyLists : List (List Nat) := [[], [5], [2 ^ 64 - 1, 5, 5]] ++ (List.range 47).map fun i =>
+  (List.range (rnd i 9 % 30)).map fun j => key (i * 31 + j)
+#eval do
+  emitInd "tree_contains5" contains5.code contains5.ind.pg.M false (bsts.map fun t => (TU.enc t, boolB (contains5 t)))
+  emitInd "tree_insert5" insert5.code insert5.ind.pg.M true (bsts.map fun t => (TU.enc t, TU.enc (insert5 t)))
+  emitInd "list_elem5" elem5.code elem5.ind.pg.M false (keyLists.map fun l => (LN.enc l, boolB (elem5 l)))
+  emitInd "list_erase5" erase5.code erase5.ind.pg.M true (keyLists.map fun l => (LN.enc l, LN.enc (erase5 l)))
 end

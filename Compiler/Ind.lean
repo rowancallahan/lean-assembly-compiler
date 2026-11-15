@@ -139,6 +139,8 @@ inductive E (rk : Kd) : Kd → Type where
   | nul : E rk .t
   | mk (t : Nat) (ex : E rk .w) (el er : E rk .t) : E rk .t
   | call (ch : Bool) (ea : E rk .w) (eb : E rk .t) : E rk rk
+  /-- `if c ≠ 0 then e₁ else e₂` (only the chosen branch is evaluated) -/
+  | ite {k : Kd} (c : E rk .w) (e₁ e₂ : E rk k) : E rk k
 
 /-- one function: an arm per tag (tags `≥ arms.length` and `z` give `rk.dflt`) -/
 structure Pg (rk : Kd) where
@@ -158,6 +160,7 @@ def ev (self : Bool → BitVec 64 → C → rk.den) (x : BitVec 64) (l r : C) (a
   | _, .nul => C.z
   | _, .mk t ex el er => C.c t (ev self x l r a b ex) (ev self x l r a b el) (ev self x l r a b er)
   | _, .call ch ea eb => self ch (ev self x l r a b ea) (ev self x l r a b eb)
+  | _, .ite c e₁ e₂ => if ev self x l r a b c = 0 then ev self x l r a b e₂ else ev self x l r a b e₁
 
 /-- cells allocated by an expression -/
 def alE (self : Bool → BitVec 64 → C → rk.den) (sal : Bool → BitVec 64 → C → Nat) (x : BitVec 64) (l r : C)
@@ -166,6 +169,8 @@ def alE (self : Bool → BitVec 64 → C → rk.den) (sal : Bool → BitVec 64 �
   | _, .mk _ ex el er => alE self sal x l r a b ex + alE self sal x l r a b el + alE self sal x l r a b er + 1
   | _, .call ch ea eb => alE self sal x l r a b ea + alE self sal x l r a b eb +
       sal ch (ev self x l r a b ea) (ev self x l r a b eb)
+  | _, .ite c e₁ e₂ => alE self sal x l r a b c +
+      if ev self x l r a b c = 0 then alE self sal x l r a b e₂ else alE self sal x l r a b e₁
   | _, _ => 0
 
 def Pg.sem (pg : Pg rk) : C → BitVec 64 → C → rk.den
@@ -190,6 +195,7 @@ def E.mks : {k : Kd} → E rk k → Nat
   | _, .bin _ e₁ e₂ => e₁.mks + e₂.mks
   | _, .mk _ ex el er => ex.mks + el.mks + er.mks + 1
   | _, .call _ ea eb => ea.mks + eb.mks
+  | _, .ite c e₁ e₂ => c.mks + max e₁.mks e₂.mks
   | _, _ => 0
 
 /-- calls on child `ch` -/
@@ -197,6 +203,7 @@ def E.calls (ch : Bool) : {k : Kd} → E rk k → Nat
   | _, .bin _ e₁ e₂ => e₁.calls ch + e₂.calls ch
   | _, .mk _ ex el er => ex.calls ch + el.calls ch + er.calls ch
   | _, .call c ea eb => ea.calls ch + eb.calls ch + if c = ch then 1 else 0
+  | _, .ite c e₁ e₂ => c.calls ch + max (e₁.calls ch) (e₂.calls ch)
   | _, _ => 0
 
 /-- largest tag of a constructor -/
@@ -204,6 +211,7 @@ def E.tags : {k : Kd} → E rk k → Nat
   | _, .bin _ e₁ e₂ => max e₁.tags e₂.tags
   | _, .mk t ex el er => max (max t ex.tags) (max el.tags er.tags)
   | _, .call _ ea eb => max ea.tags eb.tags
+  | _, .ite c e₁ e₂ => max c.tags (max e₁.tags e₂.tags)
   | _, _ => 0
 
 /-- temporaries used by `comp` beyond its first -/
@@ -211,6 +219,7 @@ def E.tmp : {k : Kd} → E rk k → Nat
   | _, .bin _ e₁ e₂ => max e₁.tmp (e₂.tmp + 1) + 1
   | _, .mk _ ex el er => max (max ex.tmp (el.tmp + 1)) (er.tmp + 2) + 1
   | _, .call _ ea eb => max ea.tmp (eb.tmp + 1) + 1
+  | _, .ite c e₁ e₂ => max c.tmp (max e₁.tmp e₂.tmp) + 1
   | _, _ => 0
 
 /-- is a tail call -/
@@ -258,6 +267,7 @@ def comp (fi : Nat) : {k : Kd} → E rk k → Nat → Nat → CStmt
       (.seq (comp fi er (n + 2) (n + 3)) (.base (alloc (kE t) n (n + 1) (n + 2) d))))
   | _, .call ch ea eb, d, n => .seq (comp fi ea n (n + 1)) (.seq (comp fi eb (n + 1) (n + 2))
       (.call d fi [vE (if ch then 16 else 15), vE n, vE (n + 1)]))
+  | _, .ite c e₁ e₂, d, n => .seq (comp fi c n (n + 1)) (.ite (vE n) (comp fi e₁ d (n + 1)) (comp fi e₂ d (n + 1)))
 
 /-- the four words of the cell at `v_p` -/
 def loads (p t x l r : Nat) : BStmt :=

@@ -24,6 +24,15 @@ theorem alE_le (self : Bool → BitVec 64 → C → rk.den) (sal : Bool → BitV
     cases ch
     · have := hl (ev self x l r a b ea) (ev self x l r a b eb); simp; omega
     · have := hr (ev self x l r a b ea) (ev self x l r a b eb); simp; omega
+  | ite c e₁ e₂ ihc ih₁ ih₂ =>
+    simp only [alE, E.mks, E.calls]
+    have m1 := Nat.mul_le_mul_right Bl (Nat.le_max_left (e₁.calls false) (e₂.calls false))
+    have m2 := Nat.mul_le_mul_right Bl (Nat.le_max_right (e₁.calls false) (e₂.calls false))
+    have m3 := Nat.mul_le_mul_right Br (Nat.le_max_left (e₁.calls true) (e₂.calls true))
+    have m4 := Nat.mul_le_mul_right Br (Nat.le_max_right (e₁.calls true) (e₂.calls true))
+    have := Nat.le_max_left e₁.mks e₂.mks; have := Nat.le_max_right e₁.mks e₂.mks
+    rw [Nat.add_mul, Nat.add_mul]
+    split <;> omega
 
 theorem mks_le (pg : Pg rk) {e : E rk rk} (he : e ∈ pg.arms) : e.mks ≤ pg.M := by
   unfold Pg.M

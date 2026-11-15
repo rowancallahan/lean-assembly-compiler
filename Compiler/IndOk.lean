@@ -310,6 +310,31 @@ theorem comp_ok (hP3 : ∃ hf : 3 < P.length, P[3] = fFn pg) {K K' : Nat} (hK : 
         (ev (selfS pg l r) x l r a b eb)) = h + 4 * A1 + 4 * A2 + 4 * pg.al (if ch then r else l)
         (ev (selfS pg l r) x l r a b ea) (ev (selfS pg l r) x l r a b eb) by omega]
       exact v₃
+  | ite c e₁ e₂ ihc ih₁ ih₂ =>
+    intro d n env H W h hd hdk hn htg cx hcap
+    simp only [alE] at hcap ⊢
+    simp only [E.tags] at htg
+    obtain ⟨E₁, W₁, x₁, p₁, k₁, v₁⟩ := ihc n (n + 1) env H W h (by omega) (by simp; omega) (by omega) (by omega) cx
+      (by omega)
+    have c₁ := cx.step p₁ (by intro i hi; simp at hi; exact k₁ i (by omega) (by omega) (by omega))
+    simp only [RelK] at v₁
+    simp only [ev]
+    generalize alE (selfS pg l r) (selfA pg l r) x l r a b c = A1 at *
+    by_cases hz : ev (selfS pg l r) x l r a b c = 0
+    · rw [if_pos hz] at hcap ⊢; rw [if_pos hz]
+      obtain ⟨E₂, W₂, x₂, p₂, k₂, v₂⟩ := ih₂ d (n + 1) E₁ H W₁ _ hd hdk (by omega) (by omega) c₁
+        (by have := p₁.len; omega)
+      refine ⟨E₂, W₂, .seq x₁ (.iteF (by simp only [vE, BExp.denote]; rw [v₁, hz]) x₂), ?_, fun i hi hid h8 => ?_, ?_⟩
+      · rw [Nat.mul_add, ← Nat.add_assoc]; exact p₁.trans p₂
+      · rw [k₂ i (by omega) hid h8, k₁ i (by omega) (by omega) h8]
+      · rw [Nat.mul_add, ← Nat.add_assoc]; exact v₂
+    · rw [if_neg hz] at hcap ⊢; rw [if_neg hz]
+      obtain ⟨E₂, W₂, x₂, p₂, k₂, v₂⟩ := ih₁ d (n + 1) E₁ H W₁ _ hd hdk (by omega) (by omega) c₁
+        (by have := p₁.len; omega)
+      refine ⟨E₂, W₂, .seq x₁ (.iteT (by simp only [vE, BExp.denote]; rw [v₁]; exact hz) x₂), ?_, fun i hi hid h8 => ?_, ?_⟩
+      · rw [Nat.mul_add, ← Nat.add_assoc]; exact p₁.trans p₂
+      · rw [k₂ i (by omega) hid h8, k₁ i (by omega) (by omega) h8]
+      · rw [Nat.mul_add, ← Nat.add_assoc]; exact v₂
 
 
 /-! ## the function -/
