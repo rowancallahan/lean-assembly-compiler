@@ -1,13 +1,13 @@
 # lean-svg verbatim through the front end
 
 lean-svg (`github.com/rowancallahan/lean-svg` @ df8e663, Lean 4.34.0) is a long-term compile target AS IS. Branch `leansvg-verbatim`.
-Files: `Testing/leansvg/Orig.lean` (22 leaf functions verbatim + `Gen` case emitter), `analyze.py` (bottom-up listing, `defs.json`),
+Files: `Testing/leansvg/b/Orig.lean` (22 leaf functions verbatim + `Gen` case emitter), `analyze.py` (bottom-up listing, `defs.json`),
 `rank.py` (feature ranking), `run.sh` + `report.py` (front-end attempts), `cases/*.cases` (executed Lean).
-Reproduce: `Testing/leansvg/run.sh > /tmp/orig.out; python3 report.py /tmp/orig.out` (8 s; needs `lake build Frontx`).
+Reproduce: `Testing/leansvg/b/run.sh > /tmp/orig.out; python3 report.py /tmp/orig.out` (8 s; needs `lake build Frontx`).
 
 ## 1. Pure functions bottom-up
 
-`python3 Testing/leansvg/analyze.py /path/to/lean-svg`: 101 files in the import closure of `LeanSvg/Render.lean`, 1665 `def`/`abbrev`; heuristic call graph by
+`python3 Testing/leansvg/b/analyze.py /path/to/lean-svg`: 101 files in the import closure of `LeanSvg/Render.lean`, 1665 `def`/`abbrev`; heuristic call graph by
 identifier match (not type-checked, so name clashes add edges): level 0 = calls no other project def. Levels: 0: 546, 1: 240, 2: 102, 3: 58, 4: 63, 5: 46, 6: 43, 7: 28, 8: 8, 9: 13, 10: 6, 11: 11, 12+: 501
 (12+ includes false cycles from name clashes). 483 level-0 defs are outside the generated data files (`Fonts`, `*Data`, `*Table`, `Stix*`).
 Leaf families: byte predicates (`Bytes`), channel/pixel arithmetic (`Canvas`, `FilterApply`, `Clip`), fixed-point `Int` helpers (`Fixed`, `Geom`, `Shader`),
@@ -49,7 +49,7 @@ Exact messages: `python3 report.py` output / `/tmp/orig.out`; the first lines ar
 
 ## 3. Cases
 
-`Testing/leansvg/cases/<function>.cases` (22 files): one line per input, `<args> => <result>`, from `#eval` of the verbatim function (ByteArray hex, `-` = empty;
+`Testing/leansvg/b/cases/<function>.cases` (22 files): one line per input, `<args> => <result>`, from `#eval` of the verbatim function (ByteArray hex, `-` = empty;
 inputs: all 256 bytes for `UInt8` functions, edge values 0, 1, 255, 256, 2^32±1, 2^63, 2^64±1, 2^70 and 50 pseudo-random for `Nat`/`Int`, both signs for `Int`).
 Not yet run on QEMU: only F1-F6, F13, F14, F17, F18 compile, and none has an entry point (`frontx_entry`) here; the cases are the oracle for when they do.
 

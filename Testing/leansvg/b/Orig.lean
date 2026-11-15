@@ -3,7 +3,7 @@ Source: https://github.com/rowancallahan/lean-svg @ df8e663 (Lean 4.34.0).  Prov
 Edits to the sources: only namespaces (`LeanSvg.X` -> `LeanSvgOrig.X`), `open Bytes (at')` added where the file opens it,
 and the `Fx` abbreviation copied from Fixed.lean:17 (`abbrev Fx := Int`).  No API edits were needed for Lean 4.29.
 Each `frontx_compile` is one attempt; its exact result (success or error) is recorded in `LEANSVG_VERBATIM.md`
-from `Testing/leansvg/run.sh`.  The `-- F<n>` markers let `run.sh` attribute a message to a function. -/
+from `Testing/leansvg/b/run.sh`.  The `-- F<n>` markers let `run.sh` attribute a message to a function. -/
 import Riscv.Frontx.Machine
 
 namespace LeanSvgOrig
@@ -161,7 +161,7 @@ end Png
 frontx_compile Png.adlerChunk
 
 
-/-! ## executed-Lean cases (`#eval` of each function) -> Testing/leansvg/cases/<fn>.cases
+/-! ## executed-Lean cases (`#eval` of each function) -> Testing/leansvg/b/cases/<fn>.cases
 line: `<args> => <result>`; ByteArray = hex (`-` empty), numbers decimal, Option `none`/`some n`, tuples `(a, b)` -/
 namespace Gen
 def hx (b : ByteArray) : String := if b.isEmpty then "-" else String.join (b.toList.map fun c => (if c.toNat < 16 then "0" else "") ++ String.ofList (Nat.toDigits 16 c.toNat))
@@ -174,7 +174,7 @@ def ints : List Int := (edgesN.map (Int.ofNat ·)) ++ (edgesN.map (fun n => -(In
 def bytes : List UInt8 := (List.range 256).map UInt8.ofNat
 def bas : List ByteArray := [ByteArray.empty, ⟨#[0]⟩, ⟨#[255]⟩, ⟨#[1, 2, 3]⟩, ⟨#[1, 2, 3, 4]⟩, ⟨#[1, 2, 3, 4, 5]⟩, ⟨#[0xFF, 0xFF, 0xFF, 0xFF]⟩, ⟨#[0xDE, 0xAD, 0xBE, 0xEF, 0x12, 0x34]⟩, ⟨(List.range 40).toArray.map fun i => UInt8.ofNat (i * 37)⟩]
 def put (name : String) (ls : List String) : IO Unit := do
-  IO.FS.createDirAll "Testing/leansvg/cases"; IO.FS.writeFile s!"Testing/leansvg/cases/{name}.cases" (String.join (ls.map (· ++ "\n")))
+  IO.FS.createDirAll "Testing/leansvg/b/cases"; IO.FS.writeFile s!"Testing/leansvg/b/cases/{name}.cases" (String.join (ls.map (· ++ "\n")))
 def un {α β} [ToString α] [ToString β] (name : String) (xs : List α) (f : α → β) : IO Unit := put name (xs.map fun x => s!"{x} => {f x}")
 def bi {α β γ} [ToString α] [ToString β] [ToString γ] (name : String) (xs : List α) (ys : List β) (f : α → β → γ) : IO Unit :=
   put name (xs.flatMap fun x => ys.map fun y => s!"{x} {y} => {f x y}")
