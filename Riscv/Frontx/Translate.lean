@@ -286,6 +286,8 @@ structure CallInfo where
   /-- per parameter of `c.exec`: `none` = a proof, `some none` = a byte array (block 0), `some (some v)` = a scalar
   in variable `v` -/
   kinds : Array (Option (Option Nat))
+  /-- per parameter: the callee's length variable of a block parameter -/
+  blen : Array (Option Nat) := #[]
 
 def callInfo? (c : Name) : MetaM (Option CallInfo) := do
   let env ← getEnv
@@ -309,18 +311,29 @@ def callInfo? (c : Name) : MetaM (Option CallInfo) := do
     unless l2a.nat? == some 4 || l2a.rawNatLit? == some 4 do return none
     let P := bx.getArg! 0
     if P.hasLooseBVars then return none
-    let mut kinds := #[]
-    let mut nextV := 4
-    for y in ys.pop.pop do
-      let yty ← whnfR (← inferType y)
-      if ← isProp yty then kinds := kinds.push none
-      else if yty.isConstOf ``ByteArray then kinds := kinds.push (some none)
+    -- the variables of the parameters, as `compileLoop` / `compile` lay them out: the first byte array first
+    -- (block 0), a block takes two variables (base, length), scalars from variable 4 on
+    let ps := ys.pop.pop
+    let mut tys := #[]
+    for y in ps do tys := tys.push (← whnfR (← inferType y))
+    let firstBA := (List.range ps.size).find? fun j => (tys[j]?.getD default).isConstOf ``ByteArray
+    let order := match firstBA with
+      | some j => #[j] ++ (Array.range ps.size).filter (· != j)
+      | none => Array.range ps.size
+    let mut kinds : Array (Option (Option Nat)) := ps.map fun _ => none
+    let mut blen : Array (Option Nat) := ps.map fun _ => none
+    let mut next := 0
+    for j in order do
+      let yty := tys[j]?.getD default
+      if ← isProp yty then kinds := kinds.set! j none
+      else if yty.isConstOf ``ByteArray || yty.isConstOf ``String then
+        kinds := kinds.set! j (some none); blen := blen.set! j (some (next + 1)); next := next + 2
       else if (← classify yty).isSome then
-        kinds := kinds.push (some (some nextV)); nextV := nextV + 1
+        if next < 4 then next := 4
+        kinds := kinds.set! j (some (some next)); next := next + 1
       else return none
-    -- at most one block, and it comes first
-    if (kinds.filter (· == some none)).size > 1 then return none
-    return some { P, repN, slots, kinds }
+    -- the blocks are passed through: the `m`-th block parameter must be the caller's block `m` (`trCall`)
+    return some { P, repN, slots, kinds, blen }
 
 /-- `c` calls itself (its unfolding equation mentions it) -/
 def isRecFn (c : Name) : MetaM Bool := do
@@ -853,6 +866,9 @@ partial def trB (ctx : Ctx) (b : Expr) : TrM (ME × Expr) := do
           modify fun s => { s with memo := (a, v) :: s.memo, temps := a :: s.temps,
                                    tempsU := if a' == a then s.tempsU else (a, a') :: s.tempsU,
                                    pend := s.pend.push (.let_ v m a a' aty s.temps) }
+    -- a translated function with a `String` argument: a call (its body is not inlined)
+    if ← args.anyM fun a => return (← whnfR (← inferType a)).isConstOf ``String then
+      if let some r ← trCall ctx b c args .bool then return r
     let st0 ← get
     let ms ← (saveState : TermElabM Term.SavedState)
     try
@@ -878,18 +894,33 @@ partial def trCall (ctx : Ctx) (e : Expr) (c : Name) (args : Array Expr) (ty : T
     let n := ci.slots + 3
     -- the callee's range is `b .. b + n`; the temporaries of the arguments go into it, above its parameters
     let b := (← get).next
-    let np := (ci.kinds.filter fun k => k matches some (some _)).size
+    let vs := (ci.kinds.filterMap fun k => match k with | some (some v) => some v | _ => none) ++
+      (ci.blen.filterMap fun l => match l with | some v => if 4 ≤ v then some v else none | none => none)
+    let np := vs.foldl (fun m v => max m (v - 3)) 0
     modify fun s => { s with next := b + np }
     let mut dargs := #[]
     let mut assigns := #[]
-    for (a, k) in args.zip ci.kinds do
-      match k with
+    let mut nb := 0
+    for j in [0:args.size] do
+      let a := args[j]!
+      match ci.kinds[j]?.getD none with
       | none => pure ()
       | some none =>
-        unless (ctx.block? a).map (·.1) == some 0 do
-          throwError "frontx: a call whose array argument is not the first block{indentExpr e}"
+        -- a `String` argument is the block of its bytes (`s.toUTF8`)
+        let key ← if (← whnfR (← inferType a)).isConstOf ``String then mkAppM ``String.toUTF8 #[a] else pure a
+        unless (ctx.block? key).map (·.1) == some nb do
+          throwError "frontx: a call whose array argument is not the caller's block {nb}{indentExpr e}"
+        nb := nb + 1
+        -- a block whose length variable is in the callee's renamed range: its length as an argument
+        if let some lv := ci.blen[j]?.getD none then
+          if 4 ≤ lv then
+            let lenE ← mkAppM ``ByteArray.size #[key]
+            let (m, l') ← trE ctx lenE
+            let m ← fit m
+            assigns := assigns.push (b + (lv - 4), m, lenE, l', .nat)
         dargs := dargs.push a
       | some (some v) =>
+        let a := args[j]!
         dargs := dargs.push a
         let some aty ← classify (← inferType a) | throwError "frontx: argument type{indentExpr a}"
         let (m, a') ← trE ctx a
