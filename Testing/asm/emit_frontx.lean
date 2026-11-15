@@ -12,9 +12,18 @@ def inputs : List (List UInt8) :=
     let L := if i % 9 = 0 then rnd i 7 % 3000 else rnd i 99 % 70
     (List.range L).map fun j => UInt8.ofNat (match i % 4 with
       | 0 => rnd i j % 256 | 1 => rnd i j % 12 | 2 => (j * 37) % 256 | _ => 255 - rnd i j % 5)
+-- inputs of the `Nat` book functions: two 16-bit little-endian numbers (small: the book's recursions are slow in
+-- the interpreter, e.g. `times` through `plus`), and some large ones (`large`)
+def le16b (n : Nat) : List UInt8 := [UInt8.ofNat (n % 256), UInt8.ofNat (n / 256 % 256)]
+def natInputs (large : Bool) : List (List UInt8) :=
+  ([(0, 0), (0, 1), (1, 0), (1, 1), (2, 3), (3, 2), (7, 7), (255, 1), (256, 255), (300, 299)] ++
+    (List.range 30).map (fun i => (rnd i 3 % 301, rnd i 5 % 301)) ++
+    (if large then [(65535, 65535), (65535, 0), (0, 65535), (40000, 50000), (65534, 65535)] else [])).map
+    fun (a, b) => le16b a ++ le16b b
 /-- `name.words`: first line the number of slots (work space = `8 * (slots + 1) + 7`), then the code words;
 `name.cases`: per line the input bytes and the result bytes as computed by Lean (`#eval` of the function) -/
-def emit (name : String) (slots : Nat) (code : List (BitVec 32)) (f : ByteArray → List UInt8) : IO Unit := do
+def emit (name : String) (slots : Nat) (code : List (BitVec 32)) (f : ByteArray → List UInt8)
+    (inputs : List (List UInt8) := inputs) : IO Unit := do
   IO.FS.createDirAll "Testing/asm/frontx-words"
   IO.FS.writeFile s!"Testing/asm/frontx-words/{name}.words" (String.intercalate "\n" (toString slots :: code.map hex8) ++ "\n")
   IO.FS.writeFile s!"Testing/asm/frontx-words/{name}.cases"
@@ -39,3 +48,22 @@ open Proven.Frontx.BookOut in
   emit "headof" headOf.slots Proven.Frontx.Ex.headOf.code (enc headOf)
   emit "finalof" finalOf.slots Proven.Frontx.Ex.finalOf.code (enc finalOf)
   emit "findfirstgt3" findFirstGt3.slots Proven.Frontx.Ex.findFirstGt3.code (enc findFirstGt3)
+open Proven.Frontx.Ex.BookNat in
+#eval do
+  emit "add1e" add1E.slots add1E.code (enc add1E) (natInputs true)
+  emit "maximume" maximumE.slots maximumE.code (enc maximumE) (natInputs true)
+  emit "iszeroe" isZeroE.slots isZeroE.code (enc isZeroE) (natInputs true)
+  emit "prede" predE.slots predE.code (enc predE) (natInputs true)
+  emit "evene" evenE.slots evenE.code (enc evenE) (natInputs false)
+  emit "pluse" plusE.slots plusE.code (enc plusE) (natInputs false)
+  emit "timese" timesE.slots timesE.code (enc timesE) (natInputs false)
+  emit "minuse" minusE.slots minusE.code (enc minusE) (natInputs false)
+  emit "doublee" doubleE.slots doubleE.code (enc doubleE) (natInputs false)
+  emit "natdoublee" natDoubleE.slots natDoubleE.code (enc natDoubleE) (natInputs true)
+  emit "triplee" tripleE.slots tripleE.code (enc tripleE) (natInputs true)
+  emit "quadruplee" quadrupleE.slots quadrupleE.code (enc quadrupleE) (natInputs true)
+  emit "timestwelvee" timesTwelveE.slots timesTwelveE.code (enc timesTwelveE) (natInputs true)
+  emit "dive" divE.slots divE.code (enc divE) (natInputs false)
+  emit "halvee" halveE.slots halveE.code (enc halveE) (natInputs false)
+
+#eval emit "dupcount" Proven.Frontx.Calls.dupCount.slots dupCount.code (enc Proven.Frontx.Calls.dupCount)

@@ -744,3 +744,36 @@ Tests: `frontx_test.py` now takes the cases from `frontx-words/<f>.cases`, writt
 result computed by Lean (`#eval` of the function: "executed Lean"); output block exactly the result's length, so the
 capacity hypothesis is tight; `a1` = length checked for list results; the Python references of the older entry
 points are kept as a second check.
+
+### 12.4 Calls to translated functions (inlined sub-programs, `Tree.sub`)
+
+A call `g args` in the body of `f`, where `g` was compiled by `frontx_compile` (it has `g.exec` with the result in
+its variable 4, heap kept, at most one byte-array parameter = `f`'s first block), becomes a **sub-program**: `g`'s
+whole program runs inside `f`'s iteration, its variables renamed into a fresh range `b .. b + n` of `f`'s
+(`rho b`: `g`'s variables `0 .. 3` are `f`'s, `4 + j` is `b + j`), its temporaries cleared afterwards (`callP`).
+A call to a recursive (looping) `g` is a nested loop. Everything stays a `BStmt`, so the machine theorem is the
+same `compBFO` route as before. Once and for all (`Sub.lean`, 3 axioms): `BExec.detF` (determinism), `exec_agree`,
+`exec_ren` (a renamed run), `callP_exec`; `Tree.sub` with `sim_sub`, `comp_ok_sub`, the `ro`/`wf` cases
+(`Tree.lean`). Per call, generated: the arguments are assigned to `g`'s parameter variables (`let_` items;
+their temporaries are placed inside `g`'s range, which is cleared after the call, so the range is shared), the
+obligations of `g.Rep` for the renamed state, `g.exec` applied, `callP_exec`. A recursive `g` is always called; a
+non-recursive one is inlined as before and called only when inlining fails (e.g. `pred`'s `match` in a value
+position); a non-recursive callee may be unfolded in later obligations (facts about its result).
+
+Results:
+- book `minus` calls `pred`: **no `pred_eq` any more** (the invariant `acc ≤ n` stays: `pred`'s argument must be
+  `< 2^64`; `pred x ≤ n` is proved by unfolding `pred`).
+- `times` still uses `plus_eq`: as a call, `plus n acc` needs `acc < 2^64`, i.e. `times n j < 2^64`, which is a
+  fact about `times` (no generated theorem gives it); the closed form is the honest way.
+- entry points for all 15 `Nat` book functions (`Machine.lean`, `BookNat`): `fAt xs i := f (u16 xs i) …` calls the
+  compiled book function, `fE xs := fAt xs 0`; 5–16 slots; `fE.implements1` for each.
+- nested loops: `CallExamples.lean`, `countDup` (a loop over `k` calling the loop `occursFrom bs (k+1) bs[k]`),
+  entry `dupCount`, 14 slots, 144 words, QEMU + Sail on inputs up to 2769 bytes (≈ 3.8 M iterations).
+
+Limits (why lean-svg `findSeq` → `startsWith` is not done): (1) the variables of caller and callee share the
+24 machine variables of `compBFO` (`N ≤ 16` slots): `startsWith` alone has 20 variables, `findSeq`'s loop ~14;
+(2) `startsWith` takes a `String` (a second block) — callee blocks must be the caller's first block; (3) a Nat
+result of a callee is opaque: comparing it (`findByte … < bs.size`) needs its bound `< 2^64`, which no generated
+theorem states. (1) and non-tail self-recursion need real calls with frames (`MachineC`, `Compiler/CStmt.lean`):
+that route has no `Implements1` bridge on the optimised back end yet (`callsCode_implements` is the `ImplementsW`
+form, unoptimised), so it is not used here.

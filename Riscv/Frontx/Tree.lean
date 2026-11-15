@@ -7,6 +7,7 @@ A conditional is two loops that run at most once (`BStmt` has no `if`):
 The function is `fl := 1; while fl { body }`: a `ret e` leaf does `res := e; fl := 0`, a `call` leaf
 assigns the new arguments in parallel (through temporaries). -/
 import Riscv.Direct.Arr2Src
+import Riscv.Frontx.Sub
 
 namespace Proven.Frontx
 open Proven
@@ -21,6 +22,8 @@ inductive Tree where
   /-- guarded load: `v := if c ≠ 0 then block b [i] else d` -/
   | cload (v b : Nat) (i c d : BExp) (k : Tree)
   | store (b : Nat) (i e : BExp) (k : Tree)
+  /-- run a whole program (an inlined call, `Sub.lean`), then `k` -/
+  | sub (p : BStmt) (k : Tree)
 
 inductive Out where
   | ret (r : BitVec 64) (σ : BState)
@@ -36,8 +39,8 @@ def rd (H : Heap) (b j : Nat) : Option (BitVec 8) := (H[b]?).bind (·[j]?)
 def wr (H : Heap) (b j : Nat) (x : BitVec 8) : Option Heap :=
   (H[b]?).bind fun B => if j < B.length then some (H.set b (B.set j x)) else none
 
-/-- one iteration; `none` = an out-of-bounds access -/
-def Tree.step : Tree → BState → Option Out
+/-- one iteration; `none` = an out-of-bounds access (or a sub-program without a run) -/
+noncomputable def Tree.step : Tree → BState → Option Out
   | .ret e, σ => some (.ret (e.denote σ.env) σ)
   | .call as, σ => some (.call ⟨parSet σ.env σ.env as, σ.heap⟩)
   | .ite c t e, σ => if c.denote σ.env = 0 then e.step σ else t.step σ
@@ -49,6 +52,7 @@ def Tree.step : Tree → BState → Option Out
     else (rd σ.heap b (i.denote σ.env).toNat).bind fun x => k.step ⟨σ.env.set v (x.setWidth 64), σ.heap⟩
   | .store b i e k, σ => (wr σ.heap b (i.denote σ.env).toNat ((e.denote σ.env).setWidth 8)).bind fun H =>
       k.step ⟨σ.env, H⟩
+  | .sub p k, σ => open Classical in if h : ∃ σ', BExec p σ σ' then k.step (Classical.choose h) else none
 
 /-- iterate until a `ret` leaf: result `r`, final state `σ'` -/
 inductive Tree.Runs (t : Tree) : BState → BitVec 64 → BState → Prop
@@ -92,6 +96,7 @@ def comp (L : Lay) : Tree → Nat → BStmt
       (.seq (.loop (.var (L.cv d)) (.seq (.load v b i) (.assign (L.cv d) (.const 0))))
         (.seq (.loop (.var (L.cv d + 1)) (.seq (.assign v e) (.assign (L.cv d + 1) (.const 0)))) (comp L k d))))
   | .store b i e k, d => .seq (.store b i e) (comp L k d)
+  | .sub p k, d => .seq p (comp L k d)
 
 /-- the whole function: result in variable `out` -/
 def prog (L : Lay) (t : Tree) (out : Nat) : BStmt :=
@@ -105,6 +110,7 @@ def Tree.wf (L : Lay) : Tree → Prop
   | .load v _ i k => v < L.M ∧ i.vlt L.M ∧ k.wf L
   | .cload v _ i c d k => v < L.M ∧ i.vlt L.M ∧ c.vlt L.M ∧ d.vlt L.M ∧ k.wf L
   | .store _ i e k => i.vlt L.M ∧ e.vlt L.M ∧ k.wf L
+  | .sub p k => p.vltF L.M = true ∧ k.wf L
 
 /-! ## Correctness -/
 
@@ -197,6 +203,22 @@ theorem Post.mono {L : Lay} {τ τ₀ τ' τ'' : BState} {o : Out} (h : Post L �
   cases o with
   | ret r σ' => exact ⟨hA _ h.1, (he _ (by simp [Lay.res])).trans h.2.1, (he _ (by simp [Lay.fl])).trans h.2.2⟩
   | call σ' => exact ⟨hA _ h.1, ((he _ (by simp [Lay.fl])).trans h.2).trans hfl⟩
+
+theorem comp_ok_sub (L : Lay) (p : BStmt) (k : Tree) (d : Nat) (σ τ : BState) (o : Out) (hp : p.vltF L.M = true)
+    (hA : Agree L.M σ τ) (hs : (Tree.sub p k).step σ = some o)
+    (ih : ∀ σ₁ τ₁, Agree L.M σ₁ τ₁ → k.step σ₁ = some o →
+      ∃ τ', BExec (comp L k d) τ₁ τ' ∧ (∀ x, L.M + 2 + L.K ≤ x → x < L.cv d → τ'.env x = τ₁.env x) ∧ Post L τ₁ τ' o) :
+    ∃ τ', BExec (comp L (.sub p k) d) τ τ' ∧ (∀ x, L.M + 2 + L.K ≤ x → x < L.cv d → τ'.env x = τ.env x) ∧
+      Post L τ τ' o := by
+  simp only [Tree.step] at hs
+  split at hs
+  · rename_i h
+    have hx := Classical.choose_spec h
+    obtain ⟨τ₁, h1, hA1, hH1, hk1⟩ := exec_agree hp hx τ hA.1 hA.2
+    obtain ⟨τ', h2, hk2, hp2⟩ := ih _ τ₁ ⟨hA1, hH1⟩ hs
+    exact ⟨τ', .seq h1 h2, fun x h1 h2 => (hk2 x h1 h2).trans (hk1 x (by omega)),
+      hp2.mono (hk1 _ (by simp [Lay.fl])) rfl (fun _ _ => rfl)⟩
+  · cases hs
 
 theorem comp_ok (L : Lay) : ∀ (t : Tree) (d : Nat) (σ τ : BState) (o : Out), t.wf L → Agree L.M σ τ →
     t.step σ = some o →
@@ -388,6 +410,8 @@ theorem comp_ok (L : Lay) : ∀ (t : Tree) (d : Nat) (σ τ : BState) (o : Out),
           exact ⟨τ', .seq (BExec.store' (B := B) (by rw [hA.2]; exact hB) (congrArg BitVec.toNat hi) hl) hx', hk,
             hp.mono rfl rfl (fun _ _ => rfl)⟩
         · rw [if_neg hl] at hr; cases hr
+  | .sub p k, d, σ, τ, o, hw, hA, hs =>
+    comp_ok_sub L p k d σ τ o hw.1 hA hs fun σ₁ τ₁ hA₁ hs₁ => comp_ok L k d σ₁ τ₁ o hw.2 hA₁ hs₁
 
 theorem loop_ok (L : Lay) {t : Tree} (hw : t.wf L) {σ σ' : BState} {r : BitVec 64} (h : t.Runs σ r σ') :
     ∀ τ, Agree L.M σ τ → τ.env L.fl ≠ 0 →
@@ -424,6 +448,7 @@ def Tree.ro : Tree → Bool
   | .ite _ t e => t.ro && e.ro
   | .let_ _ _ k | .load _ _ _ k | .cload _ _ _ _ _ k => k.ro
   | .store .. => false
+  | .sub p k => p.roF && k.ro
 
 theorem Tree.step_ro : ∀ (t : Tree) (σ : BState) (o : Out), t.ro = true → t.step σ = some o →
     (match o with | .ret _ σ' => σ'.heap | .call σ' => σ'.heap) = σ.heap
@@ -450,6 +475,13 @@ theorem Tree.step_ro : ∀ (t : Tree) (σ : BState) (o : Out), t.ro = true → t
       | none => rw [h] at hs; cases hs
       | some x => rw [h] at hs; exact step_ro k ⟨σ.env.set v (x.setWidth 64), σ.heap⟩ o hr hs
   | .store .., _, _, hr, _ => by cases hr
+  | .sub p k, σ, o, hr, hs => by
+    simp only [Tree.ro, Bool.and_eq_true] at hr
+    simp only [Tree.step] at hs
+    split at hs
+    · rename_i h
+      exact (step_ro k _ o hr.2 hs).trans ((Classical.choose_spec h).heap_roF hr.1)
+    · cases hs
 
 theorem Tree.Runs.heap_ro {t : Tree} (hr : t.ro = true) {σ σ' : BState} {r : BitVec 64} (h : t.Runs σ r σ') :
     σ'.heap = σ.heap := by
@@ -604,6 +636,14 @@ theorem sim_ret_elim {k : Tree} {σ : BState} {r : BitVec 64} (hs : Sim R k σ (
 
 The output block is block 1 of a heap `[A, O]`; the function's result `L` is written from index `j` on:
 `wrO O j L`.  A `ret` leaf of such a function is `reth` (the result and the heap). -/
+
+theorem sim_sub (p : BStmt) (k : Tree) (env : BEnv) (heap : Heap) (env' : BEnv) (o : LOut A)
+    (hx : BExec p ⟨env, heap⟩ ⟨env', heap⟩) (h : Sim R k ⟨env', heap⟩ o) : Sim R (.sub p k) ⟨env, heap⟩ o := by
+  have hex : ∃ σ', BExec p ⟨env, heap⟩ σ' := ⟨_, hx⟩
+  have e : (Tree.sub p k).step ⟨env, heap⟩ = k.step ⟨env', heap⟩ := by
+    simp only [Tree.step, dif_pos hex]
+    rw [BExec.detF (Classical.choose_spec hex) hx]
+  cases o <;> simp only [Sim, e] <;> exact h
 
 theorem sim_reth (e : BExp) (env : BEnv) (heap : Heap) (r : BitVec 64) (H : Heap)
     (h : e.denote env = r) (hH : heap = H) : Sim R (.ret e) ⟨env, heap⟩ (.reth r H) :=
