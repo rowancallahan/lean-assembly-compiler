@@ -6,6 +6,7 @@ import Compiler.Opt.Alloc
 import Compiler.Opt.Live
 import Compiler.Opt.SR
 import Compiler.Opt.Flow
+import Compiler.Opt.Peep
 
 namespace Proven.Mach
 open IR
@@ -87,16 +88,20 @@ theorem fn_ok {ram : Nat → Prop} {fp : Nat} (hram : ∀ a, ram a → M.inRAM a
 
 /-! ### With strength reduction (`SR.sr`) tried first -/
 
-/-- the bodies tried, in order: the control-flow clean-ups (`Flow.flow`) then strength reduction, strength
-reduction alone, the code itself -/
+/-- the bodies tried, in order: the front end's pipeline (`Peep.fast`, 6, 3, 1, 0 constants per loop in registers), the control-flow clean-ups (`Flow.flow`)
+then strength reduction, strength reduction alone, the code itself -/
 def _root_.Proven.Mach.IR.cands (vars : List Nat) (c : Code Nat) : List (Code Nat) :=
-  [SR.sr vars (Flow.flow vars c), SR.sr vars c, c]
+  [Peep.fast 6 vars c, Peep.fast 3 vars c, Peep.fast 1 vars c, Peep.fast 0 vars c, SR.sr vars (Flow.flow vars c), SR.sr vars c, c]
 
 theorem _root_.Proven.Mach.IR.cands_ok {ram : Nat → Prop} {fp : Nat} {vars : List Nat} {c c' : Code Nat}
     (hm : c' ∈ cands vars c) {σ σ' : St Nat} (h : Exec ram fp c σ σ') :
     ∃ τ', Exec ram fp c' σ τ' ∧ τ'.mem = σ'.mem ∧ ∀ x, x ∈ vars → τ'.reg x = σ'.reg x := by
   simp only [cands, List.mem_cons, List.not_mem_nil, or_false] at hm
-  rcases hm with rfl | rfl | rfl
+  rcases hm with rfl | rfl | rfl | rfl | rfl | rfl | rfl
+  · exact Peep.fast_ok 6 vars h
+  · exact Peep.fast_ok 3 vars h
+  · exact Peep.fast_ok 1 vars h
+  · exact Peep.fast_ok 0 vars h
   · obtain ⟨τ₁, x₁, m₁, r₁⟩ := Flow.flow_ok vars h
     obtain ⟨τ₂, x₂, m₂, r₂⟩ := SR.sr_ok vars x₁
     exact ⟨τ₂, x₂, m₂.trans m₁, fun x hx => (r₂ x hx).trans (r₁ x hx)⟩
