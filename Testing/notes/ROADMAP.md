@@ -88,3 +88,16 @@ hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read 
   wire formats); write our Lean implementation F; prove (1) F satisfies S and (2) F = M (DeepMind's model) on all inputs.
   Validate S by mutation: mutants of F that break F = M should mostly break S too; a security-relevant mutant that
   breaks F = M but still satisfies S marks a gap in S.
+
+# Strategy (owner, 2026-11-15)
+
+- Features before speed: up to ~10x gcc -O2 is acceptable for now; optimisation passes come later, possibly
+  larger ones that work across the stack, once big functions compile and show where time goes.
+- Depth first: take the biggest pure functions (con-leche checker entry points, lean-zip inflate, lean-svg render,
+  the self-hoster), compile until the first failure, and fix the feature that unblocks the most. Breadth (the book,
+  surveys) runs in parallel on Sonnet boxes to set the stage.
+- Grow the self-hoster alongside the compiler: each new feature is also used in the tiny self-hosting compiler.
+- Pure functions only: state monads inside pure code are in scope; IO is not.
+- Long-term goals: con-leche and self-hosting. The book, lean-zip and lean-svg are the way there. ARM is a slow
+  side track (bridge to Sail ARM).
+- String representation: the owner will review the byte layout (as for Encode.lean).
