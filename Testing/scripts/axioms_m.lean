@@ -9,3 +9,13 @@ import Riscv.Frontx.Machine
 #print axioms Proven.Frontx.Ex.nonTailSum.implements1
 #print axioms Proven.Frontx.Ex.tailLength.implements1
 #print axioms Proven.Frontx.Ex.bookLength.implements1
+#print axioms Proven.Frontx.implements1_list
+#print axioms Proven.Frontx.Ex.take5.implements1
+#print axioms Proven.Frontx.Ex.drop5.implements1
+#print axioms Proven.Frontx.Ex.matchDrop3.implements1
+#print axioms Proven.Frontx.Ex.filterAll.implements1
+#print axioms Proven.Frontx.Ex.incEach.implements1
+#print axioms Proven.Frontx.Ex.twice.implements1
+#print axioms Proven.Frontx.Ex.headOf.implements1
+#print axioms Proven.Frontx.Ex.finalOf.implements1
+#print axioms Proven.Frontx.Ex.findFirstGt3.implements1

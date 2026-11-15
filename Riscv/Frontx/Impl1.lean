@@ -130,6 +130,44 @@ theorem implements1_of_frontx {β : Type} (f : ByteArray → β) (encB : β → 
     · rw [List.getElem?_eq_none (by simp; omega), List.getElem?_eq_none (by simp; omega)]
   · exact List.ext_getElem? fun i => by rw [List.getElem?_drop, List.getElem?_drop]; exact hu _ (by omega)
 
+
+/-! ## List results: the bytes written to the output block, the length returned in `a1` (`retLen`) -/
+
+/-- the code of an entry point returning `List UInt8`: the program (length in variable 4), then `a1 := v4` -/
+def listCode (N : Nat) (p : Proven.BStmt) : List (BitVec 32) :=
+  compBFO N [0, 3] [2] (.seq (toMS p) (.assign 1 (.var 4)))
+
+theorem wrO_take (O : List (BitVec 8)) (L : List UInt8) (h : L.length ≤ O.length) :
+    (wrO O 0 L).take L.length = L.map (·.toBitVec) := by
+  simp [wrO]
+
+theorem wrO_drop (O : List (BitVec 8)) (L : List UInt8) : (wrO O 0 L).drop L.length = O.drop L.length := by
+  simp [wrO]
+
+/-- **Generated program with a list result ⇒ `Implements1` with `retLen`.** -/
+theorem implements1_list (f : ByteArray → List UInt8) (N : Nat) (hN : N ≤ 16) (p : Proven.BStmt)
+    (hwf : p.wf N [0, 3]) (hnw : ∀ v ∈ avars p, v ∉ [2])
+    (hex : ∀ (xs : ByteArray) (out : List (BitVec 8)) (env : BEnv), env 1 = rN xs.size → xs.size < 2 ^ 32 →
+      (∀ j, 8 ≤ j → env j = 0) → (f xs).length ≤ out.length → out.length < 2 ^ 32 →
+      ∃ σ', Proven.BExec p ⟨env, [blk xs, out]⟩ σ' ∧ σ'.env 4 = rN (f xs).length ∧
+        σ'.heap = [blk xs, wrO out 0 (f xs)]) :
+    Implements1With (fun xs : ByteArray => xs.data.toList) (fun l => l) (listCode N p) f (fun _ => 8 * (N + 1) + 7)
+      (retLen := true) := by
+  refine implements1_of_execO _ (fun l => l) f N hN (.seq (toMS p) (.assign 1 (.var 4)))
+    (show rvF.wfB N [0, 3] [2] (toMS p) ∧ _ from ⟨wfB_up N _ _ p hwf hnw, by
+      simp [MachineF.wfB, Mach.BExp.depth, Mach.BExp.vlt]; omega⟩) (fun _ => 0) _
+    (fun n => by dsimp only; omega) _ true ?_
+  intro a out tbl env h1 h8 hmax hlt hout hol htl
+  have hsz : a.data.toList.length = a.size := Array.length_toList
+  obtain ⟨σ', hx, h4, hh⟩ := hex a out env (by rw [h1, hsz]; rfl) (by rw [← hsz]; exact hlt) h8 hout hol
+  have hx' := exec_up hx [] [tbl]
+  rw [hh] at hx'
+  simp only [List.append_nil] at hx'
+  refine ⟨_, wrO out 0 (f a), .seq hx' .assign, rfl, wrO_take _ _ hout, wrO_drop _ _, fun _ => ?_⟩
+  show (σ'.env.set 1 _) 1 = _
+  simp only [Mach.BEnv.set, Mach.BExp.denote]
+  rw [h4]; rfl
+
 /-! ## Result encodings -/
 
 /-- `k` little-endian bytes of a number -/
@@ -157,6 +195,15 @@ instance : Res UInt32 := ⟨r32, 3, by decide, fun w => leN 4 w.toNat, fun w => 
 instance : Res UInt8 := ⟨r8, 0, by decide, fun w => leN 1 w.toNat, fun w => by
   rw [leN_bytes]; simp [r8]⟩
 instance : Res Bool := ⟨rB, 0, by decide, fun b => [if b then 1 else 0], fun b => by cases b <;> rfl⟩
+/-- `Option UInt8`: two bytes, the tag (`0` / `1`) and the payload (`0` for `none`) -/
+instance : Res (Option UInt8) := ⟨rOpt8, 1, by decide, fun o => [if o.isSome then 1 else 0, o.getD 0], fun o => by
+  simp only [List.range_succ, List.range_zero, List.nil_append, List.map_cons, List.map_nil, List.cons_append,
+    rOpt8_toNat, List.cons.injEq, and_true]
+  cases o with
+  | none => simp
+  | some x =>
+    have h := x.toNat_lt
+    constructor <;> apply BitVec.eq_of_toNat_eq <;> simp <;> omega⟩
 
 /-- the code of an entry point -/
 def entryCode (β : Type) [Res β] (N : Nat) (p : Proven.BStmt) : List (BitVec 32) :=
@@ -172,6 +219,20 @@ theorem implements1_res {β : Type} [Res β] (f : ByteArray → β) (N : Nat) (h
       ∃ σ', Proven.BExec p ⟨env, [blk xs]⟩ σ' ∧ σ'.env 4 = Res.repr (f xs) ∧ σ'.heap = [blk xs]) :
     Implements1With (fun xs : ByteArray => xs.data.toList) Res.enc (entryCode β N p) f (fun _ => 8 * (N + 1) + 7) :=
   implements1_of_frontx f Res.enc Res.repr (Res.k β) Res.hk Res.henc N hN p hwf hnw hex
+
+/-- the code of an entry point with a list result -/
+def listCodeOf (_f : ByteArray → List UInt8) (N : Nat) (p : Proven.BStmt) : List (BitVec 32) := listCode N p
+
+/-- `frontx_implements_list g`: `g.code` and `g.implements1` (`retLen := true`) for `g : ByteArray → List UInt8` -/
+macro "frontx_implements_list " g:ident : command => do
+  let n := g.getId
+  let prog := Lean.mkIdent (n ++ `prog); let slots := Lean.mkIdent (n ++ `slots)
+  let exec := Lean.mkIdent (n ++ `exec); let code := Lean.mkIdent (n ++ `code)
+  let thm := Lean.mkIdent (n ++ `implements1)
+  `(def $code : List (BitVec 32) := listCodeOf $g $slots $prog
+    theorem $thm : Implements1With (fun xs : ByteArray => xs.data.toList) (fun l => l) $code $g
+        (fun _ => 8 * ($slots + 1) + 7) (retLen := true) :=
+      implements1_list $g $slots (by decide) $prog (by decide +kernel) (by decide +kernel) $exec)
 
 /-- `frontx_implements g` (after `frontx_entry g`): `g.code` and the machine theorem `g.implements1` -/
 macro "frontx_implements " g:ident : command => do

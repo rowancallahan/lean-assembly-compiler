@@ -1,15 +1,41 @@
 import Riscv.Frontx.Machine
-open Proven Proven.Frontx.Ex
+open Proven Proven.Frontx Proven.Frontx.Ex
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
-/-- first line: the number of slots (work space = `8 * (slots + 1) + 7`); then the code words -/
-def emit (name : String) (slots : Nat) (code : List (BitVec 32)) : IO Unit := do
+def hex2 (b : UInt8) : String := let s := String.ofList (Nat.toDigits 16 b.toNat); if s.length < 2 then "0" ++ s else s
+def hx (xs : List UInt8) : String := if xs.isEmpty then "-" else String.join (xs.map hex2)
+def rnd (i j : Nat) : Nat := (i * 0x9E3779B97F4A7C15 + j * 0xD1B54A32D192ED03 + i * i * j) % 2^64
+/-- the test inputs: fixed ones, then pseudo-random lengths and bytes (some up to 3000 bytes) -/
+def inputs : List (List UInt8) :=
+  [[], [0], [255], [3, 3], [9, 200], [10], [1, 2, 3, 4, 5, 6, 7], "123456789".toUTF8.data.toList,
+   "The quick brown fox\njumps over the lazy dog".toUTF8.data.toList, List.replicate 64 255] ++
+  (List.range 40).map fun i =>
+    let L := if i % 9 = 0 then rnd i 7 % 3000 else rnd i 99 % 70
+    (List.range L).map fun j => UInt8.ofNat (match i % 4 with
+      | 0 => rnd i j % 256 | 1 => rnd i j % 12 | 2 => (j * 37) % 256 | _ => 255 - rnd i j % 5)
+/-- `name.words`: first line the number of slots (work space = `8 * (slots + 1) + 7`), then the code words;
+`name.cases`: per line the input bytes and the result bytes as computed by Lean (`#eval` of the function) -/
+def emit (name : String) (slots : Nat) (code : List (BitVec 32)) (f : ByteArray → List UInt8) : IO Unit := do
   IO.FS.createDirAll "Testing/asm/frontx-words"
   IO.FS.writeFile s!"Testing/asm/frontx-words/{name}.words" (String.intercalate "\n" (toString slots :: code.map hex8) ++ "\n")
-#eval emit "crcraw" crcRaw.slots crcRaw.code
-#eval emit "b64all" b64All.slots b64All.code
-#eval emit "findnl" findNL.slots findNL.code
-#eval emit "be32at0" be32At0.slots be32At0.code
-#eval emit "tailsum" Proven.Frontx.BookList.tailSum.slots tailSum.code
-#eval emit "nontailsum" Proven.Frontx.BookList.nonTailSum.slots nonTailSum.code
-#eval emit "taillength" Proven.Frontx.BookList.tailLength.slots tailLength.code
-#eval emit "booklength" Proven.Frontx.BookList.bookLength.slots bookLength.code
+  IO.FS.writeFile s!"Testing/asm/frontx-words/{name}.cases"
+    (String.join (inputs.map fun xs => s!"{hx xs} {hx (f ⟨xs.toArray⟩)}\n"))
+def enc {β : Type} [Res β] (f : ByteArray → β) : ByteArray → List UInt8 := fun xs => Res.enc (f xs)
+#eval emit "crcraw" crcRaw.slots crcRaw.code (enc crcRaw)
+#eval emit "b64all" b64All.slots b64All.code (enc b64All)
+#eval emit "findnl" findNL.slots findNL.code (enc findNL)
+#eval emit "be32at0" be32At0.slots be32At0.code (enc be32At0)
+#eval emit "tailsum" Proven.Frontx.BookList.tailSum.slots tailSum.code (enc Proven.Frontx.BookList.tailSum)
+#eval emit "nontailsum" Proven.Frontx.BookList.nonTailSum.slots nonTailSum.code (enc Proven.Frontx.BookList.nonTailSum)
+#eval emit "taillength" Proven.Frontx.BookList.tailLength.slots tailLength.code (enc Proven.Frontx.BookList.tailLength)
+#eval emit "booklength" Proven.Frontx.BookList.bookLength.slots bookLength.code (enc Proven.Frontx.BookList.bookLength)
+open Proven.Frontx.BookOut in
+#eval do
+  emit "take5" take5.slots Proven.Frontx.Ex.take5.code take5
+  emit "drop5" drop5.slots Proven.Frontx.Ex.drop5.code drop5
+  emit "matchdrop3" matchDrop3.slots Proven.Frontx.Ex.matchDrop3.code matchDrop3
+  emit "filterall" filterAll.slots Proven.Frontx.Ex.filterAll.code filterAll
+  emit "inceach" incEach.slots Proven.Frontx.Ex.incEach.code incEach
+  emit "twice" twice.slots Proven.Frontx.Ex.twice.code twice
+  emit "headof" headOf.slots Proven.Frontx.Ex.headOf.code (enc headOf)
+  emit "finalof" finalOf.slots Proven.Frontx.Ex.finalOf.code (enc finalOf)
+  emit "findfirstgt3" findFirstGt3.slots Proven.Frontx.Ex.findFirstGt3.code (enc findFirstGt3)
