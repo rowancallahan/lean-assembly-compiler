@@ -23,6 +23,7 @@ def MS.maxv : MS → Nat
   | .store _ i e | .store64 _ i e => max (MB.maxv i) (MB.maxv e)
   | .seq p q => max (MS.maxv p) (MS.maxv q)
   | .loop c b => max (MB.maxv c) (MS.maxv b)
+  | .mop _ v a b => max (v + 1) (max (MB.maxv a) (MB.maxv b))
 
 /-! ## `wfB` is decidable -/
 
@@ -48,6 +49,7 @@ def wfBDec (N : Nat) (bv wv : List Nat) : (p : Mach.BStmt) → Decidable (rvF.wf
     inferInstanceAs (Decidable (i.depth < 6 ∧ i.vlt (8 + N) ∧ v < 8 + N ∧ v ∉ bv ∧ v ∉ wv ∧ b < wv.length))
   | .store64 b i e =>
     inferInstanceAs (Decidable (i.depth < 6 ∧ e.depth < 6 ∧ i.vlt (8 + N) ∧ e.vlt (8 + N) ∧ b < wv.length))
+  | .mop _ _ _ _ => inferInstanceAs (Decidable False)
 
 instance (N : Nat) (bv wv : List Nat) (p : Mach.BStmt) : Decidable (rvF.wfB N bv wv p) := wfBDec N bv wv p
 
@@ -93,6 +95,49 @@ theorem implements1_wa {t : Ty} {β : Type} [Res β] (f : ByteArray → β) (p :
     Implements1With (fun xs : ByteArray => xs.data.toList) Res.enc (waCode p (Res.k β)) f
       (fun _ => 8 * wholeW p [inLoc] + 8 * (wholeN p (Res.k β) + 1) + 7) := by
   refine implements1_of_execOW _ Res.enc f (wholeN p (Res.k β)) hN (wholeProg p (Res.k β)) hmwf
+    (fun _ => wholeW p [inLoc]) _ (fun n => Nat.le_refl _) _ false ?_
+  intro a out tbl env h1 h8 hmax hlt hout hol htl
+  have hsz : a.data.toList.length = a.size := Array.length_toList
+  obtain ⟨y, hg, hy⟩ := hgood a (by rw [← hsz]; exact hlt)
+  have hR := rel_input a env out tbl h1 (by rw [← hsz]; exact hlt)
+  obtain ⟨σ1, W1, e1, h1', w1, s1⟩ := Pg.comp_ok [inLoc] p (a, ()) _ 4 0 tbl y hR (by simp) (by
+      intro l hl; simp [inLoc] at hl; subst hl; decide) (fun l hl => by simp [inLoc] at hl; subst hl; exact .inl rfl)
+    hwf hg rfl (by rw [htl]; exact Nat.le_refl _) (by rw [htl]; exact h32)
+  have hlen : (Res.enc (f a)).length = Res.k β + 1 := by
+    have := congrArg List.length (Res.henc (f a)); simpa using this
+  let σ2 : Mach.BState := ⟨σ1.env.set 4 (σ1.env (p.comp [inLoc] 4 0).2.1.v), σ1.heap, σ1.wheap⟩
+  have h4 : σ2.env 4 = Res.repr (f a) := by
+    simp only [σ2, set_eq]; rw [← hy, hcv]; exact s1
+  obtain ⟨out', hst, hl', hb', hu⟩ := store8_exec (Res.repr (f a)) (Res.k β) hk σ2 _ out
+    (by simp only [σ2]; rw [h1']) h4 (by omega) rfl
+  refine ⟨_, out', .seq e1 (.seq .assign hst), rfl, ?_, ?_, fun h => nomatch h⟩
+  · rw [hlen]
+    apply List.ext_getElem?; intro i
+    rw [Res.henc]
+    by_cases hi : i < Res.k β + 1
+    · rw [List.getElem?_take_of_lt hi, hb' i (by omega), List.getElem?_map, List.getElem?_range hi]; rfl
+    · rw [List.getElem?_eq_none (by simp; omega), List.getElem?_eq_none (by simp; omega)]
+  · rw [hlen]
+    exact List.ext_getElem? fun i => by rw [List.getElem?_drop, List.getElem?_drop]; exact hu _ (by omega)
+
+/-- the checked words of a scalar-result program -/
+def waCodeC {t : Ty} (p : Pg [.ar .ba] (.sc t)) (k : Nat) (tb : List (Nat × Reg)) (spl : List Nat) : List (BitVec 32) :=
+  compBFC (wholeN p k) [0, 3] [2] tb spl (wholeProg p k)
+
+/-- **`implements1_wa` for the checked words `compBFC`** (programs with `BStmt.mop`, which the plain fallback of
+`compBFO` does not have): `optB` accepts the register choice `(tb, spl)` instead of `wfB` -/
+theorem implements1_waC {t : Ty} {β : Type} [Res β] (f : ByteArray → β) (p : Pg [.ar .ba] (.sc t))
+    (cv : t.T → β) (hcv : ∀ y, Res.repr (cv y) = t.rep y)
+    (hk : Res.k β < 8)
+    (hN : wholeN p (Res.k β) ≤ NS) (hwf : p.wf [inLoc] 4 0 = true)
+    (tb : List (Nat × Reg)) (spl : List Nat)
+    (hc : (rvwF.optB scB (tblG tb) (fun j => spl.contains j) (wholeN p (Res.k β)) [0, 3] [2]
+      (wholeProg p (Res.k β))).isSome = true)
+    (h32 : wholeW p [inLoc] < 2 ^ 32)
+    (hgood : ∀ xs : ByteArray, xs.size < 2 ^ 32 → ∃ y, p.Good (xs, ()) y ∧ cv y = f xs) :
+    Implements1With (fun xs : ByteArray => xs.data.toList) Res.enc (waCodeC p (Res.k β) tb spl) f
+      (fun _ => 8 * wholeW p [inLoc] + 8 * (wholeN p (Res.k β) + 1) + 7) := by
+  refine implements1_of_execC _ Res.enc f (wholeN p (Res.k β)) hN (wholeProg p (Res.k β)) tb spl hc
     (fun _ => wholeW p [inLoc]) _ (fun n => Nat.le_refl _) _ false ?_
   intro a out tbl env h1 h8 hmax hlt hout hol htl
   have hsz : a.data.toList.length = a.size := Array.length_toList
@@ -285,5 +330,70 @@ theorem implements1_waA {k : AK} (f : ByteArray → k.T) (p : Pg [.ar .ba] (.ar 
     wrO_take _ _ hout, wrO_drop _ _, fun _ => ?_⟩
   show (env'.set 1 _) 1 = _
   simp only [set_eq, Mach.BExp.denote]; rw [hq]; rfl
+
+
+def waCodeAC {k : AK} (p : Pg [.ar .ba] (.ar k)) (tb : List (Nat × Reg)) (spl : List Nat) : List (BitVec 32) :=
+  compBFC (wholeNA p) [0, 3] [2] tb spl (wholeProgA p)
+
+/-- **`implements1_waA` for the checked words `compBFC`** (the elements' bytes, their number in `a1`). -/
+theorem implements1_waAC {k : AK} (f : ByteArray → k.T) (p : Pg [.ar .ba] (.ar k))
+    (hN : wholeNA p ≤ NS) (hwf : p.wf [inLoc] 4 0 = true)
+    (tb : List (Nat × Reg)) (spl : List Nat)
+    (hc : (rvwF.optB scB (tblG tb) (fun j => spl.contains j) (wholeNA p) [0, 3] [2] (wholeProgA p)).isSome = true)
+    (h32 : wholeW p [inLoc] < 2 ^ 32)
+    (hd : (p.comp [inLoc] 4 0).2.1.v < outBase p [inLoc])
+    (hgood : ∀ xs : ByteArray, xs.size < 2 ^ 32 → p.Good (xs, ()) (f xs)) :
+    Implements1With (fun xs : ByteArray => xs.data.toList) (encArr k) (waCodeAC p tb spl) f
+      (fun _ => 8 * wholeW p [inLoc] + 8 * (wholeNA p + 1) + 7) (retLen := true) := by
+  refine implements1_of_execC _ (encArr k) f (wholeNA p) hN (wholeProgA p) tb spl hc
+    (fun _ => wholeW p [inLoc]) _ (fun n => Nat.le_refl _) _ true ?_
+  intro a out tbl env h1 h8 hmax hlt hout hol htl
+  have hsz : a.data.toList.length = a.size := Array.length_toList
+  have hR := rel_input a env out tbl h1 (by rw [← hsz]; exact hlt)
+  obtain ⟨σ1, W1, e1, h1', w1, s1⟩ := Pg.comp_ok [inLoc] p (a, ()) _ 4 0 tbl (f a) hR (by simp) (by
+      intro l hl; simp [inLoc] at hl; subst hl; decide) (fun l hl => by simp [inLoc] at hl; subst hl; exact .inl rfl)
+    hwf (hgood a (by rw [← hsz]; exact hlt)) rfl (by rw [htl]; exact Nat.le_refl _) (by rw [htl]; exact h32)
+  generalize hl : (p.comp [inLoc] 4 0).2.1 = l at s1 hd
+  generalize hdd : outBase p [inLoc] = d at hd
+  obtain ⟨env1, heap1, wheap1⟩ := σ1
+  simp only at h1' w1; subst h1' w1
+  obtain ⟨hv, hs32, hA⟩ := s1.ar
+  simp only [List.getD_cons_zero, List.getD_cons_succ] at hA
+  have hcap : k.el.width * AK.size k (f a) ≤ out.length := by
+    have := encPre_length k (f a) (AK.size k (f a)); unfold encArr at hout; omega
+  let env2 := (env1.set d 0).set (d + 1) 0
+  obtain ⟨env', e3, hq, hk⟩ := outLoop_iter (f a) l d _ out W1 hA hd hcap hol hs32 _ 0 env2 rfl (Nat.zero_le _)
+    (by simp only [env2, set_ne (show d ≠ d + 1 by omega), set_eq]; rfl)
+    (by simp only [env2, set_eq]; rfl)
+    (by simp only [env2, set_ne (show l.v ≠ d + 1 by omega), set_ne (show l.v ≠ d by omega)]; exact hv)
+  simp only [List.range_zero, List.flatMap_nil, wrO_nil] at e3
+  have e2 : Mach.BExec (outLoop l k.el.width d) ⟨env1, [a.data.toList.map (·.toBitVec), out], [W1]⟩
+      ⟨env', [a.data.toList.map (·.toBitVec), wrO out 0 (encArr k (f a))], [W1]⟩ :=
+    .seq .assign (.seq .assign e3)
+  refine ⟨_, wrO out 0 (encArr k (f a)), .seq e1 (by rw [hl, hdd]; exact .seq e2 .assign), rfl,
+    wrO_take _ _ hout, wrO_drop _ _, fun _ => ?_⟩
+  show (env'.set 1 _) 1 = _
+  simp only [set_eq, Mach.BExp.denote]; rw [hq]; rfl
+
+/-! ## Choosing the words (untrusted, evaluated by `wa_compile`) -/
+
+/-- the program uses the M extension (`BStmt.mop`): the plain fallback words do not exist, `compBFC` is used -/
+def MS.hasMop : MS → Bool
+  | .mop .. => true
+  | .seq p q => MS.hasMop p || MS.hasMop q
+  | .loop _ b => MS.hasMop b
+  | _ => false
+
+/-- a register table with `Nat` registers -/
+def waTbl (l : List (Nat × Nat)) : List (Nat × Reg) := l.map fun q => (q.1, rk q.2)
+
+def natChoice (c : Option (List (Nat × Reg) × List Nat)) : Option (List (Nat × Nat) × List Nat) :=
+  c.map fun (t, spl) => (t.map fun q => (q.1, q.2.val), spl)
+
+def waPick {t : Ty} (p : Pg [.ar .ba] (.sc t)) (k : Nat) : Option (List (Nat × Nat) × List Nat) :=
+  natChoice (pickC (wholeN p k) [0, 3] [2] (wholeProg p k))
+
+def waPickA {k : AK} (p : Pg [.ar .ba] (.ar k)) : Option (List (Nat × Nat) × List Nat) :=
+  natChoice (pickC (wholeNA p) [0, 3] [2] (wholeProgA p))
 
 end Proven.WA

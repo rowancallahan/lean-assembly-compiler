@@ -15,6 +15,7 @@ def Tst.map (f : α → β) (t : Tst α) : Tst β := ⟨t.c, t.a.map f, t.b.map 
 def Ins.map (f : α → β) : Ins α → Ins β
   | .set d a => .set (f d) (a.map f)
   | .bin op d a b => .bin op (f d) (a.map f) (b.map f)
+  | .mop m d a b => .mop m (f d) (a.map f) (b.map f)
   | .lbu d a off => .lbu (f d) (a.map f) off
   | .sb v a off => .sb (v.map f) (a.map f) off
   | .ldS d j => .ldS (f d) j
@@ -39,6 +40,7 @@ def Tst.regs (t : Tst α) : List α := t.a.regs ++ t.b.regs
 def Ins.regs : Ins α → List α
   | .set d a => d :: a.regs
   | .bin _ d a b => d :: (a.regs ++ b.regs)
+  | .mop _ d a b => d :: (a.regs ++ b.regs)
   | .lbu d a _ => d :: a.regs
   | .sb v a _ => v.regs ++ a.regs
   | .ldS d _ => [d]
@@ -113,6 +115,12 @@ theorem map_ok (ram : Nat → Prop) (fp : Nat) (inj : ∀ x y, U x → U y → f
       have ha : ∀ x, x ∈ a.regs → U x := fun x hx => hu x (List.mem_cons_of_mem _ (List.mem_append.2 (.inl hx)))
       have hb : ∀ x, x ∈ b.regs → U x := fun x hx => hu x (List.mem_cons_of_mem _ (List.mem_append.2 (.inr hx)))
       refine ⟨_, .ins .bin, ?_⟩
+      rw [hr.arg ha, hr.arg hb]; exact hr.upd inj hd _
+    | @mop m d a b =>
+      have hd : U d := hu d (List.mem_cons_self ..)
+      have ha : ∀ x, x ∈ a.regs → U x := fun x hx => hu x (List.mem_cons_of_mem _ (List.mem_append.2 (.inl hx)))
+      have hb : ∀ x, x ∈ b.regs → U x := fun x hx => hu x (List.mem_cons_of_mem _ (List.mem_append.2 (.inr hx)))
+      refine ⟨_, .ins .mop, ?_⟩
       rw [hr.arg ha, hr.arg hb]; exact hr.upd inj hd _
     | @lbu d a off _ v hra hv =>
       have hd : U d := hu d (List.mem_cons_self ..)

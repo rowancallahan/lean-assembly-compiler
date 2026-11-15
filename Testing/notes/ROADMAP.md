@@ -88,3 +88,35 @@ hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read 
   wire formats); write our Lean implementation F; prove (1) F satisfies S and (2) F = M (DeepMind's model) on all inputs.
   Validate S by mutation: mutants of F that break F = M should mostly break S too; a security-relevant mutant that
   breaks F = M but still satisfies S marks a gap in S.
+
+# Strategy (owner, 2026-11-15)
+
+- Features before speed: up to ~10x gcc -O2 is acceptable for now; optimisation passes come later, possibly
+  larger ones that work across the stack, once big functions compile and show where time goes.
+- Depth first: take the biggest pure functions (con-leche checker entry points, lean-zip inflate, lean-svg render,
+  the self-hoster), compile until the first failure, and fix the feature that unblocks the most. Breadth (the book,
+  surveys) runs in parallel on Sonnet boxes to set the stage.
+- Grow the self-hoster alongside the compiler: each new feature is also used in the tiny self-hosting compiler.
+- Pure functions only: state monads inside pure code are in scope; IO is not.
+- Long-term goals: con-leche and self-hosting. The book, lean-zip and lean-svg are the way there. ARM is a slow
+  side track (bridge to Sail ARM).
+- String representation: the owner will review the byte layout (as for Encode.lean).
+- Memory at run time (owner, final for now): `compile_correct` keeps its shape; its memory hypothesis becomes
+  `enoughMemory : memoryNeeded compiled input <= call.workLength`, where `memoryNeeded` is the maximum work memory
+  the run uses, DEFINED from the run (not calculated, not an explicit formula). It replaces `compiled.space n` /
+  `cellsSup` in the statement (those become ways to prove the hypothesis). Being a Nat it is always satisfiable
+  for a large enough block, so the theorem is not vacuous. One work block per top-level call; callees allocate
+  inside it.
+  Out of memory (draft definition, owner asked for a stab): `memoryNeeded compiled input` = most work memory the
+  run uses with unlimited space (defined, not calculated); `OutOfMemory compiled input W := W < memoryNeeded
+  compiled input` (a property of the run, not of a register). Behaviour for any W: halts, nothing outside output +
+  work changes; `memoryNeeded <= W` -> right output (`compile_correct`); `OutOfMemory` -> halts with `a1 = 2^64-1`
+  (the reported flag; output contents unspecified). The two cases are complementary, so the flag appears exactly
+  when the run does not fit, never earlier.
+- con-leche hashing (owner): `mixHash` is `@[extern "lean_uint64_mix_hash"] opaque` in Lean core (Init/Prelude.lean),
+  i.e. no Lean definition at all; `String.hash` is an extern too. Plan: port the C code exactly into Lean
+  (`mixHashLean`, 6 lines of UInt64 mul/xor/shift; `String.hash` = MurmurHash64A from the runtime), substitute it in
+  a copy of con-leche, re-check con-leche's proofs (they cannot depend on an opaque value), compile that, and fuzz
+  the port heavily against native `mixHash` (`#eval` runs the C) on random inputs and on real con-leche terms.
+  Our theorems then say "computes con-leche with mixHash := mixHashLean". If con-leche's output provably does not
+  depend on the hash function (only consistency), any Lean hash will do.

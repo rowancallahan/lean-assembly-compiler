@@ -116,6 +116,7 @@ theorem exec_frame {p : BStmt} {σ σ' : BState} (h : BExec p σ σ') (X : Heap)
     BExec p ⟨σ.env, σ.heap ++ X⟩ ⟨σ'.env, σ'.heap ++ X⟩ := by
   induction h with
   | @assign v e σ => exact .assign
+  | mop => exact .mop
   | @load v b i σ hb hi =>
     have hb' : b < (σ.heap ++ X).length := by rw [List.length_append]; omega
     have hg : (σ.heap ++ X)[b] = σ.heap[b] := List.getElem_append_left hb

@@ -36,6 +36,7 @@ def wfDec (N : Nat) (bv : List Nat) : (p : BStmt) → Decidable (p.wf N bv)
   | .loop _ body =>
     @instDecidableAnd _ _ inferInstance (@instDecidableAnd _ _ inferInstance
       (@instDecidableAnd _ _ (wfDec N bv body) inferInstance))
+  | .mop _ _ _ _ => inferInstanceAs (Decidable False)
 
 instance (N : Nat) (bv : List Nat) (p : BStmt) : Decidable (p.wf N bv) := wfDec N bv p
 
@@ -62,16 +63,19 @@ theorem exec_up {p : Proven.BStmt} {σ σ' : Proven.BState} (h : Proven.BExec p 
   | seq _ _ ih1 ih2 => exact .seq ih1 ih2
   | loopF hc => exact .loopF (by show _ = _; rw [denote_toMB]; exact hc)
   | loopT hc _ _ ih1 ih2 => exact .loopT (by show _ ≠ _; rw [denote_toMB]; exact hc) ih1 ih2
+  | @mop m v a b σ =>
+    have := Mach.BExec.mop (m := m) (v := v) (a := toMB a) (b := toMB b) (σ := ⟨σ.env, σ.heap ++ X, w⟩)
+    simp only [denote_toMB] at this; exact this
 
 /-- the variables a program assigns -/
 def avars : Proven.BStmt → List Nat
-  | .assign v _ | .load v _ _ => [v]
+  | .assign v _ | .load v _ _ | .mop _ v _ _ => [v]
   | .store _ _ _ => []
   | .seq p q => avars p ++ avars q
   | .loop _ b => avars b
 
 theorem compB_wv (bv wv : List Nat) : ∀ p : Proven.BStmt, rvF.compB bv wv (toMS p) = rvF.compB bv [] (toMS p)
-  | .assign _ _ | .load _ _ _ | .store _ _ _ => rfl
+  | .assign _ _ | .load _ _ _ | .store _ _ _ | .mop _ _ _ _ => rfl
   | .seq p q => by simp only [toMS, MachineF.compB, compB_wv bv wv p, compB_wv bv wv q]
   | .loop c b => by simp only [toMS, MachineF.compB, compB_wv bv wv b]
 
@@ -93,6 +97,7 @@ theorem wfB_up (N : Nat) (bv wv : List Nat) : ∀ p : Proven.BStmt, p.wf N bv �
     refine ⟨h1, h2, wfB_up N bv wv b hp.2.2.1 fun v hv => ha v (by simpa [avars] using hv), ?_, ?_⟩
     · rw [compB_wv]; exact h4
     · rw [compB_wv]; exact h5
+  | .mop _ _ _ _, hp, _ => hp.elim
 
 theorem store8_wf (N : Nat) : ∀ k, k < 8 → rvF.wfB N [0, 3] [2] (store8 k)
   | 0, _ => by simp [store8, MachineF.wfB, Mach.BExp.depth, Mach.BExp.vlt]; omega

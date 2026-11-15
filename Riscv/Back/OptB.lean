@@ -46,6 +46,7 @@ def score : Mach.BStmt → Nat → Nat
   | .loop c b, x => 8 * (cntE c x + score b x)
   | .load64 v _ i, x => (if v = x then 1 else 0) + cntE i x
   | .store64 _ i e, x => cntE i x + cntE e x
+  | .mop _ v a b, x => (if v = x then 1 else 0) + cntE a x + cntE b x
 
 /-- the `k` most used locals (slot indices) -/
 def pickRegs (p : Mach.BStmt) (N k : Nat) : List Nat :=

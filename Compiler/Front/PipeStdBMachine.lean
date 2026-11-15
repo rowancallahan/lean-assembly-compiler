@@ -40,6 +40,7 @@ def wfErrB (N : Nat) (bv : List Nat) : BStmt → Option String
     if c.depth < 7 ∧ c.vltB (8 + N) = true ∧ (genB c 0).length + (compileB bv body).length + 2 < 1024 then
       wfErrB N bv body
     else some s!"loop too long: {(genB c 0).length + (compileB bv body).length + 2} words (limit 1023, the reach of beq)"
+  | .mop _ _ _ _ => some "multiply / divide: only the optimising back end (compBFC) compiles BStmt.mop"
 
 theorem wfErrB_iff (N : Nat) (bv : List Nat) : ∀ p : BStmt, wfErrB N bv p = none ↔ p.wf N bv
   | .assign v e => by simp only [wfErrB, BStmt.wf, ← BExp.vltB_iff]; split <;> simp_all
@@ -51,6 +52,7 @@ theorem wfErrB_iff (N : Nat) (bv : List Nat) : ∀ p : BStmt, wfErrB N bv p = no
   | .loop c body => by
     simp only [wfErrB, BStmt.wf, ← BExp.vltB_iff, ← wfErrB_iff N bv body]
     split <;> simp_all
+  | .mop _ _ _ _ => by simp [wfErrB, BStmt.wf]
 
 /-! ## The compiler -/
 

@@ -1,4 +1,5 @@
-import Riscv.Frontx.WaLeanZip
+import Riscv.Frontx.WaMul
+import Riscv.Frontx.MulExamples
 #print axioms Proven.Mach.Riscv.implements1_of_execO
 #print axioms Proven.WA.implements1_wa
 #print axioms Proven.WA.implements1_waA
@@ -10,3 +11,21 @@ import Riscv.Frontx.WaLeanZip
 #print axioms Proven.WA.LeanZip.countLengthsE.good
 #print axioms Proven.WA.LeanZip.countLengthsE.implements1
 #print axioms Proven.WA.LeanZip.countLengths7E.implements1
+#print axioms Proven.WA.implements1_waC
+#print axioms Proven.WA.implements1_waAC
+#print axioms Proven.WA.LeanZip.kraftE.good
+#print axioms Proven.WA.LeanZip.kraftE.implements1
+#print axioms Proven.WA.LeanZip.nextCodesE.good
+#print axioms Proven.WA.LeanZip.nextCodesE.implements1
+#print axioms Proven.WA.Core.gcdE.good
+#print axioms Proven.WA.Core.gcdE.implements1
+#print axioms Proven.WA.Ops.ops64E.implements1
+#print axioms Proven.WA.Ops.ops32E.implements1
+#print axioms Proven.WA.Ops.opsNE.implements1
+#print axioms Proven.Frontx.implements1_resC
+#print axioms Proven.Frontx.Mul.ops64E.exec
+#print axioms Proven.Frontx.Mul.ops64E.implements1
+#print axioms Proven.Frontx.Mul.ops32E.implements1
+#print axioms Proven.Frontx.Mul.opsNE.implements1
+#print axioms Proven.Frontx.Mul.gcdE.exec
+#print axioms Proven.Frontx.Mul.gcdE.implements1

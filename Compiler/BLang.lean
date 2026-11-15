@@ -8,6 +8,7 @@ cannot be imported here; `Riscv/Back/BStmt.lean` maps it in) extended by WORD AR
 
 Variables `0 .. 7` live in registers, variables `8 ..` in 8-byte stack slots (`compBF`). -/
 import Spec.ArrCode
+import Compiler.MOp
 
 namespace Proven.Mach
 
@@ -61,6 +62,8 @@ inductive BStmt where
   | load64 (v : Nat) (b : Nat) (i : BExp)
   /-- `word block b [i] := e` -/
   | store64 (b : Nat) (i e : BExp)
+  /-- `v := m.eval a b` (multiply / divide; only the optimising back end supports it) -/
+  | mop (m : MOp) (v : Nat) (a b : BExp)
 
 /-- big-step semantics; an out-of-bounds access has no derivation -/
 inductive BExec : BStmt → BState → BState → Prop
@@ -79,6 +82,7 @@ inductive BExec : BStmt → BState → BState → Prop
   | store64 {b i e σ} (hb : b < σ.wheap.length) (hi : (i.denote σ.env).toNat < σ.wheap[b].length) :
       BExec (.store64 b i e) σ
         ⟨σ.env, σ.heap, σ.wheap.set b (σ.wheap[b].set (i.denote σ.env).toNat (e.denote σ.env))⟩
+  | mop {m v a b σ} : BExec (.mop m v a b) σ ⟨σ.env.set v (m.eval (a.denote σ.env) (b.denote σ.env)), σ.heap, σ.wheap⟩
 
 /-- the blocks of the word heap `p` accesses -/
 def BStmt.wblocks : BStmt → List Nat

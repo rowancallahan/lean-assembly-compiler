@@ -22,6 +22,7 @@ def toMS : Proven.BStmt → Mach.BStmt
   | .store b i e => .store b (toMB i) (toMB e)
   | .seq p q => .seq (toMS p) (toMS q)
   | .loop c b => .loop (toMB c) (toMS b)
+  | .mop m v a b => .mop m v (toMB a) (toMB b)
 
 def toMSt (σ : Proven.BState) : Mach.BState := ⟨σ.env, σ.heap, []⟩
 
@@ -59,6 +60,9 @@ theorem exec_toM {p : Proven.BStmt} {σ σ' : Proven.BState} (h : Proven.BExec p
   | seq _ _ ih1 ih2 => exact .seq ih1 ih2
   | loopF hc => exact .loopF (by show _ = _; rw [denote_toMB]; exact hc)
   | loopT hc _ _ ih1 ih2 => exact .loopT (by show _ ≠ _; rw [denote_toMB]; exact hc) ih1 ih2
+  | @mop m v a b σ =>
+    have := Mach.BExec.mop (m := m) (v := v) (a := toMB a) (b := toMB b) (σ := toMSt σ)
+    simp only [denote_toMB] at this; exact this
 
 /-! ## Same words -/
 

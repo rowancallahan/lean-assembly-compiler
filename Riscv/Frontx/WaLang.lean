@@ -112,9 +112,12 @@ def Op2.den : (o : Op2) → (t : Ty) → t.T → t.T → t.T
   | .add, .u64, a, b => @HAdd.hAdd UInt64 UInt64 UInt64 _ a b | .add, .nat, a, b => @HAdd.hAdd Nat Nat Nat _ a b 
   | .sub, .u8, a, b => @HSub.hSub UInt8 UInt8 UInt8 _ a b | .sub, .u16, a, b => @HSub.hSub UInt16 UInt16 UInt16 _ a b | .sub, .u32, a, b => @HSub.hSub UInt32 UInt32 UInt32 _ a b 
   | .sub, .u64, a, b => @HSub.hSub UInt64 UInt64 UInt64 _ a b | .sub, .nat, a, b => @HSub.hSub Nat Nat Nat _ a b 
-  | .mul, .nat, a, b => @HMul.hMul Nat Nat Nat _ a b 
-  | .div, .nat, a, b => @HDiv.hDiv Nat Nat Nat _ a b 
-  | .mod, .nat, a, b => @HMod.hMod Nat Nat Nat _ a b 
+  | .mul, .u8, a, b => @HMul.hMul UInt8 UInt8 UInt8 _ a b | .mul, .u16, a, b => @HMul.hMul UInt16 UInt16 UInt16 _ a b | .mul, .u32, a, b => @HMul.hMul UInt32 UInt32 UInt32 _ a b
+  | .mul, .u64, a, b => @HMul.hMul UInt64 UInt64 UInt64 _ a b | .mul, .nat, a, b => @HMul.hMul Nat Nat Nat _ a b
+  | .div, .u8, a, b => @HDiv.hDiv UInt8 UInt8 UInt8 _ a b | .div, .u16, a, b => @HDiv.hDiv UInt16 UInt16 UInt16 _ a b | .div, .u32, a, b => @HDiv.hDiv UInt32 UInt32 UInt32 _ a b
+  | .div, .u64, a, b => @HDiv.hDiv UInt64 UInt64 UInt64 _ a b | .div, .nat, a, b => @HDiv.hDiv Nat Nat Nat _ a b
+  | .mod, .u8, a, b => @HMod.hMod UInt8 UInt8 UInt8 _ a b | .mod, .u16, a, b => @HMod.hMod UInt16 UInt16 UInt16 _ a b | .mod, .u32, a, b => @HMod.hMod UInt32 UInt32 UInt32 _ a b
+  | .mod, .u64, a, b => @HMod.hMod UInt64 UInt64 UInt64 _ a b | .mod, .nat, a, b => @HMod.hMod Nat Nat Nat _ a b
   | .and, .u8, a, b => @HAnd.hAnd UInt8 UInt8 UInt8 _ a b | .and, .u16, a, b => @HAnd.hAnd UInt16 UInt16 UInt16 _ a b | .and, .u32, a, b => @HAnd.hAnd UInt32 UInt32 UInt32 _ a b 
   | .and, .u64, a, b => @HAnd.hAnd UInt64 UInt64 UInt64 _ a b | .and, .nat, a, b => @HAnd.hAnd Nat Nat Nat _ a b 
   | .or, .u8, a, b => a ||| b | .or, .u16, a, b => a ||| b | .or, .u32, a, b => a ||| b
@@ -122,7 +125,7 @@ def Op2.den : (o : Op2) → (t : Ty) → t.T → t.T → t.T
   | .xor, .u8, a, b => @HXor.hXor UInt8 UInt8 UInt8 _ a b | .xor, .u16, a, b => @HXor.hXor UInt16 UInt16 UInt16 _ a b | .xor, .u32, a, b => @HXor.hXor UInt32 UInt32 UInt32 _ a b 
   | .xor, .u64, a, b => @HXor.hXor UInt64 UInt64 UInt64 _ a b | .xor, .nat, a, b => @HXor.hXor Nat Nat Nat _ a b 
   | .shl, .u8, a, b => @HShiftLeft.hShiftLeft UInt8 UInt8 UInt8 _ a b | .shl, .u16, a, b => @HShiftLeft.hShiftLeft UInt16 UInt16 UInt16 _ a b | .shl, .u32, a, b => @HShiftLeft.hShiftLeft UInt32 UInt32 UInt32 _ a b 
-  | .shl, .u64, a, b => @HShiftLeft.hShiftLeft UInt64 UInt64 UInt64 _ a b 
+  | .shl, .u64, a, b => @HShiftLeft.hShiftLeft UInt64 UInt64 UInt64 _ a b | .shl, .nat, a, b => @HShiftLeft.hShiftLeft Nat Nat Nat _ a b
   | .shr, .u8, a, b => @HShiftRight.hShiftRight UInt8 UInt8 UInt8 _ a b | .shr, .u16, a, b => @HShiftRight.hShiftRight UInt16 UInt16 UInt16 _ a b | .shr, .u32, a, b => @HShiftRight.hShiftRight UInt32 UInt32 UInt32 _ a b 
   | .shr, .u64, a, b => @HShiftRight.hShiftRight UInt64 UInt64 UInt64 _ a b | .shr, .nat, a, b => @HShiftRight.hShiftRight Nat Nat Nat _ a b 
   | .band, .bool, a, b => a && b 

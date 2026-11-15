@@ -8,6 +8,7 @@ Frame: the prologue computes `fp = alignDown(sp, 8) - 8 (N + 1)`, saves `gp` (`x
 `sd t0, 8(j+1)(gp)`); the epilogue restores `gp` (`ld gp, 0(gp)`) and returns.  At most `NS = 16` slots. -/
 import Spec.ArrCode
 import Riscv.Direct.Loop
+import Compiler.MOp
 
 namespace Proven
 
@@ -58,6 +59,9 @@ inductive BStmt where
   | seq (p q : BStmt)
   /-- `while c ≠ 0 do body` -/
   | loop (c : BExp) (body : BStmt)
+  /-- `v := m.eval a b` (multiply / divide, NOTES section 22; only the optimising back end compiles it: `wf` is
+  `False`, the words of `compileB` empty) -/
+  | mop (m : Mach.MOp) (v : Nat) (a b : BExp)
 
 /-- big-step semantics; an out-of-bounds load or store has no derivation -/
 inductive BExec : BStmt → BState → BState → Prop
@@ -71,6 +75,7 @@ inductive BExec : BStmt → BState → BState → Prop
   | loopF {c b σ} : c.denote σ.env = 0 → BExec (.loop c b) σ σ
   | loopT {c b σ σ₁ σ₂} : c.denote σ.env ≠ 0 → BExec b σ σ₁ → BExec (.loop c b) σ₁ σ₂ →
       BExec (.loop c b) σ σ₂
+  | mop {m v a b σ} : BExec (.mop m v a b) σ ⟨σ.env.set v (m.eval (a.denote σ.env) (b.denote σ.env)), σ.heap⟩
 
 /-! ## Words -/
 
@@ -109,6 +114,7 @@ def compileB (bv : List Nat) : BStmt → List (BitVec 32)
   | .seq p q => compileB bv p ++ compileB bv q
   | .loop c body => genB c 0 ++ [iBeqz ((compileB bv body).length + 2)] ++ compileB bv body ++
       [iJmp ((genB c 0).length + 1 + (compileB bv body).length)]
+  | .mop _ _ _ _ => []
 
 /-- prologue for `N` slots: `t0 := alignDown(sp) - 8(N+1)`, `sd gp, 0(t0)`, `gp := t0`, slots `:= 0` -/
 def prologue (N : Nat) : List (BitVec 32) :=
@@ -128,6 +134,7 @@ def BStmt.wf (N : Nat) (bv : List Nat) : BStmt → Prop
   | .seq p q => p.wf N bv ∧ q.wf N bv
   | .loop c body => c.depth < 7 ∧ c.vlt (8 + N) ∧ body.wf N bv ∧
       (genB c 0).length + (compileB bv body).length + 2 < 1024
+  | .mop _ _ _ _ => False
 
 /-! ## The old language embeds -/
 

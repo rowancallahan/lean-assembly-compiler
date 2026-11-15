@@ -21,6 +21,7 @@ import Riscv.Frontx.Rep
 import Riscv.Frontx.For
 import Riscv.Frontx.Bytes
 import Riscv.Frontx.Exc
+import Riscv.Frontx.MulRep
 
 namespace Proven.Frontx
 open Lean Meta Elab Term Command Tactic
@@ -198,6 +199,9 @@ inductive Item where
   /-- a call: the callee's program `P` renamed to base `b` (`n` temporaries), its `Rep` (name, data arguments),
   its `exec` applied to the arguments, and the result `r` (the callee's `rep` of the call) -/
   | sub (b n : Nat) (P : Expr) (repN : Name) (dargs : Array Expr) (exec : Expr) (r : Expr) (temps : List Expr)
+  /-- multiply / divide / remainder (`m` a constructor of `Mach.MOp`): `v := mopV m a b` by `mopS`, no Lean term
+  attached (the expression using `v` carries it) -/
+  | mop (v : Nat) (m : Name) (a b : ME)
 
 structure TrSt where
   next : Nat
@@ -506,10 +510,29 @@ partial def trE (ctx : Ctx) (e : Expr) : TrM (ME × Expr) := do
           return (ME.bin ``Op.and x (.const (mkBV sm)), b')
         else return (ME.const (← litBV (← mkAppM ``HAnd.hAnd #[bty.rep b, mkBV sm])), b)
       | none => trE ctx b : TrM (ME × Expr))
+    -- `Nat` right shift by a variable: `0` from 64 on (the machine takes the amount mod 64)
+    if ty == .nat && op == ``Op.lshr && b.hasFVar then
+      return (.ite (.bin ``Op.ult amt (.const (mkBV 64))) (.bin op a amt) (.const (mkBV 0)),
+        mkAppN f ((args.set! 4 a').set! 5 b'))
     return (masked m (.bin op a amt), mkAppN f ((args.set! 4 a').set! 5 b'))
   let conv (m : Option Nat) : TrM (ME × Expr) := do
     let (a, a') ← trE ctx args[0]!
     return (masked m a, mkAppN f #[a'])
+  -- `*`, `/`, `%` by a variable: the M extension (`BStmt.mop` through `mopS`), the operands in shallow expressions
+  let mopE (m : Name) (mk : Option Nat) : TrM (ME × Expr) := do
+    let (a, a') ← trE ctx args[4]!
+    let (b, b') ← trE ctx args[5]!
+    let a ← fit a 4
+    let b ← fit b 4
+    let v ← fresh
+    -- the representation lemmas of this operation (not in the global set: they would preempt the literal forms)
+    let tyS := match ty with | .nat => "rN" | .u64 => "r64" | .u32 => "r32" | .u16 => "r16" | _ => "r8"
+    let opS := if m == ``Mach.MOp.mul then "mul" else if m == ``Mach.MOp.divu then "div" else "mod"
+    let ls : List Name := [Name.mkStr `Proven.Frontx s!"{tyS}_{opS}",
+      if m == ``Mach.MOp.mul then ``mopV_mul else if m == ``Mach.MOp.divu then ``mopV_divu else ``mopV_remu]
+    let addL (u : Array Name) : Array Name := ls.foldl (fun u l => if u.contains l then u else u.push l) u
+    modify fun s => { s with pend := s.pend.push (.mop v m a b), unfolded := addL s.unfolded }
+    return (masked mk (.var v), mkAppN f ((args.set! 4 a').set! 5 b'))
   if (← matchMatcherApp? e).isSome then
     if let .reduced e' ← reduceMatcher? e then return ← trE ctx e'
   -- `min` / `max` on `Nat`: a select, through `Nat.min_def` / `Nat.max_def`
@@ -624,7 +647,8 @@ partial def trE (ctx : Ctx) (e : Expr) : TrM (ME × Expr) := do
         let rest ← Tactic.run mv.mvarId! (Tactic.withoutRecover (Tactic.evalTactic stx))
         pure rest.isEmpty
       catch _ => pure false : TermElabM Bool)
-    unless ok do throwError "frontx: `{e}` is translated by one conditional subtraction and needs{indentExpr bnd}\nfrom the context (a `with` invariant or `requires`)"
+    -- without the bound: the M extension
+    unless ok do return ← mopE (if isMod then ``Mach.MOp.remu else ``Mach.MOp.divu) none
     modify fun s => if s.unfolded.contains lN then s else { s with unfolded := s.unfolded.push lN }
     let lty ← instantiateForall (← getConstInfo lN).type #[x]
     let lty := if lty.isArrow then lty.bindingBody! else lty
@@ -661,6 +685,9 @@ partial def trE (ctx : Ctx) (e : Expr) : TrM (ME × Expr) := do
       let (m, _) ← trE ctx rhs
       return (m, e)
   match f.constName?, args.size with
+  | some ``HMul.hMul, 6 => mopE ``Mach.MOp.mul ty.mask
+  | some ``HDiv.hDiv, 6 => mopE ``Mach.MOp.divu none
+  | some ``HMod.hMod, 6 => mopE ``Mach.MOp.remu none
   | some ``HAdd.hAdd, 6 => bin ``Op.add ty.mask
   | some ``HSub.hSub, 6 =>
     if ty == .nat then
@@ -983,7 +1010,8 @@ def simpNames : Array Name :=
     ``r8_ofNatU, ``r32_ofNatU, ``r64_ofNatU, ``r32_shl, ``r64_shl, ``r64_shr, ``rN_shr,
     ``r16_add, ``r16_sub, ``r16_and, ``r16_or, ``r16_xor, ``r16_ite, ``r16_dite, ``r16_eq', ``r16_lt', ``r16_le', ``r16_toNat,
     ``r16_shr, ``r16_shl, ``r16_of8, ``r32_of16, ``r64_of16, ``r16_of32, ``r8_of16, ``r16_ofNat, ``r16_ofNatU, ``r16_lit, ``r8_shr,
-    ``excTag_ok, ``excTag_error, ``excGet_ok, ``excGet_error, ``optGet_some, ``optGet_none]
+    ``excTag_ok, ``excTag_error, ``excGet_ok, ``excGet_error, ``optGet_some, ``optGet_none,
+    ``rN_and63_mod, ``bv_and63_mod, ``nat_and63_mod, ``rN_xor', ``shr_guard, ``shr_guardB, ``shr_guardN, ``shr_guardU, ``r64_toNat_eq]
 
 /-- side conditions (bounds): `omega`, also through the defining equation of a temporary that is an `if` -/
 elab "frontx_ite_facts" : tactic => withMainContext do
@@ -1034,7 +1062,8 @@ elab "frontx_u8_facts" : tactic => withMainContext do
   replaceMainGoal [g]
 
 macro "frontx_disch" : tactic =>
-  `(tactic| first | omega | (frontx_ite_facts; omega) | (subst_vars; split; omega; omega) | (frontx_u8_facts; omega))
+  `(tactic| first | omega | (frontx_ite_facts; omega) | (subst_vars; split; omega; omega) | (frontx_u8_facts; omega) |
+    (frontx_md_facts; omega))
 
 /-- expression evaluation, and every supported operation pushed through its representation function -/
 macro "frontx_simp" "[" ts:ident,* "]" : tactic => do
@@ -1154,6 +1183,16 @@ partial def wrapItems (ctx : Ctx) (items : List Item) (env : Expr)
     let pE := mkApp3 (mkConst ``callP) P bS (toExpr n)
     return (.sub pE t, o, mkAppN (mkConst ``sim_sub)
       #[ctx.A, ctx.R, pE, ← t.toExpr, env, ctx.heap, env', o, hx, p])
+  | .mop v m a b :: rest => do
+    let x := mkApp3 (mkConst ``mopV) (mkConst m) (denoteE env a) (denoteE env b)
+    let env' := setE env v x
+    let pS := mkApp4 (mkConst ``mopS) (mkConst m) (toExpr v) a.toExpr b.toExpr
+    let hbT ← mkEq (mkApp2 (mkConst ``BExp.vltF) (toExpr v) b.toExpr) (mkConst ``Bool.true)
+    let hb ← mkExpectedTypeHint (← mkEqRefl (mkConst ``Bool.true)) hbT
+    let hx := mkAppN (mkConst ``mopS_exec) #[mkConst m, toExpr v, a.toExpr, b.toExpr, hb, env, ctx.heap]
+    let (t, o, p) ← wrapItems ctx rest env' k
+    return (.sub pS t, o, mkAppN (mkConst ``sim_sub)
+      #[ctx.A, ctx.R, pS, ← t.toExpr, env, ctx.heap, env', o, hx, p])
   | .load v b i r idx temps :: rest => do
     let y := mkApp (mkConst ``UInt8.toBitVec) r
     let hj ← oblig (← mkEq (mkApp2 (mkConst ``BitVec.toNat) (toExpr (64 : Nat)) (denoteE env i)) idx) temps

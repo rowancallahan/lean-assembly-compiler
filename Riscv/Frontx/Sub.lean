@@ -14,6 +14,7 @@ theorem _root_.Proven.BExec.detF {p : BStmt} {σ σ₁ σ₂ : BState} (h₁ : B
   | assign => cases h₂; rfl
   | load => cases h₂; rfl
   | store => cases h₂; rfl
+  | mop => cases h₂; rfl
   | seq _ _ ih1 ih2 => cases h₂ with | seq a b => exact ih2 ((ih1 a) ▸ b)
   | loopF hc => cases h₂ with | loopF => rfl | loopT hc' => exact absurd hc hc'
   | loopT hc _ _ ih1 ih2 => cases h₂ with
@@ -34,12 +35,16 @@ def _root_.Proven.BStmt.vltF (m : Nat) : BStmt → Bool
   | .store _ i e => i.vltF m && e.vltF m
   | .seq p q => p.vltF m && q.vltF m
   | .loop c b => c.vltF m && b.vltF m
+  | .mop _ v a b => decide (v < m) && a.vltF m && b.vltF m
 
 theorem _root_.Proven.BStmt.vltF_assigns {m : Nat} : ∀ {p : BStmt}, p.vltF m = true → ∀ v ∈ p.assigns, v < m
   | .assign _ _, h, v, hv | .load _ _ _, h, v, hv => by
     simp only [BStmt.vltF, Bool.and_eq_true, decide_eq_true_eq] at h
     simp only [BStmt.assigns, List.mem_singleton] at hv; subst hv; exact h.1
   | .store .., _, _, hv => by simp [BStmt.assigns] at hv
+  | .mop _ _ _ _, h, v, hv => by
+    simp only [BStmt.vltF, Bool.and_eq_true, decide_eq_true_eq] at h
+    simp only [BStmt.assigns, List.mem_singleton] at hv; subst hv; exact h.1.1
   | .seq p q, h, v, hv => by
     simp only [BStmt.vltF, Bool.and_eq_true] at h
     simp only [BStmt.assigns, List.mem_append] at hv
@@ -93,6 +98,14 @@ theorem exec_agree {m : Nat} {p : BStmt} (hp : p.vltF m = true) {σ σ' : BState
     have hb' : b < τ.heap.length := hH ▸ hb
     have hl : (i.denote τ.env).toNat < τ.heap[b].length := by simp only [hH, hi']; exact hi
     exact ⟨_, .store hb' hl, hA, by simp only [hH, hi', he'], fun _ _ => rfl⟩
+  | @mop o v a b σ =>
+    intro τ hA hH
+    simp only [BStmt.vltF, Bool.and_eq_true, decide_eq_true_eq] at hp
+    refine ⟨_, .mop, fun x hx => ?_, hH, fun x hx => ?_⟩
+    · simp only [BEnv.set]; split
+      · rw [BExp.denote_agreeF hA a hp.1.2, BExp.denote_agreeF hA b hp.2]
+      · exact hA x hx
+    · simp only [BEnv.set]; rw [if_neg (by omega)]
   | seq _ _ ih1 ih2 =>
     intro τ hA hH
     simp only [BStmt.vltF, Bool.and_eq_true] at hp
@@ -129,6 +142,7 @@ def _root_.Proven.BStmt.renF (b : Nat) : BStmt → BStmt
   | .store k i e => .store k (i.renF b) (e.renF b)
   | .seq p q => .seq (p.renF b) (q.renF b)
   | .loop c p => .loop (c.renF b) (p.renF b)
+  | .mop o v x y => .mop o (rho b v) (x.renF b) (y.renF b)
 
 theorem _root_.Proven.BExp.denote_renF (b : Nat) (E : BEnv) : ∀ e : BExp, (e.renF b).denote E = e.denote (fun v => E (rho b v))
   | .var _ => rfl
@@ -173,6 +187,13 @@ theorem exec_ren {b : Nat} (hb : 4 ≤ b) {p : BStmt} {σ σ' : BState} (h : BEx
     refine ⟨E, ?_, hE, fun _ _ => rfl⟩
     have := BExec.store (b := k) (i := i.renF b) (e := e.renF b) (σ := ⟨E, σ.heap⟩) hk (by simp only [hi']; exact hi)
     simp only [hi', he'] at this; exact this
+  | @mop o v x y σ =>
+    intro E hE
+    have hfe : (fun w => E (rho b w)) = σ.env := funext hE
+    refine ⟨_, .mop, ?_, fun z hz => ?_⟩
+    · have := hset E σ.env v (o.eval (x.denote σ.env) (y.denote σ.env)) hE
+      rw [BExp.denote_renF, BExp.denote_renF, hfe]; exact this
+    · simp only [BEnv.set]; rw [if_neg (fun e => hz v e.symm)]
   | seq _ _ ih1 ih2 =>
     intro E hE
     obtain ⟨E₁, h1, hE1, hk1⟩ := ih1 E hE
@@ -265,7 +286,7 @@ open Proven
 
 /-- no store -/
 def _root_.Proven.BStmt.roF : BStmt → Bool
-  | .assign .. | .load .. => true
+  | .assign .. | .load .. | .mop .. => true
   | .store .. => false
   | .seq p q => p.roF && q.roF
   | .loop _ p => p.roF
@@ -273,14 +294,14 @@ def _root_.Proven.BStmt.roF : BStmt → Bool
 theorem _root_.Proven.BExec.heap_roF {p : BStmt} {σ σ' : BState} (h : BExec p σ σ') (hr : p.roF = true) :
     σ'.heap = σ.heap := by
   induction h with
-  | assign | load | loopF => rfl
+  | assign | load | loopF | mop => rfl
   | store => simp [BStmt.roF] at hr
   | seq _ _ ih1 ih2 =>
     simp only [BStmt.roF, Bool.and_eq_true] at hr; exact (ih2 hr.2).trans (ih1 hr.1)
   | loopT _ _ _ ih1 ih2 => exact (ih2 hr).trans (ih1 hr)
 
 theorem renF_roF (b : Nat) : ∀ p : BStmt, (p.renF b).roF = p.roF
-  | .assign .. | .load .. | .store .. => rfl
+  | .assign .. | .load .. | .store .. | .mop .. => rfl
   | .seq p q => by simp only [BStmt.renF, BStmt.roF, renF_roF b p, renF_roF b q]
   | .loop _ p => by simp only [BStmt.renF, BStmt.roF, renF_roF b p]
 
@@ -317,6 +338,11 @@ theorem renF_vltF {b n m : Nat} (hb : 4 ≤ b) (hm : b + n + 1 ≤ m) : ∀ p : 
   | .store _ i e, h => by
     simp only [BStmt.vltF, Bool.and_eq_true] at h
     simp only [BStmt.renF, BStmt.vltF, renF_vltF_e hb hm i h.1, renF_vltF_e hb hm e h.2, Bool.and_self]
+  | .mop _ v x y, h => by
+    simp only [BStmt.vltF, Bool.and_eq_true, decide_eq_true_eq] at h
+    simp only [BStmt.renF, BStmt.vltF, renF_vltF_e hb hm x h.1.2, renF_vltF_e hb hm y h.2, Bool.and_true,
+      decide_eq_true_eq]
+    have := rho_lt (b := b) hb h.1.1; omega
   | .seq p q, h => by
     simp only [BStmt.vltF, Bool.and_eq_true] at h
     simp only [BStmt.renF, BStmt.vltF, renF_vltF hb hm p h.1, renF_vltF hb hm q h.2, Bool.and_self]
@@ -334,5 +360,64 @@ theorem clr_vltF {b m : Nat} : ∀ n, b + n + 1 ≤ m → (clr b n).vltF m = tru
 @[simp] theorem callP_vltF {p : BStmt} {b n m : Nat} (hb : 4 ≤ b) (hm : b + n + 1 ≤ m) (hp : p.vltF (5 + n) = true) :
     (callP p b n).vltF m = true := by
   simp only [callP, BStmt.vltF, renF_vltF hb hm p hp, clr_vltF n hm, Bool.and_self]
+
+end Proven.Frontx
+
+/-! ## Multiply / divide / remainder (NOTES section 22): one `BStmt.mop`, the division guarded -/
+
+namespace Proven.Frontx
+open Proven
+
+/-- the value `mopS` leaves: Lean's `BitVec` operation (`x / 0 = 0`, `x % 0 = x`) -/
+def mopV : Mach.MOp → BitVec 64 → BitVec 64 → BitVec 64
+  | .mul, x, y => x * y
+  | .divu, x, y => x / y
+  | .remu, x, y => x % y
+
+/-- `v := a m b`; for `divu` the machine's all-ones quotient by zero is replaced by `0` -/
+def mopS (m : Mach.MOp) (v : Nat) (a b : BExp) : BStmt :=
+  match m with
+  | .divu => .seq (.mop .divu v a b) (.assign v (.ite (.bin .eq b (.const 0)) (.const 0) (.var v)))
+  | _ => .mop m v a b
+
+theorem mopS_exec (m : Mach.MOp) (v : Nat) (a b : BExp) (hb : b.vltF v = true) (E : BEnv) (H : Heap) :
+    BExec (mopS m v a b) ⟨E, H⟩ ⟨E.set v (mopV m (a.denote E) (b.denote E)), H⟩ := by
+  cases m with
+  | mul => exact .mop
+  | remu => exact .mop
+  | divu =>
+    refine .seq .mop (BExec.assign' ?_)
+    have hb' : b.denote (E.set v (Mach.MOp.eval .divu (a.denote E) (b.denote E))) = b.denote E :=
+      BExp.denote_agreeF (m := v) (fun x hx => by simp [BEnv.set, Nat.ne_of_lt hx]) b hb
+    simp only [BState.mk.injEq, and_true]
+    funext x
+    simp only [BEnv.set, BExp.denote, Op.eval, hb']
+    split
+    · subst x; simp only [if_true, mopV, Mach.MOp.eval]
+      by_cases h0 : b.denote E = 0
+      · rw [if_pos h0, if_pos h0, if_neg (by decide), h0]; exact BitVec.udiv_zero
+      · rw [if_neg h0, if_neg h0, if_pos rfl]
+    · rfl
+
+theorem mopS_vltF (m : Mach.MOp) (v M : Nat) (a b : BExp) (hv : v < M) (ha : a.vltF M = true) (hb : b.vltF M = true) :
+    (mopS m v a b).vltF M = true := by
+  cases m <;> simp [mopS, BStmt.vltF, BExp.vltF, hv, ha, hb]
+
+@[simp] theorem vltF_var' (i m : Nat) : (BExp.var i).vltF m = decide (i < m) := rfl
+@[simp] theorem vltF_const' (c : BitVec 64) (m : Nat) : (BExp.const c).vltF m = true := rfl
+@[simp] theorem vltF_bin' (op : Op) (a b : BExp) (m : Nat) : (BExp.bin op a b).vltF m = (a.vltF m && b.vltF m) := rfl
+@[simp] theorem vltF_ite' (c a b : BExp) (m : Nat) : (BExp.ite c a b).vltF m = (c.vltF m && a.vltF m && b.vltF m) := rfl
+
+@[simp] theorem mopS_vltF_eq (m : Mach.MOp) (v M : Nat) (a b : BExp) :
+    (mopS m v a b).vltF M = (decide (v < M) && a.vltF M && b.vltF M) := by
+  cases m <;> simp only [mopS, BStmt.vltF, BExp.vltF] <;>
+    cases decide (v < M) <;> cases a.vltF M <;> cases b.vltF M <;> rfl
+
+@[simp] theorem mopS_roF (m : Mach.MOp) (v : Nat) (a b : BExp) : (mopS m v a b).roF = true := by
+  cases m <;> rfl
+
+theorem mopV_mul (x y : BitVec 64) : mopV .mul x y = x * y := rfl
+theorem mopV_divu (x y : BitVec 64) : mopV .divu x y = x / y := rfl
+theorem mopV_remu (x y : BitVec 64) : mopV .remu x y = x % y := rfl
 
 end Proven.Frontx

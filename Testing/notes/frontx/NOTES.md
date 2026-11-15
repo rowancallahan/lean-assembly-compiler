@@ -1370,6 +1370,81 @@ proof, so a huge `cellsSup` only makes the theorem's precondition (`space ≤ wo
 tree(s), `inBytesA`; read in `main` by `rdB`), an output format other than the input's (`shO`: e.g. `Option Unit`,
 `Ordering`).
 
+## 22. Multiply, divide, remainder, shift by a variable (branch `feat-muldiv`)
+
+`Spec/` is untouched (`Op` stays as it is). The new operations live on the compiler side only:
+
+- `Compiler/MOp.lean`: `MOp = mul | divu | remu` with the **hardware** meaning (`divu` by zero = all ones, `remu` by
+  zero = the dividend). Middle layer: `Mach.BStmt.mop m v a b` (`v := m.eval a b`, `Compiler/BLang.lean`) and
+  `Proven.BStmt.mop` (`Riscv/Direct/Arr2Code.lean`, mapped by `toMS`); optimiser IR `IR.Ins.mop` (every pass:
+  selection `BSel.irB`, renaming, liveness, copy propagation, hoisting (the constant operands too), flow facts,
+  lowering); wide op `WOp.mop` with the law `Wide.w_mop`. The plain back ends (`compB`, `compileB`) have no
+  multiply: their `wf` is `False` for `mop`, so a program with `mop` uses the **checked words** `compBFC` (the
+  register choice found by `pickC` at elaboration time, `optB` accepting it checked by `decide +kernel`; no plain
+  fallback) through `implements1_of_execC`.
+- RISC-V: `mul`/`divu`/`remu` = `encR 1 (0|5|7)` (`Riscv/Back/Wide.lean`), step lemmas `G.step_mul`, `G.step_divu`,
+  `G.step_remu` (`Riscv/Steps/GenMul.lean`, by `gstep` on the Sail model plus `mul_low`, `divu_eq`, `remu_eq`).
+  Checked in the model (`LeanRV64D/InstsEnd.lean`): `execute_MUL` = `mult_to_bits_half` low half (`= a * b`),
+  `execute_DIV`/`execute_REM` unsigned with the by-zero cases above. **M extension**: no hypothesis is needed;
+  `Cfg` fixes `misa = 0x800000000014112F`, bit 12 (`M`) set, and the boot path establishes `Cfg`
+  (`BootReset.lean`: reset `misa` differs only in `V`, which the stub clears); the step lemmas hold in every `Cfg`
+  state. `mulhu` was not needed (not added). The theorems still have exactly the 77 Sail axioms.
+- Lean's `x / 0 = 0` (Nat, UIntN, BitVec): `/` is `divu` followed by a select `b = 0 ? 0 : q` (`mopS`, `mStmt`);
+  `%` needs no guard. `Nat` operands of `/`, `%`, `-`, `>>>` must be `< 2 ^ 64` (run-time `ok` conditions,
+  discharged from invariants / `requires`; `*`, `+`, `<<<` by an amount `< 64` are homomorphic mod `2 ^ 64` and
+  need nothing). `UInt32/16/8` products are masked. `Nat` results are encoded mod `2 ^ 64` (`Res.enc`, `encArr`).
+
+**Word arrays** (`WaLang/WaComp/WaExp`): `Op2.den` gained `* / %` on `UInt8/16/32/64` and `<<<` on `Nat`;
+`Op2.isM` ops compile to `binS`/`mStmt`; `Op2.side` (`Nat` `<<<`: amount `< 64`) joined `E.ok`. `wa_compile`:
+`let`s floated out of helper arguments (so `f (g xs)` with two loops works: the second loop reads the array the
+first one built), core `Nat.gcd`/`Nat.lcm` allowed as code (`coreCode`), `wa_facts` (bounds of `%`, `/`,
+`UInt8.toNat`, products, `gcd` for `omega`), `implements1_waC`/`implements1_waAC` (checked words) chosen when the
+program has a `mop` (`MS.hasMop`).
+
+**List front end** (`Translate.lean`): `*`, `/`, `%` on `Nat`/`UInt64`/`UInt32`/`UInt16`/`UInt8` whose literal
+forms do not apply become an `Item.mop` (a `Tree.sub (mopS …)` node, `sim_sub` with `mopS_exec`), representation
+lemmas per use (`MulRep.lean`, kept out of the global set: they would pre-empt the literal shift/mask forms);
+`Nat` `>>>` by a variable is guarded (`≥ 64` gives `0`), `Nat` `<<< (b % 64)` works; `frontx_md_facts` in
+`frontx_disch`. Machine theorems through `frontx_implementsC` (`Checked.lean`, `implements1_resC`). Trees with a
+`sub` node get no fast loop (`Tree.calls`), so these loops run through the plain step.
+
+**Compiled verbatim** (each: `Implements1With … Res.enc/encArr … code f space`, no input hypothesis beyond the
+`Implements1` frame; QEMU + Sail against executed Lean and a Python reference, `frontx_test.py`; divisor 0, `2^63`,
+`2^64 - 1`, Fibonacci pairs, shift amounts 31/32/63/64/65 among the cases):
+
+| entry | library code | path | words | cases |
+|---|---|---|---|---|
+| `kraftE xs = kraftSumFast (countLengthsFast xs.data 15) 15` | lean-zip @7e10583 `Zip/Native/Inflate.lean:555` (+`:536`) | wa | 142 | 56 |
+| `nextCodesE xs = nextCodesFast (countLengthsFast xs.data 15) 15` (`Array UInt32`) | `Zip/Native/Inflate.lean:587` (+`:536`) | wa | 189 | 56 |
+| `gcdE xs = Nat.gcd (rd32 xs 0) (rd32 xs 4)` | core `Init/Data/Nat/Gcd.lean:35` | wa | 145 | 56 |
+| `ops64E`/`ops32E`/`opsNE` (`a * b ^^^ a / b ^^^ a % b ^^^ a <<< b ^^^ a >>> b`, glue) | — | wa | 223/163/158 | 56 |
+| `gcdE xs = Nat.gcd (u64At xs 0).toNat (u64At xs 8).toNat` | core `Init/Data/Nat/Gcd.lean:35` (`frontx_compile Nat.gcd`) | list | 182 | 53 |
+| `ops64E`/`ops32E`/`opsNE` (glue, `Nat` shift `a <<< (b % 64)`) | — | list | 291/294/295 | 53 |
+
+(`kraftSumFast`: `count[b]! * (1 <<< (maxBits - b))`, variable multiply and variable shift; `nextCodesFast`:
+`(code + count[bits - 1]!) * 2`.) Human input: the loop invariants/measures in `WaMul.lean` (as for
+`countLengthsFast`); none for the list path beyond `requires` bounds.
+
+**Speed** (`python3 Testing/asm/mul-bench/bench.py`, `minstret` under `qemu -icount`, gcc =
+`riscv64-linux-gnu-gcc -march=rv64im -O2`, `Testing/asm/mul-bench/mul.c`): `wa_gcd` on (F45, F46) 537 vs 206
+instructions (2.6×); `wa_kraft` n = 1000: 28 661 vs 10 807, n = 10000: 281 701 vs 106 627 (2.6×; 28.2 vs 10.7 per
+byte). Overhead: the plain `fl := 1; while fl` loop form and state copies (no fast loops for `mop` trees in the
+list path), the guard of every `/`.
+
+**Not done / why.**
+- `Nat.lcm` (`m * n / gcd m n`): the `gcd` loop sits inside an expression; `wa_compile` takes loops only as
+  stages (`let` / result). The list path would need the same.
+- lean-zip `copyLoopGo` (`k % distance`): needs growing output and read-while-write (section 20, not done).
+- fp-lean is not available on this machine (`/home/user/deps` has no checkout); con-leche @6810492 has no
+  variable multiply/divide in executable code (only by constants, already supported).
+- `Nat` `<<<` by an unbounded variable (`a <<< b` with `b ≥ 64` is not the machine's `sll`); `mulhu`, signed
+  `div`/`rem`.
+
+Reproduce: `lake build Frontx`; `lake env lean --tstack=400000 Testing/asm/emit_wa.lean`;
+`lake env lean --tstack=400000 Testing/asm/emit_mul.lean`; `bash Testing/scripts/frontx_tests.sh` (or
+`frontx_test.py check 56 wa_kraft` …); `bash Testing/scripts/wa_check.sh` (axioms, also the list-path entries).
+Statement fingerprints: no `stmt` hash changed; 62 closures changed (the middle layer gained `mop`). Not re-frozen.
+
 ## 23. Strings and Names (branch `speed-ind`)
 
 Scope changed by the owner (features first, speed later); the speed finding is kept at the end of this section.

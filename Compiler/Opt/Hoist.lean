@@ -46,6 +46,7 @@ def repT (m : Nat) (L : List (BitVec 64)) (t : Tst Nat) : Tst Nat := ⟨t.c, rep
 def repI (m : Nat) (L : List (BitVec 64)) : Ins Nat → Ins Nat
   | .set d a => .set d (repA m L a)
   | .bin op d a b => .bin op d (repA m L a) (repA m L b)
+  | .mop o d a b => .mop o d (repA m L a) (repA m L b)
   | .sb v a off => .sb (repA m L v) a off
   | i => i
 
@@ -84,6 +85,9 @@ theorem repI_step {m : Nat} {L : List (BitVec 64)} {i : Ins Nat} {σ σ' : St Na
     have := Step.set (ram := ram) (fp := fp) (d := d) (a := repA m L a) (s := σ); rwa [repA_eval h] at this
   | @bin op d a b =>
     have := Step.bin (ram := ram) (fp := fp) (op := op) (d := d) (a := repA m L a) (b := repA m L b) (s := σ)
+    rwa [repA_eval h, repA_eval h] at this
+  | @mop o d a b =>
+    have := Step.mop (ram := ram) (fp := fp) (m := o) (d := d) (a := repA m L a) (b := repA m L b) (s := σ)
     rwa [repA_eval h, repA_eval h] at this
   | lbu h1 h2 => exact .lbu h1 h2
   | @sb v a off _ h1 =>
@@ -163,6 +167,7 @@ def kT (t : Tst Nat) : List (BitVec 64) := (kA t.a ++ kA t.b).filter (· != 0)
 def kI : Ins Nat → List (BitVec 64)
   | .set _ a => kBig a
   | .bin _ _ a b => kA a ++ kBig b
+  | .mop _ _ a b => kA a ++ kA b
   | .sb v _ _ => (kA v).filter (· != 0)
   | _ => []
 

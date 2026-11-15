@@ -405,6 +405,7 @@ theorem afterF_ok {F : Fs} {i : Ins Nat} {σ σ' : St Nat} (hst : Step ram fp i 
             arg_eq (τ := upd σ.reg d _) (σ := σ.reg) (a := b) fun y hy => upd_ne _ _ fun e => hd (by
               rw [← e]; exact List.contains_iff_mem.2 (List.mem_append_right _ hy))]
         · exact killF_ok h _ _ x f hm
+  | mop => exact killF_ok h _ _
   | lbu _ _ => exact killF_ok h _ _
   | sb _ => exact h
   | ldS _ _ _ => exact killF_ok h _ _

@@ -8,6 +8,7 @@ plan found by an untrusted search and CHECKED by evaluation (fallback: one bit a
 import Compiler.Wide
 import Riscv.Steps.GenUse
 import Riscv.Steps.Imm12
+import Riscv.Steps.GenMul
 open LeanRV64D LeanRV64D.Functions Sail Sail.ConcurrencyInterfaceV1
 
 set_option linter.unusedVariables false
@@ -154,12 +155,16 @@ def immOK (op : Op) (c : BitVec 64) : Bool :=
   | .sub => fits12 (-c)
   | _ => fits12 c
 
+/-- funct3 of the M-extension R-type words (funct7 = 1): `mul` 0, `divu` 5, `remu` 7 -/
+def MOp.f3 : MOp → Nat | .mul => 0 | .divu => 5 | .remu => 7
+
 def wenc : WOp → List (BitVec 32)
   | .mov d a => [encR 0 0 (phys d) 0 (phys a)]
   | .li d c => (liCode c).map (LiStep.word (phys d))
   | .bin op d a b =>
       if op = .eq then [encR 0 4 (phys d) (phys a) (phys b), encI 3 (1 : BitVec 12).toNat (phys d) (phys d)]
       else [encR op.f7 op.f3 (phys d) (phys a) (phys b)]
+  | .mop m d a b => [encR 1 (MOp.f3 m) (phys d) (phys a) (phys b)]
   | .bini op d a c => immWords op (phys d) (phys a) c
   | .lbu d a off => [encL 4 (off.setWidth 12) (phys d) (phys a)]
   | .sb v a off => [encS 0 (off.setWidth 12) (phys v) (phys a)]
@@ -257,6 +262,15 @@ theorem w_bin {op : Op} {d a b : Reg} {s : St} {pc : BitVec 64} (hA : core.At s 
     simpa only [Op.eval, xor_eq_zero] using this
   · rw [ite_neg he] at hA ⊢
     exact one hA fun h hpc hok hi => step_rop h hpc hok op he _ _ _ (phys_ne0 d) hi
+
+theorem w_mop {m : MOp} {d a b : Reg} {s : St} {pc : BitVec 64} (hA : core.At s pc (wenc (.mop m d a b))) :
+    core.runsTo s fun s' => core.Done s s' (next pc (wenc (.mop m d a b)).length) ∧
+      core.Set1 s s' d (m.eval (core.get s a) (core.get s b)) ∧ core.mem s' = core.mem s := by
+  simp only [wenc] at hA ⊢
+  cases m with
+  | mul => exact one hA fun h hpc hok hi => G.step_mul h hpc hok _ _ _ hi
+  | divu => exact one hA fun h hpc hok hi => G.step_divu h hpc hok _ _ _ hi
+  | remu => exact one hA fun h hpc hok hi => G.step_remu h hpc hok _ _ _ hi
 
 theorem toNat6 (c : BitVec 64) : (c.setWidth 6).toNat = c.toNat % 64 := by simp
 
@@ -511,6 +525,7 @@ def rvw : Wide where
   w_mov := w_mov
   w_li := w_li
   w_bin := w_bin
+  w_mop := w_mop
   w_bini := w_bini
   w_lbu := w_lbu
   w_sb := w_sb
