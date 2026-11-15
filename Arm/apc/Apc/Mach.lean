@@ -35,7 +35,11 @@ def instrAt (L : Lay) (s : Arm64.State) (pc : BitVec 64) (w : BitVec 32) : Prop 
 def okS (L : Lay) (s : Arm64.State) : Prop :=
   s.status = .Running ∧ (∀ a, L.cLo ≤ a → a < L.cHi → s.mem.canExec (BitVec.ofNat 64 a) 1 = true) ∧
   (∀ a, L.dLo ≤ a → a < L.dHi → s.mem.canRead (BitVec.ofNat 64 a) 1 = true ∧ s.mem.canWrite (BitVec.ofNat 64 a) 1 = true)
-def keepS (s s' : Arm64.State) : Prop := s'.regs.read 30#5 = s.regs.read 30#5 ∧ s'.sp = s.sp
+/-- every register outside the abstract ones and outside `ex` is unchanged, and so is `sp` -/
+def keepX (ex : BitVec 5 → Prop) (s s' : Arm64.State) : Prop :=
+  (∀ x : BitVec 5, (∀ r, xr r ≠ x) → ¬ ex x → s'.regs.read x = s.regs.read x) ∧ s'.sp = s.sp
+/-- the frame of `Machine`: every register outside the abstract ones (x8, x16..x30: so x28 and x30 too), and `sp` -/
+def keepS : Arm64.State → Arm64.State → Prop := keepX fun _ => False
 def getR (s : Arm64.State) (r : Mach.Reg) : BitVec 64 := s.regs.read (xr r)
 def runsTo (s : Arm64.State) (Q : Arm64.State → Prop) : Prop := ∃ s', Arm64.Steps P s s' ∧ Q s'
 
@@ -130,9 +134,9 @@ def core (L : Lay) : Core where
   toBase := base L
   runsTo_of h := ⟨_, .refl _, h⟩
   runsTo_trans := fun ⟨s₁, h₁, p₁⟩ h => let ⟨s₂, h₂, p₂⟩ := h s₁ p₁; ⟨s₂, steps_trans h₁ h₂, p₂⟩
-  keep_refl _ := ⟨rfl, rfl⟩
-  keep_trans h₁ h₂ := ⟨h₂.1.trans h₁.1, h₂.2.trans h₁.2⟩
-  keep_ra h := h.1
+  keep_refl _ := ⟨fun _ _ _ => rfl, rfl⟩
+  keep_trans h₁ h₂ := ⟨fun x hx he => (h₂.1 x hx he).trans (h₁.1 x hx he), h₂.2.trans h₁.2⟩
+  keep_ra h := h.1 30#5 (fun r => xr_ne30 r) id
   instrAt_frame h hi := ⟨hi.1, fun j hj => (h j hj).trans (hi.2 j hj)⟩
   ramHi_lt := (by decide : 2 ^ 64 - 1 < 2 ^ 64)
   len_bz _ _ := rfl
@@ -166,7 +170,7 @@ theorem post_upd {L : Lay} {s : Arm64.State} {pc : BitVec 64} (hok : okS L s) (h
     (okS L (upd s d v ps) ∧ keepS s (upd s d v ps) ∧ (upd s d v ps).pc = next pc 1) ∧
       (∀ r, getR (upd s d v ps) r = if r = d then v else getR s r) ∧ memV (upd s d v ps) = memV s := by
   refine ⟨⟨hok, ⟨?_, rfl⟩, ?_⟩, ?_, rfl⟩
-  · simp [upd, Arm64.RegFile.read, Arm64.RegFile.write, (xr_ne30 d).symm]
+  · intro x hx _; simp [upd, Arm64.RegFile.read, Arm64.RegFile.write, Ne.symm (hx d)]
   · simp [upd, next, hpc]
   · intro r
     by_cases h : r = d
@@ -218,7 +222,7 @@ theorem law_ret {L : Lay} {s : Arm64.State} {pc : BitVec 64} (_ : (base L).retOK
       (base L).mem s' = (base L).mem s := by
   obtain ⟨hok, hpc, -⟩ := at1 h
   refine run1 h dec_ret ?_
-  refine ⟨⟨hok, ⟨rfl, rfl⟩, ?_⟩, fun r => rfl, rfl⟩
+  refine ⟨⟨hok, ⟨fun _ _ _ => rfl, rfl⟩, ?_⟩, fun r => rfl, rfl⟩
   simp [base, Arm64.Program.evalInst, Arm64.execInstWithSvc, Arm64.State.readReg64, Arm64.State.setPC, Arm64.RegFile.read]
 
 /-! ## `bin` -/
@@ -555,7 +559,7 @@ theorem law_sb {L : Lay} {v a : Mach.Reg} {s : Arm64.State} {pc : BitVec 64} (hv
   have hpc : s.pc = pc := h.hpc
   refine run1 h dec_strb ?_
   rw [ev_strb s (wr_ok hok hr).2]
-  refine ⟨⟨okS_stb hok _ _, ⟨rfl, rfl⟩, ?_⟩, fun r => rfl, memV_stb s _ _ (wr_ok hok hr).1⟩
+  refine ⟨⟨okS_stb hok _ _, ⟨fun _ _ _ => rfl, rfl⟩, ?_⟩, fun r => rfl, memV_stb s _ _ (wr_ok hok hr).1⟩
   show s.pc + 4#64 = next pc 1
   simp [next, hpc]
 
@@ -589,7 +593,7 @@ theorem law_bz {L : Lay} {c : Mach.Reg} {n : Nat} {s : Arm64.State} {pc : BitVec
   have hpc : s.pc = pc := h.hpc
   refine run1 h (dec_cbz ⟨n, hn⟩) ?_
   rw [ev_cbz]
-  refine ⟨⟨okS_of hok rfl rfl, ⟨rfl, rfl⟩, ?_⟩, fun r => rfl, rfl⟩
+  refine ⟨⟨okS_of hok rfl rfl, ⟨fun _ _ _ => rfl, rfl⟩, ?_⟩, fun r => rfl, rfl⟩
   show (if getR s 0 = 0#64 then s.pc + BitVec.ofNat 64 (4 * n) else s.pc + 4#64) =
     (if getR s 0 = 0 then next pc n else next pc 1)
   simp [next, hpc]
@@ -601,7 +605,7 @@ theorem law_jmp {L : Lay} {n : Nat} {s : Arm64.State} {pc : BitVec 64} (hn : (ba
   have hok : okS L s := h.ok
   have hpc : s.pc = pc := h.hpc
   refine run1 h (dec_b ⟨n, hn⟩) ?_
-  refine ⟨⟨hok, ⟨rfl, rfl⟩, ?_⟩, fun r => rfl, rfl⟩
+  refine ⟨⟨hok, ⟨fun _ _ _ => rfl, rfl⟩, ?_⟩, fun r => rfl, rfl⟩
   have hn' : n < 1024 := hn
   show s.pc + BitVec.ofNat 64 (2 ^ 64 - 4 * n) = pc - BitVec.ofNat 64 (4 * n)
   rw [hpc]; bv_omega

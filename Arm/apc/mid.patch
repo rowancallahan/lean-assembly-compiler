@@ -1,0 +1,84 @@
+--- a/Compiler/Frame.lean
++++ b/Compiler/Frame.lean
+@@ -60,7 +60,8 @@
+   keepF_ra : ∀ {s s' : S}, keepF s s' → ra s' = ra s
+   /-- what the middle may assume of an opened frame -/
+   enterOK_frame : ∀ {s : S} {n : Nat}, enterOK s n →
+-    n ≤ maxSlots ∧ toBase.inRAM (frameAt s n) (8 * (n + 1)) ∧ frameAt s n % 8 = 0
++    n ≤ maxSlots ∧ toBase.inRAM (frameAt s n) (8 * (n + 1)) ∧ frameAt s n % 8 = 0 ∧
++    ∀ a, frameAt s n ≤ a → a < frameAt s n + 8 * (n + 1) → ∀ s', ok s' → writable s' a
+   law_enter : ∀ {n : Nat} {s : S} {pc : BitVec 64}, enterOK s n → toBase.At s pc (encX (.enter n)) →
+     disjoint ⟨pc.toNat, 4 * (encX (.enter n)).length⟩ ⟨frameAt s n, 8 * (n + 1)⟩ →
+     runsTo s fun s' => ok s' ∧ keepF s s' ∧ pcIs s' (next pc (encX (.enter n)).length) ∧
+@@ -78,7 +79,7 @@
+     runsTo s fun s' => toBase.Done s s' (next pc (encX (.ldS d j)).length) ∧ toBase.Set1 s s' d v ∧ mem s' = mem s
+   law_stS : ∀ {j : Nat} {v : Reg} {s : S} {pc : BitVec 64}, v.val = 0 → j < maxSlots →
+     toBase.At s pc (encX (.stS j v)) → toBase.inRAM ((fr s).toNat + 8 * (j + 1)) 8 →
+-    ((fr s).toNat + 8 * (j + 1)) % 8 = 0 →
++    ((fr s).toNat + 8 * (j + 1)) % 8 = 0 → (∀ i, i < 8 → writable s ((fr s).toNat + 8 * (j + 1) + i)) →
+     runsTo s fun s' => toBase.Done s s' (next pc (encX (.stS j v)).length) ∧ toBase.Same s s' ∧
+       mem s' = (mem s).wr ((fr s).toNat + 8 * (j + 1)) (le8 (get s v))
+   law_ld : ∀ {d a : Reg} {s : S} {pc : BitVec 64} {v : BitVec 64}, d.val = 0 → a.val = 0 →
+@@ -87,6 +88,7 @@
+     runsTo s fun s' => toBase.Done s s' (next pc (encX (.ld d a)).length) ∧ toBase.Set1 s s' d v ∧ mem s' = mem s
+   law_sd : ∀ {v a : Reg} {s : S} {pc : BitVec 64}, v.val = 1 → a.val = 0 →
+     toBase.At s pc (encX (.sd v a)) → toBase.inRAM (get s a).toNat 8 → (get s a).toNat % 8 = 0 →
++    (∀ i, i < 8 → writable s ((get s a).toNat + i)) →
+     runsTo s fun s' => toBase.Done s s' (next pc (encX (.sd v a)).length) ∧ toBase.Same s s' ∧
+       mem s' = (mem s).wr (get s a).toNat (le8 (get s v))
+ 
+--- a/Compiler/BExp.lean
++++ b/Compiler/BExp.lean
+@@ -21,6 +21,8 @@
+   ram : M.inRAM fp (8 * (N + 1))
+   al : fp % 8 = 0
+   ns : N ≤ M.maxSlots
++  /-- the frame may be stored to (`Base.writable`) -/
++  wr : ∀ a, fp ≤ a → a < fp + 8 * (N + 1) → ∀ s, M.ok s → M.writable s a
+ 
+ /-- `s` holds `env`: variable `i < 8` in `avar i`, frame register `= fp`, variable `8 + j` in slot `j` -/
+ structure EnvB (N fp : Nat) (env : BEnv) (s : M.S) : Prop where
+--- a/Compiler/BStmt.lean
++++ b/Compiler/BStmt.lean
+@@ -136,6 +136,8 @@
+   wal : ∀ w ∈ W, w.base % 8 = 0
+   /-- byte blocks may be stored to (`sb`; `Base.writable`) -/
+   wr : ∀ r ∈ R, ∀ a, r.base ≤ a → a < r.base + r.len → ∀ s, M.ok s → M.writable s a
++  /-- word blocks may be stored to (`sd`) -/
++  wwr : ∀ r ∈ W, ∀ a, r.base ≤ a → a < r.base + r.len → ∀ s, M.ok s → M.writable s a
+ 
+ /-- the machine state represents `σ` -/
+ structure RelB (N fp : Nat) (bv wv : List Nat) (R W : List Region) (σ : BState) (s : M.S) : Prop where
+@@ -217,7 +219,8 @@
+     have hj : v - 8 < N := by omega
+     obtain ⟨hr, hal, hjm⟩ := Frm.slot M hF hj
+     have hfr := Frm.fr M hF hrel.env.fr
+-    refine M.runsTo_mono (M.law_stS (rk_val (by omega)) hjm hA (by rw [hfr]; exact hr) (by rw [hfr]; exact hal))
++    refine M.runsTo_mono (M.law_stS (rk_val (by omega)) hjm hA (by rw [hfr]; exact hr) (by rw [hfr]; exact hal)
++      (fun i hi => by rw [hfr]; exact hF.wr _ (by omega) (by omega) _ hA.ok))
+       fun s' ⟨d, st, m⟩ => ?_
+     rw [hfr, hx] at m
+     have hl8 := length_le8 x
+@@ -454,7 +457,8 @@
+       rw [k₂ _ (.inl (by rw [rk_val (by omega)]; omega)), v₁]
+     refine M.runsTo_mono (M.law_sd (rk_val (by omega)) (rk_val (by omega))
+       (Core.Done.at _ d₂ (M.codeAt_mem (m₂.trans m₁) hc3) ho3) (by rw [a₂, ha]; exact hram)
+-      (by rw [a₂, ha]; exact hal))
++      (by rw [a₂, ha]; exact hal)
++      (fun j hj => by rw [a₂, ha]; exact hL.wwr _ (List.getElem_mem hbW) _ (by omega) (by omega) _ d₂.ok))
+       fun s₃ ⟨d₃, st₃, m₃⟩ => ⟨Core.Done.trans _ d₁ (Core.Done.trans _ d₂ d₃), ?_, ?_⟩
+     · rw [a₂, ha, v₂, m₂, m₁] at m₃
+       rw [m₃]
+@@ -592,9 +596,9 @@
+       M.HeapB bv wv R W σ' s' ∧ Out (R ++ W ++ [⟨M.frameAt s N, 8 * (N + 1)⟩]) (M.mem s) (M.mem s') ∧
+       M.ok s' ∧ M.keep s s' := by
+   generalize hfp : M.frameAt s N = fp at hL hcd ⊢
+-  obtain ⟨hns, hram, hal⟩ := M.enterOK_frame hen
+-  rw [hfp] at hram hal
+-  have hF : M.Frm N fp := ⟨hram, hal, hns⟩
++  obtain ⟨hns, hram, hal, hwr⟩ := M.enterOK_frame hen
++  rw [hfp] at hram hal hwr
++  have hF : M.Frm N fp := ⟨hram, hal, hns, hwr⟩
+   simp only [compBF, codeF_append, codeF_one, codeF_two, List.length_append] at hA hcd
+   obtain ⟨hA12, hc3, ho3⟩ := Core.At.split _ hA
+   obtain ⟨hA1, hc2, ho2⟩ := Core.At.split _ hA12
