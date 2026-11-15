@@ -362,3 +362,62 @@ theorem clr_vltF {b m : Nat} : ∀ n, b + n + 1 ≤ m → (clr b n).vltF m = tru
   simp only [callP, BStmt.vltF, renF_vltF hb hm p hp, clr_vltF n hm, Bool.and_self]
 
 end Proven.Frontx
+
+/-! ## Multiply / divide / remainder (NOTES section 22): one `BStmt.mop`, the division guarded -/
+
+namespace Proven.Frontx
+open Proven
+
+/-- the value `mopS` leaves: Lean's `BitVec` operation (`x / 0 = 0`, `x % 0 = x`) -/
+def mopV : Mach.MOp → BitVec 64 → BitVec 64 → BitVec 64
+  | .mul, x, y => x * y
+  | .divu, x, y => x / y
+  | .remu, x, y => x % y
+
+/-- `v := a m b`; for `divu` the machine's all-ones quotient by zero is replaced by `0` -/
+def mopS (m : Mach.MOp) (v : Nat) (a b : BExp) : BStmt :=
+  match m with
+  | .divu => .seq (.mop .divu v a b) (.assign v (.ite (.bin .eq b (.const 0)) (.const 0) (.var v)))
+  | _ => .mop m v a b
+
+theorem mopS_exec (m : Mach.MOp) (v : Nat) (a b : BExp) (hb : b.vltF v = true) (E : BEnv) (H : Heap) :
+    BExec (mopS m v a b) ⟨E, H⟩ ⟨E.set v (mopV m (a.denote E) (b.denote E)), H⟩ := by
+  cases m with
+  | mul => exact .mop
+  | remu => exact .mop
+  | divu =>
+    refine .seq .mop (BExec.assign' ?_)
+    have hb' : b.denote (E.set v (Mach.MOp.eval .divu (a.denote E) (b.denote E))) = b.denote E :=
+      BExp.denote_agreeF (m := v) (fun x hx => by simp [BEnv.set, Nat.ne_of_lt hx]) b hb
+    simp only [BState.mk.injEq, and_true]
+    funext x
+    simp only [BEnv.set, BExp.denote, Op.eval, hb']
+    split
+    · subst x; simp only [if_true, mopV, Mach.MOp.eval]
+      by_cases h0 : b.denote E = 0
+      · rw [if_pos h0, if_pos h0, if_neg (by decide), h0]; exact BitVec.udiv_zero
+      · rw [if_neg h0, if_neg h0, if_pos rfl]
+    · rfl
+
+theorem mopS_vltF (m : Mach.MOp) (v M : Nat) (a b : BExp) (hv : v < M) (ha : a.vltF M = true) (hb : b.vltF M = true) :
+    (mopS m v a b).vltF M = true := by
+  cases m <;> simp [mopS, BStmt.vltF, BExp.vltF, hv, ha, hb]
+
+@[simp] theorem vltF_var' (i m : Nat) : (BExp.var i).vltF m = decide (i < m) := rfl
+@[simp] theorem vltF_const' (c : BitVec 64) (m : Nat) : (BExp.const c).vltF m = true := rfl
+@[simp] theorem vltF_bin' (op : Op) (a b : BExp) (m : Nat) : (BExp.bin op a b).vltF m = (a.vltF m && b.vltF m) := rfl
+@[simp] theorem vltF_ite' (c a b : BExp) (m : Nat) : (BExp.ite c a b).vltF m = (c.vltF m && a.vltF m && b.vltF m) := rfl
+
+@[simp] theorem mopS_vltF_eq (m : Mach.MOp) (v M : Nat) (a b : BExp) :
+    (mopS m v a b).vltF M = (decide (v < M) && a.vltF M && b.vltF M) := by
+  cases m <;> simp only [mopS, BStmt.vltF, BExp.vltF] <;>
+    cases decide (v < M) <;> cases a.vltF M <;> cases b.vltF M <;> rfl
+
+@[simp] theorem mopS_roF (m : Mach.MOp) (v : Nat) (a b : BExp) : (mopS m v a b).roF = true := by
+  cases m <;> rfl
+
+theorem mopV_mul (x y : BitVec 64) : mopV .mul x y = x * y := rfl
+theorem mopV_divu (x y : BitVec 64) : mopV .divu x y = x / y := rfl
+theorem mopV_remu (x y : BitVec 64) : mopV .remu x y = x % y := rfl
+
+end Proven.Frontx
