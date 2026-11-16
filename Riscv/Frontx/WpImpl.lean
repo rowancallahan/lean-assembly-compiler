@@ -298,4 +298,80 @@ theorem pg_of_spec {α β : Type} (encA : α → List UInt8) (encB : β → List
   rcases hr with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
     first | (rw [hn.cfg.x2, h.x2, hx1 2 (by decide)]) | (rw [hn.cfg.x3, h.x3, hx1 3 (by decide)]) | (rw [hn.cfg.x4, h.x4, hx1 4 (by decide)]) | (rw [hn.cfg.x8, h.x8, hx1 8 (by decide)]) | (rw [hn.cfg.x9, h.x9, hx1 9 (by decide)]) | (rw [hn.cfg.x18, h.x18, hx1 18 (by decide)]) | (rw [hn.cfg.x19, h.x19, hx1 19 (by decide)]) | (rw [hn.cfg.x20, h.x20, hx1 20 (by decide)]) | (rw [hn.cfg.x21, h.x21, hx1 21 (by decide)]) | (rw [hn.cfg.x22, h.x22, hx1 22 (by decide)]) | (rw [hn.cfg.x23, h.x23, hx1 23 (by decide)]) | (rw [hn.cfg.x24, h.x24, hx1 24 (by decide)]) | (rw [hn.cfg.x25, h.x25, hx1 25 (by decide)]) | (rw [hn.cfg.x26, h.x26, hx1 26 (by decide)]) | (rw [hn.cfg.x27, h.x27, hx1 27 (by decide)])
 
+/-- **`Implements1Pg` for the optimised words**: `mv a4, sp`, then `compBFO` of the program -/
+theorem pg_of_execOW {α β : Type} (encA : α → List UInt8) (encB : β → List UInt8) (f : α → β)
+    (N : Nat) (hN : N ≤ NS) (prog : Mach.BStmt) (hwf : rvF.wfB N [0, 3] [2] prog)
+    (wl : Nat → Nat) (hwl : ∀ L, 8192 ≤ L → 8 * wl L + 8 * (N + 1) + 7 ≤ L) (maxLen : Nat) (retLen : Bool)
+    (fits : α → Nat → Prop)
+    (hex : ∀ (a : α) (out : List (BitVec 8)) (tbl : List (BitVec 64)) (env : Mach.BEnv) (b L : Nat),
+      env 1 = BitVec.ofNat 64 (encA a).length → env 2 = BitVec.ofNat 64 b → env 4 = BitVec.ofNat 64 (b + L) →
+      b % 8 = 0 → 0x80000000 ≤ b → b + L ≤ 0x100000000 → 8192 ≤ L → (∀ j, 8 ≤ j → env j = 0) →
+      (encA a).length ≤ maxLen → (encA a).length < 2 ^ 32 → (encB (f a)).length ≤ out.length →
+      out.length < 2 ^ 32 → tbl.length = wl L →
+      ∃ σ' out', Mach.BExec prog ⟨env, [(encA a).map (·.toBitVec), out], [tbl]⟩ σ' ∧
+        σ'.heap = [(encA a).map (·.toBitVec), out'] ∧
+        out'.drop (encB (f a)).length = out.drop (encB (f a)).length ∧
+        (fits a L → out'.take (encB (f a)).length = (encB (f a)).map (·.toBitVec) ∧
+          (retLen = true → σ'.env 1 = BitVec.ofNat 64 (encB (f a)).length)) ∧
+        (¬ fits a L → σ'.env 1 = BitVec.allOnes 64)) :
+    Implements1Pg encA encB (mvA4 :: compBFO N [0, 3] [2] prog) f 8192 fits maxLen retLen :=
+  pg_of_spec encA encB f N hN prog _
+    (fun hexec hA hen hL hcd hreg hslot hheap hra => compBFO_ok' N [0, 3] [2] (by intro x hx; simp at hx; omega)
+      (by intro x hx; simp at hx; omega) hwf hexec hA hen hL hcd hreg hslot hheap hra) wl hwl maxLen retLen fits hex
+
 end Proven.Mach.Riscv
+
+namespace Proven.WA
+open Proven Proven.WP Proven.Top.Alloc Proven.Mach.Riscv
+open Proven.Frontx (Res rN rN_toNat rN_lt rN_add rN_inj rB wrO wrO_length wrO_append wrO_nil wrO_take wrO_drop)
+
+/-- work words of the pool for a work block of `L` bytes -/
+def wlOf (L : Nat) : Nat := (L / 8192 - 1) * P
+
+theorem wlOf_le (N : Nat) (hN : N ≤ NS) (L : Nat) (hL : 8192 ≤ L) :
+    8 * wlOf L + 8 * (N + 1) + 7 ≤ L := by
+  unfold wlOf P NS at *; omega
+
+/-- scalar result: the program with the pool size from the work block -/
+def pgProgS {t : Ty} (p : Pg [.ar .ba] (.sc t)) (k : Nat) : MS := .seq capCode (wholeS p k)
+
+def pgNS {t : Ty} (p : Pg [.ar .ba] (.sc t)) (k : Nat) : Nat := (pgProgS p k).maxv - 8
+
+def pgCodeS {t : Ty} (p : Pg [.ar .ba] (.sc t)) (k : Nat) : List (BitVec 32) :=
+  mvA4 :: compBFO (pgNS p k) [0, 3] [2] (pgProgS p k)
+
+/-- **A paged program with a scalar result ⇒ `Implements1Pg`**: for any work block of `L ≥ 8192` bytes the code
+returns the result when its page events fit (`pk 0 E + 1 ≤ L / 8192`: the pages and one page for the frame), else
+`a1 = -1` -/
+theorem implements1_pgS {t : Ty} {β : Type} [Res β] (f : ByteArray → β) (p : Pg [.ar .ba] (.sc t))
+    (cv : t.T → β) (hcv : ∀ y, Res.repr (cv y) = t.rep y) (hN : pgNS p (Res.k β) ≤ NS)
+    (hwf : p.wfP [inLocP] 9 = true)
+    (hmwf : rvF.wfB (pgNS p (Res.k β)) [0, 3] [2] (pgProgS p (Res.k β)))
+    (fits : ByteArray → Nat → Prop)
+    (hgood : ∀ xs : ByteArray, xs.size < 2 ^ 32 → ∃ y E, p.GoodE [inLocP] 9 (xs, ()) y E ∧ cv y = f xs ∧
+      ∀ L, 8192 ≤ L → (fits xs L ↔ pk 0 E + 1 ≤ L / 8192)) :
+    Implements1Pg (fun xs : ByteArray => xs.data.toList) Res.enc (pgCodeS p (Res.k β)) f 8192 fits := by
+  refine pg_of_execOW _ Res.enc f (pgNS p (Res.k β)) hN (pgProgS p (Res.k β)) hmwf wlOf
+    (wlOf_le _ hN) _ false fits ?_
+  intro a out tbl env b L h1 h2 h4 hb hb1 hb2 hL h8 hmax hlt hout hol htl
+  have hsz : a.data.toList.length = a.size := Array.length_toList
+  obtain ⟨y, E, hg, hy, hfit⟩ := hgood a (by rw [← hsz]; exact hlt)
+  have hcap := capCode_ok env [a.data.toList.map (·.toBitVec), out] [tbl] b L h2 h4 hL (by omega)
+  have htl' : tbl.length = (L / 8192 - 1) * P := htl
+  obtain ⟨σ', out', hex', hh, hr⟩ := wholeS_ok (L / 8192 - 1) f p cv hcv a (env.set vCap (rN ((L / 8192 - 1) * P))) out tbl
+    y E (by rw [set_ne (show 1 ≠ vCap by decide)]; exact h1) (by rw [← hsz]; exact hlt) (by rw [htl']; unfold P; omega)
+    (by rw [htl']; exact Nat.le_refl _) (by simp only [set_eq]) hwf hg hy hout
+  refine ⟨σ', out', .seq hcap hex', hh, ?_, ?_, ?_⟩
+  · rcases hr with ⟨-, -, hd⟩ | ⟨-, -, rfl⟩
+    · exact hd
+    · rfl
+  · intro hf
+    rcases hr with ⟨hp, ht, hd⟩ | ⟨hp, -, -⟩
+    · exact ⟨ht, fun h => nomatch h⟩
+    · have := (hfit L hL).1 hf; omega
+  · intro hf
+    rcases hr with ⟨hp, -, -⟩ | ⟨-, h1', -⟩
+    · exact absurd ((hfit L hL).2 (by omega)) hf
+    · exact h1'
+
+end Proven.WA
