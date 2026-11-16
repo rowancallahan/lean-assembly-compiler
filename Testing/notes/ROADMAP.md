@@ -169,3 +169,10 @@ hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read 
   and Certora/clean are inspiration (designs, proof strategies); acknowledged in NOTICE.md. Licence (owner, 2026-11-16):
   Apache-2.0 (LICENSE; open, warranty/liability disclaimer, patent grant), replacing the earlier non-commercial intent. If CompCert code or proofs are ever copied, that file falls
   under CompCert's licence and must say so.
+- Less stuck time (owner, 2026-11-16). Causes seen today: boxes stalled on setup (denied installs of zstd/QEMU/gcc,
+  old main, missing sources) and boxes that stopped to ask and waited idle. Fixes: (1) the cloud environment now has
+  a setup script installing zstd, qemu-system-misc, gcc-riscv64-linux-gnu; (2) every box prompt: start from the
+  latest origin/main, restore build-cache (gzip or zstd), use repo copies of sources (con-leche: origin/conleche-depth
+  F2.lean.txt), NEVER stop to ask: make the reasonable choice, write it in the notes, continue; stop only when done
+  or after a stated time cap, pushing every step; (3) Haiku only gets self-contained recipes; (4) the parent batches
+  merges (one combined check for several small branches) and reacts to box messages immediately.
