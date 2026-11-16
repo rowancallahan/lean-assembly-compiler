@@ -33,7 +33,12 @@ structure Ctx (T : Target) where
   outL : Nat
   wb : Nat
   wl : Nat
+  /-- the current frame: its slots, its base, the word in its cell 0 -/
   nS : Nat
+  F0 : Nat
+  sv : BitVec 64
+  /-- the memory above the current frame (the callers' frames and the stub), as it must stay -/
+  hm : Nat → Option (BitVec 8)
   code0 : T.codeAt s0 pc0 W
   codeOK : T.codeOK pc0 W.length
   lo : 0 < T.ramLo
@@ -49,12 +54,17 @@ structure Ctx (T : Target) where
   inb : ∀ i (h : i < input.length), T.mem s0 (inA + i) = some input[i].toBitVec
   wr : ∀ (s : T.S) (a : Nat), (outA ≤ a ∧ a < outA + outL) ∨ (wb ≤ a ∧ a < wb + wl) → T.writable s a
   retOK : T.retOK (T.ra s0)
+  /-- the top of the work block, 8-aligned -/
+  htop : T.top s0 = wb + wl / 8 * 8
 
 namespace Ctx
 variable {T : Target} (C : Ctx T)
 
-/-- the frame base: the frame of `nS` slots (and the saved frame register) at the top of the work block -/
-def F0 : Nat := C.wb + C.wl / 8 * 8 - 8 * (C.nS + 1)
+/-- the aligned top of the work block -/
+def T0 : Nat := C.wb + C.wl / 8 * 8
+
+/-- the same run with another current frame -/
+def fa (n fb : Nat) (v : BitVec 64) (M : Nat → Option (BitVec 8)) : Ctx T := { C with nS := n, F0 := fb, sv := v, hm := M }
 
 /-- nothing changed outside the output and work blocks -/
 def Unch (s : T.S) : Prop :=

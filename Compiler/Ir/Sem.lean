@@ -188,8 +188,8 @@ def termStep (F : Func ρ) (fr : Frame ρ) (rest : List (Frame ρ)) (m : Mem) (e
     | .p _ _ => .stuck
   | .ret vs => match rest with
     | [] => .done ⟨vs.map (Arg.eval fr.regs), m, ev⟩
-    | c :: rest' => if vs.length = c.dst.length then
-        .next ⟨{ c with regs := setMany c.regs c.dst (vs.map (Arg.eval fr.regs)) } :: rest', m,
+    | c :: rest' => if vs.length = fr.dst.length then
+        .next ⟨{ c with regs := setMany c.regs fr.dst (vs.map (Arg.eval fr.regs)) } :: rest', m,
           .free (F.slots + 1) :: ev⟩
       else .stuck
 

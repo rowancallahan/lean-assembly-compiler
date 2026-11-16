@@ -33,5 +33,27 @@ def rvT : Target where
       omega
     · exact h1
     · exact h2
+  keepC := KC
+  keepC_of_keepF h j hj h3 _ := h j hj h3
+  keepC_trans h₁ h₂ j hj h3 h1 := (h₂ j hj h3 h1).trans (h₁ j hj h3 h1)
+  top_keepC h := by
+    show (getX _ 2).toNat / 8 * 8 = (getX _ 2).toNat / 8 * 8
+    rw [h 2 phys_ne2 (by decide) (by decide)]
+  retOK_al v h := by show v.toNat % 2 = 0; omega
+  encCall d := encC (.call d)
+  callOK d := decide (-2 ^ 18 ≤ d ∧ d < 2 ^ 18)
+  lenCall := 1
+  len_call _ := rfl
+  c_call h hA := law_call (of_decide_eq_true h) hA
+  encEC n := encC (.enterC n)
+  c_enterC hn hA h1 hr hal _ := law_enterC hn hA h1 hr hal
+  encLC n := encC (.leaveC n)
+  c_leaveC := law_leaveC
+  encX := encK .exit
+  c_exit {s pc w} hA h16 hr hal hb hw := by
+    have e : frameBase 0 (getX s 2) - 8 = (getX s 2).toNat / 8 * 8 - 16 := by unfold frameBase; omega
+    have h16' : 16 ≤ (getX s 2).toNat / 8 * 8 := h16
+    refine core.runsTo_mono (law_exit hA (by unfold frameBase; omega) (by rw [e]; exact hr) (by rw [e]; exact hal)
+      (by rw [e]; exact hb) hw) fun s' ⟨h1, h2, h3, h4⟩ => ⟨h1, h2, h3, h4⟩
 
 end Proven.Mach.Riscv

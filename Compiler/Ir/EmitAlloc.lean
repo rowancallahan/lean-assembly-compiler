@@ -15,44 +15,16 @@ def Exited (s' : T.S) : Prop :=
 
 variable {C}
 
-theorem leave_ok {m : Mem} {regs : Nat → Val} {s : T.S} {q : Nat} {rest : List (BitVec 32)}
-    (hA : C.AtQ s q) (hR : C.MR m regs s) (hin : InW C.W q (T.encO .leave ++ rest)) :
-    T.runsTo s fun s' => C.AtQ s' (q + (T.encO .leave).length) ∧ T.keepF C.s0 s' ∧ T.Same s s' ∧
-      T.mem s' = T.mem s := by
-  have hAt := C.at_of hA hin.left
-  have hF := hR.F0_lt; have hal := hR.F0_al; have hcap := hR.cap
-  obtain ⟨hw1, hw2⟩ := C.wR; have hlt := T.ramHi_lt
-  have e : (T.fr s).toNat = C.F0 := by rw [hR.fr, ofNat_toNat' (by omega)]
-  refine T.toCore.runsTo_mono (T.f_leave (w := T.fr C.s0) hAt (by rw [e]; exact ⟨by omega, by omega⟩) (by rw [e]; exact hal)
-    (by rw [e]; exact hR.saved)) fun s' ⟨hok, hk, hpc, _, hs, hm⟩ => ?_
-  refine ⟨⟨hok, by rw [next_add] at hpc; exact hpc, fun a h1 h2 => by rw [hm]; exact hA.2.2 a h1 h2⟩,
-    T.keepF_trans hR.keep hk, hs, hm⟩
-
-theorem ra_of {s s' : T.S} (h : T.keepF C.s0 s) (hk : T.keep s s') : T.ra s' = T.ra C.s0 := by
-  rw [T.keep_ra hk, T.keepF_ra h]
-
-/-- **the out-of-memory exit** -/
+/-- **the out-of-memory exit**: back to the caller through the stub's cell, the flag in the status register -/
 theorem exit_ok {m : Mem} {regs : Nat → Val} {s : T.S} {q : Nat} {rest : List (BitVec 32)}
-    (hA : C.AtQ s q) (hR : C.MR m regs s) (hin : InW C.W q (T.words exit1 ++ rest)) :
+    (hA : C.AtQ s q) (hR : C.MR m regs s) (hin : InW C.W q (T.encO .exit ++ rest)) :
     T.runsTo s C.Exited := by
-  have hin' : InW C.W q (T.words [.leave, .w (.li RIn (BitVec.allOnes 64)), .w .ret] ++ rest) := hin
-  refine T.toCore.runsTo_trans (C.leave_ok hA hR hin'.cons) fun s1 ⟨hA1, hk1, _, _⟩ => ?_
-  refine T.toCore.runsTo_trans (C.op hA1 hin'.next.cons fun h => T.toCore.runsTo_mono (T.w_li h)
-    fun s' ⟨d, st, hm⟩ => ⟨d, hm, st⟩) fun s2 ⟨hA2, hk2, hm2, st2⟩ => ?_
-  have hra := ra_of hk1 hk2
-  refine T.toCore.runsTo_mono (T.w_ret (by rw [hra]; exact C.retOK) (C.at_of hA2 hin'.next.next.cons.left))
-    fun s3 ⟨d, hs, hm⟩ => ⟨d.ok, by rw [← hra]; exact d.hpc, fun a h1 h2 => by rw [hm]; exact hA2.2.2 a h1 h2, ?_⟩
-  rw [hs]; exact Core.Set1.same T.toCore st2
-
-/-- **the return** -/
-theorem ret_ok {m : Mem} {regs : Nat → Val} {s : T.S} {q : Nat} {rest : List (BitVec 32)}
-    (hA : C.AtQ s q) (hR : C.MR m regs s) (hin : InW C.W q (T.words [.leave, .w .ret] ++ rest)) :
-    T.runsTo s fun s' => T.ok s' ∧ T.pcIs s' (T.ra C.s0) ∧ C.Unch s' ∧ T.get s' RIn = BitVec.ofNat 64 C.inA ∧
-      T.mem s' = T.mem s := by
-  refine T.toCore.runsTo_trans (C.leave_ok hA hR hin.cons) fun s1 ⟨hA1, hk1, hs1, hm1⟩ => ?_
-  refine T.toCore.runsTo_mono (T.w_ret (by rw [T.keepF_ra hk1]; exact C.retOK)
-    (C.at_of hA1 hin.next.cons.left)) fun s2 ⟨d, hs, hm⟩ => ⟨d.ok, by rw [← T.keepF_ra hk1]; exact d.hpc,
-      fun a h1 h2 => by rw [hm]; exact hA1.2.2 a h1 h2, by rw [hs, hs1]; exact hR.rin, by rw [hm, hm1]⟩
+  have htop : T.top s = C.T0 := by rw [T.top_keepC hR.keep, C.htop]; rfl
+  have hfit := hR.fit; have hcap := hR.cap; have hT := C.T0_le; have hal := C.T0_al
+  obtain ⟨hw1, hw2⟩ := C.wR
+  refine T.toCore.runsTo_mono (T.c_exit (w := T.ra C.s0) (C.at_of hA hin.left) (by rw [htop]; omega)
+    (by rw [htop]; exact ⟨by omega, by omega⟩) (by rw [htop]; omega) (by rw [htop]; exact hR.stub) C.retOK)
+    fun s' ⟨hok, hpc, hs, hm⟩ => ⟨hok, hpc, fun a h1 h2 => by rw [hm]; exact hA.2.2 a h1 h2, hs⟩
 
 /-- the words before the jump to the exit -/
 def allocPre (T : Target) (n : Arg Nat) : List EOp :=
@@ -66,17 +38,17 @@ theorem alloc_ok {m : Mem} {regs : Nat → Val} {s : T.S} {q ex : Nat} {rest res
     (hbr : T.brOK false (T.lenBr + T.lenJ) = true) (hj : T.jW (q + T.len (allocPre T n)) ex = some j)
     (hin : InW C.W q (T.words (allocPre T n ++ [j, .w (.stS d RHp), .w (.bini .shl R0 R0 3),
       .w (.bin .add RHp RHp R0)]) ++ rest))
-    (hex : InW C.W ex (T.words exit1 ++ rest')) (hc : n.word regs = some c) :
+    (hex : InW C.W ex (T.encO .exit ++ rest')) (hc : n.word regs = some c) :
     T.runsTo s fun s' => (C.AtQ s' (q + T.len (allocPre T n ++ [j, .w (.stS d RHp), .w (.bini .shl R0 R0 3),
       .w (.bin .add RHp RHp R0)])) ∧
       C.MR { m with cells := m.cells ++ List.replicate c.toNat none, blks := m.blks ++ [(m.cells.length, c.toNat, true)] }
         (upd regs d (.p (m.blks.length + 2) 0)) s') ∨
-      (C.wl / 8 < C.nS + 1 + (m.cells.length + c.toNat) ∧ C.Exited s') := by
+      (C.F0 < C.wb + 8 * (m.cells.length + c.toNat) ∧ C.Exited s') := by
   have hin0 : InW C.W q (T.words [ldArg R0 n, .w (.bin .sub R1 RLim RHp), .w (.bini .lshr R1 R1 3),
       .w (.br .geu R1 (some R0) false (T.lenBr + T.lenJ)), j, .w (.stS d RHp), .w (.bini .shl R0 R0 3),
       .w (.bin .add RHp RHp R0)] ++ rest) := hin
   have hF := hR.F0_lt; have hcap := hR.cap; have hal := hR.F0_al
-  obtain ⟨hw1, hw2⟩ := C.wR; have hlt := T.ramHi_lt; have hfit := hR.fit
+  obtain ⟨hw1, hw2⟩ := C.wR; have hlt := T.ramHi_lt; have hfit := hR.fit; have hT := C.T0_le
   refine T.toCore.runsTo_trans (C.ldArg_ok hA hR hin0.cons (by decide) hn) fun s1 ⟨hA1, hR1, st1⟩ => ?_
   refine T.toCore.runsTo_trans (C.reg_ok hA1 hR1 hin0.next.cons (by decide) fun h => T.w_bin h)
     fun s2 ⟨hA2, hR2, st2⟩ => ?_
@@ -147,7 +119,6 @@ theorem alloc_ok {m : Mem} {regs : Nat → Val} {s : T.S} {q ex : Nat} {rest res
     rw [epos] at hA4 hin4
     refine T.toCore.runsTo_trans (C.jW_ok hA4 hR4 hj hin4.cons) fun s5 ⟨hA5, hR5⟩ => ?_
     refine T.toCore.runsTo_mono (C.exit_ok hA5 hR5 hex) fun s6 h6 => .inr ⟨?_, h6⟩
-    have : C.F0 = C.wb + C.wl / 8 * 8 - 8 * (C.nS + 1) := rfl
     omega
 
 end Ctx

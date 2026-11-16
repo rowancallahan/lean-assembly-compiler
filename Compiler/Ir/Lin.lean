@@ -35,21 +35,42 @@ def Term.locs : Term Nat → List Nat
 
 def Block.locs (B : Block Nat) : List Nat := B.params ++ (B.body.map Inst.locs).flatten ++ B.term.locs
 
-/-- the number of slots of the trivial allocation: one more than the largest location (untrusted) -/
-def Func.nSlots (F : Func Nat) : Nat :=
-  ((F.params ++ (F.blocks.map fun b => b.2.locs).flatten).foldl max 0) + 1
+/-- the registers of a function -/
+def Func.locs (F : Func Nat) : List Nat := F.params ++ (F.blocks.map fun b => b.2.locs).flatten
+
+/-- position in a list (untrusted choice of slots) -/
+def idx : List Nat → Nat → Nat
+  | [], _ => 0
+  | v :: vs, x => if v = x then 0 else idx vs x + 1
+
+/-- the list without repeats (untrusted) -/
+def dedup (L : List Nat) : List Nat := L.foldl (fun acc x => if acc.contains x then acc else acc ++ [x]) []
+
+/-- distinct registers get distinct slots -/
+def injOn (σ : Nat → Nat) (L : List Nat) : Bool := L.all fun x => L.all fun y => σ x != σ y || x == y
+
+def Func.rename (σ : Nat → Nat) (F : Func Nat) : Func Nat :=
+  { F with params := F.params.map σ, blocks := F.blocks.map fun b => (b.1, b.2.map σ) }
+
+/-- one function: every register in its own slot (its position in `D`, untrusted), if the check passes: every
+register is in `D`, and distinct registers of `D` get distinct slots -/
+def Func.allocD (F : Func Nat) (D : List Nat) : Option (Func Nat) :=
+  if F.locs.all (fun x => D.contains x) = true ∧ injOn (idx D) D = true then
+    some { F.rename (idx D) with slots := D.length }
+  else none
+
+def Func.alloc1 (F : Func Nat) : Option (Func Nat) := F.allocD (dedup F.locs)
+
+/-- **the trivial allocation** (validated): every function's registers in slots -/
+def alloc (P : Prog Nat) : Option (Prog Nat) :=
+  (P.funcs.mapM Func.alloc1).map fun fs => ⟨fs, P.main⟩
 
 namespace Target
 variable (T : Target)
 
-/-- **the Lin code of a program's `main`**: the operations and the slot count -/
-def lin (P : Prog Nat) : Option (List EOp × Nat) :=
-  match P.funcs[P.main]? with
-  | some F =>
-    let nS := F.nSlots
-    let h := T.layout F nS (F.blocks.length + 4) ([], 0)
-    (T.emitF F nS (posOf h.1) h.2).map fun c => (c, nS)
-  | none => none
+/-- **the Lin code of a program** -/
+def lin (P : Prog Nat) : Option (List EOp) :=
+  T.emitP P (T.layout P (rounds P) ⟨[], [], 0⟩)
 
 end Target
 end Proven.Ir

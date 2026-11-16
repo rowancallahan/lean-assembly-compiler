@@ -32,10 +32,10 @@ variable {T : Target} {C : Ctx T}
 theorem inst_ok {m : Mem} {regs : Nat → Val} {s : T.S} {q ex : Nat} {i : Inst Nat} {ci : List EOp}
     {rest rest' : List (BitVec 32)} {g' : Nat → Val} {m' : Mem} {e : List MemEvent}
     (hA : C.AtQ s q) (hR : C.MR m regs s) (he : T.emitI C.nS ex q i = some ci)
-    (hin : InW C.W q (T.words ci ++ rest)) (hex : InW C.W ex (T.words exit1 ++ rest'))
+    (hin : InW C.W q (T.words ci ++ rest)) (hex : InW C.W ex (T.encO .exit ++ rest'))
     (hx : i.exec m regs = some (g', m', e)) (hO : m'.out.length ≤ C.outL) :
     T.runsTo s fun s' => (C.AtQ s' (q + T.len ci) ∧ C.MR m' g' s') ∨
-      (C.wl / 8 < C.nS + 1 + m'.cells.length ∧ C.Exited s') := by
+      (C.F0 < C.wb + 8 * m'.cells.length ∧ C.Exited s') := by
   have L : ∀ {P Q : T.S → Prop}, T.runsTo s P → (∀ s', P s' → Q s') → T.runsTo s Q := T.toCore.runsTo_mono
   cases i with
   | let_ d r =>

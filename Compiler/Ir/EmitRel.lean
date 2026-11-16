@@ -40,18 +40,24 @@ structure MemOK (m : Mem) : Prop where
   blks : ∀ (k a sz : Nat) (lv : Bool), m.blks[k]? = some (a, sz, lv) → a + sz ≤ m.cells.length ∧ lv = true
   cv : ∀ (g : Nat) (v : Val), m.cells[g]? = some (some v) → Valid m.blks v
 
-/-- **the relation** of an IR memory and the registers of its frame to a machine state -/
+/-- **the relation** of an IR memory and the registers of the current frame to a machine state -/
 structure MR (m : Mem) (regs : Nat → Val) (s : T.S) : Prop where
   ok : T.ok s
-  keep : T.keepF C.s0 s
+  keep : T.keepC C.s0 s
   fr : T.fr s = BitVec.ofNat 64 C.F0
   rlim : T.get s RLim = BitVec.ofNat 64 C.F0
   rin : T.get s RIn = BitVec.ofNat 64 C.inA
   rhp : T.get s RHp = BitVec.ofNat 64 (C.wb + 8 * m.cells.length)
   cap : C.wb + 8 * m.cells.length ≤ C.F0
-  fit : 8 * (C.nS + 1) ≤ C.wl / 8 * 8
+  /-- the frame, then the stub's two cells, below the top of the work block -/
+  fit : C.F0 + 8 * (C.nS + 1) + 16 ≤ C.T0
+  fal : C.F0 % 8 = 0
   nsl : C.nS ≤ T.maxSlots
-  saved : bytes (T.mem s) C.F0 8 = (le8 (T.fr C.s0)).map some
+  saved : bytes (T.mem s) C.F0 8 = (le8 C.sv).map some
+  /-- the stub's cell with the caller's return address -/
+  stub : bytes (T.mem s) (C.T0 - 16) 8 = (le8 (T.ra C.s0)).map some
+  /-- nothing above the frame changes -/
+  above : ∀ x, C.F0 + 8 * (C.nS + 1) ≤ x → x < C.T0 → T.mem s x = C.hm x
   slots : ∀ j, j < C.nS → bytes (T.mem s) (C.F0 + 8 * (j + 1)) 8 = (le8 (C.repr m.blks (regs j))).map some
   cells : ∀ g v, m.cells[g]? = some (some v) →
     bytes (T.mem s) (C.wb + 8 * g) 8 = (le8 (C.repr m.blks v)).map some
@@ -63,18 +69,17 @@ structure MR (m : Mem) (regs : Nat → Val) (s : T.S) : Prop where
 
 variable {C}
 
-theorem MR.F0_eq {m : Mem} {regs : Nat → Val} {s : T.S} (h : C.MR m regs s) :
-    C.F0 + 8 * (C.nS + 1) = C.wb + C.wl / 8 * 8 := by
-  have := h.fit; unfold F0; omega
+theorem T0_le (C : Ctx T) : C.T0 ≤ C.wb + C.wl := by
+  unfold T0; have := Nat.div_mul_le_self C.wl 8; omega
+
+theorem T0_al (C : Ctx T) : C.T0 % 8 = 0 := by
+  unfold T0; have := C.wal; have : C.wl / 8 * 8 % 8 = 0 := Nat.mul_mod_left _ _; omega
 
 theorem MR.F0_lt {m : Mem} {regs : Nat → Val} {s : T.S} (h : C.MR m regs s) :
     C.F0 + 8 * (C.nS + 1) ≤ C.wb + C.wl := by
-  rw [h.F0_eq]; have := Nat.div_mul_le_self C.wl 8; omega
+  have := h.fit; have := C.T0_le; omega
 
-theorem MR.F0_al {m : Mem} {regs : Nat → Val} {s : T.S} (h : C.MR m regs s) : C.F0 % 8 = 0 := by
-  have := h.fit; have := C.wal; unfold F0
-  have : C.wl / 8 * 8 % 8 = 0 := Nat.mul_mod_left _ _
-  omega
+theorem MR.F0_al {m : Mem} {regs : Nat → Val} {s : T.S} (h : C.MR m regs s) : C.F0 % 8 = 0 := h.fal
 
 theorem MR.hi {m : Mem} {regs : Nat → Val} {s : T.S} (_h : C.MR m regs s) : C.wb + C.wl < 2 ^ 64 :=
   Nat.lt_of_le_of_lt C.w_lt T.ramHi_lt
@@ -92,15 +97,18 @@ theorem MR.regs {m : Mem} {regs : Nat → Val} {s s' : T.S} (h : C.MR m regs s) 
     (hk : T.keep s s') (hm : T.mem s' = T.mem s) (h10 : T.get s' RLim = T.get s RLim)
     (h11 : T.get s' RIn = T.get s RIn) (h13 : T.get s' RHp = T.get s RHp) : C.MR m regs s' where
   ok := hok
-  keep := T.keepF_trans h.keep (T.keepF_of_keep hk)
+  keep := T.keepC_trans h.keep (T.keepC_of_keepF (T.keepF_of_keep hk))
   fr := by rw [T.keep_fr hk]; exact h.fr
   rlim := by rw [h10]; exact h.rlim
   rin := by rw [h11]; exact h.rin
   rhp := by rw [h13]; exact h.rhp
   cap := h.cap
   fit := h.fit
+  fal := h.fal
   nsl := h.nsl
   saved := by rw [hm]; exact h.saved
+  stub := by rw [hm]; exact h.stub
+  above x h1 h2 := by rw [hm]; exact h.above x h1 h2
   slots j hj := by rw [hm]; exact h.slots j hj
   cells g v hg := by rw [hm]; exact h.cells g v hg
   out i b hi := by rw [hm]; exact h.out i b hi
@@ -137,15 +145,18 @@ theorem MR.stS {m : Mem} {regs : Nat → Val} {s s' : T.S} {d : Nat} {v : Val} (
   have hO := C.dOW; have hoL := h.outL; unfold disjoint at hO; dsimp only at hO
   exact {
     ok := hok
-    keep := T.keepF_trans h.keep (T.keepF_of_keep hk)
+    keep := T.keepC_trans h.keep (T.keepC_of_keepF (T.keepF_of_keep hk))
     fr := by rw [T.keep_fr hk]; exact h.fr
     rlim := by rw [hs]; exact h.rlim
     rin := by rw [hs]; exact h.rin
     rhp := by rw [hs]; exact h.rhp
     cap := h.cap
     fit := h.fit
+    fal := h.fal
     nsl := h.nsl
     saved := by rw [hm, bytes_wr_out (.inl (by omega))]; exact h.saved
+    stub := by rw [hm, bytes_wr_out (.inr (by have := h.fit; have := h.cap; simp only [length_le8]; omega))]; exact h.stub
+    above := fun x h1 h2 => by have := h.fit; have := h.cap; rw [hm, Proven.Mach.Mem.wr_out (by simp only [length_le8]; omega)]; exact h.above x h1 h2
     slots := fun j hj => by
       rw [hm]
       by_cases e : j = d
@@ -211,15 +222,18 @@ theorem MR.stCell {m : Mem} {regs : Nat → Val} {s s' : T.S} {g0 : Nat} {w : Va
   have hcap := h.cap; have hF := h.F0_lt
   exact {
     ok := hok
-    keep := T.keepF_trans h.keep (T.keepF_of_keep hk)
+    keep := T.keepC_trans h.keep (T.keepC_of_keepF (T.keepF_of_keep hk))
     fr := by rw [T.keep_fr hk]; exact h.fr
     rlim := by rw [hs]; exact h.rlim
     rin := by rw [hs]; exact h.rin
     rhp := by rw [hs]; simpa using h.rhp
     cap := by simpa using h.cap
     fit := h.fit
+    fal := h.fal
     nsl := h.nsl
     saved := by rw [hm, bytes_wr_out (.inr (by rw [hl]; omega))]; exact h.saved
+    stub := by rw [hm, bytes_wr_out (.inr (by have := h.fit; have := h.cap; simp only [length_le8]; omega))]; exact h.stub
+    above := fun x h1 h2 => by have := h.fit; have := h.cap; rw [hm, Proven.Mach.Mem.wr_out (by simp only [length_le8]; omega)]; exact h.above x h1 h2
     slots := fun j hj => by
       rw [hm, bytes_wr_out (.inr (by rw [hl]; omega))]; exact h.slots j hj
     cells := fun g u hg => by
@@ -253,15 +267,18 @@ theorem MR.stOut {m : Mem} {regs : Nat → Val} {s s' : T.S} {i : Nat} {y : BitV
   have hcap := h.cap; have hF := h.F0_lt
   exact {
     ok := hok
-    keep := T.keepF_trans h.keep (T.keepF_of_keep hk)
+    keep := T.keepC_trans h.keep (T.keepC_of_keepF (T.keepF_of_keep hk))
     fr := by rw [T.keep_fr hk]; exact h.fr
     rlim := by rw [hs]; exact h.rlim
     rin := by rw [hs]; exact h.rin
     rhp := by rw [hs]; exact h.rhp
     cap := h.cap
     fit := h.fit
+    fal := h.fal
     nsl := h.nsl
     saved := by rw [hm, bytes_upd_out fun j hj => by omega]; exact h.saved
+    stub := by have := h.fit; have := h.cap; have := C.T0_le; rw [hm, bytes_upd_out fun j hj => by omega]; exact h.stub
+    above := fun x h1 h2 => by have := h.fit; have := h.cap; have := C.T0_le; rw [hm]; unfold Proven.Mach.Mem.upd; rw [if_neg (by omega)]; exact h.above x h1 h2
     slots := fun j hj => by
       have := h.slot hj
       rw [hm, bytes_upd_out fun j hj => by omega]; exact h.slots j hj
@@ -319,15 +336,18 @@ theorem MR.alloc {m : Mem} {regs : Nat → Val} {s s' : T.S} {d c : Nat} (h : C.
       exact Valid.ext _ (h.mok.cv g u hg'')
   exact {
     ok := hok
-    keep := T.keepF_trans h.keep (T.keepF_of_keep hk)
+    keep := T.keepC_trans h.keep (T.keepC_of_keepF (T.keepF_of_keep hk))
     fr := by rw [T.keep_fr hk]; exact h.fr
     rlim := by rw [h10]; exact h.rlim
     rin := by rw [h11]; exact h.rin
     rhp := by rw [h13]; simp
     cap := by simpa using hcap
     fit := h.fit
+    fal := h.fal
     nsl := h.nsl
     saved := by rw [hm, bytes_wr_out (.inl (by omega))]; exact h.saved
+    stub := by rw [hm, bytes_wr_out (.inr (by have := h.fit; have := h.cap; simp only [length_le8]; omega))]; exact h.stub
+    above := fun x h1 h2 => by have := h.fit; have := h.cap; rw [hm, Proven.Mach.Mem.wr_out (by simp only [length_le8]; omega)]; exact h.above x h1 h2
     slots := fun j hj => by
       rw [hm]
       by_cases e : j = d
@@ -351,6 +371,68 @@ theorem MR.alloc {m : Mem} {regs : Nat → Val} {s s' : T.S} {d c : Nat} (h : C.
       · subst e; simp only [upd]; rw [if_pos trivial]; exact ⟨m.cells.length, c, by simp, Nat.zero_le _⟩
       · simp only [upd, if_neg e]; exact Valid.ext _ (h.valid j)
     mok := hmok }
+
+end Ctx
+end Proven.Ir
+
+namespace Proven.Ir
+open Proven.Mach Proven.Top.Alloc
+namespace Ctx
+variable {T : Target} {C : Ctx T}
+
+/-- **a store of zero to the slot after the last**: the frame grows by one slot -/
+theorem MR.grow {m : Mem} {regs : Nat → Val} {s s' : T.S} (h : C.MR m regs s) (hz : regs C.nS = .w 0)
+    (hfit : C.F0 + 8 * (C.nS + 2) + 16 ≤ C.T0) (hn : C.nS + 1 ≤ T.maxSlots)
+    (hok : T.ok s') (hk : T.keep s s') (hs : T.Same s s')
+    (hm : T.mem s' = (T.mem s).wr (C.F0 + 8 * (C.nS + 1)) (le8 0)) :
+    (C.fa (C.nS + 1) C.F0 C.sv C.hm).MR m regs s' := by
+  have hl : (le8 (0 : BitVec 64)).length = 8 := length_le8 _
+  have hO := C.dOW; have hoL := h.outL; unfold disjoint at hO; dsimp only at hO
+  have hT := C.T0_le; have hcap := h.cap
+  exact {
+    ok := hok
+    keep := T.keepC_trans h.keep (T.keepC_of_keepF (T.keepF_of_keep hk))
+    fr := by rw [T.keep_fr hk]; exact h.fr
+    rlim := by rw [hs]; exact h.rlim
+    rin := by rw [hs]; exact h.rin
+    rhp := by rw [hs]; exact h.rhp
+    cap := h.cap
+    fit := by show C.F0 + 8 * (C.nS + 1 + 1) + 16 ≤ C.T0; omega
+    fal := h.fal
+    nsl := hn
+    saved := by
+      change bytes (T.mem s') C.F0 8 = (le8 C.sv).map some
+      rw [hm, bytes_wr_out (.inl (by omega))]; exact h.saved
+    stub := by
+      change bytes (T.mem s') (C.T0 - 16) 8 = _
+      rw [hm, bytes_wr_out (.inr (by rw [hl]; omega))]; exact h.stub
+    above := fun x h1 h2 => by
+      change C.F0 + 8 * (C.nS + 1 + 1) ≤ x at h1
+      rw [hm, Proven.Mach.Mem.wr_out (by rw [hl]; omega)]; exact h.above x (by omega) h2
+    slots := fun j hj => by
+      change j < C.nS + 1 at hj
+      change bytes (T.mem s') (C.F0 + 8 * (j + 1)) 8 = _
+      rw [hm]
+      by_cases e : j = C.nS
+      · subst e
+        have e := @bytes_wr_self (T.mem s) (C.F0 + 8 * (C.nS + 1)) (le8 0)
+        rw [hl] at e; rw [e, hz]; rfl
+      · rw [bytes_wr_out (by rw [hl]; omega)]; exact h.slots j (by omega)
+    cells := fun g v hg => by
+      dsimp only [Ctx.fa]
+      have : g < m.cells.length := (List.getElem?_eq_some_iff.1 hg).1
+      rw [hm, bytes_wr_out (.inl (by omega))]; exact h.cells g v hg
+    out := fun i b hi => by
+      dsimp only [Ctx.fa]
+      have : i < m.out.length := (List.getElem?_eq_some_iff.1 hi).1
+      have := C.T0_le
+      rw [hm, Proven.Mach.Mem.wr_out (by rw [hl]; omega)]; exact h.out i b hi
+    outL := h.outL
+    unch := by
+      have := C.T0_le
+      exact unch_work (C := C) h.unch hm (by omega) (by rw [hl]; omega)
+    valid := h.valid
+    mok := ⟨h.mok.inp, h.mok.blks, h.mok.cv⟩ }
 
 end Ctx
 end Proven.Ir
