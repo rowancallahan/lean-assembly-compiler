@@ -1,0 +1,3027 @@
+import Riscv.Frontx.IndGate
+import Riscv.Frontx.ExprExamples
+import Std.Data.HashMap
+import Std.Data.HashMap.Lemmas
+import Std.Data.HashSet
+set_option maxErrors 100000
+open Proven.Frontx.ExprEx
+
+
+
+namespace ConLeche
+namespace Expr
+/-- Has-level-param: is level instantiation ever non-trivial here?
+One bit, so this read is *exact*. -/
+@[inline] def hasLP (e : Expr) : Bool := lpOfData e.data
+end Expr
+end ConLeche
+
+namespace ConLeche
+namespace Expr
+/-- The stored loose-bvar bound, saturating at `satRange`. -/
+@[inline] def bvarBRaw (e : Expr) : Nat := (bvarOfData e.data).toNat
+end Expr
+end ConLeche
+
+namespace ConLeche
+namespace Expr
+/-- The stored fvar range, saturating at `satRange`. -/
+@[inline] def fvarBRaw (e : Expr) : Nat := (fvarOfData e.data).toNat
+end Expr
+end ConLeche
+
+namespace ConLeche
+namespace Expr
+/-- Is the expression an application?  The spine test of `beqGoX`. -/
+@[inline] def beqIsApp : Expr → Bool
+  | .app .. => true
+  | _ => false
+end Expr
+end ConLeche
+
+namespace ConLeche
+namespace Expr
+/-- A memo entry: the pair of objects a completed descent proved
+equal, the addresses the descent saw them at, and the proof.  The
+proof is erased; the addresses are the probe's cheap filter; the
+objects are what the probe verifies against (`probeHit`) — and
+holding them is what keeps their addresses theirs. -/
+structure EqPair where
+  fst : Expr
+  snd : Expr
+  pa : USize
+  pb : USize
+  eq : fst = snd
+end Expr
+end ConLeche
+
+namespace ConLeche
+namespace Expr
+/-- The memo: keyed on the packed address pair (`beqKey`). -/
+abbrev BeqMap := Std.HashMap Nat EqPair
+end Expr
+end ConLeche
+
+namespace ConLeche
+namespace Expr
+/-- `withPtrAddr` into a subsingleton: its side condition — the
+continuation's result does not depend on the address — is then
+`Subsingleton.elim`. -/
+@[inline] def withAddr {α : Type u} {β : Type v} [Subsingleton β] (a : α)
+    (k : USize → β) : β :=
+  withPtrAddr a k (fun _ _ => Subsingleton.elim _ _)
+end Expr
+end ConLeche
+
+namespace ConLeche
+namespace Expr
+/-- **The specification of expression equality**: the structural
+decision, the one the kernel, `by decide` and `#guard` reduce (the
+instance below).  No `deriving DecidableEq` (task #554): compiled code
+runs `decEqPtr` in its place (`decEq_eq_decEqPtr`), and the only
+compiled reference to this body is `ptrDecStruct`'s pure-model fallback,
+which compiled code never reaches. -/
+def decEq : (a b : Expr) → Decidable (a = b)
+  | .bvar x0, .bvar y0 =>
+    if h0 : x0 = y0 then
+      isTrue (by subst h0; rfl)
+    else isFalse (fun e => h0 (by injection e <;> assumption))
+  | .fvar x0 x1, .fvar y0 y1 =>
+    if h0 : x0 = y0 then
+      match decEq x1 y1 with
+      | isFalse h => isFalse (fun e => h (by injection e <;> assumption))
+      | isTrue h1 =>
+        isTrue (by subst h0; subst h1; rfl)
+    else isFalse (fun e => h0 (by injection e <;> assumption))
+  | .sort x0, .sort y0 =>
+    if h0 : x0 = y0 then
+      isTrue (by subst h0; rfl)
+    else isFalse (fun e => h0 (by injection e <;> assumption))
+  | .const x0 x1, .const y0 y1 =>
+    if h0 : x0 = y0 then
+      if h1 : x1 = y1 then
+        isTrue (by subst h0; subst h1; rfl)
+      else isFalse (fun e => h1 (by injection e <;> assumption))
+    else isFalse (fun e => h0 (by injection e <;> assumption))
+  | .app x0 x1, .app y0 y1 =>
+    match decEq x0 y0 with
+    | isFalse h => isFalse (fun e => h (by injection e <;> assumption))
+    | isTrue h0 =>
+      match decEq x1 y1 with
+      | isFalse h => isFalse (fun e => h (by injection e <;> assumption))
+      | isTrue h1 =>
+        isTrue (by subst h0; subst h1; rfl)
+  | .lam x0 x1, .lam y0 y1 =>
+    match decEq x0 y0 with
+    | isFalse h => isFalse (fun e => h (by injection e <;> assumption))
+    | isTrue h0 =>
+      match decEq x1 y1 with
+      | isFalse h => isFalse (fun e => h (by injection e <;> assumption))
+      | isTrue h1 =>
+        isTrue (by subst h0; subst h1; rfl)
+  | .forallE x0 x1, .forallE y0 y1 =>
+    match decEq x0 y0 with
+    | isFalse h => isFalse (fun e => h (by injection e <;> assumption))
+    | isTrue h0 =>
+      match decEq x1 y1 with
+      | isFalse h => isFalse (fun e => h (by injection e <;> assumption))
+      | isTrue h1 =>
+        isTrue (by subst h0; subst h1; rfl)
+  | .letE x0 x1 x2, .letE y0 y1 y2 =>
+    match decEq x0 y0 with
+    | isFalse h => isFalse (fun e => h (by injection e <;> assumption))
+    | isTrue h0 =>
+      match decEq x1 y1 with
+      | isFalse h => isFalse (fun e => h (by injection e <;> assumption))
+      | isTrue h1 =>
+        match decEq x2 y2 with
+        | isFalse h => isFalse (fun e => h (by injection e <;> assumption))
+        | isTrue h2 =>
+          isTrue (by subst h0; subst h1; subst h2; rfl)
+  | .lit x0, .lit y0 =>
+    if h0 : x0 = y0 then
+      isTrue (by subst h0; rfl)
+    else isFalse (fun e => h0 (by injection e <;> assumption))
+  | .proj x0 x1 x2, .proj y0 y1 y2 =>
+    if h0 : x0 = y0 then
+      if h1 : x1 = y1 then
+        match decEq x2 y2 with
+        | isFalse h => isFalse (fun e => h (by injection e <;> assumption))
+        | isTrue h2 =>
+          isTrue (by subst h0; subst h1; subst h2; rfl)
+      else isFalse (fun e => h1 (by injection e <;> assumption))
+    else isFalse (fun e => h0 (by injection e <;> assumption))
+  | .bvar .., .fvar .. | .bvar .., .sort .. | .bvar .., .const ..
+  | .bvar .., .app .. | .bvar .., .lam .. | .bvar .., .forallE ..
+  | .bvar .., .letE .. | .bvar .., .lit .. | .bvar .., .proj ..
+  | .fvar .., .bvar .. | .fvar .., .sort .. | .fvar .., .const ..
+  | .fvar .., .app .. | .fvar .., .lam .. | .fvar .., .forallE ..
+  | .fvar .., .letE .. | .fvar .., .lit .. | .fvar .., .proj ..
+  | .sort .., .bvar .. | .sort .., .fvar .. | .sort .., .const ..
+  | .sort .., .app .. | .sort .., .lam .. | .sort .., .forallE ..
+  | .sort .., .letE .. | .sort .., .lit .. | .sort .., .proj ..
+  | .const .., .bvar .. | .const .., .fvar .. | .const .., .sort ..
+  | .const .., .app .. | .const .., .lam .. | .const .., .forallE ..
+  | .const .., .letE .. | .const .., .lit .. | .const .., .proj ..
+  | .app .., .bvar .. | .app .., .fvar .. | .app .., .sort ..
+  | .app .., .const .. | .app .., .lam .. | .app .., .forallE ..
+  | .app .., .letE .. | .app .., .lit .. | .app .., .proj ..
+  | .lam .., .bvar .. | .lam .., .fvar .. | .lam .., .sort ..
+  | .lam .., .const .. | .lam .., .app .. | .lam .., .forallE ..
+  | .lam .., .letE .. | .lam .., .lit .. | .lam .., .proj ..
+  | .forallE .., .bvar .. | .forallE .., .fvar .. | .forallE .., .sort ..
+  | .forallE .., .const .. | .forallE .., .app .. | .forallE .., .lam ..
+  | .forallE .., .letE .. | .forallE .., .lit .. | .forallE .., .proj ..
+  | .letE .., .bvar .. | .letE .., .fvar .. | .letE .., .sort ..
+  | .letE .., .const .. | .letE .., .app .. | .letE .., .lam ..
+  | .letE .., .forallE .. | .letE .., .lit .. | .letE .., .proj ..
+  | .lit .., .bvar .. | .lit .., .fvar .. | .lit .., .sort ..
+  | .lit .., .const .. | .lit .., .app .. | .lit .., .lam ..
+  | .lit .., .forallE .. | .lit .., .letE .. | .lit .., .proj ..
+  | .proj .., .bvar .. | .proj .., .fvar .. | .proj .., .sort ..
+  | .proj .., .const .. | .proj .., .app .. | .proj .., .lam ..
+  | .proj .., .forallE .. | .proj .., .letE .. | .proj .., .lit .. =>
+    isFalse (fun e => Expr.noConfusion e)
+end Expr
+end ConLeche
+
+namespace ConLeche
+namespace Expr
+/-- The state the descent threads, verdict and memo in one word: `fail`
+once a pair proved unequal (a `false` aborts the whole comparison, so
+the memo is dead from then on), `empty` before the first recorded pair,
+`table m` after it.  `fail` and `empty` are scalars and a pass-through
+returns the state it was given, so a node's comparison allocates
+nothing but the memo's own growth — the official kernel's `apply`
+returns a `bool` beside a member `m_cache` (`src/kernel/expr_eq_fn.cpp`).
+The table type is this constructor's field: a different memo
+representation replaces `BeqMap` here and in `BeqSt.record`/`probeHit`
+and nowhere else. -/
+inductive BeqSt where
+  | fail
+  | empty
+  | table (m : BeqMap)
+end Expr
+end ConLeche
+
+namespace ConLeche
+namespace Expr
+section
+/-- Is the comparison still going (no unequal pair found)? -/
+@[inline] def BeqSt.ok : BeqSt → Bool
+  | .fail => false
+  | _ => true
+end
+end Expr
+end ConLeche
+
+namespace ConLeche
+namespace Expr
+/-- The result as the descent returns it: the state, with the proof
+that it is not `fail` exactly when the pair is equal, behind a quotient
+identifying all of them, so that it is a subsingleton — the decision is
+fixed by the proof and the memo is unobservable.  Subtype and quotient
+are erased by the compiler: at runtime this is the `BeqSt` itself. -/
+abbrev BeqOutX (a b : Expr) := Squash { s : BeqSt // s.ok = true ↔ a = b }
+end Expr
+end ConLeche
+
+namespace ConLeche
+namespace Expr
+/-- A child's result read as the parent's: the same state, the proof
+moved along an equivalence of the two equalities (erased). -/
+@[inline] def BeqOutX.cast {a b c d : Expr} (r : BeqOutX a b) (e : (a = b) ↔ (c = d)) :
+    BeqOutX c d :=
+  Squash.lift r fun r => Quot.mk _ ⟨r.1, r.2.trans e⟩
+end Expr
+end ConLeche
+
+namespace ConLeche.Expr
+/-- Memoized `bvarBound` (the saturated branch's exact recomputation). -/
+def bvarBoundGo (memo : Std.HashMap Expr Nat) (e : Expr) :
+    Nat × Std.HashMap Expr Nat :=
+  match memo[e]? with
+  | some r => (r, memo)
+  | none =>
+    let (r, memo) : Nat × Std.HashMap Expr Nat :=
+      match e with
+      | .bvar i => (i + 1, memo)
+      | .fvar _ _ | .sort _ | .const _ _ | .lit _ => (0, memo)
+      | .app f a =>
+        let (rf, memo) := bvarBoundGo memo f
+        let (ra, memo) := bvarBoundGo memo a
+        (max rf ra, memo)
+      | .lam ty body | .forallE ty body =>
+        let (rt, memo) := bvarBoundGo memo ty
+        let (rb, memo) := bvarBoundGo memo body
+        (max rt (rb - 1), memo)
+      | .letE ty val body =>
+        let (rt, memo) := bvarBoundGo memo ty
+        let (rv, memo) := bvarBoundGo memo val
+        let (rb, memo) := bvarBoundGo memo body
+        (max (max rt rv) (rb - 1), memo)
+      | .proj _ _ sub => bvarBoundGo memo sub
+    (r, memo.insert e r)
+end ConLeche.Expr
+
+namespace ConLeche.Expr
+@[inherit_doc bvarBoundGo]
+def bvarBoundMemo (e : Expr) : Nat := (bvarBoundGo {} e).1
+end ConLeche.Expr
+
+namespace ConLeche.Expr
+/-- Memoized `fvarRange` (the saturated branch's exact
+recomputation). -/
+def fvarRangeGo (memo : Std.HashMap Expr Nat) (e : Expr) :
+    Nat × Std.HashMap Expr Nat :=
+  match memo[e]? with
+  | some r => (r, memo)
+  | none =>
+    let (r, memo) : Nat × Std.HashMap Expr Nat :=
+      match e with
+      | .fvar idx _ => (idx + 1, memo)
+      | .bvar _ | .sort _ | .const _ _ | .lit _ => (0, memo)
+      | .app f a =>
+        let (rf, memo) := fvarRangeGo memo f
+        let (ra, memo) := fvarRangeGo memo a
+        (max rf ra, memo)
+      | .lam ty body | .forallE ty body =>
+        let (rt, memo) := fvarRangeGo memo ty
+        let (rb, memo) := fvarRangeGo memo body
+        (max rt rb, memo)
+      | .letE ty val body =>
+        let (rt, memo) := fvarRangeGo memo ty
+        let (rv, memo) := fvarRangeGo memo val
+        let (rb, memo) := fvarRangeGo memo body
+        (max (max rt rv) rb, memo)
+      | .proj _ _ sub => fvarRangeGo memo sub
+    (r, memo.insert e r)
+end ConLeche.Expr
+
+namespace ConLeche.Expr
+@[inherit_doc fvarRangeGo]
+def fvarRangeMemo (e : Expr) : Nat := (fvarRangeGo {} e).1
+end ConLeche.Expr
+
+namespace ConLeche.Expr
+/-- **The loose-bvar bound the checker reads**: the packed field, or —
+on the saturated branch alone — the exact memoized recomputation.
+Equal to `Expr.bvarBound` unconditionally (`bvarB_eq`). -/
+@[inline] def bvarB (e : Expr) : Nat :=
+  let r := e.bvarBRaw
+  if r == satRange then bvarBoundMemo e else r
+end ConLeche.Expr
+
+namespace ConLeche.Expr
+/-- **The fvar range the checker reads**: the packed field, or — on the
+saturated branch alone — the exact memoized recomputation.  Equal to
+`Expr.fvarRange` unconditionally (`fvarB_eq`). -/
+@[inline] def fvarB (e : Expr) : Nat :=
+  let r := e.fvarBRaw
+  if r == satRange then fvarRangeMemo e else r
+end ConLeche.Expr
+
+namespace ConLeche.Expr
+/-- Bump every loose bound variable `≥ cutoff` by `amount`.  Used to
+transport a constructor-telescope field domain (parameters, then prior
+fields) into a recursor-rule telescope (parameters, motive, minors,
+then prior fields): parameter references must skip the extra motive
+and minor binders, and by the zeta expansion's substitution to carry
+open let-values under binders. -/
+def liftLooseBVars (amount : Nat) : (cutoff : Nat) → Expr → Expr
+  | c, .bvar i => if i ≥ c then .bvar (i + amount) else .bvar i
+  | _, .fvar i ty => .fvar i ty
+  | _, .sort u => .sort u
+  | _, .const n us => .const n us
+  | c, .app a b => .app (liftLooseBVars amount c a) (liftLooseBVars amount c b)
+  | c, .lam ty body =>
+    .lam (liftLooseBVars amount c ty) (liftLooseBVars amount (c + 1) body)
+  | c, .forallE ty body =>
+    .forallE (liftLooseBVars amount c ty) (liftLooseBVars amount (c + 1) body)
+  | c, .letE ty v body =>
+    .letE (liftLooseBVars amount c ty) (liftLooseBVars amount c v)
+      (liftLooseBVars amount (c + 1) body)
+  | _, .lit l => .lit l
+  | c, .proj s i e => .proj s i (liftLooseBVars amount c e)
+end ConLeche.Expr
+
+namespace ConLeche.Expr
+/-- Apply to a list of arguments. -/
+def mkAppN (f : Expr) : List Expr → Expr
+  | [] => f
+  | a :: as => mkAppN (.app f a) as
+end ConLeche.Expr
+
+section
+namespace ConLeche
+namespace Expr
+/-- Every expression equality — `=` in an `if`, a derived instance of a
+type with an `Expr` field — runs `Expr.decEqPtr`. -/
+instance : DecidableEq Expr := Expr.decEq
+end Expr
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- Data common to all constants: name, universe parameters, type. -/
+structure ConstantVal where
+  name : Name
+  levelParams : List Name
+  type : Expr
+  deriving DecidableEq, Repr, Inhabited
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- How a stored recursor rule fires (install-computed; parse
+placeholder `.plain`).  The official kernel fires a rule by constructor
+name and field count and compares nothing; the fire here compares what
+the rule's law (`RecRuleLaw`) is stated at, and only at a case-3 redex
+(`iotaCase3`: not K, and the family may be `Prop` at the comparand
+levels): the levels, the parameters and the indices.  There the
+constructor application may be the point, and at a `Prop` valuation
+nothing else ties the constructor's levels and parameters to the
+comparands; elsewhere the major's membership in the family at the
+comparands ties its fields, and the law reads nothing else of the
+constructor's levels or parameters.
+
+* `.plain` — the installer's rule at a member major: the comparands
+  are the recursor's own instantiation and leading arguments (the
+  constructor's levels are the recursor's, by name, and its parameters
+  the recursor's leading arguments).
+* `.nested lvls pins` — an auxiliary recursor's rule at an outside
+  major (a nested block): the comparands are fixed instantiations,
+  the class's levels and parameters the generated recursor type's major
+  domain applies the container to (`auxRuleFire`) — `lvls` are levels
+  over the recursor's level parameters, `pins` expressions in the
+  recursor's rule-prefix context, instantiated at the redex's levels and
+  leading arguments.
+* `.levels lvls` — a quotient eliminator's rule: the comparands are `lvls`,
+  levels over the recursor's level parameters, and the recursor's leading
+  arguments.  A level parameter is local to its constant, so a stream's
+  `Quot.lift` and `Quot.mk` need not share names; this rule reads no name of
+  the constructor's. -/
+inductive RecRuleFire where
+  | plain
+  | nested (lvls : List Level) (pins : List Expr)
+  | levels (lvls : List Level)
+  deriving DecidableEq, Repr, Inhabited
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- One iota rule of a recursor: applying the recursor (with its
+parameters, motives and minors) to a `ctor`-headed major premise reduces
+to `rhs` applied to the parameters, motives, minors and the constructor's
+`nfields` fields: the record's three fields, as Lean's `RecursorRule`
+has them.  `fire` (the plain/nested firing mode) is read off the
+recursor's record, the group alone (`storedFire`); input rules carry the
+parse placeholder `.plain`.  The constructor's parameter count is the
+constructor's, looked up where the rule fires. -/
+structure RecRule where
+  ctor : Name
+  nfields : Nat
+  /-- The firing mode (install-computed, parse placeholder `.plain`):
+  `.plain` at a member major, `.nested` at an outside one. -/
+  fire : RecRuleFire
+  rhs : Expr
+  deriving DecidableEq, Repr, Inhabited
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- Reducibility hint of a definition, mirroring Lean's
+`ReducibilityHints`: `abbrev` unfolds first, `opaque` last, `regular`
+definitions compare by their definitional height.  The hints steer only
+the *order* of lazy delta unfolding in `isDefEq` — never whether two
+terms are definitionally equal — so the model and all soundness proofs
+are independent of them. -/
+inductive ReducibilityHint where
+  | «opaque»
+  | «abbrev»
+  | regular (height : Nat)
+  deriving DecidableEq, Repr, Inhabited
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- Definitional capabilities of a stored inductive type that its block
+alone decides, read off the block's records at its check: structure-likeness
+for its (single-constructor) values (official's `is_non_rec_structure`; with
+no field, all inhabitants are definitionally equal), and the family's names
+and counts.  The family's
+result sort is on no record, so what depends on it is computed where it is
+read, from the former's type (`formerResSort`, `formerNeverZero`). -/
+structure IndCaps where
+  /-- Official's `is_non_rec_structure`: one constructor, no index, a block that
+  is not recursive.  A proposition may have it: a proof is the point, and the
+  η laws speak of what is not. -/
+  eta : Bool := false
+  /-- **The block's members** (official's `all`): the formers installed
+  together with this one, in block
+  order, itself included.  Read by nested positivity alone — a container
+  frame's restart (`nestFrame`) abstracts only group-mates listed here,
+  so an accepted frame's holes are members of ONE recorded block (a pinned
+  basis type records `[T]`, as official does; `Quot` alone keeps `[]`). -/
+  all : List Name := []
+  /-- **The family's parameter count** (official's `inductive_val.nparams`):
+  the block's declared parameter count, recorded at every install
+  (uniform: `BlockShape.nP`; basis: the pin's).  Read by nested positivity
+  alone, and only for a
+  container WITHOUT constructors (`nestContainer`), whose parameter count
+  no constructor record carries. -/
+  nparams : Nat := 0
+  /-- **The family's index count** (official's `inductive_val.nindices`), read
+  off the block's recursor record: how many binders past the parameters the
+  reading of the family's sort walks (`formerSortLoop`). -/
+  nIdx : Nat := 0
+  /-- **The family's constructors, in declaration order** (official's
+  `inductive_val.cnstrs`): recorded at its check (uniform: the member's
+  constructors; basis: the pin's).  Read by nested positivity alone
+  (`nestContainer`): a container's constructors are looked up by name,
+  never by a scan of the environment.  `Quot` records none (it is no
+  container). -/
+  ctors : List Name := []
+  /-- **The family's sort is never zero** (official's `is_never_zero` at
+  every level instantiation): the former's stored type ends in a sort
+  whose zero-ness datum is unsatisfiable (`formerZ`), read off it at its
+  check (`blockCapsAt`).  `false` claims nothing.  The ι step's case split
+  reads it in place of the walk to the family's sort. -/
+  neverZero : Bool := false
+  deriving DecidableEq, Repr, Inhabited
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- Information stored about an accepted constant. -/
+inductive ConstantInfo where
+  | axiomInfo (val : ConstantVal)
+  | defnInfo (val : ConstantVal) (value : Expr) (hint : ReducibilityHint)
+  | thmInfo (val : ConstantVal)
+  /-- An inductive type former (whnf-stuck) with its capabilities. -/
+  | indInfo (val : ConstantVal) (caps : IndCaps)
+  /-- A constructor (whnf-stuck; the iota target), with its family's name
+  (official's `ConstructorVal.induct`): the head constant of its declared
+  type's result, which its install reads off the member it is checked
+  against (an environment invariant, `CtorWF`).  The readers that need the
+  family (the ι case split, the rescues, η) look it up by this name instead
+  of walking the type. -/
+  | ctorInfo (val : ConstantVal) (numParams numFields : Nat) (induct : Name)
+  /-- A recursor with its iota rules and the record's K flag (official's
+  `recursor_val::is_k`, read off the stream's record; the block's job
+  checks it).  Only the two sums the
+  firing path reads are stored: `majorIdx` (= numParams + numMotives +
+  numMinors + numIndices, the major premise's argument position) and
+  `rulePrefix` (= numParams + numMotives + numMinors, the length of the
+  argument prefix a rule's rhs is applied to).  The individual counts
+  are consumed at its check only and are not stored. -/
+  | recInfo (val : ConstantVal) (majorIdx rulePrefix : Nat)
+      (isK : Bool) (rules : List RecRule)
+  deriving DecidableEq, Repr, Inhabited
+end ConLeche
+end
+
+section
+namespace ConLeche
+open Name (anonymous)
+/-- The name `Nat`. -/
+def natName : Name := anonymous |>.str "Nat"
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-! ## Structural-Nat literal acceleration
+
+The official kernel accelerates the structural `Nat` operations on
+literals (GMP-backed there).  Here the fast path is *certified*: an
+operation participates only when its defining recurrence equations
+hold by definitional equality — checked once, at its check: `checkDecl`
+positively rejects a nonstandard definition under one of these names,
+so *presence in the store is the certificate* (no runtime flag, no
+re-checking; a reduction-time re-check would in fact livelock — the
+certification's own `pred zero` equation re-enters the fast path).
+
+The certification runs in the environment *before* the operation is
+stored, on the equations with the operation's self-references replaced
+by its stored definition value (`Expr.substConst0`): running it
+after insertion would let the operation's own just-enabled fast path
+discharge its all-literal-argument equations (`pred zero ≡ zero`,
+`beq zero zero ≡ true`) vacuously — accepting definitions that
+disagree with the fast path on those points, which is unsound.  The
+install also pins the operation's and its dependencies' types to the
+expected `Nat → … → Nat`/`Bool` shapes (`natOpStoredOk`): the model
+reads the operations' function-space memberships off these shapes.
+
+The environment model carries the matching semantic clause: a stored
+definition under one of these names satisfies its recurrences, from
+which meta-level induction over the literal yields the computed
+value.  WF-recursive operations (`div`, `mod`, `gcd`) and string
+literals are deferred. -/
+def natPredName : Name := natName.str "pred"
+end ConLeche
+end
+
+section
+namespace ConLeche
+def natAddName : Name := natName.str "add"
+end ConLeche
+end
+
+section
+namespace ConLeche
+def natSubName : Name := natName.str "sub"
+end ConLeche
+end
+
+section
+namespace ConLeche
+def natMulName : Name := natName.str "mul"
+end ConLeche
+end
+
+section
+namespace ConLeche
+def natPowName : Name := natName.str "pow"
+end ConLeche
+end
+
+section
+namespace ConLeche
+def natBeqName : Name := natName.str "beq"
+end ConLeche
+end
+
+section
+namespace ConLeche
+def natBleName : Name := natName.str "ble"
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- The certified structural-`Nat` operations.  Six of them
+(`add sub mul pow beq ble`) carry a literal fast path; `Nat.pred` is
+here without one — it has no fast path (official's `reduce_nat` folds
+nothing unary but `Nat.succ`), but `Nat.sub`'s recurrence
+`sub x (succ y) = pred (sub x y)` names it, so its own recurrences
+must be certified for `sub`'s literal fold to be sound. -/
+def natOpNames : List Name :=
+  [natPredName, natAddName, natSubName, natMulName, natPowName,
+   natBeqName, natBleName]
+end ConLeche
+end
+
+section
+namespace ConLeche
+def natDivName : Name := natName.str "div"
+end ConLeche
+end
+
+section
+namespace ConLeche
+def natModName : Name := natName.str "mod"
+end ConLeche
+end
+
+section
+namespace ConLeche
+def natGcdName : Name := natName.str "gcd"
+end ConLeche
+end
+
+section
+namespace ConLeche
+def natLandName : Name := natName.str "land"
+end ConLeche
+end
+
+section
+namespace ConLeche
+def natLorName : Name := natName.str "lor"
+end ConLeche
+end
+
+section
+namespace ConLeche
+def natXorName : Name := natName.str "xor"
+end ConLeche
+end
+
+section
+namespace ConLeche
+def natShiftLeftName : Name := natName.str "shiftLeft"
+end ConLeche
+end
+
+section
+namespace ConLeche
+def natShiftRightName : Name := natName.str "shiftRight"
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- The WF-recursive operations with a *pinned-declaration* certified
+fast path: at its check, `checkDecl` compares the stream's definition
+against a vendored pin of the toolchain's own (helper-unfolded)
+definition by definitional equality, and then checks the pinned
+`Nat.ble`-guarded characterization certificates
+(`ConLeche/Kernel/NatOpPins.lean`) like theorem declarations — without
+installing them.  Presence in the store is therefore again the
+capability: a stored operation under one of these names has passed pin
+and certificates, or the install declined.  (The family: every pin-certified WF-recursive kernel-accelerated `Nat`
+operation, `Nat.div` and `Nat.mod` among them; official folds no unary
+operation but `Nat.succ`.) -/
+def natDivModNames : List Name :=
+  [natDivName, natModName, natGcdName, natLandName, natLorName,
+   natXorName, natShiftLeftName, natShiftRightName]
+end ConLeche
+end
+
+section
+namespace ConLeche
+open Name (anonymous)
+/-- The name `Nat.zero`. -/
+def natZeroName : Name := natName |>.str "zero"
+end ConLeche
+end
+
+section
+namespace ConLeche
+open Name (anonymous)
+/-- The name `Nat.succ`. -/
+def natSuccName : Name := natName |>.str "succ"
+end ConLeche
+end
+
+section
+namespace ConLeche
+open Name (anonymous)
+/-- The name `String`. -/
+def stringName : Name := anonymous |>.str "String"
+end ConLeche
+end
+
+section
+namespace ConLeche
+open Name (anonymous)
+/-- The name `String.ofList`. -/
+def stringOfListName : Name := stringName.str "ofList"
+end ConLeche
+end
+
+section
+namespace ConLeche
+open Name (anonymous)
+/-- The name `List`. -/
+def listName : Name := anonymous |>.str "List"
+end ConLeche
+end
+
+section
+namespace ConLeche
+open Name (anonymous)
+/-- The name `List.nil`. -/
+def listNilName : Name := listName.str "nil"
+end ConLeche
+end
+
+section
+namespace ConLeche
+open Name (anonymous)
+/-- The name `List.cons`. -/
+def listConsName : Name := listName.str "cons"
+end ConLeche
+end
+
+section
+namespace ConLeche
+open Name (anonymous)
+/-- The name `Char`. -/
+def charName : Name := anonymous |>.str "Char"
+end ConLeche
+end
+
+section
+namespace ConLeche
+open Name (anonymous)
+/-- The name `Char.ofNat`. -/
+def charOfNatName : Name := charName.str "ofNat"
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- The ten names the two literal guards look up: the `Nat` guard's
+three and the `String` guard's seven. -/
+def litGuardNames : List Name :=
+  [natName, natZeroName, natSuccName,
+   stringName, stringOfListName, listName, listNilName, listConsName,
+   charName, charOfNatName]
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- The pins of one toolchain: eight pinned defining expressions and
+eight certificate-proof lists and eight type-pin lists, in the order of
+`natDivModNames`' family (`div`, `mod`, `gcd`, `land`, `lor`, `xor`,
+`shiftLeft`, `shiftRight`), plus the toolchain string for
+diagnostics.  A type pin `(n, ty)` says that the constant `n`, which
+the operation's certificates use, has type `ty` in this toolchain. -/
+structure NatOpPinSet where
+  /-- The generating toolchain (`lean-toolchain` at generation time),
+  named in the decline message when no variant matches. -/
+  toolchain : String
+  divPin : Expr
+  modPin : Expr
+  gcdPin : Expr
+  landPin : Expr
+  lorPin : Expr
+  xorPin : Expr
+  shiftLeftPin : Expr
+  shiftRightPin : Expr
+  divProofs : List Expr
+  modProofs : List Expr
+  gcdProofs : List Expr
+  landProofs : List Expr
+  lorProofs : List Expr
+  xorProofs : List Expr
+  shiftLeftProofs : List Expr
+  shiftRightProofs : List Expr
+  divTypePins : List (Name × Expr)
+  modTypePins : List (Name × Expr)
+  gcdTypePins : List (Name × Expr)
+  landTypePins : List (Name × Expr)
+  lorTypePins : List (Name × Expr)
+  xorTypePins : List (Name × Expr)
+  shiftLeftTypePins : List (Name × Expr)
+  shiftRightTypePins : List (Name × Expr)
+end ConLeche
+end
+
+section
+set_option linter.unusedSimpArgs false
+namespace ConLeche
+section
+variable {m : Type -> Type} [Monad m] [MonadExceptOf CheckError m]
+/-- **A constructor's walked normal form, recorded** (K.53′): the
+constructor `ctor` of the class it builds at the
+levels `lvls` and the parameters `ds`, and its field telescope as the
+walk normalised it (`nestFields`' normal forms, closed over the fields,
+`closeTelescope`), both READ BACK — every hole replaced by the whole
+application it stands for (`nestHoleImg`: a member hole by the member
+applied to the block's parameters, a frame hole by its container applied
+to the frame's parameters, read back), so only the block's parameter
+variables stay free.  Recorded at every node the walk derives: the
+members' constructors at the block's own levels and parameters, and every
+frame's constructors at the frame's key.  The recursor stage reads a
+recursive call's callee off it: the called field's normal form, at the
+rule's field variables, IS the callee's major type (official: the
+auxiliary type replacing that very occurrence, `replace_all_nested`;
+`mk_rec_rules`' `whnf(infer_type(u_i))`). -/
+structure NestCtorNf where
+  ctor : Name
+  lvls : List Level
+  ds : List Expr
+  ty : Expr
+  deriving Inhabited
+end
+end ConLeche
+end
+
+section
+namespace ConLeche
+variable {m : Type → Type} [Monad m] [MonadExceptOf CheckError m]
+/-- **A recursor's major, resolved.**  `ind.{lvls} ds ı⃗` with `ds`
+the inductive's parameters at the recursor's own binders (fvars
+`0 … nP-1`), `nPc` its parameter count, `nIdx` its index count at that
+instantiation, `ctors` its constructors in declaration order with their
+field counts, and `member` the block member it is (`none`: an outside
+inductive — a nested block's container). -/
+structure TargetMajor where
+  ind : Name
+  lvls : List Level
+  ds : List Expr
+  nPc : Nat
+  nIdx : Nat
+  ctors : List (ConstantVal × Nat)
+  member : Option Nat
+  /-- the positivity walk's recorded normal forms of this class's
+  constructors (`targetMajorNfs`, K.53′) -/
+  nfs : List NestCtorNf := []
+  /-- the recursor's prefix openers (fvars `0 … rP-1`, the parameters
+  first), the context the class is compared in (`targetClassMatch`) -/
+  pfvs : List Expr := []
+  deriving Inhabited
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- A class: an inductive `ind` at the levels `lvls` and the parameters
+`ds` (over the block's parameter variables `fvar 0 … fvar (nP-1)`). -/
+structure ClassKey where
+  ind : Name
+  lvls : List Level
+  ds : List Expr
+  deriving Inhabited
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- One binder of the recursors' shared prefix after the parameters. -/
+inductive ClassSlot where
+  /-- a motive; its class -/
+  | motive (key : ClassKey)
+  /-- a minor premise: the class (motive ordinal) it concludes at, the
+  constructor it builds, and its inductive hypotheses `(field, class)` in
+  binder order -/
+  | minor (cls : Nat) (ctor : Name) (ihs : List (Nat × Nat))
+  deriving Inhabited
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- What the pre-pass read. -/
+structure ClassRead where
+  /-- the prefix after the parameters, in the stream's order -/
+  slots : List ClassSlot
+  /-- per recursor (the block's order), the class its conclusion eliminates -/
+  recCls : List Nat
+  deriving Inhabited
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- A field of a class's constructor, as the generator reads it:
+ordinary, or recursive at class `cls` with a telescope of `tele` binders
+(the inductive hypothesis's). -/
+inductive ClassField where
+  | ordinary
+  | recursive (cls : Nat) (tele : Nat)
+  deriving DecidableEq, Inhabited
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- A class's constructor as the generator reads it (official's
+`mk_rec_infos` shape): its DECLARED type at the class's levels and
+parameters `tyD` — the minor premise's fields and conclusion, the rule's
+fields — and the datum entry's WALKED telescope `tyN` (read back, over the
+canonical parameters) — every inductive hypothesis's telescope and
+indices (official: `whnf (infer_type u_i)`) — with the field count and
+the fields' kinds. -/
+structure ClassCtor where
+  cv : ConstantVal
+  nF : Nat
+  kinds : List ClassField
+  tyD : Expr
+  tyN : Expr
+  deriving Inhabited
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- What generation reads: the block, the classes, the layout, the
+constructors, the elimination level. -/
+structure ClassGen where
+  nP : Nat
+  params : List Expr
+  cls : List TargetMajor
+  /-- per class, the former's type (its own levels instantiated) -/
+  formerTys : List Expr
+  slots : List ClassSlot
+  ctors : List (List ClassCtor)
+  elim : Level
+  /-- the generated prefix binders (`ClassGen.prefixBinders`), computed once -/
+  pre : List Expr := []
+end ConLeche
+end
+
+section
+namespace ConLeche.Expr
+/-- The packed key: the node's address over its 8-byte alignment,
+then the cursor modulo `2^16` in the low bits.  Pure `UInt64` register
+arithmetic; a tagged scalar as a `Nat` (addresses are below `2^47`).
+In the model the address is `0` and the key is the cursor — the
+tables never rely on the key: an entry validates itself. -/
+@[inline] def pkey (addr : USize) (c : Nat) : Nat :=
+  (addr.toUInt64 / 8 * 65536 + (UInt64.ofNat c &&& 65535)).toNat
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- A memo entry: the node it was made for, its rebuild, the cursor,
+and the proof — the entry is its own invariant. -/
+structure PEnt (s : Expr → Nat → Expr) where
+  node : Expr
+  val : Expr
+  depth : Nat
+  eq : val = s node depth
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- A validated hit: the cursor compares equal and the stored node IS
+the current one (by pointer at runtime — `Expr.ptrDec` — structurally
+in the model); then the entry's proof is the walk's. -/
+@[inline] def PEnt.hit {s : Expr → Nat → Expr} {β : Sort u} (p : PEnt s) (e : Expr) (c : Nat)
+    (k : { r : Expr // r = s e c } → β) (miss : Unit → β) : β :=
+  if hd : p.depth = c then
+    match Expr.ptrDec p.node e with
+    | isTrue hn => k ⟨p.val, by rw [p.eq, hn, hd]⟩
+    | isFalse _ => miss ()
+  else miss ()
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The hash-map variant's key: the packed `Nat` under a MIXING hash —
+the identity hash of `Nat` clusters dense address bits after Std's
+fold (the intern table's lesson, task #89). -/
+structure PKey where
+  val : Nat
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- A `Bool` memo entry: the node it was decided for, the cursor, the
+decision, and the proof — the entry is its own invariant (`PEnt` with
+`Bool` in place of the rebuilt term). -/
+structure BEnt (s : Expr → Nat → Bool) where
+  node : Expr
+  depth : Nat
+  val : Bool
+  eq : val = s node depth
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- A `Nat` memo entry: the node, its value and the proof. -/
+structure NEnt (s : Expr → Nat) where
+  node : Expr
+  val : Nat
+  eq : val = s node
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The `Nat` table under the packed address key. -/
+abbrev NTab (s : Expr → Nat) := Std.HashMap PKey (NEnt s)
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The pointer-keyed `Nat` memo: absent until the first shared
+compound node. -/
+abbrev MemoN (s : Expr → Nat) := Option (NTab s)
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The record: the entry under its packed key. -/
+@[inline] def MemoN.insert {s : Expr → Nat} (memo : MemoN s) (key : Nat) (p : NEnt s) :
+    MemoN s :=
+  match memo with
+  | none => some (({} : NTab s).insert ⟨key⟩ p)
+  | some m => some (m.insert ⟨key⟩ p)
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The `Bool` table: the packed address-and-cursor key under the
+mixing hash of `PKey`. -/
+abbrev BTab (s : Expr → Nat → Bool) := Std.HashMap PKey (BEnt s)
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The pointer-keyed `Bool` memo: absent until the first shared
+compound node. -/
+abbrev MemoB (s : Expr → Nat → Bool) := Option (BTab s)
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The record: the entry under its packed key, in the table or in a
+fresh one. -/
+@[inline] def MemoB.insert {s : Expr → Nat → Bool} (memo : MemoB s) (key : Nat)
+    (p : BEnt s) : MemoB s :=
+  match memo with
+  | none => some (({} : BTab s).insert ⟨key⟩ p)
+  | some m => some (m.insert ⟨key⟩ p)
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The hash-map table: the incumbent's `Std.HashMap`, keyed by the
+packed address instead of the structural pair. -/
+abbrev HTab (s : Expr → Nat → Expr) := Std.HashMap PKey (PEnt s)
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The pointer-keyed memo: absent until the first shared compound
+node. -/
+abbrev MemoXP (s : Expr → Nat → Expr) := Option (HTab s)
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The record: the entry under its packed key, in the table or in a
+fresh one. -/
+@[inline] def MemoXP.insert {s : Expr → Nat → Expr} (memo : MemoXP s) (key : Nat)
+    (p : PEnt s) : MemoXP s :=
+  match memo with
+  | none => some (({} : HTab s).insert ⟨key⟩ p)
+  | some m => some (m.insert ⟨key⟩ p)
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- A validated hit: the cursor compares equal and the stored node IS
+the current one (by pointer at runtime — `Expr.ptrDec` — structurally
+in the model); then the entry's proof is the walk's. -/
+@[inline] def BEnt.hit {s : Expr → Nat → Bool} {β : Sort u} (p : BEnt s) (e : Expr) (c : Nat)
+    (k : { r : Bool // r = s e c } → β) (miss : Unit → β) : β :=
+  if hd : p.depth = c then
+    match Expr.ptrDec p.node e with
+    | isTrue hn => k ⟨p.val, by rw [p.eq, hn, hd]⟩
+    | isFalse _ => miss ()
+  else miss ()
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- A validated hit: the stored node IS the current one. -/
+@[inline] def NEnt.hit {s : Expr → Nat} {β : Sort u} (p : NEnt s) (e : Expr)
+    (k : { r : Nat // r = s e } → β) (miss : Unit → β) : β :=
+  match Expr.ptrDec p.node e with
+  | isTrue hn => k ⟨p.val, by rw [p.eq, hn]⟩
+  | isFalse _ => miss ()
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- A pointer-keyed walk's result: the term, fixed by its proof,
+beside the memo. -/
+abbrev ResXP (s : Expr → Nat → Expr) (e : Expr) (c : Nat) :=
+  { r : Expr // r = s e c } × MemoXP s
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The shared-node step over the pointer-keyed memo: the address
+read, the probe, the validated hit — else the descent and the record
+under the key read BEFORE the descent (the result is a `Squash`, so
+the address is unobservable: `withAddr`). -/
+@[inline] def MemoXP.shared {s : Expr → Nat → Expr} (memo : MemoXP s) (e : Expr) (c : Nat)
+    (rec : Unit → Squash (ResXP s e c)) : Squash (ResXP s e c) :=
+  withAddr e fun addr =>
+  let key := pkey addr c
+  match memo with
+  | none => Squash.lift (rec ()) fun (⟨r, hr⟩, memo) =>
+      Squash.mk (⟨r, hr⟩, memo.insert key ⟨e, r, c, hr⟩)
+  | some m =>
+    match m[(⟨key⟩ : PKey)]? with
+    | some p => p.hit e c (fun r => Squash.mk (r, memo)) fun _ =>
+        Squash.lift (rec ()) fun (⟨r, hr⟩, memo) =>
+          Squash.mk (⟨r, hr⟩, memo.insert key ⟨e, r, c, hr⟩)
+    | none => Squash.lift (rec ()) fun (⟨r, hr⟩, memo) =>
+        Squash.mk (⟨r, hr⟩, memo.insert key ⟨e, r, c, hr⟩)
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The cursor-free instance (`instLevelParams`): the cursored memo at
+cursor `0`. -/
+abbrev MemoXP0 (s : Expr → Expr) := MemoXP (fun e _ => s e)
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+abbrev ResXP0 (s : Expr → Expr) (e : Expr) := { r : Expr // r = s e } × MemoXP0 s
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+@[inline] def MemoXP0.shared {s : Expr → Expr} (memo : MemoXP0 s) (e : Expr)
+    (rec : Unit → Squash (ResXP0 s e)) : Squash (ResXP0 s e) :=
+  MemoXP.shared (s := fun e _ => s e) memo e 0 rec
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- A `Bool` walk's result: the decision, fixed by its proof, beside
+the memo. -/
+abbrev ResB (s : Expr → Nat → Bool) (e : Expr) (c : Nat) :=
+  { r : Bool // r = s e c } × MemoB s
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The shared-node step over the pointer-keyed `Bool` memo: the
+address read, the probe, the validated hit — else the descent and the
+record under the key read BEFORE the descent (`MemoXP.shared`
+verbatim, with `BEnt` for `PEnt`). -/
+@[inline] def MemoB.shared {s : Expr → Nat → Bool} (memo : MemoB s) (e : Expr) (c : Nat)
+    (rec : Unit → Squash (ResB s e c)) : Squash (ResB s e c) :=
+  withAddr e fun addr =>
+  let key := pkey addr c
+  match memo with
+  | none => Squash.lift (rec ()) fun (⟨r, hr⟩, memo) =>
+      Squash.mk (⟨r, hr⟩, memo.insert key ⟨e, c, r, hr⟩)
+  | some m =>
+    match m[(⟨key⟩ : PKey)]? with
+    | some p => p.hit e c (fun r => Squash.mk (r, memo)) fun _ =>
+        Squash.lift (rec ()) fun (⟨r, hr⟩, memo) =>
+          Squash.mk (⟨r, hr⟩, memo.insert key ⟨e, c, r, hr⟩)
+    | none => Squash.lift (rec ()) fun (⟨r, hr⟩, memo) =>
+        Squash.mk (⟨r, hr⟩, memo.insert key ⟨e, c, r, hr⟩)
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The cursor-free instance: the cursored `Bool` memo at cursor
+`0`. -/
+abbrev MemoB0 (s : Expr → Bool) := MemoB (fun e _ => s e)
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+abbrev ResB0 (s : Expr → Bool) (e : Expr) := { r : Bool // r = s e } × MemoB0 s
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+@[inline] def MemoB0.shared {s : Expr → Bool} (memo : MemoB0 s) (e : Expr)
+    (rec : Unit → Squash (ResB0 s e)) : Squash (ResB0 s e) :=
+  MemoB.shared (s := fun e _ => s e) memo e 0 rec
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- A `Nat` walk's result: the value, fixed by its proof, beside the
+memo. -/
+abbrev ResN (s : Expr → Nat) (e : Expr) := { r : Nat // r = s e } × MemoN s
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The shared-node step over the `Nat` memo (`MemoB.shared` with
+`NEnt`, at cursor `0`). -/
+@[inline] def MemoN.shared {s : Expr → Nat} (memo : MemoN s) (e : Expr)
+    (rec : Unit → Squash (ResN s e)) : Squash (ResN s e) :=
+  withAddr e fun addr =>
+  let key := pkey addr 0
+  match memo with
+  | none => Squash.lift (rec ()) fun (⟨r, hr⟩, memo) =>
+      Squash.mk (⟨r, hr⟩, memo.insert key ⟨e, r, hr⟩)
+  | some m =>
+    match m[(⟨key⟩ : PKey)]? with
+    | some p => p.hit e (fun r => Squash.mk (r, memo)) fun _ =>
+        Squash.lift (rec ()) fun (⟨r, hr⟩, memo) =>
+          Squash.mk (⟨r, hr⟩, memo.insert key ⟨e, r, hr⟩)
+    | none => Squash.lift (rec ()) fun (⟨r, hr⟩, memo) =>
+        Squash.mk (⟨r, hr⟩, memo.insert key ⟨e, r, hr⟩)
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The term of a walk's result (the quotient lifts: the term is fixed
+by its subtype). -/
+@[inline] def resTerm {c : Expr} {M : Type} (s : Squash ({ r : Expr // r = c } × M)) : Expr :=
+  Quotient.lift (fun p => p.1.1) (fun p q _ => by rw [p.1.2, q.1.2]) s
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+@[inline] def mkApp (f a : Expr) : Expr := .app f a
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+@[inline] def mkLam (ty body : Expr) : Expr :=
+  .lam ty body
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+@[inline] def mkForallE (ty body : Expr) :
+    Expr := .forallE ty body
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+@[inline] def mkLetE (ty val body : Expr) : Expr :=
+  .letE ty val body
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+@[inline] def mkProj (s : Name) (i : Nat) (e : Expr) : Expr := .proj s i e
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The nodes a memo entry can save a descent of. -/
+@[inline] def isCompound : Expr → Bool
+  | .app .. | .lam .. | .forallE .. | .letE .. | .proj .. => true
+  | _ => false
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The cached `Expr.instantiateList` (bulk): the cutoff, then the walk. -/
+def instantiateListC (e : @& Expr) (vs : List Expr) (d : Nat := 0) : Expr :=
+  match vs with
+  | [] => e
+  | v :: vs' =>
+    let a := (v :: vs').toArray
+    if hcut : e.bvarB ≤ d then e
+    else resTerm (instantiateListXP a a.size none e d (by simp [a]) hcut)
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Cached
+open ConLeche
+/-- **The mode-dependent memos** (task #353): the six entry-point
+memos, whose entries are results of the knot at ONE mode.  The level
+memos, the stored-constant caches and the bulk-instantiation memo are
+functions of their keys alone and are not among them.  `CState` holds
+the plain tower's set in its own six fields and the eager tower's set
+in `eagerMemos` (task #361). -/
+structure ModeMemos where
+  whnfCoreC : Std.HashMap Expr Expr := {}
+  whnfCoreCheapC : Std.HashMap Expr Expr := {}
+  whnfC : Std.HashMap Expr Expr := {}
+  inferC : Std.HashMap Expr Expr := {}
+  inferIOC : Std.HashMap Expr Expr := {}
+  defeqC : Std.HashMap (Expr × Expr) Bool := {}
+end ConLeche.Cached
+end
+
+section
+namespace ConLeche.Cached
+open ConLeche
+/-- The official kernel's default maximum `Nat` size, 128 MiB. -/
+def maxNatSizeDefault : Nat := 134217728
+end ConLeche.Cached
+end
+
+section
+namespace ConLeche.Cached
+open ConLeche
+/-- The fourteen binary `Nat` operations the kernel computes on literals, in the order of
+`reduceNat`'s name test. -/
+inductive NatBinOp where
+  | add | sub | mul | pow | beq | ble | div | mod | gcd | land | lor | xor
+  | shiftLeft | shiftRight
+end ConLeche.Cached
+end
+
+section
+namespace ConLeche.Cached
+open ConLeche
+/-- Per-declaration state: the memo caches for the five entry points
+(the plain tower's in their own fields, the eager tower's in
+`eagerMemos`), the lazy caches for
+level-instantiated stored constants, the level-operation memos, and
+the persistent bulk-instantiation memo (task #145). -/
+structure CState where
+  constTyAt : Std.HashMap (Name × List Level) Expr := {}
+  constValAt : Std.HashMap (Name × List Level) Expr := {}
+  ruleRhsAt : Std.HashMap (Name × Name × List Level) Expr := {}
+  whnfCoreC : Std.HashMap Expr Expr := {}
+  /-- The cheap-projection head normalization's memo (`whnfCore` at
+  `cheap_proj`, `whnfCoreBody`): a separate map, since the two modes'
+  results differ on a stuck projection. -/
+  whnfCoreCheapC : Std.HashMap Expr Expr := {}
+  whnfC : Std.HashMap Expr Expr := {}
+  inferC : Std.HashMap Expr Expr := {}
+  /-- **The io-grade inference memo** (task #170 / #172 B4): results of
+  the knot's `inferIO` slot (both modes), kept apart
+  from `inferC` per the task-#170 memo
+  ruling — *"since caching has no access to semantic reasoning (yet)
+  we need two memos, one with and one without the flag"* — because an
+  io entry witnesses fewer checks than the full-infer claims consume.
+  Its invariant is the io claims' weaker (premise-form) one
+  (`CSOK.inferIOC`, `Verify/Cached/DiscC1.lean`).  Official's own
+  layout: the C++ kernel keys its infer cache by `infer_only`. -/
+  inferIOC : Std.HashMap Expr Expr := {}
+  defeqC : Std.HashMap (Expr × Expr) Bool := {}
+  lsimpC : Std.HashMap Level Level := {}
+  lnzC : Std.HashMap Level Bool := {}
+  eqvC : Std.HashMap (Level × Level) Bool := {}
+  instC : Std.HashMap (Expr × List Expr × Nat) Expr := {}
+  /-- **The eager tower's mode memos** (task #361): the six entry-point
+  memos of the eager tower (the knot at `eager := true`, the `defeqE`
+  slot), stored here between eager comparisons and swapped in for each
+  one (`withEagerMemos`).  Kept for the declaration like the plain
+  ones, and apart from them: an eager entry never serves a plain query,
+  nor the other way round. -/
+  eagerMemos : ModeMemos := {}
+  /-- **The maximum `Nat` size**, in bytes (`maxNatSizeDefault` unless the
+  run sets it, `--max-nat-size`): the largest `Nat` numeral the core
+  takes in or computes (`natOpRefusal`).  Not a memo: set when the
+  declaration's state is made (`Cached.declStep`) and only read. -/
+  maxNatSize : Nat := maxNatSizeDefault
+end ConLeche.Cached
+end
+
+section
+namespace ConLeche.Expr
+/-- The plain descent of `instantiate1C`: the reference the walk is
+verified against (`instantiate1P_spec`, `Verify/Cached/OpsC.lean`, is
+the equation to `Expr.instantiate1`). -/
+def instantiate1P (v : Expr) (e : Expr) (d : Nat) : Expr :=
+  if e.bvarB ≤ d then e else
+  match e with
+  | .bvar i .. => if i = d then v else if i > d then Expr.mkBvar (i - 1) else e
+  | .fvar .. | .sort .. | .const .. | .lit .. => e
+  | .app f a .. => mkApp (instantiate1P v f d) (instantiate1P v a d)
+  | .lam ty body .. => mkLam (instantiate1P v ty d) (instantiate1P v body (d + 1))
+  | .forallE ty body .. =>
+    mkForallE (instantiate1P v ty d) (instantiate1P v body (d + 1))
+  | .letE ty val body .. =>
+    mkLetE (instantiate1P v ty d) (instantiate1P v val d) (instantiate1P v body (d + 1))
+  | .proj sn i sub .. => mkProj sn i (instantiate1P v sub d)
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The child step of `instantiate1XP`: the cutoff, the compound test,
+the exclusivity read. -/
+@[inline] def enter1P (v : @& Expr) (e : @& Expr) (d : Nat) (memo : MemoXP (instantiate1P v))
+    (rec : (hcut : ¬ e.bvarB ≤ d) → Squash (ResXP (instantiate1P v) e d)) :
+    Squash (ResXP (instantiate1P v) e d) :=
+  if hcut : e.bvarB ≤ d then Squash.mk (⟨e, (instantiate1P_cut hcut).symm⟩, memo)
+  else if !isCompound e then rec hcut
+  else withExcl e fun excl =>
+    if excl then rec hcut else memo.shared e d fun _ => rec hcut
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The walk of `instantiate1C` (the node is past the cutoff: the
+wrapper and `enter1P` test it). -/
+def instantiate1XP (v : @& Expr) (memo : MemoXP (instantiate1P v)) (e : @& Expr) (d : Nat)
+    (hcut : ¬ e.bvarB ≤ d) : Squash (ResXP (instantiate1P v) e d) :=
+  match e with
+  | .bvar i .. =>
+    Squash.mk (⟨if i = d then v else if i > d then Expr.mkBvar (i - 1) else .bvar i,
+      by rw [instantiate1P]; simp [hcut]⟩, memo)
+  | .fvar idx ty .. => Squash.mk (⟨.fvar idx ty, by rw [instantiate1P]; simp [hcut]⟩, memo)
+  | .sort u .. => Squash.mk (⟨.sort u, by rw [instantiate1P]; simp [hcut]⟩, memo)
+  | .const n us .. => Squash.mk (⟨.const n us, by rw [instantiate1P]; simp [hcut]⟩, memo)
+  | .lit l .. => Squash.mk (⟨.lit l, by rw [instantiate1P]; simp [hcut]⟩, memo)
+  | .app f a .. =>
+    enter1P v f d memo (fun h => instantiate1XP v memo f d h) |>.lift fun (⟨f', hf⟩, memo) =>
+    enter1P v a d memo (fun h => instantiate1XP v memo a d h) |>.lift fun (⟨a', ha⟩, memo) =>
+    Squash.mk (⟨mkApp f' a', by rw [instantiate1P]; simp [hcut, hf, ha, mkApp]⟩, memo)
+  | .lam ty body .. =>
+    enter1P v ty d memo (fun h => instantiate1XP v memo ty d h) |>.lift fun (⟨ty', ht⟩, memo) =>
+    enter1P v body (d + 1) memo (fun h => instantiate1XP v memo body (d + 1) h) |>.lift fun (⟨b', hb⟩, memo) =>
+    Squash.mk (⟨mkLam ty' b', by rw [instantiate1P]; simp [hcut, ht, hb, mkLam]⟩, memo)
+  | .forallE ty body .. =>
+    enter1P v ty d memo (fun h => instantiate1XP v memo ty d h) |>.lift fun (⟨ty', ht⟩, memo) =>
+    enter1P v body (d + 1) memo (fun h => instantiate1XP v memo body (d + 1) h) |>.lift fun (⟨b', hb⟩, memo) =>
+    Squash.mk (⟨mkForallE ty' b', by rw [instantiate1P]; simp [hcut, ht, hb, mkForallE]⟩, memo)
+  | .letE ty val body .. =>
+    enter1P v ty d memo (fun h => instantiate1XP v memo ty d h) |>.lift fun (⟨ty', ht⟩, memo) =>
+    enter1P v val d memo (fun h => instantiate1XP v memo val d h) |>.lift fun (⟨v', hv⟩, memo) =>
+    enter1P v body (d + 1) memo (fun h => instantiate1XP v memo body (d + 1) h) |>.lift fun (⟨b', hb⟩, memo) =>
+    Squash.mk (⟨mkLetE ty' v' b', by rw [instantiate1P]; simp [hcut, ht, hv, hb, mkLetE]⟩, memo)
+  | .proj sn i sub .. =>
+    enter1P v sub d memo (fun h => instantiate1XP v memo sub d h) |>.lift fun (⟨s', hs⟩, memo) =>
+    Squash.mk (⟨mkProj sn i s', by rw [instantiate1P]; simp [hcut, hs, mkProj]⟩, memo)
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The cached `Expr.instantiate1`: the cutoff, then the walk. -/
+def instantiate1C (e : @& Expr) (v : Expr) (d : Nat := 0) : Expr :=
+  if hcut : e.bvarB ≤ d then e else
+  resTerm (instantiate1XP v none e d hcut)
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche
+/-- **The length of a syntactic Π-telescope ending in a SORT**:
+`some n` when the expression is `n` Π binders with a `.sort`
+residual, `none` when the residual is anything else — a constant that
+only *unfolds* to a telescope, say (task #195).  A spine walk: one
+child per step, never a tree.
+
+The distinction is what makes `indParamsOk` one-sided.  Official's
+telescope loop (`check_inductive_types`, `inductive.cpp`) reduces the
+residual to weak head normal form before every binder; at a `.sort`
+residual that reduction is the identity and no further binder can
+appear, so `n` is exactly the number of binders official counts. -/
+def Expr.piSortTeleLen? : Expr → Option Nat
+  | .forallE _ body => (Expr.piSortTeleLen? body).map (· + 1)
+  | .sort _ => some 0
+  | _ => none
+end ConLeche
+end
+
+section
+namespace ConLeche
+namespace Expr
+/-- The residual after peeling `k` *syntactic* ∀ binders, whatever
+their domains (no substitution — the residual may mention the peeled
+binders; the readers only look at its head shape). -/
+def peelPis : Nat → Expr → Option Expr
+  | 0, e => some e
+  | k + 1, .forallE _ b => peelPis k b
+  | _ + 1, _ => none
+end Expr
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- The body of a λ-telescope that is a single bound variable: `some
+(k, j)` for `fun x₁ … x_k => x_{k-j}` (the shape of `outParam`,
+`semiOutParam`, `optParam`, `autoParam`). -/
+def lamProj? : Nat → Expr → Option (Nat × Nat)
+  | k, .lam _ b => lamProj? (k + 1) b
+  | k, .bvar j => if j < k then some (k, j) else none
+  | _, _ => none
+end ConLeche
+end
+
+section
+namespace ConLeche
+open Name (anonymous)
+/-- The name of the basis equality type. -/
+def eqName : Name := anonymous |>.str "Eq"
+end ConLeche
+end
+
+section
+namespace ConLeche
+open Name (anonymous)
+/-- The name of the pinned `False` basis type (task #181): the
+zero-constructor `Prop`, pinned like `Empty` so that the consistency
+corollary about `False` needs no hypothesis about how a stream declares
+it. -/
+def falseName : Name := anonymous |>.str "False"
+end ConLeche
+end
+
+section
+namespace ConLeche
+open Name (anonymous)
+/-- The name of the basis quotient type. -/
+def quotName : Name := anonymous |>.str "Quot"
+end ConLeche
+end
+
+section
+namespace ConLeche
+open Name (anonymous)
+/-- The name of the basis quotient induction eliminator. -/
+def quotIndName : Name := quotName |>.str "ind"
+end ConLeche
+end
+
+section
+namespace ConLeche
+open Name (anonymous)
+/-- The name `And`: the one propositional structure whose recursor is
+rescued on a stuck proof (`majorToCtor`'s `And` branch,
+`ConLeche/Kernel/Core.lean`, gated by `andRescueSlots`).  `And` is
+pinned (`andPin`, `ConLeche/Kernel/Basis/And.lean`): a record that
+declares one of its names and is not the toolchain's block is rejected
+(`andPinOk`), the matching block installs through the ordinary
+installer, and the built-in prelude supplies it to a stream that does
+not declare it — so the name always denotes the toolchain's `And` and
+the rescue is always available.  (The rescue's soundness does not rest
+on the pin: its certificate is proof irrelevance.) -/
+def andName : Name := anonymous |>.str "And"
+end ConLeche
+end
+
+section
+namespace ConLeche
+namespace BasisDSL
+/-- `Prop` = `Sort 0`. -/
+def prop : Expr := .sort .zero
+end BasisDSL
+end ConLeche
+end
+
+section
+namespace ConLeche
+open BasisDSL
+/-- The type `Nat`, as a closed constant. -/
+def natT : Expr := cnst natName
+end ConLeche
+end
+
+section
+namespace ConLeche
+open BasisDSL
+/-- The motive of `Nat.rec`: `∀ (t : Nat), Sort u`. -/
+def natRecMotive : Expr := pi "t" natT (srt u)
+end ConLeche
+end
+
+section
+namespace ConLeche
+open BasisDSL
+/-- `Quot.lift`'s coherence slot, in the `α`/`r`/`β`/`f` context:
+`∀ a b, r a b → f a = f b`. -/
+def quotLiftH : Expr :=
+  pi "a" (bv 3) <|
+  pi "b" (bv 4) <|
+  pi "a" (ap2 (bv 4) (bv 1) (bv 0)) <|
+  ap3 (cnst eqName [v]) (bv 4) (.app (bv 3) (bv 2)) (.app (bv 3) (bv 1))
+end ConLeche
+end
+
+section
+namespace ConLeche
+open BasisDSL
+/-- The name `And.rec`. -/
+def andRecName : Name := andName.str "rec"
+end ConLeche
+end
+
+section
+namespace ConLeche.Level
+/-- Substitute level parameters: `subst ks vs l` replaces `param k` by the
+corresponding `v`.  Unlisted parameters remain. -/
+def subst (ks : List Name) (vs : List Level) : Level → Level
+  | .zero => .zero
+  | .succ l => .succ (subst ks vs l)
+  | .max l r => .max (subst ks vs l) (subst ks vs r)
+  | .imax l r => .imax (subst ks vs l) (subst ks vs r)
+  | .param n => go ks vs n
+where
+  go : List Name → List Level → Name → Level
+  | k :: ks, v :: vs, n => if k = n then v else go ks vs n
+  | _, _, n => .param n
+end ConLeche.Level
+end
+
+section
+namespace ConLeche
+/-- **What a recursor's rule reads off its constructor's parameters**, by
+name (`recFireComparands`' `.plain` arm): the constructor's parameters
+at the recursor's names.  The stream's names must link the two the way
+the pin's do: this is the constant part of that comparison. -/
+def pinLinkOk (R Rp : List Name) (C Cp : List Name) : Bool :=
+  C.map Level.param == Cp.map fun p => Level.subst Rp (R.map Level.param) (.param p)
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- A `Nat` literal reading of a whnf'd expression: literals and the
+`Nat.zero` constant (the official kernel's `rawNatLitExt?`). -/
+def rawNatLit? : Expr → Option Nat
+  | .lit (.natVal n) => some n
+  | .const c [] => if c = natZeroName then some 0 else none
+  | _ => none
+end ConLeche
+end
+
+section
+namespace ConLeche
+def boolName : Name := .str .anonymous "Bool"
+end ConLeche
+end
+
+section
+namespace ConLeche
+def boolTrueName : Name := boolName.str "true"
+end ConLeche
+end
+
+section
+namespace ConLeche
+def boolFalseName : Name := boolName.str "false"
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- **A name no block RECURSOR may take**: one a literal guard looks
+up, one of the certified `Nat` operations (whose presence in the store IS their certificate, so a
+recursor stored under such a name would claim a capability nothing
+certified), or `Bool` and its two constructors, whose stored entries the
+certified operations' guards read (`natOpTyPinned`, `natOpGuard`; task
+#431: the stored recursors replace the generated ones' types, which
+must not move a guard).  Type formers and constructors are NOT held to this — a
+stream must be able to declare `List`, `List.cons` and `Nat.add` —
+which is why the block install spends this predicate on the recursors
+alone.  The basis names are `basisNamesOk`'s: a pinned block's own
+recursor carries one, and no other declaration may. -/
+def reservedRecName (n : Name) : Bool :=
+  litGuardNames.contains n ||
+    natOpNames.contains n || natDivModNames.contains n ||
+    n == boolName || n == boolTrueName || n == boolFalseName
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- Substitute the level-monomorphic constant `n` by `r` through an
+application spine (the certification equations' self-references; the
+equation sides are binder-free, so only `app` recurses). -/
+def Expr.substConst0 (n : Name) (r : Expr) : Expr → Expr
+  | .const c us => if c = n ∧ us = [] then r else .const c us
+  | .app f a => .app (Expr.substConst0 n r f) (Expr.substConst0 n r a)
+  | e => e
+end ConLeche
+end
+
+section
+namespace ConLeche.Expr
+/-- Bulk instantiation (task #50): substitute the replacement list `vs`
+for the bound variables `bvar d, bvar (d + 1), …` in one traversal —
+`vs[0]` replaces `bvar d` (the *innermost* binder of a peeled
+telescope), `vs[i]` replaces `bvar (d + i)`; loose `bvar`s above the
+range are lowered by `vs.length`.
+
+The semantics is by construction the *fold* of `instantiate1`:
+
+  `instantiateList e (v :: vs) d
+     = (instantiateList e vs (d + 1)).instantiate1 v d`
+
+(`instantiateList_cons`, unconditional) — so a chain that consumes a
+spine `a₁ … aₖ` outermost-first equals one call at the accumulator list
+`[aₖ, …, a₁]`.  In the fold, a replacement inserted early is traversed
+again by the later `instantiate1` passes; the `bvar` case reproduces
+this by recursing into the replacement with the *earlier-listed*
+entries (`vs.take i` — the substitutions the fold applies after
+inserting `vs[i]`).  On `bvar`-closed replacements (every checker call
+site) that recursion is the identity, and the cost is a single
+traversal of `e` instead of `vs.length` traversals. -/
+def instantiateList (e : Expr) (vs : List Expr) (d : Nat := 0) : Expr :=
+  match e with
+  | .bvar j =>
+    if j < d then .bvar j
+    else if h : j - d < vs.length then
+      instantiateList vs[j - d] (vs.take (j - d)) d
+    else .bvar (j - vs.length)
+  | .fvar idx ty => .fvar idx ty
+  | .sort u => .sort u
+  | .const n us => .const n us
+  | .app f a => .app (instantiateList f vs d) (instantiateList a vs d)
+  | .lam ty body =>
+    .lam (instantiateList ty vs d) (instantiateList body vs (d + 1))
+  | .forallE ty body =>
+    .forallE (instantiateList ty vs d) (instantiateList body vs (d + 1))
+  | .letE ty val body =>
+    .letE (instantiateList ty vs d) (instantiateList val vs d)
+      (instantiateList body vs (d + 1))
+  | .lit l => .lit l
+  | .proj s i e => .proj s i (instantiateList e vs d)
+termination_by (vs.length, sizeOf e)
+decreasing_by
+  all_goals first
+    | (apply Prod.Lex.left; simp [List.length_take]; omega)
+    | (apply Prod.Lex.right; simp; omega)
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche
+/-- **The field telescope of an η family's instance** (the opening of
+official's `is_unit_like` field loop): the η constructor's type at the
+levels `us`, its `nP` parameter binders dropped and instantiated with the
+type's arguments `targs` in one pass (official's `binding_body` ×`nP`,
+then `instantiate_rev`). -/
+def unitFieldTele (cty : Expr) (nP : Nat) (targs : List Expr) : Option Expr :=
+  (Expr.peelPis nP cty).map fun body => body.instantiateList targs.reverse
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- Open the first `n` `∀`-binders at fresh free variables `0..n-1`
+(each fvar's type is the binder domain, instantiated with the earlier
+fvars).  Returns the fvars and the opened body. -/
+def openPisAtFvars : Nat → Expr → Nat → Option (List Expr × Expr)
+  | 0, e, _ => some ([], e)
+  | n + 1, .forallE dom body, i =>
+    let fv : Expr := .fvar i dom
+    match openPisAtFvars n (body.instantiate1 fv) (i + 1) with
+    | some (fvs, e) => some (fv :: fvs, e)
+    | none => none
+  | _ + 1, _, _ => none
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- `hasLooseBVar` with the packed bound's cutoff (task #214, P4): a
+node whose loose-bvar bound is at or below `i` has no `bvar i`, so the
+walk stops there without descending, so `structUsedLater` calls touch
+only the spine of a large telescope, never its shared instance towers.  Read as `hasLooseBVar`
+by `Expr.hasLooseBVarB_eq` (`ConLeche/Verify/LooseBVar.lean`). -/
+def Expr.hasLooseBVarB (i : Nat) (e : Expr) : Bool :=
+  if e.bvarB ≤ i then false else
+  match e with
+  | .bvar j => i == j
+  | .fvar .. => false
+  | .sort _ => false
+  | .const .. => false
+  | .lit _ => false
+  | .app f a => hasLooseBVarB i f || hasLooseBVarB i a
+  | .lam ty b => hasLooseBVarB i ty || hasLooseBVarB (i + 1) b
+  | .forallE ty b => hasLooseBVarB i ty || hasLooseBVarB (i + 1) b
+  | .letE t v b =>
+    hasLooseBVarB i t || hasLooseBVarB i v || hasLooseBVarB (i + 1) b
+  | .proj _ _ e => hasLooseBVarB i e
+end ConLeche
+end
+
+section
+namespace ConLeche.Expr
+/-- Strip `k` leading `∀`s: the binder list (outermost first) and the
+body. -/
+def stripPis : Nat → Expr → Option (List Expr × Expr)
+  | 0, e => some ([], e)
+  | k + 1, .forallE ty b =>
+    (stripPis k b).map fun (bs, e) => (ty :: bs, e)
+  | _ + 1, _ => none
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche
+open Name (anonymous)
+open BasisDSL
+/-- The name `propext`. -/
+def propextName : Name := anonymous |>.str "propext"
+end ConLeche
+end
+
+section
+namespace ConLeche
+open Name (anonymous)
+open BasisDSL
+/-- The name `Iff`. -/
+def iffName : Name := anonymous |>.str "Iff"
+end ConLeche
+end
+
+section
+namespace ConLeche
+open Name (anonymous)
+open BasisDSL
+/-- The name `Iff.rec`. -/
+def iffRecName : Name := iffName |>.str "rec"
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- The parameter variables as seen from under `o` extra binders:
+`p_k = bvar (o + nP - 1 - k)` — `structFamI`'s argument spine. -/
+def structPsAt (o nP : Nat) : List Expr :=
+  (List.range nP).map fun k => Expr.bvar (o + nP - 1 - k)
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- The `j`-th earlier-field substitute in a **tower entry's**
+generated type (task #175 wiring): the first-class node `t.j`
+(`.proj T j` of the subject), at the frame of the subject
+`t = bvar 0`.  Each field's entry stands alone, which is what makes
+O4's per-field entry branch real. -/
+def structProjArgP (T : Name) (j : Nat) : Expr :=
+  Expr.proj T j (Expr.bvar 0)
+end ConLeche
+end
+
+section
+namespace ConLeche.Expr
+/-- Instantiate `bvar d, bvar (d + 1), …` at the values `vs` (innermost
+first), lifting each value past the `d` binders crossed. -/
+def instantiateLift (e : Expr) (vs : List Expr) (d : Nat := 0) : Expr :=
+  match e with
+  | .bvar j =>
+    if j < d then .bvar j
+    else if h : j - d < vs.length then Expr.liftLooseBVars d 0 vs[j - d]
+    else .bvar (j - vs.length)
+  | .fvar idx ty => .fvar idx ty
+  | .sort u => .sort u
+  | .const n us => .const n us
+  | .app f a => .app (instantiateLift f vs d) (instantiateLift a vs d)
+  | .lam ty body =>
+    .lam (instantiateLift ty vs d) (instantiateLift body vs (d + 1))
+  | .forallE ty body =>
+    .forallE (instantiateLift ty vs d) (instantiateLift body vs (d + 1))
+  | .letE ty val body =>
+    .letE (instantiateLift ty vs d) (instantiateLift val vs d)
+      (instantiateLift body vs (d + 1))
+  | .lit l => .lit l
+  | .proj s i e => .proj s i (instantiateLift e vs d)
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche
+/-- **The projection bodies of a recognised block** (task #175 S1),
+one walk of the constructor telescope: the parameter binders are
+skipped, and field `i`'s raw domain is instantiated once
+(`Expr.instantiateLift`) at the values of the binders before it,
+innermost first — the subject's earlier projections `.proj T j (bvar
+0)` (`structProjArgP`), then the parameters as the loose variables
+`structProjPs nP` (parameter `k` at `bvar (nP - k)`, the subject
+reserved at `bvar 0`).  So `bodies[i] = F_i[p⃗ ↦ bvars, f_j ↦ .proj T
+j (bvar 0)]`, scoped at `nP + 1`: what a `.proj T i e` use
+instantiates in one `instantiateList` along the subject type's
+arguments and the subject (`ProjEntry.typeAt`).  The values are
+threaded down the telescope (`vs`, one cons per field), the rest of
+the telescope is never rewritten.  The table holds every field (the
+official `infer_proj` restriction at a `Prop`-declared structure is
+checked at the use, `projGuardRows`); no entry is inferred or
+pinned. -/
+def structProjBodiesGo (T : Name) (vs : List Expr) : Nat → Nat → Expr → Option (List Expr)
+  | 0, _, _ => some []
+  | k + 1, i, .forallE fdom body =>
+    (structProjBodiesGo T (structProjArgP T i :: vs) k (i + 1) body).map
+      (fdom.instantiateLift vs :: ·)
+  | _ + 1, _, _ => none
+end ConLeche
+end
+
+section
+set_option linter.unusedSimpArgs false
+namespace ConLeche
+/-- Close a telescope opened at the free variables `i ..< i + bs.length`
+back into a syntactic Π-telescope over `body`: innermost binder first,
+each abstraction turning the binder's own free variable into the bound
+one (`abstract1`; the domains of the inner binders are closed by the
+outer abstractions, which descend into binder domains). -/
+def closeTelescope : List Expr → Nat → Expr → Expr
+  | [], _, body => body
+  | dom :: bs, i, body =>
+    .forallE dom ((closeTelescope bs (i + 1) body).abstract1 i 0)
+end ConLeche
+end
+
+section
+set_option linter.unusedSimpArgs false
+namespace ConLeche
+variable {m : Type -> Type} [Monad m] [MonadExceptOf CheckError m]
+/-- Does a MEMBER or a HOLE occur in `e`?  Official's `has_ind_occ`:
+member constants, and here also the hole variables `lo ..< hi` — a free
+variable's annotation is NOT looked into (a local's type lives in the
+local context, not in the term) and a `.proj` node's structure name is
+no occurrence.  The specification; the cached tier runs `nestOccC`. -/
+def Expr.nestOcc (names : List Name) (lo hi : Nat) : Expr → Bool
+  | .bvar _ => false
+  | .sort _ => false
+  | .lit _ => false
+  | .fvar i _ => decide (lo ≤ i ∧ i < hi)
+  | .const n _ => names.contains n
+  | .app f a => nestOcc names lo hi f || nestOcc names lo hi a
+  | .lam ty body => nestOcc names lo hi ty || nestOcc names lo hi body
+  | .forallE ty body => nestOcc names lo hi ty || nestOcc names lo hi body
+  | .letE ty val body =>
+    nestOcc names lo hi ty || nestOcc names lo hi val || nestOcc names lo hi body
+  | .proj _ _ sub => nestOcc names lo hi sub
+end ConLeche
+end
+
+section
+set_option linter.unusedSimpArgs false
+namespace ConLeche
+variable {m : Type -> Type} [Monad m] [MonadExceptOf CheckError m]
+/-- Instantiate the leading `Π` binders of `e` at `args`, in order
+(the parameters of a constructor or a type former). -/
+def instPisWith : List Expr → Expr → Option Expr
+  | [], e => some e
+  | a :: as, .forallE _ body => instPisWith as (body.instantiate1 a)
+  | _ :: _, _ => none
+end ConLeche
+end
+
+section
+set_option linter.unusedSimpArgs false
+namespace ConLeche
+variable {m : Type -> Type} [Monad m] [MonadExceptOf CheckError m]
+/-- The variable replacement of a key: the canonical parameter variable
+`i` to the key's parameter `ds[i]`, the canonical hole `|ds| + m` to the
+frame's hole `holes[m]`. -/
+def nestKeyMap (ds holes : List Expr) : Nat → Option Expr :=
+  fun i => if i < ds.length then ds[i]? else holes[i - ds.length]?
+end ConLeche
+end
+
+section
+namespace ConLeche
+open BasisDSL
+/-- `Lean.reduceBool`'s pinned value: `fun (b : Bool) => b`. -/
+def reduceBoolDeclPin : Expr := lm "b" (cnst (bn "Bool")) (bv 0)
+end ConLeche
+end
+
+section
+namespace ConLeche
+open Name (anonymous)
+open BasisDSL
+/-- The name `Lean.trustCompiler`. -/
+def trustCompilerName : Name := (anonymous |>.str "Lean") |>.str "trustCompiler"
+end ConLeche
+end
+
+section
+namespace ConLeche
+open Name (anonymous)
+open BasisDSL
+/-- The name `Lean.reduceNat`. -/
+def reduceNatName : Name := (anonymous |>.str "Lean") |>.str "reduceNat"
+end ConLeche
+end
+
+section
+namespace ConLeche
+open Name (anonymous)
+open BasisDSL
+/-- The name `Lean.ofReduceBool`. -/
+def ofReduceBoolName : Name := (anonymous |>.str "Lean") |>.str "ofReduceBool"
+end ConLeche
+end
+
+section
+namespace ConLeche
+open Name (anonymous)
+open BasisDSL
+/-- The element type of a reduce operation, as the pinned constant. -/
+def reduceElemTy (c : Name) : Expr :=
+  if c = reduceNatName then .const natName [] else .const boolName []
+end ConLeche
+end
+
+section
+namespace ConLeche
+open Name (anonymous)
+open BasisDSL
+/-- The identity certificate's variable: `fvar 0` at the element
+type. -/
+def reduceCertVar (c : Name) : Expr :=
+  .fvar 0 (reduceElemTy c)
+end ConLeche
+end
+
+section
+namespace ConLeche
+variable {m : Type → Type} [Monad m] [MonadExceptOf CheckError m]
+/-- The domains of the first `|xs|` `∀` binders, each instantiated at the
+earlier `xs` (a telescope's field types at given field variables). -/
+def targetPiDomsWith : List Expr → Expr → Option (List Expr)
+  | [], _ => some []
+  | x :: xs, .forallE d b => (d :: ·) <$> targetPiDomsWith xs (b.instantiate1 x)
+  | _ :: _, _ => none
+end ConLeche
+end
+
+section
+namespace ConLeche
+variable {m : Type -> Type} [Monad m] [MonadExceptOf CheckError m]
+variable (mode : CheckMode)
+/-- The pinned defining expression of a pin-certified WF-recursive op
+in one **pin variant** (`ConLeche/Kernel/NatOpPinSet.lean`: one
+toolchain's generated pins, `ConLeche/Kernel/NatOpPins.lean` splices one
+per committed dump). -/
+def divModDeclPin (ps : NatOpPinSet) (c : Name) : Expr :=
+  if c = natDivName then ps.divPin
+  else if c = natGcdName then ps.gcdPin
+  else if c = natLandName then ps.landPin
+  else if c = natLorName then ps.lorPin
+  else if c = natXorName then ps.xorPin
+  else if c = natShiftLeftName then ps.shiftLeftPin
+  else if c = natShiftRightName then ps.shiftRightPin
+  else ps.modPin
+end ConLeche
+end
+
+section
+namespace ConLeche
+variable {m : Type -> Type} [Monad m] [MonadExceptOf CheckError m]
+variable (mode : CheckMode)
+/-- The vendored proof applied to the statement's free variables
+(`x`, `y`, then one `fvar` per hypothesis, carrying the hypothesis
+*type* as its `fvar` annotation — the checker's implicit local
+context). -/
+def divModCertApplied (proofS : Expr) (hyps : List Expr) : Expr :=
+  let base : Expr :=
+    .app (.app proofS (.fvar 0 (.const natName [])))
+      (.fvar 1 (.const natName []))
+  match hyps with
+  | [h1] => .app base (.fvar 2 h1)
+  | [h1, h2] =>
+    .app (.app base (.fvar 2 h1))
+      (.fvar 3 h2)
+  | _ => base
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- The binder of an opened variable (the motive types' binders: their
+codomains are sorts, never zero). -/
+def classBinder (x : Expr) : Expr := x.fvarTypeD
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- A generated binder of an opened variable. -/
+def ClassGen.binder (_g : ClassGen) (x : Expr) : Expr := x.fvarTypeD
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- The prefix variable of slot `s`. -/
+def ClassGen.slotVar (g : ClassGen) (s : Nat) : Expr := .fvar (g.nP + s) (.sort .zero)
+end ConLeche
+end
+
+section
+namespace ConLeche
+namespace ClassRead
+/-- The prefix position (after the parameters) of class `c`'s motive. -/
+def motiveSlot (r : ClassRead) (c : Nat) : Option Nat :=
+  let ms := (List.range r.slots.length).filter fun s =>
+    match r.slots[s]? with | some (.motive _) => true | _ => false
+  ms[c]?
+end ClassRead
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- Class `c`'s motive variable. -/
+def ClassGen.motVar (g : ClassGen) (c : Nat) : Expr :=
+  g.slotVar ((ClassRead.motiveSlot ⟨g.slots, []⟩ c).getD 0)
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- Class `c`'s index telescope opened at `d`, and its major domain. -/
+def ClassGen.major (g : ClassGen) (c : Nat) (d : Nat) : Option (List Expr × Expr) := do
+  let ci := g.cls.getD c default
+  let ty ← instPisWith ci.ds (g.formerTys.getD c default)
+  let (ifs, _) ← openPisAtFvars ci.nIdx ty d
+  pure (ifs, Expr.mkAppN (.const ci.ind ci.lvls) (ci.ds ++ ifs))
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- Class `c`'s motive type at depth `d`: `∀ ı⃗ (t : I D⃗ ı⃗), Sort ℓ`. -/
+def ClassGen.motiveTy (g : ClassGen) (c d : Nat) : Option Expr := do
+  let (ifs, maj) ← g.major c d
+  pure (closeTelescope (ifs.map classBinder) d (.forallE maj (.sort g.elim)))
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- The inductive hypothesis of a recursive field whose WALKED type is `w`
+(`∀ a⃗, J E⃗ e⃗`, landing at class `t`), opened at `d`: its telescope and its
+index arguments. -/
+def ClassGen.ihParts (g : ClassGen) (t : Nat) (tele : Nat) (w : Expr) (d : Nat) :
+    Option (List Expr × List Expr) := do
+  let (xs, leaf) ← openPisAtFvars tele w d
+  pure (xs, leaf.getAppArgs.drop (g.cls.getD t default).nPc)
+end ConLeche
+end
+
+section
+namespace ConLeche
+namespace ConstantInfo
+def name (c : ConstantInfo) : Name := c.toConstantVal.name
+end ConstantInfo
+end ConLeche
+end
+
+section
+namespace ConLeche.Cached
+open ConLeche
+/-- The operation's constant. -/
+def NatBinOp.name : NatBinOp → Name
+  | .add => natAddName | .sub => natSubName | .mul => natMulName | .pow => natPowName
+  | .beq => natBeqName | .ble => natBleName | .div => natDivName | .mod => natModName
+  | .gcd => natGcdName | .land => natLandName | .lor => natLorName | .xor => natXorName
+  | .shiftLeft => natShiftLeftName | .shiftRight => natShiftRightName
+end ConLeche.Cached
+end
+
+section
+namespace ConLeche
+/-- Constructor `x`'s minor premise type at depth `d`, of class `c`: its
+declared fields, then per recursive field `f` (walked type `w`) the
+inductive hypothesis `∀ a⃗, motive_t e⃗ (f a⃗)`, over the motive at the
+declared result indices and the constructor applied. -/
+def ClassGen.minorTy (g : ClassGen) (c : Nat) (x : ClassCtor) (d : Nat) : Option Expr := do
+  let ci := g.cls.getD c default
+  let (fvs, res) ← openPisAtFvars x.nF x.tyD d
+  let ws ← targetPiDomsWith fvs x.tyN
+  let recs := (List.range x.nF).filterMap fun i =>
+    match x.kinds.getD i .ordinary with
+    | .recursive t tele => some (i, t, tele)
+    | .ordinary => none
+  let ihs ← (List.range recs.length).mapM fun l => do
+    let (i, t, tele) := recs.getD l default
+    let e := d + x.nF + l
+    let (xs, idx) ← g.ihParts t tele (ws.getD i default) e
+    pure (closeTelescope (xs.map g.binder) e
+      (Expr.mkAppN (g.motVar t) (idx ++ [Expr.mkAppN (fvs.getD i default) xs])))
+  let concl := Expr.mkAppN (g.motVar c)
+    (res.getAppArgs.drop ci.nPc ++ [Expr.mkAppN (.const x.cv.name ci.lvls) (ci.ds ++ fvs)])
+  pure (closeTelescope (fvs.map g.binder ++ ihs) d concl)
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- The prefix binders (parameters, then every slot in the stream's
+order). -/
+def ClassGen.prefixBinders (g : ClassGen) : Option (List Expr) := do
+  let slotBs ← (List.range g.slots.length).mapM fun s => do
+    let d := g.nP + s
+    match g.slots.getD s default with
+    | .motive _ =>
+      let c := ((List.range s).filter fun s' =>
+        match g.slots.getD s' default with | .motive _ => true | _ => false).length
+      g.motiveTy c d
+    | .minor c C _ =>
+      let x ← (g.ctors.getD c []).find? (·.cv.name == C)
+      g.minorTy c x d
+  pure (g.params.map g.binder ++ slotBs)
+end ConLeche
+end
+
+section
+namespace ConLeche
+/-- `n` variables below a term's own, which do not occur in it, dropped. -/
+def Expr.dropVars : Nat → Expr → Expr
+  | 0, e => e
+  | n + 1, e => Expr.dropVars n (e.instantiate1 (.sort .zero))
+end ConLeche
+end
+
+section
+namespace ConLeche.Expr
+/-- The plain descent of `liftLooseBVarsC`: the reference
+`liftLooseBVarsXP` carries its own proof against. -/
+def liftLooseBVarsP (amount : Nat) (e : Expr) (c : Nat) : Expr :=
+  if e.bvarB ≤ c then e else
+  match e with
+  | .bvar i .. => if i ≥ c then Expr.mkBvar (i + amount) else e
+  | .fvar .. | .sort .. | .const .. | .lit .. => e
+  | .app f a .. => mkApp (liftLooseBVarsP amount f c) (liftLooseBVarsP amount a c)
+  | .lam ty body .. =>
+    mkLam (liftLooseBVarsP amount ty c) (liftLooseBVarsP amount body (c + 1))
+  | .forallE ty body .. =>
+    mkForallE (liftLooseBVarsP amount ty c) (liftLooseBVarsP amount body (c + 1))
+  | .letE ty val body .. =>
+    mkLetE (liftLooseBVarsP amount ty c) (liftLooseBVarsP amount val c)
+      (liftLooseBVarsP amount body (c + 1))
+  | .proj sn i sub .. => mkProj sn i (liftLooseBVarsP amount sub c)
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The child step of `liftLooseBVarsXP`: the cutoff, the compound
+test, the exclusivity read. -/
+@[inline] def enterLLP (amount : Nat) (e : @& Expr) (c : Nat)
+    (memo : MemoXP (liftLooseBVarsP amount))
+    (rec : (hcut : ¬ e.bvarB ≤ c) → Squash (ResXP (liftLooseBVarsP amount) e c)) :
+    Squash (ResXP (liftLooseBVarsP amount) e c) :=
+  if hcut : e.bvarB ≤ c then Squash.mk (⟨e, (liftLooseBVarsP_cut hcut).symm⟩, memo)
+  else if !isCompound e then rec hcut
+  else withExcl e fun excl =>
+    if excl then rec hcut else memo.shared e c fun _ => rec hcut
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The walk of `liftLooseBVarsC` (the node is past the cutoff). -/
+def liftLooseBVarsXP (amount : Nat) (memo : MemoXP (liftLooseBVarsP amount)) (e : @& Expr)
+    (c : Nat) (hcut : ¬ e.bvarB ≤ c) : Squash (ResXP (liftLooseBVarsP amount) e c) :=
+  match e with
+  | .bvar i .. =>
+    Squash.mk (⟨if i ≥ c then Expr.mkBvar (i + amount) else .bvar i,
+      by rw [liftLooseBVarsP]; simp [hcut]⟩, memo)
+  | .fvar idx ty .. => Squash.mk (⟨.fvar idx ty, by rw [liftLooseBVarsP]; simp [hcut]⟩, memo)
+  | .sort u .. => Squash.mk (⟨.sort u, by rw [liftLooseBVarsP]; simp [hcut]⟩, memo)
+  | .const n us .. => Squash.mk (⟨.const n us, by rw [liftLooseBVarsP]; simp [hcut]⟩, memo)
+  | .lit l .. => Squash.mk (⟨.lit l, by rw [liftLooseBVarsP]; simp [hcut]⟩, memo)
+  | .app f a .. =>
+    enterLLP amount f c memo (fun h => liftLooseBVarsXP amount memo f c h) |>.lift fun (⟨f', hf⟩, memo) =>
+    enterLLP amount a c memo (fun h => liftLooseBVarsXP amount memo a c h) |>.lift fun (⟨a', ha⟩, memo) =>
+    Squash.mk (⟨mkApp f' a', by rw [liftLooseBVarsP]; simp [hcut, hf, ha, mkApp]⟩, memo)
+  | .lam ty body .. =>
+    enterLLP amount ty c memo (fun h => liftLooseBVarsXP amount memo ty c h) |>.lift fun (⟨ty', ht⟩, memo) =>
+    enterLLP amount body (c + 1) memo (fun h => liftLooseBVarsXP amount memo body (c + 1) h) |>.lift fun (⟨b', hb⟩, memo) =>
+    Squash.mk (⟨mkLam ty' b', by rw [liftLooseBVarsP]; simp [hcut, ht, hb, mkLam]⟩, memo)
+  | .forallE ty body .. =>
+    enterLLP amount ty c memo (fun h => liftLooseBVarsXP amount memo ty c h) |>.lift fun (⟨ty', ht⟩, memo) =>
+    enterLLP amount body (c + 1) memo (fun h => liftLooseBVarsXP amount memo body (c + 1) h) |>.lift fun (⟨b', hb⟩, memo) =>
+    Squash.mk (⟨mkForallE ty' b', by rw [liftLooseBVarsP]; simp [hcut, ht, hb, mkForallE]⟩, memo)
+  | .letE ty val body .. =>
+    enterLLP amount ty c memo (fun h => liftLooseBVarsXP amount memo ty c h) |>.lift fun (⟨ty', ht⟩, memo) =>
+    enterLLP amount val c memo (fun h => liftLooseBVarsXP amount memo val c h) |>.lift fun (⟨v', hv⟩, memo) =>
+    enterLLP amount body (c + 1) memo (fun h => liftLooseBVarsXP amount memo body (c + 1) h) |>.lift fun (⟨b', hb⟩, memo) =>
+    Squash.mk (⟨mkLetE ty' v' b', by rw [liftLooseBVarsP]; simp [hcut, ht, hv, hb, mkLetE]⟩, memo)
+  | .proj sn i sub .. =>
+    enterLLP amount sub c memo (fun h => liftLooseBVarsXP amount memo sub c h) |>.lift fun (⟨s', hs⟩, memo) =>
+    Squash.mk (⟨mkProj sn i s', by rw [liftLooseBVarsP]; simp [hcut, hs, mkProj]⟩, memo)
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The cached `Expr.liftLooseBVars amount c`: the cutoff, then the
+walk. -/
+def liftLooseBVarsC (amount : Nat) (e : @& Expr) (c : Nat := 0) : Expr :=
+  if hcut : e.bvarB ≤ c then e else
+  resTerm (liftLooseBVarsXP amount none e c hcut)
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The plain descent of `abstractRangeC`: the reference of
+`abstractRangeXP`. -/
+def abstractRangeP (d k : Nat) (e : Expr) (c : Nat) : Expr :=
+  if e.fvarB ≤ d then e else
+  match e with
+  | .fvar idx .. =>
+    if d ≤ idx ∧ idx < d + k then Expr.mkBvar (c + (d + k - 1 - idx)) else e
+  | .bvar .. | .sort .. | .const .. | .lit .. => e
+  | .app f a .. => mkApp (abstractRangeP d k f c) (abstractRangeP d k a c)
+  | .lam ty body .. =>
+    mkLam (abstractRangeP d k ty c) (abstractRangeP d k body (c + 1))
+  | .forallE ty body .. =>
+    mkForallE (abstractRangeP d k ty c) (abstractRangeP d k body (c + 1))
+  | .letE ty val body .. =>
+    mkLetE (abstractRangeP d k ty c) (abstractRangeP d k val c)
+      (abstractRangeP d k body (c + 1))
+  | .proj sn i sub .. => mkProj sn i (abstractRangeP d k sub c)
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- (Task #316.) The child step of `abstractRangeXP`, pointer-keyed. -/
+@[inline] def enterAbsRP (d k : Nat) (e : @& Expr) (c : Nat) (memo : MemoXP (abstractRangeP d k))
+    (rec : (hcut : ¬ e.fvarB ≤ d) → Squash (ResXP (abstractRangeP d k) e c)) :
+    Squash (ResXP (abstractRangeP d k) e c) :=
+  if hcut : e.fvarB ≤ d then Squash.mk (⟨e, (abstractRangeP_cut hcut).symm⟩, memo)
+  else if !isCompound e then rec hcut
+  else withExcl e fun excl =>
+    if excl then rec hcut else memo.shared e c fun _ => rec hcut
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The walk of `abstractRangeC`. -/
+def abstractRangeXP (d k : Nat) (memo : MemoXP (abstractRangeP d k)) (e : @& Expr) (c : Nat)
+    (hcut : ¬ e.fvarB ≤ d) : Squash (ResXP (abstractRangeP d k) e c) :=
+  match e with
+  | .fvar idx ty .. =>
+    Squash.mk (⟨if d ≤ idx ∧ idx < d + k then Expr.mkBvar (c + (d + k - 1 - idx))
+        else .fvar idx ty,
+      by rw [abstractRangeP]; simp [hcut]⟩, memo)
+  | .bvar i .. => Squash.mk (⟨.bvar i, by rw [abstractRangeP]; simp [hcut]⟩, memo)
+  | .sort u .. => Squash.mk (⟨.sort u, by rw [abstractRangeP]; simp [hcut]⟩, memo)
+  | .const n us .. => Squash.mk (⟨.const n us, by rw [abstractRangeP]; simp [hcut]⟩, memo)
+  | .lit l .. => Squash.mk (⟨.lit l, by rw [abstractRangeP]; simp [hcut]⟩, memo)
+  | .app f a .. =>
+    enterAbsRP d k f c memo (fun h => abstractRangeXP d k memo f c h) |>.lift fun (⟨f', hf⟩, memo) =>
+    enterAbsRP d k a c memo (fun h => abstractRangeXP d k memo a c h) |>.lift fun (⟨a', ha⟩, memo) =>
+    Squash.mk (⟨mkApp f' a', by rw [abstractRangeP]; simp [hcut, hf, ha, mkApp]⟩, memo)
+  | .lam ty body .. =>
+    enterAbsRP d k ty c memo (fun h => abstractRangeXP d k memo ty c h) |>.lift fun (⟨ty', ht⟩, memo) =>
+    enterAbsRP d k body (c + 1) memo (fun h => abstractRangeXP d k memo body (c + 1) h) |>.lift fun (⟨b', hb⟩, memo) =>
+    Squash.mk (⟨mkLam ty' b', by rw [abstractRangeP]; simp [hcut, ht, hb, mkLam]⟩, memo)
+  | .forallE ty body .. =>
+    enterAbsRP d k ty c memo (fun h => abstractRangeXP d k memo ty c h) |>.lift fun (⟨ty', ht⟩, memo) =>
+    enterAbsRP d k body (c + 1) memo (fun h => abstractRangeXP d k memo body (c + 1) h) |>.lift fun (⟨b', hb⟩, memo) =>
+    Squash.mk (⟨mkForallE ty' b', by rw [abstractRangeP]; simp [hcut, ht, hb, mkForallE]⟩, memo)
+  | .letE ty val body .. =>
+    enterAbsRP d k ty c memo (fun h => abstractRangeXP d k memo ty c h) |>.lift fun (⟨ty', ht⟩, memo) =>
+    enterAbsRP d k val c memo (fun h => abstractRangeXP d k memo val c h) |>.lift fun (⟨v', hv⟩, memo) =>
+    enterAbsRP d k body (c + 1) memo (fun h => abstractRangeXP d k memo body (c + 1) h) |>.lift fun (⟨b', hb⟩, memo) =>
+    Squash.mk (⟨mkLetE ty' v' b', by rw [abstractRangeP]; simp [hcut, ht, hv, hb, mkLetE]⟩, memo)
+  | .proj sn i sub .. =>
+    enterAbsRP d k sub c memo (fun h => abstractRangeXP d k memo sub c h) |>.lift fun (⟨s', hs⟩, memo) =>
+    Squash.mk (⟨mkProj sn i s', by rw [abstractRangeP]; simp [hcut, hs, mkProj]⟩, memo)
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The cached `Expr.abstractRange` (`k = 0` is the identity and skips
+the traversal, as in the arena): the cutoff, then the walk. -/
+def abstractRangeC (e : @& Expr) (d k : Nat) (c : Nat := 0) : Expr :=
+  match k with
+  | 0 => e
+  | _ + 1 =>
+    if hcut : e.fvarB ≤ d then e else
+    resTerm (abstractRangeXP d k none e c hcut)
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The nodes a `Bool` memo entry can save a descent of: the compound
+nodes, and `fvar` — every walk of this section descends into the
+ANNOTATION, so the cached fvar range does not decide an `fvar` node. -/
+@[inline] def isCompoundF : Expr → Bool
+  | .app .. | .lam .. | .forallE .. | .letE .. | .proj .. | .fvar .. => true
+  | _ => false
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The plain descent of `wscopedBC`: the reference the walk is
+verified against (`wscopedBP_spec`, `ConLeche/Verify/Cached/OpsC.lean`,
+is the equation to `Expr.wscopedB`).  The cursor is the node's second
+argument, as it is for the substitution walks — it CHANGES at `fvar`,
+where the annotation is entered at the variable's own index, so the
+memo key must carry it. -/
+def wscopedBP (e : Expr) (d : Nat) : Bool :=
+  if e.fvarB == 0 then true else
+  match e with
+  | .bvar .. | .sort .. | .const .. | .lit .. => true
+  | .fvar idx ty .. => idx < d && wscopedBP ty idx
+  | .app f a .. => wscopedBP f d && wscopedBP a d
+  | .lam ty body .. | .forallE ty body .. => wscopedBP ty d && wscopedBP body d
+  | .letE ty val body .. => wscopedBP ty d && wscopedBP val d && wscopedBP body d
+  | .proj _ _ sub .. => wscopedBP sub d
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The decision of a `Bool` walk's result (the quotient lifts: the
+decision is fixed by its subtype). -/
+@[inline] def resBool {c : Bool} {M : Type} (s : Squash ({ r : Bool // r = c } × M)) : Bool :=
+  Quotient.lift (fun p => p.1.1) (fun p q _ => by rw [p.1.2, q.1.2]) s
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The plain descent of `hasLooseBVarInC`, the cutoff included: the
+reference `hasLooseBVarInXP` carries its own proof against
+(`hasLooseBVarInP_false`, `ConLeche/Verify/Cached/DiscC4.lean`). -/
+def hasLooseBVarInP (w : Nat) (e : Expr) (d : Nat) : Bool :=
+  if e.bvarB ≤ d then false else
+  match e with
+  | .bvar j => decide (d ≤ j) && decide (j < d + w)
+  | .fvar .. | .sort _ | .const .. | .lit _ => false
+  | .app f a => hasLooseBVarInP w f d || hasLooseBVarInP w a d
+  | .lam ty b => hasLooseBVarInP w ty d || hasLooseBVarInP w b (d + 1)
+  | .forallE ty b => hasLooseBVarInP w ty d || hasLooseBVarInP w b (d + 1)
+  | .letE t v b =>
+    hasLooseBVarInP w t d || hasLooseBVarInP w v d || hasLooseBVarInP w b (d + 1)
+  | .proj _ _ s => hasLooseBVarInP w s d
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The plain descent of `mentionsAnyConstC`. -/
+def mentionsAnyConstP (names : List Name) (e : Expr) : Bool :=
+  match e with
+  | .bvar .. | .sort .. | .lit .. => false
+  | .const n .. => names.contains n
+  | .fvar _ ty .. => mentionsAnyConstP names ty
+  | .app f a .. => mentionsAnyConstP names f || mentionsAnyConstP names a
+  | .lam ty body .. | .forallE ty body .. =>
+    mentionsAnyConstP names ty || mentionsAnyConstP names body
+  | .letE ty val body .. =>
+    mentionsAnyConstP names ty || mentionsAnyConstP names val || mentionsAnyConstP names body
+  | .proj s _ sub .. => names.contains s || mentionsAnyConstP names sub
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- Core of `fvarLeavesC` (memoized set accumulation).
+
+**The one walk of the tree whose memo is not the `withExclusive`
+idiom, and why** (task #319, which put that idiom in front of every
+other traversal memo — the substitution walks, `Expr.beqGoX`, and the
+`Bool`-valued walks above).  This memo is a visited SET, and its
+entries are `Unit`: what an entry means is *"this node's leaves are
+already in `acc`"* — a statement about the ACCUMULATOR, which changes
+at every step, and about the walk's own descent path, not about the
+node.  It is the verification's `SeenInv`
+(`ConLeche/Verify/Cached/GuardsC.lean`): every key of `seen` either
+has all its leaves in `acc` already or is *gray* (being processed).
+An entry carrying no value cannot prove itself, so this memo needs a
+table invariant — which is exactly what the idiom removes.
+
+The self-proving alternative is an entry carrying the node's own leaf
+list, `{ r : List (Nat × Expr) // r = Expr.fvarLeaves e }`, appended
+at the parent.  That closes as a proof — it is the `Bool` walks'
+shape with a list in place of the decision — but it is the wrong
+ALGORITHM: `Expr.fvarLeaves` concatenates at every compound node
+(`ConLeche/Kernel/ExprOps.lean`), so a node's own list is the leaf
+list of its TREE unfolding, and materialising one per entry is
+precisely the blow-up the `seen` set exists to avoid (an `app e e`
+ladder gives the root a list of `2^k` elements on `k` nodes; the
+affine frontier's 3.9 · 10⁸-node unfolding of a 3 106-node DAG is the
+real instance).  Weakening the subtype to a membership
+characterization — all the one consumer, `leafMem`, needs — closes
+just as easily and does not shrink the lists: siblings still
+concatenate, and deduplicating at each node reintroduces a per-node
+set, i.e. the table the entry was meant to replace.  So the
+accumulator is the algorithm here, and the accumulator is what cannot
+be carried in a type.  DESIGN.md, task #319, records this as the one
+permitted exception and the open question behind it. -/
+def fvarLeavesGoC (acc : List (Nat × Expr))
+    (seen : Std.HashMap Expr Unit) (e : Expr) :
+    List (Nat × Expr) × Std.HashMap Expr Unit :=
+  if e.fvarB == 0 then (acc, seen) else
+  match seen[e]? with
+  | some _ => (acc, seen)
+  | none =>
+    let seen := seen.insert e ()
+    match e with
+    | .bvar .. | .sort .. | .const .. | .lit .. => (acc, seen)
+    | .fvar idx ty .. => fvarLeavesGoC ((idx, ty) :: acc) seen ty
+    | .app f a .. =>
+      let (acc, seen) := fvarLeavesGoC acc seen f
+      fvarLeavesGoC acc seen a
+    | .lam ty body .. | .forallE ty body .. =>
+      let (acc, seen) := fvarLeavesGoC acc seen ty
+      fvarLeavesGoC acc seen body
+    | .letE ty val body .. =>
+      let (acc, seen) := fvarLeavesGoC acc seen ty
+      let (acc, seen) := fvarLeavesGoC acc seen val
+      fvarLeavesGoC acc seen body
+    | .proj _ _ sub .. => fvarLeavesGoC acc seen sub
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The reachable `fvar` leaves (hereditarily through annotations). -/
+def fvarLeavesC (e : Expr) : List (Nat × Expr) :=
+  (fvarLeavesGoC [] {} e).1
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- Is `(idx, ty)` in the base leaf list?  Compares the annotation
+with `Expr.beq` (pointer-first). -/
+def leafMem : List (Nat × Expr) → Nat → Expr → Bool
+  | [], _, _ => false
+  | (i, t) :: rest, idx, ty =>
+    (i == idx && t == ty) || leafMem rest idx ty
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The plain descent of the leaf-subset walk: the reference the walk
+is verified against (`leavesSubP_spec`,
+`ConLeche/Verify/Cached/GuardsC.lean`, is the equation to the
+`Expr`-level leaf-subset boolean).  `leafMem` is the membership
+test (task #86). -/
+def leavesSubP (bl : List (Nat × Expr)) (e : Expr) : Bool :=
+  if e.fvarB == 0 then true else
+  match e with
+  | .bvar .. | .sort .. | .const .. | .lit .. => true
+  | .fvar idx ty .. => leafMem bl idx ty && leavesSubP bl ty
+  | .app f a .. => leavesSubP bl f && leavesSubP bl a
+  | .lam ty body .. | .forallE ty body .. => leavesSubP bl ty && leavesSubP bl body
+  | .letE ty val body .. =>
+    leavesSubP bl ty && leavesSubP bl val && leavesSubP bl body
+  | .proj _ _ sub .. => leavesSubP bl sub
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The child step of `leavesSubXP`: the cutoff, the compound test,
+the exclusivity read. -/
+@[inline] def enterLSub (bl : @& List (Nat × Expr)) (e : @& Expr)
+    (memo : MemoB0 (leavesSubP bl))
+    (rec : (hcut : (e.fvarB == 0) = false) → Squash (ResB0 (leavesSubP bl) e)) :
+    Squash (ResB0 (leavesSubP bl) e) :=
+  match hcut : e.fvarB == 0 with
+  | true => Squash.mk (⟨true, (leavesSubP_cut hcut).symm⟩, memo)
+  | false =>
+    if !isCompoundF e then rec hcut
+    else withExcl e fun excl =>
+      if excl then rec hcut else memo.shared e fun _ => rec hcut
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The leaf-subset walk (the node is past the cutoff: `leavesSubC`
+and `enterLSub` test it). -/
+def leavesSubXP (bl : @& List (Nat × Expr)) (memo : MemoB0 (leavesSubP bl))
+    (e : @& Expr) (hcut : (e.fvarB == 0) = false) : Squash (ResB0 (leavesSubP bl) e) :=
+  match e with
+  | .bvar .. => Squash.mk (⟨true, by rw [leavesSubP]; simp [hcut]⟩, memo)
+  | .sort .. => Squash.mk (⟨true, by rw [leavesSubP]; simp [hcut]⟩, memo)
+  | .const .. => Squash.mk (⟨true, by rw [leavesSubP]; simp [hcut]⟩, memo)
+  | .lit .. => Squash.mk (⟨true, by rw [leavesSubP]; simp [hcut]⟩, memo)
+  | .fvar idx ty .. =>
+    if hlm : leafMem bl idx ty = true then
+      enterLSub bl ty memo (fun h => leavesSubXP bl memo ty h)
+        |>.lift fun (⟨rt, ht⟩, memo) =>
+      Squash.mk (⟨rt, by rw [leavesSubP]; simp [hcut, hlm, ← ht]⟩, memo)
+    else
+      Squash.mk (⟨false, by rw [leavesSubP]; simp [hcut, hlm]⟩, memo)
+  | .app f a .. =>
+    enterLSub bl f memo (fun h => leavesSubXP bl memo f h) |>.lift fun (⟨rf, hf⟩, memo) =>
+    match rf, hf with
+    | true, hf =>
+      enterLSub bl a memo (fun h => leavesSubXP bl memo a h) |>.lift fun (⟨ra, ha⟩, memo) =>
+      Squash.mk (⟨ra, by rw [leavesSubP]; simp [hcut, ← hf, ← ha]⟩, memo)
+    | false, hf =>
+      Squash.mk (⟨false, by rw [leavesSubP]; simp [hcut, ← hf]⟩, memo)
+  | .lam ty body .. =>
+    enterLSub bl ty memo (fun h => leavesSubXP bl memo ty h) |>.lift fun (⟨rt, ht⟩, memo) =>
+    match rt, ht with
+    | true, ht =>
+      enterLSub bl body memo (fun h => leavesSubXP bl memo body h)
+        |>.lift fun (⟨rb, hb⟩, memo) =>
+      Squash.mk (⟨rb, by rw [leavesSubP]; simp [hcut, ← ht, ← hb]⟩, memo)
+    | false, ht =>
+      Squash.mk (⟨false, by rw [leavesSubP]; simp [hcut, ← ht]⟩, memo)
+  | .forallE ty body .. =>
+    enterLSub bl ty memo (fun h => leavesSubXP bl memo ty h) |>.lift fun (⟨rt, ht⟩, memo) =>
+    match rt, ht with
+    | true, ht =>
+      enterLSub bl body memo (fun h => leavesSubXP bl memo body h)
+        |>.lift fun (⟨rb, hb⟩, memo) =>
+      Squash.mk (⟨rb, by rw [leavesSubP]; simp [hcut, ← ht, ← hb]⟩, memo)
+    | false, ht =>
+      Squash.mk (⟨false, by rw [leavesSubP]; simp [hcut, ← ht]⟩, memo)
+  | .letE ty val body .. =>
+    enterLSub bl ty memo (fun h => leavesSubXP bl memo ty h) |>.lift fun (⟨rt, ht⟩, memo) =>
+    match rt, ht with
+    | true, ht =>
+      enterLSub bl val memo (fun h => leavesSubXP bl memo val h)
+        |>.lift fun (⟨rv, hv⟩, memo) =>
+      match rv, hv with
+      | true, hv =>
+        enterLSub bl body memo (fun h => leavesSubXP bl memo body h)
+          |>.lift fun (⟨rb, hb⟩, memo) =>
+        Squash.mk (⟨rb, by rw [leavesSubP]; simp [hcut, ← ht, ← hv, ← hb]⟩, memo)
+      | false, hv =>
+        Squash.mk (⟨false, by rw [leavesSubP]; simp [hcut, ← ht, ← hv]⟩, memo)
+    | false, ht =>
+      Squash.mk (⟨false, by rw [leavesSubP]; simp [hcut, ← ht]⟩, memo)
+  | .proj _ _ sub .. =>
+    enterLSub bl sub memo (fun h => leavesSubXP bl memo sub h) |>.lift fun (⟨rs, hs⟩, memo) =>
+    Squash.mk (⟨rs, by rw [leavesSubP]; simp [hcut, ← hs]⟩, memo)
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The cached leaf-subset test: the cutoff, then the walk. -/
+def leavesSubC (bl : List (Nat × Expr)) (e : Expr) : Bool :=
+  match hcut : e.fvarB == 0 with
+  | true => true
+  | false => resBool (leavesSubXP bl none e hcut)
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The fabrication leaf guard: every `fvar` leaf of `fab` is one of
+`base` (short-circuits on `fvar`-free fabrications, `O(1)` off the
+cached range). -/
+def leafGuard (fab base : Expr) : Bool :=
+  !fab.hasFvar || leavesSubC (fvarLeavesC base) fab
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- Core of `piResidual` (bulk form, task #50).
+
+Not structural: the `bvar` arm re-enters on the same argument list with
+the accumulator flushed.  Measure `(as.length, acc.length)` — the
+`forallE` arm consumes an argument, the `bvar` arm keeps the arguments
+and empties a nonempty accumulator. -/
+def piResidualAcc : List Expr → Expr → List Expr → Option Expr
+  | acc, e, [] => some (instantiateListC e acc 0)
+  | acc, e, a :: as =>
+    match e with
+    | .forallE _ b .. => piResidualAcc (a :: acc) b as
+    | .bvar .. =>
+      match acc with
+      | [] => none
+      | _ :: _ => piResidualAcc [] (instantiateListC e acc 0) (a :: as)
+    | _ => none
+termination_by acc _ as => (as.length, acc.length)
+decreasing_by
+  all_goals first
+    | (apply Prod.Lex.right; simp +arith +decide)
+    | (apply Prod.Lex.left; simp +arith +decide)
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+@[inherit_doc piResidualAcc]
+def piResidual (e : Expr) (args : List Expr) : Option Expr :=
+  piResidualAcc [] e args
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The cached `closeLams`: `closeTelescopeC` with `λ` binders. -/
+def closeLamsGoC (i : Nat) : Nat → List Expr → Expr → Expr
+  | k, [], body => abstractRangeC body i k
+  | k, dom :: bs, body => mkLam (abstractRangeC dom i k) (closeLamsGoC i (k + 1) bs body)
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+@[inherit_doc closeLamsGoC]
+def closeLamsC (bs : List Expr) (i : Nat) (body : Expr) : Expr :=
+  closeLamsGoC i 0 bs body
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Expr
+/-- The plain descent of `allLevelParamsDefinedC`: the reference the
+walk is verified against (`allLevelParamsDefinedP_spec`,
+`ConLeche/Verify/Cached/GuardsC.lean`, is the equation to
+`Expr.allLevelParamsDefined`).  The cutoff: a node without a level
+parameter is `true` without traversal. -/
+def allLevelParamsDefinedP (params : List Name) (e : Expr) : Bool :=
+  if e.hasLP then
+    match e with
+    | .bvar .. | .lit .. => true
+    | .sort u .. => Level.allParamsDefined params u
+    | .const _ us .. => us.all (Level.allParamsDefined params)
+    | .fvar _ ty .. => allLevelParamsDefinedP params ty
+    | .app f a .. =>
+      allLevelParamsDefinedP params f && allLevelParamsDefinedP params a
+    | .lam ty body .. | .forallE ty body .. =>
+      allLevelParamsDefinedP params ty && allLevelParamsDefinedP params body
+    | .letE ty val body .. =>
+      allLevelParamsDefinedP params ty && allLevelParamsDefinedP params val
+        && allLevelParamsDefinedP params body
+    | .proj _ _ sub .. => allLevelParamsDefinedP params sub
+  else true
+end ConLeche.Expr
+end
+
+section
+namespace ConLeche.Cached
+open ConLeche
+/-- `c = n`, the cached hashes first: a different hash decides at once, without a call. -/
+@[inline] def nameIsC (c n : Name) : Bool := c.hashData == n.hashData && decide (c = n)
+end ConLeche.Cached
+end
+
+section
+namespace ConLeche.Cached
+open ConLeche
+/-- The cached checker's monad: the per-declaration memo state over
+`CheckM`. -/
+abbrev CheckCM := StateT CState CheckM
+end ConLeche.Cached
+end
+
+section
+namespace ConLeche.Cached
+open ConLeche
+/-- `Expr.instantiate1`; the identity — the same node, by reference —
+when the target has no loose bvar at or above the cursor. -/
+@[inline] def inst1M (e v : Expr) (d : Nat := 0) : CheckCM Expr :=
+  pure (Expr.instantiate1C e v d)
+end ConLeche.Cached
+end
+
+section
+namespace ConLeche.Cached
+open ConLeche
+variable {m : Type → Type}
+/-- **`whnfCore`'s easy cases** (official `whnf_core`, "handle easy
+cases"): the kinds that are their own head normal form
+(`whnfCoreStepI`'s `.done e` arm).  The loop returns them before the
+memo, at every step: no lookup, no insert.  A free variable is never a
+let-variable here (lets are ζ-reduced by instantiation), so it is easy,
+as official's non-let `FVar`. -/
+@[inline] def whnfCoreEasy : Expr → Bool
+  | .sort _ | .fvar .. | .forallE .. | .lam .. | .const .. | .lit _ => true
+  | _ => false
+end ConLeche.Cached
+end
+
+section
+namespace ConLeche.Cached
+open ConLeche
+variable {m : Type → Type}
+/-- The pending keys past a step on `e`: `e` joins them where it is
+stored (`b`). -/
+@[inline] def pushKey (b : Bool) (e : Expr) (pend : List Expr) : List Expr :=
+  if b then e :: pend else pend
+end ConLeche.Cached
+end
+
+section
+namespace ConLeche.Cached
+open ConLeche
+variable (mode : CheckMode)
+/-- The cached `structUsedLater`: the occurrence by `hasLooseBVarBC`. -/
+def structUsedLaterC (cty : Expr) (nP j : Nat) : Bool :=
+  match cty.stripPis (nP + j + 1) with
+  | some (_, rest) => Expr.hasLooseBVarBC 0 rest
+  | none => false
+end ConLeche.Cached
+end
+
+section
+namespace ConLeche.Cached
+open ConLeche
+variable (mode : CheckMode)
+/-- The cached `Expr.eraseFVarTys`. -/
+def eraseFVarTysC (e : Expr) : Expr :=
+  Expr.replaceFVarsC (fun i => some (.fvar i (.sort .zero))) e
+end ConLeche.Cached
+end
+
+section
+namespace ConLeche.Cached
+open ConLeche
+/-- The cached `Expr.dropVars`: each variable dropped by `instantiate1C`
+(`dropVarsC_eq`). -/
+def Expr.dropVarsC : Nat → Expr → Expr
+  | 0, e => e
+  | n + 1, e => Expr.dropVarsC n (Expr.instantiate1C e (.sort .zero))
+end ConLeche.Cached
+end
+
+frontx_ind_gate ConLeche.Expr.hasLP on TExpr
+frontx_ind ConLeche.Expr.hasLP on TExpr
+
+frontx_ind_gate ConLeche.Expr.beqIsApp on TExpr
+frontx_ind ConLeche.Expr.beqIsApp on TExpr
+
+frontx_ind_gate ConLeche.Expr.BeqOutX.cast on TExpr
+
+-- Expr.looseBVarsBounded: already compiled in Riscv/Frontx (ExprExamples)
+
+frontx_ind_gate ConLeche.Expr.liftLooseBVars on TExpr
+
+-- Expr.isForallE: already compiled in Riscv/Frontx (ExprExamples)
+
+frontx_ind_gate ConLeche.Expr.mkAppN on TExpr
+frontx_ind ConLeche.Expr.mkAppN on TExpr
+
+frontx_ind_gate ConLeche.natPredName on TExpr
+
+frontx_ind_gate ConLeche.natPowName on TExpr
+
+frontx_ind_gate ConLeche.natModName on TExpr
+
+frontx_ind_gate ConLeche.natXorName on TExpr
+
+frontx_ind_gate ConLeche.natSuccName on TExpr
+
+frontx_ind_gate ConLeche.listNilName on TExpr
+
+-- Expr.depth: already compiled in Riscv/Frontx (ExprExamples)
+
+frontx_ind_gate ConLeche.Expr.instantiate1C on TExpr
+frontx_ind ConLeche.Expr.instantiate1C on TExpr
+
+frontx_ind_gate ConLeche.Expr.piSortTeleLen? on TExpr
+
+frontx_ind_gate ConLeche.lamProj? on TExpr
+
+frontx_ind_gate ConLeche.falseName on TExpr
+
+frontx_ind_gate ConLeche.quotIndName on TExpr
+
+frontx_ind_gate ConLeche.BasisDSL.prop on TExpr
+
+frontx_ind_gate ConLeche.natRecMotive on TExpr
+
+frontx_ind_gate ConLeche.quotLiftH on TExpr
+
+frontx_ind_gate ConLeche.andRecName on TExpr
+
+frontx_ind_gate ConLeche.pinLinkOk on TExpr
+
+frontx_ind_gate ConLeche.rawNatLit? on TExpr
+
+frontx_ind_gate ConLeche.boolTrueName on TExpr
+
+frontx_ind_gate ConLeche.reservedRecName on TExpr
+frontx_ind ConLeche.reservedRecName on TExpr
+
+frontx_ind_gate ConLeche.Expr.substConst0 on TExpr
+
+frontx_ind_gate ConLeche.unitFieldTele on TExpr
+frontx_ind ConLeche.unitFieldTele on TExpr
+
+frontx_ind_gate ConLeche.Expr.hasLooseBVarB on TExpr
+frontx_ind ConLeche.Expr.hasLooseBVarB on TExpr
+
+-- Expr.isLit: already compiled in Riscv/Frontx (ExprExamples)
+
+frontx_ind_gate ConLeche.propextName on TExpr
+
+frontx_ind_gate ConLeche.iffRecName on TExpr
+
+frontx_ind_gate ConLeche.structPsAt on TExpr
+
+frontx_ind_gate ConLeche.structProjBodiesGo on TExpr
+
+frontx_ind_gate ConLeche.Expr.nestOcc on TExpr
+
+frontx_ind_gate ConLeche.nestKeyMap on TExpr
+frontx_ind ConLeche.nestKeyMap on TExpr
+
+frontx_ind_gate ConLeche.reduceBoolDeclPin on TExpr
+
+frontx_ind_gate ConLeche.trustCompilerName on TExpr
+
+frontx_ind_gate ConLeche.ofReduceBoolName on TExpr
+
+frontx_ind_gate ConLeche.reduceCertVar on TExpr
+frontx_ind ConLeche.reduceCertVar on TExpr
+
+frontx_ind_gate ConLeche.targetPiDomsWith on TExpr
+
+frontx_ind_gate ConLeche.divModDeclPin on TExpr
+
+frontx_ind_gate ConLeche.divModCertApplied on TExpr
+frontx_ind ConLeche.divModCertApplied on TExpr
+
+frontx_ind_gate ConLeche.ClassGen.binder on TExpr
+
+frontx_ind_gate ConLeche.ClassGen.motiveTy on TExpr
+
+frontx_ind_gate ConLeche.ClassGen.prefixBinders on TExpr
+
+frontx_ind_gate ConLeche.Expr.dropVars on TExpr
+frontx_ind ConLeche.Expr.dropVars on TExpr
+
+frontx_ind_gate ConLeche.Expr.liftLooseBVarsC on TExpr
+
+frontx_ind_gate ConLeche.Expr.abstractRangeP on TExpr
+
+frontx_ind_gate ConLeche.Expr.wscopedBP on TExpr
+frontx_ind ConLeche.Expr.wscopedBP on TExpr
+
+frontx_ind_gate ConLeche.Expr.hasLooseBVarInP on TExpr
+
+frontx_ind_gate ConLeche.Expr.mentionsAnyConstP on TExpr
+
+frontx_ind_gate ConLeche.Expr.fvarLeavesC on TExpr
+
+frontx_ind_gate ConLeche.Expr.leafGuard on TExpr
+frontx_ind ConLeche.Expr.leafGuard on TExpr
+
+frontx_ind_gate ConLeche.Expr.piResidual on TExpr
+frontx_ind ConLeche.Expr.piResidual on TExpr
+
+frontx_ind_gate ConLeche.Expr.closeLamsC on TExpr
+frontx_ind ConLeche.Expr.closeLamsC on TExpr
+
+frontx_ind_gate ConLeche.Expr.allLevelParamsDefinedP on TExpr
+
+frontx_ind_gate ConLeche.Cached.nameIsC on TExpr
+frontx_ind ConLeche.Cached.nameIsC on TExpr
+
+frontx_ind_gate ConLeche.Cached.inst1M on TExpr
+
+frontx_ind_gate ConLeche.Cached.whnfCoreEasy on TExpr
+frontx_ind ConLeche.Cached.whnfCoreEasy on TExpr
+
+frontx_ind_gate ConLeche.Cached.pushKey on TExpr
+frontx_ind ConLeche.Cached.pushKey on TExpr
+
+frontx_ind_gate ConLeche.Cached.structUsedLaterC on TExpr
+
+frontx_ind_gate ConLeche.Cached.eraseFVarTysC on TExpr
+frontx_ind ConLeche.Cached.eraseFVarTysC on TExpr
+
+frontx_ind_gate ConLeche.Cached.Expr.dropVarsC on TExpr
+frontx_ind ConLeche.Cached.Expr.dropVarsC on TExpr

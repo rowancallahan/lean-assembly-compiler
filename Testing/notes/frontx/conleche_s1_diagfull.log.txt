@@ -1,0 +1,439 @@
+/root/s1/ConLecheDiagFull.lean:142:4: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Decidable (x0 = y0)
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+/root/s1/ConLecheDiagFull.lean:241:24: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  BEq Expr
+
+Hint: Adding the command `deriving instance BEq for ConLeche.Expr` may allow Lean to derive the missing instance.
+/root/s1/ConLecheDiagFull.lean:242:10: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  BEq Expr
+
+Hint: Adding the command `deriving instance BEq for ConLeche.Expr` may allow Lean to derive the missing instance.
+/root/s1/ConLecheDiagFull.lean:244:4: error: Type mismatch
+  some r
+has type
+  Option ?m.13
+but is expected to have type
+  Type
+/root/s1/ConLecheDiagFull.lean:269:4: warning: declaration uses `sorry`
+/root/s1/ConLecheDiagFull.lean:275:24: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  BEq Expr
+
+Hint: Adding the command `deriving instance BEq for ConLeche.Expr` may allow Lean to derive the missing instance.
+/root/s1/ConLecheDiagFull.lean:276:10: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  BEq Expr
+
+Hint: Adding the command `deriving instance BEq for ConLeche.Expr` may allow Lean to derive the missing instance.
+/root/s1/ConLecheDiagFull.lean:278:4: error: Type mismatch
+  some r
+has type
+  Option ?m.13
+but is expected to have type
+  Type
+/root/s1/ConLecheDiagFull.lean:303:4: warning: declaration uses `sorry`
+/root/s1/ConLecheDiagFull.lean:986:10: error(lean.unknownIdentifier): Unknown constant `ConLeche.Expr.ptrDec`
+/root/s1/ConLecheDiagFull.lean:1029:32: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  BEq PKey
+
+Hint: Adding the command `deriving instance BEq for ConLeche.Expr.PKey` may allow Lean to derive the missing instance.
+/root/s1/ConLecheDiagFull.lean:1044:14: warning: declaration uses `sorry`
+/root/s1/ConLecheDiagFull.lean:1044:62: warning: unused variable `key`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+/root/s1/ConLecheDiagFull.lean:1044:74: warning: unused variable `p`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+/root/s1/ConLecheDiagFull.lean:1056:39: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  BEq PKey
+
+Hint: Adding the command `deriving instance BEq for ConLeche.Expr.PKey` may allow Lean to derive the missing instance.
+/root/s1/ConLecheDiagFull.lean:1072:14: warning: declaration uses `sorry`
+/root/s1/ConLecheDiagFull.lean:1072:69: warning: unused variable `key`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+/root/s1/ConLecheDiagFull.lean:1073:5: warning: unused variable `p`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+/root/s1/ConLecheDiagFull.lean:1084:39: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  BEq PKey
+
+Hint: Adding the command `deriving instance BEq for ConLeche.Expr.PKey` may allow Lean to derive the missing instance.
+/root/s1/ConLecheDiagFull.lean:1100:14: warning: declaration uses `sorry`
+/root/s1/ConLecheDiagFull.lean:1100:71: warning: unused variable `key`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+/root/s1/ConLecheDiagFull.lean:1101:5: warning: unused variable `p`
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+/root/s1/ConLecheDiagFull.lean:1116:10: error(lean.unknownIdentifier): Unknown constant `ConLeche.Expr.ptrDec`
+/root/s1/ConLecheDiagFull.lean:1128:8: error(lean.unknownIdentifier): Unknown constant `ConLeche.Expr.ptrDec`
+/root/s1/ConLecheDiagFull.lean:1157:10: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  GetElem? (HTab s) PKey ?m.45 ?m.46
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+/root/s1/ConLecheDiagFull.lean:1158:16: error(lean.invalidField): Invalid field notation: Type of
+  p
+is not known; cannot resolve field `hit`
+
+Hint: Consider replacing the field projection with a call to one of the following:
+  • `BEnt.hit`
+  • `NEnt.hit`
+  • `PEnt.hit`
+  • `Proven.Mach.IR.SR.hit`
+/root/s1/ConLecheDiagFull.lean:1211:10: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  GetElem? (BTab s) PKey ?m.45 ?m.46
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+/root/s1/ConLecheDiagFull.lean:1212:16: error(lean.invalidField): Invalid field notation: Type of
+  p
+is not known; cannot resolve field `hit`
+
+Hint: Consider replacing the field projection with a call to one of the following:
+  • `BEnt.hit`
+  • `NEnt.hit`
+  • `PEnt.hit`
+  • `Proven.Mach.IR.SR.hit`
+/root/s1/ConLecheDiagFull.lean:1262:10: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  GetElem? (NTab s) PKey ?m.47 ?m.48
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+/root/s1/ConLecheDiagFull.lean:1263:16: error(lean.invalidField): Invalid field notation: Type of
+  p
+is not known; cannot resolve field `hit`
+
+Hint: Consider replacing the field projection with a call to one of the following:
+  • `BEnt.hit`
+  • `NEnt.hit`
+  • `PEnt.hit`
+  • `Proven.Mach.IR.SR.hit`
+/root/s1/ConLecheDiagFull.lean:1276:54: error: Tactic `rewrite` failed: Did not find an occurrence of the pattern
+  p.fst.val
+in the target expression
+  (fun p => p.fst.val) p = (fun p => p.fst.val) q
+
+c : Expr
+M : Type
+s : Squash ({ r // r = c } × M)
+p q : { r // r = c } × M
+x✝ : p ≈ q
+⊢ (fun p => p.fst.val) p = (fun p => p.fst.val) q
+/root/s1/ConLecheDiagFull.lean:1331:18: error(lean.unknownIdentifier): Unknown identifier `instantiateListXP`
+/root/s1/ConLecheDiagFull.lean:1345:14: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Hashable Expr
+
+Hint: Adding the command `deriving instance Hashable for ConLeche.Expr` may allow Lean to derive the missing instance.
+/root/s1/ConLecheDiagFull.lean:1346:19: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Hashable Expr
+
+Hint: Adding the command `deriving instance Hashable for ConLeche.Expr` may allow Lean to derive the missing instance.
+/root/s1/ConLecheDiagFull.lean:1347:10: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Hashable Expr
+
+Hint: Adding the command `deriving instance Hashable for ConLeche.Expr` may allow Lean to derive the missing instance.
+/root/s1/ConLecheDiagFull.lean:1348:11: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Hashable Expr
+
+Hint: Adding the command `deriving instance Hashable for ConLeche.Expr` may allow Lean to derive the missing instance.
+/root/s1/ConLecheDiagFull.lean:1349:13: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Hashable Expr
+
+Hint: Adding the command `deriving instance Hashable for ConLeche.Expr` may allow Lean to derive the missing instance.
+/root/s1/ConLecheDiagFull.lean:1350:11: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Hashable (Expr × Expr)
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+/root/s1/ConLecheDiagFull.lean:1382:14: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Hashable (Name × List Level)
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+/root/s1/ConLecheDiagFull.lean:1383:15: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Hashable (Name × List Level)
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+/root/s1/ConLecheDiagFull.lean:1384:14: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Hashable (Name × Name × List Level)
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+/root/s1/ConLecheDiagFull.lean:1385:14: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Hashable Expr
+
+Hint: Adding the command `deriving instance Hashable for ConLeche.Expr` may allow Lean to derive the missing instance.
+/root/s1/ConLecheDiagFull.lean:1389:19: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Hashable Expr
+
+Hint: Adding the command `deriving instance Hashable for ConLeche.Expr` may allow Lean to derive the missing instance.
+/root/s1/ConLecheDiagFull.lean:1390:10: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Hashable Expr
+
+Hint: Adding the command `deriving instance Hashable for ConLeche.Expr` may allow Lean to derive the missing instance.
+/root/s1/ConLecheDiagFull.lean:1391:11: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Hashable Expr
+
+Hint: Adding the command `deriving instance Hashable for ConLeche.Expr` may allow Lean to derive the missing instance.
+/root/s1/ConLecheDiagFull.lean:1401:13: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Hashable Expr
+
+Hint: Adding the command `deriving instance Hashable for ConLeche.Expr` may allow Lean to derive the missing instance.
+/root/s1/ConLecheDiagFull.lean:1402:11: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Hashable (Expr × Expr)
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+/root/s1/ConLecheDiagFull.lean:1403:11: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Hashable Level
+
+Hint: Adding the command `deriving instance Hashable for ConLeche.Level` may allow Lean to derive the missing instance.
+/root/s1/ConLecheDiagFull.lean:1404:9: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Hashable Level
+
+Hint: Adding the command `deriving instance Hashable for ConLeche.Level` may allow Lean to derive the missing instance.
+/root/s1/ConLecheDiagFull.lean:1405:9: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Hashable (Level × Level)
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+/root/s1/ConLecheDiagFull.lean:1406:10: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Hashable (Expr × List Expr × Nat)
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+/root/s1/ConLecheDiagFull.lean:1413:28: error: overloaded, errors 
+  failed to synthesize instance of type class
+    EmptyCollection ModeMemos
+  
+  Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+  
+  Fields missing: `whnfCoreC`, `whnfCoreCheapC`, `whnfC`, `inferC`, `inferIOC`, `defeqC`
+  
+  Hint: Add missing fields:
+     ̲w̲h̲n̲f̲C̲o̲r̲e̲C̲ ̲:̲=̲ ̲_̲
+    ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲w̲h̲n̲f̲C̲o̲r̲e̲C̲h̲e̲a̲p̲C̲ ̲:̲=̲ ̲_̲
+    ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲w̲h̲n̲f̲C̲ ̲:̲=̲ ̲_̲
+    ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲i̲n̲f̲e̲r̲C̲ ̲:̲=̲ ̲_̲
+    ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲i̲n̲f̲e̲r̲I̲O̲C̲ ̲:̲=̲ ̲_̲
+    ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲ ̲d̲e̲f̲e̲q̲C̲ ̲:̲=̲ ̲_̲ ̲
+/root/s1/ConLecheDiagFull.lean:1430:53: error(lean.unknownIdentifier): Unknown constant `ConLeche.Expr.mkBvar`
+/root/s1/ConLecheDiagFull.lean:1451:7: error(lean.unknownIdentifier): Unknown identifier `withExcl`
+/root/s1/ConLecheDiagFull.lean:1449:45: error(lean.unknownIdentifier): Unknown identifier `instantiate1P_cut`
+/root/s1/ConLecheDiagFull.lean:1464:51: error(lean.unknownIdentifier): Unknown constant `ConLeche.Expr.mkBvar`
+/root/s1/ConLecheDiagFull.lean:1465:13: warning: declaration uses `sorry`
+/root/s1/ConLecheDiagFull.lean:1465:13: warning: declaration uses `sorry`
+/root/s1/ConLecheDiagFull.lean:1613:19: error(lean.unknownIdentifier): Unknown identifier `cnst`
+/root/s1/ConLecheDiagFull.lean:1621:27: error(lean.unknownIdentifier): Unknown identifier `pi`
+/root/s1/ConLecheDiagFull.lean:1631:2: error(lean.unknownIdentifier): Unknown identifier `pi`
+/root/s1/ConLecheDiagFull.lean:1961:51: error(lean.invalidField): Invalid field `abstract1`: The environment does not contain `ConLeche.Expr.abstract1`, so it is not possible to project the field `abstract1` from an expression
+  closeTelescope bs (i + 1) body
+of type `Expr`
+/root/s1/ConLecheDiagFull.lean:2018:32: error(lean.unknownIdentifier): Unknown identifier `lm`
+/root/s1/ConLecheDiagFull.lean:2193:17: error(lean.invalidField): Invalid field `getAppArgs`: The environment does not contain `ConLeche.Expr.getAppArgs`, so it is not possible to project the field `getAppArgs` from an expression
+  leaf
+of type `Expr`
+/root/s1/ConLecheDiagFull.lean:2200:40: error(lean.invalidField): Invalid field `toConstantVal`: The environment does not contain `ConLeche.ConstantInfo.toConstantVal`, so it is not possible to project the field `toConstantVal` from an expression
+  c
+of type `ConstantInfo`
+/root/s1/ConLecheDiagFull.lean:2238:9: error(lean.invalidField): Invalid field `getAppArgs`: The environment does not contain `ConLeche.Expr.getAppArgs`, so it is not possible to project the field `getAppArgs` from an expression
+  res
+of type `Expr`
+/root/s1/ConLecheDiagFull.lean:2278:32: error(lean.unknownIdentifier): Unknown constant `ConLeche.Expr.mkBvar`
+/root/s1/ConLecheDiagFull.lean:2302:7: error(lean.unknownIdentifier): Unknown identifier `withExcl`
+/root/s1/ConLecheDiagFull.lean:2300:45: error(lean.unknownIdentifier): Unknown identifier `liftLooseBVarsP_cut`
+/root/s1/ConLecheDiagFull.lean:2314:30: error(lean.unknownIdentifier): Unknown constant `ConLeche.Expr.mkBvar`
+/root/s1/ConLecheDiagFull.lean:2315:13: warning: declaration uses `sorry`
+/root/s1/ConLecheDiagFull.lean:2315:13: warning: declaration uses `sorry`
+/root/s1/ConLecheDiagFull.lean:2361:34: error(lean.unknownIdentifier): Unknown constant `ConLeche.Expr.mkBvar`
+/root/s1/ConLecheDiagFull.lean:2383:7: error(lean.unknownIdentifier): Unknown identifier `withExcl`
+/root/s1/ConLecheDiagFull.lean:2381:45: error(lean.unknownIdentifier): Unknown identifier `abstractRangeP_cut`
+/root/s1/ConLecheDiagFull.lean:2395:46: error(lean.unknownIdentifier): Unknown constant `ConLeche.Expr.mkBvar`
+/root/s1/ConLecheDiagFull.lean:2397:13: warning: declaration uses `sorry`
+/root/s1/ConLecheDiagFull.lean:2397:13: warning: declaration uses `sorry`
+/root/s1/ConLecheDiagFull.lean:2474:54: error: Tactic `rewrite` failed: Did not find an occurrence of the pattern
+  p.fst.val
+in the target expression
+  (fun p => p.fst.val) p = (fun p => p.fst.val) q
+
+c : Bool
+M : Type
+s : Squash ({ r // r = c } × M)
+p q : { r // r = c } × M
+x✝ : p ≈ q
+⊢ (fun p => p.fst.val) p = (fun p => p.fst.val) q
+/root/s1/ConLecheDiagFull.lean:2550:12: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Hashable Expr
+
+Hint: Adding the command `deriving instance Hashable for ConLeche.Expr` may allow Lean to derive the missing instance.
+/root/s1/ConLecheDiagFull.lean:2551:24: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Hashable Expr
+
+Hint: Adding the command `deriving instance Hashable for ConLeche.Expr` may allow Lean to derive the missing instance.
+/root/s1/ConLecheDiagFull.lean:2554:4: error: Type mismatch
+  some ?m.23
+has type
+  Option ?m.22
+but is expected to have type
+  Type
+/root/s1/ConLecheDiagFull.lean:2577:4: warning: declaration uses `sorry`
+/root/s1/ConLecheDiagFull.lean:2625:9: error(lean.unknownIdentifier): Unknown identifier `withExcl`
+/root/s1/ConLecheDiagFull.lean:2622:31: error(lean.unknownIdentifier): Unknown identifier `leavesSubP_cut`
+/root/s1/ConLecheDiagFull.lean:2777:20: error(lean.unknownIdentifier): Unknown constant `ConLeche.Level.allParamsDefined`
+/root/s1/ConLecheDiagFull.lean:2778:32: error(lean.unknownIdentifier): Unknown constant `ConLeche.Level.allParamsDefined`
+/root/s1/ConLecheDiagFull.lean:2805:32: error(lean.unknownIdentifier): Unknown identifier `CheckM`
+/root/s1/ConLecheDiagFull.lean:2815:2: error(lean.synthInstanceFailed): failed to synthesize instance of type class
+  Pure CheckCM
+
+Hint: Type class instance resolution failures can be inspected with the `set_option trace.Meta.synthInstance true` command.
+/root/s1/ConLecheDiagFull.lean:2853:22: error(lean.unknownIdentifier): Unknown constant `ConLeche.Expr.hasLooseBVarBC`
+/root/s1/ConLecheDiagFull.lean:2864:2: error(lean.unknownIdentifier): Unknown constant `ConLeche.Expr.replaceFVarsC`
+frontx_ind_gate ConLeche.Expr.hasLP: gate ok; arms FAIL: frontx_ind: equation ConLeche.Expr.hasLP.eq_1 has no constructor pattern
+(by cases: frontx_ind: unsupported term
+  ConLeche.lpOfData (ConLeche.Expr.bvar i).data)
+/root/s1/ConLecheDiagFull.lean:2880:0: error: frontx_ind: UInt64.decEq has no argument of a declared type
+frontx_ind_gate ConLeche.Expr.beqIsApp: gate ok; arms ok (1 function(s))
+frontx_ind: ConLeche.Expr.beqIsApp on Proven.Frontx.ExprEx.TExpr: 1 function(s) [ConLeche.Expr.beqIsApp], 10 arms, result .w, 16 locals; 75 ms
+frontx_ind_gate ConLeche.Expr.BeqOutX.cast: gate FAIL: frontx_ind: more than one extra parameter of a declared type
+frontx_ind_gate ConLeche.Expr.liftLooseBVars: gate FAIL: frontx_ind: more than one scalar parameter
+frontx_ind_gate ConLeche.Expr.mkAppN: gate ok; arms FAIL: frontx_ind: unsupported variable (a dropped field?)
+  ?a
+(by cases: frontx_ind: unsupported variable (a dropped field?)
+  head)
+/root/s1/ConLecheDiagFull.lean:2894:0: error: frontx_ind: unsupported variable (a dropped field?)
+  ?a
+(by cases: frontx_ind: unsupported variable (a dropped field?)
+  head)
+frontx_ind_gate ConLeche.natPredName: gate FAIL: frontx_ind: ConLeche.natPredName has no argument of a declared type
+frontx_ind_gate ConLeche.natPowName: gate FAIL: frontx_ind: ConLeche.natPowName has no argument of a declared type
+frontx_ind_gate ConLeche.natModName: gate FAIL: frontx_ind: ConLeche.natModName has no argument of a declared type
+frontx_ind_gate ConLeche.natXorName: gate FAIL: frontx_ind: ConLeche.natXorName has no argument of a declared type
+frontx_ind_gate ConLeche.natSuccName: gate FAIL: frontx_ind: ConLeche.natSuccName has no argument of a declared type
+frontx_ind_gate ConLeche.listNilName: gate FAIL: frontx_ind: ConLeche.listNilName has no argument of a declared type
+frontx_ind_gate ConLeche.Expr.instantiate1C: gate ok; arms FAIL: frontx_ind: equation ConLeche.Expr.instantiate1C.eq_1 has no constructor pattern
+(by cases: frontx_ind: unsupported term
+  ConLeche.Expr.resTerm (ConLeche.Expr.instantiate1XP ?v none (ConLeche.Expr.bvar i) ?d h))
+/root/s1/ConLecheDiagFull.lean:2910:0: warning: declaration uses `sorry`
+/root/s1/ConLecheDiagFull.lean:2911:0: error: frontx_ind: dite has no argument of a declared type
+frontx_ind_gate ConLeche.Expr.piSortTeleLen?: gate FAIL: frontx_ind: unsupported result type
+  Option Nat
+frontx_ind_gate ConLeche.lamProj?: gate FAIL: frontx_ind: unsupported result type
+  Option (Nat × Nat)
+frontx_ind_gate ConLeche.falseName: gate FAIL: frontx_ind: ConLeche.falseName has no argument of a declared type
+frontx_ind_gate ConLeche.quotIndName: gate FAIL: frontx_ind: ConLeche.quotIndName has no argument of a declared type
+frontx_ind_gate ConLeche.BasisDSL.prop: gate FAIL: frontx_ind: ConLeche.BasisDSL.prop has no argument of a declared type
+frontx_ind_gate ConLeche.natRecMotive: gate FAIL: frontx_ind: ConLeche.natRecMotive has no argument of a declared type
+/root/s1/ConLecheDiagFull.lean:2923:0: warning: declaration uses `sorry`
+frontx_ind_gate ConLeche.quotLiftH: gate FAIL: frontx_ind: ConLeche.quotLiftH has no argument of a declared type
+/root/s1/ConLecheDiagFull.lean:2925:0: warning: declaration uses `sorry`
+frontx_ind_gate ConLeche.andRecName: gate FAIL: frontx_ind: ConLeche.andRecName has no argument of a declared type
+frontx_ind_gate ConLeche.pinLinkOk: gate FAIL: frontx_ind: ConLeche.pinLinkOk has no argument of a declared type
+frontx_ind_gate ConLeche.rawNatLit?: gate FAIL: frontx_ind: unsupported result type
+  Option Nat
+frontx_ind_gate ConLeche.boolTrueName: gate FAIL: frontx_ind: ConLeche.boolTrueName has no argument of a declared type
+frontx_ind_gate ConLeche.reservedRecName: gate ok; arms FAIL: frontx_ind: equation ConLeche.reservedRecName.eq_1 has no constructor pattern
+(by cases: frontx_ind: comparison of an unsupported type
+  ConLeche.Name)
+/root/s1/ConLecheDiagFull.lean:2936:0: error: frontx_ind: Bool.or has no argument of a declared type
+frontx_ind_gate ConLeche.Expr.substConst0: gate FAIL: frontx_ind: more than one extra parameter of a declared type
+frontx_ind_gate ConLeche.unitFieldTele: gate ok; arms FAIL: frontx_ind: equation ConLeche.unitFieldTele.eq_1 has no constructor pattern
+(by cases: frontx_ind: unsupported term
+  Option.map (fun body => body.instantiateList (List.reverse ?targs))
+    (ConLeche.Expr.peelPis ?nP (ConLeche.Expr.bvar i)))
+/root/s1/ConLecheDiagFull.lean:2941:0: error: frontx_ind: unsupported parameter type
+  ConLeche.Expr → ?β
+frontx_ind_gate ConLeche.Expr.hasLooseBVarB: gate ok; arms FAIL: frontx_ind: equation ConLeche.Expr.bvarB.eq_1 has no constructor pattern
+(by cases: frontx_ind: unsupported term
+  ConLeche.satRange)
+/root/s1/ConLecheDiagFull.lean:2944:0: error: frontx_ind: equation ConLeche.Expr.bvarB.eq_1 has no constructor pattern
+(by cases: frontx_ind: unsupported term
+  ConLeche.satRange)
+frontx_ind_gate ConLeche.propextName: gate FAIL: frontx_ind: ConLeche.propextName has no argument of a declared type
+frontx_ind_gate ConLeche.iffRecName: gate FAIL: frontx_ind: ConLeche.iffRecName has no argument of a declared type
+frontx_ind_gate ConLeche.structPsAt: gate FAIL: frontx_ind: ConLeche.structPsAt has no argument of a declared type
+frontx_ind_gate ConLeche.structProjBodiesGo: gate FAIL: frontx_ind: more than one extra parameter of a declared type
+frontx_ind_gate ConLeche.Expr.nestOcc: gate FAIL: frontx_ind: unsupported parameter type
+  List ConLeche.Name
+frontx_ind_gate ConLeche.nestKeyMap: gate ok; arms FAIL: frontx_ind: equation ConLeche.nestKeyMap.eq_1 has no constructor pattern
+(by cases: frontx_ind: unsupported term
+  [].get?Internal ?i)
+/root/s1/ConLecheDiagFull.lean:2959:0: error: frontx_ind: equation ite.eq_1 has no constructor pattern
+(by cases: frontx_ind: ite has no argument of the type)
+frontx_ind_gate ConLeche.reduceBoolDeclPin: gate FAIL: frontx_ind: ConLeche.reduceBoolDeclPin has no argument of a declared type
+/root/s1/ConLecheDiagFull.lean:2961:0: warning: declaration uses `sorry`
+frontx_ind_gate ConLeche.trustCompilerName: gate FAIL: frontx_ind: ConLeche.trustCompilerName has no argument of a declared type
+frontx_ind_gate ConLeche.ofReduceBoolName: gate FAIL: frontx_ind: ConLeche.ofReduceBoolName has no argument of a declared type
+frontx_ind_gate ConLeche.reduceCertVar: gate ok; arms FAIL: frontx_ind: equation ConLeche.reduceElemTy.eq_1 has no constructor pattern
+(by cases: frontx_ind: unsupported term
+  ConLeche.reduceNatName)
+/root/s1/ConLecheDiagFull.lean:2968:0: error: frontx_ind: ConLeche.Expr.fvar has no equations
+frontx_ind_gate ConLeche.targetPiDomsWith: gate FAIL: frontx_ind: unsupported result type
+  Option (List ConLeche.Expr)
+frontx_ind_gate ConLeche.divModDeclPin: gate FAIL: frontx_ind: unsupported parameter type
+  ConLeche.NatOpPinSet
+frontx_ind_gate ConLeche.divModCertApplied: gate ok; arms FAIL: frontx_ind: nested patterns are not supported (ConLeche.divModCertApplied.eq_1)
+(by cases: frontx_ind: unsupported term
+  ConLeche.natName)
+/root/s1/ConLecheDiagFull.lean:2975:0: error: frontx_ind: nested patterns are not supported (ConLeche.divModCertApplied.eq_1)
+(by cases: frontx_ind: unsupported term
+  ConLeche.natName)
+frontx_ind_gate ConLeche.ClassGen.binder: gate FAIL: frontx_ind: unsupported parameter type
+  ConLeche.ClassGen
+frontx_ind_gate ConLeche.ClassGen.motiveTy: gate FAIL: frontx_ind: ConLeche.ClassGen.motiveTy has no argument of a declared type
+frontx_ind_gate ConLeche.ClassGen.prefixBinders: gate FAIL: frontx_ind: ConLeche.ClassGen.prefixBinders has no argument of a declared type
+frontx_ind_gate ConLeche.Expr.dropVars: gate ok; arms FAIL: frontx_ind: equation ConLeche.Expr.dropVars.eq_1 has no constructor pattern
+(by cases: frontx_ind: unsupported term
+  match ?x✝, ConLeche.Expr.bvar i with
+  | 0, e => e
+  | n.succ, e => ConLeche.Expr.dropVars n (e.instantiate1 (ConLeche.Expr.sort ConLeche.Level.zero)))
+/root/s1/ConLecheDiagFull.lean:2984:0: error: frontx_ind: Nat.brecOn has no argument of a declared type
+frontx_ind_gate ConLeche.Expr.liftLooseBVarsC: gate FAIL: frontx_ind: more than one scalar parameter
+frontx_ind_gate ConLeche.Expr.abstractRangeP: gate FAIL: frontx_ind: more than one scalar parameter
+frontx_ind_gate ConLeche.Expr.wscopedBP: gate ok; arms FAIL: frontx_ind: equation ConLeche.Expr.fvarB.eq_1 has no constructor pattern
+(by cases: frontx_ind: unsupported term
+  ConLeche.satRange)
+/root/s1/ConLecheDiagFull.lean:2991:0: error: frontx_ind: equation ConLeche.Expr.fvarB.eq_1 has no constructor pattern
+(by cases: frontx_ind: unsupported term
+  ConLeche.satRange)
+frontx_ind_gate ConLeche.Expr.hasLooseBVarInP: gate FAIL: frontx_ind: more than one scalar parameter
+frontx_ind_gate ConLeche.Expr.mentionsAnyConstP: gate FAIL: frontx_ind: unsupported parameter type
+  List ConLeche.Name
+frontx_ind_gate ConLeche.Expr.fvarLeavesC: gate FAIL: frontx_ind: unsupported result type
+  List (Nat × ConLeche.Expr)
+/root/s1/ConLecheDiagFull.lean:2997:0: warning: declaration uses `sorry`
+frontx_ind_gate ConLeche.Expr.leafGuard: gate ok; arms FAIL: frontx_ind: equation ConLeche.Expr.leafGuard.eq_1 has no constructor pattern
+(by cases: frontx_ind: unsupported term
+  ConLeche.Expr.leavesSubC (ConLeche.Expr.fvarLeavesC ?base) (ConLeche.Expr.bvar i))
+/root/s1/ConLecheDiagFull.lean:3000:0: error: frontx_ind: Bool.or has no argument of a declared type
+frontx_ind_gate ConLeche.Expr.piResidual: gate ok; arms FAIL: frontx_ind: equation ConLeche.Expr.piResidual.eq_1 has no constructor pattern
+(by cases: frontx_ind: unsupported term
+  ConLeche.Expr.piResidualAcc [] (ConLeche.Expr.bvar i) ?args)
+/root/s1/ConLecheDiagFull.lean:3003:0: error: frontx_ind: more than one extra parameter of a declared type
+frontx_ind_gate ConLeche.Expr.closeLamsC: gate ok; arms FAIL: frontx_ind: equation ConLeche.Expr.closeLamsC.eq_1 has no constructor pattern
+(by cases: frontx_ind: unsupported term
+  ConLeche.Expr.closeLamsGoC ?i 0 [] ?body)
+/root/s1/ConLecheDiagFull.lean:3006:0: error: frontx_ind: more than one scalar parameter
+frontx_ind_gate ConLeche.Expr.allLevelParamsDefinedP: gate FAIL: frontx_ind: unsupported parameter type
+  List ConLeche.Name
+/root/s1/ConLecheDiagFull.lean:3008:0: warning: declaration uses `sorry`
+/root/s1/ConLecheDiagFull.lean:3008:0: warning: declaration uses `sorry`
+/root/s1/ConLecheDiagFull.lean:3008:0: warning: declaration uses `sorry`
+frontx_ind_gate ConLeche.Cached.nameIsC: gate ok; arms FAIL: frontx_ind: equation ConLeche.Cached.nameIsC.eq_1 has no constructor pattern
+(by cases: frontx_ind: not a constant
+  pre)
+/root/s1/ConLecheDiagFull.lean:3011:0: error: frontx_ind: Bool.and has no argument of a declared type
+frontx_ind_gate ConLeche.Cached.inst1M: gate FAIL: frontx_ind: unsupported result type
+  ConLeche.Cached.CheckCM ConLeche.Expr
+/root/s1/ConLecheDiagFull.lean:3013:0: warning: declaration uses `sorry`
+frontx_ind_gate ConLeche.Cached.whnfCoreEasy: gate ok; arms ok (1 function(s))
+frontx_ind: ConLeche.Cached.whnfCoreEasy on Proven.Frontx.ExprEx.TExpr: 1 function(s) [ConLeche.Cached.whnfCoreEasy], 10 arms, result .w, 16 locals; 76 ms
+frontx_ind_gate ConLeche.Cached.pushKey: gate ok; arms ok (1 function(s))
+/root/s1/ConLecheDiagFull.lean:3019:0: error: frontx_ind: equation ite.eq_1 has no constructor pattern
+(by cases: frontx_ind: ite has no argument of the type)
+frontx_ind_gate ConLeche.Cached.structUsedLaterC: gate FAIL: frontx_ind: more than one scalar parameter
+/root/s1/ConLecheDiagFull.lean:3021:0: warning: declaration uses `sorry`
+frontx_ind_gate ConLeche.Cached.eraseFVarTysC: gate ok; arms FAIL: frontx_ind: equation ConLeche.Cached.eraseFVarTysC.eq_1 has no constructor pattern
+(by cases: frontx_ind: unsupported term
+  sorry)
+/root/s1/ConLecheDiagFull.lean:3023:0: warning: declaration uses `sorry`
+/root/s1/ConLecheDiagFull.lean:3023:0: warning: declaration uses `sorry`
+/root/s1/ConLecheDiagFull.lean:3024:0: error: frontx_ind: sorryAx has no equations
+frontx_ind_gate ConLeche.Cached.Expr.dropVarsC: gate ok; arms FAIL: frontx_ind: equation ConLeche.Cached.Expr.dropVarsC.eq_1 has no constructor pattern
+(by cases: frontx_ind: unsupported term
+  match ?x✝, ConLeche.Expr.bvar i with
+  | 0, e => e
+  | n.succ, e => ConLeche.Cached.Expr.dropVarsC n (e.instantiate1C (ConLeche.Expr.sort ConLeche.Level.zero)))
+/root/s1/ConLecheDiagFull.lean:3027:0: error: frontx_ind: Nat.brecOn has no argument of a declared type
