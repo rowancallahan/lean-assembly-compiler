@@ -484,12 +484,60 @@ partial def reifyF (ctx : List Ent) (e : Expr) : TermElabM Term := do
   let (m, _) ← arr ctx e
   `(F.alias $(← memSyn m))
 
+/-- `p.f` / `S.f p` of a constructor application `p = S.mk a…`: the field `a` -/
+def projCtor? (e : Expr) : MetaM (Option Expr) := do
+  let e := e.consumeMData
+  let (i, np, s) ← match e with
+    | .proj _ i s => pure (i, 0, s)
+    | _ =>
+      let some c := e.getAppFn.constName? | return none
+      let some pi := (← getEnv).getProjectionFnInfo? c | return none
+      if pi.fromClass || e.getAppNumArgs != pi.numParams + 1 then return none
+      pure (pi.i, pi.numParams, e.appArg!)
+  let s := s.consumeMData.headBeta
+  let some c := s.getAppFn.constName? | return none
+  let some (.ctorInfo ci) := (← getEnv).find? c | return none
+  unless isStructure (← getEnv) ci.induct && s.getAppNumArgs == ci.numParams + ci.numFields do return none
+  let _ := np
+  return some (s.getArg! (ci.numParams + i))
+
+/-- every projection of a constructor application in `e` reduced -/
+def normPC (e : Expr) : MetaM Expr :=
+  Meta.transform e (post := fun t => do
+    if let some t' ← projCtor? t then return .visit t' else return .done t)
+
+/-- `let x : S := S.mk a…; b` (S a structure): `let f₁ := a₁; …; b[x := S.mk f₁ …]`, projections reduced -/
+def splitStructLet? (t v b : Expr) : MetaM (Option Expr) := do
+  let some sn := (← whnfR t).getAppFn.constName? | return none
+  unless isStructure (← getEnv) sn do return none
+  let v := v.consumeMData.headBeta
+  let some c := v.getAppFn.constName? | return none
+  let some (.ctorInfo ci) := (← getEnv).find? c | return none
+  unless ci.induct == sn && v.getAppNumArgs == ci.numParams + ci.numFields do return none
+  let fields := (v.getAppArgs.extract ci.numParams v.getAppNumArgs)
+  let names := getStructureFields (← getEnv) sn
+  let rec go (i : Nat) (fs : Array Expr) : MetaM Expr := do
+    if h : i < fields.size then
+      let a := fields[i]
+      let ty ← inferType a
+      -- proofs and atoms are substituted, other fields get a `let`
+      if (← isProof a) || a.isFVar || a.isConst || a.isLit then return ← go (i + 1) (fs.push a)
+      withLetDecl (names[i]?.getD `f) ty a fun x => do
+        let r ← go (i + 1) (fs.push x)
+        mkLetFVars #[x] r (usedLetOnly := false)
+    else
+      normPC (b.instantiate1 (mkAppN v.getAppFn (v.getAppArgs.extract 0 ci.numParams ++ fs)))
+  return some (← go 0 #[])
+
 /-- the stages of a program -/
 partial def reifyPg (ctx : List Ent) (e : Expr) (R : Sl) (names : IO.Ref (Array Name)) (loops : IO.Ref (Array LoopRec)) :
     TermElabM Term := do
   let e ← prepTop e names
   match e with
   | .letE n t v b _ =>
+    -- a structure built by its constructor: one `let` per field, the projections of the constructor reduce
+    if let some e' ← splitStructLet? t (← prepTop v names) b then
+      return ← reifyPg ctx e' R names loops
     let some sl ← slOf? t | throwError "wa_compile: unsupported let type {t}"
     let v' ← prepTop v names
     -- `let x := (let y := a; B); K` ⇒ `let y := a; let x := B; K` (a helper's arguments, then its loop)
@@ -768,7 +816,7 @@ elab_rules : command
     let rec good : List Stage → CommandElabM Term
       | [] => throwError "wa_compile: no result"
       | .retS :: _ => match R with
-        | .sc _ => `(⟨by simp only [$unf,*, foldl_foldGo]; wa_dsimp; try rfl, by wa_okt⟩)
+        | .sc _ => `(⟨by simp only [$unf,*, foldl_foldGo, ← getElem!_pos, dite_eq_ite]; wa_dsimp; try rfl, by wa_okt⟩)
         | .ar _ => `(by simp only [$unf,*, foldl_foldGo]; wa_dsimp; try rfl)
       | .letS :: rest => do `(⟨by wa_okt, $(← good rest)⟩)
       | .loopS k _ :: rest => do
