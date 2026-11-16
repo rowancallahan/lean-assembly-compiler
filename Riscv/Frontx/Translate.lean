@@ -1560,15 +1560,15 @@ def baFields (ty : Expr) : MetaM (Array Name) := do
   return out
 
 /-- the components of a result type: per component, the projection `fun x => …` and its scalar type -/
-partial def resultComps (ty : Expr) : MetaM (Option (Array (Expr × Ty))) := do
+partial def resultComps (ty : Expr) (param := false) : MetaM (Option (Array (Expr × Ty))) := do
   let ty ← whnfR ty
   if let some t ← classify ty then
     return some #[(← withLocalDeclD `x ty fun x => mkLambdaFVars #[x] x, t)]
   -- `Unit` (the result of a stateful action, `Unit × σ`): no component
   if ty.isConstOf ``Unit || ty.isConstOf ``PUnit then return some #[]
   if ty.isAppOfArity ``Prod 2 then
-    let some first ← resultComps (ty.getArg! 0) | return none
-    let some rest ← resultComps (ty.getArg! 1) | return none
+    let some first ← resultComps (ty.getArg! 0) param | return none
+    let some rest ← resultComps (ty.getArg! 1) param | return none
     let first' ← first.mapM fun (π, t) => do
       let l ← withLocalDeclD `p ty fun p => do mkLambdaFVars #[p] (mkApp π (← mkAppM ``Prod.fst #[p])).headBeta
       return (l, t)
@@ -1586,7 +1586,9 @@ partial def resultComps (ty : Expr) : MetaM (Option (Array (Expr × Ty))) := do
           return (← inferType pr, ← mkLambdaFVars #[p] pr)
         -- a `ByteArray` field is a block (the input), not a component
         if (← whnfR fty).isConstOf ``ByteArray then continue
-        let some sub ← resultComps fty | return none
+        -- in a parameter, an `Array` field is not a component (the body must not read it: it has no variable)
+        if param && (← whnfR fty).isAppOfArity ``Array 1 then continue
+        let some sub ← resultComps fty param | return none
         for (π, t) in sub do
           let l ← withLocalDeclD `p ty fun p => do mkLambdaFVars #[p] (mkApp π (mkApp projL p).headBeta).headBeta
           out := out.push (l, t)
@@ -1791,7 +1793,7 @@ partial def trT (ctx : Ctx) (nconj : Nat) (env : Expr) (e : Expr) : TrM (MT × E
         idx := idx.push (some j)
       | none =>
         -- a parameter with several components: assign the components that change
-        let some comps ← resultComps (← inferType p) | throwError "frontx: parameter without a variable{indentExpr p}"
+        let some comps ← resultComps (← inferType p) (param := true) | throwError "frontx: parameter without a variable{indentExpr p}"
         -- its `ByteArray` fields (blocks) must be passed on unchanged
         for fld in ← baFields (← inferType p) do
           let old ← mkProjection p fld
@@ -2598,6 +2600,19 @@ def normEq (fn : Name) : TermElabM (Option (Name × Term)) := do
       `(fun $bs* => 0)
   return some (eqx, μ)
 
+/-- the constructor of a structure as a function: the equation `C.mk xs = C.mk xs` (`rfl`), named `C.mk.eqx` -/
+def ctorEqn? (fn : Name) : MetaM (Option Name) := do
+  let some (.ctorInfo ci) := (← getEnv).find? fn | return none
+  unless isStructure (← getEnv) ci.induct do return none
+  let eqx := fn ++ `eqx
+  if (← getEnv).contains eqx then return some eqx
+  let c ← mkConstWithLevelParams fn
+  let (ty, val) ← forallTelescope ci.type fun xs _ => do
+    let lhs := mkAppN c xs
+    return (← mkForallFVars xs (← mkEq lhs lhs), ← mkLambdaFVars xs (← mkEqRefl lhs))
+  addDecl (.thmDecl { name := eqx, levelParams := ci.levelParams, type := ty, value := val })
+  return some eqx
+
 def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (accMode := false)
     (pre? : Option Term := none) (from? : Option (Name × Term) := none)
     (start : Nat := 4) (noBound : Array Nat := #[]) : TermElabM Unit := do
@@ -2607,13 +2622,15 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
   -- `Except` / `Option` results: the normalised equation (`normEq`)
   let from? ← match from? with
     | some x => pure (some x)
-    | none => normEq fn
+    | none =>
+      if (← ctorEqn? fn).isSome then pure none else normEq fn
   -- the equation `f xs = body`: the unfolding equation, or a proved one (`from`)
   let (eqnN, eqnTy) ← match from? with
     | some (e, _) => pure (e, (← getConstInfo e).type)
     | none =>
-      let some eqn ← getUnfoldEqnFor? fn (nonRec := true) | throwError "frontx: no unfolding equation for {fn}"
-      pure (eqn, (← getConstInfo eqn).type)
+      if let some eqn ← getUnfoldEqnFor? fn (nonRec := true) then pure (eqn, (← getConstInfo eqn).type)
+      else if let some eqn ← ctorEqn? fn then pure (eqn, (← getConstInfo eqn).type)
+      else throwError "frontx: no unfolding equation for {fn}"
   let repN := fn ++ `Rep
   let treeN := fn ++ `tree
   let layN := fn ++ `lay
@@ -2698,6 +2715,14 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
       let mut dataIdx := #[]
       let mut compIdx := 0
       let mut dropped : Array Nat := #[]
+      -- the body with raw projections `p.1` written with their projection functions (the keys of the components)
+      let bodyP ← Meta.transform body (post := fun t => do
+        match t with
+        | .proj sn i s =>
+          match (getStructureFields (← getEnv) sn)[i]? with
+          | some fld => return .done (← mkProjection s fld)
+          | none => return .done t
+        | _ => return .done t)
       -- the first byte array is block 0 (length in variable 1) wherever it stands
       let ba0 := (← hoistBA xs)[0]?
       let ba0 ← match ba0 with
@@ -2730,7 +2755,7 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
               blocks := blocks ++ [(pr, blocks.length, next + 1)]
               next := next + 2
           -- a scalar, or a structure / tuple / `Option` of scalars: one variable per component
-          let some comps ← resultComps xty | throwError "frontx: unsupported parameter type{indentExpr xty}"
+          let some comps ← resultComps xty (param := true) | throwError "frontx: unsupported parameter type{indentExpr xty}"
           -- variables 2 and 3 stay free (work and output base in the `Implements1` calling convention)
           if next < start then next := start
           let env0 ← getEnv
@@ -2739,7 +2764,7 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
             let key := (mkApp π x).headBeta
             compIdx := compIdx + 1
             -- a field of a structure parameter that the body never reads gets no variable (`f.dropped`)
-            if isStruct && comps.size > 1 && (body.find? (· == key)).isNone then
+            if isStruct && comps.size > 1 && (bodyP.find? (· == key)).isNone then
               dropped := dropped.push (compIdx - 1)
               continue
             memo := (key, next) :: memo
@@ -2803,7 +2828,9 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
       withLocalDeclD `σ bstate fun σ => do
         let hyps ← hypsOf σ
         let decls := hyps.mapIdx fun i h => (Name.mkSimple s!"h{i}", h)
-        let ctx : Ctx := { fn, params := xs, blocks, A, R, heap := mkApp (mkConst ``BState.heap) σ, repN, rty, lemmas,
+        -- a constructor's body is itself, not a recursive call
+        let fnC := if (← getEnv).isConstructor fn then Name.anonymous else fn
+        let ctx : Ctx := { fn := fnC, params := xs, blocks, A, R, heap := mkApp (mkConst ``BState.heap) σ, repN, rty, lemmas,
                            acc? := acc?.map fun acc => (acc, scal.back!.2.2), dataIdx := some dataIdx,
                            res0 := if multi then some resInfo[0]!.1 else none, resExtra }
         let ((mt, outE, proof), st) ← withLocalDeclsDND decls fun hs => do
@@ -3014,8 +3041,8 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
           let runsI := mkIdent (fn ++ `runs)
           let r0 := rty.rep (mkApp resInfo[0]!.1 lhs).headBeta
           let rsL ← mkRs (resExtra.map fun (π, t, v) => (v, t.rep (mkApp π lhs).headBeta))
-          let ind ← if (body.find? (·.isConstOf fn)).isSome then `(tactic| fun_induction $fI:ident $as*)
-            else `(tactic| first | fun_cases $fI:ident $as* | unfold $fI:ident)
+          let ind ← if (body.find? (·.isConstOf fn)).isSome && !(← getEnv).isConstructor fn then `(tactic| fun_induction $fI:ident $as*)
+            else `(tactic| first | fun_cases $fI:ident $as* | unfold $fI:ident | skip)
           let runsTy ← mkForallFVars (xs.push σ) (← mkArrow (mkAppN (mkConst repN) (xsD.push σ))
             (← withLocalDeclD `σ' bstate fun σ' => do
               mkAppM ``Exists #[← mkLambdaFVars #[σ'] (mkAnd (mkApp4 (mkConst ``Tree.Runs) (mkConst treeN) σ r0 σ')
@@ -3082,8 +3109,8 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
         let lI := mkIdent layN
         let sI := mkIdent stepN
         -- a function that does not call itself: case analysis instead of induction
-        let ind ← if (body.find? (·.isConstOf fn)).isSome then `(tactic| fun_induction $fI:ident $as*)
-          else `(tactic| first | fun_cases $fI:ident $as* | unfold $fI:ident)
+        let ind ← if (body.find? (·.isConstOf fn)).isSome && !(← getEnv).isConstructor fn then `(tactic| fun_induction $fI:ident $as*)
+          else `(tactic| first | fun_cases $fI:ident $as* | unfold $fI:ident | skip)
         match from? with
         | none =>
           addThm (fn ++ `runs) runsTy (← `(tactic|
@@ -3592,7 +3619,7 @@ elab_rules : command
       let aty ← inferType a
       if ← isProp aty then continue
       -- a scalar, or a closed tuple / structure (one variable per component)
-      let some acs ← resultComps aty | throwError "frontx_entry: unsupported argument type{indentExpr aty}"
+      let some acs ← resultComps aty (param := true) | throwError "frontx_entry: unsupported argument type{indentExpr aty}"
       for (π, ty) in acs do
         ci := ci + 1
         if dropped.contains (ci - 1) then continue
