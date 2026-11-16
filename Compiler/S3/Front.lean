@@ -68,7 +68,7 @@ def isRecursive (n : Name) : MetaM Bool := do
 def isWordTy (t : Lean.Expr) : Bool := t.isConstOf ``UInt64 || t.isConstOf ``Int64 || t.isConstOf ``UInt8
 
 partial def tyOf (t : Lean.Expr) : M Ty := do
-  let t := (← instantiateMVars (← whnfR t)).consumeMData
+  let t := (← instantiateMVars (← whnf t)).consumeMData
   if isWordTy t then return .w
   if t.isConstOf ``Bool then return .b
   let s ← get
@@ -231,6 +231,9 @@ partial def tr (c : Ctx) (e : Lean.Expr) : M SE := do
     | some l => return .var l
     | none => throwError "S3: unknown variable {e}"
   | .letE _ t v b _ =>
+    -- a function value (a `do` join point): substitute it
+    if (← whnf t).isForall || v.consumeMData.isLambda then
+      return ← tr c (b.instantiate1 v).headBeta
     let s1 ← tr c v
     let ty ← tyOf t
     withLocalDeclD `x t fun x => do
@@ -336,13 +339,35 @@ partial def trApp (c : Ctx) (e : Lean.Expr) : M SE := do
     let info ← getConstInfo n
     let v ← instantiateValueLevelParams info us
     return ← tr c (mkAppN v args).headBeta
-  -- class projections of instances
-  if (← getProjectionFnInfo? n).isSome then
+  -- projections: of a structure (a one-arm match), of a class instance (unfolded)
+  if let some pi ← getProjectionFnInfo? n then
+    if !pi.fromClass then
+      unless args.size == pi.numParams + 1 do throwError "S3: projection with extra arguments {e}"
+      let s := args[pi.numParams]!
+      let some (.ctorInfo ci) := env.find? pi.ctorName | throwError "S3: proj"
+      return ← atom c s fun c' lx => do
+        let .d i ← tyOf (← inferType s) | throwError "S3: projection of a non-datatype"
+        return .cas i lx [(ci.numFields, .var (c'.depth + ci.numFields - 1 - pi.i))]
     if let some e' ← unfoldProjInst? e then return ← tr c e'.headBeta
     throwError "S3: unsupported class operation {e}"
-  -- calls
-  let ns ← staticArgs fn args
+  -- calls (a non-recursive function with a function argument after a run-time one is inlined)
+  let ns ← try staticArgs fn args catch ex =>
+    if (← isRecursive n) then throw ex
+    let info ← getConstInfo n
+    unless info.isDefinition do throw ex
+    let .const _ us := fn | throw ex
+    let v ← instantiateValueLevelParams info us
+    return ← tr c (mkAppN v args).headBeta
   let key := mkAppN fn (args.extract 0 ns)
+  if key.hasFVar && !(← isRecursive n) then
+    -- a function argument captures run-time variables: inline the (non-recursive) callee
+    let info ← getConstInfo n
+    if info.isDefinition then
+      let .const _ us := fn | throwError "S3"
+      let v ← instantiateValueLevelParams info us
+      return ← tr c (mkAppN v args).headBeta
+  for a in args.extract ns args.size do
+    if a.consumeMData.isLambda then throwError "S3: a function value as a run-time argument in {e}"
   let k ← fnIdx key
   atoms c (args.extract ns args.size).toList fun _ ls => return .call k ls
 
@@ -380,7 +405,7 @@ syntax (name := s3Split) "s3_split" : tactic
   -- first: a datatype value computed by a call (`Enc.enc (f args)`): generalize it, then split
   for e in encArgs do
     if e.isFVar || e.hasLooseBVars then continue
-    let ty ← whnfR (← inferType e)
+    let ty ← whnf (← inferType e)
     if isWordTy ty || ty.isConstOf ``Bool then continue
     let .const I _ := ty.getAppFn | continue
     let some (.inductInfo ii) := (← getEnv).find? I | continue
@@ -407,7 +432,7 @@ syntax (name := s3Split) "s3_split" : tactic
     let gs ← g.cases d.fvarId
     Tactic.replaceMainGoal (gs.map (·.mvarId)).toList
     return
-  throwError "s3_split: nothing to split"
+  throwError "s3_split: nothing to split in\n{MessageData.ofGoal g}"
 
 /-- close a goal by a hypothesis `∀ xs, x = pattern → False` that now applies (a wildcard case of a match) -/
 syntax (name := s3Contra) "s3_contra" : tactic
@@ -424,7 +449,9 @@ syntax (name := s3Contra) "s3_contra" : tactic
       let gs ← g.apply d.toExpr
       for g' in gs do
         if !(← g'.isAssigned) then
-          if (← g'.getType).isEq then g'.refl
+          let gt ← whnfR (← g'.getType)
+          if gt.isEq then g'.refl
+          else if gt.isConstOf ``True then g'.assign (mkConst ``True.intro)
       if (← gs.allM fun g' => g'.isAssigned) then
         Tactic.replaceMainGoal []
         return
@@ -568,6 +595,13 @@ def genText (N : Name) (st : St) (extraSimp : String) : MetaM String := do
     let callees := ((fi.body.map SE.calls).getD []).filter (· != k)
     let closers := callees.eraseDups.map (fun j => s!"(apply cert{j}' <;> simp)")
     let closer := " | ".intercalate ("assumption" :: "(intros; assumption)" :: closers)
+    -- non-recursive callees unfold in the certificate (their values are then computed)
+    let mut unf := ""
+    for j in callees.eraseDups do
+      let fj := st.fns[j]!
+      let .const gname _ := fj.key.getAppFn | continue
+      let rec_ := ((fj.body.map SE.calls).getD []).contains j
+      if !rec_ && fj.pTys.size == 0 then unf := unf ++ s!", {gname}"
     let introLine := if xs.isEmpty then "" else s!"  intro {" ".intercalate xs}\n"
     let introLine := if recursive then introLine else introLine ++ "  (\n"
     let mut statics := ""
@@ -605,12 +639,13 @@ def genText (N : Name) (st : St) (extraSimp : String) : MetaM String := do
       induct := s!"  induction {", ".intercalate (targets.map (xs[·]!))} using @{fname}.induct{fixedTxt} <;> (\n"
     out := out ++ s!"theorem body{k} : P.body ⟨{k}, by decide⟩ = b{k} := rfl\n"
     let fapp := (← exprTxt fi.key) ++ String.join (xs.map (" " ++ ·))
-    out := out ++ s!"theorem phi{k} : ∀ {" ".intercalate binders}, φ ⟨{k}, by decide⟩ {encs} = Proven.S3.Enc.enc ({fapp}) := by\n" ++
+    let fa := if binders.isEmpty then "" else s!"∀ {" ".intercalate binders}, "
+    out := out ++ s!"theorem phi{k} : {fa}φ ⟨{k}, by decide⟩ {encs} = Proven.S3.Enc.enc ({fapp}) := by\n" ++
       (if xs.isEmpty then "" else s!"  intro {" ".intercalate xs}\n") ++ "  simp [φ]\n"
-    out := out ++ s!"theorem cert{k} : ∀ {" ".intercalate binders}, Proven.S3.Good P φ ⟨{k}, by decide⟩ {encs} := by\n" ++
+    out := out ++ s!"theorem cert{k} : {fa}Proven.S3.Good P φ ⟨{k}, by decide⟩ {encs} := by\n" ++
       introLine ++ induct ++
       s!"  (apply Proven.S3.good_intro <;> rw [body{k}]) <;> (try rw [phi{k}]) <;> (try rw [{fname}.eq_def]) <;>\n" ++
-      s!"  s3_solve 12 [{simpSet}, b{k}, φ{extraSimp}, *] with (first | {closer}))\n"
+      s!"  s3_solve 12 [{simpSet}, b{k}, φ{extraSimp}{unf}, *] with (first | {closer}))\n"
     let vs := (List.range fi.pTys.size).map (s!"v{·}")
     let hs := (List.range fi.pTys.size).map (s!"h{·}")
     let hyps ← (List.range fi.pTys.size).mapM fun i => do

@@ -207,6 +207,16 @@ instance {α : Type} [Enc α] : Enc (Option α) where
   dec | .c 1 [a] => some (Enc.dec a) | _ => none
   dec_enc o := by cases o <;> simp
 
+instance : Enc Unit where
+  enc _ := .c 0 []
+  dec _ := ()
+  dec_enc _ := rfl
+
+instance {ε α : Type} {m : Type → Type} [h : Enc (m (Except ε α))] : Enc (ExceptT ε m α) := h
+
+@[simp] theorem enc_unit (u : Unit) : Enc.enc u = .c 0 [] := rfl
+@[simp] theorem dec_unit (v : V) : (Enc.dec v : Unit) = () := rfl
+
 @[simp] theorem enc_u64 (x : UInt64) : Enc.enc x = .w x.toBitVec := rfl
 @[simp] theorem enc_i64 (x : Int64) : Enc.enc x = .w x.toBitVec := rfl
 @[simp] theorem enc_u8 (x : UInt8) : Enc.enc x = .w (x.toBitVec.setWidth 64) := rfl
@@ -241,6 +251,8 @@ instance {α : Type} [Enc α] : Enc (Option α) where
   simp [BitVec.toNat_setWidth]
 @[simp] theorem u8_beq (b : UInt8) (y : BitVec 64) : (BitVec.setWidth 64 b.toBitVec == y) = (b.toNat == y.toNat) := by
   rw [Bool.eq_iff_iff]; simp [← BitVec.toNat_inj]
+@[simp] theorem u8_eq_bv (b : UInt8) (y : BitVec 64) : (BitVec.setWidth 64 b.toBitVec = y) ↔ b.toNat = y.toNat := by
+  simp [← BitVec.toNat_inj]
 @[simp] theorem u8_lt (b : UInt8) (y : BitVec 64) : (BitVec.setWidth 64 b.toBitVec < y) ↔ b.toNat < y.toNat := by
   simp [BitVec.lt_def]
 @[simp] theorem u8_lt' (b : UInt8) (y : BitVec 64) : (y < BitVec.setWidth 64 b.toBitVec) ↔ y.toNat < b.toNat := by
@@ -252,6 +264,10 @@ instance {α : Type} [Enc α] : Enc (Option α) where
 
 @[s3_norm] theorem u8_beq_toNat (a b : UInt8) : (a == b) = (a.toNat == b.toNat) := by
   rw [Bool.eq_iff_iff]; simp [UInt8.toNat_inj]
+@[s3_norm] theorem u8_bne_toNat (a b : UInt8) : (a != b) = !(a.toNat == b.toNat) := by
+  rw [bne, u8_beq_toNat]
+@[simp] theorem u8_bne (b : UInt8) (y : BitVec 64) : (BitVec.setWidth 64 b.toBitVec != y) = !(b.toNat == y.toNat) := by
+  rw [bne, u8_beq]
 @[s3_norm] theorem u8_eq_iff (a b : UInt8) : (a = b) = (a.toNat = b.toNat) := by
   simp [UInt8.toNat_inj]
 @[s3_norm] theorem u8_lt_iff (a b : UInt8) : (a < b) = (a.toNat < b.toNat) := by
@@ -265,6 +281,11 @@ instance {α : Type} [Enc α] : Enc (Option α) where
   simp [UInt64.toBitVec_inj]
 @[s3_norm] theorem u64_lt_iff (a b : UInt64) : (a < b) = (a.toBitVec < b.toBitVec) := rfl
 @[s3_norm] theorem u64_le_iff (a b : UInt64) : (a ≤ b) = (a.toBitVec ≤ b.toBitVec) := rfl
+@[s3_norm, simp] theorem bv64_beq_decide (a b : BitVec 64) : (a == b) = decide (a = b) := by
+  cases h : decide (a = b) <;> simp_all
+@[simp] theorem failure_option {α : Type} : (failure : Option α) = none := rfl
+@[simp] theorem pure_option {α : Type} (a : α) : (pure a : Option α) = some a := rfl
+@[simp] theorem bv_xor_one (c : Bool) : bv c ^^^ 1#64 = bv (!c) := by cases c <;> decide
 @[simp] theorem bv_eq_zero (c : Bool) : (bv c = 0#64) = (c = false) := by cases c <;> decide
 @[simp] theorem bv_eq_one (c : Bool) : (bv c = 1#64) = (c = true) := by cases c <;> decide
 attribute [s3_norm] UInt8.toNat_zero
