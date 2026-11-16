@@ -546,4 +546,25 @@ theorem link_implements {α β γ : Type} {encA : α → List UInt8} {encB : β 
         getX_of_abi pcfg ucfg uabi _ (by decide),
         pk _ (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)]
 
+/-! ## Stages in the front end's form (`ByteArray` in, byte list out) -/
+
+/-- re-typing the argument -/
+theorem comap {α α' β : Type} {encA : α → List UInt8} {encB : β → List UInt8} {c : List (BitVec 32)} {f : α → β}
+    {sp : Nat → Nat} {m : Nat} {rl : Bool} (h : Implements1With encA encB c f sp m rl) (φ : α' → α) :
+    Implements1With (fun a => encA (φ a)) encB c (fun a => f (φ a)) sp m rl := fun a => h (φ a)
+
+/-- a byte list as the front end's argument type -/
+def ofL (l : List UInt8) : ByteArray := ⟨⟨l⟩⟩
+
+/-- **linking a stage `g` (front-end form) after `f`**: `K` bounds the intermediate length and both work spaces -/
+theorem link_stage {α : Type} {encA : α → List UInt8} {cf cg : List (BitVec 32)} {f : α → List UInt8}
+    {g : ByteArray → List UInt8} {spf spg : Nat → Nat} {mf : Nat} {rl : Bool} (K : Nat)
+    (hf : Implements1With encA (fun l => l) cf f spf mf true)
+    (hg : Implements1With (fun xs : ByteArray => xs.data.toList) (fun l => l) cg g spg (2 ^ 20) rl)
+    (hsize : cg.length < 2 ^ 17)
+    (hb : ∀ a, (encA a).length ≤ mf → (f a).length ≤ 2 ^ 20 ∧ (f a).length ≤ K ∧ spf (encA a).length ≤ K ∧
+      spg (f a).length ≤ K) :
+    Implements1With encA (fun l => l) (link cf cg) (fun a => g (ofL (f a))) (fun _ => 4 * K + 96) mf rl :=
+  link_implements (encB := fun l => l) hf (comap hg ofL) (fun _ => K) hsize hb
+
 end Nano.Link
