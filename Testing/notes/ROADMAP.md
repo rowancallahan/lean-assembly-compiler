@@ -220,6 +220,22 @@ Bootstrap: (6) the first checker used is correct for our use, made robust by int
 (Lean kernel, con-leche, nanoda, …). Everything else (exporter, our compiler, con-leche's binary, optimisation passes) is
 proved, not trusted.
 
+Tentative (7): the elaborator is correct (it defines what syntax means, and is a likely source of bugs).
+
+### Long term ("white whale"): a small elaborator for pure functions (owner, 2026-11-16; NOT started)
+
+- Size of the real one (Lean 4.29 sources): `Lean/Elab` ≈ 69k lines, `Lean/Meta` (unifier, whnf, instances, match
+  compilation, simp) ≈ 83k, `Lean/Parser` ≈ 7k; ≈ 400 `partial`/`unsafe` definitions and ~30 `@[extern]` in those folders.
+  No correctness theorems about Lean 4's elaborator are known to us.
+- Idea: a small elaborator, written in pure Lean (no `partial`, no `unsafe`, no extern, no IO), for the subset we use:
+  `def`/`structure`/`inductive`, explicit or simple implicit arguments, pattern matching, structural and well-founded
+  recursion, a fixed set of instances/notations (`+`, `==`, `do` for concrete monads). Rough size 5–15k lines; the hard
+  parts are unification, implicit arguments, match compilation and recursion compilation.
+- Validation without trusting either elaborator alone: for every definition, elaborate it with both and let the kernel
+  prove `tiny_f = real_f` (by `rfl`/`funext`); fuzz with generated programs and our corpora (book, con-leche, the
+  compiler itself). Agreement means both would have to be wrong in the same way. Once it is pure Lean, our compiler
+  compiles it with a machine theorem.
+
 ### Details of the root checker
 
 Trusted: (1) the pinned Sail models with their axiom set (`Testing/scripts/expected-axioms.txt`) and the standard Lean
