@@ -46,9 +46,10 @@ def evalO : {Γ : List Ty} → {τ : Ty} → List V → Expr S Γ τ → Option 
     | _ => none
   | _, _, env, .call f xs _ => (xs.get env).map (φ f)
 
-variable (R : Fin S.fns.length → List V → V → Prop)
+variable (R : Fin S.fns.length → List V → Prop)
 
-/-- every call that `evalO` made has the value `φ` gave it (`R`: the meaning of calls) -/
+/-- every call that `evalO` made satisfies `R` (used with `R f vs` = "the call of `f` on `vs` has the value
+`φ f vs`", `Good`) -/
 def CallsOk : {Γ : List Ty} → {τ : Ty} → List V → Expr S Γ τ → Prop
   | _, _, env, .let_ e₁ e₂ => CallsOk env e₁ ∧ (match evalO S φ env e₁ with
     | some v₁ => CallsOk (v₁ :: env) e₂
@@ -60,21 +61,21 @@ def CallsOk : {Γ : List Ty} → {τ : Ty} → List V → Expr S Γ τ → Prop
     | some (.c j fs) => if h : j < S.nc i then CallsOk (fs ++ env) (arms ⟨j, h⟩) else True
     | _ => True
   | _, _, env, .call f xs _ => match xs.get env with
-    | some vs => R f vs (φ f vs)
+    | some vs => R f vs
     | none => True
   | _, _, _, _ => True
 
 end
 
-/-- the meaning of calls in `P` -/
-def EvF (P : Prog) (f : Fin P.S.fns.length) (vs : List V) (v : V) : Prop := Ev P vs (P.body f) v
-
 section
 variable (P : Prog) (φ : Fin P.S.fns.length → List V → V)
 
+/-- **the call of `f` on `vs` has, in `P`'s meaning, the value the oracle gives** -/
+def Good (f : Fin P.S.fns.length) (vs : List V) : Prop := Ev P vs (P.body f) (φ f vs)
+
 /-- **the oracle evaluation is sound** -/
 theorem evalO_sound : ∀ {Γ : List Ty} {τ : Ty} (e : Expr P.S Γ τ) (env : List V) (v : V),
-    evalO P.S φ env e = some v → CallsOk P.S φ (EvF P) env e → Ev P env e v
+    evalO P.S φ env e = some v → CallsOk P.S φ (Good P φ) env e → Ev P env e v
   | _, _, .var x, env, v, h, _ => .var h
   | _, _, .lit c, env, v, h, _ => by simp [evalO] at h; subst h; exact .lit
   | _, _, .blit c, env, v, h, _ => by simp [evalO] at h; subst h; exact .blit
@@ -138,6 +139,12 @@ theorem evalO_sound : ∀ {Γ : List Ty} {τ : Ty} (e : Expr P.S Γ τ) (env : L
     cases hx : xs.get env with
     | none => rw [hx] at h; exact nomatch h
     | some vs => rw [hx] at h hc; cases h; exact .call hx hc
+
+/-- **the certificate of one call**: its body, evaluated with the oracle, gives the oracle's value, and every call
+it makes is good -/
+theorem good_intro {f : Fin P.S.fns.length} {vs : List V} (h : evalO P.S φ vs (P.body f) = some (φ f vs))
+    (hc : CallsOk P.S φ (Good P φ) vs (P.body f)) : Good P φ f vs :=
+  evalO_sound P φ _ vs _ h hc
 
 end
 
@@ -209,6 +216,18 @@ instance {α : Type} [Enc α] : Enc (Option α) where
 @[simp] theorem enc_none {α : Type} [Enc α] : Enc.enc (none : Option α) = .c 0 [] := rfl
 @[simp] theorem enc_some {α : Type} [Enc α] (a : α) : Enc.enc (some a) = .c 1 [Enc.enc a] := rfl
 
+@[simp] theorem dec_u64 (x : BitVec 64) : (Enc.dec (V.w x) : UInt64) = UInt64.ofBitVec x := rfl
+@[simp] theorem dec_i64 (x : BitVec 64) : (Enc.dec (V.w x) : Int64) = Int64.ofBitVec x := rfl
+@[simp] theorem dec_u8 (x : BitVec 64) : (Enc.dec (V.w x) : UInt8) = UInt8.ofBitVec (x.setWidth 8) := rfl
+@[simp] theorem dec_bool (x : BitVec 64) : (Enc.dec (V.w x) : Bool) = (x != 0) := rfl
+@[simp] theorem dec_nil {α : Type} [Enc α] : (Enc.dec (V.c 0 []) : List α) = [] := rfl
+@[simp] theorem dec_cons {α : Type} [Enc α] (a l : V) : (Enc.dec (V.c 1 [a, l]) : List α) = Enc.dec a :: Enc.dec l := rfl
+@[simp] theorem dec_pair {α β : Type} [Enc α] [Enc β] (a b : V) :
+    (Enc.dec (V.c 0 [a, b]) : α × β) = (Enc.dec a, Enc.dec b) := rfl
+@[simp] theorem dec_none {α : Type} [Enc α] : (Enc.dec (V.c 0 []) : Option α) = none := rfl
+@[simp] theorem dec_some {α : Type} [Enc α] (a : V) : (Enc.dec (V.c 1 [a]) : Option α) = some (Enc.dec a) := rfl
+@[simp] theorem bv_ne_zero (c : Bool) : (bv c != 0) = c := by cases c <;> decide
+
 /-- a byte list is the input / output value -/
 theorem enc_bytes : ∀ l : List UInt8, Enc.enc l = bytesV l
   | [] => rfl
@@ -224,12 +243,15 @@ theorem bytesOut_bytesV : ∀ l : List UInt8, bytesOut (bytesV l) = some l
 
 /-- **from the certificate of `main` to `Computes`**: if `main` computes the byte-list function `mainL`, and
 `mainL` maps the encoding of `x` to the encoding of `f x`, then `P` computes `f` -/
-theorem computes_of_main {P : Prog} {α β : Type} (f : α → β) (encIn : α → List UInt8) (encOut : β → List UInt8)
+theorem computes_of_main {P : Prog} {φ : Fin P.S.fns.length → List V → V} {α β : Type} (f : α → β)
+    (encIn : α → List UInt8) (encOut : β → List UInt8)
     (mainL : List UInt8 → List UInt8) (hmain : ∀ x, mainL (encIn x) = encOut (f x))
-    (cert : ∀ bs : List UInt8, Ev P [Enc.enc bs] (P.body P.main) (Enc.enc (mainL bs))) :
+    (hφ : ∀ bs : List UInt8, φ P.main [Enc.enc bs] = Enc.enc (mainL bs))
+    (cert : ∀ bs : List UInt8, Good P φ P.main [Enc.enc bs]) :
     Proven.Top.Computes P f encIn encOut := by
   intro x
-  have h := cert (encIn x)
+  have h : Ev P [Enc.enc (encIn x)] (P.body P.main) (Enc.enc (mainL (encIn x))) := by
+    have := cert (encIn x); unfold Good at this; rwa [hφ] at this
   rw [enc_bytes, enc_bytes, hmain] at h
   show P.run (encIn x) = _
   rw [Prog.run_eq h, bytesOut_bytesV]

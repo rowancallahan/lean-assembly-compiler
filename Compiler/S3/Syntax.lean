@@ -54,6 +54,8 @@ structure Sig where
 @[reducible] def Sig.nc (S : Sig) (i : Nat) : Nat := (S.dt i).length
 /-- the field types of constructor `j` of datatype `i`, for a constructor that exists -/
 @[reducible] def Sig.fld (S : Sig) (i : Nat) (j : Fin (S.nc i)) : List Ty := (S.dt i)[j.val]'j.isLt
+/-- the parameter types and the result type of function `f` -/
+@[reducible] def Sig.fn (S : Sig) (f : Nat) : List Ty × Ty := lget ([], .w) S.fns f
 
 /-! ## syntax -/
 
@@ -121,7 +123,7 @@ inductive Expr (S : Sig) : List Ty → Ty → Type where
   | cas {Γ : List Ty} {τ : Ty} {i : Nat} (x : Var Γ (.d i)) (arms : (j : Fin (S.nc i)) → Expr S (S.fld i j ++ Γ) τ) :
       Expr S Γ τ
   /-- a fully applied call of function `f` -/
-  | call {Γ : List Ty} {τ : Ty} (f : Fin S.fns.length) (xs : Vars Γ S.fns[f].1) (h : S.fns[f].2 = τ) : Expr S Γ τ
+  | call {Γ : List Ty} {τ : Ty} (f : Fin S.fns.length) (xs : Vars Γ (S.fn f).1) (h : (S.fn f).2 = τ) : Expr S Γ τ
 
 /-- match arms as a list (`Alts.get` is the arms function of `cas`) -/
 inductive Alts (S : Sig) (Γ : List Ty) (τ : Ty) : List (List Ty) → Type where
@@ -144,12 +146,32 @@ def Alts.get {S : Sig} {Γ : List Ty} {τ : Ty} : {fss : List (List Ty)} → Alt
 def Alts.arms {S : Sig} {Γ : List Ty} {τ : Ty} {i : Nat} (as : Alts S Γ τ (S.dt i)) :
     (j : Fin (S.nc i)) → Expr S (S.fld i j ++ Γ) τ := fun j => as.get j.val j.isLt
 
+/-- the bodies of functions with signatures `fns` -/
+inductive Bodies (S : Sig) : List (List Ty × Ty) → Type where
+  | nil : Bodies S []
+  | cons {fn : List Ty × Ty} {fns : List (List Ty × Ty)} : Expr S fn.1 fn.2 → Bodies S fns → Bodies S (fn :: fns)
+
+def Bodies.get {S : Sig} : {fns : List (List Ty × Ty)} → Bodies S fns → (j : Nat) → j < fns.length →
+    Expr S (lget ([], .w) fns j).1 (lget ([], .w) fns j).2
+  | _ :: _, .cons b _, 0, _ => b
+  | _ :: _, .cons _ bs, j + 1, h => bs.get j (Nat.lt_of_succ_lt_succ h)
+
+@[simp] theorem Bodies.get_zero {S : Sig} {fn : List Ty × Ty} {fns : List (List Ty × Ty)} (b : Expr S fn.1 fn.2)
+    (bs : Bodies S fns) (h : 0 < (fn :: fns).length) : (Bodies.cons b bs).get 0 h = b := rfl
+
+@[simp] theorem Bodies.get_succ {S : Sig} {fn : List Ty × Ty} {fns : List (List Ty × Ty)} (b : Expr S fn.1 fn.2)
+    (bs : Bodies S fns) (j : Nat) (h : j + 1 < (fn :: fns).length) :
+    (Bodies.cons b bs).get (j + 1) h = bs.get j (Nat.lt_of_succ_lt_succ h) := rfl
+
 /-- **programs**: a signature, one body per function, the entry `main` (a byte list to a byte list, datatype `0`
 being byte lists `[[], [w, d 0]]`) -/
 structure Prog where
   S : Sig
-  body : (f : Fin S.fns.length) → Expr S S.fns[f].1 S.fns[f].2
+  bodies : Bodies S S.fns
   main : Fin S.fns.length
+
+/-- the body of function `f` -/
+def Prog.body (P : Prog) (f : Fin P.S.fns.length) : Expr P.S (P.S.fn f).1 (P.S.fn f).2 := P.bodies.get f.val f.isLt
 
 /-! ## values and meaning -/
 
@@ -194,7 +216,7 @@ inductive Ev (P : Prog) : {Γ : List Ty} → {τ : Ty} → List V → Expr P.S �
   | cas {Γ τ env i j fs v} {x : Var Γ (.d i)} {arms : (j : Fin (P.S.nc i)) → Expr P.S (P.S.fld i j ++ Γ) τ}
       (hj : j < P.S.nc i) : env[x.idx]? = some (.c j fs) → fs.length = (P.S.fld i ⟨j, hj⟩).length →
       Ev P (fs ++ env) (arms ⟨j, hj⟩) v → Ev P env (.cas x arms) v
-  | call {Γ τ env vs v} {f : Fin P.S.fns.length} {xs : Vars Γ P.S.fns[f].1} {h : P.S.fns[f].2 = τ} :
+  | call {Γ τ env vs v} {f : Fin P.S.fns.length} {xs : Vars Γ (P.S.fn f).1} {h : (P.S.fn f).2 = τ} :
       xs.get env = some vs → Ev P vs (P.body f) v → Ev P env (.call f xs h) v
 
 /-- **the meaning is deterministic** -/
@@ -267,7 +289,7 @@ noncomputable instance : Proven.Top.Program Prog := ⟨Prog.run⟩
 /-- evaluating `e` in `env` reaches a call of `g` on `ws` (only the branches taken) -/
 inductive Reaches (P : Prog) (g : Fin P.S.fns.length) (ws : List V) : {Γ : List Ty} → {τ : Ty} → List V →
     Expr P.S Γ τ → Prop where
-  | here {Γ τ env} {xs : Vars Γ P.S.fns[g].1} {h : P.S.fns[g].2 = τ} : xs.get env = some ws →
+  | here {Γ τ env} {xs : Vars Γ (P.S.fn g).1} {h : (P.S.fn g).2 = τ} : xs.get env = some ws →
       Reaches P g ws env (.call g xs h)
   | let₁ {Γ σ τ env} {e₁ : Expr P.S Γ σ} {e₂ : Expr P.S (σ :: Γ) τ} : Reaches P g ws env e₁ →
       Reaches P g ws env (.let_ e₁ e₂)

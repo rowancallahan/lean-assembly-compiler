@@ -82,7 +82,7 @@ def fnTC {S : Sig} {Γ : List Ty} {τ : Ty} (e : Expr S Γ τ) : TC :=
   .seq (low e (List.range Γ.length) Γ.length) (.term (.ret [.r Γ.length]))
 
 def lowFn (P : Prog) (f : Fin P.S.fns.length) : Func VReg :=
-  mkFunc (List.range P.S.fns[f].1.length) (List.range P.S.fns[f].1.length) 1 [(0, fnTC (P.body f))]
+  mkFunc (List.range (P.S.fn f).1.length) (List.range (P.S.fn f).1.length) 1 [(0, fnTC (P.body f))]
 
 /-! ## `main`: bytes in, bytes out -/
 

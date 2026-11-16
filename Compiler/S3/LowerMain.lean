@@ -191,7 +191,7 @@ theorem out_loop : ∀ (rest written : List UInt8) (w : V) (g : VReg → Val) (m
 end
 
 /-- what the compiler checks: small datatypes, a one-parameter `main` -/
-def Good (P : Prog) : Prop := Small P.S ∧ P.S.fns[P.main].1.length = 1
+def Good (P : Prog) : Prop := Small P.S ∧ (P.S.fn P.main).1.length = 1
 
 theorem lowerP_fn (P : Prog) (f : Fin P.S.fns.length) : (lowerP P).funcs[f.val]? = some (lowFn P f) := by
   simp [lowerP, List.getElem?_append_left (show f.val < (List.ofFn (lowFn P)).length by simp)]

@@ -87,10 +87,10 @@ theorem ex_alloc {g : VReg → Val} (m : Ir.Mem) (d : VReg) (c : BitVec 64) :
 theorem fn_returns (hQ : HasFns P Q) (f : Fin P.S.fns.length) {vs : List V} {v : V} {m : Ir.Mem}
     (ih : ∀ (ρ : List VReg) (n : Nat) (g : VReg → Val) (m : Ir.Mem), EnvR m vs ρ g → (∀ r : Nat, r ∈ ρ → r < n) →
       ∃ g' m', SC.Ex Q (low (P.body f) ρ n) g m g' m' ∧ Grow m m' ∧ Rep m' v (g' n) ∧ ∀ r : Nat, r < n → g' r = g r)
-    (vals : List Val) (hl : vs.length = vals.length) (hk : vs.length = P.S.fns[f].1.length)
+    (vals : List Val) (hl : vs.length = vals.length) (hk : vs.length = (P.S.fn f).1.length)
     (hr : ∀ k (h₁ : k < vs.length) (h₂ : k < vals.length), Rep m vs[k] vals[k]) :
     ∃ x m', Returns Q f.val vals m [x] m' ∧ Grow m m' ∧ Rep m' v x := by
-  generalize hK : P.S.fns[f].1.length = K at hk
+  generalize hK : (P.S.fn f).1.length = K at hk
   have hF : Q.funcs[f.val]? = some (lowFn P f) := hQ f
   generalize hFF : lowFn P f = F at hF
   have hFdef : F = mkFunc (List.range K) (List.range K) 1 [(0, fnTC (P.body f))] := by rw [← hFF, ← hK]; rfl
@@ -101,7 +101,7 @@ theorem fn_returns (hQ : HasFns P Q) (f : Fin P.S.fns.length) {vs : List V} {v :
     exact hr i h₁ (by omega)
   obtain ⟨g', m', x1, gr, rp, -⟩ := ih (List.range K) K g0 m henv (fun r hr => by simpa using hr)
   have xT : TC.Ex Q F (fnTC (P.body f)) g0 m (.ret [g' K] m') := by
-    have e : (P.S.fns[f].1).length = K := hK
+    have e : (P.S.fn f).1.length = K := hK
     unfold fnTC; rw [e]
     exact .seq x1 .ret
   obtain ⟨nl', ok⟩ := mkFunc_region (params := List.range K) (ps := List.range K) (nl := 1)
@@ -257,7 +257,7 @@ theorem low_ok (hQ : HasFns P Q) (hS : Small P.S) {Γ : List Ty} {τ : Ty} {env 
   | @call Γ τ env vs v f xs hτ hv _ ih =>
     intro ρ n g m he hb
     obtain ⟨hvl, hvr⟩ := vars_rep he hv
-    have hk : vs.length = P.S.fns[f].1.length := by rw [hvl, Vars.get_length]
+    have hk : vs.length = (P.S.fn f).1.length := by rw [hvl, Vars.get_length]
     obtain ⟨x, m', hR, gr, rp⟩ := fn_returns hQ f ih (xs.idxs.map fun k => g (ρ.getD k 0)) (by simp [hvl]) hk
       (fun k h₁ h₂ => by simpa using (hvr k h₁ (by simpa using h₂)).1)
     have hargs : (xs.idxs.map fun k => (Arg.r (ρ.getD k 0) : Arg VReg)).map (Arg.eval g) =
