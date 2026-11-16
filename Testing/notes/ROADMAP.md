@@ -210,3 +210,12 @@ Measured yield (BLOCKER_YIELD.md, merged): con-leche greedy starts with 0-ary co
    and polymorphic type variables (+105: the compiler's IR types are generic in the register type ρ; monomorphise at the use site).
    So round 1 = constants + monomorphisation of type variables + those translator crashes; round 2 = IR S3.
 Ranking of later features from the Haiku yield analysis (`Testing/notes/BLOCKER_YIELD.md`, branch blocker-yield).
+
+## Trust statement and self-hosting scope (2026-11-16, from REVIEW_TRUST.md; owner to confirm wording)
+
+- Proposed wording: trusted = the pinned Sail models + ONE root proof checker and its logic (today the Lean kernel; later
+  con-leche's own binary only after a root checker has checked its proof once; independent checkers such as other Lean
+  kernels can be added as diverse roots) + "the hardware behaves as the Sail model". Self-checking is evidence, not a root.
+- A COMPLETE self-hosted compiler needs the front ends (today Lean metaprograms with tactics) rewritten as a pure function
+  from exported kernel terms to code + a certificate checked by the compiled con-leche. Not counted in SELFHOST_DEPTH*;
+  needs its own design round before the self-hosting milestone can be met.
