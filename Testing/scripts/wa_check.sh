@@ -7,7 +7,7 @@ H=$(cd "$(dirname "$0")" && pwd); R=$(cd "$H/../.." && pwd); cd "$R"
 export PATH=$HOME/.elan/bin:$PATH
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
 lake env lean "$H/axioms_wa.lean" > "$T/out.txt" 2>&1 || { cat "$T/out.txt"; exit 1; }
-tr -d '\n' < "$T/out.txt" | sed "s/'Proven/\n'Proven/g; s/ //g" | grep -v '^$' > "$T/got.txt"
+tr -d '\n' < "$T/out.txt" | sed "s/'Proven/\n'Proven/g; s/'LeanSvg/\n'LeanSvg/g; s/ //g" | grep -v '^$' > "$T/got.txt"
 ref=$(grep "^'Proven.Mach.Riscv.implements1_of_execO'" "$T/got.txt" | sed 's/^[^:]*://')
 grep -qxF "'Proven.Mach.Riscv.implements1_of_execO'dependsonaxioms:$ref" "$H/expected-axioms.txt" \
   || { echo "implements1_of_execO axioms differ from expected-axioms.txt"; exit 1; }

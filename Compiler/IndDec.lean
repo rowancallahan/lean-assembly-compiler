@@ -1,89 +1,9 @@
 /- The decoder `dec` and the encoder `enc` of `indProg` (`Compiler/Ind.lean`), once and for all. -/
-import Compiler.IndOk
+import Compiler.IndStrOk
 
 set_option linter.unusedVariables false
 namespace Proven.Mach.Ind
 open Proven.Mach
-
-theorem unle_lt : ∀ L : List UInt8, unle L < 256 ^ L.length
-  | [] => by simp [unle]
-  | b :: bs => by
-    have := unle_lt bs; have := b.toNat_lt
-    simp only [unle, List.length_cons, Nat.pow_succ]
-    have : 256 * unle bs + 256 ≤ 256 ^ bs.length * 256 := by
-      have := Nat.mul_le_mul_left 256 (show unle bs + 1 ≤ 256 ^ bs.length by omega); rw [Nat.mul_comm 256 (256 ^ _)] at this; omega
-    omega
-
-theorem zb (b : UInt8) : b.toBitVec.setWidth 64 = BitVec.ofNat 64 b.toNat := by
-  apply BitVec.eq_of_toNat_eq; simp [BitVec.toNat_setWidth]
-
-theorem horner (u b : Nat) (hu : u < 2 ^ 56) (hb : b < 256) :
-    Op.eval .shl (BitVec.ofNat 64 u) (BitVec.ofNat 64 8) + BitVec.ofNat 64 b = BitVec.ofNat 64 (b + 256 * u) := by
-  apply BitVec.eq_of_toNat_eq
-  simp [Op.eval, BitVec.toNat_shiftLeft, BitVec.toNat_add, Nat.shiftLeft_eq]
-  congr 1; omega
-
-theorem load_exec {v b : Nat} {i : BExp} {env : BEnv} {H : Heap} {W : WHeap} {I : List (BitVec 8)} {k : Nat}
-    {x : BitVec 8} (hH : H[b]? = some I) (hk : (i.denote env).toNat = k) (hx : I[k]? = some x) :
-    BExec (.load v b i) ⟨env, H, W⟩ ⟨env.set v (x.setWidth 64), H, W⟩ := by
-  subst hk
-  obtain ⟨hb, rfl⟩ := List.getElem?_eq_some_iff.1 hH
-  obtain ⟨hi, rfl⟩ := List.getElem?_eq_some_iff.1 hx
-  exact BExec.load hb hi
-
-/-- the bytes `L` in `I` from `c` -/
-def At (I : List (BitVec 8)) (c : Nat) (L : List UInt8) : Prop :=
-  ∀ i, i < L.length → I[c + i]? = L[i]?.map (·.toBitVec)
-
-theorem At.app {I : List (BitVec 8)} {c : Nat} {L₁ L₂ : List UInt8} (h : At I c (L₁ ++ L₂)) :
-    At I c L₁ ∧ At I (c + L₁.length) L₂ :=
-  ⟨fun i hi => by have := h i (by simp; omega); rwa [List.getElem?_append_left hi] at this,
-   fun i hi => by
-    have := h (L₁.length + i) (by simp; omega)
-    rwa [List.getElem?_append_right (by omega), show L₁.length + i - L₁.length = i by omega, ← Nat.add_assoc] at this⟩
-
-theorem At.cons {I : List (BitVec 8)} {c : Nat} {b : UInt8} {L : List UInt8} (h : At I c (b :: L)) :
-    I[c]? = some b.toBitVec ∧ At I (c + 1) L :=
-  ⟨by simpa using h 0 (by simp), fun i hi => by
-    have := h (i + 1) (by simp; omega); rwa [show c + (i + 1) = c + 1 + i by omega] at this⟩
-
-theorem At.get {I : List (BitVec 8)} {c : Nat} {L : List UInt8} (h : At I c L) (i : Nat) (hi : i < L.length) :
-    I[c + i]? = some L[i].toBitVec := by rw [h i hi, List.getElem?_eq_getElem hi]; rfl
-
-theorem rdB_ok (L : List UInt8) (hL : L.length = 8) (c : Nat) (I : List (BitVec 8)) (hI : At I c L)
-    (hc : c + 8 < 2 ^ 60) : ∀ k, k ≤ 8 → ∀ (env : BEnv) (H : Heap) (W : WHeap), H[0]? = some I →
-      env 4 = BitVec.ofNat 64 c →
-      ∃ E', BExec (rdB k) ⟨env, H, W⟩ ⟨E', H, W⟩ ∧ E' 9 = BitVec.ofNat 64 (unle (L.drop (8 - k))) ∧
-        ∀ i, i ≠ 9 → i ≠ 12 → E' i = env i
-  | 0, _, env, H, W, hH, h4 => ⟨_, asg_exec _ _ _, by
-      rw [set_eq', List.drop_eq_nil_of_le (by omega)]; simp [unle, kE, BExp.denote],
-      fun i h9 _ => set_ne' _ _ h9⟩
-  | k + 1, hk, env, H, W, hH, h4 => by
-    obtain ⟨E₁, x₁, v₁, k₁⟩ := rdB_ok L hL c I hI hc k (by omega) env H W hH h4
-    have hb := hI.get (7 - k) (by omega)
-    have hix : ((addE 4 (7 - k)).denote E₁).toNat = c + (7 - k) :=
-      addE_den (by rw [k₁ 4 (by omega) (by omega)]; exact h4) (by omega)
-    refine ⟨_, .seq x₁ (.seq (load_exec hH hix hb) (asg_exec _ _ _)), ?_, fun i h9 h12 => ?_⟩
-    · rw [set_eq']
-      simp only [BExp.denote, vE, kE]
-      rw [set_ne' _ _ (by omega), set_eq', v₁, zb]
-      have hu := unle_lt (L.drop (8 - k))
-      simp only [List.length_drop, hL] at hu
-      have : 256 ^ (8 - (8 - k)) ≤ 2 ^ 56 := by
-        rw [show (256 : Nat) = 2 ^ 8 from rfl, ← Nat.pow_mul]; exact Nat.pow_le_pow_right (by omega) (by omega)
-      rw [show Op.add.eval (Op.shl.eval (BitVec.ofNat 64 (unle (List.drop (8 - k) L))) 8#64)
-        (BitVec.ofNat 64 L[7 - k].toNat) = Op.shl.eval (BitVec.ofNat 64 (unle (List.drop (8 - k) L))) (BitVec.ofNat 64 8) +
-        BitVec.ofNat 64 L[7 - k].toNat from rfl, horner (unle (List.drop (8 - k) L)) _ (Nat.lt_of_lt_of_le hu this) L[7 - k].toNat_lt]
-      rw [show 8 - (k + 1) = 7 - k by omega, List.drop_eq_getElem_cons (i := 7 - k) (l := L) (by omega), show 7 - k + 1 = 8 - k by omega]
-      rfl
-    · show BEnv.set _ _ _ i = _; rw [set_ne' _ _ h9]; show BEnv.set _ _ _ i = _; rw [set_ne' _ _ h12, k₁ i h9 h12]
-
-theorem At.lt {I : List (BitVec 8)} {c : Nat} {L : List UInt8} (h : At I c L) (hl : 0 < L.length) :
-    c + L.length ≤ I.length := by
-  obtain ⟨k, hk⟩ : ∃ k, L.length = k + 1 := ⟨L.length - 1, by omega⟩
-  have := h k (by omega)
-  rw [List.getElem?_eq_getElem (l := L) (by omega)] at this
-  have := (List.getElem?_eq_some_iff.1 this).1; omega
 
 /-! ## the decoder -/
 
@@ -101,7 +21,7 @@ def DecOK (K : Nat) (v : C) : Prop :=
 
 variable {P sh}
 
-theorem dcall_ok (hP1 : ∃ hf : 1 < P.length, P[1] = decFn sh) {K K' : Nat} (hK : 48 + K' ≤ K) {v : C}
+theorem dcall_ok (hP1 : ∃ hf : 1 < P.length, P[1] = decFn sh) {K K' : Nat} (hK : 64 + K' ≤ K) {v : C}
     (ok : DecOK P sh K' v) {d : Nat} (hd : 8 ≤ d) {env : BEnv} {H : Heap} {I : List (BitVec 8)} {c : Nat}
     {W : List (BitVec 64)} {h : Nat} (hH : H[0]? = some I) (hI : I.length < 2 ^ 60) (hA : At I c (v.enc sh))
     (hi : HI W h) (h4 : env 4 = BitVec.ofNat 64 c) (h5 : env 5 = BitVec.ofNat 64 h)
@@ -123,20 +43,24 @@ theorem dcall_ok (hP1 : ∃ hf : 1 < P.length, P[1] = decFn sh) {K K' : Nat} (hK
     · rfl
   · simp only; rw [set_eq']; exact rv
 
-theorem dFlds_ok (hP1 : ∃ hf : 1 < P.length, P[1] = decFn sh) {K K' : Nat} (hK : 48 + K' ≤ K)
-    {x : BitVec 64} {l r : C} (okl : l.wf sh → DecOK P sh K' l) (okr : r.wf sh → DecOK P sh K' r) :
+theorem dFlds_ok (hP1 : ∃ hf : 1 < P.length, P[1] = decFn sh) {K K' : Nat} (hK : 64 + K' ≤ K)
+    (hst : sTag sh + 1 < 256) {x : BitVec 64} {l r : C} (okl : l.wf sh → DecOK P sh K' l)
+    (okr : r.wf sh → DecOK P sh K' r) :
     ∀ (fs : List Fld) (env : BEnv) (H : Heap) (I : List (BitVec 8)) (q : Nat) (W : List (BitVec 64)) (h : Nat),
-      H[0]? = some I → I.length < 2 ^ 60 → At I q (fs.flatMap (encF x (l.enc sh) (r.enc sh))) → HI W h →
+      H[0]? = some I → I.length < 2 ^ 60 → At I q (fs.flatMap (encF x (l.enc sh) (r.enc sh) l.senc r.senc)) → HI W h →
       env 4 = BitVec.ofNat 64 q → env 5 = BitVec.ofNat 64 h →
-      h + 4 * (fs.flatMap (encF x (l.enc sh) (r.enc sh))).length ≤ W.length →
-      (Fld.l ∈ fs → l.wf sh) → (Fld.r ∈ fs → r.wf sh) → (Fld.b ∈ fs → x.toNat < 256) →
-      (Fld.x ∈ fs ∨ Fld.b ∈ fs ∨ env 9 = x) → (Fld.l ∈ fs ∨ Rp W h (env 10) l) → (Fld.r ∈ fs ∨ Rp W h (env 11) r) →
-      ∃ E' W' h', CExec P K (dFlds fs) ⟨env, H, [W]⟩ ⟨E', H, [W']⟩ ∧
+      h + 4 * (fs.flatMap (encF x (l.enc sh) (r.enc sh) l.senc r.senc)).length ≤ W.length →
+      (Fld.l ∈ fs → l.wf sh) → (Fld.r ∈ fs → r.wf sh) → (Fld.sl ∈ fs → l.IsStr (sTag sh)) →
+      (Fld.sr ∈ fs → r.IsStr (sTag sh)) → (Fld.b ∈ fs → x.toNat < 256) →
+      (Fld.x ∈ fs ∨ Fld.b ∈ fs ∨ env 9 = x) → (Fld.l ∈ fs ∨ Fld.sl ∈ fs ∨ Rp W h (env 10) l) →
+      (Fld.r ∈ fs ∨ Fld.sr ∈ fs ∨ Rp W h (env 11) r) →
+      ∃ E' W' h', CExec P K (dFlds (sTag sh) fs) ⟨env, H, [W]⟩ ⟨E', H, [W']⟩ ∧
         W'.length = W.length ∧ Agree W W' h ∧ HI W' h' ∧ h ≤ h' ∧
-        h' ≤ h + 4 * (fs.flatMap (encF x (l.enc sh) (r.enc sh))).length ∧
-        E' 5 = BitVec.ofNat 64 h' ∧ E' 4 = BitVec.ofNat 64 (q + (fs.flatMap (encF x (l.enc sh) (r.enc sh))).length) ∧
-        (∀ i, i ∉ [4, 5, 9, 10, 11, 12] → E' i = env i) ∧ E' 9 = x ∧ Rp W' h' (E' 10) l ∧ Rp W' h' (E' 11) r
-  | [], env, H, I, q, W, h, hH, hI, hA, hi, h4, h5, cap, wl, wr, wb, ix, il, ir => by
+        h' ≤ h + 4 * (fs.flatMap (encF x (l.enc sh) (r.enc sh) l.senc r.senc)).length ∧
+        E' 5 = BitVec.ofNat 64 h' ∧
+        E' 4 = BitVec.ofNat 64 (q + (fs.flatMap (encF x (l.enc sh) (r.enc sh) l.senc r.senc)).length) ∧
+        (∀ i, i ∉ [4, 5, 9, 10, 11, 12, 13, 14] → E' i = env i) ∧ E' 9 = x ∧ Rp W' h' (E' 10) l ∧ Rp W' h' (E' 11) r
+  | [], env, H, I, q, W, h, hH, hI, hA, hi, h4, h5, cap, wl, wr, wsl, wsr, wb, ix, il, ir => by
     simp only [List.flatMap_nil, List.length_nil, Nat.mul_zero, Nat.add_zero, List.not_mem_nil, false_or] at *
     refine ⟨_, W, h, .base (asg_exec _ _ _), rfl, Agree.refl _ _, hi, Nat.le_refl _, Nat.le_refl _, ?_, ?_,
       fun i hi' => ?_, ?_, ?_, ?_⟩ <;> simp only [vE, BExp.denote]
@@ -146,16 +70,16 @@ theorem dFlds_ok (hP1 : ∃ hf : 1 < P.length, P[1] = decFn sh) {K K' : Nat} (hK
     · rw [set_eq']; exact ix
     · rw [set_ne' _ _ (by omega)]; exact il
     · rw [set_ne' _ _ (by omega)]; exact ir
-  | f :: fs, env, H, I, q, W, h, hH, hI, hA, hi, h4, h5, cap, wl, wr, wb, ix, il, ir => by
+  | f :: fs, env, H, I, q, W, h, hH, hI, hA, hi, h4, h5, cap, wl, wr, wsl, wsr, wb, ix, il, ir => by
     simp only [List.flatMap_cons] at hA cap ⊢
     obtain ⟨hA1, hA2⟩ := hA.app
     -- one field, then the rest
-    have step : ∃ E₁ W₁ h₁, CExec P K (dFld f) ⟨env, H, [W]⟩ ⟨E₁, H, [W₁]⟩ ∧ W₁.length = W.length ∧ Agree W W₁ h ∧
-        HI W₁ h₁ ∧ h ≤ h₁ ∧ h₁ ≤ h + 4 * (encF x (l.enc sh) (r.enc sh) f).length ∧ E₁ 5 = BitVec.ofNat 64 h₁ ∧
-        E₁ 4 = BitVec.ofNat 64 (q + (encF x (l.enc sh) (r.enc sh) f).length) ∧
-        (∀ i, i ∉ [4, 5, 9, 10, 11, 12] → E₁ i = env i) ∧
-        (Fld.x ∈ fs ∨ Fld.b ∈ fs ∨ E₁ 9 = x) ∧ (Fld.l ∈ fs ∨ Rp W₁ h₁ (E₁ 10) l) ∧
-          (Fld.r ∈ fs ∨ Rp W₁ h₁ (E₁ 11) r) := by
+    have step : ∃ E₁ W₁ h₁, CExec P K (dFld (sTag sh) f) ⟨env, H, [W]⟩ ⟨E₁, H, [W₁]⟩ ∧ W₁.length = W.length ∧
+        Agree W W₁ h ∧ HI W₁ h₁ ∧ h ≤ h₁ ∧ h₁ ≤ h + 4 * (encF x (l.enc sh) (r.enc sh) l.senc r.senc f).length ∧
+        E₁ 5 = BitVec.ofNat 64 h₁ ∧ E₁ 4 = BitVec.ofNat 64 (q + (encF x (l.enc sh) (r.enc sh) l.senc r.senc f).length) ∧
+        (∀ i, i ∉ [4, 5, 9, 10, 11, 12, 13, 14] → E₁ i = env i) ∧
+        (Fld.x ∈ fs ∨ Fld.b ∈ fs ∨ E₁ 9 = x) ∧ (Fld.l ∈ fs ∨ Fld.sl ∈ fs ∨ Rp W₁ h₁ (E₁ 10) l) ∧
+          (Fld.r ∈ fs ∨ Fld.sr ∈ fs ∨ Rp W₁ h₁ (E₁ 11) r) := by
       cases f with
       | x =>
         have hL : (leN 8 x.toNat).length = 8 := leN_length 8 _
@@ -169,12 +93,14 @@ theorem dFlds_ok (hP1 : ∃ hf : 1 < P.length, P[1] = decFn sh) {K K' : Nat} (hK
         · simp at hi'; dsimp only; rw [set_ne' _ _ (by omega), k₁ i (by omega) (by omega)]
         · right; right; dsimp only; rw [set_ne' _ _ (by omega), v₁]; simp only [Nat.sub_self, List.drop_zero, unle_leN]
           apply BitVec.eq_of_toNat_eq; simp; omega
-        · rcases il with il | il
+        · rcases il with il | il | il
           · left; simpa using il
-          · right; dsimp only; rw [set_ne' _ _ (by omega), k₁ 10 (by omega) (by omega)]; exact il
-        · rcases ir with ir | ir
+          · right; left; simpa using il
+          · right; right; dsimp only; rw [set_ne' _ _ (by omega), k₁ 10 (by omega) (by omega)]; exact il
+        · rcases ir with ir | ir | ir
           · left; simpa using ir
-          · right; dsimp only; rw [set_ne' _ _ (by omega), k₁ 11 (by omega) (by omega)]; exact ir
+          · right; left; simpa using ir
+          · right; right; dsimp only; rw [set_ne' _ _ (by omega), k₁ 11 (by omega) (by omega)]; exact ir
       | b =>
         have hx := wb (List.mem_cons_self ..)
         have hL : ((leN 8 x.toNat).take 1) = [UInt8.ofNat x.toNat] := by simp [leN, Nat.mod_eq_of_lt hx]
@@ -191,42 +117,77 @@ theorem dFlds_ok (hP1 : ∃ hf : 1 < P.length, P[1] = decFn sh) {K K' : Nat} (hK
         · simp at hi'; dsimp only; rw [set_ne' _ _ (by omega), set_ne' _ _ (by omega)]
         · right; right; dsimp only; rw [set_ne' _ _ (by omega), set_eq', zb]
           apply BitVec.eq_of_toNat_eq; simp [Nat.mod_eq_of_lt hx]
-        · rcases il with il | il
+        · rcases il with il | il | il
           · left; simpa using il
-          · right; dsimp only; rw [set_ne' _ _ (by omega), set_ne' _ _ (by omega)]; exact il
-        · rcases ir with ir | ir
+          · right; left; simpa using il
+          · right; right; dsimp only; rw [set_ne' _ _ (by omega), set_ne' _ _ (by omega)]; exact il
+        · rcases ir with ir | ir | ir
           · left; simpa using ir
-          · right; dsimp only; rw [set_ne' _ _ (by omega), set_ne' _ _ (by omega)]; exact ir
+          · right; left; simpa using ir
+          · right; right; dsimp only; rw [set_ne' _ _ (by omega), set_ne' _ _ (by omega)]; exact ir
       | l =>
         simp only [encF, List.length_append] at hA1 cap ⊢
         obtain ⟨E₁, W₁, h₁, x₁, l1, a1, i1, b1, b2, e5, e4, gl, rv⟩ := dcall_ok hP1 hK (okl (wl (by simp)))
           (d := 10) (by omega) hH hI hA1 hi h4 h5 (by omega)
         refine ⟨E₁, W₁, h₁, x₁, l1, a1, i1, b1, b2, e5, e4, fun i hi' => gl i (by simp at hi'; omega)
-          (by simp at hi'; omega) (by simp at hi'; omega), ?_, .inr rv, ?_⟩
+          (by simp at hi'; omega) (by simp at hi'; omega), ?_, .inr (.inr rv), ?_⟩
         · rcases ix with ix | ix | ix
           · left; simpa using ix
           · right; left; simpa using ix
           · right; right; rw [gl 9 (by omega) (by omega) (by omega)]; exact ix
-        · rcases ir with ir | ir
+        · rcases ir with ir | ir | ir
           · left; simpa using ir
-          · right; rw [gl 11 (by omega) (by omega) (by omega)]; exact ir.mono b1 a1
+          · right; left; simpa using ir
+          · right; right; rw [gl 11 (by omega) (by omega) (by omega)]; exact ir.mono b1 a1
       | r =>
         simp only [encF, List.length_append] at hA1 cap ⊢
         obtain ⟨E₁, W₁, h₁, x₁, l1, a1, i1, b1, b2, e5, e4, gl, rv⟩ := dcall_ok hP1 hK (okr (wr (by simp)))
           (d := 11) (by omega) hH hI hA1 hi h4 h5 (by omega)
         refine ⟨E₁, W₁, h₁, x₁, l1, a1, i1, b1, b2, e5, e4, fun i hi' => gl i (by simp at hi'; omega)
-          (by simp at hi'; omega) (by simp at hi'; omega), ?_, ?_, .inr rv⟩
+          (by simp at hi'; omega) (by simp at hi'; omega), ?_, ?_, .inr (.inr rv)⟩
         · rcases ix with ix | ix | ix
           · left; simpa using ix
           · right; left; simpa using ix
           · right; right; rw [gl 9 (by omega) (by omega) (by omega)]; exact ix
-        · rcases il with il | il
+        · rcases il with il | il | il
           · left; simpa using il
-          · right; rw [gl 10 (by omega) (by omega) (by omega)]; exact il.mono b1 a1
+          · right; left; simpa using il
+          · right; right; rw [gl 10 (by omega) (by omega) (by omega)]; exact il.mono b1 a1
+      | sl =>
+        obtain ⟨L, hlL, hse⟩ := IsStr.senc (wsl (by simp))
+        simp only [encF, hse] at hA1 cap ⊢
+        obtain ⟨E₁, W₁, h₁, x₁, l1, a1, i1, b1, b2, e5, e4, gl, rv⟩ := dStr_ok (P := P) (K := K) (sTag sh) 10
+          (.inl rfl) hst L hH hI hA1 hi h4 h5 (by simp only [List.length_append] at cap ⊢; omega)
+        refine ⟨E₁, W₁, h₁, x₁, l1, a1, i1, b1, b2, e5, e4, fun i hi' => gl i (by simp at hi' ⊢; omega), ?_,
+          .inr (.inr (by rw [hlL]; exact rv)), ?_⟩
+        · rcases ix with ix | ix | ix
+          · left; simpa using ix
+          · right; left; simpa using ix
+          · right; right; rw [gl 9 (by simp)]; exact ix
+        · rcases ir with ir | ir | ir
+          · left; simpa using ir
+          · right; left; simpa using ir
+          · right; right; rw [gl 11 (by simp)]; exact ir.mono b1 a1
+      | sr =>
+        obtain ⟨L, hrL, hse⟩ := IsStr.senc (wsr (by simp))
+        simp only [encF, hse] at hA1 cap ⊢
+        obtain ⟨E₁, W₁, h₁, x₁, l1, a1, i1, b1, b2, e5, e4, gl, rv⟩ := dStr_ok (P := P) (K := K) (sTag sh) 11
+          (.inr rfl) hst L hH hI hA1 hi h4 h5 (by simp only [List.length_append] at cap ⊢; omega)
+        refine ⟨E₁, W₁, h₁, x₁, l1, a1, i1, b1, b2, e5, e4, fun i hi' => gl i (by simp at hi' ⊢; omega), ?_,
+          ?_, .inr (.inr (by rw [hrL]; exact rv))⟩
+        · rcases ix with ix | ix | ix
+          · left; simpa using ix
+          · right; left; simpa using ix
+          · right; right; rw [gl 9 (by simp)]; exact ix
+        · rcases il with il | il | il
+          · left; simpa using il
+          · right; left; simpa using il
+          · right; right; rw [gl 10 (by simp)]; exact il.mono b1 a1
     obtain ⟨E₁, W₁, h₁, x₁, l1, a1, i1, b1, b2, e5, e4, gl, ix1, il1, ir1⟩ := step
-    obtain ⟨E₂, W₂, h₂, x₂, l2, a2, i2, c1, c2, f5, f4, gl2, ix2, il2, ir2⟩ := dFlds_ok hP1 hK okl okr fs E₁ H I _ W₁ h₁
+    obtain ⟨E₂, W₂, h₂, x₂, l2, a2, i2, c1, c2, f5, f4, gl2, ix2, il2, ir2⟩ := dFlds_ok hP1 hK hst okl okr fs E₁ H I _ W₁ h₁
       hH hI hA2 i1 e4 e5 (by rw [l1]; simp only [List.length_append] at cap; omega)
       (fun m => wl (List.mem_cons_of_mem _ m)) (fun m => wr (List.mem_cons_of_mem _ m))
+      (fun m => wsl (List.mem_cons_of_mem _ m)) (fun m => wsr (List.mem_cons_of_mem _ m))
       (fun m => wb (List.mem_cons_of_mem _ m)) ix1 il1 ir1
     refine ⟨E₂, W₂, h₂, .seq x₁ x₂, l2.trans l1, a1.trans a2 b1, i2, by omega, by simp only [List.length_append]; omega,
       f5, by rw [f4, List.length_append, Nat.add_assoc], fun i hi' => by rw [gl2 i hi', gl i hi'], ix2, il2, ir2⟩
@@ -236,9 +197,9 @@ theorem decOK_mono {K K' : Nat} {v : C} (h : DecOK P sh K v) (hk : K ≤ K') : D
   obtain ⟨E', W', h', hx, rest⟩ := h g H I c W hh a1 a2 a3 a4 a5 a6 a7
   exact ⟨E', W', h', hx.mono hk, rest⟩
 
-theorem dDisp_skip {K : Nat} {t : Nat} (ht : t < 256) :
+theorem dDisp_skip {K : Nat} {t : Nat} (st : Nat) (ht : t < 256) :
     ∀ (ss : Shape) (i : Nat), t < i → i + ss.length ≤ 255 → ∀ (env : BEnv) (H : Heap) (Wh : WHeap),
-      env 8 = BitVec.ofNat 64 t → CExec P K (dDisp ss i) ⟨env, H, Wh⟩ ⟨env, H, Wh⟩
+      env 8 = BitVec.ofNat 64 t → CExec P K (dDisp st ss i) ⟨env, H, Wh⟩ ⟨env, H, Wh⟩
   | [], i, _, _, env, H, Wh, _ => by
     have := CExec.base (P := P) (k := K) (asg_exec 9 (vE 9) ⟨env, H, Wh⟩)
     simpa [vE, BExp.denote, set_same] using this
@@ -247,14 +208,14 @@ theorem dDisp_skip {K : Nat} {t : Nat} (ht : t < 256) :
     have hn := CExec.base (P := P) (k := K) (asg_exec 9 (vE 9) ⟨env, H, Wh⟩)
     simp only [vE, BExp.denote, set_same] at hn
     exact .seq (.iteF (by show BExp.denote env (eqE 8 i) = 0; rw [eqE_den env 8 i t he ht (by omega), if_neg (by omega)]) hn)
-      (dDisp_skip ht ss (i + 1) (by omega) (by omega) env H Wh he)
+      (dDisp_skip st ht ss (i + 1) (by omega) (by omega) env H Wh he)
 
-theorem dDisp_ok {K : Nat} {t : Nat} (ht : t < 256) {Q : BState → Prop} :
+theorem dDisp_ok {K : Nat} {t : Nat} (st : Nat) (ht : t < 256) {Q : BState → Prop} :
     ∀ (ss : Shape) (i : Nat), i ≤ t → i + ss.length ≤ 255 → ∀ (env : BEnv) (H : Heap) (Wh : WHeap),
       env 8 = BitVec.ofNat 64 t →
-      (∀ fs, ss[t - i]? = some fs → ∃ σ', CExec P K (dFlds fs) ⟨env, H, Wh⟩ σ' ∧ Q σ' ∧ σ'.env 8 = env 8) →
+      (∀ fs, ss[t - i]? = some fs → ∃ σ', CExec P K (dFlds st fs) ⟨env, H, Wh⟩ σ' ∧ Q σ' ∧ σ'.env 8 = env 8) →
       (ss[t - i]? = none → Q ⟨env.set 9 (env 9), H, Wh⟩) →
-      ∃ σ', CExec P K (dDisp ss i) ⟨env, H, Wh⟩ σ' ∧ Q σ'
+      ∃ σ', CExec P K (dDisp st ss i) ⟨env, H, Wh⟩ σ' ∧ Q σ'
   | [], i, _, _, env, H, Wh, _, _, hn => ⟨_, .base (asg_exec _ _ _), hn rfl⟩
   | fs :: ss, i, hi, hl, env, H, Wh, he, hs, hn => by
     simp only [List.length_cons] at hl
@@ -262,10 +223,10 @@ theorem dDisp_ok {K : Nat} {t : Nat} (ht : t < 256) {Q : BState → Prop} :
     · subst h
       obtain ⟨⟨E', H', Wh'⟩, hx, hq, h8⟩ := hs fs (by simp)
       exact ⟨_, .seq (.iteT (by rw [eqE_den env 8 t t he ht ht, if_pos rfl]; decide) hx)
-        (dDisp_skip ht ss (t + 1) (by omega) (by omega) E' H' Wh' (by simp only at h8; rw [h8, he])), hq⟩
+        (dDisp_skip st ht ss (t + 1) (by omega) (by omega) E' H' Wh' (by simp only at h8; rw [h8, he])), hq⟩
     · have hnop := CExec.base (P := P) (k := K) (asg_exec 9 (vE 9) ⟨env, H, Wh⟩)
       simp only [vE, BExp.denote, set_same] at hnop
-      obtain ⟨σ', hx, hq⟩ := dDisp_ok ht ss (i + 1) (by omega) (by omega) env H Wh he
+      obtain ⟨σ', hx, hq⟩ := dDisp_ok st ht ss (i + 1) (by omega) (by omega) env H Wh he
         (fun e' h' => hs e' (by rw [show t - i = (t - (i + 1)) + 1 by omega]; simpa using h'))
         (fun h' => hn (by rw [show t - i = (t - (i + 1)) + 1 by omega]; simpa using h'))
       exact ⟨σ', .seq (.iteF (by show BExp.denote env (eqE 8 i) = 0; rw [eqE_den env 8 i t he ht (by omega), if_neg h]) hnop) hx, hq⟩
@@ -275,7 +236,7 @@ theorem tag_byte {t : Nat} (ht : t < 256) : (UInt8.ofNat t).toBitVec.setWidth 64
 
 /-- **The decoder**: `dec` on the bytes of a well-formed `v` builds its cells -/
 theorem dec_ok (hP1 : ∃ hf : 1 < P.length, P[1] = decFn sh) (hsh : sh.length < 255) :
-    ∀ v, v.wf sh → DecOK P sh (48 * v.depth) v := by
+    ∀ v, v.wf sh → DecOK P sh (64 * v.depth) v := by
   intro v
   induction v with
   | z => intro h; exact absurd h id
@@ -287,7 +248,8 @@ theorem dec_ok (hP1 : ∃ hf : 1 < P.length, P[1] = decFn sh) (hsh : sh.length <
     have hcl := hA.lt (by simp)
     simp only [List.length_cons] at cap hcl
     have hfs : sh[t]? = some (sh.getD t []) := by simp [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem ht]
-    have hlen : (C.enc sh (.c t x l r)).length = (List.flatMap (encF x (l.enc sh) (r.enc sh)) (sh.getD t [])).length + 1 := by
+    have hlen : (C.enc sh (.c t x l r)).length =
+        (List.flatMap (encF x (l.enc sh) (r.enc sh) l.senc r.senc) (sh.getD t [])).length + 1 := by
       simp [C.enc]
     generalize sh.getD t [] = fs at hx0 hlw hrw hA1 cap hcl hfs hlen
     let g1 := callEnv g []
@@ -307,12 +269,12 @@ theorem dec_ok (hP1 : ∃ hf : 1 < P.length, P[1] = decFn sh) (hsh : sh.length <
     have e14 : e1 4 = BitVec.ofNat 64 (c + 1) := by
       simp only [e1]; rw [set_ne' _ _ (by omega), set_ne' _ _ (by omega), set_ne' _ _ (by omega), set_eq']
       exact addE_den' (by rw [set_ne' _ _ (by omega), hg1 4 (by omega)]; exact h4)
-    have K1 : 48 * (C.c t x l r).depth = 48 + 48 * max l.depth r.depth := by simp only [C.depth]; omega
-    obtain ⟨E₂, W₂, h₂, x₂, l2, a2, i2, b1, b2, f5, f4, gl2, ix2, il2, ir2⟩ := dFlds_ok hP1 (K := 48 * (C.c t x l r).depth)
-      (K' := 48 * max l.depth r.depth) (by omega) (x := x) (l := l) (r := r)
+    have K1 : 64 * (C.c t x l r).depth = 64 + 64 * max l.depth r.depth := by simp only [C.depth]; omega
+    obtain ⟨E₂, W₂, h₂, x₂, l2, a2, i2, b1, b2, f5, f4, gl2, ix2, il2, ir2⟩ := dFlds_ok hP1 (K := 64 * (C.c t x l r).depth)
+      (K' := 64 * max l.depth r.depth) (by omega) (by unfold sTag; omega) (x := x) (l := l) (r := r)
       (fun w => decOK_mono (ihl w) (by omega)) (fun w => decOK_mono (ihr w) (by omega)) fs e1 H I (c + 1) W h hH hI hA1 hi
       e14 (by rw [e1k 5 (by omega) (by omega)]; exact h5) (by omega)
-      (fun m => by simpa [m] using hlw) (fun m => by simpa [m] using hrw) (fun m => hx0.2 m)
+      hlw.1 hrw.1 hlw.2.1 hrw.2.1 (fun m => hx0.2 m)
       (by by_cases m : Fld.x ∈ fs
           · exact .inl m
           · by_cases mb : Fld.b ∈ fs
@@ -320,15 +282,19 @@ theorem dec_ok (hP1 : ∃ hf : 1 < P.length, P[1] = decFn sh) (hsh : sh.length <
             · right; right; simp [e1, set_eq', set_ne']; exact (hx0.1 m mb).symm)
       (by by_cases m : Fld.l ∈ fs
           · exact .inl m
-          · right; have : l = .z := by simpa [m] using hlw
-            subst this; simp only [e1]; rw [set_ne' _ _ (by omega), set_eq']; exact .z)
+          · by_cases ms : Fld.sl ∈ fs
+            · exact .inr (.inl ms)
+            · right; right; have : l = .z := hlw.2.2 m ms
+              subst this; simp only [e1]; rw [set_ne' _ _ (by omega), set_eq']; exact .z)
       (by by_cases m : Fld.r ∈ fs
           · exact .inl m
-          · right; have : r = .z := by simpa [m] using hrw
-            subst this; simp only [e1]; rw [set_eq']; exact .z)
+          · by_cases ms : Fld.sr ∈ fs
+            · exact .inr (.inl ms)
+            · right; right; have : r = .z := hrw.2.2 m ms
+              subst this; simp only [e1]; rw [set_eq']; exact .z)
     have hb4 : h₂ + 4 ≤ W₂.length := by rw [l2]; omega
     have hx := alloc_exec (H := H) (env := E₂) (vE 8) 9 10 11 12 (by omega) f5 hb4 i2.big
-    obtain ⟨σd, xd, hq⟩ := dDisp_ok (P := P) (K := 48 * (C.c t x l r).depth) (Q := fun σ => σ = ⟨E₂, H, [W₂]⟩)
+    obtain ⟨σd, xd, hq⟩ := dDisp_ok (P := P) (K := 64 * (C.c t x l r).depth) (sTag sh) (Q := fun σ => σ = ⟨E₂, H, [W₂]⟩)
       (show t < 256 by omega) sh 0 (Nat.zero_le _) (by omega) e1 H [W] e18
       (fun fs' h' => by rw [Nat.sub_zero, hfs] at h'; cases h'; exact ⟨_, x₂, rfl, gl2 8 (by simp)⟩)
       (fun h' => by rw [Nat.sub_zero, hfs] at h'; cases h')
@@ -345,79 +311,6 @@ theorem dec_ok (hP1 : ∃ hf : 1 < P.length, P[1] = decFn sh) (hsh : sh.length <
       rw [ix2]; exact Rp_put (t := t) i2 (by omega) hb4 il2 ir2
 
 /-! ## the encoder -/
-
-/-- `L` written into `O` at `j` -/
-def wr (O : List (BitVec 8)) (j : Nat) (L : List UInt8) : List (BitVec 8) :=
-  O.take j ++ L.map (·.toBitVec) ++ O.drop (j + L.length)
-
-theorem wr_get (O : List (BitVec 8)) (j : Nat) (L : List UInt8) (hj : j + L.length ≤ O.length) (i : Nat) :
-    (wr O j L)[i]? = if j ≤ i ∧ i < j + L.length then L[i - j]?.map (·.toBitVec) else O[i]? := by
-  have hm : min j O.length = j := by omega
-  simp only [wr, hm, List.getElem?_append, List.length_append, List.length_take, List.length_map, List.getElem?_take,
-    List.getElem?_drop, List.getElem?_map]
-  split <;> split <;> (try split) <;> (try split) <;> first | rfl | omega | (congr 1; omega) | skip
-
-theorem wr_length (O : List (BitVec 8)) (j : Nat) (L : List UInt8) (hj : j + L.length ≤ O.length) :
-    (wr O j L).length = O.length := by simp [wr]; omega
-
-theorem wr_nil (O : List (BitVec 8)) (j : Nat) (hj : j ≤ O.length) : wr O j [] = O := by simp [wr]
-
-theorem wr_app (O : List (BitVec 8)) (j : Nat) (L₁ L₂ : List UInt8) (hj : j + L₁.length + L₂.length ≤ O.length) :
-    wr (wr O j L₁) (j + L₁.length) L₂ = wr O j (L₁ ++ L₂) := by
-  apply List.ext_getElem?; intro i
-  rw [wr_get _ _ _ (by rw [wr_length _ _ _ (by omega)]; omega), wr_get _ _ _ (by omega),
-    wr_get _ _ _ (by simp; omega)]
-  simp only [List.length_append, List.getElem?_append]
-  repeat' split
-  all_goals first | rfl | omega | (congr 1; omega) | rw [Nat.sub_add_eq]
-
-theorem wr_one (O : List (BitVec 8)) (j : Nat) (b : UInt8) (hj : j < O.length) : O.set j b.toBitVec = wr O j [b] := by
-  apply List.ext_getElem?; intro i
-  rw [wr_get _ _ _ (by simp; omega), List.getElem?_set]
-  repeat' split
-  all_goals first | rfl | omega | (subst_vars; simp) | (simp at *; omega)
-
-theorem leN_get : ∀ (k n i : Nat), i < k → (leN k n)[i]? = some (UInt8.ofNat (n / 256 ^ i % 256))
-  | 0, _, _, h => absurd h (Nat.not_lt_zero _)
-  | k + 1, n, 0, _ => by simp [leN]
-  | k + 1, n, i + 1, h => by
-    simp only [leN, List.getElem?_cons_succ]
-    rw [leN_get k (n / 256) i (by omega), Nat.div_div_eq_div_mul, Nat.pow_succ, Nat.mul_comm (256 ^ i)]
-
-theorem byte_eq (x : BitVec 64) (i : Nat) (hi : i < 8) :
-    (Op.eval .lshr x (BitVec.ofNat 64 (8 * i))).setWidth 8 = (UInt8.ofNat (x.toNat / 256 ^ i % 256)).toBitVec := by
-  apply BitVec.eq_of_toNat_eq
-  simp only [Op.eval, BitVec.toNat_setWidth, BitVec.toNat_ushiftRight, BitVec.toNat_ofNat, UInt8.toBitVec_ofNat,
-    Nat.shiftRight_eq_div_pow]
-  rw [Nat.mod_eq_of_lt (a := 8 * i) (by omega), Nat.mod_eq_of_lt (a := 8 * i) (by omega), Nat.pow_mul]
-  simp
-
-theorem wrB_ok (x : BitVec 64) (q : Nat) (I O : List (BitVec 8)) (hO : O.length < 2 ^ 60) :
-    ∀ k, k ≤ 8 → q + k ≤ O.length → ∀ (env : BEnv) (W : WHeap), env 6 = BitVec.ofNat 64 q → env 10 = x →
-      BExec (wrB k) ⟨env, [I, O], W⟩ ⟨env, [I, wr O q ((leN 8 x.toNat).take k)], W⟩
-  | 0, _, hq, env, W, h6, h10 => by
-    have := asg_exec 10 (vE 10) ⟨env, [I, O], W⟩
-    simp only [vE, BExp.denote, set_same] at this
-    rw [List.take_zero, wr_nil _ _ (by omega)]; exact this
-  | k + 1, hk, hq, env, W, h6, h10 => by
-    have x₁ := wrB_ok x q I O hO k (by omega) (by omega) env W h6 h10
-    have hL : (leN 8 x.toNat).length = 8 := leN_length 8 _
-    have ht : ((leN 8 x.toNat).take k).length = k := by simp [hL]; omega
-    have hw := wr_length O q ((leN 8 x.toNat).take k) (by rw [ht]; omega)
-    have hix : ((addE 6 k).denote env).toNat = q + k := addE_den h6 (by omega)
-    have := BExec.store (b := 1) (i := addE 6 k) (e := .bin .lshr (vE 10) (kE (8 * k)))
-      (σ := ⟨env, [I, wr O q ((leN 8 x.toNat).take k)], W⟩) (by simp) (by
-        show ((addE 6 k).denote env).toNat < (wr O q ((leN 8 x.toNat).take k)).length
-        rw [hix, hw]; omega)
-    simp only [List.getElem_cons_succ, List.getElem_cons_zero, hix] at this
-    have hb : (BExp.bin .lshr (vE 10) (kE (8 * k))).denote env = Op.eval .lshr x (BitVec.ofNat 64 (8 * k)) := by
-      simp [BExp.denote, vE, kE, h10]
-    rw [hb, byte_eq x k (by omega), wr_one _ _ _ (by rw [hw]; omega)] at this
-    have hg := leN_get 8 x.toNat k (by omega)
-    have e := wr_app O q ((leN 8 x.toNat).take k) [UInt8.ofNat (x.toNat / 256 ^ k % 256)] (by simp [ht]; omega)
-    rw [ht] at e; rw [e] at this
-    rw [List.take_succ, hg]
-    exact .seq x₁ this
 
 theorem loads_execE {W : List (BitVec 64)} {h : Nat} {pv : BitVec 64} {v : C} (hi : HI W h) (rv : Rp W h pv v)
     {env : BEnv} {H : Heap} (hp : env 8 = pv) :
@@ -450,7 +343,7 @@ theorem encOK_mono {K K' : Nat} {v : C} (h : EncOK P sh K v) (hk : K ≤ K') : E
   obtain ⟨E', hx, rest⟩ := h g I O pv W hh j a1 a2 a3 a4 a5
   exact ⟨E', hx.mono hk, rest⟩
 
-theorem ecall_ok (hP2 : ∃ hf : 2 < P.length, P[2] = encFn sh) {K K' : Nat} (hK : 56 + K' ≤ K) {v : C}
+theorem ecall_ok (hP2 : ∃ hf : 2 < P.length, P[2] = encFn sh) {K K' : Nat} (hK : 72 + K' ≤ K) {v : C}
     (ok : EncOK P sh K' v) {pvar : Nat} {env : BEnv} {I O : List (BitVec 8)} {pv : BitVec 64}
     {W : List (BitVec 64)} {h j : Nat} (hO : O.length < 2 ^ 60) (hi : HI W h) (rv : Rp W h pv v)
     (hp : env pvar = pv) (h6 : env 6 = BitVec.ofNat 64 j) (cap : j + (v.enc sh).length ≤ O.length) :
@@ -468,15 +361,16 @@ theorem ecall_ok (hP2 : ∃ hf : 2 < P.length, P[2] = encFn sh) {K K' : Nat} (hK
     · exact gl i (by omega) n6
     · rfl
 
-theorem eFlds_ok (hP2 : ∃ hf : 2 < P.length, P[2] = encFn sh) {K K' : Nat} (hK : 56 + K' ≤ K)
+theorem eFlds_ok (hP2 : ∃ hf : 2 < P.length, P[2] = encFn sh) {K K' : Nat} (hK : 72 + K' ≤ K)
     {x : BitVec 64} {l r : C} (okl : EncOK P sh K' l) (okr : EncOK P sh K' r) {I : List (BitVec 8)}
     {W : List (BitVec 64)} {h : Nat} (hi : HI W h) :
     ∀ (fs : List Fld) (env : BEnv) (O : List (BitVec 8)) (q : Nat), O.length < 2 ^ 60 →
       env 10 = x → Rp W h (env 11) l → Rp W h (env 12) r → env 6 = BitVec.ofNat 64 q →
-      q + (fs.flatMap (encF x (l.enc sh) (r.enc sh))).length ≤ O.length →
-      ∃ E', CExec P K (eFlds fs) ⟨env, [I, O], [W]⟩ ⟨E', [I, wr O q (fs.flatMap (encF x (l.enc sh) (r.enc sh)))], [W]⟩ ∧
-        E' 6 = BitVec.ofNat 64 (q + (fs.flatMap (encF x (l.enc sh) (r.enc sh))).length) ∧
-        ∀ i, i ≠ 6 → i ≠ 13 → E' i = env i
+      q + (fs.flatMap (encF x (l.enc sh) (r.enc sh) l.senc r.senc)).length ≤ O.length →
+      ∃ E', CExec P K (eFlds fs) ⟨env, [I, O], [W]⟩
+          ⟨E', [I, wr O q (fs.flatMap (encF x (l.enc sh) (r.enc sh) l.senc r.senc))], [W]⟩ ∧
+        E' 6 = BitVec.ofNat 64 (q + (fs.flatMap (encF x (l.enc sh) (r.enc sh) l.senc r.senc)).length) ∧
+        ∀ i, i ≠ 6 → i < 13 → E' i = env i
   | [], env, O, q, hO, h10, h11, h12, h6, cap => by
     have := asg_exec 10 (vE 10) ⟨env, [I, O], [W]⟩
     simp only [vE, BExp.denote, set_same] at this
@@ -486,8 +380,9 @@ theorem eFlds_ok (hP2 : ∃ hf : 2 < P.length, P[2] = encFn sh) {K K' : Nat} (hK
   | f :: fs, env, O, q, hO, h10, h11, h12, h6, cap => by
     simp only [List.flatMap_cons, List.length_append] at cap ⊢
     have step : ∃ E₁, CExec P K (eFld f) ⟨env, [I, O], [W]⟩
-        ⟨E₁, [I, wr O q (encF x (l.enc sh) (r.enc sh) f)], [W]⟩ ∧
-        E₁ 6 = BitVec.ofNat 64 (q + (encF x (l.enc sh) (r.enc sh) f).length) ∧ ∀ i, i ≠ 6 → i ≠ 13 → E₁ i = env i := by
+        ⟨E₁, [I, wr O q (encF x (l.enc sh) (r.enc sh) l.senc r.senc f)], [W]⟩ ∧
+        E₁ 6 = BitVec.ofNat 64 (q + (encF x (l.enc sh) (r.enc sh) l.senc r.senc f).length) ∧
+        ∀ i, i ≠ 6 → i < 13 → E₁ i = env i := by
       cases f with
       | x =>
         have hL : (leN 8 x.toNat).length = 8 := leN_length 8 _
@@ -504,12 +399,22 @@ theorem eFlds_ok (hP2 : ∃ hf : 2 < P.length, P[2] = encFn sh) {K K' : Nat} (hK
         rw [set_eq']; exact addE_den' h6
       | l =>
         simp only [encF] at cap ⊢
-        exact ecall_ok hP2 hK okl hO hi h11 rfl h6 (by omega)
+        obtain ⟨E₁, x₁, e6, k₁⟩ := ecall_ok hP2 hK okl hO hi h11 rfl h6 (by omega)
+        exact ⟨E₁, x₁, e6, fun i a b => k₁ i a (by omega)⟩
       | r =>
         simp only [encF] at cap ⊢
-        exact ecall_ok hP2 hK okr hO hi h12 rfl h6 (by omega)
+        obtain ⟨E₁, x₁, e6, k₁⟩ := ecall_ok hP2 hK okr hO hi h12 rfl h6 (by omega)
+        exact ⟨E₁, x₁, e6, fun i a b => k₁ i a (by omega)⟩
+      | sl =>
+        simp only [encF] at cap ⊢
+        obtain ⟨E₁, x₁, e6, k₁⟩ := eStr_ok (P := P) (K := K) 11 (.inl rfl) hi (I := I) l h11 h6 (by omega) hO
+        exact ⟨E₁, x₁, e6, fun i a b => k₁ i a (by omega) (by omega) (by omega)⟩
+      | sr =>
+        simp only [encF] at cap ⊢
+        obtain ⟨E₁, x₁, e6, k₁⟩ := eStr_ok (P := P) (K := K) 12 (.inr rfl) hi (I := I) r h12 h6 (by omega) hO
+        exact ⟨E₁, x₁, e6, fun i a b => k₁ i a (by omega) (by omega) (by omega)⟩
     obtain ⟨E₁, x₁, e6, k₁⟩ := step
-    have hl1 := wr_length O q (encF x (l.enc sh) (r.enc sh) f) (by omega)
+    have hl1 := wr_length O q (encF x (l.enc sh) (r.enc sh) l.senc r.senc f) (by omega)
     obtain ⟨E₂, x₂, f6, k₂⟩ := eFlds_ok hP2 hK (x := x) (I := I) okl okr hi fs E₁ _ _ (by rw [hl1]; exact hO)
       (by rw [k₁ 10 (by omega) (by omega)]; exact h10) (by rw [k₁ 11 (by omega) (by omega)]; exact h11)
       (by rw [k₁ 12 (by omega) (by omega)]; exact h12) e6 (by rw [hl1]; omega)
@@ -584,7 +489,7 @@ theorem ehead_exec {W : List (BitVec 64)} {h : Nat} {pv : BitVec 64} {v : C} (hi
 
 /-- **The encoder**: `enc` on a cell of `v` writes `v.enc sh` -/
 theorem enc_ok (hP2 : ∃ hf : 2 < P.length, P[2] = encFn sh) (hsh : sh.length < 255) :
-    ∀ v, EncOK P sh (56 * v.depth) v := by
+    ∀ v, EncOK P sh (72 * v.depth) v := by
   intro v
   induction v with
   | z =>
@@ -601,27 +506,28 @@ theorem enc_ok (hP2 : ∃ hf : 2 < P.length, P[2] = encFn sh) (hsh : sh.length <
     rw [ke i (by simp; omega)]; simp [callEnv, hi']
   | c t x l r ihl ihr =>
     intro g I O pv W h j hO hi rv h6 cap
-    have hlen : (C.enc sh (.c t x l r)).length = (List.flatMap (encF x (l.enc sh) (r.enc sh)) (sh.getD t [])).length + 1 := by
+    have hlen : (C.enc sh (.c t x l r)).length =
+        (List.flatMap (encF x (l.enc sh) (r.enc sh) l.senc r.senc) (sh.getD t [])).length + 1 := by
       simp [C.enc]
     obtain ⟨e', pl, pr, hx, ht, e9, e10, e11, e12, rl, rr, e6, ke⟩ := ehead_exec (env := callEnv g [pv]) (I := I) (j := j) hi rv
       (by simp [callEnv]) (by simp [callEnv, h6]) (by omega) hO
     simp only [C.tag, C.xv, C.lv, C.rv] at ht e9 e10 rl rr hx
-    have K1 : 56 * (C.c t x l r).depth = 56 + 56 * max l.depth r.depth := by simp only [C.depth]; omega
+    have K1 : 72 * (C.c t x l r).depth = 72 + 72 * max l.depth r.depth := by simp only [C.depth]; omega
     have hw1 := wr_length O j [UInt8.ofNat t] (by simp; omega)
-    obtain ⟨σ', xd, E', hq, f6, kf⟩ := eDisp_ok (P := P) (K := 56 * (C.c t x l r).depth)
+    obtain ⟨σ', xd, E', hq, f6, kf⟩ := eDisp_ok (P := P) (K := 72 * (C.c t x l r).depth)
       (Q := fun σ => ∃ E', σ = ⟨E', [I, wr O j (C.enc sh (.c t x l r))], [W]⟩ ∧
-        E' 6 = BitVec.ofNat 64 (j + (C.enc sh (.c t x l r)).length) ∧ ∀ i, i ≠ 6 → i ≠ 13 → E' i = e' i)
+        E' 6 = BitVec.ofNat 64 (j + (C.enc sh (.c t x l r)).length) ∧ ∀ i, i ≠ 6 → i < 13 → E' i = e' i)
       ht sh 0 (Nat.zero_le _) (by omega) e' _ _ e9 (fun fs h' => by
         rw [Nat.sub_zero] at h'
         have hg : sh.getD t [] = fs := by simp [List.getD_eq_getElem?_getD, h']
         rw [hg] at hlen
-        obtain ⟨E₂, x₂, f6, k₂⟩ := eFlds_ok hP2 (K := 56 * (C.c t x l r).depth) (K' := 56 * max l.depth r.depth)
+        obtain ⟨E₂, x₂, f6, k₂⟩ := eFlds_ok hP2 (K := 72 * (C.c t x l r).depth) (K' := 72 * max l.depth r.depth)
           (by omega) (x := x) (I := I) (encOK_mono ihl (by omega)) (encOK_mono ihr (by omega)) hi fs e' _ (j + 1)
           (by rw [hw1]; exact hO) e10 (by rw [e11]; exact rl) (by rw [e12]; exact rr) e6 (by rw [hw1]; omega)
-        have ea := wr_app O j [UInt8.ofNat t] (fs.flatMap (encF x (l.enc sh) (r.enc sh))) (by simp only [List.length_cons, List.length_nil]; omega)
+        have ea := wr_app O j [UInt8.ofNat t] (fs.flatMap (encF x (l.enc sh) (r.enc sh) l.senc r.senc)) (by simp only [List.length_cons, List.length_nil]; omega)
         simp only [List.length_cons, List.length_nil, Nat.zero_add] at ea
         rw [ea] at x₂
-        have hce : C.enc sh (.c t x l r) = [UInt8.ofNat t] ++ fs.flatMap (encF x (l.enc sh) (r.enc sh)) := by
+        have hce : C.enc sh (.c t x l r) = [UInt8.ofNat t] ++ fs.flatMap (encF x (l.enc sh) (r.enc sh) l.senc r.senc) := by
           simp only [C.enc, hg, List.singleton_append]
         refine ⟨_, x₂, ⟨E₂, ?_, ?_, k₂⟩, k₂ 9 (by omega) (by omega)⟩
         · rw [hce]

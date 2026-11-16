@@ -22,11 +22,12 @@ import Riscv.Frontx.For
 import Riscv.Frontx.Bytes
 import Riscv.Frontx.Exc
 import Riscv.Frontx.MulRep
+import Riscv.Frontx.IntRep
 
 namespace Proven.Frontx
 open Lean Meta Elab Term Command Tactic
 
-inductive Ty where | bv | u8 | u32 | u64 | nat | bool | u16
+inductive Ty where | bv | u8 | u32 | u64 | nat | bool | u16 | int
   deriving BEq, Repr, Inhabited
 
 def bv64 : Expr := mkApp (mkConst ``BitVec) (toExpr (64 : Nat))
@@ -40,6 +41,7 @@ def classify (t : Expr) : MetaM (Option Ty) := do
   if t.isConstOf ``UInt64 then return some .u64
   if t.isConstOf ``Nat then return some .nat
   if t.isConstOf ``Bool then return some .bool
+  if t.isConstOf ``Int then return some .int
   if t.isAppOfArity ``BitVec 1 then
     if ← isDefEq t bv64 then return some .bv
   return none
@@ -53,6 +55,7 @@ def Ty.rep (ty : Ty) (e : Expr) : Expr :=
   | .u64 => mkApp (mkConst ``r64) e
   | .nat => mkApp (mkConst ``rN) e
   | .bool => mkApp (mkConst ``rB) e
+  | .int => mkApp (mkConst ``rI) e
 
 def Ty.mask : Ty → Option Nat
   | .u8 => some 0xff
@@ -423,6 +426,9 @@ mutual
 the terms held in temporaries occur in it syntactically) -/
 partial def trE (ctx : Ctx) (e : Expr) : TrM (ME × Expr) := do
   let e := e.consumeMData.headBeta
+  -- a `let` inside an inlined helper: its value substituted (a repeated term is found in its variable)
+  if e.isLet && !e.letBody!.hasLooseBVars then return ← trE ctx e.letBody!
+  if e.isLet then return ← trE ctx (e.letBody!.instantiate1 e.letValue!)
   -- a raw projection `p.2` is written with its projection function (the form the variables are keyed by)
   let e ← match e with
     | .proj sn i s =>
@@ -442,7 +448,14 @@ partial def trE (ctx : Ctx) (e : Expr) : TrM (ME × Expr) := do
         unless s.isFVar || (← find? e).isSome do
           throwError "frontx: projection of a term that is not a constructor application{indentExpr e}"
   let some ty ← classify (← inferType e) | throwError "frontx: not a scalar:{indentExpr e}"
-  if !e.hasFVar then return (.const (← litBV (ty.rep e)), e)
+  if !e.hasFVar then
+    -- a named `Int` constant (`Fx.maxVal`) is unfolded in the obligations
+    if ty == .int then
+      for c in e.getUsedConstants do
+        if (← userConst c) && (← getConstInfo c) matches .defnInfo _ then
+          if (← whnfR (← inferType (← mkConstWithLevelParams c))).isConstOf ``Int then
+            modify fun s => if s.unfolded.contains c then s else { s with unfolded := s.unfolded.push c }
+    return (.const (← litBV (ty.rep e)), e)
   if ty == .bool then return ← trB ctx e
   let args := e.getAppArgs
   let f := e.getAppFn
@@ -526,7 +539,7 @@ partial def trE (ctx : Ctx) (e : Expr) : TrM (ME × Expr) := do
     let b ← fit b 4
     let v ← fresh
     -- the representation lemmas of this operation (not in the global set: they would preempt the literal forms)
-    let tyS := match ty with | .nat => "rN" | .u64 => "r64" | .u32 => "r32" | .u16 => "r16" | _ => "r8"
+    let tyS := match ty with | .nat => "rN" | .u64 => "r64" | .u32 => "r32" | .u16 => "r16" | .int => "rI" | _ => "r8"
     let opS := if m == ``Mach.MOp.mul then "mul" else if m == ``Mach.MOp.divu then "div" else "mod"
     let ls : List Name := [Name.mkStr `Proven.Frontx s!"{tyS}_{opS}",
       if m == ``Mach.MOp.mul then ``mopV_mul else if m == ``Mach.MOp.divu then ``mopV_divu else ``mopV_remu]
@@ -684,6 +697,64 @@ partial def trE (ctx : Ctx) (e : Expr) : TrM (ME × Expr) := do
       let some (_, _, rhs) := (← instantiateForall (← getConstInfo lN).type #[x]).eq? | unreachable!
       let (m, _) ← trE ctx rhs
       return (m, e)
+  -- `Int`: `/` and `%` (`Int.ediv` / `Int.emod`) from the machine's signed `div` / `rem` (`q`, `r`) and one
+  -- adjustment when `r < 0` (`edivB` / `emodB`, `IntRep.lean`); `-x` is `0 - x`
+  if ty == .int then
+    let idiv (isMod : Bool) (x y : Expr) (mk : Expr → Expr → Expr) : TrM (ME × Expr) := do
+      let (a, a') ← trE ctx x
+      let (b, b') ← trE ctx y
+      let a ← fit a 4
+      let b ← fit b 3
+      let r ← fresh
+      modify fun s => { s with pend := s.pend.push (.mop r ``Mach.MOp.rem a b) }
+      let slt0 (u : ME) : ME := .bin ``Op.slt u (.const (mkBV 0))
+      if isMod then
+        return (.ite (slt0 (.var r)) (.ite (slt0 b) (.bin ``Op.sub (.var r) b) (.bin ``Op.add (.var r) b)) (.var r),
+          mk a' b')
+      let q ← fresh
+      modify fun s => { s with pend := s.pend.push (.mop q ``Mach.MOp.div a b) }
+      return (.ite (slt0 (.var r))
+          (.ite (.bin ``Op.slt (.const (mkBV 0)) b) (.bin ``Op.sub (.var q) (.const (mkBV 1)))
+            (.bin ``Op.add (.var q) (.const (mkBV 1))))
+          (.ite (.bin ``Op.eq b (.const (mkBV 0))) (.const (mkBV 0)) (.var q)), mk a' b')
+    -- the quotient / remainder in a temporary holding its Lean term (later obligations see one variable)
+    let asTemp (r : ME × Expr) : TrM (ME × Expr) := do
+      let (m, e') := r
+      let m ← fit m
+      let v ← fresh
+      modify fun s => { s with memo := (e, v) :: s.memo, temps := e :: s.temps,
+                               tempsU := if e' == e then s.tempsU else (e, e') :: s.tempsU,
+                               pend := s.pend.push (.let_ v m e e' .int s.temps) }
+      return (.var v, e)
+    match f.constName?, args.size with
+    | some ``HDiv.hDiv, 6 => return ← asTemp <| ← idiv false args[4]! args[5]! fun a b => mkAppN f ((args.set! 4 a).set! 5 b)
+    | some ``HMod.hMod, 6 => return ← asTemp <| ← idiv true args[4]! args[5]! fun a b => mkAppN f ((args.set! 4 a).set! 5 b)
+    | some ``Int.ediv, 2 => return ← asTemp <| ← idiv false args[0]! args[1]! fun a b => mkAppN f #[a, b]
+    | some ``Int.emod, 2 => return ← asTemp <| ← idiv true args[0]! args[1]! fun a b => mkAppN f #[a, b]
+    | some ``Neg.neg, 3 =>
+      let (a, a') ← trE ctx args[2]!
+      return (.bin ``Op.sub (.const (mkBV 0)) a, mkAppN f (args.set! 2 a'))
+    | some ``Int.neg, 1 =>
+      let (a, a') ← trE ctx args[0]!
+      return (.bin ``Op.sub (.const (mkBV 0)) a, mkAppN f #[a'])
+    | some ``Int.ofNat, 1 | some ``Nat.cast, 3 | some ``NatCast.natCast, 3 | some ``IntCast.intCast, 3 =>
+      let (a, a') ← trE ctx args.back!
+      return (a, mkAppN f (args.set! (args.size - 1) a'))
+    | some ``Min.min, 4 | some ``Max.max, 4 =>
+      let lN := if f.isConstOf ``Min.min then ``Int.min_def else ``Int.max_def
+      modify fun s => if s.unfolded.contains lN then s else { s with unfolded := s.unfolded.push lN }
+      let some (_, _, rhs) := (← instantiateForall (← inferType (mkConst lN)) #[args[2]!, args[3]!]).eq? | unreachable!
+      let (m, _) ← trE ctx rhs
+      return (m, e)
+    | _, _ => pure ()
+  -- `Int.toNat` (`0` below zero), `Int.natAbs`
+  if (f.isConstOf ``Int.toNat || f.isConstOf ``Int.natAbs) && args.size == 1 then
+    let (a, a') ← trE ctx args[0]!
+    let a ← fit a 2
+    let neg := ME.bin ``Op.slt a (.const (mkBV 0))
+    let m := if f.isConstOf ``Int.toNat then ME.ite neg (.const (mkBV 0)) a
+      else ME.ite neg (.bin ``Op.sub (.const (mkBV 0)) a) a
+    return (m, mkAppN f #[a'])
   match f.constName?, args.size with
   | some ``HMul.hMul, 6 => mopE ``Mach.MOp.mul ty.mask
   | some ``HDiv.hDiv, 6 => mopE ``Mach.MOp.divu none
@@ -777,26 +848,30 @@ partial def trC (ctx : Ctx) (p : Expr) : TrM (ME × Expr) := do
     -- a compound `Nat` side goes to a temporary: the test is then between variables (and `omega` has its equation)
     for k in [i, j] do
       let x := args[k]!
+      let xty ← whnfR (← inferType x)
       if x.hasFVar && !x.isFVar && !x.isAppOfArity ``ByteArray.size 1 && (← find? x).isNone &&
-          (← whnfR (← inferType x)).isConstOf ``Nat then
+          (xty.isConstOf ``Nat || xty.isConstOf ``Int) then
         let (m, x') ← trE ctx x
         let m ← fit m
         let v ← fresh
         modify fun s => { s with memo := (x, v) :: s.memo, temps := x :: s.temps,
-                                 pend := s.pend.push (.let_ v m x x' .nat s.temps) }
+                                 pend := s.pend.push (.let_ v m x x' (if xty.isConstOf ``Int then .int else .nat) s.temps) }
     let (a, a') ← trE ctx args[i]!
     let (b, b') ← trE ctx args[j]!
-    let r := ME.bin ``Op.ult a b
+    let isInt := (← whnfR args[0]!).isConstOf ``Int
+    let r := ME.bin (if isInt then ``Op.slt else ``Op.ult) a b
     return (if neg then cNot r else r, mkAppN f ((args.set! i a').set! j b'))
   -- `a = b`, `a ≠ b` on `Nat`: a compound side goes to a temporary (as for `<`)
-  if (f.isConstOf ``Eq || f.isConstOf ``Ne) && args.size == 3 && (← whnfR args[0]!).isConstOf ``Nat then
+  if (f.isConstOf ``Eq || f.isConstOf ``Ne) && args.size == 3 &&
+      ((← whnfR args[0]!).isConstOf ``Nat || (← whnfR args[0]!).isConstOf ``Int) then
+    let ety : Ty := if (← whnfR args[0]!).isConstOf ``Int then .int else .nat
     for x in [args[1]!, args[2]!] do
       if x.hasFVar && !x.isFVar && !x.isAppOfArity ``ByteArray.size 1 && (← find? x).isNone then
         let (m, x') ← trE ctx x
         let m ← fit m
         let v ← fresh
         modify fun s => { s with memo := (x, v) :: s.memo, temps := x :: s.temps,
-                                 pend := s.pend.push (.let_ v m x x' .nat s.temps) }
+                                 pend := s.pend.push (.let_ v m x x' ety s.temps) }
   match f.constName?, args.size with
   | some ``Eq, 3 =>
     if args[0]!.isConstOf ``Bool then
@@ -839,14 +914,16 @@ partial def trB (ctx : Ctx) (b : Expr) : TrM (ME × Expr) := do
   let args := b.getAppArgs
   let f := b.getAppFn
   -- `a == b` on `Nat`: a compound side goes to a temporary (as for `<`)
-  if (f.isConstOf ``BEq.beq || f.isConstOf ``bne) && args.size == 4 && (← whnfR args[0]!).isConstOf ``Nat then
+  if (f.isConstOf ``BEq.beq || f.isConstOf ``bne) && args.size == 4 &&
+      ((← whnfR args[0]!).isConstOf ``Nat || (← whnfR args[0]!).isConstOf ``Int) then
+    let ety : Ty := if (← whnfR args[0]!).isConstOf ``Int then .int else .nat
     for x in [args[2]!, args[3]!] do
       if x.hasFVar && !x.isFVar && !x.isAppOfArity ``ByteArray.size 1 && (← find? x).isNone then
         let (m, x') ← trE ctx x
         let m ← fit m
         let v ← fresh
         modify fun s => { s with memo := (x, v) :: s.memo, temps := x :: s.temps,
-                                 pend := s.pend.push (.let_ v m x x' .nat s.temps) }
+                                 pend := s.pend.push (.let_ v m x x' ety s.temps) }
   match f.constName?, args.size with
   | some ``BEq.beq, 4 =>
     let (x, x') ← trE ctx args[2]!
@@ -1011,7 +1088,10 @@ def simpNames : Array Name :=
     ``r16_add, ``r16_sub, ``r16_and, ``r16_or, ``r16_xor, ``r16_ite, ``r16_dite, ``r16_eq', ``r16_lt', ``r16_le', ``r16_toNat,
     ``r16_shr, ``r16_shl, ``r16_of8, ``r32_of16, ``r64_of16, ``r16_of32, ``r8_of16, ``r16_ofNat, ``r16_ofNatU, ``r16_lit, ``r8_shr,
     ``excTag_ok, ``excTag_error, ``excGet_ok, ``excGet_error, ``optGet_some, ``optGet_none,
-    ``rN_and63_mod, ``bv_and63_mod, ``nat_and63_mod, ``rN_xor', ``shr_guard, ``shr_guardB, ``shr_guardN, ``shr_guardU, ``r64_toNat_eq]
+    ``rN_and63_mod, ``bv_and63_mod, ``nat_and63_mod, ``rN_xor', ``shr_guard, ``shr_guardB, ``shr_guardN, ``shr_guardU, ``r64_toNat_eq,
+    ``rI_add, ``rI_sub, ``rI_neg, ``rI_ofNat, ``rI_slt, ``rI_inj, ``rI_ite, ``rN_toNatI, ``rN_natAbs, ``rI_ediv, ``rI_emod,
+    ``rI_ediv', ``rI_emod', ``edivB, ``emodB, ``mopV_div, ``mopV_rem, ``rI_lit,
+    ``rI_slt_litR, ``rI_slt_litL, ``rI_eq_litR, ``rI_eq_litL, ``litI]
 
 /-- side conditions (bounds): `omega`, also through the defining equation of a temporary that is an `if` -/
 elab "frontx_ite_facts" : tactic => withMainContext do
@@ -1019,9 +1099,11 @@ elab "frontx_ite_facts" : tactic => withMainContext do
   for d in ← getLCtx do
     if d.isImplementationDetail then continue
     let ty ← instantiateMVars d.type
-    let some (α, lhs, _) := ty.eq? | continue
-    unless α.isConstOf ``Nat && lhs.isAppOfArity ``ite 5 do continue
-    let pf ← mkAppM ``ite_eq_or #[d.toExpr]
+    let some (α, lhs, rhs) := ty.eq? | continue
+    let pf ← if α.isConstOf ``Nat && lhs.isAppOfArity ``ite 5 then mkAppM ``ite_eq_or #[d.toExpr]
+      else if α.isConstOf ``Int && lhs.isAppOfArity ``ite 5 then mkAppM ``ite_eq_orI #[d.toExpr]
+      else if α.isConstOf ``Int && rhs.isAppOfArity ``ite 5 then mkAppM ``ite_eq_orI' #[d.toExpr]
+      else continue
     let (_, g') ← (← g.assert `hite (← inferType pf) pf).intro1P
     g := g'
   replaceMainGoal [g]
@@ -1063,13 +1145,16 @@ elab "frontx_u8_facts" : tactic => withMainContext do
 
 macro "frontx_disch" : tactic =>
   `(tactic| first | omega | (frontx_ite_facts; omega) | (subst_vars; split; omega; omega) | (frontx_u8_facts; omega) |
-    (frontx_md_facts; omega))
+    (frontx_md_facts; omega) | (frontx_int_facts; omega) | (frontx_ite_facts; frontx_u8_facts; omega) |
+    (frontx_ite_facts; frontx_int_facts; omega))
 
 /-- expression evaluation, and every supported operation pushed through its representation function -/
 macro "frontx_simp" "[" ts:ident,* "]" : tactic => do
   let ids := ts.getElems ++ simpNames.map mkIdent
   let ls ← ids.mapM fun t => `(Lean.Parser.Tactic.simpLemma| $t:ident)
-  `(tactic| simp +zetaDelta (disch := frontx_disch) [$ls,*, *, -String.toUTF8_eq_toByteArray, -String.size_toByteArray])
+  -- `rI` of a cast is rewritten before `simp`'s cast lemmas move the cast inside
+  let pre ← #[``rI_ofNat, ``rI_intOfNat].mapM fun t => `(Lean.Parser.Tactic.simpLemma| ↓ $(mkIdent t):ident)
+  `(tactic| simp +zetaDelta (disch := frontx_disch) [$pre,*, $ls,*, *, -String.toUTF8_eq_toByteArray, -String.size_toByteArray])
 
 /-- prove one obligation: generalise the Lean terms held in temporaries, then `frontx_simp` / `omega` -/
 def oblig (type : Expr) (temps? : Option (List Expr) := none) : TrM Expr := do
@@ -1081,7 +1166,7 @@ def oblig (type : Expr) (temps? : Option (List Expr) := none) : TrM Expr := do
   -- `Nat` temporaries defined by a helper: also their unfolded form (`L = L'`, definitional)
   for L in temps do
     if let some (_, L') := st.tempsU.find? (·.1 == L) then
-      if (← whnfR (← inferType L)).isConstOf ``Nat then
+      if (← whnfR (← inferType L)).isConstOf ``Nat || (← whnfR (← inferType L)).isConstOf ``Int then
         let ty ← mkEq L L'
         let pf ← mkExpectedTypeHint (← mkEqRefl L) ty
         let (_, g') ← (← g.assert (← mkFreshUserName `hu) ty pf).intro1P
@@ -1092,7 +1177,7 @@ def oblig (type : Expr) (temps? : Option (List Expr) := none) : TrM Expr := do
         if d.isImplementationDetail then return acc
         if (← isProp d.type) && (d.type.find? (· == L)).isSome then return acc.push d.fvarId else return acc
     -- a `Nat` temporary keeps its defining equation (for `omega`: bounds of the new arguments)
-    let isNat := (← whnfR (← inferType L)).isConstOf ``Nat
+    let isNat := (← whnfR (← inferType L)).isConstOf ``Nat || (← whnfR (← inferType L)).isConstOf ``Int
     let hn ← mkFreshUserName `hg
     let arg : GeneralizeArg := { expr := L, hName? := if isNat then some hn else none }
     try
@@ -1108,7 +1193,7 @@ def oblig (type : Expr) (temps? : Option (List Expr) := none) : TrM Expr := do
   let usL ← us.mapM fun t => `(Lean.Parser.Tactic.simpLemma| $t:ident)
   -- last resort: both sides are `if`s over equivalent (not identical) arithmetic conditions
   -- (a failing `rfl` at default transparency can take seconds on fixed-width terms: reducible first, full last)
-  let tac ← `(tactic| first | with_reducible rfl | frontx_disch |
+  let tac ← `(tactic| (try frontx_int_abbrev) <;> first | with_reducible rfl | frontx_disch |
     (frontx_simp [$us,*] <;> (first | done | frontx_disch | rfl |
       (intro hq; frontx_simp [$us,*] <;> (first | done | frontx_disch | rfl)) |
       (split <;> split <;> (first | rfl | (exfalso; frontx_disch))))) |
@@ -1479,6 +1564,8 @@ partial def resultComps (ty : Expr) : MetaM (Option (Array (Expr × Ty))) := do
   let ty ← whnfR ty
   if let some t ← classify ty then
     return some #[(← withLocalDeclD `x ty fun x => mkLambdaFVars #[x] x, t)]
+  -- `Unit` (the result of a stateful action, `Unit × σ`): no component
+  if ty.isConstOf ``Unit || ty.isConstOf ``PUnit then return some #[]
   if ty.isAppOfArity ``Prod 2 then
     let some first ← resultComps (ty.getArg! 0) | return none
     let some rest ← resultComps (ty.getArg! 1) | return none
@@ -2008,8 +2095,9 @@ the mutable locals and `i` become variables, the loop becomes the tree loop (`fo
 def compileLoop (fn : Name) (xs : Array Expr) (rty : Ty) (lhs forE : Expr) (post? : Option Expr)
     (inv? : Option Term) (lemmas : Array Name) (t0 : Nat) (eq? : Option Expr := none) (kind : String := "for loop")
     (pre? : Option Term := none) (resInfo : Array (Expr × Ty) := #[]) : TermElabM Unit := do
-  -- a result with several components: the exit leaf also sets the extra result variables (`cvtM`, `for_execM`)
-  let multi := resInfo.size > 1
+  -- a result with several components (or one inside a tuple): the exit leaf also sets the extra result variables
+  -- (`cvtM`, `for_execM`)
+  let multi := resInfo.size > 0
   let fa := forE.getAppArgs
   let S := fa[4]!
   let init := fa[6]!
@@ -2538,8 +2626,10 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
     let listRes ← if resTyW.isAppOfArity ``List 1 then pure ((← whnfR resTyW.appArg!).isConstOf ``UInt8) else pure false
     let some resInfo ← (if listRes then pure (some #[(Lean.mkConst ``id, Ty.nat)]) else resultComps resTy)
       | throwError "frontx: unsupported result type{indentExpr resTy}"
+    if resInfo.isEmpty then throwError "frontx: result without a component{indentExpr resTy}"
     let rty := resInfo[0]!.2
-    let multi := resInfo.size > 1
+    -- several components, or one inside a compound type (`Unit × σ`)
+    let multi := resInfo.size > 1 || (listRes == false && (← classify resTy).isNone)
     let some (_, lhs, body) := (← instantiateForall eqnTy xs).eq? | throwError "frontx: bad equation"
     -- `… (B.data.foldl g s) …`: the `for` loop over the bytes of `B`, then the rest
     if !listRes then
@@ -3455,7 +3545,7 @@ parameter the byte array, the others scalars from variable 4 on), each `aᵢ` a 
 the hypothesis of `implements1_of_frontx` (`Impl1.lean`). -/
 
 def Ty.repName : Ty → Name
-  | .bv => ``id | .u8 => ``r8 | .u32 => ``r32 | .u64 => ``r64 | .nat => ``rN | .bool => ``rB | .u16 => ``r16
+  | .bv => ``id | .u8 => ``r8 | .u32 => ``r32 | .u64 => ``r64 | .nat => ``rN | .bool => ``rB | .u16 => ``r16 | .int => ``rI
 
 syntax "frontx_entry " ident (" from " ident)? : command
 elab_rules : command
@@ -3485,9 +3575,9 @@ elab_rules : command
     -- a tuple / structure result: its components (written as bytes)
     let rcomps ← if isList || isOpt then pure #[] else
       match ← resultComps bty with
-      | some cs => pure (if cs.size > 1 then cs else #[])
+      | some cs => pure (if cs.size > 1 || (cs.size == 1 && (← classify bty).isNone) then cs else #[])
       | none => pure #[]
-    let some rty ← (if isList || isOpt then pure (some Ty.nat) else if rcomps.size > 1 then pure (some rcomps[0]!.2)
+    let some rty ← (if isList || isOpt then pure (some Ty.nat) else if rcomps.size > 0 then pure (some rcomps[0]!.2)
         else classify bty)
       | throwError "frontx_entry: unsupported result type"
     let mut inits : Array Expr := #[]
@@ -3515,7 +3605,7 @@ elab_rules : command
         inits := inits.push (← mkAppM ``Prod.mk #[toExpr next, e])
         next := next + 1
     return (fN, inits, rty, isList, isOpt, rcomps)
-  let multi := rcomps.size > 1
+  let multi := rcomps.size > 0
   let env ← getEnv
   let hasInits := env.contains (fN ++ `inits)
   let base := mkAppN (mkConst ``prog) #[mkConst (fN ++ `lay), mkConst (fN ++ `tree), toExpr (4 : Nat)]

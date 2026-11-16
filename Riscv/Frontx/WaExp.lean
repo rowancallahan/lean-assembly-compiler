@@ -37,13 +37,28 @@ def getCode (l : Loc) (chk : Bool) (d : Nat) : MS :=
 
 /-! ## Multiply / divide / remainder: `BStmt.mop` -/
 
+/-- `Int` `/` (`Int.ediv`): the machine's signed remainder (`d + 2`) and quotient (`d + 3`), adjusted when the
+remainder is negative (`edivB`, `IntRep.lean`) -/
+def iDivS (d : Nat) : MS :=
+  .seq (.mop .rem (d + 2) (.var d) (.var (d + 1))) (.seq (.mop .div (d + 3) (.var d) (.var (d + 1)))
+    (.assign d (.ite (.bin .slt (.var (d + 2)) (.const 0))
+      (.ite (.bin .slt (.const 0) (.var (d + 1))) (.bin .sub (.var (d + 3)) (.const 1)) (.bin .add (.var (d + 3)) (.const 1)))
+      (.ite (.bin .eq (.var (d + 1)) (.const 0)) (.const 0) (.var (d + 3))))))
+
+/-- `Int` `%` (`Int.emod`): the signed remainder, plus `|d + 1|` when negative (`emodB`) -/
+def iModS (d : Nat) : MS :=
+  .seq (.mop .rem (d + 2) (.var d) (.var (d + 1)))
+    (.assign d (.ite (.bin .slt (.var (d + 2)) (.const 0))
+      (.ite (.bin .slt (.var (d + 1)) (.const 0)) (.bin .sub (.var (d + 2)) (.var (d + 1))) (.bin .add (.var (d + 2)) (.var (d + 1))))
+      (.var (d + 2))))
+
 /-- `d := d o (d + 1)` with the M extension (temporary `d + 2`): `*` then the type's mask; `/` guarded (the
 machine's `divu` by zero is all ones, Lean's `/` is `0`); `%` unguarded (`remu` by zero is the dividend, as `%`) -/
 def mStmt (o : Op2) (t : Ty) (d : Nat) : MS :=
   match o with
-  | .div => .seq (.mop .divu (d + 2) (.var d) (.var (d + 1)))
+  | .div => if t = .int then iDivS d else .seq (.mop .divu (d + 2) (.var d) (.var (d + 1)))
       (.assign d (.ite (.bin .eq (.var (d + 1)) (.const 0)) (.const 0) (.var (d + 2))))
-  | .mod => .mop .remu d (.var d) (.var (d + 1))
+  | .mod => if t = .int then iModS d else .mop .remu d (.var d) (.var (d + 1))
   | _ => .seq (.mop .mul d (.var d) (.var (d + 1))) (.assign d (mkMask t (.var d)))
 
 /-- `d := d o (d + 1)` -/
@@ -59,7 +74,7 @@ def E.toB (L : List Loc) {Γ : List Sl} : {t : Ty} → E Γ t → Option MB
   | t, .bin o a b => if o.sup t && !o.isM then (match a.toB L, b.toB L with
       | some x, some y => some (mop o t x y) | _, _ => none) else none
   | _, @E.cmp _ t o a b => if o.sup t then (match a.toB L, b.toB L with
-      | some x, some y => some (mcmp o x y) | _, _ => none) else none
+      | some x, some y => some (mcmp t o x y) | _, _ => none) else none
   | t, @E.cast _ s _ a => if cast.sup s t then (match a.toB L with | some x => some (mcast s t x) | none => none)
       else none
   | _, .size m => some (.var (m.loc L).v)
@@ -77,7 +92,7 @@ def E.comp (L : List Loc) {Γ : List Sl} : {t : Ty} → E Γ t → Nat → MS
   | t, .bin o a b, d => pureOr L (.bin o a b) d
     (.seq (a.comp L d) (.seq (b.comp L (d + 1)) (binS o t d)))
   | _, @E.cmp _ t o a b, d => pureOr L (.cmp o a b) d
-    (.seq (a.comp L d) (.seq (b.comp L (d + 1)) (.assign d (mcmp o (.var d) (.var (d + 1))))))
+    (.seq (a.comp L d) (.seq (b.comp L (d + 1)) (.assign d (mcmp t o (.var d) (.var (d + 1))))))
   | t, @E.cast _ s _ a, d => pureOr L (.cast t a) d (.seq (a.comp L d) (.assign d (mcast s t (.var d))))
   | _, .ite c a b, d =>
     .seq (c.comp L (d + 1)) (.seq (.assign (d + 2) (.bin .eq (.var (d + 1)) (.const 0)))
@@ -100,10 +115,10 @@ def E.wf (L : List Loc) {Γ : List Sl} : {t : Ty} → E Γ t → Bool
 /-- run-time conditions: exact `Nat` operands, in-range plain loads -/
 def E.ok {Γ : List Sl} : {t : Ty} → E Γ t → Vals Γ → Prop
   | _, .var _, _ | _, .lit _ _, _ | _, .size _, _ => True
-  | t, .bin o a b, v => a.ok v ∧ b.ok v ∧ (o.exact = true → t.small (a.den v) ∧ t.small (b.den v)) ∧
+  | t, .bin o a b, v => a.ok v ∧ b.ok v ∧ (o.exact t = true → t.small (a.den v) ∧ t.small (b.den v)) ∧
       o.side t (a.den v) (b.den v)
   | _, @E.cmp _ t _ a b, v => a.ok v ∧ b.ok v ∧ t.small (a.den v) ∧ t.small (b.den v)
-  | _, .cast _ a, v => a.ok v
+  | t, @E.cast _ s _ a, v => a.ok v ∧ cast.side s t (a.den v)
   | _, .ite c a b, v => c.ok v ∧ (if c.den v = true then a.ok v else b.ok v)
   | _, .getA m i chk, v => i.ok v ∧ @LT.lt Nat _ (i.den v) (2 ^ 64) ∧
       (chk = false → @LT.lt Nat _ (i.den v) (AK.size (.arr _) (m.get v)))
@@ -195,7 +210,7 @@ theorem AK.w_oob : ∀ (k : AK) (a : k.T) (i : Nat), AK.size k a ≤ i → AK.w 
     simp only [AK.w, AK.get, AK.el, Ty.rep]
     rw [getElem!_neg a i (by simp only [AK.size] at h; omega)]; rfl
   | .arr .u8, a, i, h | .arr .u16, a, i, h | .arr .u32, a, i, h | .arr .u64, a, i, h | .arr .nat, a, i, h
-  | .arr .bool, a, i, h => by
+  | .arr .bool, a, i, h | .arr .int, a, i, h => by
     simp only [AK.w, AK.get, AK.el, Ty.rep]
     rw [getElem!_neg a i (by simp only [AK.size] at h; omega)]; rfl
 
@@ -284,7 +299,7 @@ theorem E.toB_ok (L : List Loc) {Γ : List Sl} (v : Vals Γ) (σ : MSt) (hR : Re
       split at h
       · rename_i x hx
         simp only [Option.some.injEq] at h; subst h
-        exact mcast_ok s t _ _ _ (E.toB_ok L v σ hR a x hok hx) hs
+        exact mcast_ok s t _ _ _ (E.toB_ok L v σ hR a x hok.1 hx) hs hok.2
       · cases h
     · cases h
   | _, .size m, b, _, h => by
@@ -347,13 +362,14 @@ theorem rN_modM {x y : Nat} (hx : x < 2 ^ 64) (hy : y < 2 ^ 64) : rN x % rN y = 
 
 /-- the machine word of `x o y` from the words of `x` and `y`, as `mStmt` computes it -/
 theorem mword_ok (o : Op2) (t : Ty) (x y : t.T) (hs : o.sup t = true) (hm : o.isM = true)
-    (hx : o.exact = true → t.small x ∧ t.small y) :
+    (hx : o.exact t = true → t.small x ∧ t.small y) (hi : t = .int → o = .mul) :
     (match o with
       | .div => if t.rep y = 0 then 0 else Mach.MOp.eval .divu (t.rep x) (t.rep y)
       | .mod => Mach.MOp.eval .remu (t.rep x) (t.rep y)
       | _ => (match t.mask with | some m => Mach.MOp.eval .mul (t.rep x) (t.rep y) &&& m | none => Mach.MOp.eval .mul (t.rep x) (t.rep y)))
       = t.rep (o.den t x y) := by
   cases o <;> (try (exfalso; revert hm; decide)) <;> cases t <;> (try (exfalso; revert hs; decide)) <;>
+    (try (exfalso; exact absurd (hi rfl) (by decide))) <;>
     simp only [Op2.exact, Ty.small, forall_const, true_implies] at hx <;>
     simp only [Ty.mask, Ty.rep, Op2.den, Mach.MOp.eval]
   · apply BitVec.eq_of_toNat_eq; rw [and_mask8, BitVec.toNat_mul, r8_nat, r8_nat, r8_nat, UInt8.toNat_mul,
@@ -367,11 +383,11 @@ theorem mword_ok (o : Op2) (t : Ty) (x y : t.T) (hs : o.sup t = true) (hm : o.is
   all_goals first
     | exact r8_divM x y | exact r16_divM x y | exact r32_divM x y | exact r64_divM x y
     | exact r8_modM x y | exact r16_modM x y | exact r32_modM x y | exact r64_modM x y
-    | exact rN_divM hx.1 hx.2 | exact rN_modM hx.1 hx.2
+    | exact rN_divM hx.1 hx.2 | exact rN_modM hx.1 hx.2 | exact (rI_mul x y).symm
 
 /-- **`binS`**: the word of `x o y` lands in `d` -/
 theorem binS_ok (o : Op2) (t : Ty) (d : Nat) (σ : MSt) {x y : t.T} (ha : σ.env d = t.rep x)
-    (hb : σ.env (d + 1) = t.rep y) (hs : o.sup t = true) (hx : o.exact = true → t.small x ∧ t.small y)
+    (hb : σ.env (d + 1) = t.rep y) (hs : o.sup t = true) (hx : o.exact t = true → t.small x ∧ t.small y)
     (hsd : o.side t x y) : ERun (binS o t d) σ d (t.rep (o.den t x y)) := by
   unfold binS
   cases hm : o.isM
@@ -382,7 +398,7 @@ theorem binS_ok (o : Op2) (t : Ty) (d : Nat) (σ : MSt) {x y : t.T} (ha : σ.env
   · rw [if_pos rfl]
     cases o <;> (try exact absurd hm (by decide))
     · -- mul
-      have hw := mword_ok .mul t x y hs hm hx
+      have hw := mword_ok .mul t x y hs hm hx (fun _ => rfl)
       simp only [mStmt]
       refine ⟨_, .seq .mop .assign, ?_, fun j hj => ?_, rfl, rfl⟩
       · dsimp only; rw [set_eq, ← hw]
@@ -390,8 +406,25 @@ theorem binS_ok (o : Op2) (t : Ty) (d : Nat) (σ : MSt) {x y : t.T} (ha : σ.env
         unfold mkMask; split <;> simp_all [Mach.BExp.denote, Op.eval, set_eq]
       · dsimp only; rw [set_ne (show j ≠ d by omega), set_ne (show j ≠ d by omega)]
     · -- div
-      have hw := mword_ok .div t x y hs hm hx
-      simp only [mStmt]
+      by_cases ht : t = .int
+      · subst ht
+        have ⟨⟨x1, x2⟩, y1, y2⟩ := hx rfl
+        simp only [mStmt, if_pos rfl, iDivS]
+        refine ⟨_, .seq .mop (.seq .mop .assign), ?_, fun j hj => ?_, rfl, rfl⟩
+        · dsimp only
+          simp only [set_eq, Mach.BExp.denote, Op.eval, set_ne (show d ≠ d + 2 by omega), set_ne (show d ≠ d + 3 by omega),
+            set_ne (show d + 1 ≠ d + 2 by omega), set_ne (show d + 1 ≠ d + 3 by omega),
+            set_ne (show d + 2 ≠ d + 3 by omega), ha, hb, Op2.den, Ty.rep]
+          rw [rI_ediv x1 x2 y1 y2]
+          simp only [edivB, sdivH, sremH]
+          by_cases h1 : (Mach.MOp.eval .rem (rI x) (rI y)).slt 0#64 = true <;>
+            by_cases h2 : (0#64).slt (rI y) = true <;> by_cases h3 : rI y = 0#64 <;>
+            first | exact absurd (h3 ▸ h2) (by decide) | (simp [h1, h2, h3]; done) |
+              (simp [h1, h2, h3] <;> split <;> split <;> simp_all)
+        · dsimp only
+          rw [set_ne (show j ≠ d by omega), set_ne (show j ≠ d + 3 by omega), set_ne (show j ≠ d + 2 by omega)]
+      have hw := mword_ok .div t x y hs hm hx (fun h => absurd h ht)
+      simp only [mStmt, if_neg ht]
       refine ⟨_, .seq .mop .assign, ?_, fun j hj => ?_, rfl, rfl⟩
       · dsimp only; rw [set_eq, ← hw]
         simp only [Mach.BExp.denote, Op.eval, set_eq, set_ne (show d ≠ d + 2 by omega),
@@ -399,8 +432,21 @@ theorem binS_ok (o : Op2) (t : Ty) (d : Nat) (σ : MSt) {x y : t.T} (ha : σ.env
         by_cases h0 : t.rep y = 0 <;> simp [h0]
       · dsimp only; rw [set_ne (show j ≠ d by omega), set_ne (show j ≠ d + 2 by omega)]
     · -- mod
-      have hw := mword_ok .mod t x y hs hm hx
-      simp only [mStmt]
+      by_cases ht : t = .int
+      · subst ht
+        have ⟨⟨x1, x2⟩, y1, y2⟩ := hx rfl
+        simp only [mStmt, if_pos rfl, iModS]
+        refine ⟨_, .seq .mop .assign, ?_, fun j hj => ?_, rfl, rfl⟩
+        · dsimp only
+          simp only [set_eq, Mach.BExp.denote, Op.eval, set_ne (show d ≠ d + 2 by omega),
+            set_ne (show d + 1 ≠ d + 2 by omega), ha, hb, Op2.den, Ty.rep]
+          rw [rI_emod x1 x2 y1 y2]
+          simp only [emodB, sremH]
+          by_cases h1 : (Mach.MOp.eval .rem (rI x) (rI y)).slt 0#64 = true <;>
+            by_cases h2 : (rI y).slt 0#64 = true <;> simp [h1, h2]
+        · dsimp only; rw [set_ne (show j ≠ d by omega), set_ne (show j ≠ d + 2 by omega)]
+      have hw := mword_ok .mod t x y hs hm hx (fun h => absurd h ht)
+      simp only [mStmt, if_neg ht]
       refine ⟨_, .mop, ?_, fun j hj => ?_, rfl, rfl⟩
       · dsimp only; rw [set_eq, ← hw]; simp only [Mach.BExp.denote, ha, hb]
       · dsimp only; rw [set_ne (show j ≠ d by omega)]
@@ -450,9 +496,9 @@ theorem E.comp_ok (L : List Loc) : ∀ {Γ : List Sl} {t : Ty} (e : E Γ t) (v :
     refine pureOr_ok L (.cast t a) v σ d _ hR hok ?_
     simp only [E.den]; simp only [E.ok] at hok
     simp only [E.wf, Bool.and_eq_true] at hwf
-    obtain ⟨σ1, e1, v1, k1, h1, w1, r1⟩ := (E.comp_ok L a v σ d hR hl hb hwf.2 hok).frame hR hb hl
+    obtain ⟨σ1, e1, v1, k1, h1, w1, r1⟩ := (E.comp_ok L a v σ d hR hl hb hwf.2 hok.1).frame hR hb hl
     refine ⟨_, .seq e1 .assign, ?_, fun j hj => ?_, h1, w1⟩
-    · simp only [set_eq]; exact mcast_ok s t _ _ _ (by simp only [Mach.BExp.denote]; exact v1) hwf.1
+    · simp only [set_eq]; exact mcast_ok s t _ _ _ (by simp only [Mach.BExp.denote]; exact v1) hwf.1 hok.2
     · simp only [set_ne (show j ≠ d by omega)]; rw [k1 j hj]
   | _, t, .ite c a b, v, σ, d, hR, hl, hb, hwf, hok => by
     simp only [E.comp, E.den]; simp only [E.ok] at hok
