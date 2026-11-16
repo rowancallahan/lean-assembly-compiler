@@ -58,7 +58,50 @@ structure TyInfo where
   /-- per constructor and field: for a child of another type of the shape, that type (and whether the field is a
   `String`, embedded as `Bytes8.ofString`) -/
   kty : Array (Array (Option (Expr × Bool))) := #[]
+  /-- per constructor and field: the extension cells to pass (through `r`) to reach the field's cell (NOTES
+  section 25: a constructor with more than two children or one scalar continues in extension cells) -/
+  hops : Array (Array Nat) := #[]
+  /-- per constructor: its number of extension cells (their tags follow the type's constructors) -/
+  next : Array Nat := #[]
   deriving Inhabited
+
+/-- the cells of a constructor: per field its role in its cell (`l`, `r`, `x`) and the number of extension
+cells before it.  If the fields fit one cell (at most two children, one scalar) they are as before; otherwise the
+cell takes the longest prefix with at most one child and one scalar, and `r` points to an extension cell holding
+the rest (the same rule again).  The byte order stays the declaration order. -/
+def layout (rs0 : Array Role) : Array Role × Array Nat × Nat := Id.run do
+  let mut rs := rs0
+  let mut hs : Array Nat := rs0.map fun _ => 0
+  let mut rest : List Nat := (List.range rs0.size).filter fun j => !(rs0[j]! matches .drop)
+  let mut hop := 0
+  let mut fuel := rs0.size + 1
+  while fuel > 0 do
+    fuel := fuel - 1
+    let isK (j : Nat) : Bool := rs0[j]! matches .l | .r
+    let nk := (rest.filter isK).length
+    let ns := (rest.filter (!isK ·)).length
+    if nk ≤ 2 && ns ≤ 1 then
+      let mut k := 0
+      for j in rest do
+        if isK j then
+          rs := rs.set! j (if k == 0 then Role.l else Role.r); k := k + 1
+        hs := hs.set! j hop
+      return (rs, hs, hop)
+    -- the longest prefix with at most one child and one scalar
+    let mut k := 0; let mut sc := 0; let mut taken := 0
+    for j in rest do
+      if taken == 0 || (if isK j then k == 0 else sc == 0) then
+        if (if isK j then k == 0 else sc == 0) then
+          if isK j then k := k + 1 else sc := sc + 1
+          taken := taken + 1
+        else break
+      else break
+    for j in rest.take taken do
+      if isK j then rs := rs.set! j Role.l
+      hs := hs.set! j hop
+    rest := rest.drop taken
+    hop := hop + 1
+  return (rs, hs, hop)
 
 /-- `analyze ty nest`: the fields of `ty`'s constructors; a field of a type in `nest`, or a `String`, is a child of
 that type (`String`: `Bytes8`) -/
@@ -69,6 +112,8 @@ def analyze (ty : Expr) (nest : Array Expr := #[]) : MetaM TyInfo := do
   let params := ty.getAppArgs
   unless params.size == iv.numParams && iv.numIndices == 0 do throwError "frontx_ind_type: indexed families are not supported"
   let mut roles := #[]
+  let mut hopsA := #[]
+  let mut nextA := #[]
   let mut ftys := #[]
   let mut ktys := #[]
   let us := ty.getAppFn.constLevels!
@@ -79,7 +124,6 @@ def analyze (ty : Expr) (nest : Array Expr := #[]) : MetaM TyInfo := do
       let mut fts := #[]
       let mut ks := #[]
       let mut kids := 0
-      let mut scal := false
       for x in xs do
         let ft ← inferType x
         fts := fts.push (toString (← withOptions (fun o => o.setBool `pp.fullNames true) (ppExpr ft)))
@@ -94,17 +138,37 @@ def analyze (ty : Expr) (nest : Array Expr := #[]) : MetaM TyInfo := do
           rs := rs.push (if kids == 0 then Role.l else Role.r)
           ks := ks.push other
           kids := kids + 1
-          if kids > 2 then throwError "frontx_ind_type: {c}: more than two recursive fields"
         else match ← scOf? ft with
           | some s =>
-            if scal then throwError "frontx_ind_type: {c}: more than one scalar field"
-            rs := rs.push (Role.x s); ks := ks.push none; scal := true
+            rs := rs.push (Role.x s); ks := ks.push none
           | none => rs := rs.push Role.drop; ks := ks.push none
       return (rs, fts, ks)
-    roles := roles.push rs
+    let (rs', hs, ne) := layout rs
+    roles := roles.push rs'
+    hopsA := hopsA.push hs
+    nextA := nextA.push ne
     ftys := ftys.push fts
     ktys := ktys.push ks
-  return { ty, ind, params, ctors := iv.ctors.toArray, roles, ftys, kty := ktys }
+  return { ty, ind, params, ctors := iv.ctors.toArray, roles, ftys, kty := ktys, hops := hopsA, next := nextA }
+
+/-- the number of tags of a type: its constructors, then their extension cells -/
+def TyInfo.ntags (ti : TyInfo) : Nat := ti.ctors.size + ti.next.foldl (· + ·) 0
+
+/-- the tag (relative to the type's first) of the `k`-th cell (`0` = the constructor's own) of constructor `i` -/
+def TyInfo.cellTag (ti : TyInfo) (i k : Nat) : Nat :=
+  if k == 0 then i else ti.ctors.size + ((ti.next.toList.take i).foldl (· + ·) 0) + (k - 1)
+
+/-- the field's place read from a value `d` (a text): `hops` extension cells through `ft true`, then the slot -/
+def TyInfo.fieldAt (ti : TyInfo) (i j : Nat) (d : String) : String := Id.run do
+  let mut b := d
+  for _ in [0:(ti.hops[i]?.bind (·[j]?)).getD 0] do b := s!"(.ft true {b})"
+  match ti.roles[i]![j]! with
+  | .l => return s!"(.ft false {b})"
+  | .r => return s!"(.ft true {b})"
+  | .x _ => return s!"(.fw true {b})"
+  | .drop => return "?"
+
+def TyInfo.hop (ti : TyInfo) (i j : Nat) : Nat := (ti.hops[i]?.bind (·[j]?)).getD 0
 
 def roleFld : Role → Option String
   | .l => some ".l" | .r => some ".r" | .x .u8 => some ".b" | .x _ => some ".x" | .drop => none
@@ -139,14 +203,36 @@ macro_rules
 /-- the cell of constructor `i` (tag `off + i`) with field texts `fs`; `emb j v` embeds child field `j` -/
 def cellS (ti : TyInfo) (i : Nat) (fs : Array String) (emb : Nat → String → String) (off : Nat := 0) : String := Id.run do
   let rs := ti.roles[i]!
-  let mut x := "0"; let mut l := "Proven.Mach.Ind.C.z"; let mut r := "Proven.Mach.Ind.C.z"
-  for j in [0:rs.size] do
-    match rs[j]! with
-    | .l => l := emb j fs[j]!
-    | .r => r := emb j fs[j]!
-    | .x s => x := s.rep fs[j]!
-    | .drop => pure ()
-  return s!"(Proven.Mach.Ind.C.c {off + i} {x} {l} {r})"
+  let ne := ti.next[i]?.getD 0
+  let mut acc := ""
+  for k' in [0:ne + 1] do
+    let k := ne - k'
+    let mut x := "0"; let mut l := "Proven.Mach.Ind.C.z"; let mut r := if k < ne then acc else "Proven.Mach.Ind.C.z"
+    for j in [0:rs.size] do
+      if ti.hop i j == k then
+        match rs[j]! with
+        | .l => l := emb j fs[j]!
+        | .r => r := emb j fs[j]!
+        | .x s => x := s.rep fs[j]!
+        | .drop => pure ()
+    acc := s!"(Proven.Mach.Ind.C.c {off + ti.cellTag i k} {x} {l} {r})"
+  return acc
+
+/-- the shape of a type: per constructor the fields of its cell (in declaration order, the extension last), then
+the extension cells -/
+def shapeOf (ti : TyInfo) : Array String := Id.run do
+  let cellF (i k : Nat) : String := Id.run do
+    let rs := ti.roles[i]!
+    let mut fs : Array String := #[]
+    for j in [0:rs.size] do
+      if ti.hop i j == k then if let some f := roleFld rs[j]! then fs := fs.push f
+    if k < ti.next[i]?.getD 0 then fs := fs.push ".r"
+    return "[" ++ ", ".intercalate fs.toList ++ "]"
+  let mut out := #[]
+  for i in [0:ti.ctors.size] do out := out.push (cellF i 0)
+  for i in [0:ti.ctors.size] do
+    for k in [1:(ti.next[i]?.getD 0) + 1] do out := out.push (cellF i k)
+  return out
 
 /-- the name of the `k`-th type of the shape of `T` (`T` itself, then `T.N1`, `T.N2`, …) -/
 def unionName (Tn : Name) (k : Nat) : Name := if k == 0 then Tn else Tn ++ Name.mkSimple s!"N{k}"
@@ -177,6 +263,22 @@ elab_rules : command
             for (u, _) in U do if ← isDefEq u t then known := true
             unless known do U := U.push (t, ← analyze t nest)
       k := k + 1
+    -- the types given in `nesting` are in the shape even when no field has them (a result type, e.g. `Option T`)
+    for n in nest0 do
+      let mut known := false
+      for (u, _) in U do if ← isDefEq u n then known := true
+      unless known do U := U.push (n, ← analyze n nest)
+      -- and the types of their fields
+      let mut k2 := U.size - 1
+      while h : k2 < U.size do
+        let ti := U[k2].2
+        for ks in ti.kty do
+          for o in ks do
+            if let some (t, _) := o then
+              let mut known2 := false
+              for (u, _) in U do if ← isDefEq u t then known2 := true
+              unless known2 do U := U.push (t, ← analyze t nest)
+        k2 := k2 + 1
     let mut out : Array (String × TyInfo) := #[]
     for (t, ti) in U do out := out.push (← ppFull t, ti)
     return (← ppFull tyE, out)
@@ -188,7 +290,7 @@ elab_rules : command
     throwError "frontx_ind_type: a child type not in the shape"
   let mut offs := #[]
   let mut o := 0
-  for (_, ti) in us do offs := offs.push o; o := o + ti.ctors.size
+  for (_, ti) in us do offs := offs.push o; o := o + ti.ntags
   -- per type, per constructor, per field: the embedding of a child (`Tk.emb`, a `String` through `Bytes8.ofString`)
   let mut kemb : Array (Array (Array (Option (String × Bool)))) := #[]
   for k in [0:us.size] do
@@ -211,11 +313,27 @@ elab_rules : command
     | none => "?"
   let mut shParts := #[]
   for (_, ti) in us do
-    for rs in ti.roles do shParts := shParts.push ("[" ++ ", ".intercalate (rs.toList.filterMap roleFld) ++ "]")
+    shParts := shParts ++ shapeOf ti
   let shS := ", ".intercalate shParts.toList
   runCmd s!"def {Tn}.sh : Proven.Mach.Ind.Shape := [{shS}]"
   -- definitions per type, the types used by a type first
-  let order := (List.range us.size).reverse
+  -- (a topological order of the child-type relation: `List Level` after `Level`, whatever their positions)
+  let mut deps : Array (Array Nat) := #[]
+  for k in [0:us.size] do
+    let mut d := #[]
+    for ks in us[k]!.2.kty do
+      for o2 in ks do
+        if let some (t, _) := o2 then
+          let kk ← idxOf t
+          if kk != k && !d.contains kk then d := d.push kk
+    deps := deps.push d
+  let mut order : List Nat := []
+  let mut fuel := us.size * us.size + 1
+  while order.length < us.size && fuel > 0 do
+    fuel := fuel - 1
+    for k in [0:us.size] do
+      if !order.contains k && deps[k]!.all (order.contains ·) then order := order ++ [k]
+  if order.length < us.size then throwError "frontx_ind_type: the nested types depend on each other"
   for k in order do
     let (tS, ti) := us[k]!
     let Kn := unionName Tn k
@@ -251,11 +369,14 @@ def {Kn}.small : {tS} → Prop{salts}"
       let bs := " ".intercalate ((List.range fs.size).map fun j => s!"({fs[j]!} : {ti.ftys[i]![j]!})")
       let app := s!"(@{ti.ctors[i]!} " ++ " ".intercalate ((List.replicate ti.params.size "_") ++ fs.toList) ++ ")"
       runCmd s!"theorem {Kn}.fold{i} : {if fs.isEmpty then "" else "∀ " ++ bs ++ ","} {cellS ti i fs (embF k i) offs[k]!} = {Kn}.emb {app} := {if fs.isEmpty then "rfl" else "fun " ++ " ".intercalate fs.toList ++ " => rfl"}"
-    let wfs := ", ".intercalate ((List.range us.size).filter (· > k) |>.map fun kk => s!"{unionName Tn kk}.emb_wfL")
+    let wfs := ", ".intercalate (deps[k]!.toList.map fun kk => s!"{unionName Tn kk}.emb_wfL")
     runCmd s!"theorem {Kn}.emb_wf : ∀ t : {tS}, ({Kn}.emb t).wf {Tn}.sh := by
   intro t; induction t <;> simp_all [{Kn}.emb, Proven.Mach.Ind.C.wf, {Tn}.sh, Proven.Frontx.Ind.u8_lt, Proven.Frontx.Ind.u8_lt'{if wfs.isEmpty then "" else ", " ++ wfs}]"
     if us.size > 1 then
       runCmd s!"theorem {Kn}.emb_wfL : ∀ t : {tS}, ({Kn}.emb t).wf [{shS}] := {Kn}.emb_wf"
+    if k > 0 then
+      runCmd s!"/-- the format of `{tS}` in the shape of `{Tn}` -/
+def {Kn}.enc (t : {tS}) : List UInt8 := ({Kn}.emb t).enc {Tn}.sh"
   let tyS := us[0]!.1
   runCmd s!"/-- the input format of `{tyS}` -/
 def {Tn}.enc (t : {tyS}) : List UInt8 := ({Tn}.emb t).enc {Tn}.sh"
@@ -297,8 +418,8 @@ structure Ctx where
   /-- expressions with a fixed translation (fields of the node, of matched values, the node itself, `let`s); the
   text from the number of enclosing `bind`s -/
   als : Array (Expr × (Nat → String))
-  /-- the children of the current node (`false` = `l`) -/
-  kids : Array (Expr × Bool)
+  /-- the children of the current node: the extension cells passed, `false` = `l` -/
+  kids : Array (Expr × Nat × Bool)
   /-- the number of enclosing `bind`s -/
   depth : Nat
   sIdx : Nat
@@ -324,6 +445,14 @@ def findTy (tys : Array RTy) (t : Expr) : MetaM (Option RTy) := do
     if ← isDefEq t r.ti.ty then return some r
   return none
 
+/-- the constructor `cn` of the declared type of `t` (constructor names are shared, e.g. by `List Level` and
+`List Expr`) -/
+def findCtorT (tys : Array RTy) (cn : Name) (t : Expr) : MetaM (Option (RTy × Nat)) := do
+  for r in tys do
+    if let some i := r.ti.ctors.findIdx? (· == cn) then
+      if ← isDefEq t r.ti.ty then return some (r, i)
+  return none
+
 def findCtor (tys : Array RTy) (cn : Name) : Option (RTy × Nat) := Id.run do
   for r in tys do
     if let some i := r.ti.ctors.findIdx? (· == cn) then return some (r, i)
@@ -341,15 +470,11 @@ def fieldAliases (r : RTy) (i : Nat) (fs : Array Expr) (d : Nat → String) : Ar
   let rs := r.ti.roles[i]!
   let mut out := #[]
   for j in [0:rs.size] do
-    match rs[j]! with
-    | .l => out := out.push (fs[j]!, fun (D : Nat) => s!"(.ft false {d D})")
-    | .r => out := out.push (fs[j]!, fun (D : Nat) => s!"(.ft true {d D})")
-    | .x _ => out := out.push (fs[j]!, fun (D : Nat) => s!"(.fw true {d D})")
-    | .drop => pure ()
+    unless rs[j]! matches .drop do
+      out := out.push (fs[j]!, fun (D : Nat) => r.ti.fieldAt i j (d D))
     -- a `String` field is its chain of bytes
     if let some (some (_, true)) := r.ti.kty[i]?.bind (·[j]?) then
-      let t := if rs[j]! matches .l then "false" else "true"
-      out := out.push (mkApp (mkConst ``Proven.Frontx.Ind.Bytes8.ofString) fs[j]!, fun (D : Nat) => s!"(.ft {t} {d D})")
+      out := out.push (mkApp (mkConst ``Proven.Frontx.Ind.Bytes8.ofString) fs[j]!, fun (D : Nat) => r.ti.fieldAt i j (d D))
   return out
 
 /-- the explicit arguments of a call of `fi`: tree, word, tree -/
@@ -415,6 +540,8 @@ def fnInfo (tys : Array RTy) (g : Name) : MetaM FnI := do
         if let some r ← findTy tys (← inferType xs[j]!) then sIdx? := some j; rty? := some r
   let some sIdx := sIdx? | throwError "frontx_ind: {g} has no argument of a declared type"
   let some rty := rty? | throwError "frontx_ind: {g} has no argument of a declared type"
+  -- the declared type of the argument itself (constructor names are shared between `List T`s)
+  let rty := (← findTy tys (← instantiateMVars (← inferType xs[sIdx]!))).getD rty
   unless ← isDefEq (← inferType xs[sIdx]!) rty.ti.ty do throwError "frontx_ind: {g}: type mismatch"
   let (aIdx, bIdx, aSc) ← extraArgs tys xs sIdx
   let res ← instantiateMVars res
@@ -471,9 +598,8 @@ partial def treeEqS (c : Ctx) (dS : String) (k : Expr) : MetaM String := do
   let mut acc := s!"(.bin .eq (.fw false {dS}) (.k (BitVec.ofNat 64 {r.off + i})))"
   for j in [0:rs.size] do
     match rs[j]! with
-    | .l => acc := s!"(.bin .and {acc} {← treeEqS c s!"(.ft false {dS})" fs[j]!})"
-    | .r => acc := s!"(.bin .and {acc} {← treeEqS c s!"(.ft true {dS})" fs[j]!})"
-    | .x _ => acc := s!"(.bin .and {acc} (.bin .eq (.fw true {dS}) {← reify c fs[j]!}))"
+    | .l | .r => acc := s!"(.bin .and {acc} {← treeEqS c (r.ti.fieldAt i j dS) fs[j]!})"
+    | .x _ => acc := s!"(.bin .and {acc} (.bin .eq {r.ti.fieldAt i j dS} {← reify c fs[j]!}))"
     | .drop => throwError "frontx_ind: `=` on a constructor with a field not in the byte format{indentExpr k}"
   return acc
 
@@ -579,6 +705,11 @@ partial def reify (c : Ctx) (e : Expr) : MetaM String := do
     let t ← whnfR (e.getArg! 0)
     if t.isConstOf ``Nat || t.isConstOf ``UInt64 then
       return s!"(.bin .add {← reify c (e.getArg! 4)} {← reify c (e.getArg! 5)})"
+  -- `Nat` subtraction: truncated at `0` (`natSub`; the values below `2^64`)
+  if e.isAppOfArity ``HSub.hSub 6 then
+    if (← whnfR (e.getArg! 0)).isConstOf ``Nat then
+      c.small.set true
+      return s!"(Proven.Frontx.Ind.natSub {← reify c (e.getArg! 4)} {← reify c (e.getArg! 5)})"
   -- `UInt64` arithmetic wraps like the words
   for (op, o) in [(``HSub.hSub, ".sub"), (``HAnd.hAnd, ".and"), (``HOr.hOr, ".or"), (``HXor.hXor, ".xor")] do
     if e.isAppOfArity op 6 then
@@ -618,13 +749,14 @@ partial def reify (c : Ctx) (e : Expr) : MetaM String := do
   if fn.isConstOf c.g && e.getAppNumArgs == c.nargs then
     let args := e.getAppArgs
     let s := args[c.sIdx]!.consumeMData
-    let ch ← match c.kids.find? (fun (x, _) => s == x) with
-      | some (_, false) => pure "false"
-      | some (_, true) => pure "true"
+    let (hop, ch) ← match c.kids.find? (fun (x, _) => s == x) with
+      | some (_, h, ch) => pure (h, ch)
       | none => throwError "frontx_ind: a recursive call not on a child{indentExpr e}"
     let a ← match c.aIdx with | some i => reify c args[i]! | none => pure "(.k 0)"
     let b ← match c.bIdx with | some i => reify c args[i]! | none => pure ".nul"
-    return s!"(.call {ch} {a} {b})"
+    if hop == 0 then return s!"(.call {ch} {a} {b})"
+    if hop == 1 then return s!"(.call2 true {ch} {a} {b})"
+    throwError "frontx_ind: a recursive call on a field in a second extension cell{indentExpr e}"
   -- a call of another function of the program
   if let .const fnN _ := fn then
     if let some p := c.fns.findIdx? (·.name == fnN) then
@@ -637,19 +769,25 @@ partial def reify (c : Ctx) (e : Expr) : MetaM String := do
         let bS ← match b with | some x => reify c x | none => pure ".nul"
         return s!"(.ext {p - c.cur - 1} {fi.rk} {tS} {aS} {bS})"
   if let .const cn _ := fn then
-    if let some (rt, i) := findCtor c.tys cn then
+    if let some (rt, i) ← findCtorT c.tys cn (← inferType e) then
       let args := e.getAppArgs
       let fs := args.extract rt.ti.params.size args.size
       let rs := rt.ti.roles[i]!
       unless fs.size == rs.size do throwError "frontx_ind: partial constructor application{indentExpr e}"
-      let mut x := "(.k 0)"; let mut l := ".nul"; let mut r := ".nul"
-      for j in [0:rs.size] do
-        match rs[j]! with
-        | .l => l ← reify c fs[j]!
-        | .r => r ← reify c fs[j]!
-        | .x _ => x ← reify c fs[j]!
-        | .drop => pure ()  -- not in the byte format (`T.emb` ignores it)
-      return s!"(.mk {rt.off + i} {x} {l} {r})"
+      let ne := rt.ti.next[i]?.getD 0
+      let mut acc := ""
+      for k' in [0:ne + 1] do
+        let k := ne - k'
+        let mut x := "(.k 0)"; let mut l := ".nul"; let mut r := if k < ne then acc else ".nul"
+        for j in [0:rs.size] do
+          if rt.ti.hop i j == k then
+            match rs[j]! with
+            | .l => l ← reify c fs[j]!
+            | .r => r ← reify c fs[j]!
+            | .x _ => x ← reify c fs[j]!
+            | .drop => pure ()  -- not in the byte format (`T.emb` ignores it)
+        acc := s!"(.mk {rt.off + rt.ti.cellTag i k} {x} {l} {r})"
+      return acc
   -- instances (`+` on `Pos`, `++` on lists): unfold to the function
   let e' ← withTransparency .instances (whnf e)
   if e' != e then return ← reify c e'
@@ -663,18 +801,26 @@ partial def reify (c : Ctx) (e : Expr) : MetaM String := do
 end
 
 /-- the aliases and children of the node's pattern variables (constructor `i` of `r`) -/
-def nodeAliases (r : RTy) (i : Nat) (fs : Array Expr) : Array (Expr × (Nat → String)) × Array (Expr × Bool) := Id.run do
+def nodeAliases (r : RTy) (i : Nat) (fs : Array Expr) : Array (Expr × (Nat → String)) × Array (Expr × Nat × Bool) := Id.run do
   let rs := r.ti.roles[i]!
   let mut al := #[]; let mut kids := #[]
   for j in [0:fs.size] do
+    let h := r.ti.hop i j
+    -- in the node's own cell: the fields `.l`, `.r`, `.x`; in an extension cell: read from `r`
+    let at_ : String := if h == 0 then
+        (match rs[j]! with | .l => ".l" | .r => ".r" | .x _ => ".x" | .drop => "?")
+      else Id.run do
+        let mut b := ".r"
+        for _ in [1:h] do b := s!"(.ft true {b})"
+        return match rs[j]! with
+          | .l => s!"(.ft false {b})" | .r => s!"(.ft true {b})" | .x _ => s!"(.fw true {b})" | .drop => "?"
     match rs[j]! with
-    | .l => al := al.push (fs[j]!, fun (_ : Nat) => ".l"); kids := kids.push (fs[j]!, false)
-    | .r => al := al.push (fs[j]!, fun (_ : Nat) => ".r"); kids := kids.push (fs[j]!, true)
-    | .x _ => al := al.push (fs[j]!, fun (_ : Nat) => ".x")
+    | .l => al := al.push (fs[j]!, fun (_ : Nat) => at_); kids := kids.push (fs[j]!, h, false)
+    | .r => al := al.push (fs[j]!, fun (_ : Nat) => at_); kids := kids.push (fs[j]!, h, true)
+    | .x _ => al := al.push (fs[j]!, fun (_ : Nat) => at_)
     | .drop => pure ()
     if let some (some (_, true)) := r.ti.kty[i]?.bind (·[j]?) then
-      let t := if rs[j]! matches .l then ".l" else ".r"
-      al := al.push (mkApp (mkConst ``Proven.Frontx.Ind.Bytes8.ofString) fs[j]!, fun (_ : Nat) => t)
+      al := al.push (mkApp (mkConst ``Proven.Frontx.Ind.Bytes8.ofString) fs[j]!, fun (_ : Nat) => at_)
   return (al, kids)
 
 structure Arms where
@@ -791,6 +937,8 @@ def wfDefs : List String := ["Proven.Mach.Ind.indProg", "Proven.Mach.Ind.indProg
   "Proven.Mach.Ind.eFlds", "Proven.Mach.Ind.eFld", "Proven.Mach.Ind.rdB", "Proven.Mach.Ind.wrB",
   "Proven.Mach.Ind.alloc", "Proven.Mach.Ind.stW", "Proven.Mach.Ind.vE", "Proven.Mach.Ind.kE",
   "Proven.Mach.Ind.addE", "Proven.Mach.Ind.asg", "Proven.Mach.Ind.eqE", "List.mapIdx", "List.mapIdx.go",
+  "Proven.Frontx.Ind.natSub", "Proven.Mach.Ind.fLoopX", "Proven.Mach.Ind.fLoopS", "Proven.Mach.Ind.dispS",
+  "Proven.Mach.Ind.armN",
   "List.getD"]
 
 /-- the types of the shape of `T` after `T` itself (`T.N1`, `T.N2`, …) -/
@@ -815,9 +963,93 @@ def rTyOfName (tn : Name) : TermElabM RTy := do
     else pure 0
   return { tn, ti := ← analyze embTy.bindingDomain! nest, off }
 
+/-- an arm with a recursive call whose word argument grows (a sum, `d + 1` under a binder) -/
+def armShifts (arm : String) : Bool := Id.run do
+  let parts := (arm.splitOn "(.call ").drop 1 ++ (arm.splitOn "(.call2 ").drop 1
+  for p in parts do
+    let mut q := p
+    for _ in [0:2] do
+      if q.startsWith "true " then q := q.drop 5 |>.toString
+      else if q.startsWith "false " then q := q.drop 6 |>.toString
+    -- the word argument: up to the tree argument (a growing one is a sum, `d + 1`)
+    if q.startsWith "(.bin .add" then return true
+  return false
+
 def scTy : Option Sc → String
   | some .nat => "Nat" | some .u64 => "UInt64" | some .bool => "Bool" | some .u8 => "UInt8" | none => "BitVec 64"
 
+
+/-- the `sem` step for calls whose arguments are built terms (NOTES section 25, F3): for each call `f t a b` of a
+function of the program in the goal (`fs`), the meaning theorem of `f` (`sems`, or an induction hypothesis) is
+instantiated at those arguments (`b` a constructor term), its cells written out (`embs`), and used to rewrite -/
+syntax "frontx_calls_sem" "[" ident,* "]" "[" ident,* "]" "[" Lean.Parser.Tactic.simpLemma,* "]" : tactic
+elab_rules : tactic
+  | `(tactic| frontx_calls_sem [$fs,*] [$sems,*] [$ls,*]) => Lean.Elab.Tactic.withMainContext do
+  let fNs ← fs.getElems.mapM fun f => Lean.Elab.realizeGlobalConstNoOverloadWithInfo f
+  let semEs ← sems.getElems.mapM fun s => do mkConstWithLevelParams (← Lean.Elab.realizeGlobalConstNoOverloadWithInfo s)
+  let g ← Lean.Elab.Tactic.getMainGoal
+  let t ← instantiateMVars (← g.getType)
+  let some (_, _, rhs) := t.eq? | return
+  -- the calls in the expected value
+  let calls := (Id.run do
+      let mut out : Array Expr := #[]
+      let mut todo : Array Expr := #[rhs]
+      while h : todo.size > 0 do
+        let e := todo[todo.size - 1]
+        todo := todo.pop
+        if let .const n _ := e.getAppFn then
+          if fNs.contains n && !e.hasLooseBVars then out := out.push e
+        for a in e.getAppArgs do todo := todo.push a
+        if let .app f x := e then if !e.getAppFn.isConst then todo := todo.push f |>.push x
+      return out)
+  -- the lemmas: the meaning theorems and the local hypotheses (induction hypotheses)
+  let mut lems : Array Expr := semEs
+  for d in (← getLCtx) do
+    if d.isImplementationDetail then continue
+    let ty ← instantiateMVars d.type
+    if ty.isForall then lems := lems.push d.toExpr
+  let mut k := 0
+  if (← IO.getEnv "FRONTX_DEBUG").isSome then logInfo m!"calls {calls} lems {lems.size}"
+  for c in calls do
+    if (← Lean.Elab.Tactic.getUnsolvedGoals).isEmpty then return
+    for L in lems do
+      let ok ← withNewMCtxDepth (allowLevelAssignments := true) <| (do
+        let (_, _, eq) ← forallMetaTelescope (← inferType L)
+        let some (_, _, r) := eq.eq? | return false
+        let mut found := false
+        let mut todo : Array Expr := #[r]
+        while h : todo.size > 0 do
+          let e := todo[todo.size - 1]
+          todo := todo.pop
+          if !found && e.getAppFn == c.getAppFn && e.getAppNumArgs == c.getAppNumArgs then
+            if ← isDefEq e c then found := true
+          for a in e.getAppArgs do todo := todo.push a
+        return found)
+      if ok then
+        -- instantiate for real, generalize what is left (the word argument, hypotheses)
+        let (ms, _, eq) ← forallMetaTelescope (← inferType L)
+        let some (_, _, r) := eq.eq? | continue
+        let mut todo : Array Expr := #[r]
+        let mut done := false
+        while h : todo.size > 0 do
+          let e := todo[todo.size - 1]
+          todo := todo.pop
+          if !done && e.getAppFn == c.getAppFn && e.getAppNumArgs == c.getAppNumArgs then
+            if ← isDefEq e c then done := true
+          for a in e.getAppArgs do todo := todo.push a
+        let pf ← instantiateMVars (mkAppN L ms)
+        let res ← abstractMVars pf
+        let ty ← inferType res.expr
+        let nm := Name.mkSimple s!"hcall{k}"
+        k := k + 1
+        let g ← Lean.Elab.Tactic.getMainGoal
+        let g' ← g.assert nm ty res.expr
+        let (_, g'') ← g'.intro1P
+        Lean.Elab.Tactic.replaceMainGoal [g'']
+        let hid := mkIdent nm
+        try Lean.Elab.Tactic.evalTactic (← `(tactic| simp only [$ls,*, UInt64.toBitVec_ofNat] at $hid:ident)) catch _ => pure ()
+        try Lean.Elab.Tactic.evalTactic (← `(tactic| simp only [$hid:ident])) catch _ => pure ()
+        break
 
 /-- one step of the `sem` proofs of functions that match on computed values: generalize a value `T.emb e`
 (`e` a call, not a constructor application or a variable) and split it into its constructors -/
@@ -971,9 +1203,9 @@ elab_rules : command
           if eps.contains eargs[i]! then bi := "Proven.Mach.Ind.BIn.inp"; two := true
           else
             let .const cn _ := eargs[i]!.getAppFn | throwError "frontx_ind: the second argument must be a nullary constructor"
-            let some (_, ci) := findCtor tys cn | throwError "frontx_ind: the second argument must be a constructor"
-            unless eargs[i]!.getAppNumArgs == ti.params.size do throwError "frontx_ind: the second argument must be nullary"
-            bi := s!"(Proven.Mach.Ind.BIn.ctor {ci})"; bC := some ci
+            let some (rb, ci) ← findCtorT tys cn (← inferType eargs[i]!) | throwError "frontx_ind: the second argument must be a constructor"
+            unless eargs[i]!.getAppNumArgs == rb.ti.params.size do throwError "frontx_ind: the second argument must be nullary"
+            bi := s!"(Proven.Mach.Ind.BIn.ctor {rb.off + ci})"; bC := some ci
         pure (bi, toString (aC.getD 0), aC, bC, two, ain)
     -- per function: explicit argument texts, `Unit` arguments
     let mut gArgsA := #[]
@@ -1007,8 +1239,15 @@ elab_rules : command
         bTys := bTys.push (some rb)
     let mut tyStrs := #[]
     for r in tys do tyStrs := tyStrs.push (r.tn, ← ppFull r.ti.ty)
-    return (tyS, tys, fns, armsA, entry.isSome, bi, a0, aConst, bConst, twoIn, ain, gArgsA, bTys, tyStrs)
-  let (tyS, tys, fns, armsA, isEntry, bi, a0, aConst, bConst, twoIn, ain, gArgsA, bTys, tyStrs) := r
+    -- the entry's explicit parameters in order: which argument of `g` each one is (`t`, `a`, `b`)
+    let entryRoles : Array String := match entry with
+      | none => #[]
+      | some (eargs, eps) => eps.map fun x =>
+        if eargs[fi0.sIdx]? == some x then "t"
+        else if (fi0.aIdx.bind (eargs[·]?)) == some x then "a"
+        else if (fi0.bIdx.bind (eargs[·]?)) == some x then "b" else "?"
+    return (tyS, tys, fns, armsA, entry.isSome, bi, a0, aConst, bConst, twoIn, ain, gArgsA, bTys, tyStrs, entryRoles)
+  let (tyS, tys, fns, armsA, isEntry, bi, a0, aConst, bConst, twoIn, ain, gArgsA, bTys, tyStrs, entryRoles) := r
   let ti := tys[0]!.ti
   let tyOf (tn : Name) : String := ((tyStrs.find? (·.1 == tn)).map (·.2)).getD "?"
   let pre (i : Nat) : String := if i == 0 then s!"{fS}.ind" else s!"{fS}.ind.h{i}"
@@ -1017,7 +1256,8 @@ elab_rules : command
   let words0 := words
   let cmpW := "Proven.Frontx.Ind.nat_ult, Proven.Frontx.Ind.nat_eq, Proven.Frontx.Ind.bw_eq0, Proven.Frontx.Ind.bw_eq0', " ++
     "Proven.Frontx.Ind.u64_ult, Proven.Frontx.Ind.u64_eq, Proven.Frontx.Ind.bool_eq, Proven.Frontx.Ind.u64_ops, " ++
-    "Proven.Frontx.Ind.beq_dec, Proven.Frontx.Ind.u8_eq, Proven.Frontx.Ind.Bytes8.eqb_ofString"
+    "Proven.Frontx.Ind.beq_dec, Proven.Frontx.Ind.u8_eq, Proven.Frontx.Ind.Bytes8.eqb_ofString, " ++
+    "Proven.Frontx.Ind.ev_natSub, Proven.Frontx.Ind.natSubW_ofNat"
   let allFolds := ", ".intercalate (tys.toList.flatMap fun r => (List.range r.ti.ctors.size).filter
     (fun k => !r.ti.roles[k]!.contains .drop) |>.map fun k => s!"{r.tn}.fold{k}")
   let embs := ", ".intercalate (tys.toList.map fun r => s!"{r.tn}.emb")
@@ -1027,7 +1267,35 @@ elab_rules : command
   let multi := fns.size > 1
   let fnsS := ", ".intercalate (fns.toList.map fun f => toString f.name)
   let mut anySmall := false
+  let mut nodesHyp := false
   -- per function, last first: the program, its meaning
+  -- the loop of a function must fit the reach of a branch (`bz` over the loop body, about 1000 words): a larger
+  -- one is compiled straight-line (`Pg.st`, every call a real call, one test per tag in sequence)
+  let stA : Array Bool ← liftTermElabM do
+    let termOf (str : String) : TermElabM Expr := do
+      match Parser.runParserCategory (← getEnv) `term str with
+      | .ok stx => do
+        let e ← Term.elabTerm stx (some (mkConst ``Nat))
+        Term.synthesizeSyntheticMVarsNoPostponing
+        instantiateMVars e
+      | .error err => throwError "frontx_ind: {err}"
+    let armsOfI (i : Nat) : String :=
+      let fi := fns[i]!
+      "[" ++ ", ".intercalate (List.replicate fi.ty.off (if fi.rk == ".t" then ".nul" else "(.k 0)") ++ armsA[i]!.arms.toList) ++ "]"
+    let mut m := 0
+    for i in [0:fns.size] do
+      let e ← termOf s!"List.foldr max 0 (List.map Proven.Mach.Ind.E.tmp ({armsOfI i} : List (Proven.Mach.Ind.E {fns[i]!.rk} {fns[i]!.rk})))"
+      let v ← withTransparency .all <| Meta.reduce e
+      match v.rawNatLit? <|> v.nat? with
+      | some n => m := max m n
+      | none => throwError "frontx_ind: cannot compute the temporaries {v}"
+    let nl0 := max 16 (m + 9)
+    let mut out : Array Bool := #[]
+    for i in [0:fns.size] do
+      let e ← termOf s!"Proven.Mach.Riscv.rvC.lenC (List.replicate {4 + fns.size} (⟨3, {nl0}, .base (.assign 0 (.var 0)), .var 0⟩ : Proven.Mach.Fn)) [0, 3] [2] (Proven.Mach.Ind.fLoop {3 + i} (\{ arms := {armsOfI i} } : Proven.Mach.Ind.Pg {fns[i]!.rk}))"
+      let n ← unsafe Meta.evalExpr Nat (mkConst ``Nat) e
+      out := out.push (decide (n > 1000))
+    return out
   for i' in [0:fns.size] do
     let i := fns.size - 1 - i'
     let fi := fns[i]!
@@ -1039,7 +1307,7 @@ elab_rules : command
       s!", X := Proven.Mach.Ind.semX [{later}], XA := Proven.Mach.Ind.alX [{later}]" else ""
     -- a function over a type nested in the shape: its tags start at the type's offset (no arms below)
     let armsL := List.replicate fi.ty.off (if fi.rk == ".t" then ".nul" else "(.k 0)") ++ A.arms.toList
-    runCmd s!"def _root_.{P}.pg : Proven.Mach.Ind.Pg {fi.rk} := \{ arms := [{", ".intercalate armsL}]{xf} }"
+    runCmd s!"def _root_.{P}.pg : Proven.Mach.Ind.Pg {fi.rk} := \{ arms := [{", ".intercalate armsL}]{xf}{if stA[i]! then ", st := true" else ""} }"
     runCmd s!"theorem _root_.{P}.arms : {P}.pg.arms = [{", ".intercalate armsL}] := rfl"
     if i + 1 < fns.size then
       runCmd s!"theorem _root_.{P}.X : {P}.pg.X = Proven.Mach.Ind.semX [{later}] := rfl"
@@ -1061,8 +1329,12 @@ elab_rules : command
       else if fi.isDec then s!"(Proven.Frontx.Ind.bw (@decide _ {gApp}))" else fi.rSc.get!.rep gApp
     let folds := ", ".intercalate ((List.range fi.ty.ti.ctors.size).filter (fun k => !fi.ty.ti.roles[k]!.contains .drop) |>.map
       fun k => s!"{Ttn}.fold{k}")
+    -- a recursive call with a word argument other than `a` (`d + 1` under a binder): the range hypothesis covers
+    -- the growth along a path (`a + nodes < 2^64`)
+    let shift := fns.size == 1 && fi.aSc == some .nat && A.arms.any armShifts
+    if shift then nodesHyp := true
     let hyps := if !small then "" else
-      s!"{Ttn}.small t → " ++ (if fi.aSc == some .nat then "a < 2 ^ 64 → " else "") ++
+      s!"{Ttn}.small t → " ++ (if fi.aSc == some .nat then (if shift then s!"a + ({Ttn}.emb t).nodes < 2 ^ 64 → " else "a < 2 ^ 64 → ") else "") ++
         (match bTys[i]! with | some rb => s!"{rb.tn}.small b → " | none => "")
     let words := (if small then words ++ s!", {smalls}, {cmpW}" else words ++ s!", {cmpW}") ++ extra
     let caseB := if bTys[i]!.isSome then "cases b <;> " else ""
@@ -1077,7 +1349,7 @@ theorem _root_.{P}.sem : ∀ (t : {tyOf Ttn}) (a : {aTy}) (b : {bTy}), {hyps}{P}
      simp only [{gS}]
      split <;> simp_all [{embs}, {words}]; done)
   | (simp only [{gS}, {P}.arms, Proven.Mach.Ind.Pg.sem, Proven.Mach.Ind.ev, {embs}, {smalls},
-      List.getElem?_cons_succ, List.getElem?_cons_zero] at *
+      List.getElem?_cons_succ, List.getElem?_cons_zero, Proven.Mach.Ind.C.nodes] at *
      try simp (disch := omega) only [{cmpW}, decide_eq_false_iff_not, {words0}]
      repeat' split
      all_goals simp_all [{embs}, {words}]
@@ -1103,7 +1375,23 @@ theorem _root_.{P}.sem : ∀ (t : {tyOf Ttn}) (a : {aTy}) (b : {bTy}), {hyps}{P}
        simp_all [{fnsS}, {embs}, {words}, Proven.Op.eval] | frontx_emb_cases)
      done)
   | ({caseB}simp_all [{gS}, {P}.arms, Proven.Mach.Ind.Pg.sem, Proven.Mach.Ind.ev, {embs}, {smalls}, {words}, {cmpW}, Proven.Frontx.Ind.bw_eqz{extra}] <;>
-     (repeat' split) <;> simp_all [Proven.Frontx.Ind.bw]; done)"
+     (repeat' split) <;> simp_all [Proven.Frontx.Ind.bw]; done)
+  | (simp only [{gS}, {P}.arms, Proven.Mach.Ind.Pg.sem, Proven.Mach.Ind.ev, {embs}, {smalls}, List.getElem?_cons_succ,
+      List.getElem?_cons_zero, List.getElem?_nil, Bool.false_eq_true, if_false, if_true] at *
+     try simp only [Proven.Mach.Ind.C.nodes] at *
+     simp (disch := first | omega | (simp_all; done)) only [*, {cmpW}, {words0}, ↓reduceIte, ite_true, ite_false{extra}]
+     all_goals (try simp (disch := first | omega | (simp_all; done)) only [Proven.Mach.Ind.ev, Proven.Frontx.Ind.natSubW_ofNat,
+       Proven.Frontx.Ind.nat_add, Proven.Frontx.Ind.bw_eq0, Proven.Frontx.Ind.bw_eq0', decide_eq_false_iff_not,
+       decide_eq_true_eq] at *)
+     all_goals (repeat' split)
+     all_goals (simp_all [{embs}, Proven.Frontx.Ind.bw]; try omega)
+     done)
+  | (simp only [{Ttn}.emb, {P}.arms, Proven.Mach.Ind.Pg.sem, Proven.Mach.Ind.ev, List.getElem?_cons_zero,
+      List.getElem?_cons_succ, Bool.false_eq_true, if_true, if_false, {words}] at *
+     all_goals try simp only [*{if i + 1 < fns.size then ", " ++ laterSems else ""}]
+     all_goals try simp only [{gS}]
+     all_goals frontx_calls_sem [{fnsS}] [{laterSems}] [{embs}]
+     all_goals first | rfl | (simp_all [{fnsS}, {embs}, {words}]; done))"
   -- the machine program
   let fi0 := fns[0]!
   let gN := fi0.name
@@ -1128,7 +1416,7 @@ theorem _root_.{P}.sem : ∀ (t : {tyOf Ttn}) (a : {aTy}) (b : {bTy}), {hyps}{P}
       | some n => m := max m n
       | none => throwError "frontx_ind: cannot compute the temporaries {v}"
     return max 16 (m + 9)
-  let progS := if oldForm then s!"(Proven.Mach.Ind.indProg {Tn}.sh {P}.pg {bi} (BitVec.ofNat 64 {a0}) {nb})" else
+  let progS := if oldForm && nl == 16 then s!"(Proven.Mach.Ind.indProg {Tn}.sh {P}.pg {bi} (BitVec.ofNat 64 {a0}) {nb})" else
     s!"(Proven.Mach.Ind.indProgM {Tn}.sh {shO} {P}.pg {hsList} {bi} {if ain then "true" else "false"} (BitVec.ofNat 64 {a0}) {nb} {nl})"
   let pgDefs := ", ".intercalate ((List.range fns.size).map fun i => s!"{pre i}.pg")
   let shDefs := ", ".intercalate (tys.toList.map fun r => s!"{r.tn}.sh")
@@ -1146,48 +1434,63 @@ theorem _root_.{P}.wf : Proven.Mach.Riscv.WfProg1W {progS} (if {rkS} = Proven.Ma
   · {wfT}"
   runCmd s!"def _root_.{fS}.code : List (BitVec 32) := Proven.Mach.Riscv.callsCode1W {progS} {res} 0"
   -- the machine theorem: input type, encodings
+  -- the type of the structural argument (the root of the shape, or a type nested in it)
+  let T0 := fi0.ty.tn
+  let tyS0 := tyOf T0
   let bTn := match fi0.bIdx with | some _ => (bTys[0]!.map (·.tn)).getD Tn | none => Tn
-  let inTyB := if twoIn then s!"{tyS} × {tyOf bTn}" else tyS
+  let inTyB := if twoIn then s!"{tyS0} × {tyOf bTn}" else tyS0
   let inTy := if ain then s!"{inTyB} × {scTy fi0.aSc}" else inTyB
   let pT := if ain then (if twoIn then "p.1.1" else "p.1") else (if twoIn then "p.1" else "p")
   let pB := if ain then "p.1.2" else "p.2"
   let pA := "p.2"
-  let encIn := if twoIn then s!"{Tn}.enc {pT} ++ {bTn}.enc {pB}" else s!"{Tn}.enc {pT}"
+  let encIn := if twoIn then s!"{T0}.enc {pT} ++ {bTn}.enc {pB}" else s!"{T0}.enc {pT}"
   let encA := if ain then s!"(fun p : {inTy} => {encIn} ++ leN 8 {if fi0.aSc == some .nat then pA else s!"{pA}.toNat"})"
-    else if twoIn then s!"{Tn}.enc2" else s!"{Tn}.enc"
+    else if twoIn then (if T0 == Tn && bTn == Tn then s!"{Tn}.enc2" else s!"(fun p : {inTy} => {encIn})") else s!"{T0}.enc"
   let gArgs := gArgsA[0]!
   let gP := gArgs.toList.map fun s => if s == "t" then pT else if s == "b" then pB else if s == "a" then
     (if ain then pA else toString (aConst.getD 0)) else s
+  let eP := entryRoles.toList.map fun s => if s == "t" then pT else if s == "b" then pB else if s == "a" then pA else s
   let fApp := if isEntry then
-      (if ain || twoIn then s!"(fun p : {inTy} => {fS} {" ".intercalate (gP.filter (· != "()"))})" else s!"(fun t : {tyS} => {fS} t)")
+      (if ain || twoIn then s!"(fun p : {inTy} => {fS} {" ".intercalate eP})" else s!"(fun t : {tyS0} => {fS} t)")
     else if twoIn || ain then s!"(fun p : {inTy} => {gS} {" ".intercalate gP})"
-    else s!"(fun t : {tyS} => {gS} {" ".intercalate gArgs.toList})"
+    else s!"(fun t : {tyS0} => {gS} {" ".intercalate gArgs.toList})"
   let encB := if rkS == ".t" then s!"{fi0.rTy.get!.tn}.enc" else match rSc with
     | some .bool => "(fun b : Bool => [if b then (1 : UInt8) else 0])"
     | _ => "(fun n : Nat => leN 8 n)"
-  let v1 := if twoIn || ain then s!"(fun p : {inTy} => {Tn}.emb {pT})" else s!"{Tn}.emb"
+  let v1 := if twoIn || ain then s!"(fun p : {inTy} => {T0}.emb {pT})" else s!"{T0}.emb"
   let v2 := if twoIn then s!"(fun p : {inTy} => {bTn}.emb {pB})" else s!"(fun _ : {inTy} => Proven.Mach.Ind.C.z)"
   let avS := if ain then s!"(fun p : {inTy} => {(fi0.aSc.getD .nat).rep pA})" else s!"(fun _ : {inTy} => (0 : BitVec 64))"
   let hencT := "fun g => rfl"
-  let hencN := s!"fun g => by simp [Proven.Mach.Ind.inBytesA, Proven.Mach.Ind.inBytes, {Tn}.enc, {Tn}.enc2, {bTn}.enc, Proven.Frontx.Ind.leN8_ofNat, Proven.Frontx.Ind.leN8_mod]"
+  let hencN := s!"fun g => by simp [Proven.Mach.Ind.inBytesA, Proven.Mach.Ind.inBytes, {Tn}.enc, {Tn}.enc2, {T0}.enc, {bTn}.enc, Proven.Frontx.Ind.leN8_ofNat, Proven.Frontx.Ind.leN8_mod]"
   let hw2T := if twoIn then s!"fun _ g => {bTn}.emb_wf g.{if ain then "1.2" else "2"}" else "fun h => nomatch h"
   let unfoldEntry := if isEntry then s!"show {encB} ({if fi0.isDec then "@decide _ (" else ""}{gS} {" ".intercalate (gArgs.toList.map fun s =>
     if s == "t" then (if ain || twoIn then pT.replace "p" "g" else "g") else if s == "a" then (if ain then "g.2" else toString (aConst.getD 0))
     else if s == "b" then (if twoIn then pB.replace "p" "g" else "_") else "_")}){if fi0.isDec then ")" else ""} = _; " else ""
   if fi0.aIdx.isSome && aConst.isNone && !ain then throwError "frontx_ind: a scalar parameter needs an entry `f xs = {gN} n xs`"
   let aS := if ain then "g.2" else match aConst with | some n => toString n | none => "(BitVec.ofNat 64 0)"
+  let bTi : TyInfo := match fi0.bIdx with | some _ => ((bTys[0]!.map (fun (r : RTy) => r.ti)).getD ti) | none => ti
   let bS := if twoIn then pB.replace "p" "g" else match bConst with
-    | some ci => s!"(@{ti.ctors[ci]!} {" ".intercalate (List.replicate ti.params.size "_")})"
+    | some ci => s!"(@{bTi.ctors[ci]!} {" ".intercalate (List.replicate bTi.params.size "_")})"
     | none => "Proven.Mach.Ind.C.z"
   let tS := if ain || twoIn then pT.replace "p" "g" else "g"
   let semArgs := s!"{tS} {aS} {bS}"
   -- with the range hypothesis: the input is the subtype `{g // T.small g}`
-  let smallP := s!"{Tn}.small {tS}" ++ (if ain && fi0.aSc == some .nat then " ∧ g.2 < 2 ^ 64" else "") ++
+  let smallP := s!"{T0}.small {tS}" ++ (if ain && fi0.aSc == some .nat then " ∧ g.2 < 2 ^ 64" else "") ++
     (if twoIn then s!" ∧ {bTn}.small {bS}" else "")
   let semArgs := if !small then semArgs else
     semArgs ++ " hg.1" ++ (if fi0.aSc == some .nat then (if ain then (if twoIn then " hg.2.1" else " hg.2") else " (by decide)") else "") ++
       (if fi0.bIdx.isSome then (if twoIn then (if ain then " hg.2.2" else " hg.2") else s!" (by simp [{Tn}.small])") else "")
   let semArgs := if small && !ain && !twoIn then semArgs.replace " hg.1" " hg" else semArgs
+  -- the range hypothesis `a + nodes < 2^64` (a word argument that grows along a path)
+  let nodesS := s!"({T0}.emb {tS}).nodes"
+  let (smallP, semArgs) := if !(small && nodesHyp) then (smallP, semArgs) else
+    let bS' := if fi0.bIdx.isSome then (if twoIn then (if ain then " hg.2.2" else " hg.2.1") else s!" (by simp [{Tn}.small])") else ""
+    if ain then
+      (s!"{T0}.small {tS} ∧ g.2 + {nodesS} < 2 ^ 64" ++ (if twoIn then s!" ∧ {bTn}.small {bS}" else ""),
+        s!"{tS} {aS} {bS} hg.1" ++ (if twoIn then " hg.2.1" else " hg.2") ++ bS')
+    else
+      (s!"{T0}.small {tS}" ++ (if twoIn then s!" ∧ {bTn}.small {bS}" else "") ++ s!" ∧ {nodesS} < 2 ^ 64",
+        s!"{tS} {aS} {bS} hg.1" ++ (if twoIn then " (by have := hg.2.2; omega)" else " (by have := hg.2; omega)") ++ bS')
   let smallP := if small then smallP else smallP
   let sub (fn : String) : String := if small then s!"(fun g : \{g : {inTy} // {smallP}} => {fn} g.1)" else fn
   let encA' := sub encA
@@ -1197,24 +1500,28 @@ theorem _root_.{P}.wf : Proven.Mach.Riscv.WfProg1W {progS} (if {rkS} = Proven.Ma
   let av' := sub avS
   let hw2T := if small && twoIn then s!"fun _ g => {bTn}.emb_wf g.1.{if ain then "1.2" else "2"}" else hw2T
   let hencN := if small then
-      s!"fun g => by obtain ⟨g, hg⟩ := g; simp [Proven.Mach.Ind.inBytesA, Proven.Mach.Ind.inBytes, {Tn}.enc, {Tn}.enc2, {bTn}.enc, Proven.Frontx.Ind.leN8_ofNat, Proven.Frontx.Ind.leN8_mod]"
+      s!"fun g => by obtain ⟨g, hg⟩ := g; simp [Proven.Mach.Ind.inBytesA, Proven.Mach.Ind.inBytes, {Tn}.enc, {Tn}.enc2, {T0}.enc, {bTn}.enc, Proven.Frontx.Ind.leN8_ofNat, Proven.Frontx.Ind.leN8_mod]"
     else hencN
   let intro := if small then "obtain ⟨g, hg⟩ := g; dsimp only; " else ""
   let finish := if rkS == ".t" then "rfl" else match rSc with
     | some .bool => "exact Proven.Frontx.Ind.outBool _"
     | _ => "exact Proven.Frontx.Ind.outNat _"
-  let hasA := if ain then "simp only [if_true]; " else "simp only [Bool.false_eq_true, if_false]; "
+  -- calls on grandchildren (extension cells) are outside the linear cell bound: `cellsSup`
+  let lin := !(armsA.any (·.arms.any (·.contains ".call2")))
+  let hasA := if ain then "try simp only [if_true]
+      " else "try simp only [Bool.false_eq_true, if_false, ↓reduceIte]
+      "
   let houtT := s!"fun g => by
       {intro}{unfoldEntry}have h := {P}.sem {semArgs}
       simp only [Proven.Mach.Ind.Kd.out, Proven.Mach.Ind.BIn.val]
-      {if oldForm then "" else hasA}first
+      {if oldForm && lin then "" else hasA}first
       | (simp only [{embs}] at h; rw [h]; {finish})
       | (rw [h]; {finish})"
   let rl := if rkS == ".t" then "true" else "false"
   let tryOld : CommandElabM Unit := runCmd s!"theorem _root_.{fS}.implements1 : Proven.Implements1With {encA'} {encB} {fS}.code {fApp'}
     (Proven.Frontx.Ind.space {P}.pg.M) (2 ^ 20) {rl} := by
   have := Proven.Frontx.Ind.implements1_ind {Tn}.sh {P}.pg {bi} (BitVec.ofNat 64 {a0}) {nb} {encA'} {encB} {fApp'} {v1'} {v2'}
-    ({hencT}) (fun g => {Tn}.emb_wf _) ({hw2T})
+    ({hencT}) (fun g => {T0}.emb_wf _) ({hw2T})
     ({houtT})
     (by decide) (by decide) (by decide) (by unfold Proven.Mach.Ind.Pg.lin; decide) (by intro t h; cases h <;> decide)
     (by decide) (by decide) {P}.wf
@@ -1223,23 +1530,26 @@ theorem _root_.{P}.wf : Proven.Mach.Riscv.WfProg1W {progS} (if {rkS} = Proven.Ma
   let tryL : CommandElabM Unit := runCmd s!"theorem _root_.{fS}.implements1 : Proven.Implements1With {encA'} {encB} {fS}.code {fApp'}
     (Proven.Frontx.Ind.spaceA 1 16 (fun n => {P}.pg.M * n)) (2 ^ 20) {rl} :=
   Proven.Frontx.Ind.implements1_indL {Tn}.sh {shO} {P}.pg {bi} {ainS} (BitVec.ofNat 64 {a0}) {nb} {encA'} {encB} {fApp'} {v1'} {v2'} {av'}
-    ({hencN}) (fun g => {Tn}.emb_wf _) ({hw2T})
+    ({hencN}) (fun g => {T0}.emb_wf _) ({hw2T})
     ({houtT})
     (by decide) (by decide) (by decide) (by decide) (by unfold Proven.Mach.Ind.Pg.lin; decide) (by intro t h; cases h <;> decide)
     (by decide) {P}.wf"
   let chain := "⟨fun j hj => ⟨rfl, rfl⟩, " ++ String.join ((List.range (fns.size - 1)).map fun _ => "⟨fun j hj => ⟨rfl, rfl⟩, ") ++
     "trivial" ++ String.join ((List.range fns.size).map fun _ => "⟩")
   let chain := if fns.size == 1 then "⟨fun j hj => absurd hj (by simp), trivial⟩" else chain
-  let tryS : CommandElabM Unit := runCmd s!"theorem _root_.{fS}.implements1 : Proven.Implements1With {encA'} {encB} {fS}.code {fApp'}
+  let tryS : CommandElabM Unit := do
+    let thS := s!"theorem _root_.{fS}.implements1 : Proven.Implements1With {encA'} {encB} {fS}.code {fApp'}
     (Proven.Frontx.Ind.spaceA {fns.size} {nl} (Proven.Mach.Ind.cellsSup {Tn}.sh {P}.pg {bi} {ainS} (BitVec.ofNat 64 {a0}))) (2 ^ 20) {rl} :=
   Proven.Frontx.Ind.implements1_indS {Tn}.sh {shO} {P}.pg {hsList} {bi} {ainS} (BitVec.ofNat 64 {a0}) {nb} {nl} {encA'} {encB} {fApp'} {v1'} {v2'} {av'}
-    ({hencN}) (fun g => {Tn}.emb_wf _) ({hw2T})
+    ({hencN}) (fun g => {T0}.emb_wf _) ({hw2T})
     ({houtT})
     (by decide) (by decide) (by decide) (by first | exact {chain} | (simp only [Proven.Mach.Ind.Chain]; decide))
     (by decide) (by intro t h; cases h <;> decide) (by decide) {P}.wf"
-  if oldForm && nl == 16 then
+    if (← IO.getEnv "FRONTX_DEBUG").isSome then logInfo thS
+    runCmd thS
+  if oldForm && nl == 16 && lin then
     try tryOld catch _ => tryS
-  else if !multi && nl == 16 then
+  else if !multi && nl == 16 && lin then
     try tryL catch _ => tryS
   else tryS
   let t1 ← IO.monoMsNow

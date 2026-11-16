@@ -47,10 +47,11 @@ theorem alE_le (sal : Ca) (x : BitVec 64)
   | fw _ e ih => intro self hx; simp only [E.exts] at hx; have := ih self hx; simp only [alE, E.mks, E.calls]; omega
   | ft _ e ih => intro self hx; simp only [E.exts] at hx; have := ih self hx; simp only [alE, E.mks, E.calls]; omega
   | ext _ _ _ _ _ => intro self hx; simp [E.exts] at hx
+  | call2 _ _ _ _ _ _ => intro self hx; simp [E.exts] at hx
   | @bind k₁ _ e₁ e₂ ih₁ ih₂ =>
     intro self hx; simp only [E.exts] at hx
     have := ih₁ self (by omega)
-    have := ih₂ ⟨self.f, self.X, self.me, k₁.pair (ev self x l r a b e₁) :: self.ρ⟩ (by omega)
+    have := ih₂ ⟨self.f, self.g, self.X, self.me, k₁.pair (ev self x l r a b e₁) :: self.ρ⟩ (by omega)
     simp only [alE, E.mks, E.calls, Nat.add_mul]; omega
 
 theorem mks_le (pg : Pg rk) {e : E rk rk} (he : e ∈ pg.arms) : e.mks ≤ pg.M := by

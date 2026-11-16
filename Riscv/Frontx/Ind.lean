@@ -216,3 +216,26 @@ theorem leN8_mod (n : Nat) : leN 8 (n % 18446744073709551616) = leN 8 n := by
   rw [show 18446744073709551616 = 256 ^ 8 from rfl, leN_mod]
 
 end Proven.Frontx.Ind
+
+namespace Proven.Frontx.Ind
+open Proven Proven.Mach Proven.Mach.Ind
+
+/-! ## `Nat` subtraction (truncated at `0`): `if a < b then 0 else a - b` on words below `2^64` -/
+
+def natSub {rk : Kd} (a b : E rk .w) : E rk .w := .ite (.bin .ult a b) (.k 0) (.bin .sub a b)
+
+def natSubW (u v : BitVec 64) : BitVec 64 := if u < v then 0 else u - v
+
+theorem ev_natSub {rk : Kd} (self : Cn rk) (x : BitVec 64) (l r : C) (a : BitVec 64) (b : C) (e₁ e₂ : E rk .w) :
+    ev self x l r a b (natSub e₁ e₂) = natSubW (ev self x l r a b e₁) (ev self x l r a b e₂) := by
+  simp only [natSub, ev, natSubW, Op.eval]; split <;> simp_all
+
+theorem natSubW_ofNat {x y : Nat} (hx : x < 2 ^ 64) (hy : y < 2 ^ 64) :
+    natSubW (BitVec.ofNat 64 x) (BitVec.ofNat 64 y) = BitVec.ofNat 64 (x - y) := by
+  simp only [natSubW, BitVec.lt_def, BitVec.toNat_ofNat, Nat.mod_eq_of_lt hx, Nat.mod_eq_of_lt hy]
+  split
+  · rename_i h; rw [Nat.sub_eq_zero_of_le (by omega)]; rfl
+  · rename_i h; apply BitVec.eq_of_toNat_eq
+    simp only [BitVec.toNat_sub, BitVec.toNat_ofNat, Nat.mod_eq_of_lt hx, Nat.mod_eq_of_lt hy]; omega
+
+end Proven.Frontx.Ind
