@@ -1,0 +1,6 @@
+wa_int_iops: 200 cases ok on qemu (seed 21; max input 59 B, max out 8 B, max work 55 B; heap/stack gap min 7 B, max written fraction 0.873; Lean PANIC (default value on short input) x0)
+wa_int_icmp: 200 cases ok on qemu (seed 21; max input 59 B, max out 8 B, max work 55 B; heap/stack gap min 7 B, max written fraction 0.873; Lean PANIC (default value on short input) x0)
+wa_int_fxrounds: 200 cases ok on qemu (seed 21; max input 59 B, max out 8 B, max work 71 B; heap/stack gap min 7 B, max written fraction 0.901; Lean PANIC (default value on short input) x0)
+wa_int_iops: 200 cases ok on qemu (seed 22; max input 59 B, max out 8 B, max work 55 B; heap/stack gap min 7 B, max written fraction 0.873; Lean PANIC (default value on short input) x0)
+wa_int_icmp: 200 cases ok on qemu (seed 22; max input 59 B, max out 8 B, max work 55 B; heap/stack gap min 7 B, max written fraction 0.873; Lean PANIC (default value on short input) x0)
+wa_int_fxrounds: 200 cases ok on qemu (seed 22; max input 59 B, max out 8 B, max work 71 B; heap/stack gap min 7 B, max written fraction 0.901; Lean PANIC (default value on short input) x34)
