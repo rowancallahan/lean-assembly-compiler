@@ -2102,7 +2102,19 @@ all ok; entry glue reads the arguments from the input bytes):
 
 | entry | library code exercised | result | words | test |
 |---|---|---|---|---|
-RESULTS_TABLE
+| `rgbaE` | `Rgba.mk` (Canvas.lean:16) | `Rgba`, 32 B | 169 | `st_rgba` 50 ok |
+| `hdrE` | `PngDecode.Hdr.mk` (PngDecode.lean:43) | `Hdr`, 33 B | 242 | `st_hdr` 50 ok |
+| `rgbaGE` | `Rgba.g` of a constructor | `Nat` | 61 | `st_rgbag` 50 ok |
+| `interlaceE` | `PngDecode.Hdr.interlace` | `Bool` | 41 | `st_interlace` 50 ok |
+| `canvasHE` | `Canvas.h` (an `Array Nat` field, no variable) | `Nat` | 73 | `st_canvash` 50 ok |
+| `compoundValidE` | `Css.Compound.valid` (`String`, `Option String`, `Array` fields) | `Bool` | 42 | `st_compoundvalid` 50 ok |
+| `setLigE` | `Shape.GInfo.setLigForLigature` (`{ g with lig := … }`, 13 fields) | `GInfo`, 104 B | 633 | `st_setlig` 50 ok |
+| `ligNumCompsE` | `Shape.GInfo.ligNumComps` (+ `ligatedInternal`) | `Nat` | 85 | `st_lignumcomps` 50 ok |
+| `isIgnorableE` | `Shape.GInfo.isIgnorable` | `Bool` | 72 | `st_isignorable` 50 ok |
+| `rgbaHdrE` | tuple of two structures `Rgba × Hdr` | 65 B | 593 | `st_rgbahdr` 50 ok |
+| `entryAtE` (wa) | `DecodeTable.entryAt` (Inflate.lean:260) | `UInt32` | 1323 | `wa_entryat` 50 ok |
+| `lenAtE` (wa) | `DecodeTable.lenAt` (:228, `unpackLen`) | `UInt8` | 1315 | `wa_lenat` 50 ok |
+| `symAtE` (wa) | `DecodeTable.symAt` (:234, `unpackSym`) | `UInt16` | 1325 | `wa_symat` 50 ok |
 
 **Not done / why.**
 - A structure *result* with an `Array` field (`Canvas.mk`, `Canvas.new`): the list front end has no arrays; the
@@ -2115,3 +2127,9 @@ RESULTS_TABLE
 - `GInfo` with 13 fields from the input at once: `setLigAt` with 15 input-derived components took 8.6 GB and failed
   a `simp` heartbeat limit; with 5 input fields (the others the structure's defaults) 1.7 GB, 26 slots.
 - Enum `instBEq….beq` rows of §1.2 (inductives without payload, not structures) and `deriving BEq` on structures.
+
+Reproduce: `lake build Riscv.Frontx.StructExamples Riscv.Frontx.WaStruct`; `lake env lean --tstack=400000
+Testing/asm/emit_struct.lean` (do not pipe its output into `head`: the `xs.data[0]!` panics of the empty input then
+block it); `for f in st_rgba st_hdr st_rgbag st_interlace st_canvash st_compoundvalid st_setlig st_lignumcomps
+st_isignorable st_rgbahdr wa_entryat wa_lenat wa_symat; do python3 Testing/asm/frontx_test.py check 50 $f; done`.
+`lake build Frontx` (all earlier examples) passes with the translator changes.
