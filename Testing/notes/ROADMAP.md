@@ -275,6 +275,23 @@ dependency closure; theorem STATEMENTS (`Spec/`) are reviewed by the owner, not 
 
 ### Nano: a tiny fully self-hosting toolchain (owner, 2026-11-16)
 
+PRIORITY (owner, 2026-11-16 21:50): full self-hosting of nano comes FIRST. It is the through line (spec = own small
+elaborator; back end proved with the big compiler's pieces; self-hosting checked by an exact fixed point) that later
+structures the big compiler; its syntax is opened up later by putting the full Lean elaborator in front. Boxes: nano-e2e
+(Sonnet: elaborator, byte-level rewrites, self-hosted binary), nano-proof (Opus: generator proofs), nano-v2 (Opus:
+self-compiling language, B2 = B3).
+UPDATE (owner, 2026-11-16 22:00): focus = a MINIMUM VIABLE nano, PROVED correct end to end and self-hosted, plus signed
+Int64 + and − (same machine code as UInt64; only the meaning and the agreement checks change). No language growth beyond
+that; v2 (self-compiling, B2 = B3) deferred until the MVP chain is closed. Box nano-mvp (Opus) replaces nano-v2.
+SUBSET RULE (owner): nano is an EXACT subset of Lean. If `nanoElab` accepts a text, Lean's elaborator accepts the same
+text with the same meaning; nano may reject anything. Checked by per-program agreement proofs, random fuzz, and an
+adversarial boundary fuzz (accept/reject compared on both sides: precedence of application vs binary minus such as
+`f -1`, numeral wrap, unary minus, shadowing of Lean globals, keywords as names, comments, whitespace). Any "nano
+accepts, Lean rejects" or "meanings differ" is a bug, fixed by rejecting.
+SPEC OWNERSHIP (owner): `nanoElab`, `Prog.eval` and the documented grammar are a DRAFT spec; the owner writes/confirms
+the final version later. Boxes keep them minimal, record evidence (agreement proofs, fuzz results, edge cases) for that
+review, and spend their effort on the proved back end and self-hosting, not on polishing the spec.
+
 - v1 (Sonnet box, branch nano-e2e): `nanoCompile = nanoGen ∘ nanoElab` (UTF-8 text → AST → RISC-V) written in Lean,
   compiled by our compiler (binary proved to compute `nanoCompile`); elaborator checked against Lean's real elaborator
   (per-program `rfl`/`decide` + fuzz); generated code tested on QEMU/Sail (proof = stretch).

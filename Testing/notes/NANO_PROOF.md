@@ -53,3 +53,17 @@ srli/sb at a3, value stack in the work block with a bound check). Proof plan onc
 by `decide +kernel` per (op, registers) family (checked: `asm [0,5,2,c] = wordBytes [encL 3 (8c) 5 2]` for all c
 < 256 in ~1 s); per-`Ex` stack invariant on Sail states against the work block (`G.step_*` + `Next`); glue to
 `StartCorrect`/`CompileCorrect` as in `Riscv/Back/IrTop.lean` `machine_run`.
+- 2026-11-16: merged origin/main + origin/nano-e2e (c06682c). Fixed a build break in nano-mvp's Nano/Chain.lean
+  (old IR names → `nanoCompileIR`/`nanoGenIR`/`nanoGenIR_code`; nothing else changed there).
+- Route (a) for nano-e2e's raw generator, in progress: **Nano/StackRec.lean**. A record machine (`Nano.R.exec`, the
+  semantics of `Nano/Asm.lean`'s table) and, proved on it, `genE_ok`/`genA_ok` (the records of a scoped expression
+  push `den e env` on the work-block value stack, bound check passing when `W + 8·depE ≤ T`), `pro_ok` (argument
+  words read bytewise and pushed), `wr_loop` (result written bytewise at a3), all block lemmas. The proofs survived
+  nano-e2e's opcode renumbering by editing only the `exec` table and record literals.
+  Remaining: (1) `genR` end to end on the record machine (prologue `mv t6, sp; mv t3, a0`, `pro`, `genE`, `ld`, `wr8`,
+  `ret`); a compile-time check `ScE p.2 p.1 ∧ depth p ≤ 256` is needed (genE loads slot 0 for an out-of-scope variable,
+  where `den` gives 0, and offsets are 8-bit); (2) refinement: each record's `asm` word executes on Sail as `exec`
+  says (record → `encL/encS/encI/encR/jalr/bgeu` word lemmas by `decide +kernel` per register family, checked
+  feasible: ~1 s each; then `G.step_*` with `Next`), memory model `Nat → UInt8` vs Sail's map on the RAM blocks;
+  (3) glue `StartCorrect` → `CompileCorrect riscv` as in `Riscv/Back/IrTop.lean` `machine_run` (CompileRuns also
+  needs the overflow path: a0 := -1; ret).
