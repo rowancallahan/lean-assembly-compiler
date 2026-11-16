@@ -190,4 +190,101 @@ theorem out_loop : ∀ (rest written : List UInt8) (w : V) (g : VReg → Val) (m
 
 end
 
+/-- what the compiler checks: small datatypes, a one-parameter `main` -/
+def Good (P : Prog) : Prop := Small P.S ∧ P.S.fns[P.main].1.length = 1
+
+theorem lowerP_fn (P : Prog) (f : Fin P.S.fns.length) : (lowerP P).funcs[f.val]? = some (lowFn P f) := by
+  simp [lowerP, List.getElem?_append_left (show f.val < (List.ofFn (lowFn P)).length by simp)]
+
+theorem lowerP_main (P : Prog) : (lowerP P).funcs[(lowerP P).main]? = some (mainF P.main.val) := by
+  simp [lowerP]
+
+/-- **the lowering is correct**: on every input where `main` has a value whose bytes are `out`, the RTL program's
+meaning is `out` -/
+theorem lower_meaning (P : Prog) (hG : Good P) (input out : List UInt8) (v : V) (hD : P.Den input v)
+    (ho : bytesOut v = some out) (hI : input.length < 2 ^ 64) (hO : out.length < 2 ^ 64) :
+    (lowerP P).meaning input = some out := by
+  generalize hQ : lowerP P = Q
+  have hfns : HasFns P Q := fun f => by rw [← hQ]; exact lowerP_fn P f
+  have hQm : Q.funcs[Q.main]? = some (mainF P.main.val) := by rw [← hQ]; exact lowerP_main P
+  generalize hF : mainF P.main.val = F at hQm
+  obtain ⟨nl', okm⟩ := mkFunc_region (params := [0, 1, 2]) (ps := [0, 1, 2]) (nl := 1)
+    (rs := [(0, mainTC P.main.val)]) (by simp) (by simp) 0 (by simp)
+  have hF' : mkFunc [0, 1, 2] [0, 1, 2] 1 [(0, mainTC P.main.val)] = F := hF
+  rw [hF'] at okm
+  simp only [List.getElem_cons_zero, if_true] at okm
+  generalize hg0 : setMany (fun _ => Val.w 0) [0, 1, 2] [.p 0 0, .w (BitVec.ofNat 64 input.length), .p 1 0] = g0
+  have g00 : g0 0 = .p 0 0 := by rw [← hg0]; simp [setMany, upd]
+  have g01 : g0 1 = .w (BitVec.ofNat 64 input.length) := by rw [← hg0]; simp [setMany, upd]
+  have g02 : g0 2 = .p 1 0 := by rw [← hg0]; simp [setMany, upd]
+  -- the empty list
+  have m0 := Ir.Mem.init input
+  have xa := ex_alloc (Q := Q) (g := g0) (Ir.Mem.init input) 3 1
+  generalize hga : upd g0 3 (.p ((Ir.Mem.init input).blks.length + 2) 0) = ga at xa
+  have ha3 : ga 3 = .p ((Ir.Mem.init input).blks.length + 2) 0 := by rw [← hga, upd_same]
+  have xb := ex_st_blk (Q := Q) (Ir.Mem.init input) (List.replicate (BitVec.toNat (1 : BitVec 64)) none) 3 ha3 (.i 0) 0
+    (by simp)
+  have hcs : (List.replicate (BitVec.toNat (1 : BitVec 64)) (none : Option Val)).set 0
+      (some ((Arg.i 0 : Arg VReg).eval ga)) = [some (.w 0)] := by simp [Arg.eval]
+  rw [hcs] at xb
+  generalize hm1 : (Ir.Mem.init input).withBlk [some (.w 0)] = m1 at xb
+  have gr1 : Grow (Ir.Mem.init input) m1 := by rw [← hm1]; exact withBlk_grow _ _
+  have xc := ex_mov (P := Q) ga m1 4 1
+  generalize hgc : upd ga 4 (ga 1) = gc at xc
+  have gc4 : gc 4 = .w (BitVec.ofNat 64 input.length) := by
+    rw [← hgc, upd_same, ← hga, upd_ne _ _ (by decide), g01]
+  have gc0 : gc 0 = .p 0 0 := by rw [← hgc, upd_ne _ _ (by decide), ← hga, upd_ne _ _ (by decide), g00]
+  have gc3 : Rep m1 (bytesV (input.drop input.length)) (gc 3) := by
+    rw [List.drop_length]
+    rw [← hgc, upd_ne _ _ (by decide), ha3]
+    refine ⟨_, (Ir.Mem.init input).cells.length, rfl, by rw [← hm1, withBlk_blk]; rfl, by
+      rw [← hm1]; simp [Ir.Mem.withBlk, Ir.Mem.init], trivial⟩
+  obtain ⟨gd, md, xd, grd, rpd, frd⟩ := in_loop (Q := Q) input hI input.length (Nat.le_refl _) gc m1 gc4 gc0
+    (by rw [← hm1]; rfl) gc3
+  -- the call
+  obtain ⟨x, me, hR, gre, rpe⟩ := fn_returns hfns P.main
+    (fun ρ n g m he hb => low_ok hfns hG.1 hD ρ n g m he hb) [gd 3] rfl (by rw [hG.2]; rfl)
+    (fun k h₁ h₂ => by
+      have : k = 0 := by simp at h₁; omega
+      subst this; exact rpd)
+  have xe : SC.Ex Q (.i (.call [7] P.main.val [.r 3])) gd md (upd gd 7 x) me := by
+    have := SC.Ex.call (P := Q) (ds := [7]) (as := [.r 3]) (g := gd) (by simpa [Arg.eval] using hR) rfl
+    simpa [setMany] using this
+  generalize hge : upd gd 7 x = ge at xe
+  have ge2 : ge 2 = .p 1 0 := by
+    rw [← hge, upd_ne _ _ (by decide), frd 2 (by decide), ← hgc, upd_ne _ _ (by decide), ← hga,
+      upd_ne _ _ (by decide), g02]
+  -- the output
+  have xf := ex_setK (P := Q) ge me 8 0
+  generalize hgf : upd ge 8 (.w 0) = gf at xf
+  have rpf : Rep me v (gf 7) := by rw [← hgf, upd_ne _ _ (by decide), ← hge, upd_same]; exact rpe
+  obtain ⟨b', c0', sz', e', hb', hsz', hc'⟩ := rep_tag rpf ho
+  have xg := ex_ldG (Q := Q) (d := 9) e' hb' hsz' hc'
+  generalize hgg : upd gf 9 (.w (tagOf out)) = gg at xg
+  have heo : me.out = [] := by
+    rw [gre.2, grd.2, gr1.2]; rfl
+  obtain ⟨gh, mh, xh, hoh⟩ := out_loop (Q := Q) out [] v gg me ho
+    (by rw [← hgg, upd_ne _ _ (by decide)]; exact rpf)
+    (by rw [← hgg, upd_ne _ _ (by decide), ← hgf, upd_same]; rfl)
+    (by rw [← hgg, upd_ne _ _ (by decide), ← hgf, upd_ne _ _ (by decide), ge2])
+    (by rw [heo]; rfl) (by simpa using hO) (by rw [← hgg, upd_same])
+  -- the run
+  have xM : TC.Ex Q F (mainTC P.main.val) g0 (Ir.Mem.init input) (.ret [] mh) := by
+    simp only [mainTC, inLoop, outLoop, SC.seqs]
+    exact .seq (.seq (.seq xa (.seq xb (.seq xc (by simpa [inBody, SC.seqs] using xd))))
+      (.seq xe (.seq xf (.seq xg (by simpa [outBody, SC.seqs] using xh))))) .ret
+  obtain ⟨l', pc', g', B, rvs, hR', hB, hk, ht, hv⟩ := flatT_ok hQm _ xM _ okm
+  have hFe : F.entry = 0 := by rw [← hF']; rfl
+  have hFp : F.params = [0, 1, 2] := by rw [← hF']; rfl
+  have hinit : init Q input = ⟨[⟨Q.main, 0, 0, g0, []⟩], Ir.Mem.init input, []⟩ := by
+    unfold init; rw [hQm]; dsimp only; rw [hFe, hFp, hg0]
+  obtain ⟨ev', hst⟩ := hR' [] [] []
+  have hdone : step Q ⟨[⟨Q.main, l', pc', g', []⟩], mh, ev'⟩ = .done ⟨rvs.map (Arg.eval g'), mh, ev'⟩ := by
+    unfold step; simp only [hQm, hB, hk, ht, termStep]
+  obtain ⟨n, hn⟩ := Star.run hst hdone
+  have hres := Prog.result_eq (P := Q) (input := input) ⟨n, by rw [hinit]; exact hn⟩
+  show (Q.result input).bind (fun r => r.mem.output) = _
+  rw [hres]
+  simp only [Option.bind_some, Ir.Mem.output, hoh, List.nil_append, mapM_some]
+
 end Proven.S3
