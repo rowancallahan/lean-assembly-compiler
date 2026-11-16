@@ -2,22 +2,33 @@
       (if @N == 40 then (if isW c || c == 41 then [0] else REC(0, sp, d, d0, w, ty, cz))
        else if c == 41 then (if isW @N then [0] else REC(0, sp, d, d0, w, ty, cz)) else REC(0, sp, d, d0, w, ty, cz))
     else if st == 2 then REC(0, sp, d, d0, w, ty, 0)
-    else if st == 0 || st == 4 then
+    else if st == 4 then
       if c == 32 then REC(0, sp, d, d0, w, ty, 0)
       else if c == 10 then REC(4, sp, d, d0, w, ty, 0)
       else if isW c then
         (if isW @N then
            (if 48 ≤ c && c ≤ 57 then
-              (if m == 0 then REC(1, sp, (if 48 ≤ @N && @N ≤ 57 then 2 else 6), 2, ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (@N).toUInt64), ty, (if st == 4 then 1 else 0))
-               else 5 :: c :: REC(1, sp, (if 48 ≤ @N && @N ≤ 57 then 2 else 6), 2, ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (@N).toUInt64), ty, (if st == 4 then 1 else 0)))
+              (if m == 0 then REC(1, sp, (if 48 ≤ @N && @N ≤ 57 then 2 else 6), 2, ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (@N).toUInt64), ty, 1)
+               else 5 :: c :: REC(1, sp, (if 48 ≤ @N && @N ≤ 57 then 2 else 6), 2, ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (@N).toUInt64), ty, 1))
             else
-              (if m == 0 then REC(1, sp, (DSTEPL @N), (if 97 ≤ c && c ≤ 122 then 1 else 6), ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (@N).toUInt64), ty, (if st == 4 then 1 else 0))
-               else c :: REC(1, sp, (DSTEPL @N), (if 97 ≤ c && c ≤ 122 then 1 else 6), ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (@N).toUInt64), ty, (if st == 4 then 1 else 0))))
-         else if st == 4 then [0]
+              (if m == 0 then REC(1, sp, (DSTEPL @N), (if 97 ≤ c && c ≤ 122 then 1 else 6), ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (@N).toUInt64), ty, 1)
+               else c :: REC(1, sp, (DSTEPL @N), (if 97 ≤ c && c ≤ 122 then 1 else 6), ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (@N).toUInt64), ty, 1)))
+         else [0])
+      else [0]
+    else if st == 0 then
+      if c == 32 then REC(0, sp, d, d0, w, ty, 0)
+      else if c == 10 then REC(4, sp, d, d0, w, ty, 0)
+      else if isW c then
+        (if isW @N then
+           (if 48 ≤ c && c ≤ 57 then
+              (if m == 0 then REC(1, sp, (if 48 ≤ @N && @N ≤ 57 then 2 else 6), 2, ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (@N).toUInt64), ty, 0)
+               else 5 :: c :: REC(1, sp, (if 48 ≤ @N && @N ≤ 57 then 2 else 6), 2, ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (@N).toUInt64), ty, 0))
+            else
+              (if m == 0 then REC(1, sp, (DSTEPL @N), (if 97 ≤ c && c ≤ 122 then 1 else 6), ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (@N).toUInt64), ty, 0)
+               else c :: REC(1, sp, (DSTEPL @N), (if 97 ≤ c && c ≤ 122 then 1 else 6), ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (@N).toUInt64), ty, 0)))
          else if 48 ≤ c && c ≤ 57 then (if m == 0 then REC(0, sp, d, d0, w, ty, 0) else 5 :: c :: 6 :: REC(0, sp, d, d0, w, ty, 0))
          else if c < 97 || 122 < c then [0]
          else (if m == 0 then REC(0, sp, d, d0, w, ty, 0) else c :: 0 :: REC(0, sp, d, d0, w, ty, 0)))
-      else if st == 4 then [0]
       else if c == 58 then
         (if @N == 61 then (if m == 0 then REC(2, 1, d, d0, w, ty, 0) else 61 :: REC(2, 1, d, d0, w, ty, 0))
          else (if m == 0 then REC(0, sp, d, d0, w, ty, 0) else 58 :: REC(0, sp, d, d0, w, ty, 0)))

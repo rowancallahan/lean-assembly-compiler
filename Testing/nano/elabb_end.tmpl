@@ -1,8 +1,8 @@
     if m == 5 then REC(0, sp, d, d0, w, ty, cz)
     else if st == 2 then REC(0, sp, d, d0, w, ty, 0)
-    else if st == 0 || st == 4 then
+    else if st == 4 then (if c == 32 || c == 10 then REC(0, sp, d, d0, w, ty, 0) else [0])
+    else if st == 0 then
       if c == 32 || c == 10 then REC(0, sp, d, d0, w, ty, 0)
-      else if st == 4 then [0]
       else if c == 58 then (if m == 0 then REC(0, sp, d, d0, w, ty, 0) else 58 :: REC(0, sp, d, d0, w, ty, 0))
       else if c == 40 || c == 41 || c == 42 || c == 43 || c == 45 || c == 59 then
         (if m == 0 then REC(0, sp, d, d0, w, ty, 0) else c :: REC(0, sp, d, d0, w, ty, 0))

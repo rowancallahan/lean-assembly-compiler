@@ -51,22 +51,33 @@ macro "STEPN" : term => `(
       (if n == 40 then (if isW c || c == 41 then [0] else (lx (n :: t) o m 0 sp d d0 w ty cz))
        else if c == 41 then (if isW n then [0] else (lx (n :: t) o m 0 sp d d0 w ty cz)) else (lx (n :: t) o m 0 sp d d0 w ty cz))
     else if st == 2 then (lx (n :: t) o m 0 sp d d0 w ty 0)
-    else if st == 0 || st == 4 then
+    else if st == 4 then
       if c == 32 then (lx (n :: t) o m 0 sp d d0 w ty 0)
       else if c == 10 then (lx (n :: t) o m 4 sp d d0 w ty 0)
       else if isW c then
         (if isW n then
            (if 48 ≤ c && c ≤ 57 then
-              (if m == 0 then (lx (n :: t) o m 1 sp (if 48 ≤ n && n ≤ 57 then 2 else 6) 2 ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (n).toUInt64) ty (if st == 4 then 1 else 0))
-               else 5 :: c :: (lx (n :: t) o m 1 sp (if 48 ≤ n && n ≤ 57 then 2 else 6) 2 ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (n).toUInt64) ty (if st == 4 then 1 else 0)))
+              (if m == 0 then (lx (n :: t) o m 1 sp (if 48 ≤ n && n ≤ 57 then 2 else 6) 2 ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (n).toUInt64) ty 1)
+               else 5 :: c :: (lx (n :: t) o m 1 sp (if 48 ≤ n && n ≤ 57 then 2 else 6) 2 ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (n).toUInt64) ty 1))
             else
-              (if m == 0 then (lx (n :: t) o m 1 sp (DSTEPL n) (if 97 ≤ c && c ≤ 122 then 1 else 6) ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (n).toUInt64) ty (if st == 4 then 1 else 0))
-               else c :: (lx (n :: t) o m 1 sp (DSTEPL n) (if 97 ≤ c && c ≤ 122 then 1 else 6) ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (n).toUInt64) ty (if st == 4 then 1 else 0))))
-         else if st == 4 then [0]
+              (if m == 0 then (lx (n :: t) o m 1 sp (DSTEPL n) (if 97 ≤ c && c ≤ 122 then 1 else 6) ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (n).toUInt64) ty 1)
+               else c :: (lx (n :: t) o m 1 sp (DSTEPL n) (if 97 ≤ c && c ≤ 122 then 1 else 6) ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (n).toUInt64) ty 1)))
+         else [0])
+      else [0]
+    else if st == 0 then
+      if c == 32 then (lx (n :: t) o m 0 sp d d0 w ty 0)
+      else if c == 10 then (lx (n :: t) o m 4 sp d d0 w ty 0)
+      else if isW c then
+        (if isW n then
+           (if 48 ≤ c && c ≤ 57 then
+              (if m == 0 then (lx (n :: t) o m 1 sp (if 48 ≤ n && n ≤ 57 then 2 else 6) 2 ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (n).toUInt64) ty 0)
+               else 5 :: c :: (lx (n :: t) o m 1 sp (if 48 ≤ n && n ≤ 57 then 2 else 6) 2 ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (n).toUInt64) ty 0))
+            else
+              (if m == 0 then (lx (n :: t) o m 1 sp (DSTEPL n) (if 97 ≤ c && c ≤ 122 then 1 else 6) ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (n).toUInt64) ty 0)
+               else c :: (lx (n :: t) o m 1 sp (DSTEPL n) (if 97 ≤ c && c ≤ 122 then 1 else 6) ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (n).toUInt64) ty 0)))
          else if 48 ≤ c && c ≤ 57 then (if m == 0 then (lx (n :: t) o m 0 sp d d0 w ty 0) else 5 :: c :: 6 :: (lx (n :: t) o m 0 sp d d0 w ty 0))
          else if c < 97 || 122 < c then [0]
          else (if m == 0 then (lx (n :: t) o m 0 sp d d0 w ty 0) else c :: 0 :: (lx (n :: t) o m 0 sp d d0 w ty 0)))
-      else if st == 4 then [0]
       else if c == 58 then
         (if n == 61 then (if m == 0 then (lx (n :: t) o m 2 1 d d0 w ty 0) else 61 :: (lx (n :: t) o m 2 1 d d0 w ty 0))
          else (if m == 0 then (lx (n :: t) o m 0 sp d d0 w ty 0) else 58 :: (lx (n :: t) o m 0 sp d d0 w ty 0)))
@@ -87,9 +98,9 @@ set_option hygiene false in
 macro "STEPE" : term => `(
     if m == 5 then (lx o o 0 0 0 0 0 0 0 0)
     else if st == 2 then (if m == 0 then (if ty == 0 then [0] else (ty).toUInt8 :: lx o o 1 0 0 0 0 0 ty 0) else [])
-    else if st == 0 || st == 4 then
+    else if st == 4 then (if c == 32 || c == 10 then (if m == 0 then (if ty == 0 then [0] else (ty).toUInt8 :: lx o o 1 0 0 0 0 0 ty 0) else []) else [0])
+    else if st == 0 then
       if c == 32 || c == 10 then (if m == 0 then (if ty == 0 then [0] else (ty).toUInt8 :: lx o o 1 0 0 0 0 0 ty 0) else [])
-      else if st == 4 then [0]
       else if c == 58 then (if m == 0 then (if ty == 0 then [0] else (ty).toUInt8 :: lx o o 1 0 0 0 0 0 ty 0) else 58 :: [])
       else if c == 40 || c == 41 || c == 42 || c == 43 || c == 45 || c == 59 then
         (if m == 0 then (if ty == 0 then [0] else (ty).toUInt8 :: lx o o 1 0 0 0 0 0 ty 0) else c :: [])
