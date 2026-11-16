@@ -19,6 +19,9 @@ def idx : List Nat → Nat → Nat
   | [], _ => 0
   | v :: vs, x => if v = x then 0 else idx vs x + 1
 
+/-- the list without repeats (untrusted) -/
+def dedup (L : List Nat) : List Nat := L.foldl (fun acc x => if acc.contains x then acc else acc ++ [x]) []
+
 /-- distinct registers get distinct slots -/
 def injOn (σ : Nat → Nat) (L : List Nat) : Bool := L.all fun x => L.all fun y => σ x != σ y || x == y
 
@@ -37,7 +40,7 @@ def Prog.rename (σ : Nat → Nat) (P : Prog Nat) : Prog Nat := ⟨P.funcs.map (
 def alloc (P : Prog Nat) : Option (Prog Nat × (Nat → Nat)) :=
   match P.funcs[P.main]? with
   | some F =>
-    let σ := idx F.locs
+    let σ := idx (dedup F.locs)
     if injOn σ F.locs = true ∧ noCall F = true then some (P.rename σ, σ) else none
   | none => none
 
