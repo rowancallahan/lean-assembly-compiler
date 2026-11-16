@@ -1585,6 +1585,105 @@ work bound vs the new code at `memoryNeeded`): `bt_count` +67%, `bt_graftleft` +
 (about 4 instructions), about 30 on a heap-growing store (it zeroes the new words), and about 10 per call.  A
 per-allocation check would need a source-level proof that loads stay below the heap length.
 
+## 25. Expr (branch `feat-expr`)
+
+(Section 24 is reserved for the memory-spec work on branch `mem-spec`.)
+
+**n-ary constructors** (`Riscv/Frontx/IndCmd.lean`, `layout`). Cells stay `[tag, x, l, r]` (`C` unchanged, so the
+decoder, encoder and their proofs are unchanged). A constructor whose fields fit one cell (at most two children, one
+scalar) is as before; otherwise its cell takes the longest prefix of its fields with at most one child and one
+scalar and `r` points to an **extension cell** with the rest (the same rule again, so any arity). Extension cells
+have their own tags after the type's constructors (`TExpr`: tags 0-9 `Expr`, 10 the extension of `letE`). Byte
+format (stated by `C.enc T.sh`): fields in declaration order, an extension cell starts with its tag byte, e.g.
+`letE ty v b` = `07 ‹ty› 0a ‹v› ‹b›`. A recursive call on a field in the first extension cell is the new `E.call2
+c₁ c₂` (a grandchild: `Pg.sem` structural with a nested match, `Cx.okg`, `loop_ok3`/`straight_ok3` prove the loop
+for a node and its two children); fields deeper than one extension are read (`ft`) but not recursed on.
+`E.exts` counts `call2` (outside the linear bound `al_le`: such programs use `cellsSup`). Shared files changed:
+`Compiler/Ind.lean` (`E.call2`, `Cn.g`/`Ca.g`, `Pg.st`, `armN`, `dispS`, `fLoopS`, `fLoopX`, `fFn`; `alloc` and the
+`call` code are unchanged), `Compiler/IndOk.lean`, `Compiler/IndDec.lean`, `Compiler/IndMain.lean`.
+
+**Types nested in one shape** (`frontx_ind_type TExpr := ConLeche.Expr nesting ConLeche.Level, ConLeche.Name, List
+ConLeche.Level, ConLeche.Literal, List ConLeche.Expr, Option ConLeche.Expr`): the nesting types are defined in a
+topological order of the field-type relation (`List Level` after `Level`), every type listed is in the shape even
+when no field has it (`Option Expr` as a result type), each nested type gets `T.Nk.enc`, constructors are resolved
+by name *and* type (`List Level` / `List Expr` share `List.cons`), and a function may take a nested type as its
+structural argument.
+
+**`@[computed_field]`s** (`Expr.data`, `Name.hashData`, `Level.hashData`) are kept verbatim with the opaque
+`mixHash`: no function compiled here reads them, so no Lean hash was needed. A function reading `e.data` is
+rejected (the field is not in the byte format); the owner's decision (any deterministic Lean hash, e.g.
+`MixHashPort.mixHashLean` of branch `mixhash-port`) applies when one is compiled.
+
+**F1** (`r1_arm_count`: the loop body over the ±4 KiB reach of `beqz`). Two changes, both at the inductive-path
+level (no new machine operation): the decoder and encoder dispatch with one test per tag in sequence (`dDisp`,
+`eDisp`: a branch jumps only over its own fields; Expr's 25-tag shape did not fit before), and a function whose loop
+would be over 1000 words (`rvC.lenC` evaluated by the front end) is compiled **straight-line** (`Pg.st := true`,
+`fLoopS`: no loop, one test per tag in sequence, every call a real call; `straight_ok3`). Each arm must still fit
+the reach. Small functions keep their loops and tail calls (codes and theorems unchanged).
+
+**Long branches in general (owner's request; not done here).** The F1 fix above is at the inductive-path level
+(statement shapes whose branches are short), not a long-branch form in the shared back end: `Machine.jmp` is
+backward only (`law_jmp`: `pc - 4n`) and `bz` reaches ±1023 words, so `bz +2; jmp then; jmp else` needs a FORWARD
+jump. What a general fix needs (shared code, covers the memory path of branch `mem-spec` too): (1) an `AOp.jmpF n`
+(`jal x0, +4n`, ±1 MiB) with `law_jmpF` in `Compiler/Iface.lean`'s `Machine`, its RISC-V encoding and law in
+`Riscv/Back/Iface.lean` (from the step lemma of `iJmp`, the same `jal` with a positive offset), an encoding in
+`Arm/CompilerArm.lean` (`b +n`) and the ARM law in `Arm/proofs`; (2) `MachineC.compC` (`Compiler/CStmt.lean`) for
+`ite` as `mgen c; bz (lenBz + lenJmpF); jmpF else; then; jmpF end; else` and for `loop` as `mgen c; bz (lenBz +
+lenJmpF); jmpF exit; body; jmp head`, with `wfC` asking `jmpOK` instead of `bzOK` for the long ones (or choosing
+the short form when it fits, which keeps every existing code word-for-word). The memory path can instead reuse this
+section's statement shapes if its code generator emits `Compiler/Ind.lean`'s `dDisp`/`eDisp`/`fLoopS` (sequential
+tests, straight-line function bodies): then only an arm longer than ~1000 words exceeds the reach.
+
+**F3** (`r2`, `r3`, `r5`: built terms as call arguments). New tactic `frontx_calls_sem` (a last branch of the
+generated `sem` proof): for each call `f t a b` of a program function in the expected value, the meaning theorem of
+`f` (or the induction hypothesis) is instantiated at those arguments, its cells written out, and used to rewrite.
+`r8` (an `if` as a call argument) still fails. Also: entries with a constructor literal of another type as
+argument (`comp e .nil`), entries whose parameters are in another order than `g`'s, `Nat` subtraction
+(`natSub`: `if a < b then 0 else a - b`, with the range hypotheses), and a growing word argument (`d + 1` under a
+binder: hypothesis `a + nodes < 2^64` in `sem`, `(emb t).nodes < 2^64` in the machine theorem's input subtype).
+
+**Compiled verbatim** (con-leche @6810492c1; `Riscv/Frontx/ExprExamples.lean`; type `Kernel/Expr.lean:400-460`,
+`Literal` `:143-146`, `levelsHaveParam`, `levelHash`, `levelsHash` `:194-205`), each `f.implements1` (the Sail axiom
+set, `axioms_x.lean`), `sem` at most propext/Classical.choice/Quot.sound; tests: `frontx_test.py check 60`, QEMU +
+Sail against executed Lean (`Testing/asm/emit_expr.lean`: 60 expressions of depth ≤ 7 with every constructor,
+names with UTF-8/NUL strings and numbers up to `2^64 - 1`, level lists, literals, bound indices 0-5 and `2^64 - 1`):
+
+| entry | function | source | form | test |
+|---|---|---|---|---|
+| `hasFvar` | `Expr.hasFvar` | `Kernel/ExprOps.lean:60` | loop | `expr_hasfvar` |
+| `closed0 e = looseBVarsBounded 0 e` | `Expr.looseBVarsBounded` | `ExprOps.lean:46` | loop, `a + nodes` | `expr_closed0` |
+| `inst1 e v = instantiate1 e v 0` | `Expr.instantiate1` | `ExprOps.lean:27` | straight, two inputs | `expr_inst1` |
+| `sizeF` | `Expr.sizeF` | `ExprOps.lean:788` | | `expr_sizef` |
+| `scopedD e d = wscopedB d e` | `Expr.wscopedB` (WF recursion) | `ExprOps.lean:821` | word from input | `expr_scopedd` |
+| `isForallE`, `getAppFn`, `piResult`, `fvarTypeD` | | `ExprOps.lean:836,848,880,905` | | `expr_isforalle` … |
+| `numArgs` | `Expr.numArgs` | `Kernel/PropRead.lean:56` | | `expr_numargs` |
+| `isLit` | `Expr.isLit` | `Kernel/Core.lean:1119` | | `expr_islit` |
+
+All 11 pass `frontx_test.py check 60` (60 cases each; codes 4150-5271 words, `inst1` straight-line). Self-hoster
+reproducers `r1`, `r2`, `r3`, `r5` compile with machine theorems (`Riscv/Frontx/TinyRepro.lean`, `axioms_x.lean`).
+
+Reproduce: `lake build Frontx`; `lake env lean --tstack=4000000 Testing/asm/emit_expr.lean`;
+`bash Testing/scripts/frontx_tests.sh 60`; axioms `Testing/scripts/axioms_x.lean` (in `check.sh`). The existing
+inductive entries' codes changed (sequential dispatch in `dec`/`enc`; re-emitted with `emit_frontx.lean`, all
+re-tested); their `stmt` hashes are unchanged, 62 closures changed (not re-frozen).
+
+**Type gate** (the depth probe's 186 functions whose signatures mention only `Name`/`Expr`; new command
+`frontx_ind_gate f on T` in `Riscv/Frontx/IndGate.lean`, no proofs; run over `F2.lean.txt` of branch
+`conleche-depth`, 180 resolved, the 6 `beside.*` names are not con-leche functions): **62 pass the type gate**
+(before: 0 with `Expr`, the `TExpr` type itself was rejected), 28 of them also translate all arms. Gate failures:
+91 "no argument of a declared type" (nullary `Name` constants such as `natAddName`, and functions over scalars
+only), 14 more than one scalar parameter (`liftLooseBVars amount cutoff`), 7 other parameter types, 4 two extra
+tree parameters, 2 result types. Of the 34 passing the gate but not the arms: 25 overlapping/variable patterns in a
+function called from another (`eq_1 has no constructor pattern`), 4 nested patterns (`isStrLit`'s
+`.lit (.strVal _)`), 2 patterns on two arguments (`instPisWith`), 2 comparisons of other types, 1 a lambda argument.
+
+**Not done / why**: `liftLooseBVars` (two scalar parameters, one constant: needs specialisation of a constant
+parameter); `getAppArgs` (`List.append` is polymorphic and the program's functions are found by name, so its type
+is ambiguous between `List Level` and `List Expr`); `mkAppN` (rejected: the head as a tree parameter before the
+structural one); `instPisWith`, `piResidual`, `binderDom` (patterns on two arguments / on a `Nat`); `Expr.depth`
+(`max`: `sem` not proved); `isStrLit`, `natPred?` (nested patterns); `r8` (an `if` as a call argument).
+Codes are large (plain back end; straight-line `inst1` makes real calls for every child).
+
 ## 27. Higher-order arguments by specialisation (branch `feat-hof`)
 
 Files: `Riscv/Frontx/SpecHof.lean` (new: the pass and the commands), `Riscv/Frontx/HofExamples.lean` (new: targets),
