@@ -1,0 +1,4687 @@
+[
+ {
+  "file": "Examples/MonadTransformers.lean",
+  "line": 24,
+  "end": 25,
+  "name": "Evaluator.Eval",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      38,
+      "error",
+      "frontx: unsupported result type\n  Type\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7fd81a39c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/MonadTransformers.lean",
+  "line": 36,
+  "end": 38,
+  "name": "Evaluator.bind",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      114,
+      "error",
+      "frontx: unsupported result type\n  Eval \u03b1\n@bind : {\u03b1 : Type} \u2192 Var \u2192 Int \u2192 Eval \u03b1 \u2192 Eval \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/MonadTransformers.lean",
+  "line": 40,
+  "end": 41,
+  "name": "Evaluator.crash",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      113,
+      "error",
+      "frontx: unsupported result type\n  Eval \u03b1\n@crash : {\u03b1 : Type} \u2192 String \u2192 Eval \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/MonadTransformers.lean",
+  "line": 43,
+  "end": 47,
+  "name": "Evaluator.lookup",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      131,
+      "error",
+      "frontx: unsupported result type\n  Eval Int\nlookup : Var \u2192 Eval Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/MonadTransformers.lean",
+  "line": 49,
+  "end": 58,
+  "name": "Evaluator.applyPrim",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      140,
+      "error",
+      "frontx: unsupported result type\n  Eval Int\napplyPrim : Prim \u2192 Int \u2192 Int \u2192 Eval Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "ind": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      141,
+      "error",
+      "frontx_ind: unsupported parameter type\n  Int\napplyPrim : Prim \u2192 Int \u2192 Int \u2192 Eval Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT577_0 := Proven.Frontx.Run.Evaluator.Prim, shape [], [], [], []"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/MonadTransformers.lean",
+  "line": 60,
+  "end": 69,
+  "name": "Evaluator.evaluate",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      194,
+      "error",
+      "frontx: unsupported result type\n  Eval Int\nevaluate : Expr \u2192 Eval Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "ind": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      195,
+      "error",
+      "frontx_ind: unsupported result type\n  Eval Int\nevaluate : Expr \u2192 Eval Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT578_0 := Proven.Frontx.Run.Evaluator.Expr, shape [], [.l, .r], [], [.l, .r]"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/MonadTransformers/Defs.lean",
+  "line": 18,
+  "end": 19,
+  "name": "Opt.OptionT",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      17,
+      "error",
+      "frontx: unsupported result type\n  Type v\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7f9cce79c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/MonadTransformers/Defs.lean",
+  "line": 83,
+  "end": 83,
+  "name": "Opt.OptionT.mk",
+  "tries": {
+   "compile": {
+    "ctx_errors": 4,
+    "msgs": [
+     [
+      50,
+      "error",
+      "frontx: unsupported result type\n  OptionT m \u03b1\n@OptionT.mk : {m : Type u_1 \u2192 Type u_2} \u2192 {\u03b1 : Type u_1} \u2192 m (Option \u03b1) \u2192 OptionT m \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/MonadTransformers/Defs.lean",
+  "line": 85,
+  "end": 85,
+  "name": "Opt.OptionT.run",
+  "tries": {
+   "compile": {
+    "ctx_errors": 4,
+    "msgs": [
+     [
+      50,
+      "error",
+      "frontx: unsupported result type\n  m (Option \u03b1)\n@OptionT.run : {m : Type u_1 \u2192 Type u_2} \u2192 {\u03b1 : Type u_1} \u2192 OptionT m \u03b1 \u2192 m (Option \u03b1)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/MonadTransformers/Do.lean",
+  "line": 66,
+  "end": 71,
+  "name": "ThenDoUnless.count",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      21,
+      "error",
+      "frontx: unsupported result type\n  m Unit\n@count : {m : Type \u2192 Type u_1} \u2192 {\u03b1 : Type u_2} \u2192 [Monad m] \u2192 [MonadState Nat m] \u2192 (\u03b1 \u2192 m Bool) \u2192 List \u03b1 \u2192 m Unit\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      21,
+      "error",
+      "failed to synthesize\n  Monad m\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command."
+     ],
+     [
+      22,
+      "error",
+      "Unknown constant `ThenDoUnless.count.view.eq`\n@count : {m : Type \u2192 Type u_1} \u2192 {\u03b1 : Type u_2} \u2192 [Monad m] \u2192 [MonadState Nat m] \u2192 (\u03b1 \u2192 m Bool) \u2192 List \u03b1 \u2192 m Unit\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      21,
+      "error",
+      "failed to synthesize\n  Monad m\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command."
+     ],
+     [
+      22,
+      "error",
+      "Unknown constant `ThenDoUnless.count.view.eq`\n@count : {m : Type \u2192 Type u_1} \u2192 {\u03b1 : Type u_2} \u2192 [Monad m] \u2192 [MonadState Nat m] \u2192 (\u03b1 \u2192 m Bool) \u2192 List \u03b1 \u2192 m Unit\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      21,
+      "error",
+      "failed to synthesize\n  Monad m\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command."
+     ],
+     [
+      22,
+      "error",
+      "Unknown constant `ThenDoUnless.count.view.eq`\n@count : {m : Type \u2192 Type u_1} \u2192 {\u03b1 : Type u_2} \u2192 [Monad m] \u2192 [MonadState Nat m] \u2192 (\u03b1 \u2192 m Bool) \u2192 List \u03b1 \u2192 m Unit\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/MonadTransformers/Do.lean",
+  "line": 76,
+  "end": 81,
+  "name": "ThenDoUnless.countNot",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      21,
+      "error",
+      "frontx: unsupported result type\n  m Unit\n@countNot : {m : Type \u2192 Type u_1} \u2192 {\u03b1 : Type u_2} \u2192 [Monad m] \u2192 [MonadState Nat m] \u2192 (\u03b1 \u2192 m Bool) \u2192 List \u03b1 \u2192 m Unit\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      21,
+      "error",
+      "failed to synthesize\n  Monad m\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command."
+     ],
+     [
+      22,
+      "error",
+      "Unknown constant `ThenDoUnless.countNot.view.eq`\n@countNot : {m : Type \u2192 Type u_1} \u2192 {\u03b1 : Type u_2} \u2192 [Monad m] \u2192 [MonadState Nat m] \u2192 (\u03b1 \u2192 m Bool) \u2192 List \u03b1 \u2192 m Unit\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      21,
+      "error",
+      "failed to synthesize\n  Monad m\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command."
+     ],
+     [
+      22,
+      "error",
+      "Unknown constant `ThenDoUnless.countNot.view.eq`\n@countNot : {m : Type \u2192 Type u_1} \u2192 {\u03b1 : Type u_2} \u2192 [Monad m] \u2192 [MonadState Nat m] \u2192 (\u03b1 \u2192 m Bool) \u2192 List \u03b1 \u2192 m Unit\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      21,
+      "error",
+      "failed to synthesize\n  Monad m\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command."
+     ],
+     [
+      22,
+      "error",
+      "Unknown constant `ThenDoUnless.countNot.view.eq`\n@countNot : {m : Type \u2192 Type u_1} \u2192 {\u03b1 : Type u_2} \u2192 [Monad m] \u2192 [MonadState Nat m] \u2192 (\u03b1 \u2192 m Bool) \u2192 List \u03b1 \u2192 m Unit\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/MonadTransformers/Do.lean",
+  "line": 93,
+  "end": 99,
+  "name": "EarlyReturn.Non.List.find?",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      23,
+      "error",
+      "frontx: unsupported result type\n  Option \u03b1\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7f3c92b9c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared."
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      24,
+      "error",
+      "frontx: unsupported parameter type\n  UInt8 \u2192 Bool\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7fad1eb9c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/liblean"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx: Proven.Frontx.Run.EarlyReturn.Non.List.find?.view, Proven.Frontx.Run.EarlyReturn.Non.List.find?.view.eq : \u2200"
+    ]
+   },
+   "view1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      24,
+      "error",
+      "frontx: unsupported parameter type\n  UInt8 \u2192 Bool\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7ffb2f59c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/liblean"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx: Proven.Frontx.Run.EarlyReturn.Non.List.find?.view, Proven.Frontx.Run.EarlyReturn.Non.List.find?.view.eq : \u2200"
+    ]
+   },
+   "view2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      24,
+      "error",
+      "frontx: unsupported parameter type\n  UInt8 \u2192 Bool\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7f619219c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/liblean"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx: Proven.Frontx.Run.EarlyReturn.Non.List.find?.view, Proven.Frontx.Run.EarlyReturn.Non.List.find?.view.eq : \u2200"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/MonadTransformers/Do.lean",
+  "line": 105,
+  "end": 109,
+  "name": "EarlyReturn.List.find?",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      20,
+      "error",
+      "incorrect number of universe levels List.find?.eq_def\n@List.find? : {\u03b1 : Type u_1} \u2192 (\u03b1 \u2192 Bool) \u2192 List \u03b1 \u2192 Option \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      21,
+      "error",
+      "frontx: unsupported parameter type\n  UInt8 \u2192 Bool\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7fb6aa39c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/liblean"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx: Proven.Frontx.Run.EarlyReturn.List.find?.view, Proven.Frontx.Run.EarlyReturn.List.find?.view.eq : \u2200"
+    ]
+   },
+   "view1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      21,
+      "error",
+      "frontx: unsupported parameter type\n  UInt8 \u2192 Bool\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7f4e89b9c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/liblean"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx: Proven.Frontx.Run.EarlyReturn.List.find?.view, Proven.Frontx.Run.EarlyReturn.List.find?.view.eq : \u2200"
+    ]
+   },
+   "view2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      21,
+      "error",
+      "frontx: unsupported parameter type\n  UInt8 \u2192 Bool\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7fc598f9c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/liblean"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx: Proven.Frontx.Run.EarlyReturn.List.find?.view, Proven.Frontx.Run.EarlyReturn.List.find?.view.eq : \u2200"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/MonadTransformers/Do.lean",
+  "line": 114,
+  "end": 117,
+  "name": "EarlyReturn.runCatch",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      19,
+      "error",
+      "frontx: unsupported result type\n  m \u03b1\n@runCatch : {m : Type u_1 \u2192 Type u_2} \u2192 {\u03b1 : Type u_1} \u2192 [Monad m] \u2192 ExceptT \u03b1 m \u03b1 \u2192 m \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/MonadTransformers/Do.lean",
+  "line": 123,
+  "end": 128,
+  "name": "EarlyReturn.Desugared.List.find?",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      43,
+      "error",
+      "unknown free variable `_fvar.2106`\n@List.find? : {\u03b1 : Type} \u2192 (\u03b1 \u2192 Bool) \u2192 List \u03b1 \u2192 Option \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      44,
+      "error",
+      "frontx: unsupported parameter type\n  UInt8 \u2192 Bool\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7f5193f9c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/liblean"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx: Proven.Frontx.Run.EarlyReturn.Desugared.List.find?.view, Proven.Frontx.Run.EarlyReturn.Desugared.List.find?.view.eq : \u2200"
+    ]
+   },
+   "view1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      44,
+      "error",
+      "frontx: unsupported parameter type\n  UInt8 \u2192 Bool\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7feb5f39c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/liblean"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx: Proven.Frontx.Run.EarlyReturn.Desugared.List.find?.view, Proven.Frontx.Run.EarlyReturn.Desugared.List.find?.view.eq : \u2200"
+    ]
+   },
+   "view2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      44,
+      "error",
+      "frontx: unsupported parameter type\n  UInt8 \u2192 Bool\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7f608099c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/liblean"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx: Proven.Frontx.Run.EarlyReturn.Desugared.List.find?.view, Proven.Frontx.Run.EarlyReturn.Desugared.List.find?.view.eq : \u2200"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/MonadTransformers/Do.lean",
+  "line": 132,
+  "end": 136,
+  "name": "EarlyReturn.List.lookup",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      20,
+      "error",
+      "incorrect number of universe levels List.lookup.eq_def\n@List.lookup : {k : Type u_1} \u2192 {\u03b1 : Type u_2} \u2192 [BEq k] \u2192 k \u2192 List (k \u00d7 \u03b1) \u2192 Option \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      20,
+      "error",
+      "frontx_view: unsupported element type\n  UInt8 \u00d7 UInt8"
+     ],
+     [
+      21,
+      "error",
+      "Unknown constant `EarlyReturn.List.lookup.view.eq`\n@List.lookup : {k : Type u_1} \u2192 {\u03b1 : Type u_2} \u2192 [BEq k] \u2192 k \u2192 List (k \u00d7 \u03b1) \u2192 Option \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      20,
+      "error",
+      "frontx_view: unsupported element type\n  UInt8 \u00d7 UInt8"
+     ],
+     [
+      21,
+      "error",
+      "Unknown constant `EarlyReturn.List.lookup.view.eq`\n@List.lookup : {k : Type u_1} \u2192 {\u03b1 : Type u_2} \u2192 [BEq k] \u2192 k \u2192 List (k \u00d7 \u03b1) \u2192 Option \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      20,
+      "error",
+      "frontx_view: unsupported element type\n  UInt8 \u00d7 UInt8"
+     ],
+     [
+      21,
+      "error",
+      "Unknown constant `EarlyReturn.List.lookup.view.eq`\n@List.lookup : {k : Type u_1} \u2192 {\u03b1 : Type u_2} \u2192 [BEq k] \u2192 k \u2192 List (k \u00d7 \u03b1) \u2192 Option \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/MonadTransformers/Do.lean",
+  "line": 141,
+  "end": 142,
+  "name": "EarlyReturn.greet",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      17,
+      "error",
+      "unknown free variable `_fvar.680`\ngreet : String \u2192 String\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/MonadTransformers/Do.lean",
+  "line": 161,
+  "end": 165,
+  "name": "Many.forM",
+  "tries": {
+   "compile": {
+    "ctx_errors": 1,
+    "msgs": [
+     [
+      114,
+      "error",
+      "frontx: unsupported result type\n  m PUnit\n@Many.forM : {m : Type \u2192 Type u_1} \u2192 {\u03b1 : Type} \u2192 [Monad m] \u2192 Many \u03b1 \u2192 (\u03b1 \u2192 m PUnit) \u2192 m PUnit\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "ind": {
+    "ctx_errors": 1,
+    "msgs": [
+     [
+      115,
+      "error",
+      "frontx_ind: unsupported parameter type\n  Type \u2192 Type ?u.3198\n@Many.forM : {m : Type \u2192 Type u_1} \u2192 {\u03b1 : Type} \u2192 [Monad m] \u2192 Many \u03b1 \u2192 (\u03b1 \u2192 m PUnit) \u2192 m PUnit\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT600_0 := Proven.Frontx.Run.Many Nat, shape [], [.x]"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/MonadTransformers/Do.lean",
+  "line": 186,
+  "end": 190,
+  "name": "Loops.Fake.List.forM",
+  "tries": {
+   "compile": {
+    "ctx_errors": 1,
+    "msgs": [
+     [
+      125,
+      "error",
+      "frontx: unsupported result type\n  m PUnit\n@List.forM : {m : Type \u2192 Type u_1} \u2192 {\u03b1 : Type u_2} \u2192 [Monad m] \u2192 List \u03b1 \u2192 (\u03b1 \u2192 m PUnit) \u2192 m PUnit\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view0": {
+    "ctx_errors": 1,
+    "msgs": [
+     [
+      125,
+      "error",
+      "failed to synthesize\n  Monad m\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command."
+     ],
+     [
+      126,
+      "error",
+      "Unknown constant `Loops.Fake.List.forM.view.eq`\n@List.forM : {m : Type \u2192 Type u_1} \u2192 {\u03b1 : Type u_2} \u2192 [Monad m] \u2192 List \u03b1 \u2192 (\u03b1 \u2192 m PUnit) \u2192 m PUnit\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view1": {
+    "ctx_errors": 1,
+    "msgs": [
+     [
+      125,
+      "error",
+      "failed to synthesize\n  Monad m\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command."
+     ],
+     [
+      126,
+      "error",
+      "Unknown constant `Loops.Fake.List.forM.view.eq`\n@List.forM : {m : Type \u2192 Type u_1} \u2192 {\u03b1 : Type u_2} \u2192 [Monad m] \u2192 List \u03b1 \u2192 (\u03b1 \u2192 m PUnit) \u2192 m PUnit\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view2": {
+    "ctx_errors": 1,
+    "msgs": [
+     [
+      125,
+      "error",
+      "failed to synthesize\n  Monad m\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command."
+     ],
+     [
+      126,
+      "error",
+      "Unknown constant `Loops.Fake.List.forM.view.eq`\n@List.forM : {m : Type \u2192 Type u_1} \u2192 {\u03b1 : Type u_2} \u2192 [Monad m] \u2192 List \u03b1 \u2192 (\u03b1 \u2192 m PUnit) \u2192 m PUnit\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/MonadTransformers/Do.lean",
+  "line": 222,
+  "end": 230,
+  "name": "Loops.AllLessThan.forM",
+  "tries": {
+   "compile": {
+    "ctx_errors": 1,
+    "msgs": [
+     [
+      136,
+      "error",
+      "frontx: unsupported result type\n  m Unit\n@AllLessThan.forM : {m : Type \u2192 Type u_1} \u2192 [Monad m] \u2192 AllLessThan \u2192 (Nat \u2192 m Unit) \u2192 m Unit\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "ind": {
+    "ctx_errors": 1,
+    "msgs": [
+     [
+      137,
+      "error",
+      "frontx_ind: Proven.Frontx.Run.Loops.AllLessThan.forM.countdown has no argument of a declared type\n@AllLessThan.forM : {m : Type \u2192 Type u_1} \u2192 [Monad m] \u2192 AllLessThan \u2192 (Nat \u2192 m Unit) \u2192 m Unit\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT607_0 := Proven.Frontx.Run.Loops.AllLessThan, shape [.x]"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/MonadTransformers/Do.lean",
+  "line": 258,
+  "end": 259,
+  "name": "Loops.Transformed.OptionT.exec",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      18,
+      "error",
+      "frontx: unsupported result type\n  m Unit\n@OptionT.exec : {m : Type \u2192 Type u_1} \u2192 {\u03b1 : Type} \u2192 [Applicative m] \u2192 OptionT m \u03b1 \u2192 m Unit\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/MonadTransformers/Do.lean",
+  "line": 324,
+  "end": 327,
+  "name": "Loops.List.find?",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      19,
+      "error",
+      "frontx: unsupported result type\n  Option \u03b1\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7ff7d5f9c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared."
+     ],
+     [
+      19,
+      "error",
+      "(kernel) invalid reference to undefined universe level parameter 'u_1'\n@List.find? : {\u03b1 : Type u_1} \u2192 (\u03b1 \u2192 Bool) \u2192 List \u03b1 \u2192 Option \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      19,
+      "error",
+      "frontx_view: the body is not a `match`\n  do\n    let r \u2190\n      forIn (view B i) \u27e8none, PUnit.unit\u27e9 fun x r =>\n          have r := r.snd;\n          if p x = true then pure (ForInStep.done \u27e8some x, PUnit.unit\u27e9)\n          else do\n            pure PUnit.unit\n            pure (ForInStep.yield \u27e8none, PUnit"
+     ],
+     [
+      20,
+      "error",
+      "Unknown constant `Loops.List.find?.view.eq`\n@List.find? : {\u03b1 : Type u_1} \u2192 (\u03b1 \u2192 Bool) \u2192 List \u03b1 \u2192 Option \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      19,
+      "error",
+      "frontx_view: the body is not a `match`\n  do\n    let r \u2190\n      forIn (view B i) \u27e8none, PUnit.unit\u27e9 fun x r =>\n          have r := r.snd;\n          if p x = true then pure (ForInStep.done \u27e8some x, PUnit.unit\u27e9)\n          else do\n            pure PUnit.unit\n            pure (ForInStep.yield \u27e8none, PUnit"
+     ],
+     [
+      20,
+      "error",
+      "Unknown constant `Loops.List.find?.view.eq`\n@List.find? : {\u03b1 : Type u_1} \u2192 (\u03b1 \u2192 Bool) \u2192 List \u03b1 \u2192 Option \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      19,
+      "error",
+      "frontx_view: the body is not a `match`\n  do\n    let r \u2190\n      forIn (view B i) \u27e8none, PUnit.unit\u27e9 fun x r =>\n          have r := r.snd;\n          if p x = true then pure (ForInStep.done \u27e8some x, PUnit.unit\u27e9)\n          else do\n            pure PUnit.unit\n            pure (ForInStep.yield \u27e8none, PUnit"
+     ],
+     [
+      20,
+      "error",
+      "Unknown constant `Loops.List.find?.view.eq`\n@List.find? : {\u03b1 : Type u_1} \u2192 (\u03b1 \u2192 Bool) \u2192 List \u03b1 \u2192 Option \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      19,
+      "error",
+      "unexpected token 'do'; expected identifier"
+     ],
+     [
+      20,
+      "error",
+      "Unknown constant `\u00abdo\u00bb.view.eq`\n@List.find? : {\u03b1 : Type u_1} \u2192 (\u03b1 \u2192 Bool) \u2192 List \u03b1 \u2192 Option \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      19,
+      "error",
+      "unexpected token 'do'; expected identifier"
+     ],
+     [
+      20,
+      "error",
+      "Unknown constant `\u00abdo\u00bb.view.eq`\n@List.find? : {\u03b1 : Type u_1} \u2192 (\u03b1 \u2192 Bool) \u2192 List \u03b1 \u2192 Option \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      19,
+      "error",
+      "unexpected token 'do'; expected identifier"
+     ],
+     [
+      20,
+      "error",
+      "Unknown constant `\u00abdo\u00bb.view.eq`\n@List.find? : {\u03b1 : Type u_1} \u2192 (\u03b1 \u2192 Bool) \u2192 List \u03b1 \u2192 Option \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/MonadTransformers/Do.lean",
+  "line": 332,
+  "end": 336,
+  "name": "Loops.Cont.List.find?",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      31,
+      "error",
+      "incorrect number of universe levels List.find?.eq_def\n@List.find? : {\u03b1 : Type u_1} \u2192 (\u03b1 \u2192 Bool) \u2192 List \u03b1 \u2192 Option \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      31,
+      "error",
+      "frontx_view: the body is not a `match`\n  do\n    let r \u2190\n      forIn (view B i) \u27e8none, PUnit.unit\u27e9 fun x r =>\n          have r := r.snd;\n          have __do_jp := fun y => pure (ForInStep.done \u27e8some x, PUnit.unit\u27e9);\n          if (!p x) = true then pure (ForInStep.yield \u27e8none, PUnit.unit\u27e9)\n          e"
+     ],
+     [
+      32,
+      "error",
+      "Unknown constant `Loops.Cont.List.find?.view.eq`\n@List.find? : {\u03b1 : Type u_1} \u2192 (\u03b1 \u2192 Bool) \u2192 List \u03b1 \u2192 Option \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      31,
+      "error",
+      "frontx_view: the body is not a `match`\n  do\n    let r \u2190\n      forIn (view B i) \u27e8none, PUnit.unit\u27e9 fun x r =>\n          have r := r.snd;\n          have __do_jp := fun y => pure (ForInStep.done \u27e8some x, PUnit.unit\u27e9);\n          if (!p x) = true then pure (ForInStep.yield \u27e8none, PUnit.unit\u27e9)\n          e"
+     ],
+     [
+      32,
+      "error",
+      "Unknown constant `Loops.Cont.List.find?.view.eq`\n@List.find? : {\u03b1 : Type u_1} \u2192 (\u03b1 \u2192 Bool) \u2192 List \u03b1 \u2192 Option \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      31,
+      "error",
+      "frontx_view: the body is not a `match`\n  do\n    let r \u2190\n      forIn (view B i) \u27e8none, PUnit.unit\u27e9 fun x r =>\n          have r := r.snd;\n          have __do_jp := fun y => pure (ForInStep.done \u27e8some x, PUnit.unit\u27e9);\n          if (!p x) = true then pure (ForInStep.yield \u27e8none, PUnit.unit\u27e9)\n          e"
+     ],
+     [
+      32,
+      "error",
+      "Unknown constant `Loops.Cont.List.find?.view.eq`\n@List.find? : {\u03b1 : Type u_1} \u2192 (\u03b1 \u2192 Bool) \u2192 List \u03b1 \u2192 Option \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      31,
+      "error",
+      "unexpected token 'do'; expected identifier"
+     ],
+     [
+      32,
+      "error",
+      "Unknown constant `\u00abdo\u00bb.view.eq`\n@List.find? : {\u03b1 : Type u_1} \u2192 (\u03b1 \u2192 Bool) \u2192 List \u03b1 \u2192 Option \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      31,
+      "error",
+      "unexpected token 'do'; expected identifier"
+     ],
+     [
+      32,
+      "error",
+      "Unknown constant `\u00abdo\u00bb.view.eq`\n@List.find? : {\u03b1 : Type u_1} \u2192 (\u03b1 \u2192 Bool) \u2192 List \u03b1 \u2192 Option \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      31,
+      "error",
+      "unexpected token 'do'; expected identifier"
+     ],
+     [
+      32,
+      "error",
+      "Unknown constant `\u00abdo\u00bb.view.eq`\n@List.find? : {\u03b1 : Type u_1} \u2192 (\u03b1 \u2192 Bool) \u2192 List \u03b1 \u2192 Option \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/MonadTransformers/Do.lean",
+  "line": 345,
+  "end": 349,
+  "name": "Loops.List.count",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      20,
+      "error",
+      "frontx: only `for i in [a:b]` in `Id` is supported\n  forIn xs 0 fun x r =>\n    have found := r;\n    if p x = true then\n      have found := found + 1;\n      do\n      pure PUnit.unit\n      pure (ForInStep.yield found)\n    else do\n      pure PUnit.unit\n      pure (ForInStep.yield found)\n@List.count : {"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      20,
+      "error",
+      "frontx_view: the body is not a `match`\n  (have found := 0;\n    do\n    let r \u2190\n      forIn (view B i) found fun x r =>\n          have found := r;\n          if p x = true then\n            have found := found + 1;\n            do\n            pure PUnit.unit\n            pure (ForInStep.yield found)\n     "
+     ],
+     [
+      21,
+      "error",
+      "Unknown constant `Loops.List.count.view.eq`\n@List.count : {\u03b1 : Type u_1} \u2192 (\u03b1 \u2192 Bool) \u2192 List \u03b1 \u2192 Nat\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      20,
+      "error",
+      "frontx_view: the body is not a `match`\n  (have found := 0;\n    do\n    let r \u2190\n      forIn (view B i) found fun x r =>\n          have found := r;\n          if p x = true then\n            have found := found + 1;\n            do\n            pure PUnit.unit\n            pure (ForInStep.yield found)\n     "
+     ],
+     [
+      21,
+      "error",
+      "Unknown constant `Loops.List.count.view.eq`\n@List.count : {\u03b1 : Type u_1} \u2192 (\u03b1 \u2192 Bool) \u2192 List \u03b1 \u2192 Nat\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      20,
+      "error",
+      "frontx_view: the body is not a `match`\n  (have found := 0;\n    do\n    let r \u2190\n      forIn (view B i) found fun x r =>\n          have found := r;\n          if p x = true then\n            have found := found + 1;\n            do\n            pure PUnit.unit\n            pure (ForInStep.yield found)\n     "
+     ],
+     [
+      21,
+      "error",
+      "Unknown constant `Loops.List.count.view.eq`\n@List.count : {\u03b1 : Type u_1} \u2192 (\u03b1 \u2192 Bool) \u2192 List \u03b1 \u2192 Nat\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      20,
+      "error",
+      "frontx_view: no list parameter"
+     ],
+     [
+      21,
+      "error",
+      "Unknown constant `Id.run.view.eq`\n@List.count : {\u03b1 : Type u_1} \u2192 (\u03b1 \u2192 Bool) \u2192 List \u03b1 \u2192 Nat\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      20,
+      "error",
+      "frontx_view: no list parameter"
+     ],
+     [
+      21,
+      "error",
+      "Unknown constant `Id.run.view.eq`\n@List.count : {\u03b1 : Type u_1} \u2192 (\u03b1 \u2192 Bool) \u2192 List \u03b1 \u2192 Nat\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      20,
+      "error",
+      "frontx_view: no list parameter"
+     ],
+     [
+      21,
+      "error",
+      "Unknown constant `Id.run.view.eq`\n@List.count : {\u03b1 : Type u_1} \u2192 (\u03b1 \u2192 Bool) \u2192 List \u03b1 \u2192 Nat\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads.lean",
+  "line": 316,
+  "end": 317,
+  "name": "Monads.Writer.isEven",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      17,
+      "error",
+      "frontx: unsupported parameter type\n  Int\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7ffa5af9c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads.lean",
+  "line": 325,
+  "end": 329,
+  "name": "Monads.Writer.sumAndFindEvens",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      28,
+      "error",
+      "frontx: unsupported result type\n  List Int \u00d7 Int\nsumAndFindEvens : List Int \u2192 List Int \u00d7 Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      28,
+      "error",
+      "frontx_view: unsupported element type\n  Int"
+     ],
+     [
+      29,
+      "error",
+      "Unknown constant `Monads.Writer.sumAndFindEvens.view.eq`\nsumAndFindEvens : List Int \u2192 List Int \u00d7 Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      28,
+      "error",
+      "frontx_view: unsupported element type\n  Int"
+     ],
+     [
+      29,
+      "error",
+      "Unknown constant `Monads.Writer.sumAndFindEvens.view.eq`\nsumAndFindEvens : List Int \u2192 List Int \u00d7 Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      28,
+      "error",
+      "frontx_view: unsupported element type\n  Int"
+     ],
+     [
+      29,
+      "error",
+      "Unknown constant `Monads.Writer.sumAndFindEvens.view.eq`\nsumAndFindEvens : List Int \u2192 List Int \u00d7 Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      28,
+      "error",
+      "frontx_view: unsupported element type\n  Int"
+     ],
+     [
+      29,
+      "error",
+      "Unknown constant `sumAndFindEvens.view.eq`\nsumAndFindEvens : List Int \u2192 List Int \u00d7 Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      28,
+      "error",
+      "frontx_view: unsupported element type\n  Int"
+     ],
+     [
+      29,
+      "error",
+      "Unknown constant `sumAndFindEvens.view.eq`\nsumAndFindEvens : List Int \u2192 List Int \u00d7 Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      28,
+      "error",
+      "frontx_view: unsupported element type\n  Int"
+     ],
+     [
+      29,
+      "error",
+      "Unknown constant `sumAndFindEvens.view.eq`\nsumAndFindEvens : List Int \u2192 List Int \u00d7 Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads.lean",
+  "line": 334,
+  "end": 339,
+  "name": "Monads.Writer.MoreMonadic.sumAndFindEvens",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      41,
+      "error",
+      "frontx: unsupported result type\n  List Int \u00d7 Int\nsumAndFindEvens : List Int \u2192 List Int \u00d7 Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      41,
+      "error",
+      "frontx_view: unsupported element type\n  Int"
+     ],
+     [
+      42,
+      "error",
+      "Unknown constant `Monads.Writer.MoreMonadic.sumAndFindEvens.view.eq`\nsumAndFindEvens : List Int \u2192 List Int \u00d7 Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      41,
+      "error",
+      "frontx_view: unsupported element type\n  Int"
+     ],
+     [
+      42,
+      "error",
+      "Unknown constant `Monads.Writer.MoreMonadic.sumAndFindEvens.view.eq`\nsumAndFindEvens : List Int \u2192 List Int \u00d7 Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      41,
+      "error",
+      "frontx_view: unsupported element type\n  Int"
+     ],
+     [
+      42,
+      "error",
+      "Unknown constant `Monads.Writer.MoreMonadic.sumAndFindEvens.view.eq`\nsumAndFindEvens : List Int \u2192 List Int \u00d7 Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      41,
+      "error",
+      "frontx_view: unsupported element type\n  Int"
+     ],
+     [
+      42,
+      "error",
+      "Unknown constant `sumAndFindEvens.view.eq`\nsumAndFindEvens : List Int \u2192 List Int \u00d7 Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      41,
+      "error",
+      "frontx_view: unsupported element type\n  Int"
+     ],
+     [
+      42,
+      "error",
+      "Unknown constant `sumAndFindEvens.view.eq`\nsumAndFindEvens : List Int \u2192 List Int \u00d7 Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      41,
+      "error",
+      "frontx_view: unsupported element type\n  Int"
+     ],
+     [
+      42,
+      "error",
+      "Unknown constant `sumAndFindEvens.view.eq`\nsumAndFindEvens : List Int \u2192 List Int \u00d7 Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads.lean",
+  "line": 344,
+  "end": 351,
+  "name": "Monads.Writer.inorderSum",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      62,
+      "error",
+      "frontx: unsupported result type\n  List Int \u00d7 Int\ninorderSum : BinTree Int \u2192 List Int \u00d7 Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      62,
+      "error",
+      "frontx_view: no list parameter"
+     ],
+     [
+      63,
+      "error",
+      "Unknown constant `Monads.Writer.inorderSum.view.eq`\ninorderSum : BinTree Int \u2192 List Int \u00d7 Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      62,
+      "error",
+      "frontx_view: no list parameter"
+     ],
+     [
+      63,
+      "error",
+      "Unknown constant `Monads.Writer.inorderSum.view.eq`\ninorderSum : BinTree Int \u2192 List Int \u00d7 Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      62,
+      "error",
+      "frontx_view: no list parameter"
+     ],
+     [
+      63,
+      "error",
+      "Unknown constant `Monads.Writer.inorderSum.view.eq`\ninorderSum : BinTree Int \u2192 List Int \u00d7 Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      62,
+      "error",
+      "frontx_view: no list parameter"
+     ],
+     [
+      63,
+      "error",
+      "Unknown constant `inorderSum.view.eq`\ninorderSum : BinTree Int \u2192 List Int \u00d7 Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      62,
+      "error",
+      "frontx_view: no list parameter"
+     ],
+     [
+      63,
+      "error",
+      "Unknown constant `inorderSum.view.eq`\ninorderSum : BinTree Int \u2192 List Int \u00d7 Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      62,
+      "error",
+      "frontx_view: no list parameter"
+     ],
+     [
+      63,
+      "error",
+      "Unknown constant `inorderSum.view.eq`\ninorderSum : BinTree Int \u2192 List Int \u00d7 Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "ind": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      63,
+      "error",
+      "frontx_ind: Proven.Frontx.Run.Monads.Writer.inorderSum: type mismatch\ninorderSum : BinTree Int \u2192 List Int \u00d7 Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT653_0 := Proven.Frontx.Run.BinTree Nat, shape [], [.l, .x, .r]"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads.lean",
+  "line": 369,
+  "end": 372,
+  "name": "Monads.Writer.andThen",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      35,
+      "error",
+      "frontx: unsupported result type\n  WithLog \u03b1 \u03b3\n@andThen : {\u03b1 \u03b2 \u03b3 : Type} \u2192 WithLog \u03b1 \u03b2 \u2192 (\u03b2 \u2192 WithLog \u03b1 \u03b3) \u2192 WithLog \u03b1 \u03b3\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "ind": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      36,
+      "error",
+      "frontx_ind: unsupported parameter type\n  Nat \u2192 WithLog Nat ?\u03b3\n@andThen : {\u03b1 \u03b2 \u03b3 : Type} \u2192 WithLog \u03b1 \u03b2 \u2192 (\u03b2 \u2192 WithLog \u03b1 \u03b3) \u2192 WithLog \u03b1 \u03b3\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT656_0 := Proven.Frontx.Run.Monads.Writer.WithLog Nat Nat, shape [.x]"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads.lean",
+  "line": 377,
+  "end": 377,
+  "name": "Monads.Writer.ok",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      32,
+      "error",
+      "frontx: unsupported result type\n  WithLog \u03b1 \u03b2\n@ok : {\u03b2 \u03b1 : Type} \u2192 \u03b2 \u2192 WithLog \u03b1 \u03b2\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "ind": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      33,
+      "error",
+      "frontx_ind: Proven.Frontx.Run.Monads.Writer.WithLog.mk has no equations\n@ok : {\u03b2 \u03b1 : Type} \u2192 \u03b2 \u2192 WithLog \u03b1 \u03b2\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT657_0 := Proven.Frontx.Run.Monads.Writer.WithLog Nat Nat, shape [.x]"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads.lean",
+  "line": 382,
+  "end": 383,
+  "name": "Monads.Writer.save",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      33,
+      "error",
+      "frontx: unsupported result type\n  WithLog \u03b1 Unit\n@save : {\u03b1 : Type} \u2192 \u03b1 \u2192 WithLog \u03b1 Unit\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "ind": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      34,
+      "error",
+      "frontx_ind: Proven.Frontx.Run.Monads.Writer.WithLog.mk has no equations\n@save : {\u03b1 : Type} \u2192 \u03b1 \u2192 WithLog \u03b1 Unit\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT658_0 := Proven.Frontx.Run.Monads.Writer.WithLog Nat Nat, shape [.x]"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads.lean",
+  "line": 390,
+  "end": 395,
+  "name": "Monads.Writer.WithAndThen.sumAndFindEvens",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      82,
+      "error",
+      "frontx: unsupported result type\n  WithLog Int Int\nsumAndFindEvens : List Int \u2192 WithLog Int Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      82,
+      "error",
+      "frontx_view: unsupported element type\n  Int"
+     ],
+     [
+      83,
+      "error",
+      "Unknown constant `Monads.Writer.WithAndThen.sumAndFindEvens.view.eq`\nsumAndFindEvens : List Int \u2192 WithLog Int Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      82,
+      "error",
+      "frontx_view: unsupported element type\n  Int"
+     ],
+     [
+      83,
+      "error",
+      "Unknown constant `Monads.Writer.WithAndThen.sumAndFindEvens.view.eq`\nsumAndFindEvens : List Int \u2192 WithLog Int Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      82,
+      "error",
+      "frontx_view: unsupported element type\n  Int"
+     ],
+     [
+      83,
+      "error",
+      "Unknown constant `Monads.Writer.WithAndThen.sumAndFindEvens.view.eq`\nsumAndFindEvens : List Int \u2192 WithLog Int Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "ind": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      83,
+      "error",
+      "frontx_ind: List.brecOn has no argument of a declared type\nsumAndFindEvens : List Int \u2192 WithLog Int Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT659_0 := Proven.Frontx.Run.Monads.Writer.WithLog Nat Nat, shape [.x]"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads.lean",
+  "line": 400,
+  "end": 406,
+  "name": "Monads.Writer.WithAndThen.inorderSum",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      117,
+      "error",
+      "frontx: unsupported result type\n  WithLog Int Int\ninorderSum : BinTree Int \u2192 WithLog Int Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "ind": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      119,
+      "error",
+      "frontx_ind: Proven.Frontx.Run.Monads.Writer.WithAndThen.inorderSum: type mismatch\ninorderSum : BinTree Int \u2192 WithLog Int Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT660_0 := Proven.Frontx.Run.BinTree Nat, shape [], [.l, .x, .r]",
+     "frontx_ind_type: TT660_1 := Proven.Frontx.Run.Monads.Writer.WithLog Nat Nat, shape [.x]"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads.lean",
+  "line": 460,
+  "end": 467,
+  "name": "Monads.State.number",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      69,
+      "error",
+      "frontx: unsupported result type\n  BinTree (Nat \u00d7 \u03b1)\n@number : {\u03b1 : Type} \u2192 BinTree \u03b1 \u2192 BinTree (Nat \u00d7 \u03b1)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "ind": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      70,
+      "error",
+      "frontx_ind: Prod.snd has no argument of a declared type\n@number : {\u03b1 : Type} \u2192 BinTree \u03b1 \u2192 BinTree (Nat \u00d7 \u03b1)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT666_0 := Proven.Frontx.Run.BinTree Nat, shape [], [.l, .x, .r]"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads.lean",
+  "line": 488,
+  "end": 489,
+  "name": "Monads.State.State",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      17,
+      "error",
+      "frontx: unsupported result type\n  Type\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7f8c7119c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads.lean",
+  "line": 500,
+  "end": 501,
+  "name": "Monads.State.set",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      25,
+      "error",
+      "frontx: unsupported result type\n  State \u03c3 Unit\n@set : {\u03c3 : Type} \u2192 \u03c3 \u2192 State \u03c3 Unit\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads.lean",
+  "line": 506,
+  "end": 509,
+  "name": "Monads.State.andThen",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      27,
+      "error",
+      "frontx: unsupported result type\n  State \u03c3 \u03b2\n@andThen : {\u03c3 \u03b1 \u03b2 : Type} \u2192 State \u03c3 \u03b1 \u2192 (\u03b1 \u2192 State \u03c3 \u03b2) \u2192 State \u03c3 \u03b2\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads.lean",
+  "line": 516,
+  "end": 517,
+  "name": "Monads.State.ok",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      25,
+      "error",
+      "frontx: unsupported result type\n  State \u03c3 \u03b1\n@ok : {\u03b1 \u03c3 : Type} \u2192 \u03b1 \u2192 State \u03c3 \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Class.lean",
+  "line": 49,
+  "end": 55,
+  "name": "firstThirdFifthSeventh",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      23,
+      "error",
+      "frontx: unsupported result type\n  m (\u03b1 \u00d7 \u03b1 \u00d7 \u03b1 \u00d7 \u03b1)\n@firstThirdFifthSeventh : {\u03b1 : Type} \u2192 {m : Type \u2192 Type} \u2192 [Monad m] \u2192 (List \u03b1 \u2192 Nat \u2192 m \u03b1) \u2192 List \u03b1 \u2192 m (\u03b1 \u00d7 \u03b1 \u00d7 \u03b1 \u00d7 \u03b1)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      23,
+      "error",
+      "failed to synthesize\n  Monad m\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command."
+     ],
+     [
+      24,
+      "error",
+      "Unknown constant `firstThirdFifthSeventh.view.eq`\n@firstThirdFifthSeventh : {\u03b1 : Type} \u2192 {m : Type \u2192 Type} \u2192 [Monad m] \u2192 (List \u03b1 \u2192 Nat \u2192 m \u03b1) \u2192 List \u03b1 \u2192 m (\u03b1 \u00d7 \u03b1 \u00d7 \u03b1 \u00d7 \u03b1)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      23,
+      "error",
+      "failed to synthesize\n  Monad m\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command."
+     ],
+     [
+      24,
+      "error",
+      "Unknown constant `firstThirdFifthSeventh.view.eq`\n@firstThirdFifthSeventh : {\u03b1 : Type} \u2192 {m : Type \u2192 Type} \u2192 [Monad m] \u2192 (List \u03b1 \u2192 Nat \u2192 m \u03b1) \u2192 List \u03b1 \u2192 m (\u03b1 \u00d7 \u03b1 \u00d7 \u03b1 \u00d7 \u03b1)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      23,
+      "error",
+      "failed to synthesize\n  Monad m\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command."
+     ],
+     [
+      24,
+      "error",
+      "Unknown constant `firstThirdFifthSeventh.view.eq`\n@firstThirdFifthSeventh : {\u03b1 : Type} \u2192 {m : Type \u2192 Type} \u2192 [Monad m] \u2192 (List \u03b1 \u2192 Nat \u2192 m \u03b1) \u2192 List \u03b1 \u2192 m (\u03b1 \u00d7 \u03b1 \u00d7 \u03b1 \u00d7 \u03b1)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      23,
+      "error",
+      "Unknown constant `lookup`"
+     ],
+     [
+      24,
+      "error",
+      "Unknown constant `lookup.view.eq`\n@firstThirdFifthSeventh : {\u03b1 : Type} \u2192 {m : Type \u2192 Type} \u2192 [Monad m] \u2192 (List \u03b1 \u2192 Nat \u2192 m \u03b1) \u2192 List \u03b1 \u2192 m (\u03b1 \u00d7 \u03b1 \u00d7 \u03b1 \u00d7 \u03b1)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      23,
+      "error",
+      "Unknown constant `lookup`"
+     ],
+     [
+      24,
+      "error",
+      "Unknown constant `lookup.view.eq`\n@firstThirdFifthSeventh : {\u03b1 : Type} \u2192 {m : Type \u2192 Type} \u2192 [Monad m] \u2192 (List \u03b1 \u2192 Nat \u2192 m \u03b1) \u2192 List \u03b1 \u2192 m (\u03b1 \u00d7 \u03b1 \u00d7 \u03b1 \u00d7 \u03b1)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      23,
+      "error",
+      "Unknown constant `lookup`"
+     ],
+     [
+      24,
+      "error",
+      "Unknown constant `lookup.view.eq`\n@firstThirdFifthSeventh : {\u03b1 : Type} \u2192 {m : Type \u2192 Type} \u2192 [Monad m] \u2192 (List \u03b1 \u2192 Nat \u2192 m \u03b1) \u2192 List \u03b1 \u2192 m (\u03b1 \u00d7 \u03b1 \u00d7 \u03b1 \u00d7 \u03b1)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Class.lean",
+  "line": 125,
+  "end": 125,
+  "name": "IdentMonad.Id",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      16,
+      "error",
+      "frontx: unsupported result type\n  Type\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7f06a579c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Class.lean",
+  "line": 148,
+  "end": 153,
+  "name": "MyListStuff.mapM",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      22,
+      "error",
+      "frontx: unsupported result type\n  m (List \u03b2)\n@mapM : {\u03b1 \u03b2 : Type} \u2192 {m : Type \u2192 Type} \u2192 [Monad m] \u2192 (\u03b1 \u2192 m \u03b2) \u2192 List \u03b1 \u2192 m (List \u03b2)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      22,
+      "error",
+      "failed to synthesize\n  Monad m\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command."
+     ],
+     [
+      23,
+      "error",
+      "Unknown constant `MyListStuff.mapM.view.eq`\n@mapM : {\u03b1 \u03b2 : Type} \u2192 {m : Type \u2192 Type} \u2192 [Monad m] \u2192 (\u03b1 \u2192 m \u03b2) \u2192 List \u03b1 \u2192 m (List \u03b2)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      22,
+      "error",
+      "failed to synthesize\n  Monad m\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command."
+     ],
+     [
+      23,
+      "error",
+      "Unknown constant `MyListStuff.mapM.view.eq`\n@mapM : {\u03b1 \u03b2 : Type} \u2192 {m : Type \u2192 Type} \u2192 [Monad m] \u2192 (\u03b1 \u2192 m \u03b2) \u2192 List \u03b1 \u2192 m (List \u03b2)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      22,
+      "error",
+      "failed to synthesize\n  Monad m\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command."
+     ],
+     [
+      23,
+      "error",
+      "Unknown constant `MyListStuff.mapM.view.eq`\n@mapM : {\u03b1 \u03b2 : Type} \u2192 {m : Type \u2192 Type} \u2192 [Monad m] \u2192 (\u03b1 \u2192 m \u03b2) \u2192 List \u03b1 \u2192 m (List \u03b2)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Class.lean",
+  "line": 346,
+  "end": 355,
+  "name": "One.evaluateOption",
+  "tries": {
+   "compile": {
+    "ctx_errors": 1,
+    "msgs": [
+     [
+      239,
+      "error",
+      "frontx: unsupported result type\n  Option Int\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7f2f2e79c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshare"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "ind": {
+    "ctx_errors": 1,
+    "msgs": [
+     [
+      241,
+      "error",
+      "frontx_ind: Proven.Frontx.Run.One.evaluateOption: type mismatch\nevaluateOption : Expr Arith \u2192 Option Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT692_0 := Proven.Frontx.Run.Expr Nat, shape [], [.x, .l, .r]",
+     "frontx_ind_type: TT692_1 := Proven.Frontx.Run.Arith, shape [], [], [], []"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Class.lean",
+  "line": 362,
+  "end": 366,
+  "name": "Two.applyPrim",
+  "tries": {
+   "compile": {
+    "ctx_errors": 1,
+    "msgs": [
+     [
+      227,
+      "error",
+      "frontx: unsupported result type\n  Option Int\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7f075179c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshare"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "ind": {
+    "ctx_errors": 1,
+    "msgs": [
+     [
+      228,
+      "error",
+      "frontx_ind: unsupported parameter type\n  Int\napplyPrim : Arith \u2192 Int \u2192 Int \u2192 Option Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT693_0 := Proven.Frontx.Run.Arith, shape [], [], [], []"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Class.lean",
+  "line": 368,
+  "end": 373,
+  "name": "Two.evaluateOption",
+  "tries": {
+   "compile": {
+    "ctx_errors": 1,
+    "msgs": [
+     [
+      246,
+      "error",
+      "frontx: unsupported result type\n  Option Int\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7f203b99c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshare"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "ind": {
+    "ctx_errors": 1,
+    "msgs": [
+     [
+      248,
+      "error",
+      "frontx_ind: Proven.Frontx.Run.Two.evaluateOption: type mismatch\nevaluateOption : Expr Arith \u2192 Option Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT694_0 := Proven.Frontx.Run.Expr Nat, shape [], [.x, .l, .r]",
+     "frontx_ind_type: TT694_1 := Proven.Frontx.Run.Arith, shape [], [], [], []"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Class.lean",
+  "line": 391,
+  "end": 398,
+  "name": "Three.applyPrim",
+  "tries": {
+   "compile": {
+    "ctx_errors": 1,
+    "msgs": [
+     [
+      230,
+      "error",
+      "frontx: unsupported result type\n  Except String Int\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7fc58e19c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/lible"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "ind": {
+    "ctx_errors": 1,
+    "msgs": [
+     [
+      231,
+      "error",
+      "frontx_ind: unsupported parameter type\n  Int\napplyPrim : Arith \u2192 Int \u2192 Int \u2192 Except String Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT695_0 := Proven.Frontx.Run.Arith, shape [], [], [], []"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Class.lean",
+  "line": 400,
+  "end": 405,
+  "name": "Three.evaluateExcept",
+  "tries": {
+   "compile": {
+    "ctx_errors": 1,
+    "msgs": [
+     [
+      249,
+      "error",
+      "frontx: unsupported result type\n  Except String Int\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7f225099c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/lible"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "ind": {
+    "ctx_errors": 1,
+    "msgs": [
+     [
+      251,
+      "error",
+      "frontx_ind: Proven.Frontx.Run.Three.evaluateExcept: type mismatch\nevaluateExcept : Expr Arith \u2192 Except String Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT696_0 := Proven.Frontx.Run.Expr Nat, shape [], [.x, .l, .r]",
+     "frontx_ind_type: TT696_1 := Proven.Frontx.Run.Arith, shape [], [], [], []"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Class.lean",
+  "line": 414,
+  "end": 421,
+  "name": "Four.applyPrimOption",
+  "tries": {
+   "compile": {
+    "ctx_errors": 1,
+    "msgs": [
+     [
+      230,
+      "error",
+      "frontx: unsupported result type\n  Option Int\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7fb3e859c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshare"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "ind": {
+    "ctx_errors": 1,
+    "msgs": [
+     [
+      231,
+      "error",
+      "frontx_ind: unsupported parameter type\n  Int\napplyPrimOption : Arith \u2192 Int \u2192 Int \u2192 Option Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT697_0 := Proven.Frontx.Run.Arith, shape [], [], [], []"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Class.lean",
+  "line": 423,
+  "end": 430,
+  "name": "Four.applyPrimExcept",
+  "tries": {
+   "compile": {
+    "ctx_errors": 1,
+    "msgs": [
+     [
+      230,
+      "error",
+      "frontx: unsupported result type\n  Except String Int\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7ff55559c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/lible"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "ind": {
+    "ctx_errors": 1,
+    "msgs": [
+     [
+      231,
+      "error",
+      "frontx_ind: unsupported parameter type\n  Int\napplyPrimExcept : Arith \u2192 Int \u2192 Int \u2192 Except String Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT698_0 := Proven.Frontx.Run.Arith, shape [], [], [], []"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Class.lean",
+  "line": 432,
+  "end": 439,
+  "name": "Four.evaluateM",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      39,
+      "error",
+      "frontx: unsupported result type\n  m Int\n@evaluateM : {m : Type \u2192 Type u_1} \u2192 [Monad m] \u2192 (Arith \u2192 Int \u2192 Int \u2192 m Int) \u2192 Expr Arith \u2192 m Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "ind": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      41,
+      "error",
+      "frontx_ind: Proven.Frontx.Run.Four.evaluateM: type mismatch\n@evaluateM : {m : Type \u2192 Type u_1} \u2192 [Monad m] \u2192 (Arith \u2192 Int \u2192 Int \u2192 m Int) \u2192 Expr Arith \u2192 m Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT699_0 := Proven.Frontx.Run.Expr Nat, shape [], [.x, .l, .r]",
+     "frontx_ind_type: TT699_1 := Proven.Frontx.Run.Arith, shape [], [], [], []"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Class.lean",
+  "line": 464,
+  "end": 467,
+  "name": "FourPointFive.applyDivOption",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      19,
+      "error",
+      "frontx: unsupported result type\n  Option Int\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7ffa4479c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshare"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Class.lean",
+  "line": 469,
+  "end": 472,
+  "name": "FourPointFive.applyDivExcept",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      19,
+      "error",
+      "frontx: unsupported result type\n  Except String Int\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7f8d8899c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/lible"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Class.lean",
+  "line": 474,
+  "end": 480,
+  "name": "FourPointFive.applyPrim",
+  "tries": {
+   "compile": {
+    "ctx_errors": 1,
+    "msgs": [
+     [
+      229,
+      "error",
+      "frontx: unsupported result type\n  m Int\n@applyPrim : {m : Type \u2192 Type u_1} \u2192 [Monad m] \u2192 (Int \u2192 Int \u2192 m Int) \u2192 Arith \u2192 Int \u2192 Int \u2192 m Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "ind": {
+    "ctx_errors": 1,
+    "msgs": [
+     [
+      230,
+      "error",
+      "frontx_ind: unsupported parameter type\n  Type \u2192 Type ?u.5563\n@applyPrim : {m : Type \u2192 Type u_1} \u2192 [Monad m] \u2192 (Int \u2192 Int \u2192 m Int) \u2192 Arith \u2192 Int \u2192 Int \u2192 m Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT702_0 := Proven.Frontx.Run.Arith, shape [], [], [], []"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Class.lean",
+  "line": 482,
+  "end": 489,
+  "name": "FourPointFive.evaluateM",
+  "tries": {
+   "compile": {
+    "ctx_errors": 1,
+    "msgs": [
+     [
+      250,
+      "error",
+      "frontx: unsupported result type\n  m Int\n@evaluateM : {m : Type \u2192 Type u_1} \u2192 [Monad m] \u2192 (Int \u2192 Int \u2192 m Int) \u2192 Expr Arith \u2192 m Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "ind": {
+    "ctx_errors": 1,
+    "msgs": [
+     [
+      252,
+      "error",
+      "frontx_ind: Proven.Frontx.Run.FourPointFive.evaluateM: type mismatch\n@evaluateM : {m : Type \u2192 Type u_1} \u2192 [Monad m] \u2192 (Int \u2192 Int \u2192 m Int) \u2192 Expr Arith \u2192 m Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT703_0 := Proven.Frontx.Run.Expr Nat, shape [], [.x, .l, .r]",
+     "frontx_ind_type: TT703_1 := Proven.Frontx.Run.Arith, shape [], [], [], []"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Class.lean",
+  "line": 525,
+  "end": 526,
+  "name": "divOption",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      22,
+      "error",
+      "frontx: unsupported result type\n  Option Int\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7fb45ad9c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshare"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "ind": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      23,
+      "error",
+      "frontx_ind: unsupported parameter type\n  Int\ndivOption : CanFail \u2192 Int \u2192 Int \u2192 Option Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT706_0 := Proven.Frontx.Run.CanFail, shape []"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Class.lean",
+  "line": 528,
+  "end": 532,
+  "name": "divExcept",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      25,
+      "error",
+      "frontx: unsupported result type\n  Except String Int\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7f9d9a99c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/lible"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "ind": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      26,
+      "error",
+      "frontx_ind: unsupported parameter type\n  Int\ndivExcept : CanFail \u2192 Int \u2192 Int \u2192 Except String Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT707_0 := Proven.Frontx.Run.CanFail, shape []"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Class.lean",
+  "line": 534,
+  "end": 540,
+  "name": "applyPrim",
+  "tries": {
+   "compile": {
+    "ctx_errors": 1,
+    "msgs": [
+     [
+      228,
+      "error",
+      "frontx: unsupported result type\n  m Int\n@applyPrim : {m : Type \u2192 Type u_1} \u2192\n  {special : Type} \u2192 [Monad m] \u2192 (special \u2192 Int \u2192 Int \u2192 m Int) \u2192 Prim special \u2192 Int \u2192 Int \u2192 m Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "ind": {
+    "ctx_errors": 1,
+    "msgs": [
+     [
+      229,
+      "error",
+      "frontx_ind: unsupported parameter type\n  Type \u2192 Type ?u.6249\n@applyPrim : {m : Type \u2192 Type u_1} \u2192\n  {special : Type} \u2192 [Monad m] \u2192 (special \u2192 Int \u2192 Int \u2192 m Int) \u2192 Prim special \u2192 Int \u2192 Int \u2192 m Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT708_0 := Proven.Frontx.Run.Prim Nat, shape [], [], [], [.x]"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Class.lean",
+  "line": 542,
+  "end": 549,
+  "name": "evaluateM",
+  "tries": {
+   "compile": {
+    "ctx_errors": 1,
+    "msgs": [
+     [
+      247,
+      "error",
+      "frontx: unsupported result type\n  m Int\n@evaluateM : {m : Type \u2192 Type u_1} \u2192\n  {special : Type} \u2192 [Monad m] \u2192 (special \u2192 Int \u2192 Int \u2192 m Int) \u2192 Expr (Prim special) \u2192 m Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "ind": {
+    "ctx_errors": 1,
+    "msgs": [
+     [
+      249,
+      "error",
+      "frontx_ind: Proven.Frontx.Run.evaluateM: type mismatch\n@evaluateM : {m : Type \u2192 Type u_1} \u2192\n  {special : Type} \u2192 [Monad m] \u2192 (special \u2192 Int \u2192 Int \u2192 m Int) \u2192 Expr (Prim special) \u2192 m Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT709_0 := Proven.Frontx.Run.Expr Nat, shape [], [.x, .l, .r]",
+     "frontx_ind_type: TT709_1 := Proven.Frontx.Run.Prim Nat, shape [], [], [], [.x]"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Class.lean",
+  "line": 554,
+  "end": 555,
+  "name": "applyEmpty",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      16,
+      "error",
+      "frontx: unsupported result type\n  m Int\n@applyEmpty : {m : Type \u2192 Type u_1} \u2192 [Monad m] \u2192 Empty \u2192 Int \u2192 Int \u2192 m Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Class.lean",
+  "line": 585,
+  "end": 591,
+  "name": "applySearch",
+  "tries": {
+   "compile": {
+    "ctx_errors": 25,
+    "msgs": [
+     [
+      316,
+      "error",
+      "frontx: unsupported result type\n  Many Int\napplySearch : NeedsSearch \u2192 Int \u2192 Int \u2192 Many Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "ind": {
+    "ctx_errors": 25,
+    "msgs": [
+     [
+      318,
+      "error",
+      "frontx_ind: unsupported parameter type\n  Int\napplySearch : NeedsSearch \u2192 Int \u2192 Int \u2192 Many Int\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT712_0 := Proven.Frontx.Run.Many Nat, shape [], [.x]",
+     "frontx_ind_type: TT712_1 := Proven.Frontx.Run.NeedsSearch, shape [], []"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Class.lean",
+  "line": 657,
+  "end": 657,
+  "name": "Reader",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      15,
+      "error",
+      "frontx: unsupported result type\n  Type\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7efcbed9c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Class.lean",
+  "line": 778,
+  "end": 780,
+  "name": "Temp.Reader.bind",
+  "tries": {
+   "compile": {
+    "ctx_errors": 25,
+    "msgs": [
+     [
+      299,
+      "error",
+      "frontx: unsupported result type\n  \u03b2\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7fa337f9c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Class.lean",
+  "line": 787,
+  "end": 790,
+  "name": "Reader.bind",
+  "tries": {
+   "compile": {
+    "ctx_errors": 25,
+    "msgs": [
+     [
+      304,
+      "error",
+      "frontx: unsupported result type\n  Reader \u03c1 \u03b2\n@Reader.bind : {\u03c1 \u03b1 \u03b2 : Type} \u2192 Reader \u03c1 \u03b1 \u2192 (\u03b1 \u2192 Reader \u03c1 \u03b2) \u2192 Reader \u03c1 \u03b2\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Class.lean",
+  "line": 808,
+  "end": 808,
+  "name": "Reader.pure",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      20,
+      "error",
+      "frontx: unsupported result type\n  Reader \u03c1 \u03b1\n@Reader.pure : {\u03b1 \u03c1 : Type} \u2192 \u03b1 \u2192 Reader \u03c1 \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Class.lean",
+  "line": 954,
+  "end": 960,
+  "name": "Exercises.BinTree.mapM",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      68,
+      "error",
+      "frontx: unsupported result type\n  m (BinTree \u03b2)\n@BinTree.mapM : {m : Type \u2192 Type u_1} \u2192 {\u03b1 \u03b2 : Type} \u2192 [Monad m] \u2192 (\u03b1 \u2192 m \u03b2) \u2192 BinTree \u03b1 \u2192 m (BinTree \u03b2)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "ind": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      69,
+      "error",
+      "frontx_ind: unsupported parameter type\n  Type \u2192 Type ?u.4314\n@BinTree.mapM : {m : Type \u2192 Type u_1} \u2192 {\u03b1 \u03b2 : Type} \u2192 [Monad m] \u2192 (\u03b1 \u2192 m \u03b2) \u2192 BinTree \u03b1 \u2192 m (BinTree \u03b2)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT723_0 := Proven.Frontx.Run.BinTree Nat, shape [], [.l, .x, .r]"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Class.lean",
+  "line": 1025,
+  "end": 1025,
+  "name": "Exercises.ReaderOption",
+  "tries": {
+   "compile": {
+    "ctx_errors": 7,
+    "msgs": [
+     [
+      244,
+      "error",
+      "frontx: unsupported result type\n  Type\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7f66d139c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Class.lean",
+  "line": 1027,
+  "end": 1027,
+  "name": "Exercises.ReaderExcept",
+  "tries": {
+   "compile": {
+    "ctx_errors": 7,
+    "msgs": [
+     [
+      244,
+      "error",
+      "frontx: unsupported result type\n  Type\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7f4af619c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Conveniences.lean",
+  "line": 20,
+  "end": 24,
+  "name": "Old.equal?",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      21,
+      "error",
+      "frontx: unsupported result type\n  Option \u03b1\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7f4ca599c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared."
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Conveniences.lean",
+  "line": 32,
+  "end": 36,
+  "name": "New.equal?",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      21,
+      "error",
+      "frontx: unsupported result type\n  Option \u03b1\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7f4e8c39c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared."
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Conveniences.lean",
+  "line": 124,
+  "end": 125,
+  "name": "condense",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      17,
+      "error",
+      "frontx: unsupported result type\n  \u03b1\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7f94c999c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Conveniences.lean",
+  "line": 139,
+  "end": 140,
+  "name": "getTheNat",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      16,
+      "warning",
+      "unused variable `x`\n\nNote: This linter can be disabled with `set_option linter.unusedVariables false`"
+     ],
+     [
+      16,
+      "warning",
+      "unused variable `y`\n\nNote: This linter can be disabled with `set_option linter.unusedVariables false`"
+     ],
+     [
+      17,
+      "error",
+      "frontx: unsupported parameter type\n  Type\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7facfb79c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.s"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Conveniences.lean",
+  "line": 155,
+  "end": 156,
+  "name": "getTheString",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      22,
+      "warning",
+      "unused variable `n`\n\nNote: This linter can be disabled with `set_option linter.unusedVariables false`"
+     ],
+     [
+      22,
+      "warning",
+      "unused variable `n`\n\nNote: This linter can be disabled with `set_option linter.unusedVariables false`"
+     ],
+     [
+      22,
+      "warning",
+      "unused variable `y`\n\nNote: This linter can be disabled with `set_option linter.unusedVariables false`"
+     ],
+     [
+      23,
+      "error",
+      "unknown free variable `_fvar.1312`"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Do.lean",
+  "line": 110,
+  "end": 116,
+  "name": "WithDo.firstThirdFifthSeventh",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      37,
+      "error",
+      "frontx: unsupported result type\n  m (\u03b1 \u00d7 \u03b1 \u00d7 \u03b1 \u00d7 \u03b1)\n@firstThirdFifthSeventh : {\u03b1 : Type} \u2192 {m : Type \u2192 Type} \u2192 [Monad m] \u2192 (List \u03b1 \u2192 Nat \u2192 m \u03b1) \u2192 List \u03b1 \u2192 m (\u03b1 \u00d7 \u03b1 \u00d7 \u03b1 \u00d7 \u03b1)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      37,
+      "error",
+      "failed to synthesize\n  Monad m\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command."
+     ],
+     [
+      38,
+      "error",
+      "Unknown constant `WithDo.firstThirdFifthSeventh.view.eq`\n@firstThirdFifthSeventh : {\u03b1 : Type} \u2192 {m : Type \u2192 Type} \u2192 [Monad m] \u2192 (List \u03b1 \u2192 Nat \u2192 m \u03b1) \u2192 List \u03b1 \u2192 m (\u03b1 \u00d7 \u03b1 \u00d7 \u03b1 \u00d7 \u03b1)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      37,
+      "error",
+      "failed to synthesize\n  Monad m\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command."
+     ],
+     [
+      38,
+      "error",
+      "Unknown constant `WithDo.firstThirdFifthSeventh.view.eq`\n@firstThirdFifthSeventh : {\u03b1 : Type} \u2192 {m : Type \u2192 Type} \u2192 [Monad m] \u2192 (List \u03b1 \u2192 Nat \u2192 m \u03b1) \u2192 List \u03b1 \u2192 m (\u03b1 \u00d7 \u03b1 \u00d7 \u03b1 \u00d7 \u03b1)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      37,
+      "error",
+      "failed to synthesize\n  Monad m\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command."
+     ],
+     [
+      38,
+      "error",
+      "Unknown constant `WithDo.firstThirdFifthSeventh.view.eq`\n@firstThirdFifthSeventh : {\u03b1 : Type} \u2192 {m : Type \u2192 Type} \u2192 [Monad m] \u2192 (List \u03b1 \u2192 Nat \u2192 m \u03b1) \u2192 List \u03b1 \u2192 m (\u03b1 \u00d7 \u03b1 \u00d7 \u03b1 \u00d7 \u03b1)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      37,
+      "error",
+      "unexpected token 'do'; expected identifier"
+     ],
+     [
+      38,
+      "error",
+      "Unknown constant `\u00abdo\u00bb.view.eq`\n@firstThirdFifthSeventh : {\u03b1 : Type} \u2192 {m : Type \u2192 Type} \u2192 [Monad m] \u2192 (List \u03b1 \u2192 Nat \u2192 m \u03b1) \u2192 List \u03b1 \u2192 m (\u03b1 \u00d7 \u03b1 \u00d7 \u03b1 \u00d7 \u03b1)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      37,
+      "error",
+      "unexpected token 'do'; expected identifier"
+     ],
+     [
+      38,
+      "error",
+      "Unknown constant `\u00abdo\u00bb.view.eq`\n@firstThirdFifthSeventh : {\u03b1 : Type} \u2192 {m : Type \u2192 Type} \u2192 [Monad m] \u2192 (List \u03b1 \u2192 Nat \u2192 m \u03b1) \u2192 List \u03b1 \u2192 m (\u03b1 \u00d7 \u03b1 \u00d7 \u03b1 \u00d7 \u03b1)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      37,
+      "error",
+      "unexpected token 'do'; expected identifier"
+     ],
+     [
+      38,
+      "error",
+      "Unknown constant `\u00abdo\u00bb.view.eq`\n@firstThirdFifthSeventh : {\u03b1 : Type} \u2192 {m : Type \u2192 Type} \u2192 [Monad m] \u2192 (List \u03b1 \u2192 Nat \u2192 m \u03b1) \u2192 List \u03b1 \u2192 m (\u03b1 \u00d7 \u03b1 \u00d7 \u03b1 \u00d7 \u03b1)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Do.lean",
+  "line": 121,
+  "end": 126,
+  "name": "WithDo.mapM",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      22,
+      "error",
+      "frontx: unsupported result type\n  m (List \u03b2)\n@mapM : {\u03b1 \u03b2 : Type} \u2192 {m : Type \u2192 Type} \u2192 [Monad m] \u2192 (\u03b1 \u2192 m \u03b2) \u2192 List \u03b1 \u2192 m (List \u03b2)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      22,
+      "error",
+      "failed to synthesize\n  Monad m\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command."
+     ],
+     [
+      23,
+      "error",
+      "Unknown constant `WithDo.mapM.view.eq`\n@mapM : {\u03b1 \u03b2 : Type} \u2192 {m : Type \u2192 Type} \u2192 [Monad m] \u2192 (\u03b1 \u2192 m \u03b2) \u2192 List \u03b1 \u2192 m (List \u03b2)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      22,
+      "error",
+      "failed to synthesize\n  Monad m\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command."
+     ],
+     [
+      23,
+      "error",
+      "Unknown constant `WithDo.mapM.view.eq`\n@mapM : {\u03b1 \u03b2 : Type} \u2192 {m : Type \u2192 Type} \u2192 [Monad m] \u2192 (\u03b1 \u2192 m \u03b2) \u2192 List \u03b1 \u2192 m (List \u03b2)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      22,
+      "error",
+      "failed to synthesize\n  Monad m\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command."
+     ],
+     [
+      23,
+      "error",
+      "Unknown constant `WithDo.mapM.view.eq`\n@mapM : {\u03b1 \u03b2 : Type} \u2192 {m : Type \u2192 Type} \u2192 [Monad m] \u2192 (\u03b1 \u2192 m \u03b2) \u2192 List \u03b1 \u2192 m (List \u03b2)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Do.lean",
+  "line": 133,
+  "end": 136,
+  "name": "mapM",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      20,
+      "error",
+      "frontx: unsupported result type\n  m (List \u03b2)\n@mapM : {\u03b1 \u03b2 : Type} \u2192 {m : Type \u2192 Type} \u2192 [Monad m] \u2192 (\u03b1 \u2192 m \u03b2) \u2192 List \u03b1 \u2192 m (List \u03b2)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      20,
+      "error",
+      "failed to synthesize\n  Monad m\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command."
+     ],
+     [
+      21,
+      "error",
+      "Unknown constant `mapM.view.eq`\n@mapM : {\u03b1 \u03b2 : Type} \u2192 {m : Type \u2192 Type} \u2192 [Monad m] \u2192 (\u03b1 \u2192 m \u03b2) \u2192 List \u03b1 \u2192 m (List \u03b2)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      20,
+      "error",
+      "failed to synthesize\n  Monad m\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command."
+     ],
+     [
+      21,
+      "error",
+      "Unknown constant `mapM.view.eq`\n@mapM : {\u03b1 \u03b2 : Type} \u2192 {m : Type \u2192 Type} \u2192 [Monad m] \u2192 (\u03b1 \u2192 m \u03b2) \u2192 List \u03b1 \u2192 m (List \u03b2)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      20,
+      "error",
+      "failed to synthesize\n  Monad m\n\nHint: Additional diagnostic information may be available using the `set_option diagnostics true` command."
+     ],
+     [
+      21,
+      "error",
+      "Unknown constant `mapM.view.eq`\n@mapM : {\u03b1 \u03b2 : Type} \u2192 {m : Type \u2192 Type} \u2192 [Monad m] \u2192 (\u03b1 \u2192 m \u03b2) \u2192 List \u03b1 \u2192 m (List \u03b2)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Many.lean",
+  "line": 11,
+  "end": 11,
+  "name": "Many.one",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      22,
+      "error",
+      "frontx: unsupported result type\n  Many \u03b1\n@Many.one : {\u03b1 : Type} \u2192 \u03b1 \u2192 Many \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "ind": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      23,
+      "error",
+      "frontx_ind: Proven.Frontx.Run.Many.more has no equations\n@Many.one : {\u03b1 : Type} \u2192 \u03b1 \u2192 Many \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT760_0 := Proven.Frontx.Run.Many Nat, shape [], [.x]"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Many.lean",
+  "line": 24,
+  "end": 26,
+  "name": "Many.fromList",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      24,
+      "error",
+      "frontx: unsupported result type\n  Many \u03b1\n@Many.fromList : {\u03b1 : Type} \u2192 List \u03b1 \u2192 Many \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      25,
+      "error",
+      "frontx: unsupported result type\n  Many UInt8\n@Many.fromList : {\u03b1 : Type} \u2192 List \u03b1 \u2192 Many \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx: Proven.Frontx.Run.Many.fromList.view, Proven.Frontx.Run.Many.fromList.view.eq : \u2200 (B : ByteArray) (i : Nat),"
+    ]
+   },
+   "view1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      25,
+      "error",
+      "frontx: unsupported result type\n  Many UInt8\n@Many.fromList : {\u03b1 : Type} \u2192 List \u03b1 \u2192 Many \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx: Proven.Frontx.Run.Many.fromList.view, Proven.Frontx.Run.Many.fromList.view.eq : \u2200 (B : ByteArray) (i : Nat),"
+    ]
+   },
+   "view2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      25,
+      "error",
+      "frontx: unsupported result type\n  Many UInt8\n@Many.fromList : {\u03b1 : Type} \u2192 List \u03b1 \u2192 Many \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx: Proven.Frontx.Run.Many.fromList.view, Proven.Frontx.Run.Many.fromList.view.eq : \u2200 (B : ByteArray) (i : Nat),"
+    ]
+   },
+   "ind": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      25,
+      "error",
+      "frontx_ind: List.brecOn has no argument of a declared type\n@Many.fromList : {\u03b1 : Type} \u2192 List \u03b1 \u2192 Many \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT762_0 := Proven.Frontx.Run.Many Nat, shape [], [.x]"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Many.lean",
+  "line": 31,
+  "end": 34,
+  "name": "Many.take",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      25,
+      "error",
+      "frontx: unsupported result type\n  List \u03b1\n@Many.take : {\u03b1 : Type} \u2192 Nat \u2192 Many \u03b1 \u2192 List \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      25,
+      "error",
+      "frontx_view: no list parameter"
+     ],
+     [
+      26,
+      "error",
+      "Unknown constant `Many.take.view.eq`\n@Many.take : {\u03b1 : Type} \u2192 Nat \u2192 Many \u03b1 \u2192 List \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      25,
+      "error",
+      "frontx_view: no list parameter"
+     ],
+     [
+      26,
+      "error",
+      "Unknown constant `Many.take.view.eq`\n@Many.take : {\u03b1 : Type} \u2192 Nat \u2192 Many \u03b1 \u2192 List \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      25,
+      "error",
+      "frontx_view: no list parameter"
+     ],
+     [
+      26,
+      "error",
+      "Unknown constant `Many.take.view.eq`\n@Many.take : {\u03b1 : Type} \u2192 Nat \u2192 Many \u03b1 \u2192 List \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "ind": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      26,
+      "error",
+      "frontx_ind: unsupported result type\n  List Nat\n@Many.take : {\u03b1 : Type} \u2192 Nat \u2192 Many \u03b1 \u2192 List \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT763_0 := Proven.Frontx.Run.Many Nat, shape [], [.x]"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Many.lean",
+  "line": 36,
+  "end": 38,
+  "name": "Many.takeAll",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      24,
+      "error",
+      "frontx: unsupported result type\n  List \u03b1\n@Many.takeAll : {\u03b1 : Type} \u2192 Many \u03b1 \u2192 List \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      24,
+      "error",
+      "frontx_view: no list parameter"
+     ],
+     [
+      25,
+      "error",
+      "Unknown constant `Many.takeAll.view.eq`\n@Many.takeAll : {\u03b1 : Type} \u2192 Many \u03b1 \u2192 List \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      24,
+      "error",
+      "frontx_view: no list parameter"
+     ],
+     [
+      25,
+      "error",
+      "Unknown constant `Many.takeAll.view.eq`\n@Many.takeAll : {\u03b1 : Type} \u2192 Many \u03b1 \u2192 List \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      24,
+      "error",
+      "frontx_view: no list parameter"
+     ],
+     [
+      25,
+      "error",
+      "Unknown constant `Many.takeAll.view.eq`\n@Many.takeAll : {\u03b1 : Type} \u2192 Many \u03b1 \u2192 List \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "ind": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      25,
+      "error",
+      "frontx_ind: unsupported result type\n  List Nat\n@Many.takeAll : {\u03b1 : Type} \u2192 Many \u03b1 \u2192 List \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT764_0 := Proven.Frontx.Run.Many Nat, shape [], [.x]"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Many.lean",
+  "line": 172,
+  "end": 173,
+  "name": "Many.range",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      58,
+      "error",
+      "frontx: unsupported result type\n  Many Nat\nMany.range : Nat \u2192 Nat \u2192 Many Nat\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "ind": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      59,
+      "error",
+      "frontx_ind: Proven.Frontx.Run.Many.range._unary has no argument of a declared type\nMany.range : Nat \u2192 Nat \u2192 Many Nat\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT772_0 := Proven.Frontx.Run.Many Nat, shape [], [.x]"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/Monads/Many.lean",
+  "line": 270,
+  "end": 282,
+  "name": "addsTo",
+  "tries": {
+   "compile": {
+    "ctx_errors": 5,
+    "msgs": [
+     [
+      136,
+      "error",
+      "frontx: unsupported result type\n  Many (List Nat)\naddsTo : Nat \u2192 List Nat \u2192 Many (List Nat)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view0": {
+    "ctx_errors": 5,
+    "msgs": [
+     [
+      137,
+      "error",
+      "frontx: unsupported result type\n  Many (List Nat)\naddsTo : Nat \u2192 List Nat \u2192 Many (List Nat)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx: Proven.Frontx.Run.addsTo.view, Proven.Frontx.Run.addsTo.view.eq : \u2200 (B : ByteArray) (i goal : Nat),"
+    ]
+   },
+   "view1": {
+    "ctx_errors": 5,
+    "msgs": [
+     [
+      137,
+      "error",
+      "frontx: unsupported result type\n  Many (List Nat)\naddsTo : Nat \u2192 List Nat \u2192 Many (List Nat)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx: Proven.Frontx.Run.addsTo.view, Proven.Frontx.Run.addsTo.view.eq : \u2200 (B : ByteArray) (i goal : Nat),"
+    ]
+   },
+   "view2": {
+    "ctx_errors": 5,
+    "msgs": [
+     [
+      137,
+      "error",
+      "frontx: unsupported result type\n  Many (List Nat)\naddsTo : Nat \u2192 List Nat \u2192 Many (List Nat)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx: Proven.Frontx.Run.addsTo.view, Proven.Frontx.Run.addsTo.view.eq : \u2200 (B : ByteArray) (i goal : Nat),"
+    ]
+   },
+   "ind": {
+    "ctx_errors": 5,
+    "msgs": [
+     [
+      137,
+      "error",
+      "frontx_ind: List.brecOn has no argument of a declared type\naddsTo : Nat \u2192 List Nat \u2192 Many (List Nat)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx_ind_type: TT780_0 := Proven.Frontx.Run.Many Nat, shape [], [.x]"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/ProgramsProofs/Arrays.lean",
+  "line": 274,
+  "end": 278,
+  "name": "arrayMapHelper",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      19,
+      "error",
+      "frontx: unsupported result type\n  Array \u03b2\n@arrayMapHelper : {\u03b1 : Type u_1} \u2192 {\u03b2 : Type u_2} \u2192 (\u03b1 \u2192 \u03b2) \u2192 Array \u03b1 \u2192 Array \u03b2 \u2192 Nat \u2192 Array \u03b2\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "wa": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      19,
+      "error",
+      "wa_compile: expected a function of one ByteArray\n@arrayMapHelper : {\u03b1 : Type u_1} \u2192 {\u03b2 : Type u_2} \u2192 (\u03b1 \u2192 \u03b2) \u2192 Array \u03b1 \u2192 Array \u03b2 \u2192 Nat \u2192 Array \u03b2\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "/tmp/claude-0/s/root/runs/796_wa.lean:19:0: error: wa_compile: expected a function of one ByteArray"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/ProgramsProofs/Arrays.lean",
+  "line": 285,
+  "end": 286,
+  "name": "TailRec.Array.map",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      26,
+      "error",
+      "frontx: unsupported result type\n  Array \u03b2\n@Array.map : {\u03b1 : Type u_1} \u2192 {\u03b2 : Type u_2} \u2192 (\u03b1 \u2192 \u03b2) \u2192 Array \u03b1 \u2192 Array \u03b2\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "wa": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      26,
+      "error",
+      "wa_compile: expected a function of one ByteArray\n@Array.map : {\u03b1 : Type u_1} \u2192 {\u03b2 : Type u_2} \u2192 (\u03b1 \u2192 \u03b2) \u2192 Array \u03b1 \u2192 Array \u03b2\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "/tmp/claude-0/s/root/runs/797_wa.lean:26:0: error: wa_compile: expected a function of one ByteArray"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/ProgramsProofs/Arrays.lean",
+  "line": 293,
+  "end": 300,
+  "name": "findHelper",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      22,
+      "error",
+      "incorrect number of universe levels findHelper.eq_def\n@findHelper : {\u03b1 : Type u_1} \u2192 Array \u03b1 \u2192 (\u03b1 \u2192 Bool) \u2192 Nat \u2192 Option (Nat \u00d7 \u03b1)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "wa": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      22,
+      "error",
+      "wa_compile: expected a function of one ByteArray\n@findHelper : {\u03b1 : Type u_1} \u2192 Array \u03b1 \u2192 (\u03b1 \u2192 Bool) \u2192 Nat \u2192 Option (Nat \u00d7 \u03b1)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "/tmp/claude-0/s/root/runs/798_wa.lean:22:0: error: wa_compile: expected a function of one ByteArray"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/ProgramsProofs/Arrays.lean",
+  "line": 304,
+  "end": 306,
+  "name": "Array.find",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      29,
+      "error",
+      "frontx: unsupported result type\n  Option (Nat \u00d7 \u03b1)\nPANIC at Lean.Expr.appArg! Lean.Expr:920:15: application expected\nbacktrace:\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/libleanshared.so(+0xa99c3a3) [0x7fb6b859c3a3]\n/root/.elan/toolchains/leanprover--lean4---v4.29.0/lib/lean/liblea"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "wa": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      29,
+      "error",
+      "wa_compile: expected a function of one ByteArray\n@Array.find : {\u03b1 : Type u_1} \u2192 Array \u03b1 \u2192 (\u03b1 \u2192 Bool) \u2192 Option (Nat \u00d7 \u03b1)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "/tmp/claude-0/s/root/runs/799_wa.lean:29:0: error: wa_compile: expected a function of one ByteArray"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/ProgramsProofs/Arrays.lean",
+  "line": 316,
+  "end": 323,
+  "name": "Huh.findHelper",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      35,
+      "error",
+      "incorrect number of universe levels findHelper.eq_def\n@findHelper : {\u03b1 : Type u_1} \u2192 Array \u03b1 \u2192 (\u03b1 \u2192 Bool) \u2192 Nat \u2192 Option (Nat \u00d7 \u03b1)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "wa": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      35,
+      "error",
+      "wa_compile: expected a function of one ByteArray\n@findHelper : {\u03b1 : Type u_1} \u2192 Array \u03b1 \u2192 (\u03b1 \u2192 Bool) \u2192 Nat \u2192 Option (Nat \u00d7 \u03b1)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "/tmp/claude-0/s/root/runs/800_wa.lean:35:0: error: wa_compile: expected a function of one ByteArray"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/ProgramsProofs/Fin.lean",
+  "line": 48,
+  "end": 52,
+  "name": "Fin.next?",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      19,
+      "error",
+      "frontx: unsupported result type\n  Option (Fin n)\n@Fin.next? : {n : Nat} \u2192 Fin n \u2192 Option (Fin n)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/ProgramsProofs/Fin.lean",
+  "line": 82,
+  "end": 89,
+  "name": "Finny.findHelper",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      23,
+      "error",
+      "incorrect number of universe levels findHelper.eq_def\n@findHelper : {\u03b1 : Type u_1} \u2192 (arr : Array \u03b1) \u2192 (\u03b1 \u2192 Bool) \u2192 Nat \u2192 Option (Fin arr.size \u00d7 \u03b1)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "wa": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      23,
+      "error",
+      "wa_compile: expected a function of one ByteArray\n@findHelper : {\u03b1 : Type u_1} \u2192 (arr : Array \u03b1) \u2192 (\u03b1 \u2192 Bool) \u2192 Nat \u2192 Option (Fin arr.size \u00d7 \u03b1)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "/tmp/claude-0/s/root/runs/804_wa.lean:23:0: error: wa_compile: expected a function of one ByteArray"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/ProgramsProofs/Fin.lean",
+  "line": 93,
+  "end": 114,
+  "name": "Finny.Array.find",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      50,
+      "error",
+      "frontx: unsupported result type\n  Option (Fin arr.size \u00d7 \u03b1)\n@Array.find : {\u03b1 : Type u_1} \u2192 (arr : Array \u03b1) \u2192 (\u03b1 \u2192 Bool) \u2192 Option (Fin arr.size \u00d7 \u03b1)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "wa": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      50,
+      "error",
+      "wa_compile: expected a function of one ByteArray\n@Array.find : {\u03b1 : Type u_1} \u2192 (arr : Array \u03b1) \u2192 (\u03b1 \u2192 Bool) \u2192 Option (Fin arr.size \u00d7 \u03b1)\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "/tmp/claude-0/s/root/runs/805_wa.lean:50:0: error: wa_compile: expected a function of one ByteArray"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/ProgramsProofs/Inequalities.lean",
+  "line": 15,
+  "end": 22,
+  "name": "merge",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      22,
+      "error",
+      "frontx: unsupported result type\n  List \u03b1\n@merge : {\u03b1 : Type u_1} \u2192 [Ord \u03b1] \u2192 List \u03b1 \u2192 List \u03b1 \u2192 List \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      22,
+      "error",
+      "frontx_view: cannot reduce\n  match compare B[i] B[k] with\n  | Ordering.lt => B[i] :: merge (view B (i + 1)) (B[k] :: view B (k + 1))\n  | Ordering.eq => B[i] :: merge (view B (i + 1)) (B[k] :: view B (k + 1))\n  | Ordering.gt => B[k] :: merge (B[i] :: view B (i + 1)) (view B (k + 1))"
+     ],
+     [
+      23,
+      "error",
+      "Unknown constant `merge.view.eq`\n@merge : {\u03b1 : Type u_1} \u2192 [Ord \u03b1] \u2192 List \u03b1 \u2192 List \u03b1 \u2192 List \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      22,
+      "error",
+      "frontx_view: cannot reduce\n  match compare B[i] B[k] with\n  | Ordering.lt => B[i] :: merge (view B (i + 1)) (B[k] :: view B (k + 1))\n  | Ordering.eq => B[i] :: merge (view B (i + 1)) (B[k] :: view B (k + 1))\n  | Ordering.gt => B[k] :: merge (B[i] :: view B (i + 1)) (view B (k + 1))"
+     ],
+     [
+      23,
+      "error",
+      "Unknown constant `merge.view.eq`\n@merge : {\u03b1 : Type u_1} \u2192 [Ord \u03b1] \u2192 List \u03b1 \u2192 List \u03b1 \u2192 List \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      22,
+      "error",
+      "frontx_view: cannot reduce\n  match compare B[i] B[k] with\n  | Ordering.lt => B[i] :: merge (view B (i + 1)) (B[k] :: view B (k + 1))\n  | Ordering.eq => B[i] :: merge (view B (i + 1)) (B[k] :: view B (k + 1))\n  | Ordering.gt => B[k] :: merge (B[i] :: view B (i + 1)) (view B (k + 1))"
+     ],
+     [
+      23,
+      "error",
+      "Unknown constant `merge.view.eq`\n@merge : {\u03b1 : Type u_1} \u2192 [Ord \u03b1] \u2192 List \u03b1 \u2192 List \u03b1 \u2192 List \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      22,
+      "error",
+      "unexpected token 'match'; expected identifier"
+     ],
+     [
+      23,
+      "error",
+      "Unknown constant `\u00abmatch\u00bb.view.eq`\n@merge : {\u03b1 : Type u_1} \u2192 [Ord \u03b1] \u2192 List \u03b1 \u2192 List \u03b1 \u2192 List \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      22,
+      "error",
+      "unexpected token 'match'; expected identifier"
+     ],
+     [
+      23,
+      "error",
+      "Unknown constant `\u00abmatch\u00bb.view.eq`\n@merge : {\u03b1 : Type u_1} \u2192 [Ord \u03b1] \u2192 List \u03b1 \u2192 List \u03b1 \u2192 List \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      22,
+      "error",
+      "unexpected token 'match'; expected identifier"
+     ],
+     [
+      23,
+      "error",
+      "Unknown constant `\u00abmatch\u00bb.view.eq`\n@merge : {\u03b1 : Type u_1} \u2192 [Ord \u03b1] \u2192 List \u03b1 \u2192 List \u03b1 \u2192 List \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/ProgramsProofs/Inequalities.lean",
+  "line": 27,
+  "end": 32,
+  "name": "splitList",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      20,
+      "error",
+      "frontx: unsupported result type\n  List \u03b1 \u00d7 List \u03b1\n@splitList : {\u03b1 : Type u_1} \u2192 List \u03b1 \u2192 List \u03b1 \u00d7 List \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      21,
+      "error",
+      "frontx: unsupported result type\n  List UInt8 \u00d7 List UInt8\n@splitList : {\u03b1 : Type u_1} \u2192 List \u03b1 \u2192 List \u03b1 \u00d7 List \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx: Proven.Frontx.Run.splitList.view, Proven.Frontx.Run.splitList.view.eq : \u2200 (B : ByteArray) (i : Nat),"
+    ]
+   },
+   "view1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      21,
+      "error",
+      "frontx: unsupported result type\n  List UInt8 \u00d7 List UInt8\n@splitList : {\u03b1 : Type u_1} \u2192 List \u03b1 \u2192 List \u03b1 \u00d7 List \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx: Proven.Frontx.Run.splitList.view, Proven.Frontx.Run.splitList.view.eq : \u2200 (B : ByteArray) (i : Nat),"
+    ]
+   },
+   "view2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      21,
+      "error",
+      "frontx: unsupported result type\n  List UInt8 \u00d7 List UInt8\n@splitList : {\u03b1 : Type u_1} \u2192 List \u03b1 \u2192 List \u03b1 \u00d7 List \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "frontx: Proven.Frontx.Run.splitList.view, Proven.Frontx.Run.splitList.view.eq : \u2200 (B : ByteArray) (i : Nat),"
+    ]
+   },
+   "helper0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      20,
+      "error",
+      "unexpected token 'match'; expected identifier"
+     ],
+     [
+      21,
+      "error",
+      "Unknown constant `\u00abmatch\u00bb.view.eq`\n@splitList : {\u03b1 : Type u_1} \u2192 List \u03b1 \u2192 List \u03b1 \u00d7 List \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      20,
+      "error",
+      "unexpected token 'match'; expected identifier"
+     ],
+     [
+      21,
+      "error",
+      "Unknown constant `\u00abmatch\u00bb.view.eq`\n@splitList : {\u03b1 : Type u_1} \u2192 List \u03b1 \u2192 List \u03b1 \u00d7 List \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      20,
+      "error",
+      "unexpected token 'match'; expected identifier"
+     ],
+     [
+      21,
+      "error",
+      "Unknown constant `\u00abmatch\u00bb.view.eq`\n@splitList : {\u03b1 : Type u_1} \u2192 List \u03b1 \u2192 List \u03b1 \u00d7 List \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/ProgramsProofs/Inequalities.lean",
+  "line": 767,
+  "end": 782,
+  "name": "mergeSort",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      85,
+      "error",
+      "frontx: unsupported result type\n  List \u03b1\n@mergeSort : {\u03b1 : Type u_1} \u2192 [Ord \u03b1] \u2192 List \u03b1 \u2192 List \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      85,
+      "error",
+      "frontx_view: the body is not a `match`\n  if h : (view B i).length < 2 then\n    match view B i, h with\n    | [], h => []\n    | [x], h => [x]\n  else\n    let halves := splitList (view B i);\n    have this := \u22ef;\n    have this_1 := \u22ef;\n    have this := \u22ef;\n    merge (mergeSort halves.fst) (mergeSort halves."
+     ],
+     [
+      86,
+      "error",
+      "Unknown constant `mergeSort.view.eq`\n@mergeSort : {\u03b1 : Type u_1} \u2192 [Ord \u03b1] \u2192 List \u03b1 \u2192 List \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      85,
+      "error",
+      "frontx_view: the body is not a `match`\n  if h : (view B i).length < 2 then\n    match view B i, h with\n    | [], h => []\n    | [x], h => [x]\n  else\n    let halves := splitList (view B i);\n    have this := \u22ef;\n    have this_1 := \u22ef;\n    have this := \u22ef;\n    merge (mergeSort halves.fst) (mergeSort halves."
+     ],
+     [
+      86,
+      "error",
+      "Unknown constant `mergeSort.view.eq`\n@mergeSort : {\u03b1 : Type u_1} \u2192 [Ord \u03b1] \u2192 List \u03b1 \u2192 List \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "view2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      85,
+      "error",
+      "frontx_view: the body is not a `match`\n  if h : (view B i).length < 2 then\n    match view B i, h with\n    | [], h => []\n    | [x], h => [x]\n  else\n    let halves := splitList (view B i);\n    have this := \u22ef;\n    have this_1 := \u22ef;\n    have this := \u22ef;\n    merge (mergeSort halves.fst) (mergeSort halves."
+     ],
+     [
+      86,
+      "error",
+      "Unknown constant `mergeSort.view.eq`\n@mergeSort : {\u03b1 : Type u_1} \u2192 [Ord \u03b1] \u2192 List \u03b1 \u2192 List \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper0": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      85,
+      "error",
+      "unexpected token 'if'; expected identifier"
+     ],
+     [
+      86,
+      "error",
+      "Unknown constant `\u00abif\u00bb.view.eq`\n@mergeSort : {\u03b1 : Type u_1} \u2192 [Ord \u03b1] \u2192 List \u03b1 \u2192 List \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper1": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      85,
+      "error",
+      "unexpected token 'if'; expected identifier"
+     ],
+     [
+      86,
+      "error",
+      "Unknown constant `\u00abif\u00bb.view.eq`\n@mergeSort : {\u03b1 : Type u_1} \u2192 [Ord \u03b1] \u2192 List \u03b1 \u2192 List \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "helper2": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      85,
+      "error",
+      "unexpected token 'if'; expected identifier"
+     ],
+     [
+      86,
+      "error",
+      "Unknown constant `\u00abif\u00bb.view.eq`\n@mergeSort : {\u03b1 : Type u_1} \u2192 [Ord \u03b1] \u2192 List \u03b1 \u2192 List \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/ProgramsProofs/InsertionSort.lean",
+  "line": 49,
+  "end": 56,
+  "name": "insertSorted",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      22,
+      "error",
+      "frontx: unsupported result type\n  Array \u03b1\n@insertSorted : {\u03b1 : Type u_1} \u2192 [Ord \u03b1] \u2192 (arr : Array \u03b1) \u2192 Fin arr.size \u2192 Array \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "wa": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      22,
+      "error",
+      "wa_compile: expected a function of one ByteArray\n@insertSorted : {\u03b1 : Type u_1} \u2192 [Ord \u03b1] \u2192 (arr : Array \u03b1) \u2192 Fin arr.size \u2192 Array \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "/tmp/claude-0/s/root/runs/831_wa.lean:22:0: error: wa_compile: expected a function of one ByteArray"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/ProgramsProofs/InsertionSort.lean",
+  "line": 328,
+  "end": 332,
+  "name": "Partial.insertionSortLoop",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      32,
+      "error",
+      "frontx: no unfolding equation for Proven.Frontx.Run.Partial.insertionSortLoop\n@insertionSortLoop : {\u03b1 : Type u_1} \u2192 [Ord \u03b1] \u2192 Array \u03b1 \u2192 Nat \u2192 Array \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "wa": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      32,
+      "error",
+      "wa_compile: expected a function of one ByteArray\n@insertionSortLoop : {\u03b1 : Type u_1} \u2192 [Ord \u03b1] \u2192 Array \u03b1 \u2192 Nat \u2192 Array \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "/tmp/claude-0/s/root/runs/833_wa.lean:32:0: error: wa_compile: expected a function of one ByteArray"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/ProgramsProofs/InsertionSort.lean",
+  "line": 430,
+  "end": 436,
+  "name": "insertionSortLoop",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      41,
+      "error",
+      "frontx: unsupported result type\n  Array \u03b1\n@insertionSortLoop : {\u03b1 : Type u_1} \u2192 [Ord \u03b1] \u2192 Array \u03b1 \u2192 Nat \u2192 Array \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "wa": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      41,
+      "error",
+      "wa_compile: expected a function of one ByteArray\n@insertionSortLoop : {\u03b1 : Type u_1} \u2192 [Ord \u03b1] \u2192 Array \u03b1 \u2192 Nat \u2192 Array \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "/tmp/claude-0/s/root/runs/834_wa.lean:41:0: error: wa_compile: expected a function of one ByteArray"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/ProgramsProofs/InsertionSort.lean",
+  "line": 441,
+  "end": 442,
+  "name": "insertionSort",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      47,
+      "error",
+      "frontx: unsupported result type\n  Array \u03b1\n@insertionSort : {\u03b1 : Type u_1} \u2192 [Ord \u03b1] \u2192 Array \u03b1 \u2192 Array \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "wa": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      47,
+      "error",
+      "wa_compile: expected a function of one ByteArray\n@insertionSort : {\u03b1 : Type u_1} \u2192 [Ord \u03b1] \u2192 Array \u03b1 \u2192 Array \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "/tmp/claude-0/s/root/runs/835_wa.lean:47:0: error: wa_compile: expected a function of one ByteArray"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/ProgramsProofs/InstrumentedInsertionSort.lean",
+  "line": 6,
+  "end": 19,
+  "name": "insertSorted",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      28,
+      "error",
+      "frontx: unsupported result type\n  Array \u03b1\n@insertSorted : {\u03b1 : Type u_1} \u2192 [Ord \u03b1] \u2192 (arr : Array \u03b1) \u2192 Fin arr.size \u2192 Array \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "wa": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      28,
+      "error",
+      "wa_compile: expected a function of one ByteArray\n@insertSorted : {\u03b1 : Type u_1} \u2192 [Ord \u03b1] \u2192 (arr : Array \u03b1) \u2192 Fin arr.size \u2192 Array \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "/tmp/claude-0/s/root/runs/837_wa.lean:28:0: error: wa_compile: expected a function of one ByteArray"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/ProgramsProofs/InstrumentedInsertionSort.lean",
+  "line": 26,
+  "end": 32,
+  "name": "insertionSortLoop",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      47,
+      "error",
+      "frontx: unsupported result type\n  Array \u03b1\n@insertionSortLoop : {\u03b1 : Type u_1} \u2192 [Ord \u03b1] \u2192 Array \u03b1 \u2192 Nat \u2192 Array \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "wa": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      47,
+      "error",
+      "wa_compile: expected a function of one ByteArray\n@insertionSortLoop : {\u03b1 : Type u_1} \u2192 [Ord \u03b1] \u2192 Array \u03b1 \u2192 Nat \u2192 Array \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "/tmp/claude-0/s/root/runs/839_wa.lean:47:0: error: wa_compile: expected a function of one ByteArray"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ },
+ {
+  "file": "Examples/ProgramsProofs/InstrumentedInsertionSort.lean",
+  "line": 35,
+  "end": 36,
+  "name": "insertionSort",
+  "tries": {
+   "compile": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      53,
+      "error",
+      "frontx: unsupported result type\n  Array \u03b1\n@insertionSort : {\u03b1 : Type u_1} \u2192 [Ord \u03b1] \u2192 Array \u03b1 \u2192 Array \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": []
+   },
+   "wa": {
+    "ctx_errors": 0,
+    "msgs": [
+     [
+      53,
+      "error",
+      "wa_compile: expected a function of one ByteArray\n@insertionSort : {\u03b1 : Type u_1} \u2192 [Ord \u03b1] \u2192 Array \u03b1 \u2192 Array \u03b1\n\nEXIT 1"
+     ]
+    ],
+    "exit": "EXIT 1",
+    "okmsg": [
+     "/tmp/claude-0/s/root/runs/840_wa.lean:53:0: error: wa_compile: expected a function of one ByteArray"
+    ]
+   }
+  },
+  "out": "",
+  "status": "fail"
+ }
+]
