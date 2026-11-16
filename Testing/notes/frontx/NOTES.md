@@ -1830,3 +1830,12 @@ bytes` of the string's cells; `senc_ofString : (C.str st s.toUTF8.data.toList).s
 `String.utf8EncodeChar`, continuation bytes `10xxxxxx`, as a lemma; `utf8ByteSize` would be the chain length) and
 string literals as constants (a constant chain `mk … (mk … nul)` in `E`, `=` with a constant side): neither was
 cheap here.
+
+Axioms: `Testing/scripts/axioms_utf8.lean` (`dStr_ok`, `eStr_ok`, `dec_ok`, `enc_ok`, `dec_enc`, the `Bytes LString`
+instance, `senc_ofString`, `NameT.enc_str` / `enc_num`: propext, Classical.choice, Quot.sound).  Tests (QEMU + Sail
+against executed Lean, `frontx_test.py check 60`): `name_beq`, `name_bbeq`, `level_beq`, `level_bbeq` (60 cases each;
+the first 8 pairs fixed: `""`, NUL, `"𝔸"` (4 bytes), `"λ∀"`, `"é"`/`"e"`, `"x🙂y"`; the random names now also draw
+4-byte strings), the 11 `expr_*` entries (60 each; `inst1` returns trees with strings, so the encoder is exercised),
+and every other inductive-path entry re-emitted (their decoder/encoder code changed): all pass; the 25 run-time
+memory entries (`emit_mem.lean`, `mem_test.py check 10`) pass.  Statement fingerprints: no `stmt` hash changed; the
+`closure` hashes of `ind_ok` and every inductive-path `implements1` changed (C.enc, C.wf, decFn, encFn).
