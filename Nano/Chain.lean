@@ -14,7 +14,7 @@ against Lean's elaborator) → `Prog` → `nanoCompileIR = Ir.compile ∘ lower`
 These are corollaries of `CompileCorrect riscv nanoCompileIR` / `CompileRuns riscv nanoCompileIR` with
 `f` = the program's meaning on argument lists of the right length (`Computes` holds by definition of `nanoRun`,
 and for Int64 by `nanoRun_int`). -/
-import Nano.ProofTop
+import Nano.ProofSrc
 import Nano.Int
 import Nano.Elab
 
@@ -25,6 +25,9 @@ open Proven Proven.Mach Proven.Top Proven.Top.Alloc
 
 /-- **the nano compiler from source bytes** -/
 noncomputable def nanoCompileSrc (src : List UInt8) : Option CompiledA := (nanoElab src).bind nanoCompileIR
+
+/-- the same compiler as nano-proof's `nanoCompileSrcIR` (`Nano/ProofSrc.lean`) -/
+theorem nanoCompileSrc_eq (src : List UInt8) : nanoCompileSrc src = nanoCompileSrcIR ⟨src⟩ := rfl
 
 /-- argument lists of the entry's arity -/
 abbrev Args (p : Prog) (α : Type) := {args : List α // args.length = p.1}
