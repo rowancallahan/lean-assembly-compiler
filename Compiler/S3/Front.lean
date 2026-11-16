@@ -1,0 +1,572 @@
+/- **The S3 front end** (untrusted; `Testing/notes/IR_S3.md`): `s3_compile N := main` reads the kernel definitions
+of `main` (a `List UInt8 → List UInt8` function) and of everything it calls, and generates
+* `N.S`, `N.b<k>`, `N.P`: the S3 program (types as datatypes, one body per function, A-normal form);
+* `N.φ`: the oracle (each function's Lean meaning on encoded values);
+* `N.cert<k>`: the kernel-checked certificate `Good N.P N.φ k [enc x..]` for every function (by the function's own
+  functional induction, `Compiler/S3/Cert.lean`), and `N.main_good` for `main`.
+Nothing it produces is trusted: a wrong translation fails its certificate.
+
+What it reads: the unfolding equation `f.eq_def` of each function (so the input is the kernel term, after
+elaboration and match compilation), with
+* monomorphisation and specialisation: a call's type, instance and function arguments are static (they become
+  part of the function: `@List.filter UInt8 (· > 3)` is one S3 function);
+* matchers unfolded to `casesOn`, `casesOn` to `match` (`cas`), constructors to `mk`, structure projections to a
+  one-arm `match`, class projections of known instances unfolded (`++` to `List.append`);
+* `UInt64`/`Int64` arithmetic, `UInt8`/`UInt64` comparisons, `Bool` connectives, `if`/`dite`/`cond`.
+Not read (rejected with an error): `Nat`, `String`, arrays, function values that capture run-time variables,
+mutual recursion between different functions. -/
+import Lean
+import Compiler.S3.Cert
+
+namespace Proven.S3.Front
+open Lean Meta Elab Command
+
+/-- untyped S3 expressions, variables by de Bruijn level -/
+inductive SE where
+  | var (l : Nat)
+  | lit (c : Nat)
+  | blit (b : Bool)
+  | bin (o : String) (a b : Nat)
+  | cmp (c : String) (a b : Nat)
+  | bnot (a : Nat)
+  | let_ (t : Ty) (e₁ e₂ : SE)
+  | ite (c : Nat) (e₁ e₂ : SE)
+  | mk (i j : Nat) (xs : List Nat)
+  /-- per arm: its number of fields and its body -/
+  | cas (i x : Nat) (arms : List (Nat × SE))
+  | call (f : Nat) (xs : List Nat)
+  deriving Inhabited
+
+instance : Inhabited Ty := ⟨.w⟩
+
+structure FnInfo where
+  key : Lean.Expr
+  statics : Array Lean.Expr
+  pTys : Array Lean.Expr
+  retTy : Lean.Expr
+  params : Array Ty := #[]
+  ret : Ty := .w
+  body : Option SE := none
+  deriving Inhabited
+
+structure St where
+  tys : Array Lean.Expr := #[]
+  dts : Array (Array (Array Ty)) := #[]
+  fns : Array FnInfo := #[]
+
+abbrev M := StateRefT St MetaM
+
+structure Ctx where
+  vars : List (FVarId × Nat) := []
+  depth : Nat := 0
+
+def Ctx.push (c : Ctx) (x : Lean.Expr) : Ctx := ⟨(x.fvarId!, c.depth) :: c.vars, c.depth + 1⟩
+
+def isRecursive (n : Name) : MetaM Bool := do
+  return (← getEnv).contains (n ++ `_unary) || (← getEnv).contains (n.str "brecOn") || false
+
+def isWordTy (t : Lean.Expr) : Bool := t.isConstOf ``UInt64 || t.isConstOf ``Int64 || t.isConstOf ``UInt8
+
+partial def tyOf (t : Lean.Expr) : M Ty := do
+  let t := (← instantiateMVars (← whnfR t)).consumeMData
+  if isWordTy t then return .w
+  if t.isConstOf ``Bool then return .b
+  let s ← get
+  for i in [0:s.tys.size] do
+    if (← withReducible (isDefEq s.tys[i]! t)) then return .d i
+  let .const I us := t.getAppFn | throwError "S3: unsupported type {t}"
+  let some (.inductInfo ii) := (← getEnv).find? I | throwError "S3: not an inductive type: {t}"
+  unless ii.numIndices == 0 do throwError "S3: indexed families are not supported: {t}"
+  let params := t.getAppArgs
+  unless params.size == ii.numParams do throwError "S3: type not fully applied: {t}"
+  if t.hasFVar || t.hasMVar then throwError "S3: type with variables: {t}"
+  let i := s.tys.size
+  modify fun s => { s with tys := s.tys.push t, dts := s.dts.push #[] }
+  let mut cs : Array (Array Ty) := #[]
+  for c in ii.ctors do
+    let cty ← inferType (mkAppN (mkConst c us) params)
+    let fs ← forallTelescopeReducing cty fun xs _ => do
+      let mut r := #[]
+      for x in xs do
+        let xt ← inferType x
+        if xt.hasAnyFVar (fun f => xs.any (·.fvarId! == f)) then throwError "S3: dependent field in {c}"
+        r := r.push (← tyOf xt)
+      return r
+    cs := cs.push fs
+  modify fun s => { s with dts := s.dts.set! i cs }
+  return .d i
+
+def binOp? (n : Name) (t : Lean.Expr) : Option String :=
+  if n == ``HAdd.hAdd then some "(.op .add)"
+  else if n == ``HSub.hSub then some "(.op .sub)"
+  else if n == ``HMul.hMul then some ".mul"
+  else if n == ``HDiv.hDiv && t.isConstOf ``UInt64 then some ".udiv"
+  else if n == ``HMod.hMod && t.isConstOf ``UInt64 then some ".urem"
+  else if n == ``HAnd.hAnd then some "(.op .and)"
+  else if n == ``HOr.hOr then some "(.op .or)"
+  else if n == ``HXor.hXor then some "(.op .xor)"
+  else if n == ``HShiftLeft.hShiftLeft then some "(.op .shl)"
+  else if n == ``HShiftRight.hShiftRight then
+    (if t.isConstOf ``Int64 then some "(.op .ashr)" else some "(.op .lshr)")
+  else none
+
+/-- is argument `i` of a call static (a type, an instance, a function, a proof)? -/
+def staticArgs (f : Lean.Expr) (args : Array Lean.Expr) : MetaM Nat := do
+  let fty ← inferType f
+  forallBoundedTelescope fty args.size fun xs _ => do
+    let mut n := 0
+    let mut dyn := false
+    for i in [0:xs.size] do
+      let x := xs[i]!
+      let d ← x.fvarId!.getDecl
+      let xt ← whnfR d.type
+      let st := d.binderInfo.isInstImplicit || xt.isSort || (← isProp xt) || (xt.isForall && !(← isProp xt)) ||
+        (← isType xt) && !(← isProp xt) && (← whnfR xt).isSort
+      if st then
+        if dyn then throwError "S3: static argument after a run-time argument in {f}"
+        n := n + 1
+      else dyn := true
+    return n
+
+mutual
+
+partial def fnIdx (key : Lean.Expr) : M Nat := do
+  let key ← instantiateMVars key
+  let s ← get
+  for i in [0:s.fns.size] do
+    if s.fns[i]!.key == key then return i
+  let .const f us := key.getAppFn | throwError "S3: not a constant function: {key}"
+  if key.hasFVar then throwError "S3: a function value captures run-time variables: {key}"
+  let statics := key.getAppArgs
+  let kty ← inferType key
+  let (pTys, retTy) ← forallTelescopeReducing kty fun xs r => do
+    if r.hasAnyFVar (fun v => xs.any (·.fvarId! == v)) then throwError "S3: dependent result type of {key}"
+    return (← xs.mapM fun x => inferType x, r)
+  let idx := s.fns.size
+  modify fun s => { s with fns := s.fns.push { key, statics, pTys, retTy } }
+  let params ← pTys.mapM tyOf
+  let ret ← tyOf retTy
+  modify fun s => { s with fns := s.fns.modify idx fun fi => { fi with params, ret } }
+  let some eqn ← getUnfoldEqnFor? f (nonRec := true) | throwError "S3: no unfolding equation for {f}"
+  let eqTy ← inferType (mkConst eqn us)
+  let body ← forallTelescopeReducing kty fun xs _ => do
+    let inst ← instantiateForall eqTy (statics ++ xs)
+    let some (_, _, rhs) := inst.eq? | throwError "S3: unexpected equation {inst}"
+    let mut c : Ctx := {}
+    for x in xs.reverse do c := c.push x
+    tr c rhs
+  modify fun s => { s with fns := s.fns.modify idx fun fi => { fi with body := some body } }
+  return idx
+
+/-- an atom: the variable of `e` (let-bound if it is not one) -/
+partial def atom (c : Ctx) (e : Lean.Expr) (k : Ctx → Nat → M SE) : M SE := do
+  let e' := e.consumeMData.headBeta
+  if let .fvar id := e' then
+    if let some l := c.vars.lookup id then return ← k c l
+  let s1 ← tr c e
+  let ty ← tyOf (← inferType e)
+  let s2 ← k { c with depth := c.depth + 1 } c.depth
+  return .let_ ty s1 s2
+
+partial def atoms (c : Ctx) : List Lean.Expr → (Ctx → List Nat → M SE) → M SE
+  | [], k => k c []
+  | e :: es, k => atom c e fun c' l => atoms c' es fun c'' ls => k c'' (l :: ls)
+
+/-- a `Bool` value for a proposition -/
+partial def condSE (c : Ctx) (p : Lean.Expr) : M SE := do
+  let p := p.consumeMData
+  let fn := p.getAppFn
+  let args := p.getAppArgs
+  let cmp2 (op : String) (a b : Lean.Expr) : M SE := atoms c [a, b] fun _ ls => return .cmp op ls[0]! ls[1]!
+  match fn with
+  | .const n _ =>
+    let signed := args.size > 0 && args[0]!.isConstOf ``Int64
+    if n == ``LT.lt && args.size == 4 && isWordTy args[0]! then
+      return ← cmp2 (if signed then ".slt" else ".ult") args[2]! args[3]!
+    if n == ``LE.le && args.size == 4 && isWordTy args[0]! then
+      return ← cmp2 (if signed then ".sle" else ".ule") args[2]! args[3]!
+    if n == ``GT.gt && args.size == 4 && isWordTy args[0]! then
+      return ← cmp2 (if signed then ".slt" else ".ult") args[3]! args[2]!
+    if n == ``GE.ge && args.size == 4 && isWordTy args[0]! then
+      return ← cmp2 (if signed then ".sle" else ".ule") args[3]! args[2]!
+    if n == ``Eq && args.size == 3 && isWordTy args[0]! then return ← cmp2 ".eq" args[1]! args[2]!
+    if n == ``Ne && args.size == 3 && isWordTy args[0]! then return ← cmp2 ".ne" args[1]! args[2]!
+    if n == ``Eq && args.size == 3 && args[0]!.isConstOf ``Bool then
+      if args[2]!.isConstOf ``Bool.true then return ← tr c args[1]!
+      if args[2]!.isConstOf ``Bool.false then return ← atom c args[1]! fun _ l => return .bnot l
+    if n == ``Not && args.size == 1 then
+      let s ← condSE c args[0]!
+      return .let_ .b s (.bnot c.depth)
+    if n == ``And && args.size == 2 then
+      let s ← condSE c args[0]!
+      let c' := { c with depth := c.depth + 1 }
+      return .let_ .b s (.ite c.depth (← condSE c' args[1]!) (.blit false))
+    if n == ``Or && args.size == 2 then
+      let s ← condSE c args[0]!
+      let c' := { c with depth := c.depth + 1 }
+      return .let_ .b s (.ite c.depth (.blit true) (← condSE c' args[1]!))
+    throwError "S3: unsupported condition {p}"
+  | _ => throwError "S3: unsupported condition {p}"
+
+/-- the condition `p` as a `Bool` variable -/
+partial def condAtom (c : Ctx) (p : Lean.Expr) (k : Ctx → Nat → M SE) : M SE := do
+  let s ← condSE c p
+  return .let_ .b s (← k { c with depth := c.depth + 1 } c.depth)
+
+/-- the arm of a minor premise with `m` fields (the fields get the levels of variables `0 .. m - 1`) -/
+partial def arm (c : Ctx) (minor : Lean.Expr) (m : Nat) (extra : Array Lean.Expr) (nih : Nat := 0) : M (Nat × SE) := do
+  let mty ← inferType minor
+  forallBoundedTelescope mty (m + nih) fun fs _ => do
+    unless fs.size == m + nih do throwError "S3: arm with too few fields"
+    let mut c' := c
+    for f in (fs.extract 0 m).reverse do c' := c'.push f
+    return (m, ← tr c' (mkAppN (mkAppN minor fs) extra).headBeta)
+
+partial def tr (c : Ctx) (e : Lean.Expr) : M SE := do
+  let e ← Core.betaReduce ((← instantiateMVars e).consumeMData)
+  let e := e.consumeMData.headBeta
+  match e with
+  | .fvar id =>
+    match c.vars.lookup id with
+    | some l => return .var l
+    | none => throwError "S3: unknown variable {e}"
+  | .letE _ t v b _ =>
+    let s1 ← tr c v
+    let ty ← tyOf t
+    withLocalDeclD `x t fun x => do
+      return .let_ ty s1 (← tr (c.push x) (b.instantiate1 x))
+  | .proj S idx s =>
+    let some (.ctorInfo ci) := (← getEnv).find? (getStructureCtor (← getEnv) S).name | throwError "S3: proj"
+    atom c s fun c' lx => do
+      let .d i ← tyOf (← inferType s) | throwError "S3: projection of a non-datatype"
+      return .cas i lx [(ci.numFields, .var (c'.depth + ci.numFields - 1 - idx))]
+  | .const ``Bool.true _ => return .blit true
+  | .const ``Bool.false _ => return .blit false
+  | .lit (.natVal _) => throwError "S3: Nat literal {e}"
+  | _ => trApp c e
+
+partial def trApp (c : Ctx) (e : Lean.Expr) : M SE := do
+  let fn := e.getAppFn
+  let args := e.getAppArgs
+  let env ← getEnv
+  let .const n _ := fn | throwError "S3: unsupported application {e}"
+  -- literals
+  if n == ``OfNat.ofNat && args.size == 3 && isWordTy args[0]! then
+    match args[1]!.consumeMData with
+    | .lit (.natVal v) => return .lit (v % 2 ^ 64)
+    | _ => throwError "S3: literal {e}"
+  -- word operations
+  if args.size == 6 && isWordTy args[0]! then
+    if let some o := binOp? n args[0]! then
+      if args[0]!.isConstOf ``UInt8 then throwError "S3: UInt8 arithmetic is not supported: {e}"
+      return ← atoms c [args[4]!, args[5]!] fun _ ls => return .bin o ls[0]! ls[1]!
+  if n == ``BEq.beq && args.size == 4 && isWordTy args[0]! then
+    return ← atoms c [args[2]!, args[3]!] fun _ ls => return .cmp ".eq" ls[0]! ls[1]!
+  if n == ``bne && args.size == 4 && isWordTy args[0]! then
+    return ← atoms c [args[2]!, args[3]!] fun _ ls => return .cmp ".ne" ls[0]! ls[1]!
+  if n == ``not && args.size == 1 then return ← atom c args[0]! fun _ l => return .bnot l
+  if n == ``and && args.size == 2 then
+    return ← atom c args[0]! fun c' l => do return .ite l (← tr c' args[1]!) (.blit false)
+  if n == ``or && args.size == 2 then
+    return ← atom c args[0]! fun c' l => do return .ite l (.blit true) (← tr c' args[1]!)
+  if n == ``Decidable.decide && args.size == 2 then return ← condSE c args[0]!
+  if n == ``ite && args.size == 5 then
+    return ← condAtom c args[1]! fun c' l => do return .ite l (← tr c' args[3]!) (← tr c' args[4]!)
+  if n == ``dite && args.size == 5 then
+    return ← condAtom c args[1]! fun c' l => do
+      let t ← withLocalDeclD `h args[1]! fun h => tr c' (mkApp args[3]! h).headBeta
+      let f ← withLocalDeclD `h (mkNot args[1]!) fun h => tr c' (mkApp args[4]! h).headBeta
+      return .ite l t f
+  if n == ``cond && args.size == 4 then
+    return ← atom c args[1]! fun c' l => do return .ite l (← tr c' args[2]!) (← tr c' args[3]!)
+  if n == ``UInt8.toUInt64 && args.size == 1 then return ← atom c args[0]! fun _ l => return .var l
+  if n == ``UInt64.toUInt8 && args.size == 1 then
+    return ← atom c args[0]! fun c' l => return .let_ .w (.lit 255) (.bin "(.op .and)" l c'.depth)
+  -- constructors
+  if let some (.ctorInfo ci) := env.find? n then
+    unless args.size == ci.numParams + ci.numFields do throwError "S3: partial constructor {e}"
+    let .d i ← tyOf (← inferType e) | throwError "S3: constructor of a non-datatype {e}"
+    return ← atoms c (args.extract ci.numParams args.size).toList fun _ ls => return .mk i ci.cidx ls
+  -- casesOn
+  if isCasesOnRecursor env n then
+    let I := n.getPrefix
+    let some (.inductInfo ii) := env.find? I | throwError "S3: casesOn"
+    let nmaj := ii.numParams + 1 + ii.numIndices
+    let nmin := ii.ctors.length
+    unless args.size ≥ nmaj + 1 + nmin do throwError "S3: partial casesOn {e}"
+    let major := args[nmaj]!
+    let minors := args.extract (nmaj + 1) (nmaj + 1 + nmin)
+    let extra := args.extract (nmaj + 1 + nmin) args.size
+    if I == ``Bool then
+      return ← atom c major fun c' l => do
+        return .ite l (← tr c' (mkAppN minors[1]! extra).headBeta) (← tr c' (mkAppN minors[0]! extra).headBeta)
+    return ← atom c major fun c' l => do
+      let .d i ← tyOf (← inferType major) | throwError "S3: match on a non-datatype {major}"
+      let mut arms := #[]
+      for j in [0:nmin] do
+        let some (.ctorInfo cj) := env.find? ii.ctors[j]! | throwError "S3: ctor"
+        arms := arms.push (← arm c' minors[j]! cj.numFields extra)
+      return .cas i l arms.toList
+  -- recursors used as `casesOn` (the induction hypotheses unused)
+  if let some (.recInfo ri) := env.find? n then
+    let I := ri.getMajorInduct
+    let some (.inductInfo ii) := env.find? I | throwError "S3: rec"
+    let nmin := ii.ctors.length
+    let nmaj := ii.numParams + 1 + nmin + ii.numIndices
+    unless args.size ≥ nmaj + 1 && ri.numMotives == 1 do throwError "S3: partial recursor {e}"
+    let major := args[nmaj]!
+    let minors := args.extract (ii.numParams + 1) (ii.numParams + 1 + nmin)
+    let extra := args.extract (nmaj + 1) args.size
+    return ← atom c major fun c' l => do
+      let .d i ← tyOf (← inferType major) | throwError "S3: match on a non-datatype {major}"
+      let mut arms := #[]
+      for j in [0:nmin] do
+        let some (.ctorInfo cj) := env.find? ii.ctors[j]! | throwError "S3: ctor"
+        let cty ← inferType (mkConst ii.ctors[j]! (ri.levelParams.drop 1 |>.map mkLevelParam))
+        let nih ← forallTelescopeReducing cty fun xs _ => do
+          let mut k := 0
+          for x in xs.extract ii.numParams xs.size do
+            if (← inferType x).getAppFn.isConstOf I then k := k + 1
+          return k
+        arms := arms.push (← arm c' minors[j]! cj.numFields extra nih)
+      return .cas i l arms.toList
+  -- matchers
+  if (← isMatcher n) || (n.isInternal && (← getConstInfo n).isDefinition && !(← isRecursive n)) then
+    let .const _ us := fn | throwError "S3"
+    let info ← getConstInfo n
+    let v ← instantiateValueLevelParams info us
+    return ← tr c (mkAppN v args).headBeta
+  -- class projections of instances
+  if (← getProjectionFnInfo? n).isSome then
+    if let some e' ← unfoldProjInst? e then return ← tr c e'.headBeta
+    throwError "S3: unsupported class operation {e}"
+  -- calls
+  let ns ← staticArgs fn args
+  let key := mkAppN fn (args.extract 0 ns)
+  let k ← fnIdx key
+  atoms c (args.extract ns args.size).toList fun _ ls => return .call k ls
+
+end
+
+/-! ## certificate tactics -/
+
+/-- split a variable `x` that the goal uses as `Enc.enc x` (a datatype value whose constructor is not known) -/
+syntax (name := s3Split) "s3_split" : tactic
+
+@[tactic s3Split] def evalS3Split : Tactic.Tactic := fun _ => Tactic.withMainContext do
+  let g ← Tactic.getMainGoal
+  let t ← instantiateMVars (← g.getType)
+  -- the datatype variables inside `Enc.enc _`, the latest declared first
+  let mut inside : Array FVarId := #[]
+  let r ← IO.mkRef (#[] : Array Lean.Expr)
+  t.forEach fun e => do if e.isAppOfArity ``Proven.S3.Enc.enc 3 then r.modify (·.push e.appArg!)
+  let encArgs ← r.get
+  for e in encArgs do
+    let fvs := (Lean.collectFVars {} e).fvarIds
+    for v in fvs do
+      unless inside.contains v do inside := inside.push v
+  let lctx ← getLCtx
+  let mut best : Option LocalDecl := none
+  for v in inside do
+    let some d := lctx.find? v | continue
+    let ty ← whnfR d.type
+    if isWordTy ty || ty.isConstOf ``Bool then continue
+    let .const I _ := ty.getAppFn | continue
+    let some (.inductInfo ii) := (← getEnv).find? I | continue
+    if ii.ctors.length < 2 then continue
+    match best with
+    | some b => if d.index > b.index then best := some d
+    | none => best := some d
+  let some d := best | throwError "s3_split: nothing to split"
+  let gs ← g.cases d.fvarId
+  Tactic.replaceMainGoal (gs.map (·.mvarId)).toList
+
+/-- close a goal by a hypothesis `∀ xs, x = pattern → False` that now applies (a wildcard case of a match) -/
+syntax (name := s3Contra) "s3_contra" : tactic
+
+@[tactic s3Contra] def evalS3Contra : Tactic.Tactic := fun _ => Tactic.withMainContext do
+  let g ← Tactic.getMainGoal
+  let g ← g.exfalso
+  for d in (← getLCtx) do
+    if d.isImplementationDetail then continue
+    let ty ← instantiateMVars d.type
+    unless ty.isForall do continue
+    let s ← saveState
+    try
+      let gs ← g.apply d.toExpr
+      for g' in gs do
+        if !(← g'.isAssigned) then
+          if (← g'.getType).isEq then g'.refl
+      if (← gs.allM fun g' => g'.isAssigned) then
+        Tactic.replaceMainGoal []
+        return
+      s.restore
+    catch _ => s.restore
+  throwError "s3_contra: no contradiction"
+
+/-- `s3_solve n [simp lemmas] with closer`: simplify; close what remains with `closer`; else split a variable and
+retry (at most `n` times deep) -/
+syntax (name := s3Solve) "s3_solve " num " [" Lean.Parser.Tactic.simpArg,* "]" " with " tactic : tactic
+
+macro_rules (kind := s3Solve)
+  | `(tactic| s3_solve $n [$ls,*] with $c) => do
+    let k := n.getNat
+    if k == 0 then
+      `(tactic| (simp [$ls,*]; all_goals (repeat' apply And.intro) <;> $c))
+    else
+      let n' := Syntax.mkNumLit (toString (k - 1))
+      `(tactic| first
+        | s3_contra
+        | (simp [$ls,*]; done)
+        | (simp [$ls,*]; all_goals (repeat' apply And.intro) <;> $c; done)
+        | (s3_split <;> s3_solve $n' [$ls,*] with $c))
+
+/-! ## text -/
+
+def tyTxt : Ty → String
+  | .w => ".w"
+  | .b => ".b"
+  | .d i => s!"(.d {i})"
+
+def listTxt (l : List String) : String := "[" ++ ", ".intercalate l ++ "]"
+
+def varTxt : Nat → String
+  | 0 => ".z"
+  | i + 1 => "(.s " ++ varTxt i ++ ")"
+
+def varsTxt (depth : Nat) : List Nat → String
+  | [] => ".nil"
+  | l :: ls => s!"(.cons {varTxt (depth - 1 - l)} {varsTxt depth ls})"
+
+partial def seTxt (depth : Nat) : SE → String
+  | .var l => s!"(.var {varTxt (depth - 1 - l)})"
+  | .lit c => s!"(.lit {c})"
+  | .blit b => s!"(.blit {b})"
+  | .bin o a b => s!"(.bin {o} {varTxt (depth - 1 - a)} {varTxt (depth - 1 - b)})"
+  | .cmp o a b => s!"(.cmp {o} {varTxt (depth - 1 - a)} {varTxt (depth - 1 - b)})"
+  | .bnot a => s!"(.bnot {varTxt (depth - 1 - a)})"
+  | .let_ t e₁ e₂ => s!"(.let_ (σ := {tyTxt t}) {seTxt depth e₁} {seTxt (depth + 1) e₂})"
+  | .ite c e₁ e₂ => s!"(.ite {varTxt (depth - 1 - c)} {seTxt depth e₁} {seTxt depth e₂})"
+  | .mk i j xs => s!"(.mk {i} {j} {varsTxt depth xs})"
+  | .cas i x arms =>
+    let as := arms.foldr (fun (m, a) acc => s!"(.cons {seTxt (depth + m) a} {acc})") ".nil"
+    s!"(.cas (i := {i}) {varTxt (depth - 1 - x)} (Alts.arms {as}))"
+  | .call f xs => s!"(.call ⟨{f}, by decide⟩ {varsTxt depth xs} rfl)"
+
+def exprTxt (e : Lean.Expr) : MetaM String := do
+  let f ← withOptions (fun o => (((o.setBool `pp.explicit true).setBool `pp.fullNames true).setBool
+    `pp.universes false).setBool `pp.funBinderTypes true |>.setBool `pp.deepTerms false
+    |>.setBool `pp.proofs true) (ppExpr e)
+  return "(" ++ f.pretty 100000 ++ ")"
+
+/-- the functions a body calls -/
+partial def SE.calls : SE → List Nat
+  | .let_ _ a b => a.calls ++ b.calls
+  | .ite _ a b => a.calls ++ b.calls
+  | .cas _ _ arms => arms.flatMap (·.2.calls)
+  | .call f _ => [f]
+  | _ => []
+
+def simpSet : String :=
+  "Proven.S3.evalO, Proven.S3.CallsOk, Proven.S3.Var.idx, Proven.S3.Alts.arms, " ++
+  "Proven.S3.Vars.get, Proven.S3.Vars.idxs, Proven.S3.Prim.eval, Proven.Op.eval, Proven.S3.Cmp.eval, " ++
+  "Proven.S3.Sig.nc, Proven.S3.Sig.fld, Proven.S3.Sig.dt, Proven.S3.lget"
+
+/-- the commands for program `N` -/
+def genText (N : Name) (st : St) (extraSimp : String) : MetaM String := do
+  let p := N.toString
+  let dts := st.dts.toList.map fun cs => listTxt (cs.toList.map fun fs => listTxt (fs.toList.map tyTxt))
+  let fns := st.fns.toList.map fun fi => s!"({listTxt (fi.params.toList.map tyTxt)}, {tyTxt fi.ret})"
+  let mut out := s!"namespace {p}\nopen Proven.S3\n"
+  out := out ++ s!"abbrev S : Proven.S3.Sig := ⟨{listTxt dts}, {listTxt fns}⟩\n"
+  for k in [0:st.fns.size] do
+    let fi := st.fns[k]!
+    let some b := fi.body | throwError "S3: missing body"
+    out := out ++ s!"def b{k} : Proven.S3.Expr S {listTxt (fi.params.toList.map tyTxt)} {tyTxt fi.ret} :=\n  " ++
+      seTxt fi.params.size b ++ "\n"
+  let bodies := (List.range st.fns.size).foldr (fun k acc => s!"(.cons b{k} {acc})") ".nil"
+  out := out ++ s!"abbrev P : Proven.S3.Prog := ⟨S, {bodies}, ⟨0, by decide⟩⟩\n"
+  -- the oracle
+  out := out ++ "def φ : Fin P.S.fns.length → List Proven.S3.V → Proven.S3.V := fun f vs => match f.val with\n"
+  for k in [0:st.fns.size] do
+    let fi := st.fns[k]!
+    let mut app := ← exprTxt fi.key
+    for i in [0:fi.pTys.size] do
+      app := app ++ s!" (Proven.S3.Enc.dec (vs.getD {i} default) : {← exprTxt fi.pTys[i]!})"
+    out := out ++ s!"  | {k} => Proven.S3.Enc.enc ({app})\n"
+  out := out ++ "  | _ => default\n"
+  -- the certificates, callees first
+  let mut done : Array Nat := #[]
+  let mut order : Array Nat := #[]
+  let mut changed := true
+  while changed do
+    changed := false
+    for k in [0:st.fns.size] do
+      if done.contains k then continue
+      let cs := (st.fns[k]!.body.map SE.calls).getD []
+      if cs.all (fun j => j == k || done.contains j) then
+        done := done.push k; order := order.push k; changed := true
+  unless order.size == st.fns.size do throwError "S3: mutual recursion between functions is not supported"
+  for k in order do
+    let fi := st.fns[k]!
+    let xs := (List.range fi.pTys.size).map (s!"x{·}")
+    let binders ← (List.range fi.pTys.size).mapM fun i => do return s!"({xs[i]!} : {← exprTxt fi.pTys[i]!})"
+    let encs := listTxt (xs.map (s!"Proven.S3.Enc.enc {·}"))
+    let .const fname _ := fi.key.getAppFn | throwError "S3"
+    let recursive := ((fi.body.map SE.calls).getD []).contains k
+    let callees := ((fi.body.map SE.calls).getD []).filter (· != k)
+    let closers := callees.eraseDups.map (fun j => s!"(apply cert{j}' <;> simp)")
+    let closer := " | ".intercalate ("assumption" :: closers)
+    let introLine := if xs.isEmpty then "" else s!"  intro {" ".intercalate xs}\n"
+    let introLine := if recursive then introLine else introLine ++ "  (\n"
+    let mut statics := ""
+    for a in fi.statics do statics := statics ++ " " ++ (← exprTxt a)
+    let induct := if recursive then s!"  induction {", ".intercalate xs} using @{fname}.induct{statics} <;> (\n" else ""
+    out := out ++ s!"theorem body{k} : P.body ⟨{k}, by decide⟩ = b{k} := rfl\n"
+    out := out ++ s!"theorem cert{k} : ∀ {" ".intercalate binders}, Proven.S3.Good P φ ⟨{k}, by decide⟩ {encs} := by\n" ++
+      introLine ++ induct ++
+      s!"  (apply Proven.S3.good_intro <;> rw [body{k}]) <;>\n" ++
+      s!"  s3_solve 12 [{simpSet}, b{k}, {fname}, φ{extraSimp}, *] with (first | {closer}))\n"
+    let vs := (List.range fi.pTys.size).map (s!"v{·}")
+    let hs := (List.range fi.pTys.size).map (s!"h{·}")
+    let hyps ← (List.range fi.pTys.size).mapM fun i => do
+      return s!"Proven.S3.Enc.enc (Proven.S3.Enc.dec {vs[i]!} : {← exprTxt fi.pTys[i]!}) = {vs[i]!} → "
+    let vbind := if vs.isEmpty then "" else s!"∀ {" ".intercalate vs} : Proven.S3.V, "
+    out := out ++ s!"theorem cert{k}' : {vbind}{String.join hyps}Proven.S3.Good P φ ⟨{k}, by decide⟩ {listTxt vs} := by\n" ++
+      (if vs.isEmpty then s!"  exact cert{k}\n" else
+        s!"  intro {" ".intercalate (vs ++ hs)}\n  have := cert{k} {" ".intercalate (vs.map (s!"(Proven.S3.Enc.dec {·})"))}\n" ++
+        s!"  rw [{", ".intercalate hs}] at this\n  exact this\n")
+  out := out ++ s!"theorem main_good : ∀ bs : List UInt8, Proven.S3.Good P φ P.main [Proven.S3.Enc.enc bs] := cert0\n"
+  out := out ++ s!"end {p}\n"
+  return out
+
+/-- `s3_compile N := main [simp lemmas]`: generate the S3 program and its certificates -/
+syntax (name := s3Compile) "s3_compile " ident " := " term (" simp " "[" ident,* "]")? : command
+
+@[command_elab s3Compile] def elabS3 : CommandElab := fun stx => do
+  let N := stx[1].getId
+  let extra : String := match stx[4].getOptional? with
+    | some s => String.join ((s[2].getSepArgs.toList.map (·.getId.toString)).map (", " ++ ·))
+    | none => ""
+  let txt ← liftTermElabM do
+    let e ← Term.elabTerm stx[3] none
+    Term.synthesizeSyntheticMVarsNoPostponing
+    let e ← instantiateMVars e
+    let (_, st) ← (fnIdx e).run {}
+    genText N st extra
+  logInfo m!"{txt}"
+  let inputCtx := Parser.mkInputContext txt "<s3_compile>"
+  let env ← getEnv
+  let mut pstate : Parser.ModuleParserState := {}
+  let mut cmds := #[]
+  repeat
+    let (cmd, ps', msgs) := Parser.parseCommand inputCtx { env, options := {} } pstate {}
+    pstate := ps'
+    unless msgs.toList.isEmpty do
+      for m in msgs.toList do logError m!"S3 parse: {← m.toString}"
+      return
+    if cmd.isOfKind ``Parser.Command.eoi then break
+    cmds := cmds.push cmd
+  for cmd in cmds do elabCommand cmd
+
+end Proven.S3.Front

@@ -228,6 +228,14 @@ instance {α : Type} [Enc α] : Enc (Option α) where
 @[simp] theorem dec_some {α : Type} [Enc α] (a : V) : (Enc.dec (V.c 1 [a]) : Option α) = some (Enc.dec a) := rfl
 @[simp] theorem bv_ne_zero (c : Bool) : (bv c != 0) = c := by cases c <;> decide
 
+/-! ### word lemmas for the certificates -/
+
+@[simp] theorem setWidth_8_64 (x : BitVec 64) : BitVec.setWidth 64 (BitVec.setWidth 8 x) = x &&& 255 := by
+  apply BitVec.eq_of_toNat_eq
+  simp only [BitVec.toNat_setWidth, BitVec.toNat_and]
+  rw [Nat.mod_eq_of_lt (Nat.lt_of_lt_of_le (Nat.mod_lt _ (by decide)) (by decide))]
+  rw [show (255 : BitVec 64).toNat = 2 ^ 8 - 1 from rfl, Nat.and_two_pow_sub_one_eq_mod]
+
 /-- a byte list is the input / output value -/
 theorem enc_bytes : ∀ l : List UInt8, Enc.enc l = bytesV l
   | [] => rfl
