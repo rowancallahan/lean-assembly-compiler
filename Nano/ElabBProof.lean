@@ -277,4 +277,137 @@ theorem classify (u : List UInt8) : kindTok (kindOf (dfa u) (pk u)) u = identTok
       u == [111, 114] || u == [114, 102, 108] || u == [115, 101, 116] || u == [116, 114, 121] || u == [120, 111, 114]) <;>
     cases nameShape u <;> simp
 
+/-! ## The machine against `lex`, token by token -/
+
+/-- `lex`'s fuel `F` against the rest `xs`: equal (`sp = 0`) or larger (`sp = 1`) -/
+def Fu (F : Nat) (xs : List UInt8) (sp : UInt64) : Prop := (sp = 0 ∧ F = xs.length) ∨ (sp = 1 ∧ xs.length < F)
+def tyOf (ty : UInt64) : Option Bool := if ty = 1 then some false else if ty = 2 then some true else none
+def tcode (s : Bool) : UInt64 := if s then 2 else 1
+def tyStep (ty : UInt64) : Tok → UInt64
+  | .kty false => if ty = 2 then 9 else 1
+  | .kty true => if ty = 1 then 9 else 2
+  | _ => ty
+/-- pass 1's result from a `lex` result and the type so far -/
+def R1 (o : List UInt8) (r : Option (List Tok)) (ty : UInt64) : List UInt8 :=
+  match r with
+  | none => [0]
+  | some ts => match uniTy (tyOf ty) ts with
+    | none => [0]
+    | some s => (tcode s).toUInt8 :: lx o o 1 0 0 0 0 0 (tcode s)
+
+theorem lx_nil (o : List UInt8) (m sp d d0 w ty : UInt64) :
+    lx [] o m 0 sp d d0 w ty = if m == 0 then (if ty == 0 then [0] else ty.toUInt8 :: lx o o 1 0 0 0 0 0 ty) else [] := by
+  rw [lx]
+
+theorem lex_nil (F : Nat) : lex F [] = some [] := by cases F <;> rfl
+
+/-- one token (or blank) of `lex` = some steps of the machine from state 0 -/
+theorem step0 (o xs : List UInt8) (hxs : xs ≠ []) (F : Nat) (sp : UInt64) (hF : Fu F xs sp)
+    (m d d0 w ty : UInt64) (hm : m = 0 ∨ m = 1) :
+    (lex F xs = none ∧ (m = 0 → lx xs o m 0 sp d d0 w ty = [0])) ∨
+    (∃ F' r sp' d' d0' w', r.length < xs.length ∧ Fu F' r sp' ∧ lex F xs = lex F' r ∧
+      lx xs o m 0 sp d d0 w ty = lx r o m 0 sp' d' d0' w' ty) ∨
+    (∃ t bs F' r sp' d' d0' w', r.length < xs.length ∧ Fu F' r sp' ∧ lex F xs = (lex F' r).map (t :: ·) ∧
+      (∀ X, dec (bs ++ X) [] none = (dec X [] none).map (t :: ·)) ∧
+      (tyStep ty t ≠ 9 → lx xs o m 0 sp d d0 w ty = (if m = 0 then [] else bs) ++ lx r o m 0 sp' d' d0' w' (tyStep ty t)) ∧
+      (tyStep ty t = 9 → m = 0 → lx xs o m 0 sp d d0 w ty = [0])) := by
+  sorry
+
+theorem R1_cons (o : List UInt8) (t : Tok) (r : Option (List Tok)) (ty : UInt64) (hty : ty = 0 ∨ ty = 1 ∨ ty = 2) :
+    R1 o (r.map (t :: ·)) ty = if tyStep ty t = 9 then [0] else R1 o r (tyStep ty t) := by
+  rcases r with _ | ts
+  · simp only [Option.map_none, R1]; split <;> rfl
+  · simp only [Option.map_some, R1]
+    rcases hty with h | h | h <;> subst h <;> cases t <;> (try rename_i s; cases s) <;> simp [tyStep, uniTy, tyOf]
+
+theorem tyStep_ok (ty : UInt64) (t : Tok) (hty : ty = 0 ∨ ty = 1 ∨ ty = 2) (h : tyStep ty t ≠ 9) :
+    tyStep ty t = 0 ∨ tyStep ty t = 1 ∨ tyStep ty t = 2 := by
+  cases t <;> (try rename_i s; cases s) <;> simp only [tyStep] at h ⊢ <;> (try split at h) <;> (try split) <;> simp_all
+
+/-- **pass 1**: the machine computes `lex`, then the type check, then starts pass 2 -/
+theorem pass1 (o : List UInt8) : ∀ (n : Nat) (xs : List UInt8), xs.length ≤ n → ∀ F sp d d0 w ty, Fu F xs sp →
+    (ty = 0 ∨ ty = 1 ∨ ty = 2) → lx xs o 0 0 sp d d0 w ty = R1 o (lex F xs) ty := by
+  intro n
+  induction n with
+  | zero =>
+    intro xs hl F sp d d0 w ty _ hty
+    have : xs = [] := List.length_eq_zero_iff.mp (by omega)
+    subst this; rw [lx_nil, lex_nil]
+    rcases hty with h | h | h <;> subst h <;> rfl
+  | succ n ih =>
+    intro xs hl F sp d d0 w ty hF hty
+    rcases xs with _ | ⟨c, xs⟩
+    · rw [lx_nil, lex_nil]; rcases hty with h | h | h <;> subst h <;> rfl
+    rcases step0 o (c :: xs) (by simp) F sp hF 0 d d0 w ty (Or.inl rfl) with ⟨hn, hl0⟩ | ⟨F', r, sp', d', d0', w', hr, hF', he, hx⟩ |
+      ⟨t, bs, F', r, sp', d', d0', w', hr, hF', he, _, hx, hx9⟩
+    · rw [hl0 rfl, hn]; rfl
+    · rw [hx, he]; exact ih r (by simp only [List.length_cons] at hl hr; omega) F' sp' d' d0' w' ty hF' hty
+    · rw [he, R1_cons o t _ ty hty]
+      split
+      · exact hx9 ‹_› rfl
+      · rw [hx ‹_›]; simp only [if_true, List.nil_append]
+        exact ih r (by simp only [List.length_cons] at hl hr; omega) F' sp' d' d0' w' _ hF' (tyStep_ok ty t hty ‹_›)
+
+theorem uniTy_some (s : Bool) : ∀ (ts : List Tok) (s' : Bool), uniTy (some s) ts = some s' → s' = s
+  | [], _, h => by simp [uniTy] at h; exact h.symm
+  | t :: ts, s', h => by
+    cases t <;> simp only [uniTy] at h <;> (try exact uniTy_some s ts s' h)
+    rename_i b; split at h
+    · simp at *; subst_vars; exact uniTy_some _ ts s' h
+    · cases h
+
+/-- **pass 2**: the machine's bytes decode to `lex`'s tokens -/
+theorem pass2 (o : List UInt8) (s : Bool) : ∀ (n : Nat) (xs : List UInt8), xs.length ≤ n → ∀ F sp d d0 w ts, Fu F xs sp →
+    lex F xs = some ts → uniTy (some s) ts = some s → dec (lx xs o 1 0 sp d d0 w (tcode s)) [] none = some ts := by
+  intro n
+  induction n with
+  | zero =>
+    intro xs hl F sp d d0 w ts _ hlex _
+    have : xs = [] := List.length_eq_zero_iff.mp (by omega)
+    subst this; rw [lex_nil] at hlex; cases hlex; rw [lx_nil]; rfl
+  | succ n ih =>
+    intro xs hl F sp d d0 w ts hF hlex hu
+    rcases xs with _ | ⟨c, xs⟩
+    · rw [lex_nil] at hlex; cases hlex; rw [lx_nil]; rfl
+    rcases step0 o (c :: xs) (by simp) F sp hF 1 d d0 w (tcode s) (Or.inr rfl) with ⟨hn, _⟩ |
+      ⟨F', r, sp', d', d0', w', hr, hF', he, hx⟩ | ⟨t, bs, F', r, sp', d', d0', w', hr, hF', he, hdec, hx, _⟩
+    · rw [hn] at hlex; cases hlex
+    · rw [hx]; rw [he] at hlex; exact ih r (by simp only [List.length_cons] at hl hr; omega) F' sp' d' d0' w' ts hF' hlex hu
+    · rw [he] at hlex
+      rcases hl' : lex F' r with _ | ts'
+      · rw [hl'] at hlex; cases hlex
+      rw [hl'] at hlex; simp only [Option.map_some, Option.some.injEq] at hlex; subst hlex
+      have hts : tyStep (tcode s) t = tcode s := by
+        cases t <;> (try rfl)
+        rename_i b; simp only [uniTy] at hu; split at hu
+        · simp at *; subst_vars; rename_i sg; cases sg <;> rfl
+        · cases hu
+      have hu' : uniTy (some s) ts' = some s := by
+        cases t <;> simp only [uniTy] at hu <;> (try exact hu)
+        split at hu
+        · simp at *; subst_vars; exact hu
+        · cases hu
+      rw [hx (by rw [hts]; cases s <;> decide), hts]
+      simp only [show (1 : UInt64) ≠ 0 by decide, if_false]
+      rw [hdec, ih r (by simp only [List.length_cons] at hl hr; omega) F' sp' d' d0' w' ts' hF' hl' hu']; rfl
+
+theorem uniTy_none (s : Bool) : ∀ (ts : List Tok), uniTy none ts = some s → uniTy (some s) ts = some s
+  | [], h => by simp [uniTy] at h
+  | t :: ts, h => by
+    cases t <;> simp only [uniTy] at h ⊢ <;> (try exact uniTy_none s ts h)
+    rename_i b
+    have := uniTy_some b ts s h; subst this; simp [h]
+
+/-- **stage 1 is the lexer of `nanoElab`**: for every byte list -/
+theorem lexB_eq (xs : List UInt8) : decL (lexB xs) = lexT xs := by
+  unfold lexB lexT
+  rw [pass1 xs xs.length xs (Nat.le_refl _) xs.length 0 0 0 0 0 (Or.inl ⟨rfl, rfl⟩) (Or.inl rfl)]
+  rcases hl : lex xs.length xs with _ | ts
+  · rfl
+  · simp only [R1, tyOf, show (0 : UInt64) ≠ 1 by decide, show (0 : UInt64) ≠ 2 by decide, if_false]
+    rcases hu : uniTy none ts with _ | s
+    · rfl
+    · have h2 := pass2 xs s xs.length xs (Nat.le_refl _) xs.length 0 0 0 0 ts (Or.inl ⟨rfl, rfl⟩) hl (uniTy_none s ts hu)
+      cases s <;> simp only [tcode, decL] at h2 ⊢ <;> simp at h2 ⊢ <;> rw [h2] <;> rfl
+
 end Nano.B
