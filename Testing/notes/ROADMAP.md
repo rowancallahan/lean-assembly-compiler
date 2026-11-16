@@ -283,3 +283,5 @@ dependency closure; theorem STATEMENTS (`Spec/`) are reviewed by the owner, not 
   (proved); B1 compiles S → B2, B2 compiles S → B3, require B2 = B3 (fixed point); S agrees with the Lean `nanoCompile`.
   Nano owns its whole pipeline (its elaborator is its own spec, cross-checked against Lean's), so no Lean elaborator in
   the loop. Full proof additionally needs `nanoGen` correctness (generated code = `Prog.eval`).
+- (owner) `nanoElab` + `Prog.eval` ARE the spec of nano: never proved, only expanded (cross-checked against Lean's
+  elaborator). Everything after elaboration is proved: `CompileCorrect riscv nanoCompile`, reusing any big-compiler piece.
