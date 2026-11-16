@@ -34,3 +34,58 @@ Evidence:
 * Machine tests, stack generator `nanoGenS` (nano-e2e): `NANO_INT=1 python3 Testing/nano/nano_test.py 30 3`:
   22 + 30 Int64 programs × 6 inputs = **312 pairs** on qemu-riscv64 and Sail == `Prog.eval` (sp restored).
   (UInt64 run unchanged: `nano_test.py 5`: 264 pairs.)
+
+## Exact-subset rule (owner, ROADMAP 2026-11-16): elaborator changes and the boundary fuzz
+`Testing/nano/boundary.py N seed`: mutants of valid programs (names → keywords / Lean globals / odd shapes; inserted `-`,
+`--`, tabs, CR, `0x1`, `1e3`, `1_000`, `g -5`, newlines; duplicated defs; `( : T)`; type swaps; deleted tokens), each judged
+by nano (`Testing/nano/judge.lean`) and by plain `lean` as its OWN root-level file (Init only; namespaces would hide
+global clashes). Failure = nano accepts and Lean rejects or the values differ on 3 random inputs.
+Bugs found (nano accepted, Lean rejected) and fixed by rejecting, in `Nano/Elab.lean`:
+* def names that are Lean globals (`def id`, `def rfl`, `def min` (an `export` alias)) and keywords as names (`at`, `fun`):
+  names now have a fixed SHAPE, 1–3 lowercase letters then digits / `_digit` groups (`f`, `sq`, `add3`, `x_1`; covers
+  every existing corpus and generator), minus `reserved` = every name of that shape (≤ 1 digit or `_1` suffix checked
+  exhaustively, `Testing/nano/work`-style script in the log below) that Lean resolves globally or reads as a token:
+  `and at bif bne by do end for fun get id if in ite max min mt mut not or rfl set try xor` (+ `def let`).
+  Recomputing it for another Lean version: resolveGlobalName / aliases / token table over all names of the shape.
+* tabs (Lean rejects), lone CR (Lean accepts only CR LF); numerals glued to a letter or `(` (`g 0x10`, `1e3`);
+  `)` glued to `(` / a name / a numeral and a name glued to `(` (Lean needs whitespace before an argument:
+  `g (x)y` is not a 2-argument call); empty binder group `( : T)`; a def name defined twice.
+Results: seeds 1–4 (300 + 3 × 600) and seed 7 (1500): 0 failures; e.g. seed 7: both accept with the same values 292,
+nano rejects / Lean accepts 91, both reject 1117. Also checked by hand: newlines at column 0 inside applications,
+before `- y`, `* y`, `;`, inside binder groups: same values both sides.
+All 39 UInt64 (`Nano/Agree.lean`) and 22 Int64 (`Nano/AgreeInt.lean`) agreement proofs still check; fuzz.py 300 7 and
+fuzz_int.py 250 11 60: 0 mismatches.
+
+## The chain (Nano/Chain.lean)
+Full-chain test (owner request), `python3 Testing/nano/chain_test.py 8 4` (latest numbers; run after every piece lands):
+95 sources (39 UInt64 + 22 Int64 corpus, 18 adversarial edge cases, 8 + 8 random), 4 inputs each (edge/overflow).
+* L Lean's real elaborator (root-level file per source, `#eval`): accepts 88.
+* E `nanoElabT` (Lean): accepts 85, all with Lean's type and Lean's values (340); 0 mismatches.
+* P proved `nanoCompile` (code computed in Lean; no binary of `Ir.compileW` yet): 85 programs, 340 pairs on QEMU and
+  Sail in the `StartCorrect` convention == Lean's real values at `memoryNeeded`, OOM flag at `memoryNeeded - 1`
+  (ir_test.py; `- 1` rather than `- 8`: same bucket, memoryNeeded is a multiple of 8), writes only in output + work.
+* S stack route, largest self-hosted prefix: `genR` in Lean, `asm` = our compiler's binary (`Nano.Self.nanoAsm`) on QEMU
+  and Sail == Lean `asm`; its code == `nanoGenS`, 340 pairs on qemu-riscv64 and Sail == Lean's real values.
+Stages run in Lean (no binary yet): `nanoElab` (all routes), `lower`/`Ir.compileW` (P), `genR` (S).
+
+`nanoCompileSrc src = (nanoElab src).bind nanoCompile`, `nanoCompile = Ir.compile ∘ lower` (code = `nanoGen p`).
+Theorems (machine axioms = exactly the Sail set of `nano_compile_correct`; listed in axioms_nano-mvp.lean):
+* `nano_chain`: `nanoElab src = some p` → `nanoCompileSrc src = some c` → ∀ args (8-byte LE words, `length = p.1`),
+  ∀ start with `StartCorrect riscv start call c.code (encWs args)`, 8 output bytes, `memoryNeeded c … ≤ workLength`:
+  `c.code = nanoGen p` and `p.eval args = some v` and the Sail RISC-V model runs from `start` to a state at the return
+  address, status ≠ OOM flag, output block = `leN 8 v`.
+* `nano_chain_int`: same for `nanoElabT src = some (true, p)` (Int64 source): two's complement in/out, `p.evalI args`
+  (Lean's `Int64` `+ - *`).
+* `nano_chain_runs`: the `CompileRuns` form (no memory hypothesis): returns, memory outside output/work unchanged,
+  flag ↔ out of memory.
+* `chain_of` / `chain_int_of`: the same for ANY `compile` with `CompileCorrect riscv compile` (ready for nano-proof's
+  `asm ∘ genR` theorem: one line each).
+
+| link | status |
+|---|---|
+| UTF-8 bytes → `Prog` (`nanoElab`/`nanoElabT`) | **spec** (owner: draft, never proved). Checked against Lean: 39 UInt64 + 22 Int64 programs ∀ inputs (kernel, `Agree*.lean`), fuzz 300 + 310 programs, boundary fuzz 3300 mutants (exact-subset rule), 0 failures |
+| `Prog.eval` / `Prog.evalI` | **spec** (`Prog.evalI` = Lean's Int64 ops); `evalI = eval` on bits **proved** (`evalI_eq`) |
+| bytes ↔ args (`nanoRun`, `encWs`, `encIs`) | **proved** (`wordsOf_encWs`, `nanoRun_int`) |
+| `Prog` → RISC-V (`nanoCompile`, IR route) | **proved** (nano-proof: `nano_compile_correct`, `nano_compile_runs`); tested 312 (nano-proof) + 272 Int64 pairs QEMU + Sail |
+| `Prog` → RISC-V (`nanoCompileS = asm ∘ genR`, stack route) | tested only (312 Int64 + 264 UInt64 pairs here, 354 in nano-e2e); proof = nano-proof's lane (in progress) |
+| self-hosted: binary computing the compiler on Sail | only `asm` (nano-e2e: `Nano.Self.nanoAsm.implements1`); `nanoElab`/`genR` byte-level rewrite = nano-e2e's lane (in progress). The proved IR route is NOT self-hostable yet (`Ir.compileW` not compiled by our front end) |
