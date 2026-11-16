@@ -1,0 +1,6950 @@
+{
+ "selfhost": {
+  "translator shape (no type named)": {
+   "lowest_blockers": [
+    "Proven.Mach.IR.Tst.c",
+    "Proven.Mach.IR.Ins.dst",
+    "Proven.Ir.Tst.c",
+    "Proven.Mach.Wide.wenc",
+    "Proven.Mach.Wide.lenBr",
+    "Proven.Mach.Wide.lenJ",
+    "Proven.Mach.Wide.jOK",
+    "Proven.Mach.WideF.toWide",
+    "Proven.Mach.Wide.brOK",
+    "Proven.Mach.Wide.immOK",
+    "Proven.Mach.Wide.maxSlots",
+    "Proven.Mach.Wide.offOK",
+    "Proven.Ir.Func.slots",
+    "Proven.Ir.Target.toWideF",
+    "Proven.Ir.Func.entry",
+    "Proven.Mach.IR.Ins.mv",
+    "Proven.Mach.IR.SR.isInc",
+    "Proven.Mach.Sel.isVar",
+    "Proven.Mach.Sel.uses",
+    "Proven.Ir.SC.seqs",
+    "Proven.Mach.IR.SR.incs",
+    "Proven.Mach.IR.Flow.look",
+    "Proven.Mach.IR.Hoist.big",
+    "Proven.Mach.IR.SR.inits",
+    "Proven.Ir.IndLow.setK",
+    "Proven.xval",
+    "Proven.CS.gs",
+    "Proven.Mach.IR.Hoist.sets",
+    "Proven.Mach.Riscv.fits12",
+    "Proven.loopV",
+    "Proven.Ir.IndLow.addK",
+    "Proven.Ir.Prog.main",
+    "Proven.Ir.Target.callOK",
+    "Proven.vIdx",
+    "Proven.zx",
+    "Proven.Ir.Frame.f",
+    "Proven.Ir.storeRegs",
+    "Proven.Mach.Base.mem",
+    "Proven.Mach.Riscv.LiStep.init",
+    "Proven.Mach.Riscv.tz",
+    "Proven.fetchG",
+    "Proven.Ir.Env.fp",
+    "Proven.Ir.Env.fq",
+    "Proven.Ir.Env.fs",
+    "Proven.Ir.Frame.regs",
+    "Proven.Mach.Base.ramHi",
+    "Proven.Mach.Base.ramLo",
+    "Proven.Mach.Core.toBase",
+    "Proven.Mach.isS",
+    "Proven.Ir.Arg.eval",
+    "Proven.Ir.Frame.l",
+    "Proven.Ir.Frame.pc",
+    "Proven.Mach.Base.get",
+    "Proven.ltE",
+    "Proven.BPred.bit",
+    "Proven.Ir.IndLow.mov",
+    "Proven.Mach.Machine.toCore",
+    "Proven.Mach.Riscv.brOK",
+    "Proven.Mach.Riscv.jOK",
+    "Proven.NS",
+    "Proven.frameBase",
+    "Proven.Ir.IndLow.bin",
+    "Proven.Ir.IndLow.nz",
+    "Proven.Mach.MachineF.frameAt",
+    "Proven.Mach.Wide.toCore",
+    "Proven.Mach.initL",
+    "Proven.addE",
+    "Proven.Ir.Mem.cells",
+    "Proven.Ir.Mem.inp",
+    "Proven.eqB",
+    "Proven.innerBody",
+    "Proven.Mach.loB",
+    "Proven.WExp.tr",
+    "Proven.minN",
+    "Proven.RedC.fin",
+    "Proven.RedC.init",
+    "Proven.RedC.len",
+    "Proven.RedC.step",
+    "Proven.optA",
+    "Proven.ByteExp.noAcc",
+    "Proven.Ir.Target.stub3",
+    "Proven.Ir.injOn",
+    "Proven.XStage.isSort",
+    "Proven.addrB",
+    "Proven.Mach.Riscv.toMB",
+    "Proven.copyBody",
+    "Proven.BExp.av",
+    "Proven.BExp.depth",
+    "Proven.BExp.vltB",
+    "Proven.Ir.Ctx.wb",
+    "Proven.Mach.Ind.C.lv",
+    "Proven.Mach.Ind.C.rv",
+    "Proven.Mach.Ind.C.tag",
+    "Proven.Mach.Ind.C.xv",
+    "Proven.Mach.Ind.Cn.X",
+    "Proven.Mach.Ind.Cn.f",
+    "Proven.Mach.Ind.Cn.g",
+    "Proven.Mach.Wide.fr",
+    "Proven.Mach.scE",
+    "Proven.relB",
+    "Proven.Ir.Ctx.inA",
+    "Proven.Ir.Ctx.outA",
+    "Proven.Ir.Ctx.wl",
+    "Proven.Ir.IndLow.wStep",
+    "Proven.Mach.IR.Arg.eval",
+    "Proven.Mach.Ind.Pg.X",
+    "Proven.Ir.Ctx.input",
+    "Proven.Ir.Ctx.outL",
+    "Proven.Ir.Ctx.pc0",
+    "Proven.Ir.Ctx.s0",
+    "Proven.Ir.Result.vs",
+    "Proven.Ir.Ctx.F0",
+    "Proven.Ir.Ctx.nS",
+    "Proven.Ir.Ctx.sv",
+    "Proven.Ir.Target.lenCall",
+    "Proven.Ir.Target.top",
+    "Proven.Ir.keys",
+    "Proven.Ir.rs3",
+    "Proven.Ir.tacticLomega",
+    "Proven.Mach.IR.St.mem",
+    "Proven.Mach.IR.St.reg",
+    "Proven.Mach.Sel.envA",
+    "Proven.Mach.WideF.frameAt",
+    "Proven.Mach.envB",
+    "Proven.Mach.svB",
+    "Proven.N",
+    "Proven.Op.ofNat"
+   ],
+   "unlocks": 83
+  },
+  "0-ary constant": {
+   "lowest_blockers": [
+    "Proven.Ir.R0",
+    "Proven.Ir.R1",
+    "Proven.Ir.RLim",
+    "Proven.iRet",
+    "Proven.Ir.RHp",
+    "Proven.iLbuT",
+    "Proven.iSbT",
+    "Proven.Ir.R7",
+    "Proven.Ir.R8",
+    "Proven.Ir.R9",
+    "Proven.iSdGp",
+    "Proven.iLdGp",
+    "Proven.NS",
+    "Proven.innerBody",
+    "Proven.Ir.RIn",
+    "Proven.csClean",
+    "Proven.Ir.R2",
+    "Proven.Mach.Riscv.scB",
+    "Proven.Ir.RLen",
+    "Proven.Ir.ROut",
+    "Proven.Ir.Target.stub3",
+    "Proven.copyBody",
+    "Proven.Mach.Riscv.im1",
+    "Proven.Mach.Riscv.im16",
+    "Proven.Mach.Riscv.im8",
+    "Proven.cs0",
+    "Proven.Mach.scE",
+    "Proven.Mach.scA",
+    "Proven.Ir.tacticLomega",
+    "Proven.N"
+   ],
+   "unlocks": 0
+  },
+  "inductive / structure type": {
+   "lowest_blockers": [
+    "Proven.Mach.Cond.eval",
+    "Proven.addrE",
+    "Proven.Ir.Ctx.s0"
+   ],
+   "unlocks": 0
+  },
+  "monad / higher-kinded (Type → Type, m α)": {
+   "lowest_blockers": [],
+   "unlocks": 0
+  },
+  "polymorphic type variable": {
+   "lowest_blockers": [
+    "Proven.Mach.IR.Tst.a",
+    "Proven.Mach.IR.Tst.b",
+    "Proven.Mach.IR.Arg.regs",
+    "Proven.Ir.Tst.a",
+    "Proven.Ir.Tst.b",
+    "Proven.Mach.IR.Ins.dst",
+    "Proven.Ir.Block.params",
+    "Proven.Ir.Func.blocks",
+    "Proven.Ir.Block.body",
+    "Proven.Ir.Block.term",
+    "Proven.Mach.WideF.toWide",
+    "Proven.Ir.Func.params",
+    "Proven.Mach.Cond.eval",
+    "Proven.Mach.rk",
+    "Proven.Ir.Target.toWideF",
+    "Proven.Ir.Prog.funcs",
+    "Proven.Mach.IR.Ins.mv",
+    "Proven.Mach.Sel.leaf",
+    "Proven.Ir.SC.seqs",
+    "Proven.Mach.Sel.cmpOf",
+    "Proven.Mach.Sel.tstOf",
+    "Proven.Ir.R0",
+    "Proven.Ir.R1",
+    "Proven.Ir.RLim",
+    "Proven.Mach.IR.Flow.cmpOp",
+    "Proven.Mach.IR.Flow.look",
+    "Proven.Ir.RHp",
+    "Proven.Mach.IR.SR.look",
+    "Proven.Ir.R7",
+    "Proven.Ir.ldArg",
+    "Proven.Mach.IR.Hoist.insS",
+    "Proven.Mach.IR.SR.kill",
+    "Proven.Ir.IndLow.setK",
+    "Proven.Mach.IR.Arg.map",
+    "Proven.Mach.IR.Flow.splitW",
+    "Proven.Mach.Wide.argOK",
+    "Proven.Ir.R8",
+    "Proven.Mach.Sel.cond2",
+    "Proven.loopV",
+    "Proven.Ir.IndLow.addK",
+    "Proven.Ir.R9",
+    "Proven.Mach.Base.mem",
+    "Proven.Ir.Frame.dst",
+    "Proven.Mach.Core.toBase",
+    "Proven.Mach.Riscv.liSlow",
+    "Proven.Mach.avar",
+    "Proven.ltE",
+    "Proven.BPred.bit",
+    "Proven.Ir.Arg.map",
+    "Proven.Ir.IndLow.mov",
+    "Proven.Mach.Machine.toCore",
+    "Proven.Ir.IndLow.nz",
+    "Proven.Mach.Wide.toCore",
+    "Proven.addE",
+    "Proven.Ir.GS.bs",
+    "Proven.Ir.Lay.pos",
+    "Proven.Ir.State.mem",
+    "Proven.Ir.State.stack",
+    "Proven.eqB",
+    "Proven.innerBody",
+    "Proven.Ir.GS.ci",
+    "Proven.Ir.GS.cp",
+    "Proven.Ir.RIn",
+    "Proven.csClean",
+    "Proven.Ir.R2",
+    "Proven.Ir.State.ev",
+    "Proven.Ir.posOf",
+    "Proven.Mach.Riscv.scB",
+    "Proven.AExp.rB",
+    "Proven.Ir.RLen",
+    "Proven.Ir.ROut",
+    "Proven.ByteExp.noAcc",
+    "Proven.Ir.Mem.init",
+    "Proven.Red.pre",
+    "Proven.Mach.Ind.Pg.arms",
+    "Proven.XStage.isSort",
+    "Proven.addrB",
+    "Proven.copyBody",
+    "Proven.Ir.Prog.result",
+    "Proven.Ir.Result.mem",
+    "Proven.cs0",
+    "Proven.BExp.av",
+    "Proven.BExp.depth",
+    "Proven.BExp.vltB",
+    "Proven.Ir.Result.ev",
+    "Proven.Mach.Ind.C.lv",
+    "Proven.Mach.Ind.C.rv",
+    "Proven.Mach.Ind.C.tag",
+    "Proven.Mach.Ind.C.xv",
+    "Proven.Mach.Ind.Cn.me",
+    "Proven.Mach.Ind.Cn.ρ",
+    "Proven.Mach.Ind.Kd.pair",
+    "Proven.Mach.Ind.Kd.pick",
+    "Proven.relB",
+    "Proven.Mach.Ind.E.okc",
+    "Proven.Mach.Ind.E.tags",
+    "Proven.Mach.Ind.Kd.dflt",
+    "Proven.Mach.Ind.sTag",
+    "Proven.Mach.scA",
+    "Proven.addrE",
+    "Proven.Mach.IR.Code.seqs",
+    "Proven.Mach.IR.St.mem",
+    "Proven.Mach.IR.St.reg",
+    "Proven.Mach.Sel.envA",
+    "Proven.Mach.envB",
+    "Proven.Mach.svB"
+   ],
+   "unlocks": 31
+  },
+  "List / Array / Option of non-scalar element": {
+   "lowest_blockers": [
+    "Proven.Mach.IR.Arg.regs",
+    "Proven.Mach.IR.Ins.dst",
+    "Proven.Ir.Block.params",
+    "Proven.Ir.Func.blocks",
+    "Proven.Ir.Block.body",
+    "Proven.Ir.Func.params",
+    "Proven.Mach.WideF.encE",
+    "Proven.Mach.WideF.encL",
+    "Proven.Ir.Prog.funcs",
+    "Proven.Mach.IR.Ins.mv",
+    "Proven.Mach.Sel.leaf",
+    "Proven.Ir.Target.encCall",
+    "Proven.Ir.Target.encEC",
+    "Proven.Ir.Target.encLC",
+    "Proven.Ir.Target.encT",
+    "Proven.Ir.Target.encX",
+    "Proven.Mach.IR.SR.addrOf",
+    "Proven.Mach.IR.SR.fnd",
+    "Proven.Mach.Sel.cmpOf",
+    "Proven.Mach.IR.Flow.cmpOp",
+    "Proven.Mach.IR.Flow.look",
+    "Proven.Mach.IR.Hoist.kA",
+    "Proven.Mach.IR.Hoist.pos",
+    "Proven.Mach.IR.SR.dropD",
+    "Proven.Mach.IR.SR.mkPB",
+    "Proven.Mach.IR.Hoist.insS",
+    "Proven.Mach.IR.Flow.splitW",
+    "Proven.Mach.Sel.cond2",
+    "Proven.Ir.Arg.locs",
+    "Proven.Ir.Frame.dst",
+    "Proven.Ir.Mem.blks",
+    "Proven.Mach.addrB",
+    "Proven.Mach.addrW",
+    "Proven.Ir.Mem.out",
+    "Proven.Ir.idx",
+    "Proven.Ir.GS.bs",
+    "Proven.Ir.Lay.fq",
+    "Proven.Ir.Lay.pos",
+    "Proven.Ir.State.stack",
+    "Proven.Ir.dedup",
+    "Proven.Ir.nullTest",
+    "Proven.Ir.GS.ci",
+    "Proven.Ir.GS.cp",
+    "Proven.Ir.setOut",
+    "Proven.Ir.State.ev",
+    "Proven.Ir.posOf",
+    "Proven.Mach.Riscv.choose",
+    "Proven.Mach.Riscv.firstB",
+    "Proven.Ir.Prog.result",
+    "Proven.Ir.Result.ev",
+    "Proven.Top.wordBytes",
+    "Proven.addrE",
+    "Proven.Ir.Ctx.W",
+    "Proven.Mach.okA",
+    "Proven.Ir.Ctx.hm"
+   ],
+   "unlocks": 13
+  },
+  "sized BitVec / Fin": {
+   "lowest_blockers": [
+    "Proven.T",
+    "Proven.encR",
+    "Proven.Op.eval",
+    "Proven.encI",
+    "Proven.Mach.Cond.eval",
+    "Proven.Mach.WideF.encE",
+    "Proven.Mach.WideF.encL",
+    "Proven.Mach.MOp.eval",
+    "Proven.A",
+    "Proven.Ir.Target.encCall",
+    "Proven.Ir.Target.encEC",
+    "Proven.Ir.Target.encLC",
+    "Proven.Ir.Target.encT",
+    "Proven.Ir.Target.encX",
+    "Proven.immB",
+    "Proven.immJ",
+    "Proven.Mach.IR.Hoist.kA",
+    "Proven.Mach.IR.Hoist.pos",
+    "Proven.iRet",
+    "Proven.iLbuT",
+    "Proven.iSbT",
+    "Proven.iSdS",
+    "Proven.Mach.Riscv.LiStep.eval",
+    "Proven.G.encL",
+    "Proven.iSdGp",
+    "Proven.G.encS",
+    "Proven.G.encU",
+    "Proven.iLdGp",
+    "Proven.Mach.Riscv.brOff",
+    "Proven.Mach.Riscv.condF3",
+    "Proven.Mach.Riscv.jOff",
+    "Proven.A8",
+    "Proven.Mach.Riscv.firstB",
+    "Proven.Mach.Riscv.im1",
+    "Proven.Mach.Riscv.im16",
+    "Proven.Mach.Riscv.im8",
+    "Proven.Mach.Riscv.immN",
+    "Proven.Mach.Ind.Kd.pick",
+    "Proven.Top.wordBytes",
+    "Proven.addrE",
+    "Proven.Ir.Ctx.W",
+    "Proven.Mach.okA",
+    "Proven.Ir.Ctx.hm"
+   ],
+   "unlocks": 38
+  },
+  "tuple (×)": {
+   "lowest_blockers": [
+    "Proven.Ir.Func.blocks",
+    "Proven.Mach.IR.SR.addrOf",
+    "Proven.Mach.IR.SR.fnd",
+    "Proven.Mach.Sel.tstOf",
+    "Proven.Mach.IR.SR.mkPB",
+    "Proven.Mach.IR.Flow.splitW",
+    "Proven.Mach.Sel.cond2",
+    "Proven.Ir.Mem.blks",
+    "Proven.Ir.GS.bs",
+    "Proven.Ir.Lay.pos",
+    "Proven.Ir.posOf",
+    "Proven.Mach.Ind.Kd.pick"
+   ],
+   "unlocks": 0
+  },
+  "function-valued parameter or result": {
+   "lowest_blockers": [
+    "Proven.Mach.Riscv.liSlow",
+    "Proven.Mach.isS",
+    "Proven.Mach.loB",
+    "Proven.Ir.injOn",
+    "Proven.Mach.Ind.E.okc",
+    "Proven.Mach.Ind.E.tags"
+   ],
+   "unlocks": 0
+  },
+  "HashMap / HashSet / memo state": {
+   "lowest_blockers": [],
+   "unlocks": 0
+  },
+  "String / Char / Int": {
+   "lowest_blockers": [],
+   "unlocks": 0
+  },
+  "non-computational (Type / Prop / Sort / Decidable)": {
+   "lowest_blockers": [
+    "Proven.Ir.Func.slots",
+    "Proven.Ir.Func.entry",
+    "Proven.Ir.Prog.main",
+    "Proven.Ir.Frame.f",
+    "Proven.Mach.Riscv.liSlow",
+    "Proven.Ir.Frame.l",
+    "Proven.Ir.Frame.pc",
+    "Proven.Mach.IR.Arg.eval",
+    "Proven.Mach.Ind.E.okc",
+    "Proven.Mach.Ind.E.tags"
+   ],
+   "unlocks": 0
+  },
+  "several non-structural parameters": {
+   "lowest_blockers": [
+    "Proven.Mach.Sel.argUses",
+    "Proven.Mach.Sel.rangeOf",
+    "Proven.Mach.Sel.simpBin0",
+    "Proven.Ir.okA",
+    "Proven.Mach.IR.Flow.onceL",
+    "Proven.Mach.Riscv.cntE",
+    "Proven.Mach.okE",
+    "Proven.Mach.Sel.usesS"
+   ],
+   "unlocks": 9
+  }
+ },
+ "conleche": {
+  "translator shape (no type named)": {
+   "lowest_blockers": [
+    "ConLeche.Level.subst",
+    "ConLeche.Expr.bvarBRaw",
+    "ConLeche.Expr.mkAppN",
+    "ConLeche.Expr.abstract1",
+    "ConLeche.formerResSort",
+    "ConLeche.Expr.instantiateList",
+    "ConLeche.Expr.liftLooseBVars",
+    "ConLeche.structProjPs",
+    "ConLeche.etaProjs",
+    "ConLeche.Expr.fvarBRaw",
+    "ConLeche.Expr.hasLP",
+    "ConLeche.Cached.natSizeBytes",
+    "ConLeche.Cached.mkAppRange",
+    "ConLeche.Cached.nameIsC",
+    "ConLeche.Cached.pushCheapKey",
+    "ConLeche.Cached.whnfCoreStoresDone",
+    "ConLeche.Level.allParamsDefined",
+    "ConLeche.nestPhs",
+    "ConLeche.nestKeyMap",
+    "ConLeche.natOpName",
+    "ConLeche.targetHoles",
+    "ConLeche.structPsAt",
+    "ConLeche.Expr.substConst0",
+    "ConLeche.Expr.substConstAll",
+    "ConLeche.canonNameMap",
+    "ConLeche.ptrDecEq",
+    "ConLeche.Expr.BeqOutX",
+    "ConLeche.Expr.beqKey",
+    "ConLeche.Expr.BeqOk"
+   ],
+   "unlocks": 40
+  },
+  "0-ary constant": {
+   "lowest_blockers": [
+    "ConLeche.natDivName",
+    "ConLeche.natGcdName",
+    "ConLeche.natLandName",
+    "ConLeche.natLorName",
+    "ConLeche.natShiftLeftName",
+    "ConLeche.natShiftRightName",
+    "ConLeche.natXorName",
+    "ConLeche.natAddName",
+    "ConLeche.natBleName",
+    "ConLeche.natMulName",
+    "ConLeche.natSubName",
+    "ConLeche.natBeqName",
+    "ConLeche.natModName",
+    "ConLeche.natPowName",
+    "ConLeche.satRange",
+    "ConLeche.Expr.bvarPoolSize",
+    "ConLeche.natName",
+    "ConLeche.charName",
+    "ConLeche.listName",
+    "ConLeche.Expr.stripPis",
+    "ConLeche.charOfNatName",
+    "ConLeche.listConsName",
+    "ConLeche.listNilName",
+    "ConLeche.stringName",
+    "ConLeche.stringOfListName",
+    "ConLeche.PropWhen.inter",
+    "ConLeche.openPisAtFvars",
+    "ConLeche.ConstantInfo.toConstantVal",
+    "ConLeche.PropWhen.isNever",
+    "ConLeche.boolTrueName",
+    "ConLeche.instPisWith",
+    "ConLeche.boolFalseName",
+    "ConLeche.natPredName",
+    "ConLeche.sorryAxName",
+    "ConLeche.andName",
+    "ConLeche.lamProj?",
+    "ConLeche.Expr.peelPis",
+    "ConLeche.PropWhen.isProp",
+    "ConLeche.Expr.binderDom",
+    "ConLeche.andIntroName",
+    "ConLeche.CheckMode.verifiedChecks",
+    "ConLeche.Expr.binderPair?",
+    "ConLeche.bindersFuel",
+    "ConLeche.eagerReduceName",
+    "ConLeche.piResidual",
+    "ConLeche.Expr.instSpine",
+    "ConLeche.ReducibilityHint.sameRegular",
+    "ConLeche.defeqLoopFuel",
+    "ConLeche.unitLikeFuel",
+    "ConLeche.whnfLoopFuel",
+    "ConLeche.Level.defaultFuel",
+    "ConLeche.Cached.getAppArgsArrGo",
+    "ConLeche.Cached.instCCapC",
+    "ConLeche.Cached.natCountMax",
+    "ConLeche.Cached.natNumeralTooBig",
+    "ConLeche.Cached.peelFuel",
+    "ConLeche.whnfCoreLoopFuel",
+    "ConLeche.checkFuel",
+    "ConLeche.Name.nodup",
+    "ConLeche.boolName",
+    "ConLeche.natIndOk",
+    "ConLeche.quotName",
+    "ConLeche.charTyOk",
+    "ConLeche.listTyOk",
+    "ConLeche.stringTyOk",
+    "ConLeche.Expr.piBinders",
+    "ConLeche.eqName",
+    "ConLeche.QuotKind.slot",
+    "ConLeche.nestNonValid",
+    "ConLeche.BasisDSL.prop",
+    "ConLeche.Display.maxLen",
+    "ConLeche.Expr.stripLams",
+    "ConLeche.fuelSlack",
+    "ConLeche.reduceBoolName",
+    "ConLeche.NestFieldKind.flat",
+    "ConLeche.Env.empty",
+    "ConLeche.targetPiDomsWith",
+    "ConLeche.ClassSlot.isMinor",
+    "ConLeche.ofReduceNatName",
+    "ConLeche.trueName",
+    "ConLeche.BasisDSL.type1",
+    "ConLeche.iffName",
+    "ConLeche.nonemptyName",
+    "ConLeche.reduceBoolDeclPin",
+    "ConLeche.reduceNatDeclPin",
+    "ConLeche.emptyName",
+    "ConLeche.falseName",
+    "ConLeche.ofReduceBoolName",
+    "ConLeche.Name.componentList",
+    "ConLeche.choiceName",
+    "ConLeche.propextName",
+    "ConLeche.quotLiftF",
+    "ConLeche.trustCompilerName",
+    "ConLeche.Expr.piSortTeleLen?",
+    "ConLeche.pinAgrees",
+    "ConLeche.andRecName",
+    "ConLeche.Expr.dropVars",
+    "ConLeche.Expr.EqPair.dflt"
+   ],
+   "unlocks": 106
+  },
+  "inductive / structure type": {
+   "lowest_blockers": [
+    "ConLeche.ConstantInfo.name",
+    "ConLeche.FBase.find?",
+    "ConLeche.FEnv.lookup",
+    "ConLeche.PropWhen.inter",
+    "ConLeche.FBase.findTable?",
+    "ConLeche.FEnv.rawTable?",
+    "ConLeche.BasisDSL.rule",
+    "ConLeche.ConstantInfo.toConstantVal",
+    "ConLeche.PropWhen.isNever",
+    "ConLeche.ProjTable.entry",
+    "ConLeche.PropWhen.bindZ",
+    "ConLeche.PropWhen.isProp",
+    "ConLeche.CheckMode.verifiedChecks",
+    "ConLeche.MemberShape.structCtor?",
+    "ConLeche.defEqList",
+    "ConLeche.ensureSort",
+    "ConLeche.lazyDeltaProjReduction",
+    "ConLeche.structEtaExpand",
+    "ConLeche.stuckIrrel",
+    "ConLeche.unitLikeLoop",
+    "ConLeche.whnfCoreBody",
+    "ConLeche.whnfLoop",
+    "ConLeche.Cached.CState.modeMemos",
+    "ConLeche.Cached.natCountTooBig",
+    "ConLeche.Cached.natNumeralTooBig",
+    "ConLeche.recFireLevelCount",
+    "ConLeche.unwrapOr",
+    "ConLeche.natIndOk",
+    "ConLeche.ClassGen.binder",
+    "ConLeche.charTyOk",
+    "ConLeche.listTyOk",
+    "ConLeche.stringTyOk",
+    "ConLeche.NestCtx.hiAt",
+    "ConLeche.BlockShape.formers",
+    "ConLeche.ClassGen.slotVar",
+    "ConLeche.checkSpineAt",
+    "ConLeche.nestNonValid",
+    "ConLeche.classLeafAt",
+    "ConLeche.BlockShape.majorIdxAt",
+    "ConLeche.BlockShape.rulePrefixAt",
+    "ConLeche.NestCtx.rootHoles",
+    "ConLeche.targetPinTys",
+    "ConLeche.BlockShape.nIdxs",
+    "ConLeche.Cached.CState.flushed",
+    "ConLeche.ClassRead.classes",
+    "ConLeche.Env.empty",
+    "ConLeche.blockRecLpsOk",
+    "ConLeche.BlockShape.memberCtors",
+    "ConLeche.nestFields",
+    "ConLeche.FEnv.overlay",
+    "ConLeche.blockCtors",
+    "ConLeche.BasisDSL.ruleAt",
+    "ConLeche.divModAttemptReason",
+    "ConLeche.Env.pushDelta",
+    "ConLeche.pinAgrees",
+    "ConLeche.consSumCtors"
+   ],
+   "unlocks": 13
+  },
+  "monad / higher-kinded (Type → Type, m α)": {
+   "lowest_blockers": [
+    "ConLeche.Expr.resTerm",
+    "ConLeche.CheckM",
+    "ConLeche.formerSortLoop",
+    "ConLeche.CheckMode.verifiedChecks",
+    "ConLeche.liftFueled",
+    "ConLeche.defEqList",
+    "ConLeche.CoreFns.ioView",
+    "ConLeche.ensureSort",
+    "ConLeche.lazyDeltaProjReduction",
+    "ConLeche.structEtaExpand",
+    "ConLeche.stuckIrrel",
+    "ConLeche.tryUnfoldProjApp",
+    "ConLeche.unitLikeFields",
+    "ConLeche.unitLikeLoop",
+    "ConLeche.whnfCoreBody",
+    "ConLeche.whnfLoop",
+    "ConLeche.Expr.resBool",
+    "ConLeche.unwrapOr",
+    "ConLeche.checkSpineAt",
+    "ConLeche.classMinorSlot",
+    "ConLeche.targetPinTys",
+    "ConLeche.Expr.resNat",
+    "ConLeche.nestFields"
+   ],
+   "unlocks": 7
+  },
+  "polymorphic type variable": {
+   "lowest_blockers": [],
+   "unlocks": 0
+  },
+  "List / Array / Option of non-scalar element": {
+   "lowest_blockers": [
+    "ConLeche.FBase.find?",
+    "ConLeche.FEnv.lookup",
+    "ConLeche.Level.imaxRules",
+    "ConLeche.Level.leqCore",
+    "ConLeche.Level.rest",
+    "ConLeche.Expr.stripPis",
+    "ConLeche.openPisAtFvars",
+    "ConLeche.FBase.findTable?",
+    "ConLeche.FEnv.rawTable?",
+    "ConLeche.Level.isEquiv",
+    "ConLeche.lamProj?",
+    "ConLeche.Expr.binderPair?",
+    "ConLeche.MemberShape.structCtor?",
+    "ConLeche.Expr.phApp?",
+    "ConLeche.natIndOk",
+    "ConLeche.charTyOk",
+    "ConLeche.listTyOk",
+    "ConLeche.stringTyOk",
+    "ConLeche.BlockShape.formers",
+    "ConLeche.classOfMotiveVar",
+    "ConLeche.ClassRead.motiveSlot",
+    "ConLeche.Expr.stripLams",
+    "ConLeche.NestCtx.rootHoles",
+    "ConLeche.classMinorSlot",
+    "ConLeche.BlockShape.nIdxs",
+    "ConLeche.ClassRead.classes",
+    "ConLeche.targetPiDomsWith",
+    "ConLeche.BlockShape.memberCtors",
+    "ConLeche.nestFields",
+    "ConLeche.FEnv.overlay",
+    "ConLeche.blockCtors",
+    "ConLeche.nestOutKinds",
+    "ConLeche.Env.pushDelta",
+    "ConLeche.Name.componentList",
+    "ConLeche.Expr.piSortTeleLen?",
+    "ConLeche.consSumCtors"
+   ],
+   "unlocks": 6
+  },
+  "sized BitVec / Fin": {
+   "lowest_blockers": [],
+   "unlocks": 0
+  },
+  "tuple (×)": {
+   "lowest_blockers": [],
+   "unlocks": 0
+  },
+  "function-valued parameter or result": {
+   "lowest_blockers": [
+    "ConLeche.Expr.BTab",
+    "ConLeche.Expr.HTab",
+    "ConLeche.Expr.NTab",
+    "ConLeche.withExclusive",
+    "ConLeche.PropWhen.bindZ",
+    "ConLeche.formerSortLoop",
+    "ConLeche.unitLikeFields",
+    "ConLeche.Expr.replaceFVars",
+    "ConLeche.Expr.constHoleAt?",
+    "ConLeche.canonLevel",
+    "ConLeche.listBeqBy",
+    "ConLeche.Expr.withAddr"
+   ],
+   "unlocks": 11
+  },
+  "HashMap / HashSet / memo state": {
+   "lowest_blockers": [
+    "ConLeche.Cached.CState.modeMemos",
+    "ConLeche.Expr.BeqMap"
+   ],
+   "unlocks": 1
+  },
+  "String / Char / Int": {
+   "lowest_blockers": [
+    "ConLeche.Level.imaxRules",
+    "ConLeche.Level.leqCore",
+    "ConLeche.Level.rest",
+    "ConLeche.liftFueled",
+    "ConLeche.Cached.natCountTooBig",
+    "ConLeche.Display.codeEscape",
+    "ConLeche.Display.idShaped",
+    "ConLeche.divModAttemptReason",
+    "ConLeche.Display.Acc.finish",
+    "ConLeche.Name.componentList"
+   ],
+   "unlocks": 3
+  },
+  "non-computational (Type / Prop / Sort / Decidable)": {
+   "lowest_blockers": [],
+   "unlocks": 0
+  },
+  "several non-structural parameters": {
+   "lowest_blockers": [],
+   "unlocks": 0
+  }
+ },
+ "combined": {
+  "translator shape (no type named)": {
+   "unlocks": 123
+  },
+  "0-ary constant": {
+   "unlocks": 106
+  },
+  "inductive / structure type": {
+   "unlocks": 13
+  },
+  "monad / higher-kinded (Type → Type, m α)": {
+   "unlocks": 7
+  },
+  "polymorphic type variable": {
+   "unlocks": 31
+  },
+  "List / Array / Option of non-scalar element": {
+   "unlocks": 19
+  },
+  "sized BitVec / Fin": {
+   "unlocks": 38
+  },
+  "tuple (×)": {
+   "unlocks": 0
+  },
+  "function-valued parameter or result": {
+   "unlocks": 11
+  },
+  "HashMap / HashSet / memo state": {
+   "unlocks": 1
+  },
+  "String / Char / Int": {
+   "unlocks": 3
+  },
+  "non-computational (Type / Prop / Sort / Decidable)": {
+   "unlocks": 0
+  },
+  "several non-structural parameters": {
+   "unlocks": 9
+  }
+ },
+ "greedy": [
+  {
+   "scope": "selfhost",
+   "steps": [
+    {
+     "feature": "translator shape (no type named)",
+     "unlocks_total": 83,
+     "gain": 83
+    },
+    {
+     "feature": "polymorphic type variable",
+     "unlocks_total": 188,
+     "gain": 105
+    },
+    {
+     "feature": "List / Array / Option of non-scalar element",
+     "unlocks_total": 251,
+     "gain": 63
+    },
+    {
+     "feature": "sized BitVec / Fin",
+     "unlocks_total": 327,
+     "gain": 76
+    },
+    {
+     "feature": "0-ary constant",
+     "unlocks_total": 406,
+     "gain": 79
+    },
+    {
+     "feature": "tuple (×)",
+     "unlocks_total": 453,
+     "gain": 47
+    }
+   ]
+  },
+  {
+   "scope": "conleche",
+   "steps": [
+    {
+     "feature": "0-ary constant",
+     "unlocks_total": 106,
+     "gain": 106
+    },
+    {
+     "feature": "translator shape (no type named)",
+     "unlocks_total": 160,
+     "gain": 54
+    },
+    {
+     "feature": "inductive / structure type",
+     "unlocks_total": 241,
+     "gain": 81
+    },
+    {
+     "feature": "List / Array / Option of non-scalar element",
+     "unlocks_total": 396,
+     "gain": 155
+    },
+    {
+     "feature": "monad / higher-kinded (Type → Type, m α)",
+     "unlocks_total": 439,
+     "gain": 43
+    },
+    {
+     "feature": "String / Char / Int",
+     "unlocks_total": 495,
+     "gain": 56
+    }
+   ]
+  },
+  {
+   "scope": "combined",
+   "steps": [
+    {
+     "feature": "translator shape (no type named)",
+     "unlocks_total": 123,
+     "gain": 123
+    },
+    {
+     "feature": "0-ary constant",
+     "unlocks_total": 249,
+     "gain": 126
+    },
+    {
+     "feature": "polymorphic type variable",
+     "unlocks_total": 392,
+     "gain": 143
+    },
+    {
+     "feature": "List / Array / Option of non-scalar element",
+     "unlocks_total": 487,
+     "gain": 95
+    },
+    {
+     "feature": "inductive / structure type",
+     "unlocks_total": 701,
+     "gain": 214
+    },
+    {
+     "feature": "sized BitVec / Fin",
+     "unlocks_total": 815,
+     "gain": 114
+    }
+   ]
+  }
+ ],
+ "lowest": {
+  "selfhost": [
+   {
+    "rank": 1,
+    "name": "Proven.Mach.IR.Tst.a",
+    "module": "Compiler.Opt.IR",
+    "above": 77,
+    "features": [
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type X ρ",
+    "typ": "{ρ : Type} → Proven.Mach.IR.Tst ρ → Proven.Mach.IR.Arg ρ",
+    "body": null
+   },
+   {
+    "rank": 2,
+    "name": "Proven.Mach.IR.Tst.b",
+    "module": "Compiler.Opt.IR",
+    "above": 77,
+    "features": [
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type X ρ",
+    "typ": "{ρ : Type} → Proven.Mach.IR.Tst ρ → Proven.Mach.IR.Arg ρ",
+    "body": null
+   },
+   {
+    "rank": 3,
+    "name": "Proven.Mach.IR.Arg.regs",
+    "module": "Compiler.Opt.Alloc",
+    "above": 59,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type List α",
+    "typ": "{α : Type} → Proven.Mach.IR.Arg α → List α",
+    "body": null
+   },
+   {
+    "rank": 4,
+    "name": "Proven.Ir.Tst.a",
+    "module": "Compiler.Ir.Syntax",
+    "above": 54,
+    "features": [
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type X ρ",
+    "typ": "{ρ : Type} → Proven.Ir.Tst ρ → Proven.Ir.Arg ρ",
+    "body": null
+   },
+   {
+    "rank": 5,
+    "name": "Proven.Ir.Tst.b",
+    "module": "Compiler.Ir.Syntax",
+    "above": 54,
+    "features": [
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type X ρ",
+    "typ": "{ρ : Type} → Proven.Ir.Tst ρ → Proven.Ir.Arg ρ",
+    "body": null
+   },
+   {
+    "rank": 6,
+    "name": "Proven.Mach.IR.Tst.c",
+    "module": "Compiler.Opt.IR",
+    "above": 52,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx_ind: X has no argument of a declared type",
+    "typ": "{ρ : Type} → Proven.Mach.IR.Tst ρ → Proven.Mach.Cond",
+    "body": null
+   },
+   {
+    "rank": 7,
+    "name": "Proven.Mach.IR.Ins.dst",
+    "module": "Compiler.Opt.Live",
+    "above": 51,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported result type Option α PANIC at Lean.Expr.appArg! Le",
+    "typ": "{α : Type} → Proven.Mach.IR.Ins α → Option α",
+    "body": null
+   },
+   {
+    "rank": 8,
+    "name": "Proven.Ir.Tst.c",
+    "module": "Compiler.Ir.Syntax",
+    "above": 46,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx_ind: X has no argument of a declared type",
+    "typ": "{ρ : Type} → Proven.Ir.Tst ρ → Proven.Mach.Cond",
+    "body": null
+   },
+   {
+    "rank": 9,
+    "name": "Proven.Mach.Wide.wenc",
+    "module": "Compiler.Wide",
+    "above": 46,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "invalid instantiateLambda, too many parameters",
+    "typ": "Proven.Mach.Wide → Proven.Mach.WOp → List (BitVec 32)",
+    "body": null
+   },
+   {
+    "rank": 10,
+    "name": "Proven.Ir.Block.params",
+    "module": "Compiler.Ir.Syntax",
+    "above": 45,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type List ρ",
+    "typ": "{ρ : Type} → Proven.Ir.Block ρ → List ρ",
+    "body": null
+   },
+   {
+    "rank": 11,
+    "name": "Proven.T",
+    "module": "Spec.Code",
+    "above": 45,
+    "features": [
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type Fin 32",
+    "typ": "Nat → Fin 32",
+    "body": null
+   },
+   {
+    "rank": 12,
+    "name": "Proven.Mach.Wide.lenBr",
+    "module": "Compiler.Wide",
+    "above": 44,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "(kernel) application type mismatch Sim argument has type Type 1 but fu",
+    "typ": "Proven.Mach.Wide → Nat",
+    "body": null
+   },
+   {
+    "rank": 13,
+    "name": "Proven.Mach.Wide.lenJ",
+    "module": "Compiler.Wide",
+    "above": 43,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "(kernel) application type mismatch Sim argument has type Type 1 but fu",
+    "typ": "Proven.Mach.Wide → Nat",
+    "body": null
+   },
+   {
+    "rank": 14,
+    "name": "Proven.Ir.Func.blocks",
+    "module": "Compiler.Ir.Syntax",
+    "above": 42,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "polymorphic type variable",
+     "tuple (×)"
+    ],
+    "first_error": "frontx: unsupported result type List (X × X ρ)",
+    "typ": "{ρ : Type} → Proven.Ir.Func ρ → List (Proven.Ir.Lbl × Proven.Ir.Block ρ)",
+    "body": null
+   },
+   {
+    "rank": 15,
+    "name": "Proven.Mach.Wide.jOK",
+    "module": "Compiler.Wide",
+    "above": 41,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "invalid instantiateForall, too many parameters",
+    "typ": "Proven.Mach.Wide → Bool → Nat → Bool",
+    "body": null
+   },
+   {
+    "rank": 16,
+    "name": "Proven.Ir.Block.body",
+    "module": "Compiler.Ir.Syntax",
+    "above": 40,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type List (X ρ)",
+    "typ": "{ρ : Type} → Proven.Ir.Block ρ → List (Proven.Ir.Inst ρ)",
+    "body": null
+   },
+   {
+    "rank": 17,
+    "name": "Proven.Ir.Block.term",
+    "module": "Compiler.Ir.Syntax",
+    "above": 40,
+    "features": [
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type X ρ",
+    "typ": "{ρ : Type} → Proven.Ir.Block ρ → Proven.Ir.Term ρ",
+    "body": null
+   },
+   {
+    "rank": 18,
+    "name": "Proven.Mach.WideF.toWide",
+    "module": "Compiler.Opt.BFn",
+    "above": 40,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr",
+    "typ": "Proven.Mach.WideF → Proven.Mach.Wide",
+    "body": null
+   },
+   {
+    "rank": 19,
+    "name": "Proven.encR",
+    "module": "Spec.Code",
+    "above": 40,
+    "features": [
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type BitVec 32",
+    "typ": "Nat → Nat → Fin 32 → Fin 32 → Fin 32 → BitVec 32",
+    "body": null
+   },
+   {
+    "rank": 20,
+    "name": "Proven.Op.eval",
+    "module": "Spec.Code",
+    "above": 38,
+    "features": [
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx_ind: unsupported parameter type BitVec 64",
+    "typ": "Proven.Op → BitVec 64 → BitVec 64 → BitVec 64",
+    "body": null
+   },
+   {
+    "rank": 21,
+    "name": "Proven.Mach.Wide.brOK",
+    "module": "Compiler.Wide",
+    "above": 37,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "invalid instantiateForall, too many parameters",
+    "typ": "Proven.Mach.Wide → Bool → Nat → Bool",
+    "body": null
+   },
+   {
+    "rank": 22,
+    "name": "Proven.Mach.Wide.immOK",
+    "module": "Compiler.Wide",
+    "above": 37,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "invalid instantiateForall, too many parameters",
+    "typ": "Proven.Mach.Wide → Proven.Op → BitVec 64 → Bool",
+    "body": null
+   },
+   {
+    "rank": 23,
+    "name": "Proven.encI",
+    "module": "Spec.Code",
+    "above": 37,
+    "features": [
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type BitVec 32",
+    "typ": "Nat → Nat → Fin 32 → Fin 32 → BitVec 32",
+    "body": null
+   },
+   {
+    "rank": 24,
+    "name": "Proven.Ir.Func.params",
+    "module": "Compiler.Ir.Syntax",
+    "above": 36,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type List ρ",
+    "typ": "{ρ : Type} → Proven.Ir.Func ρ → List ρ",
+    "body": null
+   },
+   {
+    "rank": 25,
+    "name": "Proven.Mach.Wide.maxSlots",
+    "module": "Compiler.Wide",
+    "above": 36,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "(kernel) application type mismatch Sim argument has type Type 1 but fu",
+    "typ": "Proven.Mach.Wide → Nat",
+    "body": null
+   },
+   {
+    "rank": 26,
+    "name": "Proven.Mach.Cond.eval",
+    "module": "Compiler.Wide",
+    "above": 35,
+    "features": [
+     "inductive / structure type",
+     "polymorphic type variable",
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx_ind: unsupported parameter type BitVec 64 frontx_ind: X on TCon",
+    "typ": "Proven.Mach.Cond → BitVec 64 → BitVec 64 → Bool",
+    "body": null
+   },
+   {
+    "rank": 27,
+    "name": "Proven.Mach.rk",
+    "module": "Compiler.Exp",
+    "above": 35,
+    "features": [
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type X",
+    "typ": "Nat → Proven.Mach.Reg",
+    "body": null
+   },
+   {
+    "rank": 28,
+    "name": "Proven.Mach.WideF.encE",
+    "module": "Compiler.Opt.BFn",
+    "above": 34,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type List (BitVec 32)",
+    "typ": "Proven.Mach.WideF → Nat → List (BitVec 32)",
+    "body": null
+   },
+   {
+    "rank": 29,
+    "name": "Proven.Mach.WideF.encL",
+    "module": "Compiler.Opt.BFn",
+    "above": 34,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type List (BitVec 32)",
+    "typ": "Proven.Mach.WideF → List (BitVec 32)",
+    "body": null
+   },
+   {
+    "rank": 30,
+    "name": "Proven.Mach.Wide.offOK",
+    "module": "Compiler.Wide",
+    "above": 33,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "invalid instantiateForall, too many parameters",
+    "typ": "Proven.Mach.Wide → BitVec 64 → Bool",
+    "body": null
+   },
+   {
+    "rank": 31,
+    "name": "Proven.Mach.MOp.eval",
+    "module": "Compiler.MOp",
+    "above": 32,
+    "features": [
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx_ind: unsupported parameter type BitVec 64",
+    "typ": "Proven.Mach.MOp → BitVec 64 → BitVec 64 → BitVec 64",
+    "body": null
+   },
+   {
+    "rank": 32,
+    "name": "Proven.Ir.Func.slots",
+    "module": "Compiler.Ir.Syntax",
+    "above": 30,
+    "features": [
+     "non-computational (Type / Prop / Sort / Decidable)",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported parameter type Type PANIC at Lean.Expr.appArg! Lea",
+    "typ": "{ρ : Type} → Proven.Ir.Func ρ → Nat",
+    "body": null
+   },
+   {
+    "rank": 33,
+    "name": "Proven.Ir.Target.toWideF",
+    "module": "Compiler.Ir.Target",
+    "above": 30,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr",
+    "typ": "Proven.Ir.Target → Proven.Mach.WideF",
+    "body": null
+   },
+   {
+    "rank": 34,
+    "name": "Proven.Ir.Func.entry",
+    "module": "Compiler.Ir.Syntax",
+    "above": 28,
+    "features": [
+     "non-computational (Type / Prop / Sort / Decidable)",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported parameter type Type PANIC at Lean.Expr.appArg! Lea",
+    "typ": "{ρ : Type} → Proven.Ir.Func ρ → Proven.Ir.Lbl",
+    "body": null
+   },
+   {
+    "rank": 35,
+    "name": "Proven.Ir.Prog.funcs",
+    "module": "Compiler.Ir.Syntax",
+    "above": 28,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type List (X ρ)",
+    "typ": "{ρ : Type} → Proven.Ir.Prog ρ → List (Proven.Ir.Func ρ)",
+    "body": null
+   },
+   {
+    "rank": 36,
+    "name": "Proven.A",
+    "module": "Spec.Code",
+    "above": 26,
+    "features": [
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type Fin 32",
+    "typ": "Nat → Fin 32",
+    "body": null
+   },
+   {
+    "rank": 37,
+    "name": "Proven.Mach.IR.Ins.mv",
+    "module": "Compiler.Opt.Live",
+    "above": 26,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported result type Option α PANIC at Lean.Expr.appArg! Le",
+    "typ": "{α : Type} → Proven.Mach.IR.Ins α → Option α",
+    "body": null
+   },
+   {
+    "rank": 38,
+    "name": "Proven.Mach.Sel.leaf",
+    "module": "Compiler.Opt.Sel",
+    "above": 26,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx_ind: unsupported result type Option (X Nat)",
+    "typ": "Proven.Mach.Sel.SExp → Option (Proven.Mach.IR.Arg Nat)",
+    "body": null
+   },
+   {
+    "rank": 39,
+    "name": "Proven.Ir.Target.encCall",
+    "module": "Compiler.Ir.Target",
+    "above": 25,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type List (BitVec 32)",
+    "typ": "Proven.Ir.Target → Int → List (BitVec 32)",
+    "body": null
+   },
+   {
+    "rank": 40,
+    "name": "Proven.Ir.Target.encEC",
+    "module": "Compiler.Ir.Target",
+    "above": 25,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type List (BitVec 32)",
+    "typ": "Proven.Ir.Target → Nat → List (BitVec 32)",
+    "body": null
+   },
+   {
+    "rank": 41,
+    "name": "Proven.Ir.Target.encLC",
+    "module": "Compiler.Ir.Target",
+    "above": 25,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type List (BitVec 32)",
+    "typ": "Proven.Ir.Target → Nat → List (BitVec 32)",
+    "body": null
+   },
+   {
+    "rank": 42,
+    "name": "Proven.Ir.Target.encT",
+    "module": "Compiler.Ir.Target",
+    "above": 25,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type List (BitVec 32)",
+    "typ": "Proven.Ir.Target → Proven.Mach.Reg → List (BitVec 32)",
+    "body": null
+   },
+   {
+    "rank": 43,
+    "name": "Proven.Ir.Target.encX",
+    "module": "Compiler.Ir.Target",
+    "above": 25,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type List (BitVec 32)",
+    "typ": "Proven.Ir.Target → List (BitVec 32)",
+    "body": null
+   },
+   {
+    "rank": 44,
+    "name": "Proven.Mach.Sel.argUses",
+    "module": "Compiler.Opt.Sel",
+    "above": 25,
+    "features": [
+     "several non-structural parameters"
+    ],
+    "first_error": "frontx_ind: a scalar parameter needs an entry `f xs = X n xs`",
+    "typ": "Proven.Mach.IR.Arg Nat → Nat → Bool",
+    "body": null
+   },
+   {
+    "rank": 45,
+    "name": "Proven.immB",
+    "module": "Riscv.Steps.Branch",
+    "above": 25,
+    "features": [
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type BitVec 32",
+    "typ": "BitVec 12 → BitVec 32",
+    "body": null
+   },
+   {
+    "rank": 46,
+    "name": "Proven.immJ",
+    "module": "Riscv.Steps.Branch",
+    "above": 25,
+    "features": [
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type BitVec 32",
+    "typ": "BitVec 20 → BitVec 32",
+    "body": null
+   },
+   {
+    "rank": 47,
+    "name": "Proven.Mach.IR.SR.addrOf",
+    "module": "Compiler.Opt.SR",
+    "above": 24,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "tuple (×)"
+    ],
+    "first_error": "frontx_ind: unsupported result type Option (Nat × Nat)",
+    "typ": "Nat → Proven.Mach.IR.Ins Nat → Option (Nat × Nat)",
+    "body": null
+   },
+   {
+    "rank": 48,
+    "name": "Proven.Mach.IR.SR.isInc",
+    "module": "Compiler.Opt.SR",
+    "above": 24,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx_ind: nested patterns are not supported (X (by cases: frontx_ind",
+    "typ": "Nat → Proven.Mach.IR.Ins Nat → Bool",
+    "body": null
+   },
+   {
+    "rank": 49,
+    "name": "Proven.Mach.Sel.isVar",
+    "module": "Compiler.Opt.Sel",
+    "above": 24,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx_ind: unsupported term ?i.1 (by cases: frontx_ind: unsupported t",
+    "typ": "Proven.Mach.Sel.SExp → Nat → Bool",
+    "body": null
+   },
+   {
+    "rank": 50,
+    "name": "Proven.Mach.Sel.rangeOf",
+    "module": "Compiler.Opt.Sel",
+    "above": 24,
+    "features": [
+     "several non-structural parameters"
+    ],
+    "first_error": "frontx_ind: more than one extra parameter of a declared type",
+    "typ": "Proven.Op → Proven.Mach.Sel.SExp → Proven.Mach.Sel.SExp → Option Proven.Mach.Sel.SExp",
+    "body": null
+   },
+   {
+    "rank": 51,
+    "name": "Proven.Mach.Sel.simpBin0",
+    "module": "Compiler.Opt.Sel",
+    "above": 24,
+    "features": [
+     "several non-structural parameters"
+    ],
+    "first_error": "frontx_ind: more than one extra parameter of a declared type",
+    "typ": "Proven.Op → Proven.Mach.Sel.SExp → Proven.Mach.Sel.SExp → Proven.Mach.Sel.SExp",
+    "body": null
+   },
+   {
+    "rank": 52,
+    "name": "Proven.Mach.Sel.uses",
+    "module": "Compiler.Opt.Sel",
+    "above": 24,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx_ind: unsupported term ?i.1 (by cases: frontx_ind: unsupported t",
+    "typ": "Proven.Mach.Sel.SExp → Nat → Bool",
+    "body": null
+   },
+   {
+    "rank": 53,
+    "name": "Proven.Ir.SC.seqs",
+    "module": "Compiler.Ir.Struct",
+    "above": 23,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr",
+    "typ": "List Proven.Ir.SC → Proven.Ir.SC",
+    "body": null
+   },
+   {
+    "rank": 54,
+    "name": "Proven.Mach.IR.SR.fnd",
+    "module": "Compiler.Opt.SR",
+    "above": 23,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "tuple (×)"
+    ],
+    "first_error": "frontx: unsupported parameter type List (Nat × Nat)",
+    "typ": "List (Nat × Nat) → Nat → Option Nat",
+    "body": null
+   },
+   {
+    "rank": 55,
+    "name": "Proven.Mach.IR.SR.incs",
+    "module": "Compiler.Opt.SR",
+    "above": 23,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx_ind: List.brecOn has no argument of a declared type",
+    "typ": "List (Nat × Nat) → Proven.Mach.IR.Code Nat",
+    "body": null
+   },
+   {
+    "rank": 56,
+    "name": "Proven.Mach.Sel.cmpOf",
+    "module": "Compiler.Opt.Sel",
+    "above": 23,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx_ind: unsupported result type Option X",
+    "typ": "Proven.Op → Option Proven.Mach.Cond",
+    "body": null
+   },
+   {
+    "rank": 57,
+    "name": "Proven.Mach.Sel.tstOf",
+    "module": "Compiler.Opt.Sel",
+    "above": 23,
+    "features": [
+     "polymorphic type variable",
+     "tuple (×)"
+    ],
+    "first_error": "frontx_ind: unsupported result type X Nat × X Nat × Nat",
+    "typ": "Proven.Mach.IR.Code Nat → Nat → Proven.Mach.IR.Code Nat × Proven.Mach.IR.Tst Nat × Nat",
+    "body": null
+   },
+   {
+    "rank": 58,
+    "name": "Proven.Ir.R0",
+    "module": "Compiler.Ir.Emit",
+    "above": 22,
+    "features": [
+     "0-ary constant",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type X",
+    "typ": "Proven.Mach.Reg",
+    "body": {
+     "chars": 14,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 59,
+    "name": "Proven.Ir.R1",
+    "module": "Compiler.Ir.Emit",
+    "above": 22,
+    "features": [
+     "0-ary constant",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type X",
+    "typ": "Proven.Mach.Reg",
+    "body": {
+     "chars": 14,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 60,
+    "name": "Proven.Ir.RLim",
+    "module": "Compiler.Ir.Emit",
+    "above": 22,
+    "features": [
+     "0-ary constant",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type X",
+    "typ": "Proven.Mach.Reg",
+    "body": {
+     "chars": 15,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 61,
+    "name": "Proven.Mach.IR.Flow.cmpOp",
+    "module": "Compiler.Opt.Flow",
+    "above": 22,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx_ind: unsupported result type Option X",
+    "typ": "Proven.Op → Option Proven.Mach.Cond",
+    "body": null
+   },
+   {
+    "rank": 62,
+    "name": "Proven.Mach.IR.Flow.look",
+    "module": "Compiler.Opt.Flow",
+    "above": 22,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported result type Option X PANIC at Lean.Expr.appArg! Le",
+    "typ": "Proven.Mach.IR.Flow.Fs → Nat → Option Proven.Mach.IR.Flow.Fact",
+    "body": null
+   },
+   {
+    "rank": 63,
+    "name": "Proven.Mach.IR.Hoist.big",
+    "module": "Compiler.Opt.Hoist",
+    "above": 22,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: projection of a term that is not a constructor application ↑c.",
+    "typ": "BitVec 64 → Bool",
+    "body": null
+   },
+   {
+    "rank": 64,
+    "name": "Proven.Mach.IR.Hoist.kA",
+    "module": "Compiler.Opt.Hoist",
+    "above": 22,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx_ind: unsupported result type List (BitVec 64)",
+    "typ": "Proven.Mach.IR.Arg Nat → List (BitVec 64)",
+    "body": null
+   },
+   {
+    "rank": 65,
+    "name": "Proven.Mach.IR.Hoist.pos",
+    "module": "Compiler.Opt.Hoist",
+    "above": 22,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported parameter type List (BitVec 64)",
+    "typ": "List (BitVec 64) → BitVec 64 → Option Nat",
+    "body": null
+   },
+   {
+    "rank": 66,
+    "name": "Proven.Mach.IR.SR.dropD",
+    "module": "Compiler.Opt.SR",
+    "above": 22,
+    "features": [
+     "List / Array / Option of non-scalar element"
+    ],
+    "first_error": "frontx_ind: unsupported result type Option Nat",
+    "typ": "Proven.Mach.IR.Ins Nat → Option Nat",
+    "body": null
+   },
+   {
+    "rank": 67,
+    "name": "Proven.iRet",
+    "module": "Spec.Code",
+    "above": 22,
+    "features": [
+     "0-ary constant",
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type BitVec 32",
+    "typ": "BitVec 32",
+    "body": null
+   },
+   {
+    "rank": 68,
+    "name": "Proven.Ir.RHp",
+    "module": "Compiler.Ir.Emit",
+    "above": 21,
+    "features": [
+     "0-ary constant",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type X",
+    "typ": "Proven.Mach.Reg",
+    "body": {
+     "chars": 15,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 69,
+    "name": "Proven.Mach.IR.SR.inits",
+    "module": "Compiler.Opt.SR",
+    "above": 21,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx_ind: List.brecOn has no argument of a declared type",
+    "typ": "Nat → List (Nat × Nat) → Proven.Mach.IR.Code Nat",
+    "body": null
+   },
+   {
+    "rank": 70,
+    "name": "Proven.Mach.IR.SR.look",
+    "module": "Compiler.Opt.SR",
+    "above": 21,
+    "features": [
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported parameter type X",
+    "typ": "Proven.Mach.IR.SR.Cp → Nat → Nat",
+    "body": null
+   },
+   {
+    "rank": 71,
+    "name": "Proven.Mach.IR.SR.mkPB",
+    "module": "Compiler.Opt.SR",
+    "above": 21,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "tuple (×)"
+    ],
+    "first_error": "frontx: unsupported result type List (Nat × Nat)",
+    "typ": "Nat → List Nat → List (Nat × Nat)",
+    "body": null
+   },
+   {
+    "rank": 72,
+    "name": "Proven.iLbuT",
+    "module": "Spec.ArrCode",
+    "above": 21,
+    "features": [
+     "0-ary constant",
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type BitVec 32",
+    "typ": "BitVec 32",
+    "body": {
+     "chars": 13,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 73,
+    "name": "Proven.iSbT",
+    "module": "Spec.ArrCode",
+    "above": 21,
+    "features": [
+     "0-ary constant",
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type BitVec 32",
+    "typ": "BitVec 32",
+    "body": null
+   },
+   {
+    "rank": 74,
+    "name": "Proven.Ir.R7",
+    "module": "Compiler.Ir.Emit",
+    "above": 20,
+    "features": [
+     "0-ary constant",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type X",
+    "typ": "Proven.Mach.Reg",
+    "body": {
+     "chars": 14,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 75,
+    "name": "Proven.Ir.ldArg",
+    "module": "Compiler.Ir.Emit",
+    "above": 20,
+    "features": [
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx_ind: unsupported parameter type X",
+    "typ": "Proven.Mach.Reg → Proven.Ir.Arg Nat → Proven.Ir.EOp",
+    "body": null
+   },
+   {
+    "rank": 76,
+    "name": "Proven.Mach.IR.Hoist.insS",
+    "module": "Compiler.Opt.Hoist",
+    "above": 20,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type List α",
+    "typ": "{α : Type} → (α → α → Bool) → α → List α → List α",
+    "body": null
+   },
+   {
+    "rank": 77,
+    "name": "Proven.Mach.IR.SR.kill",
+    "module": "Compiler.Opt.SR",
+    "above": 20,
+    "features": [
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type X",
+    "typ": "Proven.Mach.IR.SR.Cp → Nat → Proven.Mach.IR.SR.Cp",
+    "body": null
+   },
+   {
+    "rank": 78,
+    "name": "Proven.Ir.IndLow.setK",
+    "module": "Compiler.Ir.IndLow",
+    "above": 19,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr",
+    "typ": "Proven.Ir.VReg → BitVec 64 → Proven.Ir.SC",
+    "body": null
+   },
+   {
+    "rank": 79,
+    "name": "Proven.Mach.IR.Arg.map",
+    "module": "Compiler.Opt.Alloc",
+    "above": 19,
+    "features": [
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type X β",
+    "typ": "{α β : Type} → (α → β) → Proven.Mach.IR.Arg α → Proven.Mach.IR.Arg β",
+    "body": null
+   },
+   {
+    "rank": 80,
+    "name": "Proven.Mach.IR.Flow.splitW",
+    "module": "Compiler.Opt.Flow",
+    "above": 19,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "polymorphic type variable",
+     "tuple (×)"
+    ],
+    "first_error": "frontx_ind: unsupported result type Option (X Nat × X Nat × X Nat)",
+    "typ": "Proven.Mach.IR.Code Nat → Option (Proven.Mach.IR.Code Nat × Proven.Mach.IR.Tst Nat × Proven.Mach.IR.Code Nat)",
+    "body": null
+   },
+   {
+    "rank": 81,
+    "name": "Proven.Mach.Wide.argOK",
+    "module": "Compiler.Opt.Lower",
+    "above": 19,
+    "features": [
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported parameter type X X",
+    "typ": "Proven.Mach.Reg → Proven.Mach.IR.Arg Proven.Mach.Reg → Bool",
+    "body": null
+   },
+   {
+    "rank": 82,
+    "name": "Proven.iSdS",
+    "module": "Riscv.Direct.Arr2Code",
+    "above": 19,
+    "features": [
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type BitVec 32",
+    "typ": "Nat → BitVec 32",
+    "body": null
+   },
+   {
+    "rank": 83,
+    "name": "Proven.xval",
+    "module": "Riscv.Steps.Regs",
+    "above": 19,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported match match a✝ with | 0 => 0 | 1 => (Std.ExtDHashM",
+    "typ": "Proven.Regs → Fin 32 → BitVec 64",
+    "body": null
+   },
+   {
+    "rank": 84,
+    "name": "Proven.CS.gs",
+    "module": "Compiler.Front.Pipe",
+    "above": 18,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx_ind: X has no argument of a declared type",
+    "typ": "Proven.CS → List Proven.AExp",
+    "body": null
+   },
+   {
+    "rank": 85,
+    "name": "Proven.Ir.R8",
+    "module": "Compiler.Ir.Emit",
+    "above": 18,
+    "features": [
+     "0-ary constant",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type X",
+    "typ": "Proven.Mach.Reg",
+    "body": {
+     "chars": 14,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 86,
+    "name": "Proven.Ir.okA",
+    "module": "Compiler.Ir.Emit",
+    "above": 18,
+    "features": [
+     "several non-structural parameters"
+    ],
+    "first_error": "frontx_ind: a scalar parameter needs an entry `f xs = X n xs`",
+    "typ": "Nat → Proven.Ir.Arg Nat → Bool",
+    "body": null
+   },
+   {
+    "rank": 87,
+    "name": "Proven.Mach.IR.Flow.onceL",
+    "module": "Compiler.Opt.Flow",
+    "above": 18,
+    "features": [
+     "several non-structural parameters"
+    ],
+    "first_error": "frontx_ind: more than one extra parameter of a declared type",
+    "typ": "Proven.Mach.IR.Code Nat → Proven.Mach.IR.Tst Nat → Proven.Mach.IR.Code Nat → Proven.Mach.IR.Code Nat",
+    "body": null
+   },
+   {
+    "rank": 88,
+    "name": "Proven.Mach.IR.Hoist.sets",
+    "module": "Compiler.Opt.Hoist",
+    "above": 18,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx_ind: List.brecOn has no argument of a declared type",
+    "typ": "Nat → List (BitVec 64) → Proven.Mach.IR.Code Nat",
+    "body": null
+   },
+   {
+    "rank": 89,
+    "name": "Proven.Mach.Riscv.LiStep.eval",
+    "module": "Riscv.Back.Wide",
+    "above": 18,
+    "features": [
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx_ind: unsupported parameter type BitVec 64",
+    "typ": "Proven.Mach.Riscv.LiStep → BitVec 64 → BitVec 64",
+    "body": null
+   },
+   {
+    "rank": 90,
+    "name": "Proven.Mach.Riscv.fits12",
+    "module": "Riscv.Back.Wide",
+    "above": 18,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: projection of a term that is not a constructor application ↑(B",
+    "typ": "BitVec 64 → Bool",
+    "body": null
+   },
+   {
+    "rank": 91,
+    "name": "Proven.Mach.Sel.cond2",
+    "module": "Compiler.Opt.Sel",
+    "above": 18,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "polymorphic type variable",
+     "tuple (×)"
+    ],
+    "first_error": "frontx_ind: unsupported result type Option (X × X",
+    "typ": "Proven.Mach.Sel.SExp → Option (Proven.Mach.Sel.SExp × Proven.Mach.Sel.SExp)",
+    "body": null
+   },
+   {
+    "rank": 92,
+    "name": "Proven.loopV",
+    "module": "Compiler.Front.Pipe",
+    "above": 18,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr",
+    "typ": "Fin 8 → Proven.AStmt → Proven.AStmt",
+    "body": null
+   },
+   {
+    "rank": 93,
+    "name": "Proven.Ir.IndLow.addK",
+    "module": "Compiler.Ir.IndLow",
+    "above": 17,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr",
+    "typ": "Proven.Ir.VReg → Proven.Ir.VReg → BitVec 64 → Proven.Ir.SC",
+    "body": null
+   },
+   {
+    "rank": 94,
+    "name": "Proven.Ir.Prog.main",
+    "module": "Compiler.Ir.Syntax",
+    "above": 17,
+    "features": [
+     "non-computational (Type / Prop / Sort / Decidable)",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported parameter type Type PANIC at Lean.Expr.appArg! Lea",
+    "typ": "{ρ : Type} → Proven.Ir.Prog ρ → Proven.Ir.FId",
+    "body": null
+   },
+   {
+    "rank": 95,
+    "name": "Proven.Ir.Target.callOK",
+    "module": "Compiler.Ir.Target",
+    "above": 17,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "invalid instantiateForall, too many parameters",
+    "typ": "Proven.Ir.Target → Int → Bool",
+    "body": null
+   },
+   {
+    "rank": 96,
+    "name": "Proven.vIdx",
+    "module": "Compiler.Front.Pipe",
+    "above": 17,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx_ind: equation ite.eq_1 has no constructor pattern (by cases: fr",
+    "typ": "Bool → Proven.AExp",
+    "body": null
+   },
+   {
+    "rank": 97,
+    "name": "Proven.zx",
+    "module": "Compiler.Front.Pipe",
+    "above": 17,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported term Decidable.rec (fun h => (fun h => BitVec.ofNa",
+    "typ": "UInt8 → BitVec 64",
+    "body": null
+   },
+   {
+    "rank": 98,
+    "name": "Proven.G.encL",
+    "module": "Riscv.Steps.GenMem",
+    "above": 16,
+    "features": [
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type BitVec 32",
+    "typ": "Nat → BitVec 12 → Fin 32 → Fin 32 → BitVec 32",
+    "body": null
+   },
+   {
+    "rank": 99,
+    "name": "Proven.Ir.Arg.locs",
+    "module": "Compiler.Ir.Lin",
+    "above": 16,
+    "features": [
+     "List / Array / Option of non-scalar element"
+    ],
+    "first_error": "frontx_ind: unsupported result type List Nat",
+    "typ": "Proven.Ir.Arg Nat → List Nat",
+    "body": null
+   },
+   {
+    "rank": 100,
+    "name": "Proven.Ir.Frame.f",
+    "module": "Compiler.Ir.Sem",
+    "above": 16,
+    "features": [
+     "non-computational (Type / Prop / Sort / Decidable)",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported parameter type Type PANIC at Lean.Expr.appArg! Lea",
+    "typ": "{ρ : Type} → Proven.Ir.Frame ρ → Proven.Ir.FId",
+    "body": null
+   },
+   {
+    "rank": 101,
+    "name": "Proven.Ir.R9",
+    "module": "Compiler.Ir.Emit",
+    "above": 16,
+    "features": [
+     "0-ary constant",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type X",
+    "typ": "Proven.Mach.Reg",
+    "body": null
+   },
+   {
+    "rank": 102,
+    "name": "Proven.Ir.storeRegs",
+    "module": "Compiler.Ir.Emit",
+    "above": 16,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx_ind: List.brecOn has no argument of a declared type",
+    "typ": "List Nat → List Proven.Mach.Reg → List Proven.Ir.EOp",
+    "body": null
+   },
+   {
+    "rank": 103,
+    "name": "Proven.Mach.Base.mem",
+    "module": "Compiler.Iface",
+    "above": 16,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr",
+    "typ": "(self : Proven.Mach.Base) → self.S → Proven.Mach.Mem",
+    "body": null
+   },
+   {
+    "rank": 104,
+    "name": "Proven.Mach.Riscv.LiStep.init",
+    "module": "Riscv.Back.Wide",
+    "above": 16,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx_ind: generated text does not parse (<input>:20:20: expected ']'",
+    "typ": "Proven.Mach.Riscv.LiStep → Bool",
+    "body": null
+   },
+   {
+    "rank": 105,
+    "name": "Proven.Mach.Riscv.tz",
+    "module": "Riscv.Back.Wide",
+    "above": 16,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported match match a✝¹, a✝ with | 0, x => 0 | fuel.succ, ",
+    "typ": "Nat → BitVec 64 → Nat",
+    "body": null
+   },
+   {
+    "rank": 106,
+    "name": "Proven.fetchG",
+    "module": "Compiler.Front.Pipe",
+    "above": 16,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx_ind: List.brecOn has no argument of a declared type",
+    "typ": "Proven.AStmt → List Proven.AExp → Proven.AStmt",
+    "body": null
+   },
+   {
+    "rank": 107,
+    "name": "Proven.iSdGp",
+    "module": "Riscv.Direct.Arr2Code",
+    "above": 16,
+    "features": [
+     "0-ary constant",
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type BitVec 32",
+    "typ": "BitVec 32",
+    "body": {
+     "chars": 13,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 108,
+    "name": "Proven.G.encS",
+    "module": "Riscv.Steps.GenMem",
+    "above": 15,
+    "features": [
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type BitVec 32",
+    "typ": "BitVec 3 → BitVec 12 → Fin 32 → Fin 32 → BitVec 32",
+    "body": null
+   },
+   {
+    "rank": 109,
+    "name": "Proven.G.encU",
+    "module": "Riscv.Steps.GenALU",
+    "above": 15,
+    "features": [
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type BitVec 32",
+    "typ": "Nat → Fin 32 → BitVec 20 → BitVec 32",
+    "body": null
+   },
+   {
+    "rank": 110,
+    "name": "Proven.Ir.Env.fp",
+    "module": "Compiler.Ir.Emit",
+    "above": 15,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "invalid instantiateForall, too many parameters",
+    "typ": "Proven.Ir.Env → Proven.Ir.FId → Nat",
+    "body": null
+   },
+   {
+    "rank": 111,
+    "name": "Proven.Ir.Env.fq",
+    "module": "Compiler.Ir.Emit",
+    "above": 15,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "invalid instantiateForall, too many parameters",
+    "typ": "Proven.Ir.Env → Proven.Ir.FId → Nat",
+    "body": null
+   },
+   {
+    "rank": 112,
+    "name": "Proven.Ir.Env.fs",
+    "module": "Compiler.Ir.Emit",
+    "above": 15,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "invalid instantiateForall, too many parameters",
+    "typ": "Proven.Ir.Env → Proven.Ir.FId → Nat",
+    "body": null
+   },
+   {
+    "rank": 113,
+    "name": "Proven.Ir.Frame.dst",
+    "module": "Compiler.Ir.Sem",
+    "above": 15,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type List ρ",
+    "typ": "{ρ : Type} → Proven.Ir.Frame ρ → List ρ",
+    "body": null
+   },
+   {
+    "rank": 114,
+    "name": "Proven.Ir.Frame.regs",
+    "module": "Compiler.Ir.Sem",
+    "above": 15,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "invalid instantiateLambda, too many parameters",
+    "typ": "{ρ : Type} → Proven.Ir.Frame ρ → ρ → Proven.Ir.Val",
+    "body": null
+   },
+   {
+    "rank": 115,
+    "name": "Proven.Mach.Base.ramHi",
+    "module": "Compiler.Iface",
+    "above": 15,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "(kernel) application type mismatch Sim argument has type Type 1 but fu",
+    "typ": "Proven.Mach.Base → Nat",
+    "body": null
+   },
+   {
+    "rank": 116,
+    "name": "Proven.Mach.Base.ramLo",
+    "module": "Compiler.Iface",
+    "above": 15,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "(kernel) application type mismatch Sim argument has type Type 1 but fu",
+    "typ": "Proven.Mach.Base → Nat",
+    "body": null
+   },
+   {
+    "rank": 117,
+    "name": "Proven.Mach.Core.toBase",
+    "module": "Compiler.Iface",
+    "above": 15,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr",
+    "typ": "Proven.Mach.Core → Proven.Mach.Base",
+    "body": null
+   },
+   {
+    "rank": 118,
+    "name": "Proven.Mach.Riscv.liSlow",
+    "module": "Riscv.Back.Wide",
+    "above": 15,
+    "features": [
+     "function-valued parameter or result",
+     "non-computational (Type / Prop / Sort / Decidable)",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx_ind: unsupported parameter type X → Sort ?u.132552",
+    "typ": "Nat → List Proven.Mach.Riscv.LiStep",
+    "body": null
+   },
+   {
+    "rank": 119,
+    "name": "Proven.Mach.avar",
+    "module": "Compiler.Exp",
+    "above": 15,
+    "features": [
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type X",
+    "typ": "Fin 8 → Proven.Mach.Reg",
+    "body": null
+   },
+   {
+    "rank": 120,
+    "name": "Proven.Mach.isS",
+    "module": "Compiler.Opt.BSel",
+    "above": 15,
+    "features": [
+     "function-valued parameter or result",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported parameter type Nat → Bool PANIC at Lean.Expr.appAr",
+    "typ": "(Nat → Bool) → Nat → Bool",
+    "body": null
+   },
+   {
+    "rank": 121,
+    "name": "Proven.iLdGp",
+    "module": "Riscv.Direct.Arr2Code",
+    "above": 15,
+    "features": [
+     "0-ary constant",
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type BitVec 32",
+    "typ": "BitVec 32",
+    "body": null
+   },
+   {
+    "rank": 122,
+    "name": "Proven.Ir.Arg.eval",
+    "module": "Compiler.Ir.Sem",
+    "above": 14,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx_ind: X has no argument of a declared type",
+    "typ": "{ρ : Type} → (ρ → Proven.Ir.Val) → Proven.Ir.Arg ρ → Proven.Ir.Val",
+    "body": null
+   },
+   {
+    "rank": 123,
+    "name": "Proven.Ir.Frame.l",
+    "module": "Compiler.Ir.Sem",
+    "above": 14,
+    "features": [
+     "non-computational (Type / Prop / Sort / Decidable)",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported parameter type Type PANIC at Lean.Expr.appArg! Lea",
+    "typ": "{ρ : Type} → Proven.Ir.Frame ρ → Proven.Ir.Lbl",
+    "body": null
+   },
+   {
+    "rank": 124,
+    "name": "Proven.Ir.Frame.pc",
+    "module": "Compiler.Ir.Sem",
+    "above": 14,
+    "features": [
+     "non-computational (Type / Prop / Sort / Decidable)",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported parameter type Type PANIC at Lean.Expr.appArg! Lea",
+    "typ": "{ρ : Type} → Proven.Ir.Frame ρ → Nat",
+    "body": null
+   },
+   {
+    "rank": 125,
+    "name": "Proven.Mach.Base.get",
+    "module": "Compiler.Iface",
+    "above": 14,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "invalid instantiateForall, too many parameters",
+    "typ": "(self : Proven.Mach.Base) → self.S → Proven.Mach.Reg → BitVec 64",
+    "body": null
+   },
+   {
+    "rank": 126,
+    "name": "Proven.Mach.Riscv.brOff",
+    "module": "Riscv.Back.Wide",
+    "above": 14,
+    "features": [
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type BitVec 12",
+    "typ": "Bool → Nat → BitVec 12",
+    "body": null
+   },
+   {
+    "rank": 127,
+    "name": "Proven.Mach.Riscv.condF3",
+    "module": "Riscv.Back.Wide",
+    "above": 14,
+    "features": [
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx_ind: unsupported result type BitVec 3",
+    "typ": "Proven.Mach.Cond → BitVec 3",
+    "body": null
+   },
+   {
+    "rank": 128,
+    "name": "Proven.Mach.Riscv.jOff",
+    "module": "Riscv.Back.Wide",
+    "above": 14,
+    "features": [
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type BitVec 20",
+    "typ": "Bool → Nat → BitVec 20",
+    "body": null
+   },
+   {
+    "rank": 129,
+    "name": "Proven.ltE",
+    "module": "Riscv.Direct.SortMergeSrc",
+    "above": 14,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr",
+    "typ": "Proven.BExp → Proven.BExp → Proven.BExp",
+    "body": null
+   },
+   {
+    "rank": 130,
+    "name": "Proven.BPred.bit",
+    "module": "Compiler.Front.PipeStd",
+    "above": 13,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr",
+    "typ": "Proven.BPred → Proven.ByteExp",
+    "body": null
+   },
+   {
+    "rank": 131,
+    "name": "Proven.Ir.Arg.map",
+    "module": "Compiler.Ir.Syntax",
+    "above": 13,
+    "features": [
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type X σ",
+    "typ": "{ρ σ : Type} → (ρ → σ) → Proven.Ir.Arg ρ → Proven.Ir.Arg σ",
+    "body": null
+   },
+   {
+    "rank": 132,
+    "name": "Proven.Ir.IndLow.mov",
+    "module": "Compiler.Ir.IndLow",
+    "above": 13,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr",
+    "typ": "Proven.Ir.VReg → Proven.Ir.VReg → Proven.Ir.SC",
+    "body": null
+   },
+   {
+    "rank": 133,
+    "name": "Proven.Ir.Mem.blks",
+    "module": "Compiler.Ir.Sem",
+    "above": 13,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "tuple (×)"
+    ],
+    "first_error": "frontx: unsupported result type List (Nat × Nat × Bool)",
+    "typ": "Proven.Ir.Mem → List (Nat × Nat × Bool)",
+    "body": null
+   },
+   {
+    "rank": 134,
+    "name": "Proven.Mach.Machine.toCore",
+    "module": "Compiler.Iface",
+    "above": 13,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr",
+    "typ": "Proven.Mach.Machine → Proven.Mach.Core",
+    "body": null
+   },
+   {
+    "rank": 135,
+    "name": "Proven.Mach.Riscv.brOK",
+    "module": "Riscv.Back.Wide",
+    "above": 13,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: could not prove X (σ.env.set 6 (rN (2 * n))) (X X (X X (X 0#64",
+    "typ": "Bool → Nat → Bool",
+    "body": null
+   },
+   {
+    "rank": 136,
+    "name": "Proven.Mach.Riscv.jOK",
+    "module": "Riscv.Back.Wide",
+    "above": 13,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: could not prove X (σ.env.set 6 (rN (2 * n))) (X X (X X (X 0#64",
+    "typ": "Bool → Nat → Bool",
+    "body": null
+   },
+   {
+    "rank": 137,
+    "name": "Proven.Mach.addrB",
+    "module": "Compiler.BStmt",
+    "above": 13,
+    "features": [
+     "List / Array / Option of non-scalar element"
+    ],
+    "first_error": "frontx_ind: unsupported parameter type List Nat",
+    "typ": "List Nat → Nat → Proven.Mach.BExp → Proven.Mach.BExp",
+    "body": null
+   },
+   {
+    "rank": 138,
+    "name": "Proven.Mach.addrW",
+    "module": "Compiler.BStmt",
+    "above": 13,
+    "features": [
+     "List / Array / Option of non-scalar element"
+    ],
+    "first_error": "frontx_ind: unsupported parameter type List Nat",
+    "typ": "List Nat → Nat → Proven.Mach.BExp → Proven.Mach.BExp",
+    "body": null
+   },
+   {
+    "rank": 139,
+    "name": "Proven.NS",
+    "module": "Riscv.Direct.Arr2Code",
+    "above": 13,
+    "features": [
+     "0-ary constant",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: could not prove X",
+    "typ": "Nat",
+    "body": null
+   },
+   {
+    "rank": 140,
+    "name": "Proven.frameBase",
+    "module": "Riscv.Direct.Arr2F",
+    "above": 13,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: projection of a term that is not a constructor application ↑sp",
+    "typ": "Nat → BitVec 64 → Nat",
+    "body": null
+   },
+   {
+    "rank": 141,
+    "name": "Proven.Ir.IndLow.bin",
+    "module": "Compiler.Ir.IndLow",
+    "above": 12,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "(lean.unknownIdentifier): Unknown constant `X",
+    "typ": "Proven.Op → Proven.Ir.VReg → Proven.Ir.VReg → Proven.Ir.VReg → Proven.Ir.SC",
+    "body": null
+   },
+   {
+    "rank": 142,
+    "name": "Proven.Ir.IndLow.nz",
+    "module": "Compiler.Ir.IndLow",
+    "above": 12,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported result type X X PANIC at Lean.Expr.appArg! Lean.Ex",
+    "typ": "Proven.Ir.VReg → Proven.Ir.Tst Proven.Ir.VReg",
+    "body": null
+   },
+   {
+    "rank": 143,
+    "name": "Proven.Ir.Mem.out",
+    "module": "Compiler.Ir.Sem",
+    "above": 12,
+    "features": [
+     "List / Array / Option of non-scalar element"
+    ],
+    "first_error": "frontx: unsupported result type List (Option UInt8)",
+    "typ": "Proven.Ir.Mem → List (Option UInt8)",
+    "body": null
+   },
+   {
+    "rank": 144,
+    "name": "Proven.Ir.idx",
+    "module": "Compiler.Ir.Lin",
+    "above": 12,
+    "features": [
+     "List / Array / Option of non-scalar element"
+    ],
+    "first_error": "frontx: unsupported parameter type List Nat",
+    "typ": "List Nat → Nat → Nat",
+    "body": null
+   },
+   {
+    "rank": 145,
+    "name": "Proven.Mach.MachineF.frameAt",
+    "module": "Compiler.Frame",
+    "above": 12,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "invalid instantiateForall, too many parameters",
+    "typ": "(self : Proven.Mach.MachineF) → self.S → Nat → Nat",
+    "body": null
+   },
+   {
+    "rank": 146,
+    "name": "Proven.Mach.Wide.toCore",
+    "module": "Compiler.Wide",
+    "above": 12,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr",
+    "typ": "Proven.Mach.Wide → Proven.Mach.Core",
+    "body": null
+   },
+   {
+    "rank": 147,
+    "name": "Proven.Mach.initL",
+    "module": "Compiler.Opt.BFn",
+    "above": 12,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx_ind: List.brecOn has no argument of a declared type",
+    "typ": "(Nat → Bool) → List Nat → Proven.Mach.IR.Code Nat",
+    "body": null
+   },
+   {
+    "rank": 148,
+    "name": "Proven.addE",
+    "module": "Riscv.Direct.SortMergeSrc",
+    "above": 12,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr",
+    "typ": "Proven.BExp → Proven.BExp → Proven.BExp",
+    "body": null
+   },
+   {
+    "rank": 149,
+    "name": "Proven.Ir.GS.bs",
+    "module": "Compiler.Ir.Struct",
+    "above": 11,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "polymorphic type variable",
+     "tuple (×)"
+    ],
+    "first_error": "frontx: unsupported result type List (X × X X",
+    "typ": "Proven.Ir.GS → List (Proven.Ir.Lbl × Proven.Ir.Block Proven.Ir.VReg)",
+    "body": null
+   },
+   {
+    "rank": 150,
+    "name": "Proven.Ir.Lay.fq",
+    "module": "Compiler.Ir.Emit",
+    "above": 11,
+    "features": [
+     "List / Array / Option of non-scalar element"
+    ],
+    "first_error": "frontx: unsupported result type List Nat",
+    "typ": "Proven.Ir.Lay → List Nat",
+    "body": null
+   },
+   {
+    "rank": 151,
+    "name": "Proven.Ir.Lay.pos",
+    "module": "Compiler.Ir.Emit",
+    "above": 11,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "polymorphic type variable",
+     "tuple (×)"
+    ],
+    "first_error": "frontx: unsupported result type List (List (X × Nat))",
+    "typ": "Proven.Ir.Lay → List (List (Proven.Ir.Lbl × Nat))",
+    "body": null
+   },
+   {
+    "rank": 152,
+    "name": "Proven.Ir.Mem.cells",
+    "module": "Compiler.Ir.Sem",
+    "above": 11,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx_ind: X has no argument of a declared type",
+    "typ": "Proven.Ir.Mem → List (Option Proven.Ir.Val)",
+    "body": null
+   },
+   {
+    "rank": 153,
+    "name": "Proven.Ir.Mem.inp",
+    "module": "Compiler.Ir.Sem",
+    "above": 11,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported list result self.1 PANIC at List.head! Init.Data.L",
+    "typ": "Proven.Ir.Mem → List UInt8",
+    "body": null
+   },
+   {
+    "rank": 154,
+    "name": "Proven.Ir.State.mem",
+    "module": "Compiler.Ir.Sem",
+    "above": 11,
+    "features": [
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type X",
+    "typ": "{ρ : Type} → Proven.Ir.State ρ → Proven.Ir.Mem",
+    "body": null
+   },
+   {
+    "rank": 155,
+    "name": "Proven.Ir.State.stack",
+    "module": "Compiler.Ir.Sem",
+    "above": 11,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type List (X ρ)",
+    "typ": "{ρ : Type} → Proven.Ir.State ρ → List (Proven.Ir.Frame ρ)",
+    "body": null
+   },
+   {
+    "rank": 156,
+    "name": "Proven.Ir.dedup",
+    "module": "Compiler.Ir.Lin",
+    "above": 11,
+    "features": [
+     "List / Array / Option of non-scalar element"
+    ],
+    "first_error": "frontx: unsupported result type List Nat",
+    "typ": "List Nat → List Nat",
+    "body": null
+   },
+   {
+    "rank": 157,
+    "name": "Proven.Ir.nullTest",
+    "module": "Compiler.Ir.Sem",
+    "above": 11,
+    "features": [
+     "List / Array / Option of non-scalar element"
+    ],
+    "first_error": "frontx_ind: unsupported result type Option Bool",
+    "typ": "Proven.Mach.Cond → Option Bool",
+    "body": null
+   },
+   {
+    "rank": 158,
+    "name": "Proven.Mach.Riscv.cntE",
+    "module": "Riscv.Back.OptB",
+    "above": 11,
+    "features": [
+     "several non-structural parameters"
+    ],
+    "first_error": "frontx_ind: a scalar parameter needs an entry `f xs = X n xs`",
+    "typ": "Proven.Mach.BExp → Nat → Nat",
+    "body": null
+   },
+   {
+    "rank": 159,
+    "name": "Proven.eqB",
+    "module": "Compiler.Front.PipeStd",
+    "above": 11,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr",
+    "typ": "UInt8 → Proven.BPred",
+    "body": null
+   },
+   {
+    "rank": 160,
+    "name": "Proven.innerBody",
+    "module": "Riscv.Direct.SortIns",
+    "above": 11,
+    "features": [
+     "0-ary constant",
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr",
+    "typ": "Proven.AStmt",
+    "body": null
+   },
+   {
+    "rank": 161,
+    "name": "Proven.A8",
+    "module": "Spec.ArrCode",
+    "above": 10,
+    "features": [
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type Fin 32",
+    "typ": "Fin 8 → Fin 32",
+    "body": null
+   },
+   {
+    "rank": 162,
+    "name": "Proven.Ir.GS.ci",
+    "module": "Compiler.Ir.Struct",
+    "above": 10,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type List (X X",
+    "typ": "Proven.Ir.GS → List (Proven.Ir.Inst Proven.Ir.VReg)",
+    "body": null
+   },
+   {
+    "rank": 163,
+    "name": "Proven.Ir.GS.cp",
+    "module": "Compiler.Ir.Struct",
+    "above": 10,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type List X",
+    "typ": "Proven.Ir.GS → List Proven.Ir.VReg",
+    "body": null
+   },
+   {
+    "rank": 164,
+    "name": "Proven.Ir.RIn",
+    "module": "Compiler.Ir.Emit",
+    "above": 10,
+    "features": [
+     "0-ary constant",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type X",
+    "typ": "Proven.Mach.Reg",
+    "body": {
+     "chars": 15,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 165,
+    "name": "Proven.Ir.setOut",
+    "module": "Compiler.Ir.Sem",
+    "above": 10,
+    "features": [
+     "List / Array / Option of non-scalar element"
+    ],
+    "first_error": "frontx: unsupported result type List (Option UInt8)",
+    "typ": "List (Option UInt8) → Nat → UInt8 → List (Option UInt8)",
+    "body": null
+   },
+   {
+    "rank": 166,
+    "name": "Proven.Mach.okE",
+    "module": "Compiler.Opt.BSel",
+    "above": 10,
+    "features": [
+     "several non-structural parameters"
+    ],
+    "first_error": "frontx_ind: a scalar parameter needs an entry `f xs = X n xs`",
+    "typ": "Nat → Proven.Mach.BExp → Bool",
+    "body": null
+   },
+   {
+    "rank": 167,
+    "name": "Proven.csClean",
+    "module": "Compiler.Front.Pipe",
+    "above": 10,
+    "features": [
+     "0-ary constant",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type X",
+    "typ": "Proven.CS",
+    "body": {
+     "chars": 45,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 168,
+    "name": "Proven.Ir.R2",
+    "module": "Compiler.Ir.Emit",
+    "above": 9,
+    "features": [
+     "0-ary constant",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type X",
+    "typ": "Proven.Mach.Reg",
+    "body": {
+     "chars": 15,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 169,
+    "name": "Proven.Ir.State.ev",
+    "module": "Compiler.Ir.Sem",
+    "above": 9,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type List X",
+    "typ": "{ρ : Type} → Proven.Ir.State ρ → List Proven.Top.Alloc.MemEvent",
+    "body": null
+   },
+   {
+    "rank": 170,
+    "name": "Proven.Ir.posOf",
+    "module": "Compiler.Ir.Emit",
+    "above": 9,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "polymorphic type variable",
+     "tuple (×)"
+    ],
+    "first_error": "frontx: unsupported parameter type List (X × Nat)",
+    "typ": "List (Proven.Ir.Lbl × Nat) → Proven.Ir.Lbl → Nat",
+    "body": null
+   },
+   {
+    "rank": 171,
+    "name": "Proven.Mach.Riscv.scB",
+    "module": "Riscv.Back.OptB",
+    "above": 9,
+    "features": [
+     "0-ary constant",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type X",
+    "typ": "Proven.Mach.Reg",
+    "body": null
+   },
+   {
+    "rank": 172,
+    "name": "Proven.Mach.loB",
+    "module": "Compiler.Opt.BSel",
+    "above": 9,
+    "features": [
+     "function-valued parameter or result",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported parameter type Nat → Bool PANIC at Lean.Expr.appAr",
+    "typ": "(Nat → Bool) → Nat → Bool",
+    "body": null
+   },
+   {
+    "rank": 173,
+    "name": "Proven.WExp.tr",
+    "module": "Compiler.Front.Pipe",
+    "above": 9,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx_ind: X has no argument of a declared type",
+    "typ": "Proven.WExp → Proven.AExp",
+    "body": null
+   },
+   {
+    "rank": 174,
+    "name": "Proven.minN",
+    "module": "Compiler.Front.Pipe",
+    "above": 9,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx_ind: X has no argument of a declared type",
+    "typ": "Nat → Proven.AExp",
+    "body": null
+   },
+   {
+    "rank": 175,
+    "name": "Proven.AExp.rB",
+    "module": "Compiler.Front.PipeStdB",
+    "above": 8,
+    "features": [
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx_ind: unsupported result type X",
+    "typ": "Proven.AExp → Proven.BExp",
+    "body": null
+   },
+   {
+    "rank": 176,
+    "name": "Proven.Ir.RLen",
+    "module": "Compiler.Ir.Emit",
+    "above": 8,
+    "features": [
+     "0-ary constant",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type X",
+    "typ": "Proven.Mach.Reg",
+    "body": {
+     "chars": 15,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 177,
+    "name": "Proven.Ir.ROut",
+    "module": "Compiler.Ir.Emit",
+    "above": 8,
+    "features": [
+     "0-ary constant",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type X",
+    "typ": "Proven.Mach.Reg",
+    "body": null
+   },
+   {
+    "rank": 178,
+    "name": "Proven.Mach.Riscv.choose",
+    "module": "Riscv.Back.OptB",
+    "above": 8,
+    "features": [
+     "List / Array / Option of non-scalar element"
+    ],
+    "first_error": "frontx: unsupported result type List (List Nat)",
+    "typ": "Nat → List Nat → List (List Nat)",
+    "body": null
+   },
+   {
+    "rank": 179,
+    "name": "Proven.RedC.fin",
+    "module": "Compiler.Front.PipeStd",
+    "above": 8,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx_ind: X has no argument of a declared type",
+    "typ": "Proven.RedC → Option Proven.AExp",
+    "body": null
+   },
+   {
+    "rank": 180,
+    "name": "Proven.RedC.init",
+    "module": "Compiler.Front.PipeStd",
+    "above": 8,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx_ind: X has no argument of a declared type",
+    "typ": "Proven.RedC → Proven.AExp",
+    "body": null
+   },
+   {
+    "rank": 181,
+    "name": "Proven.RedC.len",
+    "module": "Compiler.Front.PipeStd",
+    "above": 8,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx_ind: X has no argument of a declared type",
+    "typ": "Proven.RedC → Option Proven.AExp",
+    "body": null
+   },
+   {
+    "rank": 182,
+    "name": "Proven.RedC.step",
+    "module": "Compiler.Front.PipeStd",
+    "above": 8,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx_ind: X has no argument of a declared type",
+    "typ": "Proven.RedC → Proven.AExp",
+    "body": null
+   },
+   {
+    "rank": 183,
+    "name": "Proven.optA",
+    "module": "Compiler.Front.PipeStd",
+    "above": 8,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx_ind: X has no argument of a declared type frontx_ind: X on TAEx",
+    "typ": "Fin 8 → Option Proven.AExp → List Proven.AStmt",
+    "body": null
+   },
+   {
+    "rank": 184,
+    "name": "Proven.ByteExp.noAcc",
+    "module": "Compiler.Front.Pipe",
+    "above": 7,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E",
+    "typ": "Proven.ByteExp → Bool",
+    "body": null
+   },
+   {
+    "rank": 185,
+    "name": "Proven.Ir.Mem.init",
+    "module": "Compiler.Ir.Sem",
+    "above": 7,
+    "features": [
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type X",
+    "typ": "List UInt8 → Proven.Ir.Mem",
+    "body": null
+   },
+   {
+    "rank": 186,
+    "name": "Proven.Ir.Target.stub3",
+    "module": "Compiler.Ir.Emit",
+    "above": 7,
+    "features": [
+     "0-ary constant",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx_ind: X has no argument of a declared type",
+    "typ": "List Proven.Ir.EOp",
+    "body": null
+   },
+   {
+    "rank": 187,
+    "name": "Proven.Mach.Riscv.firstB",
+    "module": "Riscv.Back.OptB",
+    "above": 7,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type Option (List (BitVec 32))",
+    "typ": "{α : Type} → (α → Option (List (BitVec 32))) → List α → Option (List (BitVec 32))",
+    "body": null
+   },
+   {
+    "rank": 188,
+    "name": "Proven.Red.pre",
+    "module": "Compiler.Front.PipeStd",
+    "above": 7,
+    "features": [
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type X",
+    "typ": "Proven.Red → Proven.Pipe",
+    "body": null
+   },
+   {
+    "rank": 189,
+    "name": "Proven.Ir.injOn",
+    "module": "Compiler.Ir.Lin",
+    "above": 6,
+    "features": [
+     "function-valued parameter or result",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported parameter type Nat → Nat PANIC at Lean.Expr.appArg",
+    "typ": "(Nat → Nat) → List Nat → Bool",
+    "body": null
+   },
+   {
+    "rank": 190,
+    "name": "Proven.Mach.Ind.Pg.arms",
+    "module": "Compiler.Ind",
+    "above": 6,
+    "features": [
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx_ind: unsupported parameter type X ?rk",
+    "typ": "{rk : Proven.Mach.Ind.Kd} → Proven.Mach.Ind.Pg rk → List (Proven.Mach.Ind.E rk rk)",
+    "body": null
+   },
+   {
+    "rank": 191,
+    "name": "Proven.XStage.isSort",
+    "module": "Compiler.Front.PipeStdB",
+    "above": 6,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E",
+    "typ": "Proven.XStage → Bool",
+    "body": null
+   },
+   {
+    "rank": 192,
+    "name": "Proven.addrB",
+    "module": "Riscv.Direct.Arr2Code",
+    "above": 6,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr",
+    "typ": "List Nat → Nat → Proven.BExp → Proven.BExp",
+    "body": null
+   },
+   {
+    "rank": 193,
+    "name": "Proven.Mach.Riscv.toMB",
+    "module": "Riscv.Back.BStmt",
+    "above": 5,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx_ind: X has no argument of a declared type",
+    "typ": "Proven.BExp → Proven.Mach.BExp",
+    "body": null
+   },
+   {
+    "rank": 194,
+    "name": "Proven.copyBody",
+    "module": "Compiler.Front.PipeI",
+    "above": 5,
+    "features": [
+     "0-ary constant",
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr",
+    "typ": "Proven.BStmt",
+    "body": null
+   },
+   {
+    "rank": 195,
+    "name": "Proven.Ir.Prog.result",
+    "module": "Compiler.Ir.Sem",
+    "above": 4,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type Option X",
+    "typ": "Proven.Ir.Prog Proven.Ir.VReg → List UInt8 → Option Proven.Ir.Result",
+    "body": null
+   },
+   {
+    "rank": 196,
+    "name": "Proven.Ir.Result.mem",
+    "module": "Compiler.Ir.Sem",
+    "above": 4,
+    "features": [
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type X",
+    "typ": "Proven.Ir.Result → Proven.Ir.Mem",
+    "body": null
+   },
+   {
+    "rank": 197,
+    "name": "Proven.Mach.Riscv.im1",
+    "module": "Riscv.Back.MemRv",
+    "above": 4,
+    "features": [
+     "0-ary constant",
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type BitVec 12",
+    "typ": "BitVec 12",
+    "body": null
+   },
+   {
+    "rank": 198,
+    "name": "Proven.Mach.Riscv.im16",
+    "module": "Riscv.Back.MemRv",
+    "above": 4,
+    "features": [
+     "0-ary constant",
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type BitVec 12",
+    "typ": "BitVec 12",
+    "body": {
+     "chars": 8,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 199,
+    "name": "Proven.Mach.Riscv.im8",
+    "module": "Riscv.Back.MemRv",
+    "above": 4,
+    "features": [
+     "0-ary constant",
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type BitVec 12",
+    "typ": "BitVec 12",
+    "body": {
+     "chars": 8,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 200,
+    "name": "Proven.Mach.Riscv.immN",
+    "module": "Riscv.Back.Call",
+    "above": 4,
+    "features": [
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type BitVec 12",
+    "typ": "Nat → BitVec 12",
+    "body": null
+   },
+   {
+    "rank": 201,
+    "name": "Proven.cs0",
+    "module": "Compiler.Front.Pipe",
+    "above": 4,
+    "features": [
+     "0-ary constant",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type X",
+    "typ": "Proven.CS",
+    "body": null
+   },
+   {
+    "rank": 202,
+    "name": "Proven.BExp.av",
+    "module": "Compiler.Front.PipeI",
+    "above": 3,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E",
+    "typ": "Proven.BExp → Bool",
+    "body": null
+   },
+   {
+    "rank": 203,
+    "name": "Proven.BExp.depth",
+    "module": "Riscv.Direct.Arr2Code",
+    "above": 3,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E",
+    "typ": "Proven.BExp → Nat",
+    "body": null
+   },
+   {
+    "rank": 204,
+    "name": "Proven.BExp.vltB",
+    "module": "Compiler.Front.PipeStdBMachine",
+    "above": 3,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E",
+    "typ": "Nat → Proven.BExp → Bool",
+    "body": null
+   },
+   {
+    "rank": 205,
+    "name": "Proven.Ir.Ctx.wb",
+    "module": "Compiler.Ir.EmitCtx",
+    "above": 3,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "Application type mismatch: The argument a has type X × X T but is expe",
+    "typ": "{T : Proven.Ir.Target} → Proven.Ir.Ctx T → Nat",
+    "body": null
+   },
+   {
+    "rank": 206,
+    "name": "Proven.Ir.Result.ev",
+    "module": "Compiler.Ir.Sem",
+    "above": 3,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type List X",
+    "typ": "Proven.Ir.Result → List Proven.Top.Alloc.MemEvent",
+    "body": null
+   },
+   {
+    "rank": 207,
+    "name": "Proven.Mach.Ind.C.lv",
+    "module": "Compiler.Ind",
+    "above": 3,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr",
+    "typ": "Proven.Mach.Ind.C → Proven.Mach.Ind.C",
+    "body": null
+   },
+   {
+    "rank": 208,
+    "name": "Proven.Mach.Ind.C.rv",
+    "module": "Compiler.Ind",
+    "above": 3,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr",
+    "typ": "Proven.Mach.Ind.C → Proven.Mach.Ind.C",
+    "body": null
+   },
+   {
+    "rank": 209,
+    "name": "Proven.Mach.Ind.C.tag",
+    "module": "Compiler.Ind",
+    "above": 3,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E",
+    "typ": "Proven.Mach.Ind.C → Nat",
+    "body": null
+   },
+   {
+    "rank": 210,
+    "name": "Proven.Mach.Ind.C.xv",
+    "module": "Compiler.Ind",
+    "above": 3,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E",
+    "typ": "Proven.Mach.Ind.C → BitVec 64",
+    "body": null
+   },
+   {
+    "rank": 211,
+    "name": "Proven.Mach.Ind.Cn.X",
+    "module": "Compiler.Ind",
+    "above": 3,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "invalid instantiateLambda, too many parameters",
+    "typ": "{rk : Proven.Mach.Ind.Kd} →   Proven.Mach.Ind.Cn rk → Nat → Proven.Mach.Ind.C → BitVec 64 → Proven.Mach.Ind.C → BitVec 64 × Proven.Mach.Ind.C",
+    "body": null
+   },
+   {
+    "rank": 212,
+    "name": "Proven.Mach.Ind.Cn.f",
+    "module": "Compiler.Ind",
+    "above": 3,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "invalid instantiateLambda, too many parameters",
+    "typ": "{rk : Proven.Mach.Ind.Kd} → Proven.Mach.Ind.Cn rk → Bool → BitVec 64 → Proven.Mach.Ind.C → rk.den",
+    "body": null
+   },
+   {
+    "rank": 213,
+    "name": "Proven.Mach.Ind.Cn.g",
+    "module": "Compiler.Ind",
+    "above": 3,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "invalid instantiateLambda, too many parameters",
+    "typ": "{rk : Proven.Mach.Ind.Kd} → Proven.Mach.Ind.Cn rk → Bool → Bool → BitVec 64 → Proven.Mach.Ind.C → rk.den",
+    "body": null
+   },
+   {
+    "rank": 214,
+    "name": "Proven.Mach.Ind.Cn.me",
+    "module": "Compiler.Ind",
+    "above": 3,
+    "features": [
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx_ind: unsupported parameter type X ?rk",
+    "typ": "{rk : Proven.Mach.Ind.Kd} → Proven.Mach.Ind.Cn rk → Proven.Mach.Ind.C",
+    "body": null
+   },
+   {
+    "rank": 215,
+    "name": "Proven.Mach.Ind.Cn.ρ",
+    "module": "Compiler.Ind",
+    "above": 3,
+    "features": [
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx_ind: unsupported parameter type X ?rk",
+    "typ": "{rk : Proven.Mach.Ind.Kd} → Proven.Mach.Ind.Cn rk → List (BitVec 64 × Proven.Mach.Ind.C)",
+    "body": null
+   },
+   {
+    "rank": 216,
+    "name": "Proven.Mach.Ind.Kd.pair",
+    "module": "Compiler.Ind",
+    "above": 3,
+    "features": [
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx_ind: unsupported parameter type X ?k",
+    "typ": "(k : Proven.Mach.Ind.Kd) → k.den → BitVec 64 × Proven.Mach.Ind.C",
+    "body": null
+   },
+   {
+    "rank": 217,
+    "name": "Proven.Mach.Ind.Kd.pick",
+    "module": "Compiler.Ind",
+    "above": 3,
+    "features": [
+     "polymorphic type variable",
+     "sized BitVec / Fin",
+     "tuple (×)"
+    ],
+    "first_error": "frontx_ind: unsupported parameter type BitVec 64 × X",
+    "typ": "(k : Proven.Mach.Ind.Kd) → BitVec 64 × Proven.Mach.Ind.C → k.den",
+    "body": null
+   },
+   {
+    "rank": 218,
+    "name": "Proven.Mach.Wide.fr",
+    "module": "Compiler.Wide",
+    "above": 3,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "invalid instantiateForall, too many parameters",
+    "typ": "(self : Proven.Mach.Wide) → self.S → BitVec 64",
+    "body": null
+   },
+   {
+    "rank": 219,
+    "name": "Proven.Mach.scE",
+    "module": "Compiler.Opt.Exp",
+    "above": 3,
+    "features": [
+     "0-ary constant",
+     "translator shape (no type named)"
+    ],
+    "first_error": "(lean.unknownIdentifier): Unknown constant `X",
+    "typ": "Proven.Mach.Reg",
+    "body": null
+   },
+   {
+    "rank": 220,
+    "name": "Proven.relB",
+    "module": "Compiler.Front.PipeI",
+    "above": 3,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr",
+    "typ": "Proven.BStmt → Proven.BStmt",
+    "body": null
+   },
+   {
+    "rank": 221,
+    "name": "Proven.Ir.Ctx.inA",
+    "module": "Compiler.Ir.EmitCtx",
+    "above": 2,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "Application type mismatch: The argument a has type X × X T but is expe",
+    "typ": "{T : Proven.Ir.Target} → Proven.Ir.Ctx T → Nat",
+    "body": null
+   },
+   {
+    "rank": 222,
+    "name": "Proven.Ir.Ctx.outA",
+    "module": "Compiler.Ir.EmitCtx",
+    "above": 2,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "Application type mismatch: The argument a has type X × X T but is expe",
+    "typ": "{T : Proven.Ir.Target} → Proven.Ir.Ctx T → Nat",
+    "body": null
+   },
+   {
+    "rank": 223,
+    "name": "Proven.Ir.Ctx.wl",
+    "module": "Compiler.Ir.EmitCtx",
+    "above": 2,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "Application type mismatch: The argument a has type X × X T but is expe",
+    "typ": "{T : Proven.Ir.Target} → Proven.Ir.Ctx T → Nat",
+    "body": null
+   },
+   {
+    "rank": 224,
+    "name": "Proven.Ir.IndLow.wStep",
+    "module": "Compiler.Ir.IndLowMain",
+    "above": 2,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "(lean.unknownIdentifier): Unknown constant `X",
+    "typ": "Nat → Proven.Ir.SC",
+    "body": null
+   },
+   {
+    "rank": 225,
+    "name": "Proven.Mach.IR.Arg.eval",
+    "module": "Compiler.Opt.IR",
+    "above": 2,
+    "features": [
+     "non-computational (Type / Prop / Sort / Decidable)",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported parameter type Type PANIC at Lean.Expr.appArg! Lea",
+    "typ": "{ρ : Type} → Proven.Mach.IR.Regs ρ → Proven.Mach.IR.Arg ρ → BitVec 64",
+    "body": null
+   },
+   {
+    "rank": 226,
+    "name": "Proven.Mach.Ind.E.okc",
+    "module": "Compiler.Ind",
+    "above": 2,
+    "features": [
+     "function-valued parameter or result",
+     "non-computational (Type / Prop / Sort / Decidable)",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx_ind: unsupported parameter type (a : X → X ?rk a → Sort ?u.1185",
+    "typ": "{rk : Proven.Mach.Ind.Kd} →   List Proven.Mach.Ind.Kd → List Proven.Mach.Ind.Kd → {k : Proven.Mach.Ind.Kd} → Proven.Mach.Ind.E rk k → Bool",
+    "body": null
+   },
+   {
+    "rank": 227,
+    "name": "Proven.Mach.Ind.E.tags",
+    "module": "Compiler.Ind",
+    "above": 2,
+    "features": [
+     "function-valued parameter or result",
+     "non-computational (Type / Prop / Sort / Decidable)",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx_ind: unsupported parameter type (a : X → X ?rk a → Sort ?u.1189",
+    "typ": "{rk k : Proven.Mach.Ind.Kd} → Proven.Mach.Ind.E rk k → Nat",
+    "body": null
+   },
+   {
+    "rank": 228,
+    "name": "Proven.Mach.Ind.Kd.dflt",
+    "module": "Compiler.Ind",
+    "above": 2,
+    "features": [
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx_ind: unsupported result type X ?k",
+    "typ": "(k : Proven.Mach.Ind.Kd) → k.den",
+    "body": null
+   },
+   {
+    "rank": 229,
+    "name": "Proven.Mach.Ind.Pg.X",
+    "module": "Compiler.Ind",
+    "above": 2,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "invalid instantiateLambda, too many parameters",
+    "typ": "{rk : Proven.Mach.Ind.Kd} →   Proven.Mach.Ind.Pg rk → Nat → Proven.Mach.Ind.C → BitVec 64 → Proven.Mach.Ind.C → BitVec 64 × Proven.Mach.Ind.C",
+    "body": null
+   },
+   {
+    "rank": 230,
+    "name": "Proven.Mach.Ind.sTag",
+    "module": "Compiler.Ind",
+    "above": 2,
+    "features": [
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported parameter type X",
+    "typ": "Proven.Mach.Ind.Shape → Nat",
+    "body": null
+   },
+   {
+    "rank": 231,
+    "name": "Proven.Mach.scA",
+    "module": "Compiler.Opt.Arr",
+    "above": 2,
+    "features": [
+     "0-ary constant",
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type X",
+    "typ": "Proven.Mach.Reg",
+    "body": null
+   },
+   {
+    "rank": 232,
+    "name": "Proven.Top.wordBytes",
+    "module": "Riscv.Back.Top",
+    "above": 2,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported parameter type List (BitVec 32)",
+    "typ": "List (BitVec 32) → List UInt8",
+    "body": null
+   },
+   {
+    "rank": 233,
+    "name": "Proven.addrE",
+    "module": "Spec.ArrCode",
+    "above": 2,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "inductive / structure type",
+     "polymorphic type variable",
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx_ind: unsupported parameter type List (Fin 8) frontx_ind: X on T",
+    "typ": "List (Fin 8) → Nat → Proven.AExp → Proven.AExp",
+    "body": null
+   },
+   {
+    "rank": 234,
+    "name": "Proven.Ir.Ctx.W",
+    "module": "Compiler.Ir.EmitCtx",
+    "above": 1,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type List (BitVec 32)",
+    "typ": "{T : Proven.Ir.Target} → Proven.Ir.Ctx T → List (BitVec 32)",
+    "body": null
+   },
+   {
+    "rank": 235,
+    "name": "Proven.Ir.Ctx.input",
+    "module": "Compiler.Ir.EmitCtx",
+    "above": 1,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "Application type mismatch: The argument a has type X × X T × Nat × Lis",
+    "typ": "{T : Proven.Ir.Target} → Proven.Ir.Ctx T → List UInt8",
+    "body": null
+   },
+   {
+    "rank": 236,
+    "name": "Proven.Ir.Ctx.outL",
+    "module": "Compiler.Ir.EmitCtx",
+    "above": 1,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "Application type mismatch: The argument a has type X × X T but is expe",
+    "typ": "{T : Proven.Ir.Target} → Proven.Ir.Ctx T → Nat",
+    "body": null
+   },
+   {
+    "rank": 237,
+    "name": "Proven.Ir.Ctx.pc0",
+    "module": "Compiler.Ir.EmitCtx",
+    "above": 1,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "Application type mismatch: The argument a has type X × X T but is expe",
+    "typ": "{T : Proven.Ir.Target} → Proven.Ir.Ctx T → BitVec 64",
+    "body": null
+   },
+   {
+    "rank": 238,
+    "name": "Proven.Ir.Ctx.s0",
+    "module": "Compiler.Ir.EmitCtx",
+    "above": 1,
+    "features": [
+     "inductive / structure type",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported result type T.S PANIC at Lean.Expr.appArg! Lean.Ex",
+    "typ": "{T : Proven.Ir.Target} → Proven.Ir.Ctx T → T.S",
+    "body": null
+   },
+   {
+    "rank": 239,
+    "name": "Proven.Ir.Result.vs",
+    "module": "Compiler.Ir.Sem",
+    "above": 1,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx_ind: X has no argument of a declared type",
+    "typ": "Proven.Ir.Result → List Proven.Ir.Val",
+    "body": null
+   },
+   {
+    "rank": 240,
+    "name": "Proven.Mach.okA",
+    "module": "Compiler.Opt.Arr",
+    "above": 1,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported parameter type List (Fin 8)",
+    "typ": "List (Fin 8) → Proven.AStmt → Bool",
+    "body": null
+   },
+   {
+    "rank": 241,
+    "name": "Proven.Ir.Ctx.F0",
+    "module": "Compiler.Ir.EmitCtx",
+    "above": 0,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "Application type mismatch: The argument a has type X × X T but is expe",
+    "typ": "{T : Proven.Ir.Target} → Proven.Ir.Ctx T → Nat",
+    "body": null
+   },
+   {
+    "rank": 242,
+    "name": "Proven.Ir.Ctx.hm",
+    "module": "Compiler.Ir.EmitCtx",
+    "above": 0,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "sized BitVec / Fin"
+    ],
+    "first_error": "frontx: unsupported result type Option (BitVec 8)",
+    "typ": "{T : Proven.Ir.Target} → Proven.Ir.Ctx T → Nat → Option (BitVec 8)",
+    "body": null
+   },
+   {
+    "rank": 243,
+    "name": "Proven.Ir.Ctx.nS",
+    "module": "Compiler.Ir.EmitCtx",
+    "above": 0,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "Application type mismatch: The argument a has type X × X T but is expe",
+    "typ": "{T : Proven.Ir.Target} → Proven.Ir.Ctx T → Nat",
+    "body": null
+   },
+   {
+    "rank": 244,
+    "name": "Proven.Ir.Ctx.sv",
+    "module": "Compiler.Ir.EmitCtx",
+    "above": 0,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "Application type mismatch: The argument a has type X × X T but is expe",
+    "typ": "{T : Proven.Ir.Target} → Proven.Ir.Ctx T → BitVec 64",
+    "body": null
+   },
+   {
+    "rank": 245,
+    "name": "Proven.Ir.Target.lenCall",
+    "module": "Compiler.Ir.Target",
+    "above": 0,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "(kernel) application type mismatch Sim argument has type Type 1 but fu",
+    "typ": "Proven.Ir.Target → Nat",
+    "body": null
+   },
+   {
+    "rank": 246,
+    "name": "Proven.Ir.Target.top",
+    "module": "Compiler.Ir.Target",
+    "above": 0,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "invalid instantiateForall, too many parameters",
+    "typ": "(self : Proven.Ir.Target) → self.S → Nat",
+    "body": null
+   },
+   {
+    "rank": 247,
+    "name": "Proven.Ir.keys",
+    "module": "Compiler.Ir.StructLbl",
+    "above": 0,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "(lean.unknownIdentifier): Unknown constant `X",
+    "typ": "List (Proven.Ir.Lbl × Proven.Ir.Block Proven.Ir.VReg) → List Proven.Ir.Lbl",
+    "body": null
+   },
+   {
+    "rank": 248,
+    "name": "Proven.Ir.rs3",
+    "module": "Compiler.Ir.StructLbl",
+    "above": 0,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "(lean.unknownIdentifier): Unknown constant `X",
+    "typ": "{α : Type} → Proven.Ir.TC → List α → (α → Proven.Ir.TC) → Proven.Ir.TC → List (Proven.Ir.Lbl × Proven.Ir.TC)",
+    "body": null
+   },
+   {
+    "rank": 249,
+    "name": "Proven.Ir.tacticLomega",
+    "module": "Compiler.Ir.StructLbl",
+    "above": 0,
+    "features": [
+     "0-ary constant",
+     "translator shape (no type named)"
+    ],
+    "first_error": "(lean.unknownIdentifier): Unknown constant `X",
+    "typ": "ParserDescr",
+    "body": null
+   },
+   {
+    "rank": 250,
+    "name": "Proven.Mach.IR.Code.seqs",
+    "module": "Compiler.Opt.IR",
+    "above": 0,
+    "features": [
+     "polymorphic type variable"
+    ],
+    "first_error": "frontx: unsupported result type X ρ",
+    "typ": "{ρ : Type} → List (Proven.Mach.IR.Code ρ) → Proven.Mach.IR.Code ρ",
+    "body": null
+   },
+   {
+    "rank": 251,
+    "name": "Proven.Mach.IR.St.mem",
+    "module": "Compiler.Opt.IR",
+    "above": 0,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr",
+    "typ": "{ρ : Type} → Proven.Mach.IR.St ρ → Proven.Mach.Mem",
+    "body": null
+   },
+   {
+    "rank": 252,
+    "name": "Proven.Mach.IR.St.reg",
+    "module": "Compiler.Opt.IR",
+    "above": 0,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported result type X ρ PANIC at Lean.Expr.appArg! Lean.Ex",
+    "typ": "{ρ : Type} → Proven.Mach.IR.St ρ → Proven.Mach.IR.Regs ρ",
+    "body": null
+   },
+   {
+    "rank": 253,
+    "name": "Proven.Mach.Sel.envA",
+    "module": "Compiler.Opt.Sel",
+    "above": 0,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E",
+    "typ": "Proven.AEnv → Fin 32 → BitVec 64",
+    "body": null
+   },
+   {
+    "rank": 254,
+    "name": "Proven.Mach.Sel.usesS",
+    "module": "Compiler.Opt.Sel",
+    "above": 0,
+    "features": [
+     "several non-structural parameters"
+    ],
+    "first_error": "frontx_ind: a scalar parameter needs an entry `f xs = X n xs`",
+    "typ": "Proven.Mach.Sel.SExp → Nat → Bool",
+    "body": null
+   },
+   {
+    "rank": 255,
+    "name": "Proven.Mach.WideF.frameAt",
+    "module": "Compiler.Opt.BFn",
+    "above": 0,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "invalid instantiateForall, too many parameters",
+    "typ": "(self : Proven.Mach.WideF) → self.S → Nat → Nat",
+    "body": null
+   },
+   {
+    "rank": 256,
+    "name": "Proven.Mach.envB",
+    "module": "Compiler.Opt.BSel",
+    "above": 0,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E",
+    "typ": "Proven.Mach.BEnv → Fin 32 → BitVec 64",
+    "body": null
+   },
+   {
+    "rank": 257,
+    "name": "Proven.Mach.svB",
+    "module": "Compiler.Opt.BSel",
+    "above": 0,
+    "features": [
+     "polymorphic type variable",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E",
+    "typ": "Proven.Mach.BEnv → Nat → BitVec 64",
+    "body": null
+   },
+   {
+    "rank": 258,
+    "name": "Proven.N",
+    "module": "Spec.Code",
+    "above": 0,
+    "features": [
+     "0-ary constant",
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx: could not prove X",
+    "typ": "Nat",
+    "body": null
+   },
+   {
+    "rank": 259,
+    "name": "Proven.Op.ofNat",
+    "module": "Spec.Code",
+    "above": 0,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "frontx_ind: equation cond.eq_1 has no constructor pattern (by cases: f",
+    "typ": "Nat → Proven.Op",
+    "body": null
+   }
+  ],
+  "conleche": [
+   {
+    "rank": 1,
+    "name": "ConLeche.ConstantInfo.name",
+    "module": "ConLeche.Kernel.Env",
+    "above": 502,
+    "features": [
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.ConstantInfo.name has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 2,
+    "name": "ConLeche.Expr.BTab",
+    "module": "ConLeche.Cached.ExprOpsC",
+    "above": 468,
+    "features": [
+     "function-valued parameter or result"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.Expr.BTab has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 3,
+    "name": "ConLeche.natDivName",
+    "module": "ConLeche.Kernel.CoreDefs",
+    "above": 465,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.natDivName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 17,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 4,
+    "name": "ConLeche.natGcdName",
+    "module": "ConLeche.Kernel.CoreDefs",
+    "above": 465,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.natGcdName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 17,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 5,
+    "name": "ConLeche.natLandName",
+    "module": "ConLeche.Kernel.CoreDefs",
+    "above": 465,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.natLandName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 18,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 6,
+    "name": "ConLeche.natLorName",
+    "module": "ConLeche.Kernel.CoreDefs",
+    "above": 465,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.natLorName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 17,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 7,
+    "name": "ConLeche.natShiftLeftName",
+    "module": "ConLeche.Kernel.CoreDefs",
+    "above": 465,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.natShiftLeftName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 23,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 8,
+    "name": "ConLeche.natShiftRightName",
+    "module": "ConLeche.Kernel.CoreDefs",
+    "above": 465,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.natShiftRightName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 24,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 9,
+    "name": "ConLeche.natXorName",
+    "module": "ConLeche.Kernel.CoreDefs",
+    "above": 465,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.natXorName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 17,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 10,
+    "name": "ConLeche.natAddName",
+    "module": "ConLeche.Kernel.CoreDefs",
+    "above": 463,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.natAddName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 17,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 11,
+    "name": "ConLeche.natBleName",
+    "module": "ConLeche.Kernel.CoreDefs",
+    "above": 463,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.natBleName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 17,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 12,
+    "name": "ConLeche.natMulName",
+    "module": "ConLeche.Kernel.CoreDefs",
+    "above": 463,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.natMulName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 17,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 13,
+    "name": "ConLeche.natSubName",
+    "module": "ConLeche.Kernel.CoreDefs",
+    "above": 463,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.natSubName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 17,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 14,
+    "name": "ConLeche.Expr.HTab",
+    "module": "ConLeche.Cached.ExprOpsC",
+    "above": 462,
+    "features": [
+     "function-valued parameter or result"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.Expr.HTab has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 15,
+    "name": "ConLeche.natBeqName",
+    "module": "ConLeche.Kernel.CoreDefs",
+    "above": 462,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.natBeqName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 17,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 16,
+    "name": "ConLeche.natModName",
+    "module": "ConLeche.Kernel.CoreDefs",
+    "above": 462,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.natModName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 17,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 17,
+    "name": "ConLeche.natPowName",
+    "module": "ConLeche.Kernel.CoreDefs",
+    "above": 462,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.natPowName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 17,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 18,
+    "name": "ConLeche.Expr.NTab",
+    "module": "ConLeche.Cached.ExprOpsC",
+    "above": 450,
+    "features": [
+     "function-valued parameter or result"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.Expr.NTab has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 19,
+    "name": "ConLeche.withExclusive",
+    "module": "ConLeche.Kernel.Exclusive",
+    "above": 409,
+    "features": [
+     "function-valued parameter or result"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type Bool → ?β",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 20,
+    "name": "ConLeche.satRange",
+    "module": "ConLeche.Kernel.Expr",
+    "above": 401,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.satRange has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 5,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 21,
+    "name": "ConLeche.FBase.find?",
+    "module": "ConLeche.Kernel.FEnv",
+    "above": 397,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type ConLeche.FBase",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 22,
+    "name": "ConLeche.FEnv.lookup",
+    "module": "ConLeche.Kernel.FEnv",
+    "above": 397,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type ConLeche.FEnv",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 23,
+    "name": "ConLeche.Level.subst",
+    "module": "ConLeche.Kernel.Level",
+    "above": 384,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type List ConLeche.Name",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 24,
+    "name": "ConLeche.Expr.bvarBRaw",
+    "module": "ConLeche.Kernel.Expr",
+    "above": 356,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "gate ok; arms FAIL: frontx_ind: equation ConLeche.Expr.bvarBRaw.eq_1 has no constructor pattern (by cases: frontx_ind: unsupported term (ConLeche.bvarOfData (ConLeche.Expr.bvar i).data).toNat)",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 25,
+    "name": "ConLeche.Expr.bvarPoolSize",
+    "module": "ConLeche.Kernel.Expr",
+    "above": 352,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.Expr.bvarPoolSize has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 33,
+     "kind": "recursion or self-reference"
+    }
+   },
+   {
+    "rank": 26,
+    "name": "ConLeche.Expr.resTerm",
+    "module": "ConLeche.Cached.ExprOpsC",
+    "above": 346,
+    "features": [
+     "monad / higher-kinded (Type → Type, m α)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type Squash ({ r // r = ?c } × ?M)",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 27,
+    "name": "ConLeche.natName",
+    "module": "ConLeche.Kernel.Basis.Names",
+    "above": 338,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.natName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 22,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 28,
+    "name": "ConLeche.Level.imaxRules",
+    "module": "ConLeche.Kernel.Level",
+    "above": 331,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "String / Char / Int"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type Int",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 29,
+    "name": "ConLeche.Level.leqCore",
+    "module": "ConLeche.Kernel.Level",
+    "above": 331,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "String / Char / Int"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type Int",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 30,
+    "name": "ConLeche.Level.rest",
+    "module": "ConLeche.Kernel.Level",
+    "above": 331,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "String / Char / Int"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type Int",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 31,
+    "name": "ConLeche.CheckM",
+    "module": "ConLeche.Kernel.Error",
+    "above": 309,
+    "features": [
+     "monad / higher-kinded (Type → Type, m α)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.CheckM has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 32,
+    "name": "ConLeche.charName",
+    "module": "ConLeche.Kernel.Basis.Names",
+    "above": 301,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.charName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 23,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 33,
+    "name": "ConLeche.listName",
+    "module": "ConLeche.Kernel.Basis.Names",
+    "above": 301,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.listName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 23,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 34,
+    "name": "ConLeche.Expr.stripPis",
+    "module": "ConLeche.Kernel.ExprOps",
+    "above": 299,
+    "features": [
+     "0-ary constant",
+     "List / Array / Option of non-scalar element"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported result type Option (List ConLeche.Expr × ConLeche.Expr)",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 35,
+    "name": "ConLeche.charOfNatName",
+    "module": "ConLeche.Kernel.Basis.Names",
+    "above": 299,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.charOfNatName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 20,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 36,
+    "name": "ConLeche.listConsName",
+    "module": "ConLeche.Kernel.Basis.Names",
+    "above": 299,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.listConsName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 19,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 37,
+    "name": "ConLeche.listNilName",
+    "module": "ConLeche.Kernel.Basis.Names",
+    "above": 299,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.listNilName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 18,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 38,
+    "name": "ConLeche.stringName",
+    "module": "ConLeche.Kernel.Basis.Names",
+    "above": 299,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.stringName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 25,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 39,
+    "name": "ConLeche.stringOfListName",
+    "module": "ConLeche.Kernel.Basis.Names",
+    "above": 299,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.stringOfListName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 23,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 40,
+    "name": "ConLeche.PropWhen.inter",
+    "module": "ConLeche.Kernel.PropWhen",
+    "above": 295,
+    "features": [
+     "0-ary constant",
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.PropWhen.inter has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 41,
+    "name": "ConLeche.Expr.mkAppN",
+    "module": "ConLeche.Kernel.ExprOps",
+    "above": 294,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "gate ok; arms FAIL: frontx_ind: unsupported variable (a dropped field?) ?a (by cases: frontx_ind: unsupported variable (a dropped field?) head)",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 42,
+    "name": "ConLeche.openPisAtFvars",
+    "module": "ConLeche.Kernel.CoreDefs",
+    "above": 290,
+    "features": [
+     "0-ary constant",
+     "List / Array / Option of non-scalar element"
+    ],
+    "first_error": "gate FAIL: frontx_ind: more than one scalar parameter",
+    "typ": "",
+    "body": {
+     "chars": 160,
+     "kind": "recursion or self-reference"
+    }
+   },
+   {
+    "rank": 43,
+    "name": "ConLeche.FBase.findTable?",
+    "module": "ConLeche.Kernel.FEnv",
+    "above": 287,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type ConLeche.FBase",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 44,
+    "name": "ConLeche.FEnv.rawTable?",
+    "module": "ConLeche.Kernel.FEnv",
+    "above": 287,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type ConLeche.FEnv",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 45,
+    "name": "ConLeche.BasisDSL.rule",
+    "module": "ConLeche.Kernel.Basis.Builder",
+    "above": 286,
+    "features": [
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported result type ConLeche.RecRule",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 46,
+    "name": "ConLeche.Level.isEquiv",
+    "module": "ConLeche.Kernel.Level",
+    "above": 286,
+    "features": [
+     "List / Array / Option of non-scalar element"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported result type Option Bool",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 47,
+    "name": "ConLeche.ConstantInfo.toConstantVal",
+    "module": "ConLeche.Kernel.Env",
+    "above": 285,
+    "features": [
+     "0-ary constant",
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.ConstantInfo.toConstantVal has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 48,
+    "name": "ConLeche.PropWhen.isNever",
+    "module": "ConLeche.Kernel.PropWhen",
+    "above": 285,
+    "features": [
+     "0-ary constant",
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.PropWhen.isNever has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 49,
+    "name": "ConLeche.boolTrueName",
+    "module": "ConLeche.Kernel.CoreDefs",
+    "above": 285,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.boolTrueName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 19,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 50,
+    "name": "ConLeche.instPisWith",
+    "module": "ConLeche.Kernel.Inductives.Positivity",
+    "above": 285,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate ok; arms FAIL: frontx_ind: a pattern on another argument (ConLeche.instPisWith.eq_2) (by cases: frontx_ind: unsupported variable (a dropped field?) head)",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 51,
+    "name": "ConLeche.boolFalseName",
+    "module": "ConLeche.Kernel.CoreDefs",
+    "above": 284,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.boolFalseName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 20,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 52,
+    "name": "ConLeche.Expr.abstract1",
+    "module": "ConLeche.Kernel.ExprOps",
+    "above": 283,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: more than one scalar parameter",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 53,
+    "name": "ConLeche.ProjTable.entry",
+    "module": "ConLeche.Kernel.Env",
+    "above": 283,
+    "features": [
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.ProjTable.entry has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 54,
+    "name": "ConLeche.formerResSort",
+    "module": "ConLeche.Kernel.CoreDefs",
+    "above": 283,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported result type Option ConLeche.Level",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 55,
+    "name": "ConLeche.PropWhen.bindZ",
+    "module": "ConLeche.Kernel.PropWhen",
+    "above": 281,
+    "features": [
+     "function-valued parameter or result",
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.PropWhen.bindZ has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 56,
+    "name": "ConLeche.natPredName",
+    "module": "ConLeche.Kernel.CoreDefs",
+    "above": 280,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.natPredName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 18,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 57,
+    "name": "ConLeche.sorryAxName",
+    "module": "ConLeche.Kernel.Basis.Names",
+    "above": 280,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.sorryAxName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 32,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 58,
+    "name": "ConLeche.andName",
+    "module": "ConLeche.Kernel.Basis.Names",
+    "above": 277,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.andName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 22,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 59,
+    "name": "ConLeche.lamProj?",
+    "module": "ConLeche.Kernel.PropRead",
+    "above": 277,
+    "features": [
+     "0-ary constant",
+     "List / Array / Option of non-scalar element"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported result type Option (Nat × Nat)",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 60,
+    "name": "ConLeche.Expr.peelPis",
+    "module": "ConLeche.Kernel.PropRead",
+    "above": 276,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate ok; arms FAIL: frontx_ind: equation ConLeche.Expr.peelPis.eq_1 has no constructor pattern (by cases: frontx_ind: unsupported term match ?x✝, ConLeche.Expr.bvar i with | 0, e => some e | k.succ, t",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 61,
+    "name": "ConLeche.PropWhen.isProp",
+    "module": "ConLeche.Kernel.PropRead",
+    "above": 276,
+    "features": [
+     "0-ary constant",
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.PropWhen.isProp has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 62,
+    "name": "ConLeche.Expr.binderDom",
+    "module": "ConLeche.Kernel.PropRead",
+    "above": 275,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate ok; arms FAIL: frontx_ind: equation ConLeche.Expr.binderDom.eq_3 has no constructor pattern (by cases: frontx_ind: unsupported term match ?x✝, ConLeche.Expr.bvar i with | 0, A.forallE body => som",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 63,
+    "name": "ConLeche.Expr.instantiateList",
+    "module": "ConLeche.Kernel.ExprOps",
+    "above": 275,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "gate ok; arms FAIL: frontx_ind: a recursive call not on a child ?vs[?a - ?d].instantiateList (List.take (?a - ?d) ?vs) ?d (by cases: frontx_ind: a recursive call not on a child ?vs[i - ?d].instantiate",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 64,
+    "name": "ConLeche.andIntroName",
+    "module": "ConLeche.Kernel.Basis.And",
+    "above": 275,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.andIntroName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 19,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 65,
+    "name": "ConLeche.Expr.liftLooseBVars",
+    "module": "ConLeche.Kernel.ExprOps",
+    "above": 274,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: more than one scalar parameter",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 66,
+    "name": "ConLeche.formerSortLoop",
+    "module": "ConLeche.Kernel.Core",
+    "above": 274,
+    "features": [
+     "function-valued parameter or result",
+     "monad / higher-kinded (Type → Type, m α)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type Type → Type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 67,
+    "name": "ConLeche.CheckMode.verifiedChecks",
+    "module": "ConLeche.Kernel.Env",
+    "above": 273,
+    "features": [
+     "0-ary constant",
+     "inductive / structure type",
+     "monad / higher-kinded (Type → Type, m α)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.CheckMode.verifiedChecks has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 68,
+    "name": "ConLeche.structProjPs",
+    "module": "ConLeche.Kernel.Inductives.StructParts",
+    "above": 273,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.structProjPs has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 69,
+    "name": "ConLeche.liftFueled",
+    "module": "ConLeche.Kernel.Core",
+    "above": 272,
+    "features": [
+     "String / Char / Int",
+     "monad / higher-kinded (Type → Type, m α)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type Type → Type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 70,
+    "name": "ConLeche.Expr.binderPair?",
+    "module": "ConLeche.Kernel.ExprOps",
+    "above": 271,
+    "features": [
+     "0-ary constant",
+     "List / Array / Option of non-scalar element"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported result type Option (ConLeche.Expr × ConLeche.Expr × ConLeche.Expr × ConLeche.Expr)",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 71,
+    "name": "ConLeche.MemberShape.structCtor?",
+    "module": "ConLeche.Kernel.Inductives.BlockShape",
+    "above": 271,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.MemberShape.structCtor? has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 72,
+    "name": "ConLeche.defEqList",
+    "module": "ConLeche.Kernel.Core",
+    "above": 271,
+    "features": [
+     "inductive / structure type",
+     "monad / higher-kinded (Type → Type, m α)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type Type → Type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 73,
+    "name": "ConLeche.bindersFuel",
+    "module": "ConLeche.Kernel.Core",
+    "above": 270,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.bindersFuel has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 19,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 74,
+    "name": "ConLeche.eagerReduceName",
+    "module": "ConLeche.Kernel.CoreDefs",
+    "above": 270,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.eagerReduceName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 29,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 75,
+    "name": "ConLeche.etaProjs",
+    "module": "ConLeche.Kernel.CoreDefs",
+    "above": 270,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "gate ok; arms FAIL: frontx_ind: equation ConLeche.etaProjs.eq_1 has no constructor pattern (by cases: frontx_ind: unsupported term List.map (fun j => ConLeche.Expr.proj ConLeche.Name.anonymous j ?b) (",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 76,
+    "name": "ConLeche.piResidual",
+    "module": "ConLeche.Kernel.CoreDefs",
+    "above": 270,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate ok; arms FAIL: frontx_ind: a pattern on another argument (ConLeche.piResidual.eq_2) (by cases: frontx_ind: unsupported variable (a dropped field?) head)",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 77,
+    "name": "ConLeche.Expr.instSpine",
+    "module": "ConLeche.Kernel.ExprOps",
+    "above": 269,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate ok; arms FAIL: frontx_ind: unsupported variable (a dropped field?) ?a (by cases: frontx_ind: unsupported variable (a dropped field?) head)",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 78,
+    "name": "ConLeche.CoreFns.ioView",
+    "module": "ConLeche.Kernel.Core",
+    "above": 268,
+    "features": [
+     "monad / higher-kinded (Type → Type, m α)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.CoreFns.ioView has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 79,
+    "name": "ConLeche.ReducibilityHint.sameRegular",
+    "module": "ConLeche.Kernel.Env",
+    "above": 268,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.ReducibilityHint.sameRegular has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 80,
+    "name": "ConLeche.defeqLoopFuel",
+    "module": "ConLeche.Kernel.Core",
+    "above": 268,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.defeqLoopFuel has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 19,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 81,
+    "name": "ConLeche.unitLikeFuel",
+    "module": "ConLeche.Kernel.Core",
+    "above": 268,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.unitLikeFuel has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 19,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 82,
+    "name": "ConLeche.whnfLoopFuel",
+    "module": "ConLeche.Kernel.Core",
+    "above": 268,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.whnfLoopFuel has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 19,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 83,
+    "name": "ConLeche.ensureSort",
+    "module": "ConLeche.Kernel.Core",
+    "above": 267,
+    "features": [
+     "inductive / structure type",
+     "monad / higher-kinded (Type → Type, m α)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type Type → Type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 84,
+    "name": "ConLeche.lazyDeltaProjReduction",
+    "module": "ConLeche.Kernel.Core",
+    "above": 267,
+    "features": [
+     "inductive / structure type",
+     "monad / higher-kinded (Type → Type, m α)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type Type → Type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 85,
+    "name": "ConLeche.structEtaExpand",
+    "module": "ConLeche.Kernel.Core",
+    "above": 267,
+    "features": [
+     "inductive / structure type",
+     "monad / higher-kinded (Type → Type, m α)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type Type → Type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 86,
+    "name": "ConLeche.stuckIrrel",
+    "module": "ConLeche.Kernel.Core",
+    "above": 267,
+    "features": [
+     "inductive / structure type",
+     "monad / higher-kinded (Type → Type, m α)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type Type → Type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 87,
+    "name": "ConLeche.tryUnfoldProjApp",
+    "module": "ConLeche.Kernel.Core",
+    "above": 267,
+    "features": [
+     "monad / higher-kinded (Type → Type, m α)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type Type → Type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 88,
+    "name": "ConLeche.unitLikeFields",
+    "module": "ConLeche.Kernel.Core",
+    "above": 267,
+    "features": [
+     "function-valued parameter or result",
+     "monad / higher-kinded (Type → Type, m α)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type Type → Type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 89,
+    "name": "ConLeche.unitLikeLoop",
+    "module": "ConLeche.Kernel.Core",
+    "above": 267,
+    "features": [
+     "inductive / structure type",
+     "monad / higher-kinded (Type → Type, m α)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type Type → Type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 90,
+    "name": "ConLeche.whnfCoreBody",
+    "module": "ConLeche.Kernel.Core",
+    "above": 267,
+    "features": [
+     "inductive / structure type",
+     "monad / higher-kinded (Type → Type, m α)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type Type → Type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 91,
+    "name": "ConLeche.whnfLoop",
+    "module": "ConLeche.Kernel.Core",
+    "above": 267,
+    "features": [
+     "inductive / structure type",
+     "monad / higher-kinded (Type → Type, m α)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type Type → Type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 92,
+    "name": "ConLeche.Expr.fvarBRaw",
+    "module": "ConLeche.Kernel.Expr",
+    "above": 231,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "gate ok; arms FAIL: frontx_ind: equation ConLeche.Expr.fvarBRaw.eq_1 has no constructor pattern (by cases: frontx_ind: unsupported term (ConLeche.fvarOfData (ConLeche.Expr.bvar i).data).toNat)",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 93,
+    "name": "ConLeche.Expr.hasLP",
+    "module": "ConLeche.Kernel.Expr",
+    "above": 179,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "gate ok; arms FAIL: frontx_ind: equation ConLeche.Expr.hasLP.eq_1 has no constructor pattern (by cases: frontx_ind: unsupported term ConLeche.lpOfData (ConLeche.Expr.bvar i).data)",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 94,
+    "name": "ConLeche.Expr.resBool",
+    "module": "ConLeche.Cached.ExprOpsC",
+    "above": 178,
+    "features": [
+     "monad / higher-kinded (Type → Type, m α)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.Expr.resBool has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 95,
+    "name": "ConLeche.Cached.CState.modeMemos",
+    "module": "ConLeche.Cached.StateC",
+    "above": 158,
+    "features": [
+     "HashMap / HashSet / memo state",
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.Cached.CState.modeMemos has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 96,
+    "name": "ConLeche.Cached.natSizeBytes",
+    "module": "ConLeche.Cached.StateC",
+    "above": 157,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.Cached.natSizeBytes has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 97,
+    "name": "ConLeche.Level.defaultFuel",
+    "module": "ConLeche.Kernel.Level",
+    "above": 157,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.Level.defaultFuel has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 5,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 98,
+    "name": "ConLeche.Cached.getAppArgsArrGo",
+    "module": "ConLeche.Cached.CoreC",
+    "above": 156,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type Array ConLeche.Expr",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 99,
+    "name": "ConLeche.Cached.instCCapC",
+    "module": "ConLeche.Cached.StateC",
+    "above": 156,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.Cached.instCCapC has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 8,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 100,
+    "name": "ConLeche.Cached.mkAppRange",
+    "module": "ConLeche.Cached.CoreC",
+    "above": 156,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type Array ConLeche.Expr",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 101,
+    "name": "ConLeche.Cached.nameIsC",
+    "module": "ConLeche.Cached.StateC",
+    "above": 156,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "gate ok; arms FAIL: frontx_ind: equation ConLeche.Cached.nameIsC.eq_1 has no constructor pattern (by cases: frontx_ind: not a constant pre (dS = (.ft false .b)) in ConLeche.Cached.nameIsC)",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 102,
+    "name": "ConLeche.Cached.natCountMax",
+    "module": "ConLeche.Cached.StateC",
+    "above": 156,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.Cached.natCountMax has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 10,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 103,
+    "name": "ConLeche.Cached.natCountTooBig",
+    "module": "ConLeche.Cached.StateC",
+    "above": 156,
+    "features": [
+     "String / Char / Int",
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.Cached.natCountTooBig has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 104,
+    "name": "ConLeche.Cached.natNumeralTooBig",
+    "module": "ConLeche.Cached.StateC",
+    "above": 156,
+    "features": [
+     "0-ary constant",
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.Cached.natNumeralTooBig has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 102,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 105,
+    "name": "ConLeche.Cached.peelFuel",
+    "module": "ConLeche.Cached.StateC",
+    "above": 156,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.Cached.peelFuel has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 8,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 106,
+    "name": "ConLeche.Cached.pushCheapKey",
+    "module": "ConLeche.Cached.CoreC",
+    "above": 155,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: more than one scalar parameter",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 107,
+    "name": "ConLeche.Cached.whnfCoreStoresDone",
+    "module": "ConLeche.Cached.CoreC",
+    "above": 155,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "gate ok; arms FAIL: frontx_ind: not a constant ?f (dS = (.ft false .b)) in ConLeche.Cached.whnfCoreStoresDone (by cases: frontx_ind: not a constant f (dS = (.ft false .b)) in ConLeche.Cached.whnfCoreS",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 108,
+    "name": "ConLeche.recFireLevelCount",
+    "module": "ConLeche.Kernel.CoreDefs",
+    "above": 155,
+    "features": [
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.recFireLevelCount has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 109,
+    "name": "ConLeche.whnfCoreLoopFuel",
+    "module": "ConLeche.Kernel.Core",
+    "above": 155,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.whnfCoreLoopFuel has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 19,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 110,
+    "name": "ConLeche.unwrapOr",
+    "module": "ConLeche.Kernel.CheckerBase",
+    "above": 105,
+    "features": [
+     "inductive / structure type",
+     "monad / higher-kinded (Type → Type, m α)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type Type → Type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 111,
+    "name": "ConLeche.Level.allParamsDefined",
+    "module": "ConLeche.Kernel.Level",
+    "above": 101,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type List ConLeche.Name",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 112,
+    "name": "ConLeche.checkFuel",
+    "module": "ConLeche.Kernel.Core",
+    "above": 86,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.checkFuel has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 27,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 113,
+    "name": "ConLeche.Name.nodup",
+    "module": "ConLeche.Kernel.Level",
+    "above": 68,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.Name.nodup: type mismatch",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 114,
+    "name": "ConLeche.Expr.phApp?",
+    "module": "ConLeche.Kernel.Inductives.Positivity",
+    "above": 59,
+    "features": [
+     "List / Array / Option of non-scalar element"
+    ],
+    "first_error": "gate FAIL: frontx_ind: more than one scalar parameter",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 115,
+    "name": "ConLeche.boolName",
+    "module": "ConLeche.Kernel.CoreDefs",
+    "above": 53,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.boolName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 22,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 116,
+    "name": "ConLeche.natIndOk",
+    "module": "ConLeche.Kernel.CoreDefs",
+    "above": 53,
+    "features": [
+     "0-ary constant",
+     "List / Array / Option of non-scalar element",
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.natIndOk: type mismatch",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 117,
+    "name": "ConLeche.ClassGen.binder",
+    "module": "ConLeche.Kernel.Inductives.GenRec",
+    "above": 49,
+    "features": [
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type ConLeche.ClassGen",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 118,
+    "name": "ConLeche.quotName",
+    "module": "ConLeche.Kernel.Basis.Names",
+    "above": 49,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.quotName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 23,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 119,
+    "name": "ConLeche.Expr.replaceFVars",
+    "module": "ConLeche.Kernel.Inductives.Positivity",
+    "above": 48,
+    "features": [
+     "function-valued parameter or result"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type Nat → Option ConLeche.Expr",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 120,
+    "name": "ConLeche.nestPhs",
+    "module": "ConLeche.Kernel.Inductives.Positivity",
+    "above": 48,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.nestPhs has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 121,
+    "name": "ConLeche.charTyOk",
+    "module": "ConLeche.Kernel.CoreDefs",
+    "above": 45,
+    "features": [
+     "0-ary constant",
+     "List / Array / Option of non-scalar element",
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.charTyOk: type mismatch",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 122,
+    "name": "ConLeche.listTyOk",
+    "module": "ConLeche.Kernel.CoreDefs",
+    "above": 45,
+    "features": [
+     "0-ary constant",
+     "List / Array / Option of non-scalar element",
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.listTyOk: type mismatch",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 123,
+    "name": "ConLeche.stringTyOk",
+    "module": "ConLeche.Kernel.CoreDefs",
+    "above": 45,
+    "features": [
+     "0-ary constant",
+     "List / Array / Option of non-scalar element",
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.stringTyOk: type mismatch",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 124,
+    "name": "ConLeche.nestKeyMap",
+    "module": "ConLeche.Kernel.Inductives.Positivity",
+    "above": 44,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "gate ok; arms FAIL: frontx_ind: equation ConLeche.nestKeyMap.eq_1 has no constructor pattern (by cases: frontx_ind: unsupported term [].get?Internal ?i)",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 125,
+    "name": "ConLeche.NestCtx.hiAt",
+    "module": "ConLeche.Kernel.Inductives.Positivity",
+    "above": 41,
+    "features": [
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.NestCtx.hiAt has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 126,
+    "name": "ConLeche.Expr.piBinders",
+    "module": "ConLeche.Kernel.Inductives.FieldTele",
+    "above": 40,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported result type List ConLeche.Expr × ConLeche.Expr",
+    "typ": "",
+    "body": {
+     "chars": 46,
+     "kind": "recursion or self-reference"
+    }
+   },
+   {
+    "rank": 127,
+    "name": "ConLeche.eqName",
+    "module": "ConLeche.Kernel.Basis.Names",
+    "above": 38,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.eqName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 21,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 128,
+    "name": "ConLeche.natOpName",
+    "module": "ConLeche.Kernel.CoreDefs",
+    "above": 36,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "gate ok; arms FAIL: frontx_ind: comparison of an unsupported type ConLeche.Level (by cases: frontx_ind: comparison of an unsupported type ConLeche.Level)",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 129,
+    "name": "ConLeche.BlockShape.formers",
+    "module": "ConLeche.Kernel.Inductives.BlockShape",
+    "above": 35,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.BlockShape.formers has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 130,
+    "name": "ConLeche.targetHoles",
+    "module": "ConLeche.Kernel.Inductives.RecCheck",
+    "above": 32,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "gate ok; arms FAIL: frontx_ind: equation ConLeche.targetHoles.eq_1 has no constructor pattern (by cases: frontx_ind: unsupported term List.map (fun t => ConLeche.Expr.fvar (?base + t) ([].getD t defau",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 131,
+    "name": "ConLeche.ClassGen.slotVar",
+    "module": "ConLeche.Kernel.Inductives.GenRec",
+    "above": 28,
+    "features": [
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.ClassGen.slotVar has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 132,
+    "name": "ConLeche.Expr.constHoleAt?",
+    "module": "ConLeche.Cached.IndPositivity",
+    "above": 28,
+    "features": [
+     "function-valued parameter or result"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type ConLeche.Name → List ConLeche.Level → Option ConLeche.Expr",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 133,
+    "name": "ConLeche.QuotKind.slot",
+    "module": "ConLeche.Kernel.Env",
+    "above": 28,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.QuotKind.slot has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 134,
+    "name": "ConLeche.checkSpineAt",
+    "module": "ConLeche.Kernel.Inductives.Positivity",
+    "above": 27,
+    "features": [
+     "inductive / structure type",
+     "monad / higher-kinded (Type → Type, m α)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type Type → Type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 135,
+    "name": "ConLeche.nestNonValid",
+    "module": "ConLeche.Kernel.Inductives.Positivity",
+    "above": 27,
+    "features": [
+     "0-ary constant",
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.nestNonValid has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 82,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 136,
+    "name": "ConLeche.BasisDSL.prop",
+    "module": "ConLeche.Kernel.Basis.Builder",
+    "above": 25,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.BasisDSL.prop has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 11,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 137,
+    "name": "ConLeche.classOfMotiveVar",
+    "module": "ConLeche.Kernel.Inductives.ClassRead",
+    "above": 24,
+    "features": [
+     "List / Array / Option of non-scalar element"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.classOfMotiveVar has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 138,
+    "name": "ConLeche.ClassRead.motiveSlot",
+    "module": "ConLeche.Kernel.Inductives.ClassRead",
+    "above": 22,
+    "features": [
+     "List / Array / Option of non-scalar element"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.ClassRead.motiveSlot has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 139,
+    "name": "ConLeche.classLeafAt",
+    "module": "ConLeche.Kernel.Inductives.GenRec",
+    "above": 21,
+    "features": [
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type ConLeche.TargetMajor",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 140,
+    "name": "ConLeche.Display.maxLen",
+    "module": "ConLeche.Kernel.Name",
+    "above": 20,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.Display.maxLen has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 3,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 141,
+    "name": "ConLeche.Expr.stripLams",
+    "module": "ConLeche.Kernel.ExprOps",
+    "above": 20,
+    "features": [
+     "0-ary constant",
+     "List / Array / Option of non-scalar element"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported result type Option (List ConLeche.Expr × ConLeche.Expr)",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 142,
+    "name": "ConLeche.BlockShape.majorIdxAt",
+    "module": "ConLeche.Kernel.Inductives.BlockShape",
+    "above": 19,
+    "features": [
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.BlockShape.majorIdxAt has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 143,
+    "name": "ConLeche.BlockShape.rulePrefixAt",
+    "module": "ConLeche.Kernel.Inductives.BlockShape",
+    "above": 19,
+    "features": [
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.BlockShape.rulePrefixAt has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 144,
+    "name": "ConLeche.Expr.BeqMap",
+    "module": "ConLeche.Kernel.Expr",
+    "above": 19,
+    "features": [
+     "HashMap / HashSet / memo state"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.Expr.BeqMap has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 145,
+    "name": "ConLeche.NestCtx.rootHoles",
+    "module": "ConLeche.Kernel.Inductives.Positivity",
+    "above": 19,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.NestCtx.rootHoles has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 146,
+    "name": "ConLeche.classMinorSlot",
+    "module": "ConLeche.Kernel.Inductives.GenRec",
+    "above": 19,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "monad / higher-kinded (Type → Type, m α)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type Type → Type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 147,
+    "name": "ConLeche.Display.codeEscape",
+    "module": "ConLeche.Kernel.Name",
+    "above": 18,
+    "features": [
+     "String / Char / Int"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.Display.codeEscape has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 148,
+    "name": "ConLeche.fuelSlack",
+    "module": "ConLeche.Kernel.Inductives.Positivity",
+    "above": 18,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.fuelSlack has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 4,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 149,
+    "name": "ConLeche.reduceBoolName",
+    "module": "ConLeche.Kernel.TrustAxioms",
+    "above": 18,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.reduceBoolName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 45,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 150,
+    "name": "ConLeche.targetPinTys",
+    "module": "ConLeche.Kernel.Inductives.RecCheck",
+    "above": 18,
+    "features": [
+     "inductive / structure type",
+     "monad / higher-kinded (Type → Type, m α)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type Type → Type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 151,
+    "name": "ConLeche.Display.idShaped",
+    "module": "ConLeche.Kernel.Name",
+    "above": 17,
+    "features": [
+     "String / Char / Int"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.Display.idShaped has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 152,
+    "name": "ConLeche.structPsAt",
+    "module": "ConLeche.Kernel.Inductives.StructParts",
+    "above": 17,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.structPsAt has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 153,
+    "name": "ConLeche.BlockShape.nIdxs",
+    "module": "ConLeche.Kernel.Inductives.BlockShape",
+    "above": 16,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.BlockShape.nIdxs has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 154,
+    "name": "ConLeche.Expr.substConst0",
+    "module": "ConLeche.Kernel.CoreDefs",
+    "above": 16,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: more than one extra parameter of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 155,
+    "name": "ConLeche.Expr.substConstAll",
+    "module": "ConLeche.Kernel.CoreDefs",
+    "above": 16,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: more than one extra parameter of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 156,
+    "name": "ConLeche.NestFieldKind.flat",
+    "module": "ConLeche.Kernel.Inductives.Positivity",
+    "above": 16,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.NestFieldKind.flat has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 157,
+    "name": "ConLeche.Cached.CState.flushed",
+    "module": "ConLeche.Cached.StateC",
+    "above": 15,
+    "features": [
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.Cached.CState.flushed has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 158,
+    "name": "ConLeche.ClassRead.classes",
+    "module": "ConLeche.Kernel.Inductives.ClassRead",
+    "above": 14,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.ClassRead.classes has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 159,
+    "name": "ConLeche.Env.empty",
+    "module": "ConLeche.Kernel.Env",
+    "above": 14,
+    "features": [
+     "0-ary constant",
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.Env.empty has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 8,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 160,
+    "name": "ConLeche.blockRecLpsOk",
+    "module": "ConLeche.Kernel.Inductives.BlockShape",
+    "above": 14,
+    "features": [
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.blockRecLpsOk has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 161,
+    "name": "ConLeche.targetPiDomsWith",
+    "module": "ConLeche.Kernel.Inductives.RecCheck",
+    "above": 14,
+    "features": [
+     "0-ary constant",
+     "List / Array / Option of non-scalar element"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported result type Option (List ConLeche.Expr)",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 162,
+    "name": "ConLeche.ClassSlot.isMinor",
+    "module": "ConLeche.Kernel.Inductives.GenRec",
+    "above": 13,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.ClassSlot.isMinor has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 163,
+    "name": "ConLeche.Expr.resNat",
+    "module": "ConLeche.Cached.ExprOpsC",
+    "above": 13,
+    "features": [
+     "monad / higher-kinded (Type → Type, m α)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.Expr.resNat has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 164,
+    "name": "ConLeche.BlockShape.memberCtors",
+    "module": "ConLeche.Kernel.Inductives.BlockShape",
+    "above": 12,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.BlockShape.memberCtors has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 165,
+    "name": "ConLeche.ofReduceNatName",
+    "module": "ConLeche.Kernel.TrustAxioms",
+    "above": 12,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.ofReduceNatName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 46,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 166,
+    "name": "ConLeche.nestFields",
+    "module": "ConLeche.Kernel.Inductives.Positivity",
+    "above": 11,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "inductive / structure type",
+     "monad / higher-kinded (Type → Type, m α)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type Type → Type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 167,
+    "name": "ConLeche.trueName",
+    "module": "ConLeche.Kernel.TrustAxioms",
+    "above": 11,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.trueName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 23,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 168,
+    "name": "ConLeche.BasisDSL.type1",
+    "module": "ConLeche.Kernel.Basis.Builder",
+    "above": 10,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.BasisDSL.type1 has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 19,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 169,
+    "name": "ConLeche.FEnv.overlay",
+    "module": "ConLeche.Kernel.FEnv",
+    "above": 10,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.FEnv.overlay has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 170,
+    "name": "ConLeche.blockCtors",
+    "module": "ConLeche.Kernel.Install",
+    "above": 10,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.blockCtors has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 171,
+    "name": "ConLeche.iffName",
+    "module": "ConLeche.Kernel.StdAxioms",
+    "above": 10,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.iffName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 22,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 172,
+    "name": "ConLeche.nestOutKinds",
+    "module": "ConLeche.Kernel.Inductives.BlockInstall",
+    "above": 10,
+    "features": [
+     "List / Array / Option of non-scalar element"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.nestOutKinds has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 173,
+    "name": "ConLeche.nonemptyName",
+    "module": "ConLeche.Kernel.StdAxioms",
+    "above": 10,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.nonemptyName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 27,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 174,
+    "name": "ConLeche.reduceBoolDeclPin",
+    "module": "ConLeche.Kernel.TrustPins",
+    "above": 10,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.reduceBoolDeclPin has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 32,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 175,
+    "name": "ConLeche.reduceNatDeclPin",
+    "module": "ConLeche.Kernel.TrustPins",
+    "above": 10,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.reduceNatDeclPin has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 37,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 176,
+    "name": "ConLeche.BasisDSL.ruleAt",
+    "module": "ConLeche.Kernel.Basis.Builder",
+    "above": 9,
+    "features": [
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: more than one extra parameter of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 177,
+    "name": "ConLeche.divModAttemptReason",
+    "module": "ConLeche.Kernel.Checker",
+    "above": 9,
+    "features": [
+     "String / Char / Int",
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.divModAttemptReason has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 178,
+    "name": "ConLeche.emptyName",
+    "module": "ConLeche.Kernel.Basis.Names",
+    "above": 9,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.emptyName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 24,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 179,
+    "name": "ConLeche.falseName",
+    "module": "ConLeche.Kernel.Basis.Names",
+    "above": 9,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.falseName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 24,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 180,
+    "name": "ConLeche.ofReduceBoolName",
+    "module": "ConLeche.Kernel.TrustAxioms",
+    "above": 9,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.ofReduceBoolName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 47,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 181,
+    "name": "ConLeche.Display.Acc.finish",
+    "module": "ConLeche.Kernel.Name",
+    "above": 8,
+    "features": [
+     "String / Char / Int"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.Display.Acc.finish has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 182,
+    "name": "ConLeche.Env.pushDelta",
+    "module": "ConLeche.Kernel.Install",
+    "above": 8,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.Env.pushDelta has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 183,
+    "name": "ConLeche.Name.componentList",
+    "module": "ConLeche.Kernel.Name",
+    "above": 8,
+    "features": [
+     "0-ary constant",
+     "List / Array / Option of non-scalar element",
+     "String / Char / Int"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type List (String ⊕ Nat)",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 184,
+    "name": "ConLeche.choiceName",
+    "module": "ConLeche.Kernel.StdAxioms",
+    "above": 8,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.choiceName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 46,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 185,
+    "name": "ConLeche.propextName",
+    "module": "ConLeche.Kernel.StdAxioms",
+    "above": 8,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.propextName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 26,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 186,
+    "name": "ConLeche.quotLiftF",
+    "module": "ConLeche.Kernel.Basis.Quot",
+    "above": 8,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.quotLiftF has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 20,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 187,
+    "name": "ConLeche.trustCompilerName",
+    "module": "ConLeche.Kernel.TrustAxioms",
+    "above": 8,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.trustCompilerName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 48,
+     "kind": "literal data (names/strings/nats/constructors)"
+    }
+   },
+   {
+    "rank": 188,
+    "name": "ConLeche.Expr.piSortTeleLen?",
+    "module": "ConLeche.Kernel.Env",
+    "above": 7,
+    "features": [
+     "0-ary constant",
+     "List / Array / Option of non-scalar element"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported result type Option Nat",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 189,
+    "name": "ConLeche.canonLevel",
+    "module": "ConLeche.Kernel.Canon",
+    "above": 7,
+    "features": [
+     "function-valued parameter or result"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type ConLeche.Name → ConLeche.Name",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 190,
+    "name": "ConLeche.pinAgrees",
+    "module": "ConLeche.Kernel.Basis",
+    "above": 7,
+    "features": [
+     "0-ary constant",
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.pinAgrees has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 191,
+    "name": "ConLeche.canonNameMap",
+    "module": "ConLeche.Kernel.Canon",
+    "above": 6,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type List ConLeche.Name",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 192,
+    "name": "ConLeche.listBeqBy",
+    "module": "ConLeche.Kernel.Canon",
+    "above": 6,
+    "features": [
+     "function-valued parameter or result"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type ConLeche.Level → ConLeche.Level → Bool",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 193,
+    "name": "ConLeche.andRecName",
+    "module": "ConLeche.Kernel.Basis.And",
+    "above": 5,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.andRecName has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 17,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 194,
+    "name": "ConLeche.Expr.dropVars",
+    "module": "ConLeche.Kernel.Install",
+    "above": 4,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate ok; arms FAIL: frontx_ind: equation ConLeche.Expr.dropVars.eq_1 has no constructor pattern (by cases: frontx_ind: unsupported term match ?x✝, ConLeche.Expr.bvar i with | 0, e => e | n.succ, e => ",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 195,
+    "name": "ConLeche.ptrDecEq",
+    "module": "ConLeche.Kernel.PtrDecEq",
+    "above": 4,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "gate ok; arms FAIL: frontx_ind: equation ConLeche.ptrDecEq.eq_1 has no constructor pattern (by cases: frontx_ind: ConLeche.ptrDecEq has no argument of the type)",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 196,
+    "name": "ConLeche.Expr.BeqOutX",
+    "module": "ConLeche.Kernel.Expr",
+    "above": 3,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported result type Type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 197,
+    "name": "ConLeche.Expr.EqPair.dflt",
+    "module": "ConLeche.Kernel.Expr",
+    "above": 3,
+    "features": [
+     "0-ary constant"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.Expr.EqPair.dflt has no argument of a declared type",
+    "typ": "",
+    "body": {
+     "chars": 29,
+     "kind": "calls functions"
+    }
+   },
+   {
+    "rank": 198,
+    "name": "ConLeche.Expr.beqKey",
+    "module": "ConLeche.Kernel.Expr",
+    "above": 3,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.Expr.beqKey has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 199,
+    "name": "ConLeche.consSumCtors",
+    "module": "ConLeche.Kernel.Inductives.SumInstall",
+    "above": 3,
+    "features": [
+     "List / Array / Option of non-scalar element",
+     "inductive / structure type"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.consSumCtors: type mismatch",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 200,
+    "name": "ConLeche.Expr.BeqOk",
+    "module": "ConLeche.Kernel.Expr",
+    "above": 2,
+    "features": [
+     "translator shape (no type named)"
+    ],
+    "first_error": "gate FAIL: frontx_ind: ConLeche.Expr.BeqOk has no argument of a declared type",
+    "typ": "",
+    "body": null
+   },
+   {
+    "rank": 201,
+    "name": "ConLeche.Expr.withAddr",
+    "module": "ConLeche.Kernel.Expr",
+    "above": 2,
+    "features": [
+     "function-valued parameter or result"
+    ],
+    "first_error": "gate FAIL: frontx_ind: unsupported parameter type USize → ?β",
+    "typ": "",
+    "body": null
+   }
+  ]
+ },
+ "features": [
+  "translator shape (no type named)",
+  "0-ary constant",
+  "inductive / structure type",
+  "monad / higher-kinded (Type → Type, m α)",
+  "polymorphic type variable",
+  "List / Array / Option of non-scalar element",
+  "sized BitVec / Fin",
+  "tuple (×)",
+  "function-valued parameter or result",
+  "HashMap / HashSet / memo state",
+  "String / Char / Int",
+  "non-computational (Type / Prop / Sort / Decidable)",
+  "several non-structural parameters"
+ ],
+ "counts": {
+  "selfhost": {
+   "blocked": 591,
+   "ok": 31,
+   "lowest": 259
+  },
+  "conleche": {
+   "blocked": 1047,
+   "ok": 46,
+   "lowest": 201
+  }
+ }
+}
