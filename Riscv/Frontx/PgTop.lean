@@ -372,3 +372,29 @@ theorem compile_correct : CompileCorrect riscv compile := by
   exact ⟨fin, hruns, hpc, (hfit enoughMemory).1, (hfit enoughMemory).2⟩
 
 end Proven.WA
+
+namespace Proven.WA
+open Proven Proven.WP Proven.Top Proven.Top.Alloc Proven.Mach.Riscv
+
+/-- **A Lean function with `GoodE` runs is what its paged program computes** (on the inputs it accepts) -/
+theorem computes_of (q : PgProg) (f : ByteArray → q.R.T)
+    (h : ∀ xs : ByteArray, xs.size ≤ q.maxIn → ∃ E, q.p.GoodE [inLocP] 9 (xs, ()) (f xs) E) :
+    Computes q (fun a : {xs : ByteArray // xs.size ≤ q.maxIn} => f a.1) (fun a => a.1.data.toList)
+      (outEnc q.R) := by
+  intro a
+  have hl : a.1.data.toList.length ≤ q.maxIn := by rw [Array.length_toList]; exact a.2
+  obtain ⟨E, hE⟩ := h a.1 a.2
+  have hden : q.p.Den (inArr a.1.data.toList, ()) (f a.1) := by
+    rw [inArr_data]; exact Pg.goodE_den _ _ _ _ _ _ hE
+  show PgProg.run q a.1.data.toList = _
+  unfold PgProg.run
+  rw [dif_pos ⟨hl, _, hden⟩, Pg.den_det _ _ _ _ (Classical.choose_spec (⟨_, hden⟩ : ∃ y, q.p.Den _ y)) hden]
+
+theorem total_of (q : PgProg) (f : ByteArray → q.R.T)
+    (h : ∀ xs : ByteArray, xs.size ≤ q.maxIn → ∃ E, q.p.GoodE [inLocP] 9 (xs, ()) (f xs) E) : q.Total :=
+  fun xs hx => let ⟨E, hE⟩ := h xs hx; ⟨_, E, hE⟩
+
+theorem compile_some {q : PgProg} (hg : q.Good) : compile q = some ⟨wordBytes q.code, 8192, q.events⟩ := by
+  unfold compile; rw [if_pos hg]
+
+end Proven.WA

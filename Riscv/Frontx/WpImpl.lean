@@ -7,6 +7,7 @@ program derives its page pool from `L`; the result is the output (`fits a L`) or
 instruction. -/
 import Riscv.Back.Implements1Opt
 import Riscv.Frontx.WpTop
+import Riscv.Frontx.WpFlat
 
 set_option linter.unusedVariables false
 set_option linter.unusedSimpArgs false
@@ -373,8 +374,8 @@ theorem wlOf_le (N : Nat) (hN : N ≤ NS) (L : Nat) (hL : 8192 ≤ L) :
     8 * wlOf L + 8 * (N + 1) + 7 ≤ L := by
   unfold wlOf P NS at *; omega
 
-/-- scalar result: the program with the pool size from the work block -/
-def pgProgS {t : Ty} (p : Pg [.ar .ba] (.sc t)) (k : Nat) : MS := .seq capCode (wholeS p k)
+/-- scalar result: the program with the pool size from the work block (guards flattened, `flatG`) -/
+def pgProgS {t : Ty} (p : Pg [.ar .ba] (.sc t)) (k : Nat) : MS := flatG (.seq capCode (wholeS p k))
 
 def pgNS {t : Ty} (p : Pg [.ar .ba] (.sc t)) (k : Nat) : Nat := (pgProgS p k).maxv - 8
 
@@ -406,7 +407,7 @@ theorem implements1_pgSQ {t : Ty} {β : Type} [Res β] (f : ByteArray → β) (p
   obtain ⟨σ', out', hex', hh, hr⟩ := wholeS_ok (L / 8192 - 1) f p cv hcv a (env.set vCap (rN ((L / 8192 - 1) * P))) out tbl
     y E (by rw [set_ne (show 1 ≠ vCap by decide)]; exact h1) (by rw [← hsz]; exact hlt) (by rw [htl']; unfold P; omega)
     (by rw [htl']; exact Nat.le_refl _) (by simp only [set_eq]) hwf hg hy hout
-  refine ⟨σ', out', .seq hcap hex', hh, ?_, ?_, ?_, ?_⟩
+  refine ⟨σ', out', flatG_exec _ (.seq hcap hex'), hh, ?_, ?_, ?_, ?_⟩
   · rcases hr with ⟨-, -, hd, -⟩ | ⟨-, -, rfl, -⟩
     · exact hd
     · rfl
@@ -425,7 +426,7 @@ theorem implements1_pgSQ {t : Ty} {β : Type} [Res β] (f : ByteArray → β) (p
 /-- array result: the program, the elements' bytes (`outLoopP`), `a1` = their number -/
 def outBaseP {k : AK} (p : Pg [.ar .ba] (.ar k)) : Nat := max (p.compP [inLocP] 9).1.maxv 9
 
-def pgProgA {k : AK} (p : Pg [.ar .ba] (.ar k)) : MS := .seq capCode (wholeA p (outBaseP p))
+def pgProgA {k : AK} (p : Pg [.ar .ba] (.ar k)) : MS := flatG (.seq capCode (wholeA p (outBaseP p)))
 
 def pgNA {k : AK} (p : Pg [.ar .ba] (.ar k)) : Nat := (pgProgA p).maxv - 8
 
@@ -451,7 +452,7 @@ theorem implements1_pgAQ {k : AK} (f : ByteArray → k.T) (p : Pg [.ar .ba] (.ar
     (env.set vCap (rN ((L / 8192 - 1) * P))) out tbl (f a) E ⟨Nat.le_max_right _ _, hob.1, hob.2⟩
     (by rw [set_ne (show 1 ≠ vCap by decide)]; exact h1) (by rw [← hsz]; exact hlt) (by rw [htl']; unfold P; omega)
     (by rw [htl']; exact Nat.le_refl _) (by simp only [set_eq]) hwf hg hout hol
-  refine ⟨σ', out', .seq hcap hex', hh, ?_, ?_, ?_, ?_⟩
+  refine ⟨σ', out', flatG_exec _ (.seq hcap hex'), hh, ?_, ?_, ?_, ?_⟩
   · rcases hr with ⟨-, -, hd, -, -⟩ | ⟨-, -, rfl, -⟩
     · exact hd
     · rfl
