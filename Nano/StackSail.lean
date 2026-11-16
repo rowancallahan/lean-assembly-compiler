@@ -21,6 +21,7 @@ structure Ctx where
   I : Nat
   IL : Nat
   O : Nat
+  RA : Nat
 
 /-- the blocks whose bytes the record machine tracks -/
 def Ctx.In (C : Ctx) (a : Nat) : Prop :=
@@ -37,11 +38,13 @@ structure Ctx.Ok (C : Ctx) : Prop where
   cO : C.pc0 + C.P.length ≤ C.O ∨ C.O + 8 ≤ C.pc0
   wlo : 0x80000000 ≤ C.W
   whi : C.SP ≤ 0x100000000
+  wsp : C.W ≤ C.SP
   olo : 0x80000000 ≤ C.O
   ohi : C.O + 8 ≤ 0x100000000
   ilo : 0x80000000 ≤ C.I
   ihi : C.I + C.IL ≤ 0x100000000
   fam : allFam C.P = true
+  ra : C.RA % 4 = 0 ∧ C.RA < 2 ^ 64
 
 /-- the record state `s` is the Sail state `t` -/
 structure Rel (C : Ctx) (s : R.St) (t : Proven.St) : Prop where
@@ -50,6 +53,7 @@ structure Rel (C : Ctx) (s : R.St) (t : Proven.St) : Prop where
   x : ∀ j : Fin 32, getX t j = s.get j.val
   r12 : s.get 12 = BitVec.ofNat 64 C.W
   r2 : s.get 2 = BitVec.ofNat 64 C.SP
+  r1 : s.get 1 = BitVec.ofNat 64 C.RA
   g : s.g = ⟨C.I, C.IL, C.O⟩
   mem : ∀ a, C.In a → t.mem[a]? = some (s.m a).toBitVec
   frame : ∀ a, ¬ (C.W ≤ a ∧ a < C.SP) → ¬ (C.O ≤ a ∧ a < C.O + 8) → t.mem[a]? = C.t0.mem[a]?
@@ -63,7 +67,8 @@ theorem get_set_fin (s : R.St) (r : Nat) (v : BitVec 64) (j : Nat) :
 
 /-- a retired instruction that writes register `rd` and steps the pc -/
 theorem rel_reg {C : Ctx} {s : R.St} {t t' : Proven.St} (hR : Rel C s t) {rd : Fin 32} {v : BitVec 64}
-    (hN : Next t t' (BitVec.ofNat 64 (C.pc0 + 4 * s.pc) + 4) rd v t.mem) (h12 : rd.val ≠ 12) (h2 : rd.val ≠ 2) :
+    (hN : Next t t' (BitVec.ofNat 64 (C.pc0 + 4 * s.pc) + 4) rd v t.mem) (h12 : rd.val ≠ 12) (h2 : rd.val ≠ 2)
+    (h1 : rd.val ≠ 1) :
     Rel C ((({ s with pc := s.pc + 1 } : R.St)).set rd.val v) t' where
   cfg := hN.cfg
   pc := by rw [hN.pc, ofNat_add4]; congr 2
@@ -78,6 +83,7 @@ theorem rel_reg {C : Ctx} {s : R.St} {t t' : Proven.St} (hR : Rel C s t) {rd : F
         simp only [hj', this, hjr, false_and, if_false]; exact hR.x j
   r12 := by rw [get_set_ne _ (Ne.symm h12)]; exact hR.r12
   r2 := by rw [get_set_ne _ (Ne.symm h2)]; exact hR.r2
+  r1 := by rw [get_set_ne _ (Ne.symm h1)]; exact hR.r1
   g := hR.g
   mem := fun a ha => by rw [hN.mem]; exact hR.mem a ha
   frame := fun a h1 h2 => by rw [hN.mem]; exact hR.frame a h1 h2
@@ -91,6 +97,7 @@ theorem rel_pc {C : Ctx} {s : R.St} {t t' : Proven.St} (hR : Rel C s t) (k : Nat
   x := fun j => by rw [hN.x j]; by_cases hj : j = 0 <;> simp [hj] <;> first | rfl | exact hR.x j
   r12 := hR.r12
   r2 := hR.r2
+  r1 := hR.r1
   g := hR.g
   mem := fun a ha => by rw [hN.mem]; exact hR.mem a ha
   frame := fun a h1 h2 => by rw [hN.mem]; exact hR.frame a h1 h2
@@ -133,6 +140,7 @@ theorem rel_sd {C : Ctx} {s : R.St} {t t' : Proven.St} (hR : Rel C s t) {A : Nat
   x := fun j => by rw [hN.x j]; by_cases hj : j = 0 <;> simp [hj] <;> first | rfl | exact hR.x j
   r12 := hR.r12
   r2 := hR.r2
+  r1 := hR.r1
   g := hR.g
   mem := fun a ha => by
     rw [hN.mem, storeBytes_get]
@@ -156,6 +164,7 @@ theorem rel_sb {C : Ctx} {s : R.St} {t t' : Proven.St} (hR : Rel C s t) {A : Nat
   x := fun j => by rw [hN.x j]; by_cases hj : j = 0 <;> simp [hj] <;> first | rfl | exact hR.x j
   r12 := hR.r12
   r2 := hR.r2
+  r1 := hR.r1
   g := hR.g
   mem := fun a ha => by
     rw [hN.mem, Std.ExtHashMap.getElem?_insert]
