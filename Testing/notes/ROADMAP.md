@@ -183,3 +183,8 @@ hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read 
   Clight semantics, the same shape as our compile_correct with Clight in place of Sail. Route: shared IR →
   Clight + simulation proof; then CompCert compiles the C. Needs Lean 4.32.1 (Clean) vs our 4.29: separate repo or
   later upgrade; Clean's non-commercial licence applies to the side project only.
+- PRIORITY (owner, 2026-11-16): self-hosting + con-leche first; pick whatever is fastest to a STABLE, ORGANISED
+  version of those two. lean-zip / lean-svg / book only where they share features (arrays, structures). Every Opus
+  round takes its targets from the latest depth probes (CONLECHE_DEPTH2.md, SELFHOST_DEPTH2.md when they land),
+  biggest blocker first. Organisation: one route (the shared IR) for every front end, notes indexed in
+  Testing/notes/INDEX.md, small pieces merged as they finish.
