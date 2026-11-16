@@ -2092,12 +2092,31 @@ with a child, then their bytes) are RTL functions; `main` decodes, calls, encode
 the flattening against big-step meanings (`flatS_ok`, `flatT_ok`) and the call rule (`reach_call`).
 
 **`IndIr.compile`** (`Riscv/Frontx/IndIr.lean`, beside `IndMem.compile`, which is unchanged): `CompileRuns` /
-`CompileCorrect` proved with exactly the Sail axioms (`Testing/scripts/axioms_ir-s2.lean`).  NOT DONE: `LowerOk p`, the
-correctness of the lowering against `Pg.sem` (the `ind_rtl_ok` of the design).  `compile` checks it as a classical
-condition, so the theorems are vacuous for a program until `LowerOk` is proved for it.  Next: representation `Rv`
-(pointers to 4-cell blocks), `lowE_ok` by induction on `E` against `SC.Ex`, the function by induction on the value
-(tail calls = the entry again), `dec`/`enc` against `C.enc` incl. strings, `main`; then `LowerOk` for all programs
-(no per-entry proof).
+`CompileCorrect` proved with exactly the Sail axioms (`Testing/scripts/axioms_ir-s2.lean`).
+
+**The lowering is proved** (`LowerOk`, the `ind_rtl_ok` of the design; no condition left on the RTL side).  Files:
+* `Compiler/Ir/StructLbl.lean`: the labels of flattened code are distinct (`flatS_fr`, `flatT_fr`: new blocks get the
+  open label or fresh counter labels), so every region of `mkFunc` is found by `lookup` (`mkFunc_region`, the `GS.OkT`
+  of `flatT_ok`); `rs3` = entry / one region per index / last region (the shape of `lowPg`, `decF`, `encF`).
+* `IndLowMem.lean`: `Rv m v c` (a value is a pointer to a live 4-cell block `[tag, x, l, r]`, tag < 256, `z` the word
+  0), `MLe` (input, block table, written cells stay), `mkCell` = `push4`, `fld`.
+* `IndLowE.lean`: `lowE_ok` by induction on `E`: the code puts `ev` into `d` (`RvK`), grows memory, keeps the output
+  and every register below `n` but `d`; hypotheses `Regs` (registers of the arm), `Binds` (`let` values by kind),
+  `Calls` (recursive calls on children/grandchildren, later functions `ext j`, each "for any memory").
+* `IndLowT.lean`: `lowT_ok` (an arm returns its value or jumps to the entry with a child: `TRes`), `pg_ok` (a function
+  returns `Pg.sem`, by induction on the node's depth: the tail call is the induction hypothesis on the child).
+* `IndLowDec.lean`: `rd8` (8 bytes little-endian), `decStr` (length + bytes into a chain of cells, from the last byte
+  back: `str_loop`), `decFld_ok` / `decFlds_ok` (invariant `DInv`: a field register holds its value or 0 with no field
+  for it; `wf` closes the gaps), `dec_ok`.
+* `IndLowEnc.lean`: `put`, `put8`, `encStr` (count loop `cnt_loop`, bytes loop `byt_loop` = `C.senc`), `enc_ok`.
+* `IndLowMain.lean`: `chain_ok` (each function `3 + i` returns its meaning, the later ones first, `Chain` + `okL`),
+  `main`, **`lower_ok`**: `(lower …).meaning (inBytesA …) = some (Kd.out …)` for well-formed inputs of at most `2^20`
+  bytes and outputs of at most `2^32` bytes (decision: the output cursor is a 64-bit word, so the bound is needed; a
+  start state's output block lies in RAM, `ramEnd = 2^32`, so `IndIr` gets it from `StartCorrect.inRam` + `outputFits`).
+* `compile` now checks `LGood` = `Chain` ∧ `IndLow.goodB` (shape < 255 tags, `okL`, fresh constructor tag < 256,
+  `nb ≤ 8`): the conditions of `IndMem.compile` the lowering needs (not `WfMem`, so `pos_comp`, `tree_insert5`,
+  `level_combining`, `level_simplify` are accepted).  `frontx_ind` entries have `Chain` by `rfl` (`{P}.X`);
+  `Testing/asm/emit_ind_ir.lean` fails to elaborate an entry whose `goodB` is false.
 
 **Tests** (`Testing/asm/emit_ind_ir.lean`: the RTL program of every inductive-path entry's `.code` arguments, its words,
 per case Lean's result and `memoryNeeded` from a fast array interpreter checked against `Ir.interp`;
@@ -2107,7 +2126,7 @@ per case Lean's result and `memoryNeeded` from a fast array interpreter checked 
 `gp`/`sp` restored) and `memoryNeeded - 1` (`a0 = -1`), QEMU and Sail, writes only in output + work.  Codes 300–1250
 words (Expr 3270–3700; the old route 4150–5271): no inline heap checks, one check per `alloc` and per call.
 
-**State at pause (owner asked to stop):** QEMU + Sail `ir_test.py check 50` passed for 39 of the 40 entries (all but
+**State at pause (owner asked to stop, before LowerOk was proved):** QEMU + Sail `ir_test.py check 50` passed for 39 of the 40 entries (all but
 `expr_islit`, not yet run; its words/cases are emitted and the interpreter agrees with Lean). The full `check.sh` (after
 merging origin/main) passed the build and the axioms phase (ir-s2 lines added to `expected-axioms.txt`); it was stopped
 at the word-array phase, so re-run it once. Next steps: (1) `bash Testing/scripts/check.sh`; (2) `ir_test.py check 50

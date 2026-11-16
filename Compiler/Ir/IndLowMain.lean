@@ -286,4 +286,17 @@ theorem lower_ok {rk : Kd} (sh shO : Shape) (pg : Pg rk) (hs : List (Σ k : Kd, 
   rw [hres]
   simp only [Option.bind_some, Mem.output, oF, mapM_some]
 
+/-- the checkable conditions of `lower_ok` (all but `Chain`) -/
+def goodB {rk : Kd} (sh : Shape) (pg : Pg rk) (hs : List (Σ k : Kd, Pg k)) (bi : BIn) (nb : Nat) : Bool :=
+  decide (sh.length < 255) && okL (⟨rk, pg⟩ :: hs) && (match bi with | .ctor t => decide (t < 256) | _ => true) &&
+    decide (nb ≤ 8)
+
+theorem goodB_spec {rk : Kd} {sh : Shape} {pg : Pg rk} {hs : List (Σ k : Kd, Pg k)} {bi : BIn} {nb : Nat}
+    (h : goodB sh pg hs bi nb = true) :
+    sh.length < 255 ∧ okL (⟨rk, pg⟩ :: hs) = true ∧ (∀ t, bi = .ctor t → t < 256) ∧ nb ≤ 8 := by
+  simp only [goodB, Bool.and_eq_true, decide_eq_true_eq] at h
+  obtain ⟨⟨⟨h1, h2⟩, h3⟩, h4⟩ := h
+  refine ⟨h1, h2, fun t e => ?_, h4⟩
+  subst e; simpa using h3
+
 end Proven.Ir.IndLow

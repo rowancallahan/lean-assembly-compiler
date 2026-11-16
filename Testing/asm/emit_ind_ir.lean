@@ -1,13 +1,13 @@
 /- IR route of the inductive path (`Compiler/Ir/IndLow.lean`, `Riscv/Frontx/IndIr.lean`): for every `frontx_ind`
 entry (NOTES §17/§21/§24/§25/§28) the RTL program `IndLow.lower` of the entry's program (the same `indProgM`
-arguments as its `.code`), its words (`Ir.compile`: allocation, layout, emission with calls), and per case the
+arguments as its `.code`; elaboration fails unless `IndLow.goodB` holds, so `IndIr.compile` accepts it), its words (`Ir.compile`: allocation, layout, emission with calls), and per case the
 input, Lean's result and `memoryNeeded` (8 bytes times the peak of the Lin run's events plus the stub's and `main`'s
 frame, from the IR interpreter; the interpreter's output is checked against Lean's).  Run:
 `lake env lean --tstack=4000000 Testing/asm/emit_ind_ir.lean`, then `python3 Testing/asm/ir_test.py check 50 <name>`
 (QEMU + Sail at `memoryNeeded` and `memoryNeeded - 1`). -/
 import Riscv.Back.IrTarget
 import Compiler.Ir.Lin
-import Compiler.Ir.IndLow
+import Compiler.Ir.IndLowMain
 import Riscv.Frontx.IndExamples
 import Riscv.Frontx.Ind2Examples
 import Riscv.Frontx.IndCmpExamples
@@ -35,6 +35,9 @@ elab "irprog% " n:ident : term => do
       | none => break
     match P.getAppFnArgs with
     | (``Proven.Mach.Ind.indProgM, #[rk, sh, shO, pg, hs, bi, ain, a0, nb, _]) =>
+      -- `IndIr.compile` accepts the entry: `goodB` (and `Chain`, by `rfl` from `frontx_ind`)
+      let ok ← unsafe evalExpr Bool (mkConst ``Bool) (mkAppN (mkConst ``Proven.Ir.IndLow.goodB) #[rk, sh, pg, hs, bi, nb])
+      unless ok do throwError s!"{c}: goodB is false, IndIr.compile rejects the entry"
       return mkAppN (mkConst ``Proven.Ir.IndLow.lower) #[rk, sh, shO, pg, hs, bi, ain, a0, nb]
     | (f, _) => throwError s!"not indProgM: {f}"
   | _ => throwError "not callsCode1W"
