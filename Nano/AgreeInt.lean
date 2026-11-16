@@ -197,9 +197,9 @@ theorem run : ∀ x0 : Int64, nanoRun (1, (Ex.let_ (Ex.mul (Ex.var 0) (Ex.num 18
 end P16
 
 namespace P17
-def sq (x : Int64) : Int64 := x * x
-def f (x y : Int64) : Int64 := sq (x - y) - sq x - sq y
-def src : String := "def sq (x : Int64) : Int64 := x * x\ndef f (x y : Int64) : Int64 := sq (x - y) - sq x - sq y"
+def s (x : Int64) : Int64 := x * x
+def f (x y : Int64) : Int64 := s (x - y) - s x - s y
+def src : String := "def s (x : Int64) : Int64 := x * x\ndef f (x y : Int64) : Int64 := s (x - y) - s x - s y"
 theorem bytes_eq : src.toUTF8.toList = src.toList.map (fun c => c.toNat.toUInt8) := by decide +kernel
 theorem elabEq : nanoElabT (src.toList.map (fun c => c.toNat.toUInt8)) = some (true, (2, (Ex.sub (Ex.sub (Ex.call (Ex.mul (Ex.var 0) (Ex.var 0)) (Ex.acons (Ex.sub (Ex.var 1) (Ex.var 0)) Ex.anil)) (Ex.call (Ex.mul (Ex.var 0) (Ex.var 0)) (Ex.acons (Ex.var 1) Ex.anil))) (Ex.call (Ex.mul (Ex.var 0) (Ex.var 0)) (Ex.acons (Ex.var 0) Ex.anil))))) := by decide +kernel
 theorem agree : ∀ x0 x1 : Int64, (nanoElabT src.toUTF8.toList).bind (evalT · [x0, x1]) = some (f x0 x1) := by
@@ -232,9 +232,9 @@ theorem run : ∀ x0 x1 x2 x3 : Int64, nanoRun (4, (Ex.sub (Ex.mul (Ex.sub (Ex.v
 end P19
 
 namespace P20
-def mix (a b : Int64) : Int64 := a * -31 + b
-def f (x y z : Int64) : Int64 := mix (mix x y) z
-def src : String := "def mix (a b : Int64) : Int64 := a * -31 + b\ndef f (x y z : Int64) : Int64 := mix (mix x y) z"
+def m (a b : Int64) : Int64 := a * -31 + b
+def f (x y z : Int64) : Int64 := m (m x y) z
+def src : String := "def m (a b : Int64) : Int64 := a * -31 + b\ndef f (x y z : Int64) : Int64 := m (m x y) z"
 theorem bytes_eq : src.toUTF8.toList = src.toList.map (fun c => c.toNat.toUInt8) := by decide +kernel
 theorem elabEq : nanoElabT (src.toList.map (fun c => c.toNat.toUInt8)) = some (true, (3, (Ex.call (Ex.add (Ex.mul (Ex.var 1) (Ex.num 18446744073709551585)) (Ex.var 0)) (Ex.acons (Ex.call (Ex.add (Ex.mul (Ex.var 1) (Ex.num 18446744073709551585)) (Ex.var 0)) (Ex.acons (Ex.var 2) (Ex.acons (Ex.var 1) Ex.anil))) (Ex.acons (Ex.var 0) Ex.anil))))) := by decide +kernel
 theorem agree : ∀ x0 x1 x2 : Int64, (nanoElabT src.toUTF8.toList).bind (evalT · [x0, x1, x2]) = some (f x0 x1 x2) := by

@@ -8,16 +8,17 @@ compiler `nanoCompileS = asm ∘ genR ∘ nanoElab`. For every `src`, `p` with `
 Sail model outputs `c`, and `c` run on the Sail model computes `p.eval` (UInt64 and Int64), OOM flag exactly when the
 work block is too small. L1 = `B` computes `nanoCompileS`; L2 = `CompileCorrect`/`CompileRuns riscv` for `asm ∘ genR`.
 
-## Live status
+## Live status (2026-11-16 23:15)
 | piece | state |
 |---|---|
-| L1 `asm` compiled, machine theorem | was done for the 9-op `asm`; BROKEN since nano-e2e 4c64d61 (15 ops: `frontx_compile` capacity condition, simp step limit); nano-e2e is on it |
-| L1 `genR` compiled | not yet (nano-e2e: byte-level rewrite in progress) |
-| L1 `nanoElab` compiled | not yet (nano-e2e) |
-| L1 one binary from the stages | glue done: `Nano.Link.link_implements` (this branch) |
-| L2 stack generator `asm ∘ genR` correct | not yet (nano-proof); the IR generator `nanoGen` is proved but is not the self-hosted path |
-| composition `Nano/SelfHost.lean` | statement `SelfHosted` + `selfHosted_of` (target from L1 and L2 as hypotheses) done; instance waits for L1 and L2 |
-| tests | see log below |
+| L1 `asm` compiled, machine theorem | done: `Nano.Self.nanoAsm.implements1` (15-op table, nano-e2e c06682c) |
+| L1 `genR` compiled | in progress HERE: `genR p = mexp (ser p)` proved (`Nano/Ser.lean`, `mexp_ser`); `mexp` (micro-op expander, `Nano/Expand.lean`) is in the front end's list style, compile running |
+| L1 `nanoElab` compiled | not started (nano-e2e spent the time on elaborator edge fuzz); what the compiled front end must emit is now pinned down: `ser p` (micro-ops, `Nano/Ser.lean`) |
+| L1 one binary from the stages | glue done: `Nano.Link.link_implements`, `link_stage` |
+| L1 partial instance | `Nano.SelfHost.asm_stage_emits`: the compiled `asm` on Sail, run on `genR p`, emits `nanoGen p` |
+| L2 stack generator `asm ∘ genR` correct | nano-proof: record machine done up to `genE_ok`, `pro_ok`, `wr_loop` (new op table); remaining: `genR` whole, Sail refinement, glue to `CompileCorrect` |
+| composition `Nano/SelfHost.lean` | `SelfHosted`, `selfHosted_of` (from L1 + L2), `selfHosted_stages` (three stage theorems + L2) proved; instance waits for L1 and L2 |
+| tests (merged tree 7e134c9) | `chain_test.py 4`: 92 sources, Lean accepts 85, nanoElab 82 (0 mismatches); P 328 pairs QEMU+Sail; S 82 programs through the compiled `asm` binary, 328 pairs QEMU+Sail incl. OOM flag. `nano_s_test.sh`: 936 pairs |
 
 ## Naming (one consistent set; follows the lanes' latest pushes, 22:16–22:24)
 * `genR`, `nanoGen = asm ∘ genR`, `nanoCompile`: the stack generator = the SELF-HOSTED path (`Nano/Gen.lean`, nano-e2e).
@@ -52,3 +53,16 @@ work block is too small. L1 = `B` computes `nanoCompileS`; L2 = `CompileCorrect`
   and `S.depth p = depth p` (and the pieces), so nano-proof can keep its copy and the composition uses e2e's `genR`.
 * `Nano.Link.link_stage`/`comap`: the linker for stages in the front end's theorem form
   (`Implements1With (·.data.toList) id code f space (2^20) true`, as `frontx_implements_listC` produces).
+* 2026-11-16 22:50–23:00. e2e 017698f renumbered the record opcodes (to get the 15-op `asm` through the front end);
+  told nano-proof (retargeted in c3c6b2b, now imports `Nano/Gen.lean`; Bridge dropped) and asked e2e to freeze the
+  record format. Both e2e and mvp had tightened `nanoElab` differently: e2e's `Nano/Elab.lean` taken whole (mvp did the
+  same in b6f978a). Merged main b07a0b9 (check.sh loop: `conleche-hard` before the nano files).
+  `Testing/nano/regen_nano_axioms.py`: regenerates the nano tail of expected-axioms.txt after checking every line
+  (Sail set or ⊆ {propext, Classical.choice, Quot.sound}).
+* 2026-11-16 23:05. TAKEN OVER from the e2e lane (it is active but on elaborator fuzzing): the compiled `genR` stage.
+  Design: `genR` is a tree walk (postfix emission, stack-relative slots, inlined calls) that the list front end cannot
+  compile, but its OUTPUT is a flat postfix stream. So `genR = mexp ∘ ser`: `ser : Prog → List UInt8` (plain Lean,
+  mirrors `genR`) emits 2-byte micro-ops; `mexp` expands a micro-op to 1–5 records and is a one-pass byte function
+  (compilable like `asm`). The tree walk moves into `ser`, i.e. into the front-end stage: a one-pass byte-level
+  elaborator has to emit `ser p` directly (`serE` of a callee body is call-site independent, so inlining = copying).
+  Honest reading: after this, what is NOT yet compiled by our compiler is `ser ∘ nanoElab` (text → micro-ops).

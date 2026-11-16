@@ -4,12 +4,13 @@
  L  Lean's REAL elaborator: every source as its own root-level file + `#eval` of the entry on the inputs (plain `lean`).
  E  `nanoElabT` (the spec, run in Lean; no compiled binary of it exists yet): accept => Lean accepts, same type, same
     values (exact-subset rule).
- P  proved route `nanoCompile` (code computed in Lean: no compiled binary of `Ir.compileW` exists): the code on QEMU and
+ P  proved route `nanoCompileIR` (code computed in Lean: no compiled binary of `Ir.compileW` exists): the code on QEMU and
     on Sail in the real `StartCorrect` convention, at `memoryNeeded` (output == Lean's real value) and at
     `memoryNeeded - 1` (OOM flag), writes only in output + work (Testing/asm/ir_test.py).
- S  stack route `nanoCompileS = asm ∘ genR`, its largest self-hosted prefix: `genR` in Lean, then `asm` as OUR compiler's
-    RISC-V binary (`Nano.Self.nanoAsm`, machine theorem `implements1`) on QEMU and Sail (frontx_test: == Lean `asm`),
-    its output code (taken from the QEMU run) run on qemu-riscv64 and on Sail (nano convention) == Lean's real value.
+ S  stack route `nanoCompile = asm ∘ genR` (nano-e2e), its largest self-hosted prefix: `genR` in Lean, then `asm` as OUR
+    compiler's RISC-V binary (`Nano.Self.nanoAsm`, machine theorem `implements1`) on QEMU and Sail (frontx_test: == Lean
+    `asm`); its output code (taken from the QEMU run) on QEMU and Sail in the StartCorrect convention (ir_test.py) at
+    work = 8 * depth (== Lean's real value) and one byte less (OOM flag).
 usage: chain_test.py [R random programs per type] [seed]"""
 import os, random, re, shutil, subprocess, sys
 from concurrent.futures import ThreadPoolExecutor
@@ -112,11 +113,16 @@ finally:
     shutil.rmtree(f"{A}/ctest", ignore_errors=True)
     for f in os.listdir(f"{A}/ir-words"):
         if f.startswith("chain_"): os.remove(f"{A}/ir-words/{f}")
-print(f"P (proved nanoCompile, code from Lean): {len(acc)} programs, {nP} (program, input) pairs on QEMU and Sail == Lean's real "
+print(f"P (proved nanoCompileIR, code from Lean): {len(acc)} programs, {nP} (program, input) pairs on QEMU and Sail == Lean's real "
       f"elaborator at memoryNeeded; OOM flag at memoryNeeded - 1; writes only in output + work")
-# ---- S: stack route, `asm` stage as our compiler's binary
+# ---- S: stack route `nanoCompile = asm ∘ genR` (nano-e2e), `asm` stage as our compiler's binary
 S = os.path.join(W, "sel"); os.makedirs(S)
 for i in acc: shutil.copy(f"{W}/p{i:03}.nano", f"{S}/p{i:03}.nano")
+DEP = ["import Nano.Gen", "open Nano", "#eval show IO Unit from do"]
+for i in acc: DEP.append(f"  IO.println s!\"{i} {{(nanoElab {lit(progs[i][0])}.toUTF8.toList).map depth}}\"")
+open(f"{W}/dep.lean", "w").write("\n".join(DEP) + "\n")
+dep = {int(l.split()[0]): int(re.findall(r"\d+", l)[-1]) for l in subprocess.run(f"{lean_env} lake env lean {W}/dep.lean", shell=True, check=True,
+       capture_output=True, text=True).stdout.splitlines() if l.strip()}
 bak = {f: open(f"{A}/frontx-words/{f}", "rb").read() for f in ("nanoasm.cases", "nanoasm.words")}
 try:
     subprocess.run(f"{lean_env} NANO_DIR={S} lake env lean --tstack=400000 Testing/nano/emit_nano.lean > /dev/null", shell=True, check=True)
@@ -134,67 +140,24 @@ try:
 finally:
     for f, b in bak.items(): open(f"{A}/frontx-words/{f}", "wb").write(b)
     shutil.rmtree(f"{A}/ctest", ignore_errors=True)
-subprocess.run(f"riscv64-linux-gnu-gcc -O1 -static -march=rv64g -mabi=lp64d {D}/driver.c -o {W}/driver", shell=True, check=True)
-runs = []  # (code, args, want)
-for c, (r, (i0, o0, w0)) in enumerate(zip(rows, lay)):
-    a1 = int.from_bytes(mem[tab - base + F.E * c + 64:][:8], "little")
-    code = bytes(mem[o0:o0 + a1]); assert code == unhex(r[2]), ("binary asm != Lean nanoGenS", r[0])
-    i = int(re.search(r"p(\d+)\.nano", r[0]).group(1))
-    for a, v in zip(progs[i][4], L[i][1]): runs.append((code, [x % M for x in a], v))
-for code, args, want in runs:
-    open(f"{W}/code.bin", "wb").write(code); open(f"{W}/args.bin", "wb").write(b"".join(a.to_bytes(8, "little") for a in args) or b"\0")
-    got = int.from_bytes(subprocess.run(f"qemu-riscv64 {W}/driver {W}/code.bin {W}/args.bin", shell=True, check=True, capture_output=True).stdout, "little")
-    assert got == want, ("S QEMU", args, got, want)
-# Sail: one bare-metal ELF, per run: code | args | out word | stack
-LD = "ENTRY(_start)\nSECTIONS { . = 0x80000000; .text : { *(.text.start) *(.text) }\n . = 0x80100000; .tohost : { *(.tohost) }\n . = 0x80200000; .data : { *(.data) } }\n"
-data = b""; tabl = []; ST = 8192; outs = []
-for code, args, want in runs:
-    o = len(data); code = code + b"\0" * (-len(code) % 8); a0 = o + len(code); out = a0 + 8 * len(args); stk = out + 8
-    tabl.append(f"  .quad base+{o}, base+{a0}, base+{out}, base+{stk + ST}, 0, 0"); outs.append((out, stk))
-    data += code + b"".join(a.to_bytes(8, "little") for a in args) + b"\x55" * 8 + b"\0" * ST
-open(f"{W}/s.bin", "wb").write(data)
-open(f"{W}/s.S", "w").write(f""".section .text.start
-.globl _start
-_start: lla s0, tab
-  li s2, {len(runs)}
-1: ld t3, 0(s0)
-  ld a0, 8(s0)
-  ld a1, 16(s0)
-  ld sp, 24(s0)
-  jalr ra, t3, 0
-  sd sp, 32(s0)
-  addi s0, s0, 48
-  addi s2, s2, -1
-  bnez s2, 1b
-  lla t0, tohost
-  li t1, 1
-  sd t1, 0(t0)
-halt: j halt
-.section .tohost,"aw"
-.globl tohost
-.align 6
-tohost: .dword 0
-.data
-.align 4
-base:
-.incbin "{W}/s.bin"
-.align 3
-tab:
-""" + "\n".join(tabl) + "\n"); open(f"{W}/m.ld", "w").write(LD)
-subprocess.run(f"riscv64-linux-gnu-gcc -march=rv64im_zicsr -mabi=lp64 -nostdlib -static -Wl,-T,{W}/m.ld -Wl,--no-relax -Wl,--build-id=none {W}/s.S -o {W}/s.elf", shell=True, check=True)
-syms = subprocess.check_output(f"riscv64-linux-gnu-nm {W}/s.elf", shell=True, text=True)
-sym = lambda x: int(re.search(rf"(\w+) \w {x}\n", syms).group(1), 16)
-sbase, stab = sym("base"), sym("tab")
-subprocess.run(f"set -o pipefail; {SAIL} --inst-limit 2000000000 --trace-mem --trace-output /dev/stdout {W}/s.elf 2>&1 | grep -E 'mem\\[W|SUCCESS|FAIL|limit' > {W}/sail.log", shell=True, executable="/bin/bash")
-log = open(f"{W}/sail.log").read(); assert "SUCCESS" in log, log[-300:]
-smem = {}
-for l in log.splitlines():
-    m = re.match(r"mem\[(?:W,)?0x([0-9A-F]+)\] <- 0x([0-9A-F]+)", l)
-    if m:
-        a, v = int(m.group(1), 16), m.group(2)
-        for j in range(len(v) // 2): smem[a + j] = int(v[2 * (len(v) // 2 - 1 - j):2 * (len(v) // 2 - j)], 16)
-for c, ((code, args, want), (out, stk)) in enumerate(zip(runs, outs)):
-    got = int.from_bytes(bytes(smem[sbase + out + j] for j in range(8)), "little"); assert got == want, ("S Sail", args, got, want)
-    sp = int.from_bytes(bytes(smem[stab + 48 * c + 32 + j] for j in range(8)), "little"); assert sp == sbase + stk + ST, ("S Sail sp", sp)
-print(f"S (genR in Lean, asm = our compiler's binary on QEMU + Sail == Lean asm): {len(rows)} programs, code == Lean nanoGenS; "
-      f"{len(runs)} (program, input) pairs on qemu-riscv64 and on Sail == Lean's real elaborator")
+nS = 0
+try:
+    for c, (r, (i0, o0, w0)) in enumerate(zip(rows, lay)):
+        a1 = int.from_bytes(mem[tab - base + F.E * c + 64:][:8], "little")
+        code = bytes(mem[o0:o0 + a1]); assert code == unhex(r[2]), ("binary asm != Lean nanoGen", r[0])
+        i = int(re.search(r"p(\d+)\.nano", r[0]).group(1))
+        ws = [int.from_bytes(code[4 * k:4 * k + 4], "little") for k in range(len(code) // 4)]
+        open(f"{A}/ir-words/chains_{i:03}.words", "w").write(f"chains_{i:03} 0\n" + "".join(f"{w:08x}\n" for w in ws))
+        hx = lambda b: b.hex() if b else "-"
+        open(f"{A}/ir-words/chains_{i:03}.cases", "w").write("".join(
+            f"{hx(b''.join((x % M).to_bytes(8, 'little') for x in a))} {hx(v.to_bytes(8, 'little'))} {8 * dep[i]}\n"
+            for a, v in zip(progs[i][4], L[i][1])))
+        subprocess.run(f"{lean_env} python3 Testing/asm/ir_test.py check {len(progs[i][4])} chains_{i:03} > /dev/null", shell=True, check=True)
+        nS += len(progs[i][4])
+finally:
+    shutil.rmtree(f"{A}/ctest", ignore_errors=True)
+    for f in os.listdir(f"{A}/ir-words"):
+        if f.startswith("chains_"): os.remove(f"{A}/ir-words/{f}")
+print(f"S (genR in Lean; asm = our compiler's binary on QEMU + Sail == Lean asm): {len(rows)} programs, code == Lean nanoGen; "
+      f"{nS} (program, input) pairs of that code on QEMU and Sail (StartCorrect) == Lean's real elaborator at 8 * depth, "
+      f"OOM flag one byte less, writes only in output + work")

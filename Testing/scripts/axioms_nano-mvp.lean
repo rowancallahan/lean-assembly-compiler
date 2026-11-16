@@ -50,5 +50,15 @@ import Nano.AgreeInt
 #print axioms Nano.AgreeInt.P20.run
 #print axioms Nano.AgreeInt.P21.agree
 #print axioms Nano.AgreeInt.P21.run
+#print axioms Nano.AgreeInt.P22.agree
+#print axioms Nano.AgreeInt.P22.run
+#print axioms Nano.AgreeInt.P23.agree
+#print axioms Nano.AgreeInt.P23.run
+#print axioms Nano.AgreeInt.P24.agree
+#print axioms Nano.AgreeInt.P24.run
+#print axioms Nano.AgreeInt.P25.agree
+#print axioms Nano.AgreeInt.P25.run
+#print axioms Nano.AgreeInt.P26.agree
+#print axioms Nano.AgreeInt.P26.run
 #print axioms Nano.chain_of
 #print axioms Nano.chain_int_of
