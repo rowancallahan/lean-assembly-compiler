@@ -1679,3 +1679,87 @@ Not done / why:
 Reproduce: `lake build Riscv.Frontx.HofExamples`; `lake env lean --tstack=4000000 Testing/asm/emit_frontx.lean`;
 `for f in Testing/asm/frontx-words/hof_*.cases; do python3 Testing/asm/frontx_test.py check 50 $(basename $f .cases); done`;
 axioms: `Testing/scripts/axioms_x.lean`.
+
+## 29. Monads by specialisation (branch `feat-monad`, on `feat-hof`)
+
+Files: `Riscv/Frontx/SpecMonad.lean` (new: the pass, its lemmas, `frontx_monad`, `frontx_monad_entry`,
+`frontx_monad_fn`), `Riscv/Frontx/MonadExamples.lean` (new: targets), `Testing/scripts/axioms_y.lean` (new).
+Shared files touched: `Riscv/Frontx/Translate.lean` (three lines, below), `Testing/scripts/check.sh` (`axioms_y` in the
+loop), `Testing/scripts/expected-axioms.txt` (32 lines appended), `Testing/asm/emit_frontx.lean` (one `#eval` block).
+No `Compiler/`, `Spec/`, `Ind*` or §27 file changed (`SpecMonad.lean` imports `SpecHof.lean` and reuses its helpers).
+
+**The pass** (`frontx_monad h`, front end only; the copies are compiled by the existing translator):
+- A **site** is `StateT.run (F a) s`, `ReaderT.run (F a) r`, nested (`StateT.run ((F a).run r) s`: a list of `run`
+  layers), or `F a` of type `Except ε α` / `Option α` / `Id α` with an instance or a known function among its
+  arguments (a definition polymorphic in `[Monad m] [MonadState σ m]` / `[MonadExcept ε m]` used at a concrete
+  monad), or `forIn l b f` over a list with a known body (`for x in l do`). Fixed positions: §27's plus type formers
+  (the monad `m`).
+- A recursive `F` gets a copy `h.mon<k> caps ys extras := C[F a]` (`C` the layers, `extras` the state / environment,
+  `Id` stripped from the type). Its equation is `F`'s own unfolding equation under `C` (`congrArg`), then `simp only`
+  with Lean core's `StateT.run_bind/pure/get/set/modify/modifyGet/map`, `ReaderT.run_bind/pure/read/map`,
+  `ExceptT.run_bind/pure/throw`, `List.forIn_cons/nil`, `pure_bind`, `bind_assoc`, `bind_pure` and 55 lemmas of
+  `SpecMonad.lean` (each `rfl` or by cases: `run` of `ite`/`dite`/`throw`/`tryCatch`/lifted `get`/`set`/`modify`,
+  `ite`/`dite` under `bind`, `Except`/`Option`/`Id` `bind`/`pure`/`map`/`tryCatch` on constructors, projections of
+  `ite`, `MProd`, an `ExceptT` action bound in `m` as its `run`), `zeta` (the `do` join points), and two simprocs:
+  `monPushMatch` pushes a context (`run`, projections, `bind`, `tryCatch`, `<$>`, an outer `match`) into a `match`,
+  proved by the matcher itself (motive `fun d => C[match d …] = match d …`, every alternative `rfl`), `monMatchIte`
+  a `match` on an `if` (`apply_ite`). The recursive calls `C[F a']` with the same fixed arguments are folded to the
+  copy (definitional), nested sites are specialised in turn, non-recursive monadic definitions (`runCatch`,
+  `checkedSub`, `Loops.List.count`) unfolded. So the state is an extra parameter and the second component of the
+  result, `Except` the §16 tag-byte payload, a `for` loop a first-order recursion on the list.
+- After the loop (the body is `K[c]` with one copy call `c`): `monAbsorb` absorbs the continuation `K` (the `match`
+  of an early `return` in a `for`, `failure` after the loop) into a new copy `K[cN zs]` whose equation is `cN`'s under
+  `K`; `monConstArgs` drops a parameter that the entry and every recursive call pass as the same closed value (the
+  "not returned yet" loop state `⟨none, ()⟩`), its equation `cN`'s at that value.
+- `h.mon : h ys = <first-order body>`: at most `propext`, `Quot.sound` (from `List.forIn_cons`), nothing for most.
+  `frontx_monad_entry g [measure] [with]` = §27's entry command on `frontx_monad` (`g.mon.entry`, `rfl` after
+  `rw [g.mon]`); `frontx_monad_fn g [requires]` for a body without a loop: `g.monb xs (_ : Nat)` (the §16 `…At`
+  convention), `frontx_compile`, `frontx_entry g from g.mon.entry`.
+
+`Translate.lean` (generated code of all older entry points unchanged): `resultComps Unit = []` (no component: the
+`Unit` of `Unit × σ` / `Except ε (Unit × σ)`); a result with ONE component inside a compound type (`Unit × Nat`) goes
+the several-components path (`multi`) in `frontx_compile` and `frontx_entry`, not the scalar one.
+
+**Compiled, machine theorem** `g.implements1` (the Sail axiom set, equal to `nonFindGt3.implements1`'s), test
+`frontx_test.py check 50` on QEMU and Sail vs executed Lean (`emit_frontx.lean`), all 17 × 50 ok, lengths up to 2769:
+
+| entry | monadic code | source | words |
+|---|---|---|---|
+| `countGt3`, `countNotGt3` | `ThenDoUnless.count`/`countNot` (`[Monad m] [MonadState Nat m]`, `if ← p x`, `unless`, `modify`) at `StateM Nat`, `p := fun x => pure (x > 3)` | fp-lean @0abeea5 `MonadTransformers/Do.lean:66,76` | 84, 84 |
+| `countGt3Exc` | `count` at `StateT Nat (Except String)`, the predicate `throw`s on 0 | `Do.lean:66` | 111 |
+| `desFindGt3` | `EarlyReturn.Desugared.List.find?` (`runCatch` over `ExceptT α Option`, `throw`, `monadLift`; §27 "not done") | `Do.lean:114,123` | 77 |
+| `loopFindGt3`, `contFindGt3` | `Loops.List.find?`, `Loops.Cont.List.find?` (`for`, early `return`, `continue`, `failure`) | `Do.lean:324,332` | 77, 79 |
+| `loopCountSp` | `Loops.List.count` (`Id.run do`, `let mut`, `for`) | `Do.lean:345` | 83 |
+| `twoE`, `threeE`, `sixE` | `Mut.St.two` (a `StateT Nat Id` block applied to `0`), `Mut.three`, `Mut.six` (`for` over `[1, 2, 3]`, unrolled) | `Do.lean:372,386,396` | 48, 48, 48 |
+| `sumNZE` | `StateT Nat (Except String)`, `throw`, `modify` | ours | 100 |
+| `countZerosE` | `try … catch` in the loop body (`StateT Nat (Except String)`) | ours | 88 |
+| `countAboveRE` | `ReaderT UInt8 (StateM Nat)`, `read` | ours | 85 |
+| `maxStE` | `get`/`set` in `StateM UInt8` | ours | 61 |
+| `splitE` | a structure `Counts` as the state, `modify fun c => { c with … }` | ours | 116 |
+| `firstBigE` | `[Monad m] [MonadExcept String m]` at `Except String`, early `return`, `throw` | ours | 77 |
+| `trySubE` | `tryCatch` in `Except` around a helper (`frontx_monad_fn`) | ours | 65 |
+
+Human input: the `with` invariants of the `Nat` accumulators (as §27's `countSp`).
+
+Not done / why:
+- lean-zip (`LEANZIP_DEPTH.md`, EXC): the functions whose only blocker is EXC (`BitReader.readBit`, `readBits`
+  (+ `go`), `readUInt16LE`, `alignToByte`, `readBitsFast`, `takeBits`) already compile through §16 (the probe ran
+  `frontx_compile` on the `readBits` wrapper, not on the `rfl` entry). Every other EXC function also needs ARR, BAO,
+  BAF, STR, IND or WF (`decodeStored` → `readBytes` (`ByteArray` result), `validateLengths` (arrays), the inflate
+  loops); none became reachable.
+- con-leche (`CONLECHE_DEPTH.md` row 11): no `CheckM`/`CheckCM`/`[Monad m]` function passes the type gate apart from
+  the monad: the `m`-polymorphic kernel functions take `Expr`/`Level`/`CoreFns m`; the only scalar ones,
+  `peelFuelM`/`maxNatSizeM`/`flushC` (`Cached/StateC.lean:324,328,508`), live in `CheckCM = StateT CState CheckM`,
+  whose state `CState` holds `HashMap`s of `Expr`/`Name`/`Level` (not in this repo; row 1, 2, 8). The pass handles that
+  monad shape (`countGt3Exc`, `sumNZE` are `StateT σ (Except ε)`); what is missing is the data.
+- fp-lean `countLetters` (`Do.lean:44`, `StateT LetterCounts (Except Err)`): `Char`/`String` (`List Char`,
+  `vowels.contains`); the book's own `State σ α := σ → σ × α` monad (`Monads.lean:476`) and `number`
+  (trees out).
+- Non-tail recursive monadic calls (`helper left` then `helper right`): the copy returns a pair, and the translator's
+  calls take one result word (§16).
+- `for i in [a:b]` in a monad other than `Id` (the range loop of `For.lean` is `Id` only); `ExceptT` over `StateM`
+  contexts (only `ExceptT … Option` through `runCatch` was needed).
+
+Reproduce: `lake build Riscv.Frontx.MonadExamples`; `lake env lean --tstack=4000000 Testing/asm/emit_frontx.lean`;
+`for f in Testing/asm/frontx-words/mon_*.cases; do python3 Testing/asm/frontx_test.py check 50 $(basename $f .cases); done`;
+axioms: `Testing/scripts/axioms_y.lean`.

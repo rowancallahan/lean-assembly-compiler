@@ -8,6 +8,7 @@ import Riscv.Frontx.Ind2Examples
 import Riscv.Frontx.NameExamples
 import Riscv.Frontx.ScalarExamples
 import Riscv.Frontx.HofExamples
+import Riscv.Frontx.MonadExamples
 open Proven Proven.Frontx Proven.Frontx.Ex
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
 def hex2 (b : UInt8) : String := let s := String.ofList (Nat.toDigits 16 b.toNat); if s.length < 2 then "0" ++ s else s
@@ -355,3 +356,24 @@ open Proven.Frontx.Hof in
   emit "hof_arrfindgt3" arrFindGt3.slots Proven.Frontx.Hof.arrFindGt3.code (fun xs => arrFindGt3.enc (arrFindGt3 xs))
   emit "hof_mapxor" mapXor.slots Proven.Frontx.Hof.mapXor.code mapXor
   emit "hof_countabove100" countAbove100.slots Proven.Frontx.Hof.countAbove100.code (enc countAbove100)
+
+-- NOTES section 29: monads by specialisation (`MonadExamples.lean`)
+open Proven.Frontx.Mon in
+#eval do
+  emit "mon_countgt3" countGt3.slots Proven.Frontx.Mon.countGt3.code (fun xs => countGt3.enc (countGt3 xs))
+  emit "mon_countnotgt3" countNotGt3.slots Proven.Frontx.Mon.countNotGt3.code (fun xs => countNotGt3.enc (countNotGt3 xs))
+  emit "mon_countgt3exc" countGt3Exc.slots Proven.Frontx.Mon.countGt3Exc.code (fun xs => countGt3Exc.enc (countGt3Exc xs))
+  emit "mon_sumnze" sumNZE.slots Proven.Frontx.Mon.sumNZE.code (fun xs => sumNZE.enc (sumNZE xs))
+  emit "mon_countzerose" countZerosE.slots Proven.Frontx.Mon.countZerosE.code (fun xs => countZerosE.enc (countZerosE xs))
+  emit "mon_countabovere" countAboveRE.slots Proven.Frontx.Mon.countAboveRE.code (fun xs => countAboveRE.enc (countAboveRE xs))
+  emit "mon_maxste" maxStE.slots Proven.Frontx.Mon.maxStE.code (fun xs => maxStE.enc (maxStE xs))
+  emit "mon_splite" splitE.slots Proven.Frontx.Mon.splitE.code (fun xs => splitE.enc (splitE xs))
+  emit "mon_firstbige" firstBigE.slots Proven.Frontx.Mon.firstBigE.code (fun xs => firstBigE.enc (firstBigE xs))
+  emit "mon_trysube" trySubE.slots Proven.Frontx.Mon.trySubE.code (fun xs => trySubE.enc (trySubE xs))
+  emit "mon_desfindgt3" desFindGt3.slots Proven.Frontx.Mon.desFindGt3.code (enc desFindGt3)
+  emit "mon_loopfindgt3" loopFindGt3.slots Proven.Frontx.Mon.loopFindGt3.code (enc loopFindGt3)
+  emit "mon_contfindgt3" contFindGt3.slots Proven.Frontx.Mon.contFindGt3.code (enc contFindGt3)
+  emit "mon_loopcountsp" loopCountSp.slots Proven.Frontx.Mon.loopCountSp.code (enc loopCountSp)
+  emit "mon_twoe" twoE.slots Proven.Frontx.Mon.twoE.code (enc twoE)
+  emit "mon_threee" threeE.slots Proven.Frontx.Mon.threeE.code (enc threeE)
+  emit "mon_sixe" sixE.slots Proven.Frontx.Mon.sixE.code (enc sixE)
