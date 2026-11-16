@@ -1684,6 +1684,87 @@ structural one); `instPisWith`, `piResidual`, `binderDom` (patterns on two argum
 (`max`: `sem` not proved); `isStrLit`, `natPred?` (nested patterns); `r8` (an `if` as a call argument).
 Codes are large (plain back end; straight-line `inst1` makes real calls for every child).
 
+## 26. Int (branch `feat-int`)
+
+Files: `Compiler/MOp.lean` (`div`, `rem`), `Riscv/Steps/GenMul.lean` (`step_div`, `step_rem`), `Riscv/Back/Wide.lean`
+(`w_mop`), `Riscv/Frontx/IntRep.lean` (new: representation, lemmas, `frontx_int_facts`, `frontx_int_abbrev`),
+`Translate.lean`, `Sub.lean`, `Impl1.lean` (`Res Int`), `Wa{Lang,Comp,Exp,Upd,Cmd}.lean`, `LeanSvgFixed.lean` (verbatim
+lean-svg), `IntExamples.lean`, `WaInt.lean`; tests `Testing/asm/emit_int.lean` → `frontx-words/{int,wa_int}_*`;
+axioms in `Testing/scripts/axioms_wa.lean` (`wa_check.sh`). Spec/ untouched; the inductive path (`Ind*`) untouched.
+
+**Lean's semantics.** On `Int`, `/` is `Int.ediv` and `%` is `Int.emod` (checked: `-7 / 2 = -4`, `-7 % 2 = 1`,
+`7 / -2 = -3`, `7 % -2 = 1`, `x / 0 = 0`, `x % 0 = x`; `0 ≤ x % y < |y|` for `y ≠ 0`). lean-svg writes `Int.ediv a 256`
+(same function).
+
+**Encoding.** A value is its two's complement word `rI x = BitVec.ofInt 64 x` (= `x mod 2^64`); a result is 8 bytes
+little-endian of `x % 2 ^ 64` (`Res Int`, `Impl1.lean`), as `Nat` results are `n % 2 ^ 64`: not range checked; for
+`-2^63 ≤ x < 2^63` the bytes determine `x`. Word arrays: `Array Int` elements are words the same way (width 8).
+
+**Machine.** `MOp.div` / `MOp.rem` (`Compiler/MOp.lean`): `div a b = if b = 0 then allOnes else ofInt (a.toInt.tdiv
+b.toInt)`, `rem a b = ofInt (a.toInt.tmod b.toInt)`. Checked against the Sail model (`execute_DIV`, `execute_REM` in
+`LeanRV64D/InstsEnd.lean`): by zero the quotient is `-1` and the remainder the dividend; on `-2^63 / -1` the model
+clamps the quotient to `-2^63`, which is the wrap of the true `2^63`, so `div` needs no overflow case (`div_eq`).
+Encodings `encR 1 4` / `encR 1 6`; `G.step_div` / `G.step_rem` by `gstep` (the model writes `2 ^ 63` with Sail's
+`Int ^ Int` instance, so `step_div0` is stated in the model's form and rewritten by `div_eq`). Every pass of the
+optimiser is generic in `MOp` (no other change); the plain back ends still reject `mop`.
+
+**Lean `/`, `%` from the machine's** (`IntRep.lean`): with `q = div a b`, `r = rem a b`,
+`x % y = if r < 0 then (if y < 0 then r - y else r + y) else r` (`emodB`),
+`x / y = if r < 0 then (if 0 < y then q - 1 else q + 1) else if y = 0 then 0 else q` (`edivB`; the `y = 0` case
+uses the machine's `-1 + 1 = 0` when `r = x < 0`). `rI_ediv`, `rI_emod`: `rI (x / y) = edivB (rI x) (rI y)` for
+`x, y` in range (proved through `Int.tmod_eq_emod` / `Int.tdiv_eq_ediv`; no overflow case needed: `|tmod| ≤ |x|`).
+
+**Range hypotheses** (visible): `+ - * -x`, `Int.ofNat` / `↑n`, literals need nothing (homomorphic mod `2^64`);
+`<`, `≤`, `=`, `Int.toNat`, `Int.natAbs`, `/`, `%` need their operands in `-2^63 ≤ x < 2^63` (side conditions of
+`rI_slt`, `rI_inj`, `rN_toNatI`, `rN_natAbs`, `rI_ediv`, `rI_emod`, discharged by `omega`). In `frontx_compile` they
+come from `requires` (e.g. `frontx_compile LeanSvg.Fx.mul requires fun a b => -2 ^ 63 ≤ a * b ∧ a * b < 2 ^ 63`), in
+`wa_compile` from `E.ok` (`Ty.small .int`; `Op2.exact` is now per type: `Int` `-` needs nothing; `cast.side` for
+`Int.toNat`) and the loop invariants. The entries read their arguments as signed 32- or 64-bit words (`i64At`,
+`i32At`, `rdI32`, glue), so the machine theorems have no hypothesis beyond the `Implements1` frame:
+
+    LeanSvg.Fx.mul.exec : ∀ a b σ, … → -2 ^ 63 ≤ a * b ∧ a * b < 2 ^ 63 → ∃ σ', BExec … ∧ σ'.env 4 = rI (Fx.mul a b) …
+    Proven.Frontx.IntEx.mulE.implements1 : Implements1With (fun xs => xs.data.toList) Res.enc mulE.code mulE (space)
+    Proven.WA.IntOps.iopsE.implements1 : Implements1With (fun xs => xs.data.toList) Res.enc iopsE.code iopsE (space)
+
+**List front end** (`Translate.lean`): `Ty.int` (also through abbreviations: `Fx`), `+ - *` (`*` by `mop mul`),
+`-x` (`0 - x`), `Int.neg`, `/`, `%`, `Int.ediv`, `Int.emod` (two `mop`s and the adjustment; the quotient / remainder in
+a temporary holding its Lean term, so nested quotients do not grow the obligations), comparisons `slt` (compound sides
+to temporaries, as for `Nat`), `==`, `=`, `≠`, `min`/`max` (`Int.min_def`), `Int.toNat`, `Int.natAbs`, `Int.ofNat`,
+`↑n`, literals and named `Int` constants (`Fx.maxVal`, unfolded in the obligations), `let` inside inlined helpers.
+Proof support: `frontx_int_abbrev` (unfold `Int` abbreviations and `Int.ediv`/`Int.emod` to `/`/`%` before `omega`),
+`frontx_int_facts` (bounds of `Int`/`Nat` products of non-literals from searched bounds of the factors, `mul_bound`;
+`omega` does not multiply variables), `ite_eq_orI` (an `Int` temporary defined by an `if`, with its condition),
+`rI_ofNat` as a pre-order simp lemma (else `simp` pushes the cast inside first).
+
+**Word arrays** (`Wa*.lean`): `Ty.int` (`Int`, `rI`, width 8, `Array Int`), `Op2.den` `+ - * / %` on `Int`,
+`Cmp.den` with signed `mcmp t` (`slt`), casts `Int.toNat` (`mcast`: `slt`-select) and `Nat → Int`, `iDivS` / `iModS`
+(the two `mop`s and the adjustment, temporaries `d + 2`, `d + 3`), reflection of `-x`, `Int.ediv`, `Int.emod`,
+`Int.toNat`, `↑n`, `Int.ofNat`. `mop_ok`, `mcmp_ok`, `mcast_ok`, `mword_ok`, `binS_ok` extended (proved once).
+
+**Compiled verbatim** (lean-svg @df8e663, `LeanSvgFixed.lean`; each line checked to occur unchanged in the source;
+each function's own `exec` with its `requires`, and an entry `…E` with `Implements1` via `frontx_implementsC`):
+RESULTS_TABLE
+
+**Not done / why.**
+- con-leche `Level.leq` / `Level.rest` / `Level.byCases` (`Kernel/Level.lean:87-145` @6810492c1): their `diff : Int`
+  goes with `Level` arguments, i.e. the inductive path (another agent's files): an `Int` field / argument kind in
+  `Compiler/Ind*.lean` is needed there (the representation lemmas of `IntRep.lean` apply unchanged).
+- lean-svg `Image.bicNear` (`Image.lean:410`): the obligation of the third nested quotient did not close (the
+  term of `(b * t).ediv 65536` with `b` itself a quotient is large); `bicFar` compiles alone (its `exec`), its entry
+  did not (`simp` nested error): not kept.
+- lean-svg `Fx.hypot` (`Nat.sqrt`), `scaleDecimal` (`10 ^ exp10.toNat`, unbounded), `parseNumber`/`parseDecimal`
+  (`Option (Fx × Nat)` results, loops), `expSmall` (`lnScale = 2 ^ 128`: beyond 64 bits), and everything with `Mat`/`Pt`
+  structures of `Int` fields (needs structure parameters of `Int` fields; `resultComps` takes them, not tried).
+- `Fx.clamp` inside a `wa_compile` loop: the reflection panics (`index out of bounds` in `wa_compile`'s meta code); a
+  plain `Int` loop state works (`sumDevE`).
+- `Int` shifts / bitwise operations, `Int.sign`, `Int.fdiv`/`Int.tdiv` as source operations (only `/`, `%`).
+- Speed: every `/` is two M-extension instructions plus a select; `x / 256` is not yet a shift (`ediv` by `2^k` is
+  an arithmetic shift right: a later pass).
+
+Reproduce: `lake build Frontx`; `lake env lean --tstack=400000 Testing/asm/emit_int.lean`;
+`for f in Testing/asm/frontx-words/{int,wa_int}_*.cases; do python3 Testing/asm/frontx_test.py check 50 $(basename $f .cases); done`;
+`bash Testing/scripts/wa_check.sh`.
+
 ## 27. Higher-order arguments by specialisation (branch `feat-hof`)
 
 Files: `Riscv/Frontx/SpecHof.lean` (new: the pass and the commands), `Riscv/Frontx/HofExamples.lean` (new: targets),
