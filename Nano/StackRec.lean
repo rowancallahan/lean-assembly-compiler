@@ -1,9 +1,9 @@
 /- Route (a), in progress: the meaning of nano-e2e's stack generator `genR` (StartCorrect convention, nano-e2e
 4c64d61) on a RECORD MACHINE (`Nano.R`: the semantics of `Nano/Asm.lean`'s record table, before encoding), proved
-block by block (`push_ok`, `ld_ok`, `addSp_ok`, `sd0_ok`, `rop_ok`, `binop_ok`, `li_ok`; value stack `Stk` in the work block).
+block by block (`push_ok`, `ld_ok`, `addSp_ok`, `sd0_ok`, `rop_ok`, `binop_ok`, `li_ok`, and **`genE_ok`/`genA_ok`**: an expression's records push `den e env`; value stack `Stk` in the work block).
 `Nano.S` is a verbatim COPY of nano-e2e 4c64d61's `Nano/Gen.lean` definitions (r .. depth): nano-e2e does not build
 yet (Nano/AsmSelf.lean), so it cannot be merged; replace `Nano.S` by `import Nano.Gen` at the merge.
-Remaining (Testing/notes/NANO_PROOF.md): `li`, `genE`/`genA` invariant, `pro`/`wr8`, the record machine refined by
+Remaining (Testing/notes/NANO_PROOF.md): `pro`/`wr8`, the record machine refined by
 Sail (record -> word lemmas + `G.step_*`), glue to `CompileCorrect`. -/
 import Nano.Ast
 import Spec.Encode
@@ -469,5 +469,276 @@ theorem li_ok {P : List UInt8} {s : St} {n : UInt64} {rest : List UInt8} (h : Co
     by rw [m8, m7, m6, m5, m4, m3, m2, m1, m0], fun j hj => ?_, c8⟩
   · rw [g8]; simp
   · rw [k8 j hj, k7 j hj, k6 j hj, k5 j hj, k4 j hj, k3 j hj, k2 j hj, k1 j hj, k0 j hj]
+
+/-! ## stack operations -/
+
+/-- `push` on the stack: `t0` becomes the new top slot -/
+theorem push_stk {P : List UInt8} {s : St} {rest : List UInt8} (h : CodeAt P s.pc (S.push ++ rest)) {T W : Nat}
+    {vals : List (BitVec 64)} (hs : Stk s T vals) (h12 : s.get 12 = BitVec.ofNat 64 W)
+    (hW : W + 8 * (vals.length + 1) ≤ T) (hT : T < 2 ^ 64) :
+    ∃ s', Star P s s' ∧ Stk s' T (vals ++ [s.get 5]) ∧ Kept s s' ∧ CodeAt P s'.pc rest := by
+  obtain ⟨h31, hv⟩ := hs
+  obtain ⟨s', x, p', g31, m', k'⟩ := push_ok h h31 h12 (by omega) (by omega)
+  refine ⟨s', x, ⟨?_, fun k hk => ?_⟩, fun j a b c => k' j c, ?_⟩
+  · rw [g31]; congr 1; simp; omega
+  · rw [m']
+    simp only [List.length_append, List.length_singleton] at hk
+    by_cases hkn : k = vals.length
+    · subst hkn; rw [show T - 8 * (vals.length + 1) = T - 8 * vals.length - 8 by omega, rd64_wr64_same]; simp
+    · rw [rd64_wr64_out _ _ _ _ (by omega), List.getElem_append_left (by omega)]; exact hv k (by omega)
+  · obtain ⟨pre, post, hP, hl⟩ := h
+    exact ⟨pre ++ S.push, post, by rw [hP]; simp, by rw [p']; simp [S.push, S.r, S.sd]; omega⟩
+
+/-- `ld t0, 8k(t6)` reading slot `j` -/
+theorem ldslot_ok {P : List UInt8} {s : St} {j : Nat} {rest : List UInt8} {T : Nat} {vals : List (BitVec 64)}
+    (h : CodeAt P s.pc (S.ld 5 31 (vals.length - 1 - j) ++ rest)) (hs : Stk s T vals) (hj : j < vals.length)
+    (hd : vals.length ≤ 256) (hT : 8 * vals.length ≤ T) (hT2 : T < 2 ^ 64) :
+    ∃ s', Star P s s' ∧ s'.get 5 = vals[j] ∧ s'.m = s.m ∧ (∀ i, i ≠ 5 → s'.get i = s.get i) ∧ CodeAt P s'.pc rest := by
+  obtain ⟨x, c⟩ := ld_ok (rd := 5) h (by decide) (by omega) hs.1 (by omega)
+  refine ⟨_, x, ?_, rfl, fun i hi => by simp [St.get, St.set, hi], c⟩
+  simp only [get_set_same _ (show (5 : Nat) ≠ 0 by decide), set_m]
+  rw [show T - 8 * vals.length + 8 * (vals.length - 1 - j) = T - 8 * (j + 1) by omega]
+  exact hs.2 j hj
+
+/-- `ld t0, 0(t6); t6 += 8k; sd t0, 0(t6)`: the top value replaces the `k + 1` slots it sits on -/
+theorem tail_ok {P : List UInt8} {s : St} {k : Nat} {rest : List UInt8}
+    (h : CodeAt P s.pc (S.ld 5 31 0 ++ S.addSp k ++ S.sd 5 31 0 ++ rest)) {T : Nat} {vals mid : List (BitVec 64)}
+    {x : BitVec 64} (hs : Stk s T (vals ++ mid ++ [x])) (hk : mid.length = k) (hk2 : k < 128)
+    (hT : 8 * (vals.length + k + 1) ≤ T) (hT2 : T < 2 ^ 64) :
+    ∃ s', Star P s s' ∧ Stk s' T (vals ++ [x]) ∧ Kept s s' ∧ CodeAt P s'.pc rest := by
+  obtain ⟨h31, hv⟩ := hs
+  simp only [List.length_append, List.length_singleton, hk] at h31 hv
+  have hx : rd64 s.m (T - 8 * (vals.length + k + 1)) = x := by
+    have := hv (vals.length + k) (by omega)
+    rw [List.getElem_append_right (by simp [hk])] at this; simpa [hk] using this
+  simp only [List.append_assoc] at h
+  obtain ⟨x1, c1⟩ := ld_ok (rd := 5) (k := 0) h (by decide) (by decide) h31 (by omega)
+  generalize hs1 : ((({ s with pc := s.pc + 1 } : St)).set 5 (rd64 s.m (T - 8 * (vals.length + k + 1) + 8 * 0))) = s1 at x1
+  have p1 : s1.pc = s.pc + 1 := by rw [← hs1]; rfl
+  have g31 : s1.get 31 = BitVec.ofNat 64 (T - 8 * (vals.length + k + 1)) := by rw [← hs1, get_set_ne _ (by decide)]; exact h31
+  obtain ⟨x2, c2⟩ := addSp_ok (s := s1) (k := k) (p1 ▸ c1) hk2 g31 (by omega)
+  generalize hs2 : ((({ s1 with pc := s1.pc + 1 } : St)).set 31 (BitVec.ofNat 64 (T - 8 * (vals.length + k + 1) + 8 * k))) = s2 at x2
+  have p2 : s2.pc = s.pc + 2 := by rw [← hs2]; simp [p1]
+  have g31' : s2.get 31 = BitVec.ofNat 64 (T - 8 * (vals.length + 1)) := by
+    rw [← hs2]; simp only [get_set_same _ (show (31 : Nat) ≠ 0 by decide)]; congr 1; omega
+  obtain ⟨x3, c3⟩ := sd0_ok (s := s2) (by rw [p2]; rw [p1] at c2; exact c2) g31' (by omega)
+  have m2 : s2.m = s.m := by rw [← hs2, ← hs1]; rfl
+  have v5 : s2.get 5 = x := by
+    rw [← hs2, get_set_ne _ (by decide)]; show s1.get 5 = _
+    rw [← hs1]; simp only [get_set_same _ (show (5 : Nat) ≠ 0 by decide)]; rw [Nat.mul_zero, Nat.add_zero, hx]
+  refine ⟨_, x1.trans (x2.trans x3), ⟨?_, fun j hj => ?_⟩, fun j a b c => ?_, ?_⟩
+  · show s2.get 31 = _; rw [g31']; simp
+  · simp only [List.length_append, List.length_singleton] at hj
+    show rd64 (wr64 s2.m (T - 8 * (vals.length + 1)) (s2.get 5)) _ = _
+    by_cases hjn : j = vals.length
+    · subst hjn; rw [rd64_wr64_same, v5]; simp
+    · rw [rd64_wr64_out _ _ _ _ (by omega), m2, List.getElem_append_left (by omega)]
+      have := hv j (by omega); rwa [List.getElem_append_left (by simp; omega), List.getElem_append_left (by omega)] at this
+  · show s2.get j = s.get j
+    rw [← hs2, ← hs1]; simp [St.get, St.set, a, c]
+  · show CodeAt P (s2.pc + 1) rest; rw [p2]; rw [p2] at c3; exact c3
+
+/-! ## expressions -/
+
+mutual
+/-- variables in scope (`n` of them), argument lists of fewer than 128 entries, no stray `anil`/`acons` -/
+def ScE : Ex → Nat → Bool
+  | .num _, _ => true
+  | .var i, n => decide (i < n)
+  | .add a b, n => ScE a n && ScE b n
+  | .sub a b, n => ScE a n && ScE b n
+  | .mul a b, n => ScE a n && ScE b n
+  | .let_ v b, n => ScE v n && ScE b (n + 1)
+  | .call b as, n => ScA as n && ScE b (S.cnt as) && decide (S.cnt as < 128)
+  | .anil, _ => false
+  | .acons _ _, _ => false
+def ScA : Ex → Nat → Bool
+  | .acons e r, n => ScE e n && ScA r n
+  | _, _ => true
+end
+
+/-- the scope: variable `i` is slot `sc[i]`, holding `env[i]` -/
+def ScOk (sc : List Nat) (env : List UInt64) (vals : List (BitVec 64)) : Prop :=
+  ∀ i, i < env.length → ∃ h : sc.getD i 0 < vals.length, vals[sc.getD i 0] = (env.getD i 0).toBitVec
+
+theorem ScOk.mono {sc : List Nat} {env : List UInt64} {vals : List (BitVec 64)} (h : ScOk sc env vals)
+    (more : List (BitVec 64)) : ScOk sc env (vals ++ more) := fun i hi => by
+  obtain ⟨h1, h2⟩ := h i hi
+  exact ⟨by rw [List.length_append]; omega, by rw [List.getElem_append_left h1]; exact h2⟩
+
+theorem ScOk.push {sc : List Nat} {env : List UInt64} {vals : List (BitVec 64)} (h : ScOk sc env vals) (v : UInt64) :
+    ScOk (vals.length :: sc) (v :: env) (vals ++ [v.toBitVec]) := fun i hi => by
+  cases i with
+  | zero => exact ⟨by simp, by simp⟩
+  | succ i =>
+    obtain ⟨h1, h2⟩ := h i (by simp at hi; omega)
+    exact ⟨by simp only [List.getD_cons_succ, List.length_append, List.length_singleton]; omega,
+      by simp only [List.getD_cons_succ]; rw [List.getElem_append_left h1]; exact h2⟩
+
+theorem mkSc_getD : ∀ (k b i : Nat), i < k → (S.mkSc k b).getD i 0 = b + k - 1 - i
+  | 0, _, _, h => absurd h (Nat.not_lt_zero _)
+  | k + 1, b, 0, _ => by simp [S.mkSc]
+  | k + 1, b, i + 1, h => by simp only [S.mkSc, List.getD_cons_succ]; rw [mkSc_getD k b i (by omega)]; omega
+
+theorem ScOk.args (vals args : List (BitVec 64)) (as : List UInt64) (hl : as.length = args.length)
+    (ha : ∀ j (h : j < args.length), args[j] = (as[j]'(by omega)).toBitVec) :
+    ScOk (S.mkSc args.length vals.length) as.reverse (vals ++ args) := fun i hi => by
+  simp only [List.length_reverse] at hi
+  rw [mkSc_getD _ _ _ (by omega)]
+  refine ⟨by simp; omega, ?_⟩
+  rw [List.getElem_append_right (by omega)]
+  rw [ha _ (by omega), List.getD_eq_getElem?_getD, List.getElem?_reverse (by omega), List.getElem?_eq_getElem (by omega)]
+  simp only [Option.getD_some]; congr 2; omega
+
+theorem depE_ge : ∀ (e : Ex) (d n : Nat), ScE e n = true → d + 1 ≤ S.depE d e
+  | .num _, d, n, _ => by simp [S.depE]
+  | .var _, d, n, _ => by simp [S.depE]
+  | .add a b, d, n, h => by simp only [ScE, Bool.and_eq_true] at h; have := depE_ge a d n h.1; simp only [S.depE]; omega
+  | .sub a b, d, n, h => by simp only [ScE, Bool.and_eq_true] at h; have := depE_ge a d n h.1; simp only [S.depE]; omega
+  | .mul a b, d, n, h => by simp only [ScE, Bool.and_eq_true] at h; have := depE_ge a d n h.1; simp only [S.depE]; omega
+  | .let_ v b, d, n, h => by simp only [ScE, Bool.and_eq_true] at h; have := depE_ge v d n h.1; simp only [S.depE]; omega
+  | .call b as, d, n, h => by
+    simp only [ScE, Bool.and_eq_true] at h; have := depE_ge b (d + S.cnt as) _ h.1.2; simp only [S.depE]; omega
+  | .anil, _, _, h => by simp [ScE] at h
+  | .acons _ _, _, _, h => by simp [ScE] at h
+
+theorem toBV_opv5 (a b : UInt64) : opv 5 a.toBitVec b.toBitVec = (a + b).toBitVec := by simp [opv]
+theorem toBV_opv6 (a b : UInt64) : opv 6 a.toBitVec b.toBitVec = (a - b).toBitVec := by simp [opv]
+theorem toBV_opv7 (a b : UInt64) : opv 7 a.toBitVec b.toBitVec = (a * b).toBitVec := by simp [opv]
+
+theorem stk_kept {s s' : St} {T : Nat} {vals : List (BitVec 64)} (hs : Stk s T vals) (hm : s'.m = s.m)
+    (h31 : s'.get 31 = s.get 31) : Stk s' T vals := ⟨by rw [h31]; exact hs.1, fun k hk => by rw [hm]; exact hs.2 k hk⟩
+
+variable {P : List UInt8} {T W : Nat}
+
+/-- a binary operator node -/
+theorem bin_node (k : Nat) (hk : k = 5 ∨ k = 6 ∨ k = 7) (hT2 : T < 2 ^ 64) {a b : Ex} {sc : List Nat}
+    {vals : List (BitVec 64)} {s : St} {rest : List UInt8} {va vb : UInt64}
+    (ha : ∀ (s : St) (rest : List UInt8), CodeAt P s.pc (S.genE sc vals.length a ++ rest) → Stk s T vals →
+      s.get 12 = BitVec.ofNat 64 W →
+      ∃ s', Star P s s' ∧ Stk s' T (vals ++ [va.toBitVec]) ∧ Kept s s' ∧ CodeAt P s'.pc rest)
+    (hb : ∀ (s : St) (rest : List UInt8), CodeAt P s.pc (S.genE sc (vals ++ [va.toBitVec]).length b ++ rest) →
+      Stk s T (vals ++ [va.toBitVec]) → s.get 12 = BitVec.ofNat 64 W →
+      ∃ s', Star P s s' ∧ Stk s' T (vals ++ [va.toBitVec] ++ [vb.toBitVec]) ∧ Kept s s' ∧ CodeAt P s'.pc rest)
+    (h : CodeAt P s.pc (S.genE sc vals.length a ++ S.genE sc (vals.length + 1) b ++ S.binop k.toUInt8 ++ rest))
+    (hs : Stk s T vals) (h12 : s.get 12 = BitVec.ofNat 64 W) (hT : 8 * (vals.length + 2) ≤ T) :
+    ∃ s', Star P s s' ∧ Stk s' T (vals ++ [opv k va.toBitVec vb.toBitVec]) ∧ Kept s s' ∧ CodeAt P s'.pc rest := by
+  simp only [List.append_assoc] at h
+  obtain ⟨s1, x1, st1, k1, c1⟩ := ha s _ h hs h12
+  obtain ⟨s2, x2, st2, k2, c2⟩ := hb s1 _ (by simpa using c1) st1 (by rw [k1 12 (by decide) (by decide) (by decide)]; exact h12)
+  obtain ⟨s3, x3, -, st3, k3, c3⟩ := binop_ok hk c2 (vals := vals) (by simpa using st2) hT hT2
+  exact ⟨s3, x1.trans (x2.trans x3), st3, k1.trans (k2.trans k3), c3⟩
+
+mutual
+/-- **an expression's records push its value** (on the record machine; the stack fits in the work block) -/
+theorem genE_ok (hT2 : T < 2 ^ 64) : ∀ (e : Ex) (sc : List Nat) (env : List UInt64) (vals : List (BitVec 64)) (s : St)
+    (rest : List UInt8), CodeAt P s.pc (S.genE sc vals.length e ++ rest) → ScE e env.length = true →
+    ScOk sc env vals → Stk s T vals → s.get 12 = BitVec.ofNat 64 W → W + 8 * S.depE vals.length e ≤ T →
+    S.depE vals.length e ≤ 256 →
+    ∃ s', Star P s s' ∧ Stk s' T (vals ++ [(den e env).toBitVec]) ∧ Kept s s' ∧ CodeAt P s'.pc rest
+  | .num n, sc, env, vals, s, rest, h, hsc, hok, hs, h12, hW, hd => by
+    simp only [S.genE, List.append_assoc] at h
+    obtain ⟨s1, x1, g1, m1, k1, c1⟩ := li_ok h
+    obtain ⟨s2, x2, st2, k2, c2⟩ := push_stk c1 (stk_kept hs m1 (k1 31 (by decide)))
+      (by rw [k1 12 (by decide)]; exact h12) (by simp only [S.depE] at hW; omega) hT2
+    exact ⟨s2, x1.trans x2, by rw [g1] at st2; simpa [den] using st2, fun j a b c => by rw [k2 j a b c, k1 j a], c2⟩
+  | .var i, sc, env, vals, s, rest, h, hsc, hok, hs, h12, hW, hd => by
+    simp only [S.genE, List.append_assoc] at h
+    simp only [ScE, decide_eq_true_eq] at hsc
+    simp only [S.depE] at hW hd
+    obtain ⟨hj, hv⟩ := hok i hsc
+    obtain ⟨s1, x1, g1, m1, k1, c1⟩ := ldslot_ok h hs hj (by omega) (by omega) hT2
+    obtain ⟨s2, x2, st2, k2, c2⟩ := push_stk c1 (stk_kept hs m1 (k1 31 (by decide)))
+      (by rw [k1 12 (by decide)]; exact h12) (by omega) hT2
+    exact ⟨s2, x1.trans x2, by rw [g1, hv] at st2; simpa [den] using st2, fun j a b c => by rw [k2 j a b c, k1 j a], c2⟩
+  | .add a b, sc, env, vals, s, rest, h, hsc, hok, hs, h12, hW, hd => by
+    simp only [ScE, Bool.and_eq_true] at hsc; simp only [S.depE] at hW hd
+    have := depE_ge b (vals.length + 1) _ hsc.2
+    obtain ⟨s', x, st, k, c⟩ := bin_node 5 (by decide) hT2 (va := den a env) (vb := den b env)
+      (fun s rest h hs h12 => genE_ok hT2 a sc env vals s rest h hsc.1 hok hs h12 (by omega) (by omega))
+      (fun s rest h hs h12 => by
+        have := genE_ok hT2 b sc env (vals ++ [(den a env).toBitVec]) s rest h hsc.2 (hok.mono _) hs h12
+          (by simp; omega) (by simp; omega)
+        simpa using this) (by simpa [S.genE] using h) hs h12 (by omega)
+    exact ⟨s', x, by rw [toBV_opv5] at st; simpa [den] using st, k, c⟩
+  | .sub a b, sc, env, vals, s, rest, h, hsc, hok, hs, h12, hW, hd => by
+    simp only [ScE, Bool.and_eq_true] at hsc; simp only [S.depE] at hW hd
+    have := depE_ge b (vals.length + 1) _ hsc.2
+    obtain ⟨s', x, st, k, c⟩ := bin_node 6 (by decide) hT2 (va := den a env) (vb := den b env)
+      (fun s rest h hs h12 => genE_ok hT2 a sc env vals s rest h hsc.1 hok hs h12 (by omega) (by omega))
+      (fun s rest h hs h12 => by
+        have := genE_ok hT2 b sc env (vals ++ [(den a env).toBitVec]) s rest h hsc.2 (hok.mono _) hs h12
+          (by simp; omega) (by simp; omega)
+        simpa using this) (by simpa [S.genE] using h) hs h12 (by omega)
+    exact ⟨s', x, by rw [toBV_opv6] at st; simpa [den] using st, k, c⟩
+  | .mul a b, sc, env, vals, s, rest, h, hsc, hok, hs, h12, hW, hd => by
+    simp only [ScE, Bool.and_eq_true] at hsc; simp only [S.depE] at hW hd
+    have := depE_ge b (vals.length + 1) _ hsc.2
+    obtain ⟨s', x, st, k, c⟩ := bin_node 7 (by decide) hT2 (va := den a env) (vb := den b env)
+      (fun s rest h hs h12 => genE_ok hT2 a sc env vals s rest h hsc.1 hok hs h12 (by omega) (by omega))
+      (fun s rest h hs h12 => by
+        have := genE_ok hT2 b sc env (vals ++ [(den a env).toBitVec]) s rest h hsc.2 (hok.mono _) hs h12
+          (by simp; omega) (by simp; omega)
+        simpa using this) (by simpa [S.genE] using h) hs h12 (by omega)
+    exact ⟨s', x, by rw [toBV_opv7] at st; simpa [den] using st, k, c⟩
+  | .let_ v b, sc, env, vals, s, rest, h, hsc, hok, hs, h12, hW, hd => by
+    simp only [ScE, Bool.and_eq_true] at hsc; simp only [S.depE] at hW hd
+    have := depE_ge b (vals.length + 1) _ hsc.2
+    simp only [S.genE, List.append_assoc] at h
+    obtain ⟨s1, x1, st1, k1, c1⟩ := genE_ok hT2 v sc env vals s _ h hsc.1 hok hs h12 (by omega) (by omega)
+    obtain ⟨s2, x2, st2, k2, c2⟩ := genE_ok hT2 b (vals.length :: sc) (den v env :: env)
+      (vals ++ [(den v env).toBitVec]) s1 _ (by simpa using c1) (by simpa using hsc.2) (hok.push _) st1
+      (by rw [k1 12 (by decide) (by decide) (by decide)]; exact h12) (by simp; omega) (by simp; omega)
+    obtain ⟨s3, x3, st3, k3, c3⟩ := tail_ok (k := 1) (mid := [(den v env).toBitVec]) (by simpa using c2)
+      (by simpa using st2) rfl (by decide) (by omega) hT2
+    exact ⟨s3, x1.trans (x2.trans x3), by simpa [den] using st3, k1.trans (k2.trans k3), c3⟩
+  | .call b as, sc, env, vals, s, rest, h, hsc, hok, hs, h12, hW, hd => by
+    simp only [ScE, Bool.and_eq_true, decide_eq_true_eq] at hsc; simp only [S.depE] at hW hd
+    obtain ⟨⟨ha, hb⟩, hc⟩ := hsc
+    have := depE_ge b (vals.length + S.cnt as) _ hb
+    simp only [S.genE, List.append_assoc] at h
+    obtain ⟨s1, x1, st1, k1, c1, hcnt⟩ := genA_ok hT2 as sc env vals s _ h ha hok hs h12 (by omega) (by omega)
+    have hl : ((denA as env).map UInt64.toBitVec).length = S.cnt as := by simp [hcnt]
+    obtain ⟨s2, x2, st2, k2, c2⟩ := genE_ok hT2 b (S.mkSc (S.cnt as) vals.length) (denA as env).reverse
+      (vals ++ (denA as env).map UInt64.toBitVec) s1 _ (by simpa [hl] using c1) (by simpa [hcnt] using hb)
+      (by rw [← hl]; exact ScOk.args _ _ _ (by simp) (fun j h => by simp)) st1
+      (by rw [k1 12 (by decide) (by decide) (by decide)]; exact h12) (by simp [hl]; omega) (by simp [hl]; omega)
+    obtain ⟨s3, x3, st3, k3, c3⟩ := tail_ok (k := S.cnt as) (mid := (denA as env).map UInt64.toBitVec)
+      (by simpa using c2) (by simpa using st2) hl hc (by omega) hT2
+    exact ⟨s3, x1.trans (x2.trans x3), by simpa [den] using st3, k1.trans (k2.trans k3), c3⟩
+  | .anil, _, _, _, _, _, _, hsc, _, _, _, _, _ => by simp [ScE] at hsc
+  | .acons _ _, _, _, _, _, _, _, hsc, _, _, _, _, _ => by simp [ScE] at hsc
+/-- an argument list pushes its values -/
+theorem genA_ok (hT2 : T < 2 ^ 64) : ∀ (as : Ex) (sc : List Nat) (env : List UInt64) (vals : List (BitVec 64)) (s : St)
+    (rest : List UInt8), CodeAt P s.pc (S.genA sc vals.length as ++ rest) → ScA as env.length = true →
+    ScOk sc env vals → Stk s T vals → s.get 12 = BitVec.ofNat 64 W → W + 8 * S.depA vals.length as ≤ T →
+    S.depA vals.length as ≤ 256 →
+    ∃ s', Star P s s' ∧ Stk s' T (vals ++ (denA as env).map UInt64.toBitVec) ∧ Kept s s' ∧ CodeAt P s'.pc rest ∧
+      S.cnt as = (denA as env).length
+  | .acons e r, sc, env, vals, s, rest, h, hsc, hok, hs, h12, hW, hd => by
+    simp only [ScA, Bool.and_eq_true] at hsc; simp only [S.depA] at hW hd
+    simp only [S.genA, List.append_assoc] at h
+    obtain ⟨s1, x1, st1, k1, c1⟩ := genE_ok hT2 e sc env vals s _ h hsc.1 hok hs h12 (by omega) (by omega)
+    obtain ⟨s2, x2, st2, k2, c2, hc2⟩ := genA_ok hT2 r sc env (vals ++ [(den e env).toBitVec]) s1 _ (by simpa using c1)
+      hsc.2 (hok.mono _) st1 (by rw [k1 12 (by decide) (by decide) (by decide)]; exact h12) (by simp; omega)
+      (by simp; omega)
+    exact ⟨s2, x1.trans x2, by simpa [denA] using st2, k1.trans k2, c2, by simp [S.cnt, denA, hc2]⟩
+  | .num _, _, _, vals, s, rest, h, _, _, hs, _, _, _ => ⟨s, .refl _, by simpa [denA] using hs, fun _ _ _ _ => rfl,
+      by simpa [S.genA] using h, rfl⟩
+  | .var _, _, _, vals, s, rest, h, _, _, hs, _, _, _ => ⟨s, .refl _, by simpa [denA] using hs, fun _ _ _ _ => rfl,
+      by simpa [S.genA] using h, rfl⟩
+  | .add _ _, _, _, vals, s, rest, h, _, _, hs, _, _, _ => ⟨s, .refl _, by simpa [denA] using hs, fun _ _ _ _ => rfl,
+      by simpa [S.genA] using h, rfl⟩
+  | .sub _ _, _, _, vals, s, rest, h, _, _, hs, _, _, _ => ⟨s, .refl _, by simpa [denA] using hs, fun _ _ _ _ => rfl,
+      by simpa [S.genA] using h, rfl⟩
+  | .mul _ _, _, _, vals, s, rest, h, _, _, hs, _, _, _ => ⟨s, .refl _, by simpa [denA] using hs, fun _ _ _ _ => rfl,
+      by simpa [S.genA] using h, rfl⟩
+  | .let_ _ _, _, _, vals, s, rest, h, _, _, hs, _, _, _ => ⟨s, .refl _, by simpa [denA] using hs, fun _ _ _ _ => rfl,
+      by simpa [S.genA] using h, rfl⟩
+  | .call _ _, _, _, vals, s, rest, h, _, _, hs, _, _, _ => ⟨s, .refl _, by simpa [denA] using hs, fun _ _ _ _ => rfl,
+      by simpa [S.genA] using h, rfl⟩
+  | .anil, _, _, vals, s, rest, h, _, _, hs, _, _, _ => ⟨s, .refl _, by simpa [denA] using hs, fun _ _ _ _ => rfl,
+      by simpa [S.genA] using h, rfl⟩
+end
 
 end Nano.R
