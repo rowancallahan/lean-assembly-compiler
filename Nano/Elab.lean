@@ -50,7 +50,7 @@ def reserved : List (List UInt8) :=
    [97, 110, 100], [97, 116], [98, 105, 102], [98, 110, 101], [98, 121], [100, 111],  -- and at bif bne by do
    [101, 110, 100], [102, 111, 114], [102, 117, 110], [103, 101, 116], [105, 100], [105, 102],  -- end for fun get id if
    [105, 110], [105, 116, 101], [109, 97, 120], [109, 105, 110], [109, 116], [109, 117, 116],  -- in ite max min mt mut
-   [110, 111, 116], [111, 114], [114, 102, 108], [115, 101, 116], [116, 114, 121], [120, 111, 114]]  -- not or rfl set try xor
+   [110, 111, 116], [111, 114], [114, 101, 99], [114, 102, 108], [115, 101, 116], [116, 114, 121], [120, 111, 114]]  -- not or rec rfl set try xor
 
 /-- a word: a keyword of nano, or a name (shape, not reserved); `none` = rejected -/
 def identTok? (s : List UInt8) : Option Tok :=
@@ -229,6 +229,26 @@ def pDefs : Nat → Defs → List Tok → Option Prog
     | _ => none
   | _, _, _ => none
 
+/-- nesting bound: open parentheses plus `let`s in scope are at most 100 (Lean fails with "maximum recursion depth" at about 500 of
+either, 1 unit each; found by `Testing/nano/thr.py`).  State: total, `let`s of the current paren level, saved levels. -/
+def nestOk : Nat → Nat → List Nat → List Tok → Bool
+  | _, _, _, [] => true
+  | n, l, st, Tok.kdef :: ts => nestOk 0 0 [] ts
+  | n, l, st, Tok.klet :: ts => n + 1 ≤ 100 && nestOk (n + 1) (l + 1) st ts
+  | n, l, st, Tok.lp :: ts => n + 1 ≤ 100 && nestOk (n + 1) 0 (l :: st) ts
+  | n, l, st, Tok.rp :: ts =>
+    match st with
+    | [] => false
+    | l0 :: st0 => nestOk (n - 1 - l) l0 st0 ts
+  | n, l, st, _ :: ts => nestOk n l st ts
+
+/-- size bound: at most 2000 tokens per def (Lean rejects a chain of about 3000 `+` / `*` operands: "maximum recursion depth"; the
+lowest threshold measured, `Testing/nano/thr.py`; 5400 tokens) -/
+def sizeOk : Nat → List Tok → Bool
+  | _, [] => true
+  | _, Tok.kdef :: ts => sizeOk 1 ts
+  | n, _ :: ts => n + 1 ≤ 2000 && sizeOk (n + 1) ts
+
 /-- the one type of a token list: every type token is `UInt64` (`false`) or every one is `Int64` (`true`) -/
 def uniTy : Option Bool → List Tok → Option Bool
   | t, [] => t
@@ -241,7 +261,7 @@ def nanoElabT (xs : List UInt8) : Option (Bool × Prog) :=
   match lex xs.length xs with
   | some ts =>
     match uniTy none ts with
-    | some s => (pDefs (ts.length + 1) [] ts).map (s, ·)
+    | some s => if nestOk 0 0 [] ts && sizeOk 0 ts then (pDefs (4 * ts.length + 4) [] ts).map (s, ·) else none
     | none => none
   | none => none
 

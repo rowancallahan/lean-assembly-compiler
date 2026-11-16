@@ -19,7 +19,7 @@ prod   ::= app ('*' app)*                        left associative, binds tighter
 app    ::= '-' num | name atom^k | atom          k = arity of the earlier def `name` (k >= 1); `-num` = (0 - num) (Neg UInt64/Int64)
 atom   ::= num | name | '(' expr ')'             name = parameter / let (innermost wins) or an earlier def of arity 0
 name   ::= 1-3 lowercase letters, then digits or `_`digit groups (`x`, `sq`, `add3`, `x_1`), not in `reserved` (Elab.lean: Lean keywords and
-           Init/exported names of that shape: and at bif bne by do end for fun get id if in ite max min mt mut not or rfl set try xor)
+           Init/exported names of that shape: and at bif bne by do end for fun get id if in ite max min mt mut not or rec rfl set try xor (`rec`: `let rec`, found by `edge.py --allnames`))
 num    ::= [0-9]+                                wraps mod 2^64 (as `OfNat UInt64/Int64`); must not touch a name character or `(`
 white  ::= ' ' | '\n' | '\r\n'                   a line starts (column 0) with a space, a newline or `def`
 ```
