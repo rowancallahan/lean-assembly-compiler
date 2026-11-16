@@ -11,34 +11,37 @@ values) whose leaves continue (`call`: the new state) or stop (`ret`).  Loops ha
 
 The compiler and its proof: `WaComp.lean`; reflection and commands: `WaCmd.lean`. -/
 import Riscv.Frontx.Exc
+import Riscv.Frontx.IntRep
 
 namespace Proven.WA
 open Proven Proven.Frontx
 
 /-! ## Types and values -/
 
-inductive Ty | u8 | u16 | u32 | u64 | nat | bool
+inductive Ty | u8 | u16 | u32 | u64 | nat | bool | int
   deriving DecidableEq, Repr
 
 abbrev Ty.T : Ty → Type
-  | .u8 => UInt8 | .u16 => UInt16 | .u32 => UInt32 | .u64 => UInt64 | .nat => Nat | .bool => Bool
+  | .u8 => UInt8 | .u16 => UInt16 | .u32 => UInt32 | .u64 => UInt64 | .nat => Nat | .bool => Bool | .int => Int
 
 instance Ty.inh : (t : Ty) → Inhabited t.T
   | .u8 => inferInstanceAs (Inhabited UInt8) | .u16 => inferInstanceAs (Inhabited UInt16)
   | .u32 => inferInstanceAs (Inhabited UInt32) | .u64 => inferInstanceAs (Inhabited UInt64)
   | .nat => inferInstanceAs (Inhabited Nat) | .bool => inferInstanceAs (Inhabited Bool)
+  | .int => inferInstanceAs (Inhabited Int)
 
 instance Ty.deq : (t : Ty) → DecidableEq t.T
   | .u8 => inferInstanceAs (DecidableEq UInt8) | .u16 => inferInstanceAs (DecidableEq UInt16)
   | .u32 => inferInstanceAs (DecidableEq UInt32) | .u64 => inferInstanceAs (DecidableEq UInt64)
   | .nat => inferInstanceAs (DecidableEq Nat) | .bool => inferInstanceAs (DecidableEq Bool)
+  | .int => inferInstanceAs (DecidableEq Int)
 
 /-- the machine word of a value -/
 def Ty.rep : (t : Ty) → t.T → BitVec 64
-  | .u8, x => r8 x | .u16, x => r16 x | .u32, x => r32 x | .u64, x => r64 x | .nat, x => rN x | .bool, x => rB x
+  | .u8, x => r8 x | .u16, x => r16 x | .u32, x => r32 x | .u64, x => r64 x | .nat, x => rN x | .bool, x => rB x | .int, x => rI x
 
 /-- bytes of a value in a result (little-endian) -/
-def Ty.width : Ty → Nat | .u8 => 1 | .u16 => 2 | .u32 => 4 | .u64 => 8 | .nat => 8 | .bool => 1
+def Ty.width : Ty → Nat | .u8 => 1 | .u16 => 2 | .u32 => 4 | .u64 => 8 | .nat => 8 | .bool => 1 | .int => 8
 
 /-- `ByteArray` or `Array t` -/
 inductive AK | ba | arr (t : Ty)
@@ -49,29 +52,29 @@ def AK.el : AK → Ty | .ba => .u8 | .arr t => t
 
 def AK.size : (k : AK) → k.T → Nat
   | .ba, a => a.size | .arr .u8, a => a.size | .arr .u16, a => a.size | .arr .u32, a => a.size
-  | .arr .u64, a => a.size | .arr .nat, a => a.size | .arr .bool, a => a.size
+  | .arr .u64, a => a.size | .arr .nat, a => a.size | .arr .bool, a => a.size | .arr .int, a => a.size
 
 /-- `a[i]!` -/
 def AK.get : (k : AK) → k.T → Nat → k.el.T
   | .ba, a, i => a[i]! | .arr .u8, a, i => a[i]! | .arr .u16, a, i => a[i]! | .arr .u32, a, i => a[i]!
-  | .arr .u64, a, i => a[i]! | .arr .nat, a, i => a[i]! | .arr .bool, a, i => a[i]!
+  | .arr .u64, a, i => a[i]! | .arr .nat, a, i => a[i]! | .arr .bool, a, i => a[i]! | .arr .int, a, i => a[i]!
 
 /-- `a.set! i x` -/
 def AK.set : (k : AK) → k.T → Nat → k.el.T → k.T
   | .ba, a, i, x => a.set! i x | .arr .u8, a, i, x => a.set! i x | .arr .u16, a, i, x => a.set! i x
   | .arr .u32, a, i, x => a.set! i x | .arr .u64, a, i, x => a.set! i x | .arr .nat, a, i, x => a.set! i x
-  | .arr .bool, a, i, x => a.set! i x
+  | .arr .bool, a, i, x => a.set! i x | .arr .int, a, i, x => a.set! i x
 
 /-- `a.push x` -/
 def AK.push : (k : AK) → k.T → k.el.T → k.T
   | .ba, a, x => a.push x | .arr .u8, a, x => a.push x | .arr .u16, a, x => a.push x
   | .arr .u32, a, x => a.push x | .arr .u64, a, x => a.push x | .arr .nat, a, x => a.push x
-  | .arr .bool, a, x => a.push x
+  | .arr .bool, a, x => a.push x | .arr .int, a, x => a.push x
 
 /-- the elements as a list -/
 def AK.toList : (k : AK) → k.T → List k.el.T
   | .ba, a => a.data.toList | .arr .u8, a => a.toList | .arr .u16, a => a.toList | .arr .u32, a => a.toList
-  | .arr .u64, a => a.toList | .arr .nat, a => a.toList | .arr .bool, a => a.toList
+  | .arr .u64, a => a.toList | .arr .nat, a => a.toList | .arr .bool, a => a.toList | .arr .int, a => a.toList
 
 /-- a slot of an environment: a scalar or an array -/
 inductive Sl | sc (t : Ty) | ar (k : AK)
@@ -128,6 +131,9 @@ def Op2.den : (o : Op2) → (t : Ty) → t.T → t.T → t.T
   | .shl, .u64, a, b => @HShiftLeft.hShiftLeft UInt64 UInt64 UInt64 _ a b | .shl, .nat, a, b => @HShiftLeft.hShiftLeft Nat Nat Nat _ a b
   | .shr, .u8, a, b => @HShiftRight.hShiftRight UInt8 UInt8 UInt8 _ a b | .shr, .u16, a, b => @HShiftRight.hShiftRight UInt16 UInt16 UInt16 _ a b | .shr, .u32, a, b => @HShiftRight.hShiftRight UInt32 UInt32 UInt32 _ a b 
   | .shr, .u64, a, b => @HShiftRight.hShiftRight UInt64 UInt64 UInt64 _ a b | .shr, .nat, a, b => @HShiftRight.hShiftRight Nat Nat Nat _ a b 
+  | .add, .int, a, b => @HAdd.hAdd Int Int Int _ a b | .sub, .int, a, b => @HSub.hSub Int Int Int _ a b
+  | .mul, .int, a, b => @HMul.hMul Int Int Int _ a b | .div, .int, a, b => @HDiv.hDiv Int Int Int _ a b
+  | .mod, .int, a, b => @HMod.hMod Int Int Int _ a b
   | .band, .bool, a, b => a && b 
   | .bor, .bool, a, b => a || b
   | _, _, _, _ => default
@@ -144,13 +150,17 @@ def Cmp.den : (o : Cmp) → (t : Ty) → t.T → t.T → Bool
   | .lt, .u64, a, b => decide (@LT.lt UInt64 _ a b) | .lt, .nat, a, b => decide (@LT.lt Nat _ a b) 
   | .le, .u8, a, b => decide (@LE.le UInt8 _ a b) | .le, .u16, a, b => decide (@LE.le UInt16 _ a b) | .le, .u32, a, b => decide (@LE.le UInt32 _ a b) 
   | .le, .u64, a, b => decide (@LE.le UInt64 _ a b) | .le, .nat, a, b => decide (@LE.le Nat _ a b) 
+  | .eq, .int, a, b => @BEq.beq Int _ a b | .ne, .int, a, b => @bne Int _ a b
+  | .lt, .int, a, b => decide (@LT.lt Int _ a b) | .le, .int, a, b => decide (@LE.le Int _ a b)
   | _, _, _, _ => false
 
-/-- casts: `toNat`, `ofNat`, widening and narrowing between the unsigned types, `!` on `Bool` -/
+/-- casts: `toNat`, `ofNat`, widening and narrowing between the unsigned types, `!` on `Bool`; `Int.toNat` and
+`Nat` → `Int` -/
 def cast : (s t : Ty) → s.T → t.T
   | .u8, .nat, x => x.toNat | .u16, .nat, x => x.toNat | .u32, .nat, x => x.toNat | .u64, .nat, x => x.toNat
   | .nat, .u8, x => UInt8.ofNat x | .nat, .u16, x => UInt16.ofNat x | .nat, .u32, x => UInt32.ofNat x
   | .nat, .u64, x => UInt64.ofNat x
+  | .int, .nat, x => x.toNat | .nat, .int, x => (x : Int)
   | .u8, .u16, x => x.toUInt16 | .u8, .u32, x => x.toUInt32 | .u8, .u64, x => x.toUInt64
   | .u16, .u8, x => x.toUInt8 | .u16, .u32, x => x.toUInt32 | .u16, .u64, x => x.toUInt64
   | .u32, .u8, x => x.toUInt8 | .u32, .u16, x => x.toUInt16 | .u32, .u64, x => x.toUInt64
@@ -250,6 +260,7 @@ def F.den {Γ : List Sl} : {k : AK} → F Γ k → Vals Γ → k.T
     | .u8, y => Array.replicate (n.den v) y | .u16, y => Array.replicate (n.den v) y
     | .u32, y => Array.replicate (n.den v) y | .u64, y => Array.replicate (n.den v) y
     | .nat, y => Array.replicate (n.den v) y | .bool, y => Array.replicate (n.den v) y
+    | .int, y => Array.replicate (n.den v) y
   | _, .const c, _ => c
   | _, .empty, _ => ByteArray.empty
   | _, .extract m lo hi, v => (m.get v).extract (lo.den v) (hi.den v)

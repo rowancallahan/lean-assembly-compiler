@@ -11,6 +11,7 @@ base; hence generated programs keep variables 2 and 3 free and put scalars from 
 import Riscv.Examples.Implements1Ex
 import Riscv.Back.Implements1Opt
 import Riscv.Frontx.Rep
+import Riscv.Frontx.IntRep
 
 set_option linter.unusedVariables false
 
@@ -232,6 +233,10 @@ instance : Res (BitVec 64) := ⟨id, 7, by decide, fun w => leN 8 w.toNat, fun w
 instance : Res UInt64 := ⟨r64, 7, by decide, fun w => leN 8 w.toNat, fun w => leN_bytes 8 _⟩
 /-- a `Nat` result is returned mod `2 ^ 64` -/
 instance : Res Nat := ⟨rN, 7, by decide, fun n => leN 8 (n % 2 ^ 64), fun n => leN_bytes 8 _⟩
+/-- an `Int` result: two's complement, i.e. `x mod 2 ^ 64` as 8 bytes little-endian (as `Nat` results, the value
+is not range checked; in range, `-2 ^ 63 ≤ x < 2 ^ 63`, the bytes determine `x`) -/
+instance : Res Int := ⟨rI, 7, by decide, fun x => leN 8 (x % 2 ^ 64).toNat, fun x => by
+  rw [leN_bytes]; simp only [rI, BitVec.toNat_ofInt]; rfl⟩
 instance : Res UInt32 := ⟨r32, 3, by decide, fun w => leN 4 w.toNat, fun w => by
   rw [leN_bytes]; simp [r32]⟩
 instance : Res UInt8 := ⟨r8, 0, by decide, fun w => leN 1 w.toNat, fun w => by
