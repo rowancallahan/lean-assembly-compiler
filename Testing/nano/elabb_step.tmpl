@@ -1,0 +1,35 @@
+    if st == 2 then REC(0, sp, d, d0, w, ty)
+    else if st == 0 then
+      if c == 32 || c == 10 then REC(0, sp, d, d0, w, ty)
+      else if c == 13 then (if @N == 10 then REC(0, 1, d, d0, w, ty) else [0])
+      else if c == 58 then
+        (if @N == 61 then (if m == 0 then REC(2, 1, d, d0, w, ty) else 61 :: REC(2, 1, d, d0, w, ty))
+         else (if m == 0 then REC(0, sp, d, d0, w, ty) else 58 :: REC(0, sp, d, d0, w, ty)))
+      else if c == 40 || c == 42 || c == 43 || c == 59 then
+        (if m == 0 then REC(0, sp, d, d0, w, ty) else c :: REC(0, sp, d, d0, w, ty))
+      else if c == 41 then
+        (if @N == 40 || isW @N then [0] else if m == 0 then REC(0, sp, d, d0, w, ty) else c :: REC(0, sp, d, d0, w, ty))
+      else if c == 45 then
+        (if @N == 45 then [0] else if m == 0 then REC(0, sp, d, d0, w, ty) else c :: REC(0, sp, d, d0, w, ty))
+      else if 48 ≤ c && c ≤ 57 then
+        (if 48 ≤ @N && @N ≤ 57 then (if m == 0 then REC(3, sp, d, d0, 0, ty) else 5 :: c :: REC(3, sp, d, d0, 0, ty))
+         else if isL @N || @N == 40  then [0]
+         else (if m == 0 then REC(0, sp, d, d0, w, ty) else 5 :: c :: 6 :: REC(0, sp, d, d0, w, ty)))
+      else if isL c then
+        (if isW @N then
+           (if m == 0 then REC(1, sp, (DSTEP0 @N), (if 97 ≤ c && c ≤ 122 then 1 else 6), ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (@N).toUInt64), ty)
+            else c :: REC(1, sp, (DSTEP0 @N), (if 97 ≤ c && c ≤ 122 then 1 else 6), ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (@N).toUInt64), ty))
+         else if @N == 40 || (c < 97 || 122 < c) then [0]
+         else (if m == 0 then REC(0, sp, d, d0, w, ty) else c :: 0 :: REC(0, sp, d, d0, w, ty)))
+      else [0]
+    else if st == 1 then
+      if isW @N then
+        (if m == 0 then REC(1, sp, (DSTEP d, @N), d, (WSTEP w, @N), ty)
+         else c :: REC(1, sp, (DSTEP d, @N), d, (WSTEP w, @N), ty))
+      else if @N == 40 || (KIND d, w) == 9 || (TYU w) == 9 then [0]
+      else (if m == 0 then REC(0, 1, d, d0, w, (TYU w)) else c :: (KIND d, w).toUInt8 :: REC(0, 1, d, d0, w, (TYU w)))
+    else if st == 3 then
+      if 48 ≤ @N && @N ≤ 57 then (if m == 0 then REC(3, sp, d, d0, 1, ty) else c :: REC(3, sp, d, d0, 1, ty))
+      else if isL @N || @N == 40 then [0]
+      else (if m == 0 then REC(0, 1, d, d0, w, ty) else c :: 6 :: REC(0, 1, d, d0, w, ty))
+    else [0]
