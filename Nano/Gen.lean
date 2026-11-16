@@ -11,21 +11,21 @@ namespace Nano
 
 def r (a b c d : UInt8) : List UInt8 := [a, b, c, d]
 -- registers: sp = 2, t0 = 5, t1 = 6, a0 = 10, a2 = 12, a3 = 13, t3 = 28, t6 = 31 (stack pointer).  Slots are 8 bytes.
-def ld (rd rs slot : Nat) : List UInt8 := r 0 rd.toUInt8 rs.toUInt8 slot.toUInt8
-def sd (rs2 rs1 slot : Nat) : List UInt8 := r 1 rs2.toUInt8 rs1.toUInt8 slot.toUInt8
-def addSp (k : Nat) : List UInt8 := r 2 31 31 k.toUInt8           -- t6 += 8k
+def ld (rd rs slot : Nat) : List UInt8 := r 3 rd.toUInt8 rs.toUInt8 slot.toUInt8
+def sd (rs2 rs1 slot : Nat) : List UInt8 := r 11 rs2.toUInt8 rs1.toUInt8 slot.toUInt8
+def addSp (k : Nat) : List UInt8 := r 8 31 31 k.toUInt8           -- t6 += 8k
 /-- t6 -= 8; if t6 < a2 then (a0 := -1; ret); sd t0, 0(t6) -/
-def push : List UInt8 := r 2 31 31 255 ++ r 13 31 12 0 ++ r 14 10 0 255 ++ r 8 0 0 0 ++ sd 5 31 0
+def push : List UInt8 := r 0 31 31 248 ++ r 7 0 31 12 ++ r 0 10 0 255 ++ r 48 0 1 0 ++ sd 5 31 0
 
 /-- t0 := n by shifting in its 8 bytes, most significant first -/
 def li (n : UInt64) : List UInt8 :=
-  r 2 5 0 0 ++
-  r 4 5 5 8 ++ r 3 5 5 ((n >>> 56).toUInt8) ++ r 4 5 5 8 ++ r 3 5 5 ((n >>> 48).toUInt8) ++
-  r 4 5 5 8 ++ r 3 5 5 ((n >>> 40).toUInt8) ++ r 4 5 5 8 ++ r 3 5 5 ((n >>> 32).toUInt8) ++
-  r 4 5 5 8 ++ r 3 5 5 ((n >>> 24).toUInt8) ++ r 4 5 5 8 ++ r 3 5 5 ((n >>> 16).toUInt8) ++
-  r 4 5 5 8 ++ r 3 5 5 ((n >>> 8).toUInt8) ++ r 4 5 5 8 ++ r 3 5 5 (n.toUInt8)
+  r 0 5 0 0 ++
+  r 1 5 5 8 ++ r 6 5 5 ((n >>> 56).toUInt8) ++ r 1 5 5 8 ++ r 6 5 5 ((n >>> 48).toUInt8) ++
+  r 1 5 5 8 ++ r 6 5 5 ((n >>> 40).toUInt8) ++ r 1 5 5 8 ++ r 6 5 5 ((n >>> 32).toUInt8) ++
+  r 1 5 5 8 ++ r 6 5 5 ((n >>> 24).toUInt8) ++ r 1 5 5 8 ++ r 6 5 5 ((n >>> 16).toUInt8) ++
+  r 1 5 5 8 ++ r 6 5 5 ((n >>> 8).toUInt8) ++ r 1 5 5 8 ++ r 6 5 5 (n.toUInt8)
 
-/-- pops b, a; pushes a ∘ b (`k`: 5 add, 6 sub, 7 mul) -/
+/-- pops b, a; pushes a ∘ b (`k`: 24 add, 32 sub, 40 mul) -/
 def binop (k : UInt8) : List UInt8 := ld 6 31 0 ++ ld 5 31 1 ++ addSp 1 ++ r k 5 5 6 ++ sd 5 31 0
 
 /-- stack slots of k fresh variables starting at depth b, newest first -/
@@ -42,9 +42,9 @@ mutual
 def genE : List Nat → Nat → Ex → List UInt8
   | _, _, .num n => li n ++ push
   | sc, d, .var i => ld 5 31 (d - 1 - sc.getD i 0) ++ push
-  | sc, d, .add a b => genE sc d a ++ genE sc (d + 1) b ++ binop 5
-  | sc, d, .sub a b => genE sc d a ++ genE sc (d + 1) b ++ binop 6
-  | sc, d, .mul a b => genE sc d a ++ genE sc (d + 1) b ++ binop 7
+  | sc, d, .add a b => genE sc d a ++ genE sc (d + 1) b ++ binop 24
+  | sc, d, .sub a b => genE sc d a ++ genE sc (d + 1) b ++ binop 32
+  | sc, d, .mul a b => genE sc d a ++ genE sc (d + 1) b ++ binop 40
   | sc, d, .let_ v b => genE sc d v ++ genE (d :: sc) (d + 1) b ++ ld 5 31 0 ++ addSp 1 ++ sd 5 31 0
   | sc, d, .call b as =>
     genA sc d as ++ genE (mkSc (cnt as) d) (d + cnt as) b ++ ld 5 31 0 ++ addSp (cnt as) ++ sd 5 31 0
@@ -56,19 +56,19 @@ end
 
 /-- argument words: t0 := the 8 bytes at t3 (LE, bytewise), pushed; t3 += 8 -/
 def rd8 : List UInt8 :=
-  r 9 5 28 7 ++ (List.range 7).foldr (fun j acc => r 4 5 5 8 ++ r 9 6 28 (6 - j).toUInt8 ++ r 12 5 5 6 ++ acc) []
+  r 4 5 28 7 ++ (List.range 7).foldr (fun j acc => r 1 5 5 8 ++ r 4 6 28 (6 - j).toUInt8 ++ r 14 5 5 6 ++ acc) []
 
 /-- load the k arguments from t3 onto the stack, in order -/
 def pro : Nat → List UInt8
   | 0 => []
-  | k + 1 => rd8 ++ push ++ r 2 28 28 1 ++ pro k
+  | k + 1 => rd8 ++ push ++ r 8 28 28 1 ++ pro k
 
 /-- result t0 -> 8 bytes at a3, bytewise -/
-def wr8 : List UInt8 := (List.range 8).foldr (fun k acc => r 11 6 5 (8 * k).toUInt8 ++ r 10 6 13 k.toUInt8 ++ acc) []
+def wr8 : List UInt8 := (List.range 8).foldr (fun k acc => r 5 6 5 (8 * k).toUInt8 ++ r 16 6 13 k.toUInt8 ++ acc) []
 
 /-- the records of a program -/
 def genR (p : Prog) : List UInt8 :=
-  r 2 31 2 0 ++ r 2 28 10 0 ++ pro p.1 ++ genE (mkSc p.1 0) p.1 p.2 ++ ld 5 31 0 ++ wr8 ++ r 8 0 0 0
+  r 0 31 2 0 ++ r 0 28 10 0 ++ pro p.1 ++ genE (mkSc p.1 0) p.1 p.2 ++ ld 5 31 0 ++ wr8 ++ r 48 0 1 0
 
 -- most stack slots in use (what `genR`'s pushes need); `memoryNeeded` = 8 * `depth p`
 mutual
