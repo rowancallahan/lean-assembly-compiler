@@ -240,9 +240,9 @@ def shapeOf (ti : TyInfo) : Array String := Id.run do
 /-- the name of the `k`-th type of the shape of `T` (`T` itself, then `T.N1`, `T.N2`, …) -/
 def unionName (Tn : Name) (k : Nat) : Name := if k == 0 then Tn else Tn ++ Name.mkSimple s!"N{k}"
 
-syntax "frontx_ind_type " ident " := " term (" nesting " term,+)? : command
+syntax "frontx_ind_type " ("(full) ")? ident " := " term (" nesting " term,+)? : command
 elab_rules : command
-  | `(frontx_ind_type $T:ident := $ty:term $[nesting $ns,*]?) => do
+  | `(frontx_ind_type $[(full)%$full]? $T:ident := $ty:term $[nesting $ns,*]?) => do
   let Tn := T.getId
   -- the types of the shape: `ty`, then (depth first) the types of its fields given in `nesting` and `Bytes8`
   -- for `String` fields; constructor tags are numbered through all of them
@@ -256,6 +256,9 @@ elab_rules : command
     let tyE ← instantiateMVars tyE
     let nest := nest0.push (Lean.mkConst ``Proven.Frontx.Ind.Bytes8)
     let mut U : Array (Expr × TyInfo) := #[(tyE, ← analyze tyE nest)]
+    -- `full`: a field of the root type in a nested type (`List Expr`'s head, `Option Expr`'s value) is a child too
+    -- (without it such fields are dropped, as in the shapes declared before this option)
+    let nest := if full.isSome then nest.push tyE else nest
     let mut k := 0
     while h : k < U.size do
       let ti := U[k].2
@@ -321,6 +324,7 @@ elab_rules : command
     shParts := shParts ++ shapeOf ti
   let shS := ", ".intercalate shParts.toList
   runCmd s!"def {Tn}.sh : Proven.Mach.Ind.Shape := [{shS}]"
+  if full.isSome then runCmd s!"/-- marker: the shape is declared `(full)` -/\ndef {Tn}.full : Bool := true"
   -- definitions per type, the types used by a type first
   -- (a topological order of the child-type relation: `List Level` after `Level`, whatever their positions)
   let mut deps : Array (Array Nat) := #[]
@@ -898,7 +902,19 @@ partial def reify (c : Ctx) (e : Expr) : MetaM String := do
   -- a constant (a definition without arguments) of a declared type: its value
   if let .const cn _ := e then
     if let some (.defnInfo dv) := (← getEnv).find? cn then
-      if !dv.type.isForall && (← findTy c.tys dv.type).isSome then return ← reify c dv.value
+      if !dv.type.isForall && (← findTy c.tys dv.type).isSome then
+        -- inside a function that is not itself a constant: a call of the function `cn.cst_T t := cn` of the node
+        -- (its meaning theorem then states the value, so the caller's proof needs no evaluation of the cells)
+        let tyS := String.ofList ((toString (← ppExpr c.ti.ty)).toList.filter Char.isAlphanum)
+        let cstN := cn ++ Name.mkSimple s!"cst_{tyS}"
+        let gl := c.g.getString!
+        if gl == "cst" || gl.startsWith "cst_" || (← isProp dv.type) then return ← reify c dv.value
+        unless (← getEnv).contains cstN do
+          let cty ← mkArrow c.ti.ty dv.type
+          let cval := Expr.lam `t c.ti.ty (mkConst cn) .default
+          addDecl (.defnDecl { name := cstN, levelParams := [], type := cty, value := cval, hints := .abbrev, safety := .safe })
+          enableRealizationsForConst cstN
+        return ← reify c (mkApp (mkConst cstN) c.params[c.sIdx]!)
   -- a function of a declared type not in the program yet: recorded, translated in the next round
   if let .const fnN _ := fn then
     if (← getEqnsFor? fnN).isSome && !(c.fns.any (·.name == fnN)) then
@@ -1069,6 +1085,9 @@ def rTyOfName (tn : Name) : TermElabM RTy := do
   let mut nest := #[]
   for n in nestedNames env root do
     nest := nest.push (← inferType (← mkConstWithLevelParams (n ++ `emb))).bindingDomain!
+  -- a shape declared `(full)` (its marker `T.full`): fields of the root type in nested types are children
+  if tn != root && env.contains (root ++ `full) then
+    nest := nest.push (← inferType (← mkConstWithLevelParams (root ++ `emb))).bindingDomain!
   let embTy ← inferType (← mkConstWithLevelParams (tn ++ `emb))
   let off ← if env.contains (tn ++ `off) then do
       let v ← whnf (← mkConstWithLevelParams (tn ++ `off))
@@ -1242,6 +1261,12 @@ def programOf (tys : Array RTy) (g : Name) : MetaM (Array FnI) := do
   order := o.reverse
   return order.map fun n => (infos.find? (·.name == n)).get!
 
+/-- `n + 1` is not the word `0` below `2^64` (a match on `0` / `k + 1` of a `Nat` parameter) -/
+theorem ofNat_succ_eq0 {a : Nat} (h : a + 1 < 2 ^ 64) : (BitVec.ofNat 64 (a + 1) = 0#64) = False := by
+  apply propext; constructor
+  · intro h'; have := congrArg BitVec.toNat h'; simp at this; omega
+  · intro h'; exact h'.elim
+
 /-- `g`'s binders from `j` on, the fixed ones instantiated with their literals: the type and value of the
 specialisation -/
 partial def specOpen (g : Name) (n : Nat) (gc : Expr) (fixed : Array (Nat × Expr)) (j : Nat) (t : Expr)
@@ -1280,6 +1305,7 @@ def specialise (g : Name) (fixed : Array (Nat × Expr)) (sN : Name) : MetaM Unit
     else none
   let (ty, val) ← specOpen g n gc fixed 0 gi.type #[] #[]
   addDecl (.defnDecl { name := sN, levelParams := gi.levelParams, type := ty, value := val, hints := .regular 0, safety := .safe })
+  enableRealizationsForConst sN
   -- the equations
   let mut k := 1
   for eqn in eqns do
@@ -1502,6 +1528,21 @@ elab_rules : command
   let cells := "Proven.Mach.Ind.C.tag, Proven.Mach.Ind.C.xv, Proven.Mach.Ind.C.lv, Proven.Mach.Ind.C.rv, " ++
     "Proven.Mach.Ind.Kd.pick, Proven.Mach.Ind.Kd.pair, Proven.Mach.Ind.semX, List.getD_cons_zero, List.getD_cons_succ"
   let multi := fns.size > 1
+  -- the constants called through `cst_` functions and the constants their values use (for `small` of their values)
+  let cstUnf ← liftTermElabM do
+    let mut out : Array Name := #[]
+    let mut todo : Array Name := fns.filterMap fun f =>
+      if f.name.getString!.startsWith "cst_" then some f.name else none
+    while h : todo.size > 0 do
+      let n := todo[todo.size - 1]; todo := todo.pop
+      if out.contains n then continue
+      let some (.defnInfo dv) := (← getEnv).find? n | continue
+      out := out.push n
+      for m in dv.value.getUsedConstants do
+        if let some (.defnInfo mv) := (← getEnv).find? m then
+          if !mv.type.isForall && !(← isProp mv.type) && (← findTy tys mv.type).isSome then todo := todo.push m
+    return out.toList.map toString
+  let cstS := ", ".intercalate cstUnf
   let fnsS := ", ".intercalate (fns.toList.map fun f => toString f.name)
   let mut anySmall := false
   let mut nodesHyp := false
@@ -1581,7 +1622,53 @@ elab_rules : command
         (match bTys[i]! with | some rb => s!"{rb.tn}.small b → " | none => "")
     let words := (if small then words ++ s!", {smalls}, {cmpW}" else words ++ s!", {cmpW}") ++ extra
     let caseB := if bTys[i]!.isSome then "cases b <;> " else ""
-    runCmd s!"set_option maxHeartbeats 16000000 in
+    -- calls of later functions on the node or on constants (`cst_` functions): their meaning theorems before the
+    -- cells are unfolded, then the constants' `small` by evaluation, then case splits on matched fields
+    let smallD := s!"first | (simp_all [{smalls}]; done) | (simp [{smalls}{if cstS.isEmpty then "" else ", " ++ cstS}]; (repeat' constructor) <;> with_unfolding_all exact True.intro)"
+    -- `BEq` instances `g` uses (`==` on a declared type) and their functions (`Name.beq a b := decide (a = b)`)
+    let (beqS, beqH) ← liftTermElabM do
+      let some (.defnInfo gv) := (← getEnv).find? fi.name | return ("", "")
+      let mut out : Array Name := #[]
+      let mut haves : Array String := #[]
+      let mut seen : Array Name := #[]
+      let mut todo := gv.value.getUsedConstants
+      for _ in [0:3] do
+        let mut next := #[]
+        for n in todo do
+          if seen.contains n then continue
+          seen := seen.push n
+          if let some ci := (← getEnv).find? n then
+            if isInstanceCore (← getEnv) n && ci.type.getAppFn.isConstOf ``BEq then
+              out := out.push n
+              haves := haves.push (← ppFull ci.type.appArg!)
+              if let some v := ci.value? then
+                for m in v.getUsedConstants do
+                  if !(m.isPrefixOf ``BEq) && ((← getEnv).find? m).any (·.isDefinition) then out := out.push m
+            else if let some v := ci.value? then
+              if ci.isDefinition && !n.isInternal then next := next ++ v.getUsedConstants.filter (fun m => m.getPrefix == n || m.isInternal)
+        todo := next
+      -- `x == y` is `decide (x = y)` by definition (`simp` does not rewrite the instance argument)
+      let hs := String.join (haves.toList.eraseDups.map fun t =>
+        s!"try have : ∀ x y : {t}, (x == y) = decide (x = y) := fun _ _ => rfl\n     ")
+      return (String.join (out.toList.eraseDups.map (", " ++ toString ·)), hs)
+    let cstAlt := if i + 1 >= fns.size then "" else s!"
+  | (simp only [{embs}, {P}.arms, Proven.Mach.Ind.Pg.sem, Proven.Mach.Ind.ev, List.getElem?_cons_zero,
+      List.getElem?_cons_succ, Bool.false_eq_true, if_false] at *
+     try simp only [{allFolds}] at *
+     try simp only [{P}.X, {cells}]
+     try simp (disch := {smallD}) only [{laterSems}]
+     {if cstS.isEmpty then "" else s!"try simp only [{cstS}]"}
+     try simp (disch := {smallD}) only [{laterSems}]
+     {beqH}repeat' (first | (simp_all [{gS}, {embs}, {words}, Proven.Op.eval{if cstS.isEmpty then "" else ", " ++ cstS}{beqS}]; done) | frontx_emb_cases)
+     all_goals simp_all [{gS}, {embs}, {words}, Proven.Op.eval{if cstS.isEmpty then "" else ", " ++ cstS}{beqS}]
+     all_goals first | rfl | (congr 1; done) | (congr 1; simp only [decide_eq_decide])
+     done)"
+    -- a match on the `Nat` parameter together with the tree (`| 0, e => … | k + 1, .forallE _ b => …`): split `a`
+    let natAlt := if fi.aSc != some .nat then "" else s!"
+  | (rcases a with _ | a <;> (try have : a < 2 ^ 64 := by omega) <;> simp_all [{gS}, {P}.arms, Proven.Mach.Ind.Pg.sem, Proven.Mach.Ind.ev, {embs}, {words}, Proven.Frontx.IndCmd.ofNat_succ_eq0, Proven.Op.eval]; done)
+  | (rcases a with _ | a <;> (try have : a < 2 ^ 64 := by omega) <;> simp_all [{gS}, {P}.arms, Proven.Mach.Ind.Pg.sem, Proven.Mach.Ind.ev, {embs}, {words}, Proven.Frontx.IndCmd.ofNat_succ_eq0, Proven.Op.eval] <;>
+     (repeat' split) <;> simp_all [{embs}, {words}] <;> omega)"
+    let semTxt := s!"set_option maxHeartbeats 16000000 in
 theorem _root_.{P}.sem : ∀ (t : {tyOf Ttn}) (a : {aTy}) (b : {bTy}), {hyps}{P}.pg.sem ({Ttn}.emb t) {aRep} {bRep} = {resRep} := by
   intro t; induction t <;> intro a b <;> intros <;>
   first
@@ -1634,7 +1721,9 @@ theorem _root_.{P}.sem : ∀ (t : {tyOf Ttn}) (a : {aTy}) (b : {bTy}), {hyps}{P}
      all_goals try simp only [*{if i + 1 < fns.size then ", " ++ laterSems else ""}]
      all_goals try simp only [{gS}]
      all_goals frontx_calls_sem [{fnsS}] [{laterSems}] [{embs}]
-     all_goals first | rfl | (simp_all [{fnsS}, {embs}, {words}]; done))"
+     all_goals first | rfl | (simp_all [{fnsS}, {embs}, {words}]; done)){cstAlt}{natAlt}"
+    if (← IO.getEnv "FRONTX_DEBUG").isSome then logInfo semTxt
+    runCmd semTxt
   -- the machine program
   let fi0 := fns[0]!
   let gN := fi0.name
