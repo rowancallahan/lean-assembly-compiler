@@ -8,8 +8,8 @@ set_option linter.unusedVariables false
 set_option linter.unusedSimpArgs false
 
 namespace Proven.WA
-open Proven Proven.WP Proven.Top.Alloc
-open Proven.Frontx (rN rN_toNat rN_lt rN_add rN_inj rB wrO wrO_length wrO_append wrO_nil)
+open Proven Proven.WP Proven.Top.Alloc Proven.Mach.Riscv
+open Proven.Frontx (Res rN rN_toNat rN_lt rN_add rN_inj rB wrO wrO_length wrO_append wrO_nil)
 
 /-- a load of element `i` of the array `a` at `l` (input view or pages), index in `d` -/
 theorem ldLoc_ok {k : AK} (a : k.T) (l : PLoc) (X O : List (BitVec 8)) (W : W64) (env : Mach.BEnv) (d i : Nat)
@@ -178,5 +178,60 @@ theorem wholeCore (C : Nat) {R : Sl} (p : Pg [.ar .ba] R) (xs : ByteArray) (env 
     (by simpa using hS) (by simp only [env1, set_eq]) hwf hg
   refine ⟨σ', W', .seq e1 e2, h2, w2, ?_⟩
   simpa [arrsP, inLocP, pageCount] using o2
+
+/-- a scalar result: the program, its result's bytes (only while no page request failed), `a1 := -1` when one did -/
+def wholeS {t : Ty} (p : Pg [.ar .ba] (.sc t)) (k : Nat) : MS :=
+  .seq (.seq poolInit (p.compP [inLocP] 9).1) (.seq (.assign 8 (.var vOk))
+    (.seq (when 8 (.seq (.assign 4 (.var (p.compP [inLocP] 9).2.v)) (store8 k)))
+      (.assign 1 (.ite (.var vOk) (.var 1) (.const NIL)))))
+
+theorem wholeS_ok (C : Nat) {t : Ty} {β : Type} [Res β] (f : ByteArray → β) (p : Pg [.ar .ba] (.sc t))
+    (cv : t.T → β) (hcv : ∀ y, Res.repr (cv y) = t.rep y) (xs : ByteArray) (env : Mach.BEnv)
+    (out : List (BitVec 8)) (W : W64) (y : t.T) (E : List MemEvent)
+    (h1 : env 1 = BitVec.ofNat 64 xs.data.toList.length) (h32 : xs.size < 2 ^ 32) (hW : W.length < 2 ^ 32)
+    (hC : C * P ≤ W.length) (hcap : env vCap = rN (C * P))
+    (hwf : p.wfP [inLocP] 9 = true) (hg : p.GoodE [inLocP] 9 (xs, ()) y E) (hy : cv y = f xs)
+    (hout : (Res.enc (f xs)).length ≤ out.length) :
+    ∃ σ' out', Mach.BExec (wholeS p (Res.k β)) ⟨env, [xs.data.toList.map (·.toBitVec), out], [W]⟩ σ' ∧
+      σ'.heap = [xs.data.toList.map (·.toBitVec), out'] ∧
+      ((pk 0 E ≤ C ∧ out'.take (Res.enc (f xs)).length = (Res.enc (f xs)).map (·.toBitVec) ∧
+          out'.drop (Res.enc (f xs)).length = out.drop (Res.enc (f xs)).length) ∨
+        (C < pk 0 E ∧ σ'.env 1 = NIL ∧ out' = out)) := by
+  obtain ⟨σ1, W1, e1, h1', w1, o1⟩ := wholeCore C p xs env out W y E h1 h32 hW hC hcap hwf hg
+  have hlen : (Res.enc (f xs)).length = Res.k β + 1 := by
+    have := congrArg List.length (Res.henc (f xs)); simpa using this
+  obtain ⟨env1, H1, Ws1⟩ := σ1
+  simp only at h1' w1; subst h1' w1
+  let Hh : Heap := [xs.data.toList.map (·.toBitVec), out]
+  rcases o1 with ⟨ok1, r1, n1, p1, wl1, pk1⟩ | ⟨ok1, pk1⟩
+  · have ok1' : env1 vOk = 1 := ok1
+    have g1 : Mach.BExec (.assign 8 (.var vOk)) ⟨env1, Hh, [W1]⟩ ⟨env1.set 8 1, Hh, [W1]⟩ := by
+      have := Mach.BExec.assign (v := 8) (e := .var vOk) (σ := ⟨env1, [xs.data.toList.map (·.toBitVec), out], [W1]⟩)
+      simp only [Mach.BExp.denote, ok1'] at this; exact this
+    let σ2 : Mach.BState := ⟨(env1.set 8 1).set 4 ((Mach.BExp.var (p.compP [inLocP] 9).2.v).denote (env1.set 8 1)), Hh, [W1]⟩
+    have h4 : σ2.env 4 = Res.repr (f xs) := by
+      simp only [σ2, set_eq, Mach.BExp.denote, set_ne (show (p.compP [inLocP] 9).2.v ≠ 8 from n1)]
+      rw [← hy, hcv]; exact r1
+    obtain ⟨out', hst, hl', hb', hu⟩ := store8_exec (Res.repr (f xs)) (Res.k β) (Res.hk (β := β)) σ2 _ out rfl h4
+      (by omega) rfl
+    have e2 := when_true (c := 8) (σ := ⟨env1.set 8 1, Hh, [W1]⟩) (by simp only [set_eq]; decide) (.seq .assign hst)
+    refine ⟨_, out', .seq e1 (.seq g1 (.seq e2 .assign)), rfl, .inl ⟨pk1, ?_, ?_⟩⟩
+    · rw [hlen]
+      apply List.ext_getElem?; intro i
+      rw [Res.henc]
+      by_cases hi : i < Res.k β + 1
+      · rw [List.getElem?_take_of_lt hi, hb' i (by omega), List.getElem?_map, List.getElem?_range hi]; rfl
+      · rw [List.getElem?_eq_none (by simp; omega), List.getElem?_eq_none (by simp; omega)]
+    · rw [hlen]
+      exact List.ext_getElem? fun i => by rw [List.getElem?_drop, List.getElem?_drop]; exact hu _ (by omega)
+  · have ok1' : env1 vOk = 0 := ok1
+    have g1 : Mach.BExec (.assign 8 (.var vOk)) ⟨env1, Hh, [W1]⟩ ⟨env1.set 8 0, Hh, [W1]⟩ := by
+      have := Mach.BExec.assign (v := 8) (e := .var vOk) (σ := ⟨env1, [xs.data.toList.map (·.toBitVec), out], [W1]⟩)
+      simp only [Mach.BExp.denote, ok1'] at this; exact this
+    have e2 := when_false (c := 8) (S := (Mach.BStmt.seq (.assign 4 (.var (p.compP [inLocP] 9).2.v)) (store8 (Res.k β))))
+      (σ := ⟨env1.set 8 0, [xs.data.toList.map (·.toBitVec), out], [W1]⟩) (by simp only [set_eq])
+    refine ⟨_, out, .seq e1 (.seq g1 (.seq e2 .assign)), rfl, .inr ⟨pk1, ?_, rfl⟩⟩
+    simp only [Mach.BExp.denote, set_eq, set_ne (show 1 ≠ 8 by decide), set_ne (show vOk ≠ 8 by decide), ok1']
+    simp
 
 end Proven.WA
