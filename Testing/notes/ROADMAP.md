@@ -280,6 +280,9 @@ elaborator; back end proved with the big compiler's pieces; self-hosting checked
 structures the big compiler; its syntax is opened up later by putting the full Lean elaborator in front. Boxes: nano-e2e
 (Sonnet: elaborator, byte-level rewrites, self-hosted binary), nano-proof (Opus: generator proofs), nano-v2 (Opus:
 self-compiling language, B2 = B3).
+UPDATE (owner, 2026-11-16 22:00): focus = a MINIMUM VIABLE nano, PROVED correct end to end and self-hosted, plus signed
+Int64 + and − (same machine code as UInt64; only the meaning and the agreement checks change). No language growth beyond
+that; v2 (self-compiling, B2 = B3) deferred until the MVP chain is closed. Box nano-mvp (Opus) replaces nano-v2.
 
 - v1 (Sonnet box, branch nano-e2e): `nanoCompile = nanoGen ∘ nanoElab` (UTF-8 text → AST → RISC-V) written in Lean,
   compiled by our compiler (binary proved to compute `nanoCompile`); elaborator checked against Lean's real elaborator
