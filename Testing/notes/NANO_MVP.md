@@ -55,3 +55,26 @@ nano rejects / Lean accepts 91, both reject 1117. Also checked by hand: newlines
 before `- y`, `* y`, `;`, inside binder groups: same values both sides.
 All 39 UInt64 (`Nano/Agree.lean`) and 22 Int64 (`Nano/AgreeInt.lean`) agreement proofs still check; fuzz.py 300 7 and
 fuzz_int.py 250 11 60: 0 mismatches.
+
+## The chain (Nano/Chain.lean)
+`nanoCompileSrc src = (nanoElab src).bind nanoCompile`, `nanoCompile = Ir.compile ∘ lower` (code = `nanoGen p`).
+Theorems (machine axioms = exactly the Sail set of `nano_compile_correct`; listed in axioms_nano-mvp.lean):
+* `nano_chain`: `nanoElab src = some p` → `nanoCompileSrc src = some c` → ∀ args (8-byte LE words, `length = p.1`),
+  ∀ start with `StartCorrect riscv start call c.code (encWs args)`, 8 output bytes, `memoryNeeded c … ≤ workLength`:
+  `c.code = nanoGen p` and `p.eval args = some v` and the Sail RISC-V model runs from `start` to a state at the return
+  address, status ≠ OOM flag, output block = `leN 8 v`.
+* `nano_chain_int`: same for `nanoElabT src = some (true, p)` (Int64 source): two's complement in/out, `p.evalI args`
+  (Lean's `Int64` `+ - *`).
+* `nano_chain_runs`: the `CompileRuns` form (no memory hypothesis): returns, memory outside output/work unchanged,
+  flag ↔ out of memory.
+* `chain_of` / `chain_int_of`: the same for ANY `compile` with `CompileCorrect riscv compile` (ready for nano-proof's
+  `asm ∘ genR` theorem: one line each).
+
+| link | status |
+|---|---|
+| UTF-8 bytes → `Prog` (`nanoElab`/`nanoElabT`) | **spec** (owner: draft, never proved). Checked against Lean: 39 UInt64 + 22 Int64 programs ∀ inputs (kernel, `Agree*.lean`), fuzz 300 + 310 programs, boundary fuzz 3300 mutants (exact-subset rule), 0 failures |
+| `Prog.eval` / `Prog.evalI` | **spec** (`Prog.evalI` = Lean's Int64 ops); `evalI = eval` on bits **proved** (`evalI_eq`) |
+| bytes ↔ args (`nanoRun`, `encWs`, `encIs`) | **proved** (`wordsOf_encWs`, `nanoRun_int`) |
+| `Prog` → RISC-V (`nanoCompile`, IR route) | **proved** (nano-proof: `nano_compile_correct`, `nano_compile_runs`); tested 312 (nano-proof) + 272 Int64 pairs QEMU + Sail |
+| `Prog` → RISC-V (`nanoCompileS = asm ∘ genR`, stack route) | tested only (312 Int64 + 264 UInt64 pairs here, 354 in nano-e2e); proof = nano-proof's lane (in progress) |
+| self-hosted: binary computing the compiler on Sail | only `asm` (nano-e2e: `Nano.Self.nanoAsm.implements1`); `nanoElab`/`genR` byte-level rewrite = nano-e2e's lane (in progress). The proved IR route is NOT self-hostable yet (`Ir.compileW` not compiled by our front end) |
