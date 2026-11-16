@@ -9,6 +9,7 @@ inductive Ex where
   | let_ (v b : Ex)
   | call (body args : Ex)
   | anil | acons (e rest : Ex)
+  deriving DecidableEq
 
 /-- a program = the entry's arity and body -/
 abbrev Prog := Nat × Ex
