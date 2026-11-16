@@ -7,6 +7,7 @@ import Riscv.Frontx.IndExamples
 import Riscv.Frontx.Ind2Examples
 import Riscv.Frontx.NameExamples
 import Riscv.Frontx.ScalarExamples
+import Riscv.Frontx.HofExamples
 open Proven Proven.Frontx Proven.Frontx.Ex
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
 def hex2 (b : UInt8) : String := let s := String.ofList (Nat.toDigits 16 b.toNat); if s.length < 2 then "0" ++ s else s
@@ -338,3 +339,27 @@ def levelPairs : List (ConLeche.Level × ConLeche.Level) := (strPairs.map fun (a
     (LevelN.enc2 p, boolB (levelBEq p.1 p.2), spW 3 16 0 (LevelN.enc2 p)))
 #eval ((namePairs.map fun p => p.1.beq p.2).count true, (levelPairs.map fun p => p.1.beq p.2).count true)
 end
+
+-- NOTES section 27: higher-order arguments by specialisation (`HofExamples.lean`)
+open Proven.Frontx.Hof in
+#eval do
+  emit "hof_filtergt3" filterGt3.slots Proven.Frontx.Hof.filterGt3.code filterGt3
+  emit "hof_mapinc" mapInc.slots Proven.Frontx.Hof.mapInc.code mapInc
+  emit "hof_mapcomp" mapComp.slots Proven.Frontx.Hof.mapComp.code mapComp
+  emit "hof_dupall" dupAll.slots Proven.Frontx.Hof.dupAll.code dupAll
+  emit "hof_filternz" filterNZ.slots Proven.Frontx.Hof.filterNZ.code filterNZ
+  emit "hof_stagemap" stageMap.slots Proven.Frontx.Hof.stageMap.code stageMap
+  emit "hof_pipe2" pipe2.slots Proven.Frontx.Hof.pipe2.code pipe2
+  emit "hof_xstagefilter" xstageFilter.slots Proven.Frontx.Hof.xstageFilter.code xstageFilter
+  emit "hof_nonfindgt3" nonFindGt3.slots Proven.Frontx.Hof.nonFindGt3.code (enc nonFindGt3)
+  emit "hof_findgt3" findGt3.slots Proven.Frontx.Hof.findGt3.code (enc findGt3)
+  emit "hof_foldrsum" foldrSum.slots Proven.Frontx.Hof.foldrSum.code (enc foldrSum)
+  emit "hof_sumfoldl" sumFoldl.slots Proven.Frontx.Hof.sumFoldl.code (enc sumFoldl)
+  emit "hof_xorarr" xorArr.slots Proven.Frontx.Hof.xorArr.code (enc xorArr)
+  emit "hof_anynl" anyNL.slots Proven.Frontx.Hof.anyNL.code (enc anyNL)
+  emit "hof_allascii" allAscii.slots Proven.Frontx.Hof.allAscii.code (enc allAscii)
+  emit "hof_findhigh" findHigh.slots Proven.Frontx.Hof.findHigh.code (enc findHigh)
+  emit "hof_countsp" countSp.slots Proven.Frontx.Hof.countSp.code (enc countSp)
+  emit "hof_arrfindgt3" arrFindGt3.slots Proven.Frontx.Hof.arrFindGt3.code (fun xs => arrFindGt3.enc (arrFindGt3 xs))
+  emit "hof_mapxor" mapXor.slots Proven.Frontx.Hof.mapXor.code mapXor
+  emit "hof_countabove100" countAbove100.slots Proven.Frontx.Hof.countAbove100.code (enc countAbove100)
