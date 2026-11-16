@@ -54,33 +54,36 @@ theorem lzEv_allocs (xs : ByteArray) : ∀ e ∈ lzEv xs, ∃ n, e = .alloc n :=
   · exact pushFrom_allocs 0 _ e he
   · exact pushFrom_allocs _ _ e he
 
+/-- the events of `copyE`'s run on an input (newest first: the frame page, then the run) -/
+def copyEvents (input : List UInt8) : List MemEvent := (copyEv ⟨input.toArray⟩).reverse ++ [.alloc 1]
+
+def lzEvents (input : List UInt8) : List MemEvent := (lzEv ⟨input.toArray⟩).reverse ++ [.alloc 1]
+
 /-- `copyE` in the `AllocSpec` form (the events of the run on the input's bytes) -/
-def copyCompiled : CompiledA :=
-  pgCompiled (pgCodeA copyPg) fun input => (copyEv ⟨input.toArray⟩).reverse ++ [.alloc 1]
+def copyCompiled : CompiledA := pgCompiled (pgCodeA copyPg) copyEvents
 
-def lzCompiled : CompiledA :=
-  pgCompiled (pgCodeA lzPg) fun input => (lzEv ⟨input.toArray⟩).reverse ++ [.alloc 1]
+def lzCompiled : CompiledA := pgCompiled (pgCodeA lzPg) lzEvents
 
-/-- the memory `copyE` needs: a page table, `⌈n / P⌉` pages, a page for the frame -/
-theorem copy_memoryNeeded (xs : ByteArray) (h : xs.size ≤ P * P) :
-    memoryNeeded copyCompiled xs.data.toList = 8192 * (2 + npages xs.size) := by
+/-- the memory `copyE` needs: a page table, `⌈n / P⌉` pages, a page for the frame (for any code bytes) -/
+theorem copy_memoryNeeded (code : List (BitVec 32)) (xs : ByteArray) (h : xs.size ≤ P * P) :
+    memoryNeeded (pgCompiled code copyEvents) xs.data.toList = 8192 * (2 + npages xs.size) := by
   show 8192 * peak ((copyEv ⟨xs.data.toList.toArray⟩).reverse ++ [.alloc 1]) = _
   rw [show (ByteArray.mk xs.data.toList.toArray) = xs by simp, peak_pages _ (copyEv_allocs xs), (copyPg_good xs h).2]
   omega
 
-theorem copy_fits_iff_memoryNeeded (xs : ByteArray) (h : xs.size ≤ P * P) (L : Nat) :
-    copyFits xs L ↔ memoryNeeded copyCompiled xs.data.toList ≤ L := by
-  rw [copy_memoryNeeded xs h]; unfold copyFits; omega
+theorem copy_fits_iff_memoryNeeded (code : List (BitVec 32)) (xs : ByteArray) (h : xs.size ≤ P * P) (L : Nat) :
+    copyFits xs L ↔ memoryNeeded (pgCompiled code copyEvents) xs.data.toList ≤ L := by
+  rw [copy_memoryNeeded code xs h]; unfold copyFits; omega
 
-theorem lz_memoryNeeded (xs : ByteArray) (h : xs.size ≤ P * P - 16) :
-    memoryNeeded lzCompiled xs.data.toList = 8192 * (2 + npages (min 16 xs.size + xs.size)) := by
+theorem lz_memoryNeeded (code : List (BitVec 32)) (xs : ByteArray) (h : xs.size ≤ P * P - 16) :
+    memoryNeeded (pgCompiled code lzEvents) xs.data.toList = 8192 * (2 + npages (min 16 xs.size + xs.size)) := by
   show 8192 * peak ((lzEv ⟨xs.data.toList.toArray⟩).reverse ++ [.alloc 1]) = _
   rw [show (ByteArray.mk xs.data.toList.toArray) = xs by simp, peak_pages _ (lzEv_allocs xs), (lzPg_good xs h).2]
   omega
 
-theorem lz_fits_iff_memoryNeeded (xs : ByteArray) (h : xs.size ≤ P * P - 16) (L : Nat) :
-    lzFits xs L ↔ memoryNeeded lzCompiled xs.data.toList ≤ L := by
-  rw [lz_memoryNeeded xs h]; unfold lzFits; omega
+theorem lz_fits_iff_memoryNeeded (code : List (BitVec 32)) (xs : ByteArray) (h : xs.size ≤ P * P - 16) (L : Nat) :
+    lzFits xs L ↔ memoryNeeded (pgCompiled code lzEvents) xs.data.toList ≤ L := by
+  rw [lz_memoryNeeded code xs h]; unfold lzFits; omega
 
 end PgEx
 end Proven.WA
