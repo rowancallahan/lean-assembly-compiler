@@ -188,3 +188,5 @@ hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read 
   round takes its targets from the latest depth probes (CONLECHE_DEPTH2.md, SELFHOST_DEPTH2.md when they land),
   biggest blocker first. Organisation: one route (the shared IR) for every front end, notes indexed in
   Testing/notes/INDEX.md, small pieces merged as they finish.
+  lean-zip and lean-svg (and the book) are deliberately easier intermediate targets: when a con-leche / self-hosting
+  round is stuck, switch to them to build the missing feature on a simpler case, then return.
