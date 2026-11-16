@@ -142,3 +142,9 @@ hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read 
   is counted in pages (rounding and page tables included), so "fits" stays exact. Cost ~one extra load per array
   access. Not the hardware MMU.
 - Later (owner): callee-saved registers (needed to call our code from C or other code from ours).
+- Enough memory never fails (owner, 2026-11-16): already stated: CompileCorrect (memoryNeeded <= workLength ->
+  right output, no flag) and CompileRuns (flag <-> workLength < memoryNeeded, so any larger block cannot fail);
+  software paging keeps memoryNeeded exact for variable-size blocks. TO ADD (non-vacuity of the new statements,
+  like `startCorrect_nonvacuous` for the old ones): for each compiled program and input with memoryNeeded fitting in
+  RAM next to the other blocks, `compile = some _` and a start state satisfying StartCorrect exists (built by the
+  bare-metal boot proof, Riscv/Back/Boot*.lean) with workLength = memoryNeeded.
