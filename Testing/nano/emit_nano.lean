@@ -3,7 +3,7 @@ import Nano.Gen
 /- usage (repo root): NANO_DIR=DIR lake env lean Testing/nano/emit_nano.lean   (DIR holds the *.nano sources)
    writes Testing/asm/frontx-words/nanoasm.{words,cases}: the machine-theorem binary of the assembler stage and,
    per source, the record bytes (nanoElab + genR) with the result of executed Lean `asm`; and DIR/index.txt:
-   `source-file records-hex code-hex` (code = nanoGenS = executed Lean). -/
+   `source-file records-hex code-hex` (code = nanoGen = executed Lean). -/
 open Nano
 def hex2 (b : UInt8) : String := let s := String.ofList (Nat.toDigits 16 b.toNat); if s.length < 2 then "0" ++ s else s
 def hx (xs : List UInt8) : String := if xs.isEmpty then "-" else String.join (xs.map hex2)
@@ -25,7 +25,7 @@ def argsFor (k i : Nat) : List UInt64 := (List.range k).map fun j =>
       let runs := (List.range 6).map fun i =>
         let a := argsFor p.1 i
         s!"{String.intercalate "," (a.map toString)}={(p.eval a).getD 0}"
-      idx := idx ++ s!"{f} {hx recs} {hx (nanoGenS p)} {String.intercalate ";" runs}\n"
+      idx := idx ++ s!"{f} {hx recs} {hx (nanoGen p)} {String.intercalate ";" runs}\n"
   IO.FS.createDirAll "Testing/asm/frontx-words"
   IO.FS.writeFile "Testing/asm/frontx-words/nanoasm.cases" cases
   IO.FS.writeFile (dir / "index.txt") idx
