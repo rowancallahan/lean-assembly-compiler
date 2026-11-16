@@ -1479,6 +1479,8 @@ partial def resultComps (ty : Expr) : MetaM (Option (Array (Expr × Ty))) := do
   let ty ← whnfR ty
   if let some t ← classify ty then
     return some #[(← withLocalDeclD `x ty fun x => mkLambdaFVars #[x] x, t)]
+  -- `Unit` (the result of a stateful action, `Unit × σ`): no component
+  if ty.isConstOf ``Unit || ty.isConstOf ``PUnit then return some #[]
   if ty.isAppOfArity ``Prod 2 then
     let some first ← resultComps (ty.getArg! 0) | return none
     let some rest ← resultComps (ty.getArg! 1) | return none
@@ -2008,8 +2010,9 @@ the mutable locals and `i` become variables, the loop becomes the tree loop (`fo
 def compileLoop (fn : Name) (xs : Array Expr) (rty : Ty) (lhs forE : Expr) (post? : Option Expr)
     (inv? : Option Term) (lemmas : Array Name) (t0 : Nat) (eq? : Option Expr := none) (kind : String := "for loop")
     (pre? : Option Term := none) (resInfo : Array (Expr × Ty) := #[]) : TermElabM Unit := do
-  -- a result with several components: the exit leaf also sets the extra result variables (`cvtM`, `for_execM`)
-  let multi := resInfo.size > 1
+  -- a result with several components (or one inside a tuple): the exit leaf also sets the extra result variables
+  -- (`cvtM`, `for_execM`)
+  let multi := resInfo.size > 0
   let fa := forE.getAppArgs
   let S := fa[4]!
   let init := fa[6]!
@@ -2538,8 +2541,10 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
     let listRes ← if resTyW.isAppOfArity ``List 1 then pure ((← whnfR resTyW.appArg!).isConstOf ``UInt8) else pure false
     let some resInfo ← (if listRes then pure (some #[(Lean.mkConst ``id, Ty.nat)]) else resultComps resTy)
       | throwError "frontx: unsupported result type{indentExpr resTy}"
+    if resInfo.isEmpty then throwError "frontx: result without a component{indentExpr resTy}"
     let rty := resInfo[0]!.2
-    let multi := resInfo.size > 1
+    -- several components, or one inside a compound type (`Unit × σ`)
+    let multi := resInfo.size > 1 || (listRes == false && (← classify resTy).isNone)
     let some (_, lhs, body) := (← instantiateForall eqnTy xs).eq? | throwError "frontx: bad equation"
     -- `… (B.data.foldl g s) …`: the `for` loop over the bytes of `B`, then the rest
     if !listRes then
@@ -3241,7 +3246,7 @@ def vfold (vw : Name) (B : Expr) (e : Expr) : MetaM Expr :=
 
 
 /-- prove `f … (view B i) … = <decision tree>`: follow the tests of the right-hand side -/
-partial def veqGo (f : Name) (vw : Name) (n : Nat := 0) : TacticM Unit := withMainContext do
+partial def veqGo (f : Name) (vw : Name) (n : Nat := 0) (eqn : Name := f) : TacticM Unit := withMainContext do
   let g ← getMainGoal
   let ty ← instantiateMVars (← g.getType)
   let some (_, _, rhs) := ty.eq? | throwError "frontx_view: not an equation"
@@ -3268,12 +3273,13 @@ partial def veqGo (f : Name) (vw : Name) (n : Nat := 0) : TacticM Unit := withMa
         else
           let m := mkIdent (Name.mkSimple s!"m{n}")
           evalTactic (← `(tactic| (obtain ⟨$m:ident, hm⟩ := Nat.exists_eq_succ_of_ne_zero $hc:ident; subst hm)))
-      veqGo f vw (n + 1)
+      veqGo f vw (n + 1) eqn
       acc := acc ++ (← getGoals)
     setGoals acc
   else
     let gl ← getMainGoal
-    try evalTactic (← `(tactic| first | rfl | (simp only [$fI:ident]; done) | (rw [$fI:ident]; done) | (simp only [$fI:ident, Nat.add_sub_cancel]; done)))
+    let eI := mkIdent eqn
+    try evalTactic (← `(tactic| first | rfl | (simp only [$fI:ident]; done) | (rw [$fI:ident]; done) | (simp only [$fI:ident, Nat.add_sub_cancel]; done) | (rw [$eI:ident] <;> rfl) | (simp only [$eI:ident, Nat.add_sub_cancel]; done)))
     catch e => throwError "leaf {gl}: {e.toMessageData}"
 
 
@@ -3359,7 +3365,7 @@ elab_rules : command
     let mv ← mkFreshExprSyntheticOpaqueMVar eqTy
     let rest ← Tactic.run mv.mvarId! (do
       Tactic.evalTactic (← `(tactic| (intros; unfold $gI:ident)))
-      veqGo fn vw)
+      veqGo fn vw (eqn := eqn))
     unless rest.isEmpty do throwError "frontx_view: could not prove the equation"
     let pf ← instantiateMVars mv
     if pf.hasSorry || pf.hasMVar then throwError "frontx_view: could not prove the equation"
@@ -3370,7 +3376,7 @@ elab_rules : command
     (intros
      unfold $gI:ident
      rw [$vI:ident]
-     split <;> first | rfl | simp only [$fI:ident] | (rw [$fI:ident]) | (rw [$eI:ident]; rfl) | (rw [$eI:ident]))))
+     split <;> first | rfl | (rw [$eI:ident] <;> rfl) | simp only [$fI:ident] | (rw [$fI:ident]) | (rw [$eI:ident]))))
   let eqName := gN ++ `eq
   logInfo m!"frontx: {gN}, {eqName} : {eqTy}"
 
@@ -3484,9 +3490,9 @@ elab_rules : command
     -- a tuple / structure result: its components (written as bytes)
     let rcomps ← if isList || isOpt then pure #[] else
       match ← resultComps bty with
-      | some cs => pure (if cs.size > 1 then cs else #[])
+      | some cs => pure (if cs.size > 1 || (cs.size == 1 && (← classify bty).isNone) then cs else #[])
       | none => pure #[]
-    let some rty ← (if isList || isOpt then pure (some Ty.nat) else if rcomps.size > 1 then pure (some rcomps[0]!.2)
+    let some rty ← (if isList || isOpt then pure (some Ty.nat) else if rcomps.size > 0 then pure (some rcomps[0]!.2)
         else classify bty)
       | throwError "frontx_entry: unsupported result type"
     let mut inits : Array Expr := #[]
@@ -3514,7 +3520,7 @@ elab_rules : command
         inits := inits.push (← mkAppM ``Prod.mk #[toExpr next, e])
         next := next + 1
     return (fN, inits, rty, isList, isOpt, rcomps)
-  let multi := rcomps.size > 1
+  let multi := rcomps.size > 0
   let env ← getEnv
   let hasInits := env.contains (fN ++ `inits)
   let base := mkAppN (mkConst ``prog) #[mkConst (fN ++ `lay), mkConst (fN ++ `tree), toExpr (4 : Nat)]

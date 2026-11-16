@@ -47,10 +47,11 @@ theorem alE_le (sal : Ca) (x : BitVec 64)
   | fw _ e ih => intro self hx; simp only [E.exts] at hx; have := ih self hx; simp only [alE, E.mks, E.calls]; omega
   | ft _ e ih => intro self hx; simp only [E.exts] at hx; have := ih self hx; simp only [alE, E.mks, E.calls]; omega
   | ext _ _ _ _ _ => intro self hx; simp [E.exts] at hx
+  | call2 _ _ _ _ _ _ => intro self hx; simp [E.exts] at hx
   | @bind k₁ _ e₁ e₂ ih₁ ih₂ =>
     intro self hx; simp only [E.exts] at hx
     have := ih₁ self (by omega)
-    have := ih₂ ⟨self.f, self.X, self.me, k₁.pair (ev self x l r a b e₁) :: self.ρ⟩ (by omega)
+    have := ih₂ ⟨self.f, self.g, self.X, self.me, k₁.pair (ev self x l r a b e₁) :: self.ρ⟩ (by omega)
     simp only [alE, E.mks, E.calls, Nat.add_mul]; omega
 
 theorem mks_le (pg : Pg rk) {e : E rk rk} (he : e ∈ pg.arms) : e.mks ≤ pg.M := by
@@ -108,18 +109,41 @@ theorem flat_two {f : Fld → List UInt8} : ∀ {fs : List Fld} {a b : Fld}, a �
       · have := flat_one (f := f) ha'; omega
       · have := flat_two (f := f) ha' hb' hab; omega
 
+theorem str_le (st : Nat) (v : C) (h : v.IsStr st) : v.nodes ≤ v.senc.length ∧ v.depth ≤ v.nodes := by
+  obtain ⟨L, rfl, hs⟩ := IsStr.senc h
+  have := str_nodes st L
+  rw [hs]; simp [leN_length]; omega
+
+/-- the nodes of a child in a slot (`f` the child, `fs'` the string): at most the bytes of its field -/
+theorem slot_le (sh : Shape) (fs : List Fld) (f fs' : Fld) (v : C) (ev : List UInt8) (ih : v.wf sh → v.nodes ≤ ev.length ∧ v.depth ≤ v.nodes)
+    (h : (f ∈ fs → v.wf sh) ∧ (fs' ∈ fs → v.IsStr (sTag sh)) ∧ (f ∉ fs → fs' ∉ fs → v = .z)) :
+    v = .z ∨ ∃ g, g ∈ fs ∧ (g = f ∨ g = fs') ∧ (v.nodes ≤ (if g = f then ev else v.senc).length ∧ v.depth ≤ v.nodes) := by
+  by_cases m : f ∈ fs
+  · exact .inr ⟨f, m, .inl rfl, by simpa using ih (h.1 m)⟩
+  · by_cases ms : fs' ∈ fs
+    · right; refine ⟨fs', ms, .inr rfl, ?_⟩
+      have : fs' ≠ f := fun e => m (e ▸ ms)
+      simpa [this] using str_le _ v (h.2.1 ms)
+    · exact .inl (h.2.2 m ms)
+
 theorem nodes_le (sh : Shape) : ∀ v : C, v.wf sh → v.nodes ≤ (v.enc sh).length ∧ v.depth ≤ v.nodes
   | .z, h => absurd h id
   | .c t x l r, ⟨_, _, hl, hr⟩ => by
     simp only [C.nodes, C.depth, C.enc, List.length_cons]
-    by_cases ml : Fld.l ∈ sh.getD t [] <;> by_cases mr : Fld.r ∈ sh.getD t [] <;> simp only [ml, mr, if_true, if_false] at hl hr
-    · have := nodes_le sh l hl; have := nodes_le sh r hr
-      have := flat_two (f := encF x (l.enc sh) (r.enc sh)) ml mr (by decide); simp only [encF] at this; omega
-    · subst hr; have := nodes_le sh l hl
-      have := flat_one (f := encF x (l.enc sh) (C.enc sh .z)) ml; simp only [encF] at this; simp only [C.nodes, C.depth]; omega
-    · subst hl; have := nodes_le sh r hr
-      have := flat_one (f := encF x (C.enc sh .z) (r.enc sh)) mr; simp only [encF] at this; simp only [C.nodes, C.depth]; omega
-    · subst hl; subst hr; simp [C.nodes, C.depth]
+    have kl := slot_le sh _ .l .sl l (l.enc sh) (nodes_le sh l) hl
+    have kr := slot_le sh _ .r .sr r (r.enc sh) (nodes_le sh r) hr
+    rcases kl with rfl | ⟨g, mg, eg, ng⟩ <;> rcases kr with rfl | ⟨g', mg', eg', ng'⟩
+    · simp [C.nodes, C.depth]
+    · have := flat_one (f := encF x (C.enc sh .z) (r.enc sh) C.z.senc r.senc) mg'
+      rcases eg' with rfl | rfl <;> simp only [encF, if_true, if_false, reduceCtorEq] at this ng' <;>
+        simp only [C.nodes, C.depth] <;> omega
+    · have := flat_one (f := encF x (l.enc sh) (C.enc sh .z) l.senc C.z.senc) mg
+      rcases eg with rfl | rfl <;> simp only [encF, if_true, if_false, reduceCtorEq] at this ng <;>
+        simp only [C.nodes, C.depth] <;> omega
+    · have := flat_two (f := encF x (l.enc sh) (r.enc sh) l.senc r.senc) mg mg'
+        (by rcases eg with rfl | rfl <;> rcases eg' with rfl | rfl <;> decide)
+      rcases eg with rfl | rfl <;> rcases eg' with rfl | rfl <;>
+        simp only [encF, if_true, if_false, reduceCtorEq] at this ng ng' <;> omega
 
 /-! ## the whole program -/
 
@@ -153,7 +177,7 @@ def biLen (sh : Shape) : BIn → C → Nat
   | _, _ => 1
 
 theorem bi_ok {P : Prog} {sh : Shape} (hP1 : ∃ hf : 1 < P.length, P[1] = decFn sh) (hsh : sh.length < 255)
-    (bi : BIn) (v₂ : C) {K : Nat} (hK : bi = .inp → 48 + 48 * v₂.depth ≤ K) (hbi : ∀ t, bi = .ctor t → t < 256)
+    (bi : BIn) (v₂ : C) {K : Nat} (hK : bi = .inp → 64 + 64 * v₂.depth ≤ K) (hbi : ∀ t, bi = .ctor t → t < 256)
     (h2 : bi = .inp → v₂.wf sh) {env : BEnv} {I O : List (BitVec 8)} {W : List (BitVec 64)} {h c : Nat}
     (hI : I.length < 2 ^ 60) (hi : HI W h) (h5 : env 5 = BitVec.ofNat 64 h) (h4 : env 4 = BitVec.ofNat 64 c)
     (hA : bi = .inp → At I c (v₂.enc sh)) (cap : h + 4 * biLen sh bi v₂ ≤ W.length) :
@@ -164,7 +188,7 @@ theorem bi_ok {P : Prog} {sh : Shape} (hP1 : ∃ hf : 1 < P.length, P[1] = decFn
   cases bi with
   | inp =>
     simp only [biLen] at cap ⊢
-    obtain ⟨E', W', h', x, l1, a1, i1, b1, b2, e5, e4, gl, rv⟩ := dcall_ok hP1 (K' := 48 * v₂.depth) (hK rfl)
+    obtain ⟨E', W', h', x, l1, a1, i1, b1, b2, e5, e4, gl, rv⟩ := dcall_ok hP1 (K' := 64 * v₂.depth) (hK rfl)
       (dec_ok hP1 hsh v₂ (h2 rfl)) (d := 9) (by omega) (H := [I, O]) rfl hI (hA rfl) hi h4 h5 cap
     exact ⟨E', W', h', x, l1, a1, i1, b1, b2, e5, fun i hi' => gl i (by simp at hi'; omega) (by simp at hi'; omega)
       (by simp at hi'; omega), rv, by simpa using e4⟩
@@ -193,7 +217,7 @@ def outC (rk : Kd) (nb : Nat) : CStmt :=
   if decide (rk = .t) = true then .seq (.base (asg 6 (kE 0))) (.call 13 2 [vE 10]) else .base (.seq (asg 6 (kE 0)) (wrB nb))
 
 theorem out_ok {P : Prog} {sh : Shape} (hP2 : ∃ hf : 2 < P.length, P[2] = encFn sh) (hsh : sh.length < 255)
-    (nb : Nat) (hnb : nb ≤ 8) {K : Nat} {W : List (BitVec 64)} {h : Nat} (hK : 56 + 56 * W.length ≤ K) (hi : HI W h)
+    (nb : Nat) (hnb : nb ≤ 8) {K : Nat} {W : List (BitVec 64)} {h : Nat} (hK : 72 + 72 * W.length ≤ K) (hi : HI W h)
     {y : rk.den} {E : BEnv} (hy : RelK W h rk (E 10) y) {I O : List (BitVec 8)} (hO : O.length < 2 ^ 60)
     (hout : (Kd.out sh nb rk y).length ≤ O.length) :
     ∃ E', CExec P K (outC rk nb) ⟨E, [I, O], [W]⟩ ⟨E', [I, wr O 0 (Kd.out sh nb rk y)], [W]⟩ ∧
@@ -202,7 +226,7 @@ theorem out_ok {P : Prog} {sh : Shape} (hP2 : ∃ hf : 2 < P.length, P[2] = encF
   | t =>
     simp only [outC, decide_true, if_true, Kd.out] at hout ⊢
     have hd := hy.depth; have hl := hy.lt4 hi.h4; have := hi.hle
-    obtain ⟨E', x, e6, k⟩ := ecall_ok hP2 (K := K) (K' := 56 * y.depth) (by omega) (enc_ok hP2 hsh y) hO hi hy
+    obtain ⟨E', x, e6, k⟩ := ecall_ok hP2 (K := K) (K' := 72 * y.depth) (by omega) (enc_ok hP2 hsh y) hO hi hy
       (pvar := 10) (env := E.set 6 ((kE 0).denote E)) (j := 0) (I := I)
       (by rw [set_ne' _ _ (by omega)]) (by rw [set_eq']; rfl) (by omega)
     exact ⟨E', .seq (.base (asg_exec _ _ _)) x, fun _ => by rw [e6, Nat.zero_add],
@@ -337,17 +361,17 @@ theorem ind_okM (sh shO : Shape) (pg : Pg rk) (hs : List (Σ k : Kd, Pg k)) (bi 
   have hKW1 : fr * (1 + W₀.length) ≤ K := by
     have := Nat.le_mul_of_pos_right (fr * (W₀.length + 1)) (show 0 < hs.length + 1 by omega)
     rw [Nat.add_comm 1]; omega
-  have hK48 : 48 + 48 * I.length ≤ K := by
+  have hK48 : 64 + 64 * I.length ≤ K := by
     have := Nat.mul_le_mul_right I.length hfr16
     have : 136 ≤ fr * (1 + W₀.length) := by
       have := Nat.mul_le_mul hfr16 (show 1 ≤ 1 + W₀.length by omega); omega
     omega
-  have hK56 : 56 + 56 * W₀.length ≤ K := by
+  have hK56 : 72 + 72 * W₀.length ≤ K := by
     have := Nat.mul_le_mul hfr16 (Nat.le_refl (1 + W₀.length)); rw [Nat.mul_add, Nat.mul_one] at this; omega
   -- the run of `main`
   let g := callEnv env []
   obtain ⟨W₁, xi, l1, hi1⟩ := init_exec g [I.map (·.toBitVec), O] W₀ (by omega) hW
-  obtain ⟨E₂, W₂, h₂, x₂, l2, a2, i2, b21, b22, e25, e24, gl2, rv1⟩ := dcall_ok hP1 (K := K) (K' := 48 * v₁.depth)
+  obtain ⟨E₂, W₂, h₂, x₂, l2, a2, i2, b21, b22, e25, e24, gl2, rv1⟩ := dcall_ok hP1 (K := K) (K' := 64 * v₁.depth)
     (by omega) (dec_ok hP1 hsh v₁ h1) (d := 8) (by omega) (env := (g.set 4 0).set 5 4) (H := [I.map (·.toBitVec), O])
     rfl (by omega) hA1 hi1 (by rw [set_ne' _ _ (by omega), set_eq']; rfl) (by rw [set_eq']; rfl) (by rw [l1]; omega)
   obtain ⟨E₃, W₃, h₃, x₃, l3, a3, i3, b31, b32, e35, gl3, rv2, e34⟩ := bi_ok hP1 hsh bi v₂ (K := K)

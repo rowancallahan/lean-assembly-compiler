@@ -38,7 +38,7 @@ theorem implements1_indM {rk : Kd} {γ β : Type} (sh shO : Shape) (pg : Pg rk) 
     (henc : ∀ g, encA g = inBytesA sh bi ain (v₁ g) (v₂ g) (av g)) (hw1 : ∀ g, (v₁ g).wf sh)
     (hw2 : bi = .inp → ∀ g, (v₂ g).wf sh)
     (hout : ∀ g, encB (f g) = Kd.out shO nb rk (pg.sem (v₁ g) (if ain then av g else a0) (bi.val (v₂ g))))
-    (hA : ∀ g, pg.al (v₁ g) (if ain then av g else a0) (bi.val (v₂ g)) ≤ A (encA g).length)
+    (hA : ∀ g, (encA g).length < 2 ^ 32 → pg.al (v₁ g) (if ain then av g else a0) (bi.val (v₂ g)) ≤ A (encA g).length)
     (hsh : sh.length < 255) (hshO : shO.length < 255) (hnl : 16 ≤ nl) (hch : Chain (⟨rk, pg⟩ :: hs))
     (hok : okL (⟨rk, pg⟩ :: hs) = true) (hbi : ∀ t, bi = .ctor t → t < 256) (hnb : nb ≤ 8)
     (hwf : WfProg1W (indProgM sh shO pg hs bi ain a0 nb nl) (if rk = .t then 1 else 7) 0) :
@@ -48,7 +48,7 @@ theorem implements1_indM {rk : Kd} {γ β : Type} (sh shO : Shape) (pg : Pg rk) 
     (by split <;> omega) (fun n => 56 + 8 * (nl + 1) * (n + (1 + hs.length) * (1 + wnA A n))) (wnA A) (2 ^ 20)
     (decide (rk = .t))
     (fun g out W₀ env h1 hmax h32 hol hout32 hW hW32 => by
-      have hA' := hA g
+      have hA' := hA g h32
       rw [henc] at hmax h32 hW hW32 hA' ⊢
       rw [hout] at hol ⊢
       obtain ⟨σ', hx, hh, hr⟩ := ind_okM sh shO pg hs bi ain a0 nb nl hsh hshO hnl hch hok hbi hnb (v₁ g) (v₂ g) (av g)
@@ -76,7 +76,7 @@ theorem implements1_ind {rk : Kd} {γ β : Type} (sh : Shape) (pg : Pg rk) (bi :
   have hIA : ∀ v₁ v₂ : C, inBytesA sh bi false v₁ v₂ 0 = inBytes sh bi v₁ v₂ := fun _ _ => by simp [inBytesA]
   have := implements1_indM sh sh pg [] bi false a0 nb 16 encA encB f v₁ v₂ (fun _ => 0) (fun n => pg.M * n)
     (fun g => by rw [hIA]; exact henc g) hw1 hw2 (fun g => by simpa using hout g)
-    (fun g => by
+    (fun g _ => by
       have h1 := al_le pg hlin (v₁ g) a0 (bi.val (v₂ g))
       have h2 := nodes_le sh (v₁ g) (hw1 g)
       have h3 : (v₁ g).nodes ≤ (encA g).length := by rw [henc]; cases bi <;> simp [inBytes] <;> omega
@@ -107,9 +107,9 @@ theorem implements1_indS {rk : Kd} {γ β : Type} (sh shO : Shape) (pg : Pg rk) 
     Implements1With encA encB (callsCode1W (indProgM sh shO pg hs bi ain a0 nb nl) (if rk = .t then 1 else 7) 0) f
       (spaceA (1 + hs.length) nl (cellsSup sh pg bi ain a0)) (2 ^ 20) (decide (rk = .t)) :=
   implements1_indM sh shO pg hs bi ain a0 nb nl encA encB f v₁ v₂ av _ henc hw1 hw2 hout
-    (fun g => by
-      have := al_le_cellsSup sh hsh pg bi ain a0 (v₁ g) (v₂ g) (av g) (hw1 g) (fun h => hw2 h g)
-      rw [henc]; exact this)
+    (fun g hg => by
+      rw [henc] at hg ⊢
+      exact al_le_cellsSup sh hsh pg bi ain a0 (v₁ g) (v₂ g) (av g) (hw1 g) (fun h => hw2 h g) (by omega))
     hsh hshO hnl hch hok hbi hnb hwf
 
 /-! ## results and `Bool`s as words -/
@@ -187,7 +187,7 @@ theorem implements1_indL {rk : Kd} {γ β : Type} (sh shO : Shape) (pg : Pg rk) 
     Implements1With encA encB (callsCode1W (indProgM sh shO pg [] bi ain a0 nb 16) (if rk = .t then 1 else 7) 0) f
       (spaceA 1 16 (fun n => pg.M * n)) (2 ^ 20) (decide (rk = .t)) :=
   implements1_indM sh shO pg [] bi ain a0 nb 16 encA encB f v₁ v₂ av (fun n => pg.M * n) henc hw1 hw2 hout
-    (fun g => by
+    (fun g _ => by
       have h1 := al_le pg hlin (v₁ g) (if ain then av g else a0) (bi.val (v₂ g))
       have h2 := nodes_le sh (v₁ g) (hw1 g)
       have h3 : (v₁ g).nodes ≤ (encA g).length := by
@@ -214,5 +214,28 @@ namespace Proven.Frontx.Ind
 
 theorem leN8_mod (n : Nat) : leN 8 (n % 18446744073709551616) = leN 8 n := by
   rw [show 18446744073709551616 = 256 ^ 8 from rfl, leN_mod]
+
+end Proven.Frontx.Ind
+
+namespace Proven.Frontx.Ind
+open Proven Proven.Mach Proven.Mach.Ind
+
+/-! ## `Nat` subtraction (truncated at `0`): `if a < b then 0 else a - b` on words below `2^64` -/
+
+def natSub {rk : Kd} (a b : E rk .w) : E rk .w := .ite (.bin .ult a b) (.k 0) (.bin .sub a b)
+
+def natSubW (u v : BitVec 64) : BitVec 64 := if u < v then 0 else u - v
+
+theorem ev_natSub {rk : Kd} (self : Cn rk) (x : BitVec 64) (l r : C) (a : BitVec 64) (b : C) (e₁ e₂ : E rk .w) :
+    ev self x l r a b (natSub e₁ e₂) = natSubW (ev self x l r a b e₁) (ev self x l r a b e₂) := by
+  simp only [natSub, ev, natSubW, Op.eval]; split <;> simp_all
+
+theorem natSubW_ofNat {x y : Nat} (hx : x < 2 ^ 64) (hy : y < 2 ^ 64) :
+    natSubW (BitVec.ofNat 64 x) (BitVec.ofNat 64 y) = BitVec.ofNat 64 (x - y) := by
+  simp only [natSubW, BitVec.lt_def, BitVec.toNat_ofNat, Nat.mod_eq_of_lt hx, Nat.mod_eq_of_lt hy]
+  split
+  · rename_i h; rw [Nat.sub_eq_zero_of_le (by omega)]; rfl
+  · rename_i h; apply BitVec.eq_of_toNat_eq
+    simp only [BitVec.toNat_sub, BitVec.toNat_ofNat, Nat.mod_eq_of_lt hx, Nat.mod_eq_of_lt hy]; omega
 
 end Proven.Frontx.Ind
