@@ -377,9 +377,26 @@ syntax (name := s3Split) "s3_split" : tactic
     match best with
     | some b => if d.index > b.index then best := some d
     | none => best := some d
-  let some d := best | throwError "s3_split: nothing to split"
-  let gs ← g.cases d.fvarId
-  Tactic.replaceMainGoal (gs.map (·.mvarId)).toList
+  -- first: a datatype value computed by a call (`Enc.enc (f args)`): generalize it, then split
+  for e in encArgs do
+    if e.isFVar || e.hasLooseBVars then continue
+    let ty ← whnfR (← inferType e)
+    if isWordTy ty || ty.isConstOf ``Bool then continue
+    let .const I _ := ty.getAppFn | continue
+    let some (.inductInfo ii) := (← getEnv).find? I | continue
+    if ii.ctors.length < 2 then continue
+    if (← isConstructorApp e) then continue
+    let .const h _ := e.getAppFn | continue
+    if (← isMatcher h) || h == ``ite || h == ``dite || h == ``cond || isCasesOnRecursor (← getEnv) h then continue
+    let (fvs, g') ← g.generalize #[{ expr := e, xName? := `t }]
+    let gs ← g'.cases fvs[0]!
+    Tactic.replaceMainGoal (gs.map (·.mvarId)).toList
+    return
+  if let some d := best then
+    let gs ← g.cases d.fvarId
+    Tactic.replaceMainGoal (gs.map (·.mvarId)).toList
+    return
+  throwError "s3_split: nothing to split"
 
 /-- close a goal by a hypothesis `∀ xs, x = pattern → False` that now applies (a wildcard case of a match) -/
 syntax (name := s3Contra) "s3_contra" : tactic
@@ -412,14 +429,15 @@ macro_rules (kind := s3Solve)
   | `(tactic| s3_solve $n [$ls,*] with $c) => do
     let k := n.getNat
     if k == 0 then
-      `(tactic| (simp [$ls,*]; all_goals (repeat' apply And.intro) <;> $c))
+      `(tactic| ((try simp only [s3_norm, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne] at *); simp [s3_norm, $ls,*]; all_goals (repeat' apply And.intro) <;> $c))
     else
       let n' := Syntax.mkNumLit (toString (k - 1))
       `(tactic| first
         | s3_contra
-        | (simp [$ls,*]; done)
-        | (simp [$ls,*]; all_goals (repeat' apply And.intro) <;> $c; done)
-        | (s3_split <;> s3_solve $n' [$ls,*] with $c))
+        | ((try simp only [s3_norm, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne] at *); simp [s3_norm, $ls,*]; done)
+        | ((try simp only [s3_norm, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne] at *); simp [s3_norm, $ls,*]; all_goals (repeat' apply And.intro) <;> $c; done)
+        | (((try simp only [s3_norm, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne] at *); (try simp [s3_norm, $ls,*]);
+            s3_split) <;> s3_solve $n' [$ls,*] with $c))
 
 /-! ## text -/
 
@@ -521,12 +539,32 @@ def genText (N : Name) (st : St) (extraSimp : String) : MetaM String := do
     let introLine := if recursive then introLine else introLine ++ "  (\n"
     let mut statics := ""
     for a in fi.statics do statics := statics ++ " " ++ (← exprTxt a)
-    let induct := if recursive then s!"  induction {", ".intercalate xs} using @{fname}.induct{statics} <;> (\n" else ""
+    let mut induct := ""
+    if recursive then
+      -- the parameters the induction principle keeps fixed (before `motive`) and the targets
+      let indName ← realizeGlobalConstNoOverloadCore (fname ++ `induct)
+      let pnames ← forallTelescopeReducing (← inferType fi.key) fun ys _ => ys.mapM fun y => y.fvarId!.getUserName
+      let fixedNames ← forallTelescopeReducing (← getConstInfo indName).type fun ys _ => do
+        let mut r := #[]
+        let mut i := 0
+        for y in ys do
+          let n ← y.fvarId!.getUserName
+          if n == `motive then break
+          if i ≥ fi.statics.size then r := r.push n
+          i := i + 1
+        return r
+      let fixedIdx := fixedNames.toList.map fun n => (pnames.toList.idxOf n)
+      let targets := (List.range xs.length).filter (fun i => !fixedIdx.contains i)
+      let fixedTxt := String.join (fixedIdx.map fun i => " " ++ xs[i]!)
+      induct := s!"  induction {", ".intercalate (targets.map (xs[·]!))} using @{fname}.induct{statics}{fixedTxt} <;> (\n"
     out := out ++ s!"theorem body{k} : P.body ⟨{k}, by decide⟩ = b{k} := rfl\n"
+    let fapp := (← exprTxt fi.key) ++ String.join (xs.map (" " ++ ·))
+    out := out ++ s!"theorem phi{k} : ∀ {" ".intercalate binders}, φ ⟨{k}, by decide⟩ {encs} = Proven.S3.Enc.enc ({fapp}) := by\n" ++
+      (if xs.isEmpty then "" else s!"  intro {" ".intercalate xs}\n") ++ "  simp [φ]\n"
     out := out ++ s!"theorem cert{k} : ∀ {" ".intercalate binders}, Proven.S3.Good P φ ⟨{k}, by decide⟩ {encs} := by\n" ++
       introLine ++ induct ++
-      s!"  (apply Proven.S3.good_intro <;> rw [body{k}]) <;>\n" ++
-      s!"  s3_solve 12 [{simpSet}, b{k}, {fname}, φ{extraSimp}, *] with (first | {closer}))\n"
+      s!"  (apply Proven.S3.good_intro <;> rw [body{k}]) <;> (try rw [phi{k}]) <;> (try rw [{fname}.eq_def]) <;>\n" ++
+      s!"  s3_solve 12 [{simpSet}, b{k}, φ{extraSimp}, *] with (first | {closer}))\n"
     let vs := (List.range fi.pTys.size).map (s!"v{·}")
     let hs := (List.range fi.pTys.size).map (s!"h{·}")
     let hyps ← (List.range fi.pTys.size).mapM fun i => do
@@ -564,6 +602,85 @@ syntax (name := s3Compile) "s3_compile " ident " := " term (" simp " "[" ident,*
     pstate := ps'
     unless msgs.toList.isEmpty do
       for m in msgs.toList do logError m!"S3 parse: {← m.toString}"
+      return
+    if cmd.isOfKind ``Parser.Command.eoi then break
+    cmds := cmds.push cmd
+  for cmd in cmds do elabCommand cmd
+
+end Proven.S3.Front
+
+namespace Proven.S3.Front
+open Lean Meta Elab Command
+
+/-- `s3_enc I`: an `Enc` instance for the inductive type `I` (its type parameters need `Enc`), with the simp lemmas
+the certificates use -/
+syntax (name := s3Enc) "s3_enc " ident : command
+
+def genEnc (I : Name) : MetaM String := do
+  let some (.inductInfo ii) := (← getEnv).find? I | throwError "s3_enc: not an inductive type"
+  let np := ii.numParams
+  let pnames := (List.range np).map (s!"α{·}")
+  let pbind := String.join (pnames.map (s!"\{{·} : Type} "))
+  let pinst := String.join (pnames.map (s!"[Proven.S3.Enc {·}] "))
+  let Ity := if np == 0 then I.toString else s!"({I} {" ".intercalate pnames})"
+  -- per constructor: field names and whether recursive
+  let mut ctors : Array (Name × Array Bool) := #[]
+  for c in ii.ctors do
+    let cty := (← getConstInfo c).type
+    let recs ← forallTelescopeReducing cty fun xs _ => do
+      let mut r := #[]
+      for x in xs.extract np xs.size do
+        r := r.push ((← inferType x).getAppFn.isConstOf I)
+      return r
+    ctors := ctors.push (c, recs)
+  let some dflt := ctors.findIdx? (fun (_, rs) => !rs.any id) | throwError "s3_enc: no non-recursive constructor"
+  let fv (n : Nat) := (List.range n).map (s!"f{·}")
+  let encF (rec : Bool) (f : String) := if rec then s!"{I}.s3enc {f}" else s!"Proven.S3.Enc.enc {f}"
+  let decF (rec : Bool) (f : String) := if rec then s!"{I}.s3dec {f}" else s!"Proven.S3.Enc.dec {f}"
+  let mut out := s!"def _root_.{I}.s3enc {pbind}{pinst}: {Ity} → Proven.S3.V\n"
+  for j in [0:ctors.size] do
+    let (c, rs) := ctors[j]!
+    let fs := fv rs.size
+    out := out ++ s!"  | @{c} {" ".intercalate pnames} {" ".intercalate fs} => .c {j} [{", ".intercalate ((List.range rs.size).map fun k => encF rs[k]! fs[k]!)}]\n"
+  out := out ++ s!"def _root_.{I}.s3dec {pbind}{pinst}: Proven.S3.V → {Ity}\n"
+  for j in [0:ctors.size] do
+    let (c, rs) := ctors[j]!
+    let fs := fv rs.size
+    out := out ++ s!"  | .c {j} [{", ".intercalate fs}] => @{c} {" ".intercalate pnames} {" ".intercalate ((List.range rs.size).map fun k => "(" ++ decF rs[k]! fs[k]! ++ ")")}\n"
+  let (dc, drs) := ctors[dflt]!
+  out := out ++ s!"  | _ => @{dc} {" ".intercalate pnames} {" ".intercalate (drs.toList.map fun _ => "(Proven.S3.Enc.dec (.w 0))")}\n"
+  out := out ++ s!"instance _root_.{I}.s3inst {pbind}{pinst}: Proven.S3.Enc {Ity} where\n  enc := {I}.s3enc\n  dec := {I}.s3dec\n" ++
+    s!"  dec_enc x := by induction x <;> simp_all [{I}.s3enc, {I}.s3dec]\n"
+  for j in [0:ctors.size] do
+    let (c, rs) := ctors[j]!
+    let fs := fv rs.size
+    let fb := if fs.isEmpty then "" else s!"({" ".intercalate fs}) "
+    out := out ++ s!"@[simp] theorem _root_.{I}.s3enc_{j} {pbind}{pinst}{fb}: Proven.S3.Enc.enc (@{c} {" ".intercalate pnames} {" ".intercalate fs}) = Proven.S3.V.c {j} [{", ".intercalate (fs.map (s!"Proven.S3.Enc.enc {·}"))}] := rfl\n"
+    let vb := if fs.isEmpty then "" else s!"({" ".intercalate fs} : Proven.S3.V) "
+    out := out ++ s!"@[simp] theorem _root_.{I}.s3dec_{j} {pbind}{pinst}{vb}: (Proven.S3.Enc.dec (Proven.S3.V.c {j} [{", ".intercalate fs}]) : {Ity}) = @{c} {" ".intercalate pnames} {" ".intercalate (fs.map (s!"(Proven.S3.Enc.dec {·})"))} := rfl\n"
+  if ctors.size == 1 then
+    let (c, rs) := ctors[0]!
+    let projs ← do
+      let some si := getStructureInfo? (← getEnv) I | pure none
+      pure (some si.fieldNames)
+    if let some fns := projs then
+      out := out ++ s!"@[simp] theorem _root_.{I}.s3enc_eta {pbind}{pinst}(p : {Ity}) : Proven.S3.Enc.enc p = Proven.S3.V.c 0 [{", ".intercalate (fns.toList.map (s!"Proven.S3.Enc.enc p.{·}"))}] := by cases p; rfl\n"
+    let _ := c; let _ := rs
+  return out
+
+@[command_elab s3Enc] def elabS3Enc : CommandElab := fun stx => do
+  let I ← liftCoreM <| realizeGlobalConstNoOverload stx[1]
+  let txt ← liftTermElabM (genEnc I)
+  let inputCtx := Parser.mkInputContext txt "<s3_enc>"
+  let env ← getEnv
+  let mut pstate : Parser.ModuleParserState := {}
+  let mut cmds := #[]
+  repeat
+    let (cmd, ps', msgs) := Parser.parseCommand inputCtx { env, options := {} } pstate {}
+    pstate := ps'
+    unless msgs.toList.isEmpty do
+      logInfo m!"{txt}"
+      for m in msgs.toList do logError m!"s3_enc parse: {← m.toString}"
       return
     if cmd.isOfKind ``Parser.Command.eoi then break
     cmds := cmds.push cmd

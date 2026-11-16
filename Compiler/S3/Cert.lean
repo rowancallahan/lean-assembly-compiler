@@ -11,6 +11,7 @@
 * `computes_of_main`: the certificate of `main` (a byte-list function `encOut ∘ f ∘ decIn`) gives
   `Computes P f encIn encOut`, the hypothesis of `S3.compile_correct`. -/
 import Compiler.S3.Syntax
+import Compiler.S3.SimpAttr
 
 namespace Proven.S3
 set_option autoImplicit false
@@ -235,6 +236,45 @@ instance {α : Type} [Enc α] : Enc (Option α) where
   simp only [BitVec.toNat_setWidth, BitVec.toNat_and]
   rw [Nat.mod_eq_of_lt (Nat.lt_of_lt_of_le (Nat.mod_lt _ (by decide)) (by decide))]
   rw [show (255 : BitVec 64).toNat = 2 ^ 8 - 1 from rfl, Nat.and_two_pow_sub_one_eq_mod]
+
+@[simp] theorem u8_bv (b : UInt8) : (BitVec.setWidth 64 b.toBitVec).toNat = b.toNat := by
+  simp [BitVec.toNat_setWidth]
+@[simp] theorem u8_beq (b : UInt8) (y : BitVec 64) : (BitVec.setWidth 64 b.toBitVec == y) = (b.toNat == y.toNat) := by
+  rw [Bool.eq_iff_iff]; simp [← BitVec.toNat_inj]
+@[simp] theorem u8_lt (b : UInt8) (y : BitVec 64) : (BitVec.setWidth 64 b.toBitVec < y) ↔ b.toNat < y.toNat := by
+  simp [BitVec.lt_def]
+@[simp] theorem u8_lt' (b : UInt8) (y : BitVec 64) : (y < BitVec.setWidth 64 b.toBitVec) ↔ y.toNat < b.toNat := by
+  simp [BitVec.lt_def]
+@[simp] theorem u8_le (b : UInt8) (y : BitVec 64) : (BitVec.setWidth 64 b.toBitVec ≤ y) ↔ b.toNat ≤ y.toNat := by
+  simp [BitVec.le_def]
+@[simp] theorem u8_le' (b : UInt8) (y : BitVec 64) : (y ≤ BitVec.setWidth 64 b.toBitVec) ↔ y.toNat ≤ b.toNat := by
+  simp [BitVec.le_def]
+
+@[s3_norm] theorem u8_beq_toNat (a b : UInt8) : (a == b) = (a.toNat == b.toNat) := by
+  rw [Bool.eq_iff_iff]; simp [UInt8.toNat_inj]
+@[s3_norm] theorem u8_eq_iff (a b : UInt8) : (a = b) = (a.toNat = b.toNat) := by
+  simp [UInt8.toNat_inj]
+@[s3_norm] theorem u8_lt_iff (a b : UInt8) : (a < b) = (a.toNat < b.toNat) := by
+  simp [UInt8.lt_iff_toNat_lt]
+@[s3_norm] theorem u8_le_iff (a b : UInt8) : (a ≤ b) = (a.toNat ≤ b.toNat) := by
+  simp [UInt8.le_iff_toNat_le]
+@[s3_norm] theorem u8_toNat_lit (n : Nat) : (OfNat.ofNat n : UInt8).toNat = n % 256 := rfl
+@[s3_norm] theorem u64_beq_bv (a b : UInt64) : (a == b) = (a.toBitVec == b.toBitVec) := by
+  rw [Bool.eq_iff_iff]; simp [UInt64.toBitVec_inj]
+@[s3_norm] theorem u64_eq_iff (a b : UInt64) : (a = b) = (a.toBitVec = b.toBitVec) := by
+  simp [UInt64.toBitVec_inj]
+@[s3_norm] theorem u64_lt_iff (a b : UInt64) : (a < b) = (a.toBitVec < b.toBitVec) := rfl
+@[s3_norm] theorem u64_le_iff (a b : UInt64) : (a ≤ b) = (a.toBitVec ≤ b.toBitVec) := rfl
+@[simp] theorem bv_eq_zero (c : Bool) : (bv c = 0#64) = (c = false) := by cases c <;> decide
+@[simp] theorem bv_eq_one (c : Bool) : (bv c = 1#64) = (c = true) := by cases c <;> decide
+attribute [s3_norm] UInt8.toNat_zero
+
+@[simp] theorem u8_and_ff (x : UInt8) : (x &&& @OfNat.ofNat UInt8 (255 : Nat) UInt8.instOfNat) = x := by
+  apply UInt8.toNat_inj.mp
+  rw [UInt8.toNat_and]
+  show x.toNat &&& 255 = x.toNat
+  rw [show (255 : Nat) = 2 ^ 8 - 1 from rfl, Nat.and_two_pow_sub_one_eq_mod]
+  exact Nat.mod_eq_of_lt x.toNat_lt
 
 /-- a byte list is the input / output value -/
 theorem enc_bytes : ∀ l : List UInt8, Enc.enc l = bytesV l
