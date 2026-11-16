@@ -34,3 +34,24 @@ Evidence:
 * Machine tests, stack generator `nanoGenS` (nano-e2e): `NANO_INT=1 python3 Testing/nano/nano_test.py 30 3`:
   22 + 30 Int64 programs × 6 inputs = **312 pairs** on qemu-riscv64 and Sail == `Prog.eval` (sp restored).
   (UInt64 run unchanged: `nano_test.py 5`: 264 pairs.)
+
+## Exact-subset rule (owner, ROADMAP 2026-11-16): elaborator changes and the boundary fuzz
+`Testing/nano/boundary.py N seed`: mutants of valid programs (names → keywords / Lean globals / odd shapes; inserted `-`,
+`--`, tabs, CR, `0x1`, `1e3`, `1_000`, `g -5`, newlines; duplicated defs; `( : T)`; type swaps; deleted tokens), each judged
+by nano (`Testing/nano/judge.lean`) and by plain `lean` as its OWN root-level file (Init only; namespaces would hide
+global clashes). Failure = nano accepts and Lean rejects or the values differ on 3 random inputs.
+Bugs found (nano accepted, Lean rejected) and fixed by rejecting, in `Nano/Elab.lean`:
+* def names that are Lean globals (`def id`, `def rfl`, `def min` (an `export` alias)) and keywords as names (`at`, `fun`):
+  names now have a fixed SHAPE, 1–3 lowercase letters then digits / `_digit` groups (`f`, `sq`, `add3`, `x_1`; covers
+  every existing corpus and generator), minus `reserved` = every name of that shape (≤ 1 digit or `_1` suffix checked
+  exhaustively, `Testing/nano/work`-style script in the log below) that Lean resolves globally or reads as a token:
+  `and at bif bne by do end for fun get id if in ite max min mt mut not or rfl set try xor` (+ `def let`).
+  Recomputing it for another Lean version: resolveGlobalName / aliases / token table over all names of the shape.
+* tabs (Lean rejects), lone CR (Lean accepts only CR LF); numerals glued to a letter or `(` (`g 0x10`, `1e3`);
+  `)` glued to `(` / a name / a numeral and a name glued to `(` (Lean needs whitespace before an argument:
+  `g (x)y` is not a 2-argument call); empty binder group `( : T)`; a def name defined twice.
+Results: seeds 1–4 (300 + 3 × 600) and seed 7 (1500): 0 failures; e.g. seed 7: both accept with the same values 292,
+nano rejects / Lean accepts 91, both reject 1117. Also checked by hand: newlines at column 0 inside applications,
+before `- y`, `* y`, `;`, inside binder groups: same values both sides.
+All 39 UInt64 (`Nano/Agree.lean`) and 22 Int64 (`Nano/AgreeInt.lean`) agreement proofs still check; fuzz.py 300 7 and
+fuzz_int.py 250 11 60: 0 mismatches.

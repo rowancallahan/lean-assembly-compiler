@@ -27,16 +27,51 @@ def kwTy : List UInt8 := [85, 73, 110, 116, 54, 52]
 /-- `Int64` -/
 def kwTyI : List UInt8 := [73, 110, 116, 54, 52]
 
-def identTok (s : List UInt8) : Tok :=
-  if s == kwDef then .kdef else if s == kwLet then .klet else if s == kwTy then .kty false else if s == kwTyI then .kty true else .id s
+def isLower (c : UInt8) : Bool := 97 ≤ c && c ≤ 122
+
+/-- after the leading letters: digits, or `_` followed by a digit -/
+def nameTail : List UInt8 → Bool
+  | [] => true
+  | 95 :: d :: r => isDigit d && nameTail r
+  | c :: r => isDigit c && nameTail r
+
+/-- the shape of a nano name: 1 to 3 lowercase letters, then digits or `_` digit groups (`x`, `sq`, `add3`, `x_1`) -/
+def nameShape : List UInt8 → Bool
+  | a :: b :: c :: r => isLower a && (if isLower b then (if isLower c then nameTail r else nameTail (c :: r))
+      else nameTail (b :: c :: r))
+  | [a, b] => isLower a && (isLower b || isDigit b)
+  | [a] => isLower a
+  | [] => false
+
+/-- names of that shape that Lean reads otherwise (computed exhaustively for every name of the shape with at most
+one digit or `_1` suffix: Lean keyword tokens, root declarations and `export` aliases; `def`/`let` are nano keywords) -/
+def reserved : List (List UInt8) :=
+  [
+   [97, 110, 100], [97, 116], [98, 105, 102], [98, 110, 101], [98, 121], [100, 111],  -- and at bif bne by do
+   [101, 110, 100], [102, 111, 114], [102, 117, 110], [103, 101, 116], [105, 100], [105, 102],  -- end for fun get id if
+   [105, 110], [105, 116, 101], [109, 97, 120], [109, 105, 110], [109, 116], [109, 117, 116],  -- in ite max min mt mut
+   [110, 111, 116], [111, 114], [114, 102, 108], [115, 101, 116], [116, 114, 121], [120, 111, 114]]  -- not or rfl set try xor
+
+/-- a word: a keyword of nano, or a name (shape, not reserved); `none` = rejected -/
+def identTok? (s : List UInt8) : Option Tok :=
+  if s == kwDef then some .kdef else if s == kwLet then some .klet else if s == kwTy then some (.kty false)
+  else if s == kwTyI then some (.kty true)
+  else if nameShape s && !reserved.contains s then some (.id s) else none
 
 def lex : Nat → List UInt8 → Option (List Tok)
   | 0, xs => if xs.isEmpty then some [] else none
   | _ + 1, [] => some []
   | f + 1, c :: xs =>
-    if c == 32 || c == 10 || c == 13 || c == 9 then lex f xs
+    if c == 32 || c == 10 then lex f xs
+    else if c == 13 then  -- CR only before LF (Lean rejects a lone CR); tabs are rejected (Lean rejects them)
+      match xs with
+      | 10 :: ys => lex f ys
+      | _ => none
     else if c == 40 then (lex f xs).map (Tok.lp :: ·)
-    else if c == 41 then (lex f xs).map (Tok.rp :: ·)
+    else if c == 41 then  -- Lean needs whitespace before an argument: `)(`, `)x`, `)5` rejected
+      match xs with
+      | d :: _ => if d == 40 || isLetter d || isDigit d then none else (lex f xs).map (Tok.rp :: ·)
+      | [] => (lex f xs).map (Tok.rp :: ·)
     else if c == 43 then (lex f xs).map (Tok.plus :: ·)
     else if c == 45 then
       match xs with
@@ -48,10 +83,17 @@ def lex : Nat → List UInt8 → Option (List Tok)
       match xs with
       | 61 :: ys => (lex f ys).map (Tok.assign :: ·)
       | _ => (lex f xs).map (Tok.colon :: ·)
-    else if isDigit c then
-      let r := spanNum f 0 (c :: xs); (lex f r.2).map (Tok.num r.1 :: ·)
+    else if isDigit c then  -- a numeral must not run into a name character (`0x10`, `1e5`, `1_000`)
+      let r := spanNum f 0 (c :: xs)
+      match r.2 with
+      | d :: _ => if isLetter d || d == 40 then none else (lex f r.2).map (Tok.num r.1 :: ·)
+      | [] => (lex f r.2).map (Tok.num r.1 :: ·)
     else if isLetter c then
-      let r := spanId f (c :: xs); (lex f r.2).map (identTok r.1 :: ·)
+      let r := spanId f (c :: xs)
+      match identTok? r.1, r.2 with
+      | _, 40 :: _ => none  -- `x(`: rejected (Lean needs whitespace before an argument)
+      | some t, _ => (lex f r.2).map (t :: ·)
+      | none, _ => none
     else none
 
 /-- position of a name in a list (newest first) -/
@@ -153,7 +195,7 @@ def pParams : Nat → List (List UInt8) → Nat → List Tok → Option (List (L
   | 0, _, _, _ => none
   | f + 1, sc, n, Tok.lp :: ts =>
     match pNames f sc n ts with
-    | some (sc2, n2, r) => pParams f sc2 n2 r
+    | some (sc2, n2, r) => if n2 == n then none else pParams f sc2 n2 r  -- `( : T)` rejected
     | none => none
   | _ + 1, sc, n, ts => some (sc, n, ts)
 def pNames : Nat → List (List UInt8) → Nat → List Tok → Option (List (List UInt8) × Nat × List Tok)
@@ -167,6 +209,7 @@ end
 def pDefs : Nat → Defs → List Tok → Option Prog
   | 0, _, _ => none
   | f + 1, ds, Tok.kdef :: Tok.id g :: ts =>
+    if (findDef g ds).isSome then none else  -- a name defined twice: Lean rejects
     match pParams f [] 0 ts with
     | some (sc, n, Tok.colon :: Tok.kty _ :: Tok.assign :: r) =>
       match pExpr f sc ds r with
