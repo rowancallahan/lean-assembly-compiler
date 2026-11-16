@@ -1455,7 +1455,8 @@ Scope changed by the owner (features first, speed later); the speed finding is k
 (new: `Bytes8`, `Bytes8.ofString s = ofList s.toUTF8.data.toList`, `Bytes8.eqb`, `eqb_ofString : eqb (ofString s)
 (ofString t) = decide (s = t)`), `Riscv/Frontx/IndCmd.lean` (front end), `Riscv/Frontx/NameExamples.lean` (targets).
 
-- **Byte format** (stated by `C.enc` of the generated shape): a `String` field is the chain `Bytes8.ofString s` of
+- **Byte format** (superseded by section 28: a `String` is now its length, 8 bytes, then its bytes; the chain below
+  is only the memory representation) (stated by `C.enc` of the generated shape): a `String` field is the chain `Bytes8.ofString s` of
   its UTF-8 bytes: per byte the tag of `cons` and the byte, then the tag of `nil` (no length prefix: it is the
   Encode-style format of `List UInt8` as an inductive, tag + fields; a `UInt8` field is one byte).  E.g. `Name.str
   .anonymous "ab"` = `01 00 04 61 04 62 03`.
@@ -1683,3 +1684,375 @@ is ambiguous between `List Level` and `List Expr`); `mkAppN` (rejected: the head
 structural one); `instPisWith`, `piResidual`, `binderDom` (patterns on two arguments / on a `Nat`); `Expr.depth`
 (`max`: `sem` not proved); `isStrLit`, `natPred?` (nested patterns); `r8` (an `if` as a call argument).
 Codes are large (plain back end; straight-line `inst1` makes real calls for every child).
+
+## 26. Int (branch `feat-int`)
+
+Files: `Compiler/MOp.lean` (`div`, `rem`), `Riscv/Steps/GenMul.lean` (`step_div`, `step_rem`), `Riscv/Back/Wide.lean`
+(`w_mop`), `Riscv/Frontx/IntRep.lean` (new: representation, lemmas, `frontx_int_facts`, `frontx_int_abbrev`),
+`Translate.lean`, `Sub.lean`, `Impl1.lean` (`Res Int`), `Wa{Lang,Comp,Exp,Upd,Cmd}.lean`, `LeanSvgFixed.lean` (verbatim
+lean-svg), `IntExamples.lean`, `WaInt.lean`; tests `Testing/asm/emit_int.lean` → `frontx-words/{int,wa_int}_*`;
+axioms in `Testing/scripts/axioms_wa.lean` (`wa_check.sh`). Spec/ untouched; the inductive path (`Ind*`) untouched.
+
+**Lean's semantics.** On `Int`, `/` is `Int.ediv` and `%` is `Int.emod` (checked: `-7 / 2 = -4`, `-7 % 2 = 1`,
+`7 / -2 = -3`, `7 % -2 = 1`, `x / 0 = 0`, `x % 0 = x`; `0 ≤ x % y < |y|` for `y ≠ 0`). lean-svg writes `Int.ediv a 256`
+(same function).
+
+**Encoding.** A value is its two's complement word `rI x = BitVec.ofInt 64 x` (= `x mod 2^64`); a result is 8 bytes
+little-endian of `x % 2 ^ 64` (`Res Int`, `Impl1.lean`), as `Nat` results are `n % 2 ^ 64`: not range checked; for
+`-2^63 ≤ x < 2^63` the bytes determine `x`. Word arrays: `Array Int` elements are words the same way (width 8).
+
+**Machine.** `MOp.div` / `MOp.rem` (`Compiler/MOp.lean`): `div a b = if b = 0 then allOnes else ofInt (a.toInt.tdiv
+b.toInt)`, `rem a b = ofInt (a.toInt.tmod b.toInt)`. Checked against the Sail model (`execute_DIV`, `execute_REM` in
+`LeanRV64D/InstsEnd.lean`): by zero the quotient is `-1` and the remainder the dividend; on `-2^63 / -1` the model
+clamps the quotient to `-2^63`, which is the wrap of the true `2^63`, so `div` needs no overflow case (`div_eq`).
+Encodings `encR 1 4` / `encR 1 6`; `G.step_div` / `G.step_rem` by `gstep` (the model writes `2 ^ 63` with Sail's
+`Int ^ Int` instance, so `step_div0` is stated in the model's form and rewritten by `div_eq`). Every pass of the
+optimiser is generic in `MOp` (no other change); the plain back ends still reject `mop`.
+
+**Lean `/`, `%` from the machine's** (`IntRep.lean`): with `q = div a b`, `r = rem a b`,
+`x % y = if r < 0 then (if y < 0 then r - y else r + y) else r` (`emodB`),
+`x / y = if r < 0 then (if 0 < y then q - 1 else q + 1) else if y = 0 then 0 else q` (`edivB`; the `y = 0` case
+uses the machine's `-1 + 1 = 0` when `r = x < 0`). `rI_ediv`, `rI_emod`: `rI (x / y) = edivB (rI x) (rI y)` for
+`x, y` in range (proved through `Int.tmod_eq_emod` / `Int.tdiv_eq_ediv`; no overflow case needed: `|tmod| ≤ |x|`).
+
+**Range hypotheses** (visible): `+ - * -x`, `Int.ofNat` / `↑n`, literals need nothing (homomorphic mod `2^64`);
+`<`, `≤`, `=`, `Int.toNat`, `Int.natAbs`, `/`, `%` need their operands in `-2^63 ≤ x < 2^63` (side conditions of
+`rI_slt`, `rI_inj`, `rN_toNatI`, `rN_natAbs`, `rI_ediv`, `rI_emod`, discharged by `omega`). In `frontx_compile` they
+come from `requires` (e.g. `frontx_compile LeanSvg.Fx.mul requires fun a b => -2 ^ 63 ≤ a * b ∧ a * b < 2 ^ 63`), in
+`wa_compile` from `E.ok` (`Ty.small .int`; `Op2.exact` is now per type: `Int` `-` needs nothing; `cast.side` for
+`Int.toNat`) and the loop invariants. The entries read their arguments as signed 32- or 64-bit words (`i64At`,
+`i32At`, `rdI32`, glue), so the machine theorems have no hypothesis beyond the `Implements1` frame:
+
+    LeanSvg.Fx.mul.exec : ∀ a b σ, … → -2 ^ 63 ≤ a * b ∧ a * b < 2 ^ 63 → ∃ σ', BExec … ∧ σ'.env 4 = rI (Fx.mul a b) …
+    Proven.Frontx.IntEx.mulE.implements1 : Implements1With (fun xs => xs.data.toList) Res.enc mulE.code mulE (space)
+    Proven.WA.IntOps.iopsE.implements1 : Implements1With (fun xs => xs.data.toList) Res.enc iopsE.code iopsE (space)
+
+**List front end** (`Translate.lean`): `Ty.int` (also through abbreviations: `Fx`), `+ - *` (`*` by `mop mul`),
+`-x` (`0 - x`), `Int.neg`, `/`, `%`, `Int.ediv`, `Int.emod` (two `mop`s and the adjustment; the quotient / remainder in
+a temporary holding its Lean term, so nested quotients do not grow the obligations), comparisons `slt` (compound sides
+to temporaries, as for `Nat`), `==`, `=`, `≠`, `min`/`max` (`Int.min_def`), `Int.toNat`, `Int.natAbs`, `Int.ofNat`,
+`↑n`, literals and named `Int` constants (`Fx.maxVal`, unfolded in the obligations), `let` inside inlined helpers.
+Proof support: `frontx_int_abbrev` (unfold `Int` abbreviations and `Int.ediv`/`Int.emod` to `/`/`%` before `omega`),
+`frontx_int_facts` (bounds of `Int`/`Nat` products of non-literals from searched bounds of the factors, `mul_bound`;
+`omega` does not multiply variables), `ite_eq_orI` (an `Int` temporary defined by an `if`, with its condition),
+`rI_ofNat` as a pre-order simp lemma (else `simp` pushes the cast inside first).
+
+**Word arrays** (`Wa*.lean`): `Ty.int` (`Int`, `rI`, width 8, `Array Int`), `Op2.den` `+ - * / %` on `Int`,
+`Cmp.den` with signed `mcmp t` (`slt`), casts `Int.toNat` (`mcast`: `slt`-select) and `Nat → Int`, `iDivS` / `iModS`
+(the two `mop`s and the adjustment, temporaries `d + 2`, `d + 3`), reflection of `-x`, `Int.ediv`, `Int.emod`,
+`Int.toNat`, `↑n`, `Int.ofNat`. `mop_ok`, `mcmp_ok`, `mcast_ok`, `mword_ok`, `binS_ok` extended (proved once).
+
+**Compiled verbatim** (lean-svg @df8e663, `LeanSvgFixed.lean`; each line checked to occur unchanged in the source;
+each function's own `exec` with its `requires`, and an entry `…E` with `Implements1` via `frontx_implementsC`):
+| function (lean-svg @df8e663) | source | `requires` of its `exec` | entry arguments | words |
+|---|---|---|---|---|
+| `Fx.clamp` | `LeanSvg/Fixed.lean:27` | -2^63 ≤ a < 2^63 | i64 | 120 |
+| `Fx.inRange` | `LeanSvg/Fixed.lean:32` | a in range | i64 | 99 |
+| `Fx.ofNat` | `LeanSvg/Fixed.lean:34` | n < 2^32 | n mod 2^32 | 123 |
+| `Fx.mul` | `LeanSvg/Fixed.lean:37` | -2^63 ≤ a*b < 2^63 | i32, i32 | 337 |
+| `Fx.floor` | `LeanSvg/Fixed.lean:38` | a in range | i64 | 129 |
+| `Fx.ceil` | `LeanSvg/Fixed.lean:39` | -2^63 < a < 2^63 | i32 | 140 |
+| `Fx.round` | `LeanSvg/Fixed.lean:40` | -2^63 ≤ a, a+128 < 2^63 | i32 | 136 |
+| `Fx.abs` | `LeanSvg/Fixed.lean:41` | a in range | i64 | 116 |
+| `Fx.min / Fx.max` | `LeanSvg/Fixed.lean:42-43` | a, b in range | i64, i64 | 291 / 291 |
+| `Fx.scale16` | `LeanSvg/Fixed.lean:50` | a*s in range | i32, i32 | 337 |
+| `clampLin` | `LeanSvg/Geom.lean:74` | v in range | i64 | 120 |
+| `linInRange` | `LeanSvg/Geom.lean:82` | v in range | i64 | 99 |
+| `Image.clampIx` | `LeanSvg/Image.lean:406` | i in range, n < 2^64 | i64, n mod 2^32 | 307 |
+| `Image.round32` | `LeanSvg/Image.lean:426` | s in range | i64 | 131 |
+| `Image.bicFar` | `LeanSvg/Image.lean:416` | 0 ≤ t < 2^17 | (exec only) | – |
+| `Woff.fitsI16` | `LeanSvg/Woff.lean:175` | v in range | i64 | 100 |
+| `Raster.insideW` | `LeanSvg/Raster.lean:85` | w in range | bit, i64 | 290 |
+| `Grad.norm2` | `LeanSvg/Shader.lean:153` | |x|, |y| ≤ 2^31 | i32, i32 | 333 |
+| `Grad.clampTo` | `LeanSvg/Shader.lean:163` | -2^63 < lim < 2^63, a in range | i32, i64 | 366 |
+| `Filter.morphCeil` | `LeanSvg/Filter/Morphology.lean:110` | -2^63 ≤ r < 2^31, sc < 2^32 | i32, n mod 2^32 | 308 |
+
+Each entry `…E` (`IntExamples.lean`): QEMU + Sail against executed Lean, 70 cases each (edge words `0`, `±1`, `±2^31`,
+`2^63 - 1`, `-2^63`, `Fx.maxVal ± 1`, `linMax + 1`, multiples of 256, random 64/32/20/17-bit), all ok.
+Word arrays (`WaInt.lean`, glue entries over core / lean-svg operations): `iopsE` (`* / % -x + -`, `Int.ediv`,
+`Int.emod`; 372 words), `icmpE` (`<`, `≤`, `Int.toNat`; 329), `fxRoundsE` (`Fx.floor`/`ceil`/`round`; 492),
+`sumDevE` (an `Int` loop state with a linear invariant; 85): `good` + `implements1` each, 70 cases each, all ok.
+Axioms (`wa_check.sh`): every `implements1` exactly the Sail set, every `exec`/`good` ⊆ {propext, Classical.choice,
+Quot.sound}. `check.sh`: ALL CHECKS PASSED; statement fingerprints: no `stmt` hash changed, 62 closures changed
+(`MOp` gained `div` / `rem`; not re-frozen). `emit_int.lean` is slow (> 50 min for the list entries' code at `#eval`).
+
+**Not done / why.**
+- con-leche `Level.leq` / `Level.rest` / `Level.byCases` (`Kernel/Level.lean:87-145` @6810492c1): their `diff : Int`
+  goes with `Level` arguments, i.e. the inductive path (another agent's files): an `Int` field / argument kind in
+  `Compiler/Ind*.lean` is needed there (the representation lemmas of `IntRep.lean` apply unchanged).
+- lean-svg `Image.bicNear` (`Image.lean:410`): the obligation of the third nested quotient did not close (the
+  term of `(b * t).ediv 65536` with `b` itself a quotient is large); `bicFar` compiles alone (its `exec`), its entry
+  did not (`simp` nested error): not kept.
+- lean-svg `Fx.hypot` (`Nat.sqrt`), `scaleDecimal` (`10 ^ exp10.toNat`, unbounded), `parseNumber`/`parseDecimal`
+  (`Option (Fx × Nat)` results, loops), `expSmall` (`lnScale = 2 ^ 128`: beyond 64 bits), and everything with `Mat`/`Pt`
+  structures of `Int` fields (needs structure parameters of `Int` fields; `resultComps` takes them, not tried).
+- `Fx.clamp` inside a `wa_compile` loop: the reflection panics (`index out of bounds` in `wa_compile`'s meta code); a
+  plain `Int` loop state works (`sumDevE`).
+- `Int` shifts / bitwise operations, `Int.sign`, `Int.fdiv`/`Int.tdiv` as source operations (only `/`, `%`).
+- Non-vacuity corollaries for the new `Implements1With` theorems: the existing one is for `StartCorrect`
+  (`Riscv/Examples/VacuityTop.lean`); no front-end generator for per-function corollaries exists yet.
+- Axioms: the new theorems are listed in `axioms_wa.lean` (checked by `wa_check.sh` with the same rule as the other
+  word-array / list-front-end theorems), not in a branch-named file.
+- Speed: every `/` is two M-extension instructions plus a select; `x / 256` is not yet a shift (`ediv` by `2^k` is
+  an arithmetic shift right: a later pass).
+
+Reproduce: `lake build Frontx`; `lake env lean --tstack=400000 Testing/asm/emit_int.lean`;
+`for f in Testing/asm/frontx-words/{int,wa_int}_*.cases; do python3 Testing/asm/frontx_test.py check 50 $(basename $f .cases); done`;
+`bash Testing/scripts/wa_check.sh`.
+
+**State (paused, 2026-11-16).** Round complete on `feat-int` (merged with origin/main @69ebe82): `check.sh` ALL CHECKS
+PASSED, 20 list-path + 4 word-array `Int` entries tested (70 cases each, QEMU = Sail = Lean). Next steps:
+1. `Int` fields/arguments in the inductive path (`Compiler/Ind*.lean`), then con-leche `Level.leq`/`rest`/`byCases`.
+2. `bicNear`: keep nested quotients' obligations small (generalise more eagerly, or one lemma per `edivB` level).
+3. `Fx.clamp` inside `wa_compile` loops: find the `index out of bounds` in `WaCmd.lean`'s reflection.
+4. `Int` structures (`Mat`, `Pt`) as parameters/results; `Option Int` results (`Filter.n16At`, `parseNumber16`).
+5. Speed: `x / 2^k` on `Int` as an arithmetic shift; make `emit_int.lean` fast (precompute the codes).
+6. Non-vacuity corollaries once a per-function generator exists; re-freeze fingerprints (owner).
+
+## 27. Higher-order arguments by specialisation (branch `feat-hof`)
+
+Files: `Riscv/Frontx/SpecHof.lean` (new: the pass and the commands), `Riscv/Frontx/HofExamples.lean` (new: targets),
+`Testing/scripts/axioms_x.lean` (new). Shared files touched: `Riscv/Frontx/Translate.lean` (two proof tactics of
+`frontx_view`, below), `Testing/scripts/check.sh` (`axioms_x` in the loop), `Testing/scripts/expected-axioms.txt`
+(39 lines appended), `Testing/asm/emit_frontx.lean` (one `#eval` block), `Testing/asm/frontx_test.py` (`LISTS`).
+No `Compiler/`, `Spec/` or `Ind*` file changed.
+
+**The pass** (`frontx_hof h`, front end only; everything after it is the existing translator):
+- A **site** is a call `F a₁ … aₙ` of a definition `F` where some argument is a function known at compile time
+  (function-typed, not a proof or type family, and no free variable of it is itself a function: a lambda, a
+  named function, a partial application `BOp.eval .xor 0x55`, `f ∘ g`). Fixed positions: types, instances, proofs,
+  known functions. Matchers, recursors, `ite`/`dite`/`cond`/`bind`/projections are never sites.
+- A recursive `F` gets a **first-order copy** `h.hof<k> c₁ … cₘ y₁ … yₚ := F a…` (the `cᵢ` the first-order free
+  variables the fixed arguments capture, e.g. `k` in `(· > k)`; the `yⱼ` the non-fixed arguments), and
+  `h.hof<k>.eq`: `F`'s own unfolding equation at these arguments, the recursive calls with the same fixed arguments
+  folded to the copy (a call that changes a fixed argument is rejected), the known function beta-reduced,
+  `Function.comp` unfolded. This step is definitional: the proof term is `F`'s equation, the kernel checks the
+  folded statement by delta. A non-recursive user `F` (`Array.find`) and `List.countP` are unfolded instead.
+  Equal sites share one copy; sites inside a copy's body are specialised in turn (depth ≤ 8).
+- **Rewriting steps** (`simp only` with the listed lemmas, the proof kept, so not definitional but kernel-checked):
+  before: `Array.foldl_toList` (reversed), `List.foldl_nil/cons` (a fold over a literal list, e.g. a pipe of
+  stages), fusion `List.map_map`, `foldl_map`, `foldr_map`, `any_map`, `all_map`, `countP_map`; after, on each copy:
+  `cons_append`/`nil_append` (`[x, x] ++ r`), `pure_bind`, `Option.pure_def`, `failure = none`, `some a >>= f = f a`
+  (`do` in `Option`), `cond_eq_if`, `a || r` / `a && r` → `if` when `r` holds the recursive call (marked first,
+  definitionally, `hofMark`), and per `Bool` matcher `m` a generated lemma `m.hof_ite : m _ b x y = if b = true
+  then x () else y ()` (by cases; Lean's `List.filter`/`find?` match on `p a`).
+- **Partial evaluation**: user definitions applied to a closed constructor term (`Stage.denote (.map e)`,
+  `ByteExp.denote 0 x e`, `BPred.denote`, `BOp.eval .xor`) are rewritten by their own equation lemmas until nothing
+  changes. That is how the compiler core's pipeline semantics at a known stage becomes a first-order loop.
+- Three once-and-for-all lemmas replace unfolding equations whose `match` also binds the function (`List.any`,
+  `List.all`) or that have none (`List.flatMap := flatten ∘ map`): `hof_any_eq`, `hof_all_eq`, `hof_flatMap_eq`
+  (`cases l <;> rfl` / `simp`).
+- Result `h.hof : h ys = body'` (`body'` calls the copies). `frontx_hof_entry g [measure μ] [with inv]` for an
+  entry `g : ByteArray → R`: `frontx_hof g`; the copy on the input (`frontx_view`, or `c.ba B … := c B.data …` for
+  an `Array UInt8` parameter: sizes and reads of `B.data` are those of `B`, definitionally); `frontx_compile` (measure
+  default `B.size - i`); `g.hof.entry : g xs = c.view xs 0 …` (`rw [g.hof]; rfl`); `frontx_entry g from
+  g.hof.entry`. Then `frontx_implements[_list|_bytes] g` as before, so `g.implements1` is about `g` itself.
+
+`Translate.lean` hook (proofs only, no generated code changes): `frontx_view`'s simple path tried `simp only [copy]`
+before `rw [eq]`; for an equation that is not definitional (the rewriting steps) `simp only` made progress and left
+the goal open. Now `first | rfl | (rw [eq] <;> rfl) | …` (the old `(rw [eq]; rfl)` failed whenever `rw` itself closed
+the goal), and the general path's leaves (`veqGo`) also try `rw [eq]` / `simp only [eq, Nat.add_sub_cancel]`.
+
+**Compiled, machine theorem** `g.implements1` (the Sail axiom set, compared with `crcRaw.implements1`'s), `g.exec`
+and `.hof` at most `propext`, `Classical.choice`, `Quot.sound`; test `frontx_test.py check 50` on QEMU and Sail
+against executed Lean (`emit_frontx.lean`), all ok, lengths up to 2769:
+
+| entry | higher-order function, known argument | source | words |
+|---|---|---|---|
+| `nonFindGt3` | `EarlyReturn.Non.List.find? (· > 3)` | fp-lean @0abeea5 `MonadTransformers/Do.lean:93` | 77 |
+| `findGt3` | `EarlyReturn.List.find? (· > 3)` (`do`, `failure`, `return`) | `Do.lean:105` | 77 |
+| `filterGt3` | `NonTail.filter (· > 3)` (no hand `def` any more, cf. §12 `filterAll`) | `ProgramsProofs/TCO.lean:183`, use `:204` | 65 |
+| `foldrSum` | `ListExtras.List.foldr (· + ·) 0` on `map UInt8.toNat` (two copies) | `DependentTypes/Finite.lean:118`, use `:126` | 79 |
+| `arrFindGt3` | `Array.find · (· > 3)` → `findHelper` (`Array UInt8` as the input, result `Option (Nat × UInt8)`) | `ProgramsProofs/Arrays.lean:293-306` | 106 |
+| `mapInc`, `mapComp`, `mapXor` | `List.map (· + 1)`, `map ((· ^^^ 0x5A) ∘ (· + 7))`, `map (BOp.eval .xor 0x55)` | Lean core; `BOp.eval` `Compiler/Front/Pipe.lean:27` | 57, 61, 59 |
+| `sumFoldl` | `List.foldl (fun acc x => acc + x.toNat) 0` (`with` invariant, as `Tail.sum`) | core | 73 |
+| `xorArr` | `Array.foldl (· ^^^ ·) 0` on `xs.data` | core | 52 |
+| `dupAll` | `List.flatMap (fun x => [x, x])` | core | 63 |
+| `filterNZ`, `anyNL`, `allAscii`, `findHigh`, `countSp` | `filter (· != 0)`, `any (· == 10)`, `all (· < 128)`, `find? (· ≥ 128)`, `countP (· == 32)` (`with` invariant) | core | 68, 68, 65, 78, 83 |
+| `countAbove100` | `countAbove l k := l.countP (· > k)`: the closure captures `k`, a parameter of the copy | ours | 84 |
+| `stageMap` | `Stage.denote (.map e)` = `l.map fun x => e.denote 0 x`, `e` known | `Compiler/Front/Pipe.lean:125` | 61 |
+| `pipe2` | `Pipe.denote [.map e₁, .map e₂]` (`foldl` over the stages unrolled, the maps fused) | `Pipe.lean:137` | 61 |
+| `xstageFilter` | `XStage.denote (.filter p)` = `l.filter p.denote`, `p` a known `BPred` | `Compiler/Front/PipeStd.lean:171` | 67 |
+
+Human input: `with` invariants for `Nat` accumulators (`sumFoldl`, `countSp`, `countAbove100`; the same bound as
+`Tail.sum`/`Tail.length`); `countAbove100` is written out (`frontx_hof`, `frontx_view`, `frontx_compile`, an entry
+equation `rw [countAbove100, countAbove.hof]; rfl`) because its entry is not itself the higher-order call.
+
+Not done / why:
+- `Mine.List.flatMap` (`DependentTypes/DB.lean:458`) verbatim: in Lean 4.29 the `xs.flatMap f` in its body resolves to
+  core `List.flatMap`, so the book's function is a non-recursive wrapper whose body is a `match`; the entry's body is
+  then a `match`, not a call of a copy (`frontx_hof_entry` wants one call). The core function compiles (`dupAll`).
+- `EarlyReturn.Desugared.List.find?` (`Do.lean:123`, `runCatch` over `ExceptT … Option`), `Many.orElse`,
+  `Monads.Writer.andThen`, `listMonoid`: monad transformers / function-valued data, not first-order after
+  specialisation of one argument.
+- `TailRec.Array.map`/`arrayMapHelper` (`Arrays.lean:274-287`), `Array.map`: `Array` results (no array output).
+- Compiler core (`SELFHOST_DEPTH.md` row 1): no function there is blocked by higher-order arguments alone; the
+  closures sit inside passes over `IR.Code`/`BStmt` (n-ary inductives), lists of non-bytes, `Fin`, sized `BitVec`
+  (e.g. `runLi` folds `LiStep.eval` over a `List LiStep` of sized bit vectors, `loB`'s predicate is a parameter).
+  The pipeline semantics above (`Stage/XStage/Pipe.denote`) are the core functions where specialisation alone
+  suffices, at a known stage.
+- con-leche (`CONLECHE_DEPTH.md` row 6): the closures are monadic continuations (`k : Expr → m Expr`), environment
+  lookups (`Name → Option ConstantInfo`) and records of closures (`CoreFns`); every function there fails the type
+  gate first (`Expr`, `m α`). Not attempted.
+- **Escaping closures** (out of scope, reported): closures stored in data (`CoreFns`, `WideF`/`MachineF` records,
+  `Base.get`), returned (`IR.color : … → Option (Nat → Reg)`, `envB`/`svB` in `Opt/BSel.lean`), or passed down a
+  recursion that changes them (rejected: "a recursive call changes a fixed argument").
+- A site inside a loop body of a compiled function whose list argument is not the input (`xs.any …` on a second
+  list) compiles only as far as the translator's calls allow (§12.4: callee blocks are the caller's first block).
+
+Reproduce: `lake build Riscv.Frontx.HofExamples`; `lake env lean --tstack=4000000 Testing/asm/emit_frontx.lean`;
+`for f in Testing/asm/frontx-words/hof_*.cases; do python3 Testing/asm/frontx_test.py check 50 $(basename $f .cases); done`;
+axioms: `Testing/scripts/axioms_x.lean`.
+
+## 29. Monads by specialisation (branch `feat-monad`, on `feat-hof`)
+
+Files: `Riscv/Frontx/SpecMonad.lean` (new: the pass, its lemmas, `frontx_monad`, `frontx_monad_entry`,
+`frontx_monad_fn`), `Riscv/Frontx/MonadExamples.lean` (new: targets), `Testing/scripts/axioms_y.lean` (new).
+Shared files touched: `Riscv/Frontx/Translate.lean` (three lines, below), `Testing/scripts/check.sh` (`axioms_y` in the
+loop), `Testing/scripts/expected-axioms.txt` (32 lines appended), `Testing/asm/emit_frontx.lean` (one `#eval` block).
+No `Compiler/`, `Spec/`, `Ind*` or §27 file changed (`SpecMonad.lean` imports `SpecHof.lean` and reuses its helpers).
+
+**The pass** (`frontx_monad h`, front end only; the copies are compiled by the existing translator):
+- A **site** is `StateT.run (F a) s`, `ReaderT.run (F a) r`, nested (`StateT.run ((F a).run r) s`: a list of `run`
+  layers), or `F a` of type `Except ε α` / `Option α` / `Id α` with an instance or a known function among its
+  arguments (a definition polymorphic in `[Monad m] [MonadState σ m]` / `[MonadExcept ε m]` used at a concrete
+  monad), or `forIn l b f` over a list with a known body (`for x in l do`). Fixed positions: §27's plus type formers
+  (the monad `m`).
+- A recursive `F` gets a copy `h.mon<k> caps ys extras := C[F a]` (`C` the layers, `extras` the state / environment,
+  `Id` stripped from the type). Its equation is `F`'s own unfolding equation under `C` (`congrArg`), then `simp only`
+  with Lean core's `StateT.run_bind/pure/get/set/modify/modifyGet/map`, `ReaderT.run_bind/pure/read/map`,
+  `ExceptT.run_bind/pure/throw`, `List.forIn_cons/nil`, `pure_bind`, `bind_assoc`, `bind_pure` and 55 lemmas of
+  `SpecMonad.lean` (each `rfl` or by cases: `run` of `ite`/`dite`/`throw`/`tryCatch`/lifted `get`/`set`/`modify`,
+  `ite`/`dite` under `bind`, `Except`/`Option`/`Id` `bind`/`pure`/`map`/`tryCatch` on constructors, projections of
+  `ite`, `MProd`, an `ExceptT` action bound in `m` as its `run`), `zeta` (the `do` join points), and two simprocs:
+  `monPushMatch` pushes a context (`run`, projections, `bind`, `tryCatch`, `<$>`, an outer `match`) into a `match`,
+  proved by the matcher itself (motive `fun d => C[match d …] = match d …`, every alternative `rfl`), `monMatchIte`
+  a `match` on an `if` (`apply_ite`). The recursive calls `C[F a']` with the same fixed arguments are folded to the
+  copy (definitional), nested sites are specialised in turn, non-recursive monadic definitions (`runCatch`,
+  `checkedSub`, `Loops.List.count`) unfolded. So the state is an extra parameter and the second component of the
+  result, `Except` the §16 tag-byte payload, a `for` loop a first-order recursion on the list.
+- After the loop (the body is `K[c]` with one copy call `c`): `monAbsorb` absorbs the continuation `K` (the `match`
+  of an early `return` in a `for`, `failure` after the loop) into a new copy `K[cN zs]` whose equation is `cN`'s under
+  `K`; `monConstArgs` drops a parameter that the entry and every recursive call pass as the same closed value (the
+  "not returned yet" loop state `⟨none, ()⟩`), its equation `cN`'s at that value.
+- `h.mon : h ys = <first-order body>`: at most `propext`, `Quot.sound` (from `List.forIn_cons`), nothing for most.
+  `frontx_monad_entry g [measure] [with]` = §27's entry command on `frontx_monad` (`g.mon.entry`, `rfl` after
+  `rw [g.mon]`); `frontx_monad_fn g [requires]` for a body without a loop: `g.monb xs (_ : Nat)` (the §16 `…At`
+  convention), `frontx_compile`, `frontx_entry g from g.mon.entry`.
+
+`Translate.lean` (generated code of all older entry points unchanged): `resultComps Unit = []` (no component: the
+`Unit` of `Unit × σ` / `Except ε (Unit × σ)`); a result with ONE component inside a compound type (`Unit × Nat`) goes
+the several-components path (`multi`) in `frontx_compile` and `frontx_entry`, not the scalar one.
+
+**Compiled, machine theorem** `g.implements1` (the Sail axiom set, equal to `nonFindGt3.implements1`'s), test
+`frontx_test.py check 50` on QEMU and Sail vs executed Lean (`emit_frontx.lean`), all 17 × 50 ok, lengths up to 2769:
+
+| entry | monadic code | source | words |
+|---|---|---|---|
+| `countGt3`, `countNotGt3` | `ThenDoUnless.count`/`countNot` (`[Monad m] [MonadState Nat m]`, `if ← p x`, `unless`, `modify`) at `StateM Nat`, `p := fun x => pure (x > 3)` | fp-lean @0abeea5 `MonadTransformers/Do.lean:66,76` | 84, 84 |
+| `countGt3Exc` | `count` at `StateT Nat (Except String)`, the predicate `throw`s on 0 | `Do.lean:66` | 111 |
+| `desFindGt3` | `EarlyReturn.Desugared.List.find?` (`runCatch` over `ExceptT α Option`, `throw`, `monadLift`; §27 "not done") | `Do.lean:114,123` | 77 |
+| `loopFindGt3`, `contFindGt3` | `Loops.List.find?`, `Loops.Cont.List.find?` (`for`, early `return`, `continue`, `failure`) | `Do.lean:324,332` | 77, 79 |
+| `loopCountSp` | `Loops.List.count` (`Id.run do`, `let mut`, `for`) | `Do.lean:345` | 83 |
+| `twoE`, `threeE`, `sixE` | `Mut.St.two` (a `StateT Nat Id` block applied to `0`), `Mut.three`, `Mut.six` (`for` over `[1, 2, 3]`, unrolled) | `Do.lean:372,386,396` | 48, 48, 48 |
+| `sumNZE` | `StateT Nat (Except String)`, `throw`, `modify` | ours | 100 |
+| `countZerosE` | `try … catch` in the loop body (`StateT Nat (Except String)`) | ours | 88 |
+| `countAboveRE` | `ReaderT UInt8 (StateM Nat)`, `read` | ours | 85 |
+| `maxStE` | `get`/`set` in `StateM UInt8` | ours | 61 |
+| `splitE` | a structure `Counts` as the state, `modify fun c => { c with … }` | ours | 116 |
+| `firstBigE` | `[Monad m] [MonadExcept String m]` at `Except String`, early `return`, `throw` | ours | 77 |
+| `trySubE` | `tryCatch` in `Except` around a helper (`frontx_monad_fn`) | ours | 65 |
+
+Human input: the `with` invariants of the `Nat` accumulators (as §27's `countSp`).
+
+Not done / why:
+- lean-zip (`LEANZIP_DEPTH.md`, EXC): the functions whose only blocker is EXC (`BitReader.readBit`, `readBits`
+  (+ `go`), `readUInt16LE`, `alignToByte`, `readBitsFast`, `takeBits`) already compile through §16 (the probe ran
+  `frontx_compile` on the `readBits` wrapper, not on the `rfl` entry). Every other EXC function also needs ARR, BAO,
+  BAF, STR, IND or WF (`decodeStored` → `readBytes` (`ByteArray` result), `validateLengths` (arrays), the inflate
+  loops); none became reachable.
+- con-leche (`CONLECHE_DEPTH.md` row 11): no `CheckM`/`CheckCM`/`[Monad m]` function passes the type gate apart from
+  the monad: the `m`-polymorphic kernel functions take `Expr`/`Level`/`CoreFns m`; the only scalar ones,
+  `peelFuelM`/`maxNatSizeM`/`flushC` (`Cached/StateC.lean:324,328,508`), live in `CheckCM = StateT CState CheckM`,
+  whose state `CState` holds `HashMap`s of `Expr`/`Name`/`Level` (not in this repo; row 1, 2, 8). The pass handles that
+  monad shape (`countGt3Exc`, `sumNZE` are `StateT σ (Except ε)`); what is missing is the data.
+- fp-lean `countLetters` (`Do.lean:44`, `StateT LetterCounts (Except Err)`): `Char`/`String` (`List Char`,
+  `vowels.contains`); the book's own `State σ α := σ → σ × α` monad (`Monads.lean:476`) and `number`
+  (trees out).
+- Non-tail recursive monadic calls (`helper left` then `helper right`): the copy returns a pair, and the translator's
+  calls take one result word (§16).
+- `for i in [a:b]` in a monad other than `Id` (the range loop of `For.lean` is `Id` only); `ExceptT` over `StateM`
+  contexts (only `ExceptT … Option` through `runCatch` was needed).
+
+Reproduce: `lake build Riscv.Frontx.MonadExamples`; `lake env lean --tstack=4000000 Testing/asm/emit_frontx.lean`;
+`for f in Testing/asm/frontx-words/mon_*.cases; do python3 Testing/asm/frontx_test.py check 50 $(basename $f .cases); done`;
+axioms: `Testing/scripts/axioms_y.lean`.
+
+## 28. Strings as length + UTF-8 (branch `feat-utf8`)
+
+The owner's layout (ROADMAP): **a `String` is its length in bytes, 8 bytes little-endian, followed by its UTF-8
+bytes** (the format of `LList UInt8` in `Spec/Encode.lean`, no terminator, no tags).  It is the format of every
+`String` field of a `frontx_ind_type` in input and output; in memory a string stays the chain of cells of
+section 23 (`Bytes8`, one byte per cell), which is what the compiled functions (`Bytes8.eqb`, `Name.decEq`, ...) and
+their proofs work on; only the decoder and the encoder of the program changed, proved once.
+
+Example (`Riscv/Frontx/NameExamples.lean`, `decide +kernel`): `Name.str .anonymous "aλ"` is
+`01 00 03 00 00 00 00 00 00 00 61 ce bb` (tag `str`, the prefix `anonymous` = tag `00`, the length 3, the bytes;
+section 23's format was `01 00 04 61 04 ce 04 bb 03`).
+
+**Stated in the Encode style** (`Riscv/Frontx/IndStr.lean`): `encString s = enc (BitVec.ofNat 64 s.utf8ByteSize) ++
+s.toUTF8.data.toList`; `LString` (a string of fewer than `2^64` bytes, as `LList`) with `instance : Bytes LString`
+(decoder: the length, then that many bytes that are valid UTF-8; `dec_enc` proved); examples for `""`, `"ab"` and NUL
++ 2-, 3-, 4-byte characters (`"\x00λ∀𝔸"`).  Per type the layout of its constructors: `NameT.enc_anonymous : NameT.enc
+.anonymous = [0]`, `NameT.enc_str : NameT.enc (.str p s) = 1 :: NameT.enc p ++ encString s`, `NameT.enc_num :
+NameT.enc (.num p n) = 2 :: NameT.enc p ++ enc (BitVec.ofNat 64 n)`.  The generic statement is `C.enc`
+(`Compiler/Ind.lean`): a field `Fld.sl` / `Fld.sr` (the child `l` / `r` is a string) is `C.senc` = `leN 8 n ++
+bytes` of the string's cells; `senc_ofString : (C.str st s.toUTF8.data.toList).senc = encString s`.
+
+**What changed.**
+- `Compiler/Ind.lean`: `Fld.sl`, `Fld.sr`; `C.str st L` (the cells of the bytes `L`: per byte `[st + 1, b, rest, z]`,
+  then `[st, 0, z, z]`), `C.sb` (the bytes of a chain, read off the cells with a child), `C.senc`; `sTag sh =
+  sh.length - 2`: string cells use **the shape's last two tags** (the front end puts `Bytes8` last); `C.wf` per child
+  slot: `l.wf` if `Fld.l`, `l.IsStr (sTag sh)` if `Fld.sl`, `z` if neither (conjunctions, so a slot with both is
+  consistent).  Decoder `dStr st d`: read the length (into `v_13`, `v_9` kept), allocate the end cell, then a cell per
+  byte **from the last byte back** (children below parents, as `Rp` requires), cursor after the bytes; locals 13,
+  14 (decoder frame 48 → 64 bytes).  Encoder `eStr p`: count the chain (`eCnt`, loop), write the count with `wrB 8`
+  (`v_10` kept), then the bytes (`eBytes`, loop); locals 13-15 (encoder frame 56 → 72 bytes).  The stack bound of
+  the statements (`8 (nl + 1) ≥ 136` per level) covers both, so no statement's space changed.
+- `Compiler/IndStrOk.lean` (new): `dLoop_ok`, `dStr_ok` (the decoder of a string), `cnt_ok`, `bytes_ok`, `eStr_ok`
+  (the encoder), `str_sb`, `IsStr.senc`.  `Compiler/IndBytes.lean` (new): the byte-reading/writing lemmas of
+  `IndDec.lean` moved out (`At`, `rdB_ok`, `wr`, `wrB_ok`, ...).  `Compiler/IndDec.lean`: `dFlds_ok` / `eFlds_ok`
+  with the two new fields.  `Compiler/IndMain.lean`: `nodes_le` per slot (`slot_le`, `str_le`: `n + 1` cells for
+  `8 + n` bytes).  `Compiler/IndSup.lean`: `C.dec` / `decFlds` decode strings; `dec_enc`, `decIn_ok`,
+  `al_le_cellsSup` take `length < 2^64` (an 8-byte length cannot describe a longer string), so `implements1_indM`'s
+  cell bound is asked only for inputs below `2^32` bytes (`Riscv/Frontx/Ind.lean`; `IndMem.memoryNeeded_le` passes
+  its `2^20`).
+- Front end (`Riscv/Frontx/IndCmd.lean`): a `String` field is `.sl` / `.sr` in the shape; `Bytes8` is the last type
+  of the shape (TExpr: the types after `Name` — `List Level`, `Literal`, `List Expr`, `Option Expr` — move down by
+  two tags, the string cells are 28, 29); for `Bytes8`
+  `T.Nk.emb_str : (emb t).IsStr off`, used by the other types' `emb_wf`.  New definitions in `wfDefs`.
+- Shapes: `NameT` `[], [.l, .sr], [.l, .x], [], [.b, .l]`; `LevelN` `..., [.l, .sr], [.l, .x], [], [.b, .l]`;
+  `TExpr` `Name.str` `[.l, .sr]`, `Literal.strVal` `[.sl]`.
+
+**Not done.** `String.length` (Lean's is the number of characters, not bytes: needs the UTF-8 structure of
+`String.utf8EncodeChar`, continuation bytes `10xxxxxx`, as a lemma; `utf8ByteSize` would be the chain length) and
+string literals as constants (a constant chain `mk … (mk … nul)` in `E`, `=` with a constant side): neither was
+cheap here.
+
+Axioms: `Testing/scripts/axioms_utf8.lean` (`dStr_ok`, `eStr_ok`, `dec_ok`, `enc_ok`, `dec_enc`, the `Bytes LString`
+instance, `senc_ofString`, `NameT.enc_str` / `enc_num`: propext, Classical.choice, Quot.sound).  Tests (QEMU + Sail
+against executed Lean, `frontx_test.py check 60`): `name_beq`, `name_bbeq`, `level_beq`, `level_bbeq` (60 cases each;
+the first 8 pairs fixed: `""`, NUL, `"𝔸"` (4 bytes), `"λ∀"`, `"é"`/`"e"`, `"x🙂y"`; the random names now also draw
+4-byte strings), the 11 `expr_*` entries (60 each; `inst1` returns trees with strings, so the encoder is exercised),
+and every other inductive-path entry re-emitted (their decoder/encoder code changed): all pass; the 25 run-time
+memory entries (`emit_mem.lean`, `mem_test.py check 10`) pass.  Statement fingerprints: no `stmt` hash changed; the
+`closure` hashes of `ind_ok` and every inductive-path `implements1` changed (C.enc, C.wf, decFn, encFn).
+
+**State (round paused by the owner).** Done: layout, decoder/encoder proofs, front end, Encode-style statements,
+tests above.  `bash Testing/scripts/check.sh` passed (ALL CHECKS PASSED) at `dbcc834` (after merging origin/main and
+feat-expr); after that only `axioms_z.lean` → `axioms_utf8.lean` (check.sh list updated) and a ROADMAP-only merge of
+origin/main — the re-run of check.sh was stopped by the pause, so run it once on resume.  Next steps: (1) re-run
+check.sh; (2) optionally `String.utf8ByteSize` (the chain length, cheap) and `String.length` (needs a lemma on
+`String.utf8EncodeChar`: count the non-continuation bytes); (3) string literals as constant chains in `E`
+(Name constants like `Name.str .anonymous "Nat"`, `=` with a constant side); (4) small linter warnings (unused simp
+arguments in `IndStrOk.lean`, `IndDec.lean`, `IndSup.lean`).

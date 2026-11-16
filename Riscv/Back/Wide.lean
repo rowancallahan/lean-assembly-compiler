@@ -156,7 +156,7 @@ def immOK (op : Op) (c : BitVec 64) : Bool :=
   | _ => fits12 c
 
 /-- funct3 of the M-extension R-type words (funct7 = 1): `mul` 0, `divu` 5, `remu` 7 -/
-def MOp.f3 : MOp → Nat | .mul => 0 | .divu => 5 | .remu => 7
+def MOp.f3 : MOp → Nat | .mul => 0 | .divu => 5 | .remu => 7 | .div => 4 | .rem => 6
 
 def wenc : WOp → List (BitVec 32)
   | .mov d a => [encR 0 0 (phys d) 0 (phys a)]
@@ -271,6 +271,8 @@ theorem w_mop {m : MOp} {d a b : Reg} {s : St} {pc : BitVec 64} (hA : core.At s 
   | mul => exact one hA fun h hpc hok hi => G.step_mul h hpc hok _ _ _ hi
   | divu => exact one hA fun h hpc hok hi => G.step_divu h hpc hok _ _ _ hi
   | remu => exact one hA fun h hpc hok hi => G.step_remu h hpc hok _ _ _ hi
+  | div => exact one hA fun h hpc hok hi => G.step_div h hpc hok _ _ _ hi
+  | rem => exact one hA fun h hpc hok hi => G.step_rem h hpc hok _ _ _ hi
 
 theorem toNat6 (c : BitVec 64) : (c.setWidth 6).toNat = c.toNat % 64 := by simp
 
