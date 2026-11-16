@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Int64 nano programs through the proved generator `nanoGen` (= code of `nanoCompile`, Nano/ProofTop.lean) on QEMU and
+"""Int64 nano programs through the proved generator `nanoGenIR` (= code of `nanoCompileIR`, Nano/ProofTop.lean) on QEMU and
 on the Sail C simulator: Testing/nano/nanolib.INT_CORPUS + R random Int64 programs (GI), 8 signed / overflow / edge input
 vectors each.  The Lean emitter (generated: Testing/nano/work/emit_int.lean) elaborates with nanoElabT (type must be
-Int64), writes `nanoGen p` words and per case input = `encIs args`, expected = `nanoRun p input`, and CHECKS
+Int64), writes `nanoGenIR p` words and per case input = `encIs args`, expected = `nanoRun p input`, and CHECKS
 expected = `encI (f args)` with `f` Lean's own `def` of the same text (and words == Ir.compileW).  Then
 Testing/asm/ir_test.py check 8 nano_i64_<i> (memoryNeeded and memoryNeeded - 1).  Removes Testing/asm/ctest.
 usage: nano_int_test.py [R random programs] [seed]"""
@@ -29,7 +29,7 @@ L = ["import Nano.ProofTop", "import Nano.Int", "import Nano.Elab", "open Proven
      "    match compileW (lower p) with",
      "    | none => throw (IO.userError s!\"{name}: compile failed\")",
      "    | some (ws, Q) =>",
-     "      unless Proven.Top.wordBytes ws == nanoGen p do throw (IO.userError s!\"{name}: WORDS != nanoGen\")",
+     "      unless Proven.Top.wordBytes ws == nanoGenIR p do throw (IO.userError s!\"{name}: WORDS != nanoGen\")",
      "      IO.FS.writeFile s!\"Testing/asm/ir-words/{name}.words\" (String.intercalate \"\\n\" (s!\"{name} 0\" :: ws.map hex8) ++ \"\\n\")",
      "      let mut s := \"\"",
      "      for args in ins do",
