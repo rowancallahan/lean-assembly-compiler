@@ -161,7 +161,7 @@ def work_of(fn, h, n, cells):
         return spaceA(m, nl, cells, n)
     return 8 * (int(h[0]) + 1) + 7
 def gen_lines(fn, seed, N, big):
-    p = subprocess.run(f"export PATH=$HOME/.elan/bin:$PATH; ulimit -s unlimited; cd {D}/../../..; G9='{fn[5:] if fn.startswith('expr_') else fn} {seed} {N}{' big' if big else ''}' lake env lean Testing/asm/fuzz9/gen9.lean",
+    p = subprocess.run(f"export PATH=$HOME/.elan/bin:$PATH; ulimit -s unlimited; cd {D}/../../..; G9='{fn[5:] if fn.startswith('expr_') else fn} {seed} {N}{' big' if big else ''}' lake env lean --tstack=16000000 Testing/asm/fuzz9/gen9.lean",
                        shell=True, capture_output=True, text=True, executable="/bin/bash")
     assert p.returncode == 0, p.stderr[-2000:]
     out = []
