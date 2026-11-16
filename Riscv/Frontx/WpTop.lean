@@ -195,8 +195,8 @@ theorem wholeS_ok (C : Nat) {t : Ty} {β : Type} [Res β] (f : ByteArray → β)
     ∃ σ' out', Mach.BExec (wholeS p (Res.k β)) ⟨env, [xs.data.toList.map (·.toBitVec), out], [W]⟩ σ' ∧
       σ'.heap = [xs.data.toList.map (·.toBitVec), out'] ∧
       ((pk 0 E ≤ C ∧ out'.take (Res.enc (f xs)).length = (Res.enc (f xs)).map (·.toBitVec) ∧
-          out'.drop (Res.enc (f xs)).length = out.drop (Res.enc (f xs)).length) ∨
-        (C < pk 0 E ∧ σ'.env 1 = NIL ∧ out' = out)) := by
+          out'.drop (Res.enc (f xs)).length = out.drop (Res.enc (f xs)).length ∧ σ'.env vOk = 1) ∨
+        (C < pk 0 E ∧ σ'.env 1 = NIL ∧ out' = out ∧ σ'.env vOk = 0)) := by
   obtain ⟨σ1, W1, e1, h1', w1, o1⟩ := wholeCore C p xs env out W y E h1 h32 hW hC hcap hwf hg
   have hlen : (Res.enc (f xs)).length = Res.k β + 1 := by
     have := congrArg List.length (Res.henc (f xs)); simpa using this
@@ -215,7 +215,7 @@ theorem wholeS_ok (C : Nat) {t : Ty} {β : Type} [Res β] (f : ByteArray → β)
     obtain ⟨out', hst, hl', hb', hu⟩ := store8_exec (Res.repr (f xs)) (Res.k β) (Res.hk (β := β)) σ2 _ out rfl h4
       (by omega) rfl
     have e2 := when_true (c := 8) (σ := ⟨env1.set 8 1, Hh, [W1]⟩) (by simp only [set_eq]; decide) (.seq .assign hst)
-    refine ⟨_, out', .seq e1 (.seq g1 (.seq e2 .assign)), rfl, .inl ⟨pk1, ?_, ?_⟩⟩
+    refine ⟨_, out', .seq e1 (.seq g1 (.seq e2 .assign)), rfl, .inl ⟨pk1, ?_, ?_, ?_⟩⟩
     · rw [hlen]
       apply List.ext_getElem?; intro i
       rw [Res.henc]
@@ -224,15 +224,18 @@ theorem wholeS_ok (C : Nat) {t : Ty} {β : Type} [Res β] (f : ByteArray → β)
       · rw [List.getElem?_eq_none (by simp; omega), List.getElem?_eq_none (by simp; omega)]
     · rw [hlen]
       exact List.ext_getElem? fun i => by rw [List.getElem?_drop, List.getElem?_drop]; exact hu _ (by omega)
+    · simp only [σ2, set_ne (show vOk ≠ 1 by decide), set_ne (show vOk ≠ 4 by decide),
+        set_ne (show vOk ≠ 8 by decide), ok1']; done
   · have ok1' : env1 vOk = 0 := ok1
     have g1 : Mach.BExec (.assign 8 (.var vOk)) ⟨env1, Hh, [W1]⟩ ⟨env1.set 8 0, Hh, [W1]⟩ := by
       have := Mach.BExec.assign (v := 8) (e := .var vOk) (σ := ⟨env1, [xs.data.toList.map (·.toBitVec), out], [W1]⟩)
       simp only [Mach.BExp.denote, ok1'] at this; exact this
     have e2 := when_false (c := 8) (S := (Mach.BStmt.seq (.assign 4 (.var (p.compP [inLocP] 9).2.v)) (store8 (Res.k β))))
       (σ := ⟨env1.set 8 0, [xs.data.toList.map (·.toBitVec), out], [W1]⟩) (by simp only [set_eq])
-    refine ⟨_, out, .seq e1 (.seq g1 (.seq e2 .assign)), rfl, .inr ⟨pk1, ?_, rfl⟩⟩
-    simp only [Mach.BExp.denote, set_eq, set_ne (show 1 ≠ 8 by decide), set_ne (show vOk ≠ 8 by decide), ok1']
-    simp
+    refine ⟨_, out, .seq e1 (.seq g1 (.seq e2 .assign)), rfl, .inr ⟨pk1, ?_, rfl, ?_⟩⟩
+    · simp only [Mach.BExp.denote, set_eq, set_ne (show 1 ≠ 8 by decide), set_ne (show vOk ≠ 8 by decide), ok1']
+      simp
+    · simp only [set_ne (show vOk ≠ 1 by decide), set_ne (show vOk ≠ 8 by decide), ok1']
 
 /-- an array result: the program, the elements' bytes (only while no page request failed), their number in `a1`,
 `a1 := -1` when a request failed -/
@@ -252,8 +255,9 @@ theorem wholeA_ok (C : Nat) {k : AK} (p : Pg [.ar .ba] (.ar k)) (ob : Nat) (xs :
     ∃ σ' out', Mach.BExec (wholeA p ob) ⟨env, [xs.data.toList.map (·.toBitVec), out], [W]⟩ σ' ∧
       σ'.heap = [xs.data.toList.map (·.toBitVec), out'] ∧
       ((pk 0 E ≤ C ∧ out'.take (encArr k y).length = (encArr k y).map (·.toBitVec) ∧
-          out'.drop (encArr k y).length = out.drop (encArr k y).length ∧ σ'.env 1 = rN (encArr k y).length) ∨
-        (C < pk 0 E ∧ σ'.env 1 = NIL ∧ out' = out)) := by
+          out'.drop (encArr k y).length = out.drop (encArr k y).length ∧ σ'.env 1 = rN (encArr k y).length ∧
+          σ'.env vOk = 1) ∨
+        (C < pk 0 E ∧ σ'.env 1 = NIL ∧ out' = out ∧ σ'.env vOk = 0)) := by
   obtain ⟨σ1, W1, e1, h1', w1, o1⟩ := wholeCore C p xs env out W y E h1 h32 hW hC hcap hwf hg
   obtain ⟨env1, H1, Ws1⟩ := σ1
   simp only at h1' w1; subst h1' w1
@@ -291,20 +295,24 @@ theorem wholeA_ok (C : Nat) {k : AK} (p : Pg [.ar .ba] (.ar k)) (ob : Nat) (xs :
     have e4 := when_true (c := 8) (S := .seq (outLoopP l k.el.width ob) (.assign 1 (.var (ob + 1))))
       (σ := ⟨env1.set 8 1, Hh, [W1]⟩) (by simp only [set_eq]; decide) (.seq e2 .assign)
     refine ⟨_, wrO out 0 (encArr k y), .seq e1 (.seq g1 (.seq e4 .assign)), rfl,
-      .inl ⟨pk1, wrO_take _ _ hout, wrO_drop _ _, ?_⟩⟩
-    simp only [Mach.BExp.denote, set_eq, set_ne (show 1 ≠ 8 by decide), set_ne (show vOk ≠ 8 by decide),
-      set_ne (show vOk ≠ 1 by decide), Op.eval]
-    rw [hk vOk (by have := hob.1; simp only [vOk]; omega), hk2' vOk (by have := hob.1; simp only [vOk]; omega)
-      (by have := hob.1; simp only [vOk]; omega) (by decide), ok1', if_neg (by decide), hq]
+      .inl ⟨pk1, wrO_take _ _ hout, wrO_drop _ _, ?_, ?_⟩⟩
+    · simp only [Mach.BExp.denote, set_eq, set_ne (show 1 ≠ 8 by decide), set_ne (show vOk ≠ 8 by decide),
+        set_ne (show vOk ≠ 1 by decide), Op.eval]
+      rw [hk vOk (by have := hob.1; simp only [vOk]; omega), hk2' vOk (by have := hob.1; simp only [vOk]; omega)
+        (by have := hob.1; simp only [vOk]; omega) (by decide), ok1', if_neg (by decide), hq]
+    · simp only [set_ne (show vOk ≠ 1 by decide), set_ne (show vOk ≠ 8 by decide)]
+      rw [hk vOk (by have := hob.1; simp only [vOk]; omega), hk2' vOk (by have := hob.1; simp only [vOk]; omega)
+        (by have := hob.1; simp only [vOk]; omega) (by decide), ok1']
   · have ok1' : env1 vOk = 0 := ok1
     have g1 : Mach.BExec (.assign 8 (.var vOk)) ⟨env1, Hh, [W1]⟩ ⟨env1.set 8 0, Hh, [W1]⟩ := by
       have := Mach.BExec.assign (v := 8) (e := .var vOk) (σ := ⟨env1, [xs.data.toList.map (·.toBitVec), out], [W1]⟩)
       simp only [Mach.BExp.denote, ok1'] at this; exact this
     have e2 := when_false (c := 8) (S := (Mach.BStmt.seq (outLoopP (p.compP [inLocP] 9).2 k.el.width ob) (.assign 1 (.var (ob + 1)))))
       (σ := ⟨env1.set 8 0, [xs.data.toList.map (·.toBitVec), out], [W1]⟩) (by simp only [set_eq])
-    refine ⟨_, out, .seq e1 (.seq g1 (.seq e2 .assign)), rfl, .inr ⟨pk1, ?_, rfl⟩⟩
-    simp only [Mach.BExp.denote, set_eq, set_ne (show 1 ≠ 8 by decide), set_ne (show vOk ≠ 8 by decide), ok1']
-    simp
+    refine ⟨_, out, .seq e1 (.seq g1 (.seq e2 .assign)), rfl, .inr ⟨pk1, ?_, rfl, ?_⟩⟩
+    · simp only [Mach.BExp.denote, set_eq, set_ne (show 1 ≠ 8 by decide), set_ne (show vOk ≠ 8 by decide), ok1']
+      simp
+    · simp only [set_ne (show vOk ≠ 1 by decide), set_ne (show vOk ≠ 8 by decide), ok1']
 
 /-- the pool size from the work block: `cap := ((sp - a2) >> 13 - 1) << 10` words (one page of `8 P = 8192` bytes
 is left for the frame) -/

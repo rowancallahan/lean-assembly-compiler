@@ -41,10 +41,46 @@ def Implements1Pg {α β : Type} (encA : α → List UInt8) (encB : β → List 
         (retLen = true → s'.regs.get? .x11 = some (BitVec.ofNat 64 y.length))) ∧
       (¬ fits a work.len → s'.regs.get? .x11 = some (BitVec.allOnes 64))
 
+/-- **`Implements1Pg` and `a7` (variable 7, `vOk`) at the return**:: any work length `L ≥ Lmin`; the output when the run fits (`fits a L`),
+else `a1 = 2^64 - 1`; nothing outside the output and work blocks changes -/
+def Implements1PgQ {α β : Type} (encA : α → List UInt8) (encB : β → List UInt8) (code : List (BitVec 32))
+    (f : α → β) (Lmin : Nat) (fits : α → Nat → Prop) (Q : α → Nat → BitVec 64 → Prop) (maxLen : Nat := 2 ^ 20) (retLen : Bool := false) : Prop :=
+  ∀ (a : α) (s : St) (entry ra : BitVec 64) (input output work : Proven.Region),
+    let x := encA a
+    let y := encB (f a)
+    let codeR : Proven.Region := ⟨entry.toNat, 4 * code.length⟩
+    x.length ≤ maxLen → Cfg s → s.regs.get? .PC = some entry → entry.toNat % 4 = 0 →
+    bytesAt s entry.toNat (4 * code.length) = codeBytes code →
+    s.regs.get? .x10 = some (BitVec.ofNat 64 input.base) →
+    s.regs.get? .x11 = some (BitVec.ofNat 64 x.length) →
+    s.regs.get? .x12 = some (BitVec.ofNat 64 work.base) →
+    s.regs.get? .x13 = some (BitVec.ofNat 64 output.base) →
+    s.regs.get? .x2 = some (BitVec.ofNat 64 (work.base + work.len)) →
+    s.regs.get? .x1 = some ra → ra.toNat % 4 = 0 → Proven.disjoint ⟨ra.toNat, 4⟩ codeR →
+    bytesAt s input.base x.length = x.map (some ·.toBitVec) →
+    input.len = x.length → y.length ≤ output.len → Lmin ≤ work.len → work.base % 8 = 0 →
+    (∀ r ∈ [input, output, work, codeR], r.inRAM) → [input, output, work, codeR].Pairwise Proven.disjoint →
+    Mapped s output → Mapped s work →
+    runsTo s fun s' => s'.regs.get? .PC = some ra ∧
+      unchangedOutside s s' [⟨output.base, y.length⟩, work] ∧ abiSavedKept s s' ∧ Cfg s' ∧
+      (fits a work.len → bytesAt s' output.base y.length = y.map (some ·.toBitVec) ∧
+        (retLen = true → s'.regs.get? .x11 = some (BitVec.ofNat 64 y.length))) ∧
+      (¬ fits a work.len → s'.regs.get? .x11 = some (BitVec.allOnes 64)) ∧
+      ∃ v, s'.regs.get? .x17 = some v ∧ Q a work.len v
+
+theorem Implements1PgQ.toPg {α β : Type} {encA : α → List UInt8} {encB : β → List UInt8} {code : List (BitVec 32)}
+    {f : α → β} {Lmin : Nat} {fits : α → Nat → Prop} {Q : α → Nat → BitVec 64 → Prop} {maxLen : Nat} {retLen : Bool}
+    (h : Implements1PgQ encA encB code f Lmin fits Q maxLen retLen) :
+    Implements1Pg encA encB code f Lmin fits maxLen retLen := by
+  intro a s entry ra input output work x y codeR hmax hc hpc hal hcode h10 h11 h12 h13 h2 h1 hra hrad hx
+    hil hol hws hwal hram hdis hmapO hmapW
+  exact runsTo_mono (h a s entry ra input output work hmax hc hpc hal hcode h10 h11 h12 h13 h2 h1 hra hrad hx
+    hil hol hws hwal hram hdis hmapO hmapW) fun _ ⟨p1, p2, p3, p4, p5, p6, _⟩ => ⟨p1, p2, p3, p4, p5, p6⟩
+
 theorem pg_core {α β : Type} (encA : α → List UInt8) (encB : β → List UInt8) (f : α → β)
     (N : Nat) (hN : N ≤ NS) (prog : Mach.BStmt) (code : List (BitVec 32)) (hspec : BSpec N prog code)
     (wl : Nat → Nat) (hwl : ∀ L, 8192 ≤ L → 8 * wl L + 8 * (N + 1) + 7 ≤ L) (maxLen : Nat) (retLen : Bool)
-    (fits : α → Nat → Prop)
+    (fits : α → Nat → Prop) (Q : α → Nat → BitVec 64 → Prop)
     (hex : ∀ (a : α) (out : List (BitVec 8)) (tbl : List (BitVec 64)) (env : Mach.BEnv) (b L : Nat),
       env 1 = BitVec.ofNat 64 (encA a).length → env 2 = BitVec.ofNat 64 b → env 4 = BitVec.ofNat 64 (b + L) →
       b % 8 = 0 → 0x80000000 ≤ b → b + L ≤ 0x100000000 → 8192 ≤ L → (∀ j, 8 ≤ j → env j = 0) →
@@ -55,7 +91,7 @@ theorem pg_core {α β : Type} (encA : α → List UInt8) (encB : β → List UI
         out'.drop (encB (f a)).length = out.drop (encB (f a)).length ∧
         (fits a L → out'.take (encB (f a)).length = (encB (f a)).map (·.toBitVec) ∧
           (retLen = true → σ'.env 1 = BitVec.ofNat 64 (encB (f a)).length)) ∧
-        (¬ fits a L → σ'.env 1 = BitVec.allOnes 64)) :
+        (¬ fits a L → σ'.env 1 = BitVec.allOnes 64) ∧ Q a L (σ'.env 7)) :
     ∀ (a : α) (s : St) (entry ra : BitVec 64) (input output work codeR : Proven.Region),
     let x := encA a
     let y := encB (f a)
@@ -77,7 +113,8 @@ theorem pg_core {α β : Type} (encA : α → List UInt8) (encB : β → List UI
       unchangedOutside s s' [⟨output.base, y.length⟩, work] ∧ abiSavedKept s s' ∧ Cfg s' ∧
       (fits a work.len → bytesAt s' output.base y.length = y.map (some ·.toBitVec) ∧
         (retLen = true → s'.regs.get? .x11 = some (BitVec.ofNat 64 y.length))) ∧
-      (¬ fits a work.len → s'.regs.get? .x11 = some (BitVec.allOnes 64)) := by
+      (¬ fits a work.len → s'.regs.get? .x11 = some (BitVec.allOnes 64)) ∧
+      ∃ v, s'.regs.get? .x17 = some v ∧ Q a work.len v := by
   intro a s entry ra input output work codeR x y hmax h hpc hal hcont hcode h10 h11 h12 h13 h2 h14 h1 hra hrad hx
     hil hol hws hwal hram hdis hmapO hmapW
   have hin : ∀ r ∈ [input, output, work, codeR], r.inRAM := hram
@@ -110,7 +147,7 @@ theorem pg_core {α β : Type} (encA : α → List UInt8) (encB : β → List UI
     obtain ⟨ws, hl, hw⟩ := exists_wbytes (wl work.len) ((bytesAt s work.base (8 * wl work.len)).map (·.getD 0))
       (by simp [bytesAt])
     exact ⟨ws, hl, by rw [hw]; exact bytesAt_hosted fun i hi => hmapW i (by omega)⟩
-  obtain ⟨σ', out', hexec, hh, hdr, hfit, hnofit⟩ := hex a out0 tbl0 (envOf s) work.base work.len
+  obtain ⟨σ', out', hexec, hh, hdr, hfit, hnofit, hQ⟩ := hex a out0 tbl0 (envOf s) work.base work.len
     (by simpa [envOf] using getX_of (h.x11.symm.trans h11) rfl)
     (by simpa [envOf] using getX_of (h.x12.symm.trans h12) rfl)
     (by simpa [envOf] using getX_of (h.x14.symm.trans h14) rfl) hwal (by omega) (by omega) hws
@@ -192,7 +229,8 @@ theorem pg_core {α β : Type} (encA : α → List UInt8) (encB : β → List UI
   simp only [hh] at e0 e1
   have e1' : bytesAt s' output.base output.len = out'.map some := by
     have := (bytes_eq s' _ _).symm.trans e1; simpa using this
-  refine ⟨by rw [← hra']; exact p1, ?_, abi_of_keep h p5 p6, p5, fun hf => ?_, fun hf => ?_⟩
+  refine ⟨by rw [← hra']; exact p1, ?_, abi_of_keep h p5 p6, p5, fun hf => ?_, fun hf => ?_,
+    ⟨getX s' 17, p5.x17, ?_⟩⟩
   · intro q hq
     have a2 := hq ⟨output.base, y.length⟩ (by simp); have a3 := hq work (by simp)
     dsimp only at a2
@@ -233,6 +271,9 @@ theorem pg_core {α β : Type} (encA : α → List UInt8) (encB : β → List UI
   · have := p2 ⟨1, by decide⟩
     rw [show rvF.get s' (avar ⟨1, by decide⟩) = getX s' 11 from rfl, hnofit hf] at this
     rw [p5.x11, this]
+  · have := p2 ⟨7, by decide⟩
+    rw [show rvF.get s' (avar ⟨7, by decide⟩) = getX s' 17 from rfl] at this
+    rw [this]; exact hQ
 
 /-- `mv a4, sp` -/
 def mvA4 : BitVec 32 := encI 0 0 14 2
@@ -241,7 +282,7 @@ def mvA4 : BitVec 32 := encI 0 0 14 2
 theorem pg_of_spec {α β : Type} (encA : α → List UInt8) (encB : β → List UInt8) (f : α → β)
     (N : Nat) (hN : N ≤ NS) (prog : Mach.BStmt) (code : List (BitVec 32)) (hspec : BSpec N prog code)
     (wl : Nat → Nat) (hwl : ∀ L, 8192 ≤ L → 8 * wl L + 8 * (N + 1) + 7 ≤ L) (maxLen : Nat) (retLen : Bool)
-    (fits : α → Nat → Prop)
+    (fits : α → Nat → Prop) (Q : α → Nat → BitVec 64 → Prop)
     (hex : ∀ (a : α) (out : List (BitVec 8)) (tbl : List (BitVec 64)) (env : Mach.BEnv) (b L : Nat),
       env 1 = BitVec.ofNat 64 (encA a).length → env 2 = BitVec.ofNat 64 b → env 4 = BitVec.ofNat 64 (b + L) →
       b % 8 = 0 → 0x80000000 ≤ b → b + L ≤ 0x100000000 → 8192 ≤ L → (∀ j, 8 ≤ j → env j = 0) →
@@ -252,8 +293,8 @@ theorem pg_of_spec {α β : Type} (encA : α → List UInt8) (encB : β → List
         out'.drop (encB (f a)).length = out.drop (encB (f a)).length ∧
         (fits a L → out'.take (encB (f a)).length = (encB (f a)).map (·.toBitVec) ∧
           (retLen = true → σ'.env 1 = BitVec.ofNat 64 (encB (f a)).length)) ∧
-        (¬ fits a L → σ'.env 1 = BitVec.allOnes 64)) :
-    Implements1Pg encA encB (mvA4 :: code) f 8192 fits maxLen retLen := by
+        (¬ fits a L → σ'.env 1 = BitVec.allOnes 64) ∧ Q a L (σ'.env 7)) :
+    Implements1PgQ encA encB (mvA4 :: code) f 8192 fits Q maxLen retLen := by
   intro a s entry ra input output work x y codeR hmax h hpc hal hcode h10 h11 h12 h13 h2 h1 hra hrad hx
     hil hol hws hwal hram hdis hmapO hmapW
   have hin : ∀ r ∈ [input, output, work, codeR], r.inRAM := hram
@@ -277,7 +318,7 @@ theorem pg_of_spec {α β : Type} (encA : α → List UInt8) (encB : β → List
     simp only [BitVec.toNat_add, h4]; omega
   have hcd1 : codeAt s1 (entry + 4) code := core.codeAt_mem (memOf hn) sp.2.1
   have h2' := Option.some.inj (h.x2.symm.trans h2)
-  have core1 := pg_core encA encB f N hN prog code hspec wl hwl maxLen retLen fits hex a s1 (entry + 4) ra input
+  have core1 := pg_core encA encB f N hN prog code hspec wl hwl maxLen retLen fits Q hex a s1 (entry + 4) ra input
     output work codeR hmax hn.cfg hn.pc (by rw [hent]; omega) ⟨by rw [hent]; simp only [codeR]; omega,
       by rw [hent]; simp only [codeR, List.length_cons]; omega⟩ hcd1
     (by rw [hn.cfg.x10, hx1 10 (by decide)]; rw [Option.some.inj (h.x10.symm.trans h10)])
@@ -290,8 +331,8 @@ theorem pg_of_spec {α β : Type} (encA : α → List UInt8) (encB : β → List
     hra hrad (by rw [hb]; exact hx) hil hol hws hwal hram hdis (fun i hi => by rw [hmem]; exact hmapO i hi)
     (fun i hi => by rw [hmem]; exact hmapW i hi)
   refine runsTo_next hn (runsTo_mono core1 ?_)
-  rintro s' ⟨p1, p2, p3, p4, p5, p6⟩
-  refine ⟨p1, fun q hq => by rw [p2 q hq, hmem], ?_, p4, p5, p6⟩
+  rintro s' ⟨p1, p2, p3, p4, p5, p6, p7⟩
+  refine ⟨p1, fun q hq => by rw [p2 q hq, hmem], ?_, p4, p5, p6, p7⟩
   intro r hr
   rw [p3 r hr]
   simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
@@ -302,7 +343,7 @@ theorem pg_of_spec {α β : Type} (encA : α → List UInt8) (encB : β → List
 theorem pg_of_execOW {α β : Type} (encA : α → List UInt8) (encB : β → List UInt8) (f : α → β)
     (N : Nat) (hN : N ≤ NS) (prog : Mach.BStmt) (hwf : rvF.wfB N [0, 3] [2] prog)
     (wl : Nat → Nat) (hwl : ∀ L, 8192 ≤ L → 8 * wl L + 8 * (N + 1) + 7 ≤ L) (maxLen : Nat) (retLen : Bool)
-    (fits : α → Nat → Prop)
+    (fits : α → Nat → Prop) (Q : α → Nat → BitVec 64 → Prop)
     (hex : ∀ (a : α) (out : List (BitVec 8)) (tbl : List (BitVec 64)) (env : Mach.BEnv) (b L : Nat),
       env 1 = BitVec.ofNat 64 (encA a).length → env 2 = BitVec.ofNat 64 b → env 4 = BitVec.ofNat 64 (b + L) →
       b % 8 = 0 → 0x80000000 ≤ b → b + L ≤ 0x100000000 → 8192 ≤ L → (∀ j, 8 ≤ j → env j = 0) →
@@ -313,11 +354,11 @@ theorem pg_of_execOW {α β : Type} (encA : α → List UInt8) (encB : β → Li
         out'.drop (encB (f a)).length = out.drop (encB (f a)).length ∧
         (fits a L → out'.take (encB (f a)).length = (encB (f a)).map (·.toBitVec) ∧
           (retLen = true → σ'.env 1 = BitVec.ofNat 64 (encB (f a)).length)) ∧
-        (¬ fits a L → σ'.env 1 = BitVec.allOnes 64)) :
-    Implements1Pg encA encB (mvA4 :: compBFO N [0, 3] [2] prog) f 8192 fits maxLen retLen :=
+        (¬ fits a L → σ'.env 1 = BitVec.allOnes 64) ∧ Q a L (σ'.env 7)) :
+    Implements1PgQ encA encB (mvA4 :: compBFO N [0, 3] [2] prog) f 8192 fits Q maxLen retLen :=
   pg_of_spec encA encB f N hN prog _
     (fun hexec hA hen hL hcd hreg hslot hheap hra => compBFO_ok' N [0, 3] [2] (by intro x hx; simp at hx; omega)
-      (by intro x hx; simp at hx; omega) hwf hexec hA hen hL hcd hreg hslot hheap hra) wl hwl maxLen retLen fits hex
+      (by intro x hx; simp at hx; omega) hwf hexec hA hen hL hcd hreg hslot hheap hra) wl hwl maxLen retLen fits Q hex
 
 end Proven.Mach.Riscv
 
@@ -340,19 +381,23 @@ def pgNS {t : Ty} (p : Pg [.ar .ba] (.sc t)) (k : Nat) : Nat := (pgProgS p k).ma
 def pgCodeS {t : Ty} (p : Pg [.ar .ba] (.sc t)) (k : Nat) : List (BitVec 32) :=
   mvA4 :: compBFO (pgNS p k) [0, 3] [2] (pgProgS p k)
 
-/-- **A paged program with a scalar result ⇒ `Implements1Pg`**: for any work block of `L ≥ 8192` bytes the code
+/-- `a7` at the return: 1 when the run fits, 0 when not -/
+def okQ {α : Type} (fits : α → Nat → Prop) (a : α) (L : Nat) (v : BitVec 64) : Prop :=
+  (fits a L → v = 1) ∧ (¬ fits a L → v = 0)
+
+/-- **A paged program with a scalar result ⇒ `Implements1PgQ`** (`a7` = 1 or 0 as `okQ`): for any work block of `L ≥ 8192` bytes the code
 returns the result when its page events fit (`pk 0 E + 1 ≤ L / 8192`: the pages and one page for the frame), else
 `a1 = -1` -/
-theorem implements1_pgS {t : Ty} {β : Type} [Res β] (f : ByteArray → β) (p : Pg [.ar .ba] (.sc t))
+theorem implements1_pgSQ {t : Ty} {β : Type} [Res β] (f : ByteArray → β) (p : Pg [.ar .ba] (.sc t))
     (cv : t.T → β) (hcv : ∀ y, Res.repr (cv y) = t.rep y) (hN : pgNS p (Res.k β) ≤ NS)
     (hwf : p.wfP [inLocP] 9 = true)
     (hmwf : rvF.wfB (pgNS p (Res.k β)) [0, 3] [2] (pgProgS p (Res.k β)))
     (fits : ByteArray → Nat → Prop) (maxLen : Nat)
     (hgood : ∀ xs : ByteArray, xs.size ≤ maxLen → ∃ y E, p.GoodE [inLocP] 9 (xs, ()) y E ∧ cv y = f xs ∧
       ∀ L, 8192 ≤ L → (fits xs L ↔ pk 0 E + 1 ≤ L / 8192)) :
-    Implements1Pg (fun xs : ByteArray => xs.data.toList) Res.enc (pgCodeS p (Res.k β)) f 8192 fits maxLen := by
+    Implements1PgQ (fun xs : ByteArray => xs.data.toList) Res.enc (pgCodeS p (Res.k β)) f 8192 fits (okQ fits) maxLen := by
   refine pg_of_execOW _ Res.enc f (pgNS p (Res.k β)) hN (pgProgS p (Res.k β)) hmwf wlOf
-    (wlOf_le _ hN) maxLen false fits ?_
+    (wlOf_le _ hN) maxLen false fits (okQ fits) ?_
   intro a out tbl env b L h1 h2 h4 hb hb1 hb2 hL h8 hmax hlt hout hol htl
   have hsz : a.data.toList.length = a.size := Array.length_toList
   obtain ⟨y, E, hg, hy, hfit⟩ := hgood a (by rw [← hsz]; exact hmax)
@@ -361,18 +406,21 @@ theorem implements1_pgS {t : Ty} {β : Type} [Res β] (f : ByteArray → β) (p 
   obtain ⟨σ', out', hex', hh, hr⟩ := wholeS_ok (L / 8192 - 1) f p cv hcv a (env.set vCap (rN ((L / 8192 - 1) * P))) out tbl
     y E (by rw [set_ne (show 1 ≠ vCap by decide)]; exact h1) (by rw [← hsz]; exact hlt) (by rw [htl']; unfold P; omega)
     (by rw [htl']; exact Nat.le_refl _) (by simp only [set_eq]) hwf hg hy hout
-  refine ⟨σ', out', .seq hcap hex', hh, ?_, ?_, ?_⟩
-  · rcases hr with ⟨-, -, hd⟩ | ⟨-, -, rfl⟩
+  refine ⟨σ', out', .seq hcap hex', hh, ?_, ?_, ?_, ?_⟩
+  · rcases hr with ⟨-, -, hd, -⟩ | ⟨-, -, rfl, -⟩
     · exact hd
     · rfl
   · intro hf
-    rcases hr with ⟨hp, ht, hd⟩ | ⟨hp, -, -⟩
+    rcases hr with ⟨hp, ht, hd, -⟩ | ⟨hp, -, -, -⟩
     · exact ⟨ht, fun h => nomatch h⟩
     · have := (hfit L hL).1 hf; omega
   · intro hf
     rcases hr with ⟨hp, -, -⟩ | ⟨-, h1', -⟩
     · exact absurd ((hfit L hL).2 (by omega)) hf
     · exact h1'
+  · rcases hr with ⟨hp, -, -, h7⟩ | ⟨hp, -, -, h7⟩
+    · exact ⟨fun _ => h7, fun hf => absurd ((hfit L hL).2 (by omega)) hf⟩
+    · exact ⟨fun hf => by have := (hfit L hL).1 hf; omega, fun _ => h7⟩
 
 /-- array result: the program, the elements' bytes (`outLoopP`), `a1` = their number -/
 def outBaseP {k : AK} (p : Pg [.ar .ba] (.ar k)) : Nat := max (p.compP [inLocP] 9).1.maxv 9
@@ -385,15 +433,15 @@ def pgCodeA {k : AK} (p : Pg [.ar .ba] (.ar k)) : List (BitVec 32) :=
   mvA4 :: compBFO (pgNA p) [0, 3] [2] (pgProgA p)
 
 /-- **A paged program with an array result ⇒ `Implements1Pg`** (the elements' bytes, their number in `a1`) -/
-theorem implements1_pgA {k : AK} (f : ByteArray → k.T) (p : Pg [.ar .ba] (.ar k)) (hN : pgNA p ≤ NS)
+theorem implements1_pgAQ {k : AK} (f : ByteArray → k.T) (p : Pg [.ar .ba] (.ar k)) (hN : pgNA p ≤ NS)
     (hob : (p.compP [inLocP] 9).2.v < outBaseP p ∧ (p.compP [inLocP] 9).2.pt < outBaseP p)
     (hwf : p.wfP [inLocP] 9 = true) (hmwf : rvF.wfB (pgNA p) [0, 3] [2] (pgProgA p))
     (fits : ByteArray → Nat → Prop) (maxLen : Nat)
     (hgood : ∀ xs : ByteArray, xs.size ≤ maxLen → ∃ E, p.GoodE [inLocP] 9 (xs, ()) (f xs) E ∧
       ∀ L, 8192 ≤ L → (fits xs L ↔ pk 0 E + 1 ≤ L / 8192)) :
-    Implements1Pg (fun xs : ByteArray => xs.data.toList) (encArr k) (pgCodeA p) f 8192 fits maxLen
+    Implements1PgQ (fun xs : ByteArray => xs.data.toList) (encArr k) (pgCodeA p) f 8192 fits (okQ fits) maxLen
       (retLen := true) := by
-  refine pg_of_execOW _ (encArr k) f (pgNA p) hN (pgProgA p) hmwf wlOf (wlOf_le _ hN) maxLen true fits ?_
+  refine pg_of_execOW _ (encArr k) f (pgNA p) hN (pgProgA p) hmwf wlOf (wlOf_le _ hN) maxLen true fits (okQ fits) ?_
   intro a out tbl env b L h1 h2 h4 hb hb1 hb2 hL h8 hmax hlt hout hol htl
   have hsz : a.data.toList.length = a.size := Array.length_toList
   obtain ⟨E, hg, hfit⟩ := hgood a (by rw [← hsz]; exact hmax)
@@ -403,17 +451,40 @@ theorem implements1_pgA {k : AK} (f : ByteArray → k.T) (p : Pg [.ar .ba] (.ar 
     (env.set vCap (rN ((L / 8192 - 1) * P))) out tbl (f a) E ⟨Nat.le_max_right _ _, hob.1, hob.2⟩
     (by rw [set_ne (show 1 ≠ vCap by decide)]; exact h1) (by rw [← hsz]; exact hlt) (by rw [htl']; unfold P; omega)
     (by rw [htl']; exact Nat.le_refl _) (by simp only [set_eq]) hwf hg hout hol
-  refine ⟨σ', out', .seq hcap hex', hh, ?_, ?_, ?_⟩
-  · rcases hr with ⟨-, -, hd, -⟩ | ⟨-, -, rfl⟩
+  refine ⟨σ', out', .seq hcap hex', hh, ?_, ?_, ?_, ?_⟩
+  · rcases hr with ⟨-, -, hd, -, -⟩ | ⟨-, -, rfl, -⟩
     · exact hd
     · rfl
   · intro hf
-    rcases hr with ⟨hp, ht, hd, hl⟩ | ⟨hp, -, -⟩
+    rcases hr with ⟨hp, ht, hd, hl, -⟩ | ⟨hp, -, -, -⟩
     · exact ⟨ht, fun _ => by rw [hl]; rfl⟩
     · have := (hfit L hL).1 hf; omega
   · intro hf
-    rcases hr with ⟨hp, -, -, -⟩ | ⟨-, h1', -⟩
+    rcases hr with ⟨hp, -, -, -, -⟩ | ⟨-, h1', -, -⟩
     · exact absurd ((hfit L hL).2 (by omega)) hf
     · exact h1'
+  · rcases hr with ⟨hp, -, -, -, h7⟩ | ⟨hp, -, -, h7⟩
+    · exact ⟨fun _ => h7, fun hf => absurd ((hfit L hL).2 (by omega)) hf⟩
+    · exact ⟨fun hf => by have := (hfit L hL).1 hf; omega, fun _ => h7⟩
+
+theorem implements1_pgS {t : Ty} {β : Type} [Res β] (f : ByteArray → β) (p : Pg [.ar .ba] (.sc t))
+    (cv : t.T → β) (hcv : ∀ y, Res.repr (cv y) = t.rep y) (hN : pgNS p (Res.k β) ≤ NS)
+    (hwf : p.wfP [inLocP] 9 = true)
+    (hmwf : rvF.wfB (pgNS p (Res.k β)) [0, 3] [2] (pgProgS p (Res.k β)))
+    (fits : ByteArray → Nat → Prop) (maxLen : Nat)
+    (hgood : ∀ xs : ByteArray, xs.size ≤ maxLen → ∃ y E, p.GoodE [inLocP] 9 (xs, ()) y E ∧ cv y = f xs ∧
+      ∀ L, 8192 ≤ L → (fits xs L ↔ pk 0 E + 1 ≤ L / 8192)) :
+    Implements1Pg (fun xs : ByteArray => xs.data.toList) Res.enc (pgCodeS p (Res.k β)) f 8192 fits maxLen :=
+  (implements1_pgSQ f p cv hcv hN hwf hmwf fits maxLen hgood).toPg
+
+theorem implements1_pgA {k : AK} (f : ByteArray → k.T) (p : Pg [.ar .ba] (.ar k)) (hN : pgNA p ≤ NS)
+    (hob : (p.compP [inLocP] 9).2.v < outBaseP p ∧ (p.compP [inLocP] 9).2.pt < outBaseP p)
+    (hwf : p.wfP [inLocP] 9 = true) (hmwf : rvF.wfB (pgNA p) [0, 3] [2] (pgProgA p))
+    (fits : ByteArray → Nat → Prop) (maxLen : Nat)
+    (hgood : ∀ xs : ByteArray, xs.size ≤ maxLen → ∃ E, p.GoodE [inLocP] 9 (xs, ()) (f xs) E ∧
+      ∀ L, 8192 ≤ L → (fits xs L ↔ pk 0 E + 1 ≤ L / 8192)) :
+    Implements1Pg (fun xs : ByteArray => xs.data.toList) (encArr k) (pgCodeA p) f 8192 fits maxLen
+      (retLen := true) :=
+  (implements1_pgAQ f p hN hob hwf hmwf fits maxLen hgood).toPg
 
 end Proven.WA
