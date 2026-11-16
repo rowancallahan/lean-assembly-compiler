@@ -1515,3 +1515,266 @@ as real calls: exponential recomputation, not per-call cost. A fix is a common-s
 (tried: one strict duplicated call → `E.bind`, the `sem` proof and `nl = 20` unchanged); not kept (speed deferred).
 The general per-node cost (3.9–9.9× elsewhere) is ~45 % constant building (`li` one bit at a time in the plain
 `rv` back end), slot traffic and 2 instructions per zero-initialised local per call.
+
+## 24. Run-time memory (branch `mem-spec`)
+
+Statements: `Compiler/AllocSpec.lean` (owner): `CompileRuns riscv compile` (no memory hypothesis; with the
+output-fits hypothesis approved for it) and `CompileCorrect riscv compile` (hypothesis
+`memoryNeeded compiled input ≤ workLength`), with `memoryNeeded = cellSize * peak events`, `OutOfMemory = W <
+memoryNeeded`, status register `mapping.status` = `a0` on RISC-V (`riscvMapping.status = 10`).
+
+**Proved for the inductive path** (`Riscv/Frontx/IndMem.lean`, every `frontx_ind` program, one or several
+functions): `Proven.Frontx.IndMem.compile_runs : CompileRuns riscv compile`,
+`Proven.Frontx.IndMem.compile_correct : CompileCorrect riscv compile`, both with exactly the Sail axioms of
+`Proven.Top.compile_correct`; `memoryNeeded_le`: the old space bound (`Ind.spaceA … cellsSup`, the hypothesis of
+`implements1_indS` / `implements1_indM`) is at least `memoryNeeded`, so the old theorems' hypothesis gives the new
+one.  `compile : IndProg → Option CompiledA` takes the program of the inductive path (`indProgM`, unchanged: the
+same source program as the entries' `.code`) and compiles it with the run-time checks; it returns `none` unless
+`IndProg.Good` (the old side conditions, well-formedness of the new code, `progClean`, and: inputs of at most
+`2^20` bytes allocate fewer than `2^50` cells, so the source run's 64-bit pointers do not wrap).
+`Program.run` of an `IndProg`: the output bytes (`Kd.out`) of the Lean semantics `Pg.sem` of the values the input
+encodes (`inBytesA`), `none` on other inputs.
+
+**The memory model** (source level, `Compiler/MemRun.lean`, machine-independent, address-free):
+cells of 8 bytes; the run with events `TExec` (= `CExec` with word block 0 growing): word block 0 (the heap) is
+empty at the start and grows with zero words when a word at or above its length is accessed (event `alloc d`), a
+call opens a frame of `nlocals + 1` cells (`alloc`) and closes it on return (`free`), the entry stub's two cells
+come first (`alloc 2`).  The program frees no heap (owner's default (2)); frames are allocated on call and freed on
+return (default (3)); `memoryNeeded` is defined (the events of the run from a canonical start, `IndProg.events`,
+`Classical.choose` of the run), not calculated.  `texec_of_cexec`: every `CExec` run on a zero word block is a
+`TExec` run, its peak at most start + heap growth + stack need / 8 (this gives `memoryNeeded_le`);
+`texec_det`: runs from states that differ only in unread data (base addresses, output contents) have the same
+events (so the machine's run and the canonical one agree).
+
+**The generated code** (`Compiler/MemCode.lean`, `MachineM` = `MachineC` + compare-and-branch on two registers,
+read `gp`, read the stub's frame address, the exit; `Riscv/Back/MemRv.lean`): heap at the bottom of the work block
+(base `a2`, length in words in `a7`), frames from the top (`sp`, `gp`), free space between.
+* every access of word `i` of the heap: `r0 := i; bltu r0, a7, ok` (the common case); else (`i ≥ u`): if word `i`
+  lies below the current frame (`i < (gp - a2) >> 3`) zero the words `u .. i` and `a7 := i + 1`, else jump to
+  the exit;
+* every call: `gp - 8 (n + 1) ≥ a2 + 8 a7` (the callee's frame stays above the heap), else the exit;
+* entry stub: if the stub's two cells do not fit, `a0 := -1; ret`; globals 4..7 := 0;
+* exit: `ra` from the stub's cell (`alignDown(sp) - 16`), `a0 := -1`, `ret`.
+So the run fails exactly when heap + live frames exceed the work block (`execCM_ok`, by induction on `TExec`:
+either the events fit and the code ends with the relation, or they do not and the code is at the exit; `compPM_ok`
+for the whole program; `memRaw` / `memSpec` from the machine facts / `StartCorrect`).  On success `a0` is the input
+address (never `-1`), `a1` the output length (tree results), `gp` restored; on the flag `gp` is not restored (not
+required).  The input block is never written (`BStmt.clean`: stores only to byte blocks ≠ 0), so the frame clause
+holds in both cases.
+
+**Tests** (`Testing/asm/emit_mem.lean`: `memCode` of every inductive entry and per case `memoryNeeded` from an
+interpreter of `TExec`, checked against Lean's result; `python3 Testing/asm/mem_test.py check 50 <name>`): every
+case twice on QEMU and Sail: work block = `memoryNeeded` bytes (output = Lean's, `a0` = input address, `a1`,
+`gp`, `sp`), and `memoryNeeded - 1` bytes (`a0 = 2^64 - 1`); always input and guards unchanged and (Sail) every
+write in the output or work block.
+
+**Coverage gap: branch reach.**  `IndProg.Good` contains `WfMem`, and `WfMem` needs every conditional branch over
+an `ite` / `loop` body to reach (`bzOK n := 2 n < 2048`, i.e. at most 1023 words).  The inline checks make the code
+about twice as long, and in 4 of the 29 entries one function's body is now too long: `pos_comp` (1178 words),
+`tree_insert5` (1375), `level_combining` (2037), `level_simplify` (2046).  For these `compile` returns `none`, so the
+theorems hold but say nothing about them.  `emit_mem.lean` checks the same spans and skips them.  Fix (not done):
+emit a long form `bz r0, +2; jmp then; jmp else` for far branches, or move the slow path of the access check out of
+line (one shared routine per function), which also cuts the code size and the cost below.
+
+**Results.**  25 entries, each 50 cases x 2 (at `memoryNeeded`, then at `memoryNeeded - 1`), all ok on QEMU and Sail.
+
+**Run-time cost** (`mem_bench.py`, instructions retired on the largest of the 50 inputs, old code with its static
+work bound vs the new code at `memoryNeeded`): `bt_count` +67%, `bt_graftleft` +87%, `bt_mirror` +15%
+(`eq_bintree`: the old code took 1.1e9 instructions, the new one 2.2e6).  Code size about 2x.  This is more than
+"a compare + branch per alloc / call".  The checks sit on every heap word access: `li; bltu` on the fast path
+(about 4 instructions), about 30 on a heap-growing store (it zeroes the new words), and about 10 per call.  A
+per-allocation check would need a source-level proof that loads stay below the heap length.
+
+## 25. Expr (branch `feat-expr`)
+
+(Section 24 is reserved for the memory-spec work on branch `mem-spec`.)
+
+**n-ary constructors** (`Riscv/Frontx/IndCmd.lean`, `layout`). Cells stay `[tag, x, l, r]` (`C` unchanged, so the
+decoder, encoder and their proofs are unchanged). A constructor whose fields fit one cell (at most two children, one
+scalar) is as before; otherwise its cell takes the longest prefix of its fields with at most one child and one
+scalar and `r` points to an **extension cell** with the rest (the same rule again, so any arity). Extension cells
+have their own tags after the type's constructors (`TExpr`: tags 0-9 `Expr`, 10 the extension of `letE`). Byte
+format (stated by `C.enc T.sh`): fields in declaration order, an extension cell starts with its tag byte, e.g.
+`letE ty v b` = `07 ‹ty› 0a ‹v› ‹b›`. A recursive call on a field in the first extension cell is the new `E.call2
+c₁ c₂` (a grandchild: `Pg.sem` structural with a nested match, `Cx.okg`, `loop_ok3`/`straight_ok3` prove the loop
+for a node and its two children); fields deeper than one extension are read (`ft`) but not recursed on.
+`E.exts` counts `call2` (outside the linear bound `al_le`: such programs use `cellsSup`). Shared files changed:
+`Compiler/Ind.lean` (`E.call2`, `Cn.g`/`Ca.g`, `Pg.st`, `armN`, `dispS`, `fLoopS`, `fLoopX`, `fFn`; `alloc` and the
+`call` code are unchanged), `Compiler/IndOk.lean`, `Compiler/IndDec.lean`, `Compiler/IndMain.lean`.
+
+**Types nested in one shape** (`frontx_ind_type TExpr := ConLeche.Expr nesting ConLeche.Level, ConLeche.Name, List
+ConLeche.Level, ConLeche.Literal, List ConLeche.Expr, Option ConLeche.Expr`): the nesting types are defined in a
+topological order of the field-type relation (`List Level` after `Level`), every type listed is in the shape even
+when no field has it (`Option Expr` as a result type), each nested type gets `T.Nk.enc`, constructors are resolved
+by name *and* type (`List Level` / `List Expr` share `List.cons`), and a function may take a nested type as its
+structural argument.
+
+**`@[computed_field]`s** (`Expr.data`, `Name.hashData`, `Level.hashData`) are kept verbatim with the opaque
+`mixHash`: no function compiled here reads them, so no Lean hash was needed. A function reading `e.data` is
+rejected (the field is not in the byte format); the owner's decision (any deterministic Lean hash, e.g.
+`MixHashPort.mixHashLean` of branch `mixhash-port`) applies when one is compiled.
+
+**F1** (`r1_arm_count`: the loop body over the ±4 KiB reach of `beqz`). Two changes, both at the inductive-path
+level (no new machine operation): the decoder and encoder dispatch with one test per tag in sequence (`dDisp`,
+`eDisp`: a branch jumps only over its own fields; Expr's 25-tag shape did not fit before), and a function whose loop
+would be over 1000 words (`rvC.lenC` evaluated by the front end) is compiled **straight-line** (`Pg.st := true`,
+`fLoopS`: no loop, one test per tag in sequence, every call a real call; `straight_ok3`). Each arm must still fit
+the reach. Small functions keep their loops and tail calls (codes and theorems unchanged).
+
+**Long branches in general (owner's request; not done here).** The F1 fix above is at the inductive-path level
+(statement shapes whose branches are short), not a long-branch form in the shared back end: `Machine.jmp` is
+backward only (`law_jmp`: `pc - 4n`) and `bz` reaches ±1023 words, so `bz +2; jmp then; jmp else` needs a FORWARD
+jump. What a general fix needs (shared code, covers the memory path of branch `mem-spec` too): (1) an `AOp.jmpF n`
+(`jal x0, +4n`, ±1 MiB) with `law_jmpF` in `Compiler/Iface.lean`'s `Machine`, its RISC-V encoding and law in
+`Riscv/Back/Iface.lean` (from the step lemma of `iJmp`, the same `jal` with a positive offset), an encoding in
+`Arm/CompilerArm.lean` (`b +n`) and the ARM law in `Arm/proofs`; (2) `MachineC.compC` (`Compiler/CStmt.lean`) for
+`ite` as `mgen c; bz (lenBz + lenJmpF); jmpF else; then; jmpF end; else` and for `loop` as `mgen c; bz (lenBz +
+lenJmpF); jmpF exit; body; jmp head`, with `wfC` asking `jmpOK` instead of `bzOK` for the long ones (or choosing
+the short form when it fits, which keeps every existing code word-for-word). The memory path can instead reuse this
+section's statement shapes if its code generator emits `Compiler/Ind.lean`'s `dDisp`/`eDisp`/`fLoopS` (sequential
+tests, straight-line function bodies): then only an arm longer than ~1000 words exceeds the reach.
+
+**F3** (`r2`, `r3`, `r5`: built terms as call arguments). New tactic `frontx_calls_sem` (a last branch of the
+generated `sem` proof): for each call `f t a b` of a program function in the expected value, the meaning theorem of
+`f` (or the induction hypothesis) is instantiated at those arguments, its cells written out, and used to rewrite.
+`r8` (an `if` as a call argument) still fails. Also: entries with a constructor literal of another type as
+argument (`comp e .nil`), entries whose parameters are in another order than `g`'s, `Nat` subtraction
+(`natSub`: `if a < b then 0 else a - b`, with the range hypotheses), and a growing word argument (`d + 1` under a
+binder: hypothesis `a + nodes < 2^64` in `sem`, `(emb t).nodes < 2^64` in the machine theorem's input subtype).
+
+**Compiled verbatim** (con-leche @6810492c1; `Riscv/Frontx/ExprExamples.lean`; type `Kernel/Expr.lean:400-460`,
+`Literal` `:143-146`, `levelsHaveParam`, `levelHash`, `levelsHash` `:194-205`), each `f.implements1` (the Sail axiom
+set, `axioms_x.lean`), `sem` at most propext/Classical.choice/Quot.sound; tests: `frontx_test.py check 60`, QEMU +
+Sail against executed Lean (`Testing/asm/emit_expr.lean`: 60 expressions of depth ≤ 7 with every constructor,
+names with UTF-8/NUL strings and numbers up to `2^64 - 1`, level lists, literals, bound indices 0-5 and `2^64 - 1`):
+
+| entry | function | source | form | test |
+|---|---|---|---|---|
+| `hasFvar` | `Expr.hasFvar` | `Kernel/ExprOps.lean:60` | loop | `expr_hasfvar` |
+| `closed0 e = looseBVarsBounded 0 e` | `Expr.looseBVarsBounded` | `ExprOps.lean:46` | loop, `a + nodes` | `expr_closed0` |
+| `inst1 e v = instantiate1 e v 0` | `Expr.instantiate1` | `ExprOps.lean:27` | straight, two inputs | `expr_inst1` |
+| `sizeF` | `Expr.sizeF` | `ExprOps.lean:788` | | `expr_sizef` |
+| `scopedD e d = wscopedB d e` | `Expr.wscopedB` (WF recursion) | `ExprOps.lean:821` | word from input | `expr_scopedd` |
+| `isForallE`, `getAppFn`, `piResult`, `fvarTypeD` | | `ExprOps.lean:836,848,880,905` | | `expr_isforalle` … |
+| `numArgs` | `Expr.numArgs` | `Kernel/PropRead.lean:56` | | `expr_numargs` |
+| `isLit` | `Expr.isLit` | `Kernel/Core.lean:1119` | | `expr_islit` |
+
+All 11 pass `frontx_test.py check 60` (60 cases each; codes 4150-5271 words, `inst1` straight-line). Self-hoster
+reproducers `r1`, `r2`, `r3`, `r5` compile with machine theorems (`Riscv/Frontx/TinyRepro.lean`, `axioms_x.lean`).
+
+Reproduce: `lake build Frontx`; `lake env lean --tstack=4000000 Testing/asm/emit_expr.lean`;
+`bash Testing/scripts/frontx_tests.sh 60`; axioms `Testing/scripts/axioms_x.lean` (in `check.sh`). The existing
+inductive entries' codes changed (sequential dispatch in `dec`/`enc`; re-emitted with `emit_frontx.lean`, all
+re-tested); their `stmt` hashes are unchanged, 62 closures changed (not re-frozen).
+
+**Type gate** (the depth probe's 186 functions whose signatures mention only `Name`/`Expr`; new command
+`frontx_ind_gate f on T` in `Riscv/Frontx/IndGate.lean`, no proofs; run over `F2.lean.txt` of branch
+`conleche-depth`, 180 resolved, the 6 `beside.*` names are not con-leche functions): **62 pass the type gate**
+(before: 0 with `Expr`, the `TExpr` type itself was rejected), 28 of them also translate all arms. Gate failures:
+91 "no argument of a declared type" (nullary `Name` constants such as `natAddName`, and functions over scalars
+only), 14 more than one scalar parameter (`liftLooseBVars amount cutoff`), 7 other parameter types, 4 two extra
+tree parameters, 2 result types. Of the 34 passing the gate but not the arms: 25 overlapping/variable patterns in a
+function called from another (`eq_1 has no constructor pattern`), 4 nested patterns (`isStrLit`'s
+`.lit (.strVal _)`), 2 patterns on two arguments (`instPisWith`), 2 comparisons of other types, 1 a lambda argument.
+
+**Not done / why**: `liftLooseBVars` (two scalar parameters, one constant: needs specialisation of a constant
+parameter); `getAppArgs` (`List.append` is polymorphic and the program's functions are found by name, so its type
+is ambiguous between `List Level` and `List Expr`); `mkAppN` (rejected: the head as a tree parameter before the
+structural one); `instPisWith`, `piResidual`, `binderDom` (patterns on two arguments / on a `Nat`); `Expr.depth`
+(`max`: `sem` not proved); `isStrLit`, `natPred?` (nested patterns); `r8` (an `if` as a call argument).
+Codes are large (plain back end; straight-line `inst1` makes real calls for every child).
+
+## 27. Higher-order arguments by specialisation (branch `feat-hof`)
+
+Files: `Riscv/Frontx/SpecHof.lean` (new: the pass and the commands), `Riscv/Frontx/HofExamples.lean` (new: targets),
+`Testing/scripts/axioms_x.lean` (new). Shared files touched: `Riscv/Frontx/Translate.lean` (two proof tactics of
+`frontx_view`, below), `Testing/scripts/check.sh` (`axioms_x` in the loop), `Testing/scripts/expected-axioms.txt`
+(39 lines appended), `Testing/asm/emit_frontx.lean` (one `#eval` block), `Testing/asm/frontx_test.py` (`LISTS`).
+No `Compiler/`, `Spec/` or `Ind*` file changed.
+
+**The pass** (`frontx_hof h`, front end only; everything after it is the existing translator):
+- A **site** is a call `F a₁ … aₙ` of a definition `F` where some argument is a function known at compile time
+  (function-typed, not a proof or type family, and no free variable of it is itself a function: a lambda, a
+  named function, a partial application `BOp.eval .xor 0x55`, `f ∘ g`). Fixed positions: types, instances, proofs,
+  known functions. Matchers, recursors, `ite`/`dite`/`cond`/`bind`/projections are never sites.
+- A recursive `F` gets a **first-order copy** `h.hof<k> c₁ … cₘ y₁ … yₚ := F a…` (the `cᵢ` the first-order free
+  variables the fixed arguments capture, e.g. `k` in `(· > k)`; the `yⱼ` the non-fixed arguments), and
+  `h.hof<k>.eq`: `F`'s own unfolding equation at these arguments, the recursive calls with the same fixed arguments
+  folded to the copy (a call that changes a fixed argument is rejected), the known function beta-reduced,
+  `Function.comp` unfolded. This step is definitional: the proof term is `F`'s equation, the kernel checks the
+  folded statement by delta. A non-recursive user `F` (`Array.find`) and `List.countP` are unfolded instead.
+  Equal sites share one copy; sites inside a copy's body are specialised in turn (depth ≤ 8).
+- **Rewriting steps** (`simp only` with the listed lemmas, the proof kept, so not definitional but kernel-checked):
+  before: `Array.foldl_toList` (reversed), `List.foldl_nil/cons` (a fold over a literal list, e.g. a pipe of
+  stages), fusion `List.map_map`, `foldl_map`, `foldr_map`, `any_map`, `all_map`, `countP_map`; after, on each copy:
+  `cons_append`/`nil_append` (`[x, x] ++ r`), `pure_bind`, `Option.pure_def`, `failure = none`, `some a >>= f = f a`
+  (`do` in `Option`), `cond_eq_if`, `a || r` / `a && r` → `if` when `r` holds the recursive call (marked first,
+  definitionally, `hofMark`), and per `Bool` matcher `m` a generated lemma `m.hof_ite : m _ b x y = if b = true
+  then x () else y ()` (by cases; Lean's `List.filter`/`find?` match on `p a`).
+- **Partial evaluation**: user definitions applied to a closed constructor term (`Stage.denote (.map e)`,
+  `ByteExp.denote 0 x e`, `BPred.denote`, `BOp.eval .xor`) are rewritten by their own equation lemmas until nothing
+  changes. That is how the compiler core's pipeline semantics at a known stage becomes a first-order loop.
+- Three once-and-for-all lemmas replace unfolding equations whose `match` also binds the function (`List.any`,
+  `List.all`) or that have none (`List.flatMap := flatten ∘ map`): `hof_any_eq`, `hof_all_eq`, `hof_flatMap_eq`
+  (`cases l <;> rfl` / `simp`).
+- Result `h.hof : h ys = body'` (`body'` calls the copies). `frontx_hof_entry g [measure μ] [with inv]` for an
+  entry `g : ByteArray → R`: `frontx_hof g`; the copy on the input (`frontx_view`, or `c.ba B … := c B.data …` for
+  an `Array UInt8` parameter: sizes and reads of `B.data` are those of `B`, definitionally); `frontx_compile` (measure
+  default `B.size - i`); `g.hof.entry : g xs = c.view xs 0 …` (`rw [g.hof]; rfl`); `frontx_entry g from
+  g.hof.entry`. Then `frontx_implements[_list|_bytes] g` as before, so `g.implements1` is about `g` itself.
+
+`Translate.lean` hook (proofs only, no generated code changes): `frontx_view`'s simple path tried `simp only [copy]`
+before `rw [eq]`; for an equation that is not definitional (the rewriting steps) `simp only` made progress and left
+the goal open. Now `first | rfl | (rw [eq] <;> rfl) | …` (the old `(rw [eq]; rfl)` failed whenever `rw` itself closed
+the goal), and the general path's leaves (`veqGo`) also try `rw [eq]` / `simp only [eq, Nat.add_sub_cancel]`.
+
+**Compiled, machine theorem** `g.implements1` (the Sail axiom set, compared with `crcRaw.implements1`'s), `g.exec`
+and `.hof` at most `propext`, `Classical.choice`, `Quot.sound`; test `frontx_test.py check 50` on QEMU and Sail
+against executed Lean (`emit_frontx.lean`), all ok, lengths up to 2769:
+
+| entry | higher-order function, known argument | source | words |
+|---|---|---|---|
+| `nonFindGt3` | `EarlyReturn.Non.List.find? (· > 3)` | fp-lean @0abeea5 `MonadTransformers/Do.lean:93` | 77 |
+| `findGt3` | `EarlyReturn.List.find? (· > 3)` (`do`, `failure`, `return`) | `Do.lean:105` | 77 |
+| `filterGt3` | `NonTail.filter (· > 3)` (no hand `def` any more, cf. §12 `filterAll`) | `ProgramsProofs/TCO.lean:183`, use `:204` | 65 |
+| `foldrSum` | `ListExtras.List.foldr (· + ·) 0` on `map UInt8.toNat` (two copies) | `DependentTypes/Finite.lean:118`, use `:126` | 79 |
+| `arrFindGt3` | `Array.find · (· > 3)` → `findHelper` (`Array UInt8` as the input, result `Option (Nat × UInt8)`) | `ProgramsProofs/Arrays.lean:293-306` | 106 |
+| `mapInc`, `mapComp`, `mapXor` | `List.map (· + 1)`, `map ((· ^^^ 0x5A) ∘ (· + 7))`, `map (BOp.eval .xor 0x55)` | Lean core; `BOp.eval` `Compiler/Front/Pipe.lean:27` | 57, 61, 59 |
+| `sumFoldl` | `List.foldl (fun acc x => acc + x.toNat) 0` (`with` invariant, as `Tail.sum`) | core | 73 |
+| `xorArr` | `Array.foldl (· ^^^ ·) 0` on `xs.data` | core | 52 |
+| `dupAll` | `List.flatMap (fun x => [x, x])` | core | 63 |
+| `filterNZ`, `anyNL`, `allAscii`, `findHigh`, `countSp` | `filter (· != 0)`, `any (· == 10)`, `all (· < 128)`, `find? (· ≥ 128)`, `countP (· == 32)` (`with` invariant) | core | 68, 68, 65, 78, 83 |
+| `countAbove100` | `countAbove l k := l.countP (· > k)`: the closure captures `k`, a parameter of the copy | ours | 84 |
+| `stageMap` | `Stage.denote (.map e)` = `l.map fun x => e.denote 0 x`, `e` known | `Compiler/Front/Pipe.lean:125` | 61 |
+| `pipe2` | `Pipe.denote [.map e₁, .map e₂]` (`foldl` over the stages unrolled, the maps fused) | `Pipe.lean:137` | 61 |
+| `xstageFilter` | `XStage.denote (.filter p)` = `l.filter p.denote`, `p` a known `BPred` | `Compiler/Front/PipeStd.lean:171` | 67 |
+
+Human input: `with` invariants for `Nat` accumulators (`sumFoldl`, `countSp`, `countAbove100`; the same bound as
+`Tail.sum`/`Tail.length`); `countAbove100` is written out (`frontx_hof`, `frontx_view`, `frontx_compile`, an entry
+equation `rw [countAbove100, countAbove.hof]; rfl`) because its entry is not itself the higher-order call.
+
+Not done / why:
+- `Mine.List.flatMap` (`DependentTypes/DB.lean:458`) verbatim: in Lean 4.29 the `xs.flatMap f` in its body resolves to
+  core `List.flatMap`, so the book's function is a non-recursive wrapper whose body is a `match`; the entry's body is
+  then a `match`, not a call of a copy (`frontx_hof_entry` wants one call). The core function compiles (`dupAll`).
+- `EarlyReturn.Desugared.List.find?` (`Do.lean:123`, `runCatch` over `ExceptT … Option`), `Many.orElse`,
+  `Monads.Writer.andThen`, `listMonoid`: monad transformers / function-valued data, not first-order after
+  specialisation of one argument.
+- `TailRec.Array.map`/`arrayMapHelper` (`Arrays.lean:274-287`), `Array.map`: `Array` results (no array output).
+- Compiler core (`SELFHOST_DEPTH.md` row 1): no function there is blocked by higher-order arguments alone; the
+  closures sit inside passes over `IR.Code`/`BStmt` (n-ary inductives), lists of non-bytes, `Fin`, sized `BitVec`
+  (e.g. `runLi` folds `LiStep.eval` over a `List LiStep` of sized bit vectors, `loB`'s predicate is a parameter).
+  The pipeline semantics above (`Stage/XStage/Pipe.denote`) are the core functions where specialisation alone
+  suffices, at a known stage.
+- con-leche (`CONLECHE_DEPTH.md` row 6): the closures are monadic continuations (`k : Expr → m Expr`), environment
+  lookups (`Name → Option ConstantInfo`) and records of closures (`CoreFns`); every function there fails the type
+  gate first (`Expr`, `m α`). Not attempted.
+- **Escaping closures** (out of scope, reported): closures stored in data (`CoreFns`, `WideF`/`MachineF` records,
+  `Base.get`), returned (`IR.color : … → Option (Nat → Reg)`, `envB`/`svB` in `Opt/BSel.lean`), or passed down a
+  recursion that changes them (rejected: "a recursive call changes a fixed argument").
+- A site inside a loop body of a compiled function whose list argument is not the input (`xs.any …` on a second
+  list) compiles only as far as the translator's calls allow (§12.4: callee blocks are the caller's first block).
+
+Reproduce: `lake build Riscv.Frontx.HofExamples`; `lake env lean --tstack=4000000 Testing/asm/emit_frontx.lean`;
+`for f in Testing/asm/frontx-words/hof_*.cases; do python3 Testing/asm/frontx_test.py check 50 $(basename $f .cases); done`;
+axioms: `Testing/scripts/axioms_x.lean`.
