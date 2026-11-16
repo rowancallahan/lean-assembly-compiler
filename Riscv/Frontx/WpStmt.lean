@@ -962,8 +962,8 @@ theorem arrsP_one {env : Mach.BEnv} {w : PLoc} : ∀ {Δ : List Sl} {st : List P
 
 /-- before an iteration: the state's work array, as the body needs it -/
 theorem wpre_of {C : Nat} {W : W64} {Δ Γ : List Sl} {st L : List PLoc} {w : PLoc} {s : Vals Δ} {c : Vals Γ}
-    {env : Mach.BEnv} (hwl : workLocs Δ st = [w] ∨ workLocs Δ st = []) (hlen : st.length = Δ.length)
-    (hS : Store C env W (arrsP Δ st s env ++ arrsP Γ L c env)) :
+    {env : Mach.BEnv} {X : List (Nat × W64)} (hwl : workLocs Δ st = [w] ∨ workLocs Δ st = [])
+    (hlen : st.length = Δ.length) (hS : Store C env W (arrsP Δ st s env ++ (arrsP Γ L c env ++ X))) :
     WPre Δ st w (st ++ L) (Vals.app s c) env (arrsP Δ st s env) := by
   rcases hwl with h | h
   · refine .inr ⟨h, wordsAt Δ st w s, arrsP_one s h, fun k m hm => ?_⟩
@@ -972,7 +972,8 @@ theorem wpre_of {C : Nat} {W : W64} {Δ Γ : List Sl} {st L : List PLoc} {w : PL
     rw [arrsP_append hlen, hm] at h1
     have h2 : ((env w.pt).toNat, wordsAt Δ st w s) ∈ arrsP Δ st s env ++ arrsP Γ L c env := by
       rw [arrsP_one s h]; simp
-    have := Store.uniq hS h1 h2 rfl
+    rw [← List.append_assoc] at hS
+    have := Store.uniq hS (List.mem_append_left _ h1) (List.mem_append_left _ h2) rfl
     exact (Prod.mk.inj this).2
   · exact .inl ⟨h, arrsP_nil s h⟩
 
@@ -987,7 +988,7 @@ set_option maxHeartbeats 8000000 in
 /-- **A loop runs to its result**, or stops once a push found no page (exactly when the run's page events
 exceed `C`) -/
 theorem T.runP_ok {Δ Γ : List Sl} {R : Sl} (b : T (Δ ++ Γ) Δ R) (c : Vals Γ) (st L : List PLoc) (res fl : Nat)
-    (rl w : PLoc) (d C : Nat) (hy : LoopLayP st res fl rl w d) (hlen : st.length = Δ.length)
+    (rl w : PLoc) (d C : Nat) (X : List (Nat × W64)) (hy : LoopLayP st res fl rl w d) (hlen : st.length = Δ.length)
     (hl : Γ.length ≤ L.length) (hbL : BelowP L d)
     (hLd : ∀ l ∈ L, (l.v ∉ vsOfP st ∧ l.v ≠ res ∧ l.v ≠ fl ∧ NP l.v) ∧ (l.pt ∉ vsOfP st ∧ l.pt ≠ res ∧ l.pt ≠ fl ∧
       NP l.pt))
@@ -997,16 +998,16 @@ theorem T.runP_ok {Δ Γ : List Sl} {R : Sl} (b : T (Δ ++ Γ) Δ R) (c : Vals �
     (hP : ∀ s s', P s → b.out (Vals.app s c) = .inl s' → P s') :
     ∀ s r E, RunsE b c s r E → P s → ∀ σ W, EnvOK (Δ ++ Γ) (st ++ L) (Vals.app s c) σ → σ.env fl ≠ 0 →
       (σ.env fl = 0 ∨ σ.env fl = 1) → σ.env vOk = 1 → σ.wheap = [W] →
-      Store C σ.env W (arrsP Δ st s σ.env ++ arrsP Γ L c σ.env) →
+      Store C σ.env W (arrsP Δ st s σ.env ++ (arrsP Γ L c σ.env ++ X)) →
       ∃ σ' W', Mach.BExec (.loop (.bin .and (.var fl) (.var vOk)) (b.compP st res fl (st ++ L) d)) σ σ' ∧
         σ'.heap = σ.heap ∧ σ'.wheap = [W'] ∧
         (∀ j, j < d → j ∉ vsOfP st → j ≠ res → j ≠ fl → NP j → σ'.env j = σ.env j) ∧
         ((σ'.env vOk = 1 ∧ ∃ sf, RelP Δ st sf σ' ∧ RRP σ' (arrsP Δ st sf σ'.env) R res rl r ∧
-            Store C σ'.env W' (arrsP Δ st sf σ'.env ++ arrsP Γ L c σ.env) ∧
-            finE (pageCount (arrsP Δ st s σ.env ++ arrsP Γ L c σ.env)) E =
-              pageCount (arrsP Δ st sf σ'.env ++ arrsP Γ L c σ.env) ∧
-            pk (pageCount (arrsP Δ st s σ.env ++ arrsP Γ L c σ.env)) E ≤ C) ∨
-          (σ'.env vOk = 0 ∧ C < pk (pageCount (arrsP Δ st s σ.env ++ arrsP Γ L c σ.env)) E)) := by
+            Store C σ'.env W' (arrsP Δ st sf σ'.env ++ (arrsP Γ L c σ.env ++ X)) ∧
+            finE (pageCount (arrsP Δ st s σ.env ++ (arrsP Γ L c σ.env ++ X))) E =
+              pageCount (arrsP Δ st sf σ'.env ++ (arrsP Γ L c σ.env ++ X)) ∧
+            pk (pageCount (arrsP Δ st s σ.env ++ (arrsP Γ L c σ.env ++ X))) E ≤ C) ∨
+          (σ'.env vOk = 0 ∧ C < pk (pageCount (arrsP Δ st s σ.env ++ (arrsP Γ L c σ.env ++ X))) E)) := by
   have hl2 : (Δ ++ Γ).length ≤ (st ++ L).length := by simp; omega
   have hb2 : BelowP (st ++ L) d := fun l h => by
     rcases List.mem_append.1 h with h | h
@@ -1020,7 +1021,7 @@ theorem T.runP_ok {Δ Γ : List Sl} {R : Sl} (b : T (Δ ++ Γ) Δ R) (c : Vals �
   induction hr with
   | @ret s r ho =>
     intro hPs σ W hE hfl hfl01 hok1 hW hS
-    obtain ⟨σ1, W1, e1, h1, w1, k1, o1⟩ := T.compP_ok st res fl rl w C (arrsP Γ L c σ.env) b (st ++ L)
+    obtain ⟨σ1, W1, e1, h1, w1, k1, o1⟩ := T.compP_ok st res fl rl w C ((arrsP Γ L c σ.env ++ X)) b (st ++ L)
       (Vals.app s c) σ d W (arrsP Δ st s σ.env) hE hb2 hy hlen hwf (hok s hPs) hW hok1 hS
       (wpre_of hwl hlen hS) (fun l h => List.mem_append_left _ h) hLw hnp2 hrl
     rw [ho] at o1
@@ -1042,7 +1043,7 @@ theorem T.runP_ok {Δ Γ : List Sl} {R : Sl} (b : T (Δ ++ Γ) Δ R) (c : Vals �
     exact this.frame (fun l hl => hst1 _ (List.mem_map_of_mem hl)) h1 (by omega)
   | @call s s' r E ho hr' ih =>
     intro hPs σ W hE hfl hfl01 hok1 hW hS
-    obtain ⟨σ1, W1, e1, h1, w1, k1, o1⟩ := T.compP_ok st res fl rl w C (arrsP Γ L c σ.env) b (st ++ L)
+    obtain ⟨σ1, W1, e1, h1, w1, k1, o1⟩ := T.compP_ok st res fl rl w C ((arrsP Γ L c σ.env ++ X)) b (st ++ L)
       (Vals.app s c) σ d W (arrsP Δ st s σ.env) hE hb2 hy hlen hwf (hok s hPs) hW hok1 hS
       (wpre_of hwl hlen hS) (fun l h => List.mem_append_left _ h) hLw hnp2 hrl
     rw [ho] at o1
@@ -1061,7 +1062,8 @@ theorem T.runP_ok {Δ Γ : List Sl} {R : Sl} (b : T (Δ ++ Γ) Δ R) (c : Vals �
     · have hE1 : EnvOK (Δ ++ Γ) (st ++ L) (Vals.app s' c) σ1 := by
         refine ⟨(RelP.app hlen).2 ⟨rel1, ((RelP.app hlen).1 hE.rel).2.frame (fun l hl => (hLk l hl).1) h1 hl⟩,
           hl2, W1, w1, S1.1.wlen.2, ?_⟩
-        unfold AllAt; rw [arrsP_append hlen, hR0]; exact S1.2
+        unfold AllAt; rw [arrsP_append hlen, hR0]
+        intro a ha; exact S1.2 a (by rw [← List.append_assoc]; exact List.mem_append_left _ ha)
       obtain ⟨σ2, W2, e2, h2, w2, k2, r2⟩ := ih (hP s s' hPs ho) σ1 W1 hE1 (by rw [f1]; exact hfl)
         (by rw [f1]; exact hfl01) ok1 w1 (by rw [hR0]; exact S1)
       refine ⟨σ2, W2, .loopT hc0 e1 e2, h2.trans h1, w2, fun j hj a1 a2 a3 a4 => by
