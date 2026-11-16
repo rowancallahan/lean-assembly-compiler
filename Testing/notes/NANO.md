@@ -36,14 +36,27 @@ is `Testing/notes/NANO_SUBSET.md`) + every root name of `Init` (1821) and every 
 mutations of valid programs + layout fuzz (random separators incl. column 0, tabs, CR) + shadowing of earlier defs. Verdicts: both reject /
 nano rejects only (allowed) / both accept with equal values / BUG.
 History: this box and nano-mvp fixed the same class of bugs independently; the merged `Nano/Elab.lean` is nano-mvp's (name shape +
-`reserved`, tabs, lone CR, glued numerals / arguments, empty binder groups, duplicate defs) plus ONE more rule found by `edge.py`:
-(*) Lean rejects a body or an argument at COLUMN 0 (`def f (x y : UInt64) : UInt64 :=\na * 3`, `g x\n5`), nano accepted: a line may only
-start with a space, a newline or `def` (`lineStart`). With it: 0 BUGs (seeds 5, 6, 11-13, 21, 31, 77; 5500-10300 cases each, 200-440 accepted by both).
+`reserved`, tabs, lone CR, glued numerals / arguments, empty binder groups, duplicate defs) plus the rules `edge.py` / `thr.py` / the exhaustive
+check found missing (all "nano accepts, Lean rejects"):
+(*) a body or argument at COLUMN 0 (`def f (x y : UInt64) : UInt64 :=\na * 3`, `g x\n5`): a line may only start with a space, a newline or
+`def` (`lineStart`);
+(*) `let rec := ..`: `rec` added to `reserved` (found by `edge.py --allnames`: every name of 1-3 lowercase letters, and 1-2 letters with a digit or
+`_1` suffix, as def / parameter / let / used def: ~111k cases, this was the only one);
+(*) RESOURCE LIMITS (`Testing/nano/thr.py`, `thr_calls.py`: construct x size, Lean accepts / nano accepts): Lean fails with "maximum
+recursion depth" for 512 nested `let`s (500 pass) and 256 nested calls (200 pass; calls cost 2 units, parens and lets 1), and rejects a chain of
+3000 `+`/`*`/`-` operands (2700 pass; mixed chains with numerals pass 5000, rejected at 6000); nothing else broke (2000 args in a call,
+5000 parameters, 5000 defs, a 50000-digit numeral are fine). nano accepted all of these, and rejected nested parentheses deeper than ~10-20
+only because of its fuel. Now: `nestOk` (open parentheses + `let`s in scope <= 100), `sizeOk` (<= 2000 tokens per def), fuel `4 * tokens + 4`.
+With them: 0 BUGs (seeds 5, 6, 11-13, 21, 31, 41, 77; 5500-111000 cases each; 200-100000 accepted by both).
+EXHAUSTIVE (`Testing/nano/exhaust.lean`): every body of 1-5 tokens over a 15-token alphabet (x y 1 - + * ( ) g h k let w := ;) with single spaces
+(813615 bodies, nano accepts 1442), with a newline before every token (nano accepts 4), and every body of 1-6 tokens with spaces only between
+word characters (`x-1`, `g(x)`, `(x)(y)`: 12204240 bodies, nano accepts 4385): each accepted text through Lean's real frontend, values on 4
+inputs equal: 0 differences.
 Found in the pre-merge `nanoElab` (all fixed by rejecting): keywords and `Init` names as names (`def id`, `ite`, `Nat`, `Type`, `sorry`, `_`,
-`fun`, `if`, ...), tabs, lone CR, `g(x)(y)` / `g x(y)` / `(x)y`, duplicate defs, column-0 arguments. My own alternative rule (one letter,
-then digits/`_`: no list at all, none of the 1821 + 168 names is in the class) is kept out: nano-mvp's wider class with a `reserved` list is
-now the one in `Elab.lean`; it is exact only if `reserved` is complete (checked by the `SHAPE` part of `edge.py` and by
-`Testing/nano/reserved.lean`/`boundary.py`; a name outside the sampled space could still be missing: the safe fallback is the one-letter rule).
+`fun`, `if`, ...), tabs, lone CR, `g(x)(y)` / `g x(y)` / `(x)y`, duplicate defs, column-0 arguments. My own alternative name rule (one letter,
+then digits/`_`: no list at all, none of the 1821 + 168 names is in the class) is NOT used: nano-mvp's wider class with a `reserved` list is the
+one in `Elab.lean`; it is exact only if `reserved` is complete: verified exhaustively for all 1-3-letter names (+ the suffixes above) in the four
+roles; names with other suffixes (`a_12`, `ab34`) were sampled only. The one-letter rule is the safe fallback.
 No "meanings differ" case was found (numerals >= 2^64, `-1`/`- 1`/`x -1` = `x - 1`, `x - y - z`, `x - y * z`, application vs binary
 operators, unary minus on UInt64, shadowing of earlier defs by parameters/lets all agree). Accepted by Lean, rejected by nano (allowed, by
 design): `-x`, `-(e)`, `--`/`/-` comments, `let` without `;`, `let` mid-expression, `x'`, unicode, empty file (Lean accepts it, nano: no entry),
