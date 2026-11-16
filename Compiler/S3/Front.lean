@@ -375,7 +375,7 @@ syntax (name := s3Split) "s3_split" : tactic
     let some (.inductInfo ii) := (← getEnv).find? I | continue
     if ii.ctors.length < 2 then continue
     match best with
-    | some b => if d.index > b.index then best := some d
+    | some b => if d.index < b.index then best := some d
     | none => best := some d
   -- first: a datatype value computed by a call (`Enc.enc (f args)`): generalize it, then split
   for e in encArgs do
@@ -391,6 +391,17 @@ syntax (name := s3Split) "s3_split" : tactic
     let (fvs, g') ← g.generalize #[{ expr := e, xName? := `t }]
     let gs ← g'.cases fvs[0]!
     Tactic.replaceMainGoal (gs.map (·.mvarId)).toList
+    return
+  -- second: the condition of an `if`
+  let conds ← do
+    let r ← IO.mkRef (#[] : Array Lean.Expr)
+    t.forEach fun e => do
+      if e.isAppOfArity ``ite 5 && !e.appFn!.appFn!.appFn!.appArg!.hasLooseBVars then
+        r.modify (·.push e.appFn!.appFn!.appFn!.appArg!)
+    r.get
+  if h : 0 < conds.size then
+    let (g1, g2) ← g.byCases conds[0]
+    Tactic.replaceMainGoal [g1.mvarId, g2.mvarId]
     return
   if let some d := best then
     let gs ← g.cases d.fvarId
@@ -421,6 +432,28 @@ syntax (name := s3Contra) "s3_contra" : tactic
     catch _ => s.restore
   throwError "s3_contra: no contradiction"
 
+/-- add the negated forms of `Nat` order hypotheses (`a < b` gives `¬ b ≤ a`, `¬ a < b` gives `b ≤ a`, and back) -/
+syntax (name := s3Hyps) "s3_hyps" : tactic
+
+@[tactic s3Hyps] def evalS3Hyps : Tactic.Tactic := fun _ => Tactic.withMainContext do
+  for d in (← getLCtx) do
+    if d.isImplementationDetail then continue
+    let ty ← instantiateMVars d.type
+    let add (pf : Lean.Expr) : Tactic.TacticM Unit := do
+      let g ← Tactic.getMainGoal
+      let t ← inferType pf
+      let (_, g') ← (← g.assert `hS3 t pf).intro1P
+      Tactic.replaceMainGoal [g']
+    match ty.getAppFnArgs with
+    | (``LT.lt, #[t, _, a, b]) => if t.isConstOf ``Nat then add (← mkAppM ``Nat.not_le_of_lt #[d.toExpr])
+    | (``LE.le, #[t, _, a, b]) => if t.isConstOf ``Nat then add (← mkAppM ``Nat.not_lt_of_le #[d.toExpr])
+    | (``Not, #[q]) =>
+      match q.getAppFnArgs with
+      | (``LT.lt, #[t, _, _, _]) => if t.isConstOf ``Nat then add (← mkAppM ``Nat.le_of_not_lt #[d.toExpr])
+      | (``LE.le, #[t, _, _, _]) => if t.isConstOf ``Nat then add (← mkAppM ``Nat.lt_of_not_le #[d.toExpr])
+      | _ => pure ()
+    | _ => pure ()
+
 /-- `s3_solve n [simp lemmas] with closer`: simplify; close what remains with `closer`; else split a variable and
 retry (at most `n` times deep) -/
 syntax (name := s3Solve) "s3_solve " num " [" Lean.Parser.Tactic.simpArg,* "]" " with " tactic : tactic
@@ -429,14 +462,14 @@ macro_rules (kind := s3Solve)
   | `(tactic| s3_solve $n [$ls,*] with $c) => do
     let k := n.getNat
     if k == 0 then
-      `(tactic| ((try simp only [s3_norm, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne] at *); simp [s3_norm, $ls,*]; all_goals (repeat' apply And.intro) <;> $c))
+      `(tactic| ((try simp only [s3_norm, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne, Nat.blt_eq, Nat.ble_eq, UInt8.toNat_ofNat, decide_eq_true_eq] at *); (try s3_hyps); simp [s3_norm, $ls,*]; all_goals (repeat' apply And.intro) <;> $c))
     else
       let n' := Syntax.mkNumLit (toString (k - 1))
       `(tactic| first
         | s3_contra
-        | ((try simp only [s3_norm, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne] at *); simp [s3_norm, $ls,*]; done)
-        | ((try simp only [s3_norm, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne] at *); simp [s3_norm, $ls,*]; all_goals (repeat' apply And.intro) <;> $c; done)
-        | (((try simp only [s3_norm, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne] at *); (try simp [s3_norm, $ls,*]);
+        | ((try simp only [s3_norm, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne, Nat.blt_eq, Nat.ble_eq, UInt8.toNat_ofNat, decide_eq_true_eq] at *); (try s3_hyps); simp [s3_norm, $ls,*]; done)
+        | ((try simp only [s3_norm, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne, Nat.blt_eq, Nat.ble_eq, UInt8.toNat_ofNat, decide_eq_true_eq] at *); (try s3_hyps); simp [s3_norm, $ls,*]; all_goals (repeat' apply And.intro) <;> $c; done)
+        | (((try simp only [s3_norm, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne, Nat.blt_eq, Nat.ble_eq, UInt8.toNat_ofNat, decide_eq_true_eq] at *); (try s3_hyps); (try simp [s3_norm, $ls,*]);
             s3_split) <;> s3_solve $n' [$ls,*] with $c))
 
 /-! ## text -/
@@ -534,29 +567,42 @@ def genText (N : Name) (st : St) (extraSimp : String) : MetaM String := do
     let recursive := ((fi.body.map SE.calls).getD []).contains k
     let callees := ((fi.body.map SE.calls).getD []).filter (· != k)
     let closers := callees.eraseDups.map (fun j => s!"(apply cert{j}' <;> simp)")
-    let closer := " | ".intercalate ("assumption" :: closers)
+    let closer := " | ".intercalate ("assumption" :: "(intros; assumption)" :: closers)
     let introLine := if xs.isEmpty then "" else s!"  intro {" ".intercalate xs}\n"
     let introLine := if recursive then introLine else introLine ++ "  (\n"
     let mut statics := ""
     for a in fi.statics do statics := statics ++ " " ++ (← exprTxt a)
     let mut induct := ""
     if recursive then
-      -- the parameters the induction principle keeps fixed (before `motive`) and the targets
+      -- the parameters the induction principle keeps fixed (before `motive`) and the targets (the motive's arguments)
       let indName ← realizeGlobalConstNoOverloadCore (fname ++ `induct)
-      let pnames ← forallTelescopeReducing (← inferType fi.key) fun ys _ => ys.mapM fun y => y.fvarId!.getUserName
-      let fixedNames ← forallTelescopeReducing (← getConstInfo indName).type fun ys _ => do
-        let mut r := #[]
-        let mut i := 0
+      let allNames ← forallTelescopeReducing (← getConstInfo fname).type fun ys _ => ys.mapM fun y => y.fvarId!.getUserName
+      let argTxt ← do
+        let mut r : Array String := #[]
+        for a in fi.statics do r := r.push (← exprTxt a)
+        pure (r ++ xs.toArray)
+      let (preTxt, targetNames) ← forallTelescopeReducing (← getConstInfo indName).type fun ys _ => do
+        let mut pre : Array String := #[]
+        let mut m := 0
+        let mut seenMotive := false
         for y in ys do
           let n ← y.fvarId!.getUserName
-          if n == `motive then break
-          if i ≥ fi.statics.size then r := r.push n
-          i := i + 1
-        return r
-      let fixedIdx := fixedNames.toList.map fun n => (pnames.toList.idxOf n)
-      let targets := (List.range xs.length).filter (fun i => !fixedIdx.contains i)
-      let fixedTxt := String.join (fixedIdx.map fun i => " " ++ xs[i]!)
-      induct := s!"  induction {", ".intercalate (targets.map (xs[·]!))} using @{fname}.induct{statics}{fixedTxt} <;> (\n"
+          if n == `motive then
+            seenMotive := true
+            m ← forallTelescopeReducing (← inferType y) fun zs _ => pure zs.size
+          else if !seenMotive then
+            match allNames.toList.idxOf? n with
+            | some j => pre := pre.push (argTxt[j]!)
+            | none => throwError "S3: induction principle parameter {n} not found"
+        let mut r := #[]
+        for y in ys.extract (ys.size - m) ys.size do r := r.push (← y.fvarId!.getUserName)
+        return (pre, r)
+      let dyn := (allNames.extract fi.statics.size allNames.size).toList
+      let byName := targetNames.toList.map fun n => dyn.idxOf n
+      let fixedTxt := String.join (preTxt.toList.map (" " ++ ·))
+      let targets := if byName.Nodup && byName.all (· < xs.length) then byName
+        else (List.range xs.length).filter (fun i => !preTxt.contains xs[i]!) |>.take targetNames.size
+      induct := s!"  induction {", ".intercalate (targets.map (xs[·]!))} using @{fname}.induct{fixedTxt} <;> (\n"
     out := out ++ s!"theorem body{k} : P.body ⟨{k}, by decide⟩ = b{k} := rfl\n"
     let fapp := (← exprTxt fi.key) ++ String.join (xs.map (" " ++ ·))
     out := out ++ s!"theorem phi{k} : ∀ {" ".intercalate binders}, φ ⟨{k}, by decide⟩ {encs} = Proven.S3.Enc.enc ({fapp}) := by\n" ++

@@ -227,7 +227,7 @@ instance {α : Type} [Enc α] : Enc (Option α) where
     (Enc.dec (V.c 0 [a, b]) : α × β) = (Enc.dec a, Enc.dec b) := rfl
 @[simp] theorem dec_none {α : Type} [Enc α] : (Enc.dec (V.c 0 []) : Option α) = none := rfl
 @[simp] theorem dec_some {α : Type} [Enc α] (a : V) : (Enc.dec (V.c 1 [a]) : Option α) = some (Enc.dec a) := rfl
-@[simp] theorem bv_ne_zero (c : Bool) : (bv c != 0) = c := by cases c <;> decide
+@[simp] theorem bv_ne_zero (c : Bool) : (bv c != 0#64) = c := by cases c <;> decide
 
 /-! ### word lemmas for the certificates -/
 
