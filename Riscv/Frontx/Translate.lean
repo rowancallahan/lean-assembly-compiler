@@ -2666,6 +2666,29 @@ partial def readsOf (e : Expr) (fuel : Nat := 8) : MetaM Expr := do
   if e' == e then return e
   readsOf e' (fuel - 1)
 
+/-- the unfolding equation with as many binders as the type of `fn` has (C(ii), round 1): a definition whose value
+is a function after fewer binders than its type (`def g (n : Nat) : Nat → Nat := Nat.add n`, a structure field of
+function type) gets `fn.eq_eta : ∀ xs, fn xs = rhs xs` (by `congrFun`), so that the translator sees every parameter -/
+def etaEqn (fn eqnN : Name) : MetaM (Name × Expr) := do
+  let info ← getConstInfo fn
+  let eqTy := (← getConstInfo eqnN).type
+  let nE ← forallTelescope eqTy fun xs _ => pure xs.size
+  let nT ← forallTelescope info.type fun xs _ => pure xs.size
+  if nE ≥ nT then return (eqnN, eqTy)
+  let newN := fn ++ `eq_eta
+  if (← getEnv).contains newN then return (newN, (← getConstInfo newN).type)
+  let lvls := info.levelParams.map mkLevelParam
+  let (ty, pf) ← forallTelescope info.type fun xs _ => do
+    let pf0 := mkAppN (mkConst eqnN lvls) xs[:nE]
+    let some (_, lhs, rhs) := (← inferType pf0).eq? | throwError "frontx: bad equation {eqnN}"
+    unless lhs.getAppNumArgs == nE && lhs.getAppFn.isConstOf fn do throwError "frontx: equation {eqnN} is not about {fn}"
+    let mut pf := pf0
+    for z in xs[nE:] do pf ← mkCongrFun pf z
+    let ty ← mkEq (mkAppN lhs xs[nE:]) (mkAppN rhs xs[nE:]).headBeta
+    return (← mkForallFVars xs ty, ← mkLambdaFVars xs (← mkExpectedTypeHint pf ty))
+  addDecl (.thmDecl { name := newN, levelParams := info.levelParams, type := ty, value := pf })
+  return (newN, ty)
+
 def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (accMode := false)
     (pre? : Option Term := none) (from? : Option (Name × Term) := none)
     (start : Nat := 4) (noBound : Array Nat := #[]) : TermElabM Unit := do
@@ -2681,7 +2704,7 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
   let (eqnN, eqnTy) ← match from? with
     | some (e, _) => pure (e, (← getConstInfo e).type)
     | none =>
-      if let some eqn ← getUnfoldEqnFor? fn (nonRec := true) then pure (eqn, (← getConstInfo eqn).type)
+      if let some eqn ← getUnfoldEqnFor? fn (nonRec := true) then etaEqn fn eqn
       else if let some eqn ← ctorEqn? fn then pure (eqn, (← getConstInfo eqn).type)
       else throwError "frontx: no unfolding equation for {fn}"
   let repN := fn ++ `Rep
@@ -2691,6 +2714,13 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
   let stepN := fn ++ `step1
   let bstate := Lean.mkConst ``BState
   forallTelescope info.type fun xs resTy => do
+    -- C(iii), round 1: every parameter must be data or a proof (a type in `Type` or `Prop`), the result data; a
+    -- structure with a type field (`Mach.Wide : Type 1`) is rejected here, before the simulation statement is built
+    for t in xs.map (·) |>.push (mkSort levelOne) do
+      let ty ← if t.isSort then pure resTy else inferType t
+      let u ← instantiateLevelMVars (← getLevel ty)
+      unless (← isLevelDefEq u levelOne) || (!t.isSort && (← isLevelDefEq u levelZero)) do
+        throwError "frontx: unsupported {if t.isSort then "result" else "parameter"} type{indentExpr ty}\n(it lives in {mkSort u}, not in Type: a structure with a type field, or a type)"
     -- a `List UInt8` result: written to the output block (list mode)
     let resTyW ← whnfR resTy
     let listRes ← if resTyW.isAppOfArity ``List 1 then pure ((← whnfR resTyW.appArg!).isConstOf ``UInt8) else pure false
