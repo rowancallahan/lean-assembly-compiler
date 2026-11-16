@@ -29,7 +29,7 @@ L = ["import Nano.ProofTop", "import Nano.Int", "import Nano.Elab", "open Proven
      "    match compileW (lower p) with",
      "    | none => throw (IO.userError s!\"{name}: compile failed\")",
      "    | some (ws, Q) =>",
-     "      unless Proven.Top.wordBytes ws == nanoGen p do throw (IO.userError s!\"{name}: WORDS != nanoGen\")",
+     "      unless Proven.Top.wordBytes ws == nanoGenIR p do throw (IO.userError s!\"{name}: WORDS != nanoGen\")",
      "      IO.FS.writeFile s!\"Testing/asm/ir-words/{name}.words\" (String.intercalate \"\\n\" (s!\"{name} 0\" :: ws.map hex8) ++ \"\\n\")",
      "      let mut s := \"\"",
      "      for args in ins do",

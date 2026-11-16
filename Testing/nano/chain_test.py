@@ -85,7 +85,7 @@ E = ["import Nano.ProofTop", "import Nano.Elab", "import Nano.Gen", "open Proven
      "def emitC (name src : String) (cases : List (List Nat × Nat)) : IO Unit := do",
      "  let some p := nanoElab src.toUTF8.toList | throw (IO.userError s!\"{name}: rejected\")",
      "  let some (ws, Q) := compileW (lower p) | throw (IO.userError s!\"{name}: compile failed\")",
-     "  unless Proven.Top.wordBytes ws == nanoGen p do throw (IO.userError s!\"{name}: words != nanoGen\")",
+     "  unless Proven.Top.wordBytes ws == nanoGenIR p do throw (IO.userError s!\"{name}: words != nanoGen\")",
      "  IO.FS.writeFile s!\"Testing/asm/ir-words/{name}.words\" (String.intercalate \"\\n\" (s!\"{name} 0\" :: ws.map hex8) ++ \"\\n\")",
      "  let mut s := \"\"",
      "  for (args, want) in cases do",

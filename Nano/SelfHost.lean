@@ -95,4 +95,28 @@ theorem selfHosted_of {B : List (BitVec 32)} {space : Nat → Nat} {D : List UIn
     L2r p c _ _ _ ⟨args, harity⟩ startState call hc (computes_words p) startsRight
       (by rw [leN_length]; exact outputFits)
 
+open Nano.Link in
+/-- **three compiled stages, one binary**: the stages `fe` (text → program bytes), `fg` (program bytes → records),
+`fa` (records → code), each compiled by the front end (`….implements1` in list form, result length in `a1`), are
+linked into `B = link (link ce cg) ca`; with (L2) this is the target.  `K` bounds the intermediate lengths and the
+stages' work spaces on the domain `D`. -/
+theorem selfHosted_stages {ce cg ca : List (BitVec 32)} {fe fg fa : ByteArray → List UInt8} {se sg sa : Nat → Nat}
+    {D : List UInt8 → Prop} {compile : Prog → Option CompiledA} (K : Nat)
+    (he : Implements1With (fun xs : ByteArray => xs.data.toList) (fun l => l) ce fe se (2 ^ 20) true)
+    (hg : Implements1With (fun xs : ByteArray => xs.data.toList) (fun l => l) cg fg sg (2 ^ 20) true)
+    (ha : Implements1With (fun xs : ByteArray => xs.data.toList) (fun l => l) ca fa sa (2 ^ 20) true)
+    (hcg : cg.length < 2 ^ 17) (hca : ca.length < 2 ^ 17)
+    (hD : ∀ src, D src → (fe (ofL src)).length ≤ 2 ^ 20 ∧ (fe (ofL src)).length ≤ K ∧ se src.length ≤ K ∧
+      sg (fe (ofL src)).length ≤ K ∧ (fg (ofL (fe (ofL src)))).length ≤ 2 ^ 20 ∧
+      (fg (ofL (fe (ofL src)))).length ≤ K ∧ sa (fg (ofL (fe (ofL src)))).length ≤ K)
+    (heq : ∀ src p, D src → nanoElab src = some p → fa (ofL (fg (ofL (fe (ofL src))))) = nanoGen p)
+    (hcode : ∀ p c, compile p = some c → c.code = nanoGen p)
+    (L2 : CompileCorrect riscv compile) (L2r : CompileRuns riscv compile) :
+    SelfHosted (link (link ce cg) ca) (fun _ => 4 * (4 * K + 96) + 96) D compile := by
+  have h1 := link_stage (α := SrcIn D) K (comap he fun s : SrcIn D => ofL s.1) hg hcg fun a _ => by
+    obtain ⟨h1, h2, h3, h4, -⟩ := hD a.1 a.2; exact ⟨h1, h2, h3, h4⟩
+  have h2 := link_stage (4 * K + 96) h1 ha hca fun a _ => by
+    obtain ⟨-, -, -, -, h5, h6, h7⟩ := hD a.1 a.2; exact ⟨h5, by omega, by omega, by omega⟩
+  exact selfHosted_of (cb := fun src => fa (ofL (fg (ofL (fe (ofL src)))))) h2 heq hcode L2 L2r
+
 end Nano.SelfHost
