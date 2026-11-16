@@ -306,4 +306,31 @@ theorem wholeA_ok (C : Nat) {k : AK} (p : Pg [.ar .ba] (.ar k)) (ob : Nat) (xs :
     simp only [Mach.BExp.denote, set_eq, set_ne (show 1 ≠ 8 by decide), set_ne (show vOk ≠ 8 by decide), ok1']
     simp
 
+/-- the pool size from the work block: `cap := ((sp - a2) >> 13 - 1) << 10` words (one page of `8 P = 8192` bytes
+is left for the frame) -/
+def capCode : MS :=
+  .assign vCap (.bin .shl (.bin .sub (.bin .lshr (.bin .sub (.var 4) (.var 2)) (.const 13)) (.const 1)) (.const 10))
+
+theorem capCode_ok (env : Mach.BEnv) (H : Heap) (W : List (List (BitVec 64))) (b L : Nat)
+    (h2 : env 2 = BitVec.ofNat 64 b) (h4 : env 4 = BitVec.ofNat 64 (b + L)) (hL : 8192 ≤ L)
+    (hb : b + L ≤ 2 ^ 32) :
+    Mach.BExec capCode ⟨env, H, W⟩ ⟨env.set vCap (rN ((L / 8192 - 1) * P)), H, W⟩ := by
+  have hv : (Mach.BExp.bin .shl (.bin .sub (.bin .lshr (.bin .sub (.var 4) (.var 2)) (.const 13)) (.const 1)) (.const 10)).denote env = rN ((L / 8192 - 1) * P) := by
+    simp only [Mach.BExp.denote, h2, h4, Op.eval]
+    apply BitVec.eq_of_toNat_eq
+    have e1 : (BitVec.ofNat 64 (b + L) - BitVec.ofNat 64 b).toNat = L := by
+      simp only [BitVec.toNat_sub, BitVec.toNat_ofNat]; omega
+    have h13 : (13 : BitVec 64).toNat = 13 := rfl
+    have h10 : (10 : BitVec 64).toNat = 10 := rfl
+    have h1 : (1 : BitVec 64).toNat = 1 := rfl
+    have e2' : ((BitVec.ofNat 64 (b + L) - BitVec.ofNat 64 b) >>> ((13 : BitVec 64).toNat % 64)).toNat = L / 8192 := by
+      rw [BitVec.toNat_ushiftRight, e1, h13]; simp [Nat.shiftRight_eq_div_pow]
+    have e3 : (((BitVec.ofNat 64 (b + L) - BitVec.ofNat 64 b) >>> ((13 : BitVec 64).toNat % 64)) - 1).toNat = L / 8192 - 1 := by
+      rw [BitVec.toNat_sub, e2', h1]; omega
+    rw [BitVec.toNat_shiftLeft, e3, h10, Nat.shiftLeft_eq]
+    simp only [rN, BitVec.toNat_ofNat, P]
+  have := Mach.BExec.assign (v := vCap) (e := .bin .shl (.bin .sub (.bin .lshr (.bin .sub (.var 4) (.var 2)) (.const 13)) (.const 1)) (.const 10)) (σ := ⟨env, H, W⟩)
+  rw [hv] at this
+  exact this
+
 end Proven.WA
