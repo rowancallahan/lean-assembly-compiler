@@ -288,6 +288,9 @@ text with the same meaning; nano may reject anything. Checked by per-program agr
 adversarial boundary fuzz (accept/reject compared on both sides: precedence of application vs binary minus such as
 `f -1`, numeral wrap, unary minus, shadowing of Lean globals, keywords as names, comments, whitespace). Any "nano
 accepts, Lean rejects" or "meanings differ" is a bug, fixed by rejecting.
+SPEC OWNERSHIP (owner): `nanoElab`, `Prog.eval` and the documented grammar are a DRAFT spec; the owner writes/confirms
+the final version later. Boxes keep them minimal, record evidence (agreement proofs, fuzz results, edge cases) for that
+review, and spend their effort on the proved back end and self-hosting, not on polishing the spec.
 
 - v1 (Sonnet box, branch nano-e2e): `nanoCompile = nanoGen ∘ nanoElab` (UTF-8 text → AST → RISC-V) written in Lean,
   compiled by our compiler (binary proved to compute `nanoCompile`); elaborator checked against Lean's real elaborator
