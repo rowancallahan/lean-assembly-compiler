@@ -1203,7 +1203,8 @@ elab_rules : command
           if eps.contains eargs[i]! then bi := "Proven.Mach.Ind.BIn.inp"; two := true
           else
             let .const cn _ := eargs[i]!.getAppFn | throwError "frontx_ind: the second argument must be a nullary constructor"
-            let some (rb, ci) ← findCtorT tys cn (← inferType eargs[i]!) | throwError "frontx_ind: the second argument must be a constructor"
+            let byType ← try findCtorT tys cn (← inferType eargs[i]!) catch _ => pure none
+            let some (rb, ci) := byType <|> findCtor tys cn | throwError "frontx_ind: the second argument must be a constructor"
             unless eargs[i]!.getAppNumArgs == rb.ti.params.size do throwError "frontx_ind: the second argument must be nullary"
             bi := s!"(Proven.Mach.Ind.BIn.ctor {rb.off + ci})"; bC := some ci
         pure (bi, toString (aC.getD 0), aC, bC, two, ain)
