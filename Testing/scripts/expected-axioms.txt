@@ -358,3 +358,5 @@
 'Proven.Ir.flatS_ok'dependsonaxioms:[propext,Quot.sound]
 'Proven.Ir.flatT_ok'dependsonaxioms:[propext,Quot.sound]
 'Proven.Ir.reach_call'dependsonaxioms:[propext,Quot.sound]
+'Proven.Ir.IndLow.lower_ok'dependsonaxioms:[propext,Classical.choice,Quot.sound]
+'Proven.Frontx.IndIr.lowerOk'dependsonaxioms:[propext,Classical.choice,Quot.sound]

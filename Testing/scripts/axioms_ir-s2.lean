@@ -11,3 +11,5 @@ import Compiler.Ir.Examples
 #print axioms Proven.Ir.flatS_ok
 #print axioms Proven.Ir.flatT_ok
 #print axioms Proven.Ir.reach_call
+#print axioms Proven.Ir.IndLow.lower_ok
+#print axioms Proven.Frontx.IndIr.lowerOk
