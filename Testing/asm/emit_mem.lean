@@ -102,7 +102,22 @@ elab "prog%" n:ident : term => do
   | (``Proven.Mach.Riscv.callsCode1W, #[P, _, _]) => return P
   | _ => throwError "not callsCode1W"
 
+open Proven.Mach Proven.Mach.Riscv in
+/-- the conditional-branch spans of a body (the `bzOK` conjuncts of `wfCM` for `ite` / `loop`) -/
+partial def spans (P : Prog) : CStmt → List Nat
+  | .base _ => []
+  | .seq p q => spans P p ++ spans P q
+  | .ite _ p q => [rvM.lenBz + rvM.lenCM P [0, 3] wb2 p + (rvM.lenLi + rvM.lenBz), rvM.lenBz + rvM.lenCM P [0, 3] wb2 q] ++
+      spans P p ++ spans P q
+  | .loop _ b => [rvM.lenBz + rvM.lenCM P [0, 3] wb2 b + rvM.lenJmp] ++ spans P b
+  | .call .. => []
+
 def emitM (name : String) (P : Proven.Mach.Prog) (retLen : Bool) (cases : List (List UInt8 × List UInt8)) : IO Unit := do
+  -- `WfMem` needs every conditional branch within reach (`bzOK n := 2 n < 2048`); otherwise `compile = none`
+  let span := (P.flatMap fun F => spans P F.body).foldl max 0
+  if 2 * span ≥ 2048 then
+    IO.println s!"{name}: SKIPPED, a branch spans {span} words (WfMem fails, compile = none)"
+    return
   let code := Proven.Mach.Riscv.memCode P 1 0
   IO.FS.writeFile s!"Testing/asm/mem-words/{name}.words"
     (String.intercalate "\n" (s!"mem {if retLen then 1 else 0}" :: code.map hex8) ++ "\n")

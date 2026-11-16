@@ -9,7 +9,8 @@ sp = work end):
 Both: input, guards unchanged and (Sail) every data write lands in the output block or the work block.
 usage: mem_test.py check N name"""
 import math, os, random, re, subprocess, sys, zlib
-D = os.path.dirname(os.path.abspath(__file__)); W = os.path.join(D, "ctest"); os.makedirs(W, exist_ok=True)
+D = os.path.dirname(os.path.abspath(__file__))
+W = os.path.join(D, "ctest", "mem-" + sys.argv[3]); os.makedirs(W, exist_ok=True)
 SAIL = "/home/user/deps/sailsim/sail-riscv-Linux-x86_64/bin/sail_riscv_sim"
 p = lambda f: os.path.join(W, f)
 sh = lambda c: subprocess.run(c, shell=True, check=True)

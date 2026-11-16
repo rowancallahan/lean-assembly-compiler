@@ -1515,3 +1515,72 @@ as real calls: exponential recomputation, not per-call cost. A fix is a common-s
 (tried: one strict duplicated call → `E.bind`, the `sem` proof and `nl = 20` unchanged); not kept (speed deferred).
 The general per-node cost (3.9–9.9× elsewhere) is ~45 % constant building (`li` one bit at a time in the plain
 `rv` back end), slot traffic and 2 instructions per zero-initialised local per call.
+
+## 24. Run-time memory (branch `mem-spec`)
+
+Statements: `Compiler/AllocSpec.lean` (owner): `CompileRuns riscv compile` (no memory hypothesis; with the
+output-fits hypothesis approved for it) and `CompileCorrect riscv compile` (hypothesis
+`memoryNeeded compiled input ≤ workLength`), with `memoryNeeded = cellSize * peak events`, `OutOfMemory = W <
+memoryNeeded`, status register `mapping.status` = `a0` on RISC-V (`riscvMapping.status = 10`).
+
+**Proved for the inductive path** (`Riscv/Frontx/IndMem.lean`, every `frontx_ind` program, one or several
+functions): `Proven.Frontx.IndMem.compile_runs : CompileRuns riscv compile`,
+`Proven.Frontx.IndMem.compile_correct : CompileCorrect riscv compile`, both with exactly the Sail axioms of
+`Proven.Top.compile_correct`; `memoryNeeded_le`: the old space bound (`Ind.spaceA … cellsSup`, the hypothesis of
+`implements1_indS` / `implements1_indM`) is at least `memoryNeeded`, so the old theorems' hypothesis gives the new
+one.  `compile : IndProg → Option CompiledA` takes the program of the inductive path (`indProgM`, unchanged: the
+same source program as the entries' `.code`) and compiles it with the run-time checks; it returns `none` unless
+`IndProg.Good` (the old side conditions, well-formedness of the new code, `progClean`, and: inputs of at most
+`2^20` bytes allocate fewer than `2^50` cells, so the source run's 64-bit pointers do not wrap).
+`Program.run` of an `IndProg`: the output bytes (`Kd.out`) of the Lean semantics `Pg.sem` of the values the input
+encodes (`inBytesA`), `none` on other inputs.
+
+**The memory model** (source level, `Compiler/MemRun.lean`, machine-independent, address-free):
+cells of 8 bytes; the run with events `TExec` (= `CExec` with word block 0 growing): word block 0 (the heap) is
+empty at the start and grows with zero words when a word at or above its length is accessed (event `alloc d`), a
+call opens a frame of `nlocals + 1` cells (`alloc`) and closes it on return (`free`), the entry stub's two cells
+come first (`alloc 2`).  The program frees no heap (owner's default (2)); frames are allocated on call and freed on
+return (default (3)); `memoryNeeded` is defined (the events of the run from a canonical start, `IndProg.events`,
+`Classical.choose` of the run), not calculated.  `texec_of_cexec`: every `CExec` run on a zero word block is a
+`TExec` run, its peak at most start + heap growth + stack need / 8 (this gives `memoryNeeded_le`);
+`texec_det`: runs from states that differ only in unread data (base addresses, output contents) have the same
+events (so the machine's run and the canonical one agree).
+
+**The generated code** (`Compiler/MemCode.lean`, `MachineM` = `MachineC` + compare-and-branch on two registers,
+read `gp`, read the stub's frame address, the exit; `Riscv/Back/MemRv.lean`): heap at the bottom of the work block
+(base `a2`, length in words in `a7`), frames from the top (`sp`, `gp`), free space between.
+* every access of word `i` of the heap: `r0 := i; bltu r0, a7, ok` (the common case); else (`i ≥ u`): if word `i`
+  lies below the current frame (`i < (gp - a2) >> 3`) zero the words `u .. i` and `a7 := i + 1`, else jump to
+  the exit;
+* every call: `gp - 8 (n + 1) ≥ a2 + 8 a7` (the callee's frame stays above the heap), else the exit;
+* entry stub: if the stub's two cells do not fit, `a0 := -1; ret`; globals 4..7 := 0;
+* exit: `ra` from the stub's cell (`alignDown(sp) - 16`), `a0 := -1`, `ret`.
+So the run fails exactly when heap + live frames exceed the work block (`execCM_ok`, by induction on `TExec`:
+either the events fit and the code ends with the relation, or they do not and the code is at the exit; `compPM_ok`
+for the whole program; `memRaw` / `memSpec` from the machine facts / `StartCorrect`).  On success `a0` is the input
+address (never `-1`), `a1` the output length (tree results), `gp` restored; on the flag `gp` is not restored (not
+required).  The input block is never written (`BStmt.clean`: stores only to byte blocks ≠ 0), so the frame clause
+holds in both cases.
+
+**Tests** (`Testing/asm/emit_mem.lean`: `memCode` of every inductive entry and per case `memoryNeeded` from an
+interpreter of `TExec`, checked against Lean's result; `python3 Testing/asm/mem_test.py check 50 <name>`): every
+case twice on QEMU and Sail: work block = `memoryNeeded` bytes (output = Lean's, `a0` = input address, `a1`,
+`gp`, `sp`), and `memoryNeeded - 1` bytes (`a0 = 2^64 - 1`); always input and guards unchanged and (Sail) every
+write in the output or work block.
+
+**Coverage gap: branch reach.**  `IndProg.Good` contains `WfMem`, and `WfMem` needs every conditional branch over
+an `ite` / `loop` body to reach (`bzOK n := 2 n < 2048`, i.e. at most 1023 words).  The inline checks make the code
+about twice as long, and in 4 of the 29 entries one function's body is now too long: `pos_comp` (1178 words),
+`tree_insert5` (1375), `level_combining` (2037), `level_simplify` (2046).  For these `compile` returns `none`, so the
+theorems hold but say nothing about them.  `emit_mem.lean` checks the same spans and skips them.  Fix (not done):
+emit a long form `bz r0, +2; jmp then; jmp else` for far branches, or move the slow path of the access check out of
+line (one shared routine per function), which also cuts the code size and the cost below.
+
+**Results.**  25 entries, each 50 cases x 2 (at `memoryNeeded`, then at `memoryNeeded - 1`), all ok on QEMU and Sail.
+
+**Run-time cost** (`mem_bench.py`, instructions retired on the largest of the 50 inputs, old code with its static
+work bound vs the new code at `memoryNeeded`): `bt_count` +67%, `bt_graftleft` +87%, `bt_mirror` +15%
+(`eq_bintree`: the old code took 1.1e9 instructions, the new one 2.2e6).  Code size about 2x.  This is more than
+"a compare + branch per alloc / call".  The checks sit on every heap word access: `li; bltu` on the fast path
+(about 4 instructions), about 30 on a heap-growing store (it zeroes the new words), and about 10 per call.  A
+per-allocation check would need a source-level proof that loads stay below the heap length.
