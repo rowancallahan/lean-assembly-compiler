@@ -2325,3 +2325,25 @@ words (Expr 3270–3700; the old route 4150–5271): no inline heap checks, one 
 `memoryNeeded` and `memoryNeeded - 1`, after re-emitting with the `goodB` check: words unchanged);
 `bash Testing/scripts/check.sh` ALL CHECKS PASSED (statement-fingerprint warning only, not re-frozen).  Next: switch
 `frontx_ind` to the IR route (an `Implements1` from `IndIr.compile_correct` per entry, `Chain` by the `{P}.X` rfl).
+
+## 35. Paged front end (branch `feat-paged2`)
+
+**(1) `a0` flag, `CompileRuns` / `CompileCorrect` for the paged compiler (done; no sorry, no new axiom).**
+- `WpTop`: `wholeS_ok` / `wholeA_ok` also give `vOk` (variable 7, `a7`) at the end: 1 when the pages fit, 0 when not.
+- `WpImpl`: `pg_core` / `pg_of_spec` / `pg_of_execOW` take `Q : α → Nat → BitVec 64 → Prop` (a fact about `a7` at
+  the return); `Implements1PgQ` = `Implements1Pg` plus `∃ v, a7 = v ∧ Q a L v`; `implements1_pgSQ` / `implements1_pgAQ`
+  with `Q = okQ fits` (`a7 = 1` iff fits); `implements1_pgS` / `implements1_pgA` are their weakenings (unchanged
+  statements).
+- `PgMem.lean`: the entry stub `pgStub` (10 words): `t0 := (sp - a2) >> 13`; `t0 = 0` (no whole page) → `a0 := -1`,
+  `ret` without running the body; else `mv s1, ra; jal ra, body; mv ra, s1; addi a0, a7, -1; ret`.  Decision: `ra`
+  is kept in `s1` (the body keeps the callee-saved registers), not in the work block, so the body still gets the whole
+  work block and `memoryNeeded` stays `8192 * (peak + 1)` exactly; cost: the stub does not preserve `s1` (the
+  `AllocSpec` statements ask nothing of callee-saved registers).  `stub_run` (machine level, any work length, also
+  below 8192), `stub_top` (from `StartCorrect`).
+- `PgTop.lean`: `PgProg` (a `Pg [.ar .ba] R`, scalar or array result), meaning `PgProg.run` = `Pg.Den` (deterministic:
+  `Pg.den_det`; `GoodE` runs agree: `Pg.goodE_den`), `compile` (stub ++ paged code, cells of 8192 bytes, events
+  `E.reverse ++ [.alloc 1]` of the run's `GoodE` events, which are allocations only: `Pg.goodE_allocs`), `Good` (the
+  checks of `implements1_pgSQ/AQ` + every input up to `2^20` bytes has a `GoodE` run).  **`compile_runs :
+  CompileRuns riscv compile`, `compile_correct : CompileCorrect riscv compile`** (statements of
+  `Compiler/AllocSpec.lean` unchanged).  Axioms: exactly the Sail set (`Testing/scripts/axioms_feat-paged2.lean`, in
+  check.sh's loop).

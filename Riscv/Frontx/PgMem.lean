@@ -18,6 +18,8 @@ in `s1` instead of the work block leaves the body the whole work block, so `memo
 `stub_run`: the stub with the body returns to the caller, changes only the output prefix and the work block, and
 `a0 = -1` exactly when the run does not fit (`fits`), else `a0 = 0` and the output. -/
 import Riscv.Frontx.WpImpl
+import Riscv.Back.Top
+import Compiler.AllocSpec
 
 set_option linter.unusedVariables false
 set_option maxHeartbeats 4000000
@@ -242,3 +244,91 @@ theorem stub_run {α β : Type} {encA : α → List UInt8} {encB : β → List U
     · rw [g10, p8.2 hf]; decide
 
 end Proven.Mach.Riscv
+
+namespace Proven.Top
+open Proven.Mach.Riscv Proven.Top.Alloc
+
+/-- **The stub from `StartCorrect`**: the code returns to the caller, changes nothing outside the output and work
+blocks, and the status register is `oomFlag` exactly when the run does not fit; when it fits, the output -/
+theorem stub_top {α β : Type} {encA : α → List UInt8} {encB : β → List UInt8} {code : List (BitVec 32)}
+    {f : α → β} {fits : α → Nat → Prop} {retLen : Bool}
+    (hbody : Implements1PgQ encA encB code f 8192 fits (Proven.WA.okQ fits) (2 ^ 20) retLen)
+    (hsmall : ∀ a L, L < 8192 → ¬ fits a L) {argument : α} {startState : St} {call : Call}
+    (startsRight : StartCorrect riscv startState call (wordBytes (pgStub ++ code)) (encA argument))
+    (outputFits : (encB (f argument)).length ≤ call.outputLength) :
+    ∃ finishState : St, Runs riscv startState finishState ∧
+      (riscvObserve finishState).programCounter = call.returnAddress ∧
+      (∀ address, Outside address (call.outputAddress, call.outputLength) →
+        Outside address (call.workAddress, call.workLength) →
+        (riscvObserve finishState).memory address = (riscvObserve startState).memory address) ∧
+      (fits argument call.workLength → (riscvObserve finishState).register 10 ≠ oomFlag ∧
+        readMemory (riscvObserve finishState) call.outputAddress (encB (f argument)).length
+          = some (encB (f argument))) ∧
+      (¬ fits argument call.workLength → (riscvObserve finishState).register 10 = oomFlag) := by
+  obtain ⟨configured, codeLoaded, inputLoaded, inputLength, inputSmall, returnRegister, inputRegister,
+    lengthRegister, workRegister, workTopRegister, outputRegister, codeAligned, returnAligned, workAligned,
+    returnOutsideCode, inRam, disjoint, outputPresent, workPresent⟩ := startsRight
+  change Cfg startState at configured
+  have eObserve : riscv.observe = riscvObserve := rfl
+  have eMapping : riscv.mapping = riscvMapping := rfl
+  have eStart : riscv.ramStart = 0x80000000 := rfl
+  have eEnd : riscv.ramEnd = 0x100000000 := rfl
+  simp only [eObserve, eMapping, eStart, eEnd, riscvMapping, Call.blocks, wordBytes_length] at *
+  generalize hpc : (riscvObserve startState).programCounter = pc at *
+  simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq] at inRam
+  obtain ⟨⟨ri1, ri2⟩, ⟨ro1, ro2⟩, ⟨rw1, rw2⟩, ⟨rc1, rc2⟩⟩ := inRam
+  have hreg := fun (register : LeanRV64D.Register) hregister => isSome_of_cfg configured (register := register) hregister
+  have hpcReg := register_of (hreg .PC (by simp)) hpc
+  have hentry : (BitVec.ofNat 64 pc.toNat).toNat = pc.toNat := by simp
+  have hra : (BitVec.ofNat 64 call.returnAddress.toNat).toNat = call.returnAddress.toNat := by simp
+  have hcode := (readMemory_riscv startState (address := pc) (length := (wordBytes (pgStub ++ code)).length) _
+    (by rw [wordBytes_length]; omega)).1 (by rw [wordBytes_length]; exact codeLoaded)
+  rw [wordBytes_length, wordBytes_codeBytes] at hcode
+  have hinput := (readMemory_riscv startState (address := call.inputAddress) _ (by omega)).1 inputLoaded
+  have run := stub_run hbody hsmall argument startState (BitVec.ofNat 64 pc.toNat)
+    (BitVec.ofNat 64 call.returnAddress.toNat)
+    ⟨call.inputAddress.toNat, call.inputLength⟩ ⟨call.outputAddress.toNat, call.outputLength⟩
+    ⟨call.workAddress.toNat, call.workLength⟩ inputSmall configured hpcReg (by rw [hentry]; exact codeAligned)
+    (by rw [hentry]; exact hcode)
+    (register_of (hreg .x10 (by simp)) inputRegister)
+    (by have := register_of (hreg .x11 (by simp)) lengthRegister
+        rw [this, UInt64.toNat_ofNat', Nat.mod_eq_of_lt (by omega)])
+    (register_of (hreg .x12 (by simp)) workRegister)
+    (register_of (hreg .x13 (by simp)) outputRegister)
+    (by have := register_of (hreg .x2 (by simp)) workTopRegister
+        rw [this, toNat_add_offset (bound := call.workLength + 1) (by omega) (by omega)])
+    (register_of (hreg .x1 (by simp)) returnRegister) (by rw [hra]; exact returnAligned)
+    (by rw [hra, hentry]; exact returnOutsideCode) hinput inputLength outputFits workAligned
+    (by
+      simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq, Region.inRAM, hentry]
+      omega)
+    (by
+      simp only [List.pairwise_cons, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq,
+        List.Pairwise.nil, and_true, Proven.disjoint, Apart, hentry, false_implies, implies_true] at disjoint ⊢
+      simpa only [] using disjoint)
+    (fun offset (hoffset : offset < call.outputLength) => by
+      have := outputPresent offset hoffset
+      simp only [riscvObserve, Option.isSome_map] at this
+      rwa [toNat_add_offset (by omega) hoffset] at this)
+    (fun offset (hoffset : offset < call.workLength) => by
+      have := workPresent offset hoffset
+      simp only [riscvObserve, Option.isSome_map] at this
+      rwa [toNat_add_offset (by omega) hoffset] at this)
+  obtain ⟨steps, finishState, hsteps, hpcFinish, hcfg, hunchanged, hfit, hnofit⟩ := run
+  have hx10 : ∀ v, getX finishState 10 = v → (riscvObserve finishState).register 10 = UInt64.ofBitVec v := by
+    intro v hv; simp only [riscvObserve, riscvRegister, hcfg.x10, hv, Option.map_some, Option.getD_some]
+  refine ⟨finishState, runs_of_steps steps _ _ hsteps, ?_, ?_, fun hf => ?_, fun hf => ?_⟩
+  · simp [riscvObserve, hpcFinish]
+  · intro address hout hwork
+    simp only [riscvObserve]
+    rw [hunchanged address.toNat (by
+      simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq]
+      unfold Outside at hout hwork
+      simp only at hout hwork
+      exact ⟨by show _ ∨ _; omega, hwork⟩)]
+  · obtain ⟨hb, h0⟩ := hfit hf
+    refine ⟨by rw [hx10 _ h0]; decide, ?_⟩
+    exact (readMemory_riscv finishState (address := call.outputAddress) _ (by omega)).2 hb
+  · rw [hx10 _ (hnofit hf)]; rfl
+
+end Proven.Top
