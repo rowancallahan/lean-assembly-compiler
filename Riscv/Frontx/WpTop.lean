@@ -114,4 +114,69 @@ theorem outLoopP_iter {k : AK} (a : k.T) (l : PLoc) (d : Nat) (X O0 : List (BitV
     rw [k' i hi]
     simp only [env3, env2, set_ne (show i ≠ d + 1 by omega), set_ne (show i ≠ d by omega), hk1' i (by omega)]
 
+/-! ## The whole program -/
+
+def inLocP : PLoc := ⟨1, true, 0⟩
+
+/-- an empty pool: nothing bumped, no free page, no failed request (`vCap` is set before) -/
+def poolInit : MS :=
+  .seq (.assign vBump (.const 0)) (.seq (.assign vFh (.const NIL)) (.assign vOk (.const 1)))
+
+theorem envOK_input (xs : ByteArray) (env : Mach.BEnv) (out : List (BitVec 8)) (W : W64)
+    (h1 : env 1 = BitVec.ofNat 64 xs.data.toList.length) (h32 : xs.size < 2 ^ 32) (hW : W.length < 2 ^ 32) :
+    EnvOK [.ar .ba] [inLocP] (xs, ()) ⟨env, [xs.data.toList.map (·.toBitVec), out], [W]⟩ := by
+  refine ⟨⟨⟨?_, h32, fun _ => ?_, fun h => nomatch h⟩, trivial⟩, by simp, W, rfl, hW, ?_⟩
+  · show env 1 = _; rw [h1]; simp [AK.size, rN]
+  · show InpAt _ .ba xs
+    refine ⟨?_, fun j hj => ?_⟩
+    · simp [AK.size]
+    · simp only [List.getD_cons_zero, List.getElem?_map, Array.getElem?_toList, Option.map_map]
+      rw [show xs.data[j]? = some xs.data[j] from Array.getElem?_eq_getElem hj]
+      simp only [Option.map_some, AK.w, AK.el, AK.get, Ty.rep]
+      rw [getElem!_pos xs j hj]; rfl
+  · intro a ha; simp [arrsP, inLocP] at ha
+
+theorem pool_empty (C : Nat) (env : Mach.BEnv) (W : W64) (hC : C * P ≤ W.length) (hW : W.length < 2 ^ 32)
+    (hcap : env vCap = rN (C * P)) (h5 : env vBump = 0) (h6 : env vFh = NIL) :
+    Store C env W [] := by
+  refine ⟨⟨0, [], hcap, by rw [h5]; rfl, ?_, rfl, Nat.zero_le _, hC, hW, ?_⟩, fun a ha => nomatch ha⟩
+  · rw [h6]; rfl
+  · simp [owned, below]
+
+theorem poolInit_ok (env : Mach.BEnv) (H : Heap) (W : W64) :
+    Mach.BExec poolInit ⟨env, H, [W]⟩
+      ⟨((env.set vBump 0).set vFh NIL).set vOk 1, H, [W]⟩ := .seq .assign (.seq .assign .assign)
+
+/-- the pool, then the program: either it ends with its result and its page events within `C` pages, or `vOk = 0`
+exactly when the events exceed `C` pages -/
+theorem wholeCore (C : Nat) {R : Sl} (p : Pg [.ar .ba] R) (xs : ByteArray) (env : Mach.BEnv)
+    (out : List (BitVec 8)) (W : W64) (y : R.T) (E : List MemEvent)
+    (h1 : env 1 = BitVec.ofNat 64 xs.data.toList.length) (h32 : xs.size < 2 ^ 32) (hW : W.length < 2 ^ 32)
+    (hC : C * P ≤ W.length) (hcap : env vCap = rN (C * P))
+    (hwf : p.wfP [inLocP] 9 = true) (hg : p.GoodE [inLocP] 9 (xs, ()) y E) :
+    ∃ σ' W', Mach.BExec (.seq poolInit (p.compP [inLocP] 9).1) ⟨env, [xs.data.toList.map (·.toBitVec), out], [W]⟩ σ' ∧
+      σ'.heap = [xs.data.toList.map (·.toBitVec), out] ∧ σ'.wheap = [W'] ∧
+      ((σ'.env vOk = 1 ∧ ResP σ' W' R (p.compP [inLocP] 9).2 y ∧ (p.compP [inLocP] 9).2.v ≠ 8 ∧
+          (p.compP [inLocP] 9).2.pt ≠ 8 ∧ W'.length < 2 ^ 32 ∧ pk 0 E ≤ C) ∨
+        (σ'.env vOk = 0 ∧ C < pk 0 E)) := by
+  let H := [xs.data.toList.map (·.toBitVec), out]
+  let env1 := ((env.set vBump 0).set vFh NIL).set vOk 1
+  have e1 := poolInit_ok env H W
+  have hk : ∀ j, j ≠ vBump → j ≠ vFh → j ≠ vOk → env1 j = env j := fun j a b c => by
+    simp only [env1, set_ne c, set_ne b, set_ne a]
+  have hcap1 : env1 vCap = rN (C * P) := by
+    rw [hk _ (by decide) (by decide) (by decide)]; exact hcap
+  have hS : Store C env1 W ([] ++ arrsP [.ar .ba] [inLocP] (xs, ()) env1) := by
+    simpa [arrsP, inLocP] using pool_empty C env1 W hC hW hcap1 (by simp only [env1, set_ne (show vBump ≠ vOk by decide),
+      set_ne (show vBump ≠ vFh by decide), set_eq]) (by simp only [env1, set_ne (show vFh ≠ vOk by decide), set_eq])
+  have hE : EnvOK [.ar .ba] [inLocP] (xs, ()) ⟨env1, H, [W]⟩ := by
+    have := envOK_input xs env1 out W (by rw [hk 1 (by decide) (by decide) (by decide)]; exact h1) h32 hW
+    exact this
+  obtain ⟨σ', W', e2, h2, w2, o2⟩ := Pg.compP_ok C p [inLocP] (xs, ()) env1 H W 9 [] y E hE
+    (fun l hl => by simp [inLocP] at hl; subst hl; simp)
+    (by omega) (fun l hl => by simp [inLocP] at hl; subst hl; decide)
+    (by simpa using hS) (by simp only [env1, set_eq]) hwf hg
+  refine ⟨σ', W', .seq e1 e2, h2, w2, ?_⟩
+  simpa [arrsP, inLocP, pageCount] using o2
+
 end Proven.WA
