@@ -40,12 +40,20 @@ structure Sig where
   fns : List (List Ty × Ty)
   deriving Repr
 
+/-- list lookup with a default, reducible (so that the types of generated programs compute by `whnfR`) -/
+@[reducible] def lget {α : Type} (d : α) : List α → Nat → α
+  | [], _ => d
+  | a :: _, 0 => a
+  | _ :: l, n + 1 => lget d l n
+
+/-- the constructors of datatype `i` -/
+@[reducible] def Sig.dt (S : Sig) (i : Nat) : List (List Ty) := lget [] S.dts i
 /-- the field types of constructor `j` of datatype `i` -/
-def Sig.flds (S : Sig) (i j : Nat) : List Ty := (S.dts.getD i []).getD j []
+@[reducible] def Sig.flds (S : Sig) (i j : Nat) : List Ty := lget [] (S.dt i) j
 /-- the number of constructors of datatype `i` -/
-def Sig.nc (S : Sig) (i : Nat) : Nat := (S.dts.getD i []).length
+@[reducible] def Sig.nc (S : Sig) (i : Nat) : Nat := (S.dt i).length
 /-- the field types of constructor `j` of datatype `i`, for a constructor that exists -/
-def Sig.fld (S : Sig) (i : Nat) (j : Fin (S.nc i)) : List Ty := (S.dts.getD i [])[j.val]'j.isLt
+@[reducible] def Sig.fld (S : Sig) (i : Nat) (j : Fin (S.nc i)) : List Ty := (S.dt i)[j.val]'j.isLt
 
 /-! ## syntax -/
 
@@ -120,10 +128,21 @@ inductive Alts (S : Sig) (Γ : List Ty) (τ : Ty) : List (List Ty) → Type wher
   | nil : Alts S Γ τ []
   | cons {fs : List Ty} {fss : List (List Ty)} : Expr S (fs ++ Γ) τ → Alts S Γ τ fss → Alts S Γ τ (fs :: fss)
 
-def Alts.get {S : Sig} {Γ : List Ty} {τ : Ty} : {fss : List (List Ty)} → Alts S Γ τ fss → (j : Fin fss.length) →
-    Expr S (fss[j] ++ Γ) τ
-  | _ :: _, .cons a _, ⟨0, _⟩ => a
-  | _ :: _, .cons _ as, ⟨j + 1, h⟩ => as.get ⟨j, Nat.lt_of_succ_lt_succ h⟩
+def Alts.get {S : Sig} {Γ : List Ty} {τ : Ty} : {fss : List (List Ty)} → Alts S Γ τ fss → (j : Nat) →
+    (h : j < fss.length) → Expr S (fss[j] ++ Γ) τ
+  | _ :: _, .cons a _, 0, _ => a
+  | _ :: _, .cons _ as, j + 1, h => as.get j (Nat.lt_of_succ_lt_succ h)
+
+@[simp] theorem Alts.get_zero {S : Sig} {Γ : List Ty} {τ : Ty} {fs : List Ty} {fss : List (List Ty)}
+    (a : Expr S (fs ++ Γ) τ) (as : Alts S Γ τ fss) (h : 0 < (fs :: fss).length) : (Alts.cons a as).get 0 h = a := rfl
+
+@[simp] theorem Alts.get_succ {S : Sig} {Γ : List Ty} {τ : Ty} {fs : List Ty} {fss : List (List Ty)}
+    (a : Expr S (fs ++ Γ) τ) (as : Alts S Γ τ fss) (j : Nat) (h : j + 1 < (fs :: fss).length) :
+    (Alts.cons a as).get (j + 1) h = as.get j (Nat.lt_of_succ_lt_succ h) := rfl
+
+/-- the arms of a `cas` on datatype `i` (the type `cas` expects, syntactically) -/
+def Alts.arms {S : Sig} {Γ : List Ty} {τ : Ty} {i : Nat} (as : Alts S Γ τ (S.dt i)) :
+    (j : Fin (S.nc i)) → Expr S (S.fld i j ++ Γ) τ := fun j => as.get j.val j.isLt
 
 /-- **programs**: a signature, one body per function, the entry `main` (a byte list to a byte list, datatype `0`
 being byte lists `[[], [w, d 0]]`) -/
