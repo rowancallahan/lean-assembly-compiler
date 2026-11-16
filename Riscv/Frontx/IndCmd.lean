@@ -225,7 +225,10 @@ def shapeOf (ti : TyInfo) : Array String := Id.run do
     let rs := ti.roles[i]!
     let mut fs : Array String := #[]
     for j in [0:rs.size] do
-      if ti.hop i j == k then if let some f := roleFld rs[j]! then fs := fs.push f
+      if ti.hop i j == k then if let some f := roleFld rs[j]! then
+        -- a `String` field: its length, then its bytes (`Fld.sl` / `Fld.sr`)
+        let str := match (ti.kty[i]?.bind (·[j]?)).getD none with | some (_, true) => true | _ => false
+        fs := fs.push (if str then (if f == ".l" then ".sl" else ".sr") else f)
     if k < ti.next[i]?.getD 0 then fs := fs.push ".r"
     return "[" ++ ", ".intercalate fs.toList ++ "]"
   let mut out := #[]
@@ -279,6 +282,8 @@ elab_rules : command
               for (u, _) in U do if ← isDefEq u t then known2 := true
               unless known2 do U := U.push (t, ← analyze t nest)
         k2 := k2 + 1
+    -- the cells of strings (`Bytes8`) are the shape's last two tags (`Compiler/Ind.lean`, `sTag`)
+    U := U.filter (fun (_, ti) => ti.ind != ``Proven.Frontx.Ind.Bytes8) ++ U.filter (fun (_, ti) => ti.ind == ``Proven.Frontx.Ind.Bytes8)
     let mut out : Array (String × TyInfo) := #[]
     for (t, ti) in U do out := out.push (← ppFull t, ti)
     return (← ppFull tyE, out)
@@ -369,9 +374,16 @@ def {Kn}.small : {tS} → Prop{salts}"
       let bs := " ".intercalate ((List.range fs.size).map fun j => s!"({fs[j]!} : {ti.ftys[i]![j]!})")
       let app := s!"(@{ti.ctors[i]!} " ++ " ".intercalate ((List.replicate ti.params.size "_") ++ fs.toList) ++ ")"
       runCmd s!"theorem {Kn}.fold{i} : {if fs.isEmpty then "" else "∀ " ++ bs ++ ","} {cellS ti i fs (embF k i) offs[k]!} = {Kn}.emb {app} := {if fs.isEmpty then "rfl" else "fun " ++ " ".intercalate fs.toList ++ " => rfl"}"
-    let wfs := ", ".intercalate (deps[k]!.toList.map fun kk => s!"{unionName Tn kk}.emb_wfL")
+    let isB (kk : Nat) : Bool := us[kk]!.2.ind == ``Proven.Frontx.Ind.Bytes8
+    if isB k then
+      runCmd s!"theorem {Kn}.emb_str : ∀ t : {tS}, ({Kn}.emb t).IsStr {offs[k]!} := by
+  intro t; induction t with
+  | nil => exact ⟨[], rfl⟩
+  | cons b r ih => obtain ⟨L, h⟩ := ih; exact ⟨b :: L, by simp only [{Kn}.emb, h, Proven.Mach.Ind.C.str]⟩"
+    let wfs := ", ".intercalate (deps[k]!.toList.map fun kk =>
+      s!"{unionName Tn kk}.emb_wfL" ++ (if isB kk then s!", {unionName Tn kk}.emb_str" else ""))
     runCmd s!"theorem {Kn}.emb_wf : ∀ t : {tS}, ({Kn}.emb t).wf {Tn}.sh := by
-  intro t; induction t <;> simp_all [{Kn}.emb, Proven.Mach.Ind.C.wf, {Tn}.sh, Proven.Frontx.Ind.u8_lt, Proven.Frontx.Ind.u8_lt'{if wfs.isEmpty then "" else ", " ++ wfs}]"
+  intro t; induction t <;> simp_all [{Kn}.emb, Proven.Mach.Ind.C.wf, Proven.Mach.Ind.sTag, {Tn}.sh, Proven.Frontx.Ind.u8_lt, Proven.Frontx.Ind.u8_lt'{if wfs.isEmpty then "" else ", " ++ wfs}]"
     if us.size > 1 then
       runCmd s!"theorem {Kn}.emb_wfL : ∀ t : {tS}, ({Kn}.emb t).wf [{shS}] := {Kn}.emb_wf"
     if k > 0 then
@@ -938,7 +950,8 @@ def wfDefs : List String := ["Proven.Mach.Ind.indProg", "Proven.Mach.Ind.indProg
   "Proven.Mach.Ind.alloc", "Proven.Mach.Ind.stW", "Proven.Mach.Ind.vE", "Proven.Mach.Ind.kE",
   "Proven.Mach.Ind.addE", "Proven.Mach.Ind.asg", "Proven.Mach.Ind.eqE", "List.mapIdx", "List.mapIdx.go",
   "Proven.Frontx.Ind.natSub", "Proven.Mach.Ind.fLoopX", "Proven.Mach.Ind.fLoopS", "Proven.Mach.Ind.dispS",
-  "Proven.Mach.Ind.armN",
+  "Proven.Mach.Ind.armN", "Proven.Mach.Ind.dStr", "Proven.Mach.Ind.allocK", "Proven.Mach.Ind.eStr",
+  "Proven.Mach.Ind.eCnt", "Proven.Mach.Ind.eBytes", "Proven.Mach.Ind.sTag",
   "List.getD"]
 
 /-- the types of the shape of `T` after `T` itself (`T.N1`, `T.N2`, …) -/
