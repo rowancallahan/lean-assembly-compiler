@@ -48,6 +48,7 @@ structure Ctx (T : Target) where
   dOW : disjoint ⟨outA, outL⟩ ⟨wb, wl⟩
   inb : ∀ i (h : i < input.length), T.mem s0 (inA + i) = some input[i].toBitVec
   wr : ∀ (s : T.S) (a : Nat), (outA ≤ a ∧ a < outA + outL) ∨ (wb ≤ a ∧ a < wb + wl) → T.writable s a
+  retOK : T.retOK (T.ra s0)
 
 namespace Ctx
 variable {T : Target} (C : Ctx T)
@@ -112,5 +113,26 @@ theorem op {s : T.S} {q : Nat} {o : EOp} {rest : List (BitVec 32)} {Q : T.S → 
   have := d.hpc
   rwa [next_add] at this
 
+/-- one target operation that may store (the caller shows nothing changed outside output and work) -/
+theorem opW {s : T.S} {q : Nat} {o : EOp} {rest : List (BitVec 32)} {Q : T.S → Prop}
+    (hA : C.AtQ s q) (hin : InW C.W q (T.encO o ++ rest))
+    (law : T.At s (next C.pc0 q) (T.encO o) →
+      T.runsTo s fun s' => T.Done s s' (next (next C.pc0 q) (T.encO o).length) ∧ Q s')
+    (hU : ∀ s', Q s' → C.Unch s') :
+    T.runsTo s fun s' => C.AtQ s' (q + (T.encO o).length) ∧ T.keep s s' ∧ Q s' := by
+  refine T.toCore.runsTo_mono (law (C.at_of hA hin.left)) fun s' ⟨d, hq⟩ => ?_
+  refine ⟨⟨d.ok, ?_, hU s' hq⟩, d.keep, hq⟩
+  have := d.hpc
+  rwa [next_add] at this
+
 end Ctx
+
+theorem InW.cons {W : List (BitVec 32)} {q : Nat} {T : Target} {o : EOp} {os : List EOp} {rest : List (BitVec 32)}
+    (h : InW W q (T.words (o :: os) ++ rest)) : InW W q (T.encO o ++ (T.words os ++ rest)) := by
+  rwa [T.words_cons, List.append_assoc] at h
+
+theorem InW.next {W : List (BitVec 32)} {q : Nat} {T : Target} {o : EOp} {os : List EOp} {rest : List (BitVec 32)}
+    (h : InW W q (T.words (o :: os) ++ rest)) : InW W (q + (T.encO o).length) (T.words os ++ rest) :=
+  h.cons.right
+
 end Proven.Ir
