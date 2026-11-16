@@ -197,3 +197,12 @@ hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read 
   the current code, ONLY where the front end cannot yet take the real style; every rewritten function carries a Lean
   equation proving it equal to the original (so the self-hosted binary implements the real compiler, not a toy);
   the friendly part shrinks as the front end learns the complex style (the long-term goal).
+
+## Next Opus rounds (owner, 2026-11-16)
+
+1. Compile-time constants: a 0-ary definition whose value the kernel computes within a fixed heartbeat budget and output-size cap
+   (literal data such as `Name`/`String`/`Nat` constants) is emitted as data, proved by `decide +kernel`/`rfl`. Anything over budget
+   compiles as an ordinary 0-argument function (honest run-time cost). Never fold calls with arguments.
+2. IR stage S3: move every front end (list, ind, wa, hof, monad, paged) onto the shared IR so features compose in one function
+   (e.g. inductives + monad + structure). Without this, features land separately and the con-leche percentages barely move.
+Ranking of later features from the Haiku yield analysis (`Testing/notes/BLOCKER_YIELD.md`, branch blocker-yield).
