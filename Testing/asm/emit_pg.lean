@@ -3,8 +3,8 @@
 by Lean, work bytes, `oom`): per input the work block of exactly `memoryNeeded` bytes (the pages of the run, one page for
 the frame; `oom = 0`: the code returns the result) and one page less (`oom = 1`: `a1 = 2^64 - 1`, output untouched).
 Run: `lake env lean Testing/asm/emit_pg.lean`. -/
-import Riscv.Frontx.WpEx2
-open Proven Proven.WA Proven.WA.PgEx
+import Riscv.Frontx.WpLeanZip
+open Proven Proven.WA Proven.WA.PgEx Proven.WA.LeanZip
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
 def hex2 (b : UInt8) : String := let s := String.ofList (Nat.toDigits 16 b.toNat); if s.length < 2 then "0" ++ s else s
 def hx (xs : List UInt8) : String := if xs.isEmpty then "-" else String.join (xs.map hex2)
@@ -37,3 +37,6 @@ def emit (name : String) (inputs : List (List UInt8)) (hdr : String) (code : Lis
 instance (xs : ByteArray) (L : Nat) : Decidable (lzFits xs L) := by unfold lzFits; infer_instance
 #eval emit "copy" inputs "pg 1" (pgCodeA copyPg) (fun xs => encArr .ba (copyE xs)) copyFits
 #eval emit "lz" inputsSmall "pg 1" (pgCodeA lzPg) (fun xs => encArr .ba (lzE xs)) lzFits
+instance (xs : ByteArray) (L : Nat) : Decidable (clFits xs L) := by unfold clFits; infer_instance
+#eval emit "cl" inputsSmall "pg 1" (pgCodeA countLengthsE.wa) (fun xs => encArr (.arr .nat) (countLengthsE xs)) clFits
+#eval emit "cl7" inputsSmall "pg 1" (pgCodeA countLengths7E.wa) (fun xs => encArr (.arr .nat) (countLengths7E xs)) clFits
