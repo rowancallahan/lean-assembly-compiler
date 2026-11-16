@@ -2057,6 +2057,98 @@ check.sh; (2) optionally `String.utf8ByteSize` (the chain length, cheap) and `St
 (Name constants like `Name.str .anonymous "Nat"`, `=` with a constant side); (4) small linter warnings (unused simp
 arguments in `IndStrOk.lean`, `IndDec.lean`, `IndSup.lean`).
 
+## 30. Paged dynamic arrays (branch `feat-paged`)
+
+Software virtual memory beneath the spec (ROADMAP "Variable-size blocks"): arrays that grow (`push`, `extract`,
+`Array.replicate`, copies) take fixed-size pages from a pool, so no fragmentation and `memoryNeeded` is exact in pages.
+
+**Layout.** Pages of P = 1024 words (8 KiB; shift 10, mask 1023) at word 0 of the work block (`wheap[0]`), the frame
+of the back end at the top of the work block.  Pool state in the registers `a4 .. a7` (middle-layer variables 4..7):
+`vCap` = pool end in words, `vBump` = end of the pages handed out, `vFh` = head of the free list (linked through word 0
+of each free page, no extra memory), `vOk` (1, or 0 once a request found no page).  An array = a size variable + one page
+table page (up to P entries: at most 2^20 elements); element `j` is `W[W[pt + (j >> 10)] + (j & 1023)]`.  Every work
+array owns its pages; arrays of the input stay read-only views (`inp`).
+**Cost per access**: one load more than a flat array (page-table entry), and `srl; add; ld; and; add; ld` (2 loads, 4 ALU
+instructions) instead of one `add; ld`; a `push` does the same for the store plus a check `size & 1023 == 0` and, on a
+page boundary, one allocation (free-list pop or bump, no loop); there is no per-access bounds check beyond the
+source's own (`a[i]!` guard).  Memory: one page table page per array (8 KiB) on top of `⌈n / 1024⌉` data pages.
+
+**Entry** (`Riscv/Frontx/WpImpl.lean`): the code is `mv a4, sp` (the work block's end) followed by `compBFO` of the
+program; the program starts with `cap := ((a4 - a2) >> 13 - 1) << 10` words (`capCode`: whole pages of 8192 bytes, one
+page is left for the frame), `bump := 0`, `fh := NIL`, `ok := 1`.  Every later stage is guarded by `vOk`.  The
+statement `Implements1Pg` (WpImpl) is `Implements1With` for ANY work length `L ≥ 8192` (not a fixed `space n`): the
+output when the run fits (`fits a L`), and `a1 = 2^64 - 1` (output untouched, nothing outside output + work changed,
+ABI registers kept) when it does not.  `memoryNeeded` (AllocSpec form, `WpMem.lean`): events `E.reverse ++ [.alloc 1]` (the
+frame page comes first), cell size 8192, so `memoryNeeded = 8192 * (pk 0 E + 1)` and `fits ⟺ memoryNeeded ≤ L`
+(`fits_iff_memoryNeeded`, `copy_fits_iff_memoryNeeded`, `lz_fits_iff_memoryNeeded`).
+
+**Proved (no sorry, no new axiom; `bash Testing/scripts/paged_check.sh`, `axioms_paged.lean`).**
+- `WpPool`: the pool.  `alloc_ok` (free list else bump, `vOk := 0` exactly when all `C` pages are in use), `free_ok`,
+  `alloc_spec` (a returned page is a block of the work block meeting `AllocSpec` of `Compiler/AllocSpec.lean`).
+- `WpRep` .. `WpPg`: get / set / push / new / free of a paged array, expressions (`WpExp`), in-place updates (`WpUpd`),
+  loop bodies and whole loops with page events (`WpStmt`: `T.runP_ok`, stops with `vOk = 0` exactly when the events' peak
+  exceeds `C`), fill loops (`WpFill`), fresh arrays (`F.compP_ok`: empty, replicate, extract, copy/view).
+- `WpProg`: loop starts, programs: **`Pg.compP_ok`** (the loop stage was the open item): the code ends with the result and
+  the page events (`Pg.GoodE`) within `C` pages, or with `vOk = 0` exactly when they exceed `C`.  (Fix found on the way:
+  a scalar slot and an input-view slot had `pt = 0`, which `LoopLayP.p8` (`8 ≤ pt`) rejects, so no loop with a scalar
+  state passed `Pg.wfP`; their `pt` is now `d + 1`.)
+- `WpTop`: the whole programs `wholeS_ok` (scalar result) and `wholeA_ok` (array result through the page table:
+  `outLoopP`, bytes of the elements to the output block, `a1` = their number), `capCode_ok`.
+- `WpImpl`: `pg_core` (= `implements1_of_spec` for a work block of any length), `pg_of_spec` (the `mv a4, sp`),
+  `pg_of_execOW`, `implements1_pgS` / `implements1_pgA` (a program with `Pg.GoodE` events, `wfP`, `wfB`).
+- `WpMem`: `peak_pages`, `fits_iff_memoryNeeded`, `pgCompiled`, `memoryNeeded` of the examples.
+- `WpBridge`: **`Pg.goodE_of_good`**: a word-array program (`wa_compile`, `Pg.Good`) without `push`/`extract`, constant
+  `replicate` sizes and input views only is a paged program, with the events of its fresh arrays (`Pg.evsC`).
+
+**Theorems and tests** (each: `Implements1Pg` machine theorem with exactly the Sail axiom set; the work block per input
+is exactly `memoryNeeded` (run ok), one page less and one byte less than `memoryNeeded` (`a1 = -1`, output untouched); QEMU and
+Sail, `python3 Testing/asm/frontx_test.py check N pg_<name>`, words and cases from `lake env lean Testing/asm/emit_pg.lean`):
+
+| entry | what | theorem | memoryNeeded | cases (QEMU = Sail = Lean) |
+|---|---|---|---|---|
+| `copyE` | `ByteArray` grown by `push` (bytes + 1) | `PgEx.copy_implements` | `8192 (2 + ⌈n/1024⌉)` | 165 (n up to 70000) |
+| `lzE` | `extract 0 16`, then LZ77 copy `out.push out[out.size - d]!` (reads the array it writes) | `PgEx.lz_implements` | `8192 (2 + ⌈(min 16 n + n)/1024⌉)` | 162 (n up to 20000) |
+| `countLengthsE` | lean-zip `countLengthsFast xs.data 15` VERBATIM (Inflate.lean:536; `Array.replicate`, `set!`) | `LeanZip.countLengthsE_implements` | `24576` | 162 |
+| `countLengths7E` | same, `maxBits = 7` | `LeanZip.countLengths7E_implements` | `24576` | 162 |
+
+`copyE` / `lzE` are written directly as `Pg` terms (`WpEx.lean`, `WpEx2.lean`) with a hand proof of `Pg.GoodE`
+(`copyPg_good`, `lzPg_good`: the loop's `RunsE` with its events `pushFrom`, the invariant, `okP`); the lean-zip entries
+come from `wa_compile` (`WaLeanZip.lean`, unchanged) through `Pg.goodE_of_good`.
+
+**Not done (and why).**
+- **Verbatim lean-zip rows with growth** (`ByteArray.copyWithin`, `copyLoopGo`, `storedCopyLoop`, `fillDouble`, `Array.map` of
+  fp-lean): `wa_compile` (`WaCmd.lean`) still rejects `push` / `extract` / `++` and `ByteArray` results (`A.ok` is `False` for
+  `push`).  The paged back end handles `push`, `extract`, `replicate`, a read-while-write push (shown by `lzE`), but the
+  front end that turns a Lean function into `Pg` + `Pg.GoodE` (with the capacity obligation `size < P * P`, `Prop`
+  parameters of `copyLoopGo`, `k % distance`) is not extended; only hand-written `Pg` terms reach the paged back end.
+  `nextCodesFast` (`F.alias` of a work array copies it: events depend on the array's size, `PlainP` rejects it),
+  `kraftSumFast` (variable `*` needs `compBFC`, no paged variant), the Crc32 tables (`F.const`) are not covered either.
+- `++` (append), arrays as parameters / results of inner functions (stages' arrays are `let`s / loop states only).
+- **`a0` flag**: the status of `CompileRuns` / `CompileCorrect` (`Compiler/AllocSpec.lean`) is `a0 = -1`; the middle layer
+  cannot write `a0` (`HeapB` keeps `a0` = the input base), so the flag is `a1 = -1`; to get `a0`, wrap the body in a
+  stub that saves `ra`, calls it and sets `a0` from `a7` (`vOk`).  Work blocks below `8192` bytes are outside the
+  theorem (the frame would not fit; the stub would have to test `sp - a2 < 8192` before the frame).  So there is no
+  `compile_runs` / `compile_correct` for the paged compiler (the `IndMem.lean` pattern: `PgProg`, `compile`, events).
+- Freeing at program level: `free_ok` / `freeArr_ok` exist; a loop's leftover work array (the state's other array) stays
+  allocated (needs the final state in `RunsE`), so peaks may exceed the minimum for programs with several stages.
+- Speed: not measured.
+
+**State.** origin/main merged (Int, monads, strings, IR); `bash Testing/scripts/check.sh` ALL CHECKS PASSED (the statement
+fingerprint WARNING comes from main's changes; not re-frozen).  Merge fixes: `E.ok` of casts gained `cast.side`, `mcmp`
+takes the type, `Ty.int` in `AK` matches.  Next steps: (1) `a0` flag via a stub that saves `ra`, calls the body and sets
+`a0` from `a7`, plus an `sp - a2 < 8192` test, then `compile_runs` / `compile_correct` as in `IndMem.lean`; (2) extend
+`wa_compile` for `push` / `extract` / `++` and `Pg.GoodE` so the BAO rows (copyWithin, copyLoopGo, storedCopyLoop) compile
+verbatim; (3) free a loop's leftover work array at program level.
+
+**Session pause (WIP).** origin/main merged into feat-paged (NOTES conflict resolved keeping both; check.sh took main's
+loop incl. feat-struct/harvest; paged check stays in `paged_check.sh`). Build cache restored, `lake build
+Riscv.Frontx.WpImpl Riscv.Frontx.IndMem` passes (toolchain via elan, Lean 4.29.0). No new code yet for the goals.
+Next: (1) `a0` stub in a new `Riscv/Frontx/PgMem.lean` after `IndMem.lean`'s `PgProg`/`compile` pattern: save ra, test
+`sp - a2 < 8192`, call body, set `a0` from `a7`; prove `compile_runs`/`compile_correct`; (2) extend `A.ok`/`wa_compile`
+in `WaCmd.lean`/`WaImpl.lean` for `push`/`extract`/`++`/`ByteArray` results via `Pg` + `Pg.GoodE`, then the four lean-zip
+rows (copyLoopGo, storedCopyLoop, copyWithin, fillDouble) with `Implements1` and >=50 QEMU/Sail cases; (3) full
+`check.sh` once at the end.
+
 ## 32. User structures (branch `feat-struct`)
 
 Files: `Riscv/Frontx/StructExamples.lean` (lean-svg, list front end), `Riscv/Frontx/WaStruct.lean` (lean-zip,
