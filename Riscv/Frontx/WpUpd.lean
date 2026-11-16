@@ -25,7 +25,7 @@ theorem arr_get_push {α : Type} [Inhabited α] (a : Array α) (x : α) (j : Nat
 theorem AK.size_push : ∀ (k : AK) (a : k.T) (x : k.el.T), AK.size k (AK.push k a x) = AK.size k a + 1
   | .ba, a, x => by show (a.data.push x).size = a.data.size + 1; simp
   | .arr .u8, _, _ | .arr .u16, _, _ | .arr .u32, _, _ | .arr .u64, _, _ | .arr .nat, _, _
-  | .arr .bool, _, _ => by simp [AK.size, AK.push]
+  | .arr .bool, _, _ | .arr .int, _, _ => by simp [AK.size, AK.push]
 
 theorem AK.get_push : ∀ (k : AK) (a : k.T) (x : k.el.T) (j : Nat),
     AK.get k (AK.push k a x) j = if j < AK.size k a then AK.get k a j else if j = AK.size k a then x else default
@@ -34,7 +34,7 @@ theorem AK.get_push : ∀ (k : AK) (a : k.T) (x : k.el.T) (j : Nat),
     rw [← AK.get_set_eq.ba_data_get', ← AK.get_set_eq.ba_data_get']
     exact arr_get_push a.data x j
   | .arr .u8, a, x, j | .arr .u16, a, x, j | .arr .u32, a, x, j | .arr .u64, a, x, j | .arr .nat, a, x, j
-  | .arr .bool, a, x, j => arr_get_push a x j
+  | .arr .bool, a, x, j | .arr .int, a, x, j => arr_get_push a x j
 
 theorem words_push (k : AK) (a : k.T) (x : k.el.T) : words k (AK.push k a x) = words k a ++ [k.el.rep x] := by
   apply List.ext_getElem?; intro j

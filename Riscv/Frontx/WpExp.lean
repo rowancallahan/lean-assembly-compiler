@@ -257,7 +257,7 @@ def E.toBP (L : List PLoc) {Γ : List Sl} : {t : Ty} → E Γ t → Option MB
   | t, .bin o a b => if o.sup t && !o.isM then (match a.toBP L, b.toBP L with
       | some x, some y => some (mop o t x y) | _, _ => none) else none
   | _, @E.cmp _ t o a b => if o.sup t then (match a.toBP L, b.toBP L with
-      | some x, some y => some (mcmp o x y) | _, _ => none) else none
+      | some x, some y => some (mcmp t o x y) | _, _ => none) else none
   | t, @E.cast _ s _ a => if cast.sup s t then (match a.toBP L with | some x => some (mcast s t x) | none => none)
       else none
   | _, .size m => some (.var (m.locP L).v)
@@ -275,7 +275,7 @@ def E.compP (L : List PLoc) {Γ : List Sl} : {t : Ty} → E Γ t → Nat → MS
   | t, .bin o a b, d => pureOrP L (.bin o a b) d
     (.seq (a.compP L d) (.seq (b.compP L (d + 1)) (binS o t d)))
   | _, @E.cmp _ t o a b, d => pureOrP L (.cmp o a b) d
-    (.seq (a.compP L d) (.seq (b.compP L (d + 1)) (.assign d (mcmp o (.var d) (.var (d + 1))))))
+    (.seq (a.compP L d) (.seq (b.compP L (d + 1)) (.assign d (mcmp t o (.var d) (.var (d + 1))))))
   | t, @E.cast _ s _ a, d => pureOrP L (.cast t a) d (.seq (a.compP L d) (.assign d (mcast s t (.var d))))
   | _, .ite c a b, d =>
     .seq (c.compP L (d + 1)) (.seq (.assign (d + 2) (.bin .eq (.var (d + 1)) (.const 0)))
@@ -332,7 +332,7 @@ theorem E.toBP_ok (L : List PLoc) {Γ : List Sl} (v : Vals Γ) (σ : MSt) (hR : 
       split at h
       · rename_i x hx
         simp only [Option.some.injEq] at h; subst h
-        exact mcast_ok s t _ _ _ (E.toBP_ok L v σ hR a x hok hx) hs
+        exact mcast_ok s t _ _ _ (E.toBP_ok L v σ hR a x hok.1 hx) hs hok.2
       · cases h
     · cases h
   | _, .size m, b, _, h => by
@@ -396,9 +396,9 @@ theorem E.compP_ok (L : List PLoc) : ∀ {Γ : List Sl} {t : Ty} (e : E Γ t) (v
     refine pureOrP_ok L (.cast t a) v σ d _ hR hok ?_
     simp only [E.den]; simp only [E.ok] at hok
     simp only [E.wfP, Bool.and_eq_true] at hwf
-    obtain ⟨σ1, e1, v1, k1, h1, w1, r1⟩ := (E.compP_ok L a v σ d hR hl hb hwf.2 hok).frameP hR hb hl
+    obtain ⟨σ1, e1, v1, k1, h1, w1, r1⟩ := (E.compP_ok L a v σ d hR hl hb hwf.2 hok.1).frameP hR hb hl
     refine ⟨_, .seq e1 .assign, ?_, fun j hj => ?_, h1, w1⟩
-    · simp only [set_eq]; exact mcast_ok s t _ _ _ (by simp only [Mach.BExp.denote]; exact v1) hwf.1
+    · simp only [set_eq]; exact mcast_ok s t _ _ _ (by simp only [Mach.BExp.denote]; exact v1) hwf.1 hok.2
     · simp only [set_ne (show j ≠ d by omega)]; rw [k1 j hj]
   | _, t, .ite c a b, v, σ, d, hR, hl, hb, hwf, hok => by
     simp only [E.compP, E.den]; simp only [E.ok] at hok

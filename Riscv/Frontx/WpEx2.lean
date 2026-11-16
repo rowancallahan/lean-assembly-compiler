@@ -89,7 +89,7 @@ theorem lzPg_good (xs : ByteArray) (h : xs.size ≤ P * P - 16) :
       have hi2 : i ≤ xs.size := hi
       have hs2 : out.size = min 16 xs.size + i := hs
       simp only [hP]
-      refine ⟨⟨by omega, by omega⟩, fun hl => ⟨⟨⟨by omega, ?_⟩, ?_⟩, by omega⟩⟩
+      refine ⟨⟨by omega, by omega⟩, fun hl => ⟨⟨⟨by simp [cast.side], by omega, ?_⟩, ?_⟩, by omega⟩⟩
       · omega
       exact Nat.lt_of_le_of_lt (Nat.sub_le _ _) (by omega)
     · intro s s' hPs hout
