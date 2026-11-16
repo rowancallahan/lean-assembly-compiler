@@ -3241,7 +3241,7 @@ def vfold (vw : Name) (B : Expr) (e : Expr) : MetaM Expr :=
 
 
 /-- prove `f … (view B i) … = <decision tree>`: follow the tests of the right-hand side -/
-partial def veqGo (f : Name) (vw : Name) (n : Nat := 0) : TacticM Unit := withMainContext do
+partial def veqGo (f : Name) (vw : Name) (n : Nat := 0) (eqn : Name := f) : TacticM Unit := withMainContext do
   let g ← getMainGoal
   let ty ← instantiateMVars (← g.getType)
   let some (_, _, rhs) := ty.eq? | throwError "frontx_view: not an equation"
@@ -3268,12 +3268,13 @@ partial def veqGo (f : Name) (vw : Name) (n : Nat := 0) : TacticM Unit := withMa
         else
           let m := mkIdent (Name.mkSimple s!"m{n}")
           evalTactic (← `(tactic| (obtain ⟨$m:ident, hm⟩ := Nat.exists_eq_succ_of_ne_zero $hc:ident; subst hm)))
-      veqGo f vw (n + 1)
+      veqGo f vw (n + 1) eqn
       acc := acc ++ (← getGoals)
     setGoals acc
   else
     let gl ← getMainGoal
-    try evalTactic (← `(tactic| first | rfl | (simp only [$fI:ident]; done) | (rw [$fI:ident]; done) | (simp only [$fI:ident, Nat.add_sub_cancel]; done)))
+    let eI := mkIdent eqn
+    try evalTactic (← `(tactic| first | rfl | (simp only [$fI:ident]; done) | (rw [$fI:ident]; done) | (simp only [$fI:ident, Nat.add_sub_cancel]; done) | (rw [$eI:ident] <;> rfl) | (simp only [$eI:ident, Nat.add_sub_cancel]; done)))
     catch e => throwError "leaf {gl}: {e.toMessageData}"
 
 
@@ -3359,7 +3360,7 @@ elab_rules : command
     let mv ← mkFreshExprSyntheticOpaqueMVar eqTy
     let rest ← Tactic.run mv.mvarId! (do
       Tactic.evalTactic (← `(tactic| (intros; unfold $gI:ident)))
-      veqGo fn vw)
+      veqGo fn vw (eqn := eqn))
     unless rest.isEmpty do throwError "frontx_view: could not prove the equation"
     let pf ← instantiateMVars mv
     if pf.hasSorry || pf.hasMVar then throwError "frontx_view: could not prove the equation"
@@ -3370,7 +3371,7 @@ elab_rules : command
     (intros
      unfold $gI:ident
      rw [$vI:ident]
-     split <;> first | rfl | simp only [$fI:ident] | (rw [$fI:ident]) | (rw [$eI:ident]; rfl) | (rw [$eI:ident]))))
+     split <;> first | rfl | (rw [$eI:ident] <;> rfl) | simp only [$fI:ident] | (rw [$fI:ident]) | (rw [$eI:ident]))))
   let eqName := gN ++ `eq
   logInfo m!"frontx: {gN}, {eqName} : {eqTy}"
 
