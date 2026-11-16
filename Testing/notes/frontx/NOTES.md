@@ -2008,3 +2008,10 @@ come from `wa_compile` (`WaLeanZip.lean`, unchanged) through `Pg.goodE_of_good`.
 - Freeing at program level: `free_ok` / `freeArr_ok` exist; a loop's leftover work array (the state's other array) stays
   allocated (needs the final state in `RunsE`), so peaks may exceed the minimum for programs with several stages.
 - Speed: not measured.
+
+**State at pause.** All four entries pass QEMU + Sail (165 / 162 / 162 / 162 cases). The merge of origin/main is done.
+`bash Testing/scripts/check.sh` was NOT run to completion (the full `lake build Spec Compiler Riscv Arm Frontx` was still
+running when the session paused). Next steps: (1) run `check.sh` and fix what it reports (axioms, forbidden words); push
+`feat-paged`; (2) `a0` flag via a stub that saves `ra`, calls the body and sets `a0` from `a7`, plus a `sp - a2 < 8192`
+test, then `compile_runs` / `compile_correct` as in `IndMem.lean`; (3) extend `wa_compile` for `push` / `extract` / `++`
+and `Pg.GoodE` so the BAO rows (copyWithin, copyLoopGo, storedCopyLoop) can be compiled verbatim.
