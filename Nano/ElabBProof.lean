@@ -526,5 +526,147 @@ theorem WordStart (o : List UInt8) (m s0 sp d d0 w ty cz : UInt64) (c z : UInt8)
     have := WordRun o m sp ty (if s0 = 4 then 1 else 0) hm v y z t [c] (fun q hq => hv q (by simp [hq])) hz
     simp only [List.singleton_append, List.cons_append, List.nil_append] at this
     rw [this]; by_cases h0 : m = 0 <;> simp [h0]
+theorem span_exists (p : UInt8 → Bool) : ∀ xs : List UInt8, ∃ u r, xs = u ++ r ∧ (∀ y ∈ u, p y = true) ∧ hd? r p = false
+  | [] => ⟨[], [], rfl, by simp, rfl⟩
+  | x :: xs => by
+    by_cases hx : p x = true
+    · obtain ⟨u, r, h1, h2, h3⟩ := span_exists p xs
+      exact ⟨x :: u, r, by simp [h1], by simp [hx, h2]; exact h2, h3⟩
+    · exact ⟨[], x :: xs, rfl, by simp, by simpa [hd?] using hx⟩
+
+theorem dec_5 (Y : List UInt8) : dec (5 :: Y) [] none = dec Y [] (some 0) := by simp [dec, isW, isL]
+
+theorem spanId_eq : ∀ (u : List UInt8) (f : Nat) (r : List UInt8), (∀ y ∈ u, isW y = true) →
+    hd? r isW = false → spanId f (u ++ r) = (u.take f, u.drop f ++ r)
+  | [], f, r, _, hr => by
+    rcases r with _ | ⟨y, r⟩
+    · rcases f with _ | f <;> rfl
+    · have : isWordC y = false := hr
+      rcases f with _ | f
+      · rfl
+      · simp only [List.nil_append, spanId, this, Bool.false_eq_true, if_false, List.take_nil, List.drop_nil]
+  | c :: u, f, r, hu, hr => by
+    rcases f with _ | f
+    · simp [spanId]
+    · have : isWordC c = true := hu c (by simp)
+      simp only [List.cons_append, spanId, this, if_true, List.take_succ_cons, List.drop_succ_cons]
+      rw [spanId_eq u f r (fun q hq => hu q (by simp [hq])) hr]
+
+theorem dec_num : ∀ (u : List UInt8) (a : UInt64) (wd X : List UInt8), (∀ y ∈ u, isDigit y = true) →
+    dec (u ++ 6 :: X) wd (some a) = (dec X [] none).map (Tok.num (u.foldl nstep a) :: ·)
+  | [], a, wd, X, _ => by simp [dec]
+  | c :: u, a, wd, X, hu => by
+    have hc := hu c (by simp)
+    have h6 : (c == 6) = false := by
+      have : ∀ c : UInt8, isDigit c = true → (c == 6) = false := u8_all (by decide +kernel)
+      exact this c hc
+    simp only [List.cons_append, dec, h6, Bool.false_eq_true, if_false, isDigit_iff, hc, if_true, List.foldl_cons]
+    exact dec_num u _ [] X (fun q hq => hu q (by simp [hq]))
+
+theorem dec_numTok (u X : List UInt8) (hu : ∀ y ∈ u, isDigit y = true) :
+    dec ((5 :: u ++ [6]) ++ X) [] none = (dec X [] none).map (Tok.num (u.foldl nstep 0) :: ·) := by
+  simp only [List.cons_append, List.append_assoc, List.singleton_append, List.nil_append]; rw [dec_5, dec_num u 0 [] X hu]
+
+def ktok (k : UInt8) (s : List UInt8) : Tok :=
+  if k = 0 then .id s else if k = 1 then .kdef else if k = 2 then .klet else if k = 3 then .kty false else .kty true
+
+theorem dec_word : ∀ (u wd X : List UInt8) (k : UInt8), (∀ y ∈ u, isW y = true) → k ≤ 4 → wd.reverse ++ u ≠ [] →
+    dec (u ++ k :: X) wd none = (dec X [] none).map (ktok k (wd.reverse ++ u) :: ·)
+  | [], wd, X, k, _, hk, hne => by
+    have hw : isW k = false := by
+      have : ∀ c : UInt8, c ≤ 4 → isW c = false := u8_all (by decide +kernel)
+      exact this k hk
+    have hwd : wd.isEmpty = false := by cases wd <;> simp_all
+    simp only [List.nil_append, dec, hw, Bool.false_eq_true, if_false, hwd, Bool.not_false, if_true, List.append_nil]
+    have : k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 3 ∨ k = 4 := by
+      have : ∀ c : UInt8, c ≤ 4 → (c = 0 ∨ c = 1 ∨ c = 2 ∨ c = 3 ∨ c = 4) := u8_all (by decide +kernel)
+      exact this k hk
+    rcases this with h | h | h | h | h <;> subst h <;> simp [ktok]
+  | y :: u, wd, X, k, hu, hk, _ => by
+    simp only [List.cons_append, dec, hu y (by simp), if_true]
+    rw [dec_word u (y :: wd) X k (fun q hq => hu q (by simp [hq])) hk (by simp)]
+    simp
+
+theorem pk_shift (q : List UInt8) (z : UInt8) (hq : q.length ≤ 6) : pk (q ++ [z]) >>> 8 = pk q := by
+  apply UInt64.toNat_inj.mp
+  have e1 := pk_short (q ++ [z]) (by simp; omega)
+  have e2 := pk_short q (by omega)
+  rw [UInt64.toNat_shiftRight, e1, e2, packN_append]
+  simp only [UInt64.toNat_ofNat, show 8 % 2 ^ 64 % 64 = 8 by rfl, Nat.shiftRight_eq_div_pow]
+  have := z.toNat_lt; omega
+
+theorem pk_big (q : List UInt8) (hq : 7 ≤ q.length) : 2 ^ 56 ≤ (pk q).toNat := by
+  by_cases h : 8 ≤ q.length
+  · rw [pk_long q h]; decide
+  · rw [pk_short q (by omega)]
+    have := (packN_ge q).1
+    have : 256 ^ 7 ≤ 256 ^ q.length := Nat.pow_le_pow_right (by omega) hq
+    have : (2 : Nat) ^ 56 = 256 ^ 7 := by rfl
+    omega
+
+
+theorem kind_vals (d w : UInt64) : kindOf d w = 0 ∨ kindOf d w = 1 ∨ kindOf d w = 2 ∨ kindOf d w = 3 ∨
+    kindOf d w = 4 ∨ kindOf d w = 6 ∨ kindOf d w = 9 := by
+  unfold kindOf; repeat' split
+  all_goals simp
+
+theorem dec_wordTok (U X : List UInt8) (k : UInt8) (hU : ∀ y ∈ U, isW y = true) (hk : k ≤ 4) (hne : U ≠ []) :
+    dec ((U ++ [k]) ++ X) [] none = (dec X [] none).map (ktok k U :: ·) := by
+  rw [List.append_assoc, List.singleton_append, dec_word U [] X k hU hk (by simpa using hne)]; simp
+
+theorem digit_W : ∀ c : UInt8, isDigit c = true → isW c = true := u8_all (by decide +kernel)
+
+def tokK (k : UInt64) (U : List UInt8) : Tok := if k = 6 then .num (U.foldl nstep 0) else ktok k.toUInt8 U
+
+theorem kindTok_some (k : UInt64) (U : List UInt8) (h : k ≠ 9) (hv : k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 3 ∨ k = 4 ∨ k = 6 ∨ k = 9) :
+    kindTok k U = some (tokK k U) := by
+  rcases hv with e | e | e | e | e | e | e <;> subst e <;> simp_all [kindTok, tokK, ktok] <;> decide
+
+theorem tyu_ok (d w ty : UInt64) (U : List UInt8) (h : kindOf d w ≠ 9) : tyu ty w = tyStep ty (tokK (kindOf d w) U) := by
+  unfold kindOf at h ⊢; unfold tyu
+  repeat' split
+  all_goals simp_all [tokK, ktok, tyStep]
+
+theorem allDigits (c : UInt8) (u : List UInt8) (hc : isDigit c = true) (t : Tok) (h : wordTok (c :: u) = some t) :
+    (∀ y ∈ c :: u, isDigit y = true) ∧ t = .num ((c :: u).foldl nstep 0) := by
+  unfold wordTok at h; simp only [hc, if_true] at h
+  by_cases ha : (c :: u).all isDigit = true
+  · simp only [ha, if_true, Option.some.injEq] at h
+    exact ⟨by simpa using ha, h.symm⟩
+  · simp [ha] at h
+
+/-- a valid word: its kind gives `wordTok`'s token, its bytes decode to it, and the type update is `tyStep`'s -/
+theorem word_ok (c : UInt8) (u : List UInt8) (hu : ∀ y ∈ c :: u, isW y = true) (ty : UInt64)
+    (h : kindOf (dfa (c :: u)) (pk (c :: u)) ≠ 9) :
+    wordTok (c :: u) = some (tokK (kindOf (dfa (c :: u)) (pk (c :: u))) (c :: u)) ∧
+      (∀ X, dec (((if isDigit c then 5 :: c :: u else c :: u) ++ [(kindOf (dfa (c :: u)) (pk (c :: u))).toUInt8]) ++ X) [] none =
+        (dec X [] none).map (tokK (kindOf (dfa (c :: u)) (pk (c :: u))) (c :: u) :: ·)) ∧
+      tyu ty (pk (c :: u)) = tyStep ty (tokK (kindOf (dfa (c :: u)) (pk (c :: u))) (c :: u)) := by
+  have hcl := classify (c :: u)
+  have hw : wordTok (c :: u) = some (tokK (kindOf (dfa (c :: u)) (pk (c :: u))) (c :: u)) := by
+    rw [← hcl]; exact kindTok_some _ _ h (kind_vals _ _)
+  refine ⟨hw, ?_, tyu_ok _ _ ty _ h⟩
+  intro X
+  by_cases hd : isDigit c = true
+  · obtain ⟨hall, ht⟩ := allDigits c u hd _ hw
+    have h6 : kindOf (dfa (c :: u)) (pk (c :: u)) = 6 := by
+      unfold tokK at ht; split at ht
+      · assumption
+      · exfalso; revert ht; unfold ktok
+        split <;> (try split) <;> (try split) <;> (try split) <;> intro ht <;> cases ht
+    rw [ht, h6, if_pos hd]
+    have := dec_numTok (c :: u) X hall
+    simpa using this
+  · rw [if_neg hd]
+    have h6 : kindOf (dfa (c :: u)) (pk (c :: u)) ≠ 6 := by
+      intro e; rw [e] at hw; simp only [tokK, if_pos rfl] at hw
+      unfold wordTok at hw; simp only [hd, Bool.false_eq_true, if_false, ite_true] at hw
+      revert hw
+      split <;> (try split) <;> (try split) <;> (try split) <;> (try split) <;> intro hw <;> simp at hw
+    have hk4 : (kindOf (dfa (c :: u)) (pk (c :: u))).toUInt8 ≤ 4 := by
+      rcases kind_vals (dfa (c :: u)) (pk (c :: u)) with e | e | e | e | e | e | e <;> rw [e] at h h6 ⊢ <;>
+        first | decide | exact absurd rfl h | exact absurd rfl h6
+    rw [dec_wordTok (c :: u) X _ hu hk4 (by simp)]
+    simp only [tokK, if_neg h6]
 
 end Nano.B
