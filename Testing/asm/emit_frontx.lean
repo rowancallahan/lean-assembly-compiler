@@ -8,6 +8,7 @@ import Riscv.Frontx.Ind2Examples
 import Riscv.Frontx.NameExamples
 import Riscv.Frontx.ScalarExamples
 import Riscv.Frontx.HofExamples
+import Riscv.Frontx.MonadExamples
 open Proven Proven.Frontx Proven.Frontx.Ex
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
 def hex2 (b : UInt8) : String := let s := String.ofList (Nat.toDigits 16 b.toNat); if s.length < 2 then "0" ++ s else s
@@ -289,7 +290,8 @@ end
 -- `2^64 - 1`) components; pairs: equal, one component changed, a prefix, unrelated; levels with `param` names
 section
 open Proven.Frontx.IndEx
-def strs : List String := ["", "a", "b", "x", "Nat", "succ", "é", "λ", "∀x", "foo_bar", "Nat.add", "ab", "ba", "a\x00b"]
+def strs : List String := ["", "a", "b", "x", "Nat", "succ", "é", "λ", "∀x", "foo_bar", "Nat.add", "ab", "ba", "a\x00b",
+  "𝔸", "x🙂y", "\x00", "ü∀𝔸z"]
 def genN : Nat → Nat → ConLeche.Name
   | 0, _ => .anonymous
   | d + 1, s => match rnd s d % 3 with
@@ -301,7 +303,13 @@ def bumpN : ConLeche.Name → ConLeche.Name
   | .anonymous => .str .anonymous "a"
   | .str p s => .str p (if s = "a" then "b" else "a")
   | .num p n => .num p ((n + 1) % 2 ^ 64)
-def namePairs : List (ConLeche.Name × ConLeche.Name) := (List.range 60).map fun i =>
+/-- fixed pairs first: the empty string, NUL, 2-, 3- and 4-byte UTF-8, equal and differing in one byte -/
+def strPairs : List (ConLeche.Name × ConLeche.Name) :=
+  [(.str .anonymous "", .str .anonymous ""), (.str .anonymous "", .str .anonymous "\x00"),
+   (.str .anonymous "\x00", .str .anonymous "\x00"), (.str (.num .anonymous 7) "𝔸", .str (.num .anonymous 7) "𝔸"),
+   (.str .anonymous "𝔸", .str .anonymous "𝔹"), (.str .anonymous "λ∀", .str .anonymous "λ∀"),
+   (.str .anonymous "é", .str .anonymous "e"), (.str (.str .anonymous "") "x🙂y", .str (.str .anonymous "") "x🙂y")]
+def namePairs : List (ConLeche.Name × ConLeche.Name) := strPairs ++ (List.range 52).map fun i =>
   let n := genN (i % 5 + 1) (i + 1)
   match i % 4 with
   | 0 => (n, n) | 1 => (n, bumpN n) | 2 => (n, .str n "x") | _ => (n, genN (i % 4 + 1) (i + 5))
@@ -317,7 +325,8 @@ def bumpL : ConLeche.Level → ConLeche.Level
   | .succ u => .succ (bumpL u)
   | .max u v => .max (bumpL u) v
   | .imax u v => .imax (bumpL u) v
-def levelPairs : List (ConLeche.Level × ConLeche.Level) := (List.range 60).map fun i =>
+def levelPairs : List (ConLeche.Level × ConLeche.Level) := (strPairs.map fun (a, b) => (.param a, .param b)) ++
+  (List.range 52).map fun i =>
   let l := genLN (i % 6) (i + 1)
   match i % 3 with | 0 => (l, l) | 1 => (l, bumpL l) | _ => (l, genLN (i % 5) (i + 7))
 #eval do
@@ -355,3 +364,24 @@ open Proven.Frontx.Hof in
   emit "hof_arrfindgt3" arrFindGt3.slots Proven.Frontx.Hof.arrFindGt3.code (fun xs => arrFindGt3.enc (arrFindGt3 xs))
   emit "hof_mapxor" mapXor.slots Proven.Frontx.Hof.mapXor.code mapXor
   emit "hof_countabove100" countAbove100.slots Proven.Frontx.Hof.countAbove100.code (enc countAbove100)
+
+-- NOTES section 29: monads by specialisation (`MonadExamples.lean`)
+open Proven.Frontx.Mon in
+#eval do
+  emit "mon_countgt3" countGt3.slots Proven.Frontx.Mon.countGt3.code (fun xs => countGt3.enc (countGt3 xs))
+  emit "mon_countnotgt3" countNotGt3.slots Proven.Frontx.Mon.countNotGt3.code (fun xs => countNotGt3.enc (countNotGt3 xs))
+  emit "mon_countgt3exc" countGt3Exc.slots Proven.Frontx.Mon.countGt3Exc.code (fun xs => countGt3Exc.enc (countGt3Exc xs))
+  emit "mon_sumnze" sumNZE.slots Proven.Frontx.Mon.sumNZE.code (fun xs => sumNZE.enc (sumNZE xs))
+  emit "mon_countzerose" countZerosE.slots Proven.Frontx.Mon.countZerosE.code (fun xs => countZerosE.enc (countZerosE xs))
+  emit "mon_countabovere" countAboveRE.slots Proven.Frontx.Mon.countAboveRE.code (fun xs => countAboveRE.enc (countAboveRE xs))
+  emit "mon_maxste" maxStE.slots Proven.Frontx.Mon.maxStE.code (fun xs => maxStE.enc (maxStE xs))
+  emit "mon_splite" splitE.slots Proven.Frontx.Mon.splitE.code (fun xs => splitE.enc (splitE xs))
+  emit "mon_firstbige" firstBigE.slots Proven.Frontx.Mon.firstBigE.code (fun xs => firstBigE.enc (firstBigE xs))
+  emit "mon_trysube" trySubE.slots Proven.Frontx.Mon.trySubE.code (fun xs => trySubE.enc (trySubE xs))
+  emit "mon_desfindgt3" desFindGt3.slots Proven.Frontx.Mon.desFindGt3.code (enc desFindGt3)
+  emit "mon_loopfindgt3" loopFindGt3.slots Proven.Frontx.Mon.loopFindGt3.code (enc loopFindGt3)
+  emit "mon_contfindgt3" contFindGt3.slots Proven.Frontx.Mon.contFindGt3.code (enc contFindGt3)
+  emit "mon_loopcountsp" loopCountSp.slots Proven.Frontx.Mon.loopCountSp.code (enc loopCountSp)
+  emit "mon_twoe" twoE.slots Proven.Frontx.Mon.twoE.code (enc twoE)
+  emit "mon_threee" threeE.slots Proven.Frontx.Mon.threeE.code (enc threeE)
+  emit "mon_sixe" sixE.slots Proven.Frontx.Mon.sixE.code (enc sixE)

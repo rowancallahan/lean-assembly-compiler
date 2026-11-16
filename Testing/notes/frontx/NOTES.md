@@ -1455,7 +1455,8 @@ Scope changed by the owner (features first, speed later); the speed finding is k
 (new: `Bytes8`, `Bytes8.ofString s = ofList s.toUTF8.data.toList`, `Bytes8.eqb`, `eqb_ofString : eqb (ofString s)
 (ofString t) = decide (s = t)`), `Riscv/Frontx/IndCmd.lean` (front end), `Riscv/Frontx/NameExamples.lean` (targets).
 
-- **Byte format** (stated by `C.enc` of the generated shape): a `String` field is the chain `Bytes8.ofString s` of
+- **Byte format** (superseded by section 28: a `String` is now its length, 8 bytes, then its bytes; the chain below
+  is only the memory representation) (stated by `C.enc` of the generated shape): a `String` field is the chain `Bytes8.ofString s` of
   its UTF-8 bytes: per byte the tag of `cons` and the byte, then the tag of `nil` (no length prefix: it is the
   Encode-style format of `List UInt8` as an inductive, tag + fields; a `UInt8` field is one byte).  E.g. `Name.str
   .anonymous "ab"` = `01 00 04 61 04 62 03`.
@@ -1889,3 +1890,156 @@ Not done / why:
 Reproduce: `lake build Riscv.Frontx.HofExamples`; `lake env lean --tstack=4000000 Testing/asm/emit_frontx.lean`;
 `for f in Testing/asm/frontx-words/hof_*.cases; do python3 Testing/asm/frontx_test.py check 50 $(basename $f .cases); done`;
 axioms: `Testing/scripts/axioms_x.lean`.
+
+## 29. Monads by specialisation (branch `feat-monad`, on `feat-hof`)
+
+Files: `Riscv/Frontx/SpecMonad.lean` (new: the pass, its lemmas, `frontx_monad`, `frontx_monad_entry`,
+`frontx_monad_fn`), `Riscv/Frontx/MonadExamples.lean` (new: targets), `Testing/scripts/axioms_y.lean` (new).
+Shared files touched: `Riscv/Frontx/Translate.lean` (three lines, below), `Testing/scripts/check.sh` (`axioms_y` in the
+loop), `Testing/scripts/expected-axioms.txt` (32 lines appended), `Testing/asm/emit_frontx.lean` (one `#eval` block).
+No `Compiler/`, `Spec/`, `Ind*` or §27 file changed (`SpecMonad.lean` imports `SpecHof.lean` and reuses its helpers).
+
+**The pass** (`frontx_monad h`, front end only; the copies are compiled by the existing translator):
+- A **site** is `StateT.run (F a) s`, `ReaderT.run (F a) r`, nested (`StateT.run ((F a).run r) s`: a list of `run`
+  layers), or `F a` of type `Except ε α` / `Option α` / `Id α` with an instance or a known function among its
+  arguments (a definition polymorphic in `[Monad m] [MonadState σ m]` / `[MonadExcept ε m]` used at a concrete
+  monad), or `forIn l b f` over a list with a known body (`for x in l do`). Fixed positions: §27's plus type formers
+  (the monad `m`).
+- A recursive `F` gets a copy `h.mon<k> caps ys extras := C[F a]` (`C` the layers, `extras` the state / environment,
+  `Id` stripped from the type). Its equation is `F`'s own unfolding equation under `C` (`congrArg`), then `simp only`
+  with Lean core's `StateT.run_bind/pure/get/set/modify/modifyGet/map`, `ReaderT.run_bind/pure/read/map`,
+  `ExceptT.run_bind/pure/throw`, `List.forIn_cons/nil`, `pure_bind`, `bind_assoc`, `bind_pure` and 55 lemmas of
+  `SpecMonad.lean` (each `rfl` or by cases: `run` of `ite`/`dite`/`throw`/`tryCatch`/lifted `get`/`set`/`modify`,
+  `ite`/`dite` under `bind`, `Except`/`Option`/`Id` `bind`/`pure`/`map`/`tryCatch` on constructors, projections of
+  `ite`, `MProd`, an `ExceptT` action bound in `m` as its `run`), `zeta` (the `do` join points), and two simprocs:
+  `monPushMatch` pushes a context (`run`, projections, `bind`, `tryCatch`, `<$>`, an outer `match`) into a `match`,
+  proved by the matcher itself (motive `fun d => C[match d …] = match d …`, every alternative `rfl`), `monMatchIte`
+  a `match` on an `if` (`apply_ite`). The recursive calls `C[F a']` with the same fixed arguments are folded to the
+  copy (definitional), nested sites are specialised in turn, non-recursive monadic definitions (`runCatch`,
+  `checkedSub`, `Loops.List.count`) unfolded. So the state is an extra parameter and the second component of the
+  result, `Except` the §16 tag-byte payload, a `for` loop a first-order recursion on the list.
+- After the loop (the body is `K[c]` with one copy call `c`): `monAbsorb` absorbs the continuation `K` (the `match`
+  of an early `return` in a `for`, `failure` after the loop) into a new copy `K[cN zs]` whose equation is `cN`'s under
+  `K`; `monConstArgs` drops a parameter that the entry and every recursive call pass as the same closed value (the
+  "not returned yet" loop state `⟨none, ()⟩`), its equation `cN`'s at that value.
+- `h.mon : h ys = <first-order body>`: at most `propext`, `Quot.sound` (from `List.forIn_cons`), nothing for most.
+  `frontx_monad_entry g [measure] [with]` = §27's entry command on `frontx_monad` (`g.mon.entry`, `rfl` after
+  `rw [g.mon]`); `frontx_monad_fn g [requires]` for a body without a loop: `g.monb xs (_ : Nat)` (the §16 `…At`
+  convention), `frontx_compile`, `frontx_entry g from g.mon.entry`.
+
+`Translate.lean` (generated code of all older entry points unchanged): `resultComps Unit = []` (no component: the
+`Unit` of `Unit × σ` / `Except ε (Unit × σ)`); a result with ONE component inside a compound type (`Unit × Nat`) goes
+the several-components path (`multi`) in `frontx_compile` and `frontx_entry`, not the scalar one.
+
+**Compiled, machine theorem** `g.implements1` (the Sail axiom set, equal to `nonFindGt3.implements1`'s), test
+`frontx_test.py check 50` on QEMU and Sail vs executed Lean (`emit_frontx.lean`), all 17 × 50 ok, lengths up to 2769:
+
+| entry | monadic code | source | words |
+|---|---|---|---|
+| `countGt3`, `countNotGt3` | `ThenDoUnless.count`/`countNot` (`[Monad m] [MonadState Nat m]`, `if ← p x`, `unless`, `modify`) at `StateM Nat`, `p := fun x => pure (x > 3)` | fp-lean @0abeea5 `MonadTransformers/Do.lean:66,76` | 84, 84 |
+| `countGt3Exc` | `count` at `StateT Nat (Except String)`, the predicate `throw`s on 0 | `Do.lean:66` | 111 |
+| `desFindGt3` | `EarlyReturn.Desugared.List.find?` (`runCatch` over `ExceptT α Option`, `throw`, `monadLift`; §27 "not done") | `Do.lean:114,123` | 77 |
+| `loopFindGt3`, `contFindGt3` | `Loops.List.find?`, `Loops.Cont.List.find?` (`for`, early `return`, `continue`, `failure`) | `Do.lean:324,332` | 77, 79 |
+| `loopCountSp` | `Loops.List.count` (`Id.run do`, `let mut`, `for`) | `Do.lean:345` | 83 |
+| `twoE`, `threeE`, `sixE` | `Mut.St.two` (a `StateT Nat Id` block applied to `0`), `Mut.three`, `Mut.six` (`for` over `[1, 2, 3]`, unrolled) | `Do.lean:372,386,396` | 48, 48, 48 |
+| `sumNZE` | `StateT Nat (Except String)`, `throw`, `modify` | ours | 100 |
+| `countZerosE` | `try … catch` in the loop body (`StateT Nat (Except String)`) | ours | 88 |
+| `countAboveRE` | `ReaderT UInt8 (StateM Nat)`, `read` | ours | 85 |
+| `maxStE` | `get`/`set` in `StateM UInt8` | ours | 61 |
+| `splitE` | a structure `Counts` as the state, `modify fun c => { c with … }` | ours | 116 |
+| `firstBigE` | `[Monad m] [MonadExcept String m]` at `Except String`, early `return`, `throw` | ours | 77 |
+| `trySubE` | `tryCatch` in `Except` around a helper (`frontx_monad_fn`) | ours | 65 |
+
+Human input: the `with` invariants of the `Nat` accumulators (as §27's `countSp`).
+
+Not done / why:
+- lean-zip (`LEANZIP_DEPTH.md`, EXC): the functions whose only blocker is EXC (`BitReader.readBit`, `readBits`
+  (+ `go`), `readUInt16LE`, `alignToByte`, `readBitsFast`, `takeBits`) already compile through §16 (the probe ran
+  `frontx_compile` on the `readBits` wrapper, not on the `rfl` entry). Every other EXC function also needs ARR, BAO,
+  BAF, STR, IND or WF (`decodeStored` → `readBytes` (`ByteArray` result), `validateLengths` (arrays), the inflate
+  loops); none became reachable.
+- con-leche (`CONLECHE_DEPTH.md` row 11): no `CheckM`/`CheckCM`/`[Monad m]` function passes the type gate apart from
+  the monad: the `m`-polymorphic kernel functions take `Expr`/`Level`/`CoreFns m`; the only scalar ones,
+  `peelFuelM`/`maxNatSizeM`/`flushC` (`Cached/StateC.lean:324,328,508`), live in `CheckCM = StateT CState CheckM`,
+  whose state `CState` holds `HashMap`s of `Expr`/`Name`/`Level` (not in this repo; row 1, 2, 8). The pass handles that
+  monad shape (`countGt3Exc`, `sumNZE` are `StateT σ (Except ε)`); what is missing is the data.
+- fp-lean `countLetters` (`Do.lean:44`, `StateT LetterCounts (Except Err)`): `Char`/`String` (`List Char`,
+  `vowels.contains`); the book's own `State σ α := σ → σ × α` monad (`Monads.lean:476`) and `number`
+  (trees out).
+- Non-tail recursive monadic calls (`helper left` then `helper right`): the copy returns a pair, and the translator's
+  calls take one result word (§16).
+- `for i in [a:b]` in a monad other than `Id` (the range loop of `For.lean` is `Id` only); `ExceptT` over `StateM`
+  contexts (only `ExceptT … Option` through `runCatch` was needed).
+
+Reproduce: `lake build Riscv.Frontx.MonadExamples`; `lake env lean --tstack=4000000 Testing/asm/emit_frontx.lean`;
+`for f in Testing/asm/frontx-words/mon_*.cases; do python3 Testing/asm/frontx_test.py check 50 $(basename $f .cases); done`;
+axioms: `Testing/scripts/axioms_y.lean`.
+
+## 28. Strings as length + UTF-8 (branch `feat-utf8`)
+
+The owner's layout (ROADMAP): **a `String` is its length in bytes, 8 bytes little-endian, followed by its UTF-8
+bytes** (the format of `LList UInt8` in `Spec/Encode.lean`, no terminator, no tags).  It is the format of every
+`String` field of a `frontx_ind_type` in input and output; in memory a string stays the chain of cells of
+section 23 (`Bytes8`, one byte per cell), which is what the compiled functions (`Bytes8.eqb`, `Name.decEq`, ...) and
+their proofs work on; only the decoder and the encoder of the program changed, proved once.
+
+Example (`Riscv/Frontx/NameExamples.lean`, `decide +kernel`): `Name.str .anonymous "aλ"` is
+`01 00 03 00 00 00 00 00 00 00 61 ce bb` (tag `str`, the prefix `anonymous` = tag `00`, the length 3, the bytes;
+section 23's format was `01 00 04 61 04 ce 04 bb 03`).
+
+**Stated in the Encode style** (`Riscv/Frontx/IndStr.lean`): `encString s = enc (BitVec.ofNat 64 s.utf8ByteSize) ++
+s.toUTF8.data.toList`; `LString` (a string of fewer than `2^64` bytes, as `LList`) with `instance : Bytes LString`
+(decoder: the length, then that many bytes that are valid UTF-8; `dec_enc` proved); examples for `""`, `"ab"` and NUL
++ 2-, 3-, 4-byte characters (`"\x00λ∀𝔸"`).  Per type the layout of its constructors: `NameT.enc_anonymous : NameT.enc
+.anonymous = [0]`, `NameT.enc_str : NameT.enc (.str p s) = 1 :: NameT.enc p ++ encString s`, `NameT.enc_num :
+NameT.enc (.num p n) = 2 :: NameT.enc p ++ enc (BitVec.ofNat 64 n)`.  The generic statement is `C.enc`
+(`Compiler/Ind.lean`): a field `Fld.sl` / `Fld.sr` (the child `l` / `r` is a string) is `C.senc` = `leN 8 n ++
+bytes` of the string's cells; `senc_ofString : (C.str st s.toUTF8.data.toList).senc = encString s`.
+
+**What changed.**
+- `Compiler/Ind.lean`: `Fld.sl`, `Fld.sr`; `C.str st L` (the cells of the bytes `L`: per byte `[st + 1, b, rest, z]`,
+  then `[st, 0, z, z]`), `C.sb` (the bytes of a chain, read off the cells with a child), `C.senc`; `sTag sh =
+  sh.length - 2`: string cells use **the shape's last two tags** (the front end puts `Bytes8` last); `C.wf` per child
+  slot: `l.wf` if `Fld.l`, `l.IsStr (sTag sh)` if `Fld.sl`, `z` if neither (conjunctions, so a slot with both is
+  consistent).  Decoder `dStr st d`: read the length (into `v_13`, `v_9` kept), allocate the end cell, then a cell per
+  byte **from the last byte back** (children below parents, as `Rp` requires), cursor after the bytes; locals 13,
+  14 (decoder frame 48 → 64 bytes).  Encoder `eStr p`: count the chain (`eCnt`, loop), write the count with `wrB 8`
+  (`v_10` kept), then the bytes (`eBytes`, loop); locals 13-15 (encoder frame 56 → 72 bytes).  The stack bound of
+  the statements (`8 (nl + 1) ≥ 136` per level) covers both, so no statement's space changed.
+- `Compiler/IndStrOk.lean` (new): `dLoop_ok`, `dStr_ok` (the decoder of a string), `cnt_ok`, `bytes_ok`, `eStr_ok`
+  (the encoder), `str_sb`, `IsStr.senc`.  `Compiler/IndBytes.lean` (new): the byte-reading/writing lemmas of
+  `IndDec.lean` moved out (`At`, `rdB_ok`, `wr`, `wrB_ok`, ...).  `Compiler/IndDec.lean`: `dFlds_ok` / `eFlds_ok`
+  with the two new fields.  `Compiler/IndMain.lean`: `nodes_le` per slot (`slot_le`, `str_le`: `n + 1` cells for
+  `8 + n` bytes).  `Compiler/IndSup.lean`: `C.dec` / `decFlds` decode strings; `dec_enc`, `decIn_ok`,
+  `al_le_cellsSup` take `length < 2^64` (an 8-byte length cannot describe a longer string), so `implements1_indM`'s
+  cell bound is asked only for inputs below `2^32` bytes (`Riscv/Frontx/Ind.lean`; `IndMem.memoryNeeded_le` passes
+  its `2^20`).
+- Front end (`Riscv/Frontx/IndCmd.lean`): a `String` field is `.sl` / `.sr` in the shape; `Bytes8` is the last type
+  of the shape (TExpr: the types after `Name` — `List Level`, `Literal`, `List Expr`, `Option Expr` — move down by
+  two tags, the string cells are 28, 29); for `Bytes8`
+  `T.Nk.emb_str : (emb t).IsStr off`, used by the other types' `emb_wf`.  New definitions in `wfDefs`.
+- Shapes: `NameT` `[], [.l, .sr], [.l, .x], [], [.b, .l]`; `LevelN` `..., [.l, .sr], [.l, .x], [], [.b, .l]`;
+  `TExpr` `Name.str` `[.l, .sr]`, `Literal.strVal` `[.sl]`.
+
+**Not done.** `String.length` (Lean's is the number of characters, not bytes: needs the UTF-8 structure of
+`String.utf8EncodeChar`, continuation bytes `10xxxxxx`, as a lemma; `utf8ByteSize` would be the chain length) and
+string literals as constants (a constant chain `mk … (mk … nul)` in `E`, `=` with a constant side): neither was
+cheap here.
+
+Axioms: `Testing/scripts/axioms_utf8.lean` (`dStr_ok`, `eStr_ok`, `dec_ok`, `enc_ok`, `dec_enc`, the `Bytes LString`
+instance, `senc_ofString`, `NameT.enc_str` / `enc_num`: propext, Classical.choice, Quot.sound).  Tests (QEMU + Sail
+against executed Lean, `frontx_test.py check 60`): `name_beq`, `name_bbeq`, `level_beq`, `level_bbeq` (60 cases each;
+the first 8 pairs fixed: `""`, NUL, `"𝔸"` (4 bytes), `"λ∀"`, `"é"`/`"e"`, `"x🙂y"`; the random names now also draw
+4-byte strings), the 11 `expr_*` entries (60 each; `inst1` returns trees with strings, so the encoder is exercised),
+and every other inductive-path entry re-emitted (their decoder/encoder code changed): all pass; the 25 run-time
+memory entries (`emit_mem.lean`, `mem_test.py check 10`) pass.  Statement fingerprints: no `stmt` hash changed; the
+`closure` hashes of `ind_ok` and every inductive-path `implements1` changed (C.enc, C.wf, decFn, encFn).
+
+**State (round paused by the owner).** Done: layout, decoder/encoder proofs, front end, Encode-style statements,
+tests above.  `bash Testing/scripts/check.sh` passed (ALL CHECKS PASSED) at `dbcc834` (after merging origin/main and
+feat-expr); after that only `axioms_z.lean` → `axioms_utf8.lean` (check.sh list updated) and a ROADMAP-only merge of
+origin/main — the re-run of check.sh was stopped by the pause, so run it once on resume.  Next steps: (1) re-run
+check.sh; (2) optionally `String.utf8ByteSize` (the chain length, cheap) and `String.length` (needs a lemma on
+`String.utf8EncodeChar`: count the non-continuation bytes); (3) string literals as constant chains in `E`
+(Name constants like `Name.str .anonymous "Nat"`, `=` with a constant side); (4) small linter warnings (unused simp
+arguments in `IndStrOk.lean`, `IndDec.lean`, `IndSup.lean`).
