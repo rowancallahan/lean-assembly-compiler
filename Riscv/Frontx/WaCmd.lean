@@ -112,7 +112,7 @@ macro "wa_close" : tactic => `(tactic| (
 
 def tySyn : Ty → MetaM Term
   | .u8 => `(Ty.u8) | .u16 => `(Ty.u16) | .u32 => `(Ty.u32) | .u64 => `(Ty.u64) | .nat => `(Ty.nat)
-  | .bool => `(Ty.bool)
+  | .bool => `(Ty.bool) | .int => `(Ty.int)
 
 def slSyn : Sl → MetaM Term
   | .sc t => do `(Sl.sc $(← tySyn t))
@@ -135,6 +135,7 @@ def tyOf? (T : Expr) : MetaM (Option Ty) := do
   if T.isConstOf ``UInt64 then return some .u64
   if T.isConstOf ``Nat then return some .nat
   if T.isConstOf ``Bool then return some .bool
+  if T.isConstOf ``Int then return some .int
   return none
 
 def slOf? (T : Expr) : MetaM (Option Sl) := do
@@ -263,6 +264,20 @@ partial def reifyE (ctx : List Ent) (e : Expr) : TermElabM (Term × Ty) := do
     if args.size == 1 then
       let (a, _) ← reifyE ctx args[0]!
       return (← `(E.cast $(← tySyn t) $a), t)
+  -- `Int`: `-x` is `0 - x`; `Int.ediv` / `Int.emod` are `/` / `%`; `Int.toNat`, `Nat` → `Int`
+  if c == ``Neg.neg && args.size == 3 then
+    let (a, t) ← reifyE ctx args[2]!
+    if t == .int then return (← `(E.bin Op2.sub (E.lit Ty.int 0) $a), .int)
+  if (c == ``Int.ediv || c == ``Int.emod) && args.size == 2 then
+    let (a, _) ← reifyE ctx args[0]!; let (b, _) ← reifyE ctx args[1]!
+    return (← if c == ``Int.ediv then `(E.bin Op2.div $a $b) else `(E.bin Op2.mod $a $b), .int)
+  if c == ``Int.toNat && args.size == 1 then
+    let (a, _) ← reifyE ctx args[0]!
+    return (← `(E.cast Ty.nat $a), .nat)
+  if (c == ``Int.ofNat && args.size == 1) || ((c == ``Nat.cast || c == ``NatCast.natCast) && args.size == 3 &&
+      (← whnfR args[0]!).isConstOf ``Int) then
+    let (a, _) ← reifyE ctx args.back!
+    return (← `(E.cast Ty.int $a), .int)
   if c == ``Nat.toUInt32 && args.size == 1 then
     let (a, _) ← reifyE ctx args[0]!
     return (← `(E.cast Ty.u32 $a), .u32)
@@ -594,7 +609,7 @@ where
     return l
   toTyE : Ty → Expr
     | .u8 => mkConst ``Ty.u8 | .u16 => mkConst ``Ty.u16 | .u32 => mkConst ``Ty.u32 | .u64 => mkConst ``Ty.u64
-    | .nat => mkConst ``Ty.nat | .bool => mkConst ``Ty.bool
+    | .nat => mkConst ``Ty.nat | .bool => mkConst ``Ty.bool | .int => mkConst ``Ty.int
 
 /-! ## The command -/
 
@@ -614,13 +629,14 @@ theorem size_set' {α : Type} (a : Array α) (i : Nat) (x : α) : (a.set! i x).s
 /-- the simp set of the meanings -/
 macro "wa_dsimp" : tactic => `(tactic| simp (config := { failIfUnchanged := false }) only [T.ok, T.out, T.den, E.ok, E.den, A.den, A.ok, AK.set, AK.push, Args.ok, Args.den, Arg.den,
   Ini.ok, Ini.den, Inis.ok, Inis.den, F.ok, F.den, Vals.app, Mem.get, AK.size, AK.get, Op2.den, Cmp.den, WA.cast,
-  Ty.small, Op2.exact, Op2.side, decide_eq_true_eq, AK.el, size_ite_set, size_set', Array.size_replicate, u8_lt64, u16_lt64, u32_lt64, u64_lt64, u8_lt64', u16_lt64', u32_lt64',
+  Ty.small, Op2.exact, Op2.side, cast.side, Proven.Frontx.ediv_hdiv, Proven.Frontx.emod_hmod, Int.zero_sub, Int.ofNat_eq_natCast, decide_eq_true_eq, AK.el, size_ite_set, size_set', Array.size_replicate, u8_lt64, u16_lt64, u32_lt64, u64_lt64, u8_lt64', u16_lt64', u32_lt64',
   u64_lt64'] at *)
 
 macro "wa_okt" : tactic => `(tactic| (wa_dsimp <;> wa_close))
 
 def tyTypeSyn : Ty → MetaM Term
   | .u8 => `(UInt8) | .u16 => `(UInt16) | .u32 => `(UInt32) | .u64 => `(UInt64) | .nat => `(Nat) | .bool => `(Bool)
+  | .int => `(Int)
 
 /-- `rintro ⟨x0, x1, …, ⟨⟩⟩` with the components' types made explicit (for `omega`) -/
 def introState (Δ : List Sl) (extra : Array Ident := #[]) : TermElabM (Array (TSyntax `tactic)) := do

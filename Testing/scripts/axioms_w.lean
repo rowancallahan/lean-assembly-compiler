@@ -1,5 +1,6 @@
 import Riscv.Frontx.NameExamples
 import Riscv.Frontx.StringExamples
+import Riscv.Frontx.IndMem
 #print axioms Proven.Frontx.IndEx.Pos.mul.implements1
 #print axioms Proven.Frontx.IndEx.NonTail.reverse.implements1
 #print axioms Proven.Frontx.IndEx.eqBinTree.implements1
@@ -23,3 +24,11 @@ import Riscv.Frontx.StringExamples
 #print axioms ConLeche.Level.beq.ind.sem
 #print axioms Proven.Frontx.Ind.Bytes8.eqb_ofString
 #print axioms Proven.Frontx.Ex.findSeq.exec
+#print axioms Proven.Frontx.IndMem.compile_runs
+#print axioms Proven.Frontx.IndMem.compile_correct
+#print axioms Proven.Frontx.IndMem.memoryNeeded_le
+#print axioms Proven.Top.memSpec
+#print axioms Proven.Mach.MachineM.compPM_ok
+#print axioms Proven.Mach.MachineM.execCM_ok
+#print axioms Proven.Mach.texec_of_cexec
+#print axioms Proven.Mach.texec_det
