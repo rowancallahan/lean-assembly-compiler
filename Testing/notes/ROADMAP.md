@@ -130,3 +130,9 @@ hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read 
   there); cloud boxes restore it instead of building. First item: the Sail RISC-V model dependency (25 MB).
   Next: this repo's own `.lake/build` at main after big merges (~750 MB raw). Split slow proof files into
   independent lemma files so lake builds them in parallel (plan: branch build-profile, BUILD_PROFILE.md).
+- Time budget (owner, 2026-11-16): at least 70-80% (goal 90%) of wall time should be agent thinking/proof writing;
+  builds, tests and CI at most 20-30% amortised over a week (the final full check and full re-elaboration excepted).
+  Rules for every agent: iterate on ONE file with `lake env lean <File>.lean` (only what changed), never a full
+  `lake build`/`check.sh` per attempt; run the full check once at the end of the round; send QEMU/Sail test runs
+  to other boxes when possible; use the build cache. Measured daily from the session logs (tool wall time vs
+  model time per round).
