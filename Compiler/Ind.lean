@@ -168,6 +168,9 @@ inductive E (rk : Kd) : Kd → Type where
   | bind {k₁ k : Kd} (e₁ : E rk k₁) (e₂ : E rk k) : E rk k
   /-- the `i`-th enclosing `bind` (de Bruijn), of kind `k` -/
   | var (i : Nat) (k : Kd) : E rk k
+  /-- a recursive call on a grandchild: child `c₂` of child `c₁` (`false` = `l`; the fields of a constructor
+  that continue in an extension cell, `NOTES` section 25) -/
+  | call2 (c₁ c₂ : Bool) (ea : E rk .w) (eb : E rk .t) : E rk rk
 
 /-- one function: an arm per tag (tags `≥ arms.length` and `z` give `rk.dflt`); `X j` / `XA j` are the meaning and
 the cell count of the `j`-th function after this one (`ext j`) -/
@@ -175,6 +178,9 @@ structure Pg (rk : Kd) where
   arms : List (E rk rk)
   X : Nat → C → BitVec 64 → C → BitVec 64 × C := fun _ _ _ _ => (0, .z)
   XA : Nat → C → BitVec 64 → C → Nat := fun _ _ _ _ => 0
+  /-- straight-line body: no loop, every call a real call, one test per tag in sequence (`fLoopS`; for many
+  constructors: a branch then jumps only over its own arm) -/
+  st : Bool := false
 
 variable {rk : Kd}
 
@@ -182,6 +188,7 @@ variable {rk : Kd}
 values of the enclosing `bind`s (innermost first) -/
 structure Cn (rk : Kd) where
   f : Bool → BitVec 64 → C → rk.den
+  g : Bool → Bool → BitVec 64 → C → rk.den
   X : Nat → C → BitVec 64 → C → BitVec 64 × C
   me : C
   ρ : List (BitVec 64 × C)
@@ -189,6 +196,7 @@ structure Cn (rk : Kd) where
 /-- the cell counts of the calls in an expression -/
 structure Ca where
   f : Bool → BitVec 64 → C → Nat
+  g : Bool → Bool → BitVec 64 → C → Nat
   X : Nat → C → BitVec 64 → C → Nat
 
 def ev (self : Cn rk) (x : BitVec 64) (l r : C) (a : BitVec 64) (b : C) :
@@ -211,6 +219,7 @@ def ev (self : Cn rk) (x : BitVec 64) (l r : C) (a : BitVec 64) (b : C) :
   | _, @E.bind _ k₁ _ e₁ e₂ =>
     ev { self with ρ := k₁.pair (ev self x l r a b e₁) :: self.ρ } x l r a b e₂
   | _, .var i kk => kk.pick (self.ρ.getD i (0, .z))
+  | _, .call2 c₁ c₂ ea eb => self.g c₁ c₂ (ev self x l r a b ea) (ev self x l r a b eb)
 
 /-- cells allocated by an expression -/
 def alE (self : Cn rk) (sal : Ca) (x : BitVec 64) (l r : C)
@@ -227,21 +236,43 @@ def alE (self : Cn rk) (sal : Ca) (x : BitVec 64) (l r : C)
       sal.X j (ev self x l r a b et) (ev self x l r a b ea) (ev self x l r a b eb)
   | _, @E.bind _ k₁ _ e₁ e₂ => alE self sal x l r a b e₁ +
       alE { self with ρ := k₁.pair (ev self x l r a b e₁) :: self.ρ } sal x l r a b e₂
+  | _, .call2 c₁ c₂ ea eb => alE self sal x l r a b ea + alE self sal x l r a b eb +
+      sal.g c₁ c₂ (ev self x l r a b ea) (ev self x l r a b eb)
   | _, _ => 0
 
 def Pg.sem (pg : Pg rk) : C → BitVec 64 → C → rk.den
   | .z, _, _ => rk.dflt
   | .c t x l r, a, b =>
     match pg.arms[t]? with
-    | some e => ev ⟨fun ch a' b' => if ch then pg.sem r a' b' else pg.sem l a' b', pg.X, .c t x l r, []⟩ x l r a b e
+    | some e => ev ⟨fun ch a' b' => if ch then pg.sem r a' b' else pg.sem l a' b',
+        fun c₁ c₂ a' b' => if c₁ then (match r with
+            | .z => rk.dflt
+            | .c _ _ rl rr => if c₂ then pg.sem rr a' b' else pg.sem rl a' b')
+          else (match l with
+            | .z => rk.dflt
+            | .c _ _ ll lr => if c₂ then pg.sem lr a' b' else pg.sem ll a' b'),
+        pg.X, .c t x l r, []⟩ x l r a b e
     | none => rk.dflt
 
 def Pg.al (pg : Pg rk) : C → BitVec 64 → C → Nat
   | .z, _, _ => 0
   | .c t x l r, a, b =>
     match pg.arms[t]? with
-    | some e => alE ⟨fun ch a' b' => if ch then pg.sem r a' b' else pg.sem l a' b', pg.X, .c t x l r, []⟩
-        ⟨fun ch a' b' => if ch then pg.al r a' b' else pg.al l a' b', pg.XA⟩ x l r a b e
+    | some e => alE ⟨fun ch a' b' => if ch then pg.sem r a' b' else pg.sem l a' b',
+        fun c₁ c₂ a' b' => if c₁ then (match r with
+            | .z => rk.dflt
+            | .c _ _ rl rr => if c₂ then pg.sem rr a' b' else pg.sem rl a' b')
+          else (match l with
+            | .z => rk.dflt
+            | .c _ _ ll lr => if c₂ then pg.sem lr a' b' else pg.sem ll a' b'),
+        pg.X, .c t x l r, []⟩
+        ⟨fun ch a' b' => if ch then pg.al r a' b' else pg.al l a' b',
+         fun c₁ c₂ a' b' => if c₁ then (match r with
+            | .z => 0
+            | .c _ _ rl rr => if c₂ then pg.al rr a' b' else pg.al rl a' b')
+          else (match l with
+            | .z => 0
+            | .c _ _ ll lr => if c₂ then pg.al lr a' b' else pg.al ll a' b'), pg.XA⟩ x l r a b e
     | none => 0
 
 /-- the functions of a program after the current one: meanings and cell counts, by position -/
@@ -271,6 +302,7 @@ def E.mks : {k : Kd} → E rk k → Nat
   | _, .ft _ e => e.mks
   | _, .ext _ _ et ea eb => et.mks + ea.mks + eb.mks
   | _, .bind e₁ e₂ => e₁.mks + e₂.mks
+  | _, .call2 _ _ ea eb => ea.mks + eb.mks
   | _, _ => 0
 
 /-- calls on child `ch` -/
@@ -283,6 +315,7 @@ def E.calls (ch : Bool) : {k : Kd} → E rk k → Nat
   | _, .ft _ e => e.calls ch
   | _, .ext _ _ et ea eb => et.calls ch + ea.calls ch + eb.calls ch
   | _, .bind e₁ e₂ => e₁.calls ch + e₂.calls ch
+  | _, .call2 _ _ ea eb => ea.calls ch + eb.calls ch
   | _, _ => 0
 
 /-- largest tag of a constructor -/
@@ -295,6 +328,7 @@ def E.tags : {k : Kd} → E rk k → Nat
   | _, .ft _ e => e.tags
   | _, .ext _ _ et ea eb => max et.tags (max ea.tags eb.tags)
   | _, .bind e₁ e₂ => max e₁.tags e₂.tags
+  | _, .call2 _ _ ea eb => max ea.tags eb.tags
   | _, _ => 0
 
 /-- temporaries used by `comp` beyond its first -/
@@ -307,9 +341,11 @@ def E.tmp : {k : Kd} → E rk k → Nat
   | _, .ft _ e => e.tmp + 1
   | _, .ext _ _ et ea eb => max (max et.tmp (ea.tmp + 1)) (eb.tmp + 2) + 1
   | _, .bind e₁ e₂ => max e₁.tmp (e₂.tmp + 1) + 1
+  | _, .call2 _ _ ea eb => max ea.tmp (eb.tmp + 1) + 2
   | _, _ => 0
 
-/-- calls of later functions in an expression -/
+/-- calls of later functions and calls on grandchildren in an expression (both outside the linear cell bound
+`al_le`) -/
 def E.exts : {k : Kd} → E rk k → Nat
   | _, .bin _ e₁ e₂ => e₁.exts + e₂.exts
   | _, .mk _ ex el er => ex.exts + el.exts + er.exts
@@ -319,6 +355,7 @@ def E.exts : {k : Kd} → E rk k → Nat
   | _, .ft _ e => e.exts
   | _, .ext _ _ et ea eb => et.exts + ea.exts + eb.exts + 1
   | _, .bind e₁ e₂ => e₁.exts + e₂.exts
+  | _, .call2 _ _ ea eb => ea.exts + eb.exts + 1
   | _, _ => 0
 
 /-- the kinds agree: `var i k` under binders of kinds `ks` (innermost first), `ext j k` with `nx[j] = k` -/
@@ -332,6 +369,7 @@ def E.okc (ks nx : List Kd) : {k : Kd} → E rk k → Bool
   | _, .ext j kk et ea eb => nx[j]? == some kk && et.okc ks nx && ea.okc ks nx && eb.okc ks nx
   | _, @E.bind _ k₁ _ e₁ e₂ => e₁.okc ks nx && e₂.okc (k₁ :: ks) nx
   | _, .var i kk => ks[i]? == some kk
+  | _, .call2 _ _ ea eb => ea.okc ks nx && eb.okc ks nx
   | _, _ => true
 
 /-- is a tail call -/
@@ -388,6 +426,9 @@ def comp (fi : Nat) (sl : List Nat) : {k : Kd} → E rk k → Nat → Nat → CS
       (.seq (comp fi sl eb (n + 2) (n + 3)) (.call d (fi + 1 + j) [vE n, vE (n + 1), vE (n + 2)])))
   | _, .bind e₁ e₂, d, n => .seq (comp fi sl e₁ n (n + 1)) (comp fi (n :: sl) e₂ d (n + 1))
   | _, .var i _, d, _ => .base (asg d (vE (sl.getD i 0)))
+  | _, .call2 c₁ c₂ ea eb, d, n => .seq (comp fi sl ea n (n + 1)) (.seq (comp fi sl eb (n + 1) (n + 2))
+      (.seq (.base (.load64 (n + 2) 0 (addE (if c₁ then 16 else 15) (if c₂ then 3 else 2))))
+        (.call d fi [vE (n + 2), vE n, vE (n + 1)])))
 
 /-- the four words of the cell at `v_p` -/
 def loads (p t x l r : Nat) : BStmt :=
@@ -420,8 +461,22 @@ def disp (fi : Nat) : List (E rk rk) → Nat → CStmt
 
 def fLoop (fi : Nat) (pg : Pg rk) : CStmt := .loop (vE 11) (.seq (.base (loads 8 13 14 15 16)) (disp fi pg.arms 0))
 
+/-- one arm, not a loop: the value of `e` is the result -/
+def armN (fi : Nat) (e : E rk rk) : CStmt := .seq (comp fi [] e 12 17) (.base (asg 11 (kE 0)))
+
+/-- the arms in sequence, each behind its own test of the tag (`v_13` is kept by the arms) -/
+def dispS (fi : Nat) : List (E rk rk) → Nat → CStmt
+  | [], _ => .base (asg 12 (vE 12))
+  | e :: es, i => .seq (.ite (eqE 13 i) (armN fi e) (.base (asg 12 (vE 12)))) (dispS fi es (i + 1))
+
+/-- the straight-line body: the cell, the result `0` (`z` or the word `0`) unless an arm matches -/
+def fLoopS (fi : Nat) (pg : Pg rk) : CStmt :=
+  .seq (.base (.seq (loads 8 13 14 15 16) (asg 12 (kE 0)))) (dispS fi pg.arms 0)
+
+def fLoopX (fi : Nat) (pg : Pg rk) : CStmt := if pg.st then fLoopS fi pg else fLoop fi pg
+
 /-- the function at index `fi` with `nl` locals -/
-def fFn (fi nl : Nat) (pg : Pg rk) : Fn := ⟨3, nl, .seq (.base (asg 11 (kE 1))) (fLoop fi pg), vE 12⟩
+def fFn (fi nl : Nat) (pg : Pg rk) : Fn := ⟨3, nl, .seq (.base (asg 11 (kE 1))) (fLoopX fi pg), vE 12⟩
 
 /-- `x` from the 8 bytes at the cursor (`j` bytes from the top, Horner), into `v_9`; byte temporary `v_12` -/
 def rdB : Nat → BStmt
@@ -439,9 +494,11 @@ def dFlds : List Fld → CStmt
   | [] => .base (asg 9 (vE 9))
   | f :: fs => .seq (dFld f) (dFlds fs)
 
+/-- the fields of the tag in `v_8`: one test per tag in sequence (each branch jumps only over its own code, so the
+number of tags is not limited by the reach of a branch; the fields keep `v_8`) -/
 def dDisp : Shape → Nat → CStmt
   | [], _ => .base (asg 9 (vE 9))
-  | fs :: sh, i => .ite (eqE 8 i) (dFlds fs) (dDisp sh (i + 1))
+  | fs :: sh, i => .seq (.ite (eqE 8 i) (dFlds fs) (.base (asg 9 (vE 9)))) (dDisp sh (i + 1))
 
 /-- `dec()`: locals `8` tag, `9` x, `10` l, `11` r, `12` byte; the cell after its children -/
 def decFn (sh : Shape) : Fn :=
@@ -464,9 +521,10 @@ def eFlds : List Fld → CStmt
   | [] => .base (asg 10 (vE 10))
   | f :: fs => .seq (eFld f) (eFlds fs)
 
+/-- the fields of the tag in `v_9`: one test per tag in sequence (as `dDisp`) -/
 def eDisp : Shape → Nat → CStmt
   | [], _ => .base (asg 10 (vE 10))
-  | fs :: sh, i => .ite (eqE 9 i) (eFlds fs) (eDisp sh (i + 1))
+  | fs :: sh, i => .seq (.ite (eqE 9 i) (eFlds fs) (.base (asg 10 (vE 10)))) (eDisp sh (i + 1))
 
 /-- `enc(p)`: locals `8` p, `9` tag, `10` x, `11` l, `12` r, `13` dummy -/
 def encFn (sh : Shape) : Fn :=
