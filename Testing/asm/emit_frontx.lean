@@ -288,7 +288,8 @@ end
 -- `2^64 - 1`) components; pairs: equal, one component changed, a prefix, unrelated; levels with `param` names
 section
 open Proven.Frontx.IndEx
-def strs : List String := ["", "a", "b", "x", "Nat", "succ", "é", "λ", "∀x", "foo_bar", "Nat.add", "ab", "ba", "a\x00b"]
+def strs : List String := ["", "a", "b", "x", "Nat", "succ", "é", "λ", "∀x", "foo_bar", "Nat.add", "ab", "ba", "a\x00b",
+  "𝔸", "x🙂y", "\x00", "ü∀𝔸z"]
 def genN : Nat → Nat → ConLeche.Name
   | 0, _ => .anonymous
   | d + 1, s => match rnd s d % 3 with
