@@ -57,6 +57,17 @@ All 39 UInt64 (`Nano/Agree.lean`) and 22 Int64 (`Nano/AgreeInt.lean`) agreement 
 fuzz_int.py 250 11 60: 0 mismatches.
 
 ## The chain (Nano/Chain.lean)
+Full-chain test (owner request), `python3 Testing/nano/chain_test.py 8 4` (latest numbers; run after every piece lands):
+95 sources (39 UInt64 + 22 Int64 corpus, 18 adversarial edge cases, 8 + 8 random), 4 inputs each (edge/overflow).
+* L Lean's real elaborator (root-level file per source, `#eval`): accepts 88.
+* E `nanoElabT` (Lean): accepts 85, all with Lean's type and Lean's values (340); 0 mismatches.
+* P proved `nanoCompile` (code computed in Lean; no binary of `Ir.compileW` yet): 85 programs, 340 pairs on QEMU and
+  Sail in the `StartCorrect` convention == Lean's real values at `memoryNeeded`, OOM flag at `memoryNeeded - 1`
+  (ir_test.py; `- 1` rather than `- 8`: same bucket, memoryNeeded is a multiple of 8), writes only in output + work.
+* S stack route, largest self-hosted prefix: `genR` in Lean, `asm` = our compiler's binary (`Nano.Self.nanoAsm`) on QEMU
+  and Sail == Lean `asm`; its code == `nanoGenS`, 340 pairs on qemu-riscv64 and Sail == Lean's real values.
+Stages run in Lean (no binary yet): `nanoElab` (all routes), `lower`/`Ir.compileW` (P), `genR` (S).
+
 `nanoCompileSrc src = (nanoElab src).bind nanoCompile`, `nanoCompile = Ir.compile ∘ lower` (code = `nanoGen p`).
 Theorems (machine axioms = exactly the Sail set of `nano_compile_correct`; listed in axioms_nano-mvp.lean):
 * `nano_chain`: `nanoElab src = some p` → `nanoCompileSrc src = some c` → ∀ args (8-byte LE words, `length = p.1`),
