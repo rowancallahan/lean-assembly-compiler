@@ -272,3 +272,14 @@ dependency closure; theorem STATEMENTS (`Spec/`) are reviewed by the owner, not 
 - The exporter (lean4export) is the remaining unverified link for the checkers that read the export. Later item: a
   round-trip theorem `parse (export decls) = decls` with con-leche's own parser (both pure Lean functions), then compile
   exporter + parser with our compiler. Chain: elaborator (spec) → exporter (proved) → compiled con-leche (proved) → accept.
+
+### Nano: a tiny fully self-hosting toolchain (owner, 2026-11-16)
+
+- v1 (Sonnet box, branch nano-e2e): `nanoCompile = nanoGen ∘ nanoElab` (UTF-8 text → AST → RISC-V) written in Lean,
+  compiled by our compiler (binary proved to compute `nanoCompile`); elaborator checked against Lean's real elaborator
+  (per-program `rfl`/`decide` + fuzz); generated code tested on QEMU/Sail (proof = stretch).
+- v2 (queued, fresh Sonnet box after v1): grow nano just enough to write its OWN compiler (if/comparisons, recursion or
+  loops, byte input/output); write the nano compiler in nano (S); B1 = our compiler's binary of the Lean version
+  (proved); B1 compiles S → B2, B2 compiles S → B3, require B2 = B3 (fixed point); S agrees with the Lean `nanoCompile`.
+  Nano owns its whole pipeline (its elaborator is its own spec, cross-checked against Lean's), so no Lean elaborator in
+  the loop. Full proof additionally needs `nanoGen` correctness (generated code = `Prog.eval`).
