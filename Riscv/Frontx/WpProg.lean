@@ -511,7 +511,7 @@ theorem Pg.compP_ok (C : Nat) : ∀ {Γ : List Sl} {R : Sl} (p : Pg Γ R) (L : L
     obtain ⟨env1, H1, Ws1⟩ := σ1
     simp only at h1 w1 ok1 S1 fin1 k1 rel1; subst H1 Ws1
     generalize hres' : d + 2 * Δ.length = res at *
-    let fl := res + 1
+    generalize hfl : res + 1 = fl at *
     let env3 := (env1.set 8 1).set fl 1
     have hk3L : ∀ l ∈ L, env3 l.v = env l.v ∧ env3 l.pt = env l.pt := fun l h => by
       simp only [env3, set_ne (hLd l h).1.2.2.1, set_ne (hLd l h).2.2.2.1, set_ne (hL l h).2.2.1,
@@ -533,7 +533,7 @@ theorem Pg.compP_ok (C : Nat) : ∀ {Γ : List Sl} {R : Sl} (p : Pg Γ R) (L : L
         simp only [env3, set_ne (show j ≠ fl by have := hy.p8.2.1; omega), set_ne (show j ≠ 8 by omega)]
     have hE3 : EnvOK (Δ ++ Γ) (st ++ L) (Vals.app (init.den v) v) ⟨env3, H, [W1]⟩ := by
       refine ⟨(RelP.app hlen).2 ⟨rel1.frameL (fun l h => (hk3st l h).1) rfl (by omega),
-          hE.rel.frame (fun l h => (hk3L l h).1) rfl hE.len⟩, by simp; omega, W1, rfl, S1.1.wlen.2, ?_⟩
+          hE.rel.frame (fun l h => (hk3L l h).1) rfl hE.len⟩, by simp; have := hE.len; omega, W1, rfl, S1.1.wlen.2, ?_⟩
       unfold AllAt; rw [arrsP_append hlen]
       intro a ha; exact hS3.2 a (by rw [← List.append_assoc]; exact List.mem_append_left _ ha)
     have efl : Mach.BExec (.assign fl (.const 1)) ⟨env1.set 8 1, H, [W1]⟩ ⟨env3, H, [W1]⟩ := .assign
@@ -597,10 +597,10 @@ theorem Pg.compP_ok (C : Nat) : ∀ {Γ : List Sl} {R : Sl} (p : Pg Γ R) (L : L
         max (pk (pageCount (arrsP Γ L v env ++ X)) (init.evsP L v))
           (max (pk (pageCount (arrsP Δ st (init.den v) env3 ++ (arrsP Γ L v env3 ++ X))) Eb)
             (pk (pageCount (arrsP (s :: Γ) (resLocP s res rl :: L) (r, v) env5 ++ X')) Ek)) := by
-      rw [pk_append, hu1, pk_append, fin4, ← hA5, pc5]
+      rw [pk_append, hu1, pk_append, fin4, pc5]
     rcases o6 with ⟨ok6, r6, n6, p6, wl6, pk6⟩ | ⟨ok6, pk6⟩
     · refine .inl ⟨by simp only [set_ne (show vOk ≠ 8 by decide)]; exact ok6,
-        (r6.frame (set_ne n6) (set_ne p6) rfl).frame (set_ne n6) (set_ne p6) rfl, n6, p6, wl6, ?_⟩
+        r6.frame (by simp only [set_ne n6]) (by simp only [set_ne p6]) rfl, n6, p6, wl6, ?_⟩
       rw [hpkE]; exact Nat.max_le.2 ⟨pk1, Nat.max_le.2 ⟨pk4, pk6⟩⟩
     · refine .inr ⟨by simp only [set_ne (show vOk ≠ 8 by decide)]; exact ok6, ?_⟩
       rw [hpkE]; exact Nat.lt_of_lt_of_le pk6 (Nat.le_trans (Nat.le_max_right _ _) (Nat.le_max_right _ _))
