@@ -3,6 +3,7 @@
 byte-list result with its length in `a1`), `wa_<name>.cases` (input, result bytes computed by Lean).
 Run: `lake env lean --tstack=400000 Testing/asm/emit_wa.lean`. -/
 import Riscv.Frontx.WaMul
+import Riscv.Frontx.MixHash
 open Proven Proven.WA Proven.WA.LeanZip
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
 def hex2 (b : UInt8) : String := let s := String.ofList (Nat.toDigits 16 b.toNat); if s.length < 2 then "0" ++ s else s
@@ -46,3 +47,18 @@ def emit (name : String) (hdr : String) (code : List (BitVec 32)) (f : ByteArray
   (fun xs => Frontx.Res.enc (Ops.ops32E xs))
 #eval emit "opsn" s!"wa {wholeW Ops.opsNE.wa [inLoc]} {wholeN Ops.opsNE.wa 7} 0 0" Ops.opsNE.code
   (fun xs => Frontx.Res.enc (Ops.opsNE xs))
+-- mixHash port (`Riscv/Frontx/MixHash.lean`): 16-byte inputs (h, k little-endian), 25 edge pairs + 40 random pairs
+open Proven.WA.MixHash
+def mixLe8 (x : UInt64) : List UInt8 := (List.range 8).map fun i => UInt8.ofNat (x.toNat / 2 ^ (8 * i) % 256)
+def mixInputs : List (List UInt8) :=
+  let edges : List UInt64 := [0, 1, 9223372036854775808, 18446744073709551615, 0xc6a4a7935bd1e995]
+  (edges.flatMap fun h => edges.map fun k => mixLe8 h ++ mixLe8 k) ++
+    (List.range 40).map fun i => mixLe8 (UInt64.ofNat (rnd i 1)) ++ mixLe8 (UInt64.ofNat (rnd i 2))
+def emitIn (name hdr : String) (code : List (BitVec 32)) (f : ByteArray → List UInt8) (ins : List (List UInt8)) :
+    IO Unit := do
+  IO.FS.createDirAll "Testing/asm/frontx-words"
+  IO.FS.writeFile s!"Testing/asm/frontx-words/wa_{name}.words" (String.intercalate "\n" (hdr :: code.map hex8) ++ "\n")
+  IO.FS.writeFile s!"Testing/asm/frontx-words/wa_{name}.cases"
+    (String.join (ins.map fun xs => s!"{hx xs} {hx (f ⟨xs.toArray⟩)}\n"))
+#eval emitIn "mixhash" s!"wa {wholeW mixHashE.wa [inLoc]} {wholeN mixHashE.wa 7} 0 0" mixHashE.code
+  (fun xs => Frontx.Res.enc (mixHashE xs)) mixInputs

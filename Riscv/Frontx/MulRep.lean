@@ -101,7 +101,8 @@ theorem shr_guardU (x : BitVec 64) (y : UInt64) :
 theorem r64_toNat_eq (a : UInt64) : (r64 a).toNat = a.toNat := rfl
 
 open Lean Meta Elab Tactic in
-/-- bounds `omega` cannot find by itself: `a % b ≤ a`, `0 < b → a % b < b`, `a / b ≤ a` for every `Nat` `%` / `/`
+/-- bounds `omega` cannot find by itself: `a % b ≤ a`, `0 < b → a % b < b`, `a / b ≤ a`, `a &&& b ≤ a, b` for every
+`Nat` `%` / `/` / `&&&`
 in the goal and the hypotheses -/
 elab "frontx_md_facts" : tactic => withMainContext do
   let mut es : Array Expr := #[← getMainTarget]
@@ -109,6 +110,7 @@ elab "frontx_md_facts" : tactic => withMainContext do
     if !d.isImplementationDetail then es := es.push (← instantiateMVars d.type)
   let mut mods : Array (Expr × Expr) := #[]
   let mut divs : Array (Expr × Expr) := #[]
+  let mut ands : Array (Expr × Expr) := #[]
   for e in es do
     let mut todo := #[e]
     while h : todo.size > 0 do
@@ -125,7 +127,9 @@ elab "frontx_md_facts" : tactic => withMainContext do
         unless mods.contains (x.getArg! 4, x.getArg! 5) do mods := mods.push (x.getArg! 4, x.getArg! 5)
       if x.isAppOfArity ``HDiv.hDiv 6 && (x.getArg! 0).isConstOf ``Nat then
         unless divs.contains (x.getArg! 4, x.getArg! 5) do divs := divs.push (x.getArg! 4, x.getArg! 5)
-  if mods.isEmpty && divs.isEmpty then throwError "frontx_md_facts: no `%` / `/`"
+      if x.isAppOfArity ``HAnd.hAnd 6 && (x.getArg! 0).isConstOf ``Nat then
+        unless ands.contains (x.getArg! 4, x.getArg! 5) do ands := ands.push (x.getArg! 4, x.getArg! 5)
+  if mods.isEmpty && divs.isEmpty && ands.isEmpty then throwError "frontx_md_facts: no `%` / `/` / `&&&`"
   for (a, b) in mods do
     let (a, b) := (← Term.exprToSyntax a, ← Term.exprToSyntax b)
     evalTactic (← `(tactic| have := Nat.mod_le $a $b))
@@ -133,5 +137,9 @@ elab "frontx_md_facts" : tactic => withMainContext do
   for (a, b) in divs do
     let (a, b) := (← Term.exprToSyntax a, ← Term.exprToSyntax b)
     evalTactic (← `(tactic| have := Nat.div_le_self $a $b))
+  for (a, b) in ands do
+    let (a, b) := (← Term.exprToSyntax a, ← Term.exprToSyntax b)
+    evalTactic (← `(tactic| have := Nat.and_le_left (n := $a) (m := $b)))
+    evalTactic (← `(tactic| have := Nat.and_le_right (n := $a) (m := $b)))
 
 end Proven.Frontx
