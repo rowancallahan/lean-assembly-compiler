@@ -18,6 +18,7 @@ set_option autoImplicit false
 
 def R0 : Reg := ⟨0, by decide⟩
 def R1 : Reg := ⟨1, by decide⟩
+def R2 : Reg := ⟨2, by decide⟩
 def RLim : Reg := ⟨10, by decide⟩
 def RIn : Reg := ⟨11, by decide⟩
 def RLen : Reg := ⟨12, by decide⟩
@@ -143,14 +144,14 @@ def emitBs (F : Func Nat) (nS : Nat) (pos : Lbl → Nat) (ex : Nat) : Nat → Li
       | none => none
     else none
 
-/-- check the frame fits (else `exit0`), then the frame limit into `r10` -/
+/-- check the frame fits (else `exit0`): `r0 := top`, `r1 := top - work base`, `r2 := frame size` -/
 def pro1 (nS : Nat) : List EOp :=
-  [.top RLim, .w (.bini .add RLim RLim 8), .w (.bin .sub R0 RLim RHp), .w (.li R1 (BitVec.ofNat 64 (8 * (nS + 1)))),
-    .w (.br .geu R0 (some R1) false (T.lenBr + T.len exit0))]
+  [.top R0, .w (.bini .add R0 R0 8), .w (.bin .sub R1 R0 RHp), .w (.li R2 (BitVec.ofNat 64 (8 * (nS + 1)))),
+    .w (.br .geu R1 (some R2) false (T.lenBr + T.len exit0))]
 
-/-- open the frame, the parameters of `main` into their slots -/
+/-- the frame base (the heap limit) into `r10`, open the frame, the parameters of `main` into their slots -/
 def pro2 (nS : Nat) (F : Func Nat) : List EOp :=
-  [.w (.bin .sub RLim RLim R1), .enter nS] ++ storeRegs F.params [RIn, RLen, ROut]
+  [.w (.bin .sub RLim R0 R2), .enter nS] ++ storeRegs F.params [RIn, RLen, ROut]
 
 def pro (nS : Nat) (F : Func Nat) : List EOp := T.pro1 nS ++ exit0 ++ pro2 nS F
 
