@@ -881,4 +881,51 @@ theorem pro_ok {P : List UInt8} (hT2 : T < 2 ^ 64) : ∀ (k : Nat) (vals : List 
       simpa [g1, Function.comp] using st4
     · rw [k4 j a b c d, ← hs3, get_set_ne _ d]; show s2.get j = _; rw [k2 j a b c, k1 j a b]
 
+/-! ## the result (`wr8`) -/
+
+/-- byte `i` of a word -/
+def byteOf (v : BitVec 64) (i : Nat) : UInt8 := UInt8.ofBitVec ((v >>> (8 * i)).setWidth 8)
+
+def wg (k : Nat) (acc : List UInt8) : List UInt8 := S.r 11 6 5 (8 * k).toUInt8 ++ S.r 10 6 13 k.toUInt8 ++ acc
+
+/-- one byte of `wr8`: `t1 := t0 >> 8k; [a3 + k] := t1` -/
+theorem wbyte_ok {P : List UInt8} {s : St} {k : Nat} {rest : List UInt8} (hk : k < 8)
+    (h : CodeAt P s.pc (wg k rest)) {O : Nat} (h13 : s.get 13 = BitVec.ofNat 64 O) (hO : O + 8 < 2 ^ 64) :
+    ∃ s', Star P s s' ∧ s'.m = wrL s.m (O + k) [byteOf (s.get 5) k] ∧
+      (∀ j, j ≠ 6 → s'.get j = s.get j) ∧ CodeAt P s'.pc rest := by
+  have h' : CodeAt P s.pc (11 :: (6 : Nat).toUInt8 :: 5 :: (8 * k).toUInt8 :: (10 :: (6 : Nat).toUInt8 :: 13 :: k.toUInt8 :: rest)) := h
+  have x1 := one h' (s' := (({ s with pc := s.pc + 1 } : St).set 6 (s.get 5 >>> (8 * k)))) (by
+    show Out.next _ = _; rw [toU8 (show 6 < 256 by decide), toU8 (show 8 * k < 256 by omega)]; rfl)
+  generalize hs1 : (({ s with pc := s.pc + 1 } : St).set 6 (s.get 5 >>> (8 * k))) = s1 at x1
+  have c1 : CodeAt P s1.pc (10 :: (6 : Nat).toUInt8 :: 13 :: k.toUInt8 :: rest) := by rw [← hs1]; exact codeAt_drop h'
+  have x2 := one c1 (s' := { s1 with pc := s1.pc + 1, m := wrL s1.m (O + k) [byteOf (s.get 5) k] }) (by
+    show Out.next _ = _
+    have e6 : s1.get 6 = s.get 5 >>> (8 * k) := by rw [← hs1]; simp
+    have e13 : s1.get 13 = BitVec.ofNat 64 O := by rw [← hs1, get_set_ne _ (by decide)]; exact h13
+    rw [toU8 (show 6 < 256 by decide), toU8 (show k < 256 by omega), show UInt8.toNat 13 = 13 from rfl, e6, e13,
+      addr_add (by omega)]
+    rfl)
+  refine ⟨_, x1.trans x2, by rw [← hs1]; rfl, fun j hj => ?_, codeAt_drop c1⟩
+  show s1.get j = _; rw [← hs1, get_set_ne _ hj]; rfl
+
+theorem wr_loop {P : List UInt8} {O : Nat} (hO : O + 8 < 2 ^ 64) (v : BitVec 64) : ∀ n a, a + n ≤ 8 → ∀ (s : St)
+    (rest : List UInt8), CodeAt P s.pc ((List.range' a n).foldr wg [] ++ rest) → s.get 13 = BitVec.ofNat 64 O →
+    s.get 5 = v →
+    ∃ s', Star P s s' ∧ (∀ x, s'.m x = if O + a ≤ x ∧ x < O + a + n then byteOf v (x - O) else s.m x) ∧
+      (∀ j, j ≠ 6 → s'.get j = s.get j) ∧ CodeAt P s'.pc rest
+  | 0, a, _, s, rest, h, _, _ => ⟨s, .refl _, fun x => by rw [if_neg (by omega)], fun _ _ => rfl, by simpa using h⟩
+  | n + 1, a, han, s, rest, h, h13, h5 => by
+    rw [List.range'_succ, List.foldr_cons] at h
+    obtain ⟨s1, x1, m1, k1, c1⟩ := wbyte_ok (k := a) (by omega) (by simpa [wg] using h) h13 hO
+    obtain ⟨s2, x2, m2, k2, c2⟩ := wr_loop hO v n (a + 1) (by omega) s1 rest c1
+      (by rw [k1 13 (by decide)]; exact h13) (by rw [k1 5 (by decide)]; exact h5)
+    refine ⟨s2, x1.trans x2, fun x => ?_, fun j hj => by rw [k2 j hj, k1 j hj], c2⟩
+    rw [m2 x, m1]
+    unfold wrL
+    by_cases hx : x = O + a
+    · subst hx; simp [h5]
+    · by_cases hin : O + (a + 1) ≤ x ∧ x < O + (a + 1) + n
+      · rw [if_pos hin, if_pos (by omega)]
+      · rw [if_neg hin, if_neg (by simp; omega), if_neg (by omega)]
+
 end Nano.R
