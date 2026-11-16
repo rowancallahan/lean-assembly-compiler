@@ -1789,6 +1789,10 @@ Quot.sound}. `check.sh`: ALL CHECKS PASSED; statement fingerprints: no `stmt` ha
 - `Fx.clamp` inside a `wa_compile` loop: the reflection panics (`index out of bounds` in `wa_compile`'s meta code); a
   plain `Int` loop state works (`sumDevE`).
 - `Int` shifts / bitwise operations, `Int.sign`, `Int.fdiv`/`Int.tdiv` as source operations (only `/`, `%`).
+- Non-vacuity corollaries for the new `Implements1With` theorems: the existing one is for `StartCorrect`
+  (`Riscv/Examples/VacuityTop.lean`); no front-end generator for per-function corollaries exists yet.
+- Axioms: the new theorems are listed in `axioms_wa.lean` (checked by `wa_check.sh` with the same rule as the other
+  word-array / list-front-end theorems), not in a branch-named file.
 - Speed: every `/` is two M-extension instructions plus a select; `x / 256` is not yet a shift (`ediv` by `2^k` is
   an arithmetic shift right: a later pass).
 
