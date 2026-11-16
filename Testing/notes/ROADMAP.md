@@ -157,3 +157,11 @@ hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read 
 - Shared IR (Compiler/Ir, Riscv/Back/Ir*): beneath the spec; its theorems are the AllocSpec statements for
   Ir.compile. Later (owner, not now): optionally expose the top theorem as a composition "IR meaning" ∘ "IR → assembly"
   through an adapter.
+- C via Certora/clean (owner idea, 2026-11-16): github.com/Certora/clean = CompCert 3.17 fork exporting a C program's
+  Clight syntax to Lean 4.32.1 + a Lean port of Clight semantics (interpreter proved sound, determinism, separation
+  logic). C→Clight front end is trusted OCaml; NO compiler and no link to CompCert's correctness proof in Lean
+  (Clight→asm stays in Coq); non-commercial licence; experimental. Plan, by value: (1) cheap: print our IR as C and
+  use gcc/CompCert/Clean's interpreter as a differential test oracle; (2) Clight as a SOURCE language: Clight → our
+  shared IR, proved in Lean against Clean's semantics, then our verified chain to RISC-V/ARM (no Coq trust); (3)
+  optional Lean→Clight back end proved against Clean's semantics for interop. Round-trip/translation validation is
+  sound given one theorem (meaning of emitted C = the Lean function). Not a rewrite: C becomes one more input of the IR.
