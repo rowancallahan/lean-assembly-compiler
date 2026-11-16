@@ -264,4 +264,345 @@ theorem Inis.compP_ok (L : List PLoc) {Γ : List Sl} (C : Nat) : ∀ {Δ : List 
       · simp only [set_ne (show vOk ≠ 8 by decide)]; exact ok1
       · exact Nat.lt_of_lt_of_le pk1 (pk_mono_left _ _ _)
 
+/-! ## Programs -/
+
+instance (j : Nat) : Decidable (NP j) := by unfold NP; infer_instance
+
+/-- where an array result of a loop body lives (the first `ret` leaf) -/
+def T.rlP : {Γ Δ : List Sl} → {R : Sl} → T Γ Δ R → List PLoc → Nat → Option PLoc
+  | _, _, .ar _, .ret a, L, _ => match a with | .var m => some (m.locP L) | _ => none
+  | _, _, .sc _, .ret _, _, _ => none
+  | _, _, _, .call _, _, _ => none
+  | _, _, _, .ite _ a b, L, d => match a.rlP L (d + 2) with | some l => some l | none => b.rlP L (d + 2)
+  | _, _, _, .let_ _ k, L, d => k.rlP (⟨d, false, 0⟩ :: L) (d + 1)
+
+/-- the result location of a loop: `res` for a scalar, the array's slot otherwise -/
+def resLocP : (s : Sl) → Nat → PLoc → PLoc
+  | .sc _, res, _ => ⟨res, false, 0⟩
+  | .ar _, _, rl => rl
+
+/-- the work slot of a loop's state (a dummy without one) -/
+def wP (Δ : List Sl) (st : List PLoc) (res fl : Nat) : PLoc := (workLocs Δ st).headD ⟨res, false, fl⟩
+
+/-- the layout facts of a loop, as one decidable statement -/
+abbrev LayC (st : List PLoc) (res fl : Nat) (rl w : PLoc) (d : Nat) : Prop :=
+  (∀ l ∈ st, l.v < d ∧ l.pt < d) ∧ res < d ∧ fl < d ∧ (rl.v < d ∧ rl.pt < d) ∧ (vsOfP st).Nodup ∧
+    res ∉ vsOfP st ∧ fl ∉ vsOfP st ∧ res ≠ fl ∧ rl.v ≠ fl ∧ (8 ≤ res ∧ 8 ≤ fl ∧ ∀ l ∈ st, 8 ≤ l.v ∧ 8 ≤ l.pt) ∧
+    (∀ l ∈ st, l.pt ∉ vsOfP st ∧ l.pt ≠ res ∧ l.pt ≠ fl) ∧ (8 ≤ w.v ∧ 8 ≤ w.pt ∧ w.v ≠ w.pt ∧ w.v < d ∧ w.pt < d)
+
+instance (st : List PLoc) (res fl : Nat) (rl w : PLoc) (d : Nat) : Decidable (LayC st res fl rl w d) := by
+  unfold LayC; infer_instance
+
+theorem LayC.lay {st : List PLoc} {res fl : Nat} {rl w : PLoc} {d : Nat} (h : LayC st res fl rl w d) :
+    LoopLayP st res fl rl w d :=
+  ⟨h.1, h.2.1, h.2.2.1, h.2.2.2.1, h.2.2.2.2.1, h.2.2.2.2.2.1, h.2.2.2.2.2.2.1, h.2.2.2.2.2.2.2.1,
+    h.2.2.2.2.2.2.2.2.1, h.2.2.2.2.2.2.2.2.2.1, h.2.2.2.2.2.2.2.2.2.2.1, h.2.2.2.2.2.2.2.2.2.2.2⟩
+
+/-- what a loop stage needs of its locations (all checked by the compiler) -/
+abbrev LoopC (Δ : List Sl) (st L : List PLoc) (res fl : Nat) (s : Sl) (rl w : PLoc) (d : Nat) : Prop :=
+  LayC st res fl rl w d ∧
+    (∀ l ∈ L, (l.v ∉ vsOfP st ∧ l.v ≠ res ∧ l.v ≠ fl ∧ NP l.v) ∧ (l.pt ∉ vsOfP st ∧ l.pt ≠ res ∧ l.pt ≠ fl ∧ NP l.pt)) ∧
+    (workLocs Δ st = [w] ∨ workLocs Δ st = []) ∧ (∀ l ∈ st ++ L, l.v = w.v → l = w) ∧
+    (rl.inp = false → rl = w ∧ workLocs Δ st = [w]) ∧
+    (8 ∉ vsOfP st ∧ 8 ≠ res ∧ 8 ≠ fl ∧ ∀ l ∈ st, l.pt ≠ 8) ∧
+    (NP (resLocP s res rl).v ∧ NP (resLocP s res rl).pt ∧ (resLocP s res rl).v ≠ 8 ∧ (resLocP s res rl).pt ≠ 8)
+
+instance (Δ : List Sl) (st L : List PLoc) (res fl : Nat) (s : Sl) (rl w : PLoc) (d : Nat) :
+    Decidable (LoopC Δ st L res fl s rl w d) := by
+  unfold LoopC; infer_instance
+
+def Pg.compP {Γ : List Sl} : {R : Sl} → Pg Γ R → List PLoc → Nat → MS × PLoc
+  | .sc _, .ret e, L, d => (E.compP L e d, ⟨d, false, 0⟩)
+  | .ar _, .ret a, L, d => (skipAt d, match a with | .var m => m.locP L | _ => default)
+  | _, .let_ (s := s) x k, L, d =>
+    (.seq (Ini.compP L s x d) (guard (k.compP (Ini.locP L s x d :: L) (d + 2)).1),
+      (k.compP (Ini.locP L s x d :: L) (d + 2)).2)
+  | _, .loop (s := s) Δ b init k, L, d =>
+    let st := init.locP L d
+    let res := d + 2 * Δ.length
+    let rl := (b.rlP (st ++ L) (res + 2)).getD default
+    (.seq (init.compP L d) (guard (.seq (b.loopP st res (res + 1) (st ++ L) (res + 2))
+      (guard (k.compP (resLocP s res rl :: L) (res + 2)).1))), (k.compP (resLocP s res rl :: L) (res + 2)).2)
+
+def Pg.wfP {Γ : List Sl} : {R : Sl} → Pg Γ R → List PLoc → Nat → Bool
+  | .sc _, .ret e, L, _ => E.wfP L e
+  | .ar _, .ret a, _, _ => match a with | .var _ => true | _ => false
+  | _, .let_ (s := s) x k, L, d => Ini.wfP L s x && k.wfP (Ini.locP L s x d :: L) (d + 2)
+  | _, .loop (s := s) Δ b init k, L, d =>
+    let st := init.locP L d
+    let res := d + 2 * Δ.length
+    let rl := (b.rlP (st ++ L) (res + 2)).getD default
+    let w := wP Δ st res (res + 1)
+    init.wfP L && b.wfP st rl w (st ++ L) (res + 2) && decide (LoopC Δ st L res (res + 1) s rl w (res + 2)) &&
+      k.wfP (resLocP s res rl :: L) (res + 2)
+
+/-- **the meaning with page events** (oldest first): `Pg.Good` and the events of the run -/
+def Pg.GoodE {Γ : List Sl} : {R : Sl} → Pg Γ R → List PLoc → Nat → Vals Γ → R.T → List MemEvent → Prop
+  | .sc _, .ret e, _, _, v, y, Ev => y = E.den e v ∧ E.ok e v ∧ Ev = []
+  | .ar _, .ret a, _, _, v, y, Ev => y = A.den a v ∧ Ev = []
+  | _, .let_ (s := s) x k, L, d, v, y, Ev => Ini.okP s x v ∧ ∃ E2,
+      k.GoodE (Ini.locP L s x d :: L) (d + 2) (Ini.den s x v, v) y E2 ∧ Ev = Ini.evsP L s x v ++ E2
+  | _, .loop (s := s) Δ b init k, L, d, v, y, Ev =>
+    let st := init.locP L d
+    let res := d + 2 * Δ.length
+    let rl := (b.rlP (st ++ L) (res + 2)).getD default
+    init.okP v ∧ ∃ r, ∃ P : Vals Δ → Prop, ∃ Eb Ek, P (init.den v) ∧
+      (∀ s, P s → b.okP (Vals.app s v)) ∧ (∀ s s', P s → b.out (Vals.app s v) = .inl s' → P s') ∧
+      RunsE b v (init.den v) r Eb ∧ k.GoodE (resLocP s res rl :: L) (res + 2) (r, v) y Ek ∧
+      Ev = init.evsP L v ++ (Eb ++ Ek)
+
+/-- the result: a scalar in its variable, an array (size variable, its pages) -/
+def ResP (σ : MSt) (W : W64) : (R : Sl) → PLoc → R.T → Prop
+  | .sc t, l, y => σ.env l.v = t.rep y
+  | .ar k, l, y => SRP σ (.ar k) l y ∧ (l.inp = false → ArrAt W (σ.env l.pt).toNat (words k y))
+
+theorem ResP.frame {σ σ' : MSt} {W : W64} {R : Sl} {l : PLoc} {y : R.T} (h : ResP σ W R l y)
+    (hv : σ'.env l.v = σ.env l.v) (hp : σ'.env l.pt = σ.env l.pt) (hh : σ'.heap = σ.heap) : ResP σ' W R l y := by
+  cases R with
+  | sc t => show σ'.env l.v = _; rw [hv]; exact h
+  | ar k => exact ⟨h.1.frame hv hh, fun hi => by rw [hp]; exact h.2 hi⟩
+
+/-- after a loop: its result is the new slot; the state's other work array stays in use -/
+theorem loop_post {C : Nat} {s : Sl} {Γ : List Sl} {L : List PLoc} {v : Vals Γ} {r : s.T} {res : Nat} {rl : PLoc}
+    {E0 A X : List (Nat × W64)} {σ : MSt} {env' : Mach.BEnv} {W : W64}
+    (hr : RRP σ E0 s res rl r) (hS : Store C σ.env W (E0 ++ (A ++ X))) (hA : arrsP Γ L v env' = A)
+    (hv : env' (resLocP s res rl).v = σ.env (resLocP s res rl).v)
+    (hp : env' (resLocP s res rl).pt = σ.env (resLocP s res rl).pt)
+    (hpool : ∀ j, j = vCap ∨ j = vBump ∨ j = vFh → env' j = σ.env j) :
+    ∃ X', Store C env' W (arrsP (s :: Γ) (resLocP s res rl :: L) (r, v) env' ++ X') ∧
+      pageCount (E0 ++ (A ++ X)) = pageCount (arrsP (s :: Γ) (resLocP s res rl :: L) (r, v) env' ++ X') ∧
+      SRP ⟨env', σ.heap, σ.wheap⟩ s (resLocP s res rl) r := by
+  have hS' := hS.env hpool
+  cases s with
+  | sc t =>
+    simp only [resLocP] at hv hp ⊢
+    refine ⟨E0 ++ X, ?_, ?_, ?_⟩
+    · simp only [arrsP, List.tail_cons]; rw [hA]; exact hS'.perm (by perm_tac)
+    · simp only [arrsP, List.tail_cons]; rw [hA]; exact pageCount_perm (by perm_tac)
+    · show env' res = _; rw [hv]; exact hr
+  | ar k =>
+    simp only [resLocP] at hv hp ⊢
+    obtain ⟨hsr, he⟩ := hr
+    have hsrp : SRP ⟨env', σ.heap, σ.wheap⟩ (.ar k) rl r := hsr.frame hv rfl
+    by_cases hi : rl.inp = true
+    · refine ⟨E0 ++ X, ?_, ?_, hsrp⟩
+      · simp only [arrsP, List.headD_cons, List.tail_cons, hi, if_true]; rw [hA]; exact hS'.perm (by perm_tac)
+      · simp only [arrsP, List.headD_cons, List.tail_cons, hi, if_true]; rw [hA]; exact pageCount_perm (by perm_tac)
+    · have hf : rl.inp = false := by simpa using hi
+      have hE0 := he hf
+      refine ⟨X, ?_, ?_, hsrp⟩
+      · simp only [arrsP, List.headD_cons, List.tail_cons, hf, Bool.false_eq_true, if_false]; rw [hA, hp]
+        rw [hE0] at hS'; simpa using hS'
+      · simp only [arrsP, List.headD_cons, List.tail_cons, hf, Bool.false_eq_true, if_false]; rw [hA, hp, hE0]; simp
+
+set_option maxHeartbeats 16000000 in
+/-- **Programs**: the code ends with the result and the run's page events within `C` pages, or with `vOk = 0`
+exactly when the events exceed `C` pages -/
+theorem Pg.compP_ok (C : Nat) : ∀ {Γ : List Sl} {R : Sl} (p : Pg Γ R) (L : List PLoc) (v : Vals Γ) (env : Mach.BEnv)
+    (H : Heap) (W : W64) (d : Nat) (X : List (Nat × W64)) (y : R.T) (E : List MemEvent),
+    EnvOK Γ L v ⟨env, H, [W]⟩ → BelowP L d → 9 ≤ d → SlotOK L → Store C env W (arrsP Γ L v env ++ X) →
+    env vOk = 1 → p.wfP L d = true → p.GoodE L d v y E →
+    ∃ σ' W', Mach.BExec (p.compP L d).1 ⟨env, H, [W]⟩ σ' ∧ σ'.heap = H ∧ σ'.wheap = [W'] ∧
+      ((σ'.env vOk = 1 ∧ ResP σ' W' R (p.compP L d).2 y ∧ (p.compP L d).2.v ≠ 8 ∧ (p.compP L d).2.pt ≠ 8 ∧
+          W'.length < 2 ^ 32 ∧ pk (pageCount (arrsP Γ L v env ++ X)) E ≤ C) ∨
+        (σ'.env vOk = 0 ∧ C < pk (pageCount (arrsP Γ L v env ++ X)) E))
+  | _, .sc t, .ret e, L, v, env, H, W, d, X, y, E, hE, hb, hd, hL, hS, hok1, hwf, hg => by
+    simp only [Pg.wfP] at hwf; simp only [Pg.GoodE] at hg
+    obtain ⟨rfl, hok, rfl⟩ := hg
+    simp only [Pg.compP]
+    obtain ⟨σ1, e1, v1, k1, h1, w1⟩ := E.compP_ok L e v ⟨env, H, [W]⟩ d hE hE.len hb hwf hok
+    refine ⟨σ1, W, e1, h1, w1, .inl ⟨by rw [k1 _ (by simp only [vOk]; omega)]; exact hok1, v1, by omega, by decide,
+      hS.1.wlen.2, hS.count_le⟩⟩
+  | _, .ar k, .ret a, L, v, env, H, W, d, X, y, E, hE, hb, hd, hL, hS, hok1, hwf, hg => by
+    simp only [Pg.GoodE] at hg
+    obtain ⟨rfl, rfl⟩ := hg
+    cases a with
+    | var m =>
+      simp only [Pg.compP, skipAt, A.den]
+      have hmL := Mem.locP_mem m L hE.len
+      have hb1 := hb _ hmL
+      refine ⟨_, W, .assign, rfl, rfl, .inl ⟨by simp only [set_ne (show vOk ≠ d by simp only [vOk]; omega)]; exact hok1,
+        ⟨(hE.rel.get m).frame (set_ne (by omega)) rfl, fun hi => ?_⟩, (hL _ hmL).2.2.1, (hL _ hmL).2.2.2, hS.1.wlen.2,
+        hS.count_le⟩⟩
+      simp only [set_ne (show (m.locP L).pt ≠ d by omega)]
+      exact hS.2 _ (List.mem_append_left _ (arrsP_mem env m hi))
+    | set _ _ _ | push _ _ | ite _ _ _ => simp [Pg.wfP] at hwf
+  | Γ, _, .let_ (s := s) x k, L, v, env, H, W, d, X, y, E, hE, hb, hd, hL, hS, hok1, hwf, hg => by
+    simp only [Pg.wfP, Bool.and_eq_true] at hwf; simp only [Pg.GoodE] at hg
+    obtain ⟨hok, E2, hg2, rfl⟩ := hg
+    simp only [Pg.compP]
+    have hLnp : ∀ l ∈ L, NP l.v ∧ NP l.pt := fun l h => ⟨(hL l h).1, (hL l h).2.1⟩
+    obtain ⟨σ1, W1, e1, h1, w1, k1, o1⟩ := Ini.compP_ok L C s x v env H W d X hE hb (by omega) hLnp
+      (hS.perm List.perm_append_comm) hok1 hwf.1 hok
+    have hu : pageCount (X ++ arrsP Γ L v env) = pageCount (arrsP Γ L v env ++ X) :=
+      pageCount_perm List.perm_append_comm
+    rw [hu] at o1
+    have hlt := Ini.locP_lt L s x d
+    have hnp := Ini.locP_np L s x d hd
+    generalize hl0 : Ini.locP L s x d = l0 at hlt hnp o1 hg2 hwf ⊢
+    rcases o1 with ⟨ok1, sr1, S1, fin1, pk1⟩ | ⟨ok1, pk1⟩
+    · obtain ⟨env1, H1, Ws1⟩ := σ1
+      simp only at h1 w1 ok1 S1 fin1 k1 sr1; subst H1 Ws1
+      let env2 := env1.set 8 1
+      have hk2 : ∀ j, j < d → NP j → j ≠ 8 → env2 j = env j := fun j hj hn h8 => by
+        simp only [env2, set_ne h8]; exact k1 j hj hn
+      have harr2 : arrsP Γ L v env2 = arrsP Γ L v env :=
+        arrsP_congr (fun l h => hk2 _ (hb l h).2 (hL l h).2.1 (hL l h).2.2.2) hE.len
+      have h0' : arrsP [s] [l0] (Ini.den s x v, ()) env2 = arrsP [s] [l0] (Ini.den s x v, ()) env1 := by
+        apply arrsP_congr _ (by simp)
+        intro l h; simp only [List.mem_singleton] at h; subst h
+        simp only [env2, set_ne hnp.2.2.2]
+      have hS2 : Store C env2 W1 (arrsP (s :: Γ) (l0 :: L) (Ini.den s x v, v) env2 ++ X) := by
+        have := S1.env (env' := env2) fun j hj => by simp only [env2, set_ne (show j ≠ 8 by have := pool_vars hj; omega)]
+        refine this.perm ?_
+        rw [arrsP_cons1 (Γ := Γ) (L := L), harr2, h0']; perm_tac
+      have hE2 : EnvOK (s :: Γ) (l0 :: L) (Ini.den s x v, v) ⟨env2, H, [W1]⟩ := by
+        refine ⟨⟨sr1.frame (by simp only [env2, set_ne hnp.2.2.1]) rfl,
+          hE.rel.frame (fun l h => hk2 _ (hb l h).1 (hL l h).1 (hL l h).2.2.1) rfl hE.len⟩,
+          by simp only [List.length_cons]; exact Nat.succ_le_succ hE.len, W1, rfl, S1.1.wlen.2, ?_⟩
+        intro a ha; exact hS2.2 a (List.mem_append_left _ ha)
+      have hb2 : BelowP (l0 :: L) (d + 2) := fun l h => by
+        simp only [List.mem_cons] at h
+        rcases h with rfl | h
+        · omega
+        · have := hb l h; omega
+      have hL2 : SlotOK (l0 :: L) := fun l h => by
+        simp only [List.mem_cons] at h
+        rcases h with rfl | h
+        · exact hnp
+        · exact hL l h
+      obtain ⟨σ3, W3, e3, h3, w3, o3⟩ := Pg.compP_ok C k (l0 :: L) (Ini.den s x v, v) env2 H W1 (d + 2) X y E2 hE2 hb2
+        (by omega) hL2 hS2 (by simp only [env2, set_ne (show vOk ≠ 8 by decide)]; exact ok1) hwf.2 hg2
+      have e2 := guard_true (S := (k.compP (l0 :: L) (d + 2)).1) (σ := ⟨env1, H, [W1]⟩) ok1 e3
+      have hpc : finE (pageCount (arrsP Γ L v env ++ X)) (Ini.evsP L s x v) =
+          pageCount (arrsP (s :: Γ) (l0 :: L) (Ini.den s x v, v) env2 ++ X) := by
+        rw [fin1]; apply pageCount_perm; rw [arrsP_cons1 (Γ := Γ) (L := L), harr2, h0']; perm_tac
+      refine ⟨_, W3, .seq e1 e2, by simp [h3], by simp [w3], ?_⟩
+      rcases o3 with ⟨ok3, r3, n3, p3, wl3, pk3⟩ | ⟨ok3, pk3⟩
+      · refine .inl ⟨by simp only [set_ne (show vOk ≠ 8 by decide)]; exact ok3,
+          r3.frame (set_ne n3) (set_ne p3) rfl, n3, p3, wl3, ?_⟩
+        rw [pk_append, hpc]; exact Nat.max_le.2 ⟨pk1, pk3⟩
+      · refine .inr ⟨by simp only [set_ne (show vOk ≠ 8 by decide)]; exact ok3, ?_⟩
+        rw [pk_append, hpc]; exact Nat.lt_of_lt_of_le pk3 (Nat.le_max_right _ _)
+    · have e2 := guard_false (S := (k.compP (l0 :: L) (d + 2)).1) ok1
+      refine ⟨_, W1, .seq e1 e2, h1, w1, .inr ⟨?_, Nat.lt_of_lt_of_le pk1 (pk_mono_left _ _ _)⟩⟩
+      simp only [set_ne (show vOk ≠ 8 by decide)]; exact ok1
+  | Γ, _, .loop (s := s) Δ b init k, L, v, env, H, W, d, X, y, E, hE, hb, hd, hL, hS, hok1, hwf, hg => by
+    simp only [Pg.wfP, Bool.and_eq_true, decide_eq_true_eq] at hwf
+    obtain ⟨⟨⟨hwi, hwb⟩, hC⟩, hwk⟩ := hwf
+    simp only [Pg.GoodE] at hg
+    obtain ⟨hoi, r, P, Eb, Ek, hP0, hPok, hPs, hruns, hgk, rfl⟩ := hg
+    simp only [Pg.compP]
+    obtain ⟨σ1, W1, e1, h1, w1, k1, o1⟩ := Inis.compP_ok L C init v env H W d X hE hb hd hL hS hok1 hwi hoi
+    have hlen : (init.locP L d).length = Δ.length := Inis.locP_length L init d
+    have hin := Inis.locP_in L init d
+    generalize hst : init.locP L d = st at hwb hC hwk hgk o1 hlen hin ⊢
+    generalize hrl : (b.rlP (st ++ L) (d + 2 * Δ.length + 2)).getD default = rl at hwb hC hwk hgk ⊢
+    generalize hw : wP Δ st (d + 2 * Δ.length) (d + 2 * Δ.length + 1) = w at hwb hC
+    obtain ⟨hlay, hLd, hwl, hLw, hrl', ⟨h8s, h8r, h8f, h8p⟩, hres⟩ := hC
+    have hy := hlay.lay
+    have hu := Ini.locP_np
+    rcases o1 with ⟨ok1, rel1, S1, fin1, pk1⟩ | ⟨ok1, pk1⟩
+    rotate_left
+    · have e2 := guard_false (S := (Mach.BStmt.seq (b.loopP st (d + 2 * Δ.length) (d + 2 * Δ.length + 1) (st ++ L)
+        (d + 2 * Δ.length + 2)) (guard (k.compP (resLocP s (d + 2 * Δ.length) rl :: L) (d + 2 * Δ.length + 2)).1))) ok1
+      refine ⟨_, W1, .seq e1 e2, h1, w1, .inr ⟨?_, Nat.lt_of_lt_of_le pk1 (pk_mono_left _ _ _)⟩⟩
+      simp only [set_ne (show vOk ≠ 8 by decide)]; exact ok1
+    obtain ⟨env1, H1, Ws1⟩ := σ1
+    simp only at h1 w1 ok1 S1 fin1 k1 rel1; subst H1 Ws1
+    generalize hres' : d + 2 * Δ.length = res at *
+    let fl := res + 1
+    let env3 := (env1.set 8 1).set fl 1
+    have hk3L : ∀ l ∈ L, env3 l.v = env l.v ∧ env3 l.pt = env l.pt := fun l h => by
+      simp only [env3, set_ne (hLd l h).1.2.2.1, set_ne (hLd l h).2.2.2.1, set_ne (hL l h).2.2.1,
+        set_ne (hL l h).2.2.2]
+      exact ⟨k1 _ (hb l h).1 (hL l h).1 (hL l h).2.2.1, k1 _ (hb l h).2 (hL l h).2.1 (hL l h).2.2.2⟩
+    have hk3st : ∀ l ∈ st, env3 l.v = env1 l.v ∧ env3 l.pt = env1 l.pt := fun l h => by
+      have hv : l.v ∈ vsOfP st := List.mem_map_of_mem h
+      refine ⟨?_, ?_⟩
+      · simp only [env3, set_ne (show l.v ≠ fl from fun e => hy.fs (e ▸ hv)),
+          set_ne (show l.v ≠ 8 from fun e => h8s (e ▸ hv))]
+      · simp only [env3, set_ne (hy.ptn l h).2.2, set_ne (h8p l h)]
+    have hA3 : arrsP Γ L v env3 = arrsP Γ L v env := arrsP_congr (fun l h => (hk3L l h).2) hE.len
+    have hst3 : arrsP Δ st (init.den v) env3 = arrsP Δ st (init.den v) env1 :=
+      arrsP_congr (fun l h => (hk3st l h).2) (by omega)
+    have hS3 : Store C env3 W1 (arrsP Δ st (init.den v) env3 ++ (arrsP Γ L v env3 ++ X)) := by
+      rw [hA3, hst3]
+      exact S1.env fun j hj => by
+        have := pool_vars hj
+        simp only [env3, set_ne (show j ≠ fl by have := hy.p8.2.1; omega), set_ne (show j ≠ 8 by omega)]
+    have hE3 : EnvOK (Δ ++ Γ) (st ++ L) (Vals.app (init.den v) v) ⟨env3, H, [W1]⟩ := by
+      refine ⟨(RelP.app hlen).2 ⟨rel1.frameL (fun l h => (hk3st l h).1) rfl (by omega),
+          hE.rel.frame (fun l h => (hk3L l h).1) rfl hE.len⟩, by simp; omega, W1, rfl, S1.1.wlen.2, ?_⟩
+      unfold AllAt; rw [arrsP_append hlen]
+      intro a ha; exact hS3.2 a (by rw [← List.append_assoc]; exact List.mem_append_left _ ha)
+    have efl : Mach.BExec (.assign fl (.const 1)) ⟨env1.set 8 1, H, [W1]⟩ ⟨env3, H, [W1]⟩ := .assign
+    have hfl1 : env3 fl = 1 := by simp only [env3, set_eq]
+    have hok3 : env3 vOk = 1 := by
+      simp only [env3, set_ne (show vOk ≠ fl by have := hy.p8.2.1; simp only [vOk]; omega),
+        set_ne (show vOk ≠ 8 by decide)]; exact ok1
+    obtain ⟨σ4, W4, e4, h4, w4, k4, o4⟩ := T.runP_ok b v st L res fl rl w (res + 2) C X hy hlen hE.len
+      (hb.mono (by omega)) hLd hwb hwl hLw hrl' P hPok hPs (init.den v) r Eb hruns hP0 ⟨env3, H, [W1]⟩ W1 hE3
+      (by show env3 fl ≠ 0; rw [hfl1]; decide) (.inr hfl1) hok3 rfl hS3
+    simp only at h4 k4 o4
+    have hu1 : finE (pageCount (arrsP Γ L v env ++ X)) (init.evsP L v) =
+        pageCount (arrsP Δ st (init.den v) env3 ++ (arrsP Γ L v env3 ++ X)) := by rw [fin1, hA3, hst3]
+    rcases o4 with ⟨ok4, sf, rel4, rr4, S4, fin4, pk4⟩ | ⟨ok4, pk4⟩
+    rotate_left
+    · -- the loop found no page
+      have e5 := guard_false (S := (k.compP (resLocP s res rl :: L) (res + 2)).1) ok4
+      have e6 := guard_true (S := Mach.BStmt.seq (b.loopP st res fl (st ++ L) (res + 2))
+        (guard (k.compP (resLocP s res rl :: L) (res + 2)).1)) (σ := ⟨env1, H, [W1]⟩) ok1 (.seq (.seq efl e4) e5)
+      refine ⟨_, W4, .seq e1 e6, by simp [h4], by simp [w4], .inr ⟨?_, ?_⟩⟩
+      · simp only [set_ne (show vOk ≠ 8 by decide)]; exact ok4
+      · rw [pk_append, hu1, pk_append]
+        exact Nat.lt_of_lt_of_le pk4 (Nat.le_trans (Nat.le_max_left _ _) (Nat.le_max_right _ _))
+    -- the loop's result; the rest runs
+    let env5 := σ4.env.set 8 1
+    have hk5L : ∀ l ∈ L, env5 l.v = env l.v ∧ env5 l.pt = env l.pt := fun l h => by
+      simp only [env5, set_ne (hL l h).2.2.1, set_ne (hL l h).2.2.2]
+      rw [k4 _ (by have := (hb l h).1; omega) (hLd l h).1.1 (hLd l h).1.2.1 (hLd l h).1.2.2.1 (hLd l h).1.2.2.2,
+        k4 _ (by have := (hb l h).2; omega) (hLd l h).2.1 (hLd l h).2.2.1 (hLd l h).2.2.2.1 (hLd l h).2.2.2.2]
+      exact hk3L l h
+    have hA5 : arrsP Γ L v env5 = arrsP Γ L v env3 := by
+      rw [arrsP_congr (fun l h => (hk5L l h).2) hE.len, hA3]
+    obtain ⟨X', S5, pc5, sr5⟩ := loop_post (env' := env5) rr4 S4 hA5 (by simp only [env5, set_ne hres.2.2.1])
+      (by simp only [env5, set_ne hres.2.2.2]) (fun j hj => by
+        simp only [env5, set_ne (show j ≠ 8 by have := pool_vars hj; omega)])
+    have hE5 : EnvOK (s :: Γ) (resLocP s res rl :: L) (r, v) ⟨env5, H, [W4]⟩ := by
+      refine ⟨⟨by rw [← h4]; exact sr5, hE.rel.frame (fun l h => (hk5L l h).1) rfl hE.len⟩,
+        by simp only [List.length_cons]; exact Nat.succ_le_succ hE.len, W4, rfl, S4.1.wlen.2, ?_⟩
+      intro a ha; exact S5.2 a (List.mem_append_left _ ha)
+    have hb5 : BelowP (resLocP s res rl :: L) (res + 2) := fun l h => by
+      simp only [List.mem_cons] at h
+      rcases h with rfl | h
+      · cases s with
+        | sc t => simp only [resLocP]; omega
+        | ar k => simp only [resLocP]; exact hy.hrl
+      · have := hb l h; omega
+    have hL5 : SlotOK (resLocP s res rl :: L) := fun l h => by
+      simp only [List.mem_cons] at h
+      rcases h with rfl | h
+      · exact hres
+      · exact hL l h
+    have hok5 : env5 vOk = 1 := by simp only [env5, set_ne (show vOk ≠ 8 by decide)]; exact ok4
+    obtain ⟨σ6, W6, e6, h6, w6, o6⟩ := Pg.compP_ok C k (resLocP s res rl :: L) (r, v) env5 H W4 (res + 2) X' y Ek hE5
+      hb5 (by omega) hL5 S5 hok5 hwk hgk
+    have e7 := guard_true (S := (k.compP (resLocP s res rl :: L) (res + 2)).1) (σ := σ4) ok4
+      (by rw [show σ4 = ⟨σ4.env, H, [W4]⟩ by cases σ4; simp_all]; exact e6)
+    have e8 := guard_true (S := Mach.BStmt.seq (b.loopP st res fl (st ++ L) (res + 2))
+        (guard (k.compP (resLocP s res rl :: L) (res + 2)).1)) (σ := ⟨env1, H, [W1]⟩) ok1 (.seq (.seq efl e4) e7)
+    refine ⟨_, W6, .seq e1 e8, by simp [h6], by simp [w6], ?_⟩
+    have hpkE : pk (pageCount (arrsP Γ L v env ++ X)) (init.evsP L v ++ (Eb ++ Ek)) =
+        max (pk (pageCount (arrsP Γ L v env ++ X)) (init.evsP L v))
+          (max (pk (pageCount (arrsP Δ st (init.den v) env3 ++ (arrsP Γ L v env3 ++ X))) Eb)
+            (pk (pageCount (arrsP (s :: Γ) (resLocP s res rl :: L) (r, v) env5 ++ X')) Ek)) := by
+      rw [pk_append, hu1, pk_append, fin4, ← hA5, pc5]
+    rcases o6 with ⟨ok6, r6, n6, p6, wl6, pk6⟩ | ⟨ok6, pk6⟩
+    · refine .inl ⟨by simp only [set_ne (show vOk ≠ 8 by decide)]; exact ok6,
+        (r6.frame (set_ne n6) (set_ne p6) rfl).frame (set_ne n6) (set_ne p6) rfl, n6, p6, wl6, ?_⟩
+      rw [hpkE]; exact Nat.max_le.2 ⟨pk1, Nat.max_le.2 ⟨pk4, pk6⟩⟩
+    · refine .inr ⟨by simp only [set_ne (show vOk ≠ 8 by decide)]; exact ok6, ?_⟩
+      rw [hpkE]; exact Nat.lt_of_lt_of_le pk6 (Nat.le_trans (Nat.le_max_right _ _) (Nat.le_max_right _ _))
+
 end Proven.WA

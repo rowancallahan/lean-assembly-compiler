@@ -1584,3 +1584,12 @@ work bound vs the new code at `memoryNeeded`): `bt_count` +67%, `bt_graftleft` +
 "a compare + branch per alloc / call".  The checks sit on every heap word access: `li; bltu` on the fast path
 (about 4 instructions), about 30 on a heap-growing store (it zeroes the new words), and about 10 per call.  A
 per-allocation check would need a source-level proof that loads stay below the heap length.
+
+## 30. Paged dynamic arrays (branch `feat-paged`, WIP, paused)
+
+- Layout: pages of P = 1024 words (shift 10, mask 1023) in the work block; pool vars a4 cap, a5 bump, a6 free-list head (linked through word 0 of free pages), a7 `vOk`. Array = size var + one page-table page; element j at `W[W[pt + j>>10] + (j&1023)]` (one extra load); max 2^20 elements. Every work array owns its pages; input arrays are read-only views.
+- Proved, no sorry (`Riscv/Frontx/WpPool.lean` … `WpPg.lean`): pool alloc/free (`alloc_ok`, `free_ok`, `alloc_spec` = AllocSpec for a page), get/set/push/new/free of paged arrays, expressions, in-place updates, one loop iteration and whole loops with page events (`T.runP_ok`, stop with `vOk = 0` exactly when the events' peak exceeds C pages), fresh arrays (empty, replicate, extract, copy/view: `F.compP_ok`), events/peak bridge to `AllocSpec.peak` (`WpEv.peak_eq`).
+- `WpProg.lean` (not imported anywhere, does not compile yet): loop starts `Inis.compP_ok` proved; `Pg.compP_ok` proved for ret/let; loop case written, ~6 errors left (frame `simp` steps through `set 8`/`set fl`, one `rw` of `fin4` needing `hA5` first, `ResP.frame` on the doubled `set 8 0`).
+- Shared files touched: none (all new files). `T.runP_ok`/`wpre_of` in `WpStmt.lean` gained an extra-arrays parameter `X`.
+- Next: (1) finish `Pg.compP_ok` loop case; (2) output loop for an array result via the page table, whole program with `a0 := -1` when `vOk = 0`; (3) machine glue: entry stub `mv a4, sp` + check work length ≥ 8P before the frame, a work heap sized by the call (variant of `implements1_of_spec`), then `CompileRuns`/`CompileCorrect` as in `IndMem.lean`, memoryNeeded = 8P · peak(events ++ frame page), needs a no-underflow lemma `pk (u+1) E = pk u E + 1`; (4) `wp_compile` command, targets (lean-zip copyLoop/copyLoopGo, copyWithin, storedCopyLoop; fp-lean Array.map), QEMU+Sail tests at memoryNeeded and −1 page; (5) merge origin/main, check.sh.
+- Not done: freeing a loop's leftover work array at program level (needs the final state in `RunsE`); stays allocated.
