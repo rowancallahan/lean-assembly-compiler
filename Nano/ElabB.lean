@@ -24,9 +24,9 @@ macro "DSTEP" dd:term "," ch:term : term => `(if $dd == 0 then (DSTART $ch)
   else if $dd == 2 then (if 48 ≤ $ch && $ch ≤ 57 then (2 : UInt64) else 6)
   else if $dd == 1 then (if (48 ≤ $ch && $ch ≤ 57) || $ch == 95 then (1 : UInt64) else 6) else 6)
 set_option hygiene false in
-/-- the automaton after the first two characters `c`, `n` of a word -/
-macro "DSTEP0" n:term : term => `(if 48 ≤ c && c ≤ 57 then (if 48 ≤ $n && $n ≤ 57 then (2 : UInt64) else 6)
-  else if 97 ≤ c && c ≤ 122 then (if (48 ≤ $n && $n ≤ 57) || $n == 95 then (1 : UInt64) else 6) else 6)
+/-- the automaton after the first two characters `c`, `n` of a word that starts with a letter or `_` -/
+macro "DSTEPL" n:term : term =>
+  `(if 97 ≤ c && c ≤ 122 then (if (48 ≤ $n && $n ≤ 57) || $n == 95 then (1 : UInt64) else 6) else 6)
 macro "WSTEP" ww:term "," ch:term : term =>
   `(if $ww < 0x100000000000000 then ($ww <<< 8) ||| ($ch).toUInt64 else (0x8000000000000000 : UInt64))
 /-- the kind of the word (`dd`, `ww`): 0 name, 1 `def`, 2 `let`, 3 `UInt64`, 4 `Int64`, 6 numeral, 9 rejected -/
@@ -56,10 +56,12 @@ macro "STEPN" : term => `(
       else if c == 10 then (lx (n :: t) o m 4 sp d d0 w ty 0)
       else if isW c then
         (if isW n then
-           (if m == 0 then (lx (n :: t) o m 1 sp (DSTEP0 n) (DSTART c) ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (n).toUInt64) ty (if st == 4 then 1 else 0))
-            else if 48 ≤ c && c ≤ 57 then
-              5 :: c :: (lx (n :: t) o m 1 sp (DSTEP0 n) (DSTART c) ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (n).toUInt64) ty (if st == 4 then 1 else 0))
-            else c :: (lx (n :: t) o m 1 sp (DSTEP0 n) (DSTART c) ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (n).toUInt64) ty (if st == 4 then 1 else 0)))
+           (if 48 ≤ c && c ≤ 57 then
+              (if m == 0 then (lx (n :: t) o m 1 sp (if 48 ≤ n && n ≤ 57 then 2 else 6) 2 ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (n).toUInt64) ty (if st == 4 then 1 else 0))
+               else 5 :: c :: (lx (n :: t) o m 1 sp (if 48 ≤ n && n ≤ 57 then 2 else 6) 2 ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (n).toUInt64) ty (if st == 4 then 1 else 0)))
+            else
+              (if m == 0 then (lx (n :: t) o m 1 sp (DSTEPL n) (if 97 ≤ c && c ≤ 122 then 1 else 6) ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (n).toUInt64) ty (if st == 4 then 1 else 0))
+               else c :: (lx (n :: t) o m 1 sp (DSTEPL n) (if 97 ≤ c && c ≤ 122 then 1 else 6) ((0x10000 : UInt64) ||| (c.toUInt64 <<< 8) ||| (n).toUInt64) ty (if st == 4 then 1 else 0))))
          else if st == 4 then [0]
          else if 48 ≤ c && c ≤ 57 then (if m == 0 then (lx (n :: t) o m 0 sp d d0 w ty 0) else 5 :: c :: 6 :: (lx (n :: t) o m 0 sp d d0 w ty 0))
          else if c < 97 || 122 < c then [0]
