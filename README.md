@@ -10,7 +10,7 @@ Then `lake build <target>` should rebuild only this repo's own modules.
   (`SAIL = /home/user/deps/sailsim/sail-riscv-Linux-x86_64/bin/sail_riscv_sim`). Restore:
   `mkdir -p /home/user/deps && zstd -dc sailsim.tar.zst | tar xf - -C /home/user/deps`
   (if your home differs, edit SAIL in frontx_test.py locally or symlink /home/user/deps).
-- `repo-build.tar.zst.part-aa` … `-ad`: this repo's `.lake/build` at main caa4cee (Lean 4.29.0), zstd, split in
+- `repo-build.tar.zst.part-aa` … `-ad`: this repo's `.lake/build` at main 567fe2e (Lean 4.29.0), zstd, split in
   90 MB parts. Restore from the repo root (after the Sail dependency above):
   `for p in aa ab ac ad; do git show origin/build-cache:repo-build.tar.zst.part-$p; done | zstd -dc | tar xf -`
   Then `lake build` rebuilds only modules changed since caa4cee.
@@ -19,4 +19,4 @@ Then `lake build <target>` should rebuild only this repo's own modules.
 ## Without zstd: gzip copies (same contents)
 - `sail-riscv-lean.tar.gz`: `mkdir -p ../deps && git show origin/build-cache:sail-riscv-lean.tar.gz | tar xzf - -C ../deps`
 - `sailsim.tar.gz`: `mkdir -p /home/user/deps && git show origin/build-cache:sailsim.tar.gz | tar xzf - -C /home/user/deps`
-- `repo-build.tar.gz.part-aa..ad` (main caa4cee): `for p in aa ab ac ad; do git show origin/build-cache:repo-build.tar.gz.part-$p; done | tar xzf -`
+- `repo-build.tar.gz.part-aa..ad` (main 567fe2e): `for p in aa ab ac ad; do git show origin/build-cache:repo-build.tar.gz.part-$p; done | tar xzf -`
