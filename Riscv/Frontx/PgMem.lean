@@ -252,8 +252,9 @@ open Proven.Mach.Riscv Proven.Top.Alloc
 blocks, and the status register is `oomFlag` exactly when the run does not fit; when it fits, the output -/
 theorem stub_top {α β : Type} {encA : α → List UInt8} {encB : β → List UInt8} {code : List (BitVec 32)}
     {f : α → β} {fits : α → Nat → Prop} {retLen : Bool}
-    (hbody : Implements1PgQ encA encB code f 8192 fits (Proven.WA.okQ fits) (2 ^ 20) retLen)
+    {maxLen : Nat} (hbody : Implements1PgQ encA encB code f 8192 fits (Proven.WA.okQ fits) maxLen retLen)
     (hsmall : ∀ a L, L < 8192 → ¬ fits a L) {argument : α} {startState : St} {call : Call}
+    (hmax : (encA argument).length ≤ maxLen)
     (startsRight : StartCorrect riscv startState call (wordBytes (pgStub ++ code)) (encA argument))
     (outputFits : (encB (f argument)).length ≤ call.outputLength) :
     ∃ finishState : St, Runs riscv startState finishState ∧
@@ -288,7 +289,7 @@ theorem stub_top {α β : Type} {encA : α → List UInt8} {encB : β → List U
   have run := stub_run hbody hsmall argument startState (BitVec.ofNat 64 pc.toNat)
     (BitVec.ofNat 64 call.returnAddress.toNat)
     ⟨call.inputAddress.toNat, call.inputLength⟩ ⟨call.outputAddress.toNat, call.outputLength⟩
-    ⟨call.workAddress.toNat, call.workLength⟩ inputSmall configured hpcReg (by rw [hentry]; exact codeAligned)
+    ⟨call.workAddress.toNat, call.workLength⟩ hmax configured hpcReg (by rw [hentry]; exact codeAligned)
     (by rw [hentry]; exact hcode)
     (register_of (hreg .x10 (by simp)) inputRegister)
     (by have := register_of (hreg .x11 (by simp)) lengthRegister

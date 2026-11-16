@@ -7,8 +7,9 @@ compiler `compile : PgProg → Option CompiledA`.
 * `compile`: the stub `pgStub` (the `a0` flag, `PgMem.lean`) followed by the paged code (`pgCodeS` / `pgCodeA`);
   cells are pages of 8192 bytes; the events of an input are those of its run (`Pg.GoodE`, oldest first) reversed,
   after one page for the frame (`events = E.reverse ++ [.alloc 1]`), so `memoryNeeded = 8192 * (pk 0 E + 1)`.
-* `Good`: the checks of `implements1_pgSQ` / `implements1_pgAQ` and that every input up to `2 ^ 20` bytes has a run
-  with events (`GoodE`: the side conditions of the source, e.g. indices in range, sizes below `P * P`). -/
+* `Good`: the checks of `implements1_pgSQ` / `implements1_pgAQ` and that every input up to `maxIn` bytes has a run
+  with events (`GoodE`: the side conditions of the source, e.g. indices in range, sizes below `P * P`); longer
+  inputs have no meaning (`run = none`), so a program whose arrays grow is compiled for the inputs it can serve. -/
 import Riscv.Frontx.PgMem
 import Riscv.Frontx.WpMem
 
@@ -163,6 +164,8 @@ theorem Pg.den_det {Γ : List Sl} {R : Sl} (p : Pg Γ R) : ∀ (v : Vals Γ) (y 
 structure PgProg where
   R : Sl
   p : Pg [.ar .ba] R
+  /-- the inputs it accepts: up to `maxIn` bytes (a program whose arrays grow needs room below `P * P`) -/
+  maxIn : Nat := 2 ^ 20
 
 /-- the bytes of a result: a scalar as 8 bytes little-endian, an array as its elements' bytes -/
 def outEnc : (R : Sl) → R.T → List UInt8
@@ -185,10 +188,11 @@ variable (q : PgProg)
 /-- **the meaning**: the bytes of the Lean result (`Pg.Den`) -/
 noncomputable def run (input : List UInt8) : Option (List UInt8) :=
   open Classical in
-  if h : ∃ y, q.p.Den (inArr input, ()) y then some (outEnc q.R (Classical.choose h)) else none
+  if h : input.length ≤ q.maxIn ∧ ∃ y, q.p.Den (inArr input, ()) y then some (outEnc q.R (Classical.choose h.2))
+  else none
 
-/-- every input up to `2 ^ 20` bytes has a run with page events -/
-def Total : Prop := ∀ xs : ByteArray, xs.size ≤ 2 ^ 20 → ∃ y E, q.p.GoodE [inLocP] 9 (xs, ()) y E
+/-- every input up to `maxIn` bytes has a run with page events -/
+def Total : Prop := ∀ xs : ByteArray, xs.size ≤ q.maxIn → ∃ y E, q.p.GoodE [inLocP] 9 (xs, ()) y E
 
 /-- the result and the page events of the run on an input (oldest first) -/
 noncomputable def res (input : List UInt8) : q.R.T :=
@@ -196,7 +200,7 @@ noncomputable def res (input : List UInt8) : q.R.T :=
   if h : ∃ y E, q.p.GoodE [inLocP] 9 (inArr input, ()) y E then Classical.choose h else
     Classical.choice (by
       cases q with
-      | mk R p =>
+      | mk R p m =>
         cases R with
         | sc t => cases t <;> exact ⟨default⟩
         | ar k => cases k with
@@ -212,20 +216,20 @@ noncomputable def events (input : List UInt8) : List MemEvent := (q.evs input).r
 
 /-- the paged code after the stub -/
 def body : PgProg → List (BitVec 32)
-  | ⟨.sc _, p⟩ => pgCodeS p (Res.k (BitVec 64))
-  | ⟨.ar _, p⟩ => pgCodeA p
+  | ⟨.sc _, p, _⟩ => pgCodeS p (Res.k (BitVec 64))
+  | ⟨.ar _, p, _⟩ => pgCodeA p
 
 def code : List (BitVec 32) := pgStub ++ q.body
 
 /-- the conditions the compiler checks -/
 def Good : PgProg → Prop
-  | ⟨.sc t, p⟩ => pgNS p (Res.k (BitVec 64)) ≤ NS ∧ p.wfP [inLocP] 9 = true ∧
-      rvF.wfB (pgNS p (Res.k (BitVec 64))) [0, 3] [2] (pgProgS p (Res.k (BitVec 64))) ∧ Total ⟨.sc t, p⟩
-  | ⟨.ar k, p⟩ => pgNA p ≤ NS ∧ ((p.compP [inLocP] 9).2.v < outBaseP p ∧ (p.compP [inLocP] 9).2.pt < outBaseP p) ∧
-      p.wfP [inLocP] 9 = true ∧ rvF.wfB (pgNA p) [0, 3] [2] (pgProgA p) ∧ Total ⟨.ar k, p⟩
+  | ⟨.sc t, p, m⟩ => pgNS p (Res.k (BitVec 64)) ≤ NS ∧ p.wfP [inLocP] 9 = true ∧
+      rvF.wfB (pgNS p (Res.k (BitVec 64))) [0, 3] [2] (pgProgS p (Res.k (BitVec 64))) ∧ Total ⟨.sc t, p, m⟩
+  | ⟨.ar k, p, m⟩ => pgNA p ≤ NS ∧ ((p.compP [inLocP] 9).2.v < outBaseP p ∧ (p.compP [inLocP] 9).2.pt < outBaseP p) ∧
+      p.wfP [inLocP] 9 = true ∧ rvF.wfB (pgNA p) [0, 3] [2] (pgProgA p) ∧ Total ⟨.ar k, p, m⟩
 
 theorem good_total {q : PgProg} (h : q.Good) : q.Total := by
-  obtain ⟨R, p⟩ := q
+  obtain ⟨R, p, m⟩ := q
   cases R with
   | sc t => exact h.2.2.2
   | ar k => exact h.2.2.2.2
@@ -233,7 +237,7 @@ theorem good_total {q : PgProg} (h : q.Good) : q.Total := by
 theorem goodE_cast {R : Sl} {p : Pg [.ar .ba] R} {v v' : Vals [.ar .ba]} {y : R.T} {E : List MemEvent}
     (e : v = v') (h : p.GoodE [inLocP] 9 v y E) : p.GoodE [inLocP] 9 v' y E := e ▸ h
 
-theorem res_spec {q : PgProg} (ht : q.Total) (xs : ByteArray) (hs : xs.size ≤ 2 ^ 20) :
+theorem res_spec {q : PgProg} (ht : q.Total) (xs : ByteArray) (hs : xs.size ≤ q.maxIn) :
     q.p.GoodE [inLocP] 9 (xs, ()) (q.res xs.data.toList) (q.evs xs.data.toList) := by
   have h : ∃ y E, q.p.GoodE [inLocP] 9 (inArr xs.data.toList, ()) y E := by rw [inArr_data]; exact ht xs hs
   unfold res evs
@@ -282,32 +286,32 @@ theorem _root_.Proven.Mach.Riscv.Implements1PgQ.congr {α β β' : Type} {encA :
 /-- **the paged code after the stub** -/
 theorem body_ok {q : PgProg} (hg : q.Good) :
     Implements1PgQ (fun xs : ByteArray => xs.data.toList) (outEnc q.R) q.body (fun xs => q.res xs.data.toList) 8192
-      q.fitsM (okQ q.fitsM) (2 ^ 20) (retOf q.R) := by
+      q.fitsM (okQ q.fitsM) q.maxIn (retOf q.R) := by
   have ht := PgProg.good_total hg
-  obtain ⟨R, p⟩ := q
+  obtain ⟨R, p, m⟩ := q
   cases R with
   | sc t =>
     obtain ⟨hN, hwf, hmwf, -⟩ := hg
-    have := implements1_pgSQ (β := BitVec 64) (fun xs => t.rep (PgProg.res ⟨.sc t, p⟩ xs.data.toList)) p t.rep
-      (fun _ => rfl) hN hwf hmwf (PgProg.fitsM ⟨.sc t, p⟩) (2 ^ 20) (fun xs hs =>
+    have := implements1_pgSQ (β := BitVec 64) (fun xs => t.rep (PgProg.res ⟨.sc t, p, m⟩ xs.data.toList)) p t.rep
+      (fun _ => rfl) hN hwf hmwf (PgProg.fitsM ⟨.sc t, p, m⟩) m (fun xs hs =>
         ⟨_, _, PgProg.res_spec ht xs hs, rfl, fun L _ => PgProg.fitsM_iff _ xs L⟩)
     exact this.congr fun _ => rfl
   | ar k =>
     obtain ⟨hN, hob, hwf, hmwf, -⟩ := hg
-    exact implements1_pgAQ (fun xs => PgProg.res ⟨.ar k, p⟩ xs.data.toList) p hN hob hwf hmwf
-      (PgProg.fitsM ⟨.ar k, p⟩) (2 ^ 20) (fun xs hs => ⟨_, PgProg.res_spec ht xs hs, fun L _ => PgProg.fitsM_iff _ xs L⟩)
+    exact implements1_pgAQ (fun xs => PgProg.res ⟨.ar k, p, m⟩ xs.data.toList) p hN hob hwf hmwf
+      (PgProg.fitsM ⟨.ar k, p, m⟩) m (fun xs hs => ⟨_, PgProg.res_spec ht xs hs, fun L _ => PgProg.fitsM_iff _ xs L⟩)
 
-theorem run_eq {q : PgProg} (hg : q.Good) {input out : List UInt8} (hrun : q.run input = some out)
-    (hs : input.length ≤ 2 ^ 20) : out = outEnc q.R (q.res (inArr input).data.toList) := by
+theorem run_eq {q : PgProg} (hg : q.Good) {input out : List UInt8} (hrun : q.run input = some out) :
+    input.length ≤ q.maxIn ∧ out = outEnc q.R (q.res (inArr input).data.toList) := by
   have ht := PgProg.good_total hg
-  have hsz : (inArr input).size ≤ 2 ^ 20 := by simpa [inArr, ByteArray.size] using hs
-  have hge := PgProg.res_spec ht (inArr input) hsz
-  have hden := Pg.goodE_den _ _ _ _ _ _ hge
   unfold PgProg.run at hrun
   split at hrun
   · next h =>
-    rw [← Option.some.inj hrun, Pg.den_det _ _ _ _ (Classical.choose_spec h) hden]
-  · next h => exact absurd ⟨_, hden⟩ h
+    have hsz : (inArr input).size ≤ q.maxIn := by simpa [inArr, ByteArray.size] using h.1
+    have hden := Pg.goodE_den _ _ _ _ _ _ (PgProg.res_spec ht (inArr input) hsz)
+    refine ⟨h.1, ?_⟩
+    rw [← Option.some.inj hrun, Pg.den_det _ _ _ _ (Classical.choose_spec h.2) hden]
+  · exact nomatch hrun
 
 theorem inArr_toList (input : List UInt8) : (inArr input).data.toList = input := by simp [inArr]
 
@@ -329,8 +333,7 @@ theorem machine_run {q : PgProg} {compiled : CompiledA} {α β : Type} {f : α �
       (¬ memoryNeeded compiled (encodeInput argument) ≤ call.workLength →
         (riscv.observe finishState).register riscv.mapping.status = oomFlag) := by
   obtain ⟨hg, rfl⟩ := compile_inv compiles
-  have hs := startsRight.inputSmall
-  have hout := run_eq hg (computes argument) hs
+  obtain ⟨hs, hout⟩ := run_eq hg (computes argument)
   have hsr : StartCorrect riscv startState call (wordBytes (pgStub ++ q.body))
       ((fun xs : ByteArray => xs.data.toList) (inArr (encodeInput argument))) := by
     show StartCorrect riscv startState call (wordBytes q.code) (inArr (encodeInput argument)).data.toList
@@ -338,7 +341,7 @@ theorem machine_run {q : PgProg} {compiled : CompiledA} {α β : Type} {f : α �
   have hof : (outEnc q.R (q.res (inArr (encodeInput argument)).data.toList)).length ≤ call.outputLength := by
     rw [← hout]; exact outputFits
   obtain ⟨fin, hruns, hpc, hframe, hfit, hnofit⟩ := stub_top (body_ok hg)
-    (fun a L hL h => by rw [PgProg.fitsM_iff] at h; omega) hsr hof
+    (fun a L hL h => by rw [PgProg.fitsM_iff] at h; omega) (by rw [inArr_toList]; exact hs) hsr hof
   have hmn : memoryNeeded ⟨wordBytes q.code, 8192, q.events⟩ (encodeInput argument) =
       8192 * peak (q.events (inArr (encodeInput argument)).data.toList) := by
     rw [inArr_toList]; rfl
