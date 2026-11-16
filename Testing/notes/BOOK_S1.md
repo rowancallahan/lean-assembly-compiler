@@ -86,3 +86,8 @@ Files:
 | Many.orElse | Examples/FunctorApplicativeMonad.lean:1501 | frontx_ind | frontx_ind: unsupported parameter type (also tried hof) |
 | report | Examples/FunctorApplicativeMonad.lean:1588 | frontx_ind | Unknown identifier `TreeError` (also tried hof) |
 | simpleConst | Examples/FunctorApplicativeMonad/ActualDefs.lean:29 | frontx_compile | frontx: unsupported result type |
+
+## Test vectors and entry wrappers (update)
+
+- Test vectors: `Testing/asm/emit_books1.lean` writes `Testing/asm/frontx-words/finite_issingleton.{words,cases}` (11 cases; the emitter runs without error). Test: **pending (run by parent at merge)**: `python3 Testing/asm/frontx_test.py check 50 finite_issingleton`. QEMU is not installed here, and the install was denied, so the test was not run.
+- `frontx_hof_entry` wrappers: **0 added**. The rows that failed with "no call with a known function argument" mostly take no function argument at all (`addNatPos`, `Nat.plusL`, `Finite.count`, `hashPos`, …), so `frontx_hof` has nothing to specialise, and a wrapper would only add a call the book does not make. The one row with a function-typed parameter, `Many.orElse : Many α → (Unit → Many α) → Many α`, returns `Many α`, which has a `Unit → Many α` field. I did not write a wrapper for it; I expect frontx cannot hold that field, but I did not test this.
