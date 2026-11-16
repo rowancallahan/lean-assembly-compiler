@@ -11,46 +11,43 @@ are the draft spec; everything below is what `nanoElab` ACCEPTS (it may reject a
 
 ```
 file   ::= def+                                  last def = entry; no other text
-def    ::= 'def' name ('(' name+ ':' ty ')')* ':' ty ':=' expr       zero parameters allowed
+def    ::= 'def' name ('(' name+ ':' ty ')')* ':' ty ':=' expr       zero parameters allowed, no empty binder group
 ty     ::= 'UInt64' | 'Int64'                    the same in every type position of the file
 expr   ::= 'let' name ':=' expr ';' expr | sum   (a `let` only at the start of an expression, `;` required)
 sum    ::= prod (('+' | '-') prod)*              left associative
 prod   ::= app ('*' app)*                        left associative, binds tighter
 app    ::= '-' num | name atom^k | atom          k = arity of the earlier def `name` (k >= 1); `-num` = (0 - num) (Neg UInt64/Int64)
 atom   ::= num | name | '(' expr ')'             name = parameter / let (innermost wins) or an earlier def of arity 0
-name   ::= [a-z] [0-9_]*                         one lowercase letter, then digits / underscores
-num    ::= [0-9]+                                wraps mod 2^64 (as `OfNat UInt64/Int64`)
-white  ::= ' ' | '\n'                            a line starts (column 0) with a space, a newline or `def`
+name   ::= 1-3 lowercase letters, then digits or `_`digit groups (`x`, `sq`, `add3`, `x_1`), not in `reserved` (Elab.lean: Lean keywords and
+           Init/exported names of that shape: and at bif bne by do end for fun get id if in ite max min mt mut not or rfl set try xor)
+num    ::= [0-9]+                                wraps mod 2^64 (as `OfNat UInt64/Int64`); must not touch a name character or `(`
+white  ::= ' ' | '\n' | '\r\n'                   a line starts (column 0) with a space, a newline or `def`
 ```
-Further conditions: calls only to EARLIER defs (no recursion), exact arity, every name bound, def names pairwise distinct, no whitespace
-needed but NO ADJACENCY `x(`, `)(`, `)x` (Lean needs whitespace before an application argument). Semantics: `Prog = Nat x Ex` (entry arity,
+Further conditions: calls only to EARLIER defs (no recursion), exact arity, every name bound, def names pairwise distinct, no adjacency
+`x(`, `)(`, `)x` (Lean needs whitespace before an application argument), no tab, no lone CR. Semantics: `Prog = Nat x Ex` (entry arity,
 body); name resolution inlines the callee (`Ex.call body args`), variables are de Bruijn (newest = 0, parameters pushed in order), `den`
 wraps like `UInt64` (Int64 = the same bits). Input = the entry's arguments as 8-byte LE words, output = one 8-byte LE word.
 
 ## Subset findings (task 3, `Testing/nano/edge.py`, oracle `Testing/nano/oracle.lean`)
 The oracle runs Lean's REAL frontend (`IO.processCommands`, header-less file = `import Init`, errors = reject, entry evaluated by the
-interpreter) and `nanoElab` + `Prog.eval` on the same text. `edge.py N seed`: ~350 hand-written edge cases (each as UInt64 and Int64) +
-every root name of `Init` (1821) and every identifier-like parser token (168) as def / parameter / let name + 26 letters and digit/underscore
-variants + token soups + mutations of valid programs + layout fuzz (random separators incl. column 0, tabs, CR) + shadowing of earlier defs.
-Verdicts: both reject / nano rejects only (allowed) / both accept with equal values / BUG. Final runs: 0 BUGs (seeds 5, 11, 12, 13, 21, 31;
-5501-10264 cases each, 200-440 accepted by both, the rest rejected by at least nano).
-Bugs found in the pre-existing `nanoElab` (nano accepted, Lean rejects), all fixed by rejecting:
-1. keywords as names (`def f (fun : UInt64)`, `let if := ..`, 168 tokens incl. `at from in by do ...`) and names that already exist in `Init`
-   (`def id`, `ite`, `dite`, `panic`, `Nat`, `Id`, `Add`, `Type`, `sorry`, `_` ...: `def` of an existing root constant is an error): ONE
-   rule, identifiers are `[a-z][0-9_]*` (no keyword has a digit or is a single letter, no `Init` root name is in the class: asserted by
-   `edge.py` against `roots.txt`/`tokens.txt` produced by `Testing/nano/names.lean`; also checked against `Lean` + `Std`). The corpora were renamed
-   (`sq`->`s`, `inc`->`i`, `mix`->`m`, ...), `Nano/Agree*.lean` regenerated.
-2. tab characters and lone carriage returns (Lean: tabs forbidden, lone CR error): whitespace is space and newline only.
-3. `g(x)(y)`, `g x(y)`, `h(x)`, `(x)y`: Lean needs whitespace before an application argument: `adjOk` rejects `[word|)]` directly before
-   `(` and `)` directly before a word character.
-4. an argument at column 0 (`g x\n\n5`): rejected by Lean, accepted by the token-based parser: a line may only start with space, newline or `def`.
-5. duplicate def names (`def f ..; def f ..`: Lean "already declared"): rejected.
+interpreter) and `nanoElab` + `Prog.eval` on the same text. `edge.py N seed`: ~350 hand-written edge cases (each as UInt64 and Int64; the table
+is `Testing/notes/NANO_SUBSET.md`) + every root name of `Init` (1821) and every identifier-like parser token (168) as def / parameter / let name
++ every 2-letter name and random 1-3-letter names with digit / `_1` suffixes in the same three roles (and used afterwards) + token soups +
+mutations of valid programs + layout fuzz (random separators incl. column 0, tabs, CR) + shadowing of earlier defs. Verdicts: both reject /
+nano rejects only (allowed) / both accept with equal values / BUG.
+History: this box and nano-mvp fixed the same class of bugs independently; the merged `Nano/Elab.lean` is nano-mvp's (name shape +
+`reserved`, tabs, lone CR, glued numerals / arguments, empty binder groups, duplicate defs) plus ONE more rule found by `edge.py`:
+(*) Lean rejects a body or an argument at COLUMN 0 (`def f (x y : UInt64) : UInt64 :=\na * 3`, `g x\n5`), nano accepted: a line may only
+start with a space, a newline or `def` (`lineStart`). With it: 0 BUGs (seeds 5, 6, 11-13, 21, 31, 77; 5500-10300 cases each, 200-440 accepted by both).
+Found in the pre-merge `nanoElab` (all fixed by rejecting): keywords and `Init` names as names (`def id`, `ite`, `Nat`, `Type`, `sorry`, `_`,
+`fun`, `if`, ...), tabs, lone CR, `g(x)(y)` / `g x(y)` / `(x)y`, duplicate defs, column-0 arguments. My own alternative rule (one letter,
+then digits/`_`: no list at all, none of the 1821 + 168 names is in the class) is kept out: nano-mvp's wider class with a `reserved` list is
+now the one in `Elab.lean`; it is exact only if `reserved` is complete (checked by the `SHAPE` part of `edge.py` and by
+`Testing/nano/reserved.lean`/`boundary.py`; a name outside the sampled space could still be missing: the safe fallback is the one-letter rule).
 No "meanings differ" case was found (numerals >= 2^64, `-1`/`- 1`/`x -1` = `x - 1`, `x - y - z`, `x - y * z`, application vs binary
 operators, unary minus on UInt64, shadowing of earlier defs by parameters/lets all agree). Accepted by Lean, rejected by nano (allowed, by
-design): `-x`, `-(e)`, `let` without `;`, `let` mid-expression, comments, `x'`, unicode, empty file (Lean accepts it, nano: no entry), tabs/CRLF,
-adjacent binder groups `(x : UInt64)(y : UInt64)`, 2^64-sized `0x..`/`1_000`/`1e3` literals, `.`-names, `|>.`, `$`, `fun`, `if`.
-Alternative for the final spec: allow longer identifiers by a denylist (the 168 tokens plus the 28 lowercase-alphanumeric `Init` root names
-`absurd .. trivial hash64`); the one-letter rule avoids any list.
+design): `-x`, `-(e)`, `--`/`/-` comments, `let` without `;`, `let` mid-expression, `x'`, unicode, empty file (Lean accepts it, nano: no entry),
+adjacent binder groups `(x : UInt64)(y : UInt64)`, `0x..`/`1_000`/`1e3`, `.`-names, `|>.`, `$`, `fun`, `if`.
 
 ## Pipeline
 `nanoCompileS src = (nanoElab src).map nanoGenS`, `nanoGenS p = asm (genR p)`.

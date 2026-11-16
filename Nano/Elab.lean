@@ -58,14 +58,24 @@ def identTok? (s : List UInt8) : Option Tok :=
   else if s == kwTyI then some (.kty true)
   else if nameShape s && !reserved.contains s then some (.id s) else none
 
+/-- Lean rejects a term token at column 0 (a body or an argument there): a line starts with a space, a newline, or `def` -/
+def lineStart : List UInt8 → Bool
+  | [] => true
+  | 32 :: _ => true
+  | 10 :: _ => true
+  | 13 :: _ => true
+  | 100 :: 101 :: 102 :: z => (match z with | d :: _ => !(isLetter d || isDigit d) | [] => true)
+  | _ => false
+
 def lex : Nat → List UInt8 → Option (List Tok)
   | 0, xs => if xs.isEmpty then some [] else none
   | _ + 1, [] => some []
   | f + 1, c :: xs =>
-    if c == 32 || c == 10 then lex f xs
+    if c == 32 then lex f xs
+    else if c == 10 then (if lineStart xs then lex f xs else none)
     else if c == 13 then  -- CR only before LF (Lean rejects a lone CR); tabs are rejected (Lean rejects them)
       match xs with
-      | 10 :: ys => lex f ys
+      | 10 :: ys => if lineStart ys then lex f ys else none
       | _ => none
     else if c == 40 then (lex f xs).map (Tok.lp :: ·)
     else if c == 41 then  -- Lean needs whitespace before an argument: `)(`, `)x`, `)5` rejected
