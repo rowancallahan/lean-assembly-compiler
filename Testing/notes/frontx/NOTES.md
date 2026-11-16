@@ -2056,3 +2056,80 @@ check.sh; (2) optionally `String.utf8ByteSize` (the chain length, cheap) and `St
 `String.utf8EncodeChar`: count the non-continuation bytes); (3) string literals as constant chains in `E`
 (Name constants like `Name.str .anonymous "Nat"`, `=` with a constant side); (4) small linter warnings (unused simp
 arguments in `IndStrOk.lean`, `IndDec.lean`, `IndSup.lean`).
+
+## 32. User structures (branch `feat-struct`)
+
+Files: `Riscv/Frontx/StructExamples.lean` (lean-svg, list front end), `Riscv/Frontx/WaStruct.lean` (lean-zip,
+word-array front end), `Testing/asm/emit_struct.lean` (words and cases), `Testing/scripts/axioms_feat-struct.lean`
+(in `check.sh`'s list; `check.sh` now also splits `'LeanSvg…` lines). Changes in `Translate.lean`, `MulRep.lean`,
+`WaCmd.lean`, `WaImpl.lean`.
+
+**Targets** (rows of the target lists, verbatim; the source of each block is in the files):
+- LEANSVG_TARGETS.md @ `origin/leansvg-targets` (lean-svg @ `df8e663`): §1.1 #107 `Rgba.mk` (Canvas.lean:16), #99
+  `PngDecode.Hdr.mk` (PngDecode.lean:43); §1.2 #12, #13 `Canvas.h`, `Canvas.w` (Canvas.lean:24,25); §1.1 #14
+  `Css.Compound.hasType` (Css.lean:54) and the other `Compound` fields; §1.5 #16-#23, #30, #34 `PngDecode.Hdr.w/h/
+  depth/ctype/interlace`, `Rgba.r/g/b/a`, `Shape.GInfo.lig` (and `cp`, `gc`, `gprops`, `ngid`). Not in the lists but
+  in the same blocks (Shape.lean:107-129): `GInfo.isIgnorable`, `ligNumComps`, `ligatedAndDidntMultiply`,
+  `setLigForLigature`, `setLigForMark` (`{ g with lig := … }`, a 13-field result).
+- LEANZIP_TARGETS.md @ `origin/leanzip-targets` (lean-zip @ `7e10583`): STR #1-#3 `DecodeTable.entryAt`, `lenAt`,
+  `symAt` (Zip/Native/Inflate.lean:260, 228, 234; with `packEntry`, `unpackSym`, `unpackLen` :190-198 and the
+  structure :221).
+
+**What was missing, and the fix** (each a few lines; the first failures of the probes):
+- *Constructor as a function* (`no unfolding equation for Rgba.mk`): `ctorEqn?` adds `C.mk.eqx : C.mk xs = C.mk xs`
+  (`rfl`); the context's function name is cleared for a constructor, so its body is not a tail call of itself; `runs`
+  uses `unfold … | skip`.
+- *Projection as a function* (`recursive call not in tail position self.r`): the unfolding equation's body is the raw
+  projection `self.1`; the test "is this field read" (`f.dropped`) compared it with the key `Rgba.r self` and dropped
+  every field. `readsOf` normalises raw projections to projection functions and also unfolds non-recursive user
+  helpers (to depth 8), so a field read inside a helper (`g.ligated` → `g.gprops`) keeps its variable (before, such a
+  field was dropped and the translator looped between `GInfo.gprops g` and `g.7` until out of memory). A projection of
+  a parameter without a variable is now a loud error. `isRecFn` is false for projections and constructors.
+- *Fields that are not scalars* (`unsupported parameter type Canvas`; `unknown free variable` for structures with a
+  `String` field): in a parameter (`resultComps (param := true)`), a field that is not made of scalars (`Array`,
+  `String`, `Option String`, …) gets no variable; a proof field or one whose type depends on another field
+  (`String.isValidUTF8`, the cause of the `unknown free variable` rows: its type escaped the local context) is skipped.
+  A body reading such a field fails loudly ("a field of a parameter without a variable"). Results stay strict.
+- Proofs of the `GInfo` tests: `a &&& b ≤ a, b` in `frontx_md_facts` (a temporary `x = u &&& 64` lost its bound), and
+  0/1 tests with a negated side in `simp` normal form (`c_not_n`, `c_and_n*`, `c_or_n*`).
+- *Word arrays*: `wa_compile` splits `let t : S := S.mk a…; b` into one `let` per field and reduces the projections
+  of the constructor (`splitStructLet?`, `normPC`); a `dite` read `a[i]'h` in the result stage is closed with
+  `← getElem!_pos, dite_eq_ite` (as in loop bodies); `Res UInt16` (2 bytes) for `UInt16` results.
+
+**Compiled verbatim**: every library definition above by `frontx_compile` on the definition itself (source-level
+`f.exec`, 3 axioms). **Machine theorems** (`Implements1`, the Sail set; QEMU + Sail vs executed Lean, 50 cases each,
+all ok; entry glue reads the arguments from the input bytes):
+
+| entry | library code exercised | result | words | test |
+|---|---|---|---|---|
+| `rgbaE` | `Rgba.mk` (Canvas.lean:16) | `Rgba`, 32 B | 169 | `st_rgba` 50 ok |
+| `hdrE` | `PngDecode.Hdr.mk` (PngDecode.lean:43) | `Hdr`, 33 B | 242 | `st_hdr` 50 ok |
+| `rgbaGE` | `Rgba.g` of a constructor | `Nat` | 61 | `st_rgbag` 50 ok |
+| `interlaceE` | `PngDecode.Hdr.interlace` | `Bool` | 41 | `st_interlace` 50 ok |
+| `canvasHE` | `Canvas.h` (an `Array Nat` field, no variable) | `Nat` | 73 | `st_canvash` 50 ok |
+| `compoundValidE` | `Css.Compound.valid` (`String`, `Option String`, `Array` fields) | `Bool` | 42 | `st_compoundvalid` 50 ok |
+| `setLigE` | `Shape.GInfo.setLigForLigature` (`{ g with lig := … }`, 13 fields) | `GInfo`, 104 B | 633 | `st_setlig` 50 ok |
+| `ligNumCompsE` | `Shape.GInfo.ligNumComps` (+ `ligatedInternal`) | `Nat` | 85 | `st_lignumcomps` 50 ok |
+| `isIgnorableE` | `Shape.GInfo.isIgnorable` | `Bool` | 72 | `st_isignorable` 50 ok |
+| `rgbaHdrE` | tuple of two structures `Rgba × Hdr` | 65 B | 593 | `st_rgbahdr` 50 ok |
+| `entryAtE` (wa) | `DecodeTable.entryAt` (Inflate.lean:260) | `UInt32` | 1323 | `wa_entryat` 50 ok |
+| `lenAtE` (wa) | `DecodeTable.lenAt` (:228, `unpackLen`) | `UInt8` | 1315 | `wa_lenat` 50 ok |
+| `symAtE` (wa) | `DecodeTable.symAt` (:234, `unpackSym`) | `UInt16` | 1325 | `wa_symat` 50 ok |
+
+**Not done / why.**
+- A structure *result* with an `Array` field (`Canvas.mk`, `Canvas.new`): the list front end has no arrays; the
+  word-array front end returns a scalar or one array, not a structure. Splitting a structure result into its scalar
+  fields and one array (one length in `a1`) is the natural next step.
+- A table built from the input inside a structure on the word-array path: the later stages need a fact about the
+  loop's result (`(fillW …).size = 256`) that `Pg.Good` does not carry (only the invariant of the states); a
+  `result` clause (invariant of the returned value, proved from the loop invariant by `Runs` induction) would do it.
+  The entries use a constant table (packed by lean-zip's own `packEntry`).
+- `GInfo` with 13 fields from the input at once: `setLigAt` with 15 input-derived components took 8.6 GB and failed
+  a `simp` heartbeat limit; with 5 input fields (the others the structure's defaults) 1.7 GB, 26 slots.
+- Enum `instBEq….beq` rows of §1.2 (inductives without payload, not structures) and `deriving BEq` on structures.
+
+Reproduce: `lake build Riscv.Frontx.StructExamples Riscv.Frontx.WaStruct`; `lake env lean --tstack=400000
+Testing/asm/emit_struct.lean` (do not pipe its output into `head`: the `xs.data[0]!` panics of the empty input then
+block it); `for f in st_rgba st_hdr st_rgbag st_interlace st_canvash st_compoundvalid st_setlig st_lignumcomps
+st_isignorable st_rgbahdr wa_entryat wa_lenat wa_symat; do python3 Testing/asm/frontx_test.py check 50 $f; done`.
+`lake build Frontx` (all earlier examples) passes with the translator changes.
