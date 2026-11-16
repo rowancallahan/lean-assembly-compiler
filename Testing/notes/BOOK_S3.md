@@ -24,6 +24,8 @@ Compiler: `main` (`lake build Frontx`, 303 jobs, no error), Lean 4.29.0. Harness
 | `DirTree.lean:212` | `T.ReaderT` | `frontx_compile` | `frontx: unsupported result type` / `Type (max u v)` |
 | `DirTree.lean:228` | `T.R.read` | `frontx_compile` | `frontx: unsupported result type` / `ReaderT ρ m ρ` |
 
+Re-run on `main` merged into `book-s3` (merge `origin/main` at 8a97cad, NOTES §25-§29): the same 13 first errors (only the `_fvar` number of `configFromArgs` changed). Consequence: `lake build Frontx` now fails on `Riscv.Frontx.BookS3`, because `Riscv/Frontx/*.lean` is in the `Frontx` glob; every other module builds. QEMU was not installed (`apt-get` was denied in this session), so no test was run.
+
 ## Notes
 
 - Most rows fail on the type, not the body: a polymorphic `α` result (`second`, `third`, `thirdOption`), a result type built from `MyList` of types (`myListOfList`), a function result (`ConfigIO α`), or a `Type` result (`ReaderT`, a type and not a function). These are the "polymorphic / type-valued" bucket of `BOOK_SURVEY3.md`.
