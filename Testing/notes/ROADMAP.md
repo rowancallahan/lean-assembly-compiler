@@ -120,3 +120,19 @@ hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read 
   the port heavily against native `mixHash` (`#eval` runs the C) on random inputs and on real con-leche terms.
   Our theorems then say "computes con-leche with mixHash := mixHashLean". If con-leche's output provably does not
   depend on the hash function (only consistency), any Lean hash will do.
+- String byte layout (owner, 2026-11-15): a length followed by the raw UTF-8 bytes (replaces the §23 chain of tagged
+  byte cells). Both keep every symbol; this one is compact and standard. Length width to fix in the round (8-byte
+  little-endian like other scalars unless the owner says otherwise). To be done after the Expr round (same files).
+- Pipelining (owner, 2026-11-15): start the next round on top of the previous round's unverified branch instead of
+  waiting for its checks; rebase if it fails (some redone work is accepted). Farm independent QEMU/Sail test runs out
+  to cloud boxes; keep one final combined `check.sh` before pushing to main/stable. Lean already reuses unchanged
+  modules' builds. Build cache (owner): branch `build-cache` holds prebuilt build output (zstd tarballs, README
+  there); cloud boxes restore it instead of building. First item: the Sail RISC-V model dependency (25 MB).
+  Next: this repo's own `.lake/build` at main after big merges (~750 MB raw). Split slow proof files into
+  independent lemma files so lake builds them in parallel (plan: branch build-profile, BUILD_PROFILE.md).
+- Time budget (owner, 2026-11-16): at least 70-80% (goal 90%) of wall time should be agent thinking/proof writing;
+  builds, tests and CI at most 20-30% amortised over a week (the final full check and full re-elaboration excepted).
+  Rules for every agent: iterate on ONE file with `lake env lean <File>.lean` (only what changed), never a full
+  `lake build`/`check.sh` per attempt; run the full check once at the end of the round; send QEMU/Sail test runs
+  to other boxes when possible; use the build cache. Measured daily from the session logs (tool wall time vs
+  model time per round).
