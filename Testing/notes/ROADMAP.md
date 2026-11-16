@@ -222,6 +222,17 @@ proved, not trusted.
 
 Tentative (7): the elaborator is correct (it defines what syntax means, and is a likely source of bugs).
 
+### Front-end input: exported kernel terms, compiler correct by construction (owner, 2026-11-16; S3 design direction)
+
+- Input = UTF-8 export of KERNEL terms (lean4export-style), not Lean source text (source text needs an elaborator, i.e.
+  the white whale below). The compiler is one pure Lean function `exported terms → Option code` with ONE general
+  correctness theorem (proof checking of internals stays beneath the spec). Unsupported input (IO, `partial`, extern,
+  unsupported types) returns `none`: rejection, never a wrong compile.
+- Per program only the bridge "this exported term denotes the Lean function `f`" remains, a kernel `rfl`/`decide`
+  (a metaprogram may generate it). Fits `Program P` / `Computes` in the current spec with `P` = exported declarations.
+- Do it inside IR S3: rewrite the front ends as pure `kernel terms → IR` functions instead of tactic metaprograms. This is
+  also what makes the complete compiler self-hostable.
+
 ### Long term ("white whale"): a small elaborator for pure functions (owner, 2026-11-16; NOT started)
 
 - Size of the real one (Lean 4.29 sources): `Lean/Elab` ≈ 69k lines, `Lean/Meta` (unifier, whnf, instances, match
