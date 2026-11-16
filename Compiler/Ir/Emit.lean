@@ -157,7 +157,8 @@ def pro (nS : Nat) (F : Func Nat) : List EOp := T.pro1 nS ++ exit0 ++ pro2 nS F
 
 /-- **the code of a function** -/
 def emitF (F : Func Nat) (nS : Nat) (pos : Lbl → Nat) (ex : Nat) : Option (List EOp) :=
-  if nS ≤ T.maxSlots ∧ F.params.all (· < nS) = true ∧ T.immOK .add 8 = true ∧
+  if nS ≤ T.maxSlots ∧ nS < 2 ^ 32 ∧ (F.blocks.lookup F.entry).isSome = true ∧ F.params.all (· < nS) = true ∧
+      T.immOK .add 8 = true ∧
       T.brOK false (T.lenBr + T.len exit0) = true then
     match T.jTo (T.len (T.pro nS F)) (pos F.entry) with
     | some j => (T.emitBs F nS pos ex (T.len (T.pro nS F ++ j)) F.blocks).map fun b => T.pro nS F ++ j ++ b ++ exit1
