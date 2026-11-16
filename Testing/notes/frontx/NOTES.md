@@ -2499,6 +2499,46 @@ compiled verbatim (source copied from con-leche @6810492c1 with file:line commen
   are fields of the record of laws `Mach.Wide : Type 1`: a correct rejection, not compilable data.
 * (i) heads `ite` / `HAppend.hAppend` taken as entry calls (`frontx_ind`). Fix (`IndCmd.lean`, `notEntryHeads`): a body
   whose head is `ite`, `dite`, `cond`, `++`, `&&`, `||`, `!`, `==`, `decide` is not an entry `f xs = g c₁ …`; `f` itself is
-  the function (by cases). See the ledger for what the reproducers do now. `List.brecOn` / `Nat.brecOn`: not done
+  the function (by cases); `id` likewise. The entry body is now `v.beta xs` (was `instantiateLambda`: the same arity
+  bug in `frontx_ind`). Reproducer `def shIte (t : Sh) : Sh := if true then t else .a 0`: compiles now; `def shK : Sh →
+  Sh → Sh := fun t _ => t`: compiles now. `List.brecOn` / `Nat.brecOn`: not done
   (the functions are structural recursions over `List Nat` / `Nat`, not over a declared type; they need `List` as a
   declared type of the call and the `brecOn`-free equation lemmas).
+
+### Ledger: probe rows re-run (round 1)
+
+Commands as in the probes (`frontx_ind f on T [using …]` with the selfhost-depth2 type mapping, `frontx_compile f`),
+`/home/user/scratch/p/P2c.lean` (not committed; regenerate with `mkP2.py`'s mapping over the rows below).
+
+| rows (selfhost-depth2) | before | now |
+|---|---|---|
+| 23 P1 rows `invalid instantiateForall/Lambda, too many parameters` + kernel `Sim argument has type Type 1` (`Mach.Wide.*`, `Mach.Base.*`, `Ir.Target.lenCall/top/callOK`, `Ir.Env.*`, `Ir.Lay.posF`, `Ir.Func.σ`, `Op.toCtorIdx`, `Op.raw`, `WideF/MachineF.frameAt`) | crash / kernel error | 23 clean rejections: `unsupported parameter type` (records in `Type 1` or with function fields) or `unsupported term self.k a` (function-valued field) |
+| 35 P2 rows: 28 `equation ite.eq_1 / HAppend.hAppend.eq_1 has no constructor pattern` + 7 `invalid instantiateLambda, too many parameters` in `frontx_ind` | head symbol unfolded as the function / crash | no row misreads its head or crashes any more; each stops at its real blocker: `unsupported parameter type` (12 + 6 of the 7: `Ir.Frame.regs`, `Mach.Wide.wenc`, `Ind.Pg.X`, `Ind.Cn.f/X/g`: records with function fields or `Type 1`), `no argument of a declared type` (12, scalar-only functions such as `vIdx`, `jW`, `liCode`), `unsupported result type` (3), `more than one scalar parameter` (1), `List.brecOn` (1, `Ir.setMany`) |
+| self-hoster 0-ary `Ir.R0`, `R1`, `RLim` | `unsupported result type X` | compiled (`frontx_const`, data) |
+| self-hoster `Mach.IR.Tst.a/b/c`, `Ir.Tst.a/b/c`, `Mach.IR.Ins.dst`, `Mach.IR.Arg.regs`, `Ir.Block.term/params/body` | `unsupported result type X ρ / List α / Option α` | compiled (`frontx_mono … at Nat`) |
+| con-leche 0-ary constants (85: `Name`, `Expr`, `Nat`) | `has no argument of a declared type` | compiled (`frontx_const`, data) |
+| con-leche `Expr.isBoolTrue`, `isNatZero`, `isEagerReduce` (callers of constants) | gate / arms fail | `isBoolTrue`: arms ok, `sem` proof fails; the other two: nested patterns. Not compiled. |
+
+**Counts against BLOCKER_YIELD.md** (graphs and states of the two probes, the compiled functions above marked OK;
+script: `Testing/dashboard/yield.py` with the unlock lists exported, `/home/user/scratch/yl.py`):
+
+| | lowest blockers before | of them compiled now | in the top 60 | OK before → now | blocked functions now fully clear (whole closure OK) |
+|---|---:|---:|---:|---:|---:|
+| con-leche | 201 | 63 (all 0-ary constants) | 29 | 46 → 131 | 85 |
+| self-hosting | 259 | 14 (11 monomorphised, 3 constants) | 14 | 31 → 45 | 14 |
+
+Lowest blockers after round 1 (same rule, compiled nodes OK): con-leche 170, self-hosting 251. The 106 con-leche functions
+that "0-ary constants" alone was predicted to unlock: 85 compiled (all constants of type `Name`/`Expr`/`Nat`); the other
+21 are functions or constants of other types (`Array Expr`, `EqPair`, `NatBinOp → Name`, `Expr → Bool` with nested
+patterns, `Option`/`List` results) and stay blocked. Self-hosting "translator shape": the crash classes (arity, universe,
+`ite`/`++` heads) are gone from the rows above; none of those rows compiles yet, each now names a feature
+(records of laws in `Type 1`, function-valued fields, scalar-only functions, `List`/`Nat.brecOn`).
+
+**Blocked, and why.**
+* Constants as callees from compiled code as DATA (not recomputed): needs a static data block on the IR route (IR S3).
+* `BitVec 64` constructor fields are dropped by `frontx_ind_type` (see B, caveat): a new scalar kind is needed before
+  the `Arg`/`Ins` results are fully informative.
+* `List.brecOn` / `Nat.brecOn` rows (16 + 3): structural recursion over `List Nat` / `Nat` with the list not a declared
+  type of the call; not attempted this round.
+* Probe caveat kept: the con-leche edges are read from source text (BLOCKER_YIELD §5), so "fully clear" counts inherit it.
+
