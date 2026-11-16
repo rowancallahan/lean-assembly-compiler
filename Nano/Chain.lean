@@ -14,7 +14,7 @@ against Lean's elaborator) → `Prog` → `nanoCompileIR = Ir.compile ∘ lower`
 These are corollaries of `CompileCorrect riscv nanoCompileIR` / `CompileRuns riscv nanoCompileIR` with
 `f` = the program's meaning on argument lists of the right length (`Computes` holds by definition of `nanoRun`,
 and for Int64 by `nanoRun_int`). -/
-import Nano.ProofTop
+import Nano.ProofSrc
 import Nano.Int
 import Nano.Elab
 
@@ -25,6 +25,9 @@ open Proven Proven.Mach Proven.Top Proven.Top.Alloc
 
 /-- **the nano compiler from source bytes** -/
 noncomputable def nanoCompileSrc (src : List UInt8) : Option CompiledA := (nanoElab src).bind nanoCompileIR
+
+/-- the same compiler as nano-proof's `nanoCompileSrcIR` (`Nano/ProofSrc.lean`) -/
+theorem nanoCompileSrc_eq (src : List UInt8) : nanoCompileSrc src = nanoCompileSrcIR ⟨src⟩ := rfl
 
 /-- argument lists of the entry's arity -/
 abbrev Args (p : Prog) (α : Type) := {args : List α // args.length = p.1}
@@ -59,6 +62,41 @@ theorem computes_int (p : Prog) :
   intro ⟨args, h⟩
   show nanoRun p (encIs args) = _
   rw [nanoRun_int p args h]; unfold Prog.evalI; rw [if_pos h]; rfl
+
+/-! ## any proved nano back end (`CompileCorrect riscv compile`): the source-level corollaries
+(for `nanoCompileIR` below; for nano-proof's `asm ∘ genR` route once its `CompileCorrect` theorem lands) -/
+
+/-- **`UInt64`, for any proved back end** -/
+theorem chain_of {compile : Prog → Option CompiledA} (correct : CompileCorrect riscv compile) (src : List UInt8)
+    (p : Prog) (c : CompiledA) (helab : nanoElab src = some p) (hc : compile p = some c) (args : List UInt64)
+    (harity : args.length = p.1) (startState : riscv.State) (call : Call)
+    (startsRight : StartCorrect riscv startState call c.code (encWs args))
+    (outputFits : 8 ≤ call.outputLength) (enoughMemory : memoryNeeded c (encWs args) ≤ call.workLength) :
+    ∃ v, p.eval args = some v ∧
+    ∃ finishState, Runs riscv startState finishState ∧
+      (riscv.observe finishState).programCounter = call.returnAddress ∧
+      (riscv.observe finishState).register riscv.mapping.status ≠ oomFlag ∧
+      readMemory (riscv.observe finishState) call.outputAddress 8 = some (leN 8 v.toNat) := by
+  refine ⟨den p.2 args.reverse, by unfold Prog.eval; rw [if_pos harity], ?_⟩
+  have := correct p c _ _ _ ⟨args, harity⟩ startState call hc (computes_words p) startsRight
+    (by rw [leN_length]; exact outputFits) enoughMemory
+  simpa only [leN_length] using this
+
+/-- **`Int64`, for any proved back end** -/
+theorem chain_int_of {compile : Prog → Option CompiledA} (correct : CompileCorrect riscv compile)
+    (src : List UInt8) (p : Prog) (c : CompiledA) (helab : nanoElabT src = some (true, p)) (hc : compile p = some c)
+    (args : List Int64) (harity : args.length = p.1) (startState : riscv.State) (call : Call)
+    (startsRight : StartCorrect riscv startState call c.code (encIs args))
+    (outputFits : 8 ≤ call.outputLength) (enoughMemory : memoryNeeded c (encIs args) ≤ call.workLength) :
+    ∃ v, p.evalI args = some v ∧
+    ∃ finishState, Runs riscv startState finishState ∧
+      (riscv.observe finishState).programCounter = call.returnAddress ∧
+      (riscv.observe finishState).register riscv.mapping.status ≠ oomFlag ∧
+      readMemory (riscv.observe finishState) call.outputAddress 8 = some (encI v) := by
+  refine ⟨denI p.2 args.reverse, by unfold Prog.evalI; rw [if_pos harity], ?_⟩
+  have := correct p c _ _ _ ⟨args, harity⟩ startState call hc (computes_int p) startsRight
+    (by rw [encI, leN_length]; exact outputFits) enoughMemory
+  simpa only [encI, leN_length] using this
 
 /-- **source to machine, `UInt64`** -/
 theorem nano_chain (src : List UInt8) (p : Prog) (c : CompiledA) (helab : nanoElab src = some p)

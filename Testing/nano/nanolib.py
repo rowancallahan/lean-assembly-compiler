@@ -134,6 +134,11 @@ INT_CORPUS = [
 "def m (a b : Int64) : Int64 := a * -31 + b\ndef f (x y z : Int64) : Int64 := m (m x y) z",
 "def f (x y : Int64) : Int64 :=\n  let s := x + y\n  ; let d := x - y\n  ; s * d * -2",
 "def f (x : Int64) : Int64 := (((-(3))))",
+"def f (x : Int64) : Int64 := 9223372036854775808 + x",
+"def f (x : Int64) : Int64 := 18446744073709551621 * x",
+"def f (x : Int64) : Int64 := 0 - -9223372036854775808",
+"def f (x : Int64) : Int64 := -9223372036854775808 * -1 + x",
+"def k : Int64 := -1\ndef f (x : Int64) : Int64 := k -1",
 ]
 INT_CORPUS = [s for s in INT_CORPUS if "x0p" not in s and "-(" not in s]  # `-x`, `-(e)`: not nano (Lean accepts; nano rejects)
 INT_NEG = [  # Lean rejects or means something else; nanoElab must reject
@@ -143,6 +148,9 @@ INT_NEG = [  # Lean rejects or means something else; nanoElab must reject
 "def f (x : Int64) : Int64 := x --5",
 "def f (x : Int64) : Int64 := -x",
 "def f (x : Int64) : Int64 := x * - - 5",
+"def f (x : Int64) : Int64 := - -5",
+"def f (x y : Int64) : Int64 := x - -y",
+"def f (x : UInt64) (y : Int64) : Int64 := y",
 ]
 M63 = 2 ** 63
 EDGE_I = [0, 1, -1, 2, -2, 7, -7, 255, -256, 2**32, -2**32, M63 - 1, -M63, M63 - 2, -M63 + 1]

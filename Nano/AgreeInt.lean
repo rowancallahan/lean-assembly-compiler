@@ -257,4 +257,60 @@ theorem run : ∀ x0 x1 : Int64, nanoRun (2, (Ex.let_ (Ex.add (Ex.var 1) (Ex.var
   intro x0 x1; rw [nanoRun_int _ _ rfl]; simp only [Prog.evalI, List.length_cons, List.length_nil, if_true]; rfl
 end P21
 
+namespace P22
+def f (x : Int64) : Int64 := 9223372036854775808 + x
+def src : String := "def f (x : Int64) : Int64 := 9223372036854775808 + x"
+theorem bytes_eq : src.toUTF8.toList = src.toList.map (fun c => c.toNat.toUInt8) := by decide +kernel
+theorem elabEq : nanoElabT (src.toList.map (fun c => c.toNat.toUInt8)) = some (true, (1, (Ex.add (Ex.num 9223372036854775808) (Ex.var 0)))) := by decide +kernel
+theorem agree : ∀ x0 : Int64, (nanoElabT src.toUTF8.toList).bind (evalT · [x0]) = some (f x0) := by
+  intro x0; rw [bytes_eq, elabEq]; rfl
+theorem run : ∀ x0 : Int64, nanoRun (1, (Ex.add (Ex.num 9223372036854775808) (Ex.var 0))) (encIs [x0]) = some (encI (f x0)) := by
+  intro x0; rw [nanoRun_int _ _ rfl]; simp only [Prog.evalI, List.length_cons, List.length_nil, if_true]; rfl
+end P22
+
+namespace P23
+def f (x : Int64) : Int64 := 18446744073709551621 * x
+def src : String := "def f (x : Int64) : Int64 := 18446744073709551621 * x"
+theorem bytes_eq : src.toUTF8.toList = src.toList.map (fun c => c.toNat.toUInt8) := by decide +kernel
+theorem elabEq : nanoElabT (src.toList.map (fun c => c.toNat.toUInt8)) = some (true, (1, (Ex.mul (Ex.num 5) (Ex.var 0)))) := by decide +kernel
+theorem agree : ∀ x0 : Int64, (nanoElabT src.toUTF8.toList).bind (evalT · [x0]) = some (f x0) := by
+  intro x0; rw [bytes_eq, elabEq]; rfl
+theorem run : ∀ x0 : Int64, nanoRun (1, (Ex.mul (Ex.num 5) (Ex.var 0))) (encIs [x0]) = some (encI (f x0)) := by
+  intro x0; rw [nanoRun_int _ _ rfl]; simp only [Prog.evalI, List.length_cons, List.length_nil, if_true]; rfl
+end P23
+
+namespace P24
+def f (x : Int64) : Int64 := 0 - -9223372036854775808
+def src : String := "def f (x : Int64) : Int64 := 0 - -9223372036854775808"
+theorem bytes_eq : src.toUTF8.toList = src.toList.map (fun c => c.toNat.toUInt8) := by decide +kernel
+theorem elabEq : nanoElabT (src.toList.map (fun c => c.toNat.toUInt8)) = some (true, (1, (Ex.sub (Ex.num 0) (Ex.num 9223372036854775808)))) := by decide +kernel
+theorem agree : ∀ x0 : Int64, (nanoElabT src.toUTF8.toList).bind (evalT · [x0]) = some (f x0) := by
+  intro x0; rw [bytes_eq, elabEq]; rfl
+theorem run : ∀ x0 : Int64, nanoRun (1, (Ex.sub (Ex.num 0) (Ex.num 9223372036854775808))) (encIs [x0]) = some (encI (f x0)) := by
+  intro x0; rw [nanoRun_int _ _ rfl]; simp only [Prog.evalI, List.length_cons, List.length_nil, if_true]; rfl
+end P24
+
+namespace P25
+def f (x : Int64) : Int64 := -9223372036854775808 * -1 + x
+def src : String := "def f (x : Int64) : Int64 := -9223372036854775808 * -1 + x"
+theorem bytes_eq : src.toUTF8.toList = src.toList.map (fun c => c.toNat.toUInt8) := by decide +kernel
+theorem elabEq : nanoElabT (src.toList.map (fun c => c.toNat.toUInt8)) = some (true, (1, (Ex.add (Ex.mul (Ex.num 9223372036854775808) (Ex.num 18446744073709551615)) (Ex.var 0)))) := by decide +kernel
+theorem agree : ∀ x0 : Int64, (nanoElabT src.toUTF8.toList).bind (evalT · [x0]) = some (f x0) := by
+  intro x0; rw [bytes_eq, elabEq]; rfl
+theorem run : ∀ x0 : Int64, nanoRun (1, (Ex.add (Ex.mul (Ex.num 9223372036854775808) (Ex.num 18446744073709551615)) (Ex.var 0))) (encIs [x0]) = some (encI (f x0)) := by
+  intro x0; rw [nanoRun_int _ _ rfl]; simp only [Prog.evalI, List.length_cons, List.length_nil, if_true]; rfl
+end P25
+
+namespace P26
+def k : Int64 := -1
+def f (x : Int64) : Int64 := k -1
+def src : String := "def k : Int64 := -1\ndef f (x : Int64) : Int64 := k -1"
+theorem bytes_eq : src.toUTF8.toList = src.toList.map (fun c => c.toNat.toUInt8) := by decide +kernel
+theorem elabEq : nanoElabT (src.toList.map (fun c => c.toNat.toUInt8)) = some (true, (1, (Ex.sub (Ex.call (Ex.num 18446744073709551615) Ex.anil) (Ex.num 1)))) := by decide +kernel
+theorem agree : ∀ x0 : Int64, (nanoElabT src.toUTF8.toList).bind (evalT · [x0]) = some (f x0) := by
+  intro x0; rw [bytes_eq, elabEq]; rfl
+theorem run : ∀ x0 : Int64, nanoRun (1, (Ex.sub (Ex.call (Ex.num 18446744073709551615) Ex.anil) (Ex.num 1))) (encIs [x0]) = some (encI (f x0)) := by
+  intro x0; rw [nanoRun_int _ _ rfl]; simp only [Prog.evalI, List.length_cons, List.length_nil, if_true]; rfl
+end P26
+
 end Nano.AgreeInt
