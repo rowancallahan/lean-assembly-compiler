@@ -2126,9 +2126,7 @@ per case Lean's result and `memoryNeeded` from a fast array interpreter checked 
 `gp`/`sp` restored) and `memoryNeeded - 1` (`a0 = -1`), QEMU and Sail, writes only in output + work.  Codes 300–1250
 words (Expr 3270–3700; the old route 4150–5271): no inline heap checks, one check per `alloc` and per call.
 
-**State at pause (owner asked to stop, before LowerOk was proved):** QEMU + Sail `ir_test.py check 50` passed for 39 of the 40 entries (all but
-`expr_islit`, not yet run; its words/cases are emitted and the interpreter agrees with Lean). The full `check.sh` (after
-merging origin/main) passed the build and the axioms phase (ir-s2 lines added to `expected-axioms.txt`); it was stopped
-at the word-array phase, so re-run it once. Next steps: (1) `bash Testing/scripts/check.sh`; (2) `ir_test.py check 50
-expr_islit`; (3) prove `LowerOk` (see above: `Rv`, `MLe`, `mkCell` against `SC.Ex`, `lowE_ok`, the function by induction
-on the value, `dec`/`enc`/`main`), then drop the condition from `IndIr.compile`; (4) switch `frontx_ind` to the IR route.
+**State (LowerOk proved):** `ir_test.py check 50` passed for all 40 entries incl. `expr_islit` (QEMU + Sail at
+`memoryNeeded` and `memoryNeeded - 1`, after re-emitting with the `goodB` check: words unchanged);
+`bash Testing/scripts/check.sh` ALL CHECKS PASSED (statement-fingerprint warning only, not re-frozen).  Next: switch
+`frontx_ind` to the IR route (an `Implements1` from `IndIr.compile_correct` per entry, `Chain` by the `{P}.X` rfl).
