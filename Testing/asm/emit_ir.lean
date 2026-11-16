@@ -1,9 +1,8 @@
 /- IR back-end tests (`Compiler/Ir/`, `Riscv/Back/IrTop.lean`): for each hand-written RTL program the words of
-`Ir.compile`, and per case the input, the IR interpreter's output and `memoryNeeded` (8 bytes times the peak of the
+`Ir.compile` (`compileW`), and per case the input, the IR interpreter's output and `memoryNeeded` (8 bytes times the peak of the
 run's events and the frame).  Run: `lake env lean --tstack=4000000 Testing/asm/emit_ir.lean`, then
 `python3 Testing/asm/ir_test.py check 60 <name>` (QEMU + Sail at `memoryNeeded` and `memoryNeeded - 1`). -/
-import Riscv.Back.IrTarget
-import Compiler.Ir.Lin
+import Riscv.Back.IrTop
 import Compiler.Ir.Examples
 open Proven.Ir Proven.Mach.Riscv Proven.Top.Alloc
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
@@ -12,10 +11,9 @@ def hx (xs : List UInt8) : String := if xs.isEmpty then "-" else String.join (xs
 def rnd (i j : Nat) : Nat := (i * 0x9E3779B97F4A7C15 + j * 0xD1B54A32D192ED03 + i * i * j) % 2^64
 
 def emit (name : String) (P : Prog VReg) (inputs : List (List UInt8)) : IO Unit := do
-  match rvT.lin P with
+  match compileW P with
   | none => IO.println s!"{name}: compile failed"
-  | some (c, nS) =>
-    let ws := rvT.words c
+  | some (ws, nS) =>
     IO.FS.writeFile s!"Testing/asm/ir-words/{name}.words" (String.intercalate "\n" (s!"{name} 0" :: ws.map hex8) ++ "\n")
     let mut lines : List String := []
     for x in inputs do

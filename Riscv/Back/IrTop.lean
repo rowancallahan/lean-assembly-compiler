@@ -9,6 +9,7 @@ import Riscv.Back.IrTarget
 import Riscv.Back.Top
 import Compiler.Ir.EmitTop
 import Compiler.Ir.Lin
+import Compiler.Ir.Rename
 open LeanRV64D LeanRV64D.Functions Sail Sail.ConcurrencyInterfaceV1
 
 set_option linter.unusedVariables false
@@ -20,27 +21,37 @@ open Proven Proven.Mach Proven.Mach.Riscv Proven.Top Proven.Top.Alloc
 noncomputable def events (P : Prog VReg) (nS : Nat) (input : List UInt8) : List MemEvent :=
   ((P.result input).map (·.ev)).getD [] ++ [.alloc (nS + 1)]
 
+/-- the words of a program: allocation (validated), then the Lin code of `main` -/
+def compileW (P : Prog VReg) : Option (List (BitVec 32) × Nat) :=
+  match alloc P with
+  | some (Q, _) => (rvT.lin Q).map fun (c, nS) => (rvT.words c, nS)
+  | none => none
+
 /-- **the IR compiler** -/
 noncomputable def compile (P : Prog VReg) : Option CompiledA :=
-  match rvT.lin P with
-  | some (c, nS) => some ⟨wordBytes (rvT.words c), 8, events P nS⟩
+  match compileW P with
+  | some (ws, nS) => some ⟨wordBytes ws, 8, events P nS⟩
   | none => none
 
 theorem compile_inv {P : Prog VReg} {c : CompiledA} (h : compile P = some c) :
-    ∃ F code pos ex, P.funcs[P.main]? = some F ∧ rvT.emitF F F.nSlots pos ex = some code ∧
-      c = ⟨wordBytes (rvT.words code), 8, events P F.nSlots⟩ := by
-  unfold compile Target.lin at h
+    ∃ Q σ F code pos ex, alloc P = some (Q, σ) ∧ Q.funcs[Q.main]? = some F ∧
+      rvT.emitF F F.nSlots pos ex = some code ∧ c = ⟨wordBytes (rvT.words code), 8, events P F.nSlots⟩ := by
+  unfold compile compileW at h
   split at h
-  · next c0 nS hl =>
+  · next ws nS hw =>
     cases h
-    split at hl
-    · next F hF =>
-      simp only at hl
-      cases he : rvT.emitF F F.nSlots (Target.posOf (rvT.layout F F.nSlots (F.blocks.length + 4) ([], 0)).1)
-          (rvT.layout F F.nSlots (F.blocks.length + 4) ([], 0)).2 with
-      | none => rw [he] at hl; exact nomatch hl
-      | some code => rw [he] at hl; cases hl; exact ⟨F, c0, _, _, hF, he, rfl⟩
-    · exact nomatch hl
+    split at hw
+    · next Q σ ha =>
+      unfold Target.lin at hw
+      split at hw
+      · next F hF =>
+        simp only at hw
+        cases he : rvT.emitF F F.nSlots (Target.posOf (rvT.layout F F.nSlots (F.blocks.length + 4) ([], 0)).1)
+            (rvT.layout F F.nSlots (F.blocks.length + 4) ([], 0)).2 with
+        | none => rw [he] at hw; exact nomatch hw
+        | some code => rw [he] at hw; cases hw; exact ⟨Q, σ, F, code, _, _, ha, hF, he, rfl⟩
+      · exact nomatch hw
+    · exact nomatch hw
   · exact nomatch h
 
 theorem mapM_id_bytes : ∀ {l : List (Option UInt8)} {o : List UInt8}, l.mapM id = some o →
@@ -82,7 +93,7 @@ theorem machine_run {P : Prog VReg} {compiled : CompiledA} {α β : Type} {f : �
             some (encodeOutput (f argument))) ∨
         (call.workLength < memoryNeeded compiled (encodeInput argument) ∧
           (riscv.observe finishState).register riscv.mapping.status = oomFlag)) := by
-  obtain ⟨F, code, pos, ex, hP, he, rfl⟩ := compile_inv compiles
+  obtain ⟨Q, σ, F, code, pos, ex, ha, hP, he, rfl⟩ := compile_inv compiles
   -- the run of the program
   have hmean := computes argument
   change (P.result (encodeInput argument)).bind (fun r => r.mem.output) = _ at hmean
@@ -90,7 +101,7 @@ theorem machine_run {P : Prog VReg} {compiled : CompiledA} {α β : Type} {f : �
   | none => rw [hres] at hmean; exact nomatch hmean
   | some r =>
   rw [hres] at hmean
-  have hrun := Prog.result_some hres
+  have hrun := alloc_runs ha (Prog.result_some hres)
   obtain ⟨hol, hob⟩ := output_bytes hmean
   have hmn : memoryNeeded ⟨wordBytes (rvT.words code), 8, events P F.nSlots⟩ (encodeInput argument) =
       8 * peak (r.ev ++ [.alloc (F.nSlots + 1)]) := by
