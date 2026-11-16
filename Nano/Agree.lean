@@ -140,9 +140,9 @@ theorem agree : ∀ x0 : UInt64, (nanoElab src.toUTF8.toList).bind (·.eval [x0]
 end P14
 
 namespace P15
-def sq (x : UInt64) : UInt64 := x * x
-def f (x : UInt64) : UInt64 := sq x + 1
-def src : String := "def sq (x : UInt64) : UInt64 := x * x\ndef f (x : UInt64) : UInt64 := sq x + 1"
+def s (x : UInt64) : UInt64 := x * x
+def f (x : UInt64) : UInt64 := s x + 1
+def src : String := "def s (x : UInt64) : UInt64 := x * x\ndef f (x : UInt64) : UInt64 := s x + 1"
 theorem bytes_eq : src.toUTF8.toList = src.toList.map (fun c => c.toNat.toUInt8) := by decide +kernel
 theorem elabEq : nanoElab (src.toList.map (fun c => c.toNat.toUInt8)) = some (1, (Ex.add (Ex.call (Ex.mul (Ex.var 0) (Ex.var 0)) (Ex.acons (Ex.var 0) Ex.anil)) (Ex.num 1))) := by decide +kernel
 theorem agree : ∀ x0 : UInt64, (nanoElab src.toUTF8.toList).bind (·.eval [x0]) = some (f x0) := by
@@ -150,9 +150,9 @@ theorem agree : ∀ x0 : UInt64, (nanoElab src.toUTF8.toList).bind (·.eval [x0]
 end P15
 
 namespace P16
-def sq (x : UInt64) : UInt64 := x * x
-def f (x y : UInt64) : UInt64 := sq (x + y) - sq x - sq y
-def src : String := "def sq (x : UInt64) : UInt64 := x * x\ndef f (x y : UInt64) : UInt64 := sq (x + y) - sq x - sq y"
+def s (x : UInt64) : UInt64 := x * x
+def f (x y : UInt64) : UInt64 := s (x + y) - s x - s y
+def src : String := "def s (x : UInt64) : UInt64 := x * x\ndef f (x y : UInt64) : UInt64 := s (x + y) - s x - s y"
 theorem bytes_eq : src.toUTF8.toList = src.toList.map (fun c => c.toNat.toUInt8) := by decide +kernel
 theorem elabEq : nanoElab (src.toList.map (fun c => c.toNat.toUInt8)) = some (2, (Ex.sub (Ex.sub (Ex.call (Ex.mul (Ex.var 0) (Ex.var 0)) (Ex.acons (Ex.add (Ex.var 1) (Ex.var 0)) Ex.anil)) (Ex.call (Ex.mul (Ex.var 0) (Ex.var 0)) (Ex.acons (Ex.var 1) Ex.anil))) (Ex.call (Ex.mul (Ex.var 0) (Ex.var 0)) (Ex.acons (Ex.var 0) Ex.anil)))) := by decide +kernel
 theorem agree : ∀ x0 x1 : UInt64, (nanoElab src.toUTF8.toList).bind (·.eval [x0, x1]) = some (f x0 x1) := by
@@ -160,9 +160,9 @@ theorem agree : ∀ x0 x1 : UInt64, (nanoElab src.toUTF8.toList).bind (·.eval [
 end P16
 
 namespace P17
-def add3 (a b c : UInt64) : UInt64 := a + b + c
-def f (x y : UInt64) : UInt64 := add3 x y 7
-def src : String := "def add3 (a b c : UInt64) : UInt64 := a + b + c\ndef f (x y : UInt64) : UInt64 := add3 x y 7"
+def a3 (a b c : UInt64) : UInt64 := a + b + c
+def f (x y : UInt64) : UInt64 := a3 x y 7
+def src : String := "def a3 (a b c : UInt64) : UInt64 := a + b + c\ndef f (x y : UInt64) : UInt64 := a3 x y 7"
 theorem bytes_eq : src.toUTF8.toList = src.toList.map (fun c => c.toNat.toUInt8) := by decide +kernel
 theorem elabEq : nanoElab (src.toList.map (fun c => c.toNat.toUInt8)) = some (2, (Ex.call (Ex.add (Ex.add (Ex.var 2) (Ex.var 1)) (Ex.var 0)) (Ex.acons (Ex.var 1) (Ex.acons (Ex.var 0) (Ex.acons (Ex.num 7) Ex.anil))))) := by decide +kernel
 theorem agree : ∀ x0 x1 : UInt64, (nanoElab src.toUTF8.toList).bind (·.eval [x0, x1]) = some (f x0 x1) := by
@@ -170,9 +170,9 @@ theorem agree : ∀ x0 x1 : UInt64, (nanoElab src.toUTF8.toList).bind (·.eval [
 end P17
 
 namespace P18
-def add3 (a b c : UInt64) : UInt64 := a + b * c
-def f (x y : UInt64) : UInt64 := add3 x (y - 1) (x + 2) * 2
-def src : String := "def add3 (a b c : UInt64) : UInt64 := a + b * c\ndef f (x y : UInt64) : UInt64 := add3 x (y - 1) (x + 2) * 2"
+def a3 (a b c : UInt64) : UInt64 := a + b * c
+def f (x y : UInt64) : UInt64 := a3 x (y - 1) (x + 2) * 2
+def src : String := "def a3 (a b c : UInt64) : UInt64 := a + b * c\ndef f (x y : UInt64) : UInt64 := a3 x (y - 1) (x + 2) * 2"
 theorem bytes_eq : src.toUTF8.toList = src.toList.map (fun c => c.toNat.toUInt8) := by decide +kernel
 theorem elabEq : nanoElab (src.toList.map (fun c => c.toNat.toUInt8)) = some (2, (Ex.mul (Ex.call (Ex.add (Ex.var 2) (Ex.mul (Ex.var 1) (Ex.var 0))) (Ex.acons (Ex.var 1) (Ex.acons (Ex.sub (Ex.var 0) (Ex.num 1)) (Ex.acons (Ex.add (Ex.var 1) (Ex.num 2)) Ex.anil)))) (Ex.num 2))) := by decide +kernel
 theorem agree : ∀ x0 x1 : UInt64, (nanoElab src.toUTF8.toList).bind (·.eval [x0, x1]) = some (f x0 x1) := by
@@ -201,11 +201,11 @@ theorem agree : ∀ x0 : UInt64, (nanoElab src.toUTF8.toList).bind (·.eval [x0]
 end P20
 
 namespace P21
-def inc (x : UInt64) : UInt64 := x + 1
-def inc2 (x : UInt64) : UInt64 := inc (inc x)
-def inc4 (x : UInt64) : UInt64 := inc2 (inc2 x)
-def f (x : UInt64) : UInt64 := inc4 (inc4 x)
-def src : String := "def inc (x : UInt64) : UInt64 := x + 1\ndef inc2 (x : UInt64) : UInt64 := inc (inc x)\ndef inc4 (x : UInt64) : UInt64 := inc2 (inc2 x)\ndef f (x : UInt64) : UInt64 := inc4 (inc4 x)"
+def i (x : UInt64) : UInt64 := x + 1
+def i2 (x : UInt64) : UInt64 := i (i x)
+def i4 (x : UInt64) : UInt64 := i2 (i2 x)
+def f (x : UInt64) : UInt64 := i4 (i4 x)
+def src : String := "def i (x : UInt64) : UInt64 := x + 1\ndef i2 (x : UInt64) : UInt64 := i (i x)\ndef i4 (x : UInt64) : UInt64 := i2 (i2 x)\ndef f (x : UInt64) : UInt64 := i4 (i4 x)"
 theorem bytes_eq : src.toUTF8.toList = src.toList.map (fun c => c.toNat.toUInt8) := by decide +kernel
 theorem elabEq : nanoElab (src.toList.map (fun c => c.toNat.toUInt8)) = some (1, (Ex.call (Ex.call (Ex.call (Ex.add (Ex.var 0) (Ex.num 1)) (Ex.acons (Ex.call (Ex.add (Ex.var 0) (Ex.num 1)) (Ex.acons (Ex.var 0) Ex.anil)) Ex.anil)) (Ex.acons (Ex.call (Ex.call (Ex.add (Ex.var 0) (Ex.num 1)) (Ex.acons (Ex.call (Ex.add (Ex.var 0) (Ex.num 1)) (Ex.acons (Ex.var 0) Ex.anil)) Ex.anil)) (Ex.acons (Ex.var 0) Ex.anil)) Ex.anil)) (Ex.acons (Ex.call (Ex.call (Ex.call (Ex.add (Ex.var 0) (Ex.num 1)) (Ex.acons (Ex.call (Ex.add (Ex.var 0) (Ex.num 1)) (Ex.acons (Ex.var 0) Ex.anil)) Ex.anil)) (Ex.acons (Ex.call (Ex.call (Ex.add (Ex.var 0) (Ex.num 1)) (Ex.acons (Ex.call (Ex.add (Ex.var 0) (Ex.num 1)) (Ex.acons (Ex.var 0) Ex.anil)) Ex.anil)) (Ex.acons (Ex.var 0) Ex.anil)) Ex.anil)) (Ex.acons (Ex.var 0) Ex.anil)) Ex.anil))) := by decide +kernel
 theorem agree : ∀ x0 : UInt64, (nanoElab src.toUTF8.toList).bind (·.eval [x0]) = some (f x0) := by
@@ -276,9 +276,9 @@ theorem agree : ∀ x0 : UInt64, (nanoElab src.toUTF8.toList).bind (·.eval [x0]
 end P28
 
 namespace P29
-def mix (a b : UInt64) : UInt64 := a * 31 + b
-def f (x y z : UInt64) : UInt64 := mix (mix x y) z
-def src : String := "def mix (a b : UInt64) : UInt64 := a * 31 + b\ndef f (x y z : UInt64) : UInt64 := mix (mix x y) z"
+def m (a b : UInt64) : UInt64 := a * 31 + b
+def f (x y z : UInt64) : UInt64 := m (m x y) z
+def src : String := "def m (a b : UInt64) : UInt64 := a * 31 + b\ndef f (x y z : UInt64) : UInt64 := m (m x y) z"
 theorem bytes_eq : src.toUTF8.toList = src.toList.map (fun c => c.toNat.toUInt8) := by decide +kernel
 theorem elabEq : nanoElab (src.toList.map (fun c => c.toNat.toUInt8)) = some (3, (Ex.call (Ex.add (Ex.mul (Ex.var 1) (Ex.num 31)) (Ex.var 0)) (Ex.acons (Ex.call (Ex.add (Ex.mul (Ex.var 1) (Ex.num 31)) (Ex.var 0)) (Ex.acons (Ex.var 2) (Ex.acons (Ex.var 1) Ex.anil))) (Ex.acons (Ex.var 0) Ex.anil)))) := by decide +kernel
 theorem agree : ∀ x0 x1 x2 : UInt64, (nanoElab src.toUTF8.toList).bind (·.eval [x0, x1, x2]) = some (f x0 x1 x2) := by
@@ -345,8 +345,8 @@ theorem agree : ∀ x0 : UInt64, (nanoElab src.toUTF8.toList).bind (·.eval [x0]
 end P35
 
 namespace P36
-def f (xs ys : UInt64) : UInt64 := xs * ys + xs - ys
-def src : String := "def f (xs ys : UInt64) : UInt64 := xs * ys + xs - ys"
+def f (u v : UInt64) : UInt64 := u * v + u - v
+def src : String := "def f (u v : UInt64) : UInt64 := u * v + u - v"
 theorem bytes_eq : src.toUTF8.toList = src.toList.map (fun c => c.toNat.toUInt8) := by decide +kernel
 theorem elabEq : nanoElab (src.toList.map (fun c => c.toNat.toUInt8)) = some (2, (Ex.sub (Ex.add (Ex.mul (Ex.var 1) (Ex.var 0)) (Ex.var 1)) (Ex.var 0))) := by decide +kernel
 theorem agree : ∀ x0 x1 : UInt64, (nanoElab src.toUTF8.toList).bind (·.eval [x0, x1]) = some (f x0 x1) := by

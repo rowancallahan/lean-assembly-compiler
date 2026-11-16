@@ -64,6 +64,7 @@ words = [int(l, 16) for l in lines[1:]]
 G, E = 16, 80
 if lines[0].split()[1] == "1": LISTS.add(FN)
 MAGIC = 0x0123456789ABCDEF
+MIS = tuple(int(v) for v in os.environ.get("MIS", "0,0").split(","))  # extra bytes before the input / output block (misalignment tests)
 LD = "ENTRY(_start)\nSECTIONS { . = 0x80000000; .text : { *(.text.start) *(.text) }\n . = 0x80100000; .tohost : { *(.tohost) }\n . = 0x80200000; .data : { *(.data) } }\n"
 TAIL = """.section .tohost,"aw"
 .globl tohost
@@ -103,10 +104,10 @@ def build(cases, func):
     for case in cases:
         xs, ys, WK = case[0], case[1], case[2]
         R = len(ys)
-        L = len(xs); i0 = off; o0 = i0 + L + G; w0 = (o0 + R + G + 7) // 8 * 8; off = w0 + WK + G
+        L = len(xs); i0 = off + MIS[0]; o0 = i0 + L + G + MIS[1]; w0 = (o0 + R + G + 7) // 8 * 8; off = w0 + WK + G
         lay.append((i0, o0, w0))
         tab.append(f"  .quad base+{i0}, {L}, base+{w0}, base+{o0}, base+{w0 + WK}, {MAGIC}, 0, 0, 0, 0")
-        data.append(bytes(xs) + b"\xAA" * G + b"\x55" * R + b"\xAA" * G + b"\x00" * (w0 - (o0 + R + G))
+        data.append(b"\x11" * MIS[0] + bytes(xs) + b"\xAA" * G + b"\x44" * MIS[1] + b"\x55" * R + b"\xAA" * G + b"\x00" * (w0 - (o0 + R + G))
                     + b"\x77" * WK + b"\xAA" * G)
     open(p("crc.bin"), "wb").write(b"".join(data))
     src = DRIVER % (len(cases), E, func) + f'.data\n.align 4\nbase:\n.incbin "{p("crc.bin")}"\n.align 3\ntab:\n' + "\n".join(tab) + "\n"
