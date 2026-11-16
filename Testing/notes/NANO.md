@@ -95,4 +95,25 @@ Run: `lake build Nano`; `python3 Testing/nano/nano_test.py 20`; `bash Testing/as
 * Design consequence: the bit packing of instruction words lives in `asm`; `genR` only chooses registers/slots.
 
 ## Self-hosting status (task 2) and what blocks it
-B (the proved binary) covers ONLY the assembler stage `asm`; `nanoElab` and `genR` stay plain Lean. SELFHOST_PROBE
+**B (the proved binary) covers ONLY the assembler stage `asm`** (records -> words, `Nano.Self.nanoAsm.implements1`, 379 words). `nanoElab` and
+`genR` are plain Lean; no byte-level rewrite of them was accepted, so there is no "friendly = original" proof and B does not compute the whole
+`nanoCompileS`. Evidence (all reproducible, `Testing/nano/probes/`):
+1. `genR` as a byte machine. The stack generator was reshaped for it where it was free to (faithful on all `Ex`, position-independent
+   records, `memoryNeeded = 8 * depth`), but the generator is a tree walk with a scope list `sc` (de Bruijn index -> slot) and a depth `d`, and
+   its code per node is 5-22 records. A flat token stream with `d` as a scalar would remove the tree walk, but then every token must expand
+   to a chunk of up to 20 constant bytes inside one `if`-arm; `probes/token_machine.lean` (5 arms, 20-byte chains, `d` threaded) does not
+   finish in 30 minutes (TINYSELF.md item 5: 8 arms of 12 bytes: 44 variables / 36 slots, 388 obligations, abandoned). A phase counter (one
+   record per iteration) loops in `frontx_view` (TINYSELF.md item 6). The inductive path (`frontx_ind`) allows one scalar and one tree parameter
+   (no `sc` list), results by `++` of call results are rejected (F3), arms <= 4-5 (F1, relaxed in NOTES section 25 for decoding only).
+2. `nanoElab`: list views need structurally decreasing views (`lex` token spans continue on `ys`), `Option (List Tok)` / pair results and mutual
+   recursion are outside every front end; `frontx_rec` (NOTES section 15) handles `if`-trees with all-or-no recursive calls and scalar results only
+   (no list results through calls). A shunting-yard / explicit-stack parser needs word arrays and loops (the `wa` path, NOTES section 20) and a
+   def table with code strings; the equivalence proof against the recursive-descent parser (all inputs, not per program) was judged out of reach
+   for this round (it is the dominant cost, not the front end).
+3. New finding that applies to every self-hosted stage: an `if`-chain macro with more than 7 clauses is rejected (see Front-end findings); the
+   assembler had to be re-encoded arithmetically to fit 15 ops.
+What would make B the whole compiler: (a) a front-end form for "emit a fixed chunk per input element" (e.g. a table-driven loop over a constant
+byte table, `wa`) so that `genR` over a flat token stream compiles; (b) `lexer + parser` written as one loop with an explicit stack in word arrays,
+or the recursive-descent parser's CPS/defunctionalised form with a generic equivalence lemma; (c) the serialisation `Prog -> tokens` produced by
+the elaborator itself. The calling convention above is the interface for the proof of the stack generator by nano-proof (route (a)):
+`StackRec.lean` there was written against the previous sp/a1 convention of `genR` and has to be moved to the registers above.
