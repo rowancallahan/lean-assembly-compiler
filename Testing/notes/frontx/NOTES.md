@@ -2140,6 +2140,15 @@ takes the type, `Ty.int` in `AK` matches.  Next steps: (1) `a0` flag via a stub 
 `wa_compile` for `push` / `extract` / `++` and `Pg.GoodE` so the BAO rows (copyWithin, copyLoopGo, storedCopyLoop) compile
 verbatim; (3) free a loop's leftover work array at program level.
 
+**Session pause (WIP).** origin/main merged into feat-paged (NOTES conflict resolved keeping both; check.sh took main's
+loop incl. feat-struct/harvest; paged check stays in `paged_check.sh`). Build cache restored, `lake build
+Riscv.Frontx.WpImpl Riscv.Frontx.IndMem` passes (toolchain via elan, Lean 4.29.0). No new code yet for the goals.
+Next: (1) `a0` stub in a new `Riscv/Frontx/PgMem.lean` after `IndMem.lean`'s `PgProg`/`compile` pattern: save ra, test
+`sp - a2 < 8192`, call body, set `a0` from `a7`; prove `compile_runs`/`compile_correct`; (2) extend `A.ok`/`wa_compile`
+in `WaCmd.lean`/`WaImpl.lean` for `push`/`extract`/`++`/`ByteArray` results via `Pg` + `Pg.GoodE`, then the four lean-zip
+rows (copyLoopGo, storedCopyLoop, copyWithin, fillDouble) with `Implements1` and >=50 QEMU/Sail cases; (3) full
+`check.sh` once at the end.
+
 ## 32. User structures (branch `feat-struct`)
 
 Files: `Riscv/Frontx/StructExamples.lean` (lean-svg, list front end), `Riscv/Frontx/WaStruct.lean` (lean-zip,
