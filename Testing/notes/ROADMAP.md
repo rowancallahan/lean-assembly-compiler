@@ -136,3 +136,9 @@ hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read 
   `lake build`/`check.sh` per attempt; run the full check once at the end of the round; send QEMU/Sail test runs
   to other boxes when possible; use the build cache. Measured daily from the session logs (tool wall time vs
   model time per round).
+- Variable-size blocks (owner, 2026-11-16): arrays/strings of different sizes must not make out of memory inexact
+  (fragmentation: enough free memory in total but no contiguous piece). Fix, BENEATH the spec: a software
+  virtual-memory layer, fixed-size pages + a page table per block, so any free page serves any block; `memoryNeeded`
+  is counted in pages (rounding and page tables included), so "fits" stays exact. Cost ~one extra load per array
+  access. Not the hardware MMU.
+- Later (owner): callee-saved registers (needed to call our code from C or other code from ours).
