@@ -21,3 +21,9 @@ nano-e2e had no `nanoGen` when this branch started; this one is new (same name/s
 `Prog.eval`, output `leN 8 v.toNat`.
 
 ## Log
+- 2026-11-16: `Nano/Gen.lean` (`cE`/`cA`, `ldArgs`, `mainTC`, `lower`, `nanoGen`), `Nano/Proof.lean` (`nanoRun`,
+  `Program Prog` instance, `cE_ok`/`cA_ok`, `ldArgs_ok`, `lower_ok`), `Nano/ProofTop.lean` (`nanoCompile`,
+  `nanoGen_code`, **`nano_compile_correct : CompileCorrect riscv nanoCompile`**, **`nano_compile_runs : CompileRuns
+  riscv nanoCompile`**). Axioms: machine theorems = the Sail set (same as `ir_compile_correct`), `lower_ok` ⊆
+  {propext, Classical.choice, Quot.sound}. `Testing/scripts/axioms_nano-proof.lean` added to check.sh's loop;
+  check.sh also builds `Nano` and greps `Nano/*.lean` for forbidden words (decided: the nano files are proof sources).
