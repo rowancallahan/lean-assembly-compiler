@@ -233,3 +233,22 @@ Feature ids: F1 = translator shape (no type named), F2 = 0-ary constant, F3 = in
 python3 Testing/dashboard/yield.py <input dir> Testing/dashboard/yield.json <F2.lean.txt> <repo root>
 ```
 The input dir is the one `build.py` reads (see its header), with `all.json` from `index.py` on `F2.lean.txt`.
+
+## 6. Self-hosting "translator shape" (F1), broken down (main session, from `blockers_per_def.tsv`, class TRANS)
+
+`PANIC at Lean.Expr.appArg!` is a follow-on printed after an earlier `unsupported …` message, not the cause; the cause is the
+first message. Counts of first messages (217 TRANS rows; top classes):
+
+| n | message | reading |
+|---:|---|---|
+| 32 | `frontx_ind: X has no argument of a declared type` | probe chose a type `T` absent from the signature, or 0-ary / scalar-only function: probe mapping + 0-ary constants |
+| 29 | `Unknown constant` | probe named auxiliary/private constants (`Ir.IndLow.bin`, `*.elim`): probe artefact |
+| 22 + 5 | `equation ite.eq_1` / `HAppend.hAppend.eq_1 has no constructor pattern` | body whose top is `if … then … else` or `++`: the front end unfolds the head symbol as if it were the function. Real gap |
+| 16 + 3 | `List.brecOn` / `Nat.brecOn has no argument …` | structural recursion seen through `brecOn` instead of the equation lemmas. Real gap; same fix as the con-leche knot note (drive the front end by equation lemmas) |
+| 15 + 6 | `invalid instantiateForall/instantiateLambda, too many parameters` | arity bug: definitions whose value is a `fun` after fewer binders than the type (`def f : A → B → C := fun …`). Real bug |
+| 10 + 6 | `Application type mismatch` (tuple `X × X T`; structure `self`) | elaboration of tuple/structure-projection arguments. Real gap |
+| 6 | kernel `Sim argument has type Type 1` | universe level in the generated simulation statement. Real bug |
+| 5 + 5 + 4 | more than one extra parameter / scalar needs an entry / pattern on another argument | front-end shape limits |
+
+So F1 is mixed: about 60 are probe artefacts; the real compiler gaps are equation-lemma driving (ite/++/brecOn, ~46),
+the arity bug (~21), tuple/projection elaboration (~16) and the universe bug (6).
