@@ -276,6 +276,10 @@ def T.rlP : {Γ Δ : List Sl} → {R : Sl} → T Γ Δ R → List PLoc → Nat �
   | _, _, _, .ite _ a b, L, d => match a.rlP L (d + 2) with | some l => some l | none => b.rlP L (d + 2)
   | _, _, _, .let_ _ k, L, d => k.rlP (⟨d, false, 0⟩ :: L) (d + 1)
 
+/-- the result location of a loop body without an array result (a scalar loop): read-only, so `LoopC` asks
+nothing of it -/
+def rlNone : PLoc := ⟨0, true, 0⟩
+
 /-- the result location of a loop: `res` for a scalar, the array's slot otherwise -/
 def resLocP : (s : Sl) → Nat → PLoc → PLoc
   | .sc _, res, _ => ⟨res, false, 0⟩
@@ -320,7 +324,7 @@ def Pg.compP {Γ : List Sl} : {R : Sl} → Pg Γ R → List PLoc → Nat → MS 
   | _, .loop (s := s) Δ b init k, L, d =>
     let st := init.locP L d
     let res := d + 2 * Δ.length
-    let rl := (b.rlP (st ++ L) (res + 2)).getD default
+    let rl := (b.rlP (st ++ L) (res + 2)).getD rlNone
     (.seq (init.compP L d) (guard (.seq (b.loopP st res (res + 1) (st ++ L) (res + 2))
       (guard (k.compP (resLocP s res rl :: L) (res + 2)).1))), (k.compP (resLocP s res rl :: L) (res + 2)).2)
 
@@ -331,7 +335,7 @@ def Pg.wfP {Γ : List Sl} : {R : Sl} → Pg Γ R → List PLoc → Nat → Bool
   | _, .loop (s := s) Δ b init k, L, d =>
     let st := init.locP L d
     let res := d + 2 * Δ.length
-    let rl := (b.rlP (st ++ L) (res + 2)).getD default
+    let rl := (b.rlP (st ++ L) (res + 2)).getD rlNone
     let w := wP Δ st res (res + 1)
     init.wfP L && b.wfP st rl w (st ++ L) (res + 2) && decide (LoopC Δ st L res (res + 1) s rl w (res + 2)) &&
       k.wfP (resLocP s res rl :: L) (res + 2)
@@ -345,7 +349,7 @@ def Pg.GoodE {Γ : List Sl} : {R : Sl} → Pg Γ R → List PLoc → Nat → Val
   | _, .loop (s := s) Δ b init k, L, d, v, y, Ev =>
     let st := init.locP L d
     let res := d + 2 * Δ.length
-    let rl := (b.rlP (st ++ L) (res + 2)).getD default
+    let rl := (b.rlP (st ++ L) (res + 2)).getD rlNone
     init.okP v ∧ ∃ r, ∃ P : Vals Δ → Prop, ∃ Eb Ek, P (init.den v) ∧
       (∀ s, P s → b.okP (Vals.app s v)) ∧ (∀ s s', P s → b.out (Vals.app s v) = .inl s' → P s') ∧
       RunsE b v (init.den v) r Eb ∧ k.GoodE (resLocP s res rl :: L) (res + 2) (r, v) y Ek ∧
@@ -497,7 +501,7 @@ theorem Pg.compP_ok (C : Nat) : ∀ {Γ : List Sl} {R : Sl} (p : Pg Γ R) (L : L
     have hlen : (init.locP L d).length = Δ.length := Inis.locP_length L init d
     have hin := Inis.locP_in L init d
     generalize hst : init.locP L d = st at hwb hC hwk hgk o1 hlen hin ⊢
-    generalize hrl : (b.rlP (st ++ L) (d + 2 * Δ.length + 2)).getD default = rl at hwb hC hwk hgk ⊢
+    generalize hrl : (b.rlP (st ++ L) (d + 2 * Δ.length + 2)).getD rlNone = rl at hwb hC hwk hgk ⊢
     generalize hw : wP Δ st (d + 2 * Δ.length) (d + 2 * Δ.length + 1) = w at hwb hC
     obtain ⟨hlay, hLd, hwl, hLw, hrl', ⟨h8s, h8r, h8f, h8p⟩, hres⟩ := hC
     have hy := hlay.lay

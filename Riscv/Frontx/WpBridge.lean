@@ -126,7 +126,7 @@ def Pg.PlainP : {Γ : List Sl} → {R : Sl} → Pg Γ R → List PLoc → Nat �
   | _, _, @Pg.let_ _ _ (.sc _) x k, L, d => k.PlainP (Ini.locP L (.sc _) x d :: L) (d + 2)
   | _, _, @Pg.let_ _ _ (.ar _) f k, L, d => F.PlainP L f ∧ k.PlainP (Ini.locP L (.ar _) f d :: L) (d + 2)
   | _, _, @Pg.loop _ _ s Δ b init k, L, d => init.PlainP L ∧ b.PushFree ∧
-    k.PlainP (resLocP s (d + 2 * Δ.length) ((b.rlP (init.locP L d ++ L) (d + 2 * Δ.length + 2)).getD default) :: L)
+    k.PlainP (resLocP s (d + 2 * Δ.length) ((b.rlP (init.locP L d ++ L) (d + 2 * Δ.length + 2)).getD rlNone) :: L)
       (d + 2 * Δ.length + 2)
 
 def Pg.evsC : {Γ : List Sl} → {R : Sl} → Pg Γ R → List PLoc → Nat → List MemEvent
@@ -134,7 +134,7 @@ def Pg.evsC : {Γ : List Sl} → {R : Sl} → Pg Γ R → List PLoc → Nat → 
   | _, _, @Pg.let_ _ _ (.sc _) x k, L, d => k.evsC (Ini.locP L (.sc _) x d :: L) (d + 2)
   | _, _, @Pg.let_ _ _ (.ar _) f k, L, d => f.evsC ++ k.evsC (Ini.locP L (.ar _) f d :: L) (d + 2)
   | _, _, @Pg.loop _ _ s Δ b init k, L, d => init.evsC ++
-    k.evsC (resLocP s (d + 2 * Δ.length) ((b.rlP (init.locP L d ++ L) (d + 2 * Δ.length + 2)).getD default) :: L)
+    k.evsC (resLocP s (d + 2 * Δ.length) ((b.rlP (init.locP L d ++ L) (d + 2 * Δ.length + 2)).getD rlNone) :: L)
       (d + 2 * Δ.length + 2)
 
 theorem Ini.okP_of_ok {Γ : List Sl} (L : List PLoc) (s : Sl) (x : Ini Γ s) (v : Vals Γ) (hp : match s, x with
