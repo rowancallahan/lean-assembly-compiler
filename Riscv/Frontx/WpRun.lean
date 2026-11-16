@@ -21,7 +21,7 @@ def Pg.evRun : {Γ : List Sl} → {R : Sl} → Pg Γ R → List PLoc → Nat →
   | _, _, .loop (s := s) Δ b init k, L, d, n, v =>
     let st := init.locP L d
     let res := d + 2 * Δ.length
-    let rl := (b.rlP (st ++ L) (res + 2)).getD default
+    let rl := (b.rlP (st ++ L) (res + 2)).getD rlNone
     match runEv b v n (init.den v) with
     | none => none
     | some (r, Eb) => (k.evRun (resLocP s res rl :: L) (res + 2) n (r, v)).map fun q =>

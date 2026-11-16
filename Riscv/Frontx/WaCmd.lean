@@ -676,6 +676,7 @@ partial def reifyPg (ctx : List Ent) (e : Expr) (R : Sl) (names : IO.Ref (Array 
       withLocalDeclD n t fun x => do
         let lp ← if v'.isAppOfArity ``Array.foldl 7 then reifyFold ctx v' names loops else reifyLoop ctx v' sl names loops
         waStagesRef.modify (·.push (.loopS ((← loops.get).size - 1) [.sc .nat]))
+        waLetValsRef.modify (·.push (x, v'))
         let k ← reifyPg (⟨x, sl⟩ :: ctx) (b.instantiate1 x) R names loops
         `($lp $k)
     else
@@ -819,18 +820,23 @@ where
       unless ps.size == args.size do throwError "wa_compile: {fn}: partial application"
       let some (_, _, rhs) := eq.eq? | throwError "wa_compile: equation of {fn}"
       -- `Prop` parameters (proofs) are not state: dropped from the loop, rebuilt in `g` from the invariant
-      let mut Δ : List Sl := []
-      let mut keep : Array Nat := #[]
-      let mut props : Array Nat := #[]
-      for h : j in [0:ps.size] do
-        let p := ps[j]
-        if ← isProp (← inferType p) then props := props.push j; continue
-        let some sl ← slOf? (← inferType p) | throwError "wa_compile: {fn}: unsupported parameter {p}"
-        Δ := Δ ++ [sl]; keep := keep.push j
       -- the parameters a recursive call changes
       let calls := collectApps fn rhs
       let modified (j : Nat) : Bool :=
         calls.any fun c => c.getAppNumArgs == ps.size && c.getAppArgs[j]? != some ps[j]!
+      let mut Δ : List Sl := []
+      let mut keep : Array Nat := #[]
+      let mut props : Array Nat := #[]
+      -- paged: an array parameter the loop never changes, given an array of the environment, is that array
+      let mut dropped : Array Nat := #[]
+      for h : j in [0:ps.size] do
+        let p := ps[j]
+        if ← isProp (← inferType p) then props := props.push j; continue
+        let some sl ← slOf? (← inferType p) | throwError "wa_compile: {fn}: unsupported parameter {p}"
+        if (← waPagedRef.get) && sl matches .ar _ && !modified j && (← Ent.find? ctx args[j]!).isSome then
+          dropped := dropped.push j; continue
+        Δ := Δ ++ [sl]; keep := keep.push j
+      let rhs := rhs.replaceFVars (dropped.map (ps[·]!)) (dropped.map (args[·]!))
       -- initial values
       let mut init ← `(Inis.nil)
       for (j, sl) in (keep.toList.zip Δ).reverse do
@@ -851,9 +857,16 @@ where
         return out
       let gE ← withLocalDeclD `s sT fun s => do
         let cs ← comps s
-        if props.isEmpty then return ← mkLambdaFVars #[s] (mkAppN e.getAppFn cs)
+        if props.isEmpty then
+          let mut full : Array Expr := #[]
+          let mut ki := 0
+          for j in [0:ps.size] do
+            if dropped.contains j then full := full.push args[j]!
+            else full := full.push cs[ki]!; ki := ki + 1
+          return ← mkLambdaFVars #[s] (mkAppN e.getAppFn full)
         -- `if h : T₁ ∧ … then fn … h.1 … else default`
-        let pts ← props.mapM fun j => do return (← inferType ps[j]!).replaceFVars kps cs
+        let pts ← props.mapM fun j => do
+          return ((← inferType ps[j]!).replaceFVars kps cs).replaceFVars (dropped.map (ps[·]!)) (dropped.map (args[·]!))
         let C := pts.pop.foldr (fun t acc => mkAnd t acc) pts.back!
         let RT ← inferType e
         let yes ← withLocalDeclD `h C fun h => do
@@ -867,6 +880,7 @@ where
           let mut ki := 0; let mut pi := 0
           for j in [0:ps.size] do
             if props.contains j then full := full.push pf[pi]!; pi := pi + 1
+            else if dropped.contains j then full := full.push args[j]!
             else full := full.push cs[ki]!; ki := ki + 1
           mkLambdaFVars #[h] (mkAppN e.getAppFn full)
         let no ← withLocalDeclD `h (mkNot C) fun h => do
@@ -881,11 +895,18 @@ where
         let mut ki := 0
         for j in [0:ps.size] do
           if props.contains j then continue
+          if dropped.contains j then allArgs := allArgs.push args[j]!; continue
           allArgs := allArgs.push cs[ki]!; ki := ki + 1
         mkLambdaFVars #[s] ((mkAppN Pu allArgs).headBeta)
       let μE ← withLocalDeclD `s sT fun s => do
         let cs ← comps s
-        mkLambdaFVars #[s] ((mkAppN μu cs).headBeta)
+        let mut allArgs : Array Expr := #[]
+        let mut ki := 0
+        for j in [0:ps.size] do
+          if props.contains j then continue
+          if dropped.contains j then allArgs := allArgs.push args[j]!; continue
+          allArgs := allArgs.push cs[ki]!; ki := ki + 1
+        mkLambdaFVars #[s] ((mkAppN μu allArgs).headBeta)
       loops.modify (·.push ⟨← substLets gE, ← substLets PE, ← substLets μE, Δ, fn⟩)
       `(Pg.loop $(← ctxSyn Δ) $body $init)
   collectApps (fn : Name) (e : Expr) : Array Expr := Id.run do

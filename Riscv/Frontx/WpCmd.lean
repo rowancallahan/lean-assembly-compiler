@@ -202,7 +202,7 @@ elab_rules : command
         let okall ← `(tactic| ($(← liftMacroM (seqT st)); simp only [$P:ident] at hP; (try simp only [$unf,*] at *); wp_dsimp; wp_close))
         let step ← `(tactic| ($(← liftMacroM (seqT st2)); wp_step $P $μ))
         let unI := mkIdent l.un
-        let simpG ← `(tactic| simp only [$g:ident, $unf,*, ← getElem!_pos, dite_eq_ite, decide_eq_true_eq, Bool.and_eq_true, Bool.or_eq_true, Bool.not_eq_true', decide_eq_false_iff_not, beq_iff_eq, bne_iff_ne])
+        let simpG ← `(tactic| simp only [$g:ident, $unf,*, $gsAll,*, Nat.toUInt32, ← getElem!_pos, dite_eq_ite, decide_eq_true_eq, Bool.and_eq_true, Bool.or_eq_true, Bool.not_eq_true', decide_eq_false_iff_not, beq_iff_eq, bne_iff_ne])
         let heq ← if propLoops[k]! then
             `(tactic| ($(← liftMacroM (seqT st3)); simp only [$P:ident] at hP; simp only [$g:ident]; wp_dif; rw [$unI:ident]; wp_dsimp; $simpG:tactic; wp_dif))
           else

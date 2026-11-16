@@ -1,5 +1,7 @@
 import Riscv.Frontx.PgTop
 import Riscv.Frontx.WpLeanZip2
+import Riscv.Frontx.WpLeanZip3
+import Riscv.Frontx.WpRun
 #print axioms Proven.Mach.Riscv.stub_run
 #print axioms Proven.Top.stub_top
 #print axioms Proven.WA.body_ok
@@ -18,3 +20,12 @@ import Riscv.Frontx.WpLeanZip2
 #print axioms Proven.WA.LeanZip2.copyLoopGoE.pgGood
 #print axioms Proven.WA.LeanZip2.copyLoopGoE.compiles
 #print axioms Proven.WA.LeanZip2.copyLoopGoE.computes
+#print axioms Proven.WA.memoryNeeded_eval
+#print axioms Proven.WA.LeanZip3.kraftPE.goodE
+#print axioms Proven.WA.LeanZip3.kraftPE.pgGood
+#print axioms Proven.WA.LeanZip3.kraftPE.compiles
+#print axioms Proven.WA.LeanZip3.kraftPE.computes
+#print axioms Proven.WA.LeanZip3.nextCodesPE.goodE
+#print axioms Proven.WA.LeanZip3.nextCodesPE.pgGood
+#print axioms Proven.WA.LeanZip3.nextCodesPE.compiles
+#print axioms Proven.WA.LeanZip3.nextCodesPE.computes
