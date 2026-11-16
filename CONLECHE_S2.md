@@ -53,3 +53,15 @@ Port state (not advanced this session):
 - Compile, emit, and `frontx_test.py check 50`: **not run**.
 
 Next step: build `Riscv/Frontx/ConLecheS2.lean` on `import Riscv.Frontx.ExprExamples` with the verbatim `DecidableEq` chain from `origin/conleche-depth` `Testing/conleche-depth/out/F2.lean.txt` (~lines 82–160, 479–605, 1696–1725), removing the duplicate defs, then gate the 64 targets.
+
+## Port attempt 2 (fresh ConLecheS2.lean)
+
+- `Riscv/Frontx/ConLecheS2.lean` now imports `ExprExamples` (reuses Expr/Name/Level/Literal, satRange, bvarOfData, etc.). Only one block so far: batch B #3 `Expr.piSortTeleLen?`, verbatim, body shortened to its definition (doc comment removed).
+- Gate: `frontx_ind_gate ConLeche.Expr.piSortTeleLen? on TExpr` → **gate FAIL: frontx_ind: unsupported result type `Option Nat`**. Not compiled, no emit, no test.
+- Full batch B (230 blocks, slice 2 lines un-commented, rest commented out, imports as above) elaborates with **101 errors**. Causes:
+  1. Gate names are written without the `ConLeche.` prefix once the namespace has closed (`Unknown constant Expr.piSortTeleLen?`). Every slice target needs its full name.
+  2. `ConLeche.Expr.numArgs` duplicates the one in `ExprExamples`.
+  3. Callees missing from the slice are not defined in the file: `pi`, `cnst`, `piA` (BasisDSL / Builder), `quotName`, `quotSoundName`, `natZeroName`, `listNilName`, `charOfNatName`, `eqRecMotive`, `quotRel`, `lamProj?`. The note's "callees" column does not list all of these, so it cannot be used as the dependency closure.
+  4. Batch A's targets (A is a separate file, not included here) and the `DecidableEq` chain are not in the file, so the Expr-equality targets are not testable yet.
+- Leaf-only probe (no-callee targets alone): all failed at unknown names of the same kind; no gate passed or ran.
+- Status: 0 of 64 targets gated successfully, 0 compiled, 0 tested. Remaining work is (a) build the full dependency closure of each slice target verbatim (following real references, not the note's callee column), (b) add the `DecidableEq`/`beqMemo` chain from F2 (lines 1166–1730, plus `ptrDecEq` at F2:37), (c) qualify gate names.
