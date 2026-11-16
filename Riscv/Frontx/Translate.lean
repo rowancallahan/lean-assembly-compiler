@@ -1581,14 +1581,17 @@ partial def resultComps (ty : Expr) (param := false) : MetaM (Option (Array (Exp
       -- a structure: its fields, each a scalar or again such a structure
       let mut out := #[]
       for fld in getStructureFields (← getEnv) sn do
-        let (fty, projL) ← withLocalDeclD `p ty fun p => do
+        let (fty, projL, dep) ← withLocalDeclD `p ty fun p => do
           let pr ← mkProjection p fld
-          return (← inferType pr, ← mkLambdaFVars #[p] pr)
+          let fty ← inferType pr
+          return (fty, ← mkLambdaFVars #[p] pr, fty.containsFVar p.fvarId! || (← isProp fty))
+        -- a proof field, or one whose type depends on another field (`String.isValidUTF8`): no component
+        if dep then if param then continue else return none
         -- a `ByteArray` field is a block (the input), not a component
         if (← whnfR fty).isConstOf ``ByteArray then continue
-        -- in a parameter, an `Array` field is not a component (the body must not read it: it has no variable)
-        if param && (← whnfR fty).isAppOfArity ``Array 1 then continue
-        let some sub ← resultComps fty param | return none
+        -- in a parameter, a field that is not made of scalars (`Array`, `String`, …) is not a component: it has no
+        -- variable, so a body that reads it is rejected when it is translated
+        let some sub ← resultComps fty param | if param then continue else return none
         for (π, t) in sub do
           let l ← withLocalDeclD `p ty fun p => do mkLambdaFVars #[p] (mkApp π (mkApp projL p).headBeta).headBeta
           out := out.push (l, t)
