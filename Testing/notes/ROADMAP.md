@@ -228,3 +228,11 @@ dependency closure; theorem STATEMENTS (`Spec/`) are reviewed by the owner, not 
 - A COMPLETE self-hosted compiler needs the front ends (today Lean metaprograms with tactics) rewritten as a pure function
   from exported kernel terms to code + a certificate checked by the compiled con-leche. Not counted in SELFHOST_DEPTH*;
   needs its own design round before the self-hosting milestone can be met.
+
+### Elaborator and exporter (owner, 2026-11-16)
+
+- The elaborator is trusted by definition: it is the specification of what a written statement means (checked later by
+  reviewing `Spec/` statements printed with `pp.all`). The Lean kernel is assumed correct for now.
+- The exporter (lean4export) is the remaining unverified link for the checkers that read the export. Later item: a
+  round-trip theorem `parse (export decls) = decls` with con-leche's own parser (both pure Lean functions), then compile
+  exporter + parser with our compiler. Chain: elaborator (spec) → exporter (proved) → compiled con-leche (proved) → accept.
