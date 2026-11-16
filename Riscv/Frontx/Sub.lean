@@ -368,11 +368,14 @@ end Proven.Frontx
 namespace Proven.Frontx
 open Proven
 
-/-- the value `mopS` leaves: Lean's `BitVec` operation (`x / 0 = 0`, `x % 0 = x`) -/
+/-- the value `mopS` leaves: Lean's `BitVec` operation (`x / 0 = 0`, `x % 0 = x`); for the signed `div` / `rem`
+the machine's (Lean's `Int` `/` / `%` are built from both, `IntRep.lean`) -/
 def mopV : Mach.MOp → BitVec 64 → BitVec 64 → BitVec 64
   | .mul, x, y => x * y
   | .divu, x, y => x / y
   | .remu, x, y => x % y
+  | .div, x, y => Mach.MOp.eval .div x y
+  | .rem, x, y => Mach.MOp.eval .rem x y
 
 /-- `v := a m b`; for `divu` the machine's all-ones quotient by zero is replaced by `0` -/
 def mopS (m : Mach.MOp) (v : Nat) (a b : BExp) : BStmt :=
@@ -385,6 +388,8 @@ theorem mopS_exec (m : Mach.MOp) (v : Nat) (a b : BExp) (hb : b.vltF v = true) (
   cases m with
   | mul => exact .mop
   | remu => exact .mop
+  | div => exact .mop
+  | rem => exact .mop
   | divu =>
     refine .seq .mop (BExec.assign' ?_)
     have hb' : b.denote (E.set v (Mach.MOp.eval .divu (a.denote E) (b.denote E))) = b.denote E :=

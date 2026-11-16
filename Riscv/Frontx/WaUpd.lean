@@ -14,7 +14,7 @@ open Proven Proven.Frontx
 theorem AK.size_set : ∀ (k : AK) (a : k.T) (i : Nat) (x : k.el.T), AK.size k (AK.set k a i x) = AK.size k a
   | .ba, a, i, x => by show (a.data.set! i x).size = a.data.size; simp
   | .arr .u8, _, _, _ | .arr .u16, _, _, _ | .arr .u32, _, _, _ | .arr .u64, _, _, _ | .arr .nat, _, _, _
-  | .arr .bool, _, _, _ => by simp [AK.size, AK.set]
+  | .arr .bool, _, _, _ | .arr .int, _, _, _ => by simp [AK.size, AK.set]
 
 theorem AK.get_set_eq : ∀ (k : AK) (a : k.T) (i : Nat) (x : k.el.T), i < AK.size k a →
     AK.get k (AK.set k a i x) i = x
@@ -22,7 +22,7 @@ theorem AK.get_set_eq : ∀ (k : AK) (a : k.T) (i : Nat) (x : k.el.T), i < AK.si
     show (ByteArray.set! a i x)[i]! = x
     rw [← ba_data_get']; show (a.data.set! i x)[i]! = x; simp only [AK.size] at h; simp [h]
   | .arr .u8, _, _, _, h | .arr .u16, _, _, _, h | .arr .u32, _, _, _, h | .arr .u64, _, _, _, h
-  | .arr .nat, _, _, _, h | .arr .bool, _, _, _, h => by simp only [AK.size] at h; simp [AK.get, AK.set, h]
+  | .arr .nat, _, _, _, h | .arr .bool, _, _, _, h | .arr .int, _, _, _, h => by simp only [AK.size] at h; simp [AK.get, AK.set, h]
 where
   ba_data_get' (xs : ByteArray) (j : Nat) : xs.data[j]! = xs[j]! := by
     by_cases h : j < xs.size
@@ -36,7 +36,7 @@ theorem AK.get_set_ne : ∀ (k : AK) (a : k.T) (i j : Nat) (x : k.el.T), j ≠ i
     rw [← AK.get_set_eq.ba_data_get', ← AK.get_set_eq.ba_data_get']
     show (a.data.set! i x)[j]! = a.data[j]!; simp [getElem!_def, Ne.symm h]
   | .arr .u8, _, _, _, _, h | .arr .u16, _, _, _, _, h | .arr .u32, _, _, _, _, h | .arr .u64, _, _, _, _, h
-  | .arr .nat, _, _, _, _, h | .arr .bool, _, _, _, _, h => by simp [AK.get, AK.set, getElem!_def, Ne.symm h]
+  | .arr .nat, _, _, _, _, h | .arr .bool, _, _, _, _, h | .arr .int, _, _, _, _, h => by simp [AK.get, AK.set, getElem!_def, Ne.symm h]
 
 theorem AK.set_oob : ∀ (k : AK) (a : k.T) (i : Nat) (x : k.el.T), AK.size k a ≤ i → AK.set k a i x = a
   | .ba, a, i, x, h => by
@@ -46,7 +46,7 @@ theorem AK.set_oob : ∀ (k : AK) (a : k.T) (i : Nat) (x : k.el.T), AK.size k a 
       simp only [Array.set!, Array.setIfInBounds]; rw [dif_neg (by show ¬ i < a.data.size; exact Nat.not_lt.2 h)]
     rw [this]
   | .arr .u8, a, i, _, h | .arr .u16, a, i, _, h | .arr .u32, a, i, _, h | .arr .u64, a, i, _, h
-  | .arr .nat, a, i, _, h | .arr .bool, a, i, _, h => by
+  | .arr .nat, a, i, _, h | .arr .bool, a, i, _, h | .arr .int, a, i, _, h => by
     simp only [AK.size] at h
     simp only [AK.set, Array.set!, Array.setIfInBounds]; rw [dif_neg (Nat.not_lt.2 h)]
 

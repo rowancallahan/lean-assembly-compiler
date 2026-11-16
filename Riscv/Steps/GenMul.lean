@@ -11,6 +11,7 @@ every `Cfg` state.  Semantics checked against the model (`LeanRV64D/InstsEnd.lea
 * `divu`: `a / b`, and all ones when `b = 0` (Lean's `BitVec` / `UInt64` / `Nat` give `0`: callers guard);
 * `remu`: `a % b`, and `a` when `b = 0` (= Lean's `x % 0 = x`). -/
 import Riscv.Steps.GenALU
+import Compiler.MOp
 open LeanRV64D LeanRV64D.Functions Sail Sail.ConcurrencyInterfaceV1
 
 set_option maxRecDepth 1000000
@@ -69,6 +70,37 @@ theorem tbt_nat (n : Nat) : (to_bits_truncate (l := 64) (n : Int)) = BitVec.ofNa
     apply BitVec.eq_of_toNat_eq; simp [BitVec.toNat_umod]
     have := Nat.mod_le a.toNat b.toNat; have := a.isLt; omega
 
+theorem tbt_int (z : Int) : (to_bits_truncate (l := 64) z) = BitVec.ofInt 64 z := by
+  simp only [to_bits_truncate, Sail.get_slice_int]
+  apply BitVec.eq_of_toNat_eq
+  simp [BitVec.extractLsb'_toNat, BitVec.toNat_ofInt]
+  omega
+
+/-- signed `div`: the model's overflow clamp (`-2^63 / -1`) is the wrap of the true quotient `2^63` -/
+@[simp] theorem div_eq (a b : BitVec 64) :
+    to_bits_truncate (l := 64) (if (2 : Int) ^ (63 : Int) ≤ (if b.toInt = 0 then -1 else a.toInt.tdiv b.toInt) then -9223372036854775808
+      else if b.toInt = 0 then -1 else a.toInt.tdiv b.toInt) = Mach.MOp.eval .div a b := by
+  have p63 : (2 : Int) ^ (63 : Int) = 9223372036854775808 := by decide
+  simp only [Mach.MOp.eval, tbt_int, p63]
+  by_cases hb : b = 0
+  · subst hb; simp
+  · have hb' : b.toInt ≠ 0 := fun e => hb (BitVec.eq_of_toInt_eq (by simpa using e))
+    simp only [if_neg hb', if_neg hb]
+    split
+    · have h1 : (a.toInt.tdiv b.toInt).natAbs = a.toInt.natAbs / b.toInt.natAbs := Int.natAbs_tdiv _ _
+      have h2 := Nat.div_le_self a.toInt.natAbs b.toInt.natAbs
+      have h3 := BitVec.toInt_lt (x := a); have h4 := BitVec.le_toInt (x := a)
+      have e : a.toInt.tdiv b.toInt = 9223372036854775808 := by simp at h3 h4; omega
+      rw [e]; decide
+    · rfl
+
+@[simp] theorem rem_eq (a b : BitVec 64) :
+    to_bits_truncate (l := 64) (if b.toInt = 0 then a.toInt else a.toInt.tmod b.toInt) = Mach.MOp.eval .rem a b := by
+  simp only [Mach.MOp.eval, tbt_int]
+  split
+  · next h => rw [h, Int.tmod_zero]
+  · rfl
+
 /-! ## Step lemmas -/
 
 variable {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc)
@@ -80,6 +112,18 @@ theorem step_divu (rd rs1 rs2 : Fin 32) (hi : instrAt s pc (encR 1 5 rd rs1 rs2)
     ∃ s', Next s s' (pc + 4) rd (divu (getX s rs1) (getX s rs2)) s.mem := by genc; gstep
 theorem step_remu (rd rs1 rs2 : Fin 32) (hi : instrAt s pc (encR 1 7 rd rs1 rs2)) :
     ∃ s', Next s s' (pc + 4) rd (getX s rs1 % getX s rs2) s.mem := by genc; gstep
+/-- the model's signed quotient as `execute_DIV` writes it -/
+
+theorem step_div0 (rd rs1 rs2 : Fin 32) (hi : instrAt s pc (encR 1 4 rd rs1 rs2)) :
+    ∃ s', Next s s' (pc + 4) rd (to_bits_truncate (l := 64)
+      (if (2 : Int) ^ (63 : Int) ≤ (if (getX s rs2).toInt = 0 then -1 else (getX s rs1).toInt.tdiv (getX s rs2).toInt)
+        then -9223372036854775808 else if (getX s rs2).toInt = 0 then -1 else (getX s rs1).toInt.tdiv (getX s rs2).toInt))
+      s.mem := by genc; gstep
+theorem step_div (rd rs1 rs2 : Fin 32) (hi : instrAt s pc (encR 1 4 rd rs1 rs2)) :
+    ∃ s', Next s s' (pc + 4) rd (Mach.MOp.eval .div (getX s rs1) (getX s rs2)) s.mem := by
+  have := step_div0 h hpc hok rd rs1 rs2 hi; rwa [div_eq] at this
+theorem step_rem (rd rs1 rs2 : Fin 32) (hi : instrAt s pc (encR 1 6 rd rs1 rs2)) :
+    ∃ s', Next s s' (pc + 4) rd (Mach.MOp.eval .rem (getX s rs1) (getX s rs2)) s.mem := by genc; gstep
 
 end G
 end Proven

@@ -1,5 +1,7 @@
 import Riscv.Frontx.WaMul
 import Riscv.Frontx.MulExamples
+import Riscv.Frontx.IntExamples
+import Riscv.Frontx.WaInt
 #print axioms Proven.Mach.Riscv.implements1_of_execO
 #print axioms Proven.WA.implements1_wa
 #print axioms Proven.WA.implements1_waA
@@ -29,3 +31,52 @@ import Riscv.Frontx.MulExamples
 #print axioms Proven.Frontx.Mul.opsNE.implements1
 #print axioms Proven.Frontx.Mul.gcdE.exec
 #print axioms Proven.Frontx.Mul.gcdE.implements1
+#print axioms LeanSvg.Fx.clamp.exec
+#print axioms LeanSvg.Fx.inRange.exec
+#print axioms LeanSvg.Fx.ofNat.exec
+#print axioms LeanSvg.Fx.mul.exec
+#print axioms LeanSvg.Fx.floor.exec
+#print axioms LeanSvg.Fx.ceil.exec
+#print axioms LeanSvg.Fx.round.exec
+#print axioms LeanSvg.Fx.abs.exec
+#print axioms LeanSvg.Fx.min.exec
+#print axioms LeanSvg.Fx.max.exec
+#print axioms LeanSvg.Fx.scale16.exec
+#print axioms LeanSvg.clampLin.exec
+#print axioms LeanSvg.linInRange.exec
+#print axioms LeanSvg.Image.clampIx.exec
+#print axioms LeanSvg.Image.bicFar.exec
+#print axioms LeanSvg.Image.round32.exec
+#print axioms LeanSvg.Woff.fitsI16.exec
+#print axioms LeanSvg.Raster.insideW.exec
+#print axioms LeanSvg.Grad.norm2.exec
+#print axioms LeanSvg.Grad.clampTo.exec
+#print axioms LeanSvg.Filter.morphCeil.exec
+#print axioms Proven.Frontx.IntEx.clampE.implements1
+#print axioms Proven.Frontx.IntEx.inRangeE.implements1
+#print axioms Proven.Frontx.IntEx.ofNatE.implements1
+#print axioms Proven.Frontx.IntEx.mulE.implements1
+#print axioms Proven.Frontx.IntEx.floorE.implements1
+#print axioms Proven.Frontx.IntEx.ceilE.implements1
+#print axioms Proven.Frontx.IntEx.roundE.implements1
+#print axioms Proven.Frontx.IntEx.absE.implements1
+#print axioms Proven.Frontx.IntEx.minE.implements1
+#print axioms Proven.Frontx.IntEx.maxE.implements1
+#print axioms Proven.Frontx.IntEx.scale16E.implements1
+#print axioms Proven.Frontx.IntEx.clampLinE.implements1
+#print axioms Proven.Frontx.IntEx.linInRangeE.implements1
+#print axioms Proven.Frontx.IntEx.clampIxE.implements1
+#print axioms Proven.Frontx.IntEx.round32E.implements1
+#print axioms Proven.Frontx.IntEx.fitsI16E.implements1
+#print axioms Proven.Frontx.IntEx.insideWE.implements1
+#print axioms Proven.Frontx.IntEx.norm2E.implements1
+#print axioms Proven.Frontx.IntEx.clampToE.implements1
+#print axioms Proven.Frontx.IntEx.morphCeilE.implements1
+#print axioms Proven.WA.IntOps.iopsE.good
+#print axioms Proven.WA.IntOps.iopsE.implements1
+#print axioms Proven.WA.IntOps.icmpE.good
+#print axioms Proven.WA.IntOps.icmpE.implements1
+#print axioms Proven.WA.IntOps.fxRoundsE.good
+#print axioms Proven.WA.IntOps.fxRoundsE.implements1
+#print axioms Proven.WA.IntOps.sumDevE.good
+#print axioms Proven.WA.IntOps.sumDevE.implements1
