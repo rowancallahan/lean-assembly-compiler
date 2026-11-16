@@ -2056,3 +2056,17 @@ check.sh; (2) optionally `String.utf8ByteSize` (the chain length, cheap) and `St
 `String.utf8EncodeChar`: count the non-continuation bytes); (3) string literals as constant chains in `E`
 (Name constants like `Name.str .anonymous "Nat"`, `=` with a constant side); (4) small linter warnings (unused simp
 arguments in `IndStrOk.lean`, `IndDec.lean`, `IndSup.lean`).
+
+## 33. Int in the inductive path (branch `feat-int-ind`; PAUSED, no code yet)
+
+State (2026-11-16): setup done (build cache, Sail, QEMU, elan); con-leche @6810492c1 source read from
+`origin/conleche-depth:Testing/conleche-depth/out/F2.lean.txt` (`Level.leq/rest/byCases` = Kernel/Level.lean part). No compiler change made.
+1. `Int` kind is front-end only: a field/param is already a word (`rI`), byte format and `Compiler/Ind*.lean` unchanged. Add `Sc.int`
+   in `IndCmd.lean` (`scOf?`, `Sc.rep` = `rI`), `+ - ` literals, `<`/`≤`/`=` via `Op.slt`/`eq` with `IntRep.lean` lemmas
+   (`rI_slt`, `rI_inj`, `rI_add`), range clause `-2^63 ≤ x < 2^63` in `T.small`, `Int` params/results in the theorem shapes.
+2. Level.leq family needs more than that (all listed "not done" in §17/§19/§25): (a) two tree parameters matched jointly
+   (`l`, `r`); (b) fuel recursion on freshly built trees (`leqCore fuel l (.max …)`), not structural: `Pg.sem`, stack and
+   allocation bounds are structural today; (c) mutual recursion leqCore/rest/imaxRules/byCases; (d) helpers `simplify`,
+   `combining`, `subst` (build trees, `=` on `Level`, `where go`, overlapping patterns); (e) `Option Bool` with `do`.
+3. Next: do step 1 on small Int-carrying inductives (Implements1 + ≥50 QEMU/Sail cases each, `axioms_feat-int-ind.lean`),
+   then plan (a)-(e) as separate rounds; owner to decide scope.
