@@ -101,11 +101,11 @@ theorem jTo_ok {m : Mem} {regs : Nat → Val} {s : T.S} {q t : Nat} {os : List E
 
 /-- a compare-and-branch on `r0, r1` -/
 theorem br_ok {m : Mem} {regs : Nat → Val} {s : T.S} {q : Nat} {rest : List (BitVec 32)} {c : Cond} {k : Bool}
-    {n : Nat} (hA : C.AtQ s q) (hR : C.MR m regs s)
-    (hin : InW C.W q (T.encO (.w (.br c R0 (some R1) k n)) ++ rest)) (hb : T.brOK k n = true) (hk : k = true → n ≤ q) :
+    {n : Nat} {a b : Reg} (hA : C.AtQ s q) (hR : C.MR m regs s)
+    (hin : InW C.W q (T.encO (.w (.br c a (some b) k n)) ++ rest)) (hb : T.brOK k n = true) (hk : k = true → n ≤ q) :
     T.runsTo s fun s' => C.MR m regs s' ∧ T.Same s s' ∧
-      (c.eval (T.get s R0) (T.get s R1) = true → C.AtQ s' (if k then q - n else q + n)) ∧
-      (c.eval (T.get s R0) (T.get s R1) = false → C.AtQ s' (q + T.lenBr)) := by
+      (c.eval (T.get s a) (T.get s b) = true → C.AtQ s' (if k then q - n else q + n)) ∧
+      (c.eval (T.get s a) (T.get s b) = false → C.AtQ s' (q + T.lenBr)) := by
   refine T.toCore.runsTo_mono (T.w_br hb (C.at_of hA hin.left)) fun s' ⟨d, hs, hm⟩ => ?_
   have hU : C.Unch s' := fun a h1 h2 => by rw [hm]; exact hA.2.2 a h1 h2
   refine ⟨hR.Same d.ok d.keep hm hs, hs, fun ht => ⟨d.ok, ?_, hU⟩, fun hf => ⟨d.ok, ?_, hU⟩⟩
@@ -139,7 +139,7 @@ theorem brTo_ok {m : Mem} {regs : Nat → Val} {s : T.S} {q t : Nat} {c : Cond} 
   by_cases hok : T.brOK (decide (t < q)) (if t < q then q - t else t - q) = true
   · rw [if_pos hok] at hb
     cases hb
-    refine T.toCore.runsTo_mono (C.br_ok (c := c) hA hR (by simpa [Target.words] using hin) hok
+    refine T.toCore.runsTo_mono (C.br_ok (c := c) (a := R0) (b := R1) hA hR (by simpa [Target.words] using hin) hok
       (fun h => by split <;> simp_all <;> omega)) fun s' ⟨hR', _, ht, hf⟩ => ⟨hR', fun e => ?_, fun e => ?_⟩
     · have := ht e
       by_cases h : t < q
@@ -156,7 +156,7 @@ theorem brTo_ok {m : Mem} {regs : Nat → Val} {s : T.S} {q t : Nat} {c : Cond} 
         rw [hj] at hb; cases hb
         have hin' : InW C.W q (T.encO (.w (.br c.neg R0 (some R1) false (T.lenBr + T.lenJ))) ++
             (T.encO j ++ rest)) := by simpa [Target.words, List.append_assoc] using hin
-        refine T.toCore.runsTo_trans (C.br_ok hA hR hin' hok (fun h => nomatch h)) fun s₁ ⟨hR₁, hs₁, ht, hf⟩ => ?_
+        refine T.toCore.runsTo_trans (C.br_ok (a := R0) (b := R1) hA hR hin' hok (fun h => nomatch h)) fun s₁ ⟨hR₁, hs₁, ht, hf⟩ => ?_
         have e0 : T.get s₁ R0 = T.get s R0 := hs₁ R0
         have e1 : T.get s₁ R1 = T.get s R1 := hs₁ R1
         have hlen : T.len [.w (.br c.neg R0 (some R1) false (T.lenBr + T.lenJ)), j] = T.lenBr + T.lenJ := by
