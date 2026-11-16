@@ -1584,3 +1584,98 @@ work bound vs the new code at `memoryNeeded`): `bt_count` +67%, `bt_graftleft` +
 "a compare + branch per alloc / call".  The checks sit on every heap word access: `li; bltu` on the fast path
 (about 4 instructions), about 30 on a heap-growing store (it zeroes the new words), and about 10 per call.  A
 per-allocation check would need a source-level proof that loads stay below the heap length.
+
+## 27. Higher-order arguments by specialisation (branch `feat-hof`)
+
+Files: `Riscv/Frontx/SpecHof.lean` (new: the pass and the commands), `Riscv/Frontx/HofExamples.lean` (new: targets),
+`Testing/scripts/axioms_x.lean` (new). Shared files touched: `Riscv/Frontx/Translate.lean` (two proof tactics of
+`frontx_view`, below), `Testing/scripts/check.sh` (`axioms_x` in the loop), `Testing/scripts/expected-axioms.txt`
+(39 lines appended), `Testing/asm/emit_frontx.lean` (one `#eval` block), `Testing/asm/frontx_test.py` (`LISTS`).
+No `Compiler/`, `Spec/` or `Ind*` file changed.
+
+**The pass** (`frontx_hof h`, front end only; everything after it is the existing translator):
+- A **site** is a call `F a₁ … aₙ` of a definition `F` where some argument is a function known at compile time
+  (function-typed, not a proof or type family, and no free variable of it is itself a function: a lambda, a
+  named function, a partial application `BOp.eval .xor 0x55`, `f ∘ g`). Fixed positions: types, instances, proofs,
+  known functions. Matchers, recursors, `ite`/`dite`/`cond`/`bind`/projections are never sites.
+- A recursive `F` gets a **first-order copy** `h.hof<k> c₁ … cₘ y₁ … yₚ := F a…` (the `cᵢ` the first-order free
+  variables the fixed arguments capture, e.g. `k` in `(· > k)`; the `yⱼ` the non-fixed arguments), and
+  `h.hof<k>.eq`: `F`'s own unfolding equation at these arguments, the recursive calls with the same fixed arguments
+  folded to the copy (a call that changes a fixed argument is rejected), the known function beta-reduced,
+  `Function.comp` unfolded. This step is definitional: the proof term is `F`'s equation, the kernel checks the
+  folded statement by delta. A non-recursive user `F` (`Array.find`) and `List.countP` are unfolded instead.
+  Equal sites share one copy; sites inside a copy's body are specialised in turn (depth ≤ 8).
+- **Rewriting steps** (`simp only` with the listed lemmas, the proof kept, so not definitional but kernel-checked):
+  before: `Array.foldl_toList` (reversed), `List.foldl_nil/cons` (a fold over a literal list, e.g. a pipe of
+  stages), fusion `List.map_map`, `foldl_map`, `foldr_map`, `any_map`, `all_map`, `countP_map`; after, on each copy:
+  `cons_append`/`nil_append` (`[x, x] ++ r`), `pure_bind`, `Option.pure_def`, `failure = none`, `some a >>= f = f a`
+  (`do` in `Option`), `cond_eq_if`, `a || r` / `a && r` → `if` when `r` holds the recursive call (marked first,
+  definitionally, `hofMark`), and per `Bool` matcher `m` a generated lemma `m.hof_ite : m _ b x y = if b = true
+  then x () else y ()` (by cases; Lean's `List.filter`/`find?` match on `p a`).
+- **Partial evaluation**: user definitions applied to a closed constructor term (`Stage.denote (.map e)`,
+  `ByteExp.denote 0 x e`, `BPred.denote`, `BOp.eval .xor`) are rewritten by their own equation lemmas until nothing
+  changes. That is how the compiler core's pipeline semantics at a known stage becomes a first-order loop.
+- Three once-and-for-all lemmas replace unfolding equations whose `match` also binds the function (`List.any`,
+  `List.all`) or that have none (`List.flatMap := flatten ∘ map`): `hof_any_eq`, `hof_all_eq`, `hof_flatMap_eq`
+  (`cases l <;> rfl` / `simp`).
+- Result `h.hof : h ys = body'` (`body'` calls the copies). `frontx_hof_entry g [measure μ] [with inv]` for an
+  entry `g : ByteArray → R`: `frontx_hof g`; the copy on the input (`frontx_view`, or `c.ba B … := c B.data …` for
+  an `Array UInt8` parameter: sizes and reads of `B.data` are those of `B`, definitionally); `frontx_compile` (measure
+  default `B.size - i`); `g.hof.entry : g xs = c.view xs 0 …` (`rw [g.hof]; rfl`); `frontx_entry g from
+  g.hof.entry`. Then `frontx_implements[_list|_bytes] g` as before, so `g.implements1` is about `g` itself.
+
+`Translate.lean` hook (proofs only, no generated code changes): `frontx_view`'s simple path tried `simp only [copy]`
+before `rw [eq]`; for an equation that is not definitional (the rewriting steps) `simp only` made progress and left
+the goal open. Now `first | rfl | (rw [eq] <;> rfl) | …` (the old `(rw [eq]; rfl)` failed whenever `rw` itself closed
+the goal), and the general path's leaves (`veqGo`) also try `rw [eq]` / `simp only [eq, Nat.add_sub_cancel]`.
+
+**Compiled, machine theorem** `g.implements1` (the Sail axiom set, compared with `crcRaw.implements1`'s), `g.exec`
+and `.hof` at most `propext`, `Classical.choice`, `Quot.sound`; test `frontx_test.py check 50` on QEMU and Sail
+against executed Lean (`emit_frontx.lean`), all ok, lengths up to 2769:
+
+| entry | higher-order function, known argument | source | words |
+|---|---|---|---|
+| `nonFindGt3` | `EarlyReturn.Non.List.find? (· > 3)` | fp-lean @0abeea5 `MonadTransformers/Do.lean:93` | 77 |
+| `findGt3` | `EarlyReturn.List.find? (· > 3)` (`do`, `failure`, `return`) | `Do.lean:105` | 77 |
+| `filterGt3` | `NonTail.filter (· > 3)` (no hand `def` any more, cf. §12 `filterAll`) | `ProgramsProofs/TCO.lean:183`, use `:204` | 65 |
+| `foldrSum` | `ListExtras.List.foldr (· + ·) 0` on `map UInt8.toNat` (two copies) | `DependentTypes/Finite.lean:118`, use `:126` | 79 |
+| `arrFindGt3` | `Array.find · (· > 3)` → `findHelper` (`Array UInt8` as the input, result `Option (Nat × UInt8)`) | `ProgramsProofs/Arrays.lean:293-306` | 106 |
+| `mapInc`, `mapComp`, `mapXor` | `List.map (· + 1)`, `map ((· ^^^ 0x5A) ∘ (· + 7))`, `map (BOp.eval .xor 0x55)` | Lean core; `BOp.eval` `Compiler/Front/Pipe.lean:27` | 57, 61, 59 |
+| `sumFoldl` | `List.foldl (fun acc x => acc + x.toNat) 0` (`with` invariant, as `Tail.sum`) | core | 73 |
+| `xorArr` | `Array.foldl (· ^^^ ·) 0` on `xs.data` | core | 52 |
+| `dupAll` | `List.flatMap (fun x => [x, x])` | core | 63 |
+| `filterNZ`, `anyNL`, `allAscii`, `findHigh`, `countSp` | `filter (· != 0)`, `any (· == 10)`, `all (· < 128)`, `find? (· ≥ 128)`, `countP (· == 32)` (`with` invariant) | core | 68, 68, 65, 78, 83 |
+| `countAbove100` | `countAbove l k := l.countP (· > k)`: the closure captures `k`, a parameter of the copy | ours | 84 |
+| `stageMap` | `Stage.denote (.map e)` = `l.map fun x => e.denote 0 x`, `e` known | `Compiler/Front/Pipe.lean:125` | 61 |
+| `pipe2` | `Pipe.denote [.map e₁, .map e₂]` (`foldl` over the stages unrolled, the maps fused) | `Pipe.lean:137` | 61 |
+| `xstageFilter` | `XStage.denote (.filter p)` = `l.filter p.denote`, `p` a known `BPred` | `Compiler/Front/PipeStd.lean:171` | 67 |
+
+Human input: `with` invariants for `Nat` accumulators (`sumFoldl`, `countSp`, `countAbove100`; the same bound as
+`Tail.sum`/`Tail.length`); `countAbove100` is written out (`frontx_hof`, `frontx_view`, `frontx_compile`, an entry
+equation `rw [countAbove100, countAbove.hof]; rfl`) because its entry is not itself the higher-order call.
+
+Not done / why:
+- `Mine.List.flatMap` (`DependentTypes/DB.lean:458`) verbatim: in Lean 4.29 the `xs.flatMap f` in its body resolves to
+  core `List.flatMap`, so the book's function is a non-recursive wrapper whose body is a `match`; the entry's body is
+  then a `match`, not a call of a copy (`frontx_hof_entry` wants one call). The core function compiles (`dupAll`).
+- `EarlyReturn.Desugared.List.find?` (`Do.lean:123`, `runCatch` over `ExceptT … Option`), `Many.orElse`,
+  `Monads.Writer.andThen`, `listMonoid`: monad transformers / function-valued data, not first-order after
+  specialisation of one argument.
+- `TailRec.Array.map`/`arrayMapHelper` (`Arrays.lean:274-287`), `Array.map`: `Array` results (no array output).
+- Compiler core (`SELFHOST_DEPTH.md` row 1): no function there is blocked by higher-order arguments alone; the
+  closures sit inside passes over `IR.Code`/`BStmt` (n-ary inductives), lists of non-bytes, `Fin`, sized `BitVec`
+  (e.g. `runLi` folds `LiStep.eval` over a `List LiStep` of sized bit vectors, `loB`'s predicate is a parameter).
+  The pipeline semantics above (`Stage/XStage/Pipe.denote`) are the core functions where specialisation alone
+  suffices, at a known stage.
+- con-leche (`CONLECHE_DEPTH.md` row 6): the closures are monadic continuations (`k : Expr → m Expr`), environment
+  lookups (`Name → Option ConstantInfo`) and records of closures (`CoreFns`); every function there fails the type
+  gate first (`Expr`, `m α`). Not attempted.
+- **Escaping closures** (out of scope, reported): closures stored in data (`CoreFns`, `WideF`/`MachineF` records,
+  `Base.get`), returned (`IR.color : … → Option (Nat → Reg)`, `envB`/`svB` in `Opt/BSel.lean`), or passed down a
+  recursion that changes them (rejected: "a recursive call changes a fixed argument").
+- A site inside a loop body of a compiled function whose list argument is not the input (`xs.any …` on a second
+  list) compiles only as far as the translator's calls allow (§12.4: callee blocks are the caller's first block).
+
+Reproduce: `lake build Riscv.Frontx.HofExamples`; `lake env lean --tstack=4000000 Testing/asm/emit_frontx.lean`;
+`for f in Testing/asm/frontx-words/hof_*.cases; do python3 Testing/asm/frontx_test.py check 50 $(basename $f .cases); done`;
+axioms: `Testing/scripts/axioms_x.lean`.
