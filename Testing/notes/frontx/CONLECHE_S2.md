@@ -22,7 +22,7 @@ Assembling `Riscv/Frontx/ConLecheS2.lean` as batch A body + batch B body, after 
 2. **Duplicates with imports.** `ConLeche.satRange`, `bvarOfData`, `fvarOfData`, `lpOfData` are defined by `ScalarExamples` (imported by `ExprExamples`) and by the batch copies. `instantiate1`, `hasFvar`, `piResult`, `getAppFn`, `fvarTypeD` are defined by `ExprExamples.lean` and by batch A. `piResult` (#26) is already compiled with `frontx_ind` in `ExprExamples.lean:247`.
 3. **Batch A and batch B clash.** Both define `bvarOfData`, `fvarOfData`, `lpOfData` (A: lines 62-70; B: lines 1354, 3780, 5260). They cannot be concatenated verbatim into one file.
 
-No target was gated, so the gate and compile columns are empty for all 64. The scratch draft is at `/tmp/claude-0/-home-user-lean-assembly-compiler/2c39469b-61a8-5e5c-b758-bc6a003977bb/scratchpad/batchA.lean` and `batchB.lean`; the failing assembly was `Riscv/Frontx/ConLecheS2.lean` (untracked, not committed).
+No target was gated, so the gate and compile columns are empty for all 64. The draft (does not elaborate) is `Testing/conleche-batches/ConLecheS2.draft.lean`, outside `Riscv.Frontx` so the `Frontx` lake glob does not pick it up.
 
 ## Options to finish
 
