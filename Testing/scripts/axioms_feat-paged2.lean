@@ -29,3 +29,11 @@ import Riscv.Frontx.WpRun
 #print axioms Proven.WA.LeanZip3.nextCodesPE.pgGood
 #print axioms Proven.WA.LeanZip3.nextCodesPE.compiles
 #print axioms Proven.WA.LeanZip3.nextCodesPE.computes
+#print axioms Proven.WA.LeanZip3.longCodesE.goodE
+#print axioms Proven.WA.LeanZip3.longCodesE.pgGood
+#print axioms Proven.WA.LeanZip3.longCodesE.compiles
+#print axioms Proven.WA.LeanZip3.longCodesE.computes
+#print axioms Proven.WA.LeanZip3.specNextCodesE.goodE
+#print axioms Proven.WA.LeanZip3.specNextCodesE.pgGood
+#print axioms Proven.WA.LeanZip3.specNextCodesE.compiles
+#print axioms Proven.WA.LeanZip3.specNextCodesE.computes

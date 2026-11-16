@@ -46,15 +46,15 @@ Features the user listed, in order. A feature with no row alone shows its two-fe
 | 5 | `Huffman.Spec.countLengths` | 5 | Zip/Spec/Huffman.lean:74@7e10583 | ARR | still blocked (no §22-24 change) |
 | 6 | `Zip.Native.HuffTree.fillSlots` | 5 | Zip/Native/Inflate.lean:398@7e10583 | ARR | still blocked (no §22-24 change) |
 | 7 | `Crc32.Spec.crcByteTable` | 6 | Zip/Spec/Crc32.lean:84@7e10583 | ARR | still blocked as a frontx unit; its table sits inside `crc32`/`updateBytes`, which `WaLeanZip` compiles via `wa` (probe §1) |
-| 8 | `Zip.Native.HuffTree.countLongCodes` | 7 | Zip/Native/InflateTreeFree.lean:94@7e10583 | ARR | still blocked (no §22-24 change) |
+| 8 | `Zip.Native.HuffTree.countLongCodes` | 7 | Zip/Native/InflateTreeFree.lean:94@7e10583 | ARR | **compiled verbatim, paged** (`wp_compile`, NOTES §35, `Riscv/Frontx/WpLeanZip3.lean`; `CompileCorrect`/`CompileRuns` via `PgTop`) |
 | 9 | `Zip.Native.HuffTree.countLongCodes.go` (nested `where`; lines of parent) | 7 | Zip/Native/InflateTreeFree.lean:94@7e10583 | ARR | still blocked (no §22-24 change) |
-| 10 | `Zip.Native.HuffTree.hasLongCode` | 8 | Zip/Native/InflateTreeFree.lean:176@7e10583 | ARR | still blocked (no §22-24 change) |
+| 10 | `Zip.Native.HuffTree.hasLongCode` | 8 | Zip/Native/InflateTreeFree.lean:176@7e10583 | ARR | blocked: `Nat` comparison on an element of a computed array needs a bound across loops; NOTES §35 |
 | 11 | `Zip.Native.HuffTree.hasLongCode.go` (nested `where`; lines of parent) | 8 | Zip/Native/InflateTreeFree.lean:176@7e10583 | ARR | still blocked (no §22-24 change) |
-| 12 | `Zip.Native.HuffTree.kraftSumFast` | 8 | Zip/Native/Inflate.lean:555@7e10583 | ARR | **possibly unblocked now** (§22 `wa` entries `kraftE`, `nextCodesE` with `countLengthsFast`; verified there, not on the list path) |
+| 12 | `Zip.Native.HuffTree.kraftSumFast` | 8 | Zip/Native/Inflate.lean:555@7e10583 | ARR | **compiled verbatim, paged** (`wp_compile`, NOTES §35, `Riscv/Frontx/WpLeanZip3.lean`; `CompileCorrect`/`CompileRuns` via `PgTop`) |
 | 13 | `Zip.Native.HuffTree.kraftSumFast.go` (nested `where`; lines of parent) | 8 | Zip/Native/Inflate.lean:555@7e10583 | ARR | **possibly unblocked now** (§22 `wa` entries `kraftE`, `nextCodesE` with `countLengthsFast`; verified there, not on the list path) |
-| 14 | `Zip.Native.HuffTree.nextCodesFast` | 9 | Zip/Native/Inflate.lean:587@7e10583 | ARR | **possibly unblocked now** (§22 `wa` entries `kraftE`, `nextCodesE` with `countLengthsFast`; verified there, not on the list path) |
+| 14 | `Zip.Native.HuffTree.nextCodesFast` | 9 | Zip/Native/Inflate.lean:587@7e10583 | ARR | **compiled verbatim, paged** (`wp_compile`, NOTES §35, `Riscv/Frontx/WpLeanZip3.lean`; `CompileCorrect`/`CompileRuns` via `PgTop`) |
 | 15 | `Zip.Native.HuffTree.nextCodesFast.go` (nested `where`; lines of parent) | 9 | Zip/Native/Inflate.lean:587@7e10583 | ARR | **possibly unblocked now** (§22 `wa` entries `kraftE`, `nextCodesE` with `countLengthsFast`; verified there, not on the list path) |
-| 16 | `Huffman.Spec.nextCodes` | 10 | Zip/Spec/Huffman.lean:83@7e10583 | ARR | still blocked (no §22-24 change) |
+| 16 | `Huffman.Spec.nextCodes` | 10 | Zip/Spec/Huffman.lean:83@7e10583 | ARR | **compiled verbatim, paged** (`wp_compile`, NOTES §35, `Riscv/Frontx/WpLeanZip3.lean`; `CompileCorrect`/`CompileRuns` via `PgTop`) |
 | 17 | `Huffman.Spec.nextCodes.go` (nested `where`; lines of parent) | 10 | Zip/Spec/Huffman.lean:83@7e10583 | ARR | still blocked (no §22-24 change) |
 | 18 | `Zip.Native.HuffTree.countLengthsFast` | 10 | Zip/Native/Inflate.lean:536@7e10583 | ARR | **possibly unblocked now** (§22 `wa` entries `kraftE`, `nextCodesE` with `countLengthsFast`; verified there, not on the list path) |
 | 19 | `Zip.Native.HuffTree.countLengthsFast.go` (nested `where`; lines of parent) | 10 | Zip/Native/Inflate.lean:536@7e10583 | ARR | **possibly unblocked now** (§22 `wa` entries `kraftE`, `nextCodesE` with `countLengthsFast`; verified there, not on the list path) |
@@ -153,14 +153,16 @@ No node needs only this feature.
 
 ### BAO — `ByteArray` result (output growth)
 
+(feat-paged2, NOTES §35: `copyLoopGo` (BAO+PRFARG) also compiled verbatim on the paged back end, 114 QEMU+Sail cases.)
+
 | # | function (probe name) | lines | file:line@rev | probe class | status |
 |---|---|---:|---|---|---|
-| 1 | `ByteArray.copyWithin` | 3 | Zip/Native/CopyWithin.lean:37@7e10583 | BAO | not unblocked: §24 is inductive-path only; ByteArray growth untouched |
+| 1 | `ByteArray.copyWithin` | 3 | Zip/Native/CopyWithin.lean:37@7e10583 | BAO | **compiled verbatim, paged** (`wp_compile`, NOTES §35, `Riscv/Frontx/WpLeanZip2.lean`; `CompileCorrect`/`CompileRuns` via `PgTop`); 114 QEMU+Sail cases |
 | 2 | `ByteArray.extendWithin` | 3 | Zip/Native/ExtendWithin.lean:63@7e10583 | BAO | not unblocked: §24 is inductive-path only; ByteArray growth untouched |
 | 3 | `ByteArray.copyWithinAt` | 4 | Zip/Native/InflateFast.lean:83@7e10583 | BAO | not unblocked: §24 is inductive-path only; ByteArray growth untouched |
 | 4 | `ByteArray.copyWithinAtGo` | 6 | Zip/Native/InflateFast.lean:62@7e10583 | BAO | not unblocked: §24 is inductive-path only; ByteArray growth untouched |
-| 5 | `Zip.Native.InflateBuf.storedCopyLoop` | 6 | Zip/Native/InflateFast.lean:596@7e10583 | BAO | not unblocked: §24 is inductive-path only; ByteArray growth untouched |
-| 6 | `ByteArray.fillDouble` | 7 | Zip/Native/ExtendWithin.lean:48@7e10583 | BAO | not unblocked: §24 is inductive-path only; ByteArray growth untouched |
+| 5 | `Zip.Native.InflateBuf.storedCopyLoop` | 6 | Zip/Native/InflateFast.lean:596@7e10583 | BAO | **compiled verbatim, paged** (`wp_compile`, NOTES §35, `Riscv/Frontx/WpLeanZip2.lean`; `CompileCorrect`/`CompileRuns` via `PgTop`); 114 QEMU+Sail cases |
+| 6 | `ByteArray.fillDouble` | 7 | Zip/Native/ExtendWithin.lean:48@7e10583 | BAO | blocked: state update `seed ++ seed` is a loop inside a loop body (no nested loops); NOTES §35 |
 
 Two-feature nodes containing BAO (after the single-feature rows above):
 
@@ -234,14 +236,14 @@ Reach from `Zip.Native.Inflate.inflate` is 76 nodes; 62 blocked, 14 supported (6
 | 1 | `Zip.Native.HuffTree.DecodeTable.entryAt` | 2 | Zip/Native/Inflate.lean:260@7e10583 | STR | still blocked (structure parameter); `if h :` bodies now allowed (§23 `dite`) |
 | 2 | `Zip.Native.HuffTree.DecodeTable.lenAt` | 2 | Zip/Native/Inflate.lean:228@7e10583 | STR | still blocked (structure parameter); `if h :` bodies now allowed (§23 `dite`) |
 | 3 | `Zip.Native.HuffTree.DecodeTable.symAt` | 2 | Zip/Native/Inflate.lean:234@7e10583 | STR | still blocked (structure parameter); `if h :` bodies now allowed (§23 `dite`) |
-| 4 | `ByteArray.copyWithin` | 3 | Zip/Native/CopyWithin.lean:37@7e10583 | BAO | not unblocked: §24 is inductive-path only; ByteArray growth untouched — source has `@[extern]`; verbatim body only |
+| 4 | `ByteArray.copyWithin` | 3 | Zip/Native/CopyWithin.lean:37@7e10583 | BAO | **compiled verbatim, paged** (`wp_compile`, NOTES §35, `Riscv/Frontx/WpLeanZip2.lean`; `CompileCorrect`/`CompileRuns` via `PgTop`); 114 QEMU+Sail cases |
 | 5 | `Zip.Native.HuffTree.DecodeTable.entryAtU` | 3 | Zip/Native/Inflate.lean:279@7e10583 | PRFARG+STR+USZ | still blocked (structure parameter); `if h :` bodies now allowed (§23 `dite`) |
 | 6 | `Zip.Native.HuffTree.bitReverse` | 3 | Zip/Native/Inflate.lean:390@7e10583 | MAT | still blocked (no §22-24 change) |
 | 7 | `Huffman.Spec.countLengths` | 5 | Zip/Spec/Huffman.lean:74@7e10583 | ARR | still blocked (no §22-24 change) |
 | 8 | `Zip.Native.HuffTree.fillSlots` | 5 | Zip/Native/Inflate.lean:398@7e10583 | ARR | still blocked (no §22-24 change) |
 | 9 | `Zip.Native.Inflate.fillEntries` | 5 | Zip/Native/Inflate.lean:757@7e10583 | ARR+TUP | still blocked (no §22-24 change) |
 | 10 | `ZipCommon.BitReader.readBytes` | 6 | ZipCommon/BitReader.lean:54@6b7d018 | BAF+EXC | still blocked (no §22-24 change) |
-| 11 | `ByteArray.fillDouble` | 7 | Zip/Native/ExtendWithin.lean:48@7e10583 | BAO | not unblocked: §24 is inductive-path only; ByteArray growth untouched — source has `@[extern]`; verbatim body only |
+| 11 | `ByteArray.fillDouble` | 7 | Zip/Native/ExtendWithin.lean:48@7e10583 | BAO | blocked: state update `seed ++ seed` is a loop inside a loop body (no nested loops); NOTES §35 |
 | 12 | `Zip.Native.HuffTree.countLongCodes.go` (nested) | 7 | Zip/Native/InflateTreeFree.lean:94@7e10583 | ARR | still blocked (no §22-24 change) |
 | 13 | `Zip.Native.HuffTree.hasLongCode.go` (nested) | 8 | Zip/Native/InflateTreeFree.lean:176@7e10583 | ARR | still blocked (no §22-24 change) |
 | 14 | `Zip.Native.HuffTree.kraftSumFast.go` (nested) | 8 | Zip/Native/Inflate.lean:555@7e10583 | ARR | **possibly unblocked now** (§22 `wa` entries `kraftE`, `nextCodesE` with `countLengthsFast`; verified there, not on the list path) |

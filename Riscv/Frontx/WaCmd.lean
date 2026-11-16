@@ -257,7 +257,7 @@ def unfoldable (c : Name) : MetaM Bool := do
   -- structural / well-founded recursion leaves an equation mentioning the constant itself
   if env.contains (c ++ `_unary) then return false
   if let some (.defnInfo d) := env.find? c then
-    if (d.value.find? fun e => e.isConstOf ``WellFounded.fix ||
+    if (d.value.find? fun e => e.isConstOf ``WellFounded.fix || e.isConstOf ``WellFounded.Nat.fix ||
         (e.constName?.map (fun n => n.isStr && (n.getString! == "brecOn" || n.getString! == "rec"))).getD false).isSome then
       return false
   return !(← isRecursiveDefinition c)

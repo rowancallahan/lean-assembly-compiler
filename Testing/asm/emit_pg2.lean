@@ -27,7 +27,7 @@ def need (q : PgProg) (xs : List UInt8) : Nat :=
   | none => 0
 def emit (name : String) (q : PgProg) (f : ByteArray → List UInt8) : IO Unit := do
   IO.FS.createDirAll "Testing/asm/frontx-words"
-  IO.FS.writeFile s!"Testing/asm/frontx-words/pgs_{name}.words" (String.intercalate "\n" ("pgs 1" :: q.code.map hex8) ++ "\n")
+  IO.FS.writeFile s!"Testing/asm/frontx-words/pgs_{name}.words" (String.intercalate "\n" ((if q.R matches .ar _ then "pgs 1" else "pgs 0") :: q.code.map hex8) ++ "\n")
   let mut out := ""
   for xs in inputs do
     let a : ByteArray := ⟨xs.toArray⟩
