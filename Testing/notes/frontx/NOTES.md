@@ -2056,3 +2056,60 @@ check.sh; (2) optionally `String.utf8ByteSize` (the chain length, cheap) and `St
 `String.utf8EncodeChar`: count the non-continuation bytes); (3) string literals as constant chains in `E`
 (Name constants like `Name.str .anonymous "Nat"`, `=` with a constant side); (4) small linter warnings (unused simp
 arguments in `IndStrOk.lean`, `IndDec.lean`, `IndSup.lean`).
+
+## 30. IR stage S2: calls with frames, `switch`, the inductive path on the IR (branch `ir-s2`)
+
+Design: `Testing/notes/IR_DESIGN.md` (branch `ir-design`) §4 stage S2, on top of S1 (`Ir.compile`, branch `ir-s01`).
+
+**Back end with calls** (`Compiler/Ir/`, proved, any `Target`; RISC-V instance `rvT` in `Riscv/Back/IrTarget.lean`):
+* `Target` gained `call` (`jal`), `enterC` / `leaveC` (frame below the caller's, cell 0 the return address), the
+  out-of-memory `exit` (return through the stub's cell, `a0 := -1`) and `keepC`; RISC-V laws from `Riscv/Back/Call.lean`
+  and `MemRv.lean` (no new Sail reasoning).
+* Code (`Emit.lean`: `emitP`): a stub (check its two cells fit, else `a0 := -1; ret`; `enter 0` saves the caller's
+  `gp`, `enterC 0` the return address; call `main`), every function (prologue `enterC n`, slots zeroed, parameters
+  from `r0 ..`), the exit.  A call: arguments into `r0 ..`, check that the callee's frame fits above the heap (else the
+  exit), frame limit down, `jal`; after it the limit back up and the results from `r0 ..` into their slots.  `ret`:
+  results into `r0 ..`, `leaveC n`, `ret`.  `switch x ls d`: `r0 := x`, per index a compare-and-branch (long form when
+  out of reach), then the default.  Layout of all functions by an untrusted fixpoint (`layout`), re-checked by `emitP`.
+* Relation (`EmitStep.lean`): the top frame's `MR` in the context `C.fa n fb sv M` (slots at `fb`, cell 0 `sv`, `M` the
+  memory above the frame as it must stay; `MR.above`), the suspended frames `Stk` (each at the code after its call, its
+  slots in `M`), the cells in use `= cells + (top - fb) / 8` and the peak `≤ work / 8`.  `step_ok` (instruction, call,
+  `jmp`/`br`/`switch`, return into the caller), `done_ok` (return of `main` through the stub), `sim`, `stub_ok`,
+  `emit_ok`.  Out of memory at an `alloc` or a call is exact (`peak (events) > work / 8`).
+* Allocation (`Rename.lean`): every function renamed (slot = position in its register list, untrusted; checked), with
+  `slots` set; the simulation relates frame stacks (destinations renamed by the caller's choice); `alloc_runs`: same
+  values and memory.  Fixed `Sem.lean`: a return assigns the RETURNING frame's destinations (it used the caller's).
+* `Riscv/Back/IrTop.lean`: `Ir.compile`, `ir_compile_runs`, `ir_compile_correct` (same statements as S1, now for
+  programs with calls; `memoryNeeded = 8 · peak (Lin events ++ [stub + main frame])`); `machine_run` takes the meaning
+  only at inputs of at most `2^20` bytes (what `StartCorrect` allows).
+
+**Inductive path lowered to RTL** (`Compiler/Ir/IndLow.lean`, definitions): cell = `alloc 4` + four `st`, `z` = word 0,
+field read = test for `z` + `ld`, dispatch = `switch` on the tag, an arm that is a call on a child = jump to the entry
+(loop), other calls = `call`, `ite` / `bind` in tail position continue in tail position; `dec` (recursive descent,
+strings as length + UTF-8 bytes into chains of cells built from the last byte back) and `enc` (strings: count the cells
+with a child, then their bytes) are RTL functions; `main` decodes, calls, encodes.  Generated through structured code
+(`Compiler/Ir/Struct.lean`: `SC` / `TC`, flattened into blocks with fresh labels); `Compiler/Ir/StructOk.lean` proves
+the flattening against big-step meanings (`flatS_ok`, `flatT_ok`) and the call rule (`reach_call`).
+
+**`IndIr.compile`** (`Riscv/Frontx/IndIr.lean`, beside `IndMem.compile`, which is unchanged): `CompileRuns` /
+`CompileCorrect` proved with exactly the Sail axioms (`Testing/scripts/axioms_ir-s2.lean`).  NOT DONE: `LowerOk p`, the
+correctness of the lowering against `Pg.sem` (the `ind_rtl_ok` of the design).  `compile` checks it as a classical
+condition, so the theorems are vacuous for a program until `LowerOk` is proved for it.  Next: representation `Rv`
+(pointers to 4-cell blocks), `lowE_ok` by induction on `E` against `SC.Ex`, the function by induction on the value
+(tail calls = the entry again), `dec`/`enc` against `C.enc` incl. strings, `main`; then `LowerOk` for all programs
+(no per-entry proof).
+
+**Tests** (`Testing/asm/emit_ind_ir.lean`: the RTL program of every inductive-path entry's `.code` arguments, its words,
+per case Lean's result and `memoryNeeded` from a fast array interpreter checked against `Ir.interp`;
+`python3 Testing/asm/ir_test.py check 50 <name>`): all 40 entries (the 29 of `emit_mem.lean` incl. `pos_comp`,
+`tree_insert5`, `level_combining`, `level_simplify`, which the old route rejects (`WfMem`), and the 11 `expr_*`),
+50 cases each (60 for `expr_*` where generated, tested 50) at `memoryNeeded` (output = Lean, `a0` = input address,
+`gp`/`sp` restored) and `memoryNeeded - 1` (`a0 = -1`), QEMU and Sail, writes only in output + work.  Codes 300–1250
+words (Expr 3270–3700; the old route 4150–5271): no inline heap checks, one check per `alloc` and per call.
+
+**State at pause (owner asked to stop):** QEMU + Sail `ir_test.py check 50` passed for 39 of the 40 entries (all but
+`expr_islit`, not yet run; its words/cases are emitted and the interpreter agrees with Lean). The full `check.sh` (after
+merging origin/main) passed the build and the axioms phase (ir-s2 lines added to `expected-axioms.txt`); it was stopped
+at the word-array phase, so re-run it once. Next steps: (1) `bash Testing/scripts/check.sh`; (2) `ir_test.py check 50
+expr_islit`; (3) prove `LowerOk` (see above: `Rv`, `MLe`, `mkCell` against `SC.Ex`, `lowE_ok`, the function by induction
+on the value, `dec`/`enc`/`main`), then drop the condition from `IndIr.compile`; (4) switch `frontx_ind` to the IR route.
