@@ -11,17 +11,20 @@ work block is too small. L1 = `B` computes `nanoCompileS`; L2 = `CompileCorrect`
 ## Live status
 | piece | state |
 |---|---|
-| L1 `asm` compiled, machine theorem | done (`Nano.Self.nanoAsm.implements1`, nano-e2e) |
+| L1 `asm` compiled, machine theorem | was done for the 9-op `asm`; BROKEN since nano-e2e 4c64d61 (15 ops: `frontx_compile` capacity condition, simp step limit); nano-e2e is on it |
 | L1 `genR` compiled | not yet (nano-e2e: byte-level rewrite in progress) |
 | L1 `nanoElab` compiled | not yet (nano-e2e) |
 | L1 one binary from the stages | glue done: `Nano.Link.link_implements` (this branch) |
 | L2 stack generator `asm ∘ genR` correct | not yet (nano-proof); the IR generator `nanoGen` is proved but is not the self-hosted path |
-| composition `Nano/SelfHost.lean` | not yet |
+| composition `Nano/SelfHost.lean` | statement `SelfHosted` + `selfHosted_of` (target from L1 and L2 as hypotheses) done; instance waits for L1 and L2 |
 | tests | see log below |
 
-## Naming (one consistent set)
-* `nanoGen`, `nanoCompile`, `nanoCompileSrc`: the PROVED IR-route generator (`Nano/GenIr.lean`, `ProofTop.lean`, `Chain.lean`); noncomputable.
-* `genR`, `nanoGenS = asm ∘ genR`, `nanoCompileS`: the stack generator = the SELF-HOSTED path (`Nano/Gen.lean`).
+## Naming (one consistent set; follows the lanes' latest pushes, 22:16–22:24)
+* `genR`, `nanoGen = asm ∘ genR`, `nanoCompile`: the stack generator = the SELF-HOSTED path (`Nano/Gen.lean`, nano-e2e).
+  (The owner prompt calls these `nanoGenS`/`nanoCompileS`.)
+* `nanoGenIR`, `nanoCompileIR`, `nanoCompileSrcIR` (`Nano/GenIR.lean`, `ProofTop.lean`, `ProofSrc.lean`, nano-proof):
+  the PROVED IR-route generator; noncomputable, not the self-hosted path. `Nano/Chain.lean` (nano-mvp) still said
+  `nanoGen`/`nanoCompile` for it: renamed here to the `…IR` names; `nanoCompileSrc` (Chain) kept.
 * `Nano.Self.*`: stages compiled by the big compiler (`….implements1`). `Nano.Link.*`: linking. `Nano.SelfHost.*`: the target.
 
 ## Decisions
@@ -37,3 +40,10 @@ work block is too small. L1 = `B` computes `nanoCompileS`; L2 = `CompileCorrect`
 * Consequence for the lanes: every stage but the last must be compiled with `retLen = true`; intermediate encodings must
   be byte lists whose length is bounded by a function of the input length (inlining in `genR` is exponential in call
   nesting, so the target will carry a size hypothesis or the stages a larger `maxLen`).
+* 2026-11-16 22:40. Merge of nano-e2e 4c64d61, nano-proof 1b1c4fe, nano-mvp 6374c37. `expected-axioms.txt` conflicts
+  resolved with `Testing/nano/fix_axioms_conflict.py` (keep both sides, theirs first = check.sh's loop order).
+  `Nano/AsmSelf.lean` does not build (see table); everything else in `Nano` builds. Sent the e2e session the linking
+  interface (retLen = true for non-final stages, output-length bounds).
+* `Nano/SelfHost.lean`: `SelfHosted B space D compile` (fields `code`, `emits`, `correct`, `correctInt`, `runs`) and
+  `selfHosted_of` from (L1) `Implements1With` for a byte function `cb` on the domain `D` with `cb src = nanoGen p`,
+  (L2) `CompileCorrect`/`CompileRuns riscv compile` with `c.code = nanoGen p`. `D` = the size side conditions.
