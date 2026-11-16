@@ -2386,10 +2386,10 @@ vacuous (`WpProg`, `WpBridge`, proofs unchanged).  `Pg.evRun` (`WpRun.lean`): th
 | BAO `storedCopyLoop` | Zip/Native/InflateFast.lean:596 | `storedCopyE xs = storedCopyLoop xs xs (n >>> 1) 0 n` | `WpLeanZip2` | 2^20 | 114 |
 | BAO `ByteArray.copyWithin` | Zip/Native/CopyWithin.lean:37 (the `@[extern]` attribute line left out; body copied) | `xs.copyWithin (n >>> 2) (n >>> 1)` | `WpLeanZip2` | 2^19 | 114 |
 | BAO+PRFARG `copyLoopGo` | Zip/Native/Inflate.lean:710 | `copyLoopGo (xs.push 0) (n + 1 - (n % 7 + 1)) (n % 7 + 1) 0 n` | `WpLeanZip2` | 2^19 - 1 | 114 |
-| ARR `kraftSumFast` (+`.go`) | Zip/Native/Inflate.lean:555 (with `countLengthsFast` :536) | `kraftSumFast (countLengthsFast xs.data 15) 15` | `WpLeanZip3` | 2^20 | see below |
-| ARR `nextCodesFast` (+`.go`) | Zip/Native/Inflate.lean:587 | `nextCodesFast (countLengthsFast xs.data 15) 15` | `WpLeanZip3` | 2^20 | see below |
-| ARR `countLongCodes` (+`.go`) | Zip/Native/InflateTreeFree.lean:94 (`fastBits` Inflate.lean:144) | `countLongCodes (countLengthsFast xs.data 15) 15` | `WpLeanZip3` | 2^20 | not run |
-| ARR `Huffman.Spec.nextCodes` (+`.go`) | Zip/Spec/Huffman.lean:83 | `nextCodes (countLengthsFast xs.data 15) 15` | `WpLeanZip3` | 2^20 | not run |
+| ARR `kraftSumFast` (+`.go`) | Zip/Native/Inflate.lean:555 (with `countLengthsFast` :536) | `kraftSumFast (countLengthsFast xs.data 15) 15` | `WpLeanZip3` | 2^20 | 114 |
+| ARR `nextCodesFast` (+`.go`) | Zip/Native/Inflate.lean:587 | `nextCodesFast (countLengthsFast xs.data 15) 15` | `WpLeanZip3` | 2^20 | 114 |
+| ARR `countLongCodes` (+`.go`) | Zip/Native/InflateTreeFree.lean:94 (`fastBits` Inflate.lean:144) | `countLongCodes (countLengthsFast xs.data 15) 15` | `WpLeanZip3` | 2^20 | 114 |
+| ARR `Huffman.Spec.nextCodes` (+`.go`) | Zip/Spec/Huffman.lean:83 | `nextCodes (countLengthsFast xs.data 15) 15` | `WpLeanZip3` | 2^20 | 114 |
 
 Each entry: `f.goodE`, `f.pgGood`, `f.compiles`, `f.computes` (axioms: the Sail set for `pgGood` / `compiles`, the
 standard three for `goodE` / `computes`; `Testing/scripts/axioms_feat-paged2.lean`).  Tests: `lake env lean
@@ -2414,3 +2414,10 @@ for `pgs` words).
   found yet.
 - Compile time: each `wp_compile` with loops takes 3 to 6 minutes (the `GoodE` simp proofs and `decide +kernel` on
   `wfB` / `optB`).
+
+**State.** origin/main merged (notes only); `bash Testing/scripts/check.sh` ALL CHECKS PASSED (the statement fingerprint
+WARNING as before, not re-frozen).  QEMU + Sail: the 7 `pgs_*` entries 114 cases each (57 inputs at `memoryNeeded`
+and one page less, `a0` and `a1` checked), the 4 older `pg_*` entries (regenerated after `flatG`) 120 cases each.
+Next: nested loops in loop bodies (`fillDouble`, `extendWithin`, `copyLoop`); facts about an earlier loop's result in
+a later loop's invariant (`hasLongCode`); constant tables in the paged back end; then HuffTree (`frontx_ind`) and tuples
+of arrays toward `inflate`.
