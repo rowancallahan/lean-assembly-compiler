@@ -1,4 +1,5 @@
 import Riscv.Frontx.ConstExamples
+import Riscv.Frontx.MonoExamples
 #print axioms ConLeche.natName.data.implements1
 #print axioms ConLeche.natPredName.data.implements1
 #print axioms ConLeche.natAddName.data.implements1
@@ -175,3 +176,25 @@ import Riscv.Frontx.ConstExamples
 #print axioms Proven.Ir.R0.data.enc_eq
 #print axioms Proven.Ir.R1.data.enc_eq
 #print axioms Proven.Ir.RLim.data.enc_eq
+#print axioms Proven.Mach.IR.Tst.a.at_Nat.implements1
+#print axioms Proven.Mach.IR.Tst.b.at_Nat.implements1
+#print axioms Proven.Mach.IR.Tst.c.at_Nat.implements1
+#print axioms Proven.Ir.Tst.a.at_Nat.implements1
+#print axioms Proven.Ir.Tst.b.at_Nat.implements1
+#print axioms Proven.Ir.Tst.c.at_Nat.implements1
+#print axioms Proven.Mach.IR.Ins.dst.at_Nat.implements1
+#print axioms Proven.Mach.IR.Arg.regs.at_Nat.implements1
+#print axioms Proven.Ir.Block.term.at_Nat.implements1
+#print axioms Proven.Ir.Block.params.at_Nat.implements1
+#print axioms Proven.Ir.Block.body.at_Nat.implements1
+#print axioms Proven.Mach.IR.Tst.a.at_Nat.eq
+#print axioms Proven.Mach.IR.Tst.b.at_Nat.eq
+#print axioms Proven.Mach.IR.Tst.c.at_Nat.eq
+#print axioms Proven.Ir.Tst.a.at_Nat.eq
+#print axioms Proven.Ir.Tst.b.at_Nat.eq
+#print axioms Proven.Ir.Tst.c.at_Nat.eq
+#print axioms Proven.Mach.IR.Ins.dst.at_Nat.eq
+#print axioms Proven.Mach.IR.Arg.regs.at_Nat.eq
+#print axioms Proven.Ir.Block.term.at_Nat.eq
+#print axioms Proven.Ir.Block.params.at_Nat.eq
+#print axioms Proven.Ir.Block.body.at_Nat.eq
