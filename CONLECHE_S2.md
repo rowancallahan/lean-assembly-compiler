@@ -23,3 +23,9 @@ tar: Exiting with failure status due to previous errors
 ## Targets
 
 Not started. No functions were gated, compiled, emitted, or tested.
+
+## Resume attempt
+
+Parent session said to run `apt-get install -y zstd` and redo setup from step 2. The install was **denied** by the auto-mode permission classifier (`Bash` apt-get install), so no zstd was installed. Steps 2–5 remain blocked. Also not attempted: `git merge origin/main`, restoring `repo-build.tar.zst.part-*`, `qemu-system-misc`, and all target work.
+
+To unblock: allow `apt-get install -y zstd` (or pre-install zstd in the container), then rerun from step 2.
