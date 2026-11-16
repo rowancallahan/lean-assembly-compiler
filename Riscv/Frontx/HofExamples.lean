@@ -70,18 +70,6 @@ def foldrSum (xs : ByteArray) : Nat := ListExtras.List.foldr (· + ·) 0 (xs.dat
 frontx_hof_entry foldrSum
 frontx_implements foldrSum
 
-/-! ## fp-lean, chapter 8, `DependentTypes/DB.lean:458-460`: `List.flatMap` -/
-
-namespace Mine
-def List.flatMap (f : α → List β) : (xs : List α) → List β
-  | [] => []
-  | x :: xs => f x ++ xs.flatMap f
-end Mine
-
-def dupAll (xs : ByteArray) : List UInt8 := Mine.List.flatMap (fun x => [x, x]) xs.data.toList
-frontx_hof_entry dupAll
-frontx_implements_list dupAll
-
 /-! ## fp-lean, chapter 9, `ProgramsProofs/Arrays.lean:293-306`: `findHelper`, `Array.find` -/
 
 def findHelper (arr : Array α) (p : α → Bool)
@@ -113,12 +101,18 @@ frontx_hof_entry mapComp
 frontx_implements_list mapComp
 
 def sumFoldl (xs : ByteArray) : Nat := xs.data.toList.foldl (fun acc x => acc + x.toNat) 0
-frontx_hof_entry sumFoldl
+frontx_hof_entry sumFoldl with fun B i y0 => i ≤ B.size ∧ y0 + 255 * (B.size - i) < 2 ^ 64
 frontx_implements sumFoldl
 
 def xorArr (xs : ByteArray) : UInt8 := xs.data.foldl (· ^^^ ·) 0
 frontx_hof_entry xorArr
 frontx_implements xorArr
+
+/-- `List.flatMap` (the book's `Mine.List.flatMap`, `DependentTypes/DB.lean:458`, is a non-recursive wrapper of this
+one in Lean 4.29: its `xs.flatMap f` resolves to the core function) -/
+def dupAll (xs : ByteArray) : List UInt8 := xs.data.toList.flatMap (fun x => [x, x])
+frontx_hof_entry dupAll
+frontx_implements_list dupAll
 
 def filterNZ (xs : ByteArray) : List UInt8 := xs.data.toList.filter (· != 0)
 frontx_hof_entry filterNZ
@@ -137,7 +131,7 @@ frontx_hof_entry findHigh
 frontx_implements findHigh
 
 def countSp (xs : ByteArray) : Nat := xs.data.toList.countP (· == 32)
-frontx_hof_entry countSp
+frontx_hof_entry countSp with fun B i acc => i ≤ B.size ∧ acc + (B.size - i) < 2 ^ 64
 frontx_implements countSp
 
 /-! ## The compiler's own pipeline semantics (`Compiler/Front/Pipe.lean:125`, `PipeStd.lean:171`) at a known stage:

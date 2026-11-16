@@ -27,6 +27,22 @@ import Riscv.Frontx.Translate
 namespace Proven.Frontx
 open Lean Meta Elab Term Command
 
+/-- unfolding equations with the function argument outside the `match` (Lean's `List.any`/`all` match on it too) -/
+theorem hof_any_eq {α : Type u} (l : List α) (p : α → Bool) :
+    l.any p = match l with | [] => false | h :: t => p h || t.any p := by cases l <;> rfl
+theorem hof_all_eq {α : Type u} (l : List α) (p : α → Bool) :
+    l.all p = match l with | [] => true | h :: t => p h && t.all p := by cases l <;> rfl
+
+theorem hof_flatMap_eq {α : Type u} {β : Type v} (f : α → List β) (l : List α) :
+    l.flatMap f = match l with | [] => [] | x :: xs => f x ++ xs.flatMap f := by cases l <;> simp
+
+/-- the unfolding equation used for `F` -/
+def hofEqnFor (F : Name) : MetaM (Option Name) := do
+  if F == ``List.any then return some ``hof_any_eq
+  if F == ``List.all then return some ``hof_all_eq
+  if F == ``List.flatMap then return some ``hof_flatMap_eq
+  getUnfoldEqnFor? F (nonRec := true)
+
 /-- heads that are never specialised: control flow, matchers and recursors are handled by the translators -/
 def hofSkip : List Name :=
   [``ite, ``dite, ``cond, ``Decidable.decide, ``Function.comp, ``Bind.bind, ``Pure.pure, ``Exists, ``Subtype,
@@ -78,10 +94,10 @@ def fixedPos (F : Expr) (args : Array Expr) : MetaM (Array Bool) := do
 
 /-- a `simp only` rewrite of an equation's right-hand side with the given lemmas (`true`: right to left) and
 definitions to unfold (their equation lemmas); returns the new side and a proof `rhs = rhs'` (none: unchanged) -/
-def hofSimp (rhs : Expr) (lemmas : List (Name × Bool)) (unf : Array Name := #[]) : TermElabM (Expr × Option Expr) := do
+def hofSimp (rhs : Expr) (lemmas : List (Name × Bool)) (unf : Array Name := #[]) (zeta := false) : TermElabM (Expr × Option Expr) := do
   let thms ← lemmas.foldlM (fun s (n, inv) => s.addConst n (inv := inv)) ({} : SimpTheorems)
   let thms ← unf.foldlM (fun s n => s.addDeclToUnfold n) thms
-  let ctx ← Simp.mkContext (config := { zeta := false }) (simpTheorems := #[thms])
+  let ctx ← Simp.mkContext (config := { zeta }) (simpTheorems := #[thms])
     (congrTheorems := ← getSimpCongrTheorems)
   let (r, _) ← simp rhs ctx
   if r.expr == rhs then return (rhs, none)
@@ -93,12 +109,32 @@ def hofPre : List (Name × Bool) :=
   [(``Array.foldl_toList, true), (``List.foldl_nil, false), (``List.foldl_cons, false), (``List.map_map, false),
    (``List.foldl_map, false), (``List.foldr_map, false), (``List.any_map, false), (``List.all_map, false),
    (``List.countP_map, false)]
-/-- after: list literals appended (`f x ++ r` with `f x = [a, b]`) -/
-def hofPost : List (Name × Bool) := [(``List.cons_append, false), (``List.nil_append, false)]
+/-- `a || r` / `a && r` whose `r` holds a recursive call (marked by `hofMark`, definitionally): as `if`s, so the call
+is a tail call -/
+def hofOr (a b : Bool) : Bool := a || b
+def hofAnd (a b : Bool) : Bool := a && b
+theorem hof_or (a b : Bool) : hofOr a b = (if a = true then true else b) := by cases a <;> rfl
+theorem hof_and (a b : Bool) : hofAnd a b = (if a = true then b else false) := by cases a <;> rfl
+
+partial def hofMark (c : Name) (e : Expr) : Expr :=
+  e.replace fun e =>
+    if (e.isAppOfArity ``or 2 || e.isAppOfArity ``and 2) && (e.appArg!.find? (·.isConstOf c)).isSome then
+      some (mkApp2 (mkConst (if e.isAppOfArity ``or 2 then ``hofOr else ``hofAnd)) (hofMark c e.appFn!.appArg!)
+        (hofMark c e.appArg!))
+    else none
+
+theorem hof_some_bind {α β : Type u} (a : α) (f : α → Option β) : (some a >>= f) = f a := rfl
+
+theorem hof_option_failure {α : Type u} : (failure : Option α) = none := rfl
+
+/-- after: list literals appended (`f x ++ r` with `f x = [a, b]`); `a || r`, `a && r` as `if`s (tail calls); `do` in `Option` (`pure`, `failure`, the join
+points of `do` inlined) -/
+def hofPost : List (Name × Bool) := [(``List.cons_append, false), (``List.nil_append, false), (``pure_bind, false),
+  (``Option.pure_def, false), (``hof_option_failure, false), (``hof_some_bind, false), (``hof_or, false), (``hof_and, false), (``cond_eq_if, false)]
 
 /-- `rhs` rewritten by `hofSimp`, then the proof `lhs = rhs` (`pf`) extended -/
-def hofSimpEq (pf rhs : Expr) (lemmas : List (Name × Bool)) (unf : Array Name := #[]) : TermElabM (Expr × Expr) := do
-  let (rhs', np?) ← hofSimp rhs lemmas unf
+def hofSimpEq (pf rhs : Expr) (lemmas : List (Name × Bool)) (unf : Array Name := #[]) (zeta := false) : TermElabM (Expr × Expr) := do
+  let (rhs', np?) ← hofSimp rhs lemmas unf zeta
   match np? with
   | none => return (rhs, pf)
   | some np => return (rhs', ← mkEqTrans pf np)
@@ -127,16 +163,53 @@ partial def evalConsts (skip : Name → Bool) (e : Expr) : MetaM (Array Name) :=
   go e #[]
 
 /-- rewrite with `lemmas` and evaluate (`evalConsts`) until nothing changes -/
-def hofEvalEq (skip : Name → Bool) (pf rhs : Expr) (lemmas : List (Name × Bool) := []) : TermElabM (Expr × Expr) := do
+def hofEvalEq (skip : Name → Bool) (pf rhs : Expr) (lemmas : List (Name × Bool) := []) (zeta := false) : TermElabM (Expr × Expr) := do
   let mut rhs := rhs
   let mut pf := pf
   for _ in [0:16] do
     let cs ← evalConsts skip rhs
-    let (rhs', pf') ← hofSimpEq pf rhs lemmas cs
+    let (rhs', pf') ← hofSimpEq pf rhs lemmas cs zeta
     if rhs' == rhs then break
     unless cs.isEmpty do logInfo m!"frontx_hof: evaluated {cs} on known arguments"
     rhs := rhs'; pf := pf'
   return (rhs, pf)
+
+/-- for a matcher `m` on one `Bool` with two alternatives without variables: the lemma
+`m.hof_ite : m (fun _ => α) b x y = if b = true then x () else y ()` (proved by cases), added once -/
+def boolMatchLemma (m : Name) : TermElabM (Option Name) := do
+  let lN := m ++ `hof_ite
+  if (← getEnv).contains lN then return some lN
+  let some mi ← getMatcherInfo? m | return none
+  unless mi.numDiscrs == 1 && mi.altNumParams.size == 2 && mi.altNumParams.all (· ≤ 1) do return none
+  let info ← getConstInfo m
+  let some ui := mi.uElimPos? | return none
+  let lvlParam := Level.param `u
+  let lvls := (info.levelParams.map fun _ => levelZero).set ui lvlParam
+  let ty ← withLocalDeclD `α (mkSort lvlParam) fun α => withLocalDeclD `b (mkConst ``Bool) fun b => do
+    let fty ← mkArrow (mkConst ``Unit) α
+    withLocalDeclD `x fty fun x => withLocalDeclD `y fty fun y => do
+      let motive ← withLocalDeclD `_d (mkConst ``Bool) fun d => mkLambdaFVars #[d] α
+      let lhs := mkAppN (mkConst m lvls) #[motive, b, x, y]
+      unless (← isTypeCorrect lhs) do throwError "frontx_hof: {m} does not fit"
+      let c ← mkEq b (mkConst ``Bool.true)
+      let rhs := mkAppN (mkConst ``ite [lvlParam]) #[α, c, ← synthInstance (mkApp (mkConst ``Decidable) c),
+        mkApp x (mkConst ``Unit.unit), mkApp y (mkConst ``Unit.unit)]
+      mkForallFVars #[α, b, x, y] (← mkEq lhs rhs)
+  let ty ← instantiateMVars ty
+  let s ← saveState
+  try
+    let pf ← byTac ty (← `(tactic| (intro _ b _ _; cases b <;> rfl)))
+    addDecl (.thmDecl { name := lN, levelParams := [`u], type := ty, value := pf })
+    return some lN
+  catch _ => s.restore; return none
+
+/-- the `Bool` matchers in `e` (with their `hof_ite` lemmas) -/
+def boolMatchLemmas (e : Expr) : TermElabM (List (Name × Bool)) := do
+  let mut out := []
+  for c in e.getUsedConstants do
+    if ← isMatcher c then
+      if let some l ← boolMatchLemma c then out := (l, false) :: out
+  return out
 
 mutual
 /-- replace the higher-order calls in `e` (under binders) by calls of first-order copies -/
@@ -153,7 +226,7 @@ partial def hofSites (owner : Name) (depth : Nat) (e : Expr) : HofM Expr := do
     unless (← (List.range args.size).anyM fun j => do
       return fixed[j]! && !(← isType args[j]!) && !(← isProof args[j]!) && (← knownFn args[j]!)) do return .done e
     -- non-recursive: unfold (user definitions and the wrappers in `hofUnfold`)
-    let some eqn ← getUnfoldEqnFor? F (nonRec := true) | return .done e
+    let some eqn ← hofEqnFor F | return .done e
     let eqnInfo ← getConstInfo eqn
     let eqTy := eqnInfo.type.instantiateLevelParams eqnInfo.levelParams lvls
     let some (_, _, rhs) := (← instantiateForall eqTy args).eq? | return .done e
@@ -201,7 +274,7 @@ partial def specialise (owner : Name) (depth : Nat) (F : Name) (lvls : List Leve
   addAndCompile (.defnDecl (mkDefinitionValEx cN [] cTy cVal (.regular 1) .safe [cN]))
   enableRealizationsForConst cN
   -- its equation: `F`'s unfolding equation, the recursive calls with the same fixed arguments folded
-  let some eqn ← getUnfoldEqnFor? F (nonRec := true) | throwError "frontx_hof: no unfolding equation for {F}"
+  let some eqn ← hofEqnFor F | throwError "frontx_hof: no unfolding equation for {F}"
   let eqnInfo ← getConstInfo eqn
   let eqTy := eqnInfo.type.instantiateLevelParams eqnInfo.levelParams lvls
   let (ty, pf) ← forallTelescope cTy fun xs _ => do
@@ -227,9 +300,9 @@ partial def specialise (owner : Name) (depth : Nat) (F : Name) (lvls : List Leve
     let skip (n : Name) := n == cN || n == owner || cache.any (·.2.2 == n)
     let (rhs, pf) ← hofEvalEq skip pf0 rhs
     -- nested higher-order calls (in the known function's body, now inlined)
-    let rhs' ← hofSites cN (depth + 1) rhs
+    let rhs' := hofMark cN (← hofSites cN (depth + 1) rhs)
     let pf ← mkExpectedTypeHint pf (← mkEq lhs rhs')
-    let (rhs, pf) ← hofEvalEq skip pf rhs' hofPost
+    let (rhs, pf) ← hofEvalEq skip pf rhs' (hofPost ++ (← boolMatchLemmas rhs')) (zeta := true)
     if (rhs.find? (·.isConstOf F)).isSome then
       throwError "frontx_hof: a recursive call of {F} changes a fixed argument{indentExpr rhs}"
     return (← mkForallFVars xs (← mkEq lhs rhs), ← mkLambdaFVars xs pf)
@@ -246,13 +319,14 @@ def hofRun (hN : Name) : TermElabM (Expr × Array Name) := do
   unless info.levelParams.isEmpty do throwError "frontx_hof: {hN} is universe polymorphic"
   let some eqn ← getUnfoldEqnFor? hN (nonRec := true) | throwError "frontx_hof: no unfolding equation for {hN}"
   let eqTy := (← getConstInfo eqn).type
-  let ((ty, pf, rhs), st) ← (forallTelescope eqTy fun xs body => do
+  let act : HofM (Expr × Expr × Expr) := forallTelescope eqTy fun xs body => do
     let some (_, lhs, rhs) := body.eq? | throwError "frontx_hof: bad equation of {hN}"
-    let (rhs1, pf1) ← hofEvalEq (· == hN) (mkAppN (mkConst eqn) xs) rhs hofPre
+    let (rhs1, pf1) ← (hofEvalEq (· == hN) (mkAppN (mkConst eqn) xs) rhs hofPre : TermElabM _)
     let rhs' ← hofSites hN 0 rhs1
     if rhs' == rhs1 then throwError "frontx_hof: no call with a known function argument in {hN}{indentExpr rhs}"
     let pf ← mkExpectedTypeHint pf1 (← mkEq lhs rhs')
-    return (← mkForallFVars xs (← mkEq lhs rhs'), ← mkLambdaFVars xs pf, ← mkLambdaFVars xs rhs')).run {}
+    return (← mkForallFVars xs (← mkEq lhs rhs'), ← mkLambdaFVars xs pf, ← mkLambdaFVars xs rhs')
+  let ((ty, pf, rhs), st) ← act.run {}
   let ty ← instantiateMVars ty
   addDecl (.thmDecl { name := hN ++ `hof, levelParams := [], type := ty, value := ← instantiateMVars pf })
   for m in st.log do logInfo m!"frontx_hof: {m}"
@@ -285,8 +359,14 @@ def hofByteArray (c : Name) (p : Nat) : TermElabM Name := do
           return .done (mkApp (mkConst ``ByteArray.size) B)
         if e.isAppOfArity ``GetElem.getElem 8 && e.getArg! 5 == dB then
           let a := e.getAppArgs
-          return .done (← mkAppOptM ``GetElem.getElem #[mkConst ``ByteArray, mkConst ``Nat, mkConst ``UInt8, none,
-            none, B, a[6]!, a[7]!])
+          return .done (mkAppN (mkConst ``GetElem.getElem [levelZero, levelZero, levelZero])
+            #[mkConst ``ByteArray, mkConst ``Nat, mkConst ``UInt8,
+              ← withLocalDeclD `xs (mkConst ``ByteArray) fun xs => withLocalDeclD `i (mkConst ``Nat) fun i => do
+                mkLambdaFVars #[xs, i] (← mkAppM ``LT.lt #[i, mkApp (mkConst ``ByteArray.size) xs]),
+              ← synthInstance (← mkAppM ``GetElem #[mkConst ``ByteArray, mkConst ``Nat, mkConst ``UInt8,
+                ← withLocalDeclD `xs (mkConst ``ByteArray) fun xs => withLocalDeclD `i (mkConst ``Nat) fun i => do
+                  mkLambdaFVars #[xs, i] (← mkAppM ``LT.lt #[i, mkApp (mkConst ``ByteArray.size) xs])]),
+              B, a[6]!, a[7]!])
         return .done e)
       if (rhs.find? (· == dB)).isSome then throwError "frontx_hof: {B}.data is used otherwise{indentExpr rhs}"
       let lhs := mkAppN (mkConst gN) ps
@@ -297,9 +377,9 @@ def hofByteArray (c : Name) (p : Nat) : TermElabM Name := do
   logInfo m!"frontx_hof: {gN ++ `eq} : {ty}"
   return gN
 
-syntax "frontx_hof_entry " ident (" measure " term)? : command
+syntax "frontx_hof_entry " ident (" measure " term)? (" with " term)? : command
 elab_rules : command
-  | `(frontx_hof_entry $g:ident $[measure $μ?]?) => do
+  | `(frontx_hof_entry $g:ident $[measure $μ?]? $[with $inv?]?) => do
   let gN ← liftTermElabM <| realizeGlobalConstNoOverloadWithInfo g
   -- the specialisation, then the shape of the entry's body: one call of a copy
   let (c, cmds, entryTy) ← liftTermElabM do
@@ -338,11 +418,14 @@ elab_rules : command
       let us := (List.range (nps - 2)).toArray.map fun _ => mkIdent `_
       `(fun B i $us* => ByteArray.size B - i)
   let ceq := mkIdent (c ++ `eq)
-  elabCommand (← `(frontx_compile $cI from $ceq measure $μ))
+  match inv? with
+  | some inv => elabCommand (← `(frontx_compile $cI from $ceq measure $μ with $inv))
+  | none => elabCommand (← `(frontx_compile $cI from $ceq measure $μ))
   let eN := gN ++ `hof ++ `entry
   liftTermElabM do
     let entryTy ← instantiateMVars entryTy
-    addThm eN entryTy (← `(tactic| (intros; rfl)))
+    let hI := mkIdent (gN ++ `hof)
+    addThm eN entryTy (← `(tactic| (intros; rw [$hI:ident]; rfl)))
   let eI := mkIdent eN
   elabCommand (← `(frontx_entry $g from $eI))
 
