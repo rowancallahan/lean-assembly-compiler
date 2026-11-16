@@ -157,3 +157,22 @@ hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read 
 - Shared IR (Compiler/Ir, Riscv/Back/Ir*): beneath the spec; its theorems are the AllocSpec statements for
   Ir.compile. Later (owner, not now): optionally expose the top theorem as a composition "IR meaning" ∘ "IR → assembly"
   through an adapter.
+- C via Certora/clean (owner idea, 2026-11-16): github.com/Certora/clean = CompCert 3.17 fork exporting a C program's
+  Clight syntax to Lean 4.32.1 + a Lean port of Clight semantics (interpreter proved sound, determinism, separation
+  logic). C→Clight front end is trusted OCaml; NO compiler and no link to CompCert's correctness proof in Lean
+  (Clight→asm stays in Coq); non-commercial licence; experimental. Plan, by value: (1) cheap: print our IR as C and
+  use gcc/CompCert/Clean's interpreter as a differential test oracle; (2) Clight as a SOURCE language: Clight → our
+  shared IR, proved in Lean against Clean's semantics, then our verified chain to RISC-V/ARM (no Coq trust); (3)
+  optional Lean→Clight back end proved against Clean's semantics for interop. Round-trip/translation validation is
+  sound given one theorem (meaning of emitted C = the Lean function). Not a rewrite: C becomes one more input of the IR.
+- Trust and licence (owner, 2026-11-16): trust ONLY the Sail models (no cross-prover trust in CompCert). CompCert
+  and Certora/clean are inspiration (designs, proof strategies); acknowledged in NOTICE.md. Licence (owner, 2026-11-16):
+  Apache-2.0 (LICENSE; open, warranty/liability disclaimer, patent grant), replacing the earlier non-commercial intent. If CompCert code or proofs are ever copied, that file falls
+  under CompCert's licence and must say so.
+- Less stuck time (owner, 2026-11-16). Causes seen today: boxes stalled on setup (denied installs of zstd/QEMU/gcc,
+  old main, missing sources) and boxes that stopped to ask and waited idle. Fixes: (1) the cloud environment now has
+  a setup script installing zstd, qemu-system-misc, gcc-riscv64-linux-gnu; (2) every box prompt: start from the
+  latest origin/main, restore build-cache (gzip or zstd), use repo copies of sources (con-leche: origin/conleche-depth
+  F2.lean.txt), NEVER stop to ask: make the reasonable choice, write it in the notes, continue; stop only when done
+  or after a stated time cap, pushing every step; (3) Haiku only gets self-contained recipes; (4) the parent batches
+  merges (one combined check for several small branches) and reacts to box messages immediately.
