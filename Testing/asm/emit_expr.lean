@@ -4,7 +4,7 @@ Each `.words`: first line `indw <retLen>`, then the code; each `.cases` line: in
 work block (`Ind.spaceA m nl (fun _ => cells)` with this input's cells; the theorem's `cellsSup` is at least that). -/
 import Riscv.Frontx.ExprExamples
 
-open Proven.Frontx.ExprEx
+open Proven Proven.Frontx.ExprEx
 
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
 def hex2 (b : UInt8) : String := let s := String.ofList (Nat.toDigits 16 b.toNat); if s.length < 2 then "0" ++ s else s
@@ -67,5 +67,32 @@ def exprPairs : List (ConLeche.Expr × ConLeche.Expr) := exprs.zip
     (TExpr.enc e, boolB (closed0 e), spW 1 16 (closed0.ind.pg.al (TExpr.emb e) 0 .z) (TExpr.enc e)))
   emitIndW "expr_inst1" inst1.code true (exprPairs.map fun p =>
     (TExpr.enc2 p, TExpr.enc (inst1 p.1 p.2), spW 1 19 (inst1.ind.pg.al (TExpr.emb p.1) 0 (TExpr.emb p.2)) (TExpr.enc2 p)))
+/-- the words of the depth argument of `scopedD`: around the indices of `exprs` -/
+def depths : List Nat := (List.range exprs.length).map fun i => match i % 5 with
+  | 0 => 0 | 1 => 1 | 2 => 4 | 3 => 2 ^ 64 - 1 | _ => rnd i 1 % 8
+def w1 (e : ConLeche.Expr) (b : Bool) (pg : Nat) : List UInt8 × List UInt8 × Nat :=
+  (TExpr.enc e, boolB b, spW 1 16 pg (TExpr.enc e))
+def wN (e : ConLeche.Expr) (n : Nat) (pg : Nat) : List UInt8 × List UInt8 × Nat :=
+  (TExpr.enc e, leN 8 n, spW 1 16 pg (TExpr.enc e))
+def wT (e r : ConLeche.Expr) (pg : Nat) : List UInt8 × List UInt8 × Nat :=
+  (TExpr.enc e, TExpr.enc r, spW 1 16 pg (TExpr.enc e))
+#eval do
+  emitIndW "expr_sizef" ConLeche.Expr.sizeF.code false (exprs.map fun e =>
+    wN e e.sizeF (ConLeche.Expr.sizeF.ind.pg.al (TExpr.emb e) 0 .z))
+  emitIndW "expr_scopedd" scopedD.code false ((exprs.zip depths).map fun (e, d) =>
+    let x := TExpr.enc e ++ leN 8 d
+    (x, boolB (scopedD e d), Proven.Frontx.Ind.spaceA 1 16 (fun _ => scopedD.ind.pg.al (TExpr.emb e) (BitVec.ofNat 64 d) .z) x.length))
+  emitIndW "expr_isforalle" ConLeche.Expr.isForallE.code false (exprs.map fun e =>
+    w1 e e.isForallE (ConLeche.Expr.isForallE.ind.pg.al (TExpr.emb e) 0 .z))
+  emitIndW "expr_getappfn" ConLeche.Expr.getAppFn.code true (exprs.map fun e =>
+    wT e e.getAppFn (ConLeche.Expr.getAppFn.ind.pg.al (TExpr.emb e) 0 .z))
+  emitIndW "expr_piresult" ConLeche.Expr.piResult.code true (exprs.map fun e =>
+    wT e e.piResult (ConLeche.Expr.piResult.ind.pg.al (TExpr.emb e) 0 .z))
+  emitIndW "expr_fvartyped" ConLeche.Expr.fvarTypeD.code true (exprs.map fun e =>
+    wT e e.fvarTypeD (ConLeche.Expr.fvarTypeD.ind.pg.al (TExpr.emb e) 0 .z))
+  emitIndW "expr_numargs" ConLeche.Expr.numArgs.code false (exprs.map fun e =>
+    wN e e.numArgs (ConLeche.Expr.numArgs.ind.pg.al (TExpr.emb e) 0 .z))
+  emitIndW "expr_islit" ConLeche.Expr.isLit.code false (exprs.map fun e =>
+    w1 e e.isLit (ConLeche.Expr.isLit.ind.pg.al (TExpr.emb e) 0 .z))
 #eval (exprs.length, (exprs.map ConLeche.Expr.hasFvar).count true, (exprs.map closed0).count true,
   (exprPairs.map fun p => TExpr.enc (inst1 p.1 p.2) == TExpr.enc p.1).count true)
