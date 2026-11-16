@@ -5,6 +5,7 @@ named constants compared inside a function (`c == natZeroName`), a match on a `N
 con-leche @6810492c1, verbatim (file:line per block). -/
 import Riscv.Frontx.ExprExamples
 import Riscv.Frontx.ConLecheBlk
+import Riscv.Frontx.IndExamples
 
 set_option linter.unusedVariables false
 
@@ -42,6 +43,14 @@ def abstract1 (e : Expr) (d : Nat) (k : Nat := 0) : Expr :=
   | .lit l => .lit l
   | .proj s i e => .proj s i (abstract1 e d k)
 
+-- Kernel/ExprOps.lean:719-724
+def sizeB : Expr → Nat
+  | .bvar _ | .fvar .. | .sort _ | .const .. | .lit _ => 1
+  | .app f a => sizeB f + sizeB a + 1
+  | .lam ty body | .forallE ty body => sizeB ty + sizeB body + 1
+  | .letE ty val body => sizeB ty + sizeB val + sizeB body + 1
+  | .proj _ _ e => sizeB e + 1
+
 -- Kernel/PropRead.lean:44-47
 def peelPis : Nat → Expr → Option Expr
   | 0, e => some e
@@ -56,12 +65,33 @@ def binderDom : Nat → Expr → Option Expr
 
 end ConLeche.Expr
 
+namespace ConLeche.Level
+
+-- Kernel/Level.lean:181-186
+def isNonZero : Level → Bool
+  | .zero => false
+  | .succ _ => true
+  | .max a b => a.isNonZero || b.isNonZero
+  | .imax _ b => b.isNonZero
+  | .param _ => false
+
+end ConLeche.Level
+
 namespace ConLeche
 
--- Kernel/CoreDefs.lean:440-442
-@[inline] def Expr.isEagerReduce : Expr → Bool
-  | .app (.app (.const c _) _) _ => c == eagerReduceName
-  | _ => false
+-- Kernel/CoreDefs.lean:810-821
+def Expr.hasLooseBVar : Nat → Expr → Bool
+  | i, .bvar j => i == j
+  | _, .fvar .. => false
+  | _, .sort _ => false
+  | _, .const .. => false
+  | _, .lit _ => false
+  | i, .app f a => hasLooseBVar i f || hasLooseBVar i a
+  | i, .lam ty b => hasLooseBVar i ty || hasLooseBVar (i + 1) b
+  | i, .forallE ty b => hasLooseBVar i ty || hasLooseBVar (i + 1) b
+  | i, .letE t v b =>
+    hasLooseBVar i t || hasLooseBVar i v || hasLooseBVar (i + 1) b
+  | i, .proj _ _ e => hasLooseBVar i e
 
 -- Kernel/CoreDefs.lean:449-451
 def Expr.isBoolTrue : Expr → Bool
@@ -74,16 +104,10 @@ def Expr.isNatZero : Expr → Bool
   | .const c [] => c == natZeroName
   | _ => false
 
--- Kernel/Core.lean:1535-1538
-def Expr.natPred? : Expr → Option Expr
-  | .lit (.natVal (n + 1)) => some (.lit (.natVal n))
-  | .app (.const c []) x => if c = natSuccName then some x else none
-  | _ => none
-
 end ConLeche
 
 namespace Proven.Frontx.ConLecheHard
-open Proven.Frontx.ExprEx
+open Proven.Frontx.ExprEx Proven.Frontx.IndEx
 
 /-- entry: lift the loose bound variables at or above the cutoff (from the input) by one (`amount` fixed at `1`:
 the front end specialises `liftLooseBVars` to `lift1.spec`) -/
@@ -97,6 +121,12 @@ frontx_ind abs0 on TExpr
 frontx_ind ConLeche.Expr.isStrLit on TExpr
 frontx_ind ConLeche.Expr.isNatZero on TExpr
 frontx_ind ConLeche.Expr.isBoolTrue on TExpr
+
+/-- entry: does `bvar i` (`i` from the input) occur loose -/
+def hasLB (e : ConLeche.Expr) (i : Nat) : Bool := ConLeche.Expr.hasLooseBVar i e
+frontx_ind hasLB on TExpr
+frontx_ind ConLeche.Expr.sizeB on TExpr
+frontx_ind ConLeche.Level.isNonZero on LevelT
 
 -- `Expr` with `List Expr` and `Option Expr` whose elements / values are in the byte format (`(full)`)
 frontx_ind_type (full) TExprF := ConLeche.Expr nesting ConLeche.Level, ConLeche.Name, List ConLeche.Level,

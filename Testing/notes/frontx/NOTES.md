@@ -2342,6 +2342,16 @@ and QEMU + Sail runs equal to executed Lean (`Testing/asm/emit_conleche_hard.lea
 | `Expr.isBoolTrue` | | `Kernel/CoreDefs.lean:449` | (1) `.const c []`, `c == boolTrueName` | 81 | 20718 |
 | `peelN e k = peelPis k e` | `Expr.peelPis` | `Kernel/PropRead.lean:44` | (3) `0` / `k+1` with the tree, (4) `Option Expr` | 60 | 7960 |
 | `domN e k = binderDom k e` | `Expr.binderDom` | `Kernel/PropRead.lean:51` | (3), (4) | 60 | 7960 |
+| `hasLB e i = hasLooseBVar i e` | `Expr.hasLooseBVar` | `Kernel/CoreDefs.lean:810` | (already in the language) | 81 | 6269 |
+| `Expr.sizeB` | | `Kernel/ExprOps.lean:719` | (already in the language) | 81 | 6281 |
+| `Level.isNonZero` (on `LevelT`) | | `Kernel/Level.lean:181` | (already in the language) | 60 | 898 |
+
+The last three were found by a gate run over all of `F2.lean.txt` (branch `conleche-depth`) with the new front end
+(`gate_all`: every `ConLeche` definition whose type mentions `Expr`/`Name`/`Level`, through `frontx_ind_gate`'s
+logic; 1319 definitions, 63 "arms ok"); they translated before this branch but had not been compiled.
+Reproduce: `lake build Riscv.Frontx.ConLecheHard`; `lake env lean --tstack=4000000
+Testing/asm/emit_conleche_hard.lean`; `python3 Testing/asm/frontx_test.py check 81 hard_<name>` (60 for `hard_peeln`,
+`hard_domn`, `hard_isnonzero`); axioms `Testing/scripts/axioms_conleche-hard.lean`.
 
 **(2) Specialisation.**  An entry `f xs = g … lit …` where `g` has two scalar parameters and one argument is a literal
 that every recursive call of `g` passes unchanged (checked on `g`'s equations): `specialise` generates
@@ -2379,5 +2389,22 @@ children.  Opt-in so that the codes and statements of every existing `TExpr` ent
 **Count.**  con-leche functions compiled verbatim through `frontx_ind` with a machine theorem: 71 before this branch
 (68 named directly in `frontx_ind` commands — `IndExamples` 2, `Ind2Examples` 2, `NameExamples` 2, `ExprExamples` 8,
 `ConLecheBlk` 40, `ConLecheS1`–`S3` 6, … — and 3 through entries: `looseBVarsBounded`, `instantiate1`, `wscopedB`),
-now **78** (+ `isStrLit`, `isNatZero`, `isBoolTrue`, `liftLooseBVars`, `abstract1`, `peelPis`, `binderDom`).
-(`Name.beq`/`Level.beq` of `NameExamples` are counted as in their files.)
+now **81** (+ `isStrLit`, `isNatZero`, `isBoolTrue`, `liftLooseBVars`, `abstract1`, `peelPis`, `binderDom`,
+`hasLooseBVar`, `sizeB`, `Level.isNonZero`).  (`Name.beq`/`Level.beq` of `NameExamples` are counted as in their files.)
+
+**Not done / why.**
+- `Expr.isEagerReduce` (`Kernel/CoreDefs.lean:440`, `.app (.app (.const c _) _) _`): translates (6 functions); the
+  `sem` proof fails: after the case splits on the nested children, the generic `simp_all` unfolds the constant's cells
+  (`eagerReduceName` = `.str .anonymous "eagerReduce"`) before the `Name.decEq` meaning theorem is applied, and
+  `frontx_emb_cases` then generalizes the closed `Bytes8.ofString "eagerReduce"` (losing its value).  Tried (reverted,
+  not in the tested front end): a variant of `frontx_emb_cases` that never generalizes closed terms, plus folding
+  (`T.fold_k`) before rewriting with the later functions' theorems; the remaining goals were not closed.
+- `Expr.natPred?` (`Kernel/Core.lean:1535`): translates; `sem` proof hits `maxRecDepth` in `simp`.
+- `sameConstHeads` (`Kernel/CoreDefs.lean:148`, a match on two trees with `getAppFn` calls): translates (4 functions),
+  `sem` proof fails (item 3 for two trees is not done; the two-tree arms are only translated through the `b` parameter).
+- `Cached.iotaNumArgs` (`Cached/CoreC.lean:141`, accumulator `n + 1` with a wildcard tree pattern): `sem` proof fails.
+- `openPisAtFvars` (`Option (List Expr × Expr)`: pair results), `rawNatLit?` (`Option Nat`), `instPisWith` (a pattern on
+  the second argument, a `List Expr` structural argument with an `Expr` parameter): not attempted.
+- Specialisation fixes literals only; a fixed parameter from the input (two scalars at run time) is not done.
+- In the gate run, 167 of 1319 definitions fail with an `enableRealizationsForConst` error (realizing auxiliary
+  constants from inside the command); not investigated (the generated `spec` / `cst_` definitions call it).

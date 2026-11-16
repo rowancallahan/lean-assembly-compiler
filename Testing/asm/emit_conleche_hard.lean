@@ -5,7 +5,7 @@ cases each function distinguishes (the constants it compares with, nested litera
 the theorem's bound with this input's cells (`Pg.al`). -/
 import Riscv.Frontx.ConLecheHard
 
-open Proven Proven.Frontx.ExprEx Proven.Frontx.ConLecheHard
+open Proven Proven.Frontx.ExprEx Proven.Frontx.ConLecheHard Proven.Frontx.IndEx
 
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
 def hex2 (b : UInt8) : String := let s := String.ofList (Nat.toDigits 16 b.toNat); if s.length < 2 then "0" ++ s else s
@@ -77,6 +77,10 @@ def piCases : List (ConLeche.Expr × Nat) := (List.range 30).map (fun i => (pis 
   (exprs.take 30).map (fun e => (e, rnd 3 e.sizeF % 3))
 def small (n : Nat) : Nat := match n % 5 with | 0 => 0 | 1 => 1 | 2 => 2 | 3 => 5 | _ => 1000
 
+/-- levels of depth at most 4, every constructor -/
+def levels : List ConLeche.Level := [.zero, .succ .zero, .param .anonymous, .max .zero .zero, .imax (.succ .zero) .zero,
+  .imax .zero (.succ .zero)] ++ (List.range 54).map fun i => genL (i % 5) (i + 3)
+
 def spA (m nl cells : Nat) (x : List UInt8) : Nat := Proven.Frontx.Ind.spaceA m nl (fun _ => cells) x.length
 
 #eval do
@@ -98,5 +102,13 @@ def spA (m nl cells : Nat) (x : List UInt8) : Nat := Proven.Frontx.Ind.spaceA m 
   emitIndW "hard_domn" domN.code true (piCases.map fun (e, k) =>
     let x := TExprF.enc e ++ leN 8 k
     (x, TExprF.N6.enc (domN e k), Proven.Frontx.Ind.spaceA 1 16 (fun n => domN.ind.pg.M * n) x.length))
+  emitIndW "hard_haslb" hasLB.code false ((cases0.zip (List.range cases0.length)).map fun (e, i) =>
+    let k := i % 4
+    let x := TExpr.enc e ++ leN 8 k
+    (x, boolB (hasLB e k), spA 1 16 (hasLB.ind.pg.al (TExpr.emb e) (BitVec.ofNat 64 k) .z) x))
+  emitIndW "hard_sizeb" ConLeche.Expr.sizeB.code false (cases0.map fun e =>
+    (TExpr.enc e, leN 8 e.sizeB, spA 1 16 (ConLeche.Expr.sizeB.ind.pg.al (TExpr.emb e) 0 .z) (TExpr.enc e)))
+  emitIndW "hard_isnonzero" ConLeche.Level.isNonZero.code false (levels.map fun l =>
+    (LevelT.enc l, boolB l.isNonZero, Proven.Frontx.Ind.space ConLeche.Level.isNonZero.ind.pg.M (LevelT.enc l).length))
 #eval (cases0.length, (cases0.map ConLeche.Expr.isNatZero).count true, (cases0.map ConLeche.Expr.isBoolTrue).count true,
   (cases0.map ConLeche.Expr.isStrLit).count true, (piCases.map fun (e, k) => (peelN e k).isSome).count true)
