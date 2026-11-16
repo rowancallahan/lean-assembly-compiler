@@ -47,13 +47,15 @@ theorem pk_pushFrom : ∀ (u j m : Nat), pk u (pushFrom j m) = finE u (pushFrom 
 set_option maxHeartbeats 8000000 in
 /-- **the fill loop**: from `j` elements, pushes `f j, f (j + 1), …, f (n - 1)`; or a push found no page -/
 theorem fillLoop_ok (ptv sv x i n t : Nat) (Sv : MS) (C : Nat) (pt : Nat) (others : List (Nat × W64))
-    (f : Nat → BitVec 64) (N : Nat) (hN : N ≤ P * P)
+    (f : Nat → BitVec 64) (N : Nat) (hN : N ≤ P * P) (σ0 : MSt)
     (hv : 8 ≤ ptv ∧ 8 ≤ sv ∧ 8 ≤ x ∧ 8 ≤ i ∧ 8 ≤ n ∧ ptv < t ∧ sv < t ∧ x < t ∧ i < t ∧ n < t ∧ sv ≠ ptv ∧ sv ≠ x ∧
       i ≠ ptv ∧ i ≠ sv ∧ i ≠ x ∧ n ≠ ptv ∧ n ≠ sv ∧ n ≠ x ∧ n ≠ i ∧ ptv ≠ x)
     (hSv : ∀ (σ : MSt) (W : W64) (xs : W64) (j : Nat), σ.wheap = [W] → Store C σ.env W ((pt, xs) :: others) →
-      σ.env i = rN j → j < N → ∃ σ', Mach.BExec Sv σ σ' ∧ σ'.env x = f j ∧
+      σ.env i = rN j → j < N → (∀ q, q < t → q ≠ x → q ≠ sv → q ≠ i → NP q → σ.env q = σ0.env q) →
+      σ.heap = σ0.heap → ∃ σ', Mach.BExec Sv σ σ' ∧ σ'.env x = f j ∧
         (∀ q, q < t → q ≠ x → σ'.env q = σ.env q) ∧ σ'.heap = σ.heap ∧ σ'.wheap = σ.wheap) :
     ∀ m j (σ : MSt) (W : W64), N - j = m → j ≤ N → σ.wheap = [W] →
+      (∀ q, q < t → q ≠ x → q ≠ sv → q ≠ i → NP q → σ.env q = σ0.env q) → σ.heap = σ0.heap →
       Store C σ.env W ((pt, (List.range j).map f) :: others) → σ.env ptv = rN pt → σ.env sv = rN j →
       σ.env i = rN j → σ.env n = rN N → σ.env vOk = 1 →
       ∃ σ' W', Mach.BExec (fillLoop ptv sv x i n t Sv) σ σ' ∧ σ'.heap = σ.heap ∧ σ'.wheap = [W'] ∧
@@ -61,20 +63,20 @@ theorem fillLoop_ok (ptv sv x i n t : Nat) (Sv : MS) (C : Nat) (pt : Nat) (other
         ((σ'.env vOk = 1 ∧ σ'.env sv = rN N ∧ Store C σ'.env W' ((pt, (List.range N).map f) :: others) ∧
             pk (pageCount ((pt, (List.range j).map f) :: others)) (pushFrom j m) ≤ C) ∨
           (σ'.env vOk = 0 ∧ C < pk (pageCount ((pt, (List.range j).map f) :: others)) (pushFrom j m)))
-  | 0, j, σ, W, hm, hj, hW, hS, h1, h2, h3, h4, h5 => by
+  | 0, j, σ, W, hm, hj, hW, hf0, hh0, hS, h1, h2, h3, h4, h5 => by
     have hjN : j = N := by omega
     subst hjN
     have hc : (Mach.BExp.bin .and (.bin .ult (.var i) (.var n)) (.var vOk)).denote σ.env = 0 := by
       simp only [Mach.BExp.denote, Op.eval, h3, h4]; simp
     exact ⟨σ, W, .loopF hc, rfl, hW, fun _ _ _ _ _ _ _ _ => rfl, .inl ⟨h5, h2, hS, by simp only [pushFrom, pk]; exact hS.count_le⟩⟩
-  | m + 1, j, σ, W, hm, hj, hW, hS, h1, h2, h3, h4, h5 => by
+  | m + 1, j, σ, W, hm, hj, hW, hf0, hh0, hS, h1, h2, h3, h4, h5 => by
     obtain ⟨hp8, hs8, hx8, hi8, hn8, hpt, hst, hxt, hit, hnt, hsp, hsx, hip, his, hix, hnp, hns, hnx, hni, hpx⟩ := hv
     have hjN : j < N := by omega
     have hN32 : N < 2 ^ 32 := by rw [P] at hN; omega
     have hc : (Mach.BExp.bin .and (.bin .ult (.var i) (.var n)) (.var vOk)).denote σ.env ≠ 0 := by
       simp only [Mach.BExp.denote, Op.eval, h3, h4, h5,
         rN_lt (show j < 2 ^ 64 by omega) (show N < 2 ^ 64 by omega), if_pos hjN]; decide
-    obtain ⟨σ1, e1, v1, k1, hh1, hw1⟩ := hSv σ W _ j hW hS h3 hjN
+    obtain ⟨σ1, e1, v1, k1, hh1, hw1⟩ := hSv σ W _ j hW hS h3 hjN hf0 hh0
     have hW1 : σ1.wheap = [W] := by rw [hw1, hW]
     have hσ1 : σ1 = ⟨σ1.env, σ1.heap, [W]⟩ := by cases σ1; simp_all
     rw [hσ1] at e1
@@ -105,9 +107,11 @@ theorem fillLoop_ok (ptv sv x i n t : Nat) (Sv : MS) (C : Nat) (pt : Nat) (other
     rcases r2 with ⟨ok2, sz2, S2⟩ | ⟨ok2, hm2, hc2⟩
     · have hS3 : Store C env3 W2 ((pt, (List.range (j + 1)).map f) :: others) := by
         rw [hrange]; exact S2.env fun q hq => by simp only [env3]; rw [set_ne (by have := pool_vars hq; omega)]
-      obtain ⟨σ4, W4, e4, h4', w4, k4, r4⟩ := fillLoop_ok ptv sv x i n t Sv C pt others f N hN
+      obtain ⟨σ4, W4, e4, h4', w4, k4, r4⟩ := fillLoop_ok ptv sv x i n t Sv C pt others f N hN σ0
         ⟨hp8, hs8, hx8, hi8, hn8, hpt, hst, hxt, hit, hnt, hsp, hsx, hip, his, hix, hnp, hns, hnx, hni, hpx⟩ hSv m (j + 1)
-        ⟨env3, σ.heap, [W2]⟩ W2 (by omega) (by omega) rfl hS3
+        ⟨env3, σ.heap, [W2]⟩ W2 (by omega) (by omega) rfl
+        (fun q a b c' d' hq => by
+          show env3 q = _; rw [k3 q a b c' d' hq.1 hq.2.1 hq.2.2]; exact hf0 q a b c' d' hq) hh0 hS3
         (by simp only; rw [k3 _ hpt (by omega) (by omega) (Ne.symm hip) (pool_ne hp8).2.2.1 (pool_ne hp8).2.1 (pool_ne hp8).2.2.2]; exact h1)
         (by simp only [env3, set_ne (Ne.symm his)]; exact sz2) hi3
         (by simp only; rw [k3 _ hnt hnx hns hni (pool_ne hn8).2.2.1 (pool_ne hn8).2.1 (pool_ne hn8).2.2.2]; exact h4)
