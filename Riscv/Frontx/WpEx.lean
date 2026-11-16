@@ -118,4 +118,19 @@ theorem copyPg_good (xs : ByteArray) (h : xs.size ≤ P * P) :
     simp only [List.singleton_append, List.append_nil, finE, stepE, finE_pushFrom]
     simp [npages, P]
 
+theorem copy_N : pgNA copyPg ≤ NS := by decide +kernel
+theorem copy_ob : (copyPg.compP [inLocP] 9).2.v < outBaseP copyPg ∧ (copyPg.compP [inLocP] 9).2.pt < outBaseP copyPg := by
+  decide +kernel
+theorem copy_wfB : rvF.wfB (pgNA copyPg) [0, 3] [2] (pgProgA copyPg) := by decide +kernel
+
+/-- the pages `copyE` needs: a page table, its data pages (and one page for the frame) -/
+def copyFits (xs : ByteArray) (L : Nat) : Prop := 2 + npages xs.size ≤ L / 8192
+
+/-- **`copyE` (a `ByteArray` grown by pushes) ⇒ `Implements1Pg`** -/
+theorem copy_implements : Implements1Pg (fun xs : ByteArray => xs.data.toList) (encArr .ba) (pgCodeA copyPg) copyE
+    8192 copyFits (retLen := true) :=
+  implements1_pgA (k := .ba) copyE copyPg copy_N copy_ob copyPg_wf copy_wfB copyFits fun xs hx => by
+    obtain ⟨E, hg, hpk⟩ := copyPg_good xs (by unfold P; omega)
+    exact ⟨E, hg, fun L _ => by unfold copyFits; omega⟩
+
 end Proven.WA.PgEx

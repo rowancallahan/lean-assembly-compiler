@@ -348,14 +348,14 @@ theorem implements1_pgS {t : Ty} {β : Type} [Res β] (f : ByteArray → β) (p 
     (hwf : p.wfP [inLocP] 9 = true)
     (hmwf : rvF.wfB (pgNS p (Res.k β)) [0, 3] [2] (pgProgS p (Res.k β)))
     (fits : ByteArray → Nat → Prop)
-    (hgood : ∀ xs : ByteArray, xs.size < 2 ^ 32 → ∃ y E, p.GoodE [inLocP] 9 (xs, ()) y E ∧ cv y = f xs ∧
+    (hgood : ∀ xs : ByteArray, xs.size ≤ 2 ^ 20 → ∃ y E, p.GoodE [inLocP] 9 (xs, ()) y E ∧ cv y = f xs ∧
       ∀ L, 8192 ≤ L → (fits xs L ↔ pk 0 E + 1 ≤ L / 8192)) :
     Implements1Pg (fun xs : ByteArray => xs.data.toList) Res.enc (pgCodeS p (Res.k β)) f 8192 fits := by
   refine pg_of_execOW _ Res.enc f (pgNS p (Res.k β)) hN (pgProgS p (Res.k β)) hmwf wlOf
     (wlOf_le _ hN) _ false fits ?_
   intro a out tbl env b L h1 h2 h4 hb hb1 hb2 hL h8 hmax hlt hout hol htl
   have hsz : a.data.toList.length = a.size := Array.length_toList
-  obtain ⟨y, E, hg, hy, hfit⟩ := hgood a (by rw [← hsz]; exact hlt)
+  obtain ⟨y, E, hg, hy, hfit⟩ := hgood a (by rw [← hsz]; exact hmax)
   have hcap := capCode_ok env [a.data.toList.map (·.toBitVec), out] [tbl] b L h2 h4 hL (by omega)
   have htl' : tbl.length = (L / 8192 - 1) * P := htl
   obtain ⟨σ', out', hex', hh, hr⟩ := wholeS_ok (L / 8192 - 1) f p cv hcv a (env.set vCap (rN ((L / 8192 - 1) * P))) out tbl
@@ -389,14 +389,14 @@ theorem implements1_pgA {k : AK} (f : ByteArray → k.T) (p : Pg [.ar .ba] (.ar 
     (hob : (p.compP [inLocP] 9).2.v < outBaseP p ∧ (p.compP [inLocP] 9).2.pt < outBaseP p)
     (hwf : p.wfP [inLocP] 9 = true) (hmwf : rvF.wfB (pgNA p) [0, 3] [2] (pgProgA p))
     (fits : ByteArray → Nat → Prop)
-    (hgood : ∀ xs : ByteArray, xs.size < 2 ^ 32 → ∃ E, p.GoodE [inLocP] 9 (xs, ()) (f xs) E ∧
+    (hgood : ∀ xs : ByteArray, xs.size ≤ 2 ^ 20 → ∃ E, p.GoodE [inLocP] 9 (xs, ()) (f xs) E ∧
       ∀ L, 8192 ≤ L → (fits xs L ↔ pk 0 E + 1 ≤ L / 8192)) :
     Implements1Pg (fun xs : ByteArray => xs.data.toList) (encArr k) (pgCodeA p) f 8192 fits
       (retLen := true) := by
   refine pg_of_execOW _ (encArr k) f (pgNA p) hN (pgProgA p) hmwf wlOf (wlOf_le _ hN) _ true fits ?_
   intro a out tbl env b L h1 h2 h4 hb hb1 hb2 hL h8 hmax hlt hout hol htl
   have hsz : a.data.toList.length = a.size := Array.length_toList
-  obtain ⟨E, hg, hfit⟩ := hgood a (by rw [← hsz]; exact hlt)
+  obtain ⟨E, hg, hfit⟩ := hgood a (by rw [← hsz]; exact hmax)
   have hcap := capCode_ok env [a.data.toList.map (·.toBitVec), out] [tbl] b L h2 h4 hL (by omega)
   have htl' : tbl.length = (L / 8192 - 1) * P := htl
   obtain ⟨σ', out', hex', hh, hr⟩ := wholeA_ok (L / 8192 - 1) p (outBaseP p) a
