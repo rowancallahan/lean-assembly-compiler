@@ -87,30 +87,30 @@ macro "STEPE" : term => `(
     if st == 2 then (if m == 0 then (if ty == 0 then [0] else (ty).toUInt8 :: lx o o 1 0 0 0 0 0 ty) else [])
     else if st == 0 then
       if c == 32 || c == 10 then (if m == 0 then (if ty == 0 then [0] else (ty).toUInt8 :: lx o o 1 0 0 0 0 0 ty) else [])
-      else if c == 58 then (if m == 0 then (if m == 0 then (if ty == 0 then [0] else (ty).toUInt8 :: lx o o 1 0 0 0 0 0 ty) else []) else 58 :: (if m == 0 then (if ty == 0 then [0] else (ty).toUInt8 :: lx o o 1 0 0 0 0 0 ty) else []))
+      else if c == 58 then (if m == 0 then (if ty == 0 then [0] else (ty).toUInt8 :: lx o o 1 0 0 0 0 0 ty) else 58 :: [])
       else if c == 40 || c == 41 || c == 42 || c == 43 || c == 45 || c == 59 then
-        (if m == 0 then (if m == 0 then (if ty == 0 then [0] else (ty).toUInt8 :: lx o o 1 0 0 0 0 0 ty) else []) else c :: (if m == 0 then (if ty == 0 then [0] else (ty).toUInt8 :: lx o o 1 0 0 0 0 0 ty) else []))
+        (if m == 0 then (if ty == 0 then [0] else (ty).toUInt8 :: lx o o 1 0 0 0 0 0 ty) else c :: [])
       else if 48 ≤ c && c ≤ 57 then
-        (if sp == 0 then [0] else if m == 0 then (if m == 0 then (if ty == 0 then [0] else (ty).toUInt8 :: lx o o 1 0 0 0 0 0 ty) else []) else 5 :: c :: 6 :: (if m == 0 then (if ty == 0 then [0] else (ty).toUInt8 :: lx o o 1 0 0 0 0 0 ty) else []))
+        (if sp == 0 then [0] else if m == 0 then (if ty == 0 then [0] else (ty).toUInt8 :: lx o o 1 0 0 0 0 0 ty) else 5 :: c :: 6 :: [])
       else if 97 ≤ c && c ≤ 122 then
-        (if sp == 0 then [0] else if m == 0 then (if m == 0 then (if ty == 0 then [0] else (ty).toUInt8 :: lx o o 1 0 0 0 0 0 ty) else []) else c :: 0 :: (if m == 0 then (if ty == 0 then [0] else (ty).toUInt8 :: lx o o 1 0 0 0 0 0 ty) else []))
+        (if sp == 0 then [0] else if m == 0 then (if ty == 0 then [0] else (ty).toUInt8 :: lx o o 1 0 0 0 0 0 ty) else c :: 0 :: [])
       else [0]
     else if st == 1 then
       if sp == 0 then
         -- `lex`'s fuel equals the rest: the word is split before its last character
         (if w < 0x1000000 || (KIND d0, (w >>> 8)) == 9 || (TYU (w >>> 8)) == 9 then [0]
          else if 48 ≤ c && c ≤ 57 then
-           (if m == 0 then (if m == 0 then (if (TYU (w >>> 8)) == 0 then [0] else ((TYU (w >>> 8))).toUInt8 :: lx o o 1 0 0 0 0 0 (TYU (w >>> 8))) else [])
-            else (KIND d0, (w >>> 8)).toUInt8 :: 5 :: c :: 6 :: (if m == 0 then (if (TYU (w >>> 8)) == 0 then [0] else ((TYU (w >>> 8))).toUInt8 :: lx o o 1 0 0 0 0 0 (TYU (w >>> 8))) else []))
+           (if m == 0 then (if (TYU (w >>> 8)) == 0 then [0] else ((TYU (w >>> 8))).toUInt8 :: lx o o 1 0 0 0 0 0 (TYU (w >>> 8)))
+            else (KIND d0, (w >>> 8)).toUInt8 :: 5 :: c :: 6 :: [])
          else if c < 97 || 122 < c then [0]
-         else (if m == 0 then (if m == 0 then (if (TYU (w >>> 8)) == 0 then [0] else ((TYU (w >>> 8))).toUInt8 :: lx o o 1 0 0 0 0 0 (TYU (w >>> 8))) else [])
-            else (KIND d0, (w >>> 8)).toUInt8 :: c :: 0 :: (if m == 0 then (if (TYU (w >>> 8)) == 0 then [0] else ((TYU (w >>> 8))).toUInt8 :: lx o o 1 0 0 0 0 0 (TYU (w >>> 8))) else [])))
+         else (if m == 0 then (if (TYU (w >>> 8)) == 0 then [0] else ((TYU (w >>> 8))).toUInt8 :: lx o o 1 0 0 0 0 0 (TYU (w >>> 8)))
+            else (KIND d0, (w >>> 8)).toUInt8 :: c :: 0 :: []))
       else if (KIND d, w) == 9 || (TYU w) == 9 then [0]
-      else (if m == 0 then (if m == 0 then (if (TYU w) == 0 then [0] else ((TYU w)).toUInt8 :: lx o o 1 0 0 0 0 0 (TYU w)) else []) else c :: (KIND d, w).toUInt8 :: (if m == 0 then (if (TYU w) == 0 then [0] else ((TYU w)).toUInt8 :: lx o o 1 0 0 0 0 0 (TYU w)) else []))
+      else (if m == 0 then (if (TYU w) == 0 then [0] else ((TYU w)).toUInt8 :: lx o o 1 0 0 0 0 0 (TYU w)) else c :: (KIND d, w).toUInt8 :: [])
     else if st == 3 then
       if sp == 0 then
-        (if w == 0 then [0] else (if m == 0 then (if m == 0 then (if ty == 0 then [0] else (ty).toUInt8 :: lx o o 1 0 0 0 0 0 ty) else []) else 6 :: 5 :: c :: 6 :: (if m == 0 then (if ty == 0 then [0] else (ty).toUInt8 :: lx o o 1 0 0 0 0 0 ty) else [])))
-      else (if m == 0 then (if m == 0 then (if ty == 0 then [0] else (ty).toUInt8 :: lx o o 1 0 0 0 0 0 ty) else []) else c :: 6 :: (if m == 0 then (if ty == 0 then [0] else (ty).toUInt8 :: lx o o 1 0 0 0 0 0 ty) else []))
+        (if w == 0 then [0] else (if m == 0 then (if ty == 0 then [0] else (ty).toUInt8 :: lx o o 1 0 0 0 0 0 ty) else 6 :: 5 :: c :: 6 :: []))
+      else (if m == 0 then (if ty == 0 then [0] else (ty).toUInt8 :: lx o o 1 0 0 0 0 0 ty) else c :: 6 :: [])
     else [0])
 
 /-- the machine; see the file header -/
