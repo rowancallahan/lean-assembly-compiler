@@ -61,7 +61,7 @@ LISTS = {"tinycompile", "tinysm", "take5", "drop5", "matchdrop3", "filterall", "
 FN = sys.argv[3] if len(sys.argv) > 3 else "crcraw"
 unhex = lambda h: [] if h == "-" else list(bytes.fromhex(h))
 # a case: input hex, result hex, and (first line `indw L`) the work block in bytes
-CASES = [tuple(map(unhex, l.split()[:2])) + tuple(int(w) for w in l.split()[2:3])
+CASES = [tuple(map(unhex, l.split()[:2])) + tuple(int(w) for w in l.split()[2:4])
          for l in open(os.path.join(D, "frontx-words", FN + ".cases")) if l.strip()]
 lines = [l for l in open(os.path.join(D, "frontx-words", FN + ".words")) if l.strip()]
 words = [int(l, 16) for l in lines[1:]]
@@ -79,6 +79,12 @@ if WA and WA[3]: LISTS.add(FN)
 # space of the theorem for the cells this input allocates, `Ind.spaceA m nl (fun _ => cells)`)
 INDW = int(lines[0].split()[1]) if lines[0].startswith("indw") else None
 if INDW: LISTS.add(FN)
+# paged arrays (`Riscv/Frontx/WpImpl.lean`, NOTES section 30): first line `pg L`, per case the work block in bytes and
+# `oom` (1: the work block is one page short, the code must return a1 = 2^64 - 1 and leave the output untouched)
+PG = lines[0].startswith("pg")
+if PG:
+    INDW = 0
+    if int(lines[0].split()[1]): LISTS.add(FN)
 wk0 = lambda L: (8 * (WA[0] + WA[2] * L) + 8 * (WA[1] + 1) + 7 if WA else
                  IND[0] + IND[1] * L if IND else REC * (L + 1) + 32 if REC else 8 * (int(lines[0]) + 1) + 7)
 wkc = lambda case: case[2] if INDW is not None else wk0(len(case[0]))
@@ -178,15 +184,18 @@ def check(N):
             L = len(xs); R = len(ys); WK = wkc(case)
             assert list(mem[i0:i0 + L + G]) == xs + [0xAA] * G, (nm, "input", L)
             want = bytes(ys)
-            if FN in FUNCS:
+            if FN in FUNCS and not (PG and case[3]):
                 assert want == FUNCS[FN][1](xs).to_bytes(FUNCS[FN][0], "little"), ("Lean != Python reference", FN, L)
-            assert bytes(mem[o0:o0 + R]) == want, (nm, FN, L, bytes(mem[o0:o0 + R]).hex(), want.hex())
+            oom = PG and case[3]
+            if oom: assert bytes(mem[o0:o0 + R]) == b"\x55" * R, (nm, "output touched in the out-of-memory case", L)
+            else: assert bytes(mem[o0:o0 + R]) == want, (nm, FN, L, bytes(mem[o0:o0 + R]).hex(), want.hex())
             assert list(mem[o0 + R:o0 + R + G]) == [0xAA] * G, (nm, "output guard", L)
             assert list(mem[w0 + WK:w0 + WK + G]) == [0xAA] * G, (nm, "work guard", L)
             e = tab - base + E * c
             gp, spo, a1 = (int.from_bytes(mem[e + o:e + o + 8], "little") for o in (48, 56, 64))
             assert gp == MAGIC and spo == base + w0 + WK, (nm, "gp/sp", hex(gp), spo)
-            if FN in LISTS: assert a1 == R, (nm, "a1 (length)", a1, R)
+            if oom: assert a1 == 2 ** 64 - 1, (nm, "a1 (flag)", hex(a1))
+            elif FN in LISTS: assert a1 == R, (nm, "a1 (length)", a1, R)
     print(f"{FN}: {len(cases)} cases ok (QEMU == Sail == Lean; input lengths up to {max(len(x) for x, *_ in cases)}; "
           f"{len(words)} words, work " + (f"8 (A + B n) + 8 (N + 1) + 7, (A, N, B) = {WA[:3]}" if WA else
           f"{IND[0]} + {IND[1]} n" if IND else f"{REC} (n + 1) + 32" if REC else

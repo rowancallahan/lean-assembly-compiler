@@ -129,7 +129,7 @@ def copyFits (xs : ByteArray) (L : Nat) : Prop := 2 + npages xs.size ≤ L / 819
 /-- **`copyE` (a `ByteArray` grown by pushes) ⇒ `Implements1Pg`** -/
 theorem copy_implements : Implements1Pg (fun xs : ByteArray => xs.data.toList) (encArr .ba) (pgCodeA copyPg) copyE
     8192 copyFits (retLen := true) :=
-  implements1_pgA (k := .ba) copyE copyPg copy_N copy_ob copyPg_wf copy_wfB copyFits fun xs hx => by
+  implements1_pgA (k := .ba) copyE copyPg copy_N copy_ob copyPg_wf copy_wfB copyFits (2 ^ 20) fun xs hx => by
     obtain ⟨E, hg, hpk⟩ := copyPg_good xs (by unfold P; omega)
     exact ⟨E, hg, fun L _ => by unfold copyFits; omega⟩
 

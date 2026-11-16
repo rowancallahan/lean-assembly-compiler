@@ -347,12 +347,12 @@ theorem implements1_pgS {t : Ty} {β : Type} [Res β] (f : ByteArray → β) (p 
     (cv : t.T → β) (hcv : ∀ y, Res.repr (cv y) = t.rep y) (hN : pgNS p (Res.k β) ≤ NS)
     (hwf : p.wfP [inLocP] 9 = true)
     (hmwf : rvF.wfB (pgNS p (Res.k β)) [0, 3] [2] (pgProgS p (Res.k β)))
-    (fits : ByteArray → Nat → Prop)
-    (hgood : ∀ xs : ByteArray, xs.size ≤ 2 ^ 20 → ∃ y E, p.GoodE [inLocP] 9 (xs, ()) y E ∧ cv y = f xs ∧
+    (fits : ByteArray → Nat → Prop) (maxLen : Nat)
+    (hgood : ∀ xs : ByteArray, xs.size ≤ maxLen → ∃ y E, p.GoodE [inLocP] 9 (xs, ()) y E ∧ cv y = f xs ∧
       ∀ L, 8192 ≤ L → (fits xs L ↔ pk 0 E + 1 ≤ L / 8192)) :
-    Implements1Pg (fun xs : ByteArray => xs.data.toList) Res.enc (pgCodeS p (Res.k β)) f 8192 fits := by
+    Implements1Pg (fun xs : ByteArray => xs.data.toList) Res.enc (pgCodeS p (Res.k β)) f 8192 fits maxLen := by
   refine pg_of_execOW _ Res.enc f (pgNS p (Res.k β)) hN (pgProgS p (Res.k β)) hmwf wlOf
-    (wlOf_le _ hN) _ false fits ?_
+    (wlOf_le _ hN) maxLen false fits ?_
   intro a out tbl env b L h1 h2 h4 hb hb1 hb2 hL h8 hmax hlt hout hol htl
   have hsz : a.data.toList.length = a.size := Array.length_toList
   obtain ⟨y, E, hg, hy, hfit⟩ := hgood a (by rw [← hsz]; exact hmax)
@@ -388,12 +388,12 @@ def pgCodeA {k : AK} (p : Pg [.ar .ba] (.ar k)) : List (BitVec 32) :=
 theorem implements1_pgA {k : AK} (f : ByteArray → k.T) (p : Pg [.ar .ba] (.ar k)) (hN : pgNA p ≤ NS)
     (hob : (p.compP [inLocP] 9).2.v < outBaseP p ∧ (p.compP [inLocP] 9).2.pt < outBaseP p)
     (hwf : p.wfP [inLocP] 9 = true) (hmwf : rvF.wfB (pgNA p) [0, 3] [2] (pgProgA p))
-    (fits : ByteArray → Nat → Prop)
-    (hgood : ∀ xs : ByteArray, xs.size ≤ 2 ^ 20 → ∃ E, p.GoodE [inLocP] 9 (xs, ()) (f xs) E ∧
+    (fits : ByteArray → Nat → Prop) (maxLen : Nat)
+    (hgood : ∀ xs : ByteArray, xs.size ≤ maxLen → ∃ E, p.GoodE [inLocP] 9 (xs, ()) (f xs) E ∧
       ∀ L, 8192 ≤ L → (fits xs L ↔ pk 0 E + 1 ≤ L / 8192)) :
-    Implements1Pg (fun xs : ByteArray => xs.data.toList) (encArr k) (pgCodeA p) f 8192 fits
+    Implements1Pg (fun xs : ByteArray => xs.data.toList) (encArr k) (pgCodeA p) f 8192 fits maxLen
       (retLen := true) := by
-  refine pg_of_execOW _ (encArr k) f (pgNA p) hN (pgProgA p) hmwf wlOf (wlOf_le _ hN) _ true fits ?_
+  refine pg_of_execOW _ (encArr k) f (pgNA p) hN (pgProgA p) hmwf wlOf (wlOf_le _ hN) maxLen true fits ?_
   intro a out tbl env b L h1 h2 h4 hb hb1 hb2 hL h8 hmax hlt hout hol htl
   have hsz : a.data.toList.length = a.size := Array.length_toList
   obtain ⟨E, hg, hfit⟩ := hgood a (by rw [← hsz]; exact hmax)
