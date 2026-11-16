@@ -67,27 +67,29 @@ Method: features from the signature text (regex, **read**); a function is covere
 | 7 | `String`/`Char` | 1 097 |
 | 8 | `Int` | 1 101 |
 
-Reading: the first three steps cover ~757 of 1 101 (**run**-checked signatures, regex features). The nullary-constant rule is a crude regex (230 mentions), so step 4 is the least reliable number. The result is the same ordering as the first probe: data model first, then monad, then the collections.
+Reading: the first three steps cover ~757 of 1 101 (regex features over the signature text, **read**). The nullary-constant rule is a crude regex (230 mentions), so step 4 is the least reliable number. The result is the same ordering as the first probe: data model first, then monad, then the collections.
 
 ## 4. What blocks `whnfBody`, `inferBody`, `defeqBody`, `checkDecl` now
 
 - **`whnfBody`** (`Core.lean:1153`): first failure **run**: `unsupported parameter type Type → Type` (the `m` of `[Monad m]`). Hidden after that (**read** from the signature): `r : CoreFns m` (a record of closures, row 5 + 7), result `m Expr` (row 2). Direct callees: `whnfLoopFuel` (nullary: 2^62), `whnfLoop` (`Type → Type`), `Expr.depth` (passes).
 - **`inferBody`** (`Core.lean:1226`): first failure **run**: `Type → Type`. Hidden (**read**): `CoreFns m`, `m Expr`. Direct callees that fail on their own: `Expr.instantiateLevelParams` (`List Name`), `Expr.abstract1` (two scalars), `Env.find?`, `Env.findProj?`, `ProjTable.entry`, `ConstantInfo.toConstantVal`, `ProjEntry.typeAt`, `FBase.find?`, `FEnv.find?`, `natName`/`stringName` (nullary `Name` constants), `unknownConstError` (`CheckError` result), `whnf` (`CheckMode`), `ensureSort` (`Type → Type`). Passing callees: `Expr.instantiate1`, `Expr.getAppFn`, `Expr.getAppArgs`.
-- **`defeqBody`** (`Core.lean:1830`): first failure **run**: `Type → Type`. Hidden (**read**): `eager : Bool`, `CoreFns m`, result `m Bool`. Direct callees: `propIrrel`, `boolTrueShortcut`, `quickDefEq`, `lazyDeltaReduction`, `defeqProjPair`, `defeqStuck` (all `Type → Type`), `defeqLoopFuel` (nullary), `whnfCore` (`CheckMode`), `Expr.isBoolTrue` (passes the gate; arms fail on the string literal constant `TExpr.lit.s…`, row 11).
+- **`defeqBody`** (`Core.lean:1830`): first failure **run**: `Type → Type`. Hidden (**read**): `eager : Bool`, `CoreFns m`, result `m Bool`. Direct callees: `propIrrel`, `boolTrueShortcut`, `quickDefEq`, `lazyDeltaReduction`, `defeqProjPair`, `defeqStuck` (all `Type → Type`), `defeqLoopFuel` (nullary), `whnfCore` (`CheckMode`), `Expr.isBoolTrue` (signature passes the gate; arms fail on the string literal constant `TExpr.lit.s…`, row 11).
 - **`checkDecl`** (`CheckDecl.lean:169`): **not probed**: the definition is outside the source file's import closure (§2). Its root in the probe, `Cached.checkDecls` (`Cached/Decls.lean:89`), fails first with `no argument of a declared type` (**run**; parameters `CheckMode`, `List NatOpPinSet`, `Nat`, `Array Declaration`; result `Except (CheckError × Nat) Env`). Its direct callees `Env.empty`, `mkFEnv`, `Cached.declStep` fail on `Env`/`FEnv` results (**run**).
 
 **Inference:** `whnfBody`/`inferBody`/`defeqBody` need two things before their bodies are reached: a monad fixed at the use site (row 2) and the `CoreFns m` record (rows 5 and 7). Neither is in `frontx_ind` now. Whether the bodies then pass is not known from this run.
 
 **Inference:** `Expr.isBoolTrue`-style functions need a generated `TExpr.lit.s…` constant for every string literal in an Expr-family body. The `ConLecheBlk.lean` mechanism does this for `Name` constants. Not tested here.
 
-## 5. Real `frontx_ind` (not only the gate)
+## 5. Real `frontx_ind` (not only the gate): not measured
 
-See §6 for the status of the `F2I` run (real `frontx_ind f on TExpr` for the 42 gate-passing names).
+- Ran `frontx_ind f on TExpr` for the 42 gate-passing names (`out/F2I.lean`, `out/F2I.out`). **run**: no probe command finished in ~25 min (process at ~5.5 GB RSS, one CPU-thread busy); the output has no result line for any of the 42. Two attempts (one with `BasisDSL.cnst` first, one with the Level functions first) both stalled on the first command.
+- So: gate-pass (42) is the strongest claim this run supports. Whether `frontx_ind` completes for any of them (proof/kernel stage) is **unknown**. A per-function timing run (one function per file, no 7-min source header per run in parallel) is the next step; not done here.
 
 ## 6. Caveats
 
 - The gate result is per function, one message each; it stops at the first failing signature.
 - `frontx_compile` and `frontx_ind_gate` were run on the same probe file; no function was compiled twice.
+- Gate pass ≠ `frontx_ind` success (§5).
 - Regex-based features (§3) are reading, not running.
 - `checkDecl` and `Cached/ExprNodes` are outside the source file; they need the rest of con-leche to be probed.
 - No compiler source was modified.

@@ -22165,7 +22165,13 @@ end
 -- ===== depth-2 declarations =====
 frontx_ind_type TExpr := ConLeche.Expr nesting ConLeche.Level, ConLeche.Name, List ConLeche.Level, ConLeche.Literal, List ConLeche.Expr, Option ConLeche.Expr
 
-frontx_ind ConLeche.BasisDSL.cnst on TExpr
+frontx_ind ConLeche.Expr.hasFvar on TExpr
+frontx_ind ConLeche.Expr.instantiate1 on TExpr
+frontx_ind ConLeche.Level.combining on TExpr
+frontx_ind ConLeche.Level.decEq on TExpr
+frontx_ind ConLeche.Level.isNeverZero on TExpr
+frontx_ind ConLeche.Level.simplify on TExpr
+frontx_ind ConLeche.Literal.decEq on TExpr
 frontx_ind ConLeche.Cached.iotaNumArgs on TExpr
 frontx_ind ConLeche.Cached.isStuckHeadC on TExpr
 frontx_ind ConLeche.Cached.pushKey on TExpr
@@ -22183,9 +22189,7 @@ frontx_ind ConLeche.Expr.getAppArgs on TExpr
 frontx_ind ConLeche.Expr.getAppArgsAccC on TExpr
 frontx_ind ConLeche.Expr.getAppArgsC on TExpr
 frontx_ind ConLeche.Expr.getAppFn on TExpr
-frontx_ind ConLeche.Expr.hasFvar on TExpr
 frontx_ind ConLeche.Expr.headIsProj on TExpr
-frontx_ind ConLeche.Expr.instantiate1 on TExpr
 frontx_ind ConLeche.Expr.ioNeutral on TExpr
 frontx_ind ConLeche.Expr.isCompound on TExpr
 frontx_ind ConLeche.Expr.isCompoundF on TExpr
@@ -22197,13 +22201,9 @@ frontx_ind ConLeche.Expr.numArgs on TExpr
 frontx_ind ConLeche.Expr.piResult on TExpr
 frontx_ind ConLeche.Expr.sizeF on TExpr
 frontx_ind ConLeche.Expr.wscopedB on TExpr
-frontx_ind ConLeche.Level.combining on TExpr
-frontx_ind ConLeche.Level.decEq on TExpr
-frontx_ind ConLeche.Level.isNeverZero on TExpr
-frontx_ind ConLeche.Level.simplify on TExpr
-frontx_ind ConLeche.Literal.decEq on TExpr
 frontx_ind ConLeche.classBinder on TExpr
 frontx_ind ConLeche.nestResHead on TExpr
 frontx_ind ConLeche.sameConstHeads on TExpr
 frontx_ind ConLeche.structElimLevel on TExpr
 frontx_ind ConLeche.structProjArgP on TExpr
+frontx_ind ConLeche.BasisDSL.cnst on TExpr
