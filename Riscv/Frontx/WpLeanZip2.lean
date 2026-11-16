@@ -22,6 +22,20 @@ def copyWithin (a : ByteArray) (srcOff len : Nat) : ByteArray :=
   a ++ a.extract srcOff (srcOff + len)
 end ByteArray
 
+namespace Zip.Native.Inflate
+-- Zip/Native/Inflate.lean:710@7e10583
+def copyLoopGo (buf : ByteArray) (start distance : Nat)
+    (k length : Nat)
+    (hd_pos : distance > 0 := by omega) (hsd : start + distance ≤ buf.size := by omega) : ByteArray :=
+  if k < length then
+    have hidx : start + (k % distance) < buf.size := by
+      have := Nat.mod_lt k hd_pos; omega
+    copyLoopGo (buf.push buf[start + (k % distance)]) start distance (k + 1) length
+      hd_pos (by simp [ByteArray.size_push]; omega)
+  else buf
+termination_by length - k
+end Zip.Native.Inflate
+
 namespace Proven.WA.LeanZip2
 open Proven.WA
 
@@ -37,5 +51,15 @@ wp_compile storedCopyE max 1048576
 /-- `xs.copyWithin (n / 4) (n / 2)`: `xs ++ xs.extract (n / 4) (n / 4 + n / 2)` -/
 def copyWithinE (xs : ByteArray) : ByteArray := xs.copyWithin (xs.size >>> 2) (xs.size >>> 1)
 wp_compile copyWithinE max 524288
+
+/-- an LZ77 back-reference: `n` bytes copied from distance `n % 7 + 1` behind the end of `xs ++ [0]` -/
+def copyLoopGoE (xs : ByteArray) : ByteArray :=
+  Zip.Native.Inflate.copyLoopGo (xs.push 0) (xs.size + 1 - (xs.size % 7 + 1)) (xs.size % 7 + 1) 0 xs.size
+    (by omega) (by simp [ByteArray.size_push]; omega)
+wp_compile copyLoopGoE max 524287
+  invariant fun (buf : ByteArray) (start distance k length : Nat) =>
+    0 < distance ∧ start + distance ≤ buf.size ∧ k ≤ length ∧ buf.size + (length - k) ≤ 1048576 ∧
+      length < 2 ^ 32 ∧ start < 2 ^ 32 ∧ distance < 2 ^ 32
+  measure fun (_buf : ByteArray) (_start _distance k length : Nat) => length - k
 
 end Proven.WA.LeanZip2

@@ -24,6 +24,14 @@ open Lean Meta Elab Term Command
 theorem append_appendGo' (a b : ByteArray) : a ++ b = appendGo b 0 a := by
   rw [appendGo_eq, ByteArray.extract_zero_size]
 
+theorem push_pushGo' (a : ByteArray) (x : UInt8) : a.push x = pushGo x 0 a := (pushGo_eq x a).symm
+
+theorem ba_extract_zero_ge (a : ByteArray) (n : Nat) (h : a.size ≤ n) : a.extract 0 n = a := by
+  apply ByteArray.ext; simp [ByteArray.data_extract]; omega
+
+theorem ba_extract_zero_eq (a : ByteArray) (n : Nat) (h : n = a.size) : a.extract 0 n = a := by
+  subst h; exact ByteArray.extract_zero_size
+
 theorem ba_size_set! (a : ByteArray) (i : Nat) (x : UInt8) : (a.set! i x).size = a.size := by
   cases a with
   | mk bs => simp [ByteArray.set!, ByteArray.size]
@@ -38,10 +46,58 @@ macro "wp_dsimp" : tactic => `(tactic| simp (config := { failIfUnchanged := fals
   Proven.Frontx.ediv_hdiv, Proven.Frontx.emod_hmod, Int.zero_sub, Int.ofNat_eq_natCast, decide_eq_true_eq, AK.el,
   size_ite_set, size_set', Array.size_replicate, u8_lt64, u16_lt64, u32_lt64, u64_lt64, u8_lt64', u16_lt64',
   u32_lt64', u64_lt64', Proven.WP.P, ByteArray.size_push, ByteArray.size_extract, ByteArray.extract_zero_size,
-  ByteArray.get!_eq', ba_size_set!, ba_size_ite_set, append_appendGo', Array.size_push] at *)
+  ByteArray.get!_eq', ba_size_set!, ba_size_ite_set, ba_extract_zero_ge, ba_extract_zero_eq, append_appendGo', pushGo_eq, Array.size_push] at *)
+
+/-- numerals, `≤`, `<`, `+`, `-` at a type that is `Nat` only up to unfolding (`Ty.nat.T`, `(Sl.sc .nat).T`) restated
+at `Nat` (a definitional change), so that `omega` reads them -/
+def setArgN (t : Expr) (i : Nat) (x : Expr) : Expr :=
+  let args := t.getAppArgs
+  mkAppN t.getAppFn (args.set! i x)
+
+def natTypes (e : Expr) : MetaM Expr :=
+  Meta.transform e (post := fun t => do
+    let fix (i : Nat) : MetaM TransformStep := do
+      let T := t.getArg! i
+      if T.isConstOf ``Nat then return .done t
+      if T.hasLooseBVars then return .done t
+      if ← withDefault (isDefEq T (mkConst ``Nat)) then
+        return .done (setArgN t i (mkConst ``Nat))
+      return .done t
+    if t.isAppOfArity ``OfNat.ofNat 3 then
+      let T := t.getArg! 0
+      let n := t.getArg! 1
+      -- a numeral whose value is itself a `Nat` numeral: its raw literal
+      let n := if n.isAppOfArity ``OfNat.ofNat 3 && (n.getArg! 0).isConstOf ``Nat then n.getArg! 1 else n
+      if (T.isConstOf ``Nat && n == t.getArg! 1) || T.hasLooseBVars then return .done t
+      if ← withDefault (isDefEq T (mkConst ``Nat)) then
+        return .done (mkApp3 (mkConst ``OfNat.ofNat [0]) (mkConst ``Nat) n (mkApp (mkConst ``instOfNatNat) n))
+      return .done t
+    if t.isAppOfArity ``LE.le 4 || t.isAppOfArity ``LT.lt 4 then return ← fix 0
+    if t.isAppOfArity ``HAdd.hAdd 6 || t.isAppOfArity ``HSub.hSub 6 || t.isAppOfArity ``HMul.hMul 6 ||
+        t.isAppOfArity ``HMod.hMod 6 || t.isAppOfArity ``HDiv.hDiv 6 then
+      let mut t' := t
+      let mut all := true
+      for i in [0:3] do
+        let Ti := t.getArg! i
+        if Ti.isConstOf ``Nat then continue
+        if !Ti.hasLooseBVars && (← withDefault (isDefEq Ti (mkConst ``Nat))) then t' := setArgN t' i (mkConst ``Nat)
+        else all := false
+      return .done (if all then t' else t)
+    return .done t)
+
+open Lean Elab Tactic in
+elab "nat_types" : tactic => withMainContext do
+  let mut g ← getMainGoal
+  g ← g.replaceTargetDefEq (← natTypes (← instantiateMVars (← g.getType)))
+  for d in (← g.getDecl).lctx do
+    if d.isImplementationDetail then continue
+    let ty ← instantiateMVars d.type
+    let ty' ← natTypes ty
+    if ty' != ty then g ← g.replaceLocalDeclDefEq d.fvarId ty'
+  replaceMainGoal [g]
 
 /-- `Ty.nat.T` comparisons as `Nat` comparisons (for `omega`), then `wa_close` -/
-macro "wp_close" : tactic => `(tactic| ((try dsimp only [Ty.T, AK.T, Sl.T, AK.el] at *); wa_close))
+macro "wp_close" : tactic => `(tactic| ((try dsimp only [Ty.T, AK.T, Sl.T, AK.el] at *); (try nat_types); wa_close))
 
 macro "wp_okt" : tactic => `(tactic| (wp_dsimp <;> wp_close))
 
@@ -50,12 +106,20 @@ macro "wp_step " P:ident μ:ident : tactic => `(tactic| (
   simp only [$P:ident, $μ:ident] at hP ⊢
   wp_dsimp
   split at h <;> first
-    | (injection h with h; subst h; wp_dsimp; first | omega | (wa_facts; omega) | wp_close)
+    | (injection h with h; subst h; wp_dsimp; (try nat_types); first | omega | (wa_facts; omega) | wp_close)
     | cases h))
+
+/-- a side condition (sizes, bounds): conjunctions split, then `omega` -/
+macro "wp_side" : tactic => `(tactic| (
+  (try simp only [ByteArray.size_push, ba_size_set!, ba_size_ite_set, ByteArray.size_extract, AK.size, AK.push,
+    gt_iff_lt, ge_iff_le] at *)
+  (try nat_types)
+  repeat' (apply And.intro)
+  all_goals (first | omega | (wa_facts; omega))))
 
 /-- the equation of a loop function whose `g` rebuilds proof arguments: `dif_pos` on both sides -/
 macro "wp_dif" : tactic => `(tactic| (
-  repeat (first | (rw [dif_pos (by first | omega | (wa_facts; omega) | wp_close)]) | split)))
+  repeat (first | (rw [dif_pos (by wp_side)]) | split)))
 
 syntax "wp_compile " ident (&" reflect_only")? " max " term (" invariant " term " measure " term)* : command
 
@@ -112,14 +176,21 @@ elab_rules : command
     let unf : Array (TSyntax `Lean.Parser.Tactic.simpLemma) ←
       (names.push fn).mapM fun n => `(Lean.Parser.Tactic.simpLemma| $(mkIdent n):ident)
     let xsI := mkIdent `xs
+    let gsAll : Array (TSyntax `Lean.Parser.Tactic.simpLemma) ← (List.range ls.size).toArray.mapM fun k =>
+      `(Lean.Parser.Tactic.simpLemma| $(mkIdent (fn ++ Name.mkSimple s!"g{k}")):ident)
+    -- the functions of the `++` / `push` loops unfold to `appendGo` / `pushGo` (and those to `++` / `push`)
+    let gAuto : Array (TSyntax `Lean.Parser.Tactic.simpLemma) ← (ls.toList.zipIdx.filter fun (l, _) =>
+        l.un == ``appendGo || l.un == ``pushGo).toArray.mapM fun (_, k) =>
+      `(Lean.Parser.Tactic.simpLemma| $(mkIdent (fn ++ Name.mkSimple s!"g{k}")):ident)
+    let unf := unf ++ gAuto
     -- the proof of `GoodE`, stage by stage
     let rec good : List Stage → CommandElabM Term
       | [] => throwError "wp_compile: no result"
       | .retS :: _ => match R with
         | .sc _ => `(⟨by simp only [$unf,*, foldl_foldGo, ← getElem!_pos, dite_eq_ite]; wp_dsimp; try rfl, by wp_okt,
             rfl⟩)
-        | .ar _ => `(⟨by simp only [$unf,*, foldl_foldGo]; wp_dsimp; try rfl, rfl⟩)
-      | .letS :: rest => do `(⟨by wp_okt, _, $(← good rest), rfl⟩)
+        | .ar _ => `(⟨by simp only [$unf,*, foldl_foldGo]; wp_dsimp; (try rfl); (try (simp only [$gsAll,*]; wp_dif)), rfl⟩)
+      | .letS :: rest => do `(⟨by (try simp only [$unf,*]); wp_okt, _, $(← good rest), rfl⟩)
       | .loopS k _ :: rest => do
         let l := ls[k]!
         let g := mkIdent (fn ++ Name.mkSimple s!"g{k}")
@@ -128,7 +199,7 @@ elab_rules : command
         let st ← liftTermElabM (introState l.Δ #[mkIdent `hP])
         let st2 ← liftTermElabM (introState l.Δ #[mkIdent `s', mkIdent `hP, mkIdent `h])
         let st3 ← liftTermElabM (introState l.Δ #[mkIdent `hP])
-        let okall ← `(tactic| ($(← liftMacroM (seqT st)); simp only [$P:ident] at hP; wp_dsimp; wp_close))
+        let okall ← `(tactic| ($(← liftMacroM (seqT st)); simp only [$P:ident] at hP; (try simp only [$unf,*] at *); wp_dsimp; wp_close))
         let step ← `(tactic| ($(← liftMacroM (seqT st2)); wp_step $P $μ))
         let unI := mkIdent l.un
         let simpG ← `(tactic| simp only [$g:ident, $unf,*, ← getElem!_pos, dite_eq_ite, decide_eq_true_eq, Bool.and_eq_true, Bool.or_eq_true, Bool.not_eq_true', decide_eq_false_iff_not, beq_iff_eq, bne_iff_ne])
@@ -136,10 +207,10 @@ elab_rules : command
             `(tactic| ($(← liftMacroM (seqT st3)); simp only [$P:ident] at hP; simp only [$g:ident]; wp_dif; rw [$unI:ident]; wp_dsimp; $simpG:tactic; wp_dif))
           else
             `(tactic| ($(← liftMacroM (seqT st3)); simp only [$g:ident]; rw [$unI:ident]; wp_dsimp; $simpG:tactic))
-        let p0 ← `(tactic| (simp only [$P:ident]; wp_dsimp; wp_close))
+        let p0 ← `(tactic| (simp only [$P:ident]; (try simp only [$unf,*]); wp_dsimp; wp_close))
         let sq (t : TSyntax `tactic) : CommandElabM (TSyntax `Lean.Parser.Tactic.tacticSeq) :=
           `(Lean.Parser.Tactic.tacticSeq| $t:tactic)
-        `(⟨by wp_okt, _, $P $xsI, _, _, by $(← sq p0), by $(← sq okall), by $(← sq step),
+        `(⟨by (try simp only [$unf,*]); wp_okt, _, $P $xsI, _, _, by $(← sq p0), by $(← sq okall), by $(← sq step),
             (runsE_of (runs_of _ _ ($g $xsI) ($P $xsI) ($μ $xsI) (by $(← sq heq)) (by $(← sq step)) _
               (by $(← sq p0)))).choose_spec,
             $(← good rest), rfl⟩)
@@ -154,7 +225,21 @@ elab_rules : command
     let pgGoodI := mkIdent (`_root_ ++ fn ++ `pgGood)
     let compilesI := mkIdent (`_root_ ++ fn ++ `compiles)
     let computesI := mkIdent (`_root_ ++ fn ++ `computes)
-    elabCommand (← `(def $pgI:ident : PgProg := ⟨$(← liftTermElabM (slSyn R)), $wa, $N⟩))
+    -- programs with `mop` (`*`, `/`, `%` by variables): the checked words with a register choice
+    let progT ← match R with
+      | .sc _ => `(pgProgS $wa (Proven.Frontx.Res.k (BitVec 64)))
+      | .ar _ => `(pgProgA $wa)
+    let nT ← match R with
+      | .sc _ => `(pgNS $wa (Proven.Frontx.Res.k (BitVec 64)))
+      | .ar _ => `(pgNA $wa)
+    let chT ← if ← liftTermElabM (evalBoolW (← `(MS.hasMop $progT))) then
+        let some (t, sp) ← liftTermElabM (evalChoiceW (← `(natChoice (Proven.Mach.Riscv.pickC $nT [0, 3] [2] $progT))))
+          | throwError "wp_compile: no register choice passed optB"
+        let ts ← t.toArray.mapM fun (a, b) => `(($(quote a), $(quote b)))
+        let ss : Array Term := sp.toArray.map fun j => quote j
+        `(some ([$ts,*], [$ss,*]))
+      else `(none)
+    elabCommand (← `(def $pgI:ident : PgProg := ⟨$(← liftTermElabM (slSyn R)), $wa, $N, $chT⟩))
     match R with
     | .sc _ =>
       elabCommand (← `(set_option maxRecDepth 100000 in

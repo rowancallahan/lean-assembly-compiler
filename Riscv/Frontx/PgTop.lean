@@ -166,6 +166,8 @@ structure PgProg where
   p : Pg [.ar .ba] R
   /-- the inputs it accepts: up to `maxIn` bytes (a program whose arrays grow needs room below `P * P`) -/
   maxIn : Nat := 2 ^ 20
+  /-- a register choice for the checked words `compBFC` (programs with `mop`); `none`: `compBFO` -/
+  ch : Option (List (Nat × Nat) × List Nat) := none
 
 /-- the bytes of a result: a scalar as 8 bytes little-endian, an array as its elements' bytes -/
 def outEnc : (R : Sl) → R.T → List UInt8
@@ -200,7 +202,7 @@ noncomputable def res (input : List UInt8) : q.R.T :=
   if h : ∃ y E, q.p.GoodE [inLocP] 9 (inArr input, ()) y E then Classical.choose h else
     Classical.choice (by
       cases q with
-      | mk R p m =>
+      | mk R p m c =>
         cases R with
         | sc t => cases t <;> exact ⟨default⟩
         | ar k => cases k with
@@ -216,23 +218,30 @@ noncomputable def events (input : List UInt8) : List MemEvent := (q.evs input).r
 
 /-- the paged code after the stub -/
 def body : PgProg → List (BitVec 32)
-  | ⟨.sc _, p, _⟩ => pgCodeS p (Res.k (BitVec 64))
-  | ⟨.ar _, p, _⟩ => pgCodeA p
+  | ⟨.sc _, p, _, none⟩ => pgCodeS p (Res.k (BitVec 64))
+  | ⟨.sc _, p, _, some (t, spl)⟩ => pgCodeSC p (Res.k (BitVec 64)) (waTbl t) spl
+  | ⟨.ar _, p, _, none⟩ => pgCodeA p
+  | ⟨.ar _, p, _, some (t, spl)⟩ => pgCodeAC p (waTbl t) spl
 
 def code : List (BitVec 32) := pgStub ++ q.body
 
 /-- the conditions the compiler checks -/
 def Good : PgProg → Prop
-  | ⟨.sc t, p, m⟩ => pgNS p (Res.k (BitVec 64)) ≤ NS ∧ p.wfP [inLocP] 9 = true ∧
-      rvF.wfB (pgNS p (Res.k (BitVec 64))) [0, 3] [2] (pgProgS p (Res.k (BitVec 64))) ∧ Total ⟨.sc t, p, m⟩
-  | ⟨.ar k, p, m⟩ => pgNA p ≤ NS ∧ ((p.compP [inLocP] 9).2.v < outBaseP p ∧ (p.compP [inLocP] 9).2.pt < outBaseP p) ∧
-      p.wfP [inLocP] 9 = true ∧ rvF.wfB (pgNA p) [0, 3] [2] (pgProgA p) ∧ Total ⟨.ar k, p, m⟩
+  | ⟨.sc t, p, m, none⟩ => pgNS p (Res.k (BitVec 64)) ≤ NS ∧ p.wfP [inLocP] 9 = true ∧
+      rvF.wfB (pgNS p (Res.k (BitVec 64))) [0, 3] [2] (pgProgS p (Res.k (BitVec 64))) ∧ Total ⟨.sc t, p, m, none⟩
+  | ⟨.sc t, p, m, some (tb, spl)⟩ => pgNS p (Res.k (BitVec 64)) ≤ NS ∧ p.wfP [inLocP] 9 = true ∧
+      (rvwF.optB scB (tblG (waTbl tb)) (fun j => spl.contains j) (pgNS p (Res.k (BitVec 64))) [0, 3] [2]
+        (pgProgS p (Res.k (BitVec 64)))).isSome = true ∧ Total ⟨.sc t, p, m, some (tb, spl)⟩
+  | ⟨.ar k, p, m, none⟩ => pgNA p ≤ NS ∧ ((p.compP [inLocP] 9).2.v < outBaseP p ∧ (p.compP [inLocP] 9).2.pt < outBaseP p) ∧
+      p.wfP [inLocP] 9 = true ∧ rvF.wfB (pgNA p) [0, 3] [2] (pgProgA p) ∧ Total ⟨.ar k, p, m, none⟩
+  | ⟨.ar k, p, m, some (tb, spl)⟩ => pgNA p ≤ NS ∧
+      ((p.compP [inLocP] 9).2.v < outBaseP p ∧ (p.compP [inLocP] 9).2.pt < outBaseP p) ∧ p.wfP [inLocP] 9 = true ∧
+      (rvwF.optB scB (tblG (waTbl tb)) (fun j => spl.contains j) (pgNA p) [0, 3] [2] (pgProgA p)).isSome = true ∧
+      Total ⟨.ar k, p, m, some (tb, spl)⟩
 
 theorem good_total {q : PgProg} (h : q.Good) : q.Total := by
-  obtain ⟨R, p, m⟩ := q
-  cases R with
-  | sc t => exact h.2.2.2
-  | ar k => exact h.2.2.2.2
+  obtain ⟨R, p, m, c⟩ := q
+  cases R <;> cases c <;> first | exact h.2.2.2 | exact h.2.2.2.2
 
 theorem goodE_cast {R : Sl} {p : Pg [.ar .ba] R} {v v' : Vals [.ar .ba]} {y : R.T} {E : List MemEvent}
     (e : v = v') (h : p.GoodE [inLocP] 9 v y E) : p.GoodE [inLocP] 9 v' y E := e ▸ h
@@ -288,18 +297,35 @@ theorem body_ok {q : PgProg} (hg : q.Good) :
     Implements1PgQ (fun xs : ByteArray => xs.data.toList) (outEnc q.R) q.body (fun xs => q.res xs.data.toList) 8192
       q.fitsM (okQ q.fitsM) q.maxIn (retOf q.R) := by
   have ht := PgProg.good_total hg
-  obtain ⟨R, p, m⟩ := q
+  obtain ⟨R, p, m, c⟩ := q
   cases R with
   | sc t =>
-    obtain ⟨hN, hwf, hmwf, -⟩ := hg
-    have := implements1_pgSQ (β := BitVec 64) (fun xs => t.rep (PgProg.res ⟨.sc t, p, m⟩ xs.data.toList)) p t.rep
-      (fun _ => rfl) hN hwf hmwf (PgProg.fitsM ⟨.sc t, p, m⟩) m (fun xs hs =>
-        ⟨_, _, PgProg.res_spec ht xs hs, rfl, fun L _ => PgProg.fitsM_iff _ xs L⟩)
-    exact this.congr fun _ => rfl
+    cases c with
+    | none =>
+      obtain ⟨hN, hwf, hmwf, -⟩ := hg
+      have := implements1_pgSQ (β := BitVec 64) (fun xs => t.rep (PgProg.res ⟨.sc t, p, m, none⟩ xs.data.toList)) p
+        t.rep (fun _ => rfl) hN hwf hmwf (PgProg.fitsM ⟨.sc t, p, m, none⟩) m (fun xs hs =>
+          ⟨_, _, PgProg.res_spec ht xs hs, rfl, fun L _ => PgProg.fitsM_iff _ xs L⟩)
+      exact this.congr fun _ => rfl
+    | some ch =>
+      obtain ⟨tb, spl⟩ := ch
+      obtain ⟨hN, hwf, hc, -⟩ := hg
+      have := implements1_pgSQC (β := BitVec 64) (fun xs => t.rep (PgProg.res ⟨.sc t, p, m, some (tb, spl)⟩ xs.data.toList))
+        p t.rep (fun _ => rfl) hN hwf (waTbl tb) spl hc (PgProg.fitsM ⟨.sc t, p, m, some (tb, spl)⟩) m (fun xs hs =>
+          ⟨_, _, PgProg.res_spec ht xs hs, rfl, fun L _ => PgProg.fitsM_iff _ xs L⟩)
+      exact this.congr fun _ => rfl
   | ar k =>
-    obtain ⟨hN, hob, hwf, hmwf, -⟩ := hg
-    exact implements1_pgAQ (fun xs => PgProg.res ⟨.ar k, p, m⟩ xs.data.toList) p hN hob hwf hmwf
-      (PgProg.fitsM ⟨.ar k, p, m⟩) m (fun xs hs => ⟨_, PgProg.res_spec ht xs hs, fun L _ => PgProg.fitsM_iff _ xs L⟩)
+    cases c with
+    | none =>
+      obtain ⟨hN, hob, hwf, hmwf, -⟩ := hg
+      exact implements1_pgAQ (fun xs => PgProg.res ⟨.ar k, p, m, none⟩ xs.data.toList) p hN hob hwf hmwf
+        (PgProg.fitsM ⟨.ar k, p, m, none⟩) m (fun xs hs => ⟨_, PgProg.res_spec ht xs hs, fun L _ => PgProg.fitsM_iff _ xs L⟩)
+    | some ch =>
+      obtain ⟨tb, spl⟩ := ch
+      obtain ⟨hN, hob, hwf, hc, -⟩ := hg
+      exact implements1_pgAQC (fun xs => PgProg.res ⟨.ar k, p, m, some (tb, spl)⟩ xs.data.toList) p hN hob hwf
+        (waTbl tb) spl hc (PgProg.fitsM ⟨.ar k, p, m, some (tb, spl)⟩) m
+        (fun xs hs => ⟨_, PgProg.res_spec ht xs hs, fun L _ => PgProg.fitsM_iff _ xs L⟩)
 
 theorem run_eq {q : PgProg} (hg : q.Good) {input out : List UInt8} (hrun : q.run input = some out) :
     input.length ≤ q.maxIn ∧ out = outEnc q.R (q.res (inArr input).data.toList) := by

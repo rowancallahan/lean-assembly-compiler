@@ -65,6 +65,14 @@ theorem appendGo_eq (b : ByteArray) : ∀ i acc, appendGo b i acc = acc ++ b.ext
     rw [e, List.take_succ_cons]
     congr 1
 
+/-- `a.push x` as a loop of one push (paged mode) -/
+def pushGo (x : UInt8) (i : Nat) (acc : ByteArray) : ByteArray :=
+  if i < 1 then pushGo x (i + 1) (acc.push x) else acc
+termination_by 1 - i
+
+theorem pushGo_eq (x : UInt8) (acc : ByteArray) : pushGo x 0 acc = acc.push x := by
+  rw [pushGo, if_pos (by omega), pushGo, if_neg (by omega)]
+
 /-- `a ++ b` is the loop from a copy of `a` -/
 theorem append_appendGo (a b : ByteArray) : a ++ b = appendGo b 0 (a.extract 0 a.size) := by
   rw [appendGo_eq, ByteArray.extract_zero_size, ByteArray.extract_zero_size]
@@ -594,6 +602,20 @@ def splitStructLet? (t v b : Expr) : MetaM (Option Expr) := do
       normPC (b.instantiate1 (mkAppN v.getAppFn (v.getAppArgs.extract 0 ci.numParams ++ fs)))
   return some (← go 0 #[])
 
+/-- paged: a loop call `fn … a …` with a computed `ByteArray` argument `a` becomes `let t := a; fn … t …` -/
+def nameArrayArg? (ctx : List Ent) (e : Expr) : MetaM (Option Expr) := do
+  let args := e.getAppArgs
+  for h : j in [0:args.size] do
+    let a := args[j]
+    if a.hasLooseBVars then continue
+    let ty ← inferType a
+    unless (← whnfR ty).isConstOf ``ByteArray do continue
+    if (← Ent.find? ctx a).isSome then continue
+    if a.isFVar then continue
+    let args' := args.mapIdx fun i x => if i == j then .bvar 0 else x.liftLooseBVars 0 1
+    return some (.letE `t ty a (mkAppN e.getAppFn args') false)
+  return none
+
 /-- the stages of a program -/
 partial def reifyPg (ctx : List Ent) (e : Expr) (R : Sl) (names : IO.Ref (Array Name)) (loops : IO.Ref (Array LoopRec)) :
     TermElabM Term := do
@@ -625,6 +647,18 @@ partial def reifyPg (ctx : List Ent) (e : Expr) (R : Sl) (names : IO.Ref (Array 
           waLetValsRef.modify (·.push (x, v'))
           let k ← reifyPg (⟨x, sl⟩ :: ctx) (b.instantiate1 x) R names loops
           `($lp $k)
+      -- `a.push x`: one push onto a copy of `a`
+      if v'.isAppOfArity ``ByteArray.push 2 then
+        let a := v'.getArg! 0
+        if (← Ent.find? ctx a).isNone then
+          return ← reifyPg ctx (.letE `t t a (.letE n t (mkApp2 v'.getAppFn (.bvar 0) ((v'.getArg! 1).liftLooseBVars 0 1))
+            (b.liftLooseBVars 1 1) false) false) R names loops
+        let lp ← reifyPushOnce ctx a (v'.getArg! 1) loops
+        waStagesRef.modify (·.push (.loopS ((← loops.get).size - 1) [.sc .nat]))
+        return ← withLocalDeclD n t fun x => do
+          waLetValsRef.modify (·.push (x, v'))
+          let k ← reifyPg (⟨x, sl⟩ :: ctx) (b.instantiate1 x) R names loops
+          `($lp $k)
       -- `a.extract lo hi`: a fresh array
       if v'.isAppOfArity ``ByteArray.extract 3 then
         let (m, _) ← arr ctx (v'.getArg! 0)
@@ -635,6 +669,9 @@ partial def reifyPg (ctx : List Ent) (e : Expr) (R : Sl) (names : IO.Ref (Array 
           waLetValsRef.modify (·.push (x, v'))
           let k ← reifyPg (⟨x, sl⟩ :: ctx) (b.instantiate1 x) R names loops
           `(Pg.let_ (s := Sl.ar AK.ba) (F.extract $(← memSyn m) $lo $hi) $k)
+    if (← waPagedRef.get) && (← userLoop? v').isSome then
+      if let some v2 ← nameArrayArg? ctx v' then
+        return ← reifyPg ctx (.letE n t v2 b false) R names loops
     if v'.isAppOfArity ``Array.foldl 7 || (← userLoop? v').isSome then
       withLocalDeclD n t fun x => do
         let lp ← if v'.isAppOfArity ``Array.foldl 7 then reifyFold ctx v' names loops else reifyLoop ctx v' sl names loops
@@ -657,6 +694,9 @@ partial def reifyPg (ctx : List Ent) (e : Expr) (R : Sl) (names : IO.Ref (Array 
       waStagesRef.modify (·.push (.loopS ((← loops.get).size - 1) [.sc .nat]))
       waStagesRef.modify (·.push .retS)
       return ← `($lp (Pg.ret (E.var Mem.hd)))
+    if (← waPagedRef.get) && (← userLoop? e).isSome then
+      if let some e2 ← nameArrayArg? ctx e then
+        return ← reifyPg ctx e2 R names loops
     if (← userLoop? e).isSome then
       let lp ← reifyLoop ctx e R names loops
       waStagesRef.modify (·.push (.loopS ((← loops.get).size - 1) [.sc .nat]))
@@ -675,6 +715,35 @@ partial def reifyPg (ctx : List Ent) (e : Expr) (R : Sl) (names : IO.Ref (Array 
     waStagesRef.modify (·.push .retS)
     `(Pg.ret $t)
 where
+  /-- `a.push x` (`a` of the environment): a loop over `(acc, i)` from a copy of `a`, one push of `x` -/
+  reifyPushOnce (ctx : List Ent) (a xE : Expr) (loops : IO.Ref (Array LoopRec)) : TermElabM Term := do
+    let (ma, _) ← arr ctx a
+    let ma' ← memSyn ma
+    let Δ : List Sl := [.ar .ba, .sc .nat]
+    let body ← withLocalDeclD `acc (mkConst ``ByteArray) fun acc => withLocalDeclD `i (mkConst ``Nat) fun i => do
+      let (xt, _) ← reifyE (⟨acc, .ar .ba⟩ :: ⟨i, .sc .nat⟩ :: ctx) xE
+      `(T.ite (E.cmp Cmp.lt (E.var (Mem.tl Mem.hd)) (E.lit Ty.nat 1))
+        (T.call (Args.cons (A.push (A.var Mem.hd) $xt)
+          (Args.cons (E.bin Op2.add (E.var (Mem.tl Mem.hd)) (E.lit Ty.nat 1)) Args.nil)))
+        (T.ret (A.var Mem.hd)))
+    let init ← `(Inis.cons (F.extract $ma' (E.lit Ty.nat 0) (E.size $ma')) (Inis.cons (E.lit Ty.nat 0) Inis.nil))
+    let sT ← mkAppM ``Vals #[← toListSl Δ]
+    let xz ← substLets xE
+    let az ← substLets a
+    let iOf (s : Expr) : MetaM Expr := do mkAppM ``Prod.fst #[← mkAppM ``Prod.snd #[s]]
+    let gE ← withLocalDeclD `s sT fun s => do
+      mkLambdaFVars #[s] (← mkAppM ``pushGo #[xz, ← iOf s, ← mkAppM ``Prod.fst #[s]])
+    let PE ← withLocalDeclD `s sT fun s => do
+      let i ← iOf s
+      let accs ← mkAppM ``ByteArray.size #[← mkAppM ``Prod.fst #[s]]
+      let c1 ← mkAppM ``LE.le #[i, mkNatLit 1]
+      let c2 ← mkAppM ``LE.le #[← mkAppM ``HAdd.hAdd #[accs, ← mkAppM ``HSub.hSub #[mkNatLit 1, i]],
+        ← mkAppM ``HAdd.hAdd #[← mkAppM ``ByteArray.size #[az], mkNatLit 1]]
+      mkLambdaFVars #[s] (mkAnd c1 (mkAnd c2 (← mkAppM ``LE.le #[← mkAppM ``ByteArray.size #[az], mkNatLit 1048575])))
+    let μE ← withLocalDeclD `s sT fun s => do
+      mkLambdaFVars #[s] (← mkAppM ``HSub.hSub #[mkNatLit 1, ← iOf s])
+    loops.modify (·.push ⟨gE, PE, μE, Δ, ``pushGo⟩)
+    `(Pg.loop [Sl.ar AK.ba, Sl.sc Ty.nat] $body $init)
   /-- `a ++ b` (both arrays of the environment): a loop over `(acc, i)` from a copy of `a`, pushing `b[i]` -/
   reifyAppend (ctx : List Ent) (a bb : Expr) (loops : IO.Ref (Array LoopRec)) : TermElabM Term := do
     let (ma, _) ← arr ctx a
@@ -743,7 +812,8 @@ where
     let some eqn ← getUnfoldEqnFor? fn (nonRec := true) | throwError "wa_compile: no equation for {fn}"
     let eqT := (← getConstInfo eqn).instantiateTypeLevelParams us
     let hints ← waHintsRef.get
-    let k := (← loops.get).size
+    -- the user's loops in order (the paged `++` / `push` loops have their own invariants)
+    let k := ((← loops.get).filter fun l => l.un != ``appendGo && l.un != ``pushGo).size
     let some (Pu, μu) := hints[k]? | throwError "wa_compile: loop {k} ({fn}) needs `invariant … measure …`"
     forallTelescope eqT fun ps eq => do
       unless ps.size == args.size do throwError "wa_compile: {fn}: partial application"
@@ -801,7 +871,7 @@ where
           mkLambdaFVars #[h] (mkAppN e.getAppFn full)
         let no ← withLocalDeclD `h (mkNot C) fun h => do
           mkLambdaFVars #[h] (← mkAppOptM ``Inhabited.default #[RT, none])
-        let dec := mkApp (mkConst ``Classical.propDecidable) C
+        let dec ← try synthInstance (mkApp (mkConst ``Decidable) C) catch _ => pure (mkApp (mkConst ``Classical.propDecidable) C)
         mkLambdaFVars #[s] (mkApp5 (mkConst ``dite [← getLevel RT]) RT C dec yes no)
       let PE ← withLocalDeclD `s sT fun s => do
         let cs ← comps s

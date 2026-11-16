@@ -14,3 +14,7 @@ import Riscv.Frontx.WpLeanZip2
 #print axioms Proven.WA.LeanZip2.copyWithinE.pgGood
 #print axioms Proven.WA.LeanZip2.copyWithinE.compiles
 #print axioms Proven.WA.LeanZip2.copyWithinE.computes
+#print axioms Proven.WA.LeanZip2.copyLoopGoE.goodE
+#print axioms Proven.WA.LeanZip2.copyLoopGoE.pgGood
+#print axioms Proven.WA.LeanZip2.copyLoopGoE.compiles
+#print axioms Proven.WA.LeanZip2.copyLoopGoE.computes
