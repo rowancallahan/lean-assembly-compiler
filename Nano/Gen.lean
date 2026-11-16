@@ -58,10 +58,8 @@ def pro : Nat → Nat → List UInt8
 def genR (p : Prog) : List UInt8 :=
   pro p.1 0 ++ genE (mkSc p.1 0) p.1 p.2 ++ ld 5 2 0 ++ sd 5 11 0 ++ addSp (p.1 + 1) ++ r 8 0 0 0
 
-/-- the stack generator (self-hostable; tested, not proved). The proved `nanoGen` is in `Nano/GenIr.lean`
-(Testing/notes/NANO_PROOF.md). -/
-def nanoGenS (p : Prog) : List UInt8 := asm (genR p)
+def nanoGen (p : Prog) : List UInt8 := asm (genR p)
 
-def nanoCompileS (xs : List UInt8) : Option (List UInt8) := (nanoElab xs).map nanoGenS
+def nanoCompile (xs : List UInt8) : Option (List UInt8) := (nanoElab xs).map nanoGen
 
 end Nano

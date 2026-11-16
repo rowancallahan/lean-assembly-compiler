@@ -31,12 +31,12 @@ npairs = 0
 for c, (r, (i0, o0, w0)) in enumerate(zip(rows, lay)):
     a1 = int.from_bytes(mem[tab - base + F.E * c + 64:][:8], "little")
     code = bytes(mem[o0:o0 + a1])
-    assert code == unhex(r[2]), ("binary asm != Lean nanoGenS", r[0])
+    assert code == unhex(r[2]), ("binary asm != Lean nanoGen", r[0])
     open(f"{W}/code.bin", "wb").write(code)
     for run in r[3].split(";"):
         a, want = run.split("="); args = [int(x) for x in a.split(",") if x]
         open(f"{W}/args.bin", "wb").write(b"".join(x.to_bytes(8, "little") for x in args) or b"\0")
         got = int.from_bytes(subprocess.run(f"qemu-riscv64 {W}/driver {W}/code.bin {W}/args.bin", shell=True, check=True, capture_output=True).stdout, "little")
         assert got == int(want), (r[0], args, got, want); npairs += 1
-print(f"self-hosting: {len(rows)} nano programs: records assembled by the nanoAsm binary on QEMU (== Lean nanoGenS); "
+print(f"self-hosting: {len(rows)} nano programs: records assembled by the nanoAsm binary on QEMU (== Lean nanoGen); "
       f"{npairs} (program, input) runs of that code on qemu-riscv64 == Prog.eval")

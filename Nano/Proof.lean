@@ -1,6 +1,6 @@
 /- The nano lowering is correct: `lower_ok`, the RTL program `Nano.lower p` has the meaning `nanoRun p` (the
 arguments as 8-byte little-endian words, `Prog.eval`, the result as 8 little-endian bytes). -/
-import Nano.GenIr
+import Nano.GenIR
 
 namespace Nano
 open Proven Proven.Ir Proven.Ir.IndLow Proven.Mach

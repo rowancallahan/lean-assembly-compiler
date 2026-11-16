@@ -1,5 +1,5 @@
-/- **the proved nano code generator**: `nanoGen : Prog → List UInt8` (RISC-V machine code, `StartCorrect` convention).
-(Took over the name from nano-e2e's stack generator, now `nanoGenS` in `Nano/Gen.lean`.)
+/- **the proved nano code generator**: `nanoGenIR : Prog → List UInt8` (RISC-V machine code, `StartCorrect` convention).
+(Named `nanoGenIR`: `nanoGen`/`nanoCompile` in `Nano/Gen.lean` are nano-e2e's raw, self-hostable path.)
 Route (b) of Testing/notes/NANO_PROOF.md: nano is lowered to the shared IR as structured code (`lower`, one function,
 straight-line), and the IR compiler (`Riscv/Back/IrTop.lean`, proved once) makes the machine code.
 Calls are inlined (the AST carries callee bodies).  Registers of `main`: `0` input, `1` length, `2` output,
@@ -74,7 +74,7 @@ def mainTC (p : Prog) : TC :=
 def lower (p : Prog) : Proven.Ir.Prog VReg := ⟨[mkFunc [0, 1, 2] [0, 1, 2] 1 [(0, mainTC p)]], 0⟩
 
 /-- **the code generator**: RISC-V machine code (empty if the IR back end rejects the program) -/
-def nanoGen (p : Prog) : List UInt8 :=
+def nanoGenIR (p : Prog) : List UInt8 :=
   match compileW (lower p) with
   | some (ws, _) => Proven.Top.wordBytes ws
   | none => []
