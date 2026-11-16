@@ -50,7 +50,7 @@ design): `-x`, `-(e)`, `--`/`/-` comments, `let` without `;`, `let` mid-expressi
 adjacent binder groups `(x : UInt64)(y : UInt64)`, `0x..`/`1_000`/`1e3`, `.`-names, `|>.`, `$`, `fun`, `if`.
 
 ## Pipeline
-`nanoCompileS src = (nanoElab src).map nanoGenS`, `nanoGenS p = asm (genR p)`.
+`nanoCompileS src = (nanoElab src).bind (fun p => if depth p < 256 then some (nanoGenS p) else none)` (the 8-bit slot offsets of the records), `nanoGenS p = asm (genR p)`.
 1. `nanoElab`: `lex` (fuel = length) -> mutual structural parsers on fuel with the scope and the def table; arity and scope errors give `none`.
 2. `genR`: stack machine, calls inlined, every value on the machine stack; output = 4-byte pseudo-instruction records `[op,a,b,c]`.
 3. `asm` (`Nano/Asm.lean`): records -> RISC-V words. This is the stage compiled by our compiler.
@@ -62,8 +62,7 @@ Input blocks and output block are NOT assumed aligned: arguments are read BYTEWI
 `addi t6,t6,-8; bgeu t6,a2,+12; addi a0,x0,-1; ret; sd t0,0(t6)`: a push beyond the work block sets a0 = 0xFFFFFFFFFFFFFFFF (`oomFlag`)
 and returns, nothing else changed (sp, gp, s-registers untouched; only t0 t1 t3 t6 are written, a0 only on overflow, input/output blocks
 only at the end). `memoryNeeded` = 8 * `Nano.depth p` (`depE`: peak stack slots including the arguments); work = exactly that fits, one byte
-less returns the flag (tested). On success a0 keeps the input address (not the flag). Limits: slot offsets are 8 bits: arity < 127 and
-stack slots of an expression < 256 (not checked by `nanoElab`). Entry: `mv t6,sp; mv t3,a0`, arguments pushed in order (`rd8`, `push`,
+less returns the flag (tested). On success a0 keeps the input address (not the flag). Limit: slot offsets are 8 bits, `depth p < 256` (checked by `nanoCompileS`, not by `nanoElab` or `genR`). Entry: `mv t6,sp; mv t3,a0`, arguments pushed in order (`rd8`, `push`,
 `addi t3,t3,8`), body, `ld t0,0(t6)`, `wr8`, `ret`.
 
 ### Records of `asm` (14 ops; `op & 7` is funct3)

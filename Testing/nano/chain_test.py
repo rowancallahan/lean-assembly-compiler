@@ -149,9 +149,10 @@ for code, args, want in runs:
 LD = "ENTRY(_start)\nSECTIONS { . = 0x80000000; .text : { *(.text.start) *(.text) }\n . = 0x80100000; .tohost : { *(.tohost) }\n . = 0x80200000; .data : { *(.data) } }\n"
 data = b""; tabl = []; ST = 8192; outs = []
 for code, args, want in runs:
-    o = len(data); code = code + b"\0" * (-len(code) % 8); a0 = o + len(code); out = a0 + 8 * len(args); stk = out + 8
-    tabl.append(f"  .quad base+{o}, base+{a0}, base+{out}, base+{stk + ST}, 0, 0"); outs.append((out, stk))
-    data += code + b"".join(a.to_bytes(8, "little") for a in args) + b"\x55" * 8 + b"\0" * ST
+    o = len(data); code = code + b"\0" * (-len(code) % 8)
+    a0 = o + len(code) + 1; out = a0 + 8 * len(args) + 3 + (-(a0 + 8 * len(args) + 3) % 8) + 1; wk = out + 8 + 7 + (-(out + 8 + 7) % 8)
+    tabl.append(f"  .quad base+{o}, base+{a0}, {8 * len(args)}, base+{wk}, base+{out}, base+{wk + ST}, 0, 0"); outs.append((out, wk, a0))
+    data += code + b"\x77" + b"".join(a.to_bytes(8, "little") for a in args) + b"\x77" * (out - a0 - 8 * len(args)) + b"\x55" * 8 + b"\x77" * (wk - out - 8) + b"\0" * ST
 open(f"{W}/s.bin", "wb").write(data)
 open(f"{W}/s.S", "w").write(f""".section .text.start
 .globl _start
@@ -160,10 +161,13 @@ _start: lla s0, tab
 1: ld t3, 0(s0)
   ld a0, 8(s0)
   ld a1, 16(s0)
-  ld sp, 24(s0)
+  ld a2, 24(s0)
+  ld a3, 32(s0)
+  ld sp, 40(s0)
   jalr ra, t3, 0
-  sd sp, 32(s0)
-  addi s0, s0, 48
+  sd sp, 48(s0)
+  sd a0, 56(s0)
+  addi s0, s0, 64
   addi s2, s2, -1
   bnez s2, 1b
   lla t0, tohost
@@ -193,8 +197,9 @@ for l in log.splitlines():
     if m:
         a, v = int(m.group(1), 16), m.group(2)
         for j in range(len(v) // 2): smem[a + j] = int(v[2 * (len(v) // 2 - 1 - j):2 * (len(v) // 2 - j)], 16)
-for c, ((code, args, want), (out, stk)) in enumerate(zip(runs, outs)):
+for c, ((code, args, want), (out, wk, a0)) in enumerate(zip(runs, outs)):
     got = int.from_bytes(bytes(smem[sbase + out + j] for j in range(8)), "little"); assert got == want, ("S Sail", args, got, want)
-    sp = int.from_bytes(bytes(smem[stab + 48 * c + 32 + j] for j in range(8)), "little"); assert sp == sbase + stk + ST, ("S Sail sp", sp)
+    sp, st = (int.from_bytes(bytes(smem[stab + 64 * c + k + j] for j in range(8)), "little") for k in (48, 56))
+    assert sp == sbase + wk + ST, ("S Sail sp", sp); assert st == sbase + a0, ("S Sail a0 (status)", st)
 print(f"S (genR in Lean, asm = our compiler's binary on QEMU + Sail == Lean asm): {len(rows)} programs, code == Lean nanoGenS; "
       f"{len(runs)} (program, input) pairs on qemu-riscv64 and on Sail == Lean's real elaborator")

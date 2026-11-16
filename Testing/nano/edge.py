@@ -88,6 +88,15 @@ for nm in ROOTS + TOKS + MINE + SHAPE:
     f1(f"def f ({nm} : UInt64) : UInt64 := {nm} + 1\n")
     f1(f"def f (x : UInt64) : UInt64 := let {nm} := x + 1; {nm} * 2\n")
     if nm in MINE or nm in SHAPE: f1(f"def {nm} (x : UInt64) : UInt64 := x + 1\ndef f (x : UInt64) : UInt64 := {nm} x * {nm} (x + 2)\n")
+if "--allnames" in sys.argv:  # exhaustive: every name of 1-3 lowercase letters, and 1-2 letters with a digit / `_1` suffix, in four roles
+    import itertools
+    AL = [a for n in (1, 2, 3) for a in map("".join, itertools.product(string.ascii_lowercase, repeat=n))]
+    AL += [a + sfx for n in (1, 2) for a in map("".join, itertools.product(string.ascii_lowercase, repeat=n)) for sfx in ["0", "1", "9", "_1", "_0"]]
+    for nm in AL:
+        f1(f"def {nm} (x : UInt64) : UInt64 := x + 1\n", name=nm)
+        f1(f"def f ({nm} : UInt64) : UInt64 := {nm} + 1\n")
+        f1(f"def f (x : UInt64) : UInt64 := let {nm} := x + 1; {nm} * 2\n")
+        f1(f"def {nm} (x : UInt64) : UInt64 := x + 1\ndef f (x : UInt64) : UInt64 := {nm} x * {nm} (x + 2)\n")
 # adversarial boundary fuzz: random token soups over a boundary alphabet, and mutations of valid programs
 ALPHA = ["x", "y", "z", "g", "h", "k", "f", "1", "2", "0", "18446744073709551616", "(", ")", "+", "-", "*", ";", "let", "w", ":=", "w", " ", " ", "\n", "\t", "\r", "--", "/-", "-/", "id", "max", "add", "x'", "_", ".", "fun", "=>", ":", "UInt64", "def"]
 def soup(n): return "".join(rng.choice(ALPHA) + rng.choice(["", " ", " ", "\n"]) for _ in range(n))

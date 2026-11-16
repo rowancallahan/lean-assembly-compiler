@@ -91,6 +91,8 @@ def depth (p : Prog) : Nat := max p.1 (depE p.1 p.2)
 (Testing/notes/NANO_PROOF.md). -/
 def nanoGenS (p : Prog) : List UInt8 := asm (genR p)
 
-def nanoCompileS (xs : List UInt8) : Option (List UInt8) := (nanoElab xs).map nanoGenS
+/-- rejects (`none`) a program whose stack needs 256 or more slots (8-bit slot offsets of the records) -/
+def nanoCompileS (xs : List UInt8) : Option (List UInt8) :=
+  (nanoElab xs).bind fun p => if depth p < 256 then some (nanoGenS p) else none
 
 end Nano
