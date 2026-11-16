@@ -12,7 +12,7 @@ Evidence tags: **run** = a Lean message from this session; **read** = from sourc
   `frontx_ind_type TExpr := ConLeche.Expr nesting ConLeche.Level, ConLeche.Name, List ConLeche.Level, ConLeche.Literal, List ConLeche.Expr, Option ConLeche.Expr`. **run**: accepted, shape printed.
 - Per name, two commands: `frontx_compile f` and `frontx_ind_gate f on TExpr`.
 - Names: the 1 103 of the first probe (`out/names_first_probe.json`). Same set, so the totals are comparable.
-- Runs: `F2P` (compile + gate) took 7 min. `F2I` (real `frontx_ind f on TExpr` for the 42 gate-passing names) is in §4.
+- Runs: `F2P` (compile + gate) took 7 min. `F2I` (real `frontx_ind f on TExpr` for the 42 gate-passing names) is in §5.
 
 ## 1. Totals
 
