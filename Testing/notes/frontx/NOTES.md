@@ -1839,3 +1839,12 @@ the first 8 pairs fixed: `""`, NUL, `"𝔸"` (4 bytes), `"λ∀"`, `"é"`/`"e"`,
 and every other inductive-path entry re-emitted (their decoder/encoder code changed): all pass; the 25 run-time
 memory entries (`emit_mem.lean`, `mem_test.py check 10`) pass.  Statement fingerprints: no `stmt` hash changed; the
 `closure` hashes of `ind_ok` and every inductive-path `implements1` changed (C.enc, C.wf, decFn, encFn).
+
+**State (round paused by the owner).** Done: layout, decoder/encoder proofs, front end, Encode-style statements,
+tests above.  `bash Testing/scripts/check.sh` passed (ALL CHECKS PASSED) at `dbcc834` (after merging origin/main and
+feat-expr); after that only `axioms_z.lean` → `axioms_utf8.lean` (check.sh list updated) and a ROADMAP-only merge of
+origin/main — the re-run of check.sh was stopped by the pause, so run it once on resume.  Next steps: (1) re-run
+check.sh; (2) optionally `String.utf8ByteSize` (the chain length, cheap) and `String.length` (needs a lemma on
+`String.utf8EncodeChar`: count the non-continuation bytes); (3) string literals as constant chains in `E`
+(Name constants like `Name.str .anonymous "Nat"`, `=` with a constant side); (4) small linter warnings (unused simp
+arguments in `IndStrOk.lean`, `IndDec.lean`, `IndSup.lean`).
