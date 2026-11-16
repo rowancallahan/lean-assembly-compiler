@@ -694,7 +694,8 @@ def OutP (Δ : List Sl) (R : Sl) (st : List PLoc) (res fl : Nat) (rl : PLoc) (C 
       ((σ'.env vOk = 1 ∧ RelP Δ st s' σ' ∧ Store C σ'.env W' (arrsP Δ st s' σ'.env ++ R0) ∧
           finE (pageCount (E0 ++ R0)) E = pageCount (arrsP Δ st s' σ'.env ++ R0) ∧ pk (pageCount (E0 ++ R0)) E ≤ C) ∨
         (σ'.env vOk = 0 ∧ C < pk (pageCount (E0 ++ R0)) E))
-  | .inr r => σ'.env fl = 0 ∧ σ'.env vOk = 1 ∧ W' = W ∧ E = [] ∧ RRP σ' E0 R res rl r
+  | .inr r => σ'.env fl = 0 ∧ σ'.env vOk = 1 ∧ W' = W ∧ E = [] ∧ RRP σ' E0 R res rl r ∧
+      (∀ j ∈ vsOfP st, σ'.env j = σ.env j) ∧ Store C σ'.env W' (E0 ++ R0)
 
 theorem RRP.frame {σ σ' : MSt} {E0 : List (Nat × W64)} {R : Sl} {res : Nat} {rl : PLoc} {r : R.T}
     (h : RRP σ E0 R res rl r) (hres : σ'.env res = σ.env res) (hv : σ'.env rl.v = σ.env rl.v)
@@ -726,19 +727,22 @@ theorem OutP.frame {Δ : List Sl} {R : Sl} {st : List PLoc} {res fl : Nat} {rl :
       rw [harr]; exact S1.env fun j hj => hk j (.inr (.inr (.inr (.inr (.inr (.inr (pool_vars hj)))))))
     · exact .inr ⟨by rw [hk vOk (.inr (.inr (.inr (.inr (.inr (.inr (by decide)))))))]; exact o1, p1⟩
   | inr r =>
-    obtain ⟨h1, h2, h3, h4, h5⟩ := h
-    exact ⟨by rw [hk fl (.inr (.inr (.inr (.inl rfl))))]; exact h1,
+    obtain ⟨h1, h2, h3, h4, h5, h6, h7⟩ := h
+    refine ⟨by rw [hk fl (.inr (.inr (.inr (.inl rfl))))]; exact h1,
       by rw [hk vOk (.inr (.inr (.inr (.inr (.inr (.inr (by decide)))))))]; exact h2, h3, h4,
       RRP.frame h5 (hk _ (.inr (.inr (.inl rfl)))) (hk _ (.inr (.inr (.inr (.inr (.inl rfl))))))
-        (hk _ (.inr (.inr (.inr (.inr (.inr (.inl rfl))))))) hh⟩
+        (hk _ (.inr (.inr (.inr (.inr (.inr (.inl rfl))))))) hh, fun j hj => by rw [hk j (.inl hj)]; exact h6 j hj,
+      h7.env fun j hj => hk j (.inr (.inr (.inr (.inr (.inr (.inr (pool_vars hj)))))))⟩
 
 theorem OutP.base {Δ : List Sl} {R : Sl} {st : List PLoc} {res fl : Nat} {rl : PLoc} {C : Nat}
     {R0 E0 : List (Nat × W64)} {σ σ0 σ' : MSt} {W W' : W64} {E : List MemEvent} {o : Vals Δ ⊕ R.T}
-    (h : OutP Δ R st res fl rl C R0 E0 σ σ' W W' E o) (hfl : σ.env fl = σ0.env fl) :
+    (h : OutP Δ R st res fl rl C R0 E0 σ σ' W W' E o) (hfl : σ.env fl = σ0.env fl)
+    (hs : ∀ j ∈ vsOfP st, σ.env j = σ0.env j) :
     OutP Δ R st res fl rl C R0 E0 σ0 σ' W W' E o := by
   cases o with
   | inl s' => exact ⟨h.1.trans hfl, h.2⟩
-  | inr r => exact h
+  | inr r => exact ⟨h.1, h.2.1, h.2.2.1, h.2.2.2.1, h.2.2.2.2.1, fun j hj => (h.2.2.2.2.2.1 j hj).trans (hs j hj),
+      h.2.2.2.2.2.2⟩
 
 theorem WPre.env {Δ : List Sl} {st : List PLoc} {w : PLoc} {Γ : List Sl} {L : List PLoc} {v : Vals Γ}
     {env env' : Mach.BEnv} {E0 : List (Nat × W64)} (h : WPre Δ st w L v env E0) (he : env' w.pt = env w.pt) :
@@ -771,7 +775,8 @@ theorem T.compP_ok (st : List PLoc) (res fl : Nat) (rl w : PLoc) (C : Nat) (R0 :
     simp only [T.wfP] at hwf; simp only [T.okP] at hok
     simp only [T.compP, T.out, T.evs]
     obtain ⟨σ1, e1, v1, k1, h1, w1⟩ := E.compP_ok L e v σ d hE hE.len hb hwf hok
-    refine ⟨_, W, .seq e1 (.seq .assign .assign), h1, by rw [w1, hW], fun j hj _ h2 h3 _ => ?_, ?_, ?_, rfl, rfl, ?_⟩
+    refine ⟨_, W, .seq e1 (.seq .assign .assign), h1, by rw [w1, hW], fun j hj _ h2 h3 _ => ?_, ?_, ?_, rfl, rfl, ?_,
+      fun j hj => ?_, ?_⟩
     · simp only [set_ne h3, set_ne h2, k1 j hj]
     · simp only [set_eq]; rfl
     · simp only [set_ne (show vOk ≠ fl by have := hy.p8.2.1; simp only [vOk]; omega),
@@ -779,6 +784,15 @@ theorem T.compP_ok (st : List PLoc) (res fl : Nat) (rl w : PLoc) (C : Nat) (R0 :
           have := hy.p8.1; have := hy.hres; simp only [vOk]; omega)]; exact hok1
     · show _ = _
       simp only [set_ne hy.rf, Mach.BExp.denote, set_eq, Arg.den]; rw [v1]
+    · obtain ⟨l, hl, rfl⟩ := List.mem_map.1 hj
+      have := (hy.bst l hl).1
+      simp only [set_ne (show l.v ≠ fl by intro e; exact hy.fs (e ▸ hj)),
+        set_ne (show l.v ≠ res by intro e; exact hy.rs (e ▸ hj))]
+      exact k1 _ this
+    · refine hS.env fun j hj => ?_
+      have := pool_vars hj
+      simp only [set_ne (show j ≠ fl by have := hy.p8.2.1; omega), set_ne (show j ≠ res by have := hy.p8.1; omega)]
+      exact k1 _ (by have := hy.p8.1; have := hy.hres; omega)
   | _, _, .ar k, .ret a, L, v, σ, d, W, E0, hE, hb, hy, hlen, hwf, hok, hW, hok1, hS, hpre, hst, hLw, hLnp, hrl => by
     simp only [T.compP, T.out, T.evs]
     cases a with
@@ -786,7 +800,7 @@ theorem T.compP_ok (st : List PLoc) (res fl : Nat) (rl w : PLoc) (C : Nat) (R0 :
       simp only [T.wfP, beq_iff_eq] at hwf
       have hS' := hE.rel.get m
       rw [hwf] at hS'
-      refine ⟨_, W, .assign, rfl, hW, fun j hj _ _ h3 _ => set_ne h3, ?_, ?_, rfl, rfl, ?_, ?_⟩
+      refine ⟨_, W, .assign, rfl, hW, fun j hj _ _ h3 _ => set_ne h3, ?_, ?_, rfl, rfl, ⟨?_, ?_⟩, fun j hj => ?_, ?_⟩
       · simp only [set_eq]; rfl
       · show (σ.env.set fl _) vOk = 1
         rw [set_ne (show vOk ≠ fl by have := hy.p8.2.1; simp only [vOk]; omega)]; exact hok1
@@ -798,6 +812,9 @@ theorem T.compP_ok (st : List PLoc) (res fl : Nat) (rl w : PLoc) (C : Nat) (R0 :
         · have hwst : w ∈ st := workLocs_sub hlen (by rw [hw1]; simp)
           show E0 = [(((σ.env.set fl _) rl.pt).toNat, words k (m.get v))]
           rw [hE0, set_ne (by rw [hrw]; exact (hy.ptn w hwst).2.2), hrw, hm k m (hwf.trans hrw)]
+      · show (σ.env.set fl _) j = σ.env j
+        exact set_ne (fun e => hy.fs (e ▸ hj))
+      · exact hS.env fun j hj => set_ne (by have := pool_vars hj; have := hy.p8.2.1; omega)
     | set _ _ _ | push _ _ | ite _ _ _ => simp [T.wfP] at hwf
   | _, Δ, _, .call as, L, v, σ, d, W, E0, hE, hb, hy, hlen, hwf, hok, hW, hok1, hS, hpre, hst, hLw, hLnp, hrl => by
     simp only [T.wfP] at hwf; simp only [T.okP] at hok
@@ -856,6 +873,7 @@ theorem T.compP_ok (st : List PLoc) (res fl : Nat) (rl w : PLoc) (C : Nat) (R0 :
         rw [k3 j (by omega) hs hr hf hn, hk2 j hj]
       · rw [if_pos rfl, if_pos rfl]
         refine OutP.base (σ := σ2) (OutP.frame o3 hlen (fun j hj => ?_) rfl rfl) (hk2 fl hy.hfl)
+          (fun j hj => hk2 j (by obtain ⟨l, hl, rfl⟩ := List.mem_map.1 hj; exact (hy.bst l hl).1))
         simp only [σ4]; rw [set_ne (by have := hprot j hj; omega)]
     | false =>
       have hob := hok.2; rw [hcv] at hob; simp only [Bool.false_eq_true, if_false] at hob
@@ -870,6 +888,7 @@ theorem T.compP_ok (st : List PLoc) (res fl : Nat) (rl w : PLoc) (C : Nat) (R0 :
         rw [k3 j (by omega) hs hr hf hn, hk2 j hj]
       · simp only [Bool.false_eq_true, if_false]
         refine OutP.base (σ := σ2) (OutP.frame o3 hlen (fun j hj => ?_) rfl rfl) (hk2 fl hy.hfl)
+          (fun j hj => hk2 j (by obtain ⟨l, hl, rfl⟩ := List.mem_map.1 hj; exact (hy.bst l hl).1))
         show (σ3.env.set (d + 1) 0) j = σ3.env j
         rw [set_ne (by have := hprot j hj; omega)]
   | _, _, _, .let_ e k, L, v, σ, d, W, E0, hE, hb, hy, hlen, hwf, hok, hW, hok1, hS, hpre, hst, hLw, hLnp, hrl => by
@@ -906,5 +925,155 @@ theorem T.compP_ok (st : List PLoc) (res fl : Nat) (rl w : PLoc) (C : Nat) (R0 :
     refine ⟨σ2, W2, .seq e1 e2, h2.trans h1, w2, fun j hj hs hr hf hn => by rw [k2 j (by omega) hs hr hf hn, k1 j hj],
       ?_⟩
     exact OutP.base o2 (k1 fl hy.hfl)
+      (fun j hj => k1 j (by obtain ⟨l, hl, rfl⟩ := List.mem_map.1 hj; exact (hy.bst l hl).1))
+
+/-! ## Loops -/
+
+/-- the words of the state's slot at `w` -/
+def wordsAt : (Δ : List Sl) → List PLoc → PLoc → Vals Δ → W64
+  | [], _, _, _ => []
+  | .sc _ :: Δ, st, w, s => wordsAt Δ st.tail w s.2
+  | .ar k :: Δ, st, w, s => if st.headD default = w then words k s.1 else wordsAt Δ st.tail w s.2
+
+theorem arrsP_nil {env : Mach.BEnv} : ∀ {Δ : List Sl} {st : List PLoc} (s : Vals Δ), workLocs Δ st = [] →
+    arrsP Δ st s env = []
+  | [], _, _, _ => rfl
+  | .sc _ :: _, st, s, h => by simp only [workLocs] at h; simp only [arrsP]; exact arrsP_nil s.2 h
+  | .ar _ :: _, st, s, h => by
+    simp only [workLocs] at h; simp only [arrsP]
+    by_cases hi : (st.headD default).inp = true
+    · rw [if_pos hi] at h ⊢; exact arrsP_nil s.2 (by simpa using h)
+    · rw [if_neg hi] at h; simp at h
+
+theorem arrsP_one {env : Mach.BEnv} {w : PLoc} : ∀ {Δ : List Sl} {st : List PLoc} (s : Vals Δ),
+    workLocs Δ st = [w] → arrsP Δ st s env = [((env w.pt).toNat, wordsAt Δ st w s)]
+  | [], _, _, h => by simp [workLocs] at h
+  | .sc _ :: _, st, s, h => by simp only [workLocs] at h; simp only [arrsP, wordsAt]; exact arrsP_one s.2 h
+  | .ar _ :: _, st, s, h => by
+    simp only [workLocs] at h; simp only [arrsP, wordsAt]
+    by_cases hi : (st.headD default).inp = true
+    · rw [if_pos hi] at h ⊢; simp only [List.nil_append] at h
+      have hw : w.inp = false := workLocs_inp (by rw [h]; simp)
+      rw [if_neg (fun e => by rw [e] at hi; rw [hw] at hi; cases hi)]
+      exact arrsP_one s.2 h
+    · rw [if_neg hi] at h ⊢
+      simp only [List.singleton_append, List.cons.injEq] at h
+      rw [if_pos h.1, h.1, arrsP_nil s.2 h.2]
+
+/-- before an iteration: the state's work array, as the body needs it -/
+theorem wpre_of {C : Nat} {W : W64} {Δ Γ : List Sl} {st L : List PLoc} {w : PLoc} {s : Vals Δ} {c : Vals Γ}
+    {env : Mach.BEnv} (hwl : workLocs Δ st = [w] ∨ workLocs Δ st = []) (hlen : st.length = Δ.length)
+    (hS : Store C env W (arrsP Δ st s env ++ arrsP Γ L c env)) :
+    WPre Δ st w (st ++ L) (Vals.app s c) env (arrsP Δ st s env) := by
+  rcases hwl with h | h
+  · refine .inr ⟨h, wordsAt Δ st w s, arrsP_one s h, fun k m hm => ?_⟩
+    have hwi : w.inp = false := workLocs_inp (by rw [h]; simp)
+    have h1 := arrsP_mem (v := Vals.app s c) env m (by rw [hm]; exact hwi)
+    rw [arrsP_append hlen, hm] at h1
+    have h2 : ((env w.pt).toNat, wordsAt Δ st w s) ∈ arrsP Δ st s env ++ arrsP Γ L c env := by
+      rw [arrsP_one s h]; simp
+    have := Store.uniq hS h1 h2 rfl
+    exact (Prod.mk.inj this).2
+  · exact .inl ⟨h, arrsP_nil s h⟩
+
+/-- the code of a loop: `fl := 1; while (fl &&& vOk) { body }` -/
+def T.loopP (st : List PLoc) (res fl : Nat) {Γ Δ : List Sl} {R : Sl} (b : T Γ Δ R) (L : List PLoc) (d : Nat) : MS :=
+  .seq (.assign fl (.const 1)) (.loop (.bin .and (.var fl) (.var vOk)) (b.compP st res fl L d))
+
+theorem and_flag {x y : BitVec 64} (hx : x = 0 ∨ x = 1) (hy : y = 0 ∨ y = 1) : (x &&& y ≠ 0) ↔ (x ≠ 0 ∧ y ≠ 0) := by
+  rcases hx with rfl | rfl <;> rcases hy with rfl | rfl <;> decide
+
+set_option maxHeartbeats 8000000 in
+/-- **A loop runs to its result**, or stops once a push found no page (exactly when the run's page events
+exceed `C`) -/
+theorem T.runP_ok {Δ Γ : List Sl} {R : Sl} (b : T (Δ ++ Γ) Δ R) (c : Vals Γ) (st L : List PLoc) (res fl : Nat)
+    (rl w : PLoc) (d C : Nat) (hy : LoopLayP st res fl rl w d) (hlen : st.length = Δ.length)
+    (hl : Γ.length ≤ L.length) (hbL : BelowP L d)
+    (hLd : ∀ l ∈ L, (l.v ∉ vsOfP st ∧ l.v ≠ res ∧ l.v ≠ fl ∧ NP l.v) ∧ (l.pt ∉ vsOfP st ∧ l.pt ≠ res ∧ l.pt ≠ fl ∧
+      NP l.pt))
+    (hwf : b.wfP st rl w (st ++ L) d = true) (hwl : workLocs Δ st = [w] ∨ workLocs Δ st = [])
+    (hLw : ∀ l ∈ st ++ L, l.v = w.v → l = w) (hrl : rl.inp = false → rl = w ∧ workLocs Δ st = [w])
+    (P : Vals Δ → Prop) (hok : ∀ s, P s → b.okP (Vals.app s c))
+    (hP : ∀ s s', P s → b.out (Vals.app s c) = .inl s' → P s') :
+    ∀ s r E, RunsE b c s r E → P s → ∀ σ W, EnvOK (Δ ++ Γ) (st ++ L) (Vals.app s c) σ → σ.env fl ≠ 0 →
+      (σ.env fl = 0 ∨ σ.env fl = 1) → σ.env vOk = 1 → σ.wheap = [W] →
+      Store C σ.env W (arrsP Δ st s σ.env ++ arrsP Γ L c σ.env) →
+      ∃ σ' W', Mach.BExec (.loop (.bin .and (.var fl) (.var vOk)) (b.compP st res fl (st ++ L) d)) σ σ' ∧
+        σ'.heap = σ.heap ∧ σ'.wheap = [W'] ∧
+        (∀ j, j < d → j ∉ vsOfP st → j ≠ res → j ≠ fl → NP j → σ'.env j = σ.env j) ∧
+        ((σ'.env vOk = 1 ∧ ∃ sf, RelP Δ st sf σ' ∧ RRP σ' (arrsP Δ st sf σ'.env) R res rl r ∧
+            Store C σ'.env W' (arrsP Δ st sf σ'.env ++ arrsP Γ L c σ.env) ∧
+            finE (pageCount (arrsP Δ st s σ.env ++ arrsP Γ L c σ.env)) E =
+              pageCount (arrsP Δ st sf σ'.env ++ arrsP Γ L c σ.env) ∧
+            pk (pageCount (arrsP Δ st s σ.env ++ arrsP Γ L c σ.env)) E ≤ C) ∨
+          (σ'.env vOk = 0 ∧ C < pk (pageCount (arrsP Δ st s σ.env ++ arrsP Γ L c σ.env)) E)) := by
+  have hl2 : (Δ ++ Γ).length ≤ (st ++ L).length := by simp; omega
+  have hb2 : BelowP (st ++ L) d := fun l h => by
+    rcases List.mem_append.1 h with h | h
+    · exact hy.bst l h
+    · exact hbL l h
+  have hnp2 : ∀ l ∈ st ++ L, NP l.v := fun l h => by
+    rcases List.mem_append.1 h with h | h
+    · have := (hy.p8.2.2 l h).1; simp only [NP, vFh, vBump, vOk]; omega
+    · exact (hLd l h).1.2.2.2
+  intro s r E hr
+  induction hr with
+  | @ret s r ho =>
+    intro hPs σ W hE hfl hfl01 hok1 hW hS
+    obtain ⟨σ1, W1, e1, h1, w1, k1, o1⟩ := T.compP_ok st res fl rl w C (arrsP Γ L c σ.env) b (st ++ L)
+      (Vals.app s c) σ d W (arrsP Δ st s σ.env) hE hb2 hy hlen hwf (hok s hPs) hW hok1 hS
+      (wpre_of hwl hlen hS) (fun l h => List.mem_append_left _ h) hLw hnp2 hrl
+    rw [ho] at o1
+    obtain ⟨f1, ok1, hWW, ev1, rr1, hst1, hS1⟩ := o1
+    subst hWW
+    have hc : (Mach.BExp.bin .and (.var fl) (.var vOk)).denote σ1.env = 0 := by
+      simp only [Mach.BExp.denote, Op.eval, f1]; simp
+    have hc0 : (Mach.BExp.bin .and (.var fl) (.var vOk)).denote σ.env ≠ 0 := by
+      simp only [Mach.BExp.denote, Op.eval, hok1]
+      rcases hfl01 with h | h
+      · exact absurd h hfl
+      · rw [h]; decide
+    have hpt1 : ∀ l ∈ st, σ1.env l.pt = σ.env l.pt := fun l hl => k1 _ (hy.bst l hl).2 (hy.ptn l hl).1
+      (hy.ptn l hl).2.1 (hy.ptn l hl).2.2 (by have := (hy.p8.2.2 l hl).2; simp only [NP, vFh, vBump, vOk]; omega)
+    have harr : arrsP Δ st s σ1.env = arrsP Δ st s σ.env := arrsP_congr hpt1 (by omega)
+    refine ⟨σ1, _, .loopT hc0 e1 (.loopF hc), h1, w1, k1, .inl ⟨ok1, s, ?_, by rw [harr]; exact rr1,
+      by rw [harr]; exact hS1, by rw [harr]; rfl, hS.count_le⟩⟩
+    have := ((RelP.app hlen).1 hE.rel).1
+    exact this.frame (fun l hl => hst1 _ (List.mem_map_of_mem hl)) h1 (by omega)
+  | @call s s' r E ho hr' ih =>
+    intro hPs σ W hE hfl hfl01 hok1 hW hS
+    obtain ⟨σ1, W1, e1, h1, w1, k1, o1⟩ := T.compP_ok st res fl rl w C (arrsP Γ L c σ.env) b (st ++ L)
+      (Vals.app s c) σ d W (arrsP Δ st s σ.env) hE hb2 hy hlen hwf (hok s hPs) hW hok1 hS
+      (wpre_of hwl hlen hS) (fun l h => List.mem_append_left _ h) hLw hnp2 hrl
+    rw [ho] at o1
+    obtain ⟨f1, o1⟩ := o1
+    have hc0 : (Mach.BExp.bin .and (.var fl) (.var vOk)).denote σ.env ≠ 0 := by
+      simp only [Mach.BExp.denote, Op.eval, hok1]
+      rcases hfl01 with h | h
+      · exact absurd h hfl
+      · rw [h]; decide
+    -- the enclosing slots are untouched
+    have hLk : ∀ l ∈ L, σ1.env l.v = σ.env l.v ∧ σ1.env l.pt = σ.env l.pt := fun l hl =>
+      ⟨k1 _ (hbL l hl).1 (hLd l hl).1.1 (hLd l hl).1.2.1 (hLd l hl).1.2.2.1 (hLd l hl).1.2.2.2,
+        k1 _ (hbL l hl).2 (hLd l hl).2.1 (hLd l hl).2.2.1 (hLd l hl).2.2.2.1 (hLd l hl).2.2.2.2⟩
+    have hR0 : arrsP Γ L c σ1.env = arrsP Γ L c σ.env := arrsP_congr (fun l hl => (hLk l hl).2) hl
+    rcases o1 with ⟨ok1, rel1, S1, fin1, pk1⟩ | ⟨ok1, pk1⟩
+    · have hE1 : EnvOK (Δ ++ Γ) (st ++ L) (Vals.app s' c) σ1 := by
+        refine ⟨(RelP.app hlen).2 ⟨rel1, ((RelP.app hlen).1 hE.rel).2.frame (fun l hl => (hLk l hl).1) h1 hl⟩,
+          hl2, W1, w1, S1.1.wlen.2, ?_⟩
+        unfold AllAt; rw [arrsP_append hlen, hR0]; exact S1.2
+      obtain ⟨σ2, W2, e2, h2, w2, k2, r2⟩ := ih (hP s s' hPs ho) σ1 W1 hE1 (by rw [f1]; exact hfl)
+        (by rw [f1]; exact hfl01) ok1 w1 (by rw [hR0]; exact S1)
+      refine ⟨σ2, W2, .loopT hc0 e1 e2, h2.trans h1, w2, fun j hj a1 a2 a3 a4 => by
+        rw [k2 j hj a1 a2 a3 a4, k1 j hj a1 a2 a3 a4], ?_⟩
+      rw [hR0] at r2
+      rw [pk_append, finE_append, fin1]
+      rcases r2 with ⟨o2, sf, r2a, r2b, r2c, r2d, r2e⟩ | ⟨o2, p2⟩
+      · exact .inl ⟨o2, sf, r2a, r2b, r2c, r2d, Nat.max_le.2 ⟨pk1, r2e⟩⟩
+      · exact .inr ⟨o2, Nat.lt_of_lt_of_le p2 (Nat.le_max_right _ _)⟩
+    · have hc1 : (Mach.BExp.bin .and (.var fl) (.var vOk)).denote σ1.env = 0 := by
+        simp only [Mach.BExp.denote, Op.eval, ok1]; simp
+      exact ⟨σ1, W1, .loopT hc0 e1 (.loopF hc1), h1, w1, k1,
+        .inr ⟨ok1, Nat.lt_of_lt_of_le pk1 (pk_mono_left _ _ _)⟩⟩
 
 end Proven.WA
