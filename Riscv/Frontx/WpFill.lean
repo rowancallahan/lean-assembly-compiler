@@ -1,6 +1,6 @@
 /- Paged dynamic arrays (NOTES section 30), part 7: filling a fresh array by pushes.
 
-`fillLoop`: `while (i <u n) &&& vOk { x := value(i); push x; i := i + 1 }` onto the array at the head of the
+`fillLoopP`: `while (i <u n) &&& vOk { x := value(i); push x; i := i + 1 }` onto the array at the head of the
 store.  `Array.replicate`, `extract`, copies of arrays all are a new array (`newArr`) and this loop; the value
 code `Sv` is a parameter with its own specification.  The page events: `pushEvs n`, one page per `P`
 elements. -/
@@ -21,7 +21,7 @@ def pushFrom : Nat → Nat → List MemEvent
 /-- the page events of `n` pushes onto an empty array -/
 def pushEvs (n : Nat) : List MemEvent := pushFrom 0 n
 
-def fillLoop (ptv sv x i n t : Nat) (Sv : MS) : MS :=
+def fillLoopP (ptv sv x i n t : Nat) (Sv : MS) : MS :=
   .loop (.bin .and (.bin .ult (.var i) (.var n)) (.var vOk))
     (.seq Sv (.seq (pushEl ptv sv x t) (.assign i (.bin .add (.var i) (.const 1)))))
 
@@ -46,7 +46,7 @@ theorem pk_pushFrom : ∀ (u j m : Nat), pk u (pushFrom j m) = finE u (pushFrom 
 
 set_option maxHeartbeats 8000000 in
 /-- **the fill loop**: from `j` elements, pushes `f j, f (j + 1), …, f (n - 1)`; or a push found no page -/
-theorem fillLoop_ok (ptv sv x i n t : Nat) (Sv : MS) (C : Nat) (pt : Nat) (others : List (Nat × W64))
+theorem fillLoopP_ok (ptv sv x i n t : Nat) (Sv : MS) (C : Nat) (pt : Nat) (others : List (Nat × W64))
     (f : Nat → BitVec 64) (N : Nat) (hN : N ≤ P * P) (σ0 : MSt)
     (hv : 8 ≤ ptv ∧ 8 ≤ sv ∧ 8 ≤ x ∧ 8 ≤ i ∧ 8 ≤ n ∧ ptv < t ∧ sv < t ∧ x < t ∧ i < t ∧ n < t ∧ sv ≠ ptv ∧ sv ≠ x ∧
       i ≠ ptv ∧ i ≠ sv ∧ i ≠ x ∧ n ≠ ptv ∧ n ≠ sv ∧ n ≠ x ∧ n ≠ i ∧ ptv ≠ x)
@@ -58,7 +58,7 @@ theorem fillLoop_ok (ptv sv x i n t : Nat) (Sv : MS) (C : Nat) (pt : Nat) (other
       (∀ q, q < t → q ≠ x → q ≠ sv → q ≠ i → NP q → σ.env q = σ0.env q) → σ.heap = σ0.heap →
       Store C σ.env W ((pt, (List.range j).map f) :: others) → σ.env ptv = rN pt → σ.env sv = rN j →
       σ.env i = rN j → σ.env n = rN N → σ.env vOk = 1 →
-      ∃ σ' W', Mach.BExec (fillLoop ptv sv x i n t Sv) σ σ' ∧ σ'.heap = σ.heap ∧ σ'.wheap = [W'] ∧
+      ∃ σ' W', Mach.BExec (fillLoopP ptv sv x i n t Sv) σ σ' ∧ σ'.heap = σ.heap ∧ σ'.wheap = [W'] ∧
         (∀ q, q < t → q ≠ x → q ≠ sv → q ≠ i → q ≠ vFh → q ≠ vBump → q ≠ vOk → σ'.env q = σ.env q) ∧
         ((σ'.env vOk = 1 ∧ σ'.env sv = rN N ∧ Store C σ'.env W' ((pt, (List.range N).map f) :: others) ∧
             pk (pageCount ((pt, (List.range j).map f) :: others)) (pushFrom j m) ≤ C) ∨
@@ -107,7 +107,7 @@ theorem fillLoop_ok (ptv sv x i n t : Nat) (Sv : MS) (C : Nat) (pt : Nat) (other
     rcases r2 with ⟨ok2, sz2, S2⟩ | ⟨ok2, hm2, hc2⟩
     · have hS3 : Store C env3 W2 ((pt, (List.range (j + 1)).map f) :: others) := by
         rw [hrange]; exact S2.env fun q hq => by simp only [env3]; rw [set_ne (by have := pool_vars hq; omega)]
-      obtain ⟨σ4, W4, e4, h4', w4, k4, r4⟩ := fillLoop_ok ptv sv x i n t Sv C pt others f N hN σ0
+      obtain ⟨σ4, W4, e4, h4', w4, k4, r4⟩ := fillLoopP_ok ptv sv x i n t Sv C pt others f N hN σ0
         ⟨hp8, hs8, hx8, hi8, hn8, hpt, hst, hxt, hit, hnt, hsp, hsx, hip, his, hix, hnp, hns, hnx, hni, hpx⟩ hSv m (j + 1)
         ⟨env3, σ.heap, [W2]⟩ W2 (by omega) (by omega) rfl
         (fun q a b c' d' hq => by
