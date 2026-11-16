@@ -1,0 +1,261 @@
+Testing/conleche-depth2/out/F2I.lean:2458:8: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth2/out/F2I.lean:2466:8: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth2/out/F2I.lean:2474:8: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth2/out/F2I.lean:2830:33: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth2/out/F2I.lean:2832:31: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth2/out/F2I.lean:2840:33: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth2/out/F2I.lean:2841:31: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth2/out/F2I.lean:3164:25: error(lean.unknownIdentifier): Unknown identifier `ite_eq_left`
+Testing/conleche-depth2/out/F2I.lean:9012:0: error: unexpected token '#'; expected command
+Testing/conleche-depth2/out/F2I.lean:14766:54: error: Tactic `rewrite` failed: Did not find an occurrence of the pattern
+  p.fst.val
+in the target expression
+  (fun p => p.fst.val) p = (fun p => p.fst.val) q
+
+c : Expr
+M : Type
+s : Squash ({ r // r = c } × M)
+p q : { r // r = c } × M
+x✝ : p ≈ q
+⊢ (fun p => p.fst.val) p = (fun p => p.fst.val) q
+Testing/conleche-depth2/out/F2I.lean:15771:71: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth2/out/F2I.lean:15771:39: error: unsolved goals
+ks : List Name
+us : List Level
+memo : MemoXP0 (instLevelParamsP ks us)
+e : Expr
+i : Nat
+hcut : ¬(!(bvar i).hasLP) = true
+⊢ bvar i =
+    if (!(bvar i).hasLP) = true then bvar i
+    else
+      match bvar i with
+      | bvar i_1 => bvar i
+      | lit l => bvar i
+      | sort u => mkSort (Level.subst ks us u)
+      | const n vs => mkConst n (List.map (Level.subst ks us) vs)
+      | fvar idx ty => mkFVar idx (instLevelParamsP ks us ty)
+      | f.app a => (instLevelParamsP ks us f).mkApp (instLevelParamsP ks us a)
+      | ty.lam body => (instLevelParamsP ks us ty).mkLam (instLevelParamsP ks us body)
+      | ty.forallE body => (instLevelParamsP ks us ty).mkForallE (instLevelParamsP ks us body)
+      | ty.letE val body =>
+        (instLevelParamsP ks us ty).mkLetE (instLevelParamsP ks us val) (instLevelParamsP ks us body)
+      | proj s i sub => mkProj s i (instLevelParamsP ks us sub)
+Testing/conleche-depth2/out/F2I.lean:15772:69: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth2/out/F2I.lean:15772:37: error: unsolved goals
+ks : List Name
+us : List Level
+memo : MemoXP0 (instLevelParamsP ks us)
+e : Expr
+l : Literal
+hcut : ¬(!(lit l).hasLP) = true
+⊢ lit l =
+    if (!(lit l).hasLP) = true then lit l
+    else
+      match lit l with
+      | bvar i => lit l
+      | lit l_1 => lit l
+      | sort u => mkSort (Level.subst ks us u)
+      | const n vs => mkConst n (List.map (Level.subst ks us) vs)
+      | fvar idx ty => mkFVar idx (instLevelParamsP ks us ty)
+      | f.app a => (instLevelParamsP ks us f).mkApp (instLevelParamsP ks us a)
+      | ty.lam body => (instLevelParamsP ks us ty).mkLam (instLevelParamsP ks us body)
+      | ty.forallE body => (instLevelParamsP ks us ty).mkForallE (instLevelParamsP ks us body)
+      | ty.letE val body =>
+        (instLevelParamsP ks us ty).mkLetE (instLevelParamsP ks us val) (instLevelParamsP ks us body)
+      | proj s i sub => mkProj s i (instLevelParamsP ks us sub)
+Testing/conleche-depth2/out/F2I.lean:15774:78: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth2/out/F2I.lean:15774:46: error: unsolved goals
+ks : List Name
+us : List Level
+memo : MemoXP0 (instLevelParamsP ks us)
+e : Expr
+u : Level
+hcut : ¬(!(sort u).hasLP) = true
+⊢ mkSort (Level.subst ks us u) =
+    if (!(sort u).hasLP) = true then sort u
+    else
+      match sort u with
+      | bvar i => sort u
+      | lit l => sort u
+      | sort u => mkSort (Level.subst ks us u)
+      | const n vs => mkConst n (List.map (Level.subst ks us) vs)
+      | fvar idx ty => mkFVar idx (instLevelParamsP ks us ty)
+      | f.app a => (instLevelParamsP ks us f).mkApp (instLevelParamsP ks us a)
+      | ty.lam body => (instLevelParamsP ks us ty).mkLam (instLevelParamsP ks us body)
+      | ty.forallE body => (instLevelParamsP ks us ty).mkForallE (instLevelParamsP ks us body)
+      | ty.letE val body =>
+        (instLevelParamsP ks us ty).mkLetE (instLevelParamsP ks us val) (instLevelParamsP ks us body)
+      | proj s i sub => mkProj s i (instLevelParamsP ks us sub)
+Testing/conleche-depth2/out/F2I.lean:15777:38: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth2/out/F2I.lean:15777:6: error: unsolved goals
+ks : List Name
+us : List Level
+memo : MemoXP0 (instLevelParamsP ks us)
+e : Expr
+n : Name
+vs : List Level
+hcut : ¬(!(const n vs).hasLP) = true
+⊢ mkConst n (List.map (Level.subst ks us) vs) =
+    if (!(const n vs).hasLP) = true then const n vs
+    else
+      match const n vs with
+      | bvar i => const n vs
+      | lit l => const n vs
+      | sort u => mkSort (Level.subst ks us u)
+      | const n vs => mkConst n (List.map (Level.subst ks us) vs)
+      | fvar idx ty => mkFVar idx (instLevelParamsP ks us ty)
+      | f.app a => (instLevelParamsP ks us f).mkApp (instLevelParamsP ks us a)
+      | ty.lam body => (instLevelParamsP ks us ty).mkLam (instLevelParamsP ks us body)
+      | ty.forallE body => (instLevelParamsP ks us ty).mkForallE (instLevelParamsP ks us body)
+      | ty.letE val body =>
+        (instLevelParamsP ks us ty).mkLetE (instLevelParamsP ks us val) (instLevelParamsP ks us body)
+      | proj s i sub => mkProj s i (instLevelParamsP ks us sub)
+Testing/conleche-depth2/out/F2I.lean:15780:62: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth2/out/F2I.lean:15780:30: error: unsolved goals
+ks : List Name
+us : List Level
+memo✝ : MemoXP0 (instLevelParamsP ks us)
+e : Expr
+idx : Nat
+ty : Expr
+hcut : ¬(!(fvar idx ty).hasLP) = true
+x✝ : ResXP0 (instLevelParamsP ks us) ty
+t : Expr
+ht : t = instLevelParamsP ks us ty
+memo : MemoXP0 (instLevelParamsP ks us)
+⊢ mkFVar idx t =
+    if (!(fvar idx ty).hasLP) = true then fvar idx ty
+    else
+      match fvar idx ty with
+      | bvar i => fvar idx ty
+      | lit l => fvar idx ty
+      | sort u => mkSort (Level.subst ks us u)
+      | const n vs => mkConst n (List.map (Level.subst ks us) vs)
+      | fvar idx ty => mkFVar idx (instLevelParamsP ks us ty)
+      | f.app a => (instLevelParamsP ks us f).mkApp (instLevelParamsP ks us a)
+      | ty.lam body => (instLevelParamsP ks us ty).mkLam (instLevelParamsP ks us body)
+      | ty.forallE body => (instLevelParamsP ks us ty).mkForallE (instLevelParamsP ks us body)
+      | ty.letE val body =>
+        (instLevelParamsP ks us ty).mkLetE (instLevelParamsP ks us val) (instLevelParamsP ks us body)
+      | proj s i sub => mkProj s i (instLevelParamsP ks us sub)
+Testing/conleche-depth2/out/F2I.lean:15784:61: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth2/out/F2I.lean:15784:29: error: unsolved goals
+ks : List Name
+us : List Level
+memo✝¹ : MemoXP0 (instLevelParamsP ks us)
+e f a : Expr
+hcut : ¬(!(f.app a).hasLP) = true
+x✝¹ : ResXP0 (instLevelParamsP ks us) f
+f' : Expr
+hf : f' = instLevelParamsP ks us f
+memo✝ : MemoXP0 (instLevelParamsP ks us)
+x✝ : ResXP0 (instLevelParamsP ks us) a
+a' : Expr
+ha : a' = instLevelParamsP ks us a
+memo : MemoXP0 (instLevelParamsP ks us)
+⊢ f'.mkApp a' =
+    if (!(f.app a).hasLP) = true then f.app a
+    else
+      match f.app a with
+      | bvar i => f.app a
+      | lit l => f.app a
+      | sort u => mkSort (Level.subst ks us u)
+      | const n vs => mkConst n (List.map (Level.subst ks us) vs)
+      | fvar idx ty => mkFVar idx (instLevelParamsP ks us ty)
+      | f.app a => (instLevelParamsP ks us f).mkApp (instLevelParamsP ks us a)
+      | ty.lam body => (instLevelParamsP ks us ty).mkLam (instLevelParamsP ks us body)
+      | ty.forallE body => (instLevelParamsP ks us ty).mkForallE (instLevelParamsP ks us body)
+      | ty.letE val body =>
+        (instLevelParamsP ks us ty).mkLetE (instLevelParamsP ks us val) (instLevelParamsP ks us body)
+      | proj s i sub => mkProj s i (instLevelParamsP ks us sub)
+Testing/conleche-depth2/out/F2I.lean:15789:38: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth2/out/F2I.lean:15789:6: error: unsolved goals
+ks : List Name
+us : List Level
+memo✝¹ : MemoXP0 (instLevelParamsP ks us)
+e ty body : Expr
+hcut : ¬(!(ty.lam body).hasLP) = true
+x✝¹ : ResXP0 (instLevelParamsP ks us) ty
+ty' : Expr
+ht : ty' = instLevelParamsP ks us ty
+memo✝ : MemoXP0 (instLevelParamsP ks us)
+x✝ : ResXP0 (instLevelParamsP ks us) body
+b' : Expr
+hb : b' = instLevelParamsP ks us body
+memo : MemoXP0 (instLevelParamsP ks us)
+⊢ ty'.mkLam b' =
+    if (!(ty.lam body).hasLP) = true then ty.lam body
+    else
+      match ty.lam body with
+      | bvar i => ty.lam body
+      | lit l => ty.lam body
+      | sort u => mkSort (Level.subst ks us u)
+      | const n vs => mkConst n (List.map (Level.subst ks us) vs)
+      | fvar idx ty => mkFVar idx (instLevelParamsP ks us ty)
+      | f.app a => (instLevelParamsP ks us f).mkApp (instLevelParamsP ks us a)
+      | ty.lam body => (instLevelParamsP ks us ty).mkLam (instLevelParamsP ks us body)
+      | ty.forallE body => (instLevelParamsP ks us ty).mkForallE (instLevelParamsP ks us body)
+      | ty.letE val body =>
+        (instLevelParamsP ks us ty).mkLetE (instLevelParamsP ks us val) (instLevelParamsP ks us body)
+      | proj s i sub => mkProj s i (instLevelParamsP ks us sub)
+Testing/conleche-depth2/out/F2I.lean:15794:38: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth2/out/F2I.lean:15794:6: error: unsolved goals
+ks : List Name
+us : List Level
+memo✝¹ : MemoXP0 (instLevelParamsP ks us)
+e ty body : Expr
+hcut : ¬(!(ty.forallE body).hasLP) = true
+x✝¹ : ResXP0 (instLevelParamsP ks us) ty
+ty' : Expr
+ht : ty' = instLevelParamsP ks us ty
+memo✝ : MemoXP0 (instLevelParamsP ks us)
+x✝ : ResXP0 (instLevelParamsP ks us) body
+b' : Expr
+hb : b' = instLevelParamsP ks us body
+memo : MemoXP0 (instLevelParamsP ks us)
+⊢ ty'.mkForallE b' =
+    if (!(ty.forallE body).hasLP) = true then ty.forallE body
+    else
+      match ty.forallE body with
+      | bvar i => ty.forallE body
+      | lit l => ty.forallE body
+      | sort u => mkSort (Level.subst ks us u)
+      | const n vs => mkConst n (List.map (Level.subst ks us) vs)
+      | fvar idx ty => mkFVar idx (instLevelParamsP ks us ty)
+      | f.app a => (instLevelParamsP ks us f).mkApp (instLevelParamsP ks us a)
+      | ty.lam body => (instLevelParamsP ks us ty).mkLam (instLevelParamsP ks us body)
+      | ty.forallE body => (instLevelParamsP ks us ty).mkForallE (instLevelParamsP ks us body)
+      | ty.letE val body =>
+        (instLevelParamsP ks us ty).mkLetE (instLevelParamsP ks us val) (instLevelParamsP ks us body)
+      | proj s i sub => mkProj s i (instLevelParamsP ks us sub)
+Testing/conleche-depth2/out/F2I.lean:15799:66: error(lean.unknownIdentifier): Unknown identifier `ite_eq_right`
+Testing/conleche-depth2/out/F2I.lean:15799:34: error: unsolved goals
+ks : List Name
+us : List Level
+memo✝² : MemoXP0 (instLevelParamsP ks us)
+e ty val body : Expr
+hcut : ¬(!(ty.letE val body).hasLP) = true
+x✝² : ResXP0 (instLevelParamsP ks us) ty
+ty' : Expr
+ht : ty' = instLevelParamsP ks us ty
+memo✝¹ : MemoXP0 (instLevelParamsP ks us)
+x✝¹ : ResXP0 (instLevelParamsP ks us) val
+v' : Expr
+hv : v' = instLevelParamsP ks us val
+memo✝ : MemoXP0 (instLevelParamsP ks us)
+x✝ : ResXP0 (instLevelParamsP ks us) body
+b' : Expr
+hb : b' = instLevelParamsP ks us body
+memo : MemoXP0 (instLevelParamsP ks us)
+⊢ ty'.mkLetE v' b' =
+    if (!(ty.letE val body).hasLP) = true then ty.letE val body
+    else
+      match ty.letE val body with
+      | bvar i => ty.letE val body
+      | lit l => ty.letE val body
+      | sort u => mkSort (Level.subst ks us u)
+      | const n vs => mkConst n (List.map (Level.subst ks us) vs)
+      | fvar idx ty => mkFVar idx (instLevelParamsP ks us ty)
+      | f.app a => (instLevelParamsP ks us f).mkApp (instLevelParamsP ks us a)
+      | ty.lam 

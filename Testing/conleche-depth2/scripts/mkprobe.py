@@ -5,7 +5,8 @@ F2=open('/home/user/scratch/cl/F2.lean.txt').read().split('\n')
 names=sorted(json.load(open('/home/user/scratch/cl2/orig_final.json'))['first'])
 hdr=['import Riscv.Frontx.Machine','import Riscv.Frontx.IndCmd','import Riscv.Frontx.IndGate']
 assert F2[0]=='import Riscv.Frontx.Machine' and F2[1]=='import Riscv.Frontx.IndCmd'
-body=F2[2:]
+cut=F2.index('-- ===== probes =====')  # the branch file carries the first probe's own probe section: drop it
+body=F2[2:cut]
 decl=['','-- ===== depth-2 declarations =====',
  'frontx_ind_type TExpr := ConLeche.Expr nesting ConLeche.Level, ConLeche.Name, List ConLeche.Level, ConLeche.Literal, List ConLeche.Expr, Option ConLeche.Expr','']
 out=hdr+body+decl

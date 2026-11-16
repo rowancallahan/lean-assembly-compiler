@@ -1,0 +1,3732 @@
+{
+ "seq": [
+  [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   320
+  ],
+  [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   529
+  ],
+  [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   757
+  ],
+  [
+   "nullary constant (0-ary def)",
+   959
+  ],
+  [
+   "HashMap / HashSet / memo state",
+   1016
+  ],
+  [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)",
+   1076
+  ],
+  [
+   "String / Char",
+   1097
+  ],
+  [
+   "Int",
+   1101
+  ]
+ ],
+ "F": {
+  "ConLeche.BasisDSL.cnst": [],
+  "ConLeche.BasisDSL.prop": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.BasisDSL.rule": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.BasisDSL.ruleAt": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.BasisDSL.type1": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.BasisKind.decls": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.BlockShape.ctorGroups": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.BlockShape.formers": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.BlockShape.majorIdxAt": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.BlockShape.memberCtors": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.BlockShape.memberNames": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.BlockShape.nIdxs": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.BlockShape.nestCtx": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.BlockShape.numCtors": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.BlockShape.rulePrefixAt": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.BlockShape.withSort": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.CState.enterEager": [
+   "HashMap / HashSet / memo state",
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.CState.flushed": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.CState.leaveEager": [
+   "HashMap / HashSet / memo state",
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.CState.modeMemos": [
+   "HashMap / HashSet / memo state",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.CheckCM": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.Expr.dropVarsC": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Cached.NatBinOp.name": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Cached.NatBinOp.ofName?": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)"
+  ],
+  "ConLeche.Cached.NatBinOp.result": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Cached.abstract1M": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.abstractRangeM": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.auxRuleFireC": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.betaPeelI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.blockConstantsC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.blockIsRecC": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.blockNestCtxC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.blockRecInfosBare": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.blockRecInfosTC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.blockRecsC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.blockTablesC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.boolTrueShortcutI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.certAtI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkAbsCtorSortsAllC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkAbsCtorSortsC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkBlockAgreeC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkBlockClassesC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkBlockCtorsC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkBlockDomsAtC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkBlockIdxSortsC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkBlockIndsC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkBlockKS": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkBlockPassS": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkBlockPositivityC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkBlockTablesC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkBlockTailS": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkBlockTeleC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkBlockTelesC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkConstantValC": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkDeclC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkDeclKindC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkDeclStepC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkDecls": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkDefnValCI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkDivModCertsC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkDivModPinAtC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkDivModPinC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkDivModPinLoopC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "String / Char",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkGuardRowsI": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.checkIndDeclC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkOpaqueValCI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkProjGuardI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkProjRowsI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkQuotRecordC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkReducePinC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkSpineAtC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkStructDomsAtC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkStructFieldSortsC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkStructFieldSortsIC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkStructProjTableC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkSumCtorC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkSumCtorsC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkThmValCI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.checkTypePinsC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.classConstOkC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.classCtorOfC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.classCtorsOfC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.classFeROvl": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.classFieldsAgreeC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.classFieldsOfC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.classFormerTyC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.classGenRecTyC": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.classGenRuleC": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.classKeyCanonC": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.classKeyOfC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.classMajorsC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.classNodesAgreeC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.classReadC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.classReadMinorC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)"
+  ],
+  "ConLeche.Cached.classReadSlotsC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)"
+  ],
+  "ConLeche.Cached.classRecTyCheckC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.classRecTyOkC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.classRecTysOkC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.classRecsRulesOkC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.classRuleCheckC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.classRulesOkC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.classSeedsC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.classStreamRecsC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.classesCtorsC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.classesNfsC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.consBlockCtorsF": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.consBlockIndsF": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.consSumCtorsF": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.constTyAtM": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.constValAtM": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.constsResolveFC": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.constsResolveFP": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.constsResolveFXP": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.declStep": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.defEqListI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.defeqArgI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.defeqBindersI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.defeqBindersInnerI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.defeqBodyI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.defeqDomainI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.defeqEI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.defeqI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.defeqOffsetI": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.defeqProjPairI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.defeqSpineI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.defeqStuckI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.deltaQuickI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.divModCertGuardC": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.divModPinGuardC": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.ensureSortI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.enterCRF": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.eraseFVarTysC": [],
+  "ConLeche.Cached.etaCertI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.etaCtorPartialC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.etaCtorShapeC": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.familyKeyCheckC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.familyNeverZeroI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.familyTelescopeC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.flushC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Cached.formerNeverZeroI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.formerSortLoopI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.genRecCheckC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.generatedFireC": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.generatedRulesC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.getAppArgsArr": [],
+  "ConLeche.Cached.getAppArgsArrGo": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Cached.headHintC": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.inferBodyI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.inferBodyIOI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.inferI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.inferLamsI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.inferLamsLeafI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.inferLamsOutI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.inferPisI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.inferPisLeafI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.inferPisOutI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Cached.inferSpineI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.inferSpineIOI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.inst1M": [],
+  "ConLeche.Cached.instCCapC": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Cached.instLevelParamsM": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.instListM": [],
+  "ConLeche.Cached.instListRevM": [],
+  "ConLeche.Cached.instSpineM": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.iotaArityOk": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.iotaCase3I": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.iotaCertsFullI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.iotaCertsFullIAux": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.iotaIndexOkI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.iotaNumArgs": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Cached.iotaRecI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.iotaTargetF": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.isCtorAppC": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.isEquivLM": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.isEquivListLM": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Cached.isPropTypeI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.isStuckHeadC": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Cached.lazyDeltaProjReductionI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.lazyDeltaReductionI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.lazyDeltaStepI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.litMajorToCtorI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.litToCtorIfNatI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.majorToCtorI": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.maxNatSizeM": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Cached.memoBI": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.memoEI": [
+   "HashMap / HashSet / memo state",
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.mkAppNM": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.mkAppRange": [],
+  "ConLeche.Cached.nameIsC": [],
+  "ConLeche.Cached.natCountMax": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Cached.natCountTooBig": [
+   "String / Char",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.natNumeralTooBig": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Cached.natOpRefusal": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.natResultRefused": [],
+  "ConLeche.Cached.natSizeBytes": [],
+  "ConLeche.Cached.nestCanonCrestC": [],
+  "ConLeche.Cached.nestContC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.nestContKeyC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.nestContNewC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.nestCrestC": [],
+  "ConLeche.Cached.nestCtorNfC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.nestCtorsC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.nestFieldsC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.nestFrameC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.nestGrowGroupC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.nestHoleImgC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.nestHolesC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.nestInstTypeC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.nestPosC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.nestRootC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.nestRootCanonC": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.nestSeedOfC": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.nestSeedsC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.nestUniformC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.nestUniformOkC": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.opSIxC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.peelFuel": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Cached.peelFuelM": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Cached.piDomsOccC": [],
+  "ConLeche.Cached.piResidualM": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.pinArgsI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.prepareMajorI": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.projCertAtF": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.projCertF": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.projGuardSortI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.projLitToCtorI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.projNodesI": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.proofIrrelI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.propIrrelI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.pushCheapKey": [],
+  "ConLeche.Cached.pushKey": [],
+  "ConLeche.Cached.quickDefEqI": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.rawNatLitC?": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)"
+  ],
+  "ConLeche.Cached.recDomsAtC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.recFireC": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.recTyCheckC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.recTyOpenedC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.reduceMemberS": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.reduceMembersS": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.reduceNatI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.reducePinGuardC": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.reduceProjCoreI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.reducedFormerC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.ruleAgreeC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.ruleRhsAtM": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.sameConstHeadsC": [],
+  "ConLeche.Cached.sharedOpsC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.spineArg": [],
+  "ConLeche.Cached.storeChain": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.storeChainI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.streamNestedOkC": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.streamRecCheckC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.streamRecCompareC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.streamRecsCheckC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.streamRulesCheckC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.streamRulesShapeC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.structEtaCertI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.structEtaCertWithI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.structEtaExpandI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.structEtaFullI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.structProjBodiesC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)"
+  ],
+  "ConLeche.Cached.structProjBodiesGoC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)"
+  ],
+  "ConLeche.Cached.structUnitCertI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.structUsedLaterC": [],
+  "ConLeche.Cached.stuckIrrelI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.substLevelTreesM": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.targetCanonParamsC": [],
+  "ConLeche.Cached.targetClassMatchC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.targetCtorAtC": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.targetK53C": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.targetMajorNfsC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.targetMajorOfC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.targetMajorPinsC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.targetOutsideInstC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.targetParamsDefEqC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.targetPinTysC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.tryUnfoldProjAppI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.unfoldDefinitionI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.unfoldableHeadC": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.unitLikeFieldsI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.unitLikeLoopI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.unitLikeShapeF": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.unitLikeStructI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.unresolvedConstsErrorLC": [
+   "String / Char",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.whnfAppI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.whnfBodyI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.whnfCoreBodyI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.whnfCoreCheapSafeC": [],
+  "ConLeche.Cached.whnfCoreEasy": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Cached.whnfCoreI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.whnfCoreKeyC": [],
+  "ConLeche.Cached.whnfCoreLookupI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.whnfCoreLoopI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.whnfCoreStepI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.whnfCoreStoresDone": [],
+  "ConLeche.Cached.whnfEasy": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Cached.whnfI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.whnfLoopI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Cached.whnfStuckI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.whnfTelescopeC": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Cached.whnfWalkFuelC": [],
+  "ConLeche.Cached.withEagerMemos": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.CheckM": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.CheckMode.verifiedChecks": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.ClassGen.binder": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.ClassGen.ihParts": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.ClassGen.major": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.ClassGen.minorTy": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.ClassGen.motVar": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.ClassGen.motiveTy": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.ClassGen.prefixBinders": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.ClassGen.slotVar": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.ClassRead.classes": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.ClassRead.motiveSlot": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)"
+  ],
+  "ConLeche.ClassSlot.isMinor": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.ConstantInfo.atLps": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.ConstantInfo.canon": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.ConstantInfo.name": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.ConstantInfo.toConstantVal": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.ConstantVal.atLps": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.ConstantVal.canon": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.ConstantVal.matchesPin": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.CoreFns.ioView": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Declaration.names": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Display.Acc.chars": [
+   "String / Char"
+  ],
+  "ConLeche.Display.Acc.component": [
+   "String / Char"
+  ],
+  "ConLeche.Display.Acc.escaped": [
+   "String / Char"
+  ],
+  "ConLeche.Display.Acc.finish": [
+   "String / Char"
+  ],
+  "ConLeche.Display.Acc.piece": [
+   "String / Char"
+  ],
+  "ConLeche.Display.codeEscape": [
+   "String / Char"
+  ],
+  "ConLeche.Display.idShaped": [
+   "String / Char"
+  ],
+  "ConLeche.Display.maxLen": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Display.unsafeChar": [
+   "String / Char"
+  ],
+  "ConLeche.Env.empty": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Env.find?": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Env.findProj?": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Env.findTable?": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Env.pushDelta": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Expr.BTab": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)"
+  ],
+  "ConLeche.Expr.BeqMap": [
+   "HashMap / HashSet / memo state"
+  ],
+  "ConLeche.Expr.BeqOk": [],
+  "ConLeche.Expr.BeqOutX": [],
+  "ConLeche.Expr.BeqOutX.cast": [],
+  "ConLeche.Expr.BeqSt.record": [
+   "HashMap / HashSet / memo state"
+  ],
+  "ConLeche.Expr.BeqSt.recordEq": [
+   "HashMap / HashSet / memo state"
+  ],
+  "ConLeche.Expr.EqPair.dflt": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.HTab": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)"
+  ],
+  "ConLeche.Expr.MemoB": [
+   "HashMap / HashSet / memo state",
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)"
+  ],
+  "ConLeche.Expr.MemoB.insert": [
+   "HashMap / HashSet / memo state"
+  ],
+  "ConLeche.Expr.MemoB0": [
+   "HashMap / HashSet / memo state",
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)"
+  ],
+  "ConLeche.Expr.MemoN": [
+   "HashMap / HashSet / memo state",
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)"
+  ],
+  "ConLeche.Expr.MemoN.insert": [
+   "HashMap / HashSet / memo state"
+  ],
+  "ConLeche.Expr.MemoXP": [
+   "HashMap / HashSet / memo state",
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)"
+  ],
+  "ConLeche.Expr.MemoXP.insert": [
+   "HashMap / HashSet / memo state"
+  ],
+  "ConLeche.Expr.MemoXP0": [
+   "HashMap / HashSet / memo state",
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)"
+  ],
+  "ConLeche.Expr.NTab": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)"
+  ],
+  "ConLeche.Expr.ReentListP": [],
+  "ConLeche.Expr.ReentRevP": [],
+  "ConLeche.Expr.ResB": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)"
+  ],
+  "ConLeche.Expr.ResB0": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)"
+  ],
+  "ConLeche.Expr.ResN": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)"
+  ],
+  "ConLeche.Expr.ResXP": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)"
+  ],
+  "ConLeche.Expr.ResXP0": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)"
+  ],
+  "ConLeche.Expr.abstract1": [],
+  "ConLeche.Expr.abstract1C": [],
+  "ConLeche.Expr.abstract1P": [],
+  "ConLeche.Expr.abstract1XP": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.abstractPrefix": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.abstractPrefixC": [],
+  "ConLeche.Expr.abstractRangeC": [],
+  "ConLeche.Expr.abstractRangeP": [],
+  "ConLeche.Expr.abstractRangeXP": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.allLevelParamsDefined": [],
+  "ConLeche.Expr.allLevelParamsDefinedC": [],
+  "ConLeche.Expr.allLevelParamsDefinedP": [],
+  "ConLeche.Expr.allLevelParamsDefinedXP": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.appHole?": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)"
+  ],
+  "ConLeche.Expr.appHoleAt?": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)"
+  ],
+  "ConLeche.Expr.beqGoX": [],
+  "ConLeche.Expr.beqIsApp": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.beqKey": [],
+  "ConLeche.Expr.beqRecursive": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.binderDom": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.binderPair?": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.bvarB": [],
+  "ConLeche.Expr.bvarBRaw": [],
+  "ConLeche.Expr.bvarBoundGo": [
+   "HashMap / HashSet / memo state"
+  ],
+  "ConLeche.Expr.bvarBoundMemo": [
+   "HashMap / HashSet / memo state"
+  ],
+  "ConLeche.Expr.bvarPool": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.bvarPoolSize": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.closeLamsC": [],
+  "ConLeche.Expr.closeLamsGoC": [],
+  "ConLeche.Expr.closeTelescopeC": [],
+  "ConLeche.Expr.closeTelescopeGoC": [],
+  "ConLeche.Expr.constHoleAt?": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)"
+  ],
+  "ConLeche.Expr.constsResolve": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Expr.constsResolveF": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Expr.decEq": [],
+  "ConLeche.Expr.depth": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.depthC": [],
+  "ConLeche.Expr.depthP": [],
+  "ConLeche.Expr.depthXP": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.dropVars": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.enter1P": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.enterAbs1P": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.enterAbsRP": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.enterBeq": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)"
+  ],
+  "ConLeche.Expr.enterDepth": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.enterLBP": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.enterLIP": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.enterLLP": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.enterLPD": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.enterLPP": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.enterLSub": [
+   "HashMap / HashSet / memo state",
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.enterLiftP": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.enterListP": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.enterMAC": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.enterNO": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.enterRA": [
+   "HashMap / HashSet / memo state",
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.enterRFV": [
+   "HashMap / HashSet / memo state",
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.enterRevP": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.enterSCA": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.enterTA": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.enterWSP": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.eraseFVarTys": [],
+  "ConLeche.Expr.fvarB": [],
+  "ConLeche.Expr.fvarBRaw": [],
+  "ConLeche.Expr.fvarLeavesC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)"
+  ],
+  "ConLeche.Expr.fvarLeavesGoC": [
+   "HashMap / HashSet / memo state",
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)"
+  ],
+  "ConLeche.Expr.fvarRangeGo": [
+   "HashMap / HashSet / memo state"
+  ],
+  "ConLeche.Expr.fvarRangeMemo": [
+   "HashMap / HashSet / memo state"
+  ],
+  "ConLeche.Expr.fvarTypeD": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.getAppArgs": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.getAppArgsAccC": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.getAppArgsC": [],
+  "ConLeche.Expr.getAppFn": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.hasFvar": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.hasLP": [],
+  "ConLeche.Expr.hasLooseBVarB": [],
+  "ConLeche.Expr.hasLooseBVarBC": [],
+  "ConLeche.Expr.hasLooseBVarBP": [],
+  "ConLeche.Expr.hasLooseBVarBXP": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.hasLooseBVarInC": [],
+  "ConLeche.Expr.hasLooseBVarInP": [],
+  "ConLeche.Expr.hasLooseBVarInXP": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.hasStrLitGo": [
+   "HashMap / HashSet / memo state"
+  ],
+  "ConLeche.Expr.headIsProj": [],
+  "ConLeche.Expr.instLevelParams": [],
+  "ConLeche.Expr.instLevelParamsP": [],
+  "ConLeche.Expr.instLevelParamsXP": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.instPisWithC": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.instSpine": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.instSpineC": [],
+  "ConLeche.Expr.instSpineChainC": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.instantiate1": [],
+  "ConLeche.Expr.instantiate1C": [],
+  "ConLeche.Expr.instantiate1P": [],
+  "ConLeche.Expr.instantiate1XP": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.instantiateLevelParams": [],
+  "ConLeche.Expr.instantiateLift": [],
+  "ConLeche.Expr.instantiateLiftC": [],
+  "ConLeche.Expr.instantiateLiftP": [],
+  "ConLeche.Expr.instantiateLiftXP": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.instantiateList": [],
+  "ConLeche.Expr.instantiateListC": [],
+  "ConLeche.Expr.instantiateListP": [],
+  "ConLeche.Expr.instantiateListXP": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.instantiateRev": [],
+  "ConLeche.Expr.instantiateRevP": [],
+  "ConLeche.Expr.instantiateRevXP": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.ioNeutral": [],
+  "ConLeche.Expr.isBoolTrue": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.isCompound": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.isCompoundF": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.isEagerReduce": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.isForallE": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.isLit": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.isNatZero": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.isStrLit": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.leafGuard": [],
+  "ConLeche.Expr.leafListP": [],
+  "ConLeche.Expr.leafMem": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.leafRevP": [],
+  "ConLeche.Expr.leavesSubC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)"
+  ],
+  "ConLeche.Expr.leavesSubP": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)"
+  ],
+  "ConLeche.Expr.leavesSubXP": [
+   "HashMap / HashSet / memo state",
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.liftLooseBVars": [],
+  "ConLeche.Expr.liftLooseBVarsC": [],
+  "ConLeche.Expr.liftLooseBVarsP": [],
+  "ConLeche.Expr.liftLooseBVarsXP": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.looseBVarsBounded": [],
+  "ConLeche.Expr.mentionsAnyConst": [],
+  "ConLeche.Expr.mentionsAnyConstC": [],
+  "ConLeche.Expr.mentionsAnyConstP": [],
+  "ConLeche.Expr.mentionsAnyConstXP": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.mkAppN": [],
+  "ConLeche.Expr.mkBvar": [],
+  "ConLeche.Expr.natPred?": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.nestOcc": [],
+  "ConLeche.Expr.nestOccC": [],
+  "ConLeche.Expr.nestOccP": [],
+  "ConLeche.Expr.nestOccXP": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.numArgs": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.peelPis": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.phApp?": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)"
+  ],
+  "ConLeche.Expr.piBinders": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.piDomsMentionAny": [],
+  "ConLeche.Expr.piDomsMentionAnyC": [],
+  "ConLeche.Expr.piDomsOcc": [],
+  "ConLeche.Expr.piResidual": [],
+  "ConLeche.Expr.piResidualAcc": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.piResult": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.piSortTeleLen?": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.probeHit": [
+   "HashMap / HashSet / memo state"
+  ],
+  "ConLeche.Expr.ptrDecStruct": [],
+  "ConLeche.Expr.reentListP": [],
+  "ConLeche.Expr.reentRevP": [],
+  "ConLeche.Expr.replaceApps": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)"
+  ],
+  "ConLeche.Expr.replaceAppsC": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)"
+  ],
+  "ConLeche.Expr.replaceAppsP": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)"
+  ],
+  "ConLeche.Expr.replaceAppsXP": [
+   "HashMap / HashSet / memo state",
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.replaceFVars": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)"
+  ],
+  "ConLeche.Expr.replaceFVarsC": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)"
+  ],
+  "ConLeche.Expr.replaceFVarsP": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)"
+  ],
+  "ConLeche.Expr.replaceFVarsXP": [
+   "HashMap / HashSet / memo state",
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.resBool": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.resNat": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.resTerm": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.sizeF": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.stripLams": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.stripPis": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.substConst0": [],
+  "ConLeche.Expr.substConstAll": [],
+  "ConLeche.Expr.substConstAllC": [],
+  "ConLeche.Expr.substConstAllXP": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.targetAbsC": [],
+  "ConLeche.Expr.targetAbsConst": [],
+  "ConLeche.Expr.targetAbsP": [],
+  "ConLeche.Expr.targetAbsXP": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.Expr.targetPiDomsWithC": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Expr.withAddr": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)"
+  ],
+  "ConLeche.Expr.wscopedB": [],
+  "ConLeche.Expr.wscopedBC": [],
+  "ConLeche.Expr.wscopedBP": [],
+  "ConLeche.Expr.wscopedBXP": [
+   "HashMap / HashSet / memo state",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.FBase.find?": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.FBase.findTable?": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.FEnv.andRescueSlotsF": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.FEnv.find?": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.FEnv.findProj?": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.FEnv.findTable?": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.FEnv.lookup": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.FEnv.overlay": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.FEnv.push": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.FEnv.pushAll": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.FEnv.pushDelta": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.FEnv.pushTable": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.FEnv.pushTables": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.FEnv.rawTable?": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Level.allParamsDefined": [],
+  "ConLeche.Level.byCases": [
+   "Int",
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)"
+  ],
+  "ConLeche.Level.combining": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Level.decEq": [],
+  "ConLeche.Level.defaultFuel": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Level.imaxRules": [
+   "Int",
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)"
+  ],
+  "ConLeche.Level.isAlwaysZero": [],
+  "ConLeche.Level.isEquiv": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)"
+  ],
+  "ConLeche.Level.isEquivList": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Level.isNeverZero": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Level.leqCore": [
+   "Int",
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)"
+  ],
+  "ConLeche.Level.rest": [
+   "Int",
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)"
+  ],
+  "ConLeche.Level.simplify": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Level.subst": [],
+  "ConLeche.Level.substPW": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Level.zeroWhereZero": [],
+  "ConLeche.Level.zeronessOf": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Literal.decEq": [],
+  "ConLeche.MemberShape.structCtor?": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.Name.componentList": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "String / Char",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Name.nodup": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.Name.render": [
+   "String / Char"
+  ],
+  "ConLeche.NestCtx.hiAt": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.NestCtx.rootHoles": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.NestFieldKind.flat": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.ProjEntry.typeAt": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.ProjTable.entry": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.PropWhen.bindZ": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.PropWhen.inter": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.PropWhen.isNever": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.PropWhen.isProp": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.QuotKind.slot": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.RecRuleFire.atLps": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.ReducibilityHint.sameRegular": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.andIntroName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.andIntroRaw": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.andName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.andPin": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.andPinOk": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.andRaw": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.andRecMinor": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.andRecMotive": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.andRecName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.andRecRaw": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.andRescueSlots": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.andRescueSlotsOf": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.auxRuleFire": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.basisNameHit": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.basisNamesError": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.basisNamesOk": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.bindersFuel": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.blockCapsAt": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.blockConstants": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.blockCounts": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.blockCtors": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.blockFormers": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.blockGroups": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.blockIsRec": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.blockLargeElimAllowed": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.blockLinksOk": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.blockMemberCounts": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.blockNestCtx": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.blockNestedBit": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.blockRecLpsOk": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.blockRecNameSetOk": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.blockRecNamesUnreserved": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.blockRecs": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.blockSplit": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.blockSplitCtors": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.blockSplitRecs": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.blockTables": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.boolCvA": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.boolFalseName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.boolName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.boolTrueName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.boolTrueShortcut": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.bvarOfData": [],
+  "ConLeche.canonEqList": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.canonExpr": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)"
+  ],
+  "ConLeche.canonLevel": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)"
+  ],
+  "ConLeche.canonNameMap": [],
+  "ConLeche.certifyNatEqs": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.charName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.charOfNatName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.charOfNatTyOk": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.charTyOk": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.checkAbsCtorSorts": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkAbsCtorSortsAll": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkBlock": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkBlockAgree": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkBlockClasses": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkBlockCtors": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkBlockDomsAt": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkBlockIdxSorts": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkBlockInds": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkBlockPass": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkBlockPositivity": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkBlockRec": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkBlockTables": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkBlockTail": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkBlockTele": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkBlockTeles": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkConstantVal": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkConstantValF": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkDefnVal": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkDivModCerts": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkDivModPin": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkDivModPinAt": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkDivModPinLoop": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "String / Char",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkFuel": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.checkGuardRows": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.checkOpaqueVal": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkProjGuard": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkQuotRecord": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkReducePin": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkSpineAt": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkStructDomsAt": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkStructFieldSortsI": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkStructProjTable": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkSumCtor": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkSumCtors": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkSumTele": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkThmVal": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.checkTypePins": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.choiceA": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.choiceName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.classBinder": [],
+  "ConLeche.classConstOk": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.classCtorOf": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.classCtorsOf": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.classFeR": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.classFieldsAgree": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.classFieldsOf": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.classFormerTy": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.classGenRecTy": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.classGenRule": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.classKeyCanon": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.classKeyOf": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.classLeafAt": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.classMajors": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.classMinorSlot": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.classNPcOf": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.classNodesAgree": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.classOfMotiveVar": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)"
+  ],
+  "ConLeche.classRead": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.classReadMinor": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)"
+  ],
+  "ConLeche.classReadSlots": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)"
+  ],
+  "ConLeche.classRecOf": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.classRecTyCheck": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.classRecTyOk": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.classRecTysOk": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.classRecsRulesOk": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.classRuleCheck": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.classRuleOk": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.classRulesOk": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.classSeeds": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.classStreamRecs": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.classesCtors": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.classesNfs": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.closeLams": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.closeTelescope": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.consBlockCtors": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.consBlockInds": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.consBlockRecsBareF": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.consBlockRecsT": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.consSumCtors": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.constNamed?": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.coreKnot": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.ctorFamily": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.ctorMember?": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.defEqList": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.defeqArg": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.defeqBinders": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.defeqBindersInner": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.defeqBody": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.defeqDomain": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.defeqLoopFuel": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.defeqOffset": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.defeqProjPair": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.defeqSpine": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.defeqStuck": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.deltaQuick": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.divModAttemptReason": [
+   "String / Char",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.divModCertApplied": [],
+  "ConLeche.divModCertGuard": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.divModCertProofs": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.divModCertStmts": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)"
+  ],
+  "ConLeche.divModCertsGuard": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.divModDeclPin": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.divModEnvGuard": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.divModEnvGuardF": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.divModPinGuard": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.divModTypePins": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.eagerReduceName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.emptyA": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.emptyBasis": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.emptyName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.emptyRecA": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.ensureSort": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.eqBasis": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.eqName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.eqRecA": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.eqRecMotive": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.eqReflA": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.eqReflName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.etaCert": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.etaCtorPartial": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.etaCtorShape": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.etaFabArgsE": [],
+  "ConLeche.etaProjs": [],
+  "ConLeche.etaRescueTable?": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.falseA": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.falseBasis": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.falseName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.falseRecA": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.familyKeyCheck": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.familyNeverZeroAt": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.familyTelescope": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.formerDefHeaded": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.formerNeverZero": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.formerNeverZeroAt": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.formerResSort": [],
+  "ConLeche.formerSortLoop": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.formerZ": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.fuelSlack": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.fvarOfData": [],
+  "ConLeche.genRecCheck": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.generatedFire": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.generatedRules": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.headHint": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.headProofPW": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.headTypePW": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.iffIntroName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.iffName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.iffRecName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.indParamsOk": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.inferBody": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.inferBodyIO": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.instPisWith": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.installBasisDecl": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.installBasisDeclF": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.iotaCase3At": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.iotaCaseAt": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.iotaCertsFull": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.iotaIndexOk": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.iotaNoCert": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.iotaRec": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.isCtorApp": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.isProofFast": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.isPropType": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.lamProj?": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.lazyDeltaProjReduction": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.lazyDeltaReduction": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.lazyDeltaStep": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.liftFueled": [
+   "String / Char",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.listBeqBy": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)"
+  ],
+  "ConLeche.listConsName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.listConsTyOk": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.listName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.listNilName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.listNilTyOk": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.listTyOk": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.litMajorToCtor": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.litShapeOk": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.litToCtorIfNat": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.lpOfData": [],
+  "ConLeche.majorToCtor": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.memberIdxAt?": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)"
+  ],
+  "ConLeche.mkFEnv": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.mkIdxGo": [
+   "HashMap / HashSet / memo state",
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.mkTblsGo": [
+   "HashMap / HashSet / memo state",
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.natA": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.natAddName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.natBasis": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.natBeqName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.natBleName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.natDivName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.natGcdName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.natIndOk": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.natLandName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.natLitStored": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.natLitStoredF": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.natLitSupported": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.natLitSupportedF": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.natLitToConstructor": [],
+  "ConLeche.natLorName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.natModName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.natMulName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.natName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.natOpCod": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.natOpCodF": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.natOpDeps": [],
+  "ConLeche.natOpEquations": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)"
+  ],
+  "ConLeche.natOpGuard": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.natOpGuardF": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.natOpName": [],
+  "ConLeche.natOpResult": [],
+  "ConLeche.natOpStoredOk": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.natOpStoredOkF": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.natOpTyPinned": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.natOpTyPinnedF": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.natPowName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.natPredName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.natRecA": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.natRecMotive": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.natRecSucc": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.natShiftLeftName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.natShiftRightName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.natSubName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.natSuccA": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.natSuccName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.natSuccOk": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.natT": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.natXorName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.natZeroA": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.natZeroName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.natZeroOk": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.nativeAxiomTactic?": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "String / Char",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.nestAcceptGroup": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)"
+  ],
+  "ConLeche.nestBlockOf": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.nestCanonCrest": [],
+  "ConLeche.nestCanonSub": [],
+  "ConLeche.nestCont": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.nestContKey": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.nestContNew": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.nestContainer": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.nestCrest": [],
+  "ConLeche.nestCtorEntry": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.nestCtorNf": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.nestCtors": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.nestFields": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.nestFrame": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.nestFrameMates": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.nestGroupCtors": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.nestGrowGroup": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.nestHoleAt": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.nestHoleImg": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.nestHoles": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.nestInstType": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.nestKeyMap": [],
+  "ConLeche.nestKindsFlat": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)"
+  ],
+  "ConLeche.nestNonValid": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.nestOutKinds": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)"
+  ],
+  "ConLeche.nestPhs": [],
+  "ConLeche.nestPos": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.nestResHead": [],
+  "ConLeche.nestRoot": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.nestRootCanon": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.nestSeedOf": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.nestSeeds": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.nestUniform": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.nestUniformOk": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.nestWalkStack": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.nonStdAxiomMsg": [
+   "String / Char"
+  ],
+  "ConLeche.nonemptyIntroName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.nonemptyName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.nonemptyRecName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.notProofFast": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.numCtorsOf": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.ofReduceAxOk": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.ofReduceAxOkF": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.ofReduceBoolA": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.ofReduceBoolName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.ofReduceNatA": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.ofReduceNatName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.ofReduceOp": [],
+  "ConLeche.ofReducePinA": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.ofReduceRaw": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.openPisAtFvars": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.peelPisW": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.piResidual": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.pinAgrees": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.pinCopyOk": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.pinLinkOk": [],
+  "ConLeche.pinListOk": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.prepareMajor": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.projCert": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.projCertAt": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.projGuardRows": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.projGuardRowsGo": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.projGuardSort": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.projIndexedStructLike": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.projLitToCtor": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.projMissError": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.proofIrrel": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.proofPW": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.propIrrel": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.propextA": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.propextName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.ptrDecEq": [],
+  "ConLeche.pureFns": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.quickDefEq": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.quotA": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.quotAt": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.quotBasis": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.quotIndA": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.quotIndMk": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.quotIndMotive": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.quotIndName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.quotLiftA": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.quotLiftF": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.quotLiftH": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.quotLiftName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.quotMkA": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.quotMkName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.quotName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.quotPin": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.quotPinHit": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.quotPredsOk": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.quotRel": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.quotSoundA": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.quotSoundName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.rawNatLit?": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.readBlock": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.recDomsAt": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.recFire": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.recFireComparands": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.recFireLevelCount": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.recKExpected": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.recTargetOf": [],
+  "ConLeche.recTyCheck": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.recTyOpened": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.reduceBoolCvA": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.reduceBoolDeclPin": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.reduceBoolName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.reduceCertVar": [],
+  "ConLeche.reduceDeclPin": [],
+  "ConLeche.reduceElemOk": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.reduceElemOkF": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.reduceElemTy": [],
+  "ConLeche.reduceMember": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.reduceMembers": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.reduceNat": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.reduceNatCvA": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.reduceNatDeclPin": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.reduceNatName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.reduceOpCvA": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.reduceOpRaw": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.reducePinGuard": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.reduceProjCore": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.reduceStoredOk": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.reduceStoredOkF": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.reducedFormer": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.reservedRecName": [],
+  "ConLeche.residualPW": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.ruleAgree": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.sameConstHeads": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.satRange": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.sorryAxName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.stdAxiomOk": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.stdAxiomOkF": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.strLitStored": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.strLitStoredF": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.strLitToConstructor": [
+   "String / Char"
+  ],
+  "ConLeche.streamKCheck": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.streamNestedOk": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.streamRecCheck": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.streamRecCompare": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.streamRecsCheck": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.streamRulesCheck": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.streamRulesShape": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.stringName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.stringOfListName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.stringOfListTyOk": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.stringTyOk": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.structCtorResidOk": [],
+  "ConLeche.structElimLevel": [],
+  "ConLeche.structEtaCert": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.structEtaCertWith": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.structEtaExpand": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.structEtaFull": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.structProjArgP": [],
+  "ConLeche.structProjBodies": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)"
+  ],
+  "ConLeche.structProjBodiesGo": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)"
+  ],
+  "ConLeche.structProjPs": [],
+  "ConLeche.structPsAt": [],
+  "ConLeche.structUnitCert": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.structUsedLater": [],
+  "ConLeche.stuckIrrel": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.sumRules": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.targetAbs": [],
+  "ConLeche.targetCanonParams": [],
+  "ConLeche.targetClassMatch": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.targetCtorAt": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.targetCtorsOf": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.targetHoles": [],
+  "ConLeche.targetK53": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.targetMajorNfs": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.targetMajorOf": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.targetMajorPins": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.targetOutsideInst": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.targetParamsDefEq": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.targetPiDomsWith": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.targetPinTys": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.targetRecPins": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.teleArityOk": [],
+  "ConLeche.trueCvA": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.trueIntroCvA": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.trueIntroName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.trueName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.trustCompilerA": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.trustCompilerName": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.trustCompilerOk": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.trustCompilerOkF": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.tryUnfoldProjApp": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.typePinStored": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.typePinStoredF": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.typeSortPW": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.typeSortPWGo": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.unfoldDefinition": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.unfoldableHead": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.unitFieldTele": [],
+  "ConLeche.unitLikeFields": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)"
+  ],
+  "ConLeche.unitLikeFuel": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.unitLikeLoop": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.unitLikeShape": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.unitLikeStruct": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.unknownConstError": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.unresolvedConstsError": [
+   "String / Char",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.unresolvedConstsErrorL": [
+   "String / Char",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.unwrapIdDefs": [
+   "List / Array / Option of a non-Expr element (List Name, Array Expr, Option ConstantInfo)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)",
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.unwrapOr": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.whnf": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.whnfBody": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.whnfCore": [
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.whnfCoreBody": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.whnfCoreLoopFuel": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.whnfLoop": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.whnfLoopFuel": [
+   "nullary constant (0-ary def)"
+  ],
+  "ConLeche.whnfStep": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)",
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.whnfTelescope": [
+   "monad / m \u03b1 / CheckM / CheckCM / CoreFns (Type \u2192 Type)",
+   "multi-field structure outside the family (Env, FEnv, ConstantInfo, ProjTable, CheckMode, NestCtx, \u2026)"
+  ],
+  "ConLeche.whnfWalkFuel": [],
+  "ConLeche.withExcl": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)"
+  ],
+  "ConLeche.withExclusive": [
+   "function-valued parameter (Name \u2192 \u2026, Expr \u2192 m Expr)"
+  ],
+  "beside.ConLeche.Expr.mkApp": [],
+  "beside.ConLeche.Expr.mkConst": [],
+  "beside.ConLeche.Expr.mkFVar": [],
+  "beside.ConLeche.Expr.mkForallE": [],
+  "beside.ConLeche.Expr.mkLam": [],
+  "beside.ConLeche.Expr.mkLetE": [],
+  "beside.ConLeche.Expr.mkProj": [],
+  "beside.ConLeche.Expr.mkSort": []
+ }
+}
