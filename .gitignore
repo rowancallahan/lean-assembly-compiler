@@ -9,3 +9,4 @@ regen-work/
 *.o
 ctest/
 Testing/nano/work/
+Testing/asm/__pycache__/

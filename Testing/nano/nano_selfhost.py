@@ -15,7 +15,7 @@ rng = random.Random(3); g = G(rng)
 progs = list(CORPUS) + [g.program() for _ in range(N)]
 for i, s in enumerate(progs): open(f"{S}/p{i:03}.nano", "w").write(s)
 sh = lambda c: subprocess.run(f"cd {ROOT} && PATH=$HOME/.elan/bin:$PATH {c}", shell=True, check=True)
-sh(f"lake env lean --run Testing/nano/emit_nano.lean {S}")
+sh(f"NANO_DIR={S} lake env lean --tstack=400000 Testing/nano/emit_nano.lean")
 os.chdir(os.path.join(ROOT, "Testing", "asm"))
 sys.argv = ["frontx_test.py", "-", "0", "nanoasm"]
 import frontx_test as F
