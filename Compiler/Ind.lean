@@ -33,31 +33,65 @@ def C.nodes : C → Nat
   | .z => 0
   | .c _ _ l r => l.nodes + r.nodes + 1
 
-/-- a field of a constructor: the scalar `x` as 8 bytes (`x`) or as 1 byte (`b`, `x < 256`: a `UInt8`, e.g. a
-byte of a `String`), the children `l`, `r` -/
-inductive Fld where | x | l | r | b
+/-- a field of a constructor: the scalar `x` as 8 bytes (`x`) or as 1 byte (`b`, `x < 256`: a `UInt8`), the
+children `l`, `r`, or the child `l` / `r` as a `String` (`sl`, `sr`: its length, 8 bytes little-endian, then its
+UTF-8 bytes; `C.senc`) -/
+inductive Fld where | x | l | r | b | sl | sr
   deriving DecidableEq, Repr
 
 /-- per tag, the fields in the order of the byte format -/
 abbrev Shape := List (List Fld)
 
-def encF (x : BitVec 64) (el er : List UInt8) : Fld → List UInt8
+/-! ### strings
+
+In memory a string is a chain of cells (`C.str`): per byte a cell `[sTag sh + 1, byte, rest, z]`, then the end
+`[sTag sh, 0, z, z]`, the shape's last two tags (the type `Bytes8` of `Riscv/Frontx/IndStr.lean`).  In the byte
+format it is its length `n` (8 bytes, little-endian) followed by its `n` bytes, the format of `LList UInt8` in
+`Spec/Encode.lean` (`C.senc`). -/
+
+/-- the tag of the end of a string (`sTag sh + 1`: a byte) -/
+def sTag (sh : Shape) : Nat := sh.length - 2
+
+/-- the cells of the string of bytes `L` -/
+def C.str (st : Nat) : List UInt8 → C
+  | [] => .c st 0 .z .z
+  | b :: L => .c (st + 1) (BitVec.ofNat 64 b.toNat) (C.str st L) .z
+
+/-- the value is the cells of a string -/
+def C.IsStr (st : Nat) (v : C) : Prop := ∃ L, v = C.str st L
+
+/-- the bytes of a string: per cell with a child `l`, its byte `x` -/
+def C.sb : C → List UInt8
+  | .c _ x l@(.c _ _ _ _) _ => UInt8.ofNat x.toNat :: l.sb
+  | _ => []
+
+/-- **the byte format of a string**: its length (8 bytes, little-endian), then its bytes -/
+def C.senc (v : C) : List UInt8 := leN 8 v.sb.length ++ v.sb
+
+def encF (x : BitVec 64) (el er sl sr : List UInt8) : Fld → List UInt8
   | .x => leN 8 x.toNat
   | .l => el
   | .r => er
   | .b => (leN 8 x.toNat).take 1
+  | .sl => sl
+  | .sr => sr
 
-/-- the byte format: tag byte, then the fields of the shape (`x` 8 bytes little-endian); `z` is `[255]` -/
+/-- the byte format: tag byte, then the fields of the shape (`x` 8 bytes little-endian, a string `C.senc`); `z` is
+`[255]` -/
 def C.enc (sh : Shape) : C → List UInt8
   | .z => [255]
-  | .c t x l r => UInt8.ofNat t :: (sh.getD t []).flatMap (encF x (l.enc sh) (r.enc sh))
+  | .c t x l r => UInt8.ofNat t :: (sh.getD t []).flatMap (encF x (l.enc sh) (r.enc sh) l.senc r.senc)
 
-/-- well-formed for the shape: tags of the shape, absent fields `0` / `z`, present children well-formed -/
+/-- well-formed for the shape: tags of the shape, absent fields `0` / `z`, present children well-formed, string
+children the cells of a string -/
 def C.wf (sh : Shape) : C → Prop
   | .z => False
   | .c t x l r => t < sh.length ∧ ((Fld.x ∉ sh.getD t [] → Fld.b ∉ sh.getD t [] → x = 0) ∧
       (Fld.b ∈ sh.getD t [] → x.toNat < 256)) ∧
-      (if Fld.l ∈ sh.getD t [] then l.wf sh else l = .z) ∧ (if Fld.r ∈ sh.getD t [] then r.wf sh else r = .z)
+      ((Fld.l ∈ sh.getD t [] → l.wf sh) ∧ (Fld.sl ∈ sh.getD t [] → l.IsStr (sTag sh)) ∧
+        (Fld.l ∉ sh.getD t [] → Fld.sl ∉ sh.getD t [] → l = .z)) ∧
+      ((Fld.r ∈ sh.getD t [] → r.wf sh) ∧ (Fld.sr ∈ sh.getD t [] → r.IsStr (sTag sh)) ∧
+        (Fld.r ∉ sh.getD t [] → Fld.sr ∉ sh.getD t [] → r = .z))
 
 def Shape.ok (sh : Shape) : Prop := sh.length < 255 ∧ ∀ fs ∈ sh, fs.Nodup
 
@@ -484,38 +518,73 @@ def rdB : Nat → BStmt
   | j + 1 => .seq (rdB j) (.seq (.load 12 0 (addE 4 (7 - j)))
       (asg 9 (.bin .add (.bin .shl (vE 9) (kE 8)) (vE 12))))
 
-def dFld : Fld → CStmt
+/-- a new cell `[e_t, e_x, e_l, e_r]`, its pointer to `d`, bump -/
+def allocK (t ex el er : BExp) (d : Nat) : BStmt :=
+  .seq (stW 0 t) (.seq (stW 1 ex) (.seq (stW 2 el) (.seq (stW 3 er)
+    (.seq (asg d (vE 5)) (asg 5 (addE 5 4))))))
+
+/-- a string at the cursor into `v_d` (tags `st`, `st + 1`): its length `n` (8 bytes) into `v_13` (`v_9` kept), the
+end cell, then a cell per byte from the last one back (`v_14` the position read, `v_12` the byte); the cursor after
+the bytes -/
+def dStr (st d : Nat) : CStmt :=
+  .seq (.base (.seq (asg 13 (vE 9)) (.seq (rdB 8) (.seq (asg 14 (vE 9)) (.seq (asg 9 (vE 13)) (.seq (asg 13 (vE 14))
+      (.seq (asg 14 (.bin .add (addE 4 8) (vE 13))) (allocK (kE st) (kE 0) (kE 0) (kE 0) d))))))))
+  (.seq (.loop (.bin .sub (vE 14) (addE 4 8)) (.base (.seq (asg 14 (.bin .sub (vE 14) (kE 1)))
+      (.seq (.load 12 0 (vE 14)) (allocK (kE (st + 1)) (vE 12) (vE d) (kE 0) d)))))
+    (.base (asg 4 (.bin .add (addE 4 8) (vE 13)))))
+
+def dFld (st : Nat) : Fld → CStmt
   | .x => .base (.seq (rdB 8) (asg 4 (addE 4 8)))
   | .l => .call 10 1 []
   | .r => .call 11 1 []
   | .b => .base (.seq (.load 9 0 (vE 4)) (asg 4 (addE 4 1)))
+  | .sl => dStr st 10
+  | .sr => dStr st 11
 
-def dFlds : List Fld → CStmt
+def dFlds (st : Nat) : List Fld → CStmt
   | [] => .base (asg 9 (vE 9))
-  | f :: fs => .seq (dFld f) (dFlds fs)
+  | f :: fs => .seq (dFld st f) (dFlds st fs)
 
 /-- the fields of the tag in `v_8`: one test per tag in sequence (each branch jumps only over its own code, so the
 number of tags is not limited by the reach of a branch; the fields keep `v_8`) -/
-def dDisp : Shape → Nat → CStmt
+def dDisp (st : Nat) : Shape → Nat → CStmt
   | [], _ => .base (asg 9 (vE 9))
-  | fs :: sh, i => .seq (.ite (eqE 8 i) (dFlds fs) (.base (asg 9 (vE 9)))) (dDisp sh (i + 1))
+  | fs :: sh, i => .seq (.ite (eqE 8 i) (dFlds st fs) (.base (asg 9 (vE 9)))) (dDisp st sh (i + 1))
 
-/-- `dec()`: locals `8` tag, `9` x, `10` l, `11` r, `12` byte; the cell after its children -/
+/-- `dec()`: locals `8` tag, `9` x, `10` l, `11` r, `12` byte, `13`, `14` (strings); the cell after its children -/
 def decFn (sh : Shape) : Fn :=
-  ⟨0, 5, .seq (.base (.seq (.load 8 0 (vE 4)) (.seq (asg 4 (addE 4 1))
+  ⟨0, 7, .seq (.base (.seq (.load 8 0 (vE 4)) (.seq (asg 4 (addE 4 1))
       (.seq (asg 9 (kE 0)) (.seq (asg 10 (kE 0)) (asg 11 (kE 0)))))))
-    (.seq (dDisp sh 0) (.base (alloc (vE 8) 9 10 11 12))), vE 12⟩
+    (.seq (dDisp (sTag sh) sh 0) (.base (alloc (vE 8) 9 10 11 12))), vE 12⟩
 
 /-- the low `j` bytes of `v_10` to the output at the cursor -/
 def wrB : Nat → BStmt
   | 0 => asg 10 (vE 10)
   | j + 1 => .seq (wrB j) (.store 1 (addE 6 j) (.bin .lshr (vE 10) (kE (8 * j))))
 
+/-- the count of the string at `v_p`: `v_14` the cell, `v_13` its child, `v_15` the count -/
+def eCnt (p : Nat) : CStmt :=
+  .seq (.base (.seq (asg 15 (kE 0)) (.seq (asg 14 (vE p)) (.load64 13 0 (addE 14 2)))))
+    (.loop (vE 13) (.base (.seq (asg 15 (addE 15 1)) (.seq (asg 14 (vE 13)) (.load64 13 0 (addE 14 2))))))
+
+/-- the bytes of the string at `v_14` (its child in `v_15`) to the output, `v_13` the byte -/
+def eBytes : CStmt :=
+  .loop (vE 15) (.base (.seq (.load64 13 0 (addE 14 1)) (.seq (.store 1 (vE 6) (vE 13)) (.seq (asg 6 (addE 6 1))
+    (.seq (asg 14 (vE 15)) (.load64 15 0 (addE 14 2)))))))
+
+/-- a string at `v_p` to the output: its length (8 bytes, `v_10` kept), then its bytes -/
+def eStr (p : Nat) : CStmt :=
+  .seq (eCnt p) (.seq (.base (.seq (asg 14 (vE 10)) (.seq (asg 10 (vE 15)) (.seq (wrB 8) (.seq (asg 6 (addE 6 8))
+    (.seq (asg 10 (vE 14)) (.seq (asg 14 (vE p)) (.load64 15 0 (addE 14 2)))))))))
+    eBytes)
+
 def eFld : Fld → CStmt
   | .x => .base (.seq (wrB 8) (asg 6 (addE 6 8)))
   | .l => .call 13 2 [vE 11]
   | .r => .call 13 2 [vE 12]
   | .b => .base (.seq (wrB 1) (asg 6 (addE 6 1)))
+  | .sl => eStr 11
+  | .sr => eStr 12
 
 def eFlds : List Fld → CStmt
   | [] => .base (asg 10 (vE 10))
@@ -526,9 +595,9 @@ def eDisp : Shape → Nat → CStmt
   | [], _ => .base (asg 10 (vE 10))
   | fs :: sh, i => .seq (.ite (eqE 9 i) (eFlds fs) (.base (asg 10 (vE 10)))) (eDisp sh (i + 1))
 
-/-- `enc(p)`: locals `8` p, `9` tag, `10` x, `11` l, `12` r, `13` dummy -/
+/-- `enc(p)`: locals `8` p, `9` tag, `10` x, `11` l, `12` r, `13` dummy, `14`, `15` (strings) -/
 def encFn (sh : Shape) : Fn :=
-  ⟨1, 6, .seq (.base (.seq (loads 8 9 10 11 12) (.seq (.store 1 (vE 6) (vE 9)) (asg 6 (addE 6 1)))))
+  ⟨1, 8, .seq (.base (.seq (loads 8 9 10 11 12) (.seq (.store 1 (vE 6) (vE 9)) (asg 6 (addE 6 1)))))
     (eDisp sh 0), kE 0⟩
 
 /-- the entry: the second argument `b` of `F` -/
