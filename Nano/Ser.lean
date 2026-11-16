@@ -107,7 +107,7 @@ theorem mexp_tail : mexp (mo 7 0 ++ sWr ++ mo 12 0) = ld 5 31 0 ++ wr8 ++ r 48 0
 
 /-- **the stack generator = the compiled expander after `ser`** -/
 theorem mexp_ser (p : Prog) : mexp (ser p) = genR p := by
-  have h0 : ∀ rest, mexp (mo 0 0 ++ rest) = r 0 31 2 0 ++ r 0 28 10 0 ++ mexp rest := fun rest => by
+  have h0 : ∀ rest, mexp (mo 0 0 ++ rest) = r 5 31 2 3 ++ r 1 31 31 3 ++ r 0 28 10 0 ++ mexp rest := fun rest => by
     simp [mo, mexp, r]
   simp only [ser, genR, List.append_assoc, h0, mexp_serPro, mexp_serE]
   have := mexp_tail; simp only [List.append_assoc] at this; rw [this]

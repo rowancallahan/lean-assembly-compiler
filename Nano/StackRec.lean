@@ -13,11 +13,19 @@ import Compiler.IndBytes
 namespace Nano.R
 open Proven
 
-/-- registers (`x 0` is read as 0), byte memory, record index -/
+/-- the input and output blocks (fixed for a run): loads `lbu` only from the input, stores `sb` only to the 8
+output bytes -/
+structure Rg where
+  I : Nat
+  IL : Nat
+  O : Nat
+
+/-- registers (`x 0` is read as 0), byte memory, record index, the blocks -/
 structure St where
   x : Nat → BitVec 64
   m : Nat → UInt8
   pc : Nat
+  g : Rg
 
 def St.get (s : St) (r : Nat) : BitVec 64 := if r = 0 then 0 else s.x r
 def St.set (s : St) (r : Nat) (v : BitVec 64) : St := { s with x := fun j => if j = r then v else s.x j }
@@ -37,6 +45,17 @@ inductive Out where
   | halt (s : St)
   | stuck
 
+/-- a valid `ld`/`sd` address: 8-aligned, inside the work block `[a2, sp)` -/
+def WOk (s : St) (a : Nat) : Prop := (s.get 12).toNat ≤ a ∧ a + 8 ≤ (s.get 2).toNat ∧ a % 8 = 0
+/-- a valid `lbu` address: inside the input block -/
+def IOk (s : St) (a : Nat) : Prop := s.g.I ≤ a ∧ a < s.g.I + s.g.IL
+/-- a valid `sb` address: one of the 8 output bytes -/
+def OOk (s : St) (a : Nat) : Prop := s.g.O ≤ a ∧ a < s.g.O + 8
+
+instance (s : St) (a : Nat) : Decidable (WOk s a) := by unfold WOk; infer_instance
+instance (s : St) (a : Nat) : Decidable (IOk s a) := by unfold IOk; infer_instance
+instance (s : St) (a : Nat) : Decidable (OOk s a) := by unfold OOk; infer_instance
+
 /-- one record `[op, a, b, c]` (the table of `Nano/Asm.lean`) -/
 def exec (s : St) (op a b c : UInt8) : Out :=
   let A := a.toNat; let B := b.toNat
@@ -44,15 +63,20 @@ def exec (s : St) (op a b c : UInt8) : Out :=
   match op.toNat with
   | 0 => .next (s1.set A (s.get B + sext8 c))
   | 1 => .next (s1.set A (s.get B <<< c.toNat))
-  | 3 => .next (s1.set A (rd64 s.m (s.get B + BitVec.ofNat 64 (8 * c.toNat)).toNat))
-  | 4 => .next (s1.set A (BitVec.ofNat 64 (s.m (s.get B + BitVec.ofNat 64 c.toNat).toNat).toNat))
+  | 3 => if WOk s (s.get B + BitVec.ofNat 64 (8 * c.toNat)).toNat then
+      .next (s1.set A (rd64 s.m (s.get B + BitVec.ofNat 64 (8 * c.toNat)).toNat)) else .stuck
+  | 4 => if IOk s (s.get B + BitVec.ofNat 64 c.toNat).toNat then
+      .next (s1.set A (BitVec.ofNat 64 (s.m (s.get B + BitVec.ofNat 64 c.toNat).toNat).toNat)) else .stuck
   | 5 => .next (s1.set A (s.get B >>> c.toNat))
   | 6 => .next (s1.set A (s.get B ||| BitVec.ofNat 64 c.toNat))
   | 7 => .next (if s.get c.toNat ≤ s.get B then { s with pc := s.pc + 3 } else s1)
   | 8 => .next (s1.set A (s.get B + BitVec.ofNat 64 (8 * c.toNat)))
-  | 11 => .next { s1 with m := wr64 s.m (s.get B + BitVec.ofNat 64 (8 * c.toNat)).toNat (s.get A) }
+  | 11 => if WOk s (s.get B + BitVec.ofNat 64 (8 * c.toNat)).toNat then
+      .next { s1 with m := wr64 s.m (s.get B + BitVec.ofNat 64 (8 * c.toNat)).toNat (s.get A) } else .stuck
   | 14 => .next (s1.set A (s.get B ||| s.get c.toNat))
-  | 16 => .next { s1 with m := wrL s.m (s.get B + BitVec.ofNat 64 c.toNat).toNat [UInt8.ofBitVec ((s.get A).setWidth 8)] }
+  | 16 => if OOk s (s.get B + BitVec.ofNat 64 c.toNat).toNat then
+      .next { s1 with m := wrL s.m (s.get B + BitVec.ofNat 64 c.toNat).toNat [UInt8.ofBitVec ((s.get A).setWidth 8)] }
+      else .stuck
   | 24 => .next (s1.set A (s.get B + s.get c.toNat))
   | 32 => .next (s1.set A (s.get B - s.get c.toNat))
   | 40 => .next (s1.set A (s.get B * s.get c.toNat))
@@ -83,6 +107,35 @@ theorem CodeAt.app {P : List UInt8} {pc : Nat} {c₁ c₂ : List UInt8} (h : Cod
     CodeAt P pc c₁ ∧ CodeAt P (pc + c₁.length / 4) c₂ := by
   obtain ⟨pre, post, hP, hl⟩ := h
   exact ⟨⟨pre, c₂ ++ post, by rw [hP]; simp, hl⟩, ⟨pre ++ c₁, post, by rw [hP]; simp, by simp; omega⟩⟩
+
+theorem exec_ld (s : St) (a b c : UInt8) (h : WOk s (s.get b.toNat + BitVec.ofNat 64 (8 * c.toNat)).toNat) :
+    exec s 3 a b c = .next ((({ s with pc := s.pc + 1 } : St)).set a.toNat
+      (rd64 s.m (s.get b.toNat + BitVec.ofNat 64 (8 * c.toNat)).toNat)) := by
+  unfold exec; simp only [UInt8.reduceToNat]; rw [if_pos h]
+theorem exec_sd (s : St) (a b c : UInt8) (h : WOk s (s.get b.toNat + BitVec.ofNat 64 (8 * c.toNat)).toNat) :
+    exec s 11 a b c = .next { s with pc := s.pc + 1, m := wr64 s.m (s.get b.toNat + BitVec.ofNat 64 (8 * c.toNat)).toNat (s.get a.toNat) } := by
+  unfold exec; simp only [UInt8.reduceToNat]; rw [if_pos h]
+theorem exec_lbu (s : St) (a b c : UInt8) (h : IOk s (s.get b.toNat + BitVec.ofNat 64 c.toNat).toNat) :
+    exec s 4 a b c = .next ((({ s with pc := s.pc + 1 } : St)).set a.toNat
+      (BitVec.ofNat 64 (s.m (s.get b.toNat + BitVec.ofNat 64 c.toNat).toNat).toNat)) := by
+  unfold exec; simp only [UInt8.reduceToNat]; rw [if_pos h]
+theorem exec_sb (s : St) (a b c : UInt8) (h : OOk s (s.get b.toNat + BitVec.ofNat 64 c.toNat).toNat) :
+    exec s 16 a b c = .next { s with pc := s.pc + 1, m := wrL s.m (s.get b.toNat + BitVec.ofNat 64 c.toNat).toNat [UInt8.ofBitVec ((s.get a.toNat).setWidth 8)] } := by
+  unfold exec; simp only [UInt8.reduceToNat]; rw [if_pos h]
+
+theorem exec_g {s s' : St} {op a b c : UInt8} (h : exec s op a b c = .next s') : s'.g = s.g := by
+  unfold exec at h
+  split at h
+  all_goals first | (cases h; done) | (cases h; rfl) | (cases h; split <;> rfl) | skip
+  all_goals (dsimp only at h; split at h <;> cases h <;> rfl)
+
+theorem Star.g {P : List UInt8} {s s' : St} (h : Star P s s') : s'.g = s.g := by
+  induction h with
+  | refl => rfl
+  | step e _ ih =>
+    rw [ih]; unfold R.step at e; split at e
+    · exact exec_g e
+    · cases e
 
 theorem step_at {P : List UInt8} {s : St} {op a b c : UInt8} {rest : List UInt8}
     (h : CodeAt P s.pc (op :: a :: b :: c :: rest)) : step P s = exec s op a b c := by
@@ -156,9 +209,12 @@ theorem ofNat_sub8 {t : Nat} (h : 8 ≤ t) (ht : t < 2 ^ 64) :
   rw [this, Nat.mod_eq_of_lt (a := t - 8) (by omega)]
   omega
 
-/-- : , the bound check passes,  -/
+theorem toU8 {n : Nat} (h : n < 256) : (Nat.toUInt8 n).toNat = n := by simp [Nat.toUInt8, UInt8.toNat_ofNat]; omega
+
+/-- `push`: the bound check passes -/
 theorem push_ok {P : List UInt8} {s : St} {rest : List UInt8} (h : CodeAt P s.pc (Nano.push ++ rest)) {t W : Nat}
-    (h31 : s.get 31 = BitVec.ofNat 64 t) (h12 : s.get 12 = BitVec.ofNat 64 W) (hW : W + 8 ≤ t) (ht : t < 2 ^ 64) :
+    (h31 : s.get 31 = BitVec.ofNat 64 t) (h12 : s.get 12 = BitVec.ofNat 64 W) (hW : W + 8 ≤ t) (ht : t < 2 ^ 64)
+    (h2 : t ≤ (s.get 2).toNat) (hal : t % 8 = 0) :
     ∃ s', Star P s s' ∧ s'.pc = s.pc + 5 ∧ s'.get 31 = BitVec.ofNat 64 (t - 8) ∧
       s'.m = wr64 s.m (t - 8) (s.get 5) ∧ ∀ j, j ≠ 31 → s'.get j = s.get j := by
   simp only [Nano.push, Nano.r, Nano.sd, List.cons_append, List.nil_append] at h
@@ -178,11 +234,15 @@ theorem push_ok {P : List UInt8} {s : St} {rest : List UInt8} (h : CodeAt P s.pc
   have h4' : CodeAt P ({ s1 with pc := s1.pc + 3 } : St).pc (11 :: Nat.toUInt8 5 :: Nat.toUInt8 31 :: Nat.toUInt8 0 :: rest) := by
     show CodeAt P (s1.pc + 3) _; rw [p1]; exact h4
   have x3 := one h4' (s' := { s1 with pc := s1.pc + 3 + 1, m := wr64 s1.m (t - 8) (s.get 5) }) (by
-    show Out.next _ = _
     have e5 : s1.get 5 = s.get 5 := by rw [← hs1, get_set_ne _ (by decide)]; rfl
-    have e31 : s1.get 31 = BitVec.ofNat 64 (t - 8) := g31
-    simp [St.get] at e5 e31 ⊢
-    simp [e5, e31]; rw [Nat.mod_eq_of_lt (by omega)])
+    have ea : (({ s1 with pc := s1.pc + 3 } : St).get (Nat.toUInt8 31).toNat +
+        BitVec.ofNat 64 (8 * (Nat.toUInt8 0).toNat)).toNat = t - 8 := by
+      rw [toU8 (by decide), toU8 (by decide), get_pc, g31]; simp; omega
+    rw [exec_sd _ _ _ _ (by
+      rw [ea]; refine ⟨?_, ?_, ?_⟩
+      · rw [get_pc, g12]; simp; omega
+      · rw [get_pc, ← hs1, get_set_ne _ (by decide)]; show _ ≤ (s.get 2).toNat; omega
+      · omega), ea, toU8 (by decide), get_pc, e5])
   refine ⟨_, x1.trans (x2.trans x3), by simp [p1], ?_, ?_, fun j hj => ?_⟩
   · exact g31
   · rw [← hs1]; rfl
@@ -190,19 +250,20 @@ theorem push_ok {P : List UInt8} {s : St} {rest : List UInt8} (h : CodeAt P s.pc
 
 /-! ## the records the generator uses, one at a time -/
 
-theorem toU8 {n : Nat} (h : n < 256) : (Nat.toUInt8 n).toNat = n := by simp [Nat.toUInt8, UInt8.toNat_ofNat]; omega
 
 theorem addr8 {t k : Nat} (h : t + 8 * k < 2 ^ 64) :
     (BitVec.ofNat 64 t + BitVec.ofNat 64 (8 * k)).toNat = t + 8 * k := addr_add h
 
 /-- `ld rd, 8k(t6)` -/
 theorem ld_ok {P : List UInt8} {s : St} {rd k : Nat} {rest : List UInt8} (h : CodeAt P s.pc (Nano.ld rd 31 k ++ rest))
-    (hrd : rd < 256) (hk : k < 256) {t : Nat} (h31 : s.get 31 = BitVec.ofNat 64 t) (ht : t + 8 * k < 2 ^ 64) :
+    (hrd : rd < 256) (hk : k < 256) {t : Nat} (h31 : s.get 31 = BitVec.ofNat 64 t) (ht : t + 8 * k < 2 ^ 64)
+    (hv : WOk s (t + 8 * k)) :
     Star P s ((({ s with pc := s.pc + 1 } : St)).set rd (rd64 s.m (t + 8 * k))) ∧ CodeAt P (s.pc + 1) rest := by
   simp only [Nano.ld, Nano.r, List.cons_append, List.nil_append] at h
   refine ⟨one h ?_, codeAt_drop h⟩
-  show Out.next _ = _
-  rw [toU8 hrd, toU8 (show 31 < 256 by decide), toU8 hk, h31, addr8 ht]
+  have e : (s.get (Nat.toUInt8 31).toNat + BitVec.ofNat 64 (8 * (Nat.toUInt8 k).toNat)).toNat = t + 8 * k := by
+    rw [toU8 (show 31 < 256 by decide), toU8 hk, h31, addr8 ht]
+  rw [exec_ld _ _ _ _ (by rw [e]; exact hv), e, toU8 hrd]
 
 /-- `addi t6, t6, 8k` (`k < 128`) -/
 theorem addSp_ok {P : List UInt8} {s : St} {k : Nat} {rest : List UInt8} (h : CodeAt P s.pc (Nano.addSp k ++ rest))
@@ -220,14 +281,13 @@ theorem addSp_ok {P : List UInt8} {s : St} {k : Nat} {rest : List UInt8} (h : Co
 
 /-- `sd t0, 0(t6)` -/
 theorem sd0_ok {P : List UInt8} {s : St} {rest : List UInt8} (h : CodeAt P s.pc (Nano.sd 5 31 0 ++ rest))
-    {t : Nat} (h31 : s.get 31 = BitVec.ofNat 64 t) (ht : t < 2 ^ 64) :
+    {t : Nat} (h31 : s.get 31 = BitVec.ofNat 64 t) (ht : t < 2 ^ 64) (hv : WOk s t) :
     Star P s { s with pc := s.pc + 1, m := wr64 s.m t (s.get 5) } ∧ CodeAt P (s.pc + 1) rest := by
   simp only [Nano.sd, Nano.r, List.cons_append, List.nil_append] at h
   refine ⟨one h ?_, codeAt_drop h⟩
-  show Out.next _ = _
-  rw [toU8 (show 5 < 256 by decide), toU8 (show 31 < 256 by decide), toU8 (show 0 < 256 by decide), h31,
-    addr8 (by omega)]
-  rfl
+  have e : (s.get (Nat.toUInt8 31).toNat + BitVec.ofNat 64 (8 * (Nat.toUInt8 0).toNat)).toNat = t := by
+    rw [toU8 (show 31 < 256 by decide), toU8 (show 0 < 256 by decide), h31, addr8 (by omega)]; simp
+  rw [exec_sd _ _ _ _ (by rw [e]; exact hv), e, toU8 (show 5 < 256 by decide)]
 
 /-- the operator of `binop k` -/
 def opv (k : Nat) (a b : BitVec 64) : BitVec 64 := if k = 24 then a + b else if k = 32 then a - b else a * b
@@ -243,24 +303,31 @@ theorem rop_ok {P : List UInt8} {s : St} {k : Nat} {rest : List UInt8} (hk : k =
 /-! ## the value stack -/
 
 /-- the value stack below `T`: `t6` at its top, slot `k` (8 bytes at `T - 8 (k + 1)`) holds `vals[k]` -/
-def Stk (s : St) (T : Nat) (vals : List (BitVec 64)) : Prop :=
-  s.get 31 = BitVec.ofNat 64 (T - 8 * vals.length) ∧
-    ∀ k (hk : k < vals.length), rd64 s.m (T - 8 * (k + 1)) = vals[k]
+structure Stk (s : St) (T : Nat) (vals : List (BitVec 64)) : Prop where
+  top : s.get 31 = BitVec.ofNat 64 (T - 8 * vals.length)
+  val : ∀ k (hk : k < vals.length), rd64 s.m (T - 8 * (k + 1)) = vals[k]
+  /-- the slots lie in the work block `[a2, sp)`, 8-aligned -/
+  lo : (s.get 12).toNat + 8 * vals.length ≤ T
+  al : T % 8 = 0
+  hi : T ≤ (s.get 2).toNat
 
 /-- registers other than `t0 t1 t6` kept -/
 def Kept (s s' : St) : Prop := ∀ j, j ≠ 5 → j ≠ 6 → j ≠ 31 → s'.get j = s.get j
 
 theorem Kept.trans {a b c : St} (h₁ : Kept a b) (h₂ : Kept b c) : Kept a c := fun j x y z => by rw [h₂ j x y z, h₁ j x y z]
 
+theorem wok_of {s : St} {a : Nat} (h12 : (s.get 12).toNat ≤ a) (h2 : a + 8 ≤ (s.get 2).toNat) (h8 : a % 8 = 0) :
+    WOk s a := ⟨h12, h2, h8⟩
+
 /-- `binop k`: pop `b`, `a`; push `a ∘ b` -/
 theorem binop_ok {P : List UInt8} {s : St} {k : Nat} {rest : List UInt8} (hk : k = 24 ∨ k = 32 ∨ k = 40)
     (h : CodeAt P s.pc (Nano.binop k.toUInt8 ++ rest)) {T : Nat} {vals : List (BitVec 64)} {va vb : BitVec 64}
     (hs : Stk s T (vals ++ [va, vb])) (hT : 8 * (vals.length + 2) ≤ T) (hT2 : T < 2 ^ 64) :
     ∃ s', Star P s s' ∧ s'.pc = s.pc + 5 ∧ Stk s' T (vals ++ [opv k va vb]) ∧ Kept s s' ∧ CodeAt P s'.pc rest := by
-  obtain ⟨h31, hv⟩ := hs
-  simp only [List.length_append, List.length_cons, List.length_nil] at h31 hv
+  obtain ⟨h31, hv, hlo, hal, hhi⟩ := hs
+  simp only [List.length_append, List.length_cons, List.length_nil] at h31 hv hlo
   obtain ⟨n, hn⟩ : ∃ n, vals.length = n := ⟨_, rfl⟩
-  rw [hn] at h31 hT
+  rw [hn] at h31 hT hlo
   have hva : rd64 s.m (T - 8 * (n + 1)) = va := by
     have := hv n (by omega); rw [List.getElem_append_right (by omega)] at this; simpa [hn] using this
   have hvb : rd64 s.m (T - 8 * (n + 2)) = vb := by
@@ -268,13 +335,19 @@ theorem binop_ok {P : List UInt8} {s : St} {k : Nat} {rest : List UInt8} (hk : k
   simp only [Nano.binop, List.append_assoc] at h
   generalize ht : T - 8 * (n + 2) = t at h31 hvb
   obtain ⟨x1, c1⟩ := ld_ok (rd := 6) (k := 0) h (by decide) (by decide) h31 (by omega)
+    (wok_of (by omega) (by omega) (by omega))
   generalize hs1 : ((({ s with pc := s.pc + 1 } : St)).set 6 (rd64 s.m (t + 8 * 0))) = s1 at x1
   have p1 : s1.pc = s.pc + 1 := by rw [← hs1]; rfl
   have g31 : s1.get 31 = BitVec.ofNat 64 t := by rw [← hs1, get_set_ne _ (by decide)]; exact h31
+  have r12 : s1.get 12 = s.get 12 := by rw [← hs1, get_set_ne _ (by decide)]; rfl
+  have r2 : s1.get 2 = s.get 2 := by rw [← hs1, get_set_ne _ (by decide)]; rfl
   obtain ⟨x2, c2⟩ := ld_ok (s := s1) (rd := 5) (k := 1) (p1 ▸ c1) (by decide) (by decide) g31 (by omega)
+    (wok_of (by rw [r12]; omega) (by rw [r2]; omega) (by omega))
   generalize hs2 : ((({ s1 with pc := s1.pc + 1 } : St)).set 5 (rd64 s1.m (t + 8 * 1))) = s2 at x2
   have p2 : s2.pc = s.pc + 2 := by rw [← hs2]; simp [p1]
   have g31' : s2.get 31 = BitVec.ofNat 64 t := by rw [← hs2, get_set_ne _ (by decide)]; exact g31
+  have r12' : s2.get 12 = s.get 12 := by rw [← hs2, get_set_ne _ (by decide)]; exact r12
+  have r2' : s2.get 2 = s.get 2 := by rw [← hs2, get_set_ne _ (by decide)]; exact r2
   obtain ⟨x3, c3⟩ := addSp_ok (s := s2) (k := 1) (by rw [p2]; rw [p1] at c2; exact c2) (by decide) g31' (by omega)
   generalize hs3 : ((({ s2 with pc := s2.pc + 1 } : St)).set 31 (BitVec.ofNat 64 (t + 8 * 1))) = s3 at x3
   have p3 : s3.pc = s.pc + 3 := by rw [← hs3]; simp [p2]
@@ -283,7 +356,12 @@ theorem binop_ok {P : List UInt8} {s : St} {k : Nat} {rest : List UInt8} (hk : k
   have p4 : s4.pc = s.pc + 4 := by rw [← hs4]; simp [p3]
   have g31'' : s4.get 31 = BitVec.ofNat 64 (t + 8) := by
     rw [← hs4, get_set_ne _ (by decide)]; show s3.get 31 = _; rw [← hs3]; simp
+  have r12'' : s4.get 12 = s.get 12 := by
+    rw [← hs4, get_set_ne _ (by decide)]; show s3.get 12 = _; rw [← hs3, get_set_ne _ (by decide)]; exact r12'
+  have r2'' : s4.get 2 = s.get 2 := by
+    rw [← hs4, get_set_ne _ (by decide)]; show s3.get 2 = _; rw [← hs3, get_set_ne _ (by decide)]; exact r2'
   obtain ⟨x5, c5⟩ := sd0_ok (s := s4) (by rw [p4]; rw [p3] at c4; exact c4) g31'' (by omega)
+    (wok_of (by rw [r12'']; omega) (by rw [r2'']; omega) (by omega))
   have m4 : s4.m = s.m := by rw [← hs4, ← hs3, ← hs2, ← hs1]; rfl
   have v5 : s4.get 5 = opv k va vb := by
     rw [← hs4]; simp only [get_set_same _ (show (5 : Nat) ≠ 0 by decide)]
@@ -296,7 +374,8 @@ theorem binop_ok {P : List UInt8} {s : St} {k : Nat} {rest : List UInt8} (hk : k
       rw [← hs2, get_set_ne _ (by decide)]; show s1.get 6 = _
       rw [← hs1]; simp only [get_set_same _ (show (6 : Nat) ≠ 0 by decide)]; rw [← hvb]; congr 1
     rw [e5, e6]
-  refine ⟨_, x1.trans (x2.trans (x3.trans (x4.trans x5))), by simp [p4], ⟨?_, fun j hj => ?_⟩, fun j a b c => ?_, ?_⟩
+  refine ⟨_, x1.trans (x2.trans (x3.trans (x4.trans x5))), by simp [p4], ⟨?_, fun j hj => ?_, ?_, hal, ?_⟩,
+    fun j a b c => ?_, ?_⟩
   · show s4.get 31 = _; rw [g31'']; congr 1; simp; omega
   · simp only [List.length_append, List.length_singleton] at hj
     show rd64 (wr64 s4.m (t + 8) (s4.get 5)) _ = _
@@ -305,6 +384,8 @@ theorem binop_ok {P : List UInt8} {s : St} {k : Nat} {rest : List UInt8} (hk : k
       rw [show T - 8 * (j + 1) = t + 8 by omega, rd64_wr64_same, v5]; simp [hn]
     · rw [rd64_wr64_out _ _ _ _ (by omega), m4, List.getElem_append_left (by omega)]
       have := hv j (by omega); rwa [List.getElem_append_left (by omega)] at this
+  · show (s4.get 12).toNat + _ ≤ _; rw [r12'']; simp; omega
+  · show _ ≤ (s4.get 2).toNat; rw [r2'']; exact hhi
   · show s4.get j = s.get j
     rw [← hs4, ← hs3, ← hs2, ← hs1]; simp [St.get, St.set, a, b, c]
   · show CodeAt P (s4.pc + 1) rest; rw [p4]; rw [p4] at c5; exact c5
@@ -396,15 +477,18 @@ theorem push_stkm {P : List UInt8} {s : St} {rest : List UInt8} (h : CodeAt P s.
     (hW : W + 8 * (vals.length + 1) ≤ T) (hT : T < 2 ^ 64) :
     ∃ s', Star P s s' ∧ Stk s' T (vals ++ [s.get 5]) ∧ Kept s s' ∧ CodeAt P s'.pc rest ∧
       s'.m = wr64 s.m (T - 8 * (vals.length + 1)) (s.get 5) := by
-  obtain ⟨h31, hv⟩ := hs
-  obtain ⟨s', x, p', g31, m', k'⟩ := push_ok h h31 h12 (by omega) (by omega)
-  refine ⟨s', x, ⟨?_, fun k hk => ?_⟩, fun j a b c => k' j c, ?_, by rw [m']; congr 1⟩
+  obtain ⟨h31, hv, hlo, hal, hhi⟩ := hs
+  have hW' : (s.get 12).toNat = W := by rw [h12]; simp; omega
+  obtain ⟨s', x, p', g31, m', k'⟩ := push_ok h h31 h12 (by omega) (by omega) (by omega) (by omega)
+  refine ⟨s', x, ⟨?_, fun k hk => ?_, ?_, hal, ?_⟩, fun j a b c => k' j c, ?_, by rw [m']; congr 1⟩
   · rw [g31]; congr 1; simp; omega
   · rw [m']
     simp only [List.length_append, List.length_singleton] at hk
     by_cases hkn : k = vals.length
     · subst hkn; rw [show T - 8 * (vals.length + 1) = T - 8 * vals.length - 8 by omega, rd64_wr64_same]; simp
     · rw [rd64_wr64_out _ _ _ _ (by omega), List.getElem_append_left (by omega)]; exact hv k (by omega)
+  · rw [k' 12 (by decide)]; simp; omega
+  · rw [k' 2 (by decide)]; exact hhi
   · obtain ⟨pre, post, hP, hl⟩ := h
     exact ⟨pre ++ Nano.push, post, by rw [hP]; simp, by rw [p']; simp [Nano.push, Nano.r, Nano.sd]; omega⟩
 
@@ -419,7 +503,8 @@ theorem ldslot_ok {P : List UInt8} {s : St} {j : Nat} {rest : List UInt8} {T : N
     (h : CodeAt P s.pc (Nano.ld 5 31 (vals.length - 1 - j) ++ rest)) (hs : Stk s T vals) (hj : j < vals.length)
     (hd : vals.length ≤ 256) (hT : 8 * vals.length ≤ T) (hT2 : T < 2 ^ 64) :
     ∃ s', Star P s s' ∧ s'.get 5 = vals[j] ∧ s'.m = s.m ∧ (∀ i, i ≠ 5 → s'.get i = s.get i) ∧ CodeAt P s'.pc rest := by
-  obtain ⟨x, c⟩ := ld_ok (rd := 5) h (by decide) (by omega) hs.1 (by omega)
+  have := hs.lo; have := hs.al; have := hs.hi
+  obtain ⟨x, c⟩ := ld_ok (rd := 5) h (by decide) (by omega) hs.1 (by omega) (wok_of (by omega) (by omega) (by omega))
   refine ⟨_, x, ?_, rfl, fun i hi => by simp [St.get, St.set, hi], c⟩
   simp only [get_set_same _ (show (5 : Nat) ≠ 0 by decide), set_m]
   rw [show T - 8 * vals.length + 8 * (vals.length - 1 - j) = T - 8 * (j + 1) by omega]
@@ -431,13 +516,14 @@ theorem tail_ok {P : List UInt8} {s : St} {k : Nat} {rest : List UInt8}
     {x : BitVec 64} (hs : Stk s T (vals ++ mid ++ [x])) (hk : mid.length = k) (hk2 : k < 128)
     (hT : 8 * (vals.length + k + 1) ≤ T) (hT2 : T < 2 ^ 64) :
     ∃ s', Star P s s' ∧ Stk s' T (vals ++ [x]) ∧ Kept s s' ∧ CodeAt P s'.pc rest := by
-  obtain ⟨h31, hv⟩ := hs
-  simp only [List.length_append, List.length_singleton, hk] at h31 hv
+  obtain ⟨h31, hv, hlo, hal, hhi⟩ := hs
+  simp only [List.length_append, List.length_singleton, hk] at h31 hv hlo
   have hx : rd64 s.m (T - 8 * (vals.length + k + 1)) = x := by
     have := hv (vals.length + k) (by omega)
     rw [List.getElem_append_right (by simp [hk])] at this; simpa [hk] using this
   simp only [List.append_assoc] at h
   obtain ⟨x1, c1⟩ := ld_ok (rd := 5) (k := 0) h (by decide) (by decide) h31 (by omega)
+    (wok_of (by omega) (by omega) (by omega))
   generalize hs1 : ((({ s with pc := s.pc + 1 } : St)).set 5 (rd64 s.m (T - 8 * (vals.length + k + 1) + 8 * 0))) = s1 at x1
   have p1 : s1.pc = s.pc + 1 := by rw [← hs1]; rfl
   have g31 : s1.get 31 = BitVec.ofNat 64 (T - 8 * (vals.length + k + 1)) := by rw [← hs1, get_set_ne _ (by decide)]; exact h31
@@ -446,12 +532,17 @@ theorem tail_ok {P : List UInt8} {s : St} {k : Nat} {rest : List UInt8}
   have p2 : s2.pc = s.pc + 2 := by rw [← hs2]; simp [p1]
   have g31' : s2.get 31 = BitVec.ofNat 64 (T - 8 * (vals.length + 1)) := by
     rw [← hs2]; simp only [get_set_same _ (show (31 : Nat) ≠ 0 by decide)]; congr 1; omega
+  have r12 : s2.get 12 = s.get 12 := by
+    rw [← hs2, get_set_ne _ (by decide)]; show s1.get 12 = _; rw [← hs1, get_set_ne _ (by decide)]; rfl
+  have r2 : s2.get 2 = s.get 2 := by
+    rw [← hs2, get_set_ne _ (by decide)]; show s1.get 2 = _; rw [← hs1, get_set_ne _ (by decide)]; rfl
   obtain ⟨x3, c3⟩ := sd0_ok (s := s2) (by rw [p2]; rw [p1] at c2; exact c2) g31' (by omega)
+    (wok_of (by rw [r12]; omega) (by rw [r2]; omega) (by omega))
   have m2 : s2.m = s.m := by rw [← hs2, ← hs1]; rfl
   have v5 : s2.get 5 = x := by
     rw [← hs2, get_set_ne _ (by decide)]; show s1.get 5 = _
     rw [← hs1]; simp only [get_set_same _ (show (5 : Nat) ≠ 0 by decide)]; rw [Nat.mul_zero, Nat.add_zero, hx]
-  refine ⟨_, x1.trans (x2.trans x3), ⟨?_, fun j hj => ?_⟩, fun j a b c => ?_, ?_⟩
+  refine ⟨_, x1.trans (x2.trans x3), ⟨?_, fun j hj => ?_, ?_, hal, ?_⟩, fun j a b c => ?_, ?_⟩
   · show s2.get 31 = _; rw [g31']; simp
   · simp only [List.length_append, List.length_singleton] at hj
     show rd64 (wr64 s2.m (T - 8 * (vals.length + 1)) (s2.get 5)) _ = _
@@ -459,6 +550,8 @@ theorem tail_ok {P : List UInt8} {s : St} {k : Nat} {rest : List UInt8}
     · subst hjn; rw [rd64_wr64_same, v5]; simp
     · rw [rd64_wr64_out _ _ _ _ (by omega), m2, List.getElem_append_left (by omega)]
       have := hv j (by omega); rwa [List.getElem_append_left (by simp; omega), List.getElem_append_left (by omega)] at this
+  · show (s2.get 12).toNat + _ ≤ _; rw [r12]; simp; omega
+  · show _ ≤ (s2.get 2).toNat; rw [r2]; exact hhi
   · show s2.get j = s.get j
     rw [← hs2, ← hs1]; simp [St.get, St.set, a, c]
   · show CodeAt P (s2.pc + 1) rest; rw [p2]; rw [p2] at c3; exact c3
@@ -532,7 +625,9 @@ theorem toBV_opv32 (a b : UInt64) : opv 32 a.toBitVec b.toBitVec = (a - b).toBit
 theorem toBV_opv40 (a b : UInt64) : opv 40 a.toBitVec b.toBitVec = (a * b).toBitVec := by simp [opv]
 
 theorem stk_kept {s s' : St} {T : Nat} {vals : List (BitVec 64)} (hs : Stk s T vals) (hm : s'.m = s.m)
-    (h31 : s'.get 31 = s.get 31) : Stk s' T vals := ⟨by rw [h31]; exact hs.1, fun k hk => by rw [hm]; exact hs.2 k hk⟩
+    (h31 : s'.get 31 = s.get 31) (h12 : s'.get 12 = s.get 12) (h2 : s'.get 2 = s.get 2) : Stk s' T vals :=
+  ⟨by rw [h31]; exact hs.1, fun k hk => by rw [hm]; exact hs.2 k hk, by rw [h12]; exact hs.lo, hs.al,
+    by rw [h2]; exact hs.hi⟩
 
 variable {P : List UInt8} {T W : Nat}
 
@@ -564,7 +659,7 @@ theorem genE_ok (hT2 : T < 2 ^ 64) : ∀ (e : Ex) (sc : List Nat) (env : List UI
   | .num n, sc, env, vals, s, rest, h, hsc, hok, hs, h12, hW, hd => by
     simp only [Nano.genE, List.append_assoc] at h
     obtain ⟨s1, x1, g1, m1, k1, c1⟩ := li_ok h
-    obtain ⟨s2, x2, st2, k2, c2⟩ := push_stk c1 (stk_kept hs m1 (k1 31 (by decide)))
+    obtain ⟨s2, x2, st2, k2, c2⟩ := push_stk c1 (stk_kept hs m1 (k1 31 (by decide)) (k1 12 (by decide)) (k1 2 (by decide)))
       (by rw [k1 12 (by decide)]; exact h12) (by simp only [Nano.depE] at hW; omega) hT2
     exact ⟨s2, x1.trans x2, by rw [g1] at st2; simpa [den] using st2, fun j a b c => by rw [k2 j a b c, k1 j a], c2⟩
   | .var i, sc, env, vals, s, rest, h, hsc, hok, hs, h12, hW, hd => by
@@ -573,7 +668,7 @@ theorem genE_ok (hT2 : T < 2 ^ 64) : ∀ (e : Ex) (sc : List Nat) (env : List UI
     simp only [Nano.depE] at hW hd
     obtain ⟨hj, hv⟩ := hok i hsc
     obtain ⟨s1, x1, g1, m1, k1, c1⟩ := ldslot_ok h hs hj (by omega) (by omega) hT2
-    obtain ⟨s2, x2, st2, k2, c2⟩ := push_stk c1 (stk_kept hs m1 (k1 31 (by decide)))
+    obtain ⟨s2, x2, st2, k2, c2⟩ := push_stk c1 (stk_kept hs m1 (k1 31 (by decide)) (k1 12 (by decide)) (k1 2 (by decide)))
       (by rw [k1 12 (by decide)]; exact h12) (by omega) hT2
     exact ⟨s2, x1.trans x2, by rw [g1, hv] at st2; simpa [den] using st2, fun j a b c => by rw [k2 j a b c, k1 j a], c2⟩
   | .add a b, sc, env, vals, s, rest, h, hsc, hok, hs, h12, hW, hd => by
@@ -675,17 +770,18 @@ theorem unle_rdL_succ (m : Nat → UInt8) (a k : Nat) : unle (rdL m a (k + 1)) =
 /-- `lbu rd, i(t3)` -/
 theorem lbu_ok {P : List UInt8} {s : St} {rd i : Nat} {rest : List UInt8} (hrd : rd < 256) (hi : i < 256)
     (h : CodeAt P s.pc (Nano.r 4 rd.toUInt8 28 i.toUInt8 ++ rest)) {A : Nat} (h28 : s.get 28 = BitVec.ofNat 64 A)
-    (hA : A + i < 2 ^ 64) :
+    (hA : A + i < 2 ^ 64) (hv : IOk s (A + i)) :
     Star P s ((({ s with pc := s.pc + 1 } : St)).set rd (BitVec.ofNat 64 (s.m (A + i)).toNat)) ∧ CodeAt P (s.pc + 1) rest := by
   simp only [Nano.r, List.cons_append, List.nil_append] at h
   refine ⟨one h ?_, codeAt_drop h⟩
-  show Out.next _ = _
-  rw [toU8 hrd, toU8 hi, show UInt8.toNat 28 = 28 from rfl, h28, addr_add hA]
+  have e : (s.get (28 : UInt8).toNat + BitVec.ofNat 64 (Nat.toUInt8 i).toNat).toNat = A + i := by
+    rw [toU8 hi, show UInt8.toNat 28 = 28 from rfl, h28, addr_add hA]
+  rw [exec_lbu _ _ _ _ (by rw [e]; exact hv), e, toU8 hrd]
 
 /-- one byte of `rd8`: `t0 := t0 << 8 | [t3 + i]` -/
 theorem rdstep_ok {P : List UInt8} {s : St} {i : Nat} {rest : List UInt8} (hi : i < 7)
     (h : CodeAt P s.pc (Nano.r 1 5 5 8 ++ Nano.r 4 6 28 i.toUInt8 ++ Nano.r 14 5 5 6 ++ rest)) {A : Nat}
-    (h28 : s.get 28 = BitVec.ofNat 64 A) (hA : A + 8 < 2 ^ 64)
+    (h28 : s.get 28 = BitVec.ofNat 64 A) (hA : A + 8 < 2 ^ 64) (hI : s.g.I ≤ A ∧ A + 8 ≤ s.g.I + s.g.IL)
     (h5 : s.get 5 = BitVec.ofNat 64 (unle (rdL s.m (A + i + 1) (7 - i)))) :
     ∃ s', Star P s s' ∧ s'.get 5 = BitVec.ofNat 64 (unle (rdL s.m (A + i) (8 - i))) ∧ s'.m = s.m ∧
       (∀ j, j ≠ 5 → j ≠ 6 → s'.get j = s.get j) ∧ CodeAt P s'.pc rest := by
@@ -696,6 +792,7 @@ theorem rdstep_ok {P : List UInt8} {s : St} {i : Nat} {rest : List UInt8} (hi : 
   have p1 : s1.pc = s.pc + 1 := by rw [← hs1]; rfl
   have g28 : s1.get 28 = BitVec.ofNat 64 A := by rw [← hs1, get_set_ne _ (by decide)]; exact h28
   obtain ⟨x2, c2⟩ := lbu_ok (s := s1) (rd := 6) (i := i) (by decide) (by omega) (p1 ▸ codeAt_drop h') g28 (by omega)
+    (by rw [← hs1]; show s.g.I ≤ A + i ∧ A + i < s.g.I + s.g.IL; omega)
   generalize hs2 : ((({ s1 with pc := s1.pc + 1 } : St)).set 6 (BitVec.ofNat 64 (s1.m (A + i)).toNat)) = s2 at x2
   have p2 : s2.pc = s.pc + 2 := by rw [← hs2]; simp [p1]
   have c2' : CodeAt P s2.pc (14 :: 5 :: 5 :: 6 :: rest) := by rw [p2]; rw [p1] at c2; exact c2
@@ -721,34 +818,36 @@ def rdg (j : Nat) (acc : List UInt8) : List UInt8 := Nano.r 1 5 5 8 ++ Nano.r 4 
 
 theorem rd_loop {P : List UInt8} {A : Nat} (hA : A + 8 < 2 ^ 64) : ∀ n, n ≤ 7 → ∀ (s : St) (rest : List UInt8),
     CodeAt P s.pc ((List.range' (7 - n) n).foldr rdg [] ++ rest) → s.get 28 = BitVec.ofNat 64 A →
+    (s.g.I ≤ A ∧ A + 8 ≤ s.g.I + s.g.IL) →
     s.get 5 = BitVec.ofNat 64 (unle (rdL s.m (A + n) (8 - n))) →
     ∃ s', Star P s s' ∧ s'.get 5 = BitVec.ofNat 64 (unle (rdL s.m A 8)) ∧ s'.m = s.m ∧
       (∀ j, j ≠ 5 → j ≠ 6 → s'.get j = s.get j) ∧ CodeAt P s'.pc rest
-  | 0, _, s, rest, h, _, h5 => ⟨s, .refl _, by simpa using h5, rfl, fun _ _ _ => rfl, by simpa using h⟩
-  | n + 1, hn, s, rest, h, h28, h5 => by
+  | 0, _, s, rest, h, _, _, h5 => ⟨s, .refl _, by simpa using h5, rfl, fun _ _ _ => rfl, by simpa using h⟩
+  | n + 1, hn, s, rest, h, h28, hI, h5 => by
     rw [show 7 - (n + 1) = 6 - n by omega, List.range'_succ, List.foldr_cons] at h
     rw [show 6 - n + 1 = 7 - n by omega] at h
     have h' : CodeAt P s.pc (Nano.r 1 5 5 8 ++ Nano.r 4 6 28 (n).toUInt8 ++ Nano.r 14 5 5 6 ++
         ((List.range' (7 - n) n).foldr rdg [] ++ rest)) := by
       simp only [rdg, List.append_assoc] at h ⊢; rw [show 6 - (6 - n) = n by omega] at h; exact h
-    obtain ⟨s1, x1, g1, m1, k1, c1⟩ := rdstep_ok (i := n) (by omega) h' h28 hA
+    obtain ⟨s1, x1, g1, m1, k1, c1⟩ := rdstep_ok (i := n) (by omega) h' h28 hA hI
       (by rw [show 7 - n = 8 - (n + 1) by omega, show A + n + 1 = A + (n + 1) by omega]; exact h5)
     obtain ⟨s2, x2, g2, m2, k2, c2⟩ := rd_loop hA n (by omega) s1 rest c1
-      (by rw [k1 28 (by decide) (by decide)]; exact h28) (by rw [g1, m1])
+      (by rw [k1 28 (by decide) (by decide)]; exact h28) (by rw [x1.g]; exact hI) (by rw [g1, m1])
     exact ⟨s2, x1.trans x2, by rw [g2, m1], by rw [m2, m1], fun j a b => by rw [k2 j a b, k1 j a b], c2⟩
 
 /-- `rd8`: `t0 :=` the 8 bytes at `t3`, little-endian -/
 theorem rd8_ok {P : List UInt8} {s : St} {rest : List UInt8} (h : CodeAt P s.pc (Nano.rd8 ++ rest)) {A : Nat}
-    (h28 : s.get 28 = BitVec.ofNat 64 A) (hA : A + 8 < 2 ^ 64) :
+    (h28 : s.get 28 = BitVec.ofNat 64 A) (hA : A + 8 < 2 ^ 64) (hI : s.g.I ≤ A ∧ A + 8 ≤ s.g.I + s.g.IL) :
     ∃ s', Star P s s' ∧ s'.get 5 = BitVec.ofNat 64 (unle (rdL s.m A 8)) ∧ s'.m = s.m ∧
       (∀ j, j ≠ 5 → j ≠ 6 → s'.get j = s.get j) ∧ CodeAt P s'.pc rest := by
   have e : Nano.rd8 = Nano.r 4 (5 : Nat).toUInt8 28 (7 : Nat).toUInt8 ++ (List.range' (7 - 7) 7).foldr rdg [] := by
     simp only [Nano.rd8, List.range_eq_range']; rfl
   rw [e, List.append_assoc] at h
   obtain ⟨x1, c1⟩ := lbu_ok (rd := 5) (i := 7) (by decide) (by decide) h h28 (by omega)
+    (by show s.g.I ≤ A + 7 ∧ A + 7 < s.g.I + s.g.IL; omega)
   obtain ⟨s2, x2, g2, m2, k2, c2⟩ := rd_loop hA 7 (by decide)
     ((({ s with pc := s.pc + 1 } : St)).set 5 (BitVec.ofNat 64 (s.m (A + 7)).toNat)) rest c1
-    (by rw [get_set_ne _ (by decide)]; exact h28) (by
+    (by rw [get_set_ne _ (by decide)]; exact h28) hI (by
       rw [get_set_same _ (show (5 : Nat) ≠ 0 by decide)]
       simp [rdL, unle])
   exact ⟨s2, x1.trans x2, by rw [g2]; rfl, by rw [m2]; rfl, fun j a b => by rw [k2 j a b, get_set_ne _ a]; rfl, c2⟩
@@ -770,24 +869,27 @@ theorem rdL_wr64_out (m : Nat → UInt8) (a b : Nat) (v : BitVec 64) (h : b + 8 
 theorem pro_ok {P : List UInt8} (hT2 : T < 2 ^ 64) : ∀ (k : Nat) (vals : List (BitVec 64)) (s : St) (rest : List UInt8)
     (A : Nat), CodeAt P s.pc (Nano.pro k ++ rest) → Stk s T vals → s.get 12 = BitVec.ofNat 64 W →
     s.get 28 = BitVec.ofNat 64 A → W + 8 * (vals.length + k) ≤ T → (A + 8 * k ≤ W ∨ T ≤ A) → A + 8 * k + 8 < 2 ^ 64 →
+    (s.g.I ≤ A ∧ A + 8 * k ≤ s.g.I + s.g.IL) →
     ∃ s', Star P s s' ∧
       Stk s' T (vals ++ (List.range k).map fun i => BitVec.ofNat 64 (unle (rdL s.m (A + 8 * i) 8))) ∧
       (∀ j, j ≠ 5 → j ≠ 6 → j ≠ 31 → j ≠ 28 → s'.get j = s.get j) ∧ CodeAt P s'.pc rest
-  | 0, vals, s, rest, A, h, hs, _, _, _, _, _ => ⟨s, .refl _, by simpa using hs, fun _ _ _ _ _ => rfl, by simpa [Nano.pro] using h⟩
-  | k + 1, vals, s, rest, A, h, hs, h12, h28, hW, hd, hA => by
+  | 0, vals, s, rest, A, h, hs, _, _, _, _, _, _ => ⟨s, .refl _, by simpa using hs, fun _ _ _ _ _ => rfl, by simpa [Nano.pro] using h⟩
+  | k + 1, vals, s, rest, A, h, hs, h12, h28, hW, hd, hA, hI => by
     simp only [Nano.pro, List.append_assoc] at h
-    obtain ⟨s1, x1, g1, m1, k1, c1⟩ := rd8_ok h h28 (by omega)
-    obtain ⟨s2, x2, st2, k2, c2, mm2⟩ := push_stkm c1 (stk_kept hs m1 (k1 31 (by decide) (by decide)))
+    obtain ⟨s1, x1, g1, m1, k1, c1⟩ := rd8_ok h h28 (by omega) (by omega)
+    obtain ⟨s2, x2, st2, k2, c2, mm2⟩ := push_stkm c1 (stk_kept hs m1 (k1 31 (by decide) (by decide)) (k1 12 (by decide) (by decide)) (k1 2 (by decide) (by decide)))
       (by rw [k1 12 (by decide) (by decide)]; exact h12) (by omega) hT2
     have g28 : s2.get 28 = BitVec.ofNat 64 A := by
       rw [k2 28 (by decide) (by decide) (by decide), k1 28 (by decide) (by decide)]; exact h28
     obtain ⟨x3, c3⟩ := inc3_ok c2 g28 (by omega)
     generalize hs3 : ((({ s2 with pc := s2.pc + 1 } : St)).set 28 (BitVec.ofNat 64 (A + 8))) = s3 at x3
     have st3 : Stk s3 T (vals ++ [s1.get 5]) := stk_kept st2 (by rw [← hs3]; rfl) (by rw [← hs3, get_set_ne _ (by decide)]; rfl)
+      (by rw [← hs3, get_set_ne _ (by decide)]; rfl) (by rw [← hs3, get_set_ne _ (by decide)]; rfl)
+    have gg : s3.g = s.g := by rw [← hs3]; show s2.g = _; rw [x2.g, x1.g]
     obtain ⟨s4, x4, st4, k4, c4⟩ := pro_ok hT2 k (vals ++ [s1.get 5]) s3 rest (A + 8) (by rw [← hs3]; exact c3) st3
       (by rw [← hs3, get_set_ne _ (by decide)]; show s2.get 12 = _; rw [k2 12 (by decide) (by decide) (by decide),
         k1 12 (by decide) (by decide)]; exact h12)
-      (by rw [← hs3]; simp) (by simp; omega) (by omega) (by omega)
+      (by rw [← hs3]; simp) (by simp; omega) (by omega) (by omega) (by rw [gg]; omega)
     refine ⟨s4, x1.trans (x2.trans (x3.trans x4)), ?_, fun j a b c d => ?_, c4⟩
     · have e : ∀ i, i < k → rdL s3.m (A + 8 + 8 * i) 8 = rdL s.m (A + 8 * (i + 1)) 8 := fun i hi => by
         rw [show s3.m = s2.m by rw [← hs3]; rfl, mm2, rdL_wr64_out _ _ _ _ (by omega), m1]; congr 1; omega
@@ -808,7 +910,8 @@ def wg (k : Nat) (acc : List UInt8) : List UInt8 := Nano.r 5 6 5 (8 * k).toUInt8
 
 /-- one byte of `wr8`: `t1 := t0 >> 8k; [a3 + k] := t1` -/
 theorem wbyte_ok {P : List UInt8} {s : St} {k : Nat} {rest : List UInt8} (hk : k < 8)
-    (h : CodeAt P s.pc (wg k rest)) {O : Nat} (h13 : s.get 13 = BitVec.ofNat 64 O) (hO : O + 8 < 2 ^ 64) :
+    (h : CodeAt P s.pc (wg k rest)) {O : Nat} (h13 : s.get 13 = BitVec.ofNat 64 O) (hO : O + 8 < 2 ^ 64)
+    (hOg : s.g.O = O) :
     ∃ s', Star P s s' ∧ s'.m = wrL s.m (O + k) [byteOf (s.get 5) k] ∧
       (∀ j, j ≠ 6 → s'.get j = s.get j) ∧ CodeAt P s'.pc rest := by
   have h' : CodeAt P s.pc (5 :: (6 : Nat).toUInt8 :: 5 :: (8 * k).toUInt8 :: (16 :: (6 : Nat).toUInt8 :: 13 :: k.toUInt8 :: rest)) := h
@@ -817,26 +920,27 @@ theorem wbyte_ok {P : List UInt8} {s : St} {k : Nat} {rest : List UInt8} (hk : k
   generalize hs1 : (({ s with pc := s.pc + 1 } : St).set 6 (s.get 5 >>> (8 * k))) = s1 at x1
   have c1 : CodeAt P s1.pc (16 :: (6 : Nat).toUInt8 :: 13 :: k.toUInt8 :: rest) := by rw [← hs1]; exact codeAt_drop h'
   have x2 := one c1 (s' := { s1 with pc := s1.pc + 1, m := wrL s1.m (O + k) [byteOf (s.get 5) k] }) (by
-    show Out.next _ = _
     have e6 : s1.get 6 = s.get 5 >>> (8 * k) := by rw [← hs1]; simp
     have e13 : s1.get 13 = BitVec.ofNat 64 O := by rw [← hs1, get_set_ne _ (by decide)]; exact h13
-    rw [toU8 (show 6 < 256 by decide), toU8 (show k < 256 by omega), show UInt8.toNat 13 = 13 from rfl, e6, e13,
-      addr_add (by omega)]
+    have e : (s1.get (13 : UInt8).toNat + BitVec.ofNat 64 (Nat.toUInt8 k).toNat).toNat = O + k := by
+      rw [toU8 (show k < 256 by omega), show UInt8.toNat 13 = 13 from rfl, e13, addr_add (by omega)]
+    rw [exec_sb _ _ _ _ (by rw [e]; show s1.g.O ≤ O + k ∧ O + k < s1.g.O + 8; rw [← hs1]; show s.g.O ≤ _ ∧ _ < s.g.O + 8; omega),
+      e, toU8 (show 6 < 256 by decide), e6]
     rfl)
   refine ⟨_, x1.trans x2, by rw [← hs1]; rfl, fun j hj => ?_, codeAt_drop c1⟩
   show s1.get j = _; rw [← hs1, get_set_ne _ hj]; rfl
 
 theorem wr_loop {P : List UInt8} {O : Nat} (hO : O + 8 < 2 ^ 64) (v : BitVec 64) : ∀ n a, a + n ≤ 8 → ∀ (s : St)
     (rest : List UInt8), CodeAt P s.pc ((List.range' a n).foldr wg [] ++ rest) → s.get 13 = BitVec.ofNat 64 O →
-    s.get 5 = v →
+    s.get 5 = v → s.g.O = O →
     ∃ s', Star P s s' ∧ (∀ x, s'.m x = if O + a ≤ x ∧ x < O + a + n then byteOf v (x - O) else s.m x) ∧
       (∀ j, j ≠ 6 → s'.get j = s.get j) ∧ CodeAt P s'.pc rest
-  | 0, a, _, s, rest, h, _, _ => ⟨s, .refl _, fun x => by rw [if_neg (by omega)], fun _ _ => rfl, by simpa using h⟩
-  | n + 1, a, han, s, rest, h, h13, h5 => by
+  | 0, a, _, s, rest, h, _, _, _ => ⟨s, .refl _, fun x => by rw [if_neg (by omega)], fun _ _ => rfl, by simpa using h⟩
+  | n + 1, a, han, s, rest, h, h13, h5, hOg => by
     rw [List.range'_succ, List.foldr_cons] at h
-    obtain ⟨s1, x1, m1, k1, c1⟩ := wbyte_ok (k := a) (by omega) (by simpa [wg] using h) h13 hO
+    obtain ⟨s1, x1, m1, k1, c1⟩ := wbyte_ok (k := a) (by omega) (by simpa [wg] using h) h13 hO hOg
     obtain ⟨s2, x2, m2, k2, c2⟩ := wr_loop hO v n (a + 1) (by omega) s1 rest c1
-      (by rw [k1 13 (by decide)]; exact h13) (by rw [k1 5 (by decide)]; exact h5)
+      (by rw [k1 13 (by decide)]; exact h13) (by rw [k1 5 (by decide)]; exact h5) (by rw [x1.g]; exact hOg)
     refine ⟨s2, x1.trans x2, fun x => ?_, fun j hj => by rw [k2 j hj, k1 j hj], c2⟩
     rw [m2 x, m1]
     unfold wrL

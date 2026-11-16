@@ -2,7 +2,8 @@ import Nano.Elab
 import Nano.Asm
 /- nano stack-machine code generator: AST -> pseudo-instruction records (see Nano/Asm.lean) -> RISC-V words.
    Calling convention = `StartCorrect` (Spec/Top.lean): a0 = input address, a2 = work base, sp = work top, a3 = output
-   address.  Input: `arity` 8-byte LE words, read BYTEWISE (not aligned); output: one 8-byte LE word written BYTEWISE.
+   address.  Prologue: t6 := sp rounded down to a multiple of 8 (`srli`/`slli`: `ld`/`sd` on the Sail model need
+   8-aligned addresses, `StartCorrect` aligns only the work START); t3 := a0.  Input: `arity` 8-byte LE words, read BYTEWISE (not aligned); output: one 8-byte LE word written BYTEWISE.
    Value stack = work block, descending from the work top in t6 (x31); every push checks `t6 >= a2` after the
    decrement and else sets a0 := -1 (oomFlag) and returns.  Calls are inlined.  Registers touched: t0 t1 t3 t6, a0 only
    on overflow.  Limits (8-bit slot offsets): arity < 127, stack slots used by the expression < 256.
@@ -68,7 +69,7 @@ def wr8 : List UInt8 := (List.range 8).foldr (fun k acc => r 5 6 5 (8 * k).toUIn
 
 /-- the records of a program -/
 def genR (p : Prog) : List UInt8 :=
-  r 0 31 2 0 ++ r 0 28 10 0 ++ pro p.1 ++ genE (mkSc p.1 0) p.1 p.2 ++ ld 5 31 0 ++ wr8 ++ r 48 0 1 0
+  r 5 31 2 3 ++ r 1 31 31 3 ++ r 0 28 10 0 ++ pro p.1 ++ genE (mkSc p.1 0) p.1 p.2 ++ ld 5 31 0 ++ wr8 ++ r 48 0 1 0
 
 -- most stack slots in use (what `genR`'s pushes need); `memoryNeeded` = 8 * `depth p`
 mutual
