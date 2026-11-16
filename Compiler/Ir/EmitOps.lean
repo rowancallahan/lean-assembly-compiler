@@ -65,7 +65,7 @@ theorem stS_ok {m : Mem} {regs : Nat → Val} {s : T.S} {q : Nat} {rest : List (
 /-- one jump -/
 theorem jW_ok {m : Mem} {regs : Nat → Val} {s : T.S} {q t : Nat} {o : EOp} {rest : List (BitVec 32)}
     (hA : C.AtQ s q) (hR : C.MR m regs s) (hj : T.jW q t = some o) (hin : InW C.W q (T.encO o ++ rest)) :
-    T.runsTo s fun s' => C.AtQ s' t ∧ C.MR m regs s' := by
+    T.runsTo s fun s' => C.AtQ s' t ∧ C.MR m regs s' ∧ T.Same s s' := by
   unfold Target.jW at hj
   have hAt := C.at_of hA hin.left
   split at hj
@@ -75,7 +75,7 @@ theorem jW_ok {m : Mem} {regs : Nat → Val} {s : T.S} {q t : Nat} {o : EOp} {re
       cases hj
       refine T.toCore.runsTo_mono (T.w_jmp hok hAt) fun s' ⟨d, hs, hm⟩ => ?_
       have hpc := d.hpc; rw [tgt_fwd _ hqt] at hpc
-      exact ⟨⟨d.ok, hpc, fun a h1 h2 => by rw [hm]; exact hA.2.2 a h1 h2⟩, hR.Same d.ok d.keep hm hs⟩
+      exact ⟨⟨d.ok, hpc, fun a h1 h2 => by rw [hm]; exact hA.2.2 a h1 h2⟩, hR.Same d.ok d.keep hm hs, hs⟩
     · exact nomatch hj
   · next hqt =>
     split at hj
@@ -83,7 +83,7 @@ theorem jW_ok {m : Mem} {regs : Nat → Val} {s : T.S} {q t : Nat} {o : EOp} {re
       cases hj
       refine T.toCore.runsTo_mono (T.w_jmp hok hAt) fun s' ⟨d, hs, hm⟩ => ?_
       have hpc := d.hpc; rw [tgt_back _ (by omega)] at hpc
-      exact ⟨⟨d.ok, hpc, fun a h1 h2 => by rw [hm]; exact hA.2.2 a h1 h2⟩, hR.Same d.ok d.keep hm hs⟩
+      exact ⟨⟨d.ok, hpc, fun a h1 h2 => by rw [hm]; exact hA.2.2 a h1 h2⟩, hR.Same d.ok d.keep hm hs, hs⟩
     · exact nomatch hj
 
 /-- go to word `t`: fall through or jump -/
@@ -97,7 +97,7 @@ theorem jTo_ok {m : Mem} {regs : Nat → Val} {s : T.S} {q t : Nat} {os : List E
     | none => rw [h] at hj; exact nomatch hj
     | some o =>
       rw [h] at hj; cases hj
-      exact C.jW_ok hA hR h (by simpa [Target.words] using hin)
+      exact T.toCore.runsTo_mono (C.jW_ok hA hR h (by simpa [Target.words] using hin)) fun _ h => ⟨h.1, h.2.1⟩
 
 /-- a compare-and-branch on `r0, r1` -/
 theorem br_ok {m : Mem} {regs : Nat → Val} {s : T.S} {q : Nat} {rest : List (BitVec 32)} {c : Cond} {k : Bool}
@@ -132,7 +132,7 @@ theorem jW_len {q t : Nat} {o : EOp} (hj : T.jW q t = some o) : (T.encO o).lengt
 theorem brTo_ok {m : Mem} {regs : Nat → Val} {s : T.S} {q t : Nat} {c : Cond} {os : List EOp}
     {rest : List (BitVec 32)} (hA : C.AtQ s q) (hR : C.MR m regs s) (hb : T.brTo c q t = some os)
     (hin : InW C.W q (T.words os ++ rest)) :
-    T.runsTo s fun s' => C.MR m regs s' ∧
+    T.runsTo s fun s' => C.MR m regs s' ∧ T.Same s s' ∧
       (c.eval (T.get s R0) (T.get s R1) = true → C.AtQ s' t) ∧
       (c.eval (T.get s R0) (T.get s R1) = false → C.AtQ s' (q + T.len os)) := by
   unfold Target.brTo at hb
@@ -140,7 +140,7 @@ theorem brTo_ok {m : Mem} {regs : Nat → Val} {s : T.S} {q t : Nat} {c : Cond} 
   · rw [if_pos hok] at hb
     cases hb
     refine T.toCore.runsTo_mono (C.br_ok (c := c) (a := R0) (b := R1) hA hR (by simpa [Target.words] using hin) hok
-      (fun h => by split <;> simp_all <;> omega)) fun s' ⟨hR', _, ht, hf⟩ => ⟨hR', fun e => ?_, fun e => ?_⟩
+      (fun h => by split <;> simp_all <;> omega)) fun s' ⟨hR', hs', ht, hf⟩ => ⟨hR', hs', fun e => ?_, fun e => ?_⟩
     · have := ht e
       by_cases h : t < q
       · simp only [h, decide_true, if_true] at this; rwa [show q - (q - t) = t by omega] at this
@@ -163,13 +163,13 @@ theorem brTo_ok {m : Mem} {regs : Nat → Val} {s : T.S} {q t : Nat} {c : Cond} 
           simp only [Target.len, Target.words, List.append_nil, List.length_append, T.len_brO, jW_len hj]
         cases hc : c.eval (T.get s R0) (T.get s R1)
         · have hA₁ := ht (by rw [Cond.eval_neg, hc]; rfl)
-          refine T.runsTo_of ⟨hR₁, fun e => absurd e (by decide), fun _ => ?_⟩
+          refine T.runsTo_of ⟨hR₁, hs₁, fun e => absurd e (by decide), fun _ => ?_⟩
           simp only [if_false, Bool.false_eq_true] at hA₁; rw [hlen]; exact hA₁
         · have hA₁ := hf (by rw [Cond.eval_neg, hc]; rfl)
           have hin₂ := hin'.right
           rw [T.len_brO] at hin₂
-          exact T.toCore.runsTo_mono (C.jW_ok hA₁ hR₁ hj hin₂) fun s' ⟨hA', hR'⟩ =>
-            ⟨hR', fun _ => hA', fun e => absurd e (by decide)⟩
+          exact T.toCore.runsTo_mono (C.jW_ok hA₁ hR₁ hj hin₂) fun s' ⟨hA', hR', hs'⟩ =>
+            ⟨hR', fun r => by rw [hs' r, hs₁ r], fun _ => hA', fun e => absurd e (by decide)⟩
     · exact nomatch hb
 
 end Ctx

@@ -1,116 +1,50 @@
-/- The simulation of a Lin run by the machine: the relation `Rel` (the one frame at an instruction of a block, the
-machine at that instruction's code, `MR`), one step (`step_ok`), the return (`done_ok`), and the whole run
-(`sim`) by induction on its fuel. -/
-import Compiler.Ir.EmitInstOk
+/- The simulation of a Lin run by the machine, with calls: the relation `Rel` (the top frame at an instruction of a
+block, the machine at that instruction's code with the relation `MR` of the frame; the suspended frames below it
+in memory, each at the code after its call, `Stk`), one step (`step_ok`) and the end of the run (`done_ok`). -/
+import Compiler.Ir.EmitJump
 
 namespace Proven.Ir
 open Proven Proven.Mach Proven.Top.Alloc
 set_option autoImplicit false
 
-theorem setMany_nil {ρ : Type} [DecidableEq ρ] (g : ρ → Val) : ∀ ps : List ρ, setMany g ps [] = g
-  | [] => rfl
-  | _ :: _ => rfl
+section
+variable {P : Prog Nat} {st : State Nat} {fr : Frame Nat} {rest : List (Frame Nat)} {F : Func Nat} {B : Block Nat}
 
-theorem step_inst {P : Prog Nat} {st : State Nat} {fr : Frame Nat} {F : Func Nat} {B : Block Nat}
-    {i : Inst Nat} (hst : st.stack = [fr]) (hP : P.funcs[fr.f]? = some F) (hB : F.blocks.lookup fr.l = some B)
-    (hk : B.body[fr.pc]? = some i) (hi : ∀ ds g as, i ≠ .call ds g as) :
+theorem step_inst (hst : st.stack = fr :: rest) (hP : P.funcs[fr.f]? = some F) (hB : F.blocks.lookup fr.l = some B)
+    {i : Inst Nat} (hk : B.body[fr.pc]? = some i) (hi : ∀ ds g as, i ≠ .call ds g as) :
     step P st = match i.exec st.mem fr.regs with
-      | some (g', m', e) => .next ⟨[{ fr with pc := fr.pc + 1, regs := g' }], m', e ++ st.ev⟩
+      | some (g', m', e) => .next ⟨{ fr with pc := fr.pc + 1, regs := g' } :: rest, m', e ++ st.ev⟩
       | none => .stuck := by
   unfold step; rw [hst]; simp only [hP, hB, hk]
   cases i with
   | call ds g as => exact absurd rfl (hi ds g as)
   | _ => (rcases hx : Inst.exec _ _ _ with _ | ⟨g', m', e⟩) <;> simp only
 
-theorem step_term {P : Prog Nat} {st : State Nat} {fr : Frame Nat} {F : Func Nat} {B : Block Nat}
-    (hst : st.stack = [fr]) (hP : P.funcs[fr.f]? = some F) (hB : F.blocks.lookup fr.l = some B)
-    (hk : B.body[fr.pc]? = none) : step P st = termStep F fr [] st.mem st.ev B.term := by
+theorem step_call (hst : st.stack = fr :: rest) (hP : P.funcs[fr.f]? = some F) (hB : F.blocks.lookup fr.l = some B)
+    {ds : List Nat} {g : FId} {as : List (Arg Nat)} (hk : B.body[fr.pc]? = some (.call ds g as)) {G : Func Nat}
+    (hG : P.funcs[g]? = some G) (hl : as.length = G.params.length) :
+    step P st = .next ⟨⟨g, G.entry, 0, setMany (fun _ => .w 0) G.params (as.map (Arg.eval fr.regs)), ds⟩ ::
+            { fr with pc := fr.pc + 1 } :: rest, st.mem, .alloc (G.slots + 1) :: st.ev⟩ := by
+  unfold step; rw [hst]; simp only [hP, hB, hk, hG, hl, if_true]
+
+theorem step_call_inv (hst : st.stack = fr :: rest) (hP : P.funcs[fr.f]? = some F) (hB : F.blocks.lookup fr.l = some B)
+    {ds : List Nat} {g : FId} {as : List (Arg Nat)} (hk : B.body[fr.pc]? = some (.call ds g as)) {st' : State Nat}
+    (h : step P st = .next st') : ∃ G, P.funcs[g]? = some G ∧ as.length = G.params.length ∧
+      st' = ⟨⟨g, G.entry, 0, setMany (fun _ => .w 0) G.params (as.map (Arg.eval fr.regs)), ds⟩ ::
+            { fr with pc := fr.pc + 1 } :: rest, st.mem, .alloc (G.slots + 1) :: st.ev⟩ := by
+  unfold step at h; rw [hst] at h; simp only [hP, hB, hk] at h
+  split at h
+  · next G hG =>
+    split at h
+    · next hl => cases h; exact ⟨G, hG, hl, rfl⟩
+    · exact nomatch h
+  · exact nomatch h
+
+theorem step_term (hst : st.stack = fr :: rest) (hP : P.funcs[fr.f]? = some F) (hB : F.blocks.lookup fr.l = some B)
+    (hk : B.body[fr.pc]? = none) : step P st = termStep F fr rest st.mem st.ev B.term := by
   unfold step; rw [hst]; simp only [hP, hB, hk]
 
-theorem jump_inv {F : Func Nat} {fr fr' : Frame Nat} {l : Lbl} {vs : List Val} (h : jump F fr l vs = some fr') :
-    ∃ B, F.blocks.lookup l = some B ∧ vs.length = B.params.length ∧
-      fr' = { fr with l := l, pc := 0, regs := setMany fr.regs B.params vs } := by
-  unfold jump at h
-  split at h
-  · next B hB => split at h
-                 · next hl => cases h; exact ⟨B, hB, hl, rfl⟩
-                 · exact nomatch h
-  · exact nomatch h
-
-namespace Ctx
-variable {T : Target} (C : Ctx T)
-
-/-- where every block's code is, and the exit -/
-structure Code (F : Func Nat) (pos : Lbl → Nat) (ex : Nat) : Prop where
-  blocks : ∀ l B, F.blocks.lookup l = some B → ∃ c ct, T.emitIs C.nS ex (pos l) B.body = some c ∧
-    T.emitT F C.nS pos (pos l + T.len c) B.term = some ct ∧ InW C.W (pos l) (T.words (c ++ ct))
-  exit : InW C.W ex (T.words exit1 ++ [])
-
-/-- **the relation** of a Lin state and a machine state -/
-def Rel (P : Prog Nat) (F : Func Nat) (pos : Lbl → Nat) (ex : Nat) (st : State Nat) (s : T.S) : Prop :=
-  ∃ (l k : Nat) (regs : Nat → Val) (B : Block Nat) (q : Nat) (c ct : List EOp),
-    st.stack = [⟨P.main, l, k, regs, []⟩] ∧ F.blocks.lookup l = some B ∧
-    T.emitIs C.nS ex q (B.body.drop k) = some c ∧ T.emitT F C.nS pos (q + T.len c) B.term = some ct ∧
-    InW C.W q (T.words (c ++ ct)) ∧ C.AtQ s q ∧ C.MR st.mem regs s ∧ Allocs st.ev ∧
-    inUse st.ev = st.mem.cells.length
-
-/-- the end of a run: returned, and either the output is there or the flag (exactly when out of memory) -/
-def Fin (r : Result) (s' : T.S) : Prop :=
-  T.ok s' ∧ T.pcIs s' (T.ra C.s0) ∧ C.Unch s' ∧
-  ((peak (r.ev ++ [.alloc (C.nS + 1)]) ≤ C.wl / 8 ∧ T.get s' RIn = BitVec.ofNat 64 C.inA ∧
-      ∀ i b, r.mem.out[i]? = some (some b) → T.mem s' (C.outA + i) = some b.toBitVec) ∨
-    (C.wl / 8 < peak (r.ev ++ [.alloc (C.nS + 1)]) ∧ T.get s' RIn = BitVec.allOnes 64))
-
-variable {C}
-
-/-- entering a block at its code -/
-theorem enter_rel {P : Prog Nat} {F : Func Nat} {pos : Lbl → Nat} {ex : Nat} (hK : C.Code F pos ex) {l : Lbl}
-    {B : Block Nat} (hB : F.blocks.lookup l = some B) {m : Mem} {regs : Nat → Val} {ev : List MemEvent}
-    {s : T.S} (hA : C.AtQ s (pos l)) (hR : C.MR m regs s) (hal : Allocs ev) (hiu : inUse ev = m.cells.length) :
-    C.Rel P F pos ex ⟨[⟨P.main, l, 0, regs, []⟩], m, ev⟩ s := by
-  obtain ⟨c, ct, hc, hct, hin⟩ := hK.blocks l B hB
-  exact ⟨l, 0, regs, B, pos l, c, ct, rfl, hB, by simpa using hc, hct, hin, hA, hR, hal, hiu⟩
-
-theorem tst_eval {m : Mem} {regs : Nat → Val} {s : T.S} (hR : C.MR m regs s) {t : Tst Nat} {bv : Bool}
-    (h : t.eval regs = some bv) :
-    t.c.eval (C.repr m.blks (t.a.eval regs)) (C.repr m.blks (t.b.eval regs)) = bv := by
-  have ne0 : ∀ v : Val, Valid m.blks v → (∀ x, v ≠ .w x) → C.repr m.blks v ≠ 0 := by
-    intro v hv hw e
-    have hlo := C.lo; obtain ⟨hi1, hi2⟩ := C.inR; obtain ⟨ho1, ho2⟩ := C.outR; obtain ⟨hw1, hw2⟩ := C.wR
-    have hlt := T.ramHi_lt; have hcap := hR.cap; have hF := hR.F0_lt
-    have z : ∀ x, x < 2 ^ 64 → 0 < x → BitVec.ofNat 64 x ≠ 0 := fun x h1 h2 e => by
-      have := congrArg BitVec.toNat e; rw [ofNat_toNat' h1] at this; simp at this; omega
-    match v, hv with
-    | .w x, _ => exact hw x rfl
-    | .p 0 o, ho => simp only [Valid] at ho; subst ho; exact z _ (by omega) (by omega) e
-    | .p 1 o, ho => simp only [Valid] at ho; subst ho; exact z _ (by omega) (by omega) e
-    | .p (k + 2) o, ⟨a, sz, hk, hos⟩ =>
-      have := (hR.mok.blks k a sz true hk).1
-      rw [C.repr_blk hk] at e; exact z _ (by omega) (by omega) e
-  unfold Tst.eval at h
-  split at h
-  · next x y ha hb => cases h; rw [ha, hb]; rfl
-  · next b o y ha hb =>
-    split at h
-    · next hy =>
-      subst hy
-      have hv : C.repr m.blks (t.a.eval regs) ≠ 0 := ne0 _ (by rw [ha]; have := valid_eval hR.valid t.a; rwa [ha] at this)
-        (by rw [ha]; intro x e; cases e)
-      rw [hb]
-      have e0 : C.repr m.blks (Val.w 0) = 0 := rfl
-      cases hc : t.c <;> simp only [nullTest, hc] at h <;> cases h <;> simp [Cond.eval] <;> first | exact hv | exact Ne.symm hv
-    · exact nomatch h
-  · next x b o ha hb =>
-    split at h
-    · next hx =>
-      subst hx
-      have hv : C.repr m.blks (t.b.eval regs) ≠ 0 := ne0 _ (by rw [hb]; have := valid_eval hR.valid t.b; rwa [hb] at this)
-        (by rw [hb]; intro x e; cases e)
-      rw [ha]
-      have e0 : C.repr m.blks (Val.w 0) = 0 := rfl
-      cases hc : t.c <;> simp only [nullTest, hc] at h <;> cases h <;> simp [Cond.eval] <;> first | exact hv | exact Ne.symm hv
-    · exact nomatch h
-  · exact nomatch h
+end
 
 theorem inUse_append_allocs : ∀ (E L : List MemEvent), Allocs E → inUse (E ++ L) = inUse E + inUse L
   | [], L, _ => by simp [inUse]
@@ -119,143 +53,133 @@ theorem inUse_append_allocs : ∀ (E L : List MemEvent), Allocs E → inUse (E +
     rw [inUse_append_allocs E L fun e he => h e (List.mem_cons_of_mem _ he)]; omega
   | .free n :: E, _, h => by obtain ⟨_, e⟩ := h _ (List.mem_cons_self ..); exact nomatch e
 
-/-- **a terminator** -/
-theorem term_ok {P : Prog Nat} {F : Func Nat} {pos : Lbl → Nat} {ex : Nat} (hK : C.Code F pos ex) {m : Mem}
-    {regs : Nat → Val} {s : T.S} {q : Nat} {t : Term Nat} {ct : List EOp} {rest : List (BitVec 32)} {l k : Nat}
-    {ev : List MemEvent} {st' : State Nat} (hA : C.AtQ s q) (hR : C.MR m regs s)
-    (hct : T.emitT F C.nS pos q t = some ct) (hin : InW C.W q (T.words ct ++ rest))
-    (hs : termStep F ⟨P.main, l, k, regs, []⟩ [] m ev t = .next st') (hal : Allocs ev)
-    (hiu : inUse ev = m.cells.length) :
-    T.runsTo s fun s' => C.Rel P F pos ex st' s' := by
-  cases t with
-  | jmp l' as =>
-    simp only [termStep] at hs
-    split at hs
-    · next fr' hj =>
-      cases hs
-      obtain ⟨B', hB', -, rfl⟩ := jump_inv hj
-      simp only [Target.emitT] at hct
-      exact T.toCore.runsTo_mono (C.edge_ok hA hR hct hin hB') fun s' ⟨hA', hR'⟩ => C.enter_rel hK hB' hA' hR' hal hiu
-    · exact nomatch hs
-  | br tt l₁ a₁ l₂ a₂ =>
-    simp only [Target.emitT] at hct
-    split at hct
-    · next hc =>
-      obtain ⟨ha1, hta, htb⟩ := hc
-      have ha1' : a₁ = [] := List.isEmpty_iff.1 ha1
-      subst ha1'
-      cases hb : T.brTo tt.c (q + T.len [ldArg R0 tt.a, ldArg R1 tt.b]) (pos l₁) with
-      | none => rw [hb] at hct; exact nomatch hct
-      | some b =>
-        rw [hb] at hct; simp only at hct
-        cases he : T.edge F C.nS pos (q + T.len ([ldArg R0 tt.a, ldArg R1 tt.b] ++ b)) l₂ a₂ with
-        | none => rw [he] at hct; exact nomatch hct
-        | some e =>
-          rw [he] at hct; cases hct
-          have hin2 : InW C.W q (T.words [ldArg R0 tt.a, ldArg R1 tt.b] ++ (T.words b ++ (T.words e ++ rest))) := by
-            simpa only [T.words_append, List.append_assoc] using hin
-          have hin2' : InW C.W q (T.encO (ldArg R0 tt.a) ++ (T.encO (ldArg R1 tt.b) ++ (T.words b ++ (T.words e ++ rest)))) := by
-            simpa only [Target.words, List.append_assoc, List.append_nil] using hin2
-          refine T.toCore.runsTo_trans (C.ldArg_ok hA hR hin2' (by decide) hta) fun s1 ⟨hA1, hR1, st1⟩ => ?_
-          refine T.toCore.runsTo_trans (C.ldArg_ok hA1 hR1 hin2'.right (by decide) htb) fun s2 ⟨hA2, hR2, st2⟩ => ?_
-          have e0 : T.get s2 R0 = C.repr m.blks (tt.a.eval regs) := by
-            rw [Core.Set1.other T.toCore st2 R0_ne_R1, Core.Set1.same T.toCore st1]
-          have e1 : T.get s2 R1 = C.repr m.blks (tt.b.eval regs) := Core.Set1.same T.toCore st2
-          have hp : q + (T.encO (ldArg R0 tt.a)).length + (T.encO (ldArg R1 tt.b)).length =
-              q + T.len [ldArg R0 tt.a, ldArg R1 tt.b] := by
-            simp only [Target.len, Target.words, List.length_append, List.length_nil]; omega
-          have hin3 := hin2'.right.right
-          rw [hp] at hA2 hin3
-          refine T.toCore.runsTo_trans (C.brTo_ok hA2 hR2 hb hin3) fun s3 ⟨hR3, ht, hf⟩ => ?_
-          rw [e0, e1] at ht hf
-          simp only [termStep] at hs
-          cases htv : tt.eval regs with
-          | none => rw [htv] at hs; exact nomatch hs
-          | some bv =>
-            have hbv := tst_eval hR htv
-            cases bv
-            · rw [htv] at hs
-              simp only at hs
-              split at hs
-              · next fr' hj =>
-                cases hs
-                obtain ⟨B', hB', -, rfl⟩ := jump_inv hj
-                have hA3 := hf hbv
-                have hq : q + T.len [ldArg R0 tt.a, ldArg R1 tt.b] + T.len b =
-                    q + T.len ([ldArg R0 tt.a, ldArg R1 tt.b] ++ b) := by
-                  simp only [Target.len, T.words_append, List.length_append]; omega
-                rw [hq] at hA3
-                have hin4 := hin2.right.right
-                have hq' : q + (T.words [ldArg R0 tt.a, ldArg R1 tt.b]).length + (T.words b).length =
-                    q + T.len ([ldArg R0 tt.a, ldArg R1 tt.b] ++ b) := by
-                  simp only [Target.len, T.words_append, List.length_append]; omega
-                rw [hq'] at hin4
-                exact T.toCore.runsTo_mono (C.edge_ok hA3 hR3 he hin4 hB') fun s' ⟨hA', hR'⟩ =>
-                  C.enter_rel hK hB' hA' hR' hal hiu
-              · exact nomatch hs
-            · rw [htv] at hs
-              simp only at hs
-              split at hs
-              · next fr' hj =>
-                cases hs
-                obtain ⟨B', hB', hl, rfl⟩ := jump_inv hj
-                simp only [List.map_nil, setMany_nil]
-                exact T.runsTo_of (C.enter_rel hK hB' (ht hbv) hR3 hal hiu)
-              · exact nomatch hs
-    · exact nomatch hct
-  | switch x ls d => simp only [Target.emitT] at hct; exact nomatch hct
-  | ret vs => simp only [termStep] at hs; exact nomatch hs
+/-- the code of a function of the program -/
+structure CodeF {T : Target} (C : Ctx T) (Q : Prog Nat) (L : Lay) (f : FId) (F : Func Nat) : Prop where
+  nsl : F.slots ≤ T.maxSlots
+  big : 8 * (F.slots + 1) < 2 ^ 64
+  p7 : F.params.length ≤ 7
+  ps : ∀ p ∈ F.params, p < F.slots
+  ent : ∃ B, F.blocks.lookup F.entry = some B
+  pro : ∃ j rest, T.jTo ((Q.env L).fq f + T.len (Target.proF F.slots F)) (L.posF f F.entry) = some j ∧
+    InW C.W ((Q.env L).fq f) (T.words (Target.proF F.slots F ++ j) ++ rest)
+  blocks : ∀ l B, F.blocks.lookup l = some B → ∃ c ct,
+    T.emitIs (Q.env L) F.slots L.ex (L.posF f l) B.body = some c ∧
+    T.emitT F F.slots (L.posF f) (L.posF f l + T.len c) B.term = some ct ∧ InW C.W (L.posF f l) (T.words (c ++ ct))
 
-/-- **one step** -/
-theorem step_ok {P : Prog Nat} {F : Func Nat} {pos : Lbl → Nat} {ex : Nat} (hP : P.funcs[P.main]? = some F)
-    (hK : C.Code F pos ex) {st st' : State Nat} {s : T.S} (hrel : C.Rel P F pos ex st s)
-    (hs : step P st = .next st') (hO : st'.mem.out.length ≤ C.outL) :
-    T.runsTo s fun s' => C.Rel P F pos ex st' s' ∨
-      (C.wl / 8 < C.nS + 1 + inUse st'.ev ∧ Allocs st'.ev ∧ C.Exited s') := by
-  obtain ⟨l, k, regs, B, q, c, ct, hst, hB, hc, hct, hin, hA, hR, hal, hiu⟩ := hrel
-  cases hk : B.body[k]? with
-  | none =>
-    rw [step_term hst hP hB hk] at hs
-    have hd : B.body.drop k = [] := List.drop_eq_nil_of_le (by simpa using hk)
-    rw [hd] at hc; simp only [Target.emitIs, Option.some.injEq] at hc; subst hc
-    exact T.toCore.runsTo_mono (C.term_ok hK hA hR (by simpa [Target.len] using hct)
-      (rest := []) (by simpa [Target.words] using hin) hs hal hiu) fun _ h => .inl h
-  | some i =>
-    have hkl : k < B.body.length := (List.getElem?_eq_some_iff.1 hk).1
-    have hdrop : B.body.drop k = i :: B.body.drop (k + 1) := by
-      rw [List.drop_eq_getElem_cons hkl]; congr; exact (List.getElem?_eq_some_iff.1 hk).2
-    rw [hdrop] at hc
-    simp only [Target.emitIs] at hc
-    cases hci : T.emitI C.nS ex q i with
-    | none => rw [hci] at hc; exact nomatch hc
-    | some ci =>
-      rw [hci] at hc; simp only at hc
-      cases hcr : T.emitIs C.nS ex (q + T.len ci) (B.body.drop (k + 1)) with
-      | none => rw [hcr] at hc; exact nomatch hc
-      | some cr =>
-        rw [hcr] at hc; cases hc
-        have hi : ∀ ds g as, i ≠ .call ds g as := by rintro ds g as rfl; simp [Target.emitI] at hci
-        have hnf : ∀ p, i ≠ .free p := by rintro p rfl; simp [Target.emitI] at hci
-        rw [step_inst hst hP hB hk hi] at hs
-        cases hx : i.exec st.mem regs with
-        | none => simp only [hx] at hs; exact nomatch hs
-        | some r =>
-          obtain ⟨g', m', e⟩ := r
-          simp only [hx] at hs; cases hs
-          obtain ⟨hal', hiu'⟩ := exec_ev hx hnf
-          have hin' : InW C.W q (T.words ci ++ (T.words cr ++ T.words ct)) := by
-            simpa only [T.words_append, List.append_assoc] using hin
-          refine T.toCore.runsTo_mono (C.inst_ok hA hR hci hin' hK.exit hx hO) fun s' h => ?_
-          have hiu2 : inUse (e ++ st.ev) = m'.cells.length := by
-            rw [inUse_append_allocs _ _ hal', hiu, ← hiu']
-          rcases h with ⟨hA', hR'⟩ | ⟨hlt, hE⟩
-          · refine .inl ⟨l, k + 1, g', B, q + T.len ci, cr, ct, rfl, hB, hcr, ?_,
-              by rw [T.words_append]; exact hin'.right, hA', hR',
-              hal'.append hal, hiu2⟩
-            have : q + T.len ci + T.len cr = q + T.len (ci ++ cr) := by
-              simp only [Target.len, T.words_append, List.length_append]; omega
-            rw [this]; exact hct
-          · exact .inr ⟨by simp only at hiu2 ⊢; rw [hiu2]; exact hlt, hal'.append hal, hE⟩
+/-- the code of the program: its functions, the exit, the stub's code after the call of `main` (at `qs`) -/
+structure Code {T : Target} (C : Ctx T) (Q : Prog Nat) (L : Lay) (qs : Nat) : Prop where
+  fn : ∀ f F, Q.funcs[f]? = some F → CodeF C Q L f F
+  exit : ∃ rest, InW C.W L.ex (T.encO .exit ++ rest)
+  stub : ∃ rest, InW C.W qs (T.words (Target.stub3) ++ rest)
+
+namespace Ctx
+variable {T : Target} (C : Ctx T)
+
+/-- **the suspended frames** `fs` (innermost first) below a frame at `fbA` with `nA` slots, return address `svA`,
+destination `dA`, function `gA`; `M` the memory above that frame (as it must stay); `bl` the block table -/
+def Stk (Q : Prog Nat) (L : Lay) (qs : Nat) (bl : List (Nat × Nat × Bool)) :
+    List (Frame Nat) → (Nat → Option (BitVec 8)) → Nat → Nat → BitVec 64 → List Nat → FId → Prop
+  | [], M, fbA, nA, svA, dA, gA => fbA + 8 * (nA + 1) + 16 = C.T0 ∧ svA = next C.pc0 qs ∧ dA = [] ∧ gA = Q.main ∧
+      bytes M (C.T0 - 8) 8 = (le8 (T.fr C.s0)).map some
+  | c :: fs, M, fbA, nA, svA, dA, gA => ∃ (F : Func Nat) (B : Block Nat) (as : List (Arg Nat)) (qr : Nat)
+      (cr ct : List EOp) (Mc : Nat → Option (BitVec 8)) (svc : BitVec 64),
+      Q.funcs[c.f]? = some F ∧ F.blocks.lookup c.l = some B ∧ 1 ≤ c.pc ∧
+      B.body[c.pc - 1]? = some (.call dA gA as) ∧ dA.length ≤ 7 ∧ (∀ d ∈ dA, d < F.slots) ∧
+      nA = (Q.env L).fs gA ∧ svA = next C.pc0 qr ∧
+      T.emitIs (Q.env L) F.slots L.ex (qr + T.len (Target.callPost nA dA)) (B.body.drop c.pc) = some cr ∧
+      T.emitT F F.slots (L.posF c.f) (qr + T.len (Target.callPost nA dA) + T.len cr) B.term = some ct ∧
+      InW C.W qr (T.words (Target.callPost nA dA ++ cr ++ ct)) ∧
+      (C.fa F.slots (fbA + 8 * (nA + 1)) svc Mc).Snap ⟨[], [], [], bl⟩ c.regs M ∧ (∀ j, Valid bl (c.regs j)) ∧
+      Stk Q L qs bl fs Mc (fbA + 8 * (nA + 1)) F.slots svc c.dst c.f
+
+/-- the frame cells: the stub's two, then every frame -/
+def base (Q : Prog Nat) : MemEvent := .alloc (((Q.funcs[Q.main]?).map (·.slots)).getD 0 + 3)
+
+/-- **the relation** of a Lin state and a machine state -/
+def Rel (Q : Prog Nat) (L : Lay) (qs : Nat) (st : State Nat) (s : T.S) : Prop :=
+  ∃ (fr : Frame Nat) (below : List (Frame Nat)) (F : Func Nat) (B : Block Nat) (fb : Nat) (sv : BitVec 64)
+    (M : Nat → Option (BitVec 8)) (q : Nat) (c ct : List EOp),
+    st.stack = fr :: below ∧ Q.funcs[fr.f]? = some F ∧ F.blocks.lookup fr.l = some B ∧
+    T.emitIs (Q.env L) F.slots L.ex q (B.body.drop fr.pc) = some c ∧
+    T.emitT F F.slots (L.posF fr.f) (q + T.len c) B.term = some ct ∧ InW C.W q (T.words (c ++ ct)) ∧
+    C.AtQ s q ∧ (C.fa F.slots fb sv M).MR st.mem fr.regs s ∧
+    C.Stk Q L qs st.mem.blks below M fb F.slots sv fr.dst fr.f ∧
+    inUse (st.ev ++ [base Q]) = st.mem.cells.length + (C.T0 - fb) / 8 ∧ peak (st.ev ++ [base Q]) ≤ C.wl / 8
+
+/-- the end of a run: returned, and either the output is there or the flag (exactly when out of memory) -/
+def Fin (Q : Prog Nat) (r : Result) (s' : T.S) : Prop :=
+  T.ok s' ∧ T.pcIs s' (T.ra C.s0) ∧ C.Unch s' ∧
+  ((peak (r.ev ++ [base Q]) ≤ C.wl / 8 ∧ T.get s' RIn = BitVec.ofNat 64 C.inA ∧
+      ∀ i b, r.mem.out[i]? = some (some b) → T.mem s' (C.outA + i) = some b.toBitVec) ∨
+    (C.wl / 8 < peak (r.ev ++ [base Q]) ∧ T.get s' RIn = BitVec.allOnes 64))
+
+variable {C}
+
+theorem retOK_at {q : Nat} {ws : List (BitVec 32)} (h : InW C.W q ws) : T.retOK (next C.pc0 q) := by
+  obtain ⟨pre, post, e, hl⟩ := h
+  have hq : q ≤ C.W.length := by rw [e]; simp [hl]
+  apply T.retOK_al
+  rw [T.toCore.pc_toNat C.codeOK hq]
+  have := C.codeOK.1; omega
+
+
+theorem fa_F0 {n fb : Nat} {v : BitVec 64} {M : Nat → Option (BitVec 8)} : (C.fa n fb v M).F0 = fb := rfl
+theorem fa_nS {n fb : Nat} {v : BitVec 64} {M : Nat → Option (BitVec 8)} : (C.fa n fb v M).nS = n := rfl
+theorem fa_sv {n fb : Nat} {v : BitVec 64} {M : Nat → Option (BitVec 8)} : (C.fa n fb v M).sv = v := rfl
+theorem fa_hm {n fb : Nat} {v : BitVec 64} {M : Nat → Option (BitVec 8)} : (C.fa n fb v M).hm = M := rfl
+theorem fa_T0 {n fb : Nat} {v : BitVec 64} {M : Nat → Option (BitVec 8)} : (C.fa n fb v M).T0 = C.T0 := rfl
+theorem fa_wb {n fb : Nat} {v : BitVec 64} {M : Nat → Option (BitVec 8)} : (C.fa n fb v M).wb = C.wb := rfl
+theorem fa_wl {n fb : Nat} {v : BitVec 64} {M : Nat → Option (BitVec 8)} : (C.fa n fb v M).wl = C.wl := rfl
+theorem fa_W {n fb : Nat} {v : BitVec 64} {M : Nat → Option (BitVec 8)} : (C.fa n fb v M).W = C.W := rfl
+theorem fa_pc0 {n fb : Nat} {v : BitVec 64} {M : Nat → Option (BitVec 8)} : (C.fa n fb v M).pc0 = C.pc0 := rfl
+theorem fa_repr {n fb : Nat} {v : BitVec 64} {M : Nat → Option (BitVec 8)} : (C.fa n fb v M).repr = C.repr := rfl
+
+theorem Snap.ext {C' : Ctx T} {bl : List (Nat × Nat × Bool)} {regs : Nat → Val} {M : Nat → Option (BitVec 8)}
+    (h : C'.Snap ⟨[], [], [], bl⟩ regs M) (hv : ∀ j, Valid bl (regs j)) (X : List (Nat × Nat × Bool)) :
+    C'.Snap ⟨[], [], [], bl ++ X⟩ regs M :=
+  ⟨fun j hj => by have := h.slots j hj; simp only at this ⊢; rw [C'.repr_ext X (hv j)]; exact this, h.saved, h.above⟩
+
+theorem Snap.blks {C' : Ctx T} {m : Mem} {regs : Nat → Val} {M : Nat → Option (BitVec 8)} :
+    C'.Snap m regs M ↔ C'.Snap ⟨[], [], [], m.blks⟩ regs M :=
+  ⟨fun h => ⟨h.slots, h.saved, h.above⟩, fun h => ⟨h.slots, h.saved, h.above⟩⟩
+
+theorem Snap.congr {C' : Ctx T} {m : Mem} {regs : Nat → Val} {M M' : Nat → Option (BitVec 8)}
+    (h : C'.Snap m regs M) (hfit : C'.F0 + 8 * (C'.nS + 1) ≤ C'.T0) (he : ∀ x, C'.F0 ≤ x → x < C'.T0 → M' x = M x) :
+    C'.Snap m regs M' :=
+  ⟨fun j hj => by rw [← h.slots j hj]; exact bytes_congr fun i hi => he _ (by omega) (by omega),
+   by rw [← h.saved]; exact bytes_congr fun i hi => he _ (by omega) (by omega),
+   fun x h1 h2 => by rw [he x (by omega) h2]; exact h.above x h1 h2⟩
+
+theorem Stk.ext {Q : Prog Nat} {L : Lay} {qs : Nat} {bl : List (Nat × Nat × Bool)} (X : List (Nat × Nat × Bool)) :
+    ∀ {fs : List (Frame Nat)} {M : Nat → Option (BitVec 8)} {fbA nA : Nat} {svA : BitVec 64} {dA : List Nat} {gA : FId},
+    C.Stk Q L qs bl fs M fbA nA svA dA gA → C.Stk Q L qs (bl ++ X) fs M fbA nA svA dA gA
+  | [], _, _, _, _, _, _, h => h
+  | _ :: _, _, _, _, _, _, _, ⟨F, B, as, qr, cr, ct, Mc, svc, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12, h13, h14⟩ =>
+    ⟨F, B, as, qr, cr, ct, Mc, svc, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12.ext h13 X,
+      fun j => Valid.ext X (h13 j), Stk.ext X h14⟩
+
+theorem Stk.fit {Q : Prog Nat} {L : Lay} {qs : Nat} {bl : List (Nat × Nat × Bool)} :
+    ∀ {fs : List (Frame Nat)} {M : Nat → Option (BitVec 8)} {fbA nA : Nat} {svA : BitVec 64} {dA : List Nat} {gA : FId},
+    C.Stk Q L qs bl fs M fbA nA svA dA gA → fbA + 8 * (nA + 1) + 16 ≤ C.T0
+  | [], _, _, _, _, _, _, h => by have := h.1; omega
+  | _ :: _, _, _, _, _, _, _, ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, h14⟩ => by
+    have := Stk.fit h14; omega
+
+theorem peak_cons_le {e : MemEvent} {L : List MemEvent} {W : Nat} (h1 : inUse (e :: L) ≤ W) (h2 : peak L ≤ W) :
+    peak (e :: L) ≤ W := by
+  show max (inUse (e :: L)) (peak L) ≤ W; omega
+
+theorem exec_blks {m : Mem} {g : Nat → Val} {i : Inst Nat} {g' : Nat → Val} {m' : Mem} {e : List MemEvent}
+    (h : i.exec m g = some (g', m', e)) (hi : ∀ p, i ≠ .free p) : ∃ X, m'.blks = m.blks ++ X := by
+  cases i with
+  | let_ d r => simp only [Inst.exec] at h; split at h <;> cases h; exact ⟨[], by simp⟩
+  | ldb d p x => simp only [Inst.exec] at h; (repeat' split at h) <;> cases h <;> exact ⟨[], by simp⟩
+  | stb v p x => simp only [Inst.exec] at h; split at h <;> cases h; exact ⟨[], by simp⟩
+  | ld d p k => simp only [Inst.exec] at h; (repeat' split at h) <;> cases h <;> exact ⟨[], by simp⟩
+  | st v p k => simp only [Inst.exec] at h; (repeat' split at h) <;> cases h <;> exact ⟨[], by simp⟩
+  | alloc d n => simp only [Inst.exec] at h; split at h <;> cases h; exact ⟨_, rfl⟩
+  | free p => exact absurd rfl (hi p)
+  | call ds f as => exact nomatch h
 
 end Ctx
 end Proven.Ir

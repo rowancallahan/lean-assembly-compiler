@@ -55,6 +55,15 @@ structure Pre (m : Mem) (fb n : Nat) (s : T.S) : Prop where
   unch : C.Unch s
   mok : C.MemOK m
 
+
+theorem Pre.fa {m : Mem} {a k n fb : Nat} {v : BitVec 64} {M : Nat → Option (BitVec 8)} {s : T.S}
+    (h : C.Pre m a k s) : (C.fa n fb v M).Pre m a k s :=
+  ⟨h.ok, h.keep, h.fr, h.rlim, h.rin, h.rhp, h.cap, h.fit, h.fal, h.nsl, h.stub, h.cells, h.out, h.outL, h.unch, ⟨h.mok.inp, h.mok.blks, h.mok.cv⟩⟩
+
+theorem Pre.unfa {m : Mem} {a k n fb : Nat} {v : BitVec 64} {M : Nat → Option (BitVec 8)} {s : T.S}
+    (h : (C.fa n fb v M).Pre m a k s) : C.Pre m a k s :=
+  ⟨h.ok, h.keep, h.fr, h.rlim, h.rin, h.rhp, h.cap, h.fit, h.fal, h.nsl, h.stub, h.cells, h.out, h.outL, h.unch, ⟨h.mok.inp, h.mok.blks, h.mok.cv⟩⟩
+
 theorem zeros_len (n : Nat) : (Target.zeros n).length = n := by simp [Target.zeros]
 
 /-- the zero stores of the prologue: the frame grows slot by slot -/
@@ -349,7 +358,7 @@ theorem call_ok {E : Env} {m : Mem} {regs : Nat → Val} {s : T.S} {q ex t : Nat
           (T.encO (.w (.li R8 (BitVec.ofNat 64 (8 * (G.slots + 1)))))).length + T.lenBr = q1 + T.len (T.chkPre G.slots) := by
         simp only [Target.chkPre, Target.len_cons, Target.len_nil, T.len_brO]; omega
       rw [hpq] at hA4 hin4
-      exact T.toCore.runsTo_trans (C.jW_ok hA4 hR4 hj hin4) fun s5 ⟨hA5, hR5⟩ =>
+      exact T.toCore.runsTo_trans (C.jW_ok hA4 hR4 hj hin4) fun s5 ⟨hA5, hR5, _⟩ =>
         T.toCore.runsTo_mono (C.exit_ok hA5 hR5 hex) fun s6 h6 => .inr ⟨by omega, h6⟩
   · exact nomatch hc
 

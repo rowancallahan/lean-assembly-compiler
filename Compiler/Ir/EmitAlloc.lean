@@ -117,7 +117,7 @@ theorem alloc_ok {m : Mem} {regs : Nat → Val} {s : T.S} {q ex : Nat} {rest res
         (T.encO (.w (.bini .lshr R1 R1 3))).length + T.lenBr = q + T.len (allocPre T n) := by
       simp only [allocPre, Target.len, Target.words, List.length_append, List.length_nil, T.len_brO]; omega
     rw [epos] at hA4 hin4
-    refine T.toCore.runsTo_trans (C.jW_ok hA4 hR4 hj hin4.cons) fun s5 ⟨hA5, hR5⟩ => ?_
+    refine T.toCore.runsTo_trans (C.jW_ok hA4 hR4 hj hin4.cons) fun s5 ⟨hA5, hR5, _⟩ => ?_
     refine T.toCore.runsTo_mono (C.exit_ok hA5 hR5 hex) fun s6 h6 => .inr ⟨?_, h6⟩
     omega
 

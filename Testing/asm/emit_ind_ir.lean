@@ -46,7 +46,16 @@ def compileT (P : Prog VReg) : Option (List (BitVec 32) × Prog Nat) :=
 
 def mainSlots (Q : Prog Nat) : Nat := ((Q.funcs[Q.main]?).map (·.slots)).getD 0
 
+/-- the peak, oldest event first (the same as `peak`, in one pass) -/
+def peakF (E : List MemEvent) : Nat :=
+  (E.reverse.foldl (fun (c, m) e => match e with
+    | .alloc n => (c + n, max m (c + n)) | .free n => (c - n, max m (c - n))) (0, 0)).2
+
 def emitR (name : String) (P : Prog VReg) (_retLen : Bool) (cases : List (List UInt8 × List UInt8)) : IO Unit := do
+  -- `IR_SKIP=1`: keep the outputs of entries already emitted
+  if (← IO.getEnv "IR_SKIP") == some "1" && (← System.FilePath.pathExists s!"Testing/asm/ir-words/{name}.cases") then
+    IO.println s!"{name}: kept"; return
+  let t0 ← IO.monoMsNow
   match compileT P with
   | none => IO.println s!"{name}: compile failed"
   | some (ws, Q) =>
@@ -57,10 +66,10 @@ def emitR (name : String) (P : Prog VReg) (_retLen : Bool) (cases : List (List U
       match interp Q 100000000 x with
       | some (o, ev) =>
         if o != y then bad := bad + 1
-        s := s ++ s!"{hx x} {hx y} {8 * peak (ev ++ [.alloc (mainSlots Q + 3)])}\n"
+        s := s ++ s!"{hx x} {hx y} {8 * peakF (ev ++ [.alloc (mainSlots Q + 3)])}\n"
       | none => bad := bad + 1
     IO.FS.writeFile s!"Testing/asm/ir-words/{name}.cases" s
-    IO.println s!"{name}: {ws.length} words, {cases.length} cases, interpreter output != Lean: {bad}"
+    IO.println s!"{name}: {ws.length} words, {cases.length} cases, interpreter output != Lean: {bad} ({(← IO.monoMsNow) - t0} ms)"
 
 def emitRW (name : String) (P : Prog VReg) (retLen : Bool) (cases : List (List UInt8 × List UInt8 × Nat)) : IO Unit :=
   emitR name P retLen (cases.map fun (x, y, _) => (x, y))
