@@ -2057,7 +2057,7 @@ check.sh; (2) optionally `String.utf8ByteSize` (the chain length, cheap) and `St
 (Name constants like `Name.str .anonymous "Nat"`, `=` with a constant side); (4) small linter warnings (unused simp
 arguments in `IndStrOk.lean`, `IndDec.lean`, `IndSup.lean`).
 
-## 30. IR stage S2: calls with frames, `switch`, the inductive path on the IR (branch `ir-s2`)
+## 34. IR stage S2: calls with frames, `switch`, the inductive path on the IR (branch `ir-s2`)
 
 Design: `Testing/notes/IR_DESIGN.md` (branch `ir-design`) §4 stage S2, on top of S1 (`Ir.compile`, branch `ir-s01`).
 
