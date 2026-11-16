@@ -301,6 +301,356 @@ theorem lx_nil (o : List UInt8) (m sp d d0 w ty : UInt64) :
 
 theorem lex_nil (F : Nat) : lex F [] = some [] := by cases F <;> rfl
 
+theorem lx_c2 (c n : UInt8) (t o : List UInt8) (m st sp d d0 w ty : UInt64) :
+    lx (c :: n :: t) o m st sp d d0 w ty = STEPN := by rw [lx]
+theorem lx_c1 (c : UInt8) (o : List UInt8) (m st sp d d0 w ty : UInt64) :
+    lx [c] o m st sp d d0 w ty = STEPE := by rw [lx]
+
+/-- `REC` of the end step, in each of its three forms, is `lx []` -/
+theorem fin_eq (o : List UInt8) (m sp d d0 w ty : UInt64) :
+    (if m == 0 then (if ty == 0 then [0] else (ty).toUInt8 :: lx o o 1 0 0 0 0 0 ty) else []) = lx [] o m 0 sp d d0 w ty := by
+  rw [lx_nil]
+
+theorem M_ws (c : UInt8) (hc : c = 32 ∨ c = 10) (rest o : List UInt8) (m sp d d0 w ty : UInt64) :
+    lx (c :: rest) o m 0 sp d d0 w ty = lx rest o m 0 sp d d0 w ty := by
+  rcases rest with _ | ⟨n, t⟩
+  · rw [lx_c1, lx_nil]; rcases hc with h | h <;> subst h <;> simp
+  · rw [lx_c2]; rcases hc with h | h <;> subst h <;> simp
+
+theorem M_punct (c : UInt8) (hc : c = 40 ∨ c = 42 ∨ c = 43 ∨ c = 59) (rest o : List UInt8) (m sp d d0 w ty : UInt64) :
+    lx (c :: rest) o m 0 sp d d0 w ty = (if m = 0 then [] else [c]) ++ lx rest o m 0 sp d d0 w ty := by
+  rcases rest with _ | ⟨n, t⟩
+  · rw [lx_c1, lx_nil]; rcases hc with h | h | h | h <;> subst h <;> by_cases hm : m = 0 <;> simp [hm]
+  · rw [lx_c2]; rcases hc with h | h | h | h <;> subst h <;> by_cases hm : m = 0 <;> simp [hm]
+
+theorem M_st2 (c : UInt8) (rest o : List UInt8) (m sp d d0 w ty : UInt64) :
+    lx (c :: rest) o m 2 sp d d0 w ty = lx rest o m 0 sp d d0 w ty := by
+  rcases rest with _ | ⟨n, t⟩
+  · rw [lx_c1, lx_nil]; simp
+  · rw [lx_c2]; simp
+
+/-- the next byte is a word byte or `(` / `-`: `none`-like tests of `lex` -/
+def hd? (r : List UInt8) (p : UInt8 → Bool) : Bool := match r with | x :: _ => p x | [] => false
+
+theorem M_rp (rest o : List UInt8) (m sp d d0 w ty : UInt64) :
+    lx (41 :: rest) o m 0 sp d d0 w ty =
+      if hd? rest (fun x => x == 40 || isW x) then [0] else (if m = 0 then [] else [41]) ++ lx rest o m 0 sp d d0 w ty := by
+  rcases rest with _ | ⟨n, t⟩
+  · rw [lx_c1, lx_nil]; by_cases hm : m = 0 <;> simp [hm, hd?]
+  · rw [lx_c2]; by_cases hm : m = 0 <;> by_cases hn : (n == 40 || isW n) = true <;> simp [hm, hd?, hn] <;> simp_all
+
+theorem M_minus (rest o : List UInt8) (m sp d d0 w ty : UInt64) :
+    lx (45 :: rest) o m 0 sp d d0 w ty =
+      if hd? rest (· == 45) then [0] else (if m = 0 then [] else [45]) ++ lx rest o m 0 sp d d0 w ty := by
+  rcases rest with _ | ⟨n, t⟩
+  · rw [lx_c1, lx_nil]; by_cases hm : m = 0 <;> simp [hm, hd?]
+  · rw [lx_c2]; by_cases hm : m = 0 <;> by_cases hn : n = 45 <;> simp [hm, hd?, hn]
+
+theorem M_colon (rest o : List UInt8) (m sp d d0 w ty : UInt64) :
+    lx (58 :: rest) o m 0 sp d d0 w ty =
+      match rest with
+      | 61 :: r => (if m = 0 then [] else [61]) ++ lx r o m 0 1 d d0 w ty
+      | _ => (if m = 0 then [] else [58]) ++ lx rest o m 0 sp d d0 w ty := by
+  rcases rest with _ | ⟨n, t⟩
+  · rw [lx_c1, lx_nil]; by_cases hm : m = 0 <;> simp [hm]
+  · rw [lx_c2]
+    by_cases hn : n = 61
+    · subst hn; by_cases hm : m = 0 <;> simp [hm, M_st2]
+    · by_cases hm : m = 0 <;> simp [hm, hn]
+
+theorem M_cr (rest o : List UInt8) (m sp d d0 w ty : UInt64) :
+    lx (13 :: rest) o m 0 sp d d0 w ty =
+      match rest with
+      | 10 :: r => lx r o m 0 1 d d0 w ty
+      | _ => [0] := by
+  rcases rest with _ | ⟨n, t⟩
+  · rw [lx_c1]; simp
+  · rw [lx_c2]
+    by_cases hn : n = 10
+    · subst hn; simp [M_ws]
+    · simp [hn]
+
+/-! ### `lex`, one step per byte class -/
+
+theorem L_ws (c : UInt8) (hc : c = 32 ∨ c = 10) (f : Nat) (xs : List UInt8) : lex (f + 1) (c :: xs) = lex f xs := by
+  rcases hc with h | h <;> subst h <;> rw [lex.eq_def] <;> simp
+theorem L_cr (f : Nat) (xs : List UInt8) :
+    lex (f + 1) (13 :: xs) = match xs with | 10 :: ys => lex f ys | _ => none := by
+  rw [lex.eq_def];   rcases xs with _ | ⟨a, ys⟩
+  · rfl
+  · by_cases h : a = 10
+    · subst h; rfl
+    · simp [h]
+theorem L_punct (c : UInt8) (f : Nat) (xs : List UInt8) (t : Tok)
+    (hc : (c = 40 ∧ t = .lp) ∨ (c = 42 ∧ t = .star) ∨ (c = 43 ∧ t = .plus) ∨ (c = 59 ∧ t = .semi)) :
+    lex (f + 1) (c :: xs) = (lex f xs).map (t :: ·) := by
+  rcases hc with ⟨h, ht⟩ | ⟨h, ht⟩ | ⟨h, ht⟩ | ⟨h, ht⟩ <;> subst h ht <;> rw [lex.eq_def] <;> simp
+theorem L_rp (f : Nat) (xs : List UInt8) :
+    lex (f + 1) (41 :: xs) = if hd? xs (fun x => x == 40 || isW x) then none else (lex f xs).map (Tok.rp :: ·) := by
+  rw [lex.eq_def]; rcases xs with _ | ⟨d, xs⟩
+  · simp [hd?]
+  · have : (d == 40 || isLetter d || isDigit d) = (d == 40 || isW d) := by
+      simp only [isW, isL, isLetter, isDigit, Bool.or_assoc]
+    simp only [hd?, ← this]; simp
+theorem L_minus (f : Nat) (xs : List UInt8) :
+    lex (f + 1) (45 :: xs) = if hd? xs (· == 45) then none else (lex f xs).map (Tok.minus :: ·) := by
+  rw [lex.eq_def]; rcases xs with _ | ⟨d, xs⟩ <;> simp [hd?]
+  by_cases h : d = 45 <;> simp [h]
+theorem L_colon (f : Nat) (xs : List UInt8) :
+    lex (f + 1) (58 :: xs) = match xs with
+      | 61 :: ys => (lex f ys).map (Tok.assign :: ·)
+      | _ => (lex f xs).map (Tok.colon :: ·) := by
+  rw [lex.eq_def];   rcases xs with _ | ⟨a, ys⟩
+  · simp
+  · by_cases h : a = 61
+    · subst h; simp
+    · simp [h]
+theorem digitFacts : ∀ c : UInt8, isDigit c = true →
+    (c == 32 || c == 10) = false ∧ (c == 13) = false ∧ (c == 40) = false ∧ (c == 41) = false ∧ (c == 43) = false ∧
+    (c == 45) = false ∧ (c == 42) = false ∧ (c == 59) = false ∧ (c == 58) = false ∧
+    (c == 40 || c == 42 || c == 43 || c == 59) = false ∧ isL c = false := u8_all (by decide +kernel)
+theorem letterFacts : ∀ c : UInt8, isL c = true →
+    (c == 32 || c == 10) = false ∧ (c == 13) = false ∧ (c == 40) = false ∧ (c == 41) = false ∧ (c == 43) = false ∧
+    (c == 45) = false ∧ (c == 42) = false ∧ (c == 59) = false ∧ (c == 58) = false ∧
+    (c == 40 || c == 42 || c == 43 || c == 59) = false ∧ isDigit c = false := u8_all (by decide +kernel)
+theorem L_digit (c : UInt8) (hc : isDigit c = true) (f : Nat) (xs : List UInt8) :
+    lex (f + 1) (c :: xs) = (let r := spanNum f 0 (c :: xs)
+      match r.2 with
+      | d :: _ => if isLetter d || d == 40 then none else (lex f r.2).map (Tok.num r.1 :: ·)
+      | [] => (lex f r.2).map (Tok.num r.1 :: ·)) := by
+  obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, _, _⟩ := digitFacts c hc
+  rw [lex.eq_def]; simp only [h1, h2, h3, h4, h5, h6, h7, h8, h9, hc, Bool.false_eq_true, if_false, if_true]
+  generalize spanNum f 0 (c :: xs) = r; rcases r with ⟨a, _ | ⟨d, t⟩⟩ <;> rfl
+theorem L_letter (c : UInt8) (hc : isL c = true) (f : Nat) (xs : List UInt8) :
+    lex (f + 1) (c :: xs) = (let r := spanId f (c :: xs)
+      match identTok? r.1, r.2 with
+      | _, 40 :: _ => none
+      | some t, _ => (lex f r.2).map (t :: ·)
+      | none, _ => none) := by
+  obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, _, h11⟩ := letterFacts c hc
+  have hl : isLetter c = true := hc
+  rw [lex.eq_def]; simp only [h1, h2, h3, h4, h5, h6, h7, h8, h9, h11, hl, Bool.false_eq_true, if_false, if_true]
+  generalize spanId f (c :: xs) = r; rcases r with ⟨a, _ | ⟨d, t⟩⟩
+  · cases identTok? a <;> rfl
+  · by_cases h : d = 40
+    · subst h; cases identTok? a <;> rfl
+    · cases identTok? a <;> simp [h]
+theorem L_other (c : UInt8) (hc : (c == 32 || c == 10 || c == 13 || c == 40 || c == 41 || c == 43 || c == 45 || c == 42 ||
+    c == 59 || c == 58 || isDigit c || isL c) = false) (f : Nat) (xs : List UInt8) : lex (f + 1) (c :: xs) = none := by
+  rw [lex.eq_def]; simp only [Bool.or_eq_false_iff] at hc
+  obtain ⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨⟨h1, h2⟩, h3⟩, h4⟩, h5⟩, h6⟩, h7⟩, h8⟩, h9⟩, h10⟩, h11⟩, h12⟩ := hc
+  have h12' : isLetter c = false := h12
+  simp [h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12']
+
+/-! ### numerals -/
+
+def nstep (a : UInt64) (c : UInt8) : UInt64 := a * 10 + (c - 48).toUInt64
+
+/-- the conclusion of `step0` -/
+def S0 (o xs : List UInt8) (F : Nat) (sp m d d0 w ty : UInt64) : Prop :=
+    (lex F xs = none ∧ (m = 0 → lx xs o m 0 sp d d0 w ty = [0])) ∨
+    (∃ F' r sp' d' d0' w', r.length < xs.length ∧ Fu F' r sp' ∧ lex F xs = lex F' r ∧
+      lx xs o m 0 sp d d0 w ty = lx r o m 0 sp' d' d0' w' ty) ∨
+    (∃ t bs F' r sp' d' d0' w', r.length < xs.length ∧ Fu F' r sp' ∧ lex F xs = (lex F' r).map (t :: ·) ∧
+      (∀ X, dec (bs ++ X) [] none = (dec X [] none).map (t :: ·)) ∧
+      (tyStep ty t ≠ 9 → lx xs o m 0 sp d d0 w ty = (if m = 0 then [] else bs) ++ lx r o m 0 sp' d' d0' w' (tyStep ty t)) ∧
+      (tyStep ty t = 9 → m = 0 → lx xs o m 0 sp d d0 w ty = [0]))
+
+theorem isDigit_iff (c : UInt8) : (48 ≤ c && c ≤ 57) = isDigit c := rfl
+
+theorem N_start2 (c n : UInt8) (hc : isDigit c = true) (hn : isDigit n = true) (t o : List UInt8) (m sp d d0 w ty : UInt64) :
+    lx (c :: n :: t) o m 0 sp d d0 w ty = (if m = 0 then [] else [5, c]) ++ lx (n :: t) o m 3 sp d d0 0 ty := by
+  obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, _⟩ := digitFacts c hc
+  rw [lx_c2]; simp only [h1, h2, h9, h10, h4, h6, isDigit_iff, hc, hn]; by_cases hm : m = 0 <;> simp [hm]
+
+theorem N_adv (x y : UInt8) (hy : isDigit y = true) (t o : List UInt8) (m sp d d0 w ty : UInt64) :
+    lx (x :: y :: t) o m 3 sp d d0 w ty = (if m = 0 then [] else [x]) ++ lx (y :: t) o m 3 sp d d0 1 ty := by
+  rw [lx_c2]; simp only [isDigit_iff, hy]; by_cases hm : m = 0 <;> simp [hm]
+
+theorem N_last (x y : UInt8) (hy : isDigit y = false) (t o : List UInt8) (m sp d d0 w ty : UInt64) :
+    lx (x :: y :: t) o m 3 sp d d0 w ty =
+      if isL y || y == 40 then [0] else (if m = 0 then [] else [x, 6]) ++ lx (y :: t) o m 0 1 d d0 w ty := by
+  rw [lx_c2]; simp only [isDigit_iff, hy]; by_cases hm : m = 0 <;> simp [hm]
+
+theorem N_lastE (x : UInt8) (hx : isDigit x = true) (o : List UInt8) (m sp d d0 w ty : UInt64) :
+    lx [x] o m 3 sp d d0 w ty = if sp = 0 then (if w = 0 then [0] else (if m = 0 then [] else [6]) ++ lx [x] o m 0 1 d d0 w ty)
+      else (if m = 0 then [] else [x, 6]) ++ lx [] o m 0 1 d d0 w ty := by
+  obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11⟩ := digitFacts x hx
+  have h12 : (x == 40 || x == 41 || x == 42 || x == 43 || x == 45 || x == 59) = false := by
+    simp only [Bool.or_eq_false_iff]; simp_all
+  rw [lx_c1, lx_c1, lx_nil]; simp only [h1, h9, h12, isDigit_iff, hx]
+  by_cases hm : m = 0 <;> by_cases hs : sp = 0 <;> by_cases hw : w = 0 <;> simp [hm, hs, hw]
+
+theorem N_single (c n : UInt8) (hc : isDigit c = true) (hn : isDigit n = false) (t o : List UInt8) (m sp d d0 w ty : UInt64) :
+    lx (c :: n :: t) o m 0 sp d d0 w ty =
+      if isL n || n == 40 then [0] else (if m = 0 then [] else [5, c, 6]) ++ lx (n :: t) o m 0 sp d d0 w ty := by
+  obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, _⟩ := digitFacts c hc
+  rw [lx_c2]; simp only [h1, h2, h9, h10, h4, h6, isDigit_iff, hc, hn]; by_cases hm : m = 0 <;> simp [hm]
+
+theorem N_singleE (c : UInt8) (hc : isDigit c = true) (o : List UInt8) (m sp d d0 w ty : UInt64) :
+    lx [c] o m 0 sp d d0 w ty = if sp = 0 then [0] else (if m = 0 then [] else [5, c, 6]) ++ lx [] o m 0 sp d d0 w ty := by
+  obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, _⟩ := digitFacts c hc
+  have h11 : (c == 40 || c == 41 || c == 42 || c == 43 || c == 45 || c == 59) = false := by
+    simp only [Bool.or_eq_false_iff]; simp_all
+  rw [lx_c1, lx_nil]; simp only [h1, h9, h11, isDigit_iff, hc]
+  by_cases hm : m = 0 <;> by_cases hs : sp = 0 <;> simp [hm, hs]
+
+theorem NumRun (o : List UInt8) (m sp d d0 ty : UInt64) : ∀ (v : List UInt8) (x z : UInt8) (t : List UInt8) (w : UInt64),
+    (∀ y ∈ v, isDigit y = true) → isDigit z = true →
+    lx (x :: v ++ z :: t) o m 3 sp d d0 w ty = (if m = 0 then [] else x :: v) ++ lx (z :: t) o m 3 sp d d0 1 ty
+  | [], x, z, t, w, _, hz => by
+    simp only [List.cons_append, List.nil_append]; rw [N_adv x z hz]
+  | y :: v, x, z, t, w, hv, hz => by
+    have ih := NumRun o m sp d d0 ty v y z t 1 (fun q hq => hv q (by simp [hq])) hz
+    simp only [List.cons_append] at ih ⊢
+    rw [N_adv x y (hv y (by simp)), ih]
+    by_cases hm : m = 0 <;> simp [hm]
+
+theorem spanNum_eq : ∀ (u : List UInt8) (f : Nat) (a : UInt64) (r : List UInt8), (∀ y ∈ u, isDigit y = true) →
+    hd? r isDigit = false → spanNum f a (u ++ r) = ((u.take f).foldl nstep a, u.drop f ++ r)
+  | [], f, a, r, _, hr => by
+    rcases r with _ | ⟨y, r⟩ <;> rcases f with _ | f <;> simp [spanNum, hd?] at hr ⊢
+    simp [hr]
+  | c :: u, f, a, r, hu, hr => by
+    rcases f with _ | f
+    · simp [spanNum]
+    · simp only [List.cons_append, spanNum, hu c (by simp), if_true, List.take_succ_cons, List.foldl_cons, List.drop_succ_cons]
+      exact spanNum_eq u f _ r (fun q hq => hu q (by simp [hq])) hr
+
+theorem dec_num : ∀ (u : List UInt8) (a : UInt64) (wd X : List UInt8), (∀ y ∈ u, isDigit y = true) →
+    dec (u ++ 6 :: X) wd (some a) = (dec X [] none).map (Tok.num (u.foldl nstep a) :: ·)
+  | [], a, wd, X, _ => by simp [dec]
+  | c :: u, a, wd, X, hu => by
+    have hc := hu c (by simp)
+    have h6 : (c == 6) = false := by
+      have : ∀ c : UInt8, isDigit c = true → (c == 6) = false := u8_all (by decide +kernel)
+      exact this c hc
+    simp only [List.cons_append, dec, h6, Bool.false_eq_true, if_false, isDigit_iff, hc, if_true, List.foldl_cons]
+    exact dec_num u _ [] X (fun q hq => hu q (by simp [hq]))
+
+theorem dec_5 (Y : List UInt8) : dec (5 :: Y) [] none = dec Y [] (some 0) := by simp [dec, isW, isL]
+
+theorem span_exists (p : UInt8 → Bool) : ∀ xs : List UInt8, ∃ u r, xs = u ++ r ∧ (∀ y ∈ u, p y = true) ∧ hd? r p = false
+  | [] => ⟨[], [], rfl, by simp, rfl⟩
+  | x :: xs => by
+    by_cases hx : p x = true
+    · obtain ⟨u, r, h1, h2, h3⟩ := span_exists p xs
+      exact ⟨x :: u, r, by simp [h1], by simp [hx, h2]; exact h2, h3⟩
+    · exact ⟨[], x :: xs, rfl, by simp, by simpa [hd?] using hx⟩
+
+theorem NumStart (o : List UInt8) (m sp d d0 ty : UInt64) (c z : UInt8) (v t : List UInt8) (w : UInt64)
+    (hc : isDigit c = true) (hv : ∀ y ∈ v, isDigit y = true) (hz : isDigit z = true) :
+    lx (c :: (v ++ z :: t)) o m 0 sp d d0 w ty =
+      (if m = 0 then [] else 5 :: c :: v) ++ lx (z :: t) o m 3 sp d d0 (if v = [] then 0 else 1) ty := by
+  rcases v with _ | ⟨y, v⟩
+  · rw [List.nil_append, N_start2 c z hc hz]; by_cases hm : m = 0 <;> simp [hm]
+  · have := NumRun o m sp d d0 ty v y z t 0 (fun q hq => hv q (by simp [hq])) hz
+    simp only [List.cons_append] at this ⊢
+    rw [N_start2 c y hc (hv y (by simp)), this]; by_cases hm : m = 0 <;> simp [hm]
+
+theorem dec_numTok (u X : List UInt8) (hu : ∀ y ∈ u, isDigit y = true) :
+    dec ((5 :: u ++ [6]) ++ X) [] none = (dec X [] none).map (Tok.num (u.foldl nstep 0) :: ·) := by
+  simp only [List.cons_append, List.append_assoc, List.singleton_append, List.nil_append]; rw [dec_5, dec_num u 0 [] X hu]
+
+theorem isL_eq (c : UInt8) : isL c = isLetter c := rfl
+theorem lex0 (c : UInt8) (xs : List UInt8) : lex 0 (c :: xs) = none := rfl
+
+theorem step0_num (o : List UInt8) (c : UInt8) (hc : isDigit c = true) (rest : List UInt8) (f : Nat) (sp : UInt64)
+    (hF : Fu (f + 1) (c :: rest) sp) (m d d0 w ty : UInt64) (hty : ty ≠ 9) : S0 o (c :: rest) (f + 1) sp m d d0 w ty := by
+  obtain ⟨u, r, rfl, hu, hr⟩ := span_exists isDigit rest
+  unfold S0
+  rw [L_digit c hc]
+  have hcu : ∀ y ∈ c :: u, isDigit y = true := by simp [hc]; exact hu
+  rw [show c :: (u ++ r) = (c :: u) ++ r from rfl, spanNum_eq (c :: u) f 0 r hcu hr]
+  simp only [Fu, List.length_cons, List.length_append] at hF
+  rcases List.eq_nil_or_concat u with rfl | ⟨v, z, rfl⟩
+  · -- one digit
+    simp only [List.cons_append, List.nil_append, List.append_nil] at *
+    rcases r with _ | ⟨n, t⟩
+    · rcases hF with ⟨rfl, hf⟩ | ⟨rfl, hf⟩
+      · have : f = 0 := by simp at hf; omega
+        subst this; left; refine ⟨by simp [isLetter, lex0], fun _ => ?_⟩; rw [N_singleE c hc]; simp
+      · obtain ⟨f, rfl⟩ : ∃ g, f = g + 1 := ⟨f - 1, by simp at hf; omega⟩
+        right; right
+        refine ⟨Tok.num (nstep 0 c), [5, c, 6], f + 1, [], 1, d, d0, w, by simp, Or.inr ⟨rfl, by simp⟩, by simp, ?_, ?_, ?_⟩
+        · intro X; have := dec_numTok [c] X (by simp [hc]); simpa using this
+        · intro _; simp only [tyStep]; rw [N_singleE c hc]; simp
+        · intro h; exact absurd h hty
+    · have hn : isDigit n = false := by simpa [hd?] using hr
+      have hf1 : 1 ≤ f := by rcases hF with ⟨_, hf⟩ | ⟨_, hf⟩ <;> simp at hf <;> omega
+      obtain ⟨g, rfl⟩ : ∃ g, f = g + 1 := ⟨f - 1, by omega⟩
+      simp only [List.nil_append, List.take_succ_cons, List.take_nil, List.drop_succ_cons, List.drop_nil,
+        List.foldl_cons, List.foldl_nil]
+      rw [N_single c n hc hn, ← isL_eq]
+      by_cases hb : (isL n || n == 40) = true
+      · left; simp [hb]
+      · right; right; simp only [hb, Bool.false_eq_true, if_false]
+        refine ⟨Tok.num (nstep 0 c), [5, c, 6], g + 1, n :: t, sp, d, d0, w, by simp, ?_, rfl, ?_, ?_, ?_⟩
+        · rcases hF with ⟨h1, h2⟩ | ⟨h1, h2⟩
+          · left; exact ⟨h1, by simp at h2 ⊢; omega⟩
+          · right; exact ⟨h1, by simp at h2 ⊢; omega⟩
+        · intro X; have := dec_numTok [c] X (by simp [hc]); simpa using this
+        · intro _; simp [tyStep]
+        · intro h; exact absurd h hty
+  · -- two or more digits
+    simp only [List.concat_eq_append] at *
+    have hv : ∀ y ∈ v, isDigit y = true := fun y hy => hu y (by simp [hy])
+    have hz : isDigit z = true := hu z (by simp)
+    have hall : ∀ y ∈ c :: (v ++ [z]), isDigit y = true := hcu
+    rw [show (c :: (v ++ [z])) ++ r = c :: (v ++ z :: r) by simp, NumStart o m sp d d0 ty c z v r w hc hv hz]
+    have hdec : ∀ X, dec ((5 :: (c :: (v ++ [z])) ++ [6]) ++ X) [] none =
+        (dec X [] none).map (Tok.num ((c :: (v ++ [z])).foldl nstep 0) :: ·) := fun X => dec_numTok _ X hall
+    rcases r with _ | ⟨n, t⟩
+    · rcases hF with ⟨rfl, hf⟩ | ⟨rfl, hf⟩
+      · -- `lex`'s fuel is the rest: split before the last digit
+        simp only [List.length_append, List.length_singleton, List.length_nil, List.length_cons] at hf
+        rw [N_lastE z hz]
+        rcases v with _ | ⟨y, v⟩ <;> simp only [List.length_nil, List.length_cons] at hf
+        · have : f = 1 := by omega
+          subst this; left
+          refine ⟨by simp [isLetter, L_digit z hz, spanNum, hz, lex0], fun hm => by simp [hm]⟩
+        · have htk : List.take f (c :: (y :: v ++ [z])) = c :: y :: v := by
+            rw [show f = (c :: y :: v).length by simp; omega, show c :: (y :: v ++ [z]) = (c :: y :: v) ++ [z] by simp,
+              List.take_left]
+          have hdr : List.drop f (c :: (y :: v ++ [z])) = [z] := by
+            rw [show f = (c :: y :: v).length by simp; omega, show c :: (y :: v ++ [z]) = (c :: y :: v) ++ [z] by simp,
+              List.drop_left]
+          have hzl : isLetter z = false := (digitFacts z hz).2.2.2.2.2.2.2.2.2.2
+          right; right
+          refine ⟨Tok.num ((c :: y :: v).foldl nstep 0), 5 :: (c :: y :: v) ++ [6], f, [z], 1, d, d0, 1,
+            by simp, Or.inr ⟨rfl, by simp; omega⟩, ?_, ?_, ?_, ?_⟩
+          · have h40 : (z == 40) = false := (digitFacts z hz).2.2.1
+            simp only [htk, hdr, List.append_nil]; simp [hzl, h40]
+          · intro X; exact dec_numTok _ X (fun q hq => hall q (by simp at hq ⊢; rcases hq with h | h | h <;> simp [h]))
+          · intro _; simp only [tyStep]; simp; by_cases hm : m = 0 <;> simp [hm]
+          · intro h; exact absurd h hty
+      · simp only [List.length_append, List.length_singleton, List.length_nil, List.length_cons] at hf
+        have htk : List.take f (c :: (v ++ [z])) = c :: (v ++ [z]) := List.take_of_length_le (by simp; omega)
+        have hdr : List.drop f (c :: (v ++ [z])) = [] := List.drop_of_length_le (by simp; omega)
+        rw [N_lastE z hz]
+        right; right
+        refine ⟨_, 5 :: (c :: (v ++ [z])) ++ [6], f, [], 1, d, d0, if v = [] then 0 else 1,
+          by simp, Or.inr ⟨rfl, by simp; omega⟩, ?_, hdec, ?_, ?_⟩
+        · simp only [htk, hdr, List.append_nil]
+        · intro _; simp only [tyStep]; simp; by_cases hm : m = 0 <;> simp [hm]
+        · intro h; exact absurd h hty
+    · have hn : isDigit n = false := by simpa [hd?] using hr
+      have hf : (c :: (v ++ [z])).length ≤ f := by
+        rcases hF with ⟨_, hf⟩ | ⟨_, hf⟩ <;> simp only [List.length_append, List.length_cons, List.length_singleton] at hf ⊢ <;> omega
+      have htk : List.take f (c :: (v ++ [z])) = c :: (v ++ [z]) := List.take_of_length_le hf
+      have hdr : List.drop f (c :: (v ++ [z])) = [] := List.drop_of_length_le hf
+      simp only [htk, hdr, List.nil_append]
+      rw [N_last z n hn]; simp only [isL_eq]
+      by_cases hb : (isLetter n || n == 40) = true
+      · left; simp [hb]
+      · right; right; simp only [hb, Bool.false_eq_true, if_false]
+        refine ⟨_, 5 :: (c :: (v ++ [z])) ++ [6], f, n :: t, 1, d, d0, if v = [] then 0 else 1, by simp; omega,
+          Or.inr ⟨rfl, ?_⟩, rfl, hdec, ?_, ?_⟩
+        · rcases hF with ⟨_, h⟩ | ⟨_, h⟩ <;> simp only [List.length_append, List.length_cons, List.length_singleton] at h ⊢ <;> omega
+        · intro _; simp only [tyStep]; simp; by_cases hm : m = 0 <;> simp [hm]
+        · intro h; exact absurd h hty
+
+
 /-- one token (or blank) of `lex` = some steps of the machine from state 0 -/
 theorem step0 (o xs : List UInt8) (hxs : xs ≠ []) (F : Nat) (sp : UInt64) (hF : Fu F xs sp)
     (m d d0 w ty : UInt64) (hm : m = 0 ∨ m = 1) :
