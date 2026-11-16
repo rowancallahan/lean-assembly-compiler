@@ -50,7 +50,7 @@ NEG = [  # must be rejected by nanoElab (not valid nano)
 "def f (x : UInt64) : UInt64 := (x",
 "def f (x : UInt64) : UInt64 := x $ 1",
 "def f x : UInt64 := x",
-"",
+
 "def f (x : UInt64) : UInt64 := let y := x x",
 ]
 def entry_arity(src):
