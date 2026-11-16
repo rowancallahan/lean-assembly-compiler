@@ -1743,7 +1743,37 @@ Proof support: `frontx_int_abbrev` (unfold `Int` abbreviations and `Int.ediv`/`I
 
 **Compiled verbatim** (lean-svg @df8e663, `LeanSvgFixed.lean`; each line checked to occur unchanged in the source;
 each function's own `exec` with its `requires`, and an entry `…E` with `Implements1` via `frontx_implementsC`):
-RESULTS_TABLE
+| function (lean-svg @df8e663) | source | `requires` of its `exec` | entry arguments | words |
+|---|---|---|---|---|
+| `Fx.clamp` | `LeanSvg/Fixed.lean:27` | -2^63 ≤ a < 2^63 | i64 | 120 |
+| `Fx.inRange` | `LeanSvg/Fixed.lean:32` | a in range | i64 | 99 |
+| `Fx.ofNat` | `LeanSvg/Fixed.lean:34` | n < 2^32 | n mod 2^32 | 123 |
+| `Fx.mul` | `LeanSvg/Fixed.lean:37` | -2^63 ≤ a*b < 2^63 | i32, i32 | 337 |
+| `Fx.floor` | `LeanSvg/Fixed.lean:38` | a in range | i64 | 129 |
+| `Fx.ceil` | `LeanSvg/Fixed.lean:39` | -2^63 < a < 2^63 | i32 | 140 |
+| `Fx.round` | `LeanSvg/Fixed.lean:40` | -2^63 ≤ a, a+128 < 2^63 | i32 | 136 |
+| `Fx.abs` | `LeanSvg/Fixed.lean:41` | a in range | i64 | 116 |
+| `Fx.min / Fx.max` | `LeanSvg/Fixed.lean:42-43` | a, b in range | i64, i64 | 291 / 291 |
+| `Fx.scale16` | `LeanSvg/Fixed.lean:50` | a*s in range | i32, i32 | 337 |
+| `clampLin` | `LeanSvg/Geom.lean:74` | v in range | i64 | 120 |
+| `linInRange` | `LeanSvg/Geom.lean:82` | v in range | i64 | 99 |
+| `Image.clampIx` | `LeanSvg/Image.lean:406` | i in range, n < 2^64 | i64, n mod 2^32 | 307 |
+| `Image.round32` | `LeanSvg/Image.lean:426` | s in range | i64 | 131 |
+| `Image.bicFar` | `LeanSvg/Image.lean:416` | 0 ≤ t < 2^17 | (exec only) | – |
+| `Woff.fitsI16` | `LeanSvg/Woff.lean:175` | v in range | i64 | 100 |
+| `Raster.insideW` | `LeanSvg/Raster.lean:85` | w in range | bit, i64 | 290 |
+| `Grad.norm2` | `LeanSvg/Shader.lean:153` | |x|, |y| ≤ 2^31 | i32, i32 | 333 |
+| `Grad.clampTo` | `LeanSvg/Shader.lean:163` | -2^63 < lim < 2^63, a in range | i32, i64 | 366 |
+| `Filter.morphCeil` | `LeanSvg/Filter/Morphology.lean:110` | -2^63 ≤ r < 2^31, sc < 2^32 | i32, n mod 2^32 | 308 |
+
+Each entry `…E` (`IntExamples.lean`): QEMU + Sail against executed Lean, 70 cases each (edge words `0`, `±1`, `±2^31`,
+`2^63 - 1`, `-2^63`, `Fx.maxVal ± 1`, `linMax + 1`, multiples of 256, random 64/32/20/17-bit), all ok.
+Word arrays (`WaInt.lean`, glue entries over core / lean-svg operations): `iopsE` (`* / % -x + -`, `Int.ediv`,
+`Int.emod`; 372 words), `icmpE` (`<`, `≤`, `Int.toNat`; 329), `fxRoundsE` (`Fx.floor`/`ceil`/`round`; 492),
+`sumDevE` (an `Int` loop state with a linear invariant; 85): `good` + `implements1` each, 70 cases each, all ok.
+Axioms (`wa_check.sh`): every `implements1` exactly the Sail set, every `exec`/`good` ⊆ {propext, Classical.choice,
+Quot.sound}. `check.sh`: ALL CHECKS PASSED; statement fingerprints: no `stmt` hash changed, 62 closures changed
+(`MOp` gained `div` / `rem`; not re-frozen). `emit_int.lean` is slow (> 50 min for the list entries' code at `#eval`).
 
 **Not done / why.**
 - con-leche `Level.leq` / `Level.rest` / `Level.byCases` (`Kernel/Level.lean:87-145` @6810492c1): their `diff : Int`
