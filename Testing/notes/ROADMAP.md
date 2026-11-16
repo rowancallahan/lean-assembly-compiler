@@ -190,3 +190,10 @@ hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read 
   Testing/notes/INDEX.md, small pieces merged as they finish.
   lean-zip and lean-svg (and the book) are deliberately easier intermediate targets: when a con-leche / self-hosting
   round is stuck, switch to them to build the missing feature on a simpler case, then return.
+- Order and self-hosting track (owner, 2026-11-16): (1) con-leche (the consistent Lean checker) first; (2) then
+  self-host a COMPLETE compiler: milestone = the compiled compiler compiles itself AND compiles con-leche (no toy);
+  (3) lean-zip, then lean-svg, as easier side targets; the book, lean-zip and lean-svg are the measuring sticks.
+  Friendly-style track for self-hosting: a rewrite of the compiler's own core in compiler-friendly style, grown from
+  the current code, ONLY where the front end cannot yet take the real style; every rewritten function carries a Lean
+  equation proving it equal to the original (so the self-hosted binary implements the real compiler, not a toy);
+  the friendly part shrinks as the front end learns the complex style (the long-term goal).
