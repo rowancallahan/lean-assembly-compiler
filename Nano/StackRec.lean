@@ -1,9 +1,9 @@
 /- Route (a), in progress: the meaning of nano-e2e's stack generator `genR` (StartCorrect convention, nano-e2e
 4c64d61) on a RECORD MACHINE (`Nano.R`: the semantics of `Nano/Asm.lean`'s record table, before encoding), proved
-block by block (`push_ok`, `ld_ok`, `addSp_ok`, `sd0_ok`, `rop_ok`, `binop_ok`, `li_ok`, and **`genE_ok`/`genA_ok`**: an expression's records push `den e env`; value stack `Stk` in the work block).
+block by block (`push_ok`, `ld_ok`, `addSp_ok`, `sd0_ok`, `rop_ok`, `binop_ok`; value stack `Stk` in the work block).
 `Nano.S` is a verbatim COPY of nano-e2e 4c64d61's `Nano/Gen.lean` definitions (r .. depth): nano-e2e does not build
 yet (Nano/AsmSelf.lean), so it cannot be merged; replace `Nano.S` by `import Nano.Gen` at the merge.
-Remaining (Testing/notes/NANO_PROOF.md): `pro`/`wr8`, the record machine refined by
+Remaining (Testing/notes/NANO_PROOF.md): `li`, `genE`/`genA` invariant, `pro`/`wr8`, the record machine refined by
 Sail (record -> word lemmas + `G.step_*`), glue to `CompileCorrect`. -/
 import Nano.Ast
 import Spec.Encode
@@ -740,5 +740,92 @@ theorem genA_ok (hT2 : T < 2 ^ 64) : ∀ (as : Ex) (sc : List Nat) (env : List U
   | .anil, _, _, vals, s, rest, h, _, _, hs, _, _, _ => ⟨s, .refl _, by simpa [denA] using hs, fun _ _ _ _ => rfl,
       by simpa [S.genA] using h, rfl⟩
 end
+
+/-! ## the arguments (`rd8`, `pro`) -/
+
+theorem unle_rdL_succ (m : Nat → UInt8) (a k : Nat) : unle (rdL m a (k + 1)) = (m a).toNat + 256 * unle (rdL m (a + 1) k) := by
+  simp only [rdL, List.range_succ_eq_map, List.map_cons, List.map_map, unle]
+  congr 3; apply List.map_congr_left; intro i _; simp [Function.comp]; congr 1; omega
+
+/-- `lbu rd, i(t3)` -/
+theorem lbu_ok {P : List UInt8} {s : St} {rd i : Nat} {rest : List UInt8} (hrd : rd < 256) (hi : i < 256)
+    (h : CodeAt P s.pc (S.r 9 rd.toUInt8 28 i.toUInt8 ++ rest)) {A : Nat} (h28 : s.get 28 = BitVec.ofNat 64 A)
+    (hA : A + i < 2 ^ 64) :
+    Star P s ((({ s with pc := s.pc + 1 } : St)).set rd (BitVec.ofNat 64 (s.m (A + i)).toNat)) ∧ CodeAt P (s.pc + 1) rest := by
+  simp only [S.r, List.cons_append, List.nil_append] at h
+  refine ⟨one h ?_, codeAt_drop h⟩
+  show Out.next _ = _
+  rw [toU8 hrd, toU8 hi, show UInt8.toNat 28 = 28 from rfl, h28, addr_add hA]
+
+/-- one byte of `rd8`: `t0 := t0 << 8 | [t3 + i]` -/
+theorem rdstep_ok {P : List UInt8} {s : St} {i : Nat} {rest : List UInt8} (hi : i < 7)
+    (h : CodeAt P s.pc (S.r 4 5 5 8 ++ S.r 9 6 28 i.toUInt8 ++ S.r 12 5 5 6 ++ rest)) {A : Nat}
+    (h28 : s.get 28 = BitVec.ofNat 64 A) (hA : A + 8 < 2 ^ 64)
+    (h5 : s.get 5 = BitVec.ofNat 64 (unle (rdL s.m (A + i + 1) (7 - i)))) :
+    ∃ s', Star P s s' ∧ s'.get 5 = BitVec.ofNat 64 (unle (rdL s.m (A + i) (8 - i))) ∧ s'.m = s.m ∧
+      (∀ j, j ≠ 5 → j ≠ 6 → s'.get j = s.get j) ∧ CodeAt P s'.pc rest := by
+  simp only [List.append_assoc] at h
+  have h' : CodeAt P s.pc (4 :: 5 :: 5 :: 8 :: (S.r 9 (6 : Nat).toUInt8 28 i.toUInt8 ++ S.r 12 5 5 6 ++ rest)) := h
+  have x1 := one h' (s' := (({ s with pc := s.pc + 1 } : St).set 5 (s.get 5 <<< 8))) rfl
+  generalize hs1 : (({ s with pc := s.pc + 1 } : St).set 5 (s.get 5 <<< 8)) = s1 at x1
+  have p1 : s1.pc = s.pc + 1 := by rw [← hs1]; rfl
+  have g28 : s1.get 28 = BitVec.ofNat 64 A := by rw [← hs1, get_set_ne _ (by decide)]; exact h28
+  obtain ⟨x2, c2⟩ := lbu_ok (s := s1) (rd := 6) (i := i) (by decide) (by omega) (p1 ▸ codeAt_drop h') g28 (by omega)
+  generalize hs2 : ((({ s1 with pc := s1.pc + 1 } : St)).set 6 (BitVec.ofNat 64 (s1.m (A + i)).toNat)) = s2 at x2
+  have p2 : s2.pc = s.pc + 2 := by rw [← hs2]; simp [p1]
+  have c2' : CodeAt P s2.pc (12 :: 5 :: 5 :: 6 :: rest) := by rw [p2]; rw [p1] at c2; exact c2
+  have x3 := one c2' (s' := (({ s2 with pc := s2.pc + 1 } : St).set 5 (s2.get 5 ||| s2.get 6))) rfl
+  have m2 : s2.m = s.m := by rw [← hs2, ← hs1]; rfl
+  refine ⟨_, x1.trans (x2.trans x3), ?_, by rw [set_m]; exact m2, fun j a b => ?_, codeAt_drop c2'⟩
+  · simp only [get_set_same _ (show (5 : Nat) ≠ 0 by decide)]
+    have e5 : s2.get 5 = s.get 5 <<< 8 := by rw [← hs2, get_set_ne _ (by decide)]; show s1.get 5 = _; rw [← hs1]; simp
+    have e6 : s2.get 6 = BitVec.ofNat 64 (s.m (A + i)).toNat := by
+      rw [← hs2]; simp only [get_set_same _ (show (6 : Nat) ≠ 0 by decide)]; rw [show s1.m = s.m by rw [← hs1]; rfl]
+    have hl : unle (rdL s.m (A + i + 1) (7 - i)) < 2 ^ 56 := by
+      have := Proven.Mach.Ind.unle_lt (rdL s.m (A + i + 1) (7 - i)); rw [rdL_length] at this
+      have : 256 ^ (7 - i) ≤ 256 ^ 7 := Nat.pow_le_pow_right (by decide) (by omega)
+      have : (256 : Nat) ^ 7 = 2 ^ 56 := by decide
+      omega
+    rw [e5, e6, h5, shl_or _ _ hl (UInt8.toNat_lt _), show 8 - i = (7 - i) + 1 by omega, unle_rdL_succ]
+    congr 1; omega
+  · rw [get_set_ne _ a]; show s2.get j = _
+    rw [← hs2, get_set_ne _ b]; show s1.get j = _; rw [← hs1, get_set_ne _ a]; rfl
+
+/-- the step function of `rd8`'s loop -/
+def rdg (j : Nat) (acc : List UInt8) : List UInt8 := S.r 4 5 5 8 ++ S.r 9 6 28 (6 - j).toUInt8 ++ S.r 12 5 5 6 ++ acc
+
+theorem rd_loop {P : List UInt8} {A : Nat} (hA : A + 8 < 2 ^ 64) : ∀ n, n ≤ 7 → ∀ (s : St) (rest : List UInt8),
+    CodeAt P s.pc ((List.range' (7 - n) n).foldr rdg [] ++ rest) → s.get 28 = BitVec.ofNat 64 A →
+    s.get 5 = BitVec.ofNat 64 (unle (rdL s.m (A + n) (8 - n))) →
+    ∃ s', Star P s s' ∧ s'.get 5 = BitVec.ofNat 64 (unle (rdL s.m A 8)) ∧ s'.m = s.m ∧
+      (∀ j, j ≠ 5 → j ≠ 6 → s'.get j = s.get j) ∧ CodeAt P s'.pc rest
+  | 0, _, s, rest, h, _, h5 => ⟨s, .refl _, by simpa using h5, rfl, fun _ _ _ => rfl, by simpa using h⟩
+  | n + 1, hn, s, rest, h, h28, h5 => by
+    rw [show 7 - (n + 1) = 6 - n by omega, List.range'_succ, List.foldr_cons] at h
+    rw [show 6 - n + 1 = 7 - n by omega] at h
+    have h' : CodeAt P s.pc (S.r 4 5 5 8 ++ S.r 9 6 28 (n).toUInt8 ++ S.r 12 5 5 6 ++
+        ((List.range' (7 - n) n).foldr rdg [] ++ rest)) := by
+      simp only [rdg, List.append_assoc] at h ⊢; rw [show 6 - (6 - n) = n by omega] at h; exact h
+    obtain ⟨s1, x1, g1, m1, k1, c1⟩ := rdstep_ok (i := n) (by omega) h' h28 hA
+      (by rw [show 7 - n = 8 - (n + 1) by omega, show A + n + 1 = A + (n + 1) by omega]; exact h5)
+    obtain ⟨s2, x2, g2, m2, k2, c2⟩ := rd_loop hA n (by omega) s1 rest c1
+      (by rw [k1 28 (by decide) (by decide)]; exact h28) (by rw [g1, m1])
+    exact ⟨s2, x1.trans x2, by rw [g2, m1], by rw [m2, m1], fun j a b => by rw [k2 j a b, k1 j a b], c2⟩
+
+/-- `rd8`: `t0 :=` the 8 bytes at `t3`, little-endian -/
+theorem rd8_ok {P : List UInt8} {s : St} {rest : List UInt8} (h : CodeAt P s.pc (S.rd8 ++ rest)) {A : Nat}
+    (h28 : s.get 28 = BitVec.ofNat 64 A) (hA : A + 8 < 2 ^ 64) :
+    ∃ s', Star P s s' ∧ s'.get 5 = BitVec.ofNat 64 (unle (rdL s.m A 8)) ∧ s'.m = s.m ∧
+      (∀ j, j ≠ 5 → j ≠ 6 → s'.get j = s.get j) ∧ CodeAt P s'.pc rest := by
+  have e : S.rd8 = S.r 9 (5 : Nat).toUInt8 28 (7 : Nat).toUInt8 ++ (List.range' (7 - 7) 7).foldr rdg [] := by
+    simp only [S.rd8, List.range_eq_range']; rfl
+  rw [e, List.append_assoc] at h
+  obtain ⟨x1, c1⟩ := lbu_ok (rd := 5) (i := 7) (by decide) (by decide) h h28 (by omega)
+  obtain ⟨s2, x2, g2, m2, k2, c2⟩ := rd_loop hA 7 (by decide)
+    ((({ s with pc := s.pc + 1 } : St)).set 5 (BitVec.ofNat 64 (s.m (A + 7)).toNat)) rest c1
+    (by rw [get_set_ne _ (by decide)]; exact h28) (by
+      rw [get_set_same _ (show (5 : Nat) ≠ 0 by decide)]
+      simp [rdL, unle])
+  exact ⟨s2, x1.trans x2, by rw [g2]; rfl, by rw [m2]; rfl, fun j a b => by rw [k2 j a b, get_set_ne _ a]; rfl, c2⟩
 
 end Nano.R
