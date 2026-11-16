@@ -149,3 +149,4 @@ hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read 
   RAM next to the other blocks, `compile = some _` and a start state satisfying StartCorrect exists (built by the
   bare-metal boot proof, Riscv/Back/Boot*.lean) with workLength = memoryNeeded. Owner: only BARE METAL matters
   here (the boot proof already provides the start state); hosted setups may not satisfy it, which is fine.
+  Later (owner): a non-vacuity statement for non-bare-metal (hosted) setups too.
