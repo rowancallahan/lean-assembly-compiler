@@ -275,6 +275,12 @@ dependency closure; theorem STATEMENTS (`Spec/`) are reviewed by the owner, not 
 
 ### Nano: a tiny fully self-hosting toolchain (owner, 2026-11-16)
 
+PRIORITY (owner, 2026-11-16 21:50): full self-hosting of nano comes FIRST. It is the through line (spec = own small
+elaborator; back end proved with the big compiler's pieces; self-hosting checked by an exact fixed point) that later
+structures the big compiler; its syntax is opened up later by putting the full Lean elaborator in front. Boxes: nano-e2e
+(Sonnet: elaborator, byte-level rewrites, self-hosted binary), nano-proof (Opus: generator proofs), nano-v2 (Opus:
+self-compiling language, B2 = B3).
+
 - v1 (Sonnet box, branch nano-e2e): `nanoCompile = nanoGen ∘ nanoElab` (UTF-8 text → AST → RISC-V) written in Lean,
   compiled by our compiler (binary proved to compute `nanoCompile`); elaborator checked against Lean's real elaborator
   (per-program `rfl`/`decide` + fuzz); generated code tested on QEMU/Sail (proof = stretch).
