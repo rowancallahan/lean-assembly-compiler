@@ -9,24 +9,28 @@ import Compiler.IndMain
 
 namespace Proven.Mach.Ind
 
-/-- decode the fields of a shape into `(x, l, r)` -/
-def decFlds (d : List UInt8 → Option (C × List UInt8)) : List Fld → BitVec 64 × C × C → List UInt8 →
+/-- decode the fields of a shape into `(x, l, r)` (strings: the cells `C.str st` of the bytes) -/
+def decFlds (st : Nat) (d : List UInt8 → Option (C × List UInt8)) : List Fld → BitVec 64 × C × C → List UInt8 →
     Option ((BitVec 64 × C × C) × List UInt8)
   | [], acc, L => some (acc, L)
-  | .x :: fs, (_, l, r), L => decFlds d fs (BitVec.ofNat 64 (unle (L.take 8)), l, r) (L.drop 8)
-  | .b :: fs, (_, l, r), L => decFlds d fs (BitVec.ofNat 64 (unle (L.take 1)), l, r) (L.drop 1)
+  | .x :: fs, (_, l, r), L => decFlds st d fs (BitVec.ofNat 64 (unle (L.take 8)), l, r) (L.drop 8)
+  | .b :: fs, (_, l, r), L => decFlds st d fs (BitVec.ofNat 64 (unle (L.take 1)), l, r) (L.drop 1)
   | .l :: fs, (x, _, r), L => match d L with
-    | some (v, L') => decFlds d fs (x, v, r) L'
+    | some (v, L') => decFlds st d fs (x, v, r) L'
     | none => none
   | .r :: fs, (x, l, _), L => match d L with
-    | some (v, L') => decFlds d fs (x, l, v) L'
+    | some (v, L') => decFlds st d fs (x, l, v) L'
     | none => none
+  | .sl :: fs, (x, _, r), L =>
+    decFlds st d fs (x, C.str st ((L.drop 8).take (unle (L.take 8))), r) ((L.drop 8).drop (unle (L.take 8)))
+  | .sr :: fs, (x, l, _), L =>
+    decFlds st d fs (x, l, C.str st ((L.drop 8).take (unle (L.take 8)))) ((L.drop 8).drop (unle (L.take 8)))
 
 /-- decode one value (fuel: the depth) -/
 def C.dec (sh : Shape) : Nat → List UInt8 → Option (C × List UInt8)
   | 0, _ => none
   | _ + 1, [] => none
-  | n + 1, b :: L => match decFlds (C.dec sh n) (sh.getD b.toNat []) (0, .z, .z) L with
+  | n + 1, b :: L => match decFlds (sTag sh) (C.dec sh n) (sh.getD b.toNat []) (0, .z, .z) L with
     | some ((x, l, r), L') => some (.c b.toNat x l r, L')
     | none => none
 
@@ -46,52 +50,39 @@ theorem b_dec (x : BitVec 64) (hx : x.toNat < 256) (R : List UInt8) :
 theorem b_drop (x : BitVec 64) (R : List UInt8) : ((leN 8 x.toNat).take 1 ++ R).drop 1 = R := by
   simp [leN]
 
-theorem decFlds_ok (d : List UInt8 → Option (C × List UInt8)) (x : BitVec 64) (l r : C) (el er : List UInt8)
-    (hl : ∀ R, d (el ++ R) = some (l, R)) (hr : ∀ R, d (er ++ R) = some (r, R)) :
-    ∀ (fs : List Fld) (x0 : BitVec 64) (l0 r0 : C) (R : List UInt8),
-      (Fld.b ∈ fs → x.toNat < 256) →
-      decFlds d fs (x0, l0, r0) (fs.flatMap (encF x el er) ++ R) =
-        some ((if Fld.x ∈ fs ∨ Fld.b ∈ fs then x else x0, if Fld.l ∈ fs then l else l0,
-          if Fld.r ∈ fs then r else r0), R)
-  | [], x0, l0, r0, R, _ => by simp [decFlds]
-  | .x :: fs, x0, l0, r0, R, hb => by
-    simp only [List.flatMap_cons, encF, List.append_assoc, decFlds, x_dec, x_drop]
-    rw [decFlds_ok d x l r el er hl hr fs x l0 r0 R (fun m => hb (List.mem_cons_of_mem _ m))]
-    simp
-  | .b :: fs, x0, l0, r0, R, hb => by
-    simp only [List.flatMap_cons, encF, List.append_assoc, decFlds, b_dec x (hb (by simp)), b_drop]
-    rw [decFlds_ok d x l r el er hl hr fs x l0 r0 R (fun m => hb (List.mem_cons_of_mem _ m))]
-    simp
-  | .l :: fs, x0, l0, r0, R, hb => by
-    simp only [List.flatMap_cons, encF, List.append_assoc, decFlds, hl]
-    rw [decFlds_ok d x l r el er hl hr fs x0 l r0 R (fun m => hb (List.mem_cons_of_mem _ m))]
-    simp
-  | .r :: fs, x0, l0, r0, R, hb => by
-    simp only [List.flatMap_cons, encF, List.append_assoc, decFlds, hr]
-    rw [decFlds_ok d x l r el er hl hr fs x0 l0 r R (fun m => hb (List.mem_cons_of_mem _ m))]
-    simp
+/-- a string: its length, then its bytes -/
+theorem s_dec (L R : List UInt8) (hL : L.length < 2 ^ 64) :
+    ((leN 8 L.length ++ L ++ R).drop 8).take (unle ((leN 8 L.length ++ L ++ R).take 8)) = L ∧
+      ((leN 8 L.length ++ L ++ R).drop 8).drop (unle ((leN 8 L.length ++ L ++ R).take 8)) = R := by
+  have hn : unle ((leN 8 L.length ++ L ++ R).take 8) = L.length := by
+    rw [List.append_assoc, List.take_append_of_le_length (by simp [leN_length]),
+      List.take_of_length_le (by simp [leN_length]), unle_leN, Nat.mod_eq_of_lt (by simpa using hL)]
+  have hd : (leN 8 L.length ++ L ++ R).drop 8 = L ++ R := by
+    rw [List.append_assoc, List.drop_append_of_le_length (by simp [leN_length]),
+      List.drop_of_length_le (by simp [leN_length]), List.nil_append]
+  rw [hn, hd]; simp
 
 theorem dec_enc (sh : Shape) (hsh : sh.length < 255) :
-    ∀ (v : C), v.wf sh → ∀ n, v.depth < n → ∀ R, C.dec sh n (v.enc sh ++ R) = some (v, R)
+    ∀ (v : C), v.wf sh → (v.enc sh).length < 2 ^ 64 → ∀ n, v.depth < n → ∀ R, C.dec sh n (v.enc sh ++ R) = some (v, R)
   | .z, h => absurd h id
   | .c t x l r, ⟨ht, hx, hl, hr⟩ => by
-    intro n hn R
+    intro hlen n hn R
     obtain ⟨m, rfl⟩ : ∃ m, n = m + 1 := ⟨n - 1, by omega⟩
     simp only [C.depth] at hn
     have htb : (UInt8.ofNat t).toNat = t := by simp [UInt8.toNat_ofNat]; omega
-    have okl : ∀ R, C.dec sh m (C.enc sh l ++ R) = some (l, R) ∨ Fld.l ∉ sh.getD t [] := by
-      intro R; by_cases ml : Fld.l ∈ sh.getD t []
-      · rw [if_pos ml] at hl; exact .inl (dec_enc sh hsh l hl m (by omega) R)
-      · exact .inr ml
-    have okr : ∀ R, C.dec sh m (C.enc sh r ++ R) = some (r, R) ∨ Fld.r ∉ sh.getD t [] := by
-      intro R; by_cases mr : Fld.r ∈ sh.getD t []
-      · rw [if_pos mr] at hr; exact .inl (dec_enc sh hsh r hr m (by omega) R)
-      · exact .inr mr
+    have hfl : ∀ f ∈ sh.getD t [], (encF x (l.enc sh) (r.enc sh) l.senc r.senc f).length < 2 ^ 64 := fun f hf => by
+      have := flat_one (f := encF x (l.enc sh) (r.enc sh) l.senc r.senc) hf
+      simp only [C.enc, List.length_cons] at hlen; omega
+    have okl : ∀ R, Fld.l ∈ sh.getD t [] → C.dec sh m (C.enc sh l ++ R) = some (l, R) := fun R ml =>
+      dec_enc sh hsh l (hl.1 ml) (by simpa [encF] using hfl .l ml) m (by omega) R
+    have okr : ∀ R, Fld.r ∈ sh.getD t [] → C.dec sh m (C.enc sh r ++ R) = some (r, R) := fun R mr =>
+      dec_enc sh hsh r (hr.1 mr) (by simpa [encF] using hfl .r mr) m (by omega) R
     -- the fields of the shape decode to `x`, `l`, `r` (absent ones are `0` / `z`)
     have key : ∀ (fs : List Fld), (∀ f ∈ fs, f ∈ sh.getD t []) → ∀ (x0 : BitVec 64) (l0 r0 : C) (R : List UInt8),
-        decFlds (C.dec sh m) fs (x0, l0, r0) (fs.flatMap (encF x (l.enc sh) (r.enc sh)) ++ R) =
-          some ((if Fld.x ∈ fs ∨ Fld.b ∈ fs then x else x0, if Fld.l ∈ fs then l else l0,
-            if Fld.r ∈ fs then r else r0), R) := by
+        decFlds (sTag sh) (C.dec sh m) fs (x0, l0, r0)
+          (fs.flatMap (encF x (l.enc sh) (r.enc sh) l.senc r.senc) ++ R) =
+          some ((if Fld.x ∈ fs ∨ Fld.b ∈ fs then x else x0, if Fld.l ∈ fs ∨ Fld.sl ∈ fs then l else l0,
+            if Fld.r ∈ fs ∨ Fld.sr ∈ fs then r else r0), R) := by
       intro fs
       induction fs with
       | nil => intro _ x0 l0 r0 R; simp [decFlds]
@@ -108,14 +99,28 @@ theorem dec_enc (sh : Shape) (hsh : sh.length < 255) :
           rw [ih hsub']; simp
         | l =>
           have hm := hsub .l (by simp)
-          have e : ∀ R, C.dec sh m (C.enc sh l ++ R) = some (l, R) := fun R => (okl R).resolve_right (by simpa using hm)
-          simp only [List.flatMap_cons, encF, List.append_assoc, decFlds, e]
+          simp only [List.flatMap_cons, encF, List.append_assoc, decFlds, okl _ hm]
           rw [ih hsub']; simp
         | r =>
           have hm := hsub .r (by simp)
-          have e : ∀ R, C.dec sh m (C.enc sh r ++ R) = some (r, R) := fun R => (okr R).resolve_right (by simpa using hm)
-          simp only [List.flatMap_cons, encF, List.append_assoc, decFlds, e]
+          simp only [List.flatMap_cons, encF, List.append_assoc, decFlds, okr _ hm]
           rw [ih hsub']; simp
+        | sl =>
+          have hm := hsub .sl (by simp)
+          obtain ⟨L, hlL, hse⟩ := IsStr.senc (hl.2.1 hm)
+          have hLl : L.length < 2 ^ 64 := by have := hfl .sl hm; simp [encF, hse] at this; omega
+          obtain ⟨d1, d2⟩ := s_dec L (List.flatMap (encF x (l.enc sh) (r.enc sh) l.senc r.senc) fs ++ R) hLl
+          simp only [List.flatMap_cons, encF, hse, List.append_assoc] at d1 d2 ⊢
+          simp only [decFlds, d1, d2, ← hlL]
+          rw [← hse, ih hsub']; simp
+        | sr =>
+          have hm := hsub .sr (by simp)
+          obtain ⟨L, hrL, hse⟩ := IsStr.senc (hr.2.1 hm)
+          have hLl : L.length < 2 ^ 64 := by have := hfl .sr hm; simp [encF, hse] at this; omega
+          obtain ⟨d1, d2⟩ := s_dec L (List.flatMap (encF x (l.enc sh) (r.enc sh) l.senc r.senc) fs ++ R) hLl
+          simp only [List.flatMap_cons, encF, hse, List.append_assoc] at d1 d2 ⊢
+          simp only [decFlds, d1, d2, ← hrL]
+          rw [← hse, ih hsub']; simp
     have k := key (sh.getD t []) (fun f hf => hf) 0 .z .z R
     simp only [C.enc, List.cons_append, C.dec, htb, k]
     congr 3
@@ -124,10 +129,10 @@ theorem dec_enc (sh : Shape) (hsh : sh.length < 255) :
       · next h => exact (hx.1 (fun a => h (.inl a)) (fun a => h (.inr a))).symm
     · split
       · rfl
-      · next h => rw [if_neg h] at hl; exact hl.symm
+      · next h => exact (hl.2.2 (fun a => h (.inl a)) (fun a => h (.inr a))).symm
     · split
       · rfl
-      · next h => rw [if_neg h] at hr; exact hr.symm
+      · next h => exact (hr.2.2 (fun a => h (.inl a)) (fun a => h (.inr a))).symm
 
 /-- decode the input of a program: the first value, the second (if `b` is an input), the word (if `ain`) -/
 def decIn (sh : Shape) (bi : BIn) (ain : Bool) (L : List UInt8) : Option (C × C × BitVec 64) :=
@@ -139,7 +144,7 @@ def decIn (sh : Shape) (bi : BIn) (ain : Bool) (L : List UInt8) : Option (C × C
     | some (v₂, L₂) => some (v₁, v₂, if ain then BitVec.ofNat 64 (unle (L₂.take 8)) else 0)
 
 theorem decIn_ok (sh : Shape) (hsh : sh.length < 255) (bi : BIn) (ain : Bool) (v₁ v₂ : C) (a : BitVec 64)
-    (h1 : v₁.wf sh) (h2 : bi = .inp → v₂.wf sh) :
+    (h1 : v₁.wf sh) (h2 : bi = .inp → v₂.wf sh) (hI : (inBytesA sh bi ain v₁ v₂ a).length < 2 ^ 64) :
     decIn sh bi ain (inBytesA sh bi ain v₁ v₂ a) = some (v₁, (if bi = .inp then v₂ else .z), if ain then a else 0) := by
   have n1 := nodes_le sh v₁ h1
   unfold decIn
@@ -151,19 +156,19 @@ theorem decIn_ok (sh : Shape) (hsh : sh.length < 255) (bi : BIn) (ain : Bool) (v
     have e : inBytesA sh .inp ain v₁ v₂ a = v₁.enc sh ++ (v₂.enc sh ++ if ain then leN 8 a.toNat else []) := by
       simp [inBytesA, inBytes]
     have hl' : (inBytes sh .inp v₁ v₂).length = (v₁.enc sh).length + (v₂.enc sh).length := by simp [inBytes]
-    rw [e, dec_enc sh hsh v₁ h1 _ (by simp; omega)]
+    rw [e, dec_enc sh hsh v₁ h1 (by omega) _ (by simp; omega)]
     simp only [if_true]
-    rw [dec_enc sh hsh v₂ (h2 rfl) _ (by simp; omega)]
+    rw [dec_enc sh hsh v₂ (h2 rfl) (by omega) _ (by simp; omega)]
     cases ain <;> simp [x_dec0]
   | ctor t =>
     have e : inBytesA sh (.ctor t) ain v₁ v₂ a = v₁.enc sh ++ (if ain then leN 8 a.toNat else []) := by
       simp [inBytesA, inBytes]
-    rw [e, dec_enc sh hsh v₁ h1 _ (by simp; omega)]
+    rw [e, dec_enc sh hsh v₁ h1 (by rw [e] at hI; simp at hI; omega) _ (by simp; omega)]
     cases ain <;> simp [x_dec0]
   | none =>
     have e : inBytesA sh .none ain v₁ v₂ a = v₁.enc sh ++ (if ain then leN 8 a.toNat else []) := by
       simp [inBytesA, inBytes]
-    rw [e, dec_enc sh hsh v₁ h1 _ (by simp; omega)]
+    rw [e, dec_enc sh hsh v₁ h1 (by rw [e] at hI; simp at hI; omega) _ (by simp; omega)]
     cases ain <;> simp [x_dec0]
 
 /-- all byte strings of length `n` -/
@@ -193,7 +198,8 @@ def cellsSup {rk : Kd} (sh : Shape) (pg : Pg rk) (bi : BIn) (ain : Bool) (a0 : B
     | none => 0).foldr max 0
 
 theorem al_le_cellsSup {rk : Kd} (sh : Shape) (hsh : sh.length < 255) (pg : Pg rk) (bi : BIn) (ain : Bool)
-    (a0 : BitVec 64) (v₁ v₂ : C) (a : BitVec 64) (h1 : v₁.wf sh) (h2 : bi = .inp → v₂.wf sh) :
+    (a0 : BitVec 64) (v₁ v₂ : C) (a : BitVec 64) (h1 : v₁.wf sh) (h2 : bi = .inp → v₂.wf sh)
+    (hI : (inBytesA sh bi ain v₁ v₂ a).length < 2 ^ 64) :
     pg.al v₁ (if ain then a else a0) (bi.val v₂) ≤
       cellsSup sh pg bi ain a0 (inBytesA sh bi ain v₁ v₂ a).length := by
   have := le_foldr_max (fun L => match decIn sh bi ain L with
@@ -201,7 +207,7 @@ theorem al_le_cellsSup {rk : Kd} (sh : Shape) (hsh : sh.length < 255) (pg : Pg r
     | none => 0) _ _ (mem_allBytes (inBytesA sh bi ain v₁ v₂ a))
   unfold cellsSup
   refine Nat.le_trans ?_ this
-  simp only [decIn_ok sh hsh bi ain v₁ v₂ a h1 h2]
+  simp only [decIn_ok sh hsh bi ain v₁ v₂ a h1 h2 hI]
   cases bi <;> cases ain <;> simp [BIn.val]
 
 end Proven.Mach.Ind

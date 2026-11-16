@@ -290,7 +290,8 @@ end
 -- `2^64 - 1`) components; pairs: equal, one component changed, a prefix, unrelated; levels with `param` names
 section
 open Proven.Frontx.IndEx
-def strs : List String := ["", "a", "b", "x", "Nat", "succ", "é", "λ", "∀x", "foo_bar", "Nat.add", "ab", "ba", "a\x00b"]
+def strs : List String := ["", "a", "b", "x", "Nat", "succ", "é", "λ", "∀x", "foo_bar", "Nat.add", "ab", "ba", "a\x00b",
+  "𝔸", "x🙂y", "\x00", "ü∀𝔸z"]
 def genN : Nat → Nat → ConLeche.Name
   | 0, _ => .anonymous
   | d + 1, s => match rnd s d % 3 with
@@ -302,7 +303,13 @@ def bumpN : ConLeche.Name → ConLeche.Name
   | .anonymous => .str .anonymous "a"
   | .str p s => .str p (if s = "a" then "b" else "a")
   | .num p n => .num p ((n + 1) % 2 ^ 64)
-def namePairs : List (ConLeche.Name × ConLeche.Name) := (List.range 60).map fun i =>
+/-- fixed pairs first: the empty string, NUL, 2-, 3- and 4-byte UTF-8, equal and differing in one byte -/
+def strPairs : List (ConLeche.Name × ConLeche.Name) :=
+  [(.str .anonymous "", .str .anonymous ""), (.str .anonymous "", .str .anonymous "\x00"),
+   (.str .anonymous "\x00", .str .anonymous "\x00"), (.str (.num .anonymous 7) "𝔸", .str (.num .anonymous 7) "𝔸"),
+   (.str .anonymous "𝔸", .str .anonymous "𝔹"), (.str .anonymous "λ∀", .str .anonymous "λ∀"),
+   (.str .anonymous "é", .str .anonymous "e"), (.str (.str .anonymous "") "x🙂y", .str (.str .anonymous "") "x🙂y")]
+def namePairs : List (ConLeche.Name × ConLeche.Name) := strPairs ++ (List.range 52).map fun i =>
   let n := genN (i % 5 + 1) (i + 1)
   match i % 4 with
   | 0 => (n, n) | 1 => (n, bumpN n) | 2 => (n, .str n "x") | _ => (n, genN (i % 4 + 1) (i + 5))
@@ -318,7 +325,8 @@ def bumpL : ConLeche.Level → ConLeche.Level
   | .succ u => .succ (bumpL u)
   | .max u v => .max (bumpL u) v
   | .imax u v => .imax (bumpL u) v
-def levelPairs : List (ConLeche.Level × ConLeche.Level) := (List.range 60).map fun i =>
+def levelPairs : List (ConLeche.Level × ConLeche.Level) := (strPairs.map fun (a, b) => (.param a, .param b)) ++
+  (List.range 52).map fun i =>
   let l := genLN (i % 6) (i + 1)
   match i % 3 with | 0 => (l, l) | 1 => (l, bumpL l) | _ => (l, genLN (i % 5) (i + 7))
 #eval do

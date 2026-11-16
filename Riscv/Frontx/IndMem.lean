@@ -265,6 +265,7 @@ theorem memoryNeeded_le {p : IndProg} {c : CompiledA} (hc : compile p = some c) 
   show 8 * peak (p.events (p.bytes x)) ≤ _
   rw [hev]
   have hA := al_le_cellsSup p.sh hg.1 p.pg p.bi p.ain p.a0 x.1 x.2.1 x.2.2 hv.1 hv.2
+    (by unfold IndProg.bytes at hI; omega)
   generalize p.pg.al x.1 (if p.ain then x.2.2 else p.a0) (p.bi.val x.2.1) = al at hpk hA
   generalize hn : (p.bytes x).length = n at hpk hA ⊢
   unfold IndProg.bytes at hn
