@@ -11,8 +11,12 @@ rng = random.Random(int(sys.argv[2]) if len(sys.argv) > 2 else 5)
 M = 2 ** 64
 VALS = [0, 1, 2, 3, M - 1, M - 2, 2 ** 63, 2 ** 63 - 1, 12345678901234567, 7]
 def vecs(k): return [[str(rng.choice(VALS)) for _ in range(k)] for _ in range(6)]
+import re
+def arity(src, name):
+    ms = re.findall(r"def\s+" + re.escape(name) + r"((?:\s*\([^)]*\))*)\s*:", src)
+    return sum(len(g.split(":")[0].split()) for g in re.findall(r"\(([^)]*)\)", ms[-1])) if ms else 0
 def case(src, name="f", ty="UInt64", k=None):
-    return dict(src=src, name=name, ty=ty, ins=vecs(k if k is not None else 3))
+    return dict(src=src, name=name, ty=ty, ins=vecs(arity(src, name)))
 H = "def g (a b : UInt64) : UInt64 := a - b\ndef h (a : UInt64) : UInt64 := a * 3\ndef k : UInt64 := 7\n"
 def body(e, ty="UInt64", params="x y z"): return H + f"def f ({params} : {ty}) : {ty} := {e}\n"
 cases = []
@@ -78,6 +82,21 @@ def mutate(e):
         elif ts: j = rng.randrange(len(ts)); ts[min(i, len(ts) - 1)], ts[j] = ts[j], ts[min(i, len(ts) - 1)]
     return " ".join(ts)
 for _ in range(N): cases.append(case(body(mutate(rng.choice(GOOD)), rng.choice(["UInt64", "Int64"])), ty="UInt64"))
+# layout fuzz: valid programs with random separators (including none, newlines at column 0, trailing spaces) between tokens
+import re as _re
+SEPS = [" ", " ", " ", "\n", "\n ", " \n", "\n\n", "  ", "", "\n  ", "\r\n", "\t"]
+def toks(t): return _re.findall(r"[A-Za-z0-9_]+|:=|[-+*();:]", t)
+PROGS = [H + "def f (x y z : UInt64) : UInt64 := " + e + "\n" for e in GOOD] + [
+  "def g (x y : UInt64) : UInt64 := x - y\ndef f (x : UInt64) : UInt64 := let w := g x 5; let v := g w w; v - w * x\n",
+  "def k : UInt64 := 3\ndef f (x : UInt64) : UInt64 := k * k - (x + k) * -2\n", "def f (x y : UInt64) : UInt64 := (x) - (y)\n"]
+for _ in range(N):
+    p = rng.choice(PROGS); ts = toks(p)
+    out, sp = "", None
+    for i, t in enumerate(ts):
+        sep = rng.choice(SEPS) if rng.random() < 0.5 else rng.choice(SEPS[:7])
+        if sep == "" and i + 1 < len(ts) and re.match(r"\w", t[-1]) and re.match(r"\w", ts[i + 1][0]): sep = " "
+        out += t + sep
+    cases.append(case(out, name="f", ty="UInt64"))
 # types: the oracle needs the entry's type to wrap Int64 arguments
 for c in cases:
     if "def f (x y z : Int64) : Int64" in c["src"] or "(x : Int64) : Int64" in c["src"] or "def f : Int64" in c["src"]: c["ty"] = "Int64"
@@ -87,20 +106,20 @@ out = subprocess.run("PATH=$HOME/.elan/bin:$PATH lake env lean --run Testing/nan
 if out.returncode: print(out.stderr[-2000:]); sys.exit(2)
 lines = out.stdout.splitlines(); assert len(lines) == len(cases), (len(lines), len(cases))
 stat = dict(both_reject=0, nano_only_rejects=0, both_accept_equal=0, both_accept_unevaluated=0, BUG_nano_accepts_lean_rejects=0, BUG_meanings_differ=0)
-bugs = []
+bugs = []; uneval = []
 for c, l in zip(cases, lines):
     r, n = l.split(" nano=")
     r = r[len("real="):]
     if r == "R" and n == "R": stat["both_reject"] += 1
     elif r != "R" and n == "R": stat["nano_only_rejects"] += 1
     elif r == "R": stat["BUG_nano_accepts_lean_rejects"] += 1; bugs.append((c["src"], l))
-    elif r == "A[?]": stat["both_accept_unevaluated"] += 1; bugs.append((c["src"], "unevaluated " + l)) if False else None
+    elif "?" in r: stat["both_accept_unevaluated"] += 1; uneval.append(c["src"])
     elif r == n: stat["both_accept_equal"] += 1
     else: stat["BUG_meanings_differ"] += 1; bugs.append((c["src"], l))
 print(len(cases), "cases:", stat)
+for u in uneval[:5]: print("UNEVAL", repr(u))
 seen = set()
 for s, l in bugs:
     if s in seen: continue
     seen.add(s); print("BUG", repr(s), l)
-    if len(seen) >= 40: break
 sys.exit(1 if bugs else 0)
