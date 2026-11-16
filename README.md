@@ -15,3 +15,8 @@ Then `lake build <target>` should rebuild only this repo's own modules.
   `for p in aa ab ac ad; do git show origin/build-cache:repo-build.tar.zst.part-$p; done | zstd -dc | tar xf -`
   Then `lake build` rebuilds only modules changed since caa4cee.
 - No zstd on the box? `apt-get install -y zstd` (package registries are reachable), or ask the parent for .tar.gz.
+
+## Without zstd: gzip copies (same contents)
+- `sail-riscv-lean.tar.gz`: `mkdir -p ../deps && git show origin/build-cache:sail-riscv-lean.tar.gz | tar xzf - -C ../deps`
+- `sailsim.tar.gz`: `mkdir -p /home/user/deps && git show origin/build-cache:sailsim.tar.gz | tar xzf - -C /home/user/deps`
+- `repo-build.tar.gz.part-aa..ad` (main caa4cee): `for p in aa ab ac ad; do git show origin/build-cache:repo-build.tar.gz.part-$p; done | tar xzf -`
