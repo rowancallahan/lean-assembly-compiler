@@ -183,3 +183,48 @@ hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read 
   Clight semantics, the same shape as our compile_correct with Clight in place of Sail. Route: shared IR →
   Clight + simulation proof; then CompCert compiles the C. Needs Lean 4.32.1 (Clean) vs our 4.29: separate repo or
   later upgrade; Clean's non-commercial licence applies to the side project only.
+- PRIORITY (owner, 2026-11-16): self-hosting + con-leche first; pick whatever is fastest to a STABLE, ORGANISED
+  version of those two. lean-zip / lean-svg / book only where they share features (arrays, structures). Every Opus
+  round takes its targets from the latest depth probes (CONLECHE_DEPTH2.md, SELFHOST_DEPTH2.md when they land),
+  biggest blocker first. Organisation: one route (the shared IR) for every front end, notes indexed in
+  Testing/notes/INDEX.md, small pieces merged as they finish.
+  lean-zip and lean-svg (and the book) are deliberately easier intermediate targets: when a con-leche / self-hosting
+  round is stuck, switch to them to build the missing feature on a simpler case, then return.
+- Order and self-hosting track (owner, 2026-11-16): (1) con-leche (the consistent Lean checker) first; (2) then
+  self-host a COMPLETE compiler: milestone = the compiled compiler compiles itself AND compiles con-leche (no toy);
+  (3) lean-zip, then lean-svg, as easier side targets; the book, lean-zip and lean-svg are the measuring sticks.
+  Friendly-style track for self-hosting: a rewrite of the compiler's own core in compiler-friendly style, grown from
+  the current code, ONLY where the front end cannot yet take the real style; every rewritten function carries a Lean
+  equation proving it equal to the original (so the self-hosted binary implements the real compiler, not a toy);
+  the friendly part shrinks as the front end learns the complex style (the long-term goal).
+
+## Next Opus rounds (owner, 2026-11-16)
+
+1. Compile-time constants: a 0-ary definition whose value the kernel computes within a fixed heartbeat budget and output-size cap
+   (literal data such as `Name`/`String`/`Nat` constants) is emitted as data, proved by `decide +kernel`/`rfl`. Anything over budget
+   compiles as an ordinary 0-argument function (honest run-time cost). Never fold calls with arguments.
+2. IR stage S3: move every front end (list, ind, wa, hof, monad, paged) onto the shared IR so features compose in one function
+   (e.g. inductives + monad + structure). Without this, features land separately and the con-leche percentages barely move.
+Measured yield (BLOCKER_YIELD.md, merged): con-leche greedy starts with 0-ary constants (+106 functions); the self-hoster with
+   translator-shape bugs (+83: `PANIC at Expr.appArg!`, `instantiateForall, too many parameters`, kernel `Sim argument has type Type 1`)
+   and polymorphic type variables (+105: the compiler's IR types are generic in the register type ρ; monomorphise at the use site).
+   So round 1 = constants + monomorphisation of type variables + those translator crashes; round 2 = IR S3.
+Ranking of later features from the Haiku yield analysis (`Testing/notes/BLOCKER_YIELD.md`, branch blocker-yield).
+
+## Trust statement (owner, 2026-11-16, FINAL)
+
+Trusted: (1) the pinned Sail models with their axiom set (`Testing/scripts/expected-axioms.txt`) and the standard Lean
+axioms (propext, Classical.choice, Quot.sound); (2) the hardware behaves as the Sail model; (3) ONE root proof checker =
+the intersection of con-leche, the Lean kernel, nanoda and other independent checkers (paranoid lake check: a proof is
+trusted only if all of them accept it). Caveats kept in view: the checkers share the export format and the type theory
+(the exporter is the one shared piece of code); the paranoid check must run on the exact shipped theorems and their
+dependency closure; theorem STATEMENTS (`Spec/`) are reviewed by the owner, not by the checkers.
+
+### Earlier proposal (superseded by the above)
+
+- Proposed wording: trusted = the pinned Sail models + ONE root proof checker and its logic (today the Lean kernel; later
+  con-leche's own binary only after a root checker has checked its proof once; independent checkers such as other Lean
+  kernels can be added as diverse roots) + "the hardware behaves as the Sail model". Self-checking is evidence, not a root.
+- A COMPLETE self-hosted compiler needs the front ends (today Lean metaprograms with tactics) rewritten as a pure function
+  from exported kernel terms to code + a certificate checked by the compiled con-leche. Not counted in SELFHOST_DEPTH*;
+  needs its own design round before the self-hosting milestone can be met.
