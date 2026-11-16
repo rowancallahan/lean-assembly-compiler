@@ -1,6 +1,6 @@
 /- **The nano compiler is correct on RISC-V** (the owner's statements, `Compiler/AllocSpec.lean`):
-`Nano.nano_compile_correct : CompileCorrect riscv nanoCompile` and `Nano.nano_compile_runs : CompileRuns riscv
-nanoCompile`, for `nanoCompile p = Ir.compile (lower p)` (code = `nanoGen p`, `nanoGen_code`).  The program meaning is
+`Nano.nano_compile_correct : CompileCorrect riscv nanoCompileIR` and `Nano.nano_compile_runs : CompileRuns riscv
+nanoCompileIR`, for `nanoCompileIR p = Ir.compile (lower p)` (code = `nanoGenIR p`, `nanoGenIR_code`).  The program meaning is
 `nanoRun` (`Nano/Proof.lean`: arguments as 8-byte LE words, `Prog.eval`, result as 8 LE bytes); the lowering is
 proved there (`lower_ok`), the IR compiler in `Riscv/Back/IrTop.lean` (`Ir.machine_run`). -/
 import Nano.Proof
@@ -12,12 +12,12 @@ namespace Nano
 open Proven Proven.Mach Proven.Top Proven.Top.Alloc
 
 /-- **the nano compiler** -/
-noncomputable def nanoCompile (p : Prog) : Option CompiledA := Ir.compile (lower p)
+noncomputable def nanoCompileIR (p : Prog) : Option CompiledA := Ir.compile (lower p)
 
-/-- the code of `nanoCompile` is `nanoGen` -/
-theorem nanoGen_code {p : Prog} {c : CompiledA} (h : nanoCompile p = some c) : c.code = nanoGen p := by
-  unfold nanoCompile Ir.compile at h
-  unfold nanoGen
+/-- the code of `nanoCompileIR` is `nanoGenIR` -/
+theorem nanoGenIR_code {p : Prog} {c : CompiledA} (h : nanoCompileIR p = some c) : c.code = nanoGenIR p := by
+  unfold nanoCompileIR Ir.compile at h
+  unfold nanoGenIR
   split at h
   · next ws Q hw => cases h; rw [hw]
   · exact nomatch h
@@ -29,7 +29,7 @@ theorem computes_of {p : Prog} {α β : Type} {f : α → β} {encodeInput : α 
   lower_ok p _ _ (computes argument) hsmall
 
 /-- **What happens** (`CompileRuns`) -/
-theorem nano_compile_runs : CompileRuns riscv nanoCompile := by
+theorem nano_compile_runs : CompileRuns riscv nanoCompileIR := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
     outputFits
   obtain ⟨finishState, hruns, hpc, hframe, hcase⟩ :=
@@ -41,7 +41,7 @@ theorem nano_compile_runs : CompileRuns riscv nanoCompile := by
   · exact ⟨fun _ => hlt, fun _ => heq⟩
 
 /-- **What comes out** (`CompileCorrect`) -/
-theorem nano_compile_correct : CompileCorrect riscv nanoCompile := by
+theorem nano_compile_correct : CompileCorrect riscv nanoCompileIR := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
     outputFits enoughMemory
   obtain ⟨finishState, hruns, hpc, hframe, hcase⟩ :=
