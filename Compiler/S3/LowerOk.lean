@@ -222,7 +222,7 @@ theorem low_ok (hQ : HasFns P Q) (hS : Small P.S) {Γ : List Ty} {τ : Ty} {env 
     generalize hg1 : upd g (n + 1) (.w (BitVec.ofNat 64 j)) = g1 at x1
     have hg1r : ∀ r : Nat, r < n + 1 → g1 r = g r := fun r hr => by rw [← hg1]; exact upd_lt (Nat.le_refl _) _ r hr
     -- the fields
-    generalize hM : (P.S.flds i j).length = M at hfl
+    generalize hM : (P.S.fld i ⟨j, hj⟩).length = M at hfl
     have hgx1 : g1 (ρ.getD x.idx 0) = .p b 0 := by rw [hg1r _ (Nat.lt_succ_of_lt hxn), hgx]
     obtain ⟨g2, x2, f2, r2⟩ := ex_ldFs (Q := Q) hgx1 hblk hRL (n + 2) (Nat.lt_of_lt_of_le hxn (Nat.le_add_right n 2))
       fs.length (Nat.le_refl _)
@@ -237,15 +237,15 @@ theorem low_ok (hQ : HasFns P Q) (hS : Small P.S) {Γ : List Ty} {τ : Ty} {env 
       · omega
       · have := hb r hr; omega)
     have x4 := ex_mov (P := Q) g3 m3 n (n + 2 + M)
-    have xarm : SC.Ex Q (.seq (ldFs (reg ρ x) (n + 2) (P.S.flds i j).length)
-        (.seq (low (arms ⟨j, hj⟩) (fregs (n + 2) (P.S.flds i j).length ++ ρ) (n + 2 + (P.S.flds i j).length))
-          (mov n (n + 2 + (P.S.flds i j).length)))) g1 m (upd g3 n (g3 (n + 2 + M))) m3 := by
+    have xarm : SC.Ex Q (.seq (ldFs (reg ρ x) (n + 2) (P.S.fld i ⟨j, hj⟩).length)
+        (.seq (low (arms ⟨j, hj⟩) (fregs (n + 2) (P.S.fld i ⟨j, hj⟩).length ++ ρ) (n + 2 + (P.S.fld i ⟨j, hj⟩).length))
+          (mov n (n + 2 + (P.S.fld i ⟨j, hj⟩).length)))) g1 m (upd g3 n (g3 (n + 2 + M))) m3 := by
       rw [hfl] at x2; rw [hM]; exact .seq x2 (.seq x3 x4)
     have hjs : j < 2 ^ 32 := Nat.lt_trans hj (hS i).1
     have xc := ex_chain (Q := Q) (t := n + 1) (g := g1) (m := m) (List.ofFn fun (j' : Fin (P.S.nc i)) =>
-        SC.seq (ldFs (reg ρ x) (n + 2) (P.S.flds i j').length)
-          (SC.seq (low (arms j') (fregs (n + 2) (P.S.flds i j').length ++ ρ) (n + 2 + (P.S.flds i j').length))
-            (mov n (n + 2 + (P.S.flds i j').length)))) 0 j (by simp [hj])
+        SC.seq (ldFs (reg ρ x) (n + 2) (P.S.fld i j').length)
+          (SC.seq (low (arms j') (fregs (n + 2) (P.S.fld i j').length ++ ρ) (n + 2 + (P.S.fld i j').length))
+            (mov n (n + 2 + (P.S.fld i j').length)))) 0 j (by simp [hj])
       (by rw [← hg1, upd_same, Nat.zero_add]) (fun i' hi' => by
         simp only [Nat.zero_add]
         intro he'

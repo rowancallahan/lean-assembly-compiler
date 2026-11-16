@@ -44,6 +44,8 @@ structure Sig where
 def Sig.flds (S : Sig) (i j : Nat) : List Ty := (S.dts.getD i []).getD j []
 /-- the number of constructors of datatype `i` -/
 def Sig.nc (S : Sig) (i : Nat) : Nat := (S.dts.getD i []).length
+/-- the field types of constructor `j` of datatype `i`, for a constructor that exists -/
+def Sig.fld (S : Sig) (i : Nat) (j : Fin (S.nc i)) : List Ty := (S.dts.getD i [])[j.val]'j.isLt
 
 /-! ## syntax -/
 
@@ -108,10 +110,20 @@ inductive Expr (S : Sig) : List Ty → Ty → Type where
   /-- constructor `j` of datatype `i` -/
   | mk {Γ : List Ty} (i j : Nat) (xs : Vars Γ (S.flds i j)) : Expr S Γ (.d i)
   /-- exhaustive `match`: arm `j` binds the fields of constructor `j` (field `0` is variable `0`) -/
-  | cas {Γ : List Ty} {τ : Ty} {i : Nat} (x : Var Γ (.d i)) (arms : (j : Fin (S.nc i)) → Expr S (S.flds i j ++ Γ) τ) :
+  | cas {Γ : List Ty} {τ : Ty} {i : Nat} (x : Var Γ (.d i)) (arms : (j : Fin (S.nc i)) → Expr S (S.fld i j ++ Γ) τ) :
       Expr S Γ τ
   /-- a fully applied call of function `f` -/
   | call {Γ : List Ty} {τ : Ty} (f : Fin S.fns.length) (xs : Vars Γ S.fns[f].1) (h : S.fns[f].2 = τ) : Expr S Γ τ
+
+/-- match arms as a list (`Alts.get` is the arms function of `cas`) -/
+inductive Alts (S : Sig) (Γ : List Ty) (τ : Ty) : List (List Ty) → Type where
+  | nil : Alts S Γ τ []
+  | cons {fs : List Ty} {fss : List (List Ty)} : Expr S (fs ++ Γ) τ → Alts S Γ τ fss → Alts S Γ τ (fs :: fss)
+
+def Alts.get {S : Sig} {Γ : List Ty} {τ : Ty} : {fss : List (List Ty)} → Alts S Γ τ fss → (j : Fin fss.length) →
+    Expr S (fss[j] ++ Γ) τ
+  | _ :: _, .cons a _, ⟨0, _⟩ => a
+  | _ :: _, .cons _ as, ⟨j + 1, h⟩ => as.get ⟨j, Nat.lt_of_succ_lt_succ h⟩
 
 /-- **programs**: a signature, one body per function, the entry `main` (a byte list to a byte list, datatype `0`
 being byte lists `[[], [w, d 0]]`) -/
@@ -160,8 +172,8 @@ inductive Ev (P : Prog) : {Γ : List Ty} → {τ : Ty} → List V → Expr P.S �
   | iteF {Γ τ env v} {c : Var Γ .b} {e₁ e₂ : Expr P.S Γ τ} : env[c.idx]? = some (.w 0) → Ev P env e₂ v →
       Ev P env (.ite c e₁ e₂) v
   | mk {Γ env i j vs} {xs : Vars Γ (P.S.flds i j)} : xs.get env = some vs → Ev P env (.mk i j xs) (.c j vs)
-  | cas {Γ τ env i j fs v} {x : Var Γ (.d i)} {arms : (j : Fin (P.S.nc i)) → Expr P.S (P.S.flds i j ++ Γ) τ}
-      (hj : j < P.S.nc i) : env[x.idx]? = some (.c j fs) → fs.length = (P.S.flds i j).length →
+  | cas {Γ τ env i j fs v} {x : Var Γ (.d i)} {arms : (j : Fin (P.S.nc i)) → Expr P.S (P.S.fld i j ++ Γ) τ}
+      (hj : j < P.S.nc i) : env[x.idx]? = some (.c j fs) → fs.length = (P.S.fld i ⟨j, hj⟩).length →
       Ev P (fs ++ env) (arms ⟨j, hj⟩) v → Ev P env (.cas x arms) v
   | call {Γ τ env vs v} {f : Fin P.S.fns.length} {xs : Vars Γ P.S.fns[f].1} {h : P.S.fns[f].2 = τ} :
       xs.get env = some vs → Ev P vs (P.body f) v → Ev P env (.call f xs h) v
@@ -246,7 +258,7 @@ inductive Reaches (P : Prog) (g : Fin P.S.fns.length) (ws : List V) : {Γ : List
       Reaches P g ws env e₁ → Reaches P g ws env (.ite c e₁ e₂)
   | iteF {Γ τ env} {c : Var Γ .b} {e₁ e₂ : Expr P.S Γ τ} : env[c.idx]? = some (.w 0) →
       Reaches P g ws env e₂ → Reaches P g ws env (.ite c e₁ e₂)
-  | cas {Γ τ env i j fs} {x : Var Γ (.d i)} {arms : (j : Fin (P.S.nc i)) → Expr P.S (P.S.flds i j ++ Γ) τ}
+  | cas {Γ τ env i j fs} {x : Var Γ (.d i)} {arms : (j : Fin (P.S.nc i)) → Expr P.S (P.S.fld i j ++ Γ) τ}
       (hj : j < P.S.nc i) : env[x.idx]? = some (.c j fs) → Reaches P g ws (fs ++ env) (arms ⟨j, hj⟩) →
       Reaches P g ws env (.cas x arms)
 

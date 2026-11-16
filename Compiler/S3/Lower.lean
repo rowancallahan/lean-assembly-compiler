@@ -72,9 +72,9 @@ def low {S : Sig} : {Γ : List Ty} → {τ : Ty} → Expr S Γ τ → List VReg 
   | _, _, .cas (i := i) x arms, ρ, n =>
     .seq (.i (.ld (n + 1) (reg ρ x) 0))
       (chain (n + 1) 0 (List.ofFn fun j =>
-        .seq (ldFs (reg ρ x) (n + 2) (S.flds i j).length)
-          (.seq (low (arms j) (fregs (n + 2) (S.flds i j).length ++ ρ) (n + 2 + (S.flds i j).length))
-            (mov n (n + 2 + (S.flds i j).length)))))
+        .seq (ldFs (reg ρ x) (n + 2) (S.fld i j).length)
+          (.seq (low (arms j) (fregs (n + 2) (S.fld i j).length ++ ρ) (n + 2 + (S.fld i j).length))
+            (mov n (n + 2 + (S.fld i j).length)))))
   | _, _, .call f xs _, ρ, n => .i (.call [n] f.val (xs.idxs.map fun k => .r (ρ.getD k 0)))
 
 /-- the code of a function with `k` parameters -/
