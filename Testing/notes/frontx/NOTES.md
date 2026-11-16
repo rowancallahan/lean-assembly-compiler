@@ -2057,25 +2057,28 @@ check.sh; (2) optionally `String.utf8ByteSize` (the chain length, cheap) and `St
 (Name constants like `Name.str .anonymous "Nat"`, `=` with a constant side); (4) small linter warnings (unused simp
 arguments in `IndStrOk.lean`, `IndDec.lean`, `IndSup.lean`).
 
-## 31. con-leche blockers (branch `conleche-blk`; PAUSED, unfinished)
+## 31. con-leche blockers (branch `conleche-blk`)
 
-**Done (committed, front end only, `Riscv/Frontx/IndCmd.lean`).**
-- (2) Constants of a declared type (`natAddName := natName.str "add"`): `frontx_ind f on T` for a zero-argument `f`
-  generates `f.cst (t : root) : ty := f` (input tree ignored) and compiles that; a constant is unfolded in `reify`.
-  String literals: `let x := nil; let x := chunk_k t x; …` over generated functions `f.cst.s<k>_<bytes>` (6 bytes per
-  chunk; one function body cannot hold more than ~8 cells, because conditional branches reach 4 KiB: `bzOK`).
-  `Riscv/Frontx/ConLecheBlk.lean`: the 40 `: Name` constants of the con-leche batch (verbatim, file:line comments),
-  all `frontx_ind` commands elaborate with no errors (9.5 min for the file: its proofs are slow).
-- (1) Non-recursive entries whose body is a `match` (default patterns, match on a call result): the function is its own
-  `armsOfCases` function (was: "has no equations" for `match_1`). `Cached.isStuckHeadC` (`| .sort _ | .fvar .. | … => true | _ => false`)
-  already compiled. `Expr.headIsProj` translates, but its `sem` proof (two functions) exceeded 16M heartbeats (>15 CPU min): open.
-- wf proof: a fallback alternative was added after `rcases` (harmless).
+**Done** (front end `Riscv/Frontx/IndCmd.lean`; `check.sh` ALL CHECKS PASSED on the branch merged with origin/main).
+- (2) Constants of a declared type: `frontx_ind f on T` for a zero-argument `f` (`natAddName := natName.str "add"`) generates
+  `f.cst (t : root) : ty := f` (the input tree is ignored) and compiles that; constants are unfolded in `reify`. String
+  literals: `let x := nil; let x := T.lit.s<k>_<bytes> t x; …` over generated chunk functions (6 bytes each, once per literal
+  and shape; one function body holds at most ~8 cells, because conditional branches reach 4 KiB: `bzOK`). Chunk functions are
+  discovered through the arguments of recorded calls.
+  `Riscv/Frontx/ConLecheBlk.lean`: the 40 `: Name` constants of the con-leche batch (@6810492c1, verbatim, file:line comments).
+  Each: `f.cst.implements1` (axioms = the Sail set, `axioms_conleche-blk.lean`, entries in expected-axioms.txt) and 50 cases
+  on QEMU and Sail equal to executed Lean (`Testing/asm/emit_conleche_blk.lean`, `blk_*`; all 40 pass).
+- (1, partly) A non-recursive function whose body is a `match` is its own function (by cases). A match on a variable field of a
+  constructor application (nested pattern `.const c []`) splits on the field the matcher is stuck on. `==` on declared types
+  goes through `decide (a = b)` and `Name.decEq`.
 
-**Not done.** No `Implements1` axiom file `axioms_conleche-blk.lean`, no QEMU/Sail tests (`emit` file, `frontx_test.py check 50`),
-no check.sh, nothing merged with origin/main. (3) specialisation of one of two scalar parameters, (4) two-argument matches: not started.
-`Scratch/W*.lean` are probes (W4: isBoolTrue, isNatZero, natPred?, peelPis, binderDom, piSortTeleLen?, rawNatLit?, ioNeutral; not yet run to completion).
-Expr constants (`prop`, `type1`, …) and `uN` use helper functions (`bn`, `lm`, `cnst`) with `String` parameters: unsupported.
-Count of batch functions compiling: 40 new constants (not yet tested on QEMU/Sail); the earlier 2+2+… of S0/S1/S3 are unchanged.
+**Not done.**
+- `Expr.isBoolTrue` (nested pattern + `==` constant) now translates (5 functions) but its `sem` proof fails (the generic tactic
+  does not case-split on the `List Level` field and does not evaluate the nested chunk-function calls). Same family: `isNatZero`,
+  `natPred?`. `Expr.headIsProj` / `ioNeutral` (match on a call result): `sem` proof exceeds 16M heartbeats (> 15 CPU min).
+  `peelPis`, `binderDom` (match on a `Nat` and an `Expr`): item (4). `rawNatLit?`, `piSortTeleLen?`: result `Option Nat`.
+- (3) specialisation of one of two scalar parameters, (4) matches on two arguments: not started.
+- Expr constants and `uN`/`vN`/`u1N` (helpers `bn`, `lm`, `cnst` with `String` parameters).
+- statement_check warns (hashes changed by regenerated proofs/merge); not re-frozen, as instructed.
 
-**Next.** Run W4 file by file and read the second ("by cases") error; add `ConLecheBlk` to the Frontx glob check, emit tests for
-the constants (output = the Name's bytes; input any tree), write axioms file, run check.sh, merge main, push.
+Batch functions now compiling through `frontx_ind` with theorem and tests from this branch: 40 (all `Name` constants).
