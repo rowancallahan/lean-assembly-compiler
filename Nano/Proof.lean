@@ -123,16 +123,24 @@ theorem bin_ok (o : Nat) (a b : Ex) (env : List (Arg Nat)) (vals : List UInt64) 
     (ha : ∀ nx, ESpec P (cE a env nx) (den a vals) nx env vals)
     (hb : ∀ nx, ESpec P (cE b env nx) (den b vals) nx env vals) :
     ESpec P (let ra := cE a env nx; let rb := cE b env ra.2.2
-      (.seq (.seq ra.1 rb.1) (.i (.let_ rb.2.2 (binRhs o ra.2.1 rb.2.1))), .r rb.2.2, rb.2.2 + 1))
+      (.seq (.seq ra.1 rb.1) (.i (.let_ nx (binRhs o ra.2.1 rb.2.1))), .r nx, nx + 1))
       (opv o (den a vals) (den b vals)) nx env vals := by
   intro g m he
   obtain ⟨g1, x1, v1, l1, n1, f1⟩ := ha nx g m he
   obtain ⟨g2, x2, v2, l2, n2, f2⟩ := hb (cE a env nx).2.2 g1 m (he.mono n1 f1)
   have v1' : (cE a env nx).2.1.eval g2 = .w (den a vals).toBitVec := by rw [ALt.eval f2 l1]; exact v1
-  have x3 := ex_let (P := P) (g := g2) (m := m) (cE b env (cE a env nx).2.2).2.2
+  have x3 := ex_let (P := P) (g := g2) (m := m) nx
     (binRhs o (cE a env nx).2.1 (cE b env (cE a env nx).2.2).2.1) (binRhs_eval o v1' v2)
   refine ⟨_, .seq (.seq x1 x2) x3, by simp [Arg.eval], by simp [ALt], by dsimp only; omega, fun q hq => ?_⟩
-  rw [upd_ne _ _ (by omega), f2 q (by omega), f1 q hq]
+  rw [upd_ne _ _ (show (q : Nat) ≠ nx by omega), f2 q (by omega), f1 q hq]
+
+/-- the value of `b` moved into `nx` -/
+theorem mv_ok {g g2 : VReg → Val} {m : Ir.Mem} {nx : Nat} {c : SC} (x : SC.Ex P c g m g2 m) {xb : Arg Nat}
+    {v : UInt64} (hv : xb.eval g2 = .w v.toBitVec) (f : ∀ q, q < nx → g2 q = g q) :
+    ∃ g', SC.Ex P (.seq c (.i (.let_ nx (.arg xb)))) g m g' m ∧ (Arg.r nx).eval g' = .w v.toBitVec ∧
+      ALt (nx + 1) (.r nx) ∧ nx ≤ nx + 1 ∧ ∀ q, q < nx → g' q = g q :=
+  ⟨_, .seq x (ex_let nx (.arg xb) (v := .w v.toBitVec) (by simp [Rhs.eval, hv])), by simp [Arg.eval],
+    by simp [ALt], by omega, fun q hq => by rw [upd_ne _ _ (show (q : Nat) ≠ nx by omega), f q hq]⟩
 
 mutual
 theorem cE_ok : ∀ (e : Ex) (env : List (Arg Nat)) (vals : List UInt64) (nx : Nat),
@@ -147,12 +155,12 @@ theorem cE_ok : ∀ (e : Ex) (env : List (Arg Nat)) (vals : List UInt64) (nx : N
     obtain ⟨g1, x1, v1, l1, n1, f1⟩ := cE_ok v env vals nx g m he
     obtain ⟨g2, x2, v2, l2, n2, f2⟩ := cE_ok b ((cE v env nx).2.1 :: env) (den v vals :: vals) (cE v env nx).2.2 g1 m
       (.cons v1 l1 (he.mono n1 f1))
-    exact ⟨g2, .seq x1 x2, v2, l2, by dsimp only [cE]; omega, fun q hq => by rw [f2 q (by omega), f1 q hq]⟩
+    exact mv_ok (.seq x1 x2) v2 fun q hq => by rw [f2 q (by omega), f1 q hq]
   | .call b as, env, vals, nx => fun g m he => by
     obtain ⟨g1, x1, e1, n1, f1⟩ := cA_ok as env vals nx g m he
     obtain ⟨g2, x2, v2, l2, n2, f2⟩ := cE_ok b (cA as env nx).2.1.reverse (denA as vals).reverse (cA as env nx).2.2 g1 m
       e1.reverse
-    exact ⟨g2, .seq x1 x2, v2, l2, by dsimp only [cE]; omega, fun q hq => by rw [f2 q (by omega), f1 q hq]⟩
+    exact mv_ok (.seq x1 x2) v2 fun q hq => by rw [f2 q (by omega), f1 q hq]
   | .anil, env, vals, nx => fun g m _ => ⟨g, .nop, rfl, trivial, Nat.le_refl _, fun _ _ => rfl⟩
   | .acons _ _, env, vals, nx => fun g m _ => ⟨g, .nop, rfl, trivial, Nat.le_refl _, fun _ _ => rfl⟩
 theorem cA_ok : ∀ (e : Ex) (env : List (Arg Nat)) (vals : List UInt64) (nx : Nat),

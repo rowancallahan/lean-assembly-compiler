@@ -27,3 +27,12 @@ nano-e2e had no `nanoGen` when this branch started; this one is new (same name/s
   riscv nanoCompile`**). Axioms: machine theorems = the Sail set (same as `ir_compile_correct`), `lower_ok` ⊆
   {propext, Classical.choice, Quot.sound}. `Testing/scripts/axioms_nano-proof.lean` added to check.sh's loop;
   check.sh also builds `Nano` and greps `Nano/*.lean` for forbidden words (decided: the nano files are proof sources).
+- 2026-11-16: register reuse. The IR back end allows at most 254 frame slots (`maxSlots`, one per vreg), so the
+  first lowering (a fresh register per node) failed to compile programs with > ~240 nodes (`nanoGen` = []). Now a
+  compound expression leaves its value in its first fresh register (`.let_ nx ...`); registers grow with the nesting
+  depth only. Limit that remains: nesting depth + arity + 10 ≤ 254 (else `nanoCompile p = none`, `nanoGen p = []`).
+- Tests: `Testing/asm/nano_test.sh` (emit with `Testing/asm/emit_nano.lean` → `ir-words/nano_*`, gitignored;
+  `ir_test.py` on QEMU + Sail at `memoryNeeded` and `memoryNeeded - 1`). 39 programs (6 full trees of depth 5–10,
+  up to 4146 words; 30 random with lets, calls, out-of-range variables; 3 sources through `nanoElab`) × 8 inputs
+  = **312 program×input pairs**: QEMU == Sail == `Prog.eval`, OOM flag at `memoryNeeded - 1`, writes only in
+  output + work. Also checked: emitted words == `nanoGen p`.

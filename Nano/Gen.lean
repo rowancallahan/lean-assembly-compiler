@@ -3,7 +3,9 @@ Route (b) of Testing/notes/NANO_PROOF.md: nano is lowered to the shared IR as st
 straight-line), and the IR compiler (`Riscv/Back/IrTop.lean`, proved once) makes the machine code.
 Calls are inlined (the AST carries callee bodies).  Registers of `main`: `0` input, `1` length, `2` output,
 `3` cursor, `5`/`6` byte temporaries, `7` result, `8` byte scratch, `10 + k` parameter `k`, `10 + arity ..` the
-expression temporaries (fresh counter). -/
+expression temporaries: a compound expression computed from register `nx` on leaves its value in `nx` (its
+sub-expressions use `nx ..` and are dead after), so the registers used grow with the nesting depth, not the size
+(the IR back end allows at most 254 frame slots). -/
 import Nano.Ast
 import Compiler.Ir.IndLowMain
 import Riscv.Back.IrTop
@@ -26,23 +28,23 @@ def cE : Ex → List (Arg Nat) → Nat → SC × Arg Nat × Nat
   | .add a b, env, nx =>
     let ra := cE a env nx
     let rb := cE b env ra.2.2
-    (.seq (.seq ra.1 rb.1) (.i (.let_ rb.2.2 (binRhs 0 ra.2.1 rb.2.1))), .r rb.2.2, rb.2.2 + 1)
+    (.seq (.seq ra.1 rb.1) (.i (.let_ nx (binRhs 0 ra.2.1 rb.2.1))), .r nx, nx + 1)
   | .sub a b, env, nx =>
     let ra := cE a env nx
     let rb := cE b env ra.2.2
-    (.seq (.seq ra.1 rb.1) (.i (.let_ rb.2.2 (binRhs 1 ra.2.1 rb.2.1))), .r rb.2.2, rb.2.2 + 1)
+    (.seq (.seq ra.1 rb.1) (.i (.let_ nx (binRhs 1 ra.2.1 rb.2.1))), .r nx, nx + 1)
   | .mul a b, env, nx =>
     let ra := cE a env nx
     let rb := cE b env ra.2.2
-    (.seq (.seq ra.1 rb.1) (.i (.let_ rb.2.2 (binRhs 2 ra.2.1 rb.2.1))), .r rb.2.2, rb.2.2 + 1)
+    (.seq (.seq ra.1 rb.1) (.i (.let_ nx (binRhs 2 ra.2.1 rb.2.1))), .r nx, nx + 1)
   | .let_ v b, env, nx =>
     let rv := cE v env nx
     let rb := cE b (rv.2.1 :: env) rv.2.2
-    (.seq rv.1 rb.1, rb.2.1, rb.2.2)
+    (.seq (.seq rv.1 rb.1) (.i (.let_ nx (.arg rb.2.1))), .r nx, nx + 1)
   | .call b as, env, nx =>
     let ra := cA as env nx
     let rb := cE b ra.2.1.reverse ra.2.2
-    (.seq ra.1 rb.1, rb.2.1, rb.2.2)
+    (.seq (.seq ra.1 rb.1) (.i (.let_ nx (.arg rb.2.1))), .r nx, nx + 1)
   | .anil, _, nx => (.nop, .i 0, nx)
   | .acons _ _, _, nx => (.nop, .i 0, nx)
 /-- an argument list: its code, the operands, the next free register -/
