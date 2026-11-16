@@ -5,7 +5,7 @@ import Riscv.Frontx.ExprExamples
 import Riscv.Frontx.HofExamples
 import Riscv.Frontx.TinyRepro
 
-open Proven Proven.Frontx.ExprEx
+open Proven Proven.Frontx Proven.Frontx.ExprEx
 
 def hex2 (b : UInt8) : String := let s := String.ofList (Nat.toDigits 16 b.toNat); if s.length < 2 then "0" ++ s else s
 def hx (xs : List UInt8) : String := if xs.isEmpty then "-" else String.join (xs.map hex2)
@@ -104,20 +104,22 @@ partial def gen (c : Cx) (fuel : Nat) : G ConLeche.Expr := do
   match ← below 12 with
   | 0 => leaf c
   | 1 => fv c fuel
-  | 2 | 3 | 4 => let [a, b] ← split fuel 2 | unreachable!; return .app (← gen c a) (← gen c b)
-  | 5 => let [a, b] ← split fuel 2 | unreachable!; return .lam (← gen c a) (← gen { c with bd := c.bd + 1 } b)
-  | 6 => let [a, b] ← split fuel 2 | unreachable!; return .forallE (← gen c a) (← gen { c with bd := c.bd + 1 } b)
-  | 7 => let [a, v, b] ← split fuel 3 | unreachable!; return .letE (← gen c a) (← gen c v) (← gen { c with bd := c.bd + 1 } b)
-  | 8 => let [e] ← split fuel 1 | unreachable!; return .proj (← genN (← below 4)) (← genNat) (← gen c e)
-  | 9 => let [a, b] ← split fuel 2 | unreachable!; return .app (← gen c a) (.bvar (← genBvar c))
-  | _ => let [a, b] ← split fuel 2 | unreachable!; return .app (← gen c a) (← gen c b)
+  | 2 | 3 | 4 => let ss ← split fuel 2; let a := ss[0]!; let b := ss[1]!; return .app (← gen c a) (← gen c b)
+  | 5 => let ss ← split fuel 2; let a := ss[0]!; let b := ss[1]!; return .lam (← gen c a) (← gen { c with bd := c.bd + 1 } b)
+  | 6 => let ss ← split fuel 2; let a := ss[0]!; let b := ss[1]!; return .forallE (← gen c a) (← gen { c with bd := c.bd + 1 } b)
+  | 7 => let ss ← split fuel 3; let a := ss[0]!; let v := ss[1]!; let b := ss[2]!; return .letE (← gen c a) (← gen c v) (← gen { c with bd := c.bd + 1 } b)
+  | 8 => let ss ← split fuel 1; let e := ss[0]!; return .proj (← genN (← below 4)) (← genNat) (← gen c e)
+  | 9 => let ss ← split fuel 2; let a := ss[0]!; let b := ss[1]!; return .app (← gen c a) (.bvar (← genBvar c))
+  | _ => let ss ← split fuel 2; let a := ss[0]!; let b := ss[1]!; return .app (← gen c a) (← gen c b)
 end
 
 /-- long structured expressions: binder chains, app spines (left / right), let chains, Pi chains, in an `fvar` or `const` head -/
 def genChain (c : Cx) (n : Nat) : G ConLeche.Expr := do
   match ← below 7 with
   | 0 => -- app spine, head const / fvar / bvar, small arguments
-    let mut e ← (match ← below 3 with | 0 => pure (ConLeche.Expr.const (← genN 2) (← genLs)) | 1 => (if c.nofv then leaf c else fv c 3) | _ => leaf c)
+    let k ← below 3
+    let h0 ← genN 2; let h1 ← genLs
+    let mut e ← (if k = 0 then pure (ConLeche.Expr.const h0 h1) else if k = 1 then fv c 3 else leaf c)
     for _ in [0:n] do e := .app e (← gen c (← below 4))
     return e
   | 1 => -- right-nested app
@@ -127,7 +129,7 @@ def genChain (c : Cx) (n : Nat) : G ConLeche.Expr := do
   | 2 => -- binder chain (bodies refer to the binders)
     let ks ← (List.range n).mapM fun _ => below 3
     let rec build : List Nat → Cx → G ConLeche.Expr
-      | [], c => gen c (← below 6)
+      | [], c => do gen c (← below 6)
       | k :: ks, c => do
         let ty ← gen c (← below 4); let c' := { c with bd := c.bd + 1 }
         match k with
@@ -136,7 +138,9 @@ def genChain (c : Cx) (n : Nat) : G ConLeche.Expr := do
         | _ => return .letE ty (← gen c (← below 4)) (← build ks c')
     build ks c
   | 3 => -- Pi chain, result an application of a bound variable
-    let mut e ← (do let h ← genBvar { c with bd := c.bd + n, closed := c.closed }; pure (ConLeche.Expr.app (.bvar h) (.bvar (← below (n + 1)))))
+    let h ← genBvar { c with bd := c.bd + n, closed := c.closed }
+    let a ← below (n + 1)
+    let mut e := ConLeche.Expr.app (.bvar h) (.bvar a)
     for i in [0:n] do e := .forallE (← gen { c with bd := c.bd + n - 1 - i } (← below 4)) e
     return e
   | 4 => -- let chain
@@ -219,9 +223,9 @@ def hofCase (name : String) (xs : List UInt8) : String :=
   let ba : ByteArray := ⟨xs.toArray⟩
   open Proven.Frontx.Hof in
   let r : List UInt8 := match name with
-    | "hof_mapinc" => Res.enc (mapInc ba) | "hof_mapcomp" => Res.enc (mapComp ba) | "hof_mapxor" => Res.enc (mapXor ba)
-    | "hof_filtergt3" => Res.enc (filterGt3 ba) | "hof_filternz" => Res.enc (filterNZ ba) | "hof_dupall" => Res.enc (dupAll ba)
-    | "hof_stagemap" => Res.enc (stageMap ba) | "hof_pipe2" => Res.enc (pipe2 ba) | "hof_xstagefilter" => Res.enc (xstageFilter ba)
+    | "hof_mapinc" => mapInc ba | "hof_mapcomp" => mapComp ba | "hof_mapxor" => mapXor ba
+    | "hof_filtergt3" => filterGt3 ba | "hof_filternz" => filterNZ ba | "hof_dupall" => dupAll ba
+    | "hof_stagemap" => stageMap ba | "hof_pipe2" => pipe2 ba | "hof_xstagefilter" => xstageFilter ba
     | "hof_nonfindgt3" => Res.enc (nonFindGt3 ba) | "hof_findgt3" => Res.enc (findGt3 ba) | "hof_foldrsum" => Res.enc (foldrSum ba)
     | "hof_sumfoldl" => Res.enc (sumFoldl ba) | "hof_xorarr" => Res.enc (xorArr ba) | "hof_anynl" => Res.enc (anyNL ba)
     | "hof_allascii" => Res.enc (allAscii ba) | "hof_findhigh" => Res.enc (findHigh ba) | "hof_countsp" => Res.enc (countSp ba)
@@ -229,21 +233,66 @@ def hofCase (name : String) (xs : List UInt8) : String :=
     | _ => panic! "hof entry"
   line xs r 0
 
-def main (args : List String) : IO Unit := do
+
+-- ---------------- TinyRepro r1, r2, r3, r5: `Ex` trees, `comp e` as `Ins`
+instance : Inhabited TinyR1.Ex := ⟨.var⟩
+instance : Inhabited TinyR2.Ex := ⟨.lit 0⟩
+instance : Inhabited TinyR3.Ex := ⟨.lit 0⟩
+instance : Inhabited TinyR5.Ex := ⟨.lit 0⟩
+partial def g1 (f : Nat) : G TinyR1.Ex := do
+  let w ← below 6
+  if f ≤ 1 || w < 2 then (if (← below 3) = 0 then return .var else return .lit (UInt64.ofNat (← genNat)))
+  else
+    let ss ← split f 2; let a ← g1 ss[0]!; let b ← g1 ss[1]!
+    if w < 4 then return .add a b else return .sub a b
+partial def g2 (f : Nat) : G TinyR2.Ex := do
+  if f ≤ 1 || (← below 6) = 0 then return .lit (UInt64.ofNat (← genNat))
+  else let ss ← split f 1; return .set (← g2 ss[0]!)
+partial def g3 (f : Nat) : G TinyR3.Ex := do
+  if f ≤ 1 || (← below 6) = 0 then return .lit (UInt64.ofNat (← genNat))
+  else let ss ← split f 2; let a ← g3 ss[0]!; let b ← g3 ss[1]!; return .set a b
+partial def g5 (f : Nat) : G TinyR5.Ex := do
+  if f ≤ 1 || (← below 6) = 0 then return .lit (UInt64.ofNat (← genNat))
+  else let ss ← split f 1; return .neg (← g5 ss[0]!)
+def tinyCase (name : String) (fuel : Nat) : G String := do
+  match name with
+  | "tinyr1" => let e ← g1 fuel; return line (TinyR1.ExT.enc e) (TinyR1.InsT.enc (TinyR1.comp e)) (TinyR1.comp.ind.pg.al (TinyR1.ExT.emb e) 0 .z)
+  | "tinyr2" => let e ← g2 fuel; return line (TinyR2.ExT.enc e) (TinyR2.InsT.enc (TinyR2.comp e)) (TinyR2.comp.ind.pg.al (TinyR2.ExT.emb e) 0 .z)
+  | "tinyr3" => let e ← g3 fuel; return line (TinyR3.ExT.enc e) (TinyR3.InsT.enc (TinyR3.comp e)) (TinyR3.comp.ind.pg.al (TinyR3.ExT.emb e) 0 .z)
+  | _ => let e ← g5 fuel; let x := TinyR5.ExT.enc e
+         return line x (TinyR5.InsT.enc (TinyR5.compile e)) (TinyR5.compile.ind.pg.M * x.length)
+
+def fuzz9Main (args : List String) : IO Unit := do
   let [name, seed, n] := args.take 3 | throw (IO.userError "usage: ENTRY SEED N [big]")
   let big := args.length > 3
   let st := (seed.toNat!.toUInt64 + 1) * 0x2545F4914F6CDD1D + (name.hash)
   let gens : G (List String) := do
     let mut out := []
     for i in [0:n.toNat!] do
-      if name.startsWith "hof_" then
+      if name.startsWith "tinyr" then
+        let fz ← (if big then pick #[500, 1500] else size)
+        out := (← tinyCase name (min fz 700)) :: out
+      else if name.startsWith "hof_" then
         let L ← (if i < 4 then pure i else genBytesLen big)
         out := hofCase name (← genBytes 0 L) :: out
       else
         let c ← genContext
-        let e ← (match ← below 5 with | 0 => genChain c (← pick #[1, 2, 5, 30, 200, 1500]) | _ => gen c (← (if big then pick #[3000, 8000, 20000] else size)))
-        let v ← (match ← below 3 with | 0 => pure (ConLeche.Expr.bvar (← genNat)) | 1 => gen {} (← below 8) | _ => gen { bd := 2 } (← size))
+        let k ← below 5
+        let cn ← pick #[1, 2, 5, 30, 200, 1500]
+        let fz ← (if big then pick #[3000, 8000, 20000] else size)
+        let e ← (if k = 0 then genChain c cn else gen c fz)
+        let vk ← below 3
+        let vn ← genNat
+        let vs ← below 8
+        let vz ← size
+        let v ← (if vk = 0 then pure (ConLeche.Expr.bvar vn) else if vk = 1 then gen {} vs else gen { bd := 2 } vz)
         let d ← genDepth c
         out := exprCase name e d v :: out
     return out.reverse
-  for l in (gens.run' st) do IO.println l
+  let res : List String := Id.run (gens.run' st)
+  for l in res do IO.println l
+
+def runG9 : IO Unit := do
+  let a ← IO.getEnv "G9"
+  fuzz9Main ((a.getD "").splitOn " ")
+#eval runG9
