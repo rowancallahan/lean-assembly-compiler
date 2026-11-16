@@ -292,4 +292,215 @@ theorem Args.copyP_ok {Γ : List Sl} : ∀ {Δ : List Sl} (as : Args Γ Δ) (st 
         have := (hb l' (List.mem_cons_of_mem _ (by simpa using h'))).1; omega)) (by simpa using hl)
 
 
+/-! ## The work array of a loop state -/
+
+/-- the locations of the work arrays of a state -/
+def workLocs : (Δ : List Sl) → List PLoc → List PLoc
+  | [], _ => []
+  | .sc _ :: Δ, st => workLocs Δ st.tail
+  | .ar _ :: Δ, st => (if (st.headD default).inp then [] else [st.headD default]) ++ workLocs Δ st.tail
+
+/-- the work arrays of the new state of a call leaf -/
+def Args.arrs {Γ : List Sl} : {Δ : List Sl} → Args Γ Δ → List PLoc → Vals Γ → Mach.BEnv → List (Nat × W64)
+  | _, .nil, _, _, _ => []
+  | _, @Args.cons _ (.sc _) _ _ as, st, v, env => as.arrs st.tail v env
+  | _, @Args.cons _ (.ar k) _ a as, st, v, env =>
+    if (st.headD default).inp then as.arrs st.tail v env
+    else ((env (st.headD default).pt).toNat, words k (A.den a v)) :: as.arrs st.tail v env
+
+/-- the words of the new value of the component at `w` -/
+def Args.wwords {Γ : List Sl} : {Δ : List Sl} → Args Γ Δ → List PLoc → PLoc → Vals Γ → W64
+  | _, .nil, _, _, _ => []
+  | _, @Args.cons _ (.sc _) _ _ as, st, w, v => as.wwords st.tail w v
+  | _, @Args.cons _ (.ar k) _ a as, st, w, v =>
+    if st.headD default = w then words k (A.den a v) else as.wwords st.tail w v
+
+theorem arrsP_args {Γ : List Sl} {v : Vals Γ} {env : Mach.BEnv} : ∀ {Δ : List Sl} (as : Args Γ Δ) (st : List PLoc),
+    arrsP Δ st (as.den v) env = as.arrs st v env
+  | _, .nil, _ => rfl
+  | _, @Args.cons _ (.sc _) _ _ as, st => by simp only [Args.den, arrsP, Args.arrs]; exact arrsP_args as st.tail
+  | _, @Args.cons _ (.ar _) _ _ as, st => by
+    simp only [Args.den, arrsP, Args.arrs, Arg.den]; rw [arrsP_args as st.tail]
+
+theorem workLocs_inp : ∀ {Δ : List Sl} {st : List PLoc} {l : PLoc}, l ∈ workLocs Δ st → l.inp = false
+  | [], _, _, h => by simp [workLocs] at h
+  | .sc _ :: _, st, _, h => by simp only [workLocs] at h; exact workLocs_inp h
+  | .ar _ :: _, st, l, h => by
+    simp only [workLocs, List.mem_append] at h
+    rcases h with h | h
+    · split at h
+      · simp at h
+      · rename_i hi; simp only [List.mem_singleton] at h; subst h; simpa using hi
+    · exact workLocs_inp h
+
+theorem args_arrs_nil {Γ : List Sl} {v : Vals Γ} {env : Mach.BEnv} : ∀ {Δ : List Sl} (as : Args Γ Δ)
+    (st : List PLoc), workLocs Δ st = [] → as.arrs st v env = []
+  | _, .nil, _, _ => rfl
+  | _, @Args.cons _ (.sc _) _ _ as, st, h => by
+    simp only [workLocs] at h; simp only [Args.arrs]; exact args_arrs_nil as st.tail h
+  | _, @Args.cons _ (.ar _) _ _ as, st, h => by
+    simp only [workLocs] at h
+    simp only [Args.arrs]
+    by_cases hi : (st.headD default).inp = true
+    · rw [if_pos hi] at h ⊢; exact args_arrs_nil as st.tail (by simpa using h)
+    · rw [if_neg hi] at h; simp at h
+
+theorem args_arrs_one {Γ : List Sl} {v : Vals Γ} {env : Mach.BEnv} {w : PLoc} : ∀ {Δ : List Sl} (as : Args Γ Δ)
+    (st : List PLoc), workLocs Δ st = [w] → as.arrs st v env = [((env w.pt).toNat, as.wwords st w v)]
+  | _, .nil, _, h => by simp [workLocs] at h
+  | _, @Args.cons _ (.sc _) _ _ as, st, h => by
+    simp only [workLocs] at h; simp only [Args.arrs, Args.wwords]; exact args_arrs_one as st.tail h
+  | _, @Args.cons _ (.ar _) _ _ as, st, h => by
+    simp only [workLocs] at h
+    simp only [Args.arrs, Args.wwords]
+    by_cases hi : (st.headD default).inp = true
+    · rw [if_pos hi] at h ⊢; simp only [List.nil_append] at h
+      have hw : w.inp = false := workLocs_inp (by rw [h]; simp)
+      rw [if_neg (fun e => by rw [e] at hi; rw [hw] at hi; cases hi)]
+      exact args_arrs_one as st.tail h
+    · rw [if_neg hi] at h ⊢
+      simp only [List.singleton_append, List.cons.injEq] at h
+      rw [if_pos h.1, h.1, args_arrs_nil as st.tail h.2]
+
+/-- the array component at `w` (the first one) is represented -/
+def Args.WOK {Γ : List Sl} (σ : MSt) (w : PLoc) : {Δ : List Sl} → Args Γ Δ → List PLoc → Vals Γ → Prop
+  | _, .nil, _, _ => True
+  | _, @Args.cons _ (.sc _) _ _ as, st, v => as.WOK σ w st.tail v
+  | _, @Args.cons _ (.ar k) _ a as, st, v =>
+    if st.headD default = w then SRP σ (.ar k) w (A.den a v) else as.WOK σ w st.tail v
+
+theorem workLocs_mem_of {Δ : List Sl} {st : List PLoc} {w : PLoc} (h : workLocs Δ st = []) (hw : w ∈ workLocs Δ st) :
+    False := by rw [h] at hw; simp at hw
+
+/-- the update of a call leaf is no code or exactly one update; the words of the new value at `w` -/
+theorem Args.updP_shape (L : List PLoc) {Γ : List Sl} (w : PLoc) (v : Vals Γ) (e : Nat) :
+    ∀ {Δ : List Sl} (as : Args Γ Δ) (st : List PLoc) (cw : Bool), as.wfP L st w cw = true →
+    (workLocs Δ st = [w] ∨ workLocs Δ st = []) →
+    (as.updP L st e = skipAt e ∧ as.evs v = [] ∧
+      (workLocs Δ st = [w] → ∀ ws, (∀ k (m : Mem Γ (.ar k)), m.locP L = w → words k (m.get v) = ws) →
+        as.wwords st w v = ws) ∧
+      (∀ σ', (∀ k (m : Mem Γ (.ar k)), m.locP L = w → SRP σ' (.ar k) w (m.get v)) → as.WOK σ' w st v)) ∨
+    (∃ (k : AK) (a : A Γ k), cw = true ∧ as.updP L st e = .seq (A.preP L a e) (A.stP w (e + a.nt) a e) ∧
+      as.evs v = A.evs a v ∧ a.base.locP L = w ∧ w.inp = false ∧ a.wfP L = true ∧ (as.okP v → a.okP v) ∧
+      workLocs Δ st = [w] ∧ as.wwords st w v = words k (A.den a v) ∧
+      (∀ σ', SRP σ' (.ar k) w (A.den a v) → as.WOK σ' w st v))
+  | _, .nil, _, _, _, hwl => .inl ⟨rfl, rfl, fun h => by simp [workLocs] at h, fun _ _ => trivial⟩
+  | _, @Args.cons _ (.sc _) _ _ as, st, cw, h, hwl => by
+    simp only [Args.wfP, Bool.and_eq_true] at h
+    simp only [workLocs] at hwl
+    simp only [Args.updP, Args.evs, Args.okP, Args.wwords, workLocs, Args.WOK]
+    rcases Args.updP_shape L w v e as st.tail cw h.2 hwl with h' | ⟨k, a, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10⟩
+    · exact .inl h'
+    · exact .inr ⟨k, a, h1, h2, h3, h4, h5, h6, fun ho => h7 ho.2, h8, h9, h10⟩
+  | _, @Args.cons _ (.ar _) Δt a as, st, cw, h, hwl => by
+    simp only [workLocs] at hwl
+    cases a with
+    | var m =>
+      simp only [Args.wfP, Bool.and_eq_true, beq_iff_eq] at h
+      simp only [Args.updP, Args.evs, Args.okP, A.evs, List.nil_append, Args.wwords, workLocs, Arg.den, A.den,
+        Args.WOK]
+      by_cases hi : (st.headD default).inp = true
+      · rw [if_pos hi] at hwl ⊢; simp only [List.nil_append] at hwl ⊢
+        have hne : (st.headD default = w) → workLocs Δt st.tail = [w] → False := fun e hw' => by
+          have := workLocs_inp (show w ∈ workLocs Δt st.tail by rw [hw']; simp); rw [← e, hi] at this; cases this
+        rcases Args.updP_shape L w v e as st.tail cw h.2 hwl with ⟨c1, c2, c3, c4⟩ | ⟨k, a, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10⟩
+        · refine .inl ⟨c1, c2, fun hw ws hm => ?_, fun σ' hs => ?_⟩
+          · rw [if_neg (fun e => hne e hw)]; exact c3 hw ws hm
+          · by_cases hl : st.headD default = w
+            · rw [if_pos hl]; exact hs _ m (h.1.trans hl)
+            · rw [if_neg hl]; exact c4 σ' hs
+        · exact .inr ⟨k, a, h1, h2, h3, h4, h5, h6, fun ho => h7 ho.2, h8,
+            by rw [if_neg (fun e => hne e h8)]; exact h9, fun σ' hs => by rw [if_neg (fun e => hne e h8)]; exact h10 σ' hs⟩
+      · rw [if_neg hi] at hwl ⊢
+        simp only [List.singleton_append] at hwl ⊢
+        rcases hwl with hwl | hwl
+        · simp only [List.cons.injEq] at hwl
+          obtain ⟨hl, ht⟩ := hwl
+          rcases Args.updP_shape L w v e as st.tail cw h.2 (.inr ht) with ⟨c1, c2, c3, c4⟩ | ⟨k, a, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10⟩
+          · refine .inl ⟨c1, c2, fun _ ws hm => ?_, fun σ' hs => ?_⟩
+            · rw [if_pos hl]; exact hm _ m (h.1.trans hl)
+            · rw [if_pos hl]; exact hs _ m (h.1.trans hl)
+          · rw [ht] at h8; simp at h8
+        · simp at hwl
+    | set a' i x | push a' x | ite c a' b' =>
+      simp only [Args.wfP, Bool.and_eq_true, beq_iff_eq, Bool.not_eq_true'] at h
+      obtain ⟨⟨⟨⟨⟨hcw, hwa⟩, hbase⟩, hlw⟩, hin⟩, hwt⟩ := h
+      have hhd : (st.headD default).inp = false := by rw [hlw]; exact hin
+      rw [if_neg (by rw [hhd]; decide)] at hwl
+      simp only [List.singleton_append] at hwl
+      have hwl' : workLocs Δt st.tail = [] := by
+        rcases hwl with hwl | hwl
+        · simp only [List.cons.injEq] at hwl; exact hwl.2
+        · simp at hwl
+      refine .inr ⟨_, _, hcw, ?_, ?_, ?_, hin, hwa, fun ho => ho.1, ?_, ?_, fun σ' hs => ?_⟩
+      · simp only [Args.updP]; rw [hlw]
+      · simp only [Args.evs]
+        rcases Args.updP_shape L w v e as st.tail false hwt (.inr hwl') with h' | ⟨_, _, h1, _⟩
+        · rw [h'.2.1, List.append_nil]
+        · cases h1
+      · simp only [A.base] at hbase ⊢; rw [hbase, hlw]
+      · simp only [workLocs, hwl', List.append_nil]; rw [if_neg (by rw [hhd]; decide), hlw]
+      · simp only [Args.wwords, hlw, if_true, Arg.den]
+      · simp only [Args.WOK, hlw, if_true, Arg.den]; exact hs
+
+/-! ## The new state of a call leaf is represented -/
+
+/-- the array components are represented at their slots -/
+def Args.ArrOKP {Γ : List Sl} (σ : MSt) : {Δ : List Sl} → Args Γ Δ → List PLoc → Vals Γ → Prop
+  | _, .nil, _, _ => True
+  | _, @Args.cons _ (.sc _) _ _ as, st, v => as.ArrOKP σ st.tail v
+  | _, @Args.cons _ (.ar k) _ a as, st, v => SRP σ (.ar k) (st.headD default) (A.den a v) ∧ as.ArrOKP σ st.tail v
+
+theorem Args.relP {Γ : List Sl} : ∀ {Δ : List Sl} (as : Args Γ Δ) (st : List PLoc) (v : Vals Γ) (σu σ' : MSt),
+    as.ResP σu σ' st v → as.ArrOKP σu st v → σ'.heap = σu.heap → st.length = Δ.length →
+    RelP Δ st (as.den v) σ'
+  | _, .nil, _, _, _, _, _, _, _, _ => trivial
+  | _, .cons _ _, [], _, _, _, _, _, _, hl => by simp at hl
+  | _, @Args.cons _ (.sc t) _ e as, l :: st, v, σu, σ', hres, ha, hh, hlen => by
+    simp only [Args.ResP, List.headD_cons, List.tail_cons] at hres
+    simp only [Args.ArrOKP, List.tail_cons] at ha
+    refine ⟨?_, Args.relP as st v σu σ' hres.2 ha hh (by simpa using hlen)⟩
+    show σ'.env l.v = _
+    rw [hres.1]; rfl
+  | _, @Args.cons _ (.ar k) _ a as, l :: st, v, σu, σ', hres, ha, hh, hlen => by
+    simp only [Args.ResP, List.headD_cons, List.tail_cons] at hres
+    simp only [Args.ArrOKP, List.headD_cons, List.tail_cons] at ha
+    exact ⟨SRP.frame ha.1 hres.1 hh, Args.relP as st v σu σ' hres.2 ha.2 hh (by simpa using hlen)⟩
+
+/-- the array components are represented: those at slots other than `w` by the old state (they are views
+or unchanged), the one at `w` by `WOK` -/
+theorem Args.arrOKP (L : List PLoc) {Γ : List Sl} (w : PLoc) (v : Vals Γ) (σu : MSt)
+    (hvar : ∀ k (m : Mem Γ (.ar k)), m.locP L ≠ w → SRP σu (.ar k) (m.locP L) (m.get v)) :
+    ∀ {Δ : List Sl} (as : Args Γ Δ) (st : List PLoc) (cw : Bool), as.wfP L st w cw = true →
+      (vsOfP st).Nodup → st.length = Δ.length → (w ∈ st → as.WOK σu w st v) → as.ArrOKP σu st v
+  | _, .nil, _, _, _, _, _, _ => trivial
+  | _, .cons _ _, [], _, _, _, hl, _ => by simp at hl
+  | _, @Args.cons _ (.sc _) _ _ as, l :: st, cw, h, hnd, hl, hw => by
+    simp only [Args.wfP, Bool.and_eq_true, List.tail_cons] at h
+    simp only [Args.WOK, List.tail_cons] at hw; simp only [Args.ArrOKP, List.tail_cons]
+    simp only [vsOfP, List.map_cons, List.nodup_cons] at hnd
+    exact Args.arrOKP L w v σu hvar as st cw h.2 hnd.2 (by simpa using hl) (fun hm => hw (List.mem_cons_of_mem _ hm))
+  | _, @Args.cons _ (.ar k) _ a as, l :: st, cw, h, hnd, hl, hw => by
+    simp only [Args.WOK, List.headD_cons, List.tail_cons] at hw; simp only [Args.ArrOKP, List.headD_cons, List.tail_cons]
+    simp only [vsOfP, List.map_cons, List.nodup_cons] at hnd
+    have hwf : ∃ cw', as.wfP L st w cw' = true := by
+      simp only [Args.wfP] at h; split at h <;> simp only [Bool.and_eq_true, List.tail_cons] at h
+      · exact ⟨_, h.2⟩
+      · exact ⟨_, h.2⟩
+    obtain ⟨cw', hwf⟩ := hwf
+    by_cases hlw : l = w
+    · subst hlw
+      have hnot : l ∉ st := fun hm => hnd.1 (List.mem_map_of_mem hm)
+      refine ⟨?_, Args.arrOKP L l v σu hvar as st cw' hwf hnd.2 (by simpa using hl) (fun hm => absurd hm hnot)⟩
+      have := hw (List.mem_cons_self ..); rw [if_pos rfl] at this; exact this
+    · rw [if_neg hlw] at hw
+      refine ⟨?_, Args.arrOKP L w v σu hvar as st cw' hwf hnd.2 (by simpa using hl) (fun hm => hw (List.mem_cons_of_mem _ hm))⟩
+      cases a with
+      | var m =>
+        simp only [Args.wfP, Bool.and_eq_true, beq_iff_eq, List.headD_cons] at h
+        simp only [A.den]; rw [← h.1]; exact hvar _ m (by rw [h.1]; exact hlw)
+      | set _ _ _ | push _ _ | ite _ _ _ =>
+        simp only [Args.wfP, Bool.and_eq_true, beq_iff_eq, List.headD_cons] at h
+        exact absurd h.1.1.2 hlw
+
 end Proven.WA
