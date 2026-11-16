@@ -61,12 +61,17 @@ theorem lz_runs (xs : ByteArray) (m0 : Nat) : ∀ (m i : Nat) (out : ByteArray),
     rw [hev] at this
     exact this
 
+/-- the page events of `lzE`: the prefix (table and pages), then the pushes after it -/
+def lzEv (xs : ByteArray) : List MemEvent :=
+  (.alloc 1 :: pushEvs (min 16 xs.size)) ++ (pushFrom (min 16 xs.size) xs.size ++ [])
+
 theorem lzPg_good (xs : ByteArray) (h : xs.size ≤ P * P - 16) :
-    ∃ E, lzPg.GoodE [inLocP] 9 (xs, ()) (lzE xs) E ∧ pk 0 E = 1 + npages (min 16 xs.size + xs.size) := by
+    lzPg.GoodE [inLocP] 9 (xs, ()) (lzE xs) (lzEv xs) ∧ pk 0 (lzEv xs) = 1 + npages (min 16 xs.size + xs.size) := by
   have hP : P * P = 2 ^ 20 := by decide
   rw [hP] at h
   have hm0 : (xs.extract 0 16).size = min 16 xs.size := by simp [ByteArray.size_extract]
-  refine ⟨(.alloc 1 :: pushEvs (min 16 xs.size)) ++ (pushFrom (min 16 xs.size) xs.size ++ []), ?_, ?_⟩
+  unfold lzEv
+  refine ⟨?_, ?_⟩
   · simp only [lzPg, Pg.GoodE, Inis.okP, Ini.okP, F.okP, E.ok, and_true, true_and]
     refine ⟨⟨by simp [E.den], by simp [E.den], by simp [E.den, Mem.get]; rw [hP]; exact Nat.le_trans (Nat.min_le_left _ _) (by decide)⟩, lzGo xs 0 (xs.extract 0 16), fun s => s.1.size = min 16 xs.size + s.2.1 ∧
       s.2.1 ≤ xs.size, pushFrom (min 16 xs.size) xs.size, [], ?_, ?_, ?_, ?_, ?_, ?_⟩
@@ -128,7 +133,7 @@ def lzFits (xs : ByteArray) (L : Nat) : Prop := 2 + npages (min 16 xs.size + xs.
 theorem lz_implements : Implements1Pg (fun xs : ByteArray => xs.data.toList) (encArr .ba) (pgCodeA lzPg) lzE
     8192 lzFits (2 ^ 20 - 16) (retLen := true) :=
   implements1_pgA (k := .ba) lzE lzPg lz_N lz_ob lzPg_wf lz_wfB lzFits (2 ^ 20 - 16) fun xs hx => by
-    obtain ⟨E, hg, hpk⟩ := lzPg_good xs (by unfold P; omega)
-    exact ⟨E, hg, fun L _ => by unfold lzFits; omega⟩
+    obtain ⟨hg, hpk⟩ := lzPg_good xs (by unfold P; omega)
+    exact ⟨lzEv xs, hg, fun L _ => by unfold lzFits; omega⟩
 
 end Proven.WA.PgEx

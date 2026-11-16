@@ -71,10 +71,14 @@ theorem copy_runs (xs : ByteArray) : ∀ (m i : Nat) (out : ByteArray), xs.size 
     rw [hev] at this
     exact this
 
+/-- the page events of `copyE`: the page table, then a page at every `P`-th push -/
+def copyEv (xs : ByteArray) : List MemEvent := [.alloc 1] ++ (pushFrom 0 xs.size ++ [])
+
 theorem copyPg_good (xs : ByteArray) (h : xs.size ≤ P * P) :
-    ∃ E, copyPg.GoodE [inLocP] 9 (xs, ()) (copyE xs) E ∧ pk 0 E = 1 + npages xs.size := by
+    copyPg.GoodE [inLocP] 9 (xs, ()) (copyE xs) (copyEv xs) ∧ pk 0 (copyEv xs) = 1 + npages xs.size := by
   have hP : P * P = 2 ^ 20 := by decide
-  refine ⟨[.alloc 1] ++ (pushFrom 0 xs.size ++ []), ?_, ?_⟩
+  unfold copyEv
+  refine ⟨?_, ?_⟩
   · simp only [copyPg, Pg.GoodE, Inis.okP, Ini.okP, F.okP, E.ok, and_true, true_and]
     refine ⟨copyGo xs 0 ByteArray.empty, fun s => s.1.size = s.2.1 ∧ s.2.1 ≤ xs.size, pushFrom 0 xs.size, [], ?_, ?_, ?_, ?_, ?_, ?_⟩
     · simp [Inis.den, Ini.den, F.den, E.den]
@@ -130,7 +134,7 @@ def copyFits (xs : ByteArray) (L : Nat) : Prop := 2 + npages xs.size ≤ L / 819
 theorem copy_implements : Implements1Pg (fun xs : ByteArray => xs.data.toList) (encArr .ba) (pgCodeA copyPg) copyE
     8192 copyFits (retLen := true) :=
   implements1_pgA (k := .ba) copyE copyPg copy_N copy_ob copyPg_wf copy_wfB copyFits (2 ^ 20) fun xs hx => by
-    obtain ⟨E, hg, hpk⟩ := copyPg_good xs (by unfold P; omega)
-    exact ⟨E, hg, fun L _ => by unfold copyFits; omega⟩
+    obtain ⟨hg, hpk⟩ := copyPg_good xs (by unfold P; omega)
+    exact ⟨copyEv xs, hg, fun L _ => by unfold copyFits; omega⟩
 
 end Proven.WA.PgEx
