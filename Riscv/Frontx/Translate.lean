@@ -344,6 +344,8 @@ def callInfo? (c : Name) : MetaM (Option CallInfo) := do
 
 /-- `c` calls itself (its unfolding equation mentions it) -/
 def isRecFn (c : Name) : MetaM Bool := do
+  -- a projection (`S.f self = self.f`) or a constructor is not a recursive function
+  if (← getEnv).isProjectionFn c || (← getEnv).isConstructor c then return false
   let some eqn ← (try getUnfoldEqnFor? c (nonRec := true) catch _ => pure none) | return false
   forallTelescope (← getConstInfo eqn).type fun _ ty => do
     let some (_, _, rhs) := ty.eq? | return false
@@ -447,6 +449,7 @@ partial def trE (ctx : Ctx) (e : Expr) : TrM (ME × Expr) := do
           return ← trE ctx (s'.getArg! (pi.numParams + pi.i))
         unless s.isFVar || (← find? e).isSome do
           throwError "frontx: projection of a term that is not a constructor application{indentExpr e}"
+        if s.isFVar then throwError "frontx: a field of a parameter without a variable{indentExpr e}"
   let some ty ← classify (← inferType e) | throwError "frontx: not a scalar:{indentExpr e}"
   if !e.hasFVar then
     -- a named `Int` constant (`Fx.maxVal`) is unfolded in the obligations
@@ -1075,9 +1078,32 @@ def inBranch {α : Type} (x : TrM α) : TrM α := do
 
 /-! ## the rewriting set -/
 
+/-- `c_and'` / `c_or'` with a negated test in `simp` normal form (`if p then 0 else 1`) -/
+theorem c_not_n (p : Prop) [Decidable p] : (if p then 0#64 else 1#64) ^^^ 1#64 = if p then 1#64 else 0#64 := by
+  by_cases h : p <;> simp [h]
+theorem c_and_nr (p q : Prop) [Decidable p] [Decidable q] :
+    (if p then 1#64 else 0#64) &&& (if q then 0#64 else 1#64) = if p ∧ ¬q then 1#64 else 0#64 := by
+  by_cases h : p <;> by_cases h' : q <;> simp [h, h']
+theorem c_and_nl (p q : Prop) [Decidable p] [Decidable q] :
+    (if p then 0#64 else 1#64) &&& (if q then 1#64 else 0#64) = if ¬p ∧ q then 1#64 else 0#64 := by
+  by_cases h : p <;> by_cases h' : q <;> simp [h, h']
+theorem c_and_nn (p q : Prop) [Decidable p] [Decidable q] :
+    (if p then 0#64 else 1#64) &&& (if q then 0#64 else 1#64) = if ¬p ∧ ¬q then 1#64 else 0#64 := by
+  by_cases h : p <;> by_cases h' : q <;> simp [h, h']
+theorem c_or_nr (p q : Prop) [Decidable p] [Decidable q] :
+    (if p then 1#64 else 0#64) ||| (if q then 0#64 else 1#64) = if p ∨ ¬q then 1#64 else 0#64 := by
+  by_cases h : p <;> by_cases h' : q <;> simp [h, h']
+theorem c_or_nl (p q : Prop) [Decidable p] [Decidable q] :
+    (if p then 0#64 else 1#64) ||| (if q then 1#64 else 0#64) = if ¬p ∨ q then 1#64 else 0#64 := by
+  by_cases h : p <;> by_cases h' : q <;> simp [h, h']
+theorem c_or_nn (p q : Prop) [Decidable p] [Decidable q] :
+    (if p then 0#64 else 1#64) ||| (if q then 0#64 else 1#64) = if ¬p ∨ ¬q then 1#64 else 0#64 := by
+  by_cases h : p <;> by_cases h' : q <;> simp [h, h']
+
 def simpNames : Array Name :=
   #[``Tree.step, ``denote_var, ``denote_const, ``denote_bin, ``denote_ite, ``sel_c, ``sel_c', ``Op.eval, ``parSet, ``BEnv.set,
     ``seqSet, ``rB_def, ``callEnv, ``rho, ``rd0, ``rd1, ``rd2, ``blk_get, ``r8_fold, ``ba_get!, ``c_not, ``c_and, ``c_or, ``c_eq0, ``c_not', ``c_and', ``c_or', ``c_eq0',
+    ``c_not_n, ``c_and_nr, ``c_and_nl, ``c_and_nn, ``c_or_nr, ``c_or_nl, ``c_or_nn,
     ``rN_lit, ``r8_lit, ``r32_lit, ``r64_lit, ``rN_toNat, ``rN_add, ``r8_toNat_sub, ``r32_toNat_sub, ``rN_sub', ``nat_ite_lt_neg, ``rN_lt, ``rN_or, ``rN_and, ``rN_shl, ``rN_inj, ``rN_eq_lit, ``rN_lt_lit, ``rN_lit_lt, ``rN_ite,
     ``r64_add, ``r64_sub, ``r64_and, ``r64_or, ``r64_xor, ``r64_ite, ``r64_eq', ``r64_lt', ``r64_le', ``r64_toNat, ``r64_ofNat,
     ``r32_add, ``r32_sub, ``r32_and, ``r32_or, ``r32_xor, ``r32_ite, ``r32_eq', ``r32_lt', ``r32_le', ``r32_toNat, ``r32_shr,
@@ -2616,6 +2642,30 @@ def ctorEqn? (fn : Name) : MetaM (Option Name) := do
   addDecl (.thmDecl { name := eqx, levelParams := ci.levelParams, type := ty, value := val })
   return some eqx
 
+/-- `e` with its non-recursive user helpers unfolded (to depth `fuel`) and raw projections `p.1` written with their
+projection functions: the field reads of a body -/
+partial def readsOf (e : Expr) (fuel : Nat := 8) : MetaM Expr := do
+  let e ← Meta.transform e (post := fun t => do
+    match t with
+    | .proj sn i s =>
+      match (getStructureFields (← getEnv) sn)[i]? with
+      | some fld => return .done (← mkProjection s fld)
+      | none => return .done t
+    | _ => return .done t)
+  if fuel == 0 then return e
+  let e' ← Meta.transform e (post := fun t => do
+    let some c := t.getAppFn.constName? | return .done t
+    let env ← getEnv
+    if env.isProjectionFn c || env.isConstructor c || !(← userConst c) then return .done t
+    unless (env.find? c) matches some (.defnInfo _) do return .done t
+    if ← isRecFn c then return .done t
+    match ← (try unfoldDefinition? t catch _ => pure none) with
+    | some t' => return .done t'
+    | none => return .done t)
+  let e' ← Core.betaReduce e'
+  if e' == e then return e
+  readsOf e' (fuel - 1)
+
 def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (accMode := false)
     (pre? : Option Term := none) (from? : Option (Name × Term) := none)
     (start : Nat := 4) (noBound : Array Nat := #[]) : TermElabM Unit := do
@@ -2718,14 +2768,9 @@ def compileCmd (f : Ident) (inv? : Option Term) (lemmas : Array Name := #[]) (ac
       let mut dataIdx := #[]
       let mut compIdx := 0
       let mut dropped : Array Nat := #[]
-      -- the body with raw projections `p.1` written with their projection functions (the keys of the components)
-      let bodyP ← Meta.transform body (post := fun t => do
-        match t with
-        | .proj sn i s =>
-          match (getStructureFields (← getEnv) sn)[i]? with
-          | some fld => return .done (← mkProjection s fld)
-          | none => return .done t
-        | _ => return .done t)
+      -- the body with the non-recursive user helpers unfolded (a field read inside a helper is a read) and raw
+      -- projections `p.1` written with their projection functions (the keys of the components)
+      let bodyP ← readsOf body
       -- the first byte array is block 0 (length in variable 1) wherever it stands
       let ba0 := (← hoistBA xs)[0]?
       let ba0 ← match ba0 with
