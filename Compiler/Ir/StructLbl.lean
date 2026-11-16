@@ -302,4 +302,68 @@ theorem mkFunc_region {params ps : List VReg} {nl : Nat} {rs : List (Lbl × TC)}
 theorem mkFunc_entry (params ps : List VReg) (nl : Nat) (l : Lbl) (t : TC) (rs : List (Lbl × TC)) :
     (mkFunc params ps nl ((l, t) :: rs)).entry = l := rfl
 
+
+/-! ## functions of three kinds of regions: an entry, one per index, a last one -/
+
+section
+variable {α : Type} (params : List VReg) (t0 : TC) (L : List α) (f : α → TC) (tE : TC)
+
+/-- the regions `(0, t0)`, `(j + 1, f L[j])`, `(|L| + 1, tE)` -/
+def rs3 : List (Lbl × TC) := (0, t0) :: (L.mapIdx fun j e => (j + 1, f e)) ++ [(L.length + 1, tE)]
+
+theorem mapIdx_keys : (L.mapIdx fun j e => ((j + 1 : Nat), f e)).map Prod.fst = (List.range L.length).map (· + 1) := by
+  apply List.ext_getElem <;> simp
+
+theorem rs3_keys : (rs3 t0 L f tE).map Prod.fst = (0 :: (List.range L.length).map (· + 1)) ++ [L.length + 1] := by
+  simp only [rs3, List.map_cons, List.map_append, mapIdx_keys, List.map_nil]
+
+theorem rs3_nodup : ((rs3 t0 L f tE).map Prod.fst).Nodup := by
+  rw [rs3_keys]
+  have h1 : ((List.range L.length).map (· + 1)).Nodup :=
+    List.Pairwise.map (· + 1) (fun a b h e => h (by simp at e; omega)) List.nodup_range
+  refine nd_app (List.nodup_cons.2 ⟨by simp, h1⟩) (by simp)
+    (· < L.length + 1) (· = L.length + 1) (fun x hx => by simp at hx; omega) (by simp) (fun x a b => by omega)
+
+theorem rs3_lt : ∀ x ∈ rs3 t0 L f tE, x.1 < L.length + 2 := by
+  intro x hx
+  have : x.1 ∈ (rs3 t0 L f tE).map Prod.fst := List.mem_map_of_mem hx
+  rw [rs3_keys] at this
+  simp at this; lomega
+
+/-- the function's blocks of region `i` -/
+theorem rs3_region (i : Nat) (hi : i < (rs3 t0 L f tE).length) :
+    ∃ nl', GS.OkT (mkFunc params params (L.length + 2) (rs3 t0 L f tE))
+      (flatT (rs3 t0 L f tE)[i].2 ⟨nl', [], (rs3 t0 L f tE)[i].1, if i = 0 then params else [], []⟩) :=
+  mkFunc_region (rs3_nodup t0 L f tE) (rs3_lt t0 L f tE) i hi
+
+theorem rs3_len : (rs3 t0 L f tE).length = L.length + 2 := by simp [rs3]
+
+theorem rs3_get0 : (rs3 t0 L f tE)[0]'(by simp [rs3]) = (0, t0) := rfl
+
+theorem rs3_getj (j : Nat) (hj : j < L.length) : (rs3 t0 L f tE)[j + 1]'(by simp [rs3]; omega) = (j + 1, f L[j]) := by
+  simp [rs3, List.getElem_append_left (show j < (L.mapIdx fun j e => (j + 1, f e)).length by simpa using hj)]
+
+theorem rs3_getE : (rs3 t0 L f tE)[L.length + 1]'(by simp [rs3]) = (L.length + 1, tE) := by
+  simp [rs3, List.getElem_append_right]
+
+/-- the entry's blocks -/
+theorem rs3_ok0 : ∃ nl', GS.OkT (mkFunc params params (L.length + 2) (rs3 t0 L f tE)) (flatT t0 ⟨nl', [], 0, params, []⟩) := by
+  obtain ⟨nl', h⟩ := rs3_region params t0 L f tE 0 (by simp [rs3])
+  exact ⟨nl', by simpa [rs3_get0] using h⟩
+
+theorem rs3_okj (j : Nat) (hj : j < L.length) :
+    ∃ nl', GS.OkT (mkFunc params params (L.length + 2) (rs3 t0 L f tE)) (flatT (f L[j]) ⟨nl', [], j + 1, [], []⟩) := by
+  obtain ⟨nl', h⟩ := rs3_region params t0 L f tE (j + 1) (by simp [rs3]; omega)
+  refine ⟨nl', ?_⟩
+  have e := rs3_getj t0 L f tE j hj
+  simp only [e, Nat.add_one_ne_zero, if_false] at h; exact h
+
+theorem rs3_okE : ∃ nl', GS.OkT (mkFunc params params (L.length + 2) (rs3 t0 L f tE)) (flatT tE ⟨nl', [], L.length + 1, [], []⟩) := by
+  obtain ⟨nl', h⟩ := rs3_region params t0 L f tE (L.length + 1) (by simp [rs3])
+  refine ⟨nl', ?_⟩
+  have e := rs3_getE t0 L f tE
+  simp only [e, Nat.add_one_ne_zero, if_false] at h; exact h
+
+end
+
 end Proven.Ir
