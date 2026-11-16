@@ -205,4 +205,8 @@ hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read 
    compiles as an ordinary 0-argument function (honest run-time cost). Never fold calls with arguments.
 2. IR stage S3: move every front end (list, ind, wa, hof, monad, paged) onto the shared IR so features compose in one function
    (e.g. inductives + monad + structure). Without this, features land separately and the con-leche percentages barely move.
+Measured yield (BLOCKER_YIELD.md, merged): con-leche greedy starts with 0-ary constants (+106 functions); the self-hoster with
+   translator-shape bugs (+83: `PANIC at Expr.appArg!`, `instantiateForall, too many parameters`, kernel `Sim argument has type Type 1`)
+   and polymorphic type variables (+105: the compiler's IR types are generic in the register type ρ; monomorphise at the use site).
+   So round 1 = constants + monomorphisation of type variables + those translator crashes; round 2 = IR S3.
 Ranking of later features from the Haiku yield analysis (`Testing/notes/BLOCKER_YIELD.md`, branch blocker-yield).
