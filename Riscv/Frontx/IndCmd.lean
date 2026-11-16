@@ -566,7 +566,7 @@ def strChunk : Nat := 6
 
 /-- the function building bytes `[k * strChunk, (k + 1) * strChunk)` of the literal `str` in front of a chain -/
 def strChunkName (g : Name) (str : String) (k : Nat) : Name :=
-  g ++ Name.mkSimple s!"s{k}_{String.join (str.toUTF8.data.toList.map fun b => s!"{b.toNat}_")}"
+  g ++ `lit ++ Name.mkSimple s!"s{k}_{String.join (str.toUTF8.data.toList.map fun b => s!"{b.toNat}_")}"
 
 partial def strLits : Expr → Array String
   | .lit (.strVal s) => #[s]
@@ -620,7 +620,7 @@ partial def treeEq (c : Ctx) (a b : Expr) : MetaM String := do
   treeEqS c dS k
 
 partial def treeEqS (c : Ctx) (dS : String) (k : Expr) : MetaM String := do
-  let some (r, i, fs) := closedCtor c.tys k | throwError "frontx_ind: not a constant{indentExpr k}"
+  let some (r, i, fs) := closedCtor c.tys k | throwError "frontx_ind: not a constant{indentExpr k} (dS = {dS}) in {c.g}"
   let rs := r.ti.roles[i]!
   let mut acc := s!"(.bin .eq (.fw false {dS}) (.k (BitVec.ofNat 64 {r.off + i})))"
   for j in [0:rs.size] do
@@ -634,15 +634,43 @@ partial def treeEqS (c : Ctx) (dS : String) (k : Expr) : MetaM String := do
 type: on its tag, the pattern variables read from it; a `Bool` or an enumeration: on its value) -/
 partial def reifyMatch (c : Ctx) (e : Expr) : MetaM (Option String) := do
   let some m ← matchMatcherApp? e | return none
-  for i in [0:m.discrs.size] do
-    let d := m.discrs[i]!.consumeMData
+  for pi in [0:2 * m.discrs.size] do
+    let i := pi % m.discrs.size
+    let pass := pi / m.discrs.size
+    let d0 := m.discrs[i]!.consumeMData
+    let mut d := d0
+    let mut rebuild : Expr → Expr := fun ce =>
+      mkAppN (mkConst m.matcherName m.matcherLevels.toList)
+        (m.params ++ #[m.motive] ++ m.discrs.set! i ce ++ m.alts ++ m.remaining)
+    -- a constructor application (a nested pattern `.const c []`): split on a variable field of it instead
+    if let .const dn _ := d0.getAppFn then
+      if let some (.ctorInfo _) := (← getEnv).find? dn then
+        if pass == 0 then continue
+        if let .reduced _ ← reduceMatcher? e then continue
+        let mut found := false
+        for a in d0.getAppArgs do
+          if !found && a.isFVar then
+            if let .const an _ := (← whnfR (← inferType a)).getAppFn then
+              if let some (.inductInfo ai) := (← getEnv).find? an then
+                -- the field the matcher is stuck on: every constructor of it reduces the matcher
+                let aus := (← whnfR (← inferType a)).getAppFn.constLevels!
+                let aargs := (← whnfR (← inferType a)).getAppArgs
+                let mut all := true
+                for cn in ai.ctors do
+                  let ok ← forallTelescope (← inferType (mkAppN (mkConst cn aus) aargs)) fun fs _ => do
+                    match ← reduceMatcher? (e.replaceFVar a (mkAppN (mkConst cn aus) (aargs ++ fs))) with
+                    | .reduced _ => pure true
+                    | _ => pure false
+                  unless ok do all := false
+                if all then
+                  found := true; d := a
+                  rebuild := fun ce => e.replaceFVar a ce
+        if !found then continue
+    if pass == 1 && d == d0 then continue
     let dt ← whnfR (← inferType d)
     let .const tn us := dt.getAppFn | continue
     let some (.inductInfo iv) := (← getEnv).find? tn | continue
     if let .const dn _ := d.getAppFn then if iv.ctors.contains dn then continue
-    let rebuild (ce : Expr) : Expr :=
-      mkAppN (mkConst m.matcherName m.matcherLevels.toList)
-        (m.params ++ #[m.motive] ++ m.discrs.set! i ce ++ m.alts ++ m.remaining)
     let branch (c' : Ctx) (app : Expr) : MetaM String := do
       match ← reduceMatcher? app with
       | .reduced e' => reify c' e'.headBeta
@@ -725,7 +753,7 @@ partial def reify (c : Ctx) (e : Expr) : MetaM String := do
     let t ← instantiateMVars c.params[c.sIdx]!
     let mut v : Expr := .bvar 0
     for k in [0:(str.toUTF8.size + strChunk - 1) / strChunk] do
-      v := .letE `x b8 (mkApp2 (Lean.mkConst (strChunkName c.g str k)) t (.bvar 0)) v false
+      v := .letE `x b8 (mkApp2 (Lean.mkConst (strChunkName c.tys[0]!.tn str k)) t (.bvar 0)) v false
     v := .letE `x b8 (Lean.mkConst ``Proven.Frontx.Ind.Bytes8.nil) v false
     return ← reify c v
   if e.isConstOf ``Nat.zero || e.isConstOf ``Bool.false then return "(.k 0)"
@@ -779,6 +807,14 @@ partial def reify (c : Ctx) (e : Expr) : MetaM String := do
     return s!"(.ite {cS} {t} {f})"
   if e.isAppOfArity ``BEq.beq 4 then
     if (← whnfR (e.getArg! 0)).isConstOf ``String then return ← strEq c (e.getArg! 2) (e.getArg! 3)
+    -- `a == b` on a declared type: its instance's function (`decide (a = b)`)
+    if (← findTy c.tys (e.getArg! 0)).isSome then
+      let mut e' := (← withTransparency .instances (whnf e)).headBeta
+      -- `Name.beq a b := decide (a = b)`: unfold to the `decide`
+      if let some (.defnInfo dv) := (← getEnv).find? (e'.getAppFn.constName?.getD Name.anonymous) then
+        if (← lambdaTelescope dv.value fun _ b => pure b).isAppOfArity ``Decidable.decide 2 then
+          if let some u ← unfoldDefinition? e' then e' := u.headBeta
+      if e' != e then return ← reify c e'
     cmpTy c (e.getArg! 0); return s!"(.bin .eq {← reify c (e.getArg! 2)} {← reify c (e.getArg! 3)})"
   if e.isAppOfArity ``bne 4 then
     cmpTy c (e.getArg! 0); return s!"(.bin .xor (.bin .eq {← reify c (e.getArg! 2)} {← reify c (e.getArg! 3)}) (.k 1))"
@@ -838,6 +874,10 @@ partial def reify (c : Ctx) (e : Expr) : MetaM String := do
     if (← getEqnsFor? fnN).isSome && !(c.fns.any (·.name == fnN)) then
       if (← (do let _ ← fnInfo c.tys fnN; pure true) <|> pure false) then
         c.found.modify fun a => if a.contains fnN then a else a.push fnN
+        -- the arguments of declared types may call functions too (string literals: their chunk functions)
+        for a in e.getAppArgs do
+          if (← findTy c.tys (← inferType a)).isSome && !(a.isFVar || a.isMVar) then
+            discard <| (reify c a <|> pure "")
         return "(.ext 0 .w .nul (.k 0) .nul)"
   throwError "frontx_ind: unsupported term{indentExpr e}"
 end
@@ -1184,6 +1224,33 @@ elab_rules : command
     uNs := uNs.push n.getPrefix
   let fN ← liftCoreM (realizeGlobalConstNoOverloadWithInfo f)
   let fS := toString fN
+  -- the string literals of `f`, of the constants it unfolds to and of the functions of declared types it uses:
+  -- chunk functions (`strChunkName`, once per literal and shape)
+  let rootS ← liftTermElabM (do ppFull (← rTyOfName Tn).ti.ty)
+  let lits ← liftTermElabM do
+    let tys ← (#[Tn] ++ nestedNames (← getEnv) Tn).mapM rTyOfName
+    let mut seen : Array Name := #[]; let mut todo := #[fN]; let mut ls : Array String := #[]
+    while h : todo.size > 0 do
+      let n := todo[todo.size - 1]; todo := todo.pop
+      if seen.contains n then continue
+      seen := seen.push n
+      let some (.defnInfo dv) := (← getEnv).find? n | continue
+      let ok ← forallTelescope dv.type fun xs r => do
+        let mut ok := (← findTy tys r).isSome || n == fN
+        for x in xs do if (← findTy tys (← inferType x)).isSome then ok := true
+        return ok
+      unless ok do continue
+      ls := ls ++ strLits dv.value
+      todo := todo ++ dv.value.getUsedConstants
+    return ls
+  for str in lits.toList.eraseDups do
+    let bs := str.toUTF8.data.toList
+    for k in [0:(bs.length + strChunk - 1) / strChunk] do
+      let nm := strChunkName Tn str k
+      unless (← getEnv).contains nm do
+        let chunk := (bs.drop (k * strChunk)).take strChunk
+        let body := chunk.foldr (fun b acc => s!"(Proven.Frontx.Ind.Bytes8.cons ({b.toNat} : UInt8) {acc})") "r"
+        runCmd s!"def _root_.{nm} (t : {rootS}) (r : Proven.Frontx.Ind.Bytes8) : Proven.Frontx.Ind.Bytes8 := {body}"
   -- a constant (no arguments) of a declared type: the function `f.cst t := f` of an input tree `t` that it ignores
   let cstTy ← liftTermElabM do
     let ty ← whnfR (← getConstInfo fN).type
@@ -1192,26 +1259,6 @@ elab_rules : command
     return ← (do if (← findTy tys ty).isSome then pure (some (← ppFull ty)) else pure none)
   if let some tyS := cstTy then
     let cN := fN ++ `cst
-    let rootS ← liftTermElabM (do ppFull (← rTyOfName Tn).ti.ty)
-    -- the string literals of the constant (and of the constants it unfolds to): chunk functions
-    let lits ← liftTermElabM do
-      let tys ← (#[Tn] ++ nestedNames (← getEnv) Tn).mapM rTyOfName
-      let mut seen : Array Name := #[]; let mut todo := #[fN]; let mut ls : Array String := #[]
-      while h : todo.size > 0 do
-        let n := todo[todo.size - 1]; todo := todo.pop
-        if seen.contains n then continue
-        seen := seen.push n
-        let some (.defnInfo dv) := (← getEnv).find? n | continue
-        if dv.type.isForall || (← findTy tys dv.type).isNone then continue
-        ls := ls ++ strLits dv.value
-        todo := todo ++ dv.value.getUsedConstants
-      return ls
-    for str in lits.toList.eraseDups do
-      let bs := str.toUTF8.data.toList
-      for k in [0:(bs.length + strChunk - 1) / strChunk] do
-        let chunk := (bs.drop (k * strChunk)).take strChunk
-        let body := chunk.foldr (fun b acc => s!"(Proven.Frontx.Ind.Bytes8.cons ({b.toNat} : UInt8) {acc})") "r"
-        runCmd s!"def _root_.{strChunkName cN str k} (t : {rootS}) (r : Proven.Frontx.Ind.Bytes8) : Proven.Frontx.Ind.Bytes8 := {body}"
     runCmd s!"def _root_.{cN} (t : {rootS}) : {tyS} := {fN}"
     let c := mkIdentFrom f cN
     elabCommand (← `(frontx_ind $c:ident on $T:ident $[using $Us*]?))
