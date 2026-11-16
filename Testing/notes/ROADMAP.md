@@ -211,7 +211,16 @@ Measured yield (BLOCKER_YIELD.md, merged): con-leche greedy starts with 0-ary co
    So round 1 = constants + monomorphisation of type variables + those translator crashes; round 2 = IR S3.
 Ranking of later features from the Haiku yield analysis (`Testing/notes/BLOCKER_YIELD.md`, branch blocker-yield).
 
-## Trust statement and self-hosting scope (2026-11-16, from REVIEW_TRUST.md; owner to confirm wording)
+## Trust statement (owner, 2026-11-16, FINAL)
+
+Trusted: (1) the pinned Sail models with their axiom set (`Testing/scripts/expected-axioms.txt`) and the standard Lean
+axioms (propext, Classical.choice, Quot.sound); (2) the hardware behaves as the Sail model; (3) ONE root proof checker =
+the intersection of con-leche, the Lean kernel, nanoda and other independent checkers (paranoid lake check: a proof is
+trusted only if all of them accept it). Caveats kept in view: the checkers share the export format and the type theory
+(the exporter is the one shared piece of code); the paranoid check must run on the exact shipped theorems and their
+dependency closure; theorem STATEMENTS (`Spec/`) are reviewed by the owner, not by the checkers.
+
+### Earlier proposal (superseded by the above)
 
 - Proposed wording: trusted = the pinned Sail models + ONE root proof checker and its logic (today the Lean kernel; later
   con-leche's own binary only after a root checker has checked its proof once; independent checkers such as other Lean
