@@ -37,7 +37,8 @@ def Ty.bits : Ty → Nat | .u8 => 8 | .u16 => 16 | .u32 => 32 | _ => 64
 def mkMask (t : Ty) (e : MB) : MB := match t.mask with | some m => .bin .and e (.const m) | none => e
 
 def Op2.sup : Op2 → Ty → Bool
-  | .add, t | .sub, t | .and, t | .or, t | .xor, t | .shr, t | .shl, t => t != .bool
+  | .add, t | .sub, t => t != .bool
+  | .and, t | .or, t | .xor, t | .shr, t | .shl, t => t != .bool && t != .int
   | .mul, t | .div, t | .mod, t => t != .bool
   | .band, .bool | .bor, .bool => true
   | _, _ => false
@@ -51,8 +52,12 @@ def Op2.side : (o : Op2) → (t : Ty) → t.T → t.T → Prop
   | .shl, .nat, _, y => @LT.lt Nat _ y 64
   | _, _, _, _ => True
 
-/-- operations whose `Nat` operands must be exact (`< 2 ^ 64`): not homomorphic mod `2 ^ 64` -/
-def Op2.exact : Op2 → Bool | .sub | .shr | .div | .mod => true | _ => false
+/-- operations whose `Nat` / `Int` operands must be exact (`< 2 ^ 64`, resp. `-2 ^ 63 ≤ x < 2 ^ 63`): not
+homomorphic mod `2 ^ 64` (`Int` `-` is) -/
+def Op2.exact : Op2 → Ty → Bool
+  | .sub, .int => false
+  | .sub, _ | .shr, _ | .div, _ | .mod, _ => true
+  | _, _ => false
 
 /-- `a &&& b`, folded when both are constants -/
 def band : MB → MB → MB
@@ -78,19 +83,22 @@ def Cmp.sup : Cmp → Ty → Bool
   | .eq, _ | .ne, _ => true
   | _, t => t != .bool
 
-def mcmp : Cmp → MB → MB → MB
+/-- comparisons; `Int` ones signed (`slt`) -/
+def mcmp (t : Ty) : Cmp → MB → MB → MB
   | .eq, a, b => .bin .eq a b
   | .ne, a, b => .bin .xor (.bin .eq a b) (.const 1)
-  | .lt, a, b => .bin .ult a b
-  | .le, a, b => .bin .xor (.bin .ult b a) (.const 1)
+  | .lt, a, b => .bin (if t = .int then .slt else .ult) a b
+  | .le, a, b => .bin .xor (.bin (if t = .int then .slt else .ult) b a) (.const 1)
 
 def cast.sup : Ty → Ty → Bool
   | .bool, t | t, .bool => t == .bool
+  | .int, t | t, .int => t == .nat
   | .nat, .nat => false
   | s, t => s != t
 
 def mcast : Ty → Ty → MB → MB
   | .bool, .bool, a => .bin .xor a (.const 1)
+  | .int, .nat, a => .ite (.bin .slt a (.const 0)) (.const 0) a
   | .nat, t, a => mkMask t a
   | s, t, a => if s.bits ≤ t.bits then a else mkMask t a
 
@@ -147,7 +155,15 @@ theorem Rel.frame : ∀ {Γ : List Sl} {L : List Loc} {v : Vals Γ} {σ σ' : MS
 
 /-! ## Operation lemmas: the machine word of each result -/
 
-def Ty.small : (t : Ty) → t.T → Prop | .nat, x => @LT.lt Nat _ x (2 ^ 64) | _, _ => True
+def Ty.small : (t : Ty) → t.T → Prop
+  | .nat, x => @LT.lt Nat _ x (2 ^ 64)
+  | .int, x => @LE.le Int _ (-2 ^ 63) x ∧ @LT.lt Int _ x (2 ^ 63)
+  | _, _ => True
+
+/-- run-time condition of a cast: `Int.toNat` reads the sign, so the operand in range -/
+def cast.side : (s t : Ty) → s.T → Prop
+  | .int, .nat, x => @LE.le Int _ (-2 ^ 63) x ∧ @LT.lt Int _ x (2 ^ 63)
+  | _, _, _ => True
 
 
 theorem r8_shl' (a b : UInt8) :
@@ -193,7 +209,7 @@ macro "wa_op_close" : tactic => `(tactic| first
   | rfl
   | (simp only [r8_add, r16_add, r32_add, r64_add, rN_add, r8_sub, r16_sub, r32_sub, r64_sub, r8_and, r16_and,
       r32_and, r64_and, rN_and, r8_or, r16_or, r32_or, r64_or, rN_or, r8_xor, r16_xor, r32_xor, r64_xor, rN_xor,
-      r8_shl', r16_shl, r32_shl, r64_shl', r8_shr, r16_shr, r32_shr, r64_shr']; done)
+      r8_shl', r16_shl, r32_shl, r64_shl', r8_shr, r16_shr, r32_shr, r64_shr', rI_add, rI_sub]; done)
   | exact rN_subI (by assumption) (by assumption)
   | (cases ‹_ ∧ _›; exact rN_subI (by assumption) (by assumption))
   | (cases ‹_ ∧ _›; exact rN_shrI (by assumption) (by assumption))
@@ -209,7 +225,7 @@ theorem rN_shlI {x y : Nat} (hy : y < 64) : rN x <<< ((rN y &&& 63#64).toNat % 6
 
 theorem mop_ok (o : Op2) (t : Ty) (env : Mach.BEnv) (a b : MB) (x y : t.T)
     (ha : a.denote env = t.rep x) (hb : b.denote env = t.rep y) (hs : o.sup t = true) (hm : o.isM = false)
-    (hx : o.exact = true → t.small x ∧ t.small y) (hside : o.side t x y) :
+    (hx : o.exact t = true → t.small x ∧ t.small y) (hside : o.side t x y) :
     (mop o t a b).denote env = t.rep (o.den t x y) := by
   cases o <;> cases t <;> (try (exfalso; revert hs; decide)) <;> (try (exfalso; revert hm; decide)) <;>
     simp only [Op2.side] at hside <;> simp only [Op2.exact, Ty.small, forall_const] at hx <;>
@@ -241,20 +257,28 @@ macro "wa_cmp_close" : tactic => `(tactic| first
   | (apply ite_rB; obtain ⟨h1, h2⟩ := ‹_ ∧ _›
      simp only [rN_inj h1 h2, rN_lt h1 h2, beq_iff_eq, decide_eq_true_eq]; done)
   | (apply ite_rB'; obtain ⟨h1, h2⟩ := ‹_ ∧ _›
-     simp only [rN_inj h1 h2, rN_lt h2 h1, bne_eq_false_iff_eq, decide_eq_false_iff_not, Nat.not_le]; done))
+     simp only [rN_inj h1 h2, rN_lt h2 h1, bne_eq_false_iff_eq, decide_eq_false_iff_not, Nat.not_le]; done)
+  | (apply ite_rB; obtain ⟨⟨h1, h2⟩, h3, h4⟩ := ‹_ ∧ _›
+     simp only [rI_inj h1 h2 h3 h4, rI_slt h1 h2 h3 h4, beq_iff_eq, decide_eq_true_eq, if_true]; done)
+  | (apply ite_rB'; obtain ⟨⟨h1, h2⟩, h3, h4⟩ := ‹_ ∧ _›
+     simp only [rI_inj h1 h2 h3 h4, rI_slt h3 h4 h1 h2, bne_eq_false_iff_eq, decide_eq_false_iff_not, Int.not_le,
+       decide_eq_true_eq, if_true]; done))
 
 theorem mcmp_ok (o : Cmp) (t : Ty) (env : Mach.BEnv) (a b : MB) (x y : t.T)
     (ha : a.denote env = t.rep x) (hb : b.denote env = t.rep y) (hs : o.sup t = true)
     (hx : t.small x ∧ t.small y) :
-    (mcmp o a b).denote env = rB (o.den t x y) := by
+    (mcmp t o a b).denote env = rB (o.den t x y) := by
   cases o <;> cases t <;> (try (exfalso; revert hs; decide)) <;> simp only [Ty.small] at hx <;>
     simp only [mcmp, Cmp.den, Ty.rep, Mach.BExp.denote, Op.eval, ha, hb] <;> wa_cmp_close
 
 theorem r16_toNat' (a : UInt16) : rN a.toNat = r16 a := by
   apply BitVec.eq_of_toNat_eq; have := a.toNat_lt; rw [r16_nat]; simp [rN]
 theorem r64_toNat' (a : UInt64) : rN a.toNat = r64 a := r64_toNat a
+theorem toNat_castI {x : Int} (h1 : -2 ^ 63 ≤ x) (h2 : x < 2 ^ 63) :
+    (if (if (rI x).slt 0#64 = true then 1#64 else 0#64) = 0#64 then rI x else 0#64) = rN x.toNat := by
+  rw [rN_toNatI h1 h2]; by_cases h : (rI x).slt 0#64 = true <;> simp [h]
 theorem mcast_ok (s t : Ty) (env : Mach.BEnv) (a : MB) (x : s.T)
-    (ha : a.denote env = s.rep x) (hs : cast.sup s t = true) :
+    (ha : a.denote env = s.rep x) (hs : cast.sup s t = true) (hx : cast.side s t x) :
     (mcast s t a).denote env = t.rep (WA.cast s t x) := by
   cases s <;> cases t <;> (try (exfalso; revert hs; decide)) <;>
     simp only [mcast, mkMask, Ty.mask, Ty.bits, WA.cast, Ty.rep, Mach.BExp.denote, Op.eval, ha, Nat.reduceLeDiff,
@@ -264,5 +288,7 @@ theorem mcast_ok (s t : Ty) (env : Mach.BEnv) (a : MB) (x : s.T)
         r16_of8, r32_of8, r64_of8, r32_of16, r64_of16, r64_of32, r8_of16, r8_of32, r8_of64, r16_of32, r16_of64',
         r32_of64]; done)
     | (cases x <;> rfl)
+    | (simp only [cast.side] at hx; exact toNat_castI hx.1 hx.2)
+    | (exact (rI_ofNat x).symm)
 
 end Proven.WA
