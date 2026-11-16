@@ -46,9 +46,9 @@ LD = "ENTRY(_start)\nSECTIONS { . = 0x80000000; .text : { *(.text.start) *(.text
 data = b""; tab = []; ST = 8192
 for pi, code, args, want in rows:
     o = len(data); code = code + b"\0" * (-len(code) % 8)
-    a0 = o + len(code); out = a0 + 8 * len(args); stk = out + 8
-    tab.append(f"  .quad base+{o}, base+{a0}, base+{out}, base+{stk + ST}, 0, 0")
-    data += code + b"".join(a.to_bytes(8, "little") for a in args) + b"\x55" * 8 + b"\0" * ST
+    a0 = o + len(code) + 1; out = a0 + 8 * len(args) + 3 + (-(a0 + 8 * len(args) + 3) % 8) + 1; wk = out + 8 + 7 + (-(out + 8 + 7) % 8)
+    tab.append(f"  .quad base+{o}, base+{a0}, {8 * len(args)}, base+{wk}, base+{out}, base+{wk + ST}, 0, 0")
+    data += code + b"\x77" + b"".join(a.to_bytes(8, "little") for a in args) + b"\x77" * (out - a0 - 8 * len(args)) + b"\x55" * 8 + b"\x77" * (wk - out - 8) + b"\0" * ST
 open(f"{W}/s.bin", "wb").write(data)
 S = f""".section .text.start
 .globl _start
@@ -57,10 +57,13 @@ _start: lla s0, tab
 1: ld t3, 0(s0)
   ld a0, 8(s0)
   ld a1, 16(s0)
-  ld sp, 24(s0)
+  ld a2, 24(s0)
+  ld a3, 32(s0)
+  ld sp, 40(s0)
   jalr ra, t3, 0
-  sd sp, 32(s0)
-  addi s0, s0, 48
+  sd sp, 48(s0)
+  sd a0, 56(s0)
+  addi s0, s0, 64
   addi s2, s2, -1
   bnez s2, 1b
   lla t0, tohost
@@ -93,9 +96,24 @@ for l in log.splitlines():
         for j in range(len(v) // 2): mem[a + j] = int(v[2 * (len(v) // 2 - 1 - j):2 * (len(v) // 2 - j)], 16)
 off = 0
 for c, (pi, code, args, want) in enumerate(rows):
-    o = off; cl = len(code) + (-len(code) % 8); out = base + o + cl + 8 * len(args); stk = out + 8
-    got = int.from_bytes(bytes(mem[out + j] for j in range(8)), "little")
+    o = off; cl = len(code) + (-len(code) % 8)
+    a0 = o + cl + 1; out = a0 + 8 * len(args) + 3 + (-(a0 + 8 * len(args) + 3) % 8) + 1; wk = out + 8 + 7 + (-(out + 8 + 7) % 8)
+    got = int.from_bytes(bytes(mem[base + out + j] for j in range(8)), "little")
     assert got == want, ("Sail", progs[pi], args, got, want)
-    sp = int.from_bytes(bytes(mem[tabA + 48 * c + 32 + j] for j in range(8)), "little"); assert sp == stk + ST, ("Sail sp", sp)
-    off += cl + 8 * len(args) + 8 + ST
-print(f"Sail: {len(rows)} (program, input) pairs == Prog.eval; sp restored; every write in output word / stack")
+    sp, st = (int.from_bytes(bytes(mem[tabA + 64 * c + k + j] for j in range(8)), "little") for k in (48, 56))
+    assert sp == base + wk + ST, ("Sail sp", sp); assert st == base + a0, ("Sail a0 (status)", st)
+    # every write is the output word or the work block
+    off = wk + ST
+allowed = set()
+off = 0
+for c, (pi, code, args, want) in enumerate(rows):
+    cl = len(code) + (-len(code) % 8); a0 = off + cl + 1; out = a0 + 8 * len(args) + 3 + (-(a0 + 8 * len(args) + 3) % 8) + 1; wk = out + 8 + 7 + (-(out + 8 + 7) % 8)
+    allowed |= set(range(base + out, base + out + 8)) | set(range(base + wk, base + wk + ST)); off = wk + ST
+allowed |= set(range(tabA, tabA + 64 * len(rows)))
+for l in log.splitlines():
+    m = re.match(r"mem\[(?:W,)?0x([0-9A-F]+)\] <- 0x([0-9A-F]+)", l)
+    if m:
+        a, n = int(m.group(1), 16), len(m.group(2)) // 2
+        if a < base: continue  # tohost
+        assert all(a + j in allowed for j in range(n)), ("write outside output/work", l)
+print(f"Sail: {len(rows)} (program, input) pairs == Prog.eval; sp restored; a0 != oom flag; every write in the (unaligned) output word / work block")
