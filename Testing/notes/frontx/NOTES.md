@@ -1455,7 +1455,8 @@ Scope changed by the owner (features first, speed later); the speed finding is k
 (new: `Bytes8`, `Bytes8.ofString s = ofList s.toUTF8.data.toList`, `Bytes8.eqb`, `eqb_ofString : eqb (ofString s)
 (ofString t) = decide (s = t)`), `Riscv/Frontx/IndCmd.lean` (front end), `Riscv/Frontx/NameExamples.lean` (targets).
 
-- **Byte format** (stated by `C.enc` of the generated shape): a `String` field is the chain `Bytes8.ofString s` of
+- **Byte format** (superseded by section 28: a `String` is now its length, 8 bytes, then its bytes; the chain below
+  is only the memory representation) (stated by `C.enc` of the generated shape): a `String` field is the chain `Bytes8.ofString s` of
   its UTF-8 bytes: per byte the tag of `cons` and the byte, then the tag of `nil` (no length prefix: it is the
   Encode-style format of `List UInt8` as an inductive, tag + fields; a `UInt8` field is one byte).  E.g. `Name.str
   .anonymous "ab"` = `01 00 04 61 04 62 03`.
@@ -1685,3 +1686,55 @@ work bound vs the new code at `memoryNeeded`): `bt_count` +67%, `bt_graftleft` +
 (about 4 instructions), about 30 on a heap-growing store (it zeroes the new words), and about 10 per call.  A
 per-allocation check would need a source-level proof that loads stay below the heap length.
 >>>>>>> origin/main
+
+## 28. Strings as length + UTF-8 (branch `feat-utf8`)
+
+The owner's layout (ROADMAP): **a `String` is its length in bytes, 8 bytes little-endian, followed by its UTF-8
+bytes** (the format of `LList UInt8` in `Spec/Encode.lean`, no terminator, no tags).  It is the format of every
+`String` field of a `frontx_ind_type` in input and output; in memory a string stays the chain of cells of
+section 23 (`Bytes8`, one byte per cell), which is what the compiled functions (`Bytes8.eqb`, `Name.decEq`, ...) and
+their proofs work on; only the decoder and the encoder of the program changed, proved once.
+
+Example (`Riscv/Frontx/NameExamples.lean`, `decide +kernel`): `Name.str .anonymous "aλ"` is
+`01 00 03 00 00 00 00 00 00 00 61 ce bb` (tag `str`, the prefix `anonymous` = tag `00`, the length 3, the bytes;
+section 23's format was `01 00 04 61 04 ce 04 bb 03`).
+
+**Stated in the Encode style** (`Riscv/Frontx/IndStr.lean`): `encString s = enc (BitVec.ofNat 64 s.utf8ByteSize) ++
+s.toUTF8.data.toList`; `LString` (a string of fewer than `2^64` bytes, as `LList`) with `instance : Bytes LString`
+(decoder: the length, then that many bytes that are valid UTF-8; `dec_enc` proved); examples for `""`, `"ab"` and NUL
++ 2-, 3-, 4-byte characters (`"\x00λ∀𝔸"`).  Per type the layout of its constructors: `NameT.enc_anonymous : NameT.enc
+.anonymous = [0]`, `NameT.enc_str : NameT.enc (.str p s) = 1 :: NameT.enc p ++ encString s`, `NameT.enc_num :
+NameT.enc (.num p n) = 2 :: NameT.enc p ++ enc (BitVec.ofNat 64 n)`.  The generic statement is `C.enc`
+(`Compiler/Ind.lean`): a field `Fld.sl` / `Fld.sr` (the child `l` / `r` is a string) is `C.senc` = `leN 8 n ++
+bytes` of the string's cells; `senc_ofString : (C.str st s.toUTF8.data.toList).senc = encString s`.
+
+**What changed.**
+- `Compiler/Ind.lean`: `Fld.sl`, `Fld.sr`; `C.str st L` (the cells of the bytes `L`: per byte `[st + 1, b, rest, z]`,
+  then `[st, 0, z, z]`), `C.sb` (the bytes of a chain, read off the cells with a child), `C.senc`; `sTag sh =
+  sh.length - 2`: string cells use **the shape's last two tags** (the front end puts `Bytes8` last); `C.wf` per child
+  slot: `l.wf` if `Fld.l`, `l.IsStr (sTag sh)` if `Fld.sl`, `z` if neither (conjunctions, so a slot with both is
+  consistent).  Decoder `dStr st d`: read the length (into `v_13`, `v_9` kept), allocate the end cell, then a cell per
+  byte **from the last byte back** (children below parents, as `Rp` requires), cursor after the bytes; locals 13,
+  14 (decoder frame 48 → 64 bytes).  Encoder `eStr p`: count the chain (`eCnt`, loop), write the count with `wrB 8`
+  (`v_10` kept), then the bytes (`eBytes`, loop); locals 13-15 (encoder frame 56 → 72 bytes).  The stack bound of
+  the statements (`8 (nl + 1) ≥ 136` per level) covers both, so no statement's space changed.
+- `Compiler/IndStrOk.lean` (new): `dLoop_ok`, `dStr_ok` (the decoder of a string), `cnt_ok`, `bytes_ok`, `eStr_ok`
+  (the encoder), `str_sb`, `IsStr.senc`.  `Compiler/IndBytes.lean` (new): the byte-reading/writing lemmas of
+  `IndDec.lean` moved out (`At`, `rdB_ok`, `wr`, `wrB_ok`, ...).  `Compiler/IndDec.lean`: `dFlds_ok` / `eFlds_ok`
+  with the two new fields.  `Compiler/IndMain.lean`: `nodes_le` per slot (`slot_le`, `str_le`: `n + 1` cells for
+  `8 + n` bytes).  `Compiler/IndSup.lean`: `C.dec` / `decFlds` decode strings; `dec_enc`, `decIn_ok`,
+  `al_le_cellsSup` take `length < 2^64` (an 8-byte length cannot describe a longer string), so `implements1_indM`'s
+  cell bound is asked only for inputs below `2^32` bytes (`Riscv/Frontx/Ind.lean`; `IndMem.memoryNeeded_le` passes
+  its `2^20`).
+- Front end (`Riscv/Frontx/IndCmd.lean`): a `String` field is `.sl` / `.sr` in the shape; `Bytes8` is the last type
+  of the shape (TExpr: the types after `Name` — `List Level`, `Literal`, `List Expr`, `Option Expr` — move down by
+  two tags, the string cells are 28, 29); for `Bytes8`
+  `T.Nk.emb_str : (emb t).IsStr off`, used by the other types' `emb_wf`.  New definitions in `wfDefs`.
+- Shapes: `NameT` `[], [.l, .sr], [.l, .x], [], [.b, .l]`; `LevelN` `..., [.l, .sr], [.l, .x], [], [.b, .l]`;
+  `TExpr` `Name.str` `[.l, .sr]`, `Literal.strVal` `[.sl]`.
+
+**Not done.** `String.length` (Lean's is the number of characters, not bytes: needs the UTF-8 structure of
+`String.utf8EncodeChar`, continuation bytes `10xxxxxx`, as a lemma; `utf8ByteSize` would be the chain length) and
+string literals as constants (a constant chain `mk … (mk … nul)` in `E`, `=` with a constant side): neither was
+cheap here.
+
