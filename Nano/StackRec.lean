@@ -1,6 +1,6 @@
 /- Route (a), in progress: the meaning of nano-e2e's stack generator `genR` (StartCorrect convention, nano-e2e
 4c64d61) on a RECORD MACHINE (`Nano.R`: the semantics of `Nano/Asm.lean`'s record table, before encoding), proved
-block by block (`push_ok`, `ld_ok`, `addSp_ok`, `sd0_ok`, `rop_ok`, `binop_ok`; value stack `Stk` in the work block).
+block by block (`push_ok`, `ld_ok`, `addSp_ok`, `sd0_ok`, `rop_ok`, `binop_ok`, `li_ok`; value stack `Stk` in the work block).
 `Nano.S` is a verbatim COPY of nano-e2e 4c64d61's `Nano/Gen.lean` definitions (r .. depth): nano-e2e does not build
 yet (Nano/AsmSelf.lean), so it cannot be merged; replace `Nano.S` by `import Nano.Gen` at the merge.
 Remaining (Testing/notes/NANO_PROOF.md): `li`, `genE`/`genA` invariant, `pro`/`wr8`, the record machine refined by
@@ -390,5 +390,84 @@ theorem binop_ok {P : List UInt8} {s : St} {k : Nat} {rest : List UInt8} (hk : k
   · show s4.get j = s.get j
     rw [← hs4, ← hs3, ← hs2, ← hs1]; simp [St.get, St.set, a, b, c]
   · show CodeAt P (s4.pc + 1) rest; rw [p4]; rw [p4] at c5; exact c5
+
+/-! ## constants (`li`) -/
+
+theorem shl_or (x : Nat) (b : Nat) (hx : x < 2 ^ 56) (hb : b < 256) :
+    (BitVec.ofNat 64 x <<< 8 ||| BitVec.ofNat 64 b) = BitVec.ofNat 64 (x * 256 + b) := by
+  apply BitVec.eq_of_toNat_eq
+  rw [BitVec.toNat_or, BitVec.toNat_shiftLeft, BitVec.toNat_ofNat, BitVec.toNat_ofNat, BitVec.toNat_ofNat]
+  rw [Nat.mod_eq_of_lt (a := x) (by omega), Nat.mod_eq_of_lt (a := b) (by omega),
+    Nat.mod_eq_of_lt (a := x * 256 + b) (by omega), Nat.shiftLeft_eq,
+    Nat.mod_eq_of_lt (by rw [show 2 ^ 8 = 256 from rfl]; omega)]
+  rw [Nat.mul_comm x, ← Nat.two_pow_add_eq_or_of_lt (i := 8) (by omega)]
+
+theorem horner_step (n m : Nat) : n / 256 ^ (m + 1) * 256 + n / 256 ^ m % 256 = n / 256 ^ m := by
+  rw [Nat.pow_succ, ← Nat.div_div_eq_div_mul]
+  have := Nat.div_add_mod (n / 256 ^ m) 256
+  omega
+
+/-- one byte of `li`: `t0 := t0 << 8 | byte m` -/
+theorem pair_ok {P : List UInt8} {s : St} {n sh : UInt64} {m : Nat} {rest : List UInt8} (hsh : sh.toNat = 8 * m)
+    (hm : m < 8) (h : CodeAt P s.pc (S.r 4 5 5 8 ++ S.r 3 5 5 ((n >>> sh).toUInt8) ++ rest))
+    (h5 : s.get 5 = BitVec.ofNat 64 (n.toNat / 256 ^ (m + 1))) :
+    ∃ s', Star P s s' ∧ s'.get 5 = BitVec.ofNat 64 (n.toNat / 256 ^ m) ∧ s'.m = s.m ∧
+      (∀ j, j ≠ 5 → s'.get j = s.get j) ∧ CodeAt P s'.pc rest := by
+  simp only [S.r, List.cons_append, List.nil_append] at h
+  have h1 := codeAt_drop h
+  have x1 := one h (s' := (({ s with pc := s.pc + 1 } : St).set 5 (s.get 5 <<< 8))) rfl
+  generalize hs1 : (({ s with pc := s.pc + 1 } : St).set 5 (s.get 5 <<< 8)) = s1 at x1
+  have p1 : s1.pc = s.pc + 1 := by rw [← hs1]; rfl
+  have g5 : s1.get 5 = s.get 5 <<< 8 := by rw [← hs1]; simp
+  have x2 := one (s := s1) (p1 ▸ h1)
+    (s' := ((({ s1 with pc := s1.pc + 1 } : St).set 5 (s1.get 5 ||| BitVec.ofNat 64 ((n >>> sh).toUInt8).toNat)))) rfl
+  refine ⟨_, x1.trans x2, ?_, by rw [← hs1]; rfl, fun j hj => ?_, by simp [p1]; exact codeAt_drop h1⟩
+  · simp only [get_set_same _ (show (5 : Nat) ≠ 0 by decide), g5]
+    have hb : ((n >>> sh).toUInt8).toNat = n.toNat / 256 ^ m % 256 := by
+      simp [UInt64.toNat_shiftRight, hsh]
+      rw [Nat.mod_eq_of_lt (a := 8 * m) (by omega), Nat.shiftRight_eq_div_pow, Nat.pow_mul]
+    have hlt : n.toNat / 256 ^ (m + 1) < 2 ^ 56 := by
+      apply Nat.div_lt_of_lt_mul
+      have h1 : 256 ≤ 256 ^ (m + 1) := Nat.le_self_pow (by omega) _
+      have h2 : n.toNat < 2 ^ 56 * 2 ^ 8 := by rw [← Nat.pow_add]; exact n.toNat_lt
+      have h3 : 2 ^ 56 * 2 ^ 8 ≤ 256 ^ (m + 1) * 2 ^ 56 := by
+        rw [Nat.mul_comm]; exact Nat.mul_le_mul_right _ h1
+      exact Nat.lt_of_lt_of_le h2 h3
+    rw [h5, hb, shl_or _ _ hlt (Nat.mod_lt _ (by decide)), horner_step]
+  · rw [← hs1] at ⊢; simp [St.get, St.set, hj]
+
+theorem li_eq (n : UInt64) (rest : List UInt8) : S.li n ++ rest =
+    S.r 2 5 0 0 ++ (S.r 4 5 5 8 ++ S.r 3 5 5 ((n >>> 56).toUInt8) ++ (S.r 4 5 5 8 ++ S.r 3 5 5 ((n >>> 48).toUInt8) ++
+    (S.r 4 5 5 8 ++ S.r 3 5 5 ((n >>> 40).toUInt8) ++ (S.r 4 5 5 8 ++ S.r 3 5 5 ((n >>> 32).toUInt8) ++
+    (S.r 4 5 5 8 ++ S.r 3 5 5 ((n >>> 24).toUInt8) ++ (S.r 4 5 5 8 ++ S.r 3 5 5 ((n >>> 16).toUInt8) ++
+    (S.r 4 5 5 8 ++ S.r 3 5 5 ((n >>> 8).toUInt8) ++ (S.r 4 5 5 8 ++ S.r 3 5 5 ((n >>> 0).toUInt8) ++ rest)))))))) := by
+  simp [S.li, S.r]
+
+/-- `li n`: `t0 := n` -/
+theorem li_ok {P : List UInt8} {s : St} {n : UInt64} {rest : List UInt8} (h : CodeAt P s.pc (S.li n ++ rest)) :
+    ∃ s', Star P s s' ∧ s'.get 5 = n.toBitVec ∧ s'.m = s.m ∧ (∀ j, j ≠ 5 → s'.get j = s.get j) ∧ CodeAt P s'.pc rest := by
+  rw [li_eq] at h
+  have x0 := one (op := 2) (a := 5) (b := 0) (c := 0) h (s' := (({ s with pc := s.pc + 1 } : St).set 5 (s.get 0 + 8 * sext8 0))) rfl
+  generalize hs0 : (({ s with pc := s.pc + 1 } : St).set 5 (s.get 0 + 8 * sext8 0)) = s0 at x0
+  have c0 := codeAt_drop (op := 2) (a := 5) (b := 0) (c := 0) h
+  rw [show s.pc + 1 = s0.pc by rw [← hs0]; rfl] at c0
+  have g0 : s0.get 5 = BitVec.ofNat 64 (n.toNat / 256 ^ (7 + 1)) := by
+    rw [← hs0]; simp only [get_set_same _ (show (5 : Nat) ≠ 0 by decide)]
+    rw [Nat.div_eq_of_lt (by have := n.toNat_lt; omega)]
+    rw [show s.get 0 = 0 from rfl, show sext8 0 = 0 by decide]; rfl
+  have k0 : ∀ j, j ≠ 5 → s0.get j = s.get j := fun j hj => by rw [← hs0]; simp [St.get, St.set, hj]
+  have m0 : s0.m = s.m := by rw [← hs0]; rfl
+  obtain ⟨s1, x1, g1, m1, k1, c1⟩ := pair_ok (m := 7) (by decide) (by decide) c0 g0
+  obtain ⟨s2, x2, g2, m2, k2, c2⟩ := pair_ok (m := 6) (by decide) (by decide) c1 g1
+  obtain ⟨s3, x3, g3, m3, k3, c3⟩ := pair_ok (m := 5) (by decide) (by decide) c2 g2
+  obtain ⟨s4, x4, g4, m4, k4, c4⟩ := pair_ok (m := 4) (by decide) (by decide) c3 g3
+  obtain ⟨s5, x5, g5, m5, k5, c5⟩ := pair_ok (m := 3) (by decide) (by decide) c4 g4
+  obtain ⟨s6, x6, g6, m6, k6, c6⟩ := pair_ok (m := 2) (by decide) (by decide) c5 g5
+  obtain ⟨s7, x7, g7, m7, k7, c7⟩ := pair_ok (m := 1) (by decide) (by decide) c6 g6
+  obtain ⟨s8, x8, g8, m8, k8, c8⟩ := pair_ok (m := 0) (by decide) (by decide) c7 g7
+  refine ⟨s8, x0.trans (x1.trans (x2.trans (x3.trans (x4.trans (x5.trans (x6.trans (x7.trans x8))))))), ?_,
+    by rw [m8, m7, m6, m5, m4, m3, m2, m1, m0], fun j hj => ?_, c8⟩
+  · rw [g8]; simp
+  · rw [k8 j hj, k7 j hj, k6 j hj, k5 j hj, k4 j hj, k3 j hj, k2 j hj, k1 j hj, k0 j hj]
 
 end Nano.R
