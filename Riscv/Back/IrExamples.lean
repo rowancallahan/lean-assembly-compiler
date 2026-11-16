@@ -16,6 +16,6 @@ def longBranches : List EOp → Nat
 
 #guard (compileW reverse).isSome
 #guard ((compileW mix).map (·.1.length)).getD 0 > 1024
-#guard (((alloc mix).bind fun q => rvT.lin q.1).map fun c => longBranches c.1).getD 0 ≥ 1
+#guard (((alloc mix).bind fun q => rvT.lin q).map fun c => longBranches c).getD 0 ≥ 1
 
 end Proven.Ir.Examples

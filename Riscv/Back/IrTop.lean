@@ -17,40 +17,34 @@ set_option linter.unusedVariables false
 namespace Proven.Ir
 open Proven Proven.Mach Proven.Mach.Riscv Proven.Top Proven.Top.Alloc
 
-/-- the events of the run from the input (none if it does not terminate), then the frame of `main` -/
-noncomputable def events (P : Prog VReg) (nS : Nat) (input : List UInt8) : List MemEvent :=
-  ((P.result input).map (·.ev)).getD [] ++ [.alloc (nS + 1)]
+/-- the events of the Lin run from the input (none if it does not terminate), then the stub's and `main`'s frame -/
+noncomputable def events (Q : Prog Nat) (input : List UInt8) : List MemEvent :=
+  ((Q.result input).map (·.ev)).getD [] ++ [Ctx.base Q]
 
-/-- the words of a program: allocation (validated), then the Lin code of `main` -/
-def compileW (P : Prog VReg) : Option (List (BitVec 32) × Nat) :=
+/-- the words of a program: allocation (validated), then the Lin code of the program -/
+def compileW (P : Prog VReg) : Option (List (BitVec 32) × Prog Nat) :=
   match alloc P with
-  | some (Q, _) => (rvT.lin Q).map fun (c, nS) => (rvT.words c, nS)
+  | some Q => (rvT.lin Q).map fun c => (rvT.words c, Q)
   | none => none
 
 /-- **the IR compiler** -/
 noncomputable def compile (P : Prog VReg) : Option CompiledA :=
   match compileW P with
-  | some (ws, nS) => some ⟨wordBytes ws, 8, events P nS⟩
+  | some (ws, Q) => some ⟨wordBytes ws, 8, events Q⟩
   | none => none
 
 theorem compile_inv {P : Prog VReg} {c : CompiledA} (h : compile P = some c) :
-    ∃ Q σ F code pos ex, alloc P = some (Q, σ) ∧ Q.funcs[Q.main]? = some F ∧
-      rvT.emitF F F.nSlots pos ex = some code ∧ c = ⟨wordBytes (rvT.words code), 8, events P F.nSlots⟩ := by
+    ∃ Q code L, alloc P = some Q ∧ rvT.emitP Q L = some code ∧ c = ⟨wordBytes (rvT.words code), 8, events Q⟩ := by
   unfold compile compileW at h
   split at h
-  · next ws nS hw =>
+  · next ws Q' hw =>
     cases h
     split at hw
-    · next Q σ ha =>
+    · next Q ha =>
       unfold Target.lin at hw
-      split at hw
-      · next F hF =>
-        simp only at hw
-        cases he : rvT.emitF F F.nSlots (Target.posOf (rvT.layout F F.nSlots (F.blocks.length + 4) ([], 0)).1)
-            (rvT.layout F F.nSlots (F.blocks.length + 4) ([], 0)).2 with
-        | none => rw [he] at hw; exact nomatch hw
-        | some code => rw [he] at hw; cases hw; exact ⟨Q, σ, F, code, _, _, ha, hF, he, rfl⟩
-      · exact nomatch hw
+      cases he : rvT.emitP Q (rvT.layout Q (Target.rounds Q) ⟨[], [], 0⟩) with
+      | none => rw [he] at hw; exact nomatch hw
+      | some code => rw [he] at hw; cases hw; exact ⟨_, code, _, ha, he, rfl⟩
     · exact nomatch hw
   · exact nomatch h
 
@@ -79,7 +73,9 @@ theorem output_bytes {m : Mem} {o : List UInt8} (h : m.output = some o) :
 /-- **the machine run** of compiled code from `StartCorrect`, for a program that computes `f` -/
 theorem machine_run {P : Prog VReg} {compiled : CompiledA} {α β : Type} {f : α → β} {encodeInput : α → List UInt8}
     {encodeOutput : β → List UInt8} {argument : α} {startState : riscv.State} {call : Call}
-    (compiles : compile P = some compiled) (computes : Computes P f encodeInput encodeOutput)
+    (compiles : compile P = some compiled)
+    (computes : (encodeInput argument).length ≤ 2 ^ 20 →
+      P.meaning (encodeInput argument) = some (encodeOutput (f argument)))
     (startsRight : StartCorrect riscv startState call compiled.code (encodeInput argument))
     (outputFits : (encodeOutput (f argument)).length ≤ call.outputLength) :
     ∃ finishState, Proven.Top.Runs riscv startState finishState ∧
@@ -93,20 +89,21 @@ theorem machine_run {P : Prog VReg} {compiled : CompiledA} {α β : Type} {f : �
             some (encodeOutput (f argument))) ∨
         (call.workLength < memoryNeeded compiled (encodeInput argument) ∧
           (riscv.observe finishState).register riscv.mapping.status = oomFlag)) := by
-  obtain ⟨Q, σ, F, code, pos, ex, ha, hP, he, rfl⟩ := compile_inv compiles
+  obtain ⟨Q, code, L, ha, he, rfl⟩ := compile_inv compiles
   -- the run of the program
-  have hmean := computes argument
+  have hmean := computes startsRight.inputSmall
   change (P.result (encodeInput argument)).bind (fun r => r.mem.output) = _ at hmean
   cases hres : P.result (encodeInput argument) with
   | none => rw [hres] at hmean; exact nomatch hmean
-  | some r =>
-  rw [hres] at hmean
-  have hrun := alloc_runs ha (Prog.result_some hres)
+  | some r0 =>
+  rw [hres] at hmean; simp only [Option.bind_some] at hmean
+  obtain ⟨r, hrun, -, hmem⟩ := alloc_runs ha (Prog.result_some hres)
+  rw [← hmem] at hmean
   obtain ⟨hol, hob⟩ := output_bytes hmean
-  have hmn : memoryNeeded ⟨wordBytes (rvT.words code), 8, events P F.nSlots⟩ (encodeInput argument) =
-      8 * peak (r.ev ++ [.alloc (F.nSlots + 1)]) := by
-    show 8 * peak (events P F.nSlots (encodeInput argument)) = _
-    simp [events, hres]
+  have hmn : memoryNeeded ⟨wordBytes (rvT.words code), 8, events Q⟩ (encodeInput argument) =
+      8 * peak (r.ev ++ [Ctx.base Q]) := by
+    show 8 * peak (events Q (encodeInput argument)) = _
+    simp [events, Prog.result_eq hrun]
   rw [hmn]
   -- the start state
   obtain ⟨configured, codeLoaded, inputLoaded, inputLength, inputSmall, returnRegister, inputRegister,
@@ -141,6 +138,10 @@ theorem machine_run {P : Prog VReg} {compiled : CompiledA} {α β : Type} {f : �
   have hent : (BitVec.ofNat 64 pc.toNat).toNat = pc.toNat := by simp
   have hcodeOK : rvT.codeOK (BitVec.ofNat 64 pc.toNat) (rvT.words code).length :=
     ⟨by rw [hent]; exact codeAligned, by rw [hent]; exact rc1, by rw [hent]; show _ ≤ 0x100000000; omega⟩
+  have hsp : (getX startState 2).toNat = call.workAddress.toNat + call.workLength := by
+    rw [getX_of (configured.x2.symm.trans h2) rfl, toNat_add_offset (bound := call.workLength + 1) (by omega)
+      (by omega)]
+    simp; omega
   -- the context
   let C : Ctx rvT := {
     W := rvT.words code
@@ -152,7 +153,10 @@ theorem machine_run {P : Prog VReg} {compiled : CompiledA} {α β : Type} {f : �
     outL := call.outputLength
     wb := call.workAddress.toNat
     wl := call.workLength
-    nS := F.nSlots
+    nS := 0
+    F0 := 0
+    sv := 0
+    hm := fun _ => none
     code0 := codeAt_of_codeBytes hcodeOK (by rw [hent]; exact hcode)
     codeOK := hcodeOK
     lo := by decide
@@ -173,21 +177,18 @@ theorem machine_run {P : Prog VReg} {compiled : CompiledA} {α β : Type} {f : �
     wr := fun s a h => by show 0x80000000 ≤ a ∧ a + 1 ≤ 0x100000000; omega
     retOK := by
       show (getX startState 1).toNat % 2 = 0
-      rw [getX_of (configured.x1.symm.trans h1) rfl]; simp; omega }
+      rw [getX_of (configured.x1.symm.trans h1) rfl]; simp; omega
+    htop := by
+      show (getX startState 2).toNat / 8 * 8 = call.workAddress.toNat + call.workLength / 8 * 8
+      rw [hsp]; have := workAligned; omega }
   have hW : C.W = rvT.words code := rfl
-  have hsp : (getX startState 2).toNat = call.workAddress.toNat + call.workLength := by
-    rw [getX_of (configured.x2.symm.trans h2) rfl, toNat_add_offset (bound := call.workLength + 1) (by omega)
-      (by omega)]
-    simp; omega
   have hout : r.mem.out.length ≤ C.outL := by
     show r.mem.out.length ≤ call.outputLength; omega
-  have := C.emit_ok hP he hW configured hpcReg
+  have := C.emit_ok he hW configured hpcReg
     (by show getX startState 10 = _; rw [getX_of (configured.x10.symm.trans h10) rfl])
     (by show getX startState 11 = _; rw [getX_of (configured.x11.symm.trans h11) rfl])
     (by show getX startState 12 = _; rw [getX_of (configured.x12.symm.trans h12) rfl])
     (by show getX startState 13 = _; rw [getX_of (configured.x13.symm.trans h13) rfl])
-    (by show (getX startState 2).toNat / 8 * 8 = call.workAddress.toNat + call.workLength / 8 * 8
-        rw [hsp]; have := workAligned; omega)
     (by show 16 ≤ (getX startState 2).toNat / 8 * 8; rw [hsp]; omega)
     hrun hout
   obtain ⟨steps, finishState, hsteps, hok, hpcF, hU, hcase⟩ := this
@@ -204,7 +205,7 @@ theorem machine_run {P : Prog VReg} {compiled : CompiledA} {α β : Type} {f : �
   · have hx10 : ∀ v, getX finishState 10 = v → (riscvObserve finishState).register 10 = UInt64.ofBitVec v := by
       intro v hv; simp only [riscvObserve, riscvRegister, hok.x10, hv, Option.map_some, Option.getD_some]
     rcases hcase with ⟨pk, a0, bo⟩ | ⟨pk, a0⟩
-    · change peak (r.ev ++ [.alloc (F.nSlots + 1)]) ≤ call.workLength / 8 at pk
+    · change peak (r.ev ++ [Ctx.base Q]) ≤ call.workLength / 8 at pk
       refine .inl ⟨by omega, ?_, ?_⟩
       · rw [hx10 _ a0]
         intro e
@@ -218,7 +219,7 @@ theorem machine_run {P : Prog VReg} {compiled : CompiledA} {α β : Type} {f : �
         simp only [bytesAt, List.getElem_map, List.getElem_range]
         have hi : i < (encodeOutput (f argument)).length := by simpa [bytesAt] using h1
         exact bo i _ (hob i hi)
-    · change call.workLength / 8 < peak (r.ev ++ [.alloc (F.nSlots + 1)]) at pk
+    · change call.workLength / 8 < peak (r.ev ++ [Ctx.base Q]) at pk
       exact .inr ⟨by omega, by rw [hx10 _ a0]; rfl⟩
 
 /-- **What happens** (`CompileRuns`): the code returns to the caller, changes nothing outside the output and work
@@ -226,7 +227,7 @@ blocks, and the status register holds `oomFlag` exactly when the run's memory ex
 theorem ir_compile_runs : CompileRuns riscv compile := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
     outputFits
-  obtain ⟨finishState, hruns, hpc, hframe, hcase⟩ := machine_run compiles computes startsRight outputFits
+  obtain ⟨finishState, hruns, hpc, hframe, hcase⟩ := machine_run compiles (fun _ => computes argument) startsRight outputFits
   refine ⟨finishState, hruns, hpc, hframe, ?_⟩
   unfold OutOfMemory
   rcases hcase with ⟨hle, hne, -⟩ | ⟨hlt, heq⟩
@@ -238,7 +239,7 @@ and no flag. -/
 theorem ir_compile_correct : CompileCorrect riscv compile := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
     outputFits enoughMemory
-  obtain ⟨finishState, hruns, hpc, hframe, hcase⟩ := machine_run compiles computes startsRight outputFits
+  obtain ⟨finishState, hruns, hpc, hframe, hcase⟩ := machine_run compiles (fun _ => computes argument) startsRight outputFits
   rcases hcase with ⟨-, hne, hread⟩ | ⟨hlt, -⟩
   · exact ⟨finishState, hruns, hpc, hne, hread⟩
   · exact absurd enoughMemory (Nat.not_le.2 hlt)
