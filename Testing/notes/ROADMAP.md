@@ -211,7 +211,16 @@ Measured yield (BLOCKER_YIELD.md, merged): con-leche greedy starts with 0-ary co
    So round 1 = constants + monomorphisation of type variables + those translator crashes; round 2 = IR S3.
 Ranking of later features from the Haiku yield analysis (`Testing/notes/BLOCKER_YIELD.md`, branch blocker-yield).
 
-## Trust statement (owner, 2026-11-16, FINAL)
+## Trusted base: the six items (owner, 2026-11-16, FINAL)
+
+Math: (1) Lean's logic and axioms (what the kernel accepts: type theory + propext, Classical.choice, Quot.sound);
+(2) the elaborator, as the definition of what written syntax means; (3) our specification (`Spec/`: what "correct" is).
+Machine: (4) the Sail models describe the ISA correctly (with their axiom set); (5) the physical CPU implements the ISA.
+Bootstrap: (6) the first checker used is correct for our use, made robust by intersecting several independent checkers
+(Lean kernel, con-leche, nanoda, …). Everything else (exporter, our compiler, con-leche's binary, optimisation passes) is
+proved, not trusted.
+
+### Details of the root checker
 
 Trusted: (1) the pinned Sail models with their axiom set (`Testing/scripts/expected-axioms.txt`) and the standard Lean
 axioms (propext, Classical.choice, Quot.sound); (2) the hardware behaves as the Sail model; (3) ONE root proof checker =
