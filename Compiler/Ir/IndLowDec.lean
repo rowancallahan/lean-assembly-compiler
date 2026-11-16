@@ -187,7 +187,6 @@ theorem str_loop (st : Nat) (hst : st + 1 < 256) (L : List UInt8) (c : Nat) (hc 
     refine ⟨g', m', .loopT ht (by simp only [strBody, SC.seqs]; exact .seq x1 (.seq x2 (.seq x3 x4))) xl,
       hle.trans ml, by rw [ho]; rfl, hr, fun q a b c d => by rw [fr q a b c d, e4 q a b c d]⟩
 
--- DECSTR
 theorem unle_leN8 (n : Nat) (hn : n < 2 ^ 64) : unle (leN 8 n) = n := by
   rw [unle_leN]; exact Nat.mod_eq_of_lt (by simpa using hn)
 
@@ -256,5 +255,321 @@ theorem decStr_ok (st : Nat) (hst : st + 1 < 256) (d : Nat) (hd1 : d ≠ 0) (hd2
     rw [upd_ne _ _ a, upd_ne _ _ b]
     rw [f₅ q (by omega) (by omega) (by omega) (by omega)]
     exact e4 q b (by omega) (by omega) (by omega) (by omega) (by omega)
+
+/-! ## dec -/
+
+/-- `dec` returns the value `c` (bytes `L` read from `cur`) -/
+def DecRet (P : Prog VReg) (mm : Mem) (cur : Nat) (L : List UInt8) (c : C) : Prop :=
+  ∃ v mm', Returns P 1 [.p 0 0, .w (BitVec.ofNat 64 cur)] mm [v, .w (BitVec.ofNat 64 (cur + L.length))] mm' ∧
+    MLe mm mm' ∧ mm'.out = mm.out ∧ Rv mm' v c
+
+/-- the input holds `L` at `cur` -/
+def InAt (inp : List UInt8) (cur : Nat) (L : List UInt8) : Prop := ∀ i (hi : i < L.length), inp[cur + i]? = some L[i]
+
+/-- the registers of `dec` after the fields `fs₁` of the node `c t x l r` -/
+def DInv (fs₁ : List Fld) (t : Nat) (x : BitVec 64) (l r : C) (g : VReg → Val) (mm : Mem) (cur : Nat) : Prop :=
+  g 0 = .p 0 0 ∧ g 1 = .w (BitVec.ofNat 64 cur) ∧ g 2 = .w (BitVec.ofNat 64 t) ∧
+    (g 3 = .w x ∨ (g 3 = .w 0 ∧ Fld.x ∉ fs₁ ∧ Fld.b ∉ fs₁)) ∧
+    (Rv mm (g 4) l ∨ (g 4 = .w 0 ∧ Fld.l ∉ fs₁ ∧ Fld.sl ∉ fs₁)) ∧
+    (Rv mm (g 5) r ∨ (g 5 = .w 0 ∧ Fld.r ∉ fs₁ ∧ Fld.sr ∉ fs₁))
+
+theorem DInv.mono {fs₁ : List Fld} {t : Nat} {x : BitVec 64} {l r : C} {g : VReg → Val} {mm mm' : Mem} {cur : Nat}
+    (h : DInv fs₁ t x l r g mm cur) (hm : MLe mm mm') : DInv fs₁ t x l r g mm' cur := by
+  obtain ⟨h0, h1, h2, h3, h4, h5⟩ := h
+  refine ⟨h0, h1, h2, h3, ?_, ?_⟩
+  · rcases h4 with h4 | h4
+    · exact .inl (h4.mono hm)
+    · exact .inr h4
+  · rcases h5 with h5 | h5
+    · exact .inl (h5.mono hm)
+    · exact .inr h5
+
+theorem nmem_app {f f' : Fld} {fs : List Fld} (h : f ∉ fs) (h' : f ≠ f') : f ∉ fs ++ [f'] := by
+  simp only [List.mem_append, List.mem_singleton, not_or]; exact ⟨h, h'⟩
+
+theorem dec_args (cur : Nat) : (setMany (fun _ => Val.w 0) [0, 1] [.p 0 0, .w (BitVec.ofNat 64 cur)] : VReg → Val) 0 =
+    .p 0 0 ∧ (setMany (fun _ => Val.w 0) [0, 1] [.p 0 0, .w (BitVec.ofNat 64 cur)] : VReg → Val) 1 =
+    .w (BitVec.ofNat 64 cur) := by simp [setMany, upd]
+
+theorem setMany_two (g : VReg → Val) (a b : VReg) (u v : Val) : setMany g [a, b] [u, v] = upd (upd g a u) b v := rfl
+
+/-- **one field** of `dec` -/
+theorem decFld_ok (sh : Shape) (hsh : sh.length < 255) (t : Nat) (x : BitVec 64) (l r : C) (f : Fld)
+    (hb : f = .b → x.toNat < 256) (hsl : f = .sl → l.IsStr (sTag sh)) (hsr : f = .sr → r.IsStr (sTag sh))
+    (ihl : f = .l → ∀ cur mm, InAt mm.inp cur (l.enc sh) → cur + (l.enc sh).length < 2 ^ 60 → DecRet P mm cur (l.enc sh) l)
+    (ihr : f = .r → ∀ cur mm, InAt mm.inp cur (r.enc sh) → cur + (r.enc sh).length < 2 ^ 60 → DecRet P mm cur (r.enc sh) r)
+    (fs₁ : List Fld) (g : VReg → Val) (mm : Mem) (cur : Nat) (hI : DInv fs₁ t x l r g mm cur)
+    (hin : InAt mm.inp cur (Ind.encF x (l.enc sh) (r.enc sh) l.senc r.senc f))
+    (hc : cur + (Ind.encF x (l.enc sh) (r.enc sh) l.senc r.senc f).length < 2 ^ 60) :
+    ∃ g' mm', SC.Ex P (decFld (sTag sh) f) g mm g' mm' ∧ MLe mm mm' ∧ mm'.out = mm.out ∧
+      DInv (fs₁ ++ [f]) t x l r g' mm' (cur + (Ind.encF x (l.enc sh) (r.enc sh) l.senc r.senc f).length) := by
+  obtain ⟨h0, h1, h2, h3, h4, h5⟩ := hI
+  have hst : sTag sh + 1 < 256 := by unfold sTag; omega
+  cases f with
+  | x =>
+    simp only [Ind.encF] at hin hc ⊢
+    rw [leN_length] at hc ⊢
+    obtain ⟨g₁, x₁, e3, f₁⟩ := rd8_ok (P := P) (inp := 0) (cur := 1) (d := 3) (t1 := 6) (t2 := 7) (by decide)
+      (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)
+      (leN 8 x.toNat) (leN_length _ _) (fun i hi => hin i (by rw [leN_length]; exact hi)) (by omega) h0 h1
+    rw [unle_leN8 _ x.isLt, BitVec.ofNat_toNat, BitVec.setWidth_eq] at e3
+    have g11 : g₁ 1 = .w (BitVec.ofNat 64 cur) := by rw [f₁ 1 (by decide) (by decide) (by decide)]; exact h1
+    have x₂ := ex_addK (P := P) mm 1 1 8 g11
+    rw [show (BitVec.ofNat 64 cur + 8 : BitVec 64) = BitVec.ofNat 64 (cur + 8) from ofNat_add cur 8] at x₂
+    refine ⟨_, mm, .seq x₁ x₂, MLe.refl mm, rfl, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    · rw [upd_ne _ _ (by decide), f₁ 0 (by decide) (by decide) (by decide)]; exact h0
+    · rw [upd_same]
+    · rw [upd_ne _ _ (by decide), f₁ 2 (by decide) (by decide) (by decide)]; exact h2
+    · exact .inl (by rw [upd_ne _ _ (by decide)]; exact e3)
+    · rw [upd_ne _ _ (by decide), f₁ 4 (by decide) (by decide) (by decide)]
+      rcases h4 with h4 | ⟨a, b, c⟩
+      · exact .inl h4
+      · exact .inr ⟨a, nmem_app b (by decide), nmem_app c (by decide)⟩
+    · rw [upd_ne _ _ (by decide), f₁ 5 (by decide) (by decide) (by decide)]
+      rcases h5 with h5 | ⟨a, b, c⟩
+      · exact .inl h5
+      · exact .inr ⟨a, nmem_app b (by decide), nmem_app c (by decide)⟩
+  | b =>
+    have hx := hb rfl
+    simp only [Ind.encF] at hin hc ⊢
+    have hL : (leN 8 x.toNat).take 1 = [UInt8.ofNat (x.toNat % 256)] := by simp [leN]
+    rw [hL] at hin hc ⊢
+    have x₁ := ex_ldb (P := P) (d := 3) (p := 0) (i := .r 1) (k := cur) (g := g) (m := mm) h0 (word_r h1) (by omega)
+      (by simpa using hin 0 (by simp))
+    have hv : BitVec.ofNat 64 (UInt8.ofNat (x.toNat % 256)).toNat = x := by
+      rw [Nat.mod_eq_of_lt hx]; apply BitVec.eq_of_toNat_eq; simp; omega
+    rw [hv] at x₁
+    have g11 : upd g 3 (.w x) 1 = .w (BitVec.ofNat 64 cur) := by rw [upd_ne _ _ (by decide)]; exact h1
+    have x₂ := ex_addK (P := P) mm 1 1 1 g11
+    rw [show (BitVec.ofNat 64 cur + 1 : BitVec 64) = BitVec.ofNat 64 (cur + 1) from ofNat_add cur 1] at x₂
+    refine ⟨_, mm, .seq x₁ x₂, MLe.refl mm, rfl, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    · rw [upd_ne _ _ (by decide), upd_ne _ _ (by decide)]; exact h0
+    · rw [upd_same]; rfl
+    · rw [upd_ne _ _ (by decide), upd_ne _ _ (by decide)]; exact h2
+    · exact .inl (by rw [upd_ne _ _ (by decide), upd_same])
+    · rw [upd_ne _ _ (by decide), upd_ne _ _ (by decide)]
+      rcases h4 with h4 | ⟨a, b, c⟩
+      · exact .inl h4
+      · exact .inr ⟨a, nmem_app b (by decide), nmem_app c (by decide)⟩
+    · rw [upd_ne _ _ (by decide), upd_ne _ _ (by decide)]
+      rcases h5 with h5 | ⟨a, b, c⟩
+      · exact .inl h5
+      · exact .inr ⟨a, nmem_app b (by decide), nmem_app c (by decide)⟩
+  | l =>
+    simp only [Ind.encF] at hin hc ⊢
+    obtain ⟨v, mm', hret, ml, ho, hr⟩ := ihl rfl cur mm hin hc
+    refine ⟨_, mm', .call (vs := [v, .w (BitVec.ofNat 64 (cur + (l.enc sh).length))]) (by
+      simp only [List.map, Arg.eval, h0, h1]; exact hret) rfl, ml, ho, ?_⟩
+    rw [setMany_two]
+    refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
+    · rw [upd_ne _ _ (by decide), upd_ne _ _ (by decide)]; exact h0
+    · rw [upd_same]
+    · rw [upd_ne _ _ (by decide), upd_ne _ _ (by decide)]; exact h2
+    · rw [upd_ne _ _ (by decide), upd_ne _ _ (by decide)]
+      rcases h3 with h3 | ⟨a, b, c⟩
+      · exact .inl h3
+      · exact .inr ⟨a, nmem_app b (by decide), nmem_app c (by decide)⟩
+    · exact .inl (by rw [upd_ne _ _ (by decide), upd_same]; exact hr)
+    · rw [upd_ne _ _ (by decide), upd_ne _ _ (by decide)]
+      rcases h5 with h5 | ⟨a, b, c⟩
+      · exact .inl (h5.mono ml)
+      · exact .inr ⟨a, nmem_app b (by decide), nmem_app c (by decide)⟩
+  | r =>
+    simp only [Ind.encF] at hin hc ⊢
+    obtain ⟨v, mm', hret, ml, ho, hr⟩ := ihr rfl cur mm hin hc
+    refine ⟨_, mm', .call (vs := [v, .w (BitVec.ofNat 64 (cur + (r.enc sh).length))]) (by
+      simp only [List.map, Arg.eval, h0, h1]; exact hret) rfl, ml, ho, ?_⟩
+    rw [setMany_two]
+    refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
+    · rw [upd_ne _ _ (by decide), upd_ne _ _ (by decide)]; exact h0
+    · rw [upd_same]
+    · rw [upd_ne _ _ (by decide), upd_ne _ _ (by decide)]; exact h2
+    · rw [upd_ne _ _ (by decide), upd_ne _ _ (by decide)]
+      rcases h3 with h3 | ⟨a, b, c⟩
+      · exact .inl h3
+      · exact .inr ⟨a, nmem_app b (by decide), nmem_app c (by decide)⟩
+    · rw [upd_ne _ _ (by decide), upd_ne _ _ (by decide)]
+      rcases h4 with h4 | ⟨a, b, c⟩
+      · exact .inl (h4.mono ml)
+      · exact .inr ⟨a, nmem_app b (by decide), nmem_app c (by decide)⟩
+    · exact .inl (by rw [upd_ne _ _ (by decide), upd_same]; exact hr)
+  | sl =>
+    simp only [Ind.encF] at hin hc ⊢
+    obtain ⟨L, rfl, hs⟩ := IsStr.senc (hsl rfl)
+    rw [hs] at hin hc ⊢
+    obtain ⟨g', mm', x₁, ml, ho, hr, h1', fr⟩ := decStr_ok (P := P) (sTag sh) hst 4 (by decide) (by decide) (by decide)
+      L cur (by simp [leN_length] at hc ⊢; omega) h0 h1 hin
+    refine ⟨g', mm', x₁, ml, ho, ?_, h1', ?_, ?_, .inl hr, ?_⟩
+    · rw [fr 0 (by decide) (by decide) (by decide)]; exact h0
+    · rw [fr 2 (by decide) (by decide) (by decide)]; exact h2
+    · rw [fr 3 (by decide) (by decide) (by decide)]
+      rcases h3 with h3 | ⟨a, b, c⟩
+      · exact .inl h3
+      · exact .inr ⟨a, nmem_app b (by decide), nmem_app c (by decide)⟩
+    · rw [fr 5 (by decide) (by decide) (by decide)]
+      rcases h5 with h5 | ⟨a, b, c⟩
+      · exact .inl (h5.mono ml)
+      · exact .inr ⟨a, nmem_app b (by decide), nmem_app c (by decide)⟩
+  | sr =>
+    simp only [Ind.encF] at hin hc ⊢
+    obtain ⟨L, rfl, hs⟩ := IsStr.senc (hsr rfl)
+    rw [hs] at hin hc ⊢
+    obtain ⟨g', mm', x₁, ml, ho, hr, h1', fr⟩ := decStr_ok (P := P) (sTag sh) hst 5 (by decide) (by decide) (by decide)
+      L cur (by simp [leN_length] at hc ⊢; omega) h0 h1 hin
+    refine ⟨g', mm', x₁, ml, ho, ?_, h1', ?_, ?_, ?_, .inl hr⟩
+    · rw [fr 0 (by decide) (by decide) (by decide)]; exact h0
+    · rw [fr 2 (by decide) (by decide) (by decide)]; exact h2
+    · rw [fr 3 (by decide) (by decide) (by decide)]
+      rcases h3 with h3 | ⟨a, b, c⟩
+      · exact .inl h3
+      · exact .inr ⟨a, nmem_app b (by decide), nmem_app c (by decide)⟩
+    · rw [fr 4 (by decide) (by decide) (by decide)]
+      rcases h4 with h4 | ⟨a, b, c⟩
+      · exact .inl (h4.mono ml)
+      · exact .inr ⟨a, nmem_app b (by decide), nmem_app c (by decide)⟩
+
+theorem inAt_app {inp L₁ L₂ : List UInt8} {c : Nat} (h : InAt inp c (L₁ ++ L₂)) :
+    InAt inp c L₁ ∧ InAt inp (c + L₁.length) L₂ := in_app h
+
+/-- **the fields** of `dec` -/
+theorem decFlds_ok (sh : Shape) (hsh : sh.length < 255) (t : Nat) (x : BitVec 64) (l r : C) (fs : List Fld)
+    (hb : Fld.b ∈ fs → x.toNat < 256) (hsl : Fld.sl ∈ fs → l.IsStr (sTag sh)) (hsr : Fld.sr ∈ fs → r.IsStr (sTag sh))
+    (ihl : Fld.l ∈ fs → ∀ cur mm, InAt mm.inp cur (l.enc sh) → cur + (l.enc sh).length < 2 ^ 60 →
+      DecRet P mm cur (l.enc sh) l)
+    (ihr : Fld.r ∈ fs → ∀ cur mm, InAt mm.inp cur (r.enc sh) → cur + (r.enc sh).length < 2 ^ 60 →
+      DecRet P mm cur (r.enc sh) r) :
+    ∀ (fs₂ fs₁ : List Fld) (g : VReg → Val) (mm : Mem) (cur : Nat), (∀ f ∈ fs₂, f ∈ fs) →
+      DInv fs₁ t x l r g mm cur → InAt mm.inp cur (fs₂.flatMap (Ind.encF x (l.enc sh) (r.enc sh) l.senc r.senc)) →
+      cur + (fs₂.flatMap (Ind.encF x (l.enc sh) (r.enc sh) l.senc r.senc)).length < 2 ^ 60 →
+      ∃ g' mm', SC.Ex P (SC.seqs (fs₂.map (decFld (sTag sh)))) g mm g' mm' ∧ MLe mm mm' ∧ mm'.out = mm.out ∧
+        DInv (fs₁ ++ fs₂) t x l r g' mm' (cur + (fs₂.flatMap (Ind.encF x (l.enc sh) (r.enc sh) l.senc r.senc)).length)
+  | [], fs₁, g, mm, cur, _, hI, _, _ => ⟨g, mm, .nop, MLe.refl mm, rfl, by simpa using hI⟩
+  | f :: fs₂, fs₁, g, mm, cur, hs, hI, hin, hc => by
+    simp only [List.flatMap_cons, List.length_append] at hin hc ⊢
+    obtain ⟨hin₁, hin₂⟩ := inAt_app hin
+    have hf := hs f (by simp)
+    obtain ⟨g₁, mm₁, x₁, ml₁, o₁, hI₁⟩ := decFld_ok (P := P) sh hsh t x l r f (fun e => hb (e ▸ hf))
+      (fun e => hsl (e ▸ hf)) (fun e => hsr (e ▸ hf)) (fun e => ihl (e ▸ hf)) (fun e => ihr (e ▸ hf)) fs₁ g mm cur hI
+      hin₁ (by omega)
+    obtain ⟨g₂, mm₂, x₂, ml₂, o₂, hI₂⟩ := decFlds_ok sh hsh t x l r fs hb hsl hsr ihl ihr fs₂ (fs₁ ++ [f]) g₁ mm₁ _
+      (fun f' h => hs f' (by simp [h])) hI₁ (by rw [ml₁.1]; exact hin₂) (by omega)
+    refine ⟨g₂, mm₂, ex_seqs_cons x₁ x₂, ml₁.trans ml₂, by rw [o₂, o₁], ?_⟩
+    simp only [List.append_assoc, List.singleton_append, Nat.add_assoc] at hI₂; exact hI₂
+
+theorem decF_eq (sh : Shape) : decF sh = mkFunc [0, 1] [0, 1] (sh.length + 2)
+    (rs3 (.seq (.seqs [.i (.ldb 2 0 (.r 1)), addK 1 1 1, setK 3 0, setK 4 0, setK 5 0])
+        (.term (.switch 2 ((List.range sh.length).map (· + 1)) (sh.length + 1)))) sh
+      (fun fs => .seq (SC.seqs (fs.map (decFld (sTag sh)))) (.term (.jmp (sh.length + 1) [])))
+      (.seq (mkCell 6 (.r 2) (.r 3) (.r 4) (.r 5)) (.term (.ret [.r 6, .r 1])))) := rfl
+
+/-- **`dec`** reads a well-formed value -/
+theorem dec_ok (sh : Shape) (hsh : sh.length < 255) (hP : P.funcs[1]? = some (decF sh)) :
+    ∀ (c : C), c.wf sh → ∀ cur mm, InAt mm.inp cur (c.enc sh) → cur + (c.enc sh).length < 2 ^ 60 →
+      DecRet P mm cur (c.enc sh) c := by
+  intro c
+  induction c with
+  | z => intro h; exact absurd h id
+  | c t x l r ihl ihr =>
+    intro hwf cur mm hin hc
+    have ht : t < sh.length := hwf.1
+    have hfs : sh.getD t [] = sh[t] := by simp [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem ht]
+    rw [C.wf, hfs] at hwf
+    obtain ⟨-, ⟨hx0, hb⟩, ⟨hl, hsl, hl0⟩, ⟨hr, hsr, hr0⟩⟩ := hwf
+    simp only [C.enc, hfs] at hin hc ⊢
+    simp only [List.length_cons] at hc ⊢
+    generalize hFF : decF sh = F at hP
+    rw [decF_eq] at hFF
+    have ok0 := rs3_ok0 [0, 1] (.seq (.seqs [.i (.ldb 2 0 (.r 1)), addK 1 1 1, setK 3 0, setK 4 0, setK 5 0])
+        (.term (.switch 2 ((List.range sh.length).map (· + 1)) (sh.length + 1)))) sh
+      (fun fs => .seq (SC.seqs (fs.map (decFld (sTag sh)))) (.term (.jmp (sh.length + 1) [])))
+      (.seq (mkCell 6 (.r 2) (.r 3) (.r 4) (.r 5)) (.term (.ret [.r 6, .r 1])))
+    have okE := rs3_okE [0, 1] (.seq (.seqs [.i (.ldb 2 0 (.r 1)), addK 1 1 1, setK 3 0, setK 4 0, setK 5 0])
+        (.term (.switch 2 ((List.range sh.length).map (· + 1)) (sh.length + 1)))) sh
+      (fun fs => .seq (SC.seqs (fs.map (decFld (sTag sh)))) (.term (.jmp (sh.length + 1) [])))
+      (.seq (mkCell 6 (.r 2) (.r 3) (.r 4) (.r 5)) (.term (.ret [.r 6, .r 1])))
+    have okj := rs3_okj [0, 1] (.seq (.seqs [.i (.ldb 2 0 (.r 1)), addK 1 1 1, setK 3 0, setK 4 0, setK 5 0])
+        (.term (.switch 2 ((List.range sh.length).map (· + 1)) (sh.length + 1)))) sh
+      (fun fs => .seq (SC.seqs (fs.map (decFld (sTag sh)))) (.term (.jmp (sh.length + 1) [])))
+      (.seq (mkCell 6 (.r 2) (.r 3) (.r 4) (.r 5)) (.term (.ret [.r 6, .r 1]))) t ht
+    rw [hFF] at ok0 okE okj
+    obtain ⟨n0, ok0⟩ := ok0
+    obtain ⟨nE, okE⟩ := okE
+    obtain ⟨nj, okj⟩ := okj
+    obtain ⟨BE, hBE, hpE⟩ := ok_open_block (flatT_start _ _ okE)
+    obtain ⟨Bj, hBj, hpj⟩ := ok_open_block (flatT_start _ _ okj)
+    -- the entry
+    generalize hg : setMany (fun _ => Val.w 0) [0, 1] [.p 0 0, .w (BitVec.ofNat 64 cur)] = g
+    have h0 : g 0 = .p 0 0 := by rw [← hg]; exact (dec_args cur).1
+    have h1 : g 1 = .w (BitVec.ofNat 64 cur) := by rw [← hg]; exact (dec_args cur).2
+    have htag : mm.inp[cur]? = some (UInt8.ofNat t) := by simpa using hin 0 (by simp)
+    have x₁ := ex_ldb (P := P) (d := 2) (p := 0) (i := .r 1) (k := cur) (g := g) (m := mm) h0 (word_r h1) (by omega) htag
+    have htt : (UInt8.ofNat t).toNat = t := by rw [UInt8.toNat_ofNat']; exact Nat.mod_eq_of_lt (by omega)
+    rw [htt] at x₁
+    generalize hg₁ : upd g 2 (.w (BitVec.ofNat 64 t)) = g₁ at x₁
+    have g11 : g₁ 1 = .w (BitVec.ofNat 64 cur) := by rw [← hg₁, upd_ne _ _ (by decide)]; exact h1
+    have x₂ := ex_addK (P := P) mm 1 1 1 g11
+    rw [show (BitVec.ofNat 64 cur + 1 : BitVec 64) = BitVec.ofNat 64 (cur + 1) from ofNat_add cur 1] at x₂
+    generalize hg₂ : upd (upd (upd (upd g₁ 1 (.w (BitVec.ofNat 64 (cur + 1)))) 3 (.w 0)) 4 (.w 0)) 5 (.w 0) = g₂
+    have x₃ : SC.Ex P (.seqs [.i (.ldb 2 0 (.r 1)), addK 1 1 1, setK 3 0, setK 4 0, setK 5 0]) g mm g₂ mm := by
+      rw [← hg₂]; simp only [SC.seqs]
+      exact .seq x₁ (.seq x₂ (.seq (ex_setK _ _ _ _) (.seq (ex_setK _ _ _ _) (ex_setK _ _ _ _))))
+    have hI : DInv [] t x l r g₂ mm (cur + 1) := by
+      refine ⟨?_, ?_, ?_, .inr ⟨?_, by simp, by simp⟩, .inr ⟨?_, by simp, by simp⟩, .inr ⟨?_, by simp, by simp⟩⟩
+      · rw [← hg₂, upd_ne _ _ (by decide), upd_ne _ _ (by decide), upd_ne _ _ (by decide), upd_ne _ _ (by decide), ← hg₁,
+          upd_ne _ _ (by decide)]; exact h0
+      · rw [← hg₂]; simp [upd]
+      · rw [← hg₂]; simp only [upd]; simp [← hg₁]
+      · rw [← hg₂]; simp [upd]
+      · rw [← hg₂]; simp [upd]
+      · rw [← hg₂]; simp [upd]
+    have g22 : g₂ 2 = .w (BitVec.ofNat 64 t) := hI.2.2.1
+    have htn : (BitVec.ofNat 64 t).toNat = t := by rw [BitVec.toNat_ofNat]; exact Nat.mod_eq_of_lt (by omega)
+    have hL : ((List.range sh.length).map (· + 1))[(BitVec.ofNat 64 t).toNat]?.getD (sh.length + 1) = t + 1 := by
+      rw [htn]; simp [ht]
+    have e0 := flatT_ok hP _ (.seq x₃ (.sw g22 (by rw [hL]; exact hBj) hpj)) _ ok0
+    rw [hL] at e0
+    -- the fields
+    have hin' := (inAt_app (L₁ := [UInt8.ofNat t]) hin).2
+    simp only [List.length_singleton] at hin'
+    obtain ⟨g₃, mm₃, x₄, ml₃, o₃, hI₃⟩ := decFlds_ok (P := P) sh hsh t x l r sh[t] hb hsl hsr
+      (fun h cur' mm' a b => ihl (hl h) cur' mm' a b) (fun h cur' mm' a b => ihr (hr h) cur' mm' a b) sh[t] [] g₂ mm
+      (cur + 1) (fun _ h => h) hI hin' (by omega)
+    have e1 := flatT_ok hP _ (.seq x₄ (.jmp (as := []) hBE (by rw [hpE]; rfl))) _ okj
+    simp only [hpE, List.map_nil, setMany] at e1
+    -- the end
+    obtain ⟨h30, h31, h32, h33, h34, h35⟩ := hI₃
+    simp only [List.nil_append] at h33 h34 h35
+    have r3 : g₃ 3 = .w x := by
+      rcases h33 with h | ⟨h, a, b⟩
+      · exact h
+      · rw [h, hx0 a b]
+    have r4 : Rv mm₃ (g₃ 4) l := by
+      rcases h34 with h | ⟨h, a, b⟩
+      · exact h
+      · rw [h, hl0 a b]; exact .z
+    have r5 : Rv mm₃ (g₃ 5) r := by
+      rcases h35 with h | ⟨h, a, b⟩
+      · exact h
+      · rw [h, hr0 a b]; exact .z
+    obtain ⟨hle, hrv⟩ := mkCell_rv (m := mm₃) (t := t) (x := x) (by omega) r4 r5
+    have x₅ := ex_mkCell' (P := P) (g := g₃) (m := mm₃) (d := 6) (t := .r 2) (x := .r 3) (l := .r 4) (r := .r 5)
+      (vt := .w (BitVec.ofNat 64 t)) (vx := .w x) (vl := g₃ 4) (vr := g₃ 5)
+      (by simp only [Arg.eval]; rw [upd_ne _ _ (by decide), h32])
+      (by simp only [Arg.eval]; rw [upd_ne _ _ (by decide), r3])
+      (by simp only [Arg.eval]; rw [upd_ne _ _ (by decide)]) (by simp only [Arg.eval]; rw [upd_ne _ _ (by decide)])
+    have e2 := flatT_ok hP _ (.seq x₅ .ret) _ okE
+    have hFe : F.entry = 0 := by rw [← hFF]; rfl
+    have hFp : F.params = [0, 1] := by rw [← hFF]; rfl
+    obtain ⟨l', pc', g', B, rvs, hR, hB, hk, ht', hv⟩ := e2
+    refine ⟨.p (mm₃.blks.length + 2) 0, _, ⟨F, hP, by rw [hFp]; rfl, l', pc', g', B, rvs, ?_, hB, hk, ht', ?_⟩,
+      ml₃.trans hle, by rw [← o₃]; rfl, hrv⟩
+    · rw [hFe, hFp, hg]
+      exact (e0.trans e1).trans hR
+    · rw [hv]
+      simp only [List.map, Arg.eval, upd_same]
+      rw [upd_ne _ _ (by decide), h31]
+      congr 3
+      simp only [List.length_cons, List.length_flatMap]
+      congr 1; omega
 
 end Proven.Ir.IndLow
