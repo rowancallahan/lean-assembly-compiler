@@ -25,4 +25,9 @@ theorem of_pg {α β : Type} {encA : α → List UInt8} {encB : β → List UInt
   obtain ⟨hout, hlen⟩ := hok hf
   exact ⟨hpc', hout, hun, habi, hcfg, hlen⟩
 
+/-- the result as raw bytes (the form `link_stage` takes for the first stage) -/
+theorem out_bytes {α β : Type} {encA : α → List UInt8} {encB : β → List UInt8} {c : List (BitVec 32)} {f : α → β}
+    {sp : Nat → Nat} {m : Nat} {rl : Bool} (h : Implements1With encA encB c f sp m rl) :
+    Implements1With encA (fun l => l) c (fun a => encB (f a)) sp m rl := h
+
 end Nano.Link

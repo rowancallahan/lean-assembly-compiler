@@ -8,17 +8,19 @@ compiler `nanoCompileS = asm ∘ genR ∘ nanoElab`. For every `src`, `p` with `
 Sail model outputs `c`, and `c` run on the Sail model computes `p.eval` (UInt64 and Int64), OOM flag exactly when the
 work block is too small. L1 = `B` computes `nanoCompileS`; L2 = `CompileCorrect`/`CompileRuns riscv` for `asm ∘ genR`.
 
-## Live status (2026-11-16 23:15)
+## Live status (2026-11-17 00:00)
+Lanes: nano-e2e (Sonnet: elaborator rules, `asm`, tests), nano-elab (Opus: `nanoElab` as compiled byte-level stages),
+nano-proof (Opus: L2), nano-mvp (finished: Int64, Chain, chain_test), nano-int (this: glue, linker, composition).
 | piece | state |
 |---|---|
 | L1 `asm` compiled, machine theorem | done: `Nano.Self.nanoAsm.implements1` (15-op table, nano-e2e c06682c) |
-| L1 `genR` compiled | in progress HERE: `genR p = mexp (ser p)` proved (`Nano/Ser.lean`, `mexp_ser`); `mexp` (micro-op expander, `Nano/Expand.lean`) is in the front end's list style, compile running |
-| L1 `nanoElab` compiled | not started (nano-e2e spent the time on elaborator edge fuzz); what the compiled front end must emit is now pinned down: `ser p` (micro-ops, `Nano/Ser.lean`) |
-| L1 one binary from the stages | glue done: `Nano.Link.link_implements`, `link_stage` |
+| L1 `genR` | `genR p = mexp (ser p)` proved (`Nano/Ser.lean`); `mexp` (micro-op expander) compile running since 23:47 (slow: 124 stored bytes); alternative: the front-end chain emits `genR p` directly |
+| L1 `nanoElab` | nano-elab: stage 1 (lexer + type check, `lexB`) proved equal to the spec for every input, being reworked for e2e's lexer and compiled; stage 2 (parser, scopes, inlining → `ser p`) NOT started: needs a stack, so the paged front end (decision below) |
+| L1 one binary from the stages | glue done: `link_implements`, `link_stage`, `of_pg` (paged stages), `out_bytes`; tested on QEMU + Sail (`link_test.py`, 45 cases) |
 | L1 partial instance | `Nano.SelfHost.asm_stage_emits`: the compiled `asm` on Sail, run on `genR p`, emits `nanoGen p` |
-| L2 stack generator `asm ∘ genR` correct | nano-proof: record machine done up to `genE_ok`, `pro_ok`, `wr_loop` (new op table); remaining: `genR` whole, Sail refinement, glue to `CompileCorrect` |
-| composition `Nano/SelfHost.lean` | `SelfHosted`, `selfHosted_of` (from L1 + L2), `selfHosted_stages` (three stage theorems + L2) proved; instance waits for L1 and L2 |
-| tests (merged tree 7e134c9) | `chain_test.py 4`: 92 sources, Lean accepts 85, nanoElab 82 (0 mismatches); P 328 pairs QEMU+Sail; S 82 programs through the compiled `asm` binary, 328 pairs QEMU+Sail incl. OOM flag. `nano_s_test.sh`: 936 pairs |
+| L2 stack generator `asm ∘ genR` correct | nano-proof: whole `genR p` on the record machine, both outcomes (`genR_ok`, `genR_oom`); record → word families (`StackFam`); Sail refinement in progress (`StackSail`, `StackSim`); glue to `CompileCorrect`/`CompileRuns` open |
+| composition `Nano/SelfHost.lean` | `SelfHosted`, `selfHosted_of` (from L1 + L2), `selfHosted_stages` (three stage theorems + L2) proved; instance waits for L1 (parser stage) and L2 |
+| tests (merged tree 7e134c9) | `chain_test.py 4`: 92 sources, Lean accepts 85, nanoElab 82 (0 mismatches); P 328 pairs QEMU+Sail; S 82 programs through the compiled `asm` binary, 328 pairs QEMU+Sail incl. OOM flag. `nano_s_test.sh`: 936 pairs. `link_test.py 6`: 45 cases. `check.sh`: ALL CHECKS PASSED |
 
 ## Naming (one consistent set; follows the lanes' latest pushes, 22:16–22:24)
 * `genR`, `nanoGen = asm ∘ genR`, `nanoCompile`: the stack generator = the SELF-HOSTED path (`Nano/Gen.lean`, nano-e2e).
