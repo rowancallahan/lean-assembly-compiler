@@ -1,5 +1,5 @@
 #!/bin/bash
-# Paged arrays (NOTES section 30): axioms of the paged-array theorems.  Machine theorems (`…implements1`, `implements1_wa*`)
+# Paged arrays (NOTES section 30): axioms of the paged-array theorems.  Machine theorems (`…_implements`, `implements1_pg*`, `pg_*`)
 # must depend on exactly the axioms of `implements1_of_execO` (the Sail model set of expected-axioms.txt);
 # source-level theorems (`Pg.comp_ok`, `runs_of`, `….good`) on propext / Classical.choice / Quot.sound at most.
 set -eo pipefail
@@ -15,7 +15,7 @@ fail=0
 while read -r l; do
   n=${l%%\'depends*}; n=${n#\'}; ax=${l#*axioms:}
   case "$n" in
-    *implements1*|*pg_core|*pg_of_*|*copy_implements|*lz_implements) [ "$ax" = "$ref" ] && echo "  ok $n (Sail model set)" || { echo "  BAD $n: $ax"; fail=1; } ;;
+    *implements1*|*pg_core|*pg_of_*|*_implements) [ "$ax" = "$ref" ] && echo "  ok $n (Sail model set)" || { echo "  BAD $n: $ax"; fail=1; } ;;
     *) for a in $(echo "$ax" | tr -d '[]' | tr ',' ' '); do
          case "$a" in propext|Classical.choice|Quot.sound) ;; *) echo "  BAD $n: $a"; fail=1 ;; esac
        done; [ $fail = 0 ] && echo "  ok $n ($ax)" ;;

@@ -1,4 +1,4 @@
-import Riscv.Frontx.WpMem
+import Riscv.Frontx.WpLeanZip
 #print axioms Proven.Mach.Riscv.implements1_of_execO
 #print axioms Proven.Mach.Riscv.pg_core
 #print axioms Proven.Mach.Riscv.pg_of_spec
@@ -24,3 +24,9 @@ import Riscv.Frontx.WpMem
 #print axioms Proven.WP.alloc_ok
 #print axioms Proven.WP.free_ok
 #print axioms Proven.WP.alloc_spec
+#print axioms Proven.WA.Pg.goodE_of_good
+#print axioms Proven.WA.LeanZip.countLengthsE_implements
+#print axioms Proven.WA.LeanZip.countLengths7E_implements
+#print axioms Proven.WA.LeanZip.countLengthsE_memoryNeeded
+#print axioms Proven.WA.LeanZip.countLengths7E_memoryNeeded
+#print axioms Proven.WA.LeanZip.countLengthsE_pk
