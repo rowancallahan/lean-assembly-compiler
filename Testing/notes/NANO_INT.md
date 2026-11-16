@@ -47,3 +47,8 @@ work block is too small. L1 = `B` computes `nanoCompileS`; L2 = `CompileCorrect`
 * `Nano/SelfHost.lean`: `SelfHosted B space D compile` (fields `code`, `emits`, `correct`, `correctInt`, `runs`) and
   `selfHosted_of` from (L1) `Implements1With` for a byte function `cb` on the domain `D` with `cb src = nanoGen p`,
   (L2) `CompileCorrect`/`CompileRuns riscv compile` with `c.code = nanoGen p`. `D` = the size side conditions.
+* 2026-11-16 22:45. Merged nano-proof 777323f (`Nano/StackRec.lean`: record machine, `genE_ok`/`genA_ok`). Its `Nano.S`
+  is a copy of `Nano/Gen.lean`; instead of editing either lane's file, `Nano/Bridge.lean` proves `S.genR p = genR p`
+  and `S.depth p = depth p` (and the pieces), so nano-proof can keep its copy and the composition uses e2e's `genR`.
+* `Nano.Link.link_stage`/`comap`: the linker for stages in the front end's theorem form
+  (`Implements1With (·.data.toList) id code f space (2^20) true`, as `frontx_implements_listC` produces).
