@@ -2325,3 +2325,59 @@ words (Expr 3270–3700; the old route 4150–5271): no inline heap checks, one 
 `memoryNeeded` and `memoryNeeded - 1`, after re-emitting with the `goodB` check: words unchanged);
 `bash Testing/scripts/check.sh` ALL CHECKS PASSED (statement-fingerprint warning only, not re-frozen).  Next: switch
 `frontx_ind` to the IR route (an `Implements1` from `IndIr.compile_correct` per entry, `Chain` by the `{P}.X` rfl).
+
+## 36. con-leche hard blockers (branch `conleche-hard`)
+
+Front end only (`Riscv/Frontx/IndCmd.lean`); no change to `Compiler/`, the back end or `Spec/`.  Targets in
+`Riscv/Frontx/ConLecheHard.lean` (con-leche @6810492c1, verbatim, `file:line` per block), each with `implements1`
+(axioms = the Sail set, `Testing/scripts/axioms_conleche-hard.lean`, in `check.sh`'s loop and expected-axioms.txt)
+and QEMU + Sail runs equal to executed Lean (`Testing/asm/emit_conleche_hard.lean`, `frontx_test.py check`):
+
+| entry | con-leche function | source | feature | cases | words |
+|---|---|---|---|---|---|
+| `lift1 e c = liftLooseBVars 1 c e` | `Expr.liftLooseBVars` | `Kernel/ExprOps.lean:677` | (2) `amount` fixed | 81 | 6939 |
+| `abs0 e k = abstract1 e 0 k` | `Expr.abstract1` | `Kernel/ExprOps.lean:739` | (2) `d` fixed | 81 | 6924 |
+| `Expr.isStrLit` | | `Kernel/Core.lean:791` | (1) `.lit (.strVal _)` / `_` | 81 | 5706 |
+| `Expr.isNatZero` | | `Kernel/Core.lean:1528` | (1) `.lit (.natVal 0)`, `.const c []`, `c == natZeroName` | 81 | 19896 |
+| `Expr.isBoolTrue` | | `Kernel/CoreDefs.lean:449` | (1) `.const c []`, `c == boolTrueName` | 81 | 20718 |
+| `peelN e k = peelPis k e` | `Expr.peelPis` | `Kernel/PropRead.lean:44` | (3) `0` / `k+1` with the tree, (4) `Option Expr` | 60 | 7960 |
+| `domN e k = binderDom k e` | `Expr.binderDom` | `Kernel/PropRead.lean:51` | (3), (4) | 60 | 7960 |
+
+**(2) Specialisation.**  An entry `f xs = g … lit …` where `g` has two scalar parameters and one argument is a literal
+that every recursive call of `g` passes unchanged (checked on `g`'s equations): `specialise` generates
+`f.spec := fun rest => g … lit …` (a plain definition) and its equations `f.spec.eq_k`, one per `g.eq_k`, with
+`g … lit …` replaced by `f.spec` — each proved by `g.eq_k` itself (the kernel unfolds `f.spec`).  Lean takes
+`f.spec.eq_1 …` as `f.spec`'s equations (`getEqnsFor?` finds them as already generated), so the rest of the front end
+sees a recursive function with one scalar parameter; the entry `f` is definitionally `f.spec …`, so the machine
+theorem is about `f` (e.g. `lift1 p.1 p.2`).  `sem` proofs `simp` with `g` too (`simp [f.spec]` unfolds it).
+Not done: specialising a parameter from the input (both scalars at run time), more than one fixed parameter.
+
+**(1) Wildcards in nested patterns.**  `reifyMatch` on a constructor application stuck on a field: if no field
+reduces the matcher for every constructor (`.lit (.natVal 0)` vs `_`), it splits on the first field of a declared
+type or `Nat` (fields searched inside nested applications, `fvarsIn`); a `Nat` (parameter, field or local) splits
+into `0` and `n + 1` with `n := natSub d 1` bound (`.bind`).  **Named constants inside a function** (`c ==
+natZeroName`): a nullary constant of a declared type is now a call of a generated `cn.cst_<T> (t : T) := cn` on the
+current node (one more program function, whose own `sem` states the value), unless the function is itself a constant
+(`.cst`/`cst_`, as in §31: there the value is still unfolded).  The caller's proof (new last alternative of the
+generated `sem` tactic): the later functions' meaning theorems are rewritten before the cells are unfolded, the
+constants' `small` side conditions are discharged by unfolding the constants (`String` byte chains: `True` by
+evaluation), `x == y` on a type whose `BEq` instance is `decide (x = y)` by a local `rfl` lemma (`simp` does not
+rewrite instance arguments), `frontx_emb_cases` / `simp_all`, and `decide p = decide p` with different
+`Decidable` instances by `congr`.
+
+**(3) A match on a scalar together with the tree** (`| 0, e => … | k + 1, .forallE _ b => …`): the `Nat` split
+above; the `sem` proof gets an alternative `rcases a with _ | a` (`ofNat_succ_eq0`: `n + 1 ≠ 0` below `2^64`).
+
+**(4) `Option Expr` results.**  The existing `TExpr` shape DROPS fields of the root type in nested types: `some e`
+is encoded as the bare tag (`TExpr.N6.emb (some e) = C.c 26 0 z z`) and `List Expr`'s heads are dropped too
+(`N5.emb (e :: es) = C.c 24 0 (N5.emb es) z`).  No compiled function before this branch returned or took
+`Option Expr`/`List Expr`, so no existing theorem was wrong, but such results would have been specified as their
+shape only.  New option `frontx_ind_type (full) T := …` (marker `T.full`, also read by `rTyOfName`): such fields are
+children.  Opt-in so that the codes and statements of every existing `TExpr` entry stay as they are; the new
+`Option`-result entries use `TExprF` (byte format identical to `TExpr` for values without `List Expr`/`Option Expr`).
+
+**Count.**  con-leche functions compiled verbatim through `frontx_ind` with a machine theorem: 71 before this branch
+(68 named directly in `frontx_ind` commands — `IndExamples` 2, `Ind2Examples` 2, `NameExamples` 2, `ExprExamples` 8,
+`ConLecheBlk` 40, `ConLecheS1`–`S3` 6, … — and 3 through entries: `looseBVarsBounded`, `instantiate1`, `wscopedB`),
+now **78** (+ `isStrLit`, `isNatZero`, `isBoolTrue`, `liftLooseBVars`, `abstract1`, `peelPis`, `binderDom`).
+(`Name.beq`/`Level.beq` of `NameExamples` are counted as in their files.)
