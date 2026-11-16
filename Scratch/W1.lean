@@ -16,6 +16,6 @@ def Expr.getAppArgs : Expr → List Expr
 end ConLeche
 namespace Proven.Frontx.ExprEx
 frontx_ind ConLeche.Cached.isStuckHeadC on TExpr
+set_option maxHeartbeats 8000000 in
 frontx_ind ConLeche.Expr.headIsProj on TExpr
-frontx_ind ConLeche.Expr.getAppArgs on TExpr
 end Proven.Frontx.ExprEx

@@ -702,6 +702,12 @@ partial def reify (c : Ctx) (e : Expr) : MetaM String := do
   if let some n := e.rawNatLit? then return s!"(.k (BitVec.ofNat 64 {n}))"
   if e.isAppOfArity ``OfNat.ofNat 3 then
     if let some n := (e.getArg! 1).rawNatLit? then return s!"(.k (BitVec.ofNat 64 {n}))"
+  -- a string literal: the constant chain of its UTF-8 bytes (`Bytes8`, the type of a `String` field in memory)
+  if let .lit (.strVal str) := e then
+    let mut v := Lean.mkConst ``Proven.Frontx.Ind.Bytes8.nil
+    for b in str.toUTF8.data.toList.reverse do
+      v := mkApp2 (mkConst ``Proven.Frontx.Ind.Bytes8.cons) (toExpr b) v
+    return ← reify c v
   if e.isConstOf ``Nat.zero || e.isConstOf ``Bool.false then return "(.k 0)"
   if e.isConstOf ``Bool.true then return "(.k 1)"
   if e.isAppOfArity ``Nat.succ 1 then return s!"(.bin .add {← reify c e.appArg!} (.k 1))"
@@ -803,6 +809,10 @@ partial def reify (c : Ctx) (e : Expr) : MetaM String := do
   -- instances (`+` on `Pos`, `++` on lists): unfold to the function
   let e' ← withTransparency .instances (whnf e)
   if e' != e then return ← reify c e'
+  -- a constant (a definition without arguments) of a declared type: its value
+  if let .const cn _ := e then
+    if let some (.defnInfo dv) := (← getEnv).find? cn then
+      if !dv.type.isForall && (← findTy c.tys dv.type).isSome then return ← reify c dv.value
   -- a function of a declared type not in the program yet: recorded, translated in the next round
   if let .const fnN _ := fn then
     if (← getEqnsFor? fnN).isSome && !(c.fns.any (·.name == fnN)) then
@@ -1154,6 +1164,18 @@ elab_rules : command
     uNs := uNs.push n.getPrefix
   let fN ← liftCoreM (realizeGlobalConstNoOverloadWithInfo f)
   let fS := toString fN
+  -- a constant (no arguments) of a declared type: the function `f.cst t := f` of an input tree `t` that it ignores
+  let cstTy ← liftTermElabM do
+    let ty ← whnfR (← getConstInfo fN).type
+    if ty.isForall then return none
+    let tys ← (#[Tn] ++ nestedNames (← getEnv) Tn).mapM rTyOfName
+    return ← (do if (← findTy tys ty).isSome then pure (some (← ppFull ty)) else pure none)
+  if let some tyS := cstTy then
+    let cN := fN ++ `cst
+    runCmd s!"def {cN} (t : {← liftTermElabM (do ppFull (← rTyOfName Tn).ti.ty)}) : {tyS} := {fN}"
+    let c := mkIdentFrom f cN
+    elabCommand (← `(frontx_ind $c:ident on $T:ident $[using $Us*]?))
+    return
   let r ← liftTermElabM do
     let env ← getEnv
     let tys ← (#[Tn] ++ nestedNames env Tn ++ uNs.flatMap (fun u => #[u] ++ nestedNames env u)).mapM rTyOfName
@@ -1185,8 +1207,10 @@ elab_rules : command
           else if let some b' ← unfoldDefinition? body then
             let b' := b'.headBeta
             if b'.isAppOfArity ``Decidable.decide 2 || b'.isAppOfArity ``BEq.beq 4 then body := b'
-        let .const gN _ := body.getAppFn | throwError "frontx_ind: {fN} is neither recursive nor `g c₁ …`"
-        unless (← getEqnsFor? gN).isSome do throwError "frontx_ind: {gN} has no equations"
+        -- a body that is not a call (a `match`, e.g. with default patterns): `f` itself is the function (by cases)
+        let gN := match body.getAppFn with | .const g _ => (if body.getAppNumArgs == 0 then fN else g) | _ => fN
+        let gN ← if (← getEqnsFor? gN).isSome then pure gN else pure fN
+        if gN == fN then return (fN, none)
         -- the entry's explicit parameters: the input value(s), the input word
         let mut eps := #[]
         for x in xs do
@@ -1352,7 +1376,7 @@ elab_rules : command
         (match bTys[i]! with | some rb => s!"{rb.tn}.small b → " | none => "")
     let words := (if small then words ++ s!", {smalls}, {cmpW}" else words ++ s!", {cmpW}") ++ extra
     let caseB := if bTys[i]!.isSome then "cases b <;> " else ""
-    runCmd s!"set_option maxHeartbeats 2000000 in
+    runCmd s!"set_option maxHeartbeats 16000000 in
 theorem _root_.{P}.sem : ∀ (t : {tyOf Ttn}) (a : {aTy}) (b : {bTy}), {hyps}{P}.pg.sem ({Ttn}.emb t) {aRep} {bRep} = {resRep} := by
   intro t; induction t <;> intro a b <;> intros <;>
   first
