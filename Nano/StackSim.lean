@@ -254,4 +254,115 @@ theorem case_bgeu (hC : C.Ok) (hR : Rel C s t) (hd : C.P.drop (4 * s.pc) = 7 :: 
 
 end
 
+theorem exec_halt {s s'' : R.St} {op a b c : UInt8} (h : exec s op a b c = .halt s'') : op.toNat = 48 ∧ s'' = s := by
+  unfold exec at h
+  split at h
+  all_goals (dsimp only at h)
+  all_goals first | (cases h; done) | (split at h <;> cases h; done) | skip
+  rename_i heq; cases h; exact ⟨heq, rfl⟩
+
+section
+variable {C : Ctx} {s s' : R.St} {t : Proven.St}
+
+/-- **one record step is one retired Sail instruction** -/
+theorem sim (hC : C.Ok) (hR : Rel C s t) (he : step C.P s = .next s') : ∃ t', Retires t t' ∧ Rel C s' t' := by
+  unfold R.step at he
+  split at he
+  · rename_i op a b c rest hd
+    have hF := allFam_get C.P s.pc hC.fam hd
+    simp only [Fam, Bool.or_eq_true, Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at hF
+    rcases hF with hF | ⟨⟨⟨rfl, rfl⟩, rfl⟩, rfl⟩
+    rotate_left
+    · have e : exec s 48 0 1 0 = .halt s := rfl
+      rw [e] at he; cases he
+    rcases hF with hF | ⟨⟨⟨rfl, rfl⟩, rfl⟩, hc⟩
+    rotate_left
+    · exact case_sb hC hR 6 13 rfl rfl hc w_sb hd he
+    rcases hF with hF | ⟨⟨⟨hop, rfl⟩, rfl⟩, rfl⟩
+    rotate_left
+    · rcases hop with ((rfl | rfl) | rfl) | rfl
+      · exact case_r hC hR (· ||| ·) (fun _ => rfl) w_or (fun t h _ hpc hok hi => G.step_or h hpc hok 5 5 6 hi) hd he
+      · exact case_r hC hR (· + ·) (fun _ => rfl) w_add
+          (fun t h _ hpc hok hi => G.step_add h hpc hok 5 5 6 (by decide) hi) hd he
+      · exact case_r hC hR (· - ·) (fun _ => rfl) w_sub (fun t h _ hpc hok hi => G.step_sub h hpc hok 5 5 6 hi) hd he
+      · exact case_r hC hR (· * ·) (fun _ => rfl) w_mul (fun t h _ hpc hok hi => G.step_mul h hpc hok 5 5 6 hi) hd he
+    rcases hF with hF | ⟨⟨rfl, rfl⟩, rfl⟩
+    rotate_left
+    · exact case_sd hC hR 5 31 rfl rfl w_sd hd he
+    rcases hF with hF | ⟨rfl, ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩⟩
+    rotate_left
+    · exact case_addi8 hC hR 31 31 rfl rfl (by decide) (by decide) (by decide) w_addi8_31 hd he
+    · exact case_addi8 hC hR 28 28 rfl rfl (by decide) (by decide) (by decide) w_addi8_28 hd he
+    rcases hF with hF | ⟨⟨⟨rfl, rfl⟩, rfl⟩, rfl⟩
+    rotate_left
+    · exact case_bgeu hC hR hd he
+    rcases hF with hF | ⟨⟨rfl, rfl⟩, rfl⟩
+    rotate_left
+    · exact case_ori hC hR 5 5 rfl rfl (by decide) (by decide) (by decide) (by decide) w_ori hd he
+    rcases hF with hF | ⟨⟨rfl, ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩⟩, hc⟩
+    rotate_left
+    · exact case_srli hC hR 6 5 rfl rfl (by decide) (by decide) (by decide) hc w_srli_6_5 hd he
+    · exact case_srli hC hR 31 2 rfl rfl (by decide) (by decide) (by decide) hc w_srli_31_2 hd he
+    rcases hF with hF | ⟨⟨rfl, rfl | rfl⟩, rfl⟩
+    rotate_left
+    · exact case_lbu hC hR 5 28 rfl rfl (by decide) (by decide) (by decide) w_lbu_5 hd he
+    · exact case_lbu hC hR 6 28 rfl rfl (by decide) (by decide) (by decide) w_lbu_6 hd he
+    rcases hF with hF | ⟨⟨rfl, rfl | rfl⟩, rfl⟩
+    rotate_left
+    · exact case_ld hC hR 5 31 rfl rfl (by decide) (by decide) (by decide) w_ld_5 hd he
+    · exact case_ld hC hR 6 31 rfl rfl (by decide) (by decide) (by decide) w_ld_6 hd he
+    rcases hF with ⟨rfl, ((⟨rfl, rfl⟩ | ⟨rfl, rfl⟩) | ⟨rfl, rfl⟩) | ⟨rfl, rfl⟩⟩ | ⟨⟨rfl, ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩⟩, hc⟩
+    · exact case_addi hC hR 31 31 rfl rfl (by decide) (by decide) (by decide) w_addi_31_31 hd he
+    · exact case_addi hC hR 10 0 rfl rfl (by decide) (by decide) (by decide) w_addi_10_0 hd he
+    · exact case_addi hC hR 5 0 rfl rfl (by decide) (by decide) (by decide) w_addi_5_0 hd he
+    · exact case_addi hC hR 28 10 rfl rfl (by decide) (by decide) (by decide) w_addi_28_10 hd he
+    · exact case_slli hC hR 5 5 rfl rfl (by decide) (by decide) (by decide) hc w_slli_5_5 hd he
+    · exact case_slli hC hR 31 31 rfl rfl (by decide) (by decide) (by decide) hc w_slli_31_31 hd he
+  · cases he
+
+end
+
+section
+variable {C : Ctx} {s : R.St} {t : Proven.St}
+open Proven.Top
+
+/-- **`ret`**: back at `ra`, registers and memory as before -/
+theorem sim_halt (hC : C.Ok) (hR : Rel C s t) {s'' : R.St} (he : step C.P s = .halt s'') :
+    ∃ t', Retires t t' ∧ Cfg t' ∧ t'.regs.get? .PC = some (BitVec.ofNat 64 C.RA) ∧ (∀ j, getX t' j = getX t j) ∧
+      t'.mem = t.mem := by
+  unfold R.step at he
+  split at he
+  · rename_i op a b c rest hd
+    have hF := allFam_get C.P s.pc hC.fam hd
+    obtain ⟨h48, -⟩ := exec_halt he
+    have hop : op = 48 := by
+      apply UInt8.toNat_inj.mp; rw [h48]; rfl
+    subst hop
+    simp only [Fam, Bool.or_eq_true, Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at hF
+    have hF' : a = 0 ∧ b = 1 ∧ c = 0 := by
+      revert hF; simp (config := { decide := true }); exact fun h1 h2 h3 => ⟨h1, h2, h3⟩
+    obtain ⟨rfl, rfl, rfl⟩ := hF'
+    have hi := instr_of hC hR hd w_ret
+    have x1 : getX t 1 = BitVec.ofNat 64 C.RA := (hR.x 1).trans hR.r1
+    obtain ⟨t', hN⟩ := G.step_jalr hR.cfg hR.pc (pcok_of hC hd) 0 1 0 hi
+      (by rw [x1]; have := hC.ra; simp; omega)
+    refine ⟨t', hN.ret, hN.cfg, by rw [hN.pc, x1]; simp, fun j => ?_, hN.mem⟩
+    rw [hN.x j]; by_cases hj : j = 0 <;> simp [hj]
+  · cases he
+
+theorem runs_snoc : ∀ {a b c : riscv.State}, Runs riscv a b → riscv.step b = some c → Runs riscv a c
+  | _, _, _, .stop, h => .step h .stop
+  | _, _, _, .step e r, h => .step e (runs_snoc r h)
+
+/-- **record runs are Sail runs** -/
+theorem sim_star (hC : C.Ok) : ∀ {s s' : R.St}, Star C.P s s' → ∀ {t : Proven.St}, Rel C s t →
+    ∃ t', Runs riscv t t' ∧ Rel C s' t'
+  | _, _, .refl _, t, hR => ⟨t, .stop, hR⟩
+  | _, _, .step e rest, t, hR => by
+    obtain ⟨t1, r1, hR1⟩ := sim hC hR e
+    obtain ⟨t', r', hR'⟩ := sim_star hC rest hR1
+    exact ⟨t', .step (step_of_retires r1) r', hR'⟩
+
+end
+
 end Nano.S
