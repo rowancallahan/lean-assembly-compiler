@@ -139,4 +139,77 @@ frontx_compile LeanSvg.Shape.GInfo.ligatedAndDidntMultiply
 frontx_compile LeanSvg.Shape.GInfo.setLigForLigature
 frontx_compile LeanSvg.Shape.GInfo.setLigForMark
 
+/-! ## Entry points with machine theorems (glue: the arguments are bytes / 16-bit numbers of the input) -/
+
+def rgbaAt (xs : ByteArray) (i : Nat) : Rgba :=
+  Rgba.mk (byteAt xs i).toNat (byteAt xs (i + 1)).toNat (byteAt xs (i + 2)).toNat (byteAt xs (i + 3)).toNat
+def hdrAt (xs : ByteArray) (i : Nat) : PngDecode.Hdr :=
+  PngDecode.Hdr.mk (u16 xs i) (u16 xs (i + 2)) (byteAt xs (i + 4)).toNat (byteAt xs (i + 5)).toNat (byteAt xs (i + 6) == 1)
+def rgbaGAt (xs : ByteArray) (i : Nat) : Nat :=
+  Rgba.g ⟨(byteAt xs i).toNat, (byteAt xs (i + 1)).toNat, (byteAt xs (i + 2)).toNat, (byteAt xs (i + 3)).toNat⟩
+def interlaceAt (xs : ByteArray) (i : Nat) : Bool :=
+  PngDecode.Hdr.interlace ⟨u16 xs i, u16 xs (i + 2), 8, 6, byteAt xs (i + 4) == 1⟩
+def canvasHAt (xs : ByteArray) (i : Nat) : Nat := Canvas.h ⟨u16 xs i, u16 xs (i + 2), #[1, 2, 3]⟩
+def compoundValidAt (xs : ByteArray) (i : Nat) : Bool :=
+  Css.Compound.valid
+    { hasType := byteAt xs i == 1
+      typeName := "rect"
+      classes := #["a", "b"]
+      firstChild := byteAt xs (i + 1) == 1
+      valid := byteAt xs (i + 2) != 0 }
+/-- a glyph record: five fields from the input, the others their defaults -/
+def gAt (xs : ByteArray) (i : Nat) : Shape.GInfo :=
+  { cp := (byteAt xs i).toNat, gc := (byteAt xs (i + 1)).toNat, uflags := u16 xs (i + 2), gprops := (byteAt xs (i + 4)).toNat,
+    lig := (byteAt xs (i + 5)).toNat }
+def setLigAt (xs : ByteArray) (i : Nat) : Shape.GInfo :=
+  Shape.GInfo.setLigForLigature (gAt xs i) (byteAt xs (i + 6)).toNat (byteAt xs (i + 7)).toNat
+def ligNumCompsAt (xs : ByteArray) (i : Nat) : Nat := Shape.GInfo.ligNumComps (gAt xs i)
+def isIgnorableAt (xs : ByteArray) (i : Nat) : Bool := Shape.GInfo.isIgnorable (gAt xs i)
+/-- a tuple of two structures -/
+def rgbaHdrAt (xs : ByteArray) (i : Nat) : Rgba × PngDecode.Hdr := (rgbaAt xs i, hdrAt xs (i + 4))
+
+frontx_compile rgbaAt requires fun _ i => i + 16 < 2 ^ 64
+frontx_compile hdrAt requires fun _ i => i + 16 < 2 ^ 64
+frontx_compile rgbaGAt requires fun _ i => i + 16 < 2 ^ 64
+frontx_compile interlaceAt requires fun _ i => i + 16 < 2 ^ 64
+frontx_compile canvasHAt requires fun _ i => i + 16 < 2 ^ 64
+frontx_compile compoundValidAt requires fun _ i => i + 16 < 2 ^ 64
+set_option maxHeartbeats 2000000 in
+frontx_compile setLigAt requires fun _ i => i + 32 < 2 ^ 64
+frontx_compile ligNumCompsAt requires fun _ i => i + 32 < 2 ^ 64
+frontx_compile isIgnorableAt requires fun _ i => i + 32 < 2 ^ 64
+set_option maxHeartbeats 2000000 in
+frontx_compile rgbaHdrAt requires fun _ i => i + 32 < 2 ^ 64
+
+def rgbaE (xs : ByteArray) : Rgba := rgbaAt xs 0
+frontx_entry rgbaE
+frontx_implements_bytes rgbaE
+def hdrE (xs : ByteArray) : PngDecode.Hdr := hdrAt xs 0
+frontx_entry hdrE
+frontx_implements_bytes hdrE
+def rgbaGE (xs : ByteArray) : Nat := rgbaGAt xs 0
+frontx_entry rgbaGE
+frontx_implements rgbaGE
+def interlaceE (xs : ByteArray) : Bool := interlaceAt xs 0
+frontx_entry interlaceE
+frontx_implements interlaceE
+def canvasHE (xs : ByteArray) : Nat := canvasHAt xs 0
+frontx_entry canvasHE
+frontx_implements canvasHE
+def compoundValidE (xs : ByteArray) : Bool := compoundValidAt xs 0
+frontx_entry compoundValidE
+frontx_implements compoundValidE
+def setLigE (xs : ByteArray) : Shape.GInfo := setLigAt xs 0
+frontx_entry setLigE
+frontx_implements_bytes setLigE
+def ligNumCompsE (xs : ByteArray) : Nat := ligNumCompsAt xs 0
+frontx_entry ligNumCompsE
+frontx_implements ligNumCompsE
+def isIgnorableE (xs : ByteArray) : Bool := isIgnorableAt xs 0
+frontx_entry isIgnorableE
+frontx_implements isIgnorableE
+def rgbaHdrE (xs : ByteArray) : Rgba × PngDecode.Hdr := rgbaHdrAt xs 0
+frontx_entry rgbaHdrE
+frontx_implements_bytes rgbaHdrE
+
 end Proven.Frontx.Structs
