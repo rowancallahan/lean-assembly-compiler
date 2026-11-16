@@ -2325,3 +2325,99 @@ words (Expr 3270–3700; the old route 4150–5271): no inline heap checks, one 
 `memoryNeeded` and `memoryNeeded - 1`, after re-emitting with the `goodB` check: words unchanged);
 `bash Testing/scripts/check.sh` ALL CHECKS PASSED (statement-fingerprint warning only, not re-frozen).  Next: switch
 `frontx_ind` to the IR route (an `Implements1` from `IndIr.compile_correct` per entry, `Chain` by the `{P}.X` rfl).
+
+## 35. Paged front end (branch `feat-paged2`)
+
+**(1) `a0` flag, `CompileRuns` / `CompileCorrect` for the paged compiler (done; no sorry, no new axiom).**
+- `WpTop`: `wholeS_ok` / `wholeA_ok` also give `vOk` (variable 7, `a7`) at the end: 1 when the pages fit, 0 when not.
+- `WpImpl`: `pg_core` / `pg_of_spec` / `pg_of_execOW` take `Q : α → Nat → BitVec 64 → Prop` (a fact about `a7` at
+  the return); `Implements1PgQ` = `Implements1Pg` plus `∃ v, a7 = v ∧ Q a L v`; `implements1_pgSQ` / `implements1_pgAQ`
+  with `Q = okQ fits` (`a7 = 1` iff fits); `implements1_pgS` / `implements1_pgA` are their weakenings (unchanged
+  statements).
+- `PgMem.lean`: the entry stub `pgStub` (10 words): `t0 := (sp - a2) >> 13`; `t0 = 0` (no whole page) → `a0 := -1`,
+  `ret` without running the body; else `mv s1, ra; jal ra, body; mv ra, s1; addi a0, a7, -1; ret`.  Decision: `ra`
+  is kept in `s1` (the body keeps the callee-saved registers), not in the work block, so the body still gets the whole
+  work block and `memoryNeeded` stays `8192 * (peak + 1)` exactly; cost: the stub does not preserve `s1` (the
+  `AllocSpec` statements ask nothing of callee-saved registers).  `stub_run` (machine level, any work length, also
+  below 8192), `stub_top` (from `StartCorrect`).
+- `PgTop.lean`: `PgProg` (a `Pg [.ar .ba] R`, scalar or array result), meaning `PgProg.run` = `Pg.Den` (deterministic:
+  `Pg.den_det`; `GoodE` runs agree: `Pg.goodE_den`), `compile` (stub ++ paged code, cells of 8192 bytes, events
+  `E.reverse ++ [.alloc 1]` of the run's `GoodE` events, which are allocations only: `Pg.goodE_allocs`), `Good` (the
+  checks of `implements1_pgSQ/AQ` + every input up to `2^20` bytes has a `GoodE` run).  **`compile_runs :
+  CompileRuns riscv compile`, `compile_correct : CompileCorrect riscv compile`** (statements of
+  `Compiler/AllocSpec.lean` unchanged).  Axioms: exactly the Sail set (`Testing/scripts/axioms_feat-paged2.lean`, in
+  check.sh's loop).
+
+**(2) Paged front end `wp_compile` (`Riscv/Frontx/WpCmd.lean`; reflection shared with `wa_compile` in `WaCmd.lean`
+behind the flag `waPagedRef`, so `wa_compile` entries are unchanged).**  `wp_compile f max N (invariant P measure μ)*`
+reflects `f : ByteArray → β` into `f.wa : Pg [.ar .ba] R` and proves `f.goodE : ∀ xs, xs.size ≤ N → ∃ E,
+f.wa.GoodE [inLocP] 9 (xs, ()) (f xs) E` directly (no `Pg.Good` + bridge), then `f.pg : PgProg` (inputs up to `N`
+bytes), `f.pgGood`, `f.compiles : compile f.pg = some …`, `f.computes : Computes f.pg (fun a : {xs // xs.size ≤ N} =>
+f a.1) …`: with `compile_correct` / `compile_runs` the `AllocSpec` statements for `f`.  New in the reflection (paged
+mode):
+- a loop's `ByteArray` state that the loop changes starts as a copy (`F.extract m 0 m.size`); an array parameter the
+  loop never changes, given an array of the environment, is that array (not state, no copy: the back end allows one
+  work array per loop state);
+- `let t := a.extract lo hi` (fresh array), `a ++ b` (a loop of pushes onto a copy of `a`, `appendGo`,
+  `append_appendGo'`), `a.push x` at program level (`pushGo`), a computed array argument of a loop is named first;
+  an array result that is a computed expression is named first;
+- `Prop` parameters of loop functions (lean-zip's `hd_pos`, `hsd`) are not state: the loop's function is
+  `if h : C then fn … h … else default` with `C` the conjunction of their types, discharged from the invariant
+  (`wp_dif`, `wp_side`);
+- `ByteArray.get!`; `WellFounded.Nat.fix` (single-argument WF recursion) recognised as recursion;
+- programs with `mop` (`*`, `/`, `%` by variables, also `/` by a constant): the checked words `compBFC` with a register
+  choice found by `pickC` (`PgProg.ch`, `implements1_pgSQC/AQC`, `pg_of_execOC`).
+- `nat_types` (a definitional change of numerals / `≤` / `+` typed `Ty.nat.T` to `Nat`, so that `omega` reads them).
+
+Back-end changes: **flat guards** (`WpFlat.lean`): each paged stage sat inside the previous stage's `vOk` guard (a
+`loop` run once), so the outermost guard's body was the whole rest of the program and overran the 12-bit loop-exit
+branch (`wfB`: bodies below ~1000 words; every multi-stage program failed).  `flatG` (fuel-indexed, structural, so
+`decide` reduces it) rewrites `guard (A; guard B)` to `guard A; guard B`; `flatG_exec` (soundness, one direction is
+enough); `pgProgS` / `pgProgA` are flattened.  **Scalar-result loops**: `LoopC` required the result location to be
+the work array; a scalar loop's result location is now `rlNone = ⟨0, true, 0⟩` (read-only), so the condition is
+vacuous (`WpProg`, `WpBridge`, proofs unchanged).  `Pg.evRun` (`WpRun.lean`): the page events computed with fuel;
+`Pg.evRun_of_goodE`, **`memoryNeeded_eval`**: the memory the compiled code needs on an input is
+`8192 * (pk 0 E + 1)` for the computed `E` (used by the test emitters).
+
+**(3) lean-zip @7e10583 compiled VERBATIM (text copied with `file:line`, entry points fix the other arguments):**
+
+| row | source | entry | file | max | QEMU+Sail |
+|---|---|---|---|---|---|
+| BAO `storedCopyLoop` | Zip/Native/InflateFast.lean:596 | `storedCopyE xs = storedCopyLoop xs xs (n >>> 1) 0 n` | `WpLeanZip2` | 2^20 | 114 |
+| BAO `ByteArray.copyWithin` | Zip/Native/CopyWithin.lean:37 (the `@[extern]` attribute line left out; body copied) | `xs.copyWithin (n >>> 2) (n >>> 1)` | `WpLeanZip2` | 2^19 | 114 |
+| BAO+PRFARG `copyLoopGo` | Zip/Native/Inflate.lean:710 | `copyLoopGo (xs.push 0) (n + 1 - (n % 7 + 1)) (n % 7 + 1) 0 n` | `WpLeanZip2` | 2^19 - 1 | 114 |
+| ARR `kraftSumFast` (+`.go`) | Zip/Native/Inflate.lean:555 (with `countLengthsFast` :536) | `kraftSumFast (countLengthsFast xs.data 15) 15` | `WpLeanZip3` | 2^20 | 114 |
+| ARR `nextCodesFast` (+`.go`) | Zip/Native/Inflate.lean:587 | `nextCodesFast (countLengthsFast xs.data 15) 15` | `WpLeanZip3` | 2^20 | 114 |
+| ARR `countLongCodes` (+`.go`) | Zip/Native/InflateTreeFree.lean:94 (`fastBits` Inflate.lean:144) | `countLongCodes (countLengthsFast xs.data 15) 15` | `WpLeanZip3` | 2^20 | 114 |
+| ARR `Huffman.Spec.nextCodes` (+`.go`) | Zip/Spec/Huffman.lean:83 | `nextCodes (countLengthsFast xs.data 15) 15` | `WpLeanZip3` | 2^20 | 114 |
+
+Each entry: `f.goodE`, `f.pgGood`, `f.compiles`, `f.computes` (axioms: the Sail set for `pgGood` / `compiles`, the
+standard three for `goodE` / `computes`; `Testing/scripts/axioms_feat-paged2.lean`).  Tests: `lake env lean
+Testing/asm/emit_pg2.lean` / `emit_pg3.lean` write `pgs_<name>.words` (`pgs L`: the stub and the paged code) and
+`.cases` (57 inputs, each at exactly `memoryNeeded` (`a0 = 0`, the result) and one page less (`a0 = a1 = -1`, output
+untouched)); `python3 Testing/asm/frontx_test.py check 114 pgs_<name>` (the harness now also stores and checks `a0`
+for `pgs` words).
+
+**Not done (and why).**
+- `ByteArray.fillDouble` (ExtendWithin.lean:48): the loop's state update is `seed ++ seed`, a loop inside a loop
+  body; loop bodies (`T`) have no inner loops.  Needs nested loops in the IR / back end (or a proved rewrite of
+  doubling into one flat loop, which would not be a general compiler step).  `extendWithin` / `copyLoop` call it.
+- `hasLongCode` (InflateTreeFree.lean:176): `count[len]! > 0` compares a `Nat` element of a computed array; `E.ok`
+  asks for `< 2^64`, which needs a fact about the earlier loop's result (`countLengthsFast`) that the generated
+  invariants cannot carry from one loop to the next.  Also its nested `if … then true else go …` leaves a
+  `Decidable.rec` the step tactic cannot invert.
+- `fixedLitCount` / `fixedDistCount`, Crc32 tables: constant tables (`F.const`) are rejected by `F.wfP` in the paged
+  back end; `Huffman.Spec.countLengths` takes a `List Nat` (no lists on the `wa` path); `fillSlots` needs `Nat`
+  powers / nested loops; HuffTree (inductive) and tuples of arrays: not started.
+- Reflection prints `Error: index out of bounds` (a `!` access in the meta code returning a default) for the
+  entries with a dropped array parameter; the generated terms and proofs check (kernel), the source of the panic is not
+  found yet.
+- Compile time: each `wp_compile` with loops takes 3 to 6 minutes (the `GoodE` simp proofs and `decide +kernel` on
+  `wfB` / `optB`).
+
+**State.** origin/main merged (notes only); `bash Testing/scripts/check.sh` ALL CHECKS PASSED (the statement fingerprint
+WARNING as before, not re-frozen).  QEMU + Sail: the 7 `pgs_*` entries 114 cases each (57 inputs at `memoryNeeded`
+and one page less, `a0` and `a1` checked), the 4 older `pg_*` entries (regenerated after `flatG`) 120 cases each.
+Next: nested loops in loop bodies (`fillDouble`, `extendWithin`, `copyLoop`); facts about an earlier loop's result in
+a later loop's invariant (`hasLongCode`); constant tables in the paged back end; then HuffTree (`frontx_ind`) and tuples
+of arrays toward `inflate`.

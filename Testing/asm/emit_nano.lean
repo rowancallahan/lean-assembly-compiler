@@ -1,4 +1,4 @@
-/- nano code generator tests (`Nano/Gen.lean`, proved in `Nano/ProofTop.lean`): random nano programs (and a few
+/- nano code generator tests (`Nano/GenIr.lean`, proved in `Nano/ProofTop.lean`): random nano programs (and a few
 sources through `nanoElab`), their words (`nanoGen` = `Ir.compile ∘ lower`) and per case the input (arguments as
 8-byte LE words), `Prog.eval`'s result (8 LE bytes) and `memoryNeeded` (from the IR interpreter).  Writes
 `Testing/asm/ir-words/nano_<i>.{words,cases}`.  Run:

@@ -127,10 +127,13 @@ def pArgs : Nat → List (List UInt8) → Defs → Nat → List Tok → Option (
 def pAtom : Nat → List (List UInt8) → Defs → List Tok → Option (Ex × List Tok)
   | 0, _, _, _ => none
   | _ + 1, _, _, Tok.num n :: ts => some (Ex.num n, ts)
-  | _ + 1, sc, _, Tok.id g :: ts =>
+  | _ + 1, sc, ds, Tok.id g :: ts =>
     match idx g sc 0 with
     | some i => some (Ex.var i, ts)
-    | none => none
+    | none =>
+      match findDef g ds with
+      | some (0, b) => some (Ex.call b Ex.anil, ts)
+      | _ => none
   | f + 1, sc, ds, Tok.lp :: ts =>
     match pExpr f sc ds ts with
     | some (e, Tok.rp :: r) => some (e, r)

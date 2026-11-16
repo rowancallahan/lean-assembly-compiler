@@ -8,4 +8,6 @@ regen-work/
 *.elf
 *.o
 ctest/
+Testing/nano/work/
+Testing/asm/__pycache__/
 Testing/asm/ir-words/nano_*

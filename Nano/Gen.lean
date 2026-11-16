@@ -1,81 +1,67 @@
-/- nano code generator: `nanoGen : Prog → List UInt8` (RISC-V machine code).
-Route (b) of Testing/notes/NANO_PROOF.md: nano is lowered to the shared IR as structured code (`lower`, one function,
-straight-line), and the IR compiler (`Riscv/Back/IrTop.lean`, proved once) makes the machine code.
-Calls are inlined (the AST carries callee bodies).  Registers of `main`: `0` input, `1` length, `2` output,
-`3` cursor, `5`/`6` byte temporaries, `7` result, `8` byte scratch, `10 + k` parameter `k`, `10 + arity ..` the
-expression temporaries: a compound expression computed from register `nx` on leaves its value in `nx` (its
-sub-expressions use `nx ..` and are dead after), so the registers used grow with the nesting depth, not the size
-(the IR back end allows at most 254 frame slots). -/
-import Nano.Ast
-import Compiler.Ir.IndLowMain
-import Riscv.Back.IrTop
-
+import Nano.Elab
+import Nano.Asm
+/- nano code generator: AST -> pseudo-instruction records (see Nano/Asm.lean) -> RISC-V words.  Stack machine: every
+   value lives on the machine stack (sp); calls are inlined.  Entry convention: a0 = input words, a1 = output word.
+   Limits (12-bit offsets): arity < 127, stack slots used by the expression < 256. -/
 namespace Nano
-open Proven.Ir Proven.Ir.IndLow Proven.Mach
 
-/-- `d := a ∘ b` for a nano operator -/
-def binRhs (o : Nat) (a b : Arg Nat) : Rhs Nat :=
-  match o with
-  | 0 => .op .add a b
-  | 1 => .op .sub a b
-  | _ => .mop .mul a b
+def r (a b c d : UInt8) : List UInt8 := [a, b, c, d]
+-- registers: sp = 2, t0 = 5, t1 = 6, a0 = 10, a1 = 11.  Offsets are in slots (8 bytes).
+def ld (rd rs slot : Nat) : List UInt8 := r 0 rd.toUInt8 rs.toUInt8 slot.toUInt8
+def sd (rs2 rs1 slot : Nat) : List UInt8 := r 1 rs2.toUInt8 rs1.toUInt8 slot.toUInt8
+def addSp (k : Nat) : List UInt8 := r 2 2 2 k.toUInt8           -- sp += 8k
+def push : List UInt8 := r 2 2 2 255 ++ sd 5 2 0                -- sp -= 8; sd t0, 0(sp)
 
+/-- t0 := n by shifting in its 8 bytes, most significant first -/
+def li (n : UInt64) : List UInt8 :=
+  r 2 5 0 0 ++
+  r 4 5 5 8 ++ r 3 5 5 ((n >>> 56).toUInt8) ++ r 4 5 5 8 ++ r 3 5 5 ((n >>> 48).toUInt8) ++
+  r 4 5 5 8 ++ r 3 5 5 ((n >>> 40).toUInt8) ++ r 4 5 5 8 ++ r 3 5 5 ((n >>> 32).toUInt8) ++
+  r 4 5 5 8 ++ r 3 5 5 ((n >>> 24).toUInt8) ++ r 4 5 5 8 ++ r 3 5 5 ((n >>> 16).toUInt8) ++
+  r 4 5 5 8 ++ r 3 5 5 ((n >>> 8).toUInt8) ++ r 4 5 5 8 ++ r 3 5 5 (n.toUInt8)
+
+/-- pops b, a; pushes a ∘ b (`k`: 5 add, 6 sub, 7 mul) -/
+def binop (k : UInt8) : List UInt8 := ld 6 2 0 ++ ld 5 2 1 ++ addSp 1 ++ r k 5 5 6 ++ sd 5 2 0
+
+/-- stack slots of k fresh variables starting at depth b, newest first -/
+def mkSc : Nat → Nat → List Nat
+  | 0, _ => []
+  | k + 1, b => (b + k) :: mkSc k b
+
+def cnt : Ex → Nat
+  | .acons _ r => cnt r + 1
+  | _ => 0
+
+-- `sc`: absolute stack slot of each variable (newest first), `d`: number of slots on the stack (frame base 0)
 mutual
-/-- an expression: its code, the operand holding its value, the next free register -/
-def cE : Ex → List (Arg Nat) → Nat → SC × Arg Nat × Nat
-  | .num n, _, nx => (.nop, .i n.toBitVec, nx)
-  | .var i, env, nx => (.nop, env.getD i (.i 0), nx)
-  | .add a b, env, nx =>
-    let ra := cE a env nx
-    let rb := cE b env ra.2.2
-    (.seq (.seq ra.1 rb.1) (.i (.let_ nx (binRhs 0 ra.2.1 rb.2.1))), .r nx, nx + 1)
-  | .sub a b, env, nx =>
-    let ra := cE a env nx
-    let rb := cE b env ra.2.2
-    (.seq (.seq ra.1 rb.1) (.i (.let_ nx (binRhs 1 ra.2.1 rb.2.1))), .r nx, nx + 1)
-  | .mul a b, env, nx =>
-    let ra := cE a env nx
-    let rb := cE b env ra.2.2
-    (.seq (.seq ra.1 rb.1) (.i (.let_ nx (binRhs 2 ra.2.1 rb.2.1))), .r nx, nx + 1)
-  | .let_ v b, env, nx =>
-    let rv := cE v env nx
-    let rb := cE b (rv.2.1 :: env) rv.2.2
-    (.seq (.seq rv.1 rb.1) (.i (.let_ nx (.arg rb.2.1))), .r nx, nx + 1)
-  | .call b as, env, nx =>
-    let ra := cA as env nx
-    let rb := cE b ra.2.1.reverse ra.2.2
-    (.seq (.seq ra.1 rb.1) (.i (.let_ nx (.arg rb.2.1))), .r nx, nx + 1)
-  | .anil, _, nx => (.nop, .i 0, nx)
-  | .acons _ _, _, nx => (.nop, .i 0, nx)
-/-- an argument list: its code, the operands, the next free register -/
-def cA : Ex → List (Arg Nat) → Nat → SC × List (Arg Nat) × Nat
-  | .acons e r, env, nx =>
-    let re := cE e env nx
-    let rr := cA r env re.2.2
-    (.seq re.1 rr.1, re.2.1 :: rr.2.1, rr.2.2)
-  | _, _, nx => (.nop, [], nx)
+def genE : List Nat → Nat → Ex → List UInt8
+  | _, _, .num n => li n ++ push
+  | sc, d, .var i => ld 5 2 (d - 1 - sc.getD i 0) ++ push
+  | sc, d, .add a b => genE sc d a ++ genE sc (d + 1) b ++ binop 5
+  | sc, d, .sub a b => genE sc d a ++ genE sc (d + 1) b ++ binop 6
+  | sc, d, .mul a b => genE sc d a ++ genE sc (d + 1) b ++ binop 7
+  | sc, d, .let_ v b => genE sc d v ++ genE (d :: sc) (d + 1) b ++ ld 5 2 0 ++ addSp 1 ++ sd 5 2 0
+  | sc, d, .call b as =>
+    genA sc d as ++ genE (mkSc (cnt as) d) (d + cnt as) b ++ ld 5 2 0 ++ addSp (cnt as) ++ sd 5 2 0
+  | _, _, _ => []
+def genA : List Nat → Nat → Ex → List UInt8
+  | sc, d, .acons e r => genE sc d e ++ genA sc (d + 1) r
+  | _, _, _ => []
 end
 
-/-- load the parameters `0 .. k` (word `j` at input byte `8 j`) into registers `10 + j` -/
-def ldArgs : Nat → SC
-  | 0 => .nop
-  | k + 1 => .seq (ldArgs k) (.seq (setK 3 (BitVec.ofNat 64 (8 * k))) (rd8 0 3 (10 + k) 5 6))
+/-- load the k arguments from a0 onto the stack, in order -/
+def pro : Nat → Nat → List UInt8
+  | 0, _ => []
+  | k + 1, i => ld 5 10 i ++ push ++ pro k (i + 1)
 
-/-- the environment of the body: parameter `n - 1` is variable `0` -/
-def argEnv (n : Nat) : List (Arg Nat) := ((List.range n).map fun k => Arg.r (10 + k)).reverse
+/-- the records of a program -/
+def genR (p : Prog) : List UInt8 :=
+  pro p.1 0 ++ genE (mkSc p.1 0) p.1 p.2 ++ ld 5 2 0 ++ sd 5 11 0 ++ addSp (p.1 + 1) ++ r 8 0 0 0
 
-/-- `main`: load the parameters, compute the body into `7`, write it as 8 little-endian bytes, return -/
-def mainTC (p : Prog) : TC :=
-  let r := cE p.2 (argEnv p.1) (10 + p.1)
-  .seq (.seqs [ldArgs p.1, r.1, .i (.let_ 7 (.arg r.2.1)), .seqs ((List.range' 0 8).map wStep)]) (.term (.ret []))
+/-- the stack generator (self-hostable; tested, not proved). The proved `nanoGen` is in `Nano/GenIr.lean`
+(Testing/notes/NANO_PROOF.md). -/
+def nanoGenS (p : Prog) : List UInt8 := asm (genR p)
 
-/-- **the RTL program** of a nano program -/
-def lower (p : Prog) : Proven.Ir.Prog VReg := ⟨[mkFunc [0, 1, 2] [0, 1, 2] 1 [(0, mainTC p)]], 0⟩
-
-/-- **the code generator**: RISC-V machine code (empty if the IR back end rejects the program) -/
-def nanoGen (p : Prog) : List UInt8 :=
-  match compileW (lower p) with
-  | some (ws, _) => Proven.Top.wordBytes ws
-  | none => []
+def nanoCompileS (xs : List UInt8) : Option (List UInt8) := (nanoElab xs).map nanoGenS
 
 end Nano
