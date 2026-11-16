@@ -154,7 +154,7 @@ def analyze (ty : Expr) (nest : Array Expr := #[]) : MetaM TyInfo := do
 /-- head symbols of a body that are not an entry call `f xs = g c₁ …` (C(i), round 1) -/
 def notEntryHeads : List Name :=
   [``ite, ``dite, ``cond, ``HAppend.hAppend, ``Append.append, ``List.append, ``Bool.and, ``Bool.or, ``Bool.not,
-   ``and, ``or, ``not, ``bne, ``BEq.beq, ``Decidable.decide]
+   ``and, ``or, ``not, ``bne, ``BEq.beq, ``Decidable.decide, ``id]
 
 /-- the number of tags of a type: its constructors, then their extension cells -/
 def TyInfo.ntags (ti : TyInfo) : Nat := ti.ctors.size + ti.next.foldl (· + ·) 0
@@ -1287,7 +1287,8 @@ elab_rules : command
     let (gN, entry) ← if recur then pure (fN, none) else
       forallTelescope finfo.type fun xs _ => do
         let some v := finfo.value? | throwError "frontx_ind: {fN} has no definition"
-        let body := (← instantiateLambda v xs).consumeMData
+        -- C(ii), round 1: a value that is a function after fewer binders than the type (`beta`, not `instantiateLambda`)
+        let body := (v.beta xs).consumeMData
         -- `decide (a = b)`: the `DecidableEq` instance's function, its `Decidable` result as a `Bool`
         -- `a == b` (a `BEq` instance) and a definition `f a b := decide (a = b)` are unfolded to it
         let mut body := body
