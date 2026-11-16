@@ -1932,3 +1932,26 @@ check.sh; (2) optionally `String.utf8ByteSize` (the chain length, cheap) and `St
 `String.utf8EncodeChar`: count the non-continuation bytes); (3) string literals as constant chains in `E`
 (Name constants like `Name.str .anonymous "Nat"`, `=` with a constant side); (4) small linter warnings (unused simp
 arguments in `IndStrOk.lean`, `IndDec.lean`, `IndSup.lean`).
+
+## 31. con-leche blockers (branch `conleche-blk`; PAUSED, unfinished)
+
+**Done (committed, front end only, `Riscv/Frontx/IndCmd.lean`).**
+- (2) Constants of a declared type (`natAddName := natName.str "add"`): `frontx_ind f on T` for a zero-argument `f`
+  generates `f.cst (t : root) : ty := f` (input tree ignored) and compiles that; a constant is unfolded in `reify`.
+  String literals: `let x := nil; let x := chunk_k t x; …` over generated functions `f.cst.s<k>_<bytes>` (6 bytes per
+  chunk; one function body cannot hold more than ~8 cells, because conditional branches reach 4 KiB: `bzOK`).
+  `Riscv/Frontx/ConLecheBlk.lean`: the 40 `: Name` constants of the con-leche batch (verbatim, file:line comments),
+  all `frontx_ind` commands elaborate with no errors (9.5 min for the file: its proofs are slow).
+- (1) Non-recursive entries whose body is a `match` (default patterns, match on a call result): the function is its own
+  `armsOfCases` function (was: "has no equations" for `match_1`). `Cached.isStuckHeadC` (`| .sort _ | .fvar .. | … => true | _ => false`)
+  already compiled. `Expr.headIsProj` translates, but its `sem` proof (two functions) exceeded 16M heartbeats (>15 CPU min): open.
+- wf proof: a fallback alternative was added after `rcases` (harmless).
+
+**Not done.** No `Implements1` axiom file `axioms_conleche-blk.lean`, no QEMU/Sail tests (`emit` file, `frontx_test.py check 50`),
+no check.sh, nothing merged with origin/main. (3) specialisation of one of two scalar parameters, (4) two-argument matches: not started.
+`Scratch/W*.lean` are probes (W4: isBoolTrue, isNatZero, natPred?, peelPis, binderDom, piSortTeleLen?, rawNatLit?, ioNeutral; not yet run to completion).
+Expr constants (`prop`, `type1`, …) and `uN` use helper functions (`bn`, `lm`, `cnst`) with `String` parameters: unsupported.
+Count of batch functions compiling: 40 new constants (not yet tested on QEMU/Sail); the earlier 2+2+… of S0/S1/S3 are unchanged.
+
+**Next.** Run W4 file by file and read the second ("by cases") error; add `ConLecheBlk` to the Frontx glob check, emit tests for
+the constants (output = the Name's bytes; input any tree), write axioms file, run check.sh, merge main, push.

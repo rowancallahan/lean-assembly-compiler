@@ -1,41 +1,10 @@
 /- con-leche constants of type `Name` in the inductive path (NOTES section 31): zero-argument definitions
 (`natAddName := natName.str "add"`), compiled by `frontx_ind` as the function `f.cst t := f` of an ignored input tree;
-string literals are constant chains of `Bytes8` cells.  con-leche @6810492c1, verbatim (file:line before each block;
+string literals are built by generated chunk functions.  con-leche @6810492c1, verbatim (file:line before each block;
 `Name`, `Expr` in `ExprExamples.lean`). -/
 import Riscv.Frontx.ExprExamples
 
 set_option linter.unusedVariables false
-
--- ConLeche/Kernel/Basis/Builder.lean:42
-section
-namespace ConLeche
-namespace BasisDSL
-/-- The universe parameter `u` — every basis block's first one. -/
-def uN : Name := bn "u"
-end BasisDSL
-end ConLeche
-end
-
--- ConLeche/Kernel/Basis/Builder.lean:48
-section
-namespace ConLeche
-namespace BasisDSL
-/-- The universe parameter `v` (`Quot.lift`'s target sort). -/
-def vN : Name := bn "v"
-end BasisDSL
-end ConLeche
-end
-
--- ConLeche/Kernel/Basis/Builder.lean:55
-section
-namespace ConLeche
-namespace BasisDSL
-/-- The universe parameter `u_1` — the motive sort the exporter names
-for a recursor whose type former already spends `u`. -/
-def u1N : Name := bn "u_1"
-end BasisDSL
-end ConLeche
-end
 
 -- ConLeche/Kernel/Basis/Names.lean:24
 section
@@ -392,51 +361,6 @@ def sorryAxName : Name := anonymous |>.str "sorryAx"
 end ConLeche
 end
 
--- ConLeche/Kernel/Basis/And.lean:40
-section
-namespace ConLeche
-open BasisDSL
-/-!
-# The pinned `And` block
-
-The raw pin — the `And` block exactly as an export carries it: the
-toolchain's `Init.Prelude` structure
-
-    structure And (a b : Prop) : Prop where
-      intro :: (left : a) (right : b)
-
-as the parser reads it (its projection functions
-`And.left`/`And.right` are ordinary definition records of their own).
-
-**Why `And` is pinned, and how that differs from the basis blocks.**
-The checker has code for "the" `And`: the stuck-proof rescue
-(`majorToCtor`'s `And` branch, `ConLeche/Kernel/Core.lean`) fabricates
-`And.intro a b h.1 h.2` for an `And.rec` whose major is a proof that
-does not reduce to a constructor.  That branch must be available in
-every accepted run, so the name must denote the toolchain's `And`.
-Unlike `Eq`, `Nat`, `Empty` and `False`, `And` has no hand-written set
-model and is not installed from literals: the fold only RECOGNISES the
-block (`andPinOk`, `ConLeche/Kernel/Basis.lean`) and rejects any other
-record claiming one of its three names; the matching block then goes
-through the ordinary inductive installer, which stores its projection
-table like any structure's.  The rescue's soundness needs none of this
-(its certificate is proof irrelevance, sound whatever `And` is); the
-pin is what makes it *present*.
--/
-/-- The name `And.intro`. -/
-def andIntroName : Name := andName.str "intro"
-end ConLeche
-end
-
--- ConLeche/Kernel/Basis/And.lean:43
-section
-namespace ConLeche
-open BasisDSL
-/-- The name `And.rec`. -/
-def andRecName : Name := andName.str "rec"
-end ConLeche
-end
-
 -- ConLeche/Kernel/CoreDefs.lean:430
 section
 namespace ConLeche
@@ -467,215 +391,8 @@ def boolFalseName : Name := boolName.str "false"
 end ConLeche
 end
 
--- ConLeche/Kernel/StdAxioms.lean:34
-section
-namespace ConLeche
-open Name (anonymous)
-open BasisDSL
-/-!
-# Recognized standard axioms and their prerequisite shapes
-
-A stream may use the standard axioms `propext` and `Classical.choice`.
-Both are true in the set-theoretic model — `propext` by extensionality
-of propositions (derived through the stored `Iff` recursor),
-`Classical.choice` by global choice (through the stored `Nonempty`
-recursor) — so the checker accepts exactly these two axioms, after
-pinning their types and the *shapes of the inductives they quantify
-over* to the toolchain's.  The pins below are hand-written through the
-builder in `ConLeche/Kernel/Basis/Builder.lean`.
-
-**Binder annotations (tasks #142, #203, #205).**  A pin carries no
-binder name and no binder info — `Expr` has neither field (task #205),
-so `propext`'s `{a b : Prop}` and `Classical.choice`'s `{α}` are
-`pi`/`piI` for the reader only.  Binders carry no datum either (task
-#342), so the comparison `ConstantVal.matchesPin` is plain equality;
-`Expr.ErasedEq` — the model's "same denotation" relation, up to `fvar`
-type annotations — bridges a hit.
--/
-/-- The name `propext`. -/
-def propextName : Name := anonymous |>.str "propext"
-end ConLeche
-end
-
--- ConLeche/Kernel/StdAxioms.lean:37
-section
-namespace ConLeche
-open Name (anonymous)
-open BasisDSL
-/-- The name `Classical.choice`. -/
-def choiceName : Name := (anonymous |>.str "Classical") |>.str "choice"
-end ConLeche
-end
-
--- ConLeche/Kernel/StdAxioms.lean:40
-section
-namespace ConLeche
-open Name (anonymous)
-open BasisDSL
-/-- The name `Iff`. -/
-def iffName : Name := anonymous |>.str "Iff"
-end ConLeche
-end
-
--- ConLeche/Kernel/StdAxioms.lean:43
-section
-namespace ConLeche
-open Name (anonymous)
-open BasisDSL
-/-- The name `Iff.intro`. -/
-def iffIntroName : Name := iffName |>.str "intro"
-end ConLeche
-end
-
--- ConLeche/Kernel/StdAxioms.lean:46
-section
-namespace ConLeche
-open Name (anonymous)
-open BasisDSL
-/-- The name `Iff.rec`. -/
-def iffRecName : Name := iffName |>.str "rec"
-end ConLeche
-end
-
--- ConLeche/Kernel/StdAxioms.lean:49
-section
-namespace ConLeche
-open Name (anonymous)
-open BasisDSL
-/-- The name `Nonempty`. -/
-def nonemptyName : Name := anonymous |>.str "Nonempty"
-end ConLeche
-end
-
--- ConLeche/Kernel/StdAxioms.lean:52
-section
-namespace ConLeche
-open Name (anonymous)
-open BasisDSL
-/-- The name `Nonempty.intro`. -/
-def nonemptyIntroName : Name := nonemptyName |>.str "intro"
-end ConLeche
-end
-
--- ConLeche/Kernel/StdAxioms.lean:55
-section
-namespace ConLeche
-open Name (anonymous)
-open BasisDSL
-/-- The name `Nonempty.rec`. -/
-def nonemptyRecName : Name := nonemptyName |>.str "rec"
-end ConLeche
-end
-
--- ConLeche/Kernel/TrustAxioms.lean:50
-section
-namespace ConLeche
-open Name (anonymous)
-open BasisDSL
-/-!
-# The compiler-trust axiom family (task #95)
-
-`Init`'s compiler-trust scaffolding is installed rather than
-declined:
-
-* `Lean.trustCompiler : True` is trivially realizable — it is
-  installed as an *opaque* (stored `axiomInfo`, exactly like a checked
-  `opaque` declaration) with value `True.intro`, over a pinned `True`
-  family.  No new meta-axiom: the model is `True.intro`'s own
-  interpretation.
-* `Lean.reduceNat` / `Lean.reduceBool` then check as ordinary
-  `opaque`s (their exported values are identity functions modulo the
-  `have := trustCompiler` wrapper); at its check their stored values are
-  pinned against the identity function
-  (`ConLeche/Kernel/TrustPins.lean`, hand-pinned since task #273 —
-  every toolchain's definition after zeta) by definitional equality —
-  the task-#47 pattern: drift declines, never silently.
-* `Lean.ofReduceNat` / `Lean.ofReduceBool` are pinned axioms over
-  those stored opaques (the task-#34 standard-axioms machinery).  With
-  the stored reduce operation certified to be the identity (a
-  definitional-equality certificate at the operation's own install,
-  `checkReducePin`; the axiom's install checks `ofReduceAxOk`),
-  `∀ a b, reduceNat a = b → a = b` interprets to
-  an inhabited proposition (the hypothesis *is* the conclusion), so
-  both axioms are true in the set model with the proof point as value.
-
-`sorryAx` remains the only axiom tolerated as a *declaration*: its
-record installs nothing and any use of it declines
-(`sorryAxName`, `ConLeche/Kernel/Basis/Names.lean`).
-
-The pins below are hand-written through the builder in
-`ConLeche/Kernel/Basis/Builder.lean`.
--/
-/-- The name `True`. -/
-def trueName : Name := anonymous |>.str "True"
-end ConLeche
-end
-
--- ConLeche/Kernel/TrustAxioms.lean:53
-section
-namespace ConLeche
-open Name (anonymous)
-open BasisDSL
-/-- The name `True.intro`. -/
-def trueIntroName : Name := trueName |>.str "intro"
-end ConLeche
-end
-
--- ConLeche/Kernel/TrustAxioms.lean:56
-section
-namespace ConLeche
-open Name (anonymous)
-open BasisDSL
-/-- The name `Lean.trustCompiler`. -/
-def trustCompilerName : Name := (anonymous |>.str "Lean") |>.str "trustCompiler"
-end ConLeche
-end
-
--- ConLeche/Kernel/TrustAxioms.lean:59
-section
-namespace ConLeche
-open Name (anonymous)
-open BasisDSL
-/-- The name `Lean.reduceNat`. -/
-def reduceNatName : Name := (anonymous |>.str "Lean") |>.str "reduceNat"
-end ConLeche
-end
-
--- ConLeche/Kernel/TrustAxioms.lean:62
-section
-namespace ConLeche
-open Name (anonymous)
-open BasisDSL
-/-- The name `Lean.reduceBool`. -/
-def reduceBoolName : Name := (anonymous |>.str "Lean") |>.str "reduceBool"
-end ConLeche
-end
-
--- ConLeche/Kernel/TrustAxioms.lean:65
-section
-namespace ConLeche
-open Name (anonymous)
-open BasisDSL
-/-- The name `Lean.ofReduceNat`. -/
-def ofReduceNatName : Name := (anonymous |>.str "Lean") |>.str "ofReduceNat"
-end ConLeche
-end
-
--- ConLeche/Kernel/TrustAxioms.lean:68
-section
-namespace ConLeche
-open Name (anonymous)
-open BasisDSL
-/-- The name `Lean.ofReduceBool`. -/
-def ofReduceBoolName : Name := (anonymous |>.str "Lean") |>.str "ofReduceBool"
-end ConLeche
-end
-
 namespace Proven.Frontx.ExprEx
 
-frontx_ind ConLeche.uN on TExpr
-frontx_ind ConLeche.vN on TExpr
-frontx_ind ConLeche.u1N on TExpr
 frontx_ind ConLeche.natName on TExpr
 frontx_ind ConLeche.natPredName on TExpr
 frontx_ind ConLeche.natAddName on TExpr
@@ -712,26 +429,9 @@ frontx_ind ConLeche.quotIndName on TExpr
 frontx_ind ConLeche.quotSoundName on TExpr
 frontx_ind ConLeche.andName on TExpr
 frontx_ind ConLeche.sorryAxName on TExpr
-frontx_ind ConLeche.andIntroName on TExpr
-frontx_ind ConLeche.andRecName on TExpr
 frontx_ind ConLeche.boolName on TExpr
 frontx_ind ConLeche.eagerReduceName on TExpr
 frontx_ind ConLeche.boolTrueName on TExpr
 frontx_ind ConLeche.boolFalseName on TExpr
-frontx_ind ConLeche.propextName on TExpr
-frontx_ind ConLeche.choiceName on TExpr
-frontx_ind ConLeche.iffName on TExpr
-frontx_ind ConLeche.iffIntroName on TExpr
-frontx_ind ConLeche.iffRecName on TExpr
-frontx_ind ConLeche.nonemptyName on TExpr
-frontx_ind ConLeche.nonemptyIntroName on TExpr
-frontx_ind ConLeche.nonemptyRecName on TExpr
-frontx_ind ConLeche.trueName on TExpr
-frontx_ind ConLeche.trueIntroName on TExpr
-frontx_ind ConLeche.trustCompilerName on TExpr
-frontx_ind ConLeche.reduceNatName on TExpr
-frontx_ind ConLeche.reduceBoolName on TExpr
-frontx_ind ConLeche.ofReduceNatName on TExpr
-frontx_ind ConLeche.ofReduceBoolName on TExpr
 
 end Proven.Frontx.ExprEx
