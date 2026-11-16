@@ -503,4 +503,183 @@ theorem Args.arrOKP (L : List PLoc) {Γ : List Sl} (w : PLoc) (v : Vals Γ) (σu
         simp only [Args.wfP, Bool.and_eq_true, beq_iff_eq, List.headD_cons] at h
         exact absurd h.1.1.2 hlw
 
+/-! ## One iteration -/
+
+/-- the variables a loop leaves alone -/
+def NP (j : Nat) : Prop := j ≠ vFh ∧ j ≠ vBump ∧ j ≠ vOk
+
+/-- the layout of a loop: state variables (sizes and page tables), `res`, `fl` below `d`, distinct, none of the pool's -/
+structure LoopLayP (st : List PLoc) (res fl : Nat) (rl w : PLoc) (d : Nat) : Prop where
+  bst : BelowP st d
+  hres : res < d
+  hfl : fl < d
+  hrl : rl.v < d ∧ rl.pt < d
+  nd : (vsOfP st).Nodup
+  rs : res ∉ vsOfP st
+  fs : fl ∉ vsOfP st
+  rf : res ≠ fl
+  rlf : rl.v ≠ fl
+  p8 : 8 ≤ res ∧ 8 ≤ fl ∧ ∀ l ∈ st, 8 ≤ l.v ∧ 8 ≤ l.pt
+  ptn : ∀ l ∈ st, l.pt ∉ vsOfP st ∧ l.pt ≠ res ∧ l.pt ≠ fl
+  w8 : 8 ≤ w.v ∧ 8 ≤ w.pt ∧ w.v ≠ w.pt ∧ w.v < d ∧ w.pt < d
+
+theorem LoopLayP.mono {st : List PLoc} {res fl : Nat} {rl w : PLoc} {d d' : Nat} (h : LoopLayP st res fl rl w d)
+    (h' : d ≤ d') : LoopLayP st res fl rl w d' :=
+  ⟨h.bst.mono h', by have := h.hres; omega, by have := h.hfl; omega, by have := h.hrl; omega, h.nd, h.rs, h.fs, h.rf,
+    h.rlf, h.p8, h.ptn, by have := h.w8; omega⟩
+
+/-- the work array of the state before an iteration: none, or the one at `w` with words `ws` -/
+def WPre (Δ : List Sl) (st : List PLoc) (w : PLoc) {Γ : List Sl} (L : List PLoc) (v : Vals Γ) (env : Mach.BEnv)
+    (E0 : List (Nat × W64)) : Prop :=
+  (workLocs Δ st = [] ∧ E0 = []) ∨
+    (workLocs Δ st = [w] ∧ ∃ ws, E0 = [((env w.pt).toNat, ws)] ∧
+      ∀ k (m : Mem Γ (.ar k)), m.locP L = w → words k (m.get v) = ws)
+
+theorem rN_toNat_toNat (x : BitVec 64) : rN x.toNat = x := by simp [rN]
+
+theorem workLocs_sub : ∀ {Δ : List Sl} {st : List PLoc} {l : PLoc}, st.length = Δ.length → l ∈ workLocs Δ st → l ∈ st
+  | [], _, _, _, h => by simp [workLocs] at h
+  | _ :: _, [], _, hl, _ => by simp at hl
+  | .sc _ :: _, x :: st, _, hl, h => by
+    simp only [workLocs, List.tail_cons] at h; exact List.mem_cons_of_mem _ (workLocs_sub (by simpa using hl) h)
+  | .ar _ :: _, x :: st, l, hl, h => by
+    simp only [workLocs, List.mem_append, List.headD_cons, List.tail_cons] at h
+    rcases h with h | h
+    · split at h
+      · simp at h
+      · simp only [List.mem_singleton] at h; subst h; exact List.mem_cons_self ..
+    · exact List.mem_cons_of_mem _ (workLocs_sub (by simpa using hl) h)
+
+set_option maxHeartbeats 8000000 in
+/-- **a call leaf**: the new state is represented (its work array in the store), or a push found no page -/
+theorem Args.leaf_ok (st : List PLoc) (res fl : Nat) (rl w : PLoc) (C : Nat) (R0 E0 : List (Nat × W64))
+    {Γ Δ : List Sl} (as : Args Γ Δ) (L : List PLoc) (v : Vals Γ) (σ : MSt) (d : Nat) (W : W64)
+    (hE : EnvOK Γ L v σ) (hb : BelowP L d) (hy : LoopLayP st res fl rl w d) (hlen : st.length = Δ.length)
+    (hwf : as.wfP L st w true = true) (hok : as.okP v) (hW : σ.wheap = [W]) (hok1 : σ.env vOk = 1)
+    (hS : Store C σ.env W (E0 ++ R0)) (hpre : WPre Δ st w L v σ.env E0) (hst : ∀ l ∈ st, l ∈ L)
+    (hLw : ∀ l ∈ L, l.v = w.v → l = w) (hLnp : ∀ l ∈ L, NP l.v) :
+    ∃ σ' W', Mach.BExec (.seq (as.preP L d) (.seq (as.updP L st (d + Δ.length)) (as.copyP st d))) σ σ' ∧
+      σ'.heap = σ.heap ∧ σ'.wheap = [W'] ∧ (∀ j, j < d → j ∉ vsOfP st → NP j → σ'.env j = σ.env j) ∧
+      ((σ'.env vOk = 1 ∧ RelP Δ st (as.den v) σ' ∧
+          Store C σ'.env W' (arrsP Δ st (as.den v) σ'.env ++ R0) ∧
+          finE (pageCount (E0 ++ R0)) (as.evs v) = pageCount (arrsP Δ st (as.den v) σ'.env ++ R0) ∧
+          pk (pageCount (E0 ++ R0)) (as.evs v) ≤ C) ∨
+        (σ'.env vOk = 0 ∧ C < pk (pageCount (E0 ++ R0)) (as.evs v))) := by
+  have hd8 : 8 ≤ d := by have := hy.p8.1; have := hy.hres; omega
+  -- 1. scalar components into the temporaries
+  obtain ⟨σ1, e1, h1, w1, k1, t1⟩ := Args.preP_ok L st w as v σ d true hE hE.len hb hwf hok
+  have hE1 := hE.frame hb k1 h1 w1
+  have hS1 : Store C σ1.env W (E0 ++ R0) := hS.env fun j hj => k1 j (by have := pool_vars hj; omega)
+  have hW1 : σ1.wheap = [W] := by rw [w1, hW]
+  have hok1' : σ1.env vOk = 1 := by rw [k1 _ (by simp only [vOk]; omega)]; exact hok1
+  -- 2. the update
+  have hwl : workLocs Δ st = [w] ∨ workLocs Δ st = [] := by
+    rcases hpre with ⟨h, -⟩ | ⟨h, -⟩
+    · exact .inr h
+    · exact .inl h
+  have hv8 : ∀ l ∈ st, 8 ≤ l.v ∧ 8 ≤ l.pt := hy.p8.2.2
+  have hnpst : ∀ j, j ∈ vsOfP st → NP j := fun j hj => by
+    obtain ⟨l, hl, rfl⟩ := List.mem_map.1 hj; have := (hv8 l hl).1; simp only [NP, vFh, vBump, vOk]; omega
+  -- the old state's slots, after any change of variables at or above `d`
+  have hfr : ∀ (σx : MSt), σx.heap = σ.heap → (∀ j, j < d → j ≠ w.v → NP j → σx.env j = σ.env j) →
+      ∀ k (m : Mem Γ (.ar k)), m.locP L ≠ w → SRP σx (.ar k) (m.locP L) (m.get v) := by
+    intro σx hh hk k m hm
+    have hmL := Mem.locP_mem m L hE.len
+    refine SRP.frame (hE.rel.get m) (hk _ (hb _ hmL).1 (fun e => hm (hLw _ hmL e)) (hLnp _ hmL)) hh
+  have hcopy : ∀ (σu : MSt), as.Tmps σu v d → ∃ σ', Mach.BExec (as.copyP st d) σu σ' ∧ σ'.heap = σu.heap ∧
+      σ'.wheap = σu.wheap ∧ (∀ j, j < d → j ∉ vsOfP st → σ'.env j = σu.env j) ∧ as.ResP σu σ' st v :=
+    fun σu tu => Args.copyP_ok as st v σu d tu hy.bst hy.nd hlen
+  rcases Args.updP_shape L w v (d + Δ.length) as st true hwf hwl with ⟨c1, c2, c3, c4⟩ |
+      ⟨k, a, -, hcode, hev, hbase, hwinp, hawf, haok, hwl1, hww, hwok⟩
+  · -- no update
+    let σu : MSt := ⟨σ1.env.set (d + Δ.length) 0, σ1.heap, σ1.wheap⟩
+    have eu : Mach.BExec (as.updP L st (d + Δ.length)) σ1 σu := by rw [c1]; exact .assign
+    have tu : as.Tmps σu v d := Args.Tmps.frame t1 fun j h1 h2 => by
+      simp only [σu]; rw [set_ne (by omega)]
+    obtain ⟨σ', e3, h3, w3, k3, r3⟩ := hcopy σu tu
+    have hku : ∀ j, j < d → σu.env j = σ.env j := fun j hj => by
+      simp only [σu]; rw [set_ne (by omega), k1 j hj]
+    have hk' : ∀ j, j < d → j ∉ vsOfP st → σ'.env j = σ.env j := fun j hj hs => by rw [k3 j hj hs, hku j hj]
+    have hrel : RelP Δ st (as.den v) σ' := by
+      refine Args.relP as st v σu σ' r3 ?_ h3 hlen
+      refine Args.arrOKP L w v σu (hfr σu (by simp [σu, h1]) fun j hj _ _ => hku j hj) as st true hwf hy.nd hlen
+        (fun _ => c4 σu fun k m hm => ?_)
+      have hmL := Mem.locP_mem m L hE.len
+      rw [← hm]; exact SRP.frame (hE.rel.get m) (hku _ (hb _ hmL).1) (by simp [σu, h1])
+    have hlow : ∀ j, j < 8 → σ'.env j = σ.env j := fun j hj => hk' j (by omega) (fun hm => by
+      obtain ⟨l, hl, rfl⟩ := List.mem_map.1 hm; have := (hv8 l hl).1; omega)
+    have hE0eq : arrsP Δ st (as.den v) σ'.env = E0 := by
+      rw [arrsP_args]
+      rcases hpre with ⟨hw0, rfl⟩ | ⟨hw1, ws, rfl, hm⟩
+      · exact args_arrs_nil as st hw0
+      · rw [args_arrs_one as st hw1, c3 hw1 ws hm]
+        have hwst : w ∈ st := workLocs_sub hlen (by rw [hw1]; simp)
+        rw [hk' w.pt hy.w8.2.2.2.2 (hy.ptn w hwst).1]
+    refine ⟨σ', W, .seq e1 (.seq eu e3), by rw [h3]; simp [σu, h1], by rw [w3]; simp [σu, hW1],
+      fun j hj hs _ => hk' j hj hs, .inl ⟨?_, hrel, ?_, ?_, ?_⟩⟩
+    · rw [hlow vOk (by decide)]; exact hok1
+    · rw [hE0eq]; exact hS.env fun j hj => hlow j (by have := pool_vars hj; omega)
+    · rw [c2, hE0eq]; rfl
+    · rw [c2]; exact hS.count_le
+  · -- the update `a` of the work array at `w`
+    rcases hpre with ⟨hw0, -⟩ | ⟨-, ws, hE0, hm⟩
+    · rw [hw0] at hwl1; cases hwl1
+    have hwst : w ∈ st := workLocs_sub hlen (by rw [hwl1]; simp)
+    have hwL : w ∈ L := hst w hwst
+    generalize he : d + Δ.length = e at hcode t1
+    have hde : d ≤ e := by omega
+    obtain ⟨σ2, e2, h2, w2, k2, t2⟩ := A.preP_ok L a v σ1 e hE1 hE.len (hb.mono hde) hawf (haok hok)
+    have hk21 : ∀ j, j < d → σ2.env j = σ.env j := fun j hj => by rw [k2 j (by omega), k1 j hj]
+    have hW2 : σ2.wheap = [W] := by rw [w2, hW1]
+    have hS2 : Store C σ2.env W (((σ.env w.pt).toNat, words k (a.base.get v)) :: R0) := by
+      have := hS.env (env' := σ2.env) fun j hj => hk21 j (by have := pool_vars hj; omega)
+      rw [hE0, ← hm k a.base hbase] at this; exact this
+    have hpt2 : σ2.env w.pt = rN (σ.env w.pt).toNat := by rw [rN_toNat_toNat, hk21 _ hy.w8.2.2.2.2]
+    have hsz2 : σ2.env w.v = rN (AK.size k (a.base.get v)) := by
+      have := (hE.rel.get a.base).1; rw [hbase] at this; rw [hk21 _ hy.w8.2.2.2.1]; exact this
+    obtain ⟨σu, Wu, eu, hu, wu, ku, ru⟩ := A.stP_ok w (e + a.nt) C _ R0 a v σ2 e W hW2 hS2 hpt2 hsz2 t2 (haok hok)
+      (A.baseOK_of_wf L a hawf) (by rw [hk21 _ (by simp only [vOk]; omega)]; exact hok1) hy.w8.1 hy.w8.2.1
+      hy.w8.2.2.1 (by have := hy.w8.2.2.2.1; omega) (by have := hy.w8.2.2.2.2; omega) (Nat.le_refl _)
+    have hkuσ : ∀ j, j < d → j ≠ w.v → NP j → σu.env j = σ.env j := fun j hj hw hn => by
+      rw [ku j (.inl (by omega)) hw hn.1 hn.2.1 hn.2.2, hk21 j hj]
+    have tu : as.Tmps σu v d := Args.Tmps.frame t1 fun j h1 h2 => by
+      rw [ku j (.inl (by omega)) (by have := hy.w8.2.2.2.1; omega) (by simp only [vFh]; omega)
+        (by simp only [vBump]; omega) (by simp only [vOk]; omega), k2 j (by omega)]
+    obtain ⟨σ', e3, h3, w3, k3, r3⟩ := hcopy σu tu
+    have hk' : ∀ j, j < d → j ∉ vsOfP st → NP j → σ'.env j = σ.env j := fun j hj hs hn => by
+      rw [k3 j hj hs, hkuσ j hj (fun e => hs (e ▸ List.mem_map_of_mem hwst)) hn]
+    have hlow : ∀ j, j < 8 → j ≠ vFh → j ≠ vBump → j ≠ vOk → σ'.env j = σ.env j := fun j hj a b c =>
+      hk' j (by omega) (fun hm => by obtain ⟨l, hl, rfl⟩ := List.mem_map.1 hm; have := (hv8 l hl).1; omega) ⟨a, b, c⟩
+    have hcode' : Mach.BExec (as.updP L st e) σ1 σu := by rw [hcode]; exact .seq e2 eu
+    have hfr' : ∀ j, j = vCap ∨ j = vBump ∨ j = vFh → σ'.env j = σu.env j := fun j hj => by
+      have := pool_vars hj
+      exact k3 j (by omega) (fun hm => by obtain ⟨l, hl, rfl⟩ := List.mem_map.1 hm; have := (hv8 l hl).1; omega)
+    have hokσ' : σ'.env vOk = σu.env vOk := by
+      refine k3 vOk (by simp only [vOk]; omega) (fun hm => ?_)
+      obtain ⟨l, hl, he'⟩ := List.mem_map.1 hm
+      have := (hv8 l hl).1; simp only [vOk] at he'; omega
+    have hu0 : pageCount (E0 ++ R0) = pageCount (((σ.env w.pt).toNat, words k (a.base.get v)) :: R0) := by
+      rw [hE0, ← hm k a.base hbase]; rfl
+    refine ⟨σ', Wu, .seq e1 (.seq hcode' e3), by rw [h3, hu, h2, h1], by rw [w3, wu], fun j hj hs hn => hk' j hj hs hn,
+      ?_⟩
+    rw [hev, hu0]
+    rcases ru with ⟨o, sz, Su, fu, pu⟩ | ⟨o, pu⟩
+    · refine .inl ⟨by rw [hokσ']; exact o, ?_, ?_, ?_, pu⟩
+      · refine Args.relP as st v σu σ' r3 ?_ h3 hlen
+        refine Args.arrOKP L w v σu ?_ as st true hwf hy.nd hlen (fun _ => hwok σu ?_)
+        · exact hfr σu (by rw [hu, h2, h1]) hkuσ
+        · have hA := Su.2 _ (List.mem_cons_self ..)
+          have hlen' := hA.len
+          rw [words_length] at hlen'
+          refine ⟨sz, by rw [P] at hlen'; omega, fun h => absurd h (by rw [hwinp]; decide), fun _ => hlen'⟩
+      · rw [arrsP_args, args_arrs_one as st hwl1, hww]
+        have : σ'.env w.pt = σ.env w.pt := hk' w.pt hy.w8.2.2.2.2 (hy.ptn w hwst).1 (hLnp w hwL |> fun _ => by
+          simp only [NP, vFh, vBump, vOk]; have := hy.w8.2.1; omega)
+        rw [this]; exact Su.env hfr'
+      · rw [fu, arrsP_args, args_arrs_one as st hwl1, hww]
+        have : σ'.env w.pt = σ.env w.pt := hk' w.pt hy.w8.2.2.2.2 (hy.ptn w hwst).1 (by
+          simp only [NP, vFh, vBump, vOk]; have := hy.w8.2.1; omega)
+        rw [this]; rfl
+    · exact .inr ⟨by rw [hokσ']; exact o, pu⟩
+
 end Proven.WA
