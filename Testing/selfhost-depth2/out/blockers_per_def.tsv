@@ -1,0 +1,859 @@
+kind	name	module	final_class	P1_frontx_compile_msg	P2_frontx_ind_msg
+def	Proven.Op.shl.elim	Spec.Code	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.182185
+def	Proven.iSnez	Spec.Code	BV	frontx: unsupported result type BitVec 32	
+def	Proven.encR	Spec.Code	BV	frontx: unsupported result type BitVec 32	
+def	Proven.iXor2	Spec.Code	BV	frontx: unsupported result type BitVec 32	
+def	Proven.Exp.var.elim	Spec.Code	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.44832
+def	Proven.A	Spec.Code	BV	frontx: unsupported result type Fin 32	
+def	Proven.instDecidableEqOp	Spec.Code	GEN	frontx: unsupported result type DecidableEq X PANIC at Lean.Expr.appAr	frontx_ind: X has no argument of a declared type
+def	Proven.iNeg	Spec.Code	BV	frontx: unsupported result type BitVec 32	
+def	Proven.Op.ctorElim	Spec.Code	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.175852
+def	Proven.Exp.const.elim	Spec.Code	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.40041
+def	Proven.Op.lshr.elim	Spec.Code	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.181892
+def	Proven.Exp.depth	Spec.Code	OK	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.instReprExp	Spec.Code	GEN	frontx: unsupported result type Repr X PANIC at Lean.Expr.appArg! Lean	frontx_ind: X has no argument of a declared type
+def	Proven.Exp.bin.elim	Spec.Code	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.39874
+def	Proven.iRes	Spec.Code	BV	frontx: unsupported result type BitVec 32	
+def	Proven.Exp.ctorElim	Spec.Code	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.40229
+def	Proven.iRet	Spec.Code	BV	frontx: unsupported result type BitVec 32	
+def	Proven.selCode	Spec.Code	LIST	frontx: unsupported result type List (BitVec 32)	
+def	Proven.Op.ashr.elim	Spec.Code	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.175687
+def	Proven.Op.eq.elim	Spec.Code	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.176063
+def	Proven.genConst	Spec.Code	LIST	frontx: unsupported result type List (BitVec 32)	
+def	Proven.Op.slt.elim	Spec.Code	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.182310
+def	Proven.opCode	Spec.Code	TRANS	frontx: unsupported result type List (BitVec 32)	frontx_ind: equation ite.eq_1 has no constructor pattern (by cases: fr
+def	Proven.iInc	Spec.Code	BV	frontx: unsupported result type BitVec 32	
+def	Proven.instReprExp.repr	Spec.Code	GEN	frontx: unsupported result type Std.Format PANIC at Lean.Expr.appArg! 	frontx_ind: unsupported result type Std.Format
+def	Proven.iZero	Spec.Code	BV	frontx: unsupported result type BitVec 32	
+def	Proven.instReprOp.repr	Spec.Code	GEN	frontx: unsupported result type Std.Format PANIC at Lean.Expr.appArg! 	frontx_ind: unsupported result type Std.Format frontx_ind: X on TAExp:
+def	Proven.Op.add.elim	Spec.Code	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.175431
+def	Proven.Exp.ite.elim	Spec.Code	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.44673
+def	Proven.Exp.denote	Spec.Code	HO	frontx: unsupported parameter type Fin 4 → BitVec 64 PANIC at Lean.Exp	frontx_ind: unsupported parameter type Fin 4 → BitVec 64
+def	Proven.Op.sub.elim	Spec.Code	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.182435
+def	Proven.T	Spec.Code	BV	frontx: unsupported result type Fin 32	
+def	Proven.Op.ult.elim	Spec.Code	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.182560
+def	Proven.Op.f7	Spec.Code	OK	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Op.eval	Spec.Code	OTHER	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	frontx_ind: unsupported parameter type BitVec 64
+def	Proven.iSeqz	Spec.Code	BV	frontx: unsupported result type BitVec 32	
+def	Proven.iShl	Spec.Code	BV	frontx: unsupported result type BitVec 32	
+def	Proven.Op.toCtorIdx	Spec.Code	GEN	invalid instantiateForall, too many parameters	
+def	Proven.Op.ofNat	Spec.Code	TRANS	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	frontx_ind: equation cond.eq_1 has no constructor pattern (by cases: f
+def	Proven.Op.and.elim	Spec.Code	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.175562
+def	Proven.instReprOp	Spec.Code	GEN	frontx: unsupported result type Repr X PANIC at Lean.Expr.appArg! Lean	frontx_ind: X has no argument of a declared type
+def	Proven.iVar	Spec.Code	BV	frontx: unsupported result type BitVec 32	
+def	Proven.gen	Spec.Code	LIST	frontx: unsupported result type List (BitVec 32)	frontx_ind: unsupported result type List (BitVec 32)
+def	Proven.Op.raw	Spec.Code	GEN	invalid instantiateForall, too many parameters	
+def	Proven.Op.f3	Spec.Code	OK	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Op.or.elim	Spec.Code	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.182060
+def	Proven.compile	Spec.Code	TRANS	frontx: unsupported result type List (BitVec 32)	frontx_ind: equation HAppend.hAppend.eq_1 has no constructor pattern (
+def	Proven.encI	Spec.Code	BV	frontx: unsupported result type BitVec 32	
+def	Proven.N	Spec.Code	TRANS	frontx: could not prove X	
+def	Proven.iOp	Spec.Code	TRANS	frontx: unsupported result type BitVec 32	frontx_ind: X has no argument of a declared type frontx_ind: X on TAEx
+def	Proven.Op.xor.elim	Spec.Code	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.182685
+def	Proven.Mach.IR.Tst.eval	Compiler.Opt.IR	NONCOMP	frontx: unsupported parameter type Type PANIC at Lean.Expr.appArg! Lea	
+def	Proven.Mach.IR.instReprArg.repr	Compiler.Opt.IR	GEN	frontx: unsupported result type Std.Format PANIC at Lean.Expr.appArg! 	
+def	Proven.Mach.IR.Ins.sd.elim	Compiler.Opt.IR	GEN	frontx: unsupported result type motive t	
+def	Proven.Mach.IR.Code.seqs	Compiler.Opt.IR	POLY	frontx: unsupported result type X ρ	
+def	Proven.Mach.IR.Ins.ldS.elim	Compiler.Opt.IR	GEN	frontx: unsupported result type motive t	
+def	Proven.Mach.IR.Arg.ctorElim	Compiler.Opt.IR	GEN	frontx: unsupported result type motive t	
+def	Proven.Mach.IR.instReprIns.repr	Compiler.Opt.IR	GEN	frontx: unsupported result type Std.Format PANIC at Lean.Expr.appArg! 	
+def	Proven.Mach.IR.instReprArg	Compiler.Opt.IR	GEN	frontx: unsupported result type Repr (X ρ✝) PANIC at Lean.Expr.appArg!	
+def	Proven.Mach.IR.Ins.lbu.elim	Compiler.Opt.IR	GEN	frontx: unsupported result type motive t	
+def	Proven.Mach.IR.Ins.sb.elim	Compiler.Opt.IR	GEN	frontx: unsupported result type motive t	
+def	Proven.Mach.IR.upd	Compiler.Opt.IR	GEN	frontx: unsupported result type X ρ PANIC at Lean.Expr.appArg! Lean.Ex	
+def	Proven.Mach.IR.Code.ins.elim	Compiler.Opt.IR	GEN	frontx: unsupported result type motive t	
+def	Proven.Mach.IR.St.reg	Compiler.Opt.IR	POLY	frontx: unsupported result type X ρ PANIC at Lean.Expr.appArg! Lean.Ex	
+def	Proven.Mach.IR.Code.loop2.elim	Compiler.Opt.IR	GEN	frontx: unsupported result type motive t	
+def	Proven.Mach.IR.instReprTst.repr	Compiler.Opt.IR	GEN	frontx: unsupported result type Std.Format PANIC at Lean.Expr.appArg! 	
+def	Proven.Mach.IR.Tst.neg	Compiler.Opt.IR	POLY	frontx: unsupported result type X ρ PANIC at Lean.Expr.appArg! Lean.Ex	
+def	Proven.Mach.IR.Ins.ld.elim	Compiler.Opt.IR	GEN	frontx: unsupported result type motive t	
+def	Proven.Mach.IR.Arg.r.elim	Compiler.Opt.IR	GEN	frontx: unsupported result type motive t	
+def	Proven.Mach.IR.Arg.eval	Compiler.Opt.IR	NONCOMP	frontx: unsupported parameter type Type PANIC at Lean.Expr.appArg! Lea	
+def	Proven.Mach.IR.St.mem	Compiler.Opt.IR	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Mach.IR.Code.ctorElim	Compiler.Opt.IR	GEN	frontx: unsupported result type motive t	
+def	Proven.Mach.IR.Tst.a	Compiler.Opt.IR	POLY	frontx: unsupported result type X ρ	
+def	Proven.Mach.IR.Ins.mop.elim	Compiler.Opt.IR	GEN	frontx: unsupported result type motive t	frontx_ind: X has no argument of a declared type
+def	Proven.Mach.IR.instReprIns	Compiler.Opt.IR	GEN	frontx: unsupported result type Repr (X ρ✝) PANIC at Lean.Expr.appArg!	
+def	Proven.Mach.IR.Ins.bin.elim	Compiler.Opt.IR	GEN	frontx: unsupported result type motive t	frontx_ind: X has no argument of a declared type
+def	Proven.Mach.IR.Code.when.elim	Compiler.Opt.IR	GEN	frontx: unsupported result type motive t	
+def	Proven.Mach.IR.Ins.ctorElim	Compiler.Opt.IR	GEN	frontx: unsupported result type motive t	
+def	Proven.Mach.IR.instReprCode.repr	Compiler.Opt.IR	GEN	frontx: unsupported result type Std.Format PANIC at Lean.Expr.appArg! 	
+def	Proven.Mach.IR.Ins.set.elim	Compiler.Opt.IR	GEN	frontx: unsupported result type motive t	
+def	Proven.Mach.IR.instReprCode	Compiler.Opt.IR	GEN	frontx: unsupported result type Repr (X ρ✝) PANIC at Lean.Expr.appArg!	
+def	Proven.Mach.IR.Code.loop.elim	Compiler.Opt.IR	GEN	frontx: unsupported result type motive t	
+def	Proven.Mach.IR.Ins.stS.elim	Compiler.Opt.IR	GEN	frontx: unsupported result type motive t	
+def	Proven.Mach.IR.Tst.c	Compiler.Opt.IR	TRANS	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	frontx_ind: X has no argument of a declared type
+def	Proven.Mach.IR.Tst.b	Compiler.Opt.IR	POLY	frontx: unsupported result type X ρ	
+def	Proven.Mach.IR.Arg.i.elim	Compiler.Opt.IR	GEN	frontx: unsupported result type motive t	
+def	Proven.Mach.IR.Code.seq.elim	Compiler.Opt.IR	GEN	frontx: unsupported result type motive t	
+def	Proven.Mach.IR.Code.skip.elim	Compiler.Opt.IR	GEN	frontx: unsupported result type motive t	
+def	Proven.Mach.IR.instReprTst	Compiler.Opt.IR	GEN	frontx: unsupported result type Repr (X ρ✝) PANIC at Lean.Expr.appArg!	
+def	Proven.Mach.Wide.wf	Compiler.Opt.Lower	IND	frontx: unsupported parameter type X X PANIC at Lean.Expr.appArg! Lean	
+def	Proven.Mach.Wide.legalIns	Compiler.Opt.Lower	IND	frontx: unsupported parameter type X X PANIC at Lean.Expr.appArg! Lean	
+def	Proven.Mach.Wide.low	Compiler.Opt.Lower	TRANS	frontx: unsupported result type List X	frontx_ind: X has no argument of a declared type
+def	Proven.Mach.Wide.legalT	Compiler.Opt.Lower	TRANS	frontx: unsupported Bool match t.a with | X x => decide (x ≠ sc) | X c	
+def	Proven.Mach.Wide.brOp	Compiler.Opt.Lower	TRANS	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	frontx_ind: X has no argument of a declared type
+def	Proven.Mach.Wide.gl	Compiler.Opt.Lower	IND	frontx: unsupported parameter type X X PANIC at Lean.Expr.appArg! Lean	
+def	Proven.Mach.Wide.argOK	Compiler.Opt.Lower	IND	frontx: unsupported parameter type X X	
+def	Proven.Mach.Wide.W	Compiler.Opt.Lower	LIST	frontx: unsupported result type List (BitVec 32)	
+def	Proven.Mach.Wide.lowT	Compiler.Opt.Lower	TRANS	frontx: unsupported result type List X × X × X × Option X	frontx_ind: X has no argument of a declared type
+def	Proven.Mach.Wide.lowIns	Compiler.Opt.Lower	TRANS	frontx: unsupported result type List X	frontx_ind: X has no argument of a declared type
+def	Proven.Mach.IR.Tst.map	Compiler.Opt.Alloc	POLY	frontx: unsupported result type X β PANIC at Lean.Expr.appArg! Lean.Ex	
+def	Proven.Mach.IR.Ins.regs	Compiler.Opt.Alloc	LIST	frontx: unsupported result type List α	
+def	Proven.Mach.IR.Code.map	Compiler.Opt.Alloc	POLY	frontx: unsupported result type X β	
+def	Proven.Mach.IR.Code.regs	Compiler.Opt.Alloc	LIST	frontx: unsupported result type List α	
+def	Proven.Mach.IR.Tst.regs	Compiler.Opt.Alloc	LIST	frontx: unsupported result type List α	
+def	Proven.Mach.IR.Ins.map	Compiler.Opt.Alloc	POLY	frontx: unsupported result type X β	
+def	Proven.Mach.IR.Arg.regs	Compiler.Opt.Alloc	LIST	frontx: unsupported result type List α	
+def	Proven.Mach.IR.Arg.map	Compiler.Opt.Alloc	POLY	frontx: unsupported result type X β	
+def	Proven.Mach.IR.injOn	Compiler.Opt.Alloc	GEN	frontx: unsupported parameter type Type PANIC at Lean.Expr.appArg! Lea	
+def	Proven.Mach.IR.Ins.dst	Compiler.Opt.Live	OPT	frontx: unsupported result type Option α PANIC at Lean.Expr.appArg! Le	
+def	Proven.Mach.IR.lunion	Compiler.Opt.Live	GEN	frontx: unsupported result type List α	
+def	Proven.Mach.IR.dropMov	Compiler.Opt.Live	GEN	frontx: unsupported result type X α	
+def	Proven.Mach.IR.chk	Compiler.Opt.Live	GEN	frontx: unsupported result type Option (List α)	
+def	Proven.Mach.IR.defOK	Compiler.Opt.Live	GEN	frontx: unsupported parameter type Type PANIC at Lean.Expr.appArg! Lea	
+def	Proven.Mach.IR.lvIter2	Compiler.Opt.Live	GEN	frontx: unsupported result type List α	
+def	Proven.Mach.IR.lvIter	Compiler.Opt.Live	GEN	frontx: unsupported result type List α	
+def	Proven.Mach.IR.Ins.mv	Compiler.Opt.Live	OPT	frontx: unsupported result type Option α PANIC at Lean.Expr.appArg! Le	
+def	Proven.Mach.IR.Ins.uses	Compiler.Opt.Live	LIST	frontx: unsupported result type List α	
+def	Proven.Mach.IR.subL	Compiler.Opt.Live	GEN	frontx: unsupported parameter type Type PANIC at Lean.Expr.appArg! Lea	
+def	Proven.Mach.IR.lvIns	Compiler.Opt.Live	GEN	frontx: unsupported result type List α	
+def	Proven.Mach.IR.lv	Compiler.Opt.Live	GEN	frontx: unsupported result type List α	
+def	Proven.Mach.IR.SR.mkPB	Compiler.Opt.SR	TUP	frontx: unsupported result type List (Nat × Nat)	
+def	Proven.Mach.IR.SR.fnd	Compiler.Opt.SR	TUP	frontx: unsupported parameter type List (Nat × Nat)	
+def	Proven.Mach.IR.SR.look	Compiler.Opt.SR	IND	frontx: unsupported parameter type X	
+def	Proven.Mach.IR.SR.dropD	Compiler.Opt.SR	OPT	frontx: unsupported parameter type X Nat	frontx_ind: unsupported result type Option Nat
+def	Proven.Mach.IR.SR.addrOf	Compiler.Opt.SR	TUP	frontx: unsupported parameter type X Nat	frontx_ind: unsupported result type Option (Nat × Nat)
+def	Proven.Mach.IR.SR.triv	Compiler.Opt.SR	OK	frontx: unsupported parameter type X Nat	
+def	Proven.Mach.IR.SR.dce	Compiler.Opt.SR	LIST	frontx: unsupported result type Option (X Nat × List Nat)	frontx_ind: unsupported parameter type List Nat
+def	Proven.Mach.IR.SR.inits	Compiler.Opt.SR	TRANS	frontx: unsupported result type X Nat	frontx_ind: List.brecOn has no argument of a declared type
+def	Proven.Mach.IR.SR.after	Compiler.Opt.SR	IND	frontx: unsupported result type X	frontx_ind: unsupported parameter type X
+def	Proven.Mach.IR.SR.rwI	Compiler.Opt.SR	TRANS	frontx: unsupported result type Option (X Nat)	frontx_ind: equation ite.eq_1 has no constructor pattern (by cases: fr
+def	Proven.Mach.IR.SR.srL	Compiler.Opt.SR	TRANS	frontx: unsupported result type Option (X Nat)	frontx_ind: more than one extra parameter of a declared type frontx_in
+def	Proven.Mach.IR.SR.bases	Compiler.Opt.SR	LIST	frontx: unsupported result type List Nat	frontx_ind: unsupported result type List Nat
+def	Proven.Mach.IR.SR.cpA	Compiler.Opt.SR	IND	frontx: unsupported result type X Nat	frontx_ind: unsupported parameter type X
+def	Proven.Mach.IR.SR.kill	Compiler.Opt.SR	IND	frontx: unsupported result type X	
+def	Proven.Mach.IR.SR.wrs	Compiler.Opt.SR	LIST	frontx: unsupported result type List Nat	frontx_ind: unsupported result type List Nat
+def	Proven.Mach.IR.SR.sr	Compiler.Opt.SR	LIST	frontx: unsupported result type X Nat	frontx_ind: unsupported parameter type List Nat
+def	Proven.Mach.IR.SR.cpI	Compiler.Opt.SR	IND	frontx: unsupported result type X Nat	frontx_ind: unsupported parameter type X
+def	Proven.Mach.IR.SR.okL	Compiler.Opt.SR	TRANS	frontx: unsupported parameter type X Nat	frontx_ind: Bool.and has no argument of a declared type
+def	Proven.Mach.IR.SR.srC	Compiler.Opt.SR	TRANS	frontx: unsupported result type X Nat	frontx_ind: unsupported term match X ?m ?p ?t ?b with | some c => c | 
+def	Proven.Mach.IR.SR.rwC	Compiler.Opt.SR	TUP	frontx: unsupported result type Option (X Nat)	frontx_ind: unsupported parameter type List (Nat × Nat)
+def	Proven.Mach.IR.SR.incs	Compiler.Opt.SR	TRANS	frontx: unsupported result type X Nat	frontx_ind: List.brecOn has no argument of a declared type
+def	Proven.Mach.IR.SR.cp	Compiler.Opt.SR	IND	frontx: unsupported result type X Nat × X	frontx_ind: unsupported parameter type X
+def	Proven.Mach.IR.SR.isInc	Compiler.Opt.SR	TRANS	frontx: unsupported parameter type X Nat	frontx_ind: nested patterns are not supported (X (by cases: frontx_ind
+def	Proven.Mach.IR.SR.inc1	Compiler.Opt.SR	TRANS	frontx: unsupported parameter type X Nat	frontx_ind: unsupported term match X ?x_1 with | some d => !decide (d 
+def	Proven.Mach.IR.SR.hit	Compiler.Opt.SR	TRANS	frontx: unsupported parameter type X Nat	frontx_ind: unsupported term (X ?m ?p ?t ?b).isSome (by cases: frontx_
+def	Proven.Mach.IR.Flow.rot	Compiler.Opt.Flow	TRANS	frontx: unsupported result type X Nat	frontx_ind: a pattern on another argument (X (by cases: frontx_ind: un
+def	Proven.Mach.IR.Flow.Fact.cmp.elim	Compiler.Opt.Flow	GEN	frontx: unsupported result type motive t	frontx_ind: X has no argument of a declared type
+def	Proven.Mach.IR.Flow.Fact.cp.elim	Compiler.Opt.Flow	GEN	frontx: unsupported result type motive t	frontx_ind: X has no argument of a declared type
+def	Proven.Mach.IR.Flow.Fact.ctorElim	Compiler.Opt.Flow	GEN	frontx: unsupported result type motive t	
+def	Proven.Mach.IR.Flow.nrm	Compiler.Opt.Flow	OK	frontx: unsupported result type X Nat	
+def	Proven.Mach.IR.Flow.rw1	Compiler.Opt.Flow	IND	frontx: unsupported result type X Nat PANIC at Lean.Expr.appArg! Lean.	frontx_ind: unsupported parameter type X
+def	Proven.Mach.IR.Flow.Fact.val	Compiler.Opt.Flow	IND	frontx: unsupported parameter type X Nat PANIC at Lean.Expr.appArg! Le	
+def	Proven.Mach.IR.instDecidableEqTst	Compiler.Opt.Flow	GEN	frontx: unsupported result type DecidableEq (X ρ✝) PANIC at Lean.Expr.	
+def	Proven.Mach.IR.Flow.rotS	Compiler.Opt.Flow	TRANS	frontx: unsupported result type X Nat	frontx_ind: a pattern on another argument (X (by cases: frontx_ind: un
+def	Proven.Mach.IR.Flow.dceOr	Compiler.Opt.Flow	LIST	frontx: unsupported result type X Nat	frontx_ind: unsupported parameter type List Nat
+def	Proven.Mach.IR.Flow.hasOnce	Compiler.Opt.Flow	TRANS	frontx: unsupported parameter type X Nat	frontx_ind: unsupported term X ?p ?t ?b (by cases: frontx_ind: unsuppo
+def	Proven.Mach.IR.Flow.afterF	Compiler.Opt.Flow	IND	frontx: unsupported result type X	frontx_ind: unsupported parameter type X frontx_ind: X on TCode: 1 fun
+def	Proven.Mach.IR.Flow.onceL	Compiler.Opt.Flow	TRANS	frontx: unsupported result type X Nat	frontx_ind: more than one extra parameter of a declared type
+def	Proven.Mach.IR.Flow.look	Compiler.Opt.Flow	OPT	frontx: unsupported result type Option X PANIC at Lean.Expr.appArg! Le	
+def	Proven.Mach.IR.instDecidableEqArg.decEq	Compiler.Opt.Flow	GEN	frontx: unsupported result type Decidable (x✝¹ = x✝)	
+def	Proven.Mach.IR.Flow.rotL	Compiler.Opt.Flow	TRANS	frontx: unsupported result type X Nat	frontx_ind: more than one extra parameter of a declared type
+def	Proven.Mach.IR.Flow.splitW	Compiler.Opt.Flow	TUP	frontx: unsupported result type Option (X Nat × X Nat × X Nat)	frontx_ind: unsupported result type Option (X Nat × X Nat × X Nat)
+def	Proven.Mach.IR.instDecidableEqArg	Compiler.Opt.Flow	GEN	frontx: unsupported result type DecidableEq (X ρ✝) PANIC at Lean.Expr.	
+def	Proven.Mach.IR.Flow.keepF	Compiler.Opt.Flow	IND	frontx: unsupported result type X	
+def	Proven.Mach.IR.Flow.killF	Compiler.Opt.Flow	IND	frontx: unsupported result type X	
+def	Proven.Mach.IR.Flow.cmpOp	Compiler.Opt.Flow	OPT	frontx: unsupported result type Option X PANIC at Lean.Expr.appArg! Le	frontx_ind: unsupported result type Option X
+def	Proven.Mach.IR.Flow.once	Compiler.Opt.Flow	TRANS	frontx: unsupported result type X Nat	frontx_ind: unsupported term X (X ?p) ?t (X ?b) (by cases: frontx_ind:
+def	Proven.Mach.IR.Flow.factOf	Compiler.Opt.Flow	TUP	frontx: unsupported result type Option (Nat × X PANIC at Lean.Expr.app	frontx_ind: unsupported result type Option (Nat × X
+def	Proven.Mach.IR.Flow.cat	Compiler.Opt.Flow	OK	frontx: unsupported result type X Nat	
+def	Proven.Mach.IR.Flow.fuse	Compiler.Opt.Flow	IND	frontx: unsupported result type X Nat × X	frontx_ind: unsupported parameter type X
+def	Proven.Mach.IR.Flow.flow	Compiler.Opt.Flow	TRANS	frontx: unsupported result type X Nat	frontx_ind: equation ite.eq_1 has no constructor pattern (by cases: fr
+def	Proven.Mach.IR.Flow.Fact.regs	Compiler.Opt.Flow	LIST	frontx: unsupported result type List Nat	
+def	Proven.Mach.IR.instDecidableEqTst.decEq	Compiler.Opt.Flow	GEN	frontx: unsupported result type Decidable (x✝¹ = x✝)	
+def	Proven.Mach.IR.Flow.rwT	Compiler.Opt.Flow	TRANS	frontx: unsupported result type X Nat PANIC at Lean.Expr.appArg! Lean.	frontx_ind: Nat.brecOn has no argument of a declared type
+def	Proven.Mach.IR.Hoist.kA	Compiler.Opt.Hoist	LIST	frontx: unsupported result type List (BitVec 64)	frontx_ind: unsupported result type List (BitVec 64)
+def	Proven.Mach.IR.Hoist.kC	Compiler.Opt.Hoist	LIST	frontx: unsupported result type List (BitVec 64)	frontx_ind: unsupported result type List (BitVec 64)
+def	Proven.Mach.IR.Hoist.repC	Compiler.Opt.Hoist	LIST	frontx: unsupported result type X Nat	frontx_ind: unsupported parameter type List (BitVec 64)
+def	Proven.Mach.IR.Hoist.repA	Compiler.Opt.Hoist	LIST	frontx: unsupported result type X Nat	frontx_ind: unsupported parameter type List (BitVec 64)
+def	Proven.Mach.IR.Hoist.repT	Compiler.Opt.Hoist	LIST	frontx: unsupported result type X Nat PANIC at Lean.Expr.appArg! Lean.	frontx_ind: unsupported parameter type List (BitVec 64)
+def	Proven.Mach.IR.Hoist.big	Compiler.Opt.Hoist	TRANS	frontx: projection of a term that is not a constructor application ↑c.	
+def	Proven.Mach.IR.Hoist.repI	Compiler.Opt.Hoist	LIST	frontx: unsupported result type X Nat	frontx_ind: unsupported parameter type List (BitVec 64)
+def	Proven.Mach.IR.Hoist.insS	Compiler.Opt.Hoist	LIST	frontx: unsupported result type List α	
+def	Proven.Mach.IR.Hoist.kBig	Compiler.Opt.Hoist	LIST	frontx: unsupported result type List (BitVec 64)	frontx_ind: unsupported result type List (BitVec 64)
+def	Proven.Mach.IR.Hoist.hoistL	Compiler.Opt.Hoist	TRANS	frontx: unsupported result type X Nat	frontx_ind: equation ite.eq_1 has no constructor pattern (by cases: fr
+def	Proven.Mach.IR.Hoist.hoistC	Compiler.Opt.Hoist	TRANS	frontx: unsupported result type X Nat	frontx_ind: more than one scalar parameter
+def	Proven.Mach.IR.Hoist.inner	Compiler.Opt.Hoist	OK	frontx: unsupported parameter type X Nat	
+def	Proven.Mach.IR.Hoist.kSel	Compiler.Opt.Hoist	TRANS	frontx: unsupported result type List (BitVec 64)	frontx_ind: List.take has no argument of a declared type
+def	Proven.Mach.IR.Hoist.pos	Compiler.Opt.Hoist	LIST	frontx: unsupported parameter type List (BitVec 64)	
+def	Proven.Mach.IR.Hoist.kI	Compiler.Opt.Hoist	LIST	frontx: unsupported result type List (BitVec 64)	frontx_ind: unsupported result type List (BitVec 64)
+def	Proven.Mach.IR.Hoist.sets	Compiler.Opt.Hoist	TRANS	frontx: unsupported result type X Nat	frontx_ind: List.brecOn has no argument of a declared type
+def	Proven.Mach.IR.Hoist.kT	Compiler.Opt.Hoist	TRANS	frontx: unsupported result type List (BitVec 64)	frontx_ind: List.filter has no argument of a declared type
+def	Proven.Mach.IR.Hoist.hoist	Compiler.Opt.Hoist	TRANS	frontx: unsupported result type X Nat	frontx_ind: more than one scalar parameter
+def	Proven.Mach.IR.Hoist.isort	Compiler.Opt.Hoist	LIST	frontx: unsupported result type List α	
+def	Proven.Mach.IR.Peep.keeps	Compiler.Opt.Peep	TRANS	frontx: unsupported parameter type X Nat	frontx_ind: List.all has no argument of a declared type
+def	Proven.Mach.IR.Peep.mergeC	Compiler.Opt.Peep	TRANS	frontx: unsupported result type X Nat	frontx_ind: a pattern on another argument (X (by cases: frontx_ind: co
+def	Proven.Mach.IR.Peep.peep	Compiler.Opt.Peep	OK	frontx: unsupported result type X Nat	
+def	Proven.Mach.IR.Peep.swapC	Compiler.Opt.Peep	TRANS	frontx: unsupported result type X Nat	frontx_ind: a pattern on another argument (X (by cases: frontx_ind: un
+def	Proven.Mach.IR.Peep.fast	Compiler.Opt.Peep	TRANS	frontx: unsupported result type X Nat	frontx_ind: equation ite.eq_1 has no constructor pattern (by cases: fr
+def	Proven.Mach.IR.Peep.swapS	Compiler.Opt.Peep	TRANS	frontx: unsupported result type X Nat	frontx_ind: a pattern on another argument (X (by cases: frontx_ind: un
+def	Proven.Mach.IR.Peep.swapOK	Compiler.Opt.Peep	TRANS	frontx: unsupported parameter type X Nat	frontx_ind: Bool.and has no argument of a declared type
+def	Proven.Mach.IR.Peep.mergeS	Compiler.Opt.Peep	TRANS	frontx: unsupported result type X Nat	frontx_ind: a pattern on another argument (X (by cases: frontx_ind: co
+def	Proven.Mach.IR.allocOK	Compiler.Opt.Fn	TRANS	frontx: unsupported parameter type Nat → X PANIC at Lean.Expr.appArg! 	frontx_ind: Bool.or has no argument of a declared type
+def	Proven.Mach.Wide.body	Compiler.Opt.Fn	TRANS	frontx: unsupported result type Option (List (BitVec 32))	frontx_ind: equation ite.eq_1 has no constructor pattern (by cases: fr
+def	Proven.Mach.Wide.fn	Compiler.Opt.Fn	TRANS	frontx: unsupported result type Option (List (BitVec 32))	frontx_ind: equation ite.eq_1 has no constructor pattern (by cases: fr
+def	Proven.Mach.Wide.bodySR	Compiler.Opt.Fn	TRANS	frontx: unsupported result type Option (List (BitVec 32))	frontx_ind: List.findSome? has no argument of a declared type
+def	Proven.Mach.IR.cands	Compiler.Opt.Fn	LIST	frontx: unsupported result type List (X Nat)	frontx_ind: unsupported parameter type List Nat
+def	Proven.Mach.Wide.fnSR	Compiler.Opt.Fn	REC	frontx: unsupported result type Option (List (BitVec 32))	frontx_ind: unsupported parameter type X
+def	Proven.Mach.Sel.SExp.var.elim	Compiler.Opt.Sel	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.137578
+def	Proven.Mach.Sel.ops2'	Compiler.Opt.Sel	HO	frontx: unsupported result type X Nat × X Nat × X Nat × Nat	frontx_ind: unsupported parameter type Nat → Nat → X Nat
+def	Proven.Mach.Sel.tstUses	Compiler.Opt.Sel	TRANS	frontx: unsupported Bool match t.a, x with | X y, x => decide (y = x) 	
+def	Proven.Mach.Sel.instDecidableEqSExp.decEq	Compiler.Opt.Sel	GEN	frontx: unsupported result type Decidable (x✝¹ = x✝)	frontx_ind: a pattern on another argument (X (by cases: frontx_ind: co
+def	Proven.Mach.Sel.SExp.ite.elim	Compiler.Opt.Sel	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.137250
+def	Proven.Mach.Sel.SExp.denote	Compiler.Opt.Sel	HO	frontx: unsupported parameter type Fin 32 → BitVec 64 PANIC at Lean.Ex	frontx_ind: unsupported parameter type Fin 32 → BitVec 64
+def	Proven.Mach.Sel.leaf	Compiler.Opt.Sel	OPT	frontx: unsupported result type Option (X Nat)	frontx_ind: unsupported result type Option (X Nat)
+def	Proven.Mach.Sel.opnd	Compiler.Opt.Sel	TUP	frontx: unsupported result type X Nat × X Nat × Nat	frontx_ind: unsupported result type X Nat × X Nat × Nat
+def	Proven.Mach.Sel.tstOf	Compiler.Opt.Sel	TUP	frontx: unsupported result type X Nat × X Nat × Nat	frontx_ind: unsupported result type X Nat × X Nat × Nat
+def	Proven.Mach.Sel.rangeOf	Compiler.Opt.Sel	TRANS	frontx: unsupported result type Option X PANIC at Lean.Expr.appArg! Le	frontx_ind: more than one extra parameter of a declared type
+def	Proven.Mach.Sel.simpBin	Compiler.Opt.Sel	TRANS	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	frontx_ind: more than one extra parameter of a declared type
+def	Proven.Mach.Sel.ops2	Compiler.Opt.Sel	TRANS	frontx: unsupported result type X Nat × X Nat × X Nat × Nat	frontx_ind: equation ite.eq_1 has no constructor pattern (by cases: fr
+def	Proven.Mach.Sel.gen	Compiler.Opt.Sel	HO	frontx: unsupported result type (Nat → Nat → X Nat) × (Nat → X Nat × X	frontx_ind: unsupported result type (Nat → Nat → X Nat) × (Nat → X Nat
+def	Proven.Mach.Sel.cond2	Compiler.Opt.Sel	TUP	frontx: unsupported result type Option (X × X PANIC at Lean.Expr.appAr	frontx_ind: unsupported result type Option (X × X
+def	Proven.Mach.Sel.tk	Compiler.Opt.Sel	OK		
+def	Proven.Mach.Sel.need	Compiler.Opt.Sel	OK	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Mach.Sel.tst	Compiler.Opt.Sel	TRANS	frontx: unsupported result type X Nat × X Nat × Nat	frontx_ind: Prod.snd has no argument of a declared type
+def	Proven.Mach.Sel.cmpOf	Compiler.Opt.Sel	OPT	frontx: unsupported result type Option X PANIC at Lean.Expr.appArg! Le	frontx_ind: unsupported result type Option X
+def	Proven.Mach.Sel.SExp.bin.elim	Compiler.Opt.Sel	GEN	frontx: unsupported result type motive t	unsolved goals case simp.discharger i✝ a : Nat b : X a✝¹ : i✝ < 184467
+def	Proven.Mach.Sel.into	Compiler.Opt.Sel	TRANS	frontx: unsupported result type X Nat	frontx_ind: Prod.fst has no argument of a declared type frontx_ind: X 
+def	Proven.Mach.Sel.isVar	Compiler.Opt.Sel	TRANS	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	frontx_ind: unsupported term ?i.1 (by cases: frontx_ind: unsupported t
+def	Proven.Mach.Sel.SExp.slot.elim	Compiler.Opt.Sel	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.137414
+def	Proven.Mach.Sel.instDecidableEqSExp	Compiler.Opt.Sel	GEN	frontx: unsupported result type DecidableEq X PANIC at Lean.Expr.appAr	frontx_ind: X has no argument of a declared type
+def	Proven.Mach.Sel.simpS	Compiler.Opt.Sel	TRANS	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	frontx_ind: unsupported term X ?op (X ?a) (X ?b) (by cases: frontx_ind
+def	Proven.Mach.Sel.SExp.const.elim	Compiler.Opt.Sel	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.136613
+def	Proven.Mach.Sel.loopCode	Compiler.Opt.Sel	TRANS	frontx: unsupported result type X Nat	frontx_ind: equation X has no constructor pattern (by cases: frontx_in
+def	Proven.Mach.Sel.envA	Compiler.Opt.Sel	IND	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Mach.Sel.SExp.ctorElim	Compiler.Opt.Sel	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.136814
+def	Proven.Mach.Sel.iteCode	Compiler.Opt.Sel	TRANS	frontx: unsupported result type X Nat	frontx_ind: equation ite.eq_1 has no constructor pattern (by cases: fr
+def	Proven.Mach.Sel.simpBin0	Compiler.Opt.Sel	TRANS	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	frontx_ind: more than one extra parameter of a declared type
+def	Proven.Mach.Sel.isLeaf	Compiler.Opt.Sel	OK	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Mach.Sel.argUses	Compiler.Opt.Sel	TRANS	frontx: unsupported parameter type X Nat	frontx_ind: a scalar parameter needs an entry `f xs = X n xs`
+def	Proven.Mach.Sel.ofA	Compiler.Opt.Sel	OK	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Mach.Sel.usesS	Compiler.Opt.Sel	TRANS	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	frontx_ind: a scalar parameter needs an entry `f xs = X n xs`
+def	Proven.Mach.Sel.uses	Compiler.Opt.Sel	TRANS	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	frontx_ind: unsupported term ?i.1 (by cases: frontx_ind: unsupported t
+def	Proven.Mach.irA	Compiler.Opt.Arr	TRANS	frontx: unsupported result type X Nat	frontx_ind: X has no argument of a declared type
+def	Proven.Mach.okA	Compiler.Opt.Arr	LIST	frontx: unsupported parameter type List (Fin 8)	
+def	Proven.Mach.fA	Compiler.Opt.Arr	IND	frontx: unsupported result type X	
+def	Proven.Mach.scA	Compiler.Opt.Arr	IND	frontx: unsupported result type X	
+def	Proven.Mach.Wide.optA	Compiler.Opt.Arr	LIST	frontx: unsupported result type Option (List (BitVec 32))	
+def	Proven.Mach.envB	Compiler.Opt.BSel	IND	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Mach.okB	Compiler.Opt.BSel	LIST	frontx: unsupported parameter type List Nat	frontx_ind: unsupported parameter type List Nat
+def	Proven.Mach.toS	Compiler.Opt.BSel	HO	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	frontx_ind: unsupported parameter type Nat → Bool
+def	Proven.Mach.loB	Compiler.Opt.BSel	HO	frontx: unsupported parameter type Nat → Bool PANIC at Lean.Expr.appAr	
+def	Proven.Mach.setB	Compiler.Opt.BSel	TRANS	frontx: unsupported result type X Nat	frontx_ind: equation ite.eq_1 has no constructor pattern (by cases: fr
+def	Proven.Mach.irB	Compiler.Opt.BSel	HO	frontx: unsupported result type X Nat	frontx_ind: unsupported parameter type Nat → Bool
+def	Proven.Mach.svB	Compiler.Opt.BSel	IND	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Mach.isS	Compiler.Opt.BSel	HO	frontx: unsupported parameter type Nat → Bool PANIC at Lean.Expr.appAr	
+def	Proven.Mach.okE	Compiler.Opt.BSel	TRANS	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	frontx_ind: a scalar parameter needs an entry `f xs = X n xs`
+def	Proven.Mach.WideF.optB	Compiler.Opt.BFn	TRANS	frontx: unsupported result type Option (List (BitVec 32))	frontx_ind: equation ite.eq_1 has no constructor pattern (by cases: fr
+def	Proven.Mach.WideF.toWide	Compiler.Opt.BFn	REC	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Mach.initL	Compiler.Opt.BFn	TRANS	frontx: unsupported result type X Nat	frontx_ind: List.brecOn has no argument of a declared type
+def	Proven.Mach.WideF.frameAt	Compiler.Opt.BFn	TRANS	invalid instantiateForall, too many parameters	
+def	Proven.Mach.WideF.encE	Compiler.Opt.BFn	LIST	frontx: unsupported result type List (BitVec 32)	
+def	Proven.Mach.WideF.encL	Compiler.Opt.BFn	LIST	frontx: unsupported result type List (BitVec 32)	
+def	Proven.Mach.fB	Compiler.Opt.BFn	IND	frontx: unsupported result type X	
+def	Proven.Ir.EOp.leaveC.elim	Compiler.Ir.Target	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.46641
+def	Proven.Ir.instReprEOp.repr	Compiler.Ir.Target	GEN	frontx: unsupported result type Std.Format PANIC at Lean.Expr.appArg! 	frontx_ind: unsupported result type Std.Format
+def	Proven.Ir.Target.encO	Compiler.Ir.Target	REC	frontx: unsupported result type List (BitVec 32)	frontx_ind: unsupported parameter type X
+def	Proven.Ir.Target.lenCall	Compiler.Ir.Target	TRANS	(kernel) application type mismatch Sim argument has type Type 1 but fu	
+def	Proven.Ir.Target.words	Compiler.Ir.Target	TRANS	frontx: unsupported result type List (BitVec 32)	frontx_ind: List.brecOn has no argument of a declared type
+def	Proven.Ir.Target.top	Compiler.Ir.Target	TRANS	invalid instantiateForall, too many parameters	
+def	Proven.Ir.EOp.leave.elim	Compiler.Ir.Target	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.46490
+def	Proven.Ir.EOp.call.elim	Compiler.Ir.Target	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.45593
+def	Proven.Ir.EOp.w.elim	Compiler.Ir.Target	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.47023
+def	Proven.Ir.EOp.exit.elim	Compiler.Ir.Target	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.46344
+def	Proven.Ir.Target.encT	Compiler.Ir.Target	LIST	frontx: unsupported result type List (BitVec 32)	
+def	Proven.Ir.EOp.top.elim	Compiler.Ir.Target	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.46792
+def	Proven.Ir.Target.encEC	Compiler.Ir.Target	LIST	frontx: unsupported result type List (BitVec 32)	
+def	Proven.Ir.EOp.ctorElim	Compiler.Ir.Target	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.45788
+def	Proven.Ir.Target.callOK	Compiler.Ir.Target	TRANS	invalid instantiateForall, too many parameters	
+def	Proven.Ir.instReprEOp	Compiler.Ir.Target	GEN	frontx: unsupported result type Repr X PANIC at Lean.Expr.appArg! Lean	frontx_ind: X has no argument of a declared type
+def	Proven.Ir.Target.encX	Compiler.Ir.Target	LIST	frontx: unsupported result type List (BitVec 32)	
+def	Proven.Ir.Target.encLC	Compiler.Ir.Target	LIST	frontx: unsupported result type List (BitVec 32)	
+def	Proven.Ir.Target.encCall	Compiler.Ir.Target	LIST	frontx: unsupported result type List (BitVec 32)	
+def	Proven.Ir.EOp.enter.elim	Compiler.Ir.Target	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.46047
+def	Proven.Ir.EOp.enterC.elim	Compiler.Ir.Target	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.46198
+def	Proven.Ir.Target.toWideF	Compiler.Ir.Target	REC	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Ir.Inst.st.elim	Compiler.Ir.Syntax	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.Rhs.op.elim	Compiler.Ir.Syntax	GEN	frontx: unsupported result type motive t	frontx_ind: X has no argument of a declared type
+def	Proven.Ir.Tst.map	Compiler.Ir.Syntax	REC	frontx: unsupported result type X σ PANIC at Lean.Expr.appArg! Lean.Ex	
+def	Proven.Ir.Rhs.arg.elim	Compiler.Ir.Syntax	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.instReprTst	Compiler.Ir.Syntax	GEN	frontx: unsupported result type Repr (X ρ✝) PANIC at Lean.Expr.appArg!	
+def	Proven.Ir.Tst.a	Compiler.Ir.Syntax	POLY	frontx: unsupported result type X ρ	
+def	Proven.Ir.Term.br.elim	Compiler.Ir.Syntax	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.Inst.call.elim	Compiler.Ir.Syntax	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.instReprProg	Compiler.Ir.Syntax	GEN	frontx: unsupported result type Repr (X ρ✝) PANIC at Lean.Expr.appArg!	
+def	Proven.Ir.Val.w.elim	Compiler.Ir.Syntax	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.53798
+def	Proven.Ir.Block.map	Compiler.Ir.Syntax	REC	frontx: unsupported result type X σ	
+def	Proven.Ir.instReprArg	Compiler.Ir.Syntax	GEN	frontx: unsupported result type Repr (X ρ✝) PANIC at Lean.Expr.appArg!	
+def	Proven.Ir.instReprFunc	Compiler.Ir.Syntax	GEN	frontx: unsupported result type Repr (X ρ✝) PANIC at Lean.Expr.appArg!	
+def	Proven.Ir.Block.body	Compiler.Ir.Syntax	LIST	frontx: unsupported result type List (X ρ)	
+def	Proven.Ir.Rhs.map	Compiler.Ir.Syntax	POLY	frontx: unsupported result type X σ	
+def	Proven.Ir.instReprTerm.repr	Compiler.Ir.Syntax	GEN	frontx: unsupported result type Std.Format PANIC at Lean.Expr.appArg! 	
+def	Proven.Ir.instReprArg.repr	Compiler.Ir.Syntax	GEN	frontx: unsupported result type Std.Format PANIC at Lean.Expr.appArg! 	
+def	Proven.Ir.instReprBlock	Compiler.Ir.Syntax	GEN	frontx: unsupported result type Repr (X ρ✝) PANIC at Lean.Expr.appArg!	
+def	Proven.Ir.Inst.stb.elim	Compiler.Ir.Syntax	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.Block.term	Compiler.Ir.Syntax	POLY	frontx: unsupported result type X ρ	
+def	Proven.Ir.Arg.ctorElim	Compiler.Ir.Syntax	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.instReprTerm	Compiler.Ir.Syntax	GEN	frontx: unsupported result type Repr (X ρ✝) PANIC at Lean.Expr.appArg!	
+def	Proven.Ir.Func.entry	Compiler.Ir.Syntax	NONCOMP	frontx: unsupported parameter type Type PANIC at Lean.Expr.appArg! Lea	
+def	Proven.Ir.Inst.map	Compiler.Ir.Syntax	REC	frontx: unsupported result type X σ	
+def	Proven.Ir.instReprInst.repr	Compiler.Ir.Syntax	GEN	frontx: unsupported result type Std.Format PANIC at Lean.Expr.appArg! 	
+def	Proven.Ir.instDecidableEqVal.decEq	Compiler.Ir.Syntax	GEN	frontx: unsupported result type Decidable (x✝¹ = x✝)	frontx_ind: a pattern on another argument (X (by cases: frontx_ind: co
+def	Proven.Ir.Inst.ld.elim	Compiler.Ir.Syntax	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.Inst.free.elim	Compiler.Ir.Syntax	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.Term.switch.elim	Compiler.Ir.Syntax	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.Func.slots	Compiler.Ir.Syntax	NONCOMP	frontx: unsupported parameter type Type PANIC at Lean.Expr.appArg! Lea	
+def	Proven.Ir.instInhabitedVal.default	Compiler.Ir.Syntax	GEN	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Ir.Term.map	Compiler.Ir.Syntax	POLY	frontx: unsupported result type X σ	
+def	Proven.Ir.instReprProg.repr	Compiler.Ir.Syntax	GEN	frontx: unsupported result type Std.Format PANIC at Lean.Expr.appArg! 	
+def	Proven.Ir.instDecidableEqVal	Compiler.Ir.Syntax	GEN	frontx: unsupported result type DecidableEq X PANIC at Lean.Expr.appAr	frontx_ind: X has no argument of a declared type
+def	Proven.Ir.instReprFunc.repr	Compiler.Ir.Syntax	GEN	frontx: unsupported result type Std.Format PANIC at Lean.Expr.appArg! 	
+def	Proven.Ir.Block.params	Compiler.Ir.Syntax	LIST	frontx: unsupported result type List ρ	
+def	Proven.Ir.instReprTst.repr	Compiler.Ir.Syntax	GEN	frontx: unsupported result type Std.Format PANIC at Lean.Expr.appArg! 	
+def	Proven.Ir.instInhabitedVal	Compiler.Ir.Syntax	GEN	frontx: unsupported result type Inhabited X PANIC at Lean.Expr.appArg!	frontx_ind: X has no argument of a declared type frontx_ind: X on TStr
+def	Proven.Ir.instReprVal	Compiler.Ir.Syntax	GEN	frontx: unsupported result type Repr X PANIC at Lean.Expr.appArg! Lean	frontx_ind: X has no argument of a declared type
+def	Proven.Ir.Inst.alloc.elim	Compiler.Ir.Syntax	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.instReprRhs.repr	Compiler.Ir.Syntax	GEN	frontx: unsupported result type Std.Format PANIC at Lean.Expr.appArg! 	
+def	Proven.Ir.Rhs.mop.elim	Compiler.Ir.Syntax	GEN	frontx: unsupported result type motive t	frontx_ind: X has no argument of a declared type
+def	Proven.Ir.Prog.main	Compiler.Ir.Syntax	NONCOMP	frontx: unsupported parameter type Type PANIC at Lean.Expr.appArg! Lea	
+def	Proven.Ir.instReprRhs	Compiler.Ir.Syntax	GEN	frontx: unsupported result type Repr (X ρ✝) PANIC at Lean.Expr.appArg!	
+def	Proven.Ir.Arg.i.elim	Compiler.Ir.Syntax	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.Inst.ctorElim	Compiler.Ir.Syntax	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.Func.params	Compiler.Ir.Syntax	LIST	frontx: unsupported result type List ρ	
+def	Proven.Ir.Prog.funcs	Compiler.Ir.Syntax	LIST	frontx: unsupported result type List (X ρ)	
+def	Proven.Ir.Val.p.elim	Compiler.Ir.Syntax	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.53661
+def	Proven.Ir.instReprVal.repr	Compiler.Ir.Syntax	GEN	frontx: unsupported result type Std.Format PANIC at Lean.Expr.appArg! 	frontx_ind: unsupported result type Std.Format
+def	Proven.Ir.Term.ret.elim	Compiler.Ir.Syntax	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.instReprInst	Compiler.Ir.Syntax	GEN	frontx: unsupported result type Repr (X ρ✝) PANIC at Lean.Expr.appArg!	
+def	Proven.Ir.Tst.b	Compiler.Ir.Syntax	POLY	frontx: unsupported result type X ρ	
+def	Proven.Ir.Val.ctorElim	Compiler.Ir.Syntax	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.53440
+def	Proven.Ir.Arg.r.elim	Compiler.Ir.Syntax	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.Rhs.ctorElim	Compiler.Ir.Syntax	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.Func.blocks	Compiler.Ir.Syntax	TUP	frontx: unsupported result type List (X × X ρ)	
+def	Proven.Ir.Tst.c	Compiler.Ir.Syntax	TRANS	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	frontx_ind: X has no argument of a declared type
+def	Proven.Ir.Rhs.padd.elim	Compiler.Ir.Syntax	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.Term.jmp.elim	Compiler.Ir.Syntax	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.instReprBlock.repr	Compiler.Ir.Syntax	GEN	frontx: unsupported result type Std.Format PANIC at Lean.Expr.appArg! 	
+def	Proven.Ir.Arg.map	Compiler.Ir.Syntax	POLY	frontx: unsupported result type X σ	
+def	Proven.Ir.Inst.ldb.elim	Compiler.Ir.Syntax	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.Term.ctorElim	Compiler.Ir.Syntax	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.Inst.let_.elim	Compiler.Ir.Syntax	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.step	Compiler.Ir.Sem	GEN	frontx: unsupported result type X ρ	
+def	Proven.Ir.Mem.out	Compiler.Ir.Sem	LIST	frontx: unsupported result type List (Option UInt8)	
+def	Proven.Ir.Tst.eval	Compiler.Ir.Sem	TRANS	frontx: unsupported parameter type Type PANIC at Lean.Expr.appArg! Lea	frontx_ind: X has no argument of a declared type
+def	Proven.Ir.Mem.init	Compiler.Ir.Sem	REC	frontx: unsupported result type X	
+def	Proven.Ir.run	Compiler.Ir.Sem	GEN	frontx: unsupported result type Option X	
+def	Proven.Ir.Prog.result	Compiler.Ir.Sem	OPT	frontx: unsupported result type Option X	
+def	Proven.Ir.Outcome.stuck.elim	Compiler.Ir.Sem	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.upd	Compiler.Ir.Sem	GEN	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	frontx_ind: equation ite.eq_1 has no constructor pattern (by cases: fr
+def	Proven.Ir.Prog.meaning	Compiler.Ir.Sem	LIST	frontx: unsupported result type Option (List UInt8)	
+def	Proven.Ir.Rhs.eval	Compiler.Ir.Sem	TRANS	frontx: unsupported result type Option X PANIC at Lean.Expr.appArg! Le	frontx_ind: X has no argument of a declared type
+def	Proven.Ir.init	Compiler.Ir.Sem	GEN	frontx: unsupported result type X ρ	
+def	Proven.Ir.Outcome.ctorElim	Compiler.Ir.Sem	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.Outcome.next.elim	Compiler.Ir.Sem	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.setOut	Compiler.Ir.Sem	LIST	frontx: unsupported result type List (Option UInt8)	
+def	Proven.Ir.interp	Compiler.Ir.Sem	TUP	frontx: unsupported result type Option (List UInt8 × List X	
+def	Proven.Ir.nullTest	Compiler.Ir.Sem	OPT	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	frontx_ind: unsupported result type Option Bool
+def	Proven.Ir.Mem.blk	Compiler.Ir.Sem	TRANS	failed to synthesize OfNat (Nat × Nat × Bool) 0 Hint: Additional diagn	
+def	Proven.Ir.Frame.regs	Compiler.Ir.Sem	TRANS	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	invalid instantiateLambda, too many parameters
+def	Proven.Ir.termStep	Compiler.Ir.Sem	GEN	frontx: unsupported result type X ρ	
+def	Proven.Ir.setMany	Compiler.Ir.Sem	GEN	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	invalid instantiateLambda, too many parameters
+def	Proven.Ir.Arg.word	Compiler.Ir.Sem	TRANS	frontx: unsupported parameter type Type PANIC at Lean.Expr.appArg! Lea	frontx_ind: X has no argument of a declared type
+def	Proven.Ir.Frame.l	Compiler.Ir.Sem	NONCOMP	frontx: unsupported parameter type Type PANIC at Lean.Expr.appArg! Lea	
+def	Proven.Ir.Inst.exec	Compiler.Ir.Sem	GEN	frontx: unsupported result type Option ((ρ → X × X × List X PANIC at L	frontx_ind: X has no argument of a declared type
+def	Proven.Ir.Mem.output	Compiler.Ir.Sem	LIST	frontx: unsupported result type Option (List UInt8)	
+def	Proven.Ir.Result.vs	Compiler.Ir.Sem	TRANS	frontx: unsupported result type List X	frontx_ind: X has no argument of a declared type
+def	Proven.Ir.instProgramProgVReg	Compiler.Ir.Sem	GEN	frontx: unsupported result type X (X X PANIC at Lean.Expr.appArg! Lean	
+def	Proven.Ir.State.ev	Compiler.Ir.Sem	LIST	frontx: unsupported result type List X	
+def	Proven.Ir.Result.mem	Compiler.Ir.Sem	REC	frontx: unsupported result type X	
+def	Proven.Ir.Mem.inp	Compiler.Ir.Sem	TRANS	frontx: unsupported list result self.1 PANIC at List.head! Init.Data.L	
+def	Proven.Ir.Frame.dst	Compiler.Ir.Sem	LIST	frontx: unsupported result type List ρ	
+def	Proven.Ir.Outcome.done.elim	Compiler.Ir.Sem	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.Frame.pc	Compiler.Ir.Sem	NONCOMP	frontx: unsupported parameter type Type PANIC at Lean.Expr.appArg! Lea	
+def	Proven.Ir.Mem.cells	Compiler.Ir.Sem	TRANS	frontx: unsupported result type List (Option X	frontx_ind: X has no argument of a declared type
+def	Proven.Ir.jump	Compiler.Ir.Sem	GEN	frontx: unsupported result type Option (X ρ) PANIC at Lean.Expr.appArg	frontx_ind: X has no argument of a declared type
+def	Proven.Ir.State.stack	Compiler.Ir.Sem	LIST	frontx: unsupported result type List (X ρ)	
+def	Proven.Ir.State.mem	Compiler.Ir.Sem	REC	frontx: unsupported result type X	
+def	Proven.Ir.Result.ev	Compiler.Ir.Sem	LIST	frontx: unsupported result type List X	
+def	Proven.Ir.Frame.f	Compiler.Ir.Sem	NONCOMP	frontx: unsupported parameter type Type PANIC at Lean.Expr.appArg! Lea	
+def	Proven.Ir.Arg.eval	Compiler.Ir.Sem	TRANS	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	frontx_ind: X has no argument of a declared type
+def	Proven.Ir.Mem.blks	Compiler.Ir.Sem	TUP	frontx: unsupported result type List (Nat × Nat × Bool)	
+def	Proven.Ir.storeRegs	Compiler.Ir.Emit	TRANS	frontx: unsupported result type List X	frontx_ind: List.brecOn has no argument of a declared type
+def	Proven.Ir.Env.fp	Compiler.Ir.Emit	TRANS	invalid instantiateForall, too many parameters	
+def	Proven.Ir.Target.emitI	Compiler.Ir.Emit	REC	frontx: unsupported result type Option (List X	frontx_ind: unsupported parameter type X
+def	Proven.Ir.Target.emitIs	Compiler.Ir.Emit	TRANS	frontx: unsupported result type Option (List X	frontx_ind: List.brecOn has no argument of a declared type
+def	Proven.Ir.Target.len	Compiler.Ir.Emit	TRANS	frontx: unsupported parameter type List X PANIC at Lean.Expr.appArg! L	frontx_ind: List.length has no argument of a declared type
+def	Proven.Ir.Target.jTo	Compiler.Ir.Emit	TRANS	frontx: unsupported result type Option (List X	frontx_ind: equation ite.eq_1 has no constructor pattern (by cases: fr
+def	Proven.Ir.Target.emitT	Compiler.Ir.Emit	REC	frontx: unsupported result type Option (List X	frontx_ind: unsupported parameter type X
+def	Proven.Ir.R1	Compiler.Ir.Emit	IND	frontx: unsupported result type X	
+def	Proven.Ir.Target.layStep	Compiler.Ir.Emit	REC	frontx: unsupported result type X	
+def	Proven.Ir.Target.emitP	Compiler.Ir.Emit	TRANS	frontx: unsupported result type Option (List X	frontx_ind: equation ite.eq_1 has no constructor pattern (by cases: fr
+def	Proven.Ir.RHp	Compiler.Ir.Emit	IND	frontx: unsupported result type X	
+def	Proven.Ir.Target.noParams	Compiler.Ir.Emit	TRANS	frontx: not a scalar: Option.map (fun B => B.params.isEmpty) (List.loo	
+def	Proven.Ir.Target.brTo	Compiler.Ir.Emit	TRANS	frontx: unsupported result type Option (List X	frontx_ind: equation ite.eq_1 has no constructor pattern (by cases: fr
+def	Proven.Ir.Lay.posF	Compiler.Ir.Emit	TRANS	invalid instantiateForall, too many parameters	
+def	Proven.Ir.storeAll	Compiler.Ir.Emit	TRANS	frontx: unsupported result type List X	frontx_ind: List.brecOn has no argument of a declared type
+def	Proven.Ir.RLen	Compiler.Ir.Emit	IND	frontx: unsupported result type X	
+def	Proven.Ir.Target.jW	Compiler.Ir.Emit	TRANS	frontx: unsupported result type Option X PANIC at Lean.Expr.appArg! Le	frontx_ind: equation ite.eq_1 has no constructor pattern (by cases: fr
+def	Proven.Ir.okA	Compiler.Ir.Emit	TRANS	frontx: unsupported parameter type X Nat	frontx_ind: a scalar parameter needs an entry `f xs = X n xs`
+def	Proven.Ir.Target.chkPre	Compiler.Ir.Emit	TRANS	frontx: unsupported result type List X	frontx_ind: X has no argument of a declared type
+def	Proven.Ir.Target.emitBs	Compiler.Ir.Emit	TRANS	frontx: unsupported result type Option (List X	frontx_ind: List.brecOn has no argument of a declared type
+def	Proven.Ir.Target.stub1	Compiler.Ir.Emit	TRANS	frontx: unsupported result type List X	frontx_ind: X has no argument of a declared type
+def	Proven.Ir.RLim	Compiler.Ir.Emit	IND	frontx: unsupported result type X	
+def	Proven.Ir.instReprLay	Compiler.Ir.Emit	GEN	frontx: unsupported result type Repr X PANIC at Lean.Expr.appArg! Lean	
+def	Proven.Ir.R9	Compiler.Ir.Emit	IND	frontx: unsupported result type X	
+def	Proven.Ir.loadAll	Compiler.Ir.Emit	TRANS	frontx: unsupported result type List X	frontx_ind: List.brecOn has no argument of a declared type
+def	Proven.Ir.R2	Compiler.Ir.Emit	IND	frontx: unsupported result type X	
+def	Proven.Ir.Prog.env	Compiler.Ir.Emit	REC	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Ir.Target.edge	Compiler.Ir.Emit	TRANS	frontx: unsupported result type Option (List X	frontx_ind: X has no argument of a declared type
+def	Proven.Ir.Target.emitFs	Compiler.Ir.Emit	TRANS	frontx: unsupported result type Option (List X	frontx_ind: List.brecOn has no argument of a declared type
+def	Proven.Ir.instReprLay.repr	Compiler.Ir.Emit	GEN	frontx: unsupported result type Std.Format PANIC at Lean.Expr.appArg! 	
+def	Proven.Ir.R8	Compiler.Ir.Emit	IND	frontx: unsupported result type X	
+def	Proven.Ir.Target.emitStub	Compiler.Ir.Emit	TRANS	frontx: unsupported result type Option (List X	frontx_ind: equation ite.eq_1 has no constructor pattern (by cases: fr
+def	Proven.Ir.Target.rounds	Compiler.Ir.Emit	TRANS	frontx: unsupported term List.foldl (fun x1 x2 => x1 + x2) 0 (List.map	
+def	Proven.Ir.Lay.pos	Compiler.Ir.Emit	TUP	frontx: unsupported result type List (List (X × Nat))	
+def	Proven.Ir.Env.fs	Compiler.Ir.Emit	TRANS	invalid instantiateForall, too many parameters	
+def	Proven.Ir.argRegs	Compiler.Ir.Emit	LIST	frontx: unsupported result type List X	
+def	Proven.Ir.Lay.fq	Compiler.Ir.Emit	LIST	frontx: unsupported result type List Nat	
+def	Proven.Ir.ROut	Compiler.Ir.Emit	IND	frontx: unsupported result type X	
+def	Proven.Ir.Target.stub2	Compiler.Ir.Emit	TRANS	frontx: unsupported result type List X	frontx_ind: X has no argument of a declared type
+def	Proven.Ir.Target.emitI'	Compiler.Ir.Emit	REC	frontx: unsupported result type Option (List X	frontx_ind: unsupported parameter type X
+def	Proven.Ir.R7	Compiler.Ir.Emit	IND	frontx: unsupported result type X	
+def	Proven.Ir.Env.fq	Compiler.Ir.Emit	TRANS	invalid instantiateForall, too many parameters	
+def	Proven.Ir.Target.emitCall	Compiler.Ir.Emit	TRANS	frontx: unsupported result type Option (List X	frontx_ind: equation ite.eq_1 has no constructor pattern (by cases: fr
+def	Proven.Ir.exit0	Compiler.Ir.Emit	TRANS	frontx: unsupported result type List X	frontx_ind: X has no argument of a declared type
+def	Proven.Ir.R0	Compiler.Ir.Emit	IND	frontx: unsupported result type X	
+def	Proven.Ir.Target.proF	Compiler.Ir.Emit	TRANS	frontx: unsupported result type List X	frontx_ind: equation HAppend.hAppend.eq_1 has no constructor pattern (
+def	Proven.Ir.RIn	Compiler.Ir.Emit	IND	frontx: unsupported result type X	
+def	Proven.Ir.Target.starts	Compiler.Ir.Emit	TRANS	frontx: unsupported result type List (X × Nat) × Nat	frontx_ind: List.brecOn has no argument of a declared type
+def	Proven.Ir.Target.stub3	Compiler.Ir.Emit	TRANS	frontx: unsupported result type List X frontx: X 7 variables (5 user),	frontx_ind: X has no argument of a declared type
+def	Proven.Ir.Lay.ex	Compiler.Ir.Emit	OK		
+def	Proven.Ir.Target.zeros	Compiler.Ir.Emit	TRANS	frontx: unsupported result type List X	frontx_ind: List.map has no argument of a declared type
+def	Proven.Ir.Target.emitB	Compiler.Ir.Emit	REC	frontx: unsupported result type Option (List X	frontx_ind: unsupported parameter type X
+def	Proven.Ir.Target.layFs	Compiler.Ir.Emit	TUP	frontx: unsupported result type List Nat × List (List (X × Nat)) × Nat	
+def	Proven.Ir.Target.emitF	Compiler.Ir.Emit	TRANS	frontx: unsupported result type Option (List X	frontx_ind: equation ite.eq_1 has no constructor pattern (by cases: fr
+def	Proven.Ir.posOf	Compiler.Ir.Emit	TUP	frontx: unsupported parameter type List (X × Nat)	
+def	Proven.Ir.Target.callPost	Compiler.Ir.Emit	TRANS	frontx: unsupported result type List X	frontx_ind: equation HAppend.hAppend.eq_1 has no constructor pattern (
+def	Proven.Ir.Target.layout	Compiler.Ir.Emit	REC	frontx: unsupported result type X	
+def	Proven.Ir.Target.swChain	Compiler.Ir.Emit	TRANS	frontx: unsupported result type Option (List X	frontx_ind: List.brecOn has no argument of a declared type
+def	Proven.Ir.ldArg	Compiler.Ir.Emit	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	frontx_ind: unsupported parameter type X
+def	Proven.Ir.Target.callTo	Compiler.Ir.Emit	TRANS	frontx: unsupported result type Option (List X	frontx_ind: X has no argument of a declared type
+def	Proven.Mach.Riscv.runLi	Riscv.Back.Wide	HO	frontx: unsupported parameter type List X	frontx_ind: unsupported parameter type X → ?β → X
+def	Proven.Mach.Riscv.liGood	Riscv.Back.Wide	TRANS	frontx: unsupported parameter type List X	frontx_ind: Bool.and has no argument of a declared type
+def	Proven.Mach.Riscv.LiStep.eval	Riscv.Back.Wide	OTHER	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	frontx_ind: unsupported parameter type BitVec 64
+def	Proven.Mach.Riscv.LiStep.add.elim	Riscv.Back.Wide	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.121512
+def	Proven.Mach.Riscv.liSlow	Riscv.Back.Wide	HO	frontx: unsupported result type List X	frontx_ind: unsupported parameter type X → Sort ?u.132552
+def	Proven.Mach.Riscv.condF3	Riscv.Back.Wide	BV	frontx: unsupported result type BitVec 3	frontx_ind: unsupported result type BitVec 3
+def	Proven.Mach.Riscv.immOK	Riscv.Back.Wide	OTHER	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	frontx_ind: unsupported parameter type BitVec 64
+def	Proven.Mach.Riscv.LiStep.word	Riscv.Back.Wide	BV	frontx: unsupported result type BitVec 32	frontx_ind: unsupported parameter type Fin 32
+def	Proven.Mach.Riscv.jOff	Riscv.Back.Wide	BV	frontx: unsupported result type BitVec 20	
+def	Proven.Mach.Riscv.instReprLiStep.repr	Riscv.Back.Wide	GEN	frontx: unsupported result type Std.Format PANIC at Lean.Expr.appArg! 	frontx_ind: unsupported result type Std.Format
+def	Proven.Mach.Riscv.physO	Riscv.Back.Wide	BV	frontx: unsupported result type Fin 32	
+def	Proven.Mach.Riscv.fits12	Riscv.Back.Wide	TRANS	frontx: projection of a term that is not a constructor application ↑(B	
+def	Proven.Mach.Riscv.LiStep.ctorElim	Riscv.Back.Wide	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.121673
+def	Proven.Mach.Riscv.wenc	Riscv.Back.Wide	LIST	frontx: unsupported result type List (BitVec 32)	frontx_ind: unsupported result type List (BitVec 32)
+def	Proven.Mach.Riscv.LiStep.set.elim	Riscv.Back.Wide	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.123746
+def	Proven.Mach.Riscv.LiStep.lui.elim	Riscv.Back.Wide	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.123603
+def	Proven.Mach.Riscv.LiStep.shl.elim	Riscv.Back.Wide	GEN	frontx: unsupported result type motive t	frontx_ind: unsupported parameter type X → Sort ?u.123889
+def	Proven.Mach.Riscv.rvw	Riscv.Back.Wide	REC	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Mach.Riscv.brOK	Riscv.Back.Wide	TRANS	frontx: could not prove X (σ.env.set 6 (rN (2 * n))) (X X (X X (X 0#64	
+def	Proven.Mach.Riscv.jOK	Riscv.Back.Wide	TRANS	frontx: could not prove X (σ.env.set 6 (rN (2 * n))) (X X (X X (X 0#64	
+def	Proven.Mach.Riscv.immWords	Riscv.Back.Wide	BV	frontx: unsupported result type List (BitVec 32)	frontx_ind: unsupported parameter type Fin 32
+def	Proven.Mach.Riscv.MOp.f3	Riscv.Back.Wide	OK	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Mach.Riscv.liPlan32	Riscv.Back.Wide	TRANS	frontx: unsupported result type List X	frontx_ind: equation ite.eq_1 has no constructor pattern (by cases: fr
+def	Proven.Mach.Riscv.brOff	Riscv.Back.Wide	BV	frontx: unsupported result type BitVec 12	
+def	Proven.Mach.Riscv.instReprLiStep	Riscv.Back.Wide	GEN	frontx: unsupported result type Repr X PANIC at Lean.Expr.appArg! Lean	frontx_ind: X has no argument of a declared type
+def	Proven.Mach.Riscv.liPlan	Riscv.Back.Wide	TRANS	frontx: unsupported result type List X	frontx_ind: Nat.brecOn has no argument of a declared type
+def	Proven.Mach.Riscv.tz	Riscv.Back.Wide	TRANS	frontx: unsupported match match a✝¹, a✝ with | 0, x => 0 | fuel.succ, 	
+def	Proven.Mach.Riscv.liCode	Riscv.Back.Wide	TRANS	frontx: unsupported result type List X	frontx_ind: equation ite.eq_1 has no constructor pattern (by cases: fr
+def	Proven.Mach.Riscv.LiStep.init	Riscv.Back.Wide	TRANS	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	frontx_ind: generated text does not parse (<input>:20:20: expected ']'
+def	Proven.Mach.IR.color	Compiler.Opt.Color	LIST	frontx: unsupported result type Option (Nat → X PANIC at Lean.Expr.app	frontx_ind: unsupported parameter type List Nat
+def	Proven.Mach.IR.igIns	Compiler.Opt.Color	LIST	frontx: unsupported result type List (Nat × Nat)	frontx_ind: unsupported parameter type List Nat
+def	Proven.Mach.IR.mvIns	Compiler.Opt.Color	TUP	frontx: unsupported result type List (Nat × Nat)	frontx_ind: unsupported result type List (Nat × Nat)
+def	Proven.Mach.IR.ig	Compiler.Opt.Color	LIST	frontx: unsupported result type List (Nat × Nat) × List (Nat × Nat)	frontx_ind: unsupported parameter type List Nat
+def	Proven.Mach.IR.uncol	Compiler.Opt.Color	LIST	frontx: unsupported result type List Nat	frontx_ind: unsupported parameter type List Nat
+def	Proven.Mach.Riscv.rvT	Riscv.Back.IrTarget	REC	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Ir.Ctx.sv	Compiler.Ir.EmitCtx	TRANS	Application type mismatch: The argument a has type X × X T but is expe	
+def	Proven.Ir.Ctx.inA	Compiler.Ir.EmitCtx	TRANS	Application type mismatch: The argument a has type X × X T but is expe	
+def	Proven.Ir.Ctx.wl	Compiler.Ir.EmitCtx	TRANS	Application type mismatch: The argument a has type X × X T but is expe	
+def	Proven.Ir.Ctx.W	Compiler.Ir.EmitCtx	LIST	frontx: unsupported result type List (BitVec 32)	
+def	Proven.Ir.Ctx.pc0	Compiler.Ir.EmitCtx	TRANS	Application type mismatch: The argument a has type X × X T but is expe	
+def	Proven.Ir.Ctx.s0	Compiler.Ir.EmitCtx	OTHER	frontx: unsupported result type T.S PANIC at Lean.Expr.appArg! Lean.Ex	
+def	Proven.Ir.Ctx.F0	Compiler.Ir.EmitCtx	TRANS	Application type mismatch: The argument a has type X × X T but is expe	
+def	Proven.Ir.Ctx.nS	Compiler.Ir.EmitCtx	TRANS	Application type mismatch: The argument a has type X × X T but is expe	
+def	Proven.Ir.Ctx.T0	Compiler.Ir.EmitCtx	TRANS	Application type mismatch: The argument a has type X × X T but is expe	
+def	Proven.Ir.Ctx.outL	Compiler.Ir.EmitCtx	TRANS	Application type mismatch: The argument a has type X × X T but is expe	
+def	Proven.Ir.Ctx.wb	Compiler.Ir.EmitCtx	TRANS	Application type mismatch: The argument a has type X × X T but is expe	
+def	Proven.Ir.Ctx.outA	Compiler.Ir.EmitCtx	TRANS	Application type mismatch: The argument a has type X × X T but is expe	
+def	Proven.Ir.Ctx.repr	Compiler.Ir.EmitCtx	GEN	frontx: unsupported parameter type List (Nat × Nat × Bool) PANIC at Le	frontx_ind: unsupported parameter type X
+def	Proven.Ir.Ctx.fa	Compiler.Ir.EmitCtx	REC	frontx: unsupported result type X T	
+def	Proven.Ir.Ctx.input	Compiler.Ir.EmitCtx	TRANS	Application type mismatch: The argument a has type X × X T × Nat × Lis	
+def	Proven.Ir.Ctx.hm	Compiler.Ir.EmitCtx	BV	frontx: unsupported result type Option (BitVec 8)	
+def	Proven.Ir.Ctx.allocPre	Compiler.Ir.EmitAlloc	REC	frontx: unsupported result type List X	frontx_ind: unsupported parameter type X
+def	Proven.Ir.Ctx.base	Compiler.Ir.EmitStep	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Ir.Target.lin	Compiler.Ir.Lin	TRANS	frontx: unsupported result type Option (List X	frontx_ind: X has no argument of a declared type
+def	Proven.Ir.Block.locs	Compiler.Ir.Lin	TRANS	frontx: unsupported result type List Nat	frontx_ind: equation HAppend.hAppend.eq_1 has no constructor pattern (
+def	Proven.Ir.alloc	Compiler.Ir.Lin	OPT	frontx: unsupported result type Option (X Nat)	
+def	Proven.Ir.Func.locs	Compiler.Ir.Lin	LIST	frontx: unsupported result type List Nat	
+def	Proven.Ir.Func.rename	Compiler.Ir.Lin	REC	frontx: unsupported result type X Nat	
+def	Proven.Ir.Inst.locs	Compiler.Ir.Lin	LIST	frontx: unsupported result type List Nat	frontx_ind: unsupported result type List Nat
+def	Proven.Ir.dedup	Compiler.Ir.Lin	LIST	frontx: unsupported result type List Nat	
+def	Proven.Ir.Func.alloc1	Compiler.Ir.Lin	OPT	frontx: unsupported result type Option (X Nat)	
+def	Proven.Ir.Term.locs	Compiler.Ir.Lin	LIST	frontx: unsupported result type List Nat	frontx_ind: unsupported result type List Nat
+def	Proven.Ir.idx	Compiler.Ir.Lin	LIST	frontx: unsupported parameter type List Nat	
+def	Proven.Ir.injOn	Compiler.Ir.Lin	HO	frontx: unsupported parameter type Nat → Nat PANIC at Lean.Expr.appArg	
+def	Proven.Ir.Func.allocD	Compiler.Ir.Lin	OPT	frontx: unsupported result type Option (X Nat)	
+def	Proven.Ir.Arg.locs	Compiler.Ir.Lin	LIST	frontx: unsupported result type List Nat	frontx_ind: unsupported result type List Nat
+def	Proven.Ir.Func.σ	Compiler.Ir.Rename	TRANS	invalid instantiateForall, too many parameters	
+def	Proven.Ir.Func.ren	Compiler.Ir.Rename	REC	frontx: unsupported result type X Nat	
+def	Proven.Ir.renameSim	Compiler.Ir.Rename	IND	frontx: unsupported result type X P Q PANIC at Lean.Expr.appArg! Lean.	
+def	Proven.Ir.compileW	Riscv.Back.IrTop	TRANS	Application type mismatch: The argument X has type (self : X → self.S 	
+def	Proven.Ir.compile	Riscv.Back.IrTop	TRANS	Application type mismatch: The argument X has type (self : X → self.S 	
+def	Proven.Ir.events	Riscv.Back.IrTop	LIST	frontx: unsupported result type List X	
+def	Proven.Ir.SC.i.elim	Compiler.Ir.Struct	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.GS.bs	Compiler.Ir.Struct	TUP	frontx: unsupported result type List (X × X X	
+def	Proven.Ir.TC.ctorElim	Compiler.Ir.Struct	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.SC.ctorElim	Compiler.Ir.Struct	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.instReprTC.repr	Compiler.Ir.Struct	GEN	frontx: unsupported result type Std.Format PANIC at Lean.Expr.appArg! 	
+def	Proven.Ir.GS.cl	Compiler.Ir.Struct	OK		
+def	Proven.Ir.flatRs	Compiler.Ir.Struct	TUP	frontx: unsupported result type List (X × X X	
+def	Proven.Ir.GS.cp	Compiler.Ir.Struct	LIST	frontx: unsupported result type List X	
+def	Proven.Ir.SC.loop.elim	Compiler.Ir.Struct	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.TC.seq.elim	Compiler.Ir.Struct	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.SC.seq.elim	Compiler.Ir.Struct	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.flatS	Compiler.Ir.Struct	REC	frontx: unsupported result type X	
+def	Proven.Ir.flatT	Compiler.Ir.Struct	REC	frontx: unsupported result type X	
+def	Proven.Ir.SC.seqs	Compiler.Ir.Struct	REC	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Ir.GS.ci	Compiler.Ir.Struct	LIST	frontx: unsupported result type List (X X	
+def	Proven.Ir.TC.ite.elim	Compiler.Ir.Struct	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.SC.ite.elim	Compiler.Ir.Struct	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.instReprTC	Compiler.Ir.Struct	GEN	frontx: unsupported result type Repr X PANIC at Lean.Expr.appArg! Lean	
+def	Proven.Ir.instReprSC.repr	Compiler.Ir.Struct	GEN	frontx: unsupported result type Std.Format PANIC at Lean.Expr.appArg! 	
+def	Proven.Ir.instReprSC	Compiler.Ir.Struct	GEN	frontx: unsupported result type Repr X PANIC at Lean.Expr.appArg! Lean	
+def	Proven.Ir.GS.close	Compiler.Ir.Struct	REC	frontx: unsupported result type X	
+def	Proven.Ir.GS.open	Compiler.Ir.Struct	REC	frontx: unsupported result type X	
+def	Proven.Ir.TC.term.elim	Compiler.Ir.Struct	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.mkFunc	Compiler.Ir.Struct	REC	frontx: unsupported result type X X frontx: X 7 variables (5 user), 0 	
+def	Proven.Ir.GS.nl	Compiler.Ir.Struct	OK		
+def	Proven.Ir.SC.nop.elim	Compiler.Ir.Struct	GEN	frontx: unsupported result type motive t	
+def	Proven.Ir.IndLow.bin	Compiler.Ir.IndLow	TRANS	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	(lean.unknownIdentifier): Unknown constant `X
+def	Proven.Ir.IndLow.nextL	Compiler.Ir.IndLow	REC	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Ir.IndLow.nz	Compiler.Ir.IndLow	REC	frontx: unsupported result type X X PANIC at Lean.Expr.appArg! Lean.Ex	
+def	Proven.Ir.IndLow.lowE	Compiler.Ir.IndLow	TRANS	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	(lean.unknownIdentifier): Unknown constant `X
+def	Proven.Ir.IndLow.decF	Compiler.Ir.IndLow	REC	frontx: unsupported result type X X	
+def	Proven.Ir.IndLow.mainF	Compiler.Ir.IndLow	REC	frontx: unsupported result type X X	
+def	Proven.Ir.IndLow.fld	Compiler.Ir.IndLow	REC	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Ir.IndLow.put8	Compiler.Ir.IndLow	REC	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Ir.IndLow.encStr	Compiler.Ir.IndLow	REC	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Ir.IndLow.put	Compiler.Ir.IndLow	REC	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Ir.IndLow.rd8	Compiler.Ir.IndLow	REC	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Ir.IndLow.setK	Compiler.Ir.IndLow	REC	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Ir.IndLow.entryTC	Compiler.Ir.IndLow	REC	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Ir.IndLow.lowT	Compiler.Ir.IndLow	TRANS	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	(lean.unknownIdentifier): Unknown constant `X
+def	Proven.Ir.IndLow.addK	Compiler.Ir.IndLow	REC	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Ir.IndLow.mov	Compiler.Ir.IndLow	REC	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Ir.IndLow.decStr	Compiler.Ir.IndLow	REC	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Ir.IndLow.encF	Compiler.Ir.IndLow	REC	frontx: unsupported result type X X	
+def	Proven.Ir.IndLow.lower	Compiler.Ir.IndLow	TRANS	frontx: unsupported result type X X	(lean.unknownIdentifier): Unknown constant `X
+def	Proven.Ir.IndLow.encFld	Compiler.Ir.IndLow	TRANS	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	(lean.unknownIdentifier): Unknown constant `X
+def	Proven.Ir.IndLow.mkCell	Compiler.Ir.IndLow	REC	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Ir.IndLow.decFld	Compiler.Ir.IndLow	TRANS	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	(lean.unknownIdentifier): Unknown constant `X
+def	Proven.Ir.IndLow.lowPg	Compiler.Ir.IndLow	TRANS	frontx: unsupported result type X X	(lean.unknownIdentifier): Unknown constant `X
+def	Proven.Ir.Out.go.elim	Compiler.Ir.StructOk	GEN	(lean.unknownIdentifier): Unknown constant `X	
+def	Proven.Ir.Out.ret.elim	Compiler.Ir.StructOk	GEN	(lean.unknownIdentifier): Unknown constant `X	
+def	Proven.Ir.Out.ctorElim	Compiler.Ir.StructOk	GEN	(lean.unknownIdentifier): Unknown constant `X	
+def	Proven.Ir.keys	Compiler.Ir.StructLbl	TRANS	(lean.unknownIdentifier): Unknown constant `X	
+def	Proven.Ir.rs3	Compiler.Ir.StructLbl	TRANS	(lean.unknownIdentifier): Unknown constant `X	
+def	Proven.Ir.tacticLomega	Compiler.Ir.StructLbl	TRANS	(lean.unknownIdentifier): Unknown constant `X	
+def	Proven.Ir.Mem.push4	Compiler.Ir.IndLowMem	TRANS	(lean.unknownIdentifier): Unknown constant `X	
+def	Proven.Ir.IndLow.cnOf	Compiler.Ir.IndLowT	TRANS	(lean.unknownIdentifier): Unknown constant `X	
+def	Proven.Ir.IndLow.rdStep	Compiler.Ir.IndLowDec	TRANS	(lean.unknownIdentifier): Unknown constant `X	
+def	Proven.Ir.IndLow.strBody	Compiler.Ir.IndLowDec	TRANS	(lean.unknownIdentifier): Unknown constant `X	
+def	Proven.Ir.IndLow.bytBody	Compiler.Ir.IndLowEnc	TRANS	(lean.unknownIdentifier): Unknown constant `X	
+def	Proven.Ir.IndLow.cntBody	Compiler.Ir.IndLowEnc	TRANS	(lean.unknownIdentifier): Unknown constant `X	
+def	Proven.Ir.IndLow.p8Step	Compiler.Ir.IndLowEnc	TRANS	(lean.unknownIdentifier): Unknown constant `X	
+def	Proven.Ir.IndLow.mainTC	Compiler.Ir.IndLowMain	TRANS	(lean.unknownIdentifier): Unknown constant `X	
+def	Proven.Ir.IndLow.wStep	Compiler.Ir.IndLowMain	TRANS	(lean.unknownIdentifier): Unknown constant `X	
+def	Proven.Ir.IndLow.goodB	Compiler.Ir.IndLowMain	TRANS	(lean.unknownIdentifier): Unknown constant `X	
+def	Proven.Ir.IndLow.ainSC	Compiler.Ir.IndLowMain	TRANS	(lean.unknownIdentifier): Unknown constant `X	
+def	Proven.Ir.IndLow.biSC	Compiler.Ir.IndLowMain	TRANS	(lean.unknownIdentifier): Unknown constant `X	
+def	Proven.Ir.IndLow.outSC	Compiler.Ir.IndLowMain	TRANS	(lean.unknownIdentifier): Unknown constant `X	
+def	Proven.Mach.Wide.irE	Compiler.Opt.Exp	TRANS	(lean.unknownIdentifier): Unknown constant `X	
+def	Proven.Mach.Wide.optE	Compiler.Opt.Exp	TRANS	(lean.unknownIdentifier): Unknown constant `X	
+def	Proven.Mach.fE	Compiler.Opt.Exp	TRANS	(lean.unknownIdentifier): Unknown constant `X	
+def	Proven.Mach.scE	Compiler.Opt.Exp	TRANS	(lean.unknownIdentifier): Unknown constant `X	
+def	Proven.Mach.irS	Compiler.Opt.Stmt	TRANS	(lean.unknownIdentifier): Unknown constant `X	
+def	Proven.Mach.Wide.optS	Compiler.Opt.Stmt	TRANS	(lean.unknownIdentifier): Unknown constant `X	
+def	Proven.Top.compile	Riscv.Back.Top	OPT	frontx: unsupported result type Option X	
+def	Proven.Op.ctorElimType	Spec.Code	GEN	frontx: unsupported result type Sort (max 1 u) PANIC at Lean.Expr.appA	frontx_ind: equation cond.eq_1 has no constructor pattern (by cases: f
+def	Proven.Exp.ctorElimType	Spec.Code	GEN	frontx: unsupported result type Sort (max 1 u) PANIC at Lean.Expr.appA	frontx_ind: equation cond.eq_1 has no constructor pattern (by cases: f
+def	Proven.Mach.IR.Regs	Compiler.Opt.IR	GEN	frontx: unsupported result type Type PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Mach.Cond.eval	Compiler.Wide	IND	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	frontx_ind: unsupported parameter type BitVec 64 frontx_ind: X on TCon
+def	Proven.Mach.IR.Arg.ctorElimType	Compiler.Opt.IR	GEN	frontx: unsupported result type Sort (max 1 u) PANIC at Lean.Expr.appA	
+def	Proven.Mach.instReprMOp	Compiler.MOp	GEN	frontx: unsupported result type Repr X PANIC at Lean.Expr.appArg! Lean	frontx_ind: X has no argument of a declared type
+def	Proven.Mach.instReprCond	Compiler.Wide	GEN	frontx: unsupported result type Repr X PANIC at Lean.Expr.appArg! Lean	frontx_ind: X has no argument of a declared type
+def	Proven.Mach.Cond.neg	Compiler.Wide	OK	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Mach.IR.Code.ctorElimType	Compiler.Opt.IR	GEN	frontx: unsupported result type Sort (max 1 u) PANIC at Lean.Expr.appA	
+def	Proven.Mach.IR.Ins.ctorElimType	Compiler.Opt.IR	GEN	frontx: unsupported result type Sort (max 1 u) PANIC at Lean.Expr.appA	
+def	Proven.Mach.Reg	Compiler.Iface	GEN	frontx: unsupported result type Type PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Mach.Wide.brOK	Compiler.Wide	TRANS	invalid instantiateForall, too many parameters	
+def	Proven.Mach.Wide.lenBr	Compiler.Wide	TRANS	(kernel) application type mismatch Sim argument has type Type 1 but fu	
+def	Proven.Mach.Wide.wcode	Compiler.Wide	TRANS	frontx: unsupported result type List (BitVec 32)	frontx_ind: List.brecOn has no argument of a declared type
+def	Proven.Mach.Wide.jOK	Compiler.Wide	TRANS	invalid instantiateForall, too many parameters	
+def	Proven.Mach.Wide.lenJ	Compiler.Wide	TRANS	(kernel) application type mismatch Sim argument has type Type 1 but fu	
+def	Proven.Mach.Wide.offOK	Compiler.Wide	TRANS	invalid instantiateForall, too many parameters	
+def	Proven.Mach.Wide.maxSlots	Compiler.Wide	TRANS	(kernel) application type mismatch Sim argument has type Type 1 but fu	
+def	Proven.Mach.Wide.immOK	Compiler.Wide	TRANS	invalid instantiateForall, too many parameters	
+def	Proven.Mach.MOp.eval	Compiler.MOp	OTHER	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	frontx_ind: unsupported parameter type BitVec 64
+def	Proven.Mach.IR.SR.Cp	Compiler.Opt.SR	GEN	frontx: unsupported result type Type PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Mach.IR.Flow.Fact.ctorElimType	Compiler.Opt.Flow	GEN	frontx: unsupported result type Sort (max 1 u) PANIC at Lean.Expr.appA	
+def	Proven.Mach.IR.Flow.Fs	Compiler.Opt.Flow	GEN	frontx: unsupported result type Type PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Mach.instDecidableEqCond	Compiler.Wide	GEN	frontx: unsupported result type DecidableEq X PANIC at Lean.Expr.appAr	frontx_ind: X has no argument of a declared type
+def	Proven.Mach.Wide.wenc	Compiler.Wide	TRANS	frontx: unsupported result type List (BitVec 32)	invalid instantiateLambda, too many parameters
+def	Proven.AEnv	Spec.ArrCode	GEN	frontx: unsupported result type Type PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Mach.Sel.SExp.ctorElimType	Compiler.Opt.Sel	GEN	frontx: unsupported result type Sort (max 1 u) PANIC at Lean.Expr.appA	frontx_ind: equation cond.eq_1 has no constructor pattern (by cases: f
+def	Proven.addrE	Spec.ArrCode	LIST	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	frontx_ind: unsupported parameter type List (Fin 8) frontx_ind: X on T
+def	Proven.Mach.avar	Compiler.Exp	IND	frontx: unsupported result type X	
+def	Proven.Mach.BEnv	Compiler.BLang	GEN	frontx: unsupported result type Type PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Mach.addrB	Compiler.BStmt	LIST	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	frontx_ind: unsupported parameter type List Nat
+def	Proven.Mach.addrW	Compiler.BStmt	LIST	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	frontx_ind: unsupported parameter type List Nat
+def	Proven.Mach.instReprWOp	Compiler.Wide	GEN	frontx: unsupported result type Repr X PANIC at Lean.Expr.appArg! Lean	frontx_ind: X has no argument of a declared type
+def	Proven.Ir.EOp.ctorElimType	Compiler.Ir.Target	GEN	frontx: unsupported result type Sort (max 1 u) PANIC at Lean.Expr.appA	frontx_ind: equation cond.eq_1 has no constructor pattern (by cases: f
+def	Proven.Ir.Lbl	Compiler.Ir.Syntax	GEN	frontx: unsupported result type Type PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Ir.FId	Compiler.Ir.Syntax	GEN	frontx: unsupported result type Type PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Ir.Arg.ctorElimType	Compiler.Ir.Syntax	GEN	frontx: unsupported result type Sort (max 1 u) PANIC at Lean.Expr.appA	
+def	Proven.Ir.Inst.ctorElimType	Compiler.Ir.Syntax	GEN	frontx: unsupported result type Sort (max 1 u) PANIC at Lean.Expr.appA	
+def	Proven.Ir.Val.ctorElimType	Compiler.Ir.Syntax	GEN	frontx: unsupported result type Sort (max 1 u) PANIC at Lean.Expr.appA	frontx_ind: equation cond.eq_1 has no constructor pattern (by cases: f
+def	Proven.Ir.Rhs.ctorElimType	Compiler.Ir.Syntax	GEN	frontx: unsupported result type Sort (max 1 u) PANIC at Lean.Expr.appA	
+def	Proven.Ir.Term.ctorElimType	Compiler.Ir.Syntax	GEN	frontx: unsupported result type Sort (max 1 u) PANIC at Lean.Expr.appA	
+def	Proven.Ir.VReg	Compiler.Ir.Syntax	GEN	frontx: unsupported result type Type PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Ir.Runs	Compiler.Ir.Sem	GEN	frontx: unsupported result type Prop PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Ir.Outcome.ctorElimType	Compiler.Ir.Sem	GEN	frontx: unsupported result type Sort (max 1 u) PANIC at Lean.Expr.appA	
+def	Proven.Mach.rk	Compiler.Exp	IND	frontx: unsupported result type X	
+def	Proven.G.encU	Riscv.Steps.GenALU	BV	frontx: unsupported result type BitVec 32	
+def	Proven.Mach.Riscv.phys	Riscv.Back.Iface	BV	frontx: unsupported result type Fin 32	
+def	Proven.Mach.Riscv.LiStep.ctorElimType	Riscv.Back.Wide	GEN	frontx: unsupported result type Sort (max 1 u) PANIC at Lean.Expr.appA	frontx_ind: equation cond.eq_1 has no constructor pattern (by cases: f
+def	Proven.G.encL	Riscv.Steps.GenMem	BV	frontx: unsupported result type BitVec 32	
+def	Proven.G.encS	Riscv.Steps.GenMem	BV	frontx: unsupported result type BitVec 32	
+def	Proven.wB	Riscv.Steps.Branch	BV	frontx: unsupported result type BitVec 32	
+def	Proven.wJ	Riscv.Steps.Branch	BV	frontx: unsupported result type BitVec 32	
+def	Proven.Mach.Riscv.core	Riscv.Back.Iface	REC	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Mach.Base.S	Compiler.Iface	GEN	frontx: unsupported result type Type PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Mach.Core.toBase	Compiler.Iface	REC	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.getX	Riscv.Steps.Regs	TRANS	frontx: unsupported term match i with | 0 => 0 | 1 => (s.regs.get? Lea	
+def	Proven.Mach.Base.inRAM	Compiler.Iface	GEN	frontx: unsupported result type Prop PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Mach.Base.writable	Compiler.Iface	GEN	frontx: unsupported result type Prop PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Mach.Base.get	Compiler.Iface	TRANS	invalid instantiateForall, too many parameters	
+def	Proven.Mach.Riscv.rvwF	Riscv.Back.OptB	REC	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Mach.Wide.toCore	Compiler.Wide	REC	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Mach.Riscv.encK	Riscv.Back.MemRv	LIST	frontx: unsupported result type List (BitVec 32)	
+def	Proven.Mach.Riscv.KC	Riscv.Back.Call	GEN	frontx: unsupported result type Prop PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Mach.WideF.keepF	Compiler.Opt.BFn	GEN	frontx: unsupported result type Prop PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Mach.Riscv.encC	Riscv.Back.Call	LIST	frontx: unsupported result type List (BitVec 32)	
+def	Proven.Mach.Wide.fr	Compiler.Wide	TRANS	invalid instantiateForall, too many parameters	
+def	Proven.Ir.RelS	Compiler.Ir.Rename	GEN	frontx: unsupported result type Prop PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Top.wordBytes	Riscv.Back.Top	LIST	frontx: unsupported parameter type List (BitVec 32)	
+def	Proven.Ir.TC.ctorElimType	Compiler.Ir.Struct	GEN	frontx: unsupported result type Sort (max 1 u) PANIC at Lean.Expr.appA	
+def	Proven.Ir.SC.ctorElimType	Compiler.Ir.Struct	GEN	frontx: unsupported result type Sort (max 1 u) PANIC at Lean.Expr.appA	
+def	Proven.Mach.Ind.Shape	Compiler.Ind	GEN	frontx: unsupported result type Type PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Mach.Ind.sTag	Compiler.Ind	IND	frontx: unsupported parameter type X	
+def	Proven.Mach.Ind.instDecidableEqKd	Compiler.Ind	GEN	frontx: unsupported result type DecidableEq X PANIC at Lean.Expr.appAr	frontx_ind: X has no argument of a declared type
+def	Proven.Mach.Ind.Pg.arms	Compiler.Ind	REC	frontx: unsupported result type List (X rk rk)	frontx_ind: unsupported parameter type X ?rk
+def	Proven.Ir.Out.ctorElimType	Compiler.Ir.StructOk	GEN	(lean.unknownIdentifier): Unknown constant `X	
+def	Proven.Mach.Ind.Kd.den	Compiler.Ind	GEN	frontx: unsupported result type Type PANIC at Lean.Expr.appArg! Lean.E	frontx_ind: unsupported result type Type
+def	Proven.Mach.Ind.Pg.sem	Compiler.Ind	TRANS	frontx: unsupported result type rk.den	frontx_ind: X has no argument of a declared type
+def	Proven.Mach.Ind.Kd.dflt	Compiler.Ind	IND	frontx: unsupported result type k.den	frontx_ind: unsupported result type X ?k
+def	Proven.Mach.Ind.Pg.X	Compiler.Ind	TRANS	frontx: unsupported result type BitVec 64 × X PANIC at Lean.Expr.appAr	invalid instantiateLambda, too many parameters
+def	Proven.Mach.Ind.okL	Compiler.IndMain	TRANS	frontx: unsupported parameter type List ((k : X × X k)	frontx_ind: List.brecOn has no argument of a declared type
+def	Proven.Mach.toA	Compiler.Exp	OK	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.XPipe	Compiler.Front.PipeStd	GEN	frontx: unsupported result type Type PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.compileX1	Compiler.Front.PipeIMachine	LIST	frontx: unsupported result type Except String (List (BitVec 32))	
+def	Proven.XPipe.space1	Compiler.Front.PipeIMachine	IND	frontx: unsupported parameter type X	
+def	Proven.Mach.instReprMOp.repr	Compiler.MOp	GEN	frontx: unsupported result type Std.Format PANIC at Lean.Expr.appArg! 	frontx_ind: unsupported result type Std.Format
+def	Proven.Mach.instReprCond.repr	Compiler.Wide	GEN	frontx: unsupported result type Std.Format PANIC at Lean.Expr.appArg! 	frontx_ind: unsupported result type Std.Format
+def	Proven.Mach.instReprWOp.repr	Compiler.Wide	GEN	frontx: unsupported result type Std.Format PANIC at Lean.Expr.appArg! 	frontx_ind: unsupported result type Std.Format
+def	Proven.immB	Riscv.Steps.Branch	BV	frontx: unsupported result type BitVec 32	
+def	Proven.immJ	Riscv.Steps.Branch	BV	frontx: unsupported result type BitVec 32	
+def	Proven.Mach.Riscv.base	Riscv.Back.Iface	REC	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Mach.Base.mem	Compiler.Iface	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Mach.Base.instrAt	Compiler.Iface	GEN	frontx: unsupported result type Prop PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.St	Spec.Riscv	GEN	frontx: unsupported result type Type PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.xval	Riscv.Steps.Regs	TRANS	frontx: unsupported match match a✝ with | 0 => 0 | 1 => (Std.ExtDHashM	
+def	Proven.Mach.Base.ramLo	Compiler.Iface	TRANS	(kernel) application type mismatch Sim argument has type Type 1 but fu	
+def	Proven.Mach.Base.ramHi	Compiler.Iface	TRANS	(kernel) application type mismatch Sim argument has type Type 1 but fu	
+def	Proven.Mach.Riscv.encX	Riscv.Back.Frame	LIST	frontx: unsupported result type List (BitVec 32)	
+def	Proven.Mach.MachineF.keepF	Compiler.Frame	GEN	frontx: unsupported result type Prop PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Mach.Riscv.rvF	Riscv.Back.Frame	REC	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Mach.MachineF.frameAt	Compiler.Frame	TRANS	invalid instantiateForall, too many parameters	
+def	Proven.Mach.MachineF.enterOK	Compiler.Frame	GEN	frontx: unsupported result type Prop PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Mach.Riscv.im8	Riscv.Back.MemRv	BV	frontx: unsupported result type BitVec 12	
+def	Proven.Mach.Riscv.im16	Riscv.Back.MemRv	BV	frontx: unsupported result type BitVec 12	
+def	Proven.Mach.Riscv.im1	Riscv.Back.MemRv	BV	frontx: unsupported result type BitVec 12	
+def	Proven.Mach.Riscv.immN	Riscv.Back.Call	BV	frontx: unsupported result type BitVec 12	
+def	Proven.Ir.RelStk	Compiler.Ir.Rename	GEN	frontx: unsupported result type Prop PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Mach.Ind.ev	Compiler.Ind	HO	frontx: unsupported result type k.den	frontx_ind: unsupported parameter type (a : X → X ?rk a → Sort ?u.1207
+def	Proven.Mach.Ind.E.tags	Compiler.Ind	HO	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	frontx_ind: unsupported parameter type (a : X → X ?rk a → Sort ?u.1189
+def	Proven.Mach.Ind.E.okc	Compiler.Ind	HO	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	frontx_ind: unsupported parameter type (a : X → X ?rk a → Sort ?u.1185
+def	Proven.XPipe.chkErr	Compiler.Front.PipeStdMachine	OPT	frontx: unsupported result type Option String	
+def	Proven.okR	Compiler.Front.PipeI	IND	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.XPipe.progB	Compiler.Front.PipeStdB	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.XPipe.extra	Compiler.Front.PipeI	IND	frontx: unsupported parameter type X	
+def	Proven.wfErrB	Compiler.Front.PipeStdBMachine	OPT	frontx: unsupported result type Option String	
+def	Proven.progI	Compiler.Front.PipeI	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.compileBFO	Riscv.Back.OptB	LIST	frontx: unsupported result type List (BitVec 32)	
+def	Proven.runsTo	Spec.Riscv	GEN	frontx: unsupported result type Prop PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.instrAt	Riscv.Steps.Step	GEN	frontx: unsupported result type Prop PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Mach.Riscv.enc	Riscv.Back.Iface	LIST	frontx: unsupported result type List (BitVec 32)	
+def	Proven.Regs	Riscv.Steps.Regs	GEN	frontx: unsupported result type Type PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.prologue	Riscv.Direct.Arr2Code	LIST	frontx: unsupported result type List (BitVec 32)	
+def	Proven.iLdGp	Riscv.Direct.Arr2Code	BV	frontx: unsupported result type BitVec 32	
+def	Proven.iLdS	Riscv.Direct.Arr2Code	BV	frontx: unsupported result type BitVec 32	
+def	Proven.iSdS	Riscv.Direct.Arr2Code	BV	frontx: unsupported result type BitVec 32	
+def	Proven.Mach.Riscv.rv	Riscv.Back.Iface	REC	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Mach.Machine.toCore	Compiler.Iface	REC	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.frameBase	Riscv.Direct.Arr2F	TRANS	frontx: projection of a term that is not a constructor application ↑sp	
+def	Proven.NS	Riscv.Direct.Arr2Code	TRANS	frontx: could not prove X	
+def	Proven.Mach.Base.keep	Compiler.Iface	GEN	frontx: unsupported result type Prop PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Ir.RelF	Compiler.Ir.Rename	GEN	frontx: unsupported result type Prop PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Ir.RelD	Compiler.Ir.Rename	GEN	frontx: unsupported result type Prop PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Mach.Ind.Cn.f	Compiler.Ind	TRANS	frontx: unsupported result type rk.den	invalid instantiateLambda, too many parameters
+def	Proven.Mach.Ind.Cn.me	Compiler.Ind	REC	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	frontx_ind: unsupported parameter type X ?rk
+def	Proven.Mach.Ind.C.xv	Compiler.Ind	REC	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Mach.Ind.C.tag	Compiler.Ind	REC	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.Mach.Ind.C.rv	Compiler.Ind	REC	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Mach.Ind.C.lv	Compiler.Ind	REC	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Mach.Ind.Kd.pick	Compiler.Ind	REC	frontx: unsupported result type k.den	frontx_ind: unsupported parameter type BitVec 64 × X
+def	Proven.Mach.Ind.Cn.X	Compiler.Ind	TRANS	frontx: unsupported result type BitVec 64 × X PANIC at Lean.Expr.appAr	invalid instantiateLambda, too many parameters
+def	Proven.Mach.Ind.Cn.g	Compiler.Ind	TRANS	frontx: unsupported result type rk.den	invalid instantiateLambda, too many parameters
+def	Proven.Mach.Ind.Kd.pair	Compiler.Ind	IND	frontx: unsupported result type BitVec 64 × X PANIC at Lean.Expr.appAr	frontx_ind: unsupported parameter type X ?k
+def	Proven.Mach.Ind.Cn.ρ	Compiler.Ind	REC	frontx: unsupported result type List (BitVec 64 × X	frontx_ind: unsupported parameter type X ?rk
+def	Proven.XStage.chk	Compiler.Front.PipeStd	OPT	frontx: unsupported result type Option String	
+def	Proven.BExp.av	Compiler.Front.PipeI	IND	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.AStmt.rB	Compiler.Front.PipeStdB	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.xstmtsB	Compiler.Front.PipeStdB	LIST	frontx: unsupported result type List X	
+def	Proven.cs0	Compiler.Front.Pipe	IND	frontx: unsupported result type X	
+def	Proven.XStage.extra	Compiler.Front.PipeI	IND	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.BExp.depth	Riscv.Direct.Arr2Code	IND	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.BExp.vltB	Compiler.Front.PipeStdBMachine	IND	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.genB	Riscv.Direct.Arr2Code	LIST	frontx: unsupported result type List (BitVec 32)	
+def	Proven.compileB	Riscv.Direct.Arr2Code	LIST	frontx: unsupported result type List (BitVec 32)	
+def	Proven.relB	Compiler.Front.PipeI	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.copyL	Compiler.Front.PipeI	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.compileOptB	Riscv.Back.OptB	TRANS	Application type mismatch: The argument X has type (self : X → self.S 	
+def	Proven.compileBF	Riscv.Direct.Arr2Code	LIST	frontx: unsupported result type List (BitVec 32)	
+def	Proven.Steps	Spec.Riscv	GEN	frontx: unsupported result type Prop PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.iLbuT	Spec.ArrCode	BV	frontx: unsupported result type BitVec 32	
+def	Proven.iSbT	Spec.ArrCode	BV	frontx: unsupported result type BitVec 32	
+def	Proven.iBeqz	Riscv.Direct.Loop	BV	frontx: unsupported result type BitVec 32	
+def	Proven.iJmp	Riscv.Direct.Loop	BV	frontx: unsupported result type BitVec 32	
+def	Proven.iSpT	Riscv.Direct.Arr2Code	BV	frontx: unsupported result type BitVec 32	
+def	Proven.iSdGp	Riscv.Direct.Arr2Code	BV	frontx: unsupported result type BitVec 32	
+def	Proven.iGpT	Riscv.Direct.Arr2Code	BV	frontx: unsupported result type BitVec 32	
+def	Proven.Ir.RelR	Compiler.Ir.Rename	GEN	frontx: unsupported result type Prop PANIC at Lean.Expr.appArg! Lean.E	frontx_ind: X has no argument of a declared type
+def	Proven.Stage.chk	Compiler.Front.Pipe	OPT	frontx: unsupported result type Option String	
+def	Proven.Red.chk	Compiler.Front.PipeStd	OPT	frontx: unsupported result type Option String	
+def	Proven.BPred.noAcc	Compiler.Front.PipeStd	IND	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.rn	Compiler.Front.PipeStdB	OK		
+def	Proven.AExp.rB	Compiler.Front.PipeStdB	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	frontx_ind: unsupported result type X
+def	Proven.mat	Compiler.Front.Pipe	LIST	frontx: unsupported result type List X	
+def	Proven.xstageB	Compiler.Front.PipeStdB	TUP	frontx: unsupported result type List X × X frontx: X 7 variables (5 us	
+def	Proven.RedC.k	Compiler.Front.PipeStd	OK		
+def	Proven.Red.code	Compiler.Front.PipeStd	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.iVar8	Spec.ArrCode	BV	frontx: unsupported result type BitVec 32	
+def	Proven.setV	Riscv.Direct.Arr2Code	BV	frontx: unsupported result type BitVec 32	
+def	Proven.addrB	Riscv.Direct.Arr2Code	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.copyLoop	Compiler.Front.PipeI	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Mach.Riscv.pickB	Riscv.Back.OptB	TRANS	Application type mismatch: The argument X has type (self : X → self.S 	
+def	Proven.Mach.Riscv.toMS	Riscv.Back.BStmt	TRANS	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	frontx_ind: X has no argument of a declared type
+def	Proven.Retires	Spec.Riscv	GEN	frontx: unsupported result type Prop PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.ByteExp.noAcc	Compiler.Front.Pipe	IND	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.CS.clean	Compiler.Front.Pipe	TRANS	frontx: unsupported Bool match cs.gs with | [] => true | head :: tail 	
+def	Proven.CS.onOut	Compiler.Front.Pipe	OK		
+def	Proven.CS.rev	Compiler.Front.Pipe	OK		
+def	Proven.revC	Compiler.Front.Pipe	LIST	frontx: unsupported result type List X	
+def	Proven.loopV	Compiler.Front.Pipe	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.fetch	Compiler.Front.Pipe	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.CS.s0	Compiler.Front.Pipe	OK		
+def	Proven.CS.gs	Compiler.Front.Pipe	TRANS	frontx: unsupported result type List X	frontx_ind: X has no argument of a declared type
+def	Proven.XStage.isSort	Compiler.Front.PipeStdB	IND	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.sortB	Compiler.Front.PipeStdB	LIST	frontx: unsupported result type List X	
+def	Proven.csClean	Compiler.Front.Pipe	IND	frontx: unsupported result type X	
+def	Proven.xstageC	Compiler.Front.PipeStd	TUP	frontx: unsupported result type List X × X	
+def	Proven.ByteExp.tr	Compiler.Front.Pipe	TRANS	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	frontx_ind: X has no argument of a declared type
+def	Proven.BPred.bit	Compiler.Front.PipeStd	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.eqB	Compiler.Front.PipeStd	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.optTagE	Compiler.Front.PipeStd	OK	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.optSomeE	Compiler.Front.PipeStd	OK	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.optValE	Compiler.Front.PipeStd	OK	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.A8	Spec.ArrCode	BV	frontx: unsupported result type Fin 32	
+def	Proven.iMv8	Spec.ArrCode	BV	frontx: unsupported result type BitVec 32	
+def	Proven.copyBody	Compiler.Front.PipeI	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Mach.Riscv.firstB	Riscv.Back.OptB	LIST	frontx: unsupported result type Option (List (BitVec 32))	
+def	Proven.Mach.Riscv.tryL	Riscv.Back.OptB	TRANS	Application type mismatch: The argument X has type (self : X → self.S 	
+def	Proven.Mach.Riscv.spillSetsX	Riscv.Back.OptB	TRANS	frontx: unsupported result type List (List Nat)	frontx_ind: equation ite.eq_1 has no constructor pattern (by cases: fr
+def	Proven.Mach.Riscv.tryB	Riscv.Back.OptB	TRANS	Application type mismatch: The argument X has type (self : X → self.S 	
+def	Proven.Mach.Riscv.candidates	Riscv.Back.OptB	TUP	frontx: unsupported result type List (Nat × List Nat)	frontx_ind: unsupported result type List (Nat × List Nat)
+def	Proven.Mach.Riscv.toMB	Riscv.Back.BStmt	TRANS	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	frontx_ind: X has no argument of a declared type
+def	Proven.vIdx	Compiler.Front.Pipe	TRANS	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	frontx_ind: equation ite.eq_1 has no constructor pattern (by cases: fr
+def	Proven.fetchG	Compiler.Front.Pipe	TRANS	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	frontx_ind: List.brecOn has no argument of a declared type
+def	Proven.CS.isIn	Compiler.Front.PipeStdB	TRANS	frontx: unsupported Bool match cs.gs with | [] => true | head :: tail 	
+def	Proven.msortG	Riscv.Direct.SortMergeGen	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.copyC	Compiler.Front.PipeStdB	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.stageC	Compiler.Front.Pipe	TUP	frontx: unsupported result type List X × X	
+def	Proven.preC	Compiler.Front.PipeStd	TUP	frontx: unsupported result type List X × X	
+def	Proven.Red.pre	Compiler.Front.PipeStd	IND	frontx: unsupported result type X	
+def	Proven.redC	Compiler.Front.PipeStd	LIST	frontx: unsupported result type List X	
+def	Proven.sfC	Compiler.Front.PipeStd	LIST	frontx: unsupported result type List X	
+def	Proven.takeK	Compiler.Front.PipeStd	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.dropK	Compiler.Front.PipeStd	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.appC	Compiler.Front.PipeStd	LIST	frontx: unsupported result type List X	
+def	Proven.zx	Compiler.Front.Pipe	TRANS	frontx: unsupported term Decidable.rec (fun h => (fun h => BitVec.ofNa	
+def	Proven.mask8	Compiler.Front.Pipe	OK	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.Mach.Riscv.colorB	Riscv.Back.OptB	LIST	frontx: unsupported result type Option (Nat → X PANIC at Lean.Expr.app	frontx_ind: unsupported parameter type List Nat
+def	Proven.Mach.Riscv.scB	Riscv.Back.OptB	IND	frontx: unsupported result type X	
+def	Proven.Mach.Riscv.spillSets	Riscv.Back.OptB	LIST	frontx: unsupported result type List (List Nat)	frontx_ind: unsupported result type List (List Nat)
+def	Proven.Mach.Riscv.score	Riscv.Back.OptB	TRANS	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	frontx_ind: unsupported term X ?e ?x✝ (by cases: frontx_ind: unsupport
+def	Proven.Mach.Riscv.spillGrow	Riscv.Back.OptB	TRANS	frontx: unsupported result type List (List Nat)	frontx_ind: Nat.brecOn has no argument of a declared type
+def	Proven.Mach.Riscv.gB	Riscv.Back.OptB	IND	frontx: unsupported result type X	
+def	Proven.Mach.Riscv.pickRegs	Riscv.Back.OptB	TRANS	frontx: unsupported result type List Nat	frontx_ind: List.take has no argument of a declared type
+def	Proven.Mach.Riscv.choose	Riscv.Back.OptB	LIST	frontx: unsupported result type List (List Nat)	
+def	Proven.passM	Riscv.Direct.SortMergeSrc	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.ltE	Riscv.Direct.SortMergeSrc	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.mainBodyG	Riscv.Direct.SortMergeGen	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.minN	Compiler.Front.Pipe	TRANS	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	frontx_ind: X has no argument of a declared type
+def	Proven.insProg	Riscv.Direct.SortIns	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.foldC	Compiler.Front.Pipe	TRANS	frontx: unsupported result type List X	frontx_ind: equation HAppend.hAppend.eq_1 has no constructor pattern (
+def	Proven.WExp.tr	Compiler.Front.Pipe	TRANS	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	frontx_ind: X has no argument of a declared type
+def	Proven.Pipe	Compiler.Front.Pipe	GEN	frontx: unsupported result type Type PANIC at Lean.Expr.appArg! Lean.E	
+def	Proven.RedC.init	Compiler.Front.PipeStd	TRANS	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	frontx_ind: X has no argument of a declared type
+def	Proven.RedC.loop	Compiler.Front.PipeStd	OK		
+def	Proven.RedC.step	Compiler.Front.PipeStd	TRANS	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	frontx_ind: X has no argument of a declared type
+def	Proven.optA	Compiler.Front.PipeStd	TRANS	frontx: unsupported result type List X	frontx_ind: X has no argument of a declared type frontx_ind: X on TAEx
+def	Proven.RedC.fin	Compiler.Front.PipeStd	TRANS	frontx: unsupported result type Option X PANIC at Lean.Expr.appArg! Le	frontx_ind: X has no argument of a declared type
+def	Proven.emitC	Compiler.Front.Pipe	LIST	frontx: unsupported result type List X	
+def	Proven.RedC.len	Compiler.Front.PipeStd	TRANS	frontx: unsupported result type Option X PANIC at Lean.Expr.appArg! Le	frontx_ind: X has no argument of a declared type
+def	Proven.appStores	Compiler.Front.PipeStd	LIST	frontx: unsupported result type List X	
+def	Proven.Mach.Riscv.colsB	Riscv.Back.OptB	LIST	frontx: unsupported result type List X	
+def	Proven.Mach.Riscv.cntE	Riscv.Back.OptB	TRANS	frontx: unsupported parameter type X PANIC at Lean.Expr.appArg! Lean.E	frontx_ind: a scalar parameter needs an entry `f xs = X n xs`
+def	Proven.Mach.Riscv.uncolB	Riscv.Back.OptB	LIST	frontx: unsupported result type List Nat	frontx_ind: unsupported parameter type List Nat
+def	Proven.runM	Riscv.Direct.SortMergeSrc	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.addE	Riscv.Direct.SortMergeSrc	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.outerBody	Riscv.Direct.SortIns	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.minE	Riscv.Direct.SortMergeSrc	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.innerM	Riscv.Direct.SortMergeSrc	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.innerBody	Riscv.Direct.SortIns	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.takeE	Riscv.Direct.SortMergeSrc	IND	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.idxE	Riscv.Direct.SortIns	OK	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.cE	Riscv.Direct.SortIns	OK	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
+def	Proven.valE	Riscv.Direct.SortIns	OK	frontx: unsupported result type X PANIC at Lean.Expr.appArg! Lean.Expr	
