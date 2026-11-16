@@ -155,4 +155,23 @@ def xstageFilter (xs : ByteArray) : List UInt8 :=
 frontx_hof_entry xstageFilter
 frontx_implements_list xstageFilter
 
+/-- a partial application of a named function of the compiler core (`BOp.eval`, `Compiler/Front/Pipe.lean:27`) -/
+def mapXor (xs : ByteArray) : List UInt8 := xs.data.toList.map (BOp.eval .xor 0x55)
+frontx_hof_entry mapXor
+frontx_implements_list mapXor
+
+/-! ## A captured variable: the closure `(· > k)` uses the parameter `k`, which becomes a parameter of the copy
+(`countAbove.hof1 k l acc`); the copy is compiled as a function of the input block and `k` -/
+
+def countAbove (l : List UInt8) (k : UInt8) : Nat := l.countP (· > k)
+frontx_hof countAbove
+frontx_view countAbove.hof1 from countAbove.hof1.eq
+frontx_compile countAbove.hof1.view from countAbove.hof1.view.eq measure fun B i _ _ => B.size - i
+  with fun B i _ acc => i ≤ B.size ∧ acc + (B.size - i) < 2 ^ 64
+def countAbove100 (xs : ByteArray) : Nat := countAbove xs.data.toList 100
+theorem countAbove100_eq (xs : ByteArray) : countAbove100 xs = countAbove.hof1.view xs 0 100 0 := by
+  rw [countAbove100, countAbove.hof]; rfl
+frontx_entry countAbove100 from countAbove100_eq
+frontx_implements countAbove100
+
 end Proven.Frontx.Hof

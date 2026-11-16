@@ -57,7 +57,7 @@ FUNCS = {
     "fx_gcd": (8, lambda xs: math.gcd(rdn(xs, 0, 8), rdn(xs, 8, 8))),
 }
 # functions returning a list: the length is returned in a1
-LISTS = {"tinycompile", "tinysm", "take5", "drop5", "matchdrop3", "filterall", "inceach", "twice"}
+LISTS = {"hof_mapxor", "hof_filtergt3", "hof_mapinc", "hof_mapcomp", "hof_dupall", "hof_filternz", "hof_stagemap", "hof_pipe2", "hof_xstagefilter", "tinycompile", "tinysm", "take5", "drop5", "matchdrop3", "filterall", "inceach", "twice"}
 FN = sys.argv[3] if len(sys.argv) > 3 else "crcraw"
 unhex = lambda h: [] if h == "-" else list(bytes.fromhex(h))
 # a case: input hex, result hex, and (first line `indw L`) the work block in bytes

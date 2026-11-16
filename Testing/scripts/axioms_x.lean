@@ -35,3 +35,6 @@ import Riscv.Frontx.HofExamples
 #print axioms Proven.Frontx.Hof.pipe2.hof
 #print axioms Proven.Frontx.Hof.xstageFilter.implements1
 #print axioms Proven.Frontx.Hof.xstageFilter.hof
+#print axioms Proven.Frontx.Hof.mapXor.implements1
+#print axioms Proven.Frontx.Hof.countAbove100.implements1
+#print axioms Proven.Frontx.Hof.countAbove.hof
