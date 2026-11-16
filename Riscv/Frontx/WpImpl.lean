@@ -374,4 +374,46 @@ theorem implements1_pgS {t : Ty} {β : Type} [Res β] (f : ByteArray → β) (p 
     · exact absurd ((hfit L hL).2 (by omega)) hf
     · exact h1'
 
+/-- array result: the program, the elements' bytes (`outLoopP`), `a1` = their number -/
+def outBaseP {k : AK} (p : Pg [.ar .ba] (.ar k)) : Nat := max (p.compP [inLocP] 9).1.maxv 9
+
+def pgProgA {k : AK} (p : Pg [.ar .ba] (.ar k)) : MS := .seq capCode (wholeA p (outBaseP p))
+
+def pgNA {k : AK} (p : Pg [.ar .ba] (.ar k)) : Nat := (pgProgA p).maxv - 8
+
+def pgCodeA {k : AK} (p : Pg [.ar .ba] (.ar k)) : List (BitVec 32) :=
+  mvA4 :: compBFO (pgNA p) [0, 3] [2] (pgProgA p)
+
+/-- **A paged program with an array result ⇒ `Implements1Pg`** (the elements' bytes, their number in `a1`) -/
+theorem implements1_pgA {k : AK} (f : ByteArray → k.T) (p : Pg [.ar .ba] (.ar k)) (hN : pgNA p ≤ NS)
+    (hob : (p.compP [inLocP] 9).2.v < outBaseP p ∧ (p.compP [inLocP] 9).2.pt < outBaseP p)
+    (hwf : p.wfP [inLocP] 9 = true) (hmwf : rvF.wfB (pgNA p) [0, 3] [2] (pgProgA p))
+    (fits : ByteArray → Nat → Prop)
+    (hgood : ∀ xs : ByteArray, xs.size < 2 ^ 32 → ∃ E, p.GoodE [inLocP] 9 (xs, ()) (f xs) E ∧
+      ∀ L, 8192 ≤ L → (fits xs L ↔ pk 0 E + 1 ≤ L / 8192)) :
+    Implements1Pg (fun xs : ByteArray => xs.data.toList) (encArr k) (pgCodeA p) f 8192 fits
+      (retLen := true) := by
+  refine pg_of_execOW _ (encArr k) f (pgNA p) hN (pgProgA p) hmwf wlOf (wlOf_le _ hN) _ true fits ?_
+  intro a out tbl env b L h1 h2 h4 hb hb1 hb2 hL h8 hmax hlt hout hol htl
+  have hsz : a.data.toList.length = a.size := Array.length_toList
+  obtain ⟨E, hg, hfit⟩ := hgood a (by rw [← hsz]; exact hlt)
+  have hcap := capCode_ok env [a.data.toList.map (·.toBitVec), out] [tbl] b L h2 h4 hL (by omega)
+  have htl' : tbl.length = (L / 8192 - 1) * P := htl
+  obtain ⟨σ', out', hex', hh, hr⟩ := wholeA_ok (L / 8192 - 1) p (outBaseP p) a
+    (env.set vCap (rN ((L / 8192 - 1) * P))) out tbl (f a) E ⟨Nat.le_max_right _ _, hob.1, hob.2⟩
+    (by rw [set_ne (show 1 ≠ vCap by decide)]; exact h1) (by rw [← hsz]; exact hlt) (by rw [htl']; unfold P; omega)
+    (by rw [htl']; exact Nat.le_refl _) (by simp only [set_eq]) hwf hg hout hol
+  refine ⟨σ', out', .seq hcap hex', hh, ?_, ?_, ?_⟩
+  · rcases hr with ⟨-, -, hd, -⟩ | ⟨-, -, rfl⟩
+    · exact hd
+    · rfl
+  · intro hf
+    rcases hr with ⟨hp, ht, hd, hl⟩ | ⟨hp, -, -⟩
+    · exact ⟨ht, fun _ => by rw [hl]; rfl⟩
+    · have := (hfit L hL).1 hf; omega
+  · intro hf
+    rcases hr with ⟨hp, -, -, -⟩ | ⟨-, h1', -⟩
+    · exact absurd ((hfit L hL).2 (by omega)) hf
+    · exact h1'
+
 end Proven.WA
