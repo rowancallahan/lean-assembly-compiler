@@ -213,5 +213,31 @@ theorem pro_ok {P : Prog Nat} {F : Func Nat} {pos : Lbl → Nat} {ex : Nat} {j :
       fun s7 ⟨d7, hs7, hm7⟩ => .inr ⟨by omega, d7.ok, by rw [← hra]; exact d7.hpc,
         fun a _ _ => by rw [hm7, hm6, hm5, hm04], by rw [hs7]; exact Core.Set1.same T.toCore st6⟩
 
+/-- **emission is correct** (any target): from the start of a call, the code of `emitF` runs a terminating Lin run
+of `main` to its end: back at the caller's return address, nothing changed outside the output and work blocks, and
+either the output bytes are in the output block (`peak ≤ work cells`, status the input address) or the status is the
+out-of-memory flag (`peak > work cells`). -/
+theorem emit_ok {P : Prog Nat} {F : Func Nat} {pos : Lbl → Nat} {ex : Nat} {code : List EOp}
+    (hP : P.funcs[P.main]? = some F) (he : T.emitF F C.nS pos ex = some code) (hW : C.W = T.words code)
+    (hok : T.ok C.s0) (hpc : T.pcIs C.s0 C.pc0) (h11 : T.get C.s0 RIn = BitVec.ofNat 64 C.inA)
+    (h12 : T.get C.s0 RLen = BitVec.ofNat 64 C.input.length) (h13 : T.get C.s0 RHp = BitVec.ofNat 64 C.wb)
+    (h14 : T.get C.s0 ROut = BitVec.ofNat 64 C.outA) (htop : T.top C.s0 = C.wb + C.wl / 8 * 8)
+    (h16 : 16 ≤ T.top C.s0) {r : Result} (hrun : Runs P (init P C.input) r)
+    (hout : r.mem.out.length ≤ C.outL) : T.runsTo C.s0 (C.Fin r) := by
+  obtain ⟨j, hj, ⟨rest, hin⟩, hK⟩ := C.code_of he hW
+  unfold Target.emitF at he
+  split at he
+  · next hc =>
+    obtain ⟨hns, hns2, hent, hps, himm, hbr⟩ := hc
+    refine T.toCore.runsTo_trans (C.pro_ok hP hK hj hin hns hns2 hent hps himm hbr hok hpc h11 h12 h13 h14 htop h16)
+      fun s h => ?_
+    rcases h with hrel | ⟨hlt, hE⟩
+    · obtain ⟨n, hn⟩ := hrun; exact C.sim hP hK n hrel hn hout
+    · refine T.runsTo_of ⟨hE.1, hE.2.1, hE.2.2.1, .inr ⟨?_, hE.2.2.2⟩⟩
+      have := peak_append_ge r.ev [.alloc (C.nS + 1)]
+      have e : peak [MemEvent.alloc (C.nS + 1)] = C.nS + 1 := by simp [peak, inUse]
+      omega
+  · exact nomatch he
+
 end Ctx
 end Proven.Ir
