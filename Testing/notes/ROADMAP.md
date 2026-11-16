@@ -176,3 +176,10 @@ hash map → tagged dispatch (interpreter) → big numbers → SHA-256 → read 
   F2.lean.txt), NEVER stop to ask: make the reasonable choice, write it in the notes, continue; stop only when done
   or after a stated time cap, pushing every step; (3) Haiku only gets self-contained recipes; (4) the parent batches
   merges (one combined check for several small branches) and reacts to box messages immediately.
+- Side project (owner, 2026-11-16): Lean → C "auto compiler" via Clean + CompCert (cross-prover trust accepted for
+  this side project only; the main project still trusts only Sail). Clean's C→Lean is OCaml clightgen exporting
+  Clight SYNTAX as Lean data, not a Lean function, so an "inverse" proof is not the right spec. The one spec needed:
+  `leanToClight_correct : ∀ x, clightRun (leanToClight f) (encode x) = some (encode (f x))` against Clean's Lean
+  Clight semantics, the same shape as our compile_correct with Clight in place of Sail. Route: shared IR →
+  Clight + simulation proof; then CompCert compiles the C. Needs Lean 4.32.1 (Clean) vs our 4.29: separate repo or
+  later upgrade; Clean's non-commercial licence applies to the side project only.

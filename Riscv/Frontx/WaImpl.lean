@@ -84,6 +84,10 @@ theorem rel_input (xs : ByteArray) (env : Mach.BEnv) (out : List (BitVec 8)) (W 
     simp only [Option.map_some, AK.w, AK.el, AK.get, Ty.rep]
     rw [getElem!_pos xs j hj]; rfl
 
+/-- a `UInt16` result: 2 bytes little-endian -/
+instance : Res UInt16 := ⟨r16, 1, by decide, fun w => leN 2 w.toNat, fun w => by
+  rw [leN_bytes]; simp [r16]⟩
+
 /-- **A program with a scalar result ⇒ `Implements1`.** -/
 theorem implements1_wa {t : Ty} {β : Type} [Res β] (f : ByteArray → β) (p : Pg [.ar .ba] (.sc t))
     (cv : t.T → β) (hcv : ∀ y, Res.repr (cv y) = t.rep y)
