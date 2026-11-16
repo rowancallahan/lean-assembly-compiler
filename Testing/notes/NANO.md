@@ -69,6 +69,11 @@ less returns the flag (tested). On success a0 keeps the input address (not the f
 `0 ADDI imm=sext8 c | 1 SLLI | 3 LD imm=8c | 4 LBU imm=c | 5 SRLI | 6 ORI imm=c | 7 BGEU (a=0, rs1=b, rs2=c, offset +12) | 8 ADDI imm=8c |
 11 SD imm=8c | 16 SB imm=c | 14 OR | 24 ADD | 32 SUB | 40 MUL | 48 RET (0,1,0)`; fields rd=a rs1=b (rs2=c, imm=c; stores rs2=a). Each of the
 four byte macros `X0..X3` has at most 7 clauses (see "Front-end findings").
+**Renumbered since commit 4c64d61** (the first push of this convention, copied by nano-proof's `Nano/StackRec.lean`): old -> new op: LD 0->3, SD 1->11,
+ADDI(8c) 2->8, ORI 3->6, SLLI 4->1, ADD 5->24, SUB 6->32, MUL 7->40, RET 8->48 (record `[48,0,1,0]`), LBU 9->4, SB 10->16, SRLI 11->5, OR 12->14,
+BGEU 13->7 (record `[7,0,rs1,rs2]`: the registers moved from a,b to b,c), ADDI(sext8 c) 14->0. `push` now decrements with `[0,31,31,248]` (was the
+scaled `[2,31,31,255]`). `genE` is now faithful to `den` on ALL `Ex`: a variable index beyond the scope and `anil`/`acons` as expressions push 0
+(`li 0 ++ push`); `depE` counts them (`d + 1`). Code and `genR` are otherwise unchanged.
 
 ## What exists, and how it is established
 | link | status |
