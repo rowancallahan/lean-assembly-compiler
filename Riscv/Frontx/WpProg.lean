@@ -64,7 +64,7 @@ def Ini.compP (L : List PLoc) {Γ : List Sl} : (s : Sl) → Ini Γ s → Nat →
   | .ar _, f, d => F.compP L f d
 
 def Ini.locP (L : List PLoc) {Γ : List Sl} : (s : Sl) → Ini Γ s → Nat → PLoc
-  | .sc _, _, d => ⟨d, false, 0⟩
+  | .sc _, _, d => ⟨d, false, d + 1⟩
   | .ar _, f, d => F.locP L f d
 
 def Ini.wfP (L : List PLoc) {Γ : List Sl} : (s : Sl) → Ini Γ s → Bool
