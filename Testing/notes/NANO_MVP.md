@@ -27,3 +27,10 @@ Evidence:
 * `Testing/nano/fuzz_int.py 250 11 60`: 250 random Int64 + 60 random UInt64 programs with negative numerals, 8 signed /
   edge input vectors each (2480), 0 mismatches vs Lean's real defs run by the interpreter; 6 negatives rejected
   by nanoElab (Lean rejects 3; accepts `x --5` (comment), `-x`, `x * - - 5`: nano is a strict subset there).
+* Machine tests, proved generator `nanoGen` (IR route): `python3 Testing/asm/nano_int_test.py 12 5`: 22 corpus + 12
+  random Int64 programs × 8 signed/overflow/edge inputs = **272 pairs**, QEMU == Sail == expected at `memoryNeeded`,
+  OOM flag at `memoryNeeded - 1`, writes only in output + work; the emitter also checks expected (`nanoRun`) ==
+  `encI` of Lean's own `def` and words == `nanoGen p`.
+* Machine tests, stack generator `nanoGenS` (nano-e2e): `NANO_INT=1 python3 Testing/nano/nano_test.py 30 3`:
+  22 + 30 Int64 programs × 6 inputs = **312 pairs** on qemu-riscv64 and Sail == `Prog.eval` (sp restored).
+  (UInt64 run unchanged: `nano_test.py 5`: 264 pairs.)

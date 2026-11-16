@@ -10,9 +10,11 @@ ROOT = os.path.abspath(os.path.join(D, "..", ".."))
 SAIL = "/home/user/deps/sailsim/sail-riscv-Linux-x86_64/bin/sail_riscv_sim"
 N = int(sys.argv[1]) if len(sys.argv) > 1 else 20
 rng = random.Random(int(sys.argv[2]) if len(sys.argv) > 2 else 1)
-progs = list(CORPUS); g = G(rng)
-while len(progs) < len(CORPUS) + N: progs.append(g.program())
-cases = [(s, inputs(rng, entry_arity(s))) for s in progs]
+INT = os.environ.get("NANO_INT") == "1"  # Int64 programs (INT_CORPUS + GI), signed inputs as their two's complement bits
+base = INT_CORPUS if INT else CORPUS
+progs = list(base); g = GI(rng, "Int64") if INT else G(rng)
+while len(progs) < len(base) + N: progs.append(g.program())
+cases = [(s, [[a % M for a in v] for v in inputs_i(rng, entry_arity(s))] if INT else inputs(rng, entry_arity(s))) for s in progs]
 lit = lambda s: '"' + s.replace("\\", "\\\\").replace("\n", "\\n") + '"'
 lean = ["import Nano.Gen", "open Nano", "def hex (xs : List UInt8) : String := String.join (xs.map fun b => (if b < 16 then \"0\" else \"\") ++ String.ofList (Nat.toDigits 16 b.toNat))",
         "def run (src : String) (ins : List (List UInt64)) : IO Unit := do",
