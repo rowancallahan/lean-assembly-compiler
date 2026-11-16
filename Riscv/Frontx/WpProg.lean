@@ -80,7 +80,7 @@ def Ini.evsP (L : List PLoc) {Γ : List Sl} : (s : Sl) → Ini Γ s → Vals Γ 
   | .ar _, f, v => F.evsP L f v
 
 theorem Ini.locP_cases (L : List PLoc) {Γ : List Sl} (s : Sl) (x : Ini Γ s) (d : Nat) :
-    Ini.locP L s x d = ⟨d, false, 0⟩ ∨ Ini.locP L s x d = ⟨d, true, 0⟩ ∨ Ini.locP L s x d = ⟨d, false, d + 1⟩ := by
+    Ini.locP L s x d = ⟨d, false, 0⟩ ∨ Ini.locP L s x d = ⟨d, true, d + 1⟩ ∨ Ini.locP L s x d = ⟨d, false, d + 1⟩ := by
   cases s with
   | sc t => simp [Ini.locP]
   | ar k =>

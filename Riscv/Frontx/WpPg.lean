@@ -94,7 +94,7 @@ theorem newFill_ok (ptv sv x i n t tA : Nat) (Sv : MS) (C : Nat) (X : List (Nat 
 
 /-- the location of a fresh array in slot variables `d` (size) and `d + 1` (page table) -/
 def F.locP (L : List PLoc) {Γ : List Sl} : {k : AK} → F Γ k → Nat → PLoc
-  | _, .data m, d | _, .alias m, d => if (m.locP L).inp then ⟨d, true, 0⟩ else ⟨d, false, d + 1⟩
+  | _, .data m, d | _, .alias m, d => if (m.locP L).inp then ⟨d, true, d + 1⟩ else ⟨d, false, d + 1⟩
   | _, _, d => ⟨d, false, d + 1⟩
 
 /-- copy the array at `l` into a new array (size into `d + 3`, fill from `d + 4`) -/
@@ -288,7 +288,7 @@ theorem copy_fout {Γ : List Sl} {L : List PLoc} {v : Vals Γ} {k0 k : AK} (m : 
     (hs : AK.size k a = AK.size k0 (m.get v)) (hw : ∀ j, AK.w k a j = AK.w k0 (m.get v) j) :
     ∃ σ' W', Mach.BExec (if (m.locP L).inp then .assign d (.var (m.locP L).v) else copyCode (m.locP L) d)
         ⟨env, H, [W]⟩ σ' ∧ σ'.heap = H ∧ σ'.wheap = [W'] ∧ (∀ j, j < d → NP j → σ'.env j = env j) ∧
-      FOut C k (if (m.locP L).inp then ⟨d, true, 0⟩ else ⟨d, false, d + 1⟩) a (X ++ arrsP Γ L v env)
+      FOut C k (if (m.locP L).inp then ⟨d, true, d + 1⟩ else ⟨d, false, d + 1⟩) a (X ++ arrsP Γ L v env)
         (pageCount (X ++ arrsP Γ L v env))
         (if (m.locP L).inp then [] else .alloc 1 :: pushEvs (AK.size k0 (m.get v))) σ' W' := by
   have hmL := Mem.locP_mem m L hE.len
