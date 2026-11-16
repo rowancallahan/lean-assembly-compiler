@@ -1,7 +1,9 @@
 # Notice and acknowledgements
 
-This project is intended for non-commercial use (research, education, evaluation). The licence text is to be
-chosen by the owner; until then no licence is granted beyond what the owner states.
+Copyright 2026 the lean-assembly-compiler authors.
+
+Licensed under the Apache License, Version 2.0 (see LICENSE). Distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
+OR CONDITIONS OF ANY KIND. Third-party code included or compiled verbatim keeps its own licence (below).
 
 ## Inspiration (no code copied unless stated in the file itself)
 
