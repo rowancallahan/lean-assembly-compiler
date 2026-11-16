@@ -240,9 +240,9 @@ def shapeOf (ti : TyInfo) : Array String := Id.run do
 /-- the name of the `k`-th type of the shape of `T` (`T` itself, then `T.N1`, `T.N2`, …) -/
 def unionName (Tn : Name) (k : Nat) : Name := if k == 0 then Tn else Tn ++ Name.mkSimple s!"N{k}"
 
-syntax "frontx_ind_type " ident " := " term (" nesting " term,+)? : command
+syntax "frontx_ind_type " ("(full) ")? ident " := " term (" nesting " term,+)? : command
 elab_rules : command
-  | `(frontx_ind_type $T:ident := $ty:term $[nesting $ns,*]?) => do
+  | `(frontx_ind_type $[(full)%$full]? $T:ident := $ty:term $[nesting $ns,*]?) => do
   let Tn := T.getId
   -- the types of the shape: `ty`, then (depth first) the types of its fields given in `nesting` and `Bytes8`
   -- for `String` fields; constructor tags are numbered through all of them
@@ -256,6 +256,9 @@ elab_rules : command
     let tyE ← instantiateMVars tyE
     let nest := nest0.push (Lean.mkConst ``Proven.Frontx.Ind.Bytes8)
     let mut U : Array (Expr × TyInfo) := #[(tyE, ← analyze tyE nest)]
+    -- `full`: a field of the root type in a nested type (`List Expr`'s head, `Option Expr`'s value) is a child too
+    -- (without it such fields are dropped, as in the shapes declared before this option)
+    let nest := if full.isSome then nest.push tyE else nest
     let mut k := 0
     while h : k < U.size do
       let ti := U[k].2
@@ -321,6 +324,7 @@ elab_rules : command
     shParts := shParts ++ shapeOf ti
   let shS := ", ".intercalate shParts.toList
   runCmd s!"def {Tn}.sh : Proven.Mach.Ind.Shape := [{shS}]"
+  if full.isSome then runCmd s!"/-- marker: the shape is declared `(full)` -/\ndef {Tn}.full : Bool := true"
   -- definitions per type, the types used by a type first
   -- (a topological order of the child-type relation: `List Level` after `Level`, whatever their positions)
   let mut deps : Array (Array Nat) := #[]
@@ -576,6 +580,16 @@ partial def strLits : Expr → Array String
   | .mdata _ b | .proj _ _ b => strLits b
   | _ => #[]
 
+/-- the free variables of `e`, outermost first, each once -/
+partial def fvarsIn (e : Expr) : Array Expr :=
+  let rec go (e : Expr) (acc : Array Expr) : Array Expr :=
+    match e with
+    | .fvar _ => if acc.contains e then acc else acc.push e
+    | .app f a => go a (go f acc)
+    | .mdata _ b => go b acc
+    | _ => acc
+  go e #[]
+
 mutual
 /-- a decidable proposition as a `0`/`1` word -/
 partial def reifyP (c : Ctx) (p : Expr) : MetaM String := do
@@ -648,7 +662,7 @@ partial def reifyMatch (c : Ctx) (e : Expr) : MetaM (Option String) := do
         if pass == 0 then continue
         if let .reduced _ ← reduceMatcher? e then continue
         let mut found := false
-        for a in d0.getAppArgs do
+        for a in fvarsIn d0 do
           if !found && a.isFVar then
             if let .const an _ := (← whnfR (← inferType a)).getAppFn then
               if let some (.inductInfo ai) := (← getEnv).find? an then
@@ -665,6 +679,15 @@ partial def reifyMatch (c : Ctx) (e : Expr) : MetaM (Option String) := do
                 if all then
                   found := true; d := a
                   rebuild := fun ce => e.replaceFVar a ce
+        -- no field on which every constructor reduces the matcher (a wildcard inside a nested pattern,
+        -- `.lit (.natVal 0)` / `_`): the first field of a declared type or `Nat`, split on it
+        if !found then
+          for a in fvarsIn d0 do
+            if !found then
+              let at_ ← whnfR (← inferType a)
+              if (← findTy c.tys at_).isSome || at_.isConstOf ``Nat then
+                found := true; d := a
+                rebuild := fun ce => e.replaceFVar a ce
         if !found then continue
     if pass == 1 && d == d0 then continue
     let dt ← whnfR (← inferType d)
@@ -712,6 +735,17 @@ partial def reifyMatch (c : Ctx) (e : Expr) : MetaM (Option String) := do
         unless bs[j]! == acc do
           acc := s!"(.ite (.bin .eq (.fw false {dT c1.depth}) (.k (BitVec.ofNat 64 {rt.off + j}))) {bs[j]!} {acc})"
       return some (wrap acc)
+    -- a `Nat` parameter or local (a match on a scalar together with a tree, `| 0, e => … | k + 1, .forallE _ b => …`):
+    -- `0` or the successor of a new local `d - 1`
+    if dt.isConstOf ``Nat && (d.isMVar || d.isFVar) then
+      let dS ← reify c d
+      c.small.set true
+      let z ← branch c (rebuild (mkNatLit 0))
+      let p := c.depth
+      let sc ← withLocalDeclD `n (mkConst ``Nat) fun n => do
+        let c' := { c with als := c.als.push (n, fun (D : Nat) => s!"(.var {D - 1 - p} .w)"), depth := c.depth + 1 }
+        branch c' (rebuild (mkNatSucc n))
+      return some s!"(.ite (.bin .eq {dS} (.k 0)) {z} (.bind (Proven.Frontx.Ind.natSub {dS} (.k (BitVec.ofNat 64 1))) {sc}))"
     -- an enumeration (`Bool`: `true` is constructor 1)
     -- (constructors whose fields are proofs count: `Decidable`, `isFalse` is constructor 0)
     let mut enum := true
@@ -868,7 +902,19 @@ partial def reify (c : Ctx) (e : Expr) : MetaM String := do
   -- a constant (a definition without arguments) of a declared type: its value
   if let .const cn _ := e then
     if let some (.defnInfo dv) := (← getEnv).find? cn then
-      if !dv.type.isForall && (← findTy c.tys dv.type).isSome then return ← reify c dv.value
+      if !dv.type.isForall && (← findTy c.tys dv.type).isSome then
+        -- inside a function that is not itself a constant: a call of the function `cn.cst_T t := cn` of the node
+        -- (its meaning theorem then states the value, so the caller's proof needs no evaluation of the cells)
+        let tyS := String.ofList ((toString (← ppExpr c.ti.ty)).toList.filter Char.isAlphanum)
+        let cstN := cn ++ Name.mkSimple s!"cst_{tyS}"
+        let gl := c.g.getString!
+        if gl == "cst" || gl.startsWith "cst_" || (← isProp dv.type) then return ← reify c dv.value
+        unless (← getEnv).contains cstN do
+          let cty ← mkArrow c.ti.ty dv.type
+          let cval := Expr.lam `t c.ti.ty (mkConst cn) .default
+          addDecl (.defnDecl { name := cstN, levelParams := [], type := cty, value := cval, hints := .abbrev, safety := .safe })
+          enableRealizationsForConst cstN
+        return ← reify c (mkApp (mkConst cstN) c.params[c.sIdx]!)
   -- a function of a declared type not in the program yet: recorded, translated in the next round
   if let .const fnN _ := fn then
     if (← getEqnsFor? fnN).isSome && !(c.fns.any (·.name == fnN)) then
@@ -1039,6 +1085,9 @@ def rTyOfName (tn : Name) : TermElabM RTy := do
   let mut nest := #[]
   for n in nestedNames env root do
     nest := nest.push (← inferType (← mkConstWithLevelParams (n ++ `emb))).bindingDomain!
+  -- a shape declared `(full)` (its marker `T.full`): fields of the root type in nested types are children
+  if tn != root && env.contains (root ++ `full) then
+    nest := nest.push (← inferType (← mkConstWithLevelParams (root ++ `emb))).bindingDomain!
   let embTy ← inferType (← mkConstWithLevelParams (tn ++ `emb))
   let off ← if env.contains (tn ++ `off) then do
       let v ← whnf (← mkConstWithLevelParams (tn ++ `off))
@@ -1212,6 +1261,67 @@ def programOf (tys : Array RTy) (g : Name) : MetaM (Array FnI) := do
   order := o.reverse
   return order.map fun n => (infos.find? (·.name == n)).get!
 
+/-- `n + 1` is not the word `0` below `2^64` (a match on `0` / `k + 1` of a `Nat` parameter) -/
+theorem ofNat_succ_eq0 {a : Nat} (h : a + 1 < 2 ^ 64) : (BitVec.ofNat 64 (a + 1) = 0#64) = False := by
+  apply propext; constructor
+  · intro h'; have := congrArg BitVec.toNat h'; simp at this; omega
+  · intro h'; exact h'.elim
+
+/-- `g`'s binders from `j` on, the fixed ones instantiated with their literals: the type and value of the
+specialisation -/
+partial def specOpen (g : Name) (n : Nat) (gc : Expr) (fixed : Array (Nat × Expr)) (j : Nat) (t : Expr)
+    (ys args : Array Expr) : MetaM (Expr × Expr) := do
+  if j ≥ n then return (← mkForallFVars ys t, ← mkLambdaFVars ys (mkAppN gc args))
+  let .forallE nm d b bi := t | throwError "frontx_ind: {g}: arity"
+  match (fixed.find? (·.1 == j)).map (·.2) with
+  | some v => specOpen g n gc fixed (j + 1) (b.instantiate1 v) ys (args.push v)
+  | none => withLocalDecl nm bi d fun y => specOpen g n gc fixed (j + 1) (b.instantiate1 y) (ys.push y) (args.push y)
+
+/-- Specialisation of a function `g` at constant scalar arguments (NOTES section 36): the entry passes literals
+`fixed` (argument index ↦ literal) to parameters that every recursive call of `g` passes unchanged.  Generates
+`sN := fun rest => g (rest with the literals)` and its equations `sN.eq_k`, one per equation `g.eq_k` of `g`, with
+`g lit…` replaced by `sN` (each proved by `g.eq_k` itself: `sN` unfolds to `g lit…`, kernel-checked by
+definitional unfolding).  Lean takes `sN.eq_1 …` as `sN`'s equations (`getEqnsFor?`: already generated), so the
+front end translates `sN` like a recursive function of one scalar parameter. -/
+def specialise (g : Name) (fixed : Array (Nat × Expr)) (sN : Name) : MetaM Unit := do
+  let some (.defnInfo gi) := (← getEnv).find? g | throwError "frontx_ind: {g} is not a definition"
+  let lvls := gi.levelParams.map mkLevelParam
+  let gc := Lean.mkConst g lvls
+  let isFixed (j : Nat) : Option Expr := (fixed.find? (·.1 == j)).map (·.2)
+  let some eqns ← getEqnsFor? g | throwError "frontx_ind: no equations for {g}"
+  -- every recursive call passes the fixed parameters unchanged
+  for eqn in eqns do
+    forallTelescope (← inferType (mkConst eqn lvls)) fun _ ty => do
+      let some (_, lhs, rhs) := ty.eq? | throwError "frontx_ind: bad equation {eqn}"
+      let la := lhs.getAppArgs
+      for (j, _) in fixed do
+        unless la[j]!.isFVar do throwError "frontx_ind: {g}: a pattern on the parameter to specialise ({eqn})"
+      let bad := rhs.find? fun e => e.isAppOfArity g la.size && fixed.any fun (j, _) => e.getArg! j != la[j]!
+      if let some b := bad then throwError "frontx_ind: {g}: a recursive call changes the parameter to specialise{indentExpr b}"
+  let n := gi.type.getForallArity
+  let rw (e : Expr) : Expr := e.replace fun x =>
+    if x.isAppOfArity g n && fixed.all (fun (j, v) => x.getArg! j == v) then
+      some (mkAppN (mkConst sN lvls) ((List.range n).filter (fun j => (isFixed j).isNone) |>.toArray.map (x.getArg! ·)))
+    else none
+  let (ty, val) ← specOpen g n gc fixed 0 gi.type #[] #[]
+  addDecl (.defnDecl { name := sN, levelParams := gi.levelParams, type := ty, value := val, hints := .regular 0, safety := .safe })
+  enableRealizationsForConst sN
+  -- the equations
+  let mut k := 1
+  for eqn in eqns do
+    let (ety, pf) ← forallTelescope (← inferType (mkConst eqn lvls)) fun hs ty => do
+      let some (_, lhs, _) := ty.eq? | throwError "frontx_ind: bad equation {eqn}"
+      let la := lhs.getAppArgs
+      let fv := fixed.map (la[·.1]!)
+      let lits := fixed.map (·.2)
+      let hs' := hs.filter fun h => !fv.contains h
+      let ty' := rw (ty.replaceFVars fv lits)
+      let hsArgs := hs.map fun h => match fv.idxOf? h with | some i => lits[i]! | none => h
+      return (← mkForallFVars hs' ty', ← mkLambdaFVars hs' (mkAppN (mkConst eqn lvls) hsArgs))
+    let eqN := sN ++ Name.mkSimple s!"eq_{k}"
+    addDecl (.thmDecl { name := eqN, levelParams := gi.levelParams, type := ety, value := pf })
+    k := k + 1
+
 syntax "frontx_ind " ident " on " ident (" using " ident+)? : command
 elab_rules : command
   | `(frontx_ind $f:ident on $T:ident $[using $Us*]?) => do
@@ -1298,11 +1408,39 @@ elab_rules : command
         let gN := match body.getAppFn with | .const g _ => (if body.getAppNumArgs == 0 then fN else g) | _ => fN
         let gN ← if (← getEqnsFor? gN).isSome then pure gN else pure fN
         if gN == fN then return (fN, none)
+        -- two scalar parameters, one a literal that every recursive call passes unchanged: specialise `g` at it
+        let gFail ← try (do let _ ← fnInfo tys gN; pure false)
+          catch e => pure (((← e.toMessageData.toString).splitOn "more than one scalar").length > 1)
+        let body0 := body
+        let (gN, body1) ← if !gFail then pure (gN, body0) else do
+          let sN := fN ++ `spec
+          let bargs := body0.getAppArgs
+          let mut cands := #[]
+          for j in [0:bargs.size] do
+            if (← scOf? (← inferType bargs[j]!)).isSome then
+              let v ← instantiateMVars bargs[j]!
+              if (v.rawNatLit? <|> (if v.isAppOfArity ``OfNat.ofNat 3 then (v.getArg! 1).rawNatLit? else none)).isSome then
+                cands := cands.push (j, v)
+          let mut done := false
+          for (j, v) in cands do
+            unless done do
+              try
+                if !(← getEnv).contains sN then specialise gN #[(j, v)] sN
+                done := true
+              catch _ => pure ()
+          unless done do throwError "frontx_ind: {gN} has two scalar parameters and none is a literal it passes unchanged"
+          let lv := (← getConstInfo gN).levelParams.map mkLevelParam
+          let some (.defnInfo si) := (← getEnv).find? sN | throwError "frontx_ind: {sN}"
+          -- the arguments of `g` but the fixed one (the one `sN`'s value applies to a literal)
+          let fixedIdx ← lambdaTelescope si.value fun ys b => do
+            let ba := b.getAppArgs
+            return (List.range ba.size).filter (fun j => !(ys.contains ba[j]!))
+          pure (sN, mkAppN (mkConst sN body0.getAppFn.constLevels!) ((List.range bargs.size).filter (fun j => !fixedIdx.contains j) |>.toArray.map (bargs[·]!)))
         -- the entry's explicit parameters: the input value(s), the input word
         let mut eps := #[]
         for x in xs do
           if (← x.fvarId!.getBinderInfo).isExplicit then eps := eps.push x
-        return (gN, some (body.getAppArgs, eps))
+        return (gN, some (body1.getAppArgs, eps))
     let fns ← programOf tys gN
     -- translate every function (positions final)
     let mut armsA := #[]
@@ -1390,6 +1528,21 @@ elab_rules : command
   let cells := "Proven.Mach.Ind.C.tag, Proven.Mach.Ind.C.xv, Proven.Mach.Ind.C.lv, Proven.Mach.Ind.C.rv, " ++
     "Proven.Mach.Ind.Kd.pick, Proven.Mach.Ind.Kd.pair, Proven.Mach.Ind.semX, List.getD_cons_zero, List.getD_cons_succ"
   let multi := fns.size > 1
+  -- the constants called through `cst_` functions and the constants their values use (for `small` of their values)
+  let cstUnf ← liftTermElabM do
+    let mut out : Array Name := #[]
+    let mut todo : Array Name := fns.filterMap fun f =>
+      if f.name.getString!.startsWith "cst_" then some f.name else none
+    while h : todo.size > 0 do
+      let n := todo[todo.size - 1]; todo := todo.pop
+      if out.contains n then continue
+      let some (.defnInfo dv) := (← getEnv).find? n | continue
+      out := out.push n
+      for m in dv.value.getUsedConstants do
+        if let some (.defnInfo mv) := (← getEnv).find? m then
+          if !mv.type.isForall && !(← isProp mv.type) && (← findTy tys mv.type).isSome then todo := todo.push m
+    return out.toList.map toString
+  let cstS := ", ".intercalate cstUnf
   let fnsS := ", ".intercalate (fns.toList.map fun f => toString f.name)
   let mut anySmall := false
   let mut nodesHyp := false
@@ -1452,6 +1605,12 @@ elab_rules : command
     let gApp := s!"({gS} {" ".intercalate gArgsA[i]!.toList})"
     let resRep := if fi.rk == ".t" then s!"({fi.rTy.get!.tn}.emb {gApp})"
       else if fi.isDec then s!"(Proven.Frontx.Ind.bw (@decide _ {gApp}))" else fi.rSc.get!.rep gApp
+    -- a specialisation `g.spec` (its value `fun … => g lit …`): `simp` unfolds it, so the original's equations too
+    let gS ← liftTermElabM do
+      if fi.name.getString! != "spec" then return gS
+      let some (.defnInfo si) := (← getEnv).find? fi.name | return gS
+      let some gO := (← lambdaTelescope si.value fun _ b => pure b.getAppFn.constName?) | return gS
+      return s!"{gS}, {gO}"
     let folds := ", ".intercalate ((List.range fi.ty.ti.ctors.size).filter (fun k => !fi.ty.ti.roles[k]!.contains .drop) |>.map
       fun k => s!"{Ttn}.fold{k}")
     -- a recursive call with a word argument other than `a` (`d + 1` under a binder): the range hypothesis covers
@@ -1463,7 +1622,53 @@ elab_rules : command
         (match bTys[i]! with | some rb => s!"{rb.tn}.small b → " | none => "")
     let words := (if small then words ++ s!", {smalls}, {cmpW}" else words ++ s!", {cmpW}") ++ extra
     let caseB := if bTys[i]!.isSome then "cases b <;> " else ""
-    runCmd s!"set_option maxHeartbeats 16000000 in
+    -- calls of later functions on the node or on constants (`cst_` functions): their meaning theorems before the
+    -- cells are unfolded, then the constants' `small` by evaluation, then case splits on matched fields
+    let smallD := s!"first | (simp_all [{smalls}]; done) | (simp [{smalls}{if cstS.isEmpty then "" else ", " ++ cstS}]; (repeat' constructor) <;> with_unfolding_all exact True.intro)"
+    -- `BEq` instances `g` uses (`==` on a declared type) and their functions (`Name.beq a b := decide (a = b)`)
+    let (beqS, beqH) ← liftTermElabM do
+      let some (.defnInfo gv) := (← getEnv).find? fi.name | return ("", "")
+      let mut out : Array Name := #[]
+      let mut haves : Array String := #[]
+      let mut seen : Array Name := #[]
+      let mut todo := gv.value.getUsedConstants
+      for _ in [0:3] do
+        let mut next := #[]
+        for n in todo do
+          if seen.contains n then continue
+          seen := seen.push n
+          if let some ci := (← getEnv).find? n then
+            if isInstanceCore (← getEnv) n && ci.type.getAppFn.isConstOf ``BEq then
+              out := out.push n
+              haves := haves.push (← ppFull ci.type.appArg!)
+              if let some v := ci.value? then
+                for m in v.getUsedConstants do
+                  if !(m.isPrefixOf ``BEq) && ((← getEnv).find? m).any (·.isDefinition) then out := out.push m
+            else if let some v := ci.value? then
+              if ci.isDefinition && !n.isInternal then next := next ++ v.getUsedConstants.filter (fun m => m.getPrefix == n || m.isInternal)
+        todo := next
+      -- `x == y` is `decide (x = y)` by definition (`simp` does not rewrite the instance argument)
+      let hs := String.join (haves.toList.eraseDups.map fun t =>
+        s!"try have : ∀ x y : {t}, (x == y) = decide (x = y) := fun _ _ => rfl\n     ")
+      return (String.join (out.toList.eraseDups.map (", " ++ toString ·)), hs)
+    let cstAlt := if i + 1 >= fns.size then "" else s!"
+  | (simp only [{embs}, {P}.arms, Proven.Mach.Ind.Pg.sem, Proven.Mach.Ind.ev, List.getElem?_cons_zero,
+      List.getElem?_cons_succ, Bool.false_eq_true, if_false] at *
+     try simp only [{allFolds}] at *
+     try simp only [{P}.X, {cells}]
+     try simp (disch := {smallD}) only [{laterSems}]
+     {if cstS.isEmpty then "" else s!"try simp only [{cstS}]"}
+     try simp (disch := {smallD}) only [{laterSems}]
+     {beqH}repeat' (first | (simp_all [{gS}, {embs}, {words}, Proven.Op.eval{if cstS.isEmpty then "" else ", " ++ cstS}{beqS}]; done) | frontx_emb_cases)
+     all_goals simp_all [{gS}, {embs}, {words}, Proven.Op.eval{if cstS.isEmpty then "" else ", " ++ cstS}{beqS}]
+     all_goals first | rfl | (congr 1; done) | (congr 1; simp only [decide_eq_decide])
+     done)"
+    -- a match on the `Nat` parameter together with the tree (`| 0, e => … | k + 1, .forallE _ b => …`): split `a`
+    let natAlt := if fi.aSc != some .nat then "" else s!"
+  | (rcases a with _ | a <;> (try have : a < 2 ^ 64 := by omega) <;> simp_all [{gS}, {P}.arms, Proven.Mach.Ind.Pg.sem, Proven.Mach.Ind.ev, {embs}, {words}, Proven.Frontx.IndCmd.ofNat_succ_eq0, Proven.Op.eval]; done)
+  | (rcases a with _ | a <;> (try have : a < 2 ^ 64 := by omega) <;> simp_all [{gS}, {P}.arms, Proven.Mach.Ind.Pg.sem, Proven.Mach.Ind.ev, {embs}, {words}, Proven.Frontx.IndCmd.ofNat_succ_eq0, Proven.Op.eval] <;>
+     (repeat' split) <;> simp_all [{embs}, {words}] <;> omega)"
+    let semTxt := s!"set_option maxHeartbeats 16000000 in
 theorem _root_.{P}.sem : ∀ (t : {tyOf Ttn}) (a : {aTy}) (b : {bTy}), {hyps}{P}.pg.sem ({Ttn}.emb t) {aRep} {bRep} = {resRep} := by
   intro t; induction t <;> intro a b <;> intros <;>
   first
@@ -1516,7 +1721,9 @@ theorem _root_.{P}.sem : ∀ (t : {tyOf Ttn}) (a : {aTy}) (b : {bTy}), {hyps}{P}
      all_goals try simp only [*{if i + 1 < fns.size then ", " ++ laterSems else ""}]
      all_goals try simp only [{gS}]
      all_goals frontx_calls_sem [{fnsS}] [{laterSems}] [{embs}]
-     all_goals first | rfl | (simp_all [{fnsS}, {embs}, {words}]; done))"
+     all_goals first | rfl | (simp_all [{fnsS}, {embs}, {words}]; done)){cstAlt}{natAlt}"
+    if (← IO.getEnv "FRONTX_DEBUG").isSome then logInfo semTxt
+    runCmd semTxt
   -- the machine program
   let fi0 := fns[0]!
   let gN := fi0.name
