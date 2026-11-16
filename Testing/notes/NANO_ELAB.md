@@ -82,3 +82,7 @@ restartable: checked), and a write-only output stream. That is a multi-head two-
   computes the value with `spanNum`'s fold.
 * Tests: `Testing/nano/elabb_check.lean` (Lean side, 2000 inputs: corpus, boundary mutations, prefixes, random bytes,
   edge cases; 525 pass stage 1; 0 mismatches against `lexT`), `Testing/nano/elabb_test.py` (QEMU + Sail).
+* 2026-11-16 23:50. Merged origin/nano-int 4a04370: `Nano/Elab.lean` is now nano-e2e's lexer (`wordTok`, `identOk`,
+  global `adjOk`, column-0 rule, CR rejected). The stage-1 machine and proof above (commit f93dcc2, `lexB_eq` for the
+  old spec) are reworked for it: an `adjOk` pre-pass (mode 5) restarting on the bookmark, numerals and names as one
+  word class (`wordTok`), a column-0 flag `cz` for words right after a newline.

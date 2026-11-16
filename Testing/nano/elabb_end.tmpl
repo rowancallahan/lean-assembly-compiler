@@ -1,28 +1,26 @@
-    if st == 2 then REC(0, sp, d, d0, w, ty)
-    else if st == 0 then
-      if c == 32 || c == 10 then REC(0, sp, d, d0, w, ty)
-      else if c == 58 then (if m == 0 then REC(0, sp, d, d0, w, ty) else 58 :: REC(0, sp, d, d0, w, ty))
+    if m == 5 then REC(0, sp, d, d0, w, ty, cz)
+    else if st == 2 then REC(0, sp, d, d0, w, ty, 0)
+    else if st == 0 || st == 4 then
+      if c == 32 || c == 10 then REC(0, sp, d, d0, w, ty, 0)
+      else if st == 4 then [0]
+      else if c == 58 then (if m == 0 then REC(0, sp, d, d0, w, ty, 0) else 58 :: REC(0, sp, d, d0, w, ty, 0))
       else if c == 40 || c == 41 || c == 42 || c == 43 || c == 45 || c == 59 then
-        (if m == 0 then REC(0, sp, d, d0, w, ty) else c :: REC(0, sp, d, d0, w, ty))
+        (if m == 0 then REC(0, sp, d, d0, w, ty, 0) else c :: REC(0, sp, d, d0, w, ty, 0))
       else if 48 ≤ c && c ≤ 57 then
-        (if sp == 0 then [0] else if m == 0 then REC(0, sp, d, d0, w, ty) else 5 :: c :: 6 :: REC(0, sp, d, d0, w, ty))
+        (if sp == 0 then [0] else if m == 0 then REC(0, sp, d, d0, w, ty, 0) else 5 :: c :: 6 :: REC(0, sp, d, d0, w, ty, 0))
       else if 97 ≤ c && c ≤ 122 then
-        (if sp == 0 then [0] else if m == 0 then REC(0, sp, d, d0, w, ty) else c :: 0 :: REC(0, sp, d, d0, w, ty))
+        (if sp == 0 then [0] else if m == 0 then REC(0, sp, d, d0, w, ty, 0) else c :: 0 :: REC(0, sp, d, d0, w, ty, 0))
       else [0]
     else if st == 1 then
       if sp == 0 then
         -- `lex`'s fuel equals the rest: the word is split before its last character
-        (if w < 0x1000000 || (KIND d0, (w >>> 8)) == 9 || (TYU (w >>> 8)) == 9 then [0]
+        (if cz == 1 || w < 0x1000000 || (KIND d0, (w >>> 8)) == 9 || (TYU (w >>> 8)) == 9 then [0]
          else if 48 ≤ c && c ≤ 57 then
-           (if m == 0 then REC(0, 1, d, d0, w, (TYU (w >>> 8)))
-            else (KIND d0, (w >>> 8)).toUInt8 :: 5 :: c :: 6 :: REC(0, 1, d, d0, w, (TYU (w >>> 8))))
+           (if m == 0 then REC(0, 1, d, d0, w, (TYU (w >>> 8)), 0)
+            else (KIND d0, (w >>> 8)).toUInt8 :: 5 :: c :: 6 :: REC(0, 1, d, d0, w, (TYU (w >>> 8)), 0))
          else if c < 97 || 122 < c then [0]
-         else (if m == 0 then REC(0, 1, d, d0, w, (TYU (w >>> 8)))
-            else (KIND d0, (w >>> 8)).toUInt8 :: c :: 0 :: REC(0, 1, d, d0, w, (TYU (w >>> 8)))))
-      else if (KIND d, w) == 9 || (TYU w) == 9 then [0]
-      else (if m == 0 then REC(0, 1, d, d0, w, (TYU w)) else c :: (KIND d, w).toUInt8 :: REC(0, 1, d, d0, w, (TYU w)))
-    else if st == 3 then
-      if sp == 0 then
-        (if w == 0 then [0] else (if m == 0 then REC(0, 1, d, d0, w, ty) else 6 :: 5 :: c :: 6 :: REC(0, 1, d, d0, w, ty)))
-      else (if m == 0 then REC(0, 1, d, d0, w, ty) else c :: 6 :: REC(0, 1, d, d0, w, ty))
+         else (if m == 0 then REC(0, 1, d, d0, w, (TYU (w >>> 8)), 0)
+            else (KIND d0, (w >>> 8)).toUInt8 :: c :: 0 :: REC(0, 1, d, d0, w, (TYU (w >>> 8)), 0)))
+      else if (KINDC d, w, cz) == 9 || (TYU w) == 9 then [0]
+      else (if m == 0 then REC(0, 1, d, d0, w, (TYU w), 0) else c :: (KINDC d, w, cz).toUInt8 :: REC(0, 1, d, d0, w, (TYU w), 0))
     else [0]

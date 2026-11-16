@@ -34,7 +34,10 @@ EDGE = ["", " ", "abc", "ab", "a", "deff", "def", "UInt64", "(UInt64", "UInt64x"
         "( abc", "(ab1", "((x1", "Int64", "def f : UInt64 := 12", "def f : UInt64 := 1", "def f : UInt64 := xyz",
         "def f : Int64 := 5", "def f : UInt64 := ((1))", "def f (x : UInt64) : Int64 := x", "\r\n", "\r", "x\r",
         "def f : UInt64 := 1\r\n", "def f : UInt64 := 1 --", "-", ":", ":=", "a:=", "( :=", "(abcdefgh", "(abcdefg",
-        "(UInt645", "(xyz9", "(x_", "(x_1", "+x1", "+12", "+1", "(1)2", "(a)b", "a(b", "1a", "1(", "1_0", ";def"]
+        "(UInt645", "(xyz9", "(x_", "(x_1", "+x1", "+12", "+1", "(1)2", "(a)b", "a(b", "1a", "1(", "1_0", ";def",
+        "(12a", "(1a2", "\ndef", "\ndeff", "(\ndef", "def f : UInt64 := 1\ndef g : UInt64 := f", "def f : UInt64 := 1\nx",
+        "def f : UInt64 := 1\n def g : UInt64 := f", "def f : UInt64 :=\n 1", "def f : UInt64 :=\n1", "\n\n def", "( x)(y",
+        "x_1 y_2", "a__", "_a", "A1", "def f (x : UInt64) : UInt64 := x_1", "( 0123", "(00", "(UInt64)"]
 outs = []
 for s in CORPUS + INT_CORPUS: outs.append(s); outs.append(s + "\n")
 outs += EDGE
