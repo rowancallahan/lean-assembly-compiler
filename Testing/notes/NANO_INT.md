@@ -77,3 +77,20 @@ work block is too small. L1 = `B` computes `nanoCompileS`; L2 = `CompileCorrect`
   arm. `asm` (4 bytes per record, 4 table expressions): ~80 s. A 3-arm pass with one 20-byte arm: > 20 CPU-min for
   `frontx_compile` alone (stopped). `mexp` (13 arms, 124 stored bytes): running detached since 23:47
   (`Nano/ExpandSelf.lean`, not committed until it finishes).
+* 2026-11-16 23:55. Two NEW lanes found (started by the main session): `nano-elab` (Opus, since 22:45: `nanoElab` as
+  byte-level stages; stage 1 = lexer + type check `lexB`, proved equal to the spec for every input, compile in
+  progress) and a fresh L2 box on `nano-proof` (since 23:22). nano-elab's finding (NANO_ELAB.md): the parser stage
+  cannot be a list-front-end stage, nor a fixed chain of them: such a stage is a log-space transducer (constant
+  scalars, read-only input, write-only output), and inlining needs a return path of unbounded depth (and can be
+  exponentially long). It asks the owner / integrator to choose: (a) non-inlined `Prog` + real calls, or (b) a
+  writable array in the list path.
+  DECISION (integrator): neither. Keep the spec (`nanoElab`, inlined `Prog`) and L2 (inlining stack generator) as they
+  are; the stage that needs a stack is compiled by the PAGED front end (`wp_compile`: growing `ByteArray`, in-place
+  updates), which already exists, and is linked like any other stage. Glue done: `Nano.Link.of_pg`
+  (`Nano/LinkPg.lean`): a paged stage's theorem `Implements1Pg … 8192 fits …` gives `Implements1With … space …` for
+  any `space` under which the run fits, so `link_stage`/`link_implements` compose it with the list-path stages
+  (lexer before, `asm` after). Reasons: (a) would discard the L2 proof in progress and still needs a stack for
+  precedence / parentheses; (b) is a big-compiler feature (not to be modified here). Target of the front-end chain:
+  `ser p` (`Nano/Ser.lean`) or directly `genR p`; needed only for accepted sources (`nanoElab src = some p`).
+  Open risk, stated: whether `wp_compile` (single flat loops, one work array per loop state) accepts an explicit-stack
+  parser; that is the nano-elab lane's next experiment.
