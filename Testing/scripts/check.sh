@@ -8,8 +8,8 @@ fail() { echo "CHECK FAILED: $*" >&2; exit 1; }
 echo "== lake build"; lake build Spec Compiler Riscv Arm Frontx Nano || fail "lake build"
 echo "== #print axioms"
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
-for g in a b c d e f g h i j k l m n o p q r s t u v w x y z utf8 ir-s01 feat-struct harvest conleche-blk ir-s2 paged batch1 feat-paged2 nano-e2e nano-proof nano-mvp; do lake env lean "$H/axioms_$g.lean" > "$T/$g.txt" 2>&1 || { cat "$T/$g.txt"; fail "axioms_$g.lean"; }; done
-cat "$T"/{a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,utf8,ir-s01,feat-struct,harvest,conleche-blk,ir-s2,paged,batch1,feat-paged2,nano-e2e,nano-proof,nano-mvp}.txt | tr -d '\n' | sed "s/'Proven/\n'Proven/g; s/'List\./\n'List./g; s/'ConLeche/\n'ConLeche/g; s/'Ordering/\n'Ordering/g; s/'TinyR/\n'TinyR/g; s/'LeanSvg/\n'LeanSvg/g; s/'Nano/\n'Nano/g; s/ //g" | grep -v '^$' > "$T/got.txt"
+for g in a b c d e f g h i j k l m n o p q r s t u v w x y z utf8 ir-s01 feat-struct harvest conleche-blk ir-s2 paged batch1 feat-paged2 nano-e2e nano-proof nano-mvp nano-int; do lake env lean "$H/axioms_$g.lean" > "$T/$g.txt" 2>&1 || { cat "$T/$g.txt"; fail "axioms_$g.lean"; }; done
+cat "$T"/{a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,utf8,ir-s01,feat-struct,harvest,conleche-blk,ir-s2,paged,batch1,feat-paged2,nano-e2e,nano-proof,nano-mvp,nano-int}.txt | tr -d '\n' | sed "s/'Proven/\n'Proven/g; s/'List\./\n'List./g; s/'ConLeche/\n'ConLeche/g; s/'Ordering/\n'Ordering/g; s/'TinyR/\n'TinyR/g; s/'LeanSvg/\n'LeanSvg/g; s/'Nano/\n'Nano/g; s/ //g" | grep -v '^$' > "$T/got.txt"
 if diff "$H/expected-axioms.txt" "$T/got.txt" > "$T/diff.txt"; then
   awk -F'dependsonaxioms:' '{n=split($2,a,","); print "  ok", $1, n, "axioms"}' "$T/got.txt"
 else cat "$T/diff.txt"; fail "axioms differ from Testing/scripts/expected-axioms.txt"; fi

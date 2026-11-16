@@ -17,6 +17,7 @@ open LeanRV64D LeanRV64D.Functions Sail Sail.ConcurrencyInterfaceV1
 set_option maxHeartbeats 1000000
 set_option maxRecDepth 100000
 set_option linter.unusedVariables false
+set_option linter.unusedSimpArgs false
 
 namespace Nano.Link
 open Proven
@@ -337,5 +338,212 @@ theorem pre_run {s : St} (h : Cfg s) {entry : BitVec 64} {o : BitVec 20} {wb W :
     simp only [h1, h2, h12, h13, false_and, if_false]
     rw [k9, r5 j h5 h6]
   · rw [n12.mem, n11.mem, n10.mem, n9.mem, M9]
+
+/-! ## The stub after `f` returned -/
+
+theorem post_run {u : St} (h : Cfg u) {entry : BitVec 64} {o : BitVec 20} {F : Nat} {ra a3 sp a2 : BitVec 64}
+    (hpc : u.regs.get? .PC = some (entry + BitVec.ofNat 64 (4 * 13))) (hok : codeOK entry 18)
+    (hc : codeAt u entry (stub o)) (hF : F % 8 = 0) (hlo : 0x80000000 ≤ F) (hhi : F + 32 ≤ 0x100000000)
+    (x2 : getX u 2 = BitVec.ofNat 64 F)
+    (f0 : ∀ k < 8, u.mem[F + k]? = some (ra.extractLsb' (8 * k) 8))
+    (f8 : ∀ k < 8, u.mem[F + 8 + k]? = some (a3.extractLsb' (8 * k) 8))
+    (f16 : ∀ k < 8, u.mem[F + 16 + k]? = some (sp.extractLsb' (8 * k) 8))
+    (f24 : ∀ k < 8, u.mem[F + 24 + k]? = some (a2.extractLsb' (8 * k) 8)) :
+    ∃ u', (∀ P, runsTo u' P → runsTo u P) ∧ Cfg u' ∧
+      u'.regs.get? .PC = some (entry + BitVec.ofNat 64 (4 * 18)) ∧
+      getX u' 1 = ra ∧ getX u' 13 = a3 ∧ getX u' 10 = a2 ∧ getX u' 12 = BitVec.ofNat 64 (F + 32) ∧
+      getX u' 2 = sp ∧
+      (∀ j : Fin 32, j ≠ 1 → j ≠ 2 → j ≠ 10 → j ≠ 12 → j ≠ 13 → getX u' j = getX u j) ∧ u'.mem = u.mem := by
+  have ok := fun i (hi : i < 18) => pcOK_of hok hi
+  have I : ∀ (s' : St), s'.mem = u.mem → ∀ i (hi : i < 18),
+      instrAt s' (entry + BitVec.ofNat 64 (4 * i)) ((stub o)[i]'hi) :=
+    fun s' hm i hi => instr_keep (hc i hi) fun k hk => by rw [hm]
+  have z0 : (0 : BitVec 12).signExtend 64 = 0#64 := by decide
+  have z8 : (8 : BitVec 12).signExtend 64 = BitVec.ofNat 64 8 := by decide
+  have z16 : (16 : BitVec 12).signExtend 64 = BitVec.ofNat 64 16 := by decide
+  have z24 : (24 : BitVec 12).signExtend 64 = BitVec.ofNat 64 24 := by decide
+  have z32 : (32 : BitVec 12).signExtend 64 = BitVec.ofNat 64 32 := by decide
+  obtain ⟨u1, n0⟩ := ld_slot h hpc (ok 13 (by omega)) 1 2 0 (I u rfl 13 (by omega)) (A := F) (v := ra)
+    (by rw [x2, z0, BitVec.add_zero]) (by omega) hF f0
+  have k1 : getX u1 2 = BitVec.ofNat 64 F := by rw [getX_next n0, if_neg (by decide), x2]
+  have M1 : u1.mem = u.mem := n0.mem
+  obtain ⟨u2, n1⟩ := ld_slot n0.cfg (by rw [n0.pc, P_succ]) (ok 14 (by omega)) 13 2 8 (I u1 M1 14 (by omega))
+    (A := F + 8) (v := a3) (by rw [k1, z8, ← BitVec.ofNat_add]) (by omega) (by omega) (by rw [M1]; exact f8)
+  have k2 : getX u2 2 = BitVec.ofNat 64 F := by rw [getX_next n1, if_neg (by decide), k1]
+  have M2 : u2.mem = u.mem := by rw [n1.mem, M1]
+  obtain ⟨u3, n2⟩ := ld_slot n1.cfg (by rw [n1.pc, P_succ]) (ok 15 (by omega)) 10 2 24 (I u2 M2 15 (by omega))
+    (A := F + 24) (v := a2) (by rw [k2, z24, ← BitVec.ofNat_add]) (by omega) (by omega) (by rw [M2]; exact f24)
+  have k3 : getX u3 2 = BitVec.ofNat 64 F := by rw [getX_next n2, if_neg (by decide), k2]
+  have M3 : u3.mem = u.mem := by rw [n2.mem, M2]
+  obtain ⟨u4, n3⟩ := G.step_addi n2.cfg (by rw [n2.pc, P_succ]) (ok 16 (by omega)) 12 2 32 (I u3 M3 16 (by omega))
+  have k4 : getX u4 2 = BitVec.ofNat 64 F := by rw [getX_next n3, if_neg (by decide), k3]
+  have M4 : u4.mem = u.mem := by rw [n3.mem, M3]
+  obtain ⟨u5, n4⟩ := ld_slot n3.cfg (by rw [n3.pc, P_succ]) (ok 17 (by omega)) 2 2 16 (I u4 M4 17 (by omega))
+    (A := F + 16) (v := sp) (by rw [k4, z16, ← BitVec.ofNat_add]) (by omega) (by omega) (by rw [M4]; exact f16)
+  refine ⟨u5, fun P hP => runsTo_next n0 (runsTo_next n1 (runsTo_next n2 (runsTo_next n3 (runsTo_next n4 hP)))),
+    n4.cfg, by rw [n4.pc, P_succ], ?_, ?_, ?_, ?_, ?_, ?_, by rw [n4.mem, M4]⟩
+  · simp (config := { decide := true }) only [getX_next n4, getX_next n3, getX_next n2, getX_next n1,
+      getX_next n0, if_true, if_false]
+  · simp (config := { decide := true }) only [getX_next n4, getX_next n3, getX_next n2, getX_next n1,
+      getX_next n0, if_true, if_false]
+  · simp (config := { decide := true }) only [getX_next n4, getX_next n3, getX_next n2, getX_next n1,
+      getX_next n0, if_true, if_false]
+  · simp (config := { decide := true }) only [getX_next n4, getX_next n3, if_true, if_false]
+    rw [k3, z32, ← BitVec.ofNat_add]
+  · simp (config := { decide := true }) only [getX_next n4, if_true, if_false]
+  · intro j h1 h2 h10 h12 h13
+    simp only [getX_next n4, getX_next n3, getX_next n2, getX_next n1, getX_next n0]
+    simp only [h1, h2, h10, h12, h13, false_and, if_false]
+
+/-! ## The theorem -/
+
+theorem link_length (cf cg : List (BitVec 32)) : (link cf cg).length = 18 + cg.length + cf.length := by
+  simp [link, stub]; omega
+
+/-- **Linking**: if `cf` implements `f` (result length in `a1`) and `cg` implements `g`, then `link cf cg`
+implements `g ∘ f`.  `M n` bounds, for an input of `n` bytes: the intermediate result's length, `f`'s work space
+and `g`'s work space on the intermediate result; the intermediate result must also be within `g`'s input bound. -/
+theorem link_implements {α β γ : Type} {encA : α → List UInt8} {encB : β → List UInt8} {encC : γ → List UInt8}
+    {cf cg : List (BitVec 32)} {f : α → β} {g : β → γ} {spf spg : Nat → Nat} {mf mg : Nat} {rl : Bool}
+    (hf : Implements1With encA encB cf f spf mf true) (hg : Implements1With encB encC cg g spg mg rl)
+    (M : Nat → Nat) (hsize : cg.length < 2 ^ 17)
+    (hmid : ∀ a, (encA a).length ≤ mf → (encB (f a)).length ≤ mg ∧ (encB (f a)).length ≤ M (encA a).length ∧
+      spf (encA a).length ≤ M (encA a).length ∧ spg (encB (f a)).length ≤ M (encA a).length) :
+    Implements1With encA encC (link cf cg) (g ∘ f) (fun n => 4 * M n + 96) mf rl := by
+  intro a s entry ra input output work
+  dsimp only
+  intro hx h hpc hent hcode h10 h11 h12 h13 h2 h1 hra hrad hin hinl hzl hsp hwal hram hdis hmo hmw
+  obtain ⟨hmg, hyM, hfM, hgM⟩ := hmid a hx
+  obtain ⟨ib, il⟩ := input; obtain ⟨ob, ol⟩ := output; obtain ⟨wb, W⟩ := work
+  simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq, Region.inRAM] at hram
+  obtain ⟨⟨ri1, ri2⟩, ⟨ro1, ro2⟩, ⟨rw1, rw2⟩, ⟨rc1, rc2⟩⟩ := hram
+  simp only [List.pairwise_cons, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq,
+    List.Pairwise.nil, and_true, disjoint, false_implies, implies_true] at hdis
+  obtain ⟨⟨dio, diw, dic⟩, ⟨dow, doc⟩, dwc⟩ := hdis
+  simp only [disjoint] at hrad
+  simp only [] at hin hinl hzl hsp hwal h10 h11 h12 h13 h2 hmo hmw
+  rw [link_length] at rc2 dic doc dwc hrad
+  replace hmw : ∀ i < W, (s.mem[wb + i]?).isSome := hmw
+  replace hmo : ∀ i < ol, (s.mem[ob + i]?).isSome := hmo
+  generalize hy : encB (f a) = y at *
+  generalize hn : (encA a).length = n at *
+  -- the code
+  have hokA : codeOK entry (18 + cg.length + cf.length) := ⟨hent, rc1, rc2⟩
+  have hok : codeOK entry 18 := ⟨hent, rc1, by omega⟩
+  have hcA : codeAt s entry (link cf cg) := codeAt_of_codeBytes (by rw [link_length]; exact hokA) hcode
+  have hc : codeAt s entry (stub (BitVec.ofNat 20 (2 * (6 + cg.length)))) :=
+    (codeAt_append.1 (codeAt_append.1 hcA).1).1
+  obtain ⟨hb1, hbf⟩ := bytesAt_split (c₁ := stub (BitVec.ofNat 20 (2 * (6 + cg.length))) ++ cg) (c₂ := cf) hcode
+  obtain ⟨-, hbg⟩ := bytesAt_split hb1
+  rw [show (stub (BitVec.ofNat 20 (2 * (6 + cg.length))) ++ cg).length = 18 + cg.length by simp [stub]; omega]
+    at hbf
+  rw [show (stub (BitVec.ofNat 20 (2 * (6 + cg.length)))).length = 18 from rfl] at hbg
+  -- the registers
+  have x2 : getX s 2 = BitVec.ofNat 64 (wb + W) := Option.some.inj (h.x2.symm.trans h2)
+  have x12 : getX s 12 = BitVec.ofNat 64 wb := Option.some.inj (h.x12.symm.trans h12)
+  have x13 : getX s 13 = BitVec.ofNat 64 ob := Option.some.inj (h.x13.symm.trans h13)
+  have x10 : getX s 10 = BitVec.ofNat 64 ib := Option.some.inj (h.x10.symm.trans h10)
+  have x11 : getX s 11 = BitVec.ofNat 64 n := Option.some.inj (h.x11.symm.trans h11)
+  have x1 : getX s 1 = ra := Option.some.inj (h.x1.symm.trans h1)
+  -- the stub, part 1
+  obtain ⟨p, prun, pcfg, ppc, p1, p2, p12, p13, pk, pmem⟩ := pre_run h hpc hok hc hwal rw1 rw2 (by omega)
+    (by omega) x2 x12
+  generalize ht : 8 * (W / 32) = t at *
+  have htW : 4 * t ≤ W := by omega
+  have htM : n = n → M n < t := fun _ => by omega
+  have htM := htM rfl
+  have efe : entry + BitVec.ofNat 64 (4 * 12) + joff (BitVec.ofNat 20 (2 * (6 + cg.length))) =
+      entry + BitVec.ofNat 64 (4 * (18 + cg.length)) := by
+    rw [joff_ofNat (by omega), BitVec.add_assoc, ← BitVec.ofNat_add]; congr 2; omega
+  rw [efe] at ppc
+  have tfe : (entry + BitVec.ofNat 64 (4 * (18 + cg.length))).toNat = entry.toNat + 4 * (18 + cg.length) :=
+    pc_toNat hokA (by omega)
+  have tra : (entry + BitVec.ofNat 64 (4 * 13)).toNat = entry.toNat + 4 * 13 := pc_toNat hok (by omega)
+  have tge : (entry + BitVec.ofNat 64 (4 * 18)).toNat = entry.toNat + 4 * 18 := pc_toNat hok (by omega)
+  have PS : ∀ a, a < wb + 2 * t ∨ wb + 2 * t + 32 ≤ a → p.mem[a]? = s.mem[a]? := fun a ha => by
+    rw [pmem, frame_other _ _ _ _ _ _ ha]
+  -- `f`
+  have run := hf a p (entry + BitVec.ofNat 64 (4 * (18 + cg.length))) (entry + BitVec.ofNat 64 (4 * 13))
+    ⟨ib, il⟩ ⟨wb, t⟩ ⟨wb + t, t⟩ (by rw [hn]; exact hx) pcfg ppc (by rw [tfe]; omega)
+    (by rw [tfe, ← hbf]; exact bytesAt_congr fun i hi => PS _ (by omega))
+    (by rw [pcfg.x10, pk 10 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide), x10])
+    (by rw [pcfg.x11, pk 11 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide), x11, hn])
+    (by rw [pcfg.x12, p12]) (by rw [pcfg.x13, p13])
+    (by rw [pcfg.x2, p2]; show some (BitVec.ofNat 64 (wb + 2 * t)) = some (BitVec.ofNat 64 (wb + t + t)); congr 2; omega) (by rw [pcfg.x1, p1]) (by rw [tra]; omega)
+    (by simp only [disjoint, tra, tfe]; omega)
+    (by rw [hn, ← hin]; exact bytesAt_congr fun i hi => PS (ib + i) (by omega))
+    (by rw [hn]; exact hinl) (by rw [hy]; show y.length ≤ t; omega) (by rw [hn]; show spf n ≤ t; omega)
+    (by show (wb + t) % 8 = 0; omega)
+    (by
+      simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq, Region.inRAM, tfe]
+      omega)
+    (by
+      simp only [List.pairwise_cons, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq,
+        List.Pairwise.nil, and_true, disjoint, false_implies, implies_true, tfe]
+      omega)
+    (fun i (hi : i < t) => by rw [PS (wb + i) (by omega)]; exact hmw i (by omega))
+    (fun i (hi : i < t) => by
+      rw [PS (wb + t + i) (by omega), show wb + t + i = wb + (t + i) by omega]; exact hmw (t + i) (by omega))
+  refine prun _ (runsTo_trans run fun u hu => ?_)
+  rw [hy] at hu
+  obtain ⟨upc, uout, uunch, uabi, ucfg, ulen⟩ := hu
+  replace ulen := ulen rfl
+  have US : ∀ a, a < wb ∨ wb + 2 * t ≤ a → u.mem[a]? = p.mem[a]? := fun a ha => uunch a (by
+    intro r hr; simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
+    rcases hr with rfl | rfl <;> simp only [] <;> omega)
+  have KU : ∀ a, a < wb ∨ wb + 2 * t + 32 ≤ a → u.mem[a]? = s.mem[a]? := fun a ha => by
+    rw [US a (by omega), PS a (by omega)]
+  have u2 : getX u 2 = BitVec.ofNat 64 (wb + 2 * t) := by
+    rw [getX_of_abi pcfg ucfg uabi 2 (by decide), p2]
+  -- the stub, part 2
+  obtain ⟨q, qrun, qcfg, qpc, q1, q13, q10, q12, q2, qk, qmem⟩ := post_run ucfg (F := wb + 2 * t) upc hok
+    (fun i hi => instr_keep (hc i hi) fun k hk => KU _ (by
+      have := pc_toNat hok (a := i) (by have : i < 18 := hi; omega); have : i < 18 := hi; omega))
+    (by omega) (by omega) (by omega) u2
+    (fun k hk => by rw [US _ (by omega), pmem]; exact frame_0 _ _ _ _ _ _ hk)
+    (fun k hk => by rw [US _ (by omega), pmem]; exact frame_8 _ _ _ _ _ _ hk)
+    (fun k hk => by rw [US _ (by omega), pmem]; exact frame_16 _ _ _ _ _ _ hk)
+    (fun k hk => by rw [US _ (by omega), pmem]; exact frame_24 _ _ _ _ _ _ hk)
+  refine qrun _ ?_
+  -- `g`
+  have run2 := hg (f a) q (entry + BitVec.ofNat 64 (4 * 18)) ra ⟨wb, y.length⟩ ⟨ob, ol⟩
+    ⟨wb + 2 * t + 32, W - 2 * t - 32⟩ (by rw [hy]; exact hmg) qcfg qpc (by rw [tge]; omega)
+    (by rw [tge, ← hbg]; exact bytesAt_congr fun i hi => by rw [qmem]; exact KU _ (by omega))
+    (by rw [qcfg.x10, q10, x12])
+    (by rw [qcfg.x11, qk 11 (by decide) (by decide) (by decide) (by decide) (by decide), hy, ← ucfg.x11, ulen])
+    (by rw [qcfg.x12, q12]) (by rw [qcfg.x13, q13, x13])
+    (by rw [qcfg.x2, q2, x2]; congr 2; show wb + W = wb + 2 * t + 32 + (W - 2 * t - 32); omega)
+    (by rw [qcfg.x1, q1, x1]) hra (by simp only [disjoint, tge]; omega)
+    (by rw [hy, ← uout]; exact bytesAt_congr fun i hi => by rw [qmem])
+    (by rw [hy]) hzl (by rw [hy]; show spg y.length ≤ W - 2 * t - 32; omega)
+    (by show (wb + 2 * t + 32) % 8 = 0; omega)
+    (by
+      simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq, Region.inRAM, tge]
+      omega)
+    (by
+      simp only [List.pairwise_cons, List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq,
+        List.Pairwise.nil, and_true, disjoint, false_implies, implies_true, tge]
+      omega)
+    (fun i (hi : i < ol) => by rw [qmem, KU (ob + i) (by omega)]; exact hmo i hi)
+    (fun i (hi : i < W - 2 * t - 32) => by
+      rw [qmem, KU (wb + 2 * t + 32 + i) (by omega), show wb + 2 * t + 32 + i = wb + (2 * t + 32 + i) by omega]
+      exact hmw (2 * t + 32 + i) (by omega))
+  refine runsTo_mono run2 fun v hv => ?_
+  obtain ⟨vpc, vout, vunch, vabi, vcfg, vlen⟩ := hv
+  refine ⟨vpc, vout, fun a ha => ?_, abi_of_getX h vcfg fun j hj => ?_, vcfg, vlen⟩
+  · simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq] at ha
+    rw [vunch a (by
+      intro r hr; simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
+      rcases hr with rfl | rfl
+      · exact ha.1
+      · simp only []; omega), qmem, KU a (by omega)]
+  · rw [getX_of_abi qcfg vcfg vabi j hj]
+    simp only [saved, List.mem_cons, List.not_mem_nil, or_false] at hj
+    rcases hj with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl
+    · exact q2
+    all_goals
+      rw [qk _ (by decide) (by decide) (by decide) (by decide) (by decide),
+        getX_of_abi pcfg ucfg uabi _ (by decide),
+        pk _ (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)]
 
 end Nano.Link
