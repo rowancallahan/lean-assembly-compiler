@@ -472,14 +472,15 @@ theorem li_ok {P : List UInt8} {s : St} {n : UInt64} {rest : List UInt8} (h : Co
 
 /-! ## stack operations -/
 
-/-- `push` on the stack: `t0` becomes the new top slot -/
-theorem push_stk {P : List UInt8} {s : St} {rest : List UInt8} (h : CodeAt P s.pc (S.push ++ rest)) {T W : Nat}
+/-- `push` on the stack: `t0` becomes the new top slot (and the memory written) -/
+theorem push_stkm {P : List UInt8} {s : St} {rest : List UInt8} (h : CodeAt P s.pc (S.push ++ rest)) {T W : Nat}
     {vals : List (BitVec 64)} (hs : Stk s T vals) (h12 : s.get 12 = BitVec.ofNat 64 W)
     (hW : W + 8 * (vals.length + 1) ≤ T) (hT : T < 2 ^ 64) :
-    ∃ s', Star P s s' ∧ Stk s' T (vals ++ [s.get 5]) ∧ Kept s s' ∧ CodeAt P s'.pc rest := by
+    ∃ s', Star P s s' ∧ Stk s' T (vals ++ [s.get 5]) ∧ Kept s s' ∧ CodeAt P s'.pc rest ∧
+      s'.m = wr64 s.m (T - 8 * (vals.length + 1)) (s.get 5) := by
   obtain ⟨h31, hv⟩ := hs
   obtain ⟨s', x, p', g31, m', k'⟩ := push_ok h h31 h12 (by omega) (by omega)
-  refine ⟨s', x, ⟨?_, fun k hk => ?_⟩, fun j a b c => k' j c, ?_⟩
+  refine ⟨s', x, ⟨?_, fun k hk => ?_⟩, fun j a b c => k' j c, ?_, by rw [m']; congr 1⟩
   · rw [g31]; congr 1; simp; omega
   · rw [m']
     simp only [List.length_append, List.length_singleton] at hk
@@ -488,6 +489,12 @@ theorem push_stk {P : List UInt8} {s : St} {rest : List UInt8} (h : CodeAt P s.p
     · rw [rd64_wr64_out _ _ _ _ (by omega), List.getElem_append_left (by omega)]; exact hv k (by omega)
   · obtain ⟨pre, post, hP, hl⟩ := h
     exact ⟨pre ++ S.push, post, by rw [hP]; simp, by rw [p']; simp [S.push, S.r, S.sd]; omega⟩
+
+theorem push_stk {P : List UInt8} {s : St} {rest : List UInt8} (h : CodeAt P s.pc (S.push ++ rest)) {T W : Nat}
+    {vals : List (BitVec 64)} (hs : Stk s T vals) (h12 : s.get 12 = BitVec.ofNat 64 W)
+    (hW : W + 8 * (vals.length + 1) ≤ T) (hT : T < 2 ^ 64) :
+    ∃ s', Star P s s' ∧ Stk s' T (vals ++ [s.get 5]) ∧ Kept s s' ∧ CodeAt P s'.pc rest :=
+  let ⟨s', x, st, k, c, _⟩ := push_stkm h hs h12 hW hT; ⟨s', x, st, k, c⟩
 
 /-- `ld t0, 8k(t6)` reading slot `j` -/
 theorem ldslot_ok {P : List UInt8} {s : St} {j : Nat} {rest : List UInt8} {T : Nat} {vals : List (BitVec 64)}
@@ -827,5 +834,51 @@ theorem rd8_ok {P : List UInt8} {s : St} {rest : List UInt8} (h : CodeAt P s.pc 
       rw [get_set_same _ (show (5 : Nat) ≠ 0 by decide)]
       simp [rdL, unle])
   exact ⟨s2, x1.trans x2, by rw [g2]; rfl, by rw [m2]; rfl, fun j a b => by rw [k2 j a b, get_set_ne _ a]; rfl, c2⟩
+
+/-- `addi t3, t3, 8` -/
+theorem inc3_ok {P : List UInt8} {s : St} {rest : List UInt8} (h : CodeAt P s.pc (S.r 2 28 28 1 ++ rest)) {A : Nat}
+    (h28 : s.get 28 = BitVec.ofNat 64 A) (hA : A + 8 < 2 ^ 64) :
+    Star P s ((({ s with pc := s.pc + 1 } : St)).set 28 (BitVec.ofNat 64 (A + 8))) ∧ CodeAt P (s.pc + 1) rest := by
+  have h' : CodeAt P s.pc (2 :: 28 :: 28 :: 1 :: rest) := h
+  refine ⟨one h' ?_, codeAt_drop h'⟩
+  show Out.next _ = _
+  rw [show UInt8.toNat 28 = 28 from rfl, h28, show sext8 1 = 1 by decide]
+  congr 2; apply BitVec.eq_of_toNat_eq; (simp [BitVec.toNat_add]; try omega)
+
+theorem rdL_wr64_out (m : Nat → UInt8) (a b : Nat) (v : BitVec 64) (h : b + 8 ≤ a ∨ a + 8 ≤ b) :
+    rdL (wr64 m a v) b 8 = rdL m b 8 := by unfold wr64; rw [rdL_wrL_out _ _ _ _ _ (by rw [leN_length]; exact h)]
+
+/-- `pro k`: the next `k` argument words (at `t3`) pushed in order -/
+theorem pro_ok {P : List UInt8} (hT2 : T < 2 ^ 64) : ∀ (k : Nat) (vals : List (BitVec 64)) (s : St) (rest : List UInt8)
+    (A : Nat), CodeAt P s.pc (S.pro k ++ rest) → Stk s T vals → s.get 12 = BitVec.ofNat 64 W →
+    s.get 28 = BitVec.ofNat 64 A → W + 8 * (vals.length + k) ≤ T → (A + 8 * k ≤ W ∨ T ≤ A) → A + 8 * k + 8 < 2 ^ 64 →
+    ∃ s', Star P s s' ∧
+      Stk s' T (vals ++ (List.range k).map fun i => BitVec.ofNat 64 (unle (rdL s.m (A + 8 * i) 8))) ∧
+      (∀ j, j ≠ 5 → j ≠ 6 → j ≠ 31 → j ≠ 28 → s'.get j = s.get j) ∧ CodeAt P s'.pc rest
+  | 0, vals, s, rest, A, h, hs, _, _, _, _, _ => ⟨s, .refl _, by simpa using hs, fun _ _ _ _ _ => rfl, by simpa [S.pro] using h⟩
+  | k + 1, vals, s, rest, A, h, hs, h12, h28, hW, hd, hA => by
+    simp only [S.pro, List.append_assoc] at h
+    obtain ⟨s1, x1, g1, m1, k1, c1⟩ := rd8_ok h h28 (by omega)
+    obtain ⟨s2, x2, st2, k2, c2, mm2⟩ := push_stkm c1 (stk_kept hs m1 (k1 31 (by decide) (by decide)))
+      (by rw [k1 12 (by decide) (by decide)]; exact h12) (by omega) hT2
+    have g28 : s2.get 28 = BitVec.ofNat 64 A := by
+      rw [k2 28 (by decide) (by decide) (by decide), k1 28 (by decide) (by decide)]; exact h28
+    obtain ⟨x3, c3⟩ := inc3_ok c2 g28 (by omega)
+    generalize hs3 : ((({ s2 with pc := s2.pc + 1 } : St)).set 28 (BitVec.ofNat 64 (A + 8))) = s3 at x3
+    have st3 : Stk s3 T (vals ++ [s1.get 5]) := stk_kept st2 (by rw [← hs3]; rfl) (by rw [← hs3, get_set_ne _ (by decide)]; rfl)
+    obtain ⟨s4, x4, st4, k4, c4⟩ := pro_ok hT2 k (vals ++ [s1.get 5]) s3 rest (A + 8) (by rw [← hs3]; exact c3) st3
+      (by rw [← hs3, get_set_ne _ (by decide)]; show s2.get 12 = _; rw [k2 12 (by decide) (by decide) (by decide),
+        k1 12 (by decide) (by decide)]; exact h12)
+      (by rw [← hs3]; simp) (by simp; omega) (by omega) (by omega)
+    refine ⟨s4, x1.trans (x2.trans (x3.trans x4)), ?_, fun j a b c d => ?_, c4⟩
+    · have e : ∀ i, i < k → rdL s3.m (A + 8 + 8 * i) 8 = rdL s.m (A + 8 * (i + 1)) 8 := fun i hi => by
+        rw [show s3.m = s2.m by rw [← hs3]; rfl, mm2, rdL_wr64_out _ _ _ _ (by omega), m1]; congr 1; omega
+      have e2 : (List.range k).map (fun i => BitVec.ofNat 64 (unle (rdL s3.m (A + 8 + 8 * i) 8))) =
+          (List.range k).map (fun i => BitVec.ofNat 64 (unle (rdL s.m (A + 8 * (i + 1)) 8))) :=
+        List.map_congr_left fun i hi => by rw [e i (List.mem_range.1 hi)]
+      rw [e2] at st4
+      rw [List.range_succ_eq_map, List.map_cons, List.map_map]
+      simpa [g1, Function.comp] using st4
+    · rw [k4 j a b c d, ← hs3, get_set_ne _ d]; show s2.get j = _; rw [k2 j a b c, k1 j a b]
 
 end Nano.R
