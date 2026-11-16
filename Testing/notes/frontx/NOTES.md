@@ -1800,6 +1800,15 @@ Reproduce: `lake build Frontx`; `lake env lean --tstack=400000 Testing/asm/emit_
 `for f in Testing/asm/frontx-words/{int,wa_int}_*.cases; do python3 Testing/asm/frontx_test.py check 50 $(basename $f .cases); done`;
 `bash Testing/scripts/wa_check.sh`.
 
+**State (paused, 2026-11-16).** Round complete on `feat-int` (merged with origin/main @69ebe82): `check.sh` ALL CHECKS
+PASSED, 20 list-path + 4 word-array `Int` entries tested (70 cases each, QEMU = Sail = Lean). Next steps:
+1. `Int` fields/arguments in the inductive path (`Compiler/Ind*.lean`), then con-leche `Level.leq`/`rest`/`byCases`.
+2. `bicNear`: keep nested quotients' obligations small (generalise more eagerly, or one lemma per `edivB` level).
+3. `Fx.clamp` inside `wa_compile` loops: find the `index out of bounds` in `WaCmd.lean`'s reflection.
+4. `Int` structures (`Mat`, `Pt`) as parameters/results; `Option Int` results (`Filter.n16At`, `parseNumber16`).
+5. Speed: `x / 2^k` on `Int` as an arithmetic shift; make `emit_int.lean` fast (precompute the codes).
+6. Non-vacuity corollaries once a per-function generator exists; re-freeze fingerprints (owner).
+
 ## 27. Higher-order arguments by specialisation (branch `feat-hof`)
 
 Files: `Riscv/Frontx/SpecHof.lean` (new: the pass and the commands), `Riscv/Frontx/HofExamples.lean` (new: targets),
