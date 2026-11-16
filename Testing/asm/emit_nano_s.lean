@@ -25,10 +25,10 @@ def mkArgs : List Ex → Ex
 
 /-- a random expression over `nv` variables (some indices out of range on purpose), depth `d` -/
 def tE : Nat → Nat → Nat → Ex
-  | 0, nv, s => if nv > 0 && rnd s 3 % 3 != 0 then .var (rnd s 4 % nv) else .num (word s)
+  | 0, nv, s => if rnd s 3 % 3 != 0 then .var (rnd s 4 % (nv + 1)) else .num (word s)
   | d + 1, nv, s => match rnd s d % 9 with
     | 0 => .num (word s)
-    | 1 => if nv > 0 then .var (rnd s 5 % nv) else .num (word s)
+    | 1 => .var (rnd s 5 % (nv + 1))
     | 2 => .add (tE d nv (2 * s + 1)) (tE d nv (2 * s + 2))
     | 3 => .sub (tE d nv (2 * s + 1)) (tE d nv (2 * s + 2))
     | 4 => .mul (tE d nv (2 * s + 1)) (tE d nv (2 * s + 2))
@@ -40,7 +40,7 @@ def tE : Nat → Nat → Nat → Ex
 
 /-- a full tree of operators / lets / calls of depth `d` (large frames: hundreds of slots) -/
 def tBig : Nat → Nat → Nat → Ex
-  | 0, nv, s => if nv > 0 then .var (rnd s 4 % nv) else .num (word s)
+  | 0, nv, s => if nv > 0 then .var (rnd s 4 % (nv + 1)) else .num (word s)
   | d + 1, nv, s => match rnd s d % 5 with
     | 0 => .add (tBig d nv (2 * s + 1)) (tBig d nv (2 * s + 2))
     | 1 => .sub (tBig d nv (2 * s + 1)) (tBig d nv (2 * s + 2))
@@ -49,6 +49,7 @@ def tBig : Nat → Nat → Nat → Ex
     | _ => .call (tBig d 2 (2 * s + 1)) (mkArgs [tBig d nv (2 * s + 2), .num (word s)])
 
 def progs : List Prog :=
+  [(1, .add (.var 0) .anil), (0, .call (.var 0) (.num 3)), (2, .acons (.num 1) (.num 2)), (1, .mul (.call (.add (.var 0) (.var 3)) (.acons (.var 0) .anil)) (.var 9))] ++
   (List.range 6).map (fun i => (i % 4, tBig (i + 5) (i % 4) (i * 13 + 3))) ++
   (List.range 30).map fun i => (i % 4, tE (i % 6 + 1) (i % 4) (i * 7 + 1))
 

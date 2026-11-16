@@ -66,6 +66,12 @@ for s in ["", " ", "\n", "-- c\n", "def f (x : UInt64) : UInt64 := x", "def f (x
           "def f (x : UInt64) : UInt64 := x\ndef g (y : UInt64) : UInt64 := let z := f y\n z + z\n", "DEF f (x : UInt64) : UInt64 := x\n", "def F (x : UInt64) : UInt64 := x\n", "def f (X : UInt64) : UInt64 := X\n",
           "def f (x : uint64) : uint64 := x\n", "def f (x : UInt64) : UInt64 := x\ndef g (y : UInt64) : UInt64 := h y\n", "def f (x : UInt64) : UInt64 := Nat.succ x\n"]:
     cases.append(case(s, "g" if "def g (y" in s and "def f" in s and s.index("def g (y") > s.index("def f") else "f", "UInt64", 3))
+# shadowing of earlier defs by parameters / lets, and uses of the shadowing name as a function
+for nm in ["g", "h", "k"]:
+    for e in [f"{nm} + 1", f"{nm} 1", f"{nm} x", f"{nm} {nm}", f"{nm} ({nm} + 1)", f"let {nm} := x + 1; {nm} * {nm}", f"let {nm} := x + 1; {nm} {nm}", f"({nm}) - x", f"x - {nm} -1", f"x - {nm} - 1"]:
+        for ps in ["x", f"x {nm}", f"{nm} x", f"{nm}"]:
+            cases.append(case(H + f"def f ({ps} : UInt64) : UInt64 := {e}\n"))
+            cases.append(case(H + f"def f ({ps} : Int64) : Int64 := {e}\n", ty="Int64"))
 # every name of Init's root namespace and every identifier-like token of Lean's parser, as def name / parameter / let name; and the nano identifier class
 os.makedirs(os.path.join(D, "work"), exist_ok=True)
 if not os.path.exists(os.path.join(D, "work", "roots.txt")):

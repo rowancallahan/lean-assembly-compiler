@@ -41,14 +41,14 @@ def cnt : Ex → Nat
 mutual
 def genE : List Nat → Nat → Ex → List UInt8
   | _, _, .num n => li n ++ push
-  | sc, d, .var i => ld 5 31 (d - 1 - sc.getD i 0) ++ push
+  | sc, d, .var i => (match sc[i]? with | some s => ld 5 31 (d - 1 - s) ++ push | none => li 0 ++ push)
   | sc, d, .add a b => genE sc d a ++ genE sc (d + 1) b ++ binop 24
   | sc, d, .sub a b => genE sc d a ++ genE sc (d + 1) b ++ binop 32
   | sc, d, .mul a b => genE sc d a ++ genE sc (d + 1) b ++ binop 40
   | sc, d, .let_ v b => genE sc d v ++ genE (d :: sc) (d + 1) b ++ ld 5 31 0 ++ addSp 1 ++ sd 5 31 0
   | sc, d, .call b as =>
     genA sc d as ++ genE (mkSc (cnt as) d) (d + cnt as) b ++ ld 5 31 0 ++ addSp (cnt as) ++ sd 5 31 0
-  | _, _, _ => []
+  | _, _, _ => li 0 ++ push   -- `anil`/`acons` as expressions mean 0 (`den`)
 def genA : List Nat → Nat → Ex → List UInt8
   | sc, d, .acons e r => genE sc d e ++ genA sc (d + 1) r
   | _, _, _ => []
@@ -80,7 +80,7 @@ def depE : Nat → Ex → Nat
   | d, .mul a b => max (depE d a) (depE (d + 1) b)
   | d, .let_ v b => max (depE d v) (depE (d + 1) b)
   | d, .call b as => max (depA d as) (depE (d + cnt as) b)
-  | _, _ => 0
+  | d, _ => d + 1
 def depA : Nat → Ex → Nat
   | d, .acons e r => max (depE d e) (depA (d + 1) r)
   | _, _ => 0
