@@ -12,11 +12,11 @@ Then `lake build <target>` should rebuild only this repo's own modules.
   (if your home differs, edit SAIL in frontx_test.py locally or symlink /home/user/deps).
 - `repo-build.tar.zst.part-aa` … `-ad`: this repo's `.lake/build` at main fa8183c (Lean 4.29.0), zstd, split in
   90 MB parts. Restore from the repo root (after the Sail dependency above):
-  `for p in aa ab ac ad; do git show origin/build-cache:repo-build.tar.zst.part-$p; done | zstd -dc | tar xf -`
+  `for p in $(git ls-tree --name-only origin/build-cache | grep '^repo-build.tar.zst.part-' | sort); do git show origin/build-cache:$p; done | zstd -dc | tar xf -`
   Then `lake build` rebuilds only modules changed since caa4cee.
 - No zstd on the box? `apt-get install -y zstd` (package registries are reachable), or ask the parent for .tar.gz.
 
 ## Without zstd: gzip copies (same contents)
 - `sail-riscv-lean.tar.gz`: `mkdir -p ../deps && git show origin/build-cache:sail-riscv-lean.tar.gz | tar xzf - -C ../deps`
 - `sailsim.tar.gz`: `mkdir -p /home/user/deps && git show origin/build-cache:sailsim.tar.gz | tar xzf - -C /home/user/deps`
-- `repo-build.tar.gz.part-aa..` (main fa8183c): `for p in aa ab ac ad; do git show origin/build-cache:repo-build.tar.gz.part-$p; done | tar xzf -`
+- `repo-build.tar.gz.part-aa..` (main fa8183c): `for p in $(git ls-tree --name-only origin/build-cache | grep '^repo-build.tar.gz.part-' | sort); do git show origin/build-cache:$p; done | tar xzf -`
