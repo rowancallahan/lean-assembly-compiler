@@ -1,0 +1,109 @@
+int_clampix: 63 cases ok on qemu (seed 23; max input 59 B, max out 8 B, max work 239 B; heap/stack gap min 7 B, max written fraction 0.971; Lean PANIC (default value on short input) x0)
+int_clamp: 63 cases ok on qemu (seed 23; max input 59 B, max out 8 B, max work 119 B; heap/stack gap min 7 B, max written fraction 0.941; Lean PANIC (default value on short input) x0)
+int_abs: 63 cases ok on qemu (seed 23; max input 57 B, max out 8 B, max work 119 B; heap/stack gap min 7 B, max written fraction 0.941; Lean PANIC (default value on short input) x0)
+int_ceil: 63 cases ok on qemu (seed 23; max input 57 B, max out 8 B, max work 143 B; heap/stack gap min 7 B, max written fraction 0.951; Lean PANIC (default value on short input) x0)
+int_clamplin: 63 cases ok on qemu (seed 23; max input 59 B, max out 8 B, max work 119 B; heap/stack gap min 7 B, max written fraction 0.941; Lean PANIC (default value on short input) x0)
+int_clampto: 63 cases ok on qemu (seed 23; max input 59 B, max out 8 B, max work 239 B; heap/stack gap min 7 B, max written fraction 0.971; Lean PANIC (default value on short input) x0)
+int_fitsi16: 63 cases ok on qemu (seed 23; max input 59 B, max out 1 B, max work 119 B; heap/stack gap min 7 B, max written fraction 0.941; Lean PANIC (default value on short input) x0)
+int_floor: 63 cases ok on qemu (seed 23; max input 59 B, max out 8 B, max work 143 B; heap/stack gap min 7 B, max written fraction 0.951; Lean PANIC (default value on short input) x0)
+int_inrange: 63 cases ok on qemu (seed 23; max input 58 B, max out 1 B, max work 119 B; heap/stack gap min 7 B, max written fraction 0.941; Lean PANIC (default value on short input) x0)
+int_insidew: 63 cases ok on qemu (seed 23; max input 59 B, max out 1 B, max work 255 B; heap/stack gap min 7 B, max written fraction 0.973; Lean PANIC (default value on short input) x0)
+int_lininrange: 63 cases ok on qemu (seed 23; max input 59 B, max out 1 B, max work 119 B; heap/stack gap min 7 B, max written fraction 0.941; Lean PANIC (default value on short input) x0)
+int_max: 63 cases ok on qemu (seed 23; max input 59 B, max out 8 B, max work 231 B; heap/stack gap min 7 B, max written fraction 0.970; Lean PANIC (default value on short input) x0)
+int_morphceil: 63 cases ok on qemu (seed 23; max input 59 B, max out 8 B, max work 231 B; heap/stack gap min 7 B, max written fraction 0.970; Lean PANIC (default value on short input) x0)
+int_min: 63 cases ok on qemu (seed 23; max input 59 B, max out 8 B, max work 231 B; heap/stack gap min 7 B, max written fraction 0.970; Lean PANIC (default value on short input) x0)
+int_mul: 63 cases ok on qemu (seed 23; max input 59 B, max out 8 B, max work 271 B; heap/stack gap min 7 B, max written fraction 0.974; Lean PANIC (default value on short input) x0)
+int_norm2: 63 cases ok on qemu (seed 23; max input 58 B, max out 8 B, max work 247 B; heap/stack gap min 7 B, max written fraction 0.972; Lean PANIC (default value on short input) x0)
+int_ofnat: 63 cases ok on qemu (seed 23; max input 59 B, max out 8 B, max work 127 B; heap/stack gap min 7 B, max written fraction 0.945; Lean PANIC (default value on short input) x0)
+int_round32: 63 cases ok on qemu (seed 23; max input 56 B, max out 8 B, max work 127 B; heap/stack gap min 7 B, max written fraction 0.945; Lean PANIC (default value on short input) x0)
+int_round: 63 cases ok on qemu (seed 23; max input 59 B, max out 8 B, max work 143 B; heap/stack gap min 7 B, max written fraction 0.951; Lean PANIC (default value on short input) x0)
+int_scale16: 63 cases ok on qemu (seed 23; max input 59 B, max out 8 B, max work 271 B; heap/stack gap min 7 B, max written fraction 0.974; Lean PANIC (default value on short input) x0)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+wa_entryat: 63 cases ok on qemu (seed 23; max input 8 B, max out 4 B, max work 2087 B; heap/stack gap min 7 B, max written fraction 0.997; Lean PANIC (default value on short input) x0)
+wa_int_sumdev: 63 cases ok on qemu (seed 23; max input 54 B, max out 8 B, max work 71 B; heap/stack gap min 7 B, max written fraction 0.901; Lean PANIC (default value on short input) x0)
+wa_int_fxrounds: 63 cases ok on qemu (seed 23; max input 58 B, max out 8 B, max work 71 B; heap/stack gap min 7 B, max written fraction 0.901; Lean PANIC (default value on short input) x28)
+wa_lenat: 63 cases ok on qemu (seed 23; max input 8 B, max out 1 B, max work 2087 B; heap/stack gap min 7 B, max written fraction 0.997; Lean PANIC (default value on short input) x0)
+wa_mixhash: 63 cases ok on qemu (seed 23; max input 16 B, max out 8 B, max work 63 B; heap/stack gap min 7 B, max written fraction 0.889; Lean PANIC (default value on short input) x0)
+wa_symat: 63 cases ok on qemu (seed 23; max input 8 B, max out 2 B, max work 2095 B; heap/stack gap min 7 B, max written fraction 0.997; Lean PANIC (default value on short input) x0)
+wa_int_iops: 63 cases ok on qemu (seed 23; max input 59 B, max out 8 B, max work 55 B; heap/stack gap min 7 B, max written fraction 0.873; Lean PANIC (default value on short input) x70)
+wa_int_icmp: 63 cases ok on qemu (seed 23; max input 58 B, max out 8 B, max work 55 B; heap/stack gap min 7 B, max written fraction 0.873; Lean PANIC (default value on short input) x73)
