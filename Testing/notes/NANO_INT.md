@@ -66,3 +66,14 @@ work block is too small. L1 = `B` computes `nanoCompileS`; L2 = `CompileCorrect`
   (compilable like `asm`). The tree walk moves into `ser`, i.e. into the front-end stage: a one-pass byte-level
   elaborator has to emit `ser p` directly (`serE` of a callee body is call-site independent, so inlining = copying).
   Honest reading: after this, what is NOT yet compiled by our compiler is `ser ∘ nanoElab` (text → micro-ops).
+* 2026-11-16 23:45. `bash Testing/scripts/check.sh` on the merged tree 7e134c9: ALL CHECKS PASSED (statement-fingerprint
+  WARNING only, not re-frozen). nano-proof fast-forwarded onto nano-int (9c7590a: `genR_ok`/`genR_oom` on the record
+  machine, `Nano/StackFam.lean` record → word families).
+* LINKER TEST on machines: `python3 Testing/nano/link_test.py 6` — the binary `link nanoAsm.code nanoAsm.code` (776
+  words; computes `asm ∘ asm`, theorem `link_stage`) on QEMU and Sail == executed Lean for 45 inputs (records of the
+  corpus + 6 random programs, up to 1592 bytes), work space exactly the theorem's `4 K + 96` (rounded up to 8), a1 =
+  length, sp/gp restored, every Sail write inside output + work.
+* Compile-time finding for stages in the list front end: cost grows fast with the number of stored constant bytes per
+  arm. `asm` (4 bytes per record, 4 table expressions): ~80 s. A 3-arm pass with one 20-byte arm: > 20 CPU-min for
+  `frontx_compile` alone (stopped). `mexp` (13 arms, 124 stored bytes): running detached since 23:47
+  (`Nano/ExpandSelf.lean`, not committed until it finishes).
