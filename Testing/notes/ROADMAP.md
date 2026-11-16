@@ -272,3 +272,33 @@ dependency closure; theorem STATEMENTS (`Spec/`) are reviewed by the owner, not 
 - The exporter (lean4export) is the remaining unverified link for the checkers that read the export. Later item: a
   round-trip theorem `parse (export decls) = decls` with con-leche's own parser (both pure Lean functions), then compile
   exporter + parser with our compiler. Chain: elaborator (spec) → exporter (proved) → compiled con-leche (proved) → accept.
+
+### Nano: a tiny fully self-hosting toolchain (owner, 2026-11-16)
+
+PRIORITY (owner, 2026-11-16 21:50): full self-hosting of nano comes FIRST. It is the through line (spec = own small
+elaborator; back end proved with the big compiler's pieces; self-hosting checked by an exact fixed point) that later
+structures the big compiler; its syntax is opened up later by putting the full Lean elaborator in front. Boxes: nano-e2e
+(Sonnet: elaborator, byte-level rewrites, self-hosted binary), nano-proof (Opus: generator proofs), nano-v2 (Opus:
+self-compiling language, B2 = B3).
+UPDATE (owner, 2026-11-16 22:00): focus = a MINIMUM VIABLE nano, PROVED correct end to end and self-hosted, plus signed
+Int64 + and − (same machine code as UInt64; only the meaning and the agreement checks change). No language growth beyond
+that; v2 (self-compiling, B2 = B3) deferred until the MVP chain is closed. Box nano-mvp (Opus) replaces nano-v2.
+SUBSET RULE (owner): nano is an EXACT subset of Lean. If `nanoElab` accepts a text, Lean's elaborator accepts the same
+text with the same meaning; nano may reject anything. Checked by per-program agreement proofs, random fuzz, and an
+adversarial boundary fuzz (accept/reject compared on both sides: precedence of application vs binary minus such as
+`f -1`, numeral wrap, unary minus, shadowing of Lean globals, keywords as names, comments, whitespace). Any "nano
+accepts, Lean rejects" or "meanings differ" is a bug, fixed by rejecting.
+SPEC OWNERSHIP (owner): `nanoElab`, `Prog.eval` and the documented grammar are a DRAFT spec; the owner writes/confirms
+the final version later. Boxes keep them minimal, record evidence (agreement proofs, fuzz results, edge cases) for that
+review, and spend their effort on the proved back end and self-hosting, not on polishing the spec.
+
+- v1 (Sonnet box, branch nano-e2e): `nanoCompile = nanoGen ∘ nanoElab` (UTF-8 text → AST → RISC-V) written in Lean,
+  compiled by our compiler (binary proved to compute `nanoCompile`); elaborator checked against Lean's real elaborator
+  (per-program `rfl`/`decide` + fuzz); generated code tested on QEMU/Sail (proof = stretch).
+- v2 (queued, fresh Sonnet box after v1): grow nano just enough to write its OWN compiler (if/comparisons, recursion or
+  loops, byte input/output); write the nano compiler in nano (S); B1 = our compiler's binary of the Lean version
+  (proved); B1 compiles S → B2, B2 compiles S → B3, require B2 = B3 (fixed point); S agrees with the Lean `nanoCompile`.
+  Nano owns its whole pipeline (its elaborator is its own spec, cross-checked against Lean's), so no Lean elaborator in
+  the loop. Full proof additionally needs `nanoGen` correctness (generated code = `Prog.eval`).
+- (owner) `nanoElab` + `Prog.eval` ARE the spec of nano: never proved, only expanded (cross-checked against Lean's
+  elaborator). Everything after elaboration is proved: `CompileCorrect riscv nanoCompile`, reusing any big-compiler piece.

@@ -65,7 +65,7 @@ CASES = [tuple(map(unhex, l.split()[:2])) + tuple(int(w) for w in l.split()[2:4]
          for l in open(os.path.join(D, "frontx-words", FN + ".cases")) if l.strip()]
 lines = [l for l in open(os.path.join(D, "frontx-words", FN + ".words")) if l.strip()]
 words = [int(l, 16) for l in lines[1:]]
-G, E = 16, 72
+G, E = 16, 80
 # work space: `8 (slots + 1) + 7`, or `frame (n + 1) + 32` for programs with calls (first line `rec <frame>`)
 REC = int(lines[0].split()[1]) if lines[0].startswith("rec") else None
 # user inductives (`frontx_ind`): first line `ind A B L`, work space `A + B n`, `L = 1`: tree result, length in a1
@@ -82,6 +82,8 @@ if INDW: LISTS.add(FN)
 # paged arrays (`Riscv/Frontx/WpImpl.lean`, NOTES section 30): first line `pg L`, per case the work block in bytes and
 # `oom` (1: the work block is one page short, the code must return a1 = 2^64 - 1 and leave the output untouched)
 PG = lines[0].startswith("pg")
+# `pgs L`: paged code behind the entry stub (`Riscv/Frontx/PgMem.lean`): a0 = 2^64 - 1 exactly when out of memory, else 0
+PGS = lines[0].startswith("pgs")
 if PG:
     INDW = 0
     if int(lines[0].split()[1]): LISTS.add(FN)
@@ -111,6 +113,7 @@ _start: lla s0, tab
   sd gp, 48(s0)
   sd sp, 56(s0)
   sd a1, 64(s0)
+  sd a0, 72(s0)
   addi s0, s0, %d
   addi s2, s2, -1
   bnez s2, 1b
@@ -129,7 +132,7 @@ def build(cases, func):
         R = len(ys)
         L = len(xs); WK = wkc(case); i0 = off; o0 = i0 + L + G; w0 = (o0 + R + G + 7) // 8 * 8; off = w0 + WK + G
         lay.append((i0, o0, w0))
-        tab.append(f"  .quad base+{i0}, {L}, base+{w0}, base+{o0}, base+{w0 + WK}, {MAGIC}, 0, 0, 0")
+        tab.append(f"  .quad base+{i0}, {L}, base+{w0}, base+{o0}, base+{w0 + WK}, {MAGIC}, 0, 0, 0, 0")
         data.append(bytes(xs) + b"\xAA" * G + b"\x55" * R + b"\xAA" * G + b"\x00" * (w0 - (o0 + R + G))
                     + b"\x77" * WK + b"\xAA" * G)
     open(p("crc.bin"), "wb").write(b"".join(data))
@@ -192,7 +195,8 @@ def check(N):
             assert list(mem[o0 + R:o0 + R + G]) == [0xAA] * G, (nm, "output guard", L)
             assert list(mem[w0 + WK:w0 + WK + G]) == [0xAA] * G, (nm, "work guard", L)
             e = tab - base + E * c
-            gp, spo, a1 = (int.from_bytes(mem[e + o:e + o + 8], "little") for o in (48, 56, 64))
+            gp, spo, a1, a0 = (int.from_bytes(mem[e + o:e + o + 8], "little") for o in (48, 56, 64, 72))
+            if PGS: assert a0 == (2 ** 64 - 1 if oom else 0), (nm, "a0 (status)", hex(a0), oom)
             assert gp == MAGIC and spo == base + w0 + WK, (nm, "gp/sp", hex(gp), spo)
             if oom: assert a1 == 2 ** 64 - 1, (nm, "a1 (flag)", hex(a1))
             elif FN in LISTS: assert a1 == R, (nm, "a1 (length)", a1, R)

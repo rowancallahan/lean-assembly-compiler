@@ -1,4 +1,4 @@
-/- `frontx_mono f at τ₁ … τₖ on T [using U…]`: monomorphisation of type variables (round 1, feature B; NOTES section 35).
+/- `frontx_mono f at τ₁ … τₖ on T [using U…]`: monomorphisation of type variables (round 1, feature B; NOTES section 36).
 
 `f : {ρ₁ … ρₖ : Type} → …` (leading type parameters, e.g. the register type of `Ir.Tst ρ`, `Mach.IR.Ins α`) is
 specialised at the use site: generated

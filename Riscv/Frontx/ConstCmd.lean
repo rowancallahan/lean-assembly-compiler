@@ -1,4 +1,4 @@
-/- `frontx_const f [on T]`: a 0-ary definition folded at compile time and emitted as data (NOTES section 35).
+/- `frontx_const f [on T]`: a 0-ary definition folded at compile time and emitted as data (NOTES section 36).
 
 1. `f` must have no arguments (a function is never folded).
 2. The result encoding: `Nat` = 64-bit word (`encWord`, with the theorem `f < 2^64`), `Fin k` (`k ≤ 256`) = one byte,

@@ -1,4 +1,4 @@
-/- Compile-time constants emitted as data (round 1, feature A; NOTES section 35).
+/- Compile-time constants emitted as data (round 1, feature A; NOTES section 36).
 
 A 0-ary definition `c : β` whose encoding `encB c` the KERNEL computes (`decide +kernel` under a fixed heartbeat
 budget) to a byte list `ys` of at most `capBytes` bytes is compiled as the straight-line program `dataB ys`: one byte

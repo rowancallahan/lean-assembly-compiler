@@ -1,4 +1,4 @@
-/- Monomorphisation of type variables (`frontx_mono`, NOTES section 35): the self-hoster's IR accessors, generic in the
+/- Monomorphisation of type variables (`frontx_mono`, NOTES section 36): the self-hoster's IR accessors, generic in the
 register type (`Mach.IR.Tst ρ`, `Ir.Tst ρ`, `Mach.IR.Ins α`, `Mach.IR.Arg α`, `Ir.Block ρ`), specialised at
 `ρ := Nat` (the type after allocation) and compiled verbatim (their own equations, the type argument fixed).
 Each: `f.at_Nat.eq : f.at_Nat = @f Nat`, `f.at_Nat.implements1`. -/

@@ -1,4 +1,4 @@
-/- Compile-time constants of con-leche and the self-hoster folded and emitted as data (`frontx_const`, NOTES section 35).
+/- Compile-time constants of con-leche and the self-hoster folded and emitted as data (`frontx_const`, NOTES section 36).
 con-leche @6810492c1, verbatim (file:line before each block; generated from the depth-2 probe's source by
 `Testing/conleche-depth2`-style extraction; docstrings dropped).  The 40 `Name` constants of `ConLecheBlk.lean` are
 folded here too (as data, beside their run-time `cst` route).  Self-hoster: `Ir.R0`, `Ir.R1`, `Ir.RLim`

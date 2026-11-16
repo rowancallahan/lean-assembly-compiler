@@ -1,4 +1,4 @@
-/- Test cases of the monomorphised IR accessors (`frontx_mono`, `Riscv/Frontx/MonoExamples.lean`, NOTES section 35)
+/- Test cases of the monomorphised IR accessors (`frontx_mono`, `Riscv/Frontx/MonoExamples.lean`, NOTES section 36)
 against executed Lean: `lake env lean --tstack=4000000 Testing/asm/emit_mono.lean`, then
 `python3 Testing/asm/frontx_test.py check 60 mono_<name>`.  Work block per case: the theorem's space
 `Ind.spaceA 1 16 (fun n => M * n)` at this input's length. -/
