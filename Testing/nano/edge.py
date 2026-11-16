@@ -66,6 +66,19 @@ for s in ["", " ", "\n", "-- c\n", "def f (x : UInt64) : UInt64 := x", "def f (x
           "def f (x : UInt64) : UInt64 := x\ndef g (y : UInt64) : UInt64 := let z := f y\n z + z\n", "DEF f (x : UInt64) : UInt64 := x\n", "def F (x : UInt64) : UInt64 := x\n", "def f (X : UInt64) : UInt64 := X\n",
           "def f (x : uint64) : uint64 := x\n", "def f (x : UInt64) : UInt64 := x\ndef g (y : UInt64) : UInt64 := h y\n", "def f (x : UInt64) : UInt64 := Nat.succ x\n"]:
     cases.append(case(s, "g" if "def g (y" in s and "def f" in s and s.index("def g (y") > s.index("def f") else "f", "UInt64", 3))
+# every name of Init's root namespace and every identifier-like token of Lean's parser, as def name / parameter / let name; and the nano identifier class
+os.makedirs(os.path.join(D, "work"), exist_ok=True)
+if not os.path.exists(os.path.join(D, "work", "roots.txt")):
+    subprocess.run("PATH=$HOME/.elan/bin:$PATH lake env lean --run Testing/nano/names.lean", shell=True, cwd=ROOT, check=True, capture_output=True)
+ROOTS = open(os.path.join(D, "work", "roots.txt")).read().split("\n"); TOKS = open(os.path.join(D, "work", "tokens.txt")).read().split("\n")
+assert not [n for n in ROOTS + TOKS if re.fullmatch(r"[a-z][0-9_]*", n)], "an Init name is in nano's identifier class"
+import string
+MINE = list(string.ascii_lowercase) + [c + s for c in "afgxyz" for s in ["0", "1", "_", "__", "_1", "9_", "10", "_a"]]
+for nm in ROOTS + TOKS + MINE:
+    f1(f"def {nm} (x : UInt64) : UInt64 := x + 1\n", name=nm)
+    f1(f"def f ({nm} : UInt64) : UInt64 := {nm} + 1\n")
+    f1(f"def f (x : UInt64) : UInt64 := let {nm} := x + 1; {nm} * 2\n")
+    if nm in MINE: f1(f"def {nm} (x : UInt64) : UInt64 := x + 1\ndef f (x : UInt64) : UInt64 := {nm} x * {nm} (x + 2)\n")
 # adversarial boundary fuzz: random token soups over a boundary alphabet, and mutations of valid programs
 ALPHA = ["x", "y", "z", "g", "h", "k", "f", "1", "2", "0", "18446744073709551616", "(", ")", "+", "-", "*", ";", "let", "w", ":=", "w", " ", " ", "\n", "\t", "\r", "--", "/-", "-/", "id", "max", "add", "x'", "_", ".", "fun", "=>", ":", "UInt64", "def"]
 def soup(n): return "".join(rng.choice(ALPHA) + rng.choice(["", " ", " ", "\n"]) for _ in range(n))

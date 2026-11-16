@@ -16,10 +16,10 @@ unsafe def evalReal (env : Environment) (src name ty : String) (arity : Nat) (in
     return (st.commandState.env, !st.commandState.messages.hasErrors)
   let (_, ok) ← run src
   if !ok then return none
-  let conv (j : Nat) := if ty == "Int64" then s!"(a.getD {j} 0).toInt64" else s!"(a.getD {j} 0)"
+  let conv (j : Nat) := if ty == "Int64" then s!"(__v.getD {j} 0).toInt64" else s!"(__v.getD {j} 0)"
   let call := name ++ " " ++ " ".intercalate ((List.range arity).map conv)
   let body := if ty == "Int64" then s!"({call}).toUInt64" else call
-  let (env2, ok2) ← run (src ++ s!"\ndef __w (a : List UInt64) : UInt64 := {body}\n")
+  let (env2, ok2) ← run (src ++ s!"\ndef __w (__v : List UInt64) : UInt64 := {body}\n")
   if !ok2 then return some ["?"]
   match env2.evalConst (List UInt64 → UInt64) {} `__w with
   | .error _ => return some ["?"]
