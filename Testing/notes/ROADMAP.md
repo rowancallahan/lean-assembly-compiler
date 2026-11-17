@@ -352,3 +352,6 @@ the length register (and, for item 2, zeroes the rest).
   against `nanoElabT` (ElabU, ElabB*, ParseB*) must follow. Owner decides; until then state the bound in the domain of
   `Nano.selfHosted`. Exhaustive check otherwise clean: all bodies of 1–6 tokens over a 15-token alphabet (~13M
   texts): 0 differences against Lean.
+  DECISION (owner, 2026-11-17 06:40): REMINDER, do after self-hosting closes — add the depth/length limit to the spec
+  (preferably as an explicit parameter of `nanoElab`, e.g. `nanoElab (lim : Limits) src`), then update the proofs. Until
+  then `Nano.selfHosted` carries the bound in its stated domain.
