@@ -349,6 +349,12 @@ attribute [s3_norm] UInt64.toBitVec_ofNat
 @[s3_norm] theorem u8_ofBitVec_sw (x : BitVec 64) : UInt8.ofBitVec (x.setWidth 8) = UInt8.ofNat x.toNat := by
   apply UInt8.toNat_inj.mp; simp
 @[s3_norm] theorem u64_toUInt8_ofNat (y : UInt64) : y.toUInt8 = UInt8.ofNat y.toNat := rfl
+@[s3_norm] theorem nat_beq_decide (a b : Nat) : (a == b) = decide (a = b) := by
+  cases h : decide (a = b) <;> simp_all
+@[s3_norm] theorem list_u8_beq (x y : List UInt8) : @List.beq UInt8 instBEqOfDecidableEq x y = decide (x = y) := by
+  induction x generalizing y with
+  | nil => cases y <;> rfl
+  | cons a r ih => cases y <;> simp [List.beq, ih, Lean.Grind.beq_eq_decide_eq]
 
 @[simp] theorem u8_and_ff (x : UInt8) : (x &&& @OfNat.ofNat UInt8 (255 : Nat) UInt8.instOfNat) = x := by
   apply UInt8.toNat_inj.mp
