@@ -147,7 +147,8 @@ def cE (env : List (Ty × Nat)) (d : Nat) : Ex → Option (SC × Ty)
     | _, _, _, _ => none
   | .let_ v b => match cE env d v with
     | some (cv, τ) => match cE ((τ, d) :: env) (d + τ.size) b with
-      | some (cb, ρ) => if τ.size ≤ Lim then some (.seq (.seq cv cb) (.ins (slide ρ.size τ.size)), ρ) else none
+      | some (cb, ρ) => if τ.size ≤ Lim ∧ ρ.size ≤ Lim then some (.seq (.seq cv cb) (.ins (slide ρ.size τ.size)), ρ)
+        else none
       | none => none
     | none => none
   | .pair a b => match cE env d a with
@@ -165,7 +166,7 @@ def cE (env : List (Ty × Nat)) (d : Nat) : Ex → Option (SC × Ty)
   | .split e b => match cE env d e with
     | some (ce, .prod τ σ) =>
       match cE ((σ, d + τ.size) :: (τ, d) :: env) (d + τ.size + σ.size) b with
-      | some (cb, ρ) => if τ.size + σ.size ≤ Lim then
+      | some (cb, ρ) => if τ.size + σ.size ≤ Lim ∧ ρ.size ≤ Lim then
           some (.seq (.seq ce cb) (.ins (slide ρ.size (τ.size + σ.size))), ρ) else none
       | none => none
     | _ => none

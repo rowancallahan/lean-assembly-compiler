@@ -1000,3 +1000,4 @@
 'Nano.V2.af_genR'dependsonaxioms:[propext,Classical.choice,Quot.sound]
 'NanoV2Agree.P0.agree'dependsonaxioms:[propext,Classical.choice,Quot.sound]
 'NanoV2Agree.P8.agree'dependsonaxioms:[propext,Classical.choice,Quot.sound]
+'Nano.V2B.cE_ok'dependsonaxioms:[propext,Classical.choice,Quot.sound]

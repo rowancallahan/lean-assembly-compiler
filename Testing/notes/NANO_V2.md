@@ -199,3 +199,21 @@ OPEN PROBLEMS:
 - Two agreement sources do not close with the generic tactic (listed in gen_agree_v2.py); the Int64 meaning has no
   `denI` for v2 (Int64 dropped for milestone 1 anyway).
 - Increment 3 (products): NOT started; no code exists.
+
+## MERGED BOX (workers 1+2), 2026-11-17: increment 3 (products)
+- Merged `nano-v2-backend` into `nano-v2`. DECISION: ONE AST = worker 2's typed `Nano.V2B.Ex`/`Tl` (Nano/V2/Lang.lean);
+  the increment-1/2 path (`Nano.V2.E`, v1 records, `nano_stack_correct`) stays as the proved link for pure words.
+- Front end `Nano/V2/Front.lean` (`frontElabK κ`, `frontElab` = κ 65536): surface AST `S` (calls kept, for the guards),
+  lowered to `Ex` with calls inlined (`let` chains, `Ex.lift`). Products: `T × T`, `(a, b)` / tuples, `.1`/`.2`,
+  `let (a, b) := e;`. I/O prelude: `rd x i`, `len x`, `put o b`, `[]` (output = buffer `mk κ`). Main = last def
+  `def m (x : List UInt8) : List UInt8`; empty output ↦ status 1. Rules: input = a def's first `List UInt8` parameter;
+  every pair component TYPED; conservative ownership (a buffer-holding variable occurs ≤ 1 time, larger `if` branch);
+  declared types checked with `tyOf` (bodies, call arguments); v1 identifier rule; shift guard ported.
+- Proof `Nano/V2/Comp.lean` **`Nano.V2B.cE_ok`**: `cE` correct on the loop-free, buffer-free fragment `Ex.Pure`
+  (words, bin, ite, let, pair, fst, snd, split, isize, iget): typing (`Val.HasTy`) + run (`Post` with `Val.flat`)
+  from `EnvRep`. Axioms propext/Classical.choice/Quot.sound; module < 3 s. `cE` now also checks `ρ.size ≤ Lim` in
+  `let_`/`split` (the slide's 12-bit offsets).
+- Tests: `Testing/nano/v2f/fuzz.py N SEED` (random product programs vs Lean `#eval`; hand cases p*.lean; negatives
+  neg*.lean must be rejected): 101 programs × 12 inputs agree, 7 negatives rejected (local). `EMIT=1` writes
+  `nv2f_*` words/cases for `v2b_test.py` (QEMU + Sail).
+- NOT yet: machine-level theorem for a whole front-end program (needs buffers: the output is a buffer, increment 5).

@@ -1,5 +1,6 @@
 import Nano.V2Top
 import Nano.V2Agree
+import Nano.V2.Comp
 #print axioms Nano.V2.nano_stack_correct
 #print axioms Nano.V2.nano_stack_runs
 #print axioms Nano.V2.eval_ofEx
@@ -14,3 +15,4 @@ import Nano.V2Agree
 #print axioms Nano.V2.af_genR
 #print axioms NanoV2Agree.P0.agree
 #print axioms NanoV2Agree.P8.agree
+#print axioms Nano.V2B.cE_ok
