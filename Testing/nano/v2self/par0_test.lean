@@ -49,8 +49,8 @@ def run (t : T) (hdr : String) : Bool :=
   let ws := C.y13 (C.s10 txt.toUTF8.toList)
   let env : List UInt64 := [3, 1000003, 7, 0xFFFFFFFFFFFFFFF1]
   match ws with
-  | 2 :: 11 :: 0 :: np :: ns :: 0 :: 1 :: r =>
-    np == 4 && ns == 4 && (match dec r env 1000 with | some (v, [12]) => v == t.eval env | _ => false)
+  | 2 :: 20 :: 0 :: np :: ns :: 0 :: 1 :: r =>
+    np == 4 && ns == 4 && (match dec r env 1000 with | some (v, [21]) => v == t.eval env | _ => false)
   | _ => false
 def go : Nat → Nat → Nat × Nat → Nat × Nat
   | 0, _, r => r
