@@ -59,3 +59,12 @@ Commands that worked:
 - `lake build Nano.V2Boot.SelfHostB1` (builds everything here).
 - debug a failing S3 certificate: run the twin through `s3_compileF` in a scratch file with output to a FILE (not a
   pipe), then the `s3_contra` error prints the goal; regenerate one cert with `trace_state` to see the real goal.
+
+### Inbox at handoff (19:39, not acted on)
+- Worker 3: parser bridge landed, `Nano.V2S.ParseP.p2bV_eq : xs.length < 2^27 → p2bV xs = stage2b xs` (nano-v2-src
+  @0c5ee27). p2bV uses a 13-tuple state and `List UInt64` word buffers (`bget/bsize/bpush/bpop`, append at end), and
+  helper fuel 16*len+16. `Nano.V2S.chainV_eq` composes all five. The 13-tuple is the 7-arg IR limit test. Appending at
+  the end has the same quadratic copy problem as `put`.
+- Main: the `NanoABI.ImplementsBytes` skeleton is on main (Testing/notes/NANO_V2_SKELETONS.lean; NANO_V2_ROUND5.md §5).
+- CI tender (@89851e6): every V2Boot module cold-builds in ≤ 20 s and ≤ 2.6 GB. `selfrun_s3_test.py 30 10 5` passed
+  but peaked at 12.08 GB RSS, over the 8 GB budget (v1 harness; the B₁ copy will likely behave the same).
