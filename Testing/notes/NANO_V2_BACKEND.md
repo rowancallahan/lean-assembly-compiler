@@ -33,3 +33,10 @@ Fixed code origin is not needed by this code (only relative jumps) but is accept
   × (4096-byte work, 8-byte work): QEMU == Sail == Lean `Prog.eval` (= `copyLean`, checked in the emitter);
   statuses: ok, 1 (fuel exhausted: fuel 3, or 100 with a 100-byte input), 2 (capacity 3 full); OOM flag a0 = -1 with
   8-byte work; writes only inside output + work (Sail trace); sp/gp kept.
+- 2026-11-17: `nv2_mix` (Nano/V2/Copy.lean `mixProg`): every construct (big literals through the 17-instruction
+  `li`, add/sub/mul/and/or/xor/shl/shr, get/set incl. out of bounds, let, fst/snd, split, input-dependent fuel
+  `isize + 1`): 492 words, 20 cases × 2, QEMU == Sail == `Prog.eval`.
+- Proof layer 1 (Nano/V2/Sem.lean): abstract machine for `SC` (word memory for the work block, accesses checked:
+  8-aligned inside [lo, hi); `lbu` only in the input, `sb` only in the output), big-step `SC.Ex` with loop rules.
+- Proof layer 2 (Nano/V2/Expr.lean): `Stk` (value stack representation), `Keep`, `Post` (the uniform expression
+  contract's outcome: pushed values or out of memory), `seq_ok` (composition), **`pushC_ok`** (the bound-checked push).

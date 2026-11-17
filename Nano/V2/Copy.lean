@@ -33,3 +33,22 @@ def copyLean (F C : Nat) (input : List UInt8) : Except UInt64 (List UInt8) :=
   if r.1 = 0 then .ok (r.2.toList.map (·.toUInt8)) else .error r.1
 
 end Nano.V2
+
+namespace Nano.V2
+/-- a test of every construct: big literals, all binary ops, `get`/`set` (also out of bounds), `let`, `fst`/`snd`,
+input-dependent fuel -/
+def mixProg : Prog where
+  main :=
+    .let_ (.loop (.bin .add .isize (.lit 1)) (.pair (.lit 0) (.mk 300))
+      (.split (.var 0) (.pair (.lit 1) (.var 0)))
+      (.split (.var 0)
+        (.ite .ge (.var 1) .isize
+          (.ret (.pair (.lit 0) (.set (.var 0) (.lit 0) (.bin .xor (.get (.var 0) (.lit 0)) (.lit 0x5A)))))
+          (.let_ (.iget (.var 1))
+            (.next (.pair (.bin .add (.var 2) (.lit 1))
+              (.push (.var 1)
+                (.bin .or (.bin .sub (.bin .mul (.bin .xor (.bin .and (.bin .shr (.lit 0x0123456789ABCDEF)
+                  (.bin .shl (.bin .and (.var 0) (.lit 7)) (.lit 3))) (.lit 255)) (.var 0)) (.lit 3)) (.var 0))
+                  (.bin .and (.get (.var 1) (.lit 1000)) (.lit 0))))))))))
+      (.pair (.fst (.var 0)) (.snd (.var 0)))
+end Nano.V2

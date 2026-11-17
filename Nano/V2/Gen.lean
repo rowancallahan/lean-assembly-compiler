@@ -102,7 +102,7 @@ def pushC : SC := .seq (.ins [.i .addi SP SP (-8)]) push
 def li (rd : Nat) (n : UInt64) : List I :=
   if n.toNat < 2048 then [.i .addi rd 0 n.toNat] else
   .i .addi rd 0 0 :: (List.range 8).reverse.flatMap fun k =>
-    [.i .slli rd rd 8, .i .ori rd rd ((n >>> (8 * k).toUInt64) &&& 255).toNat]
+    [.i .slli rd rd 8, .i .addi rd rd ((n.toNat / 256 ^ k) % 256 : Nat)]
 
 /-- the top `k` slots slide down over the `m` slots below them -/
 def slide (k m : Nat) : List I :=
