@@ -2,7 +2,7 @@
 """nano v2 front end (increment 3: products + I/O prelude), oracle agreement fuzz.
 Generates N random programs (seed S) in the accepted subset, runs
   (1) Lean itself on prelude + program (`#eval` over the inputs), the ORACLE;
-  (2) `frontElabK 256` + `Prog.eval` (Testing/nano/v2f/run.lean);
+  (2) `frontElabK 64` + `Prog.eval` (Testing/nano/v2f/run.lean);
 and asserts: every program is accepted by nano and the outputs are identical.  With EMIT=1 also writes
 Testing/asm/ir-words/nv2f_*.words/.cases for Testing/nano/v2b_test.py (QEMU + Sail).
 usage: fuzz.py N SEED      (from the repo root; needs the Nano.V2.Front/Gen oleans: lake build Nano.V2.Front Nano.V2.Gen)

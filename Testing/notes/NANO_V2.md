@@ -294,3 +294,4 @@ conservative (inherited); loop states need ≥ 1 parameter; the zero arm must co
   `buffer_push` + `appendMem`), `mk_node` (fresh footprint [h, h'), disjoint from everything live); (c) `EnvRep`
   with buffer entries (address word + BufRep, pairwise-disjoint live footprints = round 6 `Owned`), indexed by the
   dead flags of `Ex.lv`; `cE_ok` with hypothesis `e.lv env d = some d'`.
+- Machine tests (runner, 8aa9125): 302/307 nv2f_* pass on QEMU, Sail subset agrees; p3–p7 hit OOM (status −1) because run.lean emitted κ = 256 (2064 B per buffer, two buffers > the 4096 B work of v2b_test.py) while `Prog.eval` has no memory bound. run.lean now uses κ = 64.
