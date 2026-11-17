@@ -158,6 +158,8 @@ See the table at the end (filled from the measurement); all modules far below 5 
 ## check.sh
 2026-11-17 on nano-v2 (after merging origin/main 97b0907): ALL CHECKS PASSED (only the pre-existing statement-fingerprint WARNING, on
 Frontx statements not touched here; not re-frozen). `Nano.V2.*` axioms appended to expected-axioms.txt.
+Again after increment 2 and merging origin/main 0128534 (nano v1-S3 FINAL, Astra rounds 4–5): ALL CHECKS PASSED (same
+pre-existing WARNING only).
 
 ## Build-time table
 `/usr/bin/time timeout 10m lake env lean Nano/<m>.lean` (deps built; seconds, peak memory):
