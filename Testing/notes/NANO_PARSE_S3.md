@@ -66,3 +66,11 @@
 - TEST inliner (`PS3_ONLY=inl python3 Testing/nano/ps3_test.py 20 6 7`, expected = executed `inlB`): QEMU 146/146 × 2
   (work = memoryNeeded: output, a1 = length, a0, gp/sp; memoryNeeded - 1: flag), Sail 6/6 × 2 (write ranges);
   2035 words, memoryNeeded 10168..527344 bytes, inputs up to 364 bytes. `ir_test.py` gained `NOSAIL=1` (bulk).
+- TIMING (owner target: ≤ 5 min per stage): monolithic `stage2S` S3 compile with `s3_compileB`: NOT finished after
+  16 min 11 s (8.8 GB, killed). Decoder alone (old tactic): 22 min 48 s; with `s3_compileB`: > 7 min (killed).
+- DECISION: parser split 2a/2b (`Nano/ParseS3B.lean`): tag format `encT`, `stage2a = encT ∘ decL` (2a: box
+  session_01MfKuVd8zxJmc6ZVj9VyJmH), `stage2b` = structural tag decoder `decT2` + the machine;
+  PROVED `stage2b_stage2a : stage2b (stage2a bs) = stage2 bs` (every input). Seven-stage composition
+  `selfHosted_parse7` (Nano/SelfHostSplit7.lean, domain `Sized7` = ∃ u, nanoElabU src = some u ∧ `Sz7` bounds).
+- 2b alone: > 16 min (8.7 GB) → the machine's certificates are the cost, not the decoder (one 3-case step function
+  ≈ 30 s in a probe; the machine has ~25 S3 functions). Profiling posted (EXPERIMENTS ps3-profile-2b, ps3-threads-2b).
