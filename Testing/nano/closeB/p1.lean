@@ -11,7 +11,7 @@ def mn (ob src : ByteArray) (i w : Nat) : ByteArray :=
   if i < src.size then
     mn (ob.set! w (if src.get! i == 7 then ob.get! w else src.get! i)) src (i + 1 + 0 * w)
       (if src.get! i == 7 then w else if w < 63 then w + 1 else w)
-  else ob.set! 0 w.toUInt8
+  else ob.set! 0 (UInt8.ofNat w)
 termination_by src.size - i
 
 def pE (xs : ByteArray) : ByteArray := mn (fl (xs.extract 0 0) xs 0) xs 0 1
