@@ -6,6 +6,7 @@ result length in `a1`): `f1` = stage 1 (`lexB`, compiled: `Nano.Self.lexBE.imple
 and the size domain remain. -/
 import Nano.SelfHostChain
 import Nano.ParseBGas
+import Nano.AsmSelf
 
 set_option linter.unusedVariables false
 
@@ -57,5 +58,30 @@ theorem selfHosted_parse {c1 c2 ci cm ca : List (BitVec 32)} {f1 f2 fi fm fa : B
   rw [hu] at hu'; cases hu'
   show fa (ofL (fm (ofL (fi (ofL (f2 (ofL (f1 (ofL src))))))))) = nanoGen p
   rw [hfe src u hu, hfi, hfm, hfa]; exact hc hb hl
+
+end Nano.SelfHost
+
+namespace Nano.SelfHost
+open Proven Nano Nano.Link Nano.B Nano.PB
+
+set_option maxRecDepth 100000 in
+theorem nanoAsm_code_len : Nano.Self.nanoAsm.code.length < 2 ^ 17 := by decide +kernel
+
+/-- `selfHosted_parse` with the compiled assembler (`Nano.Self.nanoAsm.implements1`) plugged in: what remains are
+the machine theorems of stage 1, stage 2, the inliner and the expander -/
+theorem selfHosted_parse_asm {c1 c2 ci cm : List (BitVec 32)} {f1 f2 fi fm : ByteArray → List UInt8}
+    {s1 s2 si sm : Nat → Nat} (K : Nat)
+    (h1 : Implements1With (fun xs : ByteArray => xs.data.toList) (fun l => l) c1 f1 s1 (2 ^ 20) true)
+    (h2 : Implements1With (fun xs : ByteArray => xs.data.toList) (fun l => l) c2 f2 s2 (2 ^ 20) true)
+    (hi : Implements1With (fun xs : ByteArray => xs.data.toList) (fun l => l) ci fi si (2 ^ 20) true)
+    (hm : Implements1With (fun xs : ByteArray => xs.data.toList) (fun l => l) cm fm sm (2 ^ 20) true)
+    (hc2 : c2.length < 2 ^ 17) (hci : ci.length < 2 ^ 17) (hcm : cm.length < 2 ^ 17)
+    (hf1 : ∀ x, f1 (ofL x) = lexB x) (hf2 : ∀ x, f2 (ofL x) = stage2 x)
+    (hfi : ∀ x, fi (ofL x) = U.inlB x) (hfm : ∀ x, fm (ofL x) = mexp x) :
+    SelfHosted (link (link (link (link c1 c2) ci) cm) Nano.Self.nanoAsm.code)
+      (fun _ => 4 * (4 * (4 * (4 * K + 96) + 96) + 96) + 96)
+      (Sized5 K s1 s2 si sm (fun _ => 8 * (Nano.Self.nanoAsm.slots + 1) + 7)) nanoCompileA :=
+  selfHosted_parse K h1 h2 hi hm Nano.Self.nanoAsm.implements1 hc2 hci hcm nanoAsm_code_len hf1 hf2 hfi hfm
+    (fun _ => rfl)
 
 end Nano.SelfHost
