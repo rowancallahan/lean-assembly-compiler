@@ -1,0 +1,149 @@
+# NANO v2: grow nano until its compiler is written in nano (branch `nano-v2`)
+
+Goal (ROADMAP "DIRECTION", NANO_V2_ASTRA.md decisions, binding): ONE nano-written compiler for ONE frozen subset, compiled by
+compiler 1 into B₁; B₂ = B₁(s), B₃ = B₂(s), B₂ = B₃; `ImplementsBytes B₂ Cκ` proved without compiler 1 in its dependency
+closure. This file = (A) the plan (construct set, order, per-increment work, estimates, recompiles), (B) increment 1 as
+done on this branch, (C) findings for the owner's spec review.
+
+## A. Plan
+
+### A1. What the compiler's own source needs (nano-friendly rewrite, Astra state shape)
+Each stage is a byte machine over a state `(input, cursor, tokenBuffer, workStack, output, status)` with flat buffers and
+token tags (no recursive ASTs, nested parsing with an explicit work stack). Concretely, per v1 stage:
+
+| stage (v1 Lean) | what it does on bytes | constructs it needs |
+|---|---|---|
+| lexer `lexB`/`lexA` (Nano/LexS3.lean) | classify a byte (letter / digit / `( ) + - * ; : =`), span a word, keyword test, numeral value `a * 10 + d - 48`, column-0 rule | comparisons + `if` (class tests, keyword bytes), a fuel loop over the input, byte read at cursor, append to token buffer |
+| parser 2a/2b (Nano/ParseS3*.lean) | recursive descent as a state machine with a frame stack (`Ctl`, `Fr`, `runS` on fuel) | fuel loop, `if` on tags, work stack = buffer (push = append, top = read at len-1, pop = shrink), small products for the state |
+| inliner `inlB` (Nano/InlS3.lean) | def table (bodies as byte strings), copy a body per call, renumber variables | buffers with read-by-index + length, nested loops (copy loop inside the token loop), arithmetic on depths |
+| expander `mexp` (Nano/ExpandM.lean) | one micro-op → a fixed chunk of records | `if` on the opcode, append of constants (buffer append), a loop |
+| assembler `asm` (Nano/Asm.lean) | record `[op,a,b,c]` → 4 bytes by bit packing | shifts and masks (`>>>`, `<<<` by constants, `&&&`, `|||`), `if` on the opcode, a loop |
+| driver | byte input → stages → byte output, error status | Result/status contract, capacities, I/O at the boundary only |
+
+### A2. Minimal construct set and ORDER of increments (one construct per proved link)
+1. **Comparisons + `if`** (`==`, `<`, `<=`; UInt64, Int64 kept but optional). DONE on this branch (part B).
+2. **Bit operations**: `&&&`, `|||`, `^^^`, `<<<`/`>>>` by a numeral `< 64`. Needed by the assembler and byte packing.
+3. **Fixed products**: `(a, b)`, `.1`/`.2` on nested `UInt64` products (state of loops; consuming decomposition rule).
+4. **Fuel loops** (the ONE pattern of round 2: `def run (fuel : Nat) (s : St) : St := match fuel with | 0 => … | n + 1 =>
+   if … then … else run n (…)`), lowered to a real loop (zero test, decrement, state update, backward branch). This is the
+   increment that brings BRANCHING code; the branch-free `if` of increment 1 stays for pure expressions only (see B3).
+5. **Buffers**: the approved `Array UInt64` wrapper API (create, size, checked/defaulted read, append / checked write),
+   affine ownership check in the elaborator, functional semantics in `Prog.eval`, in-place code proved under ownership.
+   Input bytes as a read-only buffer, output buffer serialized at the end.
+6. **Result/status + capacities** (user program contract `Bytes → ok output | error code`, error ⇒ output length 0).
+7. (only if measurements demand) **direct non-recursive calls** with frames, instead of inlining (inlining explosion).
+Then: rewrite the five stages in the subset (one module per stage), bootstrap B₁ with compiler 1, fixed point.
+
+### A3. Per increment: what changes
+Columns: E = `nanoElab` (lexer/parser/inliner, i.e. the spec text side), M = `Prog.eval` (the spec meaning), G = code
+generator (stack gen `genE`, records, `asm`), P = proofs (elaborator ⊆ Lean; compile correctness), S = stage compiles
+(through S3, ≤ 5 min per module), est = effort for one box.
+
+| inc | E | M | G | P | S (at the end of the group, ONE GO) | est |
+|---|---|---|---|---|---|---|
+| 1 cmp+if | tokens `if then else == < <=`, `if` at expression start, typing guard | `E.ite k a b t e`, `Cmp.test` | branch-free: X, c, Y, `X + c(Y-X)`; `<` by shifts+arithmetic; no new record | oracle fuzz + 20 agreement proofs; `genE_ok`/`genE_fail` `ite` case, `ops_ok`; families unchanged | lexA (new tokens), stage2b (new grammar/tags), inliner (new tag), mexp (new micro-ops = SOp chunks); asm UNCHANGED | done (~1 day) |
+| 2 bits | tokens `&&& \|\|\| ^^^ <<< >>>`, precedence (Lean: `\|\|\|` 55, `^^^` 58, `&&&` 60, `<<< >>>` 75), shift by numeral | `E.band/bor/bxor/shl k/shr k` | new records AND/XOR (R-type t0,t1), SLLI/SRLI t0 exist as families | oracle fuzz (precedence!), `bin_node` per op; new families + `case_r` with `G.step_and`/`step_xor` (exist) + `w_*` by `decide +kernel` | asm (new ops in X0..X3, ≤ 7 clauses per macro), mexp, lexA, stage2b | 1–2 days |
+| 3 products | `(e, e)`, `.1`/`.2`, product types in signatures | values become trees of words (`V := w \| pair V V`) or flattened k-word tuples | k stack slots per value, `dup k`/`slide` generalised | `genE_ok` with k-slot values (Stk of lists of words); ownership not yet needed (no buffers) | stage2b, inliner (k-slot arity), mexp | 2–3 days |
+| 4 fuel loops | recognise the ONE pattern (structural Nat fuel, tail calls only, predecessor fuel), reject everything else | `Nat` fuel as a word under a proved `< 2^64` bound; equations of the def | real branches: BEQ/BNE/JAL records with offsets (≤ ±4 KiB per branch, or JAL trampolines), loop = header + body + back jump; `if` lowered with branches inside loop bodies | record-machine loop invariant (induction on fuel); new Sail cases (`wB` step lemmas exist in Riscv/Steps/Branch.lean); `CodeAt` with jumps (pc arithmetic both ways) | all five (stage formats get loop tags) | 4–6 days |
+| 5 buffers | wrapper API names only (closed prelude), affine ownership checker | functional `Array UInt64` semantics, capacities, checked reads (default 0) | buffers in the work block with a header (len, cap); append/read/write records (ld/sd with index registers) | memory invariant (buffer regions disjoint from the value stack), in-place = functional under ownership | all five | 5–8 days |
+| 6 result/status | `Result`-shaped entry (status word + output buffer) | `Bytes → ok/error`, error ⇒ length 0 | exit sequence writes status, a1 = length (CompileCorrectL) | `ImplementsBytes` (round 3) | driver/linking | 2–3 days |
+Then the rewrite of the stages in nano (one module each, ~1 week with 2–4 boxes), bootstrap + fixed point (~1 week).
+
+### A4. Recompiles needed (ONE GO, not done on this branch)
+- Increment 1 alone: the v1 self-hosted binary (`Nano.selfHosted`) is UNCHANGED and still proved; v2 lives beside it
+  (`Nano.V2.*`). When v2 replaces v1 in the self-hosted chain: lexA (tokens `if then else == < <=`, the space rule),
+  stage2b (grammar: `if` at expression start, the typing guard, the `Cmp` kind, the binder-group fix below), the
+  inliner (an `ite` tag through the serialised format), mexp (the micro-ops of `SOp` chunks: `dup j`, `shr k`, `lit`,
+  `slide`, `bin` already exist as record shapes) must be recompiled; asm needs NO recompile for increment 1 (no new record).
+- Every later increment: see column S above. Per the ONE GO rule, all of them are recompiled together from one tagged
+  revision at the end of the group, with `Nano.selfHosted` re-proved for the v2 language.
+
+## B. Increment 1 on this branch: comparisons + `if`
+
+### B1. Language (DRAFT spec, owner confirms): `Nano/V2Ast.lean`, `Nano/V2Elab.lean`
+```
+expr ::= 'let' x ':=' expr ';' expr | 'if' sum cmp sum 'then' expr 'else' expr | sum        (v1's grammar otherwise)
+cmp  ::= '==' | '<' | '<='                    each followed by a space
+```
+- `if` only where `let` may stand (start of a def body, a `let` body, an `if` branch, inside parentheses): `x + if …` is
+  rejected (Lean accepts it).
+- `<`/`<=` are unsigned in a `UInt64` file, signed (Lean's `Int64` order) in an `Int64` file (`sgn`).
+- TYPING GUARD (exact-subset rule): a comparison is accepted only if one operand is TYPED (contains a parameter, a call, a
+  typed `let` variable, or a parenthesised `let`/`if` with a typed body/branch: `typed`). Reason, confirmed by the
+  oracle: Lean elaborates an untyped comparison at `Nat` (`if 1 - 2 < 1 then x else y` is `x` in Lean, the words say
+  `y`; `let z := 0 - 1; if z < 5 …` likewise).
+- `Prog.eval` (`Nano.V2.den`): `.ite k a b t e ↦ if k.test (den a) (den b) then den t else den e`, `Cmp.test` = Lean's
+  `==`, `<`, `≤` on `UInt64`, and on `UInt64.toInt64` for `lts`/`les`. v1 programs embed with the same meaning
+  (`Nano.V2.eval_ofEx`).
+- Fixed in v2 (v1 bug, see C1): a binder group needs at least one name.
+
+### B2. Subset evidence (elaborator ⊆ Lean)
+- Oracle `Testing/nano/oracle2.lean` (Lean's REAL frontend vs `Nano.V2.nanoElab` + `Prog.eval`), driver
+  `Testing/nano/fuzz2.py N seed`: 99 hand-written boundary cases × {UInt64, Int64} (token adjacency `x<y`, `x<=y`, `=<`,
+  `===`, `!=`, `>=`, `<-`, `<<<`, chained comparisons, missing `else`, `Nat` defaulting, numerals ≥ 2^64, 2^63 edges,
+  unary minus, nested/parenthesised `if`, `if` in `let` values and branches, layout incl. `then`/`else` on new lines and
+  column 0, `if1`/`iff`/`then1`, empty binder groups), the v1 corpus (v2 accepts it unchanged), random programs with
+  `if` nodes and token mutations. Runs: seeds 1–4 (100 + 3×3000 random): **0 "nano accepts, Lean rejects", 0 "meanings
+  differ"** after the binder-group fix (seed 3 found it before). Table: `python3 Testing/nano/fuzz2.py 0 1 --table`.
+- Per-program proofs `Nano/V2Agree.lean` (generated by `Testing/nano/gen_agree_v2.py`): 20 sources (UInt64 and Int64,
+  all comparison kinds, nesting, calls, `let`, layout); each text is ALSO the Lean definition in the file; `elabEq`
+  (`decide +kernel`) and `agree` (∀ inputs, the v2 program = Lean's function; Int64 on the bits). Two more sources agree in
+  the fuzz but their generic `simp` proof does not close (listed in the generator).
+
+### B3. Code generator (`Nano/V2Gen.lean`) and its proof
+- Branch-free: `if a ⋈ b then t else e` = X, then c ∈ {0,1}, then Y, then `X + c·(Y − X)`, with (X, Y) = (e, t) for `==`/`<`
+  and (t, e) for `<=` (`a ≤ b` = ¬ `b < a`). Correct because v1/v2 nano is pure and total (both branches evaluate, no
+  effects, no non-termination). Cost: both branches run. NOT valid once branches contain loops/errors: increment 4
+  brings branching `if` for those.
+- `<` without new instructions: `a <u b = ((a>>1) − (b>>1) − (b&1)(1 − (a&1))) >> 63` with `x&1 = x − (x>>1)·2`
+  (`Nano.V2R.ltu_bits`), signed = unsigned after adding 2^63 (`lts_bits`), `a == b` = `(a − b) <u 1`. Stack operations
+  `SOp` (`dup j`, `shr k`, `bin k`, `lit n`, `slide k`) are short sequences of v1's records; **every record of
+  `Nano.V2.genR p` is in v1's families** (`Nano.V2.af_genR`), so v1's Sail refinement is reused unchanged and `asm` is
+  unchanged.
+- Proofs: `Nano/V2Ops.lean` (`op_ok`, `ops_ok`, `ops_fail`, `ltu_run`, `lts_run`, `eq_run`, `sel_run`),
+  `Nano/V2Rec.lean` (`genE_ok` = v1's plus `ite_node`), `Nano/V2Run.lean` (`genE_fail` with `ite_fail`, `genR_ok`,
+  `genR_oom`), `Nano/V2Fam.lean` (`af_genR`), `Nano/V2Top.lean`:
+  **`Nano.V2.nano_stack_correct : CompileCorrect riscv Nano.V2.nanoCompileA`** and
+  **`Nano.V2.nano_stack_runs : CompileRuns riscv Nano.V2.nanoCompileA`**, for the `Program Nano.V2.Prog` instance
+  (`Nano.V2.nanoRun`: 8-byte LE argument words, `Nano.V2.Prog.eval`, 8 LE result bytes). Axioms: exactly the Sail set +
+  propext/Classical.choice/Quot.sound, the same list as v1's `Nano.nano_stack_correct` (checked by diff;
+  `Testing/scripts/axioms_nano-v2.lean` is in check.sh's loop).
+- Domain: `stackOk p = ScE p.2 p.1 ∧ depth p ≤ 256` as in v1 (each `if` needs up to 10 extra slots: `peakOps`).
+
+### B4. Tests (QEMU + Sail)
+`bash Testing/asm/nano_v2_test.sh` (emitter `Testing/asm/emit_nano_v2.lean`): 45 random programs (all five comparison
+kinds, nested `if`, `let`, calls; up to 40828 words) + 11 sources through `Nano.V2.nanoElab` (min/max, abs, clamp,
+sign, digit test, UInt64 and Int64), 8 inputs each around 0 / 2^63 / 2^64, three alignments (MIS 0,0 / 1,3 / 5,7), each
+at `memoryNeeded` (result == `Prog.eval`, QEMU == Sail) and at `memoryNeeded − 1` (a0 = −1): **1344 program × input
+pairs ok** (3 min).
+
+### B5. Build times (cold, `lake env lean`, deps built)
+See the table at the end (filled from the measurement); all modules far below 5 min.
+
+## C. Findings for the owner (spec review)
+1. **v1 bug (exact-subset violation, NOT fixed in v1)**: v1 `nanoElab` accepts an empty binder group, e.g.
+   `def g1 ( : UInt64) : UInt64 := 5` and `def g1 (x : UInt64) ( : UInt64) : UInt64 := 5`; Lean rejects both (oracle,
+   2026-11-17). NANO.md says empty binder groups were fixed, but `pParams`/`pNames` accept `( : T)`. Not changed here:
+   v1's `nanoElab` is the spec the five self-hosted stages are proved against (changing it means recompiling them).
+   Fixed in `Nano.V2.nanoElab`. Fix v1 at the next ONE GO, or state it in `Nano.selfHosted`'s domain.
+2. Int64 comparisons are in (cheap: the kind is chosen by the file type); Astra round 2 says "skip Int64 unless needed".
+   Owner decides whether the frozen subset keeps them.
+3. Rejected on purpose (nano may reject): `>`, `>=`, `!=`, `=`, `x<y` without the space, `if` as an operand without
+   parentheses (`x + if …`), `(x < y)` parenthesised conditions, untyped comparisons, `then`/`else` at column 0.
+4. The branch-free `if` makes `Prog.eval`'s `ite` (lazy, Lean's) and the code (eager) agree only because nano has no
+   effects; the plan (A2.4) replaces it by branching code inside loops.
+
+## Build-time table
+`/usr/bin/time timeout 10m lake env lean Nano/<m>.lean` (deps built; seconds, peak memory):
+
+| module | time | memory |
+|---|---|---|
+| V2Ast | 0.9 s | 0.5 GB |
+| V2Elab | 0.7 s | 0.5 GB |
+| V2Gen | 0.4 s | 0.5 GB |
+| V2Ops | 2.8 s | 0.6 GB |
+| V2Rec | 10.6 s | 0.9 GB |
+| V2Run | 7.9 s | 0.6 GB |
+| V2Fam | 2.5 s | 1.6 GB |
+| V2Top | 4.1 s | 1.8 GB |
+| V2Agree | 28.4 s | 2.7 GB |

@@ -419,3 +419,6 @@ git tags. nano v1 FINAL = this commit: main contains nano-parse-s3 rc2 (152f05b,
   Once compiler #2 self-hosts, its features move onto compiler #2 incrementally ("start small and grow the
   self-hosting one" rather than self-hosting #1 with all features at once).
 - Terminology: v1 `Nano.selfHosted` = proven bare-metal nano compiler built by compiler #1; "compiles itself" = v2.
+- STATUS (branch nano-v2, 2026-11-17): plan + increment 1 (comparisons + `if`) in Testing/notes/NANO_V2.md:
+  `Nano.V2.nano_stack_correct` proved (Sail axioms only), oracle fuzz 0 differences, QEMU+Sail 1344 pairs; v1 untouched.
+  Found: v1 `nanoElab` accepts an empty binder group `( : UInt64)` (Lean rejects) — NANO_V2.md C1.
