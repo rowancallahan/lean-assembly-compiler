@@ -178,3 +178,16 @@ nano-proof (Opus: L2), nano-mvp (finished: Int64, Chain, chain_test), nano-int (
   (front end: lexer + NON-inlining parser), `fi = inlB` (inliner), `fm = mexp` (expander), `fa = asm` (assembler,
   exists). `Sized`: arities < 256, ≤ 65536 defs, intermediate streams ≤ 2^20 bytes and ≤ K, stage work spaces ≤ K.
   Everything except the three missing stage theorems is proved (Sail axioms only).
+* 2026-11-17 03:35 (after a 3 h pause: usage limit, every lane stopped at 00:33). Merged main cd78e4f (check.sh loop:
+  `round1`), nano-proof df5f32e, nano-parse 30b1d99 (NEW lane, Opus: `Nano/ParseB.lean`, the parser as an
+  explicit-stack machine on decoded tokens that emits `ser p` directly, inlining by copy; Lean-side check 3000 inputs,
+  0 mismatches; no proof, not compiled yet). Note for that lane: `Nano/ElabU.lean`, `SerU.lean`, `ElabUWF.lean` here
+  give a proved alternative target for the parser (`serU u`, no inlining) and the parser lemmas `par`, `pwf`,
+  `pParams_len`, `nanoElab_eq`, `serE_shift`/`body_code`; `selfHosted_four` composes four stages, and
+  `selfHosted_stack_stages` three (parser emitting `ser p` directly + `mexp` + `asm`, with the lexer linked in front).
+* PARKED out of the `Nano` lib (so `lake build Nano` / check.sh finish): `Testing/nano/pending/ElabBSelf.lean.txt`
+  (nano-elab's lexer stage compile: its box was archived while the compile was running, > 22 CPU-min, not confirmed to
+  build; standalone build attempt started 03:36, result below) and `Testing/nano/pending/ExpandSelf.lean.txt` (the
+  `mexp` compile: ran 47 CPU-min without finishing before the pause, and `mexp`'s HDR arm changed since with L2's
+  aligned prologue, so it must be redone; recommended form: split into passes with ≤ 4 stored bytes per arm, or a
+  paged uniform-step machine). Move a file back to `Nano/` when it is known to build.
