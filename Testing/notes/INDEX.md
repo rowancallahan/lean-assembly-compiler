@@ -4,7 +4,7 @@ One line per note: name (file in this folder), source branch, summary.
 
 - IR_DESIGN.md — ir-design — Design for one shared IR; no compiler code changed.
 - IR_S3.md — ir-s3 — S3 calculus (Compiler/S3), proved once through the IR (S3.compile_correct); front end s3_compile; 15 functions verbatim incl. inductive + structure, QEMU + Sail.
-- S3_REC.md — s3-rec — S3 recursion from equation lemmas: structural, well-founded, mutual (one `mutual_induct` per component), lexicographic, StateT/Except; Nat/Fin/String/Int data; 6 self-hoster `List.brecOn` rows + con-leche `iotaNumArgs` verbatim; WfCert filled; QEMU + Sail.
+- S3_REC.md — s3-rec — S3 recursion from equation lemmas: structural, well-founded, mutual (one `mutual_induct` per component), lexicographic, StateT/Except; Nat/Fin/String/Int data; 6 self-hoster `List.brecOn` rows + con-leche `dropVars` (`Nat.brecOn`), CoreC `iotaNumArgs`/`getAppArgsArr`/`mkAppRange` verbatim; knot-shaped mutual StateT/Except model; WfCert filled; QEMU + Sail.
 - COMPCERT_MINING.md — compcert-mining — Ideas to take from CompCert (ideas only).
 - CONLECHE_DEPTH.md — conleche-depth — Call-graph depth probe of the con-leche checker core through the front ends.
 - CONLECHE_TARGETS.md — conleche-targets — Con-leche blocking targets classified by first failure (type gate).

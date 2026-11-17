@@ -49,6 +49,7 @@ Other front-end features added on the way (all generic, none restates a library 
 | dependent index parameters | `args[i]` with its proof unfolds to `List.get xs ⟨i, h⟩`, a parameter of type `Fin xs.length`: its value is `.c 0 [enc i]` (`encFin`), the oracle decodes it by `match` + `dite` on `i < bound` (no total decoder into `Fin 0` needed), the caller-facing certificate takes `(n, n < bound)`; all `Fin _` with a run-time bound share one S3 datatype |
 | unreachable code | `False.elim`, `absurd`, `False/Empty.rec/casesOn` become some value of the result type (never evaluated; the certificate's induction never enters that arm) |
 | mutual + state | members' parameters beyond the motive's (a `StateT` state) are quantified inside the motive; a well-founded block's `mutual_induct` lives on its first member |
+| `optParam` | parameter types lose `optParam`/`autoParam` annotations (else the oracle lemma does not rewrite) |
 | closers | each closer is all-or-nothing (`c; done`): a partial closer no longer stops `first`; BitVec order contradictions via `toNat` + `omega`; generated certificates get `maxHeartbeats 1000000` |
 
 The 15 entries of `S3Examples.lean` regenerate byte-identical words (checked: `emit_s3.lean` re-run, no diff).
@@ -75,18 +76,19 @@ Tests: `lake env lean --tstack=4000000 Testing/asm/emit_s3rec.lean` (IR interpre
 | s3_iotanumargs | con-leche `Cached.iotaNumArgs` (`CoreC.lean`) | structural over con-leche's `Expr` (`Name`/`String`/`Level`/`Literal`) | 1128 | 50 × 2 ok |
 | s3_getappargsarr | con-leche `Cached.getAppArgsArr` + `getAppArgsArrGo` + `iotaNumArgs` | structural; `Array.set!`, `Array.replicate` from their equations | 2502 | 50 × 2 ok |
 | s3_mkapprange | con-leche `Cached.mkAppRange` | well-founded `termination_by j - i`; `args[i]` with its proof | 2090 | 50 × 2 ok |
+| s3_dropvars | con-leche `Expr.dropVars` (+ `Expr.instantiate1`) | the probe's `Nat.brecOn` row: structural on `Nat`; `Nat.sub`/`Nat.blt`/`Nat.beq` | 2582 | 50 × 2 ok |
 | s3_knot | `walkK` / `tagK` (ours) | the knot's shape: mutual in `StateT UInt64 (Except UInt8)`, well-founded on `(xs.length, rank)`, one member calls the other on the same list; exceptions in 10 of 50 cases | 3564 | 50 × 2 ok |
 
 The harness (`natW`, `wNat`, the `*B` encoders, `pairsN`, …) is compiled through S3 with the function; `wNat`
 is itself well-founded (`termination_by x.toNat`) and `natW` structural on `Nat` (`Nat.rec`).
 All six self-hoster `List.brecOn` rows of the probe (`yield.json` `lowest/selfhost` 54, 68, 87, 101, 105, 146)
-now compile verbatim.
+and con-leche's `Nat.brecOn` row `Expr.dropVars` now compile verbatim.
 
 ## 3. Not done / blocked
 
-- `Nat.brecOn` rows of the probe: con-leche `Expr.dropVars(C)` needs `Expr.instantiate1(C)` (con-leche's binder
-  machinery, many functions) and the book rows (`addNatPos`) are not in this repository. The `Nat.brecOn` *shape*
-  is covered (`Nat.add`, `Nat.beq`, `Nat.ble`, `natW` compile from their equations).
+- `Nat.brecOn` rows of the probe: con-leche `Expr.dropVars` compiles verbatim (`s3_dropvars`); its cached twin
+  `dropVarsC` needs `Expr.instantiate1C` (the `Cached` sources, not in the repository); the book rows
+  (`addNatPos`) are not in this repository.
 - `CoreC`'s knot itself (one mutual block of ~70 functions in `CheckCM = StateT CState CheckM`): the shape now
   compiles (`s3_knot`), and `Array` indexing with proofs / `set!` / `replicate` / `size` compile (`s3_mkapprange`,
   `s3_getappargsarr`). Blocking: `CState`'s default `maxNatSize = 134217728` and the fuel `2^62` (unary `Nat`
@@ -111,11 +113,11 @@ now compile verbatim.
 
 ## 5. Final check
 
-After merging `origin/main` (ROADMAP only): `bash Testing/scripts/check.sh`: **ALL CHECKS PASSED** (51 min; 45 new axiom
-lines from `axioms_s3-rec.lean`: every `correct` exactly the Sail set, `computes`/`wf` ⊆ {propext, Classical.choice,
+After merging `origin/main` (ROADMAP only): `bash Testing/scripts/check.sh`: **ALL CHECKS PASSED** (51 min; again after `dropVars`, 20 min; 45 new axiom
+lines from `axioms_s3-rec.lean`, 48 after `dropVars`: every `correct` exactly the Sail set, `computes`/`wf` ⊆ {propext, Classical.choice,
 Quot.sound}, `acc_of_ev`/`wfCert_of_good`/`certM4` ⊆ {propext, Quot.sound}). The statement-fingerprint step prints
 its usual WARNING (statement hashes unchanged, dependency closures changed; warning-only, not re-frozen, per the
-round rules). QEMU + Sail: all 14 new entries 50 × 2 ok (§2); the 15 entries of `S3Examples.lean` regenerate
+round rules). QEMU + Sail: all 15 new entries 50 × 2 ok (§2); the 15 entries of `S3Examples.lean` regenerate
 byte-identical words.
 
 ## 6. Next for the knot (CONLECHE_KNOT.md steps 6–7)
