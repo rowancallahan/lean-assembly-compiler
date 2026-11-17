@@ -24,3 +24,10 @@ Results (Riscv/Back/S3Impl1.lean): `Proven.S3.implements1`, `Proven.S3.implement
 Emitted code changes: the IR stub's tail gains one `mv a1, t0` before `ret` (every IR-compiled program: S3,
 Nano, IR examples); the S3 `main` wrapper returns `[.r 8]` (one extra load in its `ret`).
 Nano's `main` still returns `[]`, so `a1` holds an unspecified value there (nothing claims otherwise).
+
+Build status: `lake build Spec Compiler Riscv` and `lake build Riscv.Back.S3Impl1` succeed.
+Outside that set: `Riscv.Frontx.S3Examples` / `S3RecExamples` fail with "maximum recursion depth" in the generated
+certificates' `simp`; NOT caused by this work: reproduced with S3Mirror alone, and it passes when the three
+`s3_norm` lemmas added by the base commit 1b68500 (`u8_mk_sw`, `u8_ofBitVec_sw`, `u64_toUInt8_ofNat`,
+Compiler/S3/Cert.lean) are removed with `attribute [-s3_norm]`. `Nano.ExpandMSelf` was killed (exit 137, memory)
+while another build ran on the machine; not verified here.
