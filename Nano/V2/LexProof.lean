@@ -276,4 +276,273 @@ theorem wordK_eq (xs : List UInt8) (hx : xs.length < 2 ^ 32) (n p e : Nat) (hpe 
     · simp only [hdg, if_false, Bool.false_eq_true]
       by_cases h1 : 97 ≤ a <;> by_cases h2 : a ≤ 122 <;> by_cases h7 : allDU r = true <;> simp [h1, h2, h7, tokK]
 
+/-! ## one lexer step -/
+
+/-- `consO` on an optional token -/
+def consT : Option Tok → Option (List Tok) → Option (List Tok)
+  | some t, r => consO t r
+  | none, _ => none
+
+/-- the meaning of a step of kind `k` to position `q` -/
+def stepR (f : Nat) (xs : List UInt8) (k p q : Nat) : Option (List Tok) :=
+  if k = 0 then none else if k = 1 then some [] else if k = 2 then lexS f (xs.drop q)
+  else consT (tokK k (seg xs p q)) (lexS f (xs.drop q))
+
+theorem toNat_toU (v : UInt64) : v.toNat.toUInt64 = v := by simp
+
+theorem byteAt (xs : List UInt8) (hx : xs.length < 2 ^ 32) (p : Nat) (h : p < xs.length) :
+    ∃ c, rd xs p.toUInt64 = c.toUInt64 ∧ xs.drop p = c :: xs.drop (p + 1) :=
+  ⟨xs[p], rdN xs p h hx, List.drop_eq_getElem_cons h⟩
+
+theorem lenLt (xs : List UInt8) (hx : xs.length < 2 ^ 32) (p k : Nat) (hp : p ≤ xs.length) (hk : k < 8) :
+    (p.toUInt64 + (OfNat.ofNat k : UInt64) < len xs) ↔ p + k < xs.length := by
+  rw [addN]; unfold len; rw [UInt64.lt_iff_toNat_lt]; simp; omega
+
+theorem rdAt (xs : List UInt8) (hx : xs.length < 2 ^ 32) (p k : Nat) (hk : k < 8) (c : UInt8)
+    (h : xs.drop (p + k) = c :: xs.drop (p + k + 1)) (hl : p + k < xs.length) :
+    rd xs (p.toUInt64 + (OfNat.ofNat k : UInt64)) = c.toUInt64 := by
+  rw [addN, rdN xs _ hl hx]
+  have := List.drop_eq_getElem_cons hl
+  rw [h] at this; injection this with h1; rw [h1]
+
+theorem wordK_cases (n : Nat) (xs : List UInt8) (p e : UInt64) :
+    ∃ k : Nat, wordK n xs p e = k.toUInt64 ∧ (k = 0 ∨ k = 3 ∨ k = 4 ∨ k = 5 ∨ k = 6 ∨ k = 7 ∨ k = 16) := by
+  unfold wordK
+  dsimp only
+  repeat' split
+  all_goals first
+    | exact ⟨0, rfl, by omega⟩ | exact ⟨3, rfl, by omega⟩ | exact ⟨4, rfl, by omega⟩
+    | exact ⟨5, rfl, by omega⟩ | exact ⟨6, rfl, by omega⟩ | exact ⟨7, rfl, by omega⟩
+    | exact ⟨16, rfl, by omega⟩
+
+theorem tokK_some (k : Nat) (w : List UInt8) (h : 3 ≤ k) (h2 : k ≤ 16) : (tokK k w).isSome := by
+  have : k = 3 ∨ k = 4 ∨ k = 5 ∨ k = 6 ∨ k = 7 ∨ k = 8 ∨ k = 9 ∨ k = 10 ∨ k = 11 ∨ k = 12 ∨ k = 13 ∨ k = 14 ∨
+    k = 15 ∨ k = 16 := by omega
+  rcases this with h | h | h | h | h | h | h | h | h | h | h | h | h | h <;> subst h <;> rfl
+
+theorem step_eq (xs : List UInt8) (hx : xs.length < 2 ^ 32) (f p : Nat) (hp : p ≤ xs.length) :
+    ∃ k q, stepK f xs p.toUInt64 = k.toUInt64 ∧ stepN f xs p.toUInt64 = q.toUInt64 ∧ k ≤ 16 ∧
+      (2 ≤ k → p < q ∧ q ≤ xs.length) ∧ lexS (f + 1) (xs.drop p) = stepR f xs k p q ∧
+      (3 ≤ k → (tokK k (seg xs p q)).isSome ∧ (k = 7 ∨ k = 16 → q - p ≤ f)) := by
+  by_cases hl : p < xs.length
+  · obtain ⟨c, hc, hdp⟩ := byteAt xs hx p hl
+    have hlt := (ltL xs p hx hp).mpr hl
+    have L1 := lenLt xs hx p 1 hp (by decide)
+    simp only [Nat.reduceAdd] at L1
+    have eK : ∀ k : Nat, stepK f xs p.toUInt64 = k.toUInt64 →
+        stepK f xs p.toUInt64 = k.toUInt64 := fun _ h => h
+    rw [hdp, lexS.eq_def]
+    simp only []
+    unfold stepK stepN
+    rw [if_pos hlt, hc]
+    simp only [beqL c (nat_lit 32) (by decide), beqL c (nat_lit 10) (by decide), beqL c (nat_lit 40) (by decide),
+      beqL c (nat_lit 41) (by decide), beqL c (nat_lit 43) (by decide), beqL c (nat_lit 45) (by decide),
+      beqL c (nat_lit 42) (by decide), beqL c (nat_lit 59) (by decide), beqL c (nat_lit 58) (by decide), isWC_eq]
+    have p1 : p.toUInt64 + 1 = (p + 1).toUInt64 := by simp
+    have p2 : p.toUInt64 + 2 = (p + 2).toUInt64 := by simp
+    by_cases h32 : c = 32
+    · subst h32
+      refine ⟨2, p + 1, by simp, by simp (config := {decide := true}) only [↓reduceIte]; simp, by omega, fun _ => ⟨by omega, by omega⟩, by simp [stepR], by omega⟩
+    by_cases h40 : c = 40
+    · subst h40
+      refine ⟨8, p + 1, by simp (config := {decide := true}) only [↓reduceIte], by simp (config := {decide := true}) only [↓reduceIte]; simp, by omega, fun _ => ⟨by omega, by omega⟩, by simp [stepR, tokK, consT],
+        fun _ => ⟨by simp [tokK], by omega⟩⟩
+    by_cases h41 : c = 41
+    · subst h41
+      refine ⟨9, p + 1, by simp (config := {decide := true}) only [↓reduceIte], by simp (config := {decide := true}) only [↓reduceIte]; simp, by omega, fun _ => ⟨by omega, by omega⟩, by simp [stepR, tokK, consT],
+        fun _ => ⟨by simp [tokK], by omega⟩⟩
+    by_cases h43 : c = 43
+    · subst h43
+      refine ⟨12, p + 1, by simp (config := {decide := true}) only [↓reduceIte], by simp (config := {decide := true}) only [↓reduceIte]; simp, by omega, fun _ => ⟨by omega, by omega⟩, by simp [stepR, tokK, consT],
+        fun _ => ⟨by simp [tokK], by omega⟩⟩
+    by_cases h42 : c = 42
+    · subst h42
+      refine ⟨14, p + 1, by simp (config := {decide := true}) only [↓reduceIte], by simp (config := {decide := true}) only [↓reduceIte]; simp, by omega, fun _ => ⟨by omega, by omega⟩, by simp [stepR, tokK, consT],
+        fun _ => ⟨by simp [tokK], by omega⟩⟩
+    by_cases h59 : c = 59
+    · subst h59
+      refine ⟨15, p + 1, by simp (config := {decide := true}) only [↓reduceIte], by simp (config := {decide := true}) only [↓reduceIte]; simp, by omega, fun _ => ⟨by omega, by omega⟩, by simp [stepR, tokK, consT],
+        fun _ => ⟨by simp [tokK], by omega⟩⟩
+    rw [p1]
+    have L1' := ltL xs (p + 1) hx (by omega)
+    by_cases h45 : c = 45
+    · subst h45
+      by_cases hn : p + 1 < xs.length
+      · obtain ⟨d, hd, hdq⟩ := byteAt xs hx (p + 1) hn
+        rw [hdq, hd, if_pos (L1'.mpr hn)]
+        have hn' := L1'.mpr hn; simp at hn'
+        by_cases hd45 : d = 45
+        · subst hd45
+          refine ⟨0, p + 1, ?_, by simp (config := {decide := true}), by omega, by omega, ?_,
+            by omega⟩
+          · simp (config := {decide := true}) [hn']
+          · simp (config := {decide := true}) [stepR]
+        · have : (d == 45) = false := by simp [hd45]
+          refine ⟨13, p + 1, ?_, by simp (config := {decide := true}), by omega, fun _ => ⟨by omega, by omega⟩, ?_, fun _ => ⟨by simp [tokK], by omega⟩⟩
+          · simp (config := {decide := true}) [hn', beqL d (nat_lit 45) (by decide), hd45]
+          · simp (config := {decide := true}) [stepR, tokK, consT, hd45]; rw [hdq]
+      · have hq : xs.drop (p + 1) = [] := by simp; omega
+        rw [hq, if_neg (fun q => hn (L1'.mp q))]
+        refine ⟨13, p + 1, ?_, by simp (config := {decide := true}), by omega, fun _ => ⟨by omega, by omega⟩, ?_, fun _ => ⟨by simp [tokK], by omega⟩⟩
+        · have hn' : ¬ (p + 1).toUInt64 < len xs := fun q => hn (L1'.mp q)
+          simp at hn'
+          simp (config := {decide := true}) [hn']
+          exact fun h => absurd h (UInt64.not_lt.mpr hn')
+        · simp (config := {decide := true}) [stepR, tokK, consT]; rw [hq]
+    by_cases h58 : c = 58
+    · subst h58
+      by_cases hn : p + 1 < xs.length
+      · obtain ⟨d, hd, hdq⟩ := byteAt xs hx (p + 1) hn
+        rw [hdq, hd, if_pos (L1'.mpr hn)]
+        have hn' := L1'.mpr hn; simp at hn'
+        by_cases hd61 : d = 61
+        · subst hd61
+          refine ⟨11, p + 2, ?_, ?_, by omega, fun _ => ⟨by omega, by omega⟩, ?_, fun _ => ⟨by simp [tokK], by omega⟩⟩
+          · simp (config := {decide := true}) [hn']
+          · simp (config := {decide := true}) [hn']
+          · simp (config := {decide := true}) [stepR, tokK, consT]
+        · refine ⟨10, p + 1, ?_, ?_, by omega, fun _ => ⟨by omega, by omega⟩, ?_, fun _ => ⟨by simp [tokK], by omega⟩⟩
+          · simp (config := {decide := true}) [hn', beqL d (nat_lit 61) (by decide), hd61]
+          · simp (config := {decide := true}) [hn', beqL d (nat_lit 61) (by decide), hd61]
+          · simp (config := {decide := true}) [stepR, tokK, consT, hd61]; rw [hdq]
+      · have hq : xs.drop (p + 1) = [] := by simp; omega
+        rw [hq, if_neg (fun q => hn (L1'.mp q))]
+        have hn' : ¬ (p + 1).toUInt64 < len xs := fun q => hn (L1'.mp q)
+        simp at hn'
+        refine ⟨10, p + 1, ?_, ?_, by omega, fun _ => ⟨by omega, by omega⟩, ?_, fun _ => ⟨by simp [tokK], by omega⟩⟩
+        · simp (config := {decide := true}) [hn']
+          exact fun h => absurd h (UInt64.not_lt.mpr hn')
+        · simp (config := {decide := true}) [hn']
+          exact fun h => absurd h (UInt64.not_lt.mpr hn')
+        · simp (config := {decide := true}) [stepR, tokK, consT]; rw [hq]
+    have p3 : p.toUInt64 + 3 = (p + 1 + 1 + 1).toUInt64 := by apply UInt64.toNat_inj.mp; simp
+    have p4 : p.toUInt64 + 4 = (p + 1 + 1 + 1 + 1).toUInt64 := by apply UInt64.toNat_inj.mp; simp
+    have p2' : p.toUInt64 + 2 = (p + 1 + 1).toUInt64 := by apply UInt64.toNat_inj.mp; simp
+    by_cases h10 : c = 10
+    · subst h10
+      by_cases hn : p + 1 < xs.length
+      · obtain ⟨d, hd, hdq⟩ := byteAt xs hx (p + 1) hn
+        rw [hdq, hd, if_pos (L1'.mpr hn)]
+        have hn' := L1'.mpr hn; simp at hn'
+        by_cases hd2 : d = 32 ∨ d = 10
+        · refine ⟨2, p + 1, ?_, by simp (config := {decide := true}), by omega, fun _ => ⟨by omega, by omega⟩, ?_,
+            by omega⟩
+          · rcases hd2 with h | h <;> subst h <;> simp (config := {decide := true}) [hn']
+          · rcases hd2 with h | h <;> subst h <;> simp (config := {decide := true}) [stepR] <;> rw [hdq]
+        have n32 : (d == 32) = false := by simp; exact fun h => hd2 (Or.inl h)
+        have n10 : (d == 10) = false := by simp; exact fun h => hd2 (Or.inr h)
+        simp only [beqL d (nat_lit 32) (by decide), beqL d (nat_lit 10) (by decide), beqL d (nat_lit 100) (by decide),
+          n32, n10, Bool.false_or, Bool.false_eq_true, if_false]
+        rw [p3, p4, p2']
+        have L3 := ltL xs (p + 1 + 1 + 1) hx
+        have L4 := ltL xs (p + 1 + 1 + 1 + 1) hx
+        by_cases hd100 : d = 100
+        · subst hd100
+          by_cases h3 : p + 1 + 1 + 1 < xs.length
+          · obtain ⟨e, he, heq⟩ := byteAt xs hx (p + 1 + 1) (by omega)
+            obtain ⟨g, hg, hgq⟩ := byteAt xs hx (p + 1 + 1 + 1) h3
+            rw [heq, hgq, he, hg]
+            have h3t : ((p + 1 + 1 + 1).toUInt64 < len xs) = True :=
+              propext ⟨fun _ => trivial, fun _ => (L3 (by omega)).mpr h3⟩
+            simp only [h3t, decide_true, Bool.and_true]
+            by_cases heg : e = 101 ∧ g = 102
+            · obtain ⟨rfl, rfl⟩ := heg
+              by_cases h4 : p + 1 + 1 + 1 + 1 < xs.length
+              · obtain ⟨hh, hhd, hhq⟩ := byteAt xs hx (p + 1 + 1 + 1 + 1) h4
+                rw [hhq, hhd, isWC_eq]
+                have h4t : ((p + 1 + 1 + 1 + 1).toUInt64 < len xs) = True :=
+                  propext ⟨fun _ => trivial, fun _ => (L4 (by omega)).mpr h4⟩
+                simp only [h4t, decide_true, Bool.true_and]
+                by_cases hw : isWordC hh = true
+                · refine ⟨0, p + 1, ?_, by simp (config := {decide := true}), by omega, by omega, ?_, by omega⟩
+                  · simp (config := {decide := true}) [hw]
+                  · simp (config := {decide := true}) [stepR, nextW, hw]
+                · refine ⟨2, p + 1, ?_, by simp (config := {decide := true}), by omega,
+                    fun _ => ⟨by omega, by omega⟩, ?_, by omega⟩
+                  · simp (config := {decide := true}) [hw]
+                  · simp (config := {decide := true}) [stepR, nextW, hw]; rw [hdq, heq, hgq, hhq]
+              · have hq : xs.drop (p + 1 + 1 + 1 + 1) = [] := by simp; omega
+                rw [hq]
+                have h4f : ((p + 1 + 1 + 1 + 1).toUInt64 < len xs) = False :=
+                  propext ⟨fun q => h4 ((L4 (by omega)).mp q), False.elim⟩
+                simp only [h4f, decide_false, Bool.false_and]
+                refine ⟨2, p + 1, ?_, by simp (config := {decide := true}), by omega,
+                  fun _ => ⟨by omega, by omega⟩, ?_, by omega⟩
+                · simp (config := {decide := true})
+                · simp (config := {decide := true}) [stepR, nextW]; rw [hdq, heq, hgq, hq]
+            · refine ⟨0, p + 1, ?_, by simp (config := {decide := true}), by omega, by omega, ?_, by omega⟩
+              · by_cases he1 : e = 101
+                · have : g ≠ 102 := fun q => heg ⟨he1, q⟩
+                  simp (config := {decide := true}) [beqL g (nat_lit 102) (by decide), this]
+                · simp (config := {decide := true}) [beqL e (nat_lit 101) (by decide), he1]
+              · by_cases he1 : e = 101
+                · have : g ≠ 102 := fun q => heg ⟨he1, q⟩
+                  subst he1; simp (config := {decide := true}) [stepR, this]
+                · simp (config := {decide := true}) [stepR, he1]
+          · have h3f : ((p + 1 + 1 + 1).toUInt64 < len xs) = False := by
+              apply propext; refine ⟨fun q => h3 ?_, False.elim⟩
+              unfold len at q; rw [UInt64.lt_iff_toNat_lt] at q; simp at q; omega
+            simp only [h3f, decide_false, Bool.and_false, Bool.false_and]
+            refine ⟨0, p + 1, ?_, by simp (config := {decide := true}), by omega, by omega, ?_, by omega⟩
+            · simp (config := {decide := true})
+            · by_cases h2 : p + 1 + 1 < xs.length
+              · obtain ⟨e, he, heq⟩ := byteAt xs hx (p + 1 + 1) h2
+                have hq : xs.drop (p + 1 + 1 + 1) = [] := by simp; omega
+                rw [heq, hq]
+                by_cases he1 : e = 101
+                · subst he1; simp (config := {decide := true}) [stepR]
+                · simp (config := {decide := true}) [stepR, he1]
+              · have hq : xs.drop (p + 1 + 1) = [] := by simp; omega
+                rw [hq]; simp (config := {decide := true}) [stepR]
+        · refine ⟨0, p + 1, ?_, by simp (config := {decide := true}), by omega, by omega, ?_, by omega⟩
+          · simp (config := {decide := true}) [hd100]
+          · simp (config := {decide := true}) [stepR, hd100, n32, n10]
+      · have hq : xs.drop (p + 1) = [] := by simp; omega
+        rw [hq, if_neg (fun q => hn (L1'.mp q))]
+        refine ⟨1, p + 1, ?_, by simp (config := {decide := true}), by omega, by omega, ?_, by omega⟩
+        · simp (config := {decide := true})
+        · simp (config := {decide := true}) [stepR]
+    have f32 : (c == 32) = false := by simp [h32]
+    have f10 : (c == 10) = false := by simp [h10]
+    have f40 : (c == 40) = false := by simp [h40]
+    have f41 : (c == 41) = false := by simp [h41]
+    have f43 : (c == 43) = false := by simp [h43]
+    have f45 : (c == 45) = false := by simp [h45]
+    have f42 : (c == 42) = false := by simp [h42]
+    have f59 : (c == 59) = false := by simp [h59]
+    have f58 : (c == 58) = false := by simp [h58]
+    simp only [f32, f10, f40, f41, f43, f45, f42, f59, f58, Bool.false_eq_true, if_false, Bool.false_and]
+    by_cases hw : isWordC c = true
+    · rw [← hdp]
+      obtain ⟨e, he1, he2, he3, he4, he5⟩ := wordEnd_eq xs hx f p hp
+      rw [he5, he1]
+      simp only [hw, if_true]
+      obtain ⟨k, hk, hkv⟩ := wordK_cases f xs p.toUInt64 e.toUInt64
+      have hkn : (wordK f xs p.toUInt64 e.toUInt64).toNat = k := by rw [hk]; simp; omega
+      rw [hk]
+      by_cases hpe : p < e
+      · refine ⟨k, e, rfl, rfl, by omega, fun _ => ⟨hpe, he3⟩, ?_, fun h3 => ⟨tokK_some k _ h3 (by omega), fun _ => he4⟩⟩
+        show (match wordTokS (seg xs p e) with
+          | some t => consO t (lexS f (xs.drop e)) | none => none) = stepR f xs k p e
+        rw [wordK_eq xs hx f p e hpe he3 he4, hkn]
+        unfold stepR
+        rcases hkv with h | h | h | h | h | h | h <;> subst h <;> simp [tokK, consT]
+      · have hep : e = p := by omega
+        subst hep
+        have hk0 : k = 0 := by
+          unfold wordK at hk; rw [if_pos (UInt64.le_refl _)] at hk
+          have := congrArg UInt64.toNat hk; simp at this; omega
+        subst hk0
+        refine ⟨0, e, rfl, rfl, by omega, by omega, ?_, by omega⟩
+        show (match wordTokS (seg xs e e) with
+          | some t => consO t (lexS f (xs.drop e)) | none => none) = stepR f xs 0 e e
+        rw [seg_nil xs e e (Nat.le_refl _)]; simp [wordTokS, stepR]
+    · have fw : isWordC c = false := by simpa using hw
+      simp only [fw, Bool.false_eq_true, if_false]
+      refine ⟨0, p + 1, rfl, by simp, by omega, by omega, by simp [stepR], by omega⟩
+  · have hd : xs.drop p = [] := by simp; omega
+    refine ⟨1, (stepN f xs p.toUInt64).toNat, ?_, (toNat_toU _).symm, by omega, by omega, ?_, by omega⟩
+    · unfold stepK; rw [if_neg (fun q => hl ((ltL xs p hx hp).mp q))]; rfl
+    · rw [hd]; simp [lexS, stepR]
+
 end Nano.V2.LexP
