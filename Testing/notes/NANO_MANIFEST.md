@@ -28,5 +28,13 @@ Tests: `python3 Testing/nano/ps3_test.py R S seed` (S3 stages; QEMU bulk, Sail s
 Superseded compiles (> 5 min) are archived in Testing/nano/archive/ (nano-final's layout): the listCS lexer halves,
 `SelfHostedA`, the paged inliners.
 
-Gate status (12:00): every row DONE. `Nano.selfHosted` kernel-checked, exactly the Sail axioms. check.sh running at
-6a76836; the tag `nano-v1-rc1` follows if it passes.
+Gate status (12:16): every row DONE; `bash Testing/scripts/check.sh` at **6a76836**: ALL CHECKS PASSED (1026 s; the only
+warning is the statement-fingerprint one, definitions under headline statements changed by the IR stub, statements
+unchanged, not re-frozen). Tag `nano-v1-rc1` created on 6a76836; pushing tags is refused by this session's git proxy
+(branch pushes work), so the tag must be pushed from another session: `git tag -a nano-v1-rc1 6a76836`.
+
+Build resources (heavy modules, measured here on 4 cores / 15 GB, one at a time): ParseS3BSelf 268 s alone (295 s pool,
+436 s under parallel load), ParseS3BAllocA 87 s, ParseS3BAllocB 177 s / ≈ 7.6 GB, ParseS3BStage 184 s / ≈ 8 GB,
+LexS3Stage 39 s here (4 m 07 s / 3.1 GB on a loaded pool box), InlS3Stage 12–40 s / 2.3 GB, AsmSelf ≈ 230 s.
+The ParseS3B* kernel files import each other (sequential), but other jobs run alongside: the gate build needs
+≥ 10 GB free for ParseS3BStage, i.e. limited parallelism (an OOM at 13.6 GB was reported with parallel jobs).
