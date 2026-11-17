@@ -46,6 +46,10 @@ Other front-end features added on the way (all generic, none restates a library 
 | `isRecursive` | also plain structural recursion (an unfold equation exists for the recursive definition) |
 | certificate tactics | `s3FinValLit` (`(k : Fin n).val` → `k % n`), `s3EncNatLit` (`enc (k : Nat)` → `.c 1 [enc (k-1)]`), `-Fin.isValue`, `UInt64.toBitVec_ofNat`, `Nat.beq/blt/ble = false` normal forms, `Bool.or/and_eq_true`; split order: `if` conditions before call results (avoids a 6-constructor blow-up on `Code`); closers `omega`, `rfl`, `apply_assumption` (all-or-nothing), callee certificates under `intros` |
 | `s3_compile … simp [ids]` | the optional simp list was never parsed (the optional group has 4 children); fixed |
+| dependent index parameters | `args[i]` with its proof unfolds to `List.get xs ⟨i, h⟩`, a parameter of type `Fin xs.length`: its value is `.c 0 [enc i]` (`encFin`), the oracle decodes it by `match` + `dite` on `i < bound` (no total decoder into `Fin 0` needed), the caller-facing certificate takes `(n, n < bound)`; all `Fin _` with a run-time bound share one S3 datatype |
+| unreachable code | `False.elim`, `absurd`, `False/Empty.rec/casesOn` become some value of the result type (never evaluated; the certificate's induction never enters that arm) |
+| mutual + state | members' parameters beyond the motive's (a `StateT` state) are quantified inside the motive; a well-founded block's `mutual_induct` lives on its first member |
+| closers | each closer is all-or-nothing (`c; done`): a partial closer no longer stops `first`; BitVec order contradictions via `toNat` + `omega`; generated certificates get `maxHeartbeats 1000000` |
 
 The 15 entries of `S3Examples.lean` regenerate byte-identical words (checked: `emit_s3.lean` re-run, no diff).
 
@@ -68,7 +72,10 @@ Tests: `lake env lean --tstack=4000000 Testing/asm/emit_s3rec.lean` (IR interpre
 | s3_evod | `evSum` / `odCnt` (ours) | mutual, result types `List UInt64` / `UInt64`, non-tail calls both ways | 1311 | 50 × 2 ok |
 | s3_lex | `lex` (ours) | lexicographic `(xs.length, k.toNat)`, inner counter reset to `x &&& 7` | 1164 | 50 × 2 ok |
 | s3_stexc | `stepS : List UInt64 → StateT UInt64 (Except UInt8) UInt64` (ours) | state + exception across a non-tail recursive call | 2094 | 50 × 2 ok |
-| s3_iotanumargs | con-leche `Cached.iotaNumArgs` (`CoreC.lean`) | structural over con-leche's `Expr` (`Name`/`String`/`Level`/`Literal`) | 1128 | see §5 |
+| s3_iotanumargs | con-leche `Cached.iotaNumArgs` (`CoreC.lean`) | structural over con-leche's `Expr` (`Name`/`String`/`Level`/`Literal`) | 1128 | 50 × 2 ok |
+| s3_getappargsarr | con-leche `Cached.getAppArgsArr` + `getAppArgsArrGo` + `iotaNumArgs` | structural; `Array.set!`, `Array.replicate` from their equations | 2502 | see §5 |
+| s3_mkapprange | con-leche `Cached.mkAppRange` | well-founded `termination_by j - i`; `args[i]` with its proof | 2090 | 50 × 2 ok |
+| s3_knot | `walkK` / `tagK` (ours) | the knot's shape: mutual in `StateT UInt64 (Except UInt8)`, well-founded on `(xs.length, rank)`, one member calls the other on the same list; exceptions in 10 of 50 cases | 3564 | 50 × 2 ok |
 
 The harness (`natW`, `wNat`, the `*B` encoders, `pairsN`, …) is compiled through S3 with the function; `wNat`
 is itself well-founded (`termination_by x.toNat`) and `natW` structural on `Nat` (`Nat.rec`).
@@ -80,17 +87,17 @@ now compile verbatim.
 - `Nat.brecOn` rows of the probe: con-leche `Expr.dropVars(C)` needs `Expr.instantiate1(C)` (con-leche's binder
   machinery, many functions) and the book rows (`addNatPos`) are not in this repository. The `Nat.brecOn` *shape*
   is covered (`Nat.add`, `Nat.beq`, `Nat.ble`, `natW` compile from their equations).
-- con-leche `mkAppRange` (`CoreC.lean`, well-founded `termination_by j - i`): `args[i]` with its proof becomes
-  `List.get` whose index type `Fin xs.length` depends on another parameter; the oracle cannot decode such a
-  parameter (no total decoder into `Fin 0`). Needs: dependent parameter types (decode against the decoded earlier
-  parameters with a fallback, or get-with-proof as a primitive whose certificate uses the proof).
-- `CoreC`'s knot itself (one mutual block of ~70 functions in `CheckCM = StateT CState CheckM`): needs `CState`
-  (hash maps) as data, `Array` operations (`push`, `set!`, `size`, indexing), the dependent indices above, and
-  the large-`Nat` representation (fuel `2^62` cannot be unary).
+- `CoreC`'s knot itself (one mutual block of ~70 functions in `CheckCM = StateT CState CheckM`): the shape now
+  compiles (`s3_knot`), and `Array` indexing with proofs / `set!` / `replicate` / `size` compile (`s3_mkapprange`,
+  `s3_getappargsarr`). Blocking: `CState`'s default `maxNatSize = 134217728` and the fuel `2^62` (unary `Nat`
+  cannot hold them), then con-leche's `Cached` sources (`StateC`, `ExprOpsC`: `Std.HashMap` keyed by `Expr`)
+  in the repository, then the members one by one.
 - `Nat` is unary: exact but O(n) space/time; fine for register numbers, not for fuel or byte offsets. Next: a
   limb representation with primitive `Nat.add/sub/mul/div/mod/beq/ble` proved once (a compiler feature, like the
   word operations).
 - Generic monads (`[Monad m]`, `CoreFns` records): specialisation only, as before.
+- Dependent `Fin` parameters inside a mutual component: rejected for now (the mutual certificate path has no
+  `encFin` form yet).
 
 ## 4. Decisions (taken without asking, per the round prompt)
 
