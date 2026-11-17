@@ -362,7 +362,13 @@ loops (round 6 E). (3) ImplementsBytes (`compile_correct`). Pending runs: QEMU/S
   formulas are literally `Proven.encR`/`Proven.encI`/`G.encL` (rfl). Build with the Sail oleans: restore
   build-cache (`sail-riscv-lean.tar.zst` to ../deps, `repo-build` parts), then
   `LEAN_PATH=<v2 out>:.lake/build/lib/lean:../deps/sail-riscv-lean/.lake/build/lib/lean:../deps/sail-riscv-lean/.lake/packages/Sail/.lake/build/lib/lean lean Nano/V2/Enc.lean`.
-- NEXT (layer 4b, Nano/V2/Sim.lean): `Rel K c (pc, s) t`: `Proven.Cfg t`; PC = base + 4·pc; every `C[i]` encoded at
+- Layer 4b DONE: Nano/V2/Sim.lean **`sim_step`** / **`sim_star`**: for a layout `K` (code at `base`, every
+  instruction `I.wf`, `jcert` jump certificate also checked by `gen`; code/work/input/output in RAM, written blocks
+  disjoint from the others) every pc-level step is ONE `Retires` of the Sail model keeping `Rel` (all forms: R/I ALU,
+  ld/sd as 8 LE bytes, lbu input, sb output, beq/bne/bltu/bgeu `+8`, jal x0 to certified labels), so every `PStar`
+  run (loops included, via `flat_ok`) is a Sail `Steps` run. `Retires.det` (determinism). Axioms: the Sail model's
+  extern set + propext/Classical.choice/Quot.sound. Sim 4 s, Enc 5 s.
+- (plan kept for reference) `Rel K c (pc, s) t`: `Proven.Cfg t`; PC = base + 4·pc; every `C[i]` encoded at
   base + 4i (`instrAt`, code region disjoint from the blocks); `getX t r = (s.x r).toBitVec` (r ≠ 0); work words:
   `c.wok a → 8 LE bytes at a = s.w a`; input bytes at ib; output bytes `o` at [ob, ob+ol); all in RAM
   [0x80000000, 2^32). Per `I` (wf): one `Retires` keeping `Rel` (G.step_add/sub/mul/and/or/xor/sll/srl/sltu,

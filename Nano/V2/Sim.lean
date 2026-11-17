@@ -338,4 +338,231 @@ theorem sim_sd {K : Lay} {c : Cfg} {pc : Nat} {s : St} {t : Proven.St} (hK : K.O
   · intro k hk; apply store8_out; have := hK.iw; omega
   · intro k hk; rw [store8_out _ _ _ _ (by have := hK.wo; omega)]; exact hR.out k hk
 
+/-- **lbu** (input bytes) -/
+theorem sim_lbu {K : Lay} {c : Cfg} {pc : Nat} {s : St} {t : Proven.St} (hK : K.Ok c) (hR : Rel K c (pc, s) t)
+    {rd a : Nat} {off : Int} (hC : K.C[pc]? = some (.lbu rd a off))
+    (hin : c.ib ≤ ea s a off ∧ ea s a off < c.ib + c.inp.length) :
+    ∃ t', Retires t t' ∧ Rel K c (pc + 1, s.set rd (c.inp.getD (ea s a off - c.ib) 0).toUInt64) t' := by
+  obtain ⟨_, hwf, hi, hok⟩ := code_at hK hR hC
+  simp only [I.wf, decide_eq_true_eq] at hwf
+  obtain ⟨hrd, ha, h1, h2⟩ := hwf
+  let RD : Fin 32 := ⟨rd, hrd⟩
+  let A : Fin 32 := ⟨a, ha⟩
+  have hea := ea_bv hR A off h1 h2
+  have hI := hK.ilo; have hJ := hK.ihi
+  have hlt : ea s a off < 2 ^ 64 := by omega
+  have hi' : instrAt t (BitVec.ofNat 64 (K.base + 4 * pc)) (G.encL 4 (BitVec.ofNat 12 (bits off 12)) RD A) := by
+    unfold G.encL; rw [imm12_toNat]; exact hi
+  have hb := hR.inp (ea s a off - c.ib) (by omega)
+  rw [show c.ib + (ea s a off - c.ib) = ea s a off by omega] at hb
+  obtain ⟨t', hN⟩ := G.step_lbu hR.cfg hR.pc hok RD A _ hi' hea (by rw [toNat_lt64 hlt]; omega)
+    (by rw [toNat_lt64 hlt]; exact hb)
+  rw [← UInt8.toBitVec_toUInt64] at hN
+  exact ⟨t', hN.ret, rel_reg hR RD _ hN⟩
+
+/-- **sb** (output bytes) -/
+theorem sim_sb {K : Lay} {c : Cfg} {pc : Nat} {s : St} {t : Proven.St} (hK : K.Ok c) (hR : Rel K c (pc, s) t)
+    {b a : Nat} {off : Int} (hC : K.C[pc]? = some (.sb b a off))
+    (hout : c.ob ≤ ea s a off ∧ ea s a off < c.ob + c.ol) :
+    ∃ t', Retires t t' ∧
+      Rel K c (pc + 1, { s with o := fun j => if j = ea s a off then (s.get b).toUInt8 else s.o j }) t' := by
+  obtain ⟨_, hwf, hi, hok⟩ := code_at hK hR hC
+  simp only [I.wf, decide_eq_true_eq] at hwf
+  obtain ⟨hb, ha, h1, h2⟩ := hwf
+  let B : Fin 32 := ⟨b, hb⟩
+  let A : Fin 32 := ⟨a, ha⟩
+  have hea := ea_bv hR A off h1 h2
+  have hO := hK.olo; have hP := hK.ohi
+  have hlt : ea s a off < 2 ^ 64 := by omega
+  have hi' : instrAt t (BitVec.ofNat 64 (K.base + 4 * pc)) (G.encS 0 (BitVec.ofNat 12 (bits off 12)) B A) := by
+    have e := encSt_eq 0 (by decide) B A (bits off 12) (bits_lt off 12)
+    have hi2 : instrAt t (BitVec.ofNat 64 (K.base + 4 * pc))
+        (BitVec.ofNat 32 (encSt 0 B.val A.val ((bits off 12 : Nat) : Int))) := by rw [← encSt_bits]; exact hi
+    rw [e] at hi2; exact hi2
+  obtain ⟨t', hN⟩ := G.step_sb hR.cfg hR.pc hok B A _ hi' hea (by rw [toNat_lt64 hlt]; omega)
+  rw [toNat_lt64 hlt, hR.x B] at hN
+  refine ⟨t', hN.ret, rel_mem hK hR hN rfl ?_ ?_ ?_ ?_⟩
+  · intro x hx1 hx2; rw [Std.ExtHashMap.getElem?_insert, if_neg (by have := hK.co; simp; omega)]
+  · intro a' ha' k hk
+    have := ha'.1; have := ha'.2.1
+    rw [Std.ExtHashMap.getElem?_insert, if_neg (by have := hK.wo; simp; omega)]; exact hR.w a' ha' k hk
+  · intro k hk; rw [Std.ExtHashMap.getElem?_insert, if_neg (by have := hK.io; simp; omega)]
+  · intro k hk
+    rw [Std.ExtHashMap.getElem?_insert]
+    by_cases he : ea s a off = c.ob + k
+    · rw [if_pos (by simp [he])]; simp [he]; rfl
+    · rw [if_neg (by simp [he])]; simp only [Ne.symm he, if_false]; exact hR.out k hk
+
+/-! ## control transfers -/
+
+/-- a retired instruction that only moves the pc -/
+theorem rel_jump {K : Lay} {c : Cfg} {pc pc' : Nat} {s : St} {t t' : Proven.St} (hR : Rel K c (pc, s) t)
+    (hN : Next t t' (BitVec.ofNat 64 (K.base + 4 * pc')) 0 0 t.mem) : Rel K c (pc', s) t' where
+  cfg := hN.cfg
+  pc := hN.pc
+  code := fun i h => by have := hR.code i h; unfold instrAt at this ⊢; rw [hN.mem]; exact this
+  x := fun j => by
+    rw [hN.x j]; simp only [show ¬ (j = 0 ∧ j ≠ 0) from fun h => h.2 h.1, if_false]; exact hR.x j
+  w := fun a ha k hk => by rw [hN.mem]; exact hR.w a ha k hk
+  inp := fun k hk => by rw [hN.mem]; exact hR.inp k hk
+  out := fun k hk => by rw [hN.mem]; exact hR.out k hk
+
+theorem app0_toNat' {w} (x : BitVec w) : (x +++ (0#1 : BitVec 1)).toNat = 2 * x.toNat := by
+  rw [BitVec.toNat_append]; simp [Nat.shiftLeft_eq]; omega
+
+theorem boff8 : boff (4#12) = 8#64 := by decide
+
+theorem pc_plus8 (b pc : Nat) : BitVec.ofNat 64 (b + 4 * pc) + 8#64 = BitVec.ofNat 64 (b + 4 * (pc + 2)) := by
+  apply BitVec.eq_of_toNat_eq; simp [BitVec.toNat_add]; omega
+
+/-- **branches** (`+8`, over the following `jal`) -/
+theorem sim_br {K : Lay} {c : Cfg} {pc : Nat} {s : St} {t : Proven.St} (hK : K.Ok c) (hR : Rel K c (pc, s) t)
+    {k : BOp} {a b : Nat} {off : Int} (hC : K.C[pc]? = some (.br k a b off)) :
+    ∃ t', Retires t t' ∧
+      Rel K c (if k.eval (s.get a) (s.get b) then jt pc off else pc + 1, s) t' := by
+  obtain ⟨_, hwf, hi, hok⟩ := code_at hK hR hC
+  simp only [I.wf, decide_eq_true_eq] at hwf
+  obtain ⟨ha, hb, rfl⟩ := hwf
+  let A : Fin 32 := ⟨a, ha⟩
+  let B : Fin 32 := ⟨b, hb⟩
+  have xa : getX t A = (s.get a).toBitVec := hR.x A
+  have xb : getX t B = (s.get b).toBitVec := hR.x B
+  have hj : jt pc 8 = pc + 2 := by unfold jt; omega
+  rw [hj]
+  have tk : ∀ {t'}, Next t t' (BitVec.ofNat 64 (K.base + 4 * pc) + boff 4#12) 0 0 t.mem → Rel K c (pc + 2, s) t' :=
+    fun hN => rel_jump hR (by rw [boff8, pc_plus8] at hN; exact hN)
+  have nt : ∀ {t'}, Next t t' (BitVec.ofNat 64 (K.base + 4 * pc) + 4) 0 0 t.mem → Rel K c (pc + 1, s) t' :=
+    fun hN => rel_jump hR (by rw [ofNat_pc4] at hN; exact hN)
+  cases k with
+  | beq =>
+    have e := encBt8_eq 0 (by decide) A B
+    have hi2 : instrAt t _ (BitVec.ofNat 32 (encBt 0 A.val B.val 8)) := hi
+    rw [e] at hi2
+    by_cases hc : s.get a = s.get b
+    · obtain ⟨t', hN⟩ := G.beq_t hR.cfg hR.pc hok A B _ hi2 (by rw [xa, xb, hc])
+      exact ⟨t', hN.ret, by simp only [BOp.eval, hc, beq_self_eq_true, if_true]; exact tk hN⟩
+    · obtain ⟨t', hN⟩ := G.beq_n hR.cfg hR.pc hok A B _ hi2 (by rw [xa, xb]; exact fun h => hc (UInt64.toBitVec_inj.1 h))
+      exact ⟨t', hN.ret, by simp only [BOp.eval, beq_iff_eq, hc, if_false]; exact nt hN⟩
+  | bne =>
+    have e := encBt8_eq 1 (by decide) A B
+    have hi2 : instrAt t _ (BitVec.ofNat 32 (encBt 1 A.val B.val 8)) := hi
+    rw [e] at hi2
+    by_cases hc : s.get a = s.get b
+    · obtain ⟨t', hN⟩ := G.bne_n hR.cfg hR.pc hok A B _ hi2 (by rw [xa, xb, hc])
+      exact ⟨t', hN.ret, by simp only [BOp.eval, hc, bne_self_eq_false, Bool.false_eq_true, if_false]; exact nt hN⟩
+    · obtain ⟨t', hN⟩ := G.bne_t hR.cfg hR.pc hok A B _ hi2 (by rw [xa, xb]; exact fun h => hc (UInt64.toBitVec_inj.1 h))
+      exact ⟨t', hN.ret, by simp only [BOp.eval, bne_iff_ne, ne_eq, hc, not_false_eq_true, if_true]; exact tk hN⟩
+  | bltu =>
+    have e := encBt8_eq 6 (by decide) A B
+    have hi2 : instrAt t _ (BitVec.ofNat 32 (encBt 6 A.val B.val 8)) := hi
+    rw [e] at hi2
+    by_cases hc : s.get a < s.get b
+    · obtain ⟨t', hN⟩ := G.bltu_t hR.cfg hR.pc hok A B _ hi2 (by rw [xa, xb]; exact hc)
+      exact ⟨t', hN.ret, by simp only [BOp.eval, hc, decide_true, if_true]; exact tk hN⟩
+    · obtain ⟨t', hN⟩ := G.bltu_n hR.cfg hR.pc hok A B _ hi2 (by rw [xa, xb]; exact hc)
+      exact ⟨t', hN.ret, by simp only [BOp.eval, hc, decide_false, Bool.false_eq_true, if_false]; exact nt hN⟩
+  | bgeu =>
+    have e := encBt8_eq 7 (by decide) A B
+    have hi2 : instrAt t _ (BitVec.ofNat 32 (encBt 7 A.val B.val 8)) := hi
+    rw [e] at hi2
+    by_cases hc : s.get a < s.get b
+    · obtain ⟨t', hN⟩ := G.bgeu_n hR.cfg hR.pc hok A B _ hi2 (by rw [xa, xb]; exact hc)
+      have : ¬ s.get b ≤ s.get a := fun h => absurd hc (UInt64.not_lt.2 h)
+      exact ⟨t', hN.ret, by simp only [BOp.eval, this, decide_false, Bool.false_eq_true, if_false]; exact nt hN⟩
+    · obtain ⟨t', hN⟩ := G.bgeu_t hR.cfg hR.pc hok A B _ hi2 (by rw [xa, xb]; exact hc)
+      have : s.get b ≤ s.get a := UInt64.not_lt.1 hc
+      exact ⟨t', hN.ret, by simp only [BOp.eval, this, decide_true, if_true]; exact tk hN⟩
+
+theorem joff_int (v : Nat) (hv : v < 2 ^ 20) (off : Int) (h1 : -2 ^ 20 ≤ off) (h2 : off < 2 ^ 20)
+    (he : bits off 21 = 2 * v) : joff (BitVec.ofNat 20 v) = BitVec.ofInt 64 off := by
+  apply BitVec.eq_of_toNat_eq
+  simp [joff, BitVec.toNat_signExtend, BitVec.msb_eq_decide, app0_toNat', BitVec.toNat_ofInt]
+  unfold bits at he
+  have hv' : v % 2 ^ 20 = v := Nat.mod_eq_of_lt hv
+  rw [hv']
+  split <;> omega
+
+theorem jcert_at {C : List I} (hc : jcert C = true) {pc : Nat} {off : Int} (h : C[pc]? = some (.jal off)) :
+    0 ≤ (pc : Int) + off / 4 ∧ (pc : Int) + off / 4 ≤ C.length := by
+  unfold jcert at hc
+  have hpc := (List.getElem?_eq_some_iff.1 h).1
+  have := List.all_eq_true.1 hc pc (List.mem_range.2 hpc)
+  simp only [h, decide_eq_true_eq] at this; exact this
+
+/-- **jal x0** (to a certified label) -/
+theorem sim_jal {K : Lay} {c : Cfg} {pc : Nat} {s : St} {t : Proven.St} (hK : K.Ok c) (hR : Rel K c (pc, s) t)
+    {off : Int} (hC : K.C[pc]? = some (.jal off)) : ∃ t', Retires t t' ∧ Rel K c (jt pc off, s) t' := by
+  obtain ⟨_, hwf, hi, hok⟩ := code_at hK hR hC
+  simp only [I.wf, decide_eq_true_eq] at hwf
+  obtain ⟨h4, h1, h2⟩ := hwf
+  obtain ⟨j1, j2⟩ := jcert_at hK.jc hC
+  have hb := bits_lt off 21
+  have heven : bits off 21 % 2 = 0 := by unfold bits; omega
+  let v := bits off 21 / 2
+  have he : bits off 21 = 2 * v := by omega
+  have hv : v < 2 ^ 20 := by omega
+  have hi2 : instrAt t (BitVec.ofNat 64 (K.base + 4 * pc)) (BitVec.ofNat 32 (encJt ((2 * v : Nat) : Int))) := by
+    have : encJt off = encJt ((2 * v : Nat) : Int) := by
+      unfold encJt; rw [bits_nat (2 * v) 21 (by omega), ← he]
+    rw [← this]; exact hi
+  rw [encJt_eq v hv] at hi2
+  obtain ⟨t', hN⟩ := G.step_jal hR.cfg hR.pc hok 0 _ hi2
+  rw [joff_int v hv off (by omega) (by omega) he] at hN
+  have e : BitVec.ofNat 64 (K.base + 4 * pc) + BitVec.ofInt 64 off = BitVec.ofNat 64 (K.base + 4 * jt pc off) := by
+    apply BitVec.eq_of_toNat_eq
+    simp only [BitVec.toNat_add, BitVec.toNat_ofNat, BitVec.toNat_ofInt, jt]
+    have := hK.bhi; omega
+  have hN' : Next t t' (BitVec.ofNat 64 (K.base + 4 * jt pc off)) 0 0 t.mem :=
+    ⟨hN.ret, hN.cfg, by rw [hN.pc, e], fun j => by
+      rw [hN.x j]; simp only [show ¬ (j = (0 : Fin 32) ∧ j ≠ 0) from fun h => h.2 h.1, if_false], hN.mem⟩
+  exact ⟨t', hN.ret, rel_jump hR hN'⟩
+
+/-- **one pc-level step is one retired Sail instruction** -/
+theorem sim_step {K : Lay} {c : Cfg} {p q : Nat × St} {t : Proven.St} (hK : K.Ok c) (hR : Rel K c p t)
+    (h : pstep c K.C p = some q) : ∃ t', Retires t t' ∧ Rel K c q t' := by
+  obtain ⟨pc, s⟩ := p
+  unfold pstep at h
+  cases hC : K.C[pc]? with
+  | none => simp [hC] at h
+  | some ins =>
+    simp only [hC] at h
+    cases ins with
+    | br k a b off => simp only [Option.some.injEq] at h; subst h; exact sim_br hK hR hC
+    | jal off => simp only [Option.some.injEq] at h; subst h; exact sim_jal hK hR hC
+    | r f rd a b => simp only [I.run, Option.map_some, Option.some.injEq] at h; subst h; exact sim_r hK hR hC
+    | i f rd a imm => simp only [I.run, Option.map_some, Option.some.injEq] at h; subst h; exact sim_i hK hR hC
+    | ld rd a off =>
+      simp only [I.run] at h; split at h
+      · rename_i hw; simp only [Option.map_some, Option.some.injEq] at h; subst h; exact sim_ld hK hR hC hw
+      · simp at h
+    | sd b a off =>
+      simp only [I.run] at h; split at h
+      · rename_i hw; simp only [Option.map_some, Option.some.injEq] at h; subst h; exact sim_sd hK hR hC hw
+      · simp at h
+    | lbu rd a off =>
+      simp only [I.run] at h; split at h
+      · rename_i hw; simp only [Option.map_some, Option.some.injEq] at h; subst h; exact sim_lbu hK hR hC hw
+      · simp at h
+    | sb b a off =>
+      simp only [I.run] at h; split at h
+      · rename_i hw; simp only [Option.map_some, Option.some.injEq] at h; subst h; exact sim_sb hK hR hC hw
+      · simp at h
+    | ret => simp [I.run] at h
+
+/-- **a pc-level run is a Sail run** -/
+theorem sim_star {K : Lay} {c : Cfg} (hK : K.Ok c) {p q : Nat × St} (h : PStar c K.C p q) :
+    ∀ {t : Proven.St}, Rel K c p t → ∃ n t', Steps n t t' ∧ Rel K c q t' := by
+  induction h with
+  | refl p => intro t hR; exact ⟨0, t, rfl, hR⟩
+  | step e _ ih =>
+    intro t hR
+    obtain ⟨t1, hr, hR1⟩ := sim_step hK hR e
+    obtain ⟨n, t', hs, hR'⟩ := ih hR1
+    exact ⟨n + 1, t', ⟨t1, hr, hs⟩, hR'⟩
+
+/-- the Sail model is deterministic: a state retires into at most one state -/
+theorem Retires.det {t a b : Proven.St} (ha : Retires t a) (hb : Retires t b) : a = b := by
+  have := ha.2.symm.trans hb.2
+  cases this; rfl
+
 end Nano.V2B
