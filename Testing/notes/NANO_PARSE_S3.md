@@ -32,3 +32,6 @@
   elaborator-depth limits (nesting ≤ 400, chains ≤ 2500; NANO.md "RESOURCE LIMITS" on nano-e2e); nanoElab unchanged.
   (2) the parser compile is owned here (close B: inliner only); if the `stage2S` compile runs > ~30 min, split it
   into smaller S3 stages, each with its own bridge, linked by `link_stage`, with timings recorded here.
+- TIMING: probe `gs` (decoder `decLS`/`decS` + `gasS` + `u8N`, S3 compile with certificates): OK, 22 min 48 s
+  wall (13 min 17 s user; another Lean build ran in parallel). The certificates dominate (s3_solve on decS's
+  if-chain).
