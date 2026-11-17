@@ -195,3 +195,52 @@ compiles verbatim from its equations over these: `Nat.pow`, `Nat.shiftLeft`, `Na
 
 ### Results
 
+Every entry: `N.correct` (exactly the Sail axiom set, checked equal to `S3Incs.correct`'s), `N.computes`, `N.wf`
+⊆ {propext, Classical.choice, Quot.sound}; `Testing/scripts/axioms_s3-limb.lean` (in `check.sh`, with the 14
+primitive lemmas). Tests: `lake env lean --tstack=4000000 Testing/asm/emit_s3limb.lean` (IR interpreter == Lean on
+all 50 cases of every entry), then `python3 Testing/asm/ir_test.py check N s3l_<name>`; `IR_QEMU_ONLY=1` (new, in
+`ir_test.py`) runs QEMU only, for bulk runs of the division-heavy entries whose Sail runs take most of an hour.
+
+| entry | file | function (verbatim where named) | words | build | QEMU + Sail |
+|---|---|---|---:|---:|---|
+| s3l_arith | `S3LimbExamples.lean` | `arith`: `+ - * / %`, `< ≤ ==` on 64/128-bit `Nat`s | 5943 | 3m17s (file) | QEMU 50 × 2 ok; Sail 10 × 2 ok |
+| s3l_fuel | `S3LimbExamples.lean` | con-leche `whnfLoopFuel` (2^62), `maxNatSizeDefault` (2^27) as data; `walkFuel` decrements the fuel | 5201 | (same file) | 50 × 2 ok |
+| s3l_fact | `S3LimbRec.lean` | `fact` (structural on `Nat`), `digits` (well-founded on `Nat`), up to `63!` | 4644 | 3m04s (file) | 50 × 2 ok |
+| s3l_natsize | `S3LimbRec.lean` | con-leche `natSizeBytes` (`Nat.log2`), the refusal test against `maxNatSizeDefault`, up to `w^8` | 5349 | (same file) | NATSIZE |
+| s3l_bits | `S3LimbBits.lean` | `&&& ||| ^^^`; `<<<`, `>>>`, `Nat.gcd`, `^` verbatim | 6853 | 2m13s | BITS |
+| s3l_dropvars | `S3LimbConLeche.lean` | con-leche `Expr.dropVars` + `instantiate1` (the `Nat.brecOn` row), `s3_encL` on `Name`/`Level`/`Literal`/`Expr` | 4521 | 1m18s | DROPVARS |
+
+`Compiler/S3/Limbs.lean` alone: 39 s. A probe with every operation in one `main` certified in 1–3 min.
+
+### Not done / blocked (found this round)
+
+- **`CState {}`**: `Std.HashMap.emptyWithCapacity` computes `Nat.nextPowerOfTwo (8 * 4 / 3)`, whose `go` is a
+  private, well-founded function with a proof parameter after its run-time arguments (`go (power) (h : power > 0)`).
+  The front end rejects a proof parameter after a run-time one, and a private name cannot be printed into the
+  generated certificate text. Options: (a) erase proof parameters (the oracle decodes them by `dite` on the decidable
+  proposition, as for dependent `Fin` parameters), and generate certificates without naming private functions; (b)
+  fold closed `Nat` terms at compile time with a `decide +kernel` lemma each (needs specialisation of
+  `emptyWithCapacity` on its literal capacity). No characterisation lemma of `nextPowerOfTwo` exists in core, so a
+  limb primitive for it cannot be proved.
+- **con-leche `NatBinOp.result` / `natOpRefusal` (StateC, verbatim)**: blocked by `String` literals (`CheckError`
+  messages): a literal as its byte chain translates (prototype, reverted), but long literals exceed the elaborator's
+  recursion depth in the generated body, and the certificate needs `Nat.blt` normal forms against
+  `natSizeBytes`; next round.
+- **A large literal factor** (`x * 4294967296`, not `x * 65536`) makes the kernel report deep recursion in the main
+  certificate (found in a probe, not located: not the value/calls split, not `s3_split`'s generalisation, not the
+  simp normal form alone). Literal divisors and literal operands elsewhere are fine.
+- Speed (measured on the interpreters, not optimised): every `Nat` operation is one extra call (the primitive wrapper)
+  plus the limb function's calls; division is bit-serial (32 steps per digit, each a compare, a subtract, a shift);
+  verbatim `Nat.gcd`/`>>>` loop over it. Next: inline the wrappers, Knuth division with a 64/32 word step.
+- Dependent `Fin` parameters with limb `Nat`s: rejected (`encFin` is unary).
+
+### Decisions (taken without asking)
+
+- A separate command `s3_compileL` (and `s3_encL`) rather than an option on `s3_compile`: no change to the existing
+  elaborators, so the nano-parse-s3 additions to the same file merge without conflicts.
+- 32-bit digits, masked on read, results normalised (above); lemmas without invariants.
+- A primitive is an S3 function (wrapper) whose certificate is its lemma, rather than a call of the limb function
+  from the caller: callers' certificates then stay at the `Nat` level (`φ` applies `Nat.add` etc.), literals decode
+  by `simp`, and no caller sees `toLimbs`.
+- `Limbs.lean` holds the encoding (`encNatL`, `encFinL`) next to the primitives (not in `Cert.lean`), so `Cert.lean`
+  is unchanged.
