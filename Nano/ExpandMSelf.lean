@@ -1,7 +1,7 @@
 import Nano.ExpandM
 import Riscv.Frontx.ListOutExamples
 import Riscv.Frontx.Impl1
-import Riscv.Frontx.Checked
+import Nano.CheckedSpill
 /- the micro-op expander `mexp` as the record-per-step machine `Nano.MX.mx` (Nano/ExpandM.lean), compiled by OUR
 compiler (front end `frontx_compile`, list view), with a machine theorem `Nano.Self.nanoExpM.implements1` -/
 namespace Nano.Self
@@ -45,7 +45,7 @@ theorem nanoExpM_eq (xs : ByteArray) : nanoExpM xs = mxv xs 0 0 0 0 := rfl
 frontx_entry nanoExpM from nanoExpM_eq
 set_option maxHeartbeats 0 in
 set_option maxRecDepth 100000 in
-frontx_implements_listC nanoExpM
+frontx_implements_listCS nanoExpM
 #print axioms nanoExpM.implements1
 
 end Nano.Self

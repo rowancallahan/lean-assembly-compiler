@@ -1,7 +1,7 @@
 import Nano.ElabBSplit
 import Riscv.Frontx.ListOutExamples
 import Riscv.Frontx.Impl1
-import Riscv.Frontx.Checked
+import Nano.CheckedSpill
 /- stage 1a of the split lexer (`Nano.B.vB`, the validator, Nano/ElabBSplit.lean) compiled by OUR compiler (front end
 `frontx_compile`, list view), with a machine theorem `Nano.Self.vBE.implements1` -/
 namespace Nano.Self
@@ -18,7 +18,7 @@ theorem vBE_eq (xs : ByteArray) : vBE xs = Nano.B.lv.view xs 0 0 5 0 0 0 0 0 0 0
 frontx_entry vBE from vBE_eq
 set_option maxHeartbeats 0 in
 set_option maxRecDepth 100000 in
-frontx_implements_listC vBE
+frontx_implements_listCS vBE
 #print axioms vBE.implements1
 
 end Nano.Self

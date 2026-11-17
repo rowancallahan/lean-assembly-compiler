@@ -1,52 +1,3 @@
-# NANO_CLOSE: closing the four machine theorems of `Nano.selfHosted_parse_asm`
-
-## Section A (box nano-closeA: lexer h1, expander hm, final instantiation)
-(owned by nano-closeA)
-
-## Section B (box nano-closeB: parser h2 = `stage2`, inliner hi = `inlB`)
-
-### Plan / decisions
-* 2026-11-17 (start). Setup: build cache restored, toolchain via elan 4.29.0. Branch nano-closeB = nano-parse + nano-int.
-* DECISION (inliner design): a paged (`wp_compile`) stage. Its output buffer is PREALLOCATED (fill loop) and written
-  only with `set!` (constant size: the side goals of the fixed tactic stay branch-free); one write per step; copy
-  mode (`rem`, `cp`) for `[14 h][15 l]` calls; consumes one input byte per non-copy step (parity flag).
-  Consequence: a fixed buffer capacity, so the stage equals `inlB` only when the inliner's whole table fits; the
-  stage hypothesis becomes `∀ x, <fits> x → fi (ofL x) = inlB x` (weaker hypothesis = stronger final theorem), and
-  the size domain gets that condition on `serU u`.
-
-### Log
-* Probes (`Testing/nano/closeB/p1.lean`, `p2*.lean`, `p3*.lean`): what `wp_compile`'s `wfP` / fixed tactic accept:
-  1. ONE changing array per loop (`Args.wfP`: after the first non-`var` array argument `cw = false`); two arrays
-     changed in one loop (`ob`, `st`) ⇒ `wfP = false`.
-  2. An array loop must return a plain variable (`T.wfP (.ret a)`: `.var` only); `else ob.set! …` ⇒ `wfP = false`.
-  3. The size of a previous loop's result is not known to the next loop's invariant (fill loop + set! loop: open goal
-     `(g0 …).size = 64`). `Array.replicate n 0` has a known size (`Array.size_replicate`), also for n = 327680.
-  4. A large literal `Array.replicate 327680 0` as a closed term overflowed the stack (`lean` default thread stack);
-     `CAP + 0 * xs.size` and `lean --tstack=4000000` are used.
-* DECISION (inliner v2, `Nano/InlP.lean`): ONE work array `ob : Array Nat` = def table (cells 0..65536) + header cell
-  (start·2^24 + end + 1 of the last closed def) + byte region (inlined bodies, each followed by its arity byte); the
-  main loop writes three cells per step with `set!` (byte, table entry, header; unchanged cells rewritten with their own
-  value); the emit loop fills a preallocated `Array UInt8` (`set!` only, so no loop allocates: the page events are the
-  two `replicate`s, bound `inlP_pk : pk ≤ 600` pages, work space `8192 · 601`).
-* PROVED (`Nano/InlPProof.lean`, standard axioms): **`Nano.IP.inlP_eq : inlFits x → (inlP ⟨⟨x⟩⟩).toList = inlB x`**
-  (`mn_main`: the main loop simulates `inlS` = `inlGo` with its final state, invariant `Inv`; `mn_copyAll`: copy mode;
-  `em_wrap`: the emit loop writes `wrap k last`). `inlFits x`: the inliner's table (all inlined bodies + arity bytes +
-  the current body) has < 262136 bytes.
-* PROVED (`Nano/PgStage.lean`): `Nano.Link.pg_stage`: `PgProg.Good` + `GoodE` runs + a page bound ⇒ `Implements1With
-  (·.data.toList) id body (fun xs => (f xs).toList) (fun _ => 8192·(B+1)) maxIn true` (`body_ok`, `of_pg`).
-* PROVED (`Nano/SelfHostB.lean`): `selfHosted_parseB`, `selfHosted_parseB_asm` = `selfHosted_parse(_asm)` with the
-  inliner hypothesis `hfi : ∀ x, inlFits x → fi (ofL x) = inlB x` and domain `Sized5B` = `Sized5` ∧ `inlFits (serU u)`.
-* Stage 2 (`stage2`, the parser machine): NOT compiled in this session. Assessment from the inliner's experience:
-  the inliner's main loop (11 scalars, three `set!` per step, ~10 nested conditionals per component) takes > 1 h of
-  `wp_compile` (single thread, 4 GB) and needs `--tstack`. `parseA`'s `step` has ~25 transitions, a frame stack, a
-  scope list and a def table (names compared byte by byte), and emits up to 18 bytes per step (`sLi`). Under the
-  constraints above (one changing array per loop: stack + scope + defs + output in ONE `Array Nat`; one tail call
-  per step; per-step constant work) it needs sub-step modes (emit-k-bytes, compare-name, pop-frame) on the order of
-  50 transitions per step function, i.e. several compiles of the inliner's size. Suggested split (each a paged loop
-  over one `Array Nat`, composed with `link_stage`, each proved equal to its part of `parseA` by a Lean equation):
-  (2a) token bytes → tokens with names resolved to scope slots / def numbers (rescans, no stack);
-  (2b) precedence/parentheses with an explicit stack → postfix micro-ops (`serU` without numerals expanded);
-  (2c) numeral expansion (`sLi`), a list-path stage (`frontx_compile`), constant output per token.
 # NANO_CLOSE: closing the self-hosting theorem of nano
 
 ## A (branch nano-closeA): stage 1 (lexer `lexB`) and the expander (`mexp`)
@@ -105,3 +56,89 @@
 * `mexp` stage TESTED (`python3 Testing/nano/stage_test.py expm R S seed`: inputs `ser p` of corpus + random
   UInt64/Int64 programs and random micro-op strings; expected = executed Lean `mexp`): seed 7, R = 40: QEMU 306/306,
   Sail 8/8; seed 11, R = 400: QEMU 2466/2466 (outputs up to 3248 bytes), Sail 5/5. 663 words, work 271 bytes.
+* 06:20. SPEED (owner-allowed proof-generation change, separate file `Nano/CheckedSpill.lean`, front end untouched):
+  the lexer halves' builds sat > 60 CPU-min in `frontx_implements_listC` (gdb: the interpreter evaluating `pickC`,
+  the untrusted register-choice search that runs the code generator `optB` for many spill sets x 7 colouring modes);
+  their `frontx_compile` alone takes 3.6 min (standalone measurement). `frontx_implements_listCS` = the same command
+  with the choice `pickSpill`: first "every local spilled" with the 7 modes, then `pickC`. Same theorem
+  (`implements1_listC`), same kernel check `decide +kernel` of `optB`. Timing on `Nano/ExpandMSelf.lean` (whole file):
+  BEFORE 5 min 46 s (`implements_listC` 229 s), AFTER 49.5 s. Code: more loads/stores (locals in memory).
+* `mexp` stage rebuilt with `frontx_implements_listCS` (55 s): 1031 words (was 663), work 271 bytes; re-tested:
+  seed 11, R = 400: QEMU 2466/2466, Sail 6/6; seed 7, R = 20: QEMU 186/186, Sail 8/8.
+* Main session (06:32): Lean's real elaborator rejects ≥ 512 nested lets, ≥ 256 nested calls, operator chains of
+  ≥ ~3000 operands, which `nanoElab` accepts. DECISION: the domain of `Nano.selfHosted` gets the explicit predicate
+  `LeanLimits src := src.length ≤ 1500 ∧ src.count 40 ≤ 250` (a nested call needs a `(` per level: ≤ 250; a `let`
+  needs ≥ 3 bytes: < 512; an operand ≥ 1 byte plus an operator: < 2500 operands). `nanoElab` unchanged.
+## Section B (box nano-closeB: parser h2 = `stage2`, inliner hi = `inlB`)
+
+### Plan / decisions
+* 2026-11-17 (start). Setup: build cache restored, toolchain via elan 4.29.0. Branch nano-closeB = nano-parse + nano-int.
+* DECISION (inliner design): a paged (`wp_compile`) stage. Its output buffer is PREALLOCATED (fill loop) and written
+  only with `set!` (constant size: the side goals of the fixed tactic stay branch-free); one write per step; copy
+  mode (`rem`, `cp`) for `[14 h][15 l]` calls; consumes one input byte per non-copy step (parity flag).
+  Consequence: a fixed buffer capacity, so the stage equals `inlB` only when the inliner's whole table fits; the
+  stage hypothesis becomes `∀ x, <fits> x → fi (ofL x) = inlB x` (weaker hypothesis = stronger final theorem), and
+  the size domain gets that condition on `serU u`.
+
+### Log
+* Probes (`Testing/nano/closeB/p1.lean`, `p2*.lean`, `p3*.lean`): what `wp_compile`'s `wfP` / fixed tactic accept:
+  1. ONE changing array per loop (`Args.wfP`: after the first non-`var` array argument `cw = false`); two arrays
+     changed in one loop (`ob`, `st`) ⇒ `wfP = false`.
+  2. An array loop must return a plain variable (`T.wfP (.ret a)`: `.var` only); `else ob.set! …` ⇒ `wfP = false`.
+  3. The size of a previous loop's result is not known to the next loop's invariant (fill loop + set! loop: open goal
+     `(g0 …).size = 64`). `Array.replicate n 0` has a known size (`Array.size_replicate`), also for n = 327680.
+  4. A large literal `Array.replicate 327680 0` as a closed term overflowed the stack (`lean` default thread stack);
+     `CAP + 0 * xs.size` and `lean --tstack=4000000` are used.
+* DECISION (inliner v2, `Nano/InlP.lean`): ONE work array `ob : Array Nat` = def table (cells 0..65536) + header cell
+  (start·2^24 + end + 1 of the last closed def) + byte region (inlined bodies, each followed by its arity byte); the
+  main loop writes three cells per step with `set!` (byte, table entry, header; unchanged cells rewritten with their own
+  value); the emit loop fills a preallocated `Array UInt8` (`set!` only, so no loop allocates: the page events are the
+  two `replicate`s, bound `inlP_pk : pk ≤ 600` pages, work space `8192 · 601`).
+* PROVED (`Nano/InlPProof.lean`, standard axioms): **`Nano.IP.inlP_eq : inlFits x → (inlP ⟨⟨x⟩⟩).toList = inlB x`**
+  (`mn_main`: the main loop simulates `inlS` = `inlGo` with its final state, invariant `Inv`; `mn_copyAll`: copy mode;
+  `em_wrap`: the emit loop writes `wrap k last`). `inlFits x`: the inliner's table (all inlined bodies + arity bytes +
+  the current body) has < 262136 bytes.
+* PROVED (`Nano/PgStage.lean`): `Nano.Link.pg_stage`: `PgProg.Good` + `GoodE` runs + a page bound ⇒ `Implements1With
+  (·.data.toList) id body (fun xs => (f xs).toList) (fun _ => 8192·(B+1)) maxIn true` (`body_ok`, `of_pg`).
+* PROVED (`Nano/SelfHostB.lean`): `selfHosted_parseB`, `selfHosted_parseB_asm` = `selfHosted_parse(_asm)` with the
+  inliner hypothesis `hfi : ∀ x, inlFits x → fi (ofL x) = inlB x` and domain `Sized5B` = `Sized5` ∧ `inlFits (serU u)`.
+* Stage 2 (`stage2`, the parser machine): NOT compiled in this session. Assessment from the inliner's experience:
+  the inliner's main loop (11 scalars, three `set!` per step, ~10 nested conditionals per component) takes > 1 h of
+  `wp_compile` (single thread, 4 GB) and needs `--tstack`. `parseA`'s `step` has ~25 transitions, a frame stack, a
+  scope list and a def table (names compared byte by byte), and emits up to 18 bytes per step (`sLi`). Under the
+  constraints above (one changing array per loop: stack + scope + defs + output in ONE `Array Nat`; one tail call
+  per step; per-step constant work) it needs sub-step modes (emit-k-bytes, compare-name, pop-frame) on the order of
+  50 transitions per step function, i.e. several compiles of the inliner's size. Suggested split (each a paged loop
+  over one `Array Nat`, composed with `link_stage`, each proved equal to its part of `parseA` by a Lean equation):
+  (2a) token bytes → tokens with names resolved to scope slots / def numbers (rescans, no stack);
+  (2b) precedence/parentheses with an explicit stack → postfix micro-ops (`serU` without numerals expanded);
+  (2c) numeral expansion (`sLi`), a list-path stage (`frontx_compile`), constant output per token.
+
+## Section F (box nano-final: fast inliner, composition `Nano.selfHosted`)
+
+### Setup
+* Branch `nano-final` = origin/nano-closeA + merge origin/nano-closeB + merge origin/nano-parse-s3 (one at a time; the
+  octopus merge failed on NANO_CLOSE.md: kept both sides). Build cache restored (all repo-build parts, main f1cfb76).
+  Toolchain: elan from elan.lean-lang.org (no denial on this box), Lean 4.29.0.
+
+### Findings / decisions
+* 07:25. FINDING: an inliner as list-style byte machines only (input view + scalars + streamed output) is not possible
+  for unbounded call depth: inlining expands a call DAG; any traversal needs memory proportional to the call depth
+  (or a table of expanded bodies), and a fixed chain of stages with O(1) scalars each cannot provide it (copy-forward
+  passes would need as many passes as the call depth). DECISION: the table stays in ONE paged stage; everything
+  around it (record normalisation, `wrap`) goes to list stages, so the paged loop is as small as possible.
+* 07:35. FINDING (why close B's `inlP` compile does not finish): `wp_compileS` evaluates the register choice in the
+  interpreter; "every local spilled" fails `optB` for all colouring modes, so it falls into `pickC`'s full search.
+  Probe (`Testing/nano/closeF/probe*.lean`): with spill-all, `inlP`'s code is 4187 words and `wf` FAILS — the loop
+  bodies are longer than the conditional-branch range that `Wide.wf` checks (`brOK`, ±4 KiB = 1024 words). The main
+  loop `mn` alone is ~1600–1700 words even as a one-`set!`-per-step variant, the emit loop `em` alone 1586 words
+  (a trivial paged copy loop: 553 words, passes). No register choice can shrink 1600 words below ~1000, so `pickC`
+  searches every spill set and candidate and then fails ("no register choice passed optB"). Stopped the race build
+  of `Nano.InlPSelf` here (18 CPU-min, in `pickC`).
+* Cost model measured (spill-all, words): paged program baseline 363; one `ob` read +46; one `set!` +33; one `src`
+  read +20; one value-level `if` test ≈ +29; a statement-level `if` with a full tail call per branch ≈ +52 per test;
+  an arithmetic op ≈ +18. => the loop body must have very few `if`s.
+* DECISION (inliner, three stages, linked with `link_stage`): `P` (list stage): byte records → normalised 3-byte
+  records, with `hi`, call validity and def numbers resolved in scalars; `Q` (paged): one record or one copied byte
+  per step, one `ob` read, one `set!`; output `body ++ [arity]` of the last closed def; `W` (list stage):
+  `wrap k body`. `Q`'s table packs start and length in one cell (one read per call).
