@@ -17,6 +17,7 @@ Not read (rejected with an error): `Nat`, `String`, arrays, function values that
 mutual recursion between different functions. -/
 import Lean
 import Compiler.S3.Cert
+import Compiler.S3.Limbs
 
 namespace Proven.S3.Front
 open Lean Meta Elab Command
@@ -51,6 +52,9 @@ structure FnInfo where
   pTxt : Array String := #[]
   /-- per parameter: the bound of a `Fin` whose bound depends on earlier parameters (text), else `none` -/
   finB : Array (Option String) := #[]
+  /-- a limb primitive (`s3_compileL`): the lemma `op (toLimbs a) … = toLimbs (a op …)` (its body calls the limb
+  function) -/
+  prim : Option Name := none
   deriving Inhabited
 
 structure St where
@@ -59,6 +63,8 @@ structure St where
   /-- per datatype, per constructor, per Lean field: is it data (`false`: a proof, not stored) -/
   masks : Array (Array (Array Bool)) := #[]
   fns : Array FnInfo := #[]
+  /-- `Nat` as limbs (`s3_compileL`, `Compiler/S3/Limbs.lean`); `false`: unary -/
+  limbs : Bool := false
 
 abbrev M := StateRefT St MetaM
 
@@ -98,8 +104,32 @@ def natChain (i : Nat) (d : Nat) : Nat → SE
   | 0 => .mk i 0 []
   | n + 1 => .let_ (.d i) (natChain i d n) (.mk i 1 [d])
 
+/-- a `Nat` literal as limbs (datatype `i` is `List UInt64`): base-`2^32` digits, least significant first -/
+partial def limbChain (i : Nat) (d : Nat) (n : Nat) : SE :=
+  if n = 0 then .mk i 0 [] else
+  .let_ .w (.lit (n % 4294967296)) (.let_ (.d i) (limbChain i (d + 1) (n / 4294967296)) (.mk i 1 [d, d + 1]))
+
+/-- the limb primitives (`s3_compileL`): a `Nat` function, its limb function, its lemma -/
+def limbPrims : List (Name × Name × Name) :=
+  [(``Nat.add, ``Proven.S3.Limbs.add, ``Proven.S3.Limbs.add_toLimbs),
+   (``Nat.sub, ``Proven.S3.Limbs.sub, ``Proven.S3.Limbs.sub_toLimbs),
+   (``Nat.mul, ``Proven.S3.Limbs.mul, ``Proven.S3.Limbs.mul_toLimbs),
+   (``Nat.div, ``Proven.S3.Limbs.div, ``Proven.S3.Limbs.div_toLimbs),
+   (``Nat.mod, ``Proven.S3.Limbs.mod, ``Proven.S3.Limbs.mod_toLimbs),
+   (``Nat.log2, ``Proven.S3.Limbs.log2, ``Proven.S3.Limbs.log2_toLimbs),
+   (``Nat.land, ``Proven.S3.Limbs.land, ``Proven.S3.Limbs.land_toLimbs),
+   (``Nat.lor, ``Proven.S3.Limbs.lor, ``Proven.S3.Limbs.lor_toLimbs),
+   (``Nat.xor, ``Proven.S3.Limbs.xor, ``Proven.S3.Limbs.xor_toLimbs),
+   (``Nat.beq, ``Proven.S3.Limbs.beq, ``Proven.S3.Limbs.beq_toLimbs),
+   (``Nat.blt, ``Proven.S3.Limbs.blt, ``Proven.S3.Limbs.blt_toLimbs),
+   (``Nat.ble, ``Proven.S3.Limbs.ble, ``Proven.S3.Limbs.ble_toLimbs),
+   (``UInt64.toNat, ``Proven.S3.Limbs.ofWord, ``Proven.S3.Limbs.ofWord_eq),
+   (``UInt64.ofNat, ``Proven.S3.Limbs.toWord, ``Proven.S3.Limbs.toWord_toLimbs)]
+
 partial def tyOf (t : Lean.Expr) : M Ty := do
   let t := (← instantiateMVars (← whnf t)).consumeMData
+  -- limb `Nat`s are limb lists (`List UInt64`)
+  if (← get).limbs && t.isConstOf ``Nat then return ← tyOf (mkApp (mkConst ``List [levelZero]) (mkConst ``UInt64))
   if isWordTy t then return .w
   if t.isConstOf ``Bool then return .b
   -- `Fin e` with a bound depending on run-time values: the shape of every `Fin` (`mk [val]`)
@@ -206,6 +236,8 @@ partial def fnIdx (key : Lean.Expr) : M Nat := do
     if s.fns[i]!.key == key then return i
   let .const f us := key.getAppFn | throwError "S3: not a constant function: {key}"
   if key.hasFVar then throwError "S3: a function value captures run-time variables: {key}"
+  if s.limbs && key.isConst then
+    if let some (_, lf, lem) := limbPrims.find? (·.1 == f) then return ← primIdx key lf lem
   let statics := key.getAppArgs
   let kty ← inferType key
   let (pTys, retTy) ← forallTelescopeReducing kty fun xs r => do
@@ -232,6 +264,39 @@ partial def fnIdx (key : Lean.Expr) : M Nat := do
     tr c rhs
   modify fun s => { s with fns := s.fns.modify idx fun fi => { fi with body := some body } }
   return idx
+
+/-- a limb primitive (`s3_compileL`): an S3 function with the `Nat` function's signature whose body calls the limb
+function (`Compiler/S3/Limbs.lean`; its certificate is the primitive's lemma) -/
+partial def primIdx (key : Lean.Expr) (lf lem : Name) : M Nat := do
+  let kty ← inferType key
+  let (pTys, retTy) ← forallTelescopeReducing kty fun xs r => do
+    return (← xs.mapM fun x => return (← inferType x).cleanupAnnotations, r)
+  let (pTxt, finB) ← paramTexts kty
+  let idx := (← get).fns.size
+  modify fun s => { s with fns := s.fns.push { key, statics := #[], pTys, retTy, pTxt, finB, prim := some lem } }
+  let params ← pTys.mapM tyOf
+  let ret ← tyOf retTy
+  modify fun s => { s with fns := s.fns.modify idx fun fi => { fi with params, ret } }
+  let j ← fnIdx (mkConst lf)
+  -- parameter `i` has level `n - 1 - i` (the parameters are pushed last first, as in `fnIdx`)
+  let body := SE.call j (List.range pTys.size).reverse
+  modify fun s => { s with fns := s.fns.modify idx fun fi => { fi with body := some body } }
+  return idx
+
+/-- `Nat.casesOn` / `Nat.rec` on limbs: `major == 0`, else the arm on `major - 1` -/
+partial def natCases (c : Ctx) (major minor0 minor1 : Lean.Expr) (extra : Array Lean.Expr) (nih : Nat) : M SE := do
+  let natTy ← tyOf (mkConst ``Nat)
+  let beqK ← fnIdx (mkConst ``Nat.beq)
+  let subK ← fnIdx (mkConst ``Nat.sub)
+  atom c major fun c1 l => do
+    let d0 := c1.depth
+    let zero ← natLitSE c1 0
+    let c3 := { c1 with depth := d0 + 2 }
+    let zArm ← tr c3 (mkAppN minor0 extra).headBeta
+    let one ← natLitSE c3 1
+    let (_, sArm) ← arm { c1 with depth := d0 + 3 } minor1 1 extra nih
+    return .let_ natTy zero (.let_ .b (.call beqK [l, d0])
+      (.ite (d0 + 1) zArm (.let_ natTy one (.let_ natTy (.call subK [l, d0 + 2]) sArm))))
 
 /-- an atom: the variable of `e` (let-bound if it is not one) -/
 partial def atom (c : Ctx) (e : Lean.Expr) (k : Ctx → Nat → M SE) : M SE := do
@@ -340,6 +405,9 @@ partial def dfltSE (c : Ctx) (τ : Ty) (depth : Nat) : M SE := do
     throwError "S3: no default value for datatype {i}"
 
 partial def natLitSE (c : Ctx) (n : Nat) : M SE := do
+  if (← get).limbs then
+    let .d i ← tyOf (mkConst ``Nat) | throwError "S3: Nat"
+    return limbChain i c.depth n
   unless n ≤ natLitMax do throwError "S3: Nat literal {n} is too large for the unary representation"
   let .d i ← tyOf (mkConst ``Nat) | throwError "S3: Nat"
   return natChain i c.depth n
@@ -438,6 +506,12 @@ partial def trApp (c : Ctx) (e : Lean.Expr) : M SE := do
   if n == ``UInt8.toUInt64 && args.size == 1 then return ← atom c args[0]! fun _ l => return .var l
   if n == ``UInt64.toUInt8 && args.size == 1 then
     return ← atom c args[0]! fun c' l => return .let_ .w (.lit 255) (.bin "(.op .and)" l c'.depth)
+  -- limb `Nat` constructors: `Nat.zero` is `0`, `Nat.succ a` is `a + 1`
+  if (← get).limbs && n == ``Nat.zero && args.size == 0 then return ← natLitSE c 0
+  if (← get).limbs && n == ``Nat.succ && args.size == 1 then
+    let addK ← fnIdx (mkConst ``Nat.add)
+    return ← atom c args[0]! fun c' l => do
+      return .let_ (← tyOf (mkConst ``Nat)) (← natLitSE c' 1) (.call addK [l, c'.depth])
   -- constructors
   if let some (.ctorInfo ci) := env.find? n then
     unless args.size == ci.numParams + ci.numFields do throwError "S3: partial constructor {e}"
@@ -455,6 +529,7 @@ partial def trApp (c : Ctx) (e : Lean.Expr) : M SE := do
     let major := args[nmaj]!
     let minors := args.extract (nmaj + 1) (nmaj + 1 + nmin)
     let extra := args.extract (nmaj + 1 + nmin) args.size
+    if I == ``Nat && (← get).limbs then return ← natCases c major minors[0]! minors[1]! extra 0
     if I == ``Bool then
       return ← atom c major fun c' l => do
         return .ite l (← tr c' (mkAppN minors[1]! extra).headBeta) (← tr c' (mkAppN minors[0]! extra).headBeta)
@@ -475,6 +550,7 @@ partial def trApp (c : Ctx) (e : Lean.Expr) : M SE := do
     let major := args[nmaj]!
     let minors := args.extract (ii.numParams + 1) (ii.numParams + 1 + nmin)
     let extra := args.extract (nmaj + 1) args.size
+    if I == ``Nat && (← get).limbs then return ← natCases c major minors[0]! minors[1]! extra 1
     return ← atom c major fun c' l => do
       let .d i ← tyOf (← inferType major) | throwError "S3: match on a non-datatype {major}"
       let mut arms := #[]
@@ -555,12 +631,26 @@ dsimproc [simp] s3FinValLit (Fin.val _) := fun e => do
 dsimproc [simp] s3EncNatLit (Proven.S3.Enc.enc _) := fun e => do
   unless e.isAppOfArity ``Proven.S3.Enc.enc 3 do return .continue
   unless e.appFn!.appFn!.appArg!.isConstOf ``Nat do return .continue
+  -- the limb encoding has its own (`s3EncNatLitL`)
+  if e.appFn!.appArg!.isConstOf ``Proven.S3.Limbs.encNatL then return .continue
   let some k := natLit? e.appArg! | return .continue
   if k == 0 then return .continue
   let inner := mkApp3 (mkConst ``Proven.S3.Enc.enc) (mkConst ``Nat) e.appFn!.appArg! (mkNatLit (k - 1))
   let one := mkApp (mkConst ``Proven.S3.V.c) (mkNatLit 1)
   let l ← mkListLit (mkConst ``Proven.S3.V) [inner]
   return .visit (mkApp one l)
+
+/-- `Enc.enc (k : Nat)` (limbs) for a literal `k > 0` is `.c 1 [.w (k % 2^32), Enc.enc (k / 2^32)]` -/
+simproc [simp] s3EncNatLitL (Proven.S3.Enc.enc _) := fun e => do
+  unless e.isAppOfArity ``Proven.S3.Enc.enc 3 do return .continue
+  unless e.appFn!.appArg!.isConstOf ``Proven.S3.Limbs.encNatL do return .continue
+  let some k := natLit? e.appArg! | return .continue
+  if k == 0 then return .continue
+  let pf := mkAppN (mkConst ``Proven.S3.Limbs.natL_lit) #[mkNatLit k, mkNatLit (k % 4294967296),
+    mkNatLit (k / 4294967296), ← mkEqRefl (mkConst ``Bool.false), ← mkEqRefl (mkNatLit (k % 4294967296)),
+    ← mkEqRefl (mkNatLit (k / 4294967296))]
+  let some (_, _, rhs) := (← inferType pf).eq? | return .continue
+  return .visit { expr := rhs, proof? := some pf }
 
 /-! ## certificate tactics -/
 
@@ -602,9 +692,18 @@ syntax (name := s3Split) "s3_split" : tactic
     let (g1, g2) ← g.byCases conds[0]
     Tactic.replaceMainGoal [g1.mvarId, g2.mvarId]
     return
+  -- (a limb `Nat` is not split: its constructors are not its representation, and `cases` on a computed `Nat` makes the
+  -- kernel unfold the computation towards `zero`/`succ`)
+  let limbArgs ← do
+    let r ← IO.mkRef (#[] : Array Lean.Expr)
+    t.forEach fun e => do
+      if e.isAppOfArity ``Proven.S3.Enc.enc 3 && e.appFn!.appArg!.isConstOf ``Proven.S3.Limbs.encNatL then
+        r.modify (·.push e.appArg!)
+    r.get
   -- second: a datatype value computed by a call (`Enc.enc (f args)`): generalize it, then split
   for e in encArgs do
     if e.isFVar || e.hasLooseBVars then continue
+    if limbArgs.contains e then continue
     let ty ← whnf (← inferType e)
     if isWordTy ty || ty.isConstOf ``Bool then continue
     let .const I _ := ty.getAppFn | continue
@@ -853,12 +952,51 @@ def genMutual (st : St) (c : List Nat) (blk : List Name) (extraSimp : String) : 
         s!"  rw [{", ".intercalate hs}] at this\n  exact this\n")
   return out
 
+/-- limb mode (`s3_compileL`): `Nat` (and `Fin n`, and every type with an `s3_encL` instance) encoded as limbs in
+the generated namespace -/
+def limbPrelude (st : St) : MetaM String := do
+  let mut out := "attribute [local instance high] Proven.S3.Limbs.encNatL Proven.S3.Limbs.encFinL\n"
+  let mut seen : Array Name := #[]
+  for t in st.tys do
+    let .const I _ := t.getAppFn | continue
+    if seen.contains I then continue
+    seen := seen.push I
+    if (← getEnv).contains (I ++ `s3instL) then out := out ++ s!"attribute [local instance high] {I ++ `s3instL}\n"
+  return out
+
+/-- the certificate of a limb primitive `k` (its body is one call of the limb function): the primitive's lemma -/
+def genPrim (st : St) (k : Nat) (lem : Name) : MetaM String := do
+  let fi := st.fns[k]!
+  let some (.call j _) := fi.body | throwError "S3: primitive body"
+  let xs := (List.range fi.pTys.size).map (s!"x{·}")
+  let binders ← (List.range fi.pTys.size).mapM fun i => do return s!"({xs[i]!} : {← exprTxt fi.pTys[i]!})"
+  let encs := listTxt (xs.map (s!"Proven.S3.Enc.enc {·}"))
+  let fa := s!"∀ {" ".intercalate binders}, "
+  let fapp := (← exprTxt fi.key) ++ String.join (xs.map (" " ++ ·))
+  let intro := s!"  intro {" ".intercalate xs}\n"
+  let mut out := s!"theorem body{k} : P.body ⟨{k}, by decide⟩ = b{k} := rfl\n"
+  out := out ++ s!"theorem phi{k} : {fa}φ ⟨{k}, by decide⟩ {encs} = Proven.S3.Enc.enc ({fapp}) := by\n{intro}  simp [φ]\n"
+  out := out ++ s!"/-- **the limb primitive** `{fi.key}`: `{lem}` -/\n" ++
+    s!"theorem cert{k} : {fa}Proven.S3.Good P φ ⟨{k}, by decide⟩ {encs} := by\n{intro}" ++
+    s!"  apply Proven.S3.good_intro <;> rw [body{k}]\n" ++
+    s!"  · simp [{simpSet}, b{k}, φ, Proven.S3.Limbs.natL_enc, {lem}] \n" ++
+    s!"  · simp only [{simpSet}, b{k}]\n    apply cert{j}' <;> simp [Proven.S3.Limbs.natL_enc]\n"
+  let vs := (List.range fi.pTys.size).map (s!"v{·}")
+  let hs := (List.range fi.pTys.size).map (s!"h{·}")
+  let hyps ← (List.range fi.pTys.size).mapM fun i => do
+    return s!"Proven.S3.Enc.enc (Proven.S3.Enc.dec {vs[i]!} : {← exprTxt fi.pTys[i]!}) = {vs[i]!} → "
+  out := out ++ s!"theorem cert{k}' : ∀ {" ".intercalate vs} : Proven.S3.V, {String.join hyps}Proven.S3.Good P φ ⟨{k}, by decide⟩ {listTxt vs} := by\n" ++
+    s!"  intro {" ".intercalate (vs ++ hs)}\n  have := cert{k} {" ".intercalate (vs.map (s!"(Proven.S3.Enc.dec {·})"))}\n" ++
+    s!"  rw [{", ".intercalate hs}] at this\n  exact this\n"
+  return out
+
 /-- the commands for program `N` -/
 def genText (N : Name) (st : St) (extraSimp : String) : MetaM String := do
   let p := N.toString
   let dts := st.dts.toList.map fun cs => listTxt (cs.toList.map fun fs => listTxt (fs.toList.map tyTxt))
   let fns := st.fns.toList.map fun fi => s!"({listTxt (fi.params.toList.map tyTxt)}, {tyTxt fi.ret})"
   let mut out := s!"namespace {p}\nopen Proven.S3\n"
+  if st.limbs then out := out ++ (← limbPrelude st)
   out := out ++ s!"abbrev S : Proven.S3.Sig := ⟨{listTxt dts}, {listTxt fns}⟩\n"
   for k in [0:st.fns.size] do
     let fi := st.fns[k]!
@@ -908,6 +1046,9 @@ def genText (N : Name) (st : St) (extraSimp : String) : MetaM String := do
   unless done.size == n do throwError "S3: call graph ordering failed"
   for c in comps do
     let k0 := c[0]!
+    if let some lem := st.fns[k0]!.prim then
+      out := out ++ (← genPrim st k0 lem)
+      continue
     let .const f0 _ := st.fns[k0]!.key.getAppFn | throwError "S3"
     let blk := (← getConstInfo f0).all
     if blk.length > 1 then
@@ -1091,6 +1232,46 @@ syntax (name := s3Compile) "s3_compile " ident " := " term (" simp " "[" ident,*
     cmds := cmds.push cmd
   for cmd in cmds do elabCommand cmd
 
+/-- the limb mode's extra normal forms for the certificates -/
+def limbSimp : String := ", Proven.S3.Limbs.u64_sub_one, Proven.S3.Limbs.nat_div_eq, Proven.S3.Limbs.nat_mod_eq, " ++
+  "Proven.S3.Limbs.nat_land_eq, Proven.S3.Limbs.nat_lor_eq, Proven.S3.Limbs.nat_xor_eq"
+
+/-- `s3_compileL N := main [simp lemmas]`: as `s3_compile`, with `Nat` as limbs (`Compiler/S3/Limbs.lean`): the
+`Nat` operations are the limb primitives, literals are limb chains, `Nat.casesOn` is a test against `0` -/
+syntax (name := s3CompileL) "s3_compileL " ident " := " term (" simp " "[" ident,* "]")? : command
+
+@[command_elab s3CompileL] def elabS3L : CommandElab := fun stx => do
+  let N := stx[1].getId
+  let extra : String := if stx[4].getNumArgs ≥ 3 then
+      String.join ((stx[4][2].getSepArgs.toList.map (·.getId.toString)).map (", " ++ ·))
+    else ""
+  let txt ← liftTermElabM do
+    let e ← Term.elabTerm stx[3] none
+    Term.synthesizeSyntheticMVarsNoPostponing
+    let e ← instantiateMVars e
+    let (_, st) ← (fnIdx e).run { limbs := true }
+    if st.fns.any (·.finB.any Option.isSome) then
+      throwError "S3: dependent Fin parameters are not supported with limb Nats yet"
+    let mentions (x : Lean.Expr) : Bool := (x.find? fun y =>
+      y.isConstOf ``StateT || y.isConstOf ``Except || y.isConstOf ``ExceptT).isSome
+    let monadic := st.fns.any fun fi => mentions fi.key || mentions fi.retTy || fi.pTys.any mentions
+    let extra := if monadic then extra ++ monadSimp else extra
+    genText N st (extra ++ limbSimp)
+  logInfo m!"{txt}"
+  let inputCtx := Parser.mkInputContext txt "<s3_compileL>"
+  let env ← getEnv
+  let mut pstate : Parser.ModuleParserState := {}
+  let mut cmds := #[]
+  repeat
+    let (cmd, ps', msgs) := Parser.parseCommand inputCtx { env, options := {} } pstate {}
+    pstate := ps'
+    unless msgs.toList.isEmpty do
+      for m in msgs.toList do logError m!"S3 parse: {← m.toString}"
+      return
+    if cmd.isOfKind ``Parser.Command.eoi then break
+    cmds := cmds.push cmd
+  for cmd in cmds do elabCommand cmd
+
 end Proven.S3.Front
 
 namespace Proven.S3.Front
@@ -1165,6 +1346,50 @@ def genEnc (I : Name) : MetaM String := do
     unless msgs.toList.isEmpty do
       logInfo m!"{txt}"
       for m in msgs.toList do logError m!"s3_enc parse: {← m.toString}"
+      return
+    if cmd.isOfKind ``Parser.Command.eoi then break
+    cmds := cmds.push cmd
+  for cmd in cmds do elabCommand cmd
+
+end Proven.S3.Front
+
+namespace Proven.S3.Front
+open Lean Meta Elab Command
+
+/-- `s3_encL I`: as `s3_enc I`, for limb `Nat`s (`s3_compileL`): `I.s3encL`, `I.s3decL`, `I.s3instL` (not a global
+instance: `s3_compileL` makes it one in the program it generates, so `s3_enc I` stays in force elsewhere), with the
+limb encodings of `Nat`, `Fin n` and every field type that has an `s3instL` -/
+syntax (name := s3EncL) "s3_encL " ident : command
+
+@[command_elab s3EncL] def elabS3EncL : CommandElab := fun stx => do
+  let I ← liftCoreM <| realizeGlobalConstNoOverload stx[1]
+  let txt ← liftTermElabM do
+    let t ← genEnc I
+    -- the field types' limb instances
+    let some (.inductInfo ii) := (← getEnv).find? I | throwError "s3_encL: not an inductive type"
+    let mut used : Array Name := #[]
+    for c in ii.ctors do
+      for u in (← getConstInfo c).type.getUsedConstants do
+        if u != I && (← getEnv).contains (u ++ `s3instL) && !used.contains u then used := used.push u
+    let pre := "section\nattribute [local instance high] Proven.S3.Limbs.encNatL Proven.S3.Limbs.encFinL\n" ++
+      String.join (used.toList.map fun u => s!"attribute [local instance high] {u ++ `s3instL}\n")
+    let t := (t.replace "s3enc" "s3encL").replace "s3dec" "s3decL"
+    let t := t.replace s!"instance _root_.{I}.s3inst " s!"@[reducible] def _root_.{I}.s3instL "
+    -- the instance is local from its definition on (the simp lemmas after it use it)
+    let parts := t.splitOn "\n@[simp] theorem"
+    let t := parts.head! ++ s!"\nattribute [local instance high] {I}.s3instL" ++
+      String.join (parts.tail.map ("\n@[simp] theorem" ++ ·))
+    return pre ++ t ++ "\nend\n"
+  let inputCtx := Parser.mkInputContext txt "<s3_encL>"
+  let env ← getEnv
+  let mut pstate : Parser.ModuleParserState := {}
+  let mut cmds := #[]
+  repeat
+    let (cmd, ps', msgs) := Parser.parseCommand inputCtx { env, options := {} } pstate {}
+    pstate := ps'
+    unless msgs.toList.isEmpty do
+      logInfo m!"{txt}"
+      for m in msgs.toList do logError m!"s3_encL parse: {← m.toString}"
       return
     if cmd.isOfKind ``Parser.Command.eoi then break
     cmds := cmds.push cmd

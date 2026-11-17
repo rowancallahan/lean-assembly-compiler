@@ -129,12 +129,32 @@ def qemu(halt, a, n):
     hmp(f'pmemsave {a:#x} {n} "{p("crc.q.bin")}"'); q.stdin.write("quit\n"); q.wait()
     return open(p("crc.q.bin"), "rb").read()
 
+def check_qemu(N, runs, lay, base, tab, qmem):
+    """`IR_QEMU_ONLY=1`: QEMU only (bulk runs; Sail on a few cases separately)"""
+    for c, ((i0, o0, w0), run) in enumerate(zip(lay, runs)):
+        xs, ys, WK, fits = run
+        L = len(xs); R = len(ys); mem = qmem
+        assert list(mem[i0:i0 + L + G]) == xs + [0xAA] * G, ("qemu", "input", L)
+        assert list(mem[o0 + R:o0 + R + G]) == [0xAA] * G, ("qemu", "output guard", L)
+        assert list(mem[w0 + WK:w0 + WK + G]) == [0xAA] * G, ("qemu", "work guard", L)
+        e = tab - base + E * c
+        gp, spo, a1, a0 = (int.from_bytes(mem[e + o:e + o + 8], "little") for o in (48, 56, 64, 72))
+        assert spo == base + w0 + WK, ("qemu", "sp", spo)
+        if fits:
+            assert bytes(mem[o0:o0 + R]) == bytes(ys), ("qemu", FN, L, bytes(mem[o0:o0 + R]).hex(), bytes(ys).hex())
+            assert a0 == base + i0, ("qemu", "a0 (status) at memoryNeeded", hex(a0))
+            assert gp == MAGIC, ("qemu", "gp", hex(gp))
+        else:
+            assert a0 == 2 ** 64 - 1, ("qemu", "a0 (status) at memoryNeeded - 1", hex(a0), WK)
+    print(f"{FN}: {N} cases x 2 ok on QEMU only (QEMU == Lean at memoryNeeded, flag a0 = -1 at memoryNeeded - 1)")
+
 def check(N):
     # every case twice: work = memoryNeeded (fits), memoryNeeded - 1 (out of memory)
     runs = [(x, y, M, True) for x, y, M in CASES[:N]] + [(x, y, M - 1, False) for x, y, M in CASES[:N]]
     func = "".join(f"  .word 0x{w:08x}\n" for w in words)
     lay, halt, base, tab, size = build(runs, func)
     qmem = qemu(halt, base, tab + E * len(runs) - base)
+    if os.environ.get("IR_QEMU_ONLY") == "1": return check_qemu(N, runs, lay, base, tab, qmem)
     r = subprocess.run(f"set -o pipefail; {SAIL} --inst-limit 4000000000 --trace-mem --trace-output /dev/stdout {p('crc.elf')}"
                        f" 2>&1 | grep -E 'mem\\[W|SUCCESS|FAIL|limit' > {p('sail.log')}",
                        shell=True, capture_output=True, text=True, executable="/bin/bash")

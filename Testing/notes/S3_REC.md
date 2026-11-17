@@ -131,3 +131,67 @@ byte-identical words.
 3. Dependent `Fin` parameters inside mutual components (the `encFin` form in `genMutual`).
 4. The `CoreC` members in call-graph order (`iotaNumArgs`, `getAppArgsArr`, `mkAppRange` done), each component
    certified by its block's `mutual_induct`; the knot's tuple measures need no extra work (`s3_knot`).
+
+## 7. `Nat` as limbs, opt-in (`s3_compileL`; second round on this branch, 2026-11-17)
+
+Step 1 of §6. The unary path (`s3_compile`, `s3_enc`) is unchanged: every limb feature is behind `St.limbs`
+(set only by `s3_compileL`) or keyed on the limb encoding `encNatL`; `S3RecExamples.lean` rebuilds with the new front
+end (388 s, all certificates).
+
+### Representation (`Compiler/S3/Limbs.lean`)
+
+- `toLimbs n`: base-`2^32` digits, least significant first, each in a 64-bit word, canonical (no zero top digit). As
+  an S3 value that is a `List UInt64` (`.c 0 []` / `.c 1 [.w d, rest]`), so a limb `Nat` IS the S3 datatype of
+  `List UInt64` (`tyOf Nat`), and the primitives are plain Lean functions over `List UInt64`.
+- Decision: 32-bit digits in 64-bit words, so that every sum of three digits and every product of two digits plus a
+  digit fits in a word (no 64×64→128 multiply, no carry-detection lemmas). Cost: twice the digits of 64-bit limbs.
+- Decision: every operation reads a digit as its low 32 bits (`lv`, a mask per digit), so the lemmas hold for EVERY
+  list (`ofLimbs` reads any list) with no well-formedness invariant, and every result goes through `norm` (mask,
+  drop zero top digits), whose one lemma is `norm l = toLimbs (ofLimbs l)`.
+- `encNatL : Enc Nat` (`enc = Enc.enc ∘ toLimbs`, `dec = ofLimbs ∘ Enc.dec`) and `encFinL : Enc (Fin n)` are defs,
+  not instances; `s3_compileL` makes them local instances (high priority) inside the generated namespace.
+
+### The primitives, each proved once (`op (toLimbs a) … = toLimbs (op a …)`)
+
+| `Nat` function | limb function | algorithm | lemma |
+|---|---|---|---|
+| `Nat.add` | `add` | `addC` digit + carry | `add_toLimbs` |
+| `Nat.sub` | `sub` | `subC` digit + borrow, times `0` when `a < b` (no branch) | `sub_toLimbs` |
+| `Nat.mul` | `mul` | schoolbook: `mulRow` per digit of `b`, summed with `addC` | `mul_toLimbs` |
+| `Nat.div`, `Nat.mod` | `div`, `mod` | bit-serial long division (`divL`, `bitsLoop`, `stepR`, `shl1`); `a / 0 = 0` by a factor, `a % 0 = a` falls out | `div_toLimbs`, `mod_toLimbs` |
+| `Nat.beq` | `beq` | `eqC` digit by digit | `beq_toLimbs` |
+| `Nat.blt`, `Nat.ble` | `blt`, `ble` | `cmpC` (three-way, high digits decide) | `blt_toLimbs`, `ble_toLimbs` |
+| `Nat.land`, `Nat.lor`, `Nat.xor` | `land`, `lor`, `xor` | digit by digit (`bitwise_digit`: `testBit` split at 32) | `land_toLimbs`, … |
+| `Nat.log2` | `log2` | `32 (len - 1) + log2 (top digit)` (`log2C`, `log2w`) | `log2_toLimbs` |
+| `UInt64.toNat` | `ofWord` | two digits | `ofWord_eq` |
+| `UInt64.ofNat` | `toWord` | the low two digits | `toWord_toLimbs` |
+
+All lemmas use {propext, Classical.choice, Quot.sound} only (`axioms_s3-limb.lean`). Everything else on `Nat`
+compiles verbatim from its equations over these: `Nat.pow`, `Nat.shiftLeft`, `Nat.shiftRight` (structural on `Nat`),
+`Nat.gcd` (well-founded), `List.length`, con-leche's `natSizeBytes`.
+
+### Front end (`Compiler/S3/Front.lean`), all localised and additive
+
+- `s3_compileL N := main [simp ids]`: `fnIdx` from `{ limbs := true }`; generated namespace opens with
+  `attribute [local instance high] encNatL encFinL` and every field type's `s3instL`.
+- `tyOf Nat` = the datatype of `List UInt64`; `natLitSE`: literals as limb chains (`limbChain`, no size limit).
+- `fnIdx`: a key in `limbPrims` becomes a primitive (`primIdx`): an S3 function with the `Nat` signature whose body
+  is ONE call of the limb function (S3 functions in their own right, certified by the generic certifier). Every path
+  reaches it (`+`, `HAdd` unfolded to `Nat.add`, `condSE`'s `Nat.beq/blt/ble`, `==`, `Nat.succ`).
+- `Nat.casesOn` / `Nat.rec` (`natCases`): `major == 0`, else the arm on `major - 1` (two primitive calls).
+- `Nat.zero` = literal `0`; `Nat.succ a` = `a + 1`.
+- Certificates: a primitive's certificate (`genPrim`) is its lemma (`simp [.., natL_enc, lemma]`); callers stay at
+  the `Nat` level (`φ` decodes, `natL_dec_cons` evaluates a literal chain, the simproc `s3EncNatLitL` unfolds a
+  literal's encoding by `natL_lit` with kernel-computed digits). `limbSimp` adds normal forms (`Nat.div a b = a / b`,
+  …, `k - 1 = 2^64 - 1 + k` for words).
+- `s3_encL I`: `s3_enc I` with the limb encodings (`I.s3encL`, `I.s3decL`, `I.s3instL`: a reducible def, local in its
+  section, made an instance by `s3_compileL`).
+- Shared code touched (behaviour of the unary path unchanged): `s3EncNatLit` skips `encNatL`; `s3_split` does not
+  generalize a limb `Nat` call result (its constructors are not its representation).
+- Library functions were rewritten until the generic certifier proves them: no `let` feeding a condition in a
+  recursive function (`bitsLoop` takes the digit top-aligned instead of shifting by `k - 1`), no branch on a call
+  result in a non-recursive function (`sub`, `div`, `stepR` multiply by a `0`/`1` word instead), no accumulator
+  condition (`cmpC` instead of a `ltC` with a `Bool` accumulator).
+
+### Results
+
