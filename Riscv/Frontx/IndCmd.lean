@@ -151,6 +151,11 @@ def analyze (ty : Expr) (nest : Array Expr := #[]) : MetaM TyInfo := do
     ktys := ktys.push ks
   return { ty, ind, params, ctors := iv.ctors.toArray, roles, ftys, kty := ktys, hops := hopsA, next := nextA }
 
+/-- head symbols of a body that are not an entry call `f xs = g c₁ …` (C(i), round 1) -/
+def notEntryHeads : List Name :=
+  [``ite, ``dite, ``cond, ``HAppend.hAppend, ``Append.append, ``List.append, ``Bool.and, ``Bool.or, ``Bool.not,
+   ``and, ``or, ``not, ``bne, ``BEq.beq, ``Decidable.decide, ``id]
+
 /-- the number of tags of a type: its constructors, then their extension cells -/
 def TyInfo.ntags (ti : TyInfo) : Nat := ti.ctors.size + ti.next.foldl (· + ·) 0
 
@@ -1392,7 +1397,8 @@ elab_rules : command
     let (gN, entry) ← if recur then pure (fN, none) else
       forallTelescope finfo.type fun xs _ => do
         let some v := finfo.value? | throwError "frontx_ind: {fN} has no definition"
-        let body := (← instantiateLambda v xs).consumeMData
+        -- C(ii), round 1: a value that is a function after fewer binders than the type (`beta`, not `instantiateLambda`)
+        let body := (v.beta xs).consumeMData
         -- `decide (a = b)`: the `DecidableEq` instance's function, its `Decidable` result as a `Bool`
         -- `a == b` (a `BEq` instance) and a definition `f a b := decide (a = b)` are unfolded to it
         let mut body := body
@@ -1406,6 +1412,9 @@ elab_rules : command
             if b'.isAppOfArity ``Decidable.decide 2 || b'.isAppOfArity ``BEq.beq 4 then body := b'
         -- a body that is not a call (a `match`, e.g. with default patterns): `f` itself is the function (by cases)
         let gN := match body.getAppFn with | .const g _ => (if body.getAppNumArgs == 0 then fN else g) | _ => fN
+        -- C(i), round 1: a body whose head is a control or append symbol (`if … then … else`, `++`) is not an entry
+        -- `f xs = g c₁ …`: `f` itself is the function (by cases), its head is never unfolded as if it were `f`
+        let gN := if notEntryHeads.contains gN then fN else gN
         let gN ← if (← getEqnsFor? gN).isSome then pure gN else pure fN
         if gN == fN then return (fN, none)
         -- two scalar parameters, one a literal that every recursive call passes unchanged: specialise `g` at it
