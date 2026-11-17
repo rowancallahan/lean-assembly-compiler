@@ -918,4 +918,103 @@ theorem step0_word (o : List UInt8) (c : UInt8) (hc : isW c = true) (rest : List
       · intro h9 h0; subst h0; simp only [List.cons_append] at h9 ⊢
         rcases h9 with h9 | h9 <;> simp [h9]
 
+/-! ### column 0 (after a newline) -/
+
+theorem defW : (∀ y ∈ [100, 101, 102], isW (y : UInt8) = true) := by decide
+theorem kindDef : kindC (dfa [100, 101, 102]) (pk [100, 101, 102]) 1 = kindC (dfa [100, 101, 102]) (pk [100, 101, 102]) 0 := by
+  decide
+
+/-- the word `def` at column 0 behaves as anywhere else -/
+theorem C4def (z o : List UInt8) (hz : hd? z isW = false) (m sp d d0 w ty cz cz' : UInt64) (hm : (m == 5) = false)
+    (hsp : sp = 0 ∨ sp = 1) :
+    lx (100 :: 101 :: 102 :: z) o m 4 sp d d0 w ty cz = lx (100 :: 101 :: 102 :: z) o m 0 sp d d0 w ty cz' := by
+  have e4 := WordStart o m 4 sp d d0 w ty cz 100 102 [101] z (by decide) (by decide) (by decide) hm (Or.inr rfl)
+  have e0 := WordStart o m 0 sp d d0 w ty cz' 100 102 [101] z (by decide) (by decide) (by decide) hm (Or.inl rfl)
+  simp only [List.singleton_append, List.cons_append, List.nil_append] at e4 e0
+  rw [e4, e0]; simp only [if_true, show ((0 : UInt64) = 4) = False by decide, if_false]
+  congr 1
+  rcases z with _ | ⟨n, t⟩
+  · rcases hsp with h | h <;> subst h
+    · rw [W_quirk 102 (Or.inr (by decide)) _ _ _ _ _ _ _ hm, W_quirk 102 (Or.inr (by decide)) _ _ _ _ _ _ _ hm]
+      have : kindOf (dfa [100, 101]) (pk [100, 101, 102] >>> 8) = 9 := by decide
+      simp [this]
+    · rw [W_lastE 102 _ _ _ _ _ _ _ hm, W_lastE 102 _ _ _ _ _ _ _ hm]
+      have kd := kindDef
+      simp only [List.cons_append, List.nil_append, List.singleton_append] at kd ⊢
+      rw [kd]
+  · have hn : isW n = false := by simpa [hd?] using hz
+    rw [W_last 102 n hn _ _ _ _ _ _ _ _ _ hm, W_last 102 n hn _ _ _ _ _ _ _ _ _ hm]
+    have kd := kindDef
+    simp only [List.cons_append, List.nil_append, List.singleton_append] at kd ⊢
+    rw [kd]
+
+theorem M_sp4 (rest o : List UInt8) (m sp d d0 w ty cz : UInt64) (hm : (m == 5) = false) :
+    lx (32 :: rest) o m 4 sp d d0 w ty cz = lx rest o m 0 sp d d0 w ty 0 := by
+  rcases rest with _ | ⟨n, t⟩
+  · rw [lx_c1, lx_nil _ _ _ _ _ _ _ _ _ hm]; simp [hm]
+  · rw [lx_c2]; simp [hm]
+
+theorem M_nl4 (rest o : List UInt8) (m sp d d0 w ty cz : UInt64) (hm : (m == 5) = false) :
+    lx (10 :: rest) o m 4 sp d d0 w ty cz = lx rest o m 4 sp d d0 w ty 0 := by
+  rcases rest with _ | ⟨n, t⟩
+  · rw [lx_c1, lx_nil _ _ _ _ _ _ _ _ _ hm]; simp [hm]
+  · rw [lx_c2]; simp [hm]
+
+theorem lx_nil_eq (o : List UInt8) (m st sp d d0 w ty cz st' sp' d' d0' w' cz' : UInt64) (hm : (m == 5) = false) :
+    lx [] o m st sp d d0 w ty cz = lx [] o m st' sp' d' d0' w' ty cz' := by
+  rw [lx_nil _ _ _ _ _ _ _ _ _ hm, lx_nil _ _ _ _ _ _ _ _ _ hm]
+
+theorem C4pos (xs o : List UInt8) (h : colOk xs = true) (m sp d d0 w ty cz cz' : UInt64) (hm : (m == 5) = false)
+    (hsp : sp = 0 ∨ sp = 1) : lx xs o m 4 sp d d0 w ty cz = lx xs o m 0 sp d d0 w ty cz' := by
+  rcases xs with _ | ⟨c, rest⟩
+  · exact lx_nil_eq o m 4 sp d d0 w ty cz 0 sp d d0 w cz' hm
+  by_cases h32 : c = 32
+  · subst h32; rw [M_sp4 _ _ _ _ _ _ _ _ _ hm, M_sp _ _ _ _ _ _ _ _ _ hm]
+  by_cases h10 : c = 10
+  · subst h10; rw [M_nl4 _ _ _ _ _ _ _ _ _ hm, M_nl _ _ _ _ _ _ _ _ _ hm]
+  have : c = 100 ∧ ∃ z, rest = 101 :: 102 :: z ∧ hd? z isW = false := by
+    unfold colOk at h; split at h <;> simp_all
+  obtain ⟨rfl, z, rfl, hz⟩ := this
+  exact C4def z o hz m sp d d0 w ty cz cz' hm hsp
+
+theorem kindC1 (D : UInt64) (U : List UInt8) (h : U ≠ [100, 101, 102]) : kindC D (pk U) 1 = 9 := by
+  have e : (0x1646566 : UInt64) = pk [100, 101, 102] := by decide
+  unfold kindC; rw [e, pk_beq U _ (by decide)]; simp [h]
+
+theorem C4neg (xs o : List UInt8) (h : colOk xs = false) (sp d d0 w ty cz : UInt64) (hsp : sp = 0 ∨ sp = 1) :
+    lx xs o 0 4 sp d d0 w ty cz = [0] := by
+  have hm : ((0 : UInt64) == 5) = false := by decide
+  rcases xs with _ | ⟨c, rest⟩
+  · simp [colOk] at h
+  have h32 : c ≠ 32 := by intro e; subst e; simp [colOk] at h
+  have h10 : c ≠ 10 := by intro e; subst e; simp [colOk] at h
+  by_cases hc : isW c = true
+  · obtain ⟨u, r, rfl, hu, hr⟩ := span_exists isW rest
+    rcases List.eq_nil_or_concat u with rfl | ⟨v, z, rfl⟩
+    · rcases r with _ | ⟨n, t⟩
+      · exact W_singleE4 c hc _ _ _ _ _ _ _ _ hm
+      · exact W_single4 c n hc (by simpa [hd?] using hr) _ _ _ _ _ _ _ _ _ hm
+    · simp only [List.concat_eq_append] at *
+      have hv : ∀ y ∈ v, isW y = true := fun y hy => hu y (by simp [hy])
+      have hz : isW z = true := hu z (by simp)
+      have hne : c :: v ++ [z] ≠ [100, 101, 102] := by
+        intro e
+        have : c = 100 ∧ v = [101] ∧ z = 102 := by
+          rcases v with _ | ⟨a, _ | ⟨b, v⟩⟩ <;> simp_all
+        obtain ⟨rfl, rfl, rfl⟩ := this
+        simp [colOk] at h; rw [hr] at h; simp at h
+      rw [show c :: (v ++ [z] ++ r) = c :: (v ++ z :: r) by simp, WordStart o 0 4 sp d d0 w ty cz c z v r hc hv hz hm (Or.inr rfl)]
+      simp only [if_true, List.nil_append]
+      rcases r with _ | ⟨n, t⟩
+      · rcases hsp with rfl | rfl
+        · by_cases hg : isDigit z = true ∨ isLower' z = true
+          · rw [W_quirk z hg _ _ _ _ _ _ _ hm]; simp
+          · simp only [not_or, Bool.not_eq_true] at hg; exact W_quirkBad z hg.1 hg.2 _ _ _ _ _ _ _ hm
+        · rw [W_lastE z _ _ _ _ _ _ _ hm, kindC1 _ _ hne]; simp
+      · rw [W_last z n (by simpa [hd?] using hr) _ _ _ _ _ _ _ _ _ hm, kindC1 _ _ hne]; simp
+  · have hcf : (c == 32) = false ∧ (c == 10) = false ∧ isW c = false := ⟨by simpa using h32, by simpa using h10, by simpa using hc⟩
+    rcases rest with _ | ⟨n, t⟩
+    · rw [lx_c1]; simp only [hm, hcf.1, hcf.2.1]; simp
+    · rw [lx_c2]; simp only [hm, hcf.1, hcf.2.1, hcf.2.2]; simp
+
 end Nano.B
