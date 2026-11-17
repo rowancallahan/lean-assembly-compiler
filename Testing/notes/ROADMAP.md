@@ -302,3 +302,17 @@ review, and spend their effort on the proved back end and self-hosting, not on p
   the loop. Full proof additionally needs `nanoGen` correctness (generated code = `Prog.eval`).
 - (owner) `nanoElab` + `Prog.eval` ARE the spec of nano: never proved, only expanded (cross-checked against Lean's
   elaborator). Everything after elaboration is proved: `CompileCorrect riscv nanoCompile`, reusing any big-compiler piece.
+
+### After nano self-hosting closes: grow the self-hosted compiler (owner, 2026-11-17)
+
+- Main line = grow the SELF-HOSTED nano compiler feature by feature (self-hosting stays an invariant: every added feature
+  is proved end to end and compiled by itself), rather than finishing the big compiler first.
+- Converge on one middle: nano's elaborator emits the S3 typed calculus (Compiler/S3, proved once through the IR to
+  RISC-V); nano's stack back end is replaced by that shared, proved S3/IR back end. Big-compiler features arrive through
+  the calculus instead of being re-implemented. Self-hosting = compiling that pipeline with itself.
+- Front ends compose as functions into the same calculus; pick per program:
+  `backend ∘ nanoElab` (small, self-hosted, our spec) or `backend ∘ fromKernelTerms ∘ leanElab` (full Lean, trusted
+  elaborator + exporter). As nanoElab grows, fewer programs need the Lean front end; later the small pure elaborator
+  (checked against Lean's by kernel equality per definition) replaces it.
+- Speed work on the front ends is safe by construction: they are certifying (each output carries a kernel-checked
+  theorem), so a wrong speed-up fails the check instead of producing wrong code.
