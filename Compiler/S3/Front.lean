@@ -18,6 +18,7 @@ mutual recursion between different functions. -/
 import Lean
 import Compiler.S3.Cert
 import Compiler.S3.Limbs
+import Compiler.S3.Opts
 
 namespace Proven.S3.Front
 open Lean Meta Elab Command
@@ -55,6 +56,8 @@ structure FnInfo where
   /-- a limb primitive (`s3_compileL`): the lemma `op (toLimbs a) … = toLimbs (a op …)` (its body calls the limb
   function) -/
   prim : Option Name := none
+  /-- a `String` literal (`s3_compileL`): a function without parameters whose body builds the literal -/
+  lit : Option String := none
   deriving Inhabited
 
 structure St where
@@ -415,6 +418,21 @@ partial def natLitSE (c : Ctx) (n : Nat) : M SE := do
 /-- a `String` literal: its UTF-8 bytes as the kernel structures (`String.ofByteArray (ByteArray.mk (Array.mk
 bytes)) _`, the validity proof not stored); its encoding unfolds by `s3EncStrLit` -/
 partial def strLitSE (c : Ctx) (str : String) : M SE := do
+  -- limb mode: one function per literal (its value stays `Enc.enc "…"` in the callers' certificates)
+  if (← get).limbs then
+    let key := mkStrLit str
+    if let some k := (← get).fns.findIdx? (·.key == key) then return .call k []
+    let ret ← tyOf (mkConst ``String)
+    let idx := (← get).fns.size
+    let fi : FnInfo := { key, statics := #[], pTys := #[], retTy := mkConst ``String, ret, lit := some str }
+    modify fun s => { s with fns := s.fns.push fi }
+    let body ← strChainSE 0 str
+    modify fun s => { s with fns := s.fns.modify idx fun fi => { fi with body := some body } }
+    return .call idx []
+  strChainSE c.depth str
+
+/-- the literal's value built in place (`String.ofByteArray (ByteArray.mk (Array.mk bytes)) _`) -/
+partial def strChainSE (d : Nat) (str : String) : M SE := do
   let .d iS ← tyOf (mkConst ``String) | throwError "S3: String"
   let .d iB ← tyOf (mkConst ``ByteArray) | throwError "S3: ByteArray"
   let .d iA ← tyOf (mkApp (mkConst ``Array [levelZero]) (mkConst ``UInt8)) | throwError "S3: Array"
@@ -422,7 +440,6 @@ partial def strLitSE (c : Ctx) (str : String) : M SE := do
   let rec chain (d : Nat) : List UInt8 → SE
     | [] => .mk iL 0 []
     | b :: bs => .let_ .w (.lit b.toNat) (.let_ (.d iL) (chain (d + 1) bs) (.mk iL 1 [d, d + 1]))
-  let d := c.depth
   return .let_ (.d iL) (chain d str.toUTF8.toList)
     (.let_ (.d iA) (.mk iA 0 [d]) (.let_ (.d iB) (.mk iB 0 [d + 1]) (.mk iS 0 [d + 2])))
 
@@ -642,6 +659,18 @@ dsimproc [simp] s3FinValLit (Fin.val _) := fun e => do
   unless x.appArg!.isAppOf ``Fin.instOfNat do return .continue
   return .visit (← mkAppM ``HMod.hMod #[mkNatLit k, n])
 
+/-- `@OfNat.ofNat UInt64 (k : Nat) _` with a non-raw literal argument (left by `UInt64.ofBitVec_ofNat`-style lemmas)
+is the numeral `k` (definitionally); simp's literal simprocs only see well-formed numerals. Opt-in (limb mode's simp
+list). -/
+dsimproc_decl s3OfNatRaw (OfNat.ofNat _) := fun e => do
+  unless e.isAppOfArity ``OfNat.ofNat 3 do return .continue
+  let T := e.appFn!.appFn!.appArg!
+  unless T.isConstOf ``UInt64 || T.isConstOf ``UInt8 || T.isConstOf ``UInt32 do return .continue
+  let n := e.appFn!.appArg!.consumeMData
+  if n.isRawNatLit then return .continue
+  let some k := natLit? n | return .continue
+  return .done (← mkNumeral T k)
+
 /-- `Enc.enc (k : Nat)` for a literal `k > 0` is `.c 1 [Enc.enc (k - 1)]` (definitionally: `natV`) -/
 dsimproc [simp] s3EncNatLit (Proven.S3.Enc.enc _) := fun e => do
   unless e.isAppOfArity ``Proven.S3.Enc.enc 3 do return .continue
@@ -720,6 +749,60 @@ dsimproc [simp] s3DecStrLit (Proven.S3.Enc.dec _) := fun e => do
 
 /-! ## certificate tactics -/
 
+/-- the conditions of the `if`s of `t` outside the alternatives of a match (`s3.limbCert`): splitting an `if`
+inside an unsplit match copies every alternative into both goals -/
+partial def outerIfConds (t : Lean.Expr) : MetaM (Array Lean.Expr) := do
+  let r ← IO.mkRef (#[] : Array Lean.Expr)
+  let rec go (e : Lean.Expr) : MetaM Unit := do
+    match e with
+    | .app .. =>
+      let fn := e.getAppFn
+      let args := e.getAppArgs
+      if let .const n _ := fn then
+        if let some mi ← getMatcherInfo? n then
+          -- the discriminants only
+          for a in args.extract (mi.numParams + 1) (mi.numParams + 1 + mi.numDiscrs) do go a
+          return
+        if isCasesOnRecursor (← getEnv) n then
+          let some (.inductInfo ii) := (← getEnv).find? n.getPrefix | return
+          let nmaj := ii.numParams + 1 + ii.numIndices
+          if h : nmaj < args.size then go args[nmaj]
+          return
+        if n == ``ite && args.size == 5 && !args[1]!.hasLooseBVars then
+          unless (← r.get).contains args[1]! do r.modify (·.push args[1]!)
+      go fn
+      for a in args do go a
+    | .lam _ _ b _ | .forallE _ _ b _ => go b
+    | .letE _ _ v b _ => go v; go b
+    | .mdata _ b => go b
+    | .proj _ _ b => go b
+    | _ => pure ()
+  go t
+  r.get
+
+/-- the discriminants of the matches (and `casesOn` majors) of `t` that are applications of a function (not a
+constructor, not a variable): a call result the goal cannot reduce without splitting it -/
+partial def stuckDiscrs (t : Lean.Expr) : MetaM (Array Lean.Expr) := do
+  let r ← IO.mkRef (#[] : Array Lean.Expr)
+  let env ← getEnv
+  let push (d : Lean.Expr) : MetaM Unit := do
+    let d := d.consumeMData
+    if d.hasLooseBVars || d.isFVar then return
+    let .const h _ := d.getAppFn | return
+    if env.isConstructor h then return
+    unless (← r.get).contains d do r.modify (·.push d)
+  t.forEach' fun e => do
+    if let .const n _ := e.getAppFn then
+      let args := e.getAppArgs
+      if let some mi ← getMatcherInfo? n then
+        for a in args.extract (mi.numParams + 1) (mi.numParams + 1 + mi.numDiscrs) do push a
+      else if isCasesOnRecursor env n then
+        if let some (.inductInfo ii) := env.find? n.getPrefix then
+          let nmaj := ii.numParams + 1 + ii.numIndices
+          if h : nmaj < args.size then push args[nmaj]
+    return true
+  r.get
+
 /-- split a variable `x` that the goal uses as `Enc.enc x` (a datatype value whose constructor is not known) -/
 syntax (name := s3Split) "s3_split" : tactic
 
@@ -756,7 +839,7 @@ syntax (name := s3Split) "s3_split" : tactic
     | some b => if d.index < b.index then best := some d
     | none => best := some d
   -- first: the condition of an `if` (two goals, never a blow-up)
-  let conds ← do
+  let conds ← if (← getOptions).getBool `s3.limbCert false then outerIfConds t else do
     let r ← IO.mkRef (#[] : Array Lean.Expr)
     t.forEach fun e => do
       if e.isAppOfArity ``ite 5 && !e.appFn!.appFn!.appFn!.appArg!.hasLooseBVars then
@@ -774,8 +857,14 @@ syntax (name := s3Split) "s3_split" : tactic
       if e.isAppOfArity ``Proven.S3.Enc.enc 3 && e.appFn!.appArg!.isConstOf ``Proven.S3.Limbs.encNatL then
         r.modify (·.push e.appArg!)
     r.get
+  -- (`s3.limbCert`) first the call results a match is stuck on, then the other call results
+  -- (inside `Enc.enc _`: the oracle's side, not the evaluation's)
+  let stuck ← if (← getOptions).getBool `s3.limbCert false then
+      encArgs.foldlM (fun acc a => do return acc ++ (← stuckDiscrs a)) #[] else pure #[]
+  -- (only those the evaluation's side also has as a value, `Enc.enc d`: every occurrence is generalized)
+  let stuck := stuck.filter encArgs.contains
   -- second: a datatype value computed by a call (`Enc.enc (f args)`): generalize it, then split
-  for e in encArgs do
+  for e in stuck ++ encArgs do
     if e.isFVar || e.hasLooseBVars then continue
     if limbArgs.contains e then continue
     let ty ← whnf (← inferType e)
@@ -846,6 +935,30 @@ syntax (name := s3Hyps) "s3_hyps" : tactic
       | _ => pure ()
     | _ => pure ()
 
+/-- split the goal's conjunctions (`s3.limbCert`: also through implications, their hypotheses introduced) -/
+syntax (name := s3Conj) "s3_conj" : tactic
+
+@[tactic s3Conj] def evalS3Conj : Tactic.Tactic := fun _ => do
+  if (← getOptions).getBool `s3.limbCert false then
+    Tactic.evalTactic (← `(tactic| repeat' (first | apply And.intro | intro)))
+  else Tactic.evalTactic (← `(tactic| repeat' apply And.intro))
+
+/-- close `Good P φ ⟨k, _⟩ vs` by the callee's certificate `cert{k}'` (its index read from the goal: one `apply`
+instead of one attempt per callee) -/
+syntax (name := s3Callee) "s3_callee" : tactic
+
+@[tactic s3Callee] def evalS3Callee : Tactic.Tactic := fun _ => Tactic.withMainContext do
+  let t := (← instantiateMVars (← Tactic.getMainTarget)).consumeMData
+  unless t.isAppOfArity ``Proven.S3.Good 4 do throwError "s3_callee: not a `Good` goal"
+  let f := t.appFn!.appArg!.consumeMData
+  let k? : Option Nat :=
+    if f.isAppOfArity ``Fin.mk 3 then natLit? f.appFn!.appArg!
+    else if f.isAppOfArity ``OfNat.ofNat 3 then natLit? f.appFn!.appArg!
+    else none
+  let some k := k? | throwError "s3_callee: unknown callee {f}"
+  let id := mkIdent (Name.mkSimple s!"cert{k}'")
+  Tactic.evalTactic (← `(tactic| first | (apply $id <;> simp; done) | (apply $id <;> simp_all; done)))
+
 /-- `s3_solve n [simp lemmas] with closer`: simplify; close what remains with `closer`; else split a variable and
 retry (at most `n` times deep) -/
 syntax (name := s3Solve) "s3_solve " num " [" Lean.Parser.Tactic.simpArg,* "]" " with " tactic : tactic
@@ -854,13 +967,13 @@ macro_rules (kind := s3Solve)
   | `(tactic| s3_solve $n [$ls,*] with $c) => do
     let k := n.getNat
     if k == 0 then
-      `(tactic| ((try simp only [s3_norm, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne, Nat.blt_eq, Nat.ble_eq, UInt8.toNat_ofNat, decide_eq_true_eq] at *); (try s3_hyps); simp [s3_norm, $ls,*]; all_goals (repeat' apply And.intro) <;> $c))
+      `(tactic| ((try simp only [s3_norm, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne, Nat.blt_eq, Nat.ble_eq, UInt8.toNat_ofNat, decide_eq_true_eq] at *); (try s3_hyps); simp [s3_norm, $ls,*]; all_goals s3_conj <;> $c))
     else
       let n' := Syntax.mkNumLit (toString (k - 1))
       `(tactic| first
         | s3_contra
         | ((try simp only [s3_norm, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne, Nat.blt_eq, Nat.ble_eq, UInt8.toNat_ofNat, decide_eq_true_eq] at *); (try s3_hyps); simp [s3_norm, $ls,*]; done)
-        | ((try simp only [s3_norm, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne, Nat.blt_eq, Nat.ble_eq, UInt8.toNat_ofNat, decide_eq_true_eq] at *); (try s3_hyps); simp [s3_norm, $ls,*]; all_goals (repeat' apply And.intro) <;> $c; done)
+        | ((try simp only [s3_norm, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne, Nat.blt_eq, Nat.ble_eq, UInt8.toNat_ofNat, decide_eq_true_eq] at *); (try s3_hyps); simp [s3_norm, $ls,*]; all_goals s3_conj <;> $c; done)
         | (((try simp only [s3_norm, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne, Nat.blt_eq, Nat.ble_eq, UInt8.toNat_ofNat, decide_eq_true_eq] at *); (try s3_hyps); (try simp [s3_norm, $ls,*]);
             s3_split) <;> s3_solve $n' [$ls,*] with $c))
 
@@ -984,8 +1097,8 @@ def genMutual (st : St) (c : List Nat) (blk : List Name) (extraSimp : String) : 
       (if xs.isEmpty then "" else s!"  intro {" ".intercalate xs}\n") ++ "  simp [φ]\n"
   -- callees outside the component close by their certificates
   let outside := (c.flatMap fun j => (st.fns[j]!.body.map SE.calls).getD []).eraseDups.filter (!c.contains ·)
-  let closers := outside.map (fun j => s!"(apply cert{j}' <;> simp)")
-  let closer := " | ".intercalate (List.map (fun c => "(" ++ c ++ "; done)") <| "assumption" :: "(intros; assumption)" :: "(intros; apply_assumption; done)" :: "rfl" :: "omega" :: "(simp only [List.length_cons] at *; omega)" :: "((try simp at *); assumption)" ::
+  let closers := if st.limbs then ["s3_callee"] else outside.map (fun j => s!"(apply cert{j}' <;> simp)")
+  let closer := " | ".intercalate (List.map (fun c => "(" ++ c ++ "; done)") <| (if st.limbs then ["s3_callee", "(intros; s3_callee)"] else []) ++ "assumption" :: "(intros; assumption)" :: "(intros; apply_assumption; done)" :: "rfl" :: "omega" :: "(simp only [List.length_cons] at *; omega)" :: "((try simp at *); assumption)" ::
       "(exfalso; simp only [BitVec.not_le, BitVec.not_lt, BitVec.lt_def, BitVec.le_def] at *; omega)" ::
       "(rw [dif_pos (by simp only [List.length_cons, Nat.succ_eq_add_one, Array.length_toList] at *; omega)])" :: (closers ++ closers.map ("(intros; " ++ · ++ ")")))
   let mut unf := ""
@@ -1070,7 +1183,7 @@ def genText (N : Name) (st : St) (extraSimp : String) : MetaM String := do
   let dts := st.dts.toList.map fun cs => listTxt (cs.toList.map fun fs => listTxt (fs.toList.map tyTxt))
   let fns := st.fns.toList.map fun fi => s!"({listTxt (fi.params.toList.map tyTxt)}, {tyTxt fi.ret})"
   let mut out := s!"namespace {p}\nopen Proven.S3\n"
-  if st.limbs then out := out ++ (← limbPrelude st) ++ "set_option maxRecDepth 100000\n"
+  if st.limbs then out := out ++ (← limbPrelude st) ++ "set_option maxRecDepth 100000\nset_option s3.limbCert true\n"
   out := out ++ s!"abbrev S : Proven.S3.Sig := ⟨{listTxt dts}, {listTxt fns}⟩\n"
   for k in [0:st.fns.size] do
     let fi := st.fns[k]!
@@ -1123,6 +1236,12 @@ def genText (N : Name) (st : St) (extraSimp : String) : MetaM String := do
     if let some lem := st.fns[k0]!.prim then
       out := out ++ (← genPrim st k0 lem)
       continue
+    if st.fns[k0]!.lit.isSome then
+      out := out ++ s!"theorem body{k0} : P.body ⟨{k0}, by decide⟩ = b{k0} := rfl\n" ++
+        s!"/-- the literal {← exprTxt st.fns[k0]!.key} -/\ntheorem cert{k0} : Proven.S3.Good P φ ⟨{k0}, by decide⟩ [] := by\n" ++
+        s!"  apply Proven.S3.good_intro <;> rw [body{k0}] <;> simp [{simpSet}, b{k0}, φ]\n" ++
+        s!"theorem cert{k0}' : Proven.S3.Good P φ ⟨{k0}, by decide⟩ [] := cert{k0}\n"
+      continue
     let .const f0 _ := st.fns[k0]!.key.getAppFn | throwError "S3"
     let blk := (← getConstInfo f0).all
     if blk.length > 1 then
@@ -1141,9 +1260,9 @@ def genText (N : Name) (st : St) (extraSimp : String) : MetaM String := do
     let .const fname _ := fi.key.getAppFn | throwError "S3"
     let recursive := ((fi.body.map SE.calls).getD []).contains k
     let callees := ((fi.body.map SE.calls).getD []).filter (· != k)
-    let closers := callees.eraseDups.map (fun j => s!"(apply cert{j}' <;> simp)") ++
+    let closers := if st.limbs then [] else callees.eraseDups.map (fun j => s!"(apply cert{j}' <;> simp)") ++
       ((callees.eraseDups.filter fun j => st.fns[j]!.finB.any Option.isSome).map fun j => s!"(apply cert{j}' <;> simp_all)")
-    let closer := " | ".intercalate (List.map (fun c => "(" ++ c ++ "; done)") <| "assumption" :: "(intros; assumption)" :: "(intros; apply_assumption; done)" :: "rfl" :: "omega" :: "(simp only [List.length_cons] at *; omega)" :: "((try simp at *); assumption)" ::
+    let closer := " | ".intercalate (List.map (fun c => "(" ++ c ++ "; done)") <| (if st.limbs then ["s3_callee", "(intros; s3_callee)"] else []) ++ "assumption" :: "(intros; assumption)" :: "(intros; apply_assumption; done)" :: "rfl" :: "omega" :: "(simp only [List.length_cons] at *; omega)" :: "((try simp at *); assumption)" ::
       "(exfalso; simp only [BitVec.not_le, BitVec.not_lt, BitVec.lt_def, BitVec.le_def] at *; omega)" ::
       "(rw [dif_pos (by simp only [List.length_cons, Nat.succ_eq_add_one, Array.length_toList] at *; omega)])" :: (closers ++ closers.map ("(intros; " ++ · ++ ")")))
     -- non-recursive callees unfold in the certificate (their values are then computed)
@@ -1309,7 +1428,7 @@ syntax (name := s3Compile) "s3_compile " ident " := " term (" simp " "[" ident,*
 /-- the limb mode's extra normal forms for the certificates -/
 def limbSimp : String := ", Proven.S3.Limbs.u64_sub_one, Proven.S3.Limbs.nat_div_eq, Proven.S3.Limbs.nat_mod_eq, " ++
   "Proven.S3.Limbs.nat_land_eq, Proven.S3.Limbs.nat_lor_eq, Proven.S3.Limbs.nat_xor_eq, " ++
-  "Proven.S3.Limbs.nat_blt_decide, Proven.S3.Limbs.nat_ble_decide, Proven.S3.Limbs.nat_beq_decide"
+  "Proven.S3.Limbs.nat_blt_decide, Proven.S3.Limbs.nat_ble_decide, Proven.S3.Limbs.nat_beq_decide, -Proven.S3.Front.s3EncStrLit, Proven.S3.Front.s3OfNatRaw"
 
 /-- `s3_compileL N := main [simp lemmas]`: as `s3_compile`, with `Nat` as limbs (`Compiler/S3/Limbs.lean`): the
 `Nat` operations are the limb primitives, literals are limb chains, `Nat.casesOn` is a test against `0` -/

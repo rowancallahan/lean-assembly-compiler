@@ -275,3 +275,37 @@ statement hash changed (62/62), only dependency closures; not re-frozen, per the
 4. Speed: inline the primitive wrappers; word-step (64/32) long division.
 5. `S3RecExamples.lean` (previous round's file) builds in 388–473 s here and on a separate build box: over the 5-min rule.
    Split it (e.g. structural / well-founded+mutual / con-leche entries) before adding entries to it.
+
+## 8. Round 3 (2026-11-17), stopped early by owner priority change (nano self-compiling) — WORK IN PROGRESS
+
+State: **unfinished, not checked** (no check.sh, no QEMU/Sail runs). The limb-mode (`s3_compileL`) certificate
+changes below are NOT yet re-verified on the existing limb entries (`S3LimbExamples/Rec/Bits/ConLeche.lean`);
+the unary path (`s3_compile`) is unchanged in behaviour (all new tactics/options are off outside limb mode).
+
+### Done (in `Compiler/S3/Front.lean`, new `Compiler/S3/Opts.lean`)
+- Option `s3.limbCert` (set by the generated text of `s3_compileL` only):
+  - `s3_split` splits only `if` conditions OUTSIDE match alternatives (`outerIfConds`). Cause of
+    `natOpRefusal`'s `whnf` heartbeat timeout: the old order split the `if`s inside the unsplit 14-way match on
+    `NatBinOp`, copying all 14 arms into every goal (exponential).
+  - `s3_split` generalizes first the call results a match on the oracle's side is stuck on, when the evaluation
+    side also has them as `Enc.enc d` (`stuckDiscrs`).
+  - `s3_conj`: splits conjunctions also through implications (`¬c → A ∧ B` callee obligations).
+- `String` literals in limb mode: one nullary S3 function per literal (`FnInfo.lit`, `strChainSE`), certified once;
+  callers keep `Enc.enc "…"` folded (`-s3EncStrLit` in the limb simp list). `natOpRefusal`'s certificate: 110 s →
+  ~20 s.
+- `s3OfNatRaw` (dsimproc_decl, limb simp list only): `@OfNat.ofNat UInt64 (k : Nat) _` with a non-raw literal
+  argument → the numeral `k`. This was the harness's `(m % 32).toNat` normal-form mismatch (hypothesis
+  `UInt64.toNat (OfNat.ofNat 32)` vs goal `… % 32`).
+- `s3_callee` closer: applies `cert{k}'` with `k` read from the goal (one `apply` instead of one per callee).
+
+### Probe status (`Testing/notes/S3_REC8_natop_probe.lean.txt`, con-leche StateC NatBinOp verbatim + harness)
+- `natOpRefusal` (cert18), `NatBinOp.result` (cert50), `natResultRefused`: certify (replayed individually).
+- `cert0` (the harness `binMain`): certifies with `maxHeartbeats 5000000`, ~195 s alone; with the default
+  1000000 the whole probe fails at cert0 (heartbeats). Profile: `simp` 118 s over 3044 calls, `apply` 31 s.
+  Next: cut harness cost (fewer `simp` calls per split goal; or a cheaper harness), then the entry + tests.
+
+### Next (unchanged order)
+1. Finish the probe → entry `s3l_natop` (QEMU bulk + Sail smoke), re-verify all limb entries under `s3.limbCert`.
+2. Proof parameters after run-time ones / no private names (`CState {}`); 3. large-literal-factor kernel recursion;
+4. `Cached` sources + `Std.HashMap`; 5. dependent `Fin` in mutual components; 6. split `S3RecExamples` (nano-parse-s3
+   already split its copy: merge from main when it lands).
