@@ -31,7 +31,7 @@ def g_4095 : UInt64 := 4095
 def g_901 : UInt64 := g_0 - 1
 def g_902 : UInt64 := g_0 - 2
 def g_908 : UInt64 := g_0 - 8
-def g_999 : UInt64 := 131072
+def g_999 : UInt64 := 262144
 
 /-! ## encoders (RV64I/M) -/
 def g1 (f7 f3 d a b : UInt64) : UInt64 :=
@@ -345,7 +345,7 @@ def g42 (x : Buf) (u : UInt64) : Buf :=
     if bget r1 4 == 1 then bnew else g40 16777216 o 0 bnew
   else bnew
 
-/-- the code generator with the default buffer capacity κ = 2^17 words -/
+/-- the code generator with the default buffer capacity κ = 2^18 words -/
 def g41 (x : Buf) : Buf := g42 x g_999
 
 end C
