@@ -214,4 +214,128 @@ theorem sim_i {K : Lay} {c : Cfg} {pc : Nat} {s : St} {t : Proven.St} (hK : K.Ok
     have := rel_reg hR RD _ hN
     simpa [IOp.eval, Nat.mod_eq_of_lt hn] using this
 
+/-! ## memory -/
+
+theorem storeBytes_get : ∀ (m : Mem) (a : Nat) (l : List (BitVec 8)) (x : Nat),
+    (storeBytes m a l)[x]? = if a ≤ x ∧ x < a + l.length then some (l.getD (x - a) 0) else m[x]?
+  | m, a, [], x => by simp [storeBytes, writeCells]; omega
+  | m, a, v :: l, x => by
+    show (writeCells (m.insert a v) (List.range' (a + 1) l.length) l)[x]? = _
+    have := storeBytes_get (m.insert a v) (a + 1) l x
+    unfold storeBytes at this; rw [this, Std.ExtHashMap.getElem?_insert]
+    by_cases hx : x = a
+    · subst hx; simp; omega
+    · by_cases h1 : a + 1 ≤ x ∧ x < a + 1 + l.length
+      · rw [if_pos h1, if_pos (by simp; omega)]
+        simp only [List.getD_eq_getElem?_getD]
+        rw [show x - a = (x - (a + 1)) + 1 by omega, List.getElem?_cons_succ]
+      · rw [if_neg h1, if_neg (by simp; omega)]
+        simp; intro h3 h4; omega
+
+theorem le8_getD (v : BitVec 64) (k : Nat) (hk : k < 8) : (le8 v).getD k 0 = v.extractLsb' (8 * k) 8 := by
+  simp [le8, List.getD_eq_getElem?_getD, hk]
+
+/-- the effective address of a load/store: the abstract `ea` -/
+theorem ea_bv {K : Lay} {c : Cfg} {p : Nat × St} {t : Proven.St} (hR : Rel K c p t) (A : Fin 32) (off : Int)
+    (h1 : -2048 ≤ off) (h2 : off < 2048) :
+    getX t A + (BitVec.ofNat 12 (bits off 12)).signExtend 64 = BitVec.ofNat 64 (ea p.2 A.val off) := by
+  rw [hR.x A, sext_bits off h1 h2, ← UInt64.toBitVec_add]; apply BitVec.eq_of_toNat_eq; simp [ea]
+
+theorem toNat_lt64 {a : Nat} (h : a < 2 ^ 64) : (BitVec.ofNat 64 a).toNat = a := by
+  rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt h]
+
+theorem imm12S_toNat (imm : Int) : (BitVec.ofNat 12 (bits imm 12)) = BitVec.ofNat 12 (bits imm 12) := rfl
+
+/-- **ld** -/
+theorem sim_ld {K : Lay} {c : Cfg} {pc : Nat} {s : St} {t : Proven.St} (hK : K.Ok c) (hR : Rel K c (pc, s) t)
+    {rd a : Nat} {off : Int} (hC : K.C[pc]? = some (.ld rd a off)) (hw : c.wok (ea s a off)) :
+    ∃ t', Retires t t' ∧ Rel K c (pc + 1, s.set rd (s.w (ea s a off))) t' := by
+  obtain ⟨_, hwf, hi, hok⟩ := code_at hK hR hC
+  simp only [I.wf, decide_eq_true_eq] at hwf
+  obtain ⟨hrd, ha, h1, h2⟩ := hwf
+  let RD : Fin 32 := ⟨rd, hrd⟩
+  let A : Fin 32 := ⟨a, ha⟩
+  have hea := ea_bv hR A off h1 h2
+  have hW := hK.wlo; have hH := hK.whi
+  have hlt : ea s a off < 2 ^ 64 := by unfold Cfg.wok at hw; omega
+  have hi' : instrAt t (BitVec.ofNat 64 (K.base + 4 * pc)) (G.encL 3 (BitVec.ofNat 12 (bits off 12)) RD A) := by
+    unfold G.encL; rw [imm12_toNat]; exact hi
+  have hb := fun k (hk : k < 8) => hR.w _ hw k hk
+  obtain ⟨t', hN⟩ := G.step_ld hR.cfg hR.pc hok RD A _ hi' hea (by rw [toNat_lt64 hlt]; unfold Cfg.wok at hw; omega)
+    (by rw [toNat_lt64 hlt]; exact hw.2.2)
+    (by rw [toNat_lt64 hlt]; exact hb 0 (by decide)) (by rw [toNat_lt64 hlt]; exact hb 1 (by decide))
+    (by rw [toNat_lt64 hlt]; exact hb 2 (by decide)) (by rw [toNat_lt64 hlt]; exact hb 3 (by decide))
+    (by rw [toNat_lt64 hlt]; exact hb 4 (by decide)) (by rw [toNat_lt64 hlt]; exact hb 5 (by decide))
+    (by rw [toNat_lt64 hlt]; exact hb 6 (by decide)) (by rw [toNat_lt64 hlt]; exact hb 7 (by decide))
+  rw [cat8_extract] at hN
+  exact ⟨t', hN.ret, rel_reg hR RD _ hN⟩
+
+theorem store8_out (m : Mem) (A : Nat) (v : BitVec 64) (x : Nat) (h : x < A ∨ A + 8 ≤ x) :
+    (storeBytes m A (le8 v))[x]? = m[x]? := by
+  rw [storeBytes_get, if_neg (by simp [le8]; omega)]
+theorem store8_in (m : Mem) (A : Nat) (v : BitVec 64) (k : Nat) (hk : k < 8) :
+    (storeBytes m A (le8 v))[A + k]? = some (v.extractLsb' (8 * k) 8) := by
+  rw [storeBytes_get, if_pos (by simp [le8]; omega), show A + k - A = k by omega, le8_getD v k hk]
+
+theorem encSt_bits (f3 b a : Nat) (off : Int) : encSt f3 b a off = encSt f3 b a ((bits off 12 : Nat) : Int) := by
+  unfold encSt; rw [bits_nat _ 12 (bits_lt off 12)]
+
+/-- a retired store keeps everything but the stored bytes -/
+theorem rel_mem {K : Lay} {c : Cfg} {pc : Nat} {s s' : St} {t t' : Proven.St} (hK : K.Ok c)
+    (hR : Rel K c (pc, s) t) {m : Mem}
+    (hN : Next t t' (BitVec.ofNat 64 (K.base + 4 * pc) + 4) 0 0 m) (hx : s'.x = s.x)
+    (hcode : ∀ x, K.base ≤ x → x < K.base + 4 * K.C.length → m[x]? = t.mem[x]?)
+    (hw : ∀ a, c.wok a → ∀ k < 8, m[a + k]? = some ((s'.w a).toBitVec.extractLsb' (8 * k) 8))
+    (hi : ∀ k < c.inp.length, m[c.ib + k]? = t.mem[c.ib + k]?)
+    (ho : ∀ k < c.ol, m[c.ob + k]? = some (s'.o (c.ob + k)).toBitVec) :
+    Rel K c (pc + 1, s') t' where
+  cfg := hN.cfg
+  pc := by rw [hN.pc, ofNat_pc4]
+  code := fun i h => by
+    have hc := hR.code i h
+    have hlt : K.base + 4 * i < 2 ^ 64 := by have := hK.bhi; omega
+    unfold instrAt at hc ⊢; rw [hN.mem]; rw [toNat_lt64 hlt] at hc ⊢
+    obtain ⟨h0, h1, h2, h3⟩ := hc
+    exact ⟨by rw [hcode _ (by omega) (by omega)]; exact h0, by rw [hcode _ (by omega) (by omega)]; exact h1,
+      by rw [hcode _ (by omega) (by omega)]; exact h2, by rw [hcode _ (by omega) (by omega)]; exact h3⟩
+  x := fun j => by
+    rw [hN.x j]; simp only [show ¬ (j = 0 ∧ j ≠ 0) from fun h => h.2 h.1, if_false, hR.x j]
+    simp [St.get, hx]
+  w := fun a ha k hk => by rw [hN.mem]; exact hw a ha k hk
+  inp := fun k hk => by rw [hN.mem, hi k hk]; exact hR.inp k hk
+  out := fun k hk => by rw [hN.mem]; exact ho k hk
+
+/-- **sd** -/
+theorem sim_sd {K : Lay} {c : Cfg} {pc : Nat} {s : St} {t : Proven.St} (hK : K.Ok c) (hR : Rel K c (pc, s) t)
+    {b a : Nat} {off : Int} (hC : K.C[pc]? = some (.sd b a off)) (hw : c.wok (ea s a off)) :
+    ∃ t', Retires t t' ∧
+      Rel K c (pc + 1, { s with w := fun j => if j = ea s a off then s.get b else s.w j }) t' := by
+  obtain ⟨_, hwf, hi, hok⟩ := code_at hK hR hC
+  simp only [I.wf, decide_eq_true_eq] at hwf
+  obtain ⟨hb, ha, h1, h2⟩ := hwf
+  let B : Fin 32 := ⟨b, hb⟩
+  let A : Fin 32 := ⟨a, ha⟩
+  have hea := ea_bv hR A off h1 h2
+  have hW := hK.wlo; have hH := hK.whi
+  have hlt : ea s a off < 2 ^ 64 := by unfold Cfg.wok at hw; omega
+  have hi' : instrAt t (BitVec.ofNat 64 (K.base + 4 * pc)) (G.encS 3 (BitVec.ofNat 12 (bits off 12)) B A) := by
+    have e := encSt_eq 3 (by decide) B A (bits off 12) (bits_lt off 12)
+    have hi2 : instrAt t (BitVec.ofNat 64 (K.base + 4 * pc))
+        (BitVec.ofNat 32 (encSt 3 B.val A.val ((bits off 12 : Nat) : Int))) := by rw [← encSt_bits]; exact hi
+    rw [e] at hi2; exact hi2
+  obtain ⟨t', hN⟩ := G.step_sd hR.cfg hR.pc hok B A _ hi' hea (by rw [toNat_lt64 hlt]; unfold Cfg.wok at hw; omega)
+    (by rw [toNat_lt64 hlt]; exact hw.2.2)
+  rw [toNat_lt64 hlt, hR.x B] at hN
+  have hwk := hw
+  unfold Cfg.wok at hwk
+  refine ⟨t', hN.ret, rel_mem hK hR hN rfl ?_ ?_ ?_ ?_⟩
+  · intro x hx1 hx2; apply store8_out; have := hK.cw; omega
+  · intro a' ha' k hk
+    by_cases he : a' = ea s a off
+    · subst he; rw [store8_in _ _ _ k hk]; simp; rfl
+    · have := ha'.2.2; rw [store8_out _ _ _ _ (by omega)]
+      rw [hR.w a' ha' k hk]; simp [he]
+  · intro k hk; apply store8_out; have := hK.iw; omega
+  · intro k hk; rw [store8_out _ _ _ _ (by have := hK.wo; omega)]; exact hR.out k hk
+
 end Nano.V2B

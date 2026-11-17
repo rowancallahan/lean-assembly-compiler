@@ -202,4 +202,17 @@ theorem flat_ok {c : Cfg} {C : List I} {om cp : Nat} {sc : SC} {s : St} {r : Res
     | ok s4 => exact e1.trans hl
     | jmp t s4 => exact e1.trans hl
 
+/-! ## bytes of a word (used by the Sail layer) -/
+
+theorem or8 (a b : Nat) (hb : b < 2 ^ 8) : a <<< 8 ||| b = a * 256 + b := by
+  rw [← Nat.shiftLeft_add_eq_or_of_lt hb, Nat.shiftLeft_eq]
+
+theorem cat8_extract (w : BitVec 64) :
+    w.extractLsb' (8 * 7) 8 ++ w.extractLsb' (8 * 6) 8 ++ w.extractLsb' (8 * 5) 8 ++ w.extractLsb' (8 * 4) 8 ++
+      w.extractLsb' (8 * 3) 8 ++ w.extractLsb' (8 * 2) 8 ++ w.extractLsb' (8 * 1) 8 ++ w.extractLsb' (8 * 0) 8 = w := by
+  apply BitVec.eq_of_toNat_eq
+  simp only [BitVec.toNat_append, BitVec.extractLsb'_toNat, Nat.shiftRight_eq_div_pow]
+  repeat rw [or8 _ _ (Nat.mod_lt _ (by decide))]
+  have := w.isLt; omega
+
 end Nano.V2B
