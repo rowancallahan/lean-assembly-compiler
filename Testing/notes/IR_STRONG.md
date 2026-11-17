@@ -53,3 +53,15 @@ Branch `ir-strong` (from main + s3-rec). Owner goals: ROADMAP "Spec strengthenin
   (∀ a, |encA a| ≤ maxLen → memoryNeeded compiled (encA a) ≤ space |encA a|) → maxLen ≤ 2^20 →
   Implements1With encA encB code f space maxLen retLen` (any `retLen`, in particular `true` as `link_stage` needs).
   `S3.implements` = the adapter on `S3.compile_correctRV`. `CompileRunsL` is not needed by the adapter.
+- tests: `Testing/asm/ir_test.py` now asserts a1 = output length for every `s3*` program and gp = caller's gp after the
+  out-of-memory exit (all IR programs). S3 words regenerated (`emit_s3.lean`); QEMU + Sail, 10 cases x 2 each:
+  s3_small, s3_find, s3_append, s3_filter, s3_mirror, s3_eqtree ok. Negative control: the pre-change s3_find words
+  fail the a1 check (a1 = 0, expected 1).
+
+## Other back ends (not done here; what each needs)
+- Inductive path (`Compiler/Ir/IndLow*`, through the IR): its `main` must return the output length (as S3's
+  `mainTC`: `ret [index]`), then `Ir.machine_runL` gives `CompileCorrectL`/`CompileCorrectRV` as for S3.
+- Hand-written IR programs (`Compiler/Ir/Examples.lean`): `Ir.ProgL` requires `main` to return `[w |output|]`.
+- Paged back end, nano stack, frontx (`Implements1`-based): `implements1_top` already yields every clause of
+  `CompileCorrectL`/`CompileCorrectRV` when the code is proved with `retLen = true`; with `retLen = false` only a1 is
+  missing: their exit code must set a1 (nano: `li a1, 8`).
