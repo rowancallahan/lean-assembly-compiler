@@ -148,3 +148,8 @@ The IR interpreter's output equals Lean's `main` on all 750 cases (`emit_s3.lean
 - Migration next: Wa (word arrays: a block type with `ld`/`st` at an index), paged arrays, the list path's `Tree`
   loops as tail calls (`jmp`), then switch `frontx_ind` entries one at a time; optimisation (IR passes) applies to
   all of them at once.
+
+## 8. Final check
+
+`bash Testing/scripts/check.sh`: ALL CHECKS PASSED (34 min, after merging origin/main at b07a0b9). The statement-fingerprint
+step prints its usual WARNING (warning-only; not re-frozen, per the round rules).
