@@ -25,5 +25,5 @@ Compiler/S3/Front.lean, Cert.lean, SimpAttr.lean), the adapter `Proven.S3.implem
 IR stub: a1 = result length), `Nano.S3Stage.stage` + kernel-literal compiler acceptance (Nano/S3Stage.lean).
 Tests: `python3 Testing/nano/ps3_test.py R S seed` (S3 stages; QEMU bulk, Sail smoke). Notes: NANO_PARSE_S3.md.
 
-Gate status (11:20): check.sh ALL CHECKS PASSED at 11:03 (re-run at head in progress). The tag `nano-v1-rc1` is NOT set: the
+Gate status (11:33): check.sh ALL CHECKS PASSED at 11:03 and again at 11:33 (head before CertBytes; 1022 s). The tag `nano-v1-rc1` is NOT set: the
 front stage (lexA) is the one missing row.
