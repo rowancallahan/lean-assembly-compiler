@@ -46,3 +46,25 @@
   (no branching), then split a variable that blocks evaluation (`match some (Enc.enc x)`), else `s3_split`.
   Option `s3.depth` (default 12) for diagnosis. Also: `st0 ts` inlined as a record literal in `stage2S` (a call
   returning a structure cannot be split). Result: `stParams` probe 34 s (was > 10 min, failing).
+
+## Decoder speed (parse-dec)
+Goal (owner rule): every compiled stage builds in ≤ 5 min. Probe `gs` (decoder `decLS`/`decS` + `gasS` + `u8N`).
+- Measurements (4 cores, `lake env lean`; per-certificate times by isolating one certificate, every other `sorry`):
+  `s3_compile` full probe 22 min 48 s (earlier note); `s3_compileB` killed by the memory cgroup after 22 min 39 s
+  (8.5 GB). Per certificate with `s3_compile`: every function ≤ 13 s (`decS` 49 s file total), EXCEPT `cert1` = `decLS`
+  (> 300 s, timeout) and `cert5` = `isL` (FAILS: `bv (decide (x = 95)) = bv (x == 95)`; needs `s3_bytes`).
+- CAUSE (decLS, a 2-line non-recursive function): after simp the obligation of the calls in the `else` branch is
+  `b.toNat = 2 → Good decS [...] ∧ Good pairO [...]`; the closer step `all_goals (repeat' apply And.intro) <;> closer`
+  splits `∧` BEFORE introducing the hypothesis, so the conjunction under `→` never reaches `cert3'`/`cert2'`; the
+  search then splits the call's result (`decS r [] none : Option (List Tok)`) and recursively its token list, up to
+  depth 12 (Tok has ~15 constructors): exponential. NOT decS's if-chain.
+- FIX (opt-in, `s3_compile` and `s3_solve`/`s3_solveB` unchanged): `s3_solveF` / command `s3_compileF`
+  (Compiler/S3/Front.lean): the `s3_solveB` search (`s3_bytes`, `s3_splitB`) with (a) `repeat' (first | (intro) |
+  apply And.intro)` before the closer, (b) each search node simplified once (`s3_solveB` re-runs the same
+  `simp at *; simp` up to three times per node, once per `first` alternative). Correct by construction (only the
+  certificate search changes; the kernel checks the certificates).
+- RESULT: `Testing/nano/ps3/pr_gsF.lean` (`s3_compileF Q := gs`, decoder sources unchanged): 36.6 s wall, all
+  certificates, `computes`/`wf` ⊆ {propext, Classical.choice, Quot.sound}, `correct` = the Sail set, no sorry.
+  Riscv/Frontx/S3Examples and S3RecExamples (plain `s3_compile`) still build.
+- For the rest of stage2S (`stepS` etc.): try `s3_compileF`; the same `c → A ∧ B` pattern arises wherever a call sits
+  in an `else`/`if` branch.
