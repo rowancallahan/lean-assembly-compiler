@@ -458,3 +458,4 @@ Branch heads (each has a HANDOFF section):
 RESUME: owner reviews Nano/V2Self/ and decides the self-hosting route. Then restart one Opus language+back-end box
 (buffer proof via round-6 F, Sail loop layer via E, result/status + ImplementsBytes), Sonnet boxes as needed, a Haiku
 runner; re-enable triggers trig_01Lbdjhesnym2ZPegRnLPVmf (team check) and trig_01XTKyxsqmfYZouFjjRfeHdt (3-hourly).
+- Note for resume: the parser S3 probe (nano-v2-boot bf6ba78, ProbeParse) ran ~16 min without finishing before the pause; likely over the 5-min rule, needs an s3.depth-4 probe / split first.
