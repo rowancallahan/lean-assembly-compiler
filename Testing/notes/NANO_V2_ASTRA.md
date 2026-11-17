@@ -136,3 +136,56 @@ decomposition, (iii) `ImplementsBytes`.
 8. KERNEL COST: data + small checked facts; name chunks once; chunkwise equalities; independent stage equations
    rewritten opaquely; specialized checkers instead of unfolding big dispatchers; layout manifest with checked offsets.
    BENCHMARK NOW: a ~2000-word function, a realistic stage-evaluation chunk, the final image equality (kernel time).
+
+# Round 4 (Astra, ~18:40): PROOF ARCHITECTURE (binding)
+0. CORRECTION: `newStage x = oldStage x` for ALL x is false when only the new stage has fuel/capacity failures. Prove
+   `Adequate_i x κ → newStage_κ x = oldStage x` and establish Adequate for the concrete bootstrap inputs.
+   "input < 2^32" alone is not a fuel/output-size bound for expansion/inlining.
+   CRITICAL-PATH NOTE (main session): the fixed point needs the rewritten compiler C to be CORRECT for the v2 language
+   (equal, under Adequate, to the v2 compiler definitions whose correctness workers 1+2 prove), plus the one-source
+   certificate. Equivalence to the OLD v1 stages is NOT required; do it only where it is the cheapest route.
+1. LOOPS: one generic header-to-header theorem, proved by induction on source fuel, instantiated per loop.
+   Header invariant H(n,s,σ): pc = header; the fuel word represents n < 2^64; locals and owned buffers represent s; the
+   designated stack shape; code and external memory intact; parameterized by the caller frame/stack suffix; scratch
+   registers are free.
+   Lemmas: header_zero, header_nonzero, body_correct (returns `continue s'` or `exit r`, proved ONCE symbolically),
+   update_backedge, loop_correct. The zero case matches the Lean equations exactly.
+   Separate LABEL/LAYOUT layer: symbolic blocks with labels, then layout, then a checked layout certificate (encodings,
+   alignment, displacement ranges, targets). Semantic proofs use `conditional_branch_to_label` / `jump_to_label`, never
+   raw immediates.
+   Watch out for: offsets relative to the branch pc; bytes vs indices; modular address arithmetic; JAL ranges for
+   trampolines; `JAL x0` for plain jumps; scratch clobbers in longer sequences. Freeze the layout, then revalidate after
+   inserting trampolines.
+   Prove one lemma per branch form (fall-through and taken).
+2. BUFFERS, no separation-logic library:
+   - a ghost map from ownership IDs to region descriptors, with pairwise-disjoint writable footprints (header + the
+     whole cap);
+   - `BufferRep a d m`: header, len = a.size ≤ cap, the first len words = the array, alignment, no address wrap;
+   - `SameOutside F m m'`.
+   Three lemma families: local operation correctness (read/set/append/failure); frame preservation (disjoint footprint
+   survives SameOutside); environment update (rebinding the consumed buffer restores the full representation).
+   Scalars are duplicable; writable IDs are not. Prove that ACCEPTED OWNERSHIP TYPING implies the discipline and that
+   execution preserves it (milestone 1: check an explicit ownership derivation). Discard ≠ reuse of the region. Use
+   fixed descriptors, no escaping borrows, no slices: framing becomes interval disjointness.
+3. STAGE EQUIVALENCE: a generic runner-refinement theorem plus a STAGE-SPECIFIC relation R(o,n). The old configuration
+   may include pending work/continuations.
+   Per stage: init, simulation (allow stuttering with a rank measure), completion, resource adequacy.
+   Shared: byte/list/array laws, cursor/buffer lemmas, runner simulation, output-prefix accumulation.
+   Stage-specific: the relation, the meaning, the transitions, the bounds.
+   Do NOT force the parser, inliner or assembler into one "list scanner" theorem.
+4. ONE-SOURCE CERTIFICATE: an untrusted tactic generates kernel-checked proofs per definition, in dependency order.
+   Three artifacts per function: `body_f` (concrete local AST), `lookup_f` (lookup selects body_f), `meaning_f`
+   (evalFun P id_f args RepResult f args, with explicit preconditions).
+   Self-tail recursion goes through the generic loop theorem / fuel induction; never rewrite with meaning_f inside its
+   own proof.
+   No unrestricted `simp [Prog.eval, p]`: use a small explicit rewrite set and stop at helper calls.
+   Kernel evaluation only for closed facts (`nanoElab s = ok p`, lookups), parsed and compared ONCE, then named.
+   Compose a library of construct lemmas rather than symbolic-evaluation traces.
+5. COST: highest = concrete self-compilation evaluation (functional buffer ops, big equalities); then
+   meaning-certificate and machine-code proofs IF they re-unfold the whole program or re-decode bytes; generic loop and
+   framing proofs are manageable.
+   Layering: foundations → generic execution → per stage (defs, transitions, refinement, adequacy) → per function (AST,
+   lookup, meaning, layout, machine correctness) → bootstrap (chunk equations, linked theorem, fixed point).
+   The final theorem only applies opaque theorems.
+   BENCHMARK NOW: a loop body, a buffer-heavy stage chunk, a large function certificate. Split by measured reduction
+   cost; give each chunk explicit input/output (not nested unevaluated stages); keep headroom under 5 min / 8 GB.
