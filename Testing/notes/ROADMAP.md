@@ -402,3 +402,9 @@ nano's `[leaveC; leave; mov a1 r0; ret]`; the OOM exit keeps the shared `encK .e
 `binary` words are unchanged (same 55529-word hash) and `CompileRunsL` proofs for the IR are dropped (GAP, next tag).
 `CompileCorrectL` / `CompileCorrectRV` / `implements_of_compileL` / `S3.implements` and `S3.implements1` all proved.
 check.sh ALL CHECKS PASSED (2385 s). Details: Testing/notes/IR_STRONG.md "Reconciliation with nano v1".
+
+### RELEASE MARKERS (owner, 2026-11-17 17:10): no tags
+Releases are marked by a commit on main whose message says it is the final addition (e.g. "nano v1 FINAL: …"), not by
+git tags. nano v1 FINAL = this commit: main contains nano-parse-s3 rc2 (152f05b, same binary as rc1 6a76836),
+`Nano.selfHosted` proved (Sail axioms + propext/Classical.choice/Quot.sound), check.sh passed (merge-nano), self-run QEMU
+146/146 and Sail 8/8 on the proved binary. The nano-v1-rc1/rc2 tags are not needed.
