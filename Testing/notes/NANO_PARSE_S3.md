@@ -110,3 +110,8 @@ Goal (owner rule): every compiled stage builds in ≤ 5 min. Probe `gs` (decoder
 - 11:03 `bash Testing/scripts/check.sh`: ALL CHECKS PASSED (1046 s). WARNING (statement fingerprints, warning
   only, not re-frozen per the rules): definitions under headline statements changed (the IR stub: a1 = result
   length; `Ctx.Fin` strengthened); all statements unchanged.
+- 11:15 merged nano-final 7a9f662 (Nano/LexS3.lean: `lexA` = lexer + parser 2a in S3 form, `lexA_eq`). The S3
+  compile of `lexA` with `s3_compileF` (NanoSlow/LexS3Self.lean) did NOT finish in 10 min (timeout) → not ≤ 5 min.
+  The stage file (NanoSlow/LexS3Stage.lean, the inliner's template) and the final instance `Nano.selfHosted`
+  (NanoSlow/SelfHosted.lean: `selfHosted_s3 K lexA_implements lexA_f`, domain `Sized5S … ∧ LeanLimits`) are
+  written and wait in the non-default lib `NanoSlow` until nano-final speeds up / splits `lexA`.
