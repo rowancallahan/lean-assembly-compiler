@@ -5,6 +5,8 @@ The IR compiler's acceptance and the code length are kernel-checked on literals:
 (`compiles_len`). Split in three files to keep each build ≤ 5 min. -/
 import Nano.ParseS3BAllocB
 
+set_option Elab.async false
+
 namespace Nano.PS
 open Proven Proven.S3 Proven.Ir Proven.Mach.Riscv Nano.S3Stage
 

@@ -81,7 +81,7 @@ abbrev smF : Nat → Nat := fun _ => 8 * (Nano.Self.nanoExpM.slots + 1) + 7
 abbrev saF : Nat → Nat := fun _ => 8 * (Nano.Self.nanoAsm.slots + 1) + 7
 
 /-- **the self-hosted nano compiler, as one RISC-V binary** -/
-def binary : List (BitVec 32) :=
+noncomputable def binary : List (BitVec 32) :=
   link (link (link (link (Proven.S3.words Nano.LS.LexA.P) (Proven.S3.words Nano.PS.Stage2B.P))
     (Proven.S3.words Nano.IS.InlS3.P)) Nano.Self.nanoExpM.code) Nano.Self.nanoAsm.code
 
