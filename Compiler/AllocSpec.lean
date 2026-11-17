@@ -90,4 +90,78 @@ def CompileCorrect {P : Type} [Program P] (machine : Machine) (compile : P → O
       readMemory (machine.observe finishState) call.outputAddress (encodeOutput (f argument)).length
         = some (encodeOutput (f argument))
 
+/-! ## Strengthened statements (owner-approved, ROADMAP "Spec strengthening: output length and exact output block")
+
+The `L` versions add, for chaining compiled stages (`Implements1With`):
+(1) on a normal return the output-length register (`mapping.outputLength`, `a1` on RISC-V) holds the result length,
+    so the output occupies exactly `[outputAddress, outputAddress + length)`;
+(2) the callee-saved registers `mapping.kept` (RISC-V: `sp`, `gp`, `tp`, `s0..s11`, as `abiSavedKept`) are unchanged;
+(3) the end state is configured again (`machine.configured`, RISC-V: `Cfg`);
+(4) memory changes only in the work block and in the first `(encodeOutput (f argument)).length` bytes of the output
+    block: the rest of the output block is unchanged.
+Zeroing the rest of the output block is deferred (owner). `CompileCorrectL → CompileCorrect` and
+`CompileRunsL → CompileRuns` (below), so nothing weakens. -/
+
+/-- the callee-saved registers of the mapping, unchanged -/
+def KeptRegisters (machine : Machine) (startState finishState : machine.State) : Prop :=
+  ∀ r ∈ machine.mapping.kept, (machine.observe finishState).register r = (machine.observe startState).register r
+
+/-- `CompileRuns` plus (2) kept registers, (3) configured, (4) only the result prefix of the output block may change -/
+def CompileRunsL {P : Type} [Program P] (machine : Machine) (compile : P → Option CompiledA) : Prop :=
+  ∀ {α β : Type} (program : P) (compiled : CompiledA) (f : α → β) (encodeInput : α → List UInt8)
+    (encodeOutput : β → List UInt8) (argument : α) (startState : machine.State) (call : Call),
+    compile program = some compiled →
+    Computes program f encodeInput encodeOutput →
+    StartCorrect machine startState call compiled.code (encodeInput argument) →
+    (encodeOutput (f argument)).length ≤ call.outputLength →
+    ∃ finishState, Runs machine startState finishState ∧
+      (machine.observe finishState).programCounter = call.returnAddress ∧
+      (∀ address, Outside address (call.outputAddress, (encodeOutput (f argument)).length) →
+        Outside address (call.workAddress, call.workLength) →
+        (machine.observe finishState).memory address = (machine.observe startState).memory address) ∧
+      ((machine.observe finishState).register machine.mapping.status = oomFlag ↔
+        OutOfMemory compiled (encodeInput argument) call.workLength) ∧
+      KeptRegisters machine startState finishState ∧ machine.configured finishState
+
+/-- `CompileCorrect` plus (1) the length register, (2) kept registers, (3) configured, (4) only the result prefix of
+the output block and the work block may change -/
+def CompileCorrectL {P : Type} [Program P] (machine : Machine) (compile : P → Option CompiledA) : Prop :=
+  ∀ {α β : Type} (program : P) (compiled : CompiledA) (f : α → β) (encodeInput : α → List UInt8)
+    (encodeOutput : β → List UInt8) (argument : α) (startState : machine.State) (call : Call),
+    compile program = some compiled →
+    Computes program f encodeInput encodeOutput →
+    StartCorrect machine startState call compiled.code (encodeInput argument) →
+    (encodeOutput (f argument)).length ≤ call.outputLength →
+    memoryNeeded compiled (encodeInput argument) ≤ call.workLength →
+    ∃ finishState, Runs machine startState finishState ∧
+      (machine.observe finishState).programCounter = call.returnAddress ∧
+      (machine.observe finishState).register machine.mapping.status ≠ oomFlag ∧
+      readMemory (machine.observe finishState) call.outputAddress (encodeOutput (f argument)).length
+        = some (encodeOutput (f argument)) ∧
+      (machine.observe finishState).register machine.mapping.outputLength =
+        (encodeOutput (f argument)).length.toUInt64 ∧
+      (∀ address, Outside address (call.outputAddress, (encodeOutput (f argument)).length) →
+        Outside address (call.workAddress, call.workLength) →
+        (machine.observe finishState).memory address = (machine.observe startState).memory address) ∧
+      KeptRegisters machine startState finishState ∧ machine.configured finishState
+
+/-- an address outside the whole output block is outside the result prefix -/
+theorem outside_prefix {address output : UInt64} {n m : Nat} (hnm : n ≤ m) (h : Outside address (output, m)) :
+    Outside address (output, n) := by
+  unfold Outside at *; dsimp only at *; omega
+
+theorem CompileRunsL.runs {P : Type} [Program P] {machine : Machine} {compile : P → Option CompiledA}
+    (h : CompileRunsL machine compile) : CompileRuns machine compile := by
+  intro α β program compiled f encodeInput encodeOutput argument startState call hc hf hs ho
+  obtain ⟨finishState, hr, hpc, hm, hflag, -, -⟩ := h program compiled f encodeInput encodeOutput argument
+    startState call hc hf hs ho
+  exact ⟨finishState, hr, hpc, fun a h1 h2 => hm a (outside_prefix ho h1) h2, hflag⟩
+
+theorem CompileCorrectL.correct {P : Type} [Program P] {machine : Machine} {compile : P → Option CompiledA}
+    (h : CompileCorrectL machine compile) : CompileCorrect machine compile := by
+  intro α β program compiled f encodeInput encodeOutput argument startState call hc hf hs ho hmem
+  obtain ⟨finishState, hr, hpc, hflag, hread, -⟩ := h program compiled f encodeInput encodeOutput argument
+    startState call hc hf hs ho hmem
+  exact ⟨finishState, hr, hpc, hflag, hread⟩
+
 end Proven.Top.Alloc

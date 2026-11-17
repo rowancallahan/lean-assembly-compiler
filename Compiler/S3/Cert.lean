@@ -260,6 +260,29 @@ instance {n : Nat} [NeZero n] : Enc (Fin n) where
 @[simp] theorem dec_fin {n : Nat} [NeZero n] (a : V) :
     (Enc.dec (V.c 0 [a]) : Fin n) = if h : (Enc.dec a : Nat) < n then ⟨Enc.dec a, h⟩ else 0 := rfl
 
+/-- `Array α`, `ByteArray`, `String` as their kernel structures (`Array.mk (toList : List α)`, `ByteArray.mk
+(data : Array UInt8)`, `String.ofByteArray bytes _`: the validity proof is not stored) -/
+instance {α : Type} [Enc α] : Enc (Array α) where
+  enc a := .c 0 [Enc.enc a.toList]
+  dec | .c 0 [l] => ⟨Enc.dec l⟩ | _ => #[]
+  dec_enc a := by cases a; simp
+
+instance : Enc ByteArray where
+  enc b := .c 0 [Enc.enc b.data]
+  dec | .c 0 [d] => ⟨Enc.dec d⟩ | _ => ByteArray.empty
+  dec_enc b := by cases b; simp
+
+/-- decoding a `String` checks its validity (decidable) -/
+instance : Enc String where
+  enc s := .c 0 [Enc.enc s.toByteArray]
+  dec | .c 0 [b] => if h : (Enc.dec b : ByteArray).IsValidUTF8 then String.ofByteArray (Enc.dec b) h else ""
+      | _ => ""
+  dec_enc s := by cases s; simp_all
+
+theorem enc_array {α : Type} [Enc α] (a : Array α) : Enc.enc a = .c 0 [Enc.enc a.toList] := rfl
+theorem enc_bytearray (b : ByteArray) : Enc.enc b = .c 0 [Enc.enc b.data] := rfl
+theorem enc_string (s : String) : Enc.enc s = .c 0 [Enc.enc s.toByteArray] := rfl
+
 instance instEncExceptT {ε α : Type} {m : Type → Type} [h : Enc (m (Except ε α))] : Enc (ExceptT ε m α) := h
 
 @[simp] theorem enc_exceptT {ε α : Type} {m : Type → Type} [h : Enc (m (Except ε α))] (x : ExceptT ε m α) :

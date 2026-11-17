@@ -68,6 +68,9 @@ def isRecursive (n : Name) : MetaM Bool := do
   if (← getEnv).contains (n ++ `_unary) || (← getEnv).contains (n.str "brecOn") then return true
   if let some ci := (← getEnv).find? n then
     if ci.all.length > 1 then return true
+    -- structural recursion (compiled through `brecOn`): it has an unfolding equation as a recursive definition
+    if ci.isDefinition && !(← isMatcher n) then
+      if (← try getUnfoldEqnFor? n (nonRec := false) catch _ => pure none).isSome then return true
   return false
 
 /-- a `Nat` literal (raw or `OfNat.ofNat Nat n _`) -/
@@ -157,7 +160,9 @@ def staticArgs (f : Lean.Expr) (args : Array Lean.Expr) : MetaM Nat := do
       let x := xs[i]!
       let d ← x.fvarId!.getDecl
       let xt ← whnfR d.type
-      let st := d.binderInfo.isInstImplicit || xt.isSort || (← isProp xt) || (xt.isForall && !(← isProp xt)) ||
+      -- function-valued (also through definitions: `StateT σ m α` is `σ → m (α × σ)`)
+      let isFn := (← whnf d.type).isForall
+      let st := d.binderInfo.isInstImplicit || xt.isSort || (← isProp xt) || (isFn && !(← isProp xt)) ||
         (← isType xt) && !(← isProp xt) && (← whnfR xt).isSort
       if st then
         if dyn then throwError "S3: static argument after a run-time argument in {f}"
@@ -187,8 +192,12 @@ partial def fnIdx (key : Lean.Expr) : M Nat := do
   let some eqn ← getUnfoldEqnFor? f (nonRec := true) | throwError "S3: no unfolding equation for {f}"
   let eqTy ← inferType (mkConst eqn us)
   let body ← forallTelescopeReducing kty fun xs _ => do
-    let inst ← instantiateForall eqTy (statics ++ xs)
-    let some (_, _, rhs) := inst.eq? | throwError "S3: unexpected equation {inst}"
+    -- the equation may have fewer binders than the (reduced) type: apply its right side to the rest
+    let nEq ← forallTelescope eqTy fun ys _ => pure ys.size
+    let all := statics ++ xs
+    let inst ← instantiateForall eqTy (all.extract 0 nEq)
+    let some (_, _, rhs0) := inst.eq? | throwError "S3: unexpected equation {inst}"
+    let rhs := (mkAppN rhs0 (all.extract nEq all.size)).headBeta
     let mut c : Ctx := {}
     for x in xs.reverse do c := c.push x
     tr c rhs
@@ -315,6 +324,9 @@ partial def trApp (c : Ctx) (e : Lean.Expr) : M SE := do
   let fn := e.getAppFn
   let args := e.getAppArgs
   let env ← getEnv
+  -- `(let x := v; b) a…` (a `do` join point applied to the state): move the arguments under the `let`
+  if let .letE nm t v b nd := fn.consumeMData then
+    return ← tr c (.letE nm t v (mkAppN b (args.map (·.liftLooseBVars 0 1))) nd)
   let .const n _ := fn | throwError "S3: unsupported application {e}"
   -- literals
   if let some v := natLit? e then return ← natLitSE c v
@@ -349,15 +361,21 @@ partial def trApp (c : Ctx) (e : Lean.Expr) : M SE := do
   if n == ``or && args.size == 2 then
     return ← atom c args[0]! fun c' l => do return .ite l (.blit true) (← tr c' args[1]!)
   if n == ``Decidable.decide && args.size == 2 then return ← condSE c args[0]!
-  if n == ``ite && args.size == 5 then
-    return ← condAtom c args[1]! fun c' l => do return .ite l (← tr c' args[3]!) (← tr c' args[4]!)
-  if n == ``dite && args.size == 5 then
+  -- (extra arguments, e.g. a state, go into the branches)
+  if n == ``ite && args.size ≥ 5 then
+    let ex := args.extract 5 args.size
     return ← condAtom c args[1]! fun c' l => do
-      let t ← withLocalDeclD `h args[1]! fun h => tr c' (mkApp args[3]! h).headBeta
-      let f ← withLocalDeclD `h (mkNot args[1]!) fun h => tr c' (mkApp args[4]! h).headBeta
+      return .ite l (← tr c' (mkAppN args[3]! ex)) (← tr c' (mkAppN args[4]! ex))
+  if n == ``dite && args.size ≥ 5 then
+    let ex := args.extract 5 args.size
+    return ← condAtom c args[1]! fun c' l => do
+      let t ← withLocalDeclD `h args[1]! fun h => tr c' (mkAppN (mkApp args[3]! h).headBeta ex)
+      let f ← withLocalDeclD `h (mkNot args[1]!) fun h => tr c' (mkAppN (mkApp args[4]! h).headBeta ex)
       return .ite l t f
-  if n == ``cond && args.size == 4 then
-    return ← atom c args[1]! fun c' l => do return .ite l (← tr c' args[2]!) (← tr c' args[3]!)
+  if n == ``cond && args.size ≥ 4 then
+    let ex := args.extract 4 args.size
+    return ← atom c args[1]! fun c' l => do
+      return .ite l (← tr c' (mkAppN args[2]! ex)) (← tr c' (mkAppN args[3]! ex))
   if (n == ``UInt64.ofBitVec || n == ``UInt64.toBitVec) && args.size == 1 then
     return ← atom c args[0]! fun _ l => return .var l
   if n == ``UInt8.toUInt64 && args.size == 1 then return ← atom c args[0]! fun _ l => return .var l
@@ -434,6 +452,16 @@ partial def trApp (c : Ctx) (e : Lean.Expr) : M SE := do
         return .cas i lx [(nd, .var (c'.depth + nd - 1 - dataIdx mask pi.i))]
     if let some e' ← unfoldProjInst? e then return ← tr c e'.headBeta
     throwError "S3: unsupported class operation {e}"
+  -- a non-recursive function applied beyond its declared arity (a monadic value applied to its state, e.g.
+  -- `StateT.get s`): inlined
+  if !(← isRecursive n) then
+    let declArity ← forallTelescope (← inferType fn) fun ys _ => pure ys.size
+    if args.size > declArity then
+      let info ← getConstInfo n
+      if info.isDefinition then
+        let .const _ us := fn | throwError "S3"
+        let v ← instantiateValueLevelParams info us
+        return ← tr c (mkAppN v args).headBeta
   -- calls (a non-recursive function with a function argument after a run-time one is inlined)
   let ns ← try staticArgs fn args catch ex =>
     if (← isRecursive n) then throw ex
@@ -794,7 +822,7 @@ def genMutual (st : St) (c : List Nat) (blk : List Name) (extraSimp : String) (s
   -- callees outside the component close by their certificates
   let outside := (c.flatMap fun j => (st.fns[j]!.body.map SE.calls).getD []).eraseDups.filter (!c.contains ·)
   let closers := outside.map (fun j => s!"(apply cert{j}' <;> simp)")
-  let closer := " | ".intercalate ("assumption" :: "(intros; assumption)" :: "omega" :: (closers ++ closers.map ("(intros; " ++ · ++ ")")))
+  let closer := " | ".intercalate ("assumption" :: "(intros; assumption)" :: "(intros; apply_assumption; done)" :: "rfl" :: "omega" :: (closers ++ closers.map ("(intros; " ++ · ++ ")")))
   let mut unf := ""
   for j in outside do
     let fj := st.fns[j]!
@@ -849,7 +877,7 @@ def genText (N : Name) (st : St) (extraSimp : String) (solveTac : String := "s3_
   let bodies := (List.range st.fns.size).foldr (fun k acc => s!"(.cons b{k} {acc})") ".nil"
   out := out ++ s!"abbrev P : Proven.S3.Prog := ⟨S, {bodies}, ⟨0, by decide⟩⟩\n"
   -- the oracle
-  out := out ++ "def φ : Fin P.S.fns.length → List Proven.S3.V → Proven.S3.V := fun f vs => match f.val with\n"
+  out := out ++ "noncomputable def φ : Fin P.S.fns.length → List Proven.S3.V → Proven.S3.V := fun f vs => match f.val with\n"
   for k in [0:st.fns.size] do
     let fi := st.fns[k]!
     let mut app := ← exprTxt fi.key
@@ -895,7 +923,7 @@ def genText (N : Name) (st : St) (extraSimp : String) (solveTac : String := "s3_
     let recursive := ((fi.body.map SE.calls).getD []).contains k
     let callees := ((fi.body.map SE.calls).getD []).filter (· != k)
     let closers := callees.eraseDups.map (fun j => s!"(apply cert{j}' <;> simp)")
-    let closer := " | ".intercalate ("assumption" :: "(intros; assumption)" :: "omega" :: (closers ++ closers.map ("(intros; " ++ · ++ ")")))
+    let closer := " | ".intercalate ("assumption" :: "(intros; assumption)" :: "(intros; apply_assumption; done)" :: "rfl" :: "omega" :: (closers ++ closers.map ("(intros; " ++ · ++ ")")))
     -- non-recursive callees unfold in the certificate (their values are then computed)
     let mut unf := ""
     for j in callees.eraseDups do
@@ -937,7 +965,9 @@ def genText (N : Name) (st : St) (extraSimp : String) (solveTac : String := "s3_
       let fixedTxt := String.join (preTxt.toList.map (" " ++ ·))
       let targets := if byName.Nodup && byName.all (· < xs.length) then byName
         else (List.range xs.length).filter (fun i => !preTxt.contains xs[i]!) |>.take targetNames.size
-      induct := s!"  induction {", ".intercalate (targets.map (xs[·]!))} using @{fname}.induct{fixedTxt} <;> (\n"
+      let gen := (List.range xs.length).filter (fun i => !targets.contains i && !preTxt.contains xs[i]!)
+      let genTxt := if gen.isEmpty then "" else s!" generalizing {" ".intercalate (gen.map (xs[·]!))}"
+      induct := s!"  induction {", ".intercalate (targets.map (xs[·]!))} using @{fname}.induct{fixedTxt}{genTxt} <;> (\n"
     out := out ++ s!"theorem body{k} : P.body ⟨{k}, by decide⟩ = b{k} := rfl\n"
     let fapp := (← exprTxt fi.key) ++ String.join (xs.map (" " ++ ·))
     let fa := if binders.isEmpty then "" else s!"∀ {" ".intercalate binders}, "
@@ -981,6 +1011,13 @@ def genText (N : Name) (st : St) (extraSimp : String) (solveTac : String := "s3_
   out := out ++ s!"end {p}\n"
   return out
 
+/-- the monad operations of concrete `StateT σ (Except ε)` / `ExceptT` code, unfolded in the certificates -/
+def monadSimp : String :=
+  ", bind, StateT.bind, StateT.pure, pure, Except.bind, Except.pure, get, getThe, MonadStateOf.get, StateT.get, " ++
+  "set, StateT.set, MonadStateOf.set, modify, modifyGet, MonadStateOf.modifyGet, StateT.modifyGet, throw, throwThe, " ++
+  "MonadExceptOf.throw, StateT.lift, Except.map, instMonadExceptOfExcept, StateT.run, Except.instMonad, " ++
+  "Except.tryCatch, ExceptT.run, ExceptT.bind, ExceptT.pure, ExceptT.mk, ExceptT.bindCont"
+
 /-- `s3_compile N := main [simp lemmas]`: generate the S3 program and its certificates -/
 syntax (name := s3Compile) "s3_compile " ident " := " term (" simp " "[" ident,* "]")? : command
 
@@ -989,14 +1026,20 @@ syntax (name := s3CompileB) "s3_compileB " ident " := " term (" simp " "[" ident
 
 def elabS3With (solveTac : String) : CommandElab := fun stx => do
   let N := stx[1].getId
-  let extra : String := match stx[4].getOptional? with
-    | some s => String.join ((s[2].getSepArgs.toList.map (·.getId.toString)).map (", " ++ ·))
-    | none => ""
+  -- the optional `simp [ids]` group: a node with its 4 parts (empty when absent)
+  let extra : String := if stx[4].getNumArgs ≥ 3 then
+      String.join ((stx[4][2].getSepArgs.toList.map (·.getId.toString)).map (", " ++ ·))
+    else ""
   let txt ← liftTermElabM do
     let e ← Term.elabTerm stx[3] none
     Term.synthesizeSyntheticMVarsNoPostponing
     let e ← instantiateMVars e
     let (_, st) ← (fnIdx e).run {}
+    -- concrete `StateT` / `Except` / `ExceptT` code: the certificates unfold their monad operations
+    let mentions (x : Lean.Expr) : Bool := (x.find? fun y =>
+      y.isConstOf ``StateT || y.isConstOf ``Except || y.isConstOf ``ExceptT).isSome
+    let monadic := st.fns.any fun fi => mentions fi.key || mentions fi.retTy || fi.pTys.any mentions
+    let extra := if monadic then extra ++ monadSimp else extra
     genText N st extra solveTac
   logInfo m!"{txt}"
   let inputCtx := Parser.mkInputContext txt "<s3_compile>"
