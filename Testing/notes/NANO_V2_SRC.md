@@ -111,3 +111,24 @@ rename to `Nano.V2S`. Worker 4 (nano-v2-boot, session_01MfKuVbK875JiDk244XTTBb) 
 - Buffers are `List UInt64` with append; switch to the frozen `Array UInt64` API names once NANO_V2_SPEC.md freezes
   them (a renaming plus `Array`↔`List` lemmas).
 
+
+## HANDOFF (2026-11-17, stage rewrite paused by owner decision)
+- DONE: all five stages in the restricted style with bridges to the v1 stages (no sorry; axioms propext,
+  Classical.choice, Quot.sound): `asmV_eq`, `mexpV_eq`, `inlV_eq`, `lexV_eq` (len < 2^32), `p2bV_eq` (len < 2^27),
+  composition `chainV_eq` (Nano/V2S/Chain.lean). `bash Testing/scripts/check.sh` ALL CHECKS PASSED at d698bab (merge of
+  main; only the known statement-fingerprint warning); a second run on 0c5ee27 was still in progress at the pause.
+- IN PROGRESS: the tail-only inliner required by NANO_V2_SPEC.md §1.1 (`inlBody` has a non-tail self call, rejected):
+  `Nano.V2S.inlTV` (Nano/V2S/InlT.lean): word-buffer table `T` (all def bodies, then the current one) + offsets `O`,
+  a call copies `T[O[t], O[t+1])` with the loop `cpy`; capacity `kap = 2^24` (overflow = error, empty output).
+  Builds; equals `inlB` on the 400-input differential test (Testing/nano/v2s_inlT_test.lean). NO bridge yet. Plan:
+  simulate `inlGo` with `T = tab.flatten ++ cur`, `O` = prefix sums of the entry lengths; hypothesis `Adequate`:
+  the final table length ≤ kap (the table only grows, so that bounds every step and the `cpy`/`emT` fuel).
+- CONFORMANCE GAPS vs NANO_V2_SPEC.md (to do when the rewrite resumes): (1) the parser's 13-tuple state (`PS`,
+  `pstep`) — the spec has no products in milestone 1: flatten `pstep` into `prun` (one loop, 13 parameters, each branch
+  ends in a tail call, `[]` or the output) and prove the flattened loop equal to `prun` (branch-by-branch unfolding);
+  (2) source text rules (§2): no `namespace`/`open`/`abbrev`, names of the form `x1`/`f_2`, no hex literals, `len'` for
+  fuel, `≠` → swap branches of `==`, the shift guard (numerals next to shifts as zero-arity defs, e.g. asm's
+  `((a &&& 1) <<< 7) ||| 3`); (3) buffers: §3 (`List UInt64`) vs §8.8 (`Array UInt64` templates) — rename when frozen.
+- NEXT: retarget the stages to the v2 grammar (cmp/if, bits, then products, buffers) as worker 1's increments land,
+  proving `Adequate x κ → C x = compileV2 x` (Astra r4 §0); the v1 bridges are the route and their step-simulation
+  structure carries over. Benchmarks (inlined size, buffer copy cost, kernel time) go to the Haiku test runner.
