@@ -182,3 +182,6 @@ stage inl alone, QEMU: 146/146 ok in 15 rounds (2035 words; every successful run
 not run linked (space5 K > 943718400 bytes): []
 nano_self3 (linked binary) QEMU: 146/146 ok (59104 words; sources up to 776 bytes, outputs up to 9304 bytes; K 17888..2348672, work space5 K up to 601268192 bytes)
   sail s0069.nano: src 38 B, code 172 B ok
+  sail s0074.nano: src 38 B, code 172 B ok
+  sail s0089.nano: src 38 B, code 172 B ok
+  sail s0000.nano: src 32 B, code 220 B ok
