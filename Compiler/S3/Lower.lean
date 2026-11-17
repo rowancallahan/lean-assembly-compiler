@@ -98,7 +98,8 @@ def outLoop : SC :=
     .loop ⟨.ne, .r 9, .i 0⟩ (SC.seqs [.i (.ld 10 7 1), .i (.stb (.r 10) 2 (.r 8)), addK 8 8 1, .i (.ld 7 7 2),
       .i (.ld 9 7 0)])]
 
-def mainTC (fm : FId) : TC := .seq (SC.seqs [inLoop, .i (.call [7] fm [.r 3]), outLoop]) (.term (.ret []))
+/-- `main`: the input as a byte list, the call, the output loop; returns the number of bytes written (`8`) -/
+def mainTC (fm : FId) : TC := .seq (SC.seqs [inLoop, .i (.call [7] fm [.r 3]), outLoop]) (.term (.ret [.r 8]))
 
 def mainF (fm : FId) : Func VReg := mkFunc [0, 1, 2] [0, 1, 2] 1 [(0, mainTC fm)]
 

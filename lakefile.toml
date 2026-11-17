@@ -33,3 +33,9 @@ path = "../deps/sail-riscv-lean"
 [[lean_lib]]
 name = "Frontx"
 globs = ["Riscv.Frontx.+"]
+
+# nano: UTF-8 source text -> RISC-V, tiny self-hostable compiler (notes in Testing/notes/NANO.md)
+[[lean_lib]]
+name = "Nano"
+globs = ["Nano.+"]
+

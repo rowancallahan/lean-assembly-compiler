@@ -106,11 +106,13 @@ def Rel (Q : Prog Nat) (L : Lay) (qs : Nat) (st : State Nat) (s : T.S) : Prop :=
     C.Stk Q L qs st.mem.blks below M fb F.slots sv fr.dst fr.f ∧
     inUse (st.ev ++ [base Q]) = st.mem.cells.length + (C.T0 - fb) / 8 ∧ peak (st.ev ++ [base Q]) ≤ C.wl / 8
 
-/-- the end of a run: returned, and either the output is there or the flag (exactly when out of memory) -/
+/-- the end of a run: returned, and either the output is there (with the preserved registers kept, the frame
+register restored and `main`'s first result in `RLen`) or the flag (exactly when out of memory) -/
 def Fin (Q : Prog Nat) (r : Result) (s' : T.S) : Prop :=
   T.ok s' ∧ T.pcIs s' (T.ra C.s0) ∧ C.Unch s' ∧
   ((peak (r.ev ++ [base Q]) ≤ C.wl / 8 ∧ T.get s' RIn = BitVec.ofNat 64 C.inA ∧
-      ∀ i b, r.mem.out[i]? = some (some b) → T.mem s' (C.outA + i) = some b.toBitVec) ∨
+      (∀ i b, r.mem.out[i]? = some (some b) → T.mem s' (C.outA + i) = some b.toBitVec) ∧
+      T.keepC C.s0 s' ∧ T.fr s' = T.fr C.s0 ∧ ∀ v, r.vs[0]? = some (.w v) → T.get s' RLen = v) ∨
     (C.wl / 8 < peak (r.ev ++ [base Q]) ∧ T.get s' RIn = BitVec.allOnes 64))
 
 variable {C}

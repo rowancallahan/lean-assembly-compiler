@@ -212,6 +212,54 @@ instance : Enc Unit where
   dec _ := ()
   dec_enc _ := rfl
 
+instance : Enc (BitVec 64) where
+  enc x := .w x
+  dec | .w x => x | _ => 0
+  dec_enc _ := rfl
+
+/-- `Nat` as its own inductive type (unary: `zero`, `succ`): exact, values cost their size -/
+def natV : Nat → V
+  | 0 => .c 0 []
+  | n + 1 => .c 1 [natV n]
+
+def natD : V → Nat
+  | .c 1 [v] => natD v + 1
+  | _ => 0
+
+instance : Enc Nat where
+  enc := natV
+  dec := natD
+  dec_enc n := by
+    induction n with
+    | zero => rfl
+    | succ n ih => simp only [natV, natD, ih]
+
+@[simp] theorem enc_bv64 (x : BitVec 64) : Enc.enc x = .w x := rfl
+@[simp] theorem dec_bv64 (x : BitVec 64) : (Enc.dec (V.w x) : BitVec 64) = x := rfl
+@[simp] theorem enc_nat_zero : Enc.enc (0 : Nat) = .c 0 [] := rfl
+@[simp] theorem enc_nat_zero' : Enc.enc Nat.zero = .c 0 [] := rfl
+@[simp] theorem enc_nat_succ (n : Nat) : Enc.enc (n + 1) = .c 1 [Enc.enc n] := rfl
+@[simp] theorem enc_nat_succ' (n : Nat) : Enc.enc (Nat.succ n) = .c 1 [Enc.enc n] := rfl
+@[simp] theorem dec_nat_zero : (Enc.dec (V.c 0 []) : Nat) = 0 := rfl
+@[simp] theorem dec_nat_succ (v : V) : (Enc.dec (V.c 1 [v]) : Nat) = Enc.dec v + 1 := rfl
+attribute [s3_norm] Nat.beq_eq Nat.add_eq Nat.succ_eq_add_one Bool.or_eq_true Bool.and_eq_true
+@[s3_norm] theorem nat_beq_false (a b : Nat) : (Nat.beq a b = false) = ¬ a = b := by
+  rw [← Nat.beq_eq, Bool.not_eq_true]
+@[s3_norm] theorem nat_blt_false (a b : Nat) : (Nat.blt a b = false) = ¬ a < b := by
+  rw [← Nat.blt_eq, Bool.not_eq_true]
+@[s3_norm] theorem nat_ble_false (a b : Nat) : (Nat.ble a b = false) = ¬ a ≤ b := by
+  rw [← Nat.ble_eq, Bool.not_eq_true]
+
+/-- `Fin n` as its constructor with the value only (the proof is not stored) -/
+instance {n : Nat} [NeZero n] : Enc (Fin n) where
+  enc i := .c 0 [Enc.enc i.val]
+  dec | .c 0 [a] => if h : (Enc.dec a : Nat) < n then ⟨Enc.dec a, h⟩ else 0 | _ => 0
+  dec_enc i := by simp
+
+@[simp] theorem enc_fin {n : Nat} [NeZero n] (i : Fin n) : Enc.enc i = .c 0 [Enc.enc i.val] := rfl
+@[simp] theorem dec_fin {n : Nat} [NeZero n] (a : V) :
+    (Enc.dec (V.c 0 [a]) : Fin n) = if h : (Enc.dec a : Nat) < n then ⟨Enc.dec a, h⟩ else 0 := rfl
+
 instance instEncExceptT {ε α : Type} {m : Type → Type} [h : Enc (m (Except ε α))] : Enc (ExceptT ε m α) := h
 
 @[simp] theorem enc_exceptT {ε α : Type} {m : Type → Type} [h : Enc (m (Except ε α))] (x : ExceptT ε m α) :
@@ -294,6 +342,29 @@ instance instEncExceptT {ε α : Type} {m : Type → Type} [h : Enc (m (Except �
 @[simp] theorem bv_eq_zero (c : Bool) : (bv c = 0#64) = (c = false) := by cases c <;> decide
 @[simp] theorem bv_eq_one (c : Bool) : (bv c = 1#64) = (c = true) := by cases c <;> decide
 attribute [s3_norm] UInt8.toNat_zero
+attribute [s3_norm] UInt64.toBitVec_ofNat
+/-- a byte decoded from a word, and `UInt64.toUInt8`, in one normal form (`UInt8.ofNat` of the word's value) -/
+@[s3_bytes] theorem u8_mk_sw (x : BitVec 64) : (⟨x.setWidth 8⟩ : UInt8) = UInt8.ofNat x.toNat := by
+  apply UInt8.toNat_inj.mp; simp
+@[s3_bytes] theorem u8_ofBitVec_sw (x : BitVec 64) : UInt8.ofBitVec (x.setWidth 8) = UInt8.ofNat x.toNat := by
+  apply UInt8.toNat_inj.mp; simp
+@[s3_bytes] theorem u64_toUInt8_ofNat (y : UInt64) : y.toUInt8 = UInt8.ofNat y.toNat := rfl
+@[s3_bytes] theorem u8_ofNat_u64_sw (y : UInt64) :
+    BitVec.setWidth 64 (UInt8.ofNat y.toNat).toBitVec = y.toBitVec &&& 255#64 := by
+  apply BitVec.eq_of_toNat_eq; simp [BitVec.toNat_and]
+@[s3_bytes] theorem u8_ofNat_bv_sw (y : BitVec 64) :
+    BitVec.setWidth 64 (UInt8.ofNat y.toNat).toBitVec = y &&& 255#64 := by
+  apply BitVec.eq_of_toNat_eq
+  simp only [BitVec.toNat_setWidth, UInt8.toNat_toBitVec, UInt8.toNat_ofNat, BitVec.toNat_and]
+  rw [show (255#64).toNat = 2 ^ 8 - 1 from rfl, Nat.and_two_pow_sub_one_eq_mod]
+  have h : (UInt8.ofNat y.toNat).toNat = y.toNat % 256 := UInt8.toNat_ofNat
+  rw [h]; omega
+@[s3_bytes] theorem nat_beq_decide (a b : Nat) : (a == b) = decide (a = b) := by
+  cases h : decide (a = b) <;> simp_all
+@[s3_bytes] theorem list_u8_beq (x y : List UInt8) : @List.beq UInt8 instBEqOfDecidableEq x y = decide (x = y) := by
+  induction x generalizing y with
+  | nil => cases y <;> rfl
+  | cons a r ih => cases y <;> simp [List.beq, ih, Lean.Grind.beq_eq_decide_eq]
 
 @[simp] theorem u8_and_ff (x : UInt8) : (x &&& @OfNat.ofNat UInt8 (255 : Nat) UInt8.instOfNat) = x := by
   apply UInt8.toNat_inj.mp
@@ -329,5 +400,9 @@ theorem computes_of_main {P : Prog} {φ : Fin P.S.fns.length → List V → V} {
   rw [enc_bytes, enc_bytes, hmain] at h
   show P.run (encIn x) = _
   rw [Prog.run_eq h, bytesOut_bytesV]
+
+/-- **the termination certificate from the certificates**: every good call has a well-founded call tree -/
+theorem wfCert_of_good (P : Prog) (φ : Fin P.S.fns.length → List V → V) : WfCert P (Good P φ) :=
+  ⟨fun _ _ h => acc_of_ev h⟩
 
 end Proven.S3
