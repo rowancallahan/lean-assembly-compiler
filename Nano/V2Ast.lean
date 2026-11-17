@@ -8,7 +8,7 @@ namespace Nano.V2
 /-- the comparison of an `if` -/
 inductive Cmp where
   | eq | ltu | leu | lts | les
-  deriving DecidableEq
+  deriving DecidableEq, Repr
 
 /-- Lean's meaning of the comparison on the words (`lts`/`les`: on the `Int64` with the same bits) -/
 def Cmp.test : Cmp → UInt64 → UInt64 → Bool
@@ -25,7 +25,7 @@ inductive E where
   | call (body args : E)
   | anil | acons (e rest : E)
   | ite (k : Cmp) (a b t e : E)
-  deriving DecidableEq
+  deriving DecidableEq, Repr
 
 abbrev Prog := Nat × E
 

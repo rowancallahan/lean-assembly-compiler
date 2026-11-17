@@ -48,7 +48,7 @@ BODIES = [
  "if x < y then(1) else 2", "if x < y then 1 else(2)", "if x < y then 1 else 2 else 3", "if x < y then 1 then 2 else 3",
  "if x < y then 1 else 2; 3", "let z := 1; if z < x then z else 2", "let z := 1; if x < z then z else 2",
  "if x < y then x else y - if x < y then 1 else 2", "if x <= y then if x == y then 0 else 1 else 2",
- "if x < y then 18446744073709551615 else 0", "if x < y then -1 else -2", "if x < y then - 1 else - 2",
+ "if x < y then 18446744073709551615 else 0", "if x < y then 1 else 2) + (3", "if x < y then -1 else -2", "if x < y then - 1 else - 2",
 ]
 PRE = "def g (a b : T) : T := a - b\ndef k : T := 7\n"
 CALLB = [
@@ -59,6 +59,8 @@ CALLB = [
 ]
 cases = []
 for ty in ["UInt64", "Int64"]:
+    for hdr in ["def f ( : T) : T := 5", "def f (x : T) ( : T) : T := x", "def f (x : T) () : T := x"]:
+        cases.append(case(hdr.replace("T", ty), ty))
     for b in BODIES: cases.append(case(H2.replace("T", ty) + b, ty))
     for b in CALLB: cases.append(case((PRE + H2).replace("T", ty) + b, ty))
 NHAND = len(cases)
