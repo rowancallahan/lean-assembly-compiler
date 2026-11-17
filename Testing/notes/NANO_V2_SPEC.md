@@ -127,7 +127,20 @@ must name the compiler-source use that needs it"). A stage entry is `def stage (
    milestone-1 backend with branching `if`, loops and buffers is worker 2's (`Nano.V2B`); worker 2 translates
    `Nano.V2.E` or adopts it, and the AST of §1 becomes `Nano.V2.E` extended (worker 1 owns the file).
 7. Int64: dropped for milestone 1 (Astra r2 §8); the v2 elaborator keeps it only for v1 compatibility.
-8. OPEN (owner): NANO_V2_ROUND5.md (main, 0128534) proposes `Array UInt64` with `readD` / `writeChecked` /
-   `appendChecked` (success flag, original array on failure, explicit semantic capacity). That is compatible with §3's
-   ownership rules but differs in representation (`Array` vs `List`) and in failure reporting (a flag vs a caller-side
-   `bsize b < κ` test). Pick one before workers 2/3 freeze their buffer code; §3 is the fallback if no decision.
+8. ALIGNED with the verified templates on main (Testing/notes/NANO_V2_SKELETONS.lean, NANO_V2_ROUND5.md, 0128534),
+   which take precedence over §3/§6 where they differ:
+   - word buffers are `Array UInt64` with `readD a i default` (= `a.getD i.toNat default`), `writeChecked a i v :
+     Bool × Array UInt64` (guarded `Array.set`, original array and `false` out of range), `appendChecked cap a v :
+     Bool × Array UInt64` (explicit semantic capacity `cap`, original array and `false` when full); `a.size` (Nat) in
+     proofs, a word size only after proving `a.size < 2^64`. §3's `bnew/bsize/bget/bset/bpush/bpop` map to these
+     (`bpop` has no template yet: add it only if a stage needs it). The input/output API (`rd`, `len`, `put`) stays.
+   - the loop form is NanoSkeleton.scan's: `def f (fuel : Nat) … := match fuel with | 0 => … | n + 1 => …` with
+     `termination_by structural fuel`; worker 3's equation-compiler form `def f : Nat → … | 0, … => … | n + 1, … => …`
+     must be accepted by nano as the same construct (both elaborate to `Nat.brecOn`; the elaborator accepts either text
+     only after an oracle check).
+   - conditions: `<`/`<=` are `Prop` + `Decidable`, `==` is `Bool` (bridge `beq_iff_eq`), as increment 1 already does.
+   - `let (a, b) := s` is the product elimination form (same as `match s with | (a, b) => …`).
+   - the contract is `NanoABI.ImplementsBytes` with `NanoABI.Result = ok out | error code` (code ≠ 0; OOM is the code
+     `oomCode`; ok ⇒ status 0, a1 = out.size, bytes at a3; error ⇒ status = code, a1 = 0); §6's numbers are the
+     concrete instance (oomCode = 2^64 − 1, Lean-level error = code 1). Where it lives: a module `Nano/V2/ABI.lean`
+     (owner: worker 1) created from the template when the first worker needs it, not on this branch yet.
