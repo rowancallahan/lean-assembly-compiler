@@ -38,3 +38,10 @@ globs = ["Riscv.Frontx.+"]
 [[lean_lib]]
 name = "Nano"
 globs = ["Nano.+"]
+
+# superseded nano stage compiles that build in more than 5 min (owner's rule; Testing/notes/NANO_MANIFEST.md): the
+# list-front-end lexer halves (replaced by the S3 lexer) and the paged inliners (replaced by the S3 inliner).
+# Not a default target, not built by check.sh.
+[[lean_lib]]
+name = "NanoSlow"
+globs = ["NanoSlow.+"]
