@@ -316,3 +316,6 @@ review, and spend their effort on the proved back end and self-hosting, not on p
   (checked against Lean's by kernel equality per definition) replaces it.
 - Speed work on the front ends is safe by construction: they are certifying (each output carries a kernel-checked
   theorem), so a wrong speed-up fails the check instead of producing wrong code.
+- Increments (owner): grow in SMALL steps, each one checked before the next: one feature or one back-end piece at a
+  time (e.g. first move only nano's expression lowering onto S3 while the stack back end stays; then one datatype; then
+  calls), and after every step the self-hosting theorem, check.sh and the full-chain test must pass again.
