@@ -203,7 +203,7 @@ def prun : Nat → Nat → List UInt8 → PS → List UInt8
 
 /-- **parser stage 2b, nano v2 source** -/
 def p2bV (xs : List UInt8) : List UInt8 :=
-  let n := xs.length + 1
+  let n := 16 * xs.length + 16
   if (rd xs 0 == 1 || rd xs 0 == 2) && vld n xs 1 == 1 then
     prun (13 * xs.length + 6) n xs (1, ntok n xs 1 0 + 1, 0, 0, 1, 0, 0, 0, 0, [], [], [], [])
   else []
