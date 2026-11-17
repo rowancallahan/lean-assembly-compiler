@@ -1,60 +1,136 @@
 # NANO: UTF-8 source text -> RISC-V, tiny compiler, partly self-hosted (branch `nano-e2e`)
 
 Files: `Nano/Ast.lean` (AST, `den`, `Prog.eval`), `Nano/Elab.lean` (`nanoElab`), `Nano/Asm.lean` (`asm`), `Nano/Gen.lean`
-(`genR`, `nanoGen`, `nanoCompile`), `Nano/AsmSelf.lean` (`asm` compiled by our front end), `Nano/Agree.lean` (generated),
-`Testing/nano/*` (tests), `Testing/scripts/axioms_nano-e2e.lean`. Lake lib `Nano` (globs `Nano.+`).
+(`genR`, `nanoGen`, `nanoCompile`, `depth`), `Nano/AsmSelf.lean` (`asm` compiled by our front end), `Nano/Agree.lean` (generated),
+`Testing/nano/*` (tests), `Testing/scripts/axioms_nano-e2e.lean`. Lake lib `Nano` (globs `Nano.+`). Names after the merge with nano-proof / nano-mvp: `nanoGen`/`nanoCompile` = the STACK generator here
+(`Nano/Gen.lean`); `nanoGenIR`/`nanoCompileIR` = the proved IR-based generator (`Nano/GenIR.lean`, nano-proof); both are compositions with
+`nanoElab`.
 
-## Language
-`def f (x y : UInt64) : UInt64 := e` lines (several groups `(x : UInt64) (y : UInt64)` and zero parameters allowed; whitespace and
-newlines are equal). `e ::= decimal | param/let name | (e) | e + e | e - e | e * e | g e1 … ek | let x := e; e`; `*` binds tighter than
-`+ -`, all left associative; calls take atoms (as in Lean) to EARLIER defs of exactly arity k (zero-arity defs are atoms); no
-recursion. Wraps like `UInt64` (numerals mod 2^64). Last def = entry; input = its arguments as 8-byte LE words, output = one 8-byte word.
-Every nano program is valid Lean (checked by the agreement files and the fuzz script).
-`Prog = Nat × Ex` (entry arity, body). Name resolution inlines the callee: `Ex.call body args` carries the callee's resolved body, so
-`Prog.eval` is structural recursion (`den`) with no function table; variables are de Bruijn (newest = 0, parameters pushed in order).
+## Language (the DRAFT spec; the owner writes the final one)
+`def f (x y : UInt64) : UInt64 := e` lines, or the same with `Int64` (one type for the whole file). `nanoElab` (text -> `Prog`) and `Prog.eval`
+are the draft spec; everything below is what `nanoElab` ACCEPTS (it may reject anything Lean accepts, never the reverse: SUBSET RULE).
+
+```
+file   ::= def+                                  last def = entry; no other text
+def    ::= 'def' name ('(' name+ ':' ty ')')* ':' ty ':=' expr       zero parameters allowed, no empty binder group
+ty     ::= 'UInt64' | 'Int64'                    the same in every type position of the file
+expr   ::= 'let' name ':=' expr ';' expr | sum   (a `let` only at the start of an expression, `;` required)
+sum    ::= prod (('+' | '-') prod)*              left associative
+prod   ::= app ('*' app)*                        left associative, binds tighter
+app    ::= '-' num | name atom^k | atom          k = arity of the earlier def `name` (k >= 1); `-num` = (0 - num) (Neg UInt64/Int64)
+atom   ::= num | name | '(' expr ')'             name = parameter / let (innermost wins) or an earlier def of arity 0
+name   ::= 1-3 lowercase letters, then digits or `_`digit groups (`x`, `sq`, `add3`, `x_1`), not in `reserved` (Elab.lean: Lean keywords and
+           Init/exported names of that shape: and at bif bne by do end for fun get id if in ite max min mt mut not or rec rfl set try xor (`rec`: `let rec`, found by `edge.py --allnames`))
+num    ::= [0-9]+                                wraps mod 2^64 (as `OfNat UInt64/Int64`); must not touch a name character or `(`
+white  ::= ' ' | '\n' | '\r\n'                   a line starts (column 0) with a space, a newline or `def`
+```
+Further conditions: calls only to EARLIER defs (no recursion), exact arity, every name bound, def names pairwise distinct, no adjacency
+`x(`, `)(`, `)x` (Lean needs whitespace before an application argument), no tab, no lone CR. Semantics: `Prog = Nat x Ex` (entry arity,
+body); name resolution inlines the callee (`Ex.call body args`), variables are de Bruijn (newest = 0, parameters pushed in order), `den`
+wraps like `UInt64` (Int64 = the same bits). Input = the entry's arguments as 8-byte LE words, output = one 8-byte LE word.
+
+## Subset findings (task 3, `Testing/nano/edge.py`, oracle `Testing/nano/oracle.lean`)
+The oracle runs Lean's REAL frontend (`IO.processCommands`, header-less file = `import Init`, errors = reject, entry evaluated by the
+interpreter) and `nanoElab` + `Prog.eval` on the same text. `edge.py N seed`: ~350 hand-written edge cases (each as UInt64 and Int64; the table
+is `Testing/notes/NANO_SUBSET.md`) + every root name of `Init` (1821) and every identifier-like parser token (168) as def / parameter / let name
++ every 2-letter name and random 1-3-letter names with digit / `_1` suffixes in the same three roles (and used afterwards) + token soups +
+mutations of valid programs + layout fuzz (random separators incl. column 0, tabs, CR) + shadowing of earlier defs. Verdicts: both reject /
+nano rejects only (allowed) / both accept with equal values / BUG.
+History: this box and nano-mvp fixed the same class of bugs independently; the merged `Nano/Elab.lean` is nano-mvp's (name shape +
+`reserved`, tabs, lone CR, glued numerals / arguments, empty binder groups, duplicate defs) plus the rules `edge.py` / `thr.py` / the exhaustive
+check found missing (all "nano accepts, Lean rejects"):
+(*) a body or argument at COLUMN 0 (`def f (x y : UInt64) : UInt64 :=\na * 3`, `g x\n5`): a line may only start with a space, a newline or
+`def` (`lineStart`);
+(*) `let rec := ..`: `rec` added to `reserved` (found by `edge.py --allnames`: every name of 1-3 lowercase letters, and 1-2 letters with a digit or
+`_1` suffix, as def / parameter / let / used def: ~111k cases, this was the only one);
+(*) RESOURCE LIMITS (`Testing/nano/thr.py`, `thr_calls.py`: construct x size, Lean accepts / nano accepts): Lean fails with "maximum
+recursion depth" for 512 nested `let`s (500 pass) and 256 nested calls (200 pass; calls cost 2 units, parens and lets 1), and rejects a chain of
+3000 `+`/`*`/`-` operands (2700 pass; mixed chains with numerals pass 5000, rejected at 6000); nothing else broke (2000 args in a call,
+5000 parameters, 5000 defs, a 50000-digit numeral are fine). nano accepted all of these, and rejected nested parentheses deeper than ~10-20
+only because of its fuel. **OPEN, NOT APPLIED on the integration line** (they change `nanoElabT`, which `nano-elab`/`nano-int` proofs (ElabU, ElabBSelf) are written against; `Gen.lean` is frozen): reject when open parentheses + `let`s in scope exceed 100 (`nestOk`), when a def has more than 2000 tokens (`sizeOk`), and raise the fuel to `4 * tokens + 4` (nested parentheses deeper than ~10-20 are rejected only by the fuel). Both functions were written and passed all tests on nano-e2e commit 'nanoCompileS rejects ... Elab: nesting and size bounds' (see git history, `git log --grep=nesting`); without them `nanoElab` accepts >= 512 nested lets and >= 3000-operand chains that Lean rejects. With them: 0 BUGs (seeds 5, 6, 11-13, 21, 31, 41, 77; 5500-111000 cases each; 200-100000 accepted by both).
+EXHAUSTIVE (`Testing/nano/exhaust.lean`): every body of 1-5 tokens over a 15-token alphabet (x y 1 - + * ( ) g h k let w := ;) with single spaces
+(813615 bodies, nano accepts 1442), with a newline before every token (nano accepts 4), and every body of 1-6 tokens with spaces only between
+word characters (`x-1`, `g(x)`, `(x)(y)`: 12204240 bodies, nano accepts 4385): each accepted text through Lean's real frontend, values on 4
+inputs equal: 0 differences.
+Found in the pre-merge `nanoElab` (all fixed by rejecting): keywords and `Init` names as names (`def id`, `ite`, `Nat`, `Type`, `sorry`, `_`,
+`fun`, `if`, ...), tabs, lone CR, `g(x)(y)` / `g x(y)` / `(x)y`, duplicate defs, column-0 arguments. My own alternative name rule (one letter,
+then digits/`_`: no list at all, none of the 1821 + 168 names is in the class) is NOT used: nano-mvp's wider class with a `reserved` list is the
+one in `Elab.lean`; it is exact only if `reserved` is complete: verified exhaustively for all 1-3-letter names (+ the suffixes above) in the four
+roles; names with other suffixes (`a_12`, `ab34`) were sampled only. The one-letter rule is the safe fallback.
+No "meanings differ" case was found (numerals >= 2^64, `-1`/`- 1`/`x -1` = `x - 1`, `x - y - z`, `x - y * z`, application vs binary
+operators, unary minus on UInt64, shadowing of earlier defs by parameters/lets all agree). Accepted by Lean, rejected by nano (allowed, by
+design): `-x`, `-(e)`, `--`/`/-` comments, `let` without `;`, `let` mid-expression, `x'`, unicode, empty file (Lean accepts it, nano: no entry),
+adjacent binder groups `(x : UInt64)(y : UInt64)`, `0x..`/`1_000`/`1e3`, `.`-names, `|>.`, `$`, `fun`, `if`.
 
 ## Pipeline
-`nanoCompile src = (nanoElab src).map nanoGen`, `nanoGen p = asm (genR p)`.
-1. `nanoElab`: `lex` (fuel = length) -> mutual structural parsers on fuel (`pExpr pAdd pMul pMulT pApp pArgs pAtom`, `pParams pNames`,
-   `pDefs`) with the scope and the def table; arity and scope errors give `none`.
+`nanoCompile src = (nanoElab src).map nanoGen` (the guard `depth p < 256` for the 8-bit slot offsets was dropped to keep `Gen.lean` frozen: programs needing 256 or more stack slots are not handled), `nanoGen p = asm (genR p)`.
+1. `nanoElab`: `lex` (fuel = length) -> mutual structural parsers on fuel with the scope and the def table; arity and scope errors give `none`.
 2. `genR`: stack machine, calls inlined, every value on the machine stack; output = 4-byte pseudo-instruction records `[op,a,b,c]`.
-3. `asm` (`Nano/Asm.lean`): records -> RISC-V words (LD, SD, ADDI, ORI, SLLI, ADD, SUB, MUL, RET). This is the stage compiled by our compiler.
-Entry convention of the generated code: a0 = input words, a1 = output word, uses sp below, restores sp, `ret`.
-Limits (12-bit offsets): arity < 127, at most 255 stack slots per expression; not checked by `nanoElab` (programs here are far below).
+3. `asm` (`Nano/Asm.lean`): records -> RISC-V words. This is the stage compiled by our compiler.
+
+### Calling convention of the generated code (`StartCorrect`, Spec/Top.lean; `riscvMapping`)
+a0 = input address, a1 = input length (unused), a2 = work base (8-aligned), sp = work top, a3 = output address, ra = return.
+Input blocks and output block are NOT assumed aligned: arguments are read BYTEWISE (`lbu`, `slli`, `or`), the result is written BYTEWISE
+(`srli`, `sb`, 8 bytes). The value stack lives in the work block, not in sp: stack pointer t6 (x31) starts at sp, grows DOWN; every push is
+`addi t6,t6,-8; bgeu t6,a2,+12; addi a0,x0,-1; ret; sd t0,0(t6)`: a push beyond the work block sets a0 = 0xFFFFFFFFFFFFFFFF (`oomFlag`)
+and returns, nothing else changed (sp, gp, s-registers untouched; only t0 t1 t3 t6 are written, a0 only on overflow, input/output blocks
+only at the end). `memoryNeeded` = 8 * `Nano.depth p` (`depE`: peak stack slots including the arguments); work = exactly that fits, one byte
+less returns the flag (tested). On success a0 keeps the input address (not the flag). Limit: slot offsets are 8 bits, `depth p < 256` (checked by `nanoCompile`, not by `nanoElab` or `genR`). Entry: `mv t6,sp; mv t3,a0`, arguments pushed in order (`rd8`, `push`,
+`addi t3,t3,8`), body, `ld t0,0(t6)`, `wr8`, `ret`.
+
+### Records of `asm` (14 ops; `op & 7` is funct3)
+`0 ADDI imm=sext8 c | 1 SLLI | 3 LD imm=8c | 4 LBU imm=c | 5 SRLI | 6 ORI imm=c | 7 BGEU (a=0, rs1=b, rs2=c, offset +12) | 8 ADDI imm=8c |
+11 SD imm=8c | 16 SB imm=c | 14 OR | 24 ADD | 32 SUB | 40 MUL | 48 RET (0,1,0)`; fields rd=a rs1=b (rs2=c, imm=c; stores rs2=a). Each of the
+four byte macros `X0..X3` has at most 7 clauses (see "Front-end findings").
+**Renumbered since commit 4c64d61** (the first push of this convention, copied by nano-proof's `Nano/StackRec.lean`): old -> new op: LD 0->3, SD 1->11,
+ADDI(8c) 2->8, ORI 3->6, SLLI 4->1, ADD 5->24, SUB 6->32, MUL 7->40, RET 8->48 (record `[48,0,1,0]`), LBU 9->4, SB 10->16, SRLI 11->5, OR 12->14,
+BGEU 13->7 (record `[7,0,rs1,rs2]`: the registers moved from a,b to b,c), ADDI(sext8 c) 14->0. `push` now decrements with `[0,31,31,248]` (was the
+scaled `[2,31,31,255]`). `genE` is now faithful to `den` on ALL `Ex`: a variable index beyond the scope and `anil`/`acons` as expressions push 0
+(`li 0 ++ push`); `depE` counts them (`d + 1`). Code and `genR` are otherwise unchanged.
 
 ## What exists, and how it is established
 | link | status |
 |---|---|
-| `asm` (records -> code) as RISC-V code on the Sail model computes `asm` | **proved**: `Nano.Self.nanoAsm.implements1` (`frontx_compile` + `frontx_implements_listC`, 23 slots, 394 words, the 77 Sail model axioms, `axioms_nano-e2e.lean`) |
-| that binary vs executed Lean | tested: `Testing/nano/nano_selfhost.py`: 70 programs (39 corpus + 31 random): `frontx_test.py` on QEMU **and** Sail == Lean `asm`; plus the binary assembles each program's records on QEMU, == Lean `nanoGen`, and runs the result on qemu-riscv64 for 6 inputs (420 pairs) == `Prog.eval` |
-| `nanoElab` agrees with Lean's elaborator | **proved per program, for all inputs**: `Nano/Agree.lean` (generated by `gen_agree.py`), 39 programs: `elabEq` (`decide +kernel`: `nanoElab bytes = some P`) and `agree : ∀ args, (nanoElab src.toUTF8.toList).bind (·.eval args) = some (f args)` with `f` Lean's own `def` of the same text; axioms propext/Classical.choice/Quot.sound only |
-| same, random programs | tested: `Testing/nano/fuzz.py 300 7`: 300 random programs, 2400 random/edge input vectors, 0 mismatches (real `def`s run by Lean vs `nanoElab`+`eval`); 8 invalid programs: Lean rejects and `nanoElab` rejects (the empty file: Lean accepts, nano rejects: no entry) |
-| `nanoGen` output correct | **tested, not proved**: `Testing/nano/nano_test.py 20`: 59 programs, 354 (program, input) pairs on qemu-riscv64 and on Sail (every Sail write inside the output word / stack, sp restored) == `Prog.eval` |
-| `nanoElab`, `genR` as RISC-V code | **not done** (below) |
-| `nanoElab`/`nanoGen` correctness theorem in general | **not done** |
+| `asm` (records -> code) as RISC-V code on the Sail model computes `asm` | **proved**: `Nano.Self.nanoAsm.implements1` (`frontx_compile` + `frontx_implements_listC`, 379 words, the 77 Sail model axioms, `axioms_nano-e2e.lean`) |
+| that binary vs executed Lean | tested: `Testing/nano/nano_selfhost.py` (70 programs): `frontx_test.py` on QEMU **and** Sail == Lean `asm` (70 cases, lengths up to 1664); plus the binary assembles each program's records == Lean `nanoGen`, and the result runs on qemu-riscv64 for 6 inputs (420 pairs) == `Prog.eval` |
+| `nanoElab` agrees with Lean's elaborator | **proved per program, for all inputs**: `Nano/Agree.lean` (39 programs) and `Nano/AgreeInt.lean` (22), `elabEq` (`decide +kernel`) and `agree`; plus the subset evidence above |
+| `nanoGen` output correct | **tested, not proved** (nano-proof proves the IR generator `nanoGenIR`; its route (a) proves this one): `Testing/asm/nano_s_test.sh`: 40 random/structured programs + 3 sources, `ir_test.py` (the real `StartCorrect` harness: QEMU and Sail, work = `memoryNeeded` and one byte less, aligned and misaligned (`MIS`) input/output, writes only in output + work, a0 kept / -1): 1032 program x input pairs (4 hand-made `Ex` incl. out-of-range variables, `anil`/`acons` as expressions, a non-chain argument list: `genR` as of c06682c is faithful to `den` only on well-scoped `Ex` (out-of-range variables / `anil` as expression: a later faithful version was reverted for the freeze)); `nano_test.py 5` and `NANO_INT=1 nano_test.py 30 3` (user-mode QEMU with an odd args address and unaligned output, plus Sail): 264 + 312 pairs == `Prog.eval` |
+| `nanoElab`, `genR` as RISC-V code | **not done**: see "Self-hosting status" |
 
-Run: `lake build Nano` (Agree 40 s, AsmSelf ~4 min); `python3 Testing/nano/nano_test.py 20`; `python3 Testing/nano/fuzz.py 300 7`;
-`python3 Testing/nano/nano_selfhost.py 31` (afterwards `rm -rf Testing/asm/ctest`); regenerate Agree: `python3 Testing/nano/gen_agree.py`.
+Run: `lake build Nano`; `python3 Testing/nano/nano_test.py 20`; `bash Testing/asm/nano_s_test.sh`; `python3 Testing/nano/fuzz.py 300 7`;
+`python3 Testing/nano/edge.py 1500 11`; `python3 Testing/nano/nano_selfhost.py 31` (afterwards `rm -rf Testing/asm/ctest`); regenerate Agree:
+`python3 Testing/nano/gen_agree.py; python3 Testing/nano/gen_agree_int.py`. Deep programs need `ulimit -s unlimited` and `lean --tstack=4000000`.
 
-## Front-end findings (what was rejected, what was changed)
-* `frontx_view Nano.lex`: "a recursive call that is not on a view of the list" (token spans continue on `ys`, not the next view index), also
-  `Option (List Tok)` results and `spanNum/spanId` pairs. `nanoElab` therefore stays plain Lean.
-* Parser: mutual recursion, `Option` of pairs with an inductive payload: outside every front end (`frontx_ind` byte format = tag + fields,
-  one function call chain, no list-of-token results).
-* `genE/genA`: needs a tree argument plus a list argument (`sc`) and a depth, and results built by `++` of call results (`frontx_ind` F3 limit, `r8`).
-* `asm` written like `TinySelf` (hygiene-off byte macros `X0..X3`, one 4-byte record per step) was accepted at once: 31 variables / 23 slots,
-  52 obligations, 80 s; over 16 slots, hence `frontx_implements_listC` (checked words), 3 min. Changes needed in the code: `UInt8 <<<` written as
-  `(x.toUInt64 <<< k).toUInt8`; literals in `|||` annotated `: UInt8`.
-* Design consequence: the bit packing of instruction words (the error-prone part) lives in `asm`; `genR` only chooses registers/slots.
+## Front-end findings
+* `asm` macros: a chain of more than 7 `if .. else if` clauses in one macro (`X1` with 8) makes `frontx_compile` fail ("could not prove" an
+  `rfl` obligation on the `BExp.denote` of the chain; 5 separate probes, each op added alone to the 9-op version). Cure: make the encoding
+  arithmetic (funct3 = `op &&& 7` as one expression, I-type and R-type share the byte formulas, BGEU/RET fit the same shapes): 15 ops in 4
+  macros with 7/4/3/6 clauses.
+* `frontx_view Nano.lex`: "a recursive call that is not on a view of the list", `Option (List Tok)` results, `spanNum/spanId` pairs. Parser:
+  mutual recursion, `Option` of pairs with an inductive payload; `genE/genA`: tree + list (`sc`) + depth, results built by `++` of call
+  results. `UInt8 <<<` written as `(x.toUInt64 <<< k).toUInt8`; literals in `|||` annotated `: UInt8`.
+* Design consequence: the bit packing of instruction words lives in `asm`; `genR` only chooses registers/slots.
 
-## What a fully proved chain still needs
-1. `genR` + `asm` correct: a Lean proof that `asm (genR p)` run on the Sail model computes `p.eval` (stack discipline invariant per `Ex` node:
-   code for `e` at depth `d` pushes `den e env`, leaves the lower stack unchanged; `asm` lemma per record; use `Riscv/Steps/*`, `Riscv/Direct/*`
-   step lemmas for ld/sd/addi/ori/slli/add/sub/mul, `Spec/` `Computes`). Not started: the budget went into the self-hosting experiments. The
-   owner's alternative route (emit the IR and reuse `ir_compile_correct`) is not self-hostable until the IR compiler is itself compiled by our compiler.
-2. `nanoElab` correct in general (a parser-correctness theorem against a Lean-level grammar), or all-programs agreement, instead of per program.
-3. `nanoElab`/`genR` compiled: needs a front end for token lists (spans) and mutual structural recursion, or rewriting as a byte-level
-   state machine with an explicit stack.
-4. Bound checks (arity, depth) inside `nanoElab`.
-Note: two cross-session messages (from a session of the same account) said another branch `nano-proof` may take over `nanoGen` and its proof;
-nothing here depends on it; the AST was kept unchanged so a merge stays possible.
+## Self-hosting status (task 2) and what blocks it
+**B (the proved binary) covers ONLY the assembler stage `asm`** (records -> words, `Nano.Self.nanoAsm.implements1`, 379 words). `nanoElab` and
+`genR` are plain Lean; no byte-level rewrite of them was accepted, so there is no "friendly = original" proof and B does not compute the whole
+`nanoCompile`. Evidence (all reproducible, `Testing/nano/probes/`):
+1. `genR` as a byte machine. The stack generator was reshaped for it where it was free to (faithful on all `Ex`, position-independent
+   records, `memoryNeeded = 8 * depth`), but the generator is a tree walk with a scope list `sc` (de Bruijn index -> slot) and a depth `d`, and
+   its code per node is 5-22 records. A flat token stream with `d` as a scalar would remove the tree walk, but then every token must expand
+   to a chunk of up to 20 constant bytes inside one `if`-arm; `probes/token_machine.lean` (5 arms, 20-byte chains, `d` threaded) does not
+   finish in 30 minutes (TINYSELF.md item 5: 8 arms of 12 bytes: 44 variables / 36 slots, 388 obligations, abandoned). A phase counter (one
+   record per iteration) loops in `frontx_view` (TINYSELF.md item 6). The inductive path (`frontx_ind`) allows one scalar and one tree parameter
+   (no `sc` list), results by `++` of call results are rejected (F3), arms <= 4-5 (F1, relaxed in NOTES section 25 for decoding only).
+2. `nanoElab`: list views need structurally decreasing views (`lex` token spans continue on `ys`), `Option (List Tok)` / pair results and mutual
+   recursion are outside every front end; `frontx_rec` (NOTES section 15) handles `if`-trees with all-or-no recursive calls and scalar results only
+   (no list results through calls). A shunting-yard / explicit-stack parser needs word arrays and loops (the `wa` path, NOTES section 20) and a
+   def table with code strings; the equivalence proof against the recursive-descent parser (all inputs, not per program) was judged out of reach
+   for this round (it is the dominant cost, not the front end).
+3. New finding that applies to every self-hosted stage: an `if`-chain macro with more than 7 clauses is rejected (see Front-end findings); the
+   assembler had to be re-encoded arithmetically to fit 15 ops.
+What would make B the whole compiler: (a) a front-end form for "emit a fixed chunk per input element" (e.g. a table-driven loop over a constant
+byte table, `wa`) so that `genR` over a flat token stream compiles; (b) `lexer + parser` written as one loop with an explicit stack in word arrays,
+or the recursive-descent parser's CPS/defunctionalised form with a generic equivalence lemma; (c) the serialisation `Prog -> tokens` produced by
+the elaborator itself. The calling convention above is the interface for the proof of the stack generator by nano-proof (route (a)):
+`StackRec.lean` there was written against the previous sp/a1 convention of `genR` and has to be moved to the registers above.
