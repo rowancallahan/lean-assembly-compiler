@@ -51,6 +51,16 @@ Fixed code origin is not needed by this code (only relative jumps) but is accept
   Generator refactor for the proofs (same behaviour, tests re-run): every push is `pushC`; `var` uses `varC`.
 - Build: every Nano/V2 module < 4 s (`lake env lean`, deps built; no /usr/bin/time on this box).
 
+- Nano/V2/Blocks.lean (1.6 s): `sd_slot`, `copies_ok`, **`slide_ok`** (result slots move down over a dropped frame,
+  deepest first, by induction on the copies), `Stk.pop1`/`Stk.popk`, `drop_node` (fst), `sd_top`, `binT_ok`, and the per-construct
+  lemmas **`bin_node`** (binary op from its operands' contracts), **`ite_node`** (branching `if` from the operands'
+  and both branches' contracts; `BOp.ofCmp_eval`), **`let_node`**/`slide_node` (let; also snd/split/loop exits).
+  Nano/V2/Inp.lean: `InpRep` (t3/t4 = the input block) and **`iget_node`** (lbu in range, 0 out of range).
+  Axioms of every lemma: ⊆ {propext, Classical.choice, Quot.sound}.
+  Per-construct lemmas now proved: lit, var, bin, ite, let, fst, iget (+ the loop header theorem). Missing for the buffer-free
+  `cE_ok` induction: pair (= `seq_ok`), snd/split (= `slide_node`), isize, `Tl` cases + loop instantiation, and the
+  value/type bookkeeping (EnvRep: env entry (τ, p) ↔ slots p..p+|τ| of the stack hold `flat v`).
+
 ## Against Astra round 4 (merged from main)
 - §1 generic header-to-header theorem: `loop_ok` (Inv indexed by fuel n, zero case = the `| 0 =>` equation, body
   outcome `jmp head` = continue s' / `jmp exit` = exit r, aborts). The label layer is `SC` (labels = `Tg`,
