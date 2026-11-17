@@ -152,3 +152,10 @@ nano-proof (Opus: L2), nano-mvp (finished: Int64, Chain, chain_test), nano-int (
   output buffer is expressible in a paged stage (bound the copy length with `% C` so the invariant `rem < C` is
   provable without facts about memory contents). What made the earlier attempts fail was a size that depends on the
   branch (conditional `push` vs `set!`): the fixed tactic simplifies sizes before splitting, not after.
+* 2026-11-17 00:45. `Nano/ElabU.lean` (pure Lean, 3 standard axioms): the NON-INLINED elaboration. `nanoElabU` runs the
+  spec's own parser functions (`pExpr` … of `Nano/Elab.lean`, unchanged) with a def table whose bodies are index
+  markers (`Ex.var j` for def `j`), so a call is `Ex.call (Ex.var j) args` and the output is linear in the source;
+  `inlineProg` replaces the markers. **`nanoElab_eq : nanoElab xs = (nanoElabU xs).map inlineProg`** (via `par`: the
+  seven mutual parser functions commute with replacing def bodies). Consequence: the compiled parser stage need not
+  inline (its output is linear, so it is log space again); inlining becomes its own stage (copying, paged front
+  end, probe 2). nano-elab's option (a), but only as an internal intermediate: spec, generator and L2 unchanged.
