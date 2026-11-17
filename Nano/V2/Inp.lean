@@ -15,17 +15,12 @@ theorem InpRep.keep {c : Cfg} {s s' : St} (h : InpRep c s) (k : Keep s s') : Inp
 def inpW (c : Cfg) : List UInt64 := c.inp.map (·.toUInt64)
 
 /-- **input read** (per-construct lemma): the index pushed by `ci`, replaced by the byte (0 out of range) -/
-theorem iget_node {c : Cfg} {ci : SC} {s : St} {h : Nat} {L : List UInt64} {i : UInt64} (hc : c.Good)
-    (hs : Stk c s h L) (hin : InpRep c s) (hi : ∃ r, SC.Ex c ci s r ∧ Post c s h L [i] r) :
-    ∃ r, SC.Ex c (.seq (.seq ci (.ins [.ld T1 SP 0]))
-        (.seq (.ite .bltu T1 IL (.ins [.r .add T0 IB T1, .lbu T0 T0 0]) (.ins [mv T0 0])) (.ins [.sd T0 SP 0]))) s r ∧
-      Post c s h L [(inpW c).getD i.toNat 0] r := by
-  obtain ⟨r, e, p⟩ := hi
-  cases r with
-  | jmp t s2 => exact ⟨_, .seqJ (.seqJ e), p⟩
-  | ok s2 =>
-    obtain ⟨hs2, k2⟩ := p
-    have hin2 := hin.keep k2
+theorem igetT_ok {c : Cfg} {s2 : St} {h : Nat} {L : List UInt64} {i : UInt64} (hc : c.Good)
+    (hs2 : Stk c s2 h (L ++ [i])) (hin2 : InpRep c s2) :
+    ∃ s5, SC.Ex c (.seq (.ins [.ld T1 SP 0])
+        (.seq (.ite .bltu T1 IL (.ins [.r .add T0 IB T1, .lbu T0 T0 0]) (.ins [mv T0 0])) (.ins [.sd T0 SP 0])))
+        s2 (.ok s5) ∧ Stk c s5 h (L ++ [(inpW c).getD i.toNat 0]) ∧ Keep s2 s5 := by
+    have hin := hin2
     have e1 := ld_slot hc hs2 T1 0 (by simp)
     rw [show (L ++ [i]).getD ((L ++ [i]).length - 1 - 0) 0 = i by simp] at e1
     let s3 := s2.set T1 i
@@ -73,10 +68,24 @@ theorem iget_node {c : Cfg} {ci : SC} {s : St} {h : Nat} {L : List UInt64} {i : 
     obtain ⟨s4, e4, hs4, k4, g4, p4⟩ := hbr
     obtain ⟨s5, e5, hs5, k5, _⟩ := sd_top hc (M := L) (x := i) hs4 T0
     rw [g4] at hs5
-    refine ⟨.ok s5, .seq (.seq e (.ins e1)) (.seq e4 (.ins e5)), hs5, ?_⟩
+    refine ⟨s5, .seq (.ins e1) (.seq e4 (.ins e5)), hs5, ?_⟩
     have hp3 : s3.get 30 = s2.get 30 := get_set_ne _ _ _ _ (by decide)
-    exact k2.trans (k3.trans (k4.trans k5 p4) hp3) (by apply UInt64.toNat.inj; rw [hs2.hp, hs.hp])
+    exact k3.trans (k4.trans k5 p4) hp3
 
+/-- **input read** (per-construct lemma): the index pushed by `ci`, replaced by the byte (0 out of range) -/
+theorem iget_node {c : Cfg} {ci : SC} {s : St} {h : Nat} {L : List UInt64} {i : UInt64} (hc : c.Good)
+    (hs : Stk c s h L) (hin : InpRep c s) (hi : ∃ r, SC.Ex c ci s r ∧ Post c s h L [i] r) :
+    ∃ r, SC.Ex c (.seq (.seq ci (.ins [.ld T1 SP 0]))
+        (.seq (.ite .bltu T1 IL (.ins [.r .add T0 IB T1, .lbu T0 T0 0]) (.ins [mv T0 0])) (.ins [.sd T0 SP 0]))) s r ∧
+      Post c s h L [(inpW c).getD i.toNat 0] r := by
+  obtain ⟨r, e, p⟩ := hi
+  cases r with
+  | jmp t s2 => exact ⟨_, .seqJ (.seqJ e), p⟩
+  | ok s2 =>
+    obtain ⟨hs2, k2⟩ := p
+    obtain ⟨s5, e5, hs5, k5⟩ := igetT_ok hc hs2 (hin.keep k2)
+    cases e5 with
+    | seq e1 e2 => exact ⟨.ok s5, .seq (.seq e e1) e2, hs5, k2.trans k5 (by apply UInt64.toNat.inj; rw [hs2.hp, hs.hp])⟩
 
 /-- **input size** (per-construct lemma) -/
 theorem isize_node {c : Cfg} {s : St} {h : Nat} {L : List UInt64} (hc : c.Good) (hs : Stk c s h L)
