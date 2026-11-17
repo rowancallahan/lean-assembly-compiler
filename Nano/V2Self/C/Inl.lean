@@ -33,13 +33,13 @@ def j5 : Nat → Buf → UInt64 → UInt64 → Buf → Buf
 
 def j6 (k : UInt64) (u w : Buf) : Buf :=
   let o := j3 256 k (j0 0 0 bnew);
-  let o1 := if 2 ≤ bsize w then j5 16777216 u (bget w (bsize w - 2)) (bget w (bsize w - 1)) o else o;
+  let o1 := let v253 := (if bsize w < 2 then k0 else k1); if v253 == k1 then j5 16777216 u (bget w (bsize w - 2)) (bget w (bsize w - 1)) o else o;
   j0 12 0 (j2 (j0 7 0 o1))
 
 def j7 : Nat → Buf → UInt64 → UInt64 → UInt64 → Buf → Buf → Buf
   | 0, x, p, h, k, u, w => bnew
   | n + 1, x, p, h, k, u, w =>
-    if p + 2 ≤ bsize x then
+    let v254 := (if bsize x < p + 2 then k0 else k1); if v254 == k1 then
       let q := bget x p;
       let s := bget x (p + 1);
       let z := bsize u;
@@ -47,11 +47,11 @@ def j7 : Nat → Buf → UInt64 → UInt64 → UInt64 → Buf → Buf → Buf
       else if q == 14 then j7 n x (p + 2) s k u w
       else if q == 15 then
         if h * 256 + s + 1 < bsize w then
-          if z + (bget w (h * 256 + s + 1) - bget w (h * 256 + s)) ≤ k100 then
+          let v255 := (if k100 < z + (bget w (h * 256 + s + 1) - bget w (h * 256 + s)) then k0 else k1); if v255 == k1 then
             j7 n x (p + 2) h k (j4 16777216 u (bget w (h * 256 + s)) (bget w (h * 256 + s + 1))) w
           else bnew
         else j7 n x (p + 2) h k u w
-      else if z + 2 ≤ k100 then j7 n x (p + 2) h k (bpush (bpush u q) s) w
+      else let v256 := (if k100 < z + 2 then k0 else k1); if v256 == k1 then j7 n x (p + 2) h k (bpush (bpush u q) s) w
       else bnew
     else j6 k u w
 

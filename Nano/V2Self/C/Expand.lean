@@ -20,7 +20,7 @@ def e0 (p q : UInt64) (o : Buf) : Buf :=
 def e1 : Nat → Buf → UInt64 → Buf → Buf
   | 0, x, i, o => o
   | n + 1, x, i, o =>
-    if i + 2 ≤ bsize x then
+    let v129 := (if bsize x < i + 2 then k0 else k1); if v129 == k1 then
       let p := bget x i;
       let q := bget x (i + 1);
       e1 n x (i + 2) (e0 p q o)

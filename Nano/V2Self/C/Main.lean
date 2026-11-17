@@ -7,7 +7,7 @@ namespace C
 def m1 : Nat → Buf → UInt64 → List UInt8 → List UInt8
   | 0, b, i, o => o
   | n + 1, b, i, o =>
-    if bsize b ≤ i then o
+    let v308 := (if i < bsize b then k0 else k1); if v308 == k1 then o
     else
       let v := bget b i;
       m1 n b (i + 1) (put o v)

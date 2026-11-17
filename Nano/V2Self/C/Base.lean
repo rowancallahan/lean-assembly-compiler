@@ -6,6 +6,8 @@ import Nano.V2Self.Prelude
 namespace C
 
 def k255 : UInt64 := 255
+def k0 : UInt64 := 0
+def k1 : UInt64 := 1
 def q0 (o : Buf) (v : UInt64) : Buf := bpush o (v &&& k255)
 
 end C
