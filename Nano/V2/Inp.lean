@@ -1,5 +1,5 @@
 import Nano.V2.Blocks
-/- nano v2 small backend: the input invariant (t3/t4 = the immutable input block) and **`iget_node`** (input read:
+/- nano v2 small backend: the input invariant (t3/t4 = the immutable input block) **`isize_node`**, and **`iget_node`** (input read:
 in range = the byte via `lbu`, out of range = 0, as `List.getD`). -/
 namespace Nano.V2B
 
@@ -76,5 +76,19 @@ theorem iget_node {c : Cfg} {ci : SC} {s : St} {h : Nat} {L : List UInt64} {i : 
     refine ⟨.ok s5, .seq (.seq e (.ins e1)) (.seq e4 (.ins e5)), hs5, ?_⟩
     have hp3 : s3.get 30 = s2.get 30 := get_set_ne _ _ _ _ (by decide)
     exact k2.trans (k3.trans (k4.trans k5 p4) hp3) (by apply UInt64.toNat.inj; rw [hs2.hp, hs.hp])
+
+
+/-- **input size** (per-construct lemma) -/
+theorem isize_node {c : Cfg} {s : St} {h : Nat} {L : List UInt64} (hc : c.Good) (hs : Stk c s h L)
+    (hin : InpRep c s) :
+    ∃ r, SC.Ex c (.seq (.ins [mv T0 IL]) pushC) s r ∧ Post c s h L [(inpW c).length.toUInt64] r := by
+  let s1 := s.set T0 (s.get IL + UInt64.ofInt 0)
+  have g : s1.get 5 = (inpW c).length.toUInt64 := by
+    show (s.set T0 _).get T0 = _
+    rw [get_set_eq _ _ _ (by decide), show IL = 29 from rfl, hin.il]; simp [inpW]; rfl
+  have hp := pushC_ok hc (hs.set T0 (s.get IL + UInt64.ofInt 0) (by decide) (by decide))
+  rw [g] at hp
+  exact pre_ok rfl (hs.set T0 _ (by decide) (by decide)) (Keep.set s T0 _ (by decide) (by decide))
+    (get_set_ne _ _ _ _ (by decide)) hp
 
 end Nano.V2B
