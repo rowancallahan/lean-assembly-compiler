@@ -116,7 +116,7 @@ elab_rules : command
             $(← good rest), rfl⟩)
     let pf ← good stages.toList
     let goodN := mkIdent (`_root_ ++ fn ++ `goodE)
-    elabCommand (← `(set_option maxRecDepth 100000 in set_option maxHeartbeats 4000000 in
+    elabCommand (← `(set_option maxRecDepth 1000000 in set_option maxHeartbeats 40000000 in
       theorem $goodN:ident : ∀ (xs : ByteArray), xs.size ≤ $N → ∃ E, ($wa).GoodE [inLocP] 9 (xs, ()) ($fI xs) E := by
         intro xs hx
         have hds : xs.data.size = xs.size := rfl
