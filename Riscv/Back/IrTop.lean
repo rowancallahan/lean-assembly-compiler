@@ -204,7 +204,7 @@ theorem machine_run {P : Prog VReg} {compiled : CompiledA} {α β : Type} {f : �
     rw [this]
   · have hx10 : ∀ v, getX finishState 10 = v → (riscvObserve finishState).register 10 = UInt64.ofBitVec v := by
       intro v hv; simp only [riscvObserve, riscvRegister, hok.x10, hv, Option.map_some, Option.getD_some]
-    rcases hcase with ⟨pk, a0, bo⟩ | ⟨pk, a0⟩
+    rcases hcase with ⟨pk, a0, bo, -⟩ | ⟨pk, a0⟩
     · change peak (r.ev ++ [Ctx.base Q]) ≤ call.workLength / 8 at pk
       refine .inl ⟨by omega, ?_, ?_⟩
       · rw [hx10 _ a0]
