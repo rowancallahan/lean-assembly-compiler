@@ -187,3 +187,4 @@ nano_self3 (linked binary) QEMU: 146/146 ok (59104 words; sources up to 776 byte
   sail s0000.nano: src 32 B, code 220 B ok
   sail s0127.nano: src 386 B, code 1852 B ok
   sail s0131.nano: src 370 B, code 444 B ok
+  sail s0144.nano: src 366 B, code 2192 B ok
