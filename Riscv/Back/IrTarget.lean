@@ -1,6 +1,7 @@
 /- The RISC-V instance of the IR target interface (`Compiler/Ir/Target.lean`): `rvT`, assembled from the existing
 step lemmas: the wide operations with a frame (`rvwF`, `Riscv/Back/OptB.lean`) and `getTop`
-(`andi d, sp, -8; addi d, d, -8`, `Riscv/Back/MemRv.lean`).  No new Sail reasoning. -/
+(`andi d, sp, -8; addi d, d, -8`, `Riscv/Back/MemRv.lean`).  New Sail reasoning: only the out-of-memory exit
+`encXG` (`law_exitG`), which also restores the caller's `gp` from the stub's cell. -/
 import Compiler.Ir.Emit
 import Riscv.Back.OptB
 import Riscv.Back.MemRv

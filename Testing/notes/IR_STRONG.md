@@ -65,3 +65,7 @@ Branch `ir-strong` (from main + s3-rec). Owner goals: ROADMAP "Spec strengthenin
 - Paged back end, nano stack, frontx (`Implements1`-based): `implements1_top` already yields every clause of
   `CompileCorrectL`/`CompileCorrectRV` when the code is proved with `retLen = true`; with `retLen = false` only a1 is
   missing: their exit code must set a1 (nano: `li a1, 8`).
+- FINISH: merged origin/main (already up to date at 441ede4); `bash Testing/scripts/check.sh`: ALL CHECKS PASSED (16 min).
+  The statement-fingerprint WARNING is pre-existing drift: `expected-statements.txt` was frozen at 793ac7c, 303
+  commits before main; only closure hashes differ (all statement hashes equal), including theorems whose files this
+  branch does not touch (e.g. `Ind.ind_ok`, `compileP_ok`). Not re-frozen (rule).
