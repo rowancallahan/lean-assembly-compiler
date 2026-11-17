@@ -5,9 +5,9 @@ most `len+1` loop steps per nesting level, and at most `len` levels).
 Constructs: UInt64 `+ - * ==  <  ≤`, `if`, `let`, calls, fuel recursion (one non-tail self call in `inlBody`), `rd`,
 `len`, `put`.  Bridge: `inlV_eq : inlV xs = inlB xs` for every input of length < 2^32. -/
 import Nano.InlS3
-import Nano.V2.Asm
+import Nano.V2S.Asm
 
-namespace Nano.V2
+namespace Nano.V2S
 
 /-- the number of `13` records from position `p` on (`c` so far) -/
 def cnt13 : Nat → List UInt8 → UInt64 → UInt64 → UInt64
@@ -74,4 +74,4 @@ def inlV (xs : List UInt8) : List UInt8 :=
   let o := if J == 0 then o else inlBody (n * n) xs (J - 1) s (hiAt n xs 0 s 0) o
   put2 (putWr (put2 o 7 0)) 12 0
 
-end Nano.V2
+end Nano.V2S

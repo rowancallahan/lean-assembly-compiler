@@ -5,9 +5,9 @@ same fuel): `lexChk` (4 on failure, else the `uniC` type code), then `lexEmit` (
 `2 + tag` a token with tag byte `tag` (Nano/ParseS3B.lean `encTok`).
 Constructs: UInt64 `+ - * >>> == < ≤ && ||`, `if`, `let`, calls, fuel recursion, `rd`, `len`, `put`. -/
 import Nano.LexS3
-import Nano.V2.Inl
+import Nano.V2S.Inl
 
-namespace Nano.V2
+namespace Nano.V2S
 
 /-- 1 if `c` is a word character (letter, digit, `_`) -/
 def isWC (c : UInt64) : UInt64 :=
@@ -139,4 +139,4 @@ def lexV (xs : List UInt8) : List UInt8 :=
     if t == 1 || t == 2 then lexEmit xs.length xs 0 (put [] t) else []
   else []
 
-end Nano.V2
+end Nano.V2S

@@ -1,9 +1,9 @@
-/- Bridge of the nano v2 inliner (Nano/V2/Inl.lean): `inlV_eq : inlV xs = inlB xs` for every input of length
+/- Bridge of the nano v2 inliner (Nano/V2S/Inl.lean): `inlV_eq : inlV xs = inlB xs` for every input of length
 < 2^32. -/
-import Nano.V2.Inl
+import Nano.V2S.Inl
 
-namespace Nano.V2.InlP
-open Nano Nano.U Nano.V2
+namespace Nano.V2S.InlP
+open Nano Nano.U Nano.V2S
 
 /-! ## list-level meaning of the scanning loops -/
 
@@ -460,4 +460,4 @@ theorem inlV_eq (xs : List UInt8) (hx : xs.length < 2 ^ 32) : inlV xs = inlB xs 
     rw [hg]
     simp [put2, put, putWr_eq, mo]
 
-end Nano.V2.InlP
+end Nano.V2S.InlP

@@ -2,9 +2,9 @@
 Constructs: UInt64 `&&& ||| <<< >>>`, `==`, `≤`, `||` in conditions, `if`, `let`, calls, fuel recursion, `rd`, `len`,
 `put`.  Bridge: `asmV_eq : asmV xs = asm xs` for every input of length < 2^32. -/
 import Nano.Asm
-import Nano.V2.Prelude
+import Nano.V2S.Prelude
 
-namespace Nano.V2
+namespace Nano.V2S
 
 def ax0 (op a c : UInt64) : UInt64 :=
   if op == 3 || op == 4 then ((a &&& 1) <<< 7) ||| 3
@@ -146,4 +146,4 @@ theorem asmL_eq (xs : List UInt8) (hx : xs.length < 2 ^ 32) : ∀ (n : Nat) (i :
 theorem asmV_eq (xs : List UInt8) (hx : xs.length < 2 ^ 32) : asmV xs = asm xs := by
   unfold asmV; rw [asmL_eq xs hx _ 0 [] (by simp) (by simp; omega)]; simp
 
-end Nano.V2
+end Nano.V2S
