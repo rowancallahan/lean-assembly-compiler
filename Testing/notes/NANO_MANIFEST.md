@@ -33,6 +33,25 @@ warning is the statement-fingerprint one, definitions under headline statements 
 unchanged, not re-frozen). Tag `nano-v1-rc1` created on 6a76836; pushing tags is refused by this session's git proxy
 (branch pushes work), so the tag must be pushed from another session: `git tag -a nano-v1-rc1 6a76836`.
 
+## nano v1 rc2
+
+Commit **2d49ff7** (branch nano-parse-s3). `bash Testing/scripts/check.sh` at 2d49ff7: ALL CHECKS PASSED (1236 s,
+peak 4.7 GB; the only warning is the statement-fingerprint one, unchanged since rc1, no Nano declaration listed, not
+re-frozen). `Nano.selfHosted` builds; its axioms are the expected-axioms.txt line (77, the Sail set), as
+`Nano.PS.stage2B_implements`.
+
+- **Every module builds in ≤ 5 min from scratch** (table below): the slowest is Nano.AsmSelf, 198 s; the slowest
+  stage-2b module is Nano.ParseS3BSelfB, 155 s; every module ≤ 6.3 GB peak (rc1: 6 min 26 s, 6 min 10 s, 10.1 GB).
+- **The words of `binary` did not change.** Only proofs and file boundaries moved: (1) `s3_compileF … s3_part a b`
+  (Compiler/S3/FrontPart.lean) elaborates the same generated commands of `s3_compileF` in index ranges, so
+  `Stage2B.P` is the same definition; (2) the allocation of function 18 goes through its lowered literal
+  (`stage2B_g18`, `stage2B_a18'`); (3) `stage2B_hE` (same statement) comes from `emitFsQ` checked in three pieces
+  (Nano/EmitSplit.lean: `emitFsQ_append`, `emitFs_of_Q`, `emitP_lt`); (4) AsmSelf's `frontx_compile` moved to
+  Nano/AsmSelfC.lean. Checked by evaluation: stage 2b, old monolithic file vs new, 46054 words with equal hash;
+  asm, old file vs new, 379 words, equal hash, 23 slots. No new gate needed; the 2b QEMU/Sail tests were not re-run
+  (same words).
+- Tag: `git tag -a nano-v1-rc2 2d49ff7` (the owner pushes it; this session's proxy refuses tags).
+
 Build resources (rc2; each module FROM SCRATCH: its .olean removed, then `/usr/bin/time -f '%e s %M KB' timeout 10m
 lake build +M`, alone on a 4-core / 15 GB box, imports already built; peak RSS of the lake process tree). Every
 module of nano and of the stage-2b chain is listed if it takes > 10 s; the Spec/Compiler/Riscv modules come from the
