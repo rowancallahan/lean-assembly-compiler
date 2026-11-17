@@ -15,6 +15,7 @@ program, certificates, `computes`, `correct` (exactly the Sail axioms).  Tests: 
 | `S3Merge` | `merge` | well-founded (`termination_by xs.length + ys.length`), not structural |
 | `S3EvOd` | `evSum` / `odCnt` | mutual, different result types, non-tail calls |
 | `S3Lex` | `lex` | lexicographic `(xs.length, k.toNat)`, the inner counter resets |
+| `S3StExc` | `stepS : List UInt64 → StateT UInt64 (Except UInt8) UInt64` | structural; state and exception across a non-tail call |
 -/
 import Riscv.Frontx.S3IO
 import Riscv.Back.S3Top
@@ -199,4 +200,25 @@ def lexMain (bs : List UInt8) : List UInt8 :=
   | k :: r => enc8 (lex r k 1)
   | [] => []
 s3_compile S3Lex := lexMain
+
+/-! ## state + exceptions across recursive calls (`StateT UInt64 (Except UInt8)`, CONLECHE_KNOT.md step 5) -/
+
+s3_enc Except
+
+/-- a running sum in the state, an exception at a zero word, a non-tail recursive call between them -/
+def stepS : List UInt64 → StateT UInt64 (Except UInt8) UInt64
+  | [] => return 0
+  | x :: r => do
+    if x == 0 then throw 7
+    let s ← get
+    set (s + x)
+    let t ← stepS r
+    return t * 2 + s
+
+def stMain (bs : List UInt8) : List UInt8 :=
+  match (stepS (decW bs)).run 1 with
+  | .ok (a, s) => enc8 a ++ enc8 s
+  | .error e => [e]
+s3_compile S3StExc := stMain
+
 end Proven.S3.Rec
