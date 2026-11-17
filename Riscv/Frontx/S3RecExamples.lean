@@ -10,6 +10,8 @@ program, certificates, `computes`, `correct` (exactly the Sail axioms).  Tests: 
 | `S3Inits` | `Mach.IR.SR.inits` (verbatim) | structural (`List.brecOn`), extra `Nat` parameter |
 | `S3Sets` | `Mach.IR.Hoist.sets` (verbatim) | structural (`List.brecOn`), `Nat` accumulator `m + 1` (`Nat.add`) |
 | `S3InitL` | `Mach.initL` (verbatim, static `sp : Nat → Bool`) | structural (`List.brecOn`), `Nat.beq`/`Nat.blt` |
+| `S3StoreRegs` | `Ir.storeRegs` (verbatim) | structural on two lists, `Reg = Fin 15`, result `List EOp` (`Int` field) |
+| `S3FetchG` | `fetchG` (verbatim) | structural, accumulator `AStmt` (`Fin 8` fields) |
 | `S3Merge` | `merge` | well-founded (`termination_by xs.length + ys.length`), not structural |
 | `S3EvOd` | `evSum` / `odCnt` | mutual, different result types, non-tail calls |
 | `S3Lex` | `lex` | lexicographic `(xs.length, k.toNat)`, the inner counter resets |
@@ -18,6 +20,8 @@ import Riscv.Frontx.S3IO
 import Riscv.Back.S3Top
 import Compiler.Opt.Hoist
 import Compiler.Opt.BFn
+import Compiler.Ir.Emit
+import Compiler.Front.Pipe
 
 namespace Proven.S3.Rec
 open Proven.S3 Proven.S3.Ex Proven.Mach.IR
@@ -97,6 +101,51 @@ def natsN : List UInt8 → List Nat
   | [] => []
 def initLMain (bs : List UInt8) : List UInt8 := codeB (Proven.Mach.initL (fun j => j == 3 || j < 2) (natsN bs))
 s3_compile S3InitL := initLMain
+
+/-! ### `Fin` (proof fields not stored), `Int`, `AStmt` -/
+
+s3_enc Int
+s3_enc Proven.Mach.WOp
+s3_enc Proven.Ir.EOp
+s3_enc Proven.AExp
+s3_enc Proven.AStmt
+
+def regB (r : Proven.Mach.Reg) : UInt64 := natW r.val
+def eopB : Proven.Ir.EOp → List UInt8
+  | .w (.stS j v) => 1 :: (enc8 (natW j) ++ enc8 (regB v))
+  | _ => [0]
+def eopsB : List Proven.Ir.EOp → List UInt8
+  | [] => []
+  | o :: r => eopB o ++ eopsB r
+def regsN : List UInt8 → List Proven.Mach.Reg
+  | a :: r => (if h : wNat a.toUInt64 < 15 then ⟨wNat a.toUInt64, h⟩ else ⟨14, by decide⟩) :: regsN r
+  | [] => []
+def storeRegsMain (bs : List UInt8) : List UInt8 :=
+  match decW bs with
+  | n :: _ => eopsB (Proven.Ir.storeRegs (natsN (bs.take (wNat (n &&& 15)))) (regsN bs))
+  | [] => []
+s3_compile S3StoreRegs := storeRegsMain
+def fin8 (b : UInt8) : Fin 8 := if h : wNat (b.toUInt64 &&& 7) < 8 then ⟨wNat (b.toUInt64 &&& 7), h⟩ else 0
+def aexpB : Proven.AExp → List UInt8
+  | .var i => [0, (natW i.val).toUInt8]
+  | .const c => 1 :: enc8 (UInt64.ofBitVec c)
+  | .bin o a b => 2 :: opB o :: (aexpB a ++ aexpB b)
+  | .ite c a b => 3 :: (aexpB c ++ aexpB a ++ aexpB b)
+def astmtB : Proven.AStmt → List UInt8
+  | .assign v e => 0 :: (natW v.val).toUInt8 :: aexpB e
+  | .load v b i => 1 :: (natW v.val).toUInt8 :: (enc8 (natW b) ++ aexpB i)
+  | .store b i e => 2 :: (enc8 (natW b) ++ aexpB i ++ aexpB e)
+  | .seq p q => 3 :: (astmtB p ++ astmtB q)
+  | .loop c b => 4 :: (aexpB c ++ astmtB b)
+/-- expressions: `0 i` a variable, `1 c` a constant byte, `2 a b` a sum of the next two -/
+def aexpsN : List UInt8 → List Proven.AExp
+  | k :: c :: r =>
+    (if k == 0 then .var (fin8 c) else if k == 1 then .const c.toUInt64.toBitVec
+     else .bin .add (.var (fin8 c)) (.const 5)) :: aexpsN r
+  | _ => []
+def fetchGMain (bs : List UInt8) : List UInt8 :=
+  astmtB (Proven.fetchG (.assign 3 (.const 7)) (aexpsN bs))
+s3_compile S3FetchG := fetchGMain
 
 /-! ## (b) well-founded, not structural -/
 
