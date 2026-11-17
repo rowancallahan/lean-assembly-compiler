@@ -282,3 +282,4 @@ conservative (inherited); loop states need ≥ 1 parameter; the zero arm must co
   v1 identifiers (one letter + digits/`_`: `xs`, `asmL`, `op` → `x`, `f1`, `p`), `;` after every `let`, no hex
   literals / type ascriptions (`(0x30 : UInt64)` → a zero-arity def), no `_` patterns, `len'` for fuel, no `bpop`
   (not in the backend yet), shift guard (numerals next to shifts as zero-arity defs), defs only (proofs elsewhere).
+- Test p3 is a deliberate fuel-exhaustion case: fuel `len' x`, but `len x + 1` steps are needed, so the zero arm returns `[]` (the Lean error, status 1) on EVERY input, the empty one included (CI tender's flag, 2026-11-17: intended).
