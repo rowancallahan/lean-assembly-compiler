@@ -67,3 +67,42 @@ by `decide +kernel` per (op, registers) family (checked: `asm [0,5,2,c] = wordBy
   feasible: ~1 s each; then `G.step_*` with `Next`), memory model `Nat → UInt8` vs Sail's map on the RAM blocks;
   (3) glue `StartCorrect` → `CompileCorrect riscv` as in `Riscv/Back/IrTop.lean` `machine_run` (CompileRuns also
   needs the overflow path: a0 := -1; ret).
+
+## L2 PROVED (2026-11-17): the stack path `asm ∘ genR` on Sail
+**`Nano.nano_stack_correct : CompileCorrect riscv nanoCompileA`**, **`Nano.nano_stack_runs : CompileRuns riscv nanoCompileA`**
+(`Nano/StackTop.lean`), for the `Program Prog` instance of `Nano/Proof.lean` (`nanoRun`: `arity` 8-byte LE words,
+`Prog.eval`, result as 8 LE bytes). Axioms: exactly the Sail set. Int64: `Nano.nano_stack_chain_int` (= `chain_int_of
+nano_stack_correct`, via `computes_int`/`nanoRun_int`).
+* `nanoCompileA p = if stackOk p then some ⟨nanoGen p, 8, fun _ => [.alloc (depth p)]⟩ else none`,
+  `stackOk p = ScE p.2 p.1 && depth p ≤ 256` (variables in scope: `genE` loads slot 0 for an out-of-scope variable
+  where `den` gives 0; 8-bit slot offsets). `memoryNeeded = 8 · depth p` (`memoryNeeded_eq`); `nanoCompileA_code`.
+* Plugged in: `Nano.nano_stack_chain`/`nano_stack_chain_int` (Nano/Chain.lean, `chain_of`/`chain_int_of nano_stack_correct`),
+  **`Nano.SelfHost.selfHosted_stack`** (L1 only → `SelfHosted B space D nanoCompileA`) and
+  **`selfHosted_stack_stages`** (three compiled stages, L2 discharged) in Nano/SelfHost.lean.
+* Structure: `Nano/StackRec.lean` (record machine, now with CHECKED memory accesses: `ld`/`sd` only 8-aligned inside
+  `[a2, sp)`, `lbu` only in the input block, `sb` only in the 8 output bytes; else stuck) → `Nano/StackRun.lean`
+  (`push_fail`, `genE_fail`/`genA_fail`, `pro_fail`, `prologue`, **`genR_ok`** / **`genR_oom`**: whole program, both
+  outcomes) → `Nano/StackFam.lean` (record families `Fam`, `af_genR`: every record of `genR p` is in one; per family
+  `asm [op,a,b,c] = wb (encoder word)` by `decide +kernel` over the 8-bit field) → `Nano/StackSail.lean` (`Ctx`, `Rel`:
+  registers equal, pc = pc0 + 4·index, a2/sp/ra fixed, bytes equal on input/work/output, Sail memory outside work and
+  the 8 output bytes = start state; bridges `rel_reg`/`rel_sd`/`rel_sb`/`rel_pc`, `instr_of`) → `Nano/StackSim.lean`
+  (`case_*` per family from `G.step_*`, **`sim`**: a record step is one retired instruction, `sim_halt` (`ret`),
+  `sim_star`) → `Nano/StackTop.lean` (`stack_run`: StartCorrect → record start state → both outcomes).
+
+### Generator change (integrator: please re-merge; affects the compiled `mexp` stage)
+* `genR`'s prologue `r 0 31 2 0` (t6 := sp) is now `r 5 31 2 3 ++ r 1 31 31 3` (t6 := (sp >> 3) << 3).
+  Why: Sail `ld`/`sd` are proved only for 8-aligned addresses (`G.step_ld`/`step_sd`), and `StartCorrect` aligns only
+  the work START (`workLength` arbitrary), so with t6 := sp every slot is misaligned when `workLength % 8 ≠ 0`.
+  Changed in Nano/Gen.lean (`genR`), Nano/Expand.lean (`mexp` micro-op 0 = HDR now expands to 3 records), Nano/Ser.lean
+  (`mexp_ser`'s HDR lemma). Nothing else changed in the generator. Overflow is still exact: pushes fail iff
+  `workLength < 8 · depth p` (`W` aligned, so the aligned top leaves `⌊workLength/8⌋` slots).
+* Found (not changed): `asm`'s `sb` encoding (op 16) puts only `a >>> 4` in byte 3, dropping imm[11:5]; correct only
+  for offsets < 32. `genR` uses offsets 0–7, so the `Fam` for op 16 requires `c < 32`. Fix in `asm` if `sb` is ever
+  used with larger offsets.
+* `Testing/scripts/check.sh` on nano-proof had committed conflict markers from an earlier merge; replaced by nano-int's.
+
+### What remains for the target
+* Only (L1): a binary `B` computing `nanoGen` from source (`selfHosted_stack` / `selfHosted_stack_stages`).
+* `nanoCompileA` is partial (`stackOk`); `SelfHosted.correct` is vacuous for programs it rejects. A lemma
+  `nanoElab src = some p → ScE p.2 p.1` (the elaborator resolves names) would make it total up to `depth p ≤ 256`;
+  that bound could go into `D`.

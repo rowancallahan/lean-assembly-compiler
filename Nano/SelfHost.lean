@@ -119,4 +119,28 @@ theorem selfHosted_stages {ce cg ca : List (BitVec 32)} {fe fg fa : ByteArray �
     obtain ⟨-, -, -, -, h5, h6, h7⟩ := hD a.1 a.2; exact ⟨h5, by omega, by omega, by omega⟩
   exact selfHosted_of (cb := fun src => fa (ofL (fg (ofL (fe (ofL src)))))) h2 heq hcode L2 L2r
 
+/-! ## (L2) discharged: the stack path `nanoCompileA` (`Nano/StackTop.lean`); only (L1) remains -/
+
+/-- **the target from (L1) alone** -/
+theorem selfHosted_stack {B : List (BitVec 32)} {space : Nat → Nat} {D : List UInt8 → Prop}
+    {cb : List UInt8 → List UInt8}
+    (L1 : Implements1With (α := SrcIn D) (fun s => s.1) encRaw B (fun s => cb s.1) space (retLen := true))
+    (hcb : ∀ src p, D src → nanoElab src = some p → cb src = nanoGen p) : SelfHosted B space D nanoCompileA :=
+  selfHosted_of L1 hcb (fun _ _ h => nanoCompileA_code h) nano_stack_correct nano_stack_runs
+
+open Nano.Link in
+/-- **three compiled stages, (L2) discharged** -/
+theorem selfHosted_stack_stages {ce cg ca : List (BitVec 32)} {fe fg fa : ByteArray → List UInt8} {se sg sa : Nat → Nat}
+    {D : List UInt8 → Prop} (K : Nat)
+    (he : Implements1With (fun xs : ByteArray => xs.data.toList) (fun l => l) ce fe se (2 ^ 20) true)
+    (hg : Implements1With (fun xs : ByteArray => xs.data.toList) (fun l => l) cg fg sg (2 ^ 20) true)
+    (ha : Implements1With (fun xs : ByteArray => xs.data.toList) (fun l => l) ca fa sa (2 ^ 20) true)
+    (hcg : cg.length < 2 ^ 17) (hca : ca.length < 2 ^ 17)
+    (hD : ∀ src, D src → (fe (ofL src)).length ≤ 2 ^ 20 ∧ (fe (ofL src)).length ≤ K ∧ se src.length ≤ K ∧
+      sg (fe (ofL src)).length ≤ K ∧ (fg (ofL (fe (ofL src)))).length ≤ 2 ^ 20 ∧
+      (fg (ofL (fe (ofL src)))).length ≤ K ∧ sa (fg (ofL (fe (ofL src)))).length ≤ K)
+    (heq : ∀ src p, D src → nanoElab src = some p → fa (ofL (fg (ofL (fe (ofL src))))) = nanoGen p) :
+    SelfHosted (link (link ce cg) ca) (fun _ => 4 * (4 * K + 96) + 96) D nanoCompileA :=
+  selfHosted_stages K he hg ha hcg hca hD heq (fun _ _ h => nanoCompileA_code h) nano_stack_correct nano_stack_runs
+
 end Nano.SelfHost
