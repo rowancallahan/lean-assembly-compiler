@@ -226,4 +226,6 @@ def wordsS (i : Nat) (m : Nat) : List UInt64 := (List.range (i % 13)).map fun j 
   run "s3_evod" S3EvOd.P evMain (cases50 fun i => encW (words i))
   run "s3_stexc" S3StExc.P stMain (cases50 fun i => encW ((words (i + 1)).map fun w => if i % 3 == 0 && w % 4 == 0 then 0 else w))
   run "s3_iotanumargs" S3IotaNumArgs.P numArgsMain (cases50 fun i => small (i * 3) 256)
+  run "s3_mkapprange" S3MkAppRange.P rangeMain (cases50 fun i =>
+    [UInt8.ofNat (rndN i 1 % 6), UInt8.ofNat (rndN i 2 % 9)] ++ ((small (i + 4) 256).map fun b => if b % 5 == 0 then 2 else b))
   run "s3_lex" S3Lex.P lexMain (cases50 fun i => encW (UInt64.ofNat (rndN i 5 % 20) :: words (i + 3)))

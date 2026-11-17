@@ -242,6 +242,8 @@ instance : Enc Nat where
 @[simp] theorem enc_nat_succ' (n : Nat) : Enc.enc (Nat.succ n) = .c 1 [Enc.enc n] := rfl
 @[simp] theorem dec_nat_zero : (Enc.dec (V.c 0 []) : Nat) = 0 := rfl
 @[simp] theorem dec_nat_succ (v : V) : (Enc.dec (V.c 1 [v]) : Nat) = Enc.dec v + 1 := rfl
+@[s3_norm, simp] theorem nat_zero_lit : Nat.zero = 0 := rfl
+attribute [s3_norm] List.length_nil List.length_singleton
 attribute [s3_norm] Nat.beq_eq Nat.add_eq Nat.succ_eq_add_one Bool.or_eq_true Bool.and_eq_true
 @[s3_norm] theorem nat_beq_false (a b : Nat) : (Nat.beq a b = false) = ¬ a = b := by
   rw [← Nat.beq_eq, Bool.not_eq_true]
@@ -282,6 +284,18 @@ instance : Enc String where
 theorem enc_array {α : Type} [Enc α] (a : Array α) : Enc.enc a = .c 0 [Enc.enc a.toList] := rfl
 theorem enc_bytearray (b : ByteArray) : Enc.enc b = .c 0 [Enc.enc b.data] := rfl
 theorem enc_string (s : String) : Enc.enc s = .c 0 [Enc.enc s.toByteArray] := rfl
+
+/-- a parameter of type `Fin n` whose bound depends on other parameters (`List.get xs ⟨i, h⟩`, `args[i]`): its value
+`⟨i, _⟩` is `.c 0 [enc i]` (as `Fin n` everywhere); decoding is partial (`Fin 0` is empty) -/
+def encFin {n : Nat} (i : Fin n) : V := .c 0 [Enc.enc i.val]
+
+def decFin? (n : Nat) : V → Option (Fin n)
+  | .c 0 [a] => if h : (Enc.dec a : Nat) < n then some ⟨Enc.dec a, h⟩ else none
+  | _ => none
+
+@[simp] theorem decFin?_encFin {n : Nat} (i : Fin n) : decFin? n (encFin i) = some i := by
+  simp [encFin, decFin?]
+@[simp] theorem encFin_eq {n : Nat} (i : Fin n) : encFin i = .c 0 [Enc.enc i.val] := rfl
 
 instance instEncExceptT {ε α : Type} {m : Type → Type} [h : Enc (m (Except ε α))] : Enc (ExceptT ε m α) := h
 

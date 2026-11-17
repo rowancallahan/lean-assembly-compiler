@@ -12,6 +12,7 @@ import Riscv.Frontx.S3RecExamples
 #print axioms Proven.S3.Rec.S3Lex.correct
 #print axioms Proven.S3.Rec.S3StExc.correct
 #print axioms Proven.S3.Rec.S3IotaNumArgs.correct
+#print axioms Proven.S3.Rec.S3MkAppRange.correct
 #print axioms Proven.S3.Rec.S3Incs.computes
 #print axioms Proven.S3.Rec.S3Incs.wf
 #print axioms Proven.S3.Rec.S3Inits.computes
@@ -34,4 +35,6 @@ import Riscv.Frontx.S3RecExamples
 #print axioms Proven.S3.Rec.S3StExc.wf
 #print axioms Proven.S3.Rec.S3IotaNumArgs.computes
 #print axioms Proven.S3.Rec.S3IotaNumArgs.wf
+#print axioms Proven.S3.Rec.S3MkAppRange.computes
+#print axioms Proven.S3.Rec.S3MkAppRange.wf
 #print axioms Proven.S3.Rec.S3EvOd.certM4

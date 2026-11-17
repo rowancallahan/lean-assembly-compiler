@@ -47,6 +47,10 @@ structure FnInfo where
   params : Array Ty := #[]
   ret : Ty := .w
   body : Option SE := none
+  /-- the parameter types as text, parameters named `x0, x1, …` -/
+  pTxt : Array String := #[]
+  /-- per parameter: the bound of a `Fin` whose bound depends on earlier parameters (text), else `none` -/
+  finB : Array (Option String) := #[]
   deriving Inhabited
 
 structure St where
@@ -98,6 +102,8 @@ partial def tyOf (t : Lean.Expr) : M Ty := do
   let t := (← instantiateMVars (← whnf t)).consumeMData
   if isWordTy t then return .w
   if t.isConstOf ``Bool then return .b
+  -- `Fin e` with a bound depending on run-time values: the shape of every `Fin` (`mk [val]`)
+  if t.isAppOfArity ``Fin 1 && t.hasFVar then return ← tyOf (mkApp (mkConst ``Fin) (mkNatLit 1))
   let s ← get
   for i in [0:s.tys.size] do
     if (← withReducible (isDefEq s.tys[i]! t)) then return .d i
@@ -150,6 +156,26 @@ def binOp? (n : Name) (t : Lean.Expr) : Option String :=
     (if t.isConstOf ``Int64 then some "(.op .ashr)" else some "(.op .lshr)")
   else none
 
+def ppTxt (e : Lean.Expr) : MetaM String := do
+  let f ← withOptions (fun o => (((o.setBool `pp.explicit true).setBool `pp.fullNames true).setBool
+    `pp.universes false).setBool `pp.funBinderTypes true |>.setBool `pp.deepTerms false
+    |>.setBool `pp.proofs true) (ppExpr e)
+  return "(" ++ f.pretty 100000 ++ ")"
+
+/-- the parameter types of a function type as text (parameters named `x0, x1, …`), and per parameter the bound of
+a `Fin` that depends on earlier parameters -/
+partial def paramTexts (t : Lean.Expr) : MetaM (Array String × Array (Option String)) := do
+  let rec go (i : Nat) (t : Lean.Expr) (acc : Array String × Array (Option String)) :
+      MetaM (Array String × Array (Option String)) := do
+    match ← whnf t with
+    | .forallE _ d b _ =>
+      let dep := d.isAppOfArity ``Fin 1 && d.hasFVar
+      let fb ← if dep then pure (some (← ppTxt d.appArg!)) else pure none
+      let acc := (acc.1.push (← ppTxt d), acc.2.push fb)
+      withLocalDeclD (Name.mkSimple s!"x{i}") d fun x => go (i + 1) (b.instantiate1 x) acc
+    | _ => return acc
+  go 0 t (#[], #[])
+
 /-- is argument `i` of a call static (a type, an instance, a function, a proof)? -/
 def staticArgs (f : Lean.Expr) (args : Array Lean.Expr) : MetaM Nat := do
   let fty ← inferType f
@@ -184,8 +210,9 @@ partial def fnIdx (key : Lean.Expr) : M Nat := do
   let (pTys, retTy) ← forallTelescopeReducing kty fun xs r => do
     if r.hasAnyFVar (fun v => xs.any (·.fvarId! == v)) then throwError "S3: dependent result type of {key}"
     return (← xs.mapM fun x => inferType x, r)
+  let (pTxt, finB) ← paramTexts kty
   let idx := s.fns.size
-  modify fun s => { s with fns := s.fns.push { key, statics, pTys, retTy } }
+  modify fun s => { s with fns := s.fns.push { key, statics, pTys, retTy, pTxt, finB } }
   let params ← pTys.mapM tyOf
   let ret ← tyOf retTy
   modify fun s => { s with fns := s.fns.modify idx fun fi => { fi with params, ret } }
@@ -286,6 +313,30 @@ partial def arm (c : Ctx) (minor : Lean.Expr) (m : Nat) (extra : Array Lean.Expr
       if mask.getD k true then c' := c'.push fs[k]!
     return (nd, ← tr c' (mkAppN (mkAppN minor fs) extra).headBeta)
 
+/-- some value of type `τ` (for unreachable code): a constructor whose fields can be filled, at most 8 deep -/
+partial def dfltSE (c : Ctx) (τ : Ty) (depth : Nat) : M SE := do
+  match τ with
+  | .w => return .lit 0
+  | .b => return .blit false
+  | .d i =>
+    unless depth < 8 do throwError "S3: no default value for datatype {i}"
+    let cs := (← get).dts[i]!
+    -- prefer a constructor without fields of the same datatype
+    let order := (List.range cs.size).filter (fun j => !cs[j]!.contains (.d i)) ++
+      (List.range cs.size).filter (fun j => cs[j]!.contains (.d i))
+    for j in order do
+      try
+        let fs := cs[j]!
+        let rec go (c' : Ctx) (k : Nat) (ls : List Nat) : M SE := do
+          if h : k < fs.size then
+            let s1 ← dfltSE c' fs[k] (depth + 1)
+            let s2 ← go { c' with depth := c'.depth + 1 } (k + 1) (ls ++ [c'.depth])
+            return .let_ fs[k] s1 s2
+          else return .mk i j ls
+        return ← go c 0 []
+      catch _ => continue
+    throwError "S3: no default value for datatype {i}"
+
 partial def natLitSE (c : Ctx) (n : Nat) : M SE := do
   unless n ≤ natLitMax do throwError "S3: Nat literal {n} is too large for the unary representation"
   let .d i ← tyOf (mkConst ``Nat) | throwError "S3: Nat"
@@ -328,6 +379,10 @@ partial def trApp (c : Ctx) (e : Lean.Expr) : M SE := do
   if let .letE nm t v b nd := fn.consumeMData then
     return ← tr c (.letE nm t v (mkAppN b (args.map (·.liftLooseBVars 0 1))) nd)
   let .const n _ := fn | throwError "S3: unsupported application {e}"
+  -- unreachable code (an eliminator of an empty proposition or type): any value of the result type
+  if n == ``False.elim || n == ``absurd || n == ``False.rec || n == ``False.casesOn || n == ``Empty.rec ||
+      n == ``Empty.casesOn || n == ``Empty.elim then
+    return ← dfltSE c (← tyOf (← inferType e)) 0
   -- literals
   if let some v := natLit? e then return ← natLitSE c v
   -- a `Fin n` literal: `⟨k % n, _⟩`
@@ -556,10 +611,13 @@ syntax (name := s3Split) "s3_split" : tactic
     if (← isConstructorApp e) then continue
     let .const h _ := e.getAppFn | continue
     if (← isMatcher h) || h == ``ite || h == ``dite || h == ``cond || isCasesOnRecursor (← getEnv) h then continue
-    let (fvs, g') ← g.generalize #[{ expr := e, xName? := `t }]
-    let gs ← g'.cases fvs[0]!
-    Tactic.replaceMainGoal (gs.map (·.mvarId)).toList
-    return
+    let st ← saveState
+    try
+      let (fvs, g') ← g.generalize #[{ expr := e, xName? := `t }]
+      let gs ← g'.cases fvs[0]!
+      Tactic.replaceMainGoal (gs.map (·.mvarId)).toList
+      return
+    catch _ => st.restore
   if let some d := best then
     let gs ← g.cases d.fvarId
     Tactic.replaceMainGoal (gs.map (·.mvarId)).toList
@@ -690,6 +748,8 @@ def genMutual (st : St) (c : List Nat) (blk : List Name) (extraSimp : String) : 
     let .const f _ := st.fns[j]!.key.getAppFn | throwError "S3"
     return f
   let names ← c.mapM fnameOf
+  if c.any (fun j => st.fns[j]!.finB.any Option.isSome) then
+    throwError "S3: dependent Fin parameters in a mutual component are not supported yet"
   unless names.Nodup do throwError "S3: a mutual block used at two specialisations: {names}"
   let k0 := c[0]!
   let fi0 := st.fns[k0]!
@@ -742,7 +802,8 @@ def genMutual (st : St) (c : List Nat) (blk : List Name) (extraSimp : String) : 
   -- callees outside the component close by their certificates
   let outside := (c.flatMap fun j => (st.fns[j]!.body.map SE.calls).getD []).eraseDups.filter (!c.contains ·)
   let closers := outside.map (fun j => s!"(apply cert{j}' <;> simp)")
-  let closer := " | ".intercalate ("assumption" :: "(intros; assumption)" :: "(intros; apply_assumption; done)" :: "rfl" :: "omega" :: (closers ++ closers.map ("(intros; " ++ · ++ ")")))
+  let closer := " | ".intercalate (List.map (fun c => "(" ++ c ++ "; done)") <| "assumption" :: "(intros; assumption)" :: "(intros; apply_assumption; done)" :: "rfl" :: "omega" :: "(simp only [List.length_cons] at *; omega)" :: "((try simp at *); assumption)" ::
+      "(rw [dif_pos (by simp only [List.length_cons, Nat.succ_eq_add_one, Array.length_toList] at *; omega)])" :: (closers ++ closers.map ("(intros; " ++ · ++ ")")))
   let mut unf := ""
   for j in outside do
     let fj := st.fns[j]!
@@ -754,7 +815,7 @@ def genMutual (st : St) (c : List Nat) (blk : List Name) (extraSimp : String) : 
     return s!"((apply Proven.S3.good_intro <;> rw [body{j}]) <;> (try rw [phi{j}]) <;> (try rw [{fn}.eq_def]))"
   let pre := String.join (preTxt.toList.map (" " ++ ·))
   let mo := String.join (motives.toList.map (" " ++ ·))
-  out := out ++ s!"/-- **the component {names}**, by ONE induction: Lean's `{indName}` -/\n" ++
+  out := out ++ s!"set_option maxHeartbeats 1000000 in\n/-- **the component {names}**, by ONE induction: Lean's `{indName}` -/\n" ++
     s!"theorem certM{k0} : {" ∧ ".intercalate conjs.toList} := by\n" ++
     s!"  apply @{indName}{pre}{mo}\n" ++
     s!"  all_goals (intros; (try dsimp only at *); first | trivial | ((first | {" | ".intercalate chains}) <;>\n" ++
@@ -799,6 +860,15 @@ def genText (N : Name) (st : St) (extraSimp : String) : MetaM String := do
   out := out ++ "noncomputable def φ : Fin P.S.fns.length → List Proven.S3.V → Proven.S3.V := fun f vs => match f.val with\n"
   for k in [0:st.fns.size] do
     let fi := st.fns[k]!
+    if fi.finB.any Option.isSome then
+      -- dependent `Fin` parameters: decode in order, the `Fin` ones partially
+      let mut inner := s!"Proven.S3.Enc.enc ({← exprTxt fi.key}{String.join ((List.range fi.pTxt.size).map (s!" x{·}"))})"
+      for i in (List.range fi.pTxt.size).reverse do
+        inner := match fi.finB[i]! with
+          | some b => s!"(match vs.getD {i} default with | Proven.S3.V.c 0 [a{i}] => (if h{i} : (Proven.S3.Enc.dec a{i} : Nat) < {b} then (let x{i} : Fin {b} := ⟨Proven.S3.Enc.dec a{i}, h{i}⟩; {inner}) else default) | _ => default)"
+          | none => s!"(let x{i} := (Proven.S3.Enc.dec (vs.getD {i} default) : {fi.pTxt[i]!}); {inner})"
+      out := out ++ s!"  | {k} => {inner}\n"
+      continue
     let mut app := ← exprTxt fi.key
     for i in [0:fi.pTys.size] do
       app := app ++ s!" (Proven.S3.Enc.dec (vs.getD {i} default) : {← exprTxt fi.pTys[i]!})"
@@ -836,13 +906,19 @@ def genText (N : Name) (st : St) (extraSimp : String) : MetaM String := do
     let k := k0
     let fi := st.fns[k]!
     let xs := (List.range fi.pTys.size).map (s!"x{·}")
-    let binders ← (List.range fi.pTys.size).mapM fun i => do return s!"({xs[i]!} : {← exprTxt fi.pTys[i]!})"
-    let encs := listTxt (xs.map (s!"Proven.S3.Enc.enc {·}"))
+    let dep := fi.finB.any Option.isSome
+    let binders ← (List.range fi.pTys.size).mapM fun i => do
+      let t ← if dep then pure fi.pTxt[i]! else exprTxt fi.pTys[i]!
+      return s!"({xs[i]!} : {t})"
+    let encs := listTxt ((List.range xs.length).map fun i =>
+      if (fi.finB.getD i none).isSome then s!"Proven.S3.encFin {xs[i]!}" else s!"Proven.S3.Enc.enc {xs[i]!}")
     let .const fname _ := fi.key.getAppFn | throwError "S3"
     let recursive := ((fi.body.map SE.calls).getD []).contains k
     let callees := ((fi.body.map SE.calls).getD []).filter (· != k)
-    let closers := callees.eraseDups.map (fun j => s!"(apply cert{j}' <;> simp)")
-    let closer := " | ".intercalate ("assumption" :: "(intros; assumption)" :: "(intros; apply_assumption; done)" :: "rfl" :: "omega" :: (closers ++ closers.map ("(intros; " ++ · ++ ")")))
+    let closers := callees.eraseDups.map (fun j => s!"(apply cert{j}' <;> simp)") ++
+      ((callees.eraseDups.filter fun j => st.fns[j]!.finB.any Option.isSome).map fun j => s!"(apply cert{j}' <;> simp_all)")
+    let closer := " | ".intercalate (List.map (fun c => "(" ++ c ++ "; done)") <| "assumption" :: "(intros; assumption)" :: "(intros; apply_assumption; done)" :: "rfl" :: "omega" :: "(simp only [List.length_cons] at *; omega)" :: "((try simp at *); assumption)" ::
+      "(rw [dif_pos (by simp only [List.length_cons, Nat.succ_eq_add_one, Array.length_toList] at *; omega)])" :: (closers ++ closers.map ("(intros; " ++ · ++ ")")))
     -- non-recursive callees unfold in the certificate (their values are then computed)
     let mut unf := ""
     for j in callees.eraseDups do
@@ -891,11 +967,42 @@ def genText (N : Name) (st : St) (extraSimp : String) : MetaM String := do
     let fapp := (← exprTxt fi.key) ++ String.join (xs.map (" " ++ ·))
     let fa := if binders.isEmpty then "" else s!"∀ {" ".intercalate binders}, "
     out := out ++ s!"theorem phi{k} : {fa}φ ⟨{k}, by decide⟩ {encs} = Proven.S3.Enc.enc ({fapp}) := by\n" ++
-      (if xs.isEmpty then "" else s!"  intro {" ".intercalate xs}\n") ++ "  simp [φ]\n"
-    out := out ++ s!"theorem cert{k} : {fa}Proven.S3.Good P φ ⟨{k}, by decide⟩ {encs} := by\n" ++
+      (if xs.isEmpty then "" else s!"  intro {" ".intercalate xs}\n") ++
+      "  simp [φ]\n"
+    out := out ++ s!"set_option maxHeartbeats 1000000 in\ntheorem cert{k} : {fa}Proven.S3.Good P φ ⟨{k}, by decide⟩ {encs} := by\n" ++
       introLine ++ induct ++
       s!"  (apply Proven.S3.good_intro <;> rw [body{k}]) <;> (try rw [phi{k}]) <;> (try rw [{fname}.eq_def]) <;>\n" ++
       s!"  s3_solve 12 [{simpSet}, b{k}, φ{extraSimp}{unf}, *] with (first | {closer}))\n"
+    if dep then
+      -- the caller-facing form: a dependent `Fin` parameter as `(n, n < bound)` (the bound over the decoded others)
+      let sub (t : String) : String := Id.run do
+        let mut r := t
+        for j in [0:xs.length] do
+          r := (r.splitOn s!"x{j})").foldl (fun acc piece => if acc.isEmpty then piece else acc ++ s!"(Proven.S3.Enc.dec v{j} : {fi.pTxt[j]!}))" ++ piece) ""
+          r := (r.splitOn s!"x{j} ").foldl (fun acc piece => if acc.isEmpty then piece else acc ++ s!"(Proven.S3.Enc.dec v{j} : {fi.pTxt[j]!}) " ++ piece) ""
+        return r
+      let mut bnd := #[]
+      let mut hyp := #[]
+      let mut vals := #[]
+      let mut names := #[]
+      let mut hnames := #[]
+      let mut args := #[]
+      for i in [0:xs.length] do
+        match fi.finB[i]! with
+        | some b =>
+          bnd := bnd.push s!"(n{i} : Nat)"; hyp := hyp.push s!"n{i} < {sub b} → "
+          vals := vals.push s!"Proven.S3.V.c 0 [Proven.S3.Enc.enc n{i}]"; names := names.push s!"n{i}"
+          hnames := hnames.push s!"hn{i}"; args := args.push s!"⟨n{i}, hn{i}⟩"
+        | none =>
+          bnd := bnd.push s!"(v{i} : Proven.S3.V)"
+          hyp := hyp.push s!"Proven.S3.Enc.enc (Proven.S3.Enc.dec v{i} : {fi.pTxt[i]!}) = v{i} → "
+          vals := vals.push s!"v{i}"; names := names.push s!"v{i}"; hnames := hnames.push s!"h{i}"
+          args := args.push s!"(Proven.S3.Enc.dec v{i})"
+      let hs := (hnames.toList.filter (·.startsWith "h") |>.filter (fun h => !h.startsWith "hn"))
+      out := out ++ s!"theorem cert{k}' : ∀ {" ".intercalate bnd.toList}, {String.join hyp.toList}Proven.S3.Good P φ ⟨{k}, by decide⟩ {listTxt vals.toList} := by\n" ++
+        s!"  intro {" ".intercalate (names.toList ++ hnames.toList)}\n  have := cert{k} {" ".intercalate args.toList}\n" ++
+        (if hs.isEmpty then "" else s!"  rw [{", ".intercalate hs}] at this\n") ++ "  exact this\n"
+      continue
     let vs := (List.range fi.pTys.size).map (s!"v{·}")
     let hs := (List.range fi.pTys.size).map (s!"h{·}")
     let hyps ← (List.range fi.pTys.size).mapM fun i => do

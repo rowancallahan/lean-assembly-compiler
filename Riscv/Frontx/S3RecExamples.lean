@@ -16,6 +16,7 @@ program, certificates, `computes`, `correct` (exactly the Sail axioms).  Tests: 
 | `S3EvOd` | `evSum` / `odCnt` | mutual, different result types, non-tail calls |
 | `S3Lex` | `lex` | lexicographic `(xs.length, k.toNat)`, the inner counter resets |
 | `S3IotaNumArgs` | con-leche `Cached.iotaNumArgs` (`CoreC.lean`, verbatim) | structural over con-leche's `Expr` |
+| `S3MkAppRange` | con-leche `Cached.mkAppRange` (`CoreC.lean`, verbatim) | well-founded (`termination_by j - i`), `args[i]` with its proof (`List.get`, dependent `Fin xs.length`) |
 | `S3StExc` | `stepS : List UInt64 → StateT UInt64 (Except UInt8) UInt64` | structural; state and exception across a non-tail call |
 -/
 import Riscv.Frontx.S3IO
@@ -237,6 +238,13 @@ list. -/
 def iotaNumArgs : Expr → Nat → Nat
   | .app f _, n => iotaNumArgs f (n + 1)
   | _, n => n
+
+-- (F2.lean.txt lines 17889-17893)
+/-- **`f` applied to the arguments `args[i:j]`**, the range read in
+place. -/
+def mkAppRange (f : Expr) (args : Array Expr) (i j : Nat) : Expr :=
+  if h : i < j ∧ i < args.size then mkAppRange (.app f args[i]) args (i + 1) j else f
+termination_by j - i
 end ConLeche.Cached
 namespace Proven.S3.Rec
 open Proven.S3 Proven.S3.Ex Proven.Mach.IR
@@ -252,5 +260,27 @@ def spine : List UInt8 → ConLeche.Expr
   | b :: r => .app (spine r) (.bvar (wNat b.toUInt64))
 def numArgsMain (bs : List UInt8) : List UInt8 := enc8 (natW (ConLeche.Cached.iotaNumArgs (spine bs) 0))
 s3_compile S3IotaNumArgs := numArgsMain
+
+/-- expressions in postorder: `2` an application of the two before it, `k b` (`k ≠ 2`) the expression `.bvar b`
+(a stack machine) -/
+def exprsGo : List UInt8 → List ConLeche.Expr → List ConLeche.Expr
+  | [], st => st
+  | b :: r, st =>
+    if b == 2 then match st with
+      | a :: f :: st' => exprsGo r (.app f a :: st')
+      | [a] => exprsGo r [a]
+      | [] => exprsGo r []
+    else match r with
+      | x :: r' => exprsGo r' (.bvar (wNat x.toUInt64) :: st)
+      | [] => st
+def exprB : ConLeche.Expr → List UInt8
+  | .app f a => 2 :: (exprB f ++ exprB a)
+  | .bvar i => [1, (natW i).toUInt8]
+  | _ => [0]
+def rangeMain (bs : List UInt8) : List UInt8 :=
+  match bs with
+  | i :: j :: r => exprB (ConLeche.Cached.mkAppRange (.sort .zero) (exprsGo r []).toArray (wNat i.toUInt64) (wNat j.toUInt64))
+  | _ => []
+s3_compile S3MkAppRange := rangeMain
 
 end Proven.S3.Rec
