@@ -3,6 +3,7 @@ import Nano.SelfHost
 import Nano.SelfHostAsm
 import Nano.LinkPg
 import Nano.ElabU
+import Nano.SerU
 #print axioms Nano.Link.link_implements
 #print axioms Nano.Link.link_stage
 #print axioms Nano.SelfHost.selfHosted_of
@@ -12,3 +13,6 @@ import Nano.ElabU
 #print axioms Nano.SelfHost.selfHosted_asm_stage
 #print axioms Nano.U.par
 #print axioms Nano.U.nanoElab_eq
+#print axioms Nano.mexp_ser
+#print axioms Nano.U.inlB_serU
+#print axioms Nano.U.genR_chain

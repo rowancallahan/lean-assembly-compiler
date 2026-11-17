@@ -159,3 +159,14 @@ nano-proof (Opus: L2), nano-mvp (finished: Int64, Chain, chain_test), nano-int (
   seven mutual parser functions commute with replacing def bodies). Consequence: the compiled parser stage need not
   inline (its output is linear, so it is log space again); inlining becomes its own stage (copying, paged front
   end, probe 2). nano-elab's option (a), but only as an internal intermediate: spec, generator and L2 unchanged.
+* 2026-11-17 01:00. `Nano/SerU.lean` (pure Lean, standard axioms): the byte format of the non-inlined program and the
+  inliner on bytes. `serU u`: per def (oldest first) the body's micro-ops (as `serE`; a call = arguments,
+  `[14, j / 256] [15, j % 256]`, `[9, arity]`), closed by `[13, arity]`. `inlB`: copy micro-ops, replace a 14/15 pair
+  by the already inlined body code of def `j`, wrap the last def as a program. **`inlB_serU : WF u → u ≠ [] → inlB
+  (serU u) = ser (inlineProg u)`** and **`genR_chain : nanoElabU xs = some u → nanoElab xs = some p → WF u → mexp
+  (inlB (serU u)) = genR p`**. Key lemma `serE_shift` / `body_code`: the code of a scoped body does not depend on the
+  stack depth of the call site, so inlining is byte copying. `WF u`: bodies scoped, calls to earlier defs with the
+  right argument count, callee numbers < 65536, arities < 256 (the last two are size conditions for the domain `D`).
+  So the front-end chain is now, stage by stage, with every Lean-level equation proved:
+  `src —[lexer + NON-inlining parser: to do, nano-elab]→ serU u —[inlB: to compile, paged]→ ser p —[mexp: compile
+  running]→ genR p —[asm: compiled]→ code`.
