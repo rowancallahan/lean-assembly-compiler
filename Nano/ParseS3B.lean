@@ -43,17 +43,19 @@ def stage2a (bs : List UInt8) : List UInt8 := encT (decL bs)
 
 /-! ## the decoder of 2b (structural) -/
 
+/-- a word from 4 little-endian bytes (IR calls take at most 7 arguments) -/
+def w4 (b0 b1 b2 b3 : UInt8) : UInt64 :=
+  b0.toUInt64 + 256 * (b1.toUInt64 + 256 * (b2.toUInt64 + 256 * b3.toUInt64))
+
 /-- a word from 8 little-endian bytes -/
-def w8 (b0 b1 b2 b3 b4 b5 b6 b7 : UInt8) : UInt64 :=
-  b0.toUInt64 + 256 * (b1.toUInt64 + 256 * (b2.toUInt64 + 256 * (b3.toUInt64 + 256 * (b4.toUInt64 +
-    256 * (b5.toUInt64 + 256 * (b6.toUInt64 + 256 * b7.toUInt64))))))
+def w8 (b0 b1 b2 b3 b4 b5 b6 b7 : UInt8) : UInt64 := w4 b0 b1 b2 b3 + 4294967296 * w4 b4 b5 b6 b7
 
 theorem w8_le8 (n : UInt64) :
     w8 n.toUInt8 (n >>> 8).toUInt8 (n >>> 16).toUInt8 (n >>> 24).toUInt8 (n >>> 32).toUInt8 (n >>> 40).toUInt8
       (n >>> 48).toUInt8 (n >>> 56).toUInt8 = n := by
   apply UInt64.toNat_inj.mp
   have h := n.toNat_lt
-  simp only [w8, UInt64.toNat_add, UInt64.toNat_mul, UInt8.toNat_toUInt64, UInt64.toNat_toUInt8,
+  simp only [w8, w4, UInt64.toNat_add, UInt64.toNat_mul, UInt8.toNat_toUInt64, UInt64.toNat_toUInt8,
     UInt64.toNat_shiftRight, Nat.shiftRight_eq_div_pow, UInt64.reduceToNat, Nat.reduceMod, Nat.reducePow]
   omega
 
@@ -84,7 +86,7 @@ def decT2 : List UInt8 → Option (List UInt8) → Option (List Tok)
     else if t == 14 then decT2 r (some [])
     else if t == 5 then
       match r with
-      | b0 :: b1 :: b2 :: b3 :: b4 :: b5 :: b6 :: b7 :: r' => consO (.num (w8 b0 b1 b2 b3 b4 b5 b6 b7)) (decT2 r' none)
+      | b0 :: b1 :: b2 :: b3 :: b4 :: b5 :: b6 :: b7 :: r' => consO (.num (w4 b0 b1 b2 b3 + 4294967296 * w4 b4 b5 b6 b7)) (decT2 r' none)
       | _ => none
     else none
 
@@ -121,7 +123,7 @@ theorem dT14 (r : List UInt8) : decT2 (14 :: r) none = decT2 r (some []) := by
   rw [decT2.eq_def]; rfl
 theorem dT5 (b0 b1 b2 b3 b4 b5 b6 b7 : UInt8) (r : List UInt8) :
     decT2 (5 :: b0 :: b1 :: b2 :: b3 :: b4 :: b5 :: b6 :: b7 :: r) none =
-      consO (.num (w8 b0 b1 b2 b3 b4 b5 b6 b7)) (decT2 r none) := by
+      consO (.num (w4 b0 b1 b2 b3 + 4294967296 * w4 b4 b5 b6 b7)) (decT2 r none) := by
   rw [decT2.eq_def]; rfl
 theorem dI0 (acc r : List UInt8) : decT2 (0 :: r) (some acc) = consO (.id acc.reverse) (decT2 r none) := by
   rw [decT2.eq_def]; rfl
@@ -146,7 +148,8 @@ theorem decT2_toks : ∀ ts : List Tok, decT2 (encToks ts) none = some ts
       rw [decT2_id s [] (encToks ts), ih]; rfl
     | num n =>
       simp only [encToks, encTok, le8, List.cons_append, List.nil_append, dT5]
-      rw [w8_le8, ih]; rfl
+      rw [show ∀ a b c d e f g h : UInt8, w4 a b c d + 4294967296 * w4 e f g h = w8 a b c d e f g h from
+        fun _ _ _ _ _ _ _ _ => rfl, w8_le8, ih]; rfl
     | kty b => cases b <;> simp only [encToks, encTok, List.cons_append, List.nil_append, dT3, dT4, ih, consO]
     | _ => simp only [encToks, encTok, List.cons_append, List.nil_append, dT1, dT2, dT6, dT7, dT8, dT9, dT10, dT11,
         dT12, dT13, ih, consO]
