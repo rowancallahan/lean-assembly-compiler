@@ -1,0 +1,26 @@
+ propext,
+ Classical.choice,
+ Quot.sound]
+ propext,
+ Classical.choice,
+ Quot.sound]
+binaryC: 55529 words (lexA 5958, 2b 46054, inl 2035, expM 1031, asm 379)
+sources 146: in Domain 146, outside (elab/nanoCompileA rejects or bounds) 0
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:31.29
+	Maximum resident set size (kbytes): 2202432
+stage 2b alone, QEMU: 146/146 ok in 14 rounds (46054 words; every successful run checked; work up to 1242464 bytes)
+stage inl alone, QEMU: 146/146 ok in 15 rounds (2035 words; every successful run checked; work up to 2348672 bytes)
+not run linked (space5 K > 943718400 bytes): []
+nano_self (linked binary) QEMU: 146/146 ok (55529 words; sources up to 776 bytes, outputs up to 9304 bytes; K 17888..2348672, work space5 K up to 601268192 bytes)
+  sail s0069.nano: src 38 B, code 172 B ok
+  sail s0074.nano: src 38 B, code 172 B ok
+  sail s0089.nano: src 38 B, code 172 B ok
+  sail s0000.nano: src 32 B, code 220 B ok
+  sail s0127.nano: src 386 B, code 1852 B ok
+  sail s0131.nano: src 370 B, code 444 B ok
+  sail s0144.nano: src 366 B, code 2192 B ok
+  sail s0135.nano: src 362 B, code 284 B ok
+nano_self (linked binary) Sail: 8/8 ok (QEMU == Sail == Lean, writes only in output + work)
+nano_lexA: 146 cases x 2 ok (QEMU only == Lean at memoryNeeded, flag a0 = -1 at memoryNeeded - 1, writes only in output + work; input lengths up to 776; 5958 words; memoryNeeded 8640..206480 bytes)
+nano_lexA: 8 cases x 2 ok (QEMU == Sail == Lean at memoryNeeded, flag a0 = -1 at memoryNeeded - 1, writes only in output + work; input lengths up to 44; 5958 words; memoryNeeded 8864..13080 bytes)
+416.46 s

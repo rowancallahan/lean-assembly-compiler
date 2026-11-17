@@ -1,0 +1,71 @@
+== Nano.ParseS3B Compiler.S3.Front Nano.S3Stage Nano.TokS3Enc
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:15.47
+	Maximum resident set size (kbytes): 1994368
+	Exit status: 0
+== Nano.ParseS3BSelf
+Build completed successfully (310 jobs).
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 5:39.11
+	Maximum resident set size (kbytes): 6075600
+	Exit status: 0
+Build completed successfully (311 jobs).
+== Nano.ParseS3BAllocA
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:26.15
+	Maximum resident set size (kbytes): 4610176
+	Exit status: 0
+== Nano.ParseS3BAllocB
+Build completed successfully (312 jobs).
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 2:53.88
+	Maximum resident set size (kbytes): 10061016
+	Exit status: 0
+== Nano.ParseS3BStage
+Build completed successfully (313 jobs).
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 3:03.80
+	Maximum resident set size (kbytes): 9570732
+	Exit status: 0
+Build completed successfully (314 jobs).
+== Nano.LexS3 Nano.InlS3
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:02.28
+	Maximum resident set size (kbytes): 579200
+	Exit status: 0
+Build completed successfully (20 jobs).
+== Nano.LexS3Self
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:11.31
+	Maximum resident set size (kbytes): 2680496
+	Exit status: 0
+== Nano.LexS3Stage
+Build completed successfully (312 jobs).
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:43.16
+	Maximum resident set size (kbytes): 3134508
+	Exit status: 0
+== Nano.InlS3Self
+Build completed successfully (313 jobs).
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:19.21
+	Maximum resident set size (kbytes): 1970184
+	Exit status: 0
+== Nano.InlS3Stage
+Build completed successfully (302 jobs).
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:12.21
+	Maximum resident set size (kbytes): 2401276
+	Exit status: 0
+== Nano.ExpandMSelf
+Build completed successfully (303 jobs).
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:59.00
+	Maximum resident set size (kbytes): 4745836
+	Exit status: 0
+Build completed successfully (232 jobs).
+== Nano.ParseBSelfHost
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 4:54.54
+	Maximum resident set size (kbytes): 3385564
+	Exit status: 0
+== Nano.LeanLimits
+Build completed successfully (328 jobs).
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:02.08
+	Maximum resident set size (kbytes): 1721928
+	Exit status: 0
+== Nano.SelfHostFinal
+Build completed successfully (299 jobs).
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:27.88
+	Maximum resident set size (kbytes): 4681960
+	Exit status: 0
+Build completed successfully (357 jobs).
+TOTAL wall 1390 s; peak system memory (RAM+swap used, GB): 10.9965
