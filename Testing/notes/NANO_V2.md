@@ -379,3 +379,31 @@ loops (round 6 E). (3) ImplementsBytes (`compile_correct`). Pending runs: QEMU/S
   `loop_ok` at the pc level, `ret` = jalr x0 0(ra) via `G.step_jalr`) ⇒ `Observes` (a0 = status / -1 oom / -2 cap,
   a1 = length, bytes at a3); instantiate `ABI.Model` with the Sail model; `ImplementsBytes M B p.result` with the
   admitted-domain hypothesis (no cap abort; output < 2^64; work big enough or oom reported).
+
+## HANDOFF (resume session end, 2026-11-17)
+DONE (nano-v2, all pushed; local builds with plain `lean`, every module ≤ 9 s; no sorry, no new axioms):
+- (1) buffer proof: `cB_ok`/`cTB_ok` (CompB.lean) — cE correct for the whole language incl. in-place buffers and
+  loops, for every `Ex.lv`-accepted expression. Soundness FIX in `Ex.lv` (`get (var i) j`), negative test neg21.
+- (4) `frontElabK_lv` (Front.lean): accepted programs pass the checker on the FINAL program (`withLv`).
+- (2) Sail layer: `flat_ok` (Flat.lean, structured runs = pc-level runs, loops incl.), `sim_star` (Sim.lean, pc-level
+  runs = Sail runs, every instruction form), `Retires.det`; encoder = Sail words (Enc.lean); `gen` now checks
+  `I.wf` (fixes the 12-bit slide-offset overflow) and the jump certificate `jcert`.
+PENDING RUNS (runner): fuzz.py at HEAD (agreement + neg1–21 rejected); QEMU/Sail of nv2f_* (gen gained the
+wf/jcert gate: expected unchanged results); check.sh; `lake build Nano.V2.Sim` cold time (Riscv deps from cache).
+NEXT = task (3), `compile_correct` (new module Nano/V2/Top.lean), pieces in order:
+1. `rd` whitelist: extend `I.wf` with `rd ∈ {0,5,6,7,10,11,14,15,28..31}` (written registers of §6) and prove the
+   abstract invariant "callee-saved x2,x8,x9,x18–27 unchanged" along `PStar`; add a `frame` field to `Rel`
+   (memory outside work ∪ output = the initial memory `m0`), re-check rel_reg/rel_mem/rel_jump (small edits).
+2. Prologue (5 straight instructions) at the pc level ⇒ `Stk c s a2 []`, `InpRep`, `EnvB` for the empty env
+   (c.lo = a2, c.hi = sp & ~7, a2 8-aligned) ⇒ `cB_ok` on `p.main` with `d = []` ⇒ `flat_ok` (body =
+   `.seq (.ins prologue) (.seq c epilogue)`, pos = 5) ⇒ PB outcome: ok (stack [status, out address], BufRep of the
+   output list) or jump to `om`/`cp` (stubs `a0 := -1/-2; ret`).
+3. Epilogue at the pc level by hand (it contains `ret`, so not `SC.Ex`): beq on status; copy loop (induction on the
+   remaining count: `ld A5 T1 0; sb A5 A4 0; T1 += 8; A4 += 1`), needs output capacity ≥ length (admissibility);
+   `mv a0 0; ret`, or `a0 := status; a1 := 0; ret`.
+4. `ret` = `jalr x0, 0(x1)` = word 0x8067: `G.step_jalr` (ra even) ⇒ PC = ra (the return boundary).
+5. The statement (§6 shape, on `Proven.St`): for `genI p = some C` placed at base (initial Sail state: Cfg, PC = base,
+   code bytes, a0..a3/sp/ra, work and output bytes present, layout `Lay.Ok`): the run returns to ra (deterministic,
+   so ALL executions), frame and callee-saved kept, and a0 = −1 (oom) ∨ a0 = −2 (cap) ∨ the observation of
+   `p.eval input` (ok: a0 = 0, a1 = len, bytes at a3; Lean error 1: a0 = 1, a1 = 0). Then `ImplementsBytes` for
+   admitted inputs (no oom/cap at the given work size, output ≤ capacity), and the `ABI.Model` instance on Sail.
