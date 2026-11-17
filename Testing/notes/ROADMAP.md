@@ -433,3 +433,14 @@ draft the owner may review later; changes after the freeze still go through the 
 - Required check: B₂ = B₃ byte for byte. (Owner 19:55: comparing against the Lean-toolchain path is NOT required. Bᴸ
   here means the OUTPUT of the Lean-compiled compiler run on s — not Lean's own native executable, which naturally differs.) The proof route (ImplementsBytes B₂ Cκ without compiler 1 in its dependency
   closure) is the separate, stronger claim; keep the two clearly labelled so they are not confused.
+
+### NANO v2 CHECKPOINT BEFORE THE SELF-HOSTING DECISION (owner, 2026-11-17 20:00)
+- Bootstrap binary: may simply be the Lean-toolchain-compiled nano compiler (we trust Lean's definitions/elaborator, so
+  Lean's compiler is acceptable for the bootstrap); the S3/B₁ route is an alternative, not required.
+- REQUIRED CHECKPOINT: at one point, the ENTIRE nano compiler exists as Lean source written in the nano subset
+  (one clearly named folder/file set, e.g. Nano/V2Self/), accepted by Lean, with its status documented (what nano itself
+  accepts of it yet). The owner reviews this before deciding how to self-host (bootstrap from Lean's compiler, from B₁,
+  or from the elaborator alone; which cross-comparisons to do).
+- Until then: interim self-host / self-compile checks are fine (e.g. compiled stages on their own text, partial fixed
+  points), but no final self-hosting route is locked in.
+- Astra round 6 (E/F/G proofs) did not arrive (Astra out of tokens); work from NANO_V2_SKELETONS.lean.
