@@ -50,6 +50,18 @@ BODIES = [
  "if x < y then x else y - if x < y then 1 else 2", "if x <= y then if x == y then 0 else 1 else 2",
  "if x < y then 18446744073709551615 else 0", "if x < y then 1 else 2) + (3", "if x < y then -1 else -2", "if x < y then - 1 else - 2",
 ]
+BITS = [  # increment 2
+ "x &&& y", "x ||| y", "x ^^^ y", "x <<< 3", "x >>> 3", "x <<< 0", "x >>> 63", "x <<< 63", "x <<< 64", "x >>> 64",
+ "x <<< y", "x <<< -1", "x &&& y ||| x ^^^ y", "x ||| y &&& x", "x ^^^ y ||| x &&& y", "x + y &&& x - y",
+ "x &&& y + x", "x * y <<< 2", "x <<< 2 * y", "x <<< 2 <<< 3", "x >>> 1 >>> 1", "x - y >>> 1", "-1 >>> 1",
+ "-1 <<< 1", "(-1) >>> 1", "0 - 1 >>> 1", "x &&& 255", "x ||| 18446744073709551616", "x&&&y", "x &&&y", "x&&& y",
+ "x|||y", "x ^^^y", "x<<<3", "x <<<3", "x >>>3", "x >> 3", "x << 3", "x && y", "x || y", "x ^^ y", "x &&&& y",
+ "x ||||  y", "x ^^^^ y", "x <<<< 3", "x >>>> 3", "x > y", "if x &&& 1 == 0 then x >>> 1 else x <<< 1",
+ "if x ||| y < x ^^^ y then 1 else 2", "if x >>> 63 == 1 then 0 - x else x", "let z := x &&& y; z ||| 1",
+ "(x &&& y) <<< 1", "x &&& (y <<< 1)", "g x y &&& g y x", "x <<< 3 + 1", "1 + x <<< 3", "x &&& - 1",
+ "x ^^^ -1", "if 1 &&& 2 == 0 then x else y", "if x &&& 0 == 0 then x else y", "let z := 1 <<< 3; if z < 9 then x else y",
+ "let z := 1 <<< 3; if z < x then x else y", "x >>> 3 <<< 3", "(x >>> 3) <<< 3", "x <<< (3)", "x <<< 3 >>> 2 &&& 7",
+]
 PRE = "def g (a b : T) : T := a - b\ndef k : T := 7\n"
 CALLB = [
  "if g x y < 1 then 1 else 2", "if k < 8 then x else y", "if k == 7 then x else y", "if 8 < k then x else y",
@@ -63,6 +75,7 @@ for ty in ["UInt64", "Int64"]:
         cases.append(case(hdr.replace("T", ty), ty))
     for b in BODIES: cases.append(case(H2.replace("T", ty) + b, ty))
     for b in CALLB: cases.append(case((PRE + H2).replace("T", ty) + b, ty))
+    for b in BITS: cases.append(case((PRE + H2).replace("T", ty) + b, ty))
 NHAND = len(cases)
 # v1 corpus: must be accepted by v2 with the same meaning
 for s in CORPUS: cases.append(case(s))
@@ -75,8 +88,12 @@ def gexpr(d, ps, funs, typed_ok):
         if ps and r.random() < .75: return r.choice(ps)
         return str(r.choice([0, 1, 2, 3, 5, 255, 2**63, 2**63 - 1, M - 1, M + 3, r.randrange(M)]))
     k = r.random()
-    if k < .35:
+    if k < .25:
         return f"({gexpr(d-1, ps, funs, typed_ok)} {r.choice('+-*')} {gexpr(d-1, ps, funs, typed_ok)})"
+    if k < .35:
+        if r.random() < .5:
+            return f"({gexpr(d-1, ps, funs, typed_ok)} {r.choice(['&&&', '|||', '^^^'])} {gexpr(d-1, ps, funs, typed_ok)})"
+        return f"({gexpr(d-1, ps, funs, typed_ok)} {r.choice(['<<<', '>>>'])} {r.choice([0, 1, 7, 31, 63, 64])})"
     if k < .7:
         a = gexpr(d-1, ps, funs, typed_ok); b = gexpr(d-1, ps, funs, typed_ok)
         if r.random() < .8 and ps and not re.search(r"[a-z]", a + b): a = f"({a} + {r.choice(ps)})"

@@ -29,7 +29,7 @@ def cmpK (n : Nat) : Cmp := match n % 5 with | 0 => .eq | 1 => .ltu | 2 => .leu 
 /-- a random expression over `nv ≥ 1` variables, depth `d`, many `if` nodes -/
 def tE : Nat → Nat → Nat → E
   | 0, nv, s => if rnd s 3 % 3 != 0 then .var (rnd s 4 % nv) else .num (word s)
-  | d + 1, nv, s => match rnd s d % 11 with
+  | d + 1, nv, s => match rnd s d % 14 with
     | 0 => .num (word s)
     | 1 => .var (rnd s 5 % nv)
     | 2 => .add (tE d nv (2 * s + 1)) (tE d nv (2 * s + 2))
@@ -39,12 +39,16 @@ def tE : Nat → Nat → Nat → E
     | 6 =>
       let k := rnd s 6 % 3 + 1
       .call (tE d k (3 * s + 5)) (mkArgs ((List.range k).map fun j => tE d nv (3 * s + 7 + 11 * j)))
+    | 11 => .bit (match rnd s 8 % 3 with | 0 => .and | 1 => .or | _ => .xor) (tE d nv (2 * s + 1)) (tE d nv (2 * s + 2))
+    | 12 => .sh (rnd s 9 % 2 == 0) (rnd s 10 % 70) (tE d nv (2 * s + 1))
     | _ => .ite (cmpK (rnd s 7)) (tE d nv (4 * s + 1)) (tE d nv (4 * s + 2)) (tE d nv (4 * s + 3)) (tE d nv (4 * s + 4))
 
 def progs : List Prog :=
   [(2, .ite .ltu (.var 1) (.var 0) (.num 1) (.num 2)), (2, .ite .lts (.var 1) (.var 0) (.num 1) (.num 2)),
    (2, .ite .leu (.var 1) (.var 0) (.num 1) (.num 2)), (2, .ite .les (.var 1) (.var 0) (.num 1) (.num 2)),
-   (2, .ite .eq (.var 1) (.var 0) (.num 1) (.num 2))] ++
+   (2, .ite .eq (.var 1) (.var 0) (.num 1) (.num 2)),
+   (2, .bit .and (.var 1) (.var 0)), (2, .bit .or (.var 1) (.var 0)), (2, .bit .xor (.var 1) (.var 0)),
+   (1, .sh true 7 (.var 0)), (1, .sh false 63 (.var 0)), (1, .sh true 64 (.var 0)), (1, .sh false 100 (.var 0))] ++
   (List.range 40).map fun i => (i % 3 + 1, tE (i % 5 + 2) (i % 3 + 1) (i * 7 + 1))
 
 def srcs : List String := [
@@ -58,7 +62,10 @@ def srcs : List String := [
   "def s (x : Int64) : Int64 := if x < 0 then -1 else if x == 0 then 0 else 1\ndef f (x y : Int64) : Int64 := s x * 3 + s y",
   "def f (x y : UInt64) : UInt64 := let d := x - y; if d < 9223372036854775808 then d else 0 - d",
   "def c (x l h : Int64) : Int64 := if x < l then l else if h < x then h else x\ndef f (x : Int64) : Int64 := c x (-100) 100",
-  "def d (c : UInt64) : UInt64 := if 48 <= c then (if c <= 57 then 1 else 0) else 0\ndef f (x : UInt64) : UInt64 := d x + d (x + 1) * 2"]
+  "def d (c : UInt64) : UInt64 := if 48 <= c then (if c <= 57 then 1 else 0) else 0\ndef f (x : UInt64) : UInt64 := d x + d (x + 1) * 2",
+  "def f (x y : UInt64) : UInt64 := x &&& y ||| x ^^^ y",
+  "def b (o c : UInt64) : UInt64 := (o &&& 7) <<< 4 ||| (c >>> 1)\ndef f (x y : UInt64) : UInt64 := b x y ^^^ (x <<< 63)",
+  "def f (x : UInt64) : UInt64 := if x &&& 1 == x - x then x >>> 1 else x <<< 1 ||| x"]
 
 def inputs (p : Prog) (i : Nat) : List (List UInt64) :=
   (List.range 8).map fun j => (List.range p.1).map fun a => word (rnd i (j * 5 + a))

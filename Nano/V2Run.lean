@@ -262,6 +262,32 @@ theorem genE_fail (hT2 : T < 2 ^ 64) (hW8 : 8 ≤ W) (hW64 : W < 2 ^ 64) : ∀ (
         (fun h1 s rest h hs h12 => genE_fail hT2 hW8 hW64 e sc env (vals ++ [(Nano.V2.den t env).toBitVec, (if (Nano.V2.den b env).toBitVec.slt (Nano.V2.den a env).toBitVec then 1#64 else 0#64)]) s rest (by simpa using h)
           he (hok.mono _) (by simpa using hs) h12 (by simpa using h1) (by simp; omega))
         (lts_run _ _ _) hw.1 hW hcode hs h12
+  | .bit o a b, sc, env, vals, s, rest, h, hsc, hok, hs, h12, hW, hd => by
+    simp only [ScE, Bool.and_eq_true] at hsc; simp only [Nano.V2.depE] at hW hd
+    have hw := wf_bit o (vals.length + 2) (by have := depE_ge a vals.length _ hsc.1; omega)
+    simp only [Nano.V2.genE, List.append_assoc] at h
+    exact seq_fail (X := Nano.V2.genE sc vals.length a) (Y := Nano.V2.genE sc (vals.length + 1) b ++ opsCode (bitOps o)) hW
+      (fun h1 s rest h hs h12 => genE_ok hT2 a sc env vals s rest h hsc.1 hok hs h12 h1 (by omega))
+      (fun h1 s rest h hs h12 => genE_fail hT2 hW8 hW64 a sc env vals s rest h hsc.1 hok hs h12 h1 (by omega))
+      (fun h1 s rest h hs h12 => by
+        rw [List.append_assoc] at h
+        exact seq_fail (X := Nano.V2.genE sc (vals.length + 1) b) (Y := opsCode (bitOps o))
+          (vals' := vals ++ [(Nano.V2.den a env).toBitVec] ++ [(Nano.V2.den b env).toBitVec]) h1
+          (fun h2 s rest h hs h12 => genE_ok hT2 b sc env (vals ++ [(Nano.V2.den a env).toBitVec]) s rest
+            (by simpa using h) hsc.2 (hok.mono _) hs h12 (by simpa using h2) (by simp; omega))
+          (fun h2 s rest h hs h12 => genE_fail hT2 hW8 hW64 b sc env (vals ++ [(Nano.V2.den a env).toBitVec]) s rest
+            (by simpa using h) hsc.2 (hok.mono _) hs h12 (by simpa using h2) (by simp; omega))
+          (fun h2 s rest h hs h12 => by
+            have e : vals ++ [(Nano.V2.den a env).toBitVec] ++ [(Nano.V2.den b env).toBitVec] =
+              ((Nano.V2.den b env).toBitVec :: (Nano.V2.den a env).toBitVec :: vals.reverse).reverse := by simp
+            rw [e] at hs
+            exact ops_fail hT2 hW8 hW64 _ _ s rest h hs h12 (by simpa using hw.1) (by simpa using h2))
+          (by simpa using h) hs h12)
+      (by simpa using h) hs h12
+  | .sh l k a, sc, env, vals, s, rest, h, hsc, hok, hs, h12, hW, hd => by
+    simp only [ScE] at hsc; simp only [Nano.V2.depE] at hW hd
+    simp only [Nano.V2.genE, List.append_assoc] at h
+    exact genE_fail hT2 hW8 hW64 a sc env vals s _ h hsc hok hs h12 hW hd
   | .anil, _, _, _, _, _, _, hsc, _, _, _, _, _ => by simp [ScE] at hsc
   | .acons _ _, _, _, _, _, _, _, hsc, _, _, _, _, _ => by simp [ScE] at hsc
 /-- an argument list runs out of stack -/
@@ -297,6 +323,10 @@ theorem genA_fail (hT2 : T < 2 ^ 64) (hW8 : 8 ≤ W) (hW64 : W < 2 ^ 64) : ∀ (
   | .anil, _, _, vals, s, _, _, _, _, hs, h12, hW, _ => by
     have := hs.lo; rw [w_of h12 (by omega)] at this; simp [Nano.V2.depA] at hW; omega
   | .ite _ _ _ _ _, _, _, vals, s, _, _, _, _, hs, h12, hW, _ => by
+    have := hs.lo; rw [w_of h12 (by omega)] at this; simp [Nano.V2.depA] at hW; omega
+  | .bit _ _ _, _, _, vals, s, _, _, _, _, hs, h12, hW, _ => by
+    have := hs.lo; rw [w_of h12 (by omega)] at this; simp [Nano.V2.depA] at hW; omega
+  | .sh _ _ _, _, _, vals, s, _, _, _, _, hs, h12, hW, _ => by
     have := hs.lo; rw [w_of h12 (by omega)] at this; simp [Nano.V2.depA] at hW; omega
 end
 

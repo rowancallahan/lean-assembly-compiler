@@ -27,6 +27,11 @@ SRCS = [
  "def f (x : Int64) : Int64 := if x <= 9223372036854775807 then 1 else 2",
  "def g (a b : UInt64) : UInt64 := a - b\ndef k : UInt64 := 7\ndef f (x y : UInt64) : UInt64 := if g (if x < y then x else y) 1 == 0 then k else g k x",
  "def f (x y : UInt64) : UInt64 := if x < y\n  then 1\n  else 2",
+ "def f (x y : UInt64) : UInt64 := x &&& y ||| x ^^^ y",
+ "def f (x y : UInt64) : UInt64 := x <<< 3 >>> 2 &&& y",
+ "def b (o c : UInt64) : UInt64 := (o &&& 7) <<< 4 ||| (c >>> 1)\ndef f (x y : UInt64) : UInt64 := b x y ^^^ (x <<< 63)",
+ "def f (x : UInt64) : UInt64 := if x &&& 1 == x - x then x >>> 1 else x <<< 1 ||| x",
+ "def f (x y : UInt64) : UInt64 := x + y &&& x - y",
 ]
 out = subprocess.run("PATH=$HOME/.elan/bin:$PATH lake env lean --stdin --run", shell=True, cwd=ROOT, capture_output=True, text=True,
   input="import Nano.V2Elab\ndef main : IO Unit := do\n" + "".join(

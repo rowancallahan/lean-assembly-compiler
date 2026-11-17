@@ -1,6 +1,7 @@
-/- nano v2, increment 1: the AST and meaning (DRAFT spec, owner confirms).  v1's `Ex` plus ONE construct:
+/- nano v2, increments 1 and 2: the AST and meaning (DRAFT spec, owner confirms).  v1's `Ex` plus ONE construct:
 `if a ⋈ b then t else e` with `⋈` one of `==`, `<`, `<=`; `<`/`<=` are unsigned in a `UInt64` file and signed in an
-`Int64` file (the elaborator picks the kind).  Values stay 64-bit words; a comparison is never a value. -/
+`Int64` file (the elaborator picks the kind).  Values stay 64-bit words; a comparison is never a value.
+Increment 2: `&&&`, `|||`, `^^^` and shifts by a numeral `< 64` (Lean's `UInt64` operations). -/
 import Nano.Ast
 
 namespace Nano.V2
@@ -18,6 +19,16 @@ def Cmp.test : Cmp → UInt64 → UInt64 → Bool
   | .lts, a, b => decide (a.toInt64 < b.toInt64)
   | .les, a, b => decide (a.toInt64 ≤ b.toInt64)
 
+/-- bitwise operations (increment 2) -/
+inductive BOp where
+  | and | or | xor
+  deriving DecidableEq, Repr
+
+def BOp.app : BOp → UInt64 → UInt64 → UInt64
+  | .and, a, b => a &&& b
+  | .or, a, b => a ||| b
+  | .xor, a, b => a ^^^ b
+
 inductive E where
   | num (n : UInt64) | var (i : Nat)
   | add (a b : E) | sub (a b : E) | mul (a b : E)
@@ -25,6 +36,8 @@ inductive E where
   | call (body args : E)
   | anil | acons (e rest : E)
   | ite (k : Cmp) (a b t e : E)
+  | bit (o : BOp) (a b : E)               -- increment 2: `&&&`, `|||`, `^^^`
+  | sh (left : Bool) (k : Nat) (a : E)    -- increment 2: `a <<< k`, `a >>> k`, `k` a numeral `< 64`
   deriving DecidableEq, Repr
 
 abbrev Prog := Nat × E
@@ -41,6 +54,8 @@ def den : E → List UInt64 → UInt64
   | .anil, _ => 0
   | .acons _ _, _ => 0
   | .ite k a b t e, env => if k.test (den a env) (den b env) then den t env else den e env
+  | .bit o a b, env => o.app (den a env) (den b env)
+  | .sh l k a, env => if l then den a env <<< k.toUInt64 else den a env >>> k.toUInt64
 def denA : E → List UInt64 → List UInt64
   | .acons e r, env => den e env :: denA r env
   | _, _ => []

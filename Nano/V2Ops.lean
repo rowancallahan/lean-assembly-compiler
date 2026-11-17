@@ -44,6 +44,65 @@ theorem lts_bits (a b : BitVec 64) :
   all_goals first | omega | (apply Bool.eq_iff_iff.mpr; simp only [Bool.not_eq_true', decide_eq_true_eq,
     decide_eq_false_iff_not]; omega)
 
+theorem nat_add_or_and : ∀ (a b : Nat), a + b = (a ||| b) + (a &&& b) := by
+  intro a
+  induction a using Nat.strongRecOn with
+  | ind a ih =>
+    intro b
+    rcases Nat.eq_zero_or_pos a with rfl | ha
+    · simp
+    · have h1 := ih (a / 2) (Nat.div_lt_self ha (by decide)) (b / 2)
+      have e1 : a ||| b = 2 * ((a ||| b) / 2) + (a ||| b) % 2 := (Nat.div_add_mod _ 2).symm
+      have e2 : a &&& b = 2 * ((a &&& b) / 2) + (a &&& b) % 2 := (Nat.div_add_mod _ 2).symm
+      rw [Nat.or_div_two] at e1; rw [Nat.and_div_two] at e2
+      have ma := Nat.mod_two_eq_zero_or_one a; have mb := Nat.mod_two_eq_zero_or_one b
+      have mo : (a ||| b) % 2 = 1 ↔ a % 2 = 1 ∨ b % 2 = 1 := Nat.or_mod_two_eq_one
+      have mn : (a &&& b) % 2 = 1 ↔ a % 2 = 1 ∧ b % 2 = 1 := Nat.and_mod_two_eq_one
+      have mo2 := Nat.mod_two_eq_zero_or_one (a ||| b); have mn2 := Nat.mod_two_eq_zero_or_one (a &&& b)
+      have da := Nat.div_add_mod a 2; have db := Nat.div_add_mod b 2
+      rw [e1, e2]
+      rcases ma with ma | ma <;> rcases mb with mb | mb <;> rcases mo2 with mo2 | mo2 <;> rcases mn2 with mn2 | mn2 <;>
+        simp_all <;> omega
+
+theorem and_eq_add_sub_or (a b : BitVec 64) : a &&& b = (a + b) - (a ||| b) := by
+  apply BitVec.eq_of_toNat_eq
+  simp only [BitVec.toNat_and, BitVec.toNat_sub, BitVec.toNat_add, BitVec.toNat_or]
+  have h := nat_add_or_and a.toNat b.toNat
+  have ha := a.isLt; have hb := b.isLt
+  have h1 : a.toNat ||| b.toNat < 2 ^ 64 := Nat.or_lt_two_pow ha hb
+  have h2 : a.toNat &&& b.toNat ≤ a.toNat := Nat.and_le_left
+  omega
+
+theorem nat_or_xor_and : ∀ (a b : Nat), (a ||| b) = (a ^^^ b) + (a &&& b) := by
+  intro a
+  induction a using Nat.strongRecOn with
+  | ind a ih =>
+    intro b
+    rcases Nat.eq_zero_or_pos a with rfl | ha
+    · simp
+    · have h1 := ih (a / 2) (Nat.div_lt_self ha (by decide)) (b / 2)
+      have e1 : a ||| b = 2 * ((a ||| b) / 2) + (a ||| b) % 2 := (Nat.div_add_mod _ 2).symm
+      have e2 : a &&& b = 2 * ((a &&& b) / 2) + (a &&& b) % 2 := (Nat.div_add_mod _ 2).symm
+      have e3 : a ^^^ b = 2 * ((a ^^^ b) / 2) + (a ^^^ b) % 2 := (Nat.div_add_mod _ 2).symm
+      rw [Nat.or_div_two] at e1; rw [Nat.and_div_two] at e2; rw [Nat.xor_div_two] at e3
+      have ma := Nat.mod_two_eq_zero_or_one a; have mb := Nat.mod_two_eq_zero_or_one b
+      have mo : (a ||| b) % 2 = 1 ↔ a % 2 = 1 ∨ b % 2 = 1 := Nat.or_mod_two_eq_one
+      have mn : (a &&& b) % 2 = 1 ↔ a % 2 = 1 ∧ b % 2 = 1 := Nat.and_mod_two_eq_one
+      have mx : (a ^^^ b) % 2 = 1 ↔ ¬ ((a % 2 = 1) ↔ (b % 2 = 1)) := Nat.xor_mod_two_eq_one
+      have mo2 := Nat.mod_two_eq_zero_or_one (a ||| b); have mn2 := Nat.mod_two_eq_zero_or_one (a &&& b)
+      have mx2 := Nat.mod_two_eq_zero_or_one (a ^^^ b)
+      rw [e1, e2, e3]
+      rcases ma with ma | ma <;> rcases mb with mb | mb <;> rcases mo2 with mo2 | mo2 <;> rcases mn2 with mn2 | mn2 <;>
+        rcases mx2 with mx2 | mx2 <;> simp_all <;> omega
+
+theorem xor_eq_or_sub_and (a b : BitVec 64) : a ^^^ b = (a ||| b) - (a &&& b) := by
+  apply BitVec.eq_of_toNat_eq
+  simp only [BitVec.toNat_xor, BitVec.toNat_sub, BitVec.toNat_and, BitVec.toNat_or]
+  have h := nat_or_xor_and a.toNat b.toNat
+  have ha := a.isLt; have hb := b.isLt
+  have h1 : a.toNat ||| b.toNat < 2 ^ 64 := Nat.or_lt_two_pow ha hb
+  omega
+
 /-! ## the meaning of the stack operations (value stack top first) -/
 
 def _root_.Nano.V2.SOp.run : SOp → List (BitVec 64) → List (BitVec 64)
@@ -52,6 +111,8 @@ def _root_.Nano.V2.SOp.run : SOp → List (BitVec 64) → List (BitVec 64)
   | .bin k, y :: x :: st => opv k x y :: st
   | .lit n, st => n.toBitVec :: st
   | .slide k, x :: st => x :: st.drop k
+  | .bor, y :: x :: st => (x ||| y) :: st
+  | .shl k, x :: st => (x <<< k) :: st
   | _, st => st
 
 def runOps : List SOp → List (BitVec 64) → List (BitVec 64)
@@ -65,6 +126,8 @@ def _root_.Nano.V2.SOp.wf (h : Nat) : SOp → Bool
   | .bin k => decide (2 ≤ h) && (k == 24 || k == 32 || k == 40)
   | .lit _ => true
   | .slide k => decide (k + 1 ≤ h) && decide (k < 128)
+  | .bor => decide (2 ≤ h)
+  | .shl k => decide (1 ≤ h) && decide (k < 64)
 
 def wfOps (h : Nat) : List SOp → Bool
   | [] => true
@@ -150,6 +213,121 @@ theorem shr_ok {s : St} {k : Nat} {rest : List UInt8} {x : BitVec 64} {st : List
   · show _ ≤ (s4.get 2).toNat; rw [r2]; exact hhi
   · show s4.get j = s.get j; exact k4 j a b
 
+/-- `binop 14`: pop `b`, `a`; push `a ||| b` -/
+theorem bor_ok {s : St} {rest : List UInt8}
+    (h : CodeAt P s.pc (Nano.binop 14 ++ rest)) {vals : List (BitVec 64)} {va vb : BitVec 64}
+    (hs : Stk s T (vals ++ [va, vb])) (hT : 8 * (vals.length + 2) ≤ T) (hT2 : T < 2 ^ 64) :
+    ∃ s', Star P s s' ∧ s'.pc = s.pc + 5 ∧ Stk s' T (vals ++ [va ||| vb]) ∧ Kept s s' ∧ CodeAt P s'.pc rest := by
+  obtain ⟨h31, hv, hlo, hal, hhi⟩ := hs
+  simp only [List.length_append, List.length_cons, List.length_nil] at h31 hv hlo
+  obtain ⟨n, hn⟩ : ∃ n, vals.length = n := ⟨_, rfl⟩
+  rw [hn] at h31 hT hlo
+  have hva : rd64 s.m (T - 8 * (n + 1)) = va := by
+    have := hv n (by omega); rw [List.getElem_append_right (by omega)] at this; simpa [hn] using this
+  have hvb : rd64 s.m (T - 8 * (n + 2)) = vb := by
+    have := hv (n + 1) (by omega); rw [List.getElem_append_right (by omega)] at this; simpa [hn] using this
+  simp only [Nano.binop, List.append_assoc] at h
+  generalize ht : T - 8 * (n + 2) = t at h31 hvb
+  obtain ⟨x1, c1⟩ := ld_ok (rd := 6) (k := 0) h (by decide) (by decide) h31 (by omega)
+    (wok_of (by omega) (by omega) (by omega))
+  generalize hs1 : ((({ s with pc := s.pc + 1 } : St)).set 6 (rd64 s.m (t + 8 * 0))) = s1 at x1
+  have p1 : s1.pc = s.pc + 1 := by rw [← hs1]; rfl
+  have g31 : s1.get 31 = BitVec.ofNat 64 t := by rw [← hs1, get_set_ne _ (by decide)]; exact h31
+  have r12 : s1.get 12 = s.get 12 := by rw [← hs1, get_set_ne _ (by decide)]; rfl
+  have r2 : s1.get 2 = s.get 2 := by rw [← hs1, get_set_ne _ (by decide)]; rfl
+  obtain ⟨x2, c2⟩ := ld_ok (s := s1) (rd := 5) (k := 1) (p1 ▸ c1) (by decide) (by decide) g31 (by omega)
+    (wok_of (by rw [r12]; omega) (by rw [r2]; omega) (by omega))
+  generalize hs2 : ((({ s1 with pc := s1.pc + 1 } : St)).set 5 (rd64 s1.m (t + 8 * 1))) = s2 at x2
+  have p2 : s2.pc = s.pc + 2 := by rw [← hs2]; simp [p1]
+  have g31' : s2.get 31 = BitVec.ofNat 64 t := by rw [← hs2, get_set_ne _ (by decide)]; exact g31
+  have r12' : s2.get 12 = s.get 12 := by rw [← hs2, get_set_ne _ (by decide)]; exact r12
+  have r2' : s2.get 2 = s.get 2 := by rw [← hs2, get_set_ne _ (by decide)]; exact r2
+  obtain ⟨x3, c3⟩ := addSp_ok (s := s2) (k := 1) (by rw [p2]; rw [p1] at c2; exact c2) (by decide) g31' (by omega)
+  generalize hs3 : ((({ s2 with pc := s2.pc + 1 } : St)).set 31 (BitVec.ofNat 64 (t + 8 * 1))) = s3 at x3
+  have p3 : s3.pc = s.pc + 3 := by rw [← hs3]; simp [p2]
+  have c3' : CodeAt P s3.pc (Nano.r 14 5 5 6 ++ (Nano.sd 5 31 0 ++ rest)) := by rw [p3]; rw [p2] at c3; exact c3
+  simp only [Nano.r, List.cons_append, List.nil_append] at c3'
+  have x4 := one c3' (s' := ((({ s3 with pc := s3.pc + 1 } : St)).set 5 (s3.get 5 ||| s3.get 6))) rfl
+  have c4 := codeAt_drop c3'
+  generalize hs4 : ((({ s3 with pc := s3.pc + 1 } : St)).set 5 (s3.get 5 ||| s3.get 6)) = s4 at x4
+  have p4 : s4.pc = s.pc + 4 := by rw [← hs4]; simp [p3]
+  have g31'' : s4.get 31 = BitVec.ofNat 64 (t + 8) := by
+    rw [← hs4, get_set_ne _ (by decide)]; show s3.get 31 = _; rw [← hs3]; simp
+  have r12'' : s4.get 12 = s.get 12 := by
+    rw [← hs4, get_set_ne _ (by decide)]; show s3.get 12 = _; rw [← hs3, get_set_ne _ (by decide)]; exact r12'
+  have r2'' : s4.get 2 = s.get 2 := by
+    rw [← hs4, get_set_ne _ (by decide)]; show s3.get 2 = _; rw [← hs3, get_set_ne _ (by decide)]; exact r2'
+  obtain ⟨x5, c5⟩ := sd0_ok (s := s4) (by rw [p4]; rw [p3] at c4; exact c4) g31'' (by omega)
+    (wok_of (by rw [r12'']; omega) (by rw [r2'']; omega) (by omega))
+  have m4 : s4.m = s.m := by rw [← hs4, ← hs3, ← hs2, ← hs1]; rfl
+  have v5 : s4.get 5 = va ||| vb := by
+    rw [← hs4]; simp only [get_set_same _ (show (5 : Nat) ≠ 0 by decide)]
+    have e5 : s3.get 5 = va := by
+      rw [← hs3, get_set_ne _ (by decide)]; show s2.get 5 = _
+      rw [← hs2]; simp only [get_set_same _ (show (5 : Nat) ≠ 0 by decide)]
+      rw [show s1.m = s.m by rw [← hs1]; rfl, ← hva]; congr 1; omega
+    have e6 : s3.get 6 = vb := by
+      rw [← hs3, get_set_ne _ (by decide)]; show s2.get 6 = _
+      rw [← hs2, get_set_ne _ (by decide)]; show s1.get 6 = _
+      rw [← hs1]; simp only [get_set_same _ (show (6 : Nat) ≠ 0 by decide)]; rw [← hvb]; congr 1
+    rw [e5, e6]
+  refine ⟨_, x1.trans (x2.trans (x3.trans (x4.trans x5))), by simp [p4], ⟨?_, fun j hj => ?_, ?_, hal, ?_⟩,
+    fun j a b c => ?_, ?_⟩
+  · show s4.get 31 = _; rw [g31'']; congr 1; simp; omega
+  · simp only [List.length_append, List.length_singleton] at hj
+    show rd64 (wr64 s4.m (t + 8) (s4.get 5)) _ = _
+    by_cases hjn : j = n
+    · subst hjn
+      rw [show T - 8 * (j + 1) = t + 8 by omega, rd64_wr64_same, v5]; simp [hn]
+    · rw [rd64_wr64_out _ _ _ _ (by omega), m4, List.getElem_append_left (by omega)]
+      have := hv j (by omega); rwa [List.getElem_append_left (by omega)] at this
+  · show (s4.get 12).toNat + _ ≤ _; rw [r12'']; simp; omega
+  · show _ ≤ (s4.get 2).toNat; rw [r2'']; exact hhi
+  · show s4.get j = s.get j
+    rw [← hs4, ← hs3, ← hs2, ← hs1]; simp [St.get, St.set, a, b, c]
+  · show CodeAt P (s4.pc + 1) rest; rw [p4]; rw [p4] at c5; exact c5
+
+/-- `top := top <<< k` -/
+theorem shl_ok {s : St} {k : Nat} {rest : List UInt8} {x : BitVec 64} {st : List (BitVec 64)}
+    (h : CodeAt P s.pc ((SOp.shl k).code ++ rest)) (hk : k < 64) (hs : Stk s T (x :: st).reverse) (hT2 : T < 2 ^ 64) :
+    ∃ s', Star P s s' ∧ Stk s' T ((x <<< k) :: st).reverse ∧ Kept s s' ∧ CodeAt P s'.pc rest := by
+  obtain ⟨h31, hv, hlo, hal, hhi⟩ := hs
+  simp only [List.reverse_cons, List.length_append, List.length_reverse, List.length_singleton] at h31 hv hlo
+  have hx : rd64 s.m (T - 8 * (st.length + 1)) = x := by
+    have := hv st.length (by simp); simpa using this
+  simp only [SOp.code, List.append_assoc] at h
+  obtain ⟨x1, c1⟩ := ld_ok (rd := 5) (k := 0) h (by decide) (by decide) h31 (by omega)
+    (wok_of (by omega) (by omega) (by omega))
+  generalize hs1 : ((({ s with pc := s.pc + 1 } : St)).set 5 (rd64 s.m (T - 8 * (st.length + 1) + 8 * 0))) = s1 at x1
+  have p1 : s1.pc = s.pc + 1 := by rw [← hs1]; rfl
+  have v1 : s1.get 5 = x := by rw [← hs1, get_set_same _ (by decide)]; simpa using hx
+  simp only [Nano.r, List.cons_append, List.nil_append] at c1
+  rw [← p1] at c1
+  have x2 := one c1 (s' := (({ s1 with pc := s1.pc + 1 } : St).set 5 (s1.get 5 <<< k))) (by
+    show Out.next _ = _; simp only [UInt8.reduceToNat]; rw [toU8 (by omega)])
+  generalize hs2 : (({ s1 with pc := s1.pc + 1 } : St).set 5 (s1.get 5 <<< k)) = s2 at x2
+  have c2 := codeAt_drop c1; rw [show s1.pc + 1 = s2.pc by rw [← hs2]; rfl] at c2
+  have k2 : ∀ j, j ≠ 5 → s2.get j = s.get j := fun j a => by
+    rw [← hs2, get_set_ne _ a]; show s1.get j = _; rw [← hs1, get_set_ne _ a]; rfl
+  have v2 : s2.get 5 = x <<< k := by rw [← hs2, get_set_same _ (by decide), v1]
+  have m2 : s2.m = s.m := by rw [← hs2, ← hs1]; rfl
+  have g31 : s2.get 31 = BitVec.ofNat 64 (T - 8 * (st.length + 1)) := by rw [k2 31 (by decide)]; exact h31
+  have r12 : s2.get 12 = s.get 12 := k2 12 (by decide)
+  have r2 : s2.get 2 = s.get 2 := k2 2 (by decide)
+  obtain ⟨x3, c3⟩ := sd0_ok (s := s2) c2 g31 (by omega) (wok_of (by rw [r12]; omega) (by rw [r2]; omega) (by omega))
+  refine ⟨_, x1.trans (x2.trans x3), ⟨?_, fun j hj => ?_, ?_, hal, ?_⟩, fun j a b c => ?_, c3⟩
+  · show s2.get 31 = _; rw [g31]; simp
+  · simp only [List.reverse_cons, List.length_append, List.length_reverse, List.length_singleton] at hj
+    show rd64 (wr64 s2.m _ (s2.get 5)) _ = _
+    by_cases hjn : j = st.length
+    · subst hjn; rw [rd64_wr64_same, v2]; simp
+    · rw [rd64_wr64_out _ _ _ _ (by omega), m2]
+      have := hv j (by omega); simp only [List.reverse_cons] at this ⊢
+      rwa [List.getElem_append_left (by simp; omega)] at this ⊢
+  · show (s2.get 12).toNat + _ ≤ _; rw [r12]; simp; omega
+  · show _ ≤ (s2.get 2).toNat; rw [r2]; exact hhi
+  · show s2.get j = s.get j; exact k2 j a
+
 /-- **one stack operation** (room for its push) -/
 theorem op_ok (hT2 : T < 2 ^ 64) (hW : W < 2 ^ 64) (o : SOp) (st : List (BitVec 64)) (s : St) (rest : List UInt8)
     (h : CodeAt P s.pc (o.code ++ rest)) (hs : Stk s T st.reverse) (h12 : s.get 12 = BitVec.ofNat 64 W)
@@ -193,6 +371,18 @@ theorem op_ok (hT2 : T < 2 ^ 64) (hW : W < 2 ^ 64) (o : SOp) (st : List (BitVec 
       rw [e] at hs
       obtain ⟨s', x', st', k', c'⟩ := tail_ok h hs (by simp; omega) hw.2 (by simp; omega) hT2
       exact ⟨s', x', by simpa [SOp.run] using st', k', c'⟩
+  | bor =>
+    simp only [SOp.wf, decide_eq_true_eq] at hw
+    match st, hs, hw with
+    | y :: x :: st, hs, hw =>
+      simp only [SOp.code] at h
+      have hs' : Stk s T (st.reverse ++ [x, y]) := by simpa using hs
+      obtain ⟨s', x', -, st', k', c'⟩ := bor_ok h hs' (by simp at hlo ⊢; omega) hT2
+      exact ⟨s', x', by simpa [SOp.run] using st', k', c'⟩
+  | shl k =>
+    simp only [SOp.wf, Bool.and_eq_true, decide_eq_true_eq] at hw
+    match st, hs, hw with
+    | x :: st, hs, hw => exact shl_ok h hw.2 hs hT2
 
 /-- **a list of stack operations** (room for its peak) -/
 theorem ops_ok (hT2 : T < 2 ^ 64) (hW : W < 2 ^ 64) : ∀ (ops : List SOp) (st : List (BitVec 64)) (s : St)
@@ -251,6 +441,8 @@ theorem ops_fail (hT2 : T < 2 ^ 64) (hW8 : 8 ≤ W) (hW : W < 2 ^ 64) : ∀ (ops
       | shr k => simp only [SOp.peak] at h1; omega
       | bin k => simp only [SOp.peak] at h1; omega
       | slide k => simp only [SOp.peak] at h1; omega
+      | bor => simp only [SOp.peak] at h1; omega
+      | shl k => simp only [SOp.peak] at h1; omega
 
 end ops
 
@@ -314,5 +506,36 @@ theorem wf_ltu (h : Nat) (hh : 2 ≤ h) : wfOps h ltuOps = true ∧ peakOps h lt
   obtain ⟨k, rfl⟩ : ∃ k, h = k + 2 := ⟨h - 2, by omega⟩
   simp [wfOps, ltuOps, SOp.wf, SOp.after, peakOps, SOp.peak]
   try omega
+
+theorem and_run (a b : BitVec 64) (st : List (BitVec 64)) : runOps andOps (b :: a :: st) = (a &&& b) :: st := by
+  rw [and_eq_add_sub_or]
+  simp only [andOps, runOps, SOp.run, opv24, opv32, List.getD_cons_zero, List.getD_cons_succ, List.drop_succ_cons,
+    List.drop_zero]
+
+theorem xor_run (a b : BitVec 64) (st : List (BitVec 64)) : runOps xorOps (b :: a :: st) = (a ^^^ b) :: st := by
+  have e : runOps [.dup 1, .dup 1, .bor, .dup 2, .dup 2] (b :: a :: st) = b :: a :: (a ||| b) :: b :: a :: st := by
+    simp only [runOps, SOp.run, List.getD_cons_zero, List.getD_cons_succ]
+  rw [xorOps, runOps_append, runOps_append, e, and_run, xor_eq_or_sub_and]
+  simp only [runOps, SOp.run, opv32, List.drop_succ_cons, List.drop_zero]
+
+theorem or_run (a b : BitVec 64) (st : List (BitVec 64)) : runOps [.bor] (b :: a :: st) = (a ||| b) :: st := rfl
+
+theorem bit_run (o : BOp) (a b : UInt64) (st : List (BitVec 64)) :
+    runOps (bitOps o) (b.toBitVec :: a.toBitVec :: st) = (o.app a b).toBitVec :: st := by
+  cases o
+  · rw [bitOps, and_run]; rfl
+  · rw [bitOps, or_run]; rfl
+  · rw [bitOps, xor_run]; rfl
+
+theorem sh_run (l : Bool) (k : Nat) (a : UInt64) (st : List (BitVec 64)) :
+    runOps [shOp l (k % 64)] (a.toBitVec :: st) =
+      (if l then a <<< k.toUInt64 else a >>> k.toUInt64).toBitVec :: st := by
+  have hm : (k.toUInt64.toBitVec % 64#64).toNat = k % 64 := by
+    rw [BitVec.toNat_umod]; simp [Nat.toUInt64]
+  cases l
+  · simp only [shOp, runOps, SOp.run, Bool.false_eq_true, if_false]
+    rw [UInt64.toBitVec_shiftRight]; congr 2; exact hm.symm
+  · simp only [shOp, runOps, SOp.run, if_true]
+    rw [UInt64.toBitVec_shiftLeft]; congr 2; exact hm.symm
 
 end Nano.V2R

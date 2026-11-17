@@ -17,6 +17,8 @@ def ScE : E → Nat → Bool
   | .let_ v b, n => ScE v n && ScE b (n + 1)
   | .call b as, n => ScA as n && ScE b (Nano.V2.cnt as) && decide (Nano.V2.cnt as < 128)
   | .ite _ a b t e, n => ScE a n && ScE b n && ScE t n && ScE e n
+  | .bit _ a b, n => ScE a n && ScE b n
+  | .sh _ _ a, n => ScE a n
   | .anil, _ => false
   | .acons _ _, _ => false
 def ScA : E → Nat → Bool
@@ -37,6 +39,9 @@ theorem depE_ge : ∀ (e : E) (d n : Nat), ScE e n = true → d + 1 ≤ Nano.V2.
     simp only [ScE, Bool.and_eq_true] at h
     have := depE_ge t d n h.1.2; have := depE_ge e d n h.2
     simp only [Nano.V2.depE]; split <;> omega
+  | .bit _ a b, d, n, h => by
+    simp only [ScE, Bool.and_eq_true] at h; have := depE_ge a d n h.1; simp only [Nano.V2.depE]; omega
+  | .sh _ _ a, d, n, h => by simp only [ScE] at h; have := depE_ge a d n h; simp only [Nano.V2.depE]; omega
   | .anil, _, _, h => by simp [ScE] at h
   | .acons _ _, _, _, h => by simp [ScE] at h
 
@@ -44,6 +49,7 @@ theorem genA_cnt : ∀ (as : E) (env : List UInt64), Nano.V2.cnt as = (Nano.V2.d
   | .acons _ r, env => by simp [Nano.V2.cnt, Nano.V2.denA, genA_cnt r env]
   | .num _, _ => rfl | .var _, _ => rfl | .add _ _, _ => rfl | .sub _ _, _ => rfl | .mul _ _, _ => rfl
   | .let_ _ _, _ => rfl | .call _ _, _ => rfl | .anil, _ => rfl | .ite _ _ _ _ _, _ => rfl
+  | .bit _ _ _, _ => rfl | .sh _ _ _, _ => rfl
 
 variable {P : List UInt8} {T W : Nat}
 
@@ -55,6 +61,14 @@ theorem wf_cmp (k : Cmp) (h : Nat) (hh : 2 ≤ h) : wfOps h (cmpOps k) = true �
 theorem wf_sel (h : Nat) (hh : 3 ≤ h) : wfOps h selOps = true ∧ peakOps h selOps = h + 1 := by
   obtain ⟨j, rfl⟩ : ∃ j, h = j + 3 := ⟨h - 3, by omega⟩
   simp [selOps, wfOps, SOp.wf, SOp.after, peakOps, SOp.peak]
+
+theorem wf_bit (o : BOp) (h : Nat) (hh : 2 ≤ h) : wfOps h (bitOps o) = true ∧ peakOps h (bitOps o) ≤ h + 7 := by
+  obtain ⟨j, rfl⟩ : ∃ j, h = j + 2 := ⟨h - 2, by omega⟩
+  cases o <;> simp [bitOps, andOps, xorOps, wfOps, SOp.wf, SOp.after, peakOps, SOp.peak] <;> (try omega)
+
+theorem wf_sh (l : Bool) (k : Nat) (h : Nat) (hh : 1 ≤ h) : wfOps h [shOp l (k % 64)] = true ∧ peakOps h [shOp l (k % 64)] = h := by
+  have := Nat.mod_lt k (show 64 > 0 by decide)
+  cases l <;> simp [shOp, wfOps, SOp.wf, SOp.after, peakOps, SOp.peak] <;> omega
 
 /-- an expression piece: with room, its records push `v` -/
 def Piece (P : List UInt8) (T W : Nat) (code : List UInt8) (vals : List (BitVec 64)) (v : BitVec 64) : Prop :=
@@ -93,6 +107,42 @@ theorem ite_node (hT2 : T < 2 ^ 64) (hW : W < 2 ^ 64) {X A B Y : List UInt8} {op
   rw [sel_run] at st6
   exact ⟨s6, x1.trans (x2.trans (x3.trans (x4.trans (x5.trans x6)))), by simpa using st6,
     k1.trans (k2.trans (k3.trans (k4.trans (k5.trans k6)))), c6⟩
+
+/-- two operands, then stack operations -/
+theorem ops_node (hT2 : T < 2 ^ 64) (hW : W < 2 ^ 64) {A B : List UInt8} {ops : List SOp} {vals : List (BitVec 64)}
+    {va vb r : BitVec 64} (hA : Piece P T W A vals va) (hB : Piece P T W B (vals ++ [va]) vb)
+    (hops : runOps ops (vb :: va :: vals.reverse) = r :: vals.reverse)
+    (hwf : wfOps (vals.length + 2) ops = true) (hfit : W + 8 * peakOps (vals.length + 2) ops ≤ T)
+    {s : St} {rest : List UInt8} (h : CodeAt P s.pc (A ++ B ++ opsCode ops ++ rest)) (hs : Stk s T vals)
+    (h12 : s.get 12 = BitVec.ofNat 64 W) :
+    ∃ s', Star P s s' ∧ Stk s' T (vals ++ [r]) ∧ Kept s s' ∧ CodeAt P s'.pc rest := by
+  simp only [List.append_assoc] at h
+  obtain ⟨s1, x1, st1, k1, c1⟩ := hA s _ h hs h12
+  obtain ⟨s2, x2, st2, k2, c2⟩ := hB s1 _ c1 st1 (by rw [k1 12 (by decide) (by decide) (by decide)]; exact h12)
+  have e2 : vals ++ [va] ++ [vb] = (vb :: va :: vals.reverse).reverse := by simp
+  rw [e2] at st2
+  obtain ⟨s3, x3, st3, k3, c3⟩ := ops_ok hT2 hW ops _ s2 _ c2 st2
+    (by rw [k2 12 (by decide) (by decide) (by decide), k1 12 (by decide) (by decide) (by decide)]; exact h12)
+    (by simpa using hwf) (by simpa using hfit)
+  rw [hops] at st3
+  exact ⟨s3, x1.trans (x2.trans x3), by simpa using st3, k1.trans (k2.trans k3), c3⟩
+
+/-- one operand, then stack operations -/
+theorem ops1_node (hT2 : T < 2 ^ 64) (hW : W < 2 ^ 64) {A : List UInt8} {ops : List SOp} {vals : List (BitVec 64)}
+    {va r : BitVec 64} (hA : Piece P T W A vals va)
+    (hops : runOps ops (va :: vals.reverse) = r :: vals.reverse)
+    (hwf : wfOps (vals.length + 1) ops = true) (hfit : W + 8 * peakOps (vals.length + 1) ops ≤ T)
+    {s : St} {rest : List UInt8} (h : CodeAt P s.pc (A ++ opsCode ops ++ rest)) (hs : Stk s T vals)
+    (h12 : s.get 12 = BitVec.ofNat 64 W) :
+    ∃ s', Star P s s' ∧ Stk s' T (vals ++ [r]) ∧ Kept s s' ∧ CodeAt P s'.pc rest := by
+  simp only [List.append_assoc] at h
+  obtain ⟨s1, x1, st1, k1, c1⟩ := hA s _ h hs h12
+  have e1 : vals ++ [va] = (va :: vals.reverse).reverse := by simp
+  rw [e1] at st1
+  obtain ⟨s2, x2, st2, k2, c2⟩ := ops_ok hT2 hW ops _ s1 _ c1 st1
+    (by rw [k1 12 (by decide) (by decide) (by decide)]; exact h12) (by simpa using hwf) (by simpa using hfit)
+  rw [hops] at st2
+  exact ⟨s2, x1.trans x2, by simpa using st2, k1.trans k2, c2⟩
 
 theorem toBV_add (a b : UInt64) : (a + b).toBitVec = a.toBitVec + b.toBitVec := rfl
 
@@ -326,6 +376,30 @@ theorem genE_ok (hT2 : T < 2 ^ 64) : ∀ (e : E) (sc : List Nat) (env : List UIn
       refine ⟨s', x, ?_, kk, c⟩
       have := ite_fin' (test_les (Nano.V2.den a env) (Nano.V2.den b env)) (Nano.V2.den t env) (Nano.V2.den e env)
       simp only [Nano.V2.den]; rw [← this]; exact st
+  | .bit o a b, sc, env, vals, s, rest, h, hsc, hok, hs, h12, hW, hd => by
+    simp only [ScE, Bool.and_eq_true] at hsc; simp only [Nano.V2.depE] at hW hd
+    have hW64 : W < 2 ^ 64 := by have := hs.lo; rw [h12] at this; simp at this; omega
+    have := depE_ge b (vals.length + 1) _ hsc.2
+    have hw := wf_bit o (vals.length + 2) (by omega)
+    simp only [Nano.V2.genE] at h
+    obtain ⟨s', x, st, kk, c⟩ := ops_node hT2 hW64
+      (fun s rest h hs h12 => genE_ok hT2 a sc env vals s rest h hsc.1 hok hs h12 (by omega) (by omega))
+      (fun s rest h hs h12 => by
+        have := genE_ok hT2 b sc env (vals ++ [(Nano.V2.den a env).toBitVec]) s rest (by simpa using h) hsc.2
+          (hok.mono _) hs h12 (by simp; omega) (by simp; omega)
+        simpa using this)
+      (bit_run o _ _ _) hw.1 (by omega) h hs h12
+    exact ⟨s', x, by simpa [Nano.V2.den] using st, kk, c⟩
+  | .sh l k a, sc, env, vals, s, rest, h, hsc, hok, hs, h12, hW, hd => by
+    simp only [ScE] at hsc; simp only [Nano.V2.depE] at hW hd
+    have hW64 : W < 2 ^ 64 := by have := hs.lo; rw [h12] at this; simp at this; omega
+    have := depE_ge a vals.length _ hsc
+    have hw := wf_sh l k (vals.length + 1) (by omega)
+    simp only [Nano.V2.genE] at h
+    obtain ⟨s', x, st, kk, c⟩ := ops1_node hT2 hW64
+      (fun s rest h hs h12 => genE_ok hT2 a sc env vals s rest h hsc hok hs h12 (by omega) (by omega))
+      (sh_run l k _ _) hw.1 (by rw [hw.2]; omega) h hs h12
+    exact ⟨s', x, by simpa [Nano.V2.den] using st, kk, c⟩
   | .anil, _, _, _, _, _, _, hsc, _, _, _, _, _ => by simp [ScE] at hsc
   | .acons _ _, _, _, _, _, _, _, hsc, _, _, _, _, _ => by simp [ScE] at hsc
 /-- an argument list pushes its values -/
@@ -360,6 +434,10 @@ theorem genA_ok (hT2 : T < 2 ^ 64) : ∀ (as : E) (sc : List Nat) (env : List UI
   | .anil, _, _, vals, s, rest, h, _, _, hs, _, _, _ => ⟨s, .refl _, by simpa [Nano.V2.denA] using hs, fun _ _ _ _ => rfl,
       by simpa [Nano.V2.genA] using h, rfl⟩
   | .ite _ _ _ _ _, _, _, vals, s, rest, h, _, _, hs, _, _, _ => ⟨s, .refl _, by simpa [Nano.V2.denA] using hs,
+      fun _ _ _ _ => rfl, by simpa [Nano.V2.genA] using h, rfl⟩
+  | .bit _ _ _, _, _, vals, s, rest, h, _, _, hs, _, _, _ => ⟨s, .refl _, by simpa [Nano.V2.denA] using hs,
+      fun _ _ _ _ => rfl, by simpa [Nano.V2.genA] using h, rfl⟩
+  | .sh _ _ _, _, _, vals, s, rest, h, _, _, hs, _, _, _ => ⟨s, .refl _, by simpa [Nano.V2.denA] using hs,
       fun _ _ _ _ => rfl, by simpa [Nano.V2.genA] using h, rfl⟩
 end
 

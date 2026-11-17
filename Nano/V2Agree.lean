@@ -237,4 +237,60 @@ theorem agree : ∀ x0 x1 : UInt64, (nanoElab src.toUTF8.toList).bind (·.eval [
   all_goals repeat' (first | rfl | decide | (split <;> simp_all [u_inj]))
 end P19
 
+namespace P20
+def f (x y : UInt64) : UInt64 := x &&& y ||| x ^^^ y
+def src : String := "def f (x y : UInt64) : UInt64 := x &&& y ||| x ^^^ y"
+theorem bytes_eq : src.toUTF8.toList = src.toList.map (fun c => c.toNat.toUInt8) := by decide +kernel
+theorem elabEq : nanoElab (src.toList.map (fun c => c.toNat.toUInt8)) = some (2, Nano.V2.E.bit (Nano.V2.BOp.or) (Nano.V2.E.bit (Nano.V2.BOp.and) (Nano.V2.E.var 1) (Nano.V2.E.var 0)) (Nano.V2.E.bit (Nano.V2.BOp.xor) (Nano.V2.E.var 1) (Nano.V2.E.var 0))) := by decide +kernel
+theorem agree : ∀ x0 x1 : UInt64, (nanoElab src.toUTF8.toList).bind (·.eval [x0, x1]) = some (f x0 x1) := by
+  intro x0 x1; rw [bytes_eq, elabEq]
+  simp [Prog.eval, den, denA, Cmp.test, u_inj, apply_ite Int64.toUInt64, f]
+  all_goals repeat' (first | rfl | decide | (split <;> simp_all [u_inj]))
+end P20
+
+namespace P21
+def f (x y : UInt64) : UInt64 := x <<< 3 >>> 2 &&& y
+def src : String := "def f (x y : UInt64) : UInt64 := x <<< 3 >>> 2 &&& y"
+theorem bytes_eq : src.toUTF8.toList = src.toList.map (fun c => c.toNat.toUInt8) := by decide +kernel
+theorem elabEq : nanoElab (src.toList.map (fun c => c.toNat.toUInt8)) = some (2, Nano.V2.E.bit (Nano.V2.BOp.and) (Nano.V2.E.sh false 2 (Nano.V2.E.sh true 3 (Nano.V2.E.var 1))) (Nano.V2.E.var 0)) := by decide +kernel
+theorem agree : ∀ x0 x1 : UInt64, (nanoElab src.toUTF8.toList).bind (·.eval [x0, x1]) = some (f x0 x1) := by
+  intro x0 x1; rw [bytes_eq, elabEq]
+  simp [Prog.eval, den, denA, Cmp.test, u_inj, apply_ite Int64.toUInt64, f]
+  all_goals repeat' (first | rfl | decide | (split <;> simp_all [u_inj]))
+end P21
+
+namespace P22
+def b (o c : UInt64) : UInt64 := (o &&& 7) <<< 4 ||| (c >>> 1)
+def f (x y : UInt64) : UInt64 := b x y ^^^ (x <<< 63)
+def src : String := "def b (o c : UInt64) : UInt64 := (o &&& 7) <<< 4 ||| (c >>> 1)\ndef f (x y : UInt64) : UInt64 := b x y ^^^ (x <<< 63)"
+theorem bytes_eq : src.toUTF8.toList = src.toList.map (fun c => c.toNat.toUInt8) := by decide +kernel
+theorem elabEq : nanoElab (src.toList.map (fun c => c.toNat.toUInt8)) = some (2, Nano.V2.E.bit (Nano.V2.BOp.xor) (Nano.V2.E.call (Nano.V2.E.bit (Nano.V2.BOp.or) (Nano.V2.E.sh true 4 (Nano.V2.E.bit (Nano.V2.BOp.and) (Nano.V2.E.var 1) (Nano.V2.E.num 7))) (Nano.V2.E.sh false 1 (Nano.V2.E.var 0))) (Nano.V2.E.acons (Nano.V2.E.var 1) (Nano.V2.E.acons (Nano.V2.E.var 0) (Nano.V2.E.anil)))) (Nano.V2.E.sh true 63 (Nano.V2.E.var 1))) := by decide +kernel
+theorem agree : ∀ x0 x1 : UInt64, (nanoElab src.toUTF8.toList).bind (·.eval [x0, x1]) = some (f x0 x1) := by
+  intro x0 x1; rw [bytes_eq, elabEq]
+  simp [Prog.eval, den, denA, Cmp.test, u_inj, apply_ite Int64.toUInt64, b, f]
+  all_goals repeat' (first | rfl | decide | (split <;> simp_all [u_inj]))
+end P22
+
+namespace P23
+def f (x : UInt64) : UInt64 := if x &&& 1 == x - x then x >>> 1 else x <<< 1 ||| x
+def src : String := "def f (x : UInt64) : UInt64 := if x &&& 1 == x - x then x >>> 1 else x <<< 1 ||| x"
+theorem bytes_eq : src.toUTF8.toList = src.toList.map (fun c => c.toNat.toUInt8) := by decide +kernel
+theorem elabEq : nanoElab (src.toList.map (fun c => c.toNat.toUInt8)) = some (1, Nano.V2.E.ite (Nano.V2.Cmp.eq) (Nano.V2.E.bit (Nano.V2.BOp.and) (Nano.V2.E.var 0) (Nano.V2.E.num 1)) (Nano.V2.E.sub (Nano.V2.E.var 0) (Nano.V2.E.var 0)) (Nano.V2.E.sh false 1 (Nano.V2.E.var 0)) (Nano.V2.E.bit (Nano.V2.BOp.or) (Nano.V2.E.sh true 1 (Nano.V2.E.var 0)) (Nano.V2.E.var 0))) := by decide +kernel
+theorem agree : ∀ x0 : UInt64, (nanoElab src.toUTF8.toList).bind (·.eval [x0]) = some (f x0) := by
+  intro x0; rw [bytes_eq, elabEq]
+  simp [Prog.eval, den, denA, Cmp.test, u_inj, apply_ite Int64.toUInt64, f]
+  all_goals repeat' (first | rfl | decide | (split <;> simp_all [u_inj]))
+end P23
+
+namespace P24
+def f (x y : UInt64) : UInt64 := x + y &&& x - y
+def src : String := "def f (x y : UInt64) : UInt64 := x + y &&& x - y"
+theorem bytes_eq : src.toUTF8.toList = src.toList.map (fun c => c.toNat.toUInt8) := by decide +kernel
+theorem elabEq : nanoElab (src.toList.map (fun c => c.toNat.toUInt8)) = some (2, Nano.V2.E.bit (Nano.V2.BOp.and) (Nano.V2.E.add (Nano.V2.E.var 1) (Nano.V2.E.var 0)) (Nano.V2.E.sub (Nano.V2.E.var 1) (Nano.V2.E.var 0))) := by decide +kernel
+theorem agree : ∀ x0 x1 : UInt64, (nanoElab src.toUTF8.toList).bind (·.eval [x0, x1]) = some (f x0 x1) := by
+  intro x0 x1; rw [bytes_eq, elabEq]
+  simp [Prog.eval, den, denA, Cmp.test, u_inj, apply_ite Int64.toUInt64, f]
+  all_goals repeat' (first | rfl | decide | (split <;> simp_all [u_inj]))
+end P24
+
 end NanoV2Agree
