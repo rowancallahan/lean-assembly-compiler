@@ -156,3 +156,27 @@
 * 09:40. SUPERSEDED: nano-parse-s3's S3 inliner `Nano.IS.inlS3_implements` holds for every input (no fits
   condition). DECISION (main session's priority correction): P/Q/W kept as files, not used; this box now compiles the
   LEXER (vB/eB) through S3.
+* 10:00–11:40. LEXER ON S3 (main session's priority correction). DECISION: instead of the generated machine `lx`
+  (one huge if-tree: its S3 certificate alone > 5 min; halves `vB`/`eB` > 5 min each), compile the SPECIFICATION
+  lexer in S3 form, together with parser stage 2a: `Nano.LS.lexA = encT ∘ lexT` (Nano/LexS3.lean: `lexS`, `spanS`,
+  `wordTokS`, keyword matchers, `uniC` over type codes), bridge `Nano.LS.lexA_eq : lexA xs = stage2a (lexB xs)` on every
+  input (via `lexB_eq`; standard axioms). This replaces THREE stages (vB, eB, 2a); stage 2a needs no separate box.
+  S3 front-end lessons (each found by timing every certificate separately, others `sorry`, probe only):
+  (1) `w == [list literal]` → certificate search fails (byte-by-byte matcher functions instead);
+  (2) an inline `match` returning `Bool` inside an `if` → the search cannot close `false = true` (helper `nextW`);
+  (3) overlapping patterns over `Tok` (13 constructors) in `uniTy` → the search hangs (map tokens to word codes, then
+      a loop over `List UInt64`);
+  (4) `if t == c then f t …` → the search cannot use `t = c` (write `f c`);
+  (5) `le8`'s byte extraction needs the normal form `le8_byte` (local `s3_norm` attribute in the compile file).
+  RESULT: `s3_compileF LexA := lexA`: 63 s wall (`Nano/LexS3Self.lean`), certificates all checked, `computes` ⊆
+  {propext, Classical.choice, Quot.sound}; stage file `Nano/LexS3Stage.lean` (as InlS3Stage): `lexA_implements`.
+* Composition `Nano.selfHosted` (Nano/SelfHostFinal.lean): FIVE stages `lexA`, `stage2b` (S3), inliner (S3), `mexp`
+  (listCS), `asm`; `selfHosted_lexA` (the `selfHosted_parse` proof with `stage2b_stage2a`); domain `Domain K` =
+  `SizedL K …` (elaborator accepts; every intermediate result and work space ≤ K, ≤ 2^20; arities < 256; ≤ 65536 defs)
+  ∧ `LeanLimits` (moved to Nano/LeanLimits.lean).
+* DECISION (check.sh must build all of `Nano/`): archived to Testing/nano/archive/ (README there): close B's
+  `InlPSelf` (cannot compile), the listCS lexer halves + `SelfHostedA` + `SelfHostS3` (superseded), my P/Q/W inliner.
+  `axioms_nano-parse-s3.lean` printed theorems that do not exist (`stage2S3_implements`, the old composition): now the
+  2b / inliner stage theorems; `axioms_nano-final.lean` added to check.sh's loop.
+* `Nano/ParseS3BStage.lean` (kernel literal checks of 2b) was OOM-killed twice on this 15 GB box (lake, alone):
+  `set_option Elab.async false` added (sequential theorems).

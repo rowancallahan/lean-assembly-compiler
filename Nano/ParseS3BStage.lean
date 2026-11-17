@@ -4,6 +4,8 @@ kernel-checked on literals (`irLit%`, `layLit%`: the allocated program and the l
 checked by the kernel; see Nano/S3Stage.lean). -/
 import Nano.ParseS3BSelf
 
+set_option Elab.async false
+
 namespace Nano.PS
 open Proven Proven.S3 Proven.Ir Proven.Mach.Riscv Nano.S3Stage
 
