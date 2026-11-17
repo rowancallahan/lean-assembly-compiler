@@ -298,11 +298,12 @@ theorem done_ok {Q : Prog Nat} {L : Lay} {qs : Nat} (hK : Code C Q L qs) {st : S
       obtain ⟨rs, hin3⟩ := hK.stub
       have hfb := hR.fal; simp only [fa_F0] at hfb
       refine T.toCore.runsTo_trans (Ctx.ret_ok (C := C.fa F.slots fb sv M) (rest := []) hA hR hv7 hvok
-        (by simpa using hin) (by rw [fa_sv, hsv]; exact retOK_at hin3)) fun s1 ⟨hpc1, hP1, hab1, _⟩ => ?_
+        (by simpa using hin) (by rw [fa_sv, hsv]; exact retOK_at hin3)) fun s1 ⟨hpc1, hP1, hab1, hv1⟩ => ?_
       rw [fa_sv, hsv] at hpc1
       have hP1' := Pre.unfa hP1
       simp only [fa_F0, fa_nS] at hP1'
-      have hin3' : InW C.W qs (T.encO (.leaveC 0) ++ (T.encO .leave ++ (T.encO (.w .ret) ++ rs))) := by
+      have hin3' : InW C.W qs (T.encO (.leaveC 0) ++ (T.encO .leave ++ (T.encO (.w (.mov RLen R0)) ++
+          (T.encO (.w .ret) ++ rs)))) := by
         simpa only [Target.stub3, Target.words_cons, Target.words_nil, List.append_nil, List.append_assoc] using hin3
       have hA1 : C.AtQ s1 qs := ⟨hP1'.ok, hpc1, hP1'.unch⟩
       have hT := C.T0_le; have hTa := C.T0_al; obtain ⟨hw1, hw2⟩ := C.wR; have hlt := T.ramHi_lt
@@ -320,15 +321,32 @@ theorem done_ok {Q : Prog Nat} {L : Lay} {qs : Nat} (hK : Code C Q L qs) {st : S
           rw [hab1 _ (by simp only [fa_F0, fa_nS]; omega) (by simp only [fa_T0]; omega)]; rfl
       refine T.toCore.runsTo_trans (T.f_leave (w := T.fr C.s0) (C.at_of hA2 hin3'.right.left)
         (by rw [hfr2']; exact ⟨by omega, by omega⟩) (by rw [hfr2']; omega) (by rw [hfr2']; exact hgp2))
-        fun s3 ⟨hok3, hk3, hpc3, _, hs3, hm3⟩ => ?_
+        fun s3 ⟨hok3, hk3, hpc3, hfr3, hs3, hm3⟩ => ?_
       have hA3 : C.AtQ s3 (qs + (T.encO (.leaveC 0)).length + (T.encO .leave).length) :=
         ⟨hok3, by rw [← next_add]; exact hpc3, fun a h1 h2 => by rw [hm3]; exact hA2.2.2 a h1 h2⟩
+      refine T.toCore.runsTo_trans (C.op hA3 hin3'.right.right fun h => T.toCore.runsTo_mono (T.w_mov h)
+        fun s' ⟨d, st, hm⟩ => ⟨d, hm, st⟩) fun s4 ⟨hA4, hk4, hm4, st4⟩ => ?_
       have hra3 : T.ra s3 = T.ra C.s0 := by rw [T.keepF_ra hk3, hra2]
-      refine T.toCore.runsTo_mono (T.w_ret (by rw [hra3]; exact C.retOK) (C.at_of hA3 hin3'.right.right.left))
-        fun s4 ⟨d4, hs4, hm4⟩ => ⟨d4.ok, by rw [← hra3]; exact d4.hpc,
-          fun a h1 h2 => by rw [hm4]; exact hA3.2.2 a h1 h2, .inl ⟨hpk, ?_, ?_⟩⟩
-      · rw [hs4, hs3, hs2]; exact hP1'.rin
-      · intro i b hi; rw [hm4, hm3, hm2]; exact hP1'.out i b hi
+      have hra4 : T.ra s4 = T.ra C.s0 := by rw [T.keep_ra hk4, hra3]
+      refine T.toCore.runsTo_mono (T.w_ret (by rw [hra4]; exact C.retOK) (C.at_of hA4 hin3'.right.right.right.left))
+        fun s5 ⟨d5, hs5, hm5⟩ => ⟨d5.ok, by rw [← hra4]; exact d5.hpc,
+          fun a h1 h2 => by rw [hm5]; exact hA4.2.2 a h1 h2, .inl ⟨hpk, ?_, ?_, ?_, ?_, ?_⟩⟩
+      · rw [hs5, Core.Set1.other T.toCore st4 (by decide), hs3, hs2]; exact hP1'.rin
+      · intro i b hi; rw [hm5, hm4, hm3, hm2]; exact hP1'.out i b hi
+      · exact T.keepC_trans (T.keepC_trans (T.keepC_trans hP1'.keep hk2) (T.keepC_of_keepF hk3))
+          (T.keepC_of_keepF (T.keepF_of_keep (T.keep_trans hk4 d5.keep)))
+      · rw [T.keep_fr d5.keep, T.keep_fr hk4, hfr3]
+      · intro v hv
+        rw [hs5, Core.Set1.same T.toCore st4, hs3, hs2]
+        simp only [List.getElem?_map] at hv
+        cases h0 : vs[0]? with
+        | none => rw [h0] at hv; exact nomatch hv
+        | some a =>
+          rw [h0] at hv; simp only [Option.map_some, Option.some.injEq] at hv
+          obtain ⟨h0l, h0e⟩ := List.getElem?_eq_some_iff.1 h0
+          have := hv1 0 h0l
+          rw [h0e, hv] at this
+          exact this
     | _ =>
       rw [ht] at hs; simp only [termStep] at hs
       (repeat' split at hs) <;> exact nomatch hs
