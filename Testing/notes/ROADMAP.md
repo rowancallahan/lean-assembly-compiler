@@ -302,3 +302,46 @@ review, and spend their effort on the proved back end and self-hosting, not on p
   the loop. Full proof additionally needs `nanoGen` correctness (generated code = `Prog.eval`).
 - (owner) `nanoElab` + `Prog.eval` ARE the spec of nano: never proved, only expanded (cross-checked against Lean's
   elaborator). Everything after elaboration is proved: `CompileCorrect riscv nanoCompile`, reusing any big-compiler piece.
+
+### After nano self-hosting closes: grow the self-hosted compiler (owner, 2026-11-17)
+
+- Main line = grow the SELF-HOSTED nano compiler feature by feature (self-hosting stays an invariant: every added feature
+  is proved end to end and compiled by itself), rather than finishing the big compiler first.
+- Converge on one middle: nano's elaborator emits the S3 typed calculus (Compiler/S3, proved once through the IR to
+  RISC-V); nano's stack back end is replaced by that shared, proved S3/IR back end. Big-compiler features arrive through
+  the calculus instead of being re-implemented. Self-hosting = compiling that pipeline with itself.
+- Front ends compose as functions into the same calculus; pick per program:
+  `backend ∘ nanoElab` (small, self-hosted, our spec) or `backend ∘ fromKernelTerms ∘ leanElab` (full Lean, trusted
+  elaborator + exporter). As nanoElab grows, fewer programs need the Lean front end; later the small pure elaborator
+  (checked against Lean's by kernel equality per definition) replaces it.
+- Speed work on the front ends is safe by construction: they are certifying (each output carries a kernel-checked
+  theorem), so a wrong speed-up fails the check instead of producing wrong code.
+- Increments (owner): grow in SMALL steps, each one checked before the next: one feature or one back-end piece at a
+  time (e.g. first move only nano's expression lowering onto S3 while the stack back end stays; then one datatype; then
+  calls), and after every step the self-hosting theorem, check.sh and the full-chain test must pass again.
+- ORDER (owner, 2026-11-17 04:45): (1) close nano self-hosting by whichever route lands first (frontx per-stage
+  certificates or S3); (2) BEFORE expanding nano, make the self-hosted binary B "correct by design": every stage
+  compiled through the S3 calculus (compiler proved once), leaving only a Lean-level equation per stage
+  (`eval P = stage`), no generated machine-level step proofs; (3) then grow nano in small checked increments on S3.
+- INTERPOLATE (owner): move nano onto S3 through a chain of intermediate calculi, each differing from the previous by ONE
+  construct (e.g. nano Prog → explicit lets → normal-form expressions → S3 words only → S3 with calls → S3 datatypes),
+  each link a small proved translation (simulation / meaning-preservation) checked before the next; the self-hosting
+  theorem, check.sh and the full-chain test pass after every link.
+- What "correct by design" means here: (a) back end proved once (`nano_stack_correct`, later S3's theorem); (b) each
+  byte-level stage of B proved equal to its spec function (`lexB_eq`, `stage2_lexB`, …); (c) B's machine code computes
+  those stages (today certifying per stage; after the S3 move, by design). `nanoElab` itself is the spec (defines
+  meaning), cross-checked against Lean's elaborator, not proved.
+
+### Spec strengthening: output length and exact output block (owner-approved, 2026-11-17)
+
+1. APPROVED: the code returns the output length in a register (e.g. a1); the spec states the output occupies exactly
+   `[outputAddress, outputAddress + a1)` and decodes to the result, so readers never depend on the type's encoding.
+2. DEFERRED (owner): zeroing the rest of the output block; outputs are self-delimiting meanwhile. Only on request.
+3. Domain of the self-hosted nano binary: either stated explicitly in `Nano.selfHosted` or out-of-domain inputs set
+   the OOM flag; must be explicit either way.
+Plan (small checked steps, AFTER nano self-hosting closes; length register only): tiniest first step = nano
+(output always 8 bytes: `li a1, 8` + one proof step), then the IR back end (a1 = end − start; S3 and the inductive
+path inherit it), then the rest. add `CompileCorrectL` / `CompileRunsL` next to the current
+statements in Compiler/AllocSpec.lean (nothing breaks); prove them back end by back end (IR first, then inductive path,
+paged, S3, nano); when all hold, make them the main statements and retire the old ones. Each back end's exit code sets
+the length register (and, for item 2, zeroes the rest).
