@@ -274,3 +274,11 @@ NEXT (in order):
    prelude (`readD`/`writeChecked`/`appendChecked`) if the owner wants it instead of the `List` prelude; `bpop`.
 OPEN: the ownership rule is conservative (a MOVED buffer is dead even if never mutated); the shift guard is
 conservative (inherited); loop states need ≥ 1 parameter; the zero arm must come first.
+
+## Language coverage for the self-hosting checkpoint (owner direction 2026-11-17)
+- Added: conditions `c && d`, `c || d`, parentheses, `≤`, `≠` (spec §1), desugared to nested `if`s (branches
+  duplicated; pure, so Lean's value); `List UInt64` = `Buf`. Test p8, negative neg17; 68 programs agree (local).
+- What the paused stage rewrite (nano-v2-src, Nano/V2S) still has to adopt as SOURCE TEXT (the constructs exist):
+  v1 identifiers (one letter + digits/`_`: `xs`, `asmL`, `op` → `x`, `f1`, `p`), `;` after every `let`, no hex
+  literals / type ascriptions (`(0x30 : UInt64)` → a zero-arity def), no `_` patterns, `len'` for fuel, no `bpop`
+  (not in the backend yet), shift guard (numerals next to shifts as zero-arity defs), defs only (proofs elsewhere).

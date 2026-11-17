@@ -27,6 +27,7 @@ inductive FTok where
   | comma | times | p1 | p2 | nil
   | kNat | arrow | bar | darrow | klenP
   | kBuf | kbnew | kbsize | kbget | kbset | kbpush
+  | tand | tor | ne
   deriving DecidableEq
 
 def wdTok (w : List UInt8) : Option FTok :=
@@ -94,10 +95,12 @@ def flex : Nat → List UInt8 → Option (List FTok)
     else if c == 38 then
       match xs with
       | 38 :: 38 :: 32 :: ys => (flex f ys).map (.band :: ·)
+      | 38 :: 32 :: ys => (flex f ys).map (.tand :: ·)
       | _ => none
     else if c == 124 then
       match xs with
       | 124 :: 124 :: 32 :: ys => (flex f ys).map (.bor :: ·)
+      | 124 :: 32 :: ys => (flex f ys).map (.tor :: ·)
       | 32 :: ys => (flex f ys).map (.bar :: ·)
       | _ => none
     else if c == 94 then
@@ -115,6 +118,8 @@ def flex : Nat → List UInt8 → Option (List FTok)
     else if c == 0xE2 then
       match xs with
       | 0x86 :: 0x92 :: ys => (flex f ys).map (.arrow :: ·)
+      | 0x89 :: 0xA4 :: 32 :: ys => (flex f ys).map (.le :: ·)
+      | 0x89 :: 0xA0 :: 32 :: ys => (flex f ys).map (.ne :: ·)
       | _ => none
     else if c == 0xC3 then
       match xs with
@@ -138,7 +143,7 @@ def flex : Nat → List UInt8 → Option (List FTok)
 
 /-! ## the surface AST (calls kept, for the Lean-subset guards) -/
 inductive SCmp where
-  | eq | lt | le
+  | eq | lt | le | ne
   deriving DecidableEq, Repr
 
 inductive S where
@@ -268,6 +273,7 @@ def S.low (ds : List FDef) : S → Ex
   | .ite .eq a b t e => .ite .eq (a.low ds) (b.low ds) (t.low ds) (e.low ds)
   | .ite .lt a b t e => .ite .lt (a.low ds) (b.low ds) (t.low ds) (e.low ds)
   | .ite .le a b t e => .ite .ge (b.low ds) (a.low ds) (t.low ds) (e.low ds)
+  | .ite .ne a b t e => .ite .ne (a.low ds) (b.low ds) (t.low ds) (e.low ds)
   | .call g as => match ds[g]? with
     | some (_, _, _, _, .fn body) => inl body 0 (lowA ds as)
     | _ => .lit 0
@@ -509,7 +515,19 @@ def fdef : List UInt8 → List FDef → Nat → Option (Nat × FDef)
   | s, d :: ds, i => if s == d.1 then some (i, d) else fdef s ds (i + 1)
 
 def cmpS : FTok → Option SCmp
-  | .eqeq => some .eq | .lt => some .lt | .le => some .le | _ => none
+  | .eqeq => some .eq | .lt => some .lt | .le => some .le | .ne => some .ne | _ => none
+
+/-- a condition: comparisons under `&&`, `||` (Lean: `&&` 35 above `||` 30, both below the comparisons) -/
+inductive Cnd where
+  | cmp (k : SCmp) (a b : S)
+  | and (p q : Cnd)
+  | or (p q : Cnd)
+
+/-- conditions become nested `if`s (pure, so Lean's `&&`/`||` = the nesting; branches are duplicated) -/
+def Cnd.ite : Cnd → S → S → S
+  | .cmp k a b, t, e => .ite k a b t e
+  | .and p q, t, e => p.ite (q.ite t e) e
+  | .or p q, t, e => p.ite t (q.ite t e)
 
 /- fuel expressions (`Nat`): `len' x`, numerals `< 2^32`, `+`, `*`, parentheses; `pFA` = an atom -/
 mutual
@@ -568,24 +586,60 @@ def pE : Nat → FScope → List FDef → List FTok → Option (S × List FTok)
       | none => none
     | _ => none
   | f + 1, sc, ds, .kif :: ts =>
-    match pOr f sc ds ts with
-    | some (a, op :: r) =>
-      match cmpS op with
-      | some k =>
-        match pOr f sc ds r with
-        | some (b, .kthen :: r2) =>
-          if a.typed (flags sc) || b.typed (flags sc) then
-            match pE f sc ds r2 with
-            | some (t, .kelse :: r3) =>
-              match pE f sc ds r3 with
-              | some (e, r4) => some (.ite k a b t e, r4)
-              | none => none
-            | _ => none
-          else none
-        | _ => none
-      | none => none
+    match pC f sc ds ts with
+    | some (c, .kthen :: r2) =>
+      match pE f sc ds r2 with
+      | some (t, .kelse :: r3) =>
+        match pE f sc ds r3 with
+        | some (e, r4) => some (c.ite t e, r4)
+        | none => none
+      | _ => none
     | _ => none
   | f + 1, sc, ds, ts => pOr f sc ds ts
+/-- `||` level -/
+def pC : Nat → FScope → List FDef → List FTok → Option (Cnd × List FTok)
+  | 0, _, _, _ => none
+  | f + 1, sc, ds, ts =>
+    match pCA f sc ds ts with
+    | some (p, .tor :: r) =>
+      match pC f sc ds r with
+      | some (q, r2) => some (.or p q, r2)
+      | none => none
+    | x => x
+/-- `&&` level -/
+def pCA : Nat → FScope → List FDef → List FTok → Option (Cnd × List FTok)
+  | 0, _, _, _ => none
+  | f + 1, sc, ds, ts =>
+    match pCB f sc ds ts with
+    | some (p, .tand :: r) =>
+      match pCA f sc ds r with
+      | some (q, r2) => some (.and p q, r2)
+      | none => none
+    | x => x
+/-- a parenthesised condition, or one comparison (one operand TYPED, the shift guard on both sides) -/
+def pCB : Nat → FScope → List FDef → List FTok → Option (Cnd × List FTok)
+  | 0, _, _, _ => none
+  | f + 1, sc, ds, ts =>
+    let paren := match ts with
+      | .lp :: r => match pC f sc ds r with
+        | some (c, .rp :: r2) => some (c, r2)
+        | _ => none
+      | _ => none
+    match paren with
+    | some x => some x
+    | none =>
+      match pOr f sc ds ts with
+      | some (a, op :: r) =>
+        match cmpS op with
+        | some k =>
+          match pOr f sc ds r with
+          | some (b, r2) =>
+            if (a.typed (flags sc) || b.typed (flags sc)) && good (comb (a.sm (flags sc)) (b.sm (flags sc))) then
+              some (.cmp k a b, r2)
+            else none
+          | none => none
+        | none => none
+      | _ => none
 def pOr : Nat → FScope → List FDef → List FTok → Option (S × List FTok)
   | 0, _, _, _ => none
   | f + 1, sc, ds, ts =>
@@ -819,6 +873,7 @@ def pTyA : Nat → List FTok → Option (Option FT × List FTok)
   | _ + 1, .kU64 :: ts => some (some .w, ts)
   | _ + 1, .kList :: .kU8 :: ts => some (none, ts)
   | _ + 1, .kBuf :: ts => some (some .buf, ts)
+  | _ + 1, .kList :: .kU64 :: ts => some (some .buf, ts)
   | f + 1, .lp :: ts =>
     match pTy f ts with
     | some (some t, .rp :: r) => some (some t, r)
@@ -862,6 +917,12 @@ def lowCmp (k : SCmp) (a b : Ex) : Cmp × Ex × Ex :=
   | .eq => (.eq, a, b)
   | .lt => (.lt, a, b)
   | .le => (.ge, b, a)
+  | .ne => (.ne, a, b)
+
+def Cnd.iteT (ds : List FDef) : Cnd → Tl → Tl → Tl
+  | .cmp k a b, t, e => let q := lowCmp k (a.low ds) (b.low ds); .ite q.1 q.2.1 q.2.2 t e
+  | .and p q, t, e => p.iteT ds (q.iteT ds t e) e
+  | .or p q, t, e => p.iteT ds t (q.iteT ds t e)
 
 /-- a leaf of a tail: an ordinary expression, returned -/
 def pRet (f : Nat) (ρ : FT) (sc : FScope) (ds : List FDef) (ts : List FTok) : Option (Tl × List FTok) :=
@@ -898,24 +959,14 @@ def pT : Nat → Me → FScope → List FDef → List FTok → Option (Tl × Lis
       | none => none
     | _ => none
   | f + 1, me, sc, ds, .kif :: ts =>
-    match pOr f sc ds ts with
-    | some (a, op :: r) =>
-      match cmpS op with
-      | some k =>
-        match pOr f sc ds r with
-        | some (b, .kthen :: r2) =>
-          if (a.typed (flags sc) || b.typed (flags sc)) && good (comb (a.sm (flags sc)) (b.sm (flags sc))) then
-            match pT f me sc ds r2 with
-            | some (t, .kelse :: r3) =>
-              match pT f me sc ds r3 with
-              | some (e, r4) =>
-                let q := lowCmp k (a.low ds) (b.low ds)
-                some (.ite q.1 q.2.1 q.2.2 t e, r4)
-              | none => none
-            | _ => none
-          else none
-        | _ => none
-      | none => none
+    match pC f sc ds ts with
+    | some (c, .kthen :: r2) =>
+      match pT f me sc ds r2 with
+      | some (t, .kelse :: r3) =>
+        match pT f me sc ds r3 with
+        | some (e, r4) => some (c.iteT ds t e, r4)
+        | none => none
+      | _ => none
     | _ => none
   | f + 1, me, sc, ds, .id g :: .id n :: ts =>
     if g == me.1 then
