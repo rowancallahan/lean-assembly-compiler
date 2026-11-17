@@ -28,3 +28,7 @@
   `some (0, j)`, `gasOf`'s multiplication. `Nano/ParseS3.lean` defines `stage2S` = the same machine with those
   constructs replaced (`natW`/`u8N`/`subN`, `consO`/`pairO`, `if b == 1`, nested `match k`, `gasS`); every other
   function and all datatypes are the originals. PROVED: `Nano.PS.stage2S_eq : stage2S bs = stage2 bs` (all inputs).
+- Main-session messages (06:32, 06:35): (1) a composed `Nano.selfHosted` must state, in its domain, the
+  elaborator-depth limits (nesting ≤ 400, chains ≤ 2500; NANO.md "RESOURCE LIMITS" on nano-e2e); nanoElab unchanged.
+  (2) the parser compile is owned here (close B: inliner only); if the `stage2S` compile runs > ~30 min, split it
+  into smaller S3 stages, each with its own bridge, linked by `link_stage`, with timings recorded here.
