@@ -345,3 +345,10 @@ path inherit it), then the rest. add `CompileCorrectL` / `CompileRunsL` next to 
 statements in Compiler/AllocSpec.lean (nothing breaks); prove them back end by back end (IR first, then inductive path,
 paged, S3, nano); when all hold, make them the main statements and retire the old ones. Each back end's exit code sets
 the length register (and, for item 2, zeroes the rest).
+- SPEC REVIEW ITEM (found 2026-11-17 by the nano-e2e box, NANO.md "RESOURCE LIMITS"): Lean's real elaborator REJECTS
+  very deep inputs (≥ 512 nested `let`s, ≥ 256 nested calls, operator chains of ≥ ~3000 operands: "maximum recursion
+  depth"), while `nanoElab` ACCEPTS them. This breaks the exact-subset rule only at these resource limits. Fix = make
+  `nanoElab` reject above fixed bounds (e.g. nesting ≤ 400, chain ≤ 2500); it changes the spec, so the proofs written
+  against `nanoElabT` (ElabU, ElabB*, ParseB*) must follow. Owner decides; until then state the bound in the domain of
+  `Nano.selfHosted`. Exhaustive check otherwise clean: all bodies of 1–6 tokens over a 15-token alphabet (~13M
+  texts): 0 differences against Lean.
