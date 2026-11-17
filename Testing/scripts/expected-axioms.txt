@@ -680,3 +680,6 @@
 'Nano.PB.sim'dependsonaxioms:[propext,Classical.choice,Quot.sound]
 'Nano.PB.parseA_eq'dependsonaxioms:[propext,Classical.choice,Quot.sound]
 'Nano.PB.stage2A_lexB'dependsonaxioms:[propext,Classical.choice,Quot.sound]
+'Nano.PB.step_dec'dependsonaxioms:[propext,Classical.choice,Quot.sound]
+'Nano.PB.stage2_lexB'dependsonaxioms:[propext,Classical.choice,Quot.sound]
+'Nano.PB.stage2_hfe'dependsonaxioms:[propext,Classical.choice,Quot.sound]
