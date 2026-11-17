@@ -6,6 +6,7 @@ the S3 forms), `memoryNeeded` (the IR interpreter, its output checked against th
 import Riscv.Back.IrTarget
 import Compiler.Ir.Lin
 import Nano.ParseS3BSelf
+import Riscv.Back.S3Top
 open Proven.Ir Proven.Mach.Riscv Proven.Top.Alloc
 open Proven.S3
 
