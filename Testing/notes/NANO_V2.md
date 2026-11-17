@@ -176,3 +176,26 @@ pre-existing WARNING only).
 | V2Top | 4.5 s | 1.8 GB |
 | V2Agree | 34.6 s | 2.9 GB |
 (after increment 2; all far below 5 min.)
+
+## HANDOFF (2026-11-17, worker 1 → merged worker-1/2 box)
+DONE (branch nano-v2, check.sh passed, all pushed):
+- Increment 1 (`==`, `<`, `<=`, `if`) and increment 2 (`&&&`, `|||`, `^^^`, `<<< k`, `>>> k`): `Nano.V2.nanoElab`,
+  `Nano.V2.Prog.eval`, branch-free stack generator on v1's records (`asm` unchanged), `Nano.V2.nano_stack_correct` /
+  `nano_stack_runs` (v1's axiom set), oracle fuzz 0 differences, 25 agreement proofs, QEMU + Sail 1584 pairs.
+- NANO_V2_SPEC.md = the owner's working freeze (aligned with NANO_V2_SKELETONS.lean / ROUND5).
+NEXT (worker-1 side, in spec order):
+1. Elaborator: the fuel-loop pattern (both `match fuel with` + `termination_by structural fuel` and the equation form
+   `def f : Nat → … | 0, … | n + 1, …`), Nat fuel expressions (`len' xs`, `+`, `*`, numerals), oracle-checked.
+2. Elaborator: types `List UInt8` (input, output) and `Array UInt64`, prelude ops (`rd`, `len`, `put`, `readD`,
+   `writeChecked`, `appendChecked`), the affine ownership check, `&&`/`||` in conditions, `≤`.
+3. `Prog.eval` for loops/buffers (functional, fuel recursion) and the ONE-SOURCE certificate generator
+   (NanoProofs.Meaning pattern); `Nano/V2/ABI.lean` from `NanoABI.ImplementsBytes`.
+4. Backend: replace the branch-free `if` by worker 2's branching backend (`Nano.V2B`, branch nano-v2-backend) for
+   loops/buffers; translate `Nano.V2.E` into it or adopt it as the shared AST (one owner).
+OPEN PROBLEMS:
+- v1 `nanoElab` accepts empty binder groups `( : UInt64)` (C1); fix at the next ONE GO.
+- Shift guard is conservative (rejects `x <<< 7 ||| 3`, which Lean accepts); worker 3's asm style needs constants as
+  zero-arity defs or a typed-ascription construct `(n : UInt64)` (not in the subset yet).
+- Two agreement sources do not close with the generic tactic (listed in gen_agree_v2.py); the Int64 meaning has no
+  `denI` for v2 (Int64 dropped for milestone 1 anyway).
+- Increment 3 (products): NOT started; no code exists.
