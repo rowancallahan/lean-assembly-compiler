@@ -2,9 +2,9 @@ import Nano.V2Self.C.Lex2
 /- reference lexer for S over `List Char` (independent of C.s*), differential test: S text files + random strings.
 run: lean --run Testing/nano/v2self/lex2_test.lean FILE...  (prints mismatch count) -/
 def isW (c : Char) : Bool := c.isAlphanum && c.toNat < 128 || c == '_' || c == '\''
-def ops : List (String × Nat) := [("&&&", 26), ("|||", 27), ("<<<", 28), (">>>", 29), (":=", 9), ("=>", 19), ("==", 23), ("&&", 24), ("||", 25),
-  ("(", 6), (")", 7), (":", 8), ("+", 10), ("-", 11), ("*", 12), (";", 13), (",", 15), ("×", 16), ("→", 17), ("|", 18), ("<", 20), ("≤", 21), ("≠", 22), ("[", 30), ("]", 31)]
-def kws : List (String × Nat) := [("def", 1), ("let", 2), ("UInt64", 3), ("Int64", 4), ("if", 32), ("then", 33), ("else", 34), ("Nat", 35), ("Buf", 36), ("List", 37), ("UInt8", 38)]
+def ops : List (String × Nat) := [("&&&", 26), ("|||", 27), ("<<<", 28), (">>>", 29), (":=", 9), ("=>", 19), ("==", 23),
+  ("(", 6), (")", 7), (":", 8), ("+", 10), ("-", 11), ("*", 12), (";", 13), (",", 15), ("×", 16), ("→", 17), ("|", 18), ("<", 20), ("[", 30), ("]", 31)]
+def kws : List (String × Nat) := [("def", 1), ("let", 2), ("UInt64", 3), ("if", 32), ("then", 33), ("else", 34), ("Nat", 35), ("Buf", 36), ("List", 37), ("UInt8", 38)]
 def le8 (v : Nat) : List UInt64 := (List.range 8).map fun i => ((v / 256 ^ i) % 256).toUInt64
 partial def ref (cs : List Char) (o : List UInt64) : Option (List UInt64) :=
   match cs with
