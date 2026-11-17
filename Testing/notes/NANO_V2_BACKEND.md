@@ -43,3 +43,19 @@ Fixed code origin is not needed by this code (only relative jumps) but is accept
   8-aligned inside [lo, hi); `lbu` only in the input, `sb` only in the output), big-step `SC.Ex` with loop rules.
 - Proof layer 2 (Nano/V2/Expr.lean): `Stk` (value stack representation), `Keep`, `Post` (the uniform expression
   contract's outcome: pushed values or out of memory), `seq_ok` (composition), **`pushC_ok`** (the bound-checked push).
+- Proofs added (Nano/V2/Expr.lean, Nano/V2/Loop.lean; axioms ⊆ {propext, Classical.choice, Quot.sound}):
+  **`li_ok`** (any 64-bit literal, the 17-instruction path by a per-byte step lemma), **`lit_ok`** (literal contract),
+  **`ld_slot`** (stack-slot load, address valid), **`varC_ok`** (a k-slot variable copied, by induction on k),
+  `pre_ok`, `Stk.set`, `Keep.set`, and **`loop_ok`**: the LOOP-HEADER INVARIANT for `SC.loop`, generic (invariant at
+  HEAD indexed by the fuel, zero branch, one body run re-establishing it at the backward jump), by induction on fuel.
+  Generator refactor for the proofs (same behaviour, tests re-run): every push is `pushC`; `var` uses `varC`.
+- Build: every Nano/V2 module < 4 s (`lake env lean`, deps built; no /usr/bin/time on this box).
+
+## Remaining (next round), in order
+1. `cE_ok`/`cT_ok` (ONE induction over `Ex`/`Tl`) for the buffer-free fragment: bin, ite, let/pair/fst/snd/split
+   (`slide` lemma), isize/iget, loop (via `loop_ok` with Inv n s := Stk (L ++ [fuel n] ++ flat state) ∧ env rep).
+2. Buffers: heap invariant (live owned buffers: pairwise disjoint regions [a, a+16+8cap) below t5, each holding its
+   Lean list; consumed variables carry no guarantee) with worker 1's affine check as hypothesis.
+3. `SC.flat` correct w.r.t. a pc-level semantics of `I` (cf. Compiler/Ir/StructOk.lean `flatT_ok`), then `I.enc`
+   on Sail (`G.step_*` from Riscv/Steps), then `ImplementsBytes` once worker 1 freezes it.
+4. Align `Nano.V2B.Ex` with worker 1's frozen AST (or a proved translation).

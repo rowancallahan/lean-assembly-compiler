@@ -119,17 +119,21 @@ def BOp.ofCmp : Cmp → BOp
 /-- pop the two top words: t1 := top, t0 := below -/
 def pop2 : List I := [.ld T1 SP 0, .ld T0 SP 8, .i .addi SP SP 16]
 
+/-- copy `m` slots starting `o` slots below the top (the offset stays: each push moves the top) -/
+def varC (o : Nat) : Nat → SC
+  | 0 => .ins []
+  | m + 1 => .seq (.seq (.ins [.ld T0 SP (8 * o)]) pushC) (varC o m)
+
 /-- offsets must fit the 12-bit immediates: slots < 256 -/
 def Lim := 255
 
 /-! ## expressions: `env` = (type, absolute slot of its first word), `d` = slots in use -/
 mutual
 def cE (env : List (Ty × Nat)) (d : Nat) : Ex → Option (SC × Ty)
-  | .lit n => some (.seq (.ins (.i .addi SP SP (-8) :: li T0 n)) push, .w)
+  | .lit n => some (.seq (.ins (li T0 n)) pushC, .w)
   | .var i => match env[i]? with
     | some (τ, p) => if d < Lim + p + 1 ∧ p < d then
-        some ((List.range τ.size).foldr (fun _ acc => .seq (.seq (.ins [.ld T0 SP (8 * (d - 1 - p))]) pushC) acc)
-          (.ins []), τ)
+        some (varC (d - 1 - p) τ.size, τ)
       else none
     | none => none
   | .bin o a b => match cE env d a, cE env (d + 1) b with
@@ -168,7 +172,7 @@ def cE (env : List (Ty × Nat)) (d : Nat) : Ex → Option (SC × Ty)
   | .mk cap => if cap < 2 ^ 20 then
       some (.seq (.seq (.ins (mv T0 HP :: li T1 (8 * (cap.toUInt64 + 2)) ++ [.r .add T1 T1 HP]))
         (.ite .bgeu SP T1 (.ins []) (.jmp .oom)))
-        (.seq (.ins (li T2 cap.toUInt64 ++ [.sd 0 T0 0, .sd T2 T0 8, mv HP T1, .i .addi SP SP (-8)])) push), .buf)
+        (.seq (.ins (li T2 cap.toUInt64 ++ [.sd 0 T0 0, .sd T2 T0 8, mv HP T1])) pushC), .buf)
       else none
   | .size b => match cE env d b with
     | some (cb, .buf) => some (.seq cb (.ins [.ld T0 SP 0, .ld T0 T0 0, .sd T0 SP 0]), .w)
@@ -191,7 +195,7 @@ def cE (env : List (Ty × Nat)) (d : Nat) : Ex → Option (SC × Ty)
         (.ite .bltu T2 A4 (.ins [.i .slli A5 T2 3, .r .add A5 A5 T0, .sd T1 A5 16, .i .addi T2 T2 1, .sd T2 T0 0])
           (.jmp .cap)), .buf)
     | _, _ => none
-  | .isize => some (.seq (.ins [.i .addi SP SP (-8), mv T0 IL]) push, .w)
+  | .isize => some (.seq (.ins [mv T0 IL]) pushC, .w)
   | .iget i => match cE env d i with
     | some (ci, .w) =>
       some (.seq (.seq ci (.ins [.ld T1 SP 0]))

@@ -160,4 +160,117 @@ theorem pushC_ok {c : Cfg} {s : St} {h : Nat} {L : List UInt64} (hc : c.Good) (h
       rw [g31, g30, hs.hp]; have := hs.hlo; have := hc.lo_pos; have := hs.hsp; omega
     exact ⟨_, SC.Ex.seq (SC.Ex.ins e1) (SC.Ex.seqJ (SC.Ex.iteF hb SC.Ex.jmp)), rfl⟩
 
+theorem set_set (s : St) (r : Nat) (a b : UInt64) : (s.set r a).set r b = s.set r b := by
+  unfold St.set; split
+  · rfl
+  · simp only [St.mk.injEq, and_true]; funext j; split <;> rfl
+
+theorem shl8 (a : UInt64) : (a <<< UInt64.ofNat (Int.toNat 8 % 64)).toNat = a.toNat * 256 % 2 ^ 64 := by
+  rw [show UInt64.ofNat (Int.toNat 8 % 64) = 8 from rfl, UInt64.toNat_shiftLeft]
+  simp [Nat.shiftLeft_eq]
+
+theorem li_step (acc : UInt64) (q : Nat) (h : acc.toNat = q / 256) (hq : q < 2 ^ 64) :
+    (acc <<< UInt64.ofNat (Int.toNat 8 % 64) + UInt64.ofInt ↑(q % 256)).toNat = q := by
+  rw [UInt64.toNat_add, shl8, ofInt_nat, h]; omega
+
+theorem div_succ (q k : Nat) : q / 256 ^ k / 256 = q / 256 ^ (k + 1) := by
+  rw [Nat.div_div_eq_div_mul, Nat.pow_succ]
+
+theorem li_ok (c : Cfg) (s : St) (r : Nat) (hr : r ≠ 0) (n : UInt64) : runL c (li r n) s = some (s.set r n) := by
+  unfold li
+  split
+  · next h =>
+    simp only [runL, I.run, IOp.eval, Option.bind_some]
+    congr 1; congr 1; unfold St.get; simp only [if_true]
+    apply UInt64.toNat.inj; rw [UInt64.toNat_add, ofInt_nat]; simp
+  · next h =>
+    simp only [List.range, List.range.loop, List.reverse_cons, List.reverse_nil, List.nil_append, List.flatMap_cons,
+      List.flatMap_nil, List.cons_append, List.append_nil, runL, I.run, IOp.eval, Option.bind_some,
+      get_set_eq _ _ _ hr, set_set]
+    congr 1; congr 1
+    unfold St.get; simp only [if_true]
+    apply UInt64.toNat.inj
+    have hn := n.toNat_lt
+    have hk : ∀ k, n.toNat / 256 ^ k < 2 ^ 64 := fun k => Nat.lt_of_le_of_lt (Nat.div_le_self _ _) hn
+    have e0 : n.toNat / 256 ^ 0 = n.toNat := by simp
+    conv => rhs; rw [← e0]
+    iterate 8 (refine li_step _ _ ?_ (hk _); rw [div_succ])
+    show (0 + UInt64.ofInt 0).toNat = n.toNat / 256 ^ (7 + 1)
+    rw [show (0 + UInt64.ofInt 0).toNat = 0 from rfl]; simp only [Nat.reduceAdd, Nat.reducePow]; omega
+/-- a straight prefix that keeps the stack, then a contracted block -/
+theorem pre_ok {c : Cfg} {l : List I} {b : SC} {s s' : St} {h : Nat} {L vs : List UInt64}
+    (e : runL c l s = some s') (hs' : Stk c s' h L) (k : Keep s s') (hp : s'.get 30 = s.get 30)
+    (hb : ∃ r, SC.Ex c b s' r ∧ Post c s' h L vs r) : ∃ r, SC.Ex c (.seq (.ins l) b) s r ∧ Post c s h L vs r := by
+  obtain ⟨r, eb, pb⟩ := hb
+  refine ⟨r, .seq (.ins e) eb, ?_⟩
+  cases r with
+  | ok s2 => exact ⟨pb.1, k.trans pb.2 hp⟩
+  | jmp t s2 => exact pb
+
+/-- setting a scratch register keeps the stack -/
+theorem Stk.set {c : Cfg} {s : St} {h : Nat} {L : List UInt64} (hs : Stk c s h L) (r : Nat) (v : UInt64)
+    (h31 : r ≠ 31) (h30 : r ≠ 30) : Stk c (s.set r v) h L where
+  sp := by rw [get_set_ne _ _ _ _ (Ne.symm h31)]; exact hs.sp
+  hp := by rw [get_set_ne _ _ _ _ (Ne.symm h30)]; exact hs.hp
+  hlo := hs.hlo
+  hsp := hs.hsp
+  slots := by simpa using hs.slots
+
+theorem Keep.set (s : St) (r : Nat) (v : UInt64) (h28 : r ≠ 28) (h29 : r ≠ 29) : Keep s (s.set r v) :=
+  ⟨get_set_ne _ _ _ _ (Ne.symm h28), get_set_ne _ _ _ _ (Ne.symm h29), fun _ _ => by simp, by simp⟩
+
+/-- **literal**: pushes `n` -/
+theorem lit_ok {c : Cfg} {s : St} {h : Nat} {L : List UInt64} (hc : c.Good) (hs : Stk c s h L) (n : UInt64) :
+    ∃ r, SC.Ex c (.seq (.ins (li T0 n)) pushC) s r ∧ Post c s h L [n] r := by
+  have hp := pushC_ok hc (hs.set T0 n (by decide) (by decide))
+  rw [show (s.set T0 n).get 5 = n from get_set_eq _ _ _ (by decide)] at hp
+  exact pre_ok (li_ok c s T0 (by decide) n) (hs.set T0 n (by decide) (by decide)) (Keep.set s T0 n (by decide) (by decide))
+    (get_set_ne _ _ _ _ (by decide)) hp
+
+/-- loading the slot `o` below the top -/
+theorem ld_slot {c : Cfg} {s : St} {h : Nat} {L : List UInt64} (hc : c.Good) (hs : Stk c s h L) (rd o : Nat)
+    (ho : o < L.length) :
+    runL c [.ld rd SP (8 * o)] s = some (s.set rd (L.getD (L.length - 1 - o) 0)) := by
+  have hea : ea s SP (8 * o) = slotA c (L.length - 1 - o) := by
+    unfold ea slotA
+    have := toNat_addK (s.get SP) (8 * o) (by have := hc.hi_lt; have := hs.hsp; simp only [SP]; rw [hs.sp]; omega)
+    rw [show ((8 * o : Nat) : Int) = 8 * (o : Int) by push_cast; rfl] at this
+    rw [this]; simp only [SP]; rw [hs.sp]; have := hs.hsp; omega
+  have hwok : c.wok (ea s SP (8 * o)) := by
+    rw [hea]; unfold Cfg.wok slotA; have := hc.hi8; have := hs.hsp; have := hs.hlo; have := hc.lo8; omega
+  rw [hea] at hwok
+  have hq := hs.slots (L.length - 1 - o) (by omega)
+  simp only [runL, I.run, hea, if_pos hwok, Option.bind_some, hq]
+
+/-- the `m` slots from `|M| - 1 - o` on -/
+def seg (M : List UInt64) (o m : Nat) : List UInt64 := (M.drop (M.length - 1 - o)).take m
+
+theorem seg_succ (M : List UInt64) (o m : Nat) (x : UInt64) (hm : m + 1 ≤ o + 1) (ho : o < M.length) :
+    seg M o (m + 1) = M.getD (M.length - 1 - o) 0 :: seg (M ++ [x]) o m := by
+  unfold seg
+  rw [List.drop_eq_getElem_cons (by omega), List.take_succ_cons]
+  simp only [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem (show M.length - 1 - o < M.length by omega),
+    Option.getD_some, List.length_append, List.length_cons, List.length_nil]
+  congr 1
+  rw [show M.length + 1 - 1 - o = M.length - 1 - o + 1 by omega, List.drop_append_of_le_length (by omega),
+    List.take_append_of_le_length (by simp; omega)]
+
+/-- **variable**: copies the `m ≤ o + 1` slots from `o` below the top -/
+theorem varC_ok {c : Cfg} {h : Nat} (hc : c.Good) (o : Nat) (ho : o ≤ 255) :
+    ∀ m (M : List UInt64) (s : St), Stk c s h M → o < M.length → m ≤ o + 1 →
+      ∃ r, SC.Ex c (varC o m) s r ∧ Post c s h M (seg M o m) r := by
+  intro m
+  induction m with
+  | zero => intro M s hs _ _; exact ⟨_, .ins rfl, by simpa [seg] using hs, Keep.refl s⟩
+  | succ m ih =>
+    intro M s hs hoM hm
+    let x := M.getD (M.length - 1 - o) 0
+    have e1 := ld_slot hc hs T0 o hoM
+    have hs1 := hs.set T0 x (by decide) (by decide)
+    have hp := pushC_ok hc hs1
+    rw [show (s.set T0 x).get 5 = x from get_set_eq _ _ _ (by decide)] at hp
+    have h1 := pre_ok e1 hs1 (Keep.set s T0 x (by decide) (by decide)) (get_set_ne _ _ _ _ (by decide)) hp
+    rw [seg_succ M o m x hm hoM]
+    exact seq_ok (A := [x]) h1 (fun s2 hs2 _ => ih (M ++ [x]) s2 hs2 (by simp; omega) (by omega)) hs
+
 end Nano.V2B
