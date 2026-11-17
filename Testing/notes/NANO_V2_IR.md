@@ -35,4 +35,4 @@ Par0 already emits this header (`... npw nslots 0 1`) and `LOCAL slot 1`.
 Node records are now 8 words (nodes at 10000 + 8 i, flatten stack at 30000, tokens at 40000); capacity grows with the language (the real source has ~tens of thousands of nodes: the layout constants move to a table before the whole-source run).
 Test `par0_test.lean`: random trees now include `if` (300 trees, 0 mismatches), rejections of `if a then …`, missing `else`, missing `then`.
 
-### Numeric tags: FINAL = the Opus box's table in `NANO_V2_CG.md` (CONST 1, LOCAL 2, BIN 3, IF 4, LET 5, PAIR 6, CALL 7, PRIM 8, LOOP 9, CONTINUE 10, DEF 11, END 12; prims ISIZE 1 … BPUSH 9). No more changes.
+### Numeric tags: FINAL = what `Gen.lean` reads and Par0 emits: CONST 1, LOCAL 2, BIN 3, IF 4, LET 5, PAIR 6, CALL 8, PRIM 9, LOOP 10, CONTINUE 11, DEF 20, ENDDEF 21; prims ISIZE 1 … BPUSH 9. (NANO_V2_CG.md says the same.) No more changes.

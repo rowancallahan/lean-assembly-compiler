@@ -1,6 +1,6 @@
 /- Nano/V2Self/C: parser increment A (Testing/notes/NANO_V2_IR.md): `def f (a b : UInt64) : UInt64 := EXPR` with literals, parameters, parentheses and the
 binary operators `|||` `&&&` `+ -` `*` `<<<` `>>>` (Lean precedences 55 60 65 70 75, left associative; shifts take a numeral).  Input: the token Buf of Lex2.
-Output Buf (words): [2 (IRV), 11 (DEF), id 0, npw, nslots, kind 0, nres 1, pre-order AST, 12 (END)]; nodes: CONST 1 v | LOCAL 2 slot w | BIN 3 op a b
+Output Buf (words): [2 (IRV), 20 (DEF), id 0, npw, nslots, kind 0, nres 1, pre-order AST, 21 (ENDDEF)]; nodes: CONST 1 v | LOCAL 2 slot w | BIN 3 op a b
 (op: add 1 sub 2 mul 3 and 4 or 5 shl 6 shr 7).  Empty Buf = rejected.  One heap Buf h: [0] ok flag, [1] root, [3] position, [4] nparams, params at 9000.., task
 stack at 1000.. (code, arg), operand stack at 5000.., nodes at 10000 + 4 i (tag a b c). -/
 import Nano.V2Self.C.Base
@@ -165,7 +165,7 @@ def y13 (x : Buf) : Buf :=
         let z3 := bget g 1;
         let j := bget g 4;
         if z2 == 1 then
-          if p1 == c then bpush (y12 16777216 (bset g 30000 z3) 1 (bpush (bpush (bpush (bpush (bpush (bpush (bpush bnew 2) 11) 0) j) j) 0) 1)) 12
+          if p1 == c then bpush (y12 16777216 (bset g 30000 z3) 1 (bpush (bpush (bpush (bpush (bpush (bpush (bpush bnew 2) 20) 0) j) j) 0) 1)) 21
           else bnew
         else bnew
       else bnew
