@@ -16,3 +16,4 @@ import Nano.V2.Comp
 #print axioms NanoV2Agree.P0.agree
 #print axioms NanoV2Agree.P8.agree
 #print axioms Nano.V2B.cE_ok
+#print axioms Nano.V2B.cT_ok

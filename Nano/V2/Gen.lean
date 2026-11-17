@@ -208,7 +208,7 @@ def cE (env : List (Ty × Nat)) (d : Nat) : Ex → Option (SC × Ty)
       let D := d + 1 + σ.size
       match cE env' D z with
       | some (cz, ρ) => match cT env' D σ ρ 0 body with
-        | some cb => if σ.size + 1 ≤ Lim then
+        | some cb => if σ.size + 1 ≤ Lim ∧ ρ.size ≤ Lim then
             some (.seq (.seq cf ci) (.loop [.ld T0 SP (8 * σ.size)] [.i .addi T0 T0 (-1), .sd T0 SP (8 * σ.size)]
               (.seq cz (.ins (slide ρ.size (σ.size + 1)))) cb), ρ)
           else none
@@ -219,7 +219,7 @@ def cE (env : List (Ty × Nat)) (d : Nat) : Ex → Option (SC × Ty)
 /-- a loop body tail at frame depth `D` (state of type `σ` just below, fuel below it) with `x` extra slots -/
 def cT (env : List (Ty × Nat)) (D : Nat) (σ ρ : Ty) (x : Nat) : Tl → Option SC
   | .ret e => match cE env (D + x) e with
-    | some (ce, τ) => if τ = ρ ∧ σ.size + 1 + x ≤ Lim then
+    | some (ce, τ) => if τ = ρ ∧ σ.size + 1 + x ≤ Lim ∧ ρ.size ≤ Lim then
         some (.seq (.seq ce (.ins (slide ρ.size (σ.size + 1 + x)))) (.jmp .exit)) else none
     | none => none
   | .next e => match cE env (D + x) e with

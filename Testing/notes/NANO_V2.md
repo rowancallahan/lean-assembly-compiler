@@ -217,3 +217,17 @@ OPEN PROBLEMS:
   neg*.lean must be rejected): 101 programs × 12 inputs agree, 7 negatives rejected (local). `EMIT=1` writes
   `nv2f_*` words/cases for `v2b_test.py` (QEMU + Sail).
 - NOT yet: machine-level theorem for a whole front-end program (needs buffers: the output is a buffer, increment 5).
+
+## Increment 4 (fuel loops), merged box
+- Front end: the equation form `def f : Nat → T₁ → … → R | 0, x₁, … => e₀ | n + 1, x₁, … => e` (zero arm first;
+  input = first parameter if `List UInt8`; ≥ 1 state parameter); self calls `f n a₁ …` only in TAIL position (`if`
+  branches, after `let`/`let (a, b) :=`), fuel exactly `n`; any other use of `f` is rejected (unknown name). Lowered
+  to `Ex.loop fuel (a₁, (a₂, …)) z t` with the state unpacked by `split`s (`unE`/`unT`, scope `bScope`). Call sites:
+  `f FUEL x a₁ …`, FUEL = `len' x`, numerals < 2^32, `+`, `*`, parentheses (word value = Lean's Nat iff < 2^64: the
+  admitted-domain condition). The `match fuel with` form: NOT yet.
+- Proof: `cE_ok` + `cT_ok` (mutual, Nano/V2/Comp.lean) now include `Ex.loop` and every `Tl` form: invariant at HEAD =
+  fuel word `ofNat n` + state words over the frame, `run … n st = V`, `Keep`; instance of worker 2's `loop_ok`.
+  `cE` gained `ρ.size ≤ Lim` checks (loop exit and `ret` slides). Axioms propext/Classical.choice/Quot.sound, 4.4 s.
+- Tests: fuzz.py generates random loop helpers too (+ hand cases p2/p3, negatives neg8–11: non-tail self call,
+  fuel ≠ n, aliasing through a loop, fuel variable used as a value): 83 programs × 12 inputs agree, 11 negatives
+  rejected (local).
