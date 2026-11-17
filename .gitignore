@@ -11,3 +11,4 @@ ctest/
 Testing/nano/work/
 Testing/asm/__pycache__/
 Testing/asm/ir-words/nano_*
+Testing/asm/ir-words/nv2_*
