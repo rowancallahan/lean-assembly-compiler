@@ -51,6 +51,13 @@ Fixed code origin is not needed by this code (only relative jumps) but is accept
   Generator refactor for the proofs (same behaviour, tests re-run): every push is `pushC`; `var` uses `varC`.
 - Build: every Nano/V2 module < 4 s (`lake env lean`, deps built; no /usr/bin/time on this box).
 
+## Against Astra round 4 (merged from main)
+- §1 generic header-to-header theorem: `loop_ok` (Inv indexed by fuel n, zero case = the `| 0 =>` equation, body
+  outcome `jmp head` = continue s' / `jmp exit` = exit r, aborts). The label layer is `SC` (labels = `Tg`,
+  `SC.Ex` never sees raw immediates); the layout is `SC.flat` (to prove: a checked layout certificate + flat_ok).
+- §2 buffers: my representation already uses fixed descriptors [len][cap][cap words] with the whole cap as footprint,
+  bump allocated (no reuse of regions, discard never reused), so framing = interval disjointness as advised.
+
 ## Remaining (next round), in order
 1. `cE_ok`/`cT_ok` (ONE induction over `Ex`/`Tl`) for the buffer-free fragment: bin, ite, let/pair/fst/snd/split
    (`slide` lemma), isize/iget, loop (via `loop_ok` with Inv n s := Stk (L ++ [fuel n] ++ flat state) ∧ env rep).
