@@ -36,3 +36,14 @@
   (·.data.toList) id body (fun xs => (f xs).toList) (fun _ => 8192·(B+1)) maxIn true` (`body_ok`, `of_pg`).
 * PROVED (`Nano/SelfHostB.lean`): `selfHosted_parseB`, `selfHosted_parseB_asm` = `selfHosted_parse(_asm)` with the
   inliner hypothesis `hfi : ∀ x, inlFits x → fi (ofL x) = inlB x` and domain `Sized5B` = `Sized5` ∧ `inlFits (serU u)`.
+* Stage 2 (`stage2`, the parser machine): NOT compiled in this session. Assessment from the inliner's experience:
+  the inliner's main loop (11 scalars, three `set!` per step, ~10 nested conditionals per component) takes > 1 h of
+  `wp_compile` (single thread, 4 GB) and needs `--tstack`. `parseA`'s `step` has ~25 transitions, a frame stack, a
+  scope list and a def table (names compared byte by byte), and emits up to 18 bytes per step (`sLi`). Under the
+  constraints above (one changing array per loop: stack + scope + defs + output in ONE `Array Nat`; one tail call
+  per step; per-step constant work) it needs sub-step modes (emit-k-bytes, compare-name, pop-frame) on the order of
+  50 transitions per step function, i.e. several compiles of the inliner's size. Suggested split (each a paged loop
+  over one `Array Nat`, composed with `link_stage`, each proved equal to its part of `parseA` by a Lean equation):
+  (2a) token bytes → tokens with names resolved to scope slots / def numbers (rescans, no stack);
+  (2b) precedence/parentheses with an explicit stack → postfix micro-ops (`serU` without numerals expanded);
+  (2c) numeral expansion (`sLi`), a list-path stage (`frontx_compile`), constant output per token.
