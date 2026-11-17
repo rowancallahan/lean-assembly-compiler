@@ -170,3 +170,11 @@ nano-proof (Opus: L2), nano-mvp (finished: Int64, Chain, chain_test), nano-int (
   So the front-end chain is now, stage by stage, with every Lean-level equation proved:
   `src —[lexer + NON-inlining parser: to do, nano-elab]→ serU u —[inlB: to compile, paged]→ ser p —[mexp: compile
   running]→ genR p —[asm: compiled]→ code`.
+* 2026-11-17 01:30. `Nano/ElabUWF.lean`: `pwf` (what the seven parser functions return is well formed, by the same
+  fuel induction as `par`), `nanoElabU_wf`, **`chain_eq : nanoElab xs = some p → ∃ u, nanoElabU xs = some u ∧ (arities
+  < 256 → at most 65536 defs → asm (mexp (inlB (serU u))) = nanoGen p)`**. `Nano/SelfHostChain.lean`:
+  **`selfHosted_four`**: the target `SelfHosted (link (link (link ce ci) cm) ca) … (Sized K …) nanoCompileA` from four
+  stage machine theorems with these exact function specs: `fe src = serU u` whenever `nanoElabU src = some u`
+  (front end: lexer + NON-inlining parser), `fi = inlB` (inliner), `fm = mexp` (expander), `fa = asm` (assembler,
+  exists). `Sized`: arities < 256, ≤ 65536 defs, intermediate streams ≤ 2^20 bytes and ≤ K, stage work spaces ≤ K.
+  Everything except the three missing stage theorems is proved (Sail axioms only).
