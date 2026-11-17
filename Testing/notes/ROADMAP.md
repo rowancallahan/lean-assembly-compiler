@@ -355,3 +355,6 @@ the length register (and, for item 2, zeroes the rest).
   DECISION (owner, 2026-11-17 06:40): REMINDER, do after self-hosting closes — add the depth/length limit to the spec
   (preferably as an explicit parameter of `nanoElab`, e.g. `nanoElab (lim : Limits) src`), then update the proofs. Until
   then `Nano.selfHosted` carries the bound in its stated domain.
+- DECISION (owner, 2026-11-17 07:36): S3 is the route for ALL new compile work (correct by construction: no per-stage
+  machine proof; per stage only a Lean bridge + kernel evaluation of the compiler). Stages already compiled by frontx
+  (asm, lexer halves, mexp) stay until ORDER step (2) moves them to S3; no new frontx/paged effort.
