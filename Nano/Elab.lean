@@ -204,26 +204,6 @@ def pDefs : Nat → Defs → List Tok → Option Prog
     | _ => none
   | _, _, _ => none
 
-/-- nesting bound: open parentheses plus `let`s in scope are at most 100 (Lean fails with "maximum recursion depth" at about 500 of
-either, 1 unit each, calls 2; found by `Testing/nano/thr.py`).  State: total, `let`s of the current paren level, saved levels. -/
-def nestOk : Nat → Nat → List Nat → List Tok → Bool
-  | _, _, _, [] => true
-  | n, l, st, Tok.kdef :: ts => nestOk 0 0 [] ts
-  | n, l, st, Tok.klet :: ts => n + 1 ≤ 100 && nestOk (n + 1) (l + 1) st ts
-  | n, l, st, Tok.lp :: ts => n + 1 ≤ 100 && nestOk (n + 1) 0 (l :: st) ts
-  | n, l, st, Tok.rp :: ts =>
-    match st with
-    | [] => false
-    | l0 :: st0 => nestOk (n - 1 - l) l0 st0 ts
-  | n, l, st, _ :: ts => nestOk n l st ts
-
-/-- size bound: at most 2000 tokens per def (Lean rejects a chain of about 3000 `+` / `*` operands: "maximum recursion depth"; the
-lowest threshold measured, `Testing/nano/thr.py`; 5400 tokens) -/
-def sizeOk : Nat → List Tok → Bool
-  | _, [] => true
-  | _, Tok.kdef :: ts => sizeOk 1 ts
-  | n, _ :: ts => n + 1 ≤ 2000 && sizeOk (n + 1) ts
-
 /-- the one type of a token list: every type token is `UInt64` (`false`) or every one is `Int64` (`true`) -/
 def uniTy : Option Bool → List Tok → Option Bool
   | t, [] => t
@@ -236,7 +216,7 @@ def nanoElabT (xs : List UInt8) : Option (Bool × Prog) :=
   match (if adjOk xs then lex xs.length xs else none) with
   | some ts =>
     match uniTy none ts with
-    | some s => if nestOk 0 0 [] ts && sizeOk 0 ts then (pDefs (4 * ts.length + 4) [] ts).map (s, ·) else none
+    | some s => (pDefs (ts.length + 1) [] ts).map (s, ·)
     | none => none
   | none => none
 
