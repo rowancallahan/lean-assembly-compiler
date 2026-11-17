@@ -331,3 +331,16 @@ review, and spend their effort on the proved back end and self-hosting, not on p
   byte-level stage of B proved equal to its spec function (`lexB_eq`, `stage2_lexB`, …); (c) B's machine code computes
   those stages (today certifying per stage; after the S3 move, by design). `nanoElab` itself is the spec (defines
   meaning), cross-checked against Lean's elaborator, not proved.
+
+### Spec strengthening: output length and exact output block (owner-approved, 2026-11-17)
+
+1. APPROVED: the code returns the output length in a register (e.g. a1); the spec states the output occupies exactly
+   `[outputAddress, outputAddress + a1)` and decodes to the result, so readers never depend on the type's encoding.
+2. APPROVED IN PRINCIPLE (owner to confirm when we get there): the rest of the output block is zero (a proved zeroing
+   loop), so only the encoding lives in the output block.
+3. Domain of the self-hosted nano binary: either stated explicitly in `Nano.selfHosted` or out-of-domain inputs set
+   the OOM flag; must be explicit either way.
+Plan (small checked steps, AFTER nano self-hosting closes): add `CompileCorrectL` / `CompileRunsL` next to the current
+statements in Compiler/AllocSpec.lean (nothing breaks); prove them back end by back end (IR first, then inductive path,
+paged, S3, nano); when all hold, make them the main statements and retire the old ones. Each back end's exit code sets
+the length register (and, for item 2, zeroes the rest).
