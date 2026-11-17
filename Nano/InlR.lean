@@ -2,8 +2,8 @@
 `serU` into 3-byte records, `Q` (this file, paged) keeps the table, `W` (list stage) wraps the entry body.
 
 `Q`'s records `[op, a, b]` (`x = a * 256 + b`): `op = 0`: append byte `x`; `1`: append the body of def `x` (copy
-mode `cp`/`rem`); `2`: table cell `x` := the current body (`pk` = start · 2^21 + length, the length counting the
-arity byte); `3`: header cell `HD` := the current body, the next body starts here.  One step = one record or one
+mode `cp`/`rem`); `2`: table cell `x` := the current body (`pk` = start · 2^17 + length, the length counting the
+arity byte, below 2^17); `3`: header cell `HD` := the current body, the next body starts here.  One step = one record or one
 copied byte; every step reads `ob` once and writes one cell (a call writes cell `x` its own value). -/
 import Nano.InlP
 
@@ -21,13 +21,13 @@ def mq (ob : Array UInt64) (src : ByteArray) (i w cs cp rem : Nat) : Array UInt6
     let rd := rv.toNat % 4611686018427387904
     mq (ob.set! (if 0 < rem || op == 0 then BASE + w else if op == 3 then HD else x)
         (if 0 < rem || op == 1 then rv else if op == 0 then UInt64.ofNat x
-         else UInt64.ofNat (cs * 1048576 + (w - cs))))
+         else UInt64.ofNat (cs * 131072 + (w - cs))))
       src (if 0 < rem then i else i + 3) (if 0 < rem || op == 0 then w + 1 else w)
       (if 0 < rem then cs else if op == 3 then w else cs)
-      (if 0 < rem then cp + 1 else if op == 1 then rd / 1048576 else cp)
-      (if 0 < rem then rem - 1 else if op == 1 then rd % 1048576 - 1 else 0)
+      (if 0 < rem then cp + 1 else if op == 1 then rd / 131072 else cp)
+      (if 0 < rem then rem - 1 else if op == 1 then rd % 131072 - 1 else 0)
   else ob
-termination_by (src.size - i) * 1048576 + rem
+termination_by (src.size - i) * 65536 + rem
 decreasing_by
   all_goals
     by_cases hr : 0 < rem
@@ -44,6 +44,6 @@ termination_by len - t
 def inlQ (xs : ByteArray) : Array UInt8 :=
   let ob := mq (Array.replicate (CAP + 0 * xs.size) 0) xs 0 0 0 0 0
   let h := ob[HD]!.toNat % 4611686018427387904
-  eq (Array.replicate (h % 1048576) 0) ob 0 (h / 1048576 % 1099511627776) (h % 1048576)
+  eq (Array.replicate (h % 131072) 0) ob 0 (h / 131072 % 1099511627776) (h % 131072)
 
 end Nano.IR
