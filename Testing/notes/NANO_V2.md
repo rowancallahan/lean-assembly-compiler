@@ -283,3 +283,14 @@ conservative (inherited); loop states need ≥ 1 parameter; the zero arm must co
   literals / type ascriptions (`(0x30 : UInt64)` → a zero-arity def), no `_` patterns, `len'` for fuel, no `bpop`
   (not in the backend yet), shift guard (numerals next to shifts as zero-arity defs), defs only (proofs elsewhere).
 - Test p3 is a deliberate fuel-exhaustion case: fuel `len' x`, but `len x + 1` steps are needed, so the zero arm returns `[]` (the Lean error, status 1) on EVERY input, the empty one included (CI tender's flag, 2026-11-17: intended).
+
+## Buffer proof (inc 5), started — Nano/V2/Buf.lean
+- `BufRep c s a cap l` (round 6 F's `BufferRep` on the abstract machine: header len/cap, elements at a+16+8i,
+  aligned, ≥ lo, cap < 2^20), `foot a cap`, `BufRep.keep` (a buffer below the heap top survives `Keep`).
+- Node lemmas: **`size_node`**, **`get_node`** (borrows; memory unchanged; bounds check ⇒ `l.getD i 0`).
+- NEXT: (a) generalise `Post`/`Keep` (worker 2's Expr.lean) to `∃ h' ≥ h` (mk) and `Keep.heap` → "unchanged outside
+  the footprints in a given set F" (round 6 `SameOutside`); re-prove seq_ok/let/ite/slide/tail/loop nodes
+  against it (pure blocks: F = ∅, h' = h, so the old lemmas lift); (b) `set_node`/`push_node` (`buffer_set`/
+  `buffer_push` + `appendMem`), `mk_node` (fresh footprint [h, h'), disjoint from everything live); (c) `EnvRep`
+  with buffer entries (address word + BufRep, pairwise-disjoint live footprints = round 6 `Owned`), indexed by the
+  dead flags of `Ex.lv`; `cE_ok` with hypothesis `e.lv env d = some d'`.
