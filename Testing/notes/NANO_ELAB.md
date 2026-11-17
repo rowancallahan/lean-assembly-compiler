@@ -6,7 +6,7 @@ compiled with machine theorems, tested on QEMU + Sail. Files `Nano/ElabB*.lean`.
 ## Status
 | piece | state |
 |---|---|
-| stage 1 `Nano.B.lexB` (lexer + type check of `nanoElabT`: bytes → header byte + token bytes) | machine written, front end accepts the view; **proved equal to the spec for every input**: `Nano.B.lexB_eq : decL (lexB xs) = lexT xs` (`Nano/ElabBProof.lean`, axioms propext / Classical.choice / Quot.sound) |
+| stage 1 `Nano.B.lexB` (adjacency check + lexer + type check of `nanoElabT`: bytes → header byte + token bytes) | **proved equal to the spec for every input** (current spec, nano-e2e's lexer): `Nano.B.lexB_eq : decL (lexB xs) = lexT xs`, `lexT xs = (if adjOk xs then lex xs.length xs else none) >>= uniTy` (`Nano/ElabBProof.lean`, axioms propext / Classical.choice / Quot.sound). The first version (old lexer, commit f93dcc2) was also proved, then reworked after the spec changed |
 | stage 1 compiled (`Nano.Self.lexBE`, `Nano/ElabBSelf.lean`) | see log below |
 | stage 2 (parser: tokens → Prog with inlined calls) | **not started**: analysis below says it cannot be one front-end stage, nor a fixed chain of them, for all inputs |
 
@@ -27,6 +27,14 @@ only the decoded `(s, ts)`.
   `[id x, kty, id x]`; `"12"` alone is rejected). The machine does the same.
 * Generated: the step macros `STEPN`/`STEPE` come from `Testing/nano/elabb_{step,end}.tmpl` via `Testing/nano/gen_elabb.py`.
 
+## Proof outline (`Nano/ElabBProof.lean`)
+`adjPass` (mode 5 = `adjOk`), `pass1` (= `R1 (lex F xs)`: lex result, then `uniTy`, then the restart), `pass2` (bytes decode
+to `lex`'s tokens), both by strong induction on the rest using one lemma `step0`: from state 0, one `lex` step (blank,
+newline + column-0 check, punctuation, `:=`, a word) is a fixed run of machine steps (`S0`/`S0g`). Words: `classify`
+(`KIND` on the automaton state and packed word = `wordTok`, via `pk_beq`: packing is injective up to 7 characters),
+`WordStart`/`WordRun`/`W_last*` (machine runs), `spanId_eq`, `word_ok` (bytes decode to the token, type update =
+`uniTy`'s), the fuel split (`W_quirk`, `quirkK`, `lex_last`). Column 0: `C4pos`/`C4neg`.
+
 ## Front-end rejections met (and the change made) — evidence for the front-end work
 1. `frontx_view`: a recursive call on the same list (`lx xs …` / `lx (c :: t) …`, non-consuming state change) →
    "possibly looping simp theorem `lx.eq_1`", max recursion. Change: every step consumes one byte, with lookahead.
@@ -44,7 +52,13 @@ only the decoded `(s, ts)`.
    step is its own template; the end-of-pass continuation is specialised per known `m` in the generator.
 7. `frontx_compile`: `simp` maximum recursion depth in `lx.view.runs` (the 2-pass, 7-scalar machine, ~17 min) →
    `set_option maxRecDepth 100000`.
-8. (Lean, not the front end) `let` in macros is not allowed by the front end (TINYSELF 4); helper functions cost slots:
+8. "could not prove the capacity condition" when a call argument re-tests a condition already on the path (`DSTEP0`
+   tested `48 ≤ c` inside the `48 ≤ c` branch: the hypothesis gets simplified, the goal not). Same for `st == 4` tested
+   inside `st == 0 || st == 4`. Change: split the branch so arguments do not depend on path conditions (this is
+   probably what broke nano-e2e's 15-op `asm`).
+9. `frontx_compile` aborts with a native stack overflow on the 3-pass machine; `--tstack` needed (a 4 GB stack next to
+   another Lean process got the container killed for memory).
+10. (Lean, not the front end) `let` in macros is not allowed by the front end (TINYSELF 4); helper functions cost slots:
    all shared subterms are hygiene-off macros.
 
 ## Why the parser (stage 2) cannot be built in this front end for all inputs
