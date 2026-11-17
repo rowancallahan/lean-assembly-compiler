@@ -412,6 +412,20 @@ partial def natLitSE (c : Ctx) (n : Nat) : M SE := do
   let .d i ← tyOf (mkConst ``Nat) | throwError "S3: Nat"
   return natChain i c.depth n
 
+/-- a `String` literal: its UTF-8 bytes as the kernel structures (`String.ofByteArray (ByteArray.mk (Array.mk
+bytes)) _`, the validity proof not stored); its encoding unfolds by `s3EncStrLit` -/
+partial def strLitSE (c : Ctx) (str : String) : M SE := do
+  let .d iS ← tyOf (mkConst ``String) | throwError "S3: String"
+  let .d iB ← tyOf (mkConst ``ByteArray) | throwError "S3: ByteArray"
+  let .d iA ← tyOf (mkApp (mkConst ``Array [levelZero]) (mkConst ``UInt8)) | throwError "S3: Array"
+  let .d iL ← tyOf (mkApp (mkConst ``List [levelZero]) (mkConst ``UInt8)) | throwError "S3: List"
+  let rec chain (d : Nat) : List UInt8 → SE
+    | [] => .mk iL 0 []
+    | b :: bs => .let_ .w (.lit b.toNat) (.let_ (.d iL) (chain (d + 1) bs) (.mk iL 1 [d, d + 1]))
+  let d := c.depth
+  return .let_ (.d iL) (chain d str.toUTF8.toList)
+    (.let_ (.d iA) (.mk iA 0 [d]) (.let_ (.d iB) (.mk iB 0 [d + 1]) (.mk iS 0 [d + 2])))
+
 partial def tr (c : Ctx) (e : Lean.Expr) : M SE := do
   let e ← Core.betaReduce ((← instantiateMVars e).consumeMData)
   let e := e.consumeMData.headBeta
@@ -439,6 +453,7 @@ partial def tr (c : Ctx) (e : Lean.Expr) : M SE := do
   | .const ``Bool.true _ => return .blit true
   | .const ``Bool.false _ => return .blit false
   | .lit (.natVal n) => natLitSE c n
+  | .lit (.strVal str) => strLitSE c str
   | _ => trApp c e
 
 partial def trApp (c : Ctx) (e : Lean.Expr) : M SE := do
@@ -652,6 +667,57 @@ simproc [simp] s3EncNatLitL (Proven.S3.Enc.enc _) := fun e => do
   let some (_, _, rhs) := (← inferType pf).eq? | return .continue
   return .visit { expr := rhs, proof? := some pf }
 
+/-- `Enc.enc s` for a `String` literal `s`: its bytes as values (definitionally: `enc_string`, UTF-8) -/
+dsimproc [simp] s3EncStrLit (Proven.S3.Enc.enc _) := fun e => do
+  unless e.isAppOfArity ``Proven.S3.Enc.enc 3 do return .continue
+  unless e.appFn!.appFn!.appArg!.isConstOf ``String do return .continue
+  let .lit (.strVal str) := e.appArg!.consumeMData | return .continue
+  let vT := mkConst ``Proven.S3.V
+  let bv64 := mkApp (mkConst ``BitVec) (mkNatLit 64)
+  let mut l := mkApp2 (mkConst ``Proven.S3.V.c) (mkNatLit 0) (← mkListLit vT [])
+  for b in str.toUTF8.toList.reverse do
+    let w := mkApp (mkConst ``Proven.S3.V.w) (← mkNumeral bv64 b.toNat)
+    l := mkApp2 (mkConst ``Proven.S3.V.c) (mkNatLit 1) (← mkListLit vT [w, l])
+  let wrap (v : Lean.Expr) : MetaM Lean.Expr := do
+    return mkApp2 (mkConst ``Proven.S3.V.c) (mkNatLit 0) (← mkListLit vT [v])
+  return .visit (← wrap (← wrap (← wrap l)))
+
+/-- the bytes of a concrete byte-list value (`.c 1 [.w b, rest]` chains of numerals) -/
+partial def bytesOfV? (v : Lean.Expr) : MetaM (Option (List UInt8)) := do
+  let v := v.consumeMData
+  unless v.isAppOfArity ``Proven.S3.V.c 2 do return none
+  let some j := natLit? v.appFn!.appArg! | return none
+  let some (_, fs) := v.appArg!.listLit? | return none
+  if j == 0 && fs.isEmpty then return some []
+  unless j == 1 && fs.length == 2 do return none
+  let w := fs[0]!.consumeMData
+  unless w.isAppOfArity ``Proven.S3.V.w 1 do return none
+  let some b ← (do
+    let x := w.appArg!.consumeMData
+    if x.isAppOfArity ``OfNat.ofNat 3 then pure (natLit? x.appFn!.appArg!)
+    else if x.isAppOfArity ``BitVec.ofNat 2 then pure (natLit? x.appArg!)
+    else pure none) | return none
+  unless b < 256 do return none
+  let some rest ← bytesOfV? fs[1]! | return none
+  return some (b.toUInt8 :: rest)
+
+/-- `Enc.dec v : String` for the value of a valid UTF-8 literal: the literal (definitionally: `dec` decides the
+validity, `enc_string`) -/
+dsimproc [simp] s3DecStrLit (Proven.S3.Enc.dec _) := fun e => do
+  unless e.isAppOfArity ``Proven.S3.Enc.dec 3 do return .continue
+  unless e.appFn!.appFn!.appArg!.isConstOf ``String do return .continue
+  let v := e.appArg!.consumeMData
+  let one (x : Lean.Expr) : Option Lean.Expr :=
+    if x.isAppOfArity ``Proven.S3.V.c 2 && natLit? x.appFn!.appArg! == some 0 then
+      match x.appArg!.listLit? with
+      | some (_, [y]) => some y
+      | _ => none
+    else none
+  let some l := (one v >>= one >>= one) | return .continue
+  let some bs ← bytesOfV? l | return .continue
+  let some str := String.fromUTF8? ⟨bs.toArray⟩ | return .continue
+  return .visit (mkStrLit str)
+
 /-! ## certificate tactics -/
 
 /-- split a variable `x` that the goal uses as `Enc.enc x` (a datatype value whose constructor is not known) -/
@@ -665,6 +731,13 @@ syntax (name := s3Split) "s3_split" : tactic
   let r ← IO.mkRef (#[] : Array Lean.Expr)
   t.forEach fun e => do if e.isAppOfArity ``Proven.S3.Enc.enc 3 then r.modify (·.push e.appArg!)
   let encArgs ← r.get
+  -- (a limb `Nat` variable is not split: `zero`/`succ` are not its representation)
+  let limbVars ← do
+    let r ← IO.mkRef (#[] : Array FVarId)
+    t.forEach fun e => do
+      if e.isAppOfArity ``Proven.S3.Enc.enc 3 && e.appFn!.appArg!.isConstOf ``Proven.S3.Limbs.encNatL then
+        if let .fvar v := e.appArg! then r.modify (·.push v)
+    r.get
   for e in encArgs do
     let fvs := (Lean.collectFVars {} e).fvarIds
     for v in fvs do
@@ -672,6 +745,7 @@ syntax (name := s3Split) "s3_split" : tactic
   let lctx ← getLCtx
   let mut best : Option LocalDecl := none
   for v in inside do
+    if limbVars.contains v then continue
     let some d := lctx.find? v | continue
     let ty ← whnf d.type
     if isWordTy ty || ty.isConstOf ``Bool then continue
@@ -996,7 +1070,7 @@ def genText (N : Name) (st : St) (extraSimp : String) : MetaM String := do
   let dts := st.dts.toList.map fun cs => listTxt (cs.toList.map fun fs => listTxt (fs.toList.map tyTxt))
   let fns := st.fns.toList.map fun fi => s!"({listTxt (fi.params.toList.map tyTxt)}, {tyTxt fi.ret})"
   let mut out := s!"namespace {p}\nopen Proven.S3\n"
-  if st.limbs then out := out ++ (← limbPrelude st)
+  if st.limbs then out := out ++ (← limbPrelude st) ++ "set_option maxRecDepth 100000\n"
   out := out ++ s!"abbrev S : Proven.S3.Sig := ⟨{listTxt dts}, {listTxt fns}⟩\n"
   for k in [0:st.fns.size] do
     let fi := st.fns[k]!
@@ -1234,7 +1308,8 @@ syntax (name := s3Compile) "s3_compile " ident " := " term (" simp " "[" ident,*
 
 /-- the limb mode's extra normal forms for the certificates -/
 def limbSimp : String := ", Proven.S3.Limbs.u64_sub_one, Proven.S3.Limbs.nat_div_eq, Proven.S3.Limbs.nat_mod_eq, " ++
-  "Proven.S3.Limbs.nat_land_eq, Proven.S3.Limbs.nat_lor_eq, Proven.S3.Limbs.nat_xor_eq"
+  "Proven.S3.Limbs.nat_land_eq, Proven.S3.Limbs.nat_lor_eq, Proven.S3.Limbs.nat_xor_eq, " ++
+  "Proven.S3.Limbs.nat_blt_decide, Proven.S3.Limbs.nat_ble_decide, Proven.S3.Limbs.nat_beq_decide"
 
 /-- `s3_compileL N := main [simp lemmas]`: as `s3_compile`, with `Nat` as limbs (`Compiler/S3/Limbs.lean`): the
 `Nat` operations are the limb primitives, literals are limb chains, `Nat.casesOn` is a test against `0` -/

@@ -187,7 +187,9 @@ compiles verbatim from its equations over these: `Nat.pow`, `Nat.shiftLeft`, `Na
 - `s3_encL I`: `s3_enc I` with the limb encodings (`I.s3encL`, `I.s3decL`, `I.s3instL`: a reducible def, local in its
   section, made an instance by `s3_compileL`).
 - Shared code touched (behaviour of the unary path unchanged): `s3EncNatLit` skips `encNatL`; `s3_split` does not
-  generalize a limb `Nat` call result (its constructors are not its representation).
+  generalize a limb `Nat` call result nor split a limb `Nat` variable (their constructors are not their
+  representation). New in both modes (previously rejected): `String` literals (`strLitSE`, `s3EncStrLit`,
+  `s3DecStrLit`; see Next 1).
 - Library functions were rewritten until the generic certifier proves them: no `let` feeding a condition in a
   recursive function (`bitsLoop` takes the digit top-aligned instead of shifting by `k - 1`), no branch on a call
   result in a non-recursive function (`sub`, `div`, `stepR` multiply by a `0`/`1` word instead), no accumulator
@@ -249,7 +251,8 @@ is 2582 words, the limb one 4521 (the primitives' code). A probe with every oper
 
 ### Final check (this round)
 
-After merging `origin/main` (ROADMAP only): `bash Testing/scripts/check.sh`: **ALL CHECKS PASSED** (23 min; 32 new axiom
+After merging `origin/main` (ROADMAP only), and again after the string-literal / normal-form additions (Next 1):
+`bash Testing/scripts/check.sh`: **ALL CHECKS PASSED** (23 min; 32 new axiom
 lines from `axioms_s3-limb.lean`: every `correct` exactly the Sail set, every `computes`/`wf` and the 14 primitive
 lemmas ⊆ {propext, Classical.choice, Quot.sound}). The statement-fingerprint step prints its usual WARNING: no
 statement hash changed (62/62), only dependency closures; not re-frozen, per the round rules.
@@ -257,15 +260,15 @@ statement hash changed (62/62), only dependency closures; not re-frozen, per the
 ### Next
 
 1. con-leche StateC's `NatBinOp.result`/`natOpRefusal`/`natResultRefused` (verbatim, with the 18 basis names and
-   `CheckError`). Prototype, NOT merged (`Testing/notes/S3_LIMB_NEXT.patch` against this branch, probe
-   `Testing/notes/S3_LIMB_NEXT_probe.lean.txt`): `String` literals as byte chains (`strLitSE`), their encoding unfolded
-   by a `dsimproc` (`s3EncStrLit`, checked by the kernel definitionally) and decoded back by `s3DecStrLit` (callee
-   closers need `enc (dec v) = v` for a literal); `set_option maxRecDepth` for the generated bodies (a 100-byte
-   literal nests 300 `let`s); `Nat.blt a b = decide (a < b)` (and `ble`, `beq`) as limb normal forms (a `Bool`
-   result returned as data); `s3_split` not splitting limb `Nat` variables. With it the probe certifies the
-   names, `CheckError`, the string-carrying errors, `natResultRefused`, the 14-way `NatBinOp.result` arms over
-   the primitives, and fails on: `natOpRefusal` (heartbeats in `whnf`, probably the symbolic `s!` concatenations of
-   literals) and the harness's `(m % 32).toNat` normal form in `main`.
+   `CheckError`; probe `Testing/notes/S3_LIMB_NEXT_probe.lean.txt`). Merged this round (generic, rebuilt and
+   re-checked with every entry): `String` literals as byte chains (`strLitSE`), their encoding unfolded by a
+   `dsimproc` (`s3EncStrLit`, checked by the kernel definitionally) and decoded back by `s3DecStrLit` (callee closers
+   need `enc (dec v) = v` for a literal); `set_option maxRecDepth 100000` in limb-mode programs (a 100-byte literal
+   nests 300 `let`s); `Nat.blt a b = decide (a < b)` (and `ble`, `beq`) as limb normal forms (a `Bool` result
+   returned as data); `s3_split` does not split limb `Nat` variables. With them the probe certifies the names,
+   `CheckError` with its messages, `natResultRefused` and most of `NatBinOp.result`; still failing: `natOpRefusal`
+   (heartbeats in `whnf`, probably the symbolic `s!` concatenations of literals) and the harness's `(m % 32).toNat`
+   normal form in `main`.
 2. Proof parameters after run-time ones, and certificates that never print private names (or closed-term folding
    with `decide +kernel` lemmas), for `Std.HashMap` construction (`CState {}`).
 3. The large-literal-factor kernel recursion (locate the defeq check that unfolds `Nat.mul _ 4294967296`).

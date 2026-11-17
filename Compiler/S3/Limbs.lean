@@ -676,6 +676,14 @@ theorem u64_sub_one (k : UInt64) : k - 1 = 18446744073709551615 + k := by
 theorem nat_div_eq (a b : Nat) : Nat.div a b = a / b := rfl
 theorem nat_mod_eq (a b : Nat) : Nat.mod a b = a % b := rfl
 
+/-- the certificates' normal forms of the comparisons (a `Bool` result as data meets `decide`) -/
+theorem nat_blt_decide (a b : Nat) : Nat.blt a b = decide (a < b) := by
+  rw [Bool.eq_iff_iff, Nat.blt_eq]; simp
+theorem nat_ble_decide (a b : Nat) : Nat.ble a b = decide (a ≤ b) := by
+  rw [Bool.eq_iff_iff, Nat.ble_eq]; simp
+theorem nat_beq_decide (a b : Nat) : Nat.beq a b = decide (a = b) := by
+  rw [Bool.eq_iff_iff, Nat.beq_eq]; simp
+
 /-! ## words -/
 
 /-- **`UInt64.toNat`** as limbs -/
