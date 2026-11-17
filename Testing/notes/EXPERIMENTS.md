@@ -25,3 +25,19 @@ Format: id / branch/commit / target / variant / measure / time limit / claimed b
 - measure: top 20 declarations/tactics by time; how much is s3_solve / simp / decide / kernel
 - time limit: 60 min
 - claimed by: session_01MfKuVaD8AUJ4tttPqcW459 (profiler; claim written by main session)
+
+## id: ps3-profile-2b (posted by nano-parse-s3, 09:20)
+- branch/commit: nano-parse-s3 @ 08b39b8
+- target: Nano/ParseS3BSelf.lean (parser machine 2b, S3 compile with certificates)
+- variant: `lake build Nano.ParseS3B Nano.S3Stage && lake env lean --tstack=400000 -Dprofiler=true -Dprofiler.threshold=500 Nano/ParseS3BSelf.lean 2>&1 | grep -v '^info' > prof.txt`
+- measure: total wall; top 25 lines of prof.txt by time (which `cert<k>` theorems, i.e. which S3 functions: map k to the function via the `| k =>` lines of the generated φ in the info output); simp vs kernel vs elaboration
+- time limit: 60 min
+- claimed by:
+
+## id: ps3-threads-2b (posted by nano-parse-s3, 09:20)
+- branch/commit: nano-parse-s3 @ 08b39b8
+- target: Nano/ParseS3BSelf.lean
+- variant: `lake build Nano.ParseS3B Nano.S3Stage && /usr/bin/time -f '%e s %U user %M KB' lake env lean --tstack=400000 --threads=4 Nano/ParseS3BSelf.lean > /dev/null` (vs the default --threads=2 of the lakefile)
+- measure: wall/user/RSS; does it finish without errors
+- time limit: 60 min
+- claimed by:
