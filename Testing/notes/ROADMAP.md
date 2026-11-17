@@ -425,3 +425,22 @@ The frozen spec on branch nano-v2 (v1 constructs unchanged + exactly the Astra-d
 Int64 dropped for milestone 1) is accepted as the working freeze. Like v1's `nanoElab`/`Prog.eval`, the meaning stays a
 draft the owner may review later; changes after the freeze still go through the owner.
 - Owner (19:35): the elaborator spec is deliberately LOOSE for now; it is a working draft, to be tightened by the owner later. Do not treat its details as final.
+
+### NANO v2 FINAL RUN: two independent paths (owner, 2026-11-17 19:45)
+- Path L (trusts Lean's compiler, acceptable since the elaborator is trusted anyway): build the nano compiler's Lean
+  source `s` as a native executable with the plain Lean toolchain (`lake`), run it on the UTF-8 bytes of `s` → Bᴸ.
+- Path N (our binary only): run B₁ (then B₂) on QEMU/Sail on the same bytes → B₂ (→ B₃).
+- Required check: B₂ = B₃ byte for byte. (Owner 19:55: comparing against the Lean-toolchain path is NOT required. Bᴸ
+  here means the OUTPUT of the Lean-compiled compiler run on s — not Lean's own native executable, which naturally differs.) The proof route (ImplementsBytes B₂ Cκ without compiler 1 in its dependency
+  closure) is the separate, stronger claim; keep the two clearly labelled so they are not confused.
+
+### NANO v2 CHECKPOINT BEFORE THE SELF-HOSTING DECISION (owner, 2026-11-17 20:00)
+- Bootstrap binary: may simply be the Lean-toolchain-compiled nano compiler (we trust Lean's definitions/elaborator, so
+  Lean's compiler is acceptable for the bootstrap); the S3/B₁ route is an alternative, not required.
+- REQUIRED CHECKPOINT: at one point, the ENTIRE nano compiler exists as Lean source written in the nano subset
+  (one clearly named folder/file set, e.g. Nano/V2Self/), accepted by Lean, with its status documented (what nano itself
+  accepts of it yet). The owner reviews this before deciding how to self-host (bootstrap from Lean's compiler, from B₁,
+  or from the elaborator alone; which cross-comparisons to do).
+- Until then: interim self-host / self-compile checks are fine (e.g. compiled stages on their own text, partial fixed
+  points), but no final self-hosting route is locked in.
+- Astra round 6 (E/F/G proofs) did not arrive (Astra out of tokens); work from NANO_V2_SKELETONS.lean.
