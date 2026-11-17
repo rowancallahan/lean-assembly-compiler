@@ -6,6 +6,7 @@
   R (`vres`): the same run as an `Option UInt64` (`none` = rejected, `some ty` = accepted with type `ty`), Lean only.
   E (`le`):   the emitter: pass 1 of `lx` (alternatives resolved to `BYTES :: REC`, the mode-5 branch dropped), behind
               mode 7 = read the type byte written by `lv` (0: rejected).
+In V and E the mode `m` is a `Nat` (the front end's measure, written with the same `m == k` tests, is then `omega`).
 usage: gen_lexsplit.py elabb_step.tmpl elabb_end.tmpl"""
 import re, sys
 TN = open(sys.argv[1]).read(); TE = open(sys.argv[2]).read()
