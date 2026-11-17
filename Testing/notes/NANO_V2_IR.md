@@ -36,3 +36,7 @@ Node records are now 8 words (nodes at 10000 + 8 i, flatten stack at 30000, toke
 Test `par0_test.lean`: random trees now include `if` (300 trees, 0 mismatches), rejections of `if a then …`, missing `else`, missing `then`.
 
 ### Numeric tags: FINAL = what `Gen.lean` reads and Par0 emits: CONST 1, LOCAL 2, BIN 3, IF 4, LET 5, PAIR 6, CALL 8, PRIM 9, LOOP 10, CONTINUE 11, DEF 20, ENDDEF 21; prims ISIZE 1 … BPUSH 9. (NANO_V2_CG.md says the same.) No more changes.
+
+### Parser increment C (let) done: `let x := V; BODY` (names are scoped to BODY, shadowing allowed, innermost-first lookup in a (name token position, slot) table; slots are allocated in parse order, never reused, so the DEF header's `nslots` = params + number of lets).
+Emitted as `LET slot 1 v body`. Test `par0_test.lean`: random trees with params, lets (names drawn from a small pool so shadowing is frequent), ifs and operators, evaluated by NAME in the reference and by SLOT after decoding: 200 trees 0 mismatches (407 lets in 400 sampled trees); rejections of a missing `;`/`:=`, an unbound name, a let-bound name used after its scope.
+Front-end lesson: a def with too many `let`s/inlined loops is rejected (frame/slot limit): y9 had to share one `y0` call between the ident and let cases.

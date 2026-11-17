@@ -26,9 +26,9 @@ def y2 : Nat → Buf → UInt64 → UInt64 → UInt64
 def y3 : Nat → Buf → UInt64 → UInt64 → UInt64
   | 0, h, i, p => 0
   | n + 1, h, i, p =>
-    if i < bget h 4 then
-      if y2 16777216 h (bget h (9000 + i) + 1) (p + 1) == 1 then i + 1 else y3 n h (i + 1) p
-    else 0
+    if i == 0 then 0
+    else if y2 16777216 h (bget h (8998 + 2 * i) + 1) (p + 1) == 1 then bget h (8999 + 2 * i) + 1
+    else y3 n h (i - 1) p
 
 def y7 (h : Buf) (p : UInt64) : UInt64 :=
   bget h (40000 + (p + 1)) ||| ((bget h (40000 + (p + 2))) <<< 8) ||| ((bget h (40000 + (p + 3))) <<< 16) ||| ((bget h (40000 + (p + 4))) <<< 24)
@@ -51,19 +51,23 @@ def y9 : Nat → UInt64 → UInt64 → UInt64 → UInt64 → Buf → Buf
   | 0, p, g, k, m, h => h
   | n + 1, p, g, k, m, h =>
     let u := g - 1;
+    let i := bget h 4;
     let c := bget h (1000 + 2 * u);
     let a := bget h (1001 + 2 * u);
     let t := bget h (40000 + p);
     let b := 10000 + 8 * m;
     let q1 := bget h (5000 + k - 1);
     let q2 := bget h (5000 + k - 2);
-    let s := y3 16777216 h 0 p;
+    let s := y3 16777216 h i p;
     let v1 := y7 h p;
     let v2 := y7 h (p + 1);
     let o := y8 t;
     let r := y10 t;
     let t1 := bget h (40000 + (p + 1));
-    let e1 := y0 16777216 h (p + 1);
+    let e1 := y0 16777216 h (p + 1 + (if t == 2 then k1 else k0));
+    let d := bget h 11;
+    let f := bget h (999 + 2 * u);
+    let l := bget h (40000 + e1);
     let q3 := bget h (5000 + k - 3);
     let q4 := bget h (5000 + k - 4);
     let q5 := bget h (5000 + k - 5);
@@ -75,6 +79,11 @@ def y9 : Nat → UInt64 → UInt64 → UInt64 → UInt64 → Buf → Buf
         if s == 0 then h
         else y9 n e1 u (k + 1) (m + 1) (bset (bset (bset h (5000 + k) m) b 2) (b + 1) (s - 1))
       else if t == 6 then y9 n (p + 1) (u + 2) k m (bset (bset (bset (bset h (1000 + 2 * u) 4) (1001 + 2 * u) 0) (1002 + 2 * u) 1) (1003 + 2 * u) 0)
+      else if t == 2 then
+        if t1 == 14 then
+          if l == 9 then y9 n (e1 + 1) (u + 3) k m (bset (bset (bset (bset (bset (bset (bset h (1000 + 2 * u) 12) (1001 + 2 * u) d) (1002 + 2 * u) 11) (1003 + 2 * u) (p + 1)) (1004 + 2 * u) 1) (1005 + 2 * u) 0) 11 (d + 1))
+          else h
+        else h
       else if t == 32 then y9 n (p + 1) (u + 5) k m (bset (bset (bset (bset (bset (bset (bset (bset (bset (bset h (1000 + 2 * u) 9) (1001 + 2 * u) 0) (1002 + 2 * u) 8) (1003 + 2 * u) 0) (1004 + 2 * u) 7) (1005 + 2 * u) 0) (1006 + 2 * u) 6) (1007 + 2 * u) 0) (1008 + 2 * u) 1) (1009 + 2 * u) 0)
       else h
     else if c == 4 then if t == 7 then y9 n (p + 1) u k m h else h
@@ -88,6 +97,11 @@ def y9 : Nat → UInt64 → UInt64 → UInt64 → UInt64 → Buf → Buf
         if t1 == 5 then y9 n (p + 10) (u + 1) k (m + 2) (bset (bset (bset (bset (bset (bset (bset (bset (bset h b 1) (b + 1) v2) (b + 8) 3) (b + 9) o) (b + 10) q1) (b + 11) m) (5000 + k - 1) (m + 1)) (1000 + 2 * u) 2) (1001 + 2 * u) a)
         else h
       else y9 n (p + 1) (u + 3) k m (bset (bset (bset (bset (bset (bset h (1000 + 2 * u) 2) (1001 + 2 * u) a) (1002 + 2 * u) 5) (1003 + 2 * u) o) (1004 + 2 * u) 1) (1005 + 2 * u) (r + 1))
+    else if c == 11 then
+      if t == 13 then y9 n (p + 1) (u + 1) k m (bset (bset (bset (bset (bset h (1000 + 2 * u) 1) (1001 + 2 * u) 0) (9000 + 2 * i) a) (9001 + 2 * i) f) 4 (i + 1))
+      else h
+    else if c == 12 then
+      y9 n p u (k - 1) (m + 1) (bset (bset (bset (bset (bset (bset (bset h b 5) (b + 1) a) (b + 2) 1) (b + 3) q2) (b + 4) q1) 4 (i - 1)) (5000 + k - 2) m)
     else if c == 6 then
       if t == 23 then y9 n (p + 1) (u + 1) (k + 1) m (bset (bset (bset h (5000 + k) 1) (1000 + 2 * u) 1) (1001 + 2 * u) 0)
       else if t == 20 then y9 n (p + 1) (u + 1) (k + 1) m (bset (bset (bset h (5000 + k) 2) (1000 + 2 * u) 1) (1001 + 2 * u) 0)
@@ -116,7 +130,7 @@ def y11 : Nat → UInt64 → UInt64 → Buf → Buf
         else h
       else h
     else
-      if t == 14 then y11 n e1 1 (bset (bset h (9000 + j) p) 4 (j + 1))
+      if t == 14 then y11 n e1 1 (bset (bset (bset h (9000 + 2 * j) p) (9001 + 2 * j) j) 4 (j + 1))
       else if t == 8 then
         if t1 == 3 then
           if t2 == 7 then y11 n (p + 3) 0 h else h
@@ -138,6 +152,7 @@ def y12 : Nat → Buf → UInt64 → Buf → Buf
       let f5 := bget h (b + 5);
       if z4 == 1 then y12 n h (d - 1) (bpush (bpush o 1) f1)
       else if z4 == 2 then y12 n h (d - 1) (bpush (bpush (bpush o 2) f1) 1)
+      else if z4 == 5 then y12 n (bset (bset h (30000 + d - 1) f4) (30000 + d) f3) (d + 1) (bpush (bpush (bpush o 5) f1) f2)
       else if z4 == 3 then y12 n (bset (bset h (30000 + d - 1) f3) (30000 + d) f2) (d + 1) (bpush (bpush o 3) f1)
       else y12 n (bset (bset (bset (bset h (30000 + d - 1) f5) (30000 + d) f4) (30001 + d) f3) (30002 + d) f2) (d + 3) (bpush (bpush o 4) f1)
 
@@ -159,13 +174,15 @@ def y13 (x : Buf) : Buf :=
       let z1 := bget h 6;
       let p0 := bget h 3;
       if z1 == 1 then
-        let g := y9 16777216 p0 1 0 0 (bset (bset h 1000 1) 1001 0);
+        let w0 := bget h 4;
+        let g := y9 16777216 p0 1 0 0 (bset (bset (bset h 1000 1) 1001 0) 11 w0);
         let z2 := bget g 0;
         let p1 := bget g 3;
         let z3 := bget g 1;
         let j := bget g 4;
+        let w1 := bget g 11;
         if z2 == 1 then
-          if p1 == c then bpush (y12 16777216 (bset g 30000 z3) 1 (bpush (bpush (bpush (bpush (bpush (bpush (bpush bnew 2) 20) 0) j) j) 0) 1)) 21
+          if p1 == c then bpush (y12 16777216 (bset g 30000 z3) 1 (bpush (bpush (bpush (bpush (bpush (bpush (bpush bnew 2) 20) 0) j) w1) 0) 1)) 21
           else bnew
         else bnew
       else bnew
