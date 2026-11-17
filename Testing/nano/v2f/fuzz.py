@@ -54,7 +54,7 @@ class G:
             fs = [f for f in s.defs if f[2] == U]
             if fs:
                 f = rng.choice(fs)
-                return "({} {})".format(f[0], " ".join(s.arg(env, t, d - 1) for t in f[1]))
+                return "({} {})".format(f[0], " ".join(s.arg(env, U if t == "U0" else t, d - 1) for t in f[1]))
         if k == 5:
             p = s.p(env, rng.choice([P2, P3]), d - 1)
             return "({}).{}".format(p, rng.choice(["1", "2.1"] if p.count(",") > 1 and False else ["1"]))
@@ -69,7 +69,7 @@ class G:
         fs = [f for f in s.defs if f[2] == t]
         if fs and k == 1:
             f = rng.choice(fs)
-            return "({} {})".format(f[0], " ".join(s.arg(env, a, d - 1) for a in f[1]))
+            return "({} {})".format(f[0], " ".join(s.arg(env, U if a == "U0" else a, d - 1) for a in f[1]))
         if t == P2: return "({}, {})".format(s.w(env, d), s.w(env, d))
         return "({}, {}, {})".format(s.w(env, d), s.w(env, d), s.w(env, d))
     def body(s, env, t, d, n):
@@ -90,7 +90,20 @@ class G:
                 a, b = nm + "_1", nm + "_2"
                 lines.append("let ({}, {}) := {};".format(a, b, s.p(env, P2, d))); env += [(a, "w"), (b, "w")]
         return lines, (s.w(env, d) if t == U else s.p(env, t, d)), env
+    def loop(s, i):
+        """a fuel loop over the input with state (i, a : T)"""
+        t = rng.choice([U, P2, P3])
+        env = [("x", None), ("i", "w"), ("a", TY[t])]
+        stop = s.p(env, t, 1) if t != U else s.w(env, 1)
+        nxt = s.p(env + [("v", "w")], t, 1) if t != U else s.w(env + [("v", "w")], 1)
+        z = s.p(env, t, 1) if t != U else s.w(env, 1)
+        src = ("def l{0} : Nat → List UInt8 → UInt64 → {1} → {1}\n  | 0, x, i, a => {2}\n"
+               "  | n + 1, x, i, a =>\n    if len x <= i then {3} else\n    let v := rd x i;\n    l{0} n x (i + 1) ({4})\n"
+               ).format(i, t, z, stop, nxt)
+        s.defs.append(("l{} (len' x + {}) x".format(i, rng.randrange(3)), ["U0"] + [t], t))
+        return src
     def helper(s, i):
+        if rng.random() < .35: return s.loop(i)
         ps = [rng.choice([U, U, P2, P3]) for _ in range(rng.randrange(1, 4))]
         rt = rng.choice([U, P2, P3])
         names = ["a{}".format(j) for j in range(len(ps))]

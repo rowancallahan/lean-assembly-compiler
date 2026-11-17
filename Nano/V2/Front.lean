@@ -25,6 +25,7 @@ inductive FTok where
   | lp | rp | colon | assign | plus | minus | star | semi
   | eqeq | lt | le | band | bor | bxor | shl | shr
   | comma | times | p1 | p2 | nil
+  | kNat | arrow | bar | darrow | klenP
   deriving DecidableEq
 
 def wdTok (w : List UInt8) : Option FTok :=
@@ -39,6 +40,7 @@ def wdTok (w : List UInt8) : Option FTok :=
     else if w == [76, 105, 115, 116] then some .kList else if w == [85, 73, 110, 116, 56] then some .kU8
     else if w == [114, 100] then some .krd else if w == [108, 101, 110] then some .klen
     else if w == [112, 117, 116] then some .kput
+    else if w == [78, 97, 116] then some .kNat
     else if identOk w then some (.id w) else none
 
 def flex : Nat → List UInt8 → Option (List FTok)
@@ -70,6 +72,7 @@ def flex : Nat → List UInt8 → Option (List FTok)
     else if c == 61 then
       match xs with
       | 61 :: 32 :: ys => (flex f ys).map (.eqeq :: ·)
+      | 62 :: ys => (flex f ys).map (.darrow :: ·)
       | _ => none
     else if c == 60 then
       match xs with
@@ -88,6 +91,7 @@ def flex : Nat → List UInt8 → Option (List FTok)
     else if c == 124 then
       match xs with
       | 124 :: 124 :: 32 :: ys => (flex f ys).map (.bor :: ·)
+      | 32 :: ys => (flex f ys).map (.bar :: ·)
       | _ => none
     else if c == 94 then
       match xs with
@@ -101,6 +105,10 @@ def flex : Nat → List UInt8 → Option (List FTok)
           (flex f ys).map ((if d == 49 then .p1 else .p2) :: ·)
         else none
       | [] => none
+    else if c == 0xE2 then
+      match xs with
+      | 0x86 :: 0x92 :: ys => (flex f ys).map (.arrow :: ·)
+      | _ => none
     else if c == 0xC3 then
       match xs with
       | 0x97 :: ys => (flex f ys).map (.times :: ·)
@@ -113,6 +121,9 @@ def flex : Nat → List UInt8 → Option (List FTok)
       let r := spanId f (c :: xs)
       -- a numeral followed by `.` would be a decimal literal in Lean
       if isDigit c && (match r.2 with | 46 :: _ => true | _ => false) then none else
+      -- `len'` (fuel only)
+      if r.1 == [108, 101, 110] && (match r.2 with | 39 :: _ => true | _ => false) then
+        (flex f (r.2.drop 1)).map (.klenP :: ·) else
       match wdTok r.1 with
       | some t => (flex f r.2).map (t :: ·)
       | none => none
@@ -133,6 +144,8 @@ inductive S where
   | anil | acons (e r : S)
   | pair (a b : S) | fst (e : S) | snd (e : S) | split (e b : S)
   | rd (i : S) | len | put (o e : S) | nil
+  /-- a call of a fuel-loop def: fuel (`Nat`: `len'`, `+`, `*`, numerals), state arguments -/
+  | lcall (g : Nat) (fuel as : S)
   deriving Repr, Inhabited
 
 /- shift every variable `≥ c` by `k` -/
@@ -197,8 +210,27 @@ def inl (body : Ex) : Nat → List Ex → Ex
   | j, a :: as => .let_ (a.lift 0 j) (inl body (j + 1) as)
   | _, [] => body
 
-/-- a def: (name, has the input, parameter types (outputs/words, first first), result type, lowered body) -/
-abbrev FDef := List UInt8 × Bool × List Ty × Ty × Ex
+/-- a def's lowered body: a function body, or a fuel loop (zero case, step; the state = the parameters as a
+right-nested product, already unpacked inside) -/
+inductive FB where
+  | fn (b : Ex)
+  | lp (z : Ex) (t : Tl)
+  deriving Repr
+
+/-- a def: (name, has the input, parameter types (outputs/words, first first), result type, body) -/
+abbrev FDef := List UInt8 × Bool × List Ty × Ty × FB
+
+/-- the state value of a loop call: `(a₁, (a₂, … aₖ))` -/
+def tup : List Ex → Ex
+  | [a] => a
+  | a :: as => .pair a (tup as)
+  | [] => .lit 0
+
+/-- the state type -/
+def tupT : List Ty → Ty
+  | [a] => a
+  | a :: as => .prod a (tupT as)
+  | [] => .w
 
 def S.args : S → List S
   | .acons e r => e :: r.args
@@ -215,8 +247,11 @@ def S.low (ds : List FDef) : S → Ex
   | .ite .lt a b t e => .ite .lt (a.low ds) (b.low ds) (t.low ds) (e.low ds)
   | .ite .le a b t e => .ite .ge (b.low ds) (a.low ds) (t.low ds) (e.low ds)
   | .call g as => match ds[g]? with
-    | some (_, _, _, _, body) => inl body 0 (lowA ds as)
-    | none => .lit 0
+    | some (_, _, _, _, .fn body) => inl body 0 (lowA ds as)
+    | _ => .lit 0
+  | .lcall g fu as => match ds[g]? with
+    | some (_, _, _, _, .lp z t) => .loop (fu.low ds) (tup (lowA ds as)) z t
+    | _ => .lit 0
   | .anil => .lit 0
   | .acons _ _ => .lit 0
   | .pair a b => .pair (a.low ds) (b.low ds)
@@ -240,6 +275,7 @@ def S.typed : List Bool → S → Bool
   | fl, .sh _ _ a => a.typed fl
   | fl, .let_ v b => b.typed (v.typed fl :: fl)
   | _, .call _ _ => true
+  | _, .lcall _ _ _ => true
   | fl, .ite _ _ _ t e => t.typed fl || e.typed fl
   | fl, .pair a b => a.typed fl && b.typed fl
   | fl, .fst e => e.typed fl
@@ -254,7 +290,7 @@ def S.typed : List Bool → S → Bool
 def S.hasSh : S → Bool
   | .bin _ a b | .let_ a b | .call _ (.acons a b) | .acons a b | .pair a b | .split a b | .put a b => a.hasSh || b.hasSh
   | .ite _ a b t e => a.hasSh || b.hasSh || t.hasSh || e.hasSh
-  | .fst a | .snd a | .rd a => a.hasSh
+  | .fst a | .snd a | .rd a | .lcall _ _ a => a.hasSh
   | .sh _ _ _ => true
   | _ => false
 
@@ -267,6 +303,7 @@ def S.sm : List Bool → S → Sm
   | fl, .bin _ a b => comb (a.sm fl) (b.sm fl)
   | fl, .var i => (false, !(fl.getD i false), true, false)
   | fl, .call _ as => (as.hasSh, false, smA fl as, false)
+  | fl, .lcall _ _ as => (as.hasSh, false, smA fl as, false)
   | fl, .let_ v b => (v.hasSh || b.hasSh, true, good (v.sm fl) && good (b.sm (v.typed fl :: fl)), false)
   | fl, .ite k a b t e =>
     ((S.ite k a b t e).hasSh, true, good (comb (a.sm fl) (b.sm fl)) && good (t.sm fl) && good (e.sm fl), false)
@@ -307,7 +344,8 @@ def Tl.occ (i : Nat) : Tl → Nat
   | .split e b => e.occ i + b.occ (i + 2)
 end
 
-/-- every buffer-holding binder (with types `env`, newest first) is used at most once -/
+/- every buffer-holding binder (with types `env`, newest first) is used at most once -/
+mutual
 def Ex.aff : List Ty → Ex → Bool
   | env, .bin _ a b | env, .pair a b | env, .get a b | env, .push a b => a.aff env && b.aff env
   | env, .ite _ a b t e => a.aff env && b.aff env && t.aff env && e.aff env
@@ -320,8 +358,22 @@ def Ex.aff : List Ty → Ex → Bool
     | _ => false
   | env, .fst e | env, .snd e | env, .size e | env, .iget e => e.aff env
   | env, .set a b c => a.aff env && b.aff env && c.aff env
-  | _, .loop _ _ _ _ => false
+  | env, .loop f i z t => match tyOf env i with
+    | some σ => f.aff env && i.aff env && z.aff (σ :: env) && t.aff (σ :: env) &&
+        (!σ.hasBuf || decide (z.occ 0 ≤ 1 ∧ t.occ 0 ≤ 1))
+    | none => false
   | _, _ => true
+def Tl.aff : List Ty → Tl → Bool
+  | env, .ret e | env, .next e => e.aff env
+  | env, .ite _ a b t e => a.aff env && b.aff env && t.aff env && e.aff env
+  | env, .let_ v b => match tyOf env v with
+    | some τ => v.aff env && b.aff (τ :: env) && (!τ.hasBuf || decide (b.occ 0 ≤ 1))
+    | none => false
+  | env, .split e b => match tyOf env e with
+    | some (.prod τ σ) => e.aff env && b.aff (σ :: τ :: env) &&
+        (!τ.hasBuf || decide (b.occ 1 ≤ 1)) && (!σ.hasBuf || decide (b.occ 0 ≤ 1))
+    | _ => false
+end
 
 /-! ## the parser -/
 /-- scope entry: `none` = the input; `some (τ, typed)` -/
@@ -347,6 +399,37 @@ def fdef : List UInt8 → List FDef → Nat → Option (Nat × FDef)
 
 def cmpS : FTok → Option SCmp
   | .eqeq => some .eq | .lt => some .lt | .le => some .le | _ => none
+
+/- fuel expressions (`Nat`): `len' x`, numerals `< 2^32`, `+`, `*`, parentheses; `pFA` = an atom -/
+mutual
+def pF : Nat → FScope → List FTok → Option (S × List FTok)
+  | 0, _, _ => none
+  | f + 1, sc, ts =>
+    match pFM f sc ts with
+    | some (a, .plus :: r) =>
+      match pF f sc r with
+      | some (b, r2) => some (.bin .add a b, r2)
+      | none => none
+    | x => x
+def pFM : Nat → FScope → List FTok → Option (S × List FTok)
+  | 0, _, _ => none
+  | f + 1, sc, ts =>
+    match pFA f sc ts with
+    | some (a, .star :: r) =>
+      match pFM f sc r with
+      | some (b, r2) => some (.bin .mul a b, r2)
+      | none => none
+    | x => x
+def pFA : Nat → FScope → List FTok → Option (S × List FTok)
+  | 0, _, _ => none
+  | _ + 1, _, .num n :: ts => if n < 2 ^ 32 then some (.num n, ts) else none
+  | _ + 1, sc, .klenP :: .id x :: ts => if isInp x sc then some (.len, ts) else none
+  | f + 1, sc, .lp :: ts =>
+    match pF f sc ts with
+    | some (e, .rp :: r) => some (e, r)
+    | _ => none
+  | _, _, _ => none
+end
 
 /- the parser state passes the defs `ds` (newest first) for calls and lowering -/
 mutual
@@ -500,14 +583,21 @@ def pApp : Nat → FScope → List FDef → List FTok → Option (S × List FTok
     | some i => pPost f sc ds (.var i) ts
     | none =>
       match fdef g ds 0 with
-      | some (j, (_, hi, ps, _, _)) =>
-        -- the input argument (if the callee takes it) must be the input itself
-        let ts' := if hi then (match ts with | .id x :: r => if isInp x sc then some r else none | _ => none)
-          else some ts
-        match ts' with
-        | some r =>
-          match pArgs f sc ds ps r with
-          | some (as, r2) => some (.call j as, r2)
+      | some (j, (_, hi, ps, _, fb)) =>
+        -- a loop: the fuel first
+        let fu := match fb with
+          | .fn _ => some (S.anil, ts)
+          | .lp _ _ => pFA f sc ts
+        match fu with
+        | some (fe, ts1) =>
+          -- the input argument (if the callee takes it) must be the input itself
+          let ts' := if hi then (match ts1 with | .id x :: r => if isInp x sc then some r else none | _ => none)
+            else some ts1
+          match ts' with
+          | some r =>
+            match pArgs f sc ds ps r with
+            | some (as, r2) => some (match fb with | .fn _ => .call j as | .lp _ _ => .lcall j fe as, r2)
+            | none => none
           | none => none
         | none => none
       | none => none
@@ -536,7 +626,7 @@ def pAtom : Nat → FScope → List FDef → List FTok → Option (S × List FTo
     | some i => pPost f sc ds (.var i) ts
     | none =>
       match fdef g ds 0 with
-      | some (j, (_, false, [], _, _)) => some (.call j .anil, ts)
+      | some (j, (_, false, [], _, .fn _)) => some (.call j .anil, ts)
       | _ => none
   | f + 1, sc, ds, .lp :: ts =>
     match pE f sc ds ts with
@@ -620,9 +710,166 @@ where pNs : Nat → List (List UInt8) → List FTok → Option (List (List UInt8
   | _ + 1, xs, .colon :: ts => some (xs, ts)
   | _, _, _ => none
 
+/-! ## fuel loops: `def f : Nat → T₁ → … → R | 0, x₁, … => e₀ | n + 1, x₁, … => e`, self calls `f n a₁ …` only
+in tail position (lowered to `Ex.loop`, the state = the parameters as a right-nested product, unpacked by `split`s) -/
+
+/-- self: (name, fuel variable, has the input, state parameter types) -/
+abbrev Me := List UInt8 × List UInt8 × Bool × List Ty
+
+def lowCmp (k : SCmp) (a b : Ex) : Cmp × Ex × Ex :=
+  match k with
+  | .eq => (.eq, a, b)
+  | .lt => (.lt, a, b)
+  | .le => (.ge, b, a)
+
+/-- a leaf of a tail: an ordinary expression, returned -/
+def pRet (f : Nat) (sc : FScope) (ds : List FDef) (ts : List FTok) : Option (Tl × List FTok) :=
+  match pE f sc ds ts with
+  | some (e, r) => if good (e.sm (flags sc)) then some (.ret (e.low ds), r) else none
+  | none => none
+
+/-- a loop body (tail position) -/
+def pT : Nat → Me → FScope → List FDef → List FTok → Option (Tl × List FTok)
+  | 0, _, _, _, _ => none
+  | f + 1, me, sc, ds, .klet :: .lp :: .id a :: .comma :: .id b :: .rp :: .assign :: ts =>
+    match pE f sc ds ts with
+    | some (v, .semi :: r) =>
+      match tyOf (tys sc) (v.low ds) with
+      | some (.prod τ σ) =>
+        let t := v.typed (flags sc)
+        if good (v.sm (flags sc)) then
+          match pT f me ((b, some (σ, t)) :: (a, some (τ, t)) :: sc) ds r with
+          | some (e, r2) => some (.split (v.low ds) e, r2)
+          | none => none
+        else none
+      | _ => none
+    | _ => none
+  | f + 1, me, sc, ds, .klet :: .id x :: .assign :: ts =>
+    match pE f sc ds ts with
+    | some (v, .semi :: r) =>
+      match tyOf (tys sc) (v.low ds) with
+      | some τ =>
+        if good (v.sm (flags sc)) then
+          match pT f me ((x, some (τ, v.typed (flags sc))) :: sc) ds r with
+          | some (b, r2) => some (.let_ (v.low ds) b, r2)
+          | none => none
+        else none
+      | none => none
+    | _ => none
+  | f + 1, me, sc, ds, .kif :: ts =>
+    match pOr f sc ds ts with
+    | some (a, op :: r) =>
+      match cmpS op with
+      | some k =>
+        match pOr f sc ds r with
+        | some (b, .kthen :: r2) =>
+          if (a.typed (flags sc) || b.typed (flags sc)) && good (comb (a.sm (flags sc)) (b.sm (flags sc))) then
+            match pT f me sc ds r2 with
+            | some (t, .kelse :: r3) =>
+              match pT f me sc ds r3 with
+              | some (e, r4) =>
+                let q := lowCmp k (a.low ds) (b.low ds)
+                some (.ite q.1 q.2.1 q.2.2 t e, r4)
+              | none => none
+            | _ => none
+          else none
+        | _ => none
+      | none => none
+    | _ => none
+  | f + 1, me, sc, ds, .id g :: .id n :: ts =>
+    if g == me.1 then
+      if n == me.2.1 then
+        let ts' := if me.2.2.1 then (match ts with | .id x :: r => if isInp x sc then some r else none | _ => none)
+          else some ts
+        match ts' with
+        | some r =>
+          match pArgs f sc ds me.2.2.2 r with
+          | some (as, r2) =>
+            if S.sm.smA (flags sc) as then some (.next (tup (S.low.lowA ds as)), r2) else none
+          | none => none
+        | none => none
+      else none
+    else pRet f sc ds (.id g :: .id n :: ts)
+  | f + 1, _, sc, ds, ts => pRet f sc ds ts
+
+/-- `T → T → …` -/
+def pArr : Nat → List FTok → Option (List (Option Ty) × List FTok)
+  | 0, _ => none
+  | f + 1, ts =>
+    match pTy f ts with
+    | some (t, .arrow :: r) => (pArr f r).map fun (l, r2) => (t :: l, r2)
+    | some (t, r) => some ([t], r)
+    | none => none
+
+/-- the pattern names `, x₁, …, xₖ =>` -/
+def pAN : Nat → List FTok → Option (List (List UInt8) × List FTok)
+  | 0, _ => none
+  | f + 1, .comma :: .id v :: ts => (pAN f ts).map fun (l, r) => (v :: l, r)
+  | _ + 1, .darrow :: ts => some ([], ts)
+  | _, _ => none
+
+/-- the scope inside the loop after unpacking the state (`unE`/`unT`); `[]` names the intermediate pairs -/
+def bScope : List (List UInt8 × Ty) → FScope → FScope
+  | [(p, τ)], below => (p, some (τ, true)) :: below
+  | (p, τ) :: ps, below => bScope ps ((p, some (τ, true)) :: ([], some (tupT (τ :: ps.map (·.2)), true)) :: below)
+  | [], below => below
+
+def unE : Nat → Ex → Ex
+  | k + 2, b => .split (.var 0) (unE (k + 1) b)
+  | _, b => b
+def unT : Nat → Tl → Tl
+  | k + 2, b => .split (.var 0) (unT (k + 1) b)
+  | _, b => b
+
+/-- the scope of an arm: the input (if any) at the bottom, then the unpacked state -/
+def armScope (hi : Bool) (names : List (List UInt8)) (ps : List Ty) : FScope :=
+  let inp : FScope := if hi then (match names with | x :: _ => [(x, none)] | [] => []) else []
+  bScope ((if hi then names.drop 1 else names).zip ps) inp
+
+/-- a fuel-loop definition after `def g : Nat →` -/
+def pLoop (f : Nat) (ds : List FDef) (g : List UInt8) (ts : List FTok) : Option (FDef × List FTok) :=
+  match pArr f ts with
+  | some (all, .bar :: .num 0 :: r) =>
+    let params := all.dropLast
+    let ρ : Ty := match all.getLast? with | some (some t) => t | _ => .buf
+    let hi := match params with | none :: _ => true | _ => false
+    let ps : List Ty := (if hi then params.drop 1 else params).map (·.getD .buf)
+    let k := ps.length
+    let σ := tupT ps
+    match pAN f r with
+    | some (n0, r1) =>
+      if n0.length = params.length ∧ 0 < k then
+        let sc0 := armScope hi n0 ps
+        match pE f sc0 ds r1 with
+        | some (z, .bar :: .id n :: .plus :: .num 1 :: r2) =>
+          match pAN f r2 with
+          | some (n1, r3) =>
+            if n1.length = params.length then
+              let sc1 := armScope hi n1 ps
+              match pT f (g, n, hi, ps) sc1 ds r3 with
+              | some (t, r4) =>
+                let zE := unE k (z.low ds)
+                let tT := unT k t
+                if good (z.sm (flags sc0)) && tyOf [σ] zE == some ρ && tyT [σ] σ ρ tT && zE.aff [σ] &&
+                    tT.aff [σ] && (!σ.hasBuf || decide (zE.occ 0 ≤ 1 ∧ tT.occ 0 ≤ 1)) then
+                  some ((g, hi, ps, ρ, .lp zE tT), r4)
+                else none
+              | none => none
+            else none
+          | none => none
+        | _ => none
+      else none
+    | none => none
+  | _ => none
+
 /-- the definitions; returns the defs (newest first) -/
 def pDs : Nat → List FDef → List FTok → Option (List FDef)
   | 0, _, _ => none
+  | f + 1, ds, .kdef :: .id g :: .colon :: .kNat :: .arrow :: ts =>
+    match fdef g ds 0, pLoop f ds g ts with
+    | none, some (d, []) => some (d :: ds)
+    | none, some (d, r) => pDs f (d :: ds) r
+    | _, _ => none
   | f + 1, ds, .kdef :: .id g :: ts =>
     match fdef g ds 0 with
     | some _ => none
@@ -637,7 +884,7 @@ def pDs : Nat → List FDef → List FTok → Option (List FDef)
             let b := e.low ds
             if good (e.sm (flags sc)) && tyOf (tys sc) b == some ρ && b.aff (tys sc) &&
                 (tys sc).zipIdx.all (fun (τ, i) => !τ.hasBuf || decide (b.occ i ≤ 1)) then
-              let d : FDef := (g, hi, ps, ρ, b)
+              let d : FDef := (g, hi, ps, ρ, .fn b)
               match r3 with
               | [] => some (d :: ds)
               | _ => pDs f (d :: ds) r3
@@ -656,7 +903,7 @@ def frontElabK (κ : Nat) (xs : List UInt8) : Option Prog :=
   match (if adjOk xs then flex xs.length xs else none) with
   | some ts =>
     match pDs (16 * (ts.length + 2)) [] ts with
-    | some ((_, true, [], .buf, b) :: _) => some (mainProg (b.cap κ))
+    | some ((_, true, [], .buf, .fn b) :: _) => some (mainProg (b.cap κ))
     | _ => none
   | none => none
 
