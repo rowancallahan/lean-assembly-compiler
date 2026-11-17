@@ -624,12 +624,16 @@ syntax (name := s3Contra) "s3_contra" : tactic
           let gt ← whnfR (← g'.getType)
           if gt.isEq then g'.refl
           else if gt.isConstOf ``True then g'.assign (mkConst ``True.intro)
+          else try g'.assumption catch _ => pure ()
       if (← gs.allM fun g' => g'.isAssigned) then
         Tactic.replaceMainGoal []
         return
       s.restore
     catch _ => s.restore
-  throwError "s3_contra: no contradiction"
+  throwError m!"s3_contra: no contradiction in{indentD (MessageData.ofGoal g)}"
+
+theorem bv_nle_of_lt {n : Nat} {a b : BitVec n} (h : a < b) : ¬ b ≤ a := BitVec.not_le.mpr h
+theorem bv_nlt_of_le {n : Nat} {a b : BitVec n} (h : a ≤ b) : ¬ b < a := BitVec.not_lt.mpr h
 
 /-- add the negated forms of `Nat` order hypotheses (`a < b` gives `¬ b ≤ a`, `¬ a < b` gives `b ≤ a`, and back) -/
 syntax (name := s3Hyps) "s3_hyps" : tactic
@@ -644,8 +648,12 @@ syntax (name := s3Hyps) "s3_hyps" : tactic
       let (_, g') ← (← g.assert `hS3 t pf).intro1P
       Tactic.replaceMainGoal [g']
     match ty.getAppFnArgs with
-    | (``LT.lt, #[t, _, a, b]) => if t.isConstOf ``Nat then add (← mkAppM ``Nat.not_le_of_lt #[d.toExpr])
-    | (``LE.le, #[t, _, a, b]) => if t.isConstOf ``Nat then add (← mkAppM ``Nat.not_lt_of_le #[d.toExpr])
+    | (``LT.lt, #[t, _, a, b]) =>
+      if t.isConstOf ``Nat then add (← mkAppM ``Nat.not_le_of_lt #[d.toExpr])
+      else if t.isAppOfArity ``BitVec 1 then add (← mkAppM ``bv_nle_of_lt #[d.toExpr])
+    | (``LE.le, #[t, _, a, b]) =>
+      if t.isConstOf ``Nat then add (← mkAppM ``Nat.not_lt_of_le #[d.toExpr])
+      else if t.isAppOfArity ``BitVec 1 then add (← mkAppM ``bv_nlt_of_le #[d.toExpr])
     | (``Not, #[q]) =>
       match q.getAppFnArgs with
       | (``LT.lt, #[t, _, _, _]) => if t.isConstOf ``Nat then add (← mkAppM ``Nat.le_of_not_lt #[d.toExpr])
@@ -699,16 +707,17 @@ macro_rules (kind := s3SolveF)
   | `(tactic| s3_solveF $n [$ls,*] with $c) => do
     let k := n.getNat
     if k == 0 then
-      `(tactic| ((try simp only [s3_norm, s3_bytes, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne, Nat.blt_eq, Nat.ble_eq, UInt8.toNat_ofNat, decide_eq_true_eq] at *); (try s3_hyps); simp [s3_norm, s3_bytes, $ls,*]; all_goals (repeat' (first | (intro) | apply And.intro)) <;> $c))
+      `(tactic| ((try simp only [s3_norm, s3_bytes, UInt64.toBitVec_add, UInt64.toBitVec_sub, UInt64.toBitVec_mul, UInt64.toBitVec_ofNat, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne, Nat.blt_eq, Nat.ble_eq, UInt8.toNat_ofNat, decide_eq_true_eq] at *); (try s3_hyps); simp [s3_norm, s3_bytes, $ls,*]; all_goals (repeat' (first | (intro) | apply And.intro)) <;> $c))
     else
       let n' := Syntax.mkNumLit (toString (k - 1))
       `(tactic| first
         | s3_contra
-        | ((try simp only [s3_norm, s3_bytes, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne, Nat.blt_eq, Nat.ble_eq, UInt8.toNat_ofNat, decide_eq_true_eq] at *); (try s3_hyps); (try simp [s3_norm, s3_bytes, $ls,*]);
+        | ((try simp only [s3_norm, s3_bytes, UInt64.toBitVec_add, UInt64.toBitVec_sub, UInt64.toBitVec_mul, UInt64.toBitVec_ofNat, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne, Nat.blt_eq, Nat.ble_eq, UInt8.toNat_ofNat, decide_eq_true_eq] at *); (try s3_hyps); (try simp [s3_norm, s3_bytes, $ls,*]);
             first
             | done
             | (all_goals (repeat' (first | (intro) | apply And.intro)) <;> $c; done)
-            | (s3_splitB <;> s3_solveF $n' [$ls,*] with $c)))
+            | (s3_splitB <;> s3_solveF $n' [$ls,*] with $c))
+        | ((try simp only [s3_norm, s3_bytes, UInt64.toBitVec_add, UInt64.toBitVec_sub, UInt64.toBitVec_mul, UInt64.toBitVec_ofNat, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne, Nat.blt_eq, Nat.ble_eq, UInt8.toNat_ofNat, decide_eq_true_eq] at *); s3_hyps; s3_contra))
 
 /-! ## text -/
 
