@@ -363,3 +363,17 @@ the length register (and, for item 2, zeroes the rest).
   theorem always match and no stage comes from an older compile. All earlier per-stage compiles (frontx asm, lexer
   halves, mexp, and whatever closes the milestone first) are REDONE in that one build. Then B is run on its own source
   (fixed point check, nano v2). The mixed-route milestone is only a stepping stone.
+
+### FREEZE BEFORE THE FULL RUN (owner, 2026-11-17 09:07)
+Before the one-go full run (compile the whole nano compiler from one revision, then run it on itself), ALL the Lean code
+must be present and final on ONE branch:
+- every stage's source (lexer, parser 2a/2b, inliner, expander, assembler), its bridge theorem (`= original` for every
+  input) and its stage theorem (`Implements1With`, Sail axioms only), plus the composition `Nano.selfHosted`;
+- a manifest `Testing/notes/NANO_MANIFEST.md`: per stage, the file, the bridge, the stage theorem, build wall time (≤ 5 min),
+  `#print axioms` line;
+- `check.sh` passes, with no sorry and no new axioms.
+Then tag that revision. The full run (one build, the QEMU/Sail tests, the self-run, the fixed point later) uses only the
+tag. No code changes during the run; a fix means a new tag and a new full run.
+ONE GATE (owner, 09:08): there is exactly one point, the tag, where everything is proved end to end: `Nano.selfHosted`
+is kernel-checked at the tag, every manifest row is done and check.sh passes. Only after that gate does B run on its own
+source. Per-part checks before the gate (stage tests on QEMU/Sail) are allowed and encouraged; they never replace the gate.
