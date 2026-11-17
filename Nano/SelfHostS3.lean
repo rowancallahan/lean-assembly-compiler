@@ -7,8 +7,8 @@ on ≥ 512 nested `let`s, ≥ 256 nested calls, chains of ≥ ~3000 operands): `
 program's nesting (lets, calls at cost 2, right-nested operands) by 400 and its left operator chains by 2500. It only
 narrows the domain (`SelfHosted.mono`); `nanoElab` (the spec) is unchanged. -/
 import Nano.SelfHostedA
-import Nano.ParseS3Self
-import Nano.InlS3Self
+import Nano.ParseS3Stage
+import Nano.InlS3Stage
 
 set_option linter.unusedVariables false
 

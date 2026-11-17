@@ -19,28 +19,4 @@ set_option maxRecDepth 20000 in
 set_option maxHeartbeats 0 in
 s3_compileB Stage2S3 := stage2S
 
-set_option maxRecDepth 100000 in
-theorem stage2S3_small : smallB Stage2S3.P.S = true := by decide
-
-theorem stage2S3_main : (Stage2S3.P.S.fn Stage2S3.P.main).1.length = 1 := by decide
-
-set_option maxRecDepth 100000 in
-set_option maxHeartbeats 0 in
-/-- the IR compiler accepts the program (kernel evaluation of the compiler) -/
-theorem stage2S3_compiles : (Ir.compileW (lowerP Stage2S3.P)).isSome = true := by decide +kernel
-
-/-- **the machine theorem of stage 2, route S3** (Sail axioms only) -/
-theorem stage2S3_implements :
-    Implements1With (fun xs : ByteArray => xs.data.toList) (fun l => l) (S3.words Stage2S3.P)
-      (fun xs => stage2S xs.data.toList) (spaceP Stage2S3.P) (2 ^ 20) true :=
-  stage Stage2S3.computes stage2S3_small stage2S3_main stage2S3_compiles
-
-set_option maxRecDepth 100000 in
-set_option maxHeartbeats 0 in
-theorem stage2S3_code_len : (S3.words Stage2S3.P).length < 2 ^ 17 := by decide +kernel
-
-/-- the compiled stage computes `stage2` on every input -/
-theorem stage2S3_f (x : List UInt8) : (fun xs : ByteArray => stage2S xs.data.toList) (Nano.Link.ofL x) = PB.stage2 x :=
-  stage2S_eq x
-
 end Nano.PS

@@ -8,5 +8,6 @@ s3_enc Nano.PB.St
 s3_enc Nano.PB.Res
 namespace Nano.PS
 set_option maxRecDepth 20000 in
-s3_compile Stage2S3 := stage2S
+set_option maxHeartbeats 0 in
+s3_compileB Stage2S3 := stage2S
 end Nano.PS
