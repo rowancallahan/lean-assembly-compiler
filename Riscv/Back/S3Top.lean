@@ -13,9 +13,9 @@ open Proven Proven.Mach Proven.Top Proven.Top.Alloc
 
 /-- **the S3 compiler** -/
 noncomputable def compile (P : Prog) : Option CompiledA :=
-  open Classical in if Good P then Ir.compile (lowerP P) else none
+  open Classical in if Accepted P then Ir.compile (lowerP P) else none
 
-theorem compile_inv {P : Prog} {c : CompiledA} (h : compile P = some c) : Good P ∧ Ir.compile (lowerP P) = some c := by
+theorem compile_inv {P : Prog} {c : CompiledA} (h : compile P = some c) : Accepted P ∧ Ir.compile (lowerP P) = some c := by
   unfold compile at h
   split at h
   · exact ⟨by assumption, h⟩
@@ -29,7 +29,7 @@ theorem out_small {startState : riscv.State} {call : Call} {code input : List UI
   simp only at this; omega
 
 /-- the RTL program computes what `P` computes, on the inputs a start state allows -/
-theorem computes_of {P : Prog} (hG : Good P) {α β : Type} {f : α → β} {encodeInput : α → List UInt8}
+theorem computes_of {P : Prog} (hG : Accepted P) {α β : Type} {f : α → β} {encodeInput : α → List UInt8}
     {encodeOutput : β → List UInt8} (computes : Computes P f encodeInput encodeOutput) (argument : α)
     (hsmall : (encodeInput argument).length ≤ 2 ^ 20) (hout : (encodeOutput (f argument)).length ≤ 2 ^ 32) :
     (lowerP P).meaning (encodeInput argument) = some (encodeOutput (f argument)) := by

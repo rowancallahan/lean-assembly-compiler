@@ -656,6 +656,23 @@ def genText (N : Name) (st : St) (extraSimp : String) : MetaM String := do
         s!"  intro {" ".intercalate (vs ++ hs)}\n  have := cert{k} {" ".intercalate (vs.map (s!"(Proven.S3.Enc.dec {·})"))}\n" ++
         s!"  rw [{", ".intercalate hs}] at this\n  exact this\n")
   out := out ++ s!"theorem main_good : ∀ bs : List UInt8, Proven.S3.Good P φ P.main [Proven.S3.Enc.enc bs] := cert0\n"
+  let mainTxt ← exprTxt st.fns[0]!.key
+  out := out ++ s!"/-- **the bridge**: the S3 program computes `main` on bytes -/\n" ++
+    s!"theorem computes : Proven.Top.Computes P {mainTxt} id id :=\n" ++
+    s!"  Proven.S3.computes_of_main {mainTxt} id id {mainTxt} (fun _ => rfl) (fun bs => phi0 bs) main_good\n"
+  if (← getEnv).contains `Proven.S3.compile_correct then
+    out := out ++ s!"/-- **the machine theorem**: the compiled code computes `main` (`Compiler/AllocSpec.lean`) -/\n" ++
+      s!"theorem correct (compiled : Proven.Top.Alloc.CompiledA) (h : Proven.S3.compile P = some compiled) " ++
+      s!"(input : List UInt8) (startState : Proven.Top.riscv.State) (call : Proven.Top.Call) " ++
+      s!"(hs : Proven.Top.StartCorrect Proven.Top.riscv startState call compiled.code (id input)) " ++
+      s!"(ho : (id ({mainTxt} input)).length ≤ call.outputLength) " ++
+      s!"(hm : Proven.Top.Alloc.memoryNeeded compiled (id input) ≤ call.workLength) :\n" ++
+      s!"    ∃ finishState, Proven.Top.Runs Proven.Top.riscv startState finishState ∧\n" ++
+      s!"      (Proven.Top.riscv.observe finishState).programCounter = call.returnAddress ∧\n" ++
+      s!"      (Proven.Top.riscv.observe finishState).register Proven.Top.riscv.mapping.status ≠ Proven.Top.Alloc.oomFlag ∧\n" ++
+      s!"      Proven.Top.readMemory (Proven.Top.riscv.observe finishState) call.outputAddress (id ({mainTxt} input)).length\n" ++
+      s!"        = some (id ({mainTxt} input)) :=\n" ++
+      s!"  Proven.S3.compile_correct P compiled {mainTxt} id id input startState call h computes hs ho hm\n"
   out := out ++ s!"end {p}\n"
   return out
 

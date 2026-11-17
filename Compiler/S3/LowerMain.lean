@@ -191,7 +191,7 @@ theorem out_loop : ∀ (rest written : List UInt8) (w : V) (g : VReg → Val) (m
 end
 
 /-- what the compiler checks: small datatypes, a one-parameter `main` -/
-def Good (P : Prog) : Prop := Small P.S ∧ (P.S.fn P.main).1.length = 1
+def Accepted (P : Prog) : Prop := Small P.S ∧ (P.S.fn P.main).1.length = 1
 
 theorem lowerP_fn (P : Prog) (f : Fin P.S.fns.length) : (lowerP P).funcs[f.val]? = some (lowFn P f) := by
   simp [lowerP, List.getElem?_append_left (show f.val < (List.ofFn (lowFn P)).length by simp)]
@@ -201,7 +201,7 @@ theorem lowerP_main (P : Prog) : (lowerP P).funcs[(lowerP P).main]? = some (main
 
 /-- **the lowering is correct**: on every input where `main` has a value whose bytes are `out`, the RTL program's
 meaning is `out` -/
-theorem lower_meaning (P : Prog) (hG : Good P) (input out : List UInt8) (v : V) (hD : P.Den input v)
+theorem lower_meaning (P : Prog) (hG : Accepted P) (input out : List UInt8) (v : V) (hD : P.Den input v)
     (ho : bytesOut v = some out) (hI : input.length < 2 ^ 64) (hO : out.length < 2 ^ 64) :
     (lowerP P).meaning input = some out := by
   generalize hQ : lowerP P = Q
