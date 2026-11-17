@@ -212,6 +212,44 @@ instance : Enc Unit where
   dec _ := ()
   dec_enc _ := rfl
 
+instance : Enc (BitVec 64) where
+  enc x := .w x
+  dec | .w x => x | _ => 0
+  dec_enc _ := rfl
+
+/-- `Nat` as its own inductive type (unary: `zero`, `succ`): exact, values cost their size -/
+def natV : Nat → V
+  | 0 => .c 0 []
+  | n + 1 => .c 1 [natV n]
+
+def natD : V → Nat
+  | .c 1 [v] => natD v + 1
+  | _ => 0
+
+instance : Enc Nat where
+  enc := natV
+  dec := natD
+  dec_enc n := by
+    induction n with
+    | zero => rfl
+    | succ n ih => simp only [natV, natD, ih]
+
+@[simp] theorem enc_bv64 (x : BitVec 64) : Enc.enc x = .w x := rfl
+@[simp] theorem dec_bv64 (x : BitVec 64) : (Enc.dec (V.w x) : BitVec 64) = x := rfl
+@[simp] theorem enc_nat_zero : Enc.enc (0 : Nat) = .c 0 [] := rfl
+@[simp] theorem enc_nat_zero' : Enc.enc Nat.zero = .c 0 [] := rfl
+@[simp] theorem enc_nat_succ (n : Nat) : Enc.enc (n + 1) = .c 1 [Enc.enc n] := rfl
+@[simp] theorem enc_nat_succ' (n : Nat) : Enc.enc (Nat.succ n) = .c 1 [Enc.enc n] := rfl
+@[simp] theorem dec_nat_zero : (Enc.dec (V.c 0 []) : Nat) = 0 := rfl
+@[simp] theorem dec_nat_succ (v : V) : (Enc.dec (V.c 1 [v]) : Nat) = Enc.dec v + 1 := rfl
+attribute [s3_norm] Nat.beq_eq Nat.add_eq Nat.succ_eq_add_one Bool.or_eq_true Bool.and_eq_true
+@[s3_norm] theorem nat_beq_false (a b : Nat) : (Nat.beq a b = false) = ¬ a = b := by
+  rw [← Nat.beq_eq, Bool.not_eq_true]
+@[s3_norm] theorem nat_blt_false (a b : Nat) : (Nat.blt a b = false) = ¬ a < b := by
+  rw [← Nat.blt_eq, Bool.not_eq_true]
+@[s3_norm] theorem nat_ble_false (a b : Nat) : (Nat.ble a b = false) = ¬ a ≤ b := by
+  rw [← Nat.ble_eq, Bool.not_eq_true]
+
 instance instEncExceptT {ε α : Type} {m : Type → Type} [h : Enc (m (Except ε α))] : Enc (ExceptT ε m α) := h
 
 @[simp] theorem enc_exceptT {ε α : Type} {m : Type → Type} [h : Enc (m (Except ε α))] (x : ExceptT ε m α) :

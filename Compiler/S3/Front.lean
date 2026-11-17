@@ -68,7 +68,26 @@ def isRecursive (n : Name) : MetaM Bool := do
     if ci.all.length > 1 then return true
   return false
 
-def isWordTy (t : Lean.Expr) : Bool := t.isConstOf ``UInt64 || t.isConstOf ``Int64 || t.isConstOf ``UInt8
+/-- a `Nat` literal (raw or `OfNat.ofNat Nat n _`) -/
+def natLit? (e : Lean.Expr) : Option Nat :=
+  match e.consumeMData with
+  | .lit (.natVal n) => some n
+  | e' => if e'.isAppOfArity ``OfNat.ofNat 3 && e'.appFn!.appFn!.appArg!.isConstOf ``Nat then
+      match e'.appFn!.appArg!.consumeMData with
+      | .lit (.natVal n) => some n
+      | _ => none
+    else none
+
+def isWordTy (t : Lean.Expr) : Bool := t.isConstOf ``UInt64 || t.isConstOf ``Int64 || t.isConstOf ``UInt8 ||
+  (t.isAppOfArity ``BitVec 1 && natLit? t.appArg! == some 64)
+
+/-- the largest `Nat` literal (unary representation: a literal costs its value in constructor cells) -/
+def natLitMax : Nat := 4096
+
+/-- a `Nat` literal as constructors (datatype `i` is `Nat`) -/
+def natChain (i : Nat) (d : Nat) : Nat → SE
+  | 0 => .mk i 0 []
+  | n + 1 => .let_ (.d i) (natChain i d n) (.mk i 1 [d])
 
 partial def tyOf (t : Lean.Expr) : M Ty := do
   let t := (← instantiateMVars (← whnf t)).consumeMData
@@ -181,8 +200,20 @@ partial def condSE (c : Ctx) (p : Lean.Expr) : M SE := do
   let fn := p.getAppFn
   let args := p.getAppArgs
   let cmp2 (op : String) (a b : Lean.Expr) : M SE := atoms c [a, b] fun _ ls => return .cmp op ls[0]! ls[1]!
+  let natCall (f : Name) (a b : Lean.Expr) : M SE := atoms c [a, b] fun _ ls => do
+    let k ← fnIdx (mkConst f)
+    return .call k ls
   match fn with
   | .const n _ =>
+    let isNat := args.size > 0 && args[0]!.isConstOf ``Nat
+    if isNat && n == ``Eq && args.size == 3 then return ← natCall ``Nat.beq args[1]! args[2]!
+    if isNat && n == ``Ne && args.size == 3 then
+      let s ← natCall ``Nat.beq args[1]! args[2]!
+      return .let_ .b s (.bnot c.depth)
+    if isNat && n == ``LT.lt && args.size == 4 then return ← natCall ``Nat.blt args[2]! args[3]!
+    if isNat && n == ``LE.le && args.size == 4 then return ← natCall ``Nat.ble args[2]! args[3]!
+    if isNat && n == ``GT.gt && args.size == 4 then return ← natCall ``Nat.blt args[3]! args[2]!
+    if isNat && n == ``GE.ge && args.size == 4 then return ← natCall ``Nat.ble args[3]! args[2]!
     let signed := args.size > 0 && args[0]!.isConstOf ``Int64
     if n == ``LT.lt && args.size == 4 && isWordTy args[0]! then
       return ← cmp2 (if signed then ".slt" else ".ult") args[2]! args[3]!
@@ -225,6 +256,11 @@ partial def arm (c : Ctx) (minor : Lean.Expr) (m : Nat) (extra : Array Lean.Expr
     for f in (fs.extract 0 m).reverse do c' := c'.push f
     return (m, ← tr c' (mkAppN (mkAppN minor fs) extra).headBeta)
 
+partial def natLitSE (c : Ctx) (n : Nat) : M SE := do
+  unless n ≤ natLitMax do throwError "S3: Nat literal {n} is too large for the unary representation"
+  let .d i ← tyOf (mkConst ``Nat) | throwError "S3: Nat"
+  return natChain i c.depth n
+
 partial def tr (c : Ctx) (e : Lean.Expr) : M SE := do
   let e ← Core.betaReduce ((← instantiateMVars e).consumeMData)
   let e := e.consumeMData.headBeta
@@ -248,7 +284,7 @@ partial def tr (c : Ctx) (e : Lean.Expr) : M SE := do
       return .cas i lx [(ci.numFields, .var (c'.depth + ci.numFields - 1 - idx))]
   | .const ``Bool.true _ => return .blit true
   | .const ``Bool.false _ => return .blit false
-  | .lit (.natVal _) => throwError "S3: Nat literal {e}"
+  | .lit (.natVal n) => natLitSE c n
   | _ => trApp c e
 
 partial def trApp (c : Ctx) (e : Lean.Expr) : M SE := do
@@ -257,6 +293,7 @@ partial def trApp (c : Ctx) (e : Lean.Expr) : M SE := do
   let env ← getEnv
   let .const n _ := fn | throwError "S3: unsupported application {e}"
   -- literals
+  if let some v := natLit? e then return ← natLitSE c v
   if n == ``OfNat.ofNat && args.size == 3 && isWordTy args[0]! then
     match args[1]!.consumeMData with
     | .lit (.natVal v) => return .lit (v % 2 ^ 64)
@@ -266,6 +303,11 @@ partial def trApp (c : Ctx) (e : Lean.Expr) : M SE := do
     if let some o := binOp? n args[0]! then
       if args[0]!.isConstOf ``UInt8 then throwError "S3: UInt8 arithmetic is not supported: {e}"
       return ← atoms c [args[4]!, args[5]!] fun _ ls => return .bin o ls[0]! ls[1]!
+  if (n == ``BEq.beq || n == ``bne) && args.size == 4 && args[0]!.isConstOf ``Nat then
+    return ← atoms c [args[2]!, args[3]!] fun c' ls => do
+      let k ← fnIdx (mkConst ``Nat.beq)
+      if n == ``BEq.beq then return .call k ls
+      return .let_ .b (.call k ls) (.bnot c'.depth)
   if n == ``BEq.beq && args.size == 4 && isWordTy args[0]! then
     return ← atoms c [args[2]!, args[3]!] fun _ ls => return .cmp ".eq" ls[0]! ls[1]!
   if n == ``bne && args.size == 4 && isWordTy args[0]! then
@@ -285,6 +327,8 @@ partial def trApp (c : Ctx) (e : Lean.Expr) : M SE := do
       return .ite l t f
   if n == ``cond && args.size == 4 then
     return ← atom c args[1]! fun c' l => do return .ite l (← tr c' args[2]!) (← tr c' args[3]!)
+  if (n == ``UInt64.ofBitVec || n == ``UInt64.toBitVec) && args.size == 1 then
+    return ← atom c args[0]! fun _ l => return .var l
   if n == ``UInt8.toUInt64 && args.size == 1 then return ← atom c args[0]! fun _ l => return .var l
   if n == ``UInt64.toUInt8 && args.size == 1 then
     return ← atom c args[0]! fun c' l => return .let_ .w (.lit 255) (.bin "(.op .and)" l c'.depth)
@@ -376,6 +420,26 @@ partial def trApp (c : Ctx) (e : Lean.Expr) : M SE := do
 
 end
 
+/-- `(k : Fin n).val` for a literal `k` is `k % n` (definitionally; simp does not index `Fin` literals by lemmas) -/
+dsimproc [simp] s3FinValLit (Fin.val _) := fun e => do
+  let_expr Fin.val n x ← e | return .continue
+  let x := x.consumeMData
+  unless x.isAppOfArity ``OfNat.ofNat 3 do return .continue
+  let .lit (.natVal k) := x.appFn!.appArg!.consumeMData | return .continue
+  unless x.appArg!.isAppOf ``Fin.instOfNat do return .continue
+  return .visit (← mkAppM ``HMod.hMod #[mkNatLit k, n])
+
+/-- `Enc.enc (k : Nat)` for a literal `k > 0` is `.c 1 [Enc.enc (k - 1)]` (definitionally: `natV`) -/
+dsimproc [simp] s3EncNatLit (Proven.S3.Enc.enc _) := fun e => do
+  unless e.isAppOfArity ``Proven.S3.Enc.enc 3 do return .continue
+  unless e.appFn!.appFn!.appArg!.isConstOf ``Nat do return .continue
+  let some k := natLit? e.appArg! | return .continue
+  if k == 0 then return .continue
+  let inner := mkApp3 (mkConst ``Proven.S3.Enc.enc) (mkConst ``Nat) e.appFn!.appArg! (mkNatLit (k - 1))
+  let one := mkApp (mkConst ``Proven.S3.V.c) (mkNatLit 1)
+  let l ← mkListLit (mkConst ``Proven.S3.V) [inner]
+  return .visit (mkApp one l)
+
 /-! ## certificate tactics -/
 
 /-- split a variable `x` that the goal uses as `Enc.enc x` (a datatype value whose constructor is not known) -/
@@ -405,7 +469,18 @@ syntax (name := s3Split) "s3_split" : tactic
     match best with
     | some b => if d.index < b.index then best := some d
     | none => best := some d
-  -- first: a datatype value computed by a call (`Enc.enc (f args)`): generalize it, then split
+  -- first: the condition of an `if` (two goals, never a blow-up)
+  let conds ← do
+    let r ← IO.mkRef (#[] : Array Lean.Expr)
+    t.forEach fun e => do
+      if e.isAppOfArity ``ite 5 && !e.appFn!.appFn!.appFn!.appArg!.hasLooseBVars then
+        r.modify (·.push e.appFn!.appFn!.appFn!.appArg!)
+    r.get
+  if h : 0 < conds.size then
+    let (g1, g2) ← g.byCases conds[0]
+    Tactic.replaceMainGoal [g1.mvarId, g2.mvarId]
+    return
+  -- second: a datatype value computed by a call (`Enc.enc (f args)`): generalize it, then split
   for e in encArgs do
     if e.isFVar || e.hasLooseBVars then continue
     let ty ← whnf (← inferType e)
@@ -419,17 +494,6 @@ syntax (name := s3Split) "s3_split" : tactic
     let (fvs, g') ← g.generalize #[{ expr := e, xName? := `t }]
     let gs ← g'.cases fvs[0]!
     Tactic.replaceMainGoal (gs.map (·.mvarId)).toList
-    return
-  -- second: the condition of an `if`
-  let conds ← do
-    let r ← IO.mkRef (#[] : Array Lean.Expr)
-    t.forEach fun e => do
-      if e.isAppOfArity ``ite 5 && !e.appFn!.appFn!.appFn!.appArg!.hasLooseBVars then
-        r.modify (·.push e.appFn!.appFn!.appFn!.appArg!)
-    r.get
-  if h : 0 < conds.size then
-    let (g1, g2) ← g.byCases conds[0]
-    Tactic.replaceMainGoal [g1.mvarId, g2.mvarId]
     return
   if let some d := best then
     let gs ← g.cases d.fvarId
@@ -551,7 +615,7 @@ partial def SE.calls : SE → List Nat
 def simpSet : String :=
   "Proven.S3.evalO, Proven.S3.CallsOk, Proven.S3.Var.idx, Proven.S3.Alts.arms, " ++
   "Proven.S3.Vars.get, Proven.S3.Vars.idxs, Proven.S3.Prim.eval, Proven.Op.eval, Proven.S3.Cmp.eval, " ++
-  "Proven.S3.Sig.nc, Proven.S3.Sig.fld, Proven.S3.Sig.dt, Proven.S3.lget"
+  "Proven.S3.Sig.nc, Proven.S3.Sig.fld, Proven.S3.Sig.dt, Proven.S3.lget, -Fin.isValue"
 
 /-- the certificate text of a mutual component `c` (S3 functions) of the Lean mutual block `blk`: ONE theorem by
 the block's `mutual_induct` (Lean's own termination argument, structural or well-founded) for all members at once,
@@ -613,7 +677,7 @@ def genMutual (st : St) (c : List Nat) (blk : List Name) (extraSimp : String) : 
   -- callees outside the component close by their certificates
   let outside := (c.flatMap fun j => (st.fns[j]!.body.map SE.calls).getD []).eraseDups.filter (!c.contains ·)
   let closers := outside.map (fun j => s!"(apply cert{j}' <;> simp)")
-  let closer := " | ".intercalate ("assumption" :: "(intros; assumption)" :: closers)
+  let closer := " | ".intercalate ("assumption" :: "(intros; assumption)" :: "omega" :: (closers ++ closers.map ("(intros; " ++ · ++ ")")))
   let mut unf := ""
   for j in outside do
     let fj := st.fns[j]!
@@ -713,7 +777,7 @@ def genText (N : Name) (st : St) (extraSimp : String) : MetaM String := do
     let recursive := ((fi.body.map SE.calls).getD []).contains k
     let callees := ((fi.body.map SE.calls).getD []).filter (· != k)
     let closers := callees.eraseDups.map (fun j => s!"(apply cert{j}' <;> simp)")
-    let closer := " | ".intercalate ("assumption" :: "(intros; assumption)" :: closers)
+    let closer := " | ".intercalate ("assumption" :: "(intros; assumption)" :: "omega" :: (closers ++ closers.map ("(intros; " ++ · ++ ")")))
     -- non-recursive callees unfold in the certificate (their values are then computed)
     let mut unf := ""
     for j in callees.eraseDups do
