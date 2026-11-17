@@ -1,4 +1,4 @@
-/- B₁: the machine theorem of the v2 stage `Nano.V2.asmV`, from the S3 program `AsmB` (Nano/V2Boot/AsmS3Self.lean)
+/- B₁: the machine theorem of the v2 stage `Nano.V2S.asmV`, from the S3 program `AsmB` (Nano/V2Boot/AsmS3Self.lean)
 through the adapter `Nano.S3Stage.stage`; IR acceptance and code length kernel-checked on literals (ExpS3Stage
 pattern). -/
 import Nano.V2Boot.AsmS3Self
@@ -49,10 +49,10 @@ theorem asmB_implementsS :
       (fun xs => asmVS xs.data.toList) (spaceP AsmB.P) (2 ^ 20) true :=
   stage AsmB.computes asmB_small asmB_main asmB_compiles
 
-/-- **the machine theorem of the v2 stage `Nano.V2.asmV`** (inputs ≤ 2^20 bytes; bridge `asmVS_eq`) -/
+/-- **the machine theorem of the v2 stage `Nano.V2S.asmV`** (inputs ≤ 2^20 bytes; bridge `asmVS_eq`) -/
 theorem asmB_implements :
     Implements1With (fun xs : ByteArray => xs.data.toList) (fun l => l) (S3.words AsmB.P)
-      (fun xs => Nano.V2.asmV xs.data.toList) (spaceP AsmB.P) (2 ^ 20) true :=
+      (fun xs => Nano.V2S.asmV xs.data.toList) (spaceP AsmB.P) (2 ^ 20) true :=
   implements_congr (fun _ h => asmVS_eq _ (by omega)) asmB_implementsS
 
 set_option maxRecDepth 100000 in

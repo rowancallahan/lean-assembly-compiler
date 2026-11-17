@@ -1,4 +1,4 @@
-/- B₁: the machine theorem of the v2 stage `Nano.V2.inlV`, from the S3 program `InlB` (Nano/V2Boot/InlS3Self.lean)
+/- B₁: the machine theorem of the v2 stage `Nano.V2S.inlV`, from the S3 program `InlB` (Nano/V2Boot/InlS3Self.lean)
 through the adapter `Nano.S3Stage.stage`; IR acceptance and code length kernel-checked on literals (ExpS3Stage
 pattern). -/
 import Nano.V2Boot.InlS3Self
@@ -49,10 +49,10 @@ theorem inlB_implementsS :
       (fun xs => inlVS xs.data.toList) (spaceP InlB.P) (2 ^ 20) true :=
   stage InlB.computes inlB_small inlB_main inlB_compiles
 
-/-- **the machine theorem of the v2 stage `Nano.V2.inlV`** (inputs ≤ 2^20 bytes; bridge `inlVS_eq`) -/
+/-- **the machine theorem of the v2 stage `Nano.V2S.inlV`** (inputs ≤ 2^20 bytes; bridge `inlVS_eq`) -/
 theorem inlB_implements :
     Implements1With (fun xs : ByteArray => xs.data.toList) (fun l => l) (S3.words InlB.P)
-      (fun xs => Nano.V2.inlV xs.data.toList) (spaceP InlB.P) (2 ^ 20) true :=
+      (fun xs => Nano.V2S.inlV xs.data.toList) (spaceP InlB.P) (2 ^ 20) true :=
   implements_congr (fun _ h => inlVS_eq _ (by omega)) inlB_implementsS
 
 set_option maxRecDepth 100000 in

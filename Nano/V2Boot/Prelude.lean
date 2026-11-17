@@ -4,10 +4,10 @@ each v2 stage gets an S3 twin with
 * `rdS`/`lenS`: list recursion for `rd`/`len` (equal on every input);
 * `putR`: the output kept REVERSED (`b :: o`), the entry reverses once;
 * fuel as a word (`UInt64`, well-founded on `toNat`) instead of `Nat` (equal while the fuel is `< 2^64`). -/
-import Nano.V2.Prelude
+import Nano.V2S.Prelude
 
 namespace Nano.V2B
-open Nano.V2
+open Nano.V2S
 
 def rdS : List UInt8 → UInt64 → UInt64
   | [], _ => 0

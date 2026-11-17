@@ -1,10 +1,10 @@
 /- B₁: the v2 inliner `inlV` (Nano/V2/Inl.lean) in S3 form (Nano/V2Boot/Prelude.lean) and the bridge
 `inlVS_eq : inlVS xs = inlV xs` (inputs of length < 2^31, so the fuel `(len+1)^2` is a word). -/
-import Nano.V2.Inl
+import Nano.V2S.Inl
 import Nano.V2Boot.Prelude
 
 namespace Nano.V2B
-open Nano.V2
+open Nano.V2S
 
 /-- `if rd xs p == 13 then c + 1 else c` -/
 def inc13 (xs : List UInt8) (p c : UInt64) : UInt64 := if rdS xs p == 13 then c + 1 else c

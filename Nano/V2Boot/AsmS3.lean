@@ -1,10 +1,10 @@
 /- B₁: the v2 assembler `asmV` (Nano/V2/Asm.lean) in S3 form (Nano/V2Boot/Prelude.lean) and the bridge
 `asmVS_eq : asmVS xs = asmV xs` (inputs of length < 2^64). `ax0..ax3` are the v2 originals. -/
-import Nano.V2.Asm
+import Nano.V2S.Asm
 import Nano.V2Boot.Prelude
 
 namespace Nano.V2B
-open Nano.V2
+open Nano.V2S
 
 /-- the sign fill of `ax3` without a comparison (S3's certificate search does not split a word `if` in a
 non-recursive function); equal to `if c < 128 then 0 else 0xF0` on bytes -/

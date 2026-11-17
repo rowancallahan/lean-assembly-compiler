@@ -634,6 +634,8 @@ syntax (name := s3Contra) "s3_contra" : tactic
 
 theorem bv_nle_of_lt {n : Nat} {a b : BitVec n} (h : a < b) : ¬ b ≤ a := BitVec.not_le.mpr h
 theorem bv_nlt_of_le {n : Nat} {a b : BitVec n} (h : a ≤ b) : ¬ b < a := BitVec.not_lt.mpr h
+theorem bv_le_of_nlt {n : Nat} {a b : BitVec n} (h : ¬ a < b) : b ≤ a := BitVec.not_lt.mp h
+theorem bv_lt_of_nle {n : Nat} {a b : BitVec n} (h : ¬ a ≤ b) : b < a := BitVec.not_le.mp h
 
 /-- add the negated forms of `Nat` order hypotheses (`a < b` gives `¬ b ≤ a`, `¬ a < b` gives `b ≤ a`, and back) -/
 syntax (name := s3Hyps) "s3_hyps" : tactic
@@ -656,8 +658,12 @@ syntax (name := s3Hyps) "s3_hyps" : tactic
       else if t.isAppOfArity ``BitVec 1 then add (← mkAppM ``bv_nlt_of_le #[d.toExpr])
     | (``Not, #[q]) =>
       match q.getAppFnArgs with
-      | (``LT.lt, #[t, _, _, _]) => if t.isConstOf ``Nat then add (← mkAppM ``Nat.le_of_not_lt #[d.toExpr])
-      | (``LE.le, #[t, _, _, _]) => if t.isConstOf ``Nat then add (← mkAppM ``Nat.lt_of_not_le #[d.toExpr])
+      | (``LT.lt, #[t, _, _, _]) =>
+        if t.isConstOf ``Nat then add (← mkAppM ``Nat.le_of_not_lt #[d.toExpr])
+        else if t.isAppOfArity ``BitVec 1 then add (← mkAppM ``bv_le_of_nlt #[d.toExpr])
+      | (``LE.le, #[t, _, _, _]) =>
+        if t.isConstOf ``Nat then add (← mkAppM ``Nat.lt_of_not_le #[d.toExpr])
+        else if t.isAppOfArity ``BitVec 1 then add (← mkAppM ``bv_lt_of_nle #[d.toExpr])
       | _ => pure ()
     | _ => pure ()
 

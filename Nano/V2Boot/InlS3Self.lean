@@ -1,4 +1,4 @@
-/- B₁: the S3 twin `inlVS` of the v2 stage `Nano.V2.inlV` (Nano/V2Boot/InlS3.lean) compiled by the S3 front end
+/- B₁: the S3 twin `inlVS` of the v2 stage `Nano.V2S.inlV` (Nano/V2Boot/InlS3.lean) compiled by the S3 front end
 (program, kernel-checked certificates, `computes`). Stage theorem: Nano/V2Boot/InlS3Stage.lean. -/
 import Compiler.S3.Front
 import Nano.V2Boot.InlS3

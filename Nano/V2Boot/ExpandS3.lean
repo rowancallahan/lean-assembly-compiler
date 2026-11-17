@@ -1,10 +1,10 @@
 /- B₁: the v2 expander `mexpV` (Nano/V2/Expand.lean) in S3 form (Nano/V2Boot/Prelude.lean) and the bridge
 `mexpVS_eq : mexpVS xs = mexpV xs` (inputs of length < 2^64). `mexpOpS` is `mexpOp` with `put ↦ putR`. -/
-import Nano.V2.Expand
+import Nano.V2S.Expand
 import Nano.V2Boot.Prelude
 
 namespace Nano.V2B
-open Nano.V2
+open Nano.V2S
 
 /-- `mexpOp` on the reversed output -/
 def mexpOpS (m x : UInt64) (o : List UInt8) : List UInt8 :=

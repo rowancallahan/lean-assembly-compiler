@@ -1,4 +1,4 @@
-/- B₁: the machine theorem of the v2 stage `Nano.V2.mexpV`, from the S3 program `ExpB` (Nano/V2Boot/ExpandS3Self.lean)
+/- B₁: the machine theorem of the v2 stage `Nano.V2S.mexpV`, from the S3 program `ExpB` (Nano/V2Boot/ExpandS3Self.lean)
 through the adapter `Nano.S3Stage.stage`; IR acceptance and code length kernel-checked on literals (ExpS3Stage
 pattern). -/
 import Nano.V2Boot.ExpandS3Self
@@ -49,10 +49,10 @@ theorem expB_implementsS :
       (fun xs => mexpVS xs.data.toList) (spaceP ExpB.P) (2 ^ 20) true :=
   stage ExpB.computes expB_small expB_main expB_compiles
 
-/-- **the machine theorem of the v2 stage `Nano.V2.mexpV`** (inputs ≤ 2^20 bytes; bridge `mexpVS_eq`) -/
+/-- **the machine theorem of the v2 stage `Nano.V2S.mexpV`** (inputs ≤ 2^20 bytes; bridge `mexpVS_eq`) -/
 theorem expB_implements :
     Implements1With (fun xs : ByteArray => xs.data.toList) (fun l => l) (S3.words ExpB.P)
-      (fun xs => Nano.V2.mexpV xs.data.toList) (spaceP ExpB.P) (2 ^ 20) true :=
+      (fun xs => Nano.V2S.mexpV xs.data.toList) (spaceP ExpB.P) (2 ^ 20) true :=
   implements_congr (fun _ h => mexpVS_eq _ (by omega)) expB_implementsS
 
 set_option maxRecDepth 100000 in

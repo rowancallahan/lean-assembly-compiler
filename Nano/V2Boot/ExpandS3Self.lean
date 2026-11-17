@@ -1,4 +1,4 @@
-/- B₁: the S3 twin `mexpVS` of the v2 stage `Nano.V2.mexpV` (Nano/V2Boot/ExpandS3.lean) compiled by the S3 front end
+/- B₁: the S3 twin `mexpVS` of the v2 stage `Nano.V2S.mexpV` (Nano/V2Boot/ExpandS3.lean) compiled by the S3 front end
 (program, kernel-checked certificates, `computes`). Stage theorem: Nano/V2Boot/ExpandS3Stage.lean. -/
 import Compiler.S3.Front
 import Nano.V2Boot.ExpandS3
