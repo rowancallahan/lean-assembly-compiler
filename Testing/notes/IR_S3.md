@@ -151,5 +151,5 @@ The IR interpreter's output equals Lean's `main` on all 750 cases (`emit_s3.lean
 
 ## 8. Final check
 
-`bash Testing/scripts/check.sh`: ALL CHECKS PASSED (34 min, after merging origin/main at b07a0b9). The statement-fingerprint
+`bash Testing/scripts/check.sh`: ALL CHECKS PASSED (34 min after merging origin/main at b07a0b9; again, 41 min, after merging cd78e4f). The statement-fingerprint
 step prints its usual WARNING (warning-only; not re-frozen, per the round rules).
