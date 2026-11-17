@@ -88,7 +88,13 @@ stub moves it to a1, `Ctx.Fin` states `keepC`, `fr` and a1 on a normal return (R
   `implements_of_compileL`, `S3.implements` (ir-strong) and `S3.implements1`, `S3.implements1_spaceOf` (nano).
 - Tests: the IR test words of main/nano are kept (the stub and exit they were generated with); ir_test.py keeps the
   a1 check for `s3*` programs and drops the gp-after-OOM check. The four s3-rec test programs added by ir-strong
-  (s3_storeregs, s3_fetchg, s3_stexc, s3_iotanumargs) were generated with `encXG`: regenerate with
-  `Testing/asm/emit_s3rec.lean` before running them.
+  (s3_storeregs, s3_fetchg, s3_stexc, s3_iotanumargs) had been generated with `encXG`: all 11 S3 recursion programs
+  were regenerated (`Testing/asm/emit_s3rec.lean`, interpreter == Lean on 50 cases each) and pass
+  `ir_test.py check 10` on QEMU + Sail (a1 = output length, flag at memoryNeeded - 1).
+- Result: check.sh ALL CHECKS PASSED (2385 s; only the pre-existing statement-fingerprint WARNING, not re-frozen).
+  `Nano.selfHosted` 77 axioms (unchanged line). `binary` unchanged: `binaryC` (Testing/nano/selfrun/emit_selfrun.lean)
+  evaluates to 55529 words with the same hash on merge-nano and on merge-ir-strong.
+- `S3.implements1` (nano) and `S3.implements` (ir-strong, via `implements_of_compileL`) are both kept; neither is
+  restated as a corollary of the other (that would touch the proof under `Nano.selfHosted`).
 - s3-rec's later S3 examples (StoreRegs, FetchG, StExc, IotaNumArgs) moved to Riscv/Frontx/S3RecExamplesB.lean
   (nano-parse-s3 had split S3RecExamples into A + rest for the 5-min budget).

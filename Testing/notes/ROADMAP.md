@@ -397,3 +397,8 @@ check.sh loop / expected-axioms = main's lines then the branches' (nano-closeB a
 Testing/nano/archive/ (InlP3 / InlP3Proof stay). check.sh: ALL CHECKS PASSED (cold over the f1cfb76 cache 1115 s up to
 the failure, then 1271 s; peak 6.2 GB, 4 jobs); only the pre-existing statement-fingerprint WARNING, not re-frozen.
 `Nano.selfHosted`: 77 axioms = expected-axioms.txt:930 (Sail set + propext, Classical.choice, Quot.sound).
+IR-STRONG RECONCILED (2026-11-17): branch merge-ir-strong = main + ir-strong (+ s3-rec's later examples). One IR stub:
+nano's `[leaveC; leave; mov a1 r0; ret]`; the OOM exit keeps the shared `encK .exit` (gp not restored), so nano's
+`binary` words are unchanged (same 55529-word hash) and `CompileRunsL` proofs for the IR are dropped (GAP, next tag).
+`CompileCorrectL` / `CompileCorrectRV` / `implements_of_compileL` / `S3.implements` and `S3.implements1` all proved.
+check.sh ALL CHECKS PASSED (2385 s). Details: Testing/notes/IR_STRONG.md "Reconciliation with nano v1".
