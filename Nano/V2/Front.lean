@@ -241,7 +241,9 @@ def inl (body : Ex) : Nat → List Ex → Ex
 right-nested product, already unpacked inside) -/
 inductive FB where
   | fn (b : Ex)
-  | lp (z : Ex) (t : Tl)
+  /-- `ro`: per (non-input) parameter, READ-ONLY (not in the state: the body reads it as an outer variable, bound
+  by an alias `let` at the call site, see `Ex.lv`) -/
+  | lp (z : Ex) (t : Tl) (ro : List Bool)
   deriving Repr
 
 /-- a def: (name, has the input, parameter types (outputs/words, first first), result type, body) -/
@@ -278,7 +280,11 @@ def S.low (ds : List FDef) : S → Ex
     | some (_, _, _, _, .fn body) => inl body 0 (lowA ds as)
     | _ => .lit 0
   | .lcall g fu as => match ds[g]? with
-    | some (_, _, _, _, .lp z t) => .loop (fu.low ds) (tup (lowA ds as)) z t
+    | some (_, _, _, _, .lp z t ro) =>
+      let al := lowA ds as
+      let rs := (al.zip ro).filterMap fun (a, b) => if b then some a else none
+      let st := (al.zip ro).filterMap fun (a, b) => if b then none else some a
+      inl (.loop ((fu.low ds).lift 0 rs.length) (tup (st.map (·.lift 0 rs.length))) z t) 0 rs
     | _ => .lit 0
   | .anil => .lit 0
   | .acons _ _ => .lit 0
@@ -398,8 +404,9 @@ def dead (d : List Nat) (i : Nat) : Bool := d.getD i 0 == 2
 def live (d : List Nat) (i : Nat) : Bool := d.getD i 0 == 0
 def kill (env : List Ty) (d : List Nat) (i : Nat) : List Nat :=
   if (env.getD i .w).hasBuf then d.set i 2 else d
+/-- inside a loop body every outer buffer is at most read-only -/
 def killAll (env : List Ty) (d : List Nat) : List Nat :=
-  (d.zip env).map fun (x, τ) => if τ.hasBuf then 2 else x
+  (d.zip env).map fun (x, τ) => if τ.hasBuf then max x 1 else x
 def orL (a b : List Nat) : List Nat := (a.zip b).map fun (x, y) => max x y
 /-- consuming a variable: allowed only if live (a read-only buffer may not be moved) -/
 def use (env : List Ty) (d : List Nat) (i : Nat) : Option (List Nat) :=
@@ -514,7 +521,7 @@ def S.ty (ds : List FDef) : List FT → S → Option FT
     | some (_, _, ps, ρ, .fn _) => if tyA ds env as = some ps then some ρ else none
     | _ => none
   | env, .lcall g _ as => match ds[g]? with
-    | some (_, _, ps, ρ, .lp _ _) => if tyA ds env as = some ps then some ρ else none
+    | some (_, _, ps, ρ, .lp _ _ _) => if tyA ds env as = some ps then some ρ else none
     | _ => none
   | env, .pair a b => match a.ty ds env, b.ty ds env with
     | some x, some y => some (.prod x y)
@@ -834,7 +841,7 @@ def pApp : Nat → FScope → List FDef → List FTok → Option (S × List FTok
         -- a loop: the fuel first
         let fu := match fb with
           | .fn _ => some (S.anil, ts)
-          | .lp _ _ => pFA f sc ts
+          | .lp _ _ _ => pFA f sc ts
         match fu with
         | some (fe, ts1) =>
           -- the input argument (if the callee takes it) must be the input itself
@@ -843,7 +850,7 @@ def pApp : Nat → FScope → List FDef → List FTok → Option (S × List FTok
           match ts' with
           | some r =>
             match pArgs f sc ds ps r with
-            | some (as, r2) => some (match fb with | .fn _ => .call j as | .lp _ _ => .lcall j fe as, r2)
+            | some (as, r2) => some (match fb with | .fn _ => .call j as | .lp _ _ _ => .lcall j fe as, r2)
             | none => none
           | none => none
         | none => none
@@ -964,7 +971,24 @@ where pNs : Nat → List (List UInt8) → List FTok → Option (List (List UInt8
 in tail position (lowered to `Ex.loop`, the state = the parameters as a right-nested product, unpacked by `split`s) -/
 
 /-- self: (name, fuel variable, has the input, state parameter types) -/
-abbrev Me := List UInt8 × List UInt8 × Bool × List FT × FT
+abbrev Me := List UInt8 × List UInt8 × Bool × List (FT × Option (List UInt8)) × FT
+
+/-- the arguments of a self call: a READ-ONLY parameter must be passed as itself (its name), the others are atoms
+checked against their types; only the state arguments are returned -/
+def pSelf : Nat → FScope → List FDef → List (FT × Option (List UInt8)) → List FTok → Option (S × List FTok)
+  | 0, _, _, _, _ => none
+  | _ + 1, _, _, [], ts => some (.anil, ts)
+  | f + 1, sc, ds, (_, some nm) :: ps, .id x :: ts => if x == nm then pSelf f sc ds ps ts else none
+  | f + 1, sc, ds, (τ, none) :: ps, ts =>
+    match pAtom f sc ds ts with
+    | some (e, r) =>
+      if e.ty ds (ftys sc) = some τ then
+        match pSelf f sc ds ps r with
+        | some (es, r2) => some (.acons e es, r2)
+        | none => none
+      else none
+    | none => none
+  | _, _, _, _, _ => none
 
 def lowCmp (k : SCmp) (a b : Ex) : Cmp × Ex × Ex :=
   match k with
@@ -1029,7 +1053,7 @@ def pT : Nat → Me → FScope → List FDef → List FTok → Option (Tl × Lis
           else some ts
         match ts' with
         | some r =>
-          match pArgs f sc ds me.2.2.2.1 r with
+          match pSelf f sc ds me.2.2.2.1 r with
           | some (as, r2) =>
             if S.sm.smA (flags sc) as then some (.next (tup (S.low.lowA ds as)), r2) else none
           | none => none
@@ -1068,37 +1092,46 @@ def unT : Nat → Tl → Tl
   | _, b => b
 
 /-- the scope of an arm: the input (if any) at the bottom, then the unpacked state -/
-def armScope (hi : Bool) (names : List (List UInt8)) (ps : List FT) : FScope :=
+def armScope (hi : Bool) (names : List (List UInt8)) (ps : List FT) (ro : List Bool) : FScope :=
   let inp : FScope := if hi then (match names with | x :: _ => [(x, none)] | [] => []) else []
-  bScope ((if hi then names.drop 1 else names).zip ps) inp
+  let all := ((if hi then names.drop 1 else names).zip ps).zip ro
+  let rov : FScope := (all.filterMap fun ((n, τ), b) => if b then some (n, some (τ, true)) else none).reverse
+  bScope (all.filterMap fun ((n, τ), b) => if b then none else some (n, τ)) (rov ++ inp)
 
 /-- a fuel-loop definition after `def g : Nat →` -/
-def pLoop (f : Nat) (ds : List FDef) (g : List UInt8) (ts : List FTok) : Option (FDef × List FTok) :=
+def pLoopM (ro? : Bool) (f : Nat) (ds : List FDef) (g : List UInt8) (ts : List FTok) : Option (FDef × List FTok) :=
   match pArr f ts with
   | some (all, .bar :: .num 0 :: r) =>
     let params := all.dropLast
     let ρ : FT := match all.getLast? with | some (some t) => t | _ => .out
     let hi := match params with | none :: _ => true | _ => false
     let ps : List FT := (if hi then params.drop 1 else params).map (·.getD .out)
-    let k := ps.length
-    let σ := tupT (ps.map FT.ty)
+    let ro : List Bool := ps.map fun τ => ro? && τ == .buf
+    let sps := (ps.zip ro).filterMap fun (τ, b) => if b then none else some τ
+    let rts : List Ty := ((ps.zip ro).filterMap fun (τ, b) => if b then some τ.ty else none).reverse
+    let k := sps.length
+    let σ := tupT (sps.map FT.ty)
     match pAN f r with
     | some (n0, r1) =>
       if n0.length = params.length ∧ 0 < k then
-        let sc0 := armScope hi n0 ps
+        let sc0 := armScope hi n0 ps ro
         match pE f sc0 ds r1 with
         | some (z, .bar :: .id n :: .plus :: .num 1 :: r2) =>
           match pAN f r2 with
           | some (n1, r3) =>
             if n1.length = params.length then
-              let sc1 := armScope hi n1 ps
-              match pT f (g, n, hi, ps, ρ) sc1 ds r3 with
+              let sc1 := armScope hi n1 ps ro
+              let nm1 := if hi then n1.drop 1 else n1
+              let me : Me := (g, n, hi, (ps.zip (nm1.zip ro)).map (fun (τ, (x, b)) => (τ, if b then some x else none)), ρ)
+              match pT f me sc1 ds r3 with
               | some (t, r4) =>
                 let zE := unE k (z.low ds)
                 let tT := unT k t
-                if good (z.sm (flags sc0)) && z.ty ds (ftys sc0) == some ρ && tyOf [σ] zE == some ρ.ty &&
-                    tyT [σ] σ ρ.ty tT && (zE.lv [σ] [0]).isSome && (tT.lvT [σ] [0]).isSome then
-                  some ((g, hi, ps, ρ, .lp zE tT), r4)
+                let env := σ :: rts
+                let fl := 0 :: rts.map fun _ => 1
+                if good (z.sm (flags sc0)) && z.ty ds (ftys sc0) == some ρ && tyOf env zE == some ρ.ty &&
+                    tyT env σ ρ.ty tT && (zE.lv env fl).isSome && (tT.lvT env fl).isSome then
+                  some ((g, hi, ps, ρ, .lp zE tT ro), r4)
                 else none
               | none => none
             else none
@@ -1107,6 +1140,12 @@ def pLoop (f : Nat) (ds : List FDef) (g : List UInt8) (ts : List FTok) : Option 
       else none
     | none => none
   | _ => none
+
+/-- a fuel loop: first with every `Buf` parameter READ-ONLY (borrowed from the caller), else all in the state -/
+def pLoop (f : Nat) (ds : List FDef) (g : List UInt8) (ts : List FTok) : Option (FDef × List FTok) :=
+  match pLoopM true f ds g ts with
+  | some x => some x
+  | none => pLoopM false f ds g ts
 
 /-- the definitions; returns the defs (newest first) -/
 def pDs : Nat → List FDef → List FTok → Option (List FDef)
