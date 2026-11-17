@@ -225,4 +225,5 @@ def wordsS (i : Nat) (m : Nat) : List UInt64 := (List.range (i % 13)).map fun j 
     encW ((wordsS i 1000).mergeSort (· ≤ ·) ++ [0] ++ (wordsS (i + 7) 1000).mergeSort (· ≤ ·)))
   run "s3_evod" S3EvOd.P evMain (cases50 fun i => encW (words i))
   run "s3_stexc" S3StExc.P stMain (cases50 fun i => encW ((words (i + 1)).map fun w => if i % 3 == 0 && w % 4 == 0 then 0 else w))
+  run "s3_iotanumargs" S3IotaNumArgs.P numArgsMain (cases50 fun i => small (i * 3) 256)
   run "s3_lex" S3Lex.P lexMain (cases50 fun i => encW (UInt64.ofNat (rndN i 5 % 20) :: words (i + 3)))

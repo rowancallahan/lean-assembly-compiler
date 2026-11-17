@@ -796,7 +796,7 @@ def genText (N : Name) (st : St) (extraSimp : String) : MetaM String := do
   let bodies := (List.range st.fns.size).foldr (fun k acc => s!"(.cons b{k} {acc})") ".nil"
   out := out ++ s!"abbrev P : Proven.S3.Prog := ⟨S, {bodies}, ⟨0, by decide⟩⟩\n"
   -- the oracle
-  out := out ++ "def φ : Fin P.S.fns.length → List Proven.S3.V → Proven.S3.V := fun f vs => match f.val with\n"
+  out := out ++ "noncomputable def φ : Fin P.S.fns.length → List Proven.S3.V → Proven.S3.V := fun f vs => match f.val with\n"
   for k in [0:st.fns.size] do
     let fi := st.fns[k]!
     let mut app := ← exprTxt fi.key

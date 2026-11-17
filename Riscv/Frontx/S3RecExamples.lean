@@ -15,6 +15,7 @@ program, certificates, `computes`, `correct` (exactly the Sail axioms).  Tests: 
 | `S3Merge` | `merge` | well-founded (`termination_by xs.length + ys.length`), not structural |
 | `S3EvOd` | `evSum` / `odCnt` | mutual, different result types, non-tail calls |
 | `S3Lex` | `lex` | lexicographic `(xs.length, k.toNat)`, the inner counter resets |
+| `S3IotaNumArgs` | con-leche `Cached.iotaNumArgs` (`CoreC.lean`, verbatim) | structural over con-leche's `Expr` |
 | `S3StExc` | `stepS : List UInt64 → StateT UInt64 (Except UInt8) UInt64` | structural; state and exception across a non-tail call |
 -/
 import Riscv.Frontx.S3IO
@@ -23,6 +24,7 @@ import Compiler.Opt.Hoist
 import Compiler.Opt.BFn
 import Compiler.Ir.Emit
 import Compiler.Front.Pipe
+import Riscv.Frontx.ExprExamples
 
 namespace Proven.S3.Rec
 open Proven.S3 Proven.S3.Ex Proven.Mach.IR
@@ -220,5 +222,35 @@ def stMain (bs : List UInt8) : List UInt8 :=
   | .ok (a, s) => enc8 a ++ enc8 s
   | .error e => [e]
 s3_compile S3StExc := stMain
+
+
+/-! ## con-leche `CoreC`: its smallest recursive component, verbatim -/
+
+-- con-leche `ConLeche/Cached/CoreC.lean` (`Testing/conleche-depth/out/F2.lean.txt` on `origin/conleche-depth`,
+-- lines 17868-17873; con-leche @6810492c1), verbatim; over con-leche's `Expr` (`ExprExamples.lean`: `Name` with `String`, `Level`,
+-- `Literal`)
+end Proven.S3.Rec
+namespace ConLeche.Cached
+open ConLeche
+/-- The length of an application spine, without building its argument
+list. -/
+def iotaNumArgs : Expr → Nat → Nat
+  | .app f _, n => iotaNumArgs f (n + 1)
+  | _, n => n
+end ConLeche.Cached
+namespace Proven.S3.Rec
+open Proven.S3 Proven.S3.Ex Proven.Mach.IR
+
+s3_enc ConLeche.Name
+s3_enc ConLeche.Level
+s3_enc ConLeche.Literal
+s3_enc ConLeche.Expr
+
+/-- a spine: byte `b` is the argument `.bvar b`, the head `.sort .zero` -/
+def spine : List UInt8 → ConLeche.Expr
+  | [] => .sort .zero
+  | b :: r => .app (spine r) (.bvar (wNat b.toUInt64))
+def numArgsMain (bs : List UInt8) : List UInt8 := enc8 (natW (ConLeche.Cached.iotaNumArgs (spine bs) 0))
+s3_compile S3IotaNumArgs := numArgsMain
 
 end Proven.S3.Rec
