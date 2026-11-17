@@ -73,7 +73,7 @@ Tests: `lake env lean --tstack=4000000 Testing/asm/emit_s3rec.lean` (IR interpre
 | s3_lex | `lex` (ours) | lexicographic `(xs.length, k.toNat)`, inner counter reset to `x &&& 7` | 1164 | 50 × 2 ok |
 | s3_stexc | `stepS : List UInt64 → StateT UInt64 (Except UInt8) UInt64` (ours) | state + exception across a non-tail recursive call | 2094 | 50 × 2 ok |
 | s3_iotanumargs | con-leche `Cached.iotaNumArgs` (`CoreC.lean`) | structural over con-leche's `Expr` (`Name`/`String`/`Level`/`Literal`) | 1128 | 50 × 2 ok |
-| s3_getappargsarr | con-leche `Cached.getAppArgsArr` + `getAppArgsArrGo` + `iotaNumArgs` | structural; `Array.set!`, `Array.replicate` from their equations | 2502 | see §5 |
+| s3_getappargsarr | con-leche `Cached.getAppArgsArr` + `getAppArgsArrGo` + `iotaNumArgs` | structural; `Array.set!`, `Array.replicate` from their equations | 2502 | 50 × 2 ok |
 | s3_mkapprange | con-leche `Cached.mkAppRange` | well-founded `termination_by j - i`; `args[i]` with its proof | 2090 | 50 × 2 ok |
 | s3_knot | `walkK` / `tagK` (ours) | the knot's shape: mutual in `StateT UInt64 (Except UInt8)`, well-founded on `(xs.length, rank)`, one member calls the other on the same list; exceptions in 10 of 50 cases | 3564 | 50 × 2 ok |
 
@@ -111,4 +111,21 @@ now compile verbatim.
 
 ## 5. Final check
 
-(filled at the end of the round)
+After merging `origin/main` (ROADMAP only): `bash Testing/scripts/check.sh`: **ALL CHECKS PASSED** (51 min; 45 new axiom
+lines from `axioms_s3-rec.lean`: every `correct` exactly the Sail set, `computes`/`wf` ⊆ {propext, Classical.choice,
+Quot.sound}, `acc_of_ev`/`wfCert_of_good`/`certM4` ⊆ {propext, Quot.sound}). The statement-fingerprint step prints
+its usual WARNING (statement hashes unchanged, dependency closures changed; warning-only, not re-frozen, per the
+round rules). QEMU + Sail: all 14 new entries 50 × 2 ok (§2); the 15 entries of `S3Examples.lean` regenerate
+byte-identical words.
+
+## 6. Next for the knot (CONLECHE_KNOT.md steps 6–7)
+
+1. `Nat` as limbs (`.c 0 []` / `.c 1 [w limb, rest]`, canonical), with `Nat.add/sub/mul/div/mod/beq/ble/blt`,
+   `succ`-patterns (`n + 1` = test + `n - 1`) and literals as primitives proved once against `Nat` (a compiler
+   feature like the word operations). Unblocks `maxNatSize = 2^27`, fuel `2^62`, and keeps every `Nat` function of
+   this round working (the representation changes, the certificates' shape does not).
+2. con-leche's `Cached` sources into the repository verbatim (`StateC`: `CState`, `ModeMemos`; `ExprOpsC`), then
+   `Std.HashMap` operations (`insert`/`get?` over `Array (AssocList)`, `hash` on `Expr`'s computed `data`) through S3.
+3. Dependent `Fin` parameters inside mutual components (the `encFin` form in `genMutual`).
+4. The `CoreC` members in call-graph order (`iotaNumArgs`, `getAppArgsArr`, `mkAppRange` done), each component
+   certified by its block's `mutual_induct`; the knot's tuple measures need no extra work (`s3_knot`).
