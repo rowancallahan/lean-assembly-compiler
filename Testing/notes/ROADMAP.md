@@ -319,3 +319,7 @@ review, and spend their effort on the proved back end and self-hosting, not on p
 - Increments (owner): grow in SMALL steps, each one checked before the next: one feature or one back-end piece at a
   time (e.g. first move only nano's expression lowering onto S3 while the stack back end stays; then one datatype; then
   calls), and after every step the self-hosting theorem, check.sh and the full-chain test must pass again.
+- ORDER (owner, 2026-11-17 04:45): (1) close nano self-hosting by whichever route lands first (frontx per-stage
+  certificates or S3); (2) BEFORE expanding nano, make the self-hosted binary B "correct by design": every stage
+  compiled through the S3 calculus (compiler proved once), leaving only a Lean-level equation per stage
+  (`eval P = stage`), no generated machine-level step proofs; (3) then grow nano in small checked increments on S3.
