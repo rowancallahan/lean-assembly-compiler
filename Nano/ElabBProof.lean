@@ -1016,5 +1016,208 @@ theorem C4neg (xs o : List UInt8) (h : colOk xs = false) (sp d d0 w ty cz : UInt
     rcases rest with _ | ⟨n, t⟩
     · rw [lx_c1]; simp only [hm, hcf.1, hcf.2.1]; simp
     · rw [lx_c2]; simp only [hm, hcf.1, hcf.2.1, hcf.2.2]; simp
+theorem dec_p (b : UInt8) (t : Tok) (hb : (b = 40 ∧ t = .lp) ∨ (b = 41 ∧ t = .rp) ∨ (b = 42 ∧ t = .star) ∨
+    (b = 43 ∧ t = .plus) ∨ (b = 45 ∧ t = .minus) ∨ (b = 58 ∧ t = .colon) ∨ (b = 59 ∧ t = .semi) ∨ (b = 61 ∧ t = .assign))
+    (X : List UInt8) : dec ([b] ++ X) [] none = (dec X [] none).map (t :: ·) := by
+  rcases hb with ⟨h, h'⟩ | ⟨h, h'⟩ | ⟨h, h'⟩ | ⟨h, h'⟩ | ⟨h, h'⟩ | ⟨h, h'⟩ | ⟨h, h'⟩ | ⟨h, h'⟩ <;> subst h h' <;>
+    simp [dec, isW, isL]
+
+
+theorem Fu_sp (F : Nat) (xs : List UInt8) (sp : UInt64) (h : Fu F xs sp) : sp = 0 ∨ sp = 1 := by
+  rcases h with ⟨h, _⟩ | ⟨h, _⟩
+  · exact Or.inl h
+  · exact Or.inr h
+
+theorem step0 (o xs : List UInt8) (hxs : xs ≠ []) (F : Nat) (sp : UInt64) (hF : Fu F xs sp)
+    (m d d0 w ty cz : UInt64) (hm : (m == 5) = false) (hty : ty ≠ 9) : S0 o xs F sp m d d0 w ty cz := by
+  rcases xs with _ | ⟨c, rest⟩
+  · exact absurd rfl hxs
+  obtain ⟨f, rfl⟩ : ∃ f, F = f + 1 := ⟨F - 1, by rcases hF with ⟨_, h⟩ | ⟨_, h⟩ <;> simp at h <;> omega⟩
+  have hFt := Fu_tail f c rest sp hF
+  have hlen : ∀ r : List UInt8, r.length ≤ rest.length → r.length < (c :: rest).length := fun r h => by simp; omega
+  unfold S0 S0g
+  -- punctuation tokens: one byte, one token
+  have punct : ∀ (t : Tok) (bs : List UInt8), (∀ X, dec (bs ++ X) [] none = (dec X [] none).map (t :: ·)) →
+      tyStep ty t = ty → lex (f + 1) (c :: rest) = (lex f rest).map (t :: ·) →
+      lx (c :: rest) o m 0 sp d d0 w ty cz = (if m = 0 then [] else bs) ++ lx rest o m 0 sp d d0 w ty 0 →
+      S0g o (c :: rest).length (lex (f + 1) (c :: rest)) (lx (c :: rest) o m 0 sp d d0 w ty cz) m ty := by
+    intro t bs hd hts hl hx
+    right; right
+    exact ⟨t, bs, f, rest, sp, d, d0, w, 0, hlen rest (Nat.le_refl _), hFt, hl, hd, fun _ => by rw [hts]; exact hx,
+      fun h => absurd (hts ▸ h) hty⟩
+  by_cases h32 : c = 32
+  · subst h32; right; left
+    exact ⟨f, rest, sp, d, d0, w, 0, hlen rest (Nat.le_refl _), hFt, L_sp f rest, M_sp _ _ _ _ _ _ _ _ _ hm⟩
+  by_cases h10 : c = 10
+  · subst h10
+    rw [L_nl, M_nl _ _ _ _ _ _ _ _ _ hm]
+    by_cases hc : colOk rest = true
+    · right; left
+      exact ⟨f, rest, sp, d, d0, w, 0, hlen rest (Nat.le_refl _), hFt, by simp [hc],
+        C4pos rest o hc m sp d d0 w ty 0 0 hm (Fu_sp _ _ _ hF)⟩
+    · left; simp only [Bool.not_eq_true] at hc
+      refine ⟨by simp [hc], fun h0 => ?_⟩
+      subst h0; exact C4neg rest o hc sp d d0 w ty 0 (Fu_sp _ _ _ hF)
+  by_cases h58 : c = 58
+  · subst h58
+    rcases rest with _ | ⟨n, t⟩
+    · exact punct .colon [58] (dec_p 58 .colon (by simp)) rfl (by rw [L_colon]) (by rw [M_colon _ _ _ _ _ _ _ _ _ hm])
+    · by_cases hn : n = 61
+      · subst hn; right; right
+        refine ⟨.assign, [61], f, t, 1, d, d0, w, 0, by simp only [List.length_cons]; omega, Or.inr ⟨rfl, ?_⟩,
+          by rw [L_colon]; simp, dec_p 61 .assign (by simp), fun _ => by rw [M_colon _ _ _ _ _ _ _ _ _ hm]; simp [tyStep],
+          fun h => absurd h hty⟩
+        rcases hF with ⟨_, h⟩ | ⟨_, h⟩ <;> simp at h <;> omega
+      · exact punct .colon [58] (dec_p 58 .colon (by simp)) rfl (by rw [L_colon]; simp [hn])
+          (by rw [M_colon _ _ _ _ _ _ _ _ _ hm]; simp [hn])
+  by_cases hp : c = 40 ∨ c = 41 ∨ c = 42 ∨ c = 43 ∨ c = 59
+  · rcases hp with h | h | h | h | h <;> subst h
+    · exact punct .lp [40] (dec_p 40 .lp (by simp)) rfl (L_punct 40 f rest .lp (by simp)) (M_punct 40 (by simp) rest o m sp d d0 w ty cz hm)
+    · exact punct .rp [41] (dec_p 41 .rp (by simp)) rfl (L_punct 41 f rest .rp (by simp)) (M_punct 41 (by simp) rest o m sp d d0 w ty cz hm)
+    · exact punct .star [42] (dec_p 42 .star (by simp)) rfl (L_punct 42 f rest .star (by simp)) (M_punct 42 (by simp) rest o m sp d d0 w ty cz hm)
+    · exact punct .plus [43] (dec_p 43 .plus (by simp)) rfl (L_punct 43 f rest .plus (by simp)) (M_punct 43 (by simp) rest o m sp d d0 w ty cz hm)
+    · exact punct .semi [59] (dec_p 59 .semi (by simp)) rfl (L_punct 59 f rest .semi (by simp)) (M_punct 59 (by simp) rest o m sp d d0 w ty cz hm)
+  by_cases h45 : c = 45
+  · subst h45
+    by_cases hb : hd? rest (· == 45) = true
+    · left; exact ⟨by rw [L_minus]; simp [hb], fun _ => by rw [M_minus _ _ _ _ _ _ _ _ _ hm]; simp [hb]⟩
+    · exact punct .minus [45] (dec_p 45 .minus (by simp)) rfl (by rw [L_minus]; simp [hb])
+        (by rw [M_minus _ _ _ _ _ _ _ _ _ hm]; simp [hb])
+  by_cases hw : isW c = true
+  · have := step0_word o c hw rest f sp hF m d d0 w ty cz hm hty
+    unfold S0 S0g at this; exact this
+  have hc : (c == 32 || c == 10 || c == 40 || c == 41 || c == 43 || c == 45 || c == 42 ||
+      c == 59 || c == 58 || isW c) = false := by
+    simp only [not_or] at hp; simp_all
+  left; exact ⟨L_other c hc f rest, fun _ => M_other c hc rest o m sp d d0 w ty cz hm⟩
+
+theorem R1_cons (o : List UInt8) (t : Tok) (r : Option (List Tok)) (ty : UInt64) (hty : ty = 0 ∨ ty = 1 ∨ ty = 2) :
+    R1 o (r.map (t :: ·)) ty = if tyStep ty t = 9 then [0] else R1 o r (tyStep ty t) := by
+  rcases r with _ | ts
+  · simp only [Option.map_none, R1]; split <;> rfl
+  · simp only [Option.map_some, R1]
+    rcases hty with h | h | h <;> subst h <;> cases t <;> (try rename_i s; cases s) <;> simp [tyStep, uniTy, tyOf]
+
+theorem tyStep_ok (ty : UInt64) (t : Tok) (hty : ty = 0 ∨ ty = 1 ∨ ty = 2) (h : tyStep ty t ≠ 9) :
+    tyStep ty t = 0 ∨ tyStep ty t = 1 ∨ tyStep ty t = 2 := by
+  cases t <;> (try rename_i s; cases s) <;> simp only [tyStep] at h ⊢ <;> (try split at h) <;> (try split) <;> simp_all
+
+/-- **pass 1**: the machine computes `lex`, then the type check, then starts pass 2 -/
+theorem pass1 (o : List UInt8) : ∀ (n : Nat) (xs : List UInt8), xs.length ≤ n → ∀ F sp d d0 w ty cz, Fu F xs sp →
+    (ty = 0 ∨ ty = 1 ∨ ty = 2) → lx xs o 0 0 sp d d0 w ty cz = R1 o (lex F xs) ty := by
+  intro n
+  induction n with
+  | zero =>
+    intro xs hl F sp d d0 w ty cz _ hty
+    have : xs = [] := List.length_eq_zero_iff.mp (by omega)
+    subst this; rw [lx_nil _ _ _ _ _ _ _ _ _ (by decide), lex_nil]
+    rcases hty with h | h | h <;> subst h <;> rfl
+  | succ n ih =>
+    intro xs hl F sp d d0 w ty cz hF hty
+    rcases xs with _ | ⟨c, xs⟩
+    · rw [lx_nil _ _ _ _ _ _ _ _ _ (by decide), lex_nil]; rcases hty with h | h | h <;> subst h <;> rfl
+    have hty9 : ty ≠ 9 := by rcases hty with h | h | h <;> subst h <;> decide
+    have h0 := step0 o (c :: xs) (by simp) F sp hF 0 d d0 w ty cz (by decide) hty9
+    unfold S0 S0g at h0
+    rcases h0 with ⟨hn, hl0⟩ | ⟨F', r, sp', d', d0', w', cz', hr, hF', he, hx⟩ |
+      ⟨t, bs, F', r, sp', d', d0', w', cz', hr, hF', he, _, hx, hx9⟩
+    · rw [hl0 rfl, hn]; rfl
+    · rw [hx, he]; exact ih r (by simp only [List.length_cons] at hl hr; omega) F' sp' d' d0' w' ty cz' hF' hty
+    · rw [he, R1_cons o t _ ty hty]
+      split
+      · exact hx9 ‹_› rfl
+      · rw [hx ‹_›]; simp only [if_true, List.nil_append]
+        exact ih r (by simp only [List.length_cons] at hl hr; omega) F' sp' d' d0' w' _ cz' hF' (tyStep_ok ty t hty ‹_›)
+
+theorem uniTy_some (s : Bool) : ∀ (ts : List Tok) (s' : Bool), uniTy (some s) ts = some s' → s' = s
+  | [], _, h => by simp [uniTy] at h; exact h.symm
+  | t :: ts, s', h => by
+    cases t <;> simp only [uniTy] at h <;> (try exact uniTy_some s ts s' h)
+    rename_i b; split at h
+    · simp at *; subst_vars; exact uniTy_some _ ts s' h
+    · cases h
+
+/-- **pass 2**: the machine's bytes decode to `lex`'s tokens -/
+theorem pass2 (o : List UInt8) (s : Bool) : ∀ (n : Nat) (xs : List UInt8), xs.length ≤ n → ∀ F sp d d0 w cz ts, Fu F xs sp →
+    lex F xs = some ts → uniTy (some s) ts = some s → dec (lx xs o 1 0 sp d d0 w (tcode s) cz) [] none = some ts := by
+  intro n
+  induction n with
+  | zero =>
+    intro xs hl F sp d d0 w cz ts _ hlex _
+    have : xs = [] := List.length_eq_zero_iff.mp (by omega)
+    subst this; rw [lex_nil] at hlex; cases hlex; rw [lx_nil _ _ _ _ _ _ _ _ _ (by decide)]; rfl
+  | succ n ih =>
+    intro xs hl F sp d d0 w cz ts hF hlex hu
+    rcases xs with _ | ⟨c, xs⟩
+    · rw [lex_nil] at hlex; cases hlex; rw [lx_nil _ _ _ _ _ _ _ _ _ (by decide)]; rfl
+    have h0 := step0 o (c :: xs) (by simp) F sp hF 1 d d0 w (tcode s) cz (by decide) (by cases s <;> decide)
+    unfold S0 S0g at h0
+    rcases h0 with ⟨hn, _⟩ |
+      ⟨F', r, sp', d', d0', w', cz', hr, hF', he, hx⟩ | ⟨t, bs, F', r, sp', d', d0', w', cz', hr, hF', he, hdec, hx, _⟩
+    · rw [hn] at hlex; cases hlex
+    · rw [hx]; rw [he] at hlex; exact ih r (by simp only [List.length_cons] at hl hr; omega) F' sp' d' d0' w' cz' ts hF' hlex hu
+    · rw [he] at hlex
+      rcases hl' : lex F' r with _ | ts'
+      · rw [hl'] at hlex; cases hlex
+      rw [hl'] at hlex; simp only [Option.map_some, Option.some.injEq] at hlex; subst hlex
+      have hts : tyStep (tcode s) t = tcode s := by
+        cases t <;> (try rfl)
+        rename_i b; simp only [uniTy] at hu; split at hu
+        · simp at *; subst_vars; rename_i sg; cases sg <;> rfl
+        · cases hu
+      have hu' : uniTy (some s) ts' = some s := by
+        cases t <;> simp only [uniTy] at hu <;> (try exact hu)
+        split at hu
+        · simp at *; subst_vars; exact hu
+        · cases hu
+      rw [hx (by rw [hts]; cases s <;> decide), hts]
+      simp only [show (1 : UInt64) ≠ 0 by decide, if_false]
+      rw [hdec, ih r (by simp only [List.length_cons] at hl hr; omega) F' sp' d' d0' w' cz' ts' hF' hl' hu']; rfl
+
+theorem uniTy_none (s : Bool) : ∀ (ts : List Tok), uniTy none ts = some s → uniTy (some s) ts = some s
+  | [], h => by simp [uniTy] at h
+  | t :: ts, h => by
+    cases t <;> simp only [uniTy] at h ⊢ <;> (try exact uniTy_none s ts h)
+    rename_i b
+    have := uniTy_some b ts s h; subst this; simp [h]
+
+/-- the adjacency pass: `adjOk` of the rest, then pass 1 from the start -/
+theorem adjPass (o : List UInt8) : ∀ (xs : List UInt8) (st sp d d0 w ty cz : UInt64),
+    lx xs o 5 st sp d d0 w ty cz = if adjOk xs then lx o o 0 0 0 0 0 0 0 0 else [0]
+  | [], _, _, _, _, _, _, _ => by rw [lx]; simp [adjOk]
+  | [c], _, _, _, _, _, _, _ => by rw [lx_c1]; simp [adjOk]
+  | c :: n :: t, st, sp, d, d0, w, ty, cz => by
+    rw [lx_c2]; simp only [show ((5 : UInt64) == 5) = true by decide, if_true]
+    rw [adjPass o (n :: t) 0 sp d d0 w ty cz]
+    have ha : adjOk (c :: n :: t) = (!((isW c || c == 41) && n == 40) && !(c == 41 && isW n) && adjOk (n :: t)) := by
+      simp only [adjOk, isW_eq]
+    rw [ha]
+    by_cases h40 : n = 40
+    · subst h40; by_cases hc : (isW c || c == 41) = true
+      · simp [hc]
+      · simp only [Bool.not_eq_true, Bool.or_eq_false_iff] at hc
+        have : c ≠ 41 := by simpa using hc.2
+        simp [hc.1, this]
+    · have : (n == 40) = false := by simpa using h40
+      by_cases h41 : c = 41
+      · subst h41; by_cases hn : isW n = true <;> simp [hn, this]
+      · have : (c == 41) = false := by simpa using h41
+        simp [*]
+
+/-- **stage 1 is the front of `nanoElab`** (adjacency check, lexer, type check): for every byte list -/
+theorem lexB_eq (xs : List UInt8) : decL (lexB xs) = lexT xs := by
+  unfold lexB lexT
+  rw [adjPass xs xs 0 0 0 0 0 0 0]
+  by_cases ha : adjOk xs = true
+  · simp only [ha, if_true]
+    rw [pass1 xs xs.length xs (Nat.le_refl _) xs.length 0 0 0 0 0 0 (Or.inl ⟨rfl, rfl⟩) (Or.inl rfl)]
+    rcases hl : lex xs.length xs with _ | ts
+    · rfl
+    · simp only [R1, tyOf, show (0 : UInt64) ≠ 1 by decide, show (0 : UInt64) ≠ 2 by decide, if_false]
+      rcases hu : uniTy none ts with _ | s
+      · rfl
+      · have h2 := pass2 xs s xs.length xs (Nat.le_refl _) xs.length 0 0 0 0 0 ts (Or.inl ⟨rfl, rfl⟩) hl (uniTy_none s ts hu)
+        cases s <;> simp only [tcode, decL] at h2 ⊢ <;> simp at h2 ⊢ <;> rw [h2] <;> rfl
+  · simp only [Bool.not_eq_true] at ha; simp [ha, decL]
 
 end Nano.B
