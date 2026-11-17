@@ -9,6 +9,29 @@ import Nano.InlS3Self
 import Nano.ParseBGas
 open Proven.Ir Proven.Mach.Riscv Proven.Top.Alloc
 open Proven.S3
+
+def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
+def hex2 (b : UInt8) : String := let s := String.ofList (Nat.toDigits 16 b.toNat); if s.length < 2 then "0" ++ s else s
+def hx (xs : List UInt8) : String := if xs.isEmpty then "-" else String.join (xs.map hex2)
+def rnd (i j : Nat) : Nat := (i * 0x9E3779B97F4A7C15 + j * 0xD1B54A32D192ED03 + i * i * j) % 2^64
+
+def compileT (P : Prog VReg) : Option (List (BitVec 32) × Prog Nat) :=
+  match alloc P with
+  | some Q => (rvT.lin Q).map fun c => (rvT.words c, Q)
+  | none => none
+
+def mainSlots (Q : Prog Nat) : Nat := ((Q.funcs[Q.main]?).map (·.slots)).getD 0
+
+/-- the peak, oldest event first (the same as `peak`, in one pass) -/
+def peakF (E : List MemEvent) : Nat :=
+  (E.reverse.foldl (fun (c, m) e => match e with
+    | .alloc n => (c + n, max m (c + n)) | .free n => (c - n, max m (c - n))) (0, 0)).2
+
+
+/-! ### A fast interpreter (arrays) of the IR semantics `Compiler/Ir/Sem.lean`, for the tests only: the same
+steps as `step`, with arrays for the memory and the blocks; checked against `interp` on the small cases. -/
+namespace Fast
+open Proven.Mach
 structure FFr where
   f : Nat
   l : Nat
@@ -166,6 +189,7 @@ def emitR (name : String) (P : Prog VReg) (_retLen : Bool) (cases : List (List U
       | none => bad := bad + 1
     IO.FS.writeFile s!"Testing/asm/ir-words/{name}.cases" s
     IO.println s!"{name}: {ws.length} words, {cases.length} cases, interpreter output != Lean: {bad} ({(← IO.monoMsNow) - t0} ms)"
+
 
 #eval show IO Unit from do
   let dir : System.FilePath := (← IO.getEnv "NANO_DIR").get!
