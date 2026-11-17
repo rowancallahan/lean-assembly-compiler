@@ -113,3 +113,32 @@
   (2a) token bytes → tokens with names resolved to scope slots / def numbers (rescans, no stack);
   (2b) precedence/parentheses with an explicit stack → postfix micro-ops (`serU` without numerals expanded);
   (2c) numeral expansion (`sLi`), a list-path stage (`frontx_compile`), constant output per token.
+
+## Section F (box nano-final: fast inliner, composition `Nano.selfHosted`)
+
+### Setup
+* Branch `nano-final` = origin/nano-closeA + merge origin/nano-closeB + merge origin/nano-parse-s3 (one at a time; the
+  octopus merge failed on NANO_CLOSE.md: kept both sides). Build cache restored (all repo-build parts, main f1cfb76).
+  Toolchain: elan from elan.lean-lang.org (no denial on this box), Lean 4.29.0.
+
+### Findings / decisions
+* 07:25. FINDING: an inliner as list-style byte machines only (input view + scalars + streamed output) is not possible
+  for unbounded call depth: inlining expands a call DAG; any traversal needs memory proportional to the call depth
+  (or a table of expanded bodies), and a fixed chain of stages with O(1) scalars each cannot provide it (copy-forward
+  passes would need as many passes as the call depth). DECISION: the table stays in ONE paged stage; everything
+  around it (record normalisation, `wrap`) goes to list stages, so the paged loop is as small as possible.
+* 07:35. FINDING (why close B's `inlP` compile does not finish): `wp_compileS` evaluates the register choice in the
+  interpreter; "every local spilled" fails `optB` for all colouring modes, so it falls into `pickC`'s full search.
+  Probe (`Testing/nano/closeF/probe*.lean`): with spill-all, `inlP`'s code is 4187 words and `wf` FAILS — the loop
+  bodies are longer than the conditional-branch range that `Wide.wf` checks (`brOK`, ±4 KiB = 1024 words). The main
+  loop `mn` alone is ~1600–1700 words even as a one-`set!`-per-step variant, the emit loop `em` alone 1586 words
+  (a trivial paged copy loop: 553 words, passes). No register choice can shrink 1600 words below ~1000, so `pickC`
+  searches every spill set and candidate and then fails ("no register choice passed optB"). Stopped the race build
+  of `Nano.InlPSelf` here (18 CPU-min, in `pickC`).
+* Cost model measured (spill-all, words): paged program baseline 363; one `ob` read +46; one `set!` +33; one `src`
+  read +20; one value-level `if` test ≈ +29; a statement-level `if` with a full tail call per branch ≈ +52 per test;
+  an arithmetic op ≈ +18. => the loop body must have very few `if`s.
+* DECISION (inliner, three stages, linked with `link_stage`): `P` (list stage): byte records → normalised 3-byte
+  records, with `hi`, call validity and def numbers resolved in scalars; `Q` (paged): one record or one copied byte
+  per step, one `ob` read, one `set!`; output `body ++ [arity]` of the last closed def; `W` (list stage):
+  `wrap k body`. `Q`'s table packs start and length in one cell (one read per call).
