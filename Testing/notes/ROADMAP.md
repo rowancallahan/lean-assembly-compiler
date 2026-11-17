@@ -430,5 +430,6 @@ draft the owner may review later; changes after the freeze still go through the 
 - Path L (trusts Lean's compiler, acceptable since the elaborator is trusted anyway): build the nano compiler's Lean
   source `s` as a native executable with the plain Lean toolchain (`lake`), run it on the UTF-8 bytes of `s` → Bᴸ.
 - Path N (our binary only): run B₁ (then B₂) on QEMU/Sail on the same bytes → B₂ (→ B₃).
-- Check Bᴸ = B₂ = B₃ byte for byte. The proof route (ImplementsBytes B₂ Cκ without compiler 1 in its dependency
+- Required check: B₂ = B₃ byte for byte. (Owner 19:55: comparing against the Lean-toolchain path is NOT required. Bᴸ
+  here means the OUTPUT of the Lean-compiled compiler run on s — not Lean's own native executable, which naturally differs.) The proof route (ImplementsBytes B₂ Cκ without compiler 1 in its dependency
   closure) is the separate, stronger claim; keep the two clearly labelled so they are not confused.
