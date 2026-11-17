@@ -63,3 +63,6 @@
   `Nano/ParseS3Stage.lean` / `Nano/InlS3Stage.lean` (the stage theorems).
 - INLINER through S3 (`Nano/InlS3.lean`: `inlBS`, bridge `inlBS_eq : inlBS xs = inlB xs` for EVERY input, so the
   stage needs no `inlFits` condition): compile < 1 min; `Nano.IS.inlS3_implements` checks.
+- TEST inliner (`PS3_ONLY=inl python3 Testing/nano/ps3_test.py 20 6 7`, expected = executed `inlB`): QEMU 146/146 × 2
+  (work = memoryNeeded: output, a1 = length, a0, gp/sp; memoryNeeded - 1: flag), Sail 6/6 × 2 (write ranges);
+  2035 words, memoryNeeded 10168..527344 bytes, inputs up to 364 bytes. `ir_test.py` gained `NOSAIL=1` (bulk).
