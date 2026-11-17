@@ -35,12 +35,14 @@ theorem computes_tr {α β : Type} {p : Nano.Prog} {f : α → β} {encodeInput 
     {encodeOutput : β → List UInt8} (h : Computes p f encodeInput encodeOutput) :
     Computes (nanoToS3 p) f encodeInput encodeOutput := fun a => nanoToS3_run p _ _ (h a)
 
-/-- every program of the chain passes S3's check -/
+/-- the signature is small (S3's `Accepted`) -/
 theorem small_S0 : Proven.S3.Small S0 := by
   intro i
-  rcases i with _ | i
+  rcases i with _ | _ | i
   · refine ⟨by decide, fun j => ?_⟩
     rcases j with _ | _ | j <;> simp [Proven.S3.Sig.flds, Proven.S3.lget]
+  · refine ⟨by decide, fun j => ?_⟩
+    rcases j with _ | j <;> simp [Proven.S3.Sig.flds, Proven.S3.lget]
   · simp [Proven.S3.Sig.nc, Proven.S3.Sig.flds, Proven.S3.Sig.dt, Proven.S3.lget]
 
 /-- every program of the chain passes S3's check -/
