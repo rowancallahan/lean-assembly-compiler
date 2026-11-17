@@ -136,7 +136,9 @@ def check(N):
     func = "".join(f"  .word 0x{w:08x}\n" for w in words)
     lay, halt, base, tab, size = build(runs, func)
     qmem = qemu(halt, base, tab + E * len(runs) - base)
-    r = subprocess.run(f"set -o pipefail; {SAIL} --inst-limit 4000000000 --trace-mem --trace-output /dev/stdout {p('crc.elf')}"
+    NOSAIL = os.environ.get("NOSAIL") == "1"  # bulk runs: QEMU only (Sail on a smoke subset in a separate run)
+    if NOSAIL: open(p("sail.log"), "w").write("SUCCESS\n")
+    r = None if NOSAIL else subprocess.run(f"set -o pipefail; {SAIL} --inst-limit 4000000000 --trace-mem --trace-output /dev/stdout {p('crc.elf')}"
                        f" 2>&1 | grep -E 'mem\\[W|SUCCESS|FAIL|limit' > {p('sail.log')}",
                        shell=True, capture_output=True, text=True, executable="/bin/bash")
     out = open(p("sail.log")).read()
@@ -155,7 +157,7 @@ def check(N):
         for j in range(nb):
             assert a + j in allowed, f"unexpected Sail write {l.strip()}"
             smem[a + j - base] = int(v[2 * (nb - 1 - j):2 * (nb - j)], 16)
-    for nm, mem in (("qemu", qmem), ("sail", smem)):
+    for nm, mem in (("qemu", qmem),) + ((("sail", smem),) if not NOSAIL else ()):
         for c, ((i0, o0, w0), run) in enumerate(zip(lay, runs)):
             xs, ys, WK, fits = run
             L = len(xs); R = len(ys)
@@ -173,7 +175,7 @@ def check(N):
             else:
                 assert a0 == 2 ** 64 - 1, (nm, "a0 (status) at memoryNeeded - 1", hex(a0), WK)
     Ms = [M for _, _, M in CASES[:N]]
-    print(f"{FN}: {len(Ms)} cases x 2 ok (QEMU == Sail == Lean at memoryNeeded, flag a0 = -1 at memoryNeeded - 1, "
+    print(f"{FN}: {len(Ms)} cases x 2 ok ({'QEMU only' if NOSAIL else 'QEMU == Sail'} == Lean at memoryNeeded, flag a0 = -1 at memoryNeeded - 1, "
           f"writes only in output + work; input lengths up to {max(len(x) for x, *_ in CASES[:N])}; {len(words)} words; "
           f"memoryNeeded {min(Ms)}..{max(Ms)} bytes)")
 

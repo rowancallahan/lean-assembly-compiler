@@ -8,6 +8,7 @@ program's nesting (lets, calls at cost 2, right-nested operands) by 400 and its 
 narrows the domain (`SelfHosted.mono`); `nanoElab` (the spec) is unchanged. -/
 import Nano.SelfHostedA
 import Nano.ParseS3Self
+import Nano.InlS3Self
 
 set_option linter.unusedVariables false
 
@@ -70,4 +71,32 @@ theorem selfHosted_s3 {ci : List (BitVec 32)} {fi : ByteArray → List UInt8} {s
       (fun x _ => Nano.PS.stage2S3_f x) hfi)
     fun _ h => h.1
 
+/-- the work space of the S3-compiled inliner stage -/
+noncomputable abbrev siS3 : Nat → Nat := Nano.S3Stage.spaceP Nano.IS.InlS3.P
+
+/-- the self-hosted binary: lexer halves, parser (S3), inliner (S3), expander, assembler -/
+noncomputable abbrev binary : List (BitVec 32) :=
+  link (link (link (link (link Nano.Self.vBE.code Nano.Self.eBE.code) (Proven.S3.words Nano.PS.Stage2S3.P))
+    (Proven.S3.words Nano.IS.InlS3.P)) Nano.Self.nanoExpM.code) Nano.Self.nanoAsm.code
+
+/-- the explicit domain: the size conditions of the six stages (`Sized6`; the parser and the inliner equal their
+Lean functions on every input) and the limits of Lean's elaborator -/
+def Domain (K : Nat) (src : List UInt8) : Prop :=
+  Sized6 K s1aA s1bA s2S3 siS3 smA saA (fun _ => True) (fun _ => True) src ∧ LeanLimits src
+
 end Nano.SelfHost
+
+namespace Nano
+open Nano.SelfHost
+
+/-- **nano is self-hosted** (no hypotheses; the domain is explicit): the binary `binary` (six compiled stages,
+the parser and the inliner compiled through S3), run on the Sail model on a source in `Domain K`, emits `nanoGen p`;
+that code computes `p.eval` (`SelfHosted`, Nano/SelfHost.lean) -/
+theorem selfHosted (K : Nat) : SelfHosted binary (fun _ => space6 K) (Domain K) nanoCompileA :=
+  SelfHosted.mono
+    (selfHosted_closeA (P2 := fun _ => True) (Pi := fun _ => True) K Nano.PS.stage2S3_implements
+      Nano.IS.inlS3_implements Nano.PS.stage2S3_code_len Nano.IS.inlS3_code_len
+      (fun x _ => Nano.PS.stage2S3_f x) (fun x _ => Nano.IS.inlS3_f x))
+    fun _ h => h.1
+
+end Nano
