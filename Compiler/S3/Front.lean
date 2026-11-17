@@ -538,6 +538,46 @@ syntax (name := s3Split) "s3_split" : tactic
     return
   throwError "s3_split: nothing to split in\n{MessageData.ofGoal g}"
 
+/-- `s3_split`, but first destruct a variable of a one-constructor datatype (a structure) that the goal uses inside
+`Enc.enc` (no branching: its fields become variables that `s3_split` can then split) -/
+syntax (name := s3SplitB) "s3_splitB" : tactic
+
+@[tactic s3SplitB] def evalS3SplitB : Tactic.Tactic := fun stx => Tactic.withMainContext do
+  let g ← Tactic.getMainGoal
+  let t ← instantiateMVars (← g.getType)
+  let r ← IO.mkRef (#[] : Array Lean.Expr)
+  t.forEach fun e => do if e.isAppOfArity ``Proven.S3.Enc.enc 3 then r.modify (·.push e.appArg!)
+  let lctx ← getLCtx
+  -- first: a variable that blocks evaluation (`match some (Enc.enc x) with …`, `x` of a datatype with ≥ 2 constructors)
+  let blk ← IO.mkRef (#[] : Array FVarId)
+  t.forEach fun e => do
+    if e.isAppOfArity ``Option.some 2 then
+      let a := e.appArg!
+      if a.isAppOfArity ``Proven.S3.Enc.enc 3 then
+        if let .fvar v := a.appArg! then blk.modify (·.push v)
+  for v in (← blk.get) do
+    let some d := lctx.find? v | continue
+    let ty ← whnf d.type
+    if isWordTy ty || ty.isConstOf ``Bool then continue
+    let .const I _ := ty.getAppFn | continue
+    let some (.inductInfo ii) := (← getEnv).find? I | continue
+    if ii.ctors.length < 2 then continue
+    let gs ← g.cases d.fvarId
+    Tactic.replaceMainGoal (gs.map (·.mvarId)).toList
+    return
+  for e in (← r.get) do
+    for v in (Lean.collectFVars {} e).fvarIds do
+      let some d := lctx.find? v | continue
+      let ty ← whnf d.type
+      if isWordTy ty || ty.isConstOf ``Bool then continue
+      let .const I _ := ty.getAppFn | continue
+      let some (.inductInfo ii) := (← getEnv).find? I | continue
+      unless ii.ctors.length == 1 && !ii.isRec && ii.numIndices == 0 do continue
+      let gs ← g.cases d.fvarId
+      Tactic.replaceMainGoal (gs.map (·.mvarId)).toList
+      return
+  evalS3Split stx
+
 /-- close a goal by a hypothesis `∀ xs, x = pattern → False` that now applies (a wildcard case of a match) -/
 syntax (name := s3Contra) "s3_contra" : tactic
 
@@ -619,7 +659,7 @@ macro_rules (kind := s3SolveB)
         | ((try simp only [s3_norm, s3_bytes, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne, Nat.blt_eq, Nat.ble_eq, UInt8.toNat_ofNat, decide_eq_true_eq] at *); (try s3_hyps); simp [s3_norm, s3_bytes, $ls,*]; done)
         | ((try simp only [s3_norm, s3_bytes, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne, Nat.blt_eq, Nat.ble_eq, UInt8.toNat_ofNat, decide_eq_true_eq] at *); (try s3_hyps); simp [s3_norm, s3_bytes, $ls,*]; all_goals (repeat' apply And.intro) <;> $c; done)
         | (((try simp only [s3_norm, s3_bytes, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne, Nat.blt_eq, Nat.ble_eq, UInt8.toNat_ofNat, decide_eq_true_eq] at *); (try s3_hyps); (try simp [s3_norm, s3_bytes, $ls,*]);
-            s3_split) <;> s3_solveB $n' [$ls,*] with $c))
+            s3_splitB) <;> s3_solveB $n' [$ls,*] with $c))
 
 /-! ## text -/
 
@@ -676,6 +716,7 @@ def simpSet : String :=
 the block's `mutual_induct` (Lean's own termination argument, structural or well-founded) for all members at once,
 then one projection per member -/
 def genMutual (st : St) (c : List Nat) (blk : List Name) (extraSimp : String) (solveTac : String := "s3_solve") : MetaM String := do
+  let depth := s3.depth.get (← getOptions)
   let fnameOf (j : Nat) : MetaM Name := do
     let .const f _ := st.fns[j]!.key.getAppFn | throwError "S3"
     return f
@@ -748,7 +789,7 @@ def genMutual (st : St) (c : List Nat) (blk : List Name) (extraSimp : String) (s
     s!"theorem certM{k0} : {" ∧ ".intercalate conjs.toList} := by\n" ++
     s!"  apply @{indName}{pre}{mo}\n" ++
     s!"  all_goals (intros; (try dsimp only at *); first | trivial | ((first | {" | ".intercalate chains}) <;>\n" ++
-    s!"    {solveTac} 12 [{simpSet}{bs}, φ{extraSimp}{unf}, *] with (first | {closer})))\n"
+    s!"    {solveTac} {depth} [{simpSet}{bs}, φ{extraSimp}{unf}, *] with (first | {closer})))\n"
   for t in [0:c.length] do
     let j := c[t]!
     let i := blk.idxOf names[t]!
@@ -773,6 +814,7 @@ def genMutual (st : St) (c : List Nat) (blk : List Name) (extraSimp : String) (s
 
 /-- the commands for program `N` -/
 def genText (N : Name) (st : St) (extraSimp : String) (solveTac : String := "s3_solve") : MetaM String := do
+  let depth := s3.depth.get (← getOptions)
   let p := N.toString
   let dts := st.dts.toList.map fun cs => listTxt (cs.toList.map fun fs => listTxt (fs.toList.map tyTxt))
   let fns := st.fns.toList.map fun fi => s!"({listTxt (fi.params.toList.map tyTxt)}, {tyTxt fi.ret})"
@@ -883,7 +925,7 @@ def genText (N : Name) (st : St) (extraSimp : String) (solveTac : String := "s3_
     out := out ++ s!"theorem cert{k} : {fa}Proven.S3.Good P φ ⟨{k}, by decide⟩ {encs} := by\n" ++
       introLine ++ induct ++
       s!"  (apply Proven.S3.good_intro <;> rw [body{k}]) <;> (try rw [phi{k}]) <;> (try rw [{fname}.eq_def]) <;>\n" ++
-      s!"  {solveTac} 12 [{simpSet}, b{k}, φ{extraSimp}{unf}, *] with (first | {closer}))\n"
+      s!"  {solveTac} {depth} [{simpSet}, b{k}, φ{extraSimp}{unf}, *] with (first | {closer}))\n"
     let vs := (List.range fi.pTys.size).map (s!"v{·}")
     let hs := (List.range fi.pTys.size).map (s!"h{·}")
     let hyps ← (List.range fi.pTys.size).mapM fun i => do

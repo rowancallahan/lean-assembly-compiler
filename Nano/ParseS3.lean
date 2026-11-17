@@ -314,7 +314,7 @@ theorem gasS_eq : ∀ ts, gasS ts = gasOf ts
 /-- **stage 2, S3 form** -/
 def stage2S (bs : List UInt8) : List UInt8 :=
   match decLS bs with
-  | some (_, ts) => (runS (gasS ts) (.defs (ts.length + 1)) (st0 ts)).getD []
+  | some (_, ts) => (runS (gasS ts) (.defs (ts.length + 1)) ⟨ts, [], 0, [], [], [], [], 0, 0⟩).getD []
   | none => []
 
 /-- **the bridge**: the S3 form is stage 2, on every input -/
@@ -323,6 +323,6 @@ theorem stage2S_eq (bs : List UInt8) : stage2S bs = stage2 bs := by
   rw [decLS_eq]
   cases decL bs with
   | none => rfl
-  | some p => obtain ⟨_, ts⟩ := p; simp [runS_eq, gasS_eq, parseA]
+  | some p => obtain ⟨_, ts⟩ := p; simp [runS_eq, gasS_eq, parseA, st0]
 
 end Nano.PS

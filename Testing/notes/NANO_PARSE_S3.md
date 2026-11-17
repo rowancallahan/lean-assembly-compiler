@@ -35,3 +35,14 @@
 - TIMING: probe `gs` (decoder `decLS`/`decS` + `gasS` + `u8N`, S3 compile with certificates): OK, 22 min 48 s
   wall (13 min 17 s user; another Lean build ran in parallel). The certificates dominate (s3_solve on decS's
   if-chain).
+- Regression found by the adapter box: the byte lemmas as global `s3_norm` broke Riscv/Frontx/S3Examples (and
+  S3RecExamples). DECISION: opt-in. New simp set `s3_bytes` (SimpAttr.lean), command `s3_compileB` (certificates by
+  `s3_solveB` = `s3_solve` with `s3_bytes` in every simp call, and `s3_splitB`). `s3_compile` and the existing
+  examples are unchanged (both example files build).
+- WHY the machine compile did not finish (> 27 min for `stepS`, > 10 min for the 3-case `stParams`): the parser's
+  state is a 9-field structure and the machine matches on its projections (`s.ts`); `s3_split` never destructs a
+  one-constructor variable, so those branches never close and `s3_solve` exhausts its depth (12) splitting `Nat`s
+  (~2^12 branches) before failing. FIX (`s3_splitB`): first destruct a structure variable used inside `Enc.enc`
+  (no branching), then split a variable that blocks evaluation (`match some (Enc.enc x)`), else `s3_split`.
+  Option `s3.depth` (default 12) for diagnosis. Also: `st0 ts` inlined as a record literal in `stage2S` (a call
+  returning a structure cannot be split). Result: `stParams` probe 34 s (was > 10 min, failing).
