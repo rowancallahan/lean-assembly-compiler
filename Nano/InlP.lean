@@ -80,10 +80,20 @@ def wrB (v : Nat) : UInt8 :=
   if v % 4 == 0 then 10 else if v % 4 == 1 then UInt8.ofNat (8 * (v / 4)) else if v % 4 == 2 then 11
   else UInt8.ofNat (v / 4)
 
-/-- the emit loop: `wrap k (body at BASE + ls, length len)`, byte `t` -/
-def em (out : ByteArray) (ob : Array Nat) (t ls len k : Nat) : ByteArray :=
+/-- the byte of `wrap k (body at BASE + ls, length len)` at `t` -/
+def eByte (ob : Array Nat) (t ls len k : Nat) : UInt8 :=
+  if t < 2 then 0
+  else if t < 2 + 20 * k then argB ((t - 2) % 20)
+  else if t < 2 + 20 * k + len then UInt8.ofNat ob[BASE + ls + (t - 2 - 20 * k)]!
+  else if t == 2 + 20 * k + len then 7
+  else if t == 3 + 20 * k + len then 0
+  else if t < 36 + 20 * k + len then wrB (t - 4 - 20 * k - len)
+  else if t == 36 + 20 * k + len then 12 else 0
+
+/-- the emit loop: fills a preallocated array (no pushes) -/
+def em (out : Array UInt8) (ob : Array Nat) (t ls len k : Nat) : Array UInt8 :=
   if t < 20 * k + len + 38 then
-    em (out.push
+    em (out.set! t
         (if t < 2 then 0
          else if t < 2 + 20 * k then argB ((t - 2) % 20)
          else if t < 2 + 20 * k + len then UInt8.ofNat ob[BASE + ls + (t - 2 - 20 * k)]!
@@ -96,10 +106,12 @@ def em (out : ByteArray) (ob : Array Nat) (t ls len k : Nat) : ByteArray :=
 termination_by 20 * k + len + 38 - t
 
 /-- **the inliner stage** -/
-def inlP (xs : ByteArray) : ByteArray :=
-  let ob := mn (Array.replicate CAP 0) xs 0 0 0 0 0 0 0 0 0
+def inlP (xs : ByteArray) : Array UInt8 :=
+  let ob := mn (Array.replicate (CAP + 0 * xs.size) 0) xs 0 0 0 0 0 0 0 0 0
   let ls := ob[HD]! / 16777216 % 16777216
   let le := ob[HD]! % 16777216
-  em (xs.extract 0 0) ob 0 ls (le - 1 - ls) (if le == 0 then 0 else ob[BASE + (le - 1)]! % 256)
+  let len := (le - 1 - ls) % 262144
+  let k := if le == 0 then 0 else ob[BASE + (le - 1)]! % 256
+  em (Array.replicate (20 * k + len + 38) 0) ob 0 ls len k
 
 end Nano.IP

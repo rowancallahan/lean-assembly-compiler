@@ -67,13 +67,48 @@ def eB (ob : Array Nat) (ls len k t : Nat) : UInt8 :=
   else if t < 36 + 20 * k + len then wrB (t - 4 - 20 * k - len)
   else if t == 36 + 20 * k + len then 12 else 0
 
-theorem em_eq (ob : Array Nat) (ls len k : Nat) : ∀ (n t : Nat) (out : ByteArray), 20 * k + len + 38 - t = n →
-    (em out ob t ls len k).data.toList = out.data.toList ++ (List.range' t n).map (eB ob ls len k)
-  | 0, t, out, h => by
-    rw [em, if_neg (by omega)]; simp
-  | n + 1, t, out, h => by
-    rw [em, if_pos (by omega), em_eq ob ls len k n (t + 1) _ (by omega), ba_push, List.range'_succ]
-    simp [eB]
+theorem uget_set (a : Array UInt8) (i j : Nat) (v : UInt8) :
+    (a.set! i v)[j]! = if i = j ∧ i < a.size then v else a[j]! := by
+  rw [getElem!_def, getElem!_def]
+  simp only [Array.set!, Array.getElem?_setIfInBounds]
+  by_cases h : i = j
+  · subst h; by_cases hs : i < a.size <;> simp [hs]
+  · simp [h]
+
+theorem uset_size (a : Array UInt8) (i : Nat) (v : UInt8) : (a.set! i v).size = a.size := by simp [Array.set!]
+
+theorem em_spec (ob : Array Nat) (ls len k : Nat) : ∀ (n t : Nat) (out : Array UInt8),
+    20 * k + len + 38 - t = n → out.size = 20 * k + len + 38 →
+    (em out ob t ls len k).size = 20 * k + len + 38 ∧
+      ∀ q, q < 20 * k + len + 38 → (em out ob t ls len k)[q]! = if q < t then out[q]! else eB ob ls len k q
+  | 0, t, out, h, hs => by
+    rw [em, if_neg (by omega)]
+    exact ⟨hs, fun q hq => by rw [if_pos (by omega)]⟩
+  | n + 1, t, out, h, hs => by
+    rw [em, if_pos (by omega)]
+    show (em (out.set! t (eB ob ls len k t)) ob (t + 1) ls len k).size = _ ∧ _
+    obtain ⟨h1, h2⟩ := em_spec ob ls len k n (t + 1) (out.set! t (eB ob ls len k t)) (by omega)
+      (by rw [uset_size, hs])
+    refine ⟨h1, fun q hq => ?_⟩
+    show (em (out.set! t (eB ob ls len k t)) ob (t + 1) ls len k)[q]! = _
+    rw [h2 q hq, uget_set]
+    by_cases hqt : q < t
+    · rw [if_pos (Nat.lt_succ_of_lt hqt), if_neg (by omega), if_pos hqt]
+    · by_cases hqe : q = t
+      · rw [if_pos (by omega), if_pos ⟨hqe.symm, by omega⟩, if_neg hqt, hqe]
+      · rw [if_neg (by omega), if_neg hqt]
+
+theorem em_list (ob : Array Nat) (ls len k : Nat) :
+    (em (Array.replicate (20 * k + len + 38) 0) ob 0 ls len k).toList =
+      (List.range' 0 (20 * k + len + 38)).map (eB ob ls len k) := by
+  obtain ⟨h1, h2⟩ := em_spec ob ls len k _ 0 (Array.replicate (20 * k + len + 38) 0) rfl (by simp)
+  apply List.ext_getElem
+  · simp [h1]
+  · intro q hq _
+    have hq' : q < 20 * k + len + 38 := by simpa [h1] using hq
+    have := h2 q hq'
+    rw [if_neg (by omega), getElem!_pos _ q (by rw [h1]; exact hq')] at this
+    simp only [Array.getElem_toList, this, List.getElem_map, List.getElem_range', Nat.zero_add, Nat.one_mul]
 
 theorem sArg_get : ∀ s (h : s < sArg.length), sArg[s] = argB s := by decide
 
@@ -99,11 +134,10 @@ theorem sWr_get (v : Nat) (h : v < sWr.length) : sWr[v] = wrB v := by
   revert v; decide
 
 /-- **the emit loop writes `wrap k last`** when the buffer holds `last` at `ls` -/
-theorem em_wrap (out : ByteArray) (ho : out.data.toList = []) (ob : Array Nat) (ls k : Nat) (last : List UInt8)
+theorem em_wrap (ob : Array Nat) (ls k : Nat) (last : List UInt8)
     (hb : ∀ q (h : q < last.length), ob[BASE + ls + q]! = last[q].toNat) :
-    (em out ob 0 ls last.length k).data.toList = wrap k last := by
-  rw [em_eq ob ls last.length k _ 0 _ rfl, ho]
-  simp only [Nat.sub_zero, List.nil_append]
+    (em (Array.replicate (20 * k + last.length + 38) 0) ob 0 ls last.length k).toList = wrap k last := by
+  rw [em_list]
   show (List.range' 0 (20 * k + last.length + 38)).map (eB ob ls last.length k) = wrap k last
   apply List.ext_getElem
   · simp [wrap, mo, serPro_length, sWr]; omega
@@ -324,7 +358,7 @@ def Hdr (ob : Array Nat) (cs k : Nat) (last : List UInt8) : Prop :=
 
 /-- what the emit loop needs -/
 def Post (R : Array Nat) (k : Nat) (last : List UInt8) : Prop :=
-  R[HD]! % 16777216 - 1 - R[HD]! / 16777216 % 16777216 = last.length ∧
+  (R[HD]! % 16777216 - 1 - R[HD]! / 16777216 % 16777216) % 262144 = last.length ∧
   (if R[HD]! % 16777216 == 0 then 0 else R[BASE + (R[HD]! % 16777216 - 1)]! % 256) = k ∧
   ∀ q (hq : q < last.length), R[BASE + R[HD]! / 16777216 % 16777216 + q]! = last[q].toNat
 
@@ -334,7 +368,7 @@ theorem hdr_post (ob : Array Nat) (cs k : Nat) (last : List UInt8) (h : Hdr ob c
   · simp [Post, h0]
   · have e1 : ob[HD]! % 16777216 = ls + last.length + 1 := by rw [hH]; unfold WCAP at hcs; omega
     have e2 : ob[HD]! / 16777216 % 16777216 = ls := by rw [hH]; unfold WCAP at hcs; omega
-    refine ⟨by rw [e1, e2]; omega, ?_, by rw [e2]; exact hb⟩
+    refine ⟨by rw [e1, e2]; unfold WCAP at hcs; omega, ?_, by rw [e2]; exact hb⟩
     rw [e1]; simp only [Nat.add_one_sub_one]
     rw [if_neg (by simp), hkb, Nat.mod_eq_of_lt hk]
 
@@ -595,23 +629,22 @@ theorem inv0 (sz : Nat) (h : sz = CAP) : Inv (Array.replicate sz 0) [] [] 0 0 0 
 /-- the main loop on an input -/
 def inlR (xs : ByteArray) : Array Nat := mn (Array.replicate (CAP + 0 * xs.size) 0) xs 0 0 0 0 0 0 0 0 0
 
-theorem inlP_def (xs : ByteArray) : inlP xs = em (xs.extract 0 0) (inlR xs) 0
-    ((inlR xs)[HD]! / 16777216 % 16777216) ((inlR xs)[HD]! % 16777216 - 1 - (inlR xs)[HD]! / 16777216 % 16777216)
+theorem inlP_def (xs : ByteArray) : inlP xs =
+    em (Array.replicate (20 * (if (inlR xs)[HD]! % 16777216 == 0 then 0 else
+        (inlR xs)[BASE + ((inlR xs)[HD]! % 16777216 - 1)]! % 256) +
+      ((inlR xs)[HD]! % 16777216 - 1 - (inlR xs)[HD]! / 16777216 % 16777216) % 262144 + 38) 0) (inlR xs) 0
+    ((inlR xs)[HD]! / 16777216 % 16777216)
+    (((inlR xs)[HD]! % 16777216 - 1 - (inlR xs)[HD]! / 16777216 % 16777216) % 262144)
     (if (inlR xs)[HD]! % 16777216 == 0 then 0 else (inlR xs)[BASE + ((inlR xs)[HD]! % 16777216 - 1)]! % 256) := rfl
 
-theorem extract00 (xs : ByteArray) : (xs.extract 0 0).data.toList = [] := by
-  apply List.eq_nil_of_length_eq_zero
-  have := @ByteArray.size_extract xs 0 0
-  simp only [Array.length_toList]; exact this.trans (by simp)
-
 /-- **the paged inliner computes `inlB`** whenever the inliner's table fits the buffer -/
-theorem inlP_eq (x : List UInt8) (h : inlFits x) : (inlP ⟨⟨x⟩⟩).data.toList = inlB x := by
+theorem inlP_eq (x : List UInt8) (h : inlFits x) : (inlP ⟨⟨x⟩⟩).toList = inlB x := by
   have hm : Post (inlR ⟨⟨x⟩⟩) (inlS x [] [] 0 0 []).2.2.1 (inlS x [] [] 0 0 []).2.2.2 :=
     mn_main x _ ⟨⟨x⟩⟩ 0 0 0 0 0 0 0 [] [] 0 [] (by simp) (inv0 _ (by simp)) (by decide) h
   rw [inlP_def]
   generalize inlR ⟨⟨x⟩⟩ = R at hm ⊢
   obtain ⟨h1, h2, h3⟩ := hm
   rw [h2, h1, inlB, inlGo_inlS]
-  exact em_wrap _ (extract00 _) R _ _ _ h3
+  exact em_wrap R _ _ _ h3
 
 end Nano.IP

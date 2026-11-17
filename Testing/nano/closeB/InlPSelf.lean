@@ -10,9 +10,9 @@ wp_compile inlP max 1048576
       cp + rem ≤ 524272 ∧ rem ≤ 262136 ∧ cs ≤ 262136
   measure fun (_ob : Array Nat) (src : ByteArray) (i _ph _m _w _n _hi _cp rem _cs : Nat) =>
     (src.size - i) * 262137 + rem
-  invariant fun (out : ByteArray) (_ob : Array Nat) (t ls len k : Nat) =>
-    out.size = t ∧ t ≤ 20 * k + len + 38 ∧ ls < 16777216 ∧ len < 16777216 ∧ k < 256
-  measure fun (_out : ByteArray) (_ob : Array Nat) (t ls len k : Nat) => 20 * k + len + 38 - t
+  invariant fun (out : Array UInt8) (_ob : Array Nat) (t ls len k : Nat) =>
+    out.size = 20 * k + len + 38 ∧ t ≤ 20 * k + len + 38 ∧ ls < 16777216 ∧ len < 262144 ∧ k < 256
+  measure fun (_out : Array UInt8) (_ob : Array Nat) (t ls len k : Nat) => 20 * k + len + 38 - t
 
 #check @inlP.compiles
 #print axioms inlP.compiles
