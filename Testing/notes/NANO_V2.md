@@ -299,3 +299,8 @@ conservative (inherited); loop states need ≥ 1 parameter; the zero arm must co
   `bget a i`, further read-only aliases) does not consume `j`; during `b` both are read-only (any move/mutation of
   either is rejected). Inlined helpers thus borrow `Buf` parameters (`def g (b : Buf) (i : UInt64) : UInt64 :=
   bget b i`; the caller keeps `b`). Flags 0 live / 1 read-only / 2 dead. Tests p9, neg18–19; 49 programs agree.
+- READ-ONLY LOOP PARAMETERS (V2Self request): a fuel loop is first parsed with every `Buf` parameter READ-ONLY:
+  not in the state, read by the body as an outer variable, passed as ITSELF (its name) in every self call; the
+  call lowers to `let r := arg; loop …` (read-only alias, `Ex.lv`), so the caller keeps its buffer. If that fails
+  to check (the body moves/mutates/returns it), the loop is re-parsed with the `Buf` in the state (`pLoop`).
+  Inside loop bodies outer buffers are read-only (not dead). Tests p10, neg20; 50 programs agree.
