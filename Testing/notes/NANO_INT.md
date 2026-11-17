@@ -145,3 +145,10 @@ nano-proof (Opus: L2), nano-mvp (finished: Int64, Chain, chain_test), nano-int (
   Consequence for the design: O(1) stack work per input byte (fine for nano's three precedence levels and parentheses);
   unbounded work per token (scope lookup, copying a callee body) must be done by rescanning list-path stages before
   (name → index, arity) or needs steps that do not consume input (not yet working with the fixed tactic).
+* 2026-11-17 00:30. PROBE 2, `Testing/nano/wp_copy_probe.lean`: steps that do NOT consume input also pass `wp_compile`
+  (3 min): copy mode `0 < rem` (push `buf.get! cp`, `rem - 1`, `cp + 1`, `i` unchanged), else consume one byte and set
+  `rem`; measure `(src.size - i) * 4 + rem`, invariant `rem < 4 ∧ cp + rem ≤ 3 ∧ …`; every step pushes exactly ONE
+  byte (branch-free size), every condition is the simple `0 < rem`. So inlining by copying an earlier part of the
+  output buffer is expressible in a paged stage (bound the copy length with `% C` so the invariant `rem < C` is
+  provable without facts about memory contents). What made the earlier attempts fail was a size that depends on the
+  branch (conditional `push` vs `set!`): the fixed tactic simplifies sizes before splitting, not after.
