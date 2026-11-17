@@ -24,39 +24,40 @@ def BIN : UInt64 := 3
 def IF : UInt64 := 4
 def LET : UInt64 := 5
 def PAIR : UInt64 := 6
-def CALL : UInt64 := 8
-def PRIM : UInt64 := 9
-def LOOP : UInt64 := 10
-def CONT : UInt64 := 11
-def DEF : UInt64 := 20
-def END : UInt64 := 21
-def ast : List UInt64 := [2,
+def CALL (t : Bool) : UInt64 := if t then 8 else 7
+def PRIM (t : Bool) : UInt64 := if t then 9 else 8
+def LOOP (t : Bool) : UInt64 := if t then 10 else 9
+def CONT (t : Bool) : UInt64 := if t then 11 else 10
+def DEF (t : Bool) : UInt64 := if t then 20 else 11
+def END (t : Bool) : UInt64 := if t then 21 else 12
+def ast (t : Bool) : List UInt64 := [2,
   -- f: fuel 0, i 1, b 2
-  DEF, 0, 3, 3, 1, 1, LOOP,
+  (DEF t), 0, 3, 3, 1, 1, (LOOP t),
     LOCAL, 2, 1,
-    IF, 2, LOCAL, 1, 1, PRIM, 1,
-      CONT, PAIR, 2, BIN, 1, LOCAL, 1, 1, CONST, 1, PRIM, 9, LOCAL, 2, 1, PRIM, 2, LOCAL, 1, 1,
+    IF, 2, LOCAL, 1, 1, (PRIM t), 1,
+      (CONT t), PAIR, 2, BIN, 1, LOCAL, 1, 1, CONST, 1, (PRIM t), 9, LOCAL, 2, 1, (PRIM t), 2, LOCAL, 1, 1,
       LOCAL, 2, 1,
-  END,
+  (END t),
   -- h: fuel 0, b 1, i 2, s 3, c 4
-  DEF, 1, 5, 5, 1, 2, LOOP,
+  (DEF t), 1, 5, 5, 1, 2, (LOOP t),
     PAIR, 2, LOCAL, 3, 1, LOCAL, 4, 1,
-    IF, 2, LOCAL, 2, 1, PRIM, 6, LOCAL, 1, 1,
-      CONT, PAIR, 4, LOCAL, 1, 1, BIN, 1, LOCAL, 2, 1, CONST, 1,
-        BIN, 1, LOCAL, 3, 1, PRIM, 7, LOCAL, 1, 1, LOCAL, 2, 1, BIN, 1, LOCAL, 4, 1, CONST, 1,
+    IF, 2, LOCAL, 2, 1, (PRIM t), 6, LOCAL, 1, 1,
+      (CONT t), PAIR, 4, LOCAL, 1, 1, BIN, 1, LOCAL, 2, 1, CONST, 1,
+        BIN, 1, LOCAL, 3, 1, (PRIM t), 7, LOCAL, 1, 1, LOCAL, 2, 1, BIN, 1, LOCAL, 4, 1, CONST, 1,
       PAIR, 2, LOCAL, 3, 1, LOCAL, 4, 1,
-  END,
+  (END t),
   -- m: b 0, (s, c) 1-2
-  DEF, 2, 0, 3, 0, 1,
-    LET, 0, 1, CALL, 0, 3, PRIM, 1, CONST, 0, PRIM, 5,
-    LET, 1, 2, CALL, 1, 5, PRIM, 1, LOCAL, 0, 1, CONST, 0, CONST, 0, CONST, 0,
-    PRIM, 4, PRIM, 4, PRIM, 5, LOCAL, 1, 1, LOCAL, 2, 1,
-  END]
+  (DEF t), 2, 0, 3, 0, 1,
+    LET, 0, 1, (CALL t), 0, 3, (PRIM t), 1, CONST, 0, (PRIM t), 5,
+    LET, 1, 2, (CALL t), 1, 5, (PRIM t), 1, LOCAL, 0, 1, CONST, 0, CONST, 0, CONST, 0,
+    (PRIM t), 4, (PRIM t), 4, (PRIM t), 5, LOCAL, 1, 1, LOCAL, 2, 1,
+  (END t)]
 
 def hex (l : List UInt8) : String := if l.isEmpty then "-" else String.join (l.map fun b =>
   let s := (Nat.toDigits 16 b.toNat).asString; if s.length == 1 then "0" ++ s else s)
 def main : IO Unit := do
-  let code := C.g41 ast
+  let code := C.g41 (ast true)
+  if C.g41 (ast false) != code then throw (IO.userError "the two tag tables give different code")
   IO.println s!"code bytes: {code.length}"
   let ws := (List.range (code.length / 4)).map fun k =>
     (code.getD (4*k) 0) + 256 * (code.getD (4*k+1) 0) + 65536 * (code.getD (4*k+2) 0) + 16777216 * (code.getD (4*k+3) 0)
