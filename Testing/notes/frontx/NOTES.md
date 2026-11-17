@@ -2421,3 +2421,207 @@ and one page less, `a0` and `a1` checked), the 4 older `pg_*` entries (regenerat
 Next: nested loops in loop bodies (`fillDouble`, `extendWithin`, `copyLoop`); facts about an earlier loop's result in
 a later loop's invariant (`hasLongCode`); constant tables in the paged back end; then HuffTree (`frontx_ind`) and tuples
 of arrays toward `inflate`.
+
+## 36. con-leche hard blockers (branch `conleche-hard`)
+
+Front end only (`Riscv/Frontx/IndCmd.lean`); no change to `Compiler/`, the back end or `Spec/`.  Targets in
+`Riscv/Frontx/ConLecheHard.lean` (con-leche @6810492c1, verbatim, `file:line` per block), each with `implements1`
+(axioms = the Sail set, `Testing/scripts/axioms_conleche-hard.lean`, in `check.sh`'s loop and expected-axioms.txt)
+and QEMU + Sail runs equal to executed Lean (`Testing/asm/emit_conleche_hard.lean`, `frontx_test.py check`):
+
+| entry | con-leche function | source | feature | cases | words |
+|---|---|---|---|---|---|
+| `lift1 e c = liftLooseBVars 1 c e` | `Expr.liftLooseBVars` | `Kernel/ExprOps.lean:677` | (2) `amount` fixed | 81 | 6939 |
+| `abs0 e k = abstract1 e 0 k` | `Expr.abstract1` | `Kernel/ExprOps.lean:739` | (2) `d` fixed | 81 | 6924 |
+| `Expr.isStrLit` | | `Kernel/Core.lean:791` | (1) `.lit (.strVal _)` / `_` | 81 | 5706 |
+| `Expr.isNatZero` | | `Kernel/Core.lean:1528` | (1) `.lit (.natVal 0)`, `.const c []`, `c == natZeroName` | 81 | 19896 |
+| `Expr.isBoolTrue` | | `Kernel/CoreDefs.lean:449` | (1) `.const c []`, `c == boolTrueName` | 81 | 20718 |
+| `peelN e k = peelPis k e` | `Expr.peelPis` | `Kernel/PropRead.lean:44` | (3) `0` / `k+1` with the tree, (4) `Option Expr` | 60 | 7960 |
+| `domN e k = binderDom k e` | `Expr.binderDom` | `Kernel/PropRead.lean:51` | (3), (4) | 60 | 7960 |
+| `hasLB e i = hasLooseBVar i e` | `Expr.hasLooseBVar` | `Kernel/CoreDefs.lean:810` | (already in the language) | 81 | 6269 |
+| `Expr.sizeB` | | `Kernel/ExprOps.lean:719` | (already in the language) | 81 | 6281 |
+| `Level.isNonZero` (on `LevelT`) | | `Kernel/Level.lean:181` | (already in the language) | 60 | 898 |
+
+The last three were found by a gate run over all of `F2.lean.txt` (branch `conleche-depth`) with the new front end
+(`gate_all`: every `ConLeche` definition whose type mentions `Expr`/`Name`/`Level`, through `frontx_ind_gate`'s
+logic; 1319 definitions, 63 "arms ok"); they translated before this branch but had not been compiled.
+Reproduce: `lake build Riscv.Frontx.ConLecheHard`; `lake env lean --tstack=4000000
+Testing/asm/emit_conleche_hard.lean`; `python3 Testing/asm/frontx_test.py check 81 hard_<name>` (60 for `hard_peeln`,
+`hard_domn`, `hard_isnonzero`); axioms `Testing/scripts/axioms_conleche-hard.lean`.
+
+**(2) Specialisation.**  An entry `f xs = g … lit …` where `g` has two scalar parameters and one argument is a literal
+that every recursive call of `g` passes unchanged (checked on `g`'s equations): `specialise` generates
+`f.spec := fun rest => g … lit …` (a plain definition) and its equations `f.spec.eq_k`, one per `g.eq_k`, with
+`g … lit …` replaced by `f.spec` — each proved by `g.eq_k` itself (the kernel unfolds `f.spec`).  Lean takes
+`f.spec.eq_1 …` as `f.spec`'s equations (`getEqnsFor?` finds them as already generated), so the rest of the front end
+sees a recursive function with one scalar parameter; the entry `f` is definitionally `f.spec …`, so the machine
+theorem is about `f` (e.g. `lift1 p.1 p.2`).  `sem` proofs `simp` with `g` too (`simp [f.spec]` unfolds it).
+Not done: specialising a parameter from the input (both scalars at run time), more than one fixed parameter.
+
+**(1) Wildcards in nested patterns.**  `reifyMatch` on a constructor application stuck on a field: if no field
+reduces the matcher for every constructor (`.lit (.natVal 0)` vs `_`), it splits on the first field of a declared
+type or `Nat` (fields searched inside nested applications, `fvarsIn`); a `Nat` (parameter, field or local) splits
+into `0` and `n + 1` with `n := natSub d 1` bound (`.bind`).  **Named constants inside a function** (`c ==
+natZeroName`): a nullary constant of a declared type is now a call of a generated `cn.cst_<T> (t : T) := cn` on the
+current node (one more program function, whose own `sem` states the value), unless the function is itself a constant
+(`.cst`/`cst_`, as in §31: there the value is still unfolded).  The caller's proof (new last alternative of the
+generated `sem` tactic): the later functions' meaning theorems are rewritten before the cells are unfolded, the
+constants' `small` side conditions are discharged by unfolding the constants (`String` byte chains: `True` by
+evaluation), `x == y` on a type whose `BEq` instance is `decide (x = y)` by a local `rfl` lemma (`simp` does not
+rewrite instance arguments), `frontx_emb_cases` / `simp_all`, and `decide p = decide p` with different
+`Decidable` instances by `congr`.
+
+**(3) A match on a scalar together with the tree** (`| 0, e => … | k + 1, .forallE _ b => …`): the `Nat` split
+above; the `sem` proof gets an alternative `rcases a with _ | a` (`ofNat_succ_eq0`: `n + 1 ≠ 0` below `2^64`).
+
+**(4) `Option Expr` results.**  The existing `TExpr` shape DROPS fields of the root type in nested types: `some e`
+is encoded as the bare tag (`TExpr.N6.emb (some e) = C.c 26 0 z z`) and `List Expr`'s heads are dropped too
+(`N5.emb (e :: es) = C.c 24 0 (N5.emb es) z`).  No compiled function before this branch returned or took
+`Option Expr`/`List Expr`, so no existing theorem was wrong, but such results would have been specified as their
+shape only.  New option `frontx_ind_type (full) T := …` (marker `T.full`, also read by `rTyOfName`): such fields are
+children.  Opt-in so that the codes and statements of every existing `TExpr` entry stay as they are; the new
+`Option`-result entries use `TExprF` (byte format identical to `TExpr` for values without `List Expr`/`Option Expr`).
+
+**Count.**  con-leche functions compiled verbatim through `frontx_ind` with a machine theorem: 71 before this branch
+(68 named directly in `frontx_ind` commands — `IndExamples` 2, `Ind2Examples` 2, `NameExamples` 2, `ExprExamples` 8,
+`ConLecheBlk` 40, `ConLecheS1`–`S3` 6, … — and 3 through entries: `looseBVarsBounded`, `instantiate1`, `wscopedB`),
+now **81** (+ `isStrLit`, `isNatZero`, `isBoolTrue`, `liftLooseBVars`, `abstract1`, `peelPis`, `binderDom`,
+`hasLooseBVar`, `sizeB`, `Level.isNonZero`).  (`Name.beq`/`Level.beq` of `NameExamples` are counted as in their files.)
+
+**Not done / why.**
+- `Expr.isEagerReduce` (`Kernel/CoreDefs.lean:440`, `.app (.app (.const c _) _) _`): translates (6 functions); the
+  `sem` proof fails: after the case splits on the nested children, the generic `simp_all` unfolds the constant's cells
+  (`eagerReduceName` = `.str .anonymous "eagerReduce"`) before the `Name.decEq` meaning theorem is applied, and
+  `frontx_emb_cases` then generalizes the closed `Bytes8.ofString "eagerReduce"` (losing its value).  Tried (reverted,
+  not in the tested front end): a variant of `frontx_emb_cases` that never generalizes closed terms, plus folding
+  (`T.fold_k`) before rewriting with the later functions' theorems; the remaining goals were not closed.
+- `Expr.natPred?` (`Kernel/Core.lean:1535`): translates; `sem` proof hits `maxRecDepth` in `simp`.
+- `sameConstHeads` (`Kernel/CoreDefs.lean:148`, a match on two trees with `getAppFn` calls): translates (4 functions),
+  `sem` proof fails (item 3 for two trees is not done; the two-tree arms are only translated through the `b` parameter).
+- `Cached.iotaNumArgs` (`Cached/CoreC.lean:141`, accumulator `n + 1` with a wildcard tree pattern): `sem` proof fails.
+- `openPisAtFvars` (`Option (List Expr × Expr)`: pair results), `rawNatLit?` (`Option Nat`), `instPisWith` (a pattern on
+  the second argument, a `List Expr` structural argument with an `Expr` parameter): not attempted.
+- Specialisation fixes literals only; a fixed parameter from the input (two scalars at run time) is not done.
+- In the gate run, 167 of 1319 definitions fail with an `enableRealizationsForConst` error (realizing auxiliary
+  constants from inside the command); not investigated (the generated `spec` / `cst_` definitions call it).
+
+## 37. Round 1: compile-time constants, monomorphisation, translator gaps (branch `round1`)
+
+Owner priority (ROADMAP "Next Opus rounds", BLOCKER_YIELD.md): con-leche + complete self-hosting. Every function below is
+compiled verbatim (source copied from con-leche @6810492c1 with file:line comments, or the repository's own definitions).
+
+### A. Compile-time constants as data (`frontx_const`)
+
+* `Riscv/Frontx/Const.lean` (proved once): `dataB ys` = one byte store per byte into the output block, then `v1 := |ys|`
+  (a `Mach.BStmt`, back end `compBF`); `data_implements1`: for every byte list `ys`, encodings `encA`/`encB` and value `c`
+  with `encB c = ys`, the code implements `fun _ => c` (`Implements1With …  (fun _ => 15) maxLen retLen`; any input,
+  ignored; work 15 bytes; `a1` = length). `wf_dataB` (well-formedness for every `ys`), `exec_dataGo` (the run).
+* Kernel-reducible byte format: `C.sb` (bytes of a string cell chain) is well-founded recursion, which the kernel does not
+  reduce; `sbS` / `encS` are the same functions by structural recursion, `enc_eq_encS` (proved once). A constant of a type
+  declared by `frontx_ind_type` is checked as `encS sh (emb c) = ys` and turned into `T.enc c = ys` (`enc_of_encS`).
+* `Riscv/Frontx/ConstCmd.lean`, `frontx_const f [on T]`: (1) `f` must be 0-ary (else rejected: "only 0-ary definitions are
+  folded"; applications with arguments are never folded); (2) result encoding: `Nat` = 64-bit word (`encWord`, with the
+  kernel theorem `f.data.lt : f < 2^64`), `Fin k` (`k ≤ 256`) one byte (`encFin`), a type of `T` its `enc`, else a
+  `Bytes` instance; input: `T`'s root (`T.enc`) or raw bytes; (3) candidate bytes by evaluation (`Meta.evalExpr`,
+  UNTRUSTED), at most `capBytes = 4096`; (4) the KERNEL checks `encB f = bytes` (`of_decide_eq_true rfl` added with
+  `addDecl`, `Elab.async false`, `maxHeartbeats = kernelBudget = 50000`); failure = rejection, nothing generated.
+  Generated: `f.data.enc_eq`, `f.data.bytes`, `f.data.code`, `f.data.implements1`.
+* Rejections tested (`/home/user/scratch/t/c2.lean`, `c4.lean`, not committed): a function (`fn x := x`): rejected; `2^70 : Nat`:
+  rejected (`f < 2^64` not confirmed); a value through `C.sb` (well-founded, does not reduce in the kernel): rejected;
+  a fold over `List.range 30000`: kernel `deep recursion`, rejected. A well-founded definition that DOES reduce in the
+  kernel (`go 10` by `termination_by n`) is folded (the kernel confirmed it). Caveat: a value whose kernel evaluation
+  needs much memory (`List.range 3000000`) ran out of memory (OOM kill) before the heartbeat budget stopped it: a
+  visible crash, not a wrong compile. The candidate evaluation (`evalExpr`) has no budget either; only the kernel check
+  is trusted.
+* `Riscv/Frontx/ConstExamples.lean`: 85 con-leche constants (the 40 `Name` constants of `ConLecheBlk.lean`, now also as
+  data, and 45 more: `Name`, `Expr` (`natT`, `natRecMotive`, `natRecSucc`, `andRecMinor`, `quotLiftF`, …, the `BasisDSL`
+  builders copied verbatim) and `Nat` (`whnfLoopFuel` = 2^62 and the other fuels, `satRange`, `bvarPoolSize`, …)) and the
+  self-hoster's `Ir.R0`, `Ir.R1`, `Ir.RLim` (`Reg = Fin 15`, one byte). Codes 4–127 bytes of data. All 88:
+  `f.data.implements1` with exactly the Sail axiom set; `f.data.enc_eq` ⊆ {propext, Classical.choice, Quot.sound}
+  (`Testing/scripts/axioms_round1.lean`, in `check.sh`); 60 cases each on QEMU and Sail equal to executed Lean
+  (`Testing/asm/emit_const.lean`, `cst_*`; all 88 pass).
+* Callers. `frontx_ind` already unfolds constants inside bodies (section 31), so a caller compiled by `frontx_ind` uses
+  a constant inline (recomputed). Folded constants are not yet callable as data from compiled functions (that needs the
+  IR route: a call to a 0-argument function returning a pointer to a static block; next round, IR S3). Probe of three
+  callers (`/home/user/scratch/p/callers.lean`): `Expr.isBoolTrue`: arms translate, `sem` proof fails (as in section 31);
+  `Expr.isNatZero`, `Expr.isEagerReduce`: nested patterns (not supported). So none of the ~20 non-constant functions of
+  the con-leche "0-ary" unlock set compiles yet; their blockers are nested patterns / `Option`/`List` results.
+
+### B. Monomorphisation of type variables (`frontx_mono`)
+
+* `Riscv/Frontx/Mono.lean`, `frontx_mono f at τ… on T [using U…]`: for `f : {ρ… : Type} → …` generates the specialised
+  copy `f.at_τ (x_i : A_i[ρ:=τ]) : R[ρ:=τ] := @f τ… x_i…`, the equation `f.at_τ.eq : f.at_τ = @f τ…` (`rfl`), and runs
+  `frontx_ind f.at_τ on T using U…`: the source of `f` is compiled through its own equations with the type argument fixed
+  (the entry mechanism of `frontx_ind`). The command warns when a declared type drops a constructor field from its byte
+  format (see the caveat).
+* `Riscv/Frontx/MonoExamples.lean` (types: `Mach.IR.Tst Nat`, `Mach.IR.Ins Nat`, `Mach.IR.Arg Nat`, `Ir.Tst Nat`,
+  `Ir.Block Nat`, `Option Nat`, `List Nat`): `Mach.IR.Tst.a/b/c`, `Ir.Tst.a/b/c`, `Mach.IR.Ins.dst` (result `Option Nat`),
+  `Mach.IR.Arg.regs` (result `List Nat`), `Ir.Block.term/params/body` — 11 of the self-hoster's lowest blockers (all in
+  the top 60). Each `f.at_Nat.implements1` (Sail axioms) and 60 QEMU+Sail cases equal to Lean (`Testing/asm/emit_mono.lean`,
+  `mono_*`; all 11 pass).
+* **Caveat (pre-existing, made visible):** `frontx_ind_type` leaves fields of types other than children, `Nat`, `UInt64`,
+  `Bool`, `UInt8` out of the byte format (`Role.drop`). `Arg.i (c : BitVec 64)` is encoded as `[1]` for every `c`, and
+  `Ins.lbu/sb/ld/sd` lose their `off`. The theorems above are correct but about encodings that forget immediates.
+  Fix (next): a `BitVec 64` scalar kind in `IndCmd.Sc` (touches the field emitters and the `sem` tactics; every
+  example's byte format with such a field changes, so the `.cases` files must be regenerated).
+* Not done: recursive generic functions (the copy is an entry; recursion over `Code ρ` with `ρ := Nat` untested),
+  `Ir.Func.*`, `Ir.Prog.funcs` (tuples `Lbl × Block ρ`).
+
+### C. Translator gaps (minimal reproducers first)
+
+* (ii) arity bug `invalid instantiateForall, too many parameters`. Reproducer (`/home/user/scratch/p/arity.lean`):
+  `def g3 : UInt64 → UInt64 → UInt64 := HAdd.hAdd`, `def g1 (n : Nat) : Nat → Nat := Nat.add n`, a structure field of
+  function type. Cause: `compileCmd` instantiated the unfolding equation (fewer binders) with all binders of the type.
+  Fix (`Translate.lean`, `etaEqn`): `f.eq_eta : ∀ xs, f xs = rhs xs` by `congrFun`, used when the equation has fewer
+  binders. Now `g3` compiles; `g1` is rejected properly (`Nat.add` on unbounded `Nat`); `E2.fp` (function field)
+  rejected as `unsupported term self.1 a`.
+* (iii) kernel `Sim argument has type Type 1`. Reproducer (`/home/user/scratch/p/univ.lean`): `structure W1 where S : Type;
+  n : UInt64`, `frontx_compile W1.n`. Cause: a parameter in `Type 1` reached the simulation statement (`LOut A`,
+  `A : Type`). Fix: every parameter must live in `Type` or `Prop` and the result in `Type`, else
+  `frontx: unsupported parameter type W1 (it lives in Type 1 …)`. These rows (`Mach.Wide.lenBr`, `lenJ`, `maxSlots`, …)
+  are fields of the record of laws `Mach.Wide : Type 1`: a correct rejection, not compilable data.
+* (i) heads `ite` / `HAppend.hAppend` taken as entry calls (`frontx_ind`). Fix (`IndCmd.lean`, `notEntryHeads`): a body
+  whose head is `ite`, `dite`, `cond`, `++`, `&&`, `||`, `!`, `==`, `decide` is not an entry `f xs = g c₁ …`; `f` itself is
+  the function (by cases); `id` likewise. The entry body is now `v.beta xs` (was `instantiateLambda`: the same arity
+  bug in `frontx_ind`). Reproducer `def shIte (t : Sh) : Sh := if true then t else .a 0`: compiles now; `def shK : Sh →
+  Sh → Sh := fun t _ => t`: compiles now. `List.brecOn` / `Nat.brecOn`: not done
+  (the functions are structural recursions over `List Nat` / `Nat`, not over a declared type; they need `List` as a
+  declared type of the call and the `brecOn`-free equation lemmas).
+
+### Ledger: probe rows re-run (round 1)
+
+Commands as in the probes (`frontx_ind f on T [using …]` with the selfhost-depth2 type mapping, `frontx_compile f`),
+`/home/user/scratch/p/P2c.lean` (not committed; regenerate with `mkP2.py`'s mapping over the rows below).
+
+| rows (selfhost-depth2) | before | now |
+|---|---|---|
+| 23 P1 rows `invalid instantiateForall/Lambda, too many parameters` + kernel `Sim argument has type Type 1` (`Mach.Wide.*`, `Mach.Base.*`, `Ir.Target.lenCall/top/callOK`, `Ir.Env.*`, `Ir.Lay.posF`, `Ir.Func.σ`, `Op.toCtorIdx`, `Op.raw`, `WideF/MachineF.frameAt`) | crash / kernel error | 23 clean rejections: `unsupported parameter type` (records in `Type 1` or with function fields) or `unsupported term self.k a` (function-valued field) |
+| 35 P2 rows: 28 `equation ite.eq_1 / HAppend.hAppend.eq_1 has no constructor pattern` + 7 `invalid instantiateLambda, too many parameters` in `frontx_ind` | head symbol unfolded as the function / crash | no row misreads its head or crashes any more; each stops at its real blocker: `unsupported parameter type` (12 + 6 of the 7: `Ir.Frame.regs`, `Mach.Wide.wenc`, `Ind.Pg.X`, `Ind.Cn.f/X/g`: records with function fields or `Type 1`), `no argument of a declared type` (12, scalar-only functions such as `vIdx`, `jW`, `liCode`), `unsupported result type` (3), `more than one scalar parameter` (1), `List.brecOn` (1, `Ir.setMany`) |
+| self-hoster 0-ary `Ir.R0`, `R1`, `RLim` | `unsupported result type X` | compiled (`frontx_const`, data) |
+| self-hoster `Mach.IR.Tst.a/b/c`, `Ir.Tst.a/b/c`, `Mach.IR.Ins.dst`, `Mach.IR.Arg.regs`, `Ir.Block.term/params/body` | `unsupported result type X ρ / List α / Option α` | compiled (`frontx_mono … at Nat`) |
+| con-leche 0-ary constants (85: `Name`, `Expr`, `Nat`) | `has no argument of a declared type` | compiled (`frontx_const`, data) |
+| con-leche `Expr.isBoolTrue`, `isNatZero`, `isEagerReduce` (callers of constants) | gate / arms fail | `isBoolTrue`: arms ok, `sem` proof fails; the other two: nested patterns. Not compiled. |
+
+**Counts against BLOCKER_YIELD.md** (graphs and states of the two probes, the compiled functions above marked OK;
+script: `Testing/dashboard/yield.py` with the unlock lists exported, `/home/user/scratch/yl.py`):
+
+| | lowest blockers before | of them compiled now | in the top 60 | OK before → now | blocked functions now fully clear (whole closure OK) |
+|---|---:|---:|---:|---:|---:|
+| con-leche | 201 | 63 (all 0-ary constants) | 29 | 46 → 131 | 85 |
+| self-hosting | 259 | 14 (11 monomorphised, 3 constants) | 14 | 31 → 45 | 14 |
+
+Lowest blockers after round 1 (same rule, compiled nodes OK): con-leche 170, self-hosting 251. The 106 con-leche functions
+that "0-ary constants" alone was predicted to unlock: 85 compiled (all constants of type `Name`/`Expr`/`Nat`); the other
+21 are functions or constants of other types (`Array Expr`, `EqPair`, `NatBinOp → Name`, `Expr → Bool` with nested
+patterns, `Option`/`List` results) and stay blocked. Self-hosting "translator shape": the crash classes (arity, universe,
+`ite`/`++` heads) are gone from the rows above; none of those rows compiles yet, each now names a feature
+(records of laws in `Type 1`, function-valued fields, scalar-only functions, `List`/`Nat.brecOn`).
+
+**Blocked, and why.**
+* Constants as callees from compiled code as DATA (not recomputed): needs a static data block on the IR route (IR S3).
+* `BitVec 64` constructor fields are dropped by `frontx_ind_type` (see B, caveat): a new scalar kind is needed before
+  the `Arg`/`Ins` results are fully informative.
+* `List.brecOn` / `Nat.brecOn` rows (16 + 3): structural recursion over `List Nat` / `Nat` with the list not a declared
+  type of the call; not attempted this round.
+* Probe caveat kept: the con-leche edges are read from source text (BLOCKER_YIELD §5), so "fully clear" counts inherit it.
+
