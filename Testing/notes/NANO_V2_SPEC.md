@@ -1,4 +1,4 @@
-# NANO v2 milestone 1: frozen interfaces (DRAFT by worker 1, branch `nano-v2`; the owner confirms)
+# NANO v2 milestone 1: frozen interfaces (WORKING FREEZE: owner, 2026-11-17 19:25, ROADMAP "NANO_V2_SPEC"; written by worker 1, branch `nano-v2`)
 
 Basis: NANO_V2_ASTRA.md rounds 1–4 (binding), NANO_V2.md (plan, increment 1), and what workers 2 (backend,
 `nano-v2-backend`, namespace `Nano.V2B`) and 3 (stage rewrite, `nano-v2-src`, namespace `Nano.V2S`) reported on

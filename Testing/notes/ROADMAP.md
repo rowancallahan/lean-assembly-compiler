@@ -422,3 +422,8 @@ git tags. nano v1 FINAL = this commit: main contains nano-parse-s3 rc2 (152f05b,
 - STATUS (branch nano-v2, 2026-11-17): plan + increment 1 (comparisons + `if`) in Testing/notes/NANO_V2.md:
   `Nano.V2.nano_stack_correct` proved (Sail axioms only), oracle fuzz 0 differences, QEMU+Sail 1344 pairs; v1 untouched.
   Found: v1 `nanoElab` accepts an empty binder group `( : UInt64)` (Lean rejects) — NANO_V2.md C1.
+
+### NANO_V2_SPEC (owner, 2026-11-17 19:25): proceed without a separate confirmation
+The frozen spec on branch nano-v2 (v1 constructs unchanged + exactly the Astra-decided additions; v1 stage formats;
+Int64 dropped for milestone 1) is accepted as the working freeze. Like v1's `nanoElab`/`Prog.eval`, the meaning stays a
+draft the owner may review later; changes after the freeze still go through the owner.
