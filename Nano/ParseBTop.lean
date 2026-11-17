@@ -1,6 +1,7 @@
 /- nano stage 2, layer A: defs and parameters, and the top theorem `parseA_eq`: the machine computes
 `(pDefsU (ts.length + 1) [] [] ts).map serU` for every token list. -/
 import Nano.ParseBSim
+import Nano.ElabBProof
 
 namespace Nano.PB
 open Nano Nano.U
@@ -250,5 +251,42 @@ theorem parseA_eq (ts : List Tok) :
     | some u => ∃ n, ∀ g, parseA (g + n) ts = some (serU u)
     | none => ∀ g, parseA g ts = none :=
   defs_sim (ts.length + 1) ts [] [] 0 [] [] [] [] 0 0 rfl rfl
+
+end Nano.PB
+
+namespace Nano.PB
+open Nano Nano.U Nano.B
+
+/-- stage 2 on stage 1's bytes (layer A, gas `g`): `serU u`, or `[]` for a rejected input -/
+def stage2A (g : Nat) (bs : List UInt8) : List UInt8 :=
+  match decL bs with
+  | some (_, ts) => (parseA g ts).getD []
+  | none => []
+
+theorem nanoElabU_lexT (xs : List UInt8) :
+    nanoElabU xs = (lexT xs).bind fun st => pDefsU (st.2.length + 1) [] [] st.2 := by
+  unfold nanoElabU lexT
+  cases (if adjOk xs then lex xs.length xs else none) with
+  | none => rfl
+  | some ts => cases h : uniTy none ts <;> simp [h]
+
+/-- **stage 1 then stage 2 (layer A) = the non-inlined elaboration, for every source**: on an accepted source the
+two stages emit `serU u` (with enough gas), on a rejected one `[]` (with any gas) -/
+theorem stage2A_lexB (xs : List UInt8) :
+    match nanoElabU xs with
+    | some u => ∃ n, ∀ g, stage2A (g + n) (lexB xs) = serU u
+    | none => ∀ g, stage2A g (lexB xs) = [] := by
+  rw [nanoElabU_lexT]
+  unfold stage2A
+  rw [lexB_eq]
+  cases lexT xs with
+  | none => intro g; rfl
+  | some st =>
+    obtain ⟨s, ts⟩ := st
+    have h := parseA_eq ts
+    simp only [Option.bind]
+    cases hp : pDefsU (ts.length + 1) [] [] ts with
+    | none => rw [hp] at h; intro g; simp [h g]
+    | some u => rw [hp] at h; obtain ⟨n, h⟩ := h; exact ⟨n, fun g => by simp [h g]⟩
 
 end Nano.PB
