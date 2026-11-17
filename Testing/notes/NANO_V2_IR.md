@@ -34,3 +34,5 @@ Par0 already emits this header (`... npw nslots 0 1`) and `LOCAL slot 1`.
 ### Parser increment B (cmp + if) done: `IF cmp a b t e` = tag 4 (cmp eq 1 / lt 2, then the four children in pre-order); `if A == B then T else E` / `<`; branches are full expressions (greedy, Lean's dangling-else), the condition operands are expressions that stop at `==`/`<`/`then`.
 Node records are now 8 words (nodes at 10000 + 8 i, flatten stack at 30000, tokens at 40000); capacity grows with the language (the real source has ~tens of thousands of nodes: the layout constants move to a table before the whole-source run).
 Test `par0_test.lean`: random trees now include `if` (300 trees, 0 mismatches), rejections of `if a then …`, missing `else`, missing `then`.
+
+### Numeric tags: the Opus box's table in `NANO_V2_CG.md` is authoritative (DEF 11, END 12, CALL 7, PRIM 8 …, LOOP 9, CONTINUE 10). Par0 emits DEF 11 / END 12 now; parser increments after B use the CG table.
