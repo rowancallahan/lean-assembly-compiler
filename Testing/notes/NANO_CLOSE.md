@@ -40,3 +40,6 @@
   `le_lx`, `vres5_good` (the type is one nonzero byte). Each half has about half of `lx`'s alternatives.
 * Composition: `Nano.SelfHost.selfHosted_parse6` (`Nano/SelfHostSplit.lean`): six stages
   (`vB`, `eB`, `stage2`, `inlB`, `mexp`, `asm`), domain `Sized6` (= `Sized5` plus the bounds of `vB`'s output).
+* Resources: four parallel Lean processes on this 15 GB box got two of them OOM-killed (exit 137: the one-stage
+  lexer `ElabBSelf` after 21.5 CPU-min, and `mx`). DECISION: the one-stage lexer compile is dropped (the split stages
+  replace it; it would also hit constraint 3); at most three compiles at a time.
