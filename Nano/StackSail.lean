@@ -27,6 +27,8 @@ structure Ctx where
 def Ctx.In (C : Ctx) (a : Nat) : Prop :=
   (C.W ≤ a ∧ a < C.SP) ∨ (C.O ≤ a ∧ a < C.O + 8) ∨ (C.I ≤ a ∧ a < C.I + C.IL)
 
+instance (C : Ctx) (a : Nat) : Decidable (C.In a) := by unfold Ctx.In; infer_instance
+
 /-- what the code and the blocks satisfy -/
 structure Ctx.Ok (C : Ctx) : Prop where
   p4 : C.P.length % 4 = 0
