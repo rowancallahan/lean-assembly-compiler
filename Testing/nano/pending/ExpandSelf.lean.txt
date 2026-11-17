@@ -1,0 +1,20 @@
+import Nano.Expand
+import Riscv.Frontx.ListOutExamples
+import Riscv.Frontx.Impl1
+import Riscv.Frontx.Checked
+/- the micro-op expander stage (`Nano/Expand.lean`) compiled by OUR compiler (front end `frontx_compile`, list view),
+with a machine theorem `Nano.Self.nanoExp.implements1`.  Slow to elaborate (13 arms, 124 stored bytes). -/
+namespace Nano.Self
+open Proven Proven.Frontx
+
+frontx_view Nano.mexp
+set_option maxHeartbeats 0 in
+frontx_compile Nano.mexp.view from Nano.mexp.view.eq measure fun B i => B.size - i
+
+def nanoExp (xs : ByteArray) : List UInt8 := Nano.mexp xs.data.toList
+theorem nanoExp_eq (xs : ByteArray) : nanoExp xs = Nano.mexp.view xs 0 := rfl
+frontx_entry nanoExp from nanoExp_eq
+set_option maxHeartbeats 0 in
+frontx_implements_listC nanoExp
+
+end Nano.Self
