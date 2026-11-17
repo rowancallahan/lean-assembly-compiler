@@ -444,3 +444,17 @@ draft the owner may review later; changes after the freeze still go through the 
 - Until then: interim self-host / self-compile checks are fine (e.g. compiled stages on their own text, partial fixed
   points), but no final self-hosting route is locked in.
 - Astra round 6 (E/F/G proofs) did not arrive (Astra out of tokens); work from NANO_V2_SKELETONS.lean.
+
+### PAUSED (owner, 2026-11-17 21:00). All boxes archived; recurring checks disabled.
+Branch heads (each has a HANDOFF section):
+- nano-v2 f3fe8b9: language + back end (increments 1–4 + products/loops/buffers front end, codegen proofs except
+  buffers; HANDOFF "pause 20:50" in Testing/notes/NANO_V2.md).
+- nano-v2-src 33b1ab5: OWNER REVIEW CHECKPOINT. Nano/V2Self/ = whole nano compiler as nano-subset source, ALL accepted
+  by nano's own front end incl. the nano driver `m`; Testing/notes/NANO_V2_CHECKPOINT.md (HANDOFF inside).
+- nano-v2-boot 2e49781: bootstrap B₁ via S3 (4 stages + parser bridge p2bVS_eq; parser S3 compile unverified);
+  HANDOFF in Testing/notes/NANO_V2_BOOT.md. Optional until the owner chooses the self-hosting route.
+- Templates on main: Testing/notes/NANO_V2_SKELETONS.lean (round 5) and NANO_V2_SKELETONS6.lean (round 6), verified 4.29.
+- s3-rec 6e9e02a (con-leche WIP, paused earlier).
+RESUME: owner reviews Nano/V2Self/ and decides the self-hosting route. Then restart one Opus language+back-end box
+(buffer proof via round-6 F, Sail loop layer via E, result/status + ImplementsBytes), Sonnet boxes as needed, a Haiku
+runner; re-enable triggers trig_01Lbdjhesnym2ZPegRnLPVmf (team check) and trig_01XTKyxsqmfYZouFjjRfeHdt (3-hourly).
