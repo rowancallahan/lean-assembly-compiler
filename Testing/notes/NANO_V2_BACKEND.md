@@ -92,3 +92,5 @@ Fixed code origin is not needed by this code (only relative jumps) but is accept
 - CI tender (cold `lake build`, all OK, ≤ 3.5 s / 0.6 GB): Lang 2.15 s, Gen 3.44 s, Copy 0.34 s, Sem 0.44 s, Expr 1.54 s,
   Loop 0.34 s, Blocks 1.74 s, Inp 0.54 s, Tail 0.34 s; Sail smokes (5 cases × 2) ok. `NOSAIL=1` added to
   Testing/nano/v2b_test.py for QEMU-only bulk runs.
+- CI tender @9b59fc5: QEMU-only bulk (`NOSAIL=1`), 20 cases × 2 each, all ok: nv2_copy, nv2_copyfuel, nv2_copycap,
+  nv2_mix; Sail smoke nv2_mix 5 × 2 ok.
