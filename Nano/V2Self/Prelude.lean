@@ -13,4 +13,3 @@ def bsize (b : Buf) : UInt64 := b.length.toUInt64
 def bget (b : Buf) (i : UInt64) : UInt64 := b.getD i.toNat 0
 def bset (b : Buf) (i v : UInt64) : Buf := b.set i.toNat v
 def bpush (b : Buf) (v : UInt64) : Buf := b ++ [v]
-def bpop (b : Buf) : Buf := b.dropLast
