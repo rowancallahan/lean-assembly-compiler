@@ -294,6 +294,7 @@ instance instEncExceptT {ε α : Type} {m : Type → Type} [h : Enc (m (Except �
 @[simp] theorem bv_eq_zero (c : Bool) : (bv c = 0#64) = (c = false) := by cases c <;> decide
 @[simp] theorem bv_eq_one (c : Bool) : (bv c = 1#64) = (c = true) := by cases c <;> decide
 attribute [s3_norm] UInt8.toNat_zero
+attribute [s3_norm] UInt64.toBitVec_ofNat
 
 @[simp] theorem u8_and_ff (x : UInt8) : (x &&& @OfNat.ofNat UInt8 (255 : Nat) UInt8.instOfNat) = x := by
   apply UInt8.toNat_inj.mp

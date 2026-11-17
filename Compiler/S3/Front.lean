@@ -63,7 +63,10 @@ structure Ctx where
 def Ctx.push (c : Ctx) (x : Lean.Expr) : Ctx := ⟨(x.fvarId!, c.depth) :: c.vars, c.depth + 1⟩
 
 def isRecursive (n : Name) : MetaM Bool := do
-  return (← getEnv).contains (n ++ `_unary) || (← getEnv).contains (n.str "brecOn") || false
+  if (← getEnv).contains (n ++ `_unary) || (← getEnv).contains (n.str "brecOn") then return true
+  if let some ci := (← getEnv).find? n then
+    if ci.all.length > 1 then return true
+  return false
 
 def isWordTy (t : Lean.Expr) : Bool := t.isConstOf ``UInt64 || t.isConstOf ``Int64 || t.isConstOf ``UInt8
 
@@ -550,6 +553,105 @@ def simpSet : String :=
   "Proven.S3.Vars.get, Proven.S3.Vars.idxs, Proven.S3.Prim.eval, Proven.Op.eval, Proven.S3.Cmp.eval, " ++
   "Proven.S3.Sig.nc, Proven.S3.Sig.fld, Proven.S3.Sig.dt, Proven.S3.lget"
 
+/-- the certificate text of a mutual component `c` (S3 functions) of the Lean mutual block `blk`: ONE theorem by
+the block's `mutual_induct` (Lean's own termination argument, structural or well-founded) for all members at once,
+then one projection per member -/
+def genMutual (st : St) (c : List Nat) (blk : List Name) (extraSimp : String) : MetaM String := do
+  let fnameOf (j : Nat) : MetaM Name := do
+    let .const f _ := st.fns[j]!.key.getAppFn | throwError "S3"
+    return f
+  let names ← c.mapM fnameOf
+  unless names.Nodup do throwError "S3: a mutual block used at two specialisations: {names}"
+  let k0 := c[0]!
+  let fi0 := st.fns[k0]!
+  let .const f0 us := fi0.key.getAppFn | throwError "S3"
+  let indName ← realizeGlobalConstNoOverloadCore (f0 ++ `mutual_induct)
+  let allNames ← forallTelescopeReducing (← getConstInfo f0).type fun ys _ => ys.mapM fun y => y.fvarId!.getUserName
+  let indTy ← inferType (mkConst indName us)
+  -- the parameters before the motives: the static arguments, by name
+  let (preE, preTxt, motTys) ← forallTelescopeReducing indTy fun ys _ => do
+    let mut pre : Array Lean.Expr := #[]
+    let mut preT : Array String := #[]
+    for y in ys do
+      let nm ← y.fvarId!.getUserName
+      if nm.toString.startsWith "motive" then break
+      let some j := allNames.toList.idxOf? nm | throwError "S3: induction principle parameter {nm} not found"
+      unless j < fi0.statics.size do throwError "S3: mutual induction keeps a run-time parameter {nm} fixed"
+      pre := pre.push fi0.statics[j]!
+      preT := preT.push (← exprTxt fi0.statics[j]!)
+    return (pre, preT, (← ys.filterM fun y => do return (← y.fvarId!.getUserName).toString.startsWith "motive").size)
+  unless motTys == blk.length do throwError "S3: {indName}: {motTys} motives for {blk.length} functions"
+  let ty' ← instantiateForall indTy preE
+  -- per block member: its motive (the certificate, or `True` for members the program does not use)
+  let (motives, conjs) ← forallBoundedTelescope ty' blk.length fun ms _ => do
+    let mut mo : Array String := #[]
+    let mut cj : Array String := #[]
+    for i in [0:blk.length] do
+      let dom ← forallTelescopeReducing (← inferType ms[i]!) fun zs _ => zs.mapM fun z => do exprTxt (← inferType z)
+      let ys := (List.range dom.size).map (s!"y{·}")
+      let bnd := String.join ((List.range dom.size).map fun t => s!"({ys[t]!} : {dom[t]!}) ")
+      let body ← match names.idxOf? blk[i]! with
+        | some t =>
+          let j := c[t]!
+          unless st.fns[j]!.pTys.size == dom.size do throwError "S3: motive arity of {blk[i]!} (fixed parameters are not supported)"
+          pure s!"Proven.S3.Good P φ ⟨{j}, by decide⟩ {listTxt (ys.map (s!"Proven.S3.Enc.enc {·}"))}"
+        | none => pure "True"
+      mo := mo.push (if dom.isEmpty then s!"({body})" else s!"(fun {bnd}=> {body})")
+      cj := cj.push (if dom.isEmpty then s!"({body})" else s!"(∀ {bnd}, {body})")
+    return (mo, cj)
+  let mut out := ""
+  for j in c do
+    let fi := st.fns[j]!
+    let xs := (List.range fi.pTys.size).map (s!"x{·}")
+    let binders ← (List.range fi.pTys.size).mapM fun i => do return s!"({xs[i]!} : {← exprTxt fi.pTys[i]!})"
+    let encs := listTxt (xs.map (s!"Proven.S3.Enc.enc {·}"))
+    let fa := if binders.isEmpty then "" else s!"∀ {" ".intercalate binders}, "
+    let fapp := (← exprTxt fi.key) ++ String.join (xs.map (" " ++ ·))
+    out := out ++ s!"theorem body{j} : P.body ⟨{j}, by decide⟩ = b{j} := rfl\n"
+    out := out ++ s!"theorem phi{j} : {fa}φ ⟨{j}, by decide⟩ {encs} = Proven.S3.Enc.enc ({fapp}) := by\n" ++
+      (if xs.isEmpty then "" else s!"  intro {" ".intercalate xs}\n") ++ "  simp [φ]\n"
+  -- callees outside the component close by their certificates
+  let outside := (c.flatMap fun j => (st.fns[j]!.body.map SE.calls).getD []).eraseDups.filter (!c.contains ·)
+  let closers := outside.map (fun j => s!"(apply cert{j}' <;> simp)")
+  let closer := " | ".intercalate ("assumption" :: "(intros; assumption)" :: closers)
+  let mut unf := ""
+  for j in outside do
+    let fj := st.fns[j]!
+    let .const gname _ := fj.key.getAppFn | continue
+    if !(((fj.body.map SE.calls).getD []).contains j) && fj.pTys.size == 0 then unf := unf ++ s!", {gname}"
+  let bs := String.join (c.map (s!", b{·}"))
+  let chains ← c.mapM fun j => do
+    let fn ← fnameOf j
+    return s!"((apply Proven.S3.good_intro <;> rw [body{j}]) <;> (try rw [phi{j}]) <;> (try rw [{fn}.eq_def]))"
+  let pre := String.join (preTxt.toList.map (" " ++ ·))
+  let mo := String.join (motives.toList.map (" " ++ ·))
+  out := out ++ s!"/-- **the component {names}**, by ONE induction: Lean's `{indName}` -/\n" ++
+    s!"theorem certM{k0} : {" ∧ ".intercalate conjs.toList} := by\n" ++
+    s!"  apply @{indName}{pre}{mo}\n" ++
+    s!"  all_goals (intros; (try dsimp only at *); first | trivial | ((first | {" | ".intercalate chains}) <;>\n" ++
+    s!"    s3_solve 12 [{simpSet}{bs}, φ{extraSimp}{unf}, *] with (first | {closer})))\n"
+  for t in [0:c.length] do
+    let j := c[t]!
+    let i := blk.idxOf names[t]!
+    let proj := (if i + 1 == blk.length then "" else ".1")
+    let path := String.join ((List.range i).map fun _ => ".2") ++ proj
+    let fi := st.fns[j]!
+    let xs := (List.range fi.pTys.size).map (s!"x{·}")
+    let binders ← (List.range fi.pTys.size).mapM fun i => do return s!"({xs[i]!} : {← exprTxt fi.pTys[i]!})"
+    let encs := listTxt (xs.map (s!"Proven.S3.Enc.enc {·}"))
+    let fa := if binders.isEmpty then "" else s!"∀ {" ".intercalate binders}, "
+    out := out ++ s!"theorem cert{j} : {fa}Proven.S3.Good P φ ⟨{j}, by decide⟩ {encs} := certM{k0}{path}\n"
+    let vs := (List.range fi.pTys.size).map (s!"v{·}")
+    let hs := (List.range fi.pTys.size).map (s!"h{·}")
+    let hyps ← (List.range fi.pTys.size).mapM fun i => do
+      return s!"Proven.S3.Enc.enc (Proven.S3.Enc.dec {vs[i]!} : {← exprTxt fi.pTys[i]!}) = {vs[i]!} → "
+    let vbind := if vs.isEmpty then "" else s!"∀ {" ".intercalate vs} : Proven.S3.V, "
+    out := out ++ s!"theorem cert{j}' : {vbind}{String.join hyps}Proven.S3.Good P φ ⟨{j}, by decide⟩ {listTxt vs} := by\n" ++
+      (if vs.isEmpty then s!"  exact cert{j}\n" else
+        s!"  intro {" ".intercalate (vs ++ hs)}\n  have := cert{j} {" ".intercalate (vs.map (s!"(Proven.S3.Enc.dec {·})"))}\n" ++
+        s!"  rw [{", ".intercalate hs}] at this\n  exact this\n")
+  return out
+
 /-- the commands for program `N` -/
 def genText (N : Name) (st : St) (extraSimp : String) : MetaM String := do
   let p := N.toString
@@ -573,19 +675,36 @@ def genText (N : Name) (st : St) (extraSimp : String) : MetaM String := do
       app := app ++ s!" (Proven.S3.Enc.dec (vs.getD {i} default) : {← exprTxt fi.pTys[i]!})"
     out := out ++ s!"  | {k} => Proven.S3.Enc.enc ({app})\n"
   out := out ++ "  | _ => default\n"
-  -- the certificates, callees first
+  -- the certificates, components of the call graph callees first (a component: functions calling each other)
+  let n := st.fns.size
+  let callsOf (k : Nat) : List Nat := (st.fns[k]!.body.map SE.calls).getD []
+  let mut reach : Array (Array Bool) := (List.range n).toArray.map fun k =>
+    (List.range n).toArray.map fun j => (callsOf k).contains j
+  for m in [0:n] do
+    for i in [0:n] do
+      for j in [0:n] do
+        if reach[i]![m]! && reach[m]![j]! && !reach[i]![j]! then reach := reach.modify i (·.set! j true)
+  let comp (k : Nat) : List Nat := (List.range n).filter fun j => j == k || (reach[k]![j]! && reach[j]![k]!)
   let mut done : Array Nat := #[]
-  let mut order : Array Nat := #[]
+  let mut comps : Array (List Nat) := #[]
   let mut changed := true
   while changed do
     changed := false
-    for k in [0:st.fns.size] do
+    for k in [0:n] do
       if done.contains k then continue
-      let cs := (st.fns[k]!.body.map SE.calls).getD []
-      if cs.all (fun j => j == k || done.contains j) then
-        done := done.push k; order := order.push k; changed := true
-  unless order.size == st.fns.size do throwError "S3: mutual recursion between functions is not supported"
-  for k in order do
+      let c := comp k
+      if c.all (fun j => (callsOf j).all (fun i => c.contains i || done.contains i)) then
+        done := done ++ c.toArray; comps := comps.push c; changed := true
+  unless done.size == n do throwError "S3: call graph ordering failed"
+  for c in comps do
+    let k0 := c[0]!
+    let .const f0 _ := st.fns[k0]!.key.getAppFn | throwError "S3"
+    let blk := (← getConstInfo f0).all
+    if blk.length > 1 then
+      out := out ++ (← genMutual st c blk extraSimp)
+      continue
+    unless c.length == 1 do throwError "S3: functions {c} call each other but are not one Lean mutual block"
+    let k := k0
     let fi := st.fns[k]!
     let xs := (List.range fi.pTys.size).map (s!"x{·}")
     let binders ← (List.range fi.pTys.size).mapM fun i => do return s!"({xs[i]!} : {← exprTxt fi.pTys[i]!})"
