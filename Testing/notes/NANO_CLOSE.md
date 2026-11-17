@@ -63,3 +63,5 @@
   with the choice `pickSpill`: first "every local spilled" with the 7 modes, then `pickC`. Same theorem
   (`implements1_listC`), same kernel check `decide +kernel` of `optB`. Timing on `Nano/ExpandMSelf.lean` (whole file):
   BEFORE 5 min 46 s (`implements_listC` 229 s), AFTER 49.5 s. Code: more loads/stores (locals in memory).
+* `mexp` stage rebuilt with `frontx_implements_listCS` (55 s): 1031 words (was 663), work 271 bytes; re-tested:
+  seed 11, R = 400: QEMU 2466/2466, Sail 6/6; seed 7, R = 20: QEMU 186/186, Sail 8/8.
