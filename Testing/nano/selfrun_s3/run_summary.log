@@ -179,3 +179,6 @@ sources 146: in Domain 146, outside (elab/nanoCompileA rejects or bounds) 0
 	Exit status: 0
 stage 2b alone, QEMU: 146/146 ok in 14 rounds (46054 words; every successful run checked; work up to 1242464 bytes)
 stage inl alone, QEMU: 146/146 ok in 15 rounds (2035 words; every successful run checked; work up to 2348672 bytes)
+not run linked (space5 K > 943718400 bytes): []
+nano_self3 (linked binary) QEMU: 146/146 ok (59104 words; sources up to 776 bytes, outputs up to 9304 bytes; K 17888..2348672, work space5 K up to 601268192 bytes)
+  sail s0069.nano: src 38 B, code 172 B ok
