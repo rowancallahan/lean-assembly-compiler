@@ -227,7 +227,7 @@ macro "STEPEE" : term => `(
 def lv (xs o : List UInt8) (m : Nat) (st sp d d0 w ty cz : UInt64) : List UInt8 :=
   match xs with
   | c :: n :: t => if m == 1 then c :: lv (n :: t) o m st sp d d0 w ty cz else STEPNV
-  | [c] => if m == 1 then [c] else if m == 5 || m == 0 then STEPEV else []
+  | [c] => if m == 1 then [c] else if m == 5 then lv o o 0 0 0 0 0 0 0 0 else if m == 0 then STEPEV else []
   | [] =>
     if m == 1 then []
     else if m == 5 then lv o o 0 0 0 0 0 0 0 0
@@ -347,7 +347,8 @@ theorem lv_c2 (c n : UInt8) (t o : List UInt8) (m : Nat) (st sp d d0 w ty cz : U
     lv (c :: n :: t) o m st sp d d0 w ty cz =
       if m == 1 then c :: lv (n :: t) o m st sp d d0 w ty cz else STEPNV := by rw [lv]
 theorem lv_c1 (c : UInt8) (o : List UInt8) (m : Nat) (st sp d d0 w ty cz : UInt64) :
-    lv [c] o m st sp d d0 w ty cz = if m == 1 then [c] else if m == 5 || m == 0 then STEPEV else [] := by rw [lv]
+    lv [c] o m st sp d d0 w ty cz =
+      if m == 1 then [c] else if m == 5 then lv o o 0 0 0 0 0 0 0 0 else if m == 0 then STEPEV else [] := by rw [lv]
 
 /-- mode 1 of the validator copies -/
 theorem lv_copy (o : List UInt8) : ∀ (xs : List UInt8) (st sp d d0 w ty cz : UInt64),
