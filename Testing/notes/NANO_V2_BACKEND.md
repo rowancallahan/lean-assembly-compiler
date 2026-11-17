@@ -85,3 +85,7 @@ Fixed code origin is not needed by this code (only relative jumps) but is accept
   header theorem, and per-construct lemmas (lit, var, bin, ite, let, fst, isize, iget, loop tails, slide). Not
   started: buffers' heap invariant, `SC.flat` layout correctness, Sail refinement of the new instructions,
   `ImplementsBytes` (worker 1 has not frozen it; contract proposed above).
+- Merged origin/main again (c7d583d: only Testing/notes/NANO_V2_ROUND5.md + NANO_V2_SKELETONS.lean, notes; gate
+  result above stands). Its `NanoABI.Observes` matches this backend's exit contract with `status` = a0,
+  `oomCode` = 2^64 - 1, a1 = length (ok) / 0 (error), bytes at a3 (= op). To align: the capacity abort (a0 = -2)
+  must become an error code of Cκ (or be excluded by an Adequate hypothesis), and Cκ's error codes must avoid -1/-2.
