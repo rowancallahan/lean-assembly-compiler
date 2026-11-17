@@ -1,5 +1,6 @@
 /- Stage 2b, kernel checks part 1: the allocation of every function except function 18 (Nano/ParseS3BStage.lean). -/
 import Nano.ParseS3BSelf
+import Nano.S3Stage
 
 namespace Nano.PS
 open Proven Proven.S3 Proven.Ir Proven.Mach.Riscv Nano.S3Stage

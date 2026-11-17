@@ -41,7 +41,9 @@ open Lean Elab Term Meta in
 /-- `irLit% e`: the value of `e : Ir.Prog Nat` as a literal term (untrusted: every use is checked by the kernel) -/
 elab "irLit% " t:term : term => do
   let ty := mkApp (Lean.mkConst ``Proven.Ir.Prog) (Lean.mkConst ``Nat)
-  let e ← instantiateMVars (← elabTerm t (some ty))
+  let e ← elabTerm t (some ty)
+  synthesizeSyntheticMVarsNoPostponing
+  let e ← instantiateMVars e
   let v ← unsafe evalExpr (Proven.Ir.Prog Nat) ty e
   return toExpr v
 
@@ -49,7 +51,9 @@ open Lean Elab Term Meta in
 /-- `funcLit% e`: the value of `e : Ir.Func Nat` as a literal term (untrusted) -/
 elab "funcLit% " t:term : term => do
   let ty := mkApp (Lean.mkConst ``Proven.Ir.Func) (Lean.mkConst ``Nat)
-  let e ← instantiateMVars (← elabTerm t (some ty))
+  let e ← elabTerm t (some ty)
+  synthesizeSyntheticMVarsNoPostponing
+  let e ← instantiateMVars e
   let v ← unsafe evalExpr (Proven.Ir.Func Nat) ty e
   return toExpr v
 
@@ -57,7 +61,9 @@ open Lean Elab Term Meta in
 /-- `layLit% e`: the value of `e : Ir.Lay` as a literal term (untrusted) -/
 elab "layLit% " t:term : term => do
   let ty := Lean.mkConst ``Proven.Ir.Lay
-  let e ← instantiateMVars (← elabTerm t (some ty))
+  let e ← elabTerm t (some ty)
+  synthesizeSyntheticMVarsNoPostponing
+  let e ← instantiateMVars e
   let v ← unsafe evalExpr Proven.Ir.Lay ty e
   return toExpr v
 
