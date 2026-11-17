@@ -8,19 +8,19 @@ namespace Nano.IS
 open Proven Proven.S3 Proven.Ir Proven.Mach.Riscv Nano.S3Stage
 
 set_option maxRecDepth 100000 in
-theorem inlS3_small : smallB InlS3.S = true := by decide +kernel
+theorem inlS3_small : smallB InlS3.P.S = true := by decide +kernel
 
-theorem inlS3_main : (InlS3.S.fn InlS3.main).1.length = 1 := by decide
+theorem inlS3_main : (InlS3.P.S.fn InlS3.P.main).1.length = 1 := by decide
 
 /-- the allocated program (literal) -/
-def inlS3_Q : Ir.Prog Nat := irLit% ((Ir.alloc (lowerP InlS3)).getD ⟨[], 0⟩)
+def inlS3_Q : Ir.Prog Nat := irLit% ((Ir.alloc (lowerP InlS3.P)).getD ⟨[], 0⟩)
 /-- the layout after one and two rounds (literals) -/
 def inlS3_L1 : Lay := layLit% (rvT.layStep inlS3_Q ⟨[], [], 0⟩)
 def inlS3_L2 : Lay := layLit% (rvT.layStep inlS3_Q inlS3_L1)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
-theorem inlS3_hQ : Ir.alloc (lowerP InlS3) = some inlS3_Q := by decide +kernel
+theorem inlS3_hQ : Ir.alloc (lowerP InlS3.P) = some inlS3_Q := by decide +kernel
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 0 in
 theorem inlS3_h1 : rvT.layStep inlS3_Q ⟨[], [], 0⟩ = inlS3_L1 := by decide +kernel
@@ -40,13 +40,13 @@ set_option maxHeartbeats 0 in
 theorem inlS3_hE : (rvT.emitP inlS3_Q inlS3_L2).isSome = true := by decide +kernel
 
 /-- the IR compiler accepts the program -/
-theorem inlS3_compiles : (Ir.compileW (lowerP InlS3)).isSome = true :=
+theorem inlS3_compiles : (Ir.compileW (lowerP InlS3.P)).isSome = true :=
   compileW_isSome 2 inlS3_hQ inlS3_hm inlS3_hL inlS3_fix inlS3_hE
 
 /-- **the machine theorem of inlB, route S3** (Sail axioms only) -/
 theorem inlS3_implements :
-    Implements1With (fun xs : ByteArray => xs.data.toList) (fun l => l) (S3.words InlS3)
-      (fun xs => inlBS xs.data.toList) (spaceP InlS3) (2 ^ 20) true :=
+    Implements1With (fun xs : ByteArray => xs.data.toList) (fun l => l) (S3.words InlS3.P)
+      (fun xs => inlBS xs.data.toList) (spaceP InlS3.P) (2 ^ 20) true :=
   stage InlS3.computes inlS3_small inlS3_main inlS3_compiles
 
 set_option maxRecDepth 100000 in
@@ -54,7 +54,7 @@ set_option maxHeartbeats 0 in
 theorem inlS3_code_len' : (((rvT.emitP inlS3_Q inlS3_L2).map rvT.words).getD []).length < 2 ^ 17 := by
   decide +kernel
 
-theorem inlS3_code_len : (S3.words InlS3).length < 2 ^ 17 := by
+theorem inlS3_code_len : (S3.words InlS3.P).length < 2 ^ 17 := by
   rw [words_eq' 2 inlS3_hQ inlS3_hm inlS3_hL inlS3_fix]; exact inlS3_code_len'
 
 /-- the compiled stage computes `inlB` on every input -/
