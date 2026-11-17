@@ -35,9 +35,9 @@ decreasing_by
     · simp only [hr, if_false, decide_false, Bool.false_or, dite_false]
       (repeat' split) <;> omega
 
-/-- the emit loop: copies cells `BASE + ls …` to bytes -/
+/-- the emit loop: the last cell `BASE + ls + len - 1` (the arity byte), then the cells `BASE + ls …` (the body) -/
 def eq (out : Array UInt8) (ob : Array UInt64) (t ls len : Nat) : Array UInt8 :=
-  if t < len then eq (out.set! t ob[BASE + ls + t]!.toUInt8) ob (t + 1) ls len else out
+  if t < len then eq (out.set! t ob[BASE + ls + (if t == 0 then len else t) - 1]!.toUInt8) ob (t + 1) ls len else out
 termination_by len - t
 
 /-- **the paged stage `Q`** -/
