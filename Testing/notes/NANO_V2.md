@@ -295,3 +295,7 @@ conservative (inherited); loop states need ≥ 1 parameter; the zero arm must co
   with buffer entries (address word + BufRep, pairwise-disjoint live footprints = round 6 `Owned`), indexed by the
   dead flags of `Ex.lv`; `cE_ok` with hypothesis `e.lv env d = some d'`.
 - Machine tests (runner, 8aa9125): 302/307 nv2f_* pass on QEMU, Sail subset agrees; p3–p7 hit OOM (status −1) because run.lean emitted κ = 256 (2064 B per buffer, two buffers > the 4096 B work of v2b_test.py) while `Prog.eval` has no memory bound. run.lean now uses κ = 64.
+- READ-ONLY ALIASES (request of the V2Self box): `let a := var j; b` with `b` only borrowing `a` (`Ex.ro`: `bsize a`,
+  `bget a i`, further read-only aliases) does not consume `j`; during `b` both are read-only (any move/mutation of
+  either is rejected). Inlined helpers thus borrow `Buf` parameters (`def g (b : Buf) (i : UInt64) : UInt64 :=
+  bget b i`; the caller keeps `b`). Flags 0 live / 1 read-only / 2 dead. Tests p9, neg18–19; 49 programs agree.
