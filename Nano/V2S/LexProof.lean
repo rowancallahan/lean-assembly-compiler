@@ -1,15 +1,15 @@
-/- Bridge of the nano v2 lexer (Nano/V2/Lex.lean): `lexV_eq : lexV xs = lexA xs` for every input of length
+/- Bridge of the nano v2 lexer (Nano/V2S/Lex.lean): `lexV_eq : lexV xs = lexA xs` for every input of length
 < 2^32. -/
-import Nano.V2.Lex
-import Nano.V2.InlProof
+import Nano.V2S.Lex
+import Nano.V2S.InlProof
 
-namespace Nano.V2.LexP
-open Nano Nano.B Nano.PS Nano.LS Nano.V2 Nano.V2.InlP
+namespace Nano.V2S.LexP
+open Nano Nano.B Nano.PS Nano.LS Nano.V2S Nano.V2S.InlP
 
 /-! ## bytes as words -/
 
 theorem beqL (a : UInt8) (n : Nat) (h : n < 256) :
-    (a.toUInt64 == (OfNat.ofNat n : UInt64)) = (a == (OfNat.ofNat n : UInt8)) := Nano.V2.beq8 a n h
+    (a.toUInt64 == (OfNat.ofNat n : UInt64)) = (a == (OfNat.ofNat n : UInt8)) := Nano.V2S.beq8 a n h
 theorem leL (a : UInt8) (n : Nat) (h : n < 256) :
     ((OfNat.ofNat n : UInt64) ≤ a.toUInt64) = ((OfNat.ofNat n : UInt8) ≤ a) := by
   apply propext; rw [UInt64.le_iff_toNat_le, UInt8.le_iff_toNat_le]
@@ -737,4 +737,4 @@ theorem lexV_eq (xs : List UInt8) (hx : xs.length < 2 ^ 32) : lexV xs = lexA xs 
         · simp [t1, t2, decT, pairT, encT]
   · simp [ha, encT]
 
-end Nano.V2.LexP
+end Nano.V2S.LexP

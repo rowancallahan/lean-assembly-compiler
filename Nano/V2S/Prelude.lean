@@ -1,7 +1,7 @@
 /- nano v2 source style (Testing/notes/NANO_V2_SRC.md): the primitives a restricted stage may use besides UInt64
 arithmetic, comparisons, `if`, `let`, calls and fuel-bounded self-recursion (a `Nat` fuel argument matched as
 `0` / `n + 1`).  The input is read only through `rd`/`len`, the output is extended only through `put`. -/
-namespace Nano.V2
+namespace Nano.V2S
 
 /-- input byte `i` as a word (0 past the end) -/
 def rd (xs : List UInt8) (i : UInt64) : UInt64 := (xs.getD i.toNat 0).toUInt64
@@ -29,4 +29,4 @@ theorem rd_drop (x : UInt8) (xs : List UInt8) (i : UInt64) (h : i.toNat < (x :: 
 theorem rd_get (xs : List UInt8) (i : Nat) (h : i < 2 ^ 64) : rd xs i.toUInt64 = (xs.getD i 0).toUInt64 := by
   unfold rd; congr; simp; omega
 
-end Nano.V2
+end Nano.V2S

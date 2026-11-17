@@ -2,9 +2,9 @@
 Constructs: UInt64 `==`, `≤`, `+`, `if`, `let`, calls, fuel recursion, `rd`, `len`, `put`.
 Bridge: `mexpV_eq : mexpV xs = mexp xs` for every input of length < 2^32. -/
 import Nano.ExpandM
-import Nano.V2.Asm
+import Nano.V2S.Asm
 
-namespace Nano.V2
+namespace Nano.V2S
 
 /-- the records of micro-op `[m, x]` appended to `o` -/
 def mexpOp (m x : UInt64) (o : List UInt8) : List UInt8 :=
@@ -78,4 +78,4 @@ theorem mexpL_eq (xs : List UInt8) (hx : xs.length < 2 ^ 32) : ∀ (n : Nat) (i 
 theorem mexpV_eq (xs : List UInt8) (hx : xs.length < 2 ^ 32) : mexpV xs = mexp xs := by
   unfold mexpV; rw [mexpL_eq xs hx _ 0 [] (by simp) (by simp; omega)]; simp
 
-end Nano.V2
+end Nano.V2S

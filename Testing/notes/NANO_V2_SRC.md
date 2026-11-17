@@ -8,19 +8,19 @@ Branch `nano-v2-src`. Goal (ROADMAP "DIRECTION"): nano compiles itself. This bra
 
 | stage | current definition | v2 source | bridge (no sorry, axioms propext/Classical.choice/Quot.sound) | status |
 |---|---|---|---|---|
-| assembler | `Nano.asm` (Nano/Asm.lean) | `Nano.V2.asmV` (Nano/V2/Asm.lean) | `Nano.V2.asmV_eq : xs.length < 2^32 → asmV xs = asm xs` | DONE |
-| expander | `Nano.mexp` (Nano/Expand.lean) | `Nano.V2.mexpV` (Nano/V2/Expand.lean) | `Nano.V2.mexpV_eq : xs.length < 2^32 → mexpV xs = mexp xs` | DONE |
-| inliner | `Nano.U.inlB` (Nano/SerU.lean) | `Nano.V2.inlV` (Nano/V2/Inl.lean) | `Nano.V2.InlP.inlV_eq : xs.length < 2^32 → inlV xs = inlB xs` (Nano/V2/InlProof.lean) | DONE |
+| assembler | `Nano.asm` (Nano/Asm.lean) | `Nano.V2S.asmV` (Nano/V2S/Asm.lean) | `Nano.V2S.asmV_eq : xs.length < 2^32 → asmV xs = asm xs` | DONE |
+| expander | `Nano.mexp` (Nano/Expand.lean) | `Nano.V2S.mexpV` (Nano/V2S/Expand.lean) | `Nano.V2S.mexpV_eq : xs.length < 2^32 → mexpV xs = mexp xs` | DONE |
+| inliner | `Nano.U.inlB` (Nano/SerU.lean) | `Nano.V2S.inlV` (Nano/V2S/Inl.lean) | `Nano.V2S.InlP.inlV_eq : xs.length < 2^32 → inlV xs = inlB xs` (Nano/V2S/InlProof.lean) | DONE |
 | lexA (lexer + 2a) | `Nano.LS.lexA` (Nano/LexS3.lean) | — | — | design below; feasible in the construct set (two passes) |
 | parser 2b | `Nano.PS.stage2b` (Nano/ParseS3B.lean) | — | — | BLOCKED on one extra construct (word memory), see below |
 
 Every bridge holds for every input of length < 2^32 (positions are UInt64 words; the self-hosting domain bounds every
-intermediate by 2^20, so the hypothesis is implied there). Build: `lake build Nano.V2.InlProof Nano.V2.Expand` (all
+intermediate by 2^20, so the hypothesis is implied there). Build: `lake build Nano.V2S.InlProof Nano.V2S.Expand` (all
 three files < 10 s each).
 
 ## The constructs actually used (the nano-v2 language must support exactly these)
 
-Prelude (Nano/V2/Prelude.lean), real Lean definitions:
+Prelude (Nano/V2S/Prelude.lean), real Lean definitions:
 - `rd (xs : List UInt8) (i : UInt64) : UInt64` — input byte `i`, 0 past the end;
 - `len (xs : List UInt8) : UInt64` — input length;
 - `put (o : List UInt8) (b : UInt64) : List UInt8 := o ++ [b.toUInt8]` — append one output byte.
@@ -56,7 +56,7 @@ Used per stage: asm: `&&& ||| <<< >>> == ≤ ||`, `+`; mexp: `== ≤ +`; inliner
   Fuel `(len+1)^2`: fuel is passed by value, so it bounds the longest call chain, at most `len+1` loop steps per
   nesting level and at most `len/2` levels (the work itself can be exponential, as `inlB`'s output). The entry
   counts the `13` records (`cnt13`), emits `wrap k last` (`putPro` for `serPro k`, `putWr` for `sWr`).
-  Proof (Nano/V2/InlProof.lean): list-level meanings `c13`, `so` (offset after the `t`-th `13`), `hiS`, `segG` (one
+  Proof (Nano/V2S/InlProof.lean): list-level meanings `c13`, `so` (offset after the `t`-th `13`), `hiS`, `segG` (one
   def's code); `inlBody_eq : inlBody … = segG …` given the table entries so far (`BP`); `inl_main`: the state of
   `inlGo` at the start of def `t`, by induction on `t` (`inlGo_seg` jumps one def).
 
