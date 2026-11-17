@@ -123,7 +123,7 @@ def y12 : Nat → Buf → UInt64 → Buf → Buf
       let f2 := bget h (b + 2);
       let f3 := bget h (b + 3);
       if z4 == 1 then y12 n h (d - 1) (bpush (bpush o 1) f1)
-      else if z4 == 2 then y12 n h (d - 1) (bpush (bpush o 2) f1)
+      else if z4 == 2 then y12 n h (d - 1) (bpush (bpush (bpush o 2) f1) 1)
       else y12 n (bset (bset h (20000 + d - 1) f3) (20000 + d) f2) (d + 1) (bpush (bpush o 3) f1)
 
 def y14 : Nat → Buf → UInt64 → Buf → Buf
