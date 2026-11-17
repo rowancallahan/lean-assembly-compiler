@@ -100,3 +100,29 @@ Pipeline: strip+concatenate `Nano/V2Self/C/{Base,Asm,Expand,Lex,Inl,Parse,Main}.
 - **Proposal**: for sources up to 32 kB (the V2Self text is 22.7 kB; the larger V2-language text will be ≈ 2×), κ = 2^16 = 65536 (lex/parse ≤ ~1.1 words/byte, ×2 margin), work = 11 × 0.5 MB + stack ≈ 6 MB, set 8 MB;
   if the inlined/expanded output of the real self-hosting text is larger (not measurable until the language covers it) raise to κ = 2^18 (2 MB per buffer, 24 MB work). One κ for all buffers is wasteful (asm output is ~5× smaller than lex): per-buffer capacities would cut work ~3×, but the language has one κ.
   The input length is the real limit: reject (status −2) beyond κ words ≈ 60 kB.
+
+## S = self-language (inventory of the `Nano/V2Self/C` source; `python3 Testing/nano/v2self/inventory.py`)
+Stripped text 22.7 kB, 8727 tokens, 90 defs (every def single-line or `| arm` pattern form; Lean namespace/comments stripped).
+**Lexical** (count): identifiers (one letter + digits/`_`/`'` only: `len'`), numerals 856 (decimal only; largest 16777216), `( )` 606, `,` 1074, `;` 135, `:` 148, `:=` 203, `=>` 44, `|` 44 (pattern arms),
+`→` 97, `×` 154, `==` 195, `+` 176, `-` 53, `*` 14, `<` 24, `≤` 28, `≠` 7, `&&` 56, `||` 23, `&&&` 16, `|||` 18, `<<<` 15, `>>>` 28, `[` `]` 1 (`[]` once, in `m`).
+Keywords: `def` 90, `let` 135, `if/then/else` 175 each. Types: `UInt64` 244, `Buf` 116, `Nat` 22, `List` 17 with `UInt8`. No `>`, `≥`, `%`, `/`, hex, strings, `fun`, `match`, `where`, `.1/.2`, ascriptions, `Int64`.
+**Grammar forms**: (1) `def n (a : T) … : T := e` (params of type `UInt64`, `Buf`, `List UInt8`, a tuple type); zero-arity constants `def k : UInt64 := 255`;
+(2) fuel recursion `def n : Nat → T → … → R | 0, a, … => e | f + 1, a, … => e` (44 arms, 22 defs; the `0` arm first; the recursive call passes `f`, other fuel args are `len' x` or the numeral 16777216);
+(3) `let v := e;` 135; (4) `let (a, b, …) := e;` 84, tuples up to 15 components (11 nested lets in the front end's terms); (5) tuple literals 144, tuple types `T × T × …` 154 (pairs `UInt64 × Buf` for borrowed lookups; the parser state: 9 words, 4 Bufs, 2 words);
+(6) `if c then e else e` 175 with conditions built from `==`, `<`, `≤`, `≠` joined by `&&` (56) and `||` (23), no parentheses beyond grouping;
+(7) calls (606 parens, mostly calls) and the infix operators above with Lean precedence (`<<<`/`>>>` take numerals only).
+**Primitives**: `rd` 33, `len` 12, `len'` 9 (fuel only), `put` 1, `bnew` 18, `bsize` 19, `bget` 60, `bpush` 10, `bset` 1 (stack slots). Types of values: `UInt64`, `Nat` (fuel), `List UInt8`, `Buf`, tuples.
+**Not in S** (must not be added by the stages): `Int64`, `.1/.2`, `match` on non-fuel, `for`/`do`, arrays, strings, hex, `bpop`.
+
+### Step 2 decision (shrink S): NOT done mechanically; recommendation
+`&&`/`||` (79 uses), `≤` (28), `≠` (7) are cheap to ACCEPT in the parser (condition grammar: precedence climbing over 3 levels, desugared at parse time), expensive to remove from the text: eliminating them by hand changes ~110 sites with branch-structure rewriting (a script needs a Lean-expression parser = the thing being built) and risks the 0-mismatch tests. Condition desugaring in the new parser should bind the else result in a fresh `let` (no branch duplication, as with `l4`): `if a && b then X else Y` = `let y := Y; if a then (if b then X else y) else y`, and `≤`/`≠` by swapping then/else of `<`/`==`. So S keeps `&&`, `||`, `≤`, `≠`; `>` / `≥` stay out.
+One rewrite WAS needed for size (see above): long `&&` chains with big else-branches must be written with let-bound else results until the parser does it.
+
+### Step 3 plan: stage growth to S (reference: `Nano/V2/Front.lean` `frontElabK`, `Nano.V2B` `gen`; each increment = text change + differential test against the reference on S-like inputs; frontElab acceptance + chain test stay at 0 mismatches)
+Order (each stage keeps emitting the v1 record format where possible; new records only where the target needs them):
+1. **Lexer** (`l15`): new token kinds for `: , × → | => < ≤ ≠ && || &&& ||| <<< >>> [ ] if then else Nat Buf List UInt8` (tags after the existing 1..16, kept in one constants block shared with the parser); identifiers with `'`; `--` comments not needed. Test: token stream of every `Nano/V2Self/C/*.lean` vs a Lean reference lexer over the same text; plus random mutation.
+2. **Parser** (`r16`): expression grammar with the full precedence table (`||`<`&&`<comparisons<`|||`<`&&&`<shifts<`+ -`<`*`<application), `if`, `let`, tuple pattern let, tuple literals, typed params including `A × B × …` and `→`; fuel-pattern defs `| 0, … => e | n + 1, … => e`; output = the tree the inliner/expander consumes (new record tags). Test: record stream vs `Nano/V2/Front.lean` surface AST `S` (printed) on the S text.
+3. **Inliner** (`j8`): no inlining of recursive (fuel) defs: they become loops/labels; calls to non-recursive defs inline as now (`let` chains); the table has to know which defs are loops. Test: inlined tree vs `Front.lean`'s `lower`.
+4. **Expander + assembler** (`e2`, `a5`): code for loops (`Ex.loop`), buffers (`mk/size/get/set/push`, heap bump with the oom/cap exits), pairs/tuples (value-stack slots), `if`, the I/O prelude, following `Nano.V2B.cE/cT` (Nano/V2/Gen.lean) instruction by instruction; the `jal` range (±1 MiB) has to be respected (or use `lui/jalr`) because the whole compiler is ~158k words and growing. Test: output words vs `Nano.V2B.gen` on the V2f test programs p1..p10 and on S defs, then QEMU.
+5. **Fixed point**: C₀ (Lean-compiled by `gen`) compiles the S text → P₁; P₁ compiles the S text → P₂; require P₁ = P₂ bytes, then (if the nano back end differs from `gen`) QEMU-run all of Testing/nano/v2f.
+Increment 1 (lexer) has NOT been started in this commit: it needs the token-tag table agreed with the parser first (step 1 and 2 share it); that table is the first thing to write.
