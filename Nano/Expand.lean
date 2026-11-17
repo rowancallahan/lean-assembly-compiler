@@ -2,7 +2,7 @@
 (`Nano/Gen.lean`) factors as `genR p = mexp (ser p)` (`Nano/Ser.lean`): `ser p` is the program as a flat stream of
 2-byte micro-ops `[m, x]`, `mexp` expands each micro-op to its records.  `mexp` is in the front end's list style (one
 pass, no helpers) so that OUR compiler compiles it (`Nano/ExpandSelf.lean`).
-   0 HDR                 t6 := sp; t3 := a0                    1 LB0     t0 := byte 7 of the argument at t3
+   0 HDR  t6 := sp & ~7; t3 := a0                   1 LB0     t0 := byte 7 of the argument at t3
    2 LBJ x               t0 := t0 << 8 | byte x at t3          3 PUSH    push t0 (with the out-of-memory check)
    4 ADV                 t3 += 8                               5 ZERO    t0 := 0
    6 SHOR x              t0 := t0 << 8 | x                     7 LDV x   t0 := stack slot x
@@ -13,7 +13,7 @@ namespace Nano
 
 def mexp : List UInt8 → List UInt8
   | m :: x :: rest =>
-    if m == 0 then 0 :: 31 :: 2 :: 0 :: 0 :: 28 :: 10 :: 0 :: mexp rest
+    if m == 0 then 5 :: 31 :: 2 :: 3 :: 1 :: 31 :: 31 :: 3 :: 0 :: 28 :: 10 :: 0 :: mexp rest
     else if m == 1 then 4 :: 5 :: 28 :: 7 :: mexp rest
     else if m == 2 then 1 :: 5 :: 5 :: 8 :: 4 :: 6 :: 28 :: x :: 14 :: 5 :: 5 :: 6 :: mexp rest
     else if m == 3 then 0 :: 31 :: 31 :: 248 :: 7 :: 0 :: 31 :: 12 :: 0 :: 10 :: 0 :: 255 :: 48 :: 0 :: 1 :: 0 :: 11 :: 5 :: 31 :: 0 :: mexp rest
