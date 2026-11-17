@@ -153,7 +153,7 @@ def pstepS (n : UInt64) (xs : List UInt8) (s : PSR) : PSR :=
      else (13, f, x, y, p, d, na, cg, cf, o, S, D, F))
   else if c == 12 then
     (if bsizeS F == 0 then
-       (if p < lenS xs then (1, cf, x, y, p, d, na, cg, cf, putR2 o 13 na, S, D,
+       (if p < lenS xs then (1, cf, x, y, p, d, na, cg, cf, putR2 o 13 na, S,
            bsizeS D / 3 :: na :: cg :: D, F)
         else (0, f, x, y, p, d, na, cg, cf, putR2 o 13 na, S, D, F))
      else stRetFS n xs s)
