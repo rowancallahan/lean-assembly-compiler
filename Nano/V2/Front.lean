@@ -1045,14 +1045,33 @@ def pDs : Nat → List FDef → List FTok → Option (List FDef)
 def mainProg (b : Ex) : Prog where
   main := .let_ b (.ite .eq (.size (.var 0)) (.lit 0) (.pair (.lit 1) (.var 0)) (.pair (.lit 0) (.var 0)))
 
+/-- the ownership check on the FINAL program (calls inlined, `mk κ` placed): exactly the premise of the buffer
+proof `cB_ok` (Nano/V2/CompB.lean) -/
+def withLv (p : Prog) : Option Prog := if (p.main.lv [] []).isSome then some p else none
+
+theorem withLv_lv {p q : Prog} (h : withLv p = some q) : ∃ d', q.main.lv [] [] = some d' := by
+  unfold withLv at h; split at h
+  · rename_i hc; simp only [Option.some.injEq] at h; subst h; exact Option.isSome_iff_exists.1 hc
+  · simp at h
+
 /-- **the v2 front end**, output capacity `κ` -/
 def frontElabK (κ : Nat) (xs : List UInt8) : Option Prog :=
   match (if adjOk xs then flex xs.length xs else none) with
   | some ts =>
     match pDs (16 * (ts.length + 2)) [] ts with
-    | some ((_, true, [], .out, .fn b) :: _) => some (mainProg (b.cap κ))
+    | some ((_, true, [], .out, .fn b) :: _) => withLv (mainProg (b.cap κ))
     | _ => none
   | none => none
+
+/-- **ownership soundness, front-end side**: every accepted program passes the checker the buffer proof assumes -/
+theorem frontElabK_lv {κ : Nat} {xs : List UInt8} {p : Prog} (h : frontElabK κ xs = some p) :
+    ∃ d', p.main.lv [] [] = some d' := by
+  unfold frontElabK at h
+  split at h
+  · split at h
+    · exact withLv_lv h
+    · simp at h
+  · simp at h
 
 def frontElab : List UInt8 → Option Prog := frontElabK 65536
 

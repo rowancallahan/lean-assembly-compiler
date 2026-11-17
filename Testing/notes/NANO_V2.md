@@ -339,3 +339,12 @@ loops (round 6 E). (3) ImplementsBytes (`compile_correct`). Pending runs: QEMU/S
   `BufRep` by a frame argument (`rep_frame`): the variable is not consumed by the other operands.
 - NEXT: (2) Sail layer for loops (round 6 E), (3) main-level theorem (prologue/epilogue, `ImplementsBytes`),
   (4) front end ⇒ `lv` on the lowered main (the check at Front.lean `b.lv (tys sc) …`; `lv (cap κ e) = lv e`).
+
+## Ownership soundness DONE — task (4)
+- The buffer proof's ONLY ownership premise is `e.lv (env.map fst) d = some d'` on the compiled expression (cB_ok).
+  The front end now re-runs the checker on the FINAL program (`withLv`: calls inlined, `mk κ` placed, `mainProg`
+  wrapper) and **`frontElabK_lv`** (Front.lean): `frontElabK κ xs = some p → ∃ d', p.main.lv [] [] = some d'`.
+  So every accepted program satisfies the affine discipline the buffer proof assumes (no parser reasoning needed).
+  Programs that passed the per-def checks but fail the final one are now rejected (none expected: the per-def check
+  already ran on the same lowered body; the wrapper only borrows/moves the result).
+- Pending for the runner: fuzz.py (agreement + neg1–21 rejected) at this commit; QEMU/Sail of nv2f_*; check.sh.
