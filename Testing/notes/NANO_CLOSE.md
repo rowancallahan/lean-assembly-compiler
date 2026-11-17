@@ -16,3 +16,27 @@
   proved for every input, so `hfm` holds for the compiled `nanoExpM`.
 
 ### Log
+* Front-end constraints found on the way (list front end, `frontx_compile` / `frontx_view`; not changed):
+  1. `frontx_view`'s generic equation prover loops (stack overflow) on a recursive call that does not consume the
+     list (`f (m :: x :: rest) …` in the `m :: x :: rest` arm): its leaf tactic `simp only [f]` unfolds the call again.
+     Work-around: a hand-written view and equation (`mxv`, `mxv_eq` in `Nano/ExpandMSelf.lean`), passed to
+     `frontx_compile … from mxv_eq`.
+  2. The capacity obligation (`j + (f …).length ≤ O.length` at a call leaf) is closed by `simp only [*, ↓reduceIte, …]`
+     with the path conditions. It FAILS (a) after a Prop test `k = 1` (the hypothesis substitutes `k` in the capacity
+     hypothesis but not in the goal), and (b) when a Bool test is a sub-term of a later compound test
+     (`m == 5 || m == 0` after `m == 5`: simp leaves `true || m == 0`). Work-around: Bool tests (`k == 1`), no
+     compound test containing an earlier test.
+  3. The `runs` proof (well-founded induction) closes the measure decrease with `dsimp only; omega` /
+     `simp_all only [↓reduceIte, …]; omega` / `simp_all; omega`. A goal that `simp_all` closes completely then fails
+     ("no goals" for `omega`), and `omega` cannot read `(k == 0) = true` for `UInt64`. Work-around: `Nat` counters and
+     a measure whose `if`s use exactly the code's Bool tests (`if m == 5 then … else …`), or no `if` at all.
+  The integrator's parked `ElabBSelf` (one-stage lexer, `UInt64` mode, measure `if m = 5 …` with Prop tests) hits 3
+  (and 2b for no reason of its own: none of the template's compound tests repeat an earlier test, so 2 is fine).
+* Lexer: DECISION: split `lexB` into two stages, proved equal on every input (`Nano/ElabBSplit.lean`,
+  `eB_vB : eB (vB xs) = lexB xs`): `vB` = passes 5 and 0 of `lx` without the emitting alternatives, output `[0]` or
+  `ty :: source` (copy mode); `eB` = read the type byte, then pass 1 of `lx` (the emitting alternatives only). The step
+  macros are generated from the SAME templates as `lx` (`Testing/nano/gen_lexsplit.py`), so the proofs are
+  alternative-by-alternative: `lx_vres0/5`, `lv_vres0/5` (through `vres`, the validator's run as an `Option`),
+  `le_lx`, `vres5_good` (the type is one nonzero byte). Each half has about half of `lx`'s alternatives.
+* Composition: `Nano.SelfHost.selfHosted_parse6` (`Nano/SelfHostSplit.lean`): six stages
+  (`vB`, `eB`, `stage2`, `inlB`, `mexp`, `asm`), domain `Sized6` (= `Sized5` plus the bounds of `vB`'s output).
