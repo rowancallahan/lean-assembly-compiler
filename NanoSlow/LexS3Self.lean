@@ -2,6 +2,7 @@
 `lexA_eq : lexA xs = stage2a (lexB xs)` on every input) compiled by `s3_compileF` (program, kernel-checked
 certificates, `computes`). The stage theorem: Nano/LexS3Stage.lean. -/
 import Compiler.S3.Front
+import Compiler.S3.CertBytes
 import Nano.LexS3
 
 s3_enc Nano.Tok
