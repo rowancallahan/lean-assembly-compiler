@@ -179,90 +179,114 @@ theorem endDefS_eq (s : St) : endDefS s = endDef s := by
   repeat' split
   all_goals simp_all
 
+def stDefs (f : Nat) (s : St) : Res :=
+  match f, s.ts with
+  | f + 1, Tok.kdef :: Tok.id g :: ts => .go (.params f 0) { s with ts := ts, cg := g, cf := f, sc := [] }
+  | _, _ => .fail
+
+def stParams (f : Nat) (n : Nat) (s : St) : Res :=
+  match f, s.ts with
+  | 0, _ => .fail
+  | f + 1, Tok.lp :: ts => .go (.names f f n) { s with ts := ts }
+  | _ + 1, _ => .go .dbody { s with na := n }
+
+def stNames (f : Nat) (fp : Nat) (n : Nat) (s : St) : Res :=
+  match f, s.ts with
+  | 0, _ => .fail
+  | f + 1, Tok.id x :: ts => .go (.names f fp (n + 1)) { s with ts := ts, sc := (x, n) :: s.sc }
+  | _ + 1, Tok.colon :: Tok.kty _ :: Tok.rp :: ts => .go (.params fp n) { s with ts := ts }
+  | _, _ => .fail
+
+def stDbody (s : St) : Res :=
+  match s.ts with
+  | Tok.colon :: Tok.kty _ :: Tok.assign :: r =>
+    match findD s.cg s.ds with
+    | some _ => .fail
+    | none => .go (.expr s.cf) { s with ts := r, d := s.na, K := [] }
+  | _ => .fail
+
+def stRet (s : St) : Res :=
+  match s.K with
+  | [] => endDefS s
+  | fr :: K => retFS s fr K
+
+def stExpr (f : Nat) (s : St) : Res :=
+  match f, s.ts with
+  | 0, _ => .fail
+  | f + 1, Tok.klet :: Tok.id x :: Tok.assign :: ts => .go (.expr f) { s with ts := ts, K := .letV f x :: s.K }
+  | f + 1, _ => .go (.mul f) { s with K := .exprAdd f :: s.K }
+
+def stAdd (f : Nat) (s : St) : Res :=
+  match f, s.ts with
+  | 0, _ => .fail
+  | f + 1, Tok.plus :: ts => .go (.mul f) { s with ts := ts, K := .addOp f 24 :: s.K }
+  | f + 1, Tok.minus :: ts => .go (.mul f) { s with ts := ts, K := .addOp f 32 :: s.K }
+  | _ + 1, _ => .go .ret s
+
+def stMul (f : Nat) (s : St) : Res :=
+  match f with
+  | 0 => .fail
+  | f + 1 => .go (.app f) { s with K := .mulT f :: s.K }
+
+def stMulT (f : Nat) (s : St) : Res :=
+  match f, s.ts with
+  | 0, _ => .fail
+  | f + 1, Tok.star :: ts => .go (.app f) { s with ts := ts, K := .mulOp f :: s.K }
+  | _ + 1, _ => .go .ret s
+
+def stApp (f : Nat) (s : St) : Res :=
+  match f, s.ts with
+  | 0, _ => .fail
+  | f + 1, Tok.id g :: ts =>
+    match lookS g s.sc with
+    | some k => .go .ret { s with ts := ts, out := s.out ++ sVarS s.d k, d := s.d + 1 }
+    | none =>
+      match findD g s.ds with
+      | some (k, j) => .go (.args f k) { s with ts := ts, K := .call j k :: s.K }
+      | none => .fail
+  | _ + 1, Tok.minus :: Tok.num n :: ts =>
+    .go .ret { s with ts := ts, out := s.out ++ (sLi (0 - n) ++ mo 3 0), d := s.d + 1 }
+  | f + 1, _ => .go (.atom f) s
+
+def stArgs (f : Nat) (k : Nat) (s : St) : Res :=
+  match f, k with
+  | 0, _ => .fail
+  | _ + 1, 0 => .go .ret s
+  | f + 1, k + 1 => .go (.atom f) { s with K := .args f k :: s.K }
+
+def stAtom (f : Nat) (s : St) : Res :=
+  match f, s.ts with
+  | 0, _ => .fail
+  | _ + 1, Tok.num n :: ts => .go .ret { s with ts := ts, out := s.out ++ (sLi n ++ mo 3 0), d := s.d + 1 }
+  | _ + 1, Tok.id g :: ts =>
+    match lookS g s.sc with
+    | some k => .go .ret { s with ts := ts, out := s.out ++ sVarS s.d k, d := s.d + 1 }
+    | none =>
+      match findD g s.ds with
+      | some (k, j) =>
+        match k with
+        | 0 => .go .ret { s with ts := ts, out := s.out ++ sCallS j 0, d := s.d + 1 }
+        | _ + 1 => .fail
+      | none => .fail
+  | f + 1, Tok.lp :: ts => .go (.expr f) { s with ts := ts, K := .paren :: s.K }
+  | _, _ => .fail
+
 def stepS : Ctl → St → Res
-  | .defs f, s =>
-    match f, s.ts with
-    | f + 1, Tok.kdef :: Tok.id g :: ts => .go (.params f 0) { s with ts := ts, cg := g, cf := f, sc := [] }
-    | _, _ => .fail
-  | .params f n, s =>
-    match f, s.ts with
-    | 0, _ => .fail
-    | f + 1, Tok.lp :: ts => .go (.names f f n) { s with ts := ts }
-    | _ + 1, _ => .go .dbody { s with na := n }
-  | .names f fp n, s =>
-    match f, s.ts with
-    | 0, _ => .fail
-    | f + 1, Tok.id x :: ts => .go (.names f fp (n + 1)) { s with ts := ts, sc := (x, n) :: s.sc }
-    | _ + 1, Tok.colon :: Tok.kty _ :: Tok.rp :: ts => .go (.params fp n) { s with ts := ts }
-    | _, _ => .fail
-  | .dbody, s =>
-    match s.ts with
-    | Tok.colon :: Tok.kty _ :: Tok.assign :: r =>
-      match findD s.cg s.ds with
-      | some _ => .fail
-      | none => .go (.expr s.cf) { s with ts := r, d := s.na, K := [] }
-    | _ => .fail
-  | .ret, s =>
-    match s.K with
-    | [] => endDefS s
-    | fr :: K => retFS s fr K
-  | .expr f, s =>
-    match f, s.ts with
-    | 0, _ => .fail
-    | f + 1, Tok.klet :: Tok.id x :: Tok.assign :: ts => .go (.expr f) { s with ts := ts, K := .letV f x :: s.K }
-    | f + 1, _ => .go (.mul f) { s with K := .exprAdd f :: s.K }
-  | .add f, s =>
-    match f, s.ts with
-    | 0, _ => .fail
-    | f + 1, Tok.plus :: ts => .go (.mul f) { s with ts := ts, K := .addOp f 24 :: s.K }
-    | f + 1, Tok.minus :: ts => .go (.mul f) { s with ts := ts, K := .addOp f 32 :: s.K }
-    | _ + 1, _ => .go .ret s
-  | .mul f, s =>
-    match f with
-    | 0 => .fail
-    | f + 1 => .go (.app f) { s with K := .mulT f :: s.K }
-  | .mulT f, s =>
-    match f, s.ts with
-    | 0, _ => .fail
-    | f + 1, Tok.star :: ts => .go (.app f) { s with ts := ts, K := .mulOp f :: s.K }
-    | _ + 1, _ => .go .ret s
-  | .app f, s =>
-    match f, s.ts with
-    | 0, _ => .fail
-    | f + 1, Tok.id g :: ts =>
-      match lookS g s.sc with
-      | some k => .go .ret { s with ts := ts, out := s.out ++ sVarS s.d k, d := s.d + 1 }
-      | none =>
-        match findD g s.ds with
-        | some (k, j) => .go (.args f k) { s with ts := ts, K := .call j k :: s.K }
-        | none => .fail
-    | _ + 1, Tok.minus :: Tok.num n :: ts =>
-      .go .ret { s with ts := ts, out := s.out ++ (sLi (0 - n) ++ mo 3 0), d := s.d + 1 }
-    | f + 1, _ => .go (.atom f) s
-  | .args f k, s =>
-    match f, k with
-    | 0, _ => .fail
-    | _ + 1, 0 => .go .ret s
-    | f + 1, k + 1 => .go (.atom f) { s with K := .args f k :: s.K }
-  | .atom f, s =>
-    match f, s.ts with
-    | 0, _ => .fail
-    | _ + 1, Tok.num n :: ts => .go .ret { s with ts := ts, out := s.out ++ (sLi n ++ mo 3 0), d := s.d + 1 }
-    | _ + 1, Tok.id g :: ts =>
-      match lookS g s.sc with
-      | some k => .go .ret { s with ts := ts, out := s.out ++ sVarS s.d k, d := s.d + 1 }
-      | none =>
-        match findD g s.ds with
-        | some (k, j) =>
-          match k with
-          | 0 => .go .ret { s with ts := ts, out := s.out ++ sCallS j 0, d := s.d + 1 }
-          | _ + 1 => .fail
-        | none => .fail
-    | f + 1, Tok.lp :: ts => .go (.expr f) { s with ts := ts, K := .paren :: s.K }
-    | _, _ => .fail
+  | .defs f, s => stDefs f s
+  | .params f n, s => stParams f n s
+  | .names f fp n, s => stNames f fp n s
+  | .dbody, s => stDbody s
+  | .ret, s => stRet s
+  | .expr f, s => stExpr f s
+  | .add f, s => stAdd f s
+  | .mul f, s => stMul f s
+  | .mulT f, s => stMulT f s
+  | .app f, s => stApp f s
+  | .args f k, s => stArgs f k s
+  | .atom f, s => stAtom f s
 
 theorem stepS_eq (c : Ctl) (s : St) : stepS c s = step c s := by
-  cases c <;> simp only [stepS, step, sVarS_eq, sCallS_eq, endDefS_eq, retFS_eq] <;> (repeat' split) <;> simp_all
+  cases c <;> simp only [stepS, stDefs, stParams, stNames, stDbody, stRet, stExpr, stAdd, stMul, stMulT, stApp, stArgs, stAtom, step, sVarS_eq, sCallS_eq, endDefS_eq, retFS_eq] <;> (repeat' split) <;> simp_all
 
 def runS : Nat → Ctl → St → Option (List UInt8)
   | 0, _, _ => none
@@ -290,7 +314,7 @@ theorem gasS_eq : ∀ ts, gasS ts = gasOf ts
 /-- **stage 2, S3 form** -/
 def stage2S (bs : List UInt8) : List UInt8 :=
   match decLS bs with
-  | some (_, ts) => (runS (gasS ts) (.defs (ts.length + 1)) (st0 ts)).getD []
+  | some (_, ts) => (runS (gasS ts) (.defs (ts.length + 1)) ⟨ts, [], 0, [], [], [], [], 0, 0⟩).getD []
   | none => []
 
 /-- **the bridge**: the S3 form is stage 2, on every input -/
@@ -299,6 +323,6 @@ theorem stage2S_eq (bs : List UInt8) : stage2S bs = stage2 bs := by
   rw [decLS_eq]
   cases decL bs with
   | none => rfl
-  | some p => obtain ⟨_, ts⟩ := p; simp [runS_eq, gasS_eq, parseA]
+  | some p => obtain ⟨_, ts⟩ := p; simp [runS_eq, gasS_eq, parseA, st0]
 
 end Nano.PS

@@ -11,5 +11,5 @@ open Nano Nano.PB Nano.PS
 def gs (bs : List UInt8) : List UInt8 := match decLS bs with | some (_, ts) => [u8N (gasS ts)] | none => []
 set_option maxRecDepth 20000 in
 set_option maxHeartbeats 0 in
-s3_compile Q := gs
+s3_compileB Q := gs
 end P
