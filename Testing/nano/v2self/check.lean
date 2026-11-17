@@ -24,7 +24,8 @@ def defs (ls : List String) : List String := Id.run do
     else if out.isEmpty then pure () else out := out.dropLast ++ [out.getLast! ++ "\n" ++ l]
   return out
 def stub := "def m (x : List UInt8) : List UInt8 := put [] 0\n"
-def acc (txt : String) : Bool := (frontElabK 256 (txt ++ stub).toUTF8.toList).isSome
+def hasM (txt : String) : Bool := (txt.splitOn "\ndef m ").length > 1 || txt.startsWith "def m "
+def acc (txt : String) : Bool := (frontElabK 256 (if hasM txt then txt else txt ++ stub).toUTF8.toList).isSome
 def main (args : List String) : IO UInt32 := do
   let mut pre : List String := []
   let mut bad := 0

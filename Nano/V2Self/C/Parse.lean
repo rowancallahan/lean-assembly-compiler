@@ -54,18 +54,18 @@ def r4 : Nat → Buf → UInt64 → UInt64 → UInt64
     if bget x a == 1 && bget x b == 1 then if bget x (a + 1) == bget x (b + 1) then r4 n x (a + 2) (b + 2) else 0
     else if bget x a == 0 && bget x b == 0 then 1 else 0
 
-def r5 : Nat → Buf → Buf → UInt64 → UInt64 → UInt64 × Buf
-  | 0, x, s, i, g => (w0, s)
+def r5 : Nat → Buf → Buf → UInt64 → UInt64 → UInt64
+  | 0, x, s, i, g => 0
   | n + 1, x, s, i, g =>
-    if i == 0 then (w0, s)
-    else if r4 16777216 x (bget s (i - 2) + 1) (g + 1) == 1 then (bget s (i - 1) + 1, s)
+    if i == 0 then 0
+    else if r4 16777216 x (bget s (i - 2) + 1) (g + 1) == 1 then bget s (i - 1) + 1
     else r5 n x s (i - 2) g
 
-def r6 : Nat → Buf → Buf → UInt64 → UInt64 → UInt64 × Buf
-  | 0, x, t, i, g => (w0, t)
+def r6 : Nat → Buf → Buf → UInt64 → UInt64 → UInt64
+  | 0, x, t, i, g => 0
   | n + 1, x, t, i, g =>
-    if i == 0 then (w0, t)
-    else if r4 16777216 x (bget t (i - 3) + 1) (g + 1) == 1 then (i, t)
+    if i == 0 then 0
+    else if r4 16777216 x (bget t (i - 3) + 1) (g + 1) == 1 then i
     else r6 n x t (i - 3) g
 
 def r7 (x : Buf) (p : UInt64) : UInt64 :=
@@ -99,19 +99,19 @@ def r12 (x : Buf) (f1 a1 : UInt64) (s : UInt64 × UInt64 × UInt64 × UInt64 × 
   let (t0, y12) := y11;
   let (u0, y13) := y12;
   let (i0, m0) := y13;
-  let (z, s1) := r5 16777216 x s0 i0 p;
-  if z ≠ 0 then (w12, f, a, b, r1 x p, d + 1, g, h, k, j0 3 0 (j0 7 (r8 (r8 d 1) (z - 1)) o), s1, t0, u0, i0, m0)
+  let z := r5 16777216 x s0 i0 p;
+  if z ≠ 0 then (w12, f, a, b, r1 x p, d + 1, g, h, k, j0 3 0 (j0 7 (r8 (r8 d 1) (z - 1)) o), s0, t0, u0, i0, m0)
   else
     let j := bsize t0;
-    let (e, t1) := r6 16777216 x t0 j p;
-    if e == 0 then (w13, f, a, b, p, d, g, h, k, o, s1, t1, u0, i0, m0)
+    let e := r6 16777216 x t0 j p;
+    if e == 0 then (w13, f, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m0)
     else
-      let z2 := bget t1 (e - 2);
-      let z3 := bget t1 (e - 1);
+      let z2 := bget t0 (e - 2);
+      let z3 := bget t0 (e - 1);
       if a1 == 1 then
-        if z2 == 0 then (w12, f, a, b, r1 x p, d + 1, g, h, k, r10 z3 0 o, s1, t1, u0, i0, m0)
-        else (w13, f, a, b, p, d, g, h, k, o, s1, t1, u0, i0, m0)
-      else (w10, f1, z2, b, r1 x p, d, g, h, k, o, s1, t1, r11 u0 m0 7 z3 z2, i0, m0 + 3)
+        if z2 == 0 then (w12, f, a, b, r1 x p, d + 1, g, h, k, r10 z3 0 o, s0, t0, u0, i0, m0)
+        else (w13, f, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m0)
+      else (w10, f1, z2, b, r1 x p, d, g, h, k, o, s0, t0, r11 u0 m0 7 z3 z2, i0, m0 + 3)
 
 def r13 (x : Buf) (s : UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × Buf × Buf × Buf × Buf × UInt64 × UInt64) : UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × Buf × Buf × Buf × Buf × UInt64 × UInt64 :=
   let (c, y1) := s;
@@ -161,9 +161,9 @@ def r17 (x : Buf) (s : UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 
   let (u0, y13) := y12;
   let (i0, m0) := y13;
   let j := bsize t0;
-  let (e, t1) := r6 16777216 x t0 j h;
-  if e == 0 then (w5, k, a, b, p + 3, g, g, h, k, o, s0, t1, u0, i0, w0)
-  else (w13, f, a, b, p, d, g, h, k, o, s0, t1, u0, i0, m0)
+  let e := r6 16777216 x t0 j h;
+  if e == 0 then (w5, k, a, b, p + 3, g, g, h, k, o, s0, t0, u0, i0, w0)
+  else (w13, f, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m0)
 
 def r18 (x : Buf) (s : UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × Buf × Buf × Buf × Buf × UInt64 × UInt64) : UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × Buf × Buf × Buf × Buf × UInt64 × UInt64 :=
   let (c, y1) := s;
@@ -273,8 +273,8 @@ def r15 : Nat → Buf → UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt
 
 def r16 (x : Buf) : Buf :=
   if (bget x 0 == 1 || bget x 0 == 2) && r2 16777216 x 1 == 1 then
-    let nt := r3 16777216 x 1 0;
-    r15 16777216 x (w1, nt + 1, w0, w0, w1, w0, w0, w0, w0, bnew, bnew, bnew, bnew, w0, w0)
+    let v1 := r3 16777216 x 1 0;
+    r15 16777216 x (w1, v1 + 1, w0, w0, w1, w0, w0, w0, w0, bnew, bnew, bnew, bnew, w0, w0)
   else bnew
 
 end C

@@ -29,12 +29,11 @@ The state tuple has 15 components. The Lean meaning differs from the V2S stack (
 Stage 1 (`l15`) reads the program input and writes a `Buf`; stages 2-5 (`r16`, `j8`, `e2`, `a5`) read the previous `Buf` (`bget`/`bsize`)
 and write a `Buf` (`q0 o v` = `bpush o (v &&& 255)`, the meaning of `put`); `m` chains them and `m1` copies the last `Buf` to `put`.
 Fuel of stages 2-5 is the numeral 16777216 (they stop on their own conditions). `chain_test.lean`: `C.m = chainS` on 6 good sources and
-3000 random strings, 0 mismatches. Acceptance (frontElab): Base, Asm, Expand, Lex, Inl accepted; Parse is rejected at `r2` and Main
-is blocked behind it: the loops over a read-only `Buf` (`r0`, `r2`, `r4`, `r5`, ...) consume it; the language box was asked (2da851e added
-borrowing for helpers only) to infer borrowed Buf parameters of loops that pass them unchanged.
+3000 random strings, 0 mismatches. Acceptance (frontElab, with origin/nano-v2 d19fe00 loop borrowing): ALL of Base, Asm, Expand, Lex, Inl, Parse, Main are accepted, so the whole
+compiler incl. the nano driver `C.m` is accepted. (Parser lookups `r5`/`r6` now return only the word, so the Buf stays borrowed.)
 
 ## What is NOT done
-1. **Driver as nano source.** Written (`C/Main.lean`), accepted up to the parser; waits for loop borrowing of read-only `Buf` (above).
+1. (done) Driver as nano source: `C/Main.lean`, accepted.
 2. **Buffer capacity.** The language box's tests use 64 words per buffer (`eccd515`); the parser stacks and the inliner
    table (`kap = 2^24` words) are far larger. The checkpoint is about acceptance; the buffer allocation size is an open design point.
 3. **Proofs of the text changes** beyond the assembler and expander (below). Differential tests agree (0 mismatches).
@@ -61,3 +60,13 @@ borrowing for helpers only) to infer borrowed Buf parameters of loops that pass 
   (`let v := bget u i; … u …`). Parenthesised `if` in tail position is rejected; an operator at line end must be followed by a space,
   so long conditions are on one line. `let (a, b) := e` takes pairs only (13-tuple state = 11 nested lets). Tuple components must be
   typed (tags are constants `w0..w13`). Fuel arguments are `len' x`, numerals, `+`, `*` only (not variables).
+
+## HANDOFF (pause, 2026-11-17)
+DONE (pushed): five list-based stages `Nano/V2Self/*.lean` (accepted; asm/expand proved equal to V2S; lex/inl/parse diff-tested);
+chained Buf version `Nano/V2Self/C/*.lean` with the driver `C.m`, all accepted by frontElab; `C.m = chainS` tested (chain_test.lean).
+IN PROGRESS: nothing running. Not done: proofs for lexer / inliner / parser text changes and for the Buf-chained versions
+(`C.a5 (b)` vs `asmV` under `b = bytes.map toUInt64`); `inlTV` bridge to `inlB`; the buffer capacity (language box tests use 64 words);
+backend proof for buffers; a QEMU run of the compiled `C.m`.
+NEXT: (1) run `Testing/nano/v2f/run.lean` / the backend `gen` on `C.m` (needs the capacity decision), (2) bridges: Buf versions vs
+list versions (reads `bget b i = rd l i` on `b = l.map toUInt64`, `q0` = `put`), then lexer fuel lemma, parser index-stack invariant,
+(3) `inlTV_eq`.
