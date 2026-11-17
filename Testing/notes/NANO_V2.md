@@ -304,3 +304,16 @@ conservative (inherited); loop states need ≥ 1 parameter; the zero arm must co
   call lowers to `let r := arg; loop …` (read-only alias, `Ex.lv`), so the caller keeps its buffer. If that fails
   to check (the body moves/mutates/returns it), the loop is re-parsed with the `Buf` in the state (`pLoop`).
   Inside loop bodies outer buffers are read-only (not dead). Tests p10, neg20; 50 programs agree.
+
+## HANDOFF (pause 20:50)
+DONE (nano-v2, all pushed): merge of nano-v2-backend; front end `Nano/V2/Front.lean` with products, fuel loops,
+buffers (Buf = List UInt64), output, conditions &&/||/≤/≠, read-only Buf aliases for helpers and loops (V2Self
+requests); proofs `cE_ok`/`cT_ok` (all but buffers, loops included), `mainProg_eval` + ABI definitions; buffer
+layer started: `BufRep`, `BufRep.keep`, `size_node`, `get_node` (Nano/V2/Buf.lean). Tests: fuzz.py (local: 50
+programs × 12 inputs agree, 20 negatives rejected); runner at 8aa9125: 302/307 nv2f_* QEMU pass, the 5 failures were
+OOM from the test capacity (fixed in eccd515, re-run pending); CI tender green at 2da851e.
+IN PROGRESS: buffer proof. Nothing half-written; the next step has not started.
+NEXT: (1) generalise Post/Keep (growing heap top, SameOutside of consumed footprints), re-prove the composition
+lemmas; set/push/mk nodes (round 6 F buffer_set/buffer_push); EnvRep with buffers + Owned, indexed by Ex.lv flags,
+now also with READ-ONLY aliases (two variables may share one address while both are read-only). (2) Sail layer for
+loops (round 6 E). (3) ImplementsBytes (`compile_correct`). Pending runs: QEMU/Sail of nv2f_* at ≥ d19fe00, check.sh.
