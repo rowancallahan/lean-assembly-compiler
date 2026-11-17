@@ -336,11 +336,12 @@ review, and spend their effort on the proved back end and self-hosting, not on p
 
 1. APPROVED: the code returns the output length in a register (e.g. a1); the spec states the output occupies exactly
    `[outputAddress, outputAddress + a1)` and decodes to the result, so readers never depend on the type's encoding.
-2. APPROVED IN PRINCIPLE (owner to confirm when we get there): the rest of the output block is zero (a proved zeroing
-   loop), so only the encoding lives in the output block.
+2. DEFERRED (owner): zeroing the rest of the output block; outputs are self-delimiting meanwhile. Only on request.
 3. Domain of the self-hosted nano binary: either stated explicitly in `Nano.selfHosted` or out-of-domain inputs set
    the OOM flag; must be explicit either way.
-Plan (small checked steps, AFTER nano self-hosting closes): add `CompileCorrectL` / `CompileRunsL` next to the current
+Plan (small checked steps, AFTER nano self-hosting closes; length register only): tiniest first step = nano
+(output always 8 bytes: `li a1, 8` + one proof step), then the IR back end (a1 = end − start; S3 and the inductive
+path inherit it), then the rest. add `CompileCorrectL` / `CompileRunsL` next to the current
 statements in Compiler/AllocSpec.lean (nothing breaks); prove them back end by back end (IR first, then inductive path,
 paged, S3, nano); when all hold, make them the main statements and retire the old ones. Each back end's exit code sets
 the length register (and, for item 2, zeroes the rest).
