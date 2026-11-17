@@ -1,6 +1,9 @@
 # Nano v2: architecture advice (Astra, relayed by the owner, 2026-11-17 ~17:55) and the decision
 
-DECISION (owner, via Astra): **Option C.** Freeze a target subset. Rewrite the nano compiler in it. Compiler 1
+NOTE (owner, 19:30): everything from Astra in this file is ADVICE the owner relayed, not the owner's own decisions. The
+main session adopted it as the working design; the owner can override any of it.
+
+ADOPTED (main session, on Astra's advice relayed by the owner; NOT an owner ruling — the owner may override): **Option C.** Freeze a target subset. Rewrite the nano compiler in it. Compiler 1
 (the existing Lean→S3 front end, compiling the rewritten source as ordinary Lean) produces the bootstrap B₁. Nano's
 own SMALL backend is the final destination. Compiling S3's implementation is NOT part of the self-hosting milestone.
 Do not build a nano→S3 elaborator for the bootstrap.
@@ -65,7 +68,7 @@ Pitfalls:
 Practical: a restricted grammar plus a translation to Lean terms, with nano semantics proved equal to those terms. The
 textual elaboration correspondence may be TESTED only, and must be stated as tested (owner: acceptable for now).
 
-# Round 2 (Astra, ~18:00): DECISIONS (binding for v2 milestone 1)
+# Round 2 (Astra, ~18:00): ADOPTED DESIGN (Astra's advice, adopted by the main session; owner may override)
 1. LOOPS: one pattern only, ordinary Lean, TAIL recursion on structural Nat fuel:
    `def run (fuel : Nat) (s : St) : St := match fuel with | 0 => s | n + 1 => run n (step s)`
    (inside: `if … then s else run n (…)` allowed; at most one recursive call per branch, tail position, predecessor
@@ -106,7 +109,7 @@ textual elaboration correspondence may be TESTED only, and must be stated as tes
    chunk + large output; hidden dependencies (runtime closure inventory); capacity/fuel fit; Nat/word edges; source↔
    definition correspondence; output determinism (compile twice).
 
-# Round 3 (Astra, ~18:15): DECISIONS (binding)
+# Round 3 (Astra, ~18:15): ADOPTED DESIGN (advice; owner may override)
 FREEZE IMMEDIATELY (before more backend/stage work): (i) linked-stage ABI, (ii) affine ownership rules incl. product
 decomposition, (iii) `ImplementsBytes`.
 1. B₁ = FIVE LINKED STAGES again (reuse `link_stage`): C = L >=> P >=> I >=> E >=> A (error-propagating). Prove stage
@@ -137,7 +140,7 @@ decomposition, (iii) `ImplementsBytes`.
    rewritten opaquely; specialized checkers instead of unfolding big dispatchers; layout manifest with checked offsets.
    BENCHMARK NOW: a ~2000-word function, a realistic stage-evaluation chunk, the final image equality (kernel time).
 
-# Round 4 (Astra, ~18:40): PROOF ARCHITECTURE (binding)
+# Round 4 (Astra, ~18:40): PROOF ARCHITECTURE (advice; adopted)
 0. CORRECTION: `newStage x = oldStage x` for ALL x is false when only the new stage has fuel/capacity failures. Prove
    `Adequate_i x κ → newStage_κ x = oldStage x` and establish Adequate for the concrete bootstrap inputs.
    "input < 2^32" alone is not a fuel/output-size bound for expansion/inlining.

@@ -420,7 +420,7 @@ git tags. nano v1 FINAL = this commit: main contains nano-parse-s3 rc2 (152f05b,
   self-hosting one" rather than self-hosting #1 with all features at once).
 - Terminology: v1 `Nano.selfHosted` = proven bare-metal nano compiler built by compiler #1; "compiles itself" = v2.
 
-### NANO_V2_SPEC (owner, 2026-11-17 19:25): proceed without a separate confirmation
+### NANO_V2_SPEC (owner, 2026-11-17 19:25): work may proceed on it without a separate confirmation (the content is Astra-advised, not owner-chosen)
 The frozen spec on branch nano-v2 (v1 constructs unchanged + exactly the Astra-decided additions; v1 stage formats;
 Int64 dropped for milestone 1) is accepted as the working freeze. Like v1's `nanoElab`/`Prog.eval`, the meaning stays a
 draft the owner may review later; changes after the freeze still go through the owner.
