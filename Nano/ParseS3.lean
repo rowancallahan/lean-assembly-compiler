@@ -115,17 +115,29 @@ theorem decS_eq : ∀ bs wd o, decS bs wd o = dec bs wd o
     rw [decS, dec]
     simp only [consO_eq, decS_eq r]
 
+/-- `Option.map (b, ·)` without a lambda -/
+def pairO (b : Bool) : Option (List Tok) → Option (Bool × List Tok)
+  | some ts => some (b, ts)
+  | none => none
+
 /-- `decL` -/
 def decLS : List UInt8 → Option (Bool × List Tok)
-  | 1 :: r => (decS r [] none).map (false, ·)
-  | 2 :: r => (decS r [] none).map (true, ·)
-  | _ => none
+  | b :: r => if b == 1 then pairO false (decS r [] none) else if b == 2 then pairO true (decS r [] none) else none
+  | [] => none
+
+theorem pairO_eq (b : Bool) (o : Option (List Tok)) : pairO b o = o.map (b, ·) := by cases o <;> rfl
 
 theorem decLS_eq (bs : List UInt8) : decLS bs = decL bs := by
-  unfold decLS decL
-  simp only [decS_eq]
-  repeat' split
-  all_goals simp_all
+  cases bs with
+  | nil => rfl
+  | cons b r =>
+    simp only [decLS, decL, decS_eq, pairO_eq]
+    by_cases h1 : b = 1
+    · subst h1; rfl
+    · by_cases h2 : b = 2
+      · subst h2; rfl
+      · simp only [beq_iff_eq, h1, h2, if_false]
+        split <;> simp_all
 
 /-! ## the machine -/
 
@@ -241,8 +253,11 @@ def stepS : Ctl → St → Res
       | some k => .go .ret { s with ts := ts, out := s.out ++ sVarS s.d k, d := s.d + 1 }
       | none =>
         match findD g s.ds with
-        | some (0, j) => .go .ret { s with ts := ts, out := s.out ++ sCallS j 0, d := s.d + 1 }
-        | _ => .fail
+        | some (k, j) =>
+          match k with
+          | 0 => .go .ret { s with ts := ts, out := s.out ++ sCallS j 0, d := s.d + 1 }
+          | _ + 1 => .fail
+        | none => .fail
     | f + 1, Tok.lp :: ts => .go (.expr f) { s with ts := ts, K := .paren :: s.K }
     | _, _ => .fail
 

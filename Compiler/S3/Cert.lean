@@ -349,6 +349,16 @@ attribute [s3_norm] UInt64.toBitVec_ofNat
 @[s3_norm] theorem u8_ofBitVec_sw (x : BitVec 64) : UInt8.ofBitVec (x.setWidth 8) = UInt8.ofNat x.toNat := by
   apply UInt8.toNat_inj.mp; simp
 @[s3_norm] theorem u64_toUInt8_ofNat (y : UInt64) : y.toUInt8 = UInt8.ofNat y.toNat := rfl
+@[s3_norm] theorem u8_ofNat_u64_sw (y : UInt64) :
+    BitVec.setWidth 64 (UInt8.ofNat y.toNat).toBitVec = y.toBitVec &&& 255#64 := by
+  apply BitVec.eq_of_toNat_eq; simp [BitVec.toNat_and]
+@[s3_norm] theorem u8_ofNat_bv_sw (y : BitVec 64) :
+    BitVec.setWidth 64 (UInt8.ofNat y.toNat).toBitVec = y &&& 255#64 := by
+  apply BitVec.eq_of_toNat_eq
+  simp only [BitVec.toNat_setWidth, UInt8.toNat_toBitVec, UInt8.toNat_ofNat, BitVec.toNat_and]
+  rw [show (255#64).toNat = 2 ^ 8 - 1 from rfl, Nat.and_two_pow_sub_one_eq_mod]
+  have h : (UInt8.ofNat y.toNat).toNat = y.toNat % 256 := UInt8.toNat_ofNat
+  rw [h]; omega
 @[s3_norm] theorem nat_beq_decide (a b : Nat) : (a == b) = decide (a = b) := by
   cases h : decide (a = b) <;> simp_all
 @[s3_norm] theorem list_u8_beq (x y : List UInt8) : @List.beq UInt8 instBEqOfDecidableEq x y = decide (x = y) := by
