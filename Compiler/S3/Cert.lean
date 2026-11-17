@@ -212,7 +212,12 @@ instance : Enc Unit where
   dec _ := ()
   dec_enc _ := rfl
 
-instance {ε α : Type} {m : Type → Type} [h : Enc (m (Except ε α))] : Enc (ExceptT ε m α) := h
+instance instEncExceptT {ε α : Type} {m : Type → Type} [h : Enc (m (Except ε α))] : Enc (ExceptT ε m α) := h
+
+@[simp] theorem enc_exceptT {ε α : Type} {m : Type → Type} [h : Enc (m (Except ε α))] (x : ExceptT ε m α) :
+    @Enc.enc (ExceptT ε m α) instEncExceptT x = @Enc.enc (m (Except ε α)) h x.run := rfl
+@[simp] theorem dec_exceptT {ε α : Type} {m : Type → Type} [h : Enc (m (Except ε α))] (v : V) :
+    @Enc.dec (ExceptT ε m α) instEncExceptT v = ExceptT.mk (@Enc.dec (m (Except ε α)) h v) := rfl
 
 @[simp] theorem enc_unit (u : Unit) : Enc.enc u = .c 0 [] := rfl
 @[simp] theorem dec_unit (v : V) : (Enc.dec v : Unit) = () := rfl

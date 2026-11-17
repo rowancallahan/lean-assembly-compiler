@@ -394,7 +394,7 @@ syntax (name := s3Split) "s3_split" : tactic
   let mut best : Option LocalDecl := none
   for v in inside do
     let some d := lctx.find? v | continue
-    let ty ← whnfR d.type
+    let ty ← whnf d.type
     if isWordTy ty || ty.isConstOf ``Bool then continue
     let .const I _ := ty.getAppFn | continue
     let some (.inductInfo ii) := (← getEnv).find? I | continue
