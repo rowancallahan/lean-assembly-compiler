@@ -48,6 +48,7 @@ structure Pre (m : Mem) (fb n : Nat) (s : T.S) : Prop where
   fal : fb % 8 = 0
   nsl : n ≤ T.maxSlots
   stub : bytes (T.mem s) (C.T0 - 16) 8 = (le8 (T.ra C.s0)).map some
+  gpc : bytes (T.mem s) (C.T0 - 8) 8 = (le8 (T.fr C.s0)).map some
   cells : ∀ g v, m.cells[g]? = some (some v) →
     bytes (T.mem s) (C.wb + 8 * g) 8 = (le8 (C.repr m.blks v)).map some
   out : ∀ i b, m.out[i]? = some (some b) → T.mem s (C.outA + i) = some b.toBitVec
@@ -58,11 +59,11 @@ structure Pre (m : Mem) (fb n : Nat) (s : T.S) : Prop where
 
 theorem Pre.fa {m : Mem} {a k n fb : Nat} {v : BitVec 64} {M : Nat → Option (BitVec 8)} {s : T.S}
     (h : C.Pre m a k s) : (C.fa n fb v M).Pre m a k s :=
-  ⟨h.ok, h.keep, h.fr, h.rlim, h.rin, h.rhp, h.cap, h.fit, h.fal, h.nsl, h.stub, h.cells, h.out, h.outL, h.unch, ⟨h.mok.inp, h.mok.blks, h.mok.cv⟩⟩
+  ⟨h.ok, h.keep, h.fr, h.rlim, h.rin, h.rhp, h.cap, h.fit, h.fal, h.nsl, h.stub, h.gpc, h.cells, h.out, h.outL, h.unch, ⟨h.mok.inp, h.mok.blks, h.mok.cv⟩⟩
 
 theorem Pre.unfa {m : Mem} {a k n fb : Nat} {v : BitVec 64} {M : Nat → Option (BitVec 8)} {s : T.S}
     (h : (C.fa n fb v M).Pre m a k s) : C.Pre m a k s :=
-  ⟨h.ok, h.keep, h.fr, h.rlim, h.rin, h.rhp, h.cap, h.fit, h.fal, h.nsl, h.stub, h.cells, h.out, h.outL, h.unch, ⟨h.mok.inp, h.mok.blks, h.mok.cv⟩⟩
+  ⟨h.ok, h.keep, h.fr, h.rlim, h.rin, h.rhp, h.cap, h.fit, h.fal, h.nsl, h.stub, h.gpc, h.cells, h.out, h.outL, h.unch, ⟨h.mok.inp, h.mok.blks, h.mok.cv⟩⟩
 
 theorem zeros_len (n : Nat) : (Target.zeros n).length = n := by simp [Target.zeros]
 
@@ -153,6 +154,7 @@ theorem pro_ok {m : Mem} {fb n : Nat} {F : Func Nat} {args : List Val} {s : T.S}
       change bytes (T.mem s1) fb 8 = _
       have e := @bytes_wr_self (T.mem s) fb (le8 (T.ra s)); rw [hl8] at e; rw [hm1, e]; rfl
     stub := by change bytes (T.mem s1) (C.T0 - 16) 8 = _; rw [hm1, bytes_wr_out (.inr (by rw [hl8]; omega))]; exact hP.stub
+    gpc := by change bytes (T.mem s1) (C.T0 - 8) 8 = _; rw [hm1, bytes_wr_out (.inr (by rw [hl8]; omega))]; exact hP.gpc
     above := fun x h1 h2 => by
       change fb + 8 * (0 + 1) ≤ x at h1; rw [hm1]; exact Proven.Mach.Mem.wr_out (by rw [hl8]; omega)
     slots := fun j hj => absurd hj (Nat.not_lt_zero _)
@@ -323,6 +325,7 @@ theorem call_ok {E : Env} {m : Mem} {regs : Nat → Val} {s : T.S} {q ex t : Nat
         fal := by have := hR.fal; omega
         nsl := hns
         stub := by rw [hm64]; exact hR4.stub
+        gpc := by rw [hm64]; exact hR4.gpc
         cells := fun g' v hg => by rw [hm64]; exact hR4.cells g' v hg
         out := fun i b hi => by rw [hm64]; exact hR4.out i b hi
         outL := hR4.outL
@@ -432,6 +435,7 @@ theorem ret_ok {m : Mem} {regs : Nat → Val} {s : T.S} {q : Nat} {vs : List (Ar
       fal := hal
       nsl := hR1.nsl
       stub := by rw [hm31]; exact hR1.stub
+      gpc := by rw [hm31]; exact hR1.gpc
       cells := fun g v hg => by rw [hm31]; exact hR1.cells g v hg
       out := fun i b hi => by rw [hm31]; exact hR1.out i b hi
       outL := hR1.outL
@@ -477,6 +481,7 @@ theorem resume_ok {m : Mem} {regs : Nat → Val} {s : T.S} {q n : Nat} {ds : Lis
     nsl := hnsl
     saved := by rw [hm20]; exact hsnap.saved
     stub := by rw [hm20]; exact hP.stub
+    gpc := by rw [hm20]; exact hP.gpc
     above := fun x h1 h2 => by rw [hm20]; exact hsnap.above x h1 h2
     slots := fun j hj => by rw [hm20]; exact hsnap.slots j hj
     cells := fun g v hg => by rw [hm20]; exact hP.cells g v hg

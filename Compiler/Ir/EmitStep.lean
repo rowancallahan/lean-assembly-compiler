@@ -114,7 +114,8 @@ def Fin (Q : Prog Nat) (r : Result) (s' : T.S) : Prop :=
   ((peak (r.ev ++ [base Q]) ≤ C.wl / 8 ∧ T.get s' RIn = BitVec.ofNat 64 C.inA ∧
       (∀ i b, r.mem.out[i]? = some (some b) → T.mem s' (C.outA + i) = some b.toBitVec) ∧
       T.keepC C.s0 s' ∧ T.fr s' = T.fr C.s0 ∧ (∀ n, r.vs = [.w n] → T.get s' RLen = n)) ∨
-    (C.wl / 8 < peak (r.ev ++ [base Q]) ∧ T.get s' RIn = BitVec.allOnes 64))
+    (C.wl / 8 < peak (r.ev ++ [base Q]) ∧ T.get s' RIn = BitVec.allOnes 64 ∧ T.keepC C.s0 s' ∧
+      T.fr s' = T.fr C.s0))
 
 variable {C}
 

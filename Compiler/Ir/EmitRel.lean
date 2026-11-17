@@ -56,6 +56,8 @@ structure MR (m : Mem) (regs : Nat → Val) (s : T.S) : Prop where
   saved : bytes (T.mem s) C.F0 8 = (le8 C.sv).map some
   /-- the stub's cell with the caller's return address -/
   stub : bytes (T.mem s) (C.T0 - 16) 8 = (le8 (T.ra C.s0)).map some
+  /-- the stub's cell with the caller's frame register -/
+  gpc : bytes (T.mem s) (C.T0 - 8) 8 = (le8 (T.fr C.s0)).map some
   /-- nothing above the frame changes -/
   above : ∀ x, C.F0 + 8 * (C.nS + 1) ≤ x → x < C.T0 → T.mem s x = C.hm x
   slots : ∀ j, j < C.nS → bytes (T.mem s) (C.F0 + 8 * (j + 1)) 8 = (le8 (C.repr m.blks (regs j))).map some
@@ -108,6 +110,7 @@ theorem MR.regs {m : Mem} {regs : Nat → Val} {s s' : T.S} (h : C.MR m regs s) 
   nsl := h.nsl
   saved := by rw [hm]; exact h.saved
   stub := by rw [hm]; exact h.stub
+  gpc := by rw [hm]; exact h.gpc
   above x h1 h2 := by rw [hm]; exact h.above x h1 h2
   slots j hj := by rw [hm]; exact h.slots j hj
   cells g v hg := by rw [hm]; exact h.cells g v hg
@@ -156,6 +159,7 @@ theorem MR.stS {m : Mem} {regs : Nat → Val} {s s' : T.S} {d : Nat} {v : Val} (
     nsl := h.nsl
     saved := by rw [hm, bytes_wr_out (.inl (by omega))]; exact h.saved
     stub := by rw [hm, bytes_wr_out (.inr (by have := h.fit; have := h.cap; simp only [length_le8]; omega))]; exact h.stub
+    gpc := by rw [hm, bytes_wr_out (.inr (by have := h.fit; have := h.cap; simp only [length_le8]; omega))]; exact h.gpc
     above := fun x h1 h2 => by have := h.fit; have := h.cap; rw [hm, Proven.Mach.Mem.wr_out (by simp only [length_le8]; omega)]; exact h.above x h1 h2
     slots := fun j hj => by
       rw [hm]
@@ -233,6 +237,7 @@ theorem MR.stCell {m : Mem} {regs : Nat → Val} {s s' : T.S} {g0 : Nat} {w : Va
     nsl := h.nsl
     saved := by rw [hm, bytes_wr_out (.inr (by rw [hl]; omega))]; exact h.saved
     stub := by rw [hm, bytes_wr_out (.inr (by have := h.fit; have := h.cap; simp only [length_le8]; omega))]; exact h.stub
+    gpc := by rw [hm, bytes_wr_out (.inr (by have := h.fit; have := h.cap; simp only [length_le8]; omega))]; exact h.gpc
     above := fun x h1 h2 => by have := h.fit; have := h.cap; rw [hm, Proven.Mach.Mem.wr_out (by simp only [length_le8]; omega)]; exact h.above x h1 h2
     slots := fun j hj => by
       rw [hm, bytes_wr_out (.inr (by rw [hl]; omega))]; exact h.slots j hj
@@ -278,6 +283,7 @@ theorem MR.stOut {m : Mem} {regs : Nat → Val} {s s' : T.S} {i : Nat} {y : BitV
     nsl := h.nsl
     saved := by rw [hm, bytes_upd_out fun j hj => by omega]; exact h.saved
     stub := by have := h.fit; have := h.cap; have := C.T0_le; rw [hm, bytes_upd_out fun j hj => by omega]; exact h.stub
+    gpc := by have := h.fit; have := h.cap; have := C.T0_le; rw [hm, bytes_upd_out fun j hj => by omega]; exact h.gpc
     above := fun x h1 h2 => by have := h.fit; have := h.cap; have := C.T0_le; rw [hm]; unfold Proven.Mach.Mem.upd; rw [if_neg (by omega)]; exact h.above x h1 h2
     slots := fun j hj => by
       have := h.slot hj
@@ -347,6 +353,7 @@ theorem MR.alloc {m : Mem} {regs : Nat → Val} {s s' : T.S} {d c : Nat} (h : C.
     nsl := h.nsl
     saved := by rw [hm, bytes_wr_out (.inl (by omega))]; exact h.saved
     stub := by rw [hm, bytes_wr_out (.inr (by have := h.fit; have := h.cap; simp only [length_le8]; omega))]; exact h.stub
+    gpc := by rw [hm, bytes_wr_out (.inr (by have := h.fit; have := h.cap; simp only [length_le8]; omega))]; exact h.gpc
     above := fun x h1 h2 => by have := h.fit; have := h.cap; rw [hm, Proven.Mach.Mem.wr_out (by simp only [length_le8]; omega)]; exact h.above x h1 h2
     slots := fun j hj => by
       rw [hm]
@@ -406,6 +413,9 @@ theorem MR.grow {m : Mem} {regs : Nat → Val} {s s' : T.S} (h : C.MR m regs s) 
     stub := by
       change bytes (T.mem s') (C.T0 - 16) 8 = _
       rw [hm, bytes_wr_out (.inr (by rw [hl]; omega))]; exact h.stub
+    gpc := by
+      change bytes (T.mem s') (C.T0 - 8) 8 = _
+      rw [hm, bytes_wr_out (.inr (by rw [hl]; omega))]; exact h.gpc
     above := fun x h1 h2 => by
       change C.F0 + 8 * (C.nS + 1 + 1) ≤ x at h1
       rw [hm, Proven.Mach.Mem.wr_out (by rw [hl]; omega)]; exact h.above x (by omega) h2

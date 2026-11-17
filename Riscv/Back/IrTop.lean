@@ -150,12 +150,11 @@ theorem machine_runL {P : Prog VReg} {compiled : CompiledA} {α β : Type} {f : 
       (∀ address, Outside address (call.outputAddress, (encodeOutput (f argument)).length) →
         Outside address (call.workAddress, call.workLength) →
         (riscv.observe finishState).memory address = (riscv.observe startState).memory address) ∧
-      riscv.configured finishState ∧
+      riscv.configured finishState ∧ KeptRegisters riscv startState finishState ∧
       ((memoryNeeded compiled (encodeInput argument) ≤ call.workLength ∧
           (riscv.observe finishState).register riscv.mapping.status ≠ oomFlag ∧
           readMemory (riscv.observe finishState) call.outputAddress (encodeOutput (f argument)).length =
             some (encodeOutput (f argument)) ∧
-          KeptRegisters riscv startState finishState ∧
           ((∀ r, P.result (encodeInput argument) = some r →
               r.vs = [.w (BitVec.ofNat 64 (encodeOutput (f argument)).length)]) →
             (riscv.observe finishState).register riscv.mapping.outputLength =
@@ -265,7 +264,11 @@ theorem machine_runL {P : Prog VReg} {compiled : CompiledA} {α β : Type} {f : 
     (by show 16 ≤ (getX startState 2).toNat / 8 * 8; rw [hsp]; omega)
     hrun hout
   obtain ⟨steps, finishState, hsteps, hok, hpcF, hU, hcase⟩ := this
-  refine ⟨finishState, runs_of_steps steps _ _ hsteps, ?_, ?_, hok, ?_⟩
+  have hkf : rvT.keepC C.s0 finishState ∧ rvT.fr finishState = rvT.fr C.s0 := by
+    rcases hcase with ⟨-, -, -, h1, h2, -⟩ | ⟨-, -, h1, h2⟩
+    · exact ⟨h1, h2⟩
+    · exact ⟨h1, h2⟩
+  refine ⟨finishState, runs_of_steps steps _ _ hsteps, ?_, ?_, hok, kept_of configured hok hkf.1 hkf.2, ?_⟩
   · have : finishState.regs.get? .PC = some (BitVec.ofNat 64 call.returnAddress.toNat) := by
       rw [← getX_of (configured.x1.symm.trans h1) rfl]; exact hpcF
     simp [riscvObserve, this]
@@ -277,9 +280,9 @@ theorem machine_runL {P : Prog VReg} {compiled : CompiledA} {α β : Type} {f : 
     rw [this]
   · have hx10 : ∀ v, getX finishState 10 = v → (riscvObserve finishState).register 10 = UInt64.ofBitVec v := by
       intro v hv; simp only [riscvObserve, riscvRegister, hok.x10, hv, Option.map_some, Option.getD_some]
-    rcases hcase with ⟨pk, a0, bo, hkc, hfr, hlen⟩ | ⟨pk, a0⟩
+    rcases hcase with ⟨pk, a0, bo, -, -, hlen⟩ | ⟨pk, a0, -⟩
     · change peak (r.ev ++ [Ctx.base Q]) ≤ call.workLength / 8 at pk
-      refine .inl ⟨by omega, ?_, ?_, kept_of configured hok hkc hfr, fun hvs => ?_⟩
+      refine .inl ⟨by omega, ?_, ?_, fun hvs => ?_⟩
       · rw [hx10 _ a0]
         intro e
         have := congrArg UInt64.toNat e
@@ -321,7 +324,7 @@ theorem machine_run {P : Prog VReg} {compiled : CompiledA} {α β : Type} {f : �
             some (encodeOutput (f argument))) ∨
         (call.workLength < memoryNeeded compiled (encodeInput argument) ∧
           (riscv.observe finishState).register riscv.mapping.status = oomFlag)) := by
-  obtain ⟨finishState, hruns, hpc, hframe, -, hcase⟩ := machine_runL compiles computes startsRight outputFits
+  obtain ⟨finishState, hruns, hpc, hframe, -, -, hcase⟩ := machine_runL compiles computes startsRight outputFits
   refine ⟨finishState, hruns, hpc, fun a h1 h2 => hframe a (outside_prefix outputFits h1) h2, ?_⟩
   rcases hcase with ⟨h1, h2, h3, -⟩ | h
   · exact .inl ⟨h1, h2, h3⟩
@@ -387,6 +390,20 @@ theorem meaningL_inv {P : ProgL} {input o : List UInt8} (h : P.meaning input = s
         · cases hr'; exact hv
       · exact nomatch h
 
+/-- **What happens, strengthened** (`CompileRunsL`): returns, nothing changed outside the result and the work block,
+the flag exactly when out of memory, the callee-saved registers kept (also on the out-of-memory exit), `Cfg` -/
+theorem ir_compile_runsL : CompileRunsL riscv compileL := by
+  intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
+    outputFits
+  obtain ⟨hm, -⟩ := meaningL_inv (computes argument)
+  obtain ⟨finishState, hruns, hpc, hframe, hcfg, hkept, hcase⟩ :=
+    machine_runL (P := program.prog) compiles (fun _ => hm) startsRight outputFits
+  refine ⟨finishState, hruns, hpc, hframe, ?_, hkept, hcfg⟩
+  unfold OutOfMemory
+  rcases hcase with ⟨hle, hne, -⟩ | ⟨hlt, heq⟩
+  · exact ⟨fun h => absurd h hne, fun h => absurd h (Nat.not_lt.2 hle)⟩
+  · exact ⟨fun _ => hlt, fun _ => heq⟩
+
 /-- **What comes out, strengthened** (`CompileCorrectL`): with enough memory the code returns with the right output,
 its length in `a1`, the callee-saved registers kept, `Cfg`, and nothing changed outside the result and the work
 block -/
@@ -395,9 +412,9 @@ theorem ir_compile_correctL : CompileCorrectL riscv compileL := by
     outputFits enoughMemory
   have hc := computes argument
   obtain ⟨hm, hvs⟩ := meaningL_inv hc
-  obtain ⟨finishState, hruns, hpc, hframe, hcfg, hcase⟩ :=
+  obtain ⟨finishState, hruns, hpc, hframe, hcfg, hkept, hcase⟩ :=
     machine_runL (P := program.prog) compiles (fun _ => hm) startsRight outputFits
-  rcases hcase with ⟨-, hne, hread, hkept, hlen⟩ | ⟨hlt, -⟩
+  rcases hcase with ⟨-, hne, hread, hlen⟩ | ⟨hlt, -⟩
   · exact ⟨finishState, hruns, hpc, hne, hread, hlen hvs, hframe, hkept, hcfg⟩
   · exact absurd enoughMemory (Nat.not_le.2 hlt)
 

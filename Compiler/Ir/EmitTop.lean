@@ -13,12 +13,15 @@ variable {T : Target} {C : Ctx T}
 /-- the exit, from the stub's cell -/
 theorem exit_ok' {s : T.S} {q : Nat} {rest : List (BitVec 32)} (hA : C.AtQ s q) (hk : T.keepC C.s0 s)
     (h16 : C.wb + 16 ≤ C.T0) (hstub : bytes (T.mem s) (C.T0 - 16) 8 = (le8 (T.ra C.s0)).map some)
+    (hgpc : bytes (T.mem s) (C.T0 - 8) 8 = (le8 (T.fr C.s0)).map some)
     (hin : InW C.W q (T.encO .exit ++ rest)) : T.runsTo s C.Exited := by
   have htop : T.top s = C.T0 := by rw [T.top_keepC hk, C.htop]; rfl
   have hT := C.T0_le; have hal := C.T0_al; obtain ⟨hw1, hw2⟩ := C.wR
   refine T.toCore.runsTo_mono (T.c_exit (w := T.ra C.s0) (C.at_of hA hin.left) (by rw [htop]; omega)
-    (by rw [htop]; exact ⟨by omega, by omega⟩) (by rw [htop]; omega) (by rw [htop]; exact hstub) C.retOK)
-    fun s' ⟨hok, hpc, hs, hm⟩ => ⟨hok, hpc, fun a h1 h2 => by rw [hm]; exact hA.2.2 a h1 h2, hs⟩
+    (by rw [htop]; exact ⟨by omega, by omega⟩) (by rw [htop]; omega) (by rw [htop]; exact hstub)
+    (by rw [htop]; exact hgpc) C.retOK)
+    fun s' ⟨hok, hpc, hs, hm, hk', hfr⟩ => ⟨hok, hpc, fun a h1 h2 => by rw [hm]; exact hA.2.2 a h1 h2, hs,
+      T.keepC_trans hk hk', hfr⟩
 
 theorem init_eq {Q : Prog Nat} {F : Func Nat} (hF : Q.funcs[Q.main]? = some F) (input : List UInt8) :
     init Q input = ⟨[⟨Q.main, F.entry, 0, setMany (fun _ => .w 0) F.params
@@ -293,6 +296,7 @@ theorem stub_ok {Q : Prog Nat} {L : Lay} {F : Func Nat} {c : List EOp} {rest : L
         fal := by omega
         nsl := hns
         stub := by rw [hm16']; exact hstub11
+        gpc := by rw [hm16']; exact hgp11
         cells := fun g v h => by simp [Mem.init] at h
         out := fun i b h => by simp [Mem.init] at h
         outL := by simp [Mem.init]
@@ -339,7 +343,7 @@ theorem stub_ok {Q : Prog Nat} {L : Lay} {F : Func Nat} {c : List EOp} {rest : L
       refine T.toCore.runsTo_trans (C.jW_raw hA14 hj hin14) fun s15 ⟨hA15, hk15, hm15, _⟩ =>
         T.toCore.runsTo_mono (C.exit_ok' hA15
           (T.keepC_trans hk011 (T.keepC_of_keepF (T.keepF_of_keep (T.keep_trans hk1114 hk15)))) (by omega)
-          (by rw [hm15, hm14']; exact hstub11) hex) fun s16 h16 => .inr ⟨by omega, h16⟩
+          (by rw [hm15, hm14']; exact hstub11) (by rw [hm15, hm14']; exact hgp11) hex) fun s16 h16 => .inr ⟨by omega, h16⟩
   · -- they do not fit: `exit0`
     have hpc5 := d5.hpc
     rw [if_neg (fun h => hfit (hfitB.2 h))] at hpc5
@@ -355,7 +359,9 @@ theorem stub_ok {Q : Prog Nat} {L : Lay} {F : Func Nat} {c : List EOp} {rest : L
     have hra : T.ra s6 = T.ra C.s0 := by rw [T.keep_ra (T.keep_trans hk05 hk6)]
     refine T.toCore.runsTo_mono (T.w_ret (by rw [hra]; exact C.retOK) (C.at_of hA6 hin6.right.left))
       fun s7 ⟨d7, hs7, hm7⟩ => .inr ⟨by omega, d7.ok, by rw [← hra]; exact d7.hpc,
-        fun a _ _ => by rw [hm7, hm6, hm5, hm04], by rw [hs7]; exact Core.Set1.same T.toCore st6⟩
+        fun a _ _ => by rw [hm7, hm6, hm5, hm04], by rw [hs7]; exact Core.Set1.same T.toCore st6,
+        T.keepC_of_keepF (T.keepF_of_keep (T.keep_trans hk05 (T.keep_trans hk6 d7.keep))),
+        T.keep_fr (T.keep_trans hk05 (T.keep_trans hk6 d7.keep))⟩
 
 
 /-- **emission is correct** (any target): from the start of a call, the code of `emitP` runs a terminating Lin run

@@ -53,11 +53,14 @@ structure Target extends WideF where
     bytes (mem s) (fr s).toNat 8 = (le8 w).map some →
     runsTo s fun s' => ok s' ∧ keepC s s' ∧ pcIs s' (next pc (encLC n).length) ∧ ra s' = w ∧
       fr s' = BitVec.ofNat 64 ((fr s).toNat + 8 * (n + 1)) ∧ toBase.Same s s' ∧ mem s' = mem s
-  /-- out of memory: return to the address in the cell `top - 16`, the status register (`r11`) `:= -1` -/
+  /-- out of memory: return to the address in the cell `top - 16`, the frame register := the cell `top - 8`, the
+  status register (`r11`) `:= -1`; the registers of `keepC` kept -/
   encX : List (BitVec 32)
-  c_exit : ∀ {s : S} {pc w : BitVec 64}, toBase.At s pc encX → 16 ≤ top s →
-    toBase.inRAM (top s - 16) 8 → (top s - 16) % 8 = 0 → bytes (mem s) (top s - 16) 8 = (le8 w).map some →
-    retOK w → runsTo s fun s' => ok s' ∧ pcIs s' w ∧ get s' ⟨11, by decide⟩ = BitVec.allOnes 64 ∧ mem s' = mem s
+  c_exit : ∀ {s : S} {pc w v : BitVec 64}, toBase.At s pc encX → 16 ≤ top s →
+    toBase.inRAM (top s - 16) 16 → (top s - 16) % 8 = 0 → bytes (mem s) (top s - 16) 8 = (le8 w).map some →
+    bytes (mem s) (top s - 8) 8 = (le8 v).map some →
+    retOK w → runsTo s fun s' => ok s' ∧ pcIs s' w ∧ get s' ⟨11, by decide⟩ = BitVec.allOnes 64 ∧ mem s' = mem s ∧
+      keepC s s' ∧ fr s' = v
 
 /-- the operations emitted -/
 inductive EOp where

@@ -11,7 +11,8 @@ variable {T : Target} (C : Ctx T)
 
 /-- returned to the caller with the out-of-memory flag -/
 def Exited (s' : T.S) : Prop :=
-  T.ok s' ∧ T.pcIs s' (T.ra C.s0) ∧ C.Unch s' ∧ T.get s' RIn = BitVec.allOnes 64
+  T.ok s' ∧ T.pcIs s' (T.ra C.s0) ∧ C.Unch s' ∧ T.get s' RIn = BitVec.allOnes 64 ∧ T.keepC C.s0 s' ∧
+    T.fr s' = T.fr C.s0
 
 variable {C}
 
@@ -23,8 +24,10 @@ theorem exit_ok {m : Mem} {regs : Nat → Val} {s : T.S} {q : Nat} {rest : List 
   have hfit := hR.fit; have hcap := hR.cap; have hT := C.T0_le; have hal := C.T0_al
   obtain ⟨hw1, hw2⟩ := C.wR
   refine T.toCore.runsTo_mono (T.c_exit (w := T.ra C.s0) (C.at_of hA hin.left) (by rw [htop]; omega)
-    (by rw [htop]; exact ⟨by omega, by omega⟩) (by rw [htop]; omega) (by rw [htop]; exact hR.stub) C.retOK)
-    fun s' ⟨hok, hpc, hs, hm⟩ => ⟨hok, hpc, fun a h1 h2 => by rw [hm]; exact hA.2.2 a h1 h2, hs⟩
+    (by rw [htop]; exact ⟨by omega, by omega⟩) (by rw [htop]; omega) (by rw [htop]; exact hR.stub)
+    (by rw [htop]; exact hR.gpc) C.retOK)
+    fun s' ⟨hok, hpc, hs, hm, hk, hfr⟩ => ⟨hok, hpc, fun a h1 h2 => by rw [hm]; exact hA.2.2 a h1 h2, hs,
+      T.keepC_trans hR.keep hk, hfr⟩
 
 /-- the words before the jump to the exit -/
 def allocPre (T : Target) (n : Arg Nat) : List EOp :=

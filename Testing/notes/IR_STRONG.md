@@ -33,3 +33,8 @@ Branch `ir-strong` (from main + s3-rec). Owner goals: ROADMAP "Spec strengthenin
 - GAP (OOM path): the out-of-memory exit (`encK .exit`: `ld ra,-16(top); li a0,-1; ret`) does not restore the frame
   register gp (x3), so `KeptRegisters` fails on that path; `CompileRunsL` needs an IR-specific exit that also
   reloads gp from the stub's cell `top - 8`.
+- step 2b: OOM path closed. `rvT.encX := encXG` = `srli/slli t0 (top); ld ra,-16(t0); ld gp,-8(t0); li a0,-1; ret`
+  (`law_exitG`, Riscv/Back/IrTarget.lean; the shared `encK .exit` of the other back ends is unchanged). `Target.c_exit`
+  takes the cell `top - 8` and yields `keepC s s' ∧ fr s' = v`; `MR`/`Pre` carry the stub's gp cell (`gpc`, mirrors
+  `stub`); `Exited` and `Fin`'s OOM case state `keepC C.s0 s' ∧ fr s' = fr C.s0`. `Ir.ir_compile_runsL :
+  CompileRunsL riscv compileL` PROVED; `machine_runL` states `KeptRegisters` unconditionally.
