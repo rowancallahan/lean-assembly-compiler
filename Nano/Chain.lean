@@ -17,6 +17,7 @@ and for Int64 by `nanoRun_int`). -/
 import Nano.ProofSrc
 import Nano.Int
 import Nano.Elab
+import Nano.StackTop
 
 set_option linter.unusedVariables false
 
@@ -145,5 +146,33 @@ theorem nano_chain_runs (src : List UInt8) (p : Prog) (c : CompiledA) (helab : n
   rw [nanoCompileSrc, helab, Option.bind_some] at hc
   exact nano_compile_runs p c _ _ _ ⟨args, harity⟩ startState call hc (computes_words p) startsRight
     (by rw [leN_length]; exact outputFits)
+
+/-! ## the stack path `nanoCompileA` (code `nanoGen p = asm (genR p)`; L2 in `Nano/StackTop.lean`) -/
+
+/-- **stack path, source to machine, `UInt64`**: `chain_of nano_stack_correct` -/
+theorem nano_stack_chain (src : List UInt8) (p : Prog) (c : CompiledA) (helab : nanoElab src = some p)
+    (hc : nanoCompileA p = some c) (args : List UInt64) (harity : args.length = p.1)
+    (startState : riscv.State) (call : Call) (startsRight : StartCorrect riscv startState call c.code (encWs args))
+    (outputFits : 8 ≤ call.outputLength) (enoughMemory : memoryNeeded c (encWs args) ≤ call.workLength) :
+    c.code = nanoGen p ∧ ∃ v, p.eval args = some v ∧
+    ∃ finishState, Runs riscv startState finishState ∧
+      (riscv.observe finishState).programCounter = call.returnAddress ∧
+      (riscv.observe finishState).register riscv.mapping.status ≠ oomFlag ∧
+      readMemory (riscv.observe finishState) call.outputAddress 8 = some (leN 8 v.toNat) :=
+  ⟨nanoCompileA_code hc, chain_of nano_stack_correct src p c helab hc args harity startState call startsRight
+    outputFits enoughMemory⟩
+
+/-- **stack path, source to machine, `Int64`**: `chain_int_of nano_stack_correct` -/
+theorem nano_stack_chain_int (src : List UInt8) (p : Prog) (c : CompiledA) (helab : nanoElabT src = some (true, p))
+    (hc : nanoCompileA p = some c) (args : List Int64) (harity : args.length = p.1)
+    (startState : riscv.State) (call : Call) (startsRight : StartCorrect riscv startState call c.code (encIs args))
+    (outputFits : 8 ≤ call.outputLength) (enoughMemory : memoryNeeded c (encIs args) ≤ call.workLength) :
+    c.code = nanoGen p ∧ ∃ v, p.evalI args = some v ∧
+    ∃ finishState, Runs riscv startState finishState ∧
+      (riscv.observe finishState).programCounter = call.returnAddress ∧
+      (riscv.observe finishState).register riscv.mapping.status ≠ oomFlag ∧
+      readMemory (riscv.observe finishState) call.outputAddress 8 = some (encI v) :=
+  ⟨nanoCompileA_code hc, chain_int_of nano_stack_correct src p c helab hc args harity startState call startsRight
+    outputFits enoughMemory⟩
 
 end Nano
