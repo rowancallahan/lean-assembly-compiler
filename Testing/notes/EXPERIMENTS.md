@@ -24,4 +24,4 @@ Format: id / branch/commit / target / variant / measure / time limit / claimed b
 - variant: `lake env lean --tstack=4000000 -Dprofiler=true -Dprofiler.threshold=200 Testing/nano/ps3/pr_gs.lean`
 - measure: top 20 declarations/tactics by time; how much is s3_solve / simp / decide / kernel
 - time limit: 60 min
-- claimed by:
+- claimed by: session_01MfKuVaD8AUJ4tttPqcW459 (profiler; claim written by main session)
