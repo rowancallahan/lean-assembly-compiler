@@ -185,3 +185,9 @@ Tests (before merging origin/main at 1cdf8f8):
   146 sources, all in DomainS3; stage 2b alone and inliner alone 146/146 (QEMU, work found by doubling/bisection);
   **linked binaryS3: QEMU 146/146, Sail 8/8** (QEMU == Sail == Lean `nanoCompileA`, a1 = length, flag clear, gp/sp,
   guards, Sail writes only in output + work). K 17888..2348672, `space5 K` up to 601 MB. Mismatches: none.
+
+After merging origin/main (1cdf8f8, IR strong stub from ir-strong): `bash Testing/scripts/check.sh` **ALL CHECKS PASSED**
+(1910 s, peak 6.3 GB, 4 jobs; `ok 'Nano.selfHostedS3' 77 axioms`; only the pre-existing statement-fingerprint WARNING,
+not re-frozen). The words are unchanged by the merge: expander, assembler and the linked `binaryS3C` (59104 words)
+byte-identical to the tested ones; `bs3_test.py 20 6 7` re-run after the merge: same results (QEMU 146 × 2, Sail 6 × 2
+per stage).
