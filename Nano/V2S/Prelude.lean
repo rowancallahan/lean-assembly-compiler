@@ -29,4 +29,11 @@ theorem rd_drop (x : UInt8) (xs : List UInt8) (i : UInt64) (h : i.toNat < (x :: 
 theorem rd_get (xs : List UInt8) (i : Nat) (h : i < 2 ^ 64) : rd xs i.toUInt64 = (xs.getD i 0).toUInt64 := by
   unfold rd; congr; simp; omega
 
+/-! word buffers (work stacks): a list of words, the newest at the end; reads past the end give 0 -/
+
+def bget (b : List UInt64) (i : UInt64) : UInt64 := b.getD i.toNat 0
+def bsize (b : List UInt64) : UInt64 := b.length.toUInt64
+def bpush (b : List UInt64) (v : UInt64) : List UInt64 := b ++ [v]
+def bpop (b : List UInt64) : List UInt64 := b.dropLast
+
 end Nano.V2S
