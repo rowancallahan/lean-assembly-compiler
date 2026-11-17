@@ -661,6 +661,27 @@ macro_rules (kind := s3SolveB)
         | (((try simp only [s3_norm, s3_bytes, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne, Nat.blt_eq, Nat.ble_eq, UInt8.toNat_ofNat, decide_eq_true_eq] at *); (try s3_hyps); (try simp [s3_norm, s3_bytes, $ls,*]);
             s3_splitB) <;> s3_solveB $n' [$ls,*] with $c))
 
+/-- (opt-in, `s3_compileF`) `s3_solveF n [simp lemmas] with closer`: the search of `s3_solveB`, each node simplified
+ONCE: `s3_contra`; else simplify, then `done`, the closer, or split (`s3_splitB`) and recurse on the simplified goal.
+`s3_solveB` simplifies the same node up to three times (once per alternative), so this proves the same goals with
+about a third of the `simp` work. -/
+syntax (name := s3SolveF) "s3_solveF " num " [" Lean.Parser.Tactic.simpArg,* "]" " with " tactic : tactic
+
+macro_rules (kind := s3SolveF)
+  | `(tactic| s3_solveF $n [$ls,*] with $c) => do
+    let k := n.getNat
+    if k == 0 then
+      `(tactic| ((try simp only [s3_norm, s3_bytes, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne, Nat.blt_eq, Nat.ble_eq, UInt8.toNat_ofNat, decide_eq_true_eq] at *); (try s3_hyps); simp [s3_norm, s3_bytes, $ls,*]; all_goals (repeat' (first | (intro) | apply And.intro)) <;> $c))
+    else
+      let n' := Syntax.mkNumLit (toString (k - 1))
+      `(tactic| first
+        | s3_contra
+        | ((try simp only [s3_norm, s3_bytes, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne, Nat.blt_eq, Nat.ble_eq, UInt8.toNat_ofNat, decide_eq_true_eq] at *); (try s3_hyps); (try simp [s3_norm, s3_bytes, $ls,*]);
+            first
+            | done
+            | (all_goals (repeat' (first | (intro) | apply And.intro)) <;> $c; done)
+            | (s3_splitB <;> s3_solveF $n' [$ls,*] with $c)))
+
 /-! ## text -/
 
 def tyTxt : Ty → String
@@ -994,6 +1015,12 @@ def elabS3With (solveTac : String) : CommandElab := fun stx => do
 
 @[command_elab s3Compile] def elabS3 : CommandElab := elabS3With "s3_solve"
 @[command_elab s3CompileB] def elabS3B : CommandElab := elabS3With "s3_solveB"
+
+/-- `s3_compileF N := main [simp lemmas]`: `s3_compileB` whose certificates use `s3_solveF` (each search node
+simplified once; opt-in) -/
+syntax (name := s3CompileF) "s3_compileF " ident " := " term (" simp " "[" ident,* "]")? : command
+
+@[command_elab s3CompileF] def elabS3F : CommandElab := elabS3With "s3_solveF"
 
 end Proven.S3.Front
 
