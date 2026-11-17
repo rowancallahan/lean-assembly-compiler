@@ -231,8 +231,9 @@ def stub1 : List EOp :=
 def stub2 : List EOp :=
   [.w (.bin .sub RLim R0 R2), .enter 0, .enterC 0, .w (.mov R0 RIn), .w (.mov R1 RLen), .w (.mov R2 ROut)]
 
-/-- after `main` returns: close the stub's cells, return -/
-def stub3 : List EOp := [.leaveC 0, .leave, .w .ret]
+/-- after `main` returns: its first result (the output length, for `ProgL` programs) into the length register
+(`a1`), close the stub's cells, return -/
+def stub3 : List EOp := [.w (.mov RLen R0), .leaveC 0, .leave, .w .ret]
 
 /-- the stub, calling `main` (at word `t`, with `n` slots) -/
 def emitStub (ex n t : Nat) : Option (List EOp) :=

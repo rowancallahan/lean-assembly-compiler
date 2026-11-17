@@ -25,3 +25,11 @@ Branch `ir-strong` (from main + s3-rec). Owner goals: ROADMAP "Spec strengthenin
 
 ## Log
 - step 1: AllocSpec additions + the two implications (checked with `lake env lean Compiler/AllocSpec.lean`).
+- step 2a: IR stub `stub3 = [mov a1 r0; leaveC 0; leave; ret]` (a1 := main's first result). `Ctx.Fin`'s normal-return
+  case now also states `keepC C.s0 s'`, `fr s' = fr C.s0`, `r.vs = [w n] → a1 = n` (EmitStep/EmitStepOk `done_ok`).
+  `Ir.machine_runL` (Riscv/Back/IrTop.lean): exact frame (result prefix + work), `Cfg`, and on normal return
+  `KeptRegisters` + a1; `machine_run` (old statement) now derived from it. `Ir.ProgL`, `Ir.compileL`,
+  `Ir.ir_compile_correctL : CompileCorrectL riscv compileL` PROVED.
+- GAP (OOM path): the out-of-memory exit (`encK .exit`: `ld ra,-16(top); li a0,-1; ret`) does not restore the frame
+  register gp (x3), so `KeptRegisters` fails on that path; `CompileRunsL` needs an IR-specific exit that also
+  reloads gp from the stub's cell `top - 8`.
