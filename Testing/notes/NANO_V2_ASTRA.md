@@ -105,3 +105,34 @@ textual elaboration correspondence may be TESTED only, and must be stated as tes
    TEST FIRST: inlining explosion; functional-buffer copying cost; concrete proof-evaluation speed on a realistic stage
    chunk + large output; hidden dependencies (runtime closure inventory); capacity/fuel fit; Nat/word edges; source↔
    definition correspondence; output determinism (compile twice).
+
+# Round 3 (Astra, ~18:15): DECISIONS (binding)
+FREEZE IMMEDIATELY (before more backend/stage work): (i) linked-stage ABI, (ii) affine ownership rules incl. product
+decomposition, (iii) `ImplementsBytes`.
+1. B₁ = FIVE LINKED STAGES again (reuse `link_stage`): C = L >=> P >=> I >=> E >=> A (error-propagating). Prove stage
+   binaries implement stage functions, linked binary implements the composition, composition = C. Freeze stage byte
+   formats (malformed input, lengths, status codes, capacities). Link relocated bytes (addresses, clobbers, work memory,
+   failure propagation). Check whether S3 flattens nested products (7-arg IR limit) — else aggregate/descriptor ABI.
+   Certificate hierarchy: function → stage → linked compiler, opaque lemmas at each boundary.
+2. FUEL/CAPACITY: fixed constants κ, explicit failure; general theorem: machine computes Cκ (incl. failures) on admitted
+   inputs; separately prove Cκ(s) = Ok B₂. Input-length limit handled by wrapper rejection or the machine contract.
+3. USER PROGRAM CONTRACT: Bytes → Result (ok output | error code). Fuel-zero branch means whatever its Lean code says
+   (`| 0 => s` is SUCCESS); write an error-setting zero branch where exhaustion must fail. Fixed-capacity arrays via
+   Lean functions that check capacity and return failure (never reinterpret Array.push). Error ⇒ output length 0.
+4. BUFFERS: AFFINE OWNERSHIP check in the elaborator, in-place update proved under it. create = fresh owned; read/len =
+   borrow → scalar; update/append = consume old, return new; move into product/call transfers; branches checked
+   independently with compatible outputs; loops consume+return the same shape; discard allowed. Borrows only within one
+   primitive op. Products holding buffers: CONSUMING decomposition only (no `.1/.2` aliasing of owned fields; scalar
+   projections free). Input immutable, separate from output/work regions. Rejecting valid Lean is fine; accepting and
+   changing meaning is not.
+5. LOADING: fixed code origin (no PIC), initialization predicate (exact image at the agreed address, entry PC/exit,
+   stack/work bounds, disjointness, Sail config). Compare emitted file bytes; no pointers/stale memory/padding in output.
+6. ONE CONTRACT `ImplementsBytes B Cκ`: for every admitted input and initialized state, ALL executions terminate with the
+   ABI observation of Cκ(input) (status/OOM, output pointer, length in a1, clobbers, memory preservation).
+   bootstrap_correct : ImplementsBytes B₁ Cκ; nano_correct : ImplementsBytes B₂ Cκ. Plus nanoElab s = ok p,
+   meaning p = Cκ, compile p = ok B₂, Cκ s = ok B₂.
+7. TRUST: prove ImplementsBytes B₂ Cκ from nano backend + one-source certificate + concrete equations — no dependency on
+   compiler 1/B₁ (audit the dependency closure). B₂ = B₃ alone does not remove compiler 1.
+8. KERNEL COST: data + small checked facts; name chunks once; chunkwise equalities; independent stage equations
+   rewritten opaquely; specialized checkers instead of unfolding big dispatchers; layout manifest with checked offsets.
+   BENCHMARK NOW: a ~2000-word function, a realistic stage-evaluation chunk, the final image equality (kernel time).
