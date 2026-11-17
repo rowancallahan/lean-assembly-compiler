@@ -89,3 +89,6 @@ Fixed code origin is not needed by this code (only relative jumps) but is accept
   result above stands). Its `NanoABI.Observes` matches this backend's exit contract with `status` = a0,
   `oomCode` = 2^64 - 1, a1 = length (ok) / 0 (error), bytes at a3 (= op). To align: the capacity abort (a0 = -2)
   must become an error code of Cκ (or be excluded by an Adequate hypothesis), and Cκ's error codes must avoid -1/-2.
+- CI tender (cold `lake build`, all OK, ≤ 3.5 s / 0.6 GB): Lang 2.15 s, Gen 3.44 s, Copy 0.34 s, Sem 0.44 s, Expr 1.54 s,
+  Loop 0.34 s, Blocks 1.74 s, Inp 0.54 s, Tail 0.34 s; Sail smokes (5 cases × 2) ok. `NOSAIL=1` added to
+  Testing/nano/v2b_test.py for QEMU-only bulk runs.
