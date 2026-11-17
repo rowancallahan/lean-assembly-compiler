@@ -94,3 +94,40 @@ Fixed code origin is not needed by this code (only relative jumps) but is accept
   Testing/nano/v2b_test.py for QEMU-only bulk runs.
 - CI tender @9b59fc5: QEMU-only bulk (`NOSAIL=1`), 20 cases × 2 each, all ok: nv2_copy, nv2_copyfuel, nv2_copycap,
   nv2_mix; Sail smoke nv2_mix 5 × 2 ok.
+
+## HANDOFF (worker 2 → merged worker 1+2 box)
+
+DONE
+- Backend, tested (not proved end to end): Nano/V2/Lang.lean (provisional typed AST `Ex`/`Tl`, meaning `den`/`run`/
+  `denT`, `Prog.eval : List UInt8 → Except UInt64 (List UInt8)`, `tyOf`), Nano/V2/Gen.lean (`cE`/`cT` → `SC` →
+  `SC.flat` → `I.enc`, `gen`), Nano/V2/Copy.lean (`copyProg`, `copyLean`, `mixProg`). Namespace `Nano.V2B`.
+- Tests: `lake env lean --run Testing/asm/emit_nano_v2b.lean`, then `[NOSAIL=1] python3 Testing/nano/v2b_test.py
+  nv2_copy|nv2_copyfuel|nv2_copycap|nv2_mix`: all ok (QEMU == Sail == Prog.eval; statuses 0/1/2; OOM -1).
+- Proofs (axioms ⊆ propext/Classical.choice/Quot.sound, every module < 4 s):
+  Sem.lean: abstract machine, `SC.Ex` (loop rules incl. aborts), `runL_append`.
+  Expr.lean: `Stk`, `Keep`, `Post`, `seq_ok`, `pushC_ok`, `li_ok`, `lit_ok`, `ld_slot`, `varC_ok`, `pre_ok`.
+  Loop.lean: **`loop_ok`** (generic header theorem, induction on fuel; `ZOut`/`BOut` outcomes).
+  Blocks.lean: `sd_slot`, `copies_ok`, `slide_ok`, `Stk.popk`, `sd_top`, `bin_node`, `ite_node`, `let_node`,
+  `slide_node`, `drop_node`.  Inp.lean: `InpRep`, `isize_node`, `iget_node`.  Tail.lean: `JPost`, `tail_node`.
+
+NEXT (in order)
+1. `cE_ok`/`cT_ok`: ONE induction over `Ex`/`Tl` (buffer-free fragment) composing the node lemmas; needs `flat :
+   Val → List UInt64`, `Val.HasTy`, `EnvRep` (env entry (τ, p) ↔ stack slots p..p+|τ|). Missing cases: pair
+   (`seq_ok`), snd/split (`slide_node`), Tl.ite/let/split, and the `loop` instance of `loop_ok` (Inv n s := Stk
+   (L ++ [fuel] ++ flat state) ∧ fuel.toNat = n ∧ env rep; Aft after the test; `tail_node` gives BOut).
+2. Buffers: adapt NANO_V2_SKELETONS.lean `Buffers.buffer_set`/`buffer_frame` (BufferRep/SameOutside/footprint) to
+   this layout ([len][cap][cap words] at base, data at base+16 — same as the template), bump heap below t5;
+   ownership derivation as hypothesis; nodes for mk/size/get/set/push. `Keep.heap` must become SameOutside of the
+   footprints consumed.
+3. Layout: `SC.flat` correct w.r.t. a pc-level semantics of `I` (label lemmas, checked layout certificate).
+4. Sail: each `I` form = one Sail step (`G.step_*`, Riscv/Steps), `I.enc` vs Spec encoders; determinism for
+   all-executions; then `NanoABI.ImplementsBytes` (exit contract already matches `Observes`: status = a0,
+   oomCode = 2^64-1, a1 = len / 0).
+5. Fuel-word bridge: use the skeleton's `word_pred`/`word_zero` for the decrement in the loop instance.
+
+OPEN PROBLEMS
+- Overlap with worker 1's increment-1 backend (Nano.V2 records, branch-free if): pick one; mine handles loops/buffers.
+- The AST is provisional: align `Nano.V2B.Ex` with the frozen AST (or prove a translation).
+- Capacity abort (a0 = -2) is not an error code of Cκ: model it in Cκ or exclude via Adequate; program codes ≠ -1/-2.
+- `Lim` = 255 visible slots per frame (12-bit offsets): big states need a frame pointer or address computation.
+- Code size: inlining not yet implemented here (front end inlines); measure growth on the real stages.
