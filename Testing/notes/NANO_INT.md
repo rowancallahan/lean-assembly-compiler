@@ -36,7 +36,16 @@ small (`CompileRuns` form).
 by agreement proofs and fuzzing, never proved), the Sail RISC-V model, the statements in `Spec/` and
 `Compiler/AllocSpec.lean`, Lean's kernel.
 
-**Tests** (merged tree): see the table below.
+**Reduction proved here (pure Lean + linker)**: `selfHosted_four` (`Nano/SelfHostChain.lean`): the target follows from
+four stage machine theorems with exact byte specs — front end `src ↦ serU u` (NON-inlining; `nanoElab_eq`, `chain_eq`),
+inliner `inlB`, expander `mexp`, assembler `asm` (exists). Alternative with three stages: `selfHosted_stack_stages`
+(a parser that emits `ser p` directly, lane nano-parse).
+
+**Final state (2026-11-17 04:20, tree e122335 + this note)**: `bash Testing/scripts/check.sh`: ALL CHECKS PASSED
+(statement-fingerprint WARNING only, not re-frozen). `chain_test.py 4`: 92 sources, Lean accepts 85, nanoElab 82, 0
+mismatches; P 328 pairs and S (through the compiled `asm` binary) 328 pairs on QEMU + Sail incl. the OOM flag.
+`link_test.py 6`: 45 cases QEMU == Sail == Lean. Two stage compiles are parked in `Testing/nano/pending/` (lexer
+`ElabBSelf`: standalone compile restarted 04:01, still running after 20 CPU-min, NOT confirmed; `ExpandSelf`: to redo).
 
 ## Live status (2026-11-17 00:00)
 Lanes: nano-e2e (Sonnet: elaborator rules, `asm`, tests), nano-elab (Opus: `nanoElab` as compiled byte-level stages),
