@@ -36,3 +36,27 @@ back end's 7-parameter limit on calls.
 - `nano_s3_chain` (`chain_of`), `nano_s3_chain_int` (`chain_int_of`, Int64 via `nanoRun_int`).
 - Axioms: link theorems ⊆ {propext, Classical.choice, Quot.sound}; machine theorems exactly the Sail set.
   `Testing/scripts/axioms_nano-s3.lean` in check.sh's loop, lines appended to expected-axioms.txt.
+
+## Tests (`python3 Testing/asm/nano_s3_test.py 10 4`, ≈10 min; removes Testing/asm/ctest)
+Sources: nanolib CORPUS + INT_CORPUS, chain_test's adversarial EDGE_SRC, 6 boundary sources (10 parameters, shadowing
+lets, an 8-argument callee called twice, a doubling chain inlined 32×, a constant entry, deep nesting), 10 + 10 random
+UInt64/Int64 sources; 8 inputs each (edge values + random); plus 46 random `Ex` trees (emit_nano's generators: calls,
+out-of-range variables, large frames).
+- Lean side (`Testing/asm/emit_nano_s3.lean`), every case, every link: L1 `(tr1P p).eval`, L2 `(tr2P (tr1P p)).eval`,
+  L3 (test evaluator of S3 expressions on `tr3 (idVars n)`), L4 (test evaluator on `main`, bytes) and the IR
+  interpreters of `lowerP (nanoToS3 p)` all equal `p.eval` / `nanoRun p`; emitted words == `compileW` (the code of
+  `Ir.compile`). Result: **146 programs (10 sources rejected by nanoElabT), 1168 cases, mismatches 0**.
+- QEMU, all programs in one image: **146 programs, 1168 cases × 2 ok** (output == Lean at `memoryNeeded`, a0 = flag
+  at `memoryNeeded - 1`, sp/gp restored, nothing outside output + work changed); code 495..9367 words.
+- Sail smoke (`ir_test.py check 2`, QEMU == Sail == Lean, Sail writes traced): **4 programs × 2 cases × 2 ok**.
+
+## Findings / decisions during testing
+- First decoder kept every byte's temporaries in scope; S3's lowering numbers registers by context depth, so arity ≥ 7
+  overflowed the IR back end's 254 frame slots (`compileW = none`; theorems unaffected, `none` is allowed). Fixed by
+  reading each word inside a `let`'s bound expression returning a (word, rest) pair (datatype `d 1`): 3 registers per
+  argument. Remaining limit (as for nano's IR route): context depth (nano lets + inlined arguments + ANF nesting +
+  3·arity) ≤ ~250, else `nanoCompileS3 p = none`.
+- `memoryNeeded` must count call frames (S3's wrapper calls `main`): the reference `interp` does not record them,
+  so the cases use emit_s3's fast interpreter (copied), whose events match `Ir.events`.
+- Code size: the S3 route is larger than the stack route (unrolled 8-byte decoder per argument, list construction
+  for the output). No optimisation attempted (not in scope).
