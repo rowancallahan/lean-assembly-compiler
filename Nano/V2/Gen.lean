@@ -270,6 +270,12 @@ def I.wf : I → Bool
   | .jal off => decide (off % 4 = 0 ∧ -1048576 ≤ off ∧ off < 1048576)
   | .ret => true
 
+/-- the jump certificate: every `jal` lands inside the code (or just after it) -/
+def jcert (C : List I) : Bool :=
+  (List.range C.length).all fun i => match C[i]? with
+    | some (.jal off) => decide (0 ≤ (i : Int) + off / 4 ∧ (i : Int) + off / 4 ≤ C.length)
+    | _ => true
+
 /-- the whole program as instructions: prologue, main, epilogue, the two abort stubs; rejected unless every
 instruction is encodable (`I.wf`: e.g. a `slide` of more than 255 slots in all, or code beyond ±1 MiB jumps) -/
 def genI (p : Prog) : Option (List I) :=
@@ -278,7 +284,7 @@ def genI (p : Prog) : Option (List I) :=
     let body := SC.seq (.ins prologue) (.seq c epilogue)
     let om := body.len
     let code := body.flat om (om + 2) 0 0 0 ++ [.i .addi 10 0 (-1), .ret, .i .addi 10 0 (-2), .ret]
-    if code.all I.wf then some code else none
+    if code.all I.wf && jcert code then some code else none
   | _ => none
 
 /-! ## encoding (RV64IM) -/
