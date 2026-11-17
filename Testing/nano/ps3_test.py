@@ -31,11 +31,14 @@ for i in range(2 * R):
     n = rng.choice([0, 1, 2, 3, 5, 8, 20, 101])
     open(f"{W}/c{i:04}.inl", "wb").write(bytes(rng.choice([rng.randrange(16), rng.randrange(256)]) if j % 2 == 0
                                                else rng.randrange(4) for j in range(n)))
-subprocess.run(f"cd {ROOT} && PATH=$HOME/.elan/bin:$PATH NANO_DIR={W} lake env lean --tstack=4000000 "
-               f"Testing/nano/emit_ps3.lean", shell=True, check=True)
+ONLY = os.environ.get("PS3_ONLY")  # "p2" or "inl": one stage
+STAGES = [x for x in (("p2", "nano_ps2"), ("inl", "nano_inl")) if ONLY in (None, x[0])]
+for st, _ in STAGES:
+    subprocess.run(f"cd {ROOT} && PATH=$HOME/.elan/bin:$PATH NANO_DIR={W} lake env lean --tstack=4000000 "
+                   f"Testing/nano/emit_ps3_{st}.lean", shell=True, check=True)
 A = os.path.join(ROOT, "Testing", "asm")
 try:
-    for nm in ("nano_ps2", "nano_inl"):
+    for _, nm in STAGES:
         n = sum(1 for l in open(os.path.join(A, "ir-words", nm + ".cases")) if l.strip())
         subprocess.run(f"cd {A} && NOSAIL=1 python3 ir_test.py check {n} {nm}", shell=True, check=True)
         subprocess.run(f"cd {A} && python3 ir_test.py check {S} {nm}", shell=True, check=True)
