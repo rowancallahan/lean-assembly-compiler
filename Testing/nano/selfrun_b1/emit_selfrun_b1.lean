@@ -171,7 +171,7 @@ end Fast
 
 open Nano Nano.U Nano.Link Nano.SelfHost Nano.S3Stage
 
-def wLex : List (BitVec 32) := ((rvT.emitP Nano.LS.lexA_Q Nano.LS.lexA_L2).map rvT.words).getD []
+def wLex : List (BitVec 32) := ((rvT.emitP Nano.V2B.lexB_Q Nano.V2B.lexB_L2).map rvT.words).getD []
 def w2b : List (BitVec 32) := ((rvT.emitP Nano.PS.stage2B_Q Nano.PS.stage2B_L2).map rvT.words).getD []
 def wInl : List (BitVec 32) := ((rvT.emitP Nano.V2B.inlB_Q Nano.V2B.inlB_L2).map rvT.words).getD []
 def wExp : List (BitVec 32) := ((rvT.emitP Nano.V2B.expB_Q Nano.V2B.expB_L2).map rvT.words).getD []
@@ -182,7 +182,7 @@ def binaryS3C : List (BitVec 32) := link (link (link (link wLex w2b) wInl) wExp)
 /-- **the words tested are the words of the theorem** -/
 theorem binaryS3C_eq : Nano.V2B.binaryB1 = binaryS3C := by
   unfold Nano.V2B.binaryB1 binaryS3C wLex w2b wInl wExp wAsm
-  rw [words_eq' 2 Nano.LS.lexA_hQ Nano.LS.lexA_hm Nano.LS.lexA_hL Nano.LS.lexA_fix,
+  rw [words_eq' 2 Nano.V2B.lexB_hQ Nano.V2B.lexB_hm Nano.V2B.lexB_hL Nano.V2B.lexB_fix,
     words_eq' 2 Nano.PS.stage2B_hQ Nano.PS.stage2B_hm Nano.PS.stage2B_hL Nano.PS.stage2B_fix,
     words_eq' 2 Nano.V2B.inlB_hQ Nano.V2B.inlB_hm Nano.V2B.inlB_hL Nano.V2B.inlB_fix,
     words_eq' 2 Nano.V2B.expB_hQ Nano.V2B.expB_hm Nano.V2B.expB_hL Nano.V2B.expB_fix,
@@ -201,7 +201,7 @@ def logL (m : String) : IO Unit := do
   let h ← IO.FS.Handle.mk "Testing/nano/selfrun_b1/emit.log" .append
   h.putStrLn m; h.flush
 
-#eval show IO Unit from do
+def main : IO Unit := do
   let dir : System.FilePath := (← IO.getEnv "NANO_DIR").get!
   let files := (← dir.readDir).map (·.path) |>.toList
   let files := files.toArray.qsort (fun a b => a.toString < b.toString) |>.toList
@@ -217,7 +217,7 @@ def logL (m : String) : IO Unit := do
     let src := (← IO.FS.readBinFile f).toList
     let t0 ← IO.monoMsNow
     let a := Nano.PS.stage2a (Nano.B.lexB src)
-    let (oA, mA) := need Nano.LS.lexA_Q src
+    let (oA, mA) := need Nano.V2B.lexB_Q src
     assert! oA == a
     match nanoElabU src, nanoElab src with
     | some u, some p =>
