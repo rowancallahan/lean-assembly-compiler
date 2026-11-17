@@ -4,8 +4,9 @@
 import Compiler.S3.Front
 import Nano.ParseS3B
 import Nano.S3Stage
+import Nano.TokS3Enc
 
-s3_enc Nano.Tok
+
 s3_enc Nano.PB.Fr
 s3_enc Nano.PB.Ctl
 s3_enc Nano.PB.St
