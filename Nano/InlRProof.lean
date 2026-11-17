@@ -98,28 +98,46 @@ theorem eq_body (ob : Array UInt64) (ls : Nat) (k : UInt8) (last : List UInt8)
 
 /-! ## stage `W` -/
 
-theorem ww_body : ∀ (body : List UInt8) (k : Nat), ww body 2 k = body ++ mo 7 0 ++ sWr ++ mo 12 0
-  | [], k => by rw [ww]; rfl
-  | b :: t, k => by rw [ww]; simp only [beq_self_eq_true, if_true, ww_body t k, List.cons_append]
+theorem ww_suf (xs : List UInt8) : ww xs 3 0 0 = mo 7 0 ++ sWr ++ mo 12 0 := by
+  iterate 9 (rw [ww.eq_def]; simp (config := {decide := true}) only [if_true, if_false, Nat.reduceAdd])
 
-theorem ww_pro (body : List UInt8) : ∀ k : Nat, ww body 1 k = serPro k ++ ww body 2 0
+theorem ww_body : ∀ (body : List UInt8), ww body 2 0 0 = body ++ mo 7 0 ++ sWr ++ mo 12 0
+  | [] => by rw [ww.eq_def]; simp only [show ¬ (2 < 1) by omega, show ¬ (2 < 2) by omega, show 2 < 3 by omega,
+      if_true, if_false]; exact ww_suf []
+  | b :: t => by
+    rw [ww.eq_def]; simp only [show ¬ (2 < 1) by omega, show ¬ (2 < 2) by omega, show 2 < 3 by omega,
+      if_true, if_false, ww_body t, List.cons_append]
+
+theorem ww_pro (body : List UInt8) : ∀ k : Nat, ww body 1 k 0 = serPro k ++ ww body 2 0 0
   | 0 => by
-    cases body with
-    | nil => rw [ww]; rfl
-    | cons b t => rw [ww]; rfl
+    rw [ww.eq_def]; simp only [show ¬ (1 < 1) by omega, show 1 < 2 by omega, show 0 < 1 by omega, if_true,
+      if_false]; rfl
   | k + 1 => by
-    cases body with
-    | nil => rw [ww]; simp only [show ((1 : Nat) == 2) = false from rfl, show ((1 : Nat) == 0) = false from rfl,
-        Bool.false_eq_true, if_false, show (k + 1 == 0) = false by simp, Nat.add_sub_cancel, ww_pro [] k]; rfl
-    | cons b t => rw [ww]; simp only [show ((1 : Nat) == 2) = false from rfl, show ((1 : Nat) == 0) = false from rfl,
-        Bool.false_eq_true, if_false, show (k + 1 == 0) = false by simp, Nat.add_sub_cancel, ww_pro (b :: t) k]; rfl
+    have e : ∀ q, q ≤ 4 → ww body 1 (k + 1) q = (sArg.drop (4 * q)) ++ ww body 1 k 0 := by
+      intro q hq
+      induction hq' : 4 - q generalizing q with
+      | zero =>
+        have : q = 4 := by omega
+        subst this
+        rw [ww.eq_def]; simp only [show ¬ (1 < 1) by omega, show 1 < 2 by omega, show ¬ (k + 1 < 1) by omega,
+          show ¬ (4 < 4) by omega, if_true, if_false, Nat.add_sub_cancel]; rfl
+      | succ m ih =>
+        rw [ww.eq_def]; simp only [show ¬ (1 < 1) by omega, show 1 < 2 by omega, show ¬ (k + 1 < 1) by omega,
+          show q < 4 by omega, if_true, if_false]
+        rw [ih (q + 1) (by omega) (by omega)]
+        have hq4 : q < 4 := by omega
+        rcases (by omega : q = 0 ∨ q = 1 ∨ q = 2 ∨ q = 3) with rfl | rfl | rfl | rfl <;> rfl
+    rw [e 0 (by omega), ww_pro body k]; simp [serPro, List.append_assoc]
 
-theorem ww_wrap (k : UInt8) (last : List UInt8) : ww (k :: last) 0 0 = wrap k.toNat last := by
-  rw [ww]; simp only [show ((0 : Nat) == 2) = false from rfl, show ((0 : Nat) == 0) = true from rfl, if_true,
-    Bool.false_eq_true, if_false]
+theorem ww_wrap (k : UInt8) (last : List UInt8) : ww (k :: last) 0 0 0 = wrap k.toNat last := by
+  rw [ww.eq_def]
+  have := k.toNat_lt_size
+  simp only [show (0 : Nat) < 1 by omega, if_true, show ¬ (256 ≤ k.toNat) by simp [UInt8.size] at this; omega,
+    if_false]
   rw [ww_pro, ww_body]; simp [wrap, mo]
 
-theorem ww_nil : ww [] 0 0 = wrap 0 [] := by rw [ww]; rfl
+theorem ww_nil : ww [] 0 0 0 = wrap 0 [] := by
+  rw [ww.eq_def]; simp only [show (0 : Nat) < 1 by omega, if_true]; rw [ww_suf]; rfl
 
 /-! ## stage `P` -/
 
@@ -540,7 +558,7 @@ theorem inlQ_def (xs : ByteArray) : inlQ xs =
       ((mqR xs)[HD]!.toNat % 4611686018427387904 % 131072) := rfl
 
 /-- **`W ∘ Q ∘ P = inlB`** whenever the inliner's table fits -/
-theorem inlR_eq (x : List UInt8) (h : inlFitsR x) : ww (inlQ ⟨⟨pr x 0 0⟩⟩).toList 0 0 = inlB x := by
+theorem inlR_eq (x : List UInt8) (h : inlFitsR x) : ww (inlQ ⟨⟨pr x 0 0⟩⟩).toList 0 0 0 = inlB x := by
   have hm : PostR (mqR ⟨⟨pr x 0 0⟩⟩) (inlS x [] [] (0 : UInt8).toNat 0 []).2.2.1
       (inlS x [] [] (0 : UInt8).toNat 0 []).2.2.2 :=
     mq_main x _ ⟨⟨pr x 0 0⟩⟩ 0 0 0 0 [] [] 0 0 0 [] (by simp) rfl (by simpa using invR0) h

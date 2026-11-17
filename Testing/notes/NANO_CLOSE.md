@@ -142,3 +142,17 @@
   records, with `hi`, call validity and def numbers resolved in scalars; `Q` (paged): one record or one copied byte
   per step, one `ob` read, one `set!`; output `body ++ [arity]` of the last closed def; `W` (list stage):
   `wrap k body`. `Q`'s table packs start and length in one cell (one read per call).
+* 09:00. Inliner as three stages DONE: `P` (`Nano/InlRPSelf.lean`, list front end, 3 min 10 s), `Q`
+  (`Nano/InlRSelf.lean`, paged, one read + one `set!` per step, `UInt64` cells, measure multiplier 65536: 4 min 15 s
+  `lake build`, `inlQ_implements`), `W` (`Nano/InlRWSelf.lean`, list front end, ≤ 4 bytes per step, 30 s), proof
+  `Nano.IR.inlR_eq : inlFitsR x → ww (inlQ ⟨⟨pr x 0 0⟩⟩).toList 0 0 0 = inlB x` (standard axioms).
+  Front-end findings: (a) `wp_compile` goodE hits maxRecDepth with a measure multiplier 1048576 (65536 works);
+  (b) `Array Nat` cells carry no `< 2^64` bound (arithmetic on reads fails) — use `Array UInt64`; (c) the paged
+  step tactic cannot handle a statement-level `if` inside the loop body (dependent elimination) — one tail call with
+  `if` arguments; (d) `frontx_compile` takes > 400 s on ONE 20-byte literal chain before a recursive call (4 bytes:
+  seconds); (e) `frontx` cannot prove `Nat → UInt8` casts (`UInt8.ofNat`, `toUInt8`) nor `% 256`; (f) measure `if`s
+  are not split in the `runs` proof and `simp_all` closing a goal logs "No goals" errors: use Prop `<` tests in the
+  code and an `if`-free linear measure.
+* 09:40. SUPERSEDED: nano-parse-s3's S3 inliner `Nano.IS.inlS3_implements` holds for every input (no fits
+  condition). DECISION (main session's priority correction): P/Q/W kept as files, not used; this box now compiles the
+  LEXER (vB/eB) through S3.
