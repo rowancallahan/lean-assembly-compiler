@@ -206,8 +206,9 @@ end
 mutual
 def pParams : Nat → Scope → Nat → List Tok → Option (Scope × Nat × List Tok)
   | 0, _, _, _ => none
-  | f + 1, sc, n, Tok.lp :: ts =>
-    match pNames f sc n ts with
+  | f + 1, sc, n, Tok.lp :: Tok.id x :: ts =>
+    -- a binder group has at least one name (v1's `pParams` accepts `( : UInt64)`, which Lean rejects)
+    match pNames f ((x, true) :: sc) (n + 1) ts with
     | some (sc2, n2, r) => pParams f sc2 n2 r
     | none => none
   | _ + 1, sc, n, ts => some (sc, n, ts)
