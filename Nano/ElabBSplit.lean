@@ -224,7 +224,7 @@ macro "STEPEE" : term => `(
 
 
 /-- the validator (see the file header) -/
-def lv (xs o : List UInt8) (m : Nat) (st sp d d0 w ty cz : UInt64) : List UInt8 :=
+def lv (xs o : List UInt8) (m st sp d d0 w ty cz : UInt64) : List UInt8 :=
   match xs with
   | c :: n :: t => if m == 1 then c :: lv (n :: t) o m st sp d d0 w ty cz else STEPNV
   | [c] => if m == 1 then [c] else if m == 5 then lv o o 0 0 0 0 0 0 0 0 else if m == 0 then STEPEV else []
@@ -257,7 +257,7 @@ decreasing_by
     | exact absurd (beq_iff_eq.mp ‹(m == 5) = true›) ‹¬m = 5›
 
 /-- the emitter (see the file header) -/
-def le (xs o : List UInt8) (m : Nat) (st sp d d0 w ty cz : UInt64) : List UInt8 :=
+def le (xs o : List UInt8) (m st sp d d0 w ty cz : UInt64) : List UInt8 :=
   match xs with
   | c :: n :: t =>
     if m == 7 then (if c == 0 then [0] else c :: le (n :: t) (n :: t) 1 0 0 0 0 0 c.toUInt64 0) else STEPNE
@@ -280,7 +280,7 @@ theorem lx_c2' (c n : UInt8) (t o : List UInt8) (m st sp d d0 w ty cz : UInt64) 
 theorem lx_c1' (c : UInt8) (o : List UInt8) (m st sp d d0 w ty cz : UInt64) :
     lx [c] o m st sp d d0 w ty cz = STEPE := by rw [lx]
 
-theorem le_c2 (c n : UInt8) (t o : List UInt8) (m : Nat) (st sp d d0 w ty cz : UInt64) :
+theorem le_c2 (c n : UInt8) (t o : List UInt8) (m st sp d d0 w ty cz : UInt64) :
     le (c :: n :: t) o m st sp d d0 w ty cz =
       if m == 7 then (if c == 0 then [0] else c :: le (n :: t) (n :: t) 1 0 0 0 0 0 c.toUInt64 0) else STEPNE := by
   rw [le]
@@ -290,15 +290,15 @@ theorem le_lx : ∀ (xs o : List UInt8) (st sp d d0 w ty cz : UInt64),
     le xs o 1 st sp d d0 w ty cz = lx xs o 1 st sp d d0 w ty cz
   | c :: n :: t, o, st, sp, d, d0, w, ty, cz => by
     rw [le_c2, lx]
-    simp only [show ((0 : Nat) == 5) = false by decide, show ((0 : Nat) == 1) = false by decide, show ((5 : Nat) == 1) = false by decide, show ((1 : Nat) == 7) = false by decide, show ((5 : Nat) == 5) = true by decide, show ((1 : Nat) == 1) = true by decide, show ((0 : Nat) == 0) = true by decide, Bool.true_or, Bool.or_true, show ((1 : UInt64) == 7) = false by decide, show ((1 : UInt64) == 5) = false by decide,
+    simp only [show ((0 : UInt64) == 5) = false by decide, show ((0 : UInt64) == 1) = false by decide, show ((5 : UInt64) == 1) = false by decide, show ((1 : UInt64) == 7) = false by decide, show ((5 : UInt64) == 5) = true by decide, show ((1 : UInt64) == 1) = true by decide, show ((0 : UInt64) == 0) = true by decide, Bool.true_or, Bool.or_true, show ((1 : UInt64) == 7) = false by decide, show ((1 : UInt64) == 5) = false by decide,
       show ((1 : UInt64) == 0) = false by decide, Bool.false_eq_true, if_false, le_lx (n :: t)]
   | [c], o, st, sp, d, d0, w, ty, cz => by
     rw [le, lx]
-    simp only [show ((0 : Nat) == 5) = false by decide, show ((0 : Nat) == 1) = false by decide, show ((5 : Nat) == 1) = false by decide, show ((1 : Nat) == 7) = false by decide, show ((5 : Nat) == 5) = true by decide, show ((1 : Nat) == 1) = true by decide, show ((0 : Nat) == 0) = true by decide, Bool.true_or, Bool.or_true, show ((1 : UInt64) == 7) = false by decide, show ((1 : UInt64) == 5) = false by decide,
+    simp only [show ((0 : UInt64) == 5) = false by decide, show ((0 : UInt64) == 1) = false by decide, show ((5 : UInt64) == 1) = false by decide, show ((1 : UInt64) == 7) = false by decide, show ((5 : UInt64) == 5) = true by decide, show ((1 : UInt64) == 1) = true by decide, show ((0 : UInt64) == 0) = true by decide, Bool.true_or, Bool.or_true, show ((1 : UInt64) == 7) = false by decide, show ((1 : UInt64) == 5) = false by decide,
       show ((1 : UInt64) == 0) = false by decide, Bool.false_eq_true, if_false]
   | [], o, st, sp, d, d0, w, ty, cz => by
     rw [le, lx]
-    simp only [show ((0 : Nat) == 5) = false by decide, show ((0 : Nat) == 1) = false by decide, show ((5 : Nat) == 1) = false by decide, show ((1 : Nat) == 7) = false by decide, show ((5 : Nat) == 5) = true by decide, show ((1 : Nat) == 1) = true by decide, show ((0 : Nat) == 0) = true by decide, Bool.true_or, Bool.or_true, show ((1 : UInt64) == 7) = false by decide, show ((1 : UInt64) == 5) = false by decide,
+    simp only [show ((0 : UInt64) == 5) = false by decide, show ((0 : UInt64) == 1) = false by decide, show ((5 : UInt64) == 1) = false by decide, show ((1 : UInt64) == 7) = false by decide, show ((5 : UInt64) == 5) = true by decide, show ((1 : UInt64) == 1) = true by decide, show ((0 : UInt64) == 0) = true by decide, Bool.true_or, Bool.or_true, show ((1 : UInt64) == 7) = false by decide, show ((1 : UInt64) == 5) = false by decide,
       show ((1 : UInt64) == 0) = false by decide, Bool.false_eq_true, if_false]
 
 /-- the validator's result as `lx`'s output (`K` = the continuation after the type byte) -/
@@ -343,10 +343,10 @@ theorem lx_vres5 (o : List UInt8) : ∀ (xs : List UInt8) (st sp d d0 w ty cz : 
     rw [lx, vres]
     simp only [show ((5 : UInt64) == 5) = true by decide, if_true, lx_vres0]
 
-theorem lv_c2 (c n : UInt8) (t o : List UInt8) (m : Nat) (st sp d d0 w ty cz : UInt64) :
+theorem lv_c2 (c n : UInt8) (t o : List UInt8) (m st sp d d0 w ty cz : UInt64) :
     lv (c :: n :: t) o m st sp d d0 w ty cz =
       if m == 1 then c :: lv (n :: t) o m st sp d d0 w ty cz else STEPNV := by rw [lv]
-theorem lv_c1 (c : UInt8) (o : List UInt8) (m : Nat) (st sp d d0 w ty cz : UInt64) :
+theorem lv_c1 (c : UInt8) (o : List UInt8) (m st sp d d0 w ty cz : UInt64) :
     lv [c] o m st sp d d0 w ty cz =
       if m == 1 then [c] else if m == 5 then lv o o 0 0 0 0 0 0 0 0 else if m == 0 then STEPEV else [] := by rw [lv]
 
@@ -354,7 +354,7 @@ theorem lv_c1 (c : UInt8) (o : List UInt8) (m : Nat) (st sp d d0 w ty cz : UInt6
 theorem lv_copy (o : List UInt8) : ∀ (xs : List UInt8) (st sp d d0 w ty cz : UInt64),
     lv xs o 1 st sp d d0 w ty cz = xs
   | c :: n :: t, st, sp, d, d0, w, ty, cz => by
-    rw [lv_c2]; simp only [show ((0 : Nat) == 5) = false by decide, show ((0 : Nat) == 1) = false by decide, show ((5 : Nat) == 1) = false by decide, show ((1 : Nat) == 7) = false by decide, show ((5 : Nat) == 5) = true by decide, show ((1 : Nat) == 1) = true by decide, show ((0 : Nat) == 0) = true by decide, Bool.true_or, Bool.or_true, show ((1 : UInt64) == 1) = true by decide, if_true, lv_copy o (n :: t)]
+    rw [lv_c2]; simp only [show ((0 : UInt64) == 5) = false by decide, show ((0 : UInt64) == 1) = false by decide, show ((5 : UInt64) == 1) = false by decide, show ((1 : UInt64) == 7) = false by decide, show ((5 : UInt64) == 5) = true by decide, show ((1 : UInt64) == 1) = true by decide, show ((0 : UInt64) == 0) = true by decide, Bool.true_or, Bool.or_true, show ((1 : UInt64) == 1) = true by decide, if_true, lv_copy o (n :: t)]
   | [c], st, sp, d, d0, w, ty, cz => by rw [lv_c1]; simp
   | [], st, sp, d, d0, w, ty, cz => by rw [lv]; simp
 
@@ -362,17 +362,17 @@ theorem lv_vres0 (o : List UInt8) : ∀ (xs : List UInt8) (st sp d d0 w ty cz : 
     lv xs o 0 st sp d d0 w ty cz = vo (fun _ => o) (vres xs o 0 st sp d d0 w ty cz)
   | c :: n :: t, st, sp, d, d0, w, ty, cz => by
     rw [lv_c2, vres_c2]
-    simp only [show ((0 : Nat) == 5) = false by decide, show ((0 : Nat) == 1) = false by decide, show ((5 : Nat) == 1) = false by decide, show ((1 : Nat) == 7) = false by decide, show ((5 : Nat) == 5) = true by decide, show ((1 : Nat) == 1) = true by decide, show ((0 : Nat) == 0) = true by decide, Bool.true_or, Bool.or_true, show ((0 : UInt64) == 5) = false by decide, show ((0 : UInt64) == 0) = true by decide,
+    simp only [show ((0 : UInt64) == 5) = false by decide, show ((0 : UInt64) == 1) = false by decide, show ((5 : UInt64) == 1) = false by decide, show ((1 : UInt64) == 7) = false by decide, show ((5 : UInt64) == 5) = true by decide, show ((1 : UInt64) == 1) = true by decide, show ((0 : UInt64) == 0) = true by decide, Bool.true_or, Bool.or_true, show ((0 : UInt64) == 5) = false by decide, show ((0 : UInt64) == 0) = true by decide,
       show ((0 : UInt64) == 1) = false by decide,
       Bool.false_eq_true, if_false, if_true, apply_ite (vo _), vo_none, lv_vres0 o (n :: t)]
   | [c], st, sp, d, d0, w, ty, cz => by
     rw [lv_c1, vres_c1]
-    simp only [show ((0 : Nat) == 5) = false by decide, show ((0 : Nat) == 1) = false by decide, show ((5 : Nat) == 1) = false by decide, show ((1 : Nat) == 7) = false by decide, show ((5 : Nat) == 5) = true by decide, show ((1 : Nat) == 1) = true by decide, show ((0 : Nat) == 0) = true by decide, Bool.true_or, Bool.or_true, show ((0 : UInt64) == 5) = false by decide, show ((0 : UInt64) == 0) = true by decide,
+    simp only [show ((0 : UInt64) == 5) = false by decide, show ((0 : UInt64) == 1) = false by decide, show ((5 : UInt64) == 1) = false by decide, show ((1 : UInt64) == 7) = false by decide, show ((5 : UInt64) == 5) = true by decide, show ((1 : UInt64) == 1) = true by decide, show ((0 : UInt64) == 0) = true by decide, Bool.true_or, Bool.or_true, show ((0 : UInt64) == 5) = false by decide, show ((0 : UInt64) == 0) = true by decide,
       show ((0 : UInt64) == 1) = false by decide, Bool.or_true, Bool.or_false,
       Bool.false_eq_true, if_false, if_true, apply_ite (vo _), vo_none, vo_some, lv_copy]
   | [], st, sp, d, d0, w, ty, cz => by
     rw [lv, vres]
-    simp only [show ((0 : Nat) == 5) = false by decide, show ((0 : Nat) == 1) = false by decide, show ((5 : Nat) == 1) = false by decide, show ((1 : Nat) == 7) = false by decide, show ((5 : Nat) == 5) = true by decide, show ((1 : Nat) == 1) = true by decide, show ((0 : Nat) == 0) = true by decide, Bool.true_or, Bool.or_true, show ((0 : UInt64) == 5) = false by decide, show ((0 : UInt64) == 0) = true by decide,
+    simp only [show ((0 : UInt64) == 5) = false by decide, show ((0 : UInt64) == 1) = false by decide, show ((5 : UInt64) == 1) = false by decide, show ((1 : UInt64) == 7) = false by decide, show ((5 : UInt64) == 5) = true by decide, show ((1 : UInt64) == 1) = true by decide, show ((0 : UInt64) == 0) = true by decide, Bool.true_or, Bool.or_true, show ((0 : UInt64) == 5) = false by decide, show ((0 : UInt64) == 0) = true by decide,
       show ((0 : UInt64) == 1) = false by decide,
       Bool.false_eq_true, if_false, if_true, apply_ite (vo _), vo_none, vo_some, lv_copy]
 
@@ -380,15 +380,15 @@ theorem lv_vres5 (o : List UInt8) : ∀ (xs : List UInt8) (st sp d d0 w ty cz : 
     lv xs o 5 st sp d d0 w ty cz = vo (fun _ => o) (vres xs o 5 st sp d d0 w ty cz)
   | c :: n :: t, st, sp, d, d0, w, ty, cz => by
     rw [lv_c2, vres_c2]
-    simp only [show ((0 : Nat) == 5) = false by decide, show ((0 : Nat) == 1) = false by decide, show ((5 : Nat) == 1) = false by decide, show ((1 : Nat) == 7) = false by decide, show ((5 : Nat) == 5) = true by decide, show ((1 : Nat) == 1) = true by decide, show ((0 : Nat) == 0) = true by decide, Bool.true_or, Bool.or_true, show ((5 : UInt64) == 5) = true by decide, show ((5 : UInt64) == 1) = false by decide,
+    simp only [show ((0 : UInt64) == 5) = false by decide, show ((0 : UInt64) == 1) = false by decide, show ((5 : UInt64) == 1) = false by decide, show ((1 : UInt64) == 7) = false by decide, show ((5 : UInt64) == 5) = true by decide, show ((1 : UInt64) == 1) = true by decide, show ((0 : UInt64) == 0) = true by decide, Bool.true_or, Bool.or_true, show ((5 : UInt64) == 5) = true by decide, show ((5 : UInt64) == 1) = false by decide,
       Bool.false_eq_true, if_false, if_true, apply_ite (vo _), vo_none, lv_vres5 o (n :: t)]
   | [c], st, sp, d, d0, w, ty, cz => by
     rw [lv_c1, vres_c1]
-    simp only [show ((0 : Nat) == 5) = false by decide, show ((0 : Nat) == 1) = false by decide, show ((5 : Nat) == 1) = false by decide, show ((1 : Nat) == 7) = false by decide, show ((5 : Nat) == 5) = true by decide, show ((1 : Nat) == 1) = true by decide, show ((0 : Nat) == 0) = true by decide, Bool.true_or, Bool.or_true, show ((5 : UInt64) == 5) = true by decide, show ((5 : UInt64) == 1) = false by decide,
+    simp only [show ((0 : UInt64) == 5) = false by decide, show ((0 : UInt64) == 1) = false by decide, show ((5 : UInt64) == 1) = false by decide, show ((1 : UInt64) == 7) = false by decide, show ((5 : UInt64) == 5) = true by decide, show ((1 : UInt64) == 1) = true by decide, show ((0 : UInt64) == 0) = true by decide, Bool.true_or, Bool.or_true, show ((5 : UInt64) == 5) = true by decide, show ((5 : UInt64) == 1) = false by decide,
       Bool.true_or, Bool.false_eq_true, if_false, if_true, lv_vres0]
   | [], st, sp, d, d0, w, ty, cz => by
     rw [lv, vres]
-    simp only [show ((0 : Nat) == 5) = false by decide, show ((0 : Nat) == 1) = false by decide, show ((5 : Nat) == 1) = false by decide, show ((1 : Nat) == 7) = false by decide, show ((5 : Nat) == 5) = true by decide, show ((1 : Nat) == 1) = true by decide, show ((0 : Nat) == 0) = true by decide, Bool.true_or, Bool.or_true, show ((5 : UInt64) == 5) = true by decide, show ((5 : UInt64) == 1) = false by decide,
+    simp only [show ((0 : UInt64) == 5) = false by decide, show ((0 : UInt64) == 1) = false by decide, show ((5 : UInt64) == 1) = false by decide, show ((1 : UInt64) == 7) = false by decide, show ((5 : UInt64) == 5) = true by decide, show ((1 : UInt64) == 1) = true by decide, show ((0 : UInt64) == 0) = true by decide, Bool.true_or, Bool.or_true, show ((5 : UInt64) == 5) = true by decide, show ((5 : UInt64) == 1) = false by decide,
       Bool.false_eq_true, if_false, if_true, lv_vres0]
 
 /-- a type the validator may return: nonzero and one byte -/
