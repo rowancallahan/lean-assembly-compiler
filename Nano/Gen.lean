@@ -87,12 +87,10 @@ def depA : Nat → Ex → Nat
 end
 def depth (p : Prog) : Nat := max p.1 (depE p.1 p.2)
 
-/-- the stack generator (self-hostable; tested, not proved). The proved `nanoGen` is in `Nano/GenIr.lean`
-(Testing/notes/NANO_PROOF.md). -/
-def nanoGenS (p : Prog) : List UInt8 := asm (genR p)
+def nanoGen (p : Prog) : List UInt8 := asm (genR p)
 
 /-- rejects (`none`) a program whose stack needs 256 or more slots (8-bit slot offsets of the records) -/
-def nanoCompileS (xs : List UInt8) : Option (List UInt8) :=
-  (nanoElab xs).bind fun p => if depth p < 256 then some (nanoGenS p) else none
+def nanoCompile (xs : List UInt8) : Option (List UInt8) :=
+  (nanoElab xs).bind fun p => if depth p < 256 then some (nanoGen p) else none
 
 end Nano

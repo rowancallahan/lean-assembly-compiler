@@ -1,9 +1,10 @@
 # NANO: UTF-8 source text -> RISC-V, tiny compiler, partly self-hosted (branch `nano-e2e`)
 
 Files: `Nano/Ast.lean` (AST, `den`, `Prog.eval`), `Nano/Elab.lean` (`nanoElab`), `Nano/Asm.lean` (`asm`), `Nano/Gen.lean`
-(`genR`, `nanoGenS`, `nanoCompileS`, `depth`), `Nano/AsmSelf.lean` (`asm` compiled by our front end), `Nano/Agree.lean` (generated),
-`Testing/nano/*` (tests), `Testing/scripts/axioms_nano-e2e.lean`. Lake lib `Nano` (globs `Nano.+`). Names after the merge with nano-proof:
-`nanoGen`/`nanoCompile` = the proved IR-based generator (`Nano/GenIr.lean`, nano-proof); `nanoGenS`/`nanoCompileS` = the stack generator here.
+(`genR`, `nanoGen`, `nanoCompile`, `depth`), `Nano/AsmSelf.lean` (`asm` compiled by our front end), `Nano/Agree.lean` (generated),
+`Testing/nano/*` (tests), `Testing/scripts/axioms_nano-e2e.lean`. Lake lib `Nano` (globs `Nano.+`). Names after the merge with nano-proof / nano-mvp: `nanoGen`/`nanoCompile` = the STACK generator here
+(`Nano/Gen.lean`); `nanoGenIR`/`nanoCompileIR` = the proved IR-based generator (`Nano/GenIR.lean`, nano-proof); both are compositions with
+`nanoElab`.
 
 ## Language (the DRAFT spec; the owner writes the final one)
 `def f (x y : UInt64) : UInt64 := e` lines, or the same with `Int64` (one type for the whole file). `nanoElab` (text -> `Prog`) and `Prog.eval`
@@ -63,7 +64,7 @@ design): `-x`, `-(e)`, `--`/`/-` comments, `let` without `;`, `let` mid-expressi
 adjacent binder groups `(x : UInt64)(y : UInt64)`, `0x..`/`1_000`/`1e3`, `.`-names, `|>.`, `$`, `fun`, `if`.
 
 ## Pipeline
-`nanoCompileS src = (nanoElab src).bind (fun p => if depth p < 256 then some (nanoGenS p) else none)` (the 8-bit slot offsets of the records), `nanoGenS p = asm (genR p)`.
+`nanoCompile src = (nanoElab src).bind (fun p => if depth p < 256 then some (nanoGen p) else none)` (the 8-bit slot offsets of the records), `nanoGen p = asm (genR p)`.
 1. `nanoElab`: `lex` (fuel = length) -> mutual structural parsers on fuel with the scope and the def table; arity and scope errors give `none`.
 2. `genR`: stack machine, calls inlined, every value on the machine stack; output = 4-byte pseudo-instruction records `[op,a,b,c]`.
 3. `asm` (`Nano/Asm.lean`): records -> RISC-V words. This is the stage compiled by our compiler.
@@ -75,7 +76,7 @@ Input blocks and output block are NOT assumed aligned: arguments are read BYTEWI
 `addi t6,t6,-8; bgeu t6,a2,+12; addi a0,x0,-1; ret; sd t0,0(t6)`: a push beyond the work block sets a0 = 0xFFFFFFFFFFFFFFFF (`oomFlag`)
 and returns, nothing else changed (sp, gp, s-registers untouched; only t0 t1 t3 t6 are written, a0 only on overflow, input/output blocks
 only at the end). `memoryNeeded` = 8 * `Nano.depth p` (`depE`: peak stack slots including the arguments); work = exactly that fits, one byte
-less returns the flag (tested). On success a0 keeps the input address (not the flag). Limit: slot offsets are 8 bits, `depth p < 256` (checked by `nanoCompileS`, not by `nanoElab` or `genR`). Entry: `mv t6,sp; mv t3,a0`, arguments pushed in order (`rd8`, `push`,
+less returns the flag (tested). On success a0 keeps the input address (not the flag). Limit: slot offsets are 8 bits, `depth p < 256` (checked by `nanoCompile`, not by `nanoElab` or `genR`). Entry: `mv t6,sp; mv t3,a0`, arguments pushed in order (`rd8`, `push`,
 `addi t3,t3,8`), body, `ld t0,0(t6)`, `wr8`, `ret`.
 
 ### Records of `asm` (14 ops; `op & 7` is funct3)
@@ -92,9 +93,9 @@ scaled `[2,31,31,255]`). `genE` is now faithful to `den` on ALL `Ex`: a variable
 | link | status |
 |---|---|
 | `asm` (records -> code) as RISC-V code on the Sail model computes `asm` | **proved**: `Nano.Self.nanoAsm.implements1` (`frontx_compile` + `frontx_implements_listC`, 379 words, the 77 Sail model axioms, `axioms_nano-e2e.lean`) |
-| that binary vs executed Lean | tested: `Testing/nano/nano_selfhost.py` (70 programs): `frontx_test.py` on QEMU **and** Sail == Lean `asm` (70 cases, lengths up to 1664); plus the binary assembles each program's records == Lean `nanoGenS`, and the result runs on qemu-riscv64 for 6 inputs (420 pairs) == `Prog.eval` |
+| that binary vs executed Lean | tested: `Testing/nano/nano_selfhost.py` (70 programs): `frontx_test.py` on QEMU **and** Sail == Lean `asm` (70 cases, lengths up to 1664); plus the binary assembles each program's records == Lean `nanoGen`, and the result runs on qemu-riscv64 for 6 inputs (420 pairs) == `Prog.eval` |
 | `nanoElab` agrees with Lean's elaborator | **proved per program, for all inputs**: `Nano/Agree.lean` (39 programs) and `Nano/AgreeInt.lean` (22), `elabEq` (`decide +kernel`) and `agree`; plus the subset evidence above |
-| `nanoGenS` output correct | **tested, not proved** (nano-proof proves the IR generator `nanoGen`): `Testing/asm/nano_s_test.sh`: 40 random/structured programs + 3 sources, `ir_test.py` (the real `StartCorrect` harness: QEMU and Sail, work = `memoryNeeded` and one byte less, aligned and misaligned (`MIS`) input/output, writes only in output + work, a0 kept / -1): 1032 program x input pairs (4 hand-made `Ex` incl. out-of-range variables, `anil`/`acons` as expressions, a non-chain argument list: `genR` is faithful to `den` on ALL `Ex`); `nano_test.py 5` and `NANO_INT=1 nano_test.py 30 3` (user-mode QEMU with an odd args address and unaligned output, plus Sail): 264 + 312 pairs == `Prog.eval` |
+| `nanoGen` output correct | **tested, not proved** (nano-proof proves the IR generator `nanoGenIR`; its route (a) proves this one): `Testing/asm/nano_s_test.sh`: 40 random/structured programs + 3 sources, `ir_test.py` (the real `StartCorrect` harness: QEMU and Sail, work = `memoryNeeded` and one byte less, aligned and misaligned (`MIS`) input/output, writes only in output + work, a0 kept / -1): 1032 program x input pairs (4 hand-made `Ex` incl. out-of-range variables, `anil`/`acons` as expressions, a non-chain argument list: `genR` is faithful to `den` on ALL `Ex`); `nano_test.py 5` and `NANO_INT=1 nano_test.py 30 3` (user-mode QEMU with an odd args address and unaligned output, plus Sail): 264 + 312 pairs == `Prog.eval` |
 | `nanoElab`, `genR` as RISC-V code | **not done**: see "Self-hosting status" |
 
 Run: `lake build Nano`; `python3 Testing/nano/nano_test.py 20`; `bash Testing/asm/nano_s_test.sh`; `python3 Testing/nano/fuzz.py 300 7`;
@@ -114,7 +115,7 @@ Run: `lake build Nano`; `python3 Testing/nano/nano_test.py 20`; `bash Testing/as
 ## Self-hosting status (task 2) and what blocks it
 **B (the proved binary) covers ONLY the assembler stage `asm`** (records -> words, `Nano.Self.nanoAsm.implements1`, 379 words). `nanoElab` and
 `genR` are plain Lean; no byte-level rewrite of them was accepted, so there is no "friendly = original" proof and B does not compute the whole
-`nanoCompileS`. Evidence (all reproducible, `Testing/nano/probes/`):
+`nanoCompile`. Evidence (all reproducible, `Testing/nano/probes/`):
 1. `genR` as a byte machine. The stack generator was reshaped for it where it was free to (faithful on all `Ex`, position-independent
    records, `memoryNeeded = 8 * depth`), but the generator is a tree walk with a scope list `sc` (de Bruijn index -> slot) and a depth `d`, and
    its code per node is 5-22 records. A flat token stream with `d` as a scalar would remove the tree walk, but then every token must expand

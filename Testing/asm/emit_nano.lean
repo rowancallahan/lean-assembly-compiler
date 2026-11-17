@@ -1,5 +1,5 @@
-/- nano code generator tests (`Nano/GenIr.lean`, proved in `Nano/ProofTop.lean`): random nano programs (and a few
-sources through `nanoElab`), their words (`nanoGen` = `Ir.compile ∘ lower`) and per case the input (arguments as
+/- nano code generator tests (`Nano/GenIR.lean`, proved in `Nano/ProofTop.lean`): random nano programs (and a few
+sources through `nanoElab`), their words (`nanoGenIR` = `Ir.compile ∘ lower`) and per case the input (arguments as
 8-byte LE words), `Prog.eval`'s result (8 LE bytes) and `memoryNeeded` (from the IR interpreter).  Writes
 `Testing/asm/ir-words/nano_<i>.{words,cases}`.  Run:
 `lake env lean Testing/asm/emit_nano.lean`, then `for i in ...; python3 Testing/asm/ir_test.py check 8 nano_$i`
@@ -73,8 +73,8 @@ def emitP (name : String) (p : Prog) (i : Nat) : IO Unit := do
   match compileT (lower p) with
   | none => IO.println s!"{name}: compile failed"
   | some (ws, Q) =>
-    -- the words written are `nanoGen p`
-    unless Proven.Top.wordBytes ws == nanoGen p do IO.println s!"{name}: WORDS != nanoGen"
+    -- the words written are `nanoGenIR p`
+    unless Proven.Top.wordBytes ws == nanoGenIR p do IO.println s!"{name}: WORDS != nanoGenIR"
     IO.FS.writeFile s!"Testing/asm/ir-words/{name}.words" (String.intercalate "\n" (s!"{name} 0" :: ws.map hex8) ++ "\n")
     let mut s := ""
     let mut bad := 0
