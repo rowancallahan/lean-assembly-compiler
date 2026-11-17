@@ -9,7 +9,7 @@ Header `2` (IRV). Nodes: CONST 1 v | LOCAL 2 slot w | BIN 3 op a b (add 1 sub 2 
 | IF 4 cmp a b t e (eq 1, lt 2 unsigned) | LET 5 slot w v body | PAIR 6 n c1..cn | CALL 8 id n a1..an
 | PRIM 9 p args (ISIZE 1 [0 args], RD 2 [i], LEN 3 [0 args: the input length], PUT 4 [o b], BNEW 5 [0], BSIZE 6 [b],
 BGET 7 [b i], BSET 8 [b i v], BPUSH 9 [b v]) | LOOP 10 zero step | CONTINUE 11 e.
-Defs: `DEF 20 id npw nslots kind nres` body `END 21` (IR v2.1). Gen ALSO accepts the other table (CALL 7, PRIM 8, LOOP 9, CONTINUE 10, DEF 11, END 12): the first DEF word (20 or 11) selects it, so either parser numbering works; ids 0, 1, … in order (callees first); the LAST def is main
+Defs: `DEF 20 id npw nslots kind nres` body `END 21` (IR v2.1, FINAL; any other table is rejected; tag changes only after an entry in NANO_V2_IR.md); ids 0, 1, … in order (callees first); the LAST def is main
 (npw 0, nres 1: the output buffer). A fuel def: slot 0 = fuel, state = slots 1..npw-1, body `LOOP zero step`,
 `CONTINUE e` with e of width npw-1 (zero and step are both in TAIL mode: every leaf returns from the def).
 `let (a, b) := v` = `LET slot w v body` (a at slot, b at slot + width a).

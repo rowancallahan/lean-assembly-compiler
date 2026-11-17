@@ -191,7 +191,7 @@ def g36 (x r o k : Buf) (y : UInt64) : Buf × (Buf × Buf) :=
   let i := bget r 0;
   let n := bget r 6;
   let c0 := bget x i;
-  let c := (if bget r 10 == 1 then (if c0 < 8 then c0 else if c0 < 12 then c0 - 1 else c0) else c0);
+  let c := (if c0 < 7 then c0 else if c0 == 7 then 999 else if c0 < 12 then c0 - 1 else c0 + 100);
   let z := (if c == 4 then g_1 else if c == 5 then g_1 else if c == 10 then g_1 else g_0);
   if y == 1 then
     if z == 0 then (g15 r 6 (n + 2), (o, g18 (g18 k n 9 0 0) (n + 1) 1 0 0)) else
@@ -275,7 +275,7 @@ def g37 (x r o k t f : Buf) : Buf × (Buf × (Buf × Buf)) :=
     let (r2, o2) := g20 r1 o z;
     (r2, (bpush (bpush o2 (g10 5 5 g_901)) w, (k, f))) else
   let i := bget r1 0;
-  let r2 := (if bget x i == 12 + 9 * bget r1 10 then g15 r1 0 (i + 1) else g16 r1);
+  let r2 := (if bget x i == 21 then g15 r1 0 (i + 1) else g16 r1);
   let p := bget r2 1;
   let q := bget r2 2;
   let c2 := bget r2 8;
@@ -290,7 +290,7 @@ def g38 (x r o k t : Buf) : Buf × (Buf × (Buf × Buf)) :=
   let p := bget x (i + 2);
   let s := bget x (i + 3);
   let q := bget x (i + 5);
-  let v := (if bget x i == 11 + 9 * bget r 10 then g_1 else g_0);
+  let v := (if bget x i == 20 then g_1 else g_0);
   let z0 := (if s < 251 then g_1 else g_0);
   let z1 := (if p < s + 1 then z0 else g_0);
   let z2 := (if q < 251 then z1 else g_0);
@@ -341,8 +341,7 @@ def g40 : Nat → Buf → UInt64 → Buf → Buf
 /-- **the code generator**: AST (`IRV = 2` first) → machine-code bytes, or empty -/
 def g42 (x : Buf) (u : UInt64) : Buf :=
   if bget x 0 == 2 then
-    let v := (if bget x 1 == 20 then g_1 else g_0);
-    let r := bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush bnew 1) 0) 0) 0) 0) 0) 0) 0) 0) u) v;
+    let r := bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush bnew 1) 0) 0) 0) 0) 0) 0) 0) 0) u;
     let (r1, o) := g39 16777216 x r (g34 bnew) bnew bnew bnew;
     if bget r1 4 == 1 then bnew else g40 16777216 o 0 bnew
   else bnew
