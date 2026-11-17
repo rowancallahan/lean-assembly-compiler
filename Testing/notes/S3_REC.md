@@ -273,4 +273,5 @@ statement hash changed (62/62), only dependency closures; not re-frozen, per the
    with `decide +kernel` lemmas), for `Std.HashMap` construction (`CState {}`).
 3. The large-literal-factor kernel recursion (locate the defeq check that unfolds `Nat.mul _ 4294967296`).
 4. Speed: inline the primitive wrappers; word-step (64/32) long division.
-
+5. `S3RecExamples.lean` (previous round's file) builds in 388–473 s here and on a separate build box: over the 5-min rule.
+   Split it (e.g. structural / well-founded+mutual / con-leche entries) before adding entries to it.
