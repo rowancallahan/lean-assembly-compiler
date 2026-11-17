@@ -17,6 +17,7 @@ program, certificates, `computes`, `correct` (exactly the Sail axioms).  Tests: 
 | `S3Lex` | `lex` | lexicographic `(xs.length, k.toNat)`, the inner counter resets |
 | `S3IotaNumArgs` | con-leche `Cached.iotaNumArgs` (`CoreC.lean`, verbatim) | structural over con-leche's `Expr` |
 | `S3MkAppRange` | con-leche `Cached.mkAppRange` (`CoreC.lean`, verbatim) | well-founded (`termination_by j - i`), `args[i]` with its proof (`List.get`, dependent `Fin xs.length`) |
+| `S3GetAppArgsArr` | con-leche `Cached.getAppArgsArr` + `getAppArgsArrGo` + `iotaNumArgs` (verbatim) | structural; `Array.set!`, `Array.replicate` from their equations |
 | `S3StExc` | `stepS : List UInt64 → StateT UInt64 (Except UInt8) UInt64` | structural; state and exception across a non-tail call |
 -/
 import Riscv.Frontx.S3IO
@@ -239,6 +240,19 @@ def iotaNumArgs : Expr → Nat → Nat
   | .app f _, n => iotaNumArgs f (n + 1)
   | _, n => n
 
+-- (F2.lean.txt lines 17875-17885)
+/-- Fill `acc` from position `i` down with the arguments of the spine `e`,
+innermost first (`getAppArgsArr`). -/
+def getAppArgsArrGo : Expr → Nat → Array Expr → Array Expr
+  | .app f a, i + 1, acc => getAppArgsArrGo f i (acc.set! i a)
+  | _, _, acc => acc
+
+/-- **The arguments of an application spine, as an array** (outermost
+last), written into an array of the spine's length from the back: no
+list is built. -/
+@[inline] def getAppArgsArr (e : Expr) : Array Expr :=
+  getAppArgsArrGo e (iotaNumArgs e 0) (Array.replicate (iotaNumArgs e 0) e)
+
 -- (F2.lean.txt lines 17889-17893)
 /-- **`f` applied to the arguments `args[i:j]`**, the range read in
 place. -/
@@ -282,5 +296,9 @@ def rangeMain (bs : List UInt8) : List UInt8 :=
   | i :: j :: r => exprB (ConLeche.Cached.mkAppRange (.sort .zero) (exprsGo r []).toArray (wNat i.toUInt64) (wNat j.toUInt64))
   | _ => []
 s3_compile S3MkAppRange := rangeMain
+
+def argsMain (bs : List UInt8) : List UInt8 :=
+  (ConLeche.Cached.getAppArgsArr (spine bs)).toList.flatMap exprB
+s3_compile S3GetAppArgsArr := argsMain
 
 end Proven.S3.Rec
