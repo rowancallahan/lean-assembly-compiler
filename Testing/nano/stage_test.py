@@ -5,7 +5,7 @@ first S cases (smoke: frontx_test's full check, incl. Sail write ranges, gp / sp
 usage: stage_test.py expm|lexv|lexe [R random programs] [S sail cases] [seed], from the repo root"""
 import os, random, subprocess, sys, shutil
 D = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.abspath(os.path.join(D, "..", ".."))
-sys.path.insert(0, D)
+sys.path.insert(0, D); sys.path.insert(0, os.path.join(ROOT, "Testing", "asm"))
 from nanolib import *
 ST = sys.argv[1]; R = int(sys.argv[2]) if len(sys.argv) > 2 else 20; S = int(sys.argv[3]) if len(sys.argv) > 3 else 8
 rng = random.Random(int(sys.argv[4]) if len(sys.argv) > 4 else 7)

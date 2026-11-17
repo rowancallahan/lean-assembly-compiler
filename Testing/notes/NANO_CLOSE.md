@@ -53,3 +53,6 @@
   539 obligations, translate + step proof 18.3 s, induction 3.1 s; the rest is `frontx_implements_listC`, the
   kernel-checked words), machine theorem `Nano.Self.nanoExpM.implements1` (Sail axioms), `nanoExpM (ofL x) = mexp x`
   by `mexp_eq_mx`. (The 13-arm `mexp` itself: > 47 CPU-min without finishing, integrator.)
+* `mexp` stage TESTED (`python3 Testing/nano/stage_test.py expm R S seed`: inputs `ser p` of corpus + random
+  UInt64/Int64 programs and random micro-op strings; expected = executed Lean `mexp`): seed 7, R = 40: QEMU 306/306,
+  Sail 8/8; seed 11, R = 400: QEMU 2466/2466 (outputs up to 3248 bytes), Sail 5/5. 663 words, work 271 bytes.
