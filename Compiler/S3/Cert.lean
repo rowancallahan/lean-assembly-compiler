@@ -343,6 +343,12 @@ instance instEncExceptT {ε α : Type} {m : Type → Type} [h : Enc (m (Except �
 @[simp] theorem bv_eq_one (c : Bool) : (bv c = 1#64) = (c = true) := by cases c <;> decide
 attribute [s3_norm] UInt8.toNat_zero
 attribute [s3_norm] UInt64.toBitVec_ofNat
+/-- a byte decoded from a word, and `UInt64.toUInt8`, in one normal form (`UInt8.ofNat` of the word's value) -/
+@[s3_norm] theorem u8_mk_sw (x : BitVec 64) : (⟨x.setWidth 8⟩ : UInt8) = UInt8.ofNat x.toNat := by
+  apply UInt8.toNat_inj.mp; simp
+@[s3_norm] theorem u8_ofBitVec_sw (x : BitVec 64) : UInt8.ofBitVec (x.setWidth 8) = UInt8.ofNat x.toNat := by
+  apply UInt8.toNat_inj.mp; simp
+@[s3_norm] theorem u64_toUInt8_ofNat (y : UInt64) : y.toUInt8 = UInt8.ofNat y.toNat := rfl
 
 @[simp] theorem u8_and_ff (x : UInt8) : (x &&& @OfNat.ofNat UInt8 (255 : Nat) UInt8.instOfNat) = x := by
   apply UInt8.toNat_inj.mp
