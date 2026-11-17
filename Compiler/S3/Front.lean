@@ -52,6 +52,8 @@ structure FnInfo where
 structure St where
   tys : Array Lean.Expr := #[]
   dts : Array (Array (Array Ty)) := #[]
+  /-- per datatype, per constructor, per Lean field: is it data (`false`: a proof, not stored) -/
+  masks : Array (Array (Array Bool)) := #[]
   fns : Array FnInfo := #[]
 
 abbrev M := StateRefT St MetaM
@@ -103,20 +105,33 @@ partial def tyOf (t : Lean.Expr) : M Ty := do
   unless params.size == ii.numParams do throwError "S3: type not fully applied: {t}"
   if t.hasFVar || t.hasMVar then throwError "S3: type with variables: {t}"
   let i := s.tys.size
-  modify fun s => { s with tys := s.tys.push t, dts := s.dts.push #[] }
+  modify fun s => { s with tys := s.tys.push t, dts := s.dts.push #[], masks := s.masks.push #[] }
   let mut cs : Array (Array Ty) := #[]
+  let mut ms : Array (Array Bool) := #[]
   for c in ii.ctors do
     let cty ← inferType (mkAppN (mkConst c us) params)
-    let fs ← forallTelescopeReducing cty fun xs _ => do
+    let (fs, mk) ← forallTelescopeReducing cty fun xs _ => do
       let mut r := #[]
+      let mut mk := #[]
       for x in xs do
         let xt ← inferType x
+        -- a proof field is not stored (it has no run-time content)
+        if ← isProp xt then mk := mk.push false; continue
         if xt.hasAnyFVar (fun f => xs.any (·.fvarId! == f)) then throwError "S3: dependent field in {c}"
         r := r.push (← tyOf xt)
-      return r
+        mk := mk.push true
+      return (r, mk)
     cs := cs.push fs
-  modify fun s => { s with dts := s.dts.set! i cs }
+    ms := ms.push mk
+  modify fun s => { s with dts := s.dts.set! i cs, masks := s.masks.set! i ms }
   return .d i
+
+/-- the data mask of constructor `j` of datatype `i` -/
+def maskOf (i j : Nat) : M (Array Bool) := do
+  return (← get).masks[i]!.getD j #[]
+
+/-- the data index of Lean field `k` (fields before it that are data) -/
+def dataIdx (mask : Array Bool) (k : Nat) : Nat := ((mask.extract 0 k).filter id).size
 
 def binOp? (n : Name) (t : Lean.Expr) : Option String :=
   if n == ``HAdd.hAdd then some "(.op .add)"
@@ -248,13 +263,19 @@ partial def condAtom (c : Ctx) (p : Lean.Expr) (k : Ctx → Nat → M SE) : M SE
   return .let_ .b s (← k { c with depth := c.depth + 1 } c.depth)
 
 /-- the arm of a minor premise with `m` fields (the fields get the levels of variables `0 .. m - 1`) -/
-partial def arm (c : Ctx) (minor : Lean.Expr) (m : Nat) (extra : Array Lean.Expr) (nih : Nat := 0) : M (Nat × SE) := do
+partial def arm (c : Ctx) (minor : Lean.Expr) (m : Nat) (extra : Array Lean.Expr) (nih : Nat := 0)
+    (mask : Array Bool := #[]) : M (Nat × SE) := do
   let mty ← inferType minor
   forallBoundedTelescope mty (m + nih) fun fs _ => do
     unless fs.size == m + nih do throwError "S3: arm with too few fields"
     let mut c' := c
-    for f in (fs.extract 0 m).reverse do c' := c'.push f
-    return (m, ← tr c' (mkAppN (mkAppN minor fs) extra).headBeta)
+    let mut nd := 0
+    for k in [0:m] do
+      if mask.getD k true then nd := nd + 1
+    -- data fields only (proof fields stay local constants: they may occur only in proofs)
+    for k in (List.range m).reverse do
+      if mask.getD k true then c' := c'.push fs[k]!
+    return (nd, ← tr c' (mkAppN (mkAppN minor fs) extra).headBeta)
 
 partial def natLitSE (c : Ctx) (n : Nat) : M SE := do
   unless n ≤ natLitMax do throwError "S3: Nat literal {n} is too large for the unary representation"
@@ -281,7 +302,10 @@ partial def tr (c : Ctx) (e : Lean.Expr) : M SE := do
     let some (.ctorInfo ci) := (← getEnv).find? (getStructureCtor (← getEnv) S).name | throwError "S3: proj"
     atom c s fun c' lx => do
       let .d i ← tyOf (← inferType s) | throwError "S3: projection of a non-datatype"
-      return .cas i lx [(ci.numFields, .var (c'.depth + ci.numFields - 1 - idx))]
+      let mask ← maskOf i 0
+      unless mask.getD idx true do throwError "S3: projection of a proof field {e}"
+      let nd := (mask.filter id).size
+      return .cas i lx [(nd, .var (c'.depth + nd - 1 - dataIdx mask idx))]
   | .const ``Bool.true _ => return .blit true
   | .const ``Bool.false _ => return .blit false
   | .lit (.natVal n) => natLitSE c n
@@ -294,6 +318,13 @@ partial def trApp (c : Ctx) (e : Lean.Expr) : M SE := do
   let .const n _ := fn | throwError "S3: unsupported application {e}"
   -- literals
   if let some v := natLit? e then return ← natLitSE c v
+  -- a `Fin n` literal: `⟨k % n, _⟩`
+  if n == ``OfNat.ofNat && args.size == 3 && args[0]!.isAppOfArity ``Fin 1 then
+    if let (some m, some k) := (natLit? args[0]!.appArg!, natLit? args[1]!) then
+      if m > 0 then
+        let .d i ← tyOf args[0]! | throwError "S3: Fin"
+        let s1 ← natLitSE c (k % m)
+        return .let_ (← tyOf (mkConst ``Nat)) s1 (.mk i 0 [c.depth])
   if n == ``OfNat.ofNat && args.size == 3 && isWordTy args[0]! then
     match args[1]!.consumeMData with
     | .lit (.natVal v) => return .lit (v % 2 ^ 64)
@@ -336,7 +367,9 @@ partial def trApp (c : Ctx) (e : Lean.Expr) : M SE := do
   if let some (.ctorInfo ci) := env.find? n then
     unless args.size == ci.numParams + ci.numFields do throwError "S3: partial constructor {e}"
     let .d i ← tyOf (← inferType e) | throwError "S3: constructor of a non-datatype {e}"
-    return ← atoms c (args.extract ci.numParams args.size).toList fun _ ls => return .mk i ci.cidx ls
+    let mask ← maskOf i ci.cidx
+    let fs := (args.extract ci.numParams args.size).toList.zipIdx.filter (fun (_, k) => mask.getD k true)
+    return ← atoms c (fs.map (·.1)) fun _ ls => return .mk i ci.cidx ls
   -- casesOn
   if isCasesOnRecursor env n then
     let I := n.getPrefix
@@ -355,7 +388,7 @@ partial def trApp (c : Ctx) (e : Lean.Expr) : M SE := do
       let mut arms := #[]
       for j in [0:nmin] do
         let some (.ctorInfo cj) := env.find? ii.ctors[j]! | throwError "S3: ctor"
-        arms := arms.push (← arm c' minors[j]! cj.numFields extra)
+        arms := arms.push (← arm c' minors[j]! cj.numFields extra 0 (← maskOf i j))
       return .cas i l arms.toList
   -- recursors used as `casesOn` (the induction hypotheses unused)
   if let some (.recInfo ri) := env.find? n then
@@ -378,7 +411,7 @@ partial def trApp (c : Ctx) (e : Lean.Expr) : M SE := do
           for x in xs.extract ii.numParams xs.size do
             if (← inferType x).getAppFn.isConstOf I then k := k + 1
           return k
-        arms := arms.push (← arm c' minors[j]! cj.numFields extra nih)
+        arms := arms.push (← arm c' minors[j]! cj.numFields extra nih (← maskOf i j))
       return .cas i l arms.toList
   -- matchers
   if (← isMatcher n) || (n.isInternal && (← getConstInfo n).isDefinition && !(← isRecursive n)) then
@@ -394,7 +427,11 @@ partial def trApp (c : Ctx) (e : Lean.Expr) : M SE := do
       let some (.ctorInfo ci) := env.find? pi.ctorName | throwError "S3: proj"
       return ← atom c s fun c' lx => do
         let .d i ← tyOf (← inferType s) | throwError "S3: projection of a non-datatype"
-        return .cas i lx [(ci.numFields, .var (c'.depth + ci.numFields - 1 - pi.i))]
+        let mask ← maskOf i 0
+        unless mask.getD pi.i true do throwError "S3: projection of a proof field {e}"
+        let nd := (mask.filter id).size
+        let _ := ci
+        return .cas i lx [(nd, .var (c'.depth + nd - 1 - dataIdx mask pi.i))]
     if let some e' ← unfoldProjInst? e then return ← tr c e'.headBeta
     throwError "S3: unsupported class operation {e}"
   -- calls (a non-recursive function with a function argument after a run-time one is inlined)

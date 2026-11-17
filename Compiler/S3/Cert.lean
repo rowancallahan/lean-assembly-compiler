@@ -250,6 +250,16 @@ attribute [s3_norm] Nat.beq_eq Nat.add_eq Nat.succ_eq_add_one Bool.or_eq_true Bo
 @[s3_norm] theorem nat_ble_false (a b : Nat) : (Nat.ble a b = false) = ¬ a ≤ b := by
   rw [← Nat.ble_eq, Bool.not_eq_true]
 
+/-- `Fin n` as its constructor with the value only (the proof is not stored) -/
+instance {n : Nat} [NeZero n] : Enc (Fin n) where
+  enc i := .c 0 [Enc.enc i.val]
+  dec | .c 0 [a] => if h : (Enc.dec a : Nat) < n then ⟨Enc.dec a, h⟩ else 0 | _ => 0
+  dec_enc i := by simp
+
+@[simp] theorem enc_fin {n : Nat} [NeZero n] (i : Fin n) : Enc.enc i = .c 0 [Enc.enc i.val] := rfl
+@[simp] theorem dec_fin {n : Nat} [NeZero n] (a : V) :
+    (Enc.dec (V.c 0 [a]) : Fin n) = if h : (Enc.dec a : Nat) < n then ⟨Enc.dec a, h⟩ else 0 := rfl
+
 instance instEncExceptT {ε α : Type} {m : Type → Type} [h : Enc (m (Except ε α))] : Enc (ExceptT ε m α) := h
 
 @[simp] theorem enc_exceptT {ε α : Type} {m : Type → Type} [h : Enc (m (Except ε α))] (x : ExceptT ε m α) :
