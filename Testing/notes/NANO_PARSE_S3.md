@@ -107,3 +107,6 @@ Goal (owner rule): every compiled stage builds in ≤ 5 min. Probe `gs` (decoder
   ParseS3BSelf 311 s, ParseS3BAllocA 87 s, ParseS3BAllocB 177 s, ParseS3BStage 184 s (chained imports: sequential,
   memory). **`Nano.PS.stage2B_implements`**: Sail axioms + propext, Classical.choice, Quot.sound.
 - TEST 2b (`PS3_ONLY=p2 python3 Testing/nano/ps3_test.py 20 6 7`): QEMU 166/166 × 2 (a1, flag, gp/sp, write ranges), Sail 6/6 × 2; memoryNeeded 384..494984 bytes.
+- 11:03 `bash Testing/scripts/check.sh`: ALL CHECKS PASSED (1046 s). WARNING (statement fingerprints, warning
+  only, not re-frozen per the rules): definitions under headline statements changed (the IR stub: a1 = result
+  length; `Ctx.Fin` strengthened); all statements unchanged.
