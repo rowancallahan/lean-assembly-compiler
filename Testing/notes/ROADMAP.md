@@ -377,3 +377,11 @@ tag. No code changes during the run; a fix means a new tag and a new full run.
 ONE GATE (owner, 09:08): there is exactly one point, the tag, where everything is proved end to end: `Nano.selfHosted`
 is kernel-checked at the tag, every manifest row is done and check.sh passes. Only after that gate does B run on its own
 source. Per-part checks before the gate (stage tests on QEMU/Sail) are allowed and encouraged; they never replace the gate.
+
+### GATE REACHED (2026-11-17 12:17): nano v1 rc1 = origin/nano-parse-s3 commit 6a76836
+`theorem Nano.selfHosted (K : Nat) : SelfHosted binary (fun _ => space5 K) (Domain K) nanoCompileA` (Nano/SelfHostFinal.lean),
+no hypotheses; `binary` = 5 linked stages (lexA, stage2b, inliner: S3; nanoExpM; nanoAsm);
+`Domain K src := SizedL K … src ∧ LeanLimits src`. Axioms: Sail set + propext, Classical.choice, Quot.sound (expected-axioms.txt:930).
+check.sh ALL CHECKS PASSED (1026 s). Heavy modules: ParseS3BStage ≈ 8 GB, ParseS3BAllocB ≈ 7.6 GB, so build with limited parallelism.
+Tag `nano-v1-rc1` → 6a76836 still to be pushed by the owner (the session git proxy refuses tag pushes).
+Next: the self-run from 6a76836 (no code changes), then merge the nano branches to main.
