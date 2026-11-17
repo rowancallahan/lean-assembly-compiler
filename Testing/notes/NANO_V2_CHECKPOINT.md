@@ -133,3 +133,14 @@ plus `,` 15, `×` 16, `→` 17, `|` 18, `=>` 19, `<` 20, `≤` 21, `≠` 22, `==
 No type-uniformity pass (v1 `l9`) and no `\n def` rule; reject (any unknown char, lone `=`/`&`/`>`/`>>`, `1a`) = empty Buf. Keyword chain uses let-bound else results (no code blow-up).
 Test `Testing/nano/v2self/lex2_test.lean` (independent `List Char` reference): the whole S text (27 772 output words) identical, 20 000 random piece-strings (5 324 valid) 0 mismatches.
 Compiled (`selfcompile.lean`, m = copy of `s10 x`): 20 069 words; QEMU on the S text: 27 772 output bytes in 0.2 s. NEXT: parser (increment 2) consuming these tags.
+
+### Increment 2 design: parser → inliner → expander interchange format (PROPOSAL, sent to the Opus box; to be agreed before the parser is written)
+Goal: every later stage is a single linear pass over a `Buf` with explicit stacks (nano has no data recursion), so the parser emits **postfix (RPN) with structure markers**, variables already resolved to **stack depths**.
+Per def: `DEF n_params kind(0 plain, 1 fuel-loop) name` header, then the body stream, then `END`. Body stream (tag, then operands in following words):
+- `LIT v` (UInt64, one word since Buf words are 64-bit), `VAR d` (d = distance from the current value-stack top, 0 = top), `BIN op` (pops 2, pushes 1; ops: + - * == < ≤ ≠ &&& ||| <<< >>> as plain words; `<<<`/`>>>` carry the shift numeral: `SHL k`/`SHR k`),
+  `LET` (pops the value, binds it as a new slot; closed by `ENDLET n`, which drops n slots keeping the result), `TUP n` / `PROJ i n` (tuple values are n adjacent slots; `let (a, b, …) := e` = `LET`-style destructuring `SPLIT n`),
+- control: `IF` cond-stream `THEN` t-stream `ELSE` e-stream `FI` (`&&`/`||`/`≤`/`≠` are desugared by the PARSER into this form with a let-bound else, so the expander sees only `<`/`==` conditions),
+- calls: `CALL defno nargs` (the inliner replaces it by the callee's body with the arguments as `LET`s; recursion only via loops), prims: `RD LEN BNEW BSIZE BGET BSET BPUSH PUT`, `LEN'` only in fuel positions,
+- fuel loops (the 22 `Nat →` defs): `DEF … 1`; arms: `ZERO` stream `SUCC` stream; the self call in tail position is `NEXT nargs` (the loop back-edge: new state values on the stack, jump to header); non-tail self calls are rejected (same rule as Front.lean's `Tl`).
+The inliner (v1 `j8` style, now over this stream) handles `CALL` only; loops (`NEXT`/`ZERO`/`SUCC`) pass through, the callee loop inlined at a call site becomes a nested `LOOP` block (`LOOPB … ENDLOOP`) as in `Nano.V2B.Ex.loop`. The expander maps each tag to the `Nano.V2B` instruction sequences of `cE`/`cT` (Gen.lean) with the label/offset fix-up and the `jal` range fix.
+The differential test for the parser: decode the RPN back to the surface `S` AST of `Nano/V2/Front.lean` (pretty-print) and compare with `Front.lean`'s own parse of the same text.
