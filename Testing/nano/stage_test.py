@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Stage test (nano-closeA): a compiled nano stage (`expm`: `Nano.Self.nanoExpM` = `mexp`; `lexv` / `lexe`: the two halves `vBE` / `eBE` of the split lexer, `eBE` on `vB src` against `lexB src`) vs executed Lean on the spec function.  Inputs: corpus + R random programs (UInt64 and Int64) + raw byte strings
+"""Stage test (nano-closeA): a compiled nano stage (`expm`: `Nano.Self.nanoExpM` = `mexp`; `lexv` / `lexe`: the two halves `vBE` / `eBE` of the split lexer, `eBE` on `vB src` against `lexB src`; linked binaries: `lexlink` = `link vBE eBE` against `lexB`, `tail` =
+`link nanoExpM nanoAsm` on `ser p` against `nanoGen p`) vs executed Lean on the spec function.  Inputs: corpus + R random programs (UInt64 and Int64) + raw byte strings
 (random micro-ops for expm; mutated sources and random bytes for lex).  QEMU on every case (bulk); QEMU + Sail on the
 first S cases (smoke: frontx_test's full check, incl. Sail write ranges, gp / sp, a1 = length).
-usage: stage_test.py expm|lexv|lexe [R random programs] [S sail cases] [seed], from the repo root"""
+usage: stage_test.py expm|lexv|lexe|lexlink|tail [R random programs] [S sail cases] [seed], from the repo root"""
 import os, random, subprocess, sys, shutil
 D = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.abspath(os.path.join(D, "..", ".."))
 sys.path.insert(0, D); sys.path.insert(0, os.path.join(ROOT, "Testing", "asm"))
@@ -14,7 +15,7 @@ gu, gi = G(rng), GI(rng, "Int64")
 srcs = list(CORPUS) + list(INT_CORPUS) + [gu.program() for _ in range(R)] + [gi.program() for _ in range(R)]
 for i, s in enumerate(srcs): open(f"{W}/p{i:04}.nano", "w").write(s)
 raws = []
-if ST == "expm":
+if ST in ("expm", "tail"):
     for _ in range(4 * R):
         n = rng.choice([0, 1, 2, 3, 5, 8, 20, 101])
         raws.append(bytes(rng.choice([rng.randrange(16), rng.randrange(256)]) if j % 2 == 0 else rng.randrange(256) for j in range(n)))
@@ -27,10 +28,10 @@ else:
         raws.append(bytes(s))
     raws += [bytes(rng.randrange(256) for _ in range(rng.randrange(12))) for _ in range(R)] + [b"", b" ", b"def", b"(", b")("]
 for i, b in enumerate(raws): open(f"{W}/r{i:04}.bin", "wb").write(b)
-EM = "lexsplit" if ST in ("lexv", "lexe") else ST
+EM = {"lexv": "lexsplit", "lexe": "lexsplit", "lexlink": "linkA", "tail": "linkA"}.get(ST, ST)
 subprocess.run(f"cd {ROOT} && PATH=$HOME/.elan/bin:$PATH NANO_DIR={W} NANO_STAGE={ST} lake env lean --tstack=400000 "
                f"Testing/nano/emit_{EM}.lean", shell=True, check=True)
-FN = {"expm": "nanoexpm", "lexv": "nanolexv", "lexe": "nanolexe"}[ST]
+FN = {"expm": "nanoexpm", "lexv": "nanolexv", "lexe": "nanolexe", "lexlink": "nanolexlink", "tail": "nanotail"}[ST]
 os.chdir(os.path.join(ROOT, "Testing", "asm"))
 sys.argv = ["frontx_test.py", "-", "0", FN]
 import frontx_test as F
