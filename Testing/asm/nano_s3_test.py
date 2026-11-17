@@ -12,6 +12,7 @@
 usage: nano_s3_test.py [R random sources per type] [SAIL programs] [seed]   (from the repo root)"""
 import os, random, re, shutil, subprocess, sys
 D = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.abspath(os.path.join(D, "..", ".."))
+sys.dont_write_bytecode = True  # do not touch the tracked Testing/nano/__pycache__
 sys.path.insert(0, os.path.join(ROOT, "Testing", "nano"))
 from nanolib import *
 R = int(sys.argv[1]) if len(sys.argv) > 1 else 10
