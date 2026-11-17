@@ -397,3 +397,9 @@ check.sh loop / expected-axioms = main's lines then the branches' (nano-closeB a
 Testing/nano/archive/ (InlP3 / InlP3Proof stay). check.sh: ALL CHECKS PASSED (cold over the f1cfb76 cache 1115 s up to
 the failure, then 1271 s; peak 6.2 GB, 4 jobs); only the pre-existing statement-fingerprint WARNING, not re-frozen.
 `Nano.selfHosted`: 77 axioms = expected-axioms.txt:930 (Sail set + propext, Classical.choice, Quot.sound).
+
+### RELEASE MARKERS (owner, 2026-11-17 17:10): no tags
+Releases are marked by a commit on main whose message says it is the final addition (e.g. "nano v1 FINAL: …"), not by
+git tags. nano v1 FINAL = this commit: main contains nano-parse-s3 rc2 (152f05b, same binary as rc1 6a76836),
+`Nano.selfHosted` proved (Sail axioms + propext/Classical.choice/Quot.sound), check.sh passed (merge-nano), self-run QEMU
+146/146 and Sail 8/8 on the proved binary. The nano-v1-rc1/rc2 tags are not needed.
