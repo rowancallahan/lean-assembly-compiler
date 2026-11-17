@@ -545,4 +545,196 @@ theorem step_eq (xs : List UInt8) (hx : xs.length < 2 ^ 32) (f p : Nat) (hp : p 
     · unfold stepK; rw [if_neg (fun q => hl ((ltL xs p hx hp).mp q))]; rfl
     · rw [hd]; simp [lexS, stepR]
 
+/-! ## the two passes -/
+
+theorem emitW_eq (o : List UInt8) (v : UInt64) : emitW o v = o ++ le8 v := by simp [emitW, put, le8]
+
+theorem emitTok_eq (xs : List UInt8) (hx : xs.length < 2 ^ 32) (f k p q : Nat) (t : Tok) (h3 : 3 ≤ k)
+    (h16 : k ≤ 16) (ht : tokK k (seg xs p q) = some t) (hw : k = 7 ∨ k = 16 → q - p ≤ f) (hpq : p ≤ q)
+    (hq : q ≤ xs.length) (o : List UInt8) :
+    emitTok f xs k.toUInt64 p.toUInt64 q.toUInt64 o = o ++ encTok t ∧ tyK k.toUInt64 = tyCode t := by
+  have : k = 3 ∨ k = 4 ∨ k = 5 ∨ k = 6 ∨ k = 7 ∨ k = 8 ∨ k = 9 ∨ k = 10 ∨ k = 11 ∨ k = 12 ∨ k = 13 ∨ k = 14 ∨
+    k = 15 ∨ k = 16 := by omega
+  rcases this with h | h | h | h | h | h | h | h | h | h | h | h | h | h <;> subst h <;>
+    simp only [tokK, if_true, if_false, Option.some.injEq, reduceCtorEq, Nat.reduceEqDiff] at ht <;> subst ht
+  all_goals first
+    | (constructor
+       · simp [emitTok, put, encTok]
+       · simp [tyK, tyCode])
+    | skip
+  · constructor
+    · simp only [emitTok, show ((7 : Nat).toUInt64 == 7) = true from rfl, if_true]
+      rw [numR_eq xs hx f p q 0 hpq hq (hw (Or.inl rfl)), emitW_eq]; simp [put, encTok, seg]
+    · simp [tyK, tyCode]
+  · constructor
+    · simp only [emitTok, show ((16 : Nat).toUInt64 == 7) = false from rfl,
+        show ((16 : Nat).toUInt64 == 16) = true from rfl, if_true, if_false, Bool.false_eq_true]
+      rw [emitId_eq xs hx f p q _ hpq hq (hw (Or.inr rfl))]; simp [put, encTok, seg]
+    · simp [tyK, tyCode]
+
+theorem codes_le : ∀ ts : List Tok, ∀ x ∈ codes ts, x ≤ 2
+  | [], _, h => by simp [codes] at h
+  | t :: ts, x, h => by
+    simp only [codes, List.mem_cons] at h
+    rcases h with h | h
+    · subst h; cases t <;> simp [tyCode] <;> split <;> decide
+    · exact codes_le ts x h
+
+theorem uniC3 : ∀ r : List UInt64, (∀ x ∈ r, x ≤ 2) → uniC 3 r = 3
+  | [], _ => rfl
+  | c :: r, h => by
+    have hc := h c (by simp)
+    have hr := uniC3 r (fun x hx => h x (by simp [hx]))
+    unfold uniC
+    by_cases h0 : c = 0
+    · simp [h0, hr]
+    · have : ¬ (3 : UInt64) = c := by
+        intro e; subst e; exact absurd hc (by decide)
+      simp [h0, this]
+
+theorem uniC_cons (t c : UInt64) (r : List UInt64) (hr : ∀ x ∈ r, x ≤ 2) :
+    uniC t (c :: r) = uniC (uni t c) r := by
+  have e : uniC t (c :: r) =
+      (if c == 0 then uniC t r else if t == 0 then uniC c r else if t == c then uniC c r else 3) := rfl
+  rw [e]; unfold uni
+  by_cases h0 : c = 0
+  · simp [h0]
+  · by_cases ht : t = 0
+    · simp [h0, ht]
+    · by_cases htc : t = c
+      · subst htc; simp [h0]
+      · simp [h0, ht, htc, uniC3 r hr]
+
+theorem tyK_le (k : UInt64) : tyK k ≤ 2 := by
+  unfold tyK; split
+  · decide
+  · split <;> decide
+
+theorem lexChk_eq (xs : List UInt8) (hx : xs.length < 2 ^ 32) : ∀ (f p : Nat) (t : UInt64), p ≤ xs.length →
+    lexChk f xs p.toUInt64 t = (match lexS f (xs.drop p) with | none => 4 | some ts => uniC t (codes ts))
+  | 0, p, t, hp => by
+    unfold lexChk
+    by_cases hl : p < xs.length
+    · rw [if_pos ((ltL xs p hx hp).mpr hl), List.drop_eq_getElem_cons hl]; rfl
+    · rw [if_neg (fun q => hl ((ltL xs p hx hp).mp q)), show xs.drop p = [] by simp; omega]; rfl
+  | f + 1, p, t, hp => by
+    obtain ⟨k, q, hk, hq, h16, hpq, hl, hs⟩ := step_eq xs hx f p hp
+    rw [hl]; unfold lexChk; simp only []; rw [hk, hq]
+    unfold stepR
+    by_cases k0 : k = 0
+    · subst k0; simp
+    by_cases k1 : k = 1
+    · subst k1; simp [codes, uniC]
+    have hk0 : (k.toUInt64 == 0) = false := by
+      simp; intro e; have := congrArg UInt64.toNat e; simp at this; omega
+    have hk1 : (k.toUInt64 == 1) = false := by
+      simp; intro e; have := congrArg UInt64.toNat e; simp at this; omega
+    simp only [hk0, hk1, Bool.false_eq_true, if_false, k0, k1]
+    obtain ⟨hqp, hqL⟩ := hpq (by omega)
+    rw [lexChk_eq xs hx f q _ hqL]
+    by_cases k2 : k = 2
+    · subst k2; simp [uni, tyK]
+    · simp only [k2, if_false]
+      obtain ⟨hsome, hw⟩ := hs (by omega)
+      obtain ⟨tok, htok⟩ := Option.isSome_iff_exists.mp hsome
+      rw [htok]
+      obtain ⟨-, hty⟩ := emitTok_eq xs hx f k p q tok (by omega) h16 htok hw (by omega) hqL []
+      cases hr : lexS f (xs.drop q) with
+      | none => simp [consT, consO]
+      | some ts =>
+        simp only [consT, consO]
+        rw [codes, uniC_cons _ _ _ (codes_le ts), hty]
+
+theorem lexEmit_eq (xs : List UInt8) (hx : xs.length < 2 ^ 32) : ∀ (f p : Nat) (o : List UInt8) (ts : List Tok),
+    p ≤ xs.length → lexS f (xs.drop p) = some ts → lexEmit f xs p.toUInt64 o = o ++ encToks ts
+  | 0, p, o, ts, hp, h => by
+    unfold lexS at h
+    split at h
+    · cases h; simp [lexEmit, encToks]
+    · cases h
+  | f + 1, p, o, ts, hp, h => by
+    obtain ⟨k, q, hk, hq, h16, hpq, hl, hs⟩ := step_eq xs hx f p hp
+    rw [hl] at h; unfold lexEmit; simp only []; rw [hk, hq]
+    unfold stepR at h
+    by_cases k0 : k = 0
+    · subst k0; simp at h
+    by_cases k1 : k = 1
+    · subst k1; simp at h; subst h; simp [encToks]
+    have hk0 : (k.toUInt64 == 0) = false := by
+      simp; intro e; have := congrArg UInt64.toNat e; simp at this; omega
+    have hk1 : (k.toUInt64 == 1) = false := by
+      simp; intro e; have := congrArg UInt64.toNat e; simp at this; omega
+    simp only [hk0, hk1, Bool.false_eq_true, if_false, k0, k1, Bool.false_or] at h ⊢
+    obtain ⟨hqp, hqL⟩ := hpq (by omega)
+    by_cases k2 : k = 2
+    · subst k2; simp only [if_true] at h
+      simp only [show ((2 : Nat).toUInt64 == 2) = true from rfl, if_true]
+      exact lexEmit_eq xs hx f q o ts hqL h
+    · have hk2 : (k.toUInt64 == 2) = false := by
+        simp; intro e; have := congrArg UInt64.toNat e; simp at this; omega
+      simp only [k2, if_false] at h
+      simp only [hk2, Bool.false_eq_true, if_false]
+      obtain ⟨hsome, hw⟩ := hs (by omega)
+      obtain ⟨tok, htok⟩ := Option.isSome_iff_exists.mp hsome
+      rw [htok] at h
+      cases hr : lexS f (xs.drop q) with
+      | none => rw [hr] at h; simp [consT, consO] at h
+      | some ts' =>
+        rw [hr] at h; simp only [consT, consO, Option.some.injEq] at h; subst h
+        obtain ⟨he, -⟩ := emitTok_eq xs hx f k p q tok (by omega) h16 htok hw (by omega) hqL o
+        rw [he, lexEmit_eq xs hx f q _ ts' hqL hr, encToks]; simp
+
+/-! ## the adjacency check and the whole stage -/
+
+theorem adjL_eq (xs : List UInt8) (hx : xs.length < 2 ^ 32) : ∀ (n i : Nat), i ≤ xs.length →
+    xs.length ≤ i + n → adjL n xs i.toUInt64 = if adjOk (xs.drop i) then 1 else 0
+  | 0, i, h1, h2 => by
+    rw [show xs.drop i = [] by simp; omega]; rfl
+  | n + 1, i, h1, h2 => by
+    unfold adjL
+    by_cases hc : i + 1 < xs.length
+    · obtain ⟨a, ha, hda⟩ := byteAt xs hx i (by omega)
+      obtain ⟨b, hb, hdb⟩ := byteAt xs hx (i + 1) hc
+      rw [if_pos ((lenLt xs hx i 1 h1 (by decide)).mpr hc)]
+      simp only []
+      rw [ha, show i.toUInt64 + 1 = (i + 1).toUInt64 by simp, hb, isWC_eq, isWC_eq,
+        beqL a (nat_lit 41) (by decide), beqL b (nat_lit 40) (by decide),
+        adjL_eq xs hx n (i + 1) (by omega) (by omega), hda, hdb, adjOk]
+      rw [← hdb]
+      by_cases e1 : ((isWordC a || a == 41) && b == 40) = true
+      · simp [e1]
+      · by_cases e2 : (a == 41 && isWordC b) = true
+        · simp [e1, e2]
+        · simp only [e1, e2, Bool.false_eq_true, if_false, Bool.not_true, Bool.not_false, Bool.true_and]
+    · rw [if_neg (fun q => hc ((lenLt xs hx i 1 h1 (by decide)).mp q))]
+      have : (xs.drop i).length < 2 := by simp; omega
+      match hl : xs.drop i, this with
+      | [], _ => rfl
+      | [_], _ => rfl
+
+/-- **the bridge**: the nano v2 source of stage 1 + parser 2a is `lexA`, on every input of length < 2^32 -/
+theorem lexV_eq (xs : List UInt8) (hx : xs.length < 2 ^ 32) : lexV xs = lexA xs := by
+  have hA := adjL_eq xs hx xs.length 0 (by omega) (by omega)
+  have hC := lexChk_eq xs hx xs.length 0 0 (by omega)
+  simp only [Nat.toUInt64_eq, List.drop_zero] at hA hC
+  rw [show UInt64.ofNat 0 = 0 from rfl] at hA hC
+  unfold lexV lexA lexTS
+  rw [hA]
+  by_cases ha : adjOk xs = true
+  · simp only [ha, if_true, show ((1 : UInt64) == 1) = true from rfl]
+    rw [hC]
+    cases hl : lexS xs.length xs with
+    | none => simp [encT]
+    | some ts =>
+      simp only []
+      have hE := lexEmit_eq xs hx xs.length 0 (put [] (uniC 0 (codes ts))) ts (by omega) (by simpa using hl)
+      simp only [Nat.toUInt64_eq] at hE
+      rw [show UInt64.ofNat 0 = 0 from rfl] at hE
+      by_cases t1 : uniC 0 (codes ts) = 1
+      · rw [t1] at hE ⊢; rw [hE]; simp [decT, pairT, encT, put]
+      · by_cases t2 : uniC 0 (codes ts) = 2
+        · rw [t2] at hE ⊢; rw [hE]; simp [decT, pairT, encT, put]
+        · simp [t1, t2, decT, pairT, encT]
+  · simp [ha, encT]
+
 end Nano.V2.LexP
