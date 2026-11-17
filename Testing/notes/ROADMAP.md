@@ -374,3 +374,6 @@ must be present and final on ONE branch:
 - `check.sh` passes, with no sorry and no new axioms.
 Then tag that revision. The full run (one build, the QEMU/Sail tests, the self-run, the fixed point later) uses only the
 tag. No code changes during the run; a fix means a new tag and a new full run.
+ONE GATE (owner, 09:08): there is exactly one point, the tag, where everything is proved end to end: `Nano.selfHosted`
+is kernel-checked at the tag, every manifest row is done and check.sh passes. Only after that gate does B run on its own
+source. Per-part checks before the gate (stage tests on QEMU/Sail) are allowed and encouraged; they never replace the gate.
