@@ -2,11 +2,41 @@
 
 Integrator notes. Branch = `nano-mvp` + `nano-e2e` + `nano-proof` + `main`, merged every 30–45 min.
 
-## Target (not yet proved)
-`Nano/SelfHost.lean`: let `B` = the RISC-V binary our compiler produces from the Lean definition of the whole stack-path
-compiler `nanoCompileS = asm ∘ genR ∘ nanoElab`. For every `src`, `p` with `nanoElab src = some p`: `B` run on `src` on the
-Sail model outputs `c`, and `c` run on the Sail model computes `p.eval` (UInt64 and Int64), OOM flag exactly when the
-work block is too small. L1 = `B` computes `nanoCompileS`; L2 = `CompileCorrect`/`CompileRuns riscv` for `asm ∘ genR`.
+## Summary (state at the end of the integration session, 2026-11-17)
+
+**Target** (`Nano/SelfHost.lean`, `SelfHosted B space D compile`): `B` = ONE RISC-V binary made by our compiler from
+the nano compiler `asm ∘ genR ∘ nanoElab`; for every source `src` (in the size domain `D`) with `nanoElab src = some p`:
+`B` on the Sail model, run on `src`, emits `c.code = asm (genR p)`; that code on the Sail model computes `p.eval` /
+`p.evalI` on every input (`CompileCorrect` form) and sets the out-of-memory flag exactly when the work block is too
+small (`CompileRuns` form).
+
+**Status: NOT closed. Proved today, all with exactly the Sail axioms, no sorry:**
+1. (L2, lane nano-proof) `nano_stack_correct : CompileCorrect riscv nanoCompileA`, `nano_stack_runs : CompileRuns riscv
+   nanoCompileA` (`Nano/StackTop.lean`); `nanoCompileA p = some ⟨asm (genR p), 8, …⟩` for scoped programs of stack
+   depth ≤ 256. UInt64 and Int64 source-level forms: `nano_stack_chain`, `nano_stack_chain_int` (`Nano/Chain.lean`).
+2. (composition, this lane) `selfHosted_stack`: the target follows from (L1) alone, i.e. from a binary `B` with
+   `Implements1With` for a byte function `cb` such that `cb src = asm (genR p)` on accepted sources.
+   `selfHosted_stack_stages`: the same from three separately compiled stages (front end → generator → assembler),
+   linked by `Nano.Link.link` (`link_implements`: an 18-word stub, two stages → one binary, machine proof; tested on
+   QEMU + Sail). `of_pg`: stages compiled by the paged front end (stack available) link too.
+3. (L1, partial) `selfHosted_asm_stage` (`Nano/SelfHostAsm.lean`): the composed statement with the part that is
+   machine code today = the assembler (`Nano.Self.nanoAsm.implements1`, lane nano-e2e): the compiled `asm` on Sail,
+   run on `genR p`, emits `c.code`; `c.code` on Sail computes `p.eval`; flag iff out of memory.
+
+**What remains for the target: (L1) for the front end**, i.e. `genR ∘ nanoElab` (text → records) as machine code:
+* `genR p = mexp (ser p)` is proved (`Nano/Ser.lean`); `mexp` (micro-op expander) is a list-front-end function whose
+  compile is slow (see log); so what is missing is a compiled chain `src ↦ ser p` (or `↦ genR p`).
+* lane nano-elab: stage 1 (lexer + type check) proved equal to the spec for every input, compile in progress; the
+  parser / scopes / inlining stage is NOT started. It needs unbounded memory (a return path per inlined call), so it
+  cannot be a list-front-end stage; decision here: compile it with the paged front end (`wp_compile`), probe
+  `Testing/nano/wp_stack_probe.lean` shows the accepted shape and its limits (log, 00:20).
+* then one Lean lemma `nanoElab src = some p → chain src = ser p` and one application of `selfHosted_stack_stages`.
+
+**Trusted base**: `nanoElab` / `Prog.eval` / `Prog.evalI` (the spec of nano, cross-checked against Lean's elaborator
+by agreement proofs and fuzzing, never proved), the Sail RISC-V model, the statements in `Spec/` and
+`Compiler/AllocSpec.lean`, Lean's kernel.
+
+**Tests** (merged tree): see the table below.
 
 ## Live status (2026-11-17 00:00)
 Lanes: nano-e2e (Sonnet: elaborator rules, `asm`, tests), nano-elab (Opus: `nanoElab` as compiled byte-level stages),
@@ -96,3 +126,55 @@ nano-proof (Opus: L2), nano-mvp (finished: Int64, Chain, chain_test), nano-int (
   `ser p` (`Nano/Ser.lean`) or directly `genR p`; needed only for accepted sources (`nanoElab src = some p`).
   Open risk, stated: whether `wp_compile` (single flat loops, one work array per loop state) accepts an explicit-stack
   parser; that is the nano-elab lane's next experiment.
+* 2026-11-17 00:20. PROBE of the open risk (parser stage on the paged front end): `Testing/nano/wp_stack_probe.lean`.
+  `wp_compile` ACCEPTS an explicit-stack machine (stack cells written with `set!` inside the growing output buffer,
+  `sp` scalar), with `….compiles` / `….computes` (Sail axioms only), in this shape and only in this shape:
+  1. ONE tail call per step; every state component is a conditional EXPRESSION (`rpn (if … then buf.set! … else …) src
+     (…) (…)`). Branching between different calls (`if c then go a else go b`, nested) fails in the generated step
+     proof (`Dependent elimination failed … Decidable.rec`); so does mixing calls and the result below the top `if`.
+  2. The top-level shape is `if i < src.size then <one call> else buf` (a disjunctive loop condition with an inner
+     `if i < src.size` fails the same way).
+  3. Side conditions (invariant, measure, `< 2^64`) are closed by a fixed tactic (split, then omega). It worked with:
+     every step consumes exactly one input byte (`i + 1`), pushes a FIXED number of bytes (pad with 0 and strip in a
+     later list-path pass), invariant `sp ≤ i ∧ i ≤ src.size ∧ buf.size + 2 * (src.size - i) ≤ C ∧ src.size < 2^32`,
+     measure `src.size - i`; `sp` itself may be a nested conditional. Conditional `i` / variable push counts with a
+     lexicographic measure left goals open (`x2 - 1 < x2`, size goals) in my attempts.
+  4. Body size: the plain back end's loop-exit branch limits a body to ~1000 words and paged array accesses are large;
+     the probe's body already exceeds it (`decide` on `wfB` fails). An arithmetic `mop` in the body (`i + 1 + 0 * sp`)
+     switches `wp_compile` to the checked words (`compBFC`, `pickC`), which passed.
+  Consequence for the design: O(1) stack work per input byte (fine for nano's three precedence levels and parentheses);
+  unbounded work per token (scope lookup, copying a callee body) must be done by rescanning list-path stages before
+  (name → index, arity) or needs steps that do not consume input (not yet working with the fixed tactic).
+* 2026-11-17 00:30. PROBE 2, `Testing/nano/wp_copy_probe.lean`: steps that do NOT consume input also pass `wp_compile`
+  (3 min): copy mode `0 < rem` (push `buf.get! cp`, `rem - 1`, `cp + 1`, `i` unchanged), else consume one byte and set
+  `rem`; measure `(src.size - i) * 4 + rem`, invariant `rem < 4 ∧ cp + rem ≤ 3 ∧ …`; every step pushes exactly ONE
+  byte (branch-free size), every condition is the simple `0 < rem`. So inlining by copying an earlier part of the
+  output buffer is expressible in a paged stage (bound the copy length with `% C` so the invariant `rem < C` is
+  provable without facts about memory contents). What made the earlier attempts fail was a size that depends on the
+  branch (conditional `push` vs `set!`): the fixed tactic simplifies sizes before splitting, not after.
+* 2026-11-17 00:45. `Nano/ElabU.lean` (pure Lean, 3 standard axioms): the NON-INLINED elaboration. `nanoElabU` runs the
+  spec's own parser functions (`pExpr` … of `Nano/Elab.lean`, unchanged) with a def table whose bodies are index
+  markers (`Ex.var j` for def `j`), so a call is `Ex.call (Ex.var j) args` and the output is linear in the source;
+  `inlineProg` replaces the markers. **`nanoElab_eq : nanoElab xs = (nanoElabU xs).map inlineProg`** (via `par`: the
+  seven mutual parser functions commute with replacing def bodies). Consequence: the compiled parser stage need not
+  inline (its output is linear, so it is log space again); inlining becomes its own stage (copying, paged front
+  end, probe 2). nano-elab's option (a), but only as an internal intermediate: spec, generator and L2 unchanged.
+* 2026-11-17 01:00. `Nano/SerU.lean` (pure Lean, standard axioms): the byte format of the non-inlined program and the
+  inliner on bytes. `serU u`: per def (oldest first) the body's micro-ops (as `serE`; a call = arguments,
+  `[14, j / 256] [15, j % 256]`, `[9, arity]`), closed by `[13, arity]`. `inlB`: copy micro-ops, replace a 14/15 pair
+  by the already inlined body code of def `j`, wrap the last def as a program. **`inlB_serU : WF u → u ≠ [] → inlB
+  (serU u) = ser (inlineProg u)`** and **`genR_chain : nanoElabU xs = some u → nanoElab xs = some p → WF u → mexp
+  (inlB (serU u)) = genR p`**. Key lemma `serE_shift` / `body_code`: the code of a scoped body does not depend on the
+  stack depth of the call site, so inlining is byte copying. `WF u`: bodies scoped, calls to earlier defs with the
+  right argument count, callee numbers < 65536, arities < 256 (the last two are size conditions for the domain `D`).
+  So the front-end chain is now, stage by stage, with every Lean-level equation proved:
+  `src —[lexer + NON-inlining parser: to do, nano-elab]→ serU u —[inlB: to compile, paged]→ ser p —[mexp: compile
+  running]→ genR p —[asm: compiled]→ code`.
+* 2026-11-17 01:30. `Nano/ElabUWF.lean`: `pwf` (what the seven parser functions return is well formed, by the same
+  fuel induction as `par`), `nanoElabU_wf`, **`chain_eq : nanoElab xs = some p → ∃ u, nanoElabU xs = some u ∧ (arities
+  < 256 → at most 65536 defs → asm (mexp (inlB (serU u))) = nanoGen p)`**. `Nano/SelfHostChain.lean`:
+  **`selfHosted_four`**: the target `SelfHosted (link (link (link ce ci) cm) ca) … (Sized K …) nanoCompileA` from four
+  stage machine theorems with these exact function specs: `fe src = serU u` whenever `nanoElabU src = some u`
+  (front end: lexer + NON-inlining parser), `fi = inlB` (inliner), `fm = mexp` (expander), `fa = asm` (assembler,
+  exists). `Sized`: arities < 256, ≤ 65536 defs, intermediate streams ≤ 2^20 bytes and ≤ K, stage work spaces ≤ K.
+  Everything except the three missing stage theorems is proved (Sail axioms only).
