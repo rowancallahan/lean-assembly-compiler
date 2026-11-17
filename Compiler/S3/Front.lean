@@ -839,6 +839,10 @@ def genText (N : Name) (st : St) (extraSimp : String) : MetaM String := do
         s!"  intro {" ".intercalate (vs ++ hs)}\n  have := cert{k} {" ".intercalate (vs.map (s!"(Proven.S3.Enc.dec {·})"))}\n" ++
         s!"  rw [{", ".intercalate hs}] at this\n  exact this\n")
   out := out ++ s!"theorem main_good : ∀ bs : List UInt8, Proven.S3.Good P φ P.main [Proven.S3.Enc.enc bs] := cert0\n"
+  out := out ++ "/-- **termination**: from `main` on every input, the call tree is well-founded (from the certificates, i.e. " ++
+    "from Lean's own induction principles) -/\n" ++
+    "theorem wf : Proven.S3.WfCert P (fun f vs => f = P.main ∧ ∃ bs : List UInt8, vs = [Proven.S3.Enc.enc bs]) :=\n" ++
+    "  ⟨fun f vs ⟨hf, bs, hv⟩ => by subst hf hv; exact Proven.S3.acc_of_ev (main_good bs)⟩\n"
   let mainTxt ← exprTxt st.fns[0]!.key
   out := out ++ s!"/-- **the bridge**: the S3 program computes `main` on bytes -/\n" ++
     s!"theorem computes : Proven.Top.Computes P {mainTxt} id id :=\n" ++

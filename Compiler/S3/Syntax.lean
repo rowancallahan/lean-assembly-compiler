@@ -16,7 +16,7 @@ ill-formed values, which typed programs on encoded inputs never meet.  `⟦τ⟧
 type `τ` stands for (a datatype stands for its universal value; the bridge `Compiler/S3/Cert.lean` relates them to
 the user's Lean types).  Recursion: the meaning is the least relation (no termination needed to state it); a
 program's termination on its inputs is the per-function bridge's business (it is proved from the Lean function's
-own termination, by functional induction); `WfCert` is the slot for a program-level certificate.
+own termination, by functional induction); `WfCert` is the program-level termination certificate (filled from evaluations, `acc_of_ev`).
 
 Pure Lean (core only). -/
 import Spec.Code
@@ -303,11 +303,57 @@ inductive Reaches (P : Prog) (g : Fin P.S.fns.length) (ws : List V) : {Γ : List
       (hj : j < P.S.nc i) : env[x.idx]? = some (.c j fs) → Reaches P g ws (fs ++ env) (arms ⟨j, hj⟩) →
       Reaches P g ws env (.cas x arms)
 
-/-- **a program-level termination certificate** (the slot; structural recursion: `μ` = the size of an argument;
-tuple measures and mutual recursion: any `μ` into `Nat`): every call decreases `μ`.  Not needed by the compiler
-theorem (which takes the meaning as given), nor by the bridge (termination there is the Lean function's own). -/
-structure WfCert (P : Prog) where
-  μ : Fin P.S.fns.length → List V → Nat
-  dec : ∀ f vs g ws, Reaches P g ws vs (P.body f) → μ g ws < μ f vs
+/-- **the call relation** of `P`: `a` is called by `b` (the call of `a.1` on `a.2` is reached by the body of
+`b.1` on `b.2`) -/
+def CallRel (P : Prog) (a b : Fin P.S.fns.length × List V) : Prop := Reaches P a.1 a.2 b.2 (P.body b.1)
+
+/-- **a program-level termination certificate** (the slot): from every call in `D`, the call tree is
+well-founded (no infinite chain of calls).  Structural, well-founded, tuple-measure and mutual recursion alike: it
+is filled from an evaluation (`acc_of_ev`), and the evaluations come from the Lean function's own induction
+principle (`f.induct` / `f.mutual_induct`, i.e. Lean's termination argument). -/
+structure WfCert (P : Prog) (D : Fin P.S.fns.length → List V → Prop) : Prop where
+  acc : ∀ f vs, D f vs → Acc (CallRel P) (f, vs)
+
+/-- every call an evaluation reaches has a well-founded call tree (and a value) -/
+theorem acc_of_reaches {P : Prog} {Γ : List Ty} {τ : Ty} {env : List V} {e : Expr P.S Γ τ} {v : V}
+    (h : Ev P env e v) : ∀ g ws, Reaches P g ws env e → Acc (CallRel P) (g, ws) := by
+  induction h with
+  | var => intro g ws hr; cases hr
+  | lit => intro g ws hr; cases hr
+  | blit => intro g ws hr; cases hr
+  | bin => intro g ws hr; cases hr
+  | cmp => intro g ws hr; cases hr
+  | bnot => intro g ws hr; cases hr
+  | mk => intro g ws hr; cases hr
+  | let_ h₁ _ ih₁ ih₂ =>
+    intro g ws hr
+    cases hr with
+    | let₁ hr => exact ih₁ g ws hr
+    | let₂ h₁' hr => rw [Ev.det h₁ h₁'] at ih₂; exact ih₂ g ws hr
+  | iteT hc hx _ ih =>
+    intro g ws hr
+    cases hr with
+    | iteT _ _ hr => exact ih g ws hr
+    | iteF hc' _ => rw [hc] at hc'; cases hc'; exact absurd rfl hx
+  | iteF hc _ ih =>
+    intro g ws hr
+    cases hr with
+    | iteT hc' hx _ => rw [hc] at hc'; cases hc'; exact absurd rfl hx
+    | iteF _ hr => exact ih g ws hr
+  | cas hj hx _ _ ih =>
+    intro g ws hr
+    cases hr with
+    | cas hj' hx' hr => rw [hx] at hx'; cases hx'; exact ih g ws hr
+  | call hxs _ ih =>
+    intro g ws hr
+    cases hr with
+    | here hxs' =>
+      rw [hxs] at hxs'; cases hxs'
+      exact Acc.intro _ fun b hb => ih b.1 b.2 hb
+
+/-- **an evaluated call has a well-founded call tree** -/
+theorem acc_of_ev {P : Prog} {f : Fin P.S.fns.length} {vs : List V} {v : V} (h : Ev P vs (P.body f) v) :
+    Acc (CallRel P) (f, vs) :=
+  Acc.intro _ fun b hb => acc_of_reaches h b.1 b.2 hb
 
 end Proven.S3

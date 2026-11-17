@@ -369,4 +369,8 @@ theorem computes_of_main {P : Prog} {φ : Fin P.S.fns.length → List V → V} {
   show P.run (encIn x) = _
   rw [Prog.run_eq h, bytesOut_bytesV]
 
+/-- **the termination certificate from the certificates**: every good call has a well-founded call tree -/
+theorem wfCert_of_good (P : Prog) (φ : Fin P.S.fns.length → List V → V) : WfCert P (Good P φ) :=
+  ⟨fun _ _ h => acc_of_ev h⟩
+
 end Proven.S3
