@@ -46,3 +46,20 @@
   (no branching), then split a variable that blocks evaluation (`match some (Enc.enc x)`), else `s3_split`.
   Option `s3.depth` (default 12) for diagnosis. Also: `st0 ts` inlined as a record literal in `stage2S` (a call
   returning a structure cannot be split). Result: `stParams` probe 34 s (was > 10 min, failing).
+- Adapter (box nano-parse-s3-adapter, merged): `Proven.S3.implements1` / `implements1_spaceOf`
+  (Riscv/Back/S3Impl1.lean, notes Testing/notes/S3_IMPL1.md): S3's compiled code meets `Implements1With` with
+  `retLen = true`. IR change: the stub moves `main`'s return value into a1 (`stub3`), S3's `main` returns its output
+  count; `Ctx.Fin` gains `keepC`/frame facts; the frame of the output block is obtained by instantiating the
+  emission context with the RESULT length. All existing theorem statements unchanged.
+- `Nano/S3Stage.lean`: `stage`: from `computes` (generated), `smallB P.S = true`, main arity 1 and the IR compiler's
+  acceptance, the machine theorem in the linker's form (`spaceP P` = `spaceOf` of the compiled program).
+- FINDING: kernel evaluation of `Ir.compileW` (`decide +kernel`) blows up (> 9.5 GB on the 2035-word inliner):
+  `layout`'s accumulator is re-evaluated lazily at every use. DECISION: materialize the allocated program and the
+  layouts as literal terms (`irLit%`, `layLit%`: elaborated by evaluation with derived `ToExpr`; untrusted, every
+  use is an equation the kernel checks by `decide +kernel`): `alloc (lowerP P) = some Q`, `layStep Q init = L1`,
+  `layStep Q L1 = L2`, `layStep Q L2 = L2` (fixpoint; `layout_fix`, `layout_add`), `emitP Q L2` succeeds
+  (`compileW_isSome`), code length (`words_eq'`). Inliner: 12 s, 2.3 GB.
+- Files: `Nano/ParseS3Self.lean` / `Nano/InlS3Self.lean` (S3 compile + certificates only),
+  `Nano/ParseS3Stage.lean` / `Nano/InlS3Stage.lean` (the stage theorems).
+- INLINER through S3 (`Nano/InlS3.lean`: `inlBS`, bridge `inlBS_eq : inlBS xs = inlB xs` for EVERY input, so the
+  stage needs no `inlFits` condition): compile < 1 min; `Nano.IS.inlS3_implements` checks.
