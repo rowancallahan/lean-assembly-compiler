@@ -31,6 +31,7 @@ theorem PB.abort {c : Cfg} {s : St} {h : Nat} {L : List UInt64} {R : Rg} {τ : T
 theorem pairB {c : Cfg} {a b : SC} {s : St} {h : Nat} {L : List UInt64} {env : List (Ty × Nat)} {vals : List Val}
     {d d1 d2 : List Nat} {Fs : Nat → Rg} {τa τb : Ty} {va vb : Val}
     (he : EnvB c s h L env vals d Fs) (st1 : Step (env.map (·.1)) d d1) (st2 : Step (env.map (·.1)) d1 d2)
+    (hl1 : d1.length = d.length)
     (ha : ∃ r, SC.Ex c a s r ∧ PB c s h L (RgC env.length d d1 Fs) τa va r)
     (hb : ∀ s1 h1 W, h ≤ h1 → Stk c s1 h1 (L ++ W) → W.length = τa.size →
       EnvB c s1 h1 (L ++ W) env vals d1 Fs →
@@ -38,7 +39,7 @@ theorem pairB {c : Cfg} {a b : SC} {s : St} {h : Nat} {L : List UInt64} {env : L
     ∃ r, SC.Ex c (.seq a b) s r ∧ PB c s h L (RgC env.length d d2 Fs) (.prod τa τb) (.pr va vb) r := by
   refine thenB (fun t s' ht => ht) ha ?_
   rintro s1 ⟨h1, W, F, hh1, h81, hs1, hv1, hF1, k1⟩
-  have he1 := he.after (M := W) st1 k1 hh1 h81
+  have he1 := he.after (M := W) st1 hl1 k1 hh1 h81
   obtain ⟨r, e, p⟩ := hb s1 h1 W hh1 hs1 hv1.len he1
   refine ⟨r, e, ?_⟩
   cases r with

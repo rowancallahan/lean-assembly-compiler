@@ -146,6 +146,7 @@ structure EnvB (c : Cfg) (s : St) (h : Nat) (L : List UInt64) (env : List (Ty ×
   disj : ∀ k k' : Nat, k ≠ k' → k < env.length → k' < env.length → fl d k = 0 → fl d k' ≠ 2 → Disj (Fs k) (Fs k')
   inp : InpRep c s
   h8 : h % 8 = 0
+  dl : d.length = env.length
 
 theorem RgC.low {c : Cfg} {s : St} {h : Nat} {L : List UInt64} {env : List (Ty × Nat)} {vals : List Val}
     {d d' : List Nat} {Fs : Nat → Rg} (he : EnvB c s h L env vals d Fs) {y : Nat} (hy : RgC env.length d d' Fs y) :
@@ -175,7 +176,7 @@ theorem getD_append_take {L M : List UInt64} {p n : Nat} (h : p + n ≤ L.length
 /-- the environment after a block that consumed `RgC d d1`, grew the heap and pushed `M` -/
 theorem EnvB.after {c : Cfg} {s s1 : St} {h h1 : Nat} {L M : List UInt64} {env : List (Ty × Nat)} {vals : List Val}
     {d d1 : List Nat} {Fs : Nat → Rg} (he : EnvB c s h L env vals d Fs) (st : Step (env.map (·.1)) d d1)
-    (k : KeepB s s1 h (RgC env.length d d1 Fs)) (hh : h ≤ h1) (h8 : h1 % 8 = 0) :
+    (hl : d1.length = d.length) (k : KeepB s s1 h (RgC env.length d d1 Fs)) (hh : h ≤ h1) (h8 : h1 % 8 = 0) :
     EnvB c s1 h1 (L ++ M) env vals d1 Fs where
   len := he.len
   slot := fun k τ p hk => by have := he.slot k τ p hk; simp; omega
@@ -201,6 +202,7 @@ theorem EnvB.after {c : Cfg} {s s1 : St} {h h1 : Nat} {L M : List UInt64} {env :
     exact he.disj j j' hne hj hj' a b
   inp := he.inp.keepB k
   h8 := h8
+  dl := hl.trans he.dl
 
 /-- a value produced by the first of two blocks survives the second -/
 theorem VR.across {c : Cfg} {s s1 s2 : St} {h h1 : Nat} {L : List UInt64} {env : List (Ty × Nat)} {vals : List Val}

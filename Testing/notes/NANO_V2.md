@@ -317,3 +317,25 @@ NEXT: (1) generalise Post/Keep (growing heap top, SameOutside of consumed footpr
 lemmas; set/push/mk nodes (round 6 F buffer_set/buffer_push); EnvRep with buffers + Owned, indexed by Ex.lv flags,
 now also with READ-ONLY aliases (two variables may share one address while both are read-only). (2) Sail layer for
 loops (round 6 E). (3) ImplementsBytes (`compile_correct`). Pending runs: QEMU/Sail of nv2f_* at ≥ d19fe00, check.sh.
+
+## Buffer proof DONE (resume session, 2026-11-17) — task (1)
+- **`Nano.V2B.cB_ok`** / `cTB_ok` (Nano/V2/CompB.lean): `cE` is correct for the WHOLE back-end language (words,
+  products, input, `let`, `if`, `split`, loops, and buffers `mk`/`size`/`get`/`set`/`push` IN PLACE) on the abstract
+  machine, for every expression the ownership checker accepts (`e.lv (env.map fst) d = some d'`). Axioms
+  propext/Classical.choice/Quot.sound; CompB 9 s, every new module < 10 s locally.
+- Invariant (Nano/V2/Heap.lean): `VR` (value = stack words + `BufRep`s, exact pairwise-disjoint footprints), `EnvB`
+  (non-dead variables represented below the heap top; a LIVE variable's footprint disjoint from every other non-dead
+  one; read-only aliases may share), `KeepB s s' h R` (below the old heap top only the CONSUMED footprints `R = RgC d d'`
+  change), outcome `PB` (value pushed, heap grown, its buffers in `R` ∪ new heap; or abort oom/cap). Loop invariant
+  at HEAD: state's footprint in `R` ∪ new heap, outer buffers read-only (`killAll`), body consumes only the state.
+- Machine lemmas (Nano/V2/HeapN.lean): `setT_ok`, `pushT_ok` (append or cap abort), `mk_node`; tails `sizeT_ok`,
+  `getT_ok` (Buf.lean), `igetT_ok` (Inp.lean), `pop2_ok`; glue `pairB`/`liftP`/`thenB`, `PB.slide`/`PB.after`.
+- Checker facts (Nano/V2/OwnP.lean): inversion per construct, `lv_step` (flags only go live→dead, buffers only;
+  lengths kept), `cE_tyOf`/`cT_tyT` (cE's types are tyOf's). `Ex.lv` moved to Nano/V2/Own.lean (core-only imports).
+- **SOUNDNESS FIX in `Ex.lv`**: `get (var i) j` let `j` consume (mutate in place) `i` after `i`'s address was pushed:
+  `bget b (bget (bset b 0 0) 0)` read the mutated buffer on the machine, the original in Lean. Now `i` must still be
+  non-dead after `j`. Negative test Testing/nano/v2f/neg21.lean (runner: fuzz.py must report it rejected).
+- Borrow cases (`size/get/set/push (var i) …`) push the address as a plain WORD (empty footprint) and recover the
+  `BufRep` by a frame argument (`rep_frame`): the variable is not consumed by the other operands.
+- NEXT: (2) Sail layer for loops (round 6 E), (3) main-level theorem (prologue/epilogue, `ImplementsBytes`),
+  (4) front end ⇒ `lv` on the lowered main (the check at Front.lean `b.lv (tys sc) …`; `lv (cap κ e) = lv e`).
