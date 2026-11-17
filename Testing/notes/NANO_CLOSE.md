@@ -65,3 +65,7 @@
   BEFORE 5 min 46 s (`implements_listC` 229 s), AFTER 49.5 s. Code: more loads/stores (locals in memory).
 * `mexp` stage rebuilt with `frontx_implements_listCS` (55 s): 1031 words (was 663), work 271 bytes; re-tested:
   seed 11, R = 400: QEMU 2466/2466, Sail 6/6; seed 7, R = 20: QEMU 186/186, Sail 8/8.
+* Main session (06:32): Lean's real elaborator rejects ≥ 512 nested lets, ≥ 256 nested calls, operator chains of
+  ≥ ~3000 operands, which `nanoElab` accepts. DECISION: the domain of `Nano.selfHosted` gets the explicit predicate
+  `LeanLimits src := src.length ≤ 1500 ∧ src.count 40 ≤ 250` (a nested call needs a `(` per level: ≤ 250; a `let`
+  needs ≥ 3 bytes: < 512; an operand ≥ 1 byte plus an operator: < 2500 operands). `nanoElab` unchanged.
