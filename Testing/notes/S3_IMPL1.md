@@ -13,3 +13,14 @@ Decisions (recorded as made):
    context with `outL := y.length` (the actual result length) instead of the output block's length; `Unch` is then
    exactly "unchanged outside [output.base, y.length) and the work block".
 4. `Cfg` after the run is `T.ok` in `Fin`.
+5. `S3.words P` is defined from `Ir.compileW (lowerP P)` (empty list when rejected); `compile_words` /
+   `code_eq` (`c.code = wordBytes (words P)`) / `code_length` (`c.code.length = 4 * (words P).length`).
+6. `S3.spaceOf c n` = max of `memoryNeeded c x` over the explicit enumeration `allBytes n` of all byte lists of
+   length `n` (`memoryNeeded_le_spaceOf`); `implements1_spaceOf` needs no space hypothesis.
+
+Results (Riscv/Back/S3Impl1.lean): `Proven.S3.implements1`, `Proven.S3.implements1_spaceOf`; axioms identical to
+`Proven.S3.compile_correct` (checked with `#print axioms`). Nothing left open.
+
+Emitted code changes: the IR stub's tail gains one `mv a1, t0` before `ret` (every IR-compiled program: S3,
+Nano, IR examples); the S3 `main` wrapper returns `[.r 8]` (one extra load in its `ret`).
+Nano's `main` still returns `[]`, so `a1` holds an unspecified value there (nothing claims otherwise).
