@@ -8,15 +8,33 @@ compiled with a machine theorem, tested on QEMU + Sail, then the self-hosting co
 |---|---|
 | layer A: explicit-stack parser machine `Nano.PB.parseA` (`Nano/ParseB.lean`) | done; executable; `Testing/nano/parseb_check.lean`: 3000 inputs (corpus, boundary mutations, prefixes, random bytes, edge cases; 595 lexed, 299 accepted), 0 mismatches against `(nanoElabU x).map serU` |
 | layer A = spec, every token list | **proved**: `Nano.PB.parseA_eq` (`Nano/ParseBTop.lean`) |
-| stage 1 then layer A = spec, every source | **proved**: `Nano.PB.stage2A_lexB` |
+| stage 1 then layer A = spec, every source | **proved**: `Nano.PB.stage2A_lexB` (gas existential) |
+| explicit gas: `stage2` (a fixed Lean function) | **proved exact for every source**: `Nano.PB.stage2_lexB`, `stage2_hfe` (`Nano/ParseBGas.lean`; potential `Φ`, `step_dec`, `run_stable`) |
+| composition | **proved**: `Nano.SelfHost.selfHosted_parse` (five stage theorems → target), `selfHosted_parse_asm` (compiled `asm` plugged in) (`Nano/ParseBSelfHost.lean`, Sail axioms) |
 | layer B: the same machine on bytes, compiled by `wp_compile` | NOT done (see "What remains") |
 | QEMU + Sail tests of stage 2 | NOT done (no compiled stage) |
-| `selfHosted_four` instance | NOT done: needs the front-end stage theorem `he` (stage 1 + stage 2 linked) and `hi` (`inlB`), `hm` (`mexp`) |
+| self-hosting instance | NOT closed: the remaining hypotheses of `selfHosted_parse_asm` are the machine theorems of stage 1 (`lexBE`, compile parked by the integrator: not confirmed to build), stage 2 (`stage2`, not compiled), `inlB`, `mexp` (both not compiled); everything else is proved |
 
 Axioms of all three theorems: propext, Classical.choice, Quot.sound (`Testing/scripts/axioms_nano-parse.lean`, in
 check.sh's loop and in expected-axioms.txt). No sorry, no native_decide.
 
 ## The theorems
+```
+-- EXACT, every source (Nano/ParseBGas.lean)
+def stage2 (bs : List UInt8) : List UInt8 :=
+  match decL bs with | some (_, ts) => (parseA (gasOf ts) ts).getD [] | none => []     -- gasOf ts = 13·|ts| + 6
+theorem stage2_lexB (xs : List UInt8) :
+    stage2 (lexB xs) = match nanoElabU xs with | some u => serU u | none => []
+theorem stage2_hfe (xs) (u) (h : nanoElabU xs = some u) : stage2 (lexB xs) = serU u
+-- composition (Nano/ParseBSelfHost.lean), Sail axioms
+theorem selfHosted_parse_asm … (h1 : Implements1With … c1 f1 s1 (2^20) true)   -- stage 1
+    (h2 : Implements1With … c2 f2 s2 (2^20) true) (hi : … ci fi …) (hm : … cm fm …)
+    (hc2 : c2.length < 2^17) (hci …) (hcm …)
+    (hf1 : ∀ x, f1 (ofL x) = lexB x) (hf2 : ∀ x, f2 (ofL x) = stage2 x)
+    (hfi : ∀ x, fi (ofL x) = inlB x) (hfm : ∀ x, fm (ofL x) = mexp x) :
+    SelfHosted (link (link (link (link c1 c2) ci) cm) nanoAsm.code) (fun _ => …) (Sized5 K …) nanoCompileA
+```
+Earlier forms (gas existential):
 ```
 -- for every token list
 theorem parseA_eq (ts : List Tok) :
@@ -76,13 +94,14 @@ existential (see "What remains", item 2). Reject code: `[]` (`serU u` is never e
    faster `GoodE` proofs) or splitting the parser into several small paged / list stages (e.g. (2a) token bytes →
    fixed-width tokens with def numbers resolved by rescanning, (2b) precedence + scopes with an explicit stack), each
    with its own equality proof against a layer-A-like spec.
-2. **Gas.** `parseA_eq` gives an existential number of steps. A compiled stage needs an explicit bound (its
-   `measure`): the run takes at most c·F·(n+1) steps (F = n + 1 the fuel: between two consumed tokens the machine
-   only descends (fuel decreases) or pops frames). Not proved yet; then `stage2 bs := stage2A (G bs.length) bs`
-   satisfies `hfe` exactly.
-3. Then `selfHosted_four` (integrator) needs `hi` (`inlB` compiled, paged, copy mode), `hm` (`mexp`), `ha` (`asm`,
-   done). Remaining hypothesis of the self-hosting theorem after this session: the three stage theorems `he`, `hi`,
-   `hm` (none instantiated); `hfe` is reduced to item 1 + 2 by `stage2A_lexB`.
+2. **Gas: DONE.** `Φ c s = 13·|tokens| + 3·|frames| + κ(c)` drops on every continuing step (`step_dec`), so the run is
+   linear: `13·|ts| + 6` steps suffice (`run_stable`, `parseA_gas`). A compiled layer B can use `Φ` (scaled by its
+   sub-steps per layer-A step) as its `measure`.
+3. Remaining hypotheses of the self-hosting theorem (`selfHosted_parse_asm`): the machine theorems `h1` (stage 1:
+   `Nano.Self.lexBE.implements1`, parked in `Testing/nano/pending/ElabBSelf.lean.txt` by the integrator, not confirmed
+   to build), `h2` (stage 2 = `stage2`: item 1), `hi` (`inlB`), `hm` (`mexp`), with their code-size bounds; the domain
+   `Sized5` (arities < 256, ≤ 65536 defs, every intermediate ≤ 2^20 bytes and ≤ K). No equation hypothesis is left:
+   `hfe` is `stage2_hfe`, the rest is `chain_eq` (integrator).
 
 ## Front-end rejections met
 * (own probe, `Nano/ParseBProbe.lean`, deleted) `wp_compile` on a 4-branch stack loop: default heartbeats exceeded
@@ -98,5 +117,12 @@ existential (see "What remains", item 2). Reject code: `[]` (`serU u` is never e
   (non-inlining), because `selfHosted_four`'s `hfe` asks for exactly `serU u`, and inlining is then a separate copying
   stage. Re-tested: 0 mismatches.
 * 03:45–04:30. Proofs: views, `sim`, `params_sim`, `defs_sim`, `parseA_eq`, `stage2A_lexB`. Axioms file in check.sh.
+* 04:30–05:15. Explicit gas (`Nano/ParseBGas.lean`: `κ`, `Φ`, `step_dec` by exhausting `step`'s matches,
+  `run_stable`); `stage2`, `stage2_lexB` (exact), `stage2_hfe`; `Nano/ParseBSelfHost.lean`: `selfHosted_parse`
+  (five stages; `link_stage` over the source domain, so the lexer's output bound is only needed on `Sized5`, not for all
+  inputs ≤ 2^20 as `selfHosted_four`'s `he` would ask) and `selfHosted_parse_asm` (`nanoAsm.implements1`;
+  `nanoAsm.code.length < 2^17` by `decide +kernel`). Tests: `parseb_check.lean` now also checks `stage2 (lexB x)` =
+  `serU`/`[]`: seed 7 × 3000 and seed 11 × 2000 inputs, 0 mismatches (551 accepted, 1060 lexed).
+* Merged origin/nano-int e122335 (main merged there; check.sh loop now has `round1` and `nano-parse`).
 * Note for the integrator: `Testing/nano/regen_nano_axioms.py` lists only nano-{e2e,proof,mvp,int}; if it is rerun,
   add `nano-parse` to its list or the three nano-parse lines are dropped from expected-axioms.txt.
