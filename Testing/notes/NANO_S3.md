@@ -17,3 +17,4 @@ each differing from the previous by ONE construct, each link a proved meaning-pr
 | L0 | nano `Ex` (`den`, `Prog.eval`) | — | — | — (spec) |
 | L1 | `E1` (Nano/S3L1.lean) | no `call` (own environment) | `tr1`: call ↦ lets + `shift` args + `cut` body | `tr1_eval` |
 | L2 | `A` (Nano/S3L2.lean) | operands are variables (ANF; add/sub/mul → `bin o i j`) | `tr2`: `a ⊕ b` ↦ `let x := a; let y := b↑; x ⊕ y` | `tr2_eval` |
+| L3 | S3 `Expr S Γ .w` (Nano/S3L3.lean), `Ev` | typed scoped variables `Var Γ .w` (no "out of range = 0") | `tr3 σ`: index `i` ↦ `σ[i]`, out of range ↦ `lit 0` | `tr3_ok`, `tr3_prog` |
