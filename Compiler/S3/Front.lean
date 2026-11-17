@@ -603,6 +603,24 @@ macro_rules (kind := s3Solve)
         | (((try simp only [s3_norm, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne, Nat.blt_eq, Nat.ble_eq, UInt8.toNat_ofNat, decide_eq_true_eq] at *); (try s3_hyps); (try simp [s3_norm, $ls,*]);
             s3_split) <;> s3_solve $n' [$ls,*] with $c))
 
+/-- (`s3_solve` with the opt-in simp set `s3_bytes`) `s3_solveB n [simp lemmas] with closer`: simplify; close what remains with `closer`; else split a variable and
+retry (at most `n` times deep) -/
+syntax (name := s3SolveB) "s3_solveB " num " [" Lean.Parser.Tactic.simpArg,* "]" " with " tactic : tactic
+
+macro_rules (kind := s3SolveB)
+  | `(tactic| s3_solveB $n [$ls,*] with $c) => do
+    let k := n.getNat
+    if k == 0 then
+      `(tactic| ((try simp only [s3_norm, s3_bytes, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne, Nat.blt_eq, Nat.ble_eq, UInt8.toNat_ofNat, decide_eq_true_eq] at *); (try s3_hyps); simp [s3_norm, s3_bytes, $ls,*]; all_goals (repeat' apply And.intro) <;> $c))
+    else
+      let n' := Syntax.mkNumLit (toString (k - 1))
+      `(tactic| first
+        | s3_contra
+        | ((try simp only [s3_norm, s3_bytes, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne, Nat.blt_eq, Nat.ble_eq, UInt8.toNat_ofNat, decide_eq_true_eq] at *); (try s3_hyps); simp [s3_norm, s3_bytes, $ls,*]; done)
+        | ((try simp only [s3_norm, s3_bytes, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne, Nat.blt_eq, Nat.ble_eq, UInt8.toNat_ofNat, decide_eq_true_eq] at *); (try s3_hyps); simp [s3_norm, s3_bytes, $ls,*]; all_goals (repeat' apply And.intro) <;> $c; done)
+        | (((try simp only [s3_norm, s3_bytes, Nat.reduceMod, Nat.reducePow, beq_iff_eq, bne_iff_ne, Nat.blt_eq, Nat.ble_eq, UInt8.toNat_ofNat, decide_eq_true_eq] at *); (try s3_hyps); (try simp [s3_norm, s3_bytes, $ls,*]);
+            s3_split) <;> s3_solveB $n' [$ls,*] with $c))
+
 /-! ## text -/
 
 def tyTxt : Ty → String
@@ -657,7 +675,7 @@ def simpSet : String :=
 /-- the certificate text of a mutual component `c` (S3 functions) of the Lean mutual block `blk`: ONE theorem by
 the block's `mutual_induct` (Lean's own termination argument, structural or well-founded) for all members at once,
 then one projection per member -/
-def genMutual (st : St) (c : List Nat) (blk : List Name) (extraSimp : String) : MetaM String := do
+def genMutual (st : St) (c : List Nat) (blk : List Name) (extraSimp : String) (solveTac : String := "s3_solve") : MetaM String := do
   let fnameOf (j : Nat) : MetaM Name := do
     let .const f _ := st.fns[j]!.key.getAppFn | throwError "S3"
     return f
@@ -730,7 +748,7 @@ def genMutual (st : St) (c : List Nat) (blk : List Name) (extraSimp : String) : 
     s!"theorem certM{k0} : {" ∧ ".intercalate conjs.toList} := by\n" ++
     s!"  apply @{indName}{pre}{mo}\n" ++
     s!"  all_goals (intros; (try dsimp only at *); first | trivial | ((first | {" | ".intercalate chains}) <;>\n" ++
-    s!"    s3_solve 12 [{simpSet}{bs}, φ{extraSimp}{unf}, *] with (first | {closer})))\n"
+    s!"    {solveTac} 12 [{simpSet}{bs}, φ{extraSimp}{unf}, *] with (first | {closer})))\n"
   for t in [0:c.length] do
     let j := c[t]!
     let i := blk.idxOf names[t]!
@@ -754,7 +772,7 @@ def genMutual (st : St) (c : List Nat) (blk : List Name) (extraSimp : String) : 
   return out
 
 /-- the commands for program `N` -/
-def genText (N : Name) (st : St) (extraSimp : String) : MetaM String := do
+def genText (N : Name) (st : St) (extraSimp : String) (solveTac : String := "s3_solve") : MetaM String := do
   let p := N.toString
   let dts := st.dts.toList.map fun cs => listTxt (cs.toList.map fun fs => listTxt (fs.toList.map tyTxt))
   let fns := st.fns.toList.map fun fi => s!"({listTxt (fi.params.toList.map tyTxt)}, {tyTxt fi.ret})"
@@ -802,7 +820,7 @@ def genText (N : Name) (st : St) (extraSimp : String) : MetaM String := do
     let .const f0 _ := st.fns[k0]!.key.getAppFn | throwError "S3"
     let blk := (← getConstInfo f0).all
     if blk.length > 1 then
-      out := out ++ (← genMutual st c blk extraSimp)
+      out := out ++ (← genMutual st c blk extraSimp solveTac)
       continue
     unless c.length == 1 do throwError "S3: functions {c} call each other but are not one Lean mutual block"
     let k := k0
@@ -865,7 +883,7 @@ def genText (N : Name) (st : St) (extraSimp : String) : MetaM String := do
     out := out ++ s!"theorem cert{k} : {fa}Proven.S3.Good P φ ⟨{k}, by decide⟩ {encs} := by\n" ++
       introLine ++ induct ++
       s!"  (apply Proven.S3.good_intro <;> rw [body{k}]) <;> (try rw [phi{k}]) <;> (try rw [{fname}.eq_def]) <;>\n" ++
-      s!"  s3_solve 12 [{simpSet}, b{k}, φ{extraSimp}{unf}, *] with (first | {closer}))\n"
+      s!"  {solveTac} 12 [{simpSet}, b{k}, φ{extraSimp}{unf}, *] with (first | {closer}))\n"
     let vs := (List.range fi.pTys.size).map (s!"v{·}")
     let hs := (List.range fi.pTys.size).map (s!"h{·}")
     let hyps ← (List.range fi.pTys.size).mapM fun i => do
@@ -903,7 +921,10 @@ def genText (N : Name) (st : St) (extraSimp : String) : MetaM String := do
 /-- `s3_compile N := main [simp lemmas]`: generate the S3 program and its certificates -/
 syntax (name := s3Compile) "s3_compile " ident " := " term (" simp " "[" ident,* "]")? : command
 
-@[command_elab s3Compile] def elabS3 : CommandElab := fun stx => do
+/-- `s3_compileB N := main [simp lemmas]`: `s3_compile` whose certificates also use the opt-in simp set `s3_bytes` -/
+syntax (name := s3CompileB) "s3_compileB " ident " := " term (" simp " "[" ident,* "]")? : command
+
+def elabS3With (solveTac : String) : CommandElab := fun stx => do
   let N := stx[1].getId
   let extra : String := match stx[4].getOptional? with
     | some s => String.join ((s[2].getSepArgs.toList.map (·.getId.toString)).map (", " ++ ·))
@@ -913,7 +934,7 @@ syntax (name := s3Compile) "s3_compile " ident " := " term (" simp " "[" ident,*
     Term.synthesizeSyntheticMVarsNoPostponing
     let e ← instantiateMVars e
     let (_, st) ← (fnIdx e).run {}
-    genText N st extra
+    genText N st extra solveTac
   logInfo m!"{txt}"
   let inputCtx := Parser.mkInputContext txt "<s3_compile>"
   let env ← getEnv
@@ -928,6 +949,9 @@ syntax (name := s3Compile) "s3_compile " ident " := " term (" simp " "[" ident,*
     if cmd.isOfKind ``Parser.Command.eoi then break
     cmds := cmds.push cmd
   for cmd in cmds do elabCommand cmd
+
+@[command_elab s3Compile] def elabS3 : CommandElab := elabS3With "s3_solve"
+@[command_elab s3CompileB] def elabS3B : CommandElab := elabS3With "s3_solveB"
 
 end Proven.S3.Front
 

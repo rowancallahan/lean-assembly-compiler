@@ -10,5 +10,6 @@ namespace P
 open Nano Nano.PB Nano.PS
 def rf (bs : List UInt8) : List UInt8 := match retFS (st0 []) .letB [] with | .go _ s => s.out | _ => bs
 set_option maxRecDepth 20000 in
+set_option maxHeartbeats 0 in
 s3_compile Q := rf
 end P
