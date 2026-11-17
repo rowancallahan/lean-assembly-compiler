@@ -46,6 +46,14 @@ elab "irLit% " t:term : term => do
   return toExpr v
 
 open Lean Elab Term Meta in
+/-- `funcLit% e`: the value of `e : Ir.Func Nat` as a literal term (untrusted) -/
+elab "funcLit% " t:term : term => do
+  let ty := mkApp (Lean.mkConst ``Proven.Ir.Func) (Lean.mkConst ``Nat)
+  let e ← instantiateMVars (← elabTerm t (some ty))
+  let v ← unsafe evalExpr (Proven.Ir.Func Nat) ty e
+  return toExpr v
+
+open Lean Elab Term Meta in
 /-- `layLit% e`: the value of `e : Ir.Lay` as a literal term (untrusted) -/
 elab "layLit% " t:term : term => do
   let ty := Lean.mkConst ``Proven.Ir.Lay
@@ -103,6 +111,21 @@ theorem words_eq' {P : Proven.S3.Prog} {Q : Ir.Prog Nat} {L : Lay} (m : Nat)
     unfold Proven.S3.words Ir.compileW
     rw [hQ]; simp only [Target.lin, hlay, h, Option.map_none]; rfl
   | some c => rw [words_eq m hQ hm hL hfix h]; rfl
+
+open Proven Proven.Ir Proven.Mach.Riscv in
+/-- the IR compiler accepts the program and its code is shorter than `2 ^ 17` words, from ONE kernel evaluation of
+`emitP` on the literals -/
+theorem compiles_len {P : Proven.S3.Prog} {Q : Ir.Prog Nat} {L : Lay} (m : Nat)
+    (hQ : Ir.alloc (Proven.S3.lowerP P) = some Q) (hm : m ≤ Target.rounds Q)
+    (hL : rvT.layout Q m ⟨[], [], 0⟩ = L) (hfix : rvT.layStep Q L = L)
+    (hE : ((rvT.emitP Q L).map fun c => decide ((rvT.words c).length < 2 ^ 17)) = some true) :
+    (Ir.compileW (Proven.S3.lowerP P)).isSome = true ∧ (Proven.S3.words P).length < 2 ^ 17 := by
+  cases h : rvT.emitP Q L with
+  | none => rw [h] at hE; exact nomatch hE
+  | some c =>
+    rw [h] at hE
+    simp only [Option.map_some, Option.some.injEq, decide_eq_true_eq] at hE
+    exact ⟨compileW_isSome m hQ hm hL hfix (by rw [h]; rfl), by rw [words_eq m hQ hm hL hfix h]; exact hE⟩
 
 open Proven Proven.S3 Proven.Top Proven.Top.Alloc
 
