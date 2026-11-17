@@ -754,7 +754,9 @@ def genMutual (st : St) (c : List Nat) (blk : List Name) (extraSimp : String) : 
   let k0 := c[0]!
   let fi0 := st.fns[k0]!
   let .const f0 us := fi0.key.getAppFn | throwError "S3"
-  let indName ← realizeGlobalConstNoOverloadCore (f0 ++ `mutual_induct)
+  -- the block's induction principle (on its first member for well-founded blocks; on every member for structural)
+  let indName ← try realizeGlobalConstNoOverloadCore (blk[0]! ++ `mutual_induct)
+    catch _ => realizeGlobalConstNoOverloadCore (f0 ++ `mutual_induct)
   let allNames ← forallTelescopeReducing (← getConstInfo f0).type fun ys _ => ys.mapM fun y => y.fvarId!.getUserName
   let indTy ← inferType (mkConst indName us)
   -- the parameters before the motives: the static arguments, by name
@@ -782,8 +784,14 @@ def genMutual (st : St) (c : List Nat) (blk : List Name) (extraSimp : String) : 
       let body ← match names.idxOf? blk[i]! with
         | some t =>
           let j := c[t]!
-          unless st.fns[j]!.pTys.size == dom.size do throwError "S3: motive arity of {blk[i]!} (fixed parameters are not supported)"
-          pure s!"Proven.S3.Good P φ ⟨{j}, by decide⟩ {listTxt (ys.map (s!"Proven.S3.Enc.enc {·}"))}"
+          let fj := st.fns[j]!
+          unless dom.size ≤ fj.pTys.size do throwError "S3: motive arity of {blk[i]!}"
+          -- parameters beyond the motive's (a state: `StateT σ m α` = `σ → m (α × σ)`) are quantified inside
+          let extra := (List.range (fj.pTys.size - dom.size)).map (· + dom.size)
+          let mut ebnd := ""
+          for e in extra do ebnd := ebnd ++ s!"(y{e} : {← exprTxt fj.pTys[e]!}) "
+          let g := s!"Proven.S3.Good P φ ⟨{j}, by decide⟩ {listTxt ((ys ++ extra.map (s!"y{·}")).map (s!"Proven.S3.Enc.enc {·}"))}"
+          pure (if extra.isEmpty then g else s!"∀ {ebnd}, {g}")
         | none => pure "True"
       mo := mo.push (if dom.isEmpty then s!"({body})" else s!"(fun {bnd}=> {body})")
       cj := cj.push (if dom.isEmpty then s!"({body})" else s!"(∀ {bnd}, {body})")
@@ -803,6 +811,7 @@ def genMutual (st : St) (c : List Nat) (blk : List Name) (extraSimp : String) : 
   let outside := (c.flatMap fun j => (st.fns[j]!.body.map SE.calls).getD []).eraseDups.filter (!c.contains ·)
   let closers := outside.map (fun j => s!"(apply cert{j}' <;> simp)")
   let closer := " | ".intercalate (List.map (fun c => "(" ++ c ++ "; done)") <| "assumption" :: "(intros; assumption)" :: "(intros; apply_assumption; done)" :: "rfl" :: "omega" :: "(simp only [List.length_cons] at *; omega)" :: "((try simp at *); assumption)" ::
+      "(exfalso; simp only [BitVec.not_le, BitVec.not_lt, BitVec.lt_def, BitVec.le_def] at *; omega)" ::
       "(rw [dif_pos (by simp only [List.length_cons, Nat.succ_eq_add_one, Array.length_toList] at *; omega)])" :: (closers ++ closers.map ("(intros; " ++ · ++ ")")))
   let mut unf := ""
   for j in outside do
@@ -918,6 +927,7 @@ def genText (N : Name) (st : St) (extraSimp : String) : MetaM String := do
     let closers := callees.eraseDups.map (fun j => s!"(apply cert{j}' <;> simp)") ++
       ((callees.eraseDups.filter fun j => st.fns[j]!.finB.any Option.isSome).map fun j => s!"(apply cert{j}' <;> simp_all)")
     let closer := " | ".intercalate (List.map (fun c => "(" ++ c ++ "; done)") <| "assumption" :: "(intros; assumption)" :: "(intros; apply_assumption; done)" :: "rfl" :: "omega" :: "(simp only [List.length_cons] at *; omega)" :: "((try simp at *); assumption)" ::
+      "(exfalso; simp only [BitVec.not_le, BitVec.not_lt, BitVec.lt_def, BitVec.le_def] at *; omega)" ::
       "(rw [dif_pos (by simp only [List.length_cons, Nat.succ_eq_add_one, Array.length_toList] at *; omega)])" :: (closers ++ closers.map ("(intros; " ++ · ++ ")")))
     -- non-recursive callees unfold in the certificate (their values are then computed)
     let mut unf := ""

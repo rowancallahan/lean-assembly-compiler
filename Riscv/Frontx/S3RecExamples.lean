@@ -18,6 +18,7 @@ program, certificates, `computes`, `correct` (exactly the Sail axioms).  Tests: 
 | `S3IotaNumArgs` | con-leche `Cached.iotaNumArgs` (`CoreC.lean`, verbatim) | structural over con-leche's `Expr` |
 | `S3MkAppRange` | con-leche `Cached.mkAppRange` (`CoreC.lean`, verbatim) | well-founded (`termination_by j - i`), `args[i]` with its proof (`List.get`, dependent `Fin xs.length`) |
 | `S3GetAppArgsArr` | con-leche `Cached.getAppArgsArr` + `getAppArgsArrGo` + `iotaNumArgs` (verbatim) | structural; `Array.set!`, `Array.replicate` from their equations |
+| `S3Knot` | `walkK` / `tagK` (ours) | the knot's shape: mutual in `StateT UInt64 (Except UInt8)`, well-founded on `(xs.length, rank)`, `tagK` calls `walkK` on the same list |
 | `S3StExc` | `stepS : List UInt64 → StateT UInt64 (Except UInt8) UInt64` | structural; state and exception across a non-tail call |
 -/
 import Riscv.Frontx.S3IO
@@ -225,6 +226,34 @@ def stMain (bs : List UInt8) : List UInt8 :=
   | .error e => [e]
 s3_compile S3StExc := stMain
 
+
+/-! ## the knot's shape on a small model -/
+
+-- a model of the con-leche knot's shape: a mutual component in `StateT σ (Except ε)`, well-founded on a tuple
+-- measure `(xs.length, rank)`; `tagK` calls `walkK` on the SAME list (the rank decreases)
+mutual
+def walkK : List UInt64 → StateT UInt64 (Except UInt8) UInt64
+  | [] => get
+  | x :: r => do
+    let s ← get
+    if s > 1000000 then throw 2
+    set (s + x)
+    let t ← tagK r
+    return t * 3 + x
+termination_by xs => (xs.length, 0)
+def tagK (xs : List UInt64) : StateT UInt64 (Except UInt8) UInt64 := do
+  if xs.length > 40 then throw 9
+  let v ← walkK xs
+  modify (· ^^^ v)
+  return v + 1
+termination_by (xs.length, 1)
+end
+
+def knotMain (bs : List UInt8) : List UInt8 :=
+  match (tagK (decW bs)).run 5 with
+  | .ok (a, s) => enc8 a ++ enc8 s
+  | .error e => [e]
+s3_compile S3Knot := knotMain
 
 /-! ## con-leche `CoreC`: its smallest recursive component, verbatim -/
 

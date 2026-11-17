@@ -230,4 +230,5 @@ def wordsS (i : Nat) (m : Nat) : List UInt64 := (List.range (i % 13)).map fun j 
     [UInt8.ofNat (rndN i 1 % 3), UInt8.ofNat (2 + rndN i 2 % 9)] ++
       ((small (i + 4) 256).flatMap fun b => if b % 7 == 0 then [2] else [1, b]))
   run "s3_getappargsarr" S3GetAppArgsArr.P argsMain (cases50 fun i => small (i * 5 + 1) 256)
+  run "s3_knot" S3Knot.P knotMain (cases50 fun i => encW ((words (i + 2)).map fun w => if i % 4 == 0 then w else w &&& 0xffff))
   run "s3_lex" S3Lex.P lexMain (cases50 fun i => encW (UInt64.ofNat (rndN i 5 % 20) :: words (i + 3)))
