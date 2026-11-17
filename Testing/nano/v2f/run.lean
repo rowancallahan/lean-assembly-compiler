@@ -1,7 +1,7 @@
 import Nano.V2.Front
 import Nano.V2.Gen
 /- nano v2 front end test runner: `lake env lean --run Testing/nano/v2f/run.lean INPUTS OUTDIR? FILE...`
-Per FILE: `frontElabK 256`; prints `name REJECT` or `name i hex` per input (hex of the output, `E<status>` on error);
+Per FILE: `frontElabK 64`; prints `name REJECT` or `name i hex` per input (hex of the output, `E<status>` on error);
 with OUTDIR ≠ "-": writes OUTDIR/nv2f_<name>.words/.cases for Testing/nano/v2b_test.py. -/
 open Nano.V2B
 def hex (l : List UInt8) : String :=
@@ -17,7 +17,7 @@ def main (args : List String) : IO Unit := do
   let out := args[1]!
   for f in args.drop 2 do
     let nm := ((f.splitOn "/").getLast!.splitOn ".")[0]!
-    match frontElabK 256 (← IO.FS.readFile f).toUTF8.toList with
+    match frontElabK 64 (← IO.FS.readFile f).toUTF8.toList with
     | none => IO.println s!"{nm} REJECT"
     | some p =>
       let mut cs := ""

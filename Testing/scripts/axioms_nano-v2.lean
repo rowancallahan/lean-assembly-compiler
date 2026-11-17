@@ -2,6 +2,7 @@ import Nano.V2Top
 import Nano.V2Agree
 import Nano.V2.Comp
 import Nano.V2.ABI
+import Nano.V2.Buf
 #print axioms Nano.V2.nano_stack_correct
 #print axioms Nano.V2.nano_stack_runs
 #print axioms Nano.V2.eval_ofEx
@@ -19,3 +20,5 @@ import Nano.V2.ABI
 #print axioms Nano.V2B.cE_ok
 #print axioms Nano.V2B.cT_ok
 #print axioms Nano.V2B.ABI.mainProg_eval
+#print axioms Nano.V2B.size_node
+#print axioms Nano.V2B.get_node
