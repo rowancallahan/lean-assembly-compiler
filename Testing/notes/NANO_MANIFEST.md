@@ -90,3 +90,63 @@ Before rc2 (rc1, 6a76836, from scratch): ParseS3BSelf 6 min 26 s / 6.05 GB, Pars
 ParseS3BAllocB 160 s / 10.1 GB, AsmSelf 321 s / 3.4 GB (186 s of it the interpreted register choice `pickListC`),
 Riscv.Frontx.S3RecExamples 182 s. The full `lake build Spec Compiler Riscv Arm Frontx Nano`
 (4 parallel jobs, 54 modules rebuilt over the cache) peaked at 4.7 GB.
+
+Earlier gate status (11:33, superseded by the 12:16 status above): check.sh ALL CHECKS PASSED at 11:03 and again at 11:33 (head before CertBytes; 1022 s). The tag `nano-v1-rc1` is NOT set: the
+front stage (lexA) is the one missing row.
+
+## Self-run (nano-v1-rc1)
+
+Revision 6a76836 (gate commit; `Nano.selfHosted (K) : SelfHosted binary (fun _ => space5 K) (Domain K) nanoCompileA`).
+No Lean source under Nano/, Compiler/, Riscv/, Spec/ changed. Files: Testing/nano/selfrun/ (`build.sh` + `build.log`,
+`emit_selfrun.lean`, `selfrun_test.py`, `run_summary.log`, `cases_final.txt`). 4 cores, 15 GB RAM + 12 GB swap.
+
+**Build** (`Testing/nano/selfrun/build.sh`): build cache restored (`build-cache` branch: Sail model + `.lake/build` of
+main f1cfb76, so Spec/Compiler/Riscv/Frontx came from the cache; every Nano module and the S3 modules newer than
+f1cfb76 were compiled). Heavy modules one at a time, each under `/usr/bin/time -v timeout`:
+ParseS3BSelf 5:39 (6.1 GB), AllocA 1:26 (4.6 GB), AllocB 2:54 (**10.1 GB**), ParseS3BStage 3:04 (9.6 GB),
+LexS3Self 1:11, LexS3Stage 0:43, InlS3Self 0:19, InlS3Stage 0:12, ExpandMSelf 0:59, ParseBSelfHost 4:55,
+SelfHostFinal 0:28. **Total wall 1390 s (23 min 10 s); peak system memory 11.0 GB** (RAM + swap used, sampled
+every 2 s); largest single process 10.06 GB (ParseS3BAllocB, above the 7.6 GB noted earlier). All steps exit 0.
+`#print axioms Nano.selfHosted` = the `Nano.selfHosted` line of expected-axioms.txt (Sail set + propext,
+Classical.choice, Quot.sound).
+
+**Words of `binary`: 55529** = stub 18 × 4 + lexA 5958 + 2b 46054 + inliner 2035 + expM 1031 + asm 379.
+How: `binary` is noncomputable (`S3.words`). `emit_selfrun.lean` defines a computable `binaryC` (each S3 component
+`((rvT.emitP Q L2).map rvT.words).getD []` on the stage files' literal allocation `Q` and layout `L2`, then the
+same `link` nesting with `nanoExpM.code` / `nanoAsm.code`) and PROVES `binaryC_eq : binary = binaryC` by rewriting
+with `Nano.S3Stage.words_eq'` and the stage files' kernel-checked facts (`*_hQ`: `alloc (lowerP P) = some Q`,
+`*_hL`/`*_fix`: layout fixpoint, `*_hm`: `2 ≤ rounds Q`). So the full `rounds` layout is not approximated: the
+equality is a theorem (no sorry, no new axioms; checks in 7 s). The words written are `#eval binaryC` (Lean's
+compiled evaluator, < 1 s).
+
+**Inputs**: 146 sources = CORPUS (39) + INT_CORPUS (27) + 30 random UInt64 + 30 random Int64 + 20 mid-size random
+UInt64 programs (3–6 defs, depth 3–5), seed 11; sources up to 776 bytes, outputs up to 9304 bytes. All 146 in
+`Domain K` (elaborator accepts, `nanoCompileA` accepts, `d.1 < 256`, `u.length ≤ 65536`, intermediates ≤ 2^20,
+`LeanLimits` checked on the elaborated program). Expected = code of `nanoCompileA (nanoElab src)`, evaluated in Lean
+(also asserted equal to `asm (mexp (inlB (serU u)))`).
+
+**K per source**: K = max(intermediate lengths, lexA's memoryNeeded (IR interpreter), W(2b), W(inliner), the
+expM/asm spaces); the work is `space5 K`. W(2b), W(inliner) were found on QEMU (the interpreted IR interpreter takes
+~110 s per KB for 2b): each stage alone, work doubled until its OOM flag clears, then bisected to within 1/32
+(ir_test.py checks the IR stages' flag exactly at memoryNeeded − 1 / memoryNeeded). This is per input, not `spaceP`
+(max over all inputs of the length), so the tested work is at most the theorem's. K 17888..2348672 bytes,
+`space5 K` up to 601 MB.
+
+**Results** (`python3 Testing/nano/selfrun/selfrun_test.py 30 20 8 11`, 416 s):
+- linked `binary`, QEMU: **146/146** — output = expected bytes, a1 = length, a0 ≠ −1 (flag clear), gp/sp restored,
+  guards around input / output / work intact.
+- linked `binary`, Sail: **8/8** (4 smallest works, 4 largest sources ≤ 400 B: 362–386 B) — QEMU == Sail == Lean,
+  every Sail write inside the output or work block.
+- 2b alone 146/146 and inliner alone 146/146 on QEMU (every flag-clear run checked against `serU u` / `inlB`).
+- lexA alone (`nano_lexA`, the first component of `binaryC`, expected `stage2a (lexB src)`, exact memoryNeeded):
+  QEMU 146 × 2 (output at memoryNeeded, flag at memoryNeeded − 1), Sail 8 × 2.
+- **Mismatches: none.**
+
+Notes:
+- The OOM flag of the linked binary is only the LAST stage's a0: the link stub does not pass an inner stage's flag on
+  (`Implements1With` states nothing about a0). A too-small K therefore shows as wrong output, not as a flag; that
+  is why K comes from per-stage runs and not from retrying the linked binary.
+- `space5` gives the first stage W/256 of the work, so the linked binary needs ~256× the largest stage need: on a
+  1312-byte random program (6–11 defs, depth 4–6; trial run) the inliner alone needed 11.3 MB, `space5 K` ≈ 2.9 GB, beyond the
+  harness's 1 GB QEMU; such sources are reported as "not run linked" (none in the final run).
+- ROADMAP sections "FREEZE BEFORE THE FULL RUN", "ONE GATE", "GATE REACHED" are not present at 6a76836.
