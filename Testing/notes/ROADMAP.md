@@ -424,3 +424,4 @@ git tags. nano v1 FINAL = this commit: main contains nano-parse-s3 rc2 (152f05b,
 The frozen spec on branch nano-v2 (v1 constructs unchanged + exactly the Astra-decided additions; v1 stage formats;
 Int64 dropped for milestone 1) is accepted as the working freeze. Like v1's `nanoElab`/`Prog.eval`, the meaning stays a
 draft the owner may review later; changes after the freeze still go through the owner.
+- Owner (19:35): the elaborator spec is deliberately LOOSE for now; it is a working draft, to be tightened by the owner later. Do not treat its details as final.
