@@ -18,3 +18,21 @@ each differing from the previous by ONE construct, each link a proved meaning-pr
 | L1 | `E1` (Nano/S3L1.lean) | no `call` (own environment) | `tr1`: call ↦ lets + `shift` args + `cut` body | `tr1_eval` |
 | L2 | `A` (Nano/S3L2.lean) | operands are variables (ANF; add/sub/mul → `bin o i j`) | `tr2`: `a ⊕ b` ↦ `let x := a; let y := b↑; x ⊕ y` | `tr2_eval` |
 | L3 | S3 `Expr S Γ .w` (Nano/S3L3.lean), `Ev` | typed scoped variables `Var Γ .w` (no "out of range = 0") | `tr3 σ`: index `i` ↦ `σ[i]`, out of range ↦ `lit 0` | `tr3_ok`, `tr3_prog` |
+| L4 | S3 `Prog` on bytes (Nano/S3L4.lean), `Prog.run` | the byte-list datatype (`mk`/`cas`) for I/O | `toS3`: `main` = decode `n` 8-byte LE words (`rdB`/`wdW`), `tr3`, encode 8 bytes (`outB`) | `toS3_run` |
+
+Deviation from the suggested chain (decided): the owner's "L1 = explicit lets" is split in two links, because nano's
+`call` (an inlined callee with its OWN environment) and A-normal form are two different constructs: L1 removes the
+call (lets + `shift`/`cut`), L2 makes operands variables. L3 (typed, scoped variables) and L4 (byte-list I/O) as
+suggested. One function only (no S3 `call`): the decoder leaves the words in the context and `tr3` takes a context
+map `σ` (nano index → S3 variable), so the body sits directly under the decoder's matches; this also avoids the IR
+back end's 7-parameter limit on calls.
+
+## Composition (Nano/S3Top.lean)
+- `nanoToS3 = toS3 ∘ tr2P ∘ tr1P` (pure, computable); `nanoCompileS3 = S3.compile ∘ nanoToS3` (noncomputable only
+  through S3's `Accepted` test; `accepted` proves it always holds, `nanoCompileS3_eq` = `Ir.compile ∘ lowerP ∘ nanoToS3`).
+- `nanoToS3_run : nanoRun p input = some out → (nanoToS3 p).run input = some out`.
+- **`nano_s3_correct : CompileCorrect riscv nanoCompileS3`**, **`nano_s3_runs : CompileRuns riscv nanoCompileS3`**
+  (S3's `compile_correct`/`compile_runs` applied to `nanoToS3 p`; `Computes` transferred by `nanoToS3_run`).
+- `nano_s3_chain` (`chain_of`), `nano_s3_chain_int` (`chain_int_of`, Int64 via `nanoRun_int`).
+- Axioms: link theorems ⊆ {propext, Classical.choice, Quot.sound}; machine theorems exactly the Sail set.
+  `Testing/scripts/axioms_nano-s3.lean` in check.sh's loop, lines appended to expected-axioms.txt.
