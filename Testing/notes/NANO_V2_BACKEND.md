@@ -77,3 +77,11 @@ Fixed code origin is not needed by this code (only relative jumps) but is accept
 3. `SC.flat` correct w.r.t. a pc-level semantics of `I` (cf. Compiler/Ir/StructOk.lean `flatT_ok`), then `I.enc`
    on Sail (`G.step_*` from Riscv/Steps), then `ImplementsBytes` once worker 1 freezes it.
 4. Align `Nano.V2B.Ex` with worker 1's frozen AST (or a proved translation).
+- Gate: merged origin/main (c61d8eb); `bash Testing/scripts/check.sh` at c61d8eb: ALL CHECKS PASSED (only the
+  pre-existing statement-fingerprint WARNING; no Nano declaration listed; not re-frozen). The later commits only add
+  Nano/V2/{Blocks,Inp,Tail}.lean and notes: `lake build Nano` passes, forbidden-words scan of Nano/ clean.
+- QEMU/Sail re-run after the last generator change: nv2_copy, nv2_copyfuel, nv2_copycap, nv2_mix all ok.
+- NOT done this round (honest status): no end-to-end theorem yet. Proved: the abstract-machine semantics, the loop
+  header theorem, and per-construct lemmas (lit, var, bin, ite, let, fst, isize, iget, loop tails, slide). Not
+  started: buffers' heap invariant, `SC.flat` layout correctness, Sail refinement of the new instructions,
+  `ImplementsBytes` (worker 1 has not frozen it; contract proposed above).
