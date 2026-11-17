@@ -150,3 +150,44 @@ Notes:
   1312-byte random program (6–11 defs, depth 4–6; trial run) the inliner alone needed 11.3 MB, `space5 K` ≈ 2.9 GB, beyond the
   harness's 1 GB QEMU; such sources are reported as "not run linked" (none in the final run).
 - ROADMAP sections "FREEZE BEFORE THE FULL RUN", "ONE GATE", "GATE REACHED" are not present at 6a76836.
+
+## nano v2-design: all stages on S3 ("B on S3", branch nano-s3-all)
+
+ROADMAP ORDER step 2: every stage of B compiled by the S3 compiler (proved once); per stage only a Lean bridge
+(`= original` on every input) and kernel evaluation of the IR compiler on the program (`irLit%`/`layLit%` literals). No
+frontx certificate is left in the composition.
+
+| stage | spec | source / S3 compile | bridge (every input) | stage theorem | cold build (file, wall, peak) |
+|---|---|---|---|---|---|
+| lexer + parser 2a | `stage2a ∘ lexB` | (unchanged) Nano/LexS3.lean, LexS3Self.lean | `Nano.LS.lexA_eq` | `Nano.LS.lexA_implements` | (v1 table) |
+| parser 2b | `stage2b` | (unchanged) | `Nano.PS.stage2b_stage2a` | `Nano.PS.stage2B_implements` | (v1 table) |
+| inliner | `inlB` | (unchanged) | `Nano.IS.inlBS_eq` | `Nano.IS.inlS3_implements` | (v1 table) |
+| **expander** | `mexp` | `mexp` VERBATIM: Nano/ExpS3Self.lean (`s3_compileF ExpS3 := Nano.mexp`) | `rfl` | `Nano.XS.expS3_implements` (Nano/ExpS3Stage.lean) | ExpS3Self 35.9 s / 3.8 GB, ExpS3Stage 15.1 s / 2.6 GB |
+| **assembler** | `asm` | Nano/AsmS3.lean (`asmS`: bytes computed as `UInt64` words then `toUInt8`, S3 has no `UInt8` arithmetic; same op case split), Nano/AsmS3Self.lean (`s3_compileF`, `s3.depth 24`: the op chain is 12 deep) | `Nano.AS.asmS_eq` (9 single-byte piece lemmas, each `decide +kernel` over the 256 bytes) | `Nano.AS.asmS3_implements` (Nano/AsmS3Stage.lean) | AsmS3 2.2 s, AsmS3Self 11.8 s / 2.0 GB, AsmS3Stage 10.4 s / 2.3 GB |
+| composition | — | Nano/SelfHostS3.lean | — | **`Nano.selfHostedS3 (K) : SelfHosted binaryS3 (fun _ => space5 K) (DomainS3 K) nanoCompileA`**, no hypotheses; `DomainS3 K src := SizedL K sLex s2bF siF smS saS src ∧ LeanLimits src` (smS/saS = `spaceP` of the S3 expander/assembler) | 1.3 s / 1.8 GB |
+
+Cold = the module's .olean removed, `/usr/bin/time -f '%e s %M KB' timeout 10m lake build +M`, imports built.
+`Nano.selfHosted` (v1, frontx expander/assembler) is unchanged and still builds; `selfHostedS3` reuses its composition
+lemma `selfHosted_lexA` with the two S3 stage theorems.
+
+Axioms (Testing/scripts/axioms_nano-s3-all.lean, in check.sh): `Nano.selfHostedS3` = exactly the `Nano.selfHosted` set
+(Sail set + propext, Classical.choice, Quot.sound); `ExpS3.computes`, `AsmS3.computes` ⊆ {propext, Classical.choice,
+Quot.sound}; `asmS_eq` ⊆ {propext, Quot.sound}.
+
+Tests (before merging origin/main at 1cdf8f8):
+- per stage, `python3 Testing/nano/bs3_test.py 20 6 7` (expected = `mexp` / `asm` executed in Lean; inputs from the
+  corpus/random/mutated sources through the spec chain, plus 40 raw micro-op strings and 40 raw record strings with
+  non-nano ops and odd lengths): expander 3147 words, QEMU 146 × 2 (output at memoryNeeded, flag at memoryNeeded − 1),
+  Sail 6 × 2; assembler 1838 words, QEMU 146 × 2, Sail 6 × 2. Mismatches: none.
+- self-run of the linked binary, `python3 Testing/nano/selfrun_s3/selfrun_s3_test.py 30 20 8 11` (log
+  Testing/nano/selfrun_s3/run_summary.log, 316 s): `binaryS3C_eq : binaryS3 = binaryS3C` PROVED (words_eq' on the five
+  stage files' literals); **59104 words** = stub + lexA 5958 + 2b 46054 + inliner 2035 + expander 3147 + assembler 1838;
+  146 sources, all in DomainS3; stage 2b alone and inliner alone 146/146 (QEMU, work found by doubling/bisection);
+  **linked binaryS3: QEMU 146/146, Sail 8/8** (QEMU == Sail == Lean `nanoCompileA`, a1 = length, flag clear, gp/sp,
+  guards, Sail writes only in output + work). K 17888..2348672, `space5 K` up to 601 MB. Mismatches: none.
+
+After merging origin/main (1cdf8f8, IR strong stub from ir-strong): `bash Testing/scripts/check.sh` **ALL CHECKS PASSED**
+(1910 s, peak 6.3 GB, 4 jobs; `ok 'Nano.selfHostedS3' 77 axioms`; only the pre-existing statement-fingerprint WARNING,
+not re-frozen). The words are unchanged by the merge: expander, assembler and the linked `binaryS3C` (59104 words)
+byte-identical to the tested ones; `bs3_test.py 20 6 7` re-run after the merge: same results (QEMU 146 × 2, Sail 6 × 2
+per stage).
