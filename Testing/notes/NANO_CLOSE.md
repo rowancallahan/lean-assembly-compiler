@@ -56,3 +56,10 @@
 * `mexp` stage TESTED (`python3 Testing/nano/stage_test.py expm R S seed`: inputs `ser p` of corpus + random
   UInt64/Int64 programs and random micro-op strings; expected = executed Lean `mexp`): seed 7, R = 40: QEMU 306/306,
   Sail 8/8; seed 11, R = 400: QEMU 2466/2466 (outputs up to 3248 bytes), Sail 5/5. 663 words, work 271 bytes.
+* 06:20. SPEED (owner-allowed proof-generation change, separate file `Nano/CheckedSpill.lean`, front end untouched):
+  the lexer halves' builds sat > 60 CPU-min in `frontx_implements_listC` (gdb: the interpreter evaluating `pickC`,
+  the untrusted register-choice search that runs the code generator `optB` for many spill sets x 7 colouring modes);
+  their `frontx_compile` alone takes 3.6 min (standalone measurement). `frontx_implements_listCS` = the same command
+  with the choice `pickSpill`: first "every local spilled" with the 7 modes, then `pickC`. Same theorem
+  (`implements1_listC`), same kernel check `decide +kernel` of `optB`. Timing on `Nano/ExpandMSelf.lean` (whole file):
+  BEFORE 5 min 46 s (`implements_listC` 229 s), AFTER 49.5 s. Code: more loads/stores (locals in memory).
