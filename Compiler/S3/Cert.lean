@@ -212,6 +212,77 @@ instance : Enc Unit where
   dec _ := ()
   dec_enc _ := rfl
 
+instance : Enc (BitVec 64) where
+  enc x := .w x
+  dec | .w x => x | _ => 0
+  dec_enc _ := rfl
+
+/-- `Nat` as its own inductive type (unary: `zero`, `succ`): exact, values cost their size -/
+def natV : Nat → V
+  | 0 => .c 0 []
+  | n + 1 => .c 1 [natV n]
+
+def natD : V → Nat
+  | .c 1 [v] => natD v + 1
+  | _ => 0
+
+instance : Enc Nat where
+  enc := natV
+  dec := natD
+  dec_enc n := by
+    induction n with
+    | zero => rfl
+    | succ n ih => simp only [natV, natD, ih]
+
+@[simp] theorem enc_bv64 (x : BitVec 64) : Enc.enc x = .w x := rfl
+@[simp] theorem dec_bv64 (x : BitVec 64) : (Enc.dec (V.w x) : BitVec 64) = x := rfl
+@[simp] theorem enc_nat_zero : Enc.enc (0 : Nat) = .c 0 [] := rfl
+@[simp] theorem enc_nat_zero' : Enc.enc Nat.zero = .c 0 [] := rfl
+@[simp] theorem enc_nat_succ (n : Nat) : Enc.enc (n + 1) = .c 1 [Enc.enc n] := rfl
+@[simp] theorem enc_nat_succ' (n : Nat) : Enc.enc (Nat.succ n) = .c 1 [Enc.enc n] := rfl
+@[simp] theorem dec_nat_zero : (Enc.dec (V.c 0 []) : Nat) = 0 := rfl
+@[simp] theorem dec_nat_succ (v : V) : (Enc.dec (V.c 1 [v]) : Nat) = Enc.dec v + 1 := rfl
+attribute [s3_norm] Nat.beq_eq Nat.add_eq Nat.succ_eq_add_one Bool.or_eq_true Bool.and_eq_true
+@[s3_norm] theorem nat_beq_false (a b : Nat) : (Nat.beq a b = false) = ¬ a = b := by
+  rw [← Nat.beq_eq, Bool.not_eq_true]
+@[s3_norm] theorem nat_blt_false (a b : Nat) : (Nat.blt a b = false) = ¬ a < b := by
+  rw [← Nat.blt_eq, Bool.not_eq_true]
+@[s3_norm] theorem nat_ble_false (a b : Nat) : (Nat.ble a b = false) = ¬ a ≤ b := by
+  rw [← Nat.ble_eq, Bool.not_eq_true]
+
+/-- `Fin n` as its constructor with the value only (the proof is not stored) -/
+instance {n : Nat} [NeZero n] : Enc (Fin n) where
+  enc i := .c 0 [Enc.enc i.val]
+  dec | .c 0 [a] => if h : (Enc.dec a : Nat) < n then ⟨Enc.dec a, h⟩ else 0 | _ => 0
+  dec_enc i := by simp
+
+@[simp] theorem enc_fin {n : Nat} [NeZero n] (i : Fin n) : Enc.enc i = .c 0 [Enc.enc i.val] := rfl
+@[simp] theorem dec_fin {n : Nat} [NeZero n] (a : V) :
+    (Enc.dec (V.c 0 [a]) : Fin n) = if h : (Enc.dec a : Nat) < n then ⟨Enc.dec a, h⟩ else 0 := rfl
+
+/-- `Array α`, `ByteArray`, `String` as their kernel structures (`Array.mk (toList : List α)`, `ByteArray.mk
+(data : Array UInt8)`, `String.ofByteArray bytes _`: the validity proof is not stored) -/
+instance {α : Type} [Enc α] : Enc (Array α) where
+  enc a := .c 0 [Enc.enc a.toList]
+  dec | .c 0 [l] => ⟨Enc.dec l⟩ | _ => #[]
+  dec_enc a := by cases a; simp
+
+instance : Enc ByteArray where
+  enc b := .c 0 [Enc.enc b.data]
+  dec | .c 0 [d] => ⟨Enc.dec d⟩ | _ => ByteArray.empty
+  dec_enc b := by cases b; simp
+
+/-- decoding a `String` checks its validity (decidable) -/
+instance : Enc String where
+  enc s := .c 0 [Enc.enc s.toByteArray]
+  dec | .c 0 [b] => if h : (Enc.dec b : ByteArray).IsValidUTF8 then String.ofByteArray (Enc.dec b) h else ""
+      | _ => ""
+  dec_enc s := by cases s; simp_all
+
+theorem enc_array {α : Type} [Enc α] (a : Array α) : Enc.enc a = .c 0 [Enc.enc a.toList] := rfl
+theorem enc_bytearray (b : ByteArray) : Enc.enc b = .c 0 [Enc.enc b.data] := rfl
+theorem enc_string (s : String) : Enc.enc s = .c 0 [Enc.enc s.toByteArray] := rfl
+
 instance instEncExceptT {ε α : Type} {m : Type → Type} [h : Enc (m (Except ε α))] : Enc (ExceptT ε m α) := h
 
 @[simp] theorem enc_exceptT {ε α : Type} {m : Type → Type} [h : Enc (m (Except ε α))] (x : ExceptT ε m α) :
@@ -294,6 +365,7 @@ instance instEncExceptT {ε α : Type} {m : Type → Type} [h : Enc (m (Except �
 @[simp] theorem bv_eq_zero (c : Bool) : (bv c = 0#64) = (c = false) := by cases c <;> decide
 @[simp] theorem bv_eq_one (c : Bool) : (bv c = 1#64) = (c = true) := by cases c <;> decide
 attribute [s3_norm] UInt8.toNat_zero
+attribute [s3_norm] UInt64.toBitVec_ofNat
 
 @[simp] theorem u8_and_ff (x : UInt8) : (x &&& @OfNat.ofNat UInt8 (255 : Nat) UInt8.instOfNat) = x := by
   apply UInt8.toNat_inj.mp
@@ -329,5 +401,9 @@ theorem computes_of_main {P : Prog} {φ : Fin P.S.fns.length → List V → V} {
   rw [enc_bytes, enc_bytes, hmain] at h
   show P.run (encIn x) = _
   rw [Prog.run_eq h, bytesOut_bytesV]
+
+/-- **the termination certificate from the certificates**: every good call has a well-founded call tree -/
+theorem wfCert_of_good (P : Prog) (φ : Fin P.S.fns.length → List V → V) : WfCert P (Good P φ) :=
+  ⟨fun _ _ h => acc_of_ev h⟩
 
 end Proven.S3
