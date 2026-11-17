@@ -56,6 +56,7 @@ Fixed code origin is not needed by this code (only relative jumps) but is accept
   lemmas **`bin_node`** (binary op from its operands' contracts), **`ite_node`** (branching `if` from the operands'
   and both branches' contracts; `BOp.ofCmp_eval`), **`let_node`**/`slide_node` (let; also snd/split/loop exits).
   Nano/V2/Inp.lean: `InpRep` (t3/t4 = the input block), **`isize_node`**, **`iget_node`** (lbu in range, 0 out of range).
+  Nano/V2/Tail.lean: `JPost`, **`tail_node`** (loop-body `ret`/`next`: slide over the frame part, jump exit/head).
   Axioms of every lemma: ⊆ {propext, Classical.choice, Quot.sound}.
   Per-construct lemmas now proved: lit, var, bin, ite, let, fst, isize, iget (+ the loop header theorem). Missing for the buffer-free
   `cE_ok` induction: pair (= `seq_ok`), snd/split (= `slide_node`), `Tl` cases + loop instantiation, and the
