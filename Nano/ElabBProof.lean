@@ -669,4 +669,253 @@ theorem word_ok (c : UInt8) (u : List UInt8) (hu : ∀ y ∈ c :: u, isW y = tru
     rw [dec_wordTok (c :: u) X _ hu hk4 (by simp)]
     simp only [tokK, if_neg h6]
 
+theorem kind_nc (d ty w : UInt64) (hw : w = 0x80000000000000 ∨ 2 ^ 56 ≤ w.toNat) :
+    kindOf d w = (if d = 1 then 0 else if d = 2 then 6 else 9) ∧ tyu ty w = ty := by
+  have hne : ∀ C : UInt64, C.toNat < 2 ^ 55 → (w == C) = false := by
+    intro C hC; rw [beq_eq_false_iff_ne]; intro h; subst h
+    rcases hw with h | h
+    · rw [h] at hC; simp at hC
+    · omega
+  unfold kindOf tyu
+  simp (disch := decide) only [hne, Bool.false_eq_true, if_false]
+  simp
+
+theorem quirkK (q : List UInt8) (z : UInt8) (d ty : UInt64) :
+    kindOf d (pk (q ++ [z]) >>> 8) = kindOf d (pk q) ∧ tyu ty (pk (q ++ [z]) >>> 8) = tyu ty (pk q) := by
+  by_cases h : q.length ≤ 6
+  · rw [pk_shift q z h]; exact ⟨rfl, rfl⟩
+  · rw [pk_long (q ++ [z]) (by simp; omega)]
+    have a := kind_nc d ty ((0x8000000000000000 : UInt64) >>> 8) (Or.inl (by decide))
+    have b := kind_nc d ty (pk q) (Or.inr (pk_big q (by omega)))
+    rw [a.1, a.2, b.1, b.2]; exact ⟨rfl, rfl⟩
+
+theorem pk_lt2 (a b : UInt8) : pk [a, b] < 0x1000000 := by
+  rw [UInt64.lt_iff_toNat_lt, pk_short _ (by simp)]
+  simp only [packN, List.foldl_cons, List.foldl_nil]
+  have := a.toNat_lt; have := b.toNat_lt; simp; omega
+
+theorem pk_ge3 (u : List UInt8) (hu : 3 ≤ u.length) : ¬ pk u < 0x1000000 := by
+  rw [UInt64.lt_iff_toNat_lt]
+  by_cases h : 8 ≤ u.length
+  · rw [pk_long u h]; decide
+  · rw [pk_short u (by omega)]
+    have := (packN_ge u).1
+    have : 256 ^ 3 ≤ 256 ^ u.length := Nat.pow_le_pow_right (by omega) hu
+    simp; omega
+
+
+theorem wordTok_nil : wordTok [] = none := rfl
+theorem kind1 : ∀ c : UInt8, kindOf (dfa [c]) (pk [c]) = if isDigit c then 6 else if isLower' c then 0 else 9 :=
+  u8_all (by decide +kernel)
+theorem wordTok1 (c : UInt8) : wordTok [c] =
+    if isDigit c then some (Tok.num (nstep 0 c)) else if isLower' c then some (Tok.id [c]) else none := by
+  rw [← classify, kind1]
+  by_cases hd : isDigit c = true
+  · simp [hd, kindTok]
+  · by_cases hl : isLower' c = true <;> simp [hd, hl, kindTok]
+
+/-- `lex` of a lone last word character after a split word -/
+theorem lex_last (z : UInt8) (hz : isW z = true) (g : Nat) :
+    lex (g + 1) [z] = if g = 0 then none else
+      if isDigit z then some [Tok.num (nstep 0 z)] else if isLower' z then some [Tok.id [z]] else none := by
+  rw [L_word z hz]
+  have e := spanId_eq [z] g [] (by simp [hz]) rfl
+  simp only [List.append_nil] at e
+  rw [e]
+  rcases g with _ | g
+  · simp only [List.take_zero, List.drop_zero, wordTok_nil]; simp
+  · simp only [List.take_succ_cons, List.take_nil, List.drop_succ_cons, List.drop_nil]
+    rw [wordTok1]
+    by_cases hd : isDigit z = true
+    · simp [hd, lex_nil]
+    · by_cases hl : isLower' z = true <;> simp [hd, hl, lex_nil]
+
+/-- one `lex` step `L` against the machine's output `MX` (`N`: the length of the input of the step) -/
+def S0g (o : List UInt8) (N : Nat) (L : Option (List Tok)) (MX : List UInt8) (m ty : UInt64) : Prop :=
+    (L = none ∧ (m = 0 → MX = [0])) ∨
+    (∃ F' r sp' d' d0' w' cz', r.length < N ∧ Fu F' r sp' ∧ L = lex F' r ∧ MX = lx r o m 0 sp' d' d0' w' ty cz') ∨
+    (∃ t bs F' r sp' d' d0' w' cz', r.length < N ∧ Fu F' r sp' ∧ L = (lex F' r).map (t :: ·) ∧
+      (∀ X, dec (bs ++ X) [] none = (dec X [] none).map (t :: ·)) ∧
+      (tyStep ty t ≠ 9 → MX = (if m = 0 then [] else bs) ++ lx r o m 0 sp' d' d0' w' (tyStep ty t) cz') ∧
+      (tyStep ty t = 9 → m = 0 → MX = [0]))
+
+def S0 (o xs : List UInt8) (F : Nat) (sp m d d0 w ty cz : UInt64) : Prop :=
+  S0g o xs.length (lex F xs) (lx xs o m 0 sp d d0 w ty cz) m ty
+
+theorem kindC0 (d w : UInt64) : kindC d w 0 = kindOf d w := by simp [kindC, kindOf]
+
+/-- a whole word `c :: u` followed by `r'` (the machine's verdict at its last character) -/
+theorem wholeWord (o : List UInt8) (m ty : UInt64) (c : UInt8) (u : List UInt8) (hu : ∀ y ∈ c :: u, isW y = true)
+    (N F' : Nat) (r' : List UInt8) (hr' : r'.length < N) (hF' : Fu F' r' 1) (D D0 W : UInt64) (MX : List UInt8)
+    (h1 : kindOf (dfa (c :: u)) (pk (c :: u)) ≠ 9 → tyu ty (pk (c :: u)) ≠ 9 →
+      MX = (if m = 0 then [] else (if isDigit c then 5 :: c :: u else c :: u) ++ [(kindOf (dfa (c :: u)) (pk (c :: u))).toUInt8]) ++
+        lx r' o m 0 1 D D0 W (tyu ty (pk (c :: u))) 0)
+    (h2 : (kindOf (dfa (c :: u)) (pk (c :: u)) = 9 ∨ tyu ty (pk (c :: u)) = 9) → m = 0 → MX = [0]) :
+    S0g o N (match wordTok (c :: u) with | some t => (lex F' r').map (t :: ·) | none => none) MX m ty := by
+  by_cases hk : kindOf (dfa (c :: u)) (pk (c :: u)) = 9
+  · left
+    have : wordTok (c :: u) = none := by rw [← classify, hk]; rfl
+    rw [this]; exact ⟨rfl, h2 (Or.inl hk)⟩
+  · right; right
+    obtain ⟨hw, hdec, hty⟩ := word_ok c u hu ty hk
+    rw [hw]
+    refine ⟨_, _, F', r', 1, D, D0, W, 0, hr', hF', rfl, hdec, ?_, ?_⟩
+    · intro h9; rw [← hty] at h9 ⊢; exact h1 hk h9
+    · intro h9 h0; rw [← hty] at h9; exact h2 (Or.inr h9) h0
+
+theorem Fu_tail (f : Nat) (c : UInt8) (rest : List UInt8) (sp : UInt64) (h : Fu (f + 1) (c :: rest) sp) : Fu f rest sp := by
+  rcases h with ⟨h1, h2⟩ | ⟨h1, h2⟩
+  · left; exact ⟨h1, by simp at h2; omega⟩
+  · right; exact ⟨h1, by simp at h2; omega⟩
+
+theorem digitLower : ∀ c : UInt8, isDigit c = true → isLower' c = false := u8_all (by decide +kernel)
+
+theorem step0_word (o : List UInt8) (c : UInt8) (hc : isW c = true) (rest : List UInt8) (f : Nat) (sp : UInt64)
+    (hF : Fu (f + 1) (c :: rest) sp) (m d d0 w ty cz : UInt64) (hm : (m == 5) = false) (hty : ty ≠ 9) :
+    S0 o (c :: rest) (f + 1) sp m d d0 w ty cz := by
+  obtain ⟨u, r, rfl, hu, hr⟩ := span_exists isW rest
+  unfold S0 S0g
+  rw [L_word c hc]
+  have hcu : ∀ y ∈ c :: u, isW y = true := by simp [hc]; exact hu
+  rw [show c :: (u ++ r) = (c :: u) ++ r from rfl, spanId_eq (c :: u) f r hcu hr]
+  simp only [Fu, List.length_cons, List.length_append] at hF
+  rcases List.eq_nil_or_concat u with rfl | ⟨v, z, rfl⟩
+  · -- a one-character word
+    simp only [List.cons_append, List.nil_append, List.append_nil] at *
+    rcases r with _ | ⟨n, t⟩
+    · rcases hF with ⟨rfl, hf⟩ | ⟨rfl, hf⟩
+      · have : f = 0 := by simp at hf; omega
+        subst this; left
+        refine ⟨by simp only [List.take_zero, List.drop_zero, wordTok_nil], fun _ => ?_⟩
+        rw [W_singleE c hc _ _ _ _ _ _ _ _ hm]; simp
+      · obtain ⟨g, rfl⟩ : ∃ g, f = g + 1 := ⟨f - 1, by simp at hf; omega⟩
+        simp only [List.take_succ_cons, List.take_nil, List.drop_succ_cons, List.drop_nil]
+        rw [wordTok1, W_singleE c hc _ _ _ _ _ _ _ _ hm]
+        by_cases hd : isDigit c = true
+        · right; right
+          refine ⟨Tok.num (nstep 0 c), [5, c, 6], g + 1, [], 1, d, d0, w, 0, by simp, Or.inr ⟨rfl, by simp⟩,
+            by simp [hd], ?_, ?_, ?_⟩
+          · intro X; have := dec_numTok [c] X (by simp [hd]); simpa using this
+          · intro _; simp [hd, tyStep]
+          · intro h; exact absurd (by simpa [tyStep] using h) hty
+        · by_cases hl : isLower' c = true
+          · right; right
+            refine ⟨Tok.id [c], [c, 0], g + 1, [], 1, d, d0, w, 0, by simp, Or.inr ⟨rfl, by simp⟩, by simp [hd, hl], ?_, ?_, ?_⟩
+            · intro X; have := dec_wordTok [c] X 0 (by simp [hc]) (by decide) (by simp); simpa [ktok] using this
+            · intro _; simp [hd, hl, tyStep]
+            · intro h; exact absurd (by simpa [tyStep] using h) hty
+          · left; simp [hd, hl]
+    · have hn : isW n = false := by simpa [hd?] using hr
+      have hf1 : 1 ≤ f := by rcases hF with ⟨_, hf⟩ | ⟨_, hf⟩ <;> simp at hf <;> omega
+      obtain ⟨g, rfl⟩ : ∃ g, f = g + 1 := ⟨f - 1, by omega⟩
+      simp only [List.take_succ_cons, List.take_nil, List.drop_succ_cons, List.drop_nil, List.nil_append]
+      rw [wordTok1, W_single c n hc hn _ _ _ _ _ _ _ _ _ hm]
+      have hFt : Fu (g + 1) (n :: t) sp := by
+        rcases hF with ⟨h1, h2⟩ | ⟨h1, h2⟩
+        · left; exact ⟨h1, by simp at h2 ⊢; omega⟩
+        · right; exact ⟨h1, by simp at h2 ⊢; omega⟩
+      by_cases hd : isDigit c = true
+      · right; right
+        refine ⟨Tok.num (nstep 0 c), [5, c, 6], g + 1, n :: t, sp, d, d0, w, 0, by simp, hFt, by simp [hd], ?_, ?_, ?_⟩
+        · intro X; have := dec_numTok [c] X (by simp [hd]); simpa using this
+        · intro _; simp [hd, tyStep]
+        · intro h; exact absurd (by simpa [tyStep] using h) hty
+      · by_cases hl : isLower' c = true
+        · right; right
+          refine ⟨Tok.id [c], [c, 0], g + 1, n :: t, sp, d, d0, w, 0, by simp, hFt, by simp [hd, hl], ?_, ?_, ?_⟩
+          · intro X; have := dec_wordTok [c] X 0 (by simp [hc]) (by decide) (by simp); simpa [ktok] using this
+          · intro _; simp [hd, hl, tyStep]
+          · intro h; exact absurd (by simpa [tyStep] using h) hty
+        · left; simp [hd, hl]
+  · -- two or more characters
+    simp only [List.concat_eq_append] at *
+    have hv : ∀ y ∈ v, isW y = true := fun y hy => hu y (by simp [hy])
+    have hz : isW z = true := hu z (by simp)
+    have hall : ∀ y ∈ c :: (v ++ [z]), isW y = true := hcu
+    rw [show (c :: (v ++ [z])) ++ r = c :: (v ++ z :: r) by simp,
+      WordStart o m 0 sp d d0 w ty cz c z v r hc hv hz hm (Or.inl rfl)]
+    simp only [show ((0 : UInt64) = 4) = False by decide, if_false]
+    have pre : ∀ (Y : List UInt8), (if m = 0 then [] else (if isDigit c then [5, c] else [c]) ++ v) ++
+        ((if m = 0 then [] else [z, (kindOf (dfa (c :: (v ++ [z]))) (pk (c :: (v ++ [z])))).toUInt8]) ++ Y) =
+        (if m = 0 then [] else (if isDigit c then 5 :: c :: (v ++ [z]) else c :: (v ++ [z])) ++
+          [(kindOf (dfa (c :: (v ++ [z]))) (pk (c :: (v ++ [z])))).toUInt8]) ++ Y := by
+      intro Y; by_cases h0 : m = 0 <;> by_cases hd : isDigit c = true <;> simp [h0, hd]
+    rcases r with _ | ⟨n, t⟩
+    · rcases hF with ⟨rfl, hf⟩ | ⟨rfl, hf⟩
+      · -- `lex`'s fuel is the rest: split before the last character
+        simp only [List.length_append, List.length_singleton, List.length_nil] at hf
+        have htk : List.take f (c :: (v ++ [z])) = c :: v := by
+          rw [show f = (c :: v).length by simp; omega, show c :: (v ++ [z]) = (c :: v) ++ [z] by simp, List.take_left]
+        have hdr : List.drop f (c :: (v ++ [z])) = [z] := by
+          rw [show f = (c :: v).length by simp; omega, show c :: (v ++ [z]) = (c :: v) ++ [z] by simp, List.drop_left]
+        simp only [htk, hdr, List.append_nil]
+        obtain ⟨g, rfl⟩ : ∃ g, f = g + 1 := ⟨f - 1, by omega⟩
+        have hll := lex_last z hz g
+        by_cases hgood : isDigit z = true ∨ isLower' z = true
+        · rw [show c :: v ++ [z] = (c :: v) ++ [z] by rfl, W_quirk z hgood _ _ _ _ _ _ _ hm,
+            (quirkK (c :: v) z (dfa (c :: v)) ty).1, (quirkK (c :: v) z (dfa (c :: v)) ty).2]
+          rcases v with _ | ⟨y, v⟩
+          · left
+            have : g = 0 := by simp at hf; omega
+            subst this
+            simp only [if_pos rfl] at hll
+            refine ⟨by cases wordTok [c] <;> simp [hll], fun h0 => by simp [h0, pk_lt2]⟩
+          · have h3 := pk_ge3 (c :: y :: v ++ [z]) (by simp)
+            have hg : g ≠ 0 := by simp only [List.length_cons] at hf; omega
+            have hzt : lex (g + 1) [z] = some [if isDigit z then Tok.num (nstep 0 z) else Tok.id [z]] := by
+              rw [hll, if_neg hg]; rcases hgood with h | h
+              · simp [h]
+              · simp [h, digitLower]; by_cases hd : isDigit z = true
+                · simp [hd]
+                · simp [hd]
+            have hall2 : ∀ q ∈ c :: y :: v, isW q = true := fun q hq => hall q (by
+              simp only [List.mem_cons] at hq; rcases hq with h | h | h <;> simp [h])
+            have hk2 : ((0 : UInt64) == 1 || pk (c :: y :: v ++ [z]) < 0x1000000) = false := by
+              simp only [Bool.or_eq_false_iff]; exact ⟨by decide, by simpa using h3⟩
+            refine wholeWord o m ty c (y :: v) hall2 _ (g + 1) [z] (by simp) (Or.inr ⟨rfl, by
+              simp only [List.length_cons, List.length_nil] at hf ⊢; omega⟩)
+              (dfa (c :: y :: v ++ [z])) (dfa (c :: y :: v)) (pk (c :: y :: v ++ [z])) _ ?_ ?_
+            · intro hk h9
+              simp only [Bool.or_assoc] at hk2 ⊢
+              simp only [Bool.or_eq_false_iff] at hk2
+              simp only [hk2.1, hk2.2, beq_eq_false_iff_ne.mpr hk, beq_eq_false_iff_ne.mpr h9, Bool.false_or,
+                Bool.false_eq_true, if_false]
+              by_cases h0 : m = 0 <;> by_cases hd : isDigit c = true <;> simp [h0, hd]
+            · intro h9 h0; subst h0
+              rcases h9 with h9 | h9 <;> simp [h9]
+        · left
+          simp only [not_or, Bool.not_eq_true] at hgood
+          have : lex (g + 1) [z] = none := by rw [hll]; simp [hgood.1, hgood.2]
+          refine ⟨by cases wordTok (c :: v) <;> simp [this], fun h0 => ?_⟩
+          rw [show c :: v ++ [z] = (c :: v) ++ [z] by rfl, W_quirkBad z hgood.1 hgood.2 _ _ _ _ _ _ _ hm]; simp [h0]
+      · simp only [List.length_append, List.length_singleton, List.length_nil] at hf
+        have htk : List.take f (c :: (v ++ [z])) = c :: (v ++ [z]) := List.take_of_length_le (by simp; omega)
+        have hdr : List.drop f (c :: (v ++ [z])) = [] := List.drop_of_length_le (by simp; omega)
+        simp only [htk, hdr, List.append_nil]
+        rw [W_lastE z _ _ _ _ _ _ _ hm, kindC0]
+        refine wholeWord o m ty c (v ++ [z]) hall _ f [] (by simp) (Or.inr ⟨rfl, by simp; omega⟩)
+          (dfa (c :: v ++ [z])) (dfa (c :: v)) (pk (c :: v ++ [z])) _ ?_ ?_
+        · intro hk h9
+          simp only [List.cons_append] at hk h9 ⊢
+          simp only [beq_eq_false_iff_ne.mpr hk, beq_eq_false_iff_ne.mpr h9, Bool.false_or, Bool.false_eq_true, if_false]
+          rw [pre]
+        · intro h9 h0; subst h0; simp only [List.cons_append] at h9 ⊢
+          rcases h9 with h9 | h9 <;> simp [h9]
+    · have hn : isW n = false := by simpa [hd?] using hr
+      have hf : (c :: (v ++ [z])).length ≤ f := by
+        rcases hF with ⟨_, hf⟩ | ⟨_, hf⟩ <;> simp only [List.length_append, List.length_cons, List.length_singleton] at hf ⊢ <;> omega
+      have htk : List.take f (c :: (v ++ [z])) = c :: (v ++ [z]) := List.take_of_length_le hf
+      have hdr : List.drop f (c :: (v ++ [z])) = [] := List.drop_of_length_le hf
+      simp only [htk, hdr, List.nil_append]
+      rw [W_last z n hn _ _ _ _ _ _ _ _ _ hm, kindC0]
+      refine wholeWord o m ty c (v ++ [z]) hall _ f (n :: t) (by simp; omega) (Or.inr ⟨rfl, ?_⟩)
+        (dfa (c :: v ++ [z])) (dfa (c :: v)) (pk (c :: v ++ [z])) _ ?_ ?_
+      · rcases hF with ⟨_, h⟩ | ⟨_, h⟩ <;> simp only [List.length_append, List.length_cons, List.length_singleton] at h ⊢ <;> omega
+      · intro hk h9
+        simp only [List.cons_append] at hk h9 ⊢
+        simp only [beq_eq_false_iff_ne.mpr hk, beq_eq_false_iff_ne.mpr h9, Bool.false_or, Bool.false_eq_true, if_false]
+        rw [pre]
+      · intro h9 h0; subst h0; simp only [List.cons_append] at h9 ⊢
+        rcases h9 with h9 | h9 <;> simp [h9]
+
 end Nano.B
