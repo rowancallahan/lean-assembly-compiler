@@ -12,7 +12,7 @@ A source file is a sequence of `def`s in the closed environment of §2. Types: `
 |---|---|---|
 | numerals | `0`… (UInt64; wrap mod 2^64), `-n` only as v1 | in fuel position: Nat numerals `< 2^32` |
 | arithmetic | `a + b`, `a - b`, `a * b` | UInt64, wrapping (v1) |
-| bits | `a &&& b`, `a \|\|\| b`, `a ^^^ b`, `a <<< k`, `a >>> k` | `k` a numeral `< 64` (worker 3 uses only these) |
+| bits | `a &&& b`, `a \|\|\| b`, `a ^^^ b`, `a <<< k`, `a >>> k` | `k` a numeral `< 64`; SHIFT GUARD (NANO_V2.md B6): no tree mixing a shift with a numeral (Lean rejects some, e.g. `1 + x <<< 3`, depending on leaf order; nano rejects all, also `x <<< 7 \|\|\| 3` which Lean accepts); constants next to shifts as zero-arity defs |
 | comparisons | `a == b`, `a < b`, `a <= b`, `a ≤ b` | UInt64 only (Int64 dropped for milestone 1, Astra r2 §8); only in `if` conditions; the typing guard of NANO_V2.md B1 |
 | conditions | `c && d`, `c \|\| d`, parentheses | Bool; pure, so eager evaluation is Lean's value |
 | `if` | `if c then e else e` | both branches the same type (UInt64, `Buf` or `List UInt8`); ownership checked per branch |

@@ -42,7 +42,7 @@ generator (stack gen `genE`, records, `asm`), P = proofs (elaborator ⊆ Lean; c
 | inc | E | M | G | P | S (at the end of the group, ONE GO) | est |
 |---|---|---|---|---|---|---|
 | 1 cmp+if | tokens `if then else == < <=`, `if` at expression start, typing guard | `E.ite k a b t e`, `Cmp.test` | branch-free: X, c, Y, `X + c(Y-X)`; `<` by shifts+arithmetic; no new record | oracle fuzz + 20 agreement proofs; `genE_ok`/`genE_fail` `ite` case, `ops_ok`; families unchanged | lexA (new tokens), stage2b (new grammar/tags), inliner (new tag), mexp (new micro-ops = SOp chunks); asm UNCHANGED | done (~1 day) |
-| 2 bits | tokens `&&& \|\|\| ^^^ <<< >>>`, precedence (Lean: `\|\|\|` 55, `^^^` 58, `&&&` 60, `<<< >>>` 75), shift by numeral | `E.band/bor/bxor/shl k/shr k` | new records AND/XOR (R-type t0,t1), SLLI/SRLI t0 exist as families | oracle fuzz (precedence!), `bin_node` per op; new families + `case_r` with `G.step_and`/`step_xor` (exist) + `w_*` by `decide +kernel` | asm (new ops in X0..X3, ≤ 7 clauses per macro), mexp, lexA, stage2b | 1–2 days |
+| 2 bits (DONE, part B6) | tokens `&&& \|\|\| ^^^ <<< >>>`, precedence (Lean: `\|\|\|` 55, `^^^` 58, `&&&` 60, `<<< >>>` 75), shift by numeral | `E.band/bor/bxor/shl k/shr k` | new records AND/XOR (R-type t0,t1), SLLI/SRLI t0 exist as families | oracle fuzz (precedence!), `bin_node` per op; new families + `case_r` with `G.step_and`/`step_xor` (exist) + `w_*` by `decide +kernel` | asm (new ops in X0..X3, ≤ 7 clauses per macro), mexp, lexA, stage2b | 1–2 days |
 | 3 products | `(e, e)`, `.1`/`.2`, product types in signatures | values become trees of words (`V := w \| pair V V`) or flattened k-word tuples | k stack slots per value, `dup k`/`slide` generalised | `genE_ok` with k-slot values (Stk of lists of words); ownership not yet needed (no buffers) | stage2b, inliner (k-slot arity), mexp | 2–3 days |
 | 4 fuel loops | recognise the ONE pattern (structural Nat fuel, tail calls only, predecessor fuel), reject everything else | `Nat` fuel as a word under a proved `< 2^64` bound; equations of the def | real branches: BEQ/BNE/JAL records with offsets (≤ ±4 KiB per branch, or JAL trampolines), loop = header + body + back jump; `if` lowered with branches inside loop bodies | record-machine loop invariant (induction on fuel); new Sail cases (`wB` step lemmas exist in Riscv/Steps/Branch.lean); `CodeAt` with jumps (pc arithmetic both ways) | all five (stage formats get loop tags) | 4–6 days |
 | 5 buffers | wrapper API names only (closed prelude), affine ownership checker | functional `Array UInt64` semantics, capacities, checked reads (default 0) | buffers in the work block with a header (len, cap); append/read/write records (ld/sd with index registers) | memory invariant (buffer regions disjoint from the value stack), in-place = functional under ownership | all five | 5–8 days |
@@ -111,14 +111,36 @@ cmp  ::= '==' | '<' | '<='                    each followed by a space
 - Domain: `stackOk p = ScE p.2 p.1 ∧ depth p ≤ 256` as in v1 (each `if` needs up to 10 extra slots: `peakOps`).
 
 ### B4. Tests (QEMU + Sail)
-`bash Testing/asm/nano_v2_test.sh` (emitter `Testing/asm/emit_nano_v2.lean`): 45 random programs (all five comparison
-kinds, nested `if`, `let`, calls; up to 40828 words) + 11 sources through `Nano.V2.nanoElab` (min/max, abs, clamp,
-sign, digit test, UInt64 and Int64), 8 inputs each around 0 / 2^63 / 2^64, three alignments (MIS 0,0 / 1,3 / 5,7), each
-at `memoryNeeded` (result == `Prog.eval`, QEMU == Sail) and at `memoryNeeded − 1` (a0 = −1): **1344 program × input
-pairs ok** (3 min).
+`bash Testing/asm/nano_v2_test.sh` (emitter `Testing/asm/emit_nano_v2.lean`): 52 random/hand programs (all five
+comparison kinds, nested `if`, `let`, calls, `&&& ||| ^^^`, shifts incl. amounts ≥ 64; up to ~40000 words) + 14 sources
+through `Nano.V2.nanoElab` (min/max, abs, clamp, sign, digit test, bit packing; UInt64 and Int64), 8 inputs each around
+0 / 2^63 / 2^64, three alignments (MIS 0,0 / 1,3 / 5,7), each at `memoryNeeded` (result == `Prog.eval`, QEMU == Sail)
+and at `memoryNeeded − 1` (a0 = −1): **1584 program × input pairs ok** (increment 1 alone: 1344).
 
 ### B5. Build times (cold, `lake env lean`, deps built)
 See the table at the end (filled from the measurement); all modules far below 5 min.
+
+### B6. Increment 2: bit operations (same branch, after increment 1)
+- Syntax: `a &&& b`, `a ||| b`, `a ^^^ b`, `a <<< k`, `a >>> k` (`k` a numeral `< 64`), each operator followed by a space;
+  Lean's precedences (`|||` 55 < `^^^` 58 < `&&&` 60 < `+ -` 65 < `*` 70 < `<<< >>>` 75); `-n <<< k` rejected (prefix `-`).
+  Meaning: Lean's `UInt64` operations (`BOp.app`; shifts by `k.toUInt64`, i.e. `k % 64`). In an `Int64` file `>>>` is
+  rejected (Lean's `Int64` `>>>` is the arithmetic shift).
+- SHIFT GUARD (found by the oracle, `Nano.V2.sm`/`good`): Lean's `<<<`/`>>>` are not `binop%` operators, and Lean
+  REJECTS a `binop%` tree or comparison that mixes a shift with a numeral (`1 + x <<< 3`, `x + 1 + x <<< 3`,
+  `1 < x >>> 63`, `3 * (let l := p <<< 63; p)`, a shift in an `if` branch or call argument inside such a tree), and a
+  shift of an untyped operand (`255 >>> 31`, `let z := 1 <<< 3`). nano rejects: a tree of two or more leaves with a leaf
+  that contains a shift anywhere AND a leaf that is not a typed variable / call / shift; a shift whose operand is untyped.
+  This is conservative: Lean's verdict depends on the leaf order (`x <<< 7 ||| 3` and `x >>> 63 == 1` are accepted by
+  Lean, rejected by nano).
+  Workaround for constants next to shifts: a zero-arity def (`def c : UInt64 := 3`, a call leaf).
+- Code: `|||` = v1's OR record (`binop 14`), shifts = v1's SLLI/SRLI records, `&&&` = `(a + b) − (a ||| b)`, `^^^` =
+  `(a ||| b) − (a &&& b)` (`Nano.V2R.and_eq_add_sub_or`, `xor_eq_or_sub_and`, from core's Nat bitwise lemmas); every
+  record still in v1's families, `asm` unchanged. `Nano.V2.nano_stack_correct` re-proved for the extended language, same
+  axioms.
+- Evidence: fuzz2 (69 bit-op boundary cases × 2 types + random programs with bit ops) seeds 11–13 and 21–23 (2000 random
+  each): 0 differences after
+  the shift guard (before it: 6–20 "nano accepts, Lean rejects" per seed, all shift typing); 25 agreement proofs
+  (5 with bit ops); QEMU + Sail: see B4 (rerun with bit-op programs).
 
 ## C. Findings for the owner (spec review)
 1. **v1 bug (exact-subset violation, NOT fixed in v1)**: v1 `nanoElab` accepts an empty binder group, e.g.
@@ -142,12 +164,13 @@ Frontx statements not touched here; not re-frozen). `Nano.V2.*` axioms appended 
 
 | module | time | memory |
 |---|---|---|
-| V2Ast | 0.9 s | 0.5 GB |
-| V2Elab | 0.7 s | 0.5 GB |
-| V2Gen | 0.4 s | 0.5 GB |
-| V2Ops | 2.8 s | 0.6 GB |
-| V2Rec | 10.6 s | 0.9 GB |
-| V2Run | 7.9 s | 0.6 GB |
-| V2Fam | 2.5 s | 1.6 GB |
-| V2Top | 4.1 s | 1.8 GB |
-| V2Agree | 28.4 s | 2.7 GB |
+| V2Ast | 1.0 s | 0.5 GB |
+| V2Elab | 1.0 s | 0.5 GB |
+| V2Gen | 0.5 s | 0.5 GB |
+| V2Ops | 5.5 s | 0.7 GB |
+| V2Rec | 11.0 s | 0.9 GB |
+| V2Run | 8.2 s | 0.7 GB |
+| V2Fam | 3.2 s | 1.7 GB |
+| V2Top | 4.5 s | 1.8 GB |
+| V2Agree | 34.6 s | 2.9 GB |
+(after increment 2; all far below 5 min.)
