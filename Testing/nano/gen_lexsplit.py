@@ -7,7 +7,7 @@
   E (`le`):   the emitter: pass 1 of `lx` (alternatives resolved to `BYTES :: REC`, the mode-5 branch dropped), behind
               mode 7 = read the type byte written by `lv` (0: rejected).
 
-usage: gen_lexsplit.py elabb_step.tmpl elabb_end.tmpl"""
+usage: gen_lexsplit.py elabb_step.tmpl elabb_end.tmpl [V,R | E] (the variants to print; default all)"""
 import re, sys
 TN = open(sys.argv[1]).read(); TE = open(sys.argv[2]).read()
 def args(s, i):  # s[i] == '(' ; split top-level commas
@@ -75,10 +75,13 @@ def rej(s, V): return s.replace('[0]', 'none') if V == 'R' else s
 def mac(name, body):
     return f'set_option hygiene false in\nmacro "{name}" : term => `(\n{body.rstrip()})\n'
 outs = []
+SEL = sys.argv[3].split(',') if len(sys.argv) > 3 else ['V', 'R', 'E']
 for V, fn in (('V', 'lv'), ('R', 'vres'), ('E', 'le')):
+    if V not in SEL: continue
     n_, e_ = TN, TE
     if V == 'E': n_, e_ = drop_m5(resolve_m0(n_, 'emit')), drop_m5(resolve_m0(e_, 'emit'))
     else: n_, e_ = resolve_m0(n_, 'rec'), resolve_m0(e_, 'rec')
+    if V == 'V': e_ = drop_m5(e_)   # `lv` tests `m == 5` before (a path must not test a condition twice)
     n_ = rej(subst(n_, fn, False, V), V); e_ = rej(subst(e_, fn, True, V), V)
     assert 'm == 0' not in n_ + e_ and (V != 'E' or 'm == 5' not in n_ + e_), V
     outs.append(mac(f'STEPN{V}', n_)); outs.append(mac(f'STEPE{V}', e_))

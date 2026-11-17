@@ -1,4 +1,4 @@
-import Nano.ElabBSplit
+import Nano.ElabBSplitE
 import Riscv.Frontx.ListOutExamples
 import Riscv.Frontx.Impl1
 import Riscv.Frontx.Checked
