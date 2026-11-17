@@ -256,8 +256,16 @@ statement hash changed (62/62), only dependency closures; not re-frozen, per the
 
 ### Next
 
-1. `String` literals (byte chains, a `dsimproc` for their encoding; long literals need the generated body split) and
-   the `Nat.blt` normal form against a called function, then con-leche StateC's `NatBinOp.result`/`natOpRefusal`.
+1. con-leche StateC's `NatBinOp.result`/`natOpRefusal`/`natResultRefused` (verbatim, with the 18 basis names and
+   `CheckError`). Prototype, NOT merged (`Testing/notes/S3_LIMB_NEXT.patch` against this branch, probe
+   `Testing/notes/S3_LIMB_NEXT_probe.lean.txt`): `String` literals as byte chains (`strLitSE`), their encoding unfolded
+   by a `dsimproc` (`s3EncStrLit`, checked by the kernel definitionally) and decoded back by `s3DecStrLit` (callee
+   closers need `enc (dec v) = v` for a literal); `set_option maxRecDepth` for the generated bodies (a 100-byte
+   literal nests 300 `let`s); `Nat.blt a b = decide (a < b)` (and `ble`, `beq`) as limb normal forms (a `Bool`
+   result returned as data); `s3_split` not splitting limb `Nat` variables. With it the probe certifies the
+   names, `CheckError`, the string-carrying errors, `natResultRefused`, the 14-way `NatBinOp.result` arms over
+   the primitives, and fails on: `natOpRefusal` (heartbeats in `whnf`, probably the symbolic `s!` concatenations of
+   literals) and the harness's `(m % 32).toNat` normal form in `main`.
 2. Proof parameters after run-time ones, and certificates that never print private names (or closed-term folding
    with `decide +kernel` lemmas), for `Std.HashMap` construction (`CState {}`).
 3. The large-literal-factor kernel recursion (locate the defeq check that unfolds `Nat.mul _ 4294967296`).
