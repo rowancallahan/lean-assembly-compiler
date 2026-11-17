@@ -68,3 +68,22 @@ Commands that worked:
 - Main: the `NanoABI.ImplementsBytes` skeleton is on main (Testing/notes/NANO_V2_SKELETONS.lean; NANO_V2_ROUND5.md §5).
 - CI tender (@89851e6): every V2Boot module cold-builds in ≤ 20 s and ≤ 2.6 GB. `selfrun_s3_test.py 30 10 5` passed
   but peaked at 12.08 GB RSS, over the 8 GB budget (v1 harness; the B₁ copy will likely behave the same).
+
+## HANDOFF (pause)
+Done (all pushed on nano-v2-boot):
+- S3 twins, bridges, stage theorems for lexV, inlV, mexpV, asmV; hybrid `Nano.selfHostedB1` (its 2b stage is still v1).
+- Parser twin `Nano/V2Boot/ParseS3.lean` (`p2bVS`, 13-tuple state, reversed output/buffers, word fuel) and its bridge
+  `Nano.V2B.p2bVS_eq : xs.length < 2^27 → p2bVS xs = p2bV xs` (`Nano/V2Boot/ParseS3Br.lean`, no sorry, checked locally in ~10 s;
+  helper bridges incl. `pstepS_eq`, `prunS_eq`). The ParseS3 definitions build (1 s, 0.5 GB).
+- S3 rules learned: conditions must not use `&&`, `||`, `≠` (nested `if`s, helpers `tokOk`, `ty34`, `hd12`); no `let (..) := f ..` in a
+  recursive function (use projections `cOf`/`oOf`). The first compile of the old shape gave 10 `s3_contra` errors (idVS, nmEqS, vldS, prunS).
+- Cold build `lake build Nano.V2Boot.SelfHostB1` (runner, cache at main f1cfb76): 397 jobs, 507 s wall, peak 6.2 GB.
+In progress:
+- `s3_compileF ParseB := p2bVS` on the restructured twin (bf6ba78+) was running on the runner (probe `ProbeParse`, ~17 min per attempt). Result unknown.
+- `Nano/V2Boot/ParseS3Self.lean` and `ParseS3Stage.lean` are DRAFTS (copies of the asm pattern, not yet built, not imported by SelfHostB1; `lake build Nano` would try them).
+Next:
+1. Get the S3 compile of `p2bVS` through (fix any `s3_contra` by reshaping conditions as above); build ParseS3Self/Stage (split if > 5 min / 8 GB; the compile peaked at 2.8 GB).
+2. Swap into `SelfHostB1`: `parseB_v1` from `parseB_implements` via `Nano.V2S.ParseP.p2bV_eq`; `s2bF := spaceP ParseB.P`; link `ParseB` instead of `Nano.PS.Stage2B`; `Nano.PS.stage2B_code_len` → `parseB_code_len`.
+3. selfrun_b1 emitter: still `#eval` (interpreted, ~600 s per 617-byte program); a `lean_exe` is blocked because Lean_RV64D defines a root `main`. Use sizes `5 2 2`. Emitter names `Nano.V2B.lexB_*` now; its 2b stays `Nano.PS.stage2B_*` until the swap.
+4. Cold build table per module, merge origin/main, `bash Testing/scripts/check.sh`, axioms file for `selfHostedB1`.
+Not started (by owner direction): ImplementsBytes for B₁.
