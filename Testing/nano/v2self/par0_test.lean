@@ -30,7 +30,7 @@ def dec (ws : List UInt64) (env : List UInt64) : Nat → Option (UInt64 × List 
   | 0 => none
   | f+1 => match ws with
     | 1 :: v :: r => some (v, r)
-    | 2 :: s :: r => some (env.getD s.toNat 0, r)
+    | 2 :: s :: 1 :: r => some (env.getD s.toNat 0, r)
     | 3 :: op :: r => do
       let (x, r1) ← dec r env f; let (y, r2) ← dec r1 env f
       some (match op with | 1 => x + y | 2 => x - y | 3 => x * y | 4 => x &&& y | 5 => x ||| y | 6 => x <<< y | _ => x >>> y, r2)
@@ -40,7 +40,7 @@ def run (t : T) (hdr : String) : Bool :=
   let ws := C.y13 (C.s10 txt.toUTF8.toList)
   let env : List UInt64 := [3, 1000003, 7, 0xFFFFFFFFFFFFFFF1]
   match ws with
-  | 2 :: 20 :: 0 :: np :: ns :: 0 :: r =>
+  | 2 :: 20 :: 0 :: np :: ns :: 0 :: 1 :: r =>
     np == 4 && ns == 4 && (match dec r env 1000 with | some (v, [21]) => v == t.eval env | _ => false)
   | _ => false
 def go : Nat → Nat → Nat × Nat → Nat × Nat

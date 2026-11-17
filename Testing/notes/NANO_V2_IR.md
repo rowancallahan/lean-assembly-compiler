@@ -22,3 +22,11 @@ Output words: `2 (IRV), 20 (DEF), 0 (id), nparams, nslots, 0 (kind), pre-order n
 Test: 3000 random trees printed with minimal parentheses, lexed, parsed, decoded and evaluated: 0 mismatches; 6 rejection cases (dangling operator, unclosed paren, unknown name, shift by a variable, trailing token, Int64) give the empty Buf. Accepted by `frontElab` (13 defs).
 Front-end rules learnt (they shape all later parser code): def/variable names are ONE letter + digits (`tt`, `np`, `ok` are rejected); a Buf passed as a loop argument is MOVED into the loop (a second loop on the same Buf after the first is rejected), so the parser keeps tokens AND working memory in ONE heap Buf `h` (tokens copied to 40000.., size at h[7]) and threads only `h`; reads of `h` are let-bound before `h` is consumed; more than one non-Buf argument is fine.
 Capacity note: the heap is 40000 + tokens words (≈ 76k for the S text): κ = 65536 is too small for the parser; use κ = 2^17 (+ the later stages' buffers).
+
+## IR v2.1 (agreed with the Opus box, 2026-11-17): changes to the stage 1 → 2 format above
+`DEF id npw nslots kind nres` (npw = parameter WORDS, nslots = frame words, params first, nres = result words); `LOCAL slot w` (w words; a pair is w consecutive slots, first component lowest);
+no `SPLIT`: `let (a, b) := v` = `LET slot w v body` with a at `slot`, b at `slot + width a` (the parser maps names to (slot, width)); `PAIR n c1..cn` as before;
+`CALL id n a1..an` (n argument EXPRESSIONS, total width = callee npw, result nres words); a fuel def has the fuel as PARAM slot 0, state params after, body `LOOP zero step`, `CONTINUE e` (e of width npw-1);
+the call site passes the fuel as an ordinary first argument (`len' x` = `PRIM ISIZE`, `+ *` numerals = BIN/CONST): no LENF/FADD/FMUL; a read-only Buf param of a loop is a state word passed through by CONTINUE;
+prims: `ISIZE`, `RD i`, `LEN x`, `PUT o b`, `BNEW`, `BSIZE b`, `BGET b i`, `BSET b i v`, `BPUSH b v` (source order; `[]` = BNEW); `IF cmp a b t e` (eq 1, lt 2 unsigned).
+Par0 already emits this header (`... npw nslots 0 1`) and `LOCAL slot 1`.
