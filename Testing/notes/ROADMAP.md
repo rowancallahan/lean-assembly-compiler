@@ -323,3 +323,11 @@ review, and spend their effort on the proved back end and self-hosting, not on p
   certificates or S3); (2) BEFORE expanding nano, make the self-hosted binary B "correct by design": every stage
   compiled through the S3 calculus (compiler proved once), leaving only a Lean-level equation per stage
   (`eval P = stage`), no generated machine-level step proofs; (3) then grow nano in small checked increments on S3.
+- INTERPOLATE (owner): move nano onto S3 through a chain of intermediate calculi, each differing from the previous by ONE
+  construct (e.g. nano Prog → explicit lets → normal-form expressions → S3 words only → S3 with calls → S3 datatypes),
+  each link a small proved translation (simulation / meaning-preservation) checked before the next; the self-hosting
+  theorem, check.sh and the full-chain test pass after every link.
+- What "correct by design" means here: (a) back end proved once (`nano_stack_correct`, later S3's theorem); (b) each
+  byte-level stage of B proved equal to its spec function (`lexB_eq`, `stage2_lexB`, …); (c) B's machine code computes
+  those stages (today certifying per stage; after the S3 move, by design). `nanoElab` itself is the spec (defines
+  meaning), cross-checked against Lean's elaborator, not proved.
