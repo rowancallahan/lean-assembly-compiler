@@ -231,3 +231,18 @@ OPEN PROBLEMS:
 - Tests: fuzz.py generates random loop helpers too (+ hand cases p2/p3, negatives neg8–11: non-tail self call,
   fuel ≠ n, aliasing through a loop, fuel variable used as a value): 83 programs × 12 inputs agree, 11 negatives
   rejected (local).
+
+## Increment 5 (buffers), merged box — front end
+- Prelude (§3, the `List UInt64` version): `Buf`, `bnew`, `bsize`, `bget`, `bset`, `bpush` ↦ `mk κ`/`size`/`get`/`set`/
+  `push` (meanings equal: `getD … 0`, `List.set` = `lset`, append). `bpop` not added (no stage needs it yet).
+  §8's `Array`/`writeChecked`/`appendChecked` form: NOT implemented (the `List` prelude maps 1:1 to the backend).
+- Front-end types `FT` (`w | out | buf | prod`): the output `List UInt8` and `Buf` are both `Ty.buf` in the backend but
+  distinct in Lean; `S.ty` checks bodies, `let`s, call/loop arguments, tails; `tyOf`/`tyT` re-check the lowered term.
+- OWNERSHIP = liveness in evaluation order (`Ex.lv`/`Tl.lvT`): a buffer-holding variable is consumed by every use
+  except a borrow (`bsize v`, `bget v i`, and `v` in `bset v i x`/`bpush v x`/`put v x` while `i`, `x` run); a dead
+  variable may not be used; `if` = union of the branches' dead sets; loop bodies may not touch outer buffers.
+  Conservative: a buffer MOVED (into a pair / loop state / `let`) is dead even if not mutated, so write
+  `let v := bget b i; f n (i + 1, b) (put o v)`, not `f n (i + 1, b) (put o (bget b i))`.
+- Tests: p4 (histogram, `(i, Buf)` loop state), p5 (bubble sort), p6/p7; negatives neg12–16 (use after `bset`,
+  use after `bpush`, `Buf` vs `List UInt8` both ways, aliasing through a pair): 67 programs × 12 inputs agree.
+- Back-end proof for buffers: NOT yet (next: BufferRep/SameOutside, NANO_V2_SKELETONS.lean `Buffers`).

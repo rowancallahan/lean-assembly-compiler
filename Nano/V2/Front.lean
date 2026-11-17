@@ -26,6 +26,7 @@ inductive FTok where
   | eqeq | lt | le | band | bor | bxor | shl | shr
   | comma | times | p1 | p2 | nil
   | kNat | arrow | bar | darrow | klenP
+  | kBuf | kbnew | kbsize | kbget | kbset | kbpush
   deriving DecidableEq
 
 def wdTok (w : List UInt8) : Option FTok :=
@@ -41,6 +42,12 @@ def wdTok (w : List UInt8) : Option FTok :=
     else if w == [114, 100] then some .krd else if w == [108, 101, 110] then some .klen
     else if w == [112, 117, 116] then some .kput
     else if w == [78, 97, 116] then some .kNat
+    else if w == "Buf".toUTF8.toList then some .kBuf
+    else if w == "bnew".toUTF8.toList then some .kbnew
+    else if w == "bsize".toUTF8.toList then some .kbsize
+    else if w == "bget".toUTF8.toList then some .kbget
+    else if w == "bset".toUTF8.toList then some .kbset
+    else if w == "bpush".toUTF8.toList then some .kbpush
     else if identOk w then some (.id w) else none
 
 def flex : Nat → List UInt8 → Option (List FTok)
@@ -146,7 +153,22 @@ inductive S where
   | rd (i : S) | len | put (o e : S) | nil
   /-- a call of a fuel-loop def: fuel (`Nat`: `len'`, `+`, `*`, numerals), state arguments -/
   | lcall (g : Nat) (fuel as : S)
+  /-- word buffers (`Buf := List UInt64`, the prelude) -/
+  | bnew | bsize (b : S) | bget (b i : S) | bset (b i v : S) | bpush (b v : S)
   deriving Repr, Inhabited
+
+/-- front-end types: the output `List UInt8` and `Buf` are both `Ty.buf` in the backend but distinct in Lean -/
+inductive FT where
+  | w | out | buf | prod (a b : FT)
+  deriving DecidableEq, Repr
+
+def FT.ty : FT → Ty
+  | .w => .w | .out => .buf | .buf => .buf | .prod a b => .prod a.ty b.ty
+
+def ftup : List FT → FT
+  | [a] => a
+  | a :: as => .prod a (ftup as)
+  | [] => .w
 
 /- shift every variable `≥ c` by `k` -/
 mutual
@@ -218,7 +240,7 @@ inductive FB where
   deriving Repr
 
 /-- a def: (name, has the input, parameter types (outputs/words, first first), result type, body) -/
-abbrev FDef := List UInt8 × Bool × List Ty × Ty × FB
+abbrev FDef := List UInt8 × Bool × List FT × FT × FB
 
 /-- the state value of a loop call: `(a₁, (a₂, … aₖ))` -/
 def tup : List Ex → Ex
@@ -262,6 +284,11 @@ def S.low (ds : List FDef) : S → Ex
   | .len => .isize
   | .put o e => .push (o.low ds) (e.low ds)
   | .nil => .mk 0
+  | .bnew => .mk 0
+  | .bsize b => .size (b.low ds)
+  | .bget b i => .get (b.low ds) (i.low ds)
+  | .bset b i v => .set (b.low ds) (i.low ds) (v.low ds)
+  | .bpush b v => .push (b.low ds) (v.low ds)
 where lowA (ds : List FDef) : S → List Ex
   | .acons e r => e.low ds :: lowA ds r
   | _ => []
@@ -285,12 +312,15 @@ def S.typed : List Bool → S → Bool
   | _, .len => true
   | _, .put _ _ => true
   | _, .nil => true
+  | _, .bsize _ | _, .bget _ _ | _, .bnew | _, .bset _ _ _ | _, .bpush _ _ => true
   | _, _ => false
 
 def S.hasSh : S → Bool
   | .bin _ a b | .let_ a b | .call _ (.acons a b) | .acons a b | .pair a b | .split a b | .put a b => a.hasSh || b.hasSh
   | .ite _ a b t e => a.hasSh || b.hasSh || t.hasSh || e.hasSh
-  | .fst a | .snd a | .rd a | .lcall _ _ a => a.hasSh
+  | .fst a | .snd a | .rd a | .lcall _ _ a | .bsize a => a.hasSh
+  | .bget a b | .bpush a b => a.hasSh || b.hasSh
+  | .bset a b c => a.hasSh || b.hasSh || c.hasSh
   | .sh _ _ _ => true
   | _ => false
 
@@ -315,6 +345,10 @@ def S.sm : List Bool → S → Sm
     (e.hasSh || b.hasSh, true, good (e.sm fl) && good (b.sm (e.typed fl :: e.typed fl :: fl)), false)
   | fl, .rd i => (i.hasSh, false, good (i.sm fl), false)
   | _, .len => (false, false, true, false)
+  | fl, .bsize b => (b.hasSh, false, good (b.sm fl), false)
+  | fl, .bget b i => (b.hasSh || i.hasSh, false, good (b.sm fl) && good (i.sm fl), false)
+  | fl, .bset b i v => (b.hasSh || i.hasSh || v.hasSh, true, good (b.sm fl) && good (i.sm fl) && good (v.sm fl), false)
+  | fl, .bpush b v => (b.hasSh || v.hasSh, true, good (b.sm fl) && good (v.sm fl), false)
   | fl, .put o e => (o.hasSh || e.hasSh, true, good (o.sm fl) && good (e.sm fl), false)
   | _, _ => (false, true, true, false)
 where smA (fl : List Bool) : S → Bool
@@ -325,59 +359,135 @@ where smA (fl : List Bool) : S → Bool
 def Ty.hasBuf : Ty → Bool
   | .w => false | .buf => true | .prod a b => a.hasBuf || b.hasBuf
 
-/- occurrences of variable `i` (the larger `if` branch) -/
+/-- OWNERSHIP (affine, Astra r3 §4): walking in evaluation order, a buffer-holding variable is CONSUMED by every use
+except a BORROW (`size (var i)`, `get (var i) _`, and the buffer of `set`/`push` while their other arguments run);
+a dead variable may not be used again; `if` branches start from the same state and the union of the dead sets
+continues; loop bodies may use no outer buffer.  `d` = dead flags (de Bruijn). -/
+def dead (d : List Bool) (i : Nat) : Bool := d.getD i false
+def kill (env : List Ty) (d : List Bool) (i : Nat) : List Bool :=
+  if (env.getD i .w).hasBuf then d.set i true else d
+def killAll (env : List Ty) (d : List Bool) : List Bool :=
+  (d.zip env).map fun (x, τ) => x || τ.hasBuf
+def orL (a b : List Bool) : List Bool := (a.zip b).map fun (x, y) => x || y
+
 mutual
-def Ex.occ (i : Nat) : Ex → Nat
-  | .var j => if i = j then 1 else 0
-  | .bin _ a b | .pair a b | .get a b | .push a b => a.occ i + b.occ i
-  | .ite _ a b t e => a.occ i + b.occ i + max (t.occ i) (e.occ i)
-  | .let_ v b => v.occ i + b.occ (i + 1)
-  | .split e b => e.occ i + b.occ (i + 2)
-  | .fst e | .snd e | .size e | .iget e => e.occ i
-  | .set a b c => a.occ i + b.occ i + c.occ i
-  | .loop f s z t => f.occ i + s.occ i + 2 * (z.occ (i + 1) + t.occ (i + 1))
-  | _ => 0
-def Tl.occ (i : Nat) : Tl → Nat
-  | .ret e | .next e => e.occ i
-  | .ite _ a b t e => a.occ i + b.occ i + max (t.occ i) (e.occ i)
-  | .let_ v b => v.occ i + b.occ (i + 1)
-  | .split e b => e.occ i + b.occ (i + 2)
+def Ex.lv : List Ty → List Bool → Ex → Option (List Bool)
+  | env, d, .var i => if dead d i then none else some (kill env d i)
+  | env, d, .size (.var i) => if dead d i then none else some d
+  | env, d, .get (.var i) j => if dead d i then none else j.lv env d
+  | env, d, .set (.var i) j x => if dead d i then none else
+      match j.lv env d with
+      | some d1 => match x.lv env d1 with
+        | some d2 => if dead d2 i then none else some (kill env d2 i)
+        | none => none
+      | none => none
+  | env, d, .push (.var i) x => if dead d i then none else
+      match x.lv env d with
+      | some d2 => if dead d2 i then none else some (kill env d2 i)
+      | none => none
+  | env, d, .bin _ a b | env, d, .pair a b | env, d, .get a b | env, d, .push a b =>
+      match a.lv env d with
+      | some d1 => b.lv env d1
+      | none => none
+  | env, d, .set a b c =>
+      match a.lv env d with
+      | some d1 => match b.lv env d1 with
+        | some d2 => c.lv env d2
+        | none => none
+      | none => none
+  | env, d, .size a | env, d, .fst a | env, d, .snd a | env, d, .iget a => a.lv env d
+  | env, d, .ite _ a b t e =>
+      match a.lv env d with
+      | some d1 => match b.lv env d1 with
+        | some d2 => match t.lv env d2, e.lv env d2 with
+          | some x, some y => some (orL x y)
+          | _, _ => none
+        | none => none
+      | none => none
+  | env, d, .let_ v b => match tyOf env v, v.lv env d with
+    | some τ, some d1 => (b.lv (τ :: env) (false :: d1)).map List.tail
+    | _, _ => none
+  | env, d, .split e b => match tyOf env e, e.lv env d with
+    | some (.prod τ σ), some d1 => (b.lv (σ :: τ :: env) (false :: false :: d1)).map (·.drop 2)
+    | _, _ => none
+  | env, d, .loop f i z t => match tyOf env i with
+    | some σ =>
+      match f.lv env d with
+      | some d1 => match i.lv env d1 with
+        | some d2 =>
+          let da := false :: killAll env d2
+          if (z.lv (σ :: env) da).isSome && (t.lvT (σ :: env) da).isSome then some d2 else none
+        | none => none
+      | none => none
+    | none => none
+  | _, d, _ => some d
+def Tl.lvT : List Ty → List Bool → Tl → Option (List Bool)
+  | env, d, .ret e | env, d, .next e => e.lv env d
+  | env, d, .ite _ a b t e =>
+      match a.lv env d with
+      | some d1 => match b.lv env d1 with
+        | some d2 => match t.lvT env d2, e.lvT env d2 with
+          | some x, some y => some (orL x y)
+          | _, _ => none
+        | none => none
+      | none => none
+  | env, d, .let_ v b => match tyOf env v, v.lv env d with
+    | some τ, some d1 => (b.lvT (τ :: env) (false :: d1)).map List.tail
+    | _, _ => none
+  | env, d, .split e b => match tyOf env e, e.lv env d with
+    | some (.prod τ σ), some d1 => (b.lvT (σ :: τ :: env) (false :: false :: d1)).map (·.drop 2)
+    | _, _ => none
 end
 
-/- every buffer-holding binder (with types `env`, newest first) is used at most once -/
-mutual
-def Ex.aff : List Ty → Ex → Bool
-  | env, .bin _ a b | env, .pair a b | env, .get a b | env, .push a b => a.aff env && b.aff env
-  | env, .ite _ a b t e => a.aff env && b.aff env && t.aff env && e.aff env
-  | env, .let_ v b => match tyOf env v with
-    | some τ => v.aff env && b.aff (τ :: env) && (!τ.hasBuf || decide (b.occ 0 ≤ 1))
-    | none => false
-  | env, .split e b => match tyOf env e with
-    | some (.prod τ σ) => e.aff env && b.aff (σ :: τ :: env) &&
-        (!τ.hasBuf || decide (b.occ 1 ≤ 1)) && (!σ.hasBuf || decide (b.occ 0 ≤ 1))
-    | _ => false
-  | env, .fst e | env, .snd e | env, .size e | env, .iget e => e.aff env
-  | env, .set a b c => a.aff env && b.aff env && c.aff env
-  | env, .loop f i z t => match tyOf env i with
-    | some σ => f.aff env && i.aff env && z.aff (σ :: env) && t.aff (σ :: env) &&
-        (!σ.hasBuf || decide (z.occ 0 ≤ 1 ∧ t.occ 0 ≤ 1))
-    | none => false
-  | _, _ => true
-def Tl.aff : List Ty → Tl → Bool
-  | env, .ret e | env, .next e => e.aff env
-  | env, .ite _ a b t e => a.aff env && b.aff env && t.aff env && e.aff env
-  | env, .let_ v b => match tyOf env v with
-    | some τ => v.aff env && b.aff (τ :: env) && (!τ.hasBuf || decide (b.occ 0 ≤ 1))
-    | none => false
-  | env, .split e b => match tyOf env e with
-    | some (.prod τ σ) => e.aff env && b.aff (σ :: τ :: env) &&
-        (!τ.hasBuf || decide (b.occ 1 ≤ 1)) && (!σ.hasBuf || decide (b.occ 0 ≤ 1))
-    | _ => false
-end
+/-- the front-end type of a surface expression (`ds`: the defs, `env`: the variables' types) -/
+def S.ty (ds : List FDef) : List FT → S → Option FT
+  | _, .num _ => some .w
+  | env, .var i => env[i]?
+  | env, .bin _ a b => if a.ty ds env = some .w ∧ b.ty ds env = some .w then some .w else none
+  | env, .sh _ _ a => if a.ty ds env = some .w then some .w else none
+  | env, .let_ v b => match v.ty ds env with
+    | some τ => b.ty ds (τ :: env)
+    | none => none
+  | env, .ite _ a b t e =>
+    if a.ty ds env = some .w ∧ b.ty ds env = some .w ∧ t.ty ds env = e.ty ds env then t.ty ds env else none
+  | env, .call g as => match ds[g]? with
+    | some (_, _, ps, ρ, .fn _) => if tyA ds env as = some ps then some ρ else none
+    | _ => none
+  | env, .lcall g _ as => match ds[g]? with
+    | some (_, _, ps, ρ, .lp _ _) => if tyA ds env as = some ps then some ρ else none
+    | _ => none
+  | env, .pair a b => match a.ty ds env, b.ty ds env with
+    | some x, some y => some (.prod x y)
+    | _, _ => none
+  | env, .fst e => match e.ty ds env with
+    | some (.prod x _) => some x
+    | _ => none
+  | env, .snd e => match e.ty ds env with
+    | some (.prod _ y) => some y
+    | _ => none
+  | env, .split e b => match e.ty ds env with
+    | some (.prod x y) => b.ty ds (y :: x :: env)
+    | _ => none
+  | env, .rd i => if i.ty ds env = some .w then some .w else none
+  | _, .len => some .w
+  | env, .put o e => if o.ty ds env = some .out ∧ e.ty ds env = some .w then some .out else none
+  | _, .nil => some .out
+  | _, .bnew => some .buf
+  | env, .bsize b => if b.ty ds env = some .buf then some .w else none
+  | env, .bget b i => if b.ty ds env = some .buf ∧ i.ty ds env = some .w then some .w else none
+  | env, .bset b i v =>
+    if b.ty ds env = some .buf ∧ i.ty ds env = some .w ∧ v.ty ds env = some .w then some .buf else none
+  | env, .bpush b v => if b.ty ds env = some .buf ∧ v.ty ds env = some .w then some .buf else none
+  | _, _ => none
+where tyA (ds : List FDef) (env : List FT) : S → Option (List FT)
+  | .acons e r => match e.ty ds env, tyA ds env r with
+    | some t, some ts => some (t :: ts)
+    | _, _ => none
+  | _ => some []
 
 /-! ## the parser -/
 /-- scope entry: `none` = the input; `some (τ, typed)` -/
-abbrev FScope := List (List UInt8 × Option (Ty × Bool))
+abbrev FScope := List (List UInt8 × Option (FT × Bool))
 
 /-- the de Bruijn index of a non-input variable (the input takes no slot) -/
 def fidx : List UInt8 → FScope → Nat → Option Nat
@@ -390,7 +500,8 @@ def isInp : List UInt8 → FScope → Bool
   | _, [] => false
   | s, (t, k) :: ts => if s == t then k.isNone else isInp s ts
 
-def tys (sc : FScope) : List Ty := sc.filterMap fun e => e.2.map (·.1)
+def ftys (sc : FScope) : List FT := sc.filterMap fun e => e.2.map (·.1)
+def tys (sc : FScope) : List Ty := (ftys sc).map FT.ty
 def flags (sc : FScope) : List Bool := sc.filterMap fun e => e.2.map (·.2)
 
 def fdef : List UInt8 → List FDef → Nat → Option (Nat × FDef)
@@ -438,7 +549,7 @@ def pE : Nat → FScope → List FDef → List FTok → Option (S × List FTok)
   | f + 1, sc, ds, .klet :: .lp :: .id a :: .comma :: .id b :: .rp :: .assign :: ts =>
     match pE f sc ds ts with
     | some (v, .semi :: r) =>
-      match tyOf (tys sc) (v.low ds) with
+      match v.ty ds (ftys sc) with
       | some (.prod τ σ) =>
         let t := v.typed (flags sc)
         match pE f ((b, some (σ, t)) :: (a, some (τ, t)) :: sc) ds r with
@@ -449,7 +560,7 @@ def pE : Nat → FScope → List FDef → List FTok → Option (S × List FTok)
   | f + 1, sc, ds, .klet :: .id x :: .assign :: ts =>
     match pE f sc ds ts with
     | some (v, .semi :: r) =>
-      match tyOf (tys sc) (v.low ds) with
+      match v.ty ds (ftys sc) with
       | some τ =>
         match pE f ((x, some (τ, v.typed (flags sc))) :: sc) ds r with
         | some (b, r2) => some (.let_ v b, r2)
@@ -571,6 +682,34 @@ def pApp : Nat → FScope → List FDef → List FTok → Option (S × List FTok
       | none => none
     else none
   | _ + 1, sc, _, .klen :: .id x :: ts => if isInp x sc then some (.len, ts) else none
+  | f + 1, sc, ds, .kbsize :: ts =>
+    match pAtom f sc ds ts with
+    | some (b, r) => some (.bsize b, r)
+    | none => none
+  | f + 1, sc, ds, .kbget :: ts =>
+    match pAtom f sc ds ts with
+    | some (b, r) =>
+      match pAtom f sc ds r with
+      | some (i, r2) => some (.bget b i, r2)
+      | none => none
+    | none => none
+  | f + 1, sc, ds, .kbpush :: ts =>
+    match pAtom f sc ds ts with
+    | some (b, r) =>
+      match pAtom f sc ds r with
+      | some (v, r2) => some (.bpush b v, r2)
+      | none => none
+    | none => none
+  | f + 1, sc, ds, .kbset :: ts =>
+    match pAtom f sc ds ts with
+    | some (b, r) =>
+      match pAtom f sc ds r with
+      | some (i, r2) =>
+        match pAtom f sc ds r2 with
+        | some (v, r3) => some (.bset b i v, r3)
+        | none => none
+      | none => none
+    | none => none
   | f + 1, sc, ds, .kput :: ts =>
     match pAtom f sc ds ts with
     | some (o, r) =>
@@ -604,13 +743,13 @@ def pApp : Nat → FScope → List FDef → List FTok → Option (S × List FTok
   | _ + 1, _, _, .minus :: .num n :: ts => some (.num (0 - n), ts)
   | f + 1, sc, ds, ts => pAtom f sc ds ts
 /-- arguments, each checked against the parameter type -/
-def pArgs : Nat → FScope → List FDef → List Ty → List FTok → Option (S × List FTok)
+def pArgs : Nat → FScope → List FDef → List FT → List FTok → Option (S × List FTok)
   | 0, _, _, _, _ => none
   | _ + 1, _, _, [], ts => some (.anil, ts)
   | f + 1, sc, ds, τ :: ps, ts =>
     match pAtom f sc ds ts with
     | some (e, r) =>
-      if tyOf (tys sc) (e.low ds) = some τ then
+      if e.ty ds (ftys sc) = some τ then
         match pArgs f sc ds ps r with
         | some (es, r2) => some (.acons e es, r2)
         | none => none
@@ -621,6 +760,7 @@ def pAtom : Nat → FScope → List FDef → List FTok → Option (S × List FTo
   | 0, _, _, _ => none
   | _ + 1, _, _, .num n :: ts => some (.num n, ts)
   | _ + 1, _, _, .nil :: ts => some (.nil, ts)
+  | _ + 1, _, _, .kbnew :: ts => some (.bnew, ts)
   | f + 1, sc, ds, .id g :: ts =>
     match fidx g sc 0 with
     | some i => pPost f sc ds (.var i) ts
@@ -659,25 +799,26 @@ end
 
 /- types: `UInt64`, `List UInt8` (`none` here: the caller decides input/output), `T × T`, `(T)` -/
 mutual
-def pTy : Nat → List FTok → Option (Option Ty × List FTok)
+def pTy : Nat → List FTok → Option (Option FT × List FTok)
   | 0, _ => none
   | f + 1, ts =>
     match pTyA f ts with
     | some (some a, .times :: r) =>
       match pTy f r with
       | some (some b, r2) => some (some (.prod a b), r2)
-      | some (none, r2) => some (some (.prod a .buf), r2)
+      | some (none, r2) => some (some (.prod a .out), r2)
       | none => none
     | some (none, .times :: r) =>
       match pTy f r with
-      | some (some b, r2) => some (some (.prod .buf b), r2)
-      | some (none, r2) => some (some (.prod .buf .buf), r2)
+      | some (some b, r2) => some (some (.prod .out b), r2)
+      | some (none, r2) => some (some (.prod .out .out), r2)
       | none => none
     | x => x
-def pTyA : Nat → List FTok → Option (Option Ty × List FTok)
+def pTyA : Nat → List FTok → Option (Option FT × List FTok)
   | 0, _ => none
   | _ + 1, .kU64 :: ts => some (some .w, ts)
   | _ + 1, .kList :: .kU8 :: ts => some (none, ts)
+  | _ + 1, .kBuf :: ts => some (some .buf, ts)
   | f + 1, .lp :: ts =>
     match pTy f ts with
     | some (some t, .rp :: r) => some (some t, r)
@@ -687,7 +828,7 @@ def pTyA : Nat → List FTok → Option (Option Ty × List FTok)
 end
 
 /-- parameters `(x y : T)`: (scope, has input, parameter types first first) -/
-def pPars : Nat → FScope → Bool → List Ty → List FTok → Option (FScope × Bool × List Ty × List FTok)
+def pPars : Nat → FScope → Bool → List FT → List FTok → Option (FScope × Bool × List FT × List FTok)
   | 0, _, _, _, _ => none
   | f + 1, sc, hi, ps, .lp :: .id x :: ts =>
     match pNs f [x] ts with
@@ -699,7 +840,7 @@ def pPars : Nat → FScope → Bool → List Ty → List FTok → Option (FScope
         match t with
         | none =>
           if first && xs.length == 1 then pPars f ((x, none) :: sc) true ps r2
-          else pPars f (xs.foldl (fun s y => (y, some (.buf, true)) :: s) sc) hi (ps ++ xs.map fun _ => .buf) r2
+          else pPars f (xs.foldl (fun s y => (y, some (.out, true)) :: s) sc) hi (ps ++ xs.map fun _ => .out) r2
         | some τ => pPars f (xs.foldl (fun s y => (y, some (τ, true)) :: s) sc) hi (ps ++ xs.map fun _ => τ) r2
       | _ => none
     | none => none
@@ -714,7 +855,7 @@ where pNs : Nat → List (List UInt8) → List FTok → Option (List (List UInt8
 in tail position (lowered to `Ex.loop`, the state = the parameters as a right-nested product, unpacked by `split`s) -/
 
 /-- self: (name, fuel variable, has the input, state parameter types) -/
-abbrev Me := List UInt8 × List UInt8 × Bool × List Ty
+abbrev Me := List UInt8 × List UInt8 × Bool × List FT × FT
 
 def lowCmp (k : SCmp) (a b : Ex) : Cmp × Ex × Ex :=
   match k with
@@ -723,9 +864,9 @@ def lowCmp (k : SCmp) (a b : Ex) : Cmp × Ex × Ex :=
   | .le => (.ge, b, a)
 
 /-- a leaf of a tail: an ordinary expression, returned -/
-def pRet (f : Nat) (sc : FScope) (ds : List FDef) (ts : List FTok) : Option (Tl × List FTok) :=
+def pRet (f : Nat) (ρ : FT) (sc : FScope) (ds : List FDef) (ts : List FTok) : Option (Tl × List FTok) :=
   match pE f sc ds ts with
-  | some (e, r) => if good (e.sm (flags sc)) then some (.ret (e.low ds), r) else none
+  | some (e, r) => if good (e.sm (flags sc)) && e.ty ds (ftys sc) == some ρ then some (.ret (e.low ds), r) else none
   | none => none
 
 /-- a loop body (tail position) -/
@@ -734,7 +875,7 @@ def pT : Nat → Me → FScope → List FDef → List FTok → Option (Tl × Lis
   | f + 1, me, sc, ds, .klet :: .lp :: .id a :: .comma :: .id b :: .rp :: .assign :: ts =>
     match pE f sc ds ts with
     | some (v, .semi :: r) =>
-      match tyOf (tys sc) (v.low ds) with
+      match v.ty ds (ftys sc) with
       | some (.prod τ σ) =>
         let t := v.typed (flags sc)
         if good (v.sm (flags sc)) then
@@ -747,7 +888,7 @@ def pT : Nat → Me → FScope → List FDef → List FTok → Option (Tl × Lis
   | f + 1, me, sc, ds, .klet :: .id x :: .assign :: ts =>
     match pE f sc ds ts with
     | some (v, .semi :: r) =>
-      match tyOf (tys sc) (v.low ds) with
+      match v.ty ds (ftys sc) with
       | some τ =>
         if good (v.sm (flags sc)) then
           match pT f me ((x, some (τ, v.typed (flags sc))) :: sc) ds r with
@@ -783,17 +924,17 @@ def pT : Nat → Me → FScope → List FDef → List FTok → Option (Tl × Lis
           else some ts
         match ts' with
         | some r =>
-          match pArgs f sc ds me.2.2.2 r with
+          match pArgs f sc ds me.2.2.2.1 r with
           | some (as, r2) =>
             if S.sm.smA (flags sc) as then some (.next (tup (S.low.lowA ds as)), r2) else none
           | none => none
         | none => none
       else none
-    else pRet f sc ds (.id g :: .id n :: ts)
-  | f + 1, _, sc, ds, ts => pRet f sc ds ts
+    else pRet f me.2.2.2.2 sc ds (.id g :: .id n :: ts)
+  | f + 1, me, sc, ds, ts => pRet f me.2.2.2.2 sc ds ts
 
 /-- `T → T → …` -/
-def pArr : Nat → List FTok → Option (List (Option Ty) × List FTok)
+def pArr : Nat → List FTok → Option (List (Option FT) × List FTok)
   | 0, _ => none
   | f + 1, ts =>
     match pTy f ts with
@@ -809,9 +950,9 @@ def pAN : Nat → List FTok → Option (List (List UInt8) × List FTok)
   | _, _ => none
 
 /-- the scope inside the loop after unpacking the state (`unE`/`unT`); `[]` names the intermediate pairs -/
-def bScope : List (List UInt8 × Ty) → FScope → FScope
+def bScope : List (List UInt8 × FT) → FScope → FScope
   | [(p, τ)], below => (p, some (τ, true)) :: below
-  | (p, τ) :: ps, below => bScope ps ((p, some (τ, true)) :: ([], some (tupT (τ :: ps.map (·.2)), true)) :: below)
+  | (p, τ) :: ps, below => bScope ps ((p, some (τ, true)) :: ([], some (ftup (τ :: ps.map (·.2)), true)) :: below)
   | [], below => below
 
 def unE : Nat → Ex → Ex
@@ -822,7 +963,7 @@ def unT : Nat → Tl → Tl
   | _, b => b
 
 /-- the scope of an arm: the input (if any) at the bottom, then the unpacked state -/
-def armScope (hi : Bool) (names : List (List UInt8)) (ps : List Ty) : FScope :=
+def armScope (hi : Bool) (names : List (List UInt8)) (ps : List FT) : FScope :=
   let inp : FScope := if hi then (match names with | x :: _ => [(x, none)] | [] => []) else []
   bScope ((if hi then names.drop 1 else names).zip ps) inp
 
@@ -831,11 +972,11 @@ def pLoop (f : Nat) (ds : List FDef) (g : List UInt8) (ts : List FTok) : Option 
   match pArr f ts with
   | some (all, .bar :: .num 0 :: r) =>
     let params := all.dropLast
-    let ρ : Ty := match all.getLast? with | some (some t) => t | _ => .buf
+    let ρ : FT := match all.getLast? with | some (some t) => t | _ => .out
     let hi := match params with | none :: _ => true | _ => false
-    let ps : List Ty := (if hi then params.drop 1 else params).map (·.getD .buf)
+    let ps : List FT := (if hi then params.drop 1 else params).map (·.getD .out)
     let k := ps.length
-    let σ := tupT ps
+    let σ := tupT (ps.map FT.ty)
     match pAN f r with
     | some (n0, r1) =>
       if n0.length = params.length ∧ 0 < k then
@@ -846,12 +987,12 @@ def pLoop (f : Nat) (ds : List FDef) (g : List UInt8) (ts : List FTok) : Option 
           | some (n1, r3) =>
             if n1.length = params.length then
               let sc1 := armScope hi n1 ps
-              match pT f (g, n, hi, ps) sc1 ds r3 with
+              match pT f (g, n, hi, ps, ρ) sc1 ds r3 with
               | some (t, r4) =>
                 let zE := unE k (z.low ds)
                 let tT := unT k t
-                if good (z.sm (flags sc0)) && tyOf [σ] zE == some ρ && tyT [σ] σ ρ tT && zE.aff [σ] &&
-                    tT.aff [σ] && (!σ.hasBuf || decide (zE.occ 0 ≤ 1 ∧ tT.occ 0 ≤ 1)) then
+                if good (z.sm (flags sc0)) && z.ty ds (ftys sc0) == some ρ && tyOf [σ] zE == some ρ.ty &&
+                    tyT [σ] σ ρ.ty tT && (zE.lv [σ] [false]).isSome && (tT.lvT [σ] [false]).isSome then
                   some ((g, hi, ps, ρ, .lp zE tT), r4)
                 else none
               | none => none
@@ -878,12 +1019,12 @@ def pDs : Nat → List FDef → List FTok → Option (List FDef)
       | some (sc, hi, ps, .colon :: r) =>
         match pTy f r with
         | some (rt, .assign :: r2) =>
-          let ρ := rt.getD .buf
+          let ρ := rt.getD .out
           match pE f sc ds r2 with
           | some (e, r3) =>
             let b := e.low ds
-            if good (e.sm (flags sc)) && tyOf (tys sc) b == some ρ && b.aff (tys sc) &&
-                (tys sc).zipIdx.all (fun (τ, i) => !τ.hasBuf || decide (b.occ i ≤ 1)) then
+            if good (e.sm (flags sc)) && e.ty ds (ftys sc) == some ρ && tyOf (tys sc) b == some ρ.ty &&
+                (b.lv (tys sc) ((tys sc).map fun _ => false)).isSome then
               let d : FDef := (g, hi, ps, ρ, .fn b)
               match r3 with
               | [] => some (d :: ds)
@@ -903,7 +1044,7 @@ def frontElabK (κ : Nat) (xs : List UInt8) : Option Prog :=
   match (if adjOk xs then flex xs.length xs else none) with
   | some ts =>
     match pDs (16 * (ts.length + 2)) [] ts with
-    | some ((_, true, [], .buf, .fn b) :: _) => some (mainProg (b.cap κ))
+    | some ((_, true, [], .out, .fn b) :: _) => some (mainProg (b.cap κ))
     | _ => none
   | none => none
 
