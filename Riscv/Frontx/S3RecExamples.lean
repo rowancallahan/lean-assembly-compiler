@@ -19,6 +19,7 @@ program, certificates, `computes`, `correct` (exactly the Sail axioms).  Tests: 
 | `S3MkAppRange` | con-leche `Cached.mkAppRange` (`CoreC.lean`, verbatim) | well-founded (`termination_by j - i`), `args[i]` with its proof (`List.get`, dependent `Fin xs.length`) |
 | `S3GetAppArgsArr` | con-leche `Cached.getAppArgsArr` + `getAppArgsArrGo` + `iotaNumArgs` (verbatim) | structural; `Array.set!`, `Array.replicate` from their equations |
 | `S3Knot` | `walkK` / `tagK` (ours) | the knot's shape: mutual in `StateT UInt64 (Except UInt8)`, well-founded on `(xs.length, rank)`, `tagK` calls `walkK` on the same list |
+| `S3DropVars` | con-leche `Expr.dropVars` (+ `Expr.instantiate1`, verbatim) | the probe's `Nat.brecOn` row: structural on `Nat`; `Nat.sub`, `Nat.blt`, `Nat.beq` |
 | `S3StExc` | `stepS : List UInt64 → StateT UInt64 (Except UInt8) UInt64` | structural; state and exception across a non-tail call |
 -/
 import Riscv.Frontx.S3IO
@@ -255,6 +256,20 @@ def knotMain (bs : List UInt8) : List UInt8 :=
   | .error e => [e]
 s3_compile S3Knot := knotMain
 
+/-! ## con-leche `Expr.dropVars`: the `Nat.brecOn` row of the probe, verbatim -/
+
+end Proven.S3.Rec
+-- con-leche `ConLeche/Kernel/ExprOps.lean` (`F2.lean.txt` lines 14250-14254 on `origin/conleche-depth`;
+-- con-leche @6810492c1), verbatim; `Expr.instantiate1` is the repository's verbatim copy (`ExprExamples.lean`)
+namespace ConLeche
+/-- `n` variables below a term's own, which do not occur in it, dropped. -/
+def Expr.dropVars : Nat → Expr → Expr
+  | 0, e => e
+  | n + 1, e => Expr.dropVars n (e.instantiate1 (.sort .zero))
+end ConLeche
+namespace Proven.S3.Rec
+open Proven.S3 Proven.S3.Ex Proven.Mach.IR
+
 /-! ## con-leche `CoreC`: its smallest recursive component, verbatim -/
 
 -- con-leche `ConLeche/Cached/CoreC.lean` (`Testing/conleche-depth/out/F2.lean.txt` on `origin/conleche-depth`,
@@ -325,6 +340,15 @@ def rangeMain (bs : List UInt8) : List UInt8 :=
   | i :: j :: r => exprB (ConLeche.Cached.mkAppRange (.sort .zero) (exprsGo r []).toArray (wNat i.toUInt64) (wNat j.toUInt64))
   | _ => []
 s3_compile S3MkAppRange := rangeMain
+
+def dropAll (n : Nat) : List ConLeche.Expr → List UInt8
+  | [] => []
+  | e :: r => exprB (ConLeche.Expr.dropVars n e) ++ dropAll n r
+def dropMain (bs : List UInt8) : List UInt8 :=
+  match bs with
+  | n :: r => dropAll (wNat n.toUInt64) (exprsGo r [])
+  | [] => []
+s3_compile S3DropVars := dropMain
 
 def argsMain (bs : List UInt8) : List UInt8 :=
   (ConLeche.Cached.getAppArgsArr (spine bs)).toList.flatMap exprB

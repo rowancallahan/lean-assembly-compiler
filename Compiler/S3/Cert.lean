@@ -244,7 +244,7 @@ instance : Enc Nat where
 @[simp] theorem dec_nat_succ (v : V) : (Enc.dec (V.c 1 [v]) : Nat) = Enc.dec v + 1 := rfl
 @[s3_norm, simp] theorem nat_zero_lit : Nat.zero = 0 := rfl
 attribute [s3_norm] List.length_nil List.length_singleton
-attribute [s3_norm] Nat.beq_eq Nat.add_eq Nat.succ_eq_add_one Bool.or_eq_true Bool.and_eq_true
+attribute [s3_norm] Nat.beq_eq Nat.add_eq Nat.sub_eq Nat.mul_eq Nat.succ_eq_add_one Bool.or_eq_true Bool.and_eq_true
 @[s3_norm] theorem nat_beq_false (a b : Nat) : (Nat.beq a b = false) = ¬ a = b := by
   rw [← Nat.beq_eq, Bool.not_eq_true]
 @[s3_norm] theorem nat_blt_false (a b : Nat) : (Nat.blt a b = false) = ¬ a < b := by

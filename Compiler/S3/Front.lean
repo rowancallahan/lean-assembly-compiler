@@ -169,6 +169,7 @@ partial def paramTexts (t : Lean.Expr) : MetaM (Array String × Array (Option St
       MetaM (Array String × Array (Option String)) := do
     match ← whnf t with
     | .forallE _ d b _ =>
+      let d := d.cleanupAnnotations
       let dep := d.isAppOfArity ``Fin 1 && d.hasFVar
       let fb ← if dep then pure (some (← ppTxt d.appArg!)) else pure none
       let acc := (acc.1.push (← ppTxt d), acc.2.push fb)
@@ -209,7 +210,8 @@ partial def fnIdx (key : Lean.Expr) : M Nat := do
   let kty ← inferType key
   let (pTys, retTy) ← forallTelescopeReducing kty fun xs r => do
     if r.hasAnyFVar (fun v => xs.any (·.fvarId! == v)) then throwError "S3: dependent result type of {key}"
-    return (← xs.mapM fun x => inferType x, r)
+    -- `optParam`/`autoParam` annotations are not part of the type
+    return (← xs.mapM fun x => return (← inferType x).cleanupAnnotations, r)
   let (pTxt, finB) ← paramTexts kty
   let idx := s.fns.size
   modify fun s => { s with fns := s.fns.push { key, statics, pTys, retTy, pTxt, finB } }
