@@ -16,7 +16,7 @@ Format: id / branch/commit / target / variant / measure / time limit / claimed b
 - variant: for each file: `/usr/bin/time -f '%e s %U user %M KB' lake env lean --tstack=4000000 <file>` (after `lake build Nano`)
 - measure: wall/user/RSS per file, OK/FAIL, first error lines
 - time limit: 45 min per file
-- claimed by:
+- claimed by: session_01MfKuVdPVLzxWvdAmFTdtmH (claim written by main session)
 
 ## id: ps3-profile-gs (posted by main session)
 - branch/commit: nano-parse-s3 @ 140bbc5
