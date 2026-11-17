@@ -388,3 +388,12 @@ Next: the self-run from 6a76836 (no code changes), then merge the nano branches 
 nano v1 rc2 (2026-11-17 15:14) = origin/nano-parse-s3 commit 152f05b: same `binary` words as rc1 (evaluated hashes), every module
 ≤ 155 s cold and ≤ 6.3 GB, check.sh ALL CHECKS PASSED (1177 s). Self-run at rc1 (branch nano-selfrun ca437bf): binary = binaryC proved,
 55529 words, linked QEMU 146/146, Sail 8/8; build 1390 s / 11.0 GB. Tags nano-v1-rc1 (6a76836) and nano-v1-rc2 (152f05b): owner to push.
+
+### NANO V1 MERGED (2026-11-17): branch merge-nano → main, stable
+merge-nano = origin/main + nano-parse-s3 (c9514b2, rc2 152f05b) + nano-e2e + nano-closeB + nano-selfrun. Conflicts:
+check.sh loop / expected-axioms = main's lines then the branches' (nano-closeB appended); NANO_MANIFEST.md keeps both
+(selfrun's 11:33 gate status marked superseded). No Nano/ or S3 Lean source changed by the merge except: closeB's
+`Nano/InlP3Self.lean` ("compile in progress") overflows the stack in the build, so it is archived in
+Testing/nano/archive/ (InlP3 / InlP3Proof stay). check.sh: ALL CHECKS PASSED (cold over the f1cfb76 cache 1115 s up to
+the failure, then 1271 s; peak 6.2 GB, 4 jobs); only the pre-existing statement-fingerprint WARNING, not re-frozen.
+`Nano.selfHosted`: 77 axioms = expected-axioms.txt:930 (Sail set + propext, Classical.choice, Quot.sound).
