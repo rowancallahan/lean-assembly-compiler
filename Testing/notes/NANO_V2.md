@@ -246,3 +246,31 @@ OPEN PROBLEMS:
 - Tests: p4 (histogram, `(i, Buf)` loop state), p5 (bubble sort), p6/p7; negatives neg12–16 (use after `bset`,
   use after `bpush`, `Buf` vs `List UInt8` both ways, aliasing through a pair): 67 programs × 12 inputs agree.
 - Back-end proof for buffers: NOT yet (next: BufferRep/SameOutside, NANO_V2_SKELETONS.lean `Buffers`).
+
+## Increment 6 (result/status), merged box — definitions only
+- `Nano/V2/ABI.lean`: `ImplementsBytes`/`Initial`/`Observes`/`Result` verbatim from the skeleton (`Nano.V2B.ABI`),
+  `Prog.result` (status word ↦ `Result`), `mainProg_eval` (front-end main: empty output ↦ `error 1`, else the bytes;
+  hypothesis: output length < 2^64). The theorem `gen p = some B → ImplementsBytes M B p.result` is NOT proved.
+
+## HANDOFF (merged box, end of session 2026-11-17)
+DONE (all pushed on nano-v2; local checks: every new module < 5 s, axioms propext/Classical.choice/Quot.sound):
+- inc 3 products, inc 4 loops, inc 5 buffers: front end `Nano/V2/Front.lean` (`frontElabK κ`), oracle fuzz
+  `Testing/nano/v2f/fuzz.py` (random products + loops, hand cases p1–p7 incl. buffers, negatives neg1–16).
+- proofs: `cE_ok`/`cT_ok` (Nano/V2/Comp.lean) = `cE`/`cT` correct on the abstract machine for everything except
+  buffers (`Ex.Pure`: words, products, input, `let`, `if`, LOOPS); `mainProg_eval` (ABI.lean).
+- QEMU/Sail of the `nv2f_*` programs and `check.sh`: delegated to the runner (session_01MfKuVZASQnS5RgWnbhK5HX);
+  results NOT yet seen by this box.
+NEXT (in order):
+1. Buffer proof (inc 5): generalise worker 2's layer — `Stk c s h L` with a growing heap top (Post: `∃ h' ≥ h`),
+   `Keep.heap` → `SameOutside` of the footprints of the buffers CONSUMED by the block; `EnvRep` for `Val.bf l` =
+   the address word + `BufferRep` (skeleton `Buffers`) + pairwise-disjoint footprints of the LIVE buffers below the
+   heap top; the liveness check `Ex.lv` as the hypothesis (prove: `Ex.lv … = some _` ⇒ no dead variable is read,
+   so a mutated footprint is never observed again). Node lemmas: mk/size/get/set/push (`buffer_set`, `buffer_frame`).
+2. Main-level theorem: `genI` = prologue ++ main ++ epilogue; epilogue copy loop (worker 2's `loop_ok` instance) ⇒
+   output bytes at a3.
+3. Layers 3–4 (NANO_V2_BACKEND.md): `SC.flat` vs a pc-level semantics, each `I` = one Sail step, `I.enc` vs Spec
+   encoders ⇒ `ImplementsBytes` (`compile_correct`).
+4. Front end: the `match fuel with … termination_by structural fuel` loop form (spec §8) and §8's `Array`
+   prelude (`readD`/`writeChecked`/`appendChecked`) if the owner wants it instead of the `List` prelude; `bpop`.
+OPEN: the ownership rule is conservative (a MOVED buffer is dead even if never mutated); the shift guard is
+conservative (inherited); loop states need ≥ 1 parameter; the zero arm must come first.
