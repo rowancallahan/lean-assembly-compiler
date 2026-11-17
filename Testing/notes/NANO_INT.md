@@ -2,11 +2,41 @@
 
 Integrator notes. Branch = `nano-mvp` + `nano-e2e` + `nano-proof` + `main`, merged every 30–45 min.
 
-## Target (not yet proved)
-`Nano/SelfHost.lean`: let `B` = the RISC-V binary our compiler produces from the Lean definition of the whole stack-path
-compiler `nanoCompileS = asm ∘ genR ∘ nanoElab`. For every `src`, `p` with `nanoElab src = some p`: `B` run on `src` on the
-Sail model outputs `c`, and `c` run on the Sail model computes `p.eval` (UInt64 and Int64), OOM flag exactly when the
-work block is too small. L1 = `B` computes `nanoCompileS`; L2 = `CompileCorrect`/`CompileRuns riscv` for `asm ∘ genR`.
+## Summary (state at the end of the integration session, 2026-11-17)
+
+**Target** (`Nano/SelfHost.lean`, `SelfHosted B space D compile`): `B` = ONE RISC-V binary made by our compiler from
+the nano compiler `asm ∘ genR ∘ nanoElab`; for every source `src` (in the size domain `D`) with `nanoElab src = some p`:
+`B` on the Sail model, run on `src`, emits `c.code = asm (genR p)`; that code on the Sail model computes `p.eval` /
+`p.evalI` on every input (`CompileCorrect` form) and sets the out-of-memory flag exactly when the work block is too
+small (`CompileRuns` form).
+
+**Status: NOT closed. Proved today, all with exactly the Sail axioms, no sorry:**
+1. (L2, lane nano-proof) `nano_stack_correct : CompileCorrect riscv nanoCompileA`, `nano_stack_runs : CompileRuns riscv
+   nanoCompileA` (`Nano/StackTop.lean`); `nanoCompileA p = some ⟨asm (genR p), 8, …⟩` for scoped programs of stack
+   depth ≤ 256. UInt64 and Int64 source-level forms: `nano_stack_chain`, `nano_stack_chain_int` (`Nano/Chain.lean`).
+2. (composition, this lane) `selfHosted_stack`: the target follows from (L1) alone, i.e. from a binary `B` with
+   `Implements1With` for a byte function `cb` such that `cb src = asm (genR p)` on accepted sources.
+   `selfHosted_stack_stages`: the same from three separately compiled stages (front end → generator → assembler),
+   linked by `Nano.Link.link` (`link_implements`: an 18-word stub, two stages → one binary, machine proof; tested on
+   QEMU + Sail). `of_pg`: stages compiled by the paged front end (stack available) link too.
+3. (L1, partial) `selfHosted_asm_stage` (`Nano/SelfHostAsm.lean`): the composed statement with the part that is
+   machine code today = the assembler (`Nano.Self.nanoAsm.implements1`, lane nano-e2e): the compiled `asm` on Sail,
+   run on `genR p`, emits `c.code`; `c.code` on Sail computes `p.eval`; flag iff out of memory.
+
+**What remains for the target: (L1) for the front end**, i.e. `genR ∘ nanoElab` (text → records) as machine code:
+* `genR p = mexp (ser p)` is proved (`Nano/Ser.lean`); `mexp` (micro-op expander) is a list-front-end function whose
+  compile is slow (see log); so what is missing is a compiled chain `src ↦ ser p` (or `↦ genR p`).
+* lane nano-elab: stage 1 (lexer + type check) proved equal to the spec for every input, compile in progress; the
+  parser / scopes / inlining stage is NOT started. It needs unbounded memory (a return path per inlined call), so it
+  cannot be a list-front-end stage; decision here: compile it with the paged front end (`wp_compile`), probe
+  `Testing/nano/wp_stack_probe.lean` shows the accepted shape and its limits (log, 00:20).
+* then one Lean lemma `nanoElab src = some p → chain src = ser p` and one application of `selfHosted_stack_stages`.
+
+**Trusted base**: `nanoElab` / `Prog.eval` / `Prog.evalI` (the spec of nano, cross-checked against Lean's elaborator
+by agreement proofs and fuzzing, never proved), the Sail RISC-V model, the statements in `Spec/` and
+`Compiler/AllocSpec.lean`, Lean's kernel.
+
+**Tests** (merged tree): see the table below.
 
 ## Live status (2026-11-17 00:00)
 Lanes: nano-e2e (Sonnet: elaborator rules, `asm`, tests), nano-elab (Opus: `nanoElab` as compiled byte-level stages),
