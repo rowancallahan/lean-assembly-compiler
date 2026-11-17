@@ -49,3 +49,7 @@
 * A path must not test the same condition twice (constraint 4, found on the validator): the test obligation
   `denote (x == 5) = if (m == 5) = true then 1 else 0` fails when `(m == 5) = true` is already a hypothesis. The
   validator's end macro is generated without `lx`'s leading `if m == 5` (the validator tests it before).
+* 05:08. **`mexp` COMPILED**: `Nano/ExpandMSelf.lean` builds (5 min 46 s wall, one core; `frontx_compile` 22 s:
+  539 obligations, translate + step proof 18.3 s, induction 3.1 s; the rest is `frontx_implements_listC`, the
+  kernel-checked words), machine theorem `Nano.Self.nanoExpM.implements1` (Sail axioms), `nanoExpM (ofL x) = mexp x`
+  by `mexp_eq_mx`. (The 13-arm `mexp` itself: > 47 CPU-min without finishing, integrator.)
