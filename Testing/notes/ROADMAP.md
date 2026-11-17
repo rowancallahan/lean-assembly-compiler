@@ -358,3 +358,8 @@ the length register (and, for item 2, zeroes the rest).
 - DECISION (owner, 2026-11-17 07:36): S3 is the route for ALL new compile work (correct by construction: no per-stage
   machine proof; per stage only a Lean bridge + kernel evaluation of the compiler). Stages already compiled by frontx
   (asm, lexer halves, mexp) stay until ORDER step (2) moves them to S3; no new frontx/paged effort.
+- ONE GO (owner, 2026-11-17 07:40): the final form compiles the WHOLE nano compiler through S3 in a single build from a
+  single source revision (one script / one lake target producing B and `Nano.selfHosted` together), so binary and
+  theorem always match and no stage comes from an older compile. All earlier per-stage compiles (frontx asm, lexer
+  halves, mexp, and whatever closes the milestone first) are REDONE in that one build. Then B is run on its own source
+  (fixed point check, nano v2). The mixed-route milestone is only a stepping stone.
