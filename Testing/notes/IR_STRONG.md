@@ -38,3 +38,7 @@ Branch `ir-strong` (from main + s3-rec). Owner goals: ROADMAP "Spec strengthenin
   takes the cell `top - 8` and yields `keepC s s' ∧ fr s' = v`; `MR`/`Pre` carry the stub's gp cell (`gpc`, mirrors
   `stub`); `Exited` and `Fin`'s OOM case state `keepC C.s0 s' ∧ fr s' = fr C.s0`. `Ir.ir_compile_runsL :
   CompileRunsL riscv compileL` PROVED; `machine_runL` states `KeptRegisters` unconditionally.
+- step 3: S3. `mainTC` ends with `ret [r8]` (r8 = `outLoop`'s index = output length); `out_loop` states the final
+  index; `lower_result` (Compiler/S3/LowerMain.lean): the RTL run's output is `out` and `vs = [w |out|]`
+  (`lower_meaning` derived from it). `S3.compile_runsL : CompileRunsL riscv S3.compile`,
+  `S3.compile_correctL : CompileCorrectL riscv S3.compile` PROVED (Riscv/Back/S3Top.lean).

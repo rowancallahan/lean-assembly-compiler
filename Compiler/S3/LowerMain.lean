@@ -133,9 +133,10 @@ def outBody : SC := SC.seqs [.i (.ld 10 7 1), .i (.stb (.r 10) 2 (.r 8)), addK 8
 theorem out_loop : ∀ (rest written : List UInt8) (w : V) (g : VReg → Val) (m : Ir.Mem), bytesOut w = some rest →
     Rep m w (g 7) → g 8 = .w (BitVec.ofNat 64 written.length) → g 2 = .p 1 0 → m.out = written.map some →
     (written ++ rest).length < 2 ^ 64 → g 9 = .w (tagOf rest) →
-    ∃ g' m', SC.Ex Q (.loop ⟨.ne, .r 9, .i 0⟩ outBody) g m g' m' ∧ m'.out = (written ++ rest).map some
-  | [], written, w, g, m, _, _, _, _, ho, _, h9 =>
-    ⟨g, m, .loopF (by simp [Tst.eval, Arg.eval, h9, Cond.eval, tagOf]), by simpa using ho⟩
+    ∃ g' m', SC.Ex Q (.loop ⟨.ne, .r 9, .i 0⟩ outBody) g m g' m' ∧ m'.out = (written ++ rest).map some ∧
+      g' 8 = .w (BitVec.ofNat 64 (written ++ rest).length)
+  | [], written, w, g, m, _, _, h8, _, ho, _, h9 =>
+    ⟨g, m, .loopF (by simp [Tst.eval, Arg.eval, h9, Cond.eval, tagOf]), by simpa using ho, by simpa using h8⟩
   | b :: rest, written, w, g, m, hw, hr, h8, h2, ho, hl, h9 => by
     obtain ⟨x, r, hwe, hro, hbx⟩ := bytesOut_cons hw
     subst hwe
@@ -184,9 +185,10 @@ theorem out_loop : ∀ (rest written : List UInt8) (w : V) (g : VReg → Val) (m
     have g52 : g5 2 = .p 1 0 := by
       rw [← hg5, upd_ne _ _ (by decide), ← hg4, upd_ne _ _ (by decide), ← hg3, upd_ne _ _ (by decide), g12]
     have g59 : g5 9 = .w (tagOf rest) := by rw [← hg5, upd_same]
-    obtain ⟨g', m', xl, ho'⟩ := out_loop rest (written ++ [b]) r g5 m1 hro (by rw [g57]; exact hr2') g58 g52
+    obtain ⟨g', m', xl, ho', h8'⟩ := out_loop rest (written ++ [b]) r g5 m1 hro (by rw [g57]; exact hr2') g58 g52
       (by rw [← hm1]) (by simpa using hl) g59
-    refine ⟨g', m', .loopT (by simp [Tst.eval, Arg.eval, h9, Cond.eval, tagOf]) xb xl, by simpa using ho'⟩
+    refine ⟨g', m', .loopT (by simp [Tst.eval, Arg.eval, h9, Cond.eval, tagOf]) xb xl, by simpa using ho',
+      by simpa using h8'⟩
 
 end
 
@@ -200,10 +202,11 @@ theorem lowerP_main (P : Prog) : (lowerP P).funcs[(lowerP P).main]? = some (main
   simp [lowerP]
 
 /-- **the lowering is correct**: on every input where `main` has a value whose bytes are `out`, the RTL program's
-meaning is `out` -/
-theorem lower_meaning (P : Prog) (hG : Accepted P) (input out : List UInt8) (v : V) (hD : P.Den input v)
+run ends with the output `out` and `main` returns its length -/
+theorem lower_result (P : Prog) (hG : Accepted P) (input out : List UInt8) (v : V) (hD : P.Den input v)
     (ho : bytesOut v = some out) (hI : input.length < 2 ^ 64) (hO : out.length < 2 ^ 64) :
-    (lowerP P).meaning input = some out := by
+    ∃ r, (lowerP P).result input = some r ∧ r.mem.output = some out ∧
+      r.vs = [.w (BitVec.ofNat 64 out.length)] := by
   generalize hQ : lowerP P = Q
   have hfns : HasFns P Q := fun f => by rw [← hQ]; exact lowerP_fn P f
   have hQm : Q.funcs[Q.main]? = some (mainF P.main.val) := by rw [← hQ]; exact lowerP_main P
@@ -263,13 +266,13 @@ theorem lower_meaning (P : Prog) (hG : Accepted P) (input out : List UInt8) (v :
   generalize hgg : upd gf 9 (.w (tagOf out)) = gg at xg
   have heo : me.out = [] := by
     rw [gre.2, grd.2, gr1.2]; rfl
-  obtain ⟨gh, mh, xh, hoh⟩ := out_loop (Q := Q) out [] v gg me ho
+  obtain ⟨gh, mh, xh, hoh, hg8⟩ := out_loop (Q := Q) out [] v gg me ho
     (by rw [← hgg, upd_ne _ _ (by decide)]; exact rpf)
     (by rw [← hgg, upd_ne _ _ (by decide), ← hgf, upd_same]; rfl)
     (by rw [← hgg, upd_ne _ _ (by decide), ← hgf, upd_ne _ _ (by decide), ge2])
     (by rw [heo]; rfl) (by simpa using hO) (by rw [← hgg, upd_same])
   -- the run
-  have xM : TC.Ex Q F (mainTC P.main.val) g0 (Ir.Mem.init input) (.ret [] mh) := by
+  have xM : TC.Ex Q F (mainTC P.main.val) g0 (Ir.Mem.init input) (.ret [gh 8] mh) := by
     simp only [mainTC, inLoop, outLoop, SC.seqs]
     exact .seq (.seq (.seq xa (.seq xb (.seq xc (by simpa [inBody, SC.seqs] using xd))))
       (.seq xe (.seq xf (.seq xg (by simpa [outBody, SC.seqs] using xh))))) .ret
@@ -283,8 +286,15 @@ theorem lower_meaning (P : Prog) (hG : Accepted P) (input out : List UInt8) (v :
     unfold step; simp only [hQm, hB, hk, ht, termStep]
   obtain ⟨n, hn⟩ := Star.run hst hdone
   have hres := Prog.result_eq (P := Q) (input := input) ⟨n, by rw [hinit]; exact hn⟩
-  show (Q.result input).bind (fun r => r.mem.output) = _
-  rw [hres]
-  simp only [Option.bind_some, Ir.Mem.output, hoh, List.nil_append, mapM_some]
+  refine ⟨_, hres, ?_, ?_⟩
+  · simp only [Ir.Mem.output, hoh, List.nil_append, mapM_some]
+  · rw [hv, hg8, List.nil_append]
+
+theorem lower_meaning (P : Prog) (hG : Accepted P) (input out : List UInt8) (v : V) (hD : P.Den input v)
+    (ho : bytesOut v = some out) (hI : input.length < 2 ^ 64) (hO : out.length < 2 ^ 64) :
+    (lowerP P).meaning input = some out := by
+  obtain ⟨r, hr, hout, -⟩ := lower_result P hG input out v hD ho hI hO
+  show ((lowerP P).result input).bind (fun r => r.mem.output) = _
+  rw [hr]; exact hout
 
 end Proven.S3
