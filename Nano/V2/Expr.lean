@@ -2,7 +2,7 @@ import Nano.V2.Sem
 /- nano v2 small backend, proof layer 2: blocks of stack code on the abstract machine (Nano/V2/Sem.lean).
 The value stack `Stk c s h L`: t6 = hi - 8·|L|, slot q (deepest = 0) at hi - 8(q+1) holds L[q], heap top t5 = h
 below the stack. -/
-namespace Nano.V2
+namespace Nano.V2B
 
 /-- the run's blocks: aligned, away from address 0 and from 2^64 -/
 structure Cfg.Good (c : Cfg) : Prop where
@@ -160,4 +160,4 @@ theorem pushC_ok {c : Cfg} {s : St} {h : Nat} {L : List UInt64} (hc : c.Good) (h
       rw [g31, g30, hs.hp]; have := hs.hlo; have := hc.lo_pos; have := hs.hsp; omega
     exact ⟨_, SC.Ex.seq (SC.Ex.ins e1) (SC.Ex.seqJ (SC.Ex.iteF hb SC.Ex.jmp)), rfl⟩
 
-end Nano.V2
+end Nano.V2B

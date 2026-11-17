@@ -12,7 +12,7 @@ Testing/notes/NANO_V2_BACKEND.md.
 * Buffers (round 3 §4): `mk cap` = `Array.mkEmpty cap` (= `#[]`, `cap` = the physical capacity), `size`, `get`
   (defaulted read), `set` (`setIfInBounds`), `push`.  Affine ownership is worker 1's elaborator check; the
   backend's meaning below is the FUNCTIONAL one, the in-place implementation is justified by ownership. -/
-namespace Nano.V2
+namespace Nano.V2B
 
 inductive Ty where
   | w | buf | prod (a b : Ty)
@@ -213,4 +213,4 @@ def tyT : List Ty → Ty → Ty → Tl → Bool
     | _ => false
 end
 
-end Nano.V2
+end Nano.V2B

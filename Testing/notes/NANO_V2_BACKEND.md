@@ -3,6 +3,9 @@
 Owner of Nano/V2/* (except worker 1's spec files). Spec status: worker 1's NANO_V2_SPEC.md / origin/nano-v2 did NOT
 exist when this round started (asked by message); the typed AST below is PROVISIONAL and will be adapted.
 
+Namespace `Nano.V2B` (worker 1's increment-1 files use `Nano.V2`, Nano/V2*.lean, Testing/asm/emit_nano_v2.lean;
+no name is shared).
+
 ## Files
 - Nano/V2/Lang.lean: typed AST `Ex`/`Tl` (words, owned `Array UInt64` buffers, fixed nested products, `ite` on
   unsigned comparisons, the ONE loop `loop fuel init z body` with `Tl.ret`/`Tl.next` tail positions, consuming
@@ -10,7 +13,7 @@ exist when this round started (asked by message); the typed AST below is PROVISI
 - Nano/V2/Gen.lean: `cE`/`cT` → structured stack code `SC` (ins/seq/ite/loop/jmp) → `SC.flat` (instruction list,
   branch offsets resolved) → `I.enc` (RV64IM words). `gen p : Option (List UInt32)`.
 - Nano/V2/Copy.lean: the byte copy (round 2 §7) as typed AST (`copyProg F C`) and as ordinary Lean (`copyLean`).
-- Testing/asm/emit_nano_v2.lean, Testing/nano/v2_test.py: QEMU + Sail tests.
+- Testing/asm/emit_nano_v2b.lean, Testing/nano/v2b_test.py: QEMU + Sail tests.
 
 ## Machine contract (proposal for `ImplementsBytes`, pending worker 1)
 StartCorrect registers (a0 input, a1 length, a2 work base 8-aligned, sp work top, a3 output, ra). On return:
@@ -28,8 +31,8 @@ Fixed code origin is not needed by this code (only relative jumps) but is accept
 - the 12-bit offsets limit a frame to 255 visible slots (`Lim`); `cE` returns `none` beyond.
 
 ## Log
-- 2026-11-17: byte copy end to end: 264 words. `python3 Testing/nano/v2_test.py nv2_copy|nv2_copyfuel|nv2_copycap`
-  (after `lake env lean --run Testing/asm/emit_nano_v2.lean`): 20 inputs each ([0,127,128,255], empty, 1..101 bytes)
+- 2026-11-17: byte copy end to end: 264 words. `python3 Testing/nano/v2b_test.py nv2_copy|nv2_copyfuel|nv2_copycap`
+  (after `lake env lean --run Testing/asm/emit_nano_v2b.lean`): 20 inputs each ([0,127,128,255], empty, 1..101 bytes)
   × (4096-byte work, 8-byte work): QEMU == Sail == Lean `Prog.eval` (= `copyLean`, checked in the emitter);
   statuses: ok, 1 (fuel exhausted: fuel 3, or 100 with a 100-byte input), 2 (capacity 3 full); OOM flag a0 = -1 with
   8-byte work; writes only inside output + work (Sail trace); sp/gp kept.

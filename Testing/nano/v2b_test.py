@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""nano v2 small backend on QEMU + the Sail C emulator (words/cases from Testing/asm/emit_nano_v2.lean).
+"""nano v2 small backend on QEMU + the Sail C emulator (words/cases from Testing/asm/emit_nano_v2b.lean).
 Convention: a0 = input, a1 = length, a2 = work base (8-aligned), a3 = output, sp = work end.
 Per case (input, status, expected bytes), twice:
 * work WK = 4096 bytes: status 0 ⇒ output bytes = Lean's, a1 = length, a0 = 0; status s ≠ 0 ⇒ a0 = s, a1 = 0;
 * work 8 bytes (too small): a0 = 2^64 - 1 (out of memory).
 Always: sp, gp unchanged, input and guards unchanged, (Sail) every data write inside output + work.
-usage: v2_test.py name"""
+usage: v2b_test.py name"""
 import os, re, subprocess, sys
 D = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "asm")
 FN = sys.argv[1]

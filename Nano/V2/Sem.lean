@@ -5,7 +5,7 @@ abstract machine: registers, a WORD memory for the work block (stack + heap; onl
 proof that the code runs also proves every access valid (what the Sail refinement needs).
 Layer 2 (Nano/V2/Expr.lean): the uniform expression contract for `cE`/`cT` on this machine.
 Layer 3 (to do): `SC.flat` + `I.enc` on Sail. -/
-namespace Nano.V2
+namespace Nano.V2B
 
 /-- the fixed blocks of a run -/
 structure Cfg where
@@ -99,4 +99,4 @@ theorem runL_append (c : Cfg) (l₁ l₂ : List I) (s : St) :
     | none => rfl
     | some s' => exact ih s'
 
-end Nano.V2
+end Nano.V2B

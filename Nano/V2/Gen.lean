@@ -11,7 +11,7 @@ memory), return.  A `push` on a full buffer (len = cap) sets a0 := -2 (capacity)
 Buffer layout: [len][cap][cap data words].  A buffer value is its address (one slot).
 Result (status, out): status ≠ 0 ⇒ a0 := status, a1 := 0; else the low bytes of out's words at a3, a1 := len,
 a0 := 0. -/
-namespace Nano.V2
+namespace Nano.V2B
 
 /-- R-type ops -/
 inductive ROp where
@@ -298,4 +298,4 @@ def gen (p : Prog) : Option (List UInt32) := (genI p).map (·.map fun x => x.enc
 
 /-! ## the reference interpreter of the instruction list (for tests: runs the code on a model memory) -/
 
-end Nano.V2
+end Nano.V2B

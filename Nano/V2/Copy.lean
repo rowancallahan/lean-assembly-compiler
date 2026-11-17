@@ -2,7 +2,7 @@ import Nano.V2.Gen
 /- nano v2 first example (round 2 §7): byte copy, through the small backend.
 `copy fuel s := match fuel with | 0 => fail 1 | n+1 => if i ≥ size then ok else if full then fail 2 else
 copy n (i+1, push out input[i])`; state s = (i, out). -/
-namespace Nano.V2
+namespace Nano.V2B
 
 /-- the typed AST of the byte copy, with fuel `F` and output capacity `C` -/
 def copyProg (F C : Nat) : Prog where
@@ -32,9 +32,9 @@ def copyLean (F C : Nat) (input : List UInt8) : Except UInt64 (List UInt8) :=
   let r := copyRun C (input.map (·.toUInt64)).toArray (F.toUInt64.toNat) (0, Array.mkEmpty C)
   if r.1 = 0 then .ok (r.2.toList.map (·.toUInt8)) else .error r.1
 
-end Nano.V2
+end Nano.V2B
 
-namespace Nano.V2
+namespace Nano.V2B
 /-- a test of every construct: big literals, all binary ops, `get`/`set` (also out of bounds), `let`, `fst`/`snd`,
 input-dependent fuel -/
 def mixProg : Prog where
@@ -51,4 +51,4 @@ def mixProg : Prog where
                   (.bin .shl (.bin .and (.var 0) (.lit 7)) (.lit 3))) (.lit 255)) (.var 0)) (.lit 3)) (.var 0))
                   (.bin .and (.get (.var 1) (.lit 1000)) (.lit 0))))))))))
       (.pair (.fst (.var 0)) (.snd (.var 0)))
-end Nano.V2
+end Nano.V2B

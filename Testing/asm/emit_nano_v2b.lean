@@ -2,7 +2,7 @@ import Nano.V2.Copy
 /- nano v2 small backend: words and cases for Testing/nano/v2_test.py (Testing/asm/ir-words/nv2_*, gitignored).
 cases line: input hex, status, expected output hex ("-" = empty). Expected = `Prog.eval` (the backend's meaning),
 checked equal to the ordinary-Lean `copyLean`. -/
-open Nano.V2
+open Nano.V2B
 def hex (l : List UInt8) : String :=
   if l.isEmpty then "-" else String.join (l.map fun b => let s := String.ofList (Nat.toDigits 16 b.toNat); if s.length = 1 then "0" ++ s else s)
 def hex8 (w : UInt32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
