@@ -5,7 +5,7 @@ the S3 forms), `memoryNeeded` (the IR interpreter, its output checked against th
 `python3 Testing/nano/ps3_test.py`. Helpers copied from `Testing/asm/emit_s3rec.lean`. -/
 import Riscv.Back.IrTarget
 import Compiler.Ir.Lin
-import Nano.ParseS3Self
+import Nano.ParseS3BSelf
 open Proven.Ir Proven.Mach.Riscv Proven.Top.Alloc
 open Proven.S3
 
@@ -16,7 +16,7 @@ def rnd (i j : Nat) : Nat := (i * 0x9E3779B97F4A7C15 + j * 0xD1B54A32D192ED03 + 
 
 def compileT (P : Prog VReg) : Option (List (BitVec 32) × Prog Nat) :=
   match alloc P with
-  | some Q => (rvT.lin Q).map fun c => (rvT.words c, Q)
+  | some Q => (rvT.emitP Q (rvT.layout Q 3 ⟨[], [], 0⟩)).map fun c => (rvT.words c, Q)  -- the layout is at its fixpoint after 2 rounds (Nano/ParseS3BStage.lean)
   | none => none
 
 def mainSlots (Q : Prog Nat) : Nat := ((Q.funcs[Q.main]?).map (·.slots)).getD 0
@@ -195,14 +195,12 @@ def emitR (name : String) (P : Prog VReg) (_retLen : Bool) (cases : List (List U
   let files := (← dir.readDir).map (·.path) |>.toList
   let files := files.toArray.qsort (fun a b => a.toString < b.toString) |>.toList
   let mut c2 : List (List UInt8 × List UInt8) := []
-  let mut ci : List (List UInt8 × List UInt8) := []
   for f in files do
     let bs := (← IO.FS.readBinFile f).toList
     if f.extension == some "nano" then
       let x := Nano.B.lexB bs
-      c2 := c2 ++ [(x, Nano.PB.stage2 x)]
-      let y := Nano.PB.stage2 x
-      if !y.isEmpty then ci := ci ++ [(y, Nano.U.inlB y)]
-    else if f.extension == some "p2" then c2 := c2 ++ [(bs, Nano.PB.stage2 bs)]
-    else if f.extension == some "inl" then ci := ci ++ [(bs, Nano.U.inlB bs)]
-  emitR "nano_ps2" (lowerP Nano.PS.Stage2S3.P) true c2
+      c2 := c2 ++ [(Nano.PS.stage2a x, Nano.PB.stage2 x)]
+    else if f.extension == some "p2" then
+      c2 := c2 ++ [(Nano.PS.stage2a bs, Nano.PB.stage2 bs)]
+      c2 := c2 ++ [(bs, Nano.PS.stage2b bs)]
+  emitR "nano_ps2b" (lowerP Nano.PS.Stage2B.P) true c2

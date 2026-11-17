@@ -99,3 +99,10 @@ Goal (owner rule): every compiled stage builds in ≤ 5 min. Probe `gs` (decoder
 - Merged parse-dec (`s3_compileF`/`s3_solveF`: hypotheses introduced before splitting `∧`, so calls inside `if`
   branches reach the callee certificates). Parser 2b with `s3_compileF`: **274 s** wall (`lake build
   Nano.ParseS3BSelf`, 4 cores shared), was > 16 min with `s3_compileB`.
+- 2b: the IR compiler first REJECTED the program (`w8` had 8 parameters; IR calls take ≤ 7): `w8` via two `w4`.
+  46054 words, 42 functions, 13668 instructions. Kernel acceptance: the whole-program allocation check blew up
+  (> 9 GB), so it is checked PER FUNCTION (`funcLit%`, `decide +kernel` on `Func.alloc1 (lowFn P k) = some F_k`;
+  function 18 alone 111 s / 7.6 GB), assembled by `stage2B_funcs` (rfl) + `List.mapM_cons`; layout fixpoint after
+  2 rounds; emission and code length in one kernel evaluation (`compiles_len`). Builds:
+  ParseS3BSelf 311 s, ParseS3BAllocA 87 s, ParseS3BAllocB 177 s, ParseS3BStage 184 s (chained imports: sequential,
+  memory). **`Nano.PS.stage2B_implements`**: Sail axioms + propext, Classical.choice, Quot.sound.

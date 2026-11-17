@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Tests of the S3-compiled nano stages (branch nano-parse-s3): the parser `Nano.PS.Stage2S3` (`stage2`) and the
+"""Tests of the S3-compiled nano stages (branch nano-parse-s3): the parser machine `Nano.PS.Stage2B` (inputs
+`stage2a x`, expected `stage2 x`; raw tag bytes against `stage2b`) and the
 inliner `Nano.IS.InlS3` (`inlB`), compiled code = `Ir.compile (S3.lowerP P)`, against the SPEC functions executed in
 Lean (`Testing/nano/emit_ps3.lean`).  Inputs: corpus + R random UInt64 / Int64 programs + mutated sources (parser:
 `lexB src`; inliner: `stage2 (lexB src)` when nonempty) + raw inputs (random token bytes for the parser, random
@@ -32,7 +33,7 @@ for i in range(2 * R):
     open(f"{W}/c{i:04}.inl", "wb").write(bytes(rng.choice([rng.randrange(16), rng.randrange(256)]) if j % 2 == 0
                                                else rng.randrange(4) for j in range(n)))
 ONLY = os.environ.get("PS3_ONLY")  # "p2" or "inl": one stage
-STAGES = [x for x in (("p2", "nano_ps2"), ("inl", "nano_inl")) if ONLY in (None, x[0])]
+STAGES = [x for x in (("p2", "nano_ps2b"), ("inl", "nano_inl")) if ONLY in (None, x[0])]
 for st, _ in STAGES:
     subprocess.run(f"cd {ROOT} && PATH=$HOME/.elan/bin:$PATH NANO_DIR={W} lake env lean --tstack=4000000 "
                    f"Testing/nano/emit_ps3_{st}.lean", shell=True, check=True)
