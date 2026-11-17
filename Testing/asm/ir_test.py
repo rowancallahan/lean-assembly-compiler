@@ -4,7 +4,8 @@ in the `StartCorrect` calling convention (a0 = input, a1 = length, a2 = work bas
 sp = work end):
 * with a work block of exactly `memoryNeeded` bytes: output = Lean's result, a0 = the input address (not the flag),
   a1 = the result length for tree results, gp and sp restored;
-* with `memoryNeeded - 1` bytes: a0 = 2^64 - 1 (the out-of-memory flag), sp unchanged.
+* with `memoryNeeded - 1` bytes: a0 = 2^64 - 1 (the out-of-memory flag), sp unchanged (gp is not restored: IR_STRONG.md).
+S3 programs (`s3*`): a1 = the output length (main returns it; `S3.compile_correctL`).
 Both: input, guards unchanged and (Sail) every data write lands in the output block or the work block.
 usage: mem_test.py check N name"""
 import math, os, random, re, subprocess, sys, zlib
@@ -171,7 +172,7 @@ def check(N):
                 assert bytes(mem[o0:o0 + R]) == bytes(ys), (nm, FN, L, bytes(mem[o0:o0 + R]).hex(), bytes(ys).hex())
                 assert a0 == base + i0, (nm, "a0 (status) at memoryNeeded", hex(a0))
                 assert gp == MAGIC, (nm, "gp", hex(gp))
-                if FN in LISTS: assert a1 == R, (nm, "a1 (length)", a1, R)
+                if FN in LISTS or FN.startswith("s3"): assert a1 == R, (nm, "a1 (length)", a1, R)
             else:
                 assert a0 == 2 ** 64 - 1, (nm, "a0 (status) at memoryNeeded - 1", hex(a0), WK)
     Ms = [M for _, _, M in CASES[:N]]

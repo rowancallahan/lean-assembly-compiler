@@ -397,3 +397,25 @@ check.sh loop / expected-axioms = main's lines then the branches' (nano-closeB a
 Testing/nano/archive/ (InlP3 / InlP3Proof stay). check.sh: ALL CHECKS PASSED (cold over the f1cfb76 cache 1115 s up to
 the failure, then 1271 s; peak 6.2 GB, 4 jobs); only the pre-existing statement-fingerprint WARNING, not re-frozen.
 `Nano.selfHosted`: 77 axioms = expected-axioms.txt:930 (Sail set + propext, Classical.choice, Quot.sound).
+IR-STRONG RECONCILED (2026-11-17): branch merge-ir-strong = main + ir-strong (+ s3-rec's later examples). One IR stub:
+nano's `[leaveC; leave; mov a1 r0; ret]`; the OOM exit keeps the shared `encK .exit` (gp not restored), so nano's
+`binary` words are unchanged (same 55529-word hash) and `CompileRunsL` proofs for the IR are dropped (GAP, next tag).
+`CompileCorrectL` / `CompileCorrectRV` / `implements_of_compileL` / `S3.implements` and `S3.implements1` all proved.
+check.sh ALL CHECKS PASSED (2385 s). Details: Testing/notes/IR_STRONG.md "Reconciliation with nano v1".
+
+### RELEASE MARKERS (owner, 2026-11-17 17:10): no tags
+Releases are marked by a commit on main whose message says it is the final addition (e.g. "nano v1 FINAL: …"), not by
+git tags. nano v1 FINAL = this commit: main contains nano-parse-s3 rc2 (152f05b, same binary as rc1 6a76836),
+`Nano.selfHosted` proved (Sail axioms + propext/Classical.choice/Quot.sound), check.sh passed (merge-nano), self-run QEMU
+146/146 and Sail 8/8 on the proved binary. The nano-v1-rc1/rc2 tags are not needed.
+
+### DIRECTION (owner, 2026-11-17 17:40): compiler #2 (nano) compiles ITSELF; compiler #1 is the store
+- GOAL: nano v2 = the nano compiler written in nano, compiled by its own proven binary: B1 (built by compiler #1 / S3)
+  → B2 = B1(own source) → B3 = B2(own source), B2 = B3 byte for byte, with the proof `Nano.selfHosted`-style for each.
+- HOW: grow the nano subset by interpolation (one construct per proved link; nano stays an EXACT subset of Lean), until
+  the nano compiler can be written in nano. Candidate order: comparisons + `if`; bounded recursion / loops; byte input
+  read + output write; UInt8 / match on small numbers; small data (tuples/structures, maybe lists).
+- Compiler #1 (Lean → RISC-V: frontx, S3, IR; con-leche track) is now a general STORE of proven function translations.
+  Once compiler #2 self-hosts, its features move onto compiler #2 incrementally ("start small and grow the
+  self-hosting one" rather than self-hosting #1 with all features at once).
+- Terminology: v1 `Nano.selfHosted` = proven bare-metal nano compiler built by compiler #1; "compiles itself" = v2.

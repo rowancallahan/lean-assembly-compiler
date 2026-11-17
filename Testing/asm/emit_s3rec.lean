@@ -6,6 +6,7 @@ them, and `memoryNeeded` (from the IR interpreter, which is checked against Lean
 import Riscv.Back.IrTarget
 import Compiler.Ir.Lin
 import Riscv.Frontx.S3RecExamples
+import Riscv.Frontx.S3RecExamplesB
 open Proven.Ir Proven.Mach.Riscv Proven.Top.Alloc
 open Proven.S3 Proven.S3.Ex Proven.S3.Rec Proven.Frontx.IndEx
 
@@ -219,7 +220,11 @@ def wordsS (i : Nat) (m : Nat) : List UInt64 := (List.range (i % 13)).map fun j 
   run "s3_inits" S3Inits.P initsMain (cases50 fun i => small (i + 1) 64)
   run "s3_sets" S3Sets.P setsMain (cases50 fun i => encW (UInt64.ofNat (rndN i 99 % 300) :: words (i * 5 + 1)))
   run "s3_initl" S3InitL.P initLMain (cases50 fun i => small i 8)
+  run "s3_storeregs" S3StoreRegs.P storeRegsMain (cases50 fun i => encW [UInt64.ofNat (rndN i 3 % 16)] ++ small i 16)
+  run "s3_fetchg" S3FetchG.P fetchGMain (cases50 fun i => small (i + 2) 4 |>.zipIdx.map fun (b, k) => if k % 2 == 0 then b else UInt8.ofNat (rndN i k % 256))
   run "s3_merge" S3Merge.P mergeMain (cases50 fun i =>
     encW ((wordsS i 1000).mergeSort (· ≤ ·) ++ [0] ++ (wordsS (i + 7) 1000).mergeSort (· ≤ ·)))
   run "s3_evod" S3EvOd.P evMain (cases50 fun i => encW (words i))
+  run "s3_stexc" S3StExc.P stMain (cases50 fun i => encW ((words (i + 1)).map fun w => if i % 3 == 0 && w % 4 == 0 then 0 else w))
+  run "s3_iotanumargs" S3IotaNumArgs.P numArgsMain (cases50 fun i => small (i * 3) 256)
   run "s3_lex" S3Lex.P lexMain (cases50 fun i => encW (UInt64.ofNat (rndN i 5 % 20) :: words (i + 3)))
