@@ -32,8 +32,8 @@ srcs = list(CORPUS) + list(INT_CORPUS) + [G(rng).program() for _ in range(R)] + 
      + [Big(rng).program() for _ in range(B)]
 for i, s in enumerate(srcs): open(f"{W}/s{i:04}.nano", "wb").write(s.encode())
 if os.environ.get("SKIP_EMIT") != "1":
-    subprocess.run(f"cd {ROOT} && PATH=$HOME/.elan/bin:$PATH NANO_DIR={W} /usr/bin/time -v timeout 30m lake exe emit_selfrun_b1 "
-                   f"", shell=True, check=True)
+    subprocess.run(f"cd {ROOT} && PATH=$HOME/.elan/bin:$PATH NANO_DIR={W} /usr/bin/time -v timeout 30m lake env lean "
+                   f"--tstack=4000000 Testing/nano/selfrun_b1/emit_selfrun_b1.lean", shell=True, check=True)
 
 sys.argv = ["ir_test.py", "none", "0", "nano_b1"]  # "none": import only
 import ir_test as T

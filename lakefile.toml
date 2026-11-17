@@ -38,9 +38,3 @@ globs = ["Riscv.Frontx.+"]
 [[lean_lib]]
 name = "Nano"
 globs = ["Nano.+"]
-
-
-# B₁ self-run emitter, compiled (the interpreter was ~100x too slow): `lake exe emit_selfrun_b1` (NANO_DIR=<sources>)
-[[lean_exe]]
-name = "emit_selfrun_b1"
-root = "Testing.nano.selfrun_b1.emit_selfrun_b1"

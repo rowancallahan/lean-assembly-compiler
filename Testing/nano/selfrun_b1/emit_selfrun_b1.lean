@@ -201,7 +201,7 @@ def logL (m : String) : IO Unit := do
   let h ← IO.FS.Handle.mk "Testing/nano/selfrun_b1/emit.log" .append
   h.putStrLn m; h.flush
 
-def main : IO Unit := do
+#eval show IO Unit from do
   let dir : System.FilePath := (← IO.getEnv "NANO_DIR").get!
   let files := (← dir.readDir).map (·.path) |>.toList
   let files := files.toArray.qsort (fun a b => a.toString < b.toString) |>.toList
