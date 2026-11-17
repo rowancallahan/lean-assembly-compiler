@@ -5,4 +5,7 @@ set -e
 lake build Nano.V2Self.Driver
 lake env lean --run Testing/nano/v2self/check.lean Nano/V2Self/Asm.lean Nano/V2Self/Expand.lean Nano/V2Self/Lex.lean \
   Nano/V2Self/Inl.lean Nano/V2Self/Parse.lean || true
+lake env lean --run Testing/nano/v2self/check.lean Nano/V2Self/C/Base.lean Nano/V2Self/C/Asm.lean Nano/V2Self/C/Expand.lean \
+  Nano/V2Self/C/Lex.lean Nano/V2Self/C/Inl.lean Nano/V2Self/C/Parse.lean Nano/V2Self/C/Main.lean || true
 lake env lean Testing/nano/v2self/diff_test.lean
+lake env lean Testing/nano/v2self/chain_test.lean

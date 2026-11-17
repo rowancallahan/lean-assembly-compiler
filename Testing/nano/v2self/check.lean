@@ -12,7 +12,7 @@ def strip (s : String) : List String := Id.run do
       if (l.splitOn "-/").length > 1 then inC := false
     else if l.startsWith "/-" then
       if (l.splitOn "-/").length ≤ 1 then inC := true
-    else if l.startsWith "import" || l.startsWith "--" then pure ()
+    else if l.startsWith "import" || l.startsWith "--" || l.startsWith "namespace" || l.startsWith "end " then pure ()
     else out := out ++ [l]
   return out
 /-- split into defs (a def starts at a line beginning with `def`) -/

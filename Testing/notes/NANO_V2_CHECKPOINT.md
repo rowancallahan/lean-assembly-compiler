@@ -25,11 +25,16 @@ reject adds the defs one by one and prints the FIRST rejected def (files are che
 and frame stacks carry a top index (`i0`, `m0`) next to the `Buf`: push = `bset` below `bsize` else `bpush`, pop = lower the index.
 The state tuple has 15 components. The Lean meaning differs from the V2S stack (`dropLast`) only in dead slots above the top, never read.
 
+## The chained driver (`Nano/V2Self/C/`, Lean namespace `C`, stripped by the acceptance script)
+Stage 1 (`l15`) reads the program input and writes a `Buf`; stages 2-5 (`r16`, `j8`, `e2`, `a5`) read the previous `Buf` (`bget`/`bsize`)
+and write a `Buf` (`q0 o v` = `bpush o (v &&& 255)`, the meaning of `put`); `m` chains them and `m1` copies the last `Buf` to `put`.
+Fuel of stages 2-5 is the numeral 16777216 (they stop on their own conditions). `chain_test.lean`: `C.m = chainS` on 6 good sources and
+3000 random strings, 0 mismatches. Acceptance (frontElab): Base, Asm, Expand, Lex, Inl accepted; Parse is rejected at `r2` and Main
+is blocked behind it: the loops over a read-only `Buf` (`r0`, `r2`, `r4`, `r5`, ...) consume it; the language box was asked (2da851e added
+borrowing for helpers only) to infer borrowed Buf parameters of loops that pass them unchanged.
+
 ## What is NOT done
-1. **Driver as nano source.** The front end reads only the program input (`rd`/`len`) and writes only the output (`put`); a
-   stage's output cannot be read by the next stage. A nano `main` that chains the five stages needs every stage to read a
-   `Buf` and write a `Buf` (`rd x i` ↦ `bget`, `put o v` ↦ `bpush`), plus a final copy-out loop. `Driver.lean` has the chain
-   as Lean (`chainS`). The change is mechanical but touches every stage text and the bridges.
+1. **Driver as nano source.** Written (`C/Main.lean`), accepted up to the parser; waits for loop borrowing of read-only `Buf` (above).
 2. **Buffer capacity.** The language box's tests use 64 words per buffer (`eccd515`); the parser stacks and the inliner
    table (`kap = 2^24` words) are far larger. The checkpoint is about acceptance; the buffer allocation size is an open design point.
 3. **Proofs of the text changes** beyond the assembler and expander (below). Differential tests agree (0 mismatches).
