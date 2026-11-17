@@ -25,13 +25,12 @@ def l3 : Nat → List UInt8 → UInt64 → UInt64 → UInt64 → UInt64 → UInt
 def l4 (x : List UInt8) (p e g : UInt64) : UInt64 := if e ≤ p then 0
   else
     let c := rd x p;
-    if 48 ≤ c && c ≤ 57 then if l1 (len' x) x p e g == 1 then 7 else 0
-    else if e - p == 3 && c == 100 && rd x (p + 1) == 101 && rd x (p + 2) == 102 then 3
-    else if e - p == 3 && c == 108 && rd x (p + 1) == 101 && rd x (p + 2) == 116 then 4
-    else if e - p == 6 && c == 85 && rd x (p + 1) == 73 && rd x (p + 2) == 110 && rd x (p + 3) == 116 && rd x (p + 4) == 54 && rd x (p + 5) == 52 then 5
-    else if e - p == 5 && c == 73 && rd x (p + 1) == 110 && rd x (p + 2) == 116 && rd x (p + 3) == 54 && rd x (p + 4) == 52 then 6
-    else if 97 ≤ c && c ≤ 122 && l2 (len' x) x (p + 1) e g == 1 then 16
-    else 0
+    let r0 := if 97 ≤ c && c ≤ 122 && l2 (len' x) x (p + 1) e g == 1 then 16 else 0;
+    let r1 := if e - p == 5 && c == 73 && rd x (p + 1) == 110 && rd x (p + 2) == 116 && rd x (p + 3) == 54 && rd x (p + 4) == 52 then 6 else r0;
+    let r2 := if e - p == 6 && c == 85 && rd x (p + 1) == 73 && rd x (p + 2) == 110 && rd x (p + 3) == 116 && rd x (p + 4) == 54 && rd x (p + 5) == 52 then 5 else r1;
+    let r3 := if e - p == 3 && c == 108 && rd x (p + 1) == 101 && rd x (p + 2) == 116 then 4 else r2;
+    let r4 := if e - p == 3 && c == 100 && rd x (p + 1) == 101 && rd x (p + 2) == 102 then 3 else r3;
+    if 48 ≤ c && c ≤ 57 then if l1 (len' x) x p e g == 1 then 7 else 0 else r4
 
 def l5 (x : List UInt8) (p g : UInt64) : UInt64 := if p < len x then
     let c := rd x p;

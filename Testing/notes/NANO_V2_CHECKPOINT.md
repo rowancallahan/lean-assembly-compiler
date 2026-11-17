@@ -70,3 +70,33 @@ backend proof for buffers; a QEMU run of the compiled `C.m`.
 NEXT: (1) run `Testing/nano/v2f/run.lean` / the backend `gen` on `C.m` (needs the capacity decision), (2) bridges: Buf versions vs
 list versions (reads `bget b i = rd l i` on `b = l.map toUInt64`, `q0` = `put`), then lexer fuel lemma, parser index-stack invariant,
 (3) `inlTV_eq`.
+
+## INTERIM SELF-COMPILE CHECK (resumed session, 2026-11-17; `Testing/nano/v2self/selfcompile.sh`, `sizes.lean`, `selfrun.py`)
+Pipeline: strip+concatenate `Nano/V2Self/C/{Base,Asm,Expand,Lex,Inl,Parse,Main}.lean` (22 755 bytes, 90 defs) → `frontElabK κ` + `gen` (native `lean --run`, 37 s)
+→ P → QEMU (`qemu-system-riscv64`, bare metal, same harness convention as `v2b_test.py`, QEMU only, no Sail) with the text as input → O.
+1. **Front end and back end accept the whole program, driver `m` included.** κ = 65536.
+2. **FIRST BLOCKER (source text, fixed): exponential code size.** P was 2 616 288 words (10.5 MB). Cause: `&&` is desugared to nested `if`s that duplicate
+   the else branch, and `l4` (keyword classifier, a chain of `else if A && B && ... then` with 4–6 conjuncts each) multiplied: `l4` alone = 821 387 words.
+   In P the 21-bit `jal` offset (±1 MiB) wrapped silently (`encJt` takes `bits imm 21`, no range check): QEMU ended at pc = 0 (mcause 1) and never
+   halted. FIX in the text: `l4` computes the else-results first (`let r0 := …; let r1 := … else r0; …`), conditions then duplicate only a variable.
+   `l4`: 821 387 → 2 104 words; P: **158 439 words = 633 756 bytes** (stages cumulative: lex 48 252, +parse 142 656, +inl 149 111, +expand 155 732, +asm 158 439).
+   Applied to `C/Lex.lean` and `Lex.lean` (list version); `diff_test` 0 mismatches, `chain_test` 0 mismatches (3000 strings), both stages still accepted.
+   **Back-end gaps to report to the language box** (not fixed here): (a) `Nano.V2B.enc` has no range check: a program > 256 K words can wrap `jal` (and
+   `beq/bne/bltu/bgeu` offsets are only safe because every `.br` jumps by 8 over a `jal`); `gen` should return `none` when a jal offset leaves ±2^20; (b) the `&&`/`||`
+   desugaring duplicates branches (code size ∝ product of conjunct counts along an else-chain; source text must work around it); (c) calls are inlined (no call/return).
+3. **P runs**: 0.2 s of QEMU time on 22 755 bytes of input, status 0, **O = 84 bytes**, and O is byte-identical to the native `C.m` (Lean semantics) on the same text
+   (also identical on a small valid program: 340 bytes). So P implements `C.m` exactly on these inputs (QEMU == Lean, differential evidence only; no theorem).
+4. **Does nano compile its own source? NO.** O is the 84-byte output nano produces for ANY input its parser rejects (`k255` alone gives 172 bytes; adding the
+   second def `q0 (o : Buf) …` already gives 84): the nano LANGUAGE (v1: `UInt64`/`Int64` defs, `let`, `+ - *`, calls, `if` on ==) lacks `List UInt8`, `Buf`, `Nat`
+   fuel patterns, `&&`/`||`/`≤`/`≠`, tuples, `rd`/`len`/`bget`… So O ≠ P and no fixed point: the stages are written in the V2 language but compile the V1 language.
+   Self-hosting needs the V2 front end (`Nano/V2/Front.lean`, ~1200 lines) rewritten as nano-subset source and its stages (lexer … assembler) changed to the V2 grammar: a new, larger text, not a rerun.
+5. **Failure points seen**: jal range (above); buffer capacity (-2, below); work memory (-1, below). Not seen: fuel (stage fuel is 16 777 216 and inputs finish in ≪ that), QEMU time/memory.
+
+## Buffer capacity (measured; `selfrun.py`, synthetic valid v1 programs of 1 kB and 6 kB, `sizes.lean`)
+- `bnew` = `mk κ` allocates (κ+2)·8 bytes of the bump heap each time and never frees; ALL buffers share the one κ (`Ex.cap`); `κ < 2^20`.
+- Executed allocations of one `C.m` run ≈ 10–11 (QEMU: κ = 65536 (0.5 MB each) needs 5–6 MB of work; 5 MB → status −1, 6 MB ok) incl. the output `[]`.
+- Words per stage, per input byte: lex 1.02, parse 0.99 (6029 B → 6150, 5944), inline/expand/asm: small for inputs without calls (inliner expands only the last def).
+- κ must exceed the largest buffer: 6029-byte input: κ = 6100 → status −2 (capacity), κ = 6200 ok.
+- **Proposal**: for sources up to 32 kB (the V2Self text is 22.7 kB; the larger V2-language text will be ≈ 2×), κ = 2^16 = 65536 (lex/parse ≤ ~1.1 words/byte, ×2 margin), work = 11 × 0.5 MB + stack ≈ 6 MB, set 8 MB;
+  if the inlined/expanded output of the real self-hosting text is larger (not measurable until the language covers it) raise to κ = 2^18 (2 MB per buffer, 24 MB work). One κ for all buffers is wasteful (asm output is ~5× smaller than lex): per-buffer capacities would cut work ~3×, but the language has one κ.
+  The input length is the real limit: reject (status −2) beyond κ words ≈ 60 kB.
