@@ -1,7 +1,8 @@
 import Nano.ParseB
 import Nano.ElabB
+import Nano.ElabU
 /- `lake env lean Testing/nano/parseb_check.lean` after `python3 Testing/nano/elabb_inputs.py N SEED >
-Testing/nano/work/parseb_in.txt`: layer A (`parseA` on stage 1's decoded tokens) == `(nanoElab x).map ser` -/
+Testing/nano/work/parseb_in.txt`: layer A (`parseA` on stage 1's decoded tokens) == `(Nano.U.nanoElabU x).map Nano.U.serU` -/
 open Nano Nano.B Nano.PB
 def parseLine (s : String) : List UInt8 :=
   ((s.splitOn " ").drop 1).filter (· ≠ "") |>.map (fun x => x.toNat!.toUInt8)
@@ -12,7 +13,7 @@ def parseLine (s : String) : List UInt8 :=
   let mut lexed := 0
   for l in ls do
     let x := parseLine l
-    let spec := (nanoElab x).map ser
+    let spec := (Nano.U.nanoElabU x).map Nano.U.serU
     let mach := match decL (lexB x) with
       | some (_, ts) => parseA 100000000 ts
       | none => none

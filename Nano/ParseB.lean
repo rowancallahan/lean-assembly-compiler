@@ -1,12 +1,12 @@
 /- nano stage 2 (branch `nano-parse`): the parser of `nanoElab` (`pDefs` … `pAtom`, `Nano/Elab.lean`) as an
-explicit-stack machine that emits the micro-op stream `ser p` (`Nano/Ser.lean`) directly.
+explicit-stack machine that emits the NON-INLINED micro-op stream `serU u` (`Nano/SerU.lean`, `u = nanoElabU`'s
+result; `nanoElab_eq`, `inlB_serU`: inlining is the next stage).
 
-Layer A (this file): the machine on decoded tokens.  State: the rest of the tokens, the output of the current def
-body, the run-time depth `d`, the scope (name, slot) newest first, the defs (name, arity, `ser` bytes of the body),
-the continuation stack.  Calls are inlined by copying the callee's stored body bytes (they do not depend on the
-call site: `serE_shift`).  The fuel of the recursive descent is replicated exactly (every control carries it).
-`run` iterates `step` with gas. -/
-import Nano.Ser
+Layer A (this file): the machine on decoded tokens.  State: the rest of the tokens, the output so far, the run-time
+depth `d`, the scope (name, slot) newest first, the defs (name, arity, number), the continuation stack.  A call
+emits its arguments, then `[14, j / 256] [15, j % 256] [9, k]`.  The fuel of the recursive descent is replicated
+exactly (every control carries it).  `run` iterates `step` with gas. -/
+import Nano.SerU
 
 namespace Nano.PB
 open Nano
@@ -19,7 +19,7 @@ inductive Fr where
   | addOp (f : Nat) (op : UInt8)
   | mulT (f : Nat)
   | mulOp (f : Nat)
-  | call (b : List UInt8) (k : Nat)
+  | call (j k : Nat)
   | args (f k : Nat)
   | paren
 
@@ -34,7 +34,7 @@ structure St where
   out : List UInt8
   d : Nat
   sc : List (List UInt8 × Nat)
-  ds : List (List UInt8 × Nat × List UInt8)
+  ds : List (List UInt8 × Nat × Nat)
   K : List Fr
   cg : List UInt8
   cf : Nat
@@ -50,10 +50,13 @@ def lookS (g : List UInt8) : List (List UInt8 × Nat) → Option Nat
   | [] => none
   | (x, k) :: r => if g == x then some k else lookS g r
 
-/-- arity and body bytes of a def -/
-def findD (g : List UInt8) : List (List UInt8 × Nat × List UInt8) → Option (Nat × List UInt8)
+/-- arity and number of a def -/
+def findD (g : List UInt8) : List (List UInt8 × Nat × Nat) → Option (Nat × Nat)
   | [] => none
   | (x, k, b) :: r => if g == x then some (k, b) else findD g r
+
+/-- a call of def `j` with `k` arguments (after the arguments) -/
+def sCall (j k : Nat) : List UInt8 := mo 14 (j / 256).toUInt8 ++ mo 15 (j % 256).toUInt8 ++ mo 9 k.toUInt8
 
 /-- a variable read -/
 def sVar (d k : Nat) : List UInt8 := mo 7 (d - 1 - k).toUInt8 ++ mo 3 0
@@ -68,18 +71,18 @@ def retF (s : St) : Fr → List Fr → Res
   | .addOp f op, K => .go (.add f) { s with out := s.out ++ mo 8 op, d := s.d - 1, K := K }
   | .mulT f, K => .go (.mulT f) { s with K := K }
   | .mulOp f, K => .go (.mulT f) { s with out := s.out ++ mo 8 40, d := s.d - 1, K := K }
-  | .call b k, K => .go .ret { s with out := s.out ++ b ++ mo 9 k.toUInt8, d := s.d + 1 - k, K := K }
+  | .call j k, K => .go .ret { s with out := s.out ++ sCall j k, d := s.d + 1 - k, K := K }
   | .args f k, K => .go (.args f k) { s with K := K }
   | .paren, K =>
     match s.ts with
     | Tok.rp :: r => .go .ret { s with ts := r, K := K }
     | _ => .fail
 
-/-- the end of a def body -/
+/-- the end of a def body: `[13, arity]`; done if no token is left -/
 def endDef (s : St) : Res :=
   match s.ts with
-  | [] => .done (mo 0 0 ++ serPro s.na ++ s.out ++ mo 7 0 ++ sWr ++ mo 12 0)
-  | _ => .go (.defs s.cf) { s with ds := (s.cg, s.na, s.out) :: s.ds }
+  | [] => .done (s.out ++ mo 13 s.na.toUInt8)
+  | _ => .go (.defs s.cf) { s with out := s.out ++ mo 13 s.na.toUInt8, ds := (s.cg, s.na, s.ds.length) :: s.ds }
 
 /-- a name in a parse position: variable, else `call` (arity checked by `onDef`) -/
 def step : Ctl → St → Res
@@ -103,7 +106,7 @@ def step : Ctl → St → Res
     | Tok.colon :: Tok.kty _ :: Tok.assign :: r =>
       match findD s.cg s.ds with
       | some _ => .fail
-      | none => .go (.expr s.cf) { s with ts := r, out := [], d := s.na, K := [] }
+      | none => .go (.expr s.cf) { s with ts := r, d := s.na, K := [] }
     | _ => .fail
   | .ret, s =>
     match s.K with
@@ -137,7 +140,7 @@ def step : Ctl → St → Res
       | some k => .go .ret { s with ts := ts, out := s.out ++ sVar s.d k, d := s.d + 1 }
       | none =>
         match findD g s.ds with
-        | some (k, b) => .go (.args f k) { s with ts := ts, K := .call b k :: s.K }
+        | some (k, j) => .go (.args f k) { s with ts := ts, K := .call j k :: s.K }
         | none => .fail
     | _ + 1, Tok.minus :: Tok.num n :: ts =>
       .go .ret { s with ts := ts, out := s.out ++ (sLi (0 - n) ++ mo 3 0), d := s.d + 1 }
@@ -156,7 +159,7 @@ def step : Ctl → St → Res
       | some k => .go .ret { s with ts := ts, out := s.out ++ sVar s.d k, d := s.d + 1 }
       | none =>
         match findD g s.ds with
-        | some (0, b) => .go .ret { s with ts := ts, out := s.out ++ (b ++ mo 9 0), d := s.d + 1 }
+        | some (0, j) => .go .ret { s with ts := ts, out := s.out ++ sCall j 0, d := s.d + 1 }
         | _ => .fail
     | f + 1, Tok.lp :: ts => .go (.expr f) { s with ts := ts, K := .paren :: s.K }
     | _, _ => .fail
