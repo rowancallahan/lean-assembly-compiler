@@ -126,3 +126,10 @@ Order (each stage keeps emitting the v1 record format where possible; new record
 4. **Expander + assembler** (`e2`, `a5`): code for loops (`Ex.loop`), buffers (`mk/size/get/set/push`, heap bump with the oom/cap exits), pairs/tuples (value-stack slots), `if`, the I/O prelude, following `Nano.V2B.cE/cT` (Nano/V2/Gen.lean) instruction by instruction; the `jal` range (±1 MiB) has to be respected (or use `lui/jalr`) because the whole compiler is ~158k words and growing. Test: output words vs `Nano.V2B.gen` on the V2f test programs p1..p10 and on S defs, then QEMU.
 5. **Fixed point**: C₀ (Lean-compiled by `gen`) compiles the S text → P₁; P₁ compiles the S text → P₂; require P₁ = P₂ bytes, then (if the nano back end differs from `gen`) QEMU-run all of Testing/nano/v2f.
 Increment 1 (lexer) has NOT been started in this commit: it needs the token-tag table agreed with the parser first (step 1 and 2 share it); that table is the first thing to write.
+
+### Increment 1 DONE: the S lexer `Nano/V2Self/C/Lex2.lean` (`s10 : List UInt8 → Buf`, 11 defs, accepted by `frontElab`)
+Token tag table (shared with the parser): v1 tags unchanged (def 1, let 2, UInt64 3, Int64 4, number 5 + 8 LE bytes, `(` 6, `)` 7, `:` 8, `:=` 9, `+` 10, `-` 11, `*` 12, `;` 13, ident 14 + (1,byte)* + 0)
+plus `,` 15, `×` 16, `→` 17, `|` 18, `=>` 19, `<` 20, `≤` 21, `≠` 22, `==` 23, `&&` 24, `||` 25, `&&&` 26, `|||` 27, `<<<` 28, `>>>` 29, `[` 30, `]` 31, `if` 32, `then` 33, `else` 34, `Nat` 35, `Buf` 36, `List` 37, `UInt8` 38.
+No type-uniformity pass (v1 `l9`) and no `\n def` rule; reject (any unknown char, lone `=`/`&`/`>`/`>>`, `1a`) = empty Buf. Keyword chain uses let-bound else results (no code blow-up).
+Test `Testing/nano/v2self/lex2_test.lean` (independent `List Char` reference): the whole S text (27 772 output words) identical, 20 000 random piece-strings (5 324 valid) 0 mismatches.
+Compiled (`selfcompile.lean`, m = copy of `s10 x`): 20 069 words; QEMU on the S text: 27 772 output bytes in 0.2 s. NEXT: parser (increment 2) consuming these tags.
