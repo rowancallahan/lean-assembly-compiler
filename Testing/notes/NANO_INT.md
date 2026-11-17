@@ -96,3 +96,22 @@ nano-proof (Opus: L2), nano-mvp (finished: Int64, Chain, chain_test), nano-int (
   `ser p` (`Nano/Ser.lean`) or directly `genR p`; needed only for accepted sources (`nanoElab src = some p`).
   Open risk, stated: whether `wp_compile` (single flat loops, one work array per loop state) accepts an explicit-stack
   parser; that is the nano-elab lane's next experiment.
+* 2026-11-17 00:20. PROBE of the open risk (parser stage on the paged front end): `Testing/nano/wp_stack_probe.lean`.
+  `wp_compile` ACCEPTS an explicit-stack machine (stack cells written with `set!` inside the growing output buffer,
+  `sp` scalar), with `….compiles` / `….computes` (Sail axioms only), in this shape and only in this shape:
+  1. ONE tail call per step; every state component is a conditional EXPRESSION (`rpn (if … then buf.set! … else …) src
+     (…) (…)`). Branching between different calls (`if c then go a else go b`, nested) fails in the generated step
+     proof (`Dependent elimination failed … Decidable.rec`); so does mixing calls and the result below the top `if`.
+  2. The top-level shape is `if i < src.size then <one call> else buf` (a disjunctive loop condition with an inner
+     `if i < src.size` fails the same way).
+  3. Side conditions (invariant, measure, `< 2^64`) are closed by a fixed tactic (split, then omega). It worked with:
+     every step consumes exactly one input byte (`i + 1`), pushes a FIXED number of bytes (pad with 0 and strip in a
+     later list-path pass), invariant `sp ≤ i ∧ i ≤ src.size ∧ buf.size + 2 * (src.size - i) ≤ C ∧ src.size < 2^32`,
+     measure `src.size - i`; `sp` itself may be a nested conditional. Conditional `i` / variable push counts with a
+     lexicographic measure left goals open (`x2 - 1 < x2`, size goals) in my attempts.
+  4. Body size: the plain back end's loop-exit branch limits a body to ~1000 words and paged array accesses are large;
+     the probe's body already exceeds it (`decide` on `wfB` fails). An arithmetic `mop` in the body (`i + 1 + 0 * sp`)
+     switches `wp_compile` to the checked words (`compBFC`, `pickC`), which passed.
+  Consequence for the design: O(1) stack work per input byte (fine for nano's three precedence levels and parentheses);
+  unbounded work per token (scope lookup, copying a callee body) must be done by rescanning list-path stages before
+  (name → index, arity) or needs steps that do not consume input (not yet working with the fixed tactic).
