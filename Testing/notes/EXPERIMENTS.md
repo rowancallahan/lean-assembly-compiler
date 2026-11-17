@@ -18,3 +18,11 @@ Measure: wall/user/RSS, OK/FAIL, and for *_full every profiler line (per-command
 ## id: lx-V-compile
 - target: Testing/nano/lexsplit/V_compile.lean (through frontx_compile only)
 - claimed by: CI tender session_01MfKuVa2yyxQiaKEDu6hkHa (claim written by main session)
+## result lx-V-compile (CI tender ir-strong, 08:38)
+- FAIL at the frontx_compile line: "No goals to be solved". 186.9 s wall, 2.41 GB. translate+step 107 s, kernel 0.4 s, induction 72 s, exec thm 2.4 s; 79 vars, 71 slots, 986 obligations. Sent to nano-final.
+## note (08:55)
+- The nano-final tender's `lake build` shows ElabBESelf AND ElabBVSelf at 57+ min (with listCS). frontx_compile alone is ~3-4 min, so the time is after it: suspect pickSpill's 7 spill-all modes all fail optB and it falls back to pickC (the hour-long search).
+## id: lx-E-pick
+- target: Testing/nano/lexsplit/E_pick.lean (compile + entry, then per mode: colorB / optB result + ms; no implements)
+- measure: wall, and every "mode N: ..." line
+- claimed by: CI tender session_01MfKuVa2yyxQiaKEDu6hkHa (claim written by main session)
