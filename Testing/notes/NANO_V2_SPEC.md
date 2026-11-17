@@ -127,3 +127,7 @@ must name the compiler-source use that needs it"). A stage entry is `def stage (
    milestone-1 backend with branching `if`, loops and buffers is worker 2's (`Nano.V2B`); worker 2 translates
    `Nano.V2.E` or adopts it, and the AST of §1 becomes `Nano.V2.E` extended (worker 1 owns the file).
 7. Int64: dropped for milestone 1 (Astra r2 §8); the v2 elaborator keeps it only for v1 compatibility.
+8. OPEN (owner): NANO_V2_ROUND5.md (main, 0128534) proposes `Array UInt64` with `readD` / `writeChecked` /
+   `appendChecked` (success flag, original array on failure, explicit semantic capacity). That is compatible with §3's
+   ownership rules but differs in representation (`Array` vs `List`) and in failure reporting (a flag vs a caller-side
+   `bsize b < κ` test). Pick one before workers 2/3 freeze their buffer code; §3 is the fallback if no decision.
