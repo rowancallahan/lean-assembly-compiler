@@ -206,11 +206,13 @@ all 50 cases of every entry), then `python3 Testing/asm/ir_test.py check N s3l_<
 | s3l_arith | `S3LimbExamples.lean` | `arith`: `+ - * / %`, `< ≤ ==` on 64/128-bit `Nat`s | 5943 | 3m17s (file) | QEMU 50 × 2 ok; Sail 10 × 2 ok |
 | s3l_fuel | `S3LimbExamples.lean` | con-leche `whnfLoopFuel` (2^62), `maxNatSizeDefault` (2^27) as data; `walkFuel` decrements the fuel | 5201 | (same file) | 50 × 2 ok |
 | s3l_fact | `S3LimbRec.lean` | `fact` (structural on `Nat`), `digits` (well-founded on `Nat`), up to `63!` | 4644 | 3m04s (file) | 50 × 2 ok |
-| s3l_natsize | `S3LimbRec.lean` | con-leche `natSizeBytes` (`Nat.log2`), the refusal test against `maxNatSizeDefault`, up to `w^8` | 5349 | (same file) | NATSIZE |
-| s3l_bits | `S3LimbBits.lean` | `&&& ||| ^^^`; `<<<`, `>>>`, `Nat.gcd`, `^` verbatim | 6853 | 2m13s | BITS |
-| s3l_dropvars | `S3LimbConLeche.lean` | con-leche `Expr.dropVars` + `instantiate1` (the `Nat.brecOn` row), `s3_encL` on `Name`/`Level`/`Literal`/`Expr` | 4521 | 1m18s | DROPVARS |
+| s3l_natsize | `S3LimbRec.lean` | con-leche `natSizeBytes` (`Nat.log2`), the refusal test against `maxNatSizeDefault`, up to `w^8` | 5349 | (same file) | QEMU 50 × 2 ok; Sail 10 × 2 ok (Sail on 50 exceeded 50 min) |
+| s3l_bits | `S3LimbBits.lean` | `&&& ||| ^^^`; `<<<`, `>>>`, `Nat.gcd`, `^` verbatim | 6853 | 2m13s | QEMU 50 × 2 ok; Sail 10 × 2 ok |
+| s3l_dropvars | `S3LimbConLeche.lean` | con-leche `Expr.dropVars` + `instantiate1` (the `Nat.brecOn` row), `s3_encL` on `Name`/`Level`/`Literal`/`Expr` | 4521 | 1m18s | 50 × 2 ok |
 
-`Compiler/S3/Limbs.lean` alone: 39 s. A probe with every operation in one `main` certified in 1–3 min.
+`Compiler/S3/Limbs.lean` alone: 39 s. The 15 unary entries of `S3RecExamples.lean` re-emitted with the new front end:
+words and cases byte-identical (`emit_s3rec.lean`, no diff in `Testing/asm/ir-words/s3_*`). The unary `dropVars`
+is 2582 words, the limb one 4521 (the primitives' code). A probe with every operation in one `main` certified in 1–3 min.
 
 ### Not done / blocked (found this round)
 
@@ -244,3 +246,20 @@ all 50 cases of every entry), then `python3 Testing/asm/ir_test.py check N s3l_<
   by `simp`, and no caller sees `toLimbs`.
 - `Limbs.lean` holds the encoding (`encNatL`, `encFinL`) next to the primitives (not in `Cert.lean`), so `Cert.lean`
   is unchanged.
+
+### Final check (this round)
+
+After merging `origin/main` (ROADMAP only): `bash Testing/scripts/check.sh`: **ALL CHECKS PASSED** (23 min; 32 new axiom
+lines from `axioms_s3-limb.lean`: every `correct` exactly the Sail set, every `computes`/`wf` and the 14 primitive
+lemmas ⊆ {propext, Classical.choice, Quot.sound}). The statement-fingerprint step prints its usual WARNING: no
+statement hash changed (62/62), only dependency closures; not re-frozen, per the round rules.
+
+### Next
+
+1. `String` literals (byte chains, a `dsimproc` for their encoding; long literals need the generated body split) and
+   the `Nat.blt` normal form against a called function, then con-leche StateC's `NatBinOp.result`/`natOpRefusal`.
+2. Proof parameters after run-time ones, and certificates that never print private names (or closed-term folding
+   with `decide +kernel` lemmas), for `Std.HashMap` construction (`CState {}`).
+3. The large-literal-factor kernel recursion (locate the defeq check that unfolds `Nat.mul _ 4294967296`).
+4. Speed: inline the primitive wrappers; word-step (64/32) long division.
+
