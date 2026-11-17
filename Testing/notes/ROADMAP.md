@@ -385,3 +385,6 @@ no hypotheses; `binary` = 5 linked stages (lexA, stage2b, inliner: S3; nanoExpM;
 check.sh ALL CHECKS PASSED (1026 s). Heavy modules: ParseS3BStage ≈ 8 GB, ParseS3BAllocB ≈ 7.6 GB, so build with limited parallelism.
 Tag `nano-v1-rc1` → 6a76836 still to be pushed by the owner (the session git proxy refuses tag pushes).
 Next: the self-run from 6a76836 (no code changes), then merge the nano branches to main.
+nano v1 rc2 (2026-11-17 15:14) = origin/nano-parse-s3 commit 152f05b: same `binary` words as rc1 (evaluated hashes), every module
+≤ 155 s cold and ≤ 6.3 GB, check.sh ALL CHECKS PASSED (1177 s). Self-run at rc1 (branch nano-selfrun ca437bf): binary = binaryC proved,
+55529 words, linked QEMU 146/146, Sail 8/8; build 1390 s / 11.0 GB. Tags nano-v1-rc1 (6a76836) and nano-v1-rc2 (152f05b): owner to push.
