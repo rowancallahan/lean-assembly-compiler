@@ -43,3 +43,9 @@
 * Resources: four parallel Lean processes on this 15 GB box got two of them OOM-killed (exit 137: the one-stage
   lexer `ElabBSelf` after 21.5 CPU-min, and `mx`). DECISION: the one-stage lexer compile is dropped (the split stages
   replace it; it would also hit constraint 3); at most three compiles at a time.
+* Owner's alternative route (S3 typed calculus, compiler proved once): noted; not taken for A's stages so far, because
+  the frontx route was already running with the composition (`link_stage` over `Implements1With`) in place, and an
+  S3 stage would need an adapter from `CompileCorrect` to `Implements1With`. Route per stage: see the table at the end.
+* A path must not test the same condition twice (constraint 4, found on the validator): the test obligation
+  `denote (x == 5) = if (m == 5) = true then 1 else 0` fails when `(m == 5) = true` is already a hypothesis. The
+  validator's end macro is generated without `lx`'s leading `if m == 5` (the validator tests it before).
