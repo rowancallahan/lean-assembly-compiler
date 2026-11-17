@@ -1,13 +1,14 @@
-/- nano self-hosting with stage 2 (the parser) compiled THROUGH S3 (`Nano.PS.stage2S3_implements`,
-Nano/ParseS3Self.lean) plugged into box A's composition (`selfHosted_closeA`: lexer halves `vB`/`eB`, expander,
-assembler, compiled by the list front end). `Testing/notes/NANO_PARSE_S3.md`.
+/- nano self-hosting, seven stages (`selfHosted_parse7`, Nano/SelfHostSplit7.lean): lexer halves `vB`/`eB`, parser 2a
+(`stage2a`) and 2b (`stage2b`, compiled THROUGH S3: `Nano.PS.stage2B_implements`), the inliner (THROUGH S3:
+`Nano.IS.inlS3_implements`), the expander and the assembler. `Testing/notes/NANO_PARSE_S3.md`, NANO_MANIFEST.md.
 
 The domain also states the limits of Lean's own elaborator (owner's request, NANO.md "RESOURCE LIMITS": Lean fails
 on ≥ 512 nested `let`s, ≥ 256 nested calls, chains of ≥ ~3000 operands): `LeanLimits src` bounds the elaborated
 program's nesting (lets, calls at cost 2, right-nested operands) by 400 and its left operator chains by 2500. It only
 narrows the domain (`SelfHosted.mono`); `nanoElab` (the spec) is unchanged. -/
 import Nano.SelfHostedA
-import Nano.ParseS3Stage
+import Nano.SelfHostSplit7
+import Nano.ParseS3BStage
 import Nano.InlS3Stage
 
 set_option linter.unusedVariables false
@@ -53,50 +54,24 @@ theorem SelfHosted.mono {B : List (BitVec 32)} {space : Nat → Nat} {D D' : Lis
   correctInt := h.correctInt
   runs := h.runs
 
-/-- the work space of the S3-compiled parser stage -/
-noncomputable abbrev s2S3 : Nat → Nat := Nano.S3Stage.spaceP Nano.PS.Stage2S3.P
-
-/-- **nano self-hosting with the parser compiled through S3**: what remains is the inliner's machine theorem (its
-code-size bound and the condition `Pi` under which it equals `inlB`) -/
-theorem selfHosted_s3 {ci : List (BitVec 32)} {fi : ByteArray → List UInt8} {si : Nat → Nat}
-    {Pi : List UInt8 → Prop} (K : Nat)
-    (hi : Implements1With (fun xs : ByteArray => xs.data.toList) (fun l => l) ci fi si (2 ^ 20) true)
-    (hci : ci.length < 2 ^ 17) (hfi : ∀ x, Pi x → fi (ofL x) = U.inlB x) :
-    SelfHosted (link (link (link (link (link Nano.Self.vBE.code Nano.Self.eBE.code)
-        (Proven.S3.words Nano.PS.Stage2S3.P)) ci) Nano.Self.nanoExpM.code) Nano.Self.nanoAsm.code)
-      (fun _ => space6 K)
-      (fun src => Sized6 K s1aA s1bA s2S3 si smA saA (fun _ => True) Pi src ∧ LeanLimits src) nanoCompileA :=
-  SelfHosted.mono
-    (selfHosted_closeA (P2 := fun _ => True) K Nano.PS.stage2S3_implements hi Nano.PS.stage2S3_code_len hci
-      (fun x _ => Nano.PS.stage2S3_f x) hfi)
-    fun _ h => h.1
-
-/-- the work space of the S3-compiled inliner stage -/
+/-- the work spaces of the S3-compiled stages -/
+noncomputable abbrev s2bS3 : Nat → Nat := Nano.S3Stage.spaceP Nano.PS.Stage2B.P
 noncomputable abbrev siS3 : Nat → Nat := Nano.S3Stage.spaceP Nano.IS.InlS3.P
 
-/-- the self-hosted binary: lexer halves, parser (S3), inliner (S3), expander, assembler -/
-noncomputable abbrev binary : List (BitVec 32) :=
-  link (link (link (link (link Nano.Self.vBE.code Nano.Self.eBE.code) (Proven.S3.words Nano.PS.Stage2S3.P))
-    (Proven.S3.words Nano.IS.InlS3.P)) Nano.Self.nanoExpM.code) Nano.Self.nanoAsm.code
-
-/-- the explicit domain: the size conditions of the six stages (`Sized6`; the parser and the inliner equal their
-Lean functions on every input) and the limits of Lean's elaborator -/
-def Domain (K : Nat) (src : List UInt8) : Prop :=
-  Sized6 K s1aA s1bA s2S3 siS3 smA saA (fun _ => True) (fun _ => True) src ∧ LeanLimits src
-
-end Nano.SelfHost
-
-namespace Nano
-open Nano.SelfHost
-
-/-- **nano is self-hosted** (no hypotheses; the domain is explicit): the binary `binary` (six compiled stages,
-the parser and the inliner compiled through S3), run on the Sail model on a source in `Domain K`, emits `nanoGen p`;
-that code computes `p.eval` (`SelfHosted`, Nano/SelfHost.lean) -/
-theorem selfHosted (K : Nat) : SelfHosted binary (fun _ => space6 K) (Domain K) nanoCompileA :=
+/-- **nano self-hosting, parser 2b and the inliner through S3**: what remains is stage 2a's machine theorem (code-size
+bound, `= stage2a` on every input) -/
+theorem selfHosted_s3 {c2a : List (BitVec 32)} {f2a : ByteArray → List UInt8} {s2a : Nat → Nat} (K : Nat)
+    (h2a : Implements1With (fun xs : ByteArray => xs.data.toList) (fun l => l) c2a f2a s2a (2 ^ 20) true)
+    (hc2a : c2a.length < 2 ^ 17) (hf2a : ∀ x, f2a (ofL x) = Nano.PS.stage2a x) :
+    SelfHosted (link (link (link (link (link (link Nano.Self.vBE.code Nano.Self.eBE.code) c2a)
+        (Proven.S3.words Nano.PS.Stage2B.P)) (Proven.S3.words Nano.IS.InlS3.P)) Nano.Self.nanoExpM.code)
+        Nano.Self.nanoAsm.code)
+      (fun _ => space7 K) (fun src => Sized7 K s1aA s1bA s2a s2bS3 siS3 smA saA src ∧ LeanLimits src) nanoCompileA :=
   SelfHosted.mono
-    (selfHosted_closeA (P2 := fun _ => True) (Pi := fun _ => True) K Nano.PS.stage2S3_implements
-      Nano.IS.inlS3_implements Nano.PS.stage2S3_code_len Nano.IS.inlS3_code_len
-      (fun x _ => Nano.PS.stage2S3_f x) (fun x _ => Nano.IS.inlS3_f x))
+    (selfHosted_parse7 K Nano.Self.vBE.implements1 Nano.Self.eBE.implements1 h2a Nano.PS.stage2B_implements
+      Nano.IS.inlS3_implements Nano.Self.nanoExpM.implements1 Nano.Self.nanoAsm.implements1 eBE_code_len hc2a
+      Nano.PS.stage2B_code_len Nano.IS.inlS3_code_len nanoExpM_code_len nanoAsm_code_len vBE_f eBE_f hf2a
+      (fun _ => rfl) Nano.IS.inlS3_f nanoExpM_f (fun _ => rfl))
     fun _ h => h.1
 
-end Nano
+end Nano.SelfHost
