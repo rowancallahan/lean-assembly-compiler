@@ -12,4 +12,5 @@ for f in Testing/asm/ir-words/nanov2_*.words; do
   for mis in 0,0 1,3 5,7; do MIS=$mis python3 Testing/asm/ir_test.py check 8 "$name" > /dev/null; n=$((n + 8)); done
 done
 rm -rf Testing/asm/ctest
-echo "nano v2 stack generator: $n program x input pairs ok (QEMU == Sail == Lean, each also at memoryNeeded - 1)"
+if [ -n "$NOSAIL" ]; then w="QEMU only (NOSAIL set) == Lean"; else w="QEMU == Sail == Lean"; fi
+echo "nano v2 stack generator: $n program x input pairs ok ($w, each also at memoryNeeded - 1)"
