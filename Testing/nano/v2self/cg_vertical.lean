@@ -24,12 +24,12 @@ def BIN : UInt64 := 3
 def IF : UInt64 := 4
 def LET : UInt64 := 5
 def PAIR : UInt64 := 6
-def CALL : UInt64 := 8
-def PRIM : UInt64 := 9
-def LOOP : UInt64 := 10
-def CONT : UInt64 := 11
-def DEF : UInt64 := 20
-def END : UInt64 := 21
+def CALL : UInt64 := 7
+def PRIM : UInt64 := 8
+def LOOP : UInt64 := 9
+def CONT : UInt64 := 10
+def DEF : UInt64 := 11
+def END : UInt64 := 12
 def ast : List UInt64 := [2,
   -- f: fuel 0, i 1, b 2
   DEF, 0, 3, 3, 1, 1, LOOP,
