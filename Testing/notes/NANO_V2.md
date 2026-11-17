@@ -348,3 +348,28 @@ loops (round 6 E). (3) ImplementsBytes (`compile_correct`). Pending runs: QEMU/S
   Programs that passed the per-def checks but fail the final one are now rejected (none expected: the per-def check
   already ran on the same lowered body; the wrapper only borrows/moves the result).
 - Pending for the runner: fuzz.py (agreement + neg1–21 rejected) at this commit; QEMU/Sail of nv2f_*; check.sh.
+
+## Sail layer (task 2), in progress
+- Layer 3 DONE: Nano/V2/Flat.lean **`flat_ok`**: a structured run (`SC.Ex`) is a run of the pc-level machine
+  `pstep` (instruction list, branches/jumps by byte offsets) over `SC.flat`: fall-through ends at `pos + len`, a jump
+  at its label (`Tg.at`: loop head/exit, the oom/cap stubs). Loops included (head test, ZERO arm, back edge). 1 s.
+- `gen` now REJECTS code its encoder cannot represent (`I.wf`, Gen.lean): registers < 32, 12-bit immediates,
+  shift amounts < 64, branches `+8`, jumps ±1 MiB and word-aligned, no `add`/`ori` into x0 (hint encodings).
+  This closes a latent bug: `slide k m` stores at `8·(k−1−j+m)` ≤ 8·509 > 2047 when the two sizes are each ≤ 255
+  (cE checks them separately); such programs used to be mis-encoded (QEMU tests never had > 255 slots in all).
+- Layer 4a DONE: Nano/V2/Enc.lean: `encSt_eq` (stores), `encBt8_eq` (branches `+8`), `encJt_eq` (jal x0) = the
+  Sail-side words (`G.encS`, `wB`, `wJ`), by a 32-bit `encbits` tactic (5 s). R-type, I-type ALU, loads: our Nat
+  formulas are literally `Proven.encR`/`Proven.encI`/`G.encL` (rfl). Build with the Sail oleans: restore
+  build-cache (`sail-riscv-lean.tar.zst` to ../deps, `repo-build` parts), then
+  `LEAN_PATH=<v2 out>:.lake/build/lib/lean:../deps/sail-riscv-lean/.lake/build/lib/lean:../deps/sail-riscv-lean/.lake/packages/Sail/.lake/build/lib/lean lean Nano/V2/Enc.lean`.
+- NEXT (layer 4b, Nano/V2/Sim.lean): `Rel K c (pc, s) t`: `Proven.Cfg t`; PC = base + 4·pc; every `C[i]` encoded at
+  base + 4i (`instrAt`, code region disjoint from the blocks); `getX t r = (s.x r).toBitVec` (r ≠ 0); work words:
+  `c.wok a → 8 LE bytes at a = s.w a`; input bytes at ib; output bytes `o` at [ob, ob+ol); all in RAM
+  [0x80000000, 2^32). Per `I` (wf): one `Retires` keeping `Rel` (G.step_add/sub/mul/and/or/xor/sll/srl/sltu,
+  addi/andi/ori/xori/slli/srli, ld/lbu/sd/sb, beq/bne/bltu/bgeu `_t`/`_n`, step_jal; `St.set` ↔ `Next.x`; sd:
+  `storeBytes` ↔ word update, other words/blocks untouched). Then `PStar` ⇒ `Steps`; `Retires` deterministic
+  (`try_step` is a function) for the all-executions part.
+- Then task (3): main-level: prologue + `cB_ok` on main (EnvB for `[]`: trivial) + epilogue (copy loop via
+  `loop_ok` at the pc level, `ret` = jalr x0 0(ra) via `G.step_jalr`) ⇒ `Observes` (a0 = status / -1 oom / -2 cap,
+  a1 = length, bytes at a3); instantiate `ABI.Model` with the Sail model; `ImplementsBytes M B p.result` with the
+  admitted-domain hypothesis (no cap abort; output < 2^64; work big enough or oom reported).

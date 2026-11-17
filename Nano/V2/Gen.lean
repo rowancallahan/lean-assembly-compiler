@@ -256,13 +256,29 @@ def epilogue : SC :=
           (.ins [mv 10 0, .ret])))
       (.ins [mv 10 T1, mv 11 0, .ret]))
 
-/-- the whole program as instructions: prologue, main, epilogue, the two abort stubs -/
+/-- an instruction the encoder represents exactly: registers < 32, immediates in their fields (12-bit signed,
+6-bit shift amounts, branches only `+8`, jumps ±1 MiB, word-aligned); `add`/`ori` not into x0 (those encodings are
+hints) -/
+def I.wf : I → Bool
+  | .r f rd a b => decide (rd < 32 ∧ a < 32 ∧ b < 32) && (f != .add || rd != 0)
+  | .i f rd a imm => decide (rd < 32 ∧ a < 32) && (f != .ori || rd != 0) && (match f with
+    | .slli | .srli => decide (0 ≤ imm ∧ imm < 64)
+    | _ => decide (-2048 ≤ imm ∧ imm < 2048))
+  | .ld rd a off | .lbu rd a off => decide (rd < 32 ∧ a < 32 ∧ -2048 ≤ off ∧ off < 2048)
+  | .sd b a off | .sb b a off => decide (b < 32 ∧ a < 32 ∧ -2048 ≤ off ∧ off < 2048)
+  | .br _ a b off => decide (a < 32 ∧ b < 32 ∧ off = 8)
+  | .jal off => decide (off % 4 = 0 ∧ -1048576 ≤ off ∧ off < 1048576)
+  | .ret => true
+
+/-- the whole program as instructions: prologue, main, epilogue, the two abort stubs; rejected unless every
+instruction is encodable (`I.wf`: e.g. a `slide` of more than 255 slots in all, or code beyond ±1 MiB jumps) -/
 def genI (p : Prog) : Option (List I) :=
   match cE [] 0 p.main with
   | some (c, .prod .w .buf) =>
     let body := SC.seq (.ins prologue) (.seq c epilogue)
     let om := body.len
-    some (body.flat om (om + 2) 0 0 0 ++ [.i .addi 10 0 (-1), .ret, .i .addi 10 0 (-2), .ret])
+    let code := body.flat om (om + 2) 0 0 0 ++ [.i .addi 10 0 (-1), .ret, .i .addi 10 0 (-2), .ret]
+    if code.all I.wf then some code else none
   | _ => none
 
 /-! ## encoding (RV64IM) -/
