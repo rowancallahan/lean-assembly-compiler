@@ -42,3 +42,14 @@ Branch `ir-strong` (from main + s3-rec). Owner goals: ROADMAP "Spec strengthenin
   index; `lower_result` (Compiler/S3/LowerMain.lean): the RTL run's output is `out` and `vs = [w |out|]`
   (`lower_meaning` derived from it). `S3.compile_runsL : CompileRunsL riscv S3.compile`,
   `S3.compile_correctL : CompileCorrectL riscv S3.compile` PROVED (Riscv/Back/S3Top.lean).
+- step 4: the ADAPTER (Riscv/Back/LinkL.lean). FINDING: `CompileCorrectL` (Spec/Top machine) observes memory only at
+  `UInt64` addresses, while `Implements1With.unchangedOutside` frames every `Nat` key of the Sail memory map; addresses
+  `≥ 2^64` are not reachable from the abstract statement. So the adapter's hypothesis is
+  `Proven.Top.CompileCorrectRV compile` = `CompileCorrectL riscv compile`'s conclusion with the frame on every `Nat`
+  address (`CompileCorrectRV.correctL : CompileCorrectRV c → CompileCorrectL riscv c`). The IR proof already has it
+  (`Ctx.Unch`), so `machine_runL` states it; `Ir.ir_compile_correctRV`, `S3.compile_correctRV` PROVED.
+  `Proven.Top.implements_of_compileL : CompileCorrectRV compile → compile program = some compiled →
+  compiled.code = wordBytes code → Computes program f encA encB →
+  (∀ a, |encA a| ≤ maxLen → memoryNeeded compiled (encA a) ≤ space |encA a|) → maxLen ≤ 2^20 →
+  Implements1With encA encB code f space maxLen retLen` (any `retLen`, in particular `true` as `link_stage` needs).
+  `S3.implements` = the adapter on `S3.compile_correctRV`. `CompileRunsL` is not needed by the adapter.

@@ -80,7 +80,7 @@ theorem compile_runsL : CompileRunsL riscv compile := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
     outputFits
   obtain ⟨hG, hc⟩ := compile_inv compiles
-  obtain ⟨finishState, hruns, hpc, hframe, hcfg, hkept, hcase⟩ :=
+  obtain ⟨finishState, hruns, hpc, hframe, -, hcfg, hkept, hcase⟩ :=
     Ir.machine_runL hc (fun h => computes_of hG computes argument h
       (Nat.le_trans outputFits (out_small startsRight))) startsRight outputFits
   refine ⟨finishState, hruns, hpc, hframe, ?_, hkept, hcfg⟩
@@ -96,11 +96,36 @@ theorem compile_correctL : CompileCorrectL riscv compile := by
     outputFits enoughMemory
   obtain ⟨hG, hc⟩ := compile_inv compiles
   have hout := Nat.le_trans outputFits (out_small startsRight)
-  obtain ⟨finishState, hruns, hpc, hframe, hcfg, hkept, hcase⟩ :=
+  obtain ⟨finishState, hruns, hpc, hframe, -, hcfg, hkept, hcase⟩ :=
     Ir.machine_runL hc (fun h => computes_of hG computes argument h hout) startsRight outputFits
   rcases hcase with ⟨-, hne, hread, hlen⟩ | ⟨hlt, -⟩
   · exact ⟨finishState, hruns, hpc, hne, hread,
       hlen (result_of hG computes argument startsRight.inputSmall hout), hframe, hkept, hcfg⟩
   · exact absurd enoughMemory (Nat.not_le.2 hlt)
+
+/-- **What comes out, strengthened, with the full memory frame** (`CompileCorrectRV`) for every S3 program: the
+hypothesis of the chaining adapter `Proven.Top.implements_of_compileL` -/
+theorem compile_correctRV : CompileCorrectRV compile := by
+  intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
+    outputFits enoughMemory
+  obtain ⟨hG, hc⟩ := compile_inv compiles
+  have hout := Nat.le_trans outputFits (out_small startsRight)
+  obtain ⟨finishState, hruns, hpc, -, hnat, hcfg, hkept, hcase⟩ :=
+    Ir.machine_runL hc (fun h => computes_of hG computes argument h hout) startsRight outputFits
+  rcases hcase with ⟨-, hne, hread, hlen⟩ | ⟨hlt, -⟩
+  · exact ⟨finishState, hruns, hpc, hne, hread,
+      hlen (result_of hG computes argument startsRight.inputSmall hout), hnat, hkept, hcfg⟩
+  · exact absurd enoughMemory (Nat.not_le.2 hlt)
+
+/-- **S3-compiled code implements its function** in the `Implements1With` form that `Nano.Link.link_stage` chains:
+the adapter applied to `compile_correctRV` -/
+theorem implements {P : Prog} {compiled : CompiledA} {code : List (BitVec 32)} {α β : Type}
+    {encA : α → List UInt8} {encB : β → List UInt8} {f : α → β} {space : Nat → Nat} {maxLen : Nat} {retLen : Bool}
+    (compiles : compile P = some compiled) (hcode : compiled.code = wordBytes code)
+    (computes : Computes P f encA encB)
+    (hspace : ∀ a, (encA a).length ≤ maxLen → memoryNeeded compiled (encA a) ≤ space (encA a).length)
+    (hmax : maxLen ≤ 2 ^ 20) :
+    Implements1With encA encB code f space maxLen retLen :=
+  implements_of_compileL compile_correctRV compiles hcode computes hspace hmax
 
 end Proven.S3

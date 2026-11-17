@@ -7,6 +7,7 @@ The meaning of a program is its IR run (`Prog.meaning`, `Compiler/Ir/Sem.lean`):
 (`alloc (slots + 1)`), so `memoryNeeded` is 8 bytes times the most cells in use. -/
 import Riscv.Back.IrTarget
 import Riscv.Back.Top
+import Riscv.Back.LinkL
 import Compiler.Ir.EmitTop
 import Compiler.Ir.Lin
 import Compiler.Ir.Rename
@@ -70,43 +71,6 @@ theorem output_bytes {m : Mem} {o : List UInt8} (h : m.output = some o) :
     o.length = m.out.length ∧ ∀ i (hi : i < o.length), m.out[i]? = some (some o[i]) :=
   mapM_id_bytes h
 
-/-- the observed value of an integer register of a configured state -/
-theorem obs_reg {s : St} (h : Cfg s) : ∀ (j : Fin 32), j ≠ 0 →
-    (riscvObserve s).register j.val = UInt64.ofBitVec (getX s j)
-  | ⟨0, _⟩, hj => absurd rfl hj
-  | ⟨1, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x1]
-  | ⟨2, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x2]
-  | ⟨3, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x3]
-  | ⟨4, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x4]
-  | ⟨5, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x5]
-  | ⟨6, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x6]
-  | ⟨7, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x7]
-  | ⟨8, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x8]
-  | ⟨9, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x9]
-  | ⟨10, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x10]
-  | ⟨11, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x11]
-  | ⟨12, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x12]
-  | ⟨13, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x13]
-  | ⟨14, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x14]
-  | ⟨15, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x15]
-  | ⟨16, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x16]
-  | ⟨17, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x17]
-  | ⟨18, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x18]
-  | ⟨19, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x19]
-  | ⟨20, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x20]
-  | ⟨21, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x21]
-  | ⟨22, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x22]
-  | ⟨23, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x23]
-  | ⟨24, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x24]
-  | ⟨25, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x25]
-  | ⟨26, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x26]
-  | ⟨27, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x27]
-  | ⟨28, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x28]
-  | ⟨29, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x29]
-  | ⟨30, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x30]
-  | ⟨31, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x31]
-  | ⟨n + 32, hn⟩, _ => absurd hn (by omega)
-
 /-- `keepC` from the start state and the frame register restored: the callee-saved registers -/
 theorem kept_of {s s' : St} (h : Cfg s) (h' : Cfg s') (hk : rvT.keepC s s') (hfr : rvT.fr s' = rvT.fr s) :
     KeptRegisters riscv s s' := by
@@ -150,6 +114,9 @@ theorem machine_runL {P : Prog VReg} {compiled : CompiledA} {α β : Type} {f : 
       (∀ address, Outside address (call.outputAddress, (encodeOutput (f argument)).length) →
         Outside address (call.workAddress, call.workLength) →
         (riscv.observe finishState).memory address = (riscv.observe startState).memory address) ∧
+      (∀ a : Nat, (a < call.outputAddress.toNat ∨ call.outputAddress.toNat + (encodeOutput (f argument)).length ≤ a) →
+        (a < call.workAddress.toNat ∨ call.workAddress.toNat + call.workLength ≤ a) →
+        finishState.mem[a]? = startState.mem[a]?) ∧
       riscv.configured finishState ∧ KeptRegisters riscv startState finishState ∧
       ((memoryNeeded compiled (encodeInput argument) ≤ call.workLength ∧
           (riscv.observe finishState).register riscv.mapping.status ≠ oomFlag ∧
@@ -268,7 +235,8 @@ theorem machine_runL {P : Prog VReg} {compiled : CompiledA} {α β : Type} {f : 
     rcases hcase with ⟨-, -, -, h1, h2, -⟩ | ⟨-, -, h1, h2⟩
     · exact ⟨h1, h2⟩
     · exact ⟨h1, h2⟩
-  refine ⟨finishState, runs_of_steps steps _ _ hsteps, ?_, ?_, hok, kept_of configured hok hkf.1 hkf.2, ?_⟩
+  refine ⟨finishState, runs_of_steps steps _ _ hsteps, ?_, ?_, fun a h1 h2 => hU a h1 h2, hok,
+    kept_of configured hok hkf.1 hkf.2, ?_⟩
   · have : finishState.regs.get? .PC = some (BitVec.ofNat 64 call.returnAddress.toNat) := by
       rw [← getX_of (configured.x1.symm.trans h1) rfl]; exact hpcF
     simp [riscvObserve, this]
@@ -324,7 +292,7 @@ theorem machine_run {P : Prog VReg} {compiled : CompiledA} {α β : Type} {f : �
             some (encodeOutput (f argument))) ∨
         (call.workLength < memoryNeeded compiled (encodeInput argument) ∧
           (riscv.observe finishState).register riscv.mapping.status = oomFlag)) := by
-  obtain ⟨finishState, hruns, hpc, hframe, -, -, hcase⟩ := machine_runL compiles computes startsRight outputFits
+  obtain ⟨finishState, hruns, hpc, hframe, -, -, -, hcase⟩ := machine_runL compiles computes startsRight outputFits
   refine ⟨finishState, hruns, hpc, fun a h1 h2 => hframe a (outside_prefix outputFits h1) h2, ?_⟩
   rcases hcase with ⟨h1, h2, h3, -⟩ | h
   · exact .inl ⟨h1, h2, h3⟩
@@ -396,7 +364,7 @@ theorem ir_compile_runsL : CompileRunsL riscv compileL := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
     outputFits
   obtain ⟨hm, -⟩ := meaningL_inv (computes argument)
-  obtain ⟨finishState, hruns, hpc, hframe, hcfg, hkept, hcase⟩ :=
+  obtain ⟨finishState, hruns, hpc, hframe, -, hcfg, hkept, hcase⟩ :=
     machine_runL (P := program.prog) compiles (fun _ => hm) startsRight outputFits
   refine ⟨finishState, hruns, hpc, hframe, ?_, hkept, hcfg⟩
   unfold OutOfMemory
@@ -412,10 +380,21 @@ theorem ir_compile_correctL : CompileCorrectL riscv compileL := by
     outputFits enoughMemory
   have hc := computes argument
   obtain ⟨hm, hvs⟩ := meaningL_inv hc
-  obtain ⟨finishState, hruns, hpc, hframe, hcfg, hkept, hcase⟩ :=
+  obtain ⟨finishState, hruns, hpc, hframe, -, hcfg, hkept, hcase⟩ :=
     machine_runL (P := program.prog) compiles (fun _ => hm) startsRight outputFits
   rcases hcase with ⟨-, hne, hread, hlen⟩ | ⟨hlt, -⟩
   · exact ⟨finishState, hruns, hpc, hne, hread, hlen hvs, hframe, hkept, hcfg⟩
+  · exact absurd enoughMemory (Nat.not_le.2 hlt)
+
+/-- **What comes out, strengthened, with the full memory frame** (`CompileCorrectRV`, the adapter's hypothesis) -/
+theorem ir_compile_correctRV : CompileCorrectRV compileL := by
+  intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
+    outputFits enoughMemory
+  obtain ⟨hm, hvs⟩ := meaningL_inv (computes argument)
+  obtain ⟨finishState, hruns, hpc, -, hnat, hcfg, hkept, hcase⟩ :=
+    machine_runL (P := program.prog) compiles (fun _ => hm) startsRight outputFits
+  rcases hcase with ⟨-, hne, hread, hlen⟩ | ⟨hlt, -⟩
+  · exact ⟨finishState, hruns, hpc, hne, hread, hlen hvs, hnat, hkept, hcfg⟩
   · exact absurd enoughMemory (Nat.not_le.2 hlt)
 
 end Proven.Ir
