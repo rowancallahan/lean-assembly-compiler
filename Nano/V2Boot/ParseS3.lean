@@ -30,7 +30,9 @@ def sat' (a b : UInt64) : UInt64 := if b ≤ a then a - b else 0
 def idVS (f : UInt64) (xs : List UInt8) (q : UInt64) : UInt64 :=
   if h : f = 0 then 0
   else if q < lenS xs then
-    (if rdS xs q == 0 then q + 1 else if rdS xs q == 1 && q + 1 < lenS xs then idVS (f - 1) xs (q + 2) else 0)
+    (if rdS xs q == 0 then q + 1
+     else if rdS xs q == 1 then (if q + 1 < lenS xs then idVS (f - 1) xs (q + 2) else 0)
+     else 0)
   else 0
 termination_by f.toNat
 decreasing_by exact dec_lt h
@@ -38,10 +40,15 @@ decreasing_by exact dec_lt h
 def tnxS (n : UInt64) (xs : List UInt8) (p : UInt64) : UInt64 :=
   if rdS xs p == 5 then p + 9 else if rdS xs p == 14 then idVS n xs (p + 1) else p + 1
 
+/-- token tags `1..4`, `6..13` (S3's certificate search wants no `&&`/`||`/`≠` in conditions: nested `if`s) -/
+def tokOk (t : UInt64) : UInt64 := if t < 1 then 0 else if t < 5 then 1 else if t < 6 then 0 else if t < 14 then 1 else 0
+
+def ty34 (u : UInt64) : UInt64 := if u == 3 then 1 else if u == 4 then 1 else 0
+
 def vldS (f : UInt64) (xs : List UInt8) (p : UInt64) : UInt64 :=
   if h : f = 0 then 0
   else if p < lenS xs then
-    if (1 ≤ rdS xs p && rdS xs p ≤ 4) || (6 ≤ rdS xs p && rdS xs p ≤ 13) then vldS (f - 1) xs (p + 1)
+    if tokOk (rdS xs p) == 1 then vldS (f - 1) xs (p + 1)
     else if rdS xs p == 5 then (if p + 9 ≤ lenS xs then vldS (f - 1) xs (p + 9) else 0)
     else if rdS xs p == 14 then (if idVS (f - 1) xs (p + 1) == 0 then 0 else vldS (f - 1) xs (idVS (f - 1) xs (p + 1)))
     else 0
@@ -57,9 +64,9 @@ decreasing_by exact dec_lt h
 
 def nmEqS (f : UInt64) (xs : List UInt8) (a b : UInt64) : UInt64 :=
   if h : f = 0 then 0
-  else if rdS xs a == 1 && rdS xs b == 1 then
-    (if rdS xs (a + 1) == rdS xs (b + 1) then nmEqS (f - 1) xs (a + 2) (b + 2) else 0)
-  else if rdS xs a == 0 && rdS xs b == 0 then 1 else 0
+  else if rdS xs a == 1 then
+    (if rdS xs b == 1 then (if rdS xs (a + 1) == rdS xs (b + 1) then nmEqS (f - 1) xs (a + 2) (b + 2) else 0) else 0)
+  else if rdS xs a == 0 then (if rdS xs b == 0 then 1 else 0) else 0
 termination_by f.toNat
 decreasing_by exact dec_lt h
 
@@ -97,9 +104,7 @@ def fpopS (F : List UInt64) : List UInt64 := bpopS (bpopS (bpopS F))
 def stIdS (n : UInt64) (xs : List UInt8) (f a : UInt64) (s : PSR) : PSR :=
   let (c, f0, x, y, p, d, na, cg, cf, o, S, D, F) := s
   let k := lookVS n xs S (bsizeS S / 2) p
-  if k ≠ 0 then
-    (12, f0, x, y, tnxS n xs p, d + 1, na, cg, cf, putR2 (putR2 o 7 (sat' (sat' d 1) (k - 1))) 3 0, S, D, F)
-  else
+  if k == 0 then
     let e := findVS n xs D (bsizeS D / 3) p
     if e == 0 then (13, f0, x, y, p, d, na, cg, cf, o, S, D, F)
     else
@@ -109,6 +114,8 @@ def stIdS (n : UInt64) (xs : List UInt8) (f a : UInt64) (s : PSR) : PSR :=
         (if ar == 0 then (12, f0, x, y, tnxS n xs p, d + 1, na, cg, cf, putCallS o j 0, S, D, F)
          else (13, f0, x, y, p, d, na, cg, cf, o, S, D, F))
       else (10, f, ar, y, tnxS n xs p, d, na, cg, cf, o, S, D, fpushS F 7 j ar)
+  else
+    (12, f0, x, y, tnxS n xs p, d + 1, na, cg, cf, putR2 (putR2 o 7 (sat' (sat' d 1) (k - 1))) 3 0, S, D, F)
 
 def stRetFS (n : UInt64) (xs : List UInt8) (s : PSR) : PSR :=
   let (c, f, x, y, p, d, na, cg, cf, o, S, D, F) := s
@@ -133,8 +140,10 @@ def pstepS (n : UInt64) (xs : List UInt8) (s : PSR) : PSR :=
   let (c, f, x, y, p, d, na, cg, cf, o, S, D, F) := s
   let t := rdS xs p
   if c == 1 then
-    (if f ≠ 0 && t == 1 && rdS xs (p + 1) == 14 then
-       (2, f - 1, 0, y, tnxS n xs (p + 1), d, na, p + 1, f - 1, o, [], D, F)
+    (if f == 0 then (13, f, x, y, p, d, na, cg, cf, o, S, D, F)
+     else if t == 1 then
+       (if rdS xs (p + 1) == 14 then (2, f - 1, 0, y, tnxS n xs (p + 1), d, na, p + 1, f - 1, o, [], D, F)
+        else (13, f, x, y, p, d, na, cg, cf, o, S, D, F))
      else (13, f, x, y, p, d, na, cg, cf, o, S, D, F))
   else if c == 2 then
     (if f == 0 then (13, f, x, y, p, d, na, cg, cf, o, S, D, F)
@@ -143,12 +152,19 @@ def pstepS (n : UInt64) (xs : List UInt8) (s : PSR) : PSR :=
   else if c == 3 then
     (if f == 0 then (13, f, x, y, p, d, na, cg, cf, o, S, D, F)
      else if t == 14 then (3, f - 1, x, y + 1, tnxS n xs p, d, na, cg, cf, o, y :: p :: S, D, F)
-     else if t == 8 && (rdS xs (p + 1) == 3 || rdS xs (p + 1) == 4) && rdS xs (p + 2) == 7 then
-       (2, x, y, y, p + 3, d, na, cg, cf, o, S, D, F)
+     else if t == 8 then
+       (if ty34 (rdS xs (p + 1)) == 1 then
+          (if rdS xs (p + 2) == 7 then (2, x, y, y, p + 3, d, na, cg, cf, o, S, D, F)
+           else (13, f, x, y, p, d, na, cg, cf, o, S, D, F))
+        else (13, f, x, y, p, d, na, cg, cf, o, S, D, F))
      else (13, f, x, y, p, d, na, cg, cf, o, S, D, F))
   else if c == 4 then
-    (if t == 8 && (rdS xs (p + 1) == 3 || rdS xs (p + 1) == 4) && rdS xs (p + 2) == 9 then
-       (if findVS n xs D (bsizeS D / 3) cg == 0 then (5, cf, x, y, p + 3, na, na, cg, cf, o, S, D, [])
+    (if t == 8 then
+       (if ty34 (rdS xs (p + 1)) == 1 then
+          (if rdS xs (p + 2) == 9 then
+             (if findVS n xs D (bsizeS D / 3) cg == 0 then (5, cf, x, y, p + 3, na, na, cg, cf, o, S, D, [])
+              else (13, f, x, y, p, d, na, cg, cf, o, S, D, F))
+           else (13, f, x, y, p, d, na, cg, cf, o, S, D, F))
         else (13, f, x, y, p, d, na, cg, cf, o, S, D, F))
      else (13, f, x, y, p, d, na, cg, cf, o, S, D, F))
   else if c == 12 then
@@ -159,8 +175,12 @@ def pstepS (n : UInt64) (xs : List UInt8) (s : PSR) : PSR :=
      else stRetFS n xs s)
   else if c == 5 then
     (if f == 0 then (13, f, x, y, p, d, na, cg, cf, o, S, D, F)
-     else if t == 2 && rdS xs (p + 1) == 14 && rdS xs (tnxS n xs (p + 1)) == 9 then
-       (5, f - 1, x, y, tnxS n xs (p + 1) + 1, d, na, cg, cf, o, S, D, fpushS F 1 (f - 1) (p + 1))
+     else if t == 2 then
+       (if rdS xs (p + 1) == 14 then
+          (if rdS xs (tnxS n xs (p + 1)) == 9 then
+             (5, f - 1, x, y, tnxS n xs (p + 1) + 1, d, na, cg, cf, o, S, D, fpushS F 1 (f - 1) (p + 1))
+           else (7, f - 1, x, y, p, d, na, cg, cf, o, S, D, fpushS F 3 (f - 1) 0))
+        else (7, f - 1, x, y, p, d, na, cg, cf, o, S, D, fpushS F 3 (f - 1) 0))
      else (7, f - 1, x, y, p, d, na, cg, cf, o, S, D, fpushS F 3 (f - 1) 0))
   else if c == 6 then
     (if f == 0 then (13, f, x, y, p, d, na, cg, cf, o, S, D, F)
@@ -177,8 +197,10 @@ def pstepS (n : UInt64) (xs : List UInt8) (s : PSR) : PSR :=
   else if c == 9 then
     (if f == 0 then (13, f, x, y, p, d, na, cg, cf, o, S, D, F)
      else if t == 14 then stIdS n xs (f - 1) 0 s
-     else if t == 11 && rdS xs (p + 1) == 5 then
-       (12, f, x, y, p + 10, d + 1, na, cg, cf, putR2 (putLiS o (0 - rdWS xs (p + 2))) 3 0, S, D, F)
+     else if t == 11 then
+       (if rdS xs (p + 1) == 5 then
+          (12, f, x, y, p + 10, d + 1, na, cg, cf, putR2 (putLiS o (0 - rdWS xs (p + 2))) 3 0, S, D, F)
+        else (11, f - 1, x, y, p, d, na, cg, cf, o, S, D, F))
      else (11, f - 1, x, y, p, d, na, cg, cf, o, S, D, F))
   else if c == 10 then
     (if f == 0 then (13, f, x, y, p, d, na, cg, cf, o, S, D, F)
@@ -192,18 +214,25 @@ def pstepS (n : UInt64) (xs : List UInt8) (s : PSR) : PSR :=
      else (13, f, x, y, p, d, na, cg, cf, o, S, D, F))
   else (13, f, x, y, p, d, na, cg, cf, o, S, D, F)
 
+def cOf (s : PSR) : UInt64 := s.1
+def oOf (s : PSR) : List UInt8 := s.2.2.2.2.2.2.2.2.2.1
+
 def prunS (g : UInt64) (n : UInt64) (xs : List UInt8) (s : PSR) : List UInt8 :=
   if h : g = 0 then []
-  else
-    let (c, f1, x1, y1, p1, d1, na1, cg1, cf1, o1, S1, D1, F1) := pstepS n xs s
-    if c == 0 then o1 else if c == 13 then [] else prunS (g - 1) n xs (c, f1, x1, y1, p1, d1, na1, cg1, cf1, o1, S1, D1, F1)
+  else if cOf (pstepS n xs s) == 0 then oOf (pstepS n xs s)
+  else if cOf (pstepS n xs s) == 13 then []
+  else prunS (g - 1) n xs (pstepS n xs s)
 termination_by g.toNat
 decreasing_by exact dec_lt h
 
+def hd12 (b : UInt64) : UInt64 := if b == 1 then 1 else if b == 2 then 1 else 0
+
 def p2bVS (xs : List UInt8) : List UInt8 :=
-  let n := 16 * lenS xs + 16
-  if (rdS xs 0 == 1 || rdS xs 0 == 2) && vldS n xs 1 == 1 then
-    (prunS (13 * lenS xs + 6) n xs (1, ntokS n xs 1 0 + 1, 0, 0, 1, 0, 0, 0, 0, [], [], [], [])).reverse
+  if hd12 (rdS xs 0) == 1 then
+    (if vldS (16 * lenS xs + 16) xs 1 == 1 then
+       (prunS (13 * lenS xs + 6) (16 * lenS xs + 16) xs
+         (1, ntokS (16 * lenS xs + 16) xs 1 0 + 1, 0, 0, 1, 0, 0, 0, 0, [], [], [], [])).reverse
+     else [])
   else []
 
 end Nano.V2B
