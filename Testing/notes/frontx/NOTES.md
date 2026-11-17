@@ -2505,7 +2505,7 @@ now **81** (+ `isStrLit`, `isNatZero`, `isBoolTrue`, `liftLooseBVars`, `abstract
 - In the gate run, 167 of 1319 definitions fail with an `enableRealizationsForConst` error (realizing auxiliary
   constants from inside the command); not investigated (the generated `spec` / `cst_` definitions call it).
 
-## 36. Round 1: compile-time constants, monomorphisation, translator gaps (branch `round1`)
+## 37. Round 1: compile-time constants, monomorphisation, translator gaps (branch `round1`)
 
 Owner priority (ROADMAP "Next Opus rounds", BLOCKER_YIELD.md): con-leche + complete self-hosting. Every function below is
 compiled verbatim (source copied from con-leche @6810492c1 with file:line comments, or the repository's own definitions).
