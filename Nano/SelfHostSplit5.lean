@@ -33,7 +33,7 @@ def Sized5S (K : Nat) (sA s2b si sm sa : Nat → Nat) (src : List UInt8) : Prop 
   ∃ u, nanoElabU src = some u ∧ Sz5 K sA s2b si sm sa src u
 
 /-- the work space of the five-stage binary -/
-def space5 (K : Nat) : Nat := 4 * (4 * (4 * (4 * K + 96) + 96) + 96) + 96
+def space5S (K : Nat) : Nat := 4 * (4 * (4 * (4 * K + 96) + 96) + 96) + 96
 
 set_option maxRecDepth 20000 in
 theorem selfHosted_parse5S {cA c2b ci cm ca : List (BitVec 32)} {fA f2b fi fm fa : ByteArray → List UInt8}
@@ -47,7 +47,7 @@ theorem selfHosted_parse5S {cA c2b ci cm ca : List (BitVec 32)} {fA f2b fi fm fa
     (hfA : ∀ x, fA (ofL x) = stage2a (lexB x)) (hf2b : ∀ x, f2b (ofL x) = stage2b x)
     (hfi : ∀ x, fi (ofL x) = inlB x) (hfm : ∀ x, fm (ofL x) = mexp x) (hfa : ∀ x, fa (ofL x) = asm x) :
     SelfHosted (link (link (link (link cA c2b) ci) cm) ca)
-      (fun _ => space5 K) (Sized5S K sA s2b si sm sa) nanoCompileA := by
+      (fun _ => space5S K) (Sized5S K sA s2b si sm sa) nanoCompileA := by
   have hfe : ∀ src u, nanoElabU src = some u → f2b (ofL (fA (ofL src))) = serU u := fun src u hu => by
     rw [hfA, hf2b, stage2b_stage2a, stage2_hfe src u hu]
   have h0 := link_stage (α := SrcIn (Sized5S K sA s2b si sm sa)) K (comap hA fun s => ofL s.1) h2b hc2b

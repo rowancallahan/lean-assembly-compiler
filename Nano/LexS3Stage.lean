@@ -1,9 +1,7 @@
-/- The front stage (lexer + parser 2a) through S3: the machine theorem, from the S3 program `LexA` (`Nano/LexASelf.lean`, the S3 compile with its
-certificates) through the adapter (`Nano.S3Stage.stage`). The IR compiler's acceptance and the code length are
-kernel-checked on literals (`irLit%`, `layLit%`: the allocated program and the layout, elaborated by evaluation and
-checked by the kernel; see Nano/S3Stage.lean). -/
-import NanoSlow.LexS3Self
-import Nano.S3Stage
+/- Stage 1 + parser 2a through S3: the machine theorem, from the S3 program `LexA` (`Nano/LexS3Self.lean`) through the
+adapter (`Nano.S3Stage.stage`); acceptance by the IR compiler and the code length are kernel-checked on literals
+(`irLit%`, `layLit%`, as Nano/InlS3Stage.lean). -/
+import Nano.LexS3Self
 
 namespace Nano.LS
 open Proven Proven.S3 Proven.Ir Proven.Mach.Riscv Nano.S3Stage
@@ -44,7 +42,7 @@ theorem lexA_hE : (rvT.emitP lexA_Q lexA_L2).isSome = true := by decide +kernel
 theorem lexA_compiles : (Ir.compileW (lowerP LexA.P)).isSome = true :=
   compileW_isSome 2 lexA_hQ lexA_hm lexA_hL lexA_fix lexA_hE
 
-/-- **the machine theorem of inlB, route S3** (Sail axioms only) -/
+/-- **the machine theorem of stage 1 + 2a, route S3** (Sail axioms only) -/
 theorem lexA_implements :
     Implements1With (fun xs : ByteArray => xs.data.toList) (fun l => l) (S3.words LexA.P)
       (fun xs => lexA xs.data.toList) (spaceP LexA.P) (2 ^ 20) true :=
