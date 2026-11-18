@@ -1671,4 +1671,80 @@ theorem t_val {K hd i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (hV : VS
   · simp only [g15]; rw [hr8, if_neg (by decide), if_neg (by decide), hr2]
   · simp only [g15]; rw [hr8, if_neg (by decide), if_neg (by decide), r32, hr31]
 
+
+theorem st_t10 (s : GS) (n : UInt64) (hn : bget s.r 6 - 1 = n) (hc : bget s.k ((bget s.r 6 - 1) * 3) = 10) :
+    st s = ⟨s.x, if g14 (bsize (g26 256 (bget (g15 s.r 6 n) 1) 1 (bget (g15 s.r 6 n) 1 - 1) s.o)) (bget (g15 s.r 6 n) 3) == 1
+        then g15 s.r 6 n else g16 (g15 s.r 6 n),
+      bpush (g26 256 (bget (g15 s.r 6 n) 1) 1 (bget (g15 s.r 6 n) 1 - 1) s.o)
+        (g13 0 (bsize (g26 256 (bget (g15 s.r 6 n) 1) 1 (bget (g15 s.r 6 n) 1 - 1) s.o)) (bget (g15 s.r 6 n) 3)),
+      s.k, s.t, s.f⟩ := by
+  unfold st; rw [g37_t10 _ _ _ _ _ _ hc, hn]
+
+/-- CONTINUE (tail mode): the new state, stored into slots 1…p−1, then the jump to the loop head -/
+theorem t_cont {K hd i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀ j, i < j → VS K j) (ht : tg K.X i = 11) :
+    TS K hd i := by
+  intro s L F hL1 hI hr0 hr3 hB
+  refine Reach.step (live_of hI (by simp)) ?_
+  rw [st_visit hI]
+  have hl6 : (bset s.r 6 L.length.toUInt64).length = 10 := by rw [BufL.length_bset]; exact hI.rl
+  have h0 : bget (bset s.r 6 L.length.toUInt64) 0 = i.toUInt64 := by
+    rw [rget _ hI.rl 6 0 _ (by decide), if_neg (by decide), hr0]
+  have h6 : bget (bset s.r 6 L.length.toUInt64) 6 = L.length.toUInt64 := by
+    rw [rget _ hI.rl 6 6 _ (by decide), if_pos rfl]
+  have hx : bget s.x i.toUInt64 = 11 := by rw [hI.x, tg_u _ _ (by omega), ht]
+  rw [g36_tcont _ _ _ _ (by rw [h0]; exact hx), h0, h6]
+  have hLl := hI.Ll; simp at hLl
+  have q1 : L.length.toUInt64 + 1 = (L ++ [(10, 0, 0)]).length.toUInt64 := by simp [Nat.toUInt64, UInt64.ofNat_add]
+  obtain ⟨sk0, kl0⟩ := stk_push_at s.k L _ 10 0 0 rfl (stk_pop hI.stk) hI.kl (by omega)
+  obtain ⟨sk1, kl1⟩ := stk_push_at _ _ _ 1 0 0 q1 sk0 kl0 (by simp; omega)
+  have hr1 := rset2 _ hl6 0 6 (i.toUInt64 + 1) (L.length.toUInt64 + 2) (by decide) (by decide)
+  have hI1 := inv_mk hI (g15 (g15 (bset s.r 6 L.length.toUInt64) 0 (i.toUInt64 + 1)) 6 (L.length.toUInt64 + 2)) _ s.o
+    (L ++ [(10, 0, 0), (1, 0, 0)])
+    (fun j a b => by simp only [g15]; rw [hr1, if_neg (Ne.symm b), if_neg (Ne.symm a), rget _ hI.rl 6 j _ (by decide), if_neg (Ne.symm b)])
+    (len2 _ hl6 _ _ _ _) (by simp only [g15]; rw [hr1, if_pos rfl]; simp [Nat.toUInt64, UInt64.ofNat_add]) (by simpa using sk1) kl1
+    (by simp; omega) hI.ol
+  have hra : bget (g15 (g15 (bset s.r 6 L.length.toUInt64) 0 (i.toUInt64 + 1)) 6 (L.length.toUInt64 + 2)) 0 = (i + 1).toUInt64 := by
+    simp only [g15]; rw [hr1, if_neg (by decide), if_pos rfl]; simp [Nat.toUInt64, UInt64.ofNat_add]
+  have hr31 : bget (g15 (g15 (bset s.r 6 L.length.toUInt64) 0 (i.toUInt64 + 1)) 6 (L.length.toUInt64 + 2)) 3 = bget s.r 3 := by
+    simp only [g15]; rw [hr1, if_neg (by decide), if_neg (by decide), rget _ hI.rl 6 3 _ (by decide), if_neg (by decide)]
+  refine Reach.bind (IH (i + 1) (by omega) _ (L ++ [(10, 0, 0)]) F (by simpa using hI1) hra (by simp; omega)) ?_
+  rintro s2 ⟨c, i', E, hc, hI2, ho2, hr2, hi', hd2⟩
+  obtain ⟨eE, r32⟩ := hd2 (by simp; omega)
+  subst eE
+  simp only [List.map_nil, List.append_nil] at hI2
+  refine Reach.step (live_of hI2 (by simp)) ?_
+  obtain ⟨n2, c2, -, -⟩ := top_item hI2
+  rw [st_t10 s2 _ n2 c2]
+  obtain ⟨w1, w2, w3⟩ := r6set s2.r hI2.rl L.length.toUInt64
+  have hp : bget (g15 s2.r 6 L.length.toUInt64) 1 = K.p := by simp only [g15]; rw [w3 1 (by decide), hI2.r1]
+  have hh : bget (g15 s2.r 6 L.length.toUInt64) 3 = hd.toUInt64 := by
+    simp only [g15]; rw [w3 3 (by decide), r32, hr31, hr3]
+  rw [hp, hh]
+  have e := pi_g26 256 K.p 1 (K.p - 1) s2.o
+  rw [e]
+  have hl2 : s2.o.length = s.o.length + c.length := by rw [ho2]; simp
+  have hb : bsize (s2.o ++ em (g26 256 K.p 1 (K.p - 1)) s2.o.length) =
+      (s.o.length + c.length + (em (g26 256 K.p 1 (K.p - 1)) (s.o.length + c.length)).length).toUInt64 :=
+    ulen _ _ (by simp [hl2])
+  rw [hb]
+  by_cases hg' : ¬ (g14 (s.o.length + c.length + (em (g26 256 K.p 1 (K.p - 1)) (s.o.length + c.length)).length).toUInt64
+      hd.toUInt64 == 1) = true
+  · rw [if_neg hg']; exact Reach.error (g16_err _ w1)
+  rw [if_pos (Classical.not_not.mp hg')]
+  by_cases hbig : 2 ^ 32 ≤ (bpush (s2.o ++ em (g26 256 K.p 1 (K.p - 1)) s2.o.length)
+      (g13 0 (s.o.length + c.length + (em (g26 256 K.p 1 (K.p - 1)) (s.o.length + c.length)).length).toUInt64 hd.toUInt64)).length
+  · exact Reach.toobig hbig
+  have hI3 := inv_mk hI2 (g15 s2.r 6 L.length.toUInt64) s2.k (bpush (s2.o ++ em (g26 256 K.p 1 (K.p - 1)) s2.o.length)
+      (g13 0 (s.o.length + c.length + (em (g26 256 K.p 1 (K.p - 1)) (s.o.length + c.length)).length).toUInt64 hd.toUInt64))
+    L (fun j a b => w3 j b) w1 (by simp only [g15]; rw [w2])
+    (stk_pop hI2.stk) hI2.kl (by omega) (by omega)
+  refine Reach.done ⟨c ++ em (g26 256 K.p 1 (K.p - 1)) (s.o.length + c.length) ++
+    [jw 0 (s.o.length + c.length + (em (g26 256 K.p 1 (K.p - 1)) (s.o.length + c.length)).length) hd], i', [], ?_, ?_, ?_, ?_,
+    by omega, ?_⟩
+  · exact .cont ht (by simpa using hc)
+  · simpa using hI3
+  · simp only; rw [bpush, hl2, ho2]; simp [jw]
+  · simp only [g15]; rw [w3 0 (by decide), hr2]
+  · simp only [g15]; rw [w3 3 (by decide), r32, hr31]
+
 end GenRef
