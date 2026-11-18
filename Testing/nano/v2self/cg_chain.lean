@@ -87,6 +87,10 @@ def main (args : List String) : IO Unit := do
   let le : List UInt64 := [10, 2, 1, 1, 11, 6, 2, 3, 1, 2, 1, 1, 1, 1, 2, 2, 1]
   if lb le != good then throw (IO.userError "lb le ≠ good")
   let bad := bad ++ [lp [3, 1, 2, 1, 1, 1, 1], lb ([3, 1] ++ le ++ [1, 1]), lb ([5, 2, 1] ++ le ++ [2, 2, 1]), lb ([10, 2, 1, 1] ++ le)]
+  -- operator numbers out of range (BIN 1–8, IF compare 1–2, PRIM 1–9) ⇒ reject, not a silent xor / bltu / bpush
+  let mw (e : List UInt64) : List UInt64 := [2, 20, 0, 0, 0, 0, 1] ++ e ++ [21]
+  if (C.g41 [] (mw [4, 2, 1, 1, 1, 2, 1, 3, 1, 4])).isEmpty then throw (IO.userError "valid IF main REJECTED")
+  let bad := bad ++ [mw [3, 9, 1, 1, 1, 2], mw [3, 0, 1, 1, 1, 2], mw [4, 3, 1, 1, 1, 2, 1, 3, 1, 4], mw [9, 10, 9, 5], mw [9, 0, 9, 5]]
   let nr := (bad.filter fun b => (C.g41 [] b).isEmpty).length
   if nr != bad.length then throw (IO.userError s!"must-reject: only {nr}/{bad.length} rejected")
   IO.println s!"valid programs accepted: {n}/{n} (a rejection is a FAILURE); must-reject rejected: {nr}/{bad.length}"

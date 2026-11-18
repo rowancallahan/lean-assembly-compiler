@@ -191,13 +191,17 @@ def g35 (r o : Buf) (w : UInt64) : Buf × Buf :=
 def g43 (r : Buf) (s w : UInt64) : UInt64 :=
   if w == 0 then g_1 else if s < 251 then (if w < 251 then (if bget r 7 < s + w then g_1 else g_0) else g_1) else g_1
 
-/-- visit the node at the cursor in mode `m` (0 value, 1 loop/def tail) -/
+/-- visit the node at the cursor in mode `m` (0 value, 1 loop/def tail); a LOOP only as the def body (item 1 of the def); BIN op 1–8, IF compare 1–2, PRIM 1–9 -/
 def g36 (x r o k : Buf) (y : UInt64) : Buf × (Buf × Buf) :=
   let i := bget r 0;
   let n := bget r 6;
   let c0 := bget x i;
   let c := (if c0 < 7 then c0 else if c0 == 7 then 999 else if c0 < 12 then c0 - 1 else c0 + 100);
   let z := (if c == 4 then g_1 else if c == 5 then g_1 else if c == 10 then g_1 else g_0);
+  let b := bget x (i + 1);
+  let a := (if c == 3 then (if b - 1 < 8 then g_1 else g_0) else if c == 4 then (if b - 1 < 2 then g_1 else g_0)
+    else if c == 8 then (if b - 1 < 9 then g_1 else g_0) else g_1);
+  if a == 0 then (g16 r, (o, k)) else
   if y == 1 then
     if z == 0 then (g15 r 6 (n + 2), (o, g18 (g18 k n 9 0 0) (n + 1) 1 0 0)) else
     if c == 10 then (g15 (g15 r 0 (i + 1)) 6 (n + 2), (o, g18 (g18 k n 10 0 0) (n + 1) 1 0 0)) else
@@ -235,9 +239,11 @@ def g36 (x r o k : Buf) (y : UInt64) : Buf × (Buf × Buf) :=
     let q := g33 p;
     (g15 (g15 r 0 (i + 2)) 6 (n + 1 + q), (o, g27 256 (g18 k n 8 p 0) (n + 1) q)) else
   if c == 9 then
+    if n == 1 then
     let h := bsize o;
     let o1 := bpush (bpush (bpush o (g11 5 8 (g24 (bget r 1) 0))) (g4 0 5 0 8)) 0;
     (g15 (g15 (g15 r 0 (i + 1)) 3 h) 6 (n + 3), (o1, g18 (g18 (g18 k n 1 1 0) (n + 1) 11 (h + 2) 0) (n + 2) 1 1 0))
+    else (g16 r, (o, k))
   else (g16 r, (o, k))
 
 /-- one work item -/
