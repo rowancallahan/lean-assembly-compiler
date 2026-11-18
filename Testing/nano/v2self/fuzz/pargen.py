@@ -163,6 +163,8 @@ for r in REG[:3]:
     open(f"{d}/p{k}.txt", "w").write("def m (x : List UInt8) : List UInt8 := " + r + "\n"); k += 1
 for src in ["def g (z : List UInt8) (a : List UInt8) : UInt64 := rd a 0\n", "def g (z : List def) : UInt64 := 1\n",
             "def f : Nat → List UInt8 → UInt64 × UInt64\n  | 0, z => (1, 2)\n  | n + 1, z => f n z\n",
-            "def f : Nat → UInt64 → UInt64 → UInt64\n  | 0, a, a => a\n  | n + 1, a, b => a\n", "def f : Nat → UInt64 → UInt64\n  | 0, a => a\n  | n + 1, n => n\n"]:
+            "def f : Nat → UInt64 → UInt64 → UInt64\n  | 0, a, a => a\n  | n + 1, a, b => a\n", "def f : Nat → UInt64 → UInt64\n  | 0, a => a\n  | n + 1, n => n\n",
+            "def f (z : List UInt8) (a : List UInt8) : UInt64 := 1\ndef m2 (x : List UInt8) : UInt64 := f [] x\n", "def f (z : List UInt8) (a : List UInt8) : UInt64 := 1\ndef m2 (x : List UInt8) : UInt64 := f x x\n",
+            "def f : Nat → List UInt8 → List UInt8 → UInt64\n  | 0, z, a => 1\n  | n + 1, z, a => f n [] z\n"]:
     open(f"{d}/p{k}.txt", "w").write(src + "\ndef m (x : List UInt8) : List UInt8 := []\n"); k += 1
 print(k)

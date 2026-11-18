@@ -261,6 +261,17 @@ def v205 : Nat → Buf → UInt64 → UInt64 → UInt64 → UInt64
       let r := if bget h ((d5 + 8*a) + 0) == 2 then if bget h ((d5 + 8*a) + 2) == 0 then k1 else k0 else k0;
       v205 n h (bget h ((d5 + 8*a) + 7)) (c - 1) (m + r)
 
+/-- the INPUT parameter of a callee is the first List (shape 3) parameter: argument i is the input LOCAL iff parameter i is the input -/
+def v210 : Nat → Buf → UInt64 → UInt64 → UInt64 → UInt64 → UInt64 → UInt64
+  | 0, h, a, s1, i, c, g => 0
+  | n + 1, h, a, s1, i, c, g =>
+    if i == c then 1 else
+    let w := bget h (d7 + 4096 + s1 + i);
+    let ip := if w == 3 then (if g == 0 then k1 else k0) else k0;
+    let ia := if bget h ((d5 + 8*a) + 0) == 2 then if bget h ((d5 + 8*a) + 2) == 0 then k1 else k0 else k0;
+    let g2 := if w == 3 then k1 else g;
+    if ip == ia then v210 n h (bget h ((d5 + 8*a) + 7)) s1 (i + 1) c g2 else 0
+
 /-- arena validation (after the parse): the width-0 INPUT LOCAL may only appear as the first operand of rd / len / len' (prims 1..3, which then
 must have it), or as an argument of a CALL or of a CONTINUE state tuple (PAIR with shape 0); everywhere else (data, let value, if, prim operand,
 single-state CONTINUE) the node is rejected.  Checks every arena node: tag t, payload a, shape w, child count c, first child f. -/
@@ -280,7 +291,11 @@ def v209 : Nat → Buf → UInt64 → UInt64
                else if t == 6 then (if w == 0 then k1 else k0)
                else if t == 9 then (if a < 4 then (if m == 1 then p0 else k0) else k0)
                else k0;
-      if r == 1 then v209 n h (u + 1) else 0
+      let d := (bget h 12) - 1;
+      let r2 := if t == 8 then (if bget h (d7 + 8*a + 6) == c then v210 16777216 h f (bget h (d7 + 8*a + 5)) 0 c 0 else k0)
+                else if t == 6 then (if w == 0 then (if bget h 12 == 0 then k0 else if bget h (d7 + 8*d + 6) == c + 1 then v210 16777216 h f (bget h (d7 + 8*d + 5) + 1) 0 c 0 else k0) else k1)
+                else k1;
+      if r == 1 then (if r2 == 1 then v209 n h (u + 1) else 0) else 0
     else 1
 
 def v1 (h : Buf) (c a b : UInt64) : Buf :=
