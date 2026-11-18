@@ -193,3 +193,8 @@ loop lemmas (word end, all-digits, value, ident payload, LE bytes), `s3` (keywor
 Soundness only: a reject (empty Buf) proves nothing; completeness not claimed.  Input bound 2^32 bytes (index arithmetic).
 Gaps: the proof is about `Lex2.lean`; `self_S.lean` contains the `desugar.py` form of the same text (`&&`/`||`/`≤` rewritten) —
 equivalence not proved (the differential test `lex2_test.lean` covers it); the Array-backed B1 prelude is likewise untested by proof.
+
+### Update: proved text = compiled text; wrap-safe guards
+* `Lex2.lean` is now written in the restricted spelling (conditions only `==`/`<`, no `&& || ≤ ≠`); `build_self_S.py` concatenates Base+Lex2+Par1+Gen VERBATIM (no `desugar.py`; it asserts the restricted spelling instead). `Lex2Sound.lean` is proved against this very text (no sorry, std axioms, ~16 s), so the lexer that was proved is the lexer that is compiled into B2 (modulo the Array-backed prelude of the B1 *host*, which only runs B1).
+* Par1 capacity guards no longer use `k·x + c < d` (UInt64 wrap): direct slot-count bounds `h[5] < d12` (tasks), `h[9] < d13` (nodes), `h[4] < d14` (bindings), `j < d15` (shapes); `gen_layout.py` derives d12..d15 from the capacities. Lex2 has no such guards (only `p < len x`, `i < e`).
+* Re-run: `fixpoint.sh` B3 == B2, 240,744 bytes, sha256 `7b9ad2d8748bc1c01870cdcb66ea837d27befa050f6f9f25f783a94eda9921b9`; self_S.lean ACCEPT (190 defs); par1_test 10/10 valid accepted, 6/6 negatives rejected; neg_widths 6/6 + 10/10; qemu_regress 4/4 OK; lex2_test 0 mismatches (4424 valid random strings); ref_check 190/190 signatures; ast_check 0 width violations.

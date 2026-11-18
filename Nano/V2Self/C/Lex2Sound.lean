@@ -35,15 +35,17 @@ theorem s1_eq : ∀ (n : Nat) (x : List UInt8) (p : UInt64), x.length < 2 ^ 32 �
         have h0 : s0 (rd x p) = if isW (x.getD p.toNat 0) then 1 else 0 := by rw [rd_eq]; exact s0_eq _
         generalize x.getD p.toNat 0 = b at h0 ⊢
         by_cases hw : isW b
-        · have key : (decide (p < len x) && s0 (rd x p) == 1) = true := by simp [h0, hw, hlt]
+        · have key : (s0 (rd x p) == 1) = true := by simp [h0, hw]
           have hp1 : (p + 1).toNat = p.toNat + 1 := by
             rw [UInt64.toNat_add]; simp; omega
           have := s1_eq n x (p + 1) hx (by omega) (by omega)
           rw [hp1] at this
-          simp only [key, if_true, this, hp1, List.takeWhile_cons, hw]
+          rw [if_pos hlt, if_pos key]
+          simp only [this, hp1, List.takeWhile_cons, hw]
           simp; omega
-        · have key : ¬ (decide (p < len x) && s0 (rd x p) == 1) = true := by simp [h0, hw, hlt]
-          simp only [key, if_false, List.takeWhile_cons, hw]
+        · have key : ¬ (s0 (rd x p) == 1) = true := by simp [h0, hw]
+          rw [if_pos hlt, if_neg key]
+          simp only [List.takeWhile_cons, hw]
           simp
       · have : p.toNat = x.length := by omega
         have : ¬ p < len x := by rw [lt_len hx]; omega
@@ -51,6 +53,10 @@ theorem s1_eq : ∀ (n : Nat) (x : List UInt8) (p : UInt64), x.length < 2 ^ 32 �
 
 theorem isD_eq (b : UInt8) : (48 ≤ b.toUInt64 && b.toUInt64 ≤ 57) = isD b := by
   have : ∀ v : BitVec 8, (48 ≤ (UInt8.ofBitVec v).toUInt64 && (UInt8.ofBitVec v).toUInt64 ≤ 57) = isD (UInt8.ofBitVec v) := by decide
+  exact this b.toBitVec
+
+theorem isD_lt (b : UInt8) : isD b = true ↔ (¬ b.toUInt64 < 48 ∧ ¬ 57 < b.toUInt64) := by
+  have : ∀ v : BitVec 8, isD (UInt8.ofBitVec v) = true ↔ (¬ (UInt8.ofBitVec v).toUInt64 < 48 ∧ ¬ 57 < (UInt8.ofBitVec v).toUInt64) := by decide
   exact this b.toBitVec
 
 theorem isD_nat (b : UInt8) (h : isD b = true) : 48 ≤ b.toNat ∧ b.toNat ≤ 57 := by
@@ -84,17 +90,21 @@ theorem s2_eq : ∀ (n : Nat) (x : List UInt8) (i e : UInt64), x.length < 2 ^ 32
       · have hlt' : i.toNat < e.toNat := UInt64.lt_iff_toNat_lt.1 hlt
         have hl : i.toNat < x.length := by omega
         have e1 : e.toNat - i.toNat = (e.toNat - (i.toNat + 1)) + 1 := by omega
-        have hd : (48 ≤ rd x i && rd x i ≤ 57) = isD (x.getD i.toNat 0) := by rw [rd_eq]; exact isD_eq _
         have hr : rd x i = (x.getD i.toNat 0).toUInt64 := rd_eq x i
         have ih := s2_eq n x (i + 1) e hx he (by rw [inc_toNat (by omega) hx]; omega)
           (by rw [inc_toNat (by omega) hx]; omega)
         rw [inc_toNat (by omega) hx] at ih
         rw [e1, take_step hl]
-        simp only [hlt, if_true, hd]
-        generalize x.getD i.toNat 0 = b at hd ⊢
+        rw [if_pos hlt, hr]
+        generalize x.getD i.toNat 0 = b
         by_cases hb : isD b
-        · simp [hb, ih]
-        · simp [hb]
+        · obtain ⟨h1, h2⟩ := (isD_lt b).1 hb
+          simp [hb, ih, h1, h2]
+        · have := mt (isD_lt b).2 hb
+          by_cases h1 : b.toUInt64 < 48
+          · simp [hb, h1]
+          · have h2 : 57 < b.toUInt64 := by by_cases h2 : 57 < b.toUInt64 <;> simp_all
+            simp [hb, h1, h2]
       · have : e.toNat - i.toNat = 0 := by
           have := UInt64.le_iff_toNat_le.1 (UInt64.not_lt.1 hlt); omega
         simp [hlt, this]
@@ -182,6 +192,10 @@ theorem s7_eq : ∀ (n : Nat) (x : List UInt8) (i e : UInt64) (o : Buf), x.lengt
 
 /-! ### keyword classification (s3) -/
 
+theorem beqd (a b : UInt8) : (a == b) = decide (a = b) := by
+  cases h : a == b <;> simp_all
+
+
 theorem tu (a : UInt8) (n : Nat) (h : n < 256) : a.toUInt64 = UInt64.ofNat n ↔ a = UInt8.ofNat n := by
   constructor
   · intro e; have := congrArg UInt64.toNat e
@@ -193,52 +207,65 @@ theorem tu2 (a : UInt8) (n : Nat) (h : n < 256) :
 /-- s3 with its reads made parameters (definitionally the same body) -/
 def s3' (d c c1 c2 c3 c4 c5 : UInt64) : UInt64 :=
   let r0 := 14;
-  let r1 := if d == 4 && c == 101 && c1 == 108 && c2 == 115 && c3 == 101 then 34 else r0;
-  let r2 := if d == 4 && c == 116 && c1 == 104 && c2 == 101 && c3 == 110 then 33 else r1;
-  let r3 := if d == 2 && c == 105 && c1 == 102 then 32 else r2;
-  let r4 := if d == 3 && c == 108 && c1 == 101 && c2 == 116 then 2 else r3;
-  let r5 := if d == 3 && c == 100 && c1 == 101 && c2 == 102 then 1 else r4;
-  let r6 := if d == 4 && c == 76 && c1 == 105 && c2 == 115 && c3 == 116 then 37 else r5;
-  let r7 := if d == 3 && c == 66 && c1 == 117 && c2 == 102 then 36 else r6;
-  let r8 := if d == 3 && c == 78 && c1 == 97 && c2 == 116 then 35 else r7;
-  let r10 := if d == 5 && c == 85 && c1 == 73 && c2 == 110 && c3 == 116 && c4 == 56 then 38 else r8;
-  let r11 := if d == 6 && c == 85 && c1 == 73 && c2 == 110 && c3 == 116 && c4 == 54 && c5 == 52 then 3 else r10;
-  let r12 := if d == 2 && c == 114 && c1 == 100 then 40 else r11;
-  let r13 := if d == 3 && c == 108 && c1 == 101 && c2 == 110 then 41 else r12;
-  let r14 := if d == 4 && c == 108 && c1 == 101 && c2 == 110 && c3 == 39 then 39 else r13;
-  let r15 := if d == 3 && c == 112 && c1 == 117 && c2 == 116 then 42 else r14;
-  let r16 := if d == 4 && c == 98 && c1 == 110 && c2 == 101 && c3 == 119 then 43 else r15;
-  let r17 := if d == 5 && c == 98 && c1 == 115 && c2 == 105 && c3 == 122 && c4 == 101 then 44 else r16;
-  let r18 := if d == 4 && c == 98 && c1 == 103 && c2 == 101 && c3 == 116 then 45 else r17;
-  let r19 := if d == 4 && c == 98 && c1 == 115 && c2 == 101 && c3 == 116 then 46 else r18;
-  if d == 5 && c == 98 && c1 == 112 && c2 == 117 && c3 == 115 && c4 == 104 then 47 else r19
+  let r1 := if d == 4 then if c == 101 then if c1 == 108 then if c2 == 115 then if c3 == 101 then 34 else r0 else r0 else r0 else r0 else r0;
+  let r2 := if d == 4 then if c == 116 then if c1 == 104 then if c2 == 101 then if c3 == 110 then 33 else r1 else r1 else r1 else r1 else r1;
+  let r3 := if d == 2 then if c == 105 then if c1 == 102 then 32 else r2 else r2 else r2;
+  let r4 := if d == 3 then if c == 108 then if c1 == 101 then if c2 == 116 then 2 else r3 else r3 else r3 else r3;
+  let r5 := if d == 3 then if c == 100 then if c1 == 101 then if c2 == 102 then 1 else r4 else r4 else r4 else r4;
+  let r6 := if d == 4 then if c == 76 then if c1 == 105 then if c2 == 115 then if c3 == 116 then 37 else r5 else r5 else r5 else r5 else r5;
+  let r7 := if d == 3 then if c == 66 then if c1 == 117 then if c2 == 102 then 36 else r6 else r6 else r6 else r6;
+  let r8 := if d == 3 then if c == 78 then if c1 == 97 then if c2 == 116 then 35 else r7 else r7 else r7 else r7;
+  let r9 := if d == 5 then if c == 85 then if c1 == 73 then if c2 == 110 then if c3 == 116 then if c4 == 56 then 38 else r8 else r8 else r8 else r8 else r8 else r8;
+  let r10 := if d == 6 then if c == 85 then if c1 == 73 then if c2 == 110 then if c3 == 116 then if c4 == 54 then if c5 == 52 then 3 else r9 else r9 else r9 else r9 else r9 else r9 else r9;
+  let r11 := if d == 2 then if c == 114 then if c1 == 100 then 40 else r10 else r10 else r10;
+  let r12 := if d == 3 then if c == 108 then if c1 == 101 then if c2 == 110 then 41 else r11 else r11 else r11 else r11;
+  let r13 := if d == 4 then if c == 108 then if c1 == 101 then if c2 == 110 then if c3 == 39 then 39 else r12 else r12 else r12 else r12 else r12;
+  let r14 := if d == 3 then if c == 112 then if c1 == 117 then if c2 == 116 then 42 else r13 else r13 else r13 else r13;
+  let r15 := if d == 4 then if c == 98 then if c1 == 110 then if c2 == 101 then if c3 == 119 then 43 else r14 else r14 else r14 else r14 else r14;
+  let r16 := if d == 5 then if c == 98 then if c1 == 115 then if c2 == 105 then if c3 == 122 then if c4 == 101 then 44 else r15 else r15 else r15 else r15 else r15 else r15;
+  let r17 := if d == 4 then if c == 98 then if c1 == 103 then if c2 == 101 then if c3 == 116 then 45 else r16 else r16 else r16 else r16 else r16;
+  let r18 := if d == 4 then if c == 98 then if c1 == 115 then if c2 == 101 then if c3 == 116 then 46 else r17 else r17 else r17 else r17 else r17;
+  let r19 := if d == 5 then if c == 98 then if c1 == 112 then if c2 == 117 then if c3 == 115 then if c4 == 104 then 47 else r18 else r18 else r18 else r18 else r18 else r18;
+  r19
 
 theorem s3_eq_s3' (x : List UInt8) (p e : UInt64) :
     s3 x p e = s3' (e - p) (rd x p) (rd x (p + 1)) (rd x (p + 2)) (rd x (p + 3)) (rd x (p + 4)) (rd x (p + 5)) := rfl
 
+theorem nest {α : Type} (p q : Prop) [Decidable p] [Decidable q] (x y : α) :
+    (if p then (if q then x else y) else y) = (if p ∧ q then x else y) := by
+  by_cases hp : p <;> by_cases hq : q <;> simp [hp, hq]
+
+set_option maxHeartbeats 1000000 in
 theorem s3'_eq (w : List UInt8) (c0 c1 c2 c3 c4 c5 : UInt64) (hl : w.length < 2 ^ 32)
     (h : ∀ j, j < 6 → j < w.length → [c0, c1, c2, c3, c4, c5].getD j 0 = (w.getD j 0).toUInt64) :
     s3' w.length.toUInt64 c0 c1 c2 c3 c4 c5 = (kwTable.lookup w).getD 14 := by
   rcases w with _ | ⟨a, _ | ⟨b, _ | ⟨c, _ | ⟨d, _ | ⟨e, _ | ⟨f, _ | ⟨g, r⟩⟩⟩⟩⟩⟩⟩
-  · try simp [s3', kwTable, tu2, List.lookup]
+  · simp (config := {zeta := false}) only [s3', nest]
+    try simp [kwTable, tu2, List.lookup]
     try ((repeat' split) <;> simp_all)
   · have h0 := h 0 (by decide) (by simp)
     simp at h0
     subst_vars
-    try simp [s3', kwTable, tu2, List.lookup]
+    clear h
+    simp (config := {zeta := false}) only [s3', nest]
+    try simp [kwTable, tu2, List.lookup]
     try ((repeat' split) <;> simp_all)
   · have h0 := h 0 (by decide) (by simp)
     have h1 := h 1 (by decide) (by simp)
     simp at h0 h1
     subst_vars
-    try simp [s3', kwTable, tu2, List.lookup]
+    clear h
+    simp (config := {zeta := false}) only [s3', nest]
+    try simp [kwTable, tu2, List.lookup]
     try ((repeat' split) <;> simp_all)
   · have h0 := h 0 (by decide) (by simp)
     have h1 := h 1 (by decide) (by simp)
     have h2 := h 2 (by decide) (by simp)
     simp at h0 h1 h2
     subst_vars
-    try simp [s3', kwTable, tu2, List.lookup]
+    clear h
+    simp (config := {zeta := false}) only [s3', nest]
+    try simp [kwTable, tu2, List.lookup]
     try ((repeat' split) <;> simp_all)
   · have h0 := h 0 (by decide) (by simp)
     have h1 := h 1 (by decide) (by simp)
@@ -246,7 +273,9 @@ theorem s3'_eq (w : List UInt8) (c0 c1 c2 c3 c4 c5 : UInt64) (hl : w.length < 2 
     have h3 := h 3 (by decide) (by simp)
     simp at h0 h1 h2 h3
     subst_vars
-    try simp [s3', kwTable, tu2, List.lookup]
+    clear h
+    simp (config := {zeta := false}) only [s3', nest]
+    try simp [kwTable, tu2, List.lookup]
     try ((repeat' split) <;> simp_all)
   · have h0 := h 0 (by decide) (by simp)
     have h1 := h 1 (by decide) (by simp)
@@ -255,7 +284,9 @@ theorem s3'_eq (w : List UInt8) (c0 c1 c2 c3 c4 c5 : UInt64) (hl : w.length < 2 
     have h4 := h 4 (by decide) (by simp)
     simp at h0 h1 h2 h3 h4
     subst_vars
-    try simp [s3', kwTable, tu2, List.lookup]
+    clear h
+    simp (config := {zeta := false}) only [s3', nest]
+    try simp [kwTable, tu2, List.lookup]
     try ((repeat' split) <;> simp_all)
   · have h0 := h 0 (by decide) (by simp)
     have h1 := h 1 (by decide) (by simp)
@@ -265,7 +296,9 @@ theorem s3'_eq (w : List UInt8) (c0 c1 c2 c3 c4 c5 : UInt64) (hl : w.length < 2 
     have h5 := h 5 (by decide) (by simp)
     simp at h0 h1 h2 h3 h4 h5
     subst_vars
-    try simp [s3', kwTable, tu2, List.lookup]
+    clear h
+    simp (config := {zeta := false}) only [s3', nest]
+    try simp [kwTable, tu2, List.lookup]
     try ((repeat' split) <;> simp_all)
   · have h0 := h 0 (by decide) (by simp)
     have h1 := h 1 (by decide) (by simp)
@@ -275,6 +308,8 @@ theorem s3'_eq (w : List UInt8) (c0 c1 c2 c3 c4 c5 : UInt64) (hl : w.length < 2 
     have h5 := h 5 (by decide) (by simp)
     simp at h0 h1 h2 h3 h4 h5
     subst_vars
+    clear h
+    simp (config := {zeta := false}) only [s3', nest]
     have hd : (a :: b :: c :: d :: e :: f :: g :: r).length = r.length + 7 := by simp
     obtain ⟨N, hN⟩ : ∃ N, N = r.length + 7 := ⟨_, rfl⟩
     rw [hd, ← hN]
@@ -285,7 +320,7 @@ theorem s3'_eq (w : List UInt8) (c0 c1 c2 c3 c4 c5 : UInt64) (hl : w.length < 2 
     have n4 : N.toUInt64 ≠ 4 := by intro e; have := congrArg UInt64.toNat e; simp at this; omega
     have n5 : N.toUInt64 ≠ 5 := by intro e; have := congrArg UInt64.toNat e; simp at this; omega
     have n6 : N.toUInt64 ≠ 6 := by intro e; have := congrArg UInt64.toNat e; simp at this; omega
-    simp [s3', kwTable, List.lookup, n2, n3, n4, n5, n6]
+    simp [kwTable, List.lookup, n2, n3, n4, n5, n6]
 
 theorem rd_seg (x : List UInt8) (p q : UInt64) (m j : Nat) (hj : j < m) (hq : q.toNat = p.toNat + j) :
     rd x q = (((x.drop p.toNat).take m).getD j 0).toUInt64 := by
@@ -335,7 +370,8 @@ def s4' (c d f A B : UInt64) : UInt64 :=
     else if c == 62 then if d == 62 then if f == 62 then 29 else 0 else 0
     else if c == 195 then if d == 151 then 16 else 0
     else if c == 226 then if d == 134 then if f == 146 then 17 else 0 else 0
-    else if 48 ≤ c && c ≤ 57 then if A == 1 then 5 else 0
+    else if c < 48 then (if c == 39 then B else 0)
+    else if c < 58 then (if A == 1 then 5 else 0)
     else if s0 c == 1 then B
     else 0
 
@@ -352,6 +388,45 @@ theorem wcond (c : UInt8) : ((65 ≤ c → 90 < c) → (97 ≤ c → 122 < c) �
   have h := this c.toBitVec
   simp only [decide_eq_decide] at h
   exact propext h
+
+
+theorem tailc (c : UInt8) (A B : UInt64) :
+    (if c.toUInt64 < 48 then if c = 39 then B else 0
+      else if c.toUInt64 < 58 then if A = 1 then 5 else 0
+      else if s0 c.toUInt64 = 1 then B else 0) =
+    (if isD c = true then (if A = 1 then 5 else 0) else if isW c = true then B else 0) := by
+  have e1 : ∀ v : BitVec 8, ((UInt8.ofBitVec v).toUInt64 < 48 ↔ v.toNat < 48) := by decide
+  have e2 : ∀ v : BitVec 8, ((UInt8.ofBitVec v).toUInt64 < 58 ↔ v.toNat < 58) := by decide
+  have e3 : ∀ v : BitVec 8, (v.toNat < 48 → (isW (UInt8.ofBitVec v) = true ↔ v.toNat = 39)) ∧ isD (UInt8.ofBitVec v) = decide (48 ≤ v.toNat ∧ v.toNat < 58) := by decide
+  have h1 := e1 c.toBitVec
+  have h2 := e2 c.toBitVec
+  have h3 := e3 c.toBitVec
+  have hc : c = UInt8.ofBitVec c.toBitVec := rfl
+  have hn : c.toBitVec.toNat = c.toNat := rfl
+  rw [hn] at h1 h2 h3
+  have hs := s0_eq c
+  by_cases a1 : c.toUInt64 < 48
+  · have a1' := h1.1 a1
+    rw [if_pos a1]
+    have hd : isD c = false := by rw [hc]; rw [h3.2]; simp; omega
+    rw [hd]
+    have : isW c = true ↔ c = 39 := by
+      rw [hc] at *; rw [h3.1 a1']; constructor
+      · intro h; apply UInt8.toNat.inj; simpa using h
+      · intro h; have := congrArg UInt8.toNat h; simpa using this
+    by_cases a3 : c = 39
+    · simp [a3] at this ⊢; simp [this]
+    · have : ¬ isW c = true := fun h => a3 (this.1 h)
+      simp [a3, this]
+  · have a1' : ¬ c.toBitVec.toNat < 48 := fun h => a1 (h1.2 h)
+    rw [if_neg a1]
+    by_cases a2 : c.toUInt64 < 58
+    · have a2' := h2.1 a2
+      have hd : isD c = true := by rw [hc]; rw [h3.2]; simp; omega
+      rw [if_pos a2, hd]; simp
+    · have a2' : ¬ c.toBitVec.toNat < 58 := fun h => a2 (h2.2 h)
+      have hd : isD c = false := by rw [hc]; rw [h3.2]; simp; omega
+      rw [if_neg a2, hd, hs]; simp
 
 theorem s4'_eq (c d f : UInt8) (A B : UInt64) :
     s4' c.toUInt64 d.toUInt64 f.toUInt64 A B =
@@ -424,7 +499,8 @@ theorem s4'_eq (c d f : UInt8) (A B : UInt64) :
   have b62 : (c == 62) = false := by simpa using h62
   have b195 : (c == 195) = false := by simpa using h195
   have b226 : (c == 226) = false := by simpa using h226
-  simp [s4', opTable, List.find?, List.isPrefixOf, tu2, isD_iff, s0_eq, bcomm, isD, isW, wcond, b32, b10, b40, b41, b43, b45, b42, b59, b44, b91, b93, b58, b61, b38, b124, b60, b62, b195, b226, h32, h10, h40, h41, h43, h45, h42, h59, h44, h91, h93, h58, h61, h38, h124, h60, h62, h195, h226]
+  simp [s4', opTable, List.find?, List.isPrefixOf, tu2, bcomm, b32, b10, b40, b41, b43, b45, b42, b59, b44, b91, b93, b58, b61, b38, b124, b60, b62, b195, b226, h32, h10, h40, h41, h43, h45, h42, h59, h44, h91, h93, h58, h61, h38, h124, h60, h62, h195, h226]
+  exact tailc c A B
 
 /-! ### s4 = spec kind -/
 

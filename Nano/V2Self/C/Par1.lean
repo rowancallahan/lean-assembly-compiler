@@ -20,6 +20,11 @@ def d8 : UInt64 := 32768
 def d9 : UInt64 := d7 + d8
 def d10 : UInt64 := 4096
 def d11 : UInt64 := d9 + d10
+-- slot counts (direct index bounds; no k*x+c arithmetic): tasks, nodes, bindings, shapes
+def d12 : UInt64 := 4096
+def d13 : UInt64 := 16384
+def d14 : UInt64 := 1024
+def d15 : UInt64 := 8192
 def y15 (h : Buf) : Buf := y5 184384 h
 -- LAYOUT END
 
@@ -108,7 +113,7 @@ def k44 : UInt64 := 19
 -- k40..k49 and v0 are token/prelude adapters specified in the note.
 
 def v1 (h : Buf) (c a b : UInt64) : Buf :=
-  if (3 * (bget h 5) + 2) < d2 then
+  if (bget h 5) < d12 then
     let j := d1 + 3 * (bget h 5);
     let h := bset h (j) (c);
     let h := bset h (j + 1) (a);
@@ -129,7 +134,7 @@ def v2 : Nat → Buf → UInt64 → UInt64 → UInt64 → Buf
     v2 n h (j + 1) z (c - 1)
 
 def v5 (h : Buf) (c a b w t n : UInt64) : Buf :=
-  if 8 * (bget h 9) + 7 < d6 then
+  if (bget h 9) < d13 then
     if n < (bget h 8) + 1 then
       let j := (bget h 8) - n;
       if j < d4 then
@@ -156,7 +161,7 @@ def v5 (h : Buf) (c a b w t n : UInt64) : Buf :=
     bset h 0 0
 
 def v6 (h : Buf) (x s w : UInt64) : Buf :=
-  if 4 * (bget h 4) + 3 < d10 then
+  if (bget h 4) < d14 then
     let j := d9 + 4 * (bget h 4);
     let h := bset h (j) (x);
     let h := bset h (j + 1) (s);
@@ -195,7 +200,7 @@ def v10 : Nat → Buf → UInt64 → UInt64 → UInt64 → Buf
   | n + 1, h, x, y, j =>
     let b := d7 + 8192 + 3*j;
     if j == bget h 26 then
-      if 8192 + 3*j + 2 < d8 then
+      if j < d15 then
         let h := v9 h x;
         let z21 := bget h 31;
         let h := v9 h y;

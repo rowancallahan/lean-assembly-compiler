@@ -3,39 +3,48 @@ def k0 : UInt64 := 0
 def k1 : UInt64 := 1
 def q0 (o : Buf) (v : UInt64) : Buf := bpush o (v &&& k255)
 
-def s0 (c : UInt64) : UInt64 := let v100 := (if c < 65 then k0 else k1); let v101 := (if 90 < c then k0 else k1); let v102 := v100 * v101; let v103 := (if c < 97 then k0 else k1); let v104 := (if 122 < c then k0 else k1); let v105 := v103 * v104; let v106 := v102 ||| v105; let v107 := (if c == 95 then k1 else k0); let v108 := v106 ||| v107; let v109 := (if c == 39 then k1 else k0); let v110 := v108 ||| v109; let v111 := (if c < 48 then k0 else k1); let v112 := (if 57 < c then k0 else k1); let v113 := v111 * v112; let v114 := v110 ||| v113; if v114 == k1 then 1 else 0
+def s0 (c : UInt64) : UInt64 :=
+  if c < 48 then if c == 39 then 1 else 0
+  else if c < 58 then 1
+  else if c < 65 then 0
+  else if c < 91 then 1
+  else if c == 95 then 1
+  else if c < 97 then 0
+  else if c < 123 then 1
+  else 0
 
 def s1 : Nat → List UInt8 → UInt64 → UInt64
   | 0, x, p => p
-  | n + 1, x, p => let v115 := (if p < len x then k1 else k0); let v116 := (if s0 (rd x p) == 1 then k1 else k0); let v117 := v115 * v116; if v117 == k1 then s1 n x (p + 1) else p
+  | n + 1, x, p => if p < len x then if s0 (rd x p) == 1 then s1 n x (p + 1) else p else p
 
 def s2 : Nat → List UInt8 → UInt64 → UInt64 → UInt64
   | 0, x, i, e => 1
-  | n + 1, x, i, e => if i < e then let v118 := (if rd x i < 48 then k0 else k1); let v119 := (if 57 < rd x i then k0 else k1); let v120 := v118 * v119; if v120 == k1 then s2 n x (i + 1) e else 0 else 1
+  | n + 1, x, i, e => if i < e then if rd x i < 48 then 0 else if 57 < rd x i then 0 else s2 n x (i + 1) e else 1
 
 def s3 (x : List UInt8) (p e : UInt64) : UInt64 :=
   let c := rd x p;
   let d := e - p;
   let r0 := 14;
-  let r1 := let v121 := (if d == 4 then k1 else k0); let v122 := (if c == 101 then k1 else k0); let v123 := v121 * v122; let v124 := (if rd x (p + 1) == 108 then k1 else k0); let v125 := v123 * v124; let v126 := (if rd x (p + 2) == 115 then k1 else k0); let v127 := v125 * v126; let v128 := (if rd x (p + 3) == 101 then k1 else k0); let v129 := v127 * v128; if v129 == k1 then 34 else r0;
-  let r2 := let v130 := (if d == 4 then k1 else k0); let v131 := (if c == 116 then k1 else k0); let v132 := v130 * v131; let v133 := (if rd x (p + 1) == 104 then k1 else k0); let v134 := v132 * v133; let v135 := (if rd x (p + 2) == 101 then k1 else k0); let v136 := v134 * v135; let v137 := (if rd x (p + 3) == 110 then k1 else k0); let v138 := v136 * v137; if v138 == k1 then 33 else r1;
-  let r3 := let v139 := (if d == 2 then k1 else k0); let v140 := (if c == 105 then k1 else k0); let v141 := v139 * v140; let v142 := (if rd x (p + 1) == 102 then k1 else k0); let v143 := v141 * v142; if v143 == k1 then 32 else r2;
-  let r4 := let v144 := (if d == 3 then k1 else k0); let v145 := (if c == 108 then k1 else k0); let v146 := v144 * v145; let v147 := (if rd x (p + 1) == 101 then k1 else k0); let v148 := v146 * v147; let v149 := (if rd x (p + 2) == 116 then k1 else k0); let v150 := v148 * v149; if v150 == k1 then 2 else r3;
-  let r5 := let v151 := (if d == 3 then k1 else k0); let v152 := (if c == 100 then k1 else k0); let v153 := v151 * v152; let v154 := (if rd x (p + 1) == 101 then k1 else k0); let v155 := v153 * v154; let v156 := (if rd x (p + 2) == 102 then k1 else k0); let v157 := v155 * v156; if v157 == k1 then 1 else r4;
-  let r6 := let v158 := (if d == 4 then k1 else k0); let v159 := (if c == 76 then k1 else k0); let v160 := v158 * v159; let v161 := (if rd x (p + 1) == 105 then k1 else k0); let v162 := v160 * v161; let v163 := (if rd x (p + 2) == 115 then k1 else k0); let v164 := v162 * v163; let v165 := (if rd x (p + 3) == 116 then k1 else k0); let v166 := v164 * v165; if v166 == k1 then 37 else r5;
-  let r7 := let v167 := (if d == 3 then k1 else k0); let v168 := (if c == 66 then k1 else k0); let v169 := v167 * v168; let v170 := (if rd x (p + 1) == 117 then k1 else k0); let v171 := v169 * v170; let v172 := (if rd x (p + 2) == 102 then k1 else k0); let v173 := v171 * v172; if v173 == k1 then 36 else r6;
-  let r8 := let v174 := (if d == 3 then k1 else k0); let v175 := (if c == 78 then k1 else k0); let v176 := v174 * v175; let v177 := (if rd x (p + 1) == 97 then k1 else k0); let v178 := v176 * v177; let v179 := (if rd x (p + 2) == 116 then k1 else k0); let v180 := v178 * v179; if v180 == k1 then 35 else r7;
-  let r10 := let v181 := (if d == 5 then k1 else k0); let v182 := (if c == 85 then k1 else k0); let v183 := v181 * v182; let v184 := (if rd x (p + 1) == 73 then k1 else k0); let v185 := v183 * v184; let v186 := (if rd x (p + 2) == 110 then k1 else k0); let v187 := v185 * v186; let v188 := (if rd x (p + 3) == 116 then k1 else k0); let v189 := v187 * v188; let v190 := (if rd x (p + 4) == 56 then k1 else k0); let v191 := v189 * v190; if v191 == k1 then 38 else r8;
-  let r11 := let v192 := (if d == 6 then k1 else k0); let v193 := (if c == 85 then k1 else k0); let v194 := v192 * v193; let v195 := (if rd x (p + 1) == 73 then k1 else k0); let v196 := v194 * v195; let v197 := (if rd x (p + 2) == 110 then k1 else k0); let v198 := v196 * v197; let v199 := (if rd x (p + 3) == 116 then k1 else k0); let v200 := v198 * v199; let v201 := (if rd x (p + 4) == 54 then k1 else k0); let v202 := v200 * v201; let v203 := (if rd x (p + 5) == 52 then k1 else k0); let v204 := v202 * v203; if v204 == k1 then 3 else r10;
-  let r12 := let v205 := (if d == 2 then k1 else k0); let v206 := (if c == 114 then k1 else k0); let v207 := v205 * v206; let v208 := (if rd x (p + 1) == 100 then k1 else k0); let v209 := v207 * v208; if v209 == k1 then 40 else r11;
-  let r13 := let v210 := (if d == 3 then k1 else k0); let v211 := (if c == 108 then k1 else k0); let v212 := v210 * v211; let v213 := (if rd x (p + 1) == 101 then k1 else k0); let v214 := v212 * v213; let v215 := (if rd x (p + 2) == 110 then k1 else k0); let v216 := v214 * v215; if v216 == k1 then 41 else r12;
-  let r14 := let v217 := (if d == 4 then k1 else k0); let v218 := (if c == 108 then k1 else k0); let v219 := v217 * v218; let v220 := (if rd x (p + 1) == 101 then k1 else k0); let v221 := v219 * v220; let v222 := (if rd x (p + 2) == 110 then k1 else k0); let v223 := v221 * v222; let v224 := (if rd x (p + 3) == 39 then k1 else k0); let v225 := v223 * v224; if v225 == k1 then 39 else r13;
-  let r15 := let v226 := (if d == 3 then k1 else k0); let v227 := (if c == 112 then k1 else k0); let v228 := v226 * v227; let v229 := (if rd x (p + 1) == 117 then k1 else k0); let v230 := v228 * v229; let v231 := (if rd x (p + 2) == 116 then k1 else k0); let v232 := v230 * v231; if v232 == k1 then 42 else r14;
-  let r16 := let v233 := (if d == 4 then k1 else k0); let v234 := (if c == 98 then k1 else k0); let v235 := v233 * v234; let v236 := (if rd x (p + 1) == 110 then k1 else k0); let v237 := v235 * v236; let v238 := (if rd x (p + 2) == 101 then k1 else k0); let v239 := v237 * v238; let v240 := (if rd x (p + 3) == 119 then k1 else k0); let v241 := v239 * v240; if v241 == k1 then 43 else r15;
-  let r17 := let v242 := (if d == 5 then k1 else k0); let v243 := (if c == 98 then k1 else k0); let v244 := v242 * v243; let v245 := (if rd x (p + 1) == 115 then k1 else k0); let v246 := v244 * v245; let v247 := (if rd x (p + 2) == 105 then k1 else k0); let v248 := v246 * v247; let v249 := (if rd x (p + 3) == 122 then k1 else k0); let v250 := v248 * v249; let v251 := (if rd x (p + 4) == 101 then k1 else k0); let v252 := v250 * v251; if v252 == k1 then 44 else r16;
-  let r18 := let v253 := (if d == 4 then k1 else k0); let v254 := (if c == 98 then k1 else k0); let v255 := v253 * v254; let v256 := (if rd x (p + 1) == 103 then k1 else k0); let v257 := v255 * v256; let v258 := (if rd x (p + 2) == 101 then k1 else k0); let v259 := v257 * v258; let v260 := (if rd x (p + 3) == 116 then k1 else k0); let v261 := v259 * v260; if v261 == k1 then 45 else r17;
-  let r19 := let v262 := (if d == 4 then k1 else k0); let v263 := (if c == 98 then k1 else k0); let v264 := v262 * v263; let v265 := (if rd x (p + 1) == 115 then k1 else k0); let v266 := v264 * v265; let v267 := (if rd x (p + 2) == 101 then k1 else k0); let v268 := v266 * v267; let v269 := (if rd x (p + 3) == 116 then k1 else k0); let v270 := v268 * v269; if v270 == k1 then 46 else r18;
-  let v271 := (if d == 5 then k1 else k0); let v272 := (if c == 98 then k1 else k0); let v273 := v271 * v272; let v274 := (if rd x (p + 1) == 112 then k1 else k0); let v275 := v273 * v274; let v276 := (if rd x (p + 2) == 117 then k1 else k0); let v277 := v275 * v276; let v278 := (if rd x (p + 3) == 115 then k1 else k0); let v279 := v277 * v278; let v280 := (if rd x (p + 4) == 104 then k1 else k0); let v281 := v279 * v280; if v281 == k1 then 47 else r19
+  let r1 := if d == 4 then if c == 101 then if rd x (p + 1) == 108 then if rd x (p + 2) == 115 then if rd x (p + 3) == 101 then 34 else r0 else r0 else r0 else r0 else r0;
+  let r2 := if d == 4 then if c == 116 then if rd x (p + 1) == 104 then if rd x (p + 2) == 101 then if rd x (p + 3) == 110 then 33 else r1 else r1 else r1 else r1 else r1;
+  let r3 := if d == 2 then if c == 105 then if rd x (p + 1) == 102 then 32 else r2 else r2 else r2;
+  let r4 := if d == 3 then if c == 108 then if rd x (p + 1) == 101 then if rd x (p + 2) == 116 then 2 else r3 else r3 else r3 else r3;
+  let r5 := if d == 3 then if c == 100 then if rd x (p + 1) == 101 then if rd x (p + 2) == 102 then 1 else r4 else r4 else r4 else r4;
+  let r6 := if d == 4 then if c == 76 then if rd x (p + 1) == 105 then if rd x (p + 2) == 115 then if rd x (p + 3) == 116 then 37 else r5 else r5 else r5 else r5 else r5;
+  let r7 := if d == 3 then if c == 66 then if rd x (p + 1) == 117 then if rd x (p + 2) == 102 then 36 else r6 else r6 else r6 else r6;
+  let r8 := if d == 3 then if c == 78 then if rd x (p + 1) == 97 then if rd x (p + 2) == 116 then 35 else r7 else r7 else r7 else r7;
+  let r9 := if d == 5 then if c == 85 then if rd x (p + 1) == 73 then if rd x (p + 2) == 110 then if rd x (p + 3) == 116 then if rd x (p + 4) == 56 then 38 else r8 else r8 else r8 else r8 else r8 else r8;
+  let r10 := if d == 6 then if c == 85 then if rd x (p + 1) == 73 then if rd x (p + 2) == 110 then if rd x (p + 3) == 116 then if rd x (p + 4) == 54 then if rd x (p + 5) == 52 then 3 else r9 else r9 else r9 else r9 else r9 else r9 else r9;
+  let r11 := if d == 2 then if c == 114 then if rd x (p + 1) == 100 then 40 else r10 else r10 else r10;
+  let r12 := if d == 3 then if c == 108 then if rd x (p + 1) == 101 then if rd x (p + 2) == 110 then 41 else r11 else r11 else r11 else r11;
+  let r13 := if d == 4 then if c == 108 then if rd x (p + 1) == 101 then if rd x (p + 2) == 110 then if rd x (p + 3) == 39 then 39 else r12 else r12 else r12 else r12 else r12;
+  let r14 := if d == 3 then if c == 112 then if rd x (p + 1) == 117 then if rd x (p + 2) == 116 then 42 else r13 else r13 else r13 else r13;
+  let r15 := if d == 4 then if c == 98 then if rd x (p + 1) == 110 then if rd x (p + 2) == 101 then if rd x (p + 3) == 119 then 43 else r14 else r14 else r14 else r14 else r14;
+  let r16 := if d == 5 then if c == 98 then if rd x (p + 1) == 115 then if rd x (p + 2) == 105 then if rd x (p + 3) == 122 then if rd x (p + 4) == 101 then 44 else r15 else r15 else r15 else r15 else r15 else r15;
+  let r17 := if d == 4 then if c == 98 then if rd x (p + 1) == 103 then if rd x (p + 2) == 101 then if rd x (p + 3) == 116 then 45 else r16 else r16 else r16 else r16 else r16;
+  let r18 := if d == 4 then if c == 98 then if rd x (p + 1) == 115 then if rd x (p + 2) == 101 then if rd x (p + 3) == 116 then 46 else r17 else r17 else r17 else r17 else r17;
+  let r19 := if d == 5 then if c == 98 then if rd x (p + 1) == 112 then if rd x (p + 2) == 117 then if rd x (p + 3) == 115 then if rd x (p + 4) == 104 then 47 else r18 else r18 else r18 else r18 else r18 else r18;
+  r19
 
 def s4 (x : List UInt8) (p : UInt64) : UInt64 := if p < len x then
     let c := rd x p;
@@ -60,15 +69,35 @@ def s4 (x : List UInt8) (p : UInt64) : UInt64 := if p < len x then
     else if c == 62 then if d == 62 then if f == 62 then 29 else 0 else 0
     else if c == 195 then if d == 151 then 16 else 0
     else if c == 226 then if d == 134 then if f == 146 then 17 else 0 else 0
-    else let v282 := (if c < 48 then k0 else k1); let v283 := (if 57 < c then k0 else k1); let v284 := v282 * v283; if v284 == k1 then if s2 (len' x) x p (s1 (len' x) x p) == 1 then 5 else 0
+    else if c < 48 then if c == 39 then s3 x p (s1 (len' x) x p) else 0
+    else if c < 58 then if s2 (len' x) x p (s1 (len' x) x p) == 1 then 5 else 0
     else if s0 c == 1 then s3 x p (s1 (len' x) x p)
     else 0
   else 91
 
 def s5 (x : List UInt8) (p k : UInt64) : UInt64 :=
-  let v285 := (if k == 9 then k1 else k0); let v286 := (if k == 16 then k1 else k0); let v287 := v285 ||| v286; let v288 := (if k == 19 then k1 else k0); let v289 := v287 ||| v288; let v290 := (if k == 23 then k1 else k0); let v291 := v289 ||| v290; if v291 == k1 then p + 2
-  else let v292 := (if k == 17 then k1 else k0); let v293 := (if k == 26 then k1 else k0); let v294 := v292 ||| v293; let v295 := (if k == 27 then k1 else k0); let v296 := v294 ||| v295; let v297 := (if k == 28 then k1 else k0); let v298 := v296 ||| v297; let v299 := (if k == 29 then k1 else k0); let v300 := v298 ||| v299; if v300 == k1 then p + 3
-  else let v301 := (if k == 6 then k1 else k0); let v302 := (if k == 7 then k1 else k0); let v303 := v301 ||| v302; let v304 := (if k == 8 then k1 else k0); let v305 := v303 ||| v304; let v306 := (if k == 10 then k1 else k0); let v307 := v305 ||| v306; let v308 := (if k == 11 then k1 else k0); let v309 := v307 ||| v308; let v310 := (if k == 12 then k1 else k0); let v311 := v309 ||| v310; let v312 := (if k == 13 then k1 else k0); let v313 := v311 ||| v312; let v314 := (if k == 15 then k1 else k0); let v315 := v313 ||| v314; let v316 := (if k == 18 then k1 else k0); let v317 := v315 ||| v316; let v318 := (if k == 20 then k1 else k0); let v319 := v317 ||| v318; let v320 := (if k == 30 then k1 else k0); let v321 := v319 ||| v320; let v322 := (if k == 31 then k1 else k0); let v323 := v321 ||| v322; let v324 := (if k == 90 then k1 else k0); let v325 := v323 ||| v324; if v325 == k1 then p + 1
+  if k == 9 then p + 2
+  else if k == 16 then p + 2
+  else if k == 19 then p + 2
+  else if k == 23 then p + 2
+  else if k == 17 then p + 3
+  else if k == 26 then p + 3
+  else if k == 27 then p + 3
+  else if k == 28 then p + 3
+  else if k == 29 then p + 3
+  else if k == 6 then p + 1
+  else if k == 7 then p + 1
+  else if k == 8 then p + 1
+  else if k == 10 then p + 1
+  else if k == 11 then p + 1
+  else if k == 12 then p + 1
+  else if k == 13 then p + 1
+  else if k == 15 then p + 1
+  else if k == 18 then p + 1
+  else if k == 20 then p + 1
+  else if k == 30 then p + 1
+  else if k == 31 then p + 1
+  else if k == 90 then p + 1
   else s1 (len' x) x p
 
 def s6 : Nat → List UInt8 → UInt64 → UInt64 → UInt64 → UInt64
@@ -110,6 +139,10 @@ def d8 : UInt64 := 32768
 def d9 : UInt64 := d7 + d8
 def d10 : UInt64 := 4096
 def d11 : UInt64 := d9 + d10
+def d12 : UInt64 := 4096
+def d13 : UInt64 := 16384
+def d14 : UInt64 := 1024
+def d15 : UInt64 := 8192
 def y15 (h : Buf) : Buf := y5 184384 h
 
 def y0 : Nat → Buf → UInt64 → UInt64
@@ -193,7 +226,7 @@ def k43 : UInt64 := 18
 def k44 : UInt64 := 19
 
 def v1 (h : Buf) (c a b : UInt64) : Buf :=
-  if (3 * (bget h 5) + 2) < d2 then
+  if (bget h 5) < d12 then
     let j := d1 + 3 * (bget h 5);
     let h := bset h (j) (c);
     let h := bset h (j + 1) (a);
@@ -214,7 +247,7 @@ def v2 : Nat → Buf → UInt64 → UInt64 → UInt64 → Buf
     v2 n h (j + 1) z (c - 1)
 
 def v5 (h : Buf) (c a b w t n : UInt64) : Buf :=
-  if 8 * (bget h 9) + 7 < d6 then
+  if (bget h 9) < d13 then
     if n < (bget h 8) + 1 then
       let j := (bget h 8) - n;
       if j < d4 then
@@ -241,7 +274,7 @@ def v5 (h : Buf) (c a b w t n : UInt64) : Buf :=
     bset h 0 0
 
 def v6 (h : Buf) (x s w : UInt64) : Buf :=
-  if 4 * (bget h 4) + 3 < d10 then
+  if (bget h 4) < d14 then
     let j := d9 + 4 * (bget h 4);
     let h := bset h (j) (x);
     let h := bset h (j + 1) (s);
@@ -280,7 +313,7 @@ def v10 : Nat → Buf → UInt64 → UInt64 → UInt64 → Buf
   | n + 1, h, x, y, j =>
     let b := d7 + 8192 + 3*j;
     if j == bget h 26 then
-      if 8192 + 3*j + 2 < d8 then
+      if j < d15 then
         let h := v9 h x;
         let z21 := bget h 31;
         let h := v9 h y;

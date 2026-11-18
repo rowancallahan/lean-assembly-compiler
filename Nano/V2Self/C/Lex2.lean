@@ -1,44 +1,53 @@
 /- Nano/V2Self/C: the lexer for the self-language S (Testing/notes/NANO_V2_CHECKPOINT.md, "S = self-language").
 Output Buf: tag bytes; tags: def 1, let 2, UInt64 3, Int64 4, number 5 (+ 8 LE value bytes), ( 6, ) 7, : 8, := 9, + 10, - 11, * 12, ; 13,
-ident 14 (+ (1,byte)* + 0), `,` 15, × 16, → 17, | 18, => 19, < 20, == 23, &&& 26, ||| 27, <<< 28, >>> 29 (restricted set: no ≤ ≠ && || Int64),
+ident 14 (+ (1,byte)* + 0), `,` 15, × 16, → 17, | 18, => 19, < 20, == 23, &&& 26, ||| 27, <<< 28, >>> 29 (restricted set: no ≤ ≠ && || Int64; the source itself uses only == and < in conditions, so build_self_S.py needs no desugaring),
 [ 30, ] 31, if 32, then 33, else 34, Nat 35, Buf 36, List 37, UInt8 38.  Whitespace = space, newline.  Any other character: output empty.
 Internal kinds: 0 reject, 90 skip, 91 end. Tags 39-47: len' rd len put bnew bsize bget bset bpush (= IR prim id + 38). -/
 import Nano.V2Self.C.Base
 namespace C
 
-def s0 (c : UInt64) : UInt64 := if (65 ≤ c && c ≤ 90) || (97 ≤ c && c ≤ 122) || c == 95 || c == 39 || (48 ≤ c && c ≤ 57) then 1 else 0
+def s0 (c : UInt64) : UInt64 :=
+  if c < 48 then if c == 39 then 1 else 0
+  else if c < 58 then 1
+  else if c < 65 then 0
+  else if c < 91 then 1
+  else if c == 95 then 1
+  else if c < 97 then 0
+  else if c < 123 then 1
+  else 0
 
 def s1 : Nat → List UInt8 → UInt64 → UInt64
   | 0, x, p => p
-  | n + 1, x, p => if p < len x && s0 (rd x p) == 1 then s1 n x (p + 1) else p
+  | n + 1, x, p => if p < len x then if s0 (rd x p) == 1 then s1 n x (p + 1) else p else p
 
 def s2 : Nat → List UInt8 → UInt64 → UInt64 → UInt64
   | 0, x, i, e => 1
-  | n + 1, x, i, e => if i < e then if 48 ≤ rd x i && rd x i ≤ 57 then s2 n x (i + 1) e else 0 else 1
+  | n + 1, x, i, e => if i < e then if rd x i < 48 then 0 else if 57 < rd x i then 0 else s2 n x (i + 1) e else 1
 
 def s3 (x : List UInt8) (p e : UInt64) : UInt64 :=
   let c := rd x p;
   let d := e - p;
   let r0 := 14;
-  let r1 := if d == 4 && c == 101 && rd x (p + 1) == 108 && rd x (p + 2) == 115 && rd x (p + 3) == 101 then 34 else r0;
-  let r2 := if d == 4 && c == 116 && rd x (p + 1) == 104 && rd x (p + 2) == 101 && rd x (p + 3) == 110 then 33 else r1;
-  let r3 := if d == 2 && c == 105 && rd x (p + 1) == 102 then 32 else r2;
-  let r4 := if d == 3 && c == 108 && rd x (p + 1) == 101 && rd x (p + 2) == 116 then 2 else r3;
-  let r5 := if d == 3 && c == 100 && rd x (p + 1) == 101 && rd x (p + 2) == 102 then 1 else r4;
-  let r6 := if d == 4 && c == 76 && rd x (p + 1) == 105 && rd x (p + 2) == 115 && rd x (p + 3) == 116 then 37 else r5;
-  let r7 := if d == 3 && c == 66 && rd x (p + 1) == 117 && rd x (p + 2) == 102 then 36 else r6;
-  let r8 := if d == 3 && c == 78 && rd x (p + 1) == 97 && rd x (p + 2) == 116 then 35 else r7;
-  let r10 := if d == 5 && c == 85 && rd x (p + 1) == 73 && rd x (p + 2) == 110 && rd x (p + 3) == 116 && rd x (p + 4) == 56 then 38 else r8;
-  let r11 := if d == 6 && c == 85 && rd x (p + 1) == 73 && rd x (p + 2) == 110 && rd x (p + 3) == 116 && rd x (p + 4) == 54 && rd x (p + 5) == 52 then 3 else r10;
-  let r12 := if d == 2 && c == 114 && rd x (p + 1) == 100 then 40 else r11;
-  let r13 := if d == 3 && c == 108 && rd x (p + 1) == 101 && rd x (p + 2) == 110 then 41 else r12;
-  let r14 := if d == 4 && c == 108 && rd x (p + 1) == 101 && rd x (p + 2) == 110 && rd x (p + 3) == 39 then 39 else r13;
-  let r15 := if d == 3 && c == 112 && rd x (p + 1) == 117 && rd x (p + 2) == 116 then 42 else r14;
-  let r16 := if d == 4 && c == 98 && rd x (p + 1) == 110 && rd x (p + 2) == 101 && rd x (p + 3) == 119 then 43 else r15;
-  let r17 := if d == 5 && c == 98 && rd x (p + 1) == 115 && rd x (p + 2) == 105 && rd x (p + 3) == 122 && rd x (p + 4) == 101 then 44 else r16;
-  let r18 := if d == 4 && c == 98 && rd x (p + 1) == 103 && rd x (p + 2) == 101 && rd x (p + 3) == 116 then 45 else r17;
-  let r19 := if d == 4 && c == 98 && rd x (p + 1) == 115 && rd x (p + 2) == 101 && rd x (p + 3) == 116 then 46 else r18;
-  if d == 5 && c == 98 && rd x (p + 1) == 112 && rd x (p + 2) == 117 && rd x (p + 3) == 115 && rd x (p + 4) == 104 then 47 else r19
+  let r1 := if d == 4 then if c == 101 then if rd x (p + 1) == 108 then if rd x (p + 2) == 115 then if rd x (p + 3) == 101 then 34 else r0 else r0 else r0 else r0 else r0;
+  let r2 := if d == 4 then if c == 116 then if rd x (p + 1) == 104 then if rd x (p + 2) == 101 then if rd x (p + 3) == 110 then 33 else r1 else r1 else r1 else r1 else r1;
+  let r3 := if d == 2 then if c == 105 then if rd x (p + 1) == 102 then 32 else r2 else r2 else r2;
+  let r4 := if d == 3 then if c == 108 then if rd x (p + 1) == 101 then if rd x (p + 2) == 116 then 2 else r3 else r3 else r3 else r3;
+  let r5 := if d == 3 then if c == 100 then if rd x (p + 1) == 101 then if rd x (p + 2) == 102 then 1 else r4 else r4 else r4 else r4;
+  let r6 := if d == 4 then if c == 76 then if rd x (p + 1) == 105 then if rd x (p + 2) == 115 then if rd x (p + 3) == 116 then 37 else r5 else r5 else r5 else r5 else r5;
+  let r7 := if d == 3 then if c == 66 then if rd x (p + 1) == 117 then if rd x (p + 2) == 102 then 36 else r6 else r6 else r6 else r6;
+  let r8 := if d == 3 then if c == 78 then if rd x (p + 1) == 97 then if rd x (p + 2) == 116 then 35 else r7 else r7 else r7 else r7;
+  let r9 := if d == 5 then if c == 85 then if rd x (p + 1) == 73 then if rd x (p + 2) == 110 then if rd x (p + 3) == 116 then if rd x (p + 4) == 56 then 38 else r8 else r8 else r8 else r8 else r8 else r8;
+  let r10 := if d == 6 then if c == 85 then if rd x (p + 1) == 73 then if rd x (p + 2) == 110 then if rd x (p + 3) == 116 then if rd x (p + 4) == 54 then if rd x (p + 5) == 52 then 3 else r9 else r9 else r9 else r9 else r9 else r9 else r9;
+  let r11 := if d == 2 then if c == 114 then if rd x (p + 1) == 100 then 40 else r10 else r10 else r10;
+  let r12 := if d == 3 then if c == 108 then if rd x (p + 1) == 101 then if rd x (p + 2) == 110 then 41 else r11 else r11 else r11 else r11;
+  let r13 := if d == 4 then if c == 108 then if rd x (p + 1) == 101 then if rd x (p + 2) == 110 then if rd x (p + 3) == 39 then 39 else r12 else r12 else r12 else r12 else r12;
+  let r14 := if d == 3 then if c == 112 then if rd x (p + 1) == 117 then if rd x (p + 2) == 116 then 42 else r13 else r13 else r13 else r13;
+  let r15 := if d == 4 then if c == 98 then if rd x (p + 1) == 110 then if rd x (p + 2) == 101 then if rd x (p + 3) == 119 then 43 else r14 else r14 else r14 else r14 else r14;
+  let r16 := if d == 5 then if c == 98 then if rd x (p + 1) == 115 then if rd x (p + 2) == 105 then if rd x (p + 3) == 122 then if rd x (p + 4) == 101 then 44 else r15 else r15 else r15 else r15 else r15 else r15;
+  let r17 := if d == 4 then if c == 98 then if rd x (p + 1) == 103 then if rd x (p + 2) == 101 then if rd x (p + 3) == 116 then 45 else r16 else r16 else r16 else r16 else r16;
+  let r18 := if d == 4 then if c == 98 then if rd x (p + 1) == 115 then if rd x (p + 2) == 101 then if rd x (p + 3) == 116 then 46 else r17 else r17 else r17 else r17 else r17;
+  let r19 := if d == 5 then if c == 98 then if rd x (p + 1) == 112 then if rd x (p + 2) == 117 then if rd x (p + 3) == 115 then if rd x (p + 4) == 104 then 47 else r18 else r18 else r18 else r18 else r18 else r18;
+  r19
 
 def s4 (x : List UInt8) (p : UInt64) : UInt64 := if p < len x then
     let c := rd x p;
@@ -63,15 +72,35 @@ def s4 (x : List UInt8) (p : UInt64) : UInt64 := if p < len x then
     else if c == 62 then if d == 62 then if f == 62 then 29 else 0 else 0
     else if c == 195 then if d == 151 then 16 else 0
     else if c == 226 then if d == 134 then if f == 146 then 17 else 0 else 0
-    else if 48 ≤ c && c ≤ 57 then if s2 (len' x) x p (s1 (len' x) x p) == 1 then 5 else 0
+    else if c < 48 then if c == 39 then s3 x p (s1 (len' x) x p) else 0
+    else if c < 58 then if s2 (len' x) x p (s1 (len' x) x p) == 1 then 5 else 0
     else if s0 c == 1 then s3 x p (s1 (len' x) x p)
     else 0
   else 91
 
 def s5 (x : List UInt8) (p k : UInt64) : UInt64 :=
-  if k == 9 || k == 16 || k == 19 || k == 23 then p + 2
-  else if k == 17 || k == 26 || k == 27 || k == 28 || k == 29 then p + 3
-  else if k == 6 || k == 7 || k == 8 || k == 10 || k == 11 || k == 12 || k == 13 || k == 15 || k == 18 || k == 20 || k == 30 || k == 31 || k == 90 then p + 1
+  if k == 9 then p + 2
+  else if k == 16 then p + 2
+  else if k == 19 then p + 2
+  else if k == 23 then p + 2
+  else if k == 17 then p + 3
+  else if k == 26 then p + 3
+  else if k == 27 then p + 3
+  else if k == 28 then p + 3
+  else if k == 29 then p + 3
+  else if k == 6 then p + 1
+  else if k == 7 then p + 1
+  else if k == 8 then p + 1
+  else if k == 10 then p + 1
+  else if k == 11 then p + 1
+  else if k == 12 then p + 1
+  else if k == 13 then p + 1
+  else if k == 15 then p + 1
+  else if k == 18 then p + 1
+  else if k == 20 then p + 1
+  else if k == 30 then p + 1
+  else if k == 31 then p + 1
+  else if k == 90 then p + 1
   else s1 (len' x) x p
 
 def s6 : Nat → List UInt8 → UInt64 → UInt64 → UInt64 → UInt64
