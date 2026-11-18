@@ -199,11 +199,12 @@ theorem slotAddr_lt {p nl S0 k} (h : 8 * (nl - p) ≤ S0) (hk : k < nl) : slotAd
   unfold slotAddr slotOff; split <;> omega
 
 /-- the ENVIRONMENT contract: the fragment pushes `V env`, where `V` reads only the slots in `R`; it may write the frame
-slots in `W` (its own lets) and nothing else at or above t6; s0 and t5 are kept -/
-structure EV (C : List J) (pc len n p nl : Nat) (R W : Nat → Prop) (V : (Nat → UInt64) → UInt64) : Prop where
-  run : ∀ (s : St) (env : Nat → UInt64), Frame p nl s env → FrameOK p nl s →
+slots in `W` (its own lets) and nothing else at or above t6; s0 and t5 are kept; x0 = 0 and the invariant `Inv` (the
+input / heap / input-register facts a leaf's value depends on) are kept -/
+structure EV (C : List J) (pc len n p nl : Nat) (Inv : St → Prop) (R W : Nat → Prop) (V : (Nat → UInt64) → UInt64) : Prop where
+  run : ∀ (s : St) (env : Nat → UInt64), Inv s → s.x 0 = 0 → Frame p nl s env → FrameOK p nl s →
     (s.x 30).toNat + 8 * n ≤ (s.x 31).toNat →
-    ∃ s' env', Star C (pc, s) (pc + len, s') ∧ (s'.x 31).toNat = (s.x 31).toNat - 8 ∧
+    ∃ s' env', Star C (pc, s) (pc + len, s') ∧ Inv s' ∧ s'.x 0 = 0 ∧ (s'.x 31).toNat = (s.x 31).toNat - 8 ∧
       s'.m ((s.x 31).toNat - 8) = V env ∧ s'.x 8 = s.x 8 ∧ s'.x 30 = s.x 30 ∧
       Frame p nl s' env' ∧ (∀ k, ¬ W k → env' k = env k) ∧
       ∀ a, (s.x 31).toNat ≤ a → (∀ k, k < nl → W k → a ≠ slotAddr p (s.x 8).toNat k) → s'.m a = s.m a
@@ -212,11 +213,17 @@ structure EV (C : List J) (pc len n p nl : Nat) (R W : Nat → Prop) (V : (Nat �
 /-- pop the top word into slot k (`g26`, w = 1) -/
 def popSlot (p k : Nat) : List J := [.ld 5 31 0, .addi 31 31 8, .sd 5 8 (slotOff p k)]
 
+/-- `Inv` reads only s0, x28, x29, t5 and memory outside the stack/frame block [t5, frame top) -/
+def InvOK (p : Nat) (Inv : St → Prop) : Prop :=
+  ∀ s s' : St, Inv s → s'.x 8 = s.x 8 → s'.x 28 = s.x 28 → s'.x 29 = s.x 29 → s'.x 30 = s.x 30 →
+    (∀ a, ¬ ((s.x 30).toNat ≤ a ∧ a < (s.x 8).toNat + 8 * p + 16) → s'.m a = s.m a) → Inv s'
+
 /-- **LET** (width 1): value; pop into slot k0; body.  Scoping: the body reads none of the value's own lets. -/
-theorem let1 {C : List J} {pc lv lb n p nl k0 : Nat} {Rv Wv Rb Wb : Nat → Prop} {Vv Vb : (Nat → UInt64) → UInt64}
-    (hv : EV C pc lv n p nl Rv Wv Vv) (hS : At C (pc + lv) (popSlot p k0)) (hb : EV C (pc + lv + 3) lb n p nl Rb Wb Vb)
+theorem let1 {C : List J} {pc lv lb n p nl k0 : Nat} {Inv : St → Prop} {Rv Wv Rb Wb : Nat → Prop}
+    {Vv Vb : (Nat → UInt64) → UInt64} (hI : InvOK p Inv)
+    (hv : EV C pc lv n p nl Inv Rv Wv Vv) (hS : At C (pc + lv) (popSlot p k0)) (hb : EV C (pc + lv + 3) lb n p nl Inv Rb Wb Vb)
     (hk0 : k0 < nl) (hsc : ∀ k, Rb k → k ≠ k0 → ¬ Wv k) (hn : 1 ≤ n) :
-    EV C pc (lv + 3 + lb) n p nl (fun k => Rv k ∨ (Rb k ∧ k ≠ k0)) (fun k => Wv k ∨ k = k0 ∨ Wb k)
+    EV C pc (lv + 3 + lb) n p nl Inv (fun k => Rv k ∨ (Rb k ∧ k ≠ k0)) (fun k => Wv k ∨ k = k0 ∨ Wb k)
       (fun env => Vb (upd env k0 (Vv env))) where
   stable := fun env env' h => by
     have e1 : Vv env = Vv env' := hv.stable env env' (fun k hk => h k (Or.inl hk))
@@ -224,8 +231,8 @@ theorem let1 {C : List J} {pc lv lb n p nl k0 : Nat} {Rv Wv Rb Wb : Nat → Prop
     by_cases hk' : k = k0
     · subst hk'; simp [upd, e1]
     · simp [upd, hk']; exact h k (Or.inr ⟨hk, hk'⟩)
-  run := fun s env hF hO room => by
-    obtain ⟨s1, env1, r1, p1, v1, e81, e301, F1, ag1, m1⟩ := hv.run s env hF hO room
+  run := fun s env hI0 hx0 hF hO room => by
+    obtain ⟨s1, env1, r1, I1, z1, p1, v1, e81, e301, F1, ag1, m1⟩ := hv.run s env hI0 hx0 hF hO room
     obtain ⟨o1, o2, o3⟩ := hO
     have lt64 := (s.x 31).toNat_lt
     -- pop into the slot
@@ -254,9 +261,16 @@ theorem let1 {C : List J} {pc lv lb n p nl k0 : Nat} {Rv Wv Rb Wb : Nat → Prop
       · have ne : slotAddr p (s.x 8).toNat k ≠ slotAddr p (s.x 8).toNat k0 :=
           fun h => e (slotAddr_inj (by omega) hk hk0 h)
         rw [upd_other _ _ ne, upd_other _ _ e, ← e81]; exact F1 k hk
-    obtain ⟨s3, env3, r3, p3, v3, e83, e303, F3, ag3, m3⟩ :=
-      hb.run s2 env2 F2 ⟨by rw [x31, x8]; omega, o2, by rw [x8]; omega⟩ (by rw [x30, x31]; exact room)
-    refine ⟨s3, env3, ?_, ?_, ?_, ?_, ?_, F3, ?_, ?_⟩
+    have I2 : Inv s2 := by
+      apply hI s1 s2 I1 (by simp [s2, upd]) (by simp [s2, upd]) (by simp [s2, upd]) (by simp [s2, upd])
+      intro a ha
+      simp only [s2]; rw [upd_other]
+      intro e; apply ha; rw [e, e301, e81]
+      exact ⟨by have := slotAddr_ge (T := (s.x 31).toNat) (by omega) o2 hk0; omega, slotAddr_lt (by omega) hk0⟩
+    have z2 : s2.x 0 = 0 := by simp [s2, upd, z1]
+    obtain ⟨s3, env3, r3, I3, z3, p3, v3, e83, e303, F3, ag3, m3⟩ :=
+      hb.run s2 env2 I2 z2 F2 ⟨by rw [x31, x8]; omega, o2, by rw [x8]; omega⟩ (by rw [x30, x31]; exact room)
+    refine ⟨s3, env3, ?_, I3, z3, ?_, ?_, ?_, ?_, F3, ?_, ?_⟩
     · have : pc + lv + 3 + lb = pc + (lv + 3 + lb) := by omega
       rw [← this]; exact (r1.trans (run_star r2)).trans r3
     · rw [p3, x31]
