@@ -2,7 +2,7 @@ import Nano.V2Self.C.Lex2
 import Nano.V2Self.C.Par0
 import Nano.V2Self.C.Gen
 /- Chain test: random scalar defs (generator copied from par0_test.lean) → text → C.s10 (lex) → C.y13 (Par0) → append a
-hand-written main (args from input bytes, 8 result bytes out) → C.g41 → RV64 code.  Expected outputs = native evaluation
+hand-written main (args from input bytes, 8 result bytes out) → C.g41 [] → RV64 code.  Expected outputs = native evaluation
 of the tree.  Writes Testing/asm/ir-words/cgc_K.{words,cases}; run each with NOSAIL=1 cg_test.py cgc_K.
 run: lean --run Testing/nano/v2self/cg_chain.lean N -/
 inductive T | cst (v : Nat) | var (n : String) | bin (op : Nat) (a b : T) | ite (k : Nat) (a b t e : T) | lt (n : String) (v b : T)
@@ -61,7 +61,7 @@ def main (args : List String) : IO Unit := do
     let txt := s!"def f (a b1 c' d_e : UInt64) : UInt64 := {t.pr 0}\n"
     let ws := C.y13 (C.s10 txt.toUTF8.toList)
     if ws.isEmpty then throw (IO.userError s!"parser rejected {txt}")
-    let code := C.g41 (ws ++ mainW)
+    let code := C.g41 [] (ws ++ mainW)
     if code.isEmpty then throw (IO.userError s!"g41 rejected {txt}")
     let wd := (List.range (code.length / 4)).map fun q =>
       (code.getD (4*q) 0).toNat + 256 * (code.getD (4*q+1) 0).toNat + 65536 * (code.getD (4*q+2) 0).toNat + 16777216 * (code.getD (4*q+3) 0).toNat
@@ -76,6 +76,6 @@ def main (args : List String) : IO Unit := do
   let ws := C.y13 (C.s10 "def f (a b1 c' d_e : UInt64) : UInt64 := a\n".toUTF8.toList)
   let bad := [ws, ws ++ (mainW.map fun v => if v == 2 then 2 else v).set 2 1,
     ws ++ [20, 1, 0, 1, 0, 1, 9, 4, 9, 5, 2, 3, 1, 21], ws ++ [20, 1, 1, 1, 0, 1, 9, 4, 9, 5, 2, 0, 1, 21]]
-  let nr := (bad.filter fun b => (C.g41 b).isEmpty).length
+  let nr := (bad.filter fun b => (C.g41 [] b).isEmpty).length
   if nr != bad.length then throw (IO.userError s!"must-reject: only {nr}/{bad.length} rejected")
   IO.println s!"valid programs accepted: {n}/{n} (a rejection is a FAILURE); must-reject rejected: {nr}/{bad.length}"

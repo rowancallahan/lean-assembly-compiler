@@ -64,8 +64,11 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
   5 inputs each (146–380 words).
 - WHOLE SOURCE (Par1's dump Testing/nano/v2self/c_source_ast.bin = the OLD chain Lex/Parse/Inl/Expand/Asm/Main,
   90 defs, 14,619 words): first run stopped at def 28 on `LOCAL 1 0` (implicit input, width 0) — g43 now allows
-  width 0 (pushes nothing; slot range still checked); then ACCEPTED: 28,664 code words (`cg_whole.lean`, native 3 s).
-  The code is run on QEMU against native `C.m` with Testing/nano/v2self/selfrun.py (cgw).
+  width 0; then ACCEPTED: 28,664 code words (`cg_whole.lean`, native 3 s).
+  Since Par1 now DROPS width-0 locals (43c309b), g43 rejects width 0 again (strict; keeps Gen.lean == self_S, whose
+  B₂ was built with the strict check); that old dump therefore no longer passes g41 — use self_S_ast.bin.
+- g40/g42/g41 take the real input `c : List UInt8` FIRST (input convention), in Gen.lean itself; build_self_S.py
+  no longer patches Gen (self_S regenerated from the files is byte-identical to the committed one).
 - Heap budget of S = Base+Lex2+Par1+Gen+driver on its own source (static count of executed `bnew`s on the success
   path): lexer 1 (s10), parser 2 (y15 heap, v98 output), Gen 5 (r o k t f), output bytes 1 ⇒ 9 buffers.
   Largest: parser heap = 184,384 (layout) + 33,759 tokens + AST ≈ 233k words (needs κ ≥ 2^18; 2^19 gives 2.2×);

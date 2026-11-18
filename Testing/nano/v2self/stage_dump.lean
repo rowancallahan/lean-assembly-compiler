@@ -12,7 +12,7 @@ def main (args : List String) : IO Unit := do
   let txt ← IO.FS.readFile src
   let tk := C.s10 txt.toUTF8.toList
   let ast := C.y13 tk
-  let code := C.g41 ast
+  let code := C.g41 [] ast
   IO.FS.writeFile (out ++ ".tok") (hx tk)
   IO.FS.writeFile (out ++ ".ast") (hx ast)
   IO.FS.writeFile (out ++ ".code") (hx (code.map (·.toUInt64)))

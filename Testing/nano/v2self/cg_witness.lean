@@ -16,5 +16,5 @@ def w1ast : List UInt64 := [2, 20, 0, 2, 3, 0, 1, 5, 2, 1, 3, 3, 2, 0, 1, 2, 1, 
 -- writes at word offsets up to 40000+, i.e. kernel lists of that length).
 #guard C.y13 (C.s10 (w1src.map (·.toUInt8))) == w1ast
 -- stage 2 (code generator): kernel-checked, 25 s, 3.9 GB (needs `lean --tstack=4000000`, `ulimit -s unlimited`)
-theorem w1 : C.g41 (w1ast ++ w1main) = w1code := by decide +kernel
+theorem w1 : C.g41 [] (w1ast ++ w1main) = w1code := by decide +kernel
 end W
