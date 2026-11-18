@@ -289,4 +289,196 @@ theorem let1 {C : List J} {pc lv lb n p nl k0 : Nat} {Inv : St → Prop} {Rv Wv 
       simp only [s2]; rw [upd_other _ _ (hW k0 hk0 (Or.inr (Or.inl rfl)))]
       exact m1 a ha (fun k hk wk => hW k hk (Or.inl wk))
 
+/-- **IF (==) under EV**: A; B; head; T; jal END; E.  Scoping: B reads none of A's lets; T and E read none of A's or B's. -/
+theorem ifE_eq {C : List J} {pc la lb lt le n p nl : Nat} {Inv : St → Prop} {RA WA RB WB RT WT RE WE : Nat → Prop}
+    {VA VB VT VE : (Nat → UInt64) → UInt64} (hI : InvOK p Inv)
+    (hA : EV C pc la n p nl Inv RA WA VA) (hB : EV C (pc + la) lb n p nl Inv RB WB VB)
+    (hH : At C (pc + la + lb) (ifHead lt)) (hT : EV C (pc + la + lb + 5) lt n p nl Inv RT WT VT)
+    (hJ : C[pc + la + lb + 5 + lt]? = some (.jal 0 ((le : Int) + 1)))
+    (hE : EV C (pc + la + lb + 6 + lt) le n p nl Inv RE WE VE)
+    (sB : ∀ k, RB k → ¬ WA k) (sT : ∀ k, RT k → ¬ WA k ∧ ¬ WB k) (sE : ∀ k, RE k → ¬ WA k ∧ ¬ WB k) (hn : 1 ≤ n) :
+    EV C pc (la + lb + 6 + lt + le) (n + 1) p nl Inv (fun k => RA k ∨ RB k ∨ RT k ∨ RE k) (fun k => WA k ∨ WB k ∨ WT k ∨ WE k)
+      (fun env => if VA env = VB env then VT env else VE env) where
+  stable := fun env env' h => by
+    rw [hA.stable env env' (fun k hk => h k (Or.inl hk)), hB.stable env env' (fun k hk => h k (Or.inr (Or.inl hk))),
+      hT.stable env env' (fun k hk => h k (Or.inr (Or.inr (Or.inl hk)))),
+      hE.stable env env' (fun k hk => h k (Or.inr (Or.inr (Or.inr hk))))]
+  run := fun s env I0 z0 F0 O0 room => by
+    obtain ⟨o1, o2, o3⟩ := O0
+    obtain ⟨s1, env1, r1, I1, z1, p1, v1, e81, e301, F1, ag1, m1⟩ := hA.run s env I0 z0 F0 ⟨o1, o2, o3⟩ (by omega)
+    obtain ⟨s2, env2, r2, I2, z2, p2, v2, e82, e302, F2, ag2, m2⟩ := hB.run s1 env1 I1 z1 F1
+      ⟨by rw [p1, e81]; omega, o2, by rw [e81]; omega⟩ (by rw [e301, p1]; omega)
+    rw [p1] at p2 v2 m2
+    rw [e81] at m2
+    have c0 := hH.at 0 (by simp [ifHead]); have c1 := hH.at 1 (by simp [ifHead])
+    have c2 := hH.at 2 (by simp [ifHead]); have c3 := hH.at 3 (by simp [ifHead]); have c4 := hH.at 4 (by simp [ifHead])
+    simp [ifHead] at c0 c1 c2 c3 c4
+    have lt64 := (s.x 31).toNat_lt
+    have va : s2.m ((s.x 31).toNat - 8) = VA env := by
+      rw [m2 _ (by omega) (fun k hk _ => by
+        have := slotAddr_ge (T := (s.x 31).toNat) (by omega) o2 hk; omega), v1]
+    have vb : s2.m ((s.x 31).toNat - 8 - 8) = VB env := by
+      rw [v2]; exact hB.stable env1 env (fun k hk => ag1 k (sB k hk))
+    have ea0 : ea (s2.x 31) 0 = (s.x 31).toNat - 8 - 8 := by simp [ea, p2]
+    have ea8 : ea (s2.x 31) 8 = (s.x 31).toNat - 8 := by simp [ea, p2]; omega
+    have ea16 : ea (s2.x 31) 16 = (s.x 31).toNat := by simp [ea, p2]; omega
+    let s3 : St := ⟨upd (upd (upd s2.x 6 (VB env)) 5 (VA env)) 31 (UInt64.ofNat (s.x 31).toNat), s2.m, s2.b⟩
+    have r3 : run C 3 (pc + la + lb, s2) = some (pc + la + lb + 3, s3) := by
+      simp [run, step, c0, c1, c2, wr, ea0, ea8, va, vb, upd_other _ _ (show (31:Nat) ≠ 6 by decide),
+        upd_other _ _ (show (31:Nat) ≠ 5 by decide), ea16, s3]
+    have x31 : (s3.x 31).toNat = (s.x 31).toNat := by simp [s3, upd]
+    have x30 : s3.x 30 = s.x 30 := by simp [s3, upd, e302, e301]
+    have x8 : s3.x 8 = s.x 8 := by simp [s3, upd, e82, e81]
+    have x5 : s3.x 5 = VA env := by simp [s3, upd]
+    have x6 : s3.x 6 = VB env := by simp [s3, upd]
+    have I3 : Inv s3 := hI s2 s3 I2 (by simp [s3, upd]) (by simp [s3, upd]) (by simp [s3, upd]) (by simp [s3, upd])
+      (fun a _ => rfl)
+    have z3 : s3.x 0 = 0 := by simp [s3, upd, z2]
+    have F3 : Frame p nl s3 env2 := fun k hk => by
+      show s2.m (slotAddr p (s3.x 8).toNat k) = env2 k
+      rw [x8, ← e81, ← e82]; exact F2 k hk
+    have O3 : FrameOK p nl s3 := ⟨by rw [x31, x8]; omega, o2, by rw [x8]; omega⟩
+    have mm : ∀ a, (s.x 31).toNat ≤ a → (∀ k, k < nl → (WA k ∨ WB k) → a ≠ slotAddr p (s.x 8).toNat k) →
+        s3.m a = s.m a := by
+      intro a ha hw
+      show s2.m a = s.m a
+      rw [m2 a (by omega) (fun k hk wk => hw k hk (Or.inr wk)), m1 a ha (fun k hk wk => hw k hk (Or.inl wk))]
+    have ag : ∀ k, ¬ WA k → ¬ WB k → env2 k = env k := fun k h1 h2 => by rw [ag2 k h2, ag1 k h1]
+    have st3 : Star C (pc, s) (pc + la + lb + 3, s3) := (r1.trans r2).trans (run_star r3)
+    by_cases hc : VA env = VB env
+    · have sb : step C (pc + la + lb + 3, s3) = some (pc + la + lb + 5, s3) := by
+        simp [step, c3, x5, x6, hc]; omega
+      obtain ⟨s4, env4, r4, I4, z4, p4, v4, e84, e304, F4, ag4, m4⟩ :=
+        hT.run s3 env2 I3 z3 F3 O3 (by rw [x30, x31]; omega)
+      let s5 := wr s4 0 (UInt64.ofNat (s4.b + 4 * (pc + la + lb + 5 + lt + 1)))
+      have w5 : s5 = s4 := by simp [s5, wr]
+      have sj : step C (pc + la + lb + 5 + lt, s4) = some (pc + (la + lb + 6 + lt + le), s5) := by
+        simp [step, hJ, s5]; omega
+      rw [w5] at sj
+      refine ⟨s4, env4, (st3.tail sb |>.trans r4).tail sj, I4, z4, ?_, ?_, ?_, ?_, F4, ?_, ?_⟩
+      · rw [p4, x31]
+      · rw [x31] at v4; rw [v4, if_pos hc]; exact hT.stable env2 env (fun k hk => ag k (sT k hk).1 (sT k hk).2)
+      · rw [e84, x8]
+      · rw [e304, x30]
+      · intro k hk; simp only [not_or] at hk; rw [ag4 k hk.2.2.1, ag k hk.1 hk.2.1]
+      · intro a ha hw
+        rw [m4 a (by rw [x31]; exact ha) (fun k hk wk => by rw [x8]; exact hw k hk (Or.inr (Or.inr (Or.inl wk))))]
+        exact mm a ha (fun k hk wk => hw k hk (by rcases wk with w | w <;> simp [w]))
+    · have sb : step C (pc + la + lb + 3, s3) = some (pc + la + lb + 4, s3) := by
+        simp [step, c3, x5, x6, hc]
+      let s5 := wr s3 0 (UInt64.ofNat (s3.b + 4 * (pc + la + lb + 4 + 1)))
+      have w5 : s5 = s3 := by simp [s5, wr]
+      have sj0 : step C (pc + la + lb + 4, s3) = some (pc + la + lb + 6 + lt, s5) := by
+        simp [step, c4, s5]; omega
+      rw [w5] at sj0
+      obtain ⟨s6, env6, r6, I6, z6, p6, v6, e86, e306, F6, ag6, m6⟩ :=
+        hE.run s3 env2 I3 z3 F3 O3 (by rw [x30, x31]; omega)
+      refine ⟨s6, env6, ?_, I6, z6, ?_, ?_, ?_, ?_, F6, ?_, ?_⟩
+      · have : pc + la + lb + 6 + lt + le = pc + (la + lb + 6 + lt + le) := by omega
+        rw [← this]; exact ((st3.tail sb).tail sj0).trans r6
+      · rw [p6, x31]
+      · rw [x31] at v6; rw [v6, if_neg hc]; exact hE.stable env2 env (fun k hk => ag k (sE k hk).1 (sE k hk).2)
+      · rw [e86, x8]
+      · rw [e306, x30]
+      · intro k hk; simp only [not_or] at hk; rw [ag6 k hk.2.2.2, ag k hk.1 hk.2.1]
+      · intro a ha hw
+        rw [m6 a (by rw [x31]; exact ha) (fun k hk wk => by rw [x8]; exact hw k hk (Or.inr (Or.inr (Or.inr wk))))]
+        exact mm a ha (fun k hk wk => hw k hk (by rcases wk with w | w <;> simp [w]))
+
+/-- **IF (<, unsigned) under EV**: A; B; head; T; jal END; E.  Scoping: B reads none of A's lets; T and E read none of A's or B's. -/
+theorem ifE_lt {C : List J} {pc la lb lt le n p nl : Nat} {Inv : St → Prop} {RA WA RB WB RT WT RE WE : Nat → Prop}
+    {VA VB VT VE : (Nat → UInt64) → UInt64} (hI : InvOK p Inv)
+    (hA : EV C pc la n p nl Inv RA WA VA) (hB : EV C (pc + la) lb n p nl Inv RB WB VB)
+    (hH : At C (pc + la + lb) (ifHeadLt lt)) (hT : EV C (pc + la + lb + 5) lt n p nl Inv RT WT VT)
+    (hJ : C[pc + la + lb + 5 + lt]? = some (.jal 0 ((le : Int) + 1)))
+    (hE : EV C (pc + la + lb + 6 + lt) le n p nl Inv RE WE VE)
+    (sB : ∀ k, RB k → ¬ WA k) (sT : ∀ k, RT k → ¬ WA k ∧ ¬ WB k) (sE : ∀ k, RE k → ¬ WA k ∧ ¬ WB k) (hn : 1 ≤ n) :
+    EV C pc (la + lb + 6 + lt + le) (n + 1) p nl Inv (fun k => RA k ∨ RB k ∨ RT k ∨ RE k) (fun k => WA k ∨ WB k ∨ WT k ∨ WE k)
+      (fun env => if (VA env).toNat < (VB env).toNat then VT env else VE env) where
+  stable := fun env env' h => by
+    rw [hA.stable env env' (fun k hk => h k (Or.inl hk)), hB.stable env env' (fun k hk => h k (Or.inr (Or.inl hk))),
+      hT.stable env env' (fun k hk => h k (Or.inr (Or.inr (Or.inl hk)))),
+      hE.stable env env' (fun k hk => h k (Or.inr (Or.inr (Or.inr hk))))]
+  run := fun s env I0 z0 F0 O0 room => by
+    obtain ⟨o1, o2, o3⟩ := O0
+    obtain ⟨s1, env1, r1, I1, z1, p1, v1, e81, e301, F1, ag1, m1⟩ := hA.run s env I0 z0 F0 ⟨o1, o2, o3⟩ (by omega)
+    obtain ⟨s2, env2, r2, I2, z2, p2, v2, e82, e302, F2, ag2, m2⟩ := hB.run s1 env1 I1 z1 F1
+      ⟨by rw [p1, e81]; omega, o2, by rw [e81]; omega⟩ (by rw [e301, p1]; omega)
+    rw [p1] at p2 v2 m2
+    rw [e81] at m2
+    have c0 := hH.at 0 (by simp [ifHeadLt]); have c1 := hH.at 1 (by simp [ifHeadLt])
+    have c2 := hH.at 2 (by simp [ifHeadLt]); have c3 := hH.at 3 (by simp [ifHeadLt]); have c4 := hH.at 4 (by simp [ifHeadLt])
+    simp [ifHeadLt] at c0 c1 c2 c3 c4
+    have lt64 := (s.x 31).toNat_lt
+    have va : s2.m ((s.x 31).toNat - 8) = VA env := by
+      rw [m2 _ (by omega) (fun k hk _ => by
+        have := slotAddr_ge (T := (s.x 31).toNat) (by omega) o2 hk; omega), v1]
+    have vb : s2.m ((s.x 31).toNat - 8 - 8) = VB env := by
+      rw [v2]; exact hB.stable env1 env (fun k hk => ag1 k (sB k hk))
+    have ea0 : ea (s2.x 31) 0 = (s.x 31).toNat - 8 - 8 := by simp [ea, p2]
+    have ea8 : ea (s2.x 31) 8 = (s.x 31).toNat - 8 := by simp [ea, p2]; omega
+    have ea16 : ea (s2.x 31) 16 = (s.x 31).toNat := by simp [ea, p2]; omega
+    let s3 : St := ⟨upd (upd (upd s2.x 6 (VB env)) 5 (VA env)) 31 (UInt64.ofNat (s.x 31).toNat), s2.m, s2.b⟩
+    have r3 : run C 3 (pc + la + lb, s2) = some (pc + la + lb + 3, s3) := by
+      simp [run, step, c0, c1, c2, wr, ea0, ea8, va, vb, upd_other _ _ (show (31:Nat) ≠ 6 by decide),
+        upd_other _ _ (show (31:Nat) ≠ 5 by decide), ea16, s3]
+    have x31 : (s3.x 31).toNat = (s.x 31).toNat := by simp [s3, upd]
+    have x30 : s3.x 30 = s.x 30 := by simp [s3, upd, e302, e301]
+    have x8 : s3.x 8 = s.x 8 := by simp [s3, upd, e82, e81]
+    have x5 : s3.x 5 = VA env := by simp [s3, upd]
+    have x6 : s3.x 6 = VB env := by simp [s3, upd]
+    have I3 : Inv s3 := hI s2 s3 I2 (by simp [s3, upd]) (by simp [s3, upd]) (by simp [s3, upd]) (by simp [s3, upd])
+      (fun a _ => rfl)
+    have z3 : s3.x 0 = 0 := by simp [s3, upd, z2]
+    have F3 : Frame p nl s3 env2 := fun k hk => by
+      show s2.m (slotAddr p (s3.x 8).toNat k) = env2 k
+      rw [x8, ← e81, ← e82]; exact F2 k hk
+    have O3 : FrameOK p nl s3 := ⟨by rw [x31, x8]; omega, o2, by rw [x8]; omega⟩
+    have mm : ∀ a, (s.x 31).toNat ≤ a → (∀ k, k < nl → (WA k ∨ WB k) → a ≠ slotAddr p (s.x 8).toNat k) →
+        s3.m a = s.m a := by
+      intro a ha hw
+      show s2.m a = s.m a
+      rw [m2 a (by omega) (fun k hk wk => hw k hk (Or.inr wk)), m1 a ha (fun k hk wk => hw k hk (Or.inl wk))]
+    have ag : ∀ k, ¬ WA k → ¬ WB k → env2 k = env k := fun k h1 h2 => by rw [ag2 k h2, ag1 k h1]
+    have st3 : Star C (pc, s) (pc + la + lb + 3, s3) := (r1.trans r2).trans (run_star r3)
+    by_cases hc : (VA env).toNat < (VB env).toNat
+    · have sb : step C (pc + la + lb + 3, s3) = some (pc + la + lb + 5, s3) := by
+        simp [step, c3, x5, x6, hc]; omega
+      obtain ⟨s4, env4, r4, I4, z4, p4, v4, e84, e304, F4, ag4, m4⟩ :=
+        hT.run s3 env2 I3 z3 F3 O3 (by rw [x30, x31]; omega)
+      let s5 := wr s4 0 (UInt64.ofNat (s4.b + 4 * (pc + la + lb + 5 + lt + 1)))
+      have w5 : s5 = s4 := by simp [s5, wr]
+      have sj : step C (pc + la + lb + 5 + lt, s4) = some (pc + (la + lb + 6 + lt + le), s5) := by
+        simp [step, hJ, s5]; omega
+      rw [w5] at sj
+      refine ⟨s4, env4, (st3.tail sb |>.trans r4).tail sj, I4, z4, ?_, ?_, ?_, ?_, F4, ?_, ?_⟩
+      · rw [p4, x31]
+      · rw [x31] at v4; rw [v4, if_pos hc]; exact hT.stable env2 env (fun k hk => ag k (sT k hk).1 (sT k hk).2)
+      · rw [e84, x8]
+      · rw [e304, x30]
+      · intro k hk; simp only [not_or] at hk; rw [ag4 k hk.2.2.1, ag k hk.1 hk.2.1]
+      · intro a ha hw
+        rw [m4 a (by rw [x31]; exact ha) (fun k hk wk => by rw [x8]; exact hw k hk (Or.inr (Or.inr (Or.inl wk))))]
+        exact mm a ha (fun k hk wk => hw k hk (by rcases wk with w | w <;> simp [w]))
+    · have sb : step C (pc + la + lb + 3, s3) = some (pc + la + lb + 4, s3) := by
+        simp [step, c3, x5, x6, hc]
+      let s5 := wr s3 0 (UInt64.ofNat (s3.b + 4 * (pc + la + lb + 4 + 1)))
+      have w5 : s5 = s3 := by simp [s5, wr]
+      have sj0 : step C (pc + la + lb + 4, s3) = some (pc + la + lb + 6 + lt, s5) := by
+        simp [step, c4, s5]; omega
+      rw [w5] at sj0
+      obtain ⟨s6, env6, r6, I6, z6, p6, v6, e86, e306, F6, ag6, m6⟩ :=
+        hE.run s3 env2 I3 z3 F3 O3 (by rw [x30, x31]; omega)
+      refine ⟨s6, env6, ?_, I6, z6, ?_, ?_, ?_, ?_, F6, ?_, ?_⟩
+      · have : pc + la + lb + 6 + lt + le = pc + (la + lb + 6 + lt + le) := by omega
+        rw [← this]; exact ((st3.tail sb).tail sj0).trans r6
+      · rw [p6, x31]
+      · rw [x31] at v6; rw [v6, if_neg hc]; exact hE.stable env2 env (fun k hk => ag k (sE k hk).1 (sE k hk).2)
+      · rw [e86, x8]
+      · rw [e306, x30]
+      · intro k hk; simp only [not_or] at hk; rw [ag6 k hk.2.2.2, ag k hk.1 hk.2.1]
+      · intro a ha hw
+        rw [m6 a (by rw [x31]; exact ha) (fun k hk wk => by rw [x8]; exact hw k hk (Or.inr (Or.inr (Or.inr wk))))]
+        exact mm a ha (fun k hk wk => hw k hk (by rcases wk with w | w <;> simp [w]))
+
 end Templates

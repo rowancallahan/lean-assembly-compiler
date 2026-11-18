@@ -133,7 +133,10 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
   `Frame` = slots hold env; the fragment pushes `V env`, V reads only slots in R, writes only frame slots in W, keeps
   s0/t5 and all other cells ≥ t6).  `let1` (LET width 1: value; pop into slot k0 (g26); body) proved, with the
   scoping side condition "the body reads none of the value's own lets" (from the parser's well-scopedness).
-  Next: IF under EV (same proof as if_eq), PAIR/LET of width w, LOOP/CONTINUE, fixups, the g39 work-item invariant.
+  EV has an invariant parameter `Inv` (input / heap / input-register facts; `InvOK`: Inv reads only x8, x28, x29,
+  x30 and memory outside [t5, s0 + 8p + 16)) and x0 = 0.  `ifE_eq` / `ifE_lt`: IF under EV (room n+1 from n),
+  scoping: B reads none of A's lets, T/E none of A's or B's.
+  Next: PAIR/LET of width w, LOOP/CONTINUE (tail contract), the fixup lemma, the g39 work-item invariant.
 - Next: the parser's real output (Sonnet box) through g41 as Par0 gains calls/prims/loops; a diff test against Nano.V2B `gen` on the v2f programs.
 - EXPRESSION TEMPLATES PROVED (Sonnet box): `Nano/V2Self/Proof/Expr.lean` (+ `ExprExact.lean`), no sorry, standard axioms, ~5 s each.
   J (Proof/Call.lean) gained additive `alu` (Gen's BIN numbering), `slli`, `lbu` (byte of the aligned LE word cell).
