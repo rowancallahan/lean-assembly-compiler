@@ -13,7 +13,7 @@ Written as a plain recursive descent over decoded tokens (fuel = a bound that is
   (resolved by binding, not spelling);
 * calls: arguments match the callee's parameter shapes; the input argument is dropped (width 0); self-calls only in TAIL position of a loop's step arm
   (inherited into `if` branches, the `let` body, parentheses; cleared for conditions, operands, call arguments, `let` values, tuple fields), exactly
-  `f n e1..ek` with `n` the fuel binder as RESOLVED, becoming `CONTINUE e` (flat PAIR of the non-input states, bare when one);
+  `f n e1..ek` with `n` the fuel binder as RESOLVED, becoming `CONTINUE e` (flat PAIR of the non-input states, bare when one; a loop whose only state is the input is rejected: CONTINUE needs a payload);
 * the program is a non-empty def list ending in `m (x : List UInt8) : List UInt8`.
 Anything else is rejected (`none`). -/
 import Nano.V2Self.C.Lex2Spec
@@ -48,19 +48,30 @@ def detok (f : Nat) (l : List Nat) : Option (List Tok) := detokA f l []
 def tokens (ts : List UInt64) : Option (List Tok) := detok (ts.length + 1) (ts.map UInt64.toNat)
 
 /-! ## shapes, types, resolved nodes -/
-inductive Sh | w | p (a b : Sh) deriving DecidableEq, Repr
-def Sh.width : Sh → Nat | .w => 1 | .p a b => a.width + b.width
+/-- leaves: `uw` UInt64, `bf` Buf, `ls` List UInt8 (as a value), `nt` Nat (fuel only: numerals and `len'`) -/
+inductive Sh | uw | bf | ls | nt | p (a b : Sh) deriving DecidableEq, Repr
+def Sh.width : Sh → Nat | .p a b => a.width + b.width | _ => 1
+def Sh.hasN : Sh → Bool | .nt => true | .p a b => a.hasN || b.hasN | _ => false
 
 /-- binding / parameter kinds -/
 inductive Ps | inp | fuel | sh (s : Sh) deriving DecidableEq, Repr
 def Ps.width : Ps → Nat | .inp => 0 | .fuel => 1 | .sh s => s.width
 
-/-- type of an expression: a shape, the input, or `bot` (a CONTINUE: never returns) -/
-inductive Ty | s (s : Sh) | inp | bot deriving DecidableEq, Repr
+/-- type of an expression: a shape, a numeral (UInt64 or Nat), the input, or `bot` (a CONTINUE: never returns) -/
+inductive Ty | s (s : Sh) | lit | inp | bot deriving DecidableEq, Repr
 def Ty.join : Ty → Ty → Option Ty
   | .bot, t => some t
   | t, .bot => some t
+  | .lit, .s .uw => some (.s .uw)
+  | .s .uw, .lit => some (.s .uw)
   | a, b => if a = b then some a else none
+/-- a UInt64 operand -/
+def isU : Ty → Bool | .s .uw => true | .lit => true | _ => false
+/-- the shape a value of this type has when stored (let / tuple); Nat is never stored -/
+def tyShape : Ty → Option Sh
+  | .s s => if s.hasN then none else some s
+  | .lit => some .uw
+  | _ => none
 
 inductive Nd
   | const (v : UInt64) | loc (slot w : Nat) | bin (op : Nat) (a b : Nd) | ite (cmp : Nat) (a b t e : Nd)
@@ -86,16 +97,19 @@ def opInfo : Nat → Option (Nat × Nat)
   | 27 => some (5, 55) | 26 => some (4, 60) | 10 => some (1, 65) | 11 => some (2, 65) | 12 => some (3, 70)
   | 28 => some (6, 75) | 29 => some (7, 75) | _ => none
 
-/-- prim argument kinds: (prim id, parameter kinds incl. the input) for tags 39..47 -/
-def primSig : Nat → Option (Nat × List Ps)
-  | 39 => some (1, [.inp]) | 40 => some (2, [.inp, .sh .w]) | 41 => some (3, [.inp]) | 42 => some (4, [.sh .w, .sh .w])
-  | 43 => some (5, []) | 44 => some (6, [.sh .w]) | 45 => some (7, [.sh .w, .sh .w]) | 46 => some (8, [.sh .w, .sh .w, .sh .w])
-  | 47 => some (9, [.sh .w, .sh .w]) | _ => none
+/-- prim signatures for tags 39..47: (prim id, parameter kinds incl. the input, result shape) -/
+def primSig : Nat → Option (Nat × List Ps × Sh)
+  | 39 => some (1, [.inp], .nt) | 40 => some (2, [.inp, .sh .uw], .uw) | 41 => some (3, [.inp], .uw)
+  | 42 => some (4, [.sh .ls, .sh .uw], .ls) | 43 => some (5, [], .bf) | 44 => some (6, [.sh .bf], .uw)
+  | 45 => some (7, [.sh .bf, .sh .uw], .uw) | 46 => some (8, [.sh .bf, .sh .uw, .sh .uw], .bf) | 47 => some (9, [.sh .bf, .sh .uw], .bf)
+  | _ => none
 
 def tyMatch : Ps → Ty → Bool
   | .inp, .inp => true
   | .sh s, .s t => s == t
-  | .fuel, .s .w => true
+  | .sh .uw, .lit => true
+  | .fuel, .s .nt => true
+  | .fuel, .lit => true
   | _, _ => false
 
 /-- keep the non-input arguments, in order -/
@@ -116,26 +130,26 @@ def pExpr : Nat → Cx → Bool → List Tok → Nat → Res
   | 0, _, _, _, _ => none
   | f + 1, cx, tl, .k 2 :: .id x :: .k 9 :: r, nx =>
     (pExpr f cx false r nx).bind fun (v, tv, r1, nx1) =>
-      match tv, r1 with
-      | .s s, .k 13 :: r2 =>
+      match tyShape tv, r1 with
+      | some s, .k 13 :: r2 =>
         (pExpr f { cx with env := (x, nx1, .sh s) :: cx.env } tl r2 (nx1 + s.width)).map fun (b, tb, r3, nx3) =>
           (.letE nx1 s.width v b, tb, r3, nx3)
       | _, _ => none
   | f + 1, cx, tl, .k 2 :: .k 6 :: .id x :: .k 15 :: .id y :: .k 7 :: .k 9 :: r, nx =>
     (pExpr f cx false r nx).bind fun (v, tv, r1, nx1) =>
-      match tv, r1 with
-      | .s (.p l rr), .k 13 :: r2 =>
+      match tyShape tv, r1 with
+      | some (.p l rr), .k 13 :: r2 =>
         (pExpr f { cx with env := (y, nx1 + l.width, .sh rr) :: (x, nx1, .sh l) :: cx.env } tl r2 (nx1 + l.width + rr.width)).map
           fun (b, tb, r3, nx3) => (.letE nx1 (l.width + rr.width) v b, tb, r3, nx3)
       | _, _ => none
   | f + 1, cx, tl, .k 32 :: r, nx =>
     (pBin f cx false 0 r nx).bind fun (a, ta, r1, nx1) =>
-      match ta, r1 with
-      | .s .w, .k c :: r2 =>
+      match isU ta, r1 with
+      | true, .k c :: r2 =>
         if c = 23 ∨ c = 20 then
           (pBin f cx false 0 r2 nx1).bind fun (b, tb, r3, nx2) =>
-            match tb, r3 with
-            | .s .w, .k 33 :: r4 =>
+            match isU tb, r3 with
+            | true, .k 33 :: r4 =>
               (pExpr f cx tl r4 nx2).bind fun (t, tt, r5, nx3) =>
                 match r5 with
                 | .k 34 :: r6 =>
@@ -147,11 +161,17 @@ def pExpr : Nat → Cx → Bool → List Tok → Nat → Res
       | _, _ => none
   | f + 1, cx, tl, ts, nx => pBin f cx tl 0 ts nx
 
-/-- precedence climbing; only the first operand may be a (tail) self-call, and then no operator may follow -/
+/-- precedence climbing; the first operand inherits the tail flag only when no operator follows it -/
 def pBin : Nat → Cx → Bool → Nat → List Tok → Nat → Res
   | 0, _, _, _, _, _ => none
   | f + 1, cx, tl, minp, ts, nx =>
-    (pApp f cx tl ts nx).bind fun (a, ta, r, nx1) => pLoop f cx minp a ta r nx1
+    (pApp f cx tl ts nx).bind fun (a, ta, r, nx1) =>
+      match tl, r with
+      | true, .k t :: _ =>
+        -- an operator follows: the first operand is NOT in tail position (so no self-call inside it, however nested)
+        if (opInfo t).isSome then (pApp f cx false ts nx).bind fun (a', ta', r', nx') => pLoop f cx minp a' ta' r' nx'
+        else pLoop f cx minp a ta r nx1
+      | _, _ => pLoop f cx minp a ta r nx1
 
 def pLoop : Nat → Cx → Nat → Nd → Ty → List Tok → Nat → Res
   | 0, _, _, _, _, _, _ => none
@@ -161,18 +181,15 @@ def pLoop : Nat → Cx → Nat → Nd → Ty → List Tok → Nat → Res
       match opInfo t with
       | some (op, p) =>
         if p < minp then some (a, ta, ts, nx) else
-        match ta with
-        | .s .w =>
+        if isU ta then
           if t = 28 ∨ t = 29 then
             match r with
-            | .num k :: r' => pLoop f cx minp (.bin op a (.const (UInt64.ofNat k))) (.s .w) r' nx
+            | .num k :: r' => pLoop f cx minp (.bin op a (.const (UInt64.ofNat k))) (.s .uw) r' nx
             | _ => none
           else
             (pBin f cx false (p + 1) r nx).bind fun (b, tb, r', nx') =>
-              match tb with
-              | .s .w => pLoop f cx minp (.bin op a b) (.s .w) r' nx'
-              | _ => none
-        | _ => none
+              if isU tb then pLoop f cx minp (.bin op a b) (.s .uw) r' nx' else none
+        else none
       | none => some (a, ta, ts, nx)
     | _ => some (a, ta, ts, nx)
 
@@ -181,8 +198,8 @@ def pApp : Nat → Cx → Bool → List Tok → Nat → Res
   | 0, _, _, _, _ => none
   | f + 1, cx, tl, .k t :: r, nx =>
     match primSig t with
-    | some (pid, ps) =>
-      (pArgs f cx ps r nx).map fun (as, r1, nx1) => (.prim pid (dropInp ps (as.map (·.1))), .s .w, r1, nx1)
+    | some (pid, ps, rs) =>
+      (pArgs f cx ps r nx).map fun (as, r1, nx1) => (.prim pid (dropInp ps (as.map (·.1))), .s rs, r1, nx1)
     | none => pAtom f cx tl (.k t :: r) nx
   | f + 1, cx, tl, .id n :: r, nx =>
     match findEnv cx.env n with
@@ -196,7 +213,10 @@ def pApp : Nat → Cx → Bool → List Tok → Nat → Res
             | .id fn :: r1 =>
               match findEnv cx.env fn with
               | some (_, .fuel) =>
-                (pArgs f cx sps r1 nx).map fun (as, r2, nx2) => (.cont (mkPairFlat (dropInp sps (as.map (·.1)))), .bot, r2, nx2)
+                (pArgs f cx sps r1 nx).bind fun (as, r2, nx2) =>
+                  match dropInp sps (as.map (·.1)) with
+                  | [] => none
+                  | cs => some (.cont (mkPairFlat cs), .bot, r2, nx2)
               | _ => none
             | _ => none
           else none
@@ -223,9 +243,9 @@ def pArgs : Nat → Cx → List Ps → List Tok → Nat → Option (List (Nd × 
 /-- atoms: numeral, variable, constant, `[]`, `bnew`, parenthesised expression / tuple -/
 def pAtom : Nat → Cx → Bool → List Tok → Nat → Res
   | 0, _, _, _, _ => none
-  | _ + 1, _, _, .num v :: r, nx => some (.const (UInt64.ofNat v), .s .w, r, nx)
-  | _ + 1, _, _, .k 30 :: .k 31 :: r, nx => some (.prim 5 [], .s .w, r, nx)
-  | _ + 1, _, _, .k 43 :: r, nx => some (.prim 5 [], .s .w, r, nx)
+  | _ + 1, _, _, .num v :: r, nx => some (.const (UInt64.ofNat v), .lit, r, nx)
+  | _ + 1, _, _, .k 30 :: .k 31 :: r, nx => some (.prim 5 [], .s .ls, r, nx)
+  | _ + 1, _, _, .k 43 :: r, nx => some (.prim 5 [], .s .bf, r, nx)
   | _ + 1, cx, _, .id n :: r, nx =>
     match findEnv cx.env n with
     | some (slot, .sh s) => some (.loc slot s.width, .s s, r, nx)
@@ -241,8 +261,8 @@ def pAtom : Nat → Cx → Bool → List Tok → Nat → Res
       | .k 7 :: r2 => some (e, t, r2, nx1)
       | .k 15 :: _ =>
         (pExpr f cx false r nx).bind fun (e1, t1, r1', nx1') =>
-          match t1 with
-          | .s s1 => (pTup f cx r1' nx1').map fun (tl', st, r3, nx3) => (.pair [e1, tl'], .s (.p s1 st), r3, nx3)
+          match tyShape t1 with
+          | some s1 => (pTup f cx r1' nx1').map fun (tl', st, r3, nx3) => (.pair [e1, tl'], .s (.p s1 st), r3, nx3)
           | _ => none
       | _ => none
   | _ + 1, _, _, _, _ => none
@@ -252,23 +272,23 @@ def pTup : Nat → Cx → List Tok → Nat → Option (Nd × Sh × List Tok × N
   | 0, _, _, _ => none
   | f + 1, cx, .k 15 :: r, nx =>
     (pExpr f cx false r nx).bind fun (e, t, r1, nx1) =>
-      match t, r1 with
-      | .s s, .k 7 :: r2 => some (e, s, r2, nx1)
-      | .s s, .k 15 :: _ => (pTup f cx r1 nx1).map fun (rest, sr, r3, nx3) => (.pair [e, rest], .p s sr, r3, nx3)
+      match tyShape t, r1 with
+      | some s, .k 7 :: r2 => some (e, s, r2, nx1)
+      | some s, .k 15 :: _ => (pTup f cx r1 nx1).map fun (rest, sr, r3, nx3) => (.pair [e, rest], .p s sr, r3, nx3)
       | _, _ => none
   | _ + 1, _, _, _ => none
 end
 
 /-! ## types -/
 inductive TyR | sh (s : Sh) | lst
-def trRes : TyR → Sh | .sh s => s | .lst => .w
+def trRes : TyR → Sh | .sh s => s | .lst => .ls
 
 mutual
 def pTyAtom : Nat → List Tok → Option (TyR × List Tok)
   | 0, _ => none
-  | _ + 1, .k 3 :: r => some (.sh .w, r)
-  | _ + 1, .k 36 :: r => some (.sh .w, r)
-  | _ + 1, .k 35 :: r => some (.sh .w, r)
+  | _ + 1, .k 3 :: r => some (.sh .uw, r)
+  | _ + 1, .k 36 :: r => some (.sh .bf, r)
+  | _ + 1, .k 35 :: r => some (.sh .nt, r)
   | _ + 1, .k 37 :: .k 38 :: r => some (.lst, r)
   | f + 1, .k 6 :: r => (pTy f r).bind fun (t, r1) => match r1 with | .k 7 :: r2 => some (t, r2) | _ => none
   | _ + 1, _ => none
@@ -319,7 +339,7 @@ def pArrows : Nat → List Tok → Option (List TyR × List Tok)
 /-- parameter kind of a typed group: the first `List UInt8` alone in its group is the input, any other one a word -/
 def pickPs (used : Bool) (single : Bool) : TyR → Ps × Bool
   | .sh s => (.sh s, used)
-  | .lst => if !used && single then (.inp, true) else (.sh .w, used)
+  | .lst => if !used && single then (.inp, true) else (.sh .ls, used)
 
 /-- the parameters of a binder list: (name, slot, Ps) and the parameter kinds -/
 def bindSlots (start : Nat) (used : Bool) : List (List (List Nat) × TyR) → (List (List Nat × Nat × Ps) × List Ps × Nat)
@@ -350,7 +370,7 @@ def mkEnv (start : Nat) : List Ps → List (List Nat) → Option (List (List Nat
   | p :: ps, n :: ns => (mkEnv (start + p.width) ps ns).map fun e => (n, start, p) :: e
   | _, _ => none
 
-def tyOk (res : Sh) (t : Ty) : Bool := match t with | .s s => s == res | _ => false
+def tyOk (res : Sh) (t : Ty) : Bool := match t with | .s s => s == res | .lit => res == .uw | _ => false
 
 /-- one def; returns the def info, its output and the rest -/
 def pDef (fuel : Nat) (defs : List DefI) : List Tok → Option (DefI × DefA × List Tok)
@@ -365,19 +385,22 @@ def pDef (fuel : Nat) (defs : List DefI) : List Tok → Option (DefI × DefA × 
           let sts := revSt.reverse
           let ps : List Ps := stateKinds false sts
           let res := trRes resT
+          if res.hasN || ps.any (fun p => match p with | .sh s => s.hasN | _ => false) then none else
           let npw := 1 + (ps.map Ps.width).foldl (· + ·) 0
           match r1 with
           | .k 18 :: .num 0 :: r2 =>
             (armPat 0 r2).bind fun (zn, r3) =>
+              if zn.eraseDups.length != zn.length then none else
               (mkEnv 1 ps zn).bind fun envZ =>
-                let cx0 : Cx := { defs := defs, env := envZ, self := none }
+                let cx0 : Cx := { defs := defs, env := envZ.reverse, self := none }
                 (pExpr fuel cx0 false r3 npw).bind fun (z, tz, r4, nx1) =>
                   if !tyOk res tz then none else
                   match r4 with
                   | .k 18 :: .id nb :: .k 10 :: .num 1 :: r5 =>
                     (armPat 0 r5).bind fun (sn, r6) =>
+                      if (nb :: sn).eraseDups.length != sn.length + 1 then none else
                       (mkEnv 1 ps sn).bind fun envS =>
-                        let cx1 : Cx := { defs := defs, env := (nb, 0, .fuel) :: envS, self := some (name, ps) }
+                        let cx1 : Cx := { defs := defs, env := (nb, 0, .fuel) :: envS.reverse, self := some (name, ps) }
                         (pExpr fuel cx1 true r6 nx1).bind fun (s, ts', r7, nx2) =>
                           match ts'.join (.s res) with
                           | some (.s _) =>
@@ -396,6 +419,7 @@ def pDef (fuel : Nat) (defs : List DefI) : List Tok → Option (DefI × DefA × 
             match r3 with
             | .k 9 :: r4 =>
               let (env, ps, npw) := bindSlots 0 false groups
+              if (trRes resT).hasN || ps.any (fun p => match p with | .sh s => s.hasN | _ => false) then none else
               let cx0 : Cx := { defs := defs, env := env.reverse, self := none }
               (pExpr fuel cx0 false r4 npw).bind fun (b, tb, r5, nx) =>
                 let res := trRes resT
@@ -462,13 +486,13 @@ def parseStr (s : String) : Option (List UInt64) :=
 /-! ### accepted programs (expected words hand-decoded against NANO_V2_IR.md) -/
 -- 1. two defs: BIN, CONST, prims (RD keeps only its index; PUT/BNEW), a CALL with a prim argument; main = `DEF 0 0 nslots 0 1`
 def ex1 : String := "def a (p q : UInt64) : UInt64 := p + q * 3
-def m (x : List UInt8) : List UInt8 := put bnew (a (rd x 0) 2)"
+def m (x : List UInt8) : List UInt8 := put [] (a (rd x 0) 2)"
 #guard parseStr ex1 = some [2,
   20, 0, 2, 2, 0, 1,  3, 1, 2, 0, 1,  3, 3, 2, 1, 1,  1, 3,  21,
   20, 1, 0, 0, 0, 1,  9, 4, 9, 5,  8, 0, 2,  9, 2, 1, 0,  1, 2,  21]
 -- 2. let slots (c at 2, the pair (d, e) at 3..4: nslots 5), pair-let, `<`, tuple literals, a pair-valued call
 def ex2 : String := "def f (a b : UInt64) : UInt64 × UInt64 := let c := a + b; let (d, e) := (c, a); if d < e then (d, e) else (e, d)
-def m (x : List UInt8) : List UInt8 := let (u, v) := f 1 2; put (put bnew u) v"
+def m (x : List UInt8) : List UInt8 := let (u, v) := f 1 2; put (put [] u) v"
 #guard parseStr ex2 = some [2,
   20, 0, 2, 5, 0, 2,  5, 2, 1,  3, 1, 2, 0, 1, 2, 1, 1,  5, 3, 2,  6, 2, 2, 2, 1, 2, 0, 1,
     4, 2,  2, 3, 1, 2, 4, 1,  6, 2, 2, 3, 1, 2, 4, 1,  6, 2, 2, 4, 1, 2, 3, 1,  21,
@@ -477,20 +501,22 @@ def m (x : List UInt8) : List UInt8 := let (u, v) := f 1 2; put (put bnew u) v"
 def ex3 : String := "def g : Nat → List UInt8 → UInt64 → UInt64
   | 0, x, p => p
   | n + 1, x, p => if p < len x then g n x (p + 1) else p
-def m (x : List UInt8) : List UInt8 := put bnew (g (len' x) x 0)"
+def m (x : List UInt8) : List UInt8 := put [] (g (len' x) x 0)"
 #guard parseStr ex3 = some [2,
   20, 0, 2, 2, 1, 1,  10,  2, 1, 1,  4, 2, 2, 1, 1, 9, 3,  11, 3, 1, 2, 1, 1, 1, 1,  2, 1, 1,  21,
   20, 1, 0, 0, 0, 1,  9, 4, 9, 5,  8, 0, 2, 9, 1, 1, 0,  21]
 -- 4. a constant def, shadowing (innermost binding wins, resolved by binding), `let` inside parentheses, an if in a tail `let` body
 def ex4 : String := "def k : UInt64 := 7
-def m (x : List UInt8) : List UInt8 := let a := k; let a := (let a := a + 1; a * a); put bnew a"
+def m (x : List UInt8) : List UInt8 := let a := k; let a := (let a := a + 1; a * a); put [] a"
 #guard (parseStr ex4).isSome
 
 /-! ### rejected programs -/
-def mainTail : String := "\ndef m (x : List UInt8) : List UInt8 := bnew"
+def mainTail : String := "\ndef m (x : List UInt8) : List UInt8 := []"
 -- non-tail self-call (`f n s + 1`), also parenthesised
 #guard parseStr ("def g : Nat → UInt64 → UInt64\n  | 0, p => p\n  | n + 1, p => g n p + 1" ++ mainTail) = none
 #guard parseStr ("def g : Nat → UInt64 → UInt64\n  | 0, p => p\n  | n + 1, p => (g n p) + 1" ++ mainTail) = none
+-- a self-call nested in a parenthesised `if` that is the left operand of `+` is not in tail position either
+#guard parseStr ("def g : Nat → UInt64 → UInt64\n  | 0, p => p\n  | n + 1, p => (if p < 3 then g n p else p) + 1" ++ mainTail) = none
 -- tail self-call is fine (control)
 #guard (parseStr ("def g : Nat → UInt64 → UInt64\n  | 0, p => p\n  | n + 1, p => if p < 3 then g n (p + 1) else p" ++ mainTail)).isSome
 -- fuel as data; self-call in a let value; self-call with the wrong arity; fuel binder shadowed by a let
@@ -499,21 +525,21 @@ def mainTail : String := "\ndef m (x : List UInt8) : List UInt8 := bnew"
 #guard parseStr ("def g : Nat → UInt64 → UInt64\n  | 0, p => p\n  | n + 1, p => g n p p" ++ mainTail) = none
 #guard parseStr ("def g : Nat → UInt64 → UInt64\n  | 0, p => p\n  | n + 1, p => let n := 5; g n p" ++ mainTail) = none
 -- unbound name, use before definition, recursion in a plain def, shift by a variable, input used as data
-#guard parseStr "def m (x : List UInt8) : List UInt8 := put bnew y" = none
-#guard parseStr "def a (p : UInt64) : UInt64 := b p\ndef b (p : UInt64) : UInt64 := p\ndef m (x : List UInt8) : List UInt8 := bnew" = none
-#guard parseStr "def a (p : UInt64) : UInt64 := a p\ndef m (x : List UInt8) : List UInt8 := bnew" = none
-#guard parseStr "def a (p q : UInt64) : UInt64 := p <<< q\ndef m (x : List UInt8) : List UInt8 := bnew" = none
+#guard parseStr "def m (x : List UInt8) : List UInt8 := put [] y" = none
+#guard parseStr "def a (p : UInt64) : UInt64 := b p\ndef b (p : UInt64) : UInt64 := p\ndef m (x : List UInt8) : List UInt8 := []" = none
+#guard parseStr "def a (p : UInt64) : UInt64 := a p\ndef m (x : List UInt8) : List UInt8 := []" = none
+#guard parseStr "def a (p q : UInt64) : UInt64 := p <<< q\ndef m (x : List UInt8) : List UInt8 := []" = none
 #guard parseStr "def m (x : List UInt8) : List UInt8 := let y := x; bnew" = none
 -- width mismatches: call arity / argument shape, tuple let on a word, if branches of different shape
-#guard parseStr "def a (p q : UInt64) : UInt64 := p\ndef m (x : List UInt8) : List UInt8 := put bnew (a 1)" = none
-#guard parseStr "def a (p : UInt64 × UInt64) : UInt64 := let (u, v) := p; u\ndef m (x : List UInt8) : List UInt8 := put bnew (a 1)" = none
-#guard parseStr "def a (p : UInt64) : UInt64 := let (u, v) := p; u\ndef m (x : List UInt8) : List UInt8 := bnew" = none
-#guard parseStr "def a (p : UInt64) : UInt64 × UInt64 := if p < 1 then (p, p) else p\ndef m (x : List UInt8) : List UInt8 := bnew" = none
+#guard parseStr "def a (p q : UInt64) : UInt64 := p\ndef m (x : List UInt8) : List UInt8 := put [] (a 1)" = none
+#guard parseStr "def a (p : UInt64 × UInt64) : UInt64 := let (u, v) := p; u\ndef m (x : List UInt8) : List UInt8 := put [] (a 1)" = none
+#guard parseStr "def a (p : UInt64) : UInt64 := let (u, v) := p; u\ndef m (x : List UInt8) : List UInt8 := []" = none
+#guard parseStr "def a (p : UInt64) : UInt64 × UInt64 := if p < 1 then (p, p) else p\ndef m (x : List UInt8) : List UInt8 := []" = none
 -- tokens outside the restricted set, missing/misshapen main, duplicate def names, trailing junk
-#guard parseStr "def a (p : UInt64) : UInt64 := if p ≤ 1 then p else 2\ndef m (x : List UInt8) : List UInt8 := bnew" = none
+#guard parseStr "def a (p : UInt64) : UInt64 := if p ≤ 1 then p else 2\ndef m (x : List UInt8) : List UInt8 := []" = none
 #guard parseStr "def a (p : UInt64) : UInt64 := p" = none
 #guard parseStr "def m (x : List UInt8) : UInt64 := 1" = none
-#guard parseStr "def a (p : UInt64) : UInt64 := p\ndef a (p : UInt64) : UInt64 := p\ndef m (x : List UInt8) : List UInt8 := bnew" = none
-#guard parseStr "def m (x : List UInt8) : List UInt8 := bnew )" = none
+#guard parseStr "def a (p : UInt64) : UInt64 := p\ndef a (p : UInt64) : UInt64 := p\ndef m (x : List UInt8) : List UInt8 := []" = none
+#guard parseStr "def m (x : List UInt8) : List UInt8 := [] )" = none
 
 end ParSpec
