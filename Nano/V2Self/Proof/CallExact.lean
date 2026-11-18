@@ -2,6 +2,7 @@
 epilogue tail, the IF head, popSlot) is `template.map encG`.  Position-independent templates only. -/
 import Nano.V2Self.Proof.ExprExact
 import Nano.V2Self.Proof.Templates
+import Nano.V2Self.Proof.CallA
 namespace CallProbe
 open C
 
@@ -71,6 +72,37 @@ theorem epi_exact (o : Buf) (p q : Nat) (hp : p < 251) (hq : q < 251) :
   have i8 : iu 8 = 8 := by decide
   have i0 : iu 0 = 0 := by decide
   simp [encG, bpush, i8, i0]
+
+theorem u_neg (r : Nat) (hr : r < 251) : g_0 - (r.toUInt64 <<< 3) = iu (-8 * (r : Int)) := by
+  apply UInt64.toNat.inj; rw [iu_toNat]
+  have hsz : UInt64.size = 18446744073709551616 := rfl
+  simp [UInt64.toNat_shiftLeft, UInt64.toNat_sub, Nat.shiftLeft_eq, g_0, Nat.toUInt64, hsz]; omega
+
+/-- the prologue as g38 emits it (`g22 (g22 o 1) 8`, `addi s0 t6 0`, `addi t6 t6 −8r`, `bgeu t6 t5 +8`, `jal` to the stub) -/
+theorem pro_exact (o : Buf) (r : Nat) (hr : r < 251) (ho : o.length + 12 < 2 ^ 32) :
+    bpush (bpush (bpush (bpush (g22 (g22 o 1) 8) (g10 8 31 0)) (g10 31 31 (g_0 - (r.toUInt64 <<< 3)))) (g4 7 31 30 8))
+      (g13 0 (bsize (g22 (g22 o 1) 8) + 3) 1) = o ++ (proA 1 o.length r).map encG := by
+  have e1 : g22 o 1 = o ++ (pushA 1 o.length 1).map encG := by
+    have := g22_exact o 1 (by decide) (by omega); simpa using this
+  have e2 : g22 (g22 o 1) 8 = (o ++ (pushA 1 o.length 1).map encG) ++ (pushA 1 (o.length + 4) 8).map encG := by
+    rw [e1]
+    have := g22_exact (o ++ (pushA 1 o.length 1).map encG) 8 (by decide) (by simp [pushA_len]; omega)
+    simpa [pushA_len] using this
+  have hh1 : bsize (g22 (g22 o 1) 8) = (o.length + 8).toUInt64 := by
+    rw [e2]; simp [bsize, pushA_len]
+  have ju := jal_off (o.length + 9) (by omega)
+  have i0 : iu 0 = 0 := by decide
+  have i4 : iu (4 * 2) = 8 := by decide
+  have hx : (1 : UInt64) - ((o.length + 8).toUInt64 + 3) = 1 - (UInt64.ofNat (o.length + 9) + 2) := by
+    have : (o.length + 8).toUInt64 + 3 = UInt64.ofNat (o.length + 9) + 2 := by
+      simp only [Nat.toUInt64, UInt64.ofNat_add, UInt64.add_assoc]; congr 1
+    rw [this]
+  have jw : g13 0 ((o.length + 8).toUInt64 + 3) 1 = encG (.jal 0 (((1 : Nat) : Int) - (((o.length + 11 : Nat) : Int)))) := by
+    have e : (4 : Int) * (((1 : Nat) : Int) - (((o.length + 11 : Nat) : Int))) = 4 * (((1 : Nat) : Int) - (((o.length + 9 : Nat) : Int) + 2)) := by omega
+    simp only [g13, encG, e, ← ju, hx]; rfl
+  rw [u_neg r hr, hh1, jw, e2]
+  have i8 : iu 8 = 8 := by decide
+  simp [proA, encG, bpush, i0, i8]
 
 end CallProbe
 

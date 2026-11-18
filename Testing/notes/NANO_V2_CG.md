@@ -157,3 +157,10 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
   Exactness (`ExprExact.lean`): `encG` maps a template instruction to C's own encoder words; `g31_exact` (all 8 ops), `g22_exact` (push,
   with the position-dependent jal offset), `g32_len/len3/rd/bsize/bget`, `g23_exact` (li), `const_exact`, `g24_off`, `local_exact`:
   Gen's emitted words ARE `template.map encG`; with Bridge (encoders = nano-v2 `I.enc`) this ties the machine statements to the real code.
+- Sonnet box (Proof/CallA.lean, CallExact.lean, ExprBridge.lean): `proA`/`pro_runA`/`call_liveA` — the prologue with Gen's REAL position-indexed
+  capacity jumps (three different `jal` offsets to the stub word; `pro` in Call.lean uses one `oom` for all three, so its `At` premise cannot hold for
+  emitted code; the old statements stay).  Exactness (Gen's words = template.map encG): `epi_exact` (g29 + tail + the two loads), `pro_exact`
+  (g38's prologue = `proA 1 len r`), `popSlot_exact`, `ifHead_eq_exact`/`ifHead_lt_exact` (first four IF-head words + placeholder 0),
+  `encG_encJ` (every template instruction's C word = the Nat word Sail/SimW consumes).
+  NOTE: `g32` has no `p == 4` branch: PUT falls into the final `else`, i.e. BPUSH's code (pushes the whole word; the final output copy truncates
+  to the low byte, so the semantics match `put`).  PUT = BPUSH in the proofs.
