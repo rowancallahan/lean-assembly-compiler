@@ -383,4 +383,62 @@ theorem local_run {C tgt p} : ∀ (w k pc : Nat) (st : St), At C pc (localT tgt 
     · intro a ha
       have hne : a ≠ (st.x 31).toNat - 8 := by omega
       rw [fa a (by rw [sp1]; omega), m2 a hne]
+/-- LOCAL at the capacity exit: if the w pushes do not fit (t6 − 8w < t5) the run reaches the stub `tgt`;
+s0 is unchanged and every cell at or above the entry sp is untouched. -/
+theorem local_oom {C tgt p} : ∀ (w k pc : Nat) (st : St), At C pc (localT tgt p k pc w) →
+    (st.x 8).toNat < 2 ^ 62 → p < 2 ^ 20 →
+    (∀ i, i < w → (k + i < p ∨ 8 * (k + i - p + 1) ≤ (st.x 8).toNat) ∧ (st.x 31).toNat ≤ slotAddr p (k + i) (st.x 8).toNat) →
+    8 * w ≤ (st.x 31).toNat → (st.x 31).toNat < (st.x 30).toNat + 8 * w → 0 < w →
+    ∃ j st', run C j (pc, st) = some (tgt, st') ∧ st'.x 8 = st.x 8 ∧ (∀ a, (st.x 31).toNat ≤ a → st'.m a = st.m a)
+  | 0, k, pc, st, _, _, _, _, _, _, hw => absurd hw (by omega)
+  | w + 1, k, pc, st, hC, hs0, hp, hsl, h8, hh, _ => by
+    have hA : At C pc ([.ld 5 8 (offOf p k)] ++ pushA tgt (pc + 1) 5 ++ localT tgt p (k + 1) (pc + 5) w) := hC
+    have hL : At C pc [.ld 5 8 (offOf p k)] := hA.left.left
+    have hP : At C (pc + 1) (pushA tgt (pc + 1) 5) := by simpa using hA.left.right
+    have hR : At C (pc + 5) (localT tgt p (k + 1) (pc + 5) w) := by
+      have := hA.right
+      simpa [pushA, push] using this
+    have l0 := hL.at 0 (by simp); simp at l0
+    obtain ⟨hk0, hk1⟩ := hsl 0 (by omega)
+    simp only [Nat.add_zero] at hk0 hk1
+    have ea0 : ea (st.x 8) (offOf p k) = slotAddr p k (st.x 8).toNat :=
+      ea_slot p k _ hs0 hp hk0 _ rfl
+    let v := st.m (slotAddr p k (st.x 8).toNat)
+    let st1 : St := ⟨upd st.x 5 v, st.m⟩
+    have r1 : run C 1 (pc, st) = some (pc + 1, st1) := by simp [run, step, l0, wr, ea0, v, st1]
+    have x31 : st1.x 31 = st.x 31 := by simp [st1, upd_ne]
+    have x30 : st1.x 30 = st.x 30 := by simp [st1, upd_ne]
+    have x8' : st1.x 8 = st.x 8 := by simp [st1, upd_ne]
+    by_cases hfit : (st.x 30).toNat + 8 ≤ (st.x 31).toNat
+    · have hh1 : (st1.x 30).toNat + 8 ≤ (st1.x 31).toNat := by rw [x31, x30]; exact hfit
+      have r2 := push_run (s := st1) (by simpa [pushA] using hP) (by decide) (by decide) hh1
+      let st2 : St := ⟨upd st1.x 31 (UInt64.ofNat ((st1.x 31).toNat - 8)), upd st1.m ((st1.x 31).toNat - 8) (st1.x 5)⟩
+      have sp1 : (st2.x 31).toNat = (st.x 31).toNat - 8 := by
+        simp only [st2, upd_same, x31]; simp only [UInt64.toNat_ofNat']; have := (st.x 31).toNat_lt; omega
+      have x8'' : st2.x 8 = st.x 8 := by simp [st2, upd_ne, x8']
+      have x30'' : st2.x 30 = st.x 30 := by simp [st2, upd_ne, x30]
+      have hsl2 : ∀ i, i < w → (k + 1 + i < p ∨ 8 * (k + 1 + i - p + 1) ≤ (st2.x 8).toNat) ∧
+          (st2.x 31).toNat ≤ slotAddr p (k + 1 + i) (st2.x 8).toNat := by
+        intro i hi
+        obtain ⟨a1, a2⟩ := hsl (i + 1) (by omega)
+        rw [x8'']; refine ⟨by rw [show k + 1 + i = k + (i + 1) by omega]; exact a1, ?_⟩
+        rw [sp1]; rw [show k + 1 + i = k + (i + 1) by omega]; omega
+      have m2 : ∀ a, a ≠ (st.x 31).toNat - 8 → st2.m a = st.m a := by
+        intro a ha; simp [st2, st1, upd_ne, x31, ha]
+      have hwpos : 0 < w := by omega
+      obtain ⟨j, st', hr, f8, fa⟩ := local_oom w (k + 1) (pc + 5) st2 hR (by rw [x8'']; exact hs0) hp hsl2
+        (by rw [sp1]; omega) (by rw [sp1, x30'']; omega) hwpos
+      refine ⟨1 + (3 + j), st', ?_, ?_, ?_⟩
+      · rw [run_add r1, run_add r2, show pc + 1 + 4 = pc + 5 from rfl, hr]
+      · rw [f8, x8'']
+      · intro a ha; rw [fa a (by rw [sp1]; omega), m2 a (by omega)]
+    · have hlt : (st1.x 31).toNat < (st1.x 30).toNat + 8 := by rw [x31, x30]; omega
+      have r2 := push_oom (s := st1) (by simpa [pushA] using hP) (by rw [x31]; omega) hlt
+      refine ⟨1 + 3, ⟨upd st1.x 31 (UInt64.ofNat ((st1.x 31).toNat - 8)), st1.m⟩, ?_, ?_, ?_⟩
+      · rw [run_add r1, r2]
+        have : (((pc + 1 : Nat) : Int) + 2 + ((tgt : Int) - ((pc : Int) + 1 + 2))).toNat = tgt := by omega
+        rw [this]
+      · simp [upd_ne, st1]
+      · intro a ha; simp [st1]
+
 end CallProbe
