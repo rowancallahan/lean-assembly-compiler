@@ -1192,18 +1192,14 @@ def v142 (h : Buf) (a b : UInt64) : Buf :=
   let n := (bget h ((d5 + 8*a) + 6));
   let r := if t == 9 then if x < 4 then k1 else k0 else k0;
   let z2 := bget h ((d5 + 8*z) + 7);
-  let a1 := bget h ((d5 + 8*z) + 0);
-  let a2 := bget h ((d5 + 8*z) + 2);
-  let b1 := bget h ((d5 + 8*z2) + 0);
-  let b2 := bget h ((d5 + 8*z2) + 2);
   let c8 := if t == 8 then v205 16777216 h z n 0 else k0;
-  let c1 := if t == 6 then if a1 == 2 then if a2 == 0 then k1 else k0 else k0 else k0;
-  let c2 := if t == 6 then if b1 == 2 then if b2 == 0 then k1 else k0 else k0 else k0;
-  if c1 == 1 then v1 h 81 z2 0
-  else if c2 == 1 then v1 h 81 z 0
+  let c6 := if t == 6 then v205 16777216 h z n 0 else k0;
+  let n6 := n - c6;
+  let e2 := if t == 6 then if n6 == 1 then k1 else k0 else k0;
+  if e2 == 1 then v1 h 82 z n
   else
     let h := bpush h (t);
-    let h := if t < 10 then bpush h x else h;
+    let h := if t == 6 then bpush h n6 else if t < 10 then bpush h x else h;
     let h := if t == 2 then bpush h y else if t == 5 then bpush h y else if t == 8 then bpush h (y - c8) else h;
     let z3 := if r == 1 then z2 else z;
     let n3 := if r == 1 then n - 1 else n;
