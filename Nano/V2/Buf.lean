@@ -46,7 +46,34 @@ theorem ld_heap {c : Cfg} {s : St} {h : Nat} {L : List UInt64} (hc : c.Good) (hs
   have hw : c.wok p := ⟨hlo, by have := hs.hsp; omega, h8⟩
   simp only [I.run, hea, if_pos hw]
 
-/-- **`size`** (borrow): the block `cb` pushes the buffer's address -/
+/-- **`size`** tail: the buffer's address on top is replaced by its length -/
+theorem sizeT_ok {c : Cfg} {s1 : St} {h : Nat} {L : List UInt64} {a cap : Nat} {l : List UInt64}
+    (hc : c.Good) (hs1 : Stk c s1 h (L ++ [UInt64.ofNat a])) (hr1 : BufRep c s1 a cap l) (hf : foot a cap ≤ h) :
+    ∃ s4, runL c [.ld T0 SP 0, .ld T0 T0 0, .sd T0 SP 0] s1 = some s4 ∧
+      Stk c s4 h (L ++ [l.length.toUInt64]) ∧ Keep s1 s4 := by
+  have ha : a < 2 ^ 64 := by have := hs1.hsp; have := hc.hi_lt; unfold foot at hf; omega
+  have e1 := run1 (ld_slot hc hs1 T0 0 (by simp))
+  rw [show (L ++ [UInt64.ofNat a]).getD ((L ++ [UInt64.ofNat a]).length - 1 - 0) 0 = UInt64.ofNat a by simp] at e1
+  let s2 := s1.set T0 (UInt64.ofNat a)
+  have hs2 : Stk c s2 h (L ++ [UInt64.ofNat a]) := hs1.set T0 _ (by decide) (by decide)
+  have e2 := ld_heap hc hs2 T0 T0 a
+    (by simp only [s2]; rw [get_set_eq _ _ _ (by decide), UInt64.toNat_ofNat', Nat.mod_eq_of_lt ha])
+    hr1.al hr1.lo (by unfold foot at hf; omega)
+  let s3 := s2.set T0 (s2.w a)
+  have hs3 : Stk c s3 h (L ++ [UInt64.ofNat a]) := hs2.set T0 _ (by decide) (by decide)
+  obtain ⟨s4, e3, hs4, k4, _⟩ := sd_top hc hs3 T0
+  have g3 : s3.get T0 = l.length.toUInt64 := by
+    simp only [s3, s2]; rw [get_set_eq _ _ _ (by decide)]; simp only [set_w]; rw [hr1.hd]
+  rw [g3] at hs4
+  have k3 : Keep s1 s3 :=
+    (Keep.set s1 T0 _ (by decide) (by decide)).trans (Keep.set s2 T0 _ (by decide) (by decide))
+      (get_set_ne _ _ _ _ (by decide))
+  have e1' : I.run c s1 (I.ld T0 SP 0) = some s2 := by simpa using e1
+  refine ⟨s4, ?_, hs4, k3.trans k4 (hp_eq hs1 hs3)⟩
+  simp only [runL]; rw [e1']; simp only [Option.bind_some]; rw [e2]; simp only [Option.bind_some]
+  rw [show s2.set T0 (s2.w a) = s3 from rfl, run1 e3]; rfl
+
+/-- **`size`** (pure contract): the block `cb` pushes the buffer's address -/
 theorem size_node {c : Cfg} {cb : SC} {s : St} {h : Nat} {L : List UInt64} {a cap : Nat} {l : List UInt64}
     (hc : c.Good) (hs : Stk c s h L) (hr : BufRep c s a cap l) (hf : foot a cap ≤ h)
     (hb : ∃ r, SC.Ex c cb s r ∧ Post c s h L [UInt64.ofNat a] r) :
@@ -57,50 +84,22 @@ theorem size_node {c : Cfg} {cb : SC} {s : St} {h : Nat} {L : List UInt64} {a ca
   | jmp t s1 => exact ⟨_, .seqJ e, p⟩
   | ok s1 =>
     obtain ⟨hs1, k1⟩ := p
-    have hr1 := hr.keep (by rw [hs.hp]; exact hf) k1
-    have ha : a < 2 ^ 64 := by have := hs.hsp; have := hc.hi_lt; unfold foot at hf; omega
-    have e1 := run1 (ld_slot hc hs1 T0 0 (by simp))
-    rw [show (L ++ [UInt64.ofNat a]).getD ((L ++ [UInt64.ofNat a]).length - 1 - 0) 0 = UInt64.ofNat a by simp] at e1
-    let s2 := s1.set T0 (UInt64.ofNat a)
-    have hs2 : Stk c s2 h (L ++ [UInt64.ofNat a]) := hs1.set T0 _ (by decide) (by decide)
-    have e2 := ld_heap hc hs2 T0 T0 a
-      (by simp only [s2]; rw [get_set_eq _ _ _ (by decide), UInt64.toNat_ofNat', Nat.mod_eq_of_lt ha])
-      hr1.al hr1.lo (by unfold foot at hf; omega)
-    let s3 := s2.set T0 (s2.w a)
-    have hs3 : Stk c s3 h (L ++ [UInt64.ofNat a]) := hs2.set T0 _ (by decide) (by decide)
-    obtain ⟨s4, e3, hs4, k4, _⟩ := sd_top hc hs3 T0
-    have g3 : s3.get T0 = l.length.toUInt64 := by
-      simp only [s3, s2]; rw [get_set_eq _ _ _ (by decide)]; simp only [set_w]; rw [hr1.hd]
-    rw [g3] at hs4
-    have k3 : Keep s1 s3 :=
-      (Keep.set s1 T0 _ (by decide) (by decide)).trans (Keep.set s2 T0 _ (by decide) (by decide))
-        (get_set_ne _ _ _ _ (by decide))
-    have e1' : I.run c s1 (I.ld T0 SP 0) = some s2 := by simpa using e1
-    have run3 : runL c [.ld T0 SP 0, .ld T0 T0 0, .sd T0 SP 0] s1 = some s4 := by
-      simp only [runL]; rw [e1']; simp only [Option.bind_some]; rw [e2]; simp only [Option.bind_some]
-      rw [show s2.set T0 (s2.w a) = s3 from rfl, run1 e3]; rfl
-    refine ⟨_, .seq e (.ins run3), hs4, ?_⟩
-    exact (k1.trans k3 (hp_eq hs hs1)).trans k4 (hp_eq hs hs3)
+    obtain ⟨s4, e4, hs4, k4⟩ := sizeT_ok hc hs1 (hr.keep (by rw [hs.hp]; exact hf) k1) hf
+    exact ⟨_, .seq e (.ins e4), hs4, k1.trans k4 (hp_eq hs hs1)⟩
 
 theorem keep_sets {s1 s2 : St} (hw : s2.w = s1.w) (ho : s2.o = s1.o) (h28 : s2.get 28 = s1.get 28)
     (h29 : s2.get 29 = s1.get 29) : Keep s1 s2 :=
   ⟨h28, h29, fun _ _ => by rw [hw], ho⟩
 
-/-- **`get`** (borrow, bounds-checked: `l.getD i 0`): `cab` pushes the address and the index -/
-theorem get_node {c : Cfg} {cab : SC} {s : St} {h : Nat} {L : List UInt64} {a cap : Nat} {l : List UInt64}
-    {i : UInt64} (hc : c.Good) (hs : Stk c s h L) (hr : BufRep c s a cap l) (hf : foot a cap ≤ h)
-    (hab : ∃ r, SC.Ex c cab s r ∧ Post c s h L [UInt64.ofNat a, i] r) :
-    ∃ r, SC.Ex c (.seq (.seq cab (.ins [.ld T1 SP 0, .ld T0 SP 8, .i .addi SP SP 8, .ld T2 T0 0]))
+/-- **`get`** tail (bounds-checked: `l.getD i 0`): the address and the index on top are replaced by the element -/
+theorem getT_ok {c : Cfg} {s1 : St} {h : Nat} {L : List UInt64} {a cap : Nat} {l : List UInt64}
+    {i : UInt64} (hc : c.Good) (hs1 : Stk c s1 h (L ++ [UInt64.ofNat a, i])) (hr1 : BufRep c s1 a cap l)
+    (hf : foot a cap ≤ h) :
+    ∃ s7, SC.Ex c (.seq (.ins [.ld T1 SP 0, .ld T0 SP 8, .i .addi SP SP 8, .ld T2 T0 0])
         (.seq (.ite .bltu T1 T2 (.ins [.i .slli T1 T1 3, .r .add T0 T0 T1, .ld T0 T0 16]) (.ins [mv T0 0]))
-          (.ins [.sd T0 SP 0]))) s r ∧
-      Post c s h L [l.getD i.toNat 0] r := by
-  obtain ⟨r, e, p⟩ := hab
-  cases r with
-  | jmp t s1 => exact ⟨_, .seqJ (.seqJ e), p⟩
-  | ok s1 =>
-    obtain ⟨hs1, k1⟩ := p
-    have hr1 := hr.keep (by rw [hs.hp]; exact hf) k1
-    have ha : a + 16 + 8 * cap < 2 ^ 62 := by have := hs.hsp; have := hc.hi_lt; unfold foot at hf; omega
+          (.ins [.sd T0 SP 0]))) s1 (.ok s7) ∧
+      Stk c s7 h (L ++ [l.getD i.toNat 0]) ∧ Keep s1 s7 := by
+    have ha : a + 16 + 8 * cap < 2 ^ 62 := by have := hs1.hsp; simp at this; have := hc.hi_lt; unfold foot at hf; omega
     let A := UInt64.ofNat a
     have hA : A.toNat = a := by simp only [A, UInt64.toNat_ofNat']; omega
     have hs1' : Stk c s1 h ((L ++ [A]) ++ [i]) := by simpa using hs1
@@ -185,7 +184,7 @@ theorem get_node {c : Cfg} {cab : SC} {s : St} {h : Nat} {L : List UInt64} {a ca
     obtain ⟨s6, e6, g6, hs6, k6⟩ := br
     obtain ⟨s7, e7, hs7, k7, _⟩ := sd_top hc hs6 T0
     rw [g6] at hs7
-    refine ⟨_, .seq (.seq e (.ins run4)) (.seq e6 (.ins e7)), hs7, ?_⟩
-    exact ((k1.trans k5 (hp_eq hs hs1)).trans k6 (hp_eq hs hs5)).trans k7 (hp_eq hs hs6)
+    refine ⟨_, .seq (.ins run4) (.seq e6 (.ins e7)), hs7, ?_⟩
+    exact (k5.trans k6 (hp_eq hs1 hs5)).trans k7 (hp_eq hs1 hs6)
 
 end Nano.V2B

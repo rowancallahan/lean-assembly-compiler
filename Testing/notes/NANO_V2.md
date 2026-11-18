@@ -304,3 +304,106 @@ conservative (inherited); loop states need ≥ 1 parameter; the zero arm must co
   call lowers to `let r := arg; loop …` (read-only alias, `Ex.lv`), so the caller keeps its buffer. If that fails
   to check (the body moves/mutates/returns it), the loop is re-parsed with the `Buf` in the state (`pLoop`).
   Inside loop bodies outer buffers are read-only (not dead). Tests p10, neg20; 50 programs agree.
+
+## HANDOFF (pause 20:50)
+DONE (nano-v2, all pushed): merge of nano-v2-backend; front end `Nano/V2/Front.lean` with products, fuel loops,
+buffers (Buf = List UInt64), output, conditions &&/||/≤/≠, read-only Buf aliases for helpers and loops (V2Self
+requests); proofs `cE_ok`/`cT_ok` (all but buffers, loops included), `mainProg_eval` + ABI definitions; buffer
+layer started: `BufRep`, `BufRep.keep`, `size_node`, `get_node` (Nano/V2/Buf.lean). Tests: fuzz.py (local: 50
+programs × 12 inputs agree, 20 negatives rejected); runner at 8aa9125: 302/307 nv2f_* QEMU pass, the 5 failures were
+OOM from the test capacity (fixed in eccd515, re-run pending); CI tender green at 2da851e.
+IN PROGRESS: buffer proof. Nothing half-written; the next step has not started.
+NEXT: (1) generalise Post/Keep (growing heap top, SameOutside of consumed footprints), re-prove the composition
+lemmas; set/push/mk nodes (round 6 F buffer_set/buffer_push); EnvRep with buffers + Owned, indexed by Ex.lv flags,
+now also with READ-ONLY aliases (two variables may share one address while both are read-only). (2) Sail layer for
+loops (round 6 E). (3) ImplementsBytes (`compile_correct`). Pending runs: QEMU/Sail of nv2f_* at ≥ d19fe00, check.sh.
+
+## Buffer proof DONE (resume session, 2026-11-17) — task (1)
+- **`Nano.V2B.cB_ok`** / `cTB_ok` (Nano/V2/CompB.lean): `cE` is correct for the WHOLE back-end language (words,
+  products, input, `let`, `if`, `split`, loops, and buffers `mk`/`size`/`get`/`set`/`push` IN PLACE) on the abstract
+  machine, for every expression the ownership checker accepts (`e.lv (env.map fst) d = some d'`). Axioms
+  propext/Classical.choice/Quot.sound; CompB 9 s, every new module < 10 s locally.
+- Invariant (Nano/V2/Heap.lean): `VR` (value = stack words + `BufRep`s, exact pairwise-disjoint footprints), `EnvB`
+  (non-dead variables represented below the heap top; a LIVE variable's footprint disjoint from every other non-dead
+  one; read-only aliases may share), `KeepB s s' h R` (below the old heap top only the CONSUMED footprints `R = RgC d d'`
+  change), outcome `PB` (value pushed, heap grown, its buffers in `R` ∪ new heap; or abort oom/cap). Loop invariant
+  at HEAD: state's footprint in `R` ∪ new heap, outer buffers read-only (`killAll`), body consumes only the state.
+- Machine lemmas (Nano/V2/HeapN.lean): `setT_ok`, `pushT_ok` (append or cap abort), `mk_node`; tails `sizeT_ok`,
+  `getT_ok` (Buf.lean), `igetT_ok` (Inp.lean), `pop2_ok`; glue `pairB`/`liftP`/`thenB`, `PB.slide`/`PB.after`.
+- Checker facts (Nano/V2/OwnP.lean): inversion per construct, `lv_step` (flags only go live→dead, buffers only;
+  lengths kept), `cE_tyOf`/`cT_tyT` (cE's types are tyOf's). `Ex.lv` moved to Nano/V2/Own.lean (core-only imports).
+- **SOUNDNESS FIX in `Ex.lv`**: `get (var i) j` let `j` consume (mutate in place) `i` after `i`'s address was pushed:
+  `bget b (bget (bset b 0 0) 0)` read the mutated buffer on the machine, the original in Lean. Now `i` must still be
+  non-dead after `j`. Negative test Testing/nano/v2f/neg21.lean (runner: fuzz.py must report it rejected).
+- Borrow cases (`size/get/set/push (var i) …`) push the address as a plain WORD (empty footprint) and recover the
+  `BufRep` by a frame argument (`rep_frame`): the variable is not consumed by the other operands.
+- NEXT: (2) Sail layer for loops (round 6 E), (3) main-level theorem (prologue/epilogue, `ImplementsBytes`),
+  (4) front end ⇒ `lv` on the lowered main (the check at Front.lean `b.lv (tys sc) …`; `lv (cap κ e) = lv e`).
+
+## Ownership soundness DONE — task (4)
+- The buffer proof's ONLY ownership premise is `e.lv (env.map fst) d = some d'` on the compiled expression (cB_ok).
+  The front end now re-runs the checker on the FINAL program (`withLv`: calls inlined, `mk κ` placed, `mainProg`
+  wrapper) and **`frontElabK_lv`** (Front.lean): `frontElabK κ xs = some p → ∃ d', p.main.lv [] [] = some d'`.
+  So every accepted program satisfies the affine discipline the buffer proof assumes (no parser reasoning needed).
+  Programs that passed the per-def checks but fail the final one are now rejected (none expected: the per-def check
+  already ran on the same lowered body; the wrapper only borrows/moves the result).
+- Pending for the runner: fuzz.py (agreement + neg1–21 rejected) at this commit; QEMU/Sail of nv2f_*; check.sh.
+
+## Sail layer (task 2), in progress
+- Layer 3 DONE: Nano/V2/Flat.lean **`flat_ok`**: a structured run (`SC.Ex`) is a run of the pc-level machine
+  `pstep` (instruction list, branches/jumps by byte offsets) over `SC.flat`: fall-through ends at `pos + len`, a jump
+  at its label (`Tg.at`: loop head/exit, the oom/cap stubs). Loops included (head test, ZERO arm, back edge). 1 s.
+- `gen` now REJECTS code its encoder cannot represent (`I.wf`, Gen.lean): registers < 32, 12-bit immediates,
+  shift amounts < 64, branches `+8`, jumps ±1 MiB and word-aligned, no `add`/`ori` into x0 (hint encodings).
+  This closes a latent bug: `slide k m` stores at `8·(k−1−j+m)` ≤ 8·509 > 2047 when the two sizes are each ≤ 255
+  (cE checks them separately); such programs used to be mis-encoded (QEMU tests never had > 255 slots in all).
+- Layer 4a DONE: Nano/V2/Enc.lean: `encSt_eq` (stores), `encBt8_eq` (branches `+8`), `encJt_eq` (jal x0) = the
+  Sail-side words (`G.encS`, `wB`, `wJ`), by a 32-bit `encbits` tactic (5 s). R-type, I-type ALU, loads: our Nat
+  formulas are literally `Proven.encR`/`Proven.encI`/`G.encL` (rfl). Build with the Sail oleans: restore
+  build-cache (`sail-riscv-lean.tar.zst` to ../deps, `repo-build` parts), then
+  `LEAN_PATH=<v2 out>:.lake/build/lib/lean:../deps/sail-riscv-lean/.lake/build/lib/lean:../deps/sail-riscv-lean/.lake/packages/Sail/.lake/build/lib/lean lean Nano/V2/Enc.lean`.
+- Layer 4b DONE: Nano/V2/Sim.lean **`sim_step`** / **`sim_star`**: for a layout `K` (code at `base`, every
+  instruction `I.wf`, `jcert` jump certificate also checked by `gen`; code/work/input/output in RAM, written blocks
+  disjoint from the others) every pc-level step is ONE `Retires` of the Sail model keeping `Rel` (all forms: R/I ALU,
+  ld/sd as 8 LE bytes, lbu input, sb output, beq/bne/bltu/bgeu `+8`, jal x0 to certified labels), so every `PStar`
+  run (loops included, via `flat_ok`) is a Sail `Steps` run. `Retires.det` (determinism). Axioms: the Sail model's
+  extern set + propext/Classical.choice/Quot.sound. Sim 4 s, Enc 5 s.
+- (plan kept for reference) `Rel K c (pc, s) t`: `Proven.Cfg t`; PC = base + 4·pc; every `C[i]` encoded at
+  base + 4i (`instrAt`, code region disjoint from the blocks); `getX t r = (s.x r).toBitVec` (r ≠ 0); work words:
+  `c.wok a → 8 LE bytes at a = s.w a`; input bytes at ib; output bytes `o` at [ob, ob+ol); all in RAM
+  [0x80000000, 2^32). Per `I` (wf): one `Retires` keeping `Rel` (G.step_add/sub/mul/and/or/xor/sll/srl/sltu,
+  addi/andi/ori/xori/slli/srli, ld/lbu/sd/sb, beq/bne/bltu/bgeu `_t`/`_n`, step_jal; `St.set` ↔ `Next.x`; sd:
+  `storeBytes` ↔ word update, other words/blocks untouched). Then `PStar` ⇒ `Steps`; `Retires` deterministic
+  (`try_step` is a function) for the all-executions part.
+- Then task (3): main-level: prologue + `cB_ok` on main (EnvB for `[]`: trivial) + epilogue (copy loop via
+  `loop_ok` at the pc level, `ret` = jalr x0 0(ra) via `G.step_jalr`) ⇒ `Observes` (a0 = status / -1 oom / -2 cap,
+  a1 = length, bytes at a3); instantiate `ABI.Model` with the Sail model; `ImplementsBytes M B p.result` with the
+  admitted-domain hypothesis (no cap abort; output < 2^64; work big enough or oom reported).
+
+## HANDOFF (resume session end, 2026-11-17)
+DONE (nano-v2, all pushed; local builds with plain `lean`, every module ≤ 9 s; no sorry, no new axioms):
+- (1) buffer proof: `cB_ok`/`cTB_ok` (CompB.lean) — cE correct for the whole language incl. in-place buffers and
+  loops, for every `Ex.lv`-accepted expression. Soundness FIX in `Ex.lv` (`get (var i) j`), negative test neg21.
+- (4) `frontElabK_lv` (Front.lean): accepted programs pass the checker on the FINAL program (`withLv`).
+- (2) Sail layer: `flat_ok` (Flat.lean, structured runs = pc-level runs, loops incl.), `sim_star` (Sim.lean, pc-level
+  runs = Sail runs, every instruction form), `Retires.det`; encoder = Sail words (Enc.lean); `gen` now checks
+  `I.wf` (fixes the 12-bit slide-offset overflow) and the jump certificate `jcert`.
+PENDING RUNS (runner): fuzz.py at HEAD (agreement + neg1–21 rejected); QEMU/Sail of nv2f_* (gen gained the
+wf/jcert gate: expected unchanged results); check.sh; `lake build Nano.V2.Sim` cold time (Riscv deps from cache).
+NEXT = task (3), `compile_correct` (new module Nano/V2/Top.lean), pieces in order:
+1. `rd` whitelist: extend `I.wf` with `rd ∈ {0,5,6,7,10,11,14,15,28..31}` (written registers of §6) and prove the
+   abstract invariant "callee-saved x2,x8,x9,x18–27 unchanged" along `PStar`; add a `frame` field to `Rel`
+   (memory outside work ∪ output = the initial memory `m0`), re-check rel_reg/rel_mem/rel_jump (small edits).
+2. Prologue (5 straight instructions) at the pc level ⇒ `Stk c s a2 []`, `InpRep`, `EnvB` for the empty env
+   (c.lo = a2, c.hi = sp & ~7, a2 8-aligned) ⇒ `cB_ok` on `p.main` with `d = []` ⇒ `flat_ok` (body =
+   `.seq (.ins prologue) (.seq c epilogue)`, pos = 5) ⇒ PB outcome: ok (stack [status, out address], BufRep of the
+   output list) or jump to `om`/`cp` (stubs `a0 := -1/-2; ret`).
+3. Epilogue at the pc level by hand (it contains `ret`, so not `SC.Ex`): beq on status; copy loop (induction on the
+   remaining count: `ld A5 T1 0; sb A5 A4 0; T1 += 8; A4 += 1`), needs output capacity ≥ length (admissibility);
+   `mv a0 0; ret`, or `a0 := status; a1 := 0; ret`.
+4. `ret` = `jalr x0, 0(x1)` = word 0x8067: `G.step_jalr` (ra even) ⇒ PC = ra (the return boundary).
+5. The statement (§6 shape, on `Proven.St`): for `genI p = some C` placed at base (initial Sail state: Cfg, PC = base,
+   code bytes, a0..a3/sp/ra, work and output bytes present, layout `Lay.Ok`): the run returns to ra (deterministic,
+   so ALL executions), frame and callee-saved kept, and a0 = −1 (oom) ∨ a0 = −2 (cap) ∨ the observation of
+   `p.eval input` (ok: a0 = 0, a1 = len, bytes at a3; Lean error 1: a0 = 1, a1 = 0). Then `ImplementsBytes` for
+   admitted inputs (no oom/cap at the given work size, output ≤ capacity), and the `ABI.Model` instance on Sail.

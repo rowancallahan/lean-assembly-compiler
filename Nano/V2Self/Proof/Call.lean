@@ -175,4 +175,178 @@ theorem copy_run {C pc p q} (s : St) (hq : ∀ k, k ≤ q → At C pc (copy p q 
         rw [show ((s.x 8).toNat + (8 * (p : Int) + 16 - 8 * ((k : Int) + 1))).toNat = (s.x 8).toNat + 8 * p + 16 - 8 * (k + 1) by omega]
     · intro r hr5; simp [upd, hr5, hx r hr5]
 
+theorem At.left {C pos l1 l2} (h : At C pos (l1 ++ l2)) : At C pos l1 := fun i hi => by
+  have := h i (by simp; omega); rw [this, List.getElem?_append_left hi]
+theorem At.right {C pos l1 l2} (h : At C pos (l1 ++ l2)) : At C (pos + l1.length) l2 := fun i hi => by
+  have := h (l1.length + i) (by simp; omega); rw [Nat.add_assoc, this, List.getElem?_append_right (by omega)]; simp
+
+/-! ## the prologue (`g38`): push ra, push s0, s0 := t6, t6 −= 8r (r = nslots − npw), checked -/
+def pro (r : Nat) (oom : Int) : List J :=
+  push 1 oom ++ (push 8 oom ++ [.addi 8 31 0, .addi 31 31 (-8 * (r : Int)), .bgeu 31 30 2, .jal 0 oom])
+
+theorem pro_run {C f s r oom} (hC : At C f (pro r oom)) (hlt : (s.x 31).toNat < 2 ^ 63)
+    (hh : (s.x 30).toNat + 16 + 8 * r ≤ (s.x 31).toNat) :
+    ∃ s1, run C 9 (f, s) = some (f + 12, s1) ∧
+      (s1.x 31).toNat = (s.x 31).toNat - 16 - 8 * r ∧ (s1.x 8).toNat = (s.x 31).toNat - 16 ∧
+      (∀ i, i ≠ 31 → i ≠ 8 → s1.x i = s.x i) ∧
+      s1.m = upd (upd s.m ((s.x 31).toNat - 8) (s.x 1)) ((s.x 31).toNat - 16) (s.x 8) := by
+  have A1 : At C f (push 1 oom) := hC.left
+  have R1 : At C (f + 4) (push 8 oom ++ [.addi 8 31 0, .addi 31 31 (-8 * (r : Int)), .bgeu 31 30 2, .jal 0 oom]) := by
+    simpa [push] using hC.right
+  have A2 : At C (f + 4) (push 8 oom) := R1.left
+  have A3 : At C (f + 8) [.addi 8 31 0, .addi 31 31 (-8 * (r : Int)), .bgeu 31 30 2, .jal 0 oom] := by
+    simpa [push] using R1.right
+  have r1 := push_run (s := s) A1 (by decide) (by decide) (by omega)
+  have lt : (s.x 31).toNat < 2 ^ 64 := (s.x 31).toNat_lt
+  have t8 : (UInt64.ofNat ((s.x 31).toNat - 8)).toNat = (s.x 31).toNat - 8 := by simp; omega
+  have t16 : (UInt64.ofNat ((s.x 31).toNat - 8 - 8)).toNat = (s.x 31).toNat - 16 := by simp; omega
+  have r2 := push_run (s := ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)), upd s.m ((s.x 31).toNat - 8) (s.x 1)⟩) A2 (by decide) (by decide)
+    (by simp [upd, t8]; omega)
+  simp only [upd_same, upd_other _ _ (show (30:Nat) ≠ 31 by decide), upd_other _ _ (show (8:Nat) ≠ 31 by decide), t8] at r2
+  have r12 := run_add (l := 3) r1
+  rw [r2] at r12
+  have b0 := A3.at 0 (by simp); have b1 := A3.at 1 (by simp); have b2 := A3.at 2 (by simp)
+  simp at b0 b1 b2
+  have t16r : (UInt64.ofNat ((s.x 31).toNat - 16 - 8 * r)).toNat = (s.x 31).toNat - 16 - 8 * r := by simp; omega
+  have t16' : (UInt64.ofNat ((s.x 31).toNat - 16)).toNat = (s.x 31).toNat - 16 := by simp; omega
+  have e16 : (s.x 31).toNat - 8 - 8 = (s.x 31).toNat - 16 := by omega
+  rw [e16] at r12
+  refine ⟨⟨upd (upd (upd (upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8))) 31 (UInt64.ofNat ((s.x 31).toNat - 16)))
+      8 (UInt64.ofNat ((s.x 31).toNat - 16))) 31 (UInt64.ofNat ((s.x 31).toNat - 16 - 8 * r)),
+    upd (upd s.m ((s.x 31).toNat - 8) (s.x 1)) ((s.x 31).toNat - 16) (s.x 8)⟩, ?_, ?_, ?_, ?_, rfl⟩
+  · rw [show 9 = (3 + 3) + 3 by rfl, run_add r12]
+    have ea1 : ea (UInt64.ofNat ((s.x 31).toNat - 16)) 0 = (s.x 31).toNat - 16 := by simp [ea, t16']
+    have ea2 : ea (UInt64.ofNat ((s.x 31).toNat - 16)) (-8 * (r : Int)) = (s.x 31).toNat - 16 - 8 * r := by
+      simp only [ea, t16']; omega
+    have c : (s.x 30).toNat ≤ (s.x 31).toNat - 16 - 8 * r := by omega
+    simp [run, step, b0, b1, b2, wr, upd_same, upd_other _ _ (show (31:Nat) ≠ 8 by decide), ea1, ea2,
+      upd_other _ _ (show (30:Nat) ≠ 31 by decide), upd_other _ _ (show (30:Nat) ≠ 8 by decide), t16r, c,
+      show ((f : Int) + 8 + 2 + 2).toNat = f + 12 by omega]
+    omega
+  · simp [upd_same, t16r]
+  · simp [upd_same, upd_other _ _ (show (8:Nat) ≠ 31 by decide), t16']
+  · intro i h1 h2; simp [upd, h1, h2]
+
+theorem copy_prefix (p q : Nat) : ∀ n k, k ≤ n → ∃ l, copy p q n = copy p q k ++ l
+  | 0, k, h => ⟨[], by rw [show k = 0 by omega]; simp [copy]⟩
+  | n + 1, k, h => by
+    rcases Nat.lt_or_ge k (n + 1) with hk | hk
+    · obtain ⟨l, hl⟩ := copy_prefix p q n k (by omega); exact ⟨l ++ copyJ p q n, by simp [copy, hl]⟩
+    · exact ⟨[], by rw [show k = n + 1 by omega]; simp⟩
+
+theorem copy_at {C pc p q n k} (h : At C pc (copy p q n)) (hk : k ≤ n) : At C pc (copy p q k) := by
+  obtain ⟨l, hl⟩ := copy_prefix p q n k hk; rw [hl] at h; exact h.left
+
+/-! ## the epilogue (`g37` end + `g29`): a4 := [s0+8], a5 := [s0], copy, t6 := s0 + 8p + 16 − 8q, s0 := a5, jalr a4 -/
+def epi (p q : Nat) : List J :=
+  [.ld 14 8 8, .ld 15 8 0] ++ (copy p q q ++ [.addi 31 8 (8 * (p : Int) + 16 - 8 * (q : Int)), .addi 8 15 0, .jalr 0 14])
+
+theorem epi_run {C e p q} (s : St) (hC : At C e (epi p q))
+    (hD : (s.x 31).toNat + 8 * q ≤ (s.x 8).toNat + 8 * p + 16) (hlt : (s.x 8).toNat + 8 * p + 16 < 2 ^ 63) :
+    ∃ s3, run C (2 + 2 * q + 3) (e, s) = some ((s.m ((s.x 8).toNat + 8)).toNat, s3) ∧
+      (s3.x 31).toNat = (s.x 8).toNat + 8 * p + 16 - 8 * q ∧ s3.x 8 = s.m (s.x 8).toNat ∧
+      (∀ i, i ≠ 31 → i ≠ 8 → i ≠ 5 → i ≠ 14 → i ≠ 15 → s3.x i = s.x i) ∧
+      s3.m = Mc s.m (s.x 31).toNat ((s.x 8).toNat + 8 * p + 16) q q := by
+  have a0 := hC.at 0 (by simp [epi]); have a1 := hC.at 1 (by simp [epi])
+  simp [epi] at a0 a1
+  have R : At C (e + 2) (copy p q q ++ [.addi 31 8 (8 * (p : Int) + 16 - 8 * (q : Int)), .addi 8 15 0, .jalr 0 14]) := by
+    simpa [epi] using hC.right (l1 := [.ld 14 8 8, .ld 15 8 0])
+  have T3 := R.right
+  rw [copy_len] at T3
+  have c0 := T3.at 0 (by simp); have c1 := T3.at 1 (by simp); have c2 := T3.at 2 (by simp)
+  simp at c0 c1 c2
+  have e8 : ea (s.x 8) 8 = (s.x 8).toNat + 8 := by simp [ea]; omega
+  have e0 : ea (s.x 8) 0 = (s.x 8).toNat := by simp [ea]
+  -- after the two loads
+  let s' : St := ⟨upd (upd s.x 14 (s.m ((s.x 8).toNat + 8))) 15 (s.m (s.x 8).toNat), s.m⟩
+  have r2 : run C 2 (e, s) = some (e + 2, s') := by
+    simp [run, step, a0, a1, wr, e8, e0, upd_other _ _ (show (8:Nat) ≠ 14 by decide), s']
+  have x31 : s'.x 31 = s.x 31 := by simp [s', upd]
+  have x8 : s'.x 8 = s.x 8 := by simp [s', upd]
+  obtain ⟨s'', hr, hx, hm⟩ := copy_run (C := C) (pc := e + 2) (p := p) (q := q) s'
+    (fun k hk => copy_at R.left hk) (by rw [x31, x8]; exact hD) q (Nat.le_refl _)
+  have r22 : run C (2 + 2 * q) (e, s) = some (e + 2 + 2 * q, s'') := by rw [run_add r2]; exact hr
+  have y8 : s''.x 8 = s.x 8 := by rw [hx 8 (by decide), x8]
+  have y14 : s''.x 14 = s.m ((s.x 8).toNat + 8) := by rw [hx 14 (by decide)]; simp [s', upd]
+  have y15 : s''.x 15 = s.m (s.x 8).toNat := by rw [hx 15 (by decide)]; simp [s', upd]
+  have eA : ea (s.x 8) (8 * (p : Int) + 16 - 8 * (q : Int)) = (s.x 8).toNat + 8 * p + 16 - 8 * q := by
+    simp only [ea]; omega
+  have tA : (UInt64.ofNat ((s.x 8).toNat + 8 * p + 16 - 8 * q)).toNat = (s.x 8).toNat + 8 * p + 16 - 8 * q := by
+    simp; omega
+  have eB : ea (s.m (s.x 8).toNat) 0 = (s.m (s.x 8).toNat).toNat := by simp [ea]
+  refine ⟨⟨upd (upd s''.x 31 (UInt64.ofNat ((s.x 8).toNat + 8 * p + 16 - 8 * q))) 8 (s.m (s.x 8).toNat), s''.m⟩,
+    ?_, ?_, ?_, ?_, ?_⟩
+  · rw [show 2 + 2 * q + 3 = (2 + 2 * q) + 3 by omega, run_add r22]
+    simp [run, step, c0, c1, c2, wr, y8, eA, upd_same, upd_other _ _ (show (15:Nat) ≠ 31 by decide),
+      upd_other _ _ (show (14:Nat) ≠ 8 by decide), upd_other _ _ (show (14:Nat) ≠ 31 by decide), y14, y15, eB]
+  · simp [upd, tA]
+  · simp [upd_same]
+  · intro i h1 h2 h3 h4 h5; simp [upd, h1, h2, hx i h3, s', h4, h5]
+  · rw [hm, x31, x8]
+
+theorem Mc_above (m : Nat → UInt64) (T D q : Nat) (hD : 8 * q ≤ D) :
+    ∀ k, k ≤ q → ∀ a, D ≤ a → Mc m T D q k a = m a
+  | 0, _, _, _ => rfl
+  | k + 1, hk, a, ha => by simp only [Mc]; rw [upd_other _ _ (by omega)]; exact Mc_above m T D q hD k (by omega) a ha
+
+theorem Mc_dest (m : Nat → UInt64) (T D q : Nat) (hD : 8 * q ≤ D) :
+    ∀ k, k ≤ q → ∀ i, i < k → Mc m T D q k (D - 8 * (i + 1)) = m (T + 8 * (q - 1 - i))
+  | 0, _, _, h => absurd h (Nat.not_lt_zero _)
+  | k + 1, hk, i, hi => by
+    simp only [Mc]
+    rcases Nat.lt_or_ge i k with h | h
+    · rw [upd_other _ _ (by omega)]; exact Mc_dest m T D q hD k (by omega) i h
+    · rw [show i = k by omega, upd_same]
+
+/-- **probe 2**: a non-leaf call `jal ra f` with the arguments on top of a live caller stack.  The callee's
+body is abstract (`hB`): from the prologue's state it reaches the epilogue with its result (q words) on top,
+keeping s0 and the saved ra/s0, and writing nothing at or above the caller's pre-argument stack pointer
+`T + 8p`.  Then the call returns to `c + 1` with t6 = T + 8p − 8q, s0 restored, every cell at or above
+T + 8p (the live value and the caller's frame) unchanged, and the result words copied in order. -/
+theorem call_live {C : List J} {c f e p q r : Nat} {off oom : Int} (Bd : St → St → Prop)
+    (hj : C[c]? = some (.jal 1 off)) (hf : ((c : Int) + off).toNat = f)
+    (hP : At C f (pro r oom)) (hE : At C e (epi p q)) (s : St)
+    (hT : (s.x 31).toNat + 8 * p < 2 ^ 62) (hc : c + 1 < 2 ^ 64)
+    (hh : (s.x 30).toNat + 16 + 8 * r ≤ (s.x 31).toNat)
+    (hB : ∀ s1, (s1.x 31).toNat = (s.x 31).toNat - 16 - 8 * r → (s1.x 8).toNat = (s.x 31).toNat - 16 →
+      s1.x 30 = s.x 30 → ∃ s2, Bd s1 s2 ∧ Star C (f + 12, s1) (e, s2) ∧ s2.x 8 = s1.x 8 ∧
+        (s2.x 31).toNat + 8 * q = (s.x 31).toNat - 16 - 8 * r ∧
+        ∀ a, ((s.x 31).toNat - 16 ≤ a ∧ a < (s.x 31).toNat) ∨ (s.x 31).toNat + 8 * p ≤ a → s2.m a = s1.m a) :
+    ∃ s1 s2 s3, Bd s1 s2 ∧ Star C (c, s) (c + 1, s3) ∧
+      (s3.x 31).toNat = (s.x 31).toNat + 8 * p - 8 * q ∧ s3.x 8 = s.x 8 ∧
+      (∀ a, (s.x 31).toNat + 8 * p ≤ a → s3.m a = s.m a) ∧
+      ∀ i, i < q → s3.m ((s.x 31).toNat + 8 * p - 8 * (i + 1)) = s2.m ((s2.x 31).toNat + 8 * (q - 1 - i)) := by
+  -- the call
+  let sj := wr s 1 (c + 1).toUInt64
+  have sj1 : step C (c, s) = some (f, sj) := by rw [s_jal hj, hf]
+  have sjx : ∀ i, i ≠ 1 → sj.x i = s.x i := by intro i hi; simp [sj, wr, upd, hi]
+  have sjm : sj.m = s.m := by simp [sj, wr]
+  have sjr : sj.x 1 = (c + 1).toUInt64 := by simp [sj, wr, upd]
+  have j31 := sjx 31 (by decide); have j30 := sjx 30 (by decide); have j8 := sjx 8 (by decide)
+  -- the prologue
+  obtain ⟨s1, hr1, h31, h8, hx1, hm1⟩ := pro_run (s := sj) hP (by rw [j31]; omega) (by rw [j31, j30]; exact hh)
+  rw [j31] at h31 h8 hm1
+  -- the body
+  obtain ⟨s2, hb, hst, k8, k31, kmem⟩ := hB s1 h31 h8 (by rw [hx1 30 (by decide) (by decide), j30])
+  -- the epilogue
+  have kD : (s2.x 31).toNat + 8 * q ≤ (s2.x 8).toNat + 8 * p + 16 := by rw [k8, h8]; omega
+  have kl : (s2.x 8).toNat + 8 * p + 16 < 2 ^ 63 := by rw [k8, h8]; omega
+  obtain ⟨s3, hr3, g31, g8, gx, gm⟩ := epi_run s2 hE kD kl
+  have S8 : (s2.x 8).toNat = (s.x 31).toNat - 16 := by rw [k8, h8]
+  have ra : s2.m ((s2.x 8).toNat + 8) = (c + 1).toUInt64 := by
+    rw [S8, kmem _ (Or.inl ⟨by omega, by omega⟩), hm1, upd_other _ _ (by omega),
+      show (s.x 31).toNat - 16 + 8 = (s.x 31).toNat - 8 by omega, upd_same, sjr]
+  have pc3 : (s2.m ((s2.x 8).toNat + 8)).toNat = c + 1 := by rw [ra]; simp; omega
+  rw [pc3] at hr3
+  refine ⟨s1, s2, s3, hb, ?_, ?_, ?_, ?_, ?_⟩
+  · exact (Star.one sj1).trans ((run_star hr1).trans (hst.trans (run_star hr3)))
+  · rw [g31, S8]; omega
+  · rw [g8, S8, kmem _ (Or.inl ⟨Nat.le_refl _, by omega⟩), hm1, upd_same, j8]
+  · intro a ha
+    rw [gm, S8, Mc_above _ _ _ q (by omega) q (Nat.le_refl _) a (by omega), kmem _ (Or.inr ha), hm1,
+      upd_other _ _ (by omega), upd_other _ _ (by omega), sjm]
+  · intro i hi
+    rw [gm, S8, show (s.x 31).toNat + 8 * p - 8 * (i + 1) = (s.x 31).toNat - 16 + 8 * p + 16 - 8 * (i + 1) by omega,
+      Mc_dest _ _ _ q (by omega) q (Nat.le_refl _) i hi]
+
 end CallProbe
