@@ -113,7 +113,8 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
 - BRIDGE part 1 (encoders): `Nano/V2Self/Proof/Bridge.lean`, no sorry, standard axioms, 2 s.  C's g1 (R), g2 (I),
   g3 (S), g4 (B), g5 (J) produce exactly nano-v2's encR/encIt/encSt/encBt/encJt words with the signed immediate
   `sI v` (two's-complement reading of C's UInt64), hence g10 = addi, g11 = ld, g12 = sd, g4 = beq/bne/bltu/bgeu,
-  g5 0 = jal x0 as `I.enc` — the words Enc/Sim tie to Sail.  Still to do: `jal ra` / `jalr rs` (not in nano-v2's `I`:
-  direct Sail step lemmas), lbu/sb/R-op corollaries, and the state link CallProbe.J ↔ nano-v2 St/pstep ↔ Sail (a
+  g5 0 = jal x0 as `I.enc` — the words Enc/Sim tie to Sail; calls/returns go straight to Sail: `g5_wJ` (C's
+  `jal rd` = `Proven.wJ rd o`, for `G.step_jal`) and `g2_jalr` (C's `jalr x0, rs` = the word of `G.step_jalr`).
+  Still to do: lbu/sb/R-op corollaries, and the state link CallProbe.J ↔ nano-v2 St/pstep ↔ Sail (a
   code-agnostic `Rel`).
 - Next: the parser's real output (Sonnet box) through g41 as Par0 gains calls/prims/loops; a diff test against Nano.V2B `gen` on the v2f programs.
