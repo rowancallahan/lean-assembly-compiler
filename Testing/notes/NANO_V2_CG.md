@@ -98,6 +98,9 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
   (value-mode LET has it) ⇒ a pop outside the frame; (d) g36 normalized tags ≥ 12 as `c0 + 100`, so the tag 2^64 − 96
   wrapped to 4 and decoded as IF ⇒ now 999 (invalid).  cg_chain: valid 40/40, must-reject 15/15.  Fixed point:
   B3 == B2 = 242,208 bytes, sha256 a1970ad7…808ee1c; front end ACCEPT (69 defs); witness re-proved (rc 0).
+- g39 checks the code size (≤ 2^24 − 1 words) on every iteration, not only at the end (fail early; the proof's
+  "code too big" outcome then errs at the next step).  Fixed point: B3 == B2 = 242,396 bytes, sha256 c35407d8…abbe1dbf;
+  front end ACCEPT; cg_chain 40/40 + 15/15; witness rc 0.
 - g39 PROOF STATUS (Nano/V2Self/Proof/GenRef.lean, no sorry, file 8 s / 1.8 GB): Reach (progress | error | code too
   big), item/fixup stacks as lists, the CG/CT/CGs reference relation over Gen's own emitter words; value-mode visits
   CONST, LOCAL, BIN, IF, LET, PAIR, CALL, PRIM proved (VS, given the IH for later cursors); operand sequences (seq).

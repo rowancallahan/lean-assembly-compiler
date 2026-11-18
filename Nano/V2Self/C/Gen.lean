@@ -328,12 +328,13 @@ def g38 (x r o k t : Buf) : Buf × (Buf × (Buf × Buf)) :=
     (g13 0 (h1 + 3) 1);
   (r1, (o2, (g18 (g18 k 0 12 0 0) 1 1 0 0, bpush t h)))
 
-/-- the main loop -/
+/-- the main loop (code over 2^24 − 1 words ⇒ error at once) -/
 def g39 : Nat → Buf → Buf → Buf → Buf → Buf → Buf → Buf × Buf
   | 0, x, r, o, k, t, f => (g16 r, o)
   | n + 1, x, r, o, k, t, f =>
     if bget r 5 == 1 then (r, o) else
     if bget r 4 == 1 then (r, o) else
+    if 16777215 < bsize o then (g16 r, o) else
     if bget r 6 == 0 then
       if bget r 0 < bsize x then
         let (r1, y2) := g38 x r o k t;
