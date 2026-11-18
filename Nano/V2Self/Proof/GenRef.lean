@@ -2564,4 +2564,43 @@ theorem g37_t12 (x r o k t f : Buf) (hc : bget k ((bget r 6 - 1) * 3) = 12) (f1 
   have hR' : g28 65536 c2' (f, (r2', o)) = (f1, (r3, o3)) := hR
   rw [hR']
 
+
+/-- the def prologue (g38): push ra, push s0, s0 := t6, reserve the locals, check room -/
+def proW (p ns : UInt64) (o : Buf) : Buf :=
+  bpush (bpush (bpush (bpush (g22 (g22 o 1) 8) (g10 8 31 0)) (g10 31 31 (g_0 - ((ns - p) <<< 3)))) (g4 7 31 30 8))
+    (g13 0 (bsize (g22 (g22 o 1) 8) + 3) 1)
+
+theorem pi_pro (p ns : UInt64) : PI (proW p ns) := by
+  have q : PI (fun o => bpush (bpush (bpush (bpush o (g10 8 31 0)) (g10 31 31 (g_0 - ((ns - p) <<< 3)))) (g4 7 31 30 8))
+      (g13 0 (bsize o + 3) 1)) := by intro o; simp [em, bpush, bsize]
+  have := pi_comp (pi_comp (pi_g22 1) (pi_g22 8)) q
+  intro o; exact this o
+
+/-- a def header DEF id npw nslots kind nres at AST word i, def number = |t| -/
+def HdOk (x t : Buf) (i : UInt64) : Prop :=
+  bget x i = 20 ∧ bget x (i + 3) < 251 ∧ bget x (i + 2) < bget x (i + 3) + 1 ∧ bget x (i + 5) < 251 ∧ bget x (i + 1) = bsize t
+
+theorem g38_ok (x r o k t : Buf) (h : HdOk x t (bget r 0)) :
+    g38 x r o k t = (g15 (g15 (g15 (g15 (g15 r 0 (bget r 0 + 6)) 1 (bget x (bget r 0 + 2))) 7 (bget x (bget r 0 + 3))) 2
+        (bget x (bget r 0 + 5))) 6 2,
+      (proW (bget x (bget r 0 + 2)) (bget x (bget r 0 + 3)) o, (g18 (g18 k 0 12 0 0) 1 1 0 0, bpush t (bsize o)))) := by
+  obtain ⟨h1, h2, h3, h4, h5⟩ := h
+  unfold g38
+  extract_lets i d p s q v z0 z1 z2 z3 z4
+  have hz : (z4 == 0) = false := by
+    simp [z4, z3, z2, z1, z0, v, i, d, p, s, q, h1, h2, h3, h4, h5, g_1, g_0]
+  rw [if_neg (by simp [hz])]
+  rfl
+
+theorem g38_bad (x r o k t : Buf) (h : ¬ HdOk x t (bget r 0)) : g38 x r o k t = (g16 r, (o, (k, t))) := by
+  unfold g38
+  extract_lets i d p s q v z0 z1 z2 z3 z4
+  have hz : (z4 == 0) = true := by
+    simp only [HdOk] at h
+    by_cases h1 : bget x (bget r 0) = 20 <;> by_cases h2 : bget x (bget r 0 + 3) < 251 <;>
+      by_cases h3 : bget x (bget r 0 + 2) < bget x (bget r 0 + 3) + 1 <;> by_cases h4 : bget x (bget r 0 + 5) < 251 <;>
+      by_cases h5 : bget x (bget r 0 + 1) = bsize t <;>
+      simp_all [z4, z3, z2, z1, z0, v, i, d, p, s, q, g_1, g_0]
+  rw [if_pos hz]
+
 end GenRef
