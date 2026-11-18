@@ -76,6 +76,13 @@ def main (args : List String) : IO Unit := do
   let ws := C.y13 (C.s10 "def f (a b1 c' d_e : UInt64) : UInt64 := a\n".toUTF8.toList)
   let bad := [ws, ws ++ (mainW.map fun v => if v == 2 then 2 else v).set 2 1,
     ws ++ [20, 1, 0, 1, 0, 1, 9, 4, 9, 5, 2, 3, 1, 21], ws ++ [20, 1, 1, 1, 0, 1, 9, 4, 9, 5, 2, 0, 1, 21]]
+  -- width pre-pass: a fuel def (fuel, i, b) whose CONTINUE carries 1 word instead of npw-1 = 2 must reject
+  -- (the Par1 bug behind the first B2 crash); the same def with `PAIR 2 (i+1) b` must be accepted
+  let lp (e : List UInt64) : List UInt64 := [2, 20, 0, 3, 3, 1, 1, 10, 2, 1, 1, 11] ++ e ++ [21,
+    20, 1, 0, 0, 0, 1, 9, 4, 9, 5, 8, 0, 3, 1, 5, 1, 0, 9, 5, 21]
+  let good := lp [6, 2, 3, 1, 2, 1, 1, 1, 1, 2, 2, 1]
+  if (C.g41 [] good).isEmpty then throw (IO.userError "valid fuel loop with a 2-word CONTINUE REJECTED")
+  let bad := bad ++ [lp [3, 1, 2, 1, 1, 1, 1]]
   let nr := (bad.filter fun b => (C.g41 [] b).isEmpty).length
   if nr != bad.length then throw (IO.userError s!"must-reject: only {nr}/{bad.length} rejected")
   IO.println s!"valid programs accepted: {n}/{n} (a rejection is a FAILURE); must-reject rejected: {nr}/{bad.length}"

@@ -354,11 +354,102 @@ def g40 : Nat → List UInt8 → Buf → UInt64 → List UInt8 → List UInt8
       g40 n c w (i + 1) (put (put (put (put o v) (v >>> 8)) (v >>> 16)) (v >>> 24))
     else o
 
+/-! Width pre-pass (fail loudly, the IR carries no types): CONST 1, LOCAL w, BIN 1 (operands 1), IF (a, b 1; t = e),
+LET (v = w), PAIR Σ, CALL (Σ args = callee npw; callee nres), PRIM 1 (operands 1), LOOP (zero, step = nres),
+CONTINUE (e = npw − 1; counts as nres), def body = nres.  State `s`: [0] cursor, [1] error, [2] npw, [3] nres,
+[4] frames, [5] done; frames of 4 words (tag, children left, width so far, aux) from word 8.  `d`: npw, nres per def. -/
+/-- field j of the top frame -/
+def g44 (s : Buf) (j : UInt64) : UInt64 := bget s (8 + 4 * (bget s 4 - 1) + j)
+/-- set field j of the top frame -/
+def g46 (s : Buf) (j v : UInt64) : Buf := bset s (8 + 4 * (bget s 4 - 1) + j) v
+/-- push a frame -/
+def g47 (s : Buf) (a b c e : UInt64) : Buf :=
+  let n := bget s 4;
+  let y := 8 + 4 * n;
+  bset (g17 (g17 (g17 (g17 s y a) (y + 1) b) (y + 2) c) (y + 3) e) 4 (n + 1)
+/-- the error flag -/
+def g48 (s : Buf) : Buf := bset s 1 1
+/-- deliver a child of width `c` to the top frame -/
+def g49 (s : Buf) (c : UInt64) : Buf :=
+  let t := g44 s 0;
+  let r := g44 s 1;
+  let a := g44 s 2;
+  let e := g44 s 3;
+  let q := bget s 3;
+  let s1 := g46 s 1 (r - 1);
+  let z := (if t == 3 then (if c == 1 then g_0 else g_1)
+    else if t == 4 then (if 2 < r then (if c == 1 then g_0 else g_1) else if r == 2 then g_0 else if c == a then g_0 else g_1)
+    else if t == 5 then (if r == 2 then (if c == e then g_0 else g_1) else g_0)
+    else if t == 9 then (if c == 1 then g_0 else g_1)
+    else if t == 10 then (if c == q then g_0 else g_1)
+    else if t < 12 then g_0 else if t == 100 then g_0 else g_1);
+  let v := (if t == 6 then a + c else if t == 8 then a + c else c);
+  if z == 1 then g48 s1 else g46 s1 2 v
+/-- pop the completed top frame and deliver its width (`u`, `v` = npw, nres of a CALL's callee); the ROOT frame checks nres and the ENDDEF -/
+def g50 (x s : Buf) (u v : UInt64) : Buf :=
+  let t := g44 s 0;
+  let a := g44 s 2;
+  let e := g44 s 3;
+  let p := bget s 2;
+  let q := bget s 3;
+  let s1 := bset s 4 (bget s 4 - 1);
+  let i := bget s1 0;
+  if t == 100 then (if a == q then (if bget x i == 21 then bset s1 0 (i + 1) else g48 s1) else g48 s1) else
+  let w := (if t == 3 then g_1 else if t == 8 then v else if t == 9 then g_1 else if t == 10 then q else if t == 11 then q else a);
+  let z := (if t == 8 then (if a == u then g_0 else g_1) else if t == 11 then (if a + 1 == p then g_0 else g_1) else g_0);
+  if z == 1 then g48 s1 else g49 s1 w
+/-- one step of the width pre-pass -/
+def g51 (x d s : Buf) : Buf × Buf :=
+  let i := bget s 0;
+  let c := bget x i;
+  let e := bget x (i + 1);
+  let h := bsize d >>> 1;
+  let p := bget x (i + 2);
+  let q := bget x (i + 5);
+  let f := (if bget s 4 == 0 then g_0 else g44 s 3);
+  let u := bget d (2 * f);
+  let v := bget d (2 * f + 1);
+  if bget s 4 == 0 then
+    if i < bsize x then
+      if c == 20 then (bpush (bpush d p) q, g47 (bset (bset (bset s 0 (i + 6)) 2 p) 3 q) 100 1 0 0) else (d, g48 s)
+    else (d, bset s 5 1)
+  else if g44 s 1 == 0 then (d, g50 x s u v)
+  else if c == 1 then (d, g49 (bset s 0 (i + 2)) 1)
+  else if c == 2 then (d, g49 (bset s 0 (i + 3)) p)
+  else if c == 3 then (d, g47 (bset s 0 (i + 2)) 3 2 0 0)
+  else if c == 4 then (d, g47 (bset s 0 (i + 2)) 4 4 0 0)
+  else if c == 5 then (d, g47 (bset s 0 (i + 3)) 5 2 0 p)
+  else if c == 6 then (d, g47 (bset s 0 (i + 2)) 6 e 0 0)
+  else if c == 8 then
+    if e < h then (d, g47 (bset s 0 (i + 3)) 8 p 0 e) else (d, g48 s)
+  else if c == 9 then (d, g47 (bset s 0 (i + 2)) 9 (g33 e) 0 0)
+  else if c == 10 then (d, g47 (bset s 0 (i + 1)) 10 2 0 0)
+  else if c == 11 then (d, g47 (bset s 0 (i + 1)) 11 1 0 0)
+  else (d, g48 s)
+/-- the width pre-pass loop (`x` threaded through: a loop's Buf parameters move into its state) -/
+def g52 : Nat → Buf × (Buf × Buf) → Buf × (Buf × Buf)
+  | 0, y => let (x, z) := y; let (d, s) := z; (x, (d, g48 s))
+  | n + 1, y =>
+    let (x, z) := y;
+    let (d, s) := z;
+    if bget s 1 == 1 then (x, (d, s)) else
+    if bget s 5 == 1 then (x, (d, s)) else
+    let (d1, s1) := g51 x d s;
+    g52 n (x, (d1, s1))
+/-- the AST back and 1 iff every node's width is consistent (see above) -/
+def g53 (x : Buf) : Buf × UInt64 :=
+  let s := bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush bnew 1) 0) 0) 0) 0) 0) 0) 0;
+  let (x1, z) := g52 16777216 (x, (bnew, s));
+  let (d, s1) := z;
+  (x1, (if bget s1 1 == 1 then g_0 else g_1))
+
 /-- **the code generator**: AST (`IRV = 2` first) → machine-code bytes, or empty -/
 def g42 (c : List UInt8) (x : Buf) (u : UInt64) : List UInt8 :=
   if bget x 0 == 2 then
+    let (x2, w) := g53 x;
+    if w == 0 then [] else
     let r := bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush bnew 1) 0) 0) 0) 0) 0) 0) 0) 0) u;
-    let (r1, o) := g39 16777216 x r (g34 bnew) bnew bnew bnew;
+    let (r1, o) := g39 16777216 x2 r (g34 bnew) bnew bnew bnew;
     if bget r1 4 == 1 then [] else if 16777215 < bsize o then [] else g40 16777216 c o 0 []
   else []
 

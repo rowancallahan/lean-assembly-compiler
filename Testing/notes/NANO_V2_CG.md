@@ -74,4 +74,12 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
   Largest: parser heap = 184,384 (layout) + 33,759 tokens + AST ≈ 233k words (needs κ ≥ 2^18; 2^19 gives 2.2×);
   Gen code Buf 28.7k words, output Buf 114.7k bytes = words. At κ = 2^19: 9 × 4 MiB = 36 MiB + stack ⇒ work 80 MiB
   gives > 2× headroom (QEMU run with 256 MiB). Decision per Astra-13 rule: fixed κ for the first self-compile.
+- FIRST B₃ ATTEMPT (B2.bin @ 978c79f): B₂ crashes (pc → 0) on any input, at the start of the lexer. Traced with
+  Testing/nano/v2self/rvtrace.py + cg_map.lean (def → code offset): Par1's AST of s9 (Lex2's fuel loop, npw 3) has
+  CONTINUEs of width 1 (the `o` state word is lost, e.g. `s9 n x (p + 1) o` ⇒ CONTINUE (p+1)), so CONTINUE pops 2
+  words, t6 drifts, a push overwrites the saved s0. Reported to the Sonnet box (Par1's width-0 PAIR drop).
+- Width pre-pass in Gen (g44–g53, run before codegen): CONTINUE = npw−1, CALL Σ args = callee npw (callee nres
+  as width), IF a, b = 1 and t = e, LET v = w, BIN/PRIM operands 1, LOOP arms = nres, def body = nres. The faulty
+  AST is now REJECTED (empty output) instead of miscompiled; cg_chain has the regression pair (2-word CONTINUE
+  accepted, 1-word rejected). 2 more buffers at run time (d, s). Witness re-proved (137 s, 3.9 GB).
 - Next: the parser's real output (Sonnet box) through g41 as Par0 gains calls/prims/loops; a diff test against Nano.V2B `gen` on the v2f programs.
