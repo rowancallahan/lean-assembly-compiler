@@ -292,4 +292,95 @@ theorem bget_run {C pc} (s : St) (hC : At C pc bgetT) (hx0 : s.x 0 = 0) (hlt : (
     intro r h5' h6' h7' h14' h31'
     simp [upd, h5', h6', h7', h14', h31']
 
+/-! ## LOCAL (g25 + g24): for each word, `ld t0, off(s0)` then the checked push.  Slot k < p (an argument slot) at
+s0 + 16 + 8(p−1−k), slot k ≥ p at s0 − 8(k−p+1). -/
+def offOf (p k : Nat) : Int := if k < p then ((8 * (p - 1 - k) + 16 : Nat) : Int) else -((8 * (k - p + 1) : Nat) : Int)
+def slotAddr (p k s0 : Nat) : Nat := if k < p then s0 + 16 + 8 * (p - 1 - k) else s0 - 8 * (k - p + 1)
+
+def localT (tgt p : Nat) : Nat → Nat → Nat → List J
+  | _, _, 0 => []
+  | k, q, w + 1 => [.ld 5 8 (offOf p k)] ++ pushA tgt (q + 1) 5 ++ localT tgt p (k + 1) (q + 5) w
+
+theorem localT_len (tgt p : Nat) : ∀ w k q, (localT tgt p k q w).length = 5 * w
+  | 0, _, _ => rfl
+  | w + 1, k, q => by simp [localT, pushA, push, localT_len tgt p w]; omega
+
+theorem ea_slot (p k s0 : Nat) (hs : s0 < 2 ^ 62) (hp : p < 2 ^ 20) (hk : k < p ∨ 8 * (k - p + 1) ≤ s0) (u : UInt64)
+    (hu : u.toNat = s0) : ea u (offOf p k) = slotAddr p k s0 := by
+  unfold ea offOf slotAddr; rw [hu]; split <;> omega
+
+theorem local_run {C tgt p} : ∀ (w k pc : Nat) (st : St), At C pc (localT tgt p k pc w) →
+    (st.x 8).toNat < 2 ^ 62 → p < 2 ^ 20 →
+    (∀ i, i < w → (k + i < p ∨ 8 * (k + i - p + 1) ≤ (st.x 8).toNat) ∧ (st.x 31).toNat ≤ slotAddr p (k + i) (st.x 8).toNat) →
+    (st.x 30).toNat + 8 * w ≤ (st.x 31).toNat →
+    ∃ st', run C (4 * w) (pc, st) = some (pc + 5 * w, st') ∧ (st'.x 31).toNat = (st.x 31).toNat - 8 * w ∧
+      st'.x 8 = st.x 8 ∧ st'.x 30 = st.x 30 ∧ (∀ r, r ≠ 5 → r ≠ 31 → st'.x r = st.x r) ∧
+      (∀ i, i < w → st'.m ((st.x 31).toNat - 8 * (i + 1)) = st.m (slotAddr p (k + i) (st.x 8).toNat)) ∧
+      (∀ a, (st.x 31).toNat ≤ a ∨ a + 8 * w < (st.x 31).toNat → st'.m a = st.m a)
+  | 0, k, pc, st, _, _, _, _, _ => ⟨st, by simp [run], by simp, rfl, rfl, fun _ _ _ => rfl, fun i hi => absurd hi (by omega),
+      fun _ _ => rfl⟩
+  | w + 1, k, pc, st, hC, hs0, hp, hsl, hh => by
+    have hA : At C pc ([.ld 5 8 (offOf p k)] ++ pushA tgt (pc + 1) 5 ++ localT tgt p (k + 1) (pc + 5) w) := hC
+    have hL : At C pc [.ld 5 8 (offOf p k)] := hA.left.left
+    have hP : At C (pc + 1) (pushA tgt (pc + 1) 5) := by simpa using hA.left.right
+    have hR : At C (pc + 5) (localT tgt p (k + 1) (pc + 5) w) := by
+      have := hA.right
+      simpa [pushA, push] using this
+    have l0 := hL.at 0 (by simp); simp at l0
+    obtain ⟨hk0, hk1⟩ := hsl 0 (by omega)
+    simp only [Nat.add_zero] at hk0 hk1
+    have ea0 : ea (st.x 8) (offOf p k) = slotAddr p k (st.x 8).toNat :=
+      ea_slot p k _ hs0 hp hk0 _ rfl
+    let v := st.m (slotAddr p k (st.x 8).toNat)
+    let st1 : St := ⟨upd st.x 5 v, st.m⟩
+    have r1 : run C 1 (pc, st) = some (pc + 1, st1) := by simp [run, step, l0, wr, ea0, v, st1]
+    have x31 : st1.x 31 = st.x 31 := by simp [st1, upd_ne]
+    have x30 : st1.x 30 = st.x 30 := by simp [st1, upd_ne]
+    have x8' : st1.x 8 = st.x 8 := by simp [st1, upd_ne]
+    have hh1 : (st1.x 30).toNat + 8 ≤ (st1.x 31).toNat := by rw [x31, x30]; omega
+    have r2 := push_run (s := st1) (by simpa [pushA] using hP) (by decide) (by decide) hh1
+    let st2 : St := ⟨upd st1.x 31 (UInt64.ofNat ((st1.x 31).toNat - 8)), upd st1.m ((st1.x 31).toNat - 8) (st1.x 5)⟩
+    have sp1 : (st2.x 31).toNat = (st.x 31).toNat - 8 := by
+      simp only [st2, upd_same, x31]; simp only [UInt64.toNat_ofNat']; have := (st.x 31).toNat_lt; omega
+    have x8'' : st2.x 8 = st.x 8 := by simp [st2, upd_ne, x8']
+    have x30'' : st2.x 30 = st.x 30 := by simp [st2, upd_ne, x30]
+    -- the IH on st2
+    have hsl2 : ∀ i, i < w → (k + 1 + i < p ∨ 8 * (k + 1 + i - p + 1) ≤ (st2.x 8).toNat) ∧
+        (st2.x 31).toNat ≤ slotAddr p (k + 1 + i) (st2.x 8).toNat := by
+      intro i hi
+      obtain ⟨a1, a2⟩ := hsl (i + 1) (by omega)
+      rw [x8'']; refine ⟨by rw [show k + 1 + i = k + (i + 1) by omega]; exact a1, ?_⟩
+      rw [sp1]; rw [show k + 1 + i = k + (i + 1) by omega]; omega
+    have hh2 : (st2.x 30).toNat + 8 * w ≤ (st2.x 31).toNat := by rw [x30'', sp1]; omega
+    obtain ⟨st', hr, f31, f8, f30, fr, fm, fa⟩ := local_run w (k + 1) (pc + 5) st2 hR (by rw [x8'']; exact hs0) hp hsl2 hh2
+    have m2 : ∀ a, a ≠ (st.x 31).toNat - 8 → st2.m a = st.m a := by
+      intro a ha; simp [st2, st1, upd_ne, x31, ha]
+    have m2' : st2.m ((st.x 31).toNat - 8) = st.m (slotAddr p k (st.x 8).toNat) := by
+      show upd st1.m ((st1.x 31).toNat - 8) (st1.x 5) ((st.x 31).toNat - 8) = _
+      rw [x31, upd_same]; simp [st1, upd_same, v]
+    have x2 : ∀ r, r ≠ 5 → r ≠ 31 → st2.x r = st.x r := by
+      intro r h5 h31; simp [st2, st1, upd_ne, h5, h31]
+    refine ⟨st', ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    · rw [show 4 * (w + 1) = 1 + (3 + 4 * w) by omega, run_add r1, run_add r2]
+      rw [show pc + 1 + 4 = pc + 5 from rfl, hr]
+      rw [show pc + 5 + 5 * w = pc + 5 * (w + 1) by omega]
+    · rw [f31, sp1]; omega
+    · rw [f8, x8'']
+    · rw [f30, x30'']
+    · intro r h5 h31; rw [fr r h5 h31, x2 r h5 h31]
+    · intro i hi
+      rcases i with _ | i
+      · have := fa ((st.x 31).toNat - 8) (Or.inl (by omega))
+        simp only [Nat.zero_add, Nat.mul_one, Nat.add_zero]
+        rw [show (st.x 31).toNat - 8 * 1 = (st.x 31).toNat - 8 by omega, this, m2']
+      · have := fm i (by omega)
+        rw [sp1, x8''] at this
+        have e1 : (st.x 31).toNat - 8 - 8 * (i + 1) = (st.x 31).toNat - 8 * (i + 1 + 1) := by omega
+        rw [e1] at this
+        rw [this]
+        obtain ⟨_, a2⟩ := hsl (i + 1) (by omega)
+        rw [show k + 1 + i = k + (i + 1) by omega, m2 _ (by omega)]
+    · intro a ha
+      have hne : a ≠ (st.x 31).toNat - 8 := by omega
+      rw [fa a (by rw [sp1]; omega), m2 a hne]
 end CallProbe
