@@ -1,7 +1,7 @@
 import Nano.V2Self.C.Lex2
 import Nano.V2Self.C.Par0
 import Nano.V2Self.C.Gen
-/- Main-shaped sources through the WHOLE chain C.s10 → C.y13 → C.g41 (no hand-written AST), expected output = the
+/- Main-shaped sources through the WHOLE chain C.s10 → C.y13 → C.g41 [] (no hand-written AST), expected output = the
 same text as native Lean (the prelude's real definitions).  Writes Testing/asm/ir-words/cgp_K.{words,cases}; run each
 with `BIG=16777216 NOSAIL=1 python3 Testing/nano/v2self/cg_test.py cgp_K`.  A rejection of a valid source is a FAILURE.
 run: lean --run Testing/nano/v2self/cg_par.lean -/
@@ -25,7 +25,7 @@ def inputs : List (List UInt8) := [[], [5], [1, 2, 3, 4], [255, 0, 2, 22], [9, 9
 def main : IO Unit := do
   let mut k := 0
   for (src, f) in cases do
-    let code := C.g41 (C.y13 (C.s10 src.toUTF8.toList))
+    let code := C.g41 [] (C.y13 (C.s10 src.toUTF8.toList))
     if code.isEmpty then throw (IO.userError s!"REJECTED valid source {src}")
     let wd := (List.range (code.length / 4)).map fun q =>
       (code.getD (4*q) 0).toNat + 256 * (code.getD (4*q+1) 0).toNat + 65536 * (code.getD (4*q+2) 0).toNat + 16777216 * (code.getD (4*q+3) 0).toNat

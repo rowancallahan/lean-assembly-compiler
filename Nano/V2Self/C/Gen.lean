@@ -187,9 +187,9 @@ def g35 (r o : Buf) (w : UInt64) : Buf × Buf :=
   let o8 := bpush (bpush o7 (g13 0 h7 (h7 - 6))) (g10 10 0 0);
   (r1, bpush (bpush (bpush o8 (g11 1 12 0)) (g11 8 12 8)) (g2 g_103 0 0 1 0))
 
-/-- 1 iff a slot range (slot `s`, width `w`) leaves the frame (`nslots` = r[7]); width 0 (the implicit input) pushes nothing -/
+/-- 1 iff a slot range (slot `s`, width `w`) is empty or leaves the frame (`nslots` = r[7]) -/
 def g43 (r : Buf) (s w : UInt64) : UInt64 :=
-  if s < 251 then (if w < 251 then (if bget r 7 < s + w then g_1 else g_0) else g_1) else g_1
+  if w == 0 then g_1 else if s < 251 then (if w < 251 then (if bget r 7 < s + w then g_1 else g_0) else g_1) else g_1
 
 /-- visit the node at the cursor in mode `m` (0 value, 1 loop/def tail) -/
 def g36 (x r o k : Buf) (y : UInt64) : Buf × (Buf × Buf) :=
@@ -346,23 +346,23 @@ def g39 : Nat → Buf → Buf → Buf → Buf → Buf → Buf → Buf × Buf
       g39 n x r1 o1 k1 t f1
 
 /-- the code words as little-endian bytes -/
-def g40 : Nat → Buf → UInt64 → List UInt8 → List UInt8
-  | 0, w, i, o => o
-  | n + 1, w, i, o =>
+def g40 : Nat → List UInt8 → Buf → UInt64 → List UInt8 → List UInt8
+  | 0, c, w, i, o => o
+  | n + 1, c, w, i, o =>
     if i < bsize w then
       let v := bget w i;
-      g40 n w (i + 1) (put (put (put (put o v) (v >>> 8)) (v >>> 16)) (v >>> 24))
+      g40 n c w (i + 1) (put (put (put (put o v) (v >>> 8)) (v >>> 16)) (v >>> 24))
     else o
 
 /-- **the code generator**: AST (`IRV = 2` first) → machine-code bytes, or empty -/
-def g42 (x : Buf) (u : UInt64) : List UInt8 :=
+def g42 (c : List UInt8) (x : Buf) (u : UInt64) : List UInt8 :=
   if bget x 0 == 2 then
     let r := bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush bnew 1) 0) 0) 0) 0) 0) 0) 0) 0) u;
     let (r1, o) := g39 16777216 x r (g34 bnew) bnew bnew bnew;
-    if bget r1 4 == 1 then [] else if 16777215 < bsize o then [] else g40 16777216 o 0 []
+    if bget r1 4 == 1 then [] else if 16777215 < bsize o then [] else g40 16777216 c o 0 []
   else []
 
 /-- the code generator with the default buffer capacity κ = 2^19 words -/
-def g41 (x : Buf) : List UInt8 := g42 x g_999
+def g41 (c : List UInt8) (x : Buf) : List UInt8 := g42 c x g_999
 
 end C
