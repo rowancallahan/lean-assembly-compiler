@@ -1,5 +1,25 @@
 # NANO_V2_CHECKPOINT: the nano compiler as nano-subset source (owner review before the self-hosting decision)
 
+## OWNER REVIEW (2026-11-18): the whole compiler C as nano-subset Lean source, in ONE place
+**`Testing/nano/v2self/self_S.lean`** (generated, 1,790 lines, 186 defs; stripped text `self_S_input.txt`, 68,006 bytes) = the compiler `m : List UInt8 → List UInt8` (S source text in, RV64 machine code out), written only in the nano subset S
+(UInt64 / Buf / List UInt8 / Nat-fuel / pairs; `if`, `let`, `let (a, b) :=`, tail fuel recursion; the 9 prims `len' rd len put bnew bsize bget bset bpush`).
+Built by plain concatenation in def order (`python3 Testing/nano/v2self/build_self_S.py`) from:
+
+| part | file | lines | defs | stage |
+|---|---|---|---|---|
+| Base | `Nano/V2Self/C/Base.lean` | 13 | 4 | constants `k0 k1 k255`, `q0` |
+| Lex2 | `Nano/V2Self/C/Lex2.lean` | 101 | 11 | lexer `s10` (token tags, number/ident payloads; tested against an independent reference lexer) |
+| Par1 | `Nano/V2Self/C/Par1.lean` | 1,243 | 101 | parser `y16`: task machine on ONE heap Buf (tokens + stacks + nodes), typed (word/buf/bytes/Nat/pairs), calls, fuel loops → flat pre-order AST (`NANO_V2_IR.md`); Astra round 12 folded in |
+| Gen | `Nano/V2Self/C/Gen.lean` | 459 | 69 | fused expand+assemble `g41`: AST → RV64 code bytes (Opus box; width pre-pass rejects inconsistent ASTs) |
+| driver | in `build_self_S.py` | 1 | 1 | `def m (x : List UInt8) : List UInt8 := g41 x (y16 (s10 x))` |
+
+`&& || ≤ ≠` conditions of the parts are rewritten mechanically into eager 0/1 flags by `desugar.py` (S has only `==` and `<`).
+**Accepted by nano's own front end** (`frontElab`, `check.lean`: 186 defs). **Self-parse**: the QEMU-run parser (compiled by nano v2 `gen`, κ = 2^19) parses all of self_S in 1.0 s (177+ defs, ~11k AST nodes).
+**Bootstrap and fixed point** (`Testing/nano/v2self/boot/fixpoint.sh OUTDIR`, reproduced by two boxes): B1 = native executable of the same `m`, built by the **Lean compiler (TRUSTED, owner-approved)** from `boot/BootPrelude.lean` (**TRUSTED prelude**: Array-backed buffers, same primitive semantics as `Nano/V2Self/Prelude.lean`; checked identical on 20 sources) + self_S; B2 := B1(self_S text) = 248,632 bytes; B3 := B2(self_S text) run on QEMU (1.6 s) is byte-identical to B2: **fixed point reached** (sha256 `2ceffa2ca36b6b2e4ab3c14214b866455c989cd3766a5dd259310f2b42e2ebce`).
+Trust statement: nothing in C's own text is trusted beyond being the program that B1 (Lean-compiled) and B2/B3 (RV64) execute; the only trusted compilation step is Lean's compiler for B1; B2 = B3 shows that C's output on its own source is reproduced by its own output. It does NOT show that C is correct: no theorem connects C's machine code to the source semantics yet.
+Run: `bash Testing/nano/v2self/boot/fixpoint.sh /tmp/fp` (needs the Lean 4.29 toolchain, `riscv64-linux-gnu-gcc`, `qemu-system-riscv64`; about 10 s). Component tests: `par0_test.lean`, `par1_test.lean` (random trees + Astra regression programs, VALID must be accepted), `lex2_test.lean`, `boot/qemu_regress.py` (loops with the implicit input + 2/3 states, calls, on QEMU vs a Python model), `ast_check.py` (exact AST walk + width inference), Opus box `cg_*` tests (QEMU == Sail == Lean).
+Known gaps: (1) Par1 relies on Astra's shape checks and does not itself reject width mismatches (checked by `ast_check.py` and Gen's pre-pass); (2) no comparison of the AST with `Nano/V2/Front.lean`'s view yet; (3) no proofs for lexer/parser/codegen; (4) buffer capacity κ = 2^19 words (peak heap ~285k words for the self parse); (5) the Nano.V2B `gen` route to a stage-0 binary is blocked (program over the ±1 MiB `jal` range), which is why B1 is Lean-compiled.
+
 Branch `nano-v2-src` (merged with origin/main and origin/nano-v2 at eccd515). Folder `Nano/V2Self/`. No sorry, no new
 axioms (Bridge/Driver: propext, Quot.sound). Everything below was run here with `Testing/nano/v2self/check.sh`
 (`lake build Nano.V2Self.Driver`, the front-end acceptance script, the differential test); each module builds in < 10 s.
