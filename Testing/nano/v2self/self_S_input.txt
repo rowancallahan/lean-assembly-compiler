@@ -1712,31 +1712,43 @@ def g38 (x r o k t : Buf) : Buf × (Buf × (Buf × Buf)) :=
     (g13 0 (h1 + 3) 1);
   (r1, (o2, (g18 (g18 k 0 12 0 0) 1 1 0 0, bpush t h)))
 
+def g54 (x r o k t f : Buf) : Buf × (Buf × (Buf × (Buf × Buf))) :=
+  if bget r 6 == 0 then
+    let (r1, y2) := g38 x r o k t;
+    let (o1, y3) := y2;
+    let (k1, t1) := y3;
+    (r1, (o1, (k1, (t1, f))))
+  else
+    let (r1, y4) := g37 x r o k t f;
+    let (o1, y5) := y4;
+    let (k1, f1) := y5;
+    (r1, (o1, (k1, (t, f1))))
+
+def g55 (x r o : Buf) : UInt64 :=
+  if bget r 5 == 1 then g_1 else if bget r 4 == 1 then g_1 else if 16777215 < bsize o then g_1
+  else if bget r 6 == 0 then (if bget r 0 < bsize x then g_0 else g_1) else g_0
+
+def g56 (r o t : Buf) : Buf × Buf :=
+  if bget r 5 == 1 then (r, o) else
+  if bget r 4 == 1 then (r, o) else
+  if 16777215 < bsize o then (g16 r, o) else
+  let w := bsize t;
+  if w == 0 then (g16 r, o) else
+  let m := (if bget r 1 == 0 then (if bget r 2 == 1 then g_1 else g_0) else g_0);
+  if m == 0 then (g16 r, o) else
+  let (r1, o1) := g20 r o 0;
+  let (r2, o2) := g35 r1 o1 (bget t (w - 1));
+  (g15 r2 5 1, o2)
+
 def g39 : Nat → Buf → Buf → Buf → Buf → Buf → Buf → Buf × Buf
   | 0, x, r, o, k, t, f => (g16 r, o)
   | n + 1, x, r, o, k, t, f =>
-    if bget r 5 == 1 then (r, o) else
-    if bget r 4 == 1 then (r, o) else
-    if 16777215 < bsize o then (g16 r, o) else
-    if bget r 6 == 0 then
-      if bget r 0 < bsize x then
-        let (r1, y2) := g38 x r o k t;
-        let (o1, y3) := y2;
-        let (k1, t1) := y3;
-        g39 n x r1 o1 k1 t1 f
-      else
-        let w := bsize t;
-        if w == 0 then (g16 r, o) else
-        let m := (if bget r 1 == 0 then (if bget r 2 == 1 then g_1 else g_0) else g_0);
-        if m == 0 then (g16 r, o) else
-        let (r1, o1) := g20 r o 0;
-        let (r2, o2) := g35 r1 o1 (bget t (w - 1));
-        (g15 r2 5 1, o2)
-    else
-      let (r1, y4) := g37 x r o k t f;
-      let (o1, y5) := y4;
-      let (k1, f1) := y5;
-      g39 n x r1 o1 k1 t f1
+    if g55 x r o == 1 then g56 r o t else
+    let (r1, y) := g54 x r o k t f;
+    let (o1, y1) := y;
+    let (k1, y2) := y1;
+    let (t1, f1) := y2;
+    g39 n x r1 o1 k1 t1 f1
 
 def g40 : Nat → List UInt8 → Buf → UInt64 → List UInt8 → List UInt8
   | 0, c, w, i, o => o
