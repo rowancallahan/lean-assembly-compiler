@@ -87,4 +87,15 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
   B3 := B2(S) on QEMU (64 MiB work, 1.6 s, a0 = 0): **B3 == B2 byte for byte**, sha256 2ceffa2c…2ebce
   (Testing/nano/v2self/B2.bin, B3.bin, B2.sha256). Reproduce: `Testing/nano/v2self/boot/fixpoint.sh OUTDIR`.
   Also B2(tiny source) == B1(tiny source) under rvtrace.py (5.5 M instructions).
+- Hardening: B₃ identical with the work memory pre-filled 0xA5 / 0x5A (`FILL=` in selfrun.py); B₂ on a tiny source
+  under Sail: QEMU == Sail == B1, writes only in output + work, OOM flag with 8-byte work.
+- ASTRA-11 PROBE 2 (codegen, non-leaf call with a live stack value): `Nano/V2Self/Proof/Call.lean`, no sorry, axioms
+  propext + Quot.sound, 3 s.  Abstract RV64 subset (`J`: addi ld sd jal jalr bgeu; word memory; non-wrap proved
+  before every address use); templates exactly as Gen emits them: `push` (g21/g22, checked), `pro` (g38 prologue),
+  `copy`/`epi` (g29 + g37 epilogue).  `call_live`: caller at `jal ra f` with p argument words on top of a live stack;
+  callee body ABSTRACT (reaches the epilogue with q result words, keeps s0 and the saved ra/s0, writes nothing at or
+  above the caller's pre-argument sp) ⇒ returns to c+1 with t6 = sp − 8q, s0 restored, every cell ≥ sp unchanged,
+  result words copied in order (the copy moves UP over the args: a later source is never an earlier destination).
+  Not yet: link `J` to Gen's word encoders (g1–g5) and to the Sail layer (nano-v2 `sim_*`); OOM exits; 12-bit
+  immediate side conditions (Gen checks nslots, nres ≤ 250).
 - Next: the parser's real output (Sonnet box) through g41 as Par0 gains calls/prims/loops; a diff test against Nano.V2B `gen` on the v2f programs.
