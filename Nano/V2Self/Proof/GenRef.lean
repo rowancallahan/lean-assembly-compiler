@@ -1961,4 +1961,99 @@ theorem t_if {K hd i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀
     rw [p3 3 (by decide), r3t]; simp only [g15]
     rw [q3 3 (by decide), r3b, r3a, hr3_1]
 
+
+theorem g36_tlet (x r o k : Buf) (hc : bget x (bget r 0) = 5) :
+    g36 x r o k 1 = (if g43 r (bget x (bget r 0 + 1)) (bget x (bget r 0 + 2)) == 1 then (g16 r, (o, k)) else
+      (g15 (g15 r 0 (bget r 0 + 3)) 6 (bget r 6 + 3), (o, g18 (g18 (g18 k (bget r 6) 1 1 0) (bget r 6 + 1) 6
+        (bget x (bget r 0 + 1)) (bget x (bget r 0 + 2))) (bget r 6 + 2) 1 0 0))) := by
+  unfold g36
+  extract_lets i n c0 c z b a
+  have hc : c = 5 := by simp [c, c0, i, hc]
+  have ha : (a == 0) = false := by simp [a, hc, g_1]
+  have hz : (z == 0) = false := by simp [z, hc, g_1]
+  rw [if_neg (by simp [ha]), if_pos (by decide), if_neg (by simp [hz]), if_neg (by simp [hc]), if_neg (by simp [hc])]
+
+theorem t_let {K hd i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀ j, i < j → VS K j)
+    (IHT : ∀ j, i < j → TS K hd j) (ht : tg K.X i = 5) : TS K hd i := by
+  intro s L F hL1 hI hr0 hhd hB
+  refine Reach.step (live_of hI (by simp)) ?_
+  rw [st_visit hI]
+  have hl6 : (bset s.r 6 L.length.toUInt64).length = 10 := by rw [BufL.length_bset]; exact hI.rl
+  have h0 : bget (bset s.r 6 L.length.toUInt64) 0 = i.toUInt64 := by
+    rw [rget _ hI.rl 6 0 _ (by decide), if_neg (by decide), hr0]
+  have h6 : bget (bset s.r 6 L.length.toUInt64) 6 = L.length.toUInt64 := by
+    rw [rget _ hI.rl 6 6 _ (by decide), if_pos rfl]
+  have h7 : bget (bset s.r 6 L.length.toUInt64) 7 = K.ns := by
+    rw [rget _ hI.rl 6 7 _ (by decide), if_neg (by decide), hI.r7]
+  have hx : bget s.x i.toUInt64 = 5 := by rw [hI.x, tg_u _ _ (by omega), ht]
+  have hv1 : bget s.x (i.toUInt64 + 1) = tg K.X (i + 1) := by rw [hI.x]; exact tg_u1 _ i 1 (by omega)
+  have hv2 : bget s.x (i.toUInt64 + 2) = tg K.X (i + 2) := by rw [hI.x]; exact tg_u1 _ i 2 (by omega)
+  rw [g36_tlet _ _ _ _ (by rw [h0]; exact hx), h0, h6, hv1, hv2, g43_ok _ _ _ _ h7]
+  by_cases hs : SlotOk K (tg K.X (i + 1)) (tg K.X (i + 2))
+  · have hs' : tg K.X (i + 2) ≠ 0 ∧ tg K.X (i + 1) < 251 ∧ tg K.X (i + 2) < 251 ∧ ¬K.ns < tg K.X (i + 1) + tg K.X (i + 2) := hs
+    rw [if_pos hs']
+    simp only [show ((0 : UInt64) == 1) = false from rfl, Bool.false_eq_true, if_false]
+    have hLl := hI.Ll; simp at hLl
+    have hsk := stk_pop hI.stk
+    obtain ⟨sk1, kl1⟩ := stk_push3 s.k L (1, 1, 0) (6, tg K.X (i + 1), tg K.X (i + 2)) (1, 0, 0) hsk hI.kl (by omega)
+    simp only at sk1 kl1
+    have hr1 := rset2 _ hl6 0 6 (i.toUInt64 + 3) (L.length.toUInt64 + 3) (by decide) (by decide)
+    have hI1 := inv_mk hI (g15 (g15 (bset s.r 6 L.length.toUInt64) 0 (i.toUInt64 + 3)) 6 (L.length.toUInt64 + 3)) _ s.o
+      (L ++ [(1, 1, 0), (6, tg K.X (i + 1), tg K.X (i + 2)), (1, 0, 0)])
+      (fun j a b => by simp only [g15]; rw [hr1, if_neg (Ne.symm b), if_neg (Ne.symm a), rget _ hI.rl 6 j _ (by decide), if_neg (Ne.symm b)])
+      (len2 _ hl6 _ _ _ _) (by simp only [g15]; rw [hr1, if_pos rfl]; simp [Nat.toUInt64, UInt64.ofNat_add]) sk1 kl1
+      (by simp; omega) hI.ol
+    have hra : bget (g15 (g15 (bset s.r 6 L.length.toUInt64) 0 (i.toUInt64 + 3)) 6 (L.length.toUInt64 + 3)) 0 = (i + 3).toUInt64 := by
+      simp only [g15]; rw [hr1, if_neg (by decide), if_pos rfl]; simp [Nat.toUInt64, UInt64.ofNat_add]
+    refine Reach.bind (IH (i + 3) (by omega) _ (L ++ [(1, 1, 0), (6, tg K.X (i + 1), tg K.X (i + 2))]) F (by simpa using hI1) hra
+      (by simp; omega)) ?_
+    rintro s2 ⟨cv, i1, Ev, hcv, hI2, ho2, hr2, hi1, hd2⟩
+    -- the slot-pop item
+    have hI2' : Inv K s2 ((L ++ [(1, 1, 0)]) ++ [(6, tg K.X (i + 1), tg K.X (i + 2))]) (F ++ Ev.map Nat.toUInt64) := by simpa using hI2
+    refine Reach.step (live_of hI2' (by simp)) ?_
+    obtain ⟨n2, c2, a2, b2⟩ := top_item hI2'
+    have hp2 : bget (g15 s2.r 6 (L ++ [(1, 1, 0)]).length.toUInt64) 1 = K.p := by
+      simp only [g15]; rw [rget _ hI2.rl 6 1 _ (by decide), if_neg (by decide), hI2.r1]
+    have hst : st s2 = ⟨s2.x, g15 s2.r 6 (L ++ [(1, 1, 0)]).length.toUInt64,
+        g26 256 K.p (tg K.X (i + 1)) (tg K.X (i + 2)) s2.o, s2.k, s2.t, s2.f⟩ := by
+      unfold st; rw [g37_t6 _ _ _ _ _ _ c2, a2, b2, n2, hp2]
+    rw [hst]
+    have e := pi_g26 256 K.p (tg K.X (i + 1)) (tg K.X (i + 2)) s2.o
+    rw [e]
+    by_cases hbig : 2 ^ 32 ≤ (s2.o ++ em (g26 256 K.p (tg K.X (i + 1)) (tg K.X (i + 2))) s2.o.length).length
+    · exact Reach.toobig hbig
+    have hI3 := inv_mk hI2' (g15 s2.r 6 (L ++ [(1, 1, 0)]).length.toUInt64) s2.k
+      (s2.o ++ em (g26 256 K.p (tg K.X (i + 1)) (tg K.X (i + 2))) s2.o.length) (L ++ [(1, 1, 0)])
+      (fun j a b => by simp only [g15]; rw [rget _ hI2.rl 6 j _ (by decide), if_neg (Ne.symm b)])
+      (by simp only [g15]; rw [BufL.length_bset]; exact hI2.rl)
+      (by simp only [g15]; rw [rget _ hI2.rl 6 6 _ (by decide), if_pos rfl]) (stk_pop hI2'.stk) hI2.kl (by simp; omega) (by omega)
+    have hr3 : bget (g15 s2.r 6 (L ++ [(1, 1, 0)]).length.toUInt64) 0 = i1.toUInt64 := by
+      simp only [g15]; rw [rget _ hI2.rl 6 0 _ (by decide), if_neg (by decide), hr2]
+    obtain ⟨ev, r3a⟩ := hd2 (by simp)
+    refine Reach.bind (IHT i1 (by omega) _ L (F ++ Ev.map Nat.toUInt64) hL1 hI3 hr3 (by
+      simp only [g15]; rw [rget _ hI2.rl 6 3 _ (by decide), if_neg (by decide), r3a]
+      simp only [g15]
+      rw [rset2 _ hl6 0 6 _ _ (by decide) (by decide), if_neg (by decide), if_neg (by decide), rget _ hI.rl 6 3 _ (by decide),
+        if_neg (by decide), hhd]) (by omega)) ?_
+    rintro s4 ⟨cb, i2, Eb, hcb, hI4, ho4, hr4, hi2, r3b⟩
+    have hem : s2.o.length = s.o.length + cv.length := by rw [ho2]; simp
+    refine Reach.done ⟨cv ++ em (g26 256 K.p (tg K.X (i + 1)) (tg K.X (i + 2))) (s.o.length + cv.length) ++ cb, i2, Ev ++ Eb,
+      ?_, ?_, ?_, hr4, by omega, ?_⟩
+    · have hcv' : CG K (L.length + 2) (i + 3) s.o.length cv i1 Ev := by simpa using hcv
+      have hcb' : CT K hd L.length i1 (s.o.length + cv.length +
+          (em (g26 256 K.p (tg K.X (i + 1)) (tg K.X (i + 2))) (s.o.length + cv.length)).length) cb i2 Eb := by
+        simpa [hem, Nat.add_assoc] using hcb
+      exact .lett ht hs hcv' hcb'
+    · rw [List.map_append, ← List.append_assoc]; exact hI4
+    · rw [ho4, ho2]; simp [hem, List.append_assoc]
+    · rw [r3b]; simp only [g15]; rw [rget _ hI2.rl 6 3 _ (by decide), if_neg (by decide), r3a]
+      simp only [g15]
+      rw [rset2 _ hl6 0 6 _ _ (by decide) (by decide), if_neg (by decide), if_neg (by decide), rget _ hI.rl 6 3 _ (by decide), if_neg (by decide)]
+  · have hs' : ¬ (tg K.X (i + 2) ≠ 0 ∧ tg K.X (i + 1) < 251 ∧ tg K.X (i + 2) < 251 ∧ ¬K.ns < tg K.X (i + 1) + tg K.X (i + 2)) := hs
+    rw [if_neg hs']
+    simp only [show ((1 : UInt64) == 1) = true from rfl, if_true]
+    exact Reach.error (g16_err _ hl6)
+
+
+
 end GenRef
