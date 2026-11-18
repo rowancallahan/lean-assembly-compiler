@@ -481,4 +481,72 @@ theorem ifE_lt {C : List J} {pc la lb lt le n p nl : Nat} {Inv : St → Prop} {R
         rw [m6 a (by rw [x31]; exact ha) (fun k hk wk => by rw [x8]; exact hw k hk (Or.inr (Or.inr (Or.inr wk))))]
         exact mm a ha (fun k hk wk => hw k hk (by rcases wk with w | w <;> simp [w]))
 
+/-! ## popping w words into consecutive slots (`g26`: top → slot k0+w−1, …, deepest → slot k0) -/
+def popN (p k0 : Nat) : Nat → List J
+  | 0 => []
+  | w + 1 => popSlot p (k0 + w) ++ popN p k0 w
+
+theorem popN_len (p k0 : Nat) : ∀ w, (popN p k0 w).length = 3 * w
+  | 0 => rfl
+  | w + 1 => by simp [popN, popSlot, popN_len p k0 w]; omega
+
+/-- one pop: the top word goes to slot k, t6 += 8 (t0 clobbered) -/
+theorem popSlot_run {C : List J} {pc p k : Nat} (s : St) (hS : At C pc (popSlot p k))
+    (hlt : (s.x 31).toNat + 8 < 2 ^ 64) :
+    run C 3 (pc, s) = some (pc + 3, ⟨upd (upd s.x 5 (s.m (s.x 31).toNat)) 31 (UInt64.ofNat ((s.x 31).toNat + 8)),
+      upd s.m (slotAddr p (s.x 8).toNat k) (s.m (s.x 31).toNat), s.b⟩) := by
+  have c0 := hS.at 0 (by simp [popSlot]); have c1 := hS.at 1 (by simp [popSlot]); have c2 := hS.at 2 (by simp [popSlot])
+  simp [popSlot] at c0 c1 c2
+  have ea0 : ea (s.x 31) 0 = (s.x 31).toNat := by simp [ea]
+  have ea8 : ea (upd s.x 5 (s.m (s.x 31).toNat) 31) 8 = (s.x 31).toNat + 8 := by simp [ea, upd]; omega
+  have eaK : ∀ v w, ea (upd (upd s.x 5 v) 31 w 8) (slotOff p k) = slotAddr p (s.x 8).toNat k := by
+    intro v w; simp [ea, upd, slotAddr]
+  simp [run, step, c0, c1, c2, wr, ea0, ea8, eaK, upd_other _ _ (show (5:Nat) ≠ 31 by decide), upd_same]
+
+theorem At.app_left' {C pos l1 l2} (h : At C pos (l1 ++ l2)) : At C pos l1 := h.left
+theorem At.app_right' {C pos l1 l2} (h : At C pos (l1 ++ l2)) : At C (pos + l1.length) l2 := h.right
+
+/-- **pop w words into slots k0 … k0+w−1** (word at t6 + 8i goes to slot k0 + w − 1 − i) -/
+theorem popN_run {C : List J} {p k0 : Nat} : ∀ (w pc : Nat) (s : St), At C pc (popN p k0 w) →
+    (s.x 31).toNat + 8 * w < 2 ^ 63 →
+    (∀ j j', j < w → j' < w → slotAddr p (s.x 8).toNat (k0 + j) = slotAddr p (s.x 8).toNat (k0 + j') → j = j') →
+    (∀ j i, j < w → i < w → slotAddr p (s.x 8).toNat (k0 + j) ≠ (s.x 31).toNat + 8 * i) →
+    ∃ s', run C (3 * w) (pc, s) = some (pc + 3 * w, s') ∧ (s'.x 31).toNat = (s.x 31).toNat + 8 * w ∧
+      s'.x 8 = s.x 8 ∧ (∀ r, r ≠ 5 → r ≠ 31 → s'.x r = s.x r) ∧ s'.b = s.b ∧
+      (∀ j, j < w → s'.m (slotAddr p (s.x 8).toNat (k0 + j)) = s.m ((s.x 31).toNat + 8 * (w - 1 - j))) ∧
+      ∀ a, (∀ j, j < w → a ≠ slotAddr p (s.x 8).toNat (k0 + j)) → s'.m a = s.m a
+  | 0, pc, s, _, _, _, _ => ⟨s, by simp [run], by simp, rfl, fun _ _ _ => rfl, rfl, fun j h => absurd h (by omega),
+      fun _ _ => rfl⟩
+  | w + 1, pc, s, hC, hlt, hinj, hdis => by
+    have hC' : At C pc (popSlot p (k0 + w) ++ popN p k0 w) := hC
+    have A1 : At C pc (popSlot p (k0 + w)) := hC'.left
+    have A2 : At C (pc + 3) (popN p k0 w) := by have := hC'.right; simpa [popSlot] using this
+    have r1 := popSlot_run (k := k0 + w) s A1 (by omega)
+    generalize hs1 : (⟨upd (upd s.x 5 (s.m (s.x 31).toNat)) 31 (UInt64.ofNat ((s.x 31).toNat + 8)),
+      upd s.m (slotAddr p (s.x 8).toNat (k0 + w)) (s.m (s.x 31).toNat), s.b⟩ : St) = s1 at r1
+    have t1 : (s1.x 31).toNat = (s.x 31).toNat + 8 := by subst hs1; simp [upd]; omega
+    have x81 : s1.x 8 = s.x 8 := by subst hs1; simp [upd]
+    have m1 : ∀ a, s1.m a = if a = slotAddr p (s.x 8).toNat (k0 + w) then s.m (s.x 31).toNat else s.m a := by
+      intro a; subst hs1; simp [upd]
+    obtain ⟨s', r', p', e8', ex', eb', ms', mo'⟩ := popN_run w (pc + 3) s1 A2 (by rw [t1]; omega)
+      (fun j j' hj hj' e => hinj j j' (by omega) (by omega) (by rw [x81] at e; exact e))
+      (fun j i hj hi => by rw [x81, t1]; have := hdis j (i + 1) (by omega) (by omega); omega)
+    refine ⟨s', ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    · rw [show 3 * (w + 1) = 3 + 3 * w by omega, run_add r1, r']; congr 2; omega
+    · rw [p', t1]; omega
+    · rw [e8', x81]
+    · intro r h5 h31; rw [ex' r h5 h31]; subst hs1; simp [upd, h5, h31]
+    · rw [eb']; subst hs1; rfl
+    · intro j hj
+      rw [x81] at ms' mo'
+      by_cases hjw : j = w
+      · subst hjw
+        rw [mo' _ (fun j' hj' e => by have := hinj j j' (by omega) (by omega) e; omega), m1, if_pos rfl]
+        congr 1; omega
+      · rw [ms' j (by omega), t1, m1, if_neg (by have := hdis w (w - j) (by omega) (by omega); omega)]
+        congr 1; omega
+    · intro a ha
+      rw [x81] at mo'
+      rw [mo' a (fun j hj => ha j (by omega)), m1, if_neg (ha w (by omega))]
+
 end Templates
