@@ -82,7 +82,11 @@ def main (args : List String) : IO Unit := do
     20, 1, 0, 0, 0, 1, 9, 4, 9, 5, 8, 0, 3, 1, 5, 1, 0, 9, 5, 21]
   let good := lp [6, 2, 3, 1, 2, 1, 1, 1, 1, 2, 2, 1]
   if (C.g41 [] good).isEmpty then throw (IO.userError "valid fuel loop with a 2-word CONTINUE REJECTED")
-  let bad := bad ++ [lp [3, 1, 2, 1, 1, 1, 1]]
+  -- a LOOP only as the def body (its exits jump to the epilogue): in a BIN, in a LET value, nested in an arm ⇒ reject
+  let lb (e : List UInt64) : List UInt64 := (lp []).take 7 ++ e ++ (lp []).drop 12
+  let le : List UInt64 := [10, 2, 1, 1, 11, 6, 2, 3, 1, 2, 1, 1, 1, 1, 2, 2, 1]
+  if lb le != good then throw (IO.userError "lb le ≠ good")
+  let bad := bad ++ [lp [3, 1, 2, 1, 1, 1, 1], lb ([3, 1] ++ le ++ [1, 1]), lb ([5, 2, 1] ++ le ++ [2, 2, 1]), lb ([10, 2, 1, 1] ++ le)]
   let nr := (bad.filter fun b => (C.g41 [] b).isEmpty).length
   if nr != bad.length then throw (IO.userError s!"must-reject: only {nr}/{bad.length} rejected")
   IO.println s!"valid programs accepted: {n}/{n} (a rejection is a FAILURE); must-reject rejected: {nr}/{bad.length}"

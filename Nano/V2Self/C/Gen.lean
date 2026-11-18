@@ -356,7 +356,8 @@ def g40 : Nat → List UInt8 → Buf → UInt64 → List UInt8 → List UInt8
 
 /-! Width pre-pass (fail loudly, the IR carries no types): CONST 1, LOCAL w, BIN 1 (operands 1), IF (a, b 1; t = e),
 LET (v = w), PAIR Σ, CALL (Σ args = callee npw; callee nres), PRIM 1 (operands 1), LOOP (zero, step = nres),
-CONTINUE (e = npw − 1; counts as nres), def body = nres.  State `s`: [0] cursor, [1] error, [2] npw, [3] nres,
+CONTINUE (e = npw − 1; counts as nres), def body = nres; a LOOP only as the def body (its exits jump to
+the epilogue, its head is r[3]).  State `s`: [0] cursor, [1] error, [2] npw, [3] nres,
 [4] frames, [5] done; frames of 4 words (tag, children left, width so far, aux) from word 8.  `d`: npw, nres per def. -/
 /-- field j of the top frame -/
 def g44 (s : Buf) (j : UInt64) : UInt64 := bget s (8 + 4 * (bget s 4 - 1) + j)
@@ -423,7 +424,7 @@ def g51 (x d s : Buf) : Buf × Buf :=
   else if c == 8 then
     if e < h then (d, g47 (bset s 0 (i + 3)) 8 p 0 e) else (d, g48 s)
   else if c == 9 then (d, g47 (bset s 0 (i + 2)) 9 (g33 e) 0 0)
-  else if c == 10 then (d, g47 (bset s 0 (i + 1)) 10 2 0 0)
+  else if c == 10 then (if bget s 4 == 1 then (d, g47 (bset s 0 (i + 1)) 10 2 0 0) else (d, g48 s))
   else if c == 11 then (d, g47 (bset s 0 (i + 1)) 11 1 0 0)
   else (d, g48 s)
 /-- the width pre-pass loop (`x` threaded through: a loop's Buf parameters move into its state) -/
