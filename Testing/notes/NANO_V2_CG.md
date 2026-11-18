@@ -62,4 +62,13 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
 - Whole chain on Par0's main-shaped output (Testing/nano/v2self/cg_par.lean, no hand-written AST): 4 sources
   (prims put/rd/len/bnew/bpush/bget/bset/bsize, let, if, arithmetic): accepted 4/4, QEMU == Sail == native Lean on
   5 inputs each (146–380 words).
+- WHOLE SOURCE (Par1's dump Testing/nano/v2self/c_source_ast.bin = the OLD chain Lex/Parse/Inl/Expand/Asm/Main,
+  90 defs, 14,619 words): first run stopped at def 28 on `LOCAL 1 0` (implicit input, width 0) — g43 now allows
+  width 0 (pushes nothing; slot range still checked); then ACCEPTED: 28,664 code words (`cg_whole.lean`, native 3 s).
+  The code is run on QEMU against native `C.m` with Testing/nano/v2self/selfrun.py (cgw).
+- Heap budget of S = Base+Lex2+Par1+Gen+driver on its own source (static count of executed `bnew`s on the success
+  path): lexer 1 (s10), parser 2 (y15 heap, v98 output), Gen 5 (r o k t f), output bytes 1 ⇒ 9 buffers.
+  Largest: parser heap = 184,384 (layout) + 33,759 tokens + AST ≈ 233k words (needs κ ≥ 2^18; 2^19 gives 2.2×);
+  Gen code Buf 28.7k words, output Buf 114.7k bytes = words. At κ = 2^19: 9 × 4 MiB = 36 MiB + stack ⇒ work 80 MiB
+  gives > 2× headroom (QEMU run with 256 MiB). Decision per Astra-13 rule: fixed κ for the first self-compile.
 - Next: the parser's real output (Sonnet box) through g41 as Par0 gains calls/prims/loops; a diff test against Nano.V2B `gen` on the v2f programs.

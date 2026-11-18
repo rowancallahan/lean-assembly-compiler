@@ -187,9 +187,9 @@ def g35 (r o : Buf) (w : UInt64) : Buf × Buf :=
   let o8 := bpush (bpush o7 (g13 0 h7 (h7 - 6))) (g10 10 0 0);
   (r1, bpush (bpush (bpush o8 (g11 1 12 0)) (g11 8 12 8)) (g2 g_103 0 0 1 0))
 
-/-- 1 iff a slot range (slot `s`, width `w`) is empty or leaves the frame (`nslots` = r[7]) -/
+/-- 1 iff a slot range (slot `s`, width `w`) leaves the frame (`nslots` = r[7]); width 0 (the implicit input) pushes nothing -/
 def g43 (r : Buf) (s w : UInt64) : UInt64 :=
-  if w == 0 then g_1 else if s < 251 then (if w < 251 then (if bget r 7 < s + w then g_1 else g_0) else g_1) else g_1
+  if s < 251 then (if w < 251 then (if bget r 7 < s + w then g_1 else g_0) else g_1) else g_1
 
 /-- visit the node at the cursor in mode `m` (0 value, 1 loop/def tail) -/
 def g36 (x r o k : Buf) (y : UInt64) : Buf × (Buf × Buf) :=
