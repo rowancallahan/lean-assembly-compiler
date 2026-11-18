@@ -98,4 +98,14 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
   result words copied in order (the copy moves UP over the args: a later source is never an earlier destination).
   Not yet: link `J` to Gen's word encoders (g1–g5) and to the Sail layer (nano-v2 `sim_*`); OOM exits; 12-bit
   immediate side conditions (Gen checks nslots, nres ≤ 250).
+- ASTRA-11 PROBE 1 (parser, scoped let around a provisional self-call): `Nano/V2Self/Proof/ParLet.lean` (+ `BufL.lean`,
+  the one checked-write lemma `bget_bset`), no sorry, axioms propext/choice/Quot.sound, 2 s.  On Par1's REAL code:
+  `v2_low` (sibling linker writes only arena cells ≡ 7 mod 8), `v5_low`/`v5_fields` (node builder: low cells and
+  operand stack untouched; new node's tag and PENDING field as given), `v118_scope` (task 12 restores the binding depth
+  h[4] to the value saved by task 11: the let name leaves scope), `v118_pending` (the LET node carries the BODY's
+  pending bit: a provisional self-call inside a let body stays marked for FINISH).  Finding: these need a heap
+  invariant `OpsOK` (operand-stack ids < 16384) — Par1 indexes the arena with ids read from the heap in UInt64, so
+  without it `d5 + 8·id + k` can wrap onto low cells; likewise v5's guard `8·h[9] + 7 < d6` passes for huge h[9]
+  by wrap-around.  Both hold for heaps Par1 itself produces (ids < node count ≤ arena), to be carried by the
+  parser invariant (Entry/Step obligations).
 - Next: the parser's real output (Sonnet box) through g41 as Par0 gains calls/prims/loops; a diff test against Nano.V2B `gen` on the v2f programs.
