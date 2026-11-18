@@ -511,6 +511,16 @@ def m (x : List UInt8) : List UInt8 := let a := k; let a := (let a := a + 1; a *
 #guard (parseStr ex4).isSome
 
 /-! ### rejected programs -/
+-- the five Par1 gaps found by the differential fuzz (now fixed in Par1): input as data / as the body, rd on a non-input list,
+-- `List <not UInt8>`, a loop whose only state is the input, duplicate pattern binders
+#guard parseStr "def m (x : List UInt8) : List UInt8 := put x 1" = none
+#guard parseStr "def m (x : List UInt8) : List UInt8 := x" = none
+#guard parseStr "def m (x : List UInt8) : List UInt8 := let y := x; []" = none
+#guard parseStr "def g (z : List UInt8) (a : List UInt8) : UInt64 := rd a 0\ndef m (x : List UInt8) : List UInt8 := []" = none
+#guard parseStr "def g (z : List def) : UInt64 := 1\ndef m (x : List UInt8) : List UInt8 := []" = none
+#guard parseStr "def f : Nat → List UInt8 → UInt64 × UInt64\n  | 0, z => (1, 2)\n  | n + 1, z => f n z\ndef m (x : List UInt8) : List UInt8 := []" = none
+#guard parseStr "def f : Nat → UInt64 → UInt64 → UInt64\n  | 0, a, a => a\n  | n + 1, a, b => a\ndef m (x : List UInt8) : List UInt8 := []" = none
+#guard parseStr "def f : Nat → UInt64 → UInt64\n  | 0, a => a\n  | n + 1, n => n\ndef m (x : List UInt8) : List UInt8 := []" = none
 def mainTail : String := "\ndef m (x : List UInt8) : List UInt8 := []"
 -- non-tail self-call (`f n s + 1`), also parenthesised
 #guard parseStr ("def g : Nat → UInt64 → UInt64\n  | 0, p => p\n  | n + 1, p => g n p + 1" ++ mainTail) = none

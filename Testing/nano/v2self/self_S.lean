@@ -239,6 +239,36 @@ def k44 : UInt64 := 19
 -- Retain y0, y2, y7, y8, y10, y14, y15 and the generated layout constants.
 -- k40..k49 and v0 are token/prelude adapters specified in the note.
 
+def v205 : Nat → Buf → UInt64 → UInt64 → UInt64 → UInt64
+  | 0, h, a, c, m => m
+  | n + 1, h, a, c, m =>
+    if c == 0 then m
+    else
+      let r := if bget h ((d5 + 8*a) + 0) == 2 then if bget h ((d5 + 8*a) + 2) == 0 then k1 else k0 else k0;
+      v205 n h (bget h ((d5 + 8*a) + 7)) (c - 1) (m + r)
+
+/-- arena validation (after the parse): the width-0 INPUT LOCAL may only appear as the first operand of rd / len / len' (prims 1..3, which then
+must have it), or as an argument of a CALL or of a CONTINUE state tuple (PAIR with shape 0); everywhere else (data, let value, if, prim operand,
+single-state CONTINUE) the node is rejected.  Checks every arena node: tag t, payload a, shape w, child count c, first child f. -/
+def v209 : Nat → Buf → UInt64 → UInt64
+  | 0, h, u => 0
+  | n + 1, h, u =>
+    if u < bget h 9 then
+      let t := bget h ((d5 + 8*u) + 0);
+      let a := bget h ((d5 + 8*u) + 1);
+      let w := bget h ((d5 + 8*u) + 3);
+      let c := bget h ((d5 + 8*u) + 6);
+      let f := bget h ((d5 + 8*u) + 5);
+      let m := v205 16777216 h f c 0;
+      let p0 := if c == 0 then k0 else if bget h ((d5 + 8*f) + 0) == 2 then if bget h ((d5 + 8*f) + 2) == 0 then k1 else k0 else k0;
+      let r := if m == 0 then (if t == 9 then (if a < 4 then k0 else k1) else k1)
+               else if t == 8 then k1
+               else if t == 6 then (if w == 0 then k1 else k0)
+               else if t == 9 then (if a < 4 then (if m == 1 then p0 else k0) else k0)
+               else k0;
+      if r == 1 then v209 n h (u + 1) else 0
+    else 1
+
 def v1 (h : Buf) (c a b : UInt64) : Buf :=
   if (bget h 5) < d12 then
     let j := d1 + 3 * (bget h 5);
@@ -841,6 +871,7 @@ def v126 (h : Buf) (a b : UInt64) : Buf :=
     else bset h 0 0
 
 def v127 (h : Buf) (a b : UInt64) : Buf :=
+  if v209 16777216 h 0 == 0 then bset h 0 0 else
   if (bget h 3) == (bget h 7) then
     let h := bset h (0) (2);
     h
@@ -902,7 +933,17 @@ def v128 (h : Buf) (a b : UInt64) : Buf :=
     if w == 0 then
       bset h 0 0
     else
-      let z40 := ((bget h 3) + k1 + (if w == 3 then k1 else k0));
+      if w == 3 then
+        if (bget h (d11 + (bget h 3) + 1)) == 38 then
+          let z40 := ((bget h 3) + k1 + k1);
+          let h := bset h (3) z40;
+          let h := bset h (25) (w);
+          let h := v1 h 62 (0) (0);
+          h
+        else
+          bset h 0 0
+      else
+      let z40 := ((bget h 3) + k1);
       let h := bset h (3) z40;
       let h := bset h (25) (w);
       let h := v1 h 62 (0) (0);
@@ -1113,24 +1154,27 @@ def v138 (h : Buf) (a b : UInt64) : Buf :=
   let n1 := if i1 == 0 then k1 else k0;
   if bget h (d11+p) == 14 then
     let h := v86 16777216 h (p+1);
-    let h := v6 h p s w;
-    let h := bset h (d9 + 4 * ((bget h 4) - 1) + 3) n1;
-    let h := v9 h w;
-    let q := bget h 31;
-    let h := bset h 32 (s + q - q * n1);
-    let x := bget h 3;
-    let t := bget h (d11+x);
-    let h := bset h 3 (x+1);
-    if b+1 < z then
-      if t == k40 then v1 h 76 a (b+1) else bset h 0 0
-    else if t == k44 then
-      if a == 0 then
-        let h := v1 h 77 0 0;
-        v1 h 1 0 0
-      else
-        let h := v1 h 80 0 0;
-        let h := v1 h 79 0 0;
-        v1 h 1 0 1
+    let h := v7 16777216 h (bget h 4) p;
+    if bget h 21 == 0 then
+      let h := v6 h p s w;
+      let h := bset h (d9 + 4 * ((bget h 4) - 1) + 3) n1;
+      let h := v9 h w;
+      let q := bget h 31;
+      let h := bset h 32 (s + q - q * n1);
+      let x := bget h 3;
+      let t := bget h (d11+x);
+      let h := bset h 3 (x+1);
+      if b+1 < z then
+        if t == k40 then v1 h 76 a (b+1) else bset h 0 0
+      else if t == k44 then
+        if a == 0 then
+          let h := v1 h 77 0 0;
+          v1 h 1 0 0
+        else
+          let h := v1 h 80 0 0;
+          let h := v1 h 79 0 0;
+          v1 h 1 0 1
+      else bset h 0 0
     else bset h 0 0
   else bset h 0 0
 
@@ -1188,6 +1232,8 @@ def v141 (h : Buf) (a b : UInt64) : Buf :=
   if (bget h 8) == 1 then
     if (bget h ((d5 + 8 * (bget h (d3 + (bget h 8) - 1))) + 3)) == (bget h (d7 + 8 * ((bget h 12)) + 3)) then
       let z := (bget h (d3 + (bget h 8) - 1));
+      let zi := if bget h ((d5 + 8*z) + 0) == 2 then if bget h ((d5 + 8*z) + 2) == 0 then k1 else k0 else k0;
+      if zi == 1 then bset h 0 0 else
       let q := (bget h (d7 + 8 * ((bget h 12)) + 1));
       let w := (bget h 11);
       let t := (bget h (d7 + 8 * ((bget h 12)) + 4));
@@ -1209,14 +1255,6 @@ def v141 (h : Buf) (a b : UInt64) : Buf :=
       bset h 0 0
   else
     bset h 0 0
-
-def v205 : Nat → Buf → UInt64 → UInt64 → UInt64 → UInt64
-  | 0, h, a, c, m => m
-  | n + 1, h, a, c, m =>
-    if c == 0 then m
-    else
-      let r := if bget h ((d5 + 8*a) + 0) == 2 then if bget h ((d5 + 8*a) + 2) == 0 then k1 else k0 else k0;
-      v205 n h (bget h ((d5 + 8*a) + 7)) (c - 1) (m + r)
 
 def v142 (h : Buf) (a b : UInt64) : Buf :=
   let t := (bget h ((d5 + 8*a) + 0));
