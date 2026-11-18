@@ -158,4 +158,13 @@ for ctx in CTX:
     for call in CALLS:
         src = "def h (a : UInt64) : UInt64 := a\n\ndef g : Nat → UInt64 → UInt64\n  | 0, p => p\n  | n + 1, p => " + ctx.format(c=call) + "\n\ndef m (x : List UInt8) : List UInt8 := put [] (g 3 1)\n"
         open(f"{d}/p{k}.txt", "w").write(src); k += 1
+REG = ["put x 1", "x", "let y := x; []", "put [] (rd x 0) + len x"]
+for r in REG[:3]:
+    open(f"{d}/p{k}.txt", "w").write("def m (x : List UInt8) : List UInt8 := " + r + "\n"); k += 1
+for src in ["def g (z : List UInt8) (a : List UInt8) : UInt64 := rd a 0\n", "def g (z : List def) : UInt64 := 1\n",
+            "def f : Nat → List UInt8 → UInt64 × UInt64\n  | 0, z => (1, 2)\n  | n + 1, z => f n z\n",
+            "def f : Nat → UInt64 → UInt64 → UInt64\n  | 0, a, a => a\n  | n + 1, a, b => a\n", "def f : Nat → UInt64 → UInt64\n  | 0, a => a\n  | n + 1, n => n\n",
+            "def f (z : List UInt8) (a : List UInt8) : UInt64 := 1\ndef m2 (x : List UInt8) : UInt64 := f [] x\n", "def f (z : List UInt8) (a : List UInt8) : UInt64 := 1\ndef m2 (x : List UInt8) : UInt64 := f x x\n",
+            "def f : Nat → List UInt8 → List UInt8 → UInt64\n  | 0, z, a => 1\n  | n + 1, z, a => f n [] z\n"]:
+    open(f"{d}/p{k}.txt", "w").write(src + "\ndef m (x : List UInt8) : List UInt8 := []\n"); k += 1
 print(k)
