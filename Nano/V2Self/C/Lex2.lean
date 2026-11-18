@@ -96,6 +96,6 @@ def s9 : Nat → List UInt8 → UInt64 → Buf → Buf
     else if k == 14 then s9 n x (s5 x p k) (s7 (len' x) x p (s5 x p k) (q0 o 14))
     else s9 n x (s5 x p k) (q0 o k)
 
-def s10 (x : List UInt8) : Buf := s9 (len' x + 1) x 0 bnew
+def s10 (x : List UInt8) : Buf := s9 16777216 x 0 bnew
 
 end C
