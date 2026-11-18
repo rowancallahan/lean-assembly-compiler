@@ -136,7 +136,11 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
   EV has an invariant parameter `Inv` (input / heap / input-register facts; `InvOK`: Inv reads only x8, x28, x29,
   x30 and memory outside [t5, s0 + 8p + 16)) and x0 = 0.  `ifE_eq` / `ifE_lt`: IF under EV (room n+1 from n),
   scoping: B reads none of A's lets, T/E none of A's or B's.
-  Next: PAIR/LET of width w, LOOP/CONTINUE (tail contract), the fixup lemma, the g39 work-item invariant.
+  LOOP: `Nano/V2Self/Proof/Loop.lean` `loop_ok` (no sorry): Gen's head (ld fuel; beq fuel,x0,+2; jal STEP; zero arm)
+  and STEP (fuel − 1 stored; step arm exits to E or CONTINUEs to HEAD), by induction on the fuel; arms, head
+  invariant P and results abstract; result = inductive `LoopR` (zero / exit / cont).
+  Next: CONTINUE template (state push + pop into slots 1..npw−1 + jal HEAD as a `Cont` instance), PAIR/LET width w,
+  the fixup lemma, the g39 work-item invariant.
 - Next: the parser's real output (Sonnet box) through g41 as Par0 gains calls/prims/loops; a diff test against Nano.V2B `gen` on the v2f programs.
 - EXPRESSION TEMPLATES PROVED (Sonnet box): `Nano/V2Self/Proof/Expr.lean` (+ `ExprExact.lean`), no sorry, standard axioms, ~5 s each.
   J (Proof/Call.lean) gained additive `alu` (Gen's BIN numbering), `slli`, `lbu` (byte of the aligned LE word cell).
