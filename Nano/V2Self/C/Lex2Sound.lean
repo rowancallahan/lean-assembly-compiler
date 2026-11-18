@@ -311,3 +311,109 @@ theorem s3_eq (x : List UInt8) (p e : UInt64) (hx : x.length < 2 ^ 32) (he : e.t
   · simp; exact hrd (p + 3) (by simp [UInt64.toNat_add]; omega)
   · simp; exact hrd (p + 4) (by simp [UInt64.toNat_add]; omega)
   · simp; exact hrd (p + 5) (by simp [UInt64.toNat_add]; omega)
+
+/-! ### the token kind (s4) -/
+
+/-- s4 with its reads/inner calls made parameters (definitionally the same body) -/
+def s4' (c d f A B : UInt64) : UInt64 :=
+    if c == 32 then 90
+    else if c == 10 then 90
+    else if c == 40 then 6
+    else if c == 41 then 7
+    else if c == 43 then 10
+    else if c == 45 then 11
+    else if c == 42 then 12
+    else if c == 59 then 13
+    else if c == 44 then 15
+    else if c == 91 then 30
+    else if c == 93 then 31
+    else if c == 58 then if d == 61 then 9 else 8
+    else if c == 61 then if d == 61 then 23 else if d == 62 then 19 else 0
+    else if c == 38 then if d == 38 then if f == 38 then 26 else 0 else 0
+    else if c == 124 then if d == 124 then if f == 124 then 27 else 18 else 18
+    else if c == 60 then if d == 60 then if f == 60 then 28 else 20 else 20
+    else if c == 62 then if d == 62 then if f == 62 then 29 else 0 else 0
+    else if c == 195 then if d == 151 then 16 else 0
+    else if c == 226 then if d == 134 then if f == 146 then 17 else 0 else 0
+    else if 48 ≤ c && c ≤ 57 then if A == 1 then 5 else 0
+    else if s0 c == 1 then B
+    else 0
+
+theorem bcomm (a b : UInt8) : (a == b) = (b == a) := by
+  cases h : a == b <;> cases h2 : b == a <;> simp_all (config := {decide := true}) [isD, isW]
+
+theorem isD_iff (c : UInt8) : (48 ≤ c.toUInt64 ∧ c.toUInt64 ≤ 57) ↔ isD c = true := by
+  rw [← isD_eq]; simp
+
+theorem s4'_eq (c d f : UInt8) (A B : UInt64) :
+    s4' c.toUInt64 d.toUInt64 f.toUInt64 A B =
+      if c = 32 ∨ c = 10 then 90 else
+      match opTable.find? (fun e => e.1.isPrefixOf [c, d, f]) with
+      | some (_, t) => t
+      | none => if isD c then (if A == 1 then 5 else 0) else if isW c then B else 0 := by
+  by_cases h32 : c = 32
+  · subst h32; simp [s4', opTable, List.find?, List.isPrefixOf, tu2, isD_iff, s0_eq, bcomm]
+  by_cases h10 : c = 10
+  · subst h10; simp [s4', opTable, List.find?, List.isPrefixOf, tu2, isD_iff, s0_eq, bcomm]
+  by_cases h40 : c = 40
+  · subst h40; simp [s4', opTable, List.find?, List.isPrefixOf, tu2, isD_iff, s0_eq, bcomm]
+  by_cases h41 : c = 41
+  · subst h41; simp [s4', opTable, List.find?, List.isPrefixOf, tu2, isD_iff, s0_eq, bcomm]
+  by_cases h43 : c = 43
+  · subst h43; simp [s4', opTable, List.find?, List.isPrefixOf, tu2, isD_iff, s0_eq, bcomm]
+  by_cases h45 : c = 45
+  · subst h45; simp [s4', opTable, List.find?, List.isPrefixOf, tu2, isD_iff, s0_eq, bcomm]
+  by_cases h42 : c = 42
+  · subst h42; simp [s4', opTable, List.find?, List.isPrefixOf, tu2, isD_iff, s0_eq, bcomm]
+  by_cases h59 : c = 59
+  · subst h59; simp [s4', opTable, List.find?, List.isPrefixOf, tu2, isD_iff, s0_eq, bcomm]
+  by_cases h44 : c = 44
+  · subst h44; simp [s4', opTable, List.find?, List.isPrefixOf, tu2, isD_iff, s0_eq, bcomm]
+  by_cases h91 : c = 91
+  · subst h91; simp [s4', opTable, List.find?, List.isPrefixOf, tu2, isD_iff, s0_eq, bcomm]
+  by_cases h93 : c = 93
+  · subst h93; simp [s4', opTable, List.find?, List.isPrefixOf, tu2, isD_iff, s0_eq, bcomm]
+  by_cases h58 : c = 58
+  · subst h58
+    cases d61 : (d == 61) <;> simp [s4', opTable, List.find?, List.isPrefixOf, tu2, isD_iff, s0_eq, bcomm, d61] <;> simp_all (config := {decide := true}) [isD, isW]
+  by_cases h61 : c = 61
+  · subst h61
+    cases d61 : (d == 61) <;> cases d62 : (d == 62) <;> simp [s4', opTable, List.find?, List.isPrefixOf, tu2, isD_iff, s0_eq, bcomm, d61, d62] <;> simp_all (config := {decide := true}) [isD, isW]
+  by_cases h38 : c = 38
+  · subst h38
+    cases d38 : (d == 38) <;> cases f38 : (f == 38) <;> simp [s4', opTable, List.find?, List.isPrefixOf, tu2, isD_iff, s0_eq, bcomm, d38, f38] <;> simp_all (config := {decide := true}) [isD, isW]
+  by_cases h124 : c = 124
+  · subst h124
+    cases d124 : (d == 124) <;> cases f124 : (f == 124) <;> simp [s4', opTable, List.find?, List.isPrefixOf, tu2, isD_iff, s0_eq, bcomm, d124, f124] <;> simp_all (config := {decide := true}) [isD, isW]
+  by_cases h60 : c = 60
+  · subst h60
+    cases d60 : (d == 60) <;> cases f60 : (f == 60) <;> simp [s4', opTable, List.find?, List.isPrefixOf, tu2, isD_iff, s0_eq, bcomm, d60, f60] <;> simp_all (config := {decide := true}) [isD, isW]
+  by_cases h62 : c = 62
+  · subst h62
+    cases d62 : (d == 62) <;> cases f62 : (f == 62) <;> simp [s4', opTable, List.find?, List.isPrefixOf, tu2, isD_iff, s0_eq, bcomm, d62, f62] <;> simp_all (config := {decide := true}) [isD, isW]
+  by_cases h195 : c = 195
+  · subst h195
+    cases d151 : (d == 151) <;> simp [s4', opTable, List.find?, List.isPrefixOf, tu2, isD_iff, s0_eq, bcomm, d151] <;> simp_all (config := {decide := true}) [isD, isW]
+  by_cases h226 : c = 226
+  · subst h226
+    cases d134 : (d == 134) <;> cases f146 : (f == 146) <;> simp [s4', opTable, List.find?, List.isPrefixOf, tu2, isD_iff, s0_eq, bcomm, d134, f146] <;> simp_all (config := {decide := true}) [isD, isW]
+  have b32 : (c == 32) = false := by simpa using h32
+  have b10 : (c == 10) = false := by simpa using h10
+  have b40 : (c == 40) = false := by simpa using h40
+  have b41 : (c == 41) = false := by simpa using h41
+  have b43 : (c == 43) = false := by simpa using h43
+  have b45 : (c == 45) = false := by simpa using h45
+  have b42 : (c == 42) = false := by simpa using h42
+  have b59 : (c == 59) = false := by simpa using h59
+  have b44 : (c == 44) = false := by simpa using h44
+  have b91 : (c == 91) = false := by simpa using h91
+  have b93 : (c == 93) = false := by simpa using h93
+  have b58 : (c == 58) = false := by simpa using h58
+  have b61 : (c == 61) = false := by simpa using h61
+  have b38 : (c == 38) = false := by simpa using h38
+  have b124 : (c == 124) = false := by simpa using h124
+  have b60 : (c == 60) = false := by simpa using h60
+  have b62 : (c == 62) = false := by simpa using h62
+  have b195 : (c == 195) = false := by simpa using h195
+  have b226 : (c == 226) = false := by simpa using h226
+  simp [s4', opTable, List.find?, List.isPrefixOf, tu2, isD_iff, s0_eq, bcomm, isD, isW, b32, b10, b40, b41, b43, b45, b42, b59, b44, b91, b93, b58, b61, b38, b124, b60, b62, b195, b226, h32, h10, h40, h41, h43, h45, h42, h59, h44, h91, h93, h58, h61, h38, h124, h60, h62, h195, h226]
