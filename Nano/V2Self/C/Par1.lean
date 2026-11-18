@@ -380,7 +380,7 @@ def v105 (h : Buf) (a b : UInt64) : Buf :=
       let z40 := ((bget h 3) + 1);
       let h := bset h (3) z40;
       let h := v1 h 42 (0) (0);
-      let h := v1 h 4 (0) (0);
+      let h := v1 h 90 (0) (0);
       let h := v1 h 1 (0) (0);
       h
     else
@@ -1109,6 +1109,18 @@ def v144 (h : Buf) (a b : UInt64) : Buf :=
   let h := v1 h 60 (0) (0);
   h
 
+def v204 (h : Buf) (a b : UInt64) : Buf :=
+  if (bget h (d11 + (bget h 3) + 0)) == 7 then
+    bset h 3 ((bget h 3) + 1)
+  else
+    if (bget h (d11 + (bget h 3) + 0)) == k40 then
+      let h := bset h 3 ((bget h 3) + 1);
+      let h := v1 h 42 0 0;
+      let h := v1 h 90 0 0;
+      v1 h 1 0 0
+    else
+      bset h 0 0
+
 def v96 (h : Buf) (c a b : UInt64) : Buf :=
   if c == 1 then v100 h a b else 
     if c == 2 then v101 h a b else 
@@ -1154,7 +1166,8 @@ def v96 (h : Buf) (c a b : UInt64) : Buf :=
     if c == 80 then v141 h a b else 
     if c == 81 then v142 h a b else 
     if c == 82 then v143 h a b else 
-    if c == 83 then v144 h a b else bset h 0 0
+    if c == 83 then v144 h a b else
+    if c == 90 then v204 h a b else bset h 0 0
 
 def v97 : Nat → Buf → Buf
   | 0, h => bset h 0 0
