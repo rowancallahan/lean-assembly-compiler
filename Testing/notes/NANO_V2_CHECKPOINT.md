@@ -177,3 +177,19 @@ P = 81 973 words (327 892 bytes, was 158 439); QEMU output = native `C.m` on the
 ### Width/shape rejection (2026-11-18)
 Par1 rejects, at the SOURCE level (Astra's shape checks: argument and `CONTINUE` shapes must equal the callee's / the state's, pair widths come from interned shapes), every width/arity mismatch tried: call with too few / too many / wrong-typed / pair-for-word arguments, `CONTINUE` with a missing / extra / wrong-typed / pair-for-word state, `IF` branches of different shapes, a loop with the input but a missing state (`boot/neg_widths.py`: **NEGATIVE rejected 10/10, VALID companions accepted 6/6**, including loops with the input + 1/2/3 states, a pair state and a call taking the input).
 The class of bug that caused the B2 crash (a correct source emitted with a wrong width in the AST) is guarded by the independent width inference in `ast_check.py` and by Gen's width pre-pass, not by Par1: Par1 does not re-infer widths over its own output.
+
+## Lexer soundness proof (Lex2) — proved
+
+`Nano/V2Self/C/Lex2Spec.lean` (spec, independent of Lex2) + `Nano/V2Self/C/Lex2Sound.lean` (proof; 17 s cold, no sorry,
+axioms propext/Classical.choice/Quot.sound).
+
+    theorem s10_sound (x : List UInt8) (hx : x.length < 2^32) (t : Buf) (h : C.s10 x = t) (ht : t ≠ []) : LexSpec.Lexes x t
+
+`Lexes` = one `step` at a time: whitespace (32, 10) skipped; operator table searched longest-first (`opTable`);
+otherwise a maximal word `[A-Za-z0-9_']*`: keyword/prim table (`kwTable`), identifier `14 (1,b)* 0`, or (digit-led, all
+digits) `5` + 8 LE bytes of the decimal value mod 2^64; anything else has no `step` (rejected).  Proof: s1/s2/s6/s7/s8
+loop lemmas (word end, all-digits, value, ident payload, LE bytes), `s3` (keyword) and `s4'` (kind) against the tables,
+`s4_kind`, then induction on the s9 fuel with the invariant `s9 n x p o = t, t ≠ [] ⇒ ∃ t', Lexes (x.drop p) t' ∧ t = o ++ t'`.
+Soundness only: a reject (empty Buf) proves nothing; completeness not claimed.  Input bound 2^32 bytes (index arithmetic).
+Gaps: the proof is about `Lex2.lean`; `self_S.lean` contains the `desugar.py` form of the same text (`&&`/`||`/`≤` rewritten) —
+equivalence not proved (the differential test `lex2_test.lean` covers it); the Array-backed B1 prelude is likewise untested by proof.

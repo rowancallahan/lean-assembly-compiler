@@ -425,3 +425,256 @@ theorem s4'_eq (c d f : UInt8) (A B : UInt64) :
   have b195 : (c == 195) = false := by simpa using h195
   have b226 : (c == 226) = false := by simpa using h226
   simp [s4', opTable, List.find?, List.isPrefixOf, tu2, isD_iff, s0_eq, bcomm, isD, isW, wcond, b32, b10, b40, b41, b43, b45, b42, b59, b44, b91, b93, b58, b61, b38, b124, b60, b62, b195, b226, h32, h10, h40, h41, h43, h45, h42, h59, h44, h91, h93, h58, h61, h38, h124, h60, h62, h195, h226]
+
+/-! ### s4 = spec kind -/
+
+def kind (l : List UInt8) : UInt64 :=
+  match l with
+  | [] => 91
+  | c :: r =>
+    if c = 32 ∨ c = 10 then 90 else
+    match opTable.find? (fun e => e.1.isPrefixOf (c :: r)) with
+    | some (_, t) => t
+    | none =>
+      if isD c then (if ((c :: r).takeWhile isW).all isD then 5 else 0)
+      else if isW c then (kwTable.lookup ((c :: r).takeWhile isW)).getD 14 else 0
+
+theorem find_pad (l : List UInt8) :
+    opTable.find? (fun e => e.1.isPrefixOf l) = opTable.find? (fun e => e.1.isPrefixOf [l.getD 0 0, l.getD 1 0, l.getD 2 0]) := by
+  rcases l with _ | ⟨a, _ | ⟨b, _ | ⟨c, r⟩⟩⟩ <;>
+    simp [opTable, List.find?, List.isPrefixOf, bcomm]
+
+theorem s4_eq_s4' (x : List UInt8) (p : UInt64) :
+    s4 x p = if p < len x then s4' (rd x p) (rd x (p + 1)) (rd x (p + 2)) (s2 (len' x) x p (s1 (len' x) x p))
+      (s3 x p (s1 (len' x) x p)) else 91 := rfl
+
+theorem tw_len (l : List UInt8) : (l.takeWhile isW).length ≤ l.length := by
+  induction l with
+  | nil => simp
+  | cons a l ih => simp only [List.takeWhile_cons]; split <;> simp <;> omega
+
+theorem take_takeWhile (l : List UInt8) : l.take (l.takeWhile isW).length = l.takeWhile isW := by
+  have h := List.takeWhile_append_dropWhile (p := isW) (l := l)
+  calc l.take (l.takeWhile isW).length = ((l.takeWhile isW) ++ (l.dropWhile isW)).take (l.takeWhile isW).length := by rw [h]
+    _ = l.takeWhile isW := List.take_left' rfl
+
+theorem s4_kind (x : List UInt8) (p : UInt64) (hx : x.length < 2 ^ 32) (hp : p.toNat ≤ x.length) :
+    s4 x p = kind (x.drop p.toNat) := by
+  rw [s4_eq_s4']
+  by_cases hlt : p < len x
+  · have hl : p.toNat < x.length := (lt_len hx).1 hlt
+    simp only [hlt, if_true]
+    -- the word end
+    have he := s1_eq (len' x) x p hx hp (by unfold len'; omega)
+    generalize hed : s1 (len' x) x p = e at *
+    have htw : ((x.drop p.toNat).takeWhile isW).length ≤ x.length - p.toNat := by
+      have := tw_len (x.drop p.toNat); simp at this; omega
+    have he1 : e.toNat ≤ x.length := by omega
+    have he2 : p.toNat ≤ e.toNat := by omega
+    have hw : (x.drop p.toNat).take (e.toNat - p.toNat) = (x.drop p.toNat).takeWhile isW := by
+      rw [← take_takeWhile]; congr 1; omega
+    have hA := s2_eq (len' x) x p e hx he1 he2 (by unfold len'; omega)
+    have hB := s3_eq x p e hx he1 he2
+    rw [hw] at hA hB
+    have hc : rd x p = (((x.drop p.toNat).take 3).getD 0 0).toUInt64 := rd_seg x p p 3 0 (by omega) (by simp)
+    have hd : rd x (p + 1) = (((x.drop p.toNat).take 3).getD 1 0).toUInt64 :=
+      rd_seg x p _ 3 1 (by omega) (by simp [UInt64.toNat_add]; omega)
+    have hf : rd x (p + 2) = (((x.drop p.toNat).take 3).getD 2 0).toUInt64 :=
+      rd_seg x p _ 3 2 (by omega) (by simp [UInt64.toNat_add]; omega)
+    rw [hc, hd, hf, hA, hB, s4'_eq]
+    obtain ⟨c, r, hcr⟩ : ∃ c r, x.drop p.toNat = c :: r := ⟨_, _, drop_cons hl⟩
+    rw [hcr]
+    have e1 : ((c :: r).take 3).getD 1 0 = (c :: r).getD 1 0 := by
+      simp [List.getD_eq_getElem?_getD, List.getElem?_take]
+    have e2 : ((c :: r).take 3).getD 2 0 = (c :: r).getD 2 0 := by
+      simp [List.getD_eq_getElem?_getD, List.getElem?_take]
+    have e0 : ((c :: r).take 3).getD 0 0 = (c :: r).getD 0 0 := by simp
+    rw [e0, e1, e2, ← find_pad (c :: r)]
+    simp only [kind]
+    by_cases hall : ((c :: r).takeWhile isW).all isD = true <;> simp [hall]
+  · have : p.toNat = x.length := by
+      have := (not_congr (lt_len hx (p := p))).1 hlt; omega
+    simp [hlt, this, kind]
+
+/-! ### the main loop s9 -/
+
+theorem op_props : ∀ e ∈ opTable, e.2 ≠ 0 ∧ e.2 ≠ 5 ∧ e.2 ≠ 14 ∧ e.2 ≠ 90 ∧ e.2 ≠ 91 ∧ e.2 < 256 := by decide
+theorem kw_props : ∀ e ∈ kwTable, e.2 ≠ 0 ∧ e.2 ≠ 5 ∧ e.2 ≠ 14 ∧ e.2 ≠ 90 ∧ e.2 ≠ 91 ∧ e.2 < 256 := by decide
+
+theorem s5_op : ∀ e ∈ opTable, ∀ (x : List UInt8) (p : UInt64), s5 x p e.2 = p + e.1.length.toUInt64 := by
+  intro e he x p
+  simp only [opTable, List.mem_cons, List.not_mem_nil, or_false] at he
+  rcases he with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;> simp [s5]
+
+theorem op_len : ∀ e ∈ opTable, e.1.length ≤ 3 := by decide
+
+theorem s5_word (x : List UInt8) (p k : UInt64) (hk : k = 5 ∨ k = 14 ∨ ∃ e ∈ kwTable, e.2 = k) :
+    s5 x p k = s1 (len' x) x p := by
+  have : k ≠ 9 ∧ k ≠ 16 ∧ k ≠ 19 ∧ k ≠ 23 ∧ k ≠ 17 ∧ k ≠ 26 ∧ k ≠ 27 ∧ k ≠ 28 ∧ k ≠ 29 ∧ k ≠ 6 ∧ k ≠ 7 ∧ k ≠ 8 ∧ k ≠ 10 ∧
+      k ≠ 11 ∧ k ≠ 12 ∧ k ≠ 13 ∧ k ≠ 15 ∧ k ≠ 18 ∧ k ≠ 20 ∧ k ≠ 30 ∧ k ≠ 31 ∧ k ≠ 90 := by
+    rcases hk with rfl | rfl | ⟨e, he, rfl⟩
+    · decide
+    · decide
+    · revert e; decide
+  obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12, h13, h14, h15, h16, h17, h18, h19, h20, h21, h22⟩ := this
+  simp [s5, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12, h13, h14, h15, h16, h17, h18, h19, h20, h21, h22]
+
+theorem lookup_mem : ∀ (L : List (List UInt8 × UInt64)) (w : List UInt8) (k : UInt64), L.lookup w = some k →
+    ∃ e ∈ L, e.2 = k
+  | [], w, k, h => by simp [List.lookup] at h
+  | (a, b) :: L, w, k, h => by
+      simp only [List.lookup] at h
+      split at h
+      · exact ⟨(a, b), by simp, by simpa using h⟩
+      · obtain ⟨e, he, h2⟩ := lookup_mem L w k h
+        exact ⟨e, by simp [he], h2⟩
+
+theorem kind_spec (c : UInt8) (r : List UInt8) :
+    (kind (c :: r) = 90 ∧ step (c :: r) = some ([], r)) ∨
+    (∃ e ∈ opTable, kind (c :: r) = e.2 ∧ step (c :: r) = some ([e.2], (c :: r).drop e.1.length) ∧
+        e.1.isPrefixOf (c :: r) = true) ∨
+    (kind (c :: r) = 5 ∧ ((c :: r).takeWhile isW).all isD = true ∧ step (c :: r) = some (5 :: le8 (numVal ((c :: r).takeWhile isW)), (c :: r).dropWhile isW)) ∨
+    kind (c :: r) = 0 ∨
+    (∃ e ∈ kwTable, kind (c :: r) = e.2 ∧ step (c :: r) = some ([e.2], (c :: r).dropWhile isW)) ∨
+    (kind (c :: r) = 14 ∧ step (c :: r) = some (14 :: (((c :: r).takeWhile isW).flatMap fun b => [1, b.toUInt64]) ++ [0],
+      (c :: r).dropWhile isW)) := by
+  unfold kind step
+  by_cases hws : c = 32 ∨ c = 10
+  · have : (c == 32 || c == 10) = true := by simpa using hws
+    simp [hws, this]
+  · have : ¬ (c == 32 || c == 10) = true := by simpa using hws
+    simp only [hws, this, if_false, Bool.false_eq_true]
+    rcases hf : opTable.find? (fun e => e.1.isPrefixOf (c :: r)) with _ | ⟨s, t⟩
+    · simp only [hf]
+      by_cases hd : isD c = true
+      · by_cases ha : ((c :: r).takeWhile isW).all isD = true
+        · simp [hd, ha]
+        · simp [hd, ha]
+      · by_cases hw : isW c = true
+        · simp only [hd, hw, if_true, if_false]
+          rcases hl : kwTable.lookup ((c :: r).takeWhile isW) with _ | k
+          · simp [hl]
+          · obtain ⟨e, he, rfl⟩ := lookup_mem _ _ _ hl
+            simp only [hl, Bool.false_eq_true, if_false, Option.getD_some]
+            exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inl ⟨e, he, rfl, rfl⟩))))
+        · simp [hd, hw]
+    · have hmem := List.mem_of_find?_eq_some hf
+      have hpre := List.find?_some hf
+      simp only [hf]
+      right; left
+      exact ⟨(s, t), hmem, rfl, rfl, by simpa using hpre⟩
+
+theorem dw_eq (l : List UInt8) : l.dropWhile isW = l.drop (l.takeWhile isW).length := by
+  have h := List.takeWhile_append_dropWhile (p := isW) (l := l)
+  calc l.dropWhile isW = ((l.takeWhile isW) ++ (l.dropWhile isW)).drop (l.takeWhile isW).length := (List.drop_left' rfl).symm
+    _ = _ := by rw [h]
+
+theorem and255' : (∀ e ∈ opTable, e.2 &&& 255 = e.2) ∧ (∀ e ∈ kwTable, e.2 &&& 255 = e.2) := by decide
+
+theorem drop_drop' (x : List UInt8) (a b : Nat) : (x.drop a).drop b = x.drop (a + b) := by
+  simp [List.drop_drop]
+
+theorem word_end (x : List UInt8) (p : UInt64) (hx : x.length < 2 ^ 32) (c : UInt8) (r : List UInt8)
+    (hdp : x.drop p.toNat = c :: r) :
+    (s1 (len' x) x p).toNat = p.toNat + ((c :: r).takeWhile isW).length ∧
+    (s1 (len' x) x p).toNat ≤ x.length ∧
+    x.drop (s1 (len' x) x p).toNat = (c :: r).dropWhile isW ∧
+    (x.drop p.toNat).take ((s1 (len' x) x p).toNat - p.toNat) = (c :: r).takeWhile isW := by
+  have hl : p.toNat < x.length := by
+    have := congrArg List.length hdp; simp at this; omega
+  have he := s1_eq (len' x) x p hx (by omega) (by unfold len'; omega)
+  rw [hdp] at he
+  have htw := tw_len (c :: r)
+  have hlen : (c :: r).length = x.length - p.toNat := by rw [← hdp]; simp
+  refine ⟨he, by omega, ?_, ?_⟩
+  · rw [he, dw_eq, ← hdp, drop_drop']
+  · rw [hdp, he, Nat.add_sub_cancel_left]; exact take_takeWhile _
+
+theorem s9_sound : ∀ (n : Nat) (x : List UInt8) (p : UInt64) (o t : Buf), x.length < 2 ^ 32 → p.toNat ≤ x.length →
+    s9 n x p o = t → t ≠ [] → ∃ t', Lexes (x.drop p.toNat) t' ∧ t = o ++ t'
+  | 0, x, p, o, t, hx, hp, h, ht => by
+      exact absurd (by simpa [s9, bnew] using h.symm) ht
+  | n + 1, x, p, o, t, hx, hp, h, ht => by
+      have hk := s4_kind x p hx hp
+      simp only [s9] at h
+      rw [hk] at h
+      rcases hdp : x.drop p.toNat with _ | ⟨c, r⟩
+      · rw [hdp] at h
+        have : kind [] = 91 := by simp [kind]
+        simp [this] at h
+        exact ⟨[], Lexes.nil, by simp [h]⟩
+      · rw [hdp] at h
+        have hl : p.toNat < x.length := by
+          have := congrArg List.length hdp; simp at this; omega
+        have hr : ∀ m, x.drop (p.toNat + m) = (c :: r).drop m := fun m => by rw [← hdp, drop_drop']
+        rcases kind_spec c r with ⟨hk90, hst⟩ | ⟨e, he, hke, hst, hpre⟩ | ⟨hk5, hall, hst⟩ | hk0 | ⟨e, he, hke, hst⟩ | ⟨hk14, hst⟩
+        · simp [hk90] at h
+          have hp1 := inc_toNat (p := p) (n := x.length) hl hx
+          obtain ⟨t', hL, ht'⟩ := s9_sound n x (p + 1) o t hx (by omega) h ht
+          rw [hp1, hr 1] at hL
+          exact ⟨[] ++ t', Lexes.cons hst (by simpa using hL), by simpa using ht'⟩
+        · obtain ⟨h0, h5, h14, h90, h91, h256⟩ := op_props e he
+          simp [hke, h0, h5, h14, h90, h91] at h
+          rw [s5_op e he x p] at h
+          have hpre' := (List.isPrefixOf_iff_prefix.1 hpre).length_le
+          have hlen3 := op_len e he
+          have hlenc : (c :: r).length = x.length - p.toNat := by rw [← hdp]; simp
+          have hq : (p + e.1.length.toUInt64).toNat = p.toNat + e.1.length := by
+            simp [UInt64.toNat_add]; omega
+          obtain ⟨t', hL, ht'⟩ := s9_sound n x _ _ t hx (by rw [hq]; omega) h ht
+          rw [hq, hr] at hL
+          refine ⟨[e.2] ++ t', Lexes.cons hst hL, ?_⟩
+          rw [ht', q0_eq, (and255'.1 e he)]; simp
+        · simp [hk5] at h
+          obtain ⟨wb1, wb2, wb3, wb4⟩ := word_end x p hx c r hdp
+          rw [s5_word x p 5 (Or.inl rfl)] at h
+          generalize hed : s1 (len' x) x p = ee at *
+          have hm : p.toNat ≤ ee.toNat := by omega
+          have hv := s6_eq (len' x) x p ee 0 hx wb2 hm (by unfold len'; omega) (by rw [wb4]; exact hall)
+          rw [wb4] at hv
+          obtain ⟨t', hL, ht'⟩ := s9_sound n x ee _ t hx wb2 h ht
+          rw [wb3] at hL
+          refine ⟨(5 :: le8 (numVal ((c :: r).takeWhile isW))) ++ t', Lexes.cons hst hL, ?_⟩
+          rw [ht', s8_eq, q0_eq]
+          have hnv : (s6 (len' x) x p ee 0).toNat = numVal ((c :: r).takeWhile isW) := by rw [hv]; simp [numVal]
+          have h5' : (5 : UInt64) &&& 255 = 5 := by decide
+          rw [hnv, h5']; simp
+        · simp [hk0] at h; exact absurd h.symm ht
+        · obtain ⟨h0, h5, h14, h90, h91, h256⟩ := kw_props e he
+          simp [hke, h0, h5, h14, h90, h91] at h
+          obtain ⟨wb1, wb2, wb3, wb4⟩ := word_end x p hx c r hdp
+          rw [s5_word x p e.2 (Or.inr (Or.inr ⟨e, he, rfl⟩))] at h
+          generalize hed : s1 (len' x) x p = ee at *
+          obtain ⟨t', hL, ht'⟩ := s9_sound n x ee _ t hx wb2 h ht
+          rw [wb3] at hL
+          refine ⟨[e.2] ++ t', Lexes.cons hst hL, ?_⟩
+          rw [ht', q0_eq, (and255'.2 e he)]; simp
+        · simp [hk14] at h
+          obtain ⟨wb1, wb2, wb3, wb4⟩ := word_end x p hx c r hdp
+          rw [s5_word x p 14 (Or.inr (Or.inl rfl))] at h
+          generalize hed : s1 (len' x) x p = ee at *
+          have hm : p.toNat ≤ ee.toNat := by omega
+          have hv := s7_eq (len' x) x p ee (q0 o 14) hx wb2 hm (by unfold len'; omega)
+          rw [wb4] at hv
+          rw [hv] at h
+          obtain ⟨t', hL, ht'⟩ := s9_sound n x ee _ t hx wb2 h ht
+          rw [wb3] at hL
+          refine ⟨(14 :: (((c :: r).takeWhile isW).flatMap fun b => [1, b.toUInt64]) ++ [0]) ++ t', Lexes.cons hst hL, ?_⟩
+          rw [ht', q0_eq]
+          have h14' : (14 : UInt64) &&& 255 = 14 := by decide
+          rw [h14']; simp
+
+/-- Lexer soundness: if `C.s10` returns a nonempty buffer, the input lexes to exactly that buffer
+(`Lexes` = Nano/V2Self/C/Lex2Spec.lean; inputs under 2^32 bytes). -/
+theorem s10_sound (x : List UInt8) (hx : x.length < 2 ^ 32) (t : Buf) (h : s10 x = t) (ht : t ≠ []) :
+    Lexes x t := by
+  obtain ⟨t', hL, e⟩ := s9_sound 16777216 x 0 bnew t hx (by simp) h ht
+  simpa [bnew, e] using hL
+
+/-- sanity (non-vacuity of the spec): `def x` lexes to `1, 14 (1,'x') 0`. -/
+example : Lexes [100, 101, 102, 32, 120] [1, 14, 1, 120, 0] :=
+  Lexes.cons (e := [1]) (r := [32, 120]) (by decide)
+    (Lexes.cons (e := []) (r := [120]) (by decide)
+      (Lexes.cons (e := [14, 1, 120, 0]) (r := []) (by decide) Lexes.nil))
+
+end LexSpec
