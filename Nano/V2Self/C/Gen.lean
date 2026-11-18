@@ -186,6 +186,10 @@ def g35 (r o : Buf) (w : UInt64) : Buf × Buf :=
   let o8 := bpush (bpush o7 (g13 0 h7 (h7 - 6))) (g10 10 0 0);
   (r1, bpush (bpush (bpush o8 (g11 1 12 0)) (g11 8 12 8)) (g2 g_103 0 0 1 0))
 
+/-- 1 iff a slot range (slot `s`, width `w`) is empty or leaves the frame (`nslots` = r[7]) -/
+def g43 (r : Buf) (s w : UInt64) : UInt64 :=
+  if w == 0 then g_1 else if s < 251 then (if w < 251 then (if bget r 7 < s + w then g_1 else g_0) else g_1) else g_1
+
 /-- visit the node at the cursor in mode `m` (0 value, 1 loop/def tail) -/
 def g36 (x r o k : Buf) (y : UInt64) : Buf × (Buf × Buf) :=
   let i := bget r 0;
@@ -204,20 +208,27 @@ def g36 (x r o k : Buf) (y : UInt64) : Buf × (Buf × Buf) :=
   else
   if c == 1 then (g15 r 0 (i + 2), (g21 (g23 o 5 (bget x (i + 1))), k)) else
   if c == 2 then
+    let e := g43 r (bget x (i + 1)) (bget x (i + 2));
+    if e == 1 then (g16 r, (o, k)) else
     let v := g25 256 (bget r 1) (bget x (i + 1)) (bget x (i + 2)) o;
     (g15 r 0 (i + 3), (v, k)) else
   if c == 3 then (g15 (g15 r 0 (i + 2)) 6 (n + 3), (o, g18 (g18 (g18 k n 2 (bget x (i + 1)) 0) (n + 1) 1 0 0) (n + 2) 1 0 0)) else
   if c == 4 then (g15 (g15 r 0 (i + 2)) 6 (n + 7),
       (o, g18 (g18 (g18 (g18 (g18 (g18 (g18 k n 5 0 0) (n + 1) 1 0 0) (n + 2) 4 0 0) (n + 3) 1 0 0) (n + 4) 3 (bget x (i + 1)) 0)
         (n + 5) 1 0 0) (n + 6) 1 0 0)) else
-  if c == 5 then (g15 (g15 r 0 (i + 3)) 6 (n + 3),
+  if c == 5 then
+    let e := g43 r (bget x (i + 1)) (bget x (i + 2));
+    if e == 1 then (g16 r, (o, k)) else
+    (g15 (g15 r 0 (i + 3)) 6 (n + 3),
       (o, g18 (g18 (g18 k n 1 0 0) (n + 1) 6 (bget x (i + 1)) (bget x (i + 2))) (n + 2) 1 0 0)) else
   if c == 6 then
     let q := bget x (i + 1);
-    (g15 (g15 r 0 (i + 2)) 6 (n + q), (o, g27 256 k n q)) else
+    if q < 251 then
+    (g15 (g15 r 0 (i + 2)) 6 (n + q), (o, g27 256 k n q)) else (g16 r, (o, k)) else
   if c == 7 then
     let q := bget x (i + 2);
-    (g15 (g15 r 0 (i + 3)) 6 (n + 1 + q), (o, g27 256 (g18 k n 7 (bget x (i + 1)) 0) (n + 1) q)) else
+    if q < 251 then
+    (g15 (g15 r 0 (i + 3)) 6 (n + 1 + q), (o, g27 256 (g18 k n 7 (bget x (i + 1)) 0) (n + 1) q)) else (g16 r, (o, k)) else
   if c == 8 then
     let p := bget x (i + 1);
     let q := g33 p;
@@ -263,6 +274,7 @@ def g37 (x r o k t f : Buf) : Buf × (Buf × (Buf × Buf)) :=
   if c == 9 then
     let q := bget r1 8;
     let h := bsize o;
+    if 65535 < q then (g16 r1, (o, (k, f))) else
     (g15 r1 8 (q + 1), (bpush o 0, (k, g17 f q h))) else
   if c == 10 then
     let p := bget r1 1;
@@ -320,6 +332,8 @@ def g39 : Nat → Buf → Buf → Buf → Buf → Buf → Buf → Buf × Buf
       else
         let w := bsize t;
         if w == 0 then (g16 r, o) else
+        let m := (if bget r 1 == 0 then (if bget r 2 == 1 then g_1 else g_0) else g_0);
+        if m == 0 then (g16 r, o) else
         let (r1, o1) := g20 r o 0;
         let (r2, o2) := g35 r1 o1 (bget t (w - 1));
         (g15 r2 5 1, o2)
@@ -343,7 +357,7 @@ def g42 (x : Buf) (u : UInt64) : Buf :=
   if bget x 0 == 2 then
     let r := bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush bnew 1) 0) 0) 0) 0) 0) 0) 0) 0) u;
     let (r1, o) := g39 16777216 x r (g34 bnew) bnew bnew bnew;
-    if bget r1 4 == 1 then bnew else g40 16777216 o 0 bnew
+    if bget r1 4 == 1 then bnew else if 16777215 < bsize o then bnew else g40 16777216 o 0 bnew
   else bnew
 
 /-- the code generator with the default buffer capacity κ = 2^18 words -/

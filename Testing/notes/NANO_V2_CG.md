@@ -35,4 +35,14 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
   → C.s10 → C.y13 → + hand-written main (4 args from input bytes + 64-bit constants, 8 result bytes) → C.g41.
   40 programs x 5 inputs: QEMU == native tree eval (40/40, `BIG=8388608 NOSAIL=1 cg_test.py cgc_K`); Sail also on
   cgc_0/6/13 (483-1737 words). Note: work must hold the κ = 2^18 buffers (≥ 2 MiB each); 4 KiB work ⇒ a0 = −1 by design.
+- Astra-10 "rule out now" audit of Gen.lean (fail loudly instead of silent truncation): fixed-fuel loops now reject
+  instead of cutting off — LOCAL/LET slot ranges must be non-empty and inside nslots (g43), PAIR/CALL arity ≤ 250,
+  ≤ 65536 exit fixups per def, code < 2^24 words; the LAST def must be main-shaped (npw 0, nres 1). Already true:
+  every r[] field initialised in g42; fixup buffer and count reset per def; def ids by source order (`d == bsize t`);
+  output = exactly 4 bytes per code word (no padding); only pc-relative jal/branches (no work addresses); κ one
+  parameter (`g42 ast κ`). NOT checked by Gen (no types in the IR): CALL argument widths vs callee npw, CONTINUE
+  width vs npw−1 — the parser must guarantee them. Capacity note for B₂: the output Buf holds 4 entries per code word,
+  so compiled C at κ = 2^18 emits at most 65536 code words (status −2 beyond).
+- Stage dump for B₁ vs B₂ vs B₃: `lean --run Testing/nano/v2self/stage_dump.lean SRC OUT` → OUT.tok / OUT.ast /
+  OUT.code (one hex word per line); fixups are internal to g39 and not dumped.
 - Next: the parser's real output (Sonnet box) through g41 as Par0 gains calls/prims/loops; a diff test against Nano.V2B `gen` on the v2f programs.
