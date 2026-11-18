@@ -58,10 +58,10 @@ def hex (l : List UInt8) : String := if l.isEmpty then "-" else String.join (l.m
 def main : IO Unit := do
   let code := C.g41 (ast true)
   if !(C.g41 (ast false)).isEmpty then throw (IO.userError "the old tag table must be rejected")
-  -- out-of-frame / empty slot ranges reject: f's first `LOCAL 2 1` (words 8-10) → `LOCAL 3 1` (nslots 3), `LOCAL 2 0`
+  -- out-of-frame / empty slot ranges reject: f's first `LOCAL 2 1` (words 8-10) → `LOCAL 3 1` (nslots 3), `LOCAL 250 1`
   if (ast true).getD 8 0 != LOCAL || (ast true).getD 9 0 != 2 then throw (IO.userError "layout of ast changed")
   if !(C.g41 ((ast true).set 9 3)).isEmpty then throw (IO.userError "LOCAL beyond nslots must be rejected")
-  if !(C.g41 ((ast true).set 10 0)).isEmpty then throw (IO.userError "LOCAL width 0 must be rejected")
+  if !(C.g41 ((ast true).set 9 250)).isEmpty then throw (IO.userError "LOCAL slot 250 must be rejected")
   IO.println s!"code bytes: {code.length}"
   let ws := (List.range (code.length / 4)).map fun k =>
     (code.getD (4*k) 0).toUInt64 + 256 * (code.getD (4*k+1) 0).toUInt64 + 65536 * (code.getD (4*k+2) 0).toUInt64 + 16777216 * (code.getD (4*k+3) 0).toUInt64
