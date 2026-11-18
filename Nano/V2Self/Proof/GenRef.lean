@@ -2603,4 +2603,52 @@ theorem g38_bad (x r o k t : Buf) (h : ¬ HdOk x t (bget r 0)) : g38 x r o k t =
       simp_all [z4, z3, z2, z1, z0, v, i, d, p, s, q, g_1, g_0]
   rw [if_pos hz]
 
+
+/-- `Run s P`: whenever the fuelled main loop from s ends without error and with small code, it passed a state with P -/
+def Run (s : GS) (P : GS → Prop) : Prop :=
+  ∀ N, bget (G N s).1 4 ≠ 1 → ¬ 16777215 < bsize (G N s).2 → ∃ m, m ≤ N ∧ ∃ s', P s' ∧ G N s = G (N - m) s'
+
+theorem Run.ofReach {s : GS} {P : GS → Prop} (h : Reach s P) : Run s P := fun N h1 h2 => by
+  obtain ⟨m, hm, hp, he⟩ := reach_run h N h1 h2
+  exact ⟨m, hm, _, hp, he⟩
+
+theorem Run.done {s : GS} {P : GS → Prop} (h : P s) : Run s P := fun N _ _ => ⟨0, by omega, s, h, by simp⟩
+
+theorem Run.bind {s : GS} {P Q : GS → Prop} (h : Run s P) (hq : ∀ s', P s' → Run s' Q) : Run s Q := fun N h1 h2 => by
+  obtain ⟨m, hm, s', hp, he⟩ := h N h1 h2
+  rw [he] at h1 h2
+  obtain ⟨m', hm', s'', hq', he'⟩ := hq s' hp (N - m) h1 h2
+  exact ⟨m + m', by omega, s'', hq', by rw [he, he']; congr 1; omega⟩
+
+theorem Run.error {s : GS} {P : GS → Prop} (h : err s) : Run s P := fun N h1 _ => absurd (g39_err s h N) h1
+
+theorem Run.toobig {s : GS} {P : GS → Prop} (h : big s) : Run s P := fun N _ h2 => by
+  exfalso; apply h2; rw [g39_big s h N, bsize_u, UInt64.lt_iff_toNat_lt, u_toNat _ (by have := h.2; omega)]
+  simp; have := h.1; omega
+
+/-- one g39 step that is not a `st` step (the def header, r[6] = 0) -/
+theorem Run.stepDef {s : GS} {P : GS → Prop} (h0 : g55 s.x s.r s.o = 0) (h6 : bget s.r 6 = 0) (hl : 5 ≤ s.r.length)
+    (h : Run (match g38 s.x s.r s.o s.k s.t with | (r1, (o1, (k1, t1))) => ⟨s.x, r1, o1, k1, t1, s.f⟩) P) : Run s P := by
+  intro N h1 h2
+  cases N with
+  | zero => exfalso; apply h1; unfold G; rw [g39]; exact g16_4 _ hl
+  | succ n =>
+    have e : G (n + 1) s = G n (match g38 s.x s.r s.o s.k s.t with | (r1, (o1, (k1, t1))) => ⟨s.x, r1, o1, k1, t1, s.f⟩) := by
+      unfold G; rw [g39, h0, if_neg (by decide)]; unfold g54; rw [if_pos (by simp [h6])]
+    rw [e] at h1 h2
+    obtain ⟨m, hm, s', hp, he⟩ := h n h1 h2
+    exact ⟨m + 1, by omega, s', hp, by rw [e, he]; congr 1; omega⟩
+
+theorem st_t12 (s : GS) (n : UInt64) (hn : bget s.r 6 - 1 = n) (hc : bget s.k ((bget s.r 6 - 1) * 3) = 12) (f1 r3 o3 : Buf)
+    (hR : g28 65536 (bget (if bget s.x (bget (g15 s.r 6 n) 0) == 21 then g15 (g15 s.r 6 n) 0 (bget (g15 s.r 6 n) 0 + 1)
+        else g16 (g15 s.r 6 n)) 8)
+      (s.f, ((if bget s.x (bget (g15 s.r 6 n) 0) == 21 then g15 (g15 s.r 6 n) 0 (bget (g15 s.r 6 n) 0 + 1)
+        else g16 (g15 s.r 6 n)), s.o)) = (f1, (r3, o3))) :
+    st s = ⟨s.x, g15 r3 8 0, g29 512
+      (bget (if bget s.x (bget (g15 s.r 6 n) 0) == 21 then g15 (g15 s.r 6 n) 0 (bget (g15 s.r 6 n) 0 + 1) else g16 (g15 s.r 6 n)) 1)
+      (bget (if bget s.x (bget (g15 s.r 6 n) 0) == 21 then g15 (g15 s.r 6 n) 0 (bget (g15 s.r 6 n) 0 + 1) else g16 (g15 s.r 6 n)) 2)
+      0 (bpush (bpush o3 (g11 14 8 8)) (g11 15 8 0)), s.k, s.t, f1⟩ := by
+  subst hn
+  unfold st; rw [g37_t12 _ _ _ _ _ _ hc f1 r3 o3 hR]
+
 end GenRef
