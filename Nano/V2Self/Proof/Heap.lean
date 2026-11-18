@@ -267,7 +267,7 @@ def bpushT (tgt q : Nat) : List J :=
    .slli 15 7 3, .alu 1 15 15 5, .sd 6 15 16, .addi 7 7 1, .sd 7 5 0]
 
 theorem bpush_run {C : List J} {pc tgt : Nat} (s : St) (hC : At C pc (bpushT tgt pc)) (hx0 : s.x 0 = 0)
-    (hsp : (s.x 31).toNat + 16 < 2 ^ 62)
+    (hsp : (s.x 31).toNat + 16 < 2 ^ 63)
     (hlen : (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat < (s.m ((s.m ((s.x 31).toNat + 8)).toNat + 8)).toNat)
     (hb : (s.m ((s.x 31).toNat + 8)).toNat + 16 + 8 * (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat < 2 ^ 62) :
     ∃ k s', run C k (pc, s) = some (pc + 12, s') ∧
