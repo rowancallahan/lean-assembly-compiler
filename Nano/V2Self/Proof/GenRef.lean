@@ -2536,4 +2536,32 @@ theorem pi_g29 : ∀ (n : Nat) (p q j : UInt64), PI (g29 n p q j)
       intro o; have e := this o; simp only [g29, hj, if_true] at e ⊢; exact e
     · intro o; simp [g29, hj, em, bpush]
 
+
+/-- g37 on the ENDDEF item (tag 12), given the fixup loop's result -/
+theorem g37_t12 (x r o k t f : Buf) (hc : bget k ((bget r 6 - 1) * 3) = 12) (f1 r3 o3 : Buf)
+    (hR : g28 65536 (bget (if bget x (bget (g15 r 6 (bget r 6 - 1)) 0) == 21 then
+        g15 (g15 r 6 (bget r 6 - 1)) 0 (bget (g15 r 6 (bget r 6 - 1)) 0 + 1) else g16 (g15 r 6 (bget r 6 - 1))) 8)
+      (f, ((if bget x (bget (g15 r 6 (bget r 6 - 1)) 0) == 21 then
+        g15 (g15 r 6 (bget r 6 - 1)) 0 (bget (g15 r 6 (bget r 6 - 1)) 0 + 1) else g16 (g15 r 6 (bget r 6 - 1))), o)) = (f1, (r3, o3))) :
+    g37 x r o k t f = (g15 r3 8 0, (g29 512
+      (bget (if bget x (bget (g15 r 6 (bget r 6 - 1)) 0) == 21 then
+        g15 (g15 r 6 (bget r 6 - 1)) 0 (bget (g15 r 6 (bget r 6 - 1)) 0 + 1) else g16 (g15 r 6 (bget r 6 - 1))) 1)
+      (bget (if bget x (bget (g15 r 6 (bget r 6 - 1)) 0) == 21 then
+        g15 (g15 r 6 (bget r 6 - 1)) 0 (bget (g15 r 6 (bget r 6 - 1)) 0 + 1) else g16 (g15 r 6 (bget r 6 - 1))) 2) 0
+      (bpush (bpush o3 (g11 14 8 8)) (g11 15 8 0)), (k, f1))) := by
+  unfold g37
+  extract_lets n c z y r1
+  have hn : n = bget r 6 - 1 := rfl
+  have hc1 : c = bget k (n * 3) := rfl
+  have hr1 : r1 = g15 r 6 n := rfl
+  clear_value n c z y r1
+  subst hn hr1
+  rw [hc] at hc1
+  subst hc1
+  rw [if_neg (by decide), if_neg (by decide), if_neg (by decide), if_neg (by decide), if_neg (by decide), if_neg (by decide),
+    if_neg (by decide), if_neg (by decide), if_neg (by decide), if_neg (by decide), if_neg (by decide)]
+  rename_i i' r2' p' q' c2'
+  have hR' : g28 65536 c2' (f, (r2', o)) = (f1, (r3, o3)) := hR
+  rw [hR']
+
 end GenRef
