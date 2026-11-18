@@ -4,12 +4,16 @@ usage: pargen.py DIR N SEED  -> DIR/p{i}.txt (mutated when i is odd)"""
 import random, sys, os
 R = random.Random(int(sys.argv[3]))
 W = 'w'
+L = 'l'   # List UInt8 as a value (only in defs that also have the input)
+ALLOWL = [False]
 def sstr(s, top=True):
     if s == W: return 'UInt64'
+    if s == L: return 'List UInt8'
     a = sstr(s[1], False); b = sstr(s[2], True)
     t = f"{a} × {b}"
     return t if top else f"({t})"
 def rshape(d=2):
+    if ALLOWL[0] and R.random() < 0.25: return L
     if d == 0 or R.random() < 0.6: return W
     return ('p', rshape(d-1), rshape(d-1))
 class G:
@@ -39,6 +43,9 @@ class G:
             l, r = rshape(1), rshape(1); n1, n2 = s.fresh(), s.fresh()
             v = s.expr(('p', l, r), env, d-1, False, inp)
             return f"let ({n1}, {n2}) := {v}; {s.expr(sh, env + [(n1, l), (n2, r)], d-1, tail, inp, True)}"
+        if sh == L:
+            if c < 0.8: return f"(put {s.atom(s.expr(L, env, d-1, False, inp))} {s.atom(s.expr(W, env, d-1, False, inp))})"
+            return s.call(sh, env, d, inp) or s.leaf(sh, env, inp)
         if sh != W:
             if c < 0.8: return f"({s.expr(sh[1], env, d-1, False, inp)}, {s.expr(sh[2], env, d-1, False, inp)})"
             return s.call(sh, env, d, inp) or s.leaf(sh, env, inp)
@@ -54,6 +61,7 @@ class G:
     def leaf(s, sh, env, inp):
         vs = s.shapevars(env, sh)
         if vs and R.random() < 0.7: return R.choice(vs)
+        if sh == L: return '[]'
         if sh == W:
             if inp and R.random() < 0.3: return f"(rd {inp} {R.randrange(0, 5)})"
             return str(R.choice([0, 1, 2, 7, 255, R.randrange(0, 2**20), 2**64 - 1]))
@@ -97,9 +105,10 @@ def gen_program():
         name = 'f' + str(k) + R.choice(['', 'a', ''])[:0]
         name = 'f' + str(k)
         loop = R.random() < 0.3
+        useinp = R.random() < 0.4
+        ALLOWL[0] = useinp
         res = rshape(1)
         ps = [(g.fresh(), rshape(1)) for _ in range(R.randrange(1 if loop else 0, 4))]
-        useinp = R.random() < 0.4
         inp = 'z' + str(k) if useinp else None
         if not loop:
             if not ps and not useinp:
@@ -124,6 +133,7 @@ def gen_program():
             zp = ", ".join(["0"] + pats); sp = ", ".join([f"{n} + 1"] + pats)
             out.append(f"def {name} : {sig}\n  | {zp} => {z}\n  | {sp} => {sbody}")
             g.defs.append(dict(name=name, params=(['inp'] if useinp else []) + [t for _, t in ps], res=res, loop=True))
+    ALLOWL[0] = False
     # main: put the words of a few expressions
     body = '[]'
     for _ in range(R.randrange(1, 4)):
