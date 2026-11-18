@@ -73,3 +73,35 @@ theorem epi_exact (o : Buf) (p q : Nat) (hp : p < 251) (hq : q < 251) :
   simp [encG, bpush, i8, i0]
 
 end CallProbe
+
+namespace Templates
+open CallProbe C
+
+theorem popSlot_exact (o : Buf) (p k : Nat) (hp : p < 251) (hk : k < 251) :
+    g26 256 p.toUInt64 k.toUInt64 1 o = o ++ (popSlot p k).map encG := by
+  have e : k.toUInt64 + 1 - 1 = k.toUInt64 := by simp
+  have g := g24_off p k hp hk
+  have hoff : offOf p k = slotOff p k := by
+    unfold offOf slotOff; split <;> rfl
+  simp [g26, popSlot, encG, bpush, e, g, hoff, iu, g10, g11, g12]
+
+/-- the first four words of the IF head: pop2, `beq`/`bltu t0, t1, +2`; word five (`jal ELSE`) is the placeholder 0, patched by g20 -/
+def ifHead4 (c : J) : List J := [.ld 6 31 0, .ld 5 31 8, .addi 31 31 16, c]
+
+theorem ifHead_eq_exact (o : Buf) :
+    bpush (bpush (g30 o 16) (g4 0 5 6 8)) 0 = o ++ (ifHead4 (.beq 5 6 2)).map encG ++ [0] := by
+  have i8 : iu 16 = 16 := by decide
+  have i0 : iu 0 = 0 := by decide
+  have i8' : iu 8 = 8 := by decide
+  have i4 : iu (4 * 2) = 8 := by decide
+  simp [g30, ifHead4, encG, bpush, i8, i0, i8', i4]
+
+theorem ifHead_lt_exact (o : Buf) :
+    bpush (bpush (g30 o 16) (g4 6 5 6 8)) 0 = o ++ (ifHead4 (.bltu 5 6 2)).map encG ++ [0] := by
+  have i8 : iu 16 = 16 := by decide
+  have i0 : iu 0 = 0 := by decide
+  have i8' : iu 8 = 8 := by decide
+  have i4 : iu (4 * 2) = 8 := by decide
+  simp [g30, ifHead4, encG, bpush, i8, i0, i8', i4]
+
+end Templates
