@@ -125,4 +125,37 @@ theorem g23_big (o : Buf) (d : Nat) (v : UInt64) (hd : d < 32) (hv : ¬ v.toNat 
   all_goals simp only [UInt64.toNat_ofNat', UInt64.toNat_and, show g_255.toNat = 255 from rfl, andm]
   all_goals omega
 
+/-! ### CONST, LOCAL -/
+theorem g21_eq (o : Buf) : g21 o = g22 o 5 := rfl
+
+theorem g23_exact (o : Buf) (d : Nat) (v : UInt64) (hd : d < 32) : g23 o d.toUInt64 v = o ++ (liT d v).map encJ := by
+  by_cases hv : v.toNat < 2048
+  · exact g23_small o d v hd hv
+  · exact g23_big o d v hd hv
+
+theorem const_exact (o : Buf) (v : UInt64) (ho : o.length + 17 + 4 < 2 ^ 32) :
+    g21 (g23 o 5 v) = o ++ (constT 1 o.length v).map encJ := by
+  have h1 : g23 o (5 : Nat).toUInt64 v = o ++ (liT 5 v).map encJ := g23_exact o 5 v (by decide)
+  have hl : (liT 5 v).length ≤ 17 := by
+    by_cases hv : v.toNat < 2048
+    · rw [liT_len_small _ _ hv]; omega
+    · rw [liT_len_big _ _ hv]; omega
+  rw [g21_eq]
+  have e5 : (5 : UInt64) = (5 : Nat).toUInt64 := rfl
+  rw [e5, h1, g22_exact _ 5 (by decide) (by simp; omega)]
+  simp [constT]
+
+theorem g24_off (p s : Nat) (hp : p < 251) (hs : s < 251) : g24 p.toUInt64 s.toUInt64 = iu (offOf p s) := by
+  have hsz : UInt64.size = 18446744073709551616 := rfl
+  unfold g24 offOf
+  apply UInt64.toNat.inj
+  rw [iu_toNat]
+  by_cases h : s < p
+  · have h' : s.toUInt64 < p.toUInt64 := by rw [UInt64.lt_iff_toNat_lt]; simp; omega
+    simp [h, h', UInt64.toNat_add, UInt64.toNat_shiftLeft, UInt64.toNat_sub, Nat.shiftLeft_eq, g_16, g_0, hsz]
+    omega
+  · have h' : ¬ s.toUInt64 < p.toUInt64 := by rw [UInt64.lt_iff_toNat_lt]; simp; omega
+    simp [h, h', UInt64.toNat_add, UInt64.toNat_shiftLeft, UInt64.toNat_sub, Nat.shiftLeft_eq, g_16, g_0, hsz]
+    omega
+
 end CallProbe
