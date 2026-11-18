@@ -299,4 +299,314 @@ theorem tri_gen_EVH {C : List J} {pc la lb lc lu p nl hb : Nat}
       rw [m2 a' (by omega) (fun k hk wk => by rw [e81]; exact hW k hk (Or.inr (Or.inl wk)))]
       exact m1 a' ha (fun k hk wk => hW k hk (Or.inl wk))
 
+/-! ## the heap prims as closing fragments -/
+
+/-- a known heap cell -/
+def hread (hb : Nat) (H : Hp) (a : Nat) : Option UInt64 := if hb ≤ a ∧ a < H.top then H.m a else none
+
+theorem hread_mem {hb : Nat} {s : St} {H : Hp} {a : Nat} {v : UInt64} (hR : HRel hb s H) (h : hread hb H a = some v) :
+    s.m a = v := by
+  unfold hread at h; split at h
+  · rename_i hc; exact hR.2.2.2.2.2 a v hc.1 hc.2 h
+  · simp at h
+
+theorem hread_lt {hb : Nat} {H : Hp} {a : Nat} {v : UInt64} (h : hread hb H a = some v) : hb ≤ a ∧ a < H.top := by
+  unfold hread at h; split at h
+  · assumption
+  · simp at h
+
+/-- only stack-side changes (not in the heap, t5 kept, t6 above the heap) keep the heap relation -/
+theorem HRel_stack {hb : Nat} {s s' : St} {H : Hp} (hR : HRel hb s H) (e30 : s'.x 30 = s.x 30)
+    (h31 : H.top ≤ (s'.x 31).toNat) (hm : ∀ a, hb ≤ a → a < H.top → s'.m a = s.m a) : HRel hb s' H := by
+  obtain ⟨b16, b1, t1, al, hx, hc⟩ := hR
+  refine ⟨b16, b1, h31, al, ?_, ?_⟩
+  · rw [e30]; exact hx
+  · intro a v h1 h2 hv; rw [hm a h1 h2]; exact hc a v h1 h2 hv
+
+/-- BSIZE: the buffer's length word -/
+def bsizeF (hb : Nat) : UInt64 → Nat → Hp → Option (UInt64 × Hp) :=
+  fun b _ H => (hread hb H b.toNat).map fun len => (len, H)
+
+theorem fin1_bsize {C : List J} {q : Nat} {Inv : St → Prop} {hb : Nat} (hC : At C q bsizeT) :
+    Fin1 C q 3 Inv hb (bsizeF hb) := by
+  intro s1 H1 v H2 I1 z1 hR hF
+  simp only [bsizeF, Option.map_eq_some_iff] at hF
+  obtain ⟨len, hl, hv⟩ := hF
+  simp only [Prod.mk.injEq] at hv
+  obtain ⟨rfl, rfl⟩ := hv
+  have hm := hread_mem hR hl
+  have hr := bsize_run s1 hC
+  have := hread_lt hl
+  refine ⟨_, run_star hr, ?_, ?_, ?_, ?_, ?_⟩
+  · simp [upd_ne]
+  · simp [hm, upd_same]
+  · refine HRel_stack hR (by simp [upd_ne]) (by simp; exact hR.2.2.1) ?_
+    intro a h1 h2; simp only []; rw [upd_other _ _ (by have := hR.2.2.1; omega)]
+  · intro r h5 h6 h7 h14 h15; simp [upd_ne, h5]
+  · intro a ha _; simp only []; rw [upd_other _ _ ha]
+
+/-- BGET: word `idx` of buffer `buf` (0 when out of range) -/
+def bgetF (hb : Nat) : UInt64 → UInt64 → Nat → Hp → Option (UInt64 × Hp) :=
+  fun buf idx _ H => (hread hb H buf.toNat).bind fun len =>
+    if idx.toNat < len.toNat then
+      (if buf.toNat + 16 + 8 * idx.toNat < 2 ^ 62 then (hread hb H (buf.toNat + 16 + 8 * idx.toNat)).map fun w => (w, H) else none)
+    else some (0, H)
+
+theorem fin2_bget {C : List J} {q : Nat} {Inv : St → Prop} {hb : Nat} (hC : At C q bgetT) :
+    Fin2 C q 10 Inv hb (bgetF hb) := by
+  intro s2 H2 v H3 I2 z2 hR hl hF
+  simp only [bgetF, Option.bind_eq_some_iff] at hF
+  obtain ⟨len, hlen, hF⟩ := hF
+  have hbuf := hread_mem hR hlen
+  have hrng := hread_lt hlen
+  have key : (s2.m (s2.m ((s2.x 31).toNat + 8)).toNat).toNat > (s2.m (s2.x 31).toNat).toNat →
+      (s2.m ((s2.x 31).toNat + 8)).toNat + 16 + 8 * (s2.m (s2.x 31).toNat).toNat < 2 ^ 63 := by
+    intro hg; rw [hbuf] at hg
+    by_cases hi : (s2.m (s2.x 31).toNat).toNat < len.toNat
+    · simp only [hi, if_true] at hF
+      by_cases hc : (s2.m ((s2.x 31).toNat + 8)).toNat + 16 + 8 * (s2.m (s2.x 31).toNat).toNat < 2 ^ 62
+      · omega
+      · simp only [hc, if_false] at hF; exact absurd hF (by simp)
+    · omega
+  obtain ⟨k, s3, hk, hm, hx, hxr⟩ := bget_run s2 hC z2 hl key
+  have lt64 := (s2.x 31).toNat_lt
+  have hv : s3.m ((s2.x 31).toNat + 8) = v := by
+    rw [hm, upd_same]
+    by_cases hi : (s2.m (s2.x 31).toNat).toNat < len.toNat
+    · simp only [hi, if_true] at hF
+      by_cases hc : (s2.m ((s2.x 31).toNat + 8)).toNat + 16 + 8 * (s2.m (s2.x 31).toNat).toNat < 2 ^ 62
+      · simp only [hc, if_true, Option.map_eq_some_iff] at hF
+        obtain ⟨w, hw, hwv⟩ := hF
+        simp only [Prod.mk.injEq] at hwv
+        rw [hbuf, if_pos hi, hread_mem hR hw]; exact hwv.1
+      · simp only [hc, if_false] at hF; exact absurd hF (by simp)
+    · simp only [hi, if_false, Option.some.injEq, Prod.mk.injEq] at hF
+      rw [hbuf, if_neg hi]; exact hF.1
+  have hH : H3 = H2 := by
+    by_cases hi : (s2.m (s2.x 31).toNat).toNat < len.toNat
+    · simp only [hi, if_true] at hF
+      by_cases hc : (s2.m ((s2.x 31).toNat + 8)).toNat + 16 + 8 * (s2.m (s2.x 31).toNat).toNat < 2 ^ 62
+      · simp only [hc, if_true, Option.map_eq_some_iff] at hF
+        obtain ⟨w, hw, hwv⟩ := hF
+        simp only [Prod.mk.injEq] at hwv; exact hwv.2.symm
+      · simp only [hc, if_false] at hF; exact absurd hF (by simp)
+    · simp only [hi, if_false, Option.some.injEq, Prod.mk.injEq] at hF; exact hF.2.symm
+  subst hH
+  have x31 : (s3.x 31).toNat = (s2.x 31).toNat + 8 := by rw [hx]; simp only [UInt64.toNat_ofNat']; omega
+  refine ⟨s3, run_star hk, x31, hv, ?_, ?_, ?_⟩
+  · refine HRel_stack hR (hxr 30 (by decide) (by decide) (by decide) (by decide) (by decide)) (by rw [x31]; have := hR.2.2.1; omega) ?_
+    intro a h1 h2; rw [hm]; apply upd_other; have := hR.2.2.1; omega
+  · intro r h5 h6 h7 h14 h15 h31; exact hxr r h5 h6 h7 h14 h31
+  · intro a ha _; rw [hm]; exact upd_other _ _ ha
+
+/-- a well-formed buffer in the heap image: (len, cap) -/
+def bufInfo (hb : Nat) (H : Hp) (b : UInt64) : Option (UInt64 × UInt64) :=
+  if hb ≤ b.toNat ∧ b.toNat % 8 = 0 then
+    (hread hb H b.toNat).bind fun len => (hread hb H (b.toNat + 8)).bind fun cap =>
+      if len.toNat ≤ cap.toNat ∧ b.toNat + 16 + 8 * cap.toNat ≤ H.top then some (len, cap) else none
+  else none
+
+theorem bufInfo_spec {hb : Nat} {H : Hp} {b len cap : UInt64} (h : bufInfo hb H b = some (len, cap)) :
+    hb ≤ b.toNat ∧ hread hb H b.toNat = some len ∧ hread hb H (b.toNat + 8) = some cap ∧ len.toNat ≤ cap.toNat ∧
+      b.toNat + 16 + 8 * cap.toNat ≤ H.top := by
+  unfold bufInfo at h
+  split at h
+  · rename_i hc
+    simp only [Option.bind_eq_some_iff] at h
+    obtain ⟨l, hl, c, hcc, h⟩ := h
+    split at h
+    · rename_i hh; simp only [Option.some.injEq, Prod.mk.injEq] at h
+      obtain ⟨rfl, rfl⟩ := h; exact ⟨hc.1, hl, hcc, hh.1, hh.2⟩
+    · simp at h
+  · simp at h
+
+/-- BPUSH / PUT: append `v` to the buffer `buf` (cap exit = failure here); the buffer address stays -/
+def bpushF (hb : Nat) : UInt64 → UInt64 → Nat → Hp → Option (UInt64 × Hp) :=
+  fun buf v _ H => (bufInfo hb H buf).bind fun lc =>
+    if lc.1.toNat < lc.2.toNat ∧ buf.toNat + 16 + 8 * lc.1.toNat < 2 ^ 62 then
+      some (buf, ⟨H.top, fun a => if a = buf.toNat then some (lc.1 + 1)
+        else if a = buf.toNat + 16 + 8 * lc.1.toNat then some v else H.m a⟩)
+    else none
+
+theorem fin2_bpush {C : List J} {q : Nat} {Inv : St → Prop} {hb : Nat} (hC : At C q (bpushT 6 q)) :
+    Fin2 C q 12 Inv hb (bpushF hb) := by
+  intro s2 H2 v H3 I2 z2 hR hl hF
+  simp only [bpushF, Option.bind_eq_some_iff] at hF
+  obtain ⟨⟨len, cap⟩, hbi, hF⟩ := hF
+  obtain ⟨hbb, hrl, hrc, hlc, hcap⟩ := bufInfo_spec hbi
+  have ml := hread_mem hR hrl
+  have mc := hread_mem hR hrc
+  dsimp only at hF
+  by_cases hg : len.toNat < cap.toNat ∧ (s2.m ((s2.x 31).toNat + 8)).toNat + 16 + 8 * len.toNat < 2 ^ 62
+  · simp only [hg, and_self, if_true, Option.some.injEq, Prod.mk.injEq] at hF
+    obtain ⟨hv, hH⟩ := hF
+    subst hH
+    obtain ⟨k, s3, hk, hm, hx, hb', hxr⟩ := bpush_run s2 hC z2 hl (by rw [ml, mc]; exact hg.1) (by rw [ml]; exact hg.2)
+    rw [ml] at hm
+    have hbT := (hread_lt hrl).2
+    have htop := hR.2.2.1
+    have hsm := s2.m
+    generalize hbuf : s2.m ((s2.x 31).toNat + 8) = buf at *
+    generalize hc : buf.toNat + 16 + 8 * len.toNat = c at *
+    have lt64 := (s2.x 31).toNat_lt
+    have x31 : (s3.x 31).toNat = (s2.x 31).toNat + 8 := hx
+    have hcT : c + 8 ≤ H2.top := by omega
+    have hne : buf.toNat ≠ c := by omega
+    have e30 := hxr 30 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)
+    refine ⟨s3, run_star hk, x31, ?_, ?_, ?_, ?_⟩
+    · rw [hm, upd_other _ _ (by omega), upd_other _ _ (by omega), hbuf, hv]
+    · refine ⟨hR.1, hR.2.1, (by show H2.top ≤ (s3.x 31).toNat; omega), hR.2.2.2.1, by rw [e30]; exact hR.2.2.2.2.1, ?_⟩
+      intro a w h1 h2 hw
+      rw [hm]
+      by_cases ha : a = buf.toNat
+      · subst ha
+        simp only [if_true, Option.some.injEq] at hw
+        rw [← hw, upd_same]
+      · by_cases hac : a = c
+        · subst hac
+          simp only [ha, if_false, if_true, Option.some.injEq] at hw
+          rw [← hw, upd_other _ _ (Ne.symm hne), upd_same]
+        · simp only [ha, hac, if_false] at hw
+          rw [upd_other _ _ ha, upd_other _ _ hac]; exact hR.2.2.2.2.2 a w h1 h2 hw
+    · intro r h5 h6 h7 h14 h15 h31; exact hxr r h5 h6 h7 h14 h15 h31
+    · intro a ha hn; have hn' : ¬(hb ≤ a ∧ a < H2.top) := hn
+      rw [hm]; rw [upd_other _ _ (by omega), upd_other _ _ (by omega)]
+  · simp only [hg, if_false] at hF; exact absurd hF (by simp)
+
+/-- BSET: write `v` at index `idx` when in range (out of range is a no-op); result is the buffer -/
+def bsetF (hb : Nat) : UInt64 → UInt64 → UInt64 → Nat → Hp → Option (UInt64 × Hp) :=
+  fun buf idx v _ H => (bufInfo hb H buf).bind fun lc =>
+    if idx.toNat < lc.1.toNat then
+      (if buf.toNat + 16 + 8 * idx.toNat < 2 ^ 62 then
+        some (buf, ⟨H.top, fun a => if a = buf.toNat + 16 + 8 * idx.toNat then some v else H.m a⟩) else none)
+    else some (buf, H)
+
+theorem fin3_bset {C : List J} {q : Nat} {Inv : St → Prop} {hb : Nat} (hC : At C q bsetT) :
+    Fin3 C q 9 Inv hb (bsetF hb) := by
+  intro s3 H3 v H4 I3 z3 hR hl hF
+  simp only [bsetF, Option.bind_eq_some_iff] at hF
+  obtain ⟨⟨len, cap⟩, hbi, hF⟩ := hF
+  obtain ⟨hbb, hrl, hrc, hlc, hcap⟩ := bufInfo_spec hbi
+  have ml := hread_mem hR hrl
+  dsimp only at hF
+  have htop := hR.2.2.1
+  have lt64 := (s3.x 31).toNat_lt
+  have hB : (s3.m ((s3.x 31).toNat + 16)).toNat + 16 + 8 * (s3.m ((s3.x 31).toNat + 8)).toNat < 2 ^ 62 ∨
+      ¬ (s3.m ((s3.x 31).toNat + 8)).toNat < len.toNat := by
+    by_cases hi : (s3.m ((s3.x 31).toNat + 8)).toNat < len.toNat
+    · left
+      simp only [hi, if_true] at hF
+      by_cases hc : (s3.m ((s3.x 31).toNat + 16)).toNat + 16 + 8 * (s3.m ((s3.x 31).toNat + 8)).toNat < 2 ^ 62
+      · exact hc
+      · simp only [hc, if_false] at hF; exact absurd hF (by simp)
+    · right; exact hi
+  obtain ⟨k, s4, hk, hm, hx, hb', hxr⟩ := bset_run s3 hC z3 hl (by
+    intro hg; rw [ml] at hg; rcases hB with h | h
+    · exact h
+    · omega)
+  rw [ml] at hm
+  have hbT := (hread_lt hrl).2
+  generalize hbuf : s3.m ((s3.x 31).toNat + 16) = buf at *
+  generalize hidx : s3.m ((s3.x 31).toNat + 8) = idx at *
+  generalize hval : s3.m (s3.x 31).toNat = w at *
+  have e30 := hxr 30 (by decide) (by decide) (by decide) (by decide) (by decide)
+  have x31 : (s4.x 31).toNat = (s3.x 31).toNat + 16 := hx
+  by_cases hi : idx.toNat < len.toNat
+  · have hc : buf.toNat + 16 + 8 * idx.toNat < 2 ^ 62 := by
+      rcases hB with h | h
+      · exact h
+      · exact absurd hi h
+    simp only [hi, hc, if_true, Option.some.injEq, Prod.mk.injEq] at hF
+    obtain ⟨hv, hH⟩ := hF
+    subst hH
+    have hcT : buf.toNat + 16 + 8 * idx.toNat + 8 ≤ H3.top := by omega
+    rw [if_pos hi] at hm
+    refine ⟨s4, run_star hk, x31, ?_, ?_, ?_, ?_⟩
+    · rw [hm, upd_other _ _ (by omega), hbuf, hv]
+    · refine ⟨hR.1, hR.2.1, (by show H3.top ≤ (s4.x 31).toNat; omega), hR.2.2.2.1, by rw [e30]; exact hR.2.2.2.2.1, ?_⟩
+      intro a y h1 h2 hy
+      rw [hm]
+      by_cases hac : a = buf.toNat + 16 + 8 * idx.toNat
+      · subst hac
+        simp only [if_true, Option.some.injEq] at hy
+        rw [← hy, upd_same]
+      · simp only [hac, if_false] at hy
+        rw [upd_other _ _ hac]; exact hR.2.2.2.2.2 a y h1 h2 hy
+    · intro r h5 h6 h7 h14 h15 h31; exact hxr r h5 h6 h7 h14 h31
+    · intro a ha hn; have hn' : ¬(hb ≤ a ∧ a < H3.top) := hn
+      rw [hm, upd_other _ _ (by omega)]
+  · simp only [hi, if_false, Option.some.injEq, Prod.mk.injEq] at hF
+    obtain ⟨hv, hH⟩ := hF
+    subst hH
+    rw [if_neg hi] at hm
+    refine ⟨s4, run_star hk, x31, ?_, ?_, ?_, ?_⟩
+    · rw [hm, hbuf, hv]
+    · refine ⟨hR.1, hR.2.1, (by show H3.top ≤ (s4.x 31).toNat; omega), hR.2.2.2.1, by rw [e30]; exact hR.2.2.2.2.1, ?_⟩
+      intro a y h1 h2 hy
+      rw [hm]; exact hR.2.2.2.2.2 a y h1 h2 hy
+    · intro r h5 h6 h7 h14 h15 h31; exact hxr r h5 h6 h7 h14 h31
+    · intro a ha hn; rw [hm]
+
+/-- BNEW κ: allocate a zeroed header (len 0, cap κ) at the heap top; the new heap image knows only the header -/
+def bnewS (κ : Nat) : (Nat → UInt64) → Nat → Hp → Option (UInt64 × Hp) :=
+  fun _ sp H => if H.top + 8 * (κ + 2) + 8 ≤ sp ∧ sp < 2 ^ 62 ∧ κ < 2 ^ 40 then
+    some (UInt64.ofNat H.top, ⟨H.top + 8 * (κ + 2), fun a =>
+      if a = H.top then some 0 else if a = H.top + 8 then some (UInt64.ofNat κ) else if a < H.top then H.m a else none⟩)
+  else none
+
+theorem bnew_EVH {C : List J} {pc tgt κ p nl hb : Nat} {Inv : St → Prop} (hI : InvOKH hb p Inv)
+    (hC : At C pc (bnewT tgt pc κ)) :
+    EVH C pc (bnewT tgt pc κ).length p nl Inv hb (fun _ => False) (fun _ => False) (bnewS κ) where
+  stable := fun _ _ _ _ _ => rfl
+  run := fun s env H v H' I0 hx0 hF hO hR hS => by
+    obtain ⟨hb16, hb1, htop, hal, hx30, hcells⟩ := hR
+    simp only [bnewS] at hS
+    by_cases hg : H.top + 8 * (κ + 2) + 8 ≤ (s.x 31).toNat ∧ (s.x 31).toNat < 2 ^ 62 ∧ κ < 2 ^ 40
+    · simp only [hg, and_self, if_true, Option.some.injEq, Prod.mk.injEq] at hS
+      obtain ⟨hv, hH⟩ := hS
+      subst hH
+      obtain ⟨hr, hsp, hk⟩ := hg
+      obtain ⟨k, s', hk', x31, x30, x5, hm, hb', hxr⟩ := bnew_run s hC hx0 hk hsp (by rw [hx30]; exact hr)
+      have lt64 := (s.x 31).toNat_lt
+      have lt30 := (s.x 30).toNat_lt
+      have e30 : s.x 30 = UInt64.ofNat H.top := by rw [← hx30]; simp
+      have hFK := hO
+      obtain ⟨hf1, hf2, hf3⟩ := hO
+      have sl : ∀ k, k < nl → (s.x 31).toNat ≤ slotAddr p (s.x 8).toNat k := fun k hk => slotAddr_ge hf1 hf2 hk
+      rw [hx30] at hm
+      have hne1 : ∀ a, a < (s.x 31).toNat - 8 → a ≠ (s.x 31).toNat - 8 := fun a h => by omega
+      refine ⟨s', env, run_star hk', ?_, hxr 0 (by decide) (by decide) (by decide) (by decide) (by decide) ▸ hx0, x31, ?_,
+        hxr 8 (by decide) (by decide) (by decide) (by decide) (by decide), ?_, fun _ _ => rfl, ?_, ?_⟩
+      · apply hI s s' I0 (hxr 8 (by decide) (by decide) (by decide) (by decide) (by decide))
+          (hxr 28 (by decide) (by decide) (by decide) (by decide) (by decide))
+          (hxr 29 (by decide) (by decide) (by decide) (by decide) (by decide))
+        intro a ha
+        rw [hm, upd_other _ _ (by omega), upd_other _ _ (by omega), upd_other _ _ (by omega)]
+      · rw [hm, upd_same, e30]; exact hv
+      · intro k hk
+        rw [hxr 8 (by decide) (by decide) (by decide) (by decide) (by decide), hm, upd_other _ _ (by have := sl k hk; omega),
+          upd_other _ _ (by have := sl k hk; omega), upd_other _ _ (by have := sl k hk; omega)]
+        exact hF k hk
+      · refine ⟨hb16, (by show hb ≤ H.top + 8 * (κ + 2); omega), ?_, (by show (H.top + 8 * (κ + 2)) % 8 = 0; omega), ?_, ?_⟩
+        · show H.top + 8 * (κ + 2) ≤ (s'.x 31).toNat; omega
+        · show (s'.x 30).toNat = H.top + 8 * (κ + 2); omega
+        · intro a w h1 h2 hw
+          show s'.m a = w
+          rw [hm]
+          have h2' : a < H.top + 8 * (κ + 2) := h2
+          by_cases ha : a = H.top
+          · subst ha; simp only [if_true, Option.some.injEq] at hw
+            rw [← hw, upd_other _ _ (by omega), upd_other _ _ (by omega), upd_same]
+          · by_cases hb8 : a = H.top + 8
+            · subst hb8; simp only [ha, if_false, if_true, Option.some.injEq] at hw
+              rw [← hw, upd_other _ _ (by omega), upd_same]
+            · by_cases hlt : a < H.top
+              · simp only [ha, hb8, hlt, if_false, if_true] at hw
+                rw [upd_other _ _ (by omega), upd_other _ _ (by omega), upd_other _ _ (by omega)]
+                exact hcells a w h1 hlt hw
+              · simp only [ha, hb8, hlt, if_false] at hw; exact absurd hw (by simp)
+      · intro a ha _
+        rw [hm, upd_other _ _ (by omega), upd_other _ _ (by omega), upd_other _ _ (by omega)]
+    · simp only [hg, if_false] at hS; exact absurd hS (by simp)
+
 end Templates
