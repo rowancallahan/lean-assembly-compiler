@@ -2469,4 +2469,71 @@ theorem reach_run {s : GS} {P : GS → Prop} (h : Reach s P) (N : Nat) (hok : bg
     apply hsz
     rw [bsize_u, UInt64.lt_iff_toNat_lt, u_toNat _ (by have := hb.2; omega)]; simp; have := hb.1; omega
 
+
+/-! ## the def level: header (g38), body, ENDDEF (exit fixups g28, epilogue g29) -/
+
+/-- patch exit placeholders e (last first) to jump to the current end h -/
+def patchR (h : UInt64) : Buf → List UInt64 → Buf
+  | o, [] => o
+  | o, e :: E => patchR h (bset o e (g13 0 e h)) E
+
+theorem patchR_len (h : UInt64) : ∀ (E : List UInt64) (o : Buf), (patchR h o E).length = o.length
+  | [], o => rfl
+  | e :: E, o => by simp only [patchR]; rw [patchR_len h E]; exact BufL.length_bset _ _ _
+
+theorem g16_keep4 (r : Buf) (h : bget r 4 = 1) : bget (g16 r) 4 = 1 := by
+  unfold g16; rw [BufL.bget_bset]; split
+  · rfl
+  · exact h
+
+/-- ENDDEF's fixup loop: f unchanged, every recorded exit patched, r unchanged or the error flag set -/
+theorem g28_ok (n : Nat) : ∀ (F : List UInt64) (f r o : Buf), F.length ≤ n → F.length < 2 ^ 32 →
+    (∀ j < F.length, f.getD j 0 = F.getD j 0) →
+    (g28 n F.length.toUInt64 (f, (r, o))).1 = f ∧ (g28 n F.length.toUInt64 (f, (r, o))).2.2 = patchR (bsize o) o F.reverse ∧
+    ((g28 n F.length.toUInt64 (f, (r, o))).2.1 = r ∨ (5 ≤ r.length → bget (g28 n F.length.toUInt64 (f, (r, o))).2.1 4 = 1)) := by
+  induction n with
+  | zero =>
+    intro F f r o h _ _
+    have : F = [] := List.eq_nil_of_length_eq_zero (by omega)
+    subst this; simp [g28, patchR]
+  | succ n ih =>
+    intro F f r o h hl hF
+    rcases List.eq_nil_or_concat F with h0 | ⟨F', e, h1⟩
+    · subst h0; simp [g28, patchR]
+    subst h1
+    simp only [List.concat_eq_append] at *
+    replace h : F'.length + 1 ≤ n + 1 := by simpa using h
+    replace hl : F'.length + 1 < 2 ^ 32 := by simpa using hl
+    have hne : ¬ ((F'.length + 1).toUInt64 == 0) = true := by
+      simp [Nat.toUInt64]; intro h2; have := congrArg UInt64.toNat h2; simp at this; omega
+    have e1 : (F'.length + 1).toUInt64 - 1 = F'.length.toUInt64 := by simp [Nat.toUInt64]
+    have hv : bget f F'.length.toUInt64 = e := by
+      simp only [bget]; rw [u_toNat _ (by omega), hF F'.length (by simp)]; simp
+    have hF' : ∀ j < F'.length, f.getD j 0 = F'.getD j 0 := fun j hj => by
+      rw [hF j (by simp; omega)]; simp [List.getD_eq_getElem?_getD, List.getElem?_append_left hj]
+    rw [show (F' ++ [e]).length.toUInt64 = (F'.length + 1).toUInt64 by simp]
+    rw [g28, if_neg hne]
+    simp only
+    rw [e1, hv, g20_eq]
+    obtain ⟨a1, a2, a3⟩ := ih F' f (if g14 e (bsize o) == 1 then r else g16 r) (bset o e (g13 0 e (bsize o))) (by omega) (by omega) hF'
+    generalize hr' : (if (g14 e (bsize o) == 1) = true then r else g16 r) = r' at a1 a2 a3 ⊢
+    refine ⟨a1, ?_, ?_⟩
+    · rw [a2, BufL.bsize_bset]; simp [patchR]
+    · by_cases hg : (g14 e (bsize o) == 1) = true
+      · rw [if_pos hg] at hr'; subst hr'; exact a3
+      · rw [if_neg hg] at hr'; subst hr'
+        right; intro hr
+        rcases a3 with a3 | a3
+        · rw [a3]; exact g16_4 _ hr
+        · exact a3 (by unfold g16; rw [BufL.length_bset]; exact hr)
+
+theorem pi_g29 : ∀ (n : Nat) (p q j : UInt64), PI (g29 n p q j)
+  | 0, p, q, j => fun o => by simp [g29, em]
+  | n + 1, p, q, j => by
+    by_cases hj : j < q
+    · have := pi_comp (pi_comp (pi_bpush (g11 5 31 ((q - 1 - j) <<< 3))) (pi_bpush (g12 5 8 ((p <<< 3) + g_16 - ((j + 1) <<< 3)))))
+        (pi_g29 n p q (j + 1))
+      intro o; have e := this o; simp only [g29, hj, if_true] at e ⊢; exact e
+    · intro o; simp [g29, hj, em, bpush]
+
 end GenRef
