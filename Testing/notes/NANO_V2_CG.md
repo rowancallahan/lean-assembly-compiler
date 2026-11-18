@@ -108,4 +108,12 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
   without it `d5 + 8·id + k` can wrap onto low cells; likewise v5's guard `8·h[9] + 7 < d6` passes for huge h[9]
   by wrap-around.  Both hold for heaps Par1 itself produces (ids < node count ≤ arena), to be carried by the
   parser invariant (Entry/Step obligations).
+- nano-v2 merged into nano-v2-src (c5dd2a1): the Sail layer (Nano/V2/Enc, Sim, Flat) and Front's ownership fix are now
+  here; self_S.lean still ACCEPT (186 defs; large files need `ulimit -s unlimited; lean --tstack=4000000 --run`).
+- BRIDGE part 1 (encoders): `Nano/V2Self/Proof/Bridge.lean`, no sorry, standard axioms, 2 s.  C's g1 (R), g2 (I),
+  g3 (S), g4 (B), g5 (J) produce exactly nano-v2's encR/encIt/encSt/encBt/encJt words with the signed immediate
+  `sI v` (two's-complement reading of C's UInt64), hence g10 = addi, g11 = ld, g12 = sd, g4 = beq/bne/bltu/bgeu,
+  g5 0 = jal x0 as `I.enc` — the words Enc/Sim tie to Sail.  Still to do: `jal ra` / `jalr rs` (not in nano-v2's `I`:
+  direct Sail step lemmas), lbu/sb/R-op corollaries, and the state link CallProbe.J ↔ nano-v2 St/pstep ↔ Sail (a
+  code-agnostic `Rel`).
 - Next: the parser's real output (Sonnet box) through g41 as Par0 gains calls/prims/loops; a diff test against Nano.V2B `gen` on the v2f programs.
