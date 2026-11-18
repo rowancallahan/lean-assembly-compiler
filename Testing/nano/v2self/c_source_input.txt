@@ -1,0 +1,550 @@
+
+def k255 : UInt64 := 255
+def k0 : UInt64 := 0
+def k1 : UInt64 := 1
+def q0 (o : Buf) (v : UInt64) : Buf := bpush o (v &&& k255)
+
+
+
+def k3 : UInt64 := 3
+def k19 : UInt64 := 19
+def k35 : UInt64 := 35
+def k51 : UInt64 := 51
+def k99 : UInt64 := 99
+def k103 : UInt64 := 103
+def k48 : UInt64 := 48
+def k118 : UInt64 := 118
+def k240 : UInt64 := 240
+def k64 : UInt64 := 64
+def k2 : UInt64 := 2
+def k15 : UInt64 := 15
+def k7 : UInt64 := 7
+def k128 : UInt64 := 128
+
+def a0 (p q t : UInt64) : UInt64 :=
+  let v100 := (if p == 3 then k1 else k0); let v101 := (if p == 4 then k1 else k0); let v102 := v100 ||| v101; if v102 == k1 then ((q &&& k1) <<< 7) ||| k3
+  else let v103 := (if p == 0 then k1 else k0); let v104 := (if p == 1 then k1 else k0); let v105 := v103 ||| v104; let v106 := (if p == 5 then k1 else k0); let v107 := v105 ||| v106; let v108 := (if p == 6 then k1 else k0); let v109 := v107 ||| v108; let v110 := (if p == 8 then k1 else k0); let v111 := v109 ||| v110; if v111 == k1 then ((q &&& k1) <<< 7) ||| k19
+  else if p == 11 then k35
+  else if p == 16 then ((t &&& k1) <<< 7) ||| k35
+  else let v112 := (if p == 14 then k1 else k0); let v113 := (if p == 24 then k1 else k0); let v114 := v112 ||| v113; let v115 := (if p == 32 then k1 else k0); let v116 := v114 ||| v115; let v117 := (if p == 40 then k1 else k0); let v118 := v116 ||| v117; if v118 == k1 then ((q &&& k1) <<< 7) ||| k51
+  else if p == 7 then k99
+  else if p == 48 then ((q &&& k1) <<< 7) ||| k103
+  else k19
+
+def a1 (p q s t : UInt64) : UInt64 :=
+  if p == 11 then ((t &&& k3) <<< 2) ||| k48 ||| ((s &&& k1) <<< 7)
+  else if p == 16 then ((t >>> 1) &&& k15) ||| ((s &&& k1) <<< 7)
+  else if p == 7 then k118 ||| ((s &&& k1) <<< 7)
+  else (q >>> 1) ||| ((p &&& k7) <<< 4) ||| ((s &&& k1) <<< 7)
+
+def a2 (p q s t : UInt64) : UInt64 :=
+  let v119 := (if p == 3 then k1 else k0); let v120 := (if p == 8 then k1 else k0); let v121 := v119 ||| v120; if v121 == k1 then (s >>> 1) ||| ((t &&& k1) <<< 7)
+  else let v122 := (if p == 11 then k1 else k0); let v123 := (if p == 16 then k1 else k0); let v124 := v122 ||| v123; if v124 == k1 then (s >>> 1) ||| ((q &&& k15) <<< 4)
+  else (s >>> 1) ||| ((t &&& k15) <<< 4)
+
+def a3 (p q t : UInt64) : UInt64 :=
+  let v125 := (if p == 3 then k1 else k0); let v126 := (if p == 8 then k1 else k0); let v127 := v125 ||| v126; if v127 == k1 then t >>> 1
+  else if p == 0 then
+    let u := if t < k128 then k0 else k240;
+    (t >>> 4) ||| u
+  else if p == 11 then ((t >>> 2) <<< 1) ||| (q >>> 4)
+  else if p == 16 then q >>> 4
+  else if p == 32 then (t >>> 4) ||| k64
+  else if p == 40 then (t >>> 4) ||| k2
+  else t >>> 4
+
+def a4 : Nat → Buf → UInt64 → Buf → Buf
+  | 0, x, i, o => o
+  | n + 1, x, i, o =>
+    let v128 := (if bsize x < i + 4 then k0 else k1); if v128 == k1 then
+      let p := bget x i;
+      let q := bget x (i + 1);
+      let s := bget x (i + 2);
+      let t := bget x (i + 3);
+      a4 n x (i + 4) (q0 (q0 (q0 (q0 o (a0 p q t)) (a1 p q s t)) (a2 p q s t)) (a3 p q t))
+    else o
+
+def a5 (x : Buf) : Buf := a4 16777216 x 0 bnew
+
+
+
+def e0 (p q : UInt64) (o : Buf) : Buf :=
+  if p == 0 then q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 o 5) 31) 2) 3) 1) 31) 31) 3) 0) 28) 10) 0
+  else if p == 1 then q0 (q0 (q0 (q0 o 4) 5) 28) 7
+  else if p == 2 then q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 o 1) 5) 5) 8) 4) 6) 28) q) 14) 5) 5) 6
+  else if p == 3 then q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 o 0) 31) 31) 248) 7) 0) 31) 12) 0) 10) 0) 255) 48) 0) 1) 0) 11) 5) 31) 0
+  else if p == 4 then q0 (q0 (q0 (q0 o 8) 28) 28) 1
+  else if p == 5 then q0 (q0 (q0 (q0 o 0) 5) 0) 0
+  else if p == 6 then q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 o 1) 5) 5) 8) 6) 5) 5) q
+  else if p == 7 then q0 (q0 (q0 (q0 o 3) 5) 31) q
+  else if p == 8 then q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 o 3) 6) 31) 0) 3) 5) 31) 1) 8) 31) 31) 1) q) 5) 5) 6) 11) 5) 31) 0
+  else if p == 9 then q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 o 3) 5) 31) 0) 8) 31) 31) q) 11) 5) 31) 0
+  else if p == 10 then q0 (q0 (q0 (q0 o 5) 6) 5) q
+  else if p == 11 then q0 (q0 (q0 (q0 o 16) 6) 13) q
+  else q0 (q0 (q0 (q0 o 48) 0) 1) 0
+
+def e1 : Nat → Buf → UInt64 → Buf → Buf
+  | 0, x, i, o => o
+  | n + 1, x, i, o =>
+    let v129 := (if bsize x < i + 2 then k0 else k1); if v129 == k1 then
+      let p := bget x i;
+      let q := bget x (i + 1);
+      e1 n x (i + 2) (e0 p q o)
+    else o
+
+def e2 (x : Buf) : Buf := e1 16777216 x 0 bnew
+
+
+
+def l16 (c : UInt64) : UInt64 := let v130 := (if c < 65 then k0 else k1); let v131 := (if 90 < c then k0 else k1); let v132 := v130 * v131; let v133 := (if c < 97 then k0 else k1); let v134 := (if 122 < c then k0 else k1); let v135 := v133 * v134; let v136 := v132 ||| v135; let v137 := (if c == 95 then k1 else k0); let v138 := v136 ||| v137; let v139 := (if c < 48 then k0 else k1); let v140 := (if 57 < c then k0 else k1); let v141 := v139 * v140; let v142 := v138 ||| v141; if v142 == k1 then 1 else 0
+
+def l0 : Nat → List UInt8 → UInt64 → UInt64 → UInt64
+  | 0, x, p, g => p
+  | n + 1, x, p, g => let v143 := (if p < len x then k1 else k0); let v144 := (if l16 (rd x p) == 1 then k1 else k0); let v145 := v143 * v144; let v146 := (if g == 0 then k0 else k1); let v147 := v145 * v146; if v147 == k1 then l0 n x (p + 1) (g - 1) else p
+
+def l1 : Nat → List UInt8 → UInt64 → UInt64 → UInt64 → UInt64
+  | 0, x, i, e, g => 1
+  | n + 1, x, i, e, g => let v148 := (if i < e then k1 else k0); let v149 := (if g == 0 then k0 else k1); let v150 := v148 * v149; if v150 == k1 then let v151 := (if rd x i < 48 then k0 else k1); let v152 := (if 57 < rd x i then k0 else k1); let v153 := v151 * v152; if v153 == k1 then l1 n x (i + 1) e (g - 1) else 0 else 1
+
+def l2 : Nat → List UInt8 → UInt64 → UInt64 → UInt64 → UInt64
+  | 0, x, i, e, g => 1
+  | n + 1, x, i, e, g =>
+    let v154 := (if i < e then k1 else k0); let v155 := (if g == 0 then k0 else k1); let v156 := v154 * v155; if v156 == k1 then let v157 := (if rd x i < 48 then k0 else k1); let v158 := (if 57 < rd x i then k0 else k1); let v159 := v157 * v158; let v160 := (if rd x i == 95 then k1 else k0); let v161 := v159 ||| v160; if v161 == k1 then l2 n x (i + 1) e (g - 1) else 0 else 1
+
+def l3 : Nat → List UInt8 → UInt64 → UInt64 → UInt64 → UInt64 → UInt64
+  | 0, x, i, e, a, g => a
+  | n + 1, x, i, e, a, g => let v162 := (if i < e then k1 else k0); let v163 := (if g == 0 then k0 else k1); let v164 := v162 * v163; if v164 == k1 then l3 n x (i + 1) e (a * 10 + (rd x i - 48)) (g - 1) else a
+
+def l4 (x : List UInt8) (p e g : UInt64) : UInt64 := let v165 := (if p < e then k0 else k1); if v165 == k1 then 0
+  else
+    let c := rd x p;
+    let r0 := let v166 := (if c < 97 then k0 else k1); let v167 := (if 122 < c then k0 else k1); let v168 := v166 * v167; let v169 := (if l2 (len' x) x (p + 1) e g == 1 then k1 else k0); let v170 := v168 * v169; if v170 == k1 then 16 else 0;
+    let r1 := let v171 := (if e - p == 5 then k1 else k0); let v172 := (if c == 73 then k1 else k0); let v173 := v171 * v172; let v174 := (if rd x (p + 1) == 110 then k1 else k0); let v175 := v173 * v174; let v176 := (if rd x (p + 2) == 116 then k1 else k0); let v177 := v175 * v176; let v178 := (if rd x (p + 3) == 54 then k1 else k0); let v179 := v177 * v178; let v180 := (if rd x (p + 4) == 52 then k1 else k0); let v181 := v179 * v180; if v181 == k1 then 6 else r0;
+    let r2 := let v182 := (if e - p == 6 then k1 else k0); let v183 := (if c == 85 then k1 else k0); let v184 := v182 * v183; let v185 := (if rd x (p + 1) == 73 then k1 else k0); let v186 := v184 * v185; let v187 := (if rd x (p + 2) == 110 then k1 else k0); let v188 := v186 * v187; let v189 := (if rd x (p + 3) == 116 then k1 else k0); let v190 := v188 * v189; let v191 := (if rd x (p + 4) == 54 then k1 else k0); let v192 := v190 * v191; let v193 := (if rd x (p + 5) == 52 then k1 else k0); let v194 := v192 * v193; if v194 == k1 then 5 else r1;
+    let r3 := let v195 := (if e - p == 3 then k1 else k0); let v196 := (if c == 108 then k1 else k0); let v197 := v195 * v196; let v198 := (if rd x (p + 1) == 101 then k1 else k0); let v199 := v197 * v198; let v200 := (if rd x (p + 2) == 116 then k1 else k0); let v201 := v199 * v200; if v201 == k1 then 4 else r2;
+    let r4 := let v202 := (if e - p == 3 then k1 else k0); let v203 := (if c == 100 then k1 else k0); let v204 := v202 * v203; let v205 := (if rd x (p + 1) == 101 then k1 else k0); let v206 := v204 * v205; let v207 := (if rd x (p + 2) == 102 then k1 else k0); let v208 := v206 * v207; if v208 == k1 then 3 else r3;
+    let v209 := (if c < 48 then k0 else k1); let v210 := (if 57 < c then k0 else k1); let v211 := v209 * v210; if v211 == k1 then if l1 (len' x) x p e g == 1 then 7 else 0 else r4
+
+def l5 (x : List UInt8) (p g : UInt64) : UInt64 := if p < len x then
+    let c := rd x p;
+    if c == 32 then 2
+    else if c == 10 then
+      if p + 1 < len x then
+        let d := rd x (p + 1);
+        let v212 := (if d == 32 then k1 else k0); let v213 := (if d == 10 then k1 else k0); let v214 := v212 ||| v213; if v214 == k1 then 2
+        else let v215 := (if d == 100 then k1 else k0); let v216 := (if p + 3 < len x then k1 else k0); let v217 := v215 * v216; let v218 := (if rd x (p + 2) == 101 then k1 else k0); let v219 := v217 * v218; let v220 := (if rd x (p + 3) == 102 then k1 else k0); let v221 := v219 * v220; if v221 == k1 then
+          let v222 := (if p + 4 < len x then k1 else k0); let v223 := (if l16 (rd x (p + 4)) == 1 then k1 else k0); let v224 := v222 * v223; if v224 == k1 then 0 else 2
+        else 0
+      else 1
+    else if c == 40 then 8
+    else if c == 41 then 9
+    else if c == 43 then 12
+    else if c == 45 then let v225 := (if p + 1 < len x then k1 else k0); let v226 := (if rd x (p + 1) == 45 then k1 else k0); let v227 := v225 * v226; if v227 == k1 then 0 else 13
+    else if c == 42 then 14
+    else if c == 59 then 15
+    else if c == 58 then let v228 := (if p + 1 < len x then k1 else k0); let v229 := (if rd x (p + 1) == 61 then k1 else k0); let v230 := v228 * v229; if v230 == k1 then 11 else 10
+    else if l16 c == 1 then l4 x p (l0 (len' x) x p g) g
+    else 0
+  else 1
+
+def l6 (x : List UInt8) (p g : UInt64) : UInt64 := let c := rd x p;
+  let v231 := (if c == 58 then k1 else k0); let v232 := (if p + 1 < len x then k1 else k0); let v233 := v231 * v232; let v234 := (if rd x (p + 1) == 61 then k1 else k0); let v235 := v233 * v234; if v235 == k1 then p + 2
+  else if l16 c == 1 then l0 (len' x) x p g
+  else p + 1
+
+def l7 (k : UInt64) : UInt64 := if k == 5 then 1 else if k == 6 then 2 else 0
+
+def l8 (t c : UInt64) : UInt64 := if c == 0 then t else if t == 0 then c else if t == c then c else 3
+
+def l9 : Nat → List UInt8 → UInt64 → UInt64 → UInt64 → UInt64
+  | 0, x, p, t, r => if p < len x then 4 else t
+  | f + 1, x, p, t, r =>
+    let g := r - 1;
+    let k := l5 x p g;
+    if k == 0 then 4
+    else if k == 1 then t
+    else l9 f x (l6 x p g) (l8 t (l7 k)) g
+
+def l10 : Nat → List UInt8 → UInt64 → UInt64 → UInt64 → Buf → Buf
+  | 0, x, i, e, g, o => q0 o 0
+  | n + 1, x, i, e, g, o => let v236 := (if i < e then k1 else k0); let v237 := (if g == 0 then k0 else k1); let v238 := v236 * v237; if v238 == k1 then l10 n x (i + 1) e (g - 1) (q0 (q0 o 1) (rd x i)) else q0 o 0
+
+def l11 (v : UInt64) (o : Buf) : Buf := q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 o v) (v >>> 8)) (v >>> 16)) (v >>> 24)) (v >>> 32)) (v >>> 40)) (v >>> 48))
+    (v >>> 56)
+
+def l12 (x : List UInt8) (k p e g : UInt64) (o : Buf) : Buf := if k == 7 then l11 (l3 (len' x) x p e 0 g) (q0 o 5)
+  else if k == 16 then l10 (len' x) x p e g (q0 o 14)
+  else q0 o (k - 2)
+
+def l13 : Nat → List UInt8 → UInt64 → UInt64 → Buf → Buf
+  | 0, x, p, r, o => o
+  | f + 1, x, p, r, o =>
+    let g := r - 1;
+    let k := l5 x p g;
+    let v239 := (if k == 0 then k1 else k0); let v240 := (if k == 1 then k1 else k0); let v241 := v239 ||| v240; if v241 == k1 then o
+    else if k == 2 then l13 f x (l6 x p g) g o
+    else l13 f x (l6 x p g) g (l12 x k p (l6 x p g) g o)
+
+def l14 : Nat → List UInt8 → UInt64 → UInt64
+  | 0, x, i => 1
+  | n + 1, x, i =>
+    if i + 1 < len x then
+      let a := rd x i;
+      let b := rd x (i + 1);
+      let v242 := (if l16 a == 1 then k1 else k0); let v243 := (if a == 41 then k1 else k0); let v244 := v242 ||| v243; let v245 := (if b == 40 then k1 else k0); let v246 := v244 * v245; if v246 == k1 then 0
+      else let v247 := (if a == 41 then k1 else k0); let v248 := (if l16 b == 1 then k1 else k0); let v249 := v247 * v248; if v249 == k1 then 0
+      else l14 n x (i + 1)
+    else 1
+
+def l15 (x : List UInt8) : Buf := if l14 (len' x) x 0 == 1 then
+    let t := l9 (len' x) x 0 0 (len x);
+    let v250 := (if t == 1 then k1 else k0); let v251 := (if t == 2 then k1 else k0); let v252 := v250 ||| v251; if v252 == k1 then l13 (len' x) x 0 (len x) (q0 bnew t) else bnew
+  else bnew
+
+
+
+def k100 : UInt64 := 16777216
+
+def j0 (m q : UInt64) (o : Buf) : Buf := q0 (q0 o m) q
+
+def j1 (o : Buf) : Buf :=
+  j0 4 0 (j0 3 0 (j0 2 0 (j0 2 1 (j0 2 2 (j0 2 3 (j0 2 4 (j0 2 5 (j0 2 6 (j0 1 0 o)))))))))
+
+def j2 (o : Buf) : Buf :=
+  j0 11 7 (j0 10 56 (j0 11 6 (j0 10 48 (j0 11 5 (j0 10 40 (j0 11 4 (j0 10 32 (j0 11 3 (j0 10 24 (j0 11 2 (j0 10 16 (j0 11 1 (j0 10 8 (j0 11 0 (j0 10 0 o)))))))))))))))
+
+def j3 : Nat → UInt64 → Buf → Buf
+  | 0, k, o => o
+  | n + 1, k, o => if k == 0 then o else j3 n (k - 1) (j1 o)
+
+def j4 : Nat → Buf → UInt64 → UInt64 → Buf
+  | 0, u, i, e => u
+  | n + 1, u, i, e => if i < e then
+      let v := bget u i;
+      j4 n (bpush u v) (i + 1) e
+    else u
+
+def j5 : Nat → Buf → UInt64 → UInt64 → Buf → Buf
+  | 0, u, i, e, o => o
+  | n + 1, u, i, e, o =>
+    if i < e then
+      let v := bget u i;
+      j5 n u (i + 1) e (q0 o v)
+    else o
+
+def j6 (k : UInt64) (u w : Buf) : Buf :=
+  let o := j3 256 k (j0 0 0 bnew);
+  let o1 := let v253 := (if bsize w < 2 then k0 else k1); if v253 == k1 then j5 16777216 u (bget w (bsize w - 2)) (bget w (bsize w - 1)) o else o;
+  j0 12 0 (j2 (j0 7 0 o1))
+
+def j7 : Nat → Buf → UInt64 → UInt64 → UInt64 → Buf → Buf → Buf
+  | 0, x, p, h, k, u, w => bnew
+  | n + 1, x, p, h, k, u, w =>
+    let v254 := (if bsize x < p + 2 then k0 else k1); if v254 == k1 then
+      let q := bget x p;
+      let s := bget x (p + 1);
+      let z := bsize u;
+      if q == 13 then j7 n x (p + 2) h s u (bpush w z)
+      else if q == 14 then j7 n x (p + 2) s k u w
+      else if q == 15 then
+        if h * 256 + s + 1 < bsize w then
+          let v255 := (if k100 < z + (bget w (h * 256 + s + 1) - bget w (h * 256 + s)) then k0 else k1); if v255 == k1 then
+            j7 n x (p + 2) h k (j4 16777216 u (bget w (h * 256 + s)) (bget w (h * 256 + s + 1))) w
+          else bnew
+        else j7 n x (p + 2) h k u w
+      else let v256 := (if k100 < z + 2 then k0 else k1); if v256 == k1 then j7 n x (p + 2) h k (bpush (bpush u q) s) w
+      else bnew
+    else j6 k u w
+
+def j8 (x : Buf) : Buf := j7 16777216 x 0 0 0 bnew (bpush bnew 0)
+
+
+
+def w0 : UInt64 := 0
+def w1 : UInt64 := 1
+def w2 : UInt64 := 2
+def w3 : UInt64 := 3
+def w4 : UInt64 := 4
+def w5 : UInt64 := 5
+def w6 : UInt64 := 6
+def w7 : UInt64 := 7
+def w8 : UInt64 := 8
+def w9 : UInt64 := 9
+def w10 : UInt64 := 10
+def w11 : UInt64 := 11
+def w12 : UInt64 := 12
+def w13 : UInt64 := 13
+
+def r0 : Nat → Buf → UInt64 → UInt64
+  | 0, x, q => 0
+  | n + 1, x, q =>
+    if q < bsize x then
+      if bget x q == 0 then q + 1 else let v257 := (if bget x q == 1 then k1 else k0); let v258 := (if q + 1 < bsize x then k1 else k0); let v259 := v257 * v258; if v259 == k1 then r0 n x (q + 2) else 0
+    else 0
+
+def r1 (x : Buf) (p : UInt64) : UInt64 :=
+  if bget x p == 5 then p + 9 else if bget x p == 14 then r0 16777216 x (p + 1) else p + 1
+
+def r2 : Nat → Buf → UInt64 → UInt64
+  | 0, x, p => 0
+  | n + 1, x, p =>
+    if p < bsize x then
+      let q := bget x p;
+      let v260 := (if q < 1 then k0 else k1); let v261 := (if 4 < q then k0 else k1); let v262 := v260 * v261; let v263 := (if q < 6 then k0 else k1); let v264 := (if 13 < q then k0 else k1); let v265 := v263 * v264; let v266 := v262 ||| v265; if v266 == k1 then r2 n x (p + 1)
+      else if q == 5 then let v267 := (if bsize x < p + 9 then k0 else k1); if v267 == k1 then r2 n x (p + 9) else 0
+      else if q == 14 then
+        let w1 := r0 16777216 x (p + 1);
+        if w1 == 0 then 0 else r2 n x w1
+      else 0
+    else 1
+
+def r3 : Nat → Buf → UInt64 → UInt64 → UInt64
+  | 0, x, p, c => c
+  | n + 1, x, p, c =>
+    if p < bsize x then
+      let w1 := r1 x p;
+      r3 n x w1 (c + 1)
+    else c
+
+def r4 : Nat → Buf → UInt64 → UInt64 → UInt64
+  | 0, x, a, b => 0
+  | n + 1, x, a, b =>
+    let v268 := (if bget x a == 1 then k1 else k0); let v269 := (if bget x b == 1 then k1 else k0); let v270 := v268 * v269; if v270 == k1 then if bget x (a + 1) == bget x (b + 1) then r4 n x (a + 2) (b + 2) else 0
+    else let v271 := (if bget x a == 0 then k1 else k0); let v272 := (if bget x b == 0 then k1 else k0); let v273 := v271 * v272; if v273 == k1 then 1 else 0
+
+def r5 : Nat → Buf → Buf → UInt64 → UInt64 → UInt64
+  | 0, x, s, i, g => 0
+  | n + 1, x, s, i, g =>
+    if i == 0 then 0
+    else if r4 16777216 x (bget s (i - 2) + 1) (g + 1) == 1 then bget s (i - 1) + 1
+    else r5 n x s (i - 2) g
+
+def r6 : Nat → Buf → Buf → UInt64 → UInt64 → UInt64
+  | 0, x, t, i, g => 0
+  | n + 1, x, t, i, g =>
+    if i == 0 then 0
+    else if r4 16777216 x (bget t (i - 3) + 1) (g + 1) == 1 then i
+    else r6 n x t (i - 3) g
+
+def r7 (x : Buf) (p : UInt64) : UInt64 :=
+  let v := bget x p + 256 * (bget x (p + 1) + 256 * (bget x (p + 2) + 256 * bget x (p + 3)));
+  let w := bget x (p + 4) + 256 * (bget x (p + 5) + 256 * (bget x (p + 6) + 256 * bget x (p + 7)));
+  v + w * 65536 * 65536
+
+def r8 (a b : UInt64) : UInt64 := let v274 := (if a < b then k0 else k1); if v274 == k1 then a - b else 0
+
+def r9 (v : UInt64) (o : Buf) : Buf :=
+  j0 6 v (j0 6 (v >>> 8) (j0 6 (v >>> 16) (j0 6 (v >>> 24) (j0 6 (v >>> 32) (j0 6 (v >>> 40) (j0 6 (v >>> 48) (j0 6 (v >>> 56) (j0 5 0 o))))))))
+
+def r10 (j k : UInt64) (o : Buf) : Buf := j0 9 k (j0 15 j (j0 14 (j >>> 8) o))
+
+def r19 (u : Buf) (m v : UInt64) : Buf := if m < bsize u then bset u m v else bpush u v
+
+def r11 (u : Buf) (m t a b : UInt64) : Buf := r19 (r19 (r19 u m t) (m + 1) a) (m + 2) b
+
+def r12 (x : Buf) (f1 a1 : UInt64) (s : UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × Buf × Buf × Buf × Buf × UInt64 × UInt64) : UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × Buf × Buf × Buf × Buf × UInt64 × UInt64 :=
+  let (c, y1) := s;
+  let (f, y2) := y1;
+  let (a, y3) := y2;
+  let (b, y4) := y3;
+  let (p, y5) := y4;
+  let (d, y6) := y5;
+  let (g, y7) := y6;
+  let (h, y8) := y7;
+  let (k, y9) := y8;
+  let (o, y10) := y9;
+  let (s0, y11) := y10;
+  let (t0, y12) := y11;
+  let (u0, y13) := y12;
+  let (i0, m0) := y13;
+  let z := r5 16777216 x s0 i0 p;
+  let v275 := (if z == 0 then k0 else k1); if v275 == k1 then (w12, f, a, b, r1 x p, d + 1, g, h, k, j0 3 0 (j0 7 (r8 (r8 d 1) (z - 1)) o), s0, t0, u0, i0, m0)
+  else
+    let j := bsize t0;
+    let e := r6 16777216 x t0 j p;
+    if e == 0 then (w13, f, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m0)
+    else
+      let z2 := bget t0 (e - 2);
+      let z3 := bget t0 (e - 1);
+      if a1 == 1 then
+        if z2 == 0 then (w12, f, a, b, r1 x p, d + 1, g, h, k, r10 z3 0 o, s0, t0, u0, i0, m0)
+        else (w13, f, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m0)
+      else (w10, f1, z2, b, r1 x p, d, g, h, k, o, s0, t0, r11 u0 m0 7 z3 z2, i0, m0 + 3)
+
+def r13 (x : Buf) (s : UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × Buf × Buf × Buf × Buf × UInt64 × UInt64) : UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × Buf × Buf × Buf × Buf × UInt64 × UInt64 :=
+  let (c, y1) := s;
+  let (f, y2) := y1;
+  let (a, y3) := y2;
+  let (b, y4) := y3;
+  let (p, y5) := y4;
+  let (d, y6) := y5;
+  let (g, y7) := y6;
+  let (h, y8) := y7;
+  let (k, y9) := y8;
+  let (o, y10) := y9;
+  let (s0, y11) := y10;
+  let (t0, y12) := y11;
+  let (u0, y13) := y12;
+  let (i0, m0) := y13;
+  let m1 := m0 - 3;
+  let t := bget u0 m1;
+  let a1 := bget u0 (m1 + 1);
+  let b1 := bget u0 (m1 + 2);
+  if t == 1 then
+    if bget x p == 13 then (w5, a1, a, b, p + 1, d, g, h, k, o, r19 (r19 s0 i0 b1) (i0 + 1) (r8 d 1), t0, r11 u0 m1 2 0 0, i0 + 2, m1 + 3)
+    else (w13, f, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m1)
+  else if t == 2 then (w12, f, a, b, p, r8 d 1, g, h, k, j0 9 1 o, s0, t0, u0, i0 - 2, m1)
+  else if t == 3 then (w6, a1, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m1)
+  else if t == 4 then (w6, a1, a, b, p, r8 d 1, g, h, k, j0 8 b1 o, s0, t0, u0, i0, m1)
+  else if t == 5 then (w8, a1, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m1)
+  else if t == 6 then (w8, a1, a, b, p, r8 d 1, g, h, k, j0 8 40 o, s0, t0, u0, i0, m1)
+  else if t == 7 then (w12, f, a, b, p, r8 (d + 1) b1, g, h, k, r10 a1 b1 o, s0, t0, u0, i0, m1)
+  else if t == 8 then (w10, a1, b1, b, p, d, g, h, k, o, s0, t0, u0, i0, m1)
+  else if bget x p == 7 then (w12, f, a, b, p + 1, d, g, h, k, o, s0, t0, u0, i0, m1)
+  else (w13, f, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m1)
+
+def r17 (x : Buf) (s : UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × Buf × Buf × Buf × Buf × UInt64 × UInt64) : UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × Buf × Buf × Buf × Buf × UInt64 × UInt64 :=
+  let (c, y1) := s;
+  let (f, y2) := y1;
+  let (a, y3) := y2;
+  let (b, y4) := y3;
+  let (p, y5) := y4;
+  let (d, y6) := y5;
+  let (g, y7) := y6;
+  let (h, y8) := y7;
+  let (k, y9) := y8;
+  let (o, y10) := y9;
+  let (s0, y11) := y10;
+  let (t0, y12) := y11;
+  let (u0, y13) := y12;
+  let (i0, m0) := y13;
+  let j := bsize t0;
+  let e := r6 16777216 x t0 j h;
+  if e == 0 then (w5, k, a, b, p + 3, g, g, h, k, o, s0, t0, u0, i0, w0)
+  else (w13, f, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m0)
+
+def r18 (x : Buf) (s : UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × Buf × Buf × Buf × Buf × UInt64 × UInt64) : UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × Buf × Buf × Buf × Buf × UInt64 × UInt64 :=
+  let (c, y1) := s;
+  let (f, y2) := y1;
+  let (a, y3) := y2;
+  let (b, y4) := y3;
+  let (p, y5) := y4;
+  let (d, y6) := y5;
+  let (g, y7) := y6;
+  let (h, y8) := y7;
+  let (k, y9) := y8;
+  let (o, y10) := y9;
+  let (s0, y11) := y10;
+  let (t0, y12) := y11;
+  let (u0, y13) := y12;
+  let (i0, m0) := y13;
+  let z := bsize t0;
+  let z4 := if z == 0 then w0 else bget t0 (z - 1) + 1;
+  if m0 == 0 then
+    if p < bsize x then (w1, k, a, b, p, d, g, h, k, j0 13 g o, s0, bpush (bpush (bpush t0 h) g) z4, u0, i0, m0)
+    else (w0, f, a, b, p, d, g, h, k, j0 13 g o, s0, t0, u0, i0, m0)
+  else r13 x (c, f, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m0)
+
+def r14 (x : Buf) (s : UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × Buf × Buf × Buf × Buf × UInt64 × UInt64) : UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × Buf × Buf × Buf × Buf × UInt64 × UInt64 :=
+  let (c, y1) := s;
+  let (f, y2) := y1;
+  let (a, y3) := y2;
+  let (b, y4) := y3;
+  let (p, y5) := y4;
+  let (d, y6) := y5;
+  let (g, y7) := y6;
+  let (h, y8) := y7;
+  let (k, y9) := y8;
+  let (o, y10) := y9;
+  let (s0, y11) := y10;
+  let (t0, y12) := y11;
+  let (u0, y13) := y12;
+  let (i0, m0) := y13;
+  let q := bget x p;
+  if c == 1 then
+    let v276 := (if f == 0 then k0 else k1); let v277 := (if q == 1 then k1 else k0); let v278 := v276 * v277; let v279 := (if bget x (p + 1) == 14 then k1 else k0); let v280 := v278 * v279; if v280 == k1 then (w2, f - 1, w0, b, r1 x (p + 1), d, g, p + 1, f - 1, o, s0, t0, u0, w0, m0)
+    else (w13, f, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m0)
+  else if c == 2 then
+    if f == 0 then (w13, f, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m0)
+    else if q == 6 then (w3, f - 1, f - 1, a, p + 1, d, g, h, k, o, s0, t0, u0, i0, m0)
+    else (w4, f, a, b, p, d, a, h, k, o, s0, t0, u0, i0, m0)
+  else if c == 3 then
+    if f == 0 then (w13, f, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m0)
+    else if q == 14 then (w3, f - 1, a, b + 1, r1 x p, d, g, h, k, o, r19 (r19 s0 i0 p) (i0 + 1) b, t0, u0, i0 + 2, m0)
+    else let v281 := (if q == 8 then k1 else k0); let v282 := (if bget x (p + 1) == 3 then k1 else k0); let v283 := (if bget x (p + 1) == 4 then k1 else k0); let v284 := v282 ||| v283; let v285 := v281 * v284; let v286 := (if bget x (p + 2) == 7 then k1 else k0); let v287 := v285 * v286; if v287 == k1 then (w2, a, b, b, p + 3, d, g, h, k, o, s0, t0, u0, i0, m0)
+    else (w13, f, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m0)
+  else if c == 4 then
+    let v288 := (if q == 8 then k1 else k0); let v289 := (if bget x (p + 1) == 3 then k1 else k0); let v290 := (if bget x (p + 1) == 4 then k1 else k0); let v291 := v289 ||| v290; let v292 := v288 * v291; let v293 := (if bget x (p + 2) == 9 then k1 else k0); let v294 := v292 * v293; if v294 == k1 then r17 x (c, f, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m0)
+    else (w13, f, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m0)
+  else if c == 12 then r18 x (c, f, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m0)
+  else if c == 5 then
+    if f == 0 then (w13, f, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m0)
+    else let v295 := (if q == 2 then k1 else k0); let v296 := (if bget x (p + 1) == 14 then k1 else k0); let v297 := v295 * v296; let v298 := (if bget x (r1 x (p + 1)) == 9 then k1 else k0); let v299 := v297 * v298; if v299 == k1 then (w5, f - 1, a, b, r1 x (p + 1) + 1, d, g, h, k, o, s0, t0, r11 u0 m0 1 (f - 1) (p + 1), i0, m0 + 3)
+    else (w7, f - 1, a, b, p, d, g, h, k, o, s0, t0, r11 u0 m0 3 (f - 1) 0, i0, m0 + 3)
+  else if c == 6 then
+    if f == 0 then (w13, f, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m0)
+    else if q == 10 then (w7, f - 1, a, b, p + 1, d, g, h, k, o, s0, t0, r11 u0 m0 4 (f - 1) 24, i0, m0 + 3)
+    else if q == 11 then (w7, f - 1, a, b, p + 1, d, g, h, k, o, s0, t0, r11 u0 m0 4 (f - 1) 32, i0, m0 + 3)
+    else (w12, f, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m0)
+  else if c == 7 then
+    if f == 0 then (w13, f, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m0)
+    else (w9, f - 1, a, b, p, d, g, h, k, o, s0, t0, r11 u0 m0 5 (f - 1) 0, i0, m0 + 3)
+  else if c == 8 then
+    if f == 0 then (w13, f, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m0)
+    else if q == 12 then (w9, f - 1, a, b, p + 1, d, g, h, k, o, s0, t0, r11 u0 m0 6 (f - 1) 0, i0, m0 + 3)
+    else (w12, f, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m0)
+  else if c == 9 then
+    if f == 0 then (w13, f, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m0)
+    else if q == 14 then r12 x (f - 1) 0 (c, f, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m0)
+    else let v300 := (if q == 11 then k1 else k0); let v301 := (if bget x (p + 1) == 5 then k1 else k0); let v302 := v300 * v301; if v302 == k1 then (w12, f, a, b, p + 10, d + 1, g, h, k, j0 3 0 (r9 (0 - r7 x (p + 2)) o), s0, t0, u0, i0, m0)
+    else (w11, f - 1, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m0)
+  else if c == 10 then
+    if f == 0 then (w13, f, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m0)
+    else if a == 0 then (w12, f, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m0)
+    else (w11, f - 1, a, b, p, d, g, h, k, o, s0, t0, r11 u0 m0 8 (f - 1) (a - 1), i0, m0 + 3)
+  else if c == 11 then
+    if f == 0 then (w13, f, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m0)
+    else if q == 5 then (w12, f, a, b, p + 9, d + 1, g, h, k, j0 3 0 (r9 (r7 x (p + 1)) o), s0, t0, u0, i0, m0)
+    else if q == 14 then r12 x f 1 (c, f, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m0)
+    else if q == 6 then (w5, f - 1, a, b, p + 1, d, g, h, k, o, s0, t0, r11 u0 m0 9 0 0, i0, m0 + 3)
+    else (w13, f, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m0)
+  else (w13, f, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m0)
+
+def r15 : Nat → Buf → UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × UInt64 × Buf × Buf × Buf × Buf × UInt64 × UInt64 → Buf
+  | 0, x, s => bnew
+  | n + 1, x, s =>
+    let (c, y1) := r14 x s;
+    let (f, y2) := y1;
+    let (a, y3) := y2;
+    let (b, y4) := y3;
+    let (p, y5) := y4;
+    let (d, y6) := y5;
+    let (g, y7) := y6;
+    let (h, y8) := y7;
+    let (k, y9) := y8;
+    let (o, y10) := y9;
+    let (s0, y11) := y10;
+    let (t0, y12) := y11;
+    let (u0, y13) := y12;
+    let (i0, m0) := y13;
+    if c == 0 then o else if c == 13 then bnew else r15 n x (c, f, a, b, p, d, g, h, k, o, s0, t0, u0, i0, m0)
+
+def r16 (x : Buf) : Buf :=
+  let v303 := (if bget x 0 == 1 then k1 else k0); let v304 := (if bget x 0 == 2 then k1 else k0); let v305 := v303 ||| v304; let v306 := (if r2 16777216 x 1 == 1 then k1 else k0); let v307 := v305 * v306; if v307 == k1 then
+    let v1 := r3 16777216 x 1 0;
+    r15 16777216 x (w1, v1 + 1, w0, w0, w1, w0, w0, w0, w0, bnew, bnew, bnew, bnew, w0, w0)
+  else bnew
+
+
+
+def m1 : Nat → Buf → UInt64 → List UInt8 → List UInt8
+  | 0, b, i, o => o
+  | n + 1, b, i, o =>
+    let v308 := (if i < bsize b then k0 else k1); if v308 == k1 then o
+    else
+      let v := bget b i;
+      m1 n b (i + 1) (put o v)
+
+def m (x : List UInt8) : List UInt8 := m1 16777216 (a5 (e2 (j8 (r16 (l15 x))))) 0 []
+
+
