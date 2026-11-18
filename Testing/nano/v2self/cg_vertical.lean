@@ -64,7 +64,7 @@ def main : IO Unit := do
   if !(C.g41 ((ast true).set 10 0)).isEmpty then throw (IO.userError "LOCAL width 0 must be rejected")
   IO.println s!"code bytes: {code.length}"
   let ws := (List.range (code.length / 4)).map fun k =>
-    (code.getD (4*k) 0) + 256 * (code.getD (4*k+1) 0) + 65536 * (code.getD (4*k+2) 0) + 16777216 * (code.getD (4*k+3) 0)
+    (code.getD (4*k) 0).toUInt64 + 256 * (code.getD (4*k+1) 0).toUInt64 + 65536 * (code.getD (4*k+2) 0).toUInt64 + 16777216 * (code.getD (4*k+3) 0).toUInt64
   let hx := ws.map fun w => let s := (Nat.toDigits 16 w.toNat).asString; String.mk (List.replicate (8 - s.length) '0') ++ s
   IO.FS.writeFile "Testing/asm/ir-words/cg_vertical.words" ("cg vertical\n" ++ " ".intercalate hx ++ "\n")
   let ins : List (List UInt8) := [[], [1], [1, 2, 3], [200, 100, 7, 9], (List.range 40).map (·.toUInt8)]

@@ -31,7 +31,7 @@ def g_4095 : UInt64 := 4095
 def g_901 : UInt64 := g_0 - 1
 def g_902 : UInt64 := g_0 - 2
 def g_908 : UInt64 := g_0 - 8
-def g_999 : UInt64 := 262144
+def g_999 : UInt64 := 524288
 
 /-! ## encoders (RV64I/M) -/
 def g1 (f7 f3 d a b : UInt64) : UInt64 :=
@@ -113,13 +113,14 @@ def g27 : Nat → Buf → UInt64 → UInt64 → Buf
   | 0, k, n, c => k
   | z + 1, k, n, c => if c == 0 then k else g27 z (g18 k n 1 0 0) (n + 1) (c - 1)
 /-- patch the def's exit jumps (fixup buffer `f`, `c` entries) to here -/
-def g28 : Nat → Buf → UInt64 → (Buf × Buf) → Buf × Buf
-  | 0, f, c, y6 => y6
-  | n + 1, f, c, y6 =>
+def g28 : Nat → UInt64 → Buf × (Buf × Buf) → Buf × (Buf × Buf)
+  | 0, c, y6 => y6
+  | n + 1, c, y6 =>
     if c == 0 then y6 else
-    let (r, o) := y6;
+    let (f, y7) := y6;
+    let (r, o) := y7;
     let v := bget f (c - 1);
-    g28 n f (c - 1) (g20 r o v)
+    g28 n (c - 1) (f, g20 r o v)
 /-- the def epilogue: result (nres words on top) copied over the args, return -/
 def g29 : Nat → UInt64 → UInt64 → UInt64 → Buf → Buf
   | 0, p, q, j, o => o
@@ -291,9 +292,10 @@ def g37 (x r o k t f : Buf) : Buf × (Buf × (Buf × Buf)) :=
   let p := bget r2 1;
   let q := bget r2 2;
   let c2 := bget r2 8;
-  let (r3, o3) := g28 65536 f c2 (r2, o);
+  let (f1, y8) := g28 65536 c2 (f, (r2, o));
+  let (r3, o3) := y8;
   let o4 := g29 512 p q 0 (bpush (bpush o3 (g11 14 8 8)) (g11 15 8 0));
-  (g15 r3 8 0, (o4, (k, bnew)))
+  (g15 r3 8 0, (o4, (k, f1)))
 
 /-- a def header at the cursor: `DEF id npw nslots kind nres`, then the prologue -/
 def g38 (x r o k t : Buf) : Buf × (Buf × (Buf × Buf)) :=
@@ -344,23 +346,23 @@ def g39 : Nat → Buf → Buf → Buf → Buf → Buf → Buf → Buf × Buf
       g39 n x r1 o1 k1 t f1
 
 /-- the code words as little-endian bytes -/
-def g40 : Nat → Buf → UInt64 → Buf → Buf
+def g40 : Nat → Buf → UInt64 → List UInt8 → List UInt8
   | 0, w, i, o => o
   | n + 1, w, i, o =>
     if i < bsize w then
       let v := bget w i;
-      g40 n w (i + 1) (q0 (q0 (q0 (q0 o v) (v >>> 8)) (v >>> 16)) (v >>> 24))
+      g40 n w (i + 1) (put (put (put (put o v) (v >>> 8)) (v >>> 16)) (v >>> 24))
     else o
 
 /-- **the code generator**: AST (`IRV = 2` first) → machine-code bytes, or empty -/
-def g42 (x : Buf) (u : UInt64) : Buf :=
+def g42 (x : Buf) (u : UInt64) : List UInt8 :=
   if bget x 0 == 2 then
     let r := bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush bnew 1) 0) 0) 0) 0) 0) 0) 0) 0) u;
     let (r1, o) := g39 16777216 x r (g34 bnew) bnew bnew bnew;
-    if bget r1 4 == 1 then bnew else if 16777215 < bsize o then bnew else g40 16777216 o 0 bnew
-  else bnew
+    if bget r1 4 == 1 then [] else if 16777215 < bsize o then [] else g40 16777216 o 0 []
+  else []
 
-/-- the code generator with the default buffer capacity κ = 2^18 words -/
-def g41 (x : Buf) : Buf := g42 x g_999
+/-- the code generator with the default buffer capacity κ = 2^19 words -/
+def g41 (x : Buf) : List UInt8 := g42 x g_999
 
 end C
