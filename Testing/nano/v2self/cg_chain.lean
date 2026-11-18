@@ -72,4 +72,10 @@ def main (args : List String) : IO Unit := do
       let env := (List.zip ["a", "b1", "c'", "d_e"] ps).reverse
       hex x ++ " 0 " ++ hex (u8 (t.eval env))
     IO.FS.writeFile s!"Testing/asm/ir-words/cgc_{k}.cases" ("\n".intercalate cs ++ "\n")
-  IO.println s!"wrote {n} programs"
+  -- must-reject (reported separately from acceptance): no main, main reading a slot outside its frame, main of npw 1
+  let ws := C.y13 (C.s10 "def f (a b1 c' d_e : UInt64) : UInt64 := a\n".toUTF8.toList)
+  let bad := [ws, ws ++ (mainW.map fun v => if v == 2 then 2 else v).set 2 1,
+    ws ++ [20, 1, 0, 1, 0, 1, 9, 4, 9, 5, 2, 3, 1, 21], ws ++ [20, 1, 1, 1, 0, 1, 9, 4, 9, 5, 2, 0, 1, 21]]
+  let nr := (bad.filter fun b => (C.g41 b).isEmpty).length
+  if nr != bad.length then throw (IO.userError s!"must-reject: only {nr}/{bad.length} rejected")
+  IO.println s!"valid programs accepted: {n}/{n} (a rejection is a FAILURE); must-reject rejected: {nr}/{bad.length}"
