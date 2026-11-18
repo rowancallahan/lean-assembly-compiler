@@ -22,10 +22,10 @@ def st (s : GS) : GS :=
   match g37 s.x s.r s.o s.k s.t s.f with
   | (r1, (o1, (k1, f1))) => ⟨s.x, r1, o1, k1, s.t, f1⟩
 
-def live (s : GS) : Prop := bget s.r 5 ≠ 1 ∧ bget s.r 4 ≠ 1 ∧ bget s.r 6 ≠ 0
+def live (s : GS) : Prop := bget s.r 5 ≠ 1 ∧ bget s.r 4 ≠ 1 ∧ ¬ 16777215 < bsize s.o ∧ bget s.r 6 ≠ 0 ∧ 5 ≤ s.r.length
 def err (s : GS) : Prop := bget s.r 4 = 1
-/-- the code is too big: code only grows, and g42 outputs [] above 2^24 words -/
-def big (s : GS) : Prop := 2 ^ 32 ≤ s.o.length
+/-- the code is too big: g39 errs at its next iteration (bsize o is exact below 2^62) -/
+def big (s : GS) : Prop := 2 ^ 24 ≤ s.o.length ∧ s.o.length < 2 ^ 62
 
 /-- `it m s` = m work items from s -/
 def it : Nat → GS → GS
@@ -333,7 +333,7 @@ structure Inv (K : Cx) (s : GS) (L : List Item) (F : List UInt64) : Prop where
   fx : Fx s.f F
   r8 : bget s.r 8 = F.length.toUInt64
   fl : s.f.length ≤ 65536
-  ol : s.o.length < 2 ^ 32
+  ol : s.o.length < 2 ^ 24
 
 theorem bget_set (r : Buf) (j : UInt64) (v : UInt64) (i : UInt64) (hj : j.toNat < r.length) :
     bget (bset r j v) i = if j = i then v else bget r i := by
@@ -392,7 +392,12 @@ theorem g36_const (x r o k : Buf) (hc : bget x (bget r 0) = 1) :
   rw [if_neg (by simp [ha]), if_neg (by decide), if_pos (by simp [hc])]
 
 theorem live_of {K s L F} (hI : Inv K s L F) (hL : L ≠ []) : live s := by
-  refine ⟨hI.r5, hI.r4, ?_⟩
+  refine ⟨hI.r5, hI.r4, ?_, ?_, by rw [hI.rl]; omega⟩
+  · have := hI.ol
+    intro h
+    have h2 := UInt64.lt_iff_toNat_lt.mp h
+    simp only [bsize] at h2
+    rw [u_toNat _ (by omega)] at h2; simp at h2; omega
   rw [hI.r6]; intro h
   have h1 := congrArg UInt64.toNat h
   rw [u_toNat L.length (by have := hI.Ll; omega)] at h1
@@ -406,7 +411,7 @@ theorem rget (r : Buf) (hr : r.length = 10) (j i : UInt64) (v : UInt64) (hj : j.
 theorem inv_mk {K s L0 F} (hI : Inv K s L0 F) (r' k' o' : Buf) (L' : List Item)
     (hr : ∀ j : UInt64, j ≠ 0 → j ≠ 6 → bget r' j = bget s.r j) (hrl : r'.length = 10)
     (h6 : bget r' 6 = L'.length.toUInt64) (hk : Stk k' L') (hkl : k'.length < 2 ^ 62) (hLl : L'.length < 2 ^ 60)
-    (ho : o'.length < 2 ^ 32) : Inv K ⟨s.x, r', o', k', s.t, s.f⟩ L' F where
+    (ho : o'.length < 2 ^ 24) : Inv K ⟨s.x, r', o', k', s.t, s.f⟩ L' F where
   x := hI.x
   t := hI.t
   rl := hrl
@@ -444,6 +449,57 @@ theorem u_add (i j : Nat) : i.toUInt64 + j.toUInt64 = (i + j).toUInt64 := by sim
 
 theorem pi_const (v : UInt64) : PI (fun o => g21 (g23 o 5 v)) := pi_comp (pi_g23 5 v) pi_g21
 
+/-! emitter length bounds (for the `big` outcome: code stays below 2^62 words) -/
+theorem em_le (F : Buf → Buf) (h c : Nat) (hF : ∀ o : Buf, (F o).length ≤ o.length + c) : (em F h).length ≤ c := by
+  have := hF (List.replicate h 0); simp [em] at *; omega
+
+theorem g23_len (o : Buf) (d v : UInt64) : (g23 o d v).length ≤ o.length + 17 := by
+  unfold g23; split <;> simp [bpush]
+
+theorem g21_len (o : Buf) : (g21 o).length = o.length + 4 := by simp [g21, bpush]
+
+theorem g25_len : ∀ (n : Nat) (p s w : UInt64) (o : Buf), (g25 n p s w o).length ≤ o.length + 5 * n
+  | 0, p, s, w, o => by simp [g25]
+  | n + 1, p, s, w, o => by
+    unfold g25; split
+    · omega
+    · show (g25 n p (s + 1) (w - 1) (g21 (bpush o (g11 5 8 (g24 p s))))).length ≤ _
+      have := g25_len n p (s + 1) (w - 1) (g21 (bpush o (g11 5 8 (g24 p s)))); rw [g21_len] at this; simp only [bpush] at this ⊢; simp at this; omega
+
+theorem g26_len : ∀ (n : Nat) (p s w : UInt64) (o : Buf), (g26 n p s w o).length ≤ o.length + 3 * n
+  | 0, p, s, w, o => by simp [g26]
+  | n + 1, p, s, w, o => by
+    unfold g26; split
+    · omega
+    · show (g26 n p s (w - 1) (bpush (bpush (bpush o (g11 5 31 0)) (g10 31 31 8)) (g12 5 8 (g24 p (s + w - 1))))).length ≤ _
+      have := g26_len n p s (w - 1) (bpush (bpush (bpush o (g11 5 31 0)) (g10 31 31 8)) (g12 5 8 (g24 p (s + w - 1))))
+      have hql : (bpush (bpush (bpush o (g11 5 31 0)) (g10 31 31 8)) (g12 5 8 (g24 p (s + w - 1)))).length = o.length + 3 := by
+        simp [bpush]
+      omega
+
+theorem g32_len (o : Buf) (p u : UInt64) : (g32 o p u).length ≤ o.length + 64 := by
+  have e := pi_g32 p u o
+  simp only at e
+  have : (em (fun o => g32 o p u) o.length).length ≤ 64 := by
+    unfold em
+    by_cases h1 : p = 1; · subst h1; simp [g32, g22, bpush]
+    by_cases h3 : p = 3; · subst h3; simp [g32, g22, bpush]
+    by_cases h2 : p = 2; · subst h2; simp [g32, bpush]
+    by_cases h5 : p = 5
+    · subst h5
+      have a1 := g23_len (bpush (List.replicate o.length 0) (g10 5 30 0)) 6 ((u + 2) <<< 3)
+      have a2 := g23_len (bpush (bpush (bpush (g23 (bpush (List.replicate o.length 0) (g10 5 30 0)) 6 ((u + 2) <<< 3))
+        (g1 0 0 6 6 30)) (g4 7 31 6 8)) (g13 0 (bsize (g23 (bpush (List.replicate o.length 0) (g10 5 30 0)) 6 ((u + 2) <<< 3)) + 2) 1)) 7 u
+      simp only [g32, if_neg (show ¬ ((5 : UInt64) == 1) = true by decide), if_neg (show ¬ ((5 : UInt64) == 3) = true by decide),
+        if_neg (show ¬ ((5 : UInt64) == 2) = true by decide), if_pos (show ((5 : UInt64) == 5) = true by decide), List.length_drop,
+        g21_len]
+      simp [bpush] at a1 a2 ⊢; omega
+    by_cases h6 : p = 6; · subst h6; simp [g32, bpush]
+    by_cases h7 : p = 7; · subst h7; simp [g32, g30, bpush]
+    by_cases h8 : p = 8; · subst h8; simp [g32, bpush]
+    simp [g32, g30, bpush, bsize, h1, h2, h3, h5, h6, h7, h8]
+  rw [e]; simp; omega
+
 /-- CONST -/
 theorem v_const {K s L F d i} (hI : Inv K s (L ++ [(1, 0, 0)]) F) (hr0 : bget s.r 0 = i.toUInt64) (hi : i < 2 ^ 31) (hiX : i < K.X.length)
     (ht : tg K.X i = 1) : Reach s (VPost K s L F d i) := by
@@ -459,8 +515,8 @@ theorem v_const {K s L F d i} (hI : Inv K s (L ++ [(1, 0, 0)]) F) (hr0 : bget s.
   have e : g21 (g23 s.o 5 (tg K.X (i + 1))) = s.o ++ em (fun o => g21 (g23 o 5 (tg K.X (i + 1)))) s.o.length :=
     pi_const _ s.o
   rw [hv, e]
-  by_cases hb : 2 ^ 32 ≤ (s.o ++ em (fun o => g21 (g23 o 5 (tg K.X (i + 1)))) s.o.length).length
-  · exact Reach.toobig hb
+  by_cases hb : 2 ^ 24 ≤ (s.o ++ em (fun o => g21 (g23 o 5 (tg K.X (i + 1)))) s.o.length).length
+  · exact Reach.toobig ⟨hb, by have := hI.ol; have := em_le (fun o => g21 (g23 o 5 (tg K.X (i + 1)))) s.o.length 21 (fun o => by have := g23_len o 5 (tg K.X (i + 1)); rw [g21_len]; omega); simp; omega⟩
   obtain ⟨q1, q2, q3, q4⟩ := r06 s.r hI.rl L.length.toUInt64 (i.toUInt64 + 2)
   refine Reach.done ⟨_, i + 2, [], .const ht, ?_, rfl, ?_, by omega, fun _ => ⟨rfl, ?_⟩⟩
   · simp only [List.map_nil, List.append_nil]
@@ -531,8 +587,8 @@ theorem v_local {K s L F d i} (hI : Inv K s (L ++ [(1, 0, 0)]) F) (hr0 : bget s.
     simp only [show ((0 : UInt64) == 1) = false from rfl, Bool.false_eq_true, if_false]
     have e := pi_g25 256 K.p (tg K.X (i + 1)) (tg K.X (i + 2)) s.o
     rw [e]
-    by_cases hb : 2 ^ 32 ≤ (s.o ++ em (g25 256 K.p (tg K.X (i + 1)) (tg K.X (i + 2))) s.o.length).length
-    · exact Reach.toobig hb
+    by_cases hb : 2 ^ 24 ≤ (s.o ++ em (g25 256 K.p (tg K.X (i + 1)) (tg K.X (i + 2))) s.o.length).length
+    · exact Reach.toobig ⟨hb, by have := hI.ol; have := em_le (g25 256 K.p (tg K.X (i + 1)) (tg K.X (i + 2))) s.o.length 1280 (fun o => by have := g25_len 256 K.p (tg K.X (i + 1)) (tg K.X (i + 2)) o; omega); simp; omega⟩
     obtain ⟨q1, q2, q3, q4⟩ := r06 s.r hI.rl L.length.toUInt64 (i.toUInt64 + 3)
     refine Reach.done ⟨_, i + 3, [], .local ht hs, ?_, rfl, ?_, by omega, fun _ => ⟨rfl, ?_⟩⟩
     · simp only [List.map_nil, List.append_nil]
@@ -660,8 +716,8 @@ theorem v_bin {K i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀ j
   have e := pi_g31 (tg K.X (i + 1)) s3.o
   simp only at e
   rw [e]
-  by_cases hbig : 2 ^ 32 ≤ (s3.o ++ em (fun o => g31 o (tg K.X (i + 1))) s3.o.length).length
-  · exact Reach.toobig hbig
+  by_cases hbig : 2 ^ 24 ≤ (s3.o ++ em (fun o => g31 o (tg K.X (i + 1))) s3.o.length).length
+  · exact Reach.toobig ⟨hbig, by have := hI3.ol; have := em_le (fun o => g31 o (tg K.X (i + 1))) s3.o.length 5 (fun o => by simp [g31, g30, bpush]); simp; omega⟩
   have ho : s3.o = s.o ++ ca ++ cb := by rw [ho3, ho2]
   have hI4 := inv_mk hI3 (g15 s3.r 6 L.length.toUInt64) s3.k (s3.o ++ em (fun o => g31 o (tg K.X (i + 1))) s3.o.length) L
     (fun j a b => by simp only [g15]; rw [rget _ hI3.rl 6 j _ (by decide), if_neg (Ne.symm b)])
@@ -754,8 +810,8 @@ theorem v_let {K i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀ j
     rw [hst]
     have e := pi_g26 256 K.p (tg K.X (i + 1)) (tg K.X (i + 2)) s2.o
     rw [e]
-    by_cases hbig : 2 ^ 32 ≤ (s2.o ++ em (g26 256 K.p (tg K.X (i + 1)) (tg K.X (i + 2))) s2.o.length).length
-    · exact Reach.toobig hbig
+    by_cases hbig : 2 ^ 24 ≤ (s2.o ++ em (g26 256 K.p (tg K.X (i + 1)) (tg K.X (i + 2))) s2.o.length).length
+    · exact Reach.toobig ⟨hbig, by have := hI2.ol; have := em_le (g26 256 K.p (tg K.X (i + 1)) (tg K.X (i + 2))) s2.o.length 768 (fun o => by have := g26_len 256 K.p (tg K.X (i + 1)) (tg K.X (i + 2)) o; omega); simp; omega⟩
     have hI3 := inv_mk hI2' (g15 s2.r 6 (L ++ [(1, 0, 0)]).length.toUInt64) s2.k
       (s2.o ++ em (g26 256 K.p (tg K.X (i + 1)) (tg K.X (i + 2))) s2.o.length) (L ++ [(1, 0, 0)])
       (fun j a b => by simp only [g15]; rw [rget _ hI2.rl 6 j _ (by decide), if_neg (Ne.symm b)])
@@ -974,8 +1030,8 @@ theorem v_if {K i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀ j,
     unfold st; rw [g37_t3 _ _ _ _ _ _ c3, a3, n3, hidx]
   rw [hst]
   have ho3' : s3.o = s.o ++ ca ++ cb := by rw [ho3, ho2]
-  by_cases hbig : 2 ^ 32 ≤ (bpush (bpush (g30 s3.o 16) (if (tg K.X (i + 1)) == 1 then g4 0 5 6 8 else g4 6 5 6 8)) 0).length
-  · exact Reach.toobig hbig
+  by_cases hbig : 2 ^ 24 ≤ (bpush (bpush (g30 s3.o 16) (if (tg K.X (i + 1)) == 1 then g4 0 5 6 8 else g4 6 5 6 8)) 0).length
+  · exact Reach.toobig ⟨hbig, by have := hI3.ol; simp [g30_eq, bpush]; omega⟩
   obtain ⟨q1, q2, q3⟩ := r6set s3.r hI3.rl (L.length + 4).toUInt64
   have sk4 : Stk (bset s3.k ((3 * (L.length + 2) + 1).toUInt64) (bsize s3.o + 4))
       (L ++ [(5, 0, 0), (1, 0, 0), (4, bsize s3.o + 4, 0), (1, 0, 0)]) := by
@@ -1033,9 +1089,9 @@ theorem v_if {K i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀ j,
     rw [ulen _ _ hl5, show bpush s5.o 0 = (s.o ++ ca ++ cb ++ ifHd (tg K.X (i + 1))) ++ 0 :: (ct ++ [0]) by rw [bpush, hA]; simp,
       bset_mid _ _ _ _ _ hP, jw, ← hpj]
   rw [ho6]
-  by_cases hbig6 : 2 ^ 32 ≤ ((s.o ++ ca ++ cb ++ ifHd (tg K.X (i + 1))) ++
+  by_cases hbig6 : 2 ^ 24 ≤ ((s.o ++ ca ++ cb ++ ifHd (tg K.X (i + 1))) ++
         jw 0 (s.o.length + ca.length + cb.length + 4) (s.o.length + ca.length + cb.length + 5 + ct.length + 1) :: (ct ++ [0])).length
-  · exact Reach.toobig hbig6
+  · exact Reach.toobig ⟨hbig6, by have := hI5.ol; rw [hA] at this; simp [ifHd] at this ⊢; omega⟩
   have sk6 : Stk (bset s5.k (3 * L.length + 1).toUInt64 (bsize s5.o)) (L ++ [(5, bsize s5.o, 0), (1, 0, 0)]) := by
     have hp := stk_pop hI5'.stk
     have := stk_set hp L.length (5, 0, 0) (by simp) (bsize s5.o)
@@ -1072,7 +1128,7 @@ theorem v_if {K i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀ j,
     ulen _ _ (by rw [ho7]; simp [ifHd]; omega)
   have hQ : (s.o.length + ca.length + cb.length + 5 + ct.length).toUInt64.toNat = ((s.o ++ ca ++ cb ++ ifHd (tg K.X (i + 1))) ++
         jw 0 (s.o.length + ca.length + cb.length + 4) (s.o.length + ca.length + cb.length + 5 + ct.length + 1) :: ct).length := by
-    have hl : s5.o.length < 2 ^ 32 := hI5.ol
+    have hl : s5.o.length < 2 ^ 24 := hI5.ol
     have : s5.o.length = s.o.length + ca.length + cb.length + 5 + ct.length := by rw [hA]; simp [ifHd]; omega
     rw [u_toNat _ (by omega)]; simp [ifHd]; omega
   have ho8 : bset s7.o (bsize s5.o) (g13 0 (bsize s5.o) (bsize s7.o)) = s.o ++ (ca ++ cb ++ ifHd (tg K.X (i + 1)) ++
@@ -1086,11 +1142,11 @@ theorem v_if {K i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀ j,
     rw [bset_mid _ _ _ _ _ hQ]
     simp only [jw, List.append_assoc, List.cons_append, List.singleton_append, List.nil_append]
   rw [ho8]
-  by_cases hbig8 : 2 ^ 32 ≤ (s.o ++ (ca ++ cb ++ ifHd (tg K.X (i + 1)) ++
+  by_cases hbig8 : 2 ^ 24 ≤ (s.o ++ (ca ++ cb ++ ifHd (tg K.X (i + 1)) ++
       [jw 0 (s.o.length + ca.length + cb.length + 4) (s.o.length + ca.length + cb.length + 5 + ct.length + 1)] ++ ct ++
       [jw 0 (s.o.length + ca.length + cb.length + 5 + ct.length)
         (s.o.length + ca.length + cb.length + 5 + ct.length + 1 + ce.length)] ++ ce)).length
-  · exact Reach.toobig hbig8
+  · exact Reach.toobig ⟨hbig8, by have := hI7.ol; rw [ho7] at this; simp [ifHd] at this ⊢; omega⟩
   have hI8 := inv_mk hI7' (g15 s7.r 6 L.length.toUInt64) s7.k
     (s.o ++ (ca ++ cb ++ ifHd (tg K.X (i + 1)) ++
       [jw 0 (s.o.length + ca.length + cb.length + 4) (s.o.length + ca.length + cb.length + 5 + ct.length + 1)] ++ ct ++
@@ -1364,8 +1420,8 @@ theorem v_call {K i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀ 
   by_cases hg' : ¬ (g14 (bsize s2.o) (bget s2.t (tg K.X (i + 1))) == 1) = true
   · rw [if_neg hg']; exact Reach.error (g16_err _ p1)
   rw [if_pos (Classical.not_not.mp hg')]
-  by_cases hbig : 2 ^ 32 ≤ (bpush s2.o (g13 1 (bsize s2.o) (bget s2.t (tg K.X (i + 1))))).length
-  · exact Reach.toobig hbig
+  by_cases hbig : 2 ^ 24 ≤ (bpush s2.o (g13 1 (bsize s2.o) (bget s2.t (tg K.X (i + 1))))).length
+  · exact Reach.toobig ⟨hbig, by have := hI2.ol; simp [bpush]; omega⟩
   have hI3 := inv_mk hI2 (g15 s2.r 6 L.length.toUInt64) s2.k (bpush s2.o (g13 1 (bsize s2.o) (bget s2.t (tg K.X (i + 1))))) L
     (fun j a b => p3 j b) p1 (by simp only [g15]; rw [p2]) (stk_pop hI2.stk) hI2.kl (by omega) (by omega)
   have hl2 : s2.o.length = s.o.length + c.length := by rw [ho2]; simp
@@ -1433,8 +1489,8 @@ theorem v_prim {K i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀ 
   have e := pi_g32 (tg K.X (i + 1)) K.u s2.o
   simp only at e
   rw [e]
-  by_cases hbig : 2 ^ 32 ≤ (s2.o ++ em (fun o => g32 o (tg K.X (i + 1)) K.u) s2.o.length).length
-  · exact Reach.toobig hbig
+  by_cases hbig : 2 ^ 24 ≤ (s2.o ++ em (fun o => g32 o (tg K.X (i + 1)) K.u) s2.o.length).length
+  · exact Reach.toobig ⟨hbig, by have := hI2.ol; have := em_le (fun o => g32 o (tg K.X (i + 1)) K.u) s2.o.length 64 (fun o => g32_len o _ _); simp; omega⟩
   have hI3 := inv_mk hI2 (g15 s2.r 6 L.length.toUInt64) s2.k (s2.o ++ em (fun o => g32 o (tg K.X (i + 1)) K.u) s2.o.length) L
     (fun j a b => p3 j b) p1 (by simp only [g15]; rw [p2]) (stk_pop hI2.stk) hI2.kl (by omega) (by omega)
   have hl2 : s2.o.length = s.o.length + c.length := by rw [ho2]; simp
@@ -1569,7 +1625,7 @@ theorem inv_mk2 {K s L0 F} (hI : Inv K s L0 F) (r' k' o' f' : Buf) (L' : List It
     (hr : ∀ j : UInt64, j ≠ 0 → j ≠ 6 → j ≠ 8 → bget r' j = bget s.r j) (hrl : r'.length = 10)
     (h6 : bget r' 6 = L'.length.toUInt64) (hk : Stk k' L') (hkl : k'.length < 2 ^ 62) (hLl : L'.length < 2 ^ 60)
     (hfx : Fx f' F') (h8 : bget r' 8 = F'.length.toUInt64) (hfl : f'.length ≤ 65536)
-    (ho : o'.length < 2 ^ 32) : Inv K ⟨s.x, r', o', k', s.t, f'⟩ L' F' where
+    (ho : o'.length < 2 ^ 24) : Inv K ⟨s.x, r', o', k', s.t, f'⟩ L' F' where
   x := hI.x
   t := hI.t
   rl := hrl
@@ -1652,8 +1708,8 @@ theorem t_val {K hd i} (hX : K.X.length < 2 ^ 31) (hi : i ≤ K.X.length + 3) (h
   have hF' : F.length ≤ 65535 := by
     have : ¬ (65535 : UInt64).toNat < F.length.toUInt64.toNat := fun h => hbigF (UInt64.lt_iff_toNat_lt.mpr h)
     rw [u_toNat _ (by omega)] at this; simp at this; omega
-  by_cases hbig : 2 ^ 32 ≤ (bpush s2.o 0).length
-  · exact Reach.toobig hbig
+  by_cases hbig : 2 ^ 24 ≤ (bpush s2.o 0).length
+  · exact Reach.toobig ⟨hbig, by have := hI2.ol; simp [bpush]; omega⟩
   obtain ⟨fx3, fl3⟩ := fx_push s2.f F (bsize s2.o) hI2.fx hF' hI2.fl
   have hr8 := rset2 _ hI2.rl 6 8 L.length.toUInt64 (F.length.toUInt64 + 1) (by decide) (by decide)
   have hI3 := inv_mk2 hI2 (g15 (g15 s2.r 6 L.length.toUInt64) 8 (F.length.toUInt64 + 1)) s2.k (bpush s2.o 0)
@@ -1731,9 +1787,9 @@ theorem t_cont {K hd i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : �
       hd.toUInt64 == 1) = true
   · rw [if_neg hg']; exact Reach.error (g16_err _ w1)
   rw [if_pos (Classical.not_not.mp hg')]
-  by_cases hbig : 2 ^ 32 ≤ (bpush (s2.o ++ em (g26 256 K.p 1 (K.p - 1)) s2.o.length)
+  by_cases hbig : 2 ^ 24 ≤ (bpush (s2.o ++ em (g26 256 K.p 1 (K.p - 1)) s2.o.length)
       (g13 0 (s.o.length + c.length + (em (g26 256 K.p 1 (K.p - 1)) (s.o.length + c.length)).length).toUInt64 hd.toUInt64)).length
-  · exact Reach.toobig hbig
+  · exact Reach.toobig ⟨hbig, by have := hI2.ol; have := em_le (g26 256 K.p 1 (K.p - 1)) s2.o.length 768 (fun o => by have := g26_len 256 K.p 1 (K.p - 1) o; omega); simp [bpush]; omega⟩
   have hI3 := inv_mk hI2 (g15 s2.r 6 L.length.toUInt64) s2.k (bpush (s2.o ++ em (g26 256 K.p 1 (K.p - 1)) s2.o.length)
       (g13 0 (s.o.length + c.length + (em (g26 256 K.p 1 (K.p - 1)) (s.o.length + c.length)).length).toUInt64 hd.toUInt64))
     L (fun j a b => w3 j b) w1 (by simp only [g15]; rw [w2])
@@ -1817,8 +1873,8 @@ theorem t_if {K hd i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀
     unfold st; rw [g37_t3 _ _ _ _ _ _ c3, a3, n3, hidx]
   rw [hst]
   have ho3' : s3.o = s.o ++ ca ++ cb := by rw [ho3, ho2]
-  by_cases hbig : 2 ^ 32 ≤ (bpush (bpush (g30 s3.o 16) (if (tg K.X (i + 1)) == 1 then g4 0 5 6 8 else g4 6 5 6 8)) 0).length
-  · exact Reach.toobig hbig
+  by_cases hbig : 2 ^ 24 ≤ (bpush (bpush (g30 s3.o 16) (if (tg K.X (i + 1)) == 1 then g4 0 5 6 8 else g4 6 5 6 8)) 0).length
+  · exact Reach.toobig ⟨hbig, by have := hI3.ol; simp [g30_eq, bpush]; omega⟩
   obtain ⟨q1, q2, q3⟩ := r6set s3.r hI3.rl (L.length + 4).toUInt64
   have sk4 : Stk (bset s3.k ((3 * (L.length + 2) + 1).toUInt64) (bsize s3.o + 4))
       (L ++ [(5, 0, 0), (1, 1, 0), (4, bsize s3.o + 4, 0), (1, 1, 0)]) := by
@@ -1873,9 +1929,9 @@ theorem t_if {K hd i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀
     rw [ulen _ _ hl5, show bpush s5.o 0 = (s.o ++ ca ++ cb ++ ifHd (tg K.X (i + 1))) ++ 0 :: (ct ++ [0]) by rw [bpush, hA]; simp,
       bset_mid _ _ _ _ _ hP, jw, ← hpj]
   rw [ho6]
-  by_cases hbig6 : 2 ^ 32 ≤ ((s.o ++ ca ++ cb ++ ifHd (tg K.X (i + 1))) ++
+  by_cases hbig6 : 2 ^ 24 ≤ ((s.o ++ ca ++ cb ++ ifHd (tg K.X (i + 1))) ++
         jw 0 (s.o.length + ca.length + cb.length + 4) (s.o.length + ca.length + cb.length + 5 + ct.length + 1) :: (ct ++ [0])).length
-  · exact Reach.toobig hbig6
+  · exact Reach.toobig ⟨hbig6, by have := hI5.ol; rw [hA] at this; simp [ifHd] at this ⊢; omega⟩
   have sk6 : Stk (bset s5.k (3 * L.length + 1).toUInt64 (bsize s5.o)) (L ++ [(5, bsize s5.o, 0), (1, 1, 0)]) := by
     have hp := stk_pop hI5'.stk
     have := stk_set hp L.length (5, 0, 0) (by simp) (bsize s5.o)
@@ -1914,7 +1970,7 @@ theorem t_if {K hd i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀
     ulen _ _ (by rw [ho7]; simp [ifHd]; omega)
   have hQ : (s.o.length + ca.length + cb.length + 5 + ct.length).toUInt64.toNat = ((s.o ++ ca ++ cb ++ ifHd (tg K.X (i + 1))) ++
         jw 0 (s.o.length + ca.length + cb.length + 4) (s.o.length + ca.length + cb.length + 5 + ct.length + 1) :: ct).length := by
-    have hl : s5.o.length < 2 ^ 32 := hI5.ol
+    have hl : s5.o.length < 2 ^ 24 := hI5.ol
     have : s5.o.length = s.o.length + ca.length + cb.length + 5 + ct.length := by rw [hA]; simp [ifHd]; omega
     rw [u_toNat _ (by omega)]; simp [ifHd]; omega
   have ho8 : bset s7.o (bsize s5.o) (g13 0 (bsize s5.o) (bsize s7.o)) = s.o ++ (ca ++ cb ++ ifHd (tg K.X (i + 1)) ++
@@ -1928,11 +1984,11 @@ theorem t_if {K hd i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀
     rw [bset_mid _ _ _ _ _ hQ]
     simp only [jw, List.append_assoc, List.cons_append, List.singleton_append, List.nil_append]
   rw [ho8]
-  by_cases hbig8 : 2 ^ 32 ≤ (s.o ++ (ca ++ cb ++ ifHd (tg K.X (i + 1)) ++
+  by_cases hbig8 : 2 ^ 24 ≤ (s.o ++ (ca ++ cb ++ ifHd (tg K.X (i + 1)) ++
       [jw 0 (s.o.length + ca.length + cb.length + 4) (s.o.length + ca.length + cb.length + 5 + ct.length + 1)] ++ ct ++
       [jw 0 (s.o.length + ca.length + cb.length + 5 + ct.length)
         (s.o.length + ca.length + cb.length + 5 + ct.length + 1 + ce.length)] ++ ce)).length
-  · exact Reach.toobig hbig8
+  · exact Reach.toobig ⟨hbig8, by have := hI7.ol; rw [ho7] at this; simp [ifHd] at this ⊢; omega⟩
   have hI8 := inv_mk hI7' (g15 s7.r 6 L.length.toUInt64) s7.k
     (s.o ++ (ca ++ cb ++ ifHd (tg K.X (i + 1)) ++
       [jw 0 (s.o.length + ca.length + cb.length + 4) (s.o.length + ca.length + cb.length + 5 + ct.length + 1)] ++ ct ++
@@ -2020,8 +2076,8 @@ theorem t_let {K hd i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : �
     rw [hst]
     have e := pi_g26 256 K.p (tg K.X (i + 1)) (tg K.X (i + 2)) s2.o
     rw [e]
-    by_cases hbig : 2 ^ 32 ≤ (s2.o ++ em (g26 256 K.p (tg K.X (i + 1)) (tg K.X (i + 2))) s2.o.length).length
-    · exact Reach.toobig hbig
+    by_cases hbig : 2 ^ 24 ≤ (s2.o ++ em (g26 256 K.p (tg K.X (i + 1)) (tg K.X (i + 2))) s2.o.length).length
+    · exact Reach.toobig ⟨hbig, by have := hI2.ol; have := em_le (g26 256 K.p (tg K.X (i + 1)) (tg K.X (i + 2))) s2.o.length 768 (fun o => by have := g26_len 256 K.p (tg K.X (i + 1)) (tg K.X (i + 2)) o; omega); simp; omega⟩
     have hI3 := inv_mk hI2' (g15 s2.r 6 (L ++ [(1, 1, 0)]).length.toUInt64) s2.k
       (s2.o ++ em (g26 256 K.p (tg K.X (i + 1)) (tg K.X (i + 2))) s2.o.length) (L ++ [(1, 1, 0)])
       (fun j a b => by simp only [g15]; rw [rget _ hI2.rl 6 j _ (by decide), if_neg (Ne.symm b)])
@@ -2101,7 +2157,7 @@ theorem st_t11 (s : GS) (n Z : UInt64) (hn : bget s.r 6 - 1 = n) (hc : bget s.k 
 theorem inv_mk3 {K s L0 F} (hI : Inv K s L0 F) (r' k' o' : Buf) (L' : List Item)
     (hr : ∀ j : UInt64, j ≠ 0 → j ≠ 3 → j ≠ 6 → bget r' j = bget s.r j) (hrl : r'.length = 10)
     (h6 : bget r' 6 = L'.length.toUInt64) (hk : Stk k' L') (hkl : k'.length < 2 ^ 62) (hLl : L'.length < 2 ^ 60)
-    (ho : o'.length < 2 ^ 32) : Inv K ⟨s.x, r', o', k', s.t, s.f⟩ L' F where
+    (ho : o'.length < 2 ^ 24) : Inv K ⟨s.x, r', o', k', s.t, s.f⟩ L' F where
   x := hI.x
   t := hI.t
   rl := hrl
@@ -2148,8 +2204,8 @@ theorem v_loop {K i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (ht : tg K
   have hO1 : bpush (bpush (bpush s.o (g11 5 8 (g24 K.p 0))) (g4 0 5 0 8)) 0 = (s.o ++ lpHd K.p) ++ [0] := by
     simp [bpush, lpHd]
   rw [hO1]
-  by_cases hbig : 2 ^ 32 ≤ ((s.o ++ lpHd K.p) ++ [0]).length
-  · exact Reach.toobig hbig
+  by_cases hbig : 2 ^ 24 ≤ ((s.o ++ lpHd K.p) ++ [0]).length
+  · exact Reach.toobig ⟨hbig, by have := hI.ol; simp [lpHd]; omega⟩
   have hr3 : ∀ j : UInt64, bget (g15 (g15 (g15 (bset s.r 6 L.length.toUInt64) 0 (i.toUInt64 + 1)) 3 (bsize s.o)) 6
       (L.length.toUInt64 + 3)) j = if 6 = j then L.length.toUInt64 + 3 else if 3 = j then bsize s.o else
         if 0 = j then i.toUInt64 + 1 else bget (bset s.r 6 L.length.toUInt64) j := by
@@ -2187,8 +2243,8 @@ theorem v_loop {K i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (ht : tg K
     rw [ulen _ _ hl2, ho2, show (s.o ++ lpHd K.p) ++ [0] ++ cz = (s.o ++ lpHd K.p) ++ 0 :: cz by simp, bset_mid _ _ _ _ _ hP]
     simp [bpush, jw, lpDec, bsize_u, Nat.toUInt64, UInt64.ofNat_add]
   rw [ho3]
-  by_cases hbig3 : 2 ^ 32 ≤ (s.o ++ (lpHd K.p ++ [jw 0 (s.o.length + 2) (s.o.length + 3 + cz.length)] ++ cz ++ lpDec K.p)).length
-  · exact Reach.toobig hbig3
+  by_cases hbig3 : 2 ^ 24 ≤ (s.o ++ (lpHd K.p ++ [jw 0 (s.o.length + 2) (s.o.length + 3 + cz.length)] ++ cz ++ lpDec K.p)).length
+  · exact Reach.toobig ⟨hbig3, by have := hI2.ol; rw [hl2] at this; simp [lpHd, lpDec]; omega⟩
   have hI3 := inv_mk hI2' (g15 s2.r 6 (L ++ [((1 : UInt64), (1 : UInt64), (0 : UInt64))]).length.toUInt64) s2.k
     (s.o ++ (lpHd K.p ++ [jw 0 (s.o.length + 2) (s.o.length + 3 + cz.length)] ++ cz ++ lpDec K.p)) (L ++ [(1, 1, 0)])
     (fun j a b => by simp only [g15]; exact w3 j b) (by simp only [g15]; exact w1) (by simp only [g15]; rw [w2]) (stk_pop hI2'.stk) hI2.kl (by simp; omega) (by omega)
@@ -2313,5 +2369,104 @@ theorem visit_all (K : Cx) (hX : K.X.length < 2 ^ 31) (i : Nat) : VS K i ∧ ∀
   intro hiX
   exact t_val hX hiX hV h4 h5 h11 hiX
 termination_by K.X.length + 3 - i
+
+
+/-! ## from `Reach` to the fuelled main loop g39 -/
+
+/-- g39 on a state -/
+def G (n : Nat) (s : GS) : Buf × Buf := g39 n s.x s.r s.o s.k s.t s.f
+
+theorem g55_live (s : GS) (h : live s) : g55 s.x s.r s.o = 0 := by
+  obtain ⟨h5, h4, hz, h6, -⟩ := h
+  unfold g55
+  rw [if_neg (by simpa using h5), if_neg (by simpa using h4), if_neg hz, if_neg (by simpa using h6)]; rfl
+
+theorem g39_step (s : GS) (h : live s) (n : Nat) : G (n + 1) s = G n (st s) := by
+  have h6 := h.2.2.2.1
+  unfold G st
+  rw [g39, g55_live s h, if_neg (by decide)]
+  unfold g54
+  rw [if_neg (by simpa using h6)]
+
+theorem g39_iter : ∀ (m n : Nat) (s : GS), (∀ j < m, live (it j s)) → G (n + m) s = G n (it m s)
+  | 0, n, s, _ => rfl
+  | m + 1, n, s, h => by
+    rw [show n + (m + 1) = (n + m) + 1 by omega, g39_step s (h 0 (by omega))]
+    exact g39_iter m n (st s) (fun j hj => h (j + 1) (by omega))
+
+theorem g16_4 (r : Buf) (h : 5 ≤ r.length) : bget (g16 r) 4 = 1 := by
+  unfold g16; rw [BufL.bget_bset, if_pos ⟨rfl, by simp; omega⟩]; rfl
+
+/-- an error state stays an error -/
+theorem g39_err (s : GS) (h : err s) : ∀ n, bget (G n s).1 4 = 1
+  | 0 => by
+    unfold G; rw [g39]
+    have : 5 ≤ s.r.length := by
+      unfold err bget at h; rcases Nat.lt_or_ge 4 s.r.length with h1 | h1
+      · omega
+      · simp [List.getD_eq_getElem?_getD, List.getElem?_eq_none h1] at h
+    exact g16_4 _ this
+  | n + 1 => by
+    unfold err at h
+    have h4 : (bget s.r 4 == 1) = true := by simp [h]
+    unfold G; rw [g39]
+    have hs : g55 s.x s.r s.o = 1 := by
+      unfold g55; by_cases h5 : (bget s.r 5 == 1) = true
+      · rw [if_pos h5]; rfl
+      · rw [if_neg h5, if_pos h4]; rfl
+    rw [hs, if_pos (by decide)]
+    unfold g56
+    by_cases h5 : (bget s.r 5 == 1) = true
+    · rw [if_pos h5]; exact h
+    · rw [if_neg h5, if_pos h4]; exact h
+
+/-- a too-big state keeps its code (and g42 then rejects it) -/
+theorem g39_big (s : GS) (h : big s) : ∀ n, (G n s).2 = s.o
+  | 0 => by unfold G; rw [g39]
+  | n + 1 => by
+    have hz : 16777215 < bsize s.o := by
+      rw [bsize_u, UInt64.lt_iff_toNat_lt, u_toNat _ (by have := h.2; omega)]; simp; have := h.1; omega
+    unfold G; rw [g39]
+    have hs : g55 s.x s.r s.o = 1 := by
+      unfold g55
+      by_cases h5 : (bget s.r 5 == 1) = true
+      · rw [if_pos h5]; rfl
+      · rw [if_neg h5]
+        by_cases h4 : (bget s.r 4 == 1) = true
+        · rw [if_pos h4]; rfl
+        · rw [if_neg h4, if_pos hz]; rfl
+    rw [hs, if_pos (by decide)]
+    unfold g56
+    by_cases h5 : (bget s.r 5 == 1) = true
+    · rw [if_pos h5]
+    · rw [if_neg h5]
+      by_cases h4 : (bget s.r 4 == 1) = true
+      · rw [if_pos h4]
+      · rw [if_neg h4, if_pos hz]
+
+/-- **the bridge**: if the main loop ends without error and with code below 2^24 words, every `Reach` claim held -/
+theorem reach_run {s : GS} {P : GS → Prop} (h : Reach s P) (N : Nat) (hok : bget (G N s).1 4 ≠ 1)
+    (hsz : ¬ 16777215 < bsize (G N s).2) :
+    ∃ m, m ≤ N ∧ P (it m s) ∧ G N s = G (N - m) (it m s) := by
+  obtain ⟨m, hm, hp⟩ := h
+  by_cases hNm : N < m
+  · exfalso
+    have e := g39_iter N 0 s (fun j hj => hm j (by omega))
+    simp only [Nat.zero_add] at e
+    rw [e] at hok
+    have hl := hm N hNm
+    unfold G at hok; rw [g39] at hok
+    exact hok (g16_4 _ hl.2.2.2.2)
+  have e := g39_iter m (N - m) s hm
+  rw [show N - m + m = N by omega] at e
+  rcases hp with hp | he | hb
+  · exact ⟨m, by omega, hp, e⟩
+  · exfalso
+    rw [e] at hok; exact hok (g39_err _ he (N - m))
+  · exfalso
+    have := g39_big _ hb (N - m)
+    rw [e, this] at hsz
+    apply hsz
+    rw [bsize_u, UInt64.lt_iff_toNat_lt, u_toNat _ (by have := hb.2; omega)]; simp; have := hb.1; omega
 
 end GenRef

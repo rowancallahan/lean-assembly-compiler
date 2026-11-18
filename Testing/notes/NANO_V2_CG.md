@@ -101,6 +101,9 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
 - g39 checks the code size (≤ 2^24 − 1 words) on every iteration, not only at the end (fail early; the proof's
   "code too big" outcome then errs at the next step).  Fixed point (with Par1 v210 merged): B3 == B2 = 250,884 bytes, sha256 a77c2455…67cccf12;
   front end ACCEPT; cg_chain 40/40 + 15/15; witness rc 0.
+- g39 refactored (same behaviour): step g54 (def header or one item), stop flag g55, stop result g56; the recursive
+  body is now tiny — Lean's equation lemmas for the old body cost > 7 GB.  Fixed point: B3 == B2 = 252,316 bytes,
+  sha256 d7f3bba6…d9158cef; front end ACCEPT (72 defs); cg_chain 40/40 + 15/15; witness rc 0.
 - g39 PROOF STATUS (Nano/V2Self/Proof/GenRef.lean, no sorry, file 8 s / 1.8 GB): Reach (progress | error | code too
   big), item/fixup stacks as lists, the CG/CT/CGs reference relation over Gen's own emitter words; value-mode visits
   CONST, LOCAL, BIN, IF, LET, PAIR, CALL, PRIM proved (VS, given the IH for later cursors); operand sequences (seq).
