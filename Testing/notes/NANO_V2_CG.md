@@ -129,6 +129,9 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
   of room the fragment pushes `V s`, keeps s0, t5 and every cell ≥ old t6; `V` stable under such changes).
   `if_eq` / `if_lt`: Gen's IF layout (A; B; pop2; beq/bltu t0,t1,+8; jal ELSE; T; jal END; E) pushes
   `if VA = VB (resp. VA < VB) then VT else VE`.  J gained `beq`/`bltu` (SimW: sim_beq8/sim_bltu8).
-  LET needs a richer contract: it writes a frame slot ≥ t6, which `PV` forbids — next: an environment-based contract
-  (cells ≥ t6 = frame image of Γ; LET extends Γ), to be agreed with the Sonnet box's Expr.lean.
+  Environment contract `EV C pc len n p nl R W V` (frame slots at `slotAddr p s0 k`: params above s0, locals below;
+  `Frame` = slots hold env; the fragment pushes `V env`, V reads only slots in R, writes only frame slots in W, keeps
+  s0/t5 and all other cells ≥ t6).  `let1` (LET width 1: value; pop into slot k0 (g26); body) proved, with the
+  scoping side condition "the body reads none of the value's own lets" (from the parser's well-scopedness).
+  Next: IF under EV (same proof as if_eq), PAIR/LET of width w, LOOP/CONTINUE, fixups, the g39 work-item invariant.
 - Next: the parser's real output (Sonnet box) through g41 as Par0 gains calls/prims/loops; a diff test against Nano.V2B `gen` on the v2f programs.
