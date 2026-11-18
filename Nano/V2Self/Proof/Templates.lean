@@ -174,4 +174,105 @@ theorem if_lt {C : List J} {pc la lb lt le nA nB nT nE N : Nat} {VA VB VT VE : S
       · rw [e305, x30]
       · intro a ha; rw [m5 a (by rw [x31]; exact ha), mm a ha]
 
+/-! ## frames and the environment contract (for LET) -/
+
+/-- slot k of a def with p parameter words: params above s0 (`s0 + 16 + 8(p−1−k)`), locals below (`s0 − 8(k−p+1)`) -/
+def slotOff (p k : Nat) : Int := if k < p then 8 * ((p - 1 - k : Nat) : Int) + 16 else -(8 * ((k - p + 1 : Nat) : Int))
+def slotAddr (p S0 k : Nat) : Nat := ((S0 : Int) + slotOff p k).toNat
+
+/-- the frame holds `env` in its `nl` slots -/
+def Frame (p nl : Nat) (s : St) (env : Nat → UInt64) : Prop :=
+  ∀ k, k < nl → s.m (slotAddr p (s.x 8).toNat k) = env k
+
+/-- the frame sits between t6 and the caller's stack: locals above t6, s0 large enough -/
+def FrameOK (p nl : Nat) (s : St) : Prop :=
+  (s.x 31).toNat + 8 * (nl - p) ≤ (s.x 8).toNat ∧ p ≤ nl ∧ (s.x 8).toNat + 8 * p + 16 < 2 ^ 62
+
+theorem slotAddr_ge {p nl S0 T k} (h : T + 8 * (nl - p) ≤ S0) (hp : p ≤ nl) (hk : k < nl) : T ≤ slotAddr p S0 k := by
+  unfold slotAddr slotOff; split <;> omega
+
+theorem slotAddr_inj {p nl S0 k k'} (h : 8 * (nl - p) ≤ S0) (hk : k < nl) (hk' : k' < nl)
+    (e : slotAddr p S0 k = slotAddr p S0 k') : k = k' := by
+  unfold slotAddr slotOff at e; split at e <;> split at e <;> omega
+
+theorem slotAddr_lt {p nl S0 k} (h : 8 * (nl - p) ≤ S0) (hk : k < nl) : slotAddr p S0 k < S0 + 8 * p + 16 := by
+  unfold slotAddr slotOff; split <;> omega
+
+/-- the ENVIRONMENT contract: the fragment pushes `V env`, where `V` reads only the slots in `R`; it may write the frame
+slots in `W` (its own lets) and nothing else at or above t6; s0 and t5 are kept -/
+structure EV (C : List J) (pc len n p nl : Nat) (R W : Nat → Prop) (V : (Nat → UInt64) → UInt64) : Prop where
+  run : ∀ (s : St) (env : Nat → UInt64), Frame p nl s env → FrameOK p nl s →
+    (s.x 30).toNat + 8 * n ≤ (s.x 31).toNat →
+    ∃ s' env', Star C (pc, s) (pc + len, s') ∧ (s'.x 31).toNat = (s.x 31).toNat - 8 ∧
+      s'.m ((s.x 31).toNat - 8) = V env ∧ s'.x 8 = s.x 8 ∧ s'.x 30 = s.x 30 ∧
+      Frame p nl s' env' ∧ (∀ k, ¬ W k → env' k = env k) ∧
+      ∀ a, (s.x 31).toNat ≤ a → (∀ k, k < nl → W k → a ≠ slotAddr p (s.x 8).toNat k) → s'.m a = s.m a
+  stable : ∀ env env', (∀ k, R k → env k = env' k) → V env = V env'
+
+/-- pop the top word into slot k (`g26`, w = 1) -/
+def popSlot (p k : Nat) : List J := [.ld 5 31 0, .addi 31 31 8, .sd 5 8 (slotOff p k)]
+
+/-- **LET** (width 1): value; pop into slot k0; body.  Scoping: the body reads none of the value's own lets. -/
+theorem let1 {C : List J} {pc lv lb n p nl k0 : Nat} {Rv Wv Rb Wb : Nat → Prop} {Vv Vb : (Nat → UInt64) → UInt64}
+    (hv : EV C pc lv n p nl Rv Wv Vv) (hS : At C (pc + lv) (popSlot p k0)) (hb : EV C (pc + lv + 3) lb n p nl Rb Wb Vb)
+    (hk0 : k0 < nl) (hsc : ∀ k, Rb k → k ≠ k0 → ¬ Wv k) (hn : 1 ≤ n) :
+    EV C pc (lv + 3 + lb) n p nl (fun k => Rv k ∨ (Rb k ∧ k ≠ k0)) (fun k => Wv k ∨ k = k0 ∨ Wb k)
+      (fun env => Vb (upd env k0 (Vv env))) where
+  stable := fun env env' h => by
+    have e1 : Vv env = Vv env' := hv.stable env env' (fun k hk => h k (Or.inl hk))
+    apply hb.stable; intro k hk
+    by_cases hk' : k = k0
+    · subst hk'; simp [upd, e1]
+    · simp [upd, hk']; exact h k (Or.inr ⟨hk, hk'⟩)
+  run := fun s env hF hO room => by
+    obtain ⟨s1, env1, r1, p1, v1, e81, e301, F1, ag1, m1⟩ := hv.run s env hF hO room
+    obtain ⟨o1, o2, o3⟩ := hO
+    have lt64 := (s.x 31).toNat_lt
+    -- pop into the slot
+    have c0 := hS.at 0 (by simp [popSlot]); have c1 := hS.at 1 (by simp [popSlot]); have c2 := hS.at 2 (by simp [popSlot])
+    simp [popSlot] at c0 c1 c2
+    have ea0 : ea (s1.x 31) 0 = (s.x 31).toNat - 8 := by simp [ea, p1]
+    have ea8 : ea (s1.x 31) 8 = (s.x 31).toNat := by simp [ea, p1]; omega
+    have eaK : ea (s1.x 8) (slotOff p k0) = slotAddr p (s.x 8).toNat k0 := by simp [ea, slotAddr, e81]
+    let s2 : St := ⟨upd (upd s1.x 5 (Vv env)) 31 (UInt64.ofNat (s.x 31).toNat),
+      upd s1.m (slotAddr p (s.x 8).toNat k0) (Vv env), s1.b⟩
+    have r2 : run C 3 (pc + lv, s1) = some (pc + lv + 3, s2) := by
+      simp [run, step, c0, c1, c2, wr, ea0, v1, ea8, upd_other _ _ (show (31:Nat) ≠ 5 by decide),
+        upd_other _ _ (show (8:Nat) ≠ 31 by decide), upd_other _ _ (show (8:Nat) ≠ 5 by decide), eaK, s2,
+        upd_other _ _ (show (5:Nat) ≠ 31 by decide), upd_same]
+    have x31 : (s2.x 31).toNat = (s.x 31).toNat := by simp [s2, upd]
+    have x8 : s2.x 8 = s.x 8 := by simp [s2, upd, e81]
+    have x30 : s2.x 30 = s.x 30 := by simp [s2, upd, e301]
+    let env2 := upd env1 k0 (Vv env)
+    have F2 : Frame p nl s2 env2 := by
+      intro k hk
+      show s2.m (slotAddr p (s2.x 8).toNat k) = env2 k
+      rw [x8]
+      show upd s1.m (slotAddr p (s.x 8).toNat k0) (Vv env) (slotAddr p (s.x 8).toNat k) = upd env1 k0 (Vv env) k
+      by_cases e : k = k0
+      · subst e; simp [upd]
+      · have ne : slotAddr p (s.x 8).toNat k ≠ slotAddr p (s.x 8).toNat k0 :=
+          fun h => e (slotAddr_inj (by omega) hk hk0 h)
+        rw [upd_other _ _ ne, upd_other _ _ e, ← e81]; exact F1 k hk
+    obtain ⟨s3, env3, r3, p3, v3, e83, e303, F3, ag3, m3⟩ :=
+      hb.run s2 env2 F2 ⟨by rw [x31, x8]; omega, o2, by rw [x8]; omega⟩ (by rw [x30, x31]; exact room)
+    refine ⟨s3, env3, ?_, ?_, ?_, ?_, ?_, F3, ?_, ?_⟩
+    · have : pc + lv + 3 + lb = pc + (lv + 3 + lb) := by omega
+      rw [← this]; exact (r1.trans (run_star r2)).trans r3
+    · rw [p3, x31]
+    · rw [x31] at v3; rw [v3]
+      apply hb.stable; intro k hk
+      by_cases e : k = k0
+      · subst e; simp [upd, env2]
+      · simp only [env2, upd, e, if_false]; exact ag1 k (hsc k hk e)
+    · rw [e83, x8]
+    · rw [e303, x30]
+    · intro k hk
+      simp only [not_or] at hk
+      rw [ag3 k hk.2.2]; simp only [env2, upd, hk.2.1, if_false]; exact ag1 k hk.1
+    · intro a ha hW
+      rw [m3 a (by rw [x31]; exact ha) (fun k hk wk => by rw [x8]; exact hW k hk (Or.inr (Or.inr wk)))]
+      simp only [s2]; rw [upd_other _ _ (hW k0 hk0 (Or.inr (Or.inl rfl)))]
+      exact m1 a ha (fun k hk wk => hW k hk (Or.inl wk))
+
 end Templates
