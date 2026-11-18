@@ -9,7 +9,7 @@ Header `2` (IRV). Nodes: CONST 1 v | LOCAL 2 slot w | BIN 3 op a b (add 1 sub 2 
 | IF 4 cmp a b t e (eq 1, lt 2 unsigned) | LET 5 slot w v body | PAIR 6 n c1..cn | CALL 8 id n a1..an
 | PRIM 9 p args (ISIZE 1 [0 args], RD 2 [i], LEN 3 [0 args: the input length], PUT 4 [o b], BNEW 5 [0], BSIZE 6 [b],
 BGET 7 [b i], BSET 8 [b i v], BPUSH 9 [b v]) | LOOP 10 zero step | CONTINUE 11 e.
-Defs: `DEF 20 id npw nslots kind nres` body `END 21` (IR v2.1). Gen ALSO accepts the other table (CALL 7, PRIM 8, LOOP 9, CONTINUE 10, DEF 11, END 12): the first DEF word (20 or 11) selects it, so either parser numbering works; ids 0, 1, … in order (callees first); the LAST def is main
+Defs: `DEF 20 id npw nslots kind nres` body `END 21` (IR v2.1, FINAL; any other table is rejected; tag changes only after an entry in NANO_V2_IR.md); ids 0, 1, … in order (callees first); the LAST def is main
 (npw 0, nres 1: the output buffer). A fuel def: slot 0 = fuel, state = slots 1..npw-1, body `LOOP zero step`,
 `CONTINUE e` with e of width npw-1 (zero and step are both in TAIL mode: every leaf returns from the def).
 `let (a, b) := v` = `LET slot w v body` (a at slot, b at slot + width a).
@@ -31,4 +31,8 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
   with its own loop returning a pair, output): QEMU == Sail == native Lean on 5 inputs + the out-of-memory case
   (`BIG=2097152 python3 Testing/nano/v2self/cg_test.py cg_vertical`), 476 words.
 - Gen.lean ACCEPTED by nano's front end (check.lean: 58 defs).
-- Next: the parser's real output (Sonnet box) through g41; a diff test against Nano.V2B `gen` on the v2f programs.
+- Chain test (Testing/nano/v2self/cg_chain.lean N): random scalar defs (params, let, if, all BIN ops; Par0 increments A-C)
+  → C.s10 → C.y13 → + hand-written main (4 args from input bytes + 64-bit constants, 8 result bytes) → C.g41.
+  40 programs x 5 inputs: QEMU == native tree eval (40/40, `BIG=8388608 NOSAIL=1 cg_test.py cgc_K`); Sail also on
+  cgc_0/6/13 (483-1737 words). Note: work must hold the κ = 2^18 buffers (≥ 2 MiB each); 4 KiB work ⇒ a0 = −1 by design.
+- Next: the parser's real output (Sonnet box) through g41 as Par0 gains calls/prims/loops; a diff test against Nano.V2B `gen` on the v2f programs.

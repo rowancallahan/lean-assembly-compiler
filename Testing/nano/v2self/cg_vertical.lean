@@ -57,7 +57,7 @@ def hex (l : List UInt8) : String := if l.isEmpty then "-" else String.join (l.m
   let s := (Nat.toDigits 16 b.toNat).asString; if s.length == 1 then "0" ++ s else s)
 def main : IO Unit := do
   let code := C.g41 (ast true)
-  if C.g41 (ast false) != code then throw (IO.userError "the two tag tables give different code")
+  if !(C.g41 (ast false)).isEmpty then throw (IO.userError "the old tag table must be rejected")
   IO.println s!"code bytes: {code.length}"
   let ws := (List.range (code.length / 4)).map fun k =>
     (code.getD (4*k) 0) + 256 * (code.getD (4*k+1) 0) + 65536 * (code.getD (4*k+2) 0) + 16777216 * (code.getD (4*k+3) 0)
