@@ -146,6 +146,14 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
   (C's jump word = encJ (jal x0 (b − a))), `g20_ok` (patching placeholder p: length kept, word p = the jump to the
   current end, all other words unchanged), `g19_ok` (emit = append the jump).
   Next: the g39 work-item invariant (emitted code ↔ AST walk) that instantiates these templates.
+- g39 INVARIANT (plan, Opus box): a ghost "pending tree" view of Gen's state (cursor i into the AST words, item stack
+  k of (tag, a, b), emitted words o, fixup list f, registers r).  Invariant WI: (1) the AST suffix from i parses as a
+  sequence of nodes whose pre-order matches the visit items on k; (2) every finished node N occupies a contiguous
+  code block [start N, end N) of o that equals its template (`encG` of the J list) with jal placeholders recorded on
+  k / f; (3) each pending item's patch target is the word index the template expects (IF items 3/4/5, LOOP STEP,
+  exit fixups → epilogue).  Steps: one lemma per g36 visit case and per g37 item tag, preserving WI; at ENDDEF the
+  def's words = `pro ++ body ++ epi` with all fixups patched (Fixup.g20_ok), so the templates (EV/EVw/IF/LET/LOOP/
+  CONTINUE/CALL) apply bottom-up.  Width facts come from Gen's pre-pass (g53 = 1).  Heap prims via EVH (Sonnet).
 - Next: the parser's real output (Sonnet box) through g41 as Par0 gains calls/prims/loops; a diff test against Nano.V2B `gen` on the v2f programs.
 - EXPRESSION TEMPLATES PROVED (Sonnet box): `Nano/V2Self/Proof/Expr.lean` (+ `ExprExact.lean`), no sorry, standard axioms, ~5 s each.
   J (Proof/Call.lean) gained additive `alu` (Gen's BIN numbering), `slli`, `lbu` (byte of the aligned LE word cell).
