@@ -6,6 +6,9 @@ templates take the capacity exit when t6 − 8 < t5. -/
 import Nano.V2Self.Proof.Call
 namespace CallProbe
 
+theorem upd_upd {α} (f : Nat → α) (k : Nat) (a b : α) : upd (upd f k a) k b = upd f k b := by
+  funext i; by_cases h : i = k <;> simp [upd, h]
+
 /-- push to the capacity exit: t6 − 8 < t5 ⇒ the third instruction (`jal x0 oom`) transfers to the stub -/
 theorem push_oom {C pc s r oom} (hC : At C pc (push r oom)) (h8 : 8 ≤ (s.x 31).toNat)
     (hh : (s.x 31).toNat < (s.x 30).toNat + 8) :
@@ -162,5 +165,82 @@ theorem const_oom {C pc tgt} {v : UInt64} (s : St) (hx0 : s.x 0 = 0) (hC : At C 
   rw [run_add hr1, r2, e31, hx1, hm1]
   have : (((pc + (liT 5 v).length : Nat) : Int) + 2 + ((tgt : Int) - (((pc + (liT 5 v).length : Nat) : Int) + 2))).toNat = tgt := by omega
   rw [this]
+
+/-! ## BIN (g30 + g31): pop two (t1 := top, t0 := below), t6 += 8, t0 := t0 op t1, store over the new top -/
+def binT (op : Nat) : List J := [.ld 6 31 0, .ld 5 31 8, .addi 31 31 8, .alu op 5 5 6, .sd 5 31 0]
+
+theorem bin_run {C pc op} (s : St) (hC : At C pc (binT op)) (hlt : (s.x 31).toNat + 16 < 2 ^ 63) :
+    run C 5 (pc, s) = some (pc + 5,
+      ⟨upd (upd (upd (upd s.x 6 (s.m (s.x 31).toNat)) 5 (s.m ((s.x 31).toNat + 8))) 31 (UInt64.ofNat ((s.x 31).toNat + 8))) 5
+          (aluf op (s.m ((s.x 31).toNat + 8)) (s.m (s.x 31).toNat)),
+       upd s.m ((s.x 31).toNat + 8) (aluf op (s.m ((s.x 31).toNat + 8)) (s.m (s.x 31).toNat))⟩) := by
+  have h0 := hC.at 0 (by simp [binT]); have h1 := hC.at 1 (by simp [binT]); have h2 := hC.at 2 (by simp [binT])
+  have h3 := hC.at 3 (by simp [binT]); have h4 := hC.at 4 (by simp [binT])
+  simp [binT] at h0 h1 h2 h3 h4
+  have lt : (s.x 31).toNat < 2 ^ 64 := (s.x 31).toNat_lt
+  have e0 : ea (s.x 31) 0 = (s.x 31).toNat := by simp [ea]
+  have e8 : ea (s.x 31) 8 = (s.x 31).toNat + 8 := by simp [ea]; omega
+  have t8 : (UInt64.ofNat ((s.x 31).toNat + 8)).toNat = (s.x 31).toNat + 8 := by simp only [UInt64.toNat_ofNat']; omega
+  have e8' : ea (UInt64.ofNat ((s.x 31).toNat + 8)) 0 = (s.x 31).toNat + 8 := by simp only [ea, t8]; omega
+  have t8' : (s.x 31 + 8).toNat = (s.x 31).toNat + 8 := by rw [UInt64.toNat_add]; simp; omega
+  have e8'' : ea (s.x 31 + 8) 0 = (s.x 31).toNat + 8 := by simp only [ea, t8']; omega
+  simp [run, step, h0, h1, h2, h3, h4, wr, e0, e8, e8'', upd_same, upd_other _ _ (show (6:Nat) ≠ 31 by decide),
+    upd_other _ _ (show (5:Nat) ≠ 31 by decide), upd_other _ _ (show (5:Nat) ≠ 6 by decide), e8', t8,
+    upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide),
+    upd_other _ _ (show (6:Nat) ≠ 5 by decide)]
+
+/-- ISIZE / LEN (g32 p = 1, 3): push t4 (the input length) -/
+def lenT (tgt q : Nat) : List J := pushA tgt q 29
+
+theorem len_run {C pc tgt} (s : St) (hC : At C pc (lenT tgt pc)) (hh : (s.x 30).toNat + 8 ≤ (s.x 31).toNat) :
+    run C 3 (pc, s) = some (pc + 4, ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)), upd s.m ((s.x 31).toNat - 8) (s.x 29)⟩) :=
+  push_run (by simpa [lenT, pushA] using hC) (by decide) (by decide) hh
+
+theorem len_oom {C pc tgt} (s : St) (hC : At C pc (lenT tgt pc)) (h8 : 8 ≤ (s.x 31).toNat)
+    (hh : (s.x 31).toNat < (s.x 30).toNat + 8) :
+    run C 3 (pc, s) = some (tgt, ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)), s.m⟩) := by
+  have := push_oom (s := s) (by simpa [lenT, pushA] using hC) h8 hh
+  rw [this]; simp only [pushA_oom_target]
+
+/-! ## BSIZE (g32 p = 6): top := header length word of the buffer on top -/
+def bsizeT : List J := [.ld 5 31 0, .ld 5 5 0, .sd 5 31 0]
+
+theorem bsize_run {C pc} (s : St) (hC : At C pc bsizeT) :
+    run C 3 (pc, s) = some (pc + 3, ⟨upd s.x 5 (s.m (s.m (s.x 31).toNat).toNat), upd s.m (s.x 31).toNat (s.m (s.m (s.x 31).toNat).toNat)⟩) := by
+  have h0 := hC.at 0 (by simp [bsizeT]); have h1 := hC.at 1 (by simp [bsizeT]); have h2 := hC.at 2 (by simp [bsizeT])
+  simp [bsizeT] at h0 h1 h2
+  have e0 : ea (s.x 31) 0 = (s.x 31).toNat := by simp [ea]
+  have e1 : ∀ b : UInt64, ea b 0 = b.toNat := by intro b; simp [ea]
+  simp [run, step, h0, h1, h2, wr, e0, e1, upd_same, upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_upd]
+
+/-! ## RD (g32 p = 2): top := the input byte at index top (0 if out of range); t3 = input base, t4 = input length -/
+def rdT : List J := [.ld 6 31 0, .addi 5 0 0, .bgeu 6 29 3, .alu 1 5 28 6, .lbu 5 5 0, .sd 5 31 0]
+
+theorem rd_run {C pc} (s : St) (hC : At C pc rdT) (hx0 : s.x 0 = 0) (hb : (s.x 28).toNat + (s.x 29).toNat < 2 ^ 63) :
+    ∃ k, run C k (pc, s) = some (pc + 6,
+      ⟨upd (upd s.x 6 (s.m (s.x 31).toNat)) 5
+          (if (s.m (s.x 31).toNat).toNat < (s.x 29).toNat then lbm s.m ((s.x 28).toNat + (s.m (s.x 31).toNat).toNat) else 0),
+       upd s.m (s.x 31).toNat
+          (if (s.m (s.x 31).toNat).toNat < (s.x 29).toNat then lbm s.m ((s.x 28).toNat + (s.m (s.x 31).toNat).toNat) else 0)⟩) := by
+  have h0 := hC.at 0 (by simp [rdT]); have h1 := hC.at 1 (by simp [rdT]); have h2 := hC.at 2 (by simp [rdT])
+  have h3 := hC.at 3 (by simp [rdT]); have h4 := hC.at 4 (by simp [rdT]); have h5 := hC.at 5 (by simp [rdT])
+  simp [rdT] at h0 h1 h2 h3 h4 h5
+  have e0 : ea (s.x 31) 0 = (s.x 31).toNat := by simp [ea]
+  have e1 : ∀ b : UInt64, ea b 0 = b.toNat := by intro b; simp [ea]
+  by_cases hi : (s.m (s.x 31).toNat).toNat < (s.x 29).toNat
+  · refine ⟨6, ?_⟩
+    have hs : (s.x 28 + s.m (s.x 31).toNat).toNat = (s.x 28).toNat + (s.m (s.x 31).toNat).toNat := by
+      rw [UInt64.toNat_add]; simp; omega
+    have hc : ¬ (s.x 29).toNat ≤ (s.m (s.x 31).toNat).toNat := by omega
+    simp [run, step, h0, h1, h2, h3, h4, h5, wr, e0, e1, hc, hs, hi, hx0, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide),
+      upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide),
+      upd_other _ _ (show (28:Nat) ≠ 5 by decide), upd_other _ _ (show (28:Nat) ≠ 6 by decide),
+      upd_other _ _ (show (6:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide),
+      upd_other _ _ (show (29:Nat) ≠ 6 by decide)]
+  · refine ⟨4, ?_⟩
+    have hc : (s.x 29).toNat ≤ (s.m (s.x 31).toNat).toNat := by omega
+    simp [run, step, h0, h1, h2, h5, wr, e0, e1, hc, hi, hx0, ea, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide),
+      upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide),
+      upd_other _ _ (show (29:Nat) ≠ 6 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), show ((pc : Int) + 1 + 1 + 3).toNat = pc + 5 by omega]
 
 end CallProbe
