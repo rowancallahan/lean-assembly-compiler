@@ -459,3 +459,12 @@ RESUME: owner reviews Nano/V2Self/ and decides the self-hosting route. Then rest
 (buffer proof via round-6 F, Sail loop layer via E, result/status + ImplementsBytes), Sonnet boxes as needed, a Haiku
 runner; re-enable triggers trig_01Lbdjhesnym2ZPegRnLPVmf (team check) and trig_01XTKyxsqmfYZouFjjRfeHdt (3-hourly).
 - Note for resume: the parser S3 probe (nano-v2-boot bf6ba78, ProbeParse) ran ~16 min without finishing before the pause; likely over the 5-min rule, needs an s3.depth-4 probe / split first.
+
+## 2026-11-18 01:50 UTC — NANO v2 SELF-COMPILE FIXED POINT (tested, NOT yet proved)
+- Branch nano-v2-src @ 09e97b6. Self-source S = `Testing/nano/v2self/self_S.lean` (186 defs: Base + Lex2 + Par1 + Gen + driver m),
+  generated from the C files by `build_self_S.py`; input text `self_S_input.txt`.
+- B₁ = Lean-toolchain-compiled S (TRUSTED: Lean compiler; Array-backed bootstrap prelude, checked equal to the List
+  prelude on 20 sources). B₂ := B₁(S) = 248,632 bytes, sha256 2ceffa2c…2ebce. B₃ := B₂(S) on QEMU (64 MiB, 1.6 s) == B₂.
+- Reproduced independently by the main session from a clean worktree: `Testing/nano/v2self/boot/fixpoint.sh OUT` (37 s), same sha256.
+- Architecture: Astra rounds 7–13 advice (notes NANO_V2_ASTRA7..13). Not yet: Sail run of B₂/B₃ on the full source,
+  determinism under different work-memory fill, proofs (Astra 11 plan: soundness on success + acceptance witnesses).
