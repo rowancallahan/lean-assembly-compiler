@@ -94,6 +94,15 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
   one operator-range check at the top).  cg_chain: valid 40/40 accepted, must-reject 13/13.  Fixed point re-run:
   B3 == B2 = 241,844 bytes, sha256 056aef1c…598af0e (B2.bin / B3.bin / B2.sha256 updated); Nano front end ACCEPTs
   Gen (69 defs); kernel witness cg_witness.lean re-proved (rc 0, peak 4.0 GB).
+- MORE FAIL-LOUD FIXES from the g39 proof: (c) a tail-position LET (in a loop arm) skipped the g43 slot-range check
+  (value-mode LET has it) ⇒ a pop outside the frame; (d) g36 normalized tags ≥ 12 as `c0 + 100`, so the tag 2^64 − 96
+  wrapped to 4 and decoded as IF ⇒ now 999 (invalid).  cg_chain: valid 40/40, must-reject 15/15.  Fixed point:
+  B3 == B2 = 242,208 bytes, sha256 a1970ad7…808ee1c; front end ACCEPT (69 defs); witness re-proved (rc 0).
+- g39 PROOF STATUS (Nano/V2Self/Proof/GenRef.lean, no sorry, file 8 s / 1.8 GB): Reach (progress | error | code too
+  big), item/fixup stacks as lists, the CG/CT/CGs reference relation over Gen's own emitter words; value-mode visits
+  CONST, LOCAL, BIN, IF, LET, PAIR, CALL, PRIM proved (VS, given the IH for later cursors); operand sequences (seq).
+  Technique notes: unfold Gen's big defs with `extract_lets` + `clear_value` (zeta-reduction blows up exponentially);
+  never leave a `match` on an unreduced g19/g20 for defeq — rewrite with g19_eq/g20_eq first (kernel blowup otherwise).
 - Hardening: B₃ identical with the work memory pre-filled 0xA5 / 0x5A (`FILL=` in selfrun.py); B₂ on a tiny source
   under Sail: QEMU == Sail == B1, writes only in output + work, OOM flag with 8-byte work.
 - ASTRA-11 PROBE 2 (codegen, non-leaf call with a live stack value): `Nano/V2Self/Proof/Call.lean`, no sorry, axioms

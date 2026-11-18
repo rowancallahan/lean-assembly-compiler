@@ -91,6 +91,11 @@ def main (args : List String) : IO Unit := do
   let mw (e : List UInt64) : List UInt64 := [2, 20, 0, 0, 0, 0, 1] ++ e ++ [21]
   if (C.g41 [] (mw [4, 2, 1, 1, 1, 2, 1, 3, 1, 4])).isEmpty then throw (IO.userError "valid IF main REJECTED")
   let bad := bad ++ [mw [3, 9, 1, 1, 1, 2], mw [3, 0, 1, 1, 1, 2], mw [4, 3, 1, 1, 1, 2, 1, 3, 1, 4], mw [9, 10, 9, 5], mw [9, 0, 9, 5]]
+  -- a tail-position LET (loop arm) writing a slot outside the frame ⇒ reject (slot 1 accepted)
+  let arm (sl : UInt64) : List UInt64 := (lp []).take 7 ++ [10, 2, 1, 1, 5, sl, 1, 1, 7, 11, 6, 2, 3, 1, 2, 1, 1, 1, 1, 2, 2, 1] ++ (lp []).drop 12
+  if (C.g41 [] (arm 1)).isEmpty then throw (IO.userError "valid tail LET REJECTED")
+  -- a wrapped tag (2^64 − 96 + 100 = 4) must not decode as IF
+  let bad := bad ++ [arm 5, mw [0xFFFFFFFFFFFFFFA0, 2, 1, 1, 1, 2, 1, 3, 1, 4]]
   let nr := (bad.filter fun b => (C.g41 [] b).isEmpty).length
   if nr != bad.length then throw (IO.userError s!"must-reject: only {nr}/{bad.length} rejected")
   IO.println s!"valid programs accepted: {n}/{n} (a rejection is a FAILURE); must-reject rejected: {nr}/{bad.length}"

@@ -1448,4 +1448,106 @@ theorem v_prim {K i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀ 
     simp only [g15]; rw [p3 3 (by decide), r3]; simp only [g15]
     rw [hr1, if_neg (by decide), if_neg (by decide), rget _ hI.rl 6 3 _ (by decide), if_neg (by decide)]
 
+
+/-! ## tail mode (loop arms) -/
+
+/-- g36's tag normalization and operator-range flag -/
+def nt (c0 : UInt64) : UInt64 := if c0 < 7 then c0 else if c0 == 7 then 999 else if c0 < 12 then c0 - 1 else 999
+def rngA (c b : UInt64) : UInt64 :=
+  if c == 3 then (if b - 1 < 8 then g_1 else g_0) else if c == 4 then (if b - 1 < 2 then g_1 else g_0)
+  else if c == 8 then (if b - 1 < 9 then g_1 else g_0) else g_1
+
+theorem nt_toNat (t : UInt64) : (nt t).toNat =
+    if t.toNat < 7 then t.toNat else if t.toNat = 7 then 999 else if t.toNat < 12 then t.toNat - 1 else 999 := by
+  unfold nt
+  by_cases h1 : t < 7
+  · have : t.toNat < 7 := UInt64.lt_iff_toNat_lt.mp h1
+    rw [if_pos h1, if_pos this]
+  · have : ¬ t.toNat < 7 := fun h => h1 (UInt64.lt_iff_toNat_lt.mpr h)
+    rw [if_neg h1, if_neg this]
+    by_cases h2 : (t == 7) = true
+    · have : t.toNat = 7 := by simp at h2; subst h2; rfl
+      rw [if_pos h2, if_pos this]; rfl
+    · have : ¬ t.toNat = 7 := fun h => h2 (by simp; exact UInt64.toNat.inj h)
+      rw [if_neg h2, if_neg this]
+      by_cases h3 : t < 12
+      · have h3' : t.toNat < 12 := UInt64.lt_iff_toNat_lt.mp h3
+        rw [if_pos h3, if_pos h3', UInt64.toNat_sub_of_le _ _ (by rw [UInt64.le_iff_toNat_le]; simp; omega)]; simp
+      · have : ¬ t.toNat < 12 := fun h => h3 (UInt64.lt_iff_toNat_lt.mpr h)
+        rw [if_neg h3, if_neg this]; rfl
+
+/-- the tags that g36 visits as values in tail mode -/
+theorem nt_tail (t : UInt64) (h4 : t ≠ 4) (h5 : t ≠ 5) (h11 : t ≠ 11) : nt t ≠ 4 ∧ nt t ≠ 5 ∧ nt t ≠ 10 := by
+  have e := nt_toNat t
+  have n4 : t.toNat ≠ 4 := fun h => h4 (UInt64.toNat.inj (by rw [h]; rfl))
+  have n5 : t.toNat ≠ 5 := fun h => h5 (UInt64.toNat.inj (by rw [h]; rfl))
+  have n11 : t.toNat ≠ 11 := fun h => h11 (UInt64.toNat.inj (by rw [h]; rfl))
+  refine ⟨fun h => ?_, fun h => ?_, fun h => ?_⟩ <;> (rw [h] at e; simp at e; split at e <;> (try split at e) <;> (try split at e) <;> omega)
+
+theorem g36_tval (x r o k : Buf) (hz : nt (bget x (bget r 0)) ≠ 4 ∧ nt (bget x (bget r 0)) ≠ 5 ∧ nt (bget x (bget r 0)) ≠ 10) :
+    g36 x r o k 1 = (if rngA (nt (bget x (bget r 0))) (bget x (bget r 0 + 1)) == 0 then (g16 r, (o, k)) else
+      (g15 r 6 (bget r 6 + 2), (o, g18 (g18 k (bget r 6) 9 0 0) (bget r 6 + 1) 1 0 0))) := by
+  unfold g36
+  extract_lets i n c0 c z b a
+  have hi : i = bget r 0 := rfl
+  have hn : n = bget r 6 := rfl
+  have hc0 : c0 = bget x i := rfl
+  have hc : c = nt c0 := rfl
+  have hb : b = bget x (i + 1) := rfl
+  have ha : a = rngA c b := rfl
+  have hz' : z = (if c == 4 then g_1 else if c == 5 then g_1 else if c == 10 then g_1 else g_0) := rfl
+  clear_value i n c0 c z b a
+  subst hi hn hc0 hc hb ha hz'
+  rw [if_neg (show ¬ (nt (bget x (bget r 0)) == 4) = true by simpa using hz.1),
+    if_neg (show ¬ (nt (bget x (bget r 0)) == 5) = true by simpa using hz.2.1),
+    if_neg (show ¬ (nt (bget x (bget r 0)) == 10) = true by simpa using hz.2.2)]
+  by_cases h : (rngA (nt (bget x (bget r 0))) (bget x (bget r 0 + 1)) == 0) = true
+  · rw [if_pos h, if_pos h]
+  · rw [if_neg h, if_neg h, if_pos (show ((1 : UInt64) == 1) = true by decide), if_pos (show (g_0 == 0) = true by decide)]
+
+theorem g36_tcont (x r o k : Buf) (hc : bget x (bget r 0) = 11) :
+    g36 x r o k 1 = (g15 (g15 r 0 (bget r 0 + 1)) 6 (bget r 6 + 2), (o, g18 (g18 k (bget r 6) 10 0 0) (bget r 6 + 1) 1 0 0)) := by
+  unfold g36
+  extract_lets i n c0 c z b a
+  have hc' : c = 10 := by simp [c, c0, i, hc]
+  have ha : (a == 0) = false := by simp [a, hc', g_1]
+  have hz : (z == 0) = false := by simp [z, hc', g_1]
+  rw [if_neg (by simp [ha]), if_pos (by decide), if_neg (by simp [hz]), if_pos (by simp [hc'])]
+
+theorem g37_t9 (x r o k t f : Buf) (hc : bget k ((bget r 6 - 1) * 3) = 9) :
+    g37 x r o k t f = (if 65535 < bget (g15 r 6 (bget r 6 - 1)) 8 then (g16 (g15 r 6 (bget r 6 - 1)), (o, (k, f))) else
+      (g15 (g15 r 6 (bget r 6 - 1)) 8 (bget (g15 r 6 (bget r 6 - 1)) 8 + 1), (bpush o 0,
+        (k, g17 f (bget (g15 r 6 (bget r 6 - 1)) 8) (bsize o))))) := by
+  unfold g37
+  extract_lets n c z y r1
+  have hn : n = bget r 6 - 1 := rfl
+  have hc1 : c = bget k (n * 3) := rfl
+  have hr1 : r1 = g15 r 6 n := rfl
+  clear_value n c z y r1
+  subst hn hr1
+  rw [hc] at hc1
+  subst hc1
+  rw [if_neg (by decide), if_neg (by decide), if_neg (by decide), if_neg (by decide), if_neg (by decide), if_neg (by decide),
+    if_neg (by decide), if_neg (by decide), if_pos (by decide)]
+
+theorem g37_t10 (x r o k t f : Buf) (hc : bget k ((bget r 6 - 1) * 3) = 10) :
+    g37 x r o k t f =
+      (if g14 (bsize (g26 256 (bget (g15 r 6 (bget r 6 - 1)) 1) 1 (bget (g15 r 6 (bget r 6 - 1)) 1 - 1) o))
+          (bget (g15 r 6 (bget r 6 - 1)) 3) == 1 then g15 r 6 (bget r 6 - 1) else g16 (g15 r 6 (bget r 6 - 1)),
+        (bpush (g26 256 (bget (g15 r 6 (bget r 6 - 1)) 1) 1 (bget (g15 r 6 (bget r 6 - 1)) 1 - 1) o)
+          (g13 0 (bsize (g26 256 (bget (g15 r 6 (bget r 6 - 1)) 1) 1 (bget (g15 r 6 (bget r 6 - 1)) 1 - 1) o))
+            (bget (g15 r 6 (bget r 6 - 1)) 3)), (k, f))) := by
+  unfold g37
+  extract_lets n c z y r1
+  have hn : n = bget r 6 - 1 := rfl
+  have hc1 : c = bget k (n * 3) := rfl
+  have hr1 : r1 = g15 r 6 n := rfl
+  clear_value n c z y r1
+  subst hn hr1
+  rw [hc] at hc1
+  subst hc1
+  rw [if_neg (by decide), if_neg (by decide), if_neg (by decide), if_neg (by decide), if_neg (by decide), if_neg (by decide),
+    if_neg (by decide), if_neg (by decide), if_neg (by decide), if_pos (by decide)]
+  rw [g19_eq]
+
 end GenRef

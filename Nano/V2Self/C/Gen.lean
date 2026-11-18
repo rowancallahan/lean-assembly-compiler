@@ -196,7 +196,7 @@ def g36 (x r o k : Buf) (y : UInt64) : Buf × (Buf × Buf) :=
   let i := bget r 0;
   let n := bget r 6;
   let c0 := bget x i;
-  let c := (if c0 < 7 then c0 else if c0 == 7 then 999 else if c0 < 12 then c0 - 1 else c0 + 100);
+  let c := (if c0 < 7 then c0 else if c0 == 7 then 999 else if c0 < 12 then c0 - 1 else 999);
   let z := (if c == 4 then g_1 else if c == 5 then g_1 else if c == 10 then g_1 else g_0);
   let b := bget x (i + 1);
   let a := (if c == 3 then (if b - 1 < 8 then g_1 else g_0) else if c == 4 then (if b - 1 < 2 then g_1 else g_0)
@@ -208,7 +208,10 @@ def g36 (x r o k : Buf) (y : UInt64) : Buf × (Buf × Buf) :=
     if c == 4 then (g15 (g15 r 0 (i + 2)) 6 (n + 7),
       (o, g18 (g18 (g18 (g18 (g18 (g18 (g18 k n 5 0 0) (n + 1) 1 1 0) (n + 2) 4 0 0) (n + 3) 1 1 0) (n + 4) 3 (bget x (i + 1)) 0)
         (n + 5) 1 0 0) (n + 6) 1 0 0))
-    else (g15 (g15 r 0 (i + 3)) 6 (n + 3),
+    else
+    let e := g43 r (bget x (i + 1)) (bget x (i + 2));
+    if e == 1 then (g16 r, (o, k)) else
+    (g15 (g15 r 0 (i + 3)) 6 (n + 3),
       (o, g18 (g18 (g18 k n 1 1 0) (n + 1) 6 (bget x (i + 1)) (bget x (i + 2))) (n + 2) 1 0 0))
   else
   if c == 1 then (g15 r 0 (i + 2), (g21 (g23 o 5 (bget x (i + 1))), k)) else
