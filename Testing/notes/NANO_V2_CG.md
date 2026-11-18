@@ -56,7 +56,7 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
   Changes: g41/g42 now return `List UInt8` directly (bytes `put` to the output, no 4×-sized byte Buf — that Buf
   capped the output at κ/4 = 65536 words); the code-word Buf caps at κ; default κ = 2^19 (524288 words, ≈ 5×
   headroom); the per-def `bnew` for the fixup buffer is gone (g28 threads it as state), so C's own heap is a fixed
-  number of buffers: Gen allocates 5 (r, o, k, t, f) + the stubs' buffer, each 8·(κ+2) bytes = 4 MiB at κ = 2^19.
+  number of buffers: Gen allocates 5 (r, o, k, t, f), each 8·(κ+2) bytes = 4 MiB at κ = 2^19.
   Memory map of a compiled program: work = [a2: saved ra][a2+8: saved s0][a2+16 …: heap, bump, each Buf = len, cap,
   κ words][… ↓ expression stack from the work end]; output at a3; tests now use BIG = 16 MiB.
 - Whole chain on Par0's main-shaped output (Testing/nano/v2self/cg_par.lean, no hand-written AST): 4 sources
