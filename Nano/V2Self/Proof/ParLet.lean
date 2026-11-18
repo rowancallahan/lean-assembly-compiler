@@ -54,6 +54,12 @@ theorem v2_low : ∀ (n : Nat) (h : Buf) (j z c : UInt64), OpsOK h → j.toNat +
       obtain ⟨l, o⟩ := v2_low n _ (j + 1) z (c - 1) o1 hj1
       exact ⟨fun i i1 i2 => by rw [l i i1 i2, low1 i i2], o⟩
 
+/-- the node-capacity guard of v5 (`h[9] < d13 = 16384`) keeps the 8-word record addresses far below 2^64 -/
+theorem zN (z : UInt64) (hz : z < d13) : (8 * z + 7 : UInt64).toNat < 131072 := by
+  have h1 := UInt64.lt_iff_toNat_lt.mp hz
+  have e : d13.toNat = 16384 := rfl
+  rw [UInt64.toNat_add, UInt64.toNat_mul]; simp; omega
+
 /-- the node builder v5 leaves the low cells (status 1–7, 10…, the binding table below the operand stack) alone -/
 theorem v5_low (h : Buf) (c a b w t n : UInt64) (ho : OpsOK h) (hN : (bget h 8).toNat ≤ 4096) :
     ∀ i : UInt64, 1 ≤ i.toNat → i.toNat < 12352 → i.toNat ≠ 8 → i.toNat ≠ 9 → bget (v5 h c a b w t n) i = bget h i := by
@@ -64,7 +70,7 @@ theorem v5_low (h : Buf) (c a b w t n : UInt64) (ho : OpsOK h) (hN : (bget h 8).
   · split
     · split
       · rename_i hz hn hj
-        have hzN : (8 * bget h 9 + 7 : UInt64).toNat < 131072 := UInt64.lt_iff_toNat_lt.mp hz
+        have hzN : (8 * bget h 9 + 7 : UInt64).toNat < 131072 := zN _ hz
         have h8z : (8 * bget h 9).toNat + 7 < 131072 := by
           rw [UInt64.toNat_add, UInt64.toNat_mul] at hzN; rw [UInt64.toNat_mul]; simp at *; omega
         have c16 : (16448 : UInt64).toNat = 16448 := rfl
@@ -111,11 +117,11 @@ theorem OpsOK_low' (h h' : Buf) (ho : OpsOK h) (e : ∀ i : UInt64, i.toNat < 16
 
 /-- the node builder's PENDING field: on success, node h[9] gets pending bit `t` (field 4) and tag `c` (field 0) -/
 theorem v5_fields (h : Buf) (c a b w t n : UInt64) (ho : OpsOK h) (hN : (bget h 8).toNat ≤ 4096)
-    (hl : 147520 ≤ h.length) (hz : 8 * bget h 9 + 7 < 131072) (hn : n < bget h 8 + 1) (hj : bget h 8 - n < 4096) :
+    (hl : 147520 ≤ h.length) (hz : bget h 9 < d13) (hn : n < bget h 8 + 1) (hj : bget h 8 - n < 4096) :
     bget (v5 h c a b w t n) (16448 + 8 * bget h 9 + 4) = t ∧ bget (v5 h c a b w t n) (16448 + 8 * bget h 9) = c := by
   unfold v5
   simp only [d3v, d5v, show d6 = 131072 from rfl, show d4 = 4096 from rfl, hz, hn, hj, if_true]
-  have hzN : (8 * bget h 9 + 7 : UInt64).toNat < 131072 := UInt64.lt_iff_toNat_lt.mp hz
+  have hzN : (8 * bget h 9 + 7 : UInt64).toNat < 131072 := zN _ hz
   have h8z : (8 * bget h 9).toNat + 7 < 131072 := by
     rw [UInt64.toNat_add, UInt64.toNat_mul] at hzN; rw [UInt64.toNat_mul]; simp at *; omega
   have c16 : (16448 : UInt64).toNat = 16448 := rfl
@@ -208,7 +214,7 @@ theorem v118_scope (h : Buf) (a b : UInt64) (ho : OpsOK h) (hN : (bget h 8).toNa
 the body's PENDING bit — a provisional self-call (CONTINUE) in the body stays marked for FINISH (task 80), which
 accepts it only in tail position of a fuel def -/
 theorem v118_pending (h : Buf) (a b : UInt64) (ho : OpsOK h) (hN : (bget h 8).toNat ≤ 4096) (hl : 147520 ≤ h.length)
-    (hz : 8 * bget h 9 + 7 < 131072) (hn : (2 : UInt64) < bget h 8 + 1) (hj : bget h 8 - 2 < 4096) :
+    (hz : bget h 9 < d13) (hn : (2 : UInt64) < bget h 8 + 1) (hj : bget h 8 - 2 < 4096) :
     bget (v118 h a b) (16448 + 8 * bget h 9 + 4) = bget h (16448 + 8 * bget h (12352 + bget h 8 - 1) + 4) ∧
     bget (v118 h a b) (16448 + 8 * bget h 9) = 5 := by
   unfold v118 v9
