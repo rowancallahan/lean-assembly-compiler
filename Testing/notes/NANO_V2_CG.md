@@ -45,4 +45,10 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
   so compiled C at κ = 2^18 emits at most 65536 code words (status −2 beyond).
 - Stage dump for B₁ vs B₂ vs B₃: `lean --run Testing/nano/v2self/stage_dump.lean SRC OUT` → OUT.tok / OUT.ast /
   OUT.code (one hex word per line); fixups are internal to g39 and not dumped.
+- Non-vacuity (owner rule): cg_chain reports acceptance separately — valid programs accepted 40/40 (a rejection
+  throws = FAILURE), must-reject 4/4 (no main, slot outside frame, main with npw 1); QEMU 40/40.
+- Formal acceptance witness Testing/nano/v2self/cg_witness.lean: `theorem w1 : C.g41 (w1ast ++ w1main) = w1code`
+  by `decide +kernel` (25 s, 3.9 GB; needs `--tstack=4000000`, `ulimit -s unlimited`), with w1ast = Par0's output
+  on a let/if/mul/shift source (`#guard`, compiled). The kernel run of the PARSER stage is killed at 13.6 GB: Par0's
+  fixed layout (offsets 10000/30000/40000 words) makes kernel lists that long; a layout sized by the input would fix it.
 - Next: the parser's real output (Sonnet box) through g41 as Par0 gains calls/prims/loops; a diff test against Nano.V2B `gen` on the v2f programs.
