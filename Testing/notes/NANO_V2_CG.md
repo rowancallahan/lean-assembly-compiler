@@ -93,7 +93,7 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
   Now rejected: width pass (LOOP frame only directly under the root) and g36 (LOOP visited only as item 1 of the def;
   one operator-range check at the top).  cg_chain: valid 40/40 accepted, must-reject 13/13.  Fixed point re-run:
   B3 == B2 = 241,844 bytes, sha256 056aef1c…598af0e (B2.bin / B3.bin / B2.sha256 updated); Nano front end ACCEPTs
-  Gen (69 defs).
+  Gen (69 defs); kernel witness cg_witness.lean re-proved (rc 0, peak 4.0 GB).
 - Hardening: B₃ identical with the work memory pre-filled 0xA5 / 0x5A (`FILL=` in selfrun.py); B₂ on a tiny source
   under Sail: QEMU == Sail == B1, writes only in output + work, OOM flag with 8-byte work.
 - ASTRA-11 PROBE 2 (codegen, non-leaf call with a live stack value): `Nano/V2Self/Proof/Call.lean`, no sorry, axioms
