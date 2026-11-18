@@ -72,4 +72,57 @@ theorem g32_bget (o : Buf) (u : UInt64) : g32 o 7 u = o ++ bgetT.map encJ := by
   unfold g32 g30; simp [bgetT]; gsimp
 end prims
 
+/-! ### li (g23) -/
+theorem iu_nat (n : Nat) (h : n < 2 ^ 64) : iu (n : Int) = UInt64.ofNat n := by
+  unfold iu; congr 1; omega
+
+theorem andm (n : Nat) : n &&& 255 = n % 256 := by
+  have : (255:Nat) = 2^8-1 := rfl
+  rw [this, Nat.and_two_pow_sub_one_eq_mod]
+
+theorem sh8 (v : UInt64) (j : Nat) (m : UInt64) (hm : m.toNat = 8 * j) (hj : j < 8) :
+    (v >>> m) &&& 255 = UInt64.ofNat ((v.toNat / 2 ^ (8 * j)) % 256) := by
+  apply UInt64.toNat.inj
+  have h8 : 8 * j % 64 = 8 * j := Nat.mod_eq_of_lt (by omega)
+  rw [UInt64.toNat_and, UInt64.toNat_shiftRight, hm, h8]
+  simp only [UInt64.toNat_ofNat']
+  have h255 : (255 : UInt64).toNat = 255 := rfl
+  rw [h255, andm, Nat.shiftRight_eq_div_pow]
+  have : v.toNat / 2 ^ (8 * j) % 256 < 2 ^ 64 := by omega
+  rw [Nat.mod_eq_of_lt this]
+
+theorem g23_small (o : Buf) (d : Nat) (v : UInt64) (hd : d < 32) (hv : v.toNat < 2048) :
+    g23 o d.toUInt64 v = o ++ (liT d v).map encJ := by
+  have hv' : v < 2048 := by rw [UInt64.lt_iff_toNat_lt]; simpa using hv
+  have : iu (v.toNat : Int) = v := by rw [iu_nat _ v.toNat_lt]; simp
+  simp [g23, hv', liT, hv, encJ, bpush, this]
+
+theorem g23_big (o : Buf) (d : Nat) (v : UInt64) (hd : d < 32) (hv : ¬ v.toNat < 2048) :
+    g23 o d.toUInt64 v = o ++ (liT d v).map encJ := by
+  have hv' : ¬ v < 2048 := by rw [UInt64.lt_iff_toNat_lt]; simpa using hv
+  have b56 : (v >>> 56) &&& g_255 = UInt64.ofNat ((v.toNat / 72057594037927936) % 256) := by
+    have := sh8 v 7 56 rfl (by omega); simpa [g_255] using this
+  have b48 : (v >>> 48) &&& g_255 = UInt64.ofNat ((v.toNat / 281474976710656) % 256) := by
+    have := sh8 v 6 48 rfl (by omega); simpa [g_255] using this
+  have b40 : (v >>> 40) &&& g_255 = UInt64.ofNat ((v.toNat / 1099511627776) % 256) := by
+    have := sh8 v 5 40 rfl (by omega); simpa [g_255] using this
+  have b32 : (v >>> 32) &&& g_255 = UInt64.ofNat ((v.toNat / 4294967296) % 256) := by
+    have := sh8 v 4 32 rfl (by omega); simpa [g_255] using this
+  have b24 : (v >>> 24) &&& g_255 = UInt64.ofNat ((v.toNat / 16777216) % 256) := by
+    have := sh8 v 3 24 rfl (by omega); simpa [g_255] using this
+  have b16 : (v >>> 16) &&& g_255 = UInt64.ofNat ((v.toNat / 65536) % 256) := by
+    have := sh8 v 2 16 rfl (by omega); simpa [g_255] using this
+  have b8 : (v >>> 8) &&& g_255 = UInt64.ofNat ((v.toNat / 256) % 256) := by
+    have := sh8 v 1 8 rfl (by omega); simpa [g_255] using this
+  have b0 : (v >>> 0) &&& g_255 = UInt64.ofNat ((v.toNat / 1) % 256) := by
+    have := sh8 v 0 0 rfl (by omega); simpa [g_255] using this
+  have i0 : iu 0 = 0 := by decide
+  have hb : ∀ n : Nat, n < 256 → iu (n : Int) = UInt64.ofNat n := fun n hn => iu_nat n (by omega)
+  simp [g23, hv', liT, hv, liB, liJ, encJ, bpush, i0, b56, b48, b40, b32, b24, b16, b8, b0]
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;> congr 1
+  all_goals apply UInt64.toNat.inj
+  all_goals rw [iu_toNat]
+  all_goals simp only [UInt64.toNat_ofNat', UInt64.toNat_and, show g_255.toNat = 255 from rfl, andm]
+  all_goals omega
+
 end CallProbe
