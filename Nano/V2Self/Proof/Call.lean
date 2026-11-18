@@ -15,6 +15,11 @@ inductive J where
   | jal (rd : Nat) (off : Int)
   | jalr (rd rs : Nat)
   | bgeu (a b : Nat) (off : Int)
+  /-- R-type ALU (Gen's BIN op numbering: add 1 sub 2 mul 3 and 4 or 5 sll 6 srl 7 xor 8): rd := a op b -/
+  | alu (op rd a b : Nat)
+  | slli (rd rs sh : Nat)
+  /-- byte load: the byte at address ea of the (aligned, little-endian) word cells of `m` -/
+  | lbu (rd rs : Nat) (off : Int)
 
 structure St where
   x : Nat → UInt64
@@ -25,6 +30,11 @@ def upd {α} (f : Nat → α) (k : Nat) (v : α) : Nat → α := fun i => if i =
 def wr (s : St) (r : Nat) (v : UInt64) : St := if r = 0 then s else { s with x := upd s.x r v }
 def ea (b : UInt64) (off : Int) : Nat := ((b.toNat : Int) + off).toNat
 
+def aluf (op : Nat) (a b : UInt64) : UInt64 :=
+  if op = 1 then a + b else if op = 2 then a - b else if op = 3 then a * b else if op = 4 then a &&& b
+  else if op = 5 then a ||| b else if op = 6 then a <<< b else if op = 7 then a >>> b else a ^^^ b
+def lbm (m : Nat → UInt64) (a : Nat) : UInt64 := (m (a - a % 8) >>> (8 * (a % 8)).toUInt64) &&& 255
+
 def step (C : List J) : Nat × St → Option (Nat × St)
   | (pc, s) => match C[pc]? with
     | some (.addi rd rs imm) => some (pc + 1, wr s rd (UInt64.ofNat (ea (s.x rs) imm)))
@@ -33,6 +43,9 @@ def step (C : List J) : Nat × St → Option (Nat × St)
     | some (.jal rd off) => some (((pc : Int) + off).toNat, wr s rd (pc + 1).toUInt64)
     | some (.jalr rd rs) => some ((s.x rs).toNat, wr s rd (pc + 1).toUInt64)
     | some (.bgeu a b off) => some (if (s.x b).toNat ≤ (s.x a).toNat then ((pc : Int) + off).toNat else pc + 1, s)
+    | some (.alu op rd a b) => some (pc + 1, wr s rd (aluf op (s.x a) (s.x b)))
+    | some (.slli rd rs sh) => some (pc + 1, wr s rd (s.x rs <<< sh.toUInt64))
+    | some (.lbu rd rs off) => some (pc + 1, wr s rd (lbm s.m (ea (s.x rs) off)))
     | none => none
 
 inductive Star (C : List J) : Nat × St → Nat × St → Prop
@@ -66,6 +79,14 @@ theorem s_jal {rd off} (h : C[pc]? = some (.jal rd off)) :
     step C (pc, s) = some (((pc : Int) + off).toNat, wr s rd (pc + 1).toUInt64) := by simp [step, h]
 theorem s_jalr {rd rs} (h : C[pc]? = some (.jalr rd rs)) :
     step C (pc, s) = some ((s.x rs).toNat, wr s rd (pc + 1).toUInt64) := by simp [step, h]
+theorem s_alu {op rd a b} (h : C[pc]? = some (.alu op rd a b)) :
+    step C (pc, s) = some (pc + 1, wr s rd (aluf op (s.x a) (s.x b))) := by simp [step, h]
+theorem s_slli {rd rs sh} (h : C[pc]? = some (.slli rd rs sh)) :
+    step C (pc, s) = some (pc + 1, wr s rd (s.x rs <<< sh.toUInt64)) := by simp [step, h]
+theorem s_lbu {rd rs off} (h : C[pc]? = some (.lbu rd rs off)) :
+    step C (pc, s) = some (pc + 1, wr s rd (lbm s.m (ea (s.x rs) off))) := by simp [step, h]
+theorem s_bgeu_f {a b off} (h : C[pc]? = some (.bgeu a b off)) (hc : ¬ (s.x b).toNat ≤ (s.x a).toNat) :
+    step C (pc, s) = some (pc + 1, s) := by simp [step, h, hc]
 theorem s_bgeu_t {a b off} (h : C[pc]? = some (.bgeu a b off)) (hc : (s.x b).toNat ≤ (s.x a).toNat) :
     step C (pc, s) = some (((pc : Int) + off).toNat, s) := by simp [step, h, hc]
 end
