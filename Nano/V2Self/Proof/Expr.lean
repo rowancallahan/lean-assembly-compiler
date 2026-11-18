@@ -6,6 +6,8 @@ templates take the capacity exit when t6 − 8 < t5. -/
 import Nano.V2Self.Proof.Call
 namespace CallProbe
 
+theorem upd_ne {α} (f : Nat → α) {k i : Nat} (v : α) (h : i ≠ k) : upd f k v i = f i := upd_other f v h
+
 theorem upd_upd {α} (f : Nat → α) (k : Nat) (a b : α) : upd (upd f k a) k b = upd f k b := by
   funext i; by_cases h : i = k <;> simp [upd, h]
 
@@ -242,5 +244,52 @@ theorem rd_run {C pc} (s : St) (hC : At C pc rdT) (hx0 : s.x 0 = 0) (hb : (s.x 2
     simp [run, step, h0, h1, h2, h5, wr, e0, e1, hc, hi, hx0, ea, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide),
       upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide),
       upd_other _ _ (show (29:Nat) ≠ 6 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), show ((pc : Int) + 1 + 1 + 3).toNat = pc + 5 by omega]
+
+/-! ## BGET (g32 p = 7): top = index, below = buffer (layout [len][cap][words…]); result over the new top -/
+def bgetT : List J :=
+  [.ld 6 31 0, .ld 5 31 8, .addi 31 31 8, .ld 7 5 0, .addi 14 0 0, .bgeu 6 7 4, .slli 6 6 3, .alu 1 5 5 6, .ld 14 5 16, .sd 14 31 0]
+
+theorem bget_run {C pc} (s : St) (hC : At C pc bgetT) (hx0 : s.x 0 = 0) (hlt : (s.x 31).toNat + 16 < 2 ^ 63)
+    (hb : (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat > (s.m (s.x 31).toNat).toNat →
+      (s.m ((s.x 31).toNat + 8)).toNat + 16 + 8 * (s.m (s.x 31).toNat).toNat < 2 ^ 63) :
+    ∃ k s', run C k (pc, s) = some (pc + 10, s') ∧
+      s'.m = upd s.m ((s.x 31).toNat + 8)
+        (if (s.m (s.x 31).toNat).toNat < (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat
+         then s.m ((s.m ((s.x 31).toNat + 8)).toNat + 16 + 8 * (s.m (s.x 31).toNat).toNat) else 0) ∧
+      s'.x 31 = UInt64.ofNat ((s.x 31).toNat + 8) ∧
+      ∀ r, r ≠ 5 → r ≠ 6 → r ≠ 7 → r ≠ 14 → r ≠ 31 → s'.x r = s.x r := by
+  have h0 := hC.at 0 (by simp [bgetT]); have h1 := hC.at 1 (by simp [bgetT]); have h2 := hC.at 2 (by simp [bgetT])
+  have h3 := hC.at 3 (by simp [bgetT]); have h4 := hC.at 4 (by simp [bgetT]); have h5 := hC.at 5 (by simp [bgetT])
+  have h6 := hC.at 6 (by simp [bgetT]); have h7 := hC.at 7 (by simp [bgetT]); have h8 := hC.at 8 (by simp [bgetT])
+  have h9 := hC.at 9 (by simp [bgetT])
+  simp [bgetT] at h0 h1 h2 h3 h4 h5 h6 h7 h8 h9
+  have lt : (s.x 31).toNat < 2 ^ 64 := (s.x 31).toNat_lt
+  have e0 : ea (s.x 31) 0 = (s.x 31).toNat := by simp [ea]
+  have e8 : ea (s.x 31) 8 = (s.x 31).toNat + 8 := by simp [ea]; omega
+  have t8 : (UInt64.ofNat ((s.x 31).toNat + 8)).toNat = (s.x 31).toNat + 8 := by simp only [UInt64.toNat_ofNat']; omega
+  have t8' : (s.x 31 + 8).toNat = (s.x 31).toNat + 8 := by rw [UInt64.toNat_add]; simp; omega
+  have e8'' : ea (s.x 31 + 8) 0 = (s.x 31).toNat + 8 := by simp only [ea, t8']; omega
+  have e1 : ∀ b : UInt64, ea b 0 = b.toNat := by intro b; simp [ea]
+  by_cases hi : (s.m (s.x 31).toNat).toNat < (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat
+  · have hb' := hb hi
+    refine ⟨10, ?_⟩
+    have s3 : (s.m (s.x 31).toNat <<< 3).toNat = 8 * (s.m (s.x 31).toNat).toNat := by
+      simp [UInt64.toNat_shiftLeft, Nat.shiftLeft_eq]; omega
+    have hc : ¬ (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat ≤ (s.m (s.x 31).toNat).toNat := by omega
+    have sa : (s.m ((s.x 31).toNat + 8) + s.m (s.x 31).toNat <<< 3).toNat
+        = (s.m ((s.x 31).toNat + 8)).toNat + 8 * (s.m (s.x 31).toNat).toNat := by
+      rw [UInt64.toNat_add, s3]; simp; omega
+    have ea16 : ea (s.m ((s.x 31).toNat + 8) + s.m (s.x 31).toNat <<< 3) 16
+        = (s.m ((s.x 31).toNat + 8)).toNat + 16 + 8 * (s.m (s.x 31).toNat).toNat := by
+      simp only [ea, sa]; omega
+    simp [run, step, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hc, t8, t8', s3, ea16]
+    intro r h5' h6' h7' h14' h31'
+    simp [upd, h5', h6', h7', h14', h31']
+  · refine ⟨7, ?_⟩
+    have hc : (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat ≤ (s.m (s.x 31).toNat).toNat := by omega
+    simp [run, step, h0, h1, h2, h3, h4, h5, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hc, t8, t8',
+      show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 4).toNat = pc + 9 by omega]
+    intro r h5' h6' h7' h14' h31'
+    simp [upd, h5', h6', h7', h14', h31']
 
 end CallProbe
