@@ -1287,4 +1287,96 @@ theorem v_pair {K i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀ 
   rw [r3]; simp only [g15]
   rw [hr1, if_neg (by decide), if_neg (by decide), rget _ hI.rl 6 3 _ (by decide), if_neg (by decide)]
 
+
+theorem g19_eq (r o : Buf) (d b : UInt64) :
+    g19 r o d b = (if g14 (bsize o) b == 1 then r else g16 r, bpush o (g13 d (bsize o) b)) := by
+  unfold g19
+  extract_lets h
+  by_cases hc : (g14 h b == 1) = true
+  · rw [if_pos hc, if_pos hc]
+  · rw [if_neg hc, if_neg hc]
+
+theorem st_t7 (s : GS) (n D : UInt64) (hn : bget s.r 6 - 1 = n) (hc : bget s.k ((bget s.r 6 - 1) * 3) = 7)
+    (ha : bget s.k ((bget s.r 6 - 1) * 3 + 1) = D) (hD : D < bsize s.t) :
+    st s = ⟨s.x, if g14 (bsize s.o) (bget s.t D) == 1 then g15 s.r 6 n else g16 (g15 s.r 6 n),
+      bpush s.o (g13 1 (bsize s.o) (bget s.t D)), s.k, s.t, s.f⟩ := by
+  unfold st; rw [g37_t7 _ _ _ _ _ _ hc, ha, hn, if_pos hD, g19_eq]
+
+theorem st_t7_bad (s : GS) (n D : UInt64) (hn : bget s.r 6 - 1 = n) (hc : bget s.k ((bget s.r 6 - 1) * 3) = 7)
+    (ha : bget s.k ((bget s.r 6 - 1) * 3 + 1) = D) (hD : ¬ D < bsize s.t) :
+    st s = ⟨s.x, g16 (g15 s.r 6 n), s.o, s.k, s.t, s.f⟩ := by
+  unfold st; rw [g37_t7 _ _ _ _ _ _ hc, ha, hn, if_neg hD]
+
+theorem st_t8 (s : GS) (n P : UInt64) (hn : bget s.r 6 - 1 = n) (hc : bget s.k ((bget s.r 6 - 1) * 3) = 8)
+    (ha : bget s.k ((bget s.r 6 - 1) * 3 + 1) = P) :
+    st s = ⟨s.x, g15 s.r 6 n, g32 s.o P (bget (g15 s.r 6 n) 9), s.k, s.t, s.f⟩ := by
+  unfold st; rw [g37_t8 _ _ _ _ _ _ hc, ha, hn]
+
+/-- CALL -/
+theorem v_call {K i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀ j, i < j → VS K j) (ht : tg K.X i = 8) :
+    VS K i := by
+  intro s L F hI hr0 hB
+  refine Reach.step (live_of hI (by simp)) ?_
+  rw [st_visit hI]
+  have hl6 : (bset s.r 6 L.length.toUInt64).length = 10 := by rw [BufL.length_bset]; exact hI.rl
+  have h0 : bget (bset s.r 6 L.length.toUInt64) 0 = i.toUInt64 := by
+    rw [rget _ hI.rl 6 0 _ (by decide), if_neg (by decide), hr0]
+  have h6 : bget (bset s.r 6 L.length.toUInt64) 6 = L.length.toUInt64 := by
+    rw [rget _ hI.rl 6 6 _ (by decide), if_pos rfl]
+  have hx : bget s.x i.toUInt64 = 8 := by rw [hI.x, tg_u _ _ (by omega), ht]
+  have hv1 : bget s.x (i.toUInt64 + 1) = tg K.X (i + 1) := by rw [hI.x]; exact tg_u1 _ i 1 (by omega)
+  have hv2 : bget s.x (i.toUInt64 + 2) = tg K.X (i + 2) := by rw [hI.x]; exact tg_u1 _ i 2 (by omega)
+  rw [g36_call _ _ _ _ (by rw [h0]; exact hx), h0, h6, hv1, hv2]
+  by_cases hq' : ¬ tg K.X (i + 2) < 251
+  · rw [if_neg hq']; exact Reach.error (g16_err _ hl6)
+  have hq : tg K.X (i + 2) < 251 := Classical.not_not.mp hq'
+  rw [if_pos hq]
+  obtain ⟨qn, qe⟩ := u_small _ hq
+  have hLl := hI.Ll; simp at hLl
+  obtain ⟨sk0, kl0⟩ := stk_push s.k L 7 (tg K.X (i + 1)) 0 (stk_pop hI.stk) hI.kl (by omega)
+  have e1 : L.length.toUInt64 + 1 = (L ++ [(7, tg K.X (i + 1), 0)]).length.toUInt64 := by simp [Nat.toUInt64, UInt64.ofNat_add]
+  have hkl := hI.kl
+  obtain ⟨sk1, kl1⟩ := stk_g27 256 _ (L ++ [(7, tg K.X (i + 1), 0)]) (tg K.X (i + 2)).toNat (by omega) sk0 (by rw [kl0]; omega)
+    (by simp; omega)
+  rw [qe, ← e1] at sk1 kl1
+  have hr1 := rset2 _ hl6 0 6 (i.toUInt64 + 3) (L.length.toUInt64 + 1 + tg K.X (i + 2)) (by decide) (by decide)
+  have hI1 := inv_mk hI (g15 (g15 (bset s.r 6 L.length.toUInt64) 0 (i.toUInt64 + 3)) 6 (L.length.toUInt64 + 1 + tg K.X (i + 2)))
+    _ s.o (L ++ [(7, tg K.X (i + 1), 0)] ++ List.replicate (tg K.X (i + 2)).toNat (1, 0, 0))
+    (fun j a b => by simp only [g15]; rw [hr1, if_neg (Ne.symm b), if_neg (Ne.symm a), rget _ hI.rl 6 j _ (by decide), if_neg (Ne.symm b)])
+    (len2 _ hl6 _ _ _ _) (by simp only [g15]; rw [hr1, if_pos rfl]; rw [← qe]; simp [Nat.toUInt64, UInt64.ofNat_add]; ac_rfl) sk1 kl1
+    (by simp; omega) hI.ol
+  have hra : bget (g15 (g15 (bset s.r 6 L.length.toUInt64) 0 (i.toUInt64 + 3)) 6 (L.length.toUInt64 + 1 + tg K.X (i + 2))) 0 =
+      (i + 3).toUInt64 := by
+    simp only [g15]; rw [hr1, if_neg (by decide), if_pos rfl]; simp [Nat.toUInt64, UInt64.ofNat_add]
+  refine Reach.bind (seq (i0 := i + 3) (fun j hj => IH j (by omega)) _ (i + 3) _ (L ++ [(7, tg K.X (i + 1), 0)]) F (Nat.le_refl _)
+    hI1 hra (by simp; omega)) ?_
+  rintro s2 ⟨c, i2, E, hc, hI2, ho2, hr2, hi2, hd2⟩
+  refine Reach.step (live_of hI2 (by simp)) ?_
+  obtain ⟨n2, c2, a2, -⟩ := top_item hI2
+  have ht2 : s2.t = K.T := hI2.t
+  by_cases hD' : ¬ tg K.X (i + 1) < bsize s2.t
+  · rw [st_t7_bad s2 _ _ n2 c2 a2 hD']
+    obtain ⟨p1, -, -⟩ := r6set s2.r hI2.rl L.length.toUInt64
+    exact Reach.error (g16_err _ p1)
+  have hD : tg K.X (i + 1) < bsize s2.t := Classical.not_not.mp hD'
+  rw [st_t7 s2 _ _ n2 c2 a2 hD]
+  obtain ⟨p1, p2, p3⟩ := r6set s2.r hI2.rl L.length.toUInt64
+  by_cases hg' : ¬ (g14 (bsize s2.o) (bget s2.t (tg K.X (i + 1))) == 1) = true
+  · rw [if_neg hg']; exact Reach.error (g16_err _ p1)
+  rw [if_pos (Classical.not_not.mp hg')]
+  by_cases hbig : 2 ^ 32 ≤ (bpush s2.o (g13 1 (bsize s2.o) (bget s2.t (tg K.X (i + 1))))).length
+  · exact Reach.toobig hbig
+  have hI3 := inv_mk hI2 (g15 s2.r 6 L.length.toUInt64) s2.k (bpush s2.o (g13 1 (bsize s2.o) (bget s2.t (tg K.X (i + 1))))) L
+    (fun j a b => p3 j b) p1 (by simp only [g15]; rw [p2]) (stk_pop hI2.stk) hI2.kl (by omega) (by omega)
+  have hl2 : s2.o.length = s.o.length + c.length := by rw [ho2]; simp
+  refine Reach.done ⟨c ++ [g13 1 (s.o.length + c.length).toUInt64 (bget K.T (tg K.X (i + 1)))], i2, E, ?_, hI3, ?_, ?_, by omega,
+    fun hd => ?_⟩
+  · exact .call ht hq (by rw [← ht2]; exact hD) (by simpa using hc)
+  · simp only; rw [bpush, ulen _ _ hl2, ho2, ht2]; simp
+  · simp only [g15]; rw [p3 0 (by decide), hr2]
+  · obtain ⟨e, r3⟩ := hd2 (by simp; omega)
+    refine ⟨e, ?_⟩
+    simp only [g15]; rw [p3 3 (by decide), r3]; simp only [g15]
+    rw [hr1, if_neg (by decide), if_neg (by decide), rget _ hI.rl 6 3 _ (by decide), if_neg (by decide)]
+
 end GenRef
