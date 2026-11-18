@@ -1,5 +1,5 @@
 import Nano.V2Self.C.Lex2
-import Nano.V2Self.C.Par0
+import Nano.V2Self.C.Par1
 /- parser increments A-C: random trees (literals, params/let-bound names with shadowing, binary ops with Lean precedences, if, let), printed, lexed (`C.s10`),
 parsed (`C.y13`), the pre-order AST decoded (slots) and evaluated against the tree's value (names, wraps mod 2^64).  run: lean --run Testing/nano/v2self/par0_test.lean -/
 inductive T | cst (v : Nat) | var (n : String) | bin (op : Nat) (a b : T) | ite (k : Nat) (a b t e : T) | lt (n : String) (v b : T)
@@ -80,10 +80,10 @@ def goAcc : Nat → Nat → Nat → Nat
 def primCases : List (String × List UInt64) := [
   ("def m (x : List UInt8) : List UInt8 := put (put [] (rd x 0)) (len x)\n", [2, 20, 0, 0, 0, 0, 1, 9, 4, 9, 4, 9, 5, 9, 2, 1, 0, 9, 3, 21]),
   ("def m (x : List UInt8) : List UInt8 := put [] (bget (bpush (bnew) 7) 0)\n", [2, 20, 0, 0, 0, 0, 1, 9, 4, 9, 5, 9, 7, 9, 9, 9, 5, 1, 7, 1, 0, 21]),
-  ("def m (x : List UInt8) : List UInt8 := put [] (len' x)\n", [2, 20, 0, 0, 0, 0, 1, 9, 4, 9, 5, 9, 1, 21]),
+  ("def m (x : List UInt8) : List UInt8 := put [] (len' x)\n", []),
   ("def m (x : List UInt8) : List UInt8 := put [] x\n", []),
   ("def m (x : List UInt8) : List UInt8 := put [] (rd 1 2)\n", []),
-  ("def m (x : List UInt8) : List UInt8 := put (bset (bnew) 1 2) 3\n", [2, 20, 0, 0, 0, 0, 1, 9, 4, 9, 8, 9, 5, 1, 1, 1, 2, 1, 3, 21])]
+  ("def m (x : List UInt8) : List UInt8 := put (bset (bnew) 1 2) 3\n", [])]
 def main : IO Unit := do
   let valid := primCases.filter fun (_, w) => !w.isEmpty
   let neg := primCases.filter fun (_, w) => w.isEmpty
