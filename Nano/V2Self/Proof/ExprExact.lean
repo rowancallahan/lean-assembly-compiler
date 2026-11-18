@@ -158,4 +158,38 @@ theorem g24_off (p s : Nat) (hp : p < 251) (hs : s < 251) : g24 p.toUInt64 s.toU
     simp [h, h', UInt64.toNat_add, UInt64.toNat_shiftLeft, UInt64.toNat_sub, Nat.shiftLeft_eq, g_16, g_0, hsz]
     omega
 
+theorem pushA_len (tgt q r : Nat) : (pushA tgt q r).length = 4 := rfl
+
+theorem toU_add (a b : Nat) : (a + b).toUInt64 = a.toUInt64 + b.toUInt64 := by simp [Nat.toUInt64, UInt64.ofNat_add]
+
+theorem g25_exact (p : Nat) (hp : p < 251) : ∀ (n w s : Nat) (o : Buf), w ≤ n → s + w < 251 → o.length + 5 * w + 4 < 2 ^ 32 →
+    g25 n p.toUInt64 s.toUInt64 w.toUInt64 o = o ++ (localT 1 p s o.length w).map encJ
+  | 0, w, s, o, hw, _, _ => by
+      have : w = 0 := by omega
+      subst this; simp [g25, localT]
+  | n + 1, w, s, o, hw, hs, ho => by
+    rcases w with _ | w
+    · simp [g25, localT]
+    · have hne : ¬ ((w + 1).toUInt64 == 0) = true := by
+        simp [Nat.toUInt64, UInt64.ofNat_add]
+        intro h; have := congrArg UInt64.toNat h; simp at this; omega
+      have e1 : (w + 1).toUInt64 - 1 = w.toUInt64 := by simp [toU_add]
+      have e2 : s.toUInt64 + 1 = (s + 1).toUInt64 := by simp [toU_add]
+      have hv : g11 5 8 (g24 p.toUInt64 s.toUInt64) = encJ (.ld 5 8 (offOf p s)) := by
+        rw [g24_off p s hp (by omega)]; simp [encJ]
+      have hL : (o ++ [encJ (.ld 5 8 (offOf p s))]).length < 2 ^ 32 := by simp; omega
+      have hpush := g22_exact (o ++ [encJ (.ld 5 8 (offOf p s))]) 5 (by decide) hL
+      simp only [g25, hne, if_false, Bool.false_eq_true]
+      rw [e1, e2, g21_eq]
+      simp only [bpush, hv]
+      have e5 : (5 : UInt64) = (5 : Nat).toUInt64 := rfl
+      rw [e5, hpush]
+      rw [g25_exact p hp n w (s + 1) _ (by omega) (by omega) (by simp [pushA_len]; omega)]
+      simp [localT, pushA_len, List.append_assoc]
+
+/-- the whole of LOCAL as emitted: g25 (fuel 256, as in g36) -/
+theorem local_exact (p s w : Nat) (o : Buf) (hp : p < 251) (hw : w < 251) (hs : s + w < 251) (ho : o.length + 5 * w + 4 < 2 ^ 32) :
+    g25 256 p.toUInt64 s.toUInt64 w.toUInt64 o = o ++ (localT 1 p s o.length w).map encJ :=
+  g25_exact p hp 256 w s o (by omega) hs ho
+
 end CallProbe
