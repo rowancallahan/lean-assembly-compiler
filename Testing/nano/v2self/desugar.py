@@ -67,10 +67,13 @@ def rewrite(s):
             i = j; continue
         out.append(ts[i]); i += 1
     return "".join(out)
-for f in sys.argv[1:]:
-    txt = open(f).read()
-    parts = re.split(r"(/-.*?-/)", txt, flags=re.S)
-    new = "".join(p if p.startswith("/-") else "\n".join(l if l.startswith(("import", "namespace", "end ", "--")) else rewrite(l) if False else l for l in p.split("\n")) for p in parts)
-    # conditions never span lines in the source: rewrite per line is unsafe for multi-line ifs, so rewrite per part
-    new = "".join(p if p.startswith("/-") else rewrite(p) for p in parts)
-    open(f, "w").write(new)
+def main():
+    for f in sys.argv[1:]:
+        txt = open(f).read()
+        parts = re.split(r"(/-.*?-/)", txt, flags=re.S)
+        new = "".join(p if p.startswith("/-") else "\n".join(l if l.startswith(("import", "namespace", "end ", "--")) else rewrite(l) if False else l for l in p.split("\n")) for p in parts)
+        # conditions never span lines in the source: rewrite per line is unsafe for multi-line ifs, so rewrite per part
+        new = "".join(p if p.startswith("/-") else rewrite(p) for p in parts)
+        open(f, "w").write(new)
+    
+if __name__ == '__main__': main()
