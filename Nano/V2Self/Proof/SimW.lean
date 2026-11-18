@@ -280,4 +280,88 @@ theorem sim_jalr {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : 
   simp [CallProbe.wr] at this
   exact ⟨t', hN.ret, this⟩
 
+/-! ## whole runs: a J run on code whose words are the J instructions' encodings is a Sail run -/
+
+/-- the word C emits for a J instruction (branches only as `bgeu a b +2 instructions`, returns only `jalr x0`) -/
+def encJ : CallProbe.J → Nat
+  | .addi rd rs imm => (I.i .addi rd rs imm).enc
+  | .ld rd rs off => (I.ld rd rs off).enc
+  | .sd b a off => (I.sd b a off).enc
+  | .bgeu a b _ => (I.br .bgeu a b 8).enc
+  | .jal rd off => (C.g5 (UInt64.ofNat rd) (UInt64.ofInt (4 * off))).toNat
+  | .jalr _ rs => (C.g2 C.g_103 0 0 (UInt64.ofNat rs) 0).toNat
+  | _ => 0  -- alu / slli / lbu: not bridged yet (their steps are not `Safe`)
+
+/-- the side conditions of one J step that the Sail step needs (ranges, no wrap, work cells, aligned return) -/
+def Safe (K : LayW) (C : List CallProbe.J) : Nat × CallProbe.St → Prop
+  | (pc, s) => match C[pc]? with
+    | some (.addi rd rs imm) => rd < 32 ∧ rs < 32 ∧ -2048 ≤ imm ∧ imm < 2048 ∧
+        0 ≤ ((s.x rs).toNat : Int) + imm ∧ ((s.x rs).toNat : Int) + imm < 2 ^ 64
+    | some (.ld rd rs off) => rd < 32 ∧ rs < 32 ∧ -2048 ≤ off ∧ off < 2048 ∧
+        0 ≤ ((s.x rs).toNat : Int) + off ∧ wok K (CallProbe.ea (s.x rs) off)
+    | some (.sd b a off) => b < 32 ∧ a < 32 ∧ -2048 ≤ off ∧ off < 2048 ∧
+        0 ≤ ((s.x a).toNat : Int) + off ∧ wok K (CallProbe.ea (s.x a) off)
+    | some (.bgeu a b o) => a < 32 ∧ b < 32 ∧ o = 2
+    | some (.jal rd off) => rd < 32 ∧ -2 ^ 18 ≤ off ∧ off < 2 ^ 18 ∧ 0 ≤ (pc : Int) + off ∧ (pc : Int) + off < C.length
+    | some (.jalr rd rs) => rd = 0 ∧ rs < 32 ∧ ∃ j, (s.x rs).toNat = K.base + 4 * j
+    | _ => False
+
+/-- **one step**: a safe J step on matching words is one retired Sail instruction, keeping `RelW` -/
+theorem sim_stepW {K : LayW} {C : List CallProbe.J} (hK : K.Ok) (hW : K.W = C.map encJ)
+    {a b : Nat × CallProbe.St} {t : Proven.St} (hR : RelW K a t) (hS : Safe K C a) (hs : CallProbe.step C a = some b) :
+    ∃ t', Retires t t' ∧ RelW K b t' := by
+  obtain ⟨pc, s⟩ := a
+  have hWpc : ∀ i, C[pc]? = some i → K.W[pc]? = some (encJ i) := by intro i h; rw [hW]; simp [h]
+  simp only [Safe] at hS
+  simp only [CallProbe.step] at hs
+  cases hc : C[pc]? with
+  | none => rw [hc] at hS; exact hS.elim
+  | some i =>
+    rw [hc] at hS hs
+    cases i with
+    | addi rd rs imm =>
+      obtain ⟨h1, h2, h3, h4, h5, h6⟩ := hS
+      simp only [Option.some.injEq] at hs; subst hs; exact sim_addi hK hR (hWpc _ hc) h1 h2 h3 h4 h5 h6
+    | ld rd rs off =>
+      obtain ⟨h1, h2, h3, h4, h5, h6⟩ := hS
+      simp only [Option.some.injEq] at hs; subst hs; exact sim_ld hK hR (hWpc _ hc) h1 h2 h3 h4 h5 h6
+    | sd b' a' off =>
+      obtain ⟨h1, h2, h3, h4, h5, h6⟩ := hS
+      simp only [Option.some.injEq] at hs; subst hs; exact sim_sd hK hR (hWpc _ hc) h1 h2 h3 h4 h5 h6
+    | bgeu a' b' o =>
+      obtain ⟨h1, h2, rfl⟩ := hS
+      simp only [Option.some.injEq] at hs; subst hs; exact sim_bgeu8 hK hR (hWpc _ hc) h1 h2
+    | jal rd off =>
+      obtain ⟨h1, h2, h3, h4, h5⟩ := hS
+      have hl : C.length = K.W.length := by rw [hW]; simp
+      simp only [Option.some.injEq] at hs; subst hs; exact sim_jal hK hR h1 (hWpc _ hc) h2 h3 h4 (by rw [← hl]; exact h5)
+    | jalr rd rs =>
+      obtain ⟨rfl, h2, j, hj⟩ := hS
+      have hb : s.b = K.base := hR.bb
+      simp only [Option.some.injEq] at hs; subst hs
+      obtain ⟨t', ht, hr⟩ := sim_jalr hK hR h2 (hWpc _ hc) hj
+      refine ⟨t', ht, ?_⟩
+      have : ((s.x rs).toNat - s.b) / 4 = j := by rw [hj, hb]; omega
+      simp [this, CallProbe.wr]; exact hr
+    | alu _ _ _ _ => exact hS.elim
+    | slli _ _ _ => exact hS.elim
+    | lbu _ _ _ => exact hS.elim
+
+/-- J runs whose every step is `Safe` -/
+inductive SStar (K : LayW) (C : List CallProbe.J) : Nat × CallProbe.St → Nat × CallProbe.St → Prop
+  | refl (a) : SStar K C a a
+  | head {a b c} : Safe K C a → CallProbe.step C a = some b → SStar K C b c → SStar K C a c
+
+/-- **runs**: a safe J run on C's words is a run of retired Sail instructions, keeping `RelW` -/
+theorem sim_starW {K : LayW} {C : List CallProbe.J} (hK : K.Ok) (hW : K.W = C.map encJ)
+    {a b : Nat × CallProbe.St} (h : SStar K C a b) :
+    ∀ {t : Proven.St}, RelW K a t → ∃ n t', Steps n t t' ∧ RelW K b t' := by
+  induction h with
+  | refl a => intro t hR; exact ⟨0, t, rfl, hR⟩
+  | head hS hs _ ih =>
+    intro t hR
+    obtain ⟨t1, hr, hR1⟩ := sim_stepW hK hW hR hS hs
+    obtain ⟨n, t', hst, hR'⟩ := ih hR1
+    exact ⟨n + 1, t', ⟨t1, hr, hst⟩, hR'⟩
+
 end SimW

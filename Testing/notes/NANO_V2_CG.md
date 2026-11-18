@@ -117,4 +117,12 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
   `jal rd` = `Proven.wJ rd o`, for `G.step_jal`) and `g2_jalr` (C's `jalr x0, rs` = the word of `G.step_jalr`).
   Still to do: lbu/sb/R-op corollaries, and the state link CallProbe.J ↔ nano-v2 St/pstep ↔ Sail (a
   code-agnostic `Rel`).
+- BRIDGE part 2 (state link): `Nano/V2Self/Proof/SimW.lean`, no sorry, axioms = the Sail extern set + standard (same
+  as nano-v2's sim_star), 4 s, 1.7 GB.  `RelW` (J state ↔ Sail: code as C's words at `base`, x0 = 0, J's code base
+  `b` = base, work cells as 8 LE bytes).  Per instruction: sim_addi, sim_ld, sim_sd, sim_bgeu8, sim_jal (C's `g5`
+  word, byte return address), sim_jalr (C's return word).  `encJ` = the word C emits per J instruction; `Safe` =
+  the per-step side conditions (ranges, no wrap, work cells, aligned return); `sim_stepW` / `sim_starW`: a Safe J run
+  on code `W = C.map encJ` is a run of retired Sail instructions keeping `RelW`.  J now carries the code base
+  (`St.b`): `jal` stores `b + 4(pc+1)`, `jalr` jumps to `(x − b)/4` (call_live re-proved).  Not bridged yet: J's
+  alu/slli/lbu (added for the expression templates; `Safe` is False for them until their sims exist).
 - Next: the parser's real output (Sonnet box) through g41 as Par0 gains calls/prims/loops; a diff test against Nano.V2B `gen` on the v2f programs.
