@@ -2,7 +2,7 @@
 Output Buf: tag bytes; tags: def 1, let 2, UInt64 3, Int64 4, number 5 (+ 8 LE value bytes), ( 6, ) 7, : 8, := 9, + 10, - 11, * 12, ; 13,
 ident 14 (+ (1,byte)* + 0), `,` 15, × 16, → 17, | 18, => 19, < 20, == 23, &&& 26, ||| 27, <<< 28, >>> 29 (restricted set: no ≤ ≠ && || Int64),
 [ 30, ] 31, if 32, then 33, else 34, Nat 35, Buf 36, List 37, UInt8 38.  Whitespace = space, newline.  Any other character: output empty.
-Internal kinds: 0 reject, 40 skip, 41 end. -/
+Internal kinds: 0 reject, 90 skip, 91 end. Tags 39-47: len' rd len put bnew bsize bget bset bpush (= IR prim id + 38). -/
 import Nano.V2Self.C.Base
 namespace C
 
@@ -29,14 +29,23 @@ def s3 (x : List UInt8) (p e : UInt64) : UInt64 :=
   let r7 := if d == 3 && c == 66 && rd x (p + 1) == 117 && rd x (p + 2) == 102 then 36 else r6;
   let r8 := if d == 3 && c == 78 && rd x (p + 1) == 97 && rd x (p + 2) == 116 then 35 else r7;
   let r10 := if d == 5 && c == 85 && rd x (p + 1) == 73 && rd x (p + 2) == 110 && rd x (p + 3) == 116 && rd x (p + 4) == 56 then 38 else r8;
-  if d == 6 && c == 85 && rd x (p + 1) == 73 && rd x (p + 2) == 110 && rd x (p + 3) == 116 && rd x (p + 4) == 54 && rd x (p + 5) == 52 then 3 else r10
+  let r11 := if d == 6 && c == 85 && rd x (p + 1) == 73 && rd x (p + 2) == 110 && rd x (p + 3) == 116 && rd x (p + 4) == 54 && rd x (p + 5) == 52 then 3 else r10;
+  let r12 := if d == 2 && c == 114 && rd x (p + 1) == 100 then 40 else r11;
+  let r13 := if d == 3 && c == 108 && rd x (p + 1) == 101 && rd x (p + 2) == 110 then 41 else r12;
+  let r14 := if d == 4 && c == 108 && rd x (p + 1) == 101 && rd x (p + 2) == 110 && rd x (p + 3) == 39 then 39 else r13;
+  let r15 := if d == 3 && c == 112 && rd x (p + 1) == 117 && rd x (p + 2) == 116 then 42 else r14;
+  let r16 := if d == 4 && c == 98 && rd x (p + 1) == 110 && rd x (p + 2) == 101 && rd x (p + 3) == 119 then 43 else r15;
+  let r17 := if d == 5 && c == 98 && rd x (p + 1) == 115 && rd x (p + 2) == 105 && rd x (p + 3) == 122 && rd x (p + 4) == 101 then 44 else r16;
+  let r18 := if d == 4 && c == 98 && rd x (p + 1) == 103 && rd x (p + 2) == 101 && rd x (p + 3) == 116 then 45 else r17;
+  let r19 := if d == 4 && c == 98 && rd x (p + 1) == 115 && rd x (p + 2) == 101 && rd x (p + 3) == 116 then 46 else r18;
+  if d == 5 && c == 98 && rd x (p + 1) == 112 && rd x (p + 2) == 117 && rd x (p + 3) == 115 && rd x (p + 4) == 104 then 47 else r19
 
 def s4 (x : List UInt8) (p : UInt64) : UInt64 := if p < len x then
     let c := rd x p;
     let d := rd x (p + 1);
     let f := rd x (p + 2);
-    if c == 32 then 40
-    else if c == 10 then 40
+    if c == 32 then 90
+    else if c == 10 then 90
     else if c == 40 then 6
     else if c == 41 then 7
     else if c == 43 then 10
@@ -57,12 +66,12 @@ def s4 (x : List UInt8) (p : UInt64) : UInt64 := if p < len x then
     else if 48 ≤ c && c ≤ 57 then if s2 (len' x) x p (s1 (len' x) x p) == 1 then 5 else 0
     else if s0 c == 1 then s3 x p (s1 (len' x) x p)
     else 0
-  else 41
+  else 91
 
 def s5 (x : List UInt8) (p k : UInt64) : UInt64 :=
   if k == 9 || k == 16 || k == 19 || k == 23 then p + 2
   else if k == 17 || k == 26 || k == 27 || k == 28 || k == 29 then p + 3
-  else if k == 6 || k == 7 || k == 8 || k == 10 || k == 11 || k == 12 || k == 13 || k == 15 || k == 18 || k == 20 || k == 30 || k == 31 || k == 40 then p + 1
+  else if k == 6 || k == 7 || k == 8 || k == 10 || k == 11 || k == 12 || k == 13 || k == 15 || k == 18 || k == 20 || k == 30 || k == 31 || k == 90 then p + 1
   else s1 (len' x) x p
 
 def s6 : Nat → List UInt8 → UInt64 → UInt64 → UInt64 → UInt64
@@ -81,8 +90,8 @@ def s9 : Nat → List UInt8 → UInt64 → Buf → Buf
   | n + 1, x, p, o =>
     let k := s4 x p;
     if k == 0 then bnew
-    else if k == 41 then o
-    else if k == 40 then s9 n x (p + 1) o
+    else if k == 91 then o
+    else if k == 90 then s9 n x (p + 1) o
     else if k == 5 then s9 n x (s5 x p k) (s8 (s6 (len' x) x p (s5 x p k) 0) (q0 o 5))
     else if k == 14 then s9 n x (s5 x p k) (s7 (len' x) x p (s5 x p k) (q0 o 14))
     else s9 n x (s5 x p k) (q0 o k)

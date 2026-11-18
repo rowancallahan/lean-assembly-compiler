@@ -70,7 +70,15 @@ def go : Nat → Nat → Nat × Nat → Nat × Nat
     let (t, s') := gen (k % 7) ["a", "b1", "c'", "d_e"] s
     let hdr := if k % 2 == 0 then "(a b1 c' d_e : UInt64)" else "(a b1 : UInt64) (c' : UInt64) (d_e : UInt64)"
     go k (lcg s') (if run t hdr then bad else bad + 1, tot + 1)
+def primCases : List (String × List UInt64) := [
+  ("def m (x : List UInt8) : List UInt8 := put (put [] (rd x 0)) (len x)\n", [2, 20, 0, 0, 0, 0, 1, 9, 4, 9, 4, 9, 5, 9, 2, 1, 0, 9, 3, 21]),
+  ("def m (x : List UInt8) : List UInt8 := put [] (bget (bpush (bnew) 7) 0)\n", [2, 20, 0, 0, 0, 0, 1, 9, 4, 9, 5, 9, 7, 9, 9, 9, 5, 1, 7, 1, 0, 21]),
+  ("def m (x : List UInt8) : List UInt8 := put [] (len' x)\n", [2, 20, 0, 0, 0, 0, 1, 9, 4, 9, 5, 9, 1, 21]),
+  ("def m (x : List UInt8) : List UInt8 := put [] x\n", []),
+  ("def m (x : List UInt8) : List UInt8 := put [] (rd 1 2)\n", []),
+  ("def m (x : List UInt8) : List UInt8 := put (bset (bnew) 1 2) 3\n", [2, 20, 0, 0, 0, 0, 1, 9, 4, 9, 8, 9, 5, 1, 1, 1, 2, 1, 3, 21])]
 def main : IO Unit := do
+  IO.println s!"prim cases (hand-checked words): {primCases.map fun (t, w) => C.y13 (C.s10 t.toUTF8.toList) == w.toArray.toList}"
   IO.println s!"(mismatches, total) = {go 3000 11 (0, 0)}"
   let r := (List.range 400).foldl (fun n k => let (t, _) := gen (k % 7) ["a", "b1", "c'", "d_e"] (lcg (k * 7919)); n + t.lets) 0
   IO.println s!"lets in a sample of 400 trees: {r}"

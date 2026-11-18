@@ -4,7 +4,7 @@ run: lean --run Testing/nano/v2self/lex2_test.lean FILE...  (prints mismatch cou
 def isW (c : Char) : Bool := c.isAlphanum && c.toNat < 128 || c == '_' || c == '\''
 def ops : List (String × Nat) := [("&&&", 26), ("|||", 27), ("<<<", 28), (">>>", 29), (":=", 9), ("=>", 19), ("==", 23),
   ("(", 6), (")", 7), (":", 8), ("+", 10), ("-", 11), ("*", 12), (";", 13), (",", 15), ("×", 16), ("→", 17), ("|", 18), ("<", 20), ("[", 30), ("]", 31)]
-def kws : List (String × Nat) := [("def", 1), ("let", 2), ("UInt64", 3), ("if", 32), ("then", 33), ("else", 34), ("Nat", 35), ("Buf", 36), ("List", 37), ("UInt8", 38)]
+def kws : List (String × Nat) := [("def", 1), ("let", 2), ("UInt64", 3), ("if", 32), ("then", 33), ("else", 34), ("Nat", 35), ("Buf", 36), ("List", 37), ("UInt8", 38), ("len'", 39), ("rd", 40), ("len", 41), ("put", 42), ("bnew", 43), ("bsize", 44), ("bget", 45), ("bset", 46), ("bpush", 47)]
 def le8 (v : Nat) : List UInt64 := (List.range 8).map fun i => ((v / 256 ^ i) % 256).toUInt64
 partial def ref (cs : List Char) (o : List UInt64) : Option (List UInt64) :=
   match cs with
@@ -24,7 +24,7 @@ partial def ref (cs : List Char) (o : List UInt64) : Option (List UInt64) :=
         | none => ref (cs.drop w.length) (o ++ [14] ++ w.flatMap (fun d => [1, d.toNat.toUInt64]) ++ [0])
       else none
 def lcg (s : Nat) : Nat := (s * 6364136223846793005 + 1442695040888963407) % 2^64
-def pieces : List String := ["def ", "let ", "if ", " then ", " else ", "Nat", "Buf", "List UInt8", "UInt64", "x", "x1", "y'", "12", "007", "99999999999999999999999", "1a", "(", ")", ",", " ", "\n", ":", ":=", "=>", "==", "=", "&", "&&", "&&&", "|", "||", "|||", "<", "<<", "<<<", ">", ">>", ">>>", "≤", "≠", "×", "→", "[", "]", "+", "-", "*", ";", "é", "Int64", "ifx"]
+def pieces : List String := ["def ", "let ", "if ", " then ", " else ", "Nat", "Buf", "List UInt8", "UInt64", "x", "x1", "y'", "12", "007", "99999999999999999999999", "1a", "(", ")", ",", " ", "\n", ":", ":=", "=>", "==", "=", "&", "&&", "&&&", "|", "||", "|||", "<", "<<", "<<<", ">", ">>", ">>>", "≤", "≠", "×", "→", "[", "]", "+", "-", "*", ";", "é", "Int64", "ifx", "rd", "len", "len'", "put", "bnew", "bsize", "bget", "bset", "bpush", "bpushx", "r"]
 def gen : Nat → Nat → String → String × Nat
   | 0, s, acc => (acc, s)
   | n+1, s, acc => let s1 := lcg s; gen n s1 (acc ++ pieces[(s1 >>> 33) % pieces.length]!)
