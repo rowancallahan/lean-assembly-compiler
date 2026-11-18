@@ -1078,6 +1078,14 @@ def v141 (h : Buf) (a b : UInt64) : Buf :=
   else
     bset h 0 0
 
+def v205 : Nat → Buf → UInt64 → UInt64 → UInt64 → UInt64
+  | 0, h, a, c, m => m
+  | n + 1, h, a, c, m =>
+    if c == 0 then m
+    else
+      let r := if bget h ((d5 + 8*a) + 0) == 2 then if bget h ((d5 + 8*a) + 2) == 0 then k1 else k0 else k0;
+      v205 n h (bget h ((d5 + 8*a) + 7)) (c - 1) (m + r)
+
 def v142 (h : Buf) (a b : UInt64) : Buf :=
   let t := (bget h ((d5 + 8*a) + 0));
   let x := (bget h ((d5 + 8*a) + 1));
@@ -1086,21 +1094,31 @@ def v142 (h : Buf) (a b : UInt64) : Buf :=
   let n := (bget h ((d5 + 8*a) + 6));
   let r := if t == 9 then if x < 4 then k1 else k0 else k0;
   let z2 := bget h ((d5 + 8*z) + 7);
-  let h := bpush h (t);
-  let h := if t < 10 then bpush h x else h;
-  let h := if t == 2 then bpush h y else if t == 5 then bpush h y else if t == 8 then bpush h y else h;
-  let z3 := if r == 1 then z2 else z;
-  let n3 := if r == 1 then n - 1 else n;
-  v1 h 82 z3 n3
+  let a1 := bget h ((d5 + 8*z) + 0);
+  let a2 := bget h ((d5 + 8*z) + 2);
+  let b1 := bget h ((d5 + 8*z2) + 0);
+  let b2 := bget h ((d5 + 8*z2) + 2);
+  let c8 := if t == 8 then v205 16777216 h z n 0 else k0;
+  let c1 := if t == 6 then if a1 == 2 then if a2 == 0 then k1 else k0 else k0 else k0;
+  let c2 := if t == 6 then if b1 == 2 then if b2 == 0 then k1 else k0 else k0 else k0;
+  if c1 == 1 then v1 h 81 z2 0
+  else if c2 == 1 then v1 h 81 z 0
+  else
+    let h := bpush h (t);
+    let h := if t < 10 then bpush h x else h;
+    let h := if t == 2 then bpush h y else if t == 5 then bpush h y else if t == 8 then bpush h (y - c8) else h;
+    let z3 := if r == 1 then z2 else z;
+    let n3 := if r == 1 then n - 1 else n;
+    v1 h 82 z3 n3
 
 def v143 (h : Buf) (a b : UInt64) : Buf :=
   if b == 0 then
     h
   else
     let x := (bget h ((d5 + 8*a) + 7));
+    let r := if bget h ((d5 + 8*a) + 0) == 2 then if bget h ((d5 + 8*a) + 2) == 0 then k1 else k0 else k0;
     let h := v1 h 82 (x) (b - 1);
-    let h := v1 h 81 (a) (0);
-    h
+    if r == 1 then h else v1 h 81 (a) (0)
 
 def v144 (h : Buf) (a b : UInt64) : Buf :=
   let h := bpush h (21);
