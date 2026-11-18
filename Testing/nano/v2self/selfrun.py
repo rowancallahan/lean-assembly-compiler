@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run P (words from selfcompile.lean) on QEMU with src.txt as input.  usage: selfrun.py DIR WORK_MB OUT_KB
-Convention: a0 input, a1 length, a2 work base (8-aligned), a3 output, sp = work end.  Writes DIR/O.bin (output bytes), prints a0/a1/instructions-free timing."""
+Convention: a0 input, a1 length, a2 work base (8-aligned), a3 output, sp = work end.  Writes DIR/O.bin (output bytes), prints a0/a1/instructions-free timing.
+FILL=0xa5: the work memory starts filled with that byte instead of zeros (checks no uninitialised reads)."""
 import os, re, subprocess, sys, time
 D, WK, OUT = sys.argv[1], int(sys.argv[2]) << 20, int(sys.argv[3]) << 10
 x = open(f"{D}/src.txt", "rb").read()
@@ -38,9 +39,14 @@ tab: .quad base, {len(x)}, work, outb, work+{WK}, 0, 0, 0, 0, 0
 .bss
 .align 4
 outb: .space {OUT}
+""" + (f"""
 .align 4
 work: .space {WK}
-"""
+""" if not os.environ.get("FILL") else f"""
+.data
+.align 4
+work: .space {WK}, {os.environ["FILL"]}
+""")
 open(f"{D}/in.bin", "wb").write(x); open(f"{D}/t.S", "w").write(S); open(f"{D}/m.ld", "w").write(LD)
 sh = lambda c: subprocess.run(c, shell=True, check=True)
 sh(f"riscv64-linux-gnu-gcc -march=rv64im_zicsr -mabi=lp64 -nostdlib -static -Wl,-T,{D}/m.ld -Wl,--no-relax -Wl,--build-id=none {D}/t.S -o {D}/t.elf")
