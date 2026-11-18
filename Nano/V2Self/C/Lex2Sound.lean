@@ -179,3 +179,135 @@ theorem s7_eq : ∀ (n : Nat) (x : List UInt8) (i e : UInt64) (o : Buf), x.lengt
       · have : e.toNat - i.toNat = 0 := by
           have := UInt64.le_iff_toNat_le.1 (UInt64.not_lt.1 hlt); omega
         simp [hlt, this, q0_eq]
+
+/-! ### keyword classification (s3) -/
+
+theorem tu (a : UInt8) (n : Nat) (h : n < 256) : a.toUInt64 = UInt64.ofNat n ↔ a = UInt8.ofNat n := by
+  constructor
+  · intro e; have := congrArg UInt64.toNat e
+    apply UInt8.toNat.inj; simp at this ⊢; omega
+  · intro e; subst e; apply UInt64.toNat.inj; simp; omega
+theorem tu2 (a : UInt8) (n : Nat) (h : n < 256) :
+    a.toUInt64 = (no_index (OfNat.ofNat n : UInt64)) ↔ a = (no_index (OfNat.ofNat n : UInt8)) := tu a n h
+
+/-- s3 with its reads made parameters (definitionally the same body) -/
+def s3' (d c c1 c2 c3 c4 c5 : UInt64) : UInt64 :=
+  let r0 := 14;
+  let r1 := if d == 4 && c == 101 && c1 == 108 && c2 == 115 && c3 == 101 then 34 else r0;
+  let r2 := if d == 4 && c == 116 && c1 == 104 && c2 == 101 && c3 == 110 then 33 else r1;
+  let r3 := if d == 2 && c == 105 && c1 == 102 then 32 else r2;
+  let r4 := if d == 3 && c == 108 && c1 == 101 && c2 == 116 then 2 else r3;
+  let r5 := if d == 3 && c == 100 && c1 == 101 && c2 == 102 then 1 else r4;
+  let r6 := if d == 4 && c == 76 && c1 == 105 && c2 == 115 && c3 == 116 then 37 else r5;
+  let r7 := if d == 3 && c == 66 && c1 == 117 && c2 == 102 then 36 else r6;
+  let r8 := if d == 3 && c == 78 && c1 == 97 && c2 == 116 then 35 else r7;
+  let r10 := if d == 5 && c == 85 && c1 == 73 && c2 == 110 && c3 == 116 && c4 == 56 then 38 else r8;
+  let r11 := if d == 6 && c == 85 && c1 == 73 && c2 == 110 && c3 == 116 && c4 == 54 && c5 == 52 then 3 else r10;
+  let r12 := if d == 2 && c == 114 && c1 == 100 then 40 else r11;
+  let r13 := if d == 3 && c == 108 && c1 == 101 && c2 == 110 then 41 else r12;
+  let r14 := if d == 4 && c == 108 && c1 == 101 && c2 == 110 && c3 == 39 then 39 else r13;
+  let r15 := if d == 3 && c == 112 && c1 == 117 && c2 == 116 then 42 else r14;
+  let r16 := if d == 4 && c == 98 && c1 == 110 && c2 == 101 && c3 == 119 then 43 else r15;
+  let r17 := if d == 5 && c == 98 && c1 == 115 && c2 == 105 && c3 == 122 && c4 == 101 then 44 else r16;
+  let r18 := if d == 4 && c == 98 && c1 == 103 && c2 == 101 && c3 == 116 then 45 else r17;
+  let r19 := if d == 4 && c == 98 && c1 == 115 && c2 == 101 && c3 == 116 then 46 else r18;
+  if d == 5 && c == 98 && c1 == 112 && c2 == 117 && c3 == 115 && c4 == 104 then 47 else r19
+
+theorem s3_eq_s3' (x : List UInt8) (p e : UInt64) :
+    s3 x p e = s3' (e - p) (rd x p) (rd x (p + 1)) (rd x (p + 2)) (rd x (p + 3)) (rd x (p + 4)) (rd x (p + 5)) := rfl
+
+theorem s3'_eq (w : List UInt8) (c0 c1 c2 c3 c4 c5 : UInt64) (hl : w.length < 2 ^ 32)
+    (h : ∀ j, j < 6 → j < w.length → [c0, c1, c2, c3, c4, c5].getD j 0 = (w.getD j 0).toUInt64) :
+    s3' w.length.toUInt64 c0 c1 c2 c3 c4 c5 = (kwTable.lookup w).getD 14 := by
+  rcases w with _ | ⟨a, _ | ⟨b, _ | ⟨c, _ | ⟨d, _ | ⟨e, _ | ⟨f, _ | ⟨g, r⟩⟩⟩⟩⟩⟩⟩
+  · try simp [s3', kwTable, tu2, List.lookup]
+    try ((repeat' split) <;> simp_all)
+  · have h0 := h 0 (by decide) (by simp)
+    simp at h0
+    subst_vars
+    try simp [s3', kwTable, tu2, List.lookup]
+    try ((repeat' split) <;> simp_all)
+  · have h0 := h 0 (by decide) (by simp)
+    have h1 := h 1 (by decide) (by simp)
+    simp at h0 h1
+    subst_vars
+    try simp [s3', kwTable, tu2, List.lookup]
+    try ((repeat' split) <;> simp_all)
+  · have h0 := h 0 (by decide) (by simp)
+    have h1 := h 1 (by decide) (by simp)
+    have h2 := h 2 (by decide) (by simp)
+    simp at h0 h1 h2
+    subst_vars
+    try simp [s3', kwTable, tu2, List.lookup]
+    try ((repeat' split) <;> simp_all)
+  · have h0 := h 0 (by decide) (by simp)
+    have h1 := h 1 (by decide) (by simp)
+    have h2 := h 2 (by decide) (by simp)
+    have h3 := h 3 (by decide) (by simp)
+    simp at h0 h1 h2 h3
+    subst_vars
+    try simp [s3', kwTable, tu2, List.lookup]
+    try ((repeat' split) <;> simp_all)
+  · have h0 := h 0 (by decide) (by simp)
+    have h1 := h 1 (by decide) (by simp)
+    have h2 := h 2 (by decide) (by simp)
+    have h3 := h 3 (by decide) (by simp)
+    have h4 := h 4 (by decide) (by simp)
+    simp at h0 h1 h2 h3 h4
+    subst_vars
+    try simp [s3', kwTable, tu2, List.lookup]
+    try ((repeat' split) <;> simp_all)
+  · have h0 := h 0 (by decide) (by simp)
+    have h1 := h 1 (by decide) (by simp)
+    have h2 := h 2 (by decide) (by simp)
+    have h3 := h 3 (by decide) (by simp)
+    have h4 := h 4 (by decide) (by simp)
+    have h5 := h 5 (by decide) (by simp)
+    simp at h0 h1 h2 h3 h4 h5
+    subst_vars
+    try simp [s3', kwTable, tu2, List.lookup]
+    try ((repeat' split) <;> simp_all)
+  · have h0 := h 0 (by decide) (by simp)
+    have h1 := h 1 (by decide) (by simp)
+    have h2 := h 2 (by decide) (by simp)
+    have h3 := h 3 (by decide) (by simp)
+    have h4 := h 4 (by decide) (by simp)
+    have h5 := h 5 (by decide) (by simp)
+    simp at h0 h1 h2 h3 h4 h5
+    subst_vars
+    have hd : (a :: b :: c :: d :: e :: f :: g :: r).length = r.length + 7 := by simp
+    obtain ⟨N, hN⟩ : ∃ N, N = r.length + 7 := ⟨_, rfl⟩
+    rw [hd, ← hN]
+    rw [hd] at hl
+    have hl' : N < 2 ^ 32 := by omega
+    have n2 : N.toUInt64 ≠ 2 := by intro e; have := congrArg UInt64.toNat e; simp at this; omega
+    have n3 : N.toUInt64 ≠ 3 := by intro e; have := congrArg UInt64.toNat e; simp at this; omega
+    have n4 : N.toUInt64 ≠ 4 := by intro e; have := congrArg UInt64.toNat e; simp at this; omega
+    have n5 : N.toUInt64 ≠ 5 := by intro e; have := congrArg UInt64.toNat e; simp at this; omega
+    have n6 : N.toUInt64 ≠ 6 := by intro e; have := congrArg UInt64.toNat e; simp at this; omega
+    simp [s3', kwTable, List.lookup, n2, n3, n4, n5, n6]
+
+theorem rd_seg (x : List UInt8) (p q : UInt64) (m j : Nat) (hj : j < m) (hq : q.toNat = p.toNat + j) :
+    rd x q = (((x.drop p.toNat).take m).getD j 0).toUInt64 := by
+  rw [rd_eq, hq]
+  simp [List.getD_eq_getElem?_getD, List.getElem?_take, List.getElem?_drop, hj, Nat.add_comm]
+
+theorem s3_eq (x : List UInt8) (p e : UInt64) (hx : x.length < 2 ^ 32) (he : e.toNat ≤ x.length) (hp : p.toNat ≤ e.toNat) :
+    s3 x p e = (kwTable.lookup ((x.drop p.toNat).take (e.toNat - p.toNat))).getD 14 := by
+  rw [s3_eq_s3']
+  have hw : ((x.drop p.toNat).take (e.toNat - p.toNat)).length = e.toNat - p.toNat := by simp; omega
+  have hd : e - p = ((x.drop p.toNat).take (e.toNat - p.toNat)).length.toUInt64 := by
+    apply UInt64.toNat.inj; rw [hw]; simp [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.2 hp)]
+    omega
+  rw [hd]
+  apply s3'_eq _ _ _ _ _ _ _ (by rw [hw]; omega)
+  intro j hj hjw
+  rw [hw] at hjw
+  have hrd : ∀ q : UInt64, q.toNat = p.toNat + j → rd x q = _ := fun q hq => rd_seg x p q _ j hjw hq
+  obtain rfl | rfl | rfl | rfl | rfl | rfl : j = 0 ∨ j = 1 ∨ j = 2 ∨ j = 3 ∨ j = 4 ∨ j = 5 := by omega
+  · simp; exact hrd p (by omega)
+  · simp; exact hrd (p + 1) (by simp [UInt64.toNat_add]; omega)
+  · simp; exact hrd (p + 2) (by simp [UInt64.toNat_add]; omega)
+  · simp; exact hrd (p + 3) (by simp [UInt64.toNat_add]; omega)
+  · simp; exact hrd (p + 4) (by simp [UInt64.toNat_add]; omega)
+  · simp; exact hrd (p + 5) (by simp [UInt64.toNat_add]; omega)
