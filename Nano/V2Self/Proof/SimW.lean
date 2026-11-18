@@ -225,6 +225,54 @@ theorem sim_bgeu8 {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK :
     rw [w0] at this
     rw [if_pos (by omega), show ((pc : Int) + 2).toNat = pc + 2 by omega]; exact ⟨t', hN.ret, this⟩
 
+/-- **beq a, b, +8** (IF on `==`) -/
+theorem sim_beq8 {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
+    {a b : Nat} (hC : K.W[pc]? = some (I.br .beq a b 8).enc) (ha : a < 32) (hb : b < 32) :
+    ∃ t', Retires t t' ∧ RelW K (if s.x a = s.x b then ((pc : Int) + 2).toNat else pc + 1, s) t' := by
+  obtain ⟨hi, hok⟩ := codeW hK hR hC
+  let A : Fin 32 := ⟨a, ha⟩
+  let B : Fin 32 := ⟨b, hb⟩
+  have xa : getX t A = (s.x a).toBitVec := hR.x A
+  have xb : getX t B = (s.x b).toBitVec := hR.x B
+  have e := encBt8_eq 0 (by decide) A B
+  have hi2 : instrAt t _ (BitVec.ofNat 32 (encBt 0 A.val B.val 8)) := hi
+  rw [e] at hi2
+  have w0 : CallProbe.wr s (0 : Fin 32).val (0 : UInt64) = s := by simp [CallProbe.wr]
+  by_cases hc : s.x a = s.x b
+  · obtain ⟨t', hN⟩ := G.beq_t hR.cfg hR.pc hok A B _ hi2 (by rw [xa, xb, hc])
+    rw [boff8, pc_plus8] at hN
+    have := rel_jumpW hR 0 0 (by simpa using hN)
+    rw [w0] at this
+    rw [if_pos hc, show ((pc : Int) + 2).toNat = pc + 2 by omega]; exact ⟨t', hN.ret, this⟩
+  · obtain ⟨t', hN⟩ := G.beq_n hR.cfg hR.pc hok A B _ hi2 (by rw [xa, xb]; exact fun h => hc (UInt64.toBitVec_inj.1 h))
+    rw [ofNat_pc4] at hN
+    have := rel_jumpW hR 0 0 (by simpa using hN)
+    rw [w0] at this; rw [if_neg hc]; exact ⟨t', hN.ret, this⟩
+
+/-- **bltu a, b, +8** (IF on `<`) -/
+theorem sim_bltu8 {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
+    {a b : Nat} (hC : K.W[pc]? = some (I.br .bltu a b 8).enc) (ha : a < 32) (hb : b < 32) :
+    ∃ t', Retires t t' ∧ RelW K (if (s.x a).toNat < (s.x b).toNat then ((pc : Int) + 2).toNat else pc + 1, s) t' := by
+  obtain ⟨hi, hok⟩ := codeW hK hR hC
+  let A : Fin 32 := ⟨a, ha⟩
+  let B : Fin 32 := ⟨b, hb⟩
+  have xa : getX t A = (s.x a).toBitVec := hR.x A
+  have xb : getX t B = (s.x b).toBitVec := hR.x B
+  have e := encBt8_eq 6 (by decide) A B
+  have hi2 : instrAt t _ (BitVec.ofNat 32 (encBt 6 A.val B.val 8)) := hi
+  rw [e] at hi2
+  have w0 : CallProbe.wr s (0 : Fin 32).val (0 : UInt64) = s := by simp [CallProbe.wr]
+  by_cases hc : (s.x a).toNat < (s.x b).toNat
+  · obtain ⟨t', hN⟩ := G.bltu_t hR.cfg hR.pc hok A B _ hi2 (by rw [xa, xb]; exact hc)
+    rw [boff8, pc_plus8] at hN
+    have := rel_jumpW hR 0 0 (by simpa using hN)
+    rw [w0] at this
+    rw [if_pos hc, show ((pc : Int) + 2).toNat = pc + 2 by omega]; exact ⟨t', hN.ret, this⟩
+  · obtain ⟨t', hN⟩ := G.bltu_n hR.cfg hR.pc hok A B _ hi2 (by rw [xa, xb]; exact hc)
+    rw [ofNat_pc4] at hN
+    have := rel_jumpW hR 0 0 (by simpa using hN)
+    rw [w0] at this; rw [if_neg hc]; exact ⟨t', hN.ret, this⟩
+
 theorem ofInt_toNat64 (x : Int) : (UInt64.ofInt x).toNat = (x % 2 ^ 64).toNat := by
   rw [← UInt64.toNat_toBitVec, ofInt_bv, BitVec.toNat_ofInt]; simp
 
@@ -288,6 +336,8 @@ def encJ : CallProbe.J → Nat
   | .ld rd rs off => (I.ld rd rs off).enc
   | .sd b a off => (I.sd b a off).enc
   | .bgeu a b _ => (I.br .bgeu a b 8).enc
+  | .beq a b _ => (I.br .beq a b 8).enc
+  | .bltu a b _ => (I.br .bltu a b 8).enc
   | .jal rd off => (C.g5 (UInt64.ofNat rd) (UInt64.ofInt (4 * off))).toNat
   | .jalr _ rs => (C.g2 C.g_103 0 0 (UInt64.ofNat rs) 0).toNat
   | _ => 0  -- alu / slli / lbu: not bridged yet (their steps are not `Safe`)
@@ -302,6 +352,8 @@ def Safe (K : LayW) (C : List CallProbe.J) : Nat × CallProbe.St → Prop
     | some (.sd b a off) => b < 32 ∧ a < 32 ∧ -2048 ≤ off ∧ off < 2048 ∧
         0 ≤ ((s.x a).toNat : Int) + off ∧ wok K (CallProbe.ea (s.x a) off)
     | some (.bgeu a b o) => a < 32 ∧ b < 32 ∧ o = 2
+    | some (.beq a b o) => a < 32 ∧ b < 32 ∧ o = 2
+    | some (.bltu a b o) => a < 32 ∧ b < 32 ∧ o = 2
     | some (.jal rd off) => rd < 32 ∧ -2 ^ 18 ≤ off ∧ off < 2 ^ 18 ∧ 0 ≤ (pc : Int) + off ∧ (pc : Int) + off < C.length
     | some (.jalr rd rs) => rd = 0 ∧ rs < 32 ∧ ∃ j, (s.x rs).toNat = K.base + 4 * j
     | _ => False
@@ -343,6 +395,12 @@ theorem sim_stepW {K : LayW} {C : List CallProbe.J} (hK : K.Ok) (hW : K.W = C.ma
       refine ⟨t', ht, ?_⟩
       have : ((s.x rs).toNat - s.b) / 4 = j := by rw [hj, hb]; omega
       simp [this, CallProbe.wr]; exact hr
+    | beq a' b' o =>
+      obtain ⟨h1, h2, rfl⟩ := hS
+      simp only [Option.some.injEq] at hs; subst hs; exact sim_beq8 hK hR (hWpc _ hc) h1 h2
+    | bltu a' b' o =>
+      obtain ⟨h1, h2, rfl⟩ := hS
+      simp only [Option.some.injEq] at hs; subst hs; exact sim_bltu8 hK hR (hWpc _ hc) h1 h2
     | alu _ _ _ _ => exact hS.elim
     | slli _ _ _ => exact hS.elim
     | lbu _ _ _ => exact hS.elim

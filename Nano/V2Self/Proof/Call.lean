@@ -20,6 +20,9 @@ inductive J where
   | slli (rd rs sh : Nat)
   /-- byte load: the byte at address ea of the (aligned, little-endian) word cells of `m` -/
   | lbu (rd rs : Nat) (off : Int)
+  /-- branches of IF (Gen: `beq t0, t1, +8` / `bltu t0, t1, +8`) -/
+  | beq (a b : Nat) (off : Int)
+  | bltu (a b : Nat) (off : Int)
 
 structure St where
   x : Nat → UInt64
@@ -48,6 +51,8 @@ def step (C : List J) : Nat × St → Option (Nat × St)
     | some (.alu op rd a b) => some (pc + 1, wr s rd (aluf op (s.x a) (s.x b)))
     | some (.slli rd rs sh) => some (pc + 1, wr s rd (s.x rs <<< sh.toUInt64))
     | some (.lbu rd rs off) => some (pc + 1, wr s rd (lbm s.m (ea (s.x rs) off)))
+    | some (.beq a b off) => some (if s.x a = s.x b then ((pc : Int) + off).toNat else pc + 1, s)
+    | some (.bltu a b off) => some (if (s.x a).toNat < (s.x b).toNat then ((pc : Int) + off).toNat else pc + 1, s)
     | none => none
 
 inductive Star (C : List J) : Nat × St → Nat × St → Prop
