@@ -139,8 +139,11 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
   LOOP: `Nano/V2Self/Proof/Loop.lean` `loop_ok` (no sorry): Gen's head (ld fuel; beq fuel,x0,+2; jal STEP; zero arm)
   and STEP (fuel − 1 stored; step arm exits to E or CONTINUEs to HEAD), by induction on the fuel; arms, head
   invariant P and results abstract; result = inductive `LoopR` (zero / exit / cont).
-  Next: CONTINUE template (state push + pop into slots 1..npw−1 + jal HEAD as a `Cont` instance), PAIR/LET width w,
-  the fixup lemma, the g39 work-item invariant.
+  Multi-word values: contract `EVw` (w words, component i at t6 − 8(i+1)); `pairE` (PAIR = A ++ B), `letW` (LET of
+  width w via `popN_run`, env updated by `setSlots`), `contE` (CONTINUE: state value, pop into slots 1..npw−1, jal
+  HEAD; reaches HEAD with t6 restored and the frame = setSlots env' 1 (new state): loop_ok's continue branch).
+  Next: the fixup lemma (patched placeholder jal = encoded jump to its target), then the g39 work-item invariant
+  (emitted code ↔ AST walk) that instantiates these templates.
 - Next: the parser's real output (Sonnet box) through g41 as Par0 gains calls/prims/loops; a diff test against Nano.V2B `gen` on the v2f programs.
 - EXPRESSION TEMPLATES PROVED (Sonnet box): `Nano/V2Self/Proof/Expr.lean` (+ `ExprExact.lean`), no sorry, standard axioms, ~5 s each.
   J (Proof/Call.lean) gained additive `alu` (Gen's BIN numbering), `slli`, `lbu` (byte of the aligned LE word cell).

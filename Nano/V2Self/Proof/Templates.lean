@@ -677,4 +677,55 @@ theorem letW {C : List J} {pc lv lb n p nl k0 w wb : Nat} {Inv : St → Prop} {R
       rw [mo2 a (fun j hj e => hW (k0 + j) (by omega) (Or.inr (Or.inl ⟨by omega, by omega⟩)) e)]
       exact m1 a ha (fun k hk wk => hW k hk (Or.inl wk))
 
+/-- **CONTINUE** (tail of a fuel def's step arm): the new state (npw−1 words); pop into slots 1 … npw−1; jal HEAD.
+Reaches HEAD with t6 restored, the frame holding the state in slots 1 … npw−1 and the fragment's own lets
+changed; everything else as before (the shape loop_ok's continue branch needs). -/
+theorem contE {C : List J} {pc le n p nl H : Nat} {dH : Int} {Inv : St → Prop} {R W : Nat → Prop}
+    {Ve : (Nat → UInt64) → List UInt64} (hI : InvOK p Inv)
+    (he : EVw C pc le n p nl Inv R W (p - 1) Ve) (hS : At C (pc + le) (popN p 1 (p - 1)))
+    (hJ : C[pc + le + 3 * (p - 1)]? = some (.jal 0 dH)) (hdH : ((pc + le + 3 * (p - 1) : Nat) + dH).toNat = H)
+    (hp : 1 ≤ p) (hpn : p ≤ nl) (hn : p - 1 ≤ n) :
+    ∀ (s : St) (env : Nat → UInt64), Inv s → s.x 0 = 0 → Frame p nl s env → FrameOK p nl s →
+      (s.x 30).toNat + 8 * n ≤ (s.x 31).toNat →
+      ∃ s' env', Star C (pc, s) (H, s') ∧ Inv s' ∧ s'.x 0 = 0 ∧ (s'.x 31).toNat = (s.x 31).toNat ∧
+        s'.x 8 = s.x 8 ∧ s'.x 30 = s.x 30 ∧ Frame p nl s' (setSlots env' 1 (Ve env)) ∧
+        (∀ k, ¬ W k → env' k = env k) := by
+  intro s env I0 z0 F0 O0 room
+  obtain ⟨s1, env1, r1, I1, z1, p1, v1, e81, e301, F1, ag1, m1⟩ := he.run s env I0 z0 F0 O0 room
+  obtain ⟨o1, o2, o3⟩ := O0
+  have lt64 := (s.x 31).toNat_lt
+  have T1 : (s1.x 31).toNat + 8 * (p - 1) = (s.x 31).toNat := by rw [p1]; omega
+  obtain ⟨s2, r2, p2, e82, ex2, eb2, ms2, mo2⟩ := popN_run (p := p) (k0 := 1) (p - 1) (pc + le) s1 hS (by omega)
+    (fun j j' hj hj' e => by have := slotAddr_inj (nl := nl) (by rw [e81]; omega) (by omega) (by omega) e; omega)
+    (fun j i hj hi => by
+      rw [e81]; have := slotAddr_ge (T := (s.x 31).toNat) (k := 1 + j) (nl := nl) (by omega) o2 (by omega); omega)
+  rw [e81] at ms2 mo2
+  have x31 : (s2.x 31).toNat = (s.x 31).toNat := by rw [p2, T1]
+  have x8 : s2.x 8 = s.x 8 := by rw [e82, e81]
+  have x30 : s2.x 30 = s.x 30 := by rw [ex2 30 (by decide) (by decide), e301]
+  have F2 : Frame p nl s2 (setSlots env1 1 (Ve env)) := by
+    intro k hk
+    show s2.m (slotAddr p (s2.x 8).toNat k) = setSlots env1 1 (Ve env) k
+    rw [x8]
+    by_cases e : 1 ≤ k ∧ k < 1 + (p - 1)
+    · have := ms2 (k - 1) (by omega)
+      rw [show 1 + (k - 1) = k by omega] at this
+      rw [this, show (s1.x 31).toNat + 8 * (p - 1 - 1 - (k - 1)) = (s.x 31).toNat - 8 * (k - 1 + 1) by omega,
+        v1 (k - 1) (by omega)]
+      simp [setSlots, he.vlen, e]
+    · rw [mo2 _ (fun j hj h => e (by have := slotAddr_inj (nl := nl) (by omega) hk (by omega) h; omega))]
+      simp only [setSlots, he.vlen, e, if_false]; rw [← e81]; exact F1 k hk
+  have I2 : Inv s2 := by
+    apply hI s1 s2 I1 (by rw [e82]) (ex2 28 (by decide) (by decide)) (ex2 29 (by decide) (by decide))
+      (ex2 30 (by decide) (by decide))
+    intro a ha
+    apply mo2 a; intro j hj e; apply ha; rw [e301, e81, e]
+    exact ⟨by have := slotAddr_ge (T := (s.x 31).toNat) (k := 1 + j) (nl := nl) (by omega) o2 (by omega); omega,
+      slotAddr_lt (nl := nl) (by omega) (by omega)⟩
+  have z2 : s2.x 0 = 0 := by rw [ex2 0 (by decide) (by decide), z1]
+  have sj : step C (pc + le + 3 * (p - 1), s2) = some (H, s2) := by
+    simp [step, hJ, wr]; exact hdH
+  refine ⟨s2, env1, ((r1.trans (run_star r2)).tail sj), I2, z2, x31, x8, x30, ?_, ag1⟩
+  exact F2
+
 end Templates
