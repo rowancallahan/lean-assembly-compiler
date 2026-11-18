@@ -1717,6 +1717,7 @@ def g39 : Nat → Buf → Buf → Buf → Buf → Buf → Buf → Buf × Buf
   | n + 1, x, r, o, k, t, f =>
     if bget r 5 == 1 then (r, o) else
     if bget r 4 == 1 then (r, o) else
+    if 16777215 < bsize o then (g16 r, o) else
     if bget r 6 == 0 then
       if bget r 0 < bsize x then
         let (r1, y2) := g38 x r o k t;
