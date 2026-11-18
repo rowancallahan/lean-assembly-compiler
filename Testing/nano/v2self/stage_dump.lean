@@ -15,5 +15,5 @@ def main (args : List String) : IO Unit := do
   let code := C.g41 ast
   IO.FS.writeFile (out ++ ".tok") (hx tk)
   IO.FS.writeFile (out ++ ".ast") (hx ast)
-  IO.FS.writeFile (out ++ ".code") (hx code)
+  IO.FS.writeFile (out ++ ".code") (hx (code.map (·.toUInt64)))
   IO.println s!"{src}: tokens {tk.length}, ast words {ast.length}, code bytes {code.length}"
