@@ -142,8 +142,10 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
   Multi-word values: contract `EVw` (w words, component i at t6 − 8(i+1)); `pairE` (PAIR = A ++ B), `letW` (LET of
   width w via `popN_run`, env updated by `setSlots`), `contE` (CONTINUE: state value, pop into slots 1..npw−1, jal
   HEAD; reaches HEAD with t6 restored and the frame = setSlots env' 1 (new state): loop_ok's continue branch).
-  Next: the fixup lemma (patched placeholder jal = encoded jump to its target), then the g39 work-item invariant
-  (emitted code ↔ AST walk) that instantiates these templates.
+  FIXUPS: `Nano/V2Self/Proof/Fixup.lean` (no sorry): `off_eq` (C's `(b − a) <<< 2` = ofInt 4(b − a)), `g13_encJ`
+  (C's jump word = encJ (jal x0 (b − a))), `g20_ok` (patching placeholder p: length kept, word p = the jump to the
+  current end, all other words unchanged), `g19_ok` (emit = append the jump).
+  Next: the g39 work-item invariant (emitted code ↔ AST walk) that instantiates these templates.
 - Next: the parser's real output (Sonnet box) through g41 as Par0 gains calls/prims/loops; a diff test against Nano.V2B `gen` on the v2f programs.
 - EXPRESSION TEMPLATES PROVED (Sonnet box): `Nano/V2Self/Proof/Expr.lean` (+ `ExprExact.lean`), no sorry, standard axioms, ~5 s each.
   J (Proof/Call.lean) gained additive `alu` (Gen's BIN numbering), `slli`, `lbu` (byte of the aligned LE word cell).
