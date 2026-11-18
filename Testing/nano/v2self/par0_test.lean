@@ -64,12 +64,19 @@ def run (t : T) (hdr : String) : Bool :=
   | 2 :: 20 :: 0 :: np :: ns :: 0 :: 1 :: r =>
     np == 4 && ns.toNat == 4 + t.lets && (match dec r (ps ++ List.replicate 60 0) 1000 with | some (v, [21]) => v == t.eval env | _ => false)
   | _ => false
+def accepted (t : T) (hdr : String) : Bool :=
+  !(C.y13 (C.s10 s!"def f {hdr} : UInt64 := {t.pr 0}\n".toUTF8.toList)).isEmpty
 def go : Nat → Nat → Nat × Nat → Nat × Nat
   | 0, _, r => r
   | k+1, s, (bad, tot) =>
     let (t, s') := gen (k % 7) ["a", "b1", "c'", "d_e"] s
     let hdr := if k % 2 == 0 then "(a b1 c' d_e : UInt64)" else "(a b1 : UInt64) (c' : UInt64) (d_e : UInt64)"
     go k (lcg s') (if run t hdr then bad else bad + 1, tot + 1)
+def goAcc : Nat → Nat → Nat → Nat
+  | 0, _, a => a
+  | k+1, s, a =>
+    let (t, s') := gen (k % 7) ["a", "b1", "c'", "d_e"] s
+    goAcc k (lcg s') (if accepted t (if k % 2 == 0 then "(a b1 c' d_e : UInt64)" else "(a b1 : UInt64) (c' : UInt64) (d_e : UInt64)") then a + 1 else a)
 def primCases : List (String × List UInt64) := [
   ("def m (x : List UInt8) : List UInt8 := put (put [] (rd x 0)) (len x)\n", [2, 20, 0, 0, 0, 0, 1, 9, 4, 9, 4, 9, 5, 9, 2, 1, 0, 9, 3, 21]),
   ("def m (x : List UInt8) : List UInt8 := put [] (bget (bpush (bnew) 7) 0)\n", [2, 20, 0, 0, 0, 0, 1, 9, 4, 9, 5, 9, 7, 9, 9, 9, 5, 1, 7, 1, 0, 21]),
@@ -78,8 +85,12 @@ def primCases : List (String × List UInt64) := [
   ("def m (x : List UInt8) : List UInt8 := put [] (rd 1 2)\n", []),
   ("def m (x : List UInt8) : List UInt8 := put (bset (bnew) 1 2) 3\n", [2, 20, 0, 0, 0, 0, 1, 9, 4, 9, 8, 9, 5, 1, 1, 1, 2, 1, 3, 21])]
 def main : IO Unit := do
-  IO.println s!"prim cases (hand-checked words): {primCases.map fun (t, w) => C.y13 (C.s10 t.toUTF8.toList) == w.toArray.toList}"
-  IO.println s!"(mismatches, total) = {go 3000 11 (0, 0)}"
+  let valid := primCases.filter fun (_, w) => !w.isEmpty
+  let neg := primCases.filter fun (_, w) => w.isEmpty
+  IO.println s!"prim VALID: accepted+exact {(valid.filter fun (t, w) => C.y13 (C.s10 t.toUTF8.toList) == w).length} / {valid.length}; NEGATIVE rejected {(neg.filter fun (t, _) => (C.y13 (C.s10 t.toUTF8.toList)).isEmpty).length} / {neg.length}"
+  let N := 3000
+  IO.println s!"VALID programs: accepted {goAcc N 11 0} / {N} (must be 100%)"
+  IO.println s!"(mismatches incl. rejections, total) = {go N 11 (0, 0)}"
   let r := (List.range 400).foldl (fun n k => let (t, _) := gen (k % 7) ["a", "b1", "c'", "d_e"] (lcg (k * 7919)); n + t.lets) 0
   IO.println s!"lets in a sample of 400 trees: {r}"
   for t in ["def f (a : UInt64) : UInt64 := if a then 1 else 2\n", "def f (a : UInt64) : UInt64 := if a == 1 then 2\n", "def f (a : UInt64) : UInt64 := if a == 1 else 2\n",
