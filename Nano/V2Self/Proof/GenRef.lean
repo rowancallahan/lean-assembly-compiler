@@ -24,6 +24,8 @@ def st (s : GS) : GS :=
 
 def live (s : GS) : Prop := bget s.r 5 ≠ 1 ∧ bget s.r 4 ≠ 1 ∧ bget s.r 6 ≠ 0
 def err (s : GS) : Prop := bget s.r 4 = 1
+/-- the code is too big: code only grows, and g42 outputs [] above 2^24 words -/
+def big (s : GS) : Prop := 2 ^ 32 ≤ s.o.length
 
 /-- `it m s` = m work items from s -/
 def it : Nat → GS → GS
@@ -35,11 +37,13 @@ theorem it_add : ∀ (n m : Nat) (s : GS), it (n + m) s = it n (it m s)
   | n, m + 1, s => by rw [show n + (m + 1) = (n + m) + 1 by omega]; simp only [it]; exact it_add n m (st s)
 
 def Reach (s : GS) (P : GS → Prop) : Prop :=
-  ∃ m, (∀ j < m, live (it j s)) ∧ (P (it m s) ∨ err (it m s))
+  ∃ m, (∀ j < m, live (it j s)) ∧ (P (it m s) ∨ err (it m s) ∨ big (it m s))
 
 theorem Reach.done {s : GS} {P : GS → Prop} (h : P s) : Reach s P := ⟨0, fun _ h => absurd h (Nat.not_lt_zero _), .inl h⟩
 
-theorem Reach.error {s : GS} {P : GS → Prop} (h : err s) : Reach s P := ⟨0, fun _ h => absurd h (Nat.not_lt_zero _), .inr h⟩
+theorem Reach.error {s : GS} {P : GS → Prop} (h : err s) : Reach s P := ⟨0, fun _ h => absurd h (Nat.not_lt_zero _), .inr (.inl h)⟩
+
+theorem Reach.toobig {s : GS} {P : GS → Prop} (h : big s) : Reach s P := ⟨0, fun _ h => absurd h (Nat.not_lt_zero _), .inr (.inr h)⟩
 
 theorem Reach.step {s : GS} {P : GS → Prop} (hl : live s) (h : Reach (st s) P) : Reach s P := by
   obtain ⟨m, hm, hp⟩ := h
@@ -236,6 +240,7 @@ structure Cx where
   ns : UInt64
   u : UInt64
   T : Buf
+  q : UInt64
 
 def tg (X : Buf) (i : Nat) : UInt64 := X.getD i 0
 /-- `jal rd` from word a to word b -/
@@ -306,5 +311,161 @@ inductive CGs (K : Cx) : Nat → Nat → Nat → Nat → List UInt64 → Nat →
   | cons {d i h n c cs i1 i2 E Es} : CG K (d + n) i h c i1 E → CGs K d i1 (h + c.length) n cs i2 Es →
       CGs K d i h (n + 1) (c ++ cs) i2 (E ++ Es)
 end
+
+
+/-! ## the invariant between items -/
+
+/-- Gen's state is in def context K with pending items L and recorded exits F -/
+structure Inv (K : Cx) (s : GS) (L : List Item) (F : List UInt64) : Prop where
+  x : s.x = K.X
+  t : s.t = K.T
+  rl : s.r.length = 10
+  r1 : bget s.r 1 = K.p
+  r2 : bget s.r 2 = K.q
+  r7 : bget s.r 7 = K.ns
+  r9 : bget s.r 9 = K.u
+  r4 : bget s.r 4 ≠ 1
+  r5 : bget s.r 5 ≠ 1
+  r6 : bget s.r 6 = L.length.toUInt64
+  stk : Stk s.k L
+  kl : s.k.length < 2 ^ 62
+  Ll : L.length < 2 ^ 60
+  fx : Fx s.f F
+  r8 : bget s.r 8 = F.length.toUInt64
+  fl : s.f.length ≤ 65536
+  ol : s.o.length < 2 ^ 32
+
+theorem bget_set (r : Buf) (j : UInt64) (v : UInt64) (i : UInt64) (hj : j.toNat < r.length) :
+    bget (bset r j v) i = if j = i then v else bget r i := by
+  rw [BufL.bget_bset]
+  by_cases h : j = i
+  · subst h; simp [hj]
+  · have : j.toNat ≠ i.toNat := fun e => h (UInt64.toNat_inj.mp e)
+    simp [h, this]
+
+theorem bk (k : Buf) (n j : Nat) (h : 3 * n + j < 2 ^ 64) : bget k (n.toUInt64 * 3 + j.toUInt64) = k.getD (3 * n + j) 0 := by
+  simp only [bget]; rw [u3 n j h]
+
+theorem bk0 (k : Buf) (n : Nat) (h : 3 * n < 2 ^ 64) : bget k (n.toUInt64 * 3) = k.getD (3 * n) 0 := by
+  have := bk k n 0 (by omega); simpa using this
+
+theorem pred_u (n : Nat) (h : n + 1 < 2 ^ 64) : (n + 1).toUInt64 - 1 = n.toUInt64 := by
+  apply UInt64.toNat.inj; simp [Nat.toUInt64]
+
+/-- g37 on a visit item (unfolding with `extract_lets`: zeta-reducing Gen's lets blows up the term) -/
+theorem g37_visit (x r o k t f : Buf) (hc : bget k ((bget r 6 - 1) * 3) = 1) :
+    g37 x r o k t f = (match g36 x (g15 r 6 (bget r 6 - 1)) o k (bget k ((bget r 6 - 1) * 3 + 1)) with
+      | (r2, (o2, k2)) => (r2, (o2, (k2, f)))) := by
+  unfold g37
+  extract_lets n c z y r1
+  have hc' : (c == 1) = true := by simp [c, n, hc]
+  rw [if_pos hc']
+
+/-- popping a visit item: `st` is g36 on the popped register file -/
+theorem st_visit {K s L F} {m : UInt64} (hI : Inv K s (L ++ [(1, m, 0)]) F) :
+    st s = (match g36 s.x (bset s.r 6 L.length.toUInt64) s.o s.k m with
+      | (r2, (o2, k2)) => ⟨s.x, r2, o2, k2, s.t, s.f⟩) := by
+  have hL := hI.Ll; simp at hL
+  obtain ⟨t0, t1, t2⟩ := stk_top hI.stk
+  have hn : bget s.r 6 - 1 = L.length.toUInt64 := by
+    apply UInt64.toNat.inj; rw [hI.r6]; simp [Nat.toUInt64]
+  have e0 : bget s.k (L.length.toUInt64 * 3) = 1 := by
+    simp only [bget]; rw [show (L.length.toUInt64 * 3).toNat = 3 * L.length by simp [Nat.toUInt64]; omega, t0]
+  have e1 : bget s.k (L.length.toUInt64 * 3 + 1) = m := by
+    simp only [bget]; rw [show (L.length.toUInt64 * 3 + 1).toNat = 3 * L.length + 1 by simp [Nat.toUInt64]; omega, t1]
+  unfold st
+  rw [g37_visit _ _ _ _ _ _ (by rw [hn, e0]), hn, e1]
+  rfl
+
+
+/-- the value-visit postcondition: the node at i emitted c (CG), the item is gone, cursor at i' -/
+def VPost (K : Cx) (s0 : GS) (L : List Item) (F : List UInt64) (d i : Nat) (s' : GS) : Prop :=
+  ∃ c i' E, CG K d i s0.o.length c i' E ∧ Inv K s' L (F ++ E.map Nat.toUInt64) ∧ s'.o = s0.o ++ c ∧
+    bget s'.r 0 = i'.toUInt64 ∧ i < i' ∧ (2 ≤ d → E = [] ∧ bget s'.r 3 = bget s0.r 3)
+
+theorem g36_const (x r o k : Buf) (hc : bget x (bget r 0) = 1) :
+    g36 x r o k 0 = (g15 r 0 (bget r 0 + 2), (g21 (g23 o 5 (bget x (bget r 0 + 1))), k)) := by
+  unfold g36
+  extract_lets i n c0 c z b a
+  have hc : c = 1 := by simp [c, c0, i, hc]
+  have ha : (a == 0) = false := by simp [a, hc, g_1]
+  rw [if_neg (by simp [ha]), if_neg (by decide), if_pos (by simp [hc])]
+
+theorem live_of {K s L F} (hI : Inv K s L F) (hL : L ≠ []) : live s := by
+  refine ⟨hI.r5, hI.r4, ?_⟩
+  rw [hI.r6]; intro h
+  have h1 := congrArg UInt64.toNat h
+  rw [u_toNat L.length (by have := hI.Ll; omega)] at h1
+  exact hL (List.length_eq_zero_iff.mp h1)
+
+theorem rget (r : Buf) (hr : r.length = 10) (j i : UInt64) (v : UInt64) (hj : j.toNat < 10) :
+    bget (bset r j v) i = if j = i then v else bget r i := bget_set r j v i (by omega)
+
+
+/-- rebuild Inv after an item that writes only r[0], r[6], k and o -/
+theorem inv_mk {K s L0 F} (hI : Inv K s L0 F) (r' k' o' : Buf) (L' : List Item)
+    (hr : ∀ j : UInt64, j ≠ 0 → j ≠ 6 → bget r' j = bget s.r j) (hrl : r'.length = 10)
+    (h6 : bget r' 6 = L'.length.toUInt64) (hk : Stk k' L') (hkl : k'.length < 2 ^ 62) (hLl : L'.length < 2 ^ 60)
+    (ho : o'.length < 2 ^ 32) : Inv K ⟨s.x, r', o', k', s.t, s.f⟩ L' F where
+  x := hI.x
+  t := hI.t
+  rl := hrl
+  r1 := by rw [hr 1 (by decide) (by decide)]; exact hI.r1
+  r2 := by rw [hr 2 (by decide) (by decide)]; exact hI.r2
+  r7 := by rw [hr 7 (by decide) (by decide)]; exact hI.r7
+  r9 := by rw [hr 9 (by decide) (by decide)]; exact hI.r9
+  r4 := by rw [hr 4 (by decide) (by decide)]; exact hI.r4
+  r5 := by rw [hr 5 (by decide) (by decide)]; exact hI.r5
+  r6 := h6
+  stk := hk
+  kl := hkl
+  Ll := hLl
+  fx := hI.fx
+  r8 := by rw [hr 8 (by decide) (by decide)]; exact hI.r8
+  fl := hI.fl
+  ol := ho
+
+theorem r06 (r : Buf) (hr : r.length = 10) (a b : UInt64) :
+    (bset (bset r 6 a) 0 b).length = 10 ∧ bget (bset (bset r 6 a) 0 b) 6 = a ∧ bget (bset (bset r 6 a) 0 b) 0 = b ∧
+    ∀ j : UInt64, j ≠ 0 → j ≠ 6 → bget (bset (bset r 6 a) 0 b) j = bget r j := by
+  have l1 : (bset r 6 a).length = 10 := by rw [BufL.length_bset]; exact hr
+  refine ⟨by rw [BufL.length_bset]; exact l1, ?_, ?_, fun j h0 h6 => ?_⟩
+  · rw [rget _ l1 0 6 b (by decide), if_neg (by decide), rget _ hr 6 6 a (by decide), if_pos rfl]
+  · rw [rget _ l1 0 0 b (by decide), if_pos rfl]
+  · rw [rget _ l1 0 j b (by decide), if_neg (Ne.symm h0), rget _ hr 6 j a (by decide), if_neg (Ne.symm h6)]
+
+theorem tg_u (X : Buf) (i : Nat) (hi : i < 2 ^ 64) : bget X i.toUInt64 = tg X i := by
+  simp [bget, tg, u_toNat i hi]
+
+theorem tg_u1 (X : Buf) (i j : Nat) (hi : i + j < 2 ^ 64) : bget X (i.toUInt64 + j.toUInt64) = tg X (i + j) := by
+  rw [← tg_u X (i + j) hi]; congr 1; simp [Nat.toUInt64, UInt64.ofNat_add]
+
+theorem u_add (i j : Nat) : i.toUInt64 + j.toUInt64 = (i + j).toUInt64 := by simp [Nat.toUInt64, UInt64.ofNat_add]
+
+theorem pi_const (v : UInt64) : PI (fun o => g21 (g23 o 5 v)) := pi_comp (pi_g23 5 v) pi_g21
+
+/-- CONST -/
+theorem v_const {K s L F d i} (hI : Inv K s (L ++ [(1, 0, 0)]) F) (hr0 : bget s.r 0 = i.toUInt64) (hi : i < 2 ^ 31)
+    (ht : tg K.X i = 1) : Reach s (VPost K s L F d i) := by
+  refine Reach.step (live_of hI (by simp)) ?_
+  rw [st_visit hI]
+  have hl6 : (bset s.r 6 L.length.toUInt64).length = 10 := by rw [BufL.length_bset]; exact hI.rl
+  have h0 : bget (bset s.r 6 L.length.toUInt64) 0 = i.toUInt64 := by
+    rw [rget _ hI.rl 6 0 _ (by decide), if_neg (by decide), hr0]
+  have hx : bget s.x i.toUInt64 = 1 := by rw [hI.x, tg_u _ _ (by omega), ht]
+  rw [g36_const _ _ _ _ (by rw [h0]; exact hx), h0]
+  dsimp only
+  have hv : bget s.x (i.toUInt64 + 1) = tg K.X (i + 1) := by rw [hI.x]; exact tg_u1 _ i 1 (by omega)
+  have e : g21 (g23 s.o 5 (tg K.X (i + 1))) = s.o ++ em (fun o => g21 (g23 o 5 (tg K.X (i + 1)))) s.o.length :=
+    pi_const _ s.o
+  rw [hv, e]
+  by_cases hb : 2 ^ 32 ≤ (s.o ++ em (fun o => g21 (g23 o 5 (tg K.X (i + 1)))) s.o.length).length
+  · exact Reach.toobig hb
+  obtain ⟨q1, q2, q3, q4⟩ := r06 s.r hI.rl L.length.toUInt64 (i.toUInt64 + 2)
+  refine Reach.done ⟨_, i + 2, [], .const ht, ?_, rfl, ?_, by omega, fun _ => ⟨rfl, ?_⟩⟩
+  · simp only [List.map_nil, List.append_nil]
+    exact inv_mk hI _ _ _ L q4 q1 q2 (stk_pop hI.stk) hI.kl (by have := hI.Ll; simp at this; omega) (by omega)
+  · simp only [g15]; rw [q3]; simp [Nat.toUInt64, UInt64.ofNat_add]
+  · simp only [g15]; rw [q4 3 (by decide) (by decide)]
 
 end GenRef
