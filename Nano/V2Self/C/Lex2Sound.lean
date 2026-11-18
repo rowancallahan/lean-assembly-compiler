@@ -345,6 +345,14 @@ theorem bcomm (a b : UInt8) : (a == b) = (b == a) := by
 theorem isD_iff (c : UInt8) : (48 ≤ c.toUInt64 ∧ c.toUInt64 ≤ 57) ↔ isD c = true := by
   rw [← isD_eq]; simp
 
+theorem wcond (c : UInt8) : ((65 ≤ c → 90 < c) → (97 ≤ c → 122 < c) → ¬c = 95 → ¬c = 39 → 48 ≤ c ∧ c ≤ 57) =
+    ((((65 ≤ c ∧ c ≤ 90 ∨ 97 ≤ c ∧ c ≤ 122) ∨ c = 95) ∨ c = 39) ∨ 48 ≤ c ∧ c ≤ 57) := by
+  have : ∀ v : BitVec 8, decide ((65 ≤ UInt8.ofBitVec v → 90 < UInt8.ofBitVec v) → (97 ≤ UInt8.ofBitVec v → 122 < UInt8.ofBitVec v) → ¬UInt8.ofBitVec v = 95 → ¬UInt8.ofBitVec v = 39 → 48 ≤ UInt8.ofBitVec v ∧ UInt8.ofBitVec v ≤ 57) =
+    decide ((((65 ≤ UInt8.ofBitVec v ∧ UInt8.ofBitVec v ≤ 90 ∨ 97 ≤ UInt8.ofBitVec v ∧ UInt8.ofBitVec v ≤ 122) ∨ UInt8.ofBitVec v = 95) ∨ UInt8.ofBitVec v = 39) ∨ 48 ≤ UInt8.ofBitVec v ∧ UInt8.ofBitVec v ≤ 57) := by decide
+  have h := this c.toBitVec
+  simp only [decide_eq_decide] at h
+  exact propext h
+
 theorem s4'_eq (c d f : UInt8) (A B : UInt64) :
     s4' c.toUInt64 d.toUInt64 f.toUInt64 A B =
       if c = 32 ∨ c = 10 then 90 else
@@ -416,4 +424,4 @@ theorem s4'_eq (c d f : UInt8) (A B : UInt64) :
   have b62 : (c == 62) = false := by simpa using h62
   have b195 : (c == 195) = false := by simpa using h195
   have b226 : (c == 226) = false := by simpa using h226
-  simp [s4', opTable, List.find?, List.isPrefixOf, tu2, isD_iff, s0_eq, bcomm, isD, isW, b32, b10, b40, b41, b43, b45, b42, b59, b44, b91, b93, b58, b61, b38, b124, b60, b62, b195, b226, h32, h10, h40, h41, h43, h45, h42, h59, h44, h91, h93, h58, h61, h38, h124, h60, h62, h195, h226]
+  simp [s4', opTable, List.find?, List.isPrefixOf, tu2, isD_iff, s0_eq, bcomm, isD, isW, wcond, b32, b10, b40, b41, b43, b45, b42, b59, b44, b91, b93, b58, b61, b38, b124, b60, b62, b195, b226, h32, h10, h40, h41, h43, h45, h42, h59, h44, h91, h93, h58, h61, h38, h124, h60, h62, h195, h226]
