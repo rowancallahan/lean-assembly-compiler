@@ -2651,4 +2651,49 @@ theorem st_t12 (s : GS) (n : UInt64) (hn : bget s.r 6 - 1 = n) (hc : bget s.k ((
   subst hn
   unfold st; rw [g37_t12 _ _ _ _ _ _ hc f1 r3 o3 hR]
 
+
+/-- the root visit at any cursor below 2^40 (past |X| + 3 the tag is 0: error) -/
+theorem root_visit (K : Cx) (hX : K.X.length < 2 ^ 31) (i : Nat) (hi : i < 2 ^ 40) : ∀ s L F, Inv K s (L ++ [(1, 0, 0)]) F →
+    bget s.r 0 = i.toUInt64 → L.length + 300 * (K.X.length - i) + 300 < 2 ^ 60 → Reach s (VPost K s L F L.length i) := by
+  intro s L F hI hr0 hB
+  by_cases hiX : i ≤ K.X.length + 3
+  · exact (visit_all K hX i).1 hiX s L F hI hr0 hB
+  have ht : tg K.X i = 0 := by simp [tg, List.getD_eq_getElem?_getD, List.getElem?_eq_none (by omega : K.X.length ≤ i)]
+  refine Reach.step (live_of hI (by simp)) ?_
+  rw [st_visit hI]
+  have hl6 : (bset s.r 6 L.length.toUInt64).length = 10 := by rw [BufL.length_bset]; exact hI.rl
+  have h0 : bget (bset s.r 6 L.length.toUInt64) 0 = i.toUInt64 := by
+    rw [rget _ hI.rl 6 0 _ (by decide), if_neg (by decide), hr0]
+  have hx : bget s.x i.toUInt64 = tg K.X i := by rw [hI.x, tg_u _ _ (by omega)]
+  have hn0 : nt 0 = 0 := rfl
+  rw [g36_bad _ _ _ _ (by rw [h0, hx, ht, hn0]; decide)]
+  exact Reach.error (g16_err _ hl6)
+
+/-- the state at a def boundary -/
+structure Bnd (X : Buf) (u : UInt64) (s : GS) : Prop where
+  x : s.x = X
+  rl : s.r.length = 10
+  r4 : bget s.r 4 ≠ 1
+  r5 : bget s.r 5 ≠ 1
+  r6 : bget s.r 6 = 0
+  r8 : bget s.r 8 = 0
+  r9 : bget s.r 9 = u
+  kl : s.k.length < 2 ^ 62
+  fl : s.f.length ≤ 65536
+  ol : s.o.length < 2 ^ 24
+  tl : s.t.length < 2 ^ 32
+
+/-- the def context of the header at AST word i (def table T including this def's start) -/
+def dK (X : Buf) (u : UInt64) (T : Buf) (i : Nat) : Cx := ⟨X, tg X (i + 2), tg X (i + 3), u, T, tg X (i + 5)⟩
+
+/-- **one def** compiles: header fields valid, the body (root visit, depth 1) is CG with exits E, ENDDEF at i1;
+the code after it is: prologue ++ body (exits patched to the epilogue) ++ ld a4/a5 ++ copy-down epilogue -/
+def DefC (X : Buf) (u : UInt64) (T : Buf) (i : Nat) (o o' : Buf) (i' : Nat) : Prop :=
+  tg X i = 20 ∧ tg X (i + 3) < 251 ∧ tg X (i + 2) < tg X (i + 3) + 1 ∧ tg X (i + 5) < 251 ∧ tg X (i + 1) = bsize T ∧
+  ∃ c i1 E, CG (dK X u (bpush T (bsize o)) i) 1 (i + 6) (proW (tg X (i + 2)) (tg X (i + 3)) o).length c i1 E ∧
+    tg X i1 = 21 ∧ i' = i1 + 1 ∧
+    o' = g29 512 (tg X (i + 2)) (tg X (i + 5)) 0 (bpush (bpush
+      (patchR (bsize (proW (tg X (i + 2)) (tg X (i + 3)) o ++ c)) (proW (tg X (i + 2)) (tg X (i + 3)) o ++ c)
+        (E.map Nat.toUInt64).reverse) (g11 14 8 8)) (g11 15 8 0))
+
 end GenRef

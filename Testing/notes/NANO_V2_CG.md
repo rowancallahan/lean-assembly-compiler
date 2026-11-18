@@ -194,3 +194,38 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
   `encG_encJ` (every template instruction's C word = the Nat word Sail/SimW consumes).
   NOTE: `g32` has no `p == 4` branch: PUT falls into the final `else`, i.e. BPUSH's code (pushes the whole word; the final output copy truncates
   to the low byte, so the semantics match `put`).  PUT = BPUSH in the proofs.
+
+## HANDOFF — Gen soundness-on-success (Opus box, 2026-11-18)
+
+State: nano-v2-src; Nano/V2Self/Proof/GenRef.lean builds, no sorry, axioms propext/Classical.choice/Quot.sound
+(file ≈ 15 s, ≈ 2 GB). Bootstrap: fixpoint.sh gives B3 == B2 = 252,316 bytes, sha256 d7f3bba6…d9158cef.
+
+Proved (GenRef.lean):
+- Reference relation CG / CT / CGs over Gen's own emitter words (value mode, loop-arm tail mode, operand sequences).
+- `visit_all K i : VS K i ∧ ∀ hd, TS K hd i`: from any Gen state with a visit item on top, the item loop either
+  errs, makes the code too big, or finishes the node having emitted exactly its CG/CT code (jumps patched, exits in
+  f, item stack / registers restored).  All node kinds; invalid tags err.
+- `Reach` (item-level) and `Run` (g39-level) reachability; `reach_run` / `Run.ofReach` (a run ending with no error
+  and code < 2^24 words passes through every Reach state); `Run.bind/done/error/toobig/stepDef`.
+- Def level pieces: `g38_ok` / `g38_bad` (header), `proW` + `pi_pro` (prologue), `g37_t12` / `st_t12` (ENDDEF),
+  `g28_ok` (all exits patched to the epilogue start, r unchanged or error), `pi_g29` (epilogue), `root_visit`,
+  the boundary predicate `Bnd`, the def context `dK`, the def-code relation `DefC`.
+
+EXACT NEXT STEP:
+1. `def_run` (stated in the removed draft as: Bnd X u s, r0 = i < |X| ⇒ Run s (∃ i', DefC X u s.t i s.o s'.o i' ∧
+   Bnd X u s' ∧ s'.t = bpush s.t (bsize s.o) ∧ r0' = i' ∧ i < i')).  Header part and the Inv after g38 were done;
+   building `Inv` with an anonymous structure literal over the 5-fold g15 register file TIMED OUT (whnf) — build the
+   Inv with `inv_mk`-style lemmas (register facts via a single `hR1` rewrite) instead of `rfl` fields.  Then
+   root_visit at i+6 with L = [(12,0,0)], F = [], then the ENDDEF step: st_t12 + g28_ok with F = E.map toUInt64,
+   tag 21 check, epilogue bound (≤ 2·512+3 words) for the `big` case.
+2. Program level: iterate def_run over defs (t = def starts), then g56's end branch (main = last def: npw 0, nres 1;
+   word 0 patched; g35 start code; r5 := 1), then g42 (version word, g53 returns x unchanged, final checks, g40
+   bytes) ⇒ theorem: g41 c x ≠ [] → output = LE bytes of (g34 stubs ++ DefC codes ++ start).
+3. Then CG/DefC → machine (EV/EVw templates, Sonnet's EVH, Fixup, CallExact).
+
+Open hypotheses / notes:
+- Width facts (CONTINUE = npw−1, CALL arity, LOOP arm widths) are NOT in CG; the machine step needs them from the
+  width pass g53 (needs its own proof) or a width side-condition on CG.
+- Technique: unfold Gen's big defs with `extract_lets` + `clear_value` (zeta blowup otherwise); never close a goal
+  by defeq through an unreduced g19/g20/g28 match — rewrite with g19_eq/g20_eq or take the result as a hypothesis;
+  g39 must stay a small recursion (g54/g55/g56), its old equation lemmas cost > 7 GB.
