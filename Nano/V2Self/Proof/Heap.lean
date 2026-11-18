@@ -331,4 +331,52 @@ theorem bpush_cap {C : List J} {pc tgt : Nat} (s : St) (hC : At C pc (bpushT tgt
   refine ⟨_, ⟨by omega, rfl⟩, ?_⟩
   simp [upd_ne, hx0]
 
+/-! ## BSET (g32 p = 8): pops v, i, buf; stores v at word i if i < len; the buffer stays on top -/
+def bsetT : List J :=
+  [.ld 14 31 0, .ld 6 31 8, .ld 5 31 16, .addi 31 31 16, .ld 7 5 0, .bgeu 6 7 4, .slli 6 6 3, .alu 1 6 5 6, .sd 14 6 16]
+
+theorem bset_run {C : List J} {pc : Nat} (s : St) (hC : At C pc bsetT) (hx0 : s.x 0 = 0)
+    (hsp : (s.x 31).toNat + 24 < 2 ^ 62)
+    (hb : (s.m (s.m ((s.x 31).toNat + 16)).toNat).toNat > (s.m ((s.x 31).toNat + 8)).toNat →
+      (s.m ((s.x 31).toNat + 16)).toNat + 16 + 8 * (s.m ((s.x 31).toNat + 8)).toNat < 2 ^ 62) :
+    ∃ k s', run C k (pc, s) = some (pc + 9, s') ∧
+      s'.m = (if (s.m ((s.x 31).toNat + 8)).toNat < (s.m (s.m ((s.x 31).toNat + 16)).toNat).toNat
+              then upd s.m ((s.m ((s.x 31).toNat + 16)).toNat + 16 + 8 * (s.m ((s.x 31).toNat + 8)).toNat) (s.m (s.x 31).toNat)
+              else s.m) ∧
+      (s'.x 31).toNat = (s.x 31).toNat + 16 ∧ s'.b = s.b ∧
+      (∀ r, r ≠ 5 → r ≠ 6 → r ≠ 7 → r ≠ 14 → r ≠ 31 → s'.x r = s.x r) := by
+  have hs : ∀ i, i < 9 → C[pc + i]? = bsetT[i]? := fun i hi => hC i (by simp [bsetT]; omega)
+  have h0 := hs 0 (by omega); have h1 := hs 1 (by omega); have h2 := hs 2 (by omega); have h3 := hs 3 (by omega)
+  have h4 := hs 4 (by omega); have h5 := hs 5 (by omega); have h6 := hs 6 (by omega); have h7 := hs 7 (by omega)
+  have h8 := hs 8 (by omega)
+  simp [bsetT] at h0 h1 h2 h3 h4 h5 h6 h7 h8
+  have lt := (s.x 31).toNat_lt
+  have e0 : ea (s.x 31) 0 = (s.x 31).toNat := by simp [ea]
+  have e8 : ea (s.x 31) 8 = (s.x 31).toNat + 8 := by simp [ea]; omega
+  have e16 : ea (s.x 31) 16 = (s.x 31).toNat + 16 := by simp [ea]; omega
+  have t16 : (s.x 31 + 16).toNat = (s.x 31).toNat + 16 := by rw [UInt64.toNat_add]; simp; omega
+  have eb0 : ∀ b : UInt64, ea b 0 = b.toNat := fun b => by simp [ea]
+  by_cases hi : (s.m ((s.x 31).toNat + 8)).toNat < (s.m (s.m ((s.x 31).toNat + 16)).toNat).toNat
+  · have hb' := hb hi
+    have sh : ((s.m ((s.x 31).toNat + 8)) <<< 3).toNat = 8 * (s.m ((s.x 31).toNat + 8)).toNat := by
+      have := (s.m ((s.x 31).toNat + 8)).toNat_lt
+      simp [UInt64.toNat_shiftLeft, Nat.shiftLeft_eq]; omega
+    have sa : ((s.m ((s.x 31).toNat + 16)) + (s.m ((s.x 31).toNat + 8)) <<< 3).toNat
+        = (s.m ((s.x 31).toNat + 16)).toNat + 8 * (s.m ((s.x 31).toNat + 8)).toNat := by
+      rw [UInt64.toNat_add, sh]; simp; omega
+    have ea16 : ea ((s.m ((s.x 31).toNat + 16)) + (s.m ((s.x 31).toNat + 8)) <<< 3) 16
+        = (s.m ((s.x 31).toNat + 16)).toNat + 16 + 8 * (s.m ((s.x 31).toNat + 8)).toNat := by
+      simp only [ea, sa]; omega
+    refine ⟨9, ?_⟩
+    have hc : ¬ (s.m (s.m ((s.x 31).toNat + 16)).toNat).toNat ≤ (s.m ((s.x 31).toNat + 8)).toNat := by omega
+    simp [run, step, h0, h1, h2, h3, h4, h5, h6, h7, h8, wr, e0, e8, e16, t16, eb0, aluf, ea16, hc, hi, upd_ne, upd_same]
+    intro r h5 h6 h7 h14 h31
+    simp [upd, h5, h6, h7, h14, h31]
+  · refine ⟨6, ?_⟩
+    have hc : (s.m (s.m ((s.x 31).toNat + 16)).toNat).toNat ≤ (s.m ((s.x 31).toNat + 8)).toNat := by omega
+    simp [run, step, h0, h1, h2, h3, h4, h5, wr, e0, e8, e16, t16, eb0, hc, hi, upd_ne, upd_same,
+      show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 4).toNat = pc + 9 by omega]
+    intro r h5 h6 h7 h14 h31
+    simp [upd, h5, h6, h7, h14, h31]
+
 end CallProbe
