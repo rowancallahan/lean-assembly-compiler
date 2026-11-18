@@ -96,4 +96,78 @@ theorem sim_addi {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : 
   rw [hv] at hN
   exact ⟨t', hN.ret, rel_regW hR RD _ hN⟩
 
+/-- the hardware effective address is J's `ea` when it does not wrap -/
+theorem eaW {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hR : RelW K (pc, s) t) (A : Fin 32) (off : Int)
+    (h1 : -2048 ≤ off) (h2 : off < 2048) (h0 : 0 ≤ ((s.x A.val).toNat : Int) + off)
+    (hl : ((s.x A.val).toNat : Int) + off < 2 ^ 64) :
+    getX t A + (BitVec.ofNat 12 (bits off 12)).signExtend 64 = BitVec.ofNat 64 (CallProbe.ea (s.x A.val) off) := by
+  rw [hR.x A, sext_bits off h1 h2, ← UInt64.toBitVec_add, ← addi_val _ _ h0 hl]; rfl
+
+/-- **ld** (the address is a work cell) -/
+theorem sim_ld {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
+    {rd a : Nat} {off : Int} (hC : K.W[pc]? = some (I.ld rd a off).enc) (hrd : rd < 32) (ha : a < 32)
+    (hi1 : -2048 ≤ off) (hi2 : off < 2048) (h0 : 0 ≤ ((s.x a).toNat : Int) + off)
+    (hw : wok K (CallProbe.ea (s.x a) off)) :
+    ∃ t', Retires t t' ∧ RelW K (pc + 1, CallProbe.wr s rd (s.m (CallProbe.ea (s.x a) off))) t' := by
+  obtain ⟨hi, hok⟩ := codeW hK hR hC
+  let RD : Fin 32 := ⟨rd, hrd⟩
+  let A : Fin 32 := ⟨a, ha⟩
+  have hW := hK.wlo; have hH := hK.whi
+  have hlt : CallProbe.ea (s.x a) off < 2 ^ 64 := by unfold wok at hw; omega
+  have hea := eaW hR A off hi1 hi2 h0 (by show ((s.x a).toNat : Int) + off < 2 ^ 64; unfold CallProbe.ea at hlt; omega)
+  have hi' : instrAt t (BitVec.ofNat 64 (K.base + 4 * pc)) (G.encL 3 (BitVec.ofNat 12 (bits off 12)) RD A) := by
+    unfold G.encL; rw [imm12_toNat]; exact hi
+  have hb := fun k (hk : k < 8) => hR.w _ hw k hk
+  obtain ⟨t', hN⟩ := G.step_ld hR.cfg hR.pc hok RD A _ hi' hea (by rw [toNat_lt64 hlt]; unfold wok at hw; omega)
+    (by rw [toNat_lt64 hlt]; exact hw.2.2)
+    (by rw [toNat_lt64 hlt]; exact hb 0 (by decide)) (by rw [toNat_lt64 hlt]; exact hb 1 (by decide))
+    (by rw [toNat_lt64 hlt]; exact hb 2 (by decide)) (by rw [toNat_lt64 hlt]; exact hb 3 (by decide))
+    (by rw [toNat_lt64 hlt]; exact hb 4 (by decide)) (by rw [toNat_lt64 hlt]; exact hb 5 (by decide))
+    (by rw [toNat_lt64 hlt]; exact hb 6 (by decide)) (by rw [toNat_lt64 hlt]; exact hb 7 (by decide))
+  rw [cat8_extract] at hN
+  exact ⟨t', hN.ret, rel_regW hR RD _ hN⟩
+
+/-- **sd** (the address is a work cell; code and other cells unchanged) -/
+theorem sim_sd {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
+    {b a : Nat} {off : Int} (hC : K.W[pc]? = some (I.sd b a off).enc) (hb : b < 32) (ha : a < 32)
+    (hi1 : -2048 ≤ off) (hi2 : off < 2048) (h0 : 0 ≤ ((s.x a).toNat : Int) + off)
+    (hw : wok K (CallProbe.ea (s.x a) off)) :
+    ∃ t', Retires t t' ∧
+      RelW K (pc + 1, { s with m := CallProbe.upd s.m (CallProbe.ea (s.x a) off) (s.x b) }) t' := by
+  obtain ⟨hi, hok⟩ := codeW hK hR hC
+  let B : Fin 32 := ⟨b, hb⟩
+  let A : Fin 32 := ⟨a, ha⟩
+  have hW := hK.wlo; have hH := hK.whi
+  have hlt : CallProbe.ea (s.x a) off < 2 ^ 64 := by unfold wok at hw; omega
+  have hea := eaW hR A off hi1 hi2 h0 (by show ((s.x a).toNat : Int) + off < 2 ^ 64; unfold CallProbe.ea at hlt; omega)
+  have hi' : instrAt t (BitVec.ofNat 64 (K.base + 4 * pc)) (G.encS 3 (BitVec.ofNat 12 (bits off 12)) B A) := by
+    have hi2 : instrAt t (BitVec.ofNat 64 (K.base + 4 * pc))
+        (BitVec.ofNat 32 (encSt 3 B.val A.val ((bits off 12 : Nat) : Int))) := by rw [← encSt_bits]; exact hi
+    rw [encSt_eq 3 (by decide) B A _ (bits_lt off 12)] at hi2; exact hi2
+  obtain ⟨t', hN⟩ := G.step_sd hR.cfg hR.pc hok B A _ hi' hea (by rw [toNat_lt64 hlt]; unfold wok at hw; omega)
+    (by rw [toNat_lt64 hlt]; exact hw.2.2)
+  rw [toNat_lt64 hlt, hR.x B] at hN
+  refine ⟨t', hN.ret, ?_⟩
+  exact {
+    cfg := hN.cfg
+    pc := by rw [hN.pc, ofNat_pc4]
+    code := fun i h => by
+      have hc := hR.code i h
+      have hl : K.base + 4 * i < 2 ^ 64 := by have := hK.bhi; omega
+      unfold instrAt at hc ⊢; rw [hN.mem]; rw [toNat_lt64 hl] at hc ⊢
+      have hd := hK.cw; unfold wok at hw
+      obtain ⟨c0, c1, c2, c3⟩ := hc
+      exact ⟨by rw [store8_out _ _ _ _ (by omega)]; exact c0, by rw [store8_out _ _ _ _ (by omega)]; exact c1,
+        by rw [store8_out _ _ _ _ (by omega)]; exact c2, by rw [store8_out _ _ _ _ (by omega)]; exact c3⟩
+    x0 := hR.x0
+    x := fun j => by
+      rw [hN.x j]; simp only [show ¬ (j = 0 ∧ j ≠ 0) from fun h => h.2 h.1, if_false]; exact hR.x j
+    w := fun c hc k hk => by
+      rw [hN.mem]
+      by_cases e : c = CallProbe.ea (s.x a) off
+      · subst e; rw [store8_in _ _ _ k hk]; simp [CallProbe.upd]; rfl
+      · unfold wok at hc hw
+        rw [store8_out _ _ _ _ (by omega)]
+        have := hR.w c hc k hk; simp [CallProbe.upd, e]; exact this }
+
 end SimW
