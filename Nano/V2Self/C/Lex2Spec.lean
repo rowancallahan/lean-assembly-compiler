@@ -18,13 +18,27 @@ def opTable : List (List UInt8 × UInt64) :=
    ([40], 6), ([41], 7), ([58], 8), ([43], 10), ([45], 11), ([42], 12), ([59], 13), ([44], 15),
    ([124], 18), ([60], 20), ([91], 30), ([93], 31)]
 
-/-- keywords and prims: (bytes, tag). -/
+/-- keywords and prims: (ASCII bytes of def let UInt64 if then else Nat Buf List UInt8 len' rd len put bnew bsize bget bset bpush, tag). -/
 def kwTable : List (List UInt8 × UInt64) :=
-  [("def".toUTF8.toList, 1), ("let".toUTF8.toList, 2), ("UInt64".toUTF8.toList, 3), ("if".toUTF8.toList, 32),
-   ("then".toUTF8.toList, 33), ("else".toUTF8.toList, 34), ("Nat".toUTF8.toList, 35), ("Buf".toUTF8.toList, 36),
-   ("List".toUTF8.toList, 37), ("UInt8".toUTF8.toList, 38), ("len'".toUTF8.toList, 39), ("rd".toUTF8.toList, 40),
-   ("len".toUTF8.toList, 41), ("put".toUTF8.toList, 42), ("bnew".toUTF8.toList, 43), ("bsize".toUTF8.toList, 44),
-   ("bget".toUTF8.toList, 45), ("bset".toUTF8.toList, 46), ("bpush".toUTF8.toList, 47)]
+  [([100, 101, 102], 1),
+   ([108, 101, 116], 2),
+   ([85, 73, 110, 116, 54, 52], 3),
+   ([105, 102], 32),
+   ([116, 104, 101, 110], 33),
+   ([101, 108, 115, 101], 34),
+   ([78, 97, 116], 35),
+   ([66, 117, 102], 36),
+   ([76, 105, 115, 116], 37),
+   ([85, 73, 110, 116, 56], 38),
+   ([108, 101, 110, 39], 39),
+   ([114, 100], 40),
+   ([108, 101, 110], 41),
+   ([112, 117, 116], 42),
+   ([98, 110, 101, 119], 43),
+   ([98, 115, 105, 122, 101], 44),
+   ([98, 103, 101, 116], 45),
+   ([98, 115, 101, 116], 46),
+   ([98, 112, 117, 115, 104], 47)]
 
 /-- decimal value mod 2^64 -/
 def numVal (w : List UInt8) : Nat := w.foldl (fun a b => (a * 10 + (b.toNat - 48)) % 2 ^ 64) 0
