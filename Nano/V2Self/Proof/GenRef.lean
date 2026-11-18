@@ -468,4 +468,137 @@ theorem v_const {K s L F d i} (hI : Inv K s (L ++ [(1, 0, 0)]) F) (hr0 : bget s.
   · simp only [g15]; rw [q3]; simp [Nat.toUInt64, UInt64.ofNat_add]
   · simp only [g15]; rw [q4 3 (by decide) (by decide)]
 
+
+theorem pi_g25 : ∀ (n : Nat) (p s w : UInt64), PI (g25 n p s w)
+  | 0, p, s, w => fun o => by simp [g25, em]
+  | n + 1, p, s, w => by
+    by_cases hw : (w == 0) = true
+    · intro o; simp [g25, hw, em]
+    · have := pi_comp (pi_comp (pi_bpush (g11 5 8 (g24 p s))) pi_g21) (pi_g25 n p (s + 1) (w - 1))
+      intro o; have e := this o; simp only [g25, hw, if_false, Bool.false_eq_true] at e ⊢; exact e
+
+theorem pi_g26 : ∀ (n : Nat) (p s w : UInt64), PI (g26 n p s w)
+  | 0, p, s, w => fun o => by simp [g26, em]
+  | n + 1, p, s, w => by
+    by_cases hw : (w == 0) = true
+    · intro o; simp [g26, hw, em]
+    · have := pi_comp (pi_comp (pi_comp (pi_bpush (g11 5 31 0)) (pi_bpush (g10 31 31 8)))
+        (pi_bpush (g12 5 8 (g24 p (s + w - 1))))) (pi_g26 n p s (w - 1))
+      intro o; have e := this o; simp only [g26, hw, if_false, Bool.false_eq_true] at e ⊢; exact e
+
+theorem g36_local (x r o k : Buf) (hc : bget x (bget r 0) = 2) :
+    g36 x r o k 0 = (if g43 r (bget x (bget r 0 + 1)) (bget x (bget r 0 + 2)) == 1 then (g16 r, (o, k)) else
+      (g15 r 0 (bget r 0 + 3), (g25 256 (bget r 1) (bget x (bget r 0 + 1)) (bget x (bget r 0 + 2)) o, k))) := by
+  unfold g36
+  extract_lets i n c0 c z b a
+  have hc : c = 2 := by simp [c, c0, i, hc]
+  have ha : (a == 0) = false := by simp [a, hc, g_1]
+  rw [if_neg (by simp [ha]), if_neg (by decide), if_neg (by simp [hc]), if_pos (by simp [hc])]
+
+theorem g43_ok (r : Buf) (s w ns : UInt64) (h7 : bget r 7 = ns) :
+    g43 r s w = (if w ≠ 0 ∧ s < 251 ∧ w < 251 ∧ ¬ ns < s + w then 0 else 1) := by
+  unfold g43; rw [h7]
+  by_cases h1 : w = 0
+  · simp [h1, g_1]
+  · by_cases h2 : s < 251
+    · by_cases h3 : w < 251
+      · by_cases h4 : ns < s + w <;> simp [h1, h2, h3, h4, g_1, g_0]
+      · simp [h1, h2, h3, g_1]
+    · simp [h1, h2, g_1]
+
+theorem g16_err (r : Buf) (hr : r.length = 10) : bget (g16 r) 4 = 1 := by
+  unfold g16; rw [rget _ hr 4 4 _ (by decide), if_pos rfl]; rfl
+
+/-- LOCAL -/
+theorem v_local {K s L F d i} (hI : Inv K s (L ++ [(1, 0, 0)]) F) (hr0 : bget s.r 0 = i.toUInt64) (hi : i < 2 ^ 31)
+    (ht : tg K.X i = 2) : Reach s (VPost K s L F d i) := by
+  refine Reach.step (live_of hI (by simp)) ?_
+  rw [st_visit hI]
+  have hl6 : (bset s.r 6 L.length.toUInt64).length = 10 := by rw [BufL.length_bset]; exact hI.rl
+  have h0 : bget (bset s.r 6 L.length.toUInt64) 0 = i.toUInt64 := by
+    rw [rget _ hI.rl 6 0 _ (by decide), if_neg (by decide), hr0]
+  have h1 : bget (bset s.r 6 L.length.toUInt64) 1 = K.p := by
+    rw [rget _ hI.rl 6 1 _ (by decide), if_neg (by decide), hI.r1]
+  have h7 : bget (bset s.r 6 L.length.toUInt64) 7 = K.ns := by
+    rw [rget _ hI.rl 6 7 _ (by decide), if_neg (by decide), hI.r7]
+  have hx : bget s.x i.toUInt64 = 2 := by rw [hI.x, tg_u _ _ (by omega), ht]
+  have hv1 : bget s.x (i.toUInt64 + 1) = tg K.X (i + 1) := by rw [hI.x]; exact tg_u1 _ i 1 (by omega)
+  have hv2 : bget s.x (i.toUInt64 + 2) = tg K.X (i + 2) := by rw [hI.x]; exact tg_u1 _ i 2 (by omega)
+  rw [g36_local _ _ _ _ (by rw [h0]; exact hx), h0, hv1, hv2, h1, g43_ok _ _ _ _ h7]
+  by_cases hs : SlotOk K (tg K.X (i + 1)) (tg K.X (i + 2))
+  · have hs' : tg K.X (i + 2) ≠ 0 ∧ tg K.X (i + 1) < 251 ∧ tg K.X (i + 2) < 251 ∧ ¬K.ns < tg K.X (i + 1) + tg K.X (i + 2) := hs
+    rw [if_pos hs']
+    simp only [show ((0 : UInt64) == 1) = false from rfl, Bool.false_eq_true, if_false]
+    have e := pi_g25 256 K.p (tg K.X (i + 1)) (tg K.X (i + 2)) s.o
+    rw [e]
+    by_cases hb : 2 ^ 32 ≤ (s.o ++ em (g25 256 K.p (tg K.X (i + 1)) (tg K.X (i + 2))) s.o.length).length
+    · exact Reach.toobig hb
+    obtain ⟨q1, q2, q3, q4⟩ := r06 s.r hI.rl L.length.toUInt64 (i.toUInt64 + 3)
+    refine Reach.done ⟨_, i + 3, [], .local ht hs, ?_, rfl, ?_, by omega, fun _ => ⟨rfl, ?_⟩⟩
+    · simp only [List.map_nil, List.append_nil]
+      exact inv_mk hI _ _ _ L q4 q1 q2 (stk_pop hI.stk) hI.kl (by have := hI.Ll; simp at this; omega) (by omega)
+    · simp only [g15]; rw [q3]; simp [Nat.toUInt64, UInt64.ofNat_add]
+    · simp only [g15]; rw [q4 3 (by decide) (by decide)]
+  · have hs' : ¬ (tg K.X (i + 2) ≠ 0 ∧ tg K.X (i + 1) < 251 ∧ tg K.X (i + 2) < 251 ∧ ¬K.ns < tg K.X (i + 1) + tg K.X (i + 2)) := hs
+    rw [if_neg hs']
+    simp only [show ((1 : UInt64) == 1) = true from rfl, if_true]
+    exact Reach.error (g16_err _ hl6)
+
+
+/-- the operator-range check of g36 -/
+def rng (c b : UInt64) : Prop := (c = 3 → b - 1 < 8) ∧ (c = 4 → b - 1 < 2) ∧ (c = 9 → b - 1 < 9)
+
+theorem g36_bin (x r o k : Buf) (hc : bget x (bget r 0) = 3) (hb : bget x (bget r 0 + 1) - 1 < 8) :
+    g36 x r o k 0 = (g15 (g15 r 0 (bget r 0 + 2)) 6 (bget r 6 + 3), (o, g18 (g18 (g18 k (bget r 6) 2 (bget x (bget r 0 + 1)) 0)
+      (bget r 6 + 1) 1 0 0) (bget r 6 + 2) 1 0 0)) := by
+  unfold g36
+  extract_lets i n c0 c z b a
+  have hc : c = 3 := by simp [c, c0, i, hc]
+  have ha : (a == 0) = false := by simp [a, hc, b, i, hb, g_1]
+  rw [if_neg (by simp [ha]), if_neg (by decide), if_neg (by simp [hc]), if_neg (by simp [hc]), if_pos (by simp [hc])]
+
+theorem g36_bin_bad (x r o k : Buf) (hc : bget x (bget r 0) = 3) (hb : ¬ bget x (bget r 0 + 1) - 1 < 8) :
+    g36 x r o k 0 = (g16 r, (o, k)) := by
+  unfold g36
+  extract_lets i n c0 c z b a
+  have hc : c = 3 := by simp [c, c0, i, hc]
+  have ha : (a == 0) = true := by simp [a, hc, b, i, hb, g_0]
+  rw [if_pos ha]
+
+/-- g37 on a BIN-op item (tag 2) -/
+theorem g37_t2 (x r o k t f : Buf) (hc : bget k ((bget r 6 - 1) * 3) = 2) :
+    g37 x r o k t f = (g15 r 6 (bget r 6 - 1), (g31 o (bget k ((bget r 6 - 1) * 3 + 1)), (k, f))) := by
+  unfold g37
+  extract_lets n c z y r1
+  have hc' : c = 2 := by simp [c, n, hc]
+  rw [if_neg (by simp [hc']), if_pos (by simp [hc'])]
+
+/-- the top item of an Inv state, as g37 reads it -/
+theorem top_item {K s L F} {e : Item} (hI : Inv K s (L ++ [e]) F) :
+    bget s.r 6 - 1 = L.length.toUInt64 ∧ bget s.k ((bget s.r 6 - 1) * 3) = e.1 ∧
+    bget s.k ((bget s.r 6 - 1) * 3 + 1) = e.2.1 ∧ bget s.k ((bget s.r 6 - 1) * 3 + 2) = e.2.2 := by
+  have hL := hI.Ll; simp at hL
+  obtain ⟨t0, t1, t2⟩ := stk_top hI.stk
+  have hn : bget s.r 6 - 1 = L.length.toUInt64 := by
+    apply UInt64.toNat.inj; rw [hI.r6]; simp [Nat.toUInt64]
+  refine ⟨hn, ?_, ?_, ?_⟩ <;> rw [hn] <;> simp only [bget]
+  · rw [show (L.length.toUInt64 * 3).toNat = 3 * L.length by simp [Nat.toUInt64]; omega, t0]
+  · rw [show (L.length.toUInt64 * 3 + 1).toNat = 3 * L.length + 1 by simp [Nat.toUInt64]; omega, t1]
+  · rw [show (L.length.toUInt64 * 3 + 2).toNat = 3 * L.length + 2 by simp [Nat.toUInt64]; omega, t2]
+
+theorem stk_push3 (k : Buf) (L : List Item) (a b c : Item) (hs : Stk k L) (hk : k.length < 2 ^ 62) (hL : L.length + 3 < 2 ^ 60) :
+    Stk (g18 (g18 (g18 k L.length.toUInt64 a.1 a.2.1 a.2.2) (L.length.toUInt64 + 1) b.1 b.2.1 b.2.2)
+      (L.length.toUInt64 + 2) c.1 c.2.1 c.2.2) (L ++ [a, b, c]) ∧
+    (g18 (g18 (g18 k L.length.toUInt64 a.1 a.2.1 a.2.2) (L.length.toUInt64 + 1) b.1 b.2.1 b.2.2)
+      (L.length.toUInt64 + 2) c.1 c.2.1 c.2.2).length < 2 ^ 62 := by
+  obtain ⟨s1, l1⟩ := stk_push k L a.1 a.2.1 a.2.2 hs hk (by omega)
+  have e1 : L.length.toUInt64 + 1 = (L ++ [(a.1, a.2.1, a.2.2)]).length.toUInt64 := by simp [Nat.toUInt64, UInt64.ofNat_add]
+  obtain ⟨s2, l2⟩ := stk_push _ _ b.1 b.2.1 b.2.2 s1 (by rw [l1]; omega) (by simp; omega)
+  have e2 : L.length.toUInt64 + 2 = (L ++ [(a.1, a.2.1, a.2.2)] ++ [(b.1, b.2.1, b.2.2)]).length.toUInt64 := by
+    simp [Nat.toUInt64, UInt64.ofNat_add]
+  rw [← e1] at s2 l2
+  obtain ⟨s3, l3⟩ := stk_push _ _ c.1 c.2.1 c.2.2 s2 (by rw [l2, l1]; simp; omega) (by simp; omega)
+  rw [← e2] at s3 l3
+  refine ⟨by simpa using s3, by rw [l3, l2, l1]; simp; omega⟩
+
 end GenRef
