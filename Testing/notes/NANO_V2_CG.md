@@ -31,4 +31,8 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
   with its own loop returning a pair, output): QEMU == Sail == native Lean on 5 inputs + the out-of-memory case
   (`BIG=2097152 python3 Testing/nano/v2self/cg_test.py cg_vertical`), 476 words.
 - Gen.lean ACCEPTED by nano's front end (check.lean: 58 defs).
-- Next: the parser's real output (Sonnet box) through g41; a diff test against Nano.V2B `gen` on the v2f programs.
+- Chain test (Testing/nano/v2self/cg_chain.lean N): random scalar defs (params, let, if, all BIN ops; Par0 increments A-C)
+  → C.s10 → C.y13 → + hand-written main (4 args from input bytes + 64-bit constants, 8 result bytes) → C.g41.
+  40 programs x 5 inputs: QEMU == native tree eval (40/40, `BIG=8388608 NOSAIL=1 cg_test.py cgc_K`); Sail also on
+  cgc_0/6/13 (483-1737 words). Note: work must hold the κ = 2^18 buffers (≥ 2 MiB each); 4 KiB work ⇒ a0 = −1 by design.
+- Next: the parser's real output (Sonnet box) through g41 as Par0 gains calls/prims/loops; a diff test against Nano.V2B `gen` on the v2f programs.
