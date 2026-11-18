@@ -786,4 +786,74 @@ theorem v_let {K i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀ j
     simp only [show ((1 : UInt64) == 1) = true from rfl, if_true]
     exact Reach.error (g16_err _ hl6)
 
+
+theorem g20_eq (r o : Buf) (p : UInt64) :
+    g20 r o p = (if g14 p (bsize o) == 1 then r else g16 r, bset o p (g13 0 p (bsize o))) := by
+  unfold g20
+  extract_lets h
+  by_cases hc : (g14 p h == 1) = true
+  · rw [if_pos hc, if_pos hc]
+  · rw [if_neg hc, if_neg hc]
+
+theorem g36_if (x r o k : Buf) (hc : bget x (bget r 0) = 4) (hb : bget x (bget r 0 + 1) - 1 < 2) :
+    g36 x r o k 0 = (g15 (g15 r 0 (bget r 0 + 2)) 6 (bget r 6 + 7),
+      (o, g18 (g18 (g18 (g18 (g18 (g18 (g18 k (bget r 6) 5 0 0) (bget r 6 + 1) 1 0 0) (bget r 6 + 2) 4 0 0) (bget r 6 + 3) 1 0 0)
+        (bget r 6 + 4) 3 (bget x (bget r 0 + 1)) 0) (bget r 6 + 5) 1 0 0) (bget r 6 + 6) 1 0 0)) := by
+  unfold g36
+  extract_lets i n c0 c z b a
+  have hc : c = 4 := by simp [c, c0, i, hc]
+  have ha : (a == 0) = false := by simp [a, hc, b, i, hb, g_1]
+  rw [if_neg (by simp [ha]), if_neg (by decide), if_neg (by simp [hc]), if_neg (by simp [hc]), if_neg (by simp [hc]),
+    if_pos (by simp [hc])]
+
+theorem g36_if_bad (x r o k : Buf) (y : UInt64) (hc : bget x (bget r 0) = 4) (hb : ¬ bget x (bget r 0 + 1) - 1 < 2) :
+    g36 x r o k y = (g16 r, (o, k)) := by
+  unfold g36
+  extract_lets i n c0 c z b a
+  have hc : c = 4 := by simp [c, c0, i, hc]
+  have ha : (a == 0) = true := by simp [a, hc, b, i, hb, g_0]
+  rw [if_pos ha]
+
+theorem g37_t3 (x r o k t f : Buf) (hc : bget k ((bget r 6 - 1) * 3) = 3) :
+    g37 x r o k t f = (g15 r 6 (bget r 6 - 1), (bpush (bpush (g30 o 16)
+      (if bget k ((bget r 6 - 1) * 3 + 1) == 1 then g4 0 5 6 8 else g4 6 5 6 8)) 0,
+      (bset k ((bget r 6 - 1 - 2) * 3 + 1) (bsize o + 4), f))) := by
+  unfold g37
+  extract_lets n c z y r1
+  have hc' : c = 3 := by simp [c, n, hc]
+  rw [if_neg (by simp [hc']), if_neg (by simp [hc']), if_pos (by simp [hc'])]
+
+theorem g37_t4 (x r o k t f : Buf) (hc : bget k ((bget r 6 - 1) * 3) = 4) :
+    g37 x r o k t f = (match g20 (g15 r 6 (bget r 6 - 1)) (bpush o 0) (bget k ((bget r 6 - 1) * 3 + 1)) with
+      | (r2, o2) => (r2, (o2, (bset k ((bget r 6 - 1 - 2) * 3 + 1) (bsize o), f)))) := by
+  unfold g37
+  extract_lets n c z y r1
+  have hn : n = bget r 6 - 1 := rfl
+  have hc1 : c = bget k (n * 3) := rfl
+  have hz : z = bget k (n * 3 + 1) := rfl
+  have hr1 : r1 = g15 r 6 n := rfl
+  clear_value n c z y r1
+  subst hn hz hr1
+  rw [hc] at hc1
+  subst hc1
+  rw [if_neg (by decide), if_neg (by decide), if_neg (by decide), if_pos (by decide)]
+
+theorem g37_t5 (x r o k t f : Buf) (hc : bget k ((bget r 6 - 1) * 3) = 5) :
+    g37 x r o k t f = (match g20 (g15 r 6 (bget r 6 - 1)) o (bget k ((bget r 6 - 1) * 3 + 1)) with
+      | (r2, o2) => (r2, (o2, (k, f)))) := by
+  unfold g37
+  extract_lets n c z y r1
+  have hn : n = bget r 6 - 1 := rfl
+  have hc1 : c = bget k (n * 3) := rfl
+  have hz : z = bget k (n * 3 + 1) := rfl
+  have hr1 : r1 = g15 r 6 n := rfl
+  clear_value n c z y r1
+  subst hn hz hr1
+  rw [hc] at hc1
+  subst hc1
+  rw [if_neg (by decide), if_neg (by decide), if_neg (by decide), if_neg (by decide), if_pos (by decide)]
+
+theorem set_mid (A B : Buf) (x v : UInt64) : (A ++ x :: B).set A.length v = A ++ v :: B := by
+  simp [List.set_append_right]
+
 end GenRef
