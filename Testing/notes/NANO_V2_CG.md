@@ -125,4 +125,10 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
   on code `W = C.map encJ` is a run of retired Sail instructions keeping `RelW`.  J now carries the code base
   (`St.b`): `jal` stores `b + 4(pc+1)`, `jalr` jumps to `(x − b)/4` (call_live re-proved).  Not bridged yet: J's
   alu/slli/lbu (added for the expression templates; `Safe` is False for them until their sims exist).
+- TEMPLATES (Opus box): `Nano/V2Self/Proof/Templates.lean`, no sorry.  Value contract `PV C pc len n V` (with n words
+  of room the fragment pushes `V s`, keeps s0, t5 and every cell ≥ old t6; `V` stable under such changes).
+  `if_eq` / `if_lt`: Gen's IF layout (A; B; pop2; beq/bltu t0,t1,+8; jal ELSE; T; jal END; E) pushes
+  `if VA = VB (resp. VA < VB) then VT else VE`.  J gained `beq`/`bltu` (SimW: sim_beq8/sim_bltu8).
+  LET needs a richer contract: it writes a frame slot ≥ t6, which `PV` forbids — next: an environment-based contract
+  (cells ≥ t6 = frame image of Γ; LET extends Γ), to be agreed with the Sonnet box's Expr.lean.
 - Next: the parser's real output (Sonnet box) through g41 as Par0 gains calls/prims/loops; a diff test against Nano.V2B `gen` on the v2f programs.
