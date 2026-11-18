@@ -135,3 +135,13 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
   scoping side condition "the body reads none of the value's own lets" (from the parser's well-scopedness).
   Next: IF under EV (same proof as if_eq), PAIR/LET of width w, LOOP/CONTINUE, fixups, the g39 work-item invariant.
 - Next: the parser's real output (Sonnet box) through g41 as Par0 gains calls/prims/loops; a diff test against Nano.V2B `gen` on the v2f programs.
+- EXPRESSION TEMPLATES PROVED (Sonnet box): `Nano/V2Self/Proof/Expr.lean` (+ `ExprExact.lean`), no sorry, standard axioms, ~5 s each.
+  J (Proof/Call.lean) gained additive `alu` (Gen's BIN numbering), `slli`, `lbu` (byte of the aligned LE word cell).
+  `const_run`/`const_oom` (CONST: li g23 incl. the 8-byte chain, then the checked push), `local_run`/`local_oom` (LOCAL w words,
+  slot k<p at s0+16+8(p-1-k), k≥p at s0-8(k-p+1); the pushes in order), `bin_run` (all 8 ops through `aluf`; pops 2, result over the
+  new top, exact register/memory state), `len_run`/`len_oom` (ISIZE/LEN), `rd_run` (index ≥ len ⇒ 0), `bsize_run`, `bget_run` (out of
+  range ⇒ 0; buffer layout [len][cap][words…]).  Each: arbitrary live stack prefix (cells ≥ sp untouched, result cell exact), registers
+  outside the scratch set unchanged (s0, t5, t3, t4 included), non-wrap side conditions explicit, capacity exit (`*_oom`) reaches the stub word.
+  Exactness (`ExprExact.lean`): `encJ` maps a template instruction to C's own encoder words; `g31_exact` (all 8 ops), `g22_exact` (push,
+  with the position-dependent jal offset), `g32_len/len3/rd/bsize/bget`, `g23_exact` (li), `const_exact`, `g24_off`, `local_exact`:
+  Gen's emitted words ARE `template.map encJ`; with Bridge (encoders = nano-v2 `I.enc`) this ties the machine statements to the real code.
