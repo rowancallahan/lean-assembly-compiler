@@ -82,4 +82,9 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
   as width), IF a, b = 1 and t = e, LET v = w, BIN/PRIM operands 1, LOOP arms = nres, def body = nres. The faulty
   AST is now REJECTED (empty output) instead of miscompiled; cg_chain has the regression pair (2-word CONTINUE
   accepted, 1-word rejected). 2 more buffers at run time (d, s). Witness re-proved (137 s, 3.9 GB).
+- **SELF-COMPILE FIXED POINT (2026-11-18)**: with Par1's CONTINUE fix (5fcccd8) and Gen's width pre-pass, self_S
+  regenerated from the files, B1 = Lean-compiled self_S (TRUSTED), B2 := B1(S) = 248,632 bytes (62,158 words),
+  B3 := B2(S) on QEMU (64 MiB work, 1.6 s, a0 = 0): **B3 == B2 byte for byte**, sha256 2ceffa2c…2ebce
+  (Testing/nano/v2self/B2.bin, B3.bin, B2.sha256). Reproduce: `Testing/nano/v2self/boot/fixpoint.sh OUTDIR`.
+  Also B2(tiny source) == B1(tiny source) under rvtrace.py (5.5 M instructions).
 - Next: the parser's real output (Sonnet box) through g41 as Par0 gains calls/prims/loops; a diff test against Nano.V2B `gen` on the v2f programs.
