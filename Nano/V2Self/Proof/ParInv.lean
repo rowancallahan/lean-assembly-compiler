@@ -197,4 +197,176 @@ theorem completes_step (ts h : Buf) (hs : bget h 0 = 1) (hg : bget h 5 ≠ 0) (h
     rw [v97_running n h hs hg] at hN ⊢
     exact hc n hN
 
+/-! ## names: `v85` compares two zero-terminated identifier spellings in the token region -/
+/-- the identifier spelling `(1, b)* 0` (without the leading tag 14) starts at token position `a` and spells `n` -/
+def NameSeq (h : Buf) : UInt64 → List UInt64 → Prop
+  | a, [] => bget h (d11 + a) = 0
+  | a, c :: t => bget h (d11 + a) = 1 ∧ bget h (d11 + a + 1) = c ∧ NameSeq h (a + 2) t
+
+theorem add2_toNat (a z : UInt64) (h : a.toNat < z.toNat) : (a + 2).toNat = a.toNat + 2 ∨ z.toNat ≤ a.toNat + 2 := by
+  have := z.toNat_lt
+  by_cases hh : a.toNat + 2 < 2 ^ 64
+  · left; rw [UInt64.toNat_add]; simp; omega
+  · right; omega
+
+/-- `v85` decides name equality (and stays within the token region when both names are, with their terminator, below h[7]) -/
+theorem v85_name : ∀ (l1 l2 : List UInt64) (n : Nat) (h : Buf) (a b : UInt64),
+    l1.length + 1 ≤ n → NameSeq h a l1 → NameSeq h b l2 →
+    a.toNat + 2 * l1.length < (bget h 7).toNat → b.toNat + 2 * l2.length < (bget h 7).toNat →
+    v85 n h a b = bset h 31 (if l1 = l2 then 1 else 0)
+  | [], l2, n + 1, h, a, b, hn, ha, hb, ba, bb => by
+    have hz : a < bget h 7 := by rw [UInt64.lt_iff_toNat_lt]; omega
+    cases l2 with
+    | nil =>
+      have hz2 : b < bget h 7 := by rw [UInt64.lt_iff_toNat_lt]; simp at bb; omega
+      simp only [NameSeq] at ha hb
+      simp [v85, hz, hz2, ha, hb]
+    | cons d u =>
+      have hz2 : b < bget h 7 := by rw [UInt64.lt_iff_toNat_lt]; simp at bb; omega
+      simp only [NameSeq] at ha hb
+      obtain ⟨hb1, _, _⟩ := hb
+      simp [v85, hz, hz2, ha, hb1]
+  | c :: t, l2, n + 1, h, a, b, hn, ha, hb, ba, bb => by
+    have hz : a < bget h 7 := by rw [UInt64.lt_iff_toNat_lt]; simp at ba; omega
+    have hz2 : b < bget h 7 := by rw [UInt64.lt_iff_toNat_lt]; cases l2 <;> simp at bb <;> omega
+    simp only [NameSeq] at ha
+    obtain ⟨ha1, ha2, ha3⟩ := ha
+    cases l2 with
+    | nil =>
+      simp only [NameSeq] at hb
+      simp [v85, hz, hz2, ha1, hb]
+    | cons d u =>
+      simp only [NameSeq] at hb
+      obtain ⟨hb1, hb2, hb3⟩ := hb
+      by_cases hcd : c = d
+      · subst hcd
+        have a2 := add2_toNat a (bget h 7) (by simp at ba; omega)
+        have b2 := add2_toNat b (bget h 7) (by simp at bb; omega)
+        have a2' : (a + 2).toNat = a.toNat + 2 := by simp at ba; omega
+        have b2' : (b + 2).toNat = b.toNat + 2 := by simp at bb; omega
+        have ih := v85_name t u n h (a + 2) (b + 2) (by simp at hn; omega) ha3 hb3 (by rw [a2']; simp at ba; omega) (by rw [b2']; simp at bb; omega)
+        have hne : (1 : UInt64) ≠ 0 := by decide
+        simp [v85, hz, hz2, ha1, hb1, ha2, hb2, hne, ih]
+      · have : (c :: t ≠ d :: u) := fun e => hcd (List.cons.inj e).1
+        simp [v85, hz, hz2, ha1, hb1, ha2, hb2, hcd, this]
+  | _, _, 0, h, a, b, hn, _, _, _, _ => by simp at hn
+
+/-! ## the binding table: `v7` finds the innermost binding with the same spelling -/
+/-- the spelling of the identifier token at position `pos` (tag 14 then `(1,b)* 0`), below h[7] -/
+def NameOK (h : Buf) (pos : UInt64) (n : List UInt64) : Prop :=
+  bget h (d11 + pos) = 14 ∧ NameSeq h (pos + 1) n ∧ pos.toNat + 1 + 2 * n.length < (bget h 7).toNat
+
+/-- `h'` differs from `h` at most in the scratch cells h[21] and h[31] -/
+def Same (h h' : Buf) : Prop := h'.length = h.length ∧ ∀ i : UInt64, i.toNat ≠ 21 → i.toNat ≠ 31 → bget h' i = bget h i
+
+theorem Same.refl (h : Buf) : Same h h := ⟨rfl, fun _ _ _ => rfl⟩
+theorem Same.trans {h h' h'' : Buf} (a : Same h h') (b : Same h' h'') : Same h h'' :=
+  ⟨b.1.trans a.1, fun i i1 i2 => (b.2 i i1 i2).trans (a.2 i i1 i2)⟩
+theorem same_bset (h : Buf) (i v : UInt64) (hi : i.toNat = 21 ∨ i.toNat = 31) : Same h (bset h i v) :=
+  ⟨by simp [bset], fun j j1 j2 => by rw [bget_bset_other _ _ _ _ (by omega)]⟩
+
+theorem d11a (a : UInt64) (ha : a.toNat < 2 ^ 40) : (d11 + a).toNat = 184384 + a.toNat := by
+  rw [UInt64.toNat_add, d11v]; simp; omega
+
+theorem d11a1 (a : UInt64) (ha : a.toNat < 2 ^ 40) : (d11 + a + 1).toNat = 184384 + a.toNat + 1 := by
+  rw [UInt64.toNat_add, d11a a ha]; simp; omega
+
+theorem nameSeq_same {h h' : Buf} (s : Same h h') :
+    ∀ (l : List UInt64) (a : UInt64), a.toNat + 2 * l.length + 1 < 2 ^ 40 → NameSeq h a l → NameSeq h' a l
+  | [], a, ha, e => by
+    simp only [NameSeq] at e ⊢
+    rw [s.2 _ (by rw [d11a a (by omega)]; omega) (by rw [d11a a (by omega)]; omega)]; exact e
+  | c :: t, a, ha, e => by
+    simp only [NameSeq] at e ⊢
+    obtain ⟨e1, e2, e3⟩ := e
+    have a2 : (a + 2).toNat = a.toNat + 2 := by rw [UInt64.toNat_add]; simp; simp at ha; omega
+    refine ⟨?_, ?_, nameSeq_same s t (a + 2) (by rw [a2]; simp at ha; omega) e3⟩
+    · rw [s.2 _ (by rw [d11a a (by omega)]; omega) (by rw [d11a a (by omega)]; omega)]; exact e1
+    · rw [s.2 _ (by rw [d11a1 a (by omega)]; omega) (by rw [d11a1 a (by omega)]; omega)]; exact e2
+
+theorem nameOK_same {h h' : Buf} (s : Same h h') (hn : (bget h 7).toNat < 2 ^ 40) {pos : UInt64} {n : List UInt64}
+    (e : NameOK h pos n) : NameOK h' pos n := by
+  obtain ⟨e1, e2, e3⟩ := e
+  have p1 : (pos + 1).toNat = pos.toNat + 1 := by rw [UInt64.toNat_add]; simp; omega
+  have h7 : bget h' 7 = bget h 7 := s.2 7 (by decide) (by decide)
+  refine ⟨?_, nameSeq_same s n (pos + 1) (by rw [p1]; omega) e2, by rw [h7]; exact e3⟩
+  rw [s.2 _ (by rw [d11a pos (by omega)]; omega) (by rw [d11a pos (by omega)]; omega)]; exact e1
+
+/-- the binding table (entries `d9 + 4 i`: name token position, …) holds the names `tab` (bottom first) -/
+def TabRep (h : Buf) (tab : List (UInt64 × List UInt64)) : Prop :=
+  ∀ (i : Nat) (hi : i < tab.length), bget h (d9 + 4 * i.toUInt64) = (tab[i]).1 ∧ NameOK h (tab[i]).1 (tab[i]).2 ∧ (tab[i]).2.length < 2 ^ 24
+
+theorem tabRep_same {h h' : Buf} (s : Same h h') (hn : (bget h 7).toNat < 2 ^ 40) {tab : List (UInt64 × List UInt64)}
+    (hlen : tab.length < 2 ^ 20) (e : TabRep h tab) : TabRep h' tab := by
+  intro i hi
+  obtain ⟨e1, e2, e3⟩ := e i hi
+  have hi' : i < 2 ^ 20 := by omega
+  have q : (d9 + 4 * i.toUInt64).toNat = 180288 + 4 * i := by
+    rw [UInt64.toNat_add, UInt64.toNat_mul, d9v]; simp [UInt64.toNat_ofNat']; omega
+  refine ⟨?_, nameOK_same s hn e2, e3⟩
+  rw [s.2 _ (by rw [q]; omega) (by rw [q]; omega)]; exact e1
+
+/-- the innermost match (1-based) among the first `j` entries, 0 if none -/
+def idxOf (tab : List (UInt64 × List UInt64)) (x : List UInt64) : Nat → Nat
+  | 0 => 0
+  | j + 1 => if (tab.getD j (0, [])).2 = x then j + 1 else idxOf tab x j
+
+/-- **v7 = innermost-binding lookup**: scanning the first `j` bindings for the spelling of the token at `x`, the result cell h[21] holds `idxOf`,
+and only the scratch cells h[21], h[31] change -/
+theorem v7_lookup (tab : List (UInt64 × List UInt64)) (x : UInt64) (nx : List UInt64) :
+    ∀ (jn n : Nat) (h : Buf) (j : UInt64), j.toNat = jn → jn ≤ tab.length → tab.length < 2 ^ 20 → jn + 1 ≤ n →
+      31 < h.length → (bget h 7).toNat < 2 ^ 40 → TabRep h tab → NameOK h x nx → nx.length < 2 ^ 24 →
+      Same h (v7 n h j x) ∧ bget (v7 n h j x) 21 = (idxOf tab nx jn).toUInt64
+  | 0, n + 1, h, j, hj, _, _, _, h31, _, _, _, _ => by
+    have : j = 0 := UInt64.toNat_inj.mp (by simpa using hj)
+    subst this
+    simp only [v7, beq_self_eq_true, if_true, idxOf]
+    refine ⟨same_bset h 21 0 (Or.inl rfl), ?_⟩
+    rw [bget_bset_same _ _ _ (by simpa using (by omega : 21 < h.length))]; rfl
+  | m + 1, n + 1, h, j, hj, hjt, hl, hn, h31, h7, tr, nm, nl => by
+    have hj0 : (j == 0) = false := by
+      have : j ≠ 0 := fun e => by subst e; simp at hj
+      simpa using this
+    have hjm : j - 1 = m.toUInt64 := by
+      apply UInt64.toNat_inj.mp
+      rw [UInt64.toNat_sub_of_le _ _ (by rw [UInt64.le_iff_toNat_le]; simp [hj])]; simp [hj, UInt64.toNat_ofNat']; omega
+    obtain ⟨t1, t2, t3⟩ := tr m (by omega)
+    have hcell : bget h (d9 + 4 * (j - 1)) = (tab[m]'(by omega)).1 := by rw [hjm]; exact t1
+    obtain ⟨n1, n2, n3⟩ := nm
+    obtain ⟨u1, u2, u3⟩ := t2
+    have p1 : (x + 1).toNat = x.toNat + 1 := by rw [UInt64.toNat_add]; simp; omega
+    have q1 : ((tab[m]'(by omega)).1 + 1).toNat = (tab[m]'(by omega)).1.toNat + 1 := by
+      rw [UInt64.toNat_add]; simp; omega
+    have eq85 := v85_name (tab[m]'(by omega)).2 nx 16777216 h ((tab[m]'(by omega)).1 + 1) (x + 1) (by omega) u2 n2
+      (by rw [q1]; omega) (by rw [p1]; omega)
+    have getD : tab.getD m (0, []) = tab[m]'(by omega) := by simp [List.getD, show m < tab.length by omega]
+    have l31 : (31 : UInt64).toNat < h.length := h31
+    have l21 : (21 : UInt64).toNat < h.length := by show 21 < h.length; omega
+    by_cases hq : (tab[m]'(by omega)).2 = nx
+    · have eq85' : v85 16777216 h ((tab[m]'(by omega)).1 + 1) (x + 1) = bset h 31 1 := by rw [eq85, if_pos hq]
+      have e31 : bget (bset h 31 1) 31 = 1 := bget_bset_same h 31 1 l31
+      have stp : v7 (n + 1) h j x = bset (bset h 31 1) 21 j := by
+        simp only [v7, hj0, Bool.false_eq_true, if_false, hcell, eq85', e31, beq_self_eq_true, if_true]
+      rw [stp]
+      have s1 := same_bset h 31 1 (Or.inr rfl)
+      have s2 := same_bset (bset h 31 1) 21 j (Or.inl rfl)
+      refine ⟨s1.trans s2, ?_⟩
+      have l21' : (21 : UInt64).toNat < (bset h 31 1).length := by simpa [bset] using l21
+      rw [bget_bset_same _ _ _ l21']
+      simp only [idxOf, getD, hq, if_true]
+      apply UInt64.toNat_inj.mp; simp [UInt64.toNat_ofNat', hj]; omega
+    · have eq85' : v85 16777216 h ((tab[m]'(by omega)).1 + 1) (x + 1) = bset h 31 0 := by rw [eq85, if_neg hq]
+      have e31 : bget (bset h 31 0) 31 = 0 := bget_bset_same h 31 0 l31
+      have stp : v7 (n + 1) h j x = v7 n (bset h 31 0) (j - 1) x := by
+        simp only [v7, hj0, Bool.false_eq_true, if_false, hcell, eq85', e31]
+        have : ((0 : UInt64) == 1) = false := by decide
+        simp [this]
+      rw [stp]
+      have s1 := same_bset h 31 0 (Or.inr rfl)
+      have ih := v7_lookup tab x nx m n (bset h 31 0) (j - 1) (by rw [hjm]; simp [UInt64.toNat_ofNat']; omega) (by omega) hl (by omega)
+        (by simpa [bset] using h31) (by rw [(s1.2 7 (by decide) (by decide))]; exact h7)
+        (tabRep_same s1 h7 hl tr) (nameOK_same s1 h7 ⟨n1, n2, n3⟩) nl
+      refine ⟨s1.trans ih.1, ?_⟩
+      rw [ih.2]; simp only [idxOf, getD, hq, if_false]
+
 end ParInv
