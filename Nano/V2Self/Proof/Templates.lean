@@ -549,4 +549,132 @@ theorem popN_run {C : List J} {p k0 : Nat} : ∀ (w pc : Nat) (s : St), At C pc 
       rw [x81] at mo'
       rw [mo' a (fun j hj => ha j (by omega)), m1, if_neg (ha w (by omega))]
 
+/-! ## multi-word values (PAIR, LET of width w, CONTINUE's state) -/
+
+/-- the w-word ENVIRONMENT contract: pushes `V env` (length w; component i at old t6 − 8(i+1)) -/
+structure EVw (C : List J) (pc len n p nl : Nat) (Inv : St → Prop) (R W : Nat → Prop) (w : Nat)
+    (V : (Nat → UInt64) → List UInt64) : Prop where
+  vlen : ∀ env, (V env).length = w
+  run : ∀ (s : St) (env : Nat → UInt64), Inv s → s.x 0 = 0 → Frame p nl s env → FrameOK p nl s →
+    (s.x 30).toNat + 8 * n ≤ (s.x 31).toNat →
+    ∃ s' env', Star C (pc, s) (pc + len, s') ∧ Inv s' ∧ s'.x 0 = 0 ∧ (s'.x 31).toNat = (s.x 31).toNat - 8 * w ∧
+      (∀ i, i < w → s'.m ((s.x 31).toNat - 8 * (i + 1)) = (V env).getD i 0) ∧ s'.x 8 = s.x 8 ∧ s'.x 30 = s.x 30 ∧
+      Frame p nl s' env' ∧ (∀ k, ¬ W k → env' k = env k) ∧
+      ∀ a, (s.x 31).toNat ≤ a → (∀ k, k < nl → W k → a ≠ slotAddr p (s.x 8).toNat k) → s'.m a = s.m a
+  stable : ∀ env env', (∀ k, R k → env k = env' k) → V env = V env'
+
+theorem getD_app_l (a b : List UInt64) (i : Nat) (h : i < a.length) : (a ++ b).getD i 0 = a.getD i 0 := by
+  simp [List.getD_eq_getElem?_getD, List.getElem?_append_left h]
+theorem getD_app_r (a b : List UInt64) (i : Nat) (h : a.length ≤ i) : (a ++ b).getD i 0 = b.getD (i - a.length) 0 := by
+  simp [List.getD_eq_getElem?_getD, List.getElem?_append_right h]
+
+/-- **PAIR** (two parts): A then B; B reads none of A's lets -/
+theorem pairE {C : List J} {pc la lb n p nl wa wb : Nat} {Inv : St → Prop} {RA WA RB WB : Nat → Prop}
+    {VA VB : (Nat → UInt64) → List UInt64}
+    (hA : EVw C pc la n p nl Inv RA WA wa VA) (hB : EVw C (pc + la) lb n p nl Inv RB WB wb VB)
+    (sB : ∀ k, RB k → ¬ WA k) :
+    EVw C pc (la + lb) (n + wa) p nl Inv (fun k => RA k ∨ RB k) (fun k => WA k ∨ WB k) (wa + wb)
+      (fun env => VA env ++ VB env) where
+  vlen := fun env => by simp [hA.vlen, hB.vlen]
+  stable := fun env env' h => by
+    rw [hA.stable env env' (fun k hk => h k (Or.inl hk)), hB.stable env env' (fun k hk => h k (Or.inr hk))]
+  run := fun s env I0 z0 F0 O0 room => by
+    obtain ⟨o1, o2, o3⟩ := O0
+    obtain ⟨s1, env1, r1, I1, z1, p1, v1, e81, e301, F1, ag1, m1⟩ := hA.run s env I0 z0 F0 ⟨o1, o2, o3⟩ (by omega)
+    obtain ⟨s2, env2, r2, I2, z2, p2, v2, e82, e302, F2, ag2, m2⟩ := hB.run s1 env1 I1 z1 F1
+      ⟨by rw [p1, e81]; omega, o2, by rw [e81]; omega⟩ (by rw [e301, p1]; omega)
+    rw [p1] at p2 v2 m2; rw [e81] at m2
+    have vB : VB env1 = VB env := hB.stable env1 env (fun k hk => ag1 k (sB k hk))
+    refine ⟨s2, env2, by rw [← Nat.add_assoc]; exact r1.trans r2, I2, z2, ?_, ?_, ?_, ?_, F2, ?_, ?_⟩
+    · rw [p2]; omega
+    · intro i hi
+      by_cases hi' : i < wa
+      · rw [m2 _ (by omega) (fun k hk _ => by
+          have := slotAddr_ge (T := (s.x 31).toNat) (by omega) o2 hk; omega), v1 i hi']
+        rw [getD_app_l _ _ _ (by rw [hA.vlen]; exact hi')]
+      · have := v2 (i - wa) (by omega)
+        rw [show (s.x 31).toNat - 8 * wa - 8 * (i - wa + 1) = (s.x 31).toNat - 8 * (i + 1) by omega, vB] at this
+        rw [this, getD_app_r _ _ _ (by rw [hA.vlen]; omega), hA.vlen]
+    · rw [e82, e81]
+    · rw [e302, e301]
+    · intro k hk; simp only [not_or] at hk; rw [ag2 k hk.2, ag1 k hk.1]
+    · intro a ha hw
+      rw [m2 a (by omega) (fun k hk wk => hw k hk (Or.inr wk)), m1 a ha (fun k hk wk => hw k hk (Or.inl wk))]
+
+/-- slots k0, k0+1, … get the words of `vs` -/
+def setSlots (env : Nat → UInt64) (k0 : Nat) (vs : List UInt64) : Nat → UInt64 :=
+  fun k => if k0 ≤ k ∧ k < k0 + vs.length then vs.getD (k - k0) 0 else env k
+
+/-- **LET** (width w): the w-word value; pop into slots k0 … k0+w−1 (g26); body.  Scoping: the body reads none of
+the value's own lets (other than through the bound slots). -/
+theorem letW {C : List J} {pc lv lb n p nl k0 w wb : Nat} {Inv : St → Prop} {Rv Wv Rb Wb : Nat → Prop}
+    {Vv Vb : (Nat → UInt64) → List UInt64} (hI : InvOK p Inv)
+    (hv : EVw C pc lv n p nl Inv Rv Wv w Vv) (hS : At C (pc + lv) (popN p k0 w))
+    (hb : EVw C (pc + lv + 3 * w) lb n p nl Inv Rb Wb wb Vb)
+    (hk0 : k0 + w ≤ nl) (hsc : ∀ k, Rb k → ¬ (k0 ≤ k ∧ k < k0 + w) → ¬ Wv k) (hn : w ≤ n) :
+    EVw C pc (lv + 3 * w + lb) n p nl Inv (fun k => Rv k ∨ (Rb k ∧ ¬ (k0 ≤ k ∧ k < k0 + w)))
+      (fun k => Wv k ∨ (k0 ≤ k ∧ k < k0 + w) ∨ Wb k) wb (fun env => Vb (setSlots env k0 (Vv env))) where
+  vlen := fun env => hb.vlen _
+  stable := fun env env' h => by
+    have e1 : Vv env = Vv env' := hv.stable env env' (fun k hk => h k (Or.inl hk))
+    apply hb.stable; intro k hk
+    unfold setSlots; rw [e1]
+    split
+    · rfl
+    · rename_i hk'; rw [hv.vlen] at hk'; exact h k (Or.inr ⟨hk, hk'⟩)
+  run := fun s env I0 z0 F0 O0 room => by
+    obtain ⟨s1, env1, r1, I1, z1, p1, v1, e81, e301, F1, ag1, m1⟩ := hv.run s env I0 z0 F0 O0 room
+    obtain ⟨o1, o2, o3⟩ := O0
+    have lt64 := (s.x 31).toNat_lt
+    have T1 : (s1.x 31).toNat + 8 * w = (s.x 31).toNat := by rw [p1]; omega
+    obtain ⟨s2, r2, p2, e82, ex2, eb2, ms2, mo2⟩ := popN_run (p := p) (k0 := k0) w (pc + lv) s1 hS (by omega)
+      (fun j j' hj hj' e => by have := slotAddr_inj (nl := nl) (by rw [e81]; omega) (by omega) (by omega) e; omega)
+      (fun j i hj hi => by
+        rw [e81]; have := slotAddr_ge (T := (s.x 31).toNat) (k := k0 + j) (by omega) o2 (by omega); omega)
+    rw [e81] at ms2 mo2
+    have x31 : (s2.x 31).toNat = (s.x 31).toNat := by rw [p2, T1]
+    have x8 : s2.x 8 = s.x 8 := by rw [e82, e81]
+    have x30 : s2.x 30 = s.x 30 := by rw [ex2 30 (by decide) (by decide), e301]
+    let env2 := setSlots env1 k0 (Vv env)
+    have F2 : Frame p nl s2 env2 := by
+      intro k hk
+      show s2.m (slotAddr p (s2.x 8).toNat k) = env2 k
+      rw [x8]
+      by_cases e : k0 ≤ k ∧ k < k0 + w
+      · have := ms2 (k - k0) (by omega)
+        rw [show k0 + (k - k0) = k by omega] at this
+        rw [this, show (s1.x 31).toNat + 8 * (w - 1 - (k - k0)) = (s.x 31).toNat - 8 * (k - k0 + 1) by omega,
+          v1 (k - k0) (by omega)]
+        simp [env2, setSlots, hv.vlen, e]
+      · rw [mo2 _ (fun j hj h => e (by have := slotAddr_inj (nl := nl) (by omega) hk (by omega) h; omega))]
+        simp only [env2, setSlots, hv.vlen, e, if_false]; rw [← e81]; exact F1 k hk
+    have I2 : Inv s2 := by
+      apply hI s1 s2 I1 (by rw [e82]) (ex2 28 (by decide) (by decide)) (ex2 29 (by decide) (by decide))
+        (ex2 30 (by decide) (by decide))
+      intro a ha
+      apply mo2 a; intro j hj e; apply ha; rw [e301, e81, e]
+      exact ⟨by have := slotAddr_ge (T := (s.x 31).toNat) (k := k0 + j) (by omega) o2 (by omega); omega,
+        slotAddr_lt (nl := nl) (by omega) (by omega)⟩
+    have z2 : s2.x 0 = 0 := by rw [ex2 0 (by decide) (by decide), z1]
+    obtain ⟨s3, env3, r3, I3, z3, p3, v3, e83, e303, F3, ag3, m3⟩ :=
+      hb.run s2 env2 I2 z2 F2 ⟨by rw [x31, x8]; omega, o2, by rw [x8]; omega⟩ (by rw [x30, x31]; exact room)
+    refine ⟨s3, env3, ?_, I3, z3, ?_, ?_, ?_, ?_, F3, ?_, ?_⟩
+    · have : pc + lv + 3 * w + lb = pc + (lv + 3 * w + lb) := by omega
+      rw [← this]; exact (r1.trans (run_star r2)).trans r3
+    · rw [p3, x31]
+    · intro i hi; rw [x31] at v3; rw [v3 i hi]
+      congr 1; apply hb.stable; intro k hk
+      simp only [env2, setSlots]
+      by_cases e : k0 ≤ k ∧ k < k0 + w
+      · simp [hv.vlen, e]
+      · simp only [hv.vlen, e, if_false]; exact ag1 k (hsc k hk e)
+    · rw [e83, x8]
+    · rw [e303, x30]
+    · intro k hk; simp only [not_or] at hk
+      rw [ag3 k hk.2.2]; simp only [env2, setSlots, hv.vlen, hk.2.1, if_false]; exact ag1 k hk.1
+    · intro a ha hW
+      rw [m3 a (by rw [x31]; exact ha) (fun k hk wk => by rw [x8]; exact hW k hk (Or.inr (Or.inr wk)))]
+      rw [mo2 a (fun j hj e => hW (k0 + j) (by omega) (Or.inr (Or.inl ⟨by omega, by omega⟩)) e)]
+      exact m1 a ha (fun k hk wk => hW k hk (Or.inl wk))
+
 end Templates
