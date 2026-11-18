@@ -10,19 +10,19 @@ for p in parts:
     t = open(f"Nano/V2Self/C/{p}.lean").read()
     t = re.sub(r"/-.*?-/", "", t, count=1, flags=re.S) if t.lstrip().startswith("/-") else t
     t = "\n".join(l for l in t.split("\n") if not l.startswith(("import", "namespace", "end C")))
+    if p == "Gen":
+        # convention: a def's FIRST `List UInt8` parameter is the implicit input.  Gen's output builder g40 has the output accumulator as its first
+        # `List UInt8` parameter, so thread the real input `c` through g41/g42/g40 (Lean semantics unchanged: c is unused).
+        for a, b in [("def g40 : Nat → Buf → UInt64 → List UInt8 → List UInt8", "def g40 : Nat → List UInt8 → Buf → UInt64 → List UInt8 → List UInt8"),
+                     ("  | 0, w, i, o => o", "  | 0, c, w, i, o => o"), ("  | n + 1, w, i, o =>", "  | n + 1, c, w, i, o =>"),
+                     ("g40 n w (i + 1)", "g40 n c w (i + 1)"), ("def g42 (x : Buf) (u : UInt64) : List UInt8 :=", "def g42 (c : List UInt8) (x : Buf) (u : UInt64) : List UInt8 :="),
+                     ("g40 16777216 o 0 []", "g40 16777216 c o 0 []"), ("def g41 (x : Buf) : List UInt8 := g42 x g_999", "def g41 (c : List UInt8) (x : Buf) : List UInt8 := g42 c x g_999")]:
+            assert a in t, a
+            t = t.replace(a, b)
     t = desugar.rewrite(t)   # && || ≤ ≠ conditions -> eager 0/1 flags (the restricted S has none of them)
     out.append(f"-- ===== {p} =====\n" + t.strip("\n") + "\n")
 out.append("""-- ===== driver =====
-def m1 : Nat → Buf → UInt64 → List UInt8 → List UInt8
-  | 0, b, i, o => o
-  | n + 1, b, i, o =>
-    if bsize b < i then o
-    else if bsize b == i then o
-    else
-      let v := bget b i;
-      m1 n b (i + 1) (put o v)
-
-def m (x : List UInt8) : List UInt8 := m1 16777216 (g41 (y16 (s10 x))) 0 []
+def m (x : List UInt8) : List UInt8 := g41 x (y16 (s10 x))
 """)
 out.append("end C\n")
 open("Testing/nano/v2self/self_S.lean", "w").write("\n".join(out))
