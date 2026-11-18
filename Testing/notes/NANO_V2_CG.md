@@ -139,6 +139,6 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
   new top, exact register/memory state), `len_run`/`len_oom` (ISIZE/LEN), `rd_run` (index ≥ len ⇒ 0), `bsize_run`, `bget_run` (out of
   range ⇒ 0; buffer layout [len][cap][words…]).  Each: arbitrary live stack prefix (cells ≥ sp untouched, result cell exact), registers
   outside the scratch set unchanged (s0, t5, t3, t4 included), non-wrap side conditions explicit, capacity exit (`*_oom`) reaches the stub word.
-  Exactness (`ExprExact.lean`): `encJ` maps a template instruction to C's own encoder words; `g31_exact` (all 8 ops), `g22_exact` (push,
+  Exactness (`ExprExact.lean`): `encG` maps a template instruction to C's own encoder words; `g31_exact` (all 8 ops), `g22_exact` (push,
   with the position-dependent jal offset), `g32_len/len3/rd/bsize/bget`, `g23_exact` (li), `const_exact`, `g24_off`, `local_exact`:
-  Gen's emitted words ARE `template.map encJ`; with Bridge (encoders = nano-v2 `I.enc`) this ties the machine statements to the real code.
+  Gen's emitted words ARE `template.map encG`; with Bridge (encoders = nano-v2 `I.enc`) this ties the machine statements to the real code.

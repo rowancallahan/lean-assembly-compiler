@@ -14,7 +14,7 @@ theorem upd_upd {α} (f : Nat → α) (k : Nat) (a b : α) : upd (upd f k a) k b
 /-- push to the capacity exit: t6 − 8 < t5 ⇒ the third instruction (`jal x0 oom`) transfers to the stub -/
 theorem push_oom {C pc s r oom} (hC : At C pc (push r oom)) (h8 : 8 ≤ (s.x 31).toNat)
     (hh : (s.x 31).toNat < (s.x 30).toNat + 8) :
-    run C 3 (pc, s) = some (((pc : Int) + 2 + oom).toNat, ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)), s.m⟩) := by
+    run C 3 (pc, s) = some (((pc : Int) + 2 + oom).toNat, ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)), s.m, s.b⟩) := by
   have lt : (s.x 31).toNat < 2 ^ 64 := (s.x 31).toNat_lt
   have e : ea (s.x 31) (-8) = (s.x 31).toNat - 8 := by simp [ea]; omega
   have t6' : (UInt64.ofNat ((s.x 31).toNat - 8)).toNat = (s.x 31).toNat - 8 := by
@@ -58,16 +58,16 @@ theorem At.cons_tail {C pc a l} (h : At C pc (a :: l)) : At C (pc + 1) l := by
 theorem li_loop {C pc d} {v : UInt64} (s : St) (hd : d ≠ 0) (hx0 : s.x 0 = 0) (hv : ¬ v.toNat < 2048)
     (hC : At C pc (liT d v)) :
     ∀ j, j ≤ 8 → ∃ sj, run C (1 + 2 * j) (pc, s) = some (pc + 1 + 2 * j, sj) ∧
-      sj.x = upd s.x d (UInt64.ofNat (v.toNat / 2 ^ (64 - 8 * j))) ∧ sj.m = s.m
+      sj.x = upd s.x d (UInt64.ofNat (v.toNat / 2 ^ (64 - 8 * j))) ∧ sj.m = s.m ∧ sj.b = s.b
   | 0, _ => by
       have h0 := hC.at 0 (by simp [liT_len_big d v hv])
       simp [liT, hv] at h0
-      refine ⟨⟨upd s.x d 0, s.m⟩, ?_, ?_, rfl⟩
+      refine ⟨⟨upd s.x d 0, s.m, s.b⟩, ?_, ?_, rfl, rfl⟩
       · simp [run, step, h0, wr, hd, ea, hx0]
       · have : v.toNat / 2 ^ 64 = 0 := Nat.div_eq_of_lt v.toNat_lt
         simp [this]
   | j + 1, hj => by
-      obtain ⟨sj, hr, hx, hm⟩ := li_loop s hd hx0 hv hC j (by omega)
+      obtain ⟨sj, hr, hx, hm, hbb⟩ := li_loop s hd hx0 hv hC j (by omega)
       have hC' : At C pc (.addi d 0 0 :: liB d v.toNat 8) := by simpa [liT, hv] using hC
       have hT : At C (pc + 1) (liB d v.toNat 8) := hC'.cons_tail
       have hA := liB_at hT (show j + 1 ≤ 8 by omega)
@@ -106,7 +106,7 @@ theorem li_loop {C pc d} {v : UInt64} (s : St) (hd : d ≠ 0) (hx0 : s.x 0 = 0) 
       have t : (UInt64.ofNat (A * 256)).toNat = A * 256 := by simp; omega
       have eb : ea (UInt64.ofNat (A * 256)) (b : Int) = A * 256 + b := by simp only [ea, t]; omega
       have eb2 : UInt64.ofNat (ea (UInt64.ofNat (A * 256)) (b : Int)) = UInt64.ofNat (A * 256 + b) := by rw [eb]
-      refine ⟨⟨upd s.x d (UInt64.ofNat (A * 256 + b)), s.m⟩, ?_, ?_, rfl⟩
+      refine ⟨⟨upd s.x d (UInt64.ofNat (A * 256 + b)), s.m, s.b⟩, ?_, ?_, rfl, rfl⟩
       · rw [show 1 + 2 * (j + 1) = (1 + 2 * j) + 2 by omega, run_add hr]
         simp only [run, step, h0, h1, wr, if_neg hd, Option.bind_some, hxd, hm, hshift, eb2, show pc + 1 + 2 * j + 1 + 1 = pc + 1 + 2 * (j + 1) by omega]
         rw [upd_same, eb2]
@@ -116,15 +116,15 @@ theorem li_loop {C pc d} {v : UInt64} (s : St) (hd : d ≠ 0) (hx0 : s.x 0 = 0) 
       · rw [hT]
 
 theorem li_run {C pc d} {v : UInt64} (s : St) (hd : d ≠ 0) (hx0 : s.x 0 = 0) (hC : At C pc (liT d v)) :
-    ∃ s', run C (liT d v).length (pc, s) = some (pc + (liT d v).length, s') ∧ s'.x = upd s.x d v ∧ s'.m = s.m := by
+    ∃ s', run C (liT d v).length (pc, s) = some (pc + (liT d v).length, s') ∧ s'.x = upd s.x d v ∧ s'.m = s.m ∧ s'.b = s.b := by
   by_cases hv : v.toNat < 2048
   · have h0 := hC.at 0 (by simp [liT_len_small d v hv])
     simp [liT, hv] at h0
-    refine ⟨⟨upd s.x d v, s.m⟩, ?_, rfl, rfl⟩
+    refine ⟨⟨upd s.x d v, s.m, s.b⟩, ?_, rfl, rfl, rfl⟩
     rw [liT_len_small d v hv]
     simp [run, step, h0, wr, hd, ea, hx0]
-  · obtain ⟨s', hr, hx, hm⟩ := li_loop s hd hx0 hv hC 8 (by omega)
-    refine ⟨s', ?_, ?_, hm⟩
+  · obtain ⟨s', hr, hx, hm, hbb⟩ := li_loop s hd hx0 hv hC 8 (by omega)
+    refine ⟨s', ?_, ?_, hm, hbb⟩
     · rw [liT_len_big d v hv]; simpa using hr
     · rw [hx]; simp
 
@@ -141,7 +141,7 @@ theorem const_run {C pc tgt} {v : UInt64} (s : St) (hx0 : s.x 0 = 0) (hC : At C 
     ∃ s', run C ((liT 5 v).length + 3) (pc, s) = some (pc + (liT 5 v).length + 4, s') ∧
       s'.x = upd (upd s.x 5 v) 31 (UInt64.ofNat ((s.x 31).toNat - 8)) ∧
       s'.m = upd s.m ((s.x 31).toNat - 8) v := by
-  obtain ⟨s1, hr1, hx1, hm1⟩ := li_run (d := 5) s (by decide) hx0 hC.left
+  obtain ⟨s1, hr1, hx1, hm1, hb1⟩ := li_run (d := 5) s (by decide) hx0 hC.left
   have hP : At C (pc + (liT 5 v).length) (push 5 ((tgt : Int) - ((pc + (liT 5 v).length : Nat) + 2))) := by
     simpa [constT, pushA] using hC.right
   have hh1 : (s1.x 30).toNat + 8 ≤ (s1.x 31).toNat := by
@@ -149,22 +149,22 @@ theorem const_run {C pc tgt} {v : UInt64} (s : St) (hx0 : s.x 0 = 0) (hC : At C 
   have r2 := push_run (s := s1) hP (by decide) (by decide) hh1
   have e31 : s1.x 31 = s.x 31 := by rw [hx1]; exact upd_other _ _ (by decide)
   have e5 : s1.x 5 = v := by rw [hx1]; exact upd_same _ _ _
-  refine ⟨⟨upd (upd s.x 5 v) 31 (UInt64.ofNat ((s.x 31).toNat - 8)), upd s.m ((s.x 31).toNat - 8) v⟩, ?_, rfl, rfl⟩
-  rw [run_add hr1, r2, e31, e5, hx1, hm1]
+  refine ⟨⟨upd (upd s.x 5 v) 31 (UInt64.ofNat ((s.x 31).toNat - 8)), upd s.m ((s.x 31).toNat - 8) v, s.b⟩, ?_, rfl, rfl⟩
+  rw [run_add hr1, r2, e31, e5, hx1, hm1, hb1]
 
 /-- CONST at the capacity exit: t6 − 8 < t5 ⇒ control reaches the stub `tgt`, nothing at or above sp changed -/
 theorem const_oom {C pc tgt} {v : UInt64} (s : St) (hx0 : s.x 0 = 0) (hC : At C pc (constT tgt pc v))
     (h8 : 8 ≤ (s.x 31).toNat) (hh : (s.x 31).toNat < (s.x 30).toNat + 8) :
     ∃ s', run C ((liT 5 v).length + 3) (pc, s) = some (tgt, s') ∧
       s'.x = upd (upd s.x 5 v) 31 (UInt64.ofNat ((s.x 31).toNat - 8)) ∧ s'.m = s.m := by
-  obtain ⟨s1, hr1, hx1, hm1⟩ := li_run (d := 5) s (by decide) hx0 hC.left
+  obtain ⟨s1, hr1, hx1, hm1, hb1⟩ := li_run (d := 5) s (by decide) hx0 hC.left
   have hP : At C (pc + (liT 5 v).length) (push 5 ((tgt : Int) - ((pc + (liT 5 v).length : Nat) + 2))) := by
     simpa [constT, pushA] using hC.right
   have e31 : s1.x 31 = s.x 31 := by rw [hx1]; exact upd_other _ _ (by decide)
   have e30 : s1.x 30 = s.x 30 := by rw [hx1]; exact upd_other _ _ (by decide)
   have r2 := push_oom (s := s1) hP (by rw [e31]; exact h8) (by rw [e31, e30]; exact hh)
-  refine ⟨⟨upd (upd s.x 5 v) 31 (UInt64.ofNat ((s.x 31).toNat - 8)), s.m⟩, ?_, rfl, rfl⟩
-  rw [run_add hr1, r2, e31, hx1, hm1]
+  refine ⟨⟨upd (upd s.x 5 v) 31 (UInt64.ofNat ((s.x 31).toNat - 8)), s.m, s.b⟩, ?_, rfl, rfl⟩
+  rw [run_add hr1, r2, e31, hx1, hm1, hb1]
   have : (((pc + (liT 5 v).length : Nat) : Int) + 2 + ((tgt : Int) - (((pc + (liT 5 v).length : Nat) : Int) + 2))).toNat = tgt := by omega
   rw [this]
 
@@ -175,7 +175,7 @@ theorem bin_run {C pc op} (s : St) (hC : At C pc (binT op)) (hlt : (s.x 31).toNa
     run C 5 (pc, s) = some (pc + 5,
       ⟨upd (upd (upd (upd s.x 6 (s.m (s.x 31).toNat)) 5 (s.m ((s.x 31).toNat + 8))) 31 (UInt64.ofNat ((s.x 31).toNat + 8))) 5
           (aluf op (s.m ((s.x 31).toNat + 8)) (s.m (s.x 31).toNat)),
-       upd s.m ((s.x 31).toNat + 8) (aluf op (s.m ((s.x 31).toNat + 8)) (s.m (s.x 31).toNat))⟩) := by
+       upd s.m ((s.x 31).toNat + 8) (aluf op (s.m ((s.x 31).toNat + 8)) (s.m (s.x 31).toNat)), s.b⟩) := by
   have h0 := hC.at 0 (by simp [binT]); have h1 := hC.at 1 (by simp [binT]); have h2 := hC.at 2 (by simp [binT])
   have h3 := hC.at 3 (by simp [binT]); have h4 := hC.at 4 (by simp [binT])
   simp [binT] at h0 h1 h2 h3 h4
@@ -195,12 +195,12 @@ theorem bin_run {C pc op} (s : St) (hC : At C pc (binT op)) (hlt : (s.x 31).toNa
 def lenT (tgt q : Nat) : List J := pushA tgt q 29
 
 theorem len_run {C pc tgt} (s : St) (hC : At C pc (lenT tgt pc)) (hh : (s.x 30).toNat + 8 ≤ (s.x 31).toNat) :
-    run C 3 (pc, s) = some (pc + 4, ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)), upd s.m ((s.x 31).toNat - 8) (s.x 29)⟩) :=
+    run C 3 (pc, s) = some (pc + 4, ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)), upd s.m ((s.x 31).toNat - 8) (s.x 29), s.b⟩) :=
   push_run (by simpa [lenT, pushA] using hC) (by decide) (by decide) hh
 
 theorem len_oom {C pc tgt} (s : St) (hC : At C pc (lenT tgt pc)) (h8 : 8 ≤ (s.x 31).toNat)
     (hh : (s.x 31).toNat < (s.x 30).toNat + 8) :
-    run C 3 (pc, s) = some (tgt, ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)), s.m⟩) := by
+    run C 3 (pc, s) = some (tgt, ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)), s.m, s.b⟩) := by
   have := push_oom (s := s) (by simpa [lenT, pushA] using hC) h8 hh
   rw [this]; simp only [pushA_oom_target]
 
@@ -208,7 +208,7 @@ theorem len_oom {C pc tgt} (s : St) (hC : At C pc (lenT tgt pc)) (h8 : 8 ≤ (s.
 def bsizeT : List J := [.ld 5 31 0, .ld 5 5 0, .sd 5 31 0]
 
 theorem bsize_run {C pc} (s : St) (hC : At C pc bsizeT) :
-    run C 3 (pc, s) = some (pc + 3, ⟨upd s.x 5 (s.m (s.m (s.x 31).toNat).toNat), upd s.m (s.x 31).toNat (s.m (s.m (s.x 31).toNat).toNat)⟩) := by
+    run C 3 (pc, s) = some (pc + 3, ⟨upd s.x 5 (s.m (s.m (s.x 31).toNat).toNat), upd s.m (s.x 31).toNat (s.m (s.m (s.x 31).toNat).toNat), s.b⟩) := by
   have h0 := hC.at 0 (by simp [bsizeT]); have h1 := hC.at 1 (by simp [bsizeT]); have h2 := hC.at 2 (by simp [bsizeT])
   simp [bsizeT] at h0 h1 h2
   have e0 : ea (s.x 31) 0 = (s.x 31).toNat := by simp [ea]
@@ -223,7 +223,7 @@ theorem rd_run {C pc} (s : St) (hC : At C pc rdT) (hx0 : s.x 0 = 0) (hb : (s.x 2
       ⟨upd (upd s.x 6 (s.m (s.x 31).toNat)) 5
           (if (s.m (s.x 31).toNat).toNat < (s.x 29).toNat then lbm s.m ((s.x 28).toNat + (s.m (s.x 31).toNat).toNat) else 0),
        upd s.m (s.x 31).toNat
-          (if (s.m (s.x 31).toNat).toNat < (s.x 29).toNat then lbm s.m ((s.x 28).toNat + (s.m (s.x 31).toNat).toNat) else 0)⟩) := by
+          (if (s.m (s.x 31).toNat).toNat < (s.x 29).toNat then lbm s.m ((s.x 28).toNat + (s.m (s.x 31).toNat).toNat) else 0), s.b⟩) := by
   have h0 := hC.at 0 (by simp [rdT]); have h1 := hC.at 1 (by simp [rdT]); have h2 := hC.at 2 (by simp [rdT])
   have h3 := hC.at 3 (by simp [rdT]); have h4 := hC.at 4 (by simp [rdT]); have h5 := hC.at 5 (by simp [rdT])
   simp [rdT] at h0 h1 h2 h3 h4 h5
@@ -332,14 +332,14 @@ theorem local_run {C tgt p} : ∀ (w k pc : Nat) (st : St), At C pc (localT tgt 
     have ea0 : ea (st.x 8) (offOf p k) = slotAddr p k (st.x 8).toNat :=
       ea_slot p k _ hs0 hp hk0 _ rfl
     let v := st.m (slotAddr p k (st.x 8).toNat)
-    let st1 : St := ⟨upd st.x 5 v, st.m⟩
+    let st1 : St := ⟨upd st.x 5 v, st.m, st.b⟩
     have r1 : run C 1 (pc, st) = some (pc + 1, st1) := by simp [run, step, l0, wr, ea0, v, st1]
     have x31 : st1.x 31 = st.x 31 := by simp [st1, upd_ne]
     have x30 : st1.x 30 = st.x 30 := by simp [st1, upd_ne]
     have x8' : st1.x 8 = st.x 8 := by simp [st1, upd_ne]
     have hh1 : (st1.x 30).toNat + 8 ≤ (st1.x 31).toNat := by rw [x31, x30]; omega
     have r2 := push_run (s := st1) (by simpa [pushA] using hP) (by decide) (by decide) hh1
-    let st2 : St := ⟨upd st1.x 31 (UInt64.ofNat ((st1.x 31).toNat - 8)), upd st1.m ((st1.x 31).toNat - 8) (st1.x 5)⟩
+    let st2 : St := ⟨upd st1.x 31 (UInt64.ofNat ((st1.x 31).toNat - 8)), upd st1.m ((st1.x 31).toNat - 8) (st1.x 5), st1.b⟩
     have sp1 : (st2.x 31).toNat = (st.x 31).toNat - 8 := by
       simp only [st2, upd_same, x31]; simp only [UInt64.toNat_ofNat']; have := (st.x 31).toNat_lt; omega
     have x8'' : st2.x 8 = st.x 8 := by simp [st2, upd_ne, x8']
@@ -404,7 +404,7 @@ theorem local_oom {C tgt p} : ∀ (w k pc : Nat) (st : St), At C pc (localT tgt 
     have ea0 : ea (st.x 8) (offOf p k) = slotAddr p k (st.x 8).toNat :=
       ea_slot p k _ hs0 hp hk0 _ rfl
     let v := st.m (slotAddr p k (st.x 8).toNat)
-    let st1 : St := ⟨upd st.x 5 v, st.m⟩
+    let st1 : St := ⟨upd st.x 5 v, st.m, st.b⟩
     have r1 : run C 1 (pc, st) = some (pc + 1, st1) := by simp [run, step, l0, wr, ea0, v, st1]
     have x31 : st1.x 31 = st.x 31 := by simp [st1, upd_ne]
     have x30 : st1.x 30 = st.x 30 := by simp [st1, upd_ne]
@@ -412,7 +412,7 @@ theorem local_oom {C tgt p} : ∀ (w k pc : Nat) (st : St), At C pc (localT tgt 
     by_cases hfit : (st.x 30).toNat + 8 ≤ (st.x 31).toNat
     · have hh1 : (st1.x 30).toNat + 8 ≤ (st1.x 31).toNat := by rw [x31, x30]; exact hfit
       have r2 := push_run (s := st1) (by simpa [pushA] using hP) (by decide) (by decide) hh1
-      let st2 : St := ⟨upd st1.x 31 (UInt64.ofNat ((st1.x 31).toNat - 8)), upd st1.m ((st1.x 31).toNat - 8) (st1.x 5)⟩
+      let st2 : St := ⟨upd st1.x 31 (UInt64.ofNat ((st1.x 31).toNat - 8)), upd st1.m ((st1.x 31).toNat - 8) (st1.x 5), st1.b⟩
       have sp1 : (st2.x 31).toNat = (st.x 31).toNat - 8 := by
         simp only [st2, upd_same, x31]; simp only [UInt64.toNat_ofNat']; have := (st.x 31).toNat_lt; omega
       have x8'' : st2.x 8 = st.x 8 := by simp [st2, upd_ne, x8']
@@ -434,7 +434,7 @@ theorem local_oom {C tgt p} : ∀ (w k pc : Nat) (st : St), At C pc (localT tgt 
       · intro a ha; rw [fa a (by rw [sp1]; omega), m2 a (by omega)]
     · have hlt : (st1.x 31).toNat < (st1.x 30).toNat + 8 := by rw [x31, x30]; omega
       have r2 := push_oom (s := st1) (by simpa [pushA] using hP) (by rw [x31]; omega) hlt
-      refine ⟨1 + 3, ⟨upd st1.x 31 (UInt64.ofNat ((st1.x 31).toNat - 8)), st1.m⟩, ?_, ?_, ?_⟩
+      refine ⟨1 + 3, ⟨upd st1.x 31 (UInt64.ofNat ((st1.x 31).toNat - 8)), st1.m, st1.b⟩, ?_, ?_, ?_⟩
       · rw [run_add r1, r2]
         have : (((pc + 1 : Nat) : Int) + 2 + ((tgt : Int) - ((pc : Int) + 1 + 2))).toNat = tgt := by omega
         rw [this]
