@@ -16,9 +16,9 @@ theorem cgV_pair (hS : SK S K) (cs : List Nd) (ICS : CGL S K cs) :
   simp only [NB] at nb
   obtain ⟨_, hl⟩ := inv_pair hc t0
   rw [t1, toU_lt _ nb.1] at hl
-  obtain ⟨e1, m, eE⟩ := ICS d (i + 2) h cs.length c i' E nb.2 rfl sa2 hl hd hh
+  obtain ⟨e1, m, eE, oL⟩ := ICS d (i + 2) h cs.length c i' E nb.2 rfl sa2 hl hd hh
   simp only [tm]
-  exact ⟨by simp only [e1, Nd.ser, List.length_cons]; omega, m, eE⟩
+  exact ⟨by simp only [e1, Nd.ser, List.length_cons]; omega, m, eE, oL⟩
 
 theorem cgV_call (hS : SK S K) (n : Nat) (as : List Nd) (IAS : CGL S K as) :
     CGV S K (.call n as) := by
@@ -33,14 +33,14 @@ theorem cgV_call (hS : SK S K) (n : Nat) (as : List Nd) (IAS : CGL S K as) :
   rw [t1] at hid
   rw [t2, toU_lt _ nl] at hl
   simp only [List.length_append, List.length_cons, List.length_nil] at hh
-  obtain ⟨e1, m, eE⟩ := IAS (d + 1) (i + 3) h as.length ca i' E na rfl sa3 hl (by omega) (by omega)
+  obtain ⟨e1, m, eE, oL⟩ := IAS (d + 1) (i + 3) h as.length ca i' E na rfl sa3 hl (by omega) (by omega)
   have e0 := eE (by omega); subst e0
   have lA : ca.length = lnL S as := by rw [m.len, tmL_len]
   have eT : bget K.T (tg K.X (i + 1)) = (S.T n).toUInt64 := by
     rw [t1, hS.T n hid]; simp [Nat.toUInt64]
   rw [eT, show (1 : UInt64) = (1 : Nat).toUInt64 from rfl,
     g13_enc 1 (h + ca.length) (S.T n) (by omega) (by rw [hS.T n hid]; exact hS.Tb n hid)]
-  refine ⟨by simp only [e1, Nd.ser, List.length_cons]; omega, ?_, fun _ => rfl⟩
+  refine ⟨by simp only [e1, Nd.ser, List.length_cons]; omega, ?_, fun _ => rfl, oL⟩
   simp only [tm]
   have m2 := Mt.app (m.retarget (h + (ca ++ [encG (J.jal 1 ((S.T n : Int) - ((h + ca.length : Nat) : Int)))]).length))
     (Mt.plain [J.jal 1 ((S.T n : Int) - ((h + ca.length : Nat) : Int))] (h + (tmL S as h).length)
@@ -69,10 +69,10 @@ theorem cgV_prim (hS : SK S K) (pn : Nat) (as : List Nd) (IAS : CGL S K as) :
   rw [eu, em_of (B := 2 ^ 32 - 50) (t := fun q => primT S pn q) (fun o ho => g32_prim S pn r19.1 r19.2 o (by omega))
     (by simp at hh; omega)]
   simp only [List.length_append, List.length_map] at hh
-  obtain ⟨e1, m, eE⟩ := IAS (d + 1) (i + 2) h as.length ca i' E na rfl sa2 hl (by omega) (by omega)
+  obtain ⟨e1, m, eE, oL⟩ := IAS (d + 1) (i + 2) h as.length ca i' E na rfl sa2 hl (by omega) (by omega)
   have e0 := eE (by omega); subst e0
   have lA : ca.length = lnL S as := by rw [m.len, tmL_len]
-  refine ⟨by simp only [e1, Nd.ser, List.length_cons]; omega, ?_, fun _ => rfl⟩
+  refine ⟨by simp only [e1, Nd.ser, List.length_cons]; omega, ?_, fun _ => rfl, oL⟩
   simp only [tm]
   have m2 := Mt.app (m.retarget 0) (Mt.plain (primT S pn (h + lnL S as)) (h + (tmL S as h).length) 0)
   have m3 := m2.retarget (h + (ca ++ (primT S pn (h + ca.length)).map encG).length)
@@ -91,16 +91,16 @@ theorem cgV_loop (hS : SK S K) (z : Nd) (s' : Nd) (IZ : CGT S K z) (IS2 : CGT S 
   have lh : (lpHd K.p).length = 2 := by simp [lpHd]
   have ld : (lpDec K.p).length = 2 := by simp [lpDec]
   simp only [List.length_append, List.length_cons, List.length_nil, lh, ld] at hh
-  obtain ⟨e1, mZ⟩ := IZ h 3 (i + 1) (h + 3) cz i1 Ez (h + (3 + lnT S z + 2 + lnT S s')) nb.1 saZ hZ
+  obtain ⟨e1, mZ, oZ⟩ := IZ h 3 (i + 1) (h + 3) cz i1 Ez (h + (3 + lnT S z + 2 + lnT S s')) nb.1 saZ hZ
     (by omega) (by omega) (by omega)
   subst e1
-  obtain ⟨e2, mS⟩ := IS2 h 1 _ _ cs i' Es (h + (3 + lnT S z + 2 + lnT S s')) nb.2
+  obtain ⟨e2, mS, oS⟩ := IS2 h 1 _ _ cs i' Es (h + (3 + lnT S z + 2 + lnT S s')) nb.2
     (by simpa [Nat.add_assoc] using saS) hS' (by omega) (by omega) (by omega)
   have lZ : cz.length = lnT S z := by rw [mZ.len, tmT_len]
   have lS : cs.length = lnT S s' := by rw [mS.len, tmT_len]
   obtain ⟨eh, ed⟩ := lp_enc K.p.toNat p251
   rw [← ep] at eh ed
-  refine ⟨by simp only [e2, Nd.ser, List.length_cons, List.length_append]; omega, ?_, fun h2 => by omega⟩
+  refine ⟨by simp only [e2, Nd.ser, List.length_cons, List.length_append]; omega, ?_, fun h2 => by omega, ⟨oZ, oS⟩⟩
   rw [eh, ed, jw_enc _ _ (by omega) (by omega)]
   simp only [tm, loopHead, loopDec, hS.p]
   have m1 := Mt.app (Mt.plain [J.ld 5 8 (slotOff K.p.toNat 0), J.beq 5 0 2,
@@ -122,7 +122,7 @@ theorem cgL_nil : CGL S K [] := by
   intro d i h n c i' E _ hn _ hc _ _
   subst hn
   obtain ⟨rfl, rfl, rfl⟩ := invS_nil hc
-  exact ⟨by simp [serL], by simpa [tmL] using Mt.plain [] h h, fun _ => rfl⟩
+  exact ⟨by simp [serL], by simpa [tmL] using Mt.plain [] h h, fun _ => rfl, trivial⟩
 
 theorem cgL_cons (hS : SK S K) (x : Nd) (xs : List Nd) (IX : CGV S K x) (IL : CGL S K xs) :
     CGL S K (x :: xs) := by
@@ -133,12 +133,12 @@ theorem cgL_cons (hS : SK S K) (x : Nd) (xs : List Nd) (IX : CGV S K x) (IL : CG
   simp only [NBL] at nb
   obtain ⟨c1, cs, i1, E1, Es, h1, h2, rfl, rfl⟩ := invS_cons hc
   simp only [List.length_append] at hh
-  obtain ⟨e1, m1, eE1⟩ := IX (d + xs.length) i h c1 i1 E1 nb.1 sa1 h1 (by omega) (by omega)
+  obtain ⟨e1, m1, eE1, o1⟩ := IX (d + xs.length) i h c1 i1 E1 nb.1 sa1 h1 (by omega) (by omega)
   subst e1
-  obtain ⟨e2, m2, eE2⟩ := IL d _ (h + c1.length) xs.length cs i' Es nb.2 rfl sa2 h2 hd (by omega)
+  obtain ⟨e2, m2, eE2, o2⟩ := IL d _ (h + c1.length) xs.length cs i' Es nb.2 rfl sa2 h2 hd (by omega)
   have l1 : c1.length = lnV S x := by rw [m1.len, tm_len]
   refine ⟨by simp only [e2, serL, List.length_append]; omega, ?_, fun q => by
-    simp [eE1 (by omega), eE2 q]⟩
+    simp [eE1 (by omega), eE2 q], ⟨o1, o2⟩⟩
   simp only [tmL]
   rcases xs with _ | ⟨y, ys⟩
   · obtain ⟨rfl, rfl, rfl⟩ := invS_nil h2

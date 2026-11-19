@@ -8,13 +8,13 @@ variable {S : SC} {K : GenRef.Cx}
 
 def CGV (S : SC) (K : GenRef.Cx) (e : Nd) : Prop := ∀ (d i h : Nat) (c : List UInt64) (i' : Nat) (E : List Nat),
     NB S.p e → SerAt K.X i e.ser → CG K d i h c i' E → 1 ≤ d → h + c.length < 2 ^ 24 →
-    i' = i + e.ser.length ∧ Mt c (tm S e h) h E (h + c.length) ∧ (2 ≤ d → E = [])
+    i' = i + e.ser.length ∧ Mt c (tm S e h) h E (h + c.length) ∧ (2 ≤ d → E = []) ∧ OpV e
 def CGL (S : SC) (K : GenRef.Cx) (cs : List Nd) : Prop := ∀ (d i h n : Nat) (c : List UInt64) (i' : Nat) (E : List Nat),
     NBL S.p cs → n = cs.length → SerAt K.X i (serL cs) → CGs K d i h n c i' E → 1 ≤ d → h + c.length < 2 ^ 24 →
-    i' = i + (serL cs).length ∧ Mt c (tmL S cs h) h E (h + c.length) ∧ (2 ≤ d → E = [])
+    i' = i + (serL cs).length ∧ Mt c (tmL S cs h) h E (h + c.length) ∧ (2 ≤ d → E = []) ∧ OpL cs
 def CGT (S : SC) (K : GenRef.Cx) (e : Nd) : Prop := ∀ (hd d i h : Nat) (c : List UInt64) (i' : Nat) (E : List Nat) (X : Nat),
     NB S.p e → SerAt K.X i e.ser → CT K hd d i h c i' E → 1 ≤ d → h + c.length < 2 ^ 24 → hd < 2 ^ 24 →
-    i' = i + e.ser.length ∧ Mt c (tmT S e h X hd) h E X
+    i' = i + e.ser.length ∧ Mt c (tmT S e h X hd) h E X ∧ OpV e
 
 theorem u_lt_of (n : Nat) (hn : n < 2 ^ 32) (b : UInt64) (h : n.toUInt64 < b) : n < b.toNat := by
   rw [UInt64.lt_iff_toNat_lt, toU_lt n hn] at h; exact h
@@ -28,7 +28,7 @@ theorem cgV_const (hS : SK S K) (v : UInt64)  :
   obtain ⟨rfl, rfl, rfl⟩ := inv_const hc t0
   rw [t1, em_of (B := 2 ^ 32 - 21) (t := fun q => constT 1 q v) (fun o ho => const_exact o v (by omega)) (by omega)]
   simp only [Nd.ser, tm]
-  exact ⟨by simp, Mt.plain _ _ _, by simp⟩
+  exact ⟨by simp, Mt.plain _ _ _, by simp, by simp [OpV]⟩
 
 theorem cgV_loc (hS : SK S K) (s : Nat) (w : Nat)  :
     CGV S K (.loc s w) := by
@@ -53,7 +53,7 @@ theorem cgV_loc (hS : SK S K) (s : Nat) (w : Nat)  :
     (fun o ho => local_exact _ s w o (by have := hS.p251; rw [UInt64.lt_iff_toNat_lt] at this; exact this) hw hsw
       (by omega)) (by omega)]
   simp only [Nd.ser, tm, hS.p]
-  exact ⟨by simp, Mt.plain _ _ _, by simp⟩
+  exact ⟨by simp, Mt.plain _ _ _, by simp, by simp [OpV]⟩
 
 theorem cgV_bin (hS : SK S K) (op : Nat) (a : Nd) (b : Nd) (IA : CGV S K a) (IB : CGV S K b) :
     CGV S K (.bin op a b) := by
@@ -66,9 +66,9 @@ theorem cgV_bin (hS : SK S K) (op : Nat) (a : Nd) (b : Nd) (IA : CGV S K a) (IB 
   simp only [NB] at nb
   obtain ⟨nop, na, nb'⟩ := nb
   simp only [List.length_append] at hh
-  obtain ⟨ei1, mA, eA⟩ := IA (d + 2) (i + 2) h ca i1 Ea na saA hA (by omega) (by omega)
+  obtain ⟨ei1, mA, eA, oA⟩ := IA (d + 2) (i + 2) h ca i1 Ea na saA hA (by omega) (by omega)
   subst ei1
-  obtain ⟨ei', mB, eB⟩ := IB (d + 1) _ (h + ca.length) cb i' Eb nb' saB hB (by omega) (by omega)
+  obtain ⟨ei', mB, eB, oB⟩ := IB (d + 1) _ (h + ca.length) cb i' Eb nb' saB hB (by omega) (by omega)
   have ea := eA (by omega); have eb := eB (by omega); subst ea eb
   rw [t1] at hop ⊢
   have h1 : 1 ≤ op ∧ op ≤ 8 := by
@@ -80,7 +80,7 @@ theorem cgV_bin (hS : SK S K) (op : Nat) (a : Nd) (b : Nd) (IA : CGV S K a) (IB 
   rw [em_of (B := 2 ^ 32) (t := fun _ => binT op) (fun o _ => g31_exact o op h1.1 h1.2) (by omega)]
   have lA : ca.length = lnV S a := by rw [mA.len, tm_len]
   have lB : cb.length = lnV S b := by rw [mB.len, tm_len]
-  refine ⟨by simp only [ei', Nd.ser, List.length_cons, List.length_append]; omega, ?_, fun _ => rfl⟩
+  refine ⟨by simp only [ei', Nd.ser, List.length_cons, List.length_append]; omega, ?_, fun _ => rfl, ⟨h1.1, h1.2, oA, oB⟩⟩
   simp only [tm, List.nil_append]
   have q := Mt.app (Mt.app (mA.retarget (h + (ca ++ cb ++ (binT op).map encG).length))
     (by rw [tm_len, ← lA]; exact mB.retarget _)) (Mt.plain (binT op) _ _)
@@ -100,14 +100,14 @@ theorem cgV_ite (hS : SK S K) (cm : Nat) (a : Nd) (b : Nd) (t : Nd) (e : Nd) (IA
   obtain ⟨ncm, na, nb', nt, ne⟩ := nb
   have l4 : (ifHd (tg K.X (i + 1))).length = 4 := by simp [ifHd]
   simp only [List.length_append, List.length_cons, List.length_nil, l4] at hh
-  obtain ⟨e1, mA, eA⟩ := IA (d + 6) (i + 2) h ca i1 Ea na saA hA (by omega) (by omega)
+  obtain ⟨e1, mA, eA, oA⟩ := IA (d + 6) (i + 2) h ca i1 Ea na saA hA (by omega) (by omega)
   subst e1
-  obtain ⟨e2, mB, eB⟩ := IB (d + 5) _ (h + ca.length) cb i2 Eb nb' (by simpa [Nat.add_assoc] using saB) hB
+  obtain ⟨e2, mB, eB, oB⟩ := IB (d + 5) _ (h + ca.length) cb i2 Eb nb' (by simpa [Nat.add_assoc] using saB) hB
     (by omega) (by omega)
   subst e2
-  obtain ⟨e3, mT, eT⟩ := IT (d + 3) _ _ ct i3 Et nt (by simpa [Nat.add_assoc] using saT) hT (by omega) (by omega)
+  obtain ⟨e3, mT, eT, oT⟩ := IT (d + 3) _ _ ct i3 Et nt (by simpa [Nat.add_assoc] using saT) hT (by omega) (by omega)
   subst e3
-  obtain ⟨e4, mE, eE⟩ := IE (d + 1) _ _ ce i' Ee ne (by simpa [Nat.add_assoc] using saE) hE (by omega) (by omega)
+  obtain ⟨e4, mE, eE, oE⟩ := IE (d + 1) _ _ ce i' Ee ne (by simpa [Nat.add_assoc] using saE) hE (by omega) (by omega)
   have q1 := eA (by omega); have q2 := eB (by omega); have q3 := eT (by omega); have q4 := eE (by omega)
   subst q1 q2 q3 q4
   have lA : ca.length = lnV S a := by rw [mA.len, tm_len]
@@ -115,7 +115,7 @@ theorem cgV_ite (hS : SK S K) (cm : Nat) (a : Nd) (b : Nd) (t : Nd) (e : Nd) (IA
   have lT : ct.length = lnV S t := by rw [mT.len, tm_len]
   have lE : ce.length = lnV S e := by rw [mE.len, tm_len]
   rw [show h + ca.length + cb.length + 5 + ct.length + 1 = h + ca.length + cb.length + 6 + ct.length by omega] at mE
-  refine ⟨by simp only [e4, Nd.ser, List.length_cons, List.length_append]; omega, ?_, fun _ => by simp⟩
+  refine ⟨by simp only [e4, Nd.ser, List.length_cons, List.length_append]; omega, ?_, fun _ => by simp, ⟨oA, oB, oT, oE⟩⟩
   rw [t1, ifHd_enc cm ncm]
   simp only [tm, ifHeadG, List.nil_append]
   have m1 := Mt.app (mA.retarget 0) ((mB.retarget 0).at (by rw [tm_len, lA]) rfl)
@@ -164,13 +164,13 @@ theorem cgV_letE (hS : SK S K) (s : Nat) (w : Nat) (v : Nd) (b : Nd) (IV : CGV S
     rwa [← ep] at q
   rw [eg] at hB hh ⊢
   simp only [List.length_append, List.length_map, popN_len] at hh hB
-  obtain ⟨e1, mV, eV⟩ := IV (d + 2) (i + 3) h cv i1 Ev nv (by simpa [Nat.add_assoc] using saV) hV (by omega)
+  obtain ⟨e1, mV, eV, oV⟩ := IV (d + 2) (i + 3) h cv i1 Ev nv (by simpa [Nat.add_assoc] using saV) hV (by omega)
     (by omega)
   subst e1
-  obtain ⟨e2, mB, eB⟩ := IB d _ _ cb i' Eb nb' (by simpa [Nat.add_assoc] using saB) hB hd (by omega)
+  obtain ⟨e2, mB, eB, oB⟩ := IB d _ _ cb i' Eb nb' (by simpa [Nat.add_assoc] using saB) hB hd (by omega)
   have q1 := eV (by omega); subst q1
   have lV : cv.length = lnV S v := by rw [mV.len, tm_len]
-  refine ⟨by simp only [e2, Nd.ser, List.length_cons, List.length_append]; omega, ?_, fun h2 => by simp [eB h2]⟩
+  refine ⟨by simp only [e2, Nd.ser, List.length_cons, List.length_append]; omega, ?_, fun h2 => by simp [eB h2], ⟨oV, oB⟩⟩
   simp only [tm, List.nil_append, hS.p]
   have m1 := Mt.app (mV.retarget (h + (cv ++ (popN K.p.toNat s w).map encG ++ cb).length))
     (Mt.plain (popN K.p.toNat s w) _ (h + (cv ++ (popN K.p.toNat s w).map encG ++ cb).length))

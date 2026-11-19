@@ -86,22 +86,6 @@ theorem primT_good (K : SC) (pn q : Nat) : GL (primT K pn q) := by
     | (intro i hi; simp [rdT, bsizeT, bgetT, bsetT, bpushT] at hi
        rcases hi with h | h | h <;> subst h <;> simp [GoodX, GoodW])
 
-mutual
-/-- every BIN op is one of Gen's eight (1 … 8) -/
-def OpV : Nd → Prop
-  | .bin op a b => 1 ≤ op ∧ op ≤ 8 ∧ OpV a ∧ OpV b
-  | .ite _ a b t e => OpV a ∧ OpV b ∧ OpV t ∧ OpV e
-  | .letE _ _ v b => OpV v ∧ OpV b
-  | .pair cs => OpL cs
-  | .call _ as => OpL as
-  | .prim _ as => OpL as
-  | .loop z s => OpV z ∧ OpV s
-  | .cont e => OpV e
-  | _ => True
-def OpL : List Nd → Prop
-  | [] => True
-  | c :: cs => OpV c ∧ OpL cs
-end
 
 theorem ifHeadG_good (c lt : Nat) : GL (ifHeadG c lt) := by
   intro i hi; simp [ifHeadG] at hi

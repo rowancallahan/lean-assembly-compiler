@@ -78,7 +78,7 @@ theorem toNat_toU (x : UInt64) : x.toNat.toUInt64 = x := by simp [Nat.toUInt64]
 theorem defWords {X : Buf} {u : UInt64} {T : Buf} {i : Nat} {o o' : Buf} {i' : Nat} (hD : DefC X u T i o o' i')
     {S : SC} {e : Nd} (hS : SK S (dK X u (bpush T (bsize o)) i)) (hnl : S.nl = (tg X (i + 3)).toNat)
     (nb : NB S.p e) (sa : SerAt X (i + 6) e.ser) (hlen : o'.length < 2 ^ 24) :
-    i' = i + 6 + e.ser.length + 1 ∧ o' = o ++ (defT S e o.length (tg X (i + 5)).toNat).map encG := by
+    i' = i + 6 + e.ser.length + 1 ∧ o' = o ++ (defT S e o.length (tg X (i + 5)).toNat).map encG ∧ OpV e := by
   obtain ⟨t20, hns, hpn, hq, _, c, i1, E, hcg, t21, rfl, rfl, _⟩ := hD
   have hp : S.p = (tg X (i + 2)).toNat := hS.p
   have ns251 : (tg X (i + 3)).toNat < 251 := by rw [UInt64.lt_iff_toNat_lt] at hns; exact hns
@@ -106,9 +106,9 @@ theorem defWords {X : Buf} {u : UInt64} {T : Buf} {i : Nat} {o o' : Buf} {i' : N
   rw [epro] at hcg hlen ⊢
   have lp : (proA 1 o.length (S.nl - S.p)).length = 12 := by simp [proA, pushA, push]
   simp only [List.length_append, List.length_map, lp] at hcg hlen
-  obtain ⟨e1, m, _⟩ := cgV hS e 1 (i + 6) (o.length + 12) c i1 E nb sa hcg (Nat.le_refl 1) (by omega)
+  obtain ⟨e1, m, _, hop⟩ := cgV hS e 1 (i + 6) (o.length + 12) c i1 E nb sa hcg (Nat.le_refl 1) (by omega)
   have hm := m.patch (o0 := o ++ (proA 1 o.length (S.nl - S.p)).map encG) (by simp [lp]) (by omega)
-  refine ⟨by rw [e1], ?_⟩
+  refine ⟨by rw [e1], ?_, hop⟩
   rw [hm]
   simp [defT, List.append_assoc]
 

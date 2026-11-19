@@ -199,6 +199,23 @@ def NBL (p : Nat) : List Nd → Prop
   | c :: cs => NB p c ∧ NBL p cs
 end
 
+mutual
+/-- every BIN op is one of Gen's eight (1 … 8) -/
+def OpV : Nd → Prop
+  | .bin op a b => 1 ≤ op ∧ op ≤ 8 ∧ OpV a ∧ OpV b
+  | .ite _ a b t e => OpV a ∧ OpV b ∧ OpV t ∧ OpV e
+  | .letE _ _ v b => OpV v ∧ OpV b
+  | .pair cs => OpL cs
+  | .call _ as => OpL as
+  | .prim _ as => OpL as
+  | .loop z s => OpV z ∧ OpV s
+  | .cont e => OpV e
+  | _ => True
+def OpL : List Nd → Prop
+  | [] => True
+  | c :: cs => OpV c ∧ OpL cs
+end
+
 def SerAt (X : Buf) (i : Nat) (l : List UInt64) : Prop := ∀ j, j < l.length → tg X (i + j) = l.getD j 0
 
 theorem SerAt.app {X : Buf} {i : Nat} {l1 l2 : List UInt64} (h : SerAt X i (l1 ++ l2)) :

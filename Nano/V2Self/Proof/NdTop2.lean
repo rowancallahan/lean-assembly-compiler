@@ -185,7 +185,7 @@ theorem gen_top (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length <
       (o.length < 2 ^ 24 →
         o = g34 bnew ++ (defsJ (pcOf 524288 hb c29 inp T) ds 0 hs.length).map encG ∧
         (∀ j, j < hs.length → tg (serialize ds) (hs.getD j 0 + 2) = (dA ds j).npw.toUInt64 ∧
-          tg (serialize ds) (hs.getD j 0 + 5) = (dA ds j).nres.toUInt64) ∧
+          tg (serialize ds) (hs.getD j 0 + 5) = (dA ds j).nres.toUInt64 ∧ OpV (dA ds j).body) ∧
         ∀ (C : List J) (IG : St → Prop) (E0 : Nat) (c28 : UInt64), IGOK hb E0 IG → E0 < 2 ^ 62 →
           (∀ s, IG s → s.b + 4 * C.length < 2 ^ 64) → InpOK IG c28 c29 inp →
           At C (g34 bnew).length (defsJ (pcOf 524288 hb c29 inp T) ds 0 hs.length) →

@@ -52,7 +52,7 @@ theorem chainW {X : Buf} {u : UInt64} {P : PC} {ds : List DefA} (hκ : P.κ = u.
       o' = o ++ (defsJ P ds T.length hs.length).map encG ∧
       (∀ j, j < hs.length → P.T (T.length + j) = o.length + (defsJ P ds T.length j).length) ∧
       ∀ j, j < hs.length → tg X (hs.getD j 0 + 2) = (dA ds (T.length + j)).npw.toUInt64 ∧
-        tg X (hs.getD j 0 + 5) = (dA ds (T.length + j)).nres.toUInt64
+        tg X (hs.getD j 0 + 5) = (dA ds (T.length + j)).nres.toUInt64 ∧ OpV (dA ds (T.length + j)).body
   | _, _, _, _, _, _, _, .nil, _, _, _, _, _, _, _, _, _ => by simp [defsJ]
   | T, i, o, _, T', _, o', .cons (o1 := o1) (i1 := i1) (hs := hs) hD hr, eT, r, hdr, sa, hX, hdb, hTo, hTl, hlen => by
     subst eT
@@ -108,7 +108,7 @@ theorem chainW {X : Buf} {u : UInt64} {P : PC} {ds : List DefA} (hκ : P.κ = u.
     have hw := defWords hD SKk (by show (dA ds T.length).nslots = _; rw [hd, t3, toU_lt _ dns])
       (by show NB (dA ds T.length).npw (dA ds T.length).body; rw [hd]; exact dnb)
       (by simpa [Nat.add_assoc, hd] using sb) (by omega)
-    obtain ⟨ei1, eo1⟩ := hw
+    obtain ⟨ei1, eo1, hop⟩ := hw
     -- the rest of the chain
     have ih := chainW hκ hT hr rfl r (by simp only [bpush, List.length_append, List.length_singleton]; exact drop_succ_of hdr)
       (by simp only [List.length_append, List.length_cons, List.length_nil] at sa2
@@ -143,7 +143,7 @@ theorem chainW {X : Buf} {u : UInt64} {P : PC} {ds : List DefA} (hκ : P.κ = u.
         simp [defsJ, hd, t5, toU_lt _ dnr, pT]; omega
     · intro j hj
       rcases j with _ | j
-      · simp only [List.getD_cons_zero, Nat.add_zero, hd]; exact ⟨t2, t5⟩
+      · simp only [List.getD_cons_zero, Nat.add_zero, hd]; exact ⟨t2, t5, by rw [← hd]; exact hop⟩
       · have q := ih3 j (by simpa using hj)
         simp only [bpush, List.length_append, List.length_singleton] at q
         rw [show T.length + (j + 1) = T.length + 1 + j by omega]; simpa using q
