@@ -26,7 +26,7 @@ structure LayW where
 structure LayW.Ok (K : LayW) : Prop where
   b4 : K.base % 4 = 0
   blo : 0x80000000 ≤ K.base
-  bhi : K.base + 4 * K.W.length + 4 ≤ 0x100000000
+  bhi : K.base + 4 * K.W.length ≤ 0x100000000
   wlo : 0x80000000 ≤ K.lo
   whi : K.hi ≤ 0x100000000
   cw : K.base + 4 * K.W.length ≤ K.lo ∨ K.hi ≤ K.base
