@@ -1,11 +1,11 @@
-"""Tiny RV64IM tracer for g41 code (debugging B2/B3 crashes).  usage: [TR=word,count] [STOP=word] [HEAD=word,delta] rvtrace.py WORDS_FILE INPUT_FILE [WORK_MB] [N]
+"""Tiny RV64IM tracer for g41 code (debugging B2/B3 crashes).  usage: [TR=word,count] [STOP=word] [HEAD=word,delta] rvtrace.py WORDS_FILE INPUT_FILE [WORK_MB=80] [N]
 Convention as selfrun.py; on a bad pc prints the last N instructions with s0/t6/ra."""
 import sys, collections
 M = (1 << 64) - 1
 def sx(v, b): v &= (1 << b) - 1; return v - (1 << b) if v >> (b - 1) else v
 words = [int(x, 16) for x in open(sys.argv[1]).read().split()[2:]]
 inp = open(sys.argv[2], "rb").read()
-WK = int(sys.argv[3]) << 20 if len(sys.argv) > 3 else 64 << 20
+WK = int(sys.argv[3]) << 20 if len(sys.argv) > 3 else 80 << 20
 CODE, INP, OUT, WORK, RET = 0x80000000, 0x90000000, 0x98000000, 0xA0000000, 0x7FFFF000
 mem = bytearray(WK); inb = bytearray(inp) + bytearray(16); out = bytearray(1 << 20)
 def region(a, n):

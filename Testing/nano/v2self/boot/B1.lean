@@ -1929,56 +1929,65 @@ def o40 : Nat → Buf → UInt64 → Buf
   | 0, b, k => b
   | n + 1, b, k => if bsize b < k then o40 n (bpush b 0) k else b
 
-/-- one def (the cursor at its DEF word): kinds (mode 1, a black box: of its result only the kinds f2[0, n) matter, clamped
-to ≤ 2; the registers verify reads are set again, sizes checked), verify (mode 0), table entry -/
-def o38 (x s f v t : Buf) : Buf × (Buf × (Buf × Buf)) :=
-  let i := bget s 0;
+/-- the verify flags buffer: y[q] := clamp (f[q]) for q < n (kinds), 0 for n ≤ q < 2n (dead flags); f only read -/
+def o42 : Nat → Buf → Buf → UInt64 → UInt64 → Buf
+  | 0, y, f, j, n => y
+  | m + 1, y, f, j, n =>
+    if j < 2 * n then
+      (let e := bget f j;
+       o42 m (o0 y j (if j < n then (if e < 2 then e else 2) else 0)) f (j + 1) n)
+    else y
+
+/-- one def (the cursor at its DEF word, in the verify registers a): kinds by inference (mode 1, a black box on its own
+s / f / v; only its kinds f2[0, n) are read, clamped to ≤ 2), then verify (mode 0) on a / b / c, table entry -/
+def o38 (x s f v a b c t : Buf) : Buf × (Buf × (Buf × (Buf × (Buf × (Buf × Buf))))) :=
+  let i := bget a 0;
   let p := bget x (i + 2);
   let n := bget x (i + 3);
   let r := bget x (i + 5);
-  let d := bget s 13;
+  let d := bget a 13;
   let k := (if 1048575 < p then 1 else if 1048575 < n then 1 else if 1048575 < r then 1 else if n < p then 1 else 0);
-  if k == 1 then (o5 s, (f, (v, t))) else
-  let s1 := bset (bset (bset (bset s 2 p) 3 r) 6 n) 12 (i + 6);
+  if k == 1 then (s, (f, (v, (o5 a, (b, (c, t)))))) else
   if d < 4096 then
+  let s1 := bset (bset (bset (bset (bset (bset s 1 0) 2 p) 3 r) 6 n) 12 (i + 6)) 13 d;
   let (s2, z) := o36 1000 x s1 (o22 16777216 (o22 16777216 f 0 0 0 (2 * n) 3) 0 0 0 p 4) v t;
   let (f2, v2) := z;
-  let s4 := o40 16 s2 16;
-  let k2 := (if bsize f2 < 2 * n then 1 else if 1099511627776 < bsize f2 then 1 else if 1099511627776 < bsize s4 then 1
-    else if 1099511627776 < bsize v2 then 1 else 0);
-  if k2 == 1 then (o5 s4, (f2, (v2, t))) else
   let u := bsize t;
   let t1 := o37 16777216 (bpush (bpush (bset t d u) p) r) f2 0 p 1;
-  let s5 := bset (bset (bset (bset (bset s4 1 0) 2 p) 6 n) 12 (i + 6)) 13 d;
-  let (s3, z3) := o35 x s5 (o22 16777216 f2 0 0 0 n 5) v2 t1 0;
+  let b1 := o42 2097152 b f2 0 n;
+  let a1 := bset (bset (bset (bset a 1 0) 2 p) 6 n) 12 (i + 6);
+  let (s3, z3) := o35 x a1 b1 c t1 0;
   let (f3, v3) := z3;
   let j := bget s3 0;
-  if bget s3 1 == 1 then (s3, (f3, (v3, t1)))
+  if bget s3 1 == 1 then (s2, (f2, (v2, (s3, (f3, (v3, t1))))))
   else if bget x j == 21 then
     (if bget s3 7 == r then
-      (bset (bset s3 0 (j + 1)) 13 (d + 1), (f3, (v3, o37 16777216 (o37 16777216 t1 f3 0 p 0) v3 0 r 0)))
-     else (o5 s3, (f3, (v3, t1))))
-  else (o5 s3, (f3, (v3, t1)))
-  else (o5 s1, (f, (v, t)))
+      (s2, (f2, (v2, (bset (bset s3 0 (j + 1)) 13 (d + 1), (f3, (v3, o37 16777216 (o37 16777216 t1 f3 0 p 0) v3 0 r 0))))))
+     else (s2, (f2, (v2, (o5 s3, (f3, (v3, t1)))))))
+  else (s2, (f2, (v2, (o5 s3, (f3, (v3, t1))))))
+  else (s, (f, (v, (o5 a, (b, (c, t))))))
 
-/-- the defs in order; 1 = all accepted -/
-def o39 : Nat → Buf → Buf → Buf → Buf → Buf → UInt64
-  | 0, x, s, f, v, t => 0
-  | n + 1, x, s, f, v, t =>
-    let i := bget s 0;
-    if bget s 1 == 1 then 0
+/-- the defs in order; 1 = all accepted (control in the verify registers a) -/
+def o39 : Nat → Buf → Buf → Buf → Buf → Buf → Buf → Buf → Buf → UInt64
+  | 0, x, s, f, v, a, b, c, t => 0
+  | n + 1, x, s, f, v, a, b, c, t =>
+    let i := bget a 0;
+    if bget a 1 == 1 then 0
     else if i < bsize x then
       (if bget x i == 20 then
-        (let (s1, z) := o38 x s f v t;
+        (let (s1, z) := o38 x s f v a b c t;
          let (f1, z1) := z;
-         let (v1, t1) := z1;
-         o39 n x s1 f1 v1 t1)
+         let (v1, z2) := z1;
+         let (a1, z3) := z2;
+         let (b1, z4) := z3;
+         let (c1, t1) := z4;
+         o39 n x s1 f1 v1 a1 b1 c1 t1)
        else 0)
     else 1
 
 /-- **the ownership stage**: the AST back if every def passes `OwnSpec.chk` with the inferred kinds, else empty -/
 def o41 (x : Buf) : Buf :=
-  let r := (if bget x 0 == 2 then (if bsize x < 1099511627776 then o39 16777216 x (bset (o40 64 bnew 16) 0 1) bnew bnew (o40 4096 bnew 4096) else 0) else 0);
+  let r := (if bget x 0 == 2 then (if bsize x < 1099511627776 then o39 16777216 x (o40 64 bnew 16) bnew bnew (bset (o40 64 bnew 16) 0 1) bnew bnew (o40 4096 bnew 4096) else 0) else 0);
   if r == 1 then x else bnew
 
 -- ===== Gen =====
