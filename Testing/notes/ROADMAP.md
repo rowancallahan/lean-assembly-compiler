@@ -506,6 +506,7 @@ register ALU ops). Later: write the ARM generator in the nano subset so C self-h
 Owner decisions (2026-11-19): an `arm : Machine` instance in Spec/ next to `riscv` is approved; code below 2^29 for now
 (expand later); an ARM RAM window is assumed (chosen from what Arm/proofs supports, MMU off at EL3).
 Order (owner, 2026-11-19): (1) organization pass + survey of moving everything to the newest Lean
-(Testing/notes/LEAN_435.md); (2) migrate the repo, both Sail models, Arm/proofs and Arm/apc to ONE Lean version: 4.35.0 (owner, 2026-11-19;
+(Testing/notes/LEAN_435.md); (2) migrate the repo, both Sail models, Arm/proofs and Arm/apc to ONE Lean version: FIRST 4.34.1 (owner, 2026-11-19: the ARM
+model and Arm/proofs already work there; most breakage is 4.29->4.34), prove ARM there, THEN step everything to 4.35.0 (owner;
 4.36 rejected: it caps field-carrying constructors at 244, and the RISC-V Sail model's `instruction` has 353); (3) then the
 ARM proof and the larger code work.
