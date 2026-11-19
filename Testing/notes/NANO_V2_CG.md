@@ -465,3 +465,14 @@ the final `jalr x0, 0(ra)` (ra may be below the code) and HostLift.sim_ret takes
 code_at, wordAt/jOf, rel_init, fin_out.  Axioms = Sail set.
 Open: (A) semAt failure ⇒ OOM/cap exits (+ D's converse: enough space ⇒ semAt some, Sem cap ⇒ semAtX cap);
 then ImplementsCW with space x := max 16 (D's R x) + slack; hXl from g42's input check; DB (D).
+
+## Capacity exit (A, machine side), box E, 2026-11-19 — DONE
+SemX: `Fail := cap | room | stuck`, kinded combinators (…F), svF/stF/svLF, `semAtF`; `oD_semAt`: forgetting the kind
+gives `semAt`.  CapRun/CapNode/CapProg/CapStart: cap contracts (CapW/CapT/CapD: kinded semantics = .error .cap ⇒ safe run
+to the cap stub word 6 with the global invariant) for every combinator (bpush is the only primitive source), the node
+dispatch (runVCap/runTCap/runLCap), defs/program (progCap, gen_defs_cap), start (start_capX).  GenRunS/GenMain: cap
+branch.  CapHost: `stub_sail` (stub on Sail: a0 = −2 needs the wrapping addi, `sim_addiN`), **`gen_host_cap`**: ImplementsCW
+hyps + `Sem κC p x = .error .cap` + (∀ T, semAtF main … = .error .cap) ⇒ runsTo s (Outcome … (Sem κC p x) …) via the
+`.error .cap` disjunct.  Axioms = Sail set.
+For ImplementsC D supplies: space R with Sem = ok ⇒ semAt some (gen_host), Sem = cap ⇒ semAtF cap (gen_host_cap),
+Sem ≠ stuck.  Remaining: the final ImplementsCW assembly (case split on Sem), hXl, DB.
