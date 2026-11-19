@@ -407,3 +407,19 @@ Independent pieces (each a NEW file importing EVSDefs; state each twin exactly a
 - P7 `GenSail.lean` (after P6): gen_run on Sail: StartSafe twins + main's DefXS + `sim_starX` + `words_encJX`.
 Jump targets: `SafeX` jal needs 0 ≤ target < |C| and |offset| < 2^18 — assume `C.length < 2^18` globally and get
 target < |C| from `At` facts (target position holds an instruction).
+
+### EVS — status (Opus box E, 2026-11-19): DONE through Sail
+Files (no sorry; J-level std axioms, Sail-level = the Sail extern set): EVSDefs, EVSLeaf, EVSComp, EVSFin, EVSTail,
+EVSLoop, EVSCall (box B's), EVSRun (`RunCxS`, `runVS/runTS/runLS`), EVSProg (`defRunS`, `progRunS`,
+`gen_defs_runS`), StartAllS (`start_runX`), **GenRunS.gen_runS**: on g41 success, C = stubs ++ def templates ++ start
+code runs from word 0 as a SafeX run to the host's ra with main's buffer bytes at a3 (a0/a1 set), and with
+`KL.Ok` and `KL.W = (C.map encG).map toNat` it is a Sail `Steps` run keeping `RelW`.
+Remaining hypotheses of gen_runS (all stated explicitly):
+- size bounds from Gen success not yet exported: DB, npw/nres < 251 (h251), nslots < 251, o.length < 2^24,
+  C.length < 2^18, (serialize ds).length < 2^31;
+- parser facts (D): npw < 2^20, npw ≤ nslots, ScV, reads ⊆ params;
+- semantics: main's `semAt` run succeeds; result buffer facts in H' (length cell, byte cells in the heap) — for D's
+  Sem ⇐ sv bridge;
+- host layout: a2 % 8 = 0, a2+16 ≤ E0 = sp&~7 < 2^62, work region [KL.lo, KL.hi) ⊇ [a2, E0), code base = KL.base,
+  input/output byte cells are work cells and disjoint from [a2, E0+8), ra = base + 4j, s0.b + 4|C| < 2^64.
+OOM/capacity exits: deferred (owner, 2026-11-19); needs a semantics separating OOM/capacity from ill-formed heaps.
