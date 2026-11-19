@@ -19,6 +19,7 @@ theorem gen_C (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length < 2
           defsJ (pcOf 524288 hb c29 inp T) ds 0 hs.length ++
           startJ (11 + (defsJ (pcOf 524288 hb c29 inp T) ds 0 hs.length).length)
             ((pcOf 524288 hb c29 inp T).T (hs.length - 1))).map encG) 0 [] ∧
+        (dA ds (hs.length - 1)).npw = 0 ∧ (dA ds (hs.length - 1)).nres = 1 ∧
         ∀ (C : List J) (IG : St → Prop) (E0 : Nat) (c28 : UInt64), IGOK hb E0 IG → E0 < 2 ^ 62 →
           (∀ s, IG s → s.b + 4 * C.length < 2 ^ 64) → InpOK IG c28 c29 inp →
           At C (g34 bnew).length (defsJ (pcOf 524288 hb c29 inp T) ds 0 hs.length) →
@@ -26,11 +27,21 @@ theorem gen_C (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length < 2
             ScV (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body ∧ ∀ j, rd (dA ds k).body j → j < (dA ds k).npw) →
           ∀ k, k < hs.length → DefX C ((pcOf 524288 hb c29 inp T).T k) (dA ds k).npw (dA ds k).nres IG hb E0
             (semAt (pcOf 524288 hb c29 inp T) ds k)) := by
-  obtain ⟨hs, T, o, hD, hne, hg, hrest⟩ := gen_top c ds hXl h hdb h251 hb c29 inp
-  refine ⟨hs, T, o, hD, hne, fun hol => ⟨?_, (hrest hol).2⟩⟩
-  obtain ⟨ho, -⟩ := hrest hol
-  have hTl : T.length = hs.length := by have := (DefsC.prefix hD).2; simpa [bnew] using this
+  obtain ⟨hs, T, o, hD, hne, hg, l2, l5, hrest⟩ := gen_top c ds hXl h hdb h251 hb c29 inp
+  refine ⟨hs, T, o, hD, hne, fun hol => ?_⟩
+  obtain ⟨ho, hhd, hX⟩ := hrest hol
   have hsl : 0 < hs.length := List.length_pos_iff.mpr hne
+  have hlast : hs.getLastD 0 = hs.getD (hs.length - 1) 0 := by
+    rw [List.getLastD_eq_getLast?, List.getLast?_eq_getElem?]; simp [List.getD_eq_getElem?_getD]
+  obtain ⟨h2, h5⟩ := hhd (hs.length - 1) (by omega)
+  rw [← hlast, l2] at h2; rw [← hlast, l5] at h5
+  obtain ⟨_, dnp, _, _, dnr, _⟩ := DB_dA hdb (hs.length - 1)
+  have np : (dA ds (hs.length - 1)).npw = 0 := by
+    have := congrArg UInt64.toNat h2; simp [Nat.toUInt64] at this; omega
+  have nr : (dA ds (hs.length - 1)).nres = 1 := by
+    have := congrArg UInt64.toNat h5; simp [Nat.toUInt64] at this; omega
+  refine ⟨?_, np, nr, hX⟩
+  have hTl : T.length = hs.length := by have := (DefsC.prefix hD).2; simpa [bnew] using this
   have hT1 : bsize T - 1 = (hs.length - 1).toUInt64 := by
     unfold bsize; rw [hTl]
     have : hs.length < 2 ^ 64 := by
@@ -75,7 +86,6 @@ theorem gen_run (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length <
         g41 c (serialize ds) = g40 16777216 c (C.map encG) 0 [] ∧
         ((∀ k, k < hs.length → (dA ds k).npw < 2 ^ 20 ∧ (dA ds k).npw ≤ (dA ds k).nslots ∧
             ScV (scAt P ds k) (dA ds k).body ∧ ∀ j, rd (dA ds k).body j → j < (dA ds k).npw) →
-         (dA ds (hs.length - 1)).npw = 0 → (dA ds (hs.length - 1)).nres = 1 →
          ∀ E0, ((s0.x 2 >>> 3) <<< 3).toNat = E0 → s0.x 0 = 0 → (s0.x 12).toNat % 8 = 0 →
          (s0.x 12).toNat + 16 ≤ E0 → E0 < 2 ^ 62 → s0.b + 4 * C.length < 2 ^ 64 →
          (s0.x 10).toNat + (s0.x 11).toNat < 2 ^ 63 →
@@ -92,9 +102,9 @@ theorem gen_run (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length <
   obtain ⟨hs, T, o, hD, hne, hr⟩ := gen_C c ds hXl h hdb h251 ((s0.x 12).toNat + 16) (s0.x 11)
     (fun i => lbm s0.m ((s0.x 10).toNat + i))
   refine ⟨hs, T, o, hD, hne, fun hol => ?_⟩
-  obtain ⟨hg, hX⟩ := hr hol
+  obtain ⟨hg, np, nr, hX⟩ := hr hol
   refine ⟨hg, ?_⟩
-  intro hpar np nr E0 hE0 z0 ha8 hroom hE62 hcb hin63 hin vs H' hSd N bs hN hPb hPN hbs hQ hout
+  intro hpar E0 hE0 z0 ha8 hroom hE62 hcb hin63 hin vs H' hSd N bs hN hPb hPN hbs hQ hout
   generalize pcOf 524288 ((s0.x 12).toNat + 16) (s0.x 11) (fun i => lbm s0.m ((s0.x 10).toNat + i)) T = P at *
   generalize hDd : defsJ P ds 0 hs.length = D at *
   generalize hCd : stubJ (11 + D.length) ++ D ++ startJ (11 + D.length) (P.T (hs.length - 1)) = C at *

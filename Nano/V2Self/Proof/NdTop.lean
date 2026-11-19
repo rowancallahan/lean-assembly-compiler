@@ -47,7 +47,7 @@ theorem gen_words (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length
   refine ⟨hs, T, o, hD, hne, hg, fun hol => ?_⟩
   have := chainW (P := pcOf 524288 hb c29 inp T) (ds := ds) (u := g_999) rfl (Tf := T) (fun j => rfl) hD rfl ds
     (by simp [bnew]) (SerAt_serialize ds) (by simp [serialize]; omega) hdb (by simp [bnew]) (by simp [bnew]) hol
-  simpa [bnew] using this
+  simp [bnew] at this; exact ⟨this.1, this.2.1⟩
 
 /-- **every def runs per its semantics** on a J program holding the def templates (Gen's words, by `gen_words`) -/
 theorem gen_defs_run (P : PC) (ds : List DefA) (C : List J) (IG : St → Prop) (E0 : Nat) (c28 : UInt64) (n h : Nat)

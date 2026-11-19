@@ -181,8 +181,11 @@ theorem gen_top (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length <
     (hb : Nat) (c29 : UInt64) (inp : Nat → UInt64) :
     ∃ hs T o, DefsC (serialize ds) g_999 bnew 1 (g34 bnew) hs T (serialize ds).length o ∧ hs ≠ [] ∧
       g41 c (serialize ds) = g40 16777216 c (startW (bset o 0 (g13 0 0 (bsize o))) (bget T (bsize T - 1))) 0 [] ∧
+      tg (serialize ds) (hs.getLastD 0 + 2) = 0 ∧ tg (serialize ds) (hs.getLastD 0 + 5) = 1 ∧
       (o.length < 2 ^ 24 →
         o = g34 bnew ++ (defsJ (pcOf 524288 hb c29 inp T) ds 0 hs.length).map encG ∧
+        (∀ j, j < hs.length → tg (serialize ds) (hs.getD j 0 + 2) = (dA ds j).npw.toUInt64 ∧
+          tg (serialize ds) (hs.getD j 0 + 5) = (dA ds j).nres.toUInt64) ∧
         ∀ (C : List J) (IG : St → Prop) (E0 : Nat) (c28 : UInt64), IGOK hb E0 IG → E0 < 2 ^ 62 →
           (∀ s, IG s → s.b + 4 * C.length < 2 ^ 64) → InpOK IG c28 c29 inp →
           At C (g34 bnew).length (defsJ (pcOf 524288 hb c29 inp T) ds 0 hs.length) →
@@ -190,12 +193,12 @@ theorem gen_top (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length <
             ScV (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body ∧ ∀ j, rd (dA ds k).body j → j < (dA ds k).npw) →
           ∀ k, k < hs.length → DefX C ((pcOf 524288 hb c29 inp T).T k) (dA ds k).npw (dA ds k).nres IG hb E0
             (semAt (pcOf 524288 hb c29 inp T) ds k)) := by
-  obtain ⟨_, hs, T, o, D, hD, hW, hne, _, _, hg⟩ := gen41_full c (serialize ds) hXl h
-  refine ⟨hs, T, o, hD, hne, hg, fun hol => ?_⟩
+  obtain ⟨_, hs, T, o, D, hD, hW, hne, l2, l5, hg⟩ := gen41_full c (serialize ds) hXl h
+  refine ⟨hs, T, o, hD, hne, hg, l2, l5, fun hol => ?_⟩
   have cw := chainW (P := pcOf 524288 hb c29 inp T) (ds := ds) (u := g_999) rfl (Tf := T) (fun j => rfl) hD rfl ds
     (by simp [bnew]) (SerAt_serialize ds) (by simp [serialize]; omega) hdb (by simp [bnew]) (by simp [bnew]) hol
   simp only [bnew, List.length_nil, Nat.zero_add] at cw
-  refine ⟨cw.1, fun C IG E0 c28 hig he hcb hinp hC hpar k hk => ?_⟩
+  refine ⟨cw.1, by simpa using cw.2.2, fun C IG E0 c28 hig he hcb hinp hC hpar k hk => ?_⟩
   have perK : ∀ k, k < hs.length → OkV (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body ∧
       wd (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body = (dA ds k).nres := by
     intro k hk
@@ -226,7 +229,7 @@ theorem gen_top (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length <
     have ewd : wd (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body = (dA ds k).nres :=
       ofNat_inj' (by simpa [Nat.toUInt64] using ew) (by omega) (by omega)
     exact ⟨okV_of _ _ wdv hsc, ewd⟩
-  exact gen_defs_run _ ds C IG E0 c28 hs.length (g34 bnew).length hig he hcb hinp hC cw.2
+  exact gen_defs_run _ ds C IG E0 c28 hs.length (g34 bnew).length hig he hcb hinp hC cw.2.1
     (fun k' hk' => by
       obtain ⟨hpw', hpn', _, hrd'⟩ := hpar k' hk'
       exact ⟨hpw', hpn', (perK k' hk').1, (perK k' hk').2, hrd'⟩) k hk
