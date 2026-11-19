@@ -242,18 +242,20 @@ Results: fixpoint B3 == B2, 254,552 bytes, **sha256 b8f76d42bd8cfa647ee591ad51ff
 Results: fixpoint B3 == B2, 255,324 bytes, **sha256 d71d7c978c2fde818be200e6c0380d0ef2289918f1e1f133c46ac408e7084fe0** (supersedes b8f76d42…); fuzz 6,000 (seed 31) + 4,000 (seed 32): 0 disagreements; regressions file extended.
 
 ## HANDOFF — Opus box C, parser Layer 3 (2026-11-19, keep current)
-Build here: no lake deps in this container; `lean -o` per module with LEAN_PATH (each module < 10 s, < 1 GB).
+Build here: no lake deps in this container; `lean -o` per module with LEAN_PATH (scratch script topo-sorts the imports); every
+ParRun*/ParInv*/ParTree* module builds, each < 10 s, < 1 GB.
 DONE (pushed, no sorry, std axioms):
-* Par1 fixes G (no if/let as operands), H (input = pickPs), I (no Nat as data): B3 == B2 sha256 b8f76d42…408e, fuzz 0 disagreements.
-* `Proof/ParInvRep.lean`: `TokAt` (token cursor ↔ `List Tok`), `fld`, `ShOpt` (code ↔ Option Sh, 0 = none), `RNRep`/`KidsR` (arena record +
-  child chain ↔ B's `RN` exactly), frame rules (`RNRep.frame`, `KidsR.frame`, `ShapeCode.frame`, `ShOpt.frame`), `opAt`, `ArenaRep`
-  (h9 = |arena|, record u ↔ arena[u], operand k ↔ vals[k], distinct roots, roots in no other subtree, root subtrees disjoint).
-* `Proof/ParInvOps.lean`: `v2_eff`, `v5_eff` (exact cell effect of the node builder), `kidsR_chain`, **`arena_v5`** (B's `mkNode` ↔ `v5`:
-  new ArenaRep, shape table / low cells / cells ≥ 147520 unchanged).
-* `Proof/ParInvState.lean`: **`Rep h ts st fs`** (DRAFT until B mirrors fixes G/H/I in `Frame`: `expr`/`prim` mode, `assign` size, stash
-  as Option): TokensAt, status ↔ acc, TokAt h3, nx h11, `BindsRep` (d9), `DefsRep` (d7 rows, current row inside a def / zero row between
-  defs, zero rows above, h27 param allocator), `ArenaRep`, ty h25, stash h29, arm h30, sslot h32, `OutRep` (heap tail), `TasksRep`
-  (h5 + `FrameArgs` per constructor: names ↔ token positions, `calleeW`, flat ↔ arena id, flatL ↔ first id + KidsR).
-NEXT: (1) step lemma (top task decode, `v1_eff` push), region frame lemmas per Rep component; (2) expression handlers in
-`ParInvExpr.lean` (expr, binLoop, shiftNum, mkBin, prim const/paren/name, parenClose/tupRest/mkPair, if family, let family); D takes
-calls/types/defs/loops/flatten on the same pattern.
+* Par1 fixes G (no if/let as operands), H (input = pickPs), I (no Nat as data), J (List group before the input rejected), K (`(Nat) →`):
+  B3 == B2 sha256 d71d7c97…4fe0, fuzz 0 disagreements (B mirrored G–K in ParRun).
+* `ParInvRep`: TokAt, fld, ShOpt, RNRep/KidsR (exact arena ↔ B's RN; t < 2^64, a/b < 2^64 except tags 2/5), frame rules, ArenaRep.
+* `ParInvOps`: v2_eff, v5_eff, arena_v5 (B's mkNode ↔ v5; heap high part preserved).
+* `ParInvState`: **Rep h ts st fs** (stable): FrameArgs per frame, TasksRep, BindsRep, RowRep/DefsRep (zero rows/param cells), OutRep (heap drop),
+  inDefF = no `defs` frame on the stack; nx/slots/npw/sslot mod 2^64.
+* `ParInvStep`: region frames, v1_eff, tasks_push, step_top, rep_tasks, rep_tok, tok_kw, v1_zero/v1_ok.
+* `ParInvExpr`: h_expr (1), h_rparen (4), h_ifElse (8), expect_tok. `ParInvBuild`: v5_guards, rep_arena, rep_v5, val_rep, opCell,
+  tok_cases, rep_set3, op_corr, h_mkBin (5), h_binLoop (2). `ParInvExpr2`: cur_tok, h_parenClose (40), h_tupRest (90), h_ifCmp (6),
+  h_ifThen (7). `ParInvLet`: cur_id (ident + v86), nameAt_ts, rep_set29, h_letStart (41), h_letPairX (50), h_letPairY (51), h_stash (52).
+  Side conditions taken from B's WF / SInv by the glue: binLoop `st.vals ≠ []`; mkBin `fs.all (!·.isFlat)`.
+NEXT (box C): letSemi (11, v116: v9 width + v6 bind), letPairSemi (53, v117), letEnd (12, v118 = rep_v5 + binds.take), mkIte (9, v111),
+mkPair (42, v107 + v10 interning — coordinate with G's ParInvIntern), shiftNum (49, v102: v87 byte OR = bytesVal), prim (3, v104: const,
+paren, if/let entry, name → local/call/self, `[]`, prim heads).

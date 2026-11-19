@@ -203,4 +203,35 @@ theorem h_letPairY {h ts : Buf} {st : St} {x : List Nat} {tl : Bool} {fs : List 
   · have n : (bget h1 (d11 + bget h1 3) == 14) = false := by simpa using c14
     simp only [n, if_false] at hs; exact absurd (stat0 _ (by omega)) hs
 
+/-! ## task 52: `stash x` (v115): h[29] := the position of x -/
+theorem rep_set29 {h ts : Buf} {st : St} {fs : List Frame} {pos : UInt64} {x : List Nat} (r : Rep h ts st fs) (hx : NameAt h pos x) :
+    Rep (bset h 29 pos) ts { st with stash := x } fs := by
+  obtain ⟨rT, rts, r0, r3, r11, rB, rD, rA, r25, _, r30, r32, rO, rK⟩ := r
+  have hn : (bget h 7).toNat < 2 ^ 32 := by rw [rT.2.2.2]; simp; omega
+  have u : (29 : UInt64).toNat = 29 := rfl
+  have c : ∀ i : UInt64, i.toNat ≠ 29 → bget (bset h 29 pos) i = bget h i := fun i hi => bget_bset' _ _ _ _ (by rw [u]; omega)
+  have et : TokAgree h (bset h 29 pos) := ⟨c 7 (by decide), fun i hi => c i (by omega)⟩
+  have es : ShTabAgree h (bset h 29 pos) := fun i a _ => c i (by omega)
+  have ea : ArenaAgree h (bset h 29 pos) := fun i a _ => c i (by omega)
+  refine ⟨tokensAt_frame rT et rts, rts, by rw [c 0 (by decide)]; exact r0, by rw [c 3 (by decide)]; exact tokAt_frame et hn r3,
+    by rw [c 11 (by decide)]; exact r11, binds_frame rB (c 4 (by decide)) (fun i a _ => c i (by omega)) et hn es,
+    defs_frame rD (c 12 (by decide)) (c 27 (by decide)) (fun i a _ => c i (by omega)) et hn es,
+    arena_frame rA (c 8 (by decide)) (c 9 (by decide)) (fun i a _ => c i (by omega)) es,
+    fun s hs => by rw [c 25 (by decide)]; exact (r25 s hs).frame es,
+    fun y hy _ => by rw [bget_bset_eq _ _ _ _ rfl (by rw [u, rO.1]; omega)]; subst hy; exact nameAt_frame et (by omega) hx,
+    by rw [c 30 (by decide)]; exact r30, by rw [c 32 (by decide)]; exact r32, out_frame rO (drop_bset _ _ _ (by decide)),
+    tasks_frame rK (c 5 (by decide)) (fun i a _ => c i (by omega)) et hn es ea rA.2.1⟩
+
+theorem h_stash {h ts : Buf} {st : St} {x : List Nat} {fs : List Frame} (r : Rep h ts st (.stash x :: fs)) (hs : bget (step h) 0 ≠ 0) :
+    ∃ k st', stepF (.stash x) st = some (k, st') ∧ Rep (step h) ts st' (k ++ fs) := by
+  obtain ⟨E, ea, R1⟩ := rep_pop r (by simp [inDefF, Frame.isDefs])
+  simp only [FrameArgs] at ea
+  generalize (taskAt h fs.length).a = a at E ea
+  generalize (taskAt h fs.length).b = b at E
+  have ea1 : NameAt (bset h 5 fs.length.toUInt64) a x := nameAt_ts r.1 R1.1 r.2.1 ea
+  generalize bset h 5 fs.length.toUInt64 = h1 at E R1 ea1
+  have ev : step h = bset h1 29 a := by rw [E]; simp [Frame.code, v96, v115]
+  rw [ev]
+  exact ⟨[], _, rfl, rep_set29 R1 ea1⟩
+
 end ParInv
