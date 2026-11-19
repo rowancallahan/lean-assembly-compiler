@@ -113,11 +113,8 @@ structure DefStart (st : St) (x : List Nat) : Prop where
 /-- finished rows carry no nested Nat (the `rows` half of B's `CxNN`) -/
 def DefsNN (ds : List DefR) : Prop := ∀ d ∈ ds, ShNN d.res ∧ ∀ p ∈ d.params, p.nnt = true
 
-/-- with the arm flag off, an expression run leaves no pending value (no self-call; to be discharged) -/
-def NoPend : Prop := ∀ (st st' : St), st.arm = false → st.vals = [] → Star ([.expr 0 0], st) ([], st') → ∀ v ∈ st'.vals, v.pend = false
-
 /-- **plain def with binders**: from `.binders` (after `def x`, first token `(`) to the next `.defs` -/
-theorem plainB_spec (hNP : NoPend) {n : Nat} {ks : List Frame} {st0 fin : St} {x : List Nat} {dis : List DefI}
+theorem plainB_spec {n : Nat} {ks : List Frame} {st0 fin : St} {x : List Nat} {dis : List DefI}
     (h : StarN n (.binders :: ks, st0) ([], fin)) (hS : DefStart st0 x) (hD : DRel st0.defs dis) (hNN : DefsNN st0.defs)
     (hfr : findD st0.defs x = none) (hn8 : ∀ r, st0.toks ≠ .k 8 :: r) :
     ∃ st2 n', n' < n ∧ StarN n' (.defs :: ks, st2) ([], fin) ∧ st2.toks.length < st0.toks.length ∧
@@ -179,8 +176,7 @@ theorem plainB_spec (hNP : NoPend) {n : Nat} {ks : List Frame} {st0 fin : St} {x
         | lit => obtain ⟨e1, _⟩ := hTy; rw [hzres] at e1; simp only [Option.some.injEq] at e1; simp [tyOk, e1]
         | inp => exact absurd hTy.1 (by simp [hzi])
         | bot =>
-          have := hNP _ _ (by simpa using hS.arm) (by simpa using hS.vals) hstar z (by rw [hP.vals]; simp)
-          exact absurd hTy (by simp [TyRel, this])
+          exact absurd rfl ((nobot f).1 _ _ _ _ (hpE f (by rw [ht4] at hl3; simp at hl3; omega)))
       have hN1 : (trRes resT).hasN = false := Sh.hasN_of_nnt hnnt hw
       have hN2 : (PS.any fun p => match p with | Ps.sh s => s.hasN | _ => false) = false := by
         rw [List.any_eq_false]; intro p hp
