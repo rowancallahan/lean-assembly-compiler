@@ -16,30 +16,64 @@ theorem pArrows_succ (f : Nat) (ts : List Tok) : pArrows (f + 1) ts = (pTy f ts)
     | _ => some ([t], r) := by
   rw [pArrows]; rfl
 
+/-- `ty_sound` plus the run prefix as a `Star` (the type frames are self-contained) -/
+theorem ty_star {n : Nat} {ks : List Frame} {st fin : St} (h : StarN n (.tyAtom :: ks, st) ([], fin)) :
+    ∃ t r n', n' < n ∧ r.length < st.toks.length ∧ (∀ f, 2 * st.toks.length + 2 ≤ f → pTy f st.toks = some (t, r)) ∧
+      StarN n' (ks, st.withTy r (trRes t)) ([], fin) ∧ (trRes t).nnt = true ∧
+      Star (.tyAtom :: ks, st) (ks, st.withTy r (trRes t)) := by
+  obtain ⟨X, n1, n2, hn, e1, e2⟩ := StarN.split (k := [.tyAtom]) (ks := ks) h
+  obtain ⟨t, r, n', hn', hlt, hp, h3, hnnt⟩ := (ty_sound n1).1 (ks := []) e1
+  obtain ⟨rfl, he⟩ := StarN.nil_inv h3
+  have eX : X = st.withTy r (trRes t) := by have := congrArg Prod.snd he; simpa using this
+  subst eX
+  exact ⟨t, r, n2, by omega, hlt, hp, e2, hnnt, by simpa using Star.append ks e1.toStar⟩
+
+/-- `ExprSpec` plus the run prefix as a `Star` (an expression frame is self-contained) -/
+theorem expr_star {n md : Nat} {ks : List Frame} {st fin : St} {cx : Cx} (hmd : md < 2)
+    (h : StarN n (.expr 0 md :: ks, st) ([], fin)) (hc : CxRel st cx) (hnn : CxNN st) :
+    ∃ v st' n', n' < n ∧ Post st st' st.vals v ∧ st'.toks.length < st.toks.length ∧ StarN n' (ks, st') ([], fin) ∧
+      Stop 0 st'.toks ∧ ShNN v.sh ∧
+      (VT (rows st) v → ∃ ty, TyRel v ty ∧ PT v ∧
+        ∀ f, 4 * st.toks.length + 4 ≤ f → pExpr f cx (md == 1) st.toks st.nx = some (v.toNd, ty, st'.toks, st'.nx)) ∧
+      Star (.expr 0 md :: ks, st) (ks, st') := by
+  obtain ⟨X, n1, n2, hn, e1, e2⟩ := StarN.split (k := [.expr 0 md]) (ks := ks) h
+  obtain ⟨v, st', n', hn', hP, hlt, h3, hS, hNN, hV⟩ := (expr_specs n1).2.2.2 md [] _ X cx hmd e1 hc hnn
+  obtain ⟨rfl, he⟩ := StarN.nil_inv h3
+  have eX : st' = X := by have := congrArg Prod.snd he; simpa using this.symm
+  subst eX
+  exact ⟨v, st', n2, by omega, hP, hlt, e2, hS, hNN, hV, by simpa using Star.append ks e1.toStar⟩
+
 theorem arrows_spec : ∀ n {ks : List Frame} {st fin : St}, StarN n (.tyAtom :: .stateTy :: ks, st) ([], fin) →
     ∃ (ts : List TyR) (res : TyR) (r : List Tok) (n' : Nat), n' < n ∧ r.length < st.toks.length ∧
       (∀ f, 2 * st.toks.length + 3 ≤ f → pArrows f st.toks = some (ts ++ [res], r)) ∧
       (∀ t ∈ ts, trRes t ≠ .nt ∧ (trRes t).nnt = true) ∧ (trRes res).nnt = true ∧ (ts = [] → st.cur.params.length ≠ 1) ∧
       StarN n' (.armsStart :: ks, { st with toks := r, ty := some (trRes res), cur := (ts.map trRes).foldl stAdd st.cur })
-        ([], fin) := by
+        ([], fin) ∧
+      Star (.tyAtom :: .stateTy :: ks, st)
+        (.armsStart :: ks, { st with toks := r, ty := some (trRes res), cur := (ts.map trRes).foldl stAdd st.cur }) := by
   intro n
   induction n using Nat.strongRecOn with
   | _ n ih =>
   intro ks st fin h
-  obtain ⟨t, r, n1, hn1, hlt, hpTy, h1, hnnt⟩ := (ty_sound n).1 h
+  obtain ⟨t, r, n1, hn1, hlt, hpTy, h1, hnnt, hT⟩ := ty_star h
   match n1, h1 with
   | 0, h1 => exact absurd h1.zero_nil.1 (by simp)
   | m + 1, h1 =>
   obtain ⟨k, st2, hs, h2⟩ := h1.head
+  have hs0 := hs
   have hfin : ∀ r', (∀ r'', r' ≠ .k 17 :: r'') → st.cur.params.length ≠ 1 →
       StarN m (.armsStart :: ks, st.withTy r' (trRes t)) ([], fin) → r' = r →
+      stepF .stateTy (st.withTy r' (trRes t)) = some ([.armsStart], st.withTy r' (trRes t)) →
       ∃ (ts : List TyR) (res : TyR) (r : List Tok) (n' : Nat), n' < m + 1 + 0 + 1 ∧ r.length < st.toks.length ∧
       (∀ f, 2 * st.toks.length + 3 ≤ f → pArrows f st.toks = some (ts ++ [res], r)) ∧
       (∀ t ∈ ts, trRes t ≠ .nt ∧ (trRes t).nnt = true) ∧ (trRes res).nnt = true ∧ (ts = [] → st.cur.params.length ≠ 1) ∧
       StarN n' (.armsStart :: ks, { st with toks := r, ty := some (trRes res), cur := (ts.map trRes).foldl stAdd st.cur })
-        ([], fin) := by
-    intro r' hnot hp h2 e; subst e
-    refine ⟨[], t, r', m, by omega, hlt, fun f hf => ?_, by simp, hnnt, fun _ => hp, by simpa [St.withTy] using h2⟩
+        ([], fin) ∧
+      Star (.tyAtom :: .stateTy :: ks, st)
+        (.armsStart :: ks, { st with toks := r, ty := some (trRes res), cur := (ts.map trRes).foldl stAdd st.cur }) := by
+    intro r' hnot hp h2 e hstep; subst e
+    refine ⟨[], t, r', m, by omega, hlt, fun f hf => ?_, by simp, hnnt, fun _ => hp, by simpa [St.withTy] using h2,
+      by simpa [St.withTy] using hT.trans (Star.one (fs := ks) hstep)⟩
     obtain ⟨g, rfl⟩ : ∃ g, f = g + 1 := ⟨f - 1, by omega⟩
     rw [pArrows_succ, hpTy g (by omega)]
     simp only [Option.bind_some]
@@ -52,7 +86,7 @@ theorem arrows_spec : ∀ n {ks : List Frame} {st fin : St}, StarN n (.tyAtom ::
     by_cases hp : st.cur.params.length = 1
     · simp [hp] at hs
     · simp only [hp, if_false, Option.some.injEq, Prod.mk.injEq] at hs; obtain ⟨rfl, rfl⟩ := hs
-      obtain ⟨ts, res, r2, n', hn', h'⟩ := hfin [] (by simp) hp (by simpa using h2) rfl
+      obtain ⟨ts, res, r2, n', hn', h'⟩ := hfin [] (by simp) hp (by simpa using h2) rfl hs0
       exact ⟨ts, res, r2, n', by omega, h'⟩
   | cons tk r1 =>
     by_cases h17 : tk = .k 17
@@ -61,8 +95,8 @@ theorem arrows_spec : ∀ n {ks : List Frame} {st fin : St}, StarN n (.tyAtom ::
       by_cases hw : trRes t = .nt
       · simp [hw] at hs
       · simp only [hw, if_false, Option.some.injEq, Prod.mk.injEq] at hs; obtain ⟨rfl, rfl⟩ := hs
-        obtain ⟨ts, res, r2, n', hn', hlt2, hp2, hts, hres, hnil, h3⟩ := ih m (by omega) h2
-        refine ⟨t :: ts, res, r2, n', by omega, by simp at hlt2 hlt ⊢; omega, fun f hf => ?_, ?_, hres, by simp, ?_⟩
+        obtain ⟨ts, res, r2, n', hn', hlt2, hp2, hts, hres, hnil, h3, hT3⟩ := ih m (by omega) h2
+        refine ⟨t :: ts, res, r2, n', by omega, by simp at hlt2 hlt ⊢; omega, fun f hf => ?_, ?_, hres, by simp, ?_, ?_⟩
         · obtain ⟨g, rfl⟩ : ∃ g, f = g + 1 := ⟨f - 1, by omega⟩
           rw [pArrows_succ, hpTy g (by omega)]
           simp only [Option.bind_some]
@@ -72,6 +106,8 @@ theorem arrows_spec : ∀ n {ks : List Frame} {st fin : St}, StarN n (.tyAtom ::
           · exact ⟨hw, hnnt⟩
           · exact hts u hu
         · simpa [stAdd] using h3
+        · have := (hT.trans (Star.one (fs := ks) hs0)).trans hT3
+          simpa [stAdd, St.withTy] using this
     · have hnot : ∀ r', (tk :: r1) ≠ .k 17 :: r' := by intro r' e; cases e; exact h17 rfl
       have hs' : stepF .stateTy (st.withTy (tk :: r1) (trRes t)) =
           if st.cur.params.length = 1 then none else some ([.armsStart], st.withTy (tk :: r1) (trRes t)) := by
@@ -80,7 +116,7 @@ theorem arrows_spec : ∀ n {ks : List Frame} {st fin : St}, StarN n (.tyAtom ::
       by_cases hp : st.cur.params.length = 1
       · simp [hp] at hs
       · simp only [hp, if_false, Option.some.injEq, Prod.mk.injEq] at hs; obtain ⟨rfl, rfl⟩ := hs
-        obtain ⟨ts, res, r2, n', hn', h'⟩ := hfin _ hnot hp (by simpa using h2) rfl
+        obtain ⟨ts, res, r2, n', hn', h'⟩ := hfin _ hnot hp (by simpa using h2) rfl (by rw [hs']; simp [hp])
         exact ⟨ts, res, r2, n', by omega, h'⟩
 
 theorem hasLs_snoc (ps : List Sh) (w : Sh) : hasLs ((ps ++ [w]).map some) = (hasLs (ps.map some) || w == .ls) := by
@@ -226,7 +262,8 @@ theorem armBind_spec (ps : List Ps) (hfuel : ∀ p ∈ ps, p ≠ .fuel)
       ∃ names env r n' sl, n' < n ∧ armPat 0 (.k 15 :: st.toks) = some (names, r) ∧
         mkEnv st.sslot (ps.drop c) names = some env ∧ (∀ x ∈ names, findB st.binds x = none) ∧ names.Nodup ∧
         r.length < st.toks.length ∧
-        StarN n' (armK stp ++ ks, { st with toks := r, binds := st.binds ++ env.map toBd, sslot := sl }) ([], fin) := by
+        StarN n' (armK stp ++ ks, { st with toks := r, binds := st.binds ++ env.map toBd, sslot := sl }) ([], fin) ∧
+        Star (.armBind stp (c + 1) :: ks, st) (armK stp ++ ks, { st with toks := r, binds := st.binds ++ env.map toBd, sslot := sl }) := by
   intro n
   induction n using Nat.strongRecOn with
   | _ n ih =>
@@ -251,11 +288,11 @@ theorem armBind_spec (ps : List Ps) (hfuel : ∀ p ∈ ps, p ≠ .fuel)
   rcases hk with ⟨hlt, rfl, rfl⟩ | ⟨hlt, rfl, rfl⟩
   · -- more binders
     have hc1 : c + 1 < ps.length := by rw [hP] at hlt; simpa using hlt
-    obtain ⟨names, env, r', n', sl, hn', hpat, henv, hfr, hnd, hlt', h2⟩ :=
+    obtain ⟨names, env, r', n', sl, hn', hpat, henv, hfr, hnd, hlt', h2, hT2⟩ :=
       ih m (by omega) (by exact hP) hc1 h1
-    simp only at hpat henv hfr hlt' h2
+    simp only at hpat henv hfr hlt' h2 hT2
     rw [hsl] at henv
-    refine ⟨x :: names, (x, st.sslot, ps[c]) :: env, r', n', sl, by omega, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    refine ⟨x :: names, (x, st.sslot, ps[c]) :: env, r', n', sl, by omega, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
     · rw [ht, armPat_bind, hpat]; rfl
     · rw [List.drop_eq_getElem_cons hc, mkEnv_cons, henv]; rfl
     · intro y hy
@@ -272,16 +309,20 @@ theorem armBind_spec (ps : List Ps) (hfuel : ∀ p ∈ ps, p ≠ .fuel)
       simp [armBd] at this
     · rw [ht]; simp; omega
     · rw [hbd] at h2; simpa using h2
+    · have := (Star.one (fs := ks) hs).trans hT2
+      rw [hbd] at this; simpa using this
   · -- the last binder
     have hc1 : c + 1 = ps.length := by rw [hP] at hlt; simp at hlt; omega
     have hdrop : ps.drop c = [ps[c]] := by
       rw [List.drop_eq_getElem_cons hc, List.drop_eq_nil_of_le (by omega)]
-    refine ⟨[x], [(x, st.sslot, ps[c])], r, m, st.sslot + ps[c].width, by omega, ?_, ?_, ?_, by simp, ?_, ?_⟩
+    refine ⟨[x], [(x, st.sslot, ps[c])], r, m, st.sslot + ps[c].width, by omega, ?_, ?_, ?_, by simp, ?_, ?_, ?_⟩
     · rw [ht, armPat_bind, armPat]; rfl
     · rw [hdrop, mkEnv_cons, mkEnv]; rfl
     · intro y hy; simp at hy; subst hy; exact hb
     · rw [ht]; simp; omega
     · rw [hsl, hbd] at h1; simpa using h1
+    · have := Star.one (fs := ks) hs
+      rw [hsl, hbd] at this; simpa using this
 
 /-- name resolution in an arm: the spec env (reversed `mkEnv`) is the machine's `toBd` bindings -/
 theorem env_toBd (env : List (List Nat × Nat × Ps)) (h : ∀ e ∈ env, e.2.2 ≠ .fuel ∧ psCode e.2.2 ≠ .nt) (x : List Nat) :
@@ -515,7 +556,8 @@ theorem loop_spec {n : Nat} {ks : List Frame} {st fin : St} {defs : List DefI} {
     (hD : CxRel st ⟨defs, [], none⟩) (hnn : CxNN st) (hfresh : findDef defs name = none)
     -- TEMPORARY (Par1 finding L): not exactly one state of type `List UInt8`
     (hL : ∀ f res r', pArrows f r ≠ some ([.lst, res], r')) :
-    ∃ lp st' n', n' < n ∧ StarN n' (.defEnd :: ks, st') ([], fin) ∧ st'.vals = [lp] ∧ st'.defs = st.defs ∧
+    ∃ lp st' n', n' < n ∧ StarN n' (.defEnd :: ks, st') ([], fin) ∧
+      Star (.tyAtom :: .afterColon :: ks, st) (.defEnd :: ks, st') ∧ st'.vals = [lp] ∧ st'.defs = st.defs ∧
       st'.out = st.out ∧ st'.all = st.all ∧ st'.cur.name = name ∧ st'.cur.loop = true ∧ st'.toks.length < st.toks.length ∧
       (VT (rows st') lp →
         ∃ di : DefI, di.name = name ∧ di.params.map psCode = st'.cur.params ∧ st'.cur.res = some di.res ∧
@@ -525,7 +567,7 @@ theorem loop_spec {n : Nat} {ks : List Frame} {st fin : St} {defs : List DefI} {
             some (di, { id := defs.length, npw := st'.cur.npw, nslots := st'.nx, kind := 1, nres := di.res.width,
                         body := lp.toNd }, st'.toks)) := by
   -- the `Nat` type and `→`
-  obtain ⟨t0, r0, n1, hn1, hlt0, hp0, h1, _⟩ := (ty_sound n).1 h
+  obtain ⟨t0, r0, n1, hn1, hlt0, hp0, h1, _, hT0⟩ := ty_star h
   have ht0 : t0 = .sh .nt ∧ r0 = .k 17 :: r := by
     have := hp0 (2 * st.toks.length + 2) (Nat.le_refl _)
     rw [ht, show 2 * (Tok.k 35 :: Tok.k 17 :: r).length + 2 = (2 * r.length + 4) + 2 by simp; omega, pTy_nat] at this
@@ -535,13 +577,16 @@ theorem loop_spec {n : Nat} {ks : List Frame} {st fin : St} {defs : List DefI} {
   | 0, h1 => exact absurd h1.zero_nil.1 (by simp)
   | m1 + 1, h1 =>
   obtain ⟨k1, st1, hs1, h2⟩ := h1.head
+  have hs1' := hs1
   simp only [stepF, St.withTy, trRes] at hs1
   simp at hs1
   obtain ⟨_, rfl, rfl⟩ := hs1
-  simp only [List.cons_append, List.nil_append] at h2
+  have Tp1 := hT0.trans (Star.one (fs := ks) hs1')
+  simp only [List.cons_append, List.nil_append] at h2 Tp1
   -- the state types
-  obtain ⟨ts, res, r1, n2, hn2, hlt1, hpA, hts, hres, hnil, h3⟩ := arrows_spec m1 h2
-  simp only at hlt1 hpA hnil h3
+  obtain ⟨ts, res, r1, n2, hn2, hlt1, hpA, hts, hres, hnil, h3, hTA⟩ := arrows_spec m1 h2
+  simp only at hlt1 hpA hnil h3 hTA
+  have Tp2 := Tp1.trans hTA
   have hls : ∀ t ∈ ts, t ≠ .sh .ls := fun t ht =>
     pArrows_noLs _ _ _ _ (hpA _ (Nat.le_refl _)) t (List.mem_append_left _ ht)
   have hp1 : (st.cur.params ++ [Sh.nt]) = [Sh.nt] := by rw [hcur]; rfl
@@ -559,8 +604,9 @@ theorem loop_spec {n : Nat} {ks : List Frame} {st fin : St} {defs : List DefI} {
   | m2 + 1, h3 =>
   obtain ⟨k3, st3, hs3, h4⟩ := h3.head
   obtain ⟨hty, r2, hr1, rfl, rfl⟩ := armsStart_inv hs3
+  have Tp3 := Tp2.trans (Star.one (fs := ks) hs3)
   simp only at hty hr1
-  simp only [List.cons_append, List.nil_append] at h4
+  simp only [List.cons_append, List.nil_append] at h4 Tp3
   -- the zero arm's binders
   have hcodes : (stateKinds false ts).map psCode = ts.map trRes := sk_codes false ts
   have hfuel := sk_nofuel false ts
@@ -569,15 +615,17 @@ theorem loop_spec {n : Nat} {ks : List Frame} {st fin : St} {defs : List DefI} {
     intro i h; rw [hcodes, stateKinds_inp ts hls false i h]; simp
   have hpsl : 0 < (stateKinds false ts).length := by
     rw [stateKinds_length]; exact List.length_pos_iff.mpr hne
-  obtain ⟨zn, envZ, r3, n4, sl, hn4, hpatZ, henvZ, hfrZ, hndZ, hlt3, h5⟩ :=
+  obtain ⟨zn, envZ, r3, n4, sl, hn4, hpatZ, henvZ, hfrZ, hndZ, hlt3, h5, hTZ⟩ :=
     armBind_spec (stateKinds false ts) hfuel hinp m2 (c := 0) (by exact hP) hpsl h4
-  simp only [List.drop_zero, armK, List.cons_append, List.nil_append] at hpatZ henvZ hfrZ hlt3 h5
+  simp only [List.drop_zero, armK, List.cons_append, List.nil_append] at hpatZ henvZ hfrZ hlt3 h5 hTZ
+  have Tp4 := Tp3.trans hTZ
   generalize hC : (List.map trRes ts).foldl stAdd
-    { st.cur with npw := 1, loop := true, params := st.cur.params ++ [.nt], nni := st.cur.nni + 1 } = C at h5 hP hfp hfn hfname hfres hfloop
-  obtain ⟨S3, hb3, hd3, hc3, ha3, ht3, hn3, hv3, ho3, hal3, h5⟩ : ∃ S3 : St, S3.binds = envZ.map toBd ∧ S3.defs = st.defs ∧
+    { st.cur with npw := 1, loop := true, params := st.cur.params ++ [.nt], nni := st.cur.nni + 1 } = C at h5 hP hfp hfn hfname hfres hfloop Tp4
+  obtain ⟨S3, hb3, hd3, hc3, ha3, ht3, hn3, hv3, ho3, hal3, h5, Tp4⟩ : ∃ S3 : St, S3.binds = envZ.map toBd ∧ S3.defs = st.defs ∧
       S3.cur = { C with res := some (trRes res) } ∧ S3.arm = false ∧ S3.toks = r3 ∧ S3.nx = C.npw ∧ S3.vals = [] ∧
-      S3.out = st.out ∧ S3.all = st.all ∧ StarN n4 (.expr 0 0 :: .zeroDone :: ks, S3) ([], fin) :=
-    ⟨{ st with toks := r3, nx := C.npw, binds := st.binds ++ envZ.map toBd, cur := { C with res := some (trRes res) }, ty := some (trRes res), sslot := sl }, by simp [hb], rfl, rfl, harm, rfl, rfl, hv, rfl, rfl, h5⟩
+      S3.out = st.out ∧ S3.all = st.all ∧ StarN n4 (.expr 0 0 :: .zeroDone :: ks, S3) ([], fin) ∧
+      Star (.tyAtom :: .afterColon :: ks, st) (.expr 0 0 :: .zeroDone :: ks, S3) :=
+    ⟨{ st with toks := r3, nx := C.npw, binds := st.binds ++ envZ.map toBd, cur := { C with res := some (trRes res) }, ty := some (trRes res), sslot := sl }, by simp [hb], rfl, rfl, harm, rfl, rfl, hv, rfl, rfl, h5, Tp4⟩
   -- the zero arm's context
   have hpsP : ∀ p ∈ stateKinds false ts, p ≠ .fuel ∧ psCode p ≠ .nt ∧ (psCode p).nnt = true := by
     intro p hp
@@ -608,24 +656,28 @@ theorem loop_spec {n : Nat} {ks : List Frame} {st fin : St} {defs : List DefI} {
         rcases hp with rfl | hp
         · rfl
         · obtain ⟨q, hq, rfl⟩ := List.mem_map.mp hp; exact (hpsP q hq).2.2
-  obtain ⟨z, S4, n5, hn5, hpo4, hlt4, h6, _, hsh4, hsp4⟩ := (expr_specs n4).2.2.2 0 _ _ fin _ (by decide) h5 hc0 hnn3
+  obtain ⟨z, S4, n5, hn5, hpo4, hlt4, h6, _, hsh4, hsp4, hTE0⟩ := expr_star (by decide) h5 hc0 hnn3
+  have Tp5 := Tp4.trans hTE0
   -- zeroDone
   match n5, h6 with
   | 0, h6 => exact absurd h6.zero_nil.1 (by simp)
   | m5 + 1, h6 =>
   obtain ⟨k6, S5, hs6, h7⟩ := h6.head
   obtain ⟨z', rest, nb, r5, hv4, hz, ht4, rfl, rfl⟩ := zeroDone_inv hs6
+  have Tp6 := Tp5.trans (Star.one (fs := ks) hs6)
   rw [hpo4.vals, hv3] at hv4; injection hv4 with e1 e2; subst e1 e2
   simp only [List.cons_append, List.nil_append] at h7
   have hcur4 : S4.cur = { C with res := some (trRes res) } := by rw [hpo4.cur, hc3]
   -- the step arm's binders
-  obtain ⟨sn, envS, r6, n7, sl2, hn7, hpatS, henvS, hfrS, hndS, hlt6, h8⟩ :=
+  obtain ⟨sn, envS, r6, n7, sl2, hn7, hpatS, henvS, hfrS, hndS, hlt6, h8, hTS⟩ :=
     armBind_spec (stateKinds false ts) hfuel hinp m5 (c := 0) (by simp only; rw [hcur4]; exact hP) hpsl h7
-  simp only [List.drop_zero, armK, List.cons_append, List.nil_append] at hpatS henvS hfrS hlt6 h8
-  obtain ⟨S6, hb6, hd6, hc6, ha6, ht6, hn6, hv6, ho6, hal6, h8⟩ : ∃ S6 : St, S6.binds = nbBd nb :: envS.map toBd ∧ S6.defs = st.defs ∧
+  simp only [List.drop_zero, armK, List.cons_append, List.nil_append] at hpatS henvS hfrS hlt6 h8 hTS Tp6
+  have Tp7 := Tp6.trans hTS
+  obtain ⟨S6, hb6, hd6, hc6, ha6, ht6, hn6, hv6, ho6, hal6, h8, Tp7⟩ : ∃ S6 : St, S6.binds = nbBd nb :: envS.map toBd ∧ S6.defs = st.defs ∧
       S6.cur = { C with res := some (trRes res) } ∧ S6.arm = true ∧ S6.toks = r6 ∧ S6.nx = S4.nx ∧ S6.vals = [z] ∧
-      S6.out = st.out ∧ S6.all = st.all ∧ StarN n7 (.expr 0 1 :: .mkLoop :: .defEnd :: ks, S6) ([], fin) :=
-    ⟨{ S4 with toks := r6, binds := nbBd nb :: envS.map toBd, arm := true, sslot := sl2 }, rfl, by rw [hpo4.defs, hd3], hcur4, rfl, rfl, rfl, by simp [hpo4.vals, hv3], by simp [hpo4.out, ho3], by simp [hpo4.all, hal3], h8⟩
+      S6.out = st.out ∧ S6.all = st.all ∧ StarN n7 (.expr 0 1 :: .mkLoop :: .defEnd :: ks, S6) ([], fin) ∧
+      Star (.tyAtom :: .afterColon :: ks, st) (.expr 0 1 :: .mkLoop :: .defEnd :: ks, S6) :=
+    ⟨{ S4 with toks := r6, binds := nbBd nb :: envS.map toBd, arm := true, sslot := sl2 }, rfl, by rw [hpo4.defs, hd3], hcur4, rfl, rfl, rfl, by simp [hpo4.vals, hv3], by simp [hpo4.out, ho3], by simp [hpo4.all, hal3], h8, by simpa using Tp7⟩
   -- the step arm's context
   have hSe : ∀ e ∈ envS, e.2.2 ≠ .fuel ∧ psCode e.2.2 ≠ .nt := fun e he =>
     let h := hpsP _ (mkEnv_mem _ _ _ _ henvS e he).1; ⟨h.1, h.2.1⟩
@@ -665,13 +717,15 @@ theorem loop_spec {n : Nat} {ks : List Frame} {st fin : St} {defs : List DefI} {
     · obtain ⟨e, he, rfl⟩ := List.mem_map.mp hbd
       obtain ⟨_, _, h3⟩ := hpsP _ (mkEnv_mem _ _ _ _ henvS e he).1
       exact ⟨_, rfl, h3⟩
-  obtain ⟨s', S7, n8, hn8, hpo7, hlt7, h9, _, hsh7, hsp7⟩ := (expr_specs n7).2.2.2 1 _ _ fin _ (by decide) h8 hc1 hnn6
+  obtain ⟨s', S7, n8, hn8, hpo7, hlt7, h9, _, hsh7, hsp7, hTE1⟩ := expr_star (by decide) h8 hc1 hnn6
+  have Tp8 := Tp7.trans hTE1
   -- mkLoop
   match n8, h9 with
   | 0, h9 => exact absurd h9.zero_nil.1 (by simp)
   | m8 + 1, h9 =>
   obtain ⟨k10, S8, hs10, h10⟩ := h9.head
   obtain ⟨s'', z'', rest', hv7, hs7sh, rfl, rfl⟩ := mkLoop_inv hs10
+  have Tp9 := Tp8.trans (Star.one (fs := .defEnd :: ks) hs10)
   rw [hpo7.vals, hv6] at hv7; injection hv7 with e1 e2; injection e2 with e3 e4; subst e1 e3 e4
   simp only [List.nil_append] at h10
   have hcur7 : S7.cur = { C with res := some (trRes res) } := by rw [hpo7.cur, hc6]
@@ -681,7 +735,7 @@ theorem loop_spec {n : Nat} {ks : List Frame} {st fin : St} {defs : List DefI} {
   have ht3' : S4.toks.length < r3.length := by rw [← ht3]; exact hlt4
   have hr1l : r1.length = r2.length + 3 := by rw [hr1]; simp
   have hrl : r.length + 2 = st.toks.length := by rw [ht]; simp
-  refine ⟨_, _, m8, by omega, h10, rfl, by simp [hpo7.defs, hd6], by simp [hpo7.out, ho6], by simp [hpo7.all, hal6],
+  refine ⟨_, _, m8, by omega, h10, by simpa using Tp9, rfl, by simp [hpo7.defs, hd6], by simp [hpo7.out, ho6], by simp [hpo7.all, hal6],
     by simp [hcur7, hname], by simp [hcur7, hCloop], ?_, fun hvt => ?_⟩
   · have := hlt7; simp only [ht6] at this; simp; omega
   -- the spec side
