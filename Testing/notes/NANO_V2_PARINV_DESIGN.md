@@ -38,6 +38,10 @@ DONE (pushed, no sorry):
   + `lean -c` + `leanc`) on 4,890 pargen programs (seeds 7, 11, 12, 13), 22 hand cases and the full C source (29,224 words): 0 differences.
 * `Proof/ParRunStar.lean`: `StarN`, `Star.det`, `Star.append` (lift a sub-run under a stack suffix), `Star.split` / `StarN.split`
   (a run of `k ++ ks` to `[]` passes through `ks`), `StarN.head`. These give each ParSpec function its "Run (k ++ ks) st = Run ks st'" lemma shape.
+* `Proof/ParRunTy.lean`: TYPES done. Inversions `tyAtom_inv`/`tyCross_inv`/`tyPair_inv`/`rparen_inv` (pattern: `simp only [stepF] at h; split at h`),
+  `ty_sound`: `StarN n (tyAtom :: ks, st) ([], fin) → ∃ t r n' < n, |r| < |toks|, (∀ f ≥ 2|toks|+2, pTy f toks = some (t, r)) ∧
+  StarN n' (ks, st.withTy r (trRes t)) ([], fin)` (+ the `tyCross` continuation `crossK`). Template for every other family.
+  Cold build ParRun+ParRunStar+ParRunTy ≈ 3 s.
 BLOCKER (reported to owner 2026-11-19): Par1 accepts MORE than ParSpec, so `Accepts ⇒ refParse` is FALSE today:
   (1) code 3 parses `if`/`let` as primaries (operands, if-conditions): `1 + if a < 2 then 3 else 4`, `1 + let b := a; b`, `if let b := a; b < 2 then …`;
   (2) input parameter = first `List UInt8` param regardless of binder group (ParSpec: only when alone in its group): `(x y : List UInt8) … rd x 0`;
