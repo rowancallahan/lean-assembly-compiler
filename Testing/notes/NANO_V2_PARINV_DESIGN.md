@@ -67,34 +67,26 @@ fuel `f ≥ c·|toks| + d` (pTy: 2|ts|+2; expressions: 4|ts|+4 per the call-chai
 order: types (independent of the blocker), flatten (`flat`/`flatL` ↔ `Nd.ser ∘ toNd`), defs/binders/arms, expressions last (blocker).
 
 ## HANDOFF — parser lead (2026-11-19, keep current)
-Role: review of Layers 2/3 + own families: loop defs 73–79, self-call 46/54, FINISH 80, def headers 60–70, flatten 81–83, `v98`/`fin`, validation.
-DONE (pushed, no sorry, std axioms; each module < 5 s):
-* `Proof/ParTreeOK.lean` (pure, on B's `ParRunFlat`): `nodes` (postorder), `ArenaInv st` (arena = nodes of the operand trees), `cntOK`/`CntInv`
-  (child count per tag); `stepF_arena`, `stepF_cnt`, `Star.inv` (both are invariants of every handler, proved by one `cases f` script);
-  `ok_of_nodes` (every node cntOK ∧ nodeOK ⇒ `RN.ok`), `words_body : z.words = z.toNd.ser`. (My duplicate `ParTree.lean` of B's ParRunFlat was removed.)
-* `Proof/ParInvVal.lean` (machine): `v205_eq` (input-local count over a `Links` chain), `v210_eq` (= pure `imC` over code cells),
-  `v209_eq` (v209 = 1 ↔ every node in [u, h[9]) passes `nodeC`).
-* `Proof/ParInvFlatM.lean` (machine): `v1_append` (task pushes commute with appended output), `v141_eq` (task 80), `v142_eq` (81),
-  `v143_eq` (82), `v144_eq` (83): exact heap = low-cell effect ++ appended words.
-* `Proof/ParRunShape.lean` (pure): def-level frames only at the bottom (`StackOK`), `stepF_shape`, `StkInv` (+ acc ⇒ empty stack), `Star.stkinv`.
-* `Proof/ParInvTop.lean`: `RepAPI` (the Layer-3 contract) and `parserSound_of : RepAPI → |ts| ≤ 2^24 → Layer-2 soundness → ParserSound ts`.
-* `Proof/ParInvFin.lean` (machine): `v98_eq` (output copy = heap suffix, or `[]` on fuel-out), `MainCells`, `fin_ne`
-  (`fin ts 1 h ≠ []` ⇒ status 2 ∧ a def exists ∧ main cells ∧ output = `h.drop (d11 + |ts| + 1)`).
-REVIEW FINDINGS (sent to B, C, owner):
-* Par1 ⊋ ParSpec, confirmed on native B1: (1) if/let operands [fixed: Par1 fix G]; (2) input = first List param regardless of binder group
-  (`(a b : List UInt8)`: npw 1 vs spec 2); (3) Nat outside fuel positions (let, tuple, param, result, state, under ×); (4) `: (Nat) →` loop header.
-  Proposed guards (C): v106, v130, v134, v137, v136, v116, v107 reject code 4; input rule: `pickPs` drops `single` or v132/v133 group flag.
-* `ParserSound` is false for arbitrary `ts`: v87 ORs numeral payload words (spec adds), v85/v86 accept any non-zero ident marker.
-  The top theorem needs `TokWF ts` (tokens decode ∧ payload words < 256), from Lex2Spec (D). Owner to confirm.
-* Design: Layer-2 state machine-typed (done by B: `RN`); validation is deferred (v209/v210 in the next v127); soundness direction is
-  run ⇒ spec (fuel-free machine grammar, then fuel bound 8|toks|+8); stack-typing `WF`; slots/widths only mod 2^64 (`isInp` must test
-  `b.toUInt64 == 0`; CALL emit `b.toUInt64 - ni.toUInt64`); step-arm env order (fuel binder outermost in Par1); def rows ≥ h[12] have
-  field 6 = 0 and param-code cells ≥ h[27] are 0; arena = consecutive postorder intervals (coverage for v209); pend tested only in v101/v107.
-NEXT (in order): (c) machine lemmas for 81/82/83 and 80 on C's Rep (blocked until C's
-NodeRep/OpsRep are restated on `RN`); (d) headers 60–70, loop arms 73–79, 46/54; (e) `api_of_rep`: RepAPI from C's `Rep` ∧ `StkInv` (status/ntasks/len/out/main from Rep; step = the per-frame lemmas of C, D and me).
-OPEN ISSUES: Par1 fix H unsound (multi-name List group before the input; C informed with programs); `(Nat) →` header accepted;
-C's Rep relates nx/slots/npw/RNRep a,b by toNat (must be mod 2^64) and ShapeCode lacks the width cell; DefsRep lacks zero code cells ≥ h[27];
-B: `isInp` on b mod 2^64; prim 1..3 nodes need ≥ 1 child (WF: mkCall n = arity) else flatten of a 0-child prim diverges from Par1.
+Role: review of Layers 2/3; own families: def start/accept 60, headers 66–70/73, loop arms 74–79, self-call 46/54, FINISH 80, flatten 81–83,
+`v98`/`fin`, validation, top glue.  All files below pushed, no sorry, std axioms, each module < 10 s.
+DONE
+* pure (on B's `ParRun`): `ParTreeOK` (ArenaInv/CntInv invariants of every handler, `ok_of_nodes`, `words_body`, `StarN.out_le`),
+  `ParRunShape` (`StackOK`/`StkInv`: def-level frames only at the bottom, acc ⇒ empty stack), `ParRunNames` (`NInv`: def names non-empty
+  given non-empty identifier tokens), `ParRunArena` (kids < |arena|; `CallInv` along runs via B's `wf_star`/`wf_pre`).
+* machine: `ParInvFin` (`v98_eq`, `fin_ne`, `MainCells`), `ParInvVal` (`v205_eq`, `v210_eq`, `v209_eq`), `ParInvFlatM` (`v1_append`,
+  `v141_eq`..`v144_eq`: tasks 80–83 = low-cell effect ++ appended words), `ParInvDefs` (`v86_skip`, `idxOf_findD` = v8 lookup vs `findD`,
+  `defTab_of`).
+* on C's Rep: `ParInvApi` (`out_of`, `ntasks_of`, `main_of`), `ParInvValRep` (`v209_nodeOK`: machine validation ⇒ B's `nodeOK` on
+  every arena node; needs `IsInpW`, i.e. B's `RN.isInp` comparing the width mod 2^64 — requested).
+* glue: `ParInvTop` (`RepAPI`, `run_sim`, `parserSound_of : RepAPI → |ts| ≤ 2^24 → Layer-2 soundness → ParserSound ts`).
+OPEN / WAITING
+* Par1: main arity check missing in v99 (Par1 accepts `def m : List UInt8 := []` when 4096 parameter codes are used) — fix requested
+  from C; then mirror in `ParInvFin.fin`/`MainCells` and drop `main_of`'s arity hypothesis.
+* C's Rep: `inDefF [] = true` makes Rep false at the accepting state (current row is zero) — requested `!fs.isEmpty && …`.
+* B: `RN.isInp` mod 2^64 (`IsInpW`); `CxOK` + expression-lemma shape for the def-level Layer-2 soundness (pDef/pDefs) that I take.
+* `TokWF ts` hypothesis for `ParserSound` (numeral payload bytes < 256, identifiers non-empty): owner to confirm, D to derive from Lex2Spec.
+NEXT: `h_defs` (task 60 on C's Rep, using `v209_nodeOK`, `v86_skip`, `idxOf_findD`), then 80–83 step lemmas (cell lemmas done), then
+`api_of_rep` (RepAPI from Rep ∧ StkInv ∧ NInv), then def-level Layer-2 soundness.
 
 ## HANDOFF — G: arguments / calls / prims / types (2026-11-19, keep current)
 Families: frames 43 argAtom, 44 args, 45 mkCallN, 47 argCheck, 48 mkCall, 55 argName, the prim / def-call heads of code 3, types 61–63 (machine side),
