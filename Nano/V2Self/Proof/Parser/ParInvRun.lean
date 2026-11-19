@@ -38,6 +38,7 @@ import Nano.V2Self.Proof.Parser.ParRunDef
 import Nano.V2Self.Proof.Parser.ParRunProg
 import Nano.V2Self.Proof.Parser.ParRunBnd
 import Nano.V2Self.Proof.Parser.ParRunObl
+set_option backward.isDefEq.respectTransparency false
 namespace ParInv
 open C BufL ParSpec ParRun
 
