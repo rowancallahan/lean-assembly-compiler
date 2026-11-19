@@ -188,4 +188,49 @@ theorem prog_ok (P : Templates.PC) (ds : List ParSpec.DefA) (sigs : List Sig) (K
           exact hDR
     · simp at hpo
 
+/-- **main**: if E's semantics of the last def (main, no parameters) returns `vs`, then `vs` is one buffer word whose
+block holds `l`, and `Sem` returns the low bytes of `l` -/
+theorem main_bridge (P : Templates.PC) (ds : List ParSpec.DefA) (sigs : List Sig) (Ks : List (List Nat)) (inp : List UInt8)
+    (hTy : TyProg ds sigs) (hO : OwnSpec.progOk [] [] Ks ds = true) (hK2 : ∀ K ∈ Ks, ∀ k ∈ K, k ≤ 2)
+    (hc29 : P.c29 = UInt64.ofNat inp.length) (hinp : P.inp = inpW inp) (hil : inp.length < 2 ^ 64)
+    (sp : Nat) (H : Hp) (vs : List UInt64) (H' : Hp) (h8 : H.top % 8 = 0) (hhb : P.hb ≤ H.top)
+    (hs : semAt P ds (ds.length - 1) [] sp H = some (vs, H')) :
+    ∃ a l, vs = [a] ∧ BufAt P.hb P.κ H' a l ∧ Sem P.κ ds inp = .ok (l.map UInt64.toUInt8) := by
+  have hTy' := hTy
+  obtain ⟨hsl, hts, hlast⟩ := hTy'
+  have hne : sigs ≠ [] := by intro e; simp [e] at hlast
+  have hpos : 0 < ds.length := by have := List.length_pos_iff.2 hne; omega
+  have hk : ds.length - 1 < ds.length := by omega
+  have hsk : sigs[ds.length - 1]? = some ([], [.b]) := by
+    rw [List.getLast?_eq_getElem?] at hlast; rw [← hsl]; exact hlast
+  obtain ⟨ps, rs, -, -, -, hall⟩ := prog_ok P ds sigs Ks inp hTy hO hK2 hc29 hinp hil ds.length (Nat.le_refl _)
+  obtain ⟨R, -, -, hRl, -, f, hf, hDR⟩ := hall (ds.length - 1) hk
+  have hsg : sigs.getD (ds.length - 1) ([], []) = ([], [.b]) := by simp [List.getD_eq_getElem?_getD, hsk]
+  rw [hsg] at hDR
+  obtain ⟨t1, -, t3, -⟩ := hts (ds.length - 1) _ _ (List.getElem?_eq_getElem hk) hsk
+  have hnpw : (dA ds (ds.length - 1)).npw = 0 := by rw [dA_get ds _ hk]; simpa using t1
+  rw [hnpw, List.take_zero] at hDR
+  have hA0 : AHeap P.hb P.κ H (fun _ => none) := ⟨fun a l h => (by cases h), fun a b _ h _ => (by simp at h)⟩
+  have hAr : ArgsR (fun _ => none) [] [] [] :=
+    ⟨rfl, rfl, fun j x u h => by simp at h, fun j x h => by simp at h, fun j j' l l' u u' _ h => by simp at h⟩
+  obtain ⟨σ', res, hfres, hA', -, -, l1, l2, c1, -⟩ := hDR _ [] [] sp H vs H' hA0 h8 hhb rfl hAr hs
+  have hR1 : R.length = 1 := by rw [hRl, dA_get ds _ hk]; simpa using t3.symm
+  -- the result kinds
+  have hC := means_ok inp P.κ ds [] [] sigs ⟨rfl, by simp⟩ hsl (by simpa using hts)
+  simp only [List.nil_append] at hC
+  have hml := means_len inp P.κ ds []
+  simp only [List.length_nil, Nat.zero_add] at hml
+  have hresp := hC.2 (ds.length - 1) f ([], [.b]) (by simpa using hf) hsk
+  have kres := (hresp [] rfl).2 res hfres
+  obtain ⟨l, rfl⟩ := kOf_b kres
+  obtain ⟨a, rfl⟩ := List.length_eq_one_iff.1 (show vs.length = 1 by omega)
+  obtain ⟨e, he⟩ := List.length_eq_one_iff.1 hR1
+  have vr := (c1 0 e (.b l) a (by simp [he]) rfl rfl).1
+  refine ⟨a, l, rfl, bufAt_of hA' vr, ?_⟩
+  unfold Sem
+  rw [List.getLast?_eq_getElem?, hml]
+  have hf' : (means inp P.κ [] ds)[ds.length - 1]? = some f := by simpa using hf
+  rw [hf']
+  simp [hfres]
+
 end NanoMain
