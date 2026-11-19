@@ -22,9 +22,8 @@ theorem start_runX {KL : LayW} {C : List J} {S w hb E0 : Nat} {IG : St → Prop}
     (hout : (s0.x 13).toNat + N.toNat ≤ (s0.x 12).toNat ∨ E0 + 8 ≤ (s0.x 13).toNat)
     (hlo : KL.lo ≤ (s0.x 12).toNat) (hhi : E0 ≤ KL.hi) (hbase : s0.b = KL.base) (hE8 : E0 % 8 = 0)
     (hCl : S + 32 ≤ C.length) (hC18 : C.length < 2 ^ 18) (hwl : w < C.length)
-    (hwO : ∀ i, i < N.toNat → sok KL ((s0.x 13).toNat + i))
-    (hra : ∃ j, (s0.x 1).toNat = KL.base + 4 * j) :
-    ∃ s3, SStarX KL C (0, s0) (((s0.x 1).toNat - s0.b) / 4, s3) ∧ s3.b = s0.b ∧ s3.x 1 = s0.x 1 ∧ s3.x 8 = s0.x 8 ∧
+    (hwO : ∀ i, i < N.toNat → sok KL ((s0.x 13).toNat + i)) :
+    ∃ s3, SStarX KL C (0, s0) (S + 31, s3) ∧ C[S + 31]? = some (.jalr 0 1) ∧ s3.b = s0.b ∧ s3.x 1 = s0.x 1 ∧ s3.x 8 = s0.x 8 ∧
       s3.x 10 = (if N = 0 then 1 else 0) ∧ s3.x 11 = N ∧
       ∀ i, i < N.toNat → lbm s3.m ((s0.x 13).toNat + i) = bs i &&& 255 := by
   subst hhb hE0
@@ -51,7 +50,7 @@ theorem start_runX {KL : LayW} {C : List J} {S w hb E0 : Nat} {IG : St → Prop}
   obtain ⟨ra, s8⟩ := hIGm s2 I2
   have l31 := (s2.x 31).toNat_lt
   have aP := A2 _ _ hN
-  obtain ⟨s3, h3, b3, x1, x8', -, x10, x11, hby⟩ := start_tailX (KL := KL) hS s2 z2 (by rw [k12]; omega)
+  obtain ⟨s3, h3, c31, b3, x1, x8', -, x10, x11, hby⟩ := start_tailX (KL := KL) hS s2 z2 (by rw [k12]; omega)
     (by rw [hP2, hN2]; omega) (by rw [hP2, hN2, k13]; exact hQ)
     (by
       rw [hP2, hN2, k12, k13]
@@ -61,12 +60,10 @@ theorem start_runX {KL : LayW} {C : List J} {S w hb E0 : Nat} {IG : St → Prop}
     (by rw [k12]; exact ⟨hlo, by omega, ha8⟩) (by rw [k12]; exact ⟨by omega, by omega, by omega⟩)
     (fun i hi => by rw [hP2]; rw [hP2, hN2] at hi; exact ⟨by omega, by omega, by omega⟩)
     (fun i hi => by rw [k13]; rw [hP2, hN2] at hi; exact hwO i hi)
-    (by rw [k12, ra]; exact hra)
-  rw [k12, ra, b2] at h3
   rw [k12, ra] at x1
   rw [k12, s8] at x8'
   rw [hP2, hN2] at x10 x11 hby
-  refine ⟨s3, h1.trans (h2.trans h3), by rw [b3, b2], x1, x8', x10, x11, fun i hi => ?_⟩
+  refine ⟨s3, h1.trans (h2.trans h3), c31, by rw [b3, b2], x1, x8', x10, x11, fun i hi => ?_⟩
   rw [← k13, hby i hi, hHI _ _ (by omega) (by omega) (hbs i hi)]
 
 end Templates

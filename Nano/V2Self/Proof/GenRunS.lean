@@ -32,18 +32,17 @@ theorem gen_runS (KL : SimW.LayW) (c : List UInt8) (ds : List DefA) (hXl : (seri
          KL.lo ≤ (s0.x 12).toNat → E0 ≤ KL.hi → s0.b = KL.base →
          (∀ i, i < (s0.x 11).toNat → SimW.bok KL ((s0.x 10).toNat + i)) →
          (∀ i, i < N.toNat → SimW.sok KL ((s0.x 13).toNat + i)) →
-         (∃ j, (s0.x 1).toNat = KL.base + 4 * j) →
-         ∃ s3, SimW.SStarX KL C (0, s0) (((s0.x 1).toNat - s0.b) / 4, s3) ∧ s3.b = s0.b ∧ s3.x 1 = s0.x 1 ∧
+         ∃ s3, SimW.SStarX KL C (0, s0) (11 + D.length + 31, s3) ∧ C[11 + D.length + 31]? = some (.jalr 0 1) ∧ s3.b = s0.b ∧ s3.x 1 = s0.x 1 ∧
            s3.x 8 = s0.x 8 ∧ s3.x 10 = (if N = 0 then 1 else 0) ∧ s3.x 11 = N ∧
            (∀ i, i < N.toNat → lbm s3.m ((s0.x 13).toNat + i) = bs i &&& 255) ∧
            (KL.Ok → KL.W = (C.map encG).map UInt64.toNat → ∀ t, SimW.RelW KL (0, s0) t →
-             ∃ n t', Proven.Steps n t t' ∧ SimW.RelW KL (((s0.x 1).toNat - s0.b) / 4, s3) t'))) := by
+             ∃ n t', Proven.Steps n t t' ∧ SimW.RelW KL (11 + D.length + 31, s3) t'))) := by
   obtain ⟨hs, T, o, hD, hne, hr⟩ := gen_C c ds hXl h hdb ((s0.x 12).toNat + 16) (s0.x 11) inp
   refine ⟨hs, T, o, hD, hne, ?_⟩
   obtain ⟨hg, np, nr, hcl, hopv, hbd, hTp, hpk, -⟩ := hr
   refine ⟨hg, ?_⟩
   intro hpar E0 hE0 z0 ha8 hroom hE62 hcb hin63 hin vs H' hSd N bs hN hPb hPN hbs hQ hout hlo hhi hbase
-    hinw hwO hra
+    hinw hwO
   have hE8 : E0 % 8 = 0 := by
     rw [← hE0]; simp only [UInt64.toNat_shiftLeft, UInt64.toNat_shiftRight]; simp; omega
   generalize hPd : pcOf 524288 ((s0.x 12).toNat + 16) (s0.x 11) inp T = P at *
@@ -84,15 +83,15 @@ theorem gen_runS (KL : SimW.LayW) (c : List UInt8) (ds : List DefA) (hXl : (seri
     have : 0 < (defT (scAt P ds (hs.length - 1)) (dA ds (hs.length - 1)).body (P.T (hs.length - 1))
       (dA ds (hs.length - 1)).nres).length := List.length_pos_iff.mpr (defT_ne _ _ _ _)
     omega
-  obtain ⟨s3, h3, r1, r2, r3, r4, r5, r6⟩ := start_runX (KL := KL) hok A0 AS hM s0 z0 hPhb ha8 hE0 (by rw [hPhb]; exact hroom) hE62 (by have := lC; omega)
+  obtain ⟨s3, h3, c31, r1, r2, r3, r4, r5, r6⟩ := start_runX (KL := KL) hok A0 AS hM s0 z0 hPhb ha8 hE0 (by rw [hPhb]; exact hroom) hE62 (by have := lC; omega)
     (fun s1 en => ⟨en.x28, en.x29, fun i hi => by
         rw [en.m]
         have := Nat.mod_lt ((s0.x 10).toNat + i) (show 8 > 0 by omega)
         exact (lbm_eq (by rw [upd_other _ _ (by omega), upd_other _ _ (by omega)])).trans (hinp i hi),
       by rw [en.m, upd_other _ _ (by omega), upd_same], by rw [en.m, upd_same], en.b⟩)
     (fun s hs => ⟨hs.2.2.2.1, hs.2.2.2.2.1⟩) (by rw [hPhb]; exact hSd) hN (by rw [hPhb]; exact hPb) hPN hbs hQ hout hlo hhi hbase hE8 (by omega) hc18
-    hwl hwO hra
-  refine ⟨s3, h3, r1, r2, r3, r4, r5, r6, fun hK hW t hR => SimW.sim_starX hK ?_ h3 hR⟩
+    hwl hwO
+  refine ⟨s3, h3, c31, r1, r2, r3, r4, r5, r6, fun hK hW t hR => SimW.sim_starX hK ?_ h3 hR⟩
   rw [hW, ← hCd, ← hDd]
   exact words_encJX (prog_good P ds _ _ hs.length (fun k hk => by
     obtain ⟨c1, c2, c3, c4⟩ := hbd k hk

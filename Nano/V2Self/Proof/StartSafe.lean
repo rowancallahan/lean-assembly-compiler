@@ -136,9 +136,8 @@ theorem start_tailX {KL : LayW} {C : List J} {S w : Nat} (hS : At C S (startJ S 
     (hwA0 : wok KL (s2.x 12).toNat) (hwA8 : wok KL ((s2.x 12).toNat + 8))
     (hwB : ∀ i, i < (s2.m (s2.m (s2.x 31).toNat).toNat).toNat → wok KL ((s2.m (s2.x 31).toNat).toNat + 16 + 8 * i))
     (hwO : ∀ i, i < (s2.m (s2.m (s2.x 31).toNat).toNat).toNat →
-      sok KL ((s2.x 13).toNat + i))
-    (hra : ∃ j, (s2.m (s2.x 12).toNat).toNat = KL.base + 4 * j) :
-    ∃ s3, SStarX KL C (S + 12, s2) (((s2.m (s2.x 12).toNat).toNat - s2.b) / 4, s3) ∧ s3.b = s2.b ∧
+      sok KL ((s2.x 13).toNat + i)) :
+    ∃ s3, SStarX KL C (S + 12, s2) (S + 31, s3) ∧ C[S + 31]? = some (.jalr 0 1) ∧ s3.b = s2.b ∧
       s3.x 1 = s2.m (s2.x 12).toNat ∧ s3.x 8 = s2.m ((s2.x 12).toNat + 8) ∧ s3.x 2 = s2.x 2 ∧
       s3.x 10 = (if s2.m (s2.m (s2.x 31).toNat).toNat = 0 then 1 else 0) ∧
       s3.x 11 = s2.m (s2.m (s2.x 31).toNat).toNat ∧
@@ -170,19 +169,18 @@ theorem start_tailX {KL : LayW} {C : List J} {S w : Nat} (hS : At C S (startJ S 
   -- the common exit: S+29 .. S+31
   have ex : ∀ s : St, s.b = s2.b → s.x 0 = 0 → s.x 12 = s2.x 12 → s.m (s2.x 12).toNat = s2.m (s2.x 12).toNat →
       s.m ((s2.x 12).toNat + 8) = s2.m ((s2.x 12).toNat + 8) →
-      ∃ s3, SStarX KL C (S + 29, s) (((s2.m (s2.x 12).toNat).toNat - s2.b) / 4, s3) ∧ s3.b = s2.b ∧
+      ∃ s3, SStarX KL C (S + 29, s) (S + 31, s3) ∧ s3.b = s2.b ∧
         s3.x 1 = s2.m (s2.x 12).toNat ∧ s3.x 8 = s2.m ((s2.x 12).toNat + 8) ∧ s3.m = s.m ∧
         ∀ k, k ≠ 1 → k ≠ 8 → s3.x k = s.x k := by
     intro s hb _ h12 m0 m8
-    refine ⟨_, spc (hd ?_ (s_ld c29) (hd ?_ (s_ld (by simpa using c30)) (hd ?_ (s_jalr (by simpa using c31)) (.refl _)))) ?_,
-      ?_⟩
-    rotate_left 3
-    · simp [CallProbe.wr, upd_same, upd_other, e0, e8, h12, m0, hb]
+    refine ⟨_, spc (hd ?_ (s_ld c29) (hd ?_ (s_ld (by simpa using c30)) (.refl _))) ?_, ?_⟩
+    rotate_left 2
+    · omega
     · simp [CallProbe.wr, upd_same, upd_other, e0, e8, h12, m0, m8, hb]
       intro k k1 k8; simp [upd, k1, k8]
     all_goals simp only [SafeX]
-    all_goals simp [c29, c30, c31, CallProbe.wr, upd_same, upd_other, e0, e8, h12, m0, hb]
-    all_goals first | exact hwA0 | exact ⟨by omega, hwA8⟩ | exact hra
+    all_goals simp [c29, c30, CallProbe.wr, upd_same, upd_other, e0, e8, h12, m0, hb]
+    all_goals first | exact hwA0 | exact ⟨by omega, hwA8⟩
   let sa : St := ⟨upd (upd s2.x 5 P) 7 N, s2.m, s2.b⟩
   obtain ⟨sX, hX, eX⟩ : ∃ sX, SStarX KL C (S + 12, s2) (S + 14, sX) ∧ sX = sa := by
     refine ⟨_, hd ?_ (s_ld c12) (hd ?_ (s_ld (by simpa using c13)) (.refl _)), by simp [CallProbe.wr, sa, e0, hPd, upd_same, hNd]⟩
@@ -204,7 +202,7 @@ theorem start_tailX {KL : LayW} {C : List J} {S w : Nat} (hS : At C S (startJ S 
       all_goals first | (simp [sa, upd, z0]; done) | omega
     subst eY
     obtain ⟨s3, h3, b3, x1, x8, -, xk⟩ := ex sb rfl (by simp [sb, sa, upd, z0]) (by simp [sb, sa, upd]) rfl rfl
-    refine ⟨s3, hX.trans (hY.trans h3), b3, x1, x8, ?_, ?_, ?_, fun i hi => ?_⟩
+    refine ⟨s3, hX.trans (hY.trans h3), c31, b3, x1, x8, ?_, ?_, ?_, fun i hi => ?_⟩
     · rw [xk 2 (by omega) (by omega)]; simp [sb, sa, upd]
     · rw [xk 10 (by omega) (by omega), if_pos hN]; simp [sb, sa, upd]
     · rw [xk 11 (by omega) (by omega), hN]; simp [sb, sa, upd]
@@ -238,7 +236,7 @@ theorem start_tailX {KL : LayW} {C : List J} {S w : Nat} (hS : At C S (startJ S 
       (by simp [CallProbe.wr]; rw [md _ (Or.inr (Or.inl rfl))])
     have s28 : SafeX KL C (S + 28, sd) := by
       simp only [SafeX]; simp [c28]; rw [xd 0 (by omega) (by omega) (by omega) (by omega)]; simp [sc, sa, upd, z0]
-    refine ⟨s3, hX.trans (hY.trans (hD.trans (hd s28 a28 h3))), b3, x1, x8, ?_, ?_, ?_, fun i hi => ?_⟩
+    refine ⟨s3, hX.trans (hY.trans (hD.trans (hd s28 a28 h3))), c31, b3, x1, x8, ?_, ?_, ?_, fun i hi => ?_⟩
     · rw [xk 2 (by omega) (by omega)]; simp [CallProbe.wr, upd]; rw [xd 2 (by omega) (by omega) (by omega) (by omega)]; simp [sc, sa, upd]
     · have x0 : sd.x 0 = 0 := by rw [xd 0 (by omega) (by omega) (by omega) (by omega)]; simp [sc, sa, upd, z0]
       rw [xk 10 (by omega) (by omega), if_neg hN]; simp [CallProbe.wr, upd, ea, x0]
