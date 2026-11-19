@@ -43,18 +43,17 @@ theorem drop_v1 (h : Buf) (c a b : UInt64) (hl : 184384 ≤ h.length) : (v1 h c 
       drop_bset _ _ _ (by rw [c0]; omega)]
   · exact drop_bset _ _ _ (by simp)
 
-/-! ## task 1: `expr m tl` (v100 pushes binLoop m, then prim tl) -/
-theorem h_expr {h ts : Buf} {st : St} {m : Nat} {tl : Bool} {fs : List Frame} (r : Rep h ts st (.expr m tl :: fs))
+/-! ## task 1: `expr m md` (v100 pushes binLoop m, then prim md) -/
+theorem h_expr {h ts : Buf} {st : St} {m md : Nat} {fs : List Frame} (r : Rep h ts st (.expr m md :: fs))
     (hs : bget (step h) 0 ≠ 0) :
-    ∃ k st', stepF (.expr m tl) st = some (k, st') ∧ Rep (step h) ts st' (k ++ fs) := by
+    ∃ k st', stepF (.expr m md) st = some (k, st') ∧ Rep (step h) ts st' (k ++ fs) := by
   obtain ⟨hn, hl, har⟩ := rep_bounds r
   have rT := r.2.2.2.2.2.2.2.2.2.2.2.2.2
   obtain ⟨E, ⟨ea, eb⟩, T1⟩ := step_top (ts := ts) rT (by omega) hn har
   simp only [Frame.code] at E
   generalize (taskAt h fs.length).a = a at E ea
   generalize (taskAt h fs.length).b = b at E eb
-  subst eb
-  have ev : step h = v1 (v1 (bset h 5 fs.length.toUInt64) 2 a 0) 3 0 (b01 tl) := by rw [E]; simp [v96, v100]
+  have ev : step h = v1 (v1 (bset h 5 fs.length.toUInt64) 2 a 0) 3 0 b := by rw [E]; simp [v96, v100]
   rw [ev] at hs ⊢
   have l1 : 12352 ≤ (bset h 5 fs.length.toUInt64).length := by simp [length_bset]; omega
   have o2 := v1_ok _ _ _ _ hs
@@ -63,17 +62,17 @@ theorem h_expr {h ts : Buf} {st : St} {m : Nat} {tl : Bool} {fs : List Frame} (r
   have fl := T1.2.1
   have n5 : (bget (bset h 5 fs.length.toUInt64) 5).toNat = fs.length := by
     rw [bget_bset_eq _ _ _ _ rfl (by simp; omega)]; simp; omega
-  refine ⟨[.prim tl, .binLoop m], st, rfl, ?_⟩
+  refine ⟨[.prim md, .binLoop m], st, rfl, ?_⟩
   have hn1 : (bget (bset h 5 fs.length.toUInt64) 7).toNat < 2 ^ 32 := by rw [bget_bset' _ _ _ _ (by decide)]; exact hn
   have T2 := tasks_push (.binLoop m) a 0 T1 (by omega) l1 hn1 har ea
   simp only [show (Frame.binLoop m).code.toUInt64 = 2 from rfl] at T2
-  have T3 := tasks_push (.prim tl) 0 (b01 tl) T2 (by rw [T2.1] at o2; simpa using o2)
+  have T3 := tasks_push (.prim md) 0 b T2 (by rw [T2.1] at o2; simpa using o2)
     (by obtain ⟨L, _⟩ := v1_eff _ 2 a 0 o1 l1; rw [L]; exact l1)
     (by obtain ⟨_, _, _, U⟩ := v1_eff _ 2 a 0 o1 l1
-        rw [U 7 (by decide) (Or.inl (by rw [n5, show (7 : UInt64).toNat = 7 from rfl]; omega))]; exact hn1) har rfl
-  simp only [show (Frame.prim tl).code.toUInt64 = 3 from rfl] at T3
+        rw [U 7 (by decide) (Or.inl (by rw [n5, show (7 : UInt64).toNat = 7 from rfl]; omega))]; exact hn1) har eb
+  simp only [show (Frame.prim md).code.toUInt64 = 3 from rfl] at T3
   have fl2 : fs.length + 1 < 4096 := by have := T2.1; rw [List.length_cons] at this; omega
-  obtain ⟨PL, PU⟩ := push2_cells (bset h 5 fs.length.toUInt64) 2 a 0 3 0 (b01 tl) (by omega) l1
+  obtain ⟨PL, PU⟩ := push2_cells (bset h 5 fs.length.toUInt64) 2 a 0 3 0 b (by omega) l1
   refine rep_tasks r (by rw [PL]; simp [length_bset]) (fun i h5 hi => by rw [PU i h5 hi, bget_bset' _ _ _ _ (by simp; omega)]) ?_ T3
     (by simp [inDefF, Frame.isDefs])
   rw [drop_v1 _ _ _ _ (by obtain ⟨L, _⟩ := v1_eff _ 2 a 0 o1 l1; rw [L]; simp [length_bset]; omega),

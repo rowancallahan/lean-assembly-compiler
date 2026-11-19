@@ -20,9 +20,9 @@ def NameAt (h : Buf) (pos : UInt64) (x : List Nat) : Prop := ∃ nm, NameOK h po
 
 /-- the `a` / `b` words of a task record for each frame (the code is `Frame.code`) -/
 def FrameArgs (h : Buf) (arena : List RN) : Frame → UInt64 → UInt64 → Prop
-  | .expr m tl, a, b => a.toNat = m ∧ b = b01 tl
+  | .expr m md, a, b => a.toNat = m ∧ b.toNat = md
   | .binLoop m, a, _ => a.toNat = m
-  | .prim tl, _, b => b = b01 tl
+  | .prim md, _, b => b.toNat = md
   | .rparen, _, _ => True
   | .mkBin op, a, _ => a.toNat = op
   | .ifCmp tl, _, b => b = b01 tl
@@ -53,7 +53,7 @@ def FrameArgs (h : Buf) (arena : List RN) : Frame → UInt64 → UInt64 → Prop
   | .tyPair l, a, _ => ShapeCode h a l
   | .binders, _, _ => True
   | .group s, a, _ => a.toNat = s
-  | .assign i, a, _ => a.toNat = i
+  | .assign i sz, a, b => a.toNat = i ∧ b.toNat = sz
   | .plainBody, _, _ => True
   | .afterColon, _, _ => True
   | .stateTy, _, _ => True
