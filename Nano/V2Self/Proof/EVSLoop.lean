@@ -1,36 +1,15 @@
-/- Safe retrofit (EVS) P4: the LOOP node (box B).  As EVXL with SafeX runs: the head's `ld` / the decrement's `sd` touch the
-fuel slot (a frame cell: `Lay.wok`), the head's `jal` lands on the decrement (inside the code: `At`, `C.length < 2^18`). -/
-import Nano.V2Self.Proof.EVSComp
+/- Safe retrofit (EVS) P4: the LOOP node as `EVHwS` (Opus box E). -/
+import Nano.V2Self.Proof.EVSTail
 namespace Templates
 open CallProbe SimW SafeRun
 
-/-- the fuel slot is a work cell, its offset fits an I-immediate -/
-theorem slot0_ok {KL : LayW} {hb E0 p nl : Nat} {s : St} {H : Hp} (L : Lay KL hb E0 p s) (O : FrameOK p nl s)
-    (R : HRel hb s H) (hp : 1 ≤ p) (hnl : nl < 251) :
-    -2048 ≤ slotOff p 0 ∧ slotOff p 0 < 2048 ∧ 0 ≤ ((s.x 8).toNat : Int) + slotOff p 0 ∧
-      wok KL (ea (s.x 8) (slotOff p 0)) := by
-  obtain ⟨o1, o2, o3⟩ := O
-  have := R.2.1; have := R.2.2.1; have := L.top; have := L.a8
-  have e : ea (s.x 8) (slotOff p 0) = (s.x 8).toNat + 16 + 8 * (p - 1) := by
-    simp only [ea, slotOff, show (0 : Nat) < p by omega, if_true]; omega
-  refine ⟨by simp only [slotOff, show (0 : Nat) < p by omega, if_true]; omega,
-    by simp only [slotOff, show (0 : Nat) < p by omega, if_true]; omega,
-    by simp only [slotOff, show (0 : Nat) < p by omega, if_true]; omega, ?_⟩
-  rw [e]; exact L.wok (by omega) (by omega) (by omega)
-
-theorem lt_of_getElem? {C : List J} {i : Nat} {x : J} (h : C[i]? = some x) : i < C.length := by
-  rcases Nat.lt_or_ge i C.length with hi | hi
-  · exact hi
-  · rw [List.getElem?_eq_none hi] at h; cases h
-
-/-- one loop pass from HEAD (safe twin of `loop_pass`) -/
-theorem loop_passS {KL : LayW} {C : List J} {h S len p nl hb E0 w : Nat} {Inv : St → Prop} {RZ WZ RS WS : Nat → Prop}
-    {SZ SS : SemT} (hI : InvOKH hb p Inv)
+theorem loop_passS {KL : LayW} {C : List J} {h S len p nl hb E0 w : Nat} {Inv : St → Prop} {RZ WZ RS WS : Nat → Prop} {SZ SS : SemT}
+    (hI : InvOKH hb p Inv)
     (hH : At C h (loopHead p ((S : Int) - ((h + 2 : Nat) : Int)))) (hD : At C S (loopDec p))
     (hZ : EVHtS KL C (h + 3) p nl Inv hb E0 RZ WZ w (h + len) h SZ)
     (hSt : EVHtS KL C (S + 2) p nl Inv hb E0 RS WS w (h + len) h SS)
     (hp : 1 ≤ p) (hpn : p ≤ nl) (hWp : ∀ k, (WZ k ∨ WS k) → p ≤ k) (hsc : ∀ k, (RZ k ∨ RS k) → ¬ (WZ k ∨ WS k))
-    (hnl : nl < 251) (hC18 : C.length < 2 ^ 18) :
+    (hnl : nl < 251) (hSC : S + 2 ≤ C.length) (hhC : h + 3 ≤ C.length) (hC18 : C.length < 2 ^ 18) :
     ∀ n (env_s env_m : Env) (s : St) (H : Hp) (vs : List UInt64) (H' : Hp), Inv s → s.x 0 = 0 →
       Frame p nl s env_m → FrameOK p nl s → HRel hb s H → Lay KL hb E0 p s → HAl H →
       (∀ k, ¬ (WZ k ∨ WS k) → env_m k = env_s k) →
@@ -44,26 +23,23 @@ theorem loop_passS {KL : LayW} {C : List J} {h S len p nl hb E0 w : Nat} {Inv : 
   have c2 := hH.at 2 (by simp [loopHead])
   have d0 := hD.at 0 (by simp [loopDec]); have d1 := hD.at 1 (by simp [loopDec])
   simp only [loopHead, loopDec, List.getElem?_cons_zero, List.getElem?_cons_succ, Nat.add_zero] at c0 c1 c2 d0 d1
-  have hSlt : S < C.length := lt_of_getElem? d0
-  have hh2 : h + 2 < C.length := lt_of_getElem? c2
   have n0 : ¬ (WZ 0 ∨ WS 0) := fun h0 => by have := hWp 0 h0; omega
   -- facts about writing t0 (x5)
   have w5 : ∀ (s : St) (v : UInt64), Inv s → Inv (wr s 5 v) ∧ (wr s 5 v).x 0 = s.x 0 ∧ (wr s 5 v).x 8 = s.x 8 ∧
-      (wr s 5 v).x 31 = s.x 31 ∧ (wr s 5 v).x 30 = s.x 30 ∧ (wr s 5 v).m = s.m ∧ (wr s 5 v).x 5 = v ∧
-      (wr s 5 v).b = s.b := by
+      (wr s 5 v).x 31 = s.x 31 ∧ (wr s 5 v).x 30 = s.x 30 ∧ (wr s 5 v).m = s.m ∧ (wr s 5 v).x 5 = v := by
     intro s v I
     have e : wr s 5 v = { s with x := upd s.x 5 v } := by simp [wr]
     rw [e]
     exact ⟨hI s _ I (by simp [upd]) (by simp [upd]) (by simp [upd]) rfl (fun _ _ => rfl), by simp [upd], by simp [upd],
-      by simp [upd], by simp [upd], rfl, by simp [upd], rfl⟩
+      by simp [upd], by simp [upd], rfl, by simp [upd]⟩
   have fuel : ∀ (s : St) (env : Env), Frame p nl s env → s.m (ea (s.x 8) (slotOff p 0)) = env 0 := by
     intro s env F; exact F 0 (by omega)
-  -- the head's first two instructions are safe
-  have sa0 : ∀ (s : St) (H : Hp), Lay KL hb E0 p s → FrameOK p nl s → HRel hb s H → SafeX KL C (h, s) := by
-    intro s H L O R
-    obtain ⟨k1, k2, k3, k4⟩ := slot0_ok L O R hp hnl
-    simp only [SafeX, c0]; exact ⟨by decide, by decide, k1, k2, k3, k4⟩
-  have sa1 : ∀ s : St, SafeX KL C (h + 1, s) := by intro s; simp only [SafeX, c1]; decide
+  have sx1 : ∀ (s : St) (H : Hp), FrameOK p nl s → HRel hb s H → Lay KL hb E0 p s → SafeX KL C (h, s) := by
+    intro s H O R L
+    obtain ⟨g1, g2, g3, g4⟩ := slotT_wok (k := 0) L O (by have := R.2.1; have := R.2.2.1; omega) (by omega) hnl
+    simp only [SafeX, c0]
+    exact ⟨by decide, by decide, g2, g3, g4, g1⟩
+  have sx2 : ∀ (s : St), SafeX KL C (h + 1, s) := by intro s; simp only [SafeX, c1]; decide
   -- the zero arm
   have zc : ∀ (env_s env_m : Env) (s : St) (H : Hp) (vs : List UInt64) (H' : Hp), Inv s → s.x 0 = 0 →
       Frame p nl s env_m → FrameOK p nl s → HRel hb s H → Lay KL hb E0 p s → HAl H →
@@ -78,7 +54,7 @@ theorem loop_passS {KL : LayW} {C : List J} {h S len p nl hb E0 w : Nat} {Inv : 
     simp only [Option.bind_eq_some_iff] at hS
     obtain ⟨⟨r, H1⟩, hS, e⟩ := hS
     have e0 : env_m 0 = 0 := by rw [ag 0 n0, hz]
-    obtain ⟨I1, z1, x81, x311, x301, m1, x51, b1⟩ := w5 s (env_m 0) I0
+    obtain ⟨I1, z1, x81, x311, x301, m1, x51⟩ := w5 s (env_m 0) I0
     have st1 : step C (h, s) = some (h + 1, wr s 5 (env_m 0)) := by simp [step, c0, fuel s env_m F0]
     have x50 : (wr s 5 (env_m 0)).x 5 = (wr s 5 (env_m 0)).x 0 := by rw [x51, z1, z0, e0]
     have st2 : step C (h + 1, wr s 5 (env_m 0)) = some (h + 3, wr s 5 (env_m 0)) := by
@@ -90,13 +66,13 @@ theorem loop_passS {KL : LayW} {C : List J} {h S len p nl hb E0 w : Nat} {Inv : 
     have F1 : Frame p nl (wr s 5 (env_m 0)) env_m := by intro k hk; rw [m1, x81]; exact F0 k hk
     have O1 : FrameOK p nl (wr s 5 (env_m 0)) := by unfold FrameOK; rw [x81, x311]; exact O0
     have R1 : HRel hb (wr s 5 (env_m 0)) H := HRel_stack R0 x301 (by rw [x311]; exact R0.2.2.1) (fun a _ _ => by rw [m1])
-    have L1 : Lay KL hb E0 p (wr s 5 (env_m 0)) := L0.post' x81 b1 (by rw [x311])
     have hS' : SZ env_m ((wr s 5 (env_m 0)).x 31).toNat H = some (.inl vs, H') := by
       rw [x311, hZ.stable env_m env_s _ _ (fun k hk => ag k (hsc k (Or.inl hk)))]; exact hS
+    have L1 : Lay KL hb E0 p (wr s 5 (env_m 0)) := L0.post' x81 (wr_b _ _ _) (by rw [x311])
     obtain ⟨s', env', r', I', z', p', l', v', e8', F', ag', R', A', m'⟩ :=
       hZ.exit _ env_m H vs H' I1 (by rw [z1, z0]) F1 O1 R1 L1 A0 hS'
     rw [x311] at p' v'; rw [x81] at e8'
-    refine ⟨s', env', .head (sa0 s H L0 O0 R0) st1 (.head (sa1 _) st2 r'), I', z', p', l', v', e8', F', ?_, R', A', ?_⟩
+    refine ⟨s', env', .head (sx1 s H O0 R0 L0) st1 (.head (sx2 _) st2 r'), I', z', p', l', v', e8', F', ?_, R', A', ?_⟩
     · intro k hk; simp only [not_or] at hk; exact ag' k hk.1
     · intro a ha hW
       rw [m' a (by rw [x311]; exact ha) (fun k hk wk => by rw [x81]; exact hW k hk (Or.inl wk)), m1]
@@ -110,6 +86,7 @@ theorem loop_passS {KL : LayW} {C : List J} {h S len p nl hb E0 w : Nat} {Inv : 
     · simp [loopGo, hz] at hS
   | succ n ih =>
     intro env_s env_m s H vs H' I0 z0 F0 O0 R0 L0 A0 ag hS
+    have sx1' := sx1 s H O0 R0 L0
     by_cases hz : env_s 0 = 0
     · simp only [loopGo, hz, if_true] at hS
       exact zc env_s env_m s H vs H' I0 z0 F0 O0 R0 L0 A0 ag hz hS
@@ -117,12 +94,11 @@ theorem loop_passS {KL : LayW} {C : List J} {h S len p nl hb E0 w : Nat} {Inv : 
     obtain ⟨⟨r, H1⟩, hSS, hS⟩ := hS
     have e0 : env_m 0 = env_s 0 := ag 0 n0
     have hz' : env_m 0 ≠ 0 := by rw [e0]; exact hz
-    have O0' := O0
     obtain ⟨o1, o2, o3⟩ := O0
     have lt64 := (s.x 31).toNat_lt
     have sp0 := hrel_sp R0
     -- head and decrement
-    obtain ⟨I1, z1, x81, x311, x301, m1, x51, b1⟩ := w5 s (env_m 0) I0
+    obtain ⟨I1, z1, x81, x311, x301, m1, x51⟩ := w5 s (env_m 0) I0
     have st1 : step C (h, s) = some (h + 1, wr s 5 (env_m 0)) := by simp [step, c0, fuel s env_m F0]
     have x50 : (wr s 5 (env_m 0)).x 5 ≠ (wr s 5 (env_m 0)).x 0 := by rw [x51, z1, z0]; exact hz'
     have st2 : step C (h + 1, wr s 5 (env_m 0)) = some (h + 2, wr s 5 (env_m 0)) := by
@@ -138,21 +114,6 @@ theorem loop_passS {KL : LayW} {C : List J} {h S len p nl hb E0 w : Nat} {Inv : 
         simp [wr, upd]; rfl
       simp only [run, step, d0, d1, ev, Option.bind_some, q]
       simp [wr, s4, LoopT.upd2, upd_same]
-    have hv1 : 1 ≤ (env_m 0).toNat := by
-      have : (env_m 0).toNat ≠ 0 := fun e => hz' (UInt64.toNat_inj.mp (by simpa using e))
-      omega
-    have sk := slot0_ok L0 O0' R0 hp hnl
-    have sa2 : SafeX KL C (h + 2, wr s 5 (env_m 0)) := by
-      simp only [SafeX, c2]; refine ⟨by decide, ?_, ?_, ?_, ?_⟩ <;> omega
-    have saD : SStarX KL C (S, wr s 5 (env_m 0)) (S + 2, s4) := sstarX_of_run st45 (fun j hj c hc => by
-      rcases j with _ | _ | j
-      · simp [run] at hc; subst hc; simp only [SafeX, d0]
-        refine ⟨by decide, by decide, by decide, by decide, ?_, ?_⟩ <;> rw [x51] <;> have := (env_m 0).toNat_lt <;> omega
-      · simp [run, step, d0] at hc; subst hc; simp only [SafeX, d1]
-        have e8 : (wr (wr s 5 (env_m 0)) 5 (UInt64.ofNat (ea ((wr s 5 (env_m 0)).x 5) (-1)))).x 8 = s.x 8 := by
-          simp [wr, upd]
-        rw [e8]; exact ⟨by decide, by decide, sk.1, sk.2.1, sk.2.2.1, sk.2.2.2⟩
-      · omega)
     have a0lo : (s.x 31).toNat ≤ a0 := slotAddr_ge (T := (s.x 31).toNat) o1 o2 (by omega)
     have a0hi : a0 < (s.x 8).toNat + 8 * p + 16 := slotAddr_lt (nl := nl) (by omega) (by omega)
     have I4 : Inv s4 := hI s s4 I0 (by simp [s4, upd]) (by simp [s4, upd]) (by simp [s4, upd]) rfl (fun a ha => by
@@ -176,9 +137,23 @@ theorem loop_passS {KL : LayW} {C : List J} {h S len p nl hb E0 w : Nat} {Inv : 
       simp only [s4, upd]; split
       · rename_i e; subst e; have := R0.2.2.1; omega
       · rfl)
+    obtain ⟨g1, g2, g3, g4⟩ := slotT_wok (k := 0) L0 ⟨o1, o2, o3⟩ (by have := R0.2.1; have := R0.2.2.1; omega) (by omega) hnl
+    have lt5 := (env_m 0).toNat_lt
+    have nz5 : (env_m 0).toNat ≠ 0 := fun e => hz' (UInt64.toNat_inj.mp (by simpa using e))
+    have sx3 : SafeX KL C (h + 2, wr s 5 (env_m 0)) := by simp only [SafeX, c2]; simp; omega
+    have s45 : SStarX KL C (S, wr s 5 (env_m 0)) (S + 2, s4) := sstarX_of_run st45 (fun j hj c hc => by
+      rcases j with _ | _ | j
+      · simp [run] at hc; subst hc; simp only [SafeX, d0]; rw [x51]
+        exact ⟨by decide, by decide, by decide, by decide, by omega, by omega⟩
+      · simp [run, step, d0, ev] at hc; subst hc; simp only [SafeX, d1]
+        refine ⟨by decide, by decide, g2, g3, ?_, ?_⟩
+        · simpa [wr, upd] using g4
+        · have q : ea ((wr (wr s 5 (env_m 0)) 5 v).x 8) (slotOff p 0) = slotAddr p (s.x 8).toNat 0 := by
+            simp [wr, upd]; rfl
+          rw [q]; exact g1
+      · omega)
+    have pre : SStarX KL C (h, s) (S + 2, s4) := .head sx1' st1 (.head (sx2 _) st2 (.head sx3 st3 s45))
     have L4 : Lay KL hb E0 p s4 := L0.post' x84 rfl (by rw [x314])
-    have pre : SStarX KL C (h, s) (S + 2, s4) :=
-      .head (sa0 s H L0 O0' R0) st1 (.head (sa1 _) st2 (.head sa2 st3 saD))
     have mm4 : ∀ a, a ≠ a0 → s4.m a = s.m a := fun a ha => by simp [s4, upd, ha]
     have agd : ∀ k, ¬ (WZ k ∨ WS k) → decE env_m k = decE env_s k := by
       intro k hk; simp only [decE]; split
@@ -190,8 +165,7 @@ theorem loop_passS {KL : LayW} {C : List J} {h S len p nl hb E0 w : Nat} {Inv : 
     | .inl u, hS, hSS' =>
       simp only [Option.some.injEq, Prod.mk.injEq] at hS
       have e1 := hS.1.symm; have e2 := hS.2.symm; subst e1 e2
-      obtain ⟨s', env', r', I', z', p', l', v', e8', F', ag', R', A', m'⟩ :=
-        hSt.exit s4 _ H vs H' I4 z4 F4 O4 R4 L4 A0 hSS'
+      obtain ⟨s', env', r', I', z', p', l', v', e8', F', ag', R', A', m'⟩ := hSt.exit s4 _ H vs H' I4 z4 F4 O4 R4 L4 A0 hSS'
       rw [x314] at p' v'; rw [x84] at e8'
       refine ⟨s', env', pre.trans r', I', z', p', l', v', e8', F', ?_, R', A', ?_⟩
       · intro k hk; simp only [not_or] at hk
@@ -203,13 +177,13 @@ theorem loop_passS {KL : LayW} {C : List J} {h S len p nl hb E0 w : Nat} {Inv : 
       obtain ⟨s5, env5, r5, I5, z5, p5, l5, e85, F5, ag5, R5, A5, m5⟩ := hSt.cont s4 _ H st H1 I4 z4 F4 O4 R4 L4 A0 hSS'
       rw [x314] at p5; rw [x84] at e85
       have O5 : FrameOK p nl s5 := ⟨by rw [p5, e85]; exact o1, o2, by rw [e85]; exact o3⟩
-      have L5 : Lay KL hb E0 p s5 := L0.post' e85 (r5.star.b.trans rfl) (by rw [p5])
       have ag5' : ∀ k, ¬ (WZ k ∨ WS k) → setW env5 1 (p - 1) st k = setW (decE env_s) 1 (p - 1) st k := by
         intro k hk; simp only [setW]; split
         · rfl
         · rw [ag5 k (fun w => hk (Or.inr w))]; exact agd k hk
       have hS5 : loopGo p SZ SS (s5.x 31).toNat n (setW (decE env_s) 1 (p - 1) st) H1 = some (vs, H') := by
         rw [p5]; exact hS
+      have L5 : Lay KL hb E0 p s5 := L4.post' (by rw [e85, x84]) r5.star.b (by rw [p5, x314])
       obtain ⟨s', env', r', I', z', p', l', v', e8', F', ag', R', A', m'⟩ :=
         ih (setW (decE env_s) 1 (p - 1) st) (setW env5 1 (p - 1) st) s5 H1 vs H' I5 z5 F5 O5 R5 L5 A5 ag5' hS5
       rw [p5] at p' v'; rw [e85] at e8'
@@ -224,14 +198,14 @@ theorem loop_passS {KL : LayW} {C : List J} {h S len p nl hb E0 w : Nat} {Inv : 
           rw [x84]; exact hW k hk (wk.elim (fun q => Or.inr (Or.inl q)) (fun q => Or.inr (Or.inr (by omega)))))]
         exact mm4 a (hW 0 (by omega) (Or.inr (Or.inr hp)))
 
-/-- **LOOP**, safe twin of `loopX` -/
-theorem loopXS {KL : LayW} {C : List J} {h S len p nl hb E0 w : Nat} {Inv : St → Prop} {RZ WZ RS WS : Nat → Prop}
-    {SZ SS : SemT} (hI : InvOKH hb p Inv)
+/-- **LOOP** (Gen's CG.loop at a def's root): the whole node is a value fragment whose exits land at h + len -/
+theorem loopXS {KL : LayW} {C : List J} {h S len p nl hb E0 w : Nat} {Inv : St → Prop} {RZ WZ RS WS : Nat → Prop} {SZ SS : SemT}
+    (hI : InvOKH hb p Inv)
     (hH : At C h (loopHead p ((S : Int) - ((h + 2 : Nat) : Int)))) (hD : At C S (loopDec p))
     (hZ : EVHtS KL C (h + 3) p nl Inv hb E0 RZ WZ w (h + len) h SZ)
     (hSt : EVHtS KL C (S + 2) p nl Inv hb E0 RS WS w (h + len) h SS)
     (hp : 1 ≤ p) (hpn : p ≤ nl) (hWp : ∀ k, (WZ k ∨ WS k) → p ≤ k) (hsc : ∀ k, (RZ k ∨ RS k) → ¬ (WZ k ∨ WS k))
-    (hnl : nl < 251) (hC18 : C.length < 2 ^ 18) :
+    (hnl : nl < 251) (hSC : S + 2 ≤ C.length) (hhC : h + 3 ≤ C.length) (hC18 : C.length < 2 ^ 18) :
     EVHwS KL C h len p nl Inv hb E0 (fun k => RZ k ∨ RS k ∨ k = 0) (fun k => WZ k ∨ WS k ∨ k < p) w (loopS p SZ SS) where
   stable := fun env env' sp H hk => by
     simp only [loopS]; rw [hk 0 (Or.inr (Or.inr rfl))]
@@ -240,6 +214,6 @@ theorem loopXS {KL : LayW} {C : List J} {h S len p nl hb E0 w : Nat} {Inv : St �
       (fun e e' sp H h => hSt.stable e e' sp H (fun k q => h k (Or.inr q))) _ env env' H
       (fun k q => hk k (q.elim (fun q => q.elim (fun q => Or.inl q) (fun q => Or.inr (Or.inl q))) (fun q => Or.inr (Or.inr q))))
   run := fun s env H vs H' I0 z0 F0 O0 R0 L0 A0 hS =>
-    loop_passS hI hH hD hZ hSt hp hpn hWp hsc hnl hC18 _ env env s H vs H' I0 z0 F0 O0 R0 L0 A0 (fun _ _ => rfl) hS
+    loop_passS hI hH hD hZ hSt hp hpn hWp hsc hnl hSC hhC hC18 _ env env s H vs H' I0 z0 F0 O0 R0 L0 A0 (fun _ _ => rfl) hS
 
 end Templates
