@@ -14,6 +14,75 @@ The measurements were taken on this box, 2026-11-19.
   migration's difficulty.
 * For now: organization and survey only. No ARM code.
 
+### 0-owner. Owner decisions on the ARM machine (2026-11-19, via the lead)
+1. **An `arm : Machine` instance in Spec/ is approved**, alongside `riscv`. The lead makes the Spec edit when the
+   time comes (as for Spec/Alloc). It can only be added after the Lean 4.35 migration, once the ARM Sail state
+   type is importable from this repo.
+2. **Code below 2^29 is fine for now** (the `fetch_ok`/`memreadG*`/`memsetG*` bound); expand later.
+3. **ARM RAM window: approved; choice below.**
+
+**RAM window (proposal): `[0x1000_0000, 0x2000_0000)` = [2^28, 2^29), 256 MiB.** Why:
+* Every fetch/data lemma of `Arm/proofs` requires the address < 2^29 (`Fetch.fetch_ok`, `Mem.memreadG1/G8`,
+  `memsetG1/G8`, `full_ldr`/`str`/`ldrb`/`strb`). Below that bound `Fetch.dev_ne` shows that the address misses the
+  two device windows of the model (GIC at 0x2C00_0000, UART at 0x3C00_0000), so it is plain memory.
+* Translation is the MMU-off path at EL3 (`SCTLR_EL3 = TCR_EL3 = 0`, `s1off_ok`, valid for VA < 2^48), so VA = PA,
+  with no alignment faults (`SCTLR_EL3.A = 0`, 8-aligned accesses proved; byte accesses any address).
+* Starting at 2^28 instead of 0 keeps address 0 (null) and the low exception-vector area out of the RAM, and
+  leaves 256 MiB for code + input + output + work. That is enough for C's own run (the RISC-V run of C on its
+  66 KB text uses `spaceC ex1 [5] ≈ 4 MiB` of work, per audit A2).
+* **Consequence for the proofs**: the RISC-V proofs use the RAM bounds 2^31 ≤ base, base + len ≤ 2^32 in a few
+  places (`RunsDef.GoodU` / `thr`, `ShiftInv`, `gen_runS` premises like `2048 ≤ x12`, `E0 < 2^62`). These become
+  parameters `(lo hi : Nat)` of the window (or are stated for both windows). ShiftInv already makes the room
+  outcome position-independent, so `Msp`/`spaceC` can stay ONE function of the input for both targets (stated
+  per window, then shown equal). A small unit: "window-generic RunsDef".
+
+**Proposed Spec definition** (text only; the lead adds it after the migration):
+
+```lean
+/- Spec/ArmMachine.lean: the Sail ARMv9 model (Arm/model) as a Machine. -/
+import Spec.Top
+import Armv9            -- the generated Sail model (Lean 4.35 after the migration)
+open Armv9 …
+
+namespace Proven.Top
+
+/-- X0..X30 by number, 31 = the EL3 stack pointer (PSTATE.SP = 1, EL3: sp is SP_EL3) -/
+def armRegister (state : ArmSt) (number : Nat) : Option (BitVec 64) :=
+  if number < 31 then (state.regs.get? (xreg number)).map (cast (xreg_ty number))   -- = Arm/proofs `xget`
+  else if number = 31 then state.regs.get? .SP_EL3 else none
+
+def armObserve (state : ArmSt) : MachineState where
+  programCounter := ((state.regs.get? ._PC).map UInt64.ofBitVec).getD 0
+  register number := ((armRegister state number).map UInt64.ofBitVec).getD 0
+  memory address := (state.mem.get? address.toNat).map UInt8.ofBitVec
+
+/-- one full model step (`elfmain.sail` step_model: SEE := -1; __TopLevel; __CycleEnd), else none -/
+noncomputable def armStepM (state : ArmSt) : Option ArmSt :=
+  match stepModel state with
+  | .ok () next => some next
+  | _ => none
+
+/-- the configuration the proofs assume: `Arm/proofs` `ArmFull` (EL3, AArch64, MMU off, no optional feature,
+interrupts/debug/PMU/SPE/timers off) and sp = SP_EL3 -/
+def ArmCfgSpec (state : ArmSt) : Prop := ArmFull state ∧ state.regs.get? .PSTATE_SP = some 1   -- exact field per the model
+
+noncomputable def arm : Machine where
+  State := ArmSt
+  step := armStepM
+  observe := armObserve
+  configured := ArmCfgSpec
+  mapping := armMapping
+  ramStart := 0x10000000
+  ramEnd := 0x20000000
+
+end Proven.Top
+```
+Open points for the lead's edit: (a) `ArmFull` and `xreg` live in `Arm/proofs` (`Full.lean`, `Base.lean`). The
+Spec should either import a small `Arm/proofs/Arm/Spec*.lean` (definitions only: `Pins`, `ArmFull`, `xreg`), or
+inline them, as `Spec/Riscv.lean` inlines `Cfg`. (b) `ArmFull` is satisfiable (`Arm/Witness.lean`), but cold reset
+is not shown to establish it, the same status as RISC-V's `Cfg` (state it in the doc comment). (c) The exact
+PSTATE.SP accessor name, from the model.
+
 ### 0a. Is J abstract enough for the lift?
 J (`Machine/Call.lean`) is a small abstract machine: registers `x : Nat → UInt64`, memory as 8-byte cells
 `m : Nat → UInt64` (bytes via `lbm`/`sbm`, little-endian), the code base `b`, a `pc : Nat` in instructions.
