@@ -61,6 +61,12 @@ DONE (pushed, no sorry, std axioms; each module < 5 s):
 * `Proof/ParTreeOK.lean` (pure, on B's `ParRunFlat`): `nodes` (postorder), `ArenaInv st` (arena = nodes of the operand trees), `cntOK`/`CntInv`
   (child count per tag); `stepF_arena`, `stepF_cnt`, `Star.inv` (both are invariants of every handler, proved by one `cases f` script);
   `ok_of_nodes` (every node cntOK ∧ nodeOK ⇒ `RN.ok`), `words_body : z.words = z.toNd.ser`. (My duplicate `ParTree.lean` of B's ParRunFlat was removed.)
+* `Proof/ParInvVal.lean` (machine): `v205_eq` (input-local count over a `Links` chain), `v210_eq` (= pure `imC` over code cells),
+  `v209_eq` (v209 = 1 ↔ every node in [u, h[9]) passes `nodeC`).
+* `Proof/ParInvFlatM.lean` (machine): `v1_append` (task pushes commute with appended output), `v141_eq` (task 80), `v142_eq` (81),
+  `v143_eq` (82), `v144_eq` (83): exact heap = low-cell effect ++ appended words.
+* `Proof/ParRunShape.lean` (pure): def-level frames only at the bottom (`StackOK`), `stepF_shape`, `SInv` (+ acc ⇒ empty stack), `Star.sinv`.
+* `Proof/ParInvTop.lean`: `RepAPI` (the Layer-3 contract) and `parserSound_of : RepAPI → |ts| ≤ 2^24 → Layer-2 soundness → ParserSound ts`.
 * `Proof/ParInvFin.lean` (machine): `v98_eq` (output copy = heap suffix, or `[]` on fuel-out), `MainCells`, `fin_ne`
   (`fin ts 1 h ≠ []` ⇒ status 2 ∧ a def exists ∧ main cells ∧ output = `h.drop (d11 + |ts| + 1)`).
 REVIEW FINDINGS (sent to B, C, owner):
@@ -73,5 +79,8 @@ REVIEW FINDINGS (sent to B, C, owner):
   run ⇒ spec (fuel-free machine grammar, then fuel bound 8|toks|+8); stack-typing `WF`; slots/widths only mod 2^64 (`isInp` must test
   `b.toUInt64 == 0`; CALL emit `b.toUInt64 - ni.toUInt64`); step-arm env order (fuel binder outermost in Par1); def rows ≥ h[12] have
   field 6 = 0 and param-code cells ≥ h[27] are 0; arena = consecutive postorder intervals (coverage for v209); pend tested only in v101/v107.
-NEXT (in order): (b) pure bound `|out|` ≤ 6·steps (for `h.length < 2^64` in `fin_ne`); (c) machine lemmas for 81/82/83 and 80 on C's Rep (blocked until C's
-NodeRep/OpsRep are restated on `RN`); (d) headers 60–70, loop arms 73–79, 46/54; (e) top glue: Rep-simulation + `Accepts ⇒ refParse` ⇒ `ParserSound`.
+NEXT (in order): (c) machine lemmas for 81/82/83 and 80 on C's Rep (blocked until C's
+NodeRep/OpsRep are restated on `RN`); (d) headers 60–70, loop arms 73–79, 46/54; (e) `api_of_rep`: RepAPI from C's `Rep` ∧ `SInv` (status/ntasks/len/out/main from Rep; step = the per-frame lemmas of C, D and me).
+OPEN ISSUES: Par1 fix H unsound (multi-name List group before the input; C informed with programs); `(Nat) →` header accepted;
+C's Rep relates nx/slots/npw/RNRep a,b by toNat (must be mod 2^64) and ShapeCode lacks the width cell; DefsRep lacks zero code cells ≥ h[27];
+B: `isInp` on b mod 2^64; prim 1..3 nodes need ≥ 1 child (WF: mkCall n = arity) else flatten of a 0-child prim diverges from Par1.
