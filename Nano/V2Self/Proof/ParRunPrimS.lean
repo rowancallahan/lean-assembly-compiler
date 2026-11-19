@@ -91,4 +91,102 @@ theorem prim_leaf {n md ks st st1 fin cx} (hc : CxRel st cx) (hnn : CxNN st) (hl
       rw [ht, pApp_bound (p := (bd.slot, p)) (by rw [henv]; simp [hp]), ← ht]; exact hf g
     | cst ht hbd => exact absurd (hb _ _ ht) (by simp [hbd])
 
+
+theorem pAtom_paren {f cx tl r nx} : pAtom (f + 1) cx tl (.k 6 :: r) nx =
+    (pExpr f cx tl r nx).bind fun (e, t, r1, nx1) =>
+      match r1 with
+      | .k 7 :: r2 => some (e, t, r2, nx1)
+      | .k 15 :: _ =>
+        (pExpr f cx false r nx).bind fun (e1, t1, r1', nx1') =>
+          match tyShape t1 with
+          | some s1 => (pTup f cx r1' nx1').map fun (tl', st, r3, nx3) => (.pair [e1, tl'], .s (.p s1 st), r3, nx3)
+          | _ => none
+      | _ => none := by
+  simp only [pAtom]; rfl
+
+/-- a parenthesised expression or a tuple on the primary path -/
+theorem prim_paren {n md ks st fin cx r} (hE : ∀ n' ≤ n, ExprSpec n') (hc : CxRel st cx) (hnn : CxNN st)
+    (ht : st.toks = .k 6 :: r)
+    (h1 : StarN n (.expr 0 (bm (md == 1)) :: .parenClose :: ks, { st with toks := r }) ([], fin)) :
+    PrimConcl (n + 1) md ks st fin cx := by
+  obtain ⟨e, stE, nE, hnE, hpE, hltE, hEr, _, hnvE, hspE⟩ :=
+    hE n (Nat.le_refl _) (bm (md == 1)) _ _ fin cx (by cases md == 1 <;> simp [bm]) h1 (CxRel.transport hc rfl rfl)
+      (CxNN.transport hnn rfl rfl rfl)
+  match nE, hEr with
+  | 0, hEr => exact absurd hEr.zero_nil.1 (by simp)
+  | nE + 1, hEr =>
+  obtain ⟨k, st1, hs1, h2⟩ := hEr.head
+  simp only at hltE
+  have l0 : st.toks.length = r.length + 1 := by simp [ht]
+  rcases parenClose_inv hs1 with ⟨r2, hr2, rfl, rfl⟩ | ⟨r2, hr2, rfl, rfl⟩
+  · -- `( e )`
+    simp only [List.nil_append] at h2
+    have l1 : r2.length + 1 = stE.toks.length := by simp [hr2]
+    refine ⟨e, { stE with toks := r2 }, nE, by omega, ⟨hpE.vals, hpE.binds, hpE.defs, hpE.cur, hpE.arm, hpE.all,
+      by have := hpE.toks; simp at this ⊢; omega, hpE.nx⟩, by simp; omega, h2, hnvE, fun hvt => ?_⟩
+    obtain ⟨t, ht', hpt, hf⟩ := hspE (by simpa [ParRun.rows] using hvt)
+    refine ⟨t, ht', hpt, fun f hf' => ?_⟩
+    obtain ⟨g, rfl⟩ : ∃ g, f = g + 2 := ⟨f - 2, by omega⟩
+    have pE := hf g (by simp; omega)
+    rw [bm_eq] at pE; simp only at pE
+    rw [ht, pApp_paren, pAtom_paren, pE]; simp [hr2]
+  · -- `( e , … )`
+    simp only [List.cons_append, List.nil_append] at h2
+    have l1 : r2.length + 1 = stE.toks.length := by simp [hr2]
+    obtain ⟨w, st2, n2, hn2, hp2, hlt2, h3, hnv2, hsp2⟩ := tup_sound nE (fun n' hn' => hE n' (by omega)) _ _ fin cx h2
+      (CxRel.transport hc (by simp [hpE.binds]) (by simp [hpE.defs]))
+      (CxNN.transport hnn (by simp [hpE.binds]) (by simp [hpE.defs]) (by simp [hpE.cur]))
+    match n2, h3 with
+    | 0, h3 => exact absurd h3.zero_nil.1 (by simp)
+    | n2 + 1, h3 =>
+    obtain ⟨k4, st3, hs4, h4⟩ := h3.head
+    obtain ⟨y, x, rest, l, rr, hv4, hxl, hyr, hxp, _, hl, hrr, rfl, hst3⟩ := mkPair_inv hs4
+    rw [hp2.vals] at hv4; simp only [List.cons.injEq] at hv4; obtain ⟨rfl, hv4⟩ := hv4
+    rw [hpE.vals] at hv4; simp only [List.cons.injEq] at hv4; obtain ⟨rfl, rfl⟩ := hv4
+    simp only [List.nil_append] at h4
+    have hb2 := hp2.binds; have hd2 := hp2.defs; have hc2 := hp2.cur; have ha2 := hp2.arm; have hl2 := hp2.all
+    have ht2 := hp2.toks; have hn2' := hp2.nx
+    simp only at hb2 hd2 hc2 ha2 hl2 ht2 hn2' hlt2
+    refine ⟨_, st3, n2, by omega, ⟨by rw [hst3], ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩, ?_, h4, ?_, fun hvt => ?_⟩
+    · rw [hst3]; simp [hb2, hpE.binds]
+    · rw [hst3]; simp [hd2, hpE.defs]
+    · rw [hst3]; simp [hc2, hpE.cur]
+    · rw [hst3]; simp [ha2, hpE.arm]
+    · rw [hst3]; simp [hl2, hpE.all]
+    · rw [hst3]; simp; omega
+    · rw [hst3]; have := hpE.nx; simp at this ⊢; omega
+    · rw [hst3]; simp; omega
+    · obtain ⟨s1, hs1, hnn1⟩ := hnvE; obtain ⟨s2, hs2, hnn2⟩ := hnv2
+      rw [hxl] at hs1; cases hs1; rw [hyr] at hs2; cases hs2
+      exact ⟨.p l rr, by simp [RN.sh], by simp [Sh.nnt, hl, hrr, hnn1, hnn2]⟩
+    have hok := hvt.self
+    have hni := nodeOK_pair_noInp hok
+    have hne := hni e (by simp); have hnw := hni w (by simp)
+    obtain ⟨s1, hs1, hnn1⟩ := hnvE
+    rw [hxl] at hs1; cases hs1
+    obtain ⟨t, ht', hpt, hf⟩ := hspE (by have := hvt.kid (k := e) (by simp); simpa [ParRun.rows] using this)
+    obtain ⟨sr, hsr, hf2⟩ := hsp2 (by have := hvt.kid (k := w) (by simp); simpa [ParRun.rows, hpE.defs, hpE.cur] using this)
+      (by intro s hs; rw [hyr] at hs; cases hs; exact hrr) hnw
+    rw [hyr] at hsr; cases hsr
+    have htc : e.toNd.tailCont = false := by
+      cases hc' : e.toNd.tailCont
+      · rfl
+      · have := hpt hc'; rw [hxp] at this; cases this
+    refine ⟨.s (.p l rr), ⟨by simp [RN.sh], by simp [RN.isInp, RN.tag], by simp [RN.tag]⟩,
+      (fun h' => by rw [pairNode_toNd hne hnw] at h'; simp [Nd.tailCont] at h'), fun f hf' => ?_⟩
+    obtain ⟨g, rfl⟩ : ∃ g, f = g + 2 := ⟨f - 2, by omega⟩
+    have pE := hf g (by simp; omega)
+    rw [bm_eq] at pE; simp only at pE
+    have pE' : pExpr g cx false r st.nx = some (e.toNd, t, stE.toks, stE.nx) := by
+      cases hmd : (md == 1)
+      · rw [hmd] at pE; exact pE
+      · rw [hmd] at pE; exact (tl_down g).1 _ _ _ _ pE htc
+    have hb : t ≠ .bot := (nobot g).1 _ _ _ _ pE'
+    have p2 := hf2 g (by simp; omega)
+    simp only at p2
+    rw [ht, pApp_paren, pAtom_paren, pE]; simp only [Option.bind_some, hr2]
+    rw [pE']; simp only [Option.bind_some, comp_shape ht' hxl hnn1 hl hb hne, hr2]
+    rw [p2]
+    simp [pairNode_toNd hne hnw, hst3]
+
 end ParRun
