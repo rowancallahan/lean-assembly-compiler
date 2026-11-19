@@ -90,7 +90,7 @@ theorem tasks_frame_nf {h h' : Buf} {arena : List RN} {fs : List Frame} (r : Tas
 /-- **node builder on Rep**: a `v5` that leaves the status nonzero is B's `mkNode` (no flatten frame on the stack) -/
 theorem rep_v5g {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs) (hnf : fs.all (fun f => !f.isFlat))
     (n t A B : Nat) (sh : Option Sh) (p : Bool) (w : UInt64) (hw : ShOpt h w sh) (ht : t < 2 ^ 64)
-    (hab : t ≠ 2 → t ≠ 5 → A < 2 ^ 64 ∧ B < 2 ^ 64) (hn : n < 4096)
+    (hab : t ≠ 2 → t ≠ 5 → A < 2 ^ 64 ∧ B < 2 ^ 64) (hn : n ≤ 4096)
     (hs : bget (v5 h t.toUInt64 A.toUInt64 B.toUInt64 w (b01 p) n.toUInt64) 0 ≠ 0) :
     ∃ st', mkNode st t A B sh p n = some st' ∧ Rep (v5 h t.toUInt64 A.toUInt64 B.toUInt64 w (b01 p) n.toUInt64) ts st' fs := by
   obtain ⟨hn7, hl, har⟩ := rep_bounds r
@@ -124,7 +124,7 @@ theorem rep_v5g {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs) (h
 
 theorem rep_v5 {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs) (hnf : fs.all (fun f => !f.isFlat))
     (n t A B : Nat) (sh : Option Sh) (p : Bool) (w : UInt64) (hw : ShOpt h w sh) (ht : t < 2 ^ 64) (hA : A < 2 ^ 64)
-    (hB : B < 2 ^ 64) (hn : n < 4096) (hs : bget (v5 h t.toUInt64 A.toUInt64 B.toUInt64 w (b01 p) n.toUInt64) 0 ≠ 0) :
+    (hB : B < 2 ^ 64) (hn : n ≤ 4096) (hs : bget (v5 h t.toUInt64 A.toUInt64 B.toUInt64 w (b01 p) n.toUInt64) 0 ≠ 0) :
     ∃ st', mkNode st t A B sh p n = some st' ∧ Rep (v5 h t.toUInt64 A.toUInt64 B.toUInt64 w (b01 p) n.toUInt64) ts st' fs :=
   rep_v5g r hnf n t A B sh p w hw ht (fun _ _ => ⟨hA, hB⟩) hn hs
 

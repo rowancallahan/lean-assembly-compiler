@@ -47,8 +47,6 @@ structure Obl (toks : List Tok) : Prop where
   assignTy : ∀ {i sz fs st}, Reach toks (.assign i sz :: fs) st → st.ty.isSome = true
   prev : ∀ {fs st}, Reach toks (.afterColon :: fs) st → ∃ t, prevTok st = some t ∧ ∀ v, t ≠ .num v
   selfP : ∀ {fs st}, Reach toks (.selfArgs :: fs) st → st.cur.params ≠ []
-  contK : ∀ {f k fs st}, Reach toks (.mkCont f k :: fs) st → k < 4096
-  callN : ∀ {c n fs st}, Reach toks (.mkCall c n :: fs) st → n < 4096
   prim32 : ∀ {f fs st p}, Reach toks (f :: fs) st → (∃ k, f = .argCheck (.pr p) k ∨ f = .mkCall (.pr p) k) → p < 2 ^ 32
   names : ∀ {fs st}, Reach toks fs st → ∀ d ∈ st.defs, d.name ≠ []
   flat : ∀ {n fs st}, Reach toks (.flat n :: fs) st → n.kids.length < 16384 ∧ (n.tag = 9 → n.a < 4 → n.kids ≠ []) ∧
@@ -127,6 +125,7 @@ theorem step_sim {h ts : Buf} {toks : List Tok} (O : Obl toks)
   have hD := reach_inDef hR hf
   have hN := fun (e : f.isFl = false) => reach_noflat hR e
   have hsv := W.inv.1
+  have hv4 : st.vals.length ≤ 4096 := r.2.2.2.2.2.2.2.1.2.2.2.1
   cases f with
   | expr m md => exact h_expr r hs
   | binLoop m => simp [effF, St.g] at hg; exact h_binLoop r (by intro e; simp [e] at hg) hs
@@ -156,7 +155,7 @@ theorem step_sim {h ts : Buf} {toks : List Tok} (O : Obl toks)
       | pr p => exact O.prim32 hR ⟨k, Or.inl rfl⟩
   | mkCall c n =>
     simp [effF, St.g] at hg
-    refine h_mkCall r hD (hN rfl) (O.callN hR) ?_ hs
+    refine h_mkCall r hD (hN rfl) (by have := hg.1.1; omega) ?_ hs
     cases c with
     | df j => have := hg.1.2; simp [calleeOK, Ctx.callTgt, St.ctx] at this ⊢; omega
     | pr p => exact O.prim32 hR ⟨n, Or.inr rfl⟩
@@ -168,7 +167,7 @@ theorem step_sim {h ts : Buf} {toks : List Tok} (O : Obl toks)
     simp [effF, St.g] at hg; exact h_letPairSemi r (by intro e; simp [e] at hg) (cinv_stash (hR.cinv (cinv_init _))) hs
   | mkCont f' k =>
     simp [effF, St.g] at hg
-    exact h_mkCont r hD (hN rfl) (by have := hg.1.2.1; simp [St.ctx, rows] at this; omega) (O.contK hR) hs
+    exact h_mkCont r hD (hN rfl) (by have := hg.1.2.1; simp [St.ctx, rows] at this; omega) (by have := hg.1.1; omega) hs
   | argName => exact h_argName r (hN rfl) hs
   | defs => exact absurd rfl hf
   | tyAtom => exact h_tyAtom r hs

@@ -236,7 +236,7 @@ theorem h_argCheck {h ts : Buf} {st : St} {c : Callee} {k : Nat} {fs : List Fram
 
 /-! ## task 48: `mkCall c n` (v123) -/
 theorem h_mkCall {h ts : Buf} {st : St} {c : Callee} {n : Nat} {fs : List Frame} (r : Rep h ts st (.mkCall c n :: fs))
-    (hD : inDefF fs = true) (hnf : fs.all (fun f => !f.isFlat)) (hn : n < 4096) (hc : calleeOK st c)
+    (hD : inDefF fs = true) (hnf : fs.all (fun f => !f.isFlat)) (hn : n ≤ 4096) (hc : calleeOK st c)
     (hs : bget (step h) 0 ≠ 0) :
     ∃ fr st', stepF (.mkCall c n) st = some (fr, st') ∧ Rep (step h) ts st' (fr ++ fs) := by
   obtain ⟨E, ⟨ea, eb⟩, R1⟩ := rep_pop r rfl

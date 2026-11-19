@@ -113,7 +113,7 @@ theorem h_selfArgs {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.s
 /-- `v5` (node build) leaves the def table and everything above it alone -/
 theorem rep_v5_hi {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs)
     (n t A B : Nat) (sh : Option Sh) (p : Bool) (w : UInt64) (hw : ShOpt h w sh) (ht : t < 2 ^ 64)
-    (hab : t ≠ 2 → t ≠ 5 → A < 2 ^ 64 ∧ B < 2 ^ 64) (hn : n < 4096)
+    (hab : t ≠ 2 → t ≠ 5 → A < 2 ^ 64 ∧ B < 2 ^ 64) (hn : n ≤ 4096)
     (hs : bget (v5 h t.toUInt64 A.toUInt64 B.toUInt64 w (b01 p) n.toUInt64) 0 ≠ 0) :
     ∀ i : UInt64, 147520 ≤ i.toNat → bget (v5 h t.toUInt64 A.toUInt64 B.toUInt64 w (b01 p) n.toUInt64) i = bget h i := by
   obtain ⟨hn7, hl, har⟩ := rep_bounds r
@@ -135,7 +135,7 @@ theorem rep_v5_hi {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs)
 /-- **task 54** (CONTINUE): the self-call arguments are packed (PAIR unless exactly one) under a pending CONT node of the def's
 result shape -/
 theorem h_mkCont {h ts : Buf} {st : St} {f k : Nat} {fs : List Frame} (r : Rep h ts st (.mkCont f k :: fs))
-    (hfs : inDefF fs = true) (hnf : fs.all (fun f => !f.isFlat)) (hf : f = st.defs.length) (hk : k < 4096)
+    (hfs : inDefF fs = true) (hnf : fs.all (fun f => !f.isFlat)) (hf : f = st.defs.length) (hk : k ≤ 4096)
     (hs : bget (step h) 0 ≠ 0) :
     ∃ k' st', stepF (.mkCont f k) st = some (k', st') ∧ Rep (step h) ts st' (k' ++ fs) := by
   obtain ⟨E, FA, R1⟩ := rep_pop r (by simp [inDefF, Frame.isDefs])
