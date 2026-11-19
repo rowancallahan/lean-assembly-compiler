@@ -426,3 +426,23 @@ Remaining hypotheses of gen_runS (all stated explicitly):
 - host layout: a2 % 8 = 0, a2+16 ≤ E0 = sp&~7 < 2^62, work region [KL.lo, KL.hi) ⊇ [a2, E0), code base = KL.base,
   input/output byte cells are work cells and disjoint from [a2, E0+8), ra = base + 4j, s0.b + 4|C| < 2^64.
 OOM/capacity exits: deferred (owner, 2026-11-19); needs a semantics separating OOM/capacity from ill-formed heaps.
+
+### gen_runS — remaining hypotheses and owners (E, 2026-11-19)
+Statement: `Templates.gen_runS` (Nano/V2Self/Proof/GenRunS.lean).  Already derived from Gen: widths, OpV, npw/nslots/
+nres < 251, npw ≤ nslots, main npw 0 / nres 1, def-phase code < 2^24 words.
+(a) Gen-side size facts (E / owner; a Gen change was proposed, compiler edits are not permitted to E):
+  - `hdb : ∀ d ∈ ds, DB d` (header fields and body node fields < 2^32; Gen sees serialized UInt64 words, so it cannot
+    check fields ≥ 2^64 — needs "serialize is faithful" from the representation, then Gen checks could give < 2^32);
+  - `hXl : (serialize ds).length < 2^31` (a g42 input check would reduce it to length < 2^64);
+  - `C.length < 2^18` (a g42 check `262143 < bsize o ⇒ []` on the final words would discharge it fully).
+(b) Parser facts (D, ParsesProgram): `∀ k < hs.length, ScV (scAt P ds k) (dA ds k).body ∧
+    ∀ j, rd (dA ds k).body j → j < (dA ds k).npw` (D's MainOk.parsed_sc).
+(c) Semantics (D, Sem ⇐ sv bridge): main's run succeeds
+    `semAt P ds (hs.length - 1) [] E0 ⟨a2 + 16, fun _ => none⟩ = some (vs, H')` with P = pcOf 524288 (a2+16) a1 inp T,
+    and its result is a buffer: `H'.m (vs.getD 0 0).toNat = some N`, `a2 + 16 ≤ buf`, `buf + 16 + 8·N < H'.top`,
+    `∀ i < N, H'.m (buf + 16 + 8 i) = some (bs i)` (bs = the output words; output byte = bs i &&& 255).
+(d) Host layout / ABI (D's MainTop / StartCorrect side): with E0 = sp & ~7:
+    s0.x 0 = 0; a2 % 8 = 0; a2 + 16 ≤ E0 < 2^62; s0.b + 4|C| < 2^64; a0 + a1 < 2^63; input bytes [a0, a0+a1) below a2
+    or ≥ E0 + 8; a3 + N < 2^64 and output [a3, a3+N) below a2 or ≥ E0 + 8; work region KL.lo ≤ a2, E0 ≤ KL.hi;
+    code base s0.b = KL.base; input and output byte cells are `wok KL`; ra = KL.base + 4j; for the Sail statement:
+    KL.Ok, KL.W = Gen's words, RelW KL (0, s0) t.
