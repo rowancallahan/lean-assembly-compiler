@@ -161,8 +161,8 @@ def Outcome (s : St) (ra : BitVec 64) (output work : Region) (r : Except Stop (L
 `Proven.Implements1With` (a0 input, a1 length, a2 work base, a3 output, sp = work top, ra), inputs of at most `maxLen`
 bytes, output block large enough for an ok result.  There is ONE work-size bound per input (`space`, existential):
 with at least `space x` bytes of work memory the run never reports out-of-memory. -/
-def ImplementsC (B : List UInt8) (f : List UInt8 → Except Stop (List UInt8)) (maxLen : Nat := 2 ^ 20) : Prop :=
-  ∃ space : List UInt8 → Nat,
+def ImplementsCW (B : List UInt8) (f : List UInt8 → Except Stop (List UInt8)) (space : List UInt8 → Nat)
+    (maxLen : Nat := 2 ^ 20) : Prop :=
   ∀ (x : List UInt8) (s : St) (entry ra : BitVec 64) (input output work : Region),
     let codeR : Region := ⟨entry.toNat, B.length⟩
     x.length ≤ maxLen → Cfg s → s.regs.get? .PC = some entry → entry.toNat % 4 = 0 → B.length % 4 = 0 →
@@ -178,6 +178,10 @@ def ImplementsC (B : List UInt8) (f : List UInt8 → Except Stop (List UInt8)) (
     (∀ r ∈ [input, output, work, codeR], r.inRAM) → [input, output, work, codeR].Pairwise disjoint →
     Mapped s output → Mapped s work →
     runsTo s (Outcome s ra output work (f x) (work.len < space x))
+
+/-- `ImplementsCW` for some work bound -/
+def ImplementsC (B : List UInt8) (f : List UInt8 → Except Stop (List UInt8)) (maxLen : Nat := 2 ^ 20) : Prop :=
+  ∃ space : List UInt8 → Nat, ImplementsCW B f space maxLen
 
 /-! ## the stage hypotheses -/
 

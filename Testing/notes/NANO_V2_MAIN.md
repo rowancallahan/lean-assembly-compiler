@@ -56,6 +56,17 @@ Options: (a) Par1 layout sized by the token count (offsets d1..d11 as functions 
    (∀ j < i, p[j] = dj → K.npwOf j = dj.npw ∧ K.nresOf j = dj.nres) → OkV K d.body ∧ wd K d.body = d.nres ∧ d.npw ≤ d.nslots`;
   `parsed_main`: the last def has npw 0, nres 1.
 
+## In the owner's top-level vocabulary (`MainTop.lean`, 13 s; axioms = compiler #1's: Sail extern set + standard)
+| | compiler #1 (`Riscv/Back/S3Top.lean`) | C (`Nano/V2Self/Proof/MainTop.lean`) |
+|---|---|---|
+| theorem | `compile_correctL : CompileCorrectL riscv compile` | `C_correctL : ParStage → GenStage → CompileCorrectL riscv compileC` |
+| programs `P` | its source AST | `Src` = source TEXT (bytes) |
+| `Program.run` | the AST's evaluator | `srcRun`: Lex2Spec `Lexes`, ParSpec `ParsesProgram`, `Sem κC` (`pOf` by choice; unique: `lexes_det`, refParse is a function); `none` = not a program, or Gen's capacity κ hit |
+| `compile` | its code generator | `compileC`: `mC` when non-empty and the text ≤ 2^20 bytes; cellSize 1, events `[alloc (spaceC x inp)]` (the chosen `ImplementsC` bound) |
+| conclusion | `CompileCorrectL` (Runs, pc = ra, status ≠ oomFlag, output, a1 = length, frame, kept regs, Cfg) | the same |
+Open in this form: `ParStage`, `GenStage` are hypotheses; `CompileRuns(L)` (OOM flag ⇔ out of memory) is NOT claimed (ImplementsC only
+allows OOM below the bound); `Computes` holds only for programs whose meaning is defined on every input (capacity never hit).
+
 ## FINDING (2026-11-19): C miscompiles non-linear buffer use — the end-to-end statement is FALSE as is
 Source `def m (x : List UInt8) : List UInt8 := let b := bnew; let c := bpush b 7; put [] (bsize b)`:
 C accepts it (`mC` = 800 bytes); Lean / ParSpec+`Sem` meaning: output `[0]`; QEMU run of C's code: output `[1]`
