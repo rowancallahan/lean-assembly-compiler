@@ -121,4 +121,95 @@ theorem rep_v5 {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs) (hn
   refine rep_arena r L e DR AR (tasks_arena_ext (tasks_frame_nf rT hnf (LO 5 (by decide) (by decide) (by decide))
     (fun i a b => LO i (by have := rT.2.1; omega) (by omega) (by omega)) et hn7 ES) ⟨_, rfl⟩) rfl
 
+/-! ## reading operands -/
+theorem ShapeCode.one {h : Buf} {s : Sh} (r : ShapeCode h 1 s) : s = .uw := by
+  cases r with
+  | uw => rfl
+  | pr h1 => simp at h1
+
+theorem shOpt_one {h : Buf} {o : Option Sh} (r : ShOpt h 1 o) : o = some .uw := by
+  cases o with
+  | none => simp [ShOpt] at r
+  | some s => rw [ShapeCode.one r]
+
+/-- operand k (TOP = 0) is represented by the record its stack cell names -/
+theorem val_rep {h : Buf} {arena vals : List RN} (r : ArenaRep h arena vals) (k : Nat) (hk : k < vals.length) :
+    ∃ ids, RNRep h (opAt h (vals.length - 1 - k)) (vals[k]'hk) ids := by
+  obtain ⟨_, _, _, _, I, hI, hR, _, _⟩ := r
+  obtain ⟨hr, ea, _⟩ := hR k hk
+  have := (hI _ hr).1
+  simp only [UInt64.ofNat_toNat, ea] at this
+  exact ⟨_, this⟩
+
+/-- the machine's operand cell `d3 + h[8] - (k + 1)` is stack position |vals| - 1 - k -/
+theorem opCell {h : Buf} {n : Nat} (h8 : (bget h 8).toNat = n) (hn : n ≤ 4096) (k : Nat) (hk : k < n) :
+    bget h (d3 + bget h 8 - (k + 1).toUInt64) = opAt h (n - 1 - k) := by
+  simp only [opAt]; congr 1
+  apply UInt64.toNat_inj.mp
+  rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr (by rw [tn_add _ _ (by simp [d3v]; omega)]; simp [d3v]; omega)),
+    tn_add _ _ (by simp [d3v]; omega), d3k _ (by omega)]
+  simp [d3v]; omega
+
+/-- the fields of a represented node -/
+theorem RNRep.fields {h : Buf} {u : UInt64} {n : RN} {ids : List UInt64} (r : RNRep h u n ids) :
+    fld h u 0 = n.tag.toUInt64 ∧ fld h u 1 = n.a.toUInt64 ∧ fld h u 2 = n.b.toUInt64 ∧ ShOpt h (fld h u 3) n.sh ∧
+    fld h u 4 = b01 n.pend := by
+  cases r with
+  | mk a0 a1 a2 a3 a4 => exact ⟨a0, a1, a2, a3, by simp [b01, a4, RN.pend]⟩
+
+/-! ## task 5: `mkBin op` (v103) -/
+theorem h_mkBin {h ts : Buf} {st : St} {op : Nat} {fs : List Frame} (r : Rep h ts st (.mkBin op :: fs))
+    (hnf : fs.all (fun f => !f.isFlat)) (hs : bget (step h) 0 ≠ 0) :
+    ∃ k st', stepF (.mkBin op) st = some (k, st') ∧ Rep (step h) ts st' (k ++ fs) := by
+  obtain ⟨E, ea, R1⟩ := rep_pop r (by simp [inDefF, Frame.isDefs])
+  simp only [FrameArgs] at ea
+  generalize (taskAt h fs.length).a = a at E ea
+  generalize (taskAt h fs.length).b = b at E
+  generalize hh : bset h 5 fs.length.toUInt64 = h1 at E R1
+  have ev : step h = (if bget h1 (d5 + 8 * bget h1 (d3 + bget h1 8 - 1) + 3) == 1 then
+      if bget h1 (d5 + 8 * bget h1 (d3 + bget h1 8 - 2) + 3) == 1 then v5 h1 3 a 0 1 0 2 else bset h1 0 0 else bset h1 0 0) := by
+    rw [E]; simp [Frame.code, v96, v103]
+  obtain ⟨hn7, hl, har⟩ := rep_bounds R1
+  rw [ev] at hs ⊢
+  by_cases c1 : bget h1 (d5 + 8 * bget h1 (d3 + bget h1 8 - 1) + 3) = 1
+  · by_cases c2 : bget h1 (d5 + 8 * bget h1 (d3 + bget h1 8 - 2) + 3) = 1
+    · simp only [c1, c2, beq_self_eq_true, if_true] at hs ⊢
+      have rA := R1.2.2.2.2.2.2.2.1
+      obtain ⟨_, g2, _⟩ := v5_guards _ _ _ _ _ _ _ (by omega) hs
+      have g2' := UInt64.lt_iff_toNat_lt.mp g2
+      have h8le : (bget h1 8).toNat ≤ 4096 := by rw [rA.2.2.1]; exact rA.2.2.2.1
+      rw [tn_add _ _ (by simp; omega)] at g2'
+      simp only [show (2 : UInt64).toNat = 2 from rfl, show (1 : UInt64).toNat = 1 from rfl, rA.2.2.1] at g2'
+      obtain ⟨y, x, rest, ev2⟩ : ∃ y x rest, st.vals = y :: x :: rest := by
+        match hv : st.vals with
+        | y :: x :: rest => exact ⟨y, x, rest, rfl⟩
+        | [] => simp [hv] at g2'
+        | [_] => simp [hv] at g2'
+      have h8 := rA.2.2.1
+      have o0 := opCell h8 rA.2.2.2.1 0 (by rw [ev2]; simp)
+      have o1 := opCell h8 rA.2.2.2.1 1 (by rw [ev2]; simp)
+      simp only [show ((0 : Nat) + 1).toUInt64 = 1 from rfl, show ((1 : Nat) + 1).toUInt64 = 2 from rfl] at o0 o1
+      have l0 : 0 < st.vals.length := by rw [ev2]; simp
+      have l1 : 1 < st.vals.length := by rw [ev2]; simp
+      obtain ⟨_, ry⟩ := val_rep rA 0 l0
+      obtain ⟨_, rx⟩ := val_rep rA 1 l1
+      rw [o0] at c1; rw [o1] at c2
+      have fy : ShOpt h1 (bget h1 (d5 + 8 * opAt h1 (st.vals.length - 1 - 0) + 3)) (st.vals[0]'l0).sh := ry.fields.2.2.2.1
+      have fx : ShOpt h1 (bget h1 (d5 + 8 * opAt h1 (st.vals.length - 1 - 1) + 3)) (st.vals[1]'l1).sh := rx.fields.2.2.2.1
+      rw [c1] at fy; rw [c2] at fx
+      have sy := shOpt_one fy; have sx := shOpt_one fx
+      simp only [ev2, List.getElem_cons_zero, List.getElem_cons_succ] at sy sx
+      have hop : op < 2 ^ 64 := by rw [← ea]; exact a.toNat_lt
+      have ea' : a = op.toUInt64 := by rw [← ea]; simp
+      subst ea'
+      obtain ⟨st', em, R2⟩ := rep_v5 R1 hnf 2 3 op 0 (some .uw) false 1 .uw (by decide) (by omega) (by decide) (by decide)
+        (by simpa [b01] using hs)
+      refine ⟨[], st', ?_, by simpa [b01] using R2⟩
+      simp only [stepF, ev2, sx, sy, and_self, if_true]
+      rw [em]; rfl
+    · have : (bget h1 (d5 + 8 * bget h1 (d3 + bget h1 8 - 2) + 3) == 1) = false := by simpa using c2
+      simp only [c1, this, beq_self_eq_true, if_true] at hs; exact absurd (stat0 _ (by omega)) hs
+  · have : (bget h1 (d5 + 8 * bget h1 (d3 + bget h1 8 - 1) + 3) == 1) = false := by simpa using c1
+    simp only [this] at hs; exact absurd (stat0 _ (by omega)) hs
+
 end ParInv
