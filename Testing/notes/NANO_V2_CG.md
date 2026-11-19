@@ -476,3 +476,9 @@ hyps + `Sem κC p x = .error .cap` + (∀ T, semAtF main … = .error .cap) ⇒ 
 `.error .cap` disjunct.  Axioms = Sail set.
 For ImplementsC D supplies: space R with Sem = ok ⇒ semAt some (gen_host), Sem = cap ⇒ semAtF cap (gen_host_cap),
 Sem ≠ stuck.  Remaining: the final ImplementsCW assembly (case split on Sem), hXl, DB.
+
+## Final assembly (GenImpl.lean)
+`SimW.gen_implements`: `ImplementsCW (g41 c (serialize p)) (Sem κC p) (fun x => max 16 (R x))`, given parse/LinearK/hXl/g41≠[]/DB
+and `HD : ∀ x ≤ 2^20, ∀ wb wl, wb%8=0 → 2^31 ≤ wb → wb+wl ≤ 2^32 → wb+16 ≤ (wb+wl)/8*8 → SemCases p R x wb wl`
+(ok ∧ semAt succeeds ∀T | Sem cap ∧ semAtF cap ∀T | semAtF room ∀T ∧ wl < R x). Tiny work blocks are handled without HD.
+HANDOFF: machine side complete; remaining = D's proof of HD, plus hXl/DB discharge, then wire into GenStage.
