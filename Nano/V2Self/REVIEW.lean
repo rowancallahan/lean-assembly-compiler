@@ -2,6 +2,7 @@
 Build: `lake build Nano.V2Self.REVIEW`.  The #print axioms output is the authoritative axiom list. -/
 import Nano.V2Self.Proof.ParCapBnd
 import Nano.V2Self.Proof.Cert.All
+import Nano.V2Self.Proof.SelfC
 
 open LeanRV64D Proven Proven.Top Proven.Top.Alloc NanoMain ParSpec
 
@@ -18,7 +19,17 @@ registers kept, configuration kept, and memory changed only in the work block an
 /-! ## 2. the certificate: C's own source text means C's Lean function (needed for the self-compilation link) -/
 #check @Cert.sem_C
 #print axioms Cert.sem_C
--- PENDING (E): the SelfLink final theorem (compileC on C's own text) is not on the branch yet; add its #check here.
+
+/-! ## 2b. C compiled by itself (E, Proof/SelfC.lean; generic versions in Proof/SelfLink.lean).  `SrcGen.X0` = the bytes
+of Testing/nano/v2self/self_S_input.txt (D's generator refuses to write the modules unless its chunks concatenate to
+exactly those bytes).  `SelfIn` = inputs shorter than 2^64 bytes on which `Sem κC Cert.PC.all` does not hit `cap`.
+NOT proved: `compileC ⟨X0⟩ = some compiled` (it is a hypothesis of self_correct_C; holds iff `mC X0 ≠ []`, shown only
+by running B1), nor that the shipped B2.bin is `compiled.code`. -/
+#check @NanoMain.self_meaning_C
+#check @NanoMain.self_computes_C
+#check @NanoMain.self_correct_C
+#check @NanoMain.SelfIn
+#print axioms NanoMain.self_correct_C
 
 /-! ## 3. definitions the statement depends on (see NANO_V2_REVIEW.md for summaries) -/
 -- machine / calling convention (Spec/, frozen by Spec/FROZEN.sha256)

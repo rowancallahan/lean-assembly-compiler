@@ -25,9 +25,21 @@ bytes of work memory. Then the machine reaches, by retired instructions only, a 
 is `r = .error .cap ∨ r = .ok v`: either a buffer overflowed, or the result is exactly the Lean function's. `stuck` is
 excluded.
 
-**Pending (E):** the SelfLink theorem connecting the two (compileC applied to C's own text), together with D's source
-link `pOf (C's text) = some PC.all`. Neither is on the branch when this file was written. `REVIEW.lean` has a
-placeholder for it.
+**C compiled by itself** (E, `Nano/V2Self/Proof/SelfC.lean`; the generic versions with `hsrc` as a hypothesis are in
+`SelfLink.lean`). `SrcGen.X0` is the byte list of `Testing/nano/v2self/self_S_input.txt`: D's generator checks that its
+chunks concatenate to exactly those bytes. D's kernel-checked `SrcGen.link_pc` says `X0` lexes and parses to
+`Cert.PC.all`.
+- `self_meaning_C`: for inputs shorter than 2^64 bytes, the meaning of `X0` either hits `cap` (and `srcRun` is `none`)
+  or equals `mC inp`.
+- `self_computes_C`: `X0` computes `mC` on `SelfIn`, the inputs whose meaning does not hit `cap`
+  (`SelfLink.lean:28`).
+- `self_correct_C`: if `compileC ⟨X0⟩ = some compiled`, then for every `a : SelfIn` with a correct start, enough output
+  space and at least `memoryNeeded` work bytes, the emitted code returns with `mC a` in the output block. It also gives
+  the length register, unchanged memory outside the output and work blocks, the callee-saved registers and `Cfg`.
+  Axioms: the same as `C_correctLO`, no `sorryAx`.
+- **Not proved:** `compileC ⟨X0⟩ = some compiled`, which is a hypothesis of `self_correct_C`. It holds iff
+  `mC X0 ≠ []`, and is shown only by running B1, because the kernel cannot evaluate `mC` on the 66 KB text. Also not
+  proved: that the shipped `B2.bin` equals that `compiled.code` (see section 4, "The binary").
 
 ## 2. Definitions to trust
 
