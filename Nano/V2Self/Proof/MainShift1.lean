@@ -238,6 +238,90 @@ theorem localF_sim : ∀ (w k : Nat) (ks : List Kd) (hl : ks.length = w),
   | 0, _, _ :: _, hl, _ => by simp at hl
   | _ + 1, _, [], hl, _ => by simp at hl
 
+theorem defSF_sim {p nl : Nat} {ps rs : List Kd} {RE0 : Env → Env → Prop} {Sb Sb' : SemWX}
+    (hB : Sim δ hb RE0 (LR δ rs) Sb Sb') (hE : ∀ args args', LR δ ps args args' → RE0 (argEnv p args) (argEnv p args')) :
+    SimD δ hb ps rs (defSF p nl Sb) (defSF p nl Sb') := by
+  intro args args' sp sp' H H' ha hH hBd hS
+  simp only [defSF]
+  have := room_iff (c := 16 + 8 * (nl - p)) hH.1 hS
+  by_cases h : H.top + 16 + 8 * (nl - p) ≤ sp
+  · rw [if_pos h, if_pos (by have := this.1 (by omega); omega)]
+    have e1 : sp - 16 - 8 * (nl - p) = sp - (16 + 8 * (nl - p)) := by omega
+    have e2 : sp' - 16 - 8 * (nl - p) = sp' - (16 + 8 * (nl - p)) := by omega
+    rw [e1, e2]
+    exact hB _ _ _ _ H H' (hE args args' ha) hH hBd (spR_sub _ hS (Nat.le_refl _) (by unfold Bnd at hBd; omega))
+  · rw [if_neg h, if_neg (fun h' => h (by have := this.2 (by omega); omega))]; exact rfl
+
+/-! ## tail mode -/
+def TR (δ : Nat) (ks sk : List Kd) : TRes → TRes → Prop
+  | .inl v, .inl v' => LR δ ks v v'
+  | .inr s, .inr s' => LR δ sk s s'
+  | _, _ => False
+
+theorem exitF_sim {ks sk : List Kd} {S S' : SemWX} (h : Sim δ hb RE (LR δ ks) S S') :
+    Sim δ hb RE (TR δ ks sk) (exitF S) (exitF S') := by
+  intro env env' sp sp' H H' he hH hBd hS
+  have := h env env' sp sp' H H' he hH hBd hS
+  simp only [exitF]
+  match S env sp H, S' env' sp' H', this with
+  | .error f, .error f', h => exact h
+  | .ok (a, H1), .ok (a', H1'), h => exact ⟨h.1, h.2⟩
+
+theorem contF_sim {ks sk : List Kd} {S S' : SemWX} (h : Sim δ hb RE (LR δ sk) S S') :
+    Sim δ hb RE (TR δ ks sk) (contF S) (contF S') := by
+  intro env env' sp sp' H H' he hH hBd hS
+  have := h env env' sp sp' H H' he hH hBd hS
+  simp only [contF]
+  match S env sp H, S' env' sp' H', this with
+  | .error f, .error f', h => exact h
+  | .ok (a, H1), .ok (a', H1'), h => exact ⟨h.1, h.2⟩
+
+theorem letTF_sim {k0 w : Nat} {vs ks sk : List Kd} {RE2 : Env → Env → Prop} {SV SV' : SemWX} {SB SB' : SemTX}
+    (hV : Sim δ hb RE (LR δ vs) SV SV') (hB : Sim δ hb RE2 (TR δ ks sk) SB SB')
+    (hE : ∀ env env' r r', RE env env' → LR δ vs r r' → RE2 (setW env k0 w r) (setW env' k0 w r')) :
+    Sim δ hb RE (TR δ ks sk) (letTF k0 w SV SB) (letTF k0 w SV' SB') := by
+  intro env env' sp sp' H H' he hH hBd hS
+  simp only [letTF]
+  exact bind_sim (hV env env' sp sp' H H' he hH hBd hS) fun a a' H1 H1' ha hH1 hB1 ht =>
+    out_trans (hB _ _ sp sp' H1 H1' (hE env env' a a' he ha) hH1 hB1 (spR_mono hS ht)) ht
+
+theorem ifTF_sim {c : Nat} {ks sk : List Kd} {SP SP' : SemWX} {ST ST' SE SE' : SemTX}
+    (hP : Sim δ hb RE (LR δ [.w, .w]) SP SP') (hT : Sim δ hb RE (TR δ ks sk) ST ST') (hE : Sim δ hb RE (TR δ ks sk) SE SE') :
+    Sim δ hb RE (TR δ ks sk) (ifTF c SP ST SE) (ifTF c SP' ST' SE') := by
+  intro env env' sp sp' H H' he hH hBd hS
+  simp only [ifTF]
+  refine bind_sim (hP env env' sp sp' H H' he hH hBd hS) fun a a' H1 H1' ha hH1 hB1 ht => ?_
+  obtain ⟨x, y, rfl, rfl⟩ := LR.ww ha
+  simp only
+  split
+  · exact out_trans (hT _ _ sp sp' H1 H1' he hH1 hB1 (spR_mono hS ht)) ht
+  · exact out_trans (hE _ _ sp sp' H1 H1' he hH1 hB1 (spR_mono hS ht)) ht
+
+/-- the fuel loop -/
+theorem loopGoF_sim {p : Nat} {ks sk : List Kd} {SZ SZ' SS SS' : SemTX}
+    (hZ : Sim δ hb RE (TR δ ks sk) SZ SZ') (hSt : Sim δ hb RE (TR δ ks sk) SS SS')
+    (h0 : ∀ env env', RE env env' → env' 0 = env 0) (hdec : ∀ env env', RE env env' → RE (decE env) (decE env'))
+    (hset : ∀ env env' st st', RE env env' → LR δ sk st st' → RE (setW env 1 (p - 1) st) (setW env' 1 (p - 1) st')) :
+    ∀ n env env' sp sp' H H', RE env env' → HR δ hb H H' → Bnd hb H → SpR δ H sp sp' →
+      OutR (LR δ ks) δ hb H (loopGoF p SZ SS sp n env H) (loopGoF p SZ' SS' sp' n env' H')
+  | n, env, env', sp, sp', H, H', he, hH, hBd, hS => by
+    unfold loopGoF
+    rw [h0 env env' he]
+    split
+    · refine bind_sim (hZ env env' sp sp' H H' he hH hBd hS) fun a a' H1 H1' ha hH1 hB1 ht => ?_
+      match a, a', ha with
+      | .inl v, .inl v', ha => exact ⟨ha, hH1, hB1, ht⟩
+      | .inr v, .inr v', ha => exact rfl
+    · cases n with
+      | zero => exact rfl
+      | succ n =>
+        refine bind_sim (hSt _ _ sp sp' H H' (hdec env env' he) hH hBd hS) fun a a' H1 H1' ha hH1 hB1 ht => ?_
+        match a, a', ha with
+        | .inl v, .inl v', ha => exact ⟨ha, hH1, hB1, ht⟩
+        | .inr st, .inr st', ha =>
+          exact out_trans (loopGoF_sim hZ hSt h0 hdec hset n _ _ sp sp' H1 H1' (hset _ _ st st' (hdec env env' he) ha)
+            hH1 hB1 (spR_mono hS ht)) ht
+
 end
 
 end NanoMain
