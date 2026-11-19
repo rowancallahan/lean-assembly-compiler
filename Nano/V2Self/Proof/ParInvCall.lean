@@ -33,7 +33,7 @@ theorem rep_push {h ts : Buf} {st : St} {fs : List Frame} (f : Frame) (a b : UIn
 theorem h_args {h ts : Buf} {st : St} {c : Callee} {k : Nat} {fs : List Frame} (r : Rep h ts st (.args c k :: fs))
     (hD : inDefF fs = true) (hs : bget (step h) 0 ≠ 0) :
     ∃ fr st', stepF (.args c k) st = some (fr, st') ∧ Rep (step h) ts st' (fr ++ fs) := by
-  obtain ⟨E, ⟨ea, eb⟩, R1⟩ := rep_pop r hD
+  obtain ⟨E, ⟨ea, eb⟩, R1⟩ := rep_pop r (by simp [inDefF, Frame.isDefs])
   simp only [Frame.code] at E
   generalize (taskAt h fs.length).a = a at E ea
   generalize (taskAt h fs.length).b = b at E eb
@@ -50,7 +50,7 @@ theorem h_args {h ts : Buf} {st : St} {c : Callee} {k : Nat} {fs : List Frame} (
     rw [ev] at hs ⊢
     have eb1 : (b - 1).toNat = k := by
       rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr (by simp; omega))]; simp; omega
-    have R2 := rep_push (.args c k) a (b - 1) R1 hD.symm ⟨ea, eb1⟩ (fun z => hs (v1_zero _ _ _ _ z))
+    have R2 := rep_push (.args c k) a (b - 1) R1 (by simp [inDefF, Frame.isDefs]) ⟨ea, eb1⟩ (fun z => hs (v1_zero _ _ _ _ z))
     have R3 := rep_push .argAtom 0 0 R2 rfl trivial hs
     exact ⟨[.argAtom, .args c k], st, args_succ c k st, R3⟩
 
@@ -58,7 +58,7 @@ theorem h_args {h ts : Buf} {st : St} {c : Callee} {k : Nat} {fs : List Frame} (
 theorem h_mkCallN {h ts : Buf} {st : St} {c : Callee} {d : Nat} {fs : List Frame} (r : Rep h ts st (.mkCallN c d :: fs))
     (hD : inDefF fs = true) (hd : d ≤ st.vals.length) (hs : bget (step h) 0 ≠ 0) :
     ∃ fr st', stepF (.mkCallN c d) st = some (fr, st') ∧ Rep (step h) ts st' (fr ++ fs) := by
-  obtain ⟨E, ⟨ea, eb⟩, R1⟩ := rep_pop r hD
+  obtain ⟨E, ⟨ea, eb⟩, R1⟩ := rep_pop r (by simp [inDefF, Frame.isDefs])
   simp only [Frame.code] at E
   generalize (taskAt h fs.length).a = a at E ea
   generalize (taskAt h fs.length).b = b at E eb
@@ -69,7 +69,7 @@ theorem h_mkCallN {h ts : Buf} {st : St} {c : Callee} {d : Nat} {fs : List Frame
   have ev : step h = v1 (v1 (bset h 5 fs.length.toUInt64) 48 a (bget h 8 - b)) 47 a (bget h 8 - b) := by
     rw [E]; simp [v96, v121, e8']
   rw [ev] at hs ⊢
-  have R2 := rep_push (.mkCall c (st.vals.length - d)) a (bget h 8 - b) R1 hD.symm ⟨ea, en⟩ (fun z => hs (v1_zero _ _ _ _ z))
+  have R2 := rep_push (.mkCall c (st.vals.length - d)) a (bget h 8 - b) R1 (by simp [inDefF, Frame.isDefs]) ⟨ea, en⟩ (fun z => hs (v1_zero _ _ _ _ z))
   have R3 := rep_push (.argCheck c (st.vals.length - d)) a (bget h 8 - b) R2 rfl ⟨ea, en⟩ hs
   exact ⟨_, st, mkCallN_eq c d st, R3⟩
 
