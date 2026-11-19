@@ -13,7 +13,7 @@ theorem gen_runS (KL : SimW.LayW) (c : List UInt8) (ds : List DefA) (hXl : (seri
     (h : g41 c (serialize ds) ≠ []) (hdb : ∀ d ∈ ds, DB d)
     (s0 : St) :
     ∃ hs T o, DefsC (serialize ds) g_999 bnew 1 (g34 bnew) hs T (serialize ds).length o ∧ hs ≠ [] ∧
-      (o.length < 2 ^ 24 →
+      (
         let P := pcOf 524288 ((s0.x 12).toNat + 16) (s0.x 11) (fun i => lbm s0.m ((s0.x 10).toNat + i)) T
         let D := defsJ P ds 0 hs.length
         let C := stubJ (11 + D.length) ++ D ++ startJ (11 + D.length) (P.T (hs.length - 1))
@@ -40,8 +40,8 @@ theorem gen_runS (KL : SimW.LayW) (c : List UInt8) (ds : List DefA) (hXl : (seri
              ∃ n t', Proven.Steps n t t' ∧ SimW.RelW KL (((s0.x 1).toNat - s0.b) / 4, s3) t'))) := by
   obtain ⟨hs, T, o, hD, hne, hr⟩ := gen_C c ds hXl h hdb ((s0.x 12).toNat + 16) (s0.x 11)
     (fun i => lbm s0.m ((s0.x 10).toNat + i))
-  refine ⟨hs, T, o, hD, hne, fun hol => ?_⟩
-  obtain ⟨hg, np, nr, hopv, hbd, hTp, hpk, -⟩ := hr hol
+  refine ⟨hs, T, o, hD, hne, ?_⟩
+  obtain ⟨hg, np, nr, hopv, hbd, hTp, hpk, -⟩ := hr
   refine ⟨hg, ?_⟩
   intro hpar E0 hE0 z0 ha8 hroom hE62 hcb hin63 hin vs H' hSd N bs hN hPb hPN hbs hQ hout hlo hhi hbase hc18
     hinw hwO hra

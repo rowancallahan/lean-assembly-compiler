@@ -14,7 +14,7 @@ theorem gen_C (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length < 2
     (h : g41 c (serialize ds) ≠ []) (hdb : ∀ d ∈ ds, DB d)
     (hb : Nat) (c29 : UInt64) (inp : Nat → UInt64) :
     ∃ hs T o, DefsC (serialize ds) g_999 bnew 1 (g34 bnew) hs T (serialize ds).length o ∧ hs ≠ [] ∧
-      (o.length < 2 ^ 24 →
+      (
         g41 c (serialize ds) = g40 16777216 c ((stubJ (11 + (defsJ (pcOf 524288 hb c29 inp T) ds 0 hs.length).length) ++
           defsJ (pcOf 524288 hb c29 inp T) ds 0 hs.length ++
           startJ (11 + (defsJ (pcOf 524288 hb c29 inp T) ds 0 hs.length).length)
@@ -35,8 +35,8 @@ theorem gen_C (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length < 2
             ScV (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body ∧ ∀ j, rd (dA ds k).body j → j < (dA ds k).npw) →
           ∀ k, k < hs.length → DefX C ((pcOf 524288 hb c29 inp T).T k) (dA ds k).npw (dA ds k).nres IG hb E0
             (semAt (pcOf 524288 hb c29 inp T) ds k)) := by
-  obtain ⟨hs, T, o, hD, hne, hg, l2, l5, hrest⟩ := gen_top c ds hXl h hdb hb c29 inp
-  refine ⟨hs, T, o, hD, hne, fun hol => ?_⟩
+  obtain ⟨hs, T, o, hD, hne, hg, l2, l5, hol, hrest⟩ := gen_top c ds hXl h hdb hb c29 inp
+  refine ⟨hs, T, o, hD, hne, ?_⟩
   obtain ⟨ho, hhd, hbd, hTp, hpk, hX⟩ := hrest hol
   have hsl : 0 < hs.length := List.length_pos_iff.mpr hne
   have hlast : hs.getLastD 0 = hs.getD (hs.length - 1) 0 := by
@@ -87,7 +87,7 @@ theorem gen_run (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length <
     (h : g41 c (serialize ds) ≠ []) (hdb : ∀ d ∈ ds, DB d)
     (s0 : St) :
     ∃ hs T o, DefsC (serialize ds) g_999 bnew 1 (g34 bnew) hs T (serialize ds).length o ∧ hs ≠ [] ∧
-      (o.length < 2 ^ 24 →
+      (
         let P := pcOf 524288 ((s0.x 12).toNat + 16) (s0.x 11) (fun i => lbm s0.m ((s0.x 10).toNat + i)) T
         let D := defsJ P ds 0 hs.length
         let C := stubJ (11 + D.length) ++ D ++ startJ (11 + D.length) (P.T (hs.length - 1))
@@ -109,8 +109,8 @@ theorem gen_run (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length <
            ∀ i, i < N.toNat → lbm s3.m ((s0.x 13).toNat + i) = bs i &&& 255)) := by
   obtain ⟨hs, T, o, hD, hne, hr⟩ := gen_C c ds hXl h hdb ((s0.x 12).toNat + 16) (s0.x 11)
     (fun i => lbm s0.m ((s0.x 10).toNat + i))
-  refine ⟨hs, T, o, hD, hne, fun hol => ?_⟩
-  obtain ⟨hg, np, nr, -, -, -, -, hX⟩ := hr hol
+  refine ⟨hs, T, o, hD, hne, ?_⟩
+  obtain ⟨hg, np, nr, -, -, -, -, hX⟩ := hr
   refine ⟨hg, ?_⟩
   intro hpar E0 hE0 z0 ha8 hroom hE62 hcb hin63 hin vs H' hSd N bs hN hPb hPN hbs hQ hout
   generalize pcOf 524288 ((s0.x 12).toNat + 16) (s0.x 11) (fun i => lbm s0.m ((s0.x 10).toNat + i)) T = P at *

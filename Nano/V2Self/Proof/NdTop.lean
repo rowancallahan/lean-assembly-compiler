@@ -43,7 +43,7 @@ theorem gen_words (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length
         o = g34 bnew ++ (defsJ (pcOf 524288 hb c29 inp T) ds 0 hs.length).map encG ∧
         ∀ j, j < hs.length → (pcOf 524288 hb c29 inp T).T j =
           (g34 bnew).length + (defsJ (pcOf 524288 hb c29 inp T) ds 0 j).length) := by
-  obtain ⟨_, _, hs, T, o, hD, hne, _, _, hg⟩ := gen41_ok c (serialize ds) hXl h
+  obtain ⟨_, _, hs, T, o, hD, hne, _, _, hg, -⟩ := gen41_ok c (serialize ds) hXl h
   refine ⟨hs, T, o, hD, hne, hg, fun hol => ?_⟩
   have := chainW (P := pcOf 524288 hb c29 inp T) (ds := ds) (u := g_999) rfl (Tf := T) (fun j => rfl) hD rfl ds
     (by simp [bnew]) (SerAt_serialize ds) (by simp [serialize]; omega) hdb (by simp [bnew]) (by simp [bnew]) hol
