@@ -47,4 +47,57 @@ theorem Star.noOut {c d : List Frame × St} (h : Star c d) (hk : c.1.all (fun g 
       obtain ⟨e3, e4⟩ := ih (by simp [List.all_append, e2, hr])
       exact ⟨e3.trans e1, e4⟩
 
+
+theorem pBinders_noLs : ∀ (f : Nat) (b : Bool) (ts : List Tok) (g : List (List (List Nat) × TyR)) (r : List Tok),
+    pBinders f b ts = some (g, r) → ∀ x ∈ g, x.2 ≠ .sh .ls := by
+  intro f
+  induction f with
+  | zero => intro b ts g r h; simp [pBinders] at h
+  | succ f ih =>
+    intro b ts g r h x hx
+    rw [pBinders.eq_def] at h
+    simp only at h
+    split at h
+    all_goals first
+      | (cases h; done)
+      | (simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl⟩ := h; simp at hx; done)
+      | (obtain rfl : f = _ := Nat.succ.inj ‹f + 1 = _›
+         obtain ⟨⟨ns, r1⟩, _, h2⟩ := Option.bind_eq_some_iff.mp h
+         simp only at h2
+         split at h2
+         · obtain ⟨⟨t, r3⟩, h3, h4⟩ := Option.bind_eq_some_iff.mp h2
+           simp only at h4
+           split at h4
+           all_goals first
+             | (cases h4; done)
+             | (obtain ⟨⟨g', r5⟩, h5, h6⟩ := Option.map_eq_some_iff.mp h4
+                simp only [Prod.mk.injEq] at h6; obtain ⟨rfl, rfl⟩ := h6
+                rcases List.mem_cons.mp hx with rfl | hx
+                · exact (pTy_noLs f).2 _ _ _ h3
+                · exact ih _ _ _ _ h5 x hx)
+         · cases h2)
+
+theorem mem_go_kind (p : Ps) : ∀ (s : Nat) (ns : List (List Nat)) (e : List Nat × Nat × Ps), e ∈ (bindSlots.go p s ns).1 → e.2.2 = p := by
+  intro s ns e he
+  induction ns generalizing s with
+  | nil => simp [go_nil] at he
+  | cons x l ih =>
+    rw [go_cons] at he
+    rcases List.mem_cons.mp he with rfl | he
+    · rfl
+    · exact ih _ he
+
+theorem mem_bindSlots_kind : ∀ (g : List (List (List Nat) × TyR)) (s : Nat) (u : Bool) (e : List Nat × Nat × Ps),
+    e ∈ (bindSlots s u g).1 → e.2.2 ∈ (bindSlots s u g).2.1
+  | [], s, u, e, he => by simp [bindSlots_nil] at he
+  | (ns, t) :: g, s, u, e, he => by
+    rw [bindSlots_cons] at he ⊢
+    rcases List.mem_append.mp he with he | he
+    · apply List.mem_append_left
+      rw [mem_go_kind _ _ _ _ he, go_ps]
+      cases ns with
+      | nil => simp [go_nil] at he
+      | cons y l => simp
+    · exact List.mem_append_right _ (mem_bindSlots_kind g _ _ e he)
+
 end ParRun
