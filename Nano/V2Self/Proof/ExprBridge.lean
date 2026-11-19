@@ -23,6 +23,9 @@ def GoodW : J → Prop
   | .alu op rd a b => rd < 32 ∧ a < 32 ∧ b < 32 ∧ 1 ≤ op ∧ op ≤ 8
   | .slli rd rs sh => rd < 32 ∧ rs < 32 ∧ sh < 64
   | .lbu rd rs off => rd < 32 ∧ rs < 32 ∧ -2048 ≤ off ∧ off < 2048
+  | .srli _ _ _ => False
+  | .bne _ _ _ => False
+  | .sb _ _ _ => False
 
 theorem encG_addi (rd rs : Nat) (imm : Int) (h : GoodW (.addi rd rs imm)) :
     (encG (.addi rd rs imm)).toNat = SimW.encJ (.addi rd rs imm) := by
@@ -135,5 +138,8 @@ theorem encG_encJ (i : J) (h : GoodW i) : (encG i).toNat = SimW.encJ i := by
   | alu op rd a b => exact encG_alu _ _ _ _ h
   | slli rd rs sh => exact encG_slli _ _ _ h
   | lbu rd rs off => exact encG_lbu _ _ _ h
+  | srli _ _ _ => exact h.elim
+  | bne _ _ _ => exact h.elim
+  | sb _ _ _ => exact h.elim
 
 end CallProbe

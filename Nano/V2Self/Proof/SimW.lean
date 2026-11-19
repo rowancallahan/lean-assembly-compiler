@@ -530,6 +530,9 @@ def encJ : CallProbe.J → Nat
   | .alu op rd a b => (I.r (ropOf op) rd a b).enc
   | .slli rd rs sh => (I.i .slli rd rs (sh : Int)).enc
   | .lbu rd rs off => (I.lbu rd rs off).enc
+  | .srli rd rs sh => (C.g2 C.g_19 5 (UInt64.ofNat rd) (UInt64.ofNat rs) (UInt64.ofNat sh)).toNat
+  | .bne a b off => (C.g4 1 (UInt64.ofNat a) (UInt64.ofNat b) (UInt64.ofInt (4 * off))).toNat
+  | .sb r2 r1 off => (C.g3 0 (UInt64.ofNat r2) (UInt64.ofNat r1) (UInt64.ofInt off)).toNat
 
 /-- the side conditions of one J step that the Sail step needs (ranges, no wrap, work cells, aligned return) -/
 def Safe (K : LayW) (C : List CallProbe.J) : Nat × CallProbe.St → Prop
@@ -607,6 +610,9 @@ theorem sim_stepW {K : LayW} {C : List CallProbe.J} (hK : K.Ok) (hW : K.W = C.ma
     | lbu rd rs off =>
       obtain ⟨h1, h2, h3, h4, h5, h6⟩ := hS
       simp only [Option.some.injEq] at hs; subst hs; exact sim_lbuW hK hR (hWpc _ hc) h1 h2 h3 h4 h5 h6
+    | srli _ _ _ => exact hS.elim
+    | bne _ _ _ => exact hS.elim
+    | sb _ _ _ => exact hS.elim
 
 /-- J runs whose every step is `Safe` -/
 inductive SStar (K : LayW) (C : List CallProbe.J) : Nat × CallProbe.St → Nat × CallProbe.St → Prop

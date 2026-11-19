@@ -25,6 +25,9 @@ def encG : J → UInt64
   | .alu op rd a b => g1 (aluF op).1 (aluF op).2 rd.toUInt64 a.toUInt64 b.toUInt64
   | .slli rd rs sh => g2 g_19 1 rd.toUInt64 rs.toUInt64 sh.toUInt64
   | .lbu rd rs off => g2 g_3 4 rd.toUInt64 rs.toUInt64 (iu off)
+  | .srli rd rs sh => g2 g_19 5 rd.toUInt64 rs.toUInt64 sh.toUInt64
+  | .bne a b off => g4 1 a.toUInt64 b.toUInt64 (iu (4 * off))
+  | .sb r2 r1 off => g3 0 r2.toUInt64 r1.toUInt64 (iu off)
   | .jalr rd rs => g2 g_103 0 rd.toUInt64 rs.toUInt64 0
 
 theorem g31_exact (o : Buf) (p : Nat) (hp : 1 ≤ p) (hp8 : p ≤ 8) :

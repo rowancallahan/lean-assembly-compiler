@@ -23,6 +23,10 @@ inductive J where
   /-- branches of IF (Gen: `beq t0, t1, +8` / `bltu t0, t1, +8`) -/
   | beq (a b : Nat) (off : Int)
   | bltu (a b : Nat) (off : Int)
+  /-- start code only (g35): logical right shift, branch if not equal, byte store -/
+  | srli (rd rs sh : Nat)
+  | bne (a b : Nat) (off : Int)
+  | sb (rs2 rs1 : Nat) (off : Int)
 
 structure St where
   x : Nat → UInt64
@@ -39,6 +43,11 @@ def aluf (op : Nat) (a b : UInt64) : UInt64 :=
   if op = 1 then a + b else if op = 2 then a - b else if op = 3 then a * b else if op = 4 then a &&& b
   else if op = 5 then a ||| b else if op = 6 then a <<< b else if op = 7 then a >>> b else a ^^^ b
 def lbm (m : Nat → UInt64) (a : Nat) : UInt64 := (m (a - a % 8) >>> (8 * (a % 8)).toUInt64) &&& 255
+/-- byte store: the low byte of v into byte a of the (aligned, little-endian) word cells -/
+def sbm (m : Nat → UInt64) (a : Nat) (v : UInt64) : Nat → UInt64 :=
+  fun c => if c = a - a % 8 then
+    (m c &&& ~~~((255 : UInt64) <<< (8 * (a % 8)).toUInt64)) ||| ((v &&& 255) <<< (8 * (a % 8)).toUInt64)
+    else m c
 
 def step (C : List J) : Nat × St → Option (Nat × St)
   | (pc, s) => match C[pc]? with
@@ -53,6 +62,9 @@ def step (C : List J) : Nat × St → Option (Nat × St)
     | some (.lbu rd rs off) => some (pc + 1, wr s rd (lbm s.m (ea (s.x rs) off)))
     | some (.beq a b off) => some (if s.x a = s.x b then ((pc : Int) + off).toNat else pc + 1, s)
     | some (.bltu a b off) => some (if (s.x a).toNat < (s.x b).toNat then ((pc : Int) + off).toNat else pc + 1, s)
+    | some (.srli rd rs sh) => some (pc + 1, wr s rd (s.x rs >>> sh.toUInt64))
+    | some (.bne a b off) => some (if s.x a ≠ s.x b then ((pc : Int) + off).toNat else pc + 1, s)
+    | some (.sb r2 r1 off) => some (pc + 1, { s with m := sbm s.m (ea (s.x r1) off) (s.x r2) })
     | none => none
 
 inductive Star (C : List J) : Nat × St → Nat × St → Prop
