@@ -119,4 +119,106 @@ theorem host_room (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List Def
   have := frame a.toNat a.toNat_lt (by simp [KL]; omega) hw
   rwa [UInt64.ofNat_toNat] at this
 
+/-- **tiny work block, on any target**: fewer than 16 usable bytes: the start code's own check returns to the caller
+with status = −1, memory changed only in the work block, the kept registers, configured -/
+theorem host_tiny (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : ParsesProgram ts p)
+    (Ks : List (List Nat)) (hO : OwnSpec.progOk [] [] Ks p = true) (hK2 : ∀ K ∈ Ks, ∀ k ∈ K, k ≤ 2)
+    (hXl : (serialize p).length < 2 ^ 31) (h : C.g41 c (serialize p) ≠ []) (hdb : ∀ d ∈ p, DB d)
+    (B : List UInt8) (hB : ∀ Cj : List J, Cj.length < 2 ^ 18 →
+      C.g41 c (serialize p) = C.g40 16777216 c (Cj.map encG) 0 [] →
+      (Cj.map encG).map UInt64.toNat = Cj.map SimW.encJX → B = tbytes T Cj)
+    {s : T.M.State} {call : Call} {x : List UInt8} (sc : StartCorrect T.M s call B x)
+    (hsm : (call.workAddress.toNat + call.workLength) / 8 * 8 < call.workAddress.toNat + 16) :
+    ∃ s', Runs T.M s s' ∧ (T.M.observe s').programCounter = call.returnAddress ∧
+      (T.M.observe s').register T.M.mapping.status = oomFlag ∧
+      (∀ a, Outside a (call.workAddress, call.workLength) → (T.M.observe s').memory a = (T.M.observe s).memory a) ∧
+      KeptRegisters T.M s s' ∧ T.M.configured s' := by
+  obtain ⟨a1, a2, b1, b2, c1, c2, d1, d2, e1, e2, e3, f1, f2, g1, r32⟩ := blocks_of L sc
+  have r0 := L.ram.1
+  have ilen := sc.inputLength
+  have xs := sc.inputSmall
+  let base := (T.M.observe s).programCounter.toNat
+  let s0 := jOfT T s base
+  obtain ⟨j1, j2, j10, j11, j12, j13, j0, jb⟩ := jregs L sc base
+  have hx11 : s0.x 11 = UInt64.ofNat x.length := j11
+  have hxm : ∀ i, i < x.length → lbm s0.m ((s0.x 10).toNat + i) = (x.getD i 0).toUInt64 := by
+    intro i hi
+    obtain ⟨-, hr⟩ := read_some sc.inputLoaded
+    show lbm (wordT T s) _ = _
+    rw [lbm_wordT, j10]; unfold gbT; rw [hr i hi, List.getElem?_eq_getElem hi]
+    simp [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem hi]
+  obtain ⟨Cj, pr, S0, Tb, hg, hc18, hst, hss, h32, hwd, -⟩ :=
+    gen_main c hP Ks hO hK2 hXl h hdb s0 x hx11 (by omega) hxm
+  have hBe := hB Cj hc18 hg hwd
+  subst hBe
+  have hn := tbytes_len L Cj
+  rw [hn] at d2 e3 f2 g1
+  let wb := call.workAddress.toNat
+  have wa : wb % 8 = 0 := sc.workAligned
+  let E0 := (wb + call.workLength) / 8 * 8
+  have x12 : (s0.x 12).toNat = wb := by rw [j12]
+  have hE0 : ((s0.x 2 >>> 3) <<< 3).toNat = E0 := by
+    rw [j2]
+    have : (call.workAddress + call.workLength.toUInt64).toNat = wb + call.workLength := by
+      simp only [UInt64.toNat_add, UInt64.toNat_ofNat', Nat.toUInt64]
+      rw [Nat.mod_eq_of_lt (show call.workLength < 2 ^ 64 by omega), Nat.mod_eq_of_lt (by omega)]
+    simp only [UInt64.toNat_shiftLeft, UInt64.toNat_shiftRight, this]
+    simp [Nat.shiftLeft_eq, Nat.shiftRight_eq_div_pow, E0]; omega
+  let KL : LayW := ⟨base, T.words Cj, wb, E0, call.inputAddress.toNat, x.length, call.outputAddress.toNat,
+    0, T.m0 s⟩
+  obtain ⟨hl, hR0⟩ := enter L sc KL rfl rfl rfl rfl (by simp [KL, E0]; omega) rfl rfl rfl (Nat.zero_le _)
+  -- the start code's size check
+  obtain ⟨w, hsw⟩ := hss
+  have q0 : Cj[0]? = some (.jal 0 (S0 : Int)) := by have := hst 0 (by simp [stubJ]); simpa [stubJ] using this
+  have c0 := At.get hsw 0 (by simp [startJ]); have c1 := At.get hsw 1 (by simp [startJ])
+  have c2 := At.get hsw 2 (by simp [startJ]); have c3 := At.get hsw 3 (by simp [startJ])
+  have c4 := At.get hsw 4 (by simp [startJ]); have c5 := At.get hsw 5 (by simp [startJ])
+  have c6 := At.get hsw 6 (by simp [startJ])
+  simp only [startJ, List.getElem?_cons_zero, List.getElem?_cons_succ, Nat.add_zero] at c0 c1 c2 c3 c4 c5 c6
+  have l12 : (s0.x 12).toNat + 16 < 2 ^ 64 := by rw [x12]; omega
+  have e12 : CallProbe.ea (s0.x 12) 16 = (s0.x 12).toNat + 16 := by simp [CallProbe.ea]; omega
+  let sa : CallProbe.St := CallProbe.wr s0 30 (UInt64.ofNat ((s0.x 12).toNat + 16))
+  let sb : CallProbe.St := CallProbe.wr sa 31 (sa.x 2 >>> (3 : Nat).toUInt64)
+  let sc' : CallProbe.St := CallProbe.wr sb 31 (sb.x 31 <<< (3 : Nat).toUInt64)
+  have scx : ∀ j, j ≠ 30 → j ≠ 31 → sc'.x j = s0.x j := by
+    intro j h1 h2; simp [sc', sb, sa, CallProbe.wr, CallProbe.upd, h1, h2]
+  have sc30 : (sc'.x 30).toNat = wb + 16 := by
+    simp [sc', sb, sa, CallProbe.wr, CallProbe.upd]; rw [x12]; omega
+  have sc31 : (sc'.x 31).toNat = E0 := by
+    rw [← hE0]; simp [sc', sb, sa, CallProbe.wr, CallProbe.upd]
+  have hrun : CallProbe.run Cj 5 (0, s0) = some (S0 + 4, sc') := by
+    have : ¬ (sc'.x 30).toNat ≤ (sc'.x 31).toNat := by rw [sc30, sc31]; omega
+    simp [CallProbe.run, CallProbe.step, q0, c0, c1, c2, c3, e12, sa, sb, sc', CallProbe.wr, CallProbe.upd] at this ⊢
+    exact fun hh => absurd hh (Nat.not_le.mpr this)
+  have hsx : SStarX KL Cj (0, s0) (S0 + 4, sc') := sstarX_of_run hrun (fun j hj c hc => by
+    rcases (by omega : j = 0 ∨ j = 1 ∨ j = 2 ∨ j = 3 ∨ j = 4) with rfl | rfl | rfl | rfl | rfl
+    · simp [CallProbe.run] at hc; subst hc; simp [SafeX, q0]; omega
+    all_goals simp [CallProbe.run, CallProbe.step, q0, c0, c1, c2, e12, CallProbe.wr, CallProbe.upd] at hc
+    all_goals subst hc
+    all_goals simp [SafeX, c0, c1, c2, c3, CallProbe.wr, CallProbe.upd]
+    all_goals omega)
+  obtain ⟨s1, r1, R1⟩ := sim_star L hl hsx hR0
+  obtain ⟨s2, r2, R2⟩ := L.addi_ok hl R1 c4 (by omega) (by omega) (by omega) (by omega)
+  obtain ⟨s3, r3, R3⟩ := L.addi_ok hl R2 c5 (by omega) (by omega) (by omega) (by omega)
+  generalize hs2 : CallProbe.wr (CallProbe.wr sc' 10 (sc'.x 0 + UInt64.ofInt (-1))) 11
+    ((CallProbe.wr sc' 10 (sc'.x 0 + UInt64.ofInt (-1))).x 0 + UInt64.ofInt 0) = st2 at R3
+  have x2 : ∀ j, j ≠ 10 → j ≠ 11 → j ≠ 30 → j ≠ 31 → st2.x j = s0.x j := by
+    intro j a b c d; rw [← hs2]; simp [CallProbe.wr, CallProbe.upd, a, b]; exact scx j c d
+  have z00 : sc'.x 0 = 0 := by rw [scx 0 (by decide) (by decide), j0]
+  have x210 : st2.x 10 = UInt64.ofInt (-1) := by rw [← hs2]; simp [CallProbe.wr, CallProbe.upd, z00]
+  have r21 : st2.x 1 = s0.x 1 := x2 1 (by decide) (by decide) (by decide) (by decide)
+  have hra : (st2.x 1).toNat % 4 = 0 := by rw [r21, j1]; exact sc.returnAligned
+  obtain ⟨s4, r4, pc4, q10, -, kept, -, frame, cfg⟩ := fin_on L hl R3 (pr := S0 + 4 + 1 + 1)
+    (by rw [show S0 + 4 + 1 + 1 = S0 + 6 by omega]; exact c6) hra
+    (fun j hj => by
+      have : j ≠ 10 ∧ j ≠ 11 ∧ j ≠ 30 ∧ j ≠ 31 := by simp [keepR] at hj; omega
+      exact x2 j this.1 this.2.1 this.2.2.1 this.2.2.2)
+    (x2 8 (by decide) (by decide) (by decide) (by decide)) rfl wb (wb + call.workLength) (Nat.le_refl _)
+    (by simp [KL, E0]; omega) [] rfl (fun i hi => absurd hi (by simp))
+  obtain ⟨-, -, -, -, -, -, hst', -⟩ := L.reg_map
+  refine ⟨s4, Runs.trans r1 (Runs.trans r2 (Runs.trans r3 r4)), by rw [pc4, r21, j1],
+    by rw [hst', q10, x210]; exact oomFlag_eq, fun a hw => ?_, kept, cfg⟩
+  have := frame a.toNat a.toNat_lt (by simp [KL]; omega) hw
+  rwa [UInt64.ofNat_toNat] at this
+
 end JT
