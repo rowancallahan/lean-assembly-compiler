@@ -217,8 +217,8 @@ theorem SerAt.cons {X : Buf} {i : Nat} {a : UInt64} {l : List UInt64} (h : SerAt
 structure SK (S : SC) (K : GenRef.Cx) : Prop where
   p : S.p = K.p.toNat
   κ : S.κ = K.u.toNat
-  T : ∀ n : Nat, S.T n = (bget K.T n.toUInt64).toNat
-  Tb : ∀ n : Nat, (bget K.T n.toUInt64).toNat < 2 ^ 32
+  T : ∀ n : Nat, n.toUInt64 < bsize K.T → S.T n = (bget K.T n.toUInt64).toNat
+  Tb : ∀ n : Nat, n.toUInt64 < bsize K.T → (bget K.T n.toUInt64).toNat < 2 ^ 32
   p251 : K.p < 251
   ns251 : K.ns < 251
 

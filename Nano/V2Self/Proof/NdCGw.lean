@@ -29,16 +29,17 @@ theorem cgV_call (hS : SK S K) (n : Nat) (as : List Nd) (IAS : CGL S K as) :
   obtain ⟨t2, sa3⟩ := sa2.cons
   simp only [NB] at nb
   obtain ⟨nn, nl, na⟩ := nb
-  obtain ⟨ca, _, _, hl, rfl⟩ := inv_call hc t0
+  obtain ⟨ca, _, hid, hl, rfl⟩ := inv_call hc t0
+  rw [t1] at hid
   rw [t2, toU_lt _ nl] at hl
   simp only [List.length_append, List.length_cons, List.length_nil] at hh
   obtain ⟨e1, m, eE⟩ := IAS (d + 1) (i + 3) h as.length ca i' E na rfl sa3 hl (by omega) (by omega)
   have e0 := eE (by omega); subst e0
   have lA : ca.length = lnL S as := by rw [m.len, tmL_len]
   have eT : bget K.T (tg K.X (i + 1)) = (S.T n).toUInt64 := by
-    rw [t1, hS.T n]; simp [Nat.toUInt64]
+    rw [t1, hS.T n hid]; simp [Nat.toUInt64]
   rw [eT, show (1 : UInt64) = (1 : Nat).toUInt64 from rfl,
-    g13_enc 1 (h + ca.length) (S.T n) (by omega) (by rw [hS.T]; exact hS.Tb n)]
+    g13_enc 1 (h + ca.length) (S.T n) (by omega) (by rw [hS.T n hid]; exact hS.Tb n hid)]
   refine ⟨by simp only [e1, Nd.ser, List.length_cons]; omega, ?_, fun _ => rfl⟩
   simp only [tm]
   have m2 := Mt.app (m.retarget (h + (ca ++ [encG (J.jal 1 ((S.T n : Int) - ((h + ca.length : Nat) : Int)))]).length))
