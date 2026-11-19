@@ -129,4 +129,53 @@ theorem defX {C : List J} {f lb p nl q hb E0 : Nat} {IG : St → Prop} {Rb Wb : 
       rw [mo a (Or.inr ha), m2 a (by omega) (fun k hk _ => by rw [h8]; have := (slot_ne k hk).2.2; omega)]
       exact m1 a (by omega) (by omega)
 
+def callS (pa : Nat) (SA : SemW) (Sd : List UInt64 → Nat → Hp → Option (List UInt64 × Hp)) : SemW :=
+  fun env sp H => (SA env sp H).bind fun r => Sd r.1 (sp - 8 * pa) r.2
+
+/-- **CALL**: the pa argument words, then `jal ra f` into a def satisfying `DefX` -/
+theorem callX {C : List J} {pc la p nl pa q f hb E0 : Nat} {IG : St → Prop} {RA WA : Nat → Prop} {SA : SemW}
+    {Sd : List UInt64 → Nat → Hp → Option (List UInt64 × Hp)} {off : Int}
+    (hIG : IGOK hb E0 IG) (hA : EVHw C pc la p nl (IGp IG E0 p) hb RA WA pa SA)
+    (hj : C[pc + la]? = some (.jal 1 off)) (hf : (((pc + la : Nat) : Int) + off).toNat = f)
+    (hD : DefX C f pa q IG hb E0 Sd) (hE62 : E0 < 2 ^ 62)
+    (hcb : ∀ s, IG s → s.b + 4 * (pc + la + 1) < 2 ^ 64) :
+    EVHw C pc (la + 1) p nl (IGp IG E0 p) hb RA WA q (callS pa SA Sd) where
+  stable := fun env env' sp H h => by
+    simp only [callS]; rw [hA.stable env env' sp H h]
+  run := fun s env H vs H' I0 z0 F0 O0 R0 hS => by
+    simp only [callS, Option.bind_eq_some_iff] at hS
+    obtain ⟨⟨u, H1⟩, hSA, hSd⟩ := hS
+    obtain ⟨s1, env1, r1, I1, z1, p1, lu, v1, e81, F1, ag1, R1, m1⟩ := hA.run s env H u H1 I0 z0 F0 O0 R0 hSA
+    obtain ⟨o1, o2, o3⟩ := O0
+    have sp1 : 16 ≤ (s1.x 31).toNat := hrel_sp R1
+    let sj := wr s1 1 (UInt64.ofNat (s1.b + 4 * (pc + la + 1)))
+    have stj : step C (pc + la, s1) = some (f, sj) := by rw [s_jal hj, hf]
+    have ej : sj = { s1 with x := upd s1.x 1 (UInt64.ofNat (s1.b + 4 * (pc + la + 1))) } := by simp [sj, wr]
+    have jx : ∀ i, i ≠ 1 → sj.x i = s1.x i := by intro i hi; rw [ej]; simp [upd, hi]
+    have jm : sj.m = s1.m := by rw [ej]
+    have jb : sj.b = s1.b := by rw [ej]
+    have b1 : s1.b = s.b := r1.b
+    have Ij : IG sj := hIG s1 sj I1.1 (jx 28 (by decide)) (jx 29 (by decide)) jb (fun a _ => by rw [jm])
+    have Rj : HRel hb sj H1 := HRel_stack R1 (jx 30 (by decide)) (by rw [jx 31 (by decide)]; exact R1.2.2.1)
+      (fun a _ _ => by rw [jm])
+    have j31 : (sj.x 31).toNat = (s.x 31).toNat - 8 * pa := by rw [jx 31 (by decide), p1]
+    have hargs : ∀ i, i < pa → sj.m ((sj.x 31).toNat + 8 * (pa - 1 - i)) = u.getD i 0 := by
+      intro i hi; rw [jm, j31, show (s.x 31).toNat - 8 * pa + 8 * (pa - 1 - i) = (s.x 31).toNat - 8 * (i + 1) by omega]
+      exact v1 i hi
+    have htop : (sj.x 31).toNat + 8 * pa ≤ E0 := by have := I0.2; rw [j31]; omega
+    have hx1 : sj.x 1 = UInt64.ofNat (sj.b + 4 * (pc + la + 1)) := by rw [ej]; simp [upd]
+    have hret : sj.b + 4 * (pc + la + 1) < 2 ^ 64 := by rw [jb, b1]; exact hcb s I0.1
+    have hSd' : Sd u (sj.x 31).toNat H1 = some (vs, H') := by rw [j31]; exact hSd
+    obtain ⟨s', st', I', z', p', l', v', e8', R', m'⟩ :=
+      hD.run sj u H1 vs H' (pc + la + 1) Ij (by rw [jx 0 (by decide), z1]) Rj lu hargs htop hE62 hx1 hret hSd'
+    rw [j31, show (s.x 31).toNat - 8 * pa + 8 * pa = (s.x 31).toNat by omega] at p' v' m'
+    have x8 : s'.x 8 = s.x 8 := by rw [e8', jx 8 (by decide), e81]
+    refine ⟨s', env1, ((r1.tail stj).trans st'), ⟨I', by rw [x8]; exact I0.2⟩, z', p', l', v', x8, ?_, ag1, R', ?_⟩
+    · intro k hk
+      show s'.m (slotAddr p (s'.x 8).toNat k) = env1 k
+      have hk' := slotAddr_ge (T := (s.x 31).toNat) (by omega) o2 hk
+      rw [x8, m' _ hk', jm, ← e81]; exact F1 k hk
+    · intro a ha hW
+      rw [m' a ha, jm]; exact m1 a ha hW
+
 end Templates
