@@ -489,3 +489,10 @@ Once C_correctL has no premises and the certificate closes, reorganize Nano/V2Se
 - delete dead lemmas and scratch modules; keep each module ≤ 5 min / 8 GB;
 - one top-level file that states the final theorem and lists every remaining hypothesis, for the owner's review;
 - check axioms on the top theorem and the fixpoint after the reshuffle (moves only, no proof changes in the same commit).
+
+## LATER (owner, 2026-11-19): remove trust in the bootstrap toolchain
+For now ACCEPTED: B₁ is compiled by the Lean toolchain (trusted), and the fixed point B₃ == B₂ is evidence that B₂ = mC(T)
+(T = C's source). With the main theorem + certificate (Sem(parse T) = mC) this gives "B₂ implements mC" modulo that trust.
+Future: prove B₂ = mC(T) in the Lean kernel (stage-by-stage, chunked kernel evaluation with intermediate literals), which removes
+the Lean-compiler trust and leaves only the kernel, the Sail model and Spec/. Feasibility unmeasured; do it after the
+certificate's text link (refParse(lex T) = PC.all), which is the first half of the same job.
