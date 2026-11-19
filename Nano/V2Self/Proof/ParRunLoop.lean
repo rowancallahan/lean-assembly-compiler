@@ -283,4 +283,82 @@ theorem armBind_spec (ps : List Ps) (hfuel : ∀ p ∈ ps, p ≠ .fuel)
     · rw [ht]; simp; omega
     · rw [hsl, hbd] at h1; simpa using h1
 
+/-- name resolution in an arm: the spec env (reversed `mkEnv`) is the machine's `toBd` bindings -/
+theorem env_toBd (env : List (List Nat × Nat × Ps)) (h : ∀ e ∈ env, e.2.2 ≠ .fuel ∧ psCode e.2.2 ≠ .nt) (x : List Nat) :
+    findEnv env.reverse x = (findB (env.map toBd) x).bind fun bd => (bdPs bd).map fun p => (bd.slot, p) := by
+  unfold findEnv findB
+  rw [← List.map_reverse, List.find?_map]
+  have hf : ((fun b : Bd => b.name == x) ∘ toBd) = fun e => e.1 == x := by funext e; rfl
+  rw [hf]
+  cases hfd : env.reverse.find? (fun e => e.1 == x) with
+  | none => rfl
+  | some e =>
+    have hm : e ∈ env := List.mem_reverse.mp (List.mem_of_find?_eq_some hfd)
+    obtain ⟨h1, h2⟩ := h e hm
+    have := bdPs_toBd h1 h2
+    obtain ⟨y, sl, p⟩ := e
+    simp only [Option.map_some, Option.bind_some, this]; rfl
+
+theorem findB_toBd_isSome {env : List (List Nat × Nat × Ps)} {x : List Nat} {bd : Bd}
+    (h : findB (env.map toBd) x = some bd) : ∃ e ∈ env, bd = toBd e := by
+  unfold findB at h
+  rw [← List.map_reverse, List.find?_map] at h
+  obtain ⟨e, he, rfl⟩ := Option.map_eq_some_iff.mp h
+  exact ⟨e, List.mem_reverse.mp (List.mem_of_find?_eq_some he), rfl⟩
+
+/-- the fuel binder of a step arm (zeroDone, 77) -/
+def nbBd (nb : List Nat) : Bd := ⟨nb, 0, some .nt, false⟩
+
+theorem findB_cons_front (bd : Bd) (bs : List Bd) (x : List Nat) :
+    findB (bd :: bs) x = match findB bs x with | some b => some b | none => if bd.name == x then some bd else none := by
+  unfold findB
+  simp only [List.reverse_cons, List.find?_append, List.find?_cons, List.find?_nil]
+  cases bs.reverse.find? (fun b => b.name == x) <;> simp
+  cases h : bd.name == x <;> simp_all
+
+theorem findB_toBd_none {env : List (List Nat × Nat × Ps)} {x : List Nat} (h : ∀ e ∈ env, e.1 ≠ x) :
+    findB (env.map toBd) x = none := by
+  unfold findB
+  rw [← List.map_reverse, List.find?_map]
+  simp only [Option.map_eq_none_iff, List.find?_eq_none]
+  intro e he; have := h e (List.mem_reverse.mp he); simpa [toBd] using this
+
+/-- name resolution in a step arm: the fuel binder (innermost in the spec, outermost in the machine; names distinct) -/
+theorem env_step (nb : List Nat) (env : List (List Nat × Nat × Ps)) (h : ∀ e ∈ env, e.2.2 ≠ .fuel ∧ psCode e.2.2 ≠ .nt)
+    (hd : ∀ e ∈ env, e.1 ≠ nb) (x : List Nat) :
+    findEnv ((nb, 0, .fuel) :: env.reverse) x =
+      (findB (nbBd nb :: env.map toBd) x).bind fun bd => (bdPs bd).map fun p => (bd.slot, p) := by
+  rw [findEnv_cons, findB_cons_front]
+  by_cases hx : nb = x
+  · subst hx
+    rw [findB_toBd_none hd]; simp [nbBd, bdPs]
+  · have : (nb == x) = false := by simpa using hx
+    simp only [this, Bool.false_eq_true, if_false]
+    rw [env_toBd env h x]
+    cases findB (env.map toBd) x <;> simp [nbBd, this]
+
+/-- the context of an arm (from the def-start context `hD` and the arm's name resolution `henv`) -/
+theorem cxRel_arm {st0 st : St} {defs : List DefI} {E : List (List Nat × Nat × Ps)} {self : Option (List Nat × List Ps)}
+    (hD : CxRel st0 ⟨defs, [], none⟩) (hd : st.defs = st0.defs)
+    (htyped : ∀ x bd, findB st.binds x = some bd → bd.sh.isSome)
+    (hinp : ∀ x bd, findB st.binds x = some bd → bd.inp = true → bd.sh = some .ls)
+    (henv : ∀ x, findEnv E x = (findB st.binds x).bind fun bd => (bdPs bd).map fun p => (bd.slot, p))
+    (hself : ∀ sn sps, self = some (sn, sps) → findDef defs sn = none)
+    (harm : st.arm = true → ∃ sps, self = some (st.cur.name, sps) ∧ sps ≠ [] ∧ sps ≠ [.inp] ∧
+      sps.map psCode = st.cur.params.tail ∧
+      (∀ (i : Nat) (h : i < sps.length), (sps[i] = .inp ↔ FirstLs st.cur.params.tail i)) ∧ ∀ p ∈ sps, p ≠ .sh .nt) :
+    CxRel st ⟨defs, E, self⟩ :=
+  ⟨htyped, hinp, henv, fun x => by rw [hd]; exact hD.defs x, fun x j di hx => by rw [hd]; exact hD.row x j di hx, hself, harm⟩
+
+theorem toBd_typed {env : List (List Nat × Nat × Ps)} {pre : List Bd} (hpre : ∀ b ∈ pre, b.sh.isSome ∧ b.inp = false)
+    {x : List Nat} {bd : Bd} (h : findB (pre ++ env.map toBd) x = some bd) : bd.sh.isSome ∧ (bd.inp = true → bd.sh = some .ls) := by
+  unfold findB at h
+  have hm := List.mem_reverse.mp (List.mem_of_find?_eq_some h)
+  rcases List.mem_append.mp hm with hm | hm
+  · obtain ⟨h1, h2⟩ := hpre bd hm; exact ⟨h1, fun e => by rw [h2] at e; cases e⟩
+  · obtain ⟨e, _, rfl⟩ := List.mem_map.mp hm
+    obtain ⟨y, sl, p⟩ := e
+    refine ⟨rfl, fun hi => ?_⟩
+    cases p <;> simp_all [toBd, psCode]
+
 end ParRun
