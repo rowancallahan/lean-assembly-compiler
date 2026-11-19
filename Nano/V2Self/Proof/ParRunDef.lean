@@ -301,4 +301,131 @@ theorem plainC_spec {n : Nat} {ks : List Frame} {S fin : St} {x : List Nat} {dis
       · match n2, e2 with
         | n2 + 1, e2 => obtain ⟨_, _, h1, _⟩ := e2.head; simp [stepF, ht, c9, c17] at h1
 
+
+/-! ## tokens are consumed from the front -/
+theorem mkNode_toks {st st' : St} {t a b : Nat} {s : Option Sh} {p : Bool} {n : Nat}
+    (h : mkNode st t a b s p n = some st') : st'.toks = st.toks ∧ st'.all = st.all := by
+  unfold mkNode at h; split at h <;> cases h; exact ⟨rfl, rfl⟩
+
+theorem locOf_toks {st st' : St} {bd : Bd} (h : locOf st bd = some st') : st'.toks = st.toks ∧ st'.all = st.all := by
+  unfold locOf at h; split at h <;> cases h; exact ⟨rfl, rfl⟩
+
+/-- every handler keeps `all` and leaves a suffix of the tokens -/
+theorem stepF_toks {f : Frame} {st st' : St} {k : List Frame} (h : stepF f st = some (k, st')) :
+    st'.all = st.all ∧ st'.toks <:+ st.toks := by
+  cases f <;> simp only [stepF] at h <;> (repeat' split at h) <;>
+    first
+    | (cases h; done)
+    | (cases h; exact ⟨rfl, List.suffix_refl _⟩)
+    | (cases h; refine ⟨rfl, ?_⟩; simp_all [List.suffix_cons_iff]; done)
+    | (cases h; refine ⟨rfl, ?_⟩; simp [leaf]; done)
+    | (cases h; refine ⟨rfl, ?_⟩; simp_all [leaf, List.suffix_cons_iff]; done)
+    | (cases h; refine ⟨rfl, ?_⟩; simp_all; done)
+    | (obtain ⟨s2, h2, h3⟩ := Option.map_eq_some_iff.mp h; cases h3
+       first
+       | (obtain ⟨e1, e2⟩ := mkNode_toks h2; rw [e1, e2]; simp_all [List.suffix_cons_iff]; done)
+       | (obtain ⟨e1, e2⟩ := locOf_toks h2; rw [e1, e2]; simp_all [List.suffix_cons_iff]; done)
+       | (obtain ⟨s1, h1, h2'⟩ := Option.bind_eq_some_iff.mp h2
+          obtain ⟨e1, e2⟩ := mkNode_toks h1
+          obtain ⟨e3, e4⟩ := mkNode_toks h2'
+          rw [e3, e4, e1, e2]; simp_all [List.suffix_cons_iff]))
+
+
+theorem Star.toks {c d : List Frame × St} (h : Star c d) : d.2.all = c.2.all ∧ d.2.toks <:+ c.2.toks := by
+  induction h with
+  | refl => exact ⟨rfl, List.suffix_refl _⟩
+  | @step c c1 d hs _ ih =>
+    obtain ⟨fs, st⟩ := c
+    cases fs with
+    | nil => simp [stepS] at hs
+    | cons f rest =>
+      obtain ⟨k, st', h1, rfl⟩ := stepS_some.mp hs
+      obtain ⟨e1, e2⟩ := stepF_toks h1
+      exact ⟨ih.1.trans e1, ih.2.trans e2⟩
+
+/-- how the spec's type parser can produce `Nat`: the bare keyword, or a parenthesized type (last token `)`) -/
+theorem pTy_nt_form : ∀ (f : Nat) (T R : List Tok), pTy f T = some (.sh .nt, R) →
+    ∃ C, T = C ++ R ∧ (C = [.k 35] ∨ C.getLast? = some (.k 7)) := by
+  intro f
+  induction f using Nat.strongRecOn with
+  | _ f ih =>
+  intro T R h
+  match f, h with
+  | f + 1, h =>
+    rw [pTy_succ'] at h
+    obtain ⟨⟨a, r1⟩, h1, h2⟩ := Option.bind_eq_some_iff.mp h
+    unfold crossK at h2
+    simp only at h2
+    split at h2
+    · obtain ⟨⟨b, r3⟩, _, h4⟩ := Option.bind_eq_some_iff.mp h2
+      simp at h4
+    · simp only [Option.some.injEq, Prod.mk.injEq] at h2
+      obtain ⟨rfl, rfl⟩ := h2
+      rw [pTyAtom.eq_def] at h1
+      simp only at h1
+      split at h1
+      all_goals first
+        | (cases h1; done)
+        | (simp only [Option.some.injEq, Prod.mk.injEq, TyR.sh.injEq] at h1; obtain ⟨h1a, rfl⟩ := h1; cases h1a; done)
+        | (simp only [Option.some.injEq, Prod.mk.injEq] at h1; obtain ⟨h1a, rfl⟩ := h1; cases h1a; done)
+        | (simp only [Option.some.injEq, Prod.mk.injEq] at h1; obtain ⟨_, rfl⟩ := h1
+           exact ⟨[.k 35], rfl, Or.inl rfl⟩)
+        | (obtain ⟨⟨t1, r2⟩, h3, h5⟩ := Option.bind_eq_some_iff.mp h1
+           simp only at h5
+           split at h5
+           · simp only [Option.some.injEq, Prod.mk.injEq] at h5
+             obtain ⟨rfl, rfl⟩ := h5
+             obtain ⟨C', hC', _⟩ := ih _ (by omega) _ _ h3
+             exact ⟨.k 6 :: (C' ++ [.k 7]), by simp_all, Or.inr (by rw [← List.cons_append]; exact List.getLast?_concat)⟩
+           · cases h5)
+
+
+theorem getLast?_take_append (pre C R : List Tok) (hC : C ≠ []) :
+    ((pre ++ C ++ R).take ((pre ++ C ++ R).length - R.length)).getLast? = C.getLast? := by
+  have : (pre ++ C ++ R).length - R.length = (pre ++ C).length := by simp; omega
+  rw [this, List.take_left]
+  rw [List.getLast?_append]
+  cases h : C.getLast? with
+  | none => exact absurd (List.getLast?_eq_none_iff.mp h) hC
+  | some c => simp
+
+/-- **loop header tokens**: if the run takes `afterColon`'s `→` branch, the header was literally `Nat →` -/
+theorem loop_toks {ks : List Frame} {S st' fin : St} {n' : Nat} {r : List Tok} (hall : ∃ pre, S.all = pre ++ S.toks)
+    (e1 : Star ([.tyAtom], S) ([], st')) (e2 : StarN n' (.afterColon :: ks, st') ([], fin)) (ht : st'.toks = .k 17 :: r) :
+    S.toks = .k 35 :: .k 17 :: r := by
+  obtain ⟨m, e1N⟩ := e1.toN
+  obtain ⟨t, R, n'', _, _, hpT, e3, _⟩ := (ty_sound m).1 e1N
+  obtain ⟨_, he⟩ := StarN.nil_inv e3
+  have hst : st' = S.withTy R (trRes t) := by have := congrArg Prod.snd he; simpa using this
+  subst hst
+  simp only [St.withTy_toks] at ht
+  subst ht
+  match n', e2 with
+  | n' + 1, e2 =>
+    obtain ⟨k, _, h1, _⟩ := e2.head
+    simp only [stepF, St.withTy_toks] at h1
+    split at h1
+    · rename_i hc
+      obtain ⟨hty, hprev⟩ := hc
+      simp only [St.withTy_ty, Option.some.injEq] at hty
+      have ht' : t = .sh .nt := by cases t with
+        | lst => simp [trRes] at hty
+        | sh w => simp [trRes] at hty; rw [hty]
+      subst ht'
+      obtain ⟨C, hC, hform⟩ := pTy_nt_form _ _ _ (hpT (2 * S.toks.length + 2) (Nat.le_refl _))
+      obtain ⟨pre, hpre⟩ := hall
+      have hCne : C ≠ [] := by
+        rcases hform with rfl | h
+        · simp
+        · intro e; subst e; simp at h
+      have hp : prevTok (S.withTy (.k 17 :: r) (trRes (.sh .nt))) = C.getLast? := by
+        simp only [prevTok, St.withTy]
+        rw [hpre, hC, ← List.append_assoc]
+        exact getLast?_take_append pre C _ hCne
+      rw [hp] at hprev
+      rcases hform with rfl | h
+      · simpa using hC
+      · rw [h] at hprev; simp at hprev
+    · cases h1
+
 end ParRun
