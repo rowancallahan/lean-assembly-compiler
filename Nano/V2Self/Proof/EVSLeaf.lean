@@ -14,7 +14,8 @@ theorem leafXS {KL : LayW} {C : List J} {pc len p nl hb E0 : Nat} {Inv : St → 
     {V : Env → UInt64}
     (hI : InvOKH hb p Inv) (hst : ∀ env env', (∀ k, R k → env k = env' k) → V env = V env')
     (hgo : ∀ (s : St) (env : Env), Inv s → s.x 0 = 0 → Frame p nl s env → FrameOK p nl s →
-      (s.x 30).toNat + 8 ≤ (s.x 31).toNat → wok KL ((s.x 31).toNat - 8) →
+      (s.x 30).toNat + 8 ≤ (s.x 31).toNat → wok KL ((s.x 31).toNat - 8) → Lay KL hb E0 p s →
+      hb ≤ (s.x 30).toNat →
       ∃ s', SStarX KL C (pc, s) (pc + len, s') ∧ (s'.x 31).toNat = (s.x 31).toNat - 8 ∧
         s'.m = upd s.m ((s.x 31).toNat - 8) (V env) ∧ s'.x 8 = s.x 8 ∧ s'.x 28 = s.x 28 ∧ s'.x 29 = s.x 29 ∧
         s'.x 30 = s.x 30 ∧ s'.x 0 = s.x 0) :
@@ -28,7 +29,7 @@ theorem leafXS {KL : LayW} {C : List J} {pc len p nl hb E0 : Nat} {Inv : St → 
     simp only [Option.some.injEq, Prod.mk.injEq] at hS; obtain ⟨rfl, rfl⟩ := hS
     have top0 : (s.x 30).toNat = H.top := R0.2.2.2.2.1
     obtain ⟨s', r, p31, hm, e8, e28, e29, e30, e0⟩ :=
-      hgo s env I0 z0 F0 O0 (by omega) (push_wok L0 O0 R0 hc)
+      hgo s env I0 z0 F0 O0 (by omega) (push_wok L0 O0 R0 hc) L0 (by have := R0.2.1; omega)
     obtain ⟨o1, o2, o3⟩ := O0
     have hne : ∀ k, k < nl → slotAddr p (s.x 8).toNat k ≠ (s.x 31).toNat - 8 := fun k hk => by
       have := slotAddr_ge (T := (s.x 31).toNat) (by omega) o2 hk; omega
@@ -47,7 +48,7 @@ theorem leafXS {KL : LayW} {C : List J} {pc len p nl hb E0 : Nat} {Inv : St → 
 theorem constXS {KL : LayW} {C : List J} {pc p nl hb E0 : Nat} {Inv : St → Prop} {R W : Nat → Prop} {v : UInt64}
     (hI : InvOKH hb p Inv) (hC : At C pc (constT 1 pc v)) :
     EVHwS KL C pc ((liT 5 v).length + 4) p nl Inv hb E0 R W 1 (leafS (fun _ => v)) :=
-  leafXS hI (fun _ _ _ => rfl) (fun s env _ hx0 _ _ room hw => by
+  leafXS hI (fun _ _ _ => rfl) (fun s env _ hx0 _ _ room hw _ _ => by
     obtain ⟨s', hr, hx, hm, hb⟩ := const_srun (K := KL) s hx0 hC room hw
     have lt64 := (s.x 31).toNat_lt
     refine ⟨s', SStarX.of hr, ?_, hm, ?_, ?_, ?_, ?_, ?_⟩
@@ -58,12 +59,48 @@ theorem constXS {KL : LayW} {C : List J} {pc p nl hb E0 : Nat} {Inv : St → Pro
 theorem lenXS {KL : LayW} {C : List J} {pc p nl hb E0 : Nat} {Inv : St → Prop} {R W : Nat → Prop} {c29 : UInt64}
     (hI : InvOKH hb p Inv) (hInv : ∀ s, Inv s → s.x 29 = c29) (hC : At C pc (lenT 1 pc)) :
     EVHwS KL C pc 4 p nl Inv hb E0 R W 1 (leafS (fun _ => c29)) :=
-  leafXS hI (fun _ _ _ => rfl) (fun s env I0 hx0 _ _ room hw => by
+  leafXS hI (fun _ _ _ => rfl) (fun s env I0 hx0 _ _ room hw _ _ => by
     have lt64 := (s.x 31).toNat_lt
     have hr := len_srun (K := KL) s hC room hw
     refine ⟨_, SStarX.of hr, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
     · simp only [upd_same, UInt64.toNat_ofNat']; omega
     · simp [hInv s I0]
     all_goals simp [upd_ne])
+
+/-- a frame slot is a work cell -/
+theorem slot_wok {KL : LayW} {hb E0 p nl k : Nat} {s : St} (L : Lay KL hb E0 p s) (O : FrameOK p nl s)
+    (h30 : hb ≤ (s.x 30).toNat) (room : (s.x 30).toNat + 8 ≤ (s.x 31).toNat) (hk : k < nl) :
+    wok KL (CallProbe.slotAddr p k (s.x 8).toNat) := by
+  have := L.top; have := L.a8; obtain ⟨o1, o2, o3⟩ := O
+  unfold CallProbe.slotAddr
+  split <;> exact L.wok (by omega) (by omega) (by omega)
+
+/-- LOCAL k, width 1 -/
+theorem local1XS {KL : LayW} {C : List J} {pc p nl hb E0 k : Nat} {Inv : St → Prop} {W : Nat → Prop}
+    (hI : InvOKH hb p Inv) (hp : p < 2 ^ 20) (hnl : nl < 251) (hk : k < nl) (hC : At C pc (localT 1 p k pc 1)) :
+    EVHwS KL C pc 5 p nl Inv hb E0 (fun j => j = k) W 1 (leafS (fun env => env k)) :=
+  leafXS hI (fun env env' h => h k rfl) (fun s env _ hx0 hF hO room hpw L0 h30 => by
+    have hsw := slot_wok (k := k) L0 hO h30 room hk
+    obtain ⟨o1, o2, o3⟩ := hO
+    have hv : CallProbe.slotAddr p k (s.x 8).toNat = slotAddr p (s.x 8).toNat k := slotAddr_eq (by omega) o2 hk
+    have hkp : k < p ∨ 8 * (k - p + 1) ≤ (s.x 8).toNat := by omega
+    obtain ⟨s', hr, hx, hm⟩ := local1_run s hC (by omega) hp hkp room
+    have ss : SStarX KL C (pc, s) (pc + 5, s') := SStarX.of (local_srun 1 k pc s hC (by omega) hp
+      (fun i hi => by
+        have : i = 0 := by omega
+        subst this; refine ⟨hkp, ?_⟩; simp only [Nat.add_zero]; rw [hv]
+        exact slotAddr_ge (T := (s.x 31).toNat) (by omega) o2 hk)
+      (by omega)
+      (fun i hi => by
+        have : i = 0 := by omega
+        subst this; simp only [Nat.add_zero, Nat.zero_add, Nat.mul_one]
+        refine ⟨hsw, hpw, ?_, ?_⟩ <;> unfold offOf <;> split <;> omega)
+      _ hr)
+    have lt64 := (s.x 31).toNat_lt
+    rw [hv] at hx hm
+    refine ⟨s', ss, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    · rw [hx]; simp only [upd_same]; simp only [UInt64.toNat_ofNat']; omega
+    · rw [hm, hF k hk]
+    all_goals rw [hx]; simp [upd_ne])
 
 end Templates
