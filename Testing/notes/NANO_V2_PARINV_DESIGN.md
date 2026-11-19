@@ -173,6 +173,14 @@ supply the third part (sites: ParInvDefs, ParInvHdr, ParInvAssign; `defs_frame` 
 `Rep g ts st fs → ShapeCode g x l → ShapeCode g y r → bget (v10 16777216 g x y 0) 0 ≠ 0 →
  l ≠ .nt ∧ r ≠ .nt ∧ Rep (v10 16777216 g x y 0) ts { st with ty := some (.p l r) } fs` (h[25] = the pair's code) — C uses it for mkPair (42);
 `h_tyPair` (63, v130).
-REMAINING for G: nothing blocked.  Open interfaces owned by others: B's `ParenH` (expression induction) for `args_spec` / `defcall_spec` /
-`primcall_spec`; F's row invariant `FirstLs` for `def_inpPair`; the glue's side conditions above.
+HCALL (owner assignment, DONE): `Proof/ParRunHCall.lean` — `hcall_def` (PrimCase.call: a FINISHED def) and `hcall_prim` (prim token), both
+`… → PrimConcl n md ks st fin cx` from `∀ n' < n, ExprSpec n'`; B plugs them into `prim_sound` (the self-call branch stays B's).
+Built from `atomV_run` (leaf / `prim_paren`), `argsV` (pArgs at fuel ≥ 4|toks| + 2 under VT of the arguments), `tyMatch_of2`,
+`atom_facts` (B's `nobot` + `Proof/ParSpecLen.lean` `lenTy`: a `len'` parse is Nat-typed), `def_inpPair` / `prim_inpPair`, `pApp_call`.
+`CxRel` (ParRunAtom) now: `row` also gives `di.params[i] = .inp ↔ FirstLs d.params i` and `∀ p ∈ di.params, p ≠ .sh .nt`; new field
+`selfFresh : cx.self = some (sn, _) → findDef cx.defs sn = none`.  F must establish both when CxRel is set up at a def start.
+Renamed to avoid clashes once both chains are imported: `CxRel.transportG` (ParRunArgs), `filter_inp0` (ParRunCallSpec), `findD_ltG`.
+The unconditional `args_spec` / `defcall_spec` / `primcall_spec` (ParenH form) are superseded by `argsV` / `hcall_*`.
+REMAINING for G: nothing blocked.  Open interfaces owned by others: F's `FirstLs` / `selfFresh` at def start; B's self-call (46 / 54);
+the glue's side conditions above.
 
