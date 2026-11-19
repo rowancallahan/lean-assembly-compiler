@@ -253,9 +253,18 @@ theorem gen_host_cap (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : P
     have h2 : ¬ outB KL a := fun ho => by simp only [outB, KL, ol0] at ho; omega
     rw [fr5 a h1 h2]
 
+/-- the out-of-memory return: a0 = −1, a1 = 0, output and work blocks only changed -/
+def OomOut (s : Proven.St) (ra : BitVec 64) (output work : Region) (s' : Proven.St) : Prop :=
+  s'.regs.get? .PC = some ra ∧ abiSavedKept s s' ∧ Cfg s' ∧ s'.regs.get? .x10 = some NanoMain.a0Oom ∧
+    s'.regs.get? .x11 = some 0 ∧ unchangedOutside s s' [output, work]
+
+theorem OomOut.outcome {s s' : Proven.St} {ra : BitVec 64} {output work : Region} {r : Except NanoMain.Stop (List UInt8)}
+    {oomOK : Prop} (h : OomOut s ra output work s') (hoom : oomOK) : NanoMain.Outcome s ra output work r oomOK s' :=
+  ⟨h.1, h.2.1, h.2.2.1, Or.inr ⟨hoom, h.2.2.2⟩⟩
+
 /-- **the host lift, out of memory**: as `gen_host`, when E's kinded semantics of main fails with `room` (and the work
 block is below the bound, `oomOK`): the run returns to ra with the spec's out-of-memory outcome (a0 = −1, a1 = 0). -/
-theorem gen_host_oom (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : ParsesProgram ts p)
+theorem gen_host_oomX (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : ParsesProgram ts p)
     (Ks : List (List Nat)) (hO : OwnSpec.progOk [] [] Ks p = true) (hK2 : ∀ K ∈ Ks, ∀ k ∈ K, k ≤ 2)
     (hXl : (serialize p).length < 2 ^ 31) (h : g41 c (serialize p) ≠ []) (hdb : ∀ d ∈ p, DB d)
     (x : List UInt8) (s : Proven.St) (entry ra : BitVec 64) (input output work : Region) (oomOK : Prop)
@@ -275,7 +284,7 @@ theorem gen_host_oom (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : P
     (hoom : oomOK)
     (hS : ∀ T, semAtF (pcOf 524288 (work.base + 16) (UInt64.ofNat x.length) (NanoMain.inpW x) T) p
       (p.length - 1) [] ((work.base + work.len) / 8 * 8) ⟨work.base + 16, fun _ => none⟩ = .error .room) :
-    runsTo s (NanoMain.Outcome s ra output work (NanoMain.Sem NanoMain.κC p x) oomOK) := by
+    runsTo s (OomOut s ra output work) := by
   -- the regions
   have rI := hram input (by simp); have rO := hram output (by simp); have rW := hram work (by simp)
   have rC := hram ⟨entry.toNat, (g41 c (serialize p)).length⟩ (by simp)
@@ -390,8 +399,8 @@ theorem gen_host_oom (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : P
     · have : j = 8 := Fin.ext hj
       subst this; rw [x85, sx 8 (by omega)]; rfl
   refine ⟨n + m, t5, steps_app hSt hS5, ?_⟩
-  unfold NanoMain.Outcome
-  refine ⟨by rw [pc5], ?_, cfg5, Or.inr ⟨hoom, by rw [cfg5.x10, a05, ofInt_bv]; rfl, by rw [cfg5.x11, a15], ?_⟩⟩
+  unfold OomOut
+  refine ⟨by rw [pc5], ?_, cfg5, by rw [cfg5.x10, a05, ofInt_bv]; rfl, by rw [cfg5.x11, a15], ?_⟩
   · intro r hr
     simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
     rcases hr with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl
@@ -415,5 +424,30 @@ theorem gen_host_oom (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : P
     have h1 : ¬ wok KL (a - a % 8) := fun hw => by simp only [wok, KL, E0] at hw; omega
     have h2 : ¬ outB KL a := fun ho => by simp only [outB, KL, ol0] at ho; omega
     rw [fr5 a h1 h2]
+
+
+theorem gen_host_oom (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : ParsesProgram ts p)
+    (Ks : List (List Nat)) (hO : OwnSpec.progOk [] [] Ks p = true) (hK2 : ∀ K ∈ Ks, ∀ k ∈ K, k ≤ 2)
+    (hXl : (serialize p).length < 2 ^ 31) (h : g41 c (serialize p) ≠ []) (hdb : ∀ d ∈ p, DB d)
+    (x : List UInt8) (s : Proven.St) (entry ra : BitVec 64) (input output work : Region) (oomOK : Prop)
+    (hxl : x.length ≤ 2 ^ 20) (hc : Cfg s) (hpc : s.regs.get? .PC = some entry) (he4 : entry.toNat % 4 = 0)
+    (hB : bytesAt s entry.toNat (g41 c (serialize p)).length = (g41 c (serialize p)).map (some ·.toBitVec))
+    (h10 : s.regs.get? .x10 = some (BitVec.ofNat 64 input.base))
+    (h11 : s.regs.get? .x11 = some (BitVec.ofNat 64 x.length))
+    (h12 : s.regs.get? .x12 = some (BitVec.ofNat 64 work.base))
+    (h13 : s.regs.get? .x13 = some (BitVec.ofNat 64 output.base))
+    (h2 : s.regs.get? .x2 = some (BitVec.ofNat 64 (work.base + work.len)))
+    (h1 : s.regs.get? .x1 = some ra) (hra4 : ra.toNat % 4 = 0)
+    (hin : bytesAt s input.base x.length = x.map (some ·.toBitVec)) (hil : input.len = x.length)
+    (hout : ∀ y, NanoMain.Sem NanoMain.κC p x = .ok y → y.length ≤ output.len) (hw8 : work.base % 8 = 0)
+    (hram : ∀ r ∈ [input, output, work, ⟨entry.toNat, (g41 c (serialize p)).length⟩], Region.inRAM r)
+    (hdis : [input, output, work, ⟨entry.toNat, (g41 c (serialize p)).length⟩].Pairwise disjoint)
+    (hMo : Mapped s output) (hMw : Mapped s work) (h16 : 16 ≤ work.len)
+    (hoom : oomOK)
+    (hS : ∀ T, semAtF (pcOf 524288 (work.base + 16) (UInt64.ofNat x.length) (NanoMain.inpW x) T) p
+      (p.length - 1) [] ((work.base + work.len) / 8 * 8) ⟨work.base + 16, fun _ => none⟩ = .error .room) :
+    runsTo s (NanoMain.Outcome s ra output work (NanoMain.Sem NanoMain.κC p x) oomOK) := by
+  obtain ⟨n, s', hs, ho⟩ := gen_host_oomX c hP Ks hO hK2 hXl h hdb x s entry ra input output work oomOK hxl hc hpc he4 hB h10 h11 h12 h13 h2 h1 hra4 hin hil hout hw8 hram hdis hMo hMw h16 hoom hS
+  exact ⟨n, s', hs, ho.outcome hoom⟩
 
 end SimW

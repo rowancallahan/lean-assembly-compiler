@@ -6,7 +6,7 @@ open Proven Nano.V2B Templates CallProbe C GenRef ParSpec
 
 /-- **the host lift, tiny work block**: fewer than 16 usable bytes of work: the start code itself returns the spec's
 out-of-memory outcome (a0 = −1, a1 = 0), for any result `r`. -/
-theorem gen_host_tiny (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : ParsesProgram ts p)
+theorem gen_host_tinyX (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : ParsesProgram ts p)
     (Ks : List (List Nat)) (hO : OwnSpec.progOk [] [] Ks p = true) (hK2 : ∀ K ∈ Ks, ∀ k ∈ K, k ≤ 2)
     (hXl : (serialize p).length < 2 ^ 31) (h : g41 c (serialize p) ≠ []) (hdb : ∀ d ∈ p, DB d)
     (x : List UInt8) (s : Proven.St) (entry ra : BitVec 64) (input output work : Region) (oomOK : Prop)
@@ -25,7 +25,7 @@ theorem gen_host_tiny (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : 
     (hMo : Mapped s output) (hMw : Mapped s work) (hsmall : (work.base + work.len) / 8 * 8 < work.base + 16)
     (hoom : oomOK)
     (r : Except NanoMain.Stop (List UInt8)) :
-    runsTo s (NanoMain.Outcome s ra output work r oomOK) := by
+    runsTo s (OomOut s ra output work) := by
   -- the regions
   have rI := hram input (by simp); have rO := hram output (by simp); have rW := hram work (by simp)
   have rC := hram ⟨entry.toNat, (g41 c (serialize p)).length⟩ (by simp)
@@ -157,10 +157,10 @@ theorem gen_host_tiny (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : 
   have gk : ∀ j : Fin 32, j.val ≠ 10 → j.val ≠ 11 → j.val ≠ 30 → j.val ≠ 31 → getX t3 j = getX s j := by
     intro j a b c d; rw [gx j, x2 _ a b c d, sx j j.isLt]
   refine ⟨n + 3, t3, steps_app hSt ⟨t1, r1, t2, r2, steps_one hN.ret⟩, ?_⟩
-  unfold NanoMain.Outcome
-  refine ⟨by rw [hN.pc, r21, x1], ?_, hN.cfg, Or.inr ⟨hoom,
+  unfold OomOut
+  refine ⟨by rw [hN.pc, r21, x1], ?_, hN.cfg,
     by rw [hN.cfg.x10, gx 10]; exact congrArg some (by show (s2.x 10).toBitVec = _; rw [x210, ofInt_bv]; rfl),
-    by rw [hN.cfg.x11, gx 11]; exact congrArg some (by show (s2.x 11).toBitVec = _; rw [x211]; rfl), ?_⟩⟩
+    by rw [hN.cfg.x11, gx 11]; exact congrArg some (by show (s2.x 11).toBitVec = _; rw [x211]; rfl), ?_⟩
   · intro reg hr
     simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
     rcases hr with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl
@@ -184,5 +184,29 @@ theorem gen_host_tiny (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : 
     have h1 : ¬ wok KL (a - a % 8) := fun hw => by simp only [wok, KL, E0] at hw; omega
     have h2 : ¬ outB KL a := fun ho => by simp only [outB, KL, ol0] at ho; omega
     rw [hN.mem, R2.fr a h1 h2]
+
+
+theorem gen_host_tiny (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : ParsesProgram ts p)
+    (Ks : List (List Nat)) (hO : OwnSpec.progOk [] [] Ks p = true) (hK2 : ∀ K ∈ Ks, ∀ k ∈ K, k ≤ 2)
+    (hXl : (serialize p).length < 2 ^ 31) (h : g41 c (serialize p) ≠ []) (hdb : ∀ d ∈ p, DB d)
+    (x : List UInt8) (s : Proven.St) (entry ra : BitVec 64) (input output work : Region) (oomOK : Prop)
+    (hxl : x.length ≤ 2 ^ 20) (hc : Cfg s) (hpc : s.regs.get? .PC = some entry) (he4 : entry.toNat % 4 = 0)
+    (hB : bytesAt s entry.toNat (g41 c (serialize p)).length = (g41 c (serialize p)).map (some ·.toBitVec))
+    (h10 : s.regs.get? .x10 = some (BitVec.ofNat 64 input.base))
+    (h11 : s.regs.get? .x11 = some (BitVec.ofNat 64 x.length))
+    (h12 : s.regs.get? .x12 = some (BitVec.ofNat 64 work.base))
+    (h13 : s.regs.get? .x13 = some (BitVec.ofNat 64 output.base))
+    (h2 : s.regs.get? .x2 = some (BitVec.ofNat 64 (work.base + work.len)))
+    (h1 : s.regs.get? .x1 = some ra) (hra4 : ra.toNat % 4 = 0)
+    (hin : bytesAt s input.base x.length = x.map (some ·.toBitVec)) (hil : input.len = x.length)
+    (hout : ∀ y, NanoMain.Sem NanoMain.κC p x = .ok y → y.length ≤ output.len) (hw8 : work.base % 8 = 0)
+    (hram : ∀ r ∈ [input, output, work, ⟨entry.toNat, (g41 c (serialize p)).length⟩], Region.inRAM r)
+    (hdis : [input, output, work, ⟨entry.toNat, (g41 c (serialize p)).length⟩].Pairwise disjoint)
+    (hMo : Mapped s output) (hMw : Mapped s work) (hsmall : (work.base + work.len) / 8 * 8 < work.base + 16)
+    (hoom : oomOK)
+    (r : Except NanoMain.Stop (List UInt8)) :
+    runsTo s (NanoMain.Outcome s ra output work r oomOK) := by
+  obtain ⟨n, s', hs, ho⟩ := gen_host_tinyX c hP Ks hO hK2 hXl h hdb x s entry ra input output work oomOK hxl hc hpc he4 hB h10 h11 h12 h13 h2 h1 hra4 hin hil hout hw8 hram hdis hMo hMw hsmall hoom r
+  exact ⟨n, s', hs, ho.outcome hoom⟩
 
 end SimW
