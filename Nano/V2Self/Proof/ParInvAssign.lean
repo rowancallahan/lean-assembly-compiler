@@ -176,12 +176,12 @@ theorem rep_asg {g ts : Buf} {st : St} {fs : List Frame} (R : Rep g ts st fs) (h
   obtain ⟨b4, bl, brows⟩ := rB
   obtain ⟨d12, dl, d27, drows, dcur, dzero, dz0, ds26, dsz, dsd⟩ := rD
   simp only [if_true] at dcur
-  obtain ⟨⟨k0, k1, k2, k3, k4, k6, k5, kp⟩, kJ⟩ := dcur
+  obtain ⟨⟨⟨k0, k1, k2, k3, k4, k6, k5, kp⟩, kJ⟩, dl'⟩ := dcur
   have i1024 : i0 < 1024 := by omega
   have h12 : bget g 12 = st.defs.length.toUInt64 := by rw [← d12]; simp
   have h27 : bget g 27 = (bget g 27).toNat.toUInt64 := by simp
   obtain ⟨L, e1, e2, e3, e11, epc, e27, ec2, ec6, U, Dr⟩ :=
-    asg_eff g i0.toUInt64 (bget g 25) (b01 n1) w.width.toUInt64 i0 st.defs.length (bget g 27).toNat rfl i1024 h12 dl h27 hJ hl _ rfl
+    asg_eff g i0.toUInt64 (bget g 25) (b01 n1) w.width.toUInt64 i0 st.defs.length (bget g 27).toNat rfl i1024 h12 dl' h27 hJ hl _ rfl
   generalize asgHeap g i0.toUInt64 (bget g 25) (b01 n1) w.width.toUInt64 = G at L e1 e2 e3 e11 epc e27 ec2 ec6 U Dr ⊢
   rw [h12] at ec2 ec6
   have sc := r25 w hty
@@ -273,11 +273,11 @@ theorem rep_asg {g ts : Buf} {st : St} {fs : List Frame} (R : Rep g ts st fs) (h
         (fun i hi' => cPar _ i (by omega) (by omega)) et hn7 es, ?_⟩
       rw [cDef j (by omega) 5 (by decide) (Or.inl (by omega)), e27n]; omega
     · simp only [if_true]
-      have c := fun k hk hne => cDef st.defs.length dl k hk (Or.inr hne)
+      have c := fun k hk hne => cDef st.defs.length dl' k hk (Or.inr hne)
       have c0 := c 0 (by decide) (by decide); simp only [UInt64.add_zero] at c0
       have c5 := c 5 (by decide) (by decide)
-      refine ⟨⟨by rw [c0]; exact nameAt_frame et (by omega) k0, by rw [c 1 (by decide) (by decide)]; exact k1, ?_,
-        by rw [c 3 (by decide) (by decide)]; exact k3.frame es, by rw [c 4 (by decide) (by decide)]; exact k4, ?_, ?_, ?_⟩, ?_⟩
+      refine ⟨⟨⟨by rw [c0]; exact nameAt_frame et (by omega) k0, by rw [c 1 (by decide) (by decide)]; exact k1, ?_,
+        by rw [c 3 (by decide) (by decide)]; exact k3.frame es, by rw [c 4 (by decide) (by decide)]; exact k4, ?_, ?_, ?_⟩, ?_⟩, dl'⟩
       · rw [ec2]
         cases n1 with
         | true => simpa [b01] using k2
@@ -371,7 +371,8 @@ theorem h_assign {h ts : Buf} {st : St} {i0 sz : Nat} {fs : List Frame} (r : Rep
   · exfalso; apply hs; unfold v133; simp only [beq_iff_eq, ceq, if_false, c4, if_true]; exact stat0 _ (by omega)
   by_cases cg : (if bget g 25 = 3 then (if b = 1 then (0 : UInt64) else (if v201 16777216 g a = 0 then 1 else 0)) else 0) = 1
   · exfalso; apply hs; unfold v133; simp only [beq_iff_eq, ceq, if_false, c4, k0, k1, cg, if_true]; exact stat0 _ (by omega)
-  rw [v133_eq g a b i0 st.defs.length (bget g 27).toNat ha i1024 h12 rD.2.1 (by simp) hJ' hl ceq c4 sc.bound cg] at hs ⊢
+  have dlt : st.defs.length < 512 := by have := rD.2.2.2.2.1; simp only [if_true] at this; exact this.2
+  rw [v133_eq g a b i0 st.defs.length (bget g 27).toNat ha i1024 h12 dlt (by simp) hJ' hl ceq c4 sc.bound cg] at hs ⊢
   -- decode the machine's flags
   have hw3 : bget g 25 = 3 ↔ w = .ls := ⟨fun e => ShapeCode.det (e ▸ sc) .ls, fun e => (e ▸ sc).ls_code⟩
   have hb1 : b = 1 ↔ sz = 1 := ⟨fun e => by rw [← eb, e]; rfl, fun e => UInt64.toNat_inj.mp (by rw [eb, e]; rfl)⟩

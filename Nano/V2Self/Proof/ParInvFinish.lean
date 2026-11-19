@@ -32,9 +32,9 @@ theorem h_defEnd_core {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st 
     obtain ⟨h8, hsh, hinp⟩ := hc
     have rD := R1.2.2.2.2.2.2.1
     rw [hfs] at rD
-    obtain ⟨d12, dlt, _, _, dcur, _, _⟩ := rD
+    obtain ⟨d12, _, _, _, dcur, _, _⟩ := rD
     simp only [if_true] at dcur
-    obtain ⟨⟨_, rnpw, _, rres, rloop, _, _, _⟩, _⟩ := dcur
+    obtain ⟨⟨⟨_, rnpw, _, rres, rloop, _, _, _⟩, _⟩, dlt⟩ := dcur
     have rA := R1.2.2.2.2.2.2.2.1
     obtain ⟨a9, ale, a8, vle, I, hI, hops, _, _⟩ := rA
     have hv1 : st.vals.length = 1 := by rw [← a8, h8]; rfl

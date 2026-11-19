@@ -38,7 +38,7 @@ theorem h_mkLoop {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.mkL
     have rD : DefsRep g st true := hD ▸ R1.2.2.2.2.2.2.1
     have h12 : bget g 12 = st.defs.length.toUInt64 := by rw [← rD.1]; simp
     have hres : ShOpt g (bget g (d7 + 8 * bget g 12 + 3)) st.cur.res := by
-      rw [h12]; have := rD.2.2.2.2.1; simp only [if_true] at this; exact this.1.2.2.2.1
+      rw [h12]; have := rD.2.2.2.2.1; simp only [if_true] at this; exact this.1.1.2.2.2.1
     obtain ⟨st', em, R2⟩ := rep_v5 R1 hnf 2 10 0 0 st.cur.res false _ hres (by decide) (by decide) (by decide) (by decide) hs
     obtain ⟨hle, _⟩ := mkNode_inv em
     obtain ⟨s, rest, ev2⟩ : ∃ s rest, st.vals = s :: rest := by
@@ -263,7 +263,7 @@ theorem h_zeroDone {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.z
     have rD : DefsRep g st true := hD ▸ R1.2.2.2.2.2.2.1
     have h12 : bget g 12 = st.defs.length.toUInt64 := by rw [← rD.1]; simp
     have hres : ShOpt g (bget g (d7 + 8 * bget g 12 + 3)) st.cur.res := by
-      rw [h12]; have := rD.2.2.2.2.1; simp only [if_true] at this; exact this.1.2.2.2.1
+      rw [h12]; have := rD.2.2.2.2.1; simp only [if_true] at this; exact this.1.1.2.2.2.1
     obtain ⟨z, rest, ev2⟩ : ∃ z rest, st.vals = z :: rest := by
       match hv' : st.vals with
       | z :: rest => exact ⟨z, rest, rfl⟩
@@ -508,7 +508,7 @@ theorem h_armBind {h ts : Buf} {st : St} {stp : Bool} {b0 : Nat} {fs : List Fram
     have rD : DefsRep g st true := hD ▸ R1.2.2.2.2.2.2.1
     have h12 : bget g 12 = st.defs.length.toUInt64 := by rw [← rD.1]; simp
     have row := rD.2.2.2.2.1; simp only [if_true] at row
-    obtain ⟨⟨_, _, _, _, _, r6, r5, rc⟩, _⟩ := row
+    obtain ⟨⟨⟨_, _, _, _, _, r6, r5, rc⟩, _⟩, _⟩ := row
     rw [← h12] at r6 r5 rc
     have eb : b = b0.toUInt64 := by rw [← ea.2]; simp
     have hw := rc b0 hb

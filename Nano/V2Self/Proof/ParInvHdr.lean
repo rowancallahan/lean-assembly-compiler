@@ -39,9 +39,9 @@ theorem rep_cur {h h' ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs)
   obtain ⟨hn, hlen, har⟩ := rep_bounds r
   obtain ⟨rT, rts, r0, r3', r11, rB, rD, rA, r25, r29, r30, r32, rO, rK⟩ := r
   rw [hD] at rD
-  obtain ⟨d12, dlt, d27, drows, dcur, dz, d0, dsr⟩ := rD
+  obtain ⟨d12, dle, d27, drows, dcur, dz, d0, dsr⟩ := rD
   simp only [if_true] at dcur
-  obtain ⟨⟨c0, c1, c2, c3, c4, c6, c5, cc⟩, cs⟩ := dcur
+  obtain ⟨⟨⟨c0, c1, c2, c3, c4, c6, c5, cc⟩, cs⟩, dlt⟩ := dcur
   have big : ∀ i : UInt64, 155712 ≤ i.toNat → bget h' i = bget h i := fun i hi => e i (by omega) (by omega) (by omega)
   have low : ∀ i : UInt64, i.toNat < 147520 → i.toNat ≠ 27 → bget h' i = bget h i := fun i hi a => e i a (by omega) (by omega)
   have et : TokAgree h h' := ⟨low 7 (by decide) (by decide), fun i hi => big i (by omega)⟩
@@ -67,7 +67,7 @@ theorem rep_cur {h h' ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs)
       (fun i a b => low i b (by omega)) har⟩
   show DefsRep h' { st with cur := cur' } (inDefF fs)
   rw [hD]
-  refine ⟨by rw [low 12 (by decide) (by decide)]; exact d12, dlt, by rw [e27]; omega, fun j hj => ?_, ?_, fun j h1 h2 => ?_, ?_, ?_⟩
+  refine ⟨by rw [low 12 (by decide) (by decide)]; exact d12, dle, by rw [e27]; omega, fun j hj => ?_, ?_, fun j h1 h2 => ?_, ?_, ?_⟩
   · have hj : j < st.defs.length := hj
     obtain ⟨rr, rs⟩ := drows j hj
     have a5 := rr.2.2.2.2.2.2.1
@@ -80,7 +80,7 @@ theorem rep_cur {h h' ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs)
       (Or.inl (by rw [defCell j (by omega) 5 (by decide)]; simp; omega)), e27]
     exact Nat.le_trans rs (Nat.le_add_right _ _)
   · simp only [if_true]
-    refine ⟨⟨by rw [c0', hname]; exact nameAt_frame et (by omega) c0, r1, r2, r3, r4, r6, by rw [c5', hk]; omega, fun i hi => ?_⟩, ?_⟩
+    refine ⟨⟨⟨by rw [c0', hname]; exact nameAt_frame et (by omega) c0, r1, r2, r3, r4, r6, by rw [c5', hk]; omega, fun i hi => ?_⟩, ?_⟩, dlt⟩
     · have hi : i < cur'.params.length := hi
       rw [c5']
       by_cases hio : i < st.cur.params.length
@@ -132,9 +132,9 @@ theorem plain_core {g ts : Buf} {st : St} {fs : List Frame} (R1 : Rep g ts st fs
   obtain ⟨hn, hlen, har⟩ := rep_bounds R1
   have rD := R1.2.2.2.2.2.2.1
   rw [hfs] at rD
-  obtain ⟨d12, dlt, d27, _, dcur, _, _, _⟩ := rD
+  obtain ⟨d12, dle, d27, _, dcur, _, _, _⟩ := rD
   simp only [if_true] at dcur
-  obtain ⟨⟨_, _, c2, _, _, c6, _, _⟩, _⟩ := dcur
+  obtain ⟨⟨⟨_, _, c2, _, _, c6, _, _⟩, _⟩, dlt⟩ := dcur
   have hj : bget g 12 = st.defs.length.toUInt64 := by apply UInt64.toNat_inj.mp; rw [d12]; simp [Nat.toUInt64]; omega
   have r11 : bget g 11 = st.nx.toUInt64 := R1.2.2.2.2.1
   have sw : ShapeCode g (bget g 25) w := R1.2.2.2.2.2.2.2.2.1 w hty
@@ -263,9 +263,9 @@ theorem h_afterColon {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (
   have R2 := rep_cursor R1 (bget g 3 + 1) kr
   have rD := R1.2.2.2.2.2.2.1
   rw [hfs] at rD
-  obtain ⟨d12, dlt, d27, _, dcur, _, _, _⟩ := rD
+  obtain ⟨d12, dle, d27, _, dcur, _, _, _⟩ := rD
   simp only [if_true] at dcur
-  obtain ⟨⟨_, _, c2, c3, _, c6, c5, _⟩, cs⟩ := dcur
+  obtain ⟨⟨⟨_, _, c2, c3, _, c6, c5, _⟩, cs⟩, dlt⟩ := dcur
   have hj : bget g 12 = st.defs.length.toUInt64 := by apply UInt64.toNat_inj.mp; rw [d12]; simp [Nat.toUInt64]; omega
   have rk : ∀ k : UInt64, k.toNat < 8 → (d7 + 8 * st.defs.length.toUInt64 + k).toNat = 147520 + 8 * st.defs.length + k.toNat :=
     fun k hk => defCell _ dlt k hk
@@ -415,9 +415,9 @@ theorem h_stateTy {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.st
   have sw : ShapeCode g (bget g 25) w := R1.2.2.2.2.2.2.2.2.1 w hty
   have rD := R1.2.2.2.2.2.2.1
   rw [hfs] at rD
-  obtain ⟨d12, dlt, d27, _, dcur, _, _, _⟩ := rD
+  obtain ⟨d12, dle, d27, _, dcur, _, _, _⟩ := rD
   simp only [if_true] at dcur
-  obtain ⟨⟨_, c1, c2, c3, c4, c6, c5, cp⟩, cs⟩ := dcur
+  obtain ⟨⟨⟨_, c1, c2, c3, c4, c6, c5, cp⟩, cs⟩, dlt⟩ := dcur
   have hj : bget g 12 = st.defs.length.toUInt64 := by apply UInt64.toNat_inj.mp; rw [d12]; simp [Nat.toUInt64]; omega
   have rk : ∀ k : UInt64, k.toNat < 8 → (d7 + 8 * st.defs.length.toUInt64 + k).toNat = 147520 + 8 * st.defs.length + k.toNat :=
     fun k hk => defCell _ dlt k hk
@@ -616,9 +616,9 @@ theorem h_armsStart {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.
   have sw : ShapeCode g (bget g 25) w := R1.2.2.2.2.2.2.2.2.1 w hty
   have rD := R1.2.2.2.2.2.2.1
   rw [hfs] at rD
-  obtain ⟨d12, dlt, d27, _, dcur, _, _, _⟩ := rD
+  obtain ⟨d12, dle, d27, _, dcur, _, _, _⟩ := rD
   simp only [if_true] at dcur
-  obtain ⟨⟨_, c1, c2, c3, c4, c6, c5, cp⟩, cs⟩ := dcur
+  obtain ⟨⟨⟨_, c1, c2, c3, c4, c6, c5, cp⟩, cs⟩, dlt⟩ := dcur
   have hj : bget g 12 = st.defs.length.toUInt64 := by apply UInt64.toNat_inj.mp; rw [d12]; simp [Nat.toUInt64]; omega
   have rk : ∀ k : UInt64, k.toNat < 8 → (d7 + 8 * st.defs.length.toUInt64 + k).toNat = 147520 + 8 * st.defs.length + k.toNat :=
     fun k hk => defCell _ dlt k hk

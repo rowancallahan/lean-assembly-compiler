@@ -319,8 +319,11 @@ theorem defs_frameN {h h' : Buf} {st : St} {b : Bool} (r : DefsRep h st b) (e12 
       have c0 := c 0 (by decide); simp only [UInt64.add_zero] at c0
       exact ⟨l, r, by rw [c0]; exact a.frame es, by rw [c 1 (by decide)]; exact b.frame es, by rw [c 2 (by decide)]; exact w⟩⟩
   cases b with
-  | true => simp only [if_true] at rc ⊢; exact ⟨row_frameN (by omega) rc.1 er et hn es, by rw [c5 _ (by omega), e27]; exact rc.2⟩
-  | false => simp only [Bool.false_eq_true, if_false] at rc ⊢; exact rowZero_frame (by omega) rc er
+  | true =>
+    simp only [if_true] at rc ⊢
+    have hl := rc.2
+    exact ⟨⟨row_frameN hl rc.1.1 er et hn es, by rw [c5 _ hl, e27]; exact rc.1.2⟩, hl⟩
+  | false => simp only [Bool.false_eq_true, if_false] at rc ⊢; exact fun hl => rowZero_frame hl (rc hl) er
 
 theorem defs_frame {h h' : Buf} {st : St} {b : Bool} (r : DefsRep h st b) (e12 : bget h' 12 = bget h 12) (e27 : bget h' 27 = bget h 27)
     (e26 : bget h' 26 = bget h 26)

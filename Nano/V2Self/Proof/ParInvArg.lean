@@ -80,7 +80,7 @@ theorem row_rep {g : Buf} {st : St} {j : Nat} {d : DefR} (rD : DefsRep g st true
     have : j = st.defs.length := by omega
     subst this
     simp at hj; subst hj
-    exact ⟨hlen, (if_pos rfl ▸ hcur).1⟩
+    exact ⟨(if_pos rfl ▸ hcur).2, (if_pos rfl ▸ hcur).1.1⟩
 
 theorem u_sub {x b : UInt64} {n m : Nat} (hx : x.toNat = n) (hb : b.toNat = m) (hm : m ≤ n) : x - b = (n - m).toUInt64 := by
   apply UInt64.toNat_inj.mp

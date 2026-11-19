@@ -172,7 +172,7 @@ theorem defTabRows_of {h : Buf} {st : St} (hD : DefsRep h st true) (h7 : (bget h
   obtain ⟨tab, hl, hT, hn⟩ := defTab_of hD h7
   obtain ⟨_, _, _, _, rc, _⟩ := hD
   simp only [if_true] at rc
-  obtain ⟨⟨nm, hok, hmap⟩, _⟩ := rc.1
+  obtain ⟨⟨nm, hok, hmap⟩, _⟩ := rc.1.1
   refine ⟨tab ++ [(bget h (d7 + 8 * st.defs.length.toUInt64), nm)], by simp [rows, hl], fun i hi => ?_, fun i hi hi' => ?_⟩
   · by_cases hin : i < tab.length
     · rw [List.getElem_append_left hin]; exact hT i hin
@@ -276,7 +276,8 @@ theorem prim_id {g ts : Buf} {st : St} {fs : List Frame} {a : UInt64} {md : Nat}
   have g12 : (bget G 12).toNat = st.defs.length := R4.2.2.2.2.2.2.1.1
   have g30 : bget G 30 = b01 st.arm := R4.2.2.2.2.2.2.2.2.2.2.1
   have g8 : (bget G 8).toNat = st.vals.length := R4.2.2.2.2.2.2.2.1.2.2.1
-  have hdl : st.defs.length < 512 := R4.2.2.2.2.2.2.1.2.1
+  have hdl : st.defs.length < 512 := by
+    have := R4.2.2.2.2.2.2.1.2.2.2.2.1; rw [hin] at this; simp only [if_true] at this; exact this.2
   rcases hfb with ⟨h21, hnone⟩ | ⟨i, h21, hi, hsome⟩
   · rw [h21] at hs ⊢; simp only [beq_self_eq_true, if_true] at hs ⊢
     cases hfd : findD (rows st) (nm.map UInt64.toNat) with

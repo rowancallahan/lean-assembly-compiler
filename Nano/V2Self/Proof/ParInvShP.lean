@@ -119,8 +119,11 @@ theorem defs_frameP {h h' : Buf} {st : St} {b : Bool} (r : DefsRep h st b) (e12 
     fun i h1 h2 => by rw [er _ (by rw [parCell0 i h2]; omega) (by rw [parCell0 i h2]; omega)]; exact r0 i (by rw [← e27]; exact h1) h2,
     hsr⟩
   cases b with
-  | true => simp only [if_true] at rc ⊢; exact ⟨row_frameP (by omega) rc.1 er et hn es, by rw [c5 _ (by omega), e27]; exact rc.2⟩
-  | false => simp only [Bool.false_eq_true, if_false] at rc ⊢; exact zr _ (by omega) rc
+  | true =>
+    simp only [if_true] at rc ⊢
+    have hl := rc.2
+    exact ⟨⟨row_frameP hl rc.1.1 er et hn es, by rw [c5 _ hl, e27]; exact rc.1.2⟩, hl⟩
+  | false => simp only [Bool.false_eq_true, if_false] at rc ⊢; exact fun hl => zr _ hl (rc hl)
 
 /-- **allocation frame**: if the pair rows below `n` are unchanged and every row from `n` on had a zero left cell, all shape codes
 keep their meaning (no code can refer to a row ≥ n: its left component would be code 0) -/

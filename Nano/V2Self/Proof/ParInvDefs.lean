@@ -280,6 +280,7 @@ theorem rep_open {G H ts : Buf} {st : St} {fs' : List Frame} {p : UInt64} {x : L
   obtain ⟨d12, dlt, d27, drows, dcur, dz, d0, ds26, ds, dsd⟩ := rD
   simp only [Bool.false_eq_true, if_false] at dcur
   have hjN : (bget G 12).toNat = st.defs.length := d12
+  have dlt' : st.defs.length < 512 := by omega
   obtain ⟨v4, v8, v9, v11, v30, vR0, vR2, vR5, v12, v27⟩ := openW_vals G p hj hlen
   -- agreement with G outside the written cells
   have oth : ∀ i : UInt64, i.toNat ≠ 5 → i.toNat ≠ 3 → (i.toNat < 64 ∨ 12352 ≤ i.toNat) → i.toNat ≠ 4 → i.toNat ≠ 8 →
@@ -300,14 +301,14 @@ theorem rep_open {G H ts : Buf} {st : St} {fs' : List Frame} {p : UInt64} {x : L
   have u : ∀ n : Nat, n < 64 → (n.toUInt64).toNat = n := fun n hn => by simp [Nat.toUInt64]; omega
   -- the row cells
   have rc : ∀ k : UInt64, k.toNat < 8 → bget H (d7 + 8 * st.defs.length.toUInt64 + k) = bget (openW G p) (d7 + 8 * st.defs.length.toUInt64 + k) :=
-    fun k hk => ag _ (by rw [defCell _ dlt k hk]; omega) (by rw [defCell _ dlt k hk]; omega) (by rw [defCell _ dlt k hk]; omega)
+    fun k hk => ag _ (by rw [defCell _ dlt' k hk]; omega) (by rw [defCell _ dlt' k hk]; omega) (by rw [defCell _ dlt' k hk]; omega)
   have hj' : bget G 12 = st.defs.length.toUInt64 := by apply UInt64.toNat_inj.mp; rw [d12]; simp [Nat.toUInt64]; omega
   have rz : ∀ k : UInt64, k.toNat < 8 → k.toNat ≠ 0 → k.toNat ≠ 2 → k.toNat ≠ 5 → bget H (d7 + 8 * st.defs.length.toUInt64 + k) = 0 :=
     fun k hk a0 a2 a5 => by
       rw [rc k hk, ← hj', openW_other G p hj _ (by rw [rowIdx _ hj k hk]; omega) (by rw [rowIdx _ hj k hk]; omega)
         (by rw [rowIdx _ hj k hk]; omega) (by rw [rowIdx _ hj k hk]; omega) (by rw [rowIdx _ hj k hk]; omega)
         (by rw [rowIdx _ hj k hk]; omega) (by rw [rowIdx _ hj k hk]; omega) (by rw [rowIdx _ hj k hk]; omega), hj']
-      exact dcur k hk
+      exact dcur dlt' k hk
   refine ⟨tokensAt_frame rT et rts, rts, ?_, hK, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, hT⟩
   · rw [cell 0 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)]; exact r0
   · rw [w 11 (by decide), v11]; rfl
@@ -334,7 +335,7 @@ theorem rep_open {G H ts : Buf} {st : St} {fs' : List Frame} {p : UInt64} {x : L
         have := rc 0 (by decide); simp only [UInt64.add_zero] at this; rw [this]; exact vR0
       have c2 : bget H (d7 + 8 * st.defs.length.toUInt64 + 2) = 0 := by rw [rc 2 (by decide)]; exact vR2
       have c5 : bget H (d7 + 8 * st.defs.length.toUInt64 + 5) = bget G 27 := by rw [rc 5 (by decide)]; exact vR5
-      refine ⟨⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, fun i hi => absurd hi (by simp [DefR.fresh])⟩, ?_⟩
+      refine ⟨⟨⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, fun i hi => absurd hi (by simp [DefR.fresh])⟩, ?_⟩, dlt'⟩
       · rw [c0]; exact nameAt_frame et (by omega) hx
       · rw [rz 1 (by decide) (by decide) (by decide) (by decide)]; rfl
       · rw [c2]; rfl

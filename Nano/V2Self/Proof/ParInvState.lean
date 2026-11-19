@@ -99,12 +99,12 @@ def ShRows (h : Buf) : Prop :=
 /-- the def table: finished rows, the current row (inside a def) or a zero row (between defs), zero rows above; h[27] = next free
 parameter cell, above every row's parameter list -/
 def DefsRep (h : Buf) (st : St) (inDef : Bool) : Prop :=
-  (bget h 12).toNat = st.defs.length ∧ st.defs.length < 512 ∧ (bget h 27).toNat ≤ 4096 ∧
+  (bget h 12).toNat = st.defs.length ∧ st.defs.length ≤ 512 ∧ (bget h 27).toNat ≤ 4096 ∧
   (∀ j (hj : j < st.defs.length), RowRep h j (st.defs[j]'hj) ∧
       (bget h (d7 + 8 * j.toUInt64 + 5)).toNat + (st.defs[j]'hj).params.length ≤ (bget h 27).toNat) ∧
-  (if inDef then RowRep h st.defs.length st.cur ∧
-      (bget h (d7 + 8 * st.defs.length.toUInt64 + 5)).toNat + st.cur.params.length = (bget h 27).toNat
-    else RowZero h st.defs.length) ∧
+  (if inDef then (RowRep h st.defs.length st.cur ∧
+      (bget h (d7 + 8 * st.defs.length.toUInt64 + 5)).toNat + st.cur.params.length = (bget h 27).toNat) ∧ st.defs.length < 512
+    else st.defs.length < 512 → RowZero h st.defs.length) ∧
   (∀ j, st.defs.length < j → j < 512 → RowZero h j) ∧
   (∀ i : Nat, (bget h 27).toNat ≤ i → i < 4096 → bget h (d7 + 4096 + i.toUInt64) = 0) ∧
   ShRows h
