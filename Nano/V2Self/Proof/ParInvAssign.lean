@@ -143,4 +143,150 @@ theorem asg_eff (g : Buf) (a wv n1 z : UInt64) (i0 D J : Nat) (ha : a = i0.toUIn
       drop_bset _ _ _ (by rw [pc]; omega), drop_bset _ _ _ (by decide), drop_bset _ _ _ (by decide),
       drop_bset _ _ _ (by rw [r3]; omega), drop_bset _ _ _ (by rw [r2]; omega), drop_bset _ _ _ (by rw [r1]; omega)]
 
+/-- a def row survives when its 8 cells and its parameter-code cells are unchanged -/
+theorem row_frame' {h h' : Buf} {j : Nat} {d : DefR} (r : RowRep h j d)
+    (c : ∀ k : UInt64, k.toNat < 8 → bget h' (d7 + 8 * j.toUInt64 + k) = bget h (d7 + 8 * j.toUInt64 + k))
+    (cp : ∀ i, i < d.params.length → bget h' (d7 + 4096 + bget h (d7 + 8 * j.toUInt64 + 5) + i.toUInt64) =
+      bget h (d7 + 4096 + bget h (d7 + 8 * j.toUInt64 + 5) + i.toUInt64))
+    (et : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShTabAgree h h') : RowRep h' j d := by
+  have c0 := c 0 (by decide); simp only [UInt64.add_zero] at c0
+  obtain ⟨a0, a1, a2, a3, a4, a6, a5, ap⟩ := r
+  refine ⟨by rw [c0]; exact nameAt_frame et (by omega) a0, by rw [c 1 (by decide)]; exact a1, by rw [c 2 (by decide)]; exact a2,
+    by rw [c 3 (by decide)]; exact a3.frame es, by rw [c 4 (by decide)]; exact a4, by rw [c 6 (by decide)]; exact a6,
+    by rw [c 5 (by decide)]; exact a5, fun i hi => ?_⟩
+  rw [c 5 (by decide), cp i hi]
+  exact (ap i hi).frame es
+
+/-- **Rep after v133's writes**: binding `i0` typed (slot = nx, code, input flag), nx advanced by the width unless it is the
+input, the current row extended by the parameter code -/
+theorem rep_asg {g ts : Buf} {st : St} {fs : List Frame} (R : Rep g ts st fs) (hD : inDefF fs = true) (i0 : Nat)
+    (hi : i0 < st.binds.length) (w : Sh) (hty : st.ty = some w) (n1 : Bool) (hnni : st.cur.nni < 2 ^ 63)
+    (hJ : (bget g 27).toNat < 4096) :
+    Rep (asgHeap g i0.toUInt64 (bget g 25) (b01 n1) w.width.toUInt64) ts
+      { st with binds := st.binds.set i0 ⟨(st.binds[i0]'hi).name, st.nx, some w, n1⟩,
+                nx := if n1 then st.nx else st.nx + w.width,
+                cur := { st.cur with params := st.cur.params ++ [w], nni := if n1 then st.cur.nni else st.cur.nni + 1 } } fs := by
+  obtain ⟨hn7, hl, har⟩ := rep_bounds R
+  obtain ⟨rT, rts, r0, r3, r11, rB, rD, rA, r25, r29, r30, r32, rO, rK⟩ := R
+  rw [hD] at rD
+  obtain ⟨b4, bl, brows⟩ := rB
+  obtain ⟨d12, dl, d27, drows, dcur, dzero, dz0⟩ := rD
+  simp only [if_true] at dcur
+  obtain ⟨⟨k0, k1, k2, k3, k4, k6, k5, kp⟩, kJ⟩ := dcur
+  have i1024 : i0 < 1024 := by omega
+  have h12 : bget g 12 = st.defs.length.toUInt64 := by rw [← d12]; simp
+  have h27 : bget g 27 = (bget g 27).toNat.toUInt64 := by simp
+  obtain ⟨L, e1, e2, e3, e11, epc, e27, ec2, ec6, U, Dr⟩ :=
+    asg_eff g i0.toUInt64 (bget g 25) (b01 n1) w.width.toUInt64 i0 st.defs.length (bget g 27).toNat rfl i1024 h12 dl h27 hJ hl _ rfl
+  generalize asgHeap g i0.toUInt64 (bget g 25) (b01 n1) w.width.toUInt64 = G at L e1 e2 e3 e11 epc e27 ec2 ec6 U Dr ⊢
+  rw [h12] at ec2 ec6
+  have sc := r25 w hty
+  -- cells outside the def table / binding rows and the three scalars
+  have cS : ∀ j : UInt64, j.toNat < 64 → j.toNat ≠ 11 → j.toNat ≠ 27 → j.toNat ≠ 31 → bget G j = bget g j :=
+    fun j a b c d => U j b c d (by omega) (by omega) (by omega) (Or.inl (by omega))
+  have cLo : ∀ j : UInt64, 64 ≤ j.toNat → j.toNat < 147520 → bget G j = bget g j :=
+    fun j a b => U j (by omega) (by omega) (by omega) (by omega) (by omega) (by omega) (Or.inl (by omega))
+  have cHi : ∀ j : UInt64, 184384 ≤ j.toNat → bget G j = bget g j :=
+    fun j a => U j (by omega) (by omega) (by omega) (by omega) (by omega) (by omega) (Or.inr (by omega))
+  have cSh : ∀ j : UInt64, 155712 ≤ j.toNat → j.toNat < 180288 → bget G j = bget g j :=
+    fun j a b => U j (by omega) (by omega) (by omega) (by omega) (by omega) (by omega) (Or.inl (by omega))
+  have et : TokAgree g G := ⟨cS 7 (by decide) (by decide) (by decide) (by decide), fun j hj => cHi j hj⟩
+  have es : ShTabAgree g G := fun j a b => cSh j a (by omega)
+  have scG : ShapeCode G (bget g 25) w := sc.frame es
+  refine ⟨tokensAt_frame rT et rts, rts, by rw [cS 0 (by decide) (by decide) (by decide) (by decide)]; exact r0,
+    by rw [cS 3 (by decide) (by decide) (by decide) (by decide)]; exact tokAt_frame et hn7 r3, ?_, ?_, ?_,
+    arena_frame rA (cS 8 (by decide) (by decide) (by decide) (by decide)) (cS 9 (by decide) (by decide) (by decide) (by decide))
+      (fun j a b => cLo j (by omega) b) es,
+    fun s' hs' => by rw [cS 25 (by decide) (by decide) (by decide) (by decide)]; exact (r25 s' hs').frame es,
+    fun y hy hne => by rw [cS 29 (by decide) (by decide) (by decide) (by decide)]; exact nameAt_frame et (by omega) (r29 y hy hne),
+    by rw [cS 30 (by decide) (by decide) (by decide) (by decide)]; exact r30,
+    by rw [cS 32 (by decide) (by decide) (by decide) (by decide)]; exact r32, out_frame rO Dr,
+    tasks_frame rK (cS 5 (by decide) (by decide) (by decide) (by decide)) (fun j a b => cLo j a (by have := rK.2.1; omega)) et hn7 es
+      (fun j a b => cLo j (by omega) b) har⟩
+  · -- h[11]
+    rw [e11, r11]
+    cases n1 with
+    | true => simp [b01]
+    | false => simp [b01]
+  · -- bindings
+    have cRow : ∀ i, i < 1024 → ∀ k : UInt64, k.toNat < 4 → (i ≠ i0 ∨ k.toNat = 0) →
+        bget G (d9 + 4 * i.toUInt64 + k) = bget g (d9 + 4 * i.toUInt64 + k) := fun i hi' k hk hne => by
+      have c := rowCell i hi' k hk
+      exact U _ (by rw [c]; omega) (by rw [c]; omega) (by rw [c]; omega) (by rw [c]; omega) (by rw [c]; omega) (by rw [c]; omega)
+        (by rw [c]; omega)
+    refine ⟨by rw [cS 4 (by decide) (by decide) (by decide) (by decide)]; simpa using b4, by simpa using bl, fun i hi' => ?_⟩
+    have hi2 : i < st.binds.length := by simpa using hi'
+    dsimp only
+    by_cases hii : i = i0
+    · subst hii
+      obtain ⟨a0, _, _, _⟩ := brows i hi2
+      have c0 := cRow i i1024 0 (by decide) (Or.inr rfl); simp only [UInt64.add_zero] at c0
+      simp only [List.getElem_set_self]
+      exact ⟨by rw [c0]; exact nameAt_frame et (by omega) a0, by rw [e1]; exact r11, by rw [e2]; exact scG, e3⟩
+    · obtain ⟨a0, a1, a2, a3⟩ := brows i hi2
+      have c := fun k hk => cRow i (by omega) k hk (Or.inl hii)
+      have c0 := c 0 (by decide); simp only [UInt64.add_zero] at c0
+      simp only [List.getElem_set_ne (Ne.symm hii)]
+      exact ⟨by rw [c0]; exact nameAt_frame et (by omega) a0, by rw [c 1 (by decide)]; exact a1,
+        by rw [c 2 (by decide)]; exact a2.frame es, by rw [c 3 (by decide)]; exact a3⟩
+  · -- def table
+    rw [hD]
+    unfold DefsRep
+    dsimp only
+    have cDef : ∀ j, j < 512 → ∀ k : UInt64, k.toNat < 8 → (j ≠ st.defs.length ∨ (k.toNat ≠ 2 ∧ k.toNat ≠ 6)) →
+        bget G (d7 + 8 * j.toUInt64 + k) = bget g (d7 + 8 * j.toUInt64 + k) := fun j hj k hk hne => by
+      have c := defCell j hj k hk
+      exact U _ (by rw [c]; omega) (by rw [c]; omega) (by rw [c]; omega) (by rw [c]; omega) (by rw [c]; omega) (by rw [c]; omega)
+        (Or.inl (by rw [c]; omega))
+    have cPar : ∀ (sv : UInt64) (i : Nat), sv.toNat + i < 4096 → sv.toNat + i ≠ (bget g 27).toNat →
+        bget G (d7 + 4096 + sv + i.toUInt64) = bget g (d7 + 4096 + sv + i.toUInt64) := fun sv i h1 h2 => by
+      have c := parCell sv i h1
+      exact U _ (by rw [c]; omega) (by rw [c]; omega) (by rw [c]; omega) (by rw [c]; omega) (by rw [c]; omega) (by rw [c]; omega)
+        (Or.inl (by rw [c]; omega))
+    have e27n : (bget G 27).toNat = (bget g 27).toNat + 1 := by rw [e27, tn_add _ _ (by simp; omega)]; rfl
+    refine ⟨by rw [cS 12 (by decide) (by decide) (by decide) (by decide)]; exact d12, dl, by rw [e27n]; omega, fun j hj => ?_, ?_,
+      fun j h1 h2 k hk => by rw [cDef j h2 k hk (Or.inl (by omega))]; exact dzero j h1 h2 k hk,
+      fun i h1 h2 => by
+        rw [e27n] at h1
+        have c := parCell0 i h2
+        rw [U _ (by rw [c]; omega) (by rw [c]; omega) (by rw [c]; omega) (by rw [c]; omega) (by rw [c]; omega) (by rw [c]; omega)
+          (Or.inl (by rw [c]; omega))]
+        exact dz0 i (by omega) h2⟩
+    · have hb := (drows j hj).2
+      refine ⟨row_frame' (drows j hj).1 (fun k hk => cDef j (by omega) k hk (Or.inl (by omega)))
+        (fun i hi' => cPar _ i (by omega) (by omega)) et hn7 es, ?_⟩
+      rw [cDef j (by omega) 5 (by decide) (Or.inl (by omega)), e27n]; omega
+    · simp only [if_true]
+      have c := fun k hk hne => cDef st.defs.length dl k hk (Or.inr hne)
+      have c0 := c 0 (by decide) (by decide); simp only [UInt64.add_zero] at c0
+      have c5 := c 5 (by decide) (by decide)
+      refine ⟨⟨by rw [c0]; exact nameAt_frame et (by omega) k0, by rw [c 1 (by decide) (by decide)]; exact k1, ?_,
+        by rw [c 3 (by decide) (by decide)]; exact k3.frame es, by rw [c 4 (by decide) (by decide)]; exact k4, ?_, ?_, ?_⟩, ?_⟩
+      · rw [ec2]
+        cases n1 with
+        | true => simpa [b01] using k2
+        | false =>
+          simp only [b01, Bool.false_eq_true, if_false, UInt64.sub_zero]
+          rw [tn_add _ _ (by rw [k2]; simp; omega), k2]; rfl
+      · rw [ec6, tn_add _ _ (by rw [k6]; simp; omega), k6]; simp
+      · rw [c5]; simp only [List.length_append, List.length_singleton]; omega
+      · intro idx hidx
+        simp only [List.length_append, List.length_singleton] at hidx
+        rw [c5]
+        by_cases hlt : idx < st.cur.params.length
+        · rw [cPar _ idx (by omega) (by omega)]
+          simp only [List.getElem_append_left hlt]
+          exact (kp idx hlt).frame es
+        · have hid : idx = st.cur.params.length := by omega
+          subst hid
+          have ecell : d7 + 4096 + bget g (d7 + 8 * st.defs.length.toUInt64 + 5) + st.cur.params.length.toUInt64 =
+              d7 + 4096 + bget g 27 := by
+            rw [UInt64.add_assoc]; congr 1
+            apply UInt64.toNat_inj.mp
+            have lenU : (st.cur.params.length.toUInt64).toNat = st.cur.params.length := by simp; omega
+            rw [tn_add _ _ (by rw [lenU]; omega), lenU]; omega
+          rw [ecell, epc]
+          simpa using scG
+      · rw [c5, e27n]; simp only [List.length_append, List.length_singleton]; omega
+
 end ParInv
