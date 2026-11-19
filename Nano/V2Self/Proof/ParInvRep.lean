@@ -37,7 +37,7 @@ mutual
 inductive RNRep (h : Buf) : UInt64 → RN → List UInt64 → Prop
   | mk {u : UInt64} {t a b : Nat} {sh : Option Sh} {p : Bool} {ks : List RN} {ids : List UInt64} :
       fld h u 0 = t.toUInt64 → fld h u 1 = a.toUInt64 → fld h u 2 = b.toUInt64 → ShOpt h (fld h u 3) sh →
-      fld h u 4 = (if p then 1 else 0) → fld h u 6 = ks.length.toUInt64 → t < 2 ^ 64 → a < 2 ^ 64 → b < 2 ^ 64 →
+      fld h u 4 = (if p then 1 else 0) → fld h u 6 = ks.length.toUInt64 → t < 2 ^ 64 → (t ≠ 2 → t ≠ 5 → a < 2 ^ 64 ∧ b < 2 ^ 64) →
       KidsR h (fld h u 5) ks ids → RNRep h u (.mk t a b sh p ks) (u :: ids)
 inductive KidsR (h : Buf) : UInt64 → List RN → List UInt64 → Prop
   | nil {f : UInt64} : KidsR h f [] []
@@ -74,11 +74,14 @@ theorem ShapeCode.frame {h h' : Buf} {c : UInt64} {s : Sh} (r : ShapeCode h c s)
   | bf => exact .bf
   | ls => exact .ls
   | nt => exact .nt
-  | pr h1 h2 hl hr _ _ il ir =>
+  | pr h1 h2 hl hr hw _ _ il ir =>
     have r0 := shapeRow _ h1 h2 0 (by decide)
     have r1 := shapeRow _ h1 h2 1 (by decide)
-    simp only [UInt64.add_zero, show (0 : UInt64).toNat = 0 from rfl, show (1 : UInt64).toNat = 1 from rfl, Nat.add_zero] at r0 r1
-    exact .pr h1 h2 (by rw [e _ (by omega) (by omega)]; exact hl) (by rw [e _ (by omega) (by omega)]; exact hr) il ir
+    have r2 := shapeRow _ h1 h2 2 (by decide)
+    simp only [UInt64.add_zero, show (0 : UInt64).toNat = 0 from rfl, show (1 : UInt64).toNat = 1 from rfl,
+      show (2 : UInt64).toNat = 2 from rfl, Nat.add_zero] at r0 r1 r2
+    exact .pr h1 h2 (by rw [e _ (by omega) (by omega)]; exact hl) (by rw [e _ (by omega) (by omega)]; exact hr)
+      (by rw [e _ (by omega) (by omega)]; exact hw) il ir
 
 theorem ShOpt.frame {h h' : Buf} {c : UInt64} {o : Option Sh} (r : ShOpt h c o) (e : ShTabAgree h h') : ShOpt h' c o := by
   cases o with
@@ -92,9 +95,9 @@ theorem RNRep.frame {h h' : Buf} {u : UInt64} {n : ParRun.RN} {ids : List UInt64
     RNRep h' u n ids := by
   have g : ∀ k : UInt64, k.toNat < 7 → fld h u k = fld h' u k := fun k hk => (e0 k hk).symm
   match r with
-  | .mk a0 a1 a2 a3 a4 a6 x y z k =>
+  | .mk a0 a1 a2 a3 a4 a6 x y k =>
     exact .mk (by rw [← g 0 (by decide)]; exact a0) (by rw [← g 1 (by decide)]; exact a1) (by rw [← g 2 (by decide)]; exact a2)
-      (by rw [← g 3 (by decide)]; exact a3.frame es) (by rw [← g 4 (by decide)]; exact a4) (by rw [← g 6 (by decide)]; exact a6) x y z
+      (by rw [← g 3 (by decide)]; exact a3.frame es) (by rw [← g 4 (by decide)]; exact a4) (by rw [← g 6 (by decide)]; exact a6) x y
       (by rw [← g 5 (by decide)]; exact k.frame e es)
 
 theorem KidsR.frame {h h' : Buf} {f : UInt64} {ns : List ParRun.RN} {ids : List UInt64} (r : KidsR h f ns ids)

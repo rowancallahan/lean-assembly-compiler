@@ -15,6 +15,7 @@ inductive ShapeCode (h : Buf) : UInt64 → Sh → Prop
   | nt : ShapeCode h 4 .nt
   | pr {c : UInt64} {l r : UInt64} {a b : Sh} :
       5 ≤ c.toNat → c.toNat < 5 + 8192 → bget h (d7 + 8192 + 3 * (c - 5)) = l → bget h (d7 + 8192 + 3 * (c - 5) + 1) = r →
+      bget h (d7 + 8192 + 3 * (c - 5) + 2) = (a.width + b.width).toUInt64 →
       ShapeCode h l a → ShapeCode h r b → ShapeCode h c (.p a b)
 
 /-- parameter / binding kind codes: the input is a List (3) with the input flag set, the fuel binder a Nat (4) -/

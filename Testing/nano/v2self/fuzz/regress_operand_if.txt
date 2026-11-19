@@ -13,3 +13,8 @@ def f (x : List UInt8) : UInt64 := let p := (len' x, 1); 1 def m (x : List UInt8
 def f (a : Nat × UInt64) : UInt64 := 1 def m (x : List UInt8) : List UInt8 := []
 # must ACCEPT:
 def f (a b : List UInt8) (x : List UInt8) : UInt64 := len x def m (x : List UInt8) : List UInt8 := []
+# fix J (a List group of >= 2 before the input is rejected: "input = first List param" holds for v210) and fix K (`(Nat) →`), must REJECT:
+def f (a b : List UInt8) : UInt64 := 1 def m (x : List UInt8) : List UInt8 := put [] (f x [])
+def f : (Nat) → UInt64 → UInt64 | 0, a => a | n + 1, a => f n a def m (x : List UInt8) : List UInt8 := []
+# must ACCEPT:
+def f (x : List UInt8) (a b : List UInt8) : UInt64 := len x def m (x : List UInt8) : List UInt8 := []

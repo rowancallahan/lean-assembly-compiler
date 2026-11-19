@@ -376,7 +376,7 @@ theorem arena_v5 (h : Buf) (arena vals : List RN) (n : Nat) (t A B : Nat) (sh : 
       (fun i hi => by simp at hi; have := Elink i (by omega); simpa using this)
       (fun i hi => kidRep i (by simp at hi; omega))
     simp only [List.length_reverse, List.length_take, Nat.min_eq_left hn, Nat.add_zero] at K
-    refine .mk F0 F1 F2 (by rw [F3]; exact hw.frame shtab) F4 (by rw [F6]; simp [Nat.min_eq_left hn]) ht ha hb (by rw [F5]; exact K)
+    refine .mk F0 F1 F2 (by rw [F3]; exact hw.frame shtab) F4 (by rw [F6]; simp [Nat.min_eq_left hn]) ht (fun _ _ => ⟨ha, hb⟩) (by rw [F5]; exact K)
   have newNodup : (bget h 9 :: ids).Nodup := by
     refine List.nodup_cons.mpr ⟨fun hm => by have := idsB _ hm; omega, ?_⟩
     refine nodup_flat_range _ n (fun i hi => (hI _ (rootAt i hi).1).2.1) (fun i j hi hj hij v h1 h2 => ?_)

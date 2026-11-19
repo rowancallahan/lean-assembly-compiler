@@ -30,7 +30,7 @@ def FrameArgs (h : Buf) (arena : List RN) : Frame → UInt64 → UInt64 → Prop
   | .ifElse, _, _ => True
   | .mkIte c, a, _ => a.toNat = c
   | .letSemi x tl, a, b => NameAt h a x ∧ b = b01 tl
-  | .letEnd s d, a, b => a.toNat = s ∧ b.toNat = d
+  | .letEnd s d, a, b => a = s.toUInt64 ∧ b.toNat = d
   | .parenClose, _, _ => True
   | .letStart tl, _, b => b = b01 tl
   | .mkPair, _, _ => True
@@ -77,12 +77,12 @@ def TasksRep (h : Buf) (arena : List RN) (fs : List Frame) : Prop :=
 def BindsRep (h : Buf) (bs : List Bd) : Prop :=
   (bget h 4).toNat = bs.length ∧ bs.length ≤ 1024 ∧
   ∀ i (hi : i < bs.length), let r := d9 + 4 * i.toUInt64; let bd := bs[i]'hi
-    NameAt h (bget h r) bd.name ∧ (bget h (r + 1)).toNat = bd.slot ∧ ShOpt h (bget h (r + 2)) bd.sh ∧ bget h (r + 3) = b01 bd.inp
+    NameAt h (bget h r) bd.name ∧ bget h (r + 1) = bd.slot.toUInt64 ∧ ShOpt h (bget h (r + 2)) bd.sh ∧ bget h (r + 3) = b01 bd.inp
 
 /-- def row j (8 words at d7 + 8j) ↔ `d`; parameter codes at d7 + 4096 + start + i -/
 def RowRep (h : Buf) (j : Nat) (d : DefR) : Prop :=
   let r := d7 + 8 * j.toUInt64
-  NameAt h (bget h r) d.name ∧ (bget h (r + 1)).toNat = d.npw ∧ (bget h (r + 2)).toNat = d.nni ∧ ShOpt h (bget h (r + 3)) d.res ∧
+  NameAt h (bget h r) d.name ∧ bget h (r + 1) = d.npw.toUInt64 ∧ (bget h (r + 2)).toNat = d.nni ∧ ShOpt h (bget h (r + 3)) d.res ∧
   bget h (r + 4) = b01 d.loop ∧ (bget h (r + 6)).toNat = d.params.length ∧ (bget h (r + 5)).toNat + d.params.length ≤ 4096 ∧
   ∀ i (hi : i < d.params.length), ShapeCode h (bget h (d7 + 4096 + bget h (r + 5) + i.toUInt64)) (d.params[i]'hi)
 
@@ -97,7 +97,8 @@ def DefsRep (h : Buf) (st : St) (inDef : Bool) : Prop :=
   (if inDef then RowRep h st.defs.length st.cur ∧
       (bget h (d7 + 8 * st.defs.length.toUInt64 + 5)).toNat + st.cur.params.length = (bget h 27).toNat
     else RowZero h st.defs.length) ∧
-  ∀ j, st.defs.length < j → j < 512 → RowZero h j
+  (∀ j, st.defs.length < j → j < 512 → RowZero h j) ∧
+  ∀ i : Nat, (bget h 27).toNat ≤ i → i < 4096 → bget h (d7 + 4096 + i.toUInt64) = 0
 
 /-- the emitted words follow the token sentinel 0 at the end of the heap -/
 def OutRep (h : Buf) (ts : Buf) (out : List UInt64) : Prop :=
@@ -115,14 +116,14 @@ def Rep (h : Buf) (ts : Buf) (st : St) (fs : List Frame) : Prop :=
   TokensAt h ts ∧ ts.length < 2 ^ 24 ∧
   bget h 0 = (if st.acc then 2 else 1) ∧
   TokAt h (bget h 3) st.toks ∧
-  (bget h 11).toNat = st.nx ∧
+  bget h 11 = st.nx.toUInt64 ∧
   BindsRep h st.binds ∧
   DefsRep h st (inDefF fs) ∧
   ArenaRep h st.arena st.vals ∧
   (∀ s, st.ty = some s → ShapeCode h (bget h 25) s) ∧
   (∀ x, st.stash = x → x ≠ [] → NameAt h (bget h 29) x) ∧
   bget h 30 = b01 st.arm ∧
-  (bget h 32).toNat = st.sslot ∧
+  bget h 32 = st.sslot.toUInt64 ∧
   OutRep h ts st.out ∧
   TasksRep h st.arena fs
 

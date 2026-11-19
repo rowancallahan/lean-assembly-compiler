@@ -237,6 +237,10 @@ Second soundness caveat (open, for the statement): `ParserSound ts` quantifies o
 (I) Nat as data: v10 (pair interning, types and tuple values) rejects a Nat component; v133 (params), v136 (`→` loop states), v116 (let value), v134 (plain/constant result), v137 (loop result) reject code 4.
 Results: fixpoint B3 == B2, 254,552 bytes, **sha256 b8f76d42bd8cfa647ee591ad51ff473f6395ee1d78c67ca26f96d31a19f0408e** (supersedes 085748d9…); fuzz 6,000 (seed 21) + 4,000 (seed 22): 0 disagreements; regressions `fuzz/regress_operand_if.txt` 9 reject / 2 accept as expected. Box B must mirror G/H/I in `ParRun.stepF` (sent: mode 0/1/2 for tasks 1/3, `assign (i sz)`, Nat rejections).
 
+## Par1 fixes J, K (2026-11-19, box C; found by the parser lead / G)
+(J) after fix H the call-site validation v210 still took "first List parameter = the callee's input": `def f (a b : List UInt8) …` + `f x []` was accepted (mis-compile). Fix: v133 rejects a `List UInt8` binder in a group of ≥ 2 while no input has been chosen (so the first List parameter IS the input; completeness loss: `(a b : List UInt8) (x : List UInt8)` is rejected, spec accepts). (K) `def f : (Nat) → …` was accepted (ParSpec needs the bare `Nat` token): v135 requires token 35 right before the first `→`.
+Results: fixpoint B3 == B2, 255,324 bytes, **sha256 d71d7c978c2fde818be200e6c0380d0ef2289918f1e1f133c46ac408e7084fe0** (supersedes b8f76d42…); fuzz 6,000 (seed 31) + 4,000 (seed 32): 0 disagreements; regressions file extended.
+
 ## HANDOFF — Opus box C, parser Layer 3 (2026-11-19, keep current)
 Build here: no lake deps in this container; `lean -o` per module with LEAN_PATH (each module < 10 s, < 1 GB).
 DONE (pushed, no sorry, std axioms):

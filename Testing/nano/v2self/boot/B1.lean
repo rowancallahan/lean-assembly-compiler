@@ -1055,6 +1055,8 @@ def v133 (h : Buf) (a b : UInt64) : Buf :=
   else
     let w := (bget h 25);
     if w == 4 then bset h 0 0 else
+    let g := if w == 3 then (if b == 1 then k0 else (if v201 16777216 h a == 0 then k1 else k0)) else k0;
+    if g == 1 then bset h 0 0 else
     let i1 := if w == 3 then (if b == 1 then v201 16777216 h a else 1) else 1;
     let n1 := if i1 == 0 then k1 else k0;
     let z40 := ((bget h 11));
@@ -1124,12 +1126,14 @@ def v135 (h : Buf) (a b : UInt64) : Buf :=
   if bget h (d11+p) == 9 then v134 h 0 0 else
   if w == 4 then
     if bget h (d11+p) == k42 then
+      if bget h (d11+p-1) == 35 then
       let h := bset h 3 (p+1);
       let h := bset h (f+1) 1;
       let h := bset h (f+4) 1;
       let h := v200 h 4 k0;
       let h := v1 h 74 0 0;
       v1 h 61 0 0
+      else bset h 0 0
     else bset h 0 0
   else bset h 0 0
 

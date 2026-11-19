@@ -141,7 +141,7 @@ theorem arW_code {g ts : Buf} {st : St} {fs : List Frame} {c : Callee} {k : Nat}
 theorem operand_fld {g : Buf} {arena vals : List RN} (rA : ArenaRep g arena vals) {k : Nat} (hk : k < vals.length) {b : UInt64}
     (eb : b.toNat = k + 1) :
     ∃ t A B sh p ks, vals[k]? = some (RN.mk t A B sh p ks) ∧ fld g (bget g (d3 + bget g 8 - b)) 0 = t.toUInt64 ∧
-      fld g (bget g (d3 + bget g 8 - b)) 1 = A.toUInt64 ∧ ShOpt g (fld g (bget g (d3 + bget g 8 - b)) 3) sh ∧ t < 2 ^ 64 ∧ A < 2 ^ 64 ∧
+      fld g (bget g (d3 + bget g 8 - b)) 1 = A.toUInt64 ∧ ShOpt g (fld g (bget g (d3 + bget g 8 - b)) 3) sh ∧ t < 2 ^ 64 ∧ (t ≠ 2 → t ≠ 5 → A < 2 ^ 64) ∧
       (bget g (d3 + bget g 8 - b)).toNat < 16384 ∧ (d3 + bget g 8 - b).toNat = 12352 + (vals.length - 1 - k) := by
   obtain ⟨h9, hal, h8, hvl, I, hI, hR, _, _⟩ := rA
   obtain ⟨hr, earr, _⟩ := hR k hk
@@ -160,8 +160,8 @@ theorem operand_fld {g : Buf} {arena vals : List RN} (rA : ArenaRep g arena vals
     rw [hv] at rn
     generalize I (opAt g (vals.length - 1 - k)).toNat = ids at rn
     cases rn with
-    | mk f0 f1 _ fsh _ _ ht hA _ _ =>
-      exact ⟨t, A, B, sh, p, ks, rfl, f0, f1, fsh, ht, hA, by omega, d3k _ (by omega)⟩
+    | mk f0 f1 _ fsh _ _ ht hAB _ =>
+      exact ⟨t, A, B, sh, p, ks, rfl, f0, f1, fsh, ht, fun x y => (hAB x y).1, by omega, d3k _ (by omega)⟩
 
 theorem u_one {t : Nat} (ht : t < 2 ^ 64) {c : Nat} (hc : c < 2 ^ 64) (e : t.toUInt64 = c.toUInt64) : t = c := by
   have := congrArg UInt64.toNat e
@@ -228,7 +228,8 @@ theorem h_argCheck {h ts : Buf} {st : St} {c : Callee} {k : Nat} {fs : List Fram
           · rw [if_pos c4] at hs ⊢
             by_cases c5 : A.toUInt64 = 1
             · rw [if_pos c5] at hs ⊢
-              exact fin (Or.inr ⟨wnt, Or.inr ⟨u_one ht (c := 9) (by decide) c4, u_one hA (c := 1) (by decide) c5⟩⟩) hs
+              have t9 := u_one ht (c := 9) (by decide) c4
+              exact fin (Or.inr ⟨wnt, Or.inr ⟨t9, u_one (hA (by omega) (by omega)) (c := 1) (by decide) c5⟩⟩) hs
             · rw [if_neg c5] at hs; exact (dead hs).elim
           · rw [if_neg c4] at hs; exact (dead hs).elim
       · rw [if_neg c2] at hs; exact (dead hs).elim

@@ -20,13 +20,13 @@ theorem ShapeCode.det {h : Buf} {c : UInt64} {s s' : Sh} (r : ShapeCode h c s) (
   | nt => cases r' with
     | nt => rfl
     | pr h5 => simp at h5
-  | pr h5 _ el er _ _ iha ihb =>
+  | pr h5 _ el er _ _ _ iha ihb =>
     cases r' with
     | uw => simp at h5
     | bf => simp at h5
     | ls => simp at h5
     | nt => simp at h5
-    | pr _ _ el' er' ra rb =>
+    | pr _ _ el' er' _ ra rb =>
       subst el er el' er'
       rw [iha ra, ihb rb]
 
