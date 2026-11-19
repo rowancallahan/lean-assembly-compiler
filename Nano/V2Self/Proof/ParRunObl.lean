@@ -80,4 +80,71 @@ theorem reach_assignTy {toks : List Tok} {i sz : Nat} {fs : List Frame} {st : St
         exact stepF_ta h1 hi) (stkinv_init toks) (dinv_init toks) (.inr rfl)
   simpa [TA] using this
 
+/-! ## names -/
+theorem idsOK_of_tokL {ts : List UInt64} {toks : List Tok} (h : ParSpec.TokL ts toks) : IdsOK toks := by
+  induction h with
+  | nil => intro x hx; simp at hx
+  | kw _ _ _ _ _ ih => intro x hx; simp at hx; exact ih x hx
+  | num _ _ _ _ ih => intro x hx; simp at hx; exact ih x hx
+  | id nm hn _ ih =>
+    intro x hx; simp at hx
+    rcases hx with rfl | hx
+    · simpa using hn
+    · exact ih x hx
+
+theorem reach_names {ts : List UInt64} {toks : List Tok} (hT : ParSpec.TokL ts toks) {fs : List Frame} {st : St}
+    (h : Star ([.defs], init toks) (fs, st)) : ∀ d ∈ st.defs, d.name ≠ [] :=
+  (h.ninv (ninv_init (idsOK_of_tokL hT))).2.1
+
+/-! ## selfP: `.selfArgs` is pushed only in an arm, alone, and is executed at once; arms need a non-empty parameter list -/
+def SInv (c : List Frame × St) : Prop :=
+  (c.2.arm = true → c.2.cur.params ≠ []) ∧ (Frame.zeroDone ∈ c.1 → c.2.cur.params ≠ []) ∧
+  (∀ g ∈ c.1.tail, g ≠ .selfArgs) ∧ (c.1.head? = some .selfArgs → c.2.arm = true)
+
+theorem prefix_ne {l l' : List Sh} (h : l <+: l') (hl : l ≠ []) : l' ≠ [] := by
+  rintro rfl; exact hl (List.prefix_nil.mp h)
+
+theorem stepS_sinv {c d : List Frame × St} (hs : stepS c = some d) (hd : DInv c) (hi : SInv c) : SInv d := by
+  obtain ⟨fs, st⟩ := c
+  cases fs with
+  | nil => simp [stepS] at hs
+  | cons f rest =>
+  obtain ⟨k, st', h1, rfl⟩ := stepS_some.mp hs
+  obtain ⟨_, _, hS, hZ, hP, hA, hD⟩ := stepF_obl h1
+  obtain ⟨i1, i2, i3, i4⟩ := hi
+  simp only [List.tail_cons, List.head?_cons, Option.some.injEq] at i1 i2 i3 i4
+  have hrest : f = .defs → rest = [] := fun e => by
+    have := hd (by simp [e]); simp at this; exact this.2
+  have keep : st.cur.params ≠ [] → (f ≠ .defs ∨ k = []) → st'.cur.params ≠ [] := fun h e => prefix_ne (hP e) h
+  refine ⟨fun ha => ?_, fun hz => ?_, fun g hg => ?_, fun hh => ?_⟩
+  · rcases hA ha with ha0 | rfl
+    · by_cases e : f = .defs ∧ k ≠ []
+      · rw [hD e.1 e.2] at ha; cases ha
+      · exact keep (i1 ha0) (by by_cases hf : f = .defs; exact .inr (Classical.byContradiction fun hk => e ⟨hf, hk⟩); exact .inl hf)
+    · exact keep (i2 (by simp)) (.inl (by simp))
+  · rcases List.mem_append.mp hz with hz | hz
+    · exact hZ hz
+    · by_cases e : f = .defs
+      · rw [hrest e] at hz; cases hz
+      · exact keep (i2 (List.mem_cons_of_mem _ hz)) (.inl e)
+  · simp only at hg ⊢
+    rintro rfl
+    cases k with
+    | nil => exact i3 _ (List.mem_of_mem_tail (by simpa using hg)) rfl
+    | cons g0 k' =>
+      rcases List.mem_append.mp (by simpa using hg) with hg | hg
+      · obtain ⟨e, _⟩ := hS (List.mem_cons_of_mem _ hg); cases e; exact absurd ‹Frame.selfArgs ∈ []› (by simp)
+      · exact i3 _ hg rfl
+  · simp only at hh ⊢
+    cases k with
+    | nil => exact absurd rfl (i3 _ (List.mem_of_head? hh))
+    | cons g0 k' =>
+      simp at hh; subst hh; exact (hS (by simp)).2.2
+
+theorem reach_selfP {toks : List Tok} {fs : List Frame} {st : St}
+    (h : Star ([.defs], init toks) (.selfArgs :: fs, st)) : st.cur.params ≠ [] := by
+  have := h.lift (P := SInv) (fun hs _ hd hi => stepS_sinv hs hd hi) (stkinv_init toks) (dinv_init toks)
+    ⟨fun e => by simp [init] at e, fun e => by simp at e, fun g hg => by simp at hg, fun e => by simp at e⟩
+  exact this.1 (this.2.2.2 rfl)
+
 end ParRun
