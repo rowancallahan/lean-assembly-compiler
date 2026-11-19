@@ -87,4 +87,54 @@ theorem code_at {t : Proven.St} {e : Nat} {ws : List UInt64} (hv : ∀ v ∈ ws,
   unfold instrAt; rw [hn]
   exact ⟨by simpa using g 0 (by omega), g 1 (by omega), g 2 (by omega), g 3 (by omega)⟩
 
+/-! ## the J state of a Sail state -/
+
+/-- the byte at `a` (0 if absent) -/
+def gb (t : Proven.St) (a : Nat) : BitVec 8 := (t.mem[a]?).getD 0
+
+/-- the little-endian word at `a` -/
+def wordAt (t : Proven.St) (a : Nat) : UInt64 :=
+  UInt64.ofBitVec (gb t (a + 7) ++ gb t (a + 6) ++ gb t (a + 5) ++ gb t (a + 4) ++ gb t (a + 3) ++ gb t (a + 2) ++
+    gb t (a + 1) ++ gb t a)
+
+theorem wordAt_byte (t : Proven.St) (a k : Nat) (hk : k < 8) :
+    (wordAt t a).toBitVec.extractLsb' (8 * k) 8 = gb t (a + k) := by
+  apply BitVec.eq_of_toNat_eq
+  simp only [wordAt, UInt64.toBitVec_ofBitVec, BitVec.toNat_append, BitVec.extractLsb'_toNat, Nat.shiftRight_eq_div_pow]
+  repeat rw [Nano.V2B.or8 _ _ (BitVec.isLt _)]
+  have h0 := (gb t a).isLt; have h1 := (gb t (a + 1)).isLt; have h2 := (gb t (a + 2)).isLt
+  have h3 := (gb t (a + 3)).isLt; have h4 := (gb t (a + 4)).isLt; have h5 := (gb t (a + 5)).isLt
+  have h6 := (gb t (a + 6)).isLt; have h7 := (gb t (a + 7)).isLt
+  rcases (by omega : k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 3 ∨ k = 4 ∨ k = 5 ∨ k = 6 ∨ k = 7) with
+    rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;> simp <;> omega
+
+/-- J's view of a Sail state: registers, little-endian words, code base `b` -/
+def jOf (t : Proven.St) (b : Nat) : CallProbe.St :=
+  ⟨fun j => if h : j < 32 then UInt64.ofBitVec (getX t ⟨j, h⟩) else 0, wordAt t, b⟩
+
+theorem gb_some {t : Proven.St} {a : Nat} (h : (t.mem[a]?).isSome) : t.mem[a]? = some (gb t a) := by
+  unfold gb; cases e : t.mem[a]? with
+  | none => rw [e] at h; simp at h
+  | some v => rfl
+
+/-- **the start**: a Sail state with the code words at `base`, pc = base, the work cells and the input/output bytes
+present, and `m0` = its memory, is related to its J view at pc 0 -/
+theorem rel_init {K : LayW} {t : Proven.St} (hc : Cfg t) (hpc : t.regs.get? .PC = some (BitVec.ofNat 64 K.base))
+    (hcode : ∀ i (h : i < K.W.length), instrAt t (BitVec.ofNat 64 (K.base + 4 * i)) (BitVec.ofNat 32 K.W[i]))
+    (hw : ∀ a, wok K a → ∀ k < 8, (t.mem[a + k]?).isSome) (hio : ∀ a, io K a → (t.mem[a]?).isSome)
+    (hm0 : K.m0 = fun a => t.mem[a]?) :
+    RelW K (0, jOf t K.base) t where
+  cfg := hc
+  pc := by simpa using hpc
+  code := hcode
+  x0 := by simp [jOf, getX, xval]
+  bb := rfl
+  x := fun j => by simp [jOf, j.isLt]
+  w := fun a ha k hk => by
+    rw [gb_some (hw a ha k hk)]; simp only [jOf]; rw [wordAt_byte t a k hk]
+  bw := fun c hc => by
+    rw [gb_some (hio c hc)]; simp only [jOf]
+    rw [wordAt_byte t _ _ (Nat.mod_lt _ (by decide)), show c - c % 8 + c % 8 = c by omega]
+  fr := fun a _ _ => by rw [hm0]
+
 end SimW
