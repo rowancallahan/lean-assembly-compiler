@@ -283,21 +283,24 @@ SC from GenRef.Cx: p = K.p.toNat, κ = K.u.toNat, T id = T[id].toNat); def level
 DefX for def k from defs < k; program level over A's program theorem; Sail lift with `SimW.sim_starW`
 (`encG_encJ`, `Safe`).  Not yet: the OOM/capacity FAILURE path (S = none by OOM ⇒ machine reaches stub 1/6).
 
-## HANDOFF — Safe retrofit (Opus box A, started 2026-11-19)
+## HANDOFF — Safe retrofit (Opus box A, 2026-11-19)
 
 Goal (owner): make the template runs SAFE J runs (`SimW.SStar K C`) so `SimW.sim_starW` lifts them to Sail.
-File Nano/V2Self/Proof/SafeRun.lean (spec at its top). Tool: `sstar_of_run` (a `run C k a = some b` whose every
-intermediate state is `SimW.Safe` is an `SStar`); `SimW.SStar.trans/one/star`.
-DONE twins: push_srun, len_srun, bin_srun, bsize_srun, li_srun, const_srun, local_srun (multi-word LOCAL),
-popSlot_srun, popN_srun, pro_srun (proA), copy_sr, epi_srun; composable `SR K C k a` (SR.add / SR.one). (side conditions: `wok K` of every
-accessed cell; addi no-wrap is derived).
-NEXT: rd (lbu: aligned cell of x28 + idx is wok), bget, local1/localT, bnew/bpush/bset (Heap.lean), pro (CallA proA),
-epi (copy_run + the tail), popSlot/popN; then EVS.lean: `EVHwS` = EVHw with SStar K C and a layout hypothesis
-(lo ≤ hb, t6/s0/hb 8-aligned, frame top ≤ hi, input bytes' cells wok), S-twins of the composition lemmas.
-ISSUES (2026-11-19): (a) rdT has `bgeu 6 29 3`, bgetT/bsetT `bgeu 6 7 4`; SimW.Safe/sim_stepW only lift bgeu with
-offset 2 → SimW needs bgeu +12/+16 (encBt12/16_eq, boff 6#12/8#12, sim_stepW case) — owner asked whether A may edit SimW.
-(b) bnew/bpush/bset/rd/bget run lemmas state `∃ k s', run C k …`; `sstar_of_run` needs Safe at run C j for all
-j < k, so the twin needs the run's exact k (the proofs use explicit k: 11, 7, 9, 6, 1 + |li| + …). Either state those
-lemmas with the explicit k (owner of Expr/Heap) or duplicate the proofs in SafeRun with explicit k.
-Technique: per template, `refine sstar_of_run (X_run …) fun j hj c hc => ?_`, then `rcases j` over the
-instruction indices, compute `hc` with the same simp set as the run lemma, `subst hc; simp [Safe, hK]`.
+File Nano/V2Self/Proof/SafeRun.lean (spec at its top). Tools: `sstar_of_run` (a `run C k a = some b` whose every
+intermediate state is `SimW.Safe` is an `SStar`), `SR K C k a` (safe prefix; `SR.add`, `SR.one`), `SimW.SStar.trans/one/star`.
+DONE twins (std axioms): push_sr/push_srun, len_srun, bin_srun, bsize_srun, li_srun, const_srun, local_srun (multi-word),
+popSlot_srun, popN_srun, pro_srun (proA), copy_sr, epi_srun, bpush_srun, bset_srun, bget_srun, rd_srun.
+Side conditions are exactly `wok K` of each accessed cell (lbu: the aligned cell of x28 + idx), plus offset ranges
+for LOCAL/popN/epi slots (p, q ≤ 250 in Gen) and epi's return address = base + 4j; addi no-wrap is derived.
+DONE shared edits (owner-approved, E notified): SimW `encJ (.bgeu a b o)` uses 4·o, `Safe` bgeu o ∈ {2,3,4},
+sim_bgeu12/16; ExprBridge.encG_bgeu `rfl`; Expr/Heap `rd_runK bget_runK bnew_runK bpush_runK bset_runK` (explicit
+step counts; old ∃-forms are corollaries). E: extend ExprBridge.GoodW/encG_bgeu to o = 3, 4 for RD/BGET/BSET words.
+NEXT: (1) bnew_srun: refactor li_srun into `li_sr : SR K C |liT| (pc, s)`, then SR.add over bnew_runK's segments
+(addi 5 30 0 | li 6 W | alu, bgeu taken | li 7 κ | sd 0 5 0, sd 7 5 8 (heap cells t5, t5+8 wok), addi 30 6 0 | push);
+the segment states are s1..s8 in bnew_runK's proof (Heap.lean). (2) EVS.lean: `EVHwS K C …` = EVHw with SStar K C and a
+layout hypothesis (lo ≤ hb, t6/s0/hb 8-aligned, frame top ≤ hi, input cells wok), S-twins of the composition lemmas
+(nilX/pairX/ifX/letX/leafX/…/callX/defX/loopX); their glue instructions (ifHead, loopHead/Dec, jal/jalr) need Safe
+facts too (jal targets < |C| from the layout).
+Generator for twins of long straight-line runs: /scratchpad gen.py idea — take the runK proof, rename `hc`→`hcc`,
+`simp only [if_pos hi]` → `… at hj`, and replace each closing `simp [run, step, SET]` by `rcases j` cases
+`simp [run, step, SET] at hc; subst hc; simp [Safe, SET] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩`.
