@@ -30,8 +30,6 @@ theorem u_beq {a b : Nat} (ha : a < 2 ^ 64) (hb : b < 2 ^ 64) : (u a == u b) = d
 /-- every UInt64 literal as `u n` -/
 theorem lit (n : Nat) : (no_index (OfNat.ofNat n : UInt64)) = u n := rfl
 theorem u_lt' {a b : Nat} (ha : a < 2 ^ 64) (hb : b < 2 ^ 64) : (u a < u b) = (a < b) := propext (u_lt ha hb)
-theorem u_zero : (0 : UInt64) = u 0 := rfl
-theorem u_one : (1 : UInt64) = u 1 := rfl
 theorem u_and3 {a : Nat} (ha : a < 2 ^ 64) : u a &&& u 3 = u (a % 4) := by
   apply UInt64.toNat_inj.mp
   rw [UInt64.toNat_and, u_toNat ha, u_toNat (show 3 < 2 ^ 64 by omega), u_toNat (show a % 4 < 2 ^ 64 by omega)]
@@ -40,8 +38,6 @@ theorem u_shr2 {a : Nat} (ha : a < 2 ^ 64) : u a >>> u 2 = u (a / 4) := by
   apply UInt64.toNat_inj.mp
   rw [UInt64.toNat_shiftRight, u_toNat ha, u_toNat (show 2 < 2 ^ 64 by omega), u_toNat (show a / 4 < 2 ^ 64 by omega)]
   simp [Nat.shiftRight_eq_div_pow]
-theorem u_or01 (a b : Bool) : u (if a then 1 else 0) ||| u (if b then 1 else 0) = u (if a || b then 1 else 0) := by
-  cases a <;> cases b <;> decide
 
 /-! ## buffers as lists -/
 theorem bget_u (b : Buf) {k : Nat} (h : k < 2 ^ 64) : bget b (u k) = b.getD k 0 := by
@@ -93,7 +89,5 @@ theorem wr_getD {b : Buf} {j : Nat} (h : j ≤ b.length) (v : UInt64) (k : Nat) 
 
 theorem wr_length {b : Buf} {j : Nat} (h : j ≤ b.length) (v : UInt64) : (wr b j v).length = max b.length (j + 1) := by
   unfold wr; split <;> simp <;> omega
-
-theorem set_length' (b : Buf) (j : Nat) (v : UInt64) : (b.set j v).length = b.length := List.length_set
 
 end OwnP

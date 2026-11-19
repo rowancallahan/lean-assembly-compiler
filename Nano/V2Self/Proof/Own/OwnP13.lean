@@ -32,18 +32,6 @@ theorem push_step {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : A.
         subst h <;> simp [Fr.fld] <;> omega
   · right; exact herr
 
-/-- reading the header words of a node -/
-theorem hdr {W : WCx} {s : Buf} {A : AS} (hS : RS W s A) (hB : Bnd W A) {l rest : List UInt64}
-    (hx : W.x.drop A.i = l ++ rest) (hl : 3 ≤ l.length) :
-    bget s (u 0) = u A.i ∧ bget W.x (u A.i) = l.getD 0 0 ∧ bget W.x (u A.i + u 1) = l.getD 1 0 ∧
-    bget W.x (u A.i + u 2) = l.getD 2 0 ∧ A.i + l.length ≤ W.x.length := by
-  have hxl := drop_len hx (by omega)
-  have hx40 := hB.2.2.2.1
-  refine ⟨(regs hS).1, ?_, ?_, ?_, hxl⟩
-  · have := xw hx (k := 0) (by omega) (by omega); simpa using this
-  · rw [u_add]; exact xw hx (k := 1) (by omega) (by omega)
-  · rw [u_add]; exact xw hx (k := 2) (by omega) (by omega)
-
 theorem hdr0 {W : WCx} {A : AS} (hB : Bnd W A) {l rest : List UInt64} (hx : W.x.drop A.i = l ++ rest) {k : Nat}
     (hk : k < l.length) : bget W.x (u A.i + u k) = l.getD k 0 := by
   have hxl := drop_len hx (by omega); have hx40 := hB.2.2.2.1

@@ -58,9 +58,6 @@ structure WI (D : List (UInt64 × UInt64)) (p q : UInt64) (d s : Buf) (FL : List
   sl : s.length < 2 ^ 40
   Dl : D.length < 2 ^ 32
 
-theorem bget_n (s : Buf) (n : Nat) (h : n < 2 ^ 64) : bget s n.toUInt64 = s.getD n 0 := by
-  simp [bget, u_toNat n h]
-
 /-- s' agrees with s on the frame words and the registers except those in `J` -/
 theorem FS_mono {s s' : Buf} {FL : List Fr} (h : FS s FL) (hl : s.length ≤ s'.length)
     (ha : ∀ m, 8 ≤ m → m < 8 + 4 * FL.length → s'.getD m 0 = s.getD m 0) : FS s' FL :=
@@ -479,7 +476,6 @@ theorem WI_len {D p q d s FL} (hI : WI D p q d s FL) : 8 ≤ s.length := by have
 theorem uk1 (i : Nat) : i.toUInt64 + 1 = (i + 1).toUInt64 := u_add i 1
 theorem uk2 (i : Nat) : i.toUInt64 + 2 = (i + 2).toUInt64 := u_add i 2
 theorem uk3 (i : Nat) : i.toUInt64 + 3 = (i + 3).toUInt64 := u_add i 3
-theorem uk5 (i : Nat) : i.toUInt64 + 5 = (i + 5).toUInt64 := u_add i 5
 theorem uk6 (i : Nat) : i.toUInt64 + 6 = (i + 6).toUInt64 := u_add i 6
 theorem tk1 (X : Buf) (i : Nat) (h : i + 1 < 2 ^ 64) : bget X (i.toUInt64 + 1) = tg X (i + 1) := tg_u1 X i 1 h
 theorem tk2 (X : Buf) (i : Nat) (h : i + 2 < 2 ^ 64) : bget X (i.toUInt64 + 2) = tg X (i + 2) := tg_u1 X i 2 h

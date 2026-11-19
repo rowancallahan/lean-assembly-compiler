@@ -289,8 +289,6 @@ theorem g35_eq (r o : Buf) (w : UInt64) :
 /-- the start code's words -/
 def startW (o : Buf) (w : UInt64) : Buf := stT (bpush (stH o) (g13 1 (bsize (stH o)) w))
 
-theorem g16_len (r : Buf) : (g16 r).length = r.length := by unfold g16; rw [BufL.length_bset]
-
 /-- Gen's shared pair matcher, by an equation (never by unfolding it on a g19/g20 result) -/
 theorem m28 {α : Type} (p : Buf × Buf) (f : Buf → Buf → α) : g28.match_1 (fun _ => α) p f = f p.1 p.2 := by
   cases p; rfl

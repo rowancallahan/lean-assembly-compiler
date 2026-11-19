@@ -187,8 +187,6 @@ theorem o11_eq {p : Nat} (hp : p < 10) : o11 (u p) = u (dsP p).length := by
   rcases (by omega : p = 0 ∨ p = 1 ∨ p = 2 ∨ p = 3 ∨ p = 4 ∨ p = 5 ∨ p = 6 ∨ p = 7 ∨ p = 8 ∨ p = 9) with
     h | h | h | h | h | h | h | h | h | h <;> subst h <;> simp [dsP]
 
-theorem len_set1 (s : Buf) : (bset s 1 1).length = s.length := by simp [bset]
-
 /-- an error stays an error through `o18` -/
 theorem o18_err (f v t : Buf) : ∀ (n : Nat) (s : Buf) (q b : UInt64), 6 ≤ s.length → bget s 1 = 1 →
     bget (o18 n s f v t q b) 1 = 1 := by

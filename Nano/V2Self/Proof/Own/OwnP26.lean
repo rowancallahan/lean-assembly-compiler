@@ -11,10 +11,6 @@ def Pre (W : WCx) (s f v : Buf) (i0 : Nat) : Prop :=
 
 def A0 (i0 ns : Nat) : AS := ⟨i0, [], List.replicate ns false, [], [], 0⟩
 
-theorem getD_bset (s : Buf) (i : Nat) (hi : i < 2 ^ 64) (x : UInt64) (k : Nat) :
-    (bset s (u i) x).getD k 0 = if i = k ∧ i < s.length then x else s.getD k 0 := by
-  rw [bset_u s hi, getD_set]
-
 theorem st0 {W : WCx} {s f v : Buf} {i0 : Nat} (hP : Pre W s f v i0) :
     St W (bset (bset (bset (bset (bset (bset (bset (bset s (u 0) (u i0)) (u 4) (u 0)) (u 5) (u 0)) (u 7) (u 0)) (u 8) (u 0))
       (u 10) (u 0)) (u 11) (u 0)) (u 9) (u 0)) (o22 16777216 f (u W.ns) (u W.ns) (u 0) (u W.ns) (u 3)) v (A0 i0 W.ns) := by
@@ -56,8 +52,6 @@ theorem wfb_n {b : Nd} (hnl : ∀ z st, b ≠ .loop z st) (hb : WFB b) : WFN b :
 theorem ag_b5 (s : Buf) : Ag (bset s 5 1) s := by
   refine ⟨by simp [bset], fun k hk => ?_⟩
   simp only [bset]; rw [getD_set]; simp only [show (5 : UInt64).toNat = 5 from rfl]; rw [if_neg (by omega)]
-
-theorem ag_symm {s s' : Buf} (h : Ag s s') : Ag s' s := ⟨h.1.symm, fun k hk => (h.2 k hk).symm⟩
 
 /-- what `o35` leaves: cursor after the body, the result entries `ks` in `v[0, |ks|)`, kinds kept, sizes -/
 def Post (W : WCx) (r : Buf × (Buf × Buf)) (i1 : Nat) (ks : List Nat) : Prop :=

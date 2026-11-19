@@ -12,8 +12,6 @@ def dsOf (W : WCx) (r : Fr) : Option (List Nat) :=
 /-- what `o9` needs of a frame -/
 def Fr.ok (W : WCx) (r : Fr) : Prop := r.d ≤ 4 ∧ (r.d = 2 → r.a < 10) ∧ (r.d = 3 → r.a < W.ps.length)
 
-theorem b2n_lt (b : Bool) : b2n b < 2 := by cases b <;> simp [b2n]
-
 theorem u_b2n_beq0 (b : Bool) : (u (b2n b) == u 0) = !b := by cases b <;> decide
 
 theorem o7_eq {W : WCx} {s f : Buf} {A : AS} (hS : RS W s A) (hF : RF W f A) (hB : Bnd W A) {q : Nat} (hq : q < 2 ^ 40) :

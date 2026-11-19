@@ -57,10 +57,6 @@ theorem u_toNat_self (y : UInt64) : u y.toNat = y := UInt64.ofNat_toNat
 
 @[simp] theorem bset_len (y : Buf) (k w : UInt64) : (bset y k w).length = y.length := by simp [bset]
 
-theorem ite4 (A B C D : Prop) [Decidable A] [Decidable B] [Decidable C] [Decidable D] :
-    (if A then (1 : UInt64) else if B then 1 else if C then 1 else if D then 1 else 0) = if A ∨ B ∨ C ∨ D then 1 else 0 := by
-  by_cases A <;> by_cases B <;> by_cases C <;> by_cases D <;> simp_all
-
 theorem bget_bset (y : Buf) (k k' w : UInt64) :
     bget (bset y k w) k' = if k.toNat = k'.toNat ∧ k.toNat < y.length then w else bget y k' := by
   simp only [bget, bset]; rw [getD_set]

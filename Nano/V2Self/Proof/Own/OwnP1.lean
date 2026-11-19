@@ -178,9 +178,6 @@ theorem o0_step {b : Buf} {j : Nat} (hj : j ≤ b.length) (hb : b.length < 2 ^ 6
     (o0 b (u j) w).length = max b.length (j + 1) ∧ ∀ k, (o0 b (u j) w).getD k 0 = if k = j then w else b.getD k 0 := by
   rw [o0_u b (by omega) (by omega)]; exact ⟨wr_length hj w, wr_getD hj w⟩
 
-theorem u16 (m k : Nat) : (16 : UInt64) + 8 * u m + u k = u (16 + 8 * m + k) := by
-  rw [show (16 : UInt64) = u 16 from rfl, show (8 : UInt64) = u 8 from rfl, u_mul, u_add, u_add]
-
 theorem o3_eq {W : WCx} {s : Buf} {A : AS} (h : RS W s A) (hb : A.Φ.length < 2 ^ 30)
     (g n d a b : Nat) (hg : g < 2 ^ 60) (hn : n < 2 ^ 60) (hd : d < 2 ^ 60) (ha : a < 2 ^ 60) (hb' : b < 2 ^ 60) :
     RS W (o3 s (u g) (u n) (u d) (u a) (u b)) { A with Φ := A.Φ ++ [⟨g, n, 0, d, A.es.length, A.es.length, a, b⟩] } := by

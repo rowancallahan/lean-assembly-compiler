@@ -15,12 +15,6 @@ def EntA (ps rs : List (List Nat)) (t : Buf) : Prop :=
 def TInv (ps rs : List (List Nat)) (t : Buf) : Prop :=
   ps.length = rs.length ∧ 4096 ≤ t.length ∧ t.length ≤ 4096 + ps.length * 2 ^ 23 ∧ EntA ps rs t
 
-theorem rt_of {x t : Buf} {ps rs : List (List Nat)} {K : List Nat} {npw : Nat} (h : TInv ps rs t) (hd : ps.length < 4096) :
-    RT ⟨x, t, ps, rs, K, npw⟩ := by
-  obtain ⟨h1, -, h3, h4⟩ := h
-  refine ⟨h1, hd, by show t.length < 2 ^ 40; omega, fun c hc => ?_⟩
-  obtain ⟨a, -, rest⟩ := h4 c hc; exact ⟨a, rest⟩
-
 /-- a buffer that keeps `t[0, n)` except index `d` -/
 def Keeps (t t' : Buf) (d : Nat) : Prop := t.length ≤ t'.length ∧ ∀ k < t.length, k ≠ d → t'.getD k 0 = t.getD k 0
 
@@ -49,10 +43,6 @@ theorem keeps_trans {t t1 t2 : Buf} {d : Nat} (h1 : Keeps t t1 d) (h2 : Keeps t1
   ⟨by have := h1.1; have := h2.1; omega, fun k hk hkd => by rw [h2.2 k (by have := h1.1; omega) hkd, h1.2 k hk hkd]⟩
 
 theorem g37_0 (e : UInt64) : g37 (u 0) e = e := rfl
-
-theorem getD_map_range (y : Buf) (g : UInt64 → UInt64) {p j : Nat} (hj : j < p) :
-    ((List.range' 0 p).map fun q => g (y.getD q 0)).getD j 0 = g (y.getD j 0) := by
-  simp [List.getD_eq_getElem?_getD, List.getElem?_range', hj]
 
 theorem getD_map_range' (y : Buf) {p j : Nat} (hj : j < p) :
     ((List.range' 0 p).map fun q => y.getD q 0).getD j 0 = y.getD j 0 := by

@@ -112,8 +112,6 @@ theorem o22_or : ∀ (m : Nat) (f : Buf) (a b j n : Nat), a + n ≤ b → b + n 
     · simp only [u_lt' (show j < 2 ^ 64 by omega) (show n < 2 ^ 64 by omega), hj, if_false]
       exact ⟨trivial, fun k => by rw [if_neg (by omega)]⟩
 
-theorem getD_b2n (l : List Bool) (q : Nat) : u (b2n (l.getD q false)) = u (b2n (l.getD q false)) := rfl
-
 /-- clear the dead flags (loop arms) -/
 theorem rf_zero {W : WCx} {f : Buf} {A : AS} (hF : RF W f A) (hB : Bnd W A) :
     RF W (o22 16777216 f (u W.ns) (u W.ns) (u 0) (u W.ns) (u 3)) { A with F := List.replicate W.ns false } := by
@@ -125,9 +123,6 @@ theorem rf_zero {W : WCx} {f : Buf} {A : AS} (hF : RF W f A) (hB : Bnd W A) :
   · rw [z.2, if_neg (by omega)]; exact h5 q hq
   · rw [z.2, if_pos (by omega)]; simp [List.getD_eq_getElem?_getD, hq, b2n]; rfl
   · rw [z.2, if_neg (by have : 0 ≤ W.ns * j := Nat.zero_le _; omega)]; exact h7 j hj q hq
-
-theorem snap_idx {ns j : Nat} : (2 : UInt64) * u ns + u ns * u j = u (2 * ns + ns * j) := by
-  rw [show (2 : UInt64) = u 2 from rfl, u_mul, u_mul, u_add]
 
 theorem mul_le' {ns j k : Nat} (h : j ≤ k) : ns * j ≤ ns * k := Nat.mul_le_mul_left ns h
 

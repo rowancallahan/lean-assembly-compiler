@@ -64,9 +64,6 @@ theorem Reach.bind {s : GS} {P Q : GS → Prop} (h : Reach s P) (hq : ∀ s', P 
       rwa [show j - m + m = j by omega] at this
   · exact ⟨m, hm, .inr he⟩
 
-theorem Reach.mono {s : GS} {P Q : GS → Prop} (h : Reach s P) (hq : ∀ s', P s' → Q s') : Reach s Q :=
-  h.bind fun s' hp => .done (hq s' hp)
-
 /-! ## the item stack and the fixup list -/
 
 abbrev Item := UInt64 × UInt64 × UInt64
@@ -353,15 +350,6 @@ theorem bget_set (r : Buf) (j : UInt64) (v : UInt64) (i : UInt64) (hj : j.toNat 
   · have : j.toNat ≠ i.toNat := fun e => h (UInt64.toNat_inj.mp e)
     simp [h, this]
 
-theorem bk (k : Buf) (n j : Nat) (h : 3 * n + j < 2 ^ 64) : bget k (n.toUInt64 * 3 + j.toUInt64) = k.getD (3 * n + j) 0 := by
-  simp only [bget]; rw [u3 n j h]
-
-theorem bk0 (k : Buf) (n : Nat) (h : 3 * n < 2 ^ 64) : bget k (n.toUInt64 * 3) = k.getD (3 * n) 0 := by
-  have := bk k n 0 (by omega); simpa using this
-
-theorem pred_u (n : Nat) (h : n + 1 < 2 ^ 64) : (n + 1).toUInt64 - 1 = n.toUInt64 := by
-  apply UInt64.toNat.inj; simp [Nat.toUInt64]
-
 /-- g37 on a visit item (unfolding with `extract_lets`: zeta-reducing Gen's lets blows up the term) -/
 theorem g37_visit (x r o k t f : Buf) (hc : bget k ((bget r 6 - 1) * 3) = 1) :
     g37 x r o k t f = (match g36 x (g15 r 6 (bget r 6 - 1)) o k (bget k ((bget r 6 - 1) * 3 + 1)) with
@@ -610,9 +598,6 @@ theorem v_local {K s L F d i} (hI : Inv K s (L ++ [(1, 0, 0)]) F) (hr0 : bget s.
     simp only [show ((1 : UInt64) == 1) = true from rfl, if_true]
     exact Reach.error (g16_err _ hl6)
 
-
-/-- the operator-range check of g36 -/
-def rng (c b : UInt64) : Prop := (c = 3 → b - 1 < 8) ∧ (c = 4 → b - 1 < 2) ∧ (c = 9 → b - 1 < 9)
 
 theorem g36_bin (x r o k : Buf) (hc : bget x (bget r 0) = 3) (hb : bget x (bget r 0 + 1) - 1 < 8) :
     g36 x r o k 0 = (g15 (g15 r 0 (bget r 0 + 2)) 6 (bget r 6 + 3), (o, g18 (g18 (g18 k (bget r 6) 2 (bget x (bget r 0 + 1)) 0)
@@ -935,9 +920,6 @@ theorem stk_push_at (k : Buf) (L : List Item) (n c a b : UInt64) (hn : n = L.len
   subst hn
   obtain ⟨h1, h2⟩ := stk_push k L c a b hs hk (by omega)
   exact ⟨h1, by rw [h2]; omega⟩
-
-theorem uadd (n a b : Nat) : n.toUInt64 + a.toUInt64 + b.toUInt64 = (n + a + b).toUInt64 := by
-  simp [Nat.toUInt64, UInt64.ofNat_add]
 
 /-- seven pushes (IF) -/
 theorem stk_push7 (k : Buf) (L : List Item) (e0 e1 e2 e3 e4 e5 e6 : Item) (hs : Stk k L) (hk : k.length < 2 ^ 62)
@@ -2511,11 +2493,6 @@ def patchR (h : UInt64) : Buf → List UInt64 → Buf
 theorem patchR_len (h : UInt64) : ∀ (E : List UInt64) (o : Buf), (patchR h o E).length = o.length
   | [], o => rfl
   | e :: E, o => by simp only [patchR]; rw [patchR_len h E]; exact BufL.length_bset _ _ _
-
-theorem g16_keep4 (r : Buf) (h : bget r 4 = 1) : bget (g16 r) 4 = 1 := by
-  unfold g16; rw [BufL.bget_bset]; split
-  · rfl
-  · exact h
 
 /-- ENDDEF's fixup loop: f unchanged, every recorded exit patched, r unchanged or the error flag set -/
 theorem g28_ok (n : Nat) : ∀ (F : List UInt64) (f r o : Buf), F.length ≤ n → F.length < 2 ^ 32 →

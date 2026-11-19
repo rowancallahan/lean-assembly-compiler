@@ -110,9 +110,6 @@ theorem sim_prim {W : WCx} {p : Nat} {as : List Nd} (hsim : ∀ c ∈ as, SimOK 
   · have e : A.i + (Nd.prim p as).ser.length = A.i + 2 + (serL as).length := by simp [Nd.ser]; omega
     rw [e]; exact hσ
 
-theorem ser_head (e : Nd) (h : ∀ cs, e ≠ .pair cs) : e.ser.getD 0 0 ≠ 6 := by
-  cases e <;> simp [Nd.ser] <;> first | decide | exact h _ rfl
-
 theorem o31_cont {W : WCx} {s f v : Buf} {A : AS} (hS : RS W s A) (hB : Bnd W A) {e : Nd}
     {rest : List UInt64} (hx : W.x.drop A.i = (Nd.cont e).ser ++ rest) :
     o31 W.x s f v W.t = match e with

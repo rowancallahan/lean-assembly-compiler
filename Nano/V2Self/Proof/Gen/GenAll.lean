@@ -119,14 +119,6 @@ theorem ws_sk {X D p q} : ∀ {i ws i'}, Ws X D p q i ws i' → Sks X i ws.lengt
   | _, _, _, .cons a b => .cons (w_sk a) (ws_sk b)
 end
 
-/-- a CG node and a W node at the same AST word end at the same word -/
-theorem cg_w_end {K d i h c i' E D p q top w i''} (hC : CG K d i h c i' E) (hW : W K.X D p q top i w i'') : i' = i'' :=
-  sk_det (cg_sk hC) (w_sk hW)
-theorem ct_w_end {K hd d i h c i' E D p q top w i''} (hC : CT K hd d i h c i' E) (hW : W K.X D p q top i w i'') : i' = i'' :=
-  sk_det (ct_sk hC) (w_sk hW)
-theorem cgs_ws_end {K d i h c i' E D p q ws i''} (hC : CGs K d i h ws.length c i' E) (hW : Ws K.X D p q i ws i'') :
-    i' = i'' := sks_det (cgs_sk hC) (ws_sk hW)
-
 /-- Gen's def chain and the width pass's def chain have the same headers -/
 theorem chains {X u} : ∀ {T i o hs T' i' o'}, DefsC X u T i o hs T' i' o' → ∀ {D hs' D' i''}, WDefs X D i hs' D' i'' →
     i' = X.length → X.length ≤ i'' → hs = hs' ∧ i'' = i' := by

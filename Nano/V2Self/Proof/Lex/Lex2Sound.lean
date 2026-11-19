@@ -192,9 +192,6 @@ theorem s7_eq : ∀ (n : Nat) (x : List UInt8) (i e : UInt64) (o : Buf), x.lengt
 
 /-! ### keyword classification (s3) -/
 
-theorem beqd (a b : UInt8) : (a == b) = decide (a = b) := by
-  cases h : a == b <;> simp_all
-
 
 theorem tu (a : UInt8) (n : Nat) (h : n < 256) : a.toUInt64 = UInt64.ofNat n ↔ a = UInt8.ofNat n := by
   constructor
@@ -380,14 +377,6 @@ theorem bcomm (a b : UInt8) : (a == b) = (b == a) := by
 
 theorem isD_iff (c : UInt8) : (48 ≤ c.toUInt64 ∧ c.toUInt64 ≤ 57) ↔ isD c = true := by
   rw [← isD_eq]; simp
-
-theorem wcond (c : UInt8) : ((65 ≤ c → 90 < c) → (97 ≤ c → 122 < c) → ¬c = 95 → ¬c = 39 → 48 ≤ c ∧ c ≤ 57) =
-    ((((65 ≤ c ∧ c ≤ 90 ∨ 97 ≤ c ∧ c ≤ 122) ∨ c = 95) ∨ c = 39) ∨ 48 ≤ c ∧ c ≤ 57) := by
-  have : ∀ v : BitVec 8, decide ((65 ≤ UInt8.ofBitVec v → 90 < UInt8.ofBitVec v) → (97 ≤ UInt8.ofBitVec v → 122 < UInt8.ofBitVec v) → ¬UInt8.ofBitVec v = 95 → ¬UInt8.ofBitVec v = 39 → 48 ≤ UInt8.ofBitVec v ∧ UInt8.ofBitVec v ≤ 57) =
-    decide ((((65 ≤ UInt8.ofBitVec v ∧ UInt8.ofBitVec v ≤ 90 ∨ 97 ≤ UInt8.ofBitVec v ∧ UInt8.ofBitVec v ≤ 122) ∨ UInt8.ofBitVec v = 95) ∨ UInt8.ofBitVec v = 39) ∨ 48 ≤ UInt8.ofBitVec v ∧ UInt8.ofBitVec v ≤ 57) := by decide
-  have h := this c.toBitVec
-  simp only [decide_eq_decide] at h
-  exact propext h
 
 
 theorem tailc (c : UInt8) (A B : UInt64) :

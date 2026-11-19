@@ -35,32 +35,6 @@ theorem o40_ge : ∀ (m : Nat) (b : Buf) (k : Nat), k < 2 ^ 64 → b.length < 2 
 /-- the clamp of `o22` mode 5 -/
 def cl (x : UInt64) : UInt64 := if x < 2 then x else 2
 
-theorem o22_cl : ∀ (m : Nat) (f : Buf) (j n : Nat), n ≤ f.length → f.length < 2 ^ 62 → n - j ≤ m → j ≤ n → n < 2 ^ 40 →
-    (o22 m f (u 0) (u 0) (u j) (u n) (u 5)).length = f.length ∧
-    ∀ k, (o22 m f (u 0) (u 0) (u j) (u n) (u 5)).getD k 0 = if j ≤ k ∧ k < n then cl (f.getD k 0) else f.getD k 0 := by
-  intro m; induction m with
-  | zero => intro f j n _ _ hm _ _; rw [o22]; exact ⟨rfl, fun k => by rw [if_neg (by omega)]⟩
-  | succ m ih =>
-    intro f j n hl hl2 hm hjn hn
-    rw [o22]
-    by_cases hj : j < n
-    · simp only [u_lt' (show j < 2 ^ 64 by omega) (show n < 2 ^ 64 by omega), hj, if_true, u_add, Nat.zero_add]
-      simp only [show (u 5 == 0) = false from rfl, show (u 5 == 1) = false from rfl, show (u 5 == 2) = false from rfl,
-        show (u 5 == 3) = false from rfl, show (u 5 == 4) = false from rfl, Bool.false_eq_true, if_false]
-      rw [show (1 : UInt64) = u 1 from rfl, u_add, bset_u f (by omega), bget_u f (by omega)]
-      have := ih (f.set j (if f.getD j 0 < 2 then f.getD j 0 else 2)) (j + 1) n (by simp; omega) (by simp; omega) (by omega) (by omega) hn
-      refine ⟨by rw [this.1]; simp, fun k => ?_⟩
-      rw [this.2]; simp only [getD_set]
-      by_cases hk : k = j
-      · subst hk
-        simp only [show ¬ k + 1 ≤ k by omega, false_and, if_false, true_and, show k < f.length by omega, if_true,
-          Nat.le_refl, hj, and_self]; rfl
-      · by_cases hk2 : j + 1 ≤ k ∧ k < n
-        · simp only [hk2, if_true, show ¬ (j = k ∧ j < f.length) by omega, if_false, show j ≤ k ∧ k < n by omega]
-        · simp only [hk2, if_false, show ¬ (j = k ∧ j < f.length) by omega, show ¬ (j ≤ k ∧ k < n) by omega]
-    · simp only [u_lt' (show j < 2 ^ 64 by omega) (show n < 2 ^ 64 by omega), hj, if_false]
-      exact ⟨trivial, fun k => by rw [if_neg (by omega)]⟩
-
 theorem cl_le (x : UInt64) : (cl x).toNat ≤ 2 := by
   unfold cl; split
   · rename_i h; have := UInt64.lt_iff_toNat_lt.mp h; simp at this; omega
