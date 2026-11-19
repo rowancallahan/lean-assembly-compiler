@@ -42,11 +42,24 @@ theorem _root_.SimW.SStar.star {K : LayW} {C : List J} {a b : Nat × St} (h : SS
 
 /-! ## push -/
 
-theorem push_srun {K : LayW} {C pc s r oom} (hC : At C pc (push r oom)) (hr : r ≠ 31) (hr0 : r ≠ 0) (hr32 : r < 32)
-    (hh : (s.x 30).toNat + 8 ≤ (s.x 31).toNat) (hw : wok K ((s.x 31).toNat - 8)) :
-    SStar K C (pc, s) (pc + 4, ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)),
-                                 upd s.m ((s.x 31).toNat - 8) (s.x r), s.b⟩) := by
-  refine sstar_of_run (push_run hC hr hr0 hh) fun j hj c hc => ?_
+/-- every state of the first k steps from a is safe -/
+def SR (K : LayW) (C : List J) (k : Nat) (a : Nat × St) : Prop := ∀ j, j < k → ∀ c, run C j a = some c → Safe K C c
+
+theorem SR.add {K : LayW} {C : List J} {k1 k2 : Nat} {a b : Nat × St} (h1 : SR K C k1 a) (hr : run C k1 a = some b)
+    (h2 : SR K C k2 b) : SR K C (k1 + k2) a := fun j hj c hc => by
+  by_cases hjk : j < k1
+  · exact h1 j hjk c hc
+  · have := run_add (l := j - k1) hr
+    rw [show k1 + (j - k1) = j by omega, hc] at this
+    exact h2 (j - k1) (by omega) c this.symm
+
+theorem SR.one {K : LayW} {C : List J} {a : Nat × St} (h : Safe K C a) : SR K C 1 a := fun j hj c hc => by
+  have : j = 0 := by omega
+  subst this; simp [run] at hc; subst hc; exact h
+
+theorem push_sr {K : LayW} {C pc s r oom} (hC : At C pc (push r oom)) (hr32 : r < 32)
+    (hh : (s.x 30).toNat + 8 ≤ (s.x 31).toNat) (hw : wok K ((s.x 31).toNat - 8)) : SR K C 3 (pc, s) := by
+  intro j hj c hc
   have h0 := hC.at 0 (by simp [push]); have h1 := hC.at 1 (by simp [push])
   have h3 := hC.at 3 (by simp [push])
   simp only [push, Nat.add_zero] at h0 h1 h3
@@ -62,6 +75,12 @@ theorem push_srun {K : LayW} {C pc s r oom} (hC : At C pc (push r oom)) (hr : r 
       show ((pc : Int) + 1 + 2).toNat = pc + 3 by omega] at hc
     subst hc
     simp [Safe, h3, hr32, ea, upd_same, t6']; exact hw
+
+theorem push_srun {K : LayW} {C pc s r oom} (hC : At C pc (push r oom)) (hr : r ≠ 31) (hr0 : r ≠ 0) (hr32 : r < 32)
+    (hh : (s.x 30).toNat + 8 ≤ (s.x 31).toNat) (hw : wok K ((s.x 31).toNat - 8)) :
+    SStar K C (pc, s) (pc + 4, ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)),
+                                 upd s.m ((s.x 31).toNat - 8) (s.x r), s.b⟩) :=
+  sstar_of_run (push_run hC hr hr0 hh) (push_sr hC hr32 hh hw)
 
 theorem len_srun {K : LayW} {C pc tgt} (s : St) (hC : At C pc (lenT tgt pc)) (hh : (s.x 30).toNat + 8 ≤ (s.x 31).toNat)
     (hw : wok K ((s.x 31).toNat - 8)) :
@@ -286,5 +305,51 @@ theorem popN_srun {K : LayW} {C : List J} {p k0 : Nat} : ∀ (w pc : Nat) (s : S
     obtain ⟨-, c1, c2, c3, c4⟩ := hw j (by omega)
     rw [t1, x81]
     exact ⟨by rw [show (s.x 31).toNat + 8 + 8 * j = (s.x 31).toNat + 8 * (j + 1) by omega]; exact b0, c1, c2, c3, c4⟩
+
+/-! ## the prologue (proA): push ra, push s0, s0 := t6, t6 -= 8r, room check -/
+
+theorem pro_srun {K : LayW} {C : List J} {f r tgt : Nat} {s : St} (hC : At C f (proA tgt f r))
+    (hlt : (s.x 31).toNat < 2 ^ 63) (hh : (s.x 30).toNat + 16 + 8 * r ≤ (s.x 31).toNat) (hr : r ≤ 256)
+    (w1 : wok K ((s.x 31).toNat - 8)) (w2 : wok K ((s.x 31).toNat - 16)) :
+    ∃ s1, SStar K C (f, s) (f + 12, s1) ∧
+      (s1.x 31).toNat = (s.x 31).toNat - 16 - 8 * r ∧ (s1.x 8).toNat = (s.x 31).toNat - 16 ∧
+      (∀ i, i ≠ 31 → i ≠ 8 → s1.x i = s.x i) ∧
+      s1.m = upd (upd s.m ((s.x 31).toNat - 8) (s.x 1)) ((s.x 31).toNat - 16) (s.x 8) := by
+  obtain ⟨s1, hr9, p1, p2, p3, p4⟩ := pro_runA hC hlt hh
+  refine ⟨s1, sstar_of_run hr9 ?_, p1, p2, p3, p4⟩
+  have A1 : At C f (push 1 ((tgt : Int) - ((f : Int) + 2))) := hC.left
+  have R1 : At C (f + 4) (push 8 ((tgt : Int) - (((f + 4 : Nat) : Int) + 2)) ++
+      [.addi 8 31 0, .addi 31 31 (-8 * (r : Int)), .bgeu 31 30 2, .jal 0 ((tgt : Int) - ((f : Int) + 11))]) := by
+    simpa [proA, pushA, push] using hC.right
+  have A2 : At C (f + 4) (push 8 ((tgt : Int) - (((f + 4 : Nat) : Int) + 2))) := R1.left
+  have A3 : At C (f + 8) [.addi 8 31 0, .addi 31 31 (-8 * (r : Int)), .bgeu 31 30 2, .jal 0 ((tgt : Int) - ((f : Int) + 11))] := by
+    simpa [push] using R1.right
+  have r1 := push_run (s := s) A1 (by decide) (by decide) (by omega)
+  have q1 := push_sr (K := K) (s := s) A1 (by decide) (by omega) w1
+  have lt : (s.x 31).toNat < 2 ^ 64 := (s.x 31).toNat_lt
+  have t8 : (UInt64.ofNat ((s.x 31).toNat - 8)).toNat = (s.x 31).toNat - 8 := by simp; omega
+  have t16' : (UInt64.ofNat ((s.x 31).toNat - 16)).toNat = (s.x 31).toNat - 16 := by simp; omega
+  let sA : St := ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)), upd s.m ((s.x 31).toNat - 8) (s.x 1), s.b⟩
+  have xA31 : (sA.x 31).toNat = (s.x 31).toNat - 8 := by simp [sA, upd_same, t8]
+  have xA30 : sA.x 30 = s.x 30 := by simp [sA, upd_other _ _ (show (30:Nat) ≠ 31 by decide)]
+  have r2 := push_run (s := sA) A2 (by decide) (by decide) (by rw [xA30, xA31]; omega)
+  have q2 := push_sr (K := K) (s := sA) A2 (by decide) (by rw [xA30, xA31]; omega)
+    (by rw [xA31, show (s.x 31).toNat - 8 - 8 = (s.x 31).toNat - 16 by omega]; exact w2)
+  have b0 := A3.at 0 (by simp); have b1 := A3.at 1 (by simp); have b2 := A3.at 2 (by simp)
+  simp at b0 b1 b2
+  let sB : St := ⟨upd sA.x 31 (UInt64.ofNat ((sA.x 31).toNat - 8)), upd sA.m ((sA.x 31).toNat - 8) (sA.x 8), sA.b⟩
+  have xB31 : (sB.x 31).toNat = (s.x 31).toNat - 16 := by simp [sB, upd_same, xA31]; omega
+  have q3 : SR K C 3 (f + 8, sB) := by
+    intro j hj c hc
+    rcases (by omega : j = 0 ∨ j = 1 ∨ j = 2) with rfl | rfl | rfl
+    · simp [run] at hc; subst hc; simp [Safe, b0]; omega
+    · simp [run, step, b0] at hc; subst hc
+      simp [Safe, b1, wr]
+      rw [upd_other _ _ (show (31:Nat) ≠ 8 by decide), xB31]
+      have := (s.x 31).toNat_lt
+      omega
+    · simp [run, step, b0, b1] at hc; subst hc; simp [Safe, b2]
+  have hsum := (q1.add r1 (q2.add r2 q3))
+  exact hsum
 
 end SafeRun
