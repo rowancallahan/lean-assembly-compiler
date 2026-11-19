@@ -228,4 +228,138 @@ theorem tail_cont {cx : Ctx} {K : SC} {oc : OwnSpec.Cx} {D : List Sig} (hW : RsW
           hro⟩⟩
       · cases h
 
+theorem tr_mono : ∀ (F F1 : List Bool) (es es1 : List Nat), OwnSpec.tr F es = some (F1, es1) → Mono F F1
+  | F, F1, [], es1, h => by
+    simp only [OwnSpec.tr, Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, -⟩ := h; exact Mono.refl _
+  | F, F1, e :: es, es1, h => by
+    simp only [OwnSpec.tr] at h
+    split at h
+    · split at h
+      · obtain ⟨⟨F2, es2⟩, h2, he⟩ := Option.map_eq_some_iff.1 h
+        simp only [Prod.mk.injEq] at he; obtain ⟨rfl, -⟩ := he; exact tr_mono _ _ _ _ h2
+      · cases h
+    · split at h
+      · obtain ⟨⟨F2, es2⟩, h2, he⟩ := Option.map_eq_some_iff.1 h
+        simp only [Prod.mk.injEq] at he; obtain ⟨rfl, -⟩ := he; exact tr_mono _ _ _ _ h2
+      · split at h
+        · obtain ⟨Fh, hc, h⟩ := Option.bind_eq_some_iff.1 h
+          obtain ⟨⟨F2, es2⟩, h2, he⟩ := Option.map_eq_some_iff.1 h
+          simp only [Prod.mk.injEq] at he; obtain ⟨rfl, -⟩ := he
+          exact (consume_spec hc).2.2.1.trans (tr_mono _ _ _ _ h2)
+        · cases h
+
+theorem StOK.mono {σ σ' : AH} {Kk : List Nat} {F F1 F2 : List Bool} {Γ : List (Option Kd)} {env : List W} {ew : Env}
+    {P : List Nat} {st : List W} {ws : List UInt64} (m : Mono F1 F2) (h : StOK σ σ' Kk F F1 Γ env ew P st ws) :
+    StOK σ σ' Kk F F2 Γ env ew P st ws :=
+  ⟨h.1, fun j l u a b c d => by
+    obtain ⟨j', l', x, y, z, w⟩ := h.2.1 j l u a b c d; exact ⟨j', l', x, ⟨y.1, m j' y.2⟩, z, w⟩, h.2.2⟩
+
+theorem StOK.pre {σ σ2 σ' : AH} {Kk : List Nat} {F F2 F' : List Bool} {Γ : List (Option Kd)} {env : List W} {ew : Env}
+    {P : List Nat} {st : List W} {ws : List UInt64} (hCh : Ch σ σ2 Γ F F2 env ew) (m1 : Mono F F2) (m2 : Mono F2 F')
+    (h : StOK σ2 σ' Kk F2 F' Γ env ew P st ws) : StOK σ σ' Kk F F' Γ env ew P st ws :=
+  ⟨h.1, fun j l u a b c hs => by
+    by_cases hx : ∃ j l', Kn Γ j ∧ Cons F F2 j ∧ env[j]? = some (.b l') ∧ (ew j).toNat = u.toNat
+    · obtain ⟨j, l', x, y, z, w⟩ := hx; exact ⟨j, l', x, ⟨y.1, m2 j y.2⟩, z, UInt64.toNat_inj.1 w⟩
+    · have e2 := hCh _ hs fun s l' hk hc hl' hq => hx ⟨s, l', hk, hc, hl', hq⟩
+      obtain ⟨j, l', x, y, z, w⟩ := h.2.1 j l u a b c (by rw [e2]; exact hs)
+      exact ⟨j, l', x, ⟨live_of_mono m1 y.1, y.2⟩, z, w⟩, h.2.2⟩
+
+theorem join_nil_r {t k : List Nat} (h : OwnSpec.join t [] = some k) : k = t := by
+  unfold OwnSpec.join at h
+  split at h
+  · simp only [Option.some.injEq] at h; subst_vars; rfl
+  · simp at h; exact h.symm
+
+theorem tail_ite (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hRs : RsOK oc D) (hW : RsW oc)
+    (hAll : ∀ n, NodeOK cx K oc D n) (c : Nat) (a b t e : ParSpec.Nd) (iht : TailOK cx K oc D t)
+    (ihe : TailOK cx K oc D e) : TailOK cx K oc D (ParSpec.Nd.ite c a b t e) := by
+  intro hC hK2 Γ sk ks F F' es env ew σ sp H r H' hT hc hE hA h8 hhb hr hs
+  cases hT with
+  | ite hc12 ta tb tt te =>
+    simp only [OwnSpec.chk, Option.bind_eq_some_iff, Option.map_eq_some_iff] at hc
+    obtain ⟨a0, hca, b0, hcb, y, hy, t0, h1, t1, h2, e0, h3, e1, h4, k, hj, hk⟩ := hc
+    simp only [Prod.mk.injEq] at hk; obtain ⟨rfl, rfl⟩ := hk
+    simp only [st, ifTS, Option.bind_eq_some_iff] at hs
+    obtain ⟨⟨u, H2⟩, hp, hrest⟩ := hs
+    have hry : R2 oc.K y.1 := by
+      obtain ⟨ka, ta'⟩ := chk_keep hK2 hW ta rfl _ _ _ hca
+      obtain ⟨kb, tb'⟩ := chk_keep hK2 hW tb rfl _ _ _ hcb
+      exact hr.keep ((ka.trans kb).trans (two_keep ta' tb' hy))
+    obtain ⟨σ2, x1, x2, eva, evb, rfl, hA2, hE2, hCh2, hM2, h82, hb2, hG2⟩ :=
+      operands2 (hAll a) (hAll b) hC hK2 hW ta tb hca hcb hy hE hA h8 hhb hr hp
+    have hev : ev cx (ParSpec.Nd.ite c a b t e) env =
+        (if (if c = 1 then x1 = x2 else x1 < x2) then ev cx t env else ev cx e env) := by
+      rcases hc12 with rfl | rfl <;> simp [ev, eva, evb, val, bind, Except.bind]
+    simp only at hrest
+    have mt := tr_mono _ _ _ _ h2
+    have me := tr_mono _ _ _ _ h4
+    have lt1 := tr_len _ _ _ _ h2
+    have le1 := tr_len _ _ _ _ h4
+    have ct := chk_len_tail hRs tt _ _ _ h1
+    have ce := chk_len_tail hRs te _ _ _ h3
+    by_cases hcmp : cmpF c x1 x2
+    · rw [if_pos hcmp] at hrest
+      have hev' : ev cx (ParSpec.Nd.ite c a b t e) env = ev cx t env := by
+        rw [hev, if_pos ((cmpF_iff c hc12 x1 x2).1 hcmp)]
+      obtain ⟨σ3, out, evt, hA3, hE3, hCh3, hM3, h83, hb3, hG3, hout⟩ :=
+        iht hC hK2 Γ sk ks _ _ _ env ew σ2 sp H2 r H' tt h1 hE2 hA2 h82 hb2 hry hrest
+      have mo := mono_orF_l t1.1 e1.1
+      refine ⟨σ3, out, by rw [hev']; exact evt, hA3, (hE3.mono mt).mono mo, (Ch.trans hCh2 hCh3 hM2 hM3).weak (mt.trans mo),
+        ((hM2.trans hM3).trans mt).trans mo, h83, hb3, hG2.trans hG3, ?_⟩
+      rcases hout with ⟨v, vs, rfl, rfl, hR3, hS3, -⟩ | ⟨st', ws, rfl, rfl, hst⟩
+      · left
+        obtain ⟨m4, hR4, r4, -, -⟩ := tr_spec hK2 _ v vs _ _ _ hR3 hE3 h2
+        have sT := (tr_src _ _ _ _ _ _ hR3 hM3 hS3 h2).2
+        have kv := (ev_ok hC tt env hE.ty).2.1 v evt
+        have lv : t0.2.length = ks.length := by rw [hR3.len.1, ← kOf_length, kv]
+        have hk1 : ∀ x ∈ k, x ≤ 1 := by
+          intro x hx
+          by_cases h0 : e1.2 = []
+          · rw [h0] at hj; rw [join_nil_r hj] at hx; exact r4 x hx
+          · exact (resI_join hR4 r4 (tr_le1 _ _ _ _ h4) (by rcases ce with h | h <;> simp_all) hj).2 x hx
+        refine ⟨v, vs, rfl, rfl, ?_, ?_, fun z hz => .inl (hk1 z hz)⟩
+        · by_cases h0 : e1.2 = []
+          · rw [h0] at hj; rw [join_nil_r hj]; exact ResI.mono mo hR4
+          · exact ResI.mono mo (resI_join hR4 r4 (tr_le1 _ _ _ _ h4) (by rcases ce with h | h <;> simp_all) hj).1
+        · refine Src.pre hCh2 hM2 ((hM3.trans m4).trans mo) (Src.mono mo ?_)
+          by_cases h0 : e1.2 = []
+          · rw [h0] at hj; rw [join_nil_r hj]; exact sT
+          · exact src_join hR4 sT r4 (tr_le1 _ _ _ _ h4) hj
+      · exact .inr ⟨st', ws, rfl, rfl, StOK.pre hCh2 hM2 ((hM3.trans mt).trans mo) (StOK.mono (mt.trans mo) hst)⟩
+    · rw [if_neg hcmp] at hrest
+      have hev' : ev cx (ParSpec.Nd.ite c a b t e) env = ev cx e env := by
+        rw [hev, if_neg (fun h => hcmp ((cmpF_iff c hc12 x1 x2).2 h))]
+      obtain ⟨σ3, out, evt, hA3, hE3, hCh3, hM3, h83, hb3, hG3, hout⟩ :=
+        ihe hC hK2 Γ sk ks _ _ _ env ew σ2 sp H2 r H' te h3 hE2 hA2 h82 hb2 hry hrest
+      have mo := mono_orF_r t1.1 e1.1
+      refine ⟨σ3, out, by rw [hev']; exact evt, hA3, (hE3.mono me).mono mo, (Ch.trans hCh2 hCh3 hM2 hM3).weak (me.trans mo),
+        ((hM2.trans hM3).trans me).trans mo, h83, hb3, hG2.trans hG3, ?_⟩
+      rcases hout with ⟨v, vs, rfl, rfl, hR3, hS3, -⟩ | ⟨st', ws, rfl, rfl, hst⟩
+      · left
+        obtain ⟨m4, hR4, r4, -, -⟩ := tr_spec hK2 _ v vs _ _ _ hR3 hE3 h4
+        have sT := (tr_src _ _ _ _ _ _ hR3 hM3 hS3 h4).2
+        have kv := (ev_ok hC te env hE.ty).2.1 v evt
+        have lv : e0.2.length = ks.length := by rw [hR3.len.1, ← kOf_length, kv]
+        have hjr : OwnSpec.join t1.2 e1.2 = some k → (t1.2 = [] ∧ k = e1.2) ∨ (t1.2.length = e1.2.length) := by
+          intro hj'
+          by_cases h0 : t1.2 = []
+          · rw [h0] at hj'; unfold OwnSpec.join at hj'; simp at hj'; exact .inl ⟨h0, hj'.symm⟩
+          · rcases ct with h | h
+            · exact absurd (List.length_eq_zero_iff.1 (by rw [lt1, h]; rfl)) h0
+            · exact .inr (by omega)
+        have hk1 : ∀ x ∈ k, x ≤ 1 := by
+          intro x hx
+          rcases hjr hj with ⟨-, rfl⟩ | hl
+          · exact r4 x hx
+          · exact (resI_join_r hR4 (tr_le1 _ _ _ _ h2) r4 hl hj).2 x hx
+        refine ⟨v, vs, rfl, rfl, ?_, ?_, fun z hz => .inl (hk1 z hz)⟩
+        · rcases hjr hj with ⟨-, rfl⟩ | hl
+          · exact ResI.mono mo hR4
+          · exact ResI.mono mo (resI_join_r hR4 (tr_le1 _ _ _ _ h2) r4 hl hj).1
+        · refine Src.pre hCh2 hM2 ((hM3.trans m4).trans mo) (Src.mono mo ?_)
+          rcases hjr hj with ⟨-, rfl⟩ | hl
+          · exact sT
+          · exact src_join_r hR4 sT (tr_le1 _ _ _ _ h2) r4 hj
+      · exact .inr ⟨st', ws, rfl, rfl, StOK.pre hCh2 hM2 ((hM3.trans me).trans mo) (StOK.mono (me.trans mo) hst)⟩
+
 end NanoMain
