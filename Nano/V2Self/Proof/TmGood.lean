@@ -197,13 +197,23 @@ theorem defT_good (S : SC) (e : Nd) (f q : Nat) (hnl : S.nl < 251) (hp : S.p ≤
   · intro i hi; simp at hi; rcases hi with rfl | rfl <;> simp [GoodX, GoodW]
   · intro i hi; simp at hi; rcases hi with rfl | rfl | rfl <;> simp [GoodX, GoodW] <;> omega
 
-theorem defsJ_good (P : PC) (ds : List DefA) (hok : ∀ k, (dA ds k).nslots < 251 ∧ (dA ds k).npw ≤ (dA ds k).nslots ∧
-    (dA ds k).nres < 251 ∧ ScV (scAt P ds k) (dA ds k).body ∧ OpV (dA ds k).body) :
-    ∀ k n, GL (defsJ P ds k n)
-  | _, 0 => GL.nil
-  | k, n + 1 => by
+theorem defsJ_good (P : PC) (ds : List DefA) (N : Nat) (hok : ∀ k, k < N → (dA ds k).nslots < 251 ∧
+    (dA ds k).npw ≤ (dA ds k).nslots ∧ (dA ds k).nres < 251 ∧ ScV (scAt P ds k) (dA ds k).body ∧ OpV (dA ds k).body) :
+    ∀ k n, k + n ≤ N → GL (defsJ P ds k n)
+  | _, 0, _ => GL.nil
+  | k, n + 1, hk => by
     simp only [defsJ]
-    obtain ⟨h1, h2, h3, h4, h5⟩ := hok k
-    exact GL.app (defT_good _ _ _ _ h1 h2 h3 h4 h5) (defsJ_good P ds hok (k + 1) n)
+    obtain ⟨h1, h2, h3, h4, h5⟩ := hok k (by omega)
+    exact GL.app (defT_good _ _ _ _ h1 h2 h3 h4 h5) (defsJ_good P ds N hok (k + 1) n (by omega))
+
+/-- Gen's words for a GoodX program are the Sail layer's words -/
+theorem words_encJX {C : List J} (h : GL C) : (C.map encG).map UInt64.toNat = C.map SimW.encJX := by
+  rw [List.map_map]; apply List.map_congr_left; intro i hi; exact encG_encJX i (h i hi)
+
+/-- the whole program C = stubs ++ defs ++ start code is GoodX -/
+theorem prog_good (P : PC) (ds : List DefA) (S w n : Nat) (hok : ∀ k, k < n → (dA ds k).nslots < 251 ∧
+    (dA ds k).npw ≤ (dA ds k).nslots ∧ (dA ds k).nres < 251 ∧ ScV (scAt P ds k) (dA ds k).body ∧ OpV (dA ds k).body) :
+    GL (stubJ S ++ defsJ P ds 0 n ++ startJ S w) :=
+  GL.app (GL.app (stubJ_good S) (defsJ_good P ds n hok 0 n (by omega))) (startJ_good S w)
 
 end Templates
