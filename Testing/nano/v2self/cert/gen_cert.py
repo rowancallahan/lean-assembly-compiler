@@ -148,6 +148,10 @@ def main():
         n = sum(len(x) for x in r[2:])
         if groups[-1] and sz + n > CHUNK: groups.append([]); sz = 0
         groups[-1].append(d); sz += n
+    # defs whose delta-unfolding sends the kernel through a `let (a, b) := g19 …` match into g14's `< 2097152`
+    # (deep recursion, NANO_V2_CG.md "KERNEL TRAP"): rewrite with the function-level equation instead, then beta only
+    FUNEQ = {"C.g35": ("Nano.V2Self.Proof.GenTop", "GenRef.g35_fun")}
+    BETA = "  dsimp (config := { zeta := false, iota := false, proj := false, eta := false }) only []"
     import glob, os
     for f in glob.glob(f"{OUT}/Defs*.lean"): os.remove(f)
     for k, grp in enumerate(groups):
@@ -165,7 +169,8 @@ def main():
                 env = "[" + ", ".join(sum((cells(t, v) for v, (_, t) in zip(vs, d["args"])), [])) + "]" + zeros
                 if vs: T.append(f"  intro {' '.join(vs)}")
                 T += [f"  refine defMean_den ({app(d, vs)}) PC.b{i} ({env}) rfl (by decide) rfl rfl rfl ?_",
-                      f"  unfold PC.b{i}", "  den_unfold", "  den"]
+                      f"  unfold PC.b{i}"] + ([f"  rw [{FUNEQ[d['lean']][1]}]", BETA] if d["lean"] in FUNEQ else ["  den_unfold"]) + ["  den"]
+                if d["lean"] in FUNEQ and f"import {FUNEQ[d['lean']][0]}" not in T: T.insert(4, f"import {FUNEQ[d['lean']][0]}")
             else:
                 st = d["args"][1:]; sv = vs[1:]
                 sbind = "".join(f" ({v} : {ty_str(t)})" for v, (_, t) in zip(sv, st))

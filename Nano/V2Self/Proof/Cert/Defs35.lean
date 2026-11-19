@@ -2,6 +2,7 @@
 import Nano.V2Self.Proof.Cert.Specs
 import Nano.V2Self.C.Gen
 import Nano.V2Self.C.Own
+import Nano.V2Self.Proof.GenTop
 set_option maxHeartbeats 4000000
 set_option maxRecDepth 100000
 set_option linter.unusedVariables false
@@ -21,7 +22,8 @@ theorem ok_212 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073
   intro a0 a1 a2
   refine defMean_den (C.g35 a0 a1 a2) PC.b212 ([.b a0, .b a1, .w a2] ++ List.replicate 12 (.w 0)) rfl (by decide) rfl rfl rfl ?_
   unfold PC.b212
-  den_unfold
+  rw [GenRef.g35_fun]
+  dsimp (config := { zeta := false, iota := false, proj := false, eta := false }) only []
   den
 
 theorem ok_213 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 213) :
