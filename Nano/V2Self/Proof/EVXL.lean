@@ -91,7 +91,7 @@ theorem loop_pass {C : List J} {h S len p nl hb w : Nat} {Inv : St → Prop} {RZ
     intro s v I
     have e : wr s 5 v = { s with x := upd s.x 5 v } := by simp [wr]
     rw [e]
-    exact ⟨hI s _ I (by simp [upd]) (by simp [upd]) (by simp [upd]) (fun _ _ => rfl), by simp [upd], by simp [upd],
+    exact ⟨hI s _ I (by simp [upd]) (by simp [upd]) (by simp [upd]) rfl (fun _ _ => rfl), by simp [upd], by simp [upd],
       by simp [upd], by simp [upd], rfl, by simp [upd]⟩
   have fuel : ∀ (s : St) (env : Env), Frame p nl s env → s.m (ea (s.x 8) (slotOff p 0)) = env 0 := by
     intro s env F; exact F 0 (by omega)
@@ -167,7 +167,7 @@ theorem loop_pass {C : List J} {h S len p nl hb w : Nat} {Inv : St → Prop} {RZ
       simp [wr, s4, LoopT.upd2, upd_same]
     have a0lo : (s.x 31).toNat ≤ a0 := slotAddr_ge (T := (s.x 31).toNat) o1 o2 (by omega)
     have a0hi : a0 < (s.x 8).toNat + 8 * p + 16 := slotAddr_lt (nl := nl) (by omega) (by omega)
-    have I4 : Inv s4 := hI s s4 I0 (by simp [s4, upd]) (by simp [s4, upd]) (by simp [s4, upd]) (fun a ha => by
+    have I4 : Inv s4 := hI s s4 I0 (by simp [s4, upd]) (by simp [s4, upd]) (by simp [s4, upd]) rfl (fun a ha => by
       simp only [s4, upd]; split
       · rename_i e; subst e; exfalso; apply ha; have := R0.1; have := R0.2.1; have := R0.2.2.1; omega
       · rfl)

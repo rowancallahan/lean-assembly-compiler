@@ -193,7 +193,7 @@ theorem ifX {C : List J} {pc lp lt le p nl hb w cmp : Nat} {Inv : St → Prop} {
     have x5 : s2.x 5 = a := by simp [s2, upd]
     have x6 : s2.x 6 = b := by simp [s2, upd]
     have z2 : s2.x 0 = 0 := by simp [s2, upd, z1]
-    have I2 : Inv s2 := hI s1 s2 I1 (by simp [s2, upd]) (by simp [s2, upd]) (by simp [s2, upd]) (fun _ _ => rfl)
+    have I2 : Inv s2 := hI s1 s2 I1 (by simp [s2, upd]) (by simp [s2, upd]) (by simp [s2, upd]) rfl (fun _ _ => rfl)
     have F2 : Frame p nl s2 env1 := by
       intro k hk; show s1.m (slotAddr p (s2.x 8).toNat k) = env1 k; rw [x8, ← e81]; exact F1 k hk
     have O2 : FrameOK p nl s2 := ⟨by rw [x31, x8]; omega, o2, by rw [x8]; omega⟩
@@ -301,7 +301,7 @@ theorem letX {C : List J} {pc lv lb p nl hb k0 w wb : Nat} {Inv : St → Prop} {
         slotAddr p (s.x 8).toNat (k0 + j) < (s.x 8).toNat + 8 * p + 16 := fun j hj =>
       ⟨slotAddr_ge (T := (s.x 31).toNat) (k := k0 + j) (by omega) o2 (by omega), slotAddr_lt (nl := nl) (by omega) (by omega)⟩
     have I2 : Inv s2 := by
-      apply hI s1 s2 I1 (by rw [e82]) (ex2 28 (by decide) (by decide)) (ex2 29 (by decide) (by decide))
+      apply hI s1 s2 I1 (by rw [e82]) (ex2 28 (by decide) (by decide)) (ex2 29 (by decide) (by decide)) eb2
       intro a ha
       apply mo2 a; intro j hj e; apply ha; rw [e81, e]
       have hh := slot_hi j hj; have := R1.1; have := R1.2.1; have := R1.2.2.1
