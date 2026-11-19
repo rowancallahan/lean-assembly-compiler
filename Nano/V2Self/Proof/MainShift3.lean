@@ -78,6 +78,33 @@ theorem kinds_cases' {ps rs : List Kd} {p : Nat} (h : primK p ps = some rs) :
     (p = 6 ∧ ps = [.b]) ∨ (p = 7 ∧ ps = [.b, .w]) ∨ (p = 8 ∧ ps = [.b, .w, .w]) ∨ (p = 9 ∧ ps = [.b, .w]) := by
   unfold primK at h; split at h <;> simp_all
 
+/-- a value-mode expression's kinded tail semantics is its value semantics, exiting -/
+theorem stF_none' (K : SC) (fsX : Nat → SemDX) {D : List Sig} : ∀ {Γ S e ks}, TyN D Γ S e ks → S = none →
+    ∀ env sp H, stF K fsX e env sp H = exitF (svF K fsX e) env sp H
+  | _, _, _, _, .const, _, _, _, _ => by simp only [stF]
+  | _, _, _, _, .loc _, _, _, _, _ => by simp only [stF]
+  | _, _, _, _, .bin _ _ _ _, _, _, _, _ => by simp only [stF]
+  | _, _, _, _, .pair _, _, _, _, _ => by simp only [stF]
+  | _, _, _, _, .call _ _, _, _, _, _ => by simp only [stF]
+  | _, _, _, _, .prim _ _ _, _, _, _, _ => by simp only [stF]
+  | _, _, _, _, .cont _, hS, _, _, _ => by cases hS
+  | _, _, _, _, .ite (c := c) (a := a) (b := b) (t := t) (e := e) _ _ _ tt te, hS, env, sp, H => by
+    simp only [stF, svF, ifTF, ifF, exitF]
+    cases h : pairF 1 (svF K fsX a) (svF K fsX b) env sp H with
+    | error x => rfl
+    | ok r =>
+      simp only [Except.bind]
+      split
+      · split
+        · rw [stF_none' K fsX tt hS env sp]; rfl
+        · rw [stF_none' K fsX te hS env sp]; rfl
+      · rfl
+  | _, _, _, _, .letE (s := s) (w := w) (v := v) (b := b) _ _ _ _ tb, hS, env, sp, H => by
+    simp only [stF, svF, letTF, letF, exitF]
+    cases h : svF K fsX v env sp H with
+    | error x => rfl
+    | ok r => simp only [Except.bind]; rw [stF_none' K fsX tb hS _ sp]; rfl
+
 /-- the callees simulate each other on their signatures -/
 def CallSh (δ hb : Nat) (D : List Sig) (fsX fsX' : Nat → SemDX) : Prop :=
   ∀ i ps rs, D[i]? = some (ps, rs) → SimD δ hb ps rs (fsX i) (fsX' i)
@@ -135,6 +162,32 @@ theorem svL_sh : ∀ {Γ cs ks}, TyL D Γ cs ks →
     simp only [svLF]; rw [wd_hb K (K.hb + δ) n]
     exact pairF_sim (sv_sh tn) (svL_sh tr)
 end
+
+/-- **tail mode** (a loop's step arm) -/
+theorem st_sh : ∀ {Γ sk e ks}, TyN D Γ (some sk) e ks →
+    Sim δ K.hb (ER δ Γ) (TR δ ks sk) (stF K fsX e) (stF { K with hb := K.hb + δ } fsX' e)
+  | _, _, _, _, .ite _ ta tb tt te => by
+    simp only [stF]
+    exact ifTF_sim (pairF_sim (sv_sh K hδ8 hδ hC ta) (sv_sh K hδ8 hδ hC tb)) (st_sh tt) (st_sh te)
+  | Γ, _, _, _, .letE (s := s) (vs := vs) hv hlen hsl _ tb => by
+    simp only [stF]
+    exact letTF_sim (sv_sh K hδ8 hδ hC hv) (st_sh tb) (fun env env' r r' he hr => by
+      have h2 : s + vs.length ≤ Γ.length := by rw [hlen]; exact hsl
+      have := er_set he hr h2; rw [hlen] at this; exact this)
+  | _, _, _, _, .cont te => by simp only [stF]; exact contF_sim (sv_sh K hδ8 hδ hC te)
+  | _, _, _, _, h@(.const) => by simp only [stF]; exact exitF_sim (sv_sh K hδ8 hδ hC h)
+  | _, _, _, _, h@(.loc _) => by simp only [stF]; exact exitF_sim (sv_sh K hδ8 hδ hC h)
+  | _, _, _, _, h@(.bin _ _ _ _) => by simp only [stF]; exact exitF_sim (sv_sh K hδ8 hδ hC h)
+  | _, _, _, _, h@(.pair _) => by simp only [stF]; exact exitF_sim (sv_sh K hδ8 hδ hC h)
+  | _, _, _, _, h@(.call _ _) => by simp only [stF]; exact exitF_sim (sv_sh K hδ8 hδ hC h)
+  | _, _, _, _, h@(.prim _ _ _) => by simp only [stF]; exact exitF_sim (sv_sh K hδ8 hδ hC h)
+
+/-- a value-mode node in a loop's zero arm -/
+theorem stz_sh {Γ : List (Option Kd)} {e : ParSpec.Nd} {ks sk : List Kd} (h : TyN D Γ none e ks) :
+    Sim δ K.hb (ER δ Γ) (TR δ ks sk) (stF K fsX e) (stF { K with hb := K.hb + δ } fsX' e) := by
+  intro env env' sp sp' H H' he hH hB hS
+  rw [stF_none' K fsX h rfl, stF_none' _ fsX' h rfl]
+  exact exitF_sim (sv_sh K hδ8 hδ hC h) env env' sp sp' H H' he hH hB hS
 
 end
 
