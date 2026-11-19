@@ -49,7 +49,8 @@ theorem chainW {X : Buf} {u : UInt64} {P : PC} {ds : List DefA} (hκ : P.κ = u.
     ∀ {T i o hs T' i' o'}, DefsC X u T i o hs T' i' o' → T' = Tf → ∀ r : List DefA, ds.drop T.length = r →
       SerAt X i (r.flatMap DefA.ser) → X.length = i + (r.flatMap DefA.ser).length → (∀ d ∈ r, DB d) →
       (∀ v ∈ T, v.toNat ≤ o.length) → T.length ≤ o.length → o'.length < 2 ^ 24 →
-      o' = o ++ (defsJ P ds T.length hs.length).map encG
+      o' = o ++ (defsJ P ds T.length hs.length).map encG ∧
+      ∀ j, j < hs.length → P.T (T.length + j) = o.length + (defsJ P ds T.length j).length
   | _, _, _, _, _, _, _, .nil, _, _, _, _, _, _, _, _, _ => by simp [defsJ]
   | T, i, o, _, T', _, o', .cons (o1 := o1) (i1 := i1) (hs := hs) hD hr, eT, r, hdr, sa, hX, hdb, hTo, hTl, hlen => by
     subst eT
@@ -126,8 +127,17 @@ theorem chainW {X : Buf} {u : UInt64} {P : PC} {ds : List DefA} (hκ : P.κ = u.
       have : T.length.toUInt64.toNat = T.length := by simp [Nat.toUInt64]; omega
       simp only [bget, bpush, List.getD_eq_getElem?_getD, this]
       simp [bsize, Nat.toUInt64]; omega
-    rw [ih, eo1]
-    simp only [bpush, List.length_append, List.length_singleton, List.length_cons, defsJ, hd, t5, toU_lt _ dnr, pT,
-      List.map_append, List.append_assoc, List.length_nil, Nat.zero_add]
+    obtain ⟨ih1, ih2⟩ := ih
+    refine ⟨?_, ?_⟩
+    · rw [ih1, eo1]
+      simp only [bpush, List.length_append, List.length_singleton, List.length_cons, defsJ, hd, t5, toU_lt _ dnr, pT,
+        List.map_append, List.append_assoc, List.length_nil, Nat.zero_add]
+    · intro j hj
+      rcases j with _ | j
+      · simp [defsJ, pT]
+      · have q := ih2 j (by simpa using hj)
+        simp only [bpush, List.length_append, List.length_singleton] at q
+        rw [show T.length + (j + 1) = T.length + 1 + j by omega, q, eo1]
+        simp [defsJ, hd, t5, toU_lt _ dnr, pT]; omega
 
 end Templates
