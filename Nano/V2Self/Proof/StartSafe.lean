@@ -125,4 +125,126 @@ theorem copy_loopX {KL : LayW} {C : List J} {L : Nat} (hL : At C L loopJ) (hLC :
     · rw [hx k k6 k7 k14 k15]; simp [s5, upd_other, k6, k7, k14, k15]
 
 
+theorem start_tailX {KL : LayW} {C : List J} {S w : Nat} (hS : At C S (startJ S w)) (s2 : St) (z0 : s2.x 0 = 0)
+    (hA : (s2.x 12).toNat + 8 < 2 ^ 64)
+    (hP : (s2.m (s2.x 31).toNat).toNat + 16 + 8 * (s2.m (s2.m (s2.x 31).toNat).toNat).toNat < 2 ^ 64)
+    (hQ : (s2.x 13).toNat + (s2.m (s2.m (s2.x 31).toNat).toNat).toNat < 2 ^ 64)
+    (hdis : ∀ i, i < (s2.m (s2.m (s2.x 31).toNat).toNat).toNat →
+      ¬ KeepT (s2.x 12).toNat (s2.m (s2.x 31).toNat).toNat (s2.m (s2.m (s2.x 31).toNat).toNat).toNat
+        ((s2.x 13).toNat + i - ((s2.x 13).toNat + i) % 8))
+    (hCl : S + 32 ≤ C.length) (hw31 : wok KL (s2.x 31).toNat) (hwP : wok KL (s2.m (s2.x 31).toNat).toNat)
+    (hwA0 : wok KL (s2.x 12).toNat) (hwA8 : wok KL ((s2.x 12).toNat + 8))
+    (hwB : ∀ i, i < (s2.m (s2.m (s2.x 31).toNat).toNat).toNat → wok KL ((s2.m (s2.x 31).toNat).toNat + 16 + 8 * i))
+    (hwO : ∀ i, i < (s2.m (s2.m (s2.x 31).toNat).toNat).toNat →
+      wok KL ((s2.x 13).toNat + i - ((s2.x 13).toNat + i) % 8))
+    (hra : ∃ j, (s2.m (s2.x 12).toNat).toNat = KL.base + 4 * j) :
+    ∃ s3, SStarX KL C (S + 12, s2) (((s2.m (s2.x 12).toNat).toNat - s2.b) / 4, s3) ∧ s3.b = s2.b ∧
+      s3.x 1 = s2.m (s2.x 12).toNat ∧ s3.x 8 = s2.m ((s2.x 12).toNat + 8) ∧ s3.x 2 = s2.x 2 ∧
+      s3.x 10 = (if s2.m (s2.m (s2.x 31).toNat).toNat = 0 then 1 else 0) ∧
+      s3.x 11 = s2.m (s2.m (s2.x 31).toNat).toNat ∧
+      (∀ i, i < (s2.m (s2.m (s2.x 31).toNat).toNat).toNat →
+        lbm s3.m ((s2.x 13).toNat + i) = s2.m ((s2.m (s2.x 31).toNat).toNat + 16 + 8 * i) &&& 255) := by
+  have c12 : C[S + 12]? = some (.ld 5 31 0) := (At.get hS 12 (by rw [startJ_len]; decide)).trans rfl
+  have c13 : C[S + 13]? = some (.ld 7 5 0) := (At.get hS 13 (by rw [startJ_len]; decide)).trans rfl
+  have c14 : C[S + 14]? = some (.bne 7 0 4) := (At.get hS 14 (by rw [startJ_len]; decide)).trans rfl
+  have c15 : C[S + 15]? = some (.addi 10 0 1) := (At.get hS 15 (by rw [startJ_len]; decide)).trans rfl
+  have c16 : C[S + 16]? = some (.addi 11 0 0) := (At.get hS 16 (by rw [startJ_len]; decide)).trans rfl
+  have c17 : C[S + 17]? = some (.jal 0 12) := (At.get hS 17 (by rw [startJ_len]; decide)).trans rfl
+  have c18 : C[S + 18]? = some (.addi 11 7 0) := (At.get hS 18 (by rw [startJ_len]; decide)).trans rfl
+  have c19 : C[S + 19]? = some (.addi 6 5 16) := (At.get hS 19 (by rw [startJ_len]; decide)).trans rfl
+  have c20 : C[S + 20]? = some (.addi 14 13 0) := (At.get hS 20 (by rw [startJ_len]; decide)).trans rfl
+  have c28 : C[S + 28]? = some (.addi 10 0 0) := (At.get hS 28 (by rw [startJ_len]; decide)).trans rfl
+  have c29 : C[S + 29]? = some (.ld 1 12 0) := (At.get hS 29 (by rw [startJ_len]; decide)).trans rfl
+  have c30 : C[S + 30]? = some (.ld 8 12 8) := (At.get hS 30 (by rw [startJ_len]; decide)).trans rfl
+  have c31 : C[S + 31]? = some (.jalr 0 1) := (At.get hS 31 (by rw [startJ_len]; decide)).trans rfl
+  have hL : At C (S + 21) loopJ := At.dt hS 21 7 (by rw [startJ_len]; decide)
+  have hd : ∀ {a b c}, SafeX KL C a → step C a = some b → SStarX KL C b c → SStarX KL C a c :=
+    fun h0 h1 h2 => .head h0 h1 h2
+  have spc : ∀ {a : Nat × St} {p p' : Nat} {t : St}, SStarX KL C a (p, t) → p = p' → SStarX KL C a (p', t) :=
+    fun h e => e ▸ h
+  have e0 : ∀ v : UInt64, ea v 0 = v.toNat := by intro v; simp [ea]
+  have e8 : ∀ v : UInt64, ea v 8 = v.toNat + 8 := by intro v; simp [ea]; omega
+  have e16 : ∀ v : UInt64, ea v 16 = v.toNat + 16 := by intro v; simp [ea]; omega
+  generalize hPd : s2.m (s2.x 31).toNat = P at *
+  generalize hNd : s2.m P.toNat = N at *
+  -- the common exit: S+29 .. S+31
+  have ex : ∀ s : St, s.b = s2.b → s.x 0 = 0 → s.x 12 = s2.x 12 → s.m (s2.x 12).toNat = s2.m (s2.x 12).toNat →
+      s.m ((s2.x 12).toNat + 8) = s2.m ((s2.x 12).toNat + 8) →
+      ∃ s3, SStarX KL C (S + 29, s) (((s2.m (s2.x 12).toNat).toNat - s2.b) / 4, s3) ∧ s3.b = s2.b ∧
+        s3.x 1 = s2.m (s2.x 12).toNat ∧ s3.x 8 = s2.m ((s2.x 12).toNat + 8) ∧ s3.m = s.m ∧
+        ∀ k, k ≠ 1 → k ≠ 8 → s3.x k = s.x k := by
+    intro s hb _ h12 m0 m8
+    refine ⟨_, spc (hd ?_ (s_ld c29) (hd ?_ (s_ld (by simpa using c30)) (hd ?_ (s_jalr (by simpa using c31)) (.refl _)))) ?_,
+      ?_⟩
+    rotate_left 3
+    · simp [CallProbe.wr, upd_same, upd_other, e0, e8, h12, m0, hb]
+    · simp [CallProbe.wr, upd_same, upd_other, e0, e8, h12, m0, m8, hb]
+      intro k k1 k8; simp [upd, k1, k8]
+    all_goals simp only [SafeX]
+    all_goals simp [c29, c30, c31, CallProbe.wr, upd_same, upd_other, e0, e8, h12, m0, hb]
+    all_goals first | exact hwA0 | exact ⟨by omega, hwA8⟩ | exact hra
+  let sa : St := ⟨upd (upd s2.x 5 P) 7 N, s2.m, s2.b⟩
+  obtain ⟨sX, hX, eX⟩ : ∃ sX, SStarX KL C (S + 12, s2) (S + 14, sX) ∧ sX = sa := by
+    refine ⟨_, hd ?_ (s_ld c12) (hd ?_ (s_ld (by simpa using c13)) (.refl _)), by simp [CallProbe.wr, sa, e0, hPd, upd_same, hNd]⟩
+    all_goals simp only [SafeX]
+    all_goals simp [c12, c13, CallProbe.wr, upd_same, upd_other, e0, hPd]
+    all_goals first | exact hw31 | exact hwP
+  subst eX
+  by_cases hN : N = 0
+  · let sb : St := ⟨upd (upd sa.x 10 1) 11 0, s2.m, s2.b⟩
+    have bn : step C (S + 14, sa) = some (S + 15, sa) := by simp [step, c14, sa, upd_same, upd_other, z0, hN]
+    obtain ⟨sY, hY, eY⟩ : ∃ sY, SStarX KL C (S + 14, sa) (S + 29, sY) ∧ sY = sb := by
+      refine ⟨_, hd ?_ bn (hd ?_ (s_addi (by simpa using c15))
+        (hd ?_ (s_addi (by simpa using c16)) (hd ?_ (Star.pc_step (s_jal (by simpa using c17)) ?_) (.refl _)))), ?_⟩
+      rotate_left 4
+      · omega
+      · simp [CallProbe.wr, sb, sa, e0, z0, upd_other, ea]
+      all_goals simp only [SafeX]
+      all_goals simp [c14, c15, c16, c17, CallProbe.wr, upd_same, upd_other, e0]
+      all_goals first | (simp [sa, upd, z0]; done) | omega
+    subst eY
+    obtain ⟨s3, h3, b3, x1, x8, -, xk⟩ := ex sb rfl (by simp [sb, sa, upd, z0]) (by simp [sb, sa, upd]) rfl rfl
+    refine ⟨s3, hX.trans (hY.trans h3), b3, x1, x8, ?_, ?_, ?_, fun i hi => ?_⟩
+    · rw [xk 2 (by omega) (by omega)]; simp [sb, sa, upd]
+    · rw [xk 10 (by omega) (by omega), if_pos hN]; simp [sb, sa, upd]
+    · rw [xk 11 (by omega) (by omega), hN]; simp [sb, sa, upd]
+    · subst hN; simp at hi
+  · let sc : St := ⟨upd (upd (upd sa.x 11 N) 6 (P + 16)) 14 (s2.x 13), s2.m, s2.b⟩
+    have bn : step C (S + 14, sa) = some (S + 18, sa) := by
+      simp [step, c14, sa, upd_same, upd_other, z0, hN]; omega
+    obtain ⟨sY, hY, eY⟩ : ∃ sY, SStarX KL C (S + 14, sa) (S + 21, sY) ∧ sY = sc := by
+      refine ⟨_, hd ?_ bn (hd ?_ (s_addi c18) (hd ?_ (s_addi (by simpa using c19)) (hd ?_ (s_addi (by simpa using c20)) (.refl _)))),
+        ?_⟩
+      rotate_left 4
+      · simp [CallProbe.wr, sc, sa, e0, e16, upd_same, upd_other]
+      all_goals simp only [SafeX]
+      all_goals simp [c14, c18, c19, c20, CallProbe.wr, upd_same, upd_other, e0, e16]
+      all_goals have l13 := (s2.x 13).toNat_lt
+      all_goals have lN := N.toNat_lt
+      all_goals simp [sa, upd]
+      all_goals omega
+    subst eY
+    have t6 : (sc.x 6).toNat = P.toNat + 16 := by simp [sc, upd, UInt64.toNat_add]; omega
+    have t14 : (sc.x 14).toNat = (s2.x 13).toNat := by simp [sc, upd]
+    obtain ⟨sd, hD, bd, md, byd, -, xd⟩ := copy_loopX (KL := KL) hL (by omega) (KeepT (s2.x 12).toNat P.toNat N.toNat) N.toNat sc
+      (by simp [sc, sa, upd, z0]) (by simp [sc, sa, upd]) N.toNat_lt (by rw [t6]; omega) (by rw [t14]; omega)
+      (fun i hi => by rw [t14]; exact hdis i hi) (fun i _ => by rw [t6]; exact Or.inr (Or.inr ⟨i, by omega, rfl⟩))
+      (fun i hi => by rw [t6]; exact hwB i hi) (fun i hi => by rw [t14]; exact hwO i hi)
+    have a28 := s_addi (s := sd) c28
+    have x12 : sd.x 12 = s2.x 12 := by rw [xd 12 (by omega) (by omega) (by omega) (by omega)]; simp [sc, sa, upd]
+    obtain ⟨s3, h3, b3, x1, x8, m3, xk⟩ := ex (CallProbe.wr sd 10 (UInt64.ofNat (ea (sd.x 0) 0)))
+      (by simp [CallProbe.wr, bd, sc]) (by simp [CallProbe.wr, upd]; rw [xd 0 (by omega) (by omega) (by omega) (by omega)]; simp [sc, sa, upd, z0]) (by simp [CallProbe.wr, upd, x12])
+      (by simp [CallProbe.wr]; rw [md _ (Or.inl rfl)])
+      (by simp [CallProbe.wr]; rw [md _ (Or.inr (Or.inl rfl))])
+    have s28 : SafeX KL C (S + 28, sd) := by
+      simp only [SafeX]; simp [c28]; rw [xd 0 (by omega) (by omega) (by omega) (by omega)]; simp [sc, sa, upd, z0]
+    refine ⟨s3, hX.trans (hY.trans (hD.trans (hd s28 a28 h3))), b3, x1, x8, ?_, ?_, ?_, fun i hi => ?_⟩
+    · rw [xk 2 (by omega) (by omega)]; simp [CallProbe.wr, upd]; rw [xd 2 (by omega) (by omega) (by omega) (by omega)]; simp [sc, sa, upd]
+    · have x0 : sd.x 0 = 0 := by rw [xd 0 (by omega) (by omega) (by omega) (by omega)]; simp [sc, sa, upd, z0]
+      rw [xk 10 (by omega) (by omega), if_neg hN]; simp [CallProbe.wr, upd, ea, x0]
+    · rw [xk 11 (by omega) (by omega)]; simp [CallProbe.wr, upd]; rw [xd 11 (by omega) (by omega) (by omega) (by omega)]; simp [sc, sa, upd]
+    · rw [m3]; simp only [CallProbe.wr, if_neg (show (10 : Nat) ≠ 0 by omega)]
+      have := byd i hi; rw [t14, t6] at this; exact this
+
+
 end Templates
