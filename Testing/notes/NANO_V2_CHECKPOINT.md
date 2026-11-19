@@ -268,5 +268,12 @@ DONE (pushed, no sorry, std axioms):
   Side conditions from B's WF / SInv (glue): binLoop/letSemi `st.vals ≠ []`; node builders `fs.all (!·.isFlat)`; letEnd `d ≤ |binds|`.
   h_prim side conditions: md ≤ 2, inDefF fs, no flat frame.
   42 h_mkPair (MkPair; side conditions SInv `∀ x ∈ vals, x.sh.isSome`, |vals| ≥ 2, no flat frame; v2_stat/v5_stat: status 0 absorbing).
-NEXT (box C):
-F's items (|defs| ≤ 512 in Rep, `.flat` FrameArgs ∃ids, prev-token link for task 73, TokAgree narrowing); 53 letPairSemi (needs B's `stash : Option`).
+* F's Rep items (all pushed): (1) `TokAgreeN` = narrow token agreement `[184384, 184386 + h7)`; every token/name/frame lemma has a
+  `…_frameN` form (old `…_frame` names kept as wrappers taking the wide `TokAgree`); `ParInvAppend.rep_append`: Rep H → Rep (H ++ ws)
+  with `out := out ++ ws`. (2) DefsRep: `|defs| ≤ 512`; the in-def branch is `(RowRep cur ∧ npw-cell) ∧ |defs| < 512`, the not-in-def
+  branch `|defs| < 512 → RowZero`. (3) FrameArgs `.flat n`: `∃ ids, RNRep h a n ids ∧ ids < |arena|` (as `.flatL`); `rnRep_frameA`.
+  (4) prev token, NO Rep change (`ParInvPrev`): `tokAgree_of_tokensAt` (two TokensAt ⇒ TokAgreeN, so `TokAt h 0 st.all` transfers
+  along the run), `tokAt_pos` (cursor position determined), `prev_cell` (cell before the cursor = last keyword of `pre`, or 0 after an
+  identifier, or `pre` ends with a NUMBER — a number's last byte may be 35, so hprev also needs "previous token not a num" from Layer 2;
+  plus `st.all = pre ++ st.toks` from Layer 2).
+NEXT (box C): 53 letPairSemi (B made `stash : Option`; unblocked).
