@@ -37,7 +37,8 @@ def ResI (σ : AH) (Kk : List Nat) (F : List Bool) (Γ : List (Option Kd)) (env 
     (es[i] = 0 → ∃ x, v[i] = .w x) ∧
     (es[i] = 1 → (∃ l, v[i] = .b l) ∧ (∀ s, Kn Γ s → Kk.getD s 0 ≠ 0 → OwnSpec.dead F s = false → ew s ≠ vs[i]) ∧
       ∀ j (g1 : j < es.length) (g3 : j < vs.length), j ≠ i → es[j] = 1 → vs[j] ≠ vs[i]) ∧
-    (4 ≤ es[i] → vs[i] = ew (es[i] / 4 - 1) ∧ env[es[i] / 4 - 1]? = some v[i])
+    (4 ≤ es[i] → vs[i] = ew (es[i] / 4 - 1) ∧ env[es[i] / 4 - 1]? = some v[i] ∧
+      es[i] % 4 = Kk.getD (es[i] / 4 - 1) 0 ∧ Kn Γ (es[i] / 4 - 1))
 
 theorem leafS_some {V : Env → UInt64} {ew : Env} {sp : Nat} {H H' : Hp} {vs : List UInt64}
     (h : leafS V ew sp H = some (vs, H')) : vs = [V ew] ∧ H' = H := by
@@ -57,6 +58,22 @@ theorem localS_some : ∀ (w s : Nat) {ew : Env} {sp : Nat} {H H' : Hp} {vs : Li
     simp only [Option.some.injEq, Prod.mk.injEq] at he; obtain ⟨rfl, rfl⟩ := he
     refine ⟨?_, rfl⟩
     rw [List.range_succ_eq_map]; simp [Nat.add_comm, Nat.add_left_comm]
+
+/-- dead flags only grow -/
+def Mono (F F' : List Bool) : Prop := ∀ s, OwnSpec.dead F s = true → OwnSpec.dead F' s = true
+
+theorem Mono.refl (F : List Bool) : Mono F F := fun _ h => h
+theorem Mono.trans {F F1 F2 : List Bool} (h1 : Mono F F1) (h2 : Mono F1 F2) : Mono F F2 := fun s h => h2 s (h1 s h)
+
+theorem Ch.trans {σ σ1 σ2 : AH} {Γ : List (Option Kd)} {F F1 F2 : List Bool} {ew : Env} (h1 : Ch σ σ1 Γ F F1 ew)
+    (h2 : Ch σ1 σ2 Γ F1 F2 ew) (m1 : Mono F F1) (m2 : Mono F1 F2) : Ch σ σ2 Γ F F2 ew := by
+  intro a ha hn
+  have e1 : σ1 a = σ a := h1 a ha fun s hk hc => hn s hk ⟨hc.1, m2 s hc.2⟩
+  rw [← e1]
+  refine h2 a (by rw [e1]; exact ha) fun s hk hc => hn s hk ⟨?_, hc.2⟩
+  cases hd : OwnSpec.dead F s
+  · rfl
+  · have := m1 s hd; rw [hc.1] at this; cases this
 
 theorem Ch.refl (σ : AH) (Γ F ew) : Ch σ σ Γ F F ew := fun _ _ _ => rfl
 
