@@ -45,11 +45,11 @@ theorem bpush_capS {K : LayW} {C : List J} {pc : Nat} (s : St) (hC : At C pc (bp
 /-! ## the capacity contracts: the kinded semantics fails with `cap` ⇒ the run reaches the cap stub (word 6) -/
 
 /-- **CapW** (multi-word results): `cap` ⇒ a safe run to word 6 keeping the invariant; reads only `R` -/
-structure CapW (KL : LayW) (C : List J) (pc p nl : Nat) (Inv : St → Prop) (hb E0 : Nat) (R : Nat → Prop)
+structure CapW (KL : LayW) (C : List J) (pc p nl : Nat) (Inv G : St → Prop) (hb E0 : Nat) (R : Nat → Prop)
     (S : SemWX) : Prop where
   cap : ∀ (s : St) (env : Env) (H : Hp), Inv s → s.x 0 = 0 → Frame p nl s env → FrameOK p nl s → HRel hb s H →
     Lay KL hb E0 p s → HAl H → S env (s.x 31).toNat H = .error .cap →
-    ∃ s', SStarX KL C (pc, s) (6, s') ∧ Inv s' ∧ s'.x 0 = 0
+    ∃ s', SStarX KL C (pc, s) (6, s') ∧ G s' ∧ s'.x 0 = 0
   stable : ∀ env env' sp H, (∀ k, R k → env k = env' k) → S env sp H = S env' sp H
 
 theorem bind_cap {α β : Type} {x : Except Fail α} {f : α → Except Fail β} (h : x.bind f = .error .cap) :
@@ -58,11 +58,11 @@ theorem bind_cap {α β : Type} {x : Except Fail α} {f : α → Except Fail β}
   | error e => left; simpa [Except.bind] using h
   | ok a => right; exact ⟨a, rfl, h⟩
 
-theorem pairCap {KL : LayW} {C : List J} {pc la p nl hb E0 wa wb : Nat} {Inv : St → Prop}
+theorem pairCap {KL : LayW} {C : List J} {pc la p nl hb E0 wa wb : Nat} {Inv : St → Prop} {G : St → Prop}
     {RA WA RB : Nat → Prop} {SA SB : SemWX}
-    (hA : EVHwS KL C pc la p nl Inv hb E0 RA WA wa (oW SA)) (cA : CapW KL C pc p nl Inv hb E0 RA SA)
-    (cB : CapW KL C (pc + la) p nl Inv hb E0 RB SB) (sB : ∀ k, RB k → ¬ WA k) :
-    CapW KL C pc p nl Inv hb E0 (fun k => RA k ∨ RB k) (pairF wa SA SB) where
+    (hA : EVHwS KL C pc la p nl Inv hb E0 RA WA wa (oW SA)) (cA : CapW KL C pc p nl Inv G hb E0 RA SA)
+    (cB : CapW KL C (pc + la) p nl Inv G hb E0 RB SB) (sB : ∀ k, RB k → ¬ WA k) :
+    CapW KL C pc p nl Inv G hb E0 (fun k => RA k ∨ RB k) (pairF wa SA SB) where
   stable := fun env env' sp H h => by
     simp only [pairF]
     rw [cA.stable env env' sp H (fun k hk => h k (Or.inl hk))]
@@ -91,29 +91,30 @@ theorem map_cap {α β : Type} {x : Except Fail α} {f : α → β} (h : x.map f
   | ok a => simp [Except.map] at h
 
 /-- a semantics that never fails with `cap` -/
-theorem noCap {KL : LayW} {C : List J} {pc p nl hb E0 : Nat} {Inv : St → Prop} {R : Nat → Prop} {S : SemWX}
+theorem noCap {KL : LayW} {C : List J} {pc p nl hb E0 : Nat} {Inv : St → Prop} {G : St → Prop} {R : Nat → Prop} {S : SemWX}
     (hn : ∀ env sp H, S env sp H ≠ .error .cap)
     (hs : ∀ env env' sp H, (∀ k, R k → env k = env' k) → S env sp H = S env' sp H) :
-    CapW KL C pc p nl Inv hb E0 R S :=
+    CapW KL C pc p nl Inv G hb E0 R S :=
   ⟨fun s env H _ _ _ _ _ _ _ h => absurd h (hn _ _ _), hs⟩
 
 /-- the two-operand closing at the capacity exit -/
-def Fin2CapS (KL : LayW) (C : List J) (q : Nat) (Inv : St → Prop) (hb E0 : Nat)
+def Fin2CapS (KL : LayW) (C : List J) (q : Nat) (Inv G : St → Prop) (hb E0 : Nat)
     (F : UInt64 → UInt64 → Nat → Hp → Except Fail (UInt64 × Hp)) : Prop :=
   ∀ (s2 : St) (H2 : Hp), Inv s2 → s2.x 0 = 0 → HRel hb s2 H2 → (s2.x 31).toNat + 16 < 2 ^ 63 →
     StkOK KL hb E0 2 s2 → HAl H2 →
     F (s2.m ((s2.x 31).toNat + 8)) (s2.m (s2.x 31).toNat) (s2.x 31).toNat H2 = .error .cap →
-    ∃ s3 : St, SStarX KL C (q, s2) (6, s3) ∧ Inv s3 ∧ s3.x 0 = 0
+    ∃ s3 : St, SStarX KL C (q, s2) (6, s3) ∧ G s3 ∧ s3.x 0 = 0
 
-theorem fin2Cap_ofO {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {hb E0 : Nat}
+theorem fin2Cap_ofO {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {G : St → Prop} {hb E0 : Nat}
     (F : UInt64 → UInt64 → Nat → Hp → Option (UInt64 × Hp)) :
-    Fin2CapS KL C q Inv hb E0 (fun a b sp H => ofO .stuck (F a b sp H)) := by
+    Fin2CapS KL C q Inv G hb E0 (fun a b sp H => ofO .stuck (F a b sp H)) := by
   intro s2 H2 _ _ _ _ _ _ h
   cases e : F (s2.m ((s2.x 31).toNat + 8)) (s2.m (s2.x 31).toNat) (s2.x 31).toNat H2 <;> simp [e, ofO] at h
 
-theorem fin2Cap_bpush {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {hb E0 : Nat} (hI : ∀ p, InvOKH hb p Inv)
-    (hC : At C q (bpushT 6 q)) (h6 : 6 < C.length) (hC18 : C.length < 2 ^ 18) (he : E0 < 2 ^ 62) :
-    Fin2CapS KL C q Inv hb E0 (bpushFF hb) := by
+theorem fin2Cap_bpush {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {G : St → Prop} {hb E0 : Nat} (hI : ∀ p, InvOKH hb p Inv)
+    (hG : ∀ s, Inv s → G s) (hC : At C q (bpushT 6 q)) (h6 : 6 < C.length) (hC18 : C.length < 2 ^ 18)
+    (he : E0 < 2 ^ 62) :
+    Fin2CapS KL C q Inv G hb E0 (bpushFF hb) := by
   intro s2 H2 I2 z2 hR hl K2 A2 hF
   simp only [bpushFF] at hF
   split at hF
@@ -135,15 +136,15 @@ theorem fin2Cap_bpush {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {hb
         (by rw [ml, mc]; simp at hlt; omega) (by omega)
         (by simpa using K2.wok h31 (i := 0) (by omega)) (K2.wok h31 (i := 1) (by omega))
         (hread_wok hR K2 A2 hrl) (hread_wok hR K2 A2 hrc) h6 hC18
-      refine ⟨s3, st3, hI 0 s2 s3 I2 (x3 8 (by decide) (by decide) (by decide) (by decide) (by decide))
+      refine ⟨s3, st3, hG _ <| hI 0 s2 s3 I2 (x3 8 (by decide) (by decide) (by decide) (by decide) (by decide))
         (x3 28 (by decide) (by decide) (by decide) (by decide) (by decide))
         (x3 29 (by decide) (by decide) (by decide) (by decide) (by decide)) b3 (fun a _ => by rw [m3]), z3⟩
 
-theorem fin2Cap {KL : LayW} {C : List J} {pc lp p nl hb E0 : Nat} {Inv : St → Prop} {R W : Nat → Prop} {SP : SemWX}
+theorem fin2Cap {KL : LayW} {C : List J} {pc lp p nl hb E0 : Nat} {Inv : St → Prop} {G : St → Prop} {R W : Nat → Prop} {SP : SemWX}
     {F : UInt64 → UInt64 → Nat → Hp → Except Fail (UInt64 × Hp)}
-    (hP : EVHwS KL C pc lp p nl Inv hb E0 R W 2 (oW SP)) (cP : CapW KL C pc p nl Inv hb E0 R SP)
-    (hU : Fin2CapS KL C (pc + lp) Inv hb E0 F) :
-    CapW KL C pc p nl Inv hb E0 R (fin2F SP F) where
+    (hP : EVHwS KL C pc lp p nl Inv hb E0 R W 2 (oW SP)) (cP : CapW KL C pc p nl Inv G hb E0 R SP)
+    (hU : Fin2CapS KL C (pc + lp) Inv G hb E0 F) :
+    CapW KL C pc p nl Inv G hb E0 R (fin2F SP F) where
   stable := fun env env' sp H h => by unfold fin2F; rw [cP.stable env env' sp H h]
   cap := fun s env H I0 z0 F0 O0 R0 L0 A0 hS => by
     simp only [fin2F] at hS
@@ -169,13 +170,13 @@ theorem fin2Cap {KL : LayW} {C : List J} {pc lp p nl hb E0 : Nat} {Inv : St → 
     exact ⟨s3, r1.trans st3, I3, z3⟩
 
 /-- a closing that never fails with `cap`: the cap comes from the operands -/
-theorem finCap_of {KL : LayW} {C : List J} {pc lp p nl hb E0 w : Nat} {Inv : St → Prop} {R W : Nat → Prop}
-    {SP : SemWX} {G : Nat → (List UInt64 × Hp) → Except Fail (List UInt64 × Hp)}
-    (hP : EVHwS KL C pc lp p nl Inv hb E0 R W w (oW SP)) (cP : CapW KL C pc p nl Inv hb E0 R SP)
-    (hG : ∀ sp r, G sp r ≠ .error .cap) :
-    CapW KL C pc p nl Inv hb E0 R (fun env sp H => (SP env sp H).bind (G sp)) where
+theorem finCap_of {KL : LayW} {C : List J} {pc lp p nl hb E0 w : Nat} {Inv : St → Prop} {G : St → Prop} {R W : Nat → Prop}
+    {SP : SemWX} {Gk : Nat → (List UInt64 × Hp) → Except Fail (List UInt64 × Hp)}
+    (hP : EVHwS KL C pc lp p nl Inv hb E0 R W w (oW SP)) (cP : CapW KL C pc p nl Inv G hb E0 R SP)
+    (hG : ∀ sp r, Gk sp r ≠ .error .cap) :
+    CapW KL C pc p nl Inv G hb E0 R (fun env sp H => (SP env sp H).bind (Gk sp)) where
   stable := fun env env' sp H h => by
-    show (SP env sp H).bind (G sp) = (SP env' sp H).bind (G sp); rw [cP.stable env env' sp H h]
+    show (SP env sp H).bind (Gk sp) = (SP env' sp H).bind (Gk sp); rw [cP.stable env env' sp H h]
   cap := fun s env H I0 z0 F0 O0 R0 L0 A0 hS => by
     rcases bind_cap hS with h1 | ⟨r, _, h2⟩
     · exact cP.cap s env H I0 z0 F0 O0 R0 L0 A0 h1
@@ -185,18 +186,18 @@ theorem ofO_ne_cap {α : Type} (o : Option α) : ofO .stuck o ≠ .error .cap :=
 theorem map_ne_cap {α β : Type} {x : Except Fail α} (f : α → β) (h : x ≠ .error .cap) : x.map f ≠ .error .cap :=
   fun e => h (map_cap e)
 
-theorem fin1Cap {KL : LayW} {C : List J} {pc lp p nl hb E0 : Nat} {Inv : St → Prop} {R W : Nat → Prop} {SP : SemWX}
+theorem fin1Cap {KL : LayW} {C : List J} {pc lp p nl hb E0 : Nat} {Inv : St → Prop} {G : St → Prop} {R W : Nat → Prop} {SP : SemWX}
     {F : UInt64 → Nat → Hp → Option (UInt64 × Hp)}
-    (hP : EVHwS KL C pc lp p nl Inv hb E0 R W 1 (oW SP)) (cP : CapW KL C pc p nl Inv hb E0 R SP) :
-    CapW KL C pc p nl Inv hb E0 R (fin1F SP (fun a sp H => ofO .stuck (F a sp H))) :=
+    (hP : EVHwS KL C pc lp p nl Inv hb E0 R W 1 (oW SP)) (cP : CapW KL C pc p nl Inv G hb E0 R SP) :
+    CapW KL C pc p nl Inv G hb E0 R (fin1F SP (fun a sp H => ofO .stuck (F a sp H))) :=
   finCap_of hP cP (fun sp r => by
     obtain ⟨l, H'⟩ := r; rcases l with _ | ⟨a, _ | ⟨b, l⟩⟩ <;> simp only [] <;>
       first | exact map_ne_cap _ (ofO_ne_cap _) | simp)
 
-theorem fin3Cap {KL : LayW} {C : List J} {pc lp p nl hb E0 : Nat} {Inv : St → Prop} {R W : Nat → Prop} {SP : SemWX}
+theorem fin3Cap {KL : LayW} {C : List J} {pc lp p nl hb E0 : Nat} {Inv : St → Prop} {G : St → Prop} {R W : Nat → Prop} {SP : SemWX}
     {F : UInt64 → UInt64 → UInt64 → Nat → Hp → Option (UInt64 × Hp)}
-    (hP : EVHwS KL C pc lp p nl Inv hb E0 R W 3 (oW SP)) (cP : CapW KL C pc p nl Inv hb E0 R SP) :
-    CapW KL C pc p nl Inv hb E0 R (fin3F SP (fun a b c sp H => ofO .stuck (F a b c sp H))) :=
+    (hP : EVHwS KL C pc lp p nl Inv hb E0 R W 3 (oW SP)) (cP : CapW KL C pc p nl Inv G hb E0 R SP) :
+    CapW KL C pc p nl Inv G hb E0 R (fin3F SP (fun a b c sp H => ofO .stuck (F a b c sp H))) :=
   finCap_of hP cP (fun sp r => by
     obtain ⟨l, H'⟩ := r; rcases l with _ | ⟨a, _ | ⟨b, _ | ⟨c, _ | ⟨d, l⟩⟩⟩⟩ <;> simp only [] <;>
       first | exact map_ne_cap _ (ofO_ne_cap _) | simp)
@@ -269,14 +270,14 @@ theorem ifHeadS {KL : LayW} {C : List J} {q lt p nl hb E0 cmp : Nat} {Inv : St �
     have sj2 : SafeX KL C (q + 4, s2) := by simp only [SafeX, c4]; simp; omega
     exact ⟨s2, st2.trans (.head safe3 sc (.head sj2 sj0 (.refl _))), I2, z2, x31, x8, rfl, eb, F2, O2, R2, L2⟩
 
-theorem ifCap {KL : LayW} {C : List J} {pc lp lt p nl hb E0 cmp : Nat} {Inv : St → Prop} {RP WP RT RE : Nat → Prop}
+theorem ifCap {KL : LayW} {C : List J} {pc lp lt p nl hb E0 cmp : Nat} {Inv : St → Prop} {G : St → Prop} {RP WP RT RE : Nat → Prop}
     {SP ST SE : SemWX} (hI : InvOKH hb p Inv)
-    (hP : EVHwS KL C pc lp p nl Inv hb E0 RP WP 2 (oW SP)) (cP : CapW KL C pc p nl Inv hb E0 RP SP)
+    (hP : EVHwS KL C pc lp p nl Inv hb E0 RP WP 2 (oW SP)) (cP : CapW KL C pc p nl Inv G hb E0 RP SP)
     (hH : At C (pc + lp) (ifHeadG cmp lt))
-    (cT : CapW KL C (pc + lp + 5) p nl Inv hb E0 RT ST) (cE : CapW KL C (pc + lp + 6 + lt) p nl Inv hb E0 RE SE)
+    (cT : CapW KL C (pc + lp + 5) p nl Inv G hb E0 RT ST) (cE : CapW KL C (pc + lp + 6 + lt) p nl Inv G hb E0 RE SE)
     (sT : ∀ k, RT k → ¬ WP k) (sE : ∀ k, RE k → ¬ WP k) (hCl : pc + lp + 6 + lt < C.length)
     (hC18 : C.length < 2 ^ 18) :
-    CapW KL C pc p nl Inv hb E0 (fun k => RP k ∨ RT k ∨ RE k) (ifF cmp SP ST SE) where
+    CapW KL C pc p nl Inv G hb E0 (fun k => RP k ∨ RT k ∨ RE k) (ifF cmp SP ST SE) where
   stable := fun env env' sp H h => by
     simp only [ifF]
     rw [cP.stable env env' sp H (fun k hk => h k (Or.inl hk))]
@@ -376,12 +377,12 @@ theorem letMidS {KL : LayW} {C : List J} {q p nl hb E0 k0 w : Nat} {Inv : St →
   exact ⟨s2, ss2, I2, z2, x31, x8, by rw [eb2, eb], F2, ⟨by rw [x31, x8]; omega, o2, by rw [x8]; omega⟩, R2, L2,
     fun a ha => mo2 a (fun j hj e => ha j hj e)⟩
 
-theorem letCap {KL : LayW} {C : List J} {pc lv p nl hb E0 k0 w : Nat} {Inv : St → Prop} {Rv Wv Rb : Nat → Prop}
+theorem letCap {KL : LayW} {C : List J} {pc lv p nl hb E0 k0 w : Nat} {Inv : St → Prop} {G : St → Prop} {Rv Wv Rb : Nat → Prop}
     {SV SB : SemWX} (hI : InvOKH hb p Inv)
-    (hv : EVHwS KL C pc lv p nl Inv hb E0 Rv Wv w (oW SV)) (cv : CapW KL C pc p nl Inv hb E0 Rv SV)
-    (hS : At C (pc + lv) (popN p k0 w)) (cb : CapW KL C (pc + lv + 3 * w) p nl Inv hb E0 Rb SB)
+    (hv : EVHwS KL C pc lv p nl Inv hb E0 Rv Wv w (oW SV)) (cv : CapW KL C pc p nl Inv G hb E0 Rv SV)
+    (hS : At C (pc + lv) (popN p k0 w)) (cb : CapW KL C (pc + lv + 3 * w) p nl Inv G hb E0 Rb SB)
     (hk0 : k0 + w ≤ nl) (hsc : ∀ k, Rb k → ¬ (k0 ≤ k ∧ k < k0 + w) → ¬ Wv k) (hnl : nl < 251) :
-    CapW KL C pc p nl Inv hb E0 (fun k => Rv k ∨ (Rb k ∧ ¬ (k0 ≤ k ∧ k < k0 + w))) (letF k0 w SV SB) where
+    CapW KL C pc p nl Inv G hb E0 (fun k => Rv k ∨ (Rb k ∧ ¬ (k0 ≤ k ∧ k < k0 + w))) (letF k0 w SV SB) where
   stable := fun env env' sp H h => by
     simp only [letF]
     rw [cv.stable env env' sp H (fun k hk => h k (Or.inl hk))]
@@ -414,31 +415,31 @@ theorem letCap {KL : LayW} {C : List J} {pc lv p nl hb E0 k0 w : Nat} {Inv : St 
 /-! ## tail mode -/
 
 /-- **CapT** (tail-mode semantics) -/
-structure CapT (KL : LayW) (C : List J) (pc p nl : Nat) (Inv : St → Prop) (hb E0 : Nat) (R : Nat → Prop)
+structure CapT (KL : LayW) (C : List J) (pc p nl : Nat) (Inv G : St → Prop) (hb E0 : Nat) (R : Nat → Prop)
     (S : SemTX) : Prop where
   cap : ∀ (s : St) (env : Env) (H : Hp), Inv s → s.x 0 = 0 → Frame p nl s env → FrameOK p nl s → HRel hb s H →
     Lay KL hb E0 p s → HAl H → S env (s.x 31).toNat H = .error .cap →
-    ∃ s', SStarX KL C (pc, s) (6, s') ∧ Inv s' ∧ s'.x 0 = 0
+    ∃ s', SStarX KL C (pc, s) (6, s') ∧ G s' ∧ s'.x 0 = 0
   stable : ∀ env env' sp H, (∀ k, R k → env k = env' k) → S env sp H = S env' sp H
 
-theorem exitCap {KL : LayW} {C : List J} {pc p nl hb E0 : Nat} {Inv : St → Prop} {R : Nat → Prop} {S : SemWX}
-    (c : CapW KL C pc p nl Inv hb E0 R S) : CapT KL C pc p nl Inv hb E0 R (exitF S) where
+theorem exitCap {KL : LayW} {C : List J} {pc p nl hb E0 : Nat} {Inv : St → Prop} {G : St → Prop} {R : Nat → Prop} {S : SemWX}
+    (c : CapW KL C pc p nl Inv G hb E0 R S) : CapT KL C pc p nl Inv G hb E0 R (exitF S) where
   stable := fun env env' sp H h => by simp only [exitF]; rw [c.stable env env' sp H h]
   cap := fun s env H I0 z0 F0 O0 R0 L0 A0 hS => c.cap s env H I0 z0 F0 O0 R0 L0 A0 (map_cap hS)
 
-theorem contCap {KL : LayW} {C : List J} {pc p nl hb E0 : Nat} {Inv : St → Prop} {R : Nat → Prop} {S : SemWX}
-    (c : CapW KL C pc p nl Inv hb E0 R S) : CapT KL C pc p nl Inv hb E0 R (contF S) where
+theorem contCap {KL : LayW} {C : List J} {pc p nl hb E0 : Nat} {Inv : St → Prop} {G : St → Prop} {R : Nat → Prop} {S : SemWX}
+    (c : CapW KL C pc p nl Inv G hb E0 R S) : CapT KL C pc p nl Inv G hb E0 R (contF S) where
   stable := fun env env' sp H h => by simp only [contF]; rw [c.stable env env' sp H h]
   cap := fun s env H I0 z0 F0 O0 R0 L0 A0 hS => c.cap s env H I0 z0 F0 O0 R0 L0 A0 (map_cap hS)
 
-theorem ifTCap {KL : LayW} {C : List J} {pc lp lt p nl hb E0 cmp : Nat} {Inv : St → Prop} {RP WP RT RE : Nat → Prop}
+theorem ifTCap {KL : LayW} {C : List J} {pc lp lt p nl hb E0 cmp : Nat} {Inv : St → Prop} {G : St → Prop} {RP WP RT RE : Nat → Prop}
     {SP : SemWX} {ST SE : SemTX} (hI : InvOKH hb p Inv)
-    (hP : EVHwS KL C pc lp p nl Inv hb E0 RP WP 2 (oW SP)) (cP : CapW KL C pc p nl Inv hb E0 RP SP)
+    (hP : EVHwS KL C pc lp p nl Inv hb E0 RP WP 2 (oW SP)) (cP : CapW KL C pc p nl Inv G hb E0 RP SP)
     (hH : At C (pc + lp) (ifHeadG cmp lt))
-    (cT : CapT KL C (pc + lp + 5) p nl Inv hb E0 RT ST) (cE : CapT KL C (pc + lp + 6 + lt) p nl Inv hb E0 RE SE)
+    (cT : CapT KL C (pc + lp + 5) p nl Inv G hb E0 RT ST) (cE : CapT KL C (pc + lp + 6 + lt) p nl Inv G hb E0 RE SE)
     (sT : ∀ k, RT k → ¬ WP k) (sE : ∀ k, RE k → ¬ WP k) (hCl : pc + lp + 6 + lt < C.length)
     (hC18 : C.length < 2 ^ 18) :
-    CapT KL C pc p nl Inv hb E0 (fun k => RP k ∨ RT k ∨ RE k) (ifTF cmp SP ST SE) where
+    CapT KL C pc p nl Inv G hb E0 (fun k => RP k ∨ RT k ∨ RE k) (ifTF cmp SP ST SE) where
   stable := fun env env' sp H h => by
     simp only [ifTF]
     rw [cP.stable env env' sp H (fun k hk => h k (Or.inl hk))]
@@ -471,12 +472,12 @@ theorem ifTCap {KL : LayW} {C : List J} {pc lp lt p nl hb E0 cmp : Nat} {Inv : S
       obtain ⟨s3, r3, I3, z3⟩ := cE.cap s2 env2 H1 I2 z2 F2 O2 R2 L2 A2 hSE
       exact ⟨s3, st2.trans r3, I3, z3⟩
 
-theorem letTCap {KL : LayW} {C : List J} {pc lv p nl hb E0 k0 w : Nat} {Inv : St → Prop} {Rv Wv Rb : Nat → Prop}
+theorem letTCap {KL : LayW} {C : List J} {pc lv p nl hb E0 k0 w : Nat} {Inv : St → Prop} {G : St → Prop} {Rv Wv Rb : Nat → Prop}
     {SV : SemWX} {SB : SemTX} (hI : InvOKH hb p Inv)
-    (hv : EVHwS KL C pc lv p nl Inv hb E0 Rv Wv w (oW SV)) (cv : CapW KL C pc p nl Inv hb E0 Rv SV)
-    (hS : At C (pc + lv) (popN p k0 w)) (cb : CapT KL C (pc + lv + 3 * w) p nl Inv hb E0 Rb SB)
+    (hv : EVHwS KL C pc lv p nl Inv hb E0 Rv Wv w (oW SV)) (cv : CapW KL C pc p nl Inv G hb E0 Rv SV)
+    (hS : At C (pc + lv) (popN p k0 w)) (cb : CapT KL C (pc + lv + 3 * w) p nl Inv G hb E0 Rb SB)
     (hk0 : k0 + w ≤ nl) (hsc : ∀ k, Rb k → ¬ (k0 ≤ k ∧ k < k0 + w) → ¬ Wv k) (hnl : nl < 251) :
-    CapT KL C pc p nl Inv hb E0 (fun k => Rv k ∨ (Rb k ∧ ¬ (k0 ≤ k ∧ k < k0 + w))) (letTF k0 w SV SB) where
+    CapT KL C pc p nl Inv G hb E0 (fun k => Rv k ∨ (Rb k ∧ ¬ (k0 ≤ k ∧ k < k0 + w))) (letTF k0 w SV SB) where
   stable := fun env env' sp H h => by
     simp only [letTF]
     rw [cv.stable env env' sp H (fun k hk => h k (Or.inl hk))]
@@ -506,18 +507,18 @@ theorem letTCap {KL : LayW} {C : List J} {pc lv p nl hb E0 k0 w : Nat} {Inv : St
 
 /-! ## LOOP -/
 
-theorem loopCap {KL : LayW} {C : List J} {h S len p nl hb E0 w : Nat} {Inv : St → Prop} {RZ WZ RS WS : Nat → Prop}
+theorem loopCap {KL : LayW} {C : List J} {h S len p nl hb E0 w : Nat} {Inv : St → Prop} {G : St → Prop} {RZ WZ RS WS : Nat → Prop}
     {SZ SS : SemTX} (hI : InvOKH hb p Inv)
     (hH : At C h (loopHead p ((S : Int) - ((h + 2 : Nat) : Int)))) (hD : At C S (loopDec p))
     (hSt : EVHtS KL C (S + 2) p nl Inv hb E0 RS WS w (h + len) h (oT SS))
-    (cZ : CapT KL C (h + 3) p nl Inv hb E0 RZ SZ) (cS : CapT KL C (S + 2) p nl Inv hb E0 RS SS)
+    (cZ : CapT KL C (h + 3) p nl Inv G hb E0 RZ SZ) (cS : CapT KL C (S + 2) p nl Inv G hb E0 RS SS)
     (hp : 1 ≤ p) (hpn : p ≤ nl) (hWp : ∀ k, (WZ k ∨ WS k) → p ≤ k) (hsc : ∀ k, (RZ k ∨ RS k) → ¬ (WZ k ∨ WS k))
     (hnl : nl < 251) (hSC : S + 2 ≤ C.length) (hhC : h + 3 ≤ C.length) (hC18 : C.length < 2 ^ 18) :
     ∀ n (env_s env_m : Env) (s : St) (H : Hp), Inv s → s.x 0 = 0 →
       Frame p nl s env_m → FrameOK p nl s → HRel hb s H → Lay KL hb E0 p s → HAl H →
       (∀ k, ¬ (WZ k ∨ WS k) → env_m k = env_s k) →
       loopGoF p SZ SS (s.x 31).toNat n env_s H = .error .cap →
-      ∃ s', SStarX KL C (h, s) (6, s') ∧ Inv s' ∧ s'.x 0 = 0 := by
+      ∃ s', SStarX KL C (h, s) (6, s') ∧ G s' ∧ s'.x 0 = 0 := by
   have c0 := hH.at 0 (by simp [loopHead]); have c1 := hH.at 1 (by simp [loopHead])
   have c2 := hH.at 2 (by simp [loopHead])
   have d0 := hD.at 0 (by simp [loopDec]); have d1 := hD.at 1 (by simp [loopDec])
@@ -544,7 +545,7 @@ theorem loopCap {KL : LayW} {C : List J} {h S len p nl hb E0 w : Nat} {Inv : St 
       Frame p nl s env_m → FrameOK p nl s → HRel hb s H → Lay KL hb E0 p s → HAl H →
       (∀ k, ¬ (WZ k ∨ WS k) → env_m k = env_s k) →
       env_s 0 = 0 → (SZ env_s (s.x 31).toNat H).bind exitOnlyF = .error .cap →
-      ∃ s', SStarX KL C (h, s) (6, s') ∧ Inv s' ∧ s'.x 0 = 0 := by
+      ∃ s', SStarX KL C (h, s) (6, s') ∧ G s' ∧ s'.x 0 = 0 := by
     intro env_s env_m s H I0 z0 F0 O0 R0 L0 A0 ag hz hS
     rcases bind_cap hS with hS | ⟨⟨r, H1⟩, _, e⟩
     rotate_left
@@ -703,14 +704,14 @@ theorem loopGoF_stable {p : Nat} {SZ SS : SemTX} {R : Nat → Prop} {sp : Nat}
           · rfl
           · exact hd k hk
 
-theorem loopWCap {KL : LayW} {C : List J} {h S len p nl hb E0 w : Nat} {Inv : St → Prop} {RZ WZ RS WS : Nat → Prop}
+theorem loopWCap {KL : LayW} {C : List J} {h S len p nl hb E0 w : Nat} {Inv : St → Prop} {G : St → Prop} {RZ WZ RS WS : Nat → Prop}
     {SZ SS : SemTX} (hI : InvOKH hb p Inv)
     (hH : At C h (loopHead p ((S : Int) - ((h + 2 : Nat) : Int)))) (hD : At C S (loopDec p))
     (hSt : EVHtS KL C (S + 2) p nl Inv hb E0 RS WS w (h + len) h (oT SS))
-    (cZ : CapT KL C (h + 3) p nl Inv hb E0 RZ SZ) (cS : CapT KL C (S + 2) p nl Inv hb E0 RS SS)
+    (cZ : CapT KL C (h + 3) p nl Inv G hb E0 RZ SZ) (cS : CapT KL C (S + 2) p nl Inv G hb E0 RS SS)
     (hp : 1 ≤ p) (hpn : p ≤ nl) (hWp : ∀ k, (WZ k ∨ WS k) → p ≤ k) (hsc : ∀ k, (RZ k ∨ RS k) → ¬ (WZ k ∨ WS k))
     (hnl : nl < 251) (hSC : S + 2 ≤ C.length) (hhC : h + 3 ≤ C.length) (hC18 : C.length < 2 ^ 18) :
-    CapW KL C h p nl Inv hb E0 (fun k => RZ k ∨ RS k ∨ k = 0) (loopF p SZ SS) where
+    CapW KL C h p nl Inv G hb E0 (fun k => RZ k ∨ RS k ∨ k = 0) (loopF p SZ SS) where
   stable := fun env env' sp H hk => by
     simp only [loopF]; rw [hk 0 (Or.inr (Or.inr rfl))]
     exact loopGoF_stable (R := fun k => RZ k ∨ RS k)
