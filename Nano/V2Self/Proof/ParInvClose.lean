@@ -128,4 +128,55 @@ theorem h_defClose {h ts : Buf} {st : St} (r : Rep h ts st [.defClose]) :
   have R2 := rep_of_repZ RZ2 T2
   exact ⟨[.defs], _, rfl, by rw [ev]; exact rep_append R2 [21]⟩
 
+
+/-- the popped heap agrees with the old one off cell 5, so frame arguments transfer -/
+theorem frameArgs_pop {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs) (v : UInt64) {f : Frame} {a b : UInt64}
+    (hf : FrameArgs h st.arena f a b) : FrameArgs (bset h 5 v) st.arena f a b := by
+  obtain ⟨hn, hl, har⟩ := rep_bounds r
+  have e : ∀ i : UInt64, i.toNat ≠ 5 → bget (bset h 5 v) i = bget h i := fun i hi => bget_bset' _ _ _ _ (by simp; omega)
+  exact frameArgs_frame ⟨e 7 (by decide), fun i hi => e i (by omega)⟩ hn (fun i a _ => e i (by omega)) (fun i a _ => e i (by omega))
+    har f a b hf
+
+/-- **task 82** (flatten a sibling chain): an input local is skipped, any other node is flattened (task 81) before the rest -/
+theorem h_flatL {h ts : Buf} {st : St} {ns : List RN} {fs : List Frame} (r : Rep h ts st (.flatL ns :: fs))
+    (hfs : inDefF fs = true) (hs : bget (step h) 0 ≠ 0) :
+    ∃ k st', stepF (.flatL ns) st = some (k, st') ∧ Rep (step h) ts st' (k ++ fs) := by
+  obtain ⟨E, FA, R1⟩ := rep_pop r (by simp [inDefF, Frame.isDefs])
+  have FA' := frameArgs_pop r fs.length.toUInt64 FA
+  generalize (taskAt h fs.length).a = a at E FA'
+  generalize (taskAt h fs.length).b = b at E FA'
+  generalize bset h 5 fs.length.toUInt64 = g at E R1 FA'
+  have ev : step h = v143 g a b := by rw [E]; rfl
+  rw [ev, v143_eq] at hs ⊢
+  obtain ⟨hb, ids, hK, hids⟩ := FA'
+  cases ns with
+  | nil =>
+    have : b = 0 := UInt64.toNat_inj.mp (by simpa using hb)
+    subst this
+    exact ⟨[], st, rfl, by simpa using R1⟩
+  | cons n rest =>
+    have hb0 : b ≠ 0 := fun e => by subst e; simp at hb
+    simp only [hb0, if_false] at hs ⊢
+    cases hK with
+    | cons hn hrest =>
+      rename_i i1 ids'
+      have hb1 : (b - 1).toNat = rest.length := by
+        rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr (by simp at hb ⊢; omega))]; simp at hb ⊢; omega
+      have FAr : FrameArgs g st.arena (.flatL rest) (fld g a 7) (b - 1) :=
+        ⟨hb1, ids', hrest, fun v hv => hids v (List.mem_append_right _ hv)⟩
+      rw [inpC_isInp isInpW hn] at hs ⊢
+      by_cases hi : n.isInp
+      · simp only [hi, if_true] at hs ⊢
+        exact ⟨[.flatL rest], st, by simp [stepF, hi], rep_push (.flatL rest) _ _ R1 (by simp [inDefF, Frame.isDefs, hfs]) FAr hs⟩
+      · simp only [hi, Bool.false_eq_true, if_false, show ((0 : UInt64) = 1) = False from by decide] at hs ⊢
+        have hs1 : bget (v1 g 82 (fld g a 7) (b - 1)) 0 ≠ 0 := fun e => hs (v1_zero _ _ _ _ e)
+        have R2 := rep_push (.flatL rest) _ _ R1 (by simp [inDefF, Frame.isDefs, hfs]) FAr hs1
+        obtain ⟨hn7, hlg, har⟩ := rep_bounds R1
+        have hg := v1_ok _ _ _ _ hs1
+        obtain ⟨et, es, ea⟩ := v1_agree g 82 (fld g a 7) (b - 1) hg (by omega)
+        have FAn : FrameArgs g st.arena (.flat n) a 0 := ⟨i1, hn, fun v hv => hids v (List.mem_append_left _ hv)⟩
+        have R3 := rep_push (.flat n) a 0 R2 (by simp [inDefF, Frame.isDefs])
+          (frameArgs_frame et hn7 es ea har _ _ _ FAn) hs
+        exact ⟨[.flat n, .flatL rest], st, by simp [stepF, hi], R3⟩
+
 end ParInv
