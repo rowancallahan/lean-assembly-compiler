@@ -213,7 +213,7 @@ def FixJ : Bool → List (List (List Nat) × TyR) → Prop
 
 /-- **binder list** `(a b : T) (c : U) … :` ↔ `pBinders` + `bindSlots` from the current slot / input flag -/
 theorem binders_spec : ∀ (n : Nat) {ks : List Frame} {st fin : St} (b : Bool), StarN n (.binders :: ks, st) ([], fin) →
-    ∃ groups r n' ty' nni', n' < n ∧
+    ∃ groups r n' ty' nni', n' < n ∧ r.length < st.toks.length ∧
       (∀ f, 3 * st.toks.length + 3 ≤ f → pBinders f b st.toks = some (groups, .k 8 :: r)) ∧
       (∀ p ∈ (bindSlots st.nx (st.binds.any Bd.inp) groups).2.1, p ≠ .fuel ∧ psCode p ≠ .nt ∧ (psCode p).nnt = true) ∧
       FixJ (st.binds.any Bd.inp) groups ∧
@@ -256,13 +256,16 @@ theorem binders_spec : ∀ (n : Nat) {ks : List Frame} {st fin : St} (b : Bool),
       simp only [List.nil_append, hsz] at h6
       obtain ⟨n4, hn4, hnt, hfj, h7⟩ := assign_spec htl (used := st.binds.any Bd.inp) ns n3 st.binds.length st.binds h6 rfl rfl rfl
         (fun _ _ => rfl) (fun e => by omega)
-      obtain ⟨g, r, n5, ty', nni', hn5, hpB, hps, hfj', h8⟩ := ih n4 (by omega) false h7
-      dsimp only at hpB hps hfj' h8
+      obtain ⟨g, r, n5, ty', nni', hn5, hlr, hpB, hps, hfj', h8⟩ := ih n4 (by omega) false h7
+      dsimp only at hlr hpB hps hfj' h8
       have hused : (st.binds ++ List.map toBd (bindSlots.go (pickPs (st.binds.any Bd.inp) (ns.length == 1) t).1 st.nx ns).1).any
           Bd.inp = (pickPs (st.binds.any Bd.inp) (ns.length == 1) t).2 := by
         rw [List.any_append, any_go _ _ _ hne, pick_used]
       rw [hused] at hps hfj' h8
-      refine ⟨(ns, t) :: g, r, n5, ty', nni', by omega, ?_, ?_, ⟨fun e1 e2 => hfj hne e1 (by omega), hfj'⟩, ?_⟩
+      refine ⟨(ns, t) :: g, r, n5, ty', nni', by omega, ?_, ?_, ?_, ⟨fun e1 e2 => hfj hne e1 (by omega), hfj'⟩, ?_⟩
+      · have l1 := ids_len _ _ _ hids
+        simp only [List.length_cons] at l1 hl2
+        rw [ht0]; simp; omega
       · intro f hf
         have l1 := ids_len _ _ _ hids
         simp only [List.length_cons] at l1
@@ -291,7 +294,7 @@ theorem binders_spec : ∀ (n : Nat) {ks : List Frame} {st fin : St} (b : Bool),
     · -- `:` : end of the binders
       rename_i r0 ht0
       cases h1
-      refine ⟨[], r0, n, st.ty, st.cur.nni, by omega, fun f hf => ?_, by simp [bindSlots_nil], trivial, ?_⟩
+      refine ⟨[], r0, n, st.ty, st.cur.nni, by omega, by rw [ht0]; simp, fun f hf => ?_, by simp [bindSlots_nil], trivial, ?_⟩
       · obtain ⟨f, rfl⟩ : ∃ g, f = g + 1 := ⟨f - 1, by omega⟩
         rw [ht0]; rw [pBinders.eq_def]
       · simp only [bindSlots_nil, List.map_nil, List.append_nil]

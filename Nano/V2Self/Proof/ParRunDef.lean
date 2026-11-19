@@ -100,4 +100,133 @@ theorem mem_bindSlots_kind : ∀ (g : List (List (List Nat) × TyR)) (s : Nat) (
       | cons y l => simp
     · exact List.mem_append_right _ (mem_bindSlots_kind g _ _ e he)
 
+
+/-- the state right after `.defs` opened def `x` -/
+structure DefStart (st : St) (x : List Nat) : Prop where
+  binds : st.binds = []
+  vals : st.vals = []
+  arena : st.arena = []
+  nx : st.nx = 0
+  arm : st.arm = false
+  cur : st.cur = DefR.fresh x
+
+/-- finished rows carry no nested Nat (the `rows` half of B's `CxNN`) -/
+def DefsNN (ds : List DefR) : Prop := ∀ d ∈ ds, ShNN d.res ∧ ∀ p ∈ d.params, p.nnt = true
+
+/-- with the arm flag off, an expression run leaves no pending value (no self-call; to be discharged) -/
+def NoPend : Prop := ∀ (st st' : St), st.arm = false → st.vals = [] → Star ([.expr 0 0], st) ([], st') → ∀ v ∈ st'.vals, v.pend = false
+
+/-- **plain def with binders**: from `.binders` (after `def x`, first token `(`) to the next `.defs` -/
+theorem plainB_spec (hNP : NoPend) {n : Nat} {ks : List Frame} {st0 fin : St} {x : List Nat} {dis : List DefI}
+    (h : StarN n (.binders :: ks, st0) ([], fin)) (hS : DefStart st0 x) (hD : DRel st0.defs dis) (hNN : DefsNN st0.defs)
+    (hfr : findD st0.defs x = none) (hn8 : ∀ r, st0.toks ≠ .k 8 :: r) :
+    ∃ st2 n', n' < n ∧ StarN n' (.defs :: ks, st2) ([], fin) ∧ st2.toks.length < st0.toks.length ∧
+      (st2.arena.all (nodeOK st2.defs) = true →
+        ∃ di da, (∀ f, 4 * st0.toks.length + 4 ≤ f → pDef f dis (.k 1 :: .id x :: st0.toks) = some (di, da, st2.toks)) ∧
+          st2.out = st0.out ++ da.ser ∧ DRel st2.defs (dis ++ [di]) ∧ DefsNN st2.defs) := by
+  obtain ⟨g, r, n1, ty', nni', hn1, hlr, hpB, hps, hFJ, h1⟩ := binders_spec n true h
+  simp only [hS.binds, hS.nx, List.any_nil, List.nil_append] at hps hFJ h1
+  have hkind := mem_bindSlots_kind g 0 false
+  have hinp := bindSlots_inpInv g false 0 [] ⟨fun i h => absurd h (by simp), fun _ q hq => by simp at hq⟩ rfl hFJ
+    (pBinders_noLs _ true _ g _ (hpB _ (Nat.le_refl _)))
+  generalize hbs : bindSlots 0 false g = BS at hps h1 hkind hinp
+  obtain ⟨E, PS, NPW⟩ := BS
+  simp only [List.nil_append] at hinp
+  dsimp only at hps h1
+  obtain ⟨resT, r3, n2, hn2, hl3, hpT, h2, hnnt⟩ := (ty_sound n1).1 h1
+  dsimp only at hl3 hpT h2
+  have hcur0 : st0.cur.params = [] := by rw [hS.cur]; rfl
+  have hE : ∀ e ∈ E, e.2.2 ≠ .fuel ∧ psCode e.2.2 ≠ .nt := fun e he => let h := hps _ (hkind e he); ⟨h.1, h.2.1⟩
+  obtain ⟨r4, v, st', n3, hn3, ht4, hw, hP, h3, hstar, hNNv, _, hV⟩ := body_spec h2 rfl (cxrel_body hD rfl hE hS.arm) hS.arm (by
+    refine ⟨fun bd hbd => ?_, fun d hd => ?_⟩
+    · simp only [St.withTy, List.mem_map] at hbd
+      obtain ⟨e, he, rfl⟩ := hbd
+      exact ⟨_, rfl, (hps _ (hkind e he)).2.2⟩
+    · simp only [rows, St.withTy, List.mem_append, List.mem_singleton] at hd
+      rcases hd with hd | rfl
+      · exact hNN d hd
+      · refine ⟨⟨_, rfl, hnnt⟩, fun p hp => ?_⟩
+        simp only [bodyRow, St.withTy, hcur0, List.nil_append, List.mem_map] at hp
+        obtain ⟨q, hq, rfl⟩ := hp
+        exact (hps q hq).2.2)
+  simp only [St.withTy, bodyRow] at hP hV hstar ht4 hw
+  obtain ⟨z, n4, hn4, hz, hzs, hzi, h4⟩ := defEnd_tail h3
+  have hvz : z = v := by rw [hP.vals, hS.vals] at hz; simpa using hz.symm
+  subst hvz
+  have hl4 : st'.toks.length < st0.toks.length := by
+    have := hP.toks; simp only at this; rw [ht4] at hl3; simp at hl3; omega
+  refine ⟨_, n4, by omega, h4, hl4, fun hval => ?_⟩
+  dsimp only at hval
+  have inv := Star.inv hstar ⟨by simp [ArenaInv, hS.arena, hS.vals], by simp [CntInv, hS.arena]⟩
+  dsimp only at inv
+  have hA : st'.arena = nodes z := by rw [inv.1, hP.vals, hS.vals]; simp
+  have hall : ∀ m ∈ nodes z, cntOK m = true ∧ nodeOK (st'.defs ++ [st'.cur]) m = true := fun m hm =>
+    ⟨inv.2 m (by rw [hA]; exact hm), List.all_eq_true.mp hval m (by rw [hA]; exact hm)⟩
+  obtain ⟨ty, hTy, _, hpE⟩ := hV (fun u hu => by have := (hall u hu).2; rw [hP.defs, hP.cur] at this; exact this)
+  have hwords := words_body hall
+  have hfr' : findDef dis x = none := by
+    have := hD.2.1 x; rw [hfr] at this; cases h : findDef dis x <;> simp_all
+  refine ⟨{ name := x, params := PS, res := trRes resT, resLst := (match resT with | .lst => true | _ => false), npw := NPW },
+    { id := dis.length, npw := NPW, nslots := st'.nx, kind := 0, nres := (trRes resT).width, body := z.toNd },
+    fun f hf => ?_, ?_, ?_, ?_⟩
+  · simp only [pDef, hfr', Option.isSome_none, Bool.false_eq_true, if_false]
+    split
+    · rename_i r' he; exact absurd he (hn8 _)
+    · have hzres : z.sh = some (trRes resT) := by rw [hzs, hP.cur]
+      have hok : tyOk (trRes resT) ty = true := by
+        cases ty with
+        | s w' => obtain ⟨e1, _, _⟩ := hTy; rw [hzres] at e1; simp only [Option.some.injEq] at e1; simp [tyOk, e1]
+        | lit => obtain ⟨e1, _⟩ := hTy; rw [hzres] at e1; simp only [Option.some.injEq] at e1; simp [tyOk, e1]
+        | inp => exact absurd hTy.1 (by simp [hzi])
+        | bot =>
+          have := hNP _ _ (by simpa using hS.arm) (by simpa using hS.vals) hstar z (by rw [hP.vals]; simp)
+          exact absurd hTy (by simp [TyRel, this])
+      have hN1 : (trRes resT).hasN = false := Sh.hasN_of_nnt hnnt hw
+      have hN2 : (PS.any fun p => match p with | Ps.sh s => s.hasN | _ => false) = false := by
+        rw [List.any_eq_false]; intro p hp
+        obtain ⟨h1, h2, h3⟩ := hps p hp
+        cases p with
+        | inp => simp
+        | fuel => exact absurd rfl h1
+        | sh w' => simp only [psCode] at h2 h3; simp [Sh.hasN_of_nnt h3 h2]
+      rw [hpB f (by omega)]
+      simp only [Option.bind_some]
+      subst ht4
+      simp only [List.length_cons] at hl3
+      rw [hpT f (by omega)]
+      simp only [Option.bind_some, hbs, hN1, hN2, Bool.or_false, Bool.false_eq_true, if_false]
+      rw [hpE f (by omega)]
+      simp [hok]
+      refine ⟨fun p hp => by simpa using List.any_eq_false.mp hN2 p hp, ?_⟩
+      cases resT <;> rfl
+  · have eo := (Star.noOut hstar (by simp [isD, isOutF])).1
+    dsimp only at eo
+    have hc := hP.cur
+    have hd := hP.defs
+    dsimp only at hc hd
+    simp only [eo, defHdr, hc, hd, hD.1, DefA.ser, hwords, cw, List.append_assoc, Bool.false_eq_true, if_false]
+    rfl
+  · have hc := hP.cur
+    have hd := hP.defs
+    dsimp only at hc hd
+    show DRel (st'.defs ++ [st'.cur]) _
+    rw [hd, hc]
+    have hname : st0.cur.name = x := by rw [hS.cur]; rfl
+    refine drel_snoc hD (by simpa [hname] using hfr) (by simp [hname]) (by simp [hcur0]) rfl (fun i h => ?_) (fun p hp e => ?_)
+    · rw [hinp.1 i h]; simp [hcur0]
+    · subst e; exact (hps _ hp).2.1 rfl
+  · have hc := hP.cur
+    have hd := hP.defs
+    dsimp only at hc hd
+    show DefsNN (st'.defs ++ [st'.cur])
+    rw [hd, hc]
+    intro d hd'
+    rcases List.mem_append.mp hd' with hd' | hd'
+    · exact hNN d hd'
+    · simp at hd'; subst hd'
+      refine ⟨⟨_, rfl, hnnt⟩, fun p hp => ?_⟩
+      simp only [hcur0, List.nil_append, List.mem_map] at hp
+      obtain ⟨q, hq, rfl⟩ := hp
+      exact (hps q hq).2.2
+
 end ParRun
