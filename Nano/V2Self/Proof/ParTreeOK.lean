@@ -235,4 +235,40 @@ theorem Star.inv {c d : List Frame × St} (h : Star c d) (hi : ArenaInv c.2 ∧ 
   | refl => exact hi
   | step hs _ ih => exact ih (stepS_inv hs hi)
 
+/-! ## output growth (for the heap-length bound of the acceptance tail) -/
+theorem mkNode_out {st st' : St} {t a b : Nat} {s : Option Sh} {p : Bool} {n : Nat}
+    (h : mkNode st t a b s p n = some st') : st'.out = st.out := by
+  unfold mkNode at h; split at h <;> cases h; rfl
+
+theorem locOf_out {st st' : St} {bd : Bd} (h : locOf st bd = some st') : st'.out = st.out := by
+  unfold locOf at h; split at h <;> cases h; rfl
+
+/-- a handler appends at most 6 words (the def header of task 80) -/
+theorem stepF_out {f : Frame} {st st' : St} {k : List Frame} (h : stepF f st = some (k, st')) :
+    st'.out.length ≤ st.out.length + 6 := by
+  cases f <;> simp only [stepF] at h <;> (repeat' split at h) <;>
+    first
+    | (cases h; done)
+    | (cases h; simp [leaf]; done)
+    | (cases h; simp; (repeat' split) <;> simp <;> omega)
+    | (obtain ⟨s2, h2, h3⟩ := Option.map_eq_some_iff.mp h; cases h3
+       first
+       | (rw [mkNode_out h2]; simp; done)
+       | (rw [locOf_out h2]; simp; done)
+       | (obtain ⟨s1, h1, h2'⟩ := Option.bind_eq_some_iff.mp h2
+          rw [mkNode_out h2', mkNode_out h1]; simp))
+
+theorem stepS_out {c d : List Frame × St} (hs : stepS c = some d) : d.2.out.length ≤ c.2.out.length + 6 := by
+  obtain ⟨fs, st⟩ := c
+  cases fs with
+  | nil => simp [stepS] at hs
+  | cons f fs =>
+    obtain ⟨k, st', h1, rfl⟩ := stepS_some.mp hs
+    exact stepF_out h1
+
+theorem StarN.out_le {n : Nat} {c d : List Frame × St} (h : StarN n c d) : d.2.out.length ≤ c.2.out.length + 6 * n := by
+  induction h with
+  | refl => simp
+  | step hs _ ih => have := stepS_out hs; omega
+
 end ParRun
