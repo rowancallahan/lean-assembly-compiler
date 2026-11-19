@@ -2,6 +2,7 @@
 The fuel argument must be a Nat binding; then CONTINUE's argument tasks are pushed: args / argCheck / mkCont for the current row. -/
 import Nano.V2Self.Proof.ParInvClose
 import Nano.V2Self.Proof.ParInvArgName
+import Nano.V2Self.Proof.ParInvMkPair
 namespace ParInv
 open C BufL ParSpec ParRun
 
@@ -107,5 +108,75 @@ theorem h_selfArgs {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.s
   refine ⟨[.args (.df st.defs.length) (st.cur.params.length - 1), .argCheck (.df st.defs.length) (st.cur.params.length - 1),
     .mkCont st.defs.length (st.cur.params.length - 1)], _, ?_, R5⟩
   simp [stepF, et, hfb, hnt]
+
+
+/-- `v5` (node build) leaves the def table and everything above it alone -/
+theorem rep_v5_hi {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs)
+    (n t A B : Nat) (sh : Option Sh) (p : Bool) (w : UInt64) (hw : ShOpt h w sh) (ht : t < 2 ^ 64)
+    (hab : t ≠ 2 → t ≠ 5 → A < 2 ^ 64 ∧ B < 2 ^ 64) (hn : n < 4096)
+    (hs : bget (v5 h t.toUInt64 A.toUInt64 B.toUInt64 w (b01 p) n.toUInt64) 0 ≠ 0) :
+    ∀ i : UInt64, 147520 ≤ i.toNat → bget (v5 h t.toUInt64 A.toUInt64 B.toUInt64 w (b01 p) n.toUInt64) i = bget h i := by
+  obtain ⟨hn7, hl, har⟩ := rep_bounds r
+  have rA := r.2.2.2.2.2.2.2.1
+  obtain ⟨g1, g2, g3⟩ := v5_guards _ _ _ _ _ _ _ (by omega) hs
+  have en : n.toUInt64.toNat = n := by simp; omega
+  have h8 := rA.2.2.1; have h9 := rA.1; have hv4 := rA.2.2.2.1
+  have g1' := UInt64.lt_iff_toNat_lt.mp g1
+  have g2' := UInt64.lt_iff_toNat_lt.mp g2
+  rw [tn_add _ _ (by simp; omega), en] at g2'
+  simp only [show d13.toNat = 16384 from rfl] at g1'
+  have hle : n ≤ st.vals.length := by simp at g2'; omega
+  have g3' := UInt64.lt_iff_toNat_lt.mp g3
+  rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr (by rw [en]; omega)), en] at g3'
+  simp only [show d4.toNat = 4096 from rfl] at g3'
+  obtain ⟨_, _, _, _, HI, _⟩ := arena_v5g h st.arena st.vals n t A B sh p w rA hle (by omega) (by omega) (by omega) hw ht hab
+  simpa [b01] using HI
+
+/-- **task 54** (CONTINUE): the self-call arguments are packed (PAIR unless exactly one) under a pending CONT node of the def's
+result shape -/
+theorem h_mkCont {h ts : Buf} {st : St} {f k : Nat} {fs : List Frame} (r : Rep h ts st (.mkCont f k :: fs))
+    (hfs : inDefF fs = true) (hnf : fs.all (fun f => !f.isFlat)) (hf : f = st.defs.length) (hk : k < 4096)
+    (hs : bget (step h) 0 ≠ 0) :
+    ∃ k' st', stepF (.mkCont f k) st = some (k', st') ∧ Rep (step h) ts st' (k' ++ fs) := by
+  obtain ⟨E, FA, R1⟩ := rep_pop r (by simp [inDefF, Frame.isDefs])
+  have FA' := frameArgs_pop r fs.length.toUInt64 FA
+  generalize (taskAt h fs.length).a = a at E FA'
+  generalize (taskAt h fs.length).b = b at E FA'
+  generalize bset h 5 fs.length.toUInt64 = g at E R1 FA'
+  obtain ⟨ha, hb⟩ := FA'
+  obtain ⟨hn7, hl, har⟩ := rep_bounds R1
+  have ev : step h = v125 g a b := by rw [E]; rfl
+  rw [ev] at hs ⊢
+  subst hf
+  have rD := R1.2.2.2.2.2.2.1
+  rw [hfs] at rD
+  obtain ⟨d12, dlt, _, _, dcur, _, _, _⟩ := rD
+  simp only [if_true] at dcur
+  obtain ⟨⟨⟨_, _, _, c3, _, _, _, _⟩, _⟩, d512⟩ := dcur
+  have hA : a = st.defs.length.toUInt64 := by apply UInt64.toNat_inj.mp; rw [ha]; simp; omega
+  have hB : b = k.toUInt64 := by apply UInt64.toNat_inj.mp; rw [hb]; simp; omega
+  subst hA hB
+  unfold v125 at hs ⊢
+  simp only [] at hs ⊢
+  generalize hw : bget g (d7 + 8 * st.defs.length.toUInt64 + 3) = w at hs ⊢ c3
+  have hrow : (rows st)[st.defs.length]? = some st.cur := by simp [rows]
+  by_cases k1 : k = 1
+  · subst k1
+    simp only [show ((1 : Nat).toUInt64 == 1) = true from rfl, if_true] at hs ⊢
+    obtain ⟨st', hm, R2⟩ := rep_v5 R1 hnf 1 11 0 0 st.cur.res true w c3 (by decide) (by decide) (by decide) (by decide) hs
+    exact ⟨[], st', by simp [stepF, hrow, hm], R2⟩
+  · have kb : (k.toUInt64 == 1) = false := by
+      simp only [beq_eq_false_iff_ne, ne_eq]; intro e; apply k1
+      have := congrArg UInt64.toNat e; simp at this; omega
+    simp only [kb, Bool.false_eq_true, if_false] at hs ⊢
+    have hs1 : bget (v5 g (6 : Nat).toUInt64 k.toUInt64 (0 : Nat).toUInt64 0 (b01 false) k.toUInt64) 0 ≠ 0 :=
+      fun e => hs (v5_stat _ _ _ _ _ _ _ e)
+    obtain ⟨st1, hm1, R2⟩ := rep_v5 R1 hnf k 6 k 0 none false 0 rfl (by decide) (by omega) (by decide) hk hs1
+    have HI := rep_v5_hi R1 k 6 k 0 none false 0 rfl (by decide) (fun _ _ => ⟨by omega, by decide⟩) hk hs1
+    have hcur1 : st1.cur = st.cur := by unfold mkNode at hm1; split at hm1 <;> cases hm1; rfl
+    have es : ShTabAgree g (v5 g (6 : Nat).toUInt64 k.toUInt64 (0 : Nat).toUInt64 0 (b01 false) k.toUInt64) :=
+      fun i a _ => HI i (by omega)
+    obtain ⟨st', hm, R3⟩ := rep_v5 R2 hnf 1 11 0 0 st.cur.res true w (c3.frame es) (by decide) (by decide) (by decide) (by decide) hs
+    exact ⟨[], st', by simp [stepF, hrow, k1, hm1, hcur1, hm], R3⟩
 
 end ParInv
