@@ -6,7 +6,7 @@ What has to be trusted in C's correctness theorem. Companion file: `Nano/V2Self/
 
 ## 1. The theorems
 
-**`NanoMain.C_correctLO : CompileCorrect riscv compileC`**, at `Nano/V2Self/Proof/Parser/ParCapBnd.lean:118`. It has no premises.
+**`NanoMain.C_correctLO : CompileCorrect riscv compileC`**, at `Nano/V2Self/Proof/Main/ParCapBnd.lean:118`. It has no premises.
 
 In plain words: take any source text `s` that C compiles, so `compileC s = some compiled`, and any reading of `s` as a
 function `f : α → β`. A reading means `Computes`: for every `a : α`, the text's meaning on the bytes `encodeInput a` is

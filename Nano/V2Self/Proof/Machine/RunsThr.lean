@@ -2,7 +2,7 @@
 `max 16 ∘ Msp`, no hypothesis), `gen_runs_ok` (at or above `Msp`: the normal return), `gen_runs_oom` (below `Msp`:
 the definite out-of-memory return, given `ShiftInv`). -/
 import Nano.V2Self.Proof.Machine.RunsDef
-import Nano.V2Self.Proof.Parser.ParCapBnd
+import Nano.V2Self.Proof.Main.ParCapBnd
 namespace NanoMain
 open Templates ParSpec Classical
 

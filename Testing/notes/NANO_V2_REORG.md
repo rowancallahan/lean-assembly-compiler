@@ -1,6 +1,6 @@
 # Nano/V2Self reorganization proposal (O)
 
-Status: proposal only; nothing has been moved yet. Basis: the dead-code audit in `NANO_V2_DEADCODE.md` and its import
+Status: DONE (2a02149; cleanup 5024388, 4d17b0a). The mapping below uses the names from BEFORE the move. Basis: the dead-code audit in `NANO_V2_DEADCODE.md` and its import
 closure from `Nano/V2Self/REVIEW.lean`.
 
 ## Target layout

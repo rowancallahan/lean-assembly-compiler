@@ -2,7 +2,7 @@
 `Cert.PC.all`, hypothesis `hsrc` until D's source link lands): the meaning of `x` is the driver `mC`, except where the
 meaning hits Gen's buffer capacity (2^19 words); hence the code `compileC` emits for `x` computes `mC` on every such
 input, in the owner's `CompileCorrect` terms (via `C_correctLO`). -/
-import Nano.V2Self.Proof.Parser.ParCapBnd
+import Nano.V2Self.Proof.Main.ParCapBnd
 import Nano.V2Self.Proof.Cert.All
 open LeanRV64D
 namespace NanoMain
