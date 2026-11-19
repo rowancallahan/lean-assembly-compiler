@@ -253,14 +253,17 @@ theorem gen_host_cap (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : P
     have h2 : ¬ outB KL a := fun ho => by simp only [outB, KL, ol0] at ho; omega
     rw [fr5 a h1 h2]
 
-/-- the out-of-memory return: a0 = −1, a1 = 0, output and work blocks only changed -/
+/-- the out-of-memory return: a0 = −1, a1 = 0, only the work block changed (the output block is untouched) -/
 def OomOut (s : Proven.St) (ra : BitVec 64) (output work : Region) (s' : Proven.St) : Prop :=
   s'.regs.get? .PC = some ra ∧ abiSavedKept s s' ∧ Cfg s' ∧ s'.regs.get? .x10 = some NanoMain.a0Oom ∧
-    s'.regs.get? .x11 = some 0 ∧ unchangedOutside s s' [output, work]
+    s'.regs.get? .x11 = some 0 ∧ unchangedOutside s s' [work]
+
+theorem unchanged_mono {s s' : Proven.St} {r : Region} {rs : List Region} (h : unchangedOutside s s' rs) :
+    unchangedOutside s s' (r :: rs) := fun a ha => h a fun q hq => ha q (List.mem_cons_of_mem _ hq)
 
 theorem OomOut.outcome {s s' : Proven.St} {ra : BitVec 64} {output work : Region} {r : Except NanoMain.Stop (List UInt8)}
     {oomOK : Prop} (h : OomOut s ra output work s') (hoom : oomOK) : NanoMain.Outcome s ra output work r oomOK s' :=
-  ⟨h.1, h.2.1, h.2.2.1, Or.inr ⟨hoom, h.2.2.2⟩⟩
+  ⟨h.1, h.2.1, h.2.2.1, Or.inr ⟨hoom, h.2.2.2.1, h.2.2.2.2.1, unchanged_mono h.2.2.2.2.2⟩⟩
 
 /-- **the host lift, out of memory**: as `gen_host`, when E's kinded semantics of main fails with `room` (and the work
 block is below the bound, `oomOK`): the run returns to ra with the spec's out-of-memory outcome (a0 = −1, a1 = 0). -/
@@ -420,7 +423,7 @@ theorem gen_host_oomX (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : 
     · rw [cfg5.x26, hc.x26, gk 26 (by decide)]
     · rw [cfg5.x27, hc.x27, gk 27 (by decide)]
   · intro a ha
-    simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq] at ha
+    simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq] at ha
     have h1 : ¬ wok KL (a - a % 8) := fun hw => by simp only [wok, KL, E0] at hw; omega
     have h2 : ¬ outB KL a := fun ho => by simp only [outB, KL, ol0] at ho; omega
     rw [fr5 a h1 h2]

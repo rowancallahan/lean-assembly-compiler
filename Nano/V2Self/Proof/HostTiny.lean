@@ -180,7 +180,7 @@ theorem gen_host_tinyX (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP :
     · rw [hN.cfg.x26, hc.x26, gk 26 (by decide) (by decide) (by decide) (by decide)]
     · rw [hN.cfg.x27, hc.x27, gk 27 (by decide) (by decide) (by decide) (by decide)]
   · intro a ha
-    simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq] at ha
+    simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq] at ha
     have h1 : ¬ wok KL (a - a % 8) := fun hw => by simp only [wok, KL, E0] at hw; omega
     have h2 : ¬ outB KL a := fun ho => by simp only [outB, KL, ol0] at ho; omega
     rw [hN.mem, R2.fr a h1 h2]

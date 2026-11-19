@@ -52,10 +52,10 @@ noncomputable def srcRun (s : SrcC) (inp : List UInt8) : Option (List UInt8) :=
 
 noncomputable instance : Program SrcC := ⟨srcRun⟩
 
-/-- the definite out-of-memory return: a0 = −1, a1 = 0, only the output and work blocks changed -/
+/-- the definite out-of-memory return: a0 = −1, a1 = 0, only the work block changed (output untouched) -/
 def OomOutM (s : St) (ra : BitVec 64) (output work : Region) (s' : St) : Prop :=
   s'.regs.get? .PC = some ra ∧ abiSavedKept s s' ∧ Cfg s' ∧ s'.regs.get? .x10 = some a0Oom ∧
-    s'.regs.get? .x11 = some 0 ∧ unchangedOutside s s' [output, work]
+    s'.regs.get? .x11 = some 0 ∧ unchangedOutside s s' [work]
 
 /-- **the work bound is exact**: same premises as `ImplementsCW`; when `f` has a result and the work block is below
 `space x`, the run ends in the out-of-memory return (with `ImplementsCW`: out of memory iff below the bound) -/
@@ -148,10 +148,12 @@ theorem parStage : ParStage := fun _ hW hts => ParInv.parserSound hW hts
 /-- the ownership stage, discharged (O) -/
 theorem ownStage : OwnStage := fun _ _ hp hb hl h => OwnP.own_stage hp hb hl h
 
-/-- as `compiler_correct`, with the explicit work bound -/
-theorem compiler_correctM (HB : BndStage) (HG : GenStageM) (x : List UInt8) (hx : x.length ≤ 2 ^ 20) (h : mC x ≠ []) :
-    ∃ ts p, LexSpec.Lexes x ts ∧ ParsesProgram ts p ∧ LinearK p ∧
-      ImplementsCW (mC x) (Sem κC p) (fun inp => max 16 (Msp p inp)) := by
+/-- as `compiler_correct`, for any property `Q` of Gen's code and the program that codegen provides -/
+theorem compiler_correctG (HB : BndStage) (Q : List UInt8 → List DefA → Prop)
+    (HG : ∀ (c : List UInt8) (ts : List UInt64) (p : List DefA), ParsesProgram ts p → ts.length < 2 ^ 24 → LinearK p →
+      C.g41 c (serialize p) ≠ [] → Q (C.g41 c (serialize p)) p)
+    (x : List UInt8) (hx : x.length ≤ 2 ^ 20) (h : mC x ≠ []) :
+    ∃ ts p, LexSpec.Lexes x ts ∧ ParsesProgram ts p ∧ LinearK p ∧ Q (mC x) p := by
   have hy0 : C.o41 (C.y16 (C.s10 x)) ≠ [] := fun e => h (by simp only [mC, e, g41_nil])
   have hoe := o41_ne _ hy0
   have hy : C.y16 (C.s10 x) ≠ [] := by rw [← hoe]; exact hy0
@@ -169,6 +171,12 @@ theorem compiler_correctM (HB : BndStage) (HG : GenStageM) (x : List UInt8) (hx 
     refine ⟨_, p, hL, hp, hlin, ?_⟩
     have := HG x _ p hp hts hlin hg
     rw [mC, hoe, he]; exact this
+
+/-- as `compiler_correct`, with the explicit work bound -/
+theorem compiler_correctM (HB : BndStage) (HG : GenStageM) (x : List UInt8) (hx : x.length ≤ 2 ^ 20) (h : mC x ≠ []) :
+    ∃ ts p, LexSpec.Lexes x ts ∧ ParsesProgram ts p ∧ LinearK p ∧
+      ImplementsCW (mC x) (Sem κC p) (fun inp => max 16 (Msp p inp)) :=
+  compiler_correctG HB (fun B p => ImplementsCW B (Sem κC p) (fun inp => max 16 (Msp p inp))) HG x hx h
 
 /-- **C is correct** (owner's top-level statement), from the size-bound and codegen stage theorems -/
 theorem C_correctL (HB : BndStage) (HG : GenStageM) : CompileCorrect riscv compileC := by
