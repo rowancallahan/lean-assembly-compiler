@@ -116,6 +116,13 @@ OPEN / NEXT (owner order 2026-11-19):
    succeeds, results related in σ', σ' differs from σ only at blocks of slots consumed by e and at fresh blocks, plain
    kind-1 result entries are fresh/consumed blocks not held by any live slot after; pinned entries = the slot's address.
    Layer 1 (MainBridge.lean): BufAt + per-prim agreement (done).
+   Layer 2 (MainBridge2): AHeap σ, VR, σ under BNEW/BPUSH/BSET (done).  Layer 3 (MainBridge3): EnvI (frame invariant,
+   incl. EnvOK), ResI (list-recursive result invariant, OwnFree), Ch (change frame), Mono, monotonicity lemmas, consume_spec
+   (done).  Layer 4 (MainBridge4): `NodeOK cx K oc D e` (value-mode claim; premises CtxOK, K values ≤ 2 [asked O to add
+   to defOk]); cases const, loc, bin DONE.  Layer 5 (MainBridge5): tr_spec (transfer) DONE.
+   NEXT: ite (two + branch + tr + join/orF weakening), letE (tr + setSlots/setW + fresh slots), pair/call/prim (lstA/fin
+   with pins: consume/borrow at the end), tail mode (cont) and loop (loopGo vs loopRun, flags reset), defs (defS vs
+   defMean, CtxR), program.
 2. MainTop subset: parsed ∧ Linear, compileC with the ownership check (after O).
 3. C-wide certificate generator (one Sem = Lean lemma per def) + kernel test of progEq on C's token stream.
    MEASURED (decide +kernel, prefixes of self_S_input.txt + a stub main): 713 bytes → lexer `C.s10` 35 s / 5.9 GB, lexer +
