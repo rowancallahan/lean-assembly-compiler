@@ -14,3 +14,4 @@ Testing/asm/ir-words/nano_*
 Testing/asm/ir-words/nanov2_*
 Testing/asm/ir-words/nv2_*
 Testing/asm/ir-words/nv2f_*
+__pycache__/
