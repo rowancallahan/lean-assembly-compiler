@@ -3,6 +3,7 @@
 import Nano.V2Self.Proof.Parser.ParRunCInv
 import Nano.V2Self.Proof.Parser.ParRunArena
 import Nano.V2Self.Proof.Parser.ParRunWFPres
+set_option backward.isDefEq.respectTransparency false
 namespace ParRun
 open ParSpec
 
