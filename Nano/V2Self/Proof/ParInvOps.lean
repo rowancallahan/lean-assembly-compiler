@@ -28,6 +28,9 @@ theorem recK (u k : UInt64) (hu : u.toNat < 16384) (hk : k.toNat < 8) : (d5 + 8 
   rw [tn_add _ _ (by rw [tn_add _ _ (by rw [tn_mul8 _ (by omega)]; simp [d5v]; omega)]; rw [tn_mul8 _ (by omega)]; simp [d5v]; omega),
     tn_add _ _ (by rw [tn_mul8 _ (by omega)]; simp [d5v]; omega), tn_mul8 _ (by omega)]; simp [d5v]
 
+theorem drop_bset0 (h : Buf) (i v : UInt64) (hi : i.toNat < 184384) : (bset h i v).drop 184384 = h.drop 184384 := by
+  simp only [bset]; exact List.drop_set_of_lt hi
+
 /-! ## v2: sibling linking -/
 /-- `v2 N h j z c` sets next(op[j+k]) := op[j+k+1] for k < c and nothing else (operand ids in the arena, the written ids distinct) -/
 theorem v2_eff : ∀ (N : Nat) (h : Buf) (j : Nat) (z c : UInt64), c.toNat < N → j + c.toNat < 4096 → 16448 + 8 * 16384 ≤ h.length →
@@ -35,7 +38,8 @@ theorem v2_eff : ∀ (N : Nat) (h : Buf) (j : Nat) (z c : UInt64), c.toNat < N �
     ((List.range c.toNat).map fun k => (opAt h (j + k)).toNat).Nodup →
     (v2 N h j.toUInt64 z c).length = h.length ∧
     (∀ i : UInt64, (∀ k, k < c.toNat → i.toNat ≠ 16448 + 8 * (opAt h (j + k)).toNat + 7) → bget (v2 N h j.toUInt64 z c) i = bget h i) ∧
-    (∀ k, k < c.toNat → bget (v2 N h j.toUInt64 z c) (d5 + 8 * opAt h (j + k) + 7) = opAt h (j + k + 1))
+    (∀ k, k < c.toNat → bget (v2 N h j.toUInt64 z c) (d5 + 8 * opAt h (j + k) + 7) = opAt h (j + k + 1)) ∧
+    (v2 N h j.toUInt64 z c).drop 184384 = h.drop 184384
   | 0, h, j, z, c, hc, hj, hl, ho, hd => absurd hc (by omega)
   | N + 1, h, j, z, c, hc, hj, hl, ho, hd => by
     by_cases c0 : c = 0
@@ -71,9 +75,9 @@ theorem v2_eff : ∀ (N : Nat) (h : Buf) (j : Nat) (z c : UInt64), c.toNat < N �
             (List.range (c.toNat - 1)).map (fun k => (opAt h (j + 1 + k)).toNat) := by
           apply List.map_congr_left; intro k hk; simp at hk; rw [o1 _ (by omega)]
         rw [this]; exact hd.2
-      obtain ⟨L, U, W⟩ := v2_eff N h1 (j + 1) z (c - 1) (by omega) (by omega) (by rw [l1]; exact hl) ho1 hd1
+      obtain ⟨L, U, W, D⟩ := v2_eff N h1 (j + 1) z (c - 1) (by omega) (by omega) (by rw [l1]; exact hl) ho1 hd1
       rw [hv]
-      refine ⟨by rw [L, l1], ?_, ?_⟩
+      refine ⟨by rw [L, l1], ?_, ?_, by rw [D, h1d, drop_bset0 _ _ _ (by rw [wa]; omega)]⟩
       · intro i hi
         rw [U i (fun k hk => by rw [o1 _ (by omega), show j + 1 + k = j + (k + 1) by omega]; exact hi _ (by omega)),
           h1d, bget_bset' _ _ _ _ (by rw [wa]; have := hi 0 (by omega); simp at this; omega)]
@@ -111,7 +115,8 @@ theorem v5_eff (h : Buf) (c a b w t n : UInt64) (hl : 147520 ≤ h.length) (hz :
     opAt h' J = z ∧ bget h' 8 = J.toUInt64 + 1 ∧ bget h' 9 = z + 1 ∧
     (∀ i : UInt64, i.toNat ≠ 8 → i.toNat ≠ 9 → i.toNat ≠ 12352 + J →
       (i.toNat < 16448 + 8 * z.toNat ∨ 16448 + 8 * z.toNat + 7 ≤ i.toNat) →
-      (∀ k, k + 1 < n.toNat → i.toNat ≠ 16448 + 8 * (opAt h (J + k)).toNat + 7) → bget h' i = bget h i) := by
+      (∀ k, k + 1 < n.toNat → i.toNat ≠ 16448 + 8 * (opAt h (J + k)).toNat + 7) → bget h' i = bget h i) ∧
+    h'.drop 184384 = h.drop 184384 := by
   intro J z h'
   have hz' : z.toNat < 16384 := hz
   have hb' : ∀ i, i < n.toNat → (opAt h (J + i)).toNat < z.toNat := hb
@@ -147,7 +152,8 @@ theorem v5_eff (h : Buf) (c a b w t n : UInt64) (hl : 147520 ≤ h.length) (hz :
   obtain ⟨H2, e2⟩ : ∃ H2, H2 = (if n == 0 then H1 else v2 16777216 H1 J.toUInt64 z (n - 1)) := ⟨_, rfl⟩
   have P2 : H2.length = h.length ∧
       (∀ i : UInt64, (∀ k, k + 1 < n.toNat → i.toNat ≠ 16448 + 8 * (opAt h (J + k)).toNat + 7) → bget H2 i = bget H1 i) ∧
-      (∀ k, k + 1 < n.toNat → bget H2 (d5 + 8 * opAt h (J + k) + 7) = opAt h (J + k + 1)) := by
+      (∀ k, k + 1 < n.toNat → bget H2 (d5 + 8 * opAt h (J + k) + 7) = opAt h (J + k + 1)) ∧
+      H2.drop 184384 = H1.drop 184384 := by
     by_cases n0 : n = 0
     · subst n0; simp [e2, L1]
     · have n1 : 1 ≤ n.toNat := by
@@ -163,15 +169,18 @@ theorem v5_eff (h : Buf) (c a b w t n : UInt64) (hl : 147520 ≤ h.length) (hz :
           rw [← List.map_take, List.take_range]; simp only [Nat.min_eq_left (Nat.sub_le _ _)]
           apply List.map_congr_left; intro k hk; simp at hk; rw [O1 _ (by omega)]
         rw [this]; exact hd.sublist (List.take_sublist _ _)
-      obtain ⟨L, U, W⟩ := v2_eff 16777216 H1 J z (n - 1) (by rw [en]; omega) (by rw [en]; omega) (by rw [L1]; omega)
+      obtain ⟨L, U, W, D⟩ := v2_eff 16777216 H1 J z (n - 1) (by rw [en]; omega) (by rw [en]; omega) (by rw [L1]; omega)
         (fun k hk => by rw [en] at hk; rw [O1 _ (by omega)]; have := hb' k (by omega); omega) hd'
       have e2' : H2 = v2 16777216 H1 J.toUInt64 z (n - 1) := by rw [e2]; simp [n0]
       rw [e2']
       refine ⟨by rw [L, L1], fun i hi => U i (fun k hk => by rw [en] at hk; rw [O1 _ (by omega)]; exact hi k (by omega)),
-        fun k hk => ?_⟩
+        fun k hk => ?_, D⟩
       have := W k (by rw [en]; omega)
       rw [O1 _ (by omega), O1 _ (by omega)] at this; exact this
-  obtain ⟨L2, U2, W2⟩ := P2
+  obtain ⟨L2, U2, W2, D2⟩ := P2
+  have D1 : H1.drop 184384 = h.drop 184384 := by
+    rw [e1]
+    repeat rw [drop_bset0 _ _ _ (by first | rw [q0]; omega | rw [eq _ (by decide)]; simp; omega)]
   have hv : h' = bset (bset (bset H2 (d3 + J.toUInt64) z) 8 (J.toUInt64 + 1)) 9 (z + 1) := by
     show v5 h c a b w t n = _
     unfold v5
@@ -189,7 +198,7 @@ theorem v5_eff (h : Buf) (c a b w t n : UInt64) (hl : 147520 ≤ h.length) (hz :
     rw [top _ (by omega) (by omega) (by omega), U2 _ (fun k' hk' => by have := hb' k' (by omega); omega)]
     exact F1 k hk
   refine ⟨by rw [hv]; simp only [length_bset]; exact L2, fz 0 (by decide), fz 1 (by decide), fz 2 (by decide), fz 3 (by decide),
-    fz 4 (by decide), fz 5 (by decide), fz 6 (by decide), ?_, ?_, ?_, ?_, ?_⟩
+    fz 4 (by decide), fz 5 (by decide), fz 6 (by decide), ?_, ?_, ?_, ?_, ?_, ?_⟩
   · intro i hi
     have hx := hb' i (by omega)
     simp only [fld]
@@ -204,6 +213,7 @@ theorem v5_eff (h : Buf) (c a b w t n : UInt64) (hl : 147520 ≤ h.length) (hz :
   · rw [hv]; exact bget_bset_eq _ _ _ _ rfl (by simp only [length_bset]; simp; omega)
   · intro i a1 a2 a3 a4 a5
     rw [top i a1 a2 a3, U2 i a5, U1 i a4]
+  · rw [hv, drop_bset0 _ _ _ (by decide), drop_bset0 _ _ _ (by decide), drop_bset0 _ _ _ (by rw [ed]; omega), D2, D1]
 
 /-! ## list helpers -/
 theorem mem_getD_flat {α : Type} : ∀ (L : List (List α)) (i : Nat) (x : α), x ∈ L.getD i [] → x ∈ L.flatten
@@ -285,7 +295,7 @@ theorem arena_v5 (h : Buf) (arena vals : List RN) (n : Nat) (t A B : Nat) (sh : 
     let h' := v5 h t.toUInt64 A.toUInt64 B.toUInt64 w (if p then 1 else 0) n.toUInt64
     h'.length = h.length ∧ ShTabAgree h h' ∧ ArenaRep h' (arena ++ [nd]) (nd :: vals.drop n) ∧
     (∀ i : UInt64, i.toNat < 12352 → i.toNat ≠ 8 → i.toNat ≠ 9 → bget h' i = bget h i) ∧
-    (∀ i : UInt64, 147520 ≤ i.toNat → bget h' i = bget h i) := by
+    (∀ i : UInt64, 147520 ≤ i.toNat → bget h' i = bget h i) ∧ h'.drop 184384 = h.drop 184384 := by
   intro nd h'
   obtain ⟨h9, hal, h8, hvl, I, hI, hR, hD, hX⟩ := hA
   have en : n.toUInt64.toNat = n := by simp; omega
@@ -307,7 +317,7 @@ theorem arena_v5 (h : Buf) (arena vals : List RN) (n : Nat) (t A B : Nat) (sh : 
       omega)
   simp only [en] at E
   rw [h8] at E
-  obtain ⟨EL, F0, F1, F2, F3, F4, F5, F6, Elink, Eop, E8, E9, EU⟩ := E
+  obtain ⟨EL, F0, F1, F2, F3, F4, F5, F6, Elink, Eop, E8, E9, EU, ED⟩ := E
   -- abbreviations
   have zN : (bget h 9) = arena.length.toUInt64 := UInt64.toNat_inj.mp (by rw [h9]; simp; omega)
   have rootAt : ∀ i (hi : i < n), ∃ hr : (opAt h (vals.length - n + i)).toNat < arena.length,
@@ -393,7 +403,7 @@ theorem arena_v5 (h : Buf) (arena vals : List RN) (n : Nat) (t A B : Nat) (sh : 
   let I' : Nat → List UInt64 := fun u => if u < arena.length then I u else bget h 9 :: ids
   have hz9 : (bget h 9).toNat = arena.length := h9
   have ez : (opAt h' (vals.length - n)) = bget h 9 := Eop
-  refine ⟨EL, shtab, ⟨?_, by simp; omega, ?_, by simp; omega, I', ?_, ?_, ?_, ?_⟩, ?_, ?_⟩
+  refine ⟨EL, shtab, ⟨?_, by simp; omega, ?_, by simp; omega, I', ?_, ?_, ?_, ?_⟩, ?_, ?_, ?_⟩
   · rw [E9, tn_add _ _ (by simp; omega)]; simp; omega
   · rw [E8, tn_add _ _ (by simp; omega)]; simp; omega
   · intro u hu
@@ -472,5 +482,6 @@ theorem arena_v5 (h : Buf) (arena vals : List RN) (n : Nat) (t A B : Nat) (sh : 
     exact EU i a2 a3 (by omega) (Or.inl (by rw [h9]; omega)) (fun k hk => by have := (rootAt k (by omega)).1; omega)
   · intro i a1
     exact EU i (by omega) (by omega) (by omega) (Or.inr (by rw [h9]; omega)) (fun k hk => by have := (rootAt k (by omega)).1; omega)
+  · exact ED
 
 end ParInv
