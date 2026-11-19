@@ -285,4 +285,122 @@ theorem h_zeroDone {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.z
     · rw [if_neg c18] at hs; exact absurd (stat0 _ (by omega)) hs
   · rw [if_neg c1] at hs; exact absurd (stat0 _ (by omega)) hs
 
+/-! ### task 76 `armBind` (`v138`) -/
+
+/-- tail of `v138`: the separator token decides between the next pattern variable and the arm body -/
+def ab2 (h : Buf) (a b z : UInt64) : Buf :=
+  if b + 1 < z then
+    (if bget h (d11 + bget h 3) = 15 then v1 (bset h 3 (bget h 3 + 1)) 76 a (b + 1) else bset (bset h 3 (bget h 3 + 1)) 0 0)
+  else if bget h (d11 + bget h 3) = 19 then
+    (if a = 0 then v1 (v1 (bset h 3 (bget h 3 + 1)) 77 0 0) 1 0 0
+     else v1 (v1 (v1 (bset h 3 (bget h 3 + 1)) 80 0 0) 79 0 0) 1 0 1)
+  else bset (bset h 3 (bget h 3 + 1)) 0 0
+
+def ab1 (h : Buf) (p s w n1 a b z : UInt64) : Buf :=
+  if bget h 21 = 0 then
+    ab2 (bset (v9 (bset (v6 h p s w) (d9 + 4 * (bget (v6 h p s w) 4 - 1) + 3) n1) w) 32
+      (s + bget (v9 (bset (v6 h p s w) (d9 + 4 * (bget (v6 h p s w) 4 - 1) + 3) n1) w) 31
+         - bget (v9 (bset (v6 h p s w) (d9 + 4 * (bget (v6 h p s w) 4 - 1) + 3) n1) w) 31 * n1)) a b z
+  else bset h 0 0
+
+theorem v138_eq (g a b) : v138 g a b =
+    if bget g (d11 + bget g 3) = 14 then
+      ab1 (v7 16777216 (v86 16777216 g (bget g 3 + 1)) (bget (v86 16777216 g (bget g 3 + 1)) 4) (bget g 3)) (bget g 3) (bget g 32)
+        (bget g (d7 + 4096 + bget g (d7 + 8 * bget g 12 + 5) + b))
+        (if (if bget g (d7 + 4096 + bget g (d7 + 8 * bget g 12 + 5) + b) = 3 then v203 16777216 g (bget g (d7 + 8 * bget g 12 + 5)) b else 1) = 0 then 1 else 0)
+        a b (bget g (d7 + 8 * bget g 12 + 6))
+    else bset g 0 0 := by
+  unfold v138 ab1 ab2
+  simp only [beq_iff_eq, k40, k44, k0, k1]
+
+theorem ab2_ok {h ts : Buf} {st : St} {fs : List Frame} {a b z : UInt64} {stp : Bool} {b0 n : Nat} (R : Rep h ts st fs)
+    (ha : a = b01 stp) (hb : b.toNat = b0) (hz : z.toNat = n) (hb4 : b0 < 4096) (hs : bget (ab2 h a b z) 0 ≠ 0) :
+    ∃ t r fr, st.toks = t :: r ∧
+      (if b0 + 1 < n then (if t = .k 15 then some [Frame.armBind stp (b0 + 1)] else none)
+       else if t = .k 19 then (if stp then some [.expr 0 1, .mkLoop, .defEnd] else some [.expr 0 0, .zeroDone]) else none) = some fr ∧
+      Rep (ab2 h a b z) ts { st with toks := r } (fr ++ fs) := by
+  obtain ⟨hn, hl, har⟩ := rep_bounds R
+  have b1 : (b + 1).toNat = b0 + 1 := by rw [UInt64.toNat_add]; simp; omega
+  have lt : b + 1 < z ↔ b0 + 1 < n := by rw [UInt64.lt_iff_toNat_lt, b1, hz]
+  have fl : ∀ {P : Prop}, bget (bset (bset h 3 (bget h 3 + 1)) 0 0) 0 ≠ 0 → P := fun x => absurd (stat0 _ (by simp [length_bset]; omega)) x
+  unfold ab2 at hs ⊢
+  by_cases c : b + 1 < z
+  · rw [if_pos c] at hs ⊢
+    by_cases c15 : bget h (d11 + bget h 3) = 15
+    · rw [if_pos c15] at hs ⊢
+      obtain ⟨r, et, tr⟩ := tok_kw R.2.2.2.1 R.1 R.2.1 c15 (by decide) (by decide) (by decide)
+      have R2 := rep_cursor R (bget h 3 + 1) tr
+      exact ⟨_, r, [.armBind stp (b0 + 1)], et, by rw [if_pos (lt.mp c)]; exact if_pos rfl, rep_push (.armBind stp (b0 + 1)) a (b + 1) R2 rfl ⟨ha, b1⟩ hs⟩
+    · rw [if_neg c15] at hs; exact fl hs
+  · rw [if_neg c] at hs ⊢
+    by_cases c19 : bget h (d11 + bget h 3) = 19
+    · rw [if_pos c19] at hs ⊢
+      obtain ⟨r, et, tr⟩ := tok_kw R.2.2.2.1 R.1 R.2.1 c19 (by decide) (by decide) (by decide)
+      have R2 := rep_cursor R (bget h 3 + 1) tr
+      cases stp with
+      | false =>
+        have a0 : a = 0 := ha
+        rw [if_pos a0] at hs ⊢
+        have R3 := rep_push .zeroDone 0 0 R2 rfl trivial (fun z => hs (v1_zero _ _ _ _ z))
+        have R4 := rep_push (.expr 0 0) 0 0 R3 rfl ⟨rfl, rfl⟩ hs
+        exact ⟨_, r, [.expr 0 0, .zeroDone], et, by rw [if_neg (fun x => c (lt.mpr x))]; exact if_pos rfl, R4⟩
+      | true =>
+        have a0 : a ≠ 0 := by rw [ha]; decide
+        rw [if_neg a0] at hs ⊢
+        have R3 := rep_push .defEnd 0 0 R2 rfl trivial (fun z => hs (v1_zero _ _ _ _ (v1_zero _ _ _ _ z)))
+        have R4 := rep_push .mkLoop 0 0 R3 rfl trivial (fun z => hs (v1_zero _ _ _ _ z))
+        have R5 := rep_push (.expr 0 1) 0 1 R4 rfl ⟨rfl, rfl⟩ hs
+        exact ⟨_, r, [.expr 0 1, .mkLoop, .defEnd], et, by rw [if_neg (fun x => c (lt.mpr x))]; exact if_pos rfl, R5⟩
+    · rw [if_neg c19] at hs; exact fl hs
+
+/-- the input flag of the newest binding row may be rewritten -/
+theorem rep_flag {g ts : Buf} {st : St} {fs : List Frame} (R : Rep g ts st fs) (bs : List Bd) (bd : Bd) (hb : st.binds = bs ++ [bd])
+    (f : Bool) :
+    Rep (bset g (d9 + 4 * (bget g 4 - 1) + 3) (b01 f)) ts { st with binds := bs ++ [{ bd with inp := f }] } fs := by
+  obtain ⟨hn7, hl, har⟩ := rep_bounds R
+  obtain ⟨rT, rts, r0, r3, r11, rB, rD, rA, r25, r29, r30, r32, rO, rK⟩ := R
+  obtain ⟨b4, bl, brows⟩ := rB
+  rw [hb] at b4 bl brows
+  simp only [List.length_append, List.length_singleton] at b4 bl
+  have e41 : bget g 4 - 1 = bs.length.toUInt64 := by
+    apply UInt64.toNat_inj.mp
+    rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr (by rw [b4]; simp))]; simp; omega
+  rw [e41]
+  have ci := rowCell bs.length (by omega) 3 (by decide)
+  simp only [show (3 : UInt64).toNat = 3 from rfl] at ci
+  generalize hG : bset g (d9 + 4 * bs.length.toUInt64 + 3) (b01 f) = G
+  have e : ∀ i : UInt64, i.toNat ≠ 180288 + 4 * bs.length + 3 → bget G i = bget g i :=
+    fun i a => by rw [← hG]; exact bget_bset' _ _ _ _ (by rw [ci]; omega)
+  have et : TokAgree g G := ⟨e 7 (by simp; omega), fun i hi => e i (by omega)⟩
+  have es : ShTabAgree g G := fun i a _ => e i (by omega)
+  have cc : ∀ n : UInt64, n.toNat < 64 → bget G n = bget g n := fun n a => e n (by omega)
+  refine ⟨tokensAt_frame rT et rts, rts, by rw [cc 0 (by decide)]; exact r0,
+    by rw [cc 3 (by decide)]; exact tokAt_frame et hn7 r3, by rw [cc 11 (by decide)]; exact r11,
+    ⟨by rw [cc 4 (by decide)]; simp; omega, by simp; omega, fun i hi => ?_⟩,
+    defs_frame rD (cc 12 (by decide)) (cc 27 (by decide)) (cc 26 (by decide)) (fun i a b => e i (by omega)) et hn7 es,
+    arena_frame rA (cc 8 (by decide)) (cc 9 (by decide)) (fun i a b => e i (by omega)) es,
+    fun s' hs' => by rw [cc 25 (by decide)]; exact (r25 s' hs').frame es,
+    fun y hy => by rw [cc 29 (by decide)]; exact nameAt_frame et (by omega) (r29 y hy),
+    by rw [cc 30 (by decide)]; exact r30, by rw [cc 32 (by decide)]; exact r32,
+    out_frame rO (by rw [← hG]; exact drop_bset _ _ _ (by rw [ci]; omega)),
+    tasks_frame rK (cc 5 (by decide)) (fun i a b => e i (by have := rK.2.1; omega)) et hn7 es (fun i a b => e i (by omega)) har⟩
+  simp only [List.length_append, List.length_singleton] at hi
+  by_cases hin : i < bs.length
+  · have c : ∀ k : UInt64, k.toNat < 4 → bget G (d9 + 4 * i.toUInt64 + k) = bget g (d9 + 4 * i.toUInt64 + k) :=
+      fun k hk => e _ (by rw [rowCell i (by omega) k hk]; omega)
+    have c0' := c 0 (by decide); simp only [UInt64.add_zero] at c0'
+    obtain ⟨a0, a1, a2, a3⟩ := brows i (by simp; omega)
+    simp only [List.getElem_append_left hin] at a0 a1 a2 a3 ⊢
+    exact ⟨by rw [c0']; exact nameAt_frame et (by omega) a0, by rw [c 1 (by decide)]; exact a1,
+      by rw [c 2 (by decide)]; exact a2.frame es, by rw [c 3 (by decide)]; exact a3⟩
+  · have : i = bs.length := by omega
+    subst this
+    have c : ∀ k : UInt64, k.toNat < 3 → bget G (d9 + 4 * bs.length.toUInt64 + k) = bget g (d9 + 4 * bs.length.toUInt64 + k) :=
+      fun k hk => e _ (by rw [rowCell bs.length (by omega) k (by omega)]; omega)
+    have c0' := c 0 (by decide); simp only [UInt64.add_zero] at c0'
+    obtain ⟨a0, a1, a2, a3⟩ := brows bs.length (by simp)
+    simp only [List.getElem_append_right (Nat.le_refl _), Nat.sub_self, List.getElem_cons_zero] at a0 a1 a2 a3 ⊢
+    exact ⟨by rw [c0']; exact nameAt_frame et (by omega) a0, by rw [c 1 (by decide)]; exact a1,
+      by rw [c 2 (by decide)]; exact a2.frame es, by rw [← hG]; exact bget_bset_eq _ _ _ _ rfl (by rw [ci]; omega)⟩
+
 end ParInv
