@@ -119,7 +119,7 @@ theorem end_step {K s F i1} (hI : Inv K s [(12, 0, 0)] F) (hr0 : bget s.r 0 = i1
 /-- the result of one def: DefC, a new boundary, the def-start table pushed, the cursor past the ENDDEF -/
 def DPost (X : Buf) (u : UInt64) (s0 : GS) (i : Nat) (s : GS) : Prop :=
   ∃ i', DefC X u s0.t i s0.o s.o i' ∧ Bnd X u s ∧ s.t = bpush s0.t (bsize s0.o) ∧ bget s.r 0 = i'.toUInt64 ∧
-    i + 8 ≤ i' ∧ i' ≤ X.length
+    i + 8 ≤ i' ∧ i' ≤ X.length ∧ bget s.r 1 = tg X (i + 2) ∧ bget s.r 2 = tg X (i + 5)
 
 theorem bsize_ok (o : Buf) (h : o.length < 2 ^ 24) : ¬ 16777215 < bsize o := by
   rw [bsize_u, UInt64.lt_iff_toNat_lt, u_toNat _ (by omega)]; simp; omega
@@ -186,7 +186,7 @@ theorem def_run {X u s i} (hB : Bnd X u s) (hr0 : bget s.r 0 = i.toUInt64) (hi :
   refine (end_step hI' hr0' (by simp [dK] at hi1X; omega)).bind ?_
   rintro s'' ⟨h21, ex, ek, et, ef, eo, hol, hrl, hr0'', hr6, hr8, hrj⟩
   have hi1l : i1 < X.length := tg_lt X i1 (by simp [dK] at h21; rw [h21]; decide)
-  refine Run.done ⟨i1 + 1, ⟨d1, d2, d3, d4, d5, c, i1, E, hcg, h21, rfl, ?_⟩, ?_, ?_, hr0'', by omega, by omega⟩
+  refine Run.done ⟨i1 + 1, ⟨d1, d2, d3, d4, d5, c, i1, E, hcg, h21, rfl, ?_⟩, ?_, ?_, hr0'', by omega, by omega, ?_, ?_⟩
   · rw [eo, ho']; rfl
   · exact { x := by rw [ex, hI'.x]; rfl
             rl := hrl
@@ -200,5 +200,231 @@ theorem def_run {X u s i} (hB : Bnd X u s) (hr0 : bget s.r 0 = i.toUInt64) (hi :
             ol := hol
             tl := by rw [et, hI'.t]; simp [dK, bpush]; omega }
   · rw [et, hI'.t]; rfl
+  · rw [hrj 1 (by decide) (by decide) (by decide)]; exact hI'.r1
+  · rw [hrj 2 (by decide) (by decide) (by decide)]; exact hI'.r2
+
+/-- consecutive defs: header positions hs, def-start table T → T', cursor i → i', code o → o' -/
+inductive DefsC (X : Buf) (u : UInt64) : Buf → Nat → Buf → List Nat → Buf → Nat → Buf → Prop
+  | nil {T i o} : DefsC X u T i o [] T i o
+  | cons {T i o o1 i1 hs T' i' o'} : DefC X u T i o o1 i1 → DefsC X u (bpush T (bsize o)) i1 o1 hs T' i' o' →
+      DefsC X u T i o (i :: hs) T' i' o'
+
+theorem DefsC.nil_eq {X u T i o T' i' o'} (h : DefsC X u T i o [] T' i' o') : T = T' ∧ i = i' ∧ o = o' := by
+  cases h; exact ⟨rfl, rfl, rfl⟩
+
+/-- the main loop's def phase: all defs up to the end of the AST -/
+def PPost (X : Buf) (u : UInt64) (s0 : GS) (i : Nat) (s : GS) : Prop :=
+  ∃ hs i', DefsC X u s0.t i s0.o hs s.t i' s.o ∧ Bnd X u s ∧ bget s.r 0 = i'.toUInt64 ∧ i' = X.length ∧
+    (hs = [] → bget s.r 1 = bget s0.r 1 ∧ bget s.r 2 = bget s0.r 2) ∧
+    (hs ≠ [] → bget s.r 1 = tg X (hs.getLastD 0 + 2) ∧ bget s.r 2 = tg X (hs.getLastD 0 + 5))
+
+theorem prog_run (X : Buf) (u : UInt64) (hX : X.length < 2 ^ 31) : ∀ n s i, X.length - i ≤ n → Bnd X u s →
+    bget s.r 0 = i.toUInt64 → i ≤ X.length → 8 * s.t.length ≤ i → Run s (PPost X u s i) := by
+  intro n
+  induction n with
+  | zero =>
+    intro s i hn hB hr0 hi _
+    exact Run.done ⟨[], i, .nil, hB, hr0, by omega, fun _ => ⟨rfl, rfl⟩, fun h => absurd rfl h⟩
+  | succ n ih =>
+    intro s i hn hB hr0 hi ht
+    by_cases hiX : i = X.length
+    · exact Run.done ⟨[], i, .nil, hB, hr0, hiX, fun _ => ⟨rfl, rfl⟩, fun h => absurd rfl h⟩
+    refine (def_run hB hr0 (by omega) hX ht).bind ?_
+    rintro s1 ⟨i1, hD, hB1, ht1, hr1, hii, hiX1, hp1, hq1⟩
+    refine (ih s1 i1 (by omega) hB1 hr1 hiX1 (by rw [ht1]; simp [bpush]; omega)).bind ?_
+    rintro s2 ⟨hs, i2, hDs, hB2, hr2, hi2, hn2, hc2⟩
+    refine Run.done ⟨i :: hs, i2, .cons hD (by rw [← ht1]; exact hDs), hB2, hr2, hi2, fun h => by simp at h, fun _ => ?_⟩
+    rcases hs with _ | ⟨j, hs⟩
+    · obtain ⟨a, b⟩ := hn2 rfl; rw [a, b, hp1, hq1]; simp
+    · obtain ⟨a, b⟩ := hc2 (by simp); rw [a, b]; simp [List.getLastD]
+
+/-! ## the end of the main loop (g56), the width pass's AST, g42 -/
+
+/-! g35/g56 bind g19/g20 results with `match`; the kernel unfolds such a matcher (abbrev) before the enclosing def
+and then evaluates g14's range test on a 2^21 literal (deep recursion).  So g35 is unfolded at function level
+(`g35_fun`: both sides are lambdas, the bodies are the same term) and its matches are only met on pairs. -/
+def stT (o3 : Buf) : Buf :=
+  let o4 := bpush (bpush (bpush o3 (g11 5 31 0)) (g11 7 5 0)) (g4 1 7 0 16);
+  let h4 := bsize o4;
+  let o5 := bpush (bpush (bpush o4 (g10 10 0 1)) (g10 11 0 0)) (g13 0 (h4 + 2) (h4 + 14));
+  let o6 := bpush (bpush (bpush o5 (g10 11 7 0)) (g10 6 5 16)) (g10 14 13 0);
+  let o7 := bpush (bpush (bpush (bpush (bpush (bpush o6 (g4 0 7 0 28)) (g11 15 6 0)) (g3 0 15 14 0)) (g10 6 6 8))
+    (g10 14 14 1)) (g10 7 7 g_901);
+  let h7 := bsize o7;
+  let o8 := bpush (bpush o7 (g13 0 h7 (h7 - 6))) (g10 10 0 0);
+  bpush (bpush (bpush o8 (g11 1 12 0)) (g11 8 12 8)) (g2 g_103 0 0 1 0)
+def stH (o : Buf) : Buf :=
+  let o1 := bpush (bpush (bpush o (g10 30 12 16)) (g2 g_19 5 31 2 3)) (g2 g_19 1 31 31 3);
+  let o2 := bpush (bpush (bpush (bpush o1 (g4 7 31 30 16)) (g10 10 0 g_901)) (g10 11 0 0)) (g2 g_103 0 0 1 0);
+  bpush (bpush (bpush (bpush o2 (g12 1 12 0)) (g12 8 12 8)) (g10 28 10 0)) (g10 29 11 0)
+
+theorem g35_fun : g35 = fun r o w =>
+  let o1 := bpush (bpush (bpush o (g10 30 12 16)) (g2 g_19 5 31 2 3)) (g2 g_19 1 31 31 3);
+  let o2 := bpush (bpush (bpush (bpush o1 (g4 7 31 30 16)) (g10 10 0 g_901)) (g10 11 0 0)) (g2 g_103 0 0 1 0);
+  let o9 := bpush (bpush (bpush (bpush o2 (g12 1 12 0)) (g12 8 12 8)) (g10 28 10 0)) (g10 29 11 0);
+  let (r1, o3) := g19 r o9 1 w;
+  let o4 := bpush (bpush (bpush o3 (g11 5 31 0)) (g11 7 5 0)) (g4 1 7 0 16);
+  let h4 := bsize o4;
+  let o5 := bpush (bpush (bpush o4 (g10 10 0 1)) (g10 11 0 0)) (g13 0 (h4 + 2) (h4 + 14));
+  let o6 := bpush (bpush (bpush o5 (g10 11 7 0)) (g10 6 5 16)) (g10 14 13 0);
+  let o7 := bpush (bpush (bpush (bpush (bpush (bpush o6 (g4 0 7 0 28)) (g11 15 6 0)) (g3 0 15 14 0)) (g10 6 6 8))
+    (g10 14 14 1)) (g10 7 7 g_901);
+  let h7 := bsize o7;
+  let o8 := bpush (bpush o7 (g13 0 h7 (h7 - 6))) (g10 10 0 0);
+  (r1, bpush (bpush (bpush o8 (g11 1 12 0)) (g11 8 12 8)) (g2 g_103 0 0 1 0)) := by
+  delta g35
+  exact rfl
+
+/-- g35: the call to main (a jal, error flag if out of range) between the start code's two parts -/
+theorem g35_eq (r o : Buf) (w : UInt64) :
+    g35 r o w = (if g14 (bsize (stH o)) w == 1 then r else g16 r, stT (bpush (stH o) (g13 1 (bsize (stH o)) w))) := by
+  have h := congrFun (congrFun (congrFun g35_fun r) o) w
+  rw [h]
+  extract_lets o1 o2 o9
+  rw [g19_eq]
+  rfl
+
+/-- the start code's words -/
+def startW (o : Buf) (w : UInt64) : Buf := stT (bpush (stH o) (g13 1 (bsize (stH o)) w))
+
+theorem g16_len (r : Buf) : (g16 r).length = r.length := by unfold g16; rw [BufL.length_bset]
+
+/-- Gen's shared pair matcher, by an equation (never by unfolding it on a g19/g20 result) -/
+theorem m28 {α : Type} (p : Buf × Buf) (f : Buf → Buf → α) : g28.match_1 (fun _ => α) p f = f p.1 p.2 := by
+  cases p; rfl
+
+/-- the stop branch: after the last def, word 0 patched, the start code; any failure sets the error flag -/
+theorem g56_res (r o t : Buf) (hl : r.length = 10) (h5 : bget r 5 ≠ 1) (h4 : bget r 4 ≠ 1) (hb : ¬ 16777215 < bsize o)
+    (hok : bget (g56 r o t).1 4 ≠ 1) :
+    bsize t ≠ 0 ∧ bget r 1 = 0 ∧ bget r 2 = 1 ∧ (g56 r o t).2 = startW (bset o 0 (g13 0 0 (bsize o))) (bget t (bsize t - 1)) := by
+  unfold g56 at hok ⊢
+  rw [if_neg (by simpa using h5), if_neg (by simpa using h4), if_neg hb] at hok ⊢
+  extract_lets w m at hok ⊢
+  have hw' : w = bsize t := rfl
+  have hm : m = (if (bget r 1 == 0) = true then if (bget r 2 == 1) = true then g_1 else g_0 else g_0) := rfl
+  clear_value w m
+  subst hw' hm
+  by_cases hw : (bsize t == 0) = true
+  · rw [if_pos hw] at hok; exact absurd (g16_err _ hl) hok
+  rw [if_neg hw] at hok ⊢
+  by_cases h12 : bget r 1 = 0 ∧ bget r 2 = 1
+  · have hm : (if (bget r 1 == 0) = true then if (bget r 2 == 1) = true then g_1 else g_0 else g_0) = 1 := by
+      simp [h12.1, h12.2, g_1]
+    rw [hm, if_neg (by decide)] at hok ⊢
+    refine ⟨by simpa using hw, h12.1, h12.2, ?_⟩
+    rw [m28 (g20 r o 0) (fun r1 o1 => g28.match_1 (fun _ => Buf × Buf) (g35 r1 o1 (bget t (bsize t - 1)))
+      (fun r2 o2 => (g15 r2 5 1, o2)))]
+    rw [m28 (g35 (g20 r o 0).1 (g20 r o 0).2 (bget t (bsize t - 1))) (fun r2 o2 => (g15 r2 5 1, o2))]
+    rw [g20_eq, g35_eq]
+    rfl
+  · have hm : (if (bget r 1 == 0) = true then if (bget r 2 == 1) = true then g_1 else g_0 else g_0) = 0 := by
+      by_cases h1 : bget r 1 = 0
+      · have h2 : ¬ bget r 2 = 1 := fun h2 => h12 ⟨h1, h2⟩
+        simp only [h1, h2, beq_self_eq_true, if_true, beq_iff_eq, if_false]; rfl
+      · simp only [beq_iff_eq, h1, if_false]; rfl
+    rw [hm, if_pos (by decide)] at hok
+    exact absurd (g16_err _ hl) hok
+
+/-- a stopped boundary state: the next g39 step is g56 -/
+theorem G_stop {X u s} (hB : Bnd X u s) (hr0 : bget s.r 0 = X.length.toUInt64) (n : Nat) :
+    G (n + 1) s = g56 s.r s.o s.t := by
+  have h1 : g55 s.x s.r s.o = 1 := by
+    unfold g55
+    rw [if_neg (by simpa using hB.r5), if_neg (by simpa using hB.r4), if_neg (bsize_ok _ hB.ol), if_pos (by simp [hB.r6]),
+      if_neg (by rw [hr0, hB.x, bsize_u]; exact Nat.lt_irrefl _)]
+    rfl
+  unfold G; rw [g39, h1, if_pos (by decide)]
+
+theorem g52_x : ∀ (n : Nat) (y : Buf × (Buf × Buf)), (g52 n y).1 = y.1
+  | 0, (x, (d, s)) => rfl
+  | n + 1, (x, (d, s)) => by
+    unfold g52; dsimp only
+    split
+    · rfl
+    split
+    · rfl
+    rw [g52_x n]
+
+theorem g53_x (x : Buf) : (g53 x).1 = x := by
+  unfold g53; dsimp only
+  have := g52_x 16777216 (x, (bnew, bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush bnew 1) 0) 0) 0) 0) 0) 0) 0))
+  generalize g52 _ _ = p at this ⊢
+  obtain ⟨_, _, _⟩ := p
+  exact this
+
+/-- **Gen soundness on success**: a nonempty g42 output is the LE bytes of: the g34 stubs, then every def's DefC code
+(headers at hs, def starts T), word 0 patched to the start code, main = the last def (npw 0, nres 1) -/
+theorem gen_ok (c : List UInt8) (x : Buf) (u : UInt64) (hX : x.length < 2 ^ 31) (h : g42 c x u ≠ []) :
+    bget x 0 = 2 ∧ (g53 x).2 ≠ 0 ∧ ∃ hs T o, DefsC x u bnew 1 (g34 bnew) hs T x.length o ∧ hs ≠ [] ∧
+      tg x (hs.getLastD 0 + 2) = 0 ∧ tg x (hs.getLastD 0 + 5) = 1 ∧
+      g42 c x u = g40 16777216 c (startW (bset o 0 (g13 0 0 (bsize o))) (bget T (bsize T - 1))) 0 [] := by
+  unfold g42 at h ⊢
+  by_cases h0 : ¬ (bget x 0 == 2) = true
+  · rw [if_neg h0] at h; exact absurd rfl h
+  rw [Classical.not_not] at h0
+  rw [if_pos h0] at h ⊢
+  refine ⟨by simpa using h0, ?_⟩
+  have hx := g53_x x
+  generalize g53 x = p at h hx ⊢
+  obtain ⟨x2, w⟩ := p
+  simp only at hx; subst x2
+  dsimp only at h ⊢
+  by_cases hw : (w == 0) = true
+  · rw [if_pos hw] at h; exact absurd rfl h
+  rw [if_neg hw] at h ⊢
+  refine ⟨by simpa using hw, ?_⟩
+  let s0 : GS := ⟨x, bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush bnew 1) 0) 0) 0) 0) 0) 0) 0) 0) u,
+    g34 bnew, bnew, bnew, bnew⟩
+  have hG : g39 16777216 x s0.r (g34 bnew) bnew bnew bnew = G 16777216 s0 := rfl
+  rw [hG] at h ⊢
+  generalize hN : G 16777216 s0 = R at h ⊢
+  obtain ⟨r1, o1⟩ := R
+  dsimp only at h ⊢
+  by_cases he : (bget r1 4 == 1) = true
+  · rw [if_pos he] at h; exact absurd rfl h
+  rw [if_neg he] at h ⊢
+  by_cases hz : 16777215 < bsize o1
+  · rw [if_pos hz] at h; exact absurd rfl h
+  rw [if_neg hz]
+  have hx1 : 1 ≤ x.length := by
+    have : bget x 0 = 2 := by simpa using h0
+    rcases x with _ | ⟨a, x⟩
+    · simp [bget] at this
+    · simp
+  have hB0 : Bnd x u s0 := {
+    x := rfl
+    rl := rfl
+    r4 := by simp [s0, bget, bpush, bnew]
+    r5 := by simp [s0, bget, bpush, bnew]
+    r6 := rfl
+    r8 := rfl
+    r9 := rfl
+    kl := by simp [s0, bnew]
+    fl := by simp [s0, bnew]
+    ol := by simp [s0, g34, bpush, bnew]
+    tl := by simp [s0, bnew] }
+  have hrun := prog_run x u hX x.length s0 1 (by omega) hB0 rfl hx1 (by simp [s0, bnew]) 16777216
+    (by rw [hN]; simpa using he) (by rw [hN]; exact hz)
+  obtain ⟨m, hm, s', ⟨hs, i', hD, hB', hr0', hi', hn, hc⟩, hE⟩ := hrun
+  subst hi'
+  rw [hN] at hE
+  rcases Nat.eq_zero_or_pos (16777216 - m) with hz0 | hpos
+  · exfalso; rw [hz0] at hE; unfold G at hE; rw [g39] at hE
+    apply he; have := congrArg Prod.fst hE; simp only at this; rw [this, g16_err _ hB'.rl]; rfl
+  rw [show 16777216 - m = (16777216 - m - 1) + 1 by omega, G_stop hB' hr0'] at hE
+  have hok : bget (g56 s'.r s'.o s'.t).1 4 ≠ 1 := by rw [← hE]; simpa using he
+  obtain ⟨a1, a2, a3, a4⟩ := g56_res _ _ _ hB'.rl hB'.r5 hB'.r4 (bsize_ok _ hB'.ol) hok
+  have hsn : hs ≠ [] := by
+    rintro rfl; obtain ⟨e, -, -⟩ := hD.nil_eq; rw [← e] at a1; exact a1 rfl
+  obtain ⟨b1, b2⟩ := hc hsn
+  refine ⟨hs, s'.t, s'.o, hD, hsn, by rw [← b1, a2], by rw [← b2, a3], ?_⟩
+  rw [← a4, ← hE]
+
+/-- the same for g41 (κ = g_999) -/
+theorem gen41_ok (c : List UInt8) (x : Buf) (hX : x.length < 2 ^ 31) (h : g41 c x ≠ []) :
+    bget x 0 = 2 ∧ (g53 x).2 ≠ 0 ∧ ∃ hs T o, DefsC x g_999 bnew 1 (g34 bnew) hs T x.length o ∧ hs ≠ [] ∧
+      tg x (hs.getLastD 0 + 2) = 0 ∧ tg x (hs.getLastD 0 + 5) = 1 ∧
+      g41 c x = g40 16777216 c (startW (bset o 0 (g13 0 0 (bsize o))) (bget T (bsize T - 1))) 0 [] :=
+  gen_ok c x g_999 hX h
 
 end GenRef

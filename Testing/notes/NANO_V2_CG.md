@@ -195,7 +195,7 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
   NOTE: `g32` has no `p == 4` branch: PUT falls into the final `else`, i.e. BPUSH's code (pushes the whole word; the final output copy truncates
   to the low byte, so the semantics match `put`).  PUT = BPUSH in the proofs.
 
-## HANDOFF — Gen soundness-on-success (Opus box, 2026-11-18)
+## HANDOFF — Gen soundness-on-success (Opus box, 2026-11-18; program level done 2026-11-19)
 
 State: nano-v2-src; Nano/V2Self/Proof/GenRef.lean builds, no sorry, axioms propext/Classical.choice/Quot.sound
 (file ≈ 15 s, ≈ 2 GB). Bootstrap: fixpoint.sh gives B3 == B2 = 252,316 bytes, sha256 d7f3bba6…d9158cef.
@@ -211,17 +211,24 @@ Proved (GenRef.lean):
   `g28_ok` (all exits patched to the epilogue start, r unchanged or error), `pi_g29` (epilogue), `root_visit`,
   the boundary predicate `Bnd`, the def context `dK`, the def-code relation `DefC`.
 
+DONE (2026-11-19, Nano/V2Self/Proof/GenTop.lean, ≈ 4 s, no sorry, axioms propext/Classical.choice/Quot.sound):
+- `end_step` (ENDDEF item: tag 21, exits patched (patchR), epilogue; else error), `def_run` (one def ⇒ `DPost`:
+  DefC, new `Bnd`, def-start table pushed, cursor i' ≥ i + 8, r1/r2 = this def's npw/nres), `DefsC` (chain of DefC,
+  header list hs), `prog_run` (all defs up to |X|), `g56_res` (stop branch), `G_stop`, `g53_x` (width pass returns
+  the AST), **`gen_ok` / `gen41_ok`**: |x| < 2^31 ∧ g42 c x u ≠ [] ⇒ bget x 0 = 2 ∧ (g53 x).2 ≠ 0 ∧
+  ∃ hs T o, DefsC x u bnew 1 (g34 bnew) hs T |x| o ∧ hs ≠ [] ∧ last def npw = 0, nres = 1 ∧
+  output = g40 16777216 c (startW (bset o 0 (g13 0 0 (bsize o))) (bget T (bsize T − 1))) 0 [].
+  `startW o w = stT (bpush (stH o) (jal ra → w))` (g35_eq).
+- KERNEL TRAP (g35/g56/g42 and every `let (a, b) := gXX …` in Gen): the pair matcher (`g28.match_1`, abbrev) applied
+  to a g19/g20 result must never be compared/unfolded by the kernel against a different term: it whnf's g19 → g14's
+  `< 2097152` → Nat.ble unfolded 2^21 deep ⇒ "(kernel) deep recursion" (also `unfold g35`, `delta g35`, `split`,
+  `dsimp` (struct eta)).  Workarounds used: `g35_fun` (equation at function level, RHS = the same source text);
+  `m28` (generic matcher equation, applied by `rw [m28 p f]` with explicit p, f); take g19/g20 results as hypotheses.
+
 EXACT NEXT STEP:
-1. `def_run` (stated in the removed draft as: Bnd X u s, r0 = i < |X| ⇒ Run s (∃ i', DefC X u s.t i s.o s'.o i' ∧
-   Bnd X u s' ∧ s'.t = bpush s.t (bsize s.o) ∧ r0' = i' ∧ i < i')).  Header part and the Inv after g38 were done;
-   building `Inv` with an anonymous structure literal over the 5-fold g15 register file TIMED OUT (whnf) — build the
-   Inv with `inv_mk`-style lemmas (register facts via a single `hR1` rewrite) instead of `rfl` fields.  Then
-   root_visit at i+6 with L = [(12,0,0)], F = [], then the ENDDEF step: st_t12 + g28_ok with F = E.map toUInt64,
-   tag 21 check, epilogue bound (≤ 2·512+3 words) for the `big` case.
-2. Program level: iterate def_run over defs (t = def starts), then g56's end branch (main = last def: npw 0, nres 1;
-   word 0 patched; g35 start code; r5 := 1), then g42 (version word, g53 returns x unchanged, final checks, g40
-   bytes) ⇒ theorem: g41 c x ≠ [] → output = LE bytes of (g34 stubs ++ DefC codes ++ start).
-3. Then CG/DefC → machine (EV/EVw templates, Sonnet's EVH, Fixup, CallExact).
+1. Width pass soundness: from (g53 x).2 ≠ 0 derive the width facts the machine step needs (CONTINUE = npw−1, CALL
+   arity = callee npw, arm widths, def body = nres), as a predicate over the same CG derivations (or over the AST).
+2. (box E) CG/DefC → machine.
 
 Open hypotheses / notes:
 - Width facts (CONTINUE = npw−1, CALL arity, LOOP arm widths) are NOT in CG; the machine step needs them from the
