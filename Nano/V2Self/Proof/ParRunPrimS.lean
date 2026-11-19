@@ -189,4 +189,36 @@ theorem prim_paren {n md ks st fin cx r} (hE : ∀ n' ≤ n, ExprSpec n') (hc : 
     rw [p2]
     simp [pairNode_toNd hne hnw, hst3]
 
+
+theorem prim_sound {n : Nat} (hE : ∀ n' < n, ExprSpec n') (hcall : HCall n) : PrimSpec n := by
+  intro md ks st fin cx h hc hnn hmd
+  match n, h with
+  | 0, h => exact absurd h.zero_nil.1 (by simp)
+  | n + 1, h =>
+  obtain ⟨k, st1, hs, h1⟩ := h.head
+  cases prim_inv hs with
+  | ifs hne ht => rcases hmd with h2 | ⟨h32, _⟩
+                  · exact absurd h2 hne
+                  · exact absurd ht (h32 _)
+  | lets hne ht => rcases hmd with h2 | ⟨_, h2'⟩
+                   · exact absurd h2 hne
+                   · exact absurd ht (h2' _)
+  | leaf hl hb => exact prim_leaf hc hnn hl hb (by simpa using h1)
+  | paren ht => exact prim_paren (fun n' hn' => hE n' (by omega)) hc hnn ht (by simpa using h1)
+  | self ht hb _ _ _ => exact hcall md ks st fin cx h hc hnn (Or.inl ⟨_, _, ht, hb⟩)
+  | call ht hb _ _ => exact hcall md ks st fin cx h hc hnn (Or.inl ⟨_, _, ht, hb⟩)
+  | primTok ht h1' h2' => exact hcall md ks st fin cx h hc hnn (Or.inr ⟨_, _, ht, h1', h2'⟩)
+
+/-- the expression refinement, given the call-like heads -/
+theorem all_specs (hcallOf : ∀ n, (∀ n' < n, ExprSpec n') → HCall n) :
+    ∀ n, BinSpec n ∧ LoopSpec n ∧ PrimSpec n ∧ ExprSpec n := by
+  intro n
+  induction n using Nat.strongRecOn with
+  | _ n ih =>
+  have hB : ∀ n' < n, BinSpec n' := fun n' h => (ih n' h).1
+  have hL : ∀ n' < n, LoopSpec n' := fun n' h => (ih n' h).2.1
+  have hP : ∀ n' < n, PrimSpec n' := fun n' h => (ih n' h).2.2.1
+  have hE : ∀ n' < n, ExprSpec n' := fun n' h => (ih n' h).2.2.2
+  exact ⟨bin_of hP hL, loop_sound n hB, prim_sound hE (hcallOf n hE), expr_sound hB hE hP hL⟩
+
 end ParRun
