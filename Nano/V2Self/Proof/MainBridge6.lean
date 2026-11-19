@@ -18,8 +18,8 @@ theorem operands2 {cx : Ctx} {K : SC} {oc : OwnSpec.Cx} {D : List Sig} {a b : Pa
   simp only [pairS, Option.bind_eq_some_iff] at hs
   obtain ⟨⟨ua, H1⟩, hsa, ⟨ub, H2'⟩, hsb, hpe⟩ := hs
   simp only [Option.some.injEq, Prod.mk.injEq] at hpe; obtain ⟨rfl, rfl⟩ := hpe
-  obtain ⟨σ1, v1, eva, hA1, hR1, hE1, hCh1, hM1, h81, hb1, -⟩ := iha hC hK2 Γ _ F _ _ env ew σ sp H ua H1 ta hca hE hA h8 hhb hsa
-  obtain ⟨σ2, v2, evb, hA2, hR2, hE2, hCh2, hM2, h82, hb2, -⟩ :=
+  obtain ⟨σ1, v1, eva, hA1, hR1, hE1, hCh1, hM1, h81, hb1, -, -⟩ := iha hC hK2 Γ _ F _ _ env ew σ sp H ua H1 ta hca hE hA h8 hhb hsa
+  obtain ⟨σ2, v2, evb, hA2, hR2, hE2, hCh2, hM2, h82, hb2, -, -⟩ :=
     ihb hC hK2 Γ _ _ _ _ env ew σ1 _ H1 ub H2' tb hcb hE1 hA1 h81 hb1 hsb
   obtain ⟨y1, hlen, wa, wb⟩ := two_spec hy
   obtain ⟨-, ka, -⟩ := ev_ok hC ta env hE.ty
@@ -236,22 +236,22 @@ theorem node_ite (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hRs : RsO
     simp only at hrest
     by_cases hcmp : cmpF c x1 x2
     · rw [if_pos hcmp] at hrest
-      obtain ⟨σ3, v, evt, hA3, hR3, hE3, hCh3, hM3, h83, hb3, hS3⟩ := iht hC hK2 Γ ks _ _ _ env ew σ2 sp H2 vs H' tt h1 hE2 hA2 h82 hb2 hrest
+      obtain ⟨σ3, v, evt, hA3, hR3, hE3, hCh3, hM3, h83, hb3, hS3, -⟩ := iht hC hK2 Γ ks _ _ _ env ew σ2 sp H2 vs H' tt h1 hE2 hA2 h82 hb2 hrest
       obtain ⟨m4, hR4, r4, -, -⟩ := tr_spec hK2 _ v vs _ _ _ hR3 hE3 h2
-      obtain ⟨hRk, -⟩ := resI_join hR4 r4 (tr_le1 _ _ _ _ h4) (by omega) hj
+      obtain ⟨hRk, hk1⟩ := resI_join hR4 r4 (tr_le1 _ _ _ _ h4) (by omega) hj
       have mo := mono_orF_l t1.1 e1.1
       have sk := src_join hR4 (tr_src _ _ _ _ _ _ hR3 hM3 hS3 h2).2 r4 (tr_le1 _ _ _ _ h4) hj
       exact ⟨σ3, v, by rw [hev, if_pos ((cmpF_iff c hc12 x1 x2).1 hcmp)]; exact evt, hA3, ResI.mono mo hRk,
         (hE3.mono m4).mono mo, (Ch.trans hCh2 hCh3 hM2 hM3).weak (m4.trans mo),
-        ((hM2.trans hM3).trans m4).trans mo, h83, hb3, Src.pre hCh2 hM2 ((hM3.trans m4).trans mo) (Src.mono mo sk)⟩
+        ((hM2.trans hM3).trans m4).trans mo, h83, hb3, Src.pre hCh2 hM2 ((hM3.trans m4).trans mo) (Src.mono mo sk), fun z hz => .inl (hk1 z hz)⟩
     · rw [if_neg hcmp] at hrest
-      obtain ⟨σ3, v, evt, hA3, hR3, hE3, hCh3, hM3, h83, hb3, hS3⟩ := ihe hC hK2 Γ ks _ _ _ env ew σ2 sp H2 vs H' te h3 hE2 hA2 h82 hb2 hrest
+      obtain ⟨σ3, v, evt, hA3, hR3, hE3, hCh3, hM3, h83, hb3, hS3, -⟩ := ihe hC hK2 Γ ks _ _ _ env ew σ2 sp H2 vs H' te h3 hE2 hA2 h82 hb2 hrest
       obtain ⟨m4, hR4, r4, -, -⟩ := tr_spec hK2 _ v vs _ _ _ hR3 hE3 h4
-      obtain ⟨hRk, -⟩ := resI_join_r hR4 (tr_le1 _ _ _ _ h2) r4 (by omega) hj
+      obtain ⟨hRk, hk1⟩ := resI_join_r hR4 (tr_le1 _ _ _ _ h2) r4 (by omega) hj
       have mo := mono_orF_r t1.1 e1.1
       have sk := src_join_r hR4 (tr_src _ _ _ _ _ _ hR3 hM3 hS3 h4).2 (tr_le1 _ _ _ _ h2) r4 hj
       exact ⟨σ3, v, by rw [hev, if_neg (fun h => hcmp ((cmpF_iff c hc12 x1 x2).2 h))]; exact evt, hA3, ResI.mono mo hRk,
         (hE3.mono m4).mono mo, (Ch.trans hCh2 hCh3 hM2 hM3).weak (m4.trans mo),
-        ((hM2.trans hM3).trans m4).trans mo, h83, hb3, Src.pre hCh2 hM2 ((hM3.trans m4).trans mo) (Src.mono mo sk)⟩
+        ((hM2.trans hM3).trans m4).trans mo, h83, hb3, Src.pre hCh2 hM2 ((hM3.trans m4).trans mo) (Src.mono mo sk), fun z hz => .inl (hk1 z hz)⟩
 
 end NanoMain

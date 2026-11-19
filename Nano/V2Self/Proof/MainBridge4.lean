@@ -42,13 +42,13 @@ def NodeOK (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (e : ParSpec.Nd)
     EnvI σ oc.K F Γ env ew → AHeap K.hb K.κ H σ → H.top % 8 = 0 → K.hb ≤ H.top → sv K e ew sp H = some (vs, H') →
     ∃ σ' v, ev cx e env = .ok (.inl v) ∧ AHeap K.hb K.κ H' σ' ∧ ResI σ' oc.K F' Γ env ew es v vs ∧
       EnvI σ' oc.K F' Γ env ew ∧ Ch σ σ' Γ F F' env ew ∧ Mono F F' ∧ H'.top % 8 = 0 ∧ K.hb ≤ H'.top ∧
-      Src σ Γ F F' env ew es v vs
+      Src σ Γ F F' env ew es v vs ∧ ∀ x ∈ es, x ≤ 1 ∨ 4 ≤ x
 
 theorem node_const (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (c : UInt64) : NodeOK cx K oc D (ParSpec.Nd.const c) := by
   intro _ _ Γ ks F F' es env ew σ sp H vs H' _ hc hE hA h8 hb hs
   simp only [OwnSpec.chk, Option.some.injEq, Prod.mk.injEq] at hc; obtain ⟨rfl, rfl⟩ := hc
   simp only [sv] at hs; obtain ⟨rfl, rfl⟩ := leafS_some hs
-  exact ⟨σ, [.w c], rfl, hA, by simp [ResI, VR], hE, Ch.refl _ _ _ _ _, Mono.refl _, h8, hb, by simp [Src]⟩
+  exact ⟨σ, [.w c], rfl, hA, by simp [ResI, VR], hE, Ch.refl _ _ _ _ _, Mono.refl _, h8, hb, by simp [Src], by simp⟩
 
 theorem locE_succ (Kk : List Nat) (s w : Nat) :
     OwnSpec.locE Kk s (w + 1) = (Kk.getD s 0 + 4 * (s + 1)) :: OwnSpec.locE Kk (s + 1) w := by
@@ -88,6 +88,7 @@ theorem node_loc (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (s w : Nat
       have he : ev cx (ParSpec.Nd.loc s w) env = .ok (.inl ((env.drop s).take w)) := by simp [ev, hl, hk1]
       exact ⟨σ, _, he, hA, resI_loc hK2 w s (by omega) (fun j h1 h2 => known_get hk j h1 h2), hE,
         Ch.refl _ _ _ _ _, Mono.refl _, h8, hb, src_ne1 fun z hz => by
+          simp only [OwnSpec.locE, List.mem_map] at hz; obtain ⟨j, -, rfl⟩ := hz; omega, fun z hz => by
           simp only [OwnSpec.locE, List.mem_map] at hz; obtain ⟨j, -, rfl⟩ := hz; omega⟩
   · cases hc
 
@@ -177,8 +178,8 @@ theorem node_bin (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (op : Nat)
     simp only [sv, fin2S, pairS, Option.bind_eq_some_iff] at hs
     obtain ⟨⟨u, Hu⟩, ⟨⟨ua, H1⟩, hsa, ⟨ub, H2⟩, hsb, hpe⟩, hfin⟩ := hs
     simp only [Option.some.injEq, Prod.mk.injEq] at hpe; obtain ⟨rfl, rfl⟩ := hpe
-    obtain ⟨σ1, v1, eva, hA1, hR1, hE1, hCh1, hM1, h81, hb1, -⟩ := iha hC hK2 Γ _ F _ _ env ew σ sp H ua H1 ta hca hE hA h8 hhb hsa
-    obtain ⟨σ2, v2, evb, hA2, hR2, hE2, hCh2, hM2, h82, hb2, -⟩ :=
+    obtain ⟨σ1, v1, eva, hA1, hR1, hE1, hCh1, hM1, h81, hb1, -, -⟩ := iha hC hK2 Γ _ F _ _ env ew σ sp H ua H1 ta hca hE hA h8 hhb hsa
+    obtain ⟨σ2, v2, evb, hA2, hR2, hE2, hCh2, hM2, h82, hb2, -, -⟩ :=
       ihb hC hK2 Γ _ _ _ _ env ew σ1 _ H1 ub H2 tb hcb hE1 hA1 h81 hb1 hsb
     obtain ⟨y1, hlen, wa, wb⟩ := two_spec hy
     obtain ⟨-, ka, -⟩ := ev_ok hC ta env hE.ty
@@ -201,8 +202,9 @@ theorem node_bin (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (op : Nat)
     have hev : ev cx (ParSpec.Nd.bin op a b) env = .ok (.inl [.w (CallProbe.aluf op x1 x2)]) := by
       simp [ev, eva, evb, val, binop_aluf op x1 x2 o1 o2, bind, Except.bind, pure, Except.pure]
     rw [y1]
-    refine ⟨σ2, _, hev, hA2, ?_, hE2, Ch.trans hCh1 hCh2 hM1 hM2, hM1.trans hM2, h82, hb2, ?_⟩
+    refine ⟨σ2, _, hev, hA2, ?_, hE2, Ch.trans hCh1 hCh2 hM1 hM2, hM1.trans hM2, h82, hb2, ?_, ?_⟩
     · simp [ResI, VR]
     · simp [Src]
+    · simp
 
 end NanoMain
