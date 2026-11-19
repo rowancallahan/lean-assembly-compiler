@@ -42,6 +42,18 @@ DONE (pushed, no sorry):
   `ty_sound`: `StarN n (tyAtom :: ks, st) ([], fin) → ∃ t r n' < n, |r| < |toks|, (∀ f ≥ 2|toks|+2, pTy f toks = some (t, r)) ∧
   StarN n' (ks, st.withTy r (trRes t)) ([], fin)` (+ the `tyCross` continuation `crossK`). Template for every other family.
   Cold build ParRun+ParRunStar+ParRunTy ≈ 3 s.
+* `Proof/ParRunFlat.lean`: FLATTEN done. `RN.words` (= what v142/v143 emit), `flat_run`/`flatL_run` (frame `flat n` always reaches its
+  continuation with `out ++ n.words`), `Star.cut`/`Star.one`; `RN.toNd`/`RN.ok`, `RN.words_eq : n.ok → n.words = n.toNd.ser`.
+  NOTE: `RN.ok` includes "no input-local children" for bin/ite/let/loop/cont; it is NOT an invariant of the operand stack (the machine
+  builds e.g. an ITE with input branches and rejects it only at the next `defs` via v209). Get it from the v209 check of the arena.
+* `Proof/ParRunWF*.lean`: INVARIANT `WF fs st` done, for box C. `effF` = per-frame big-step ghost effect + precondition on
+  (operand depth, binding count, ty set) read through `Ctx` (rows, arm); `Shape` (final frames last, `group` alone, `assign` only in
+  `tys ++ [assign a, binders]`), `PhOK` (placeholders only during their group), `SInv` (stack values have a shape code, finished defs and the
+  current def in a step arm have a result code). `wf_init`, `wf_step`, `wf_reach`, `wf_star : Star ([defs], init toks) (fs, st) → WF fs st`,
+  `wf_pre : WF (f :: r) st → ∃ g1, effF st.ctx f st.g = some g1` (C unfolds `effF` for the facts it needs).
+  Files: ParRunWF (defs), ParRunWFStep (`gh_*`), ParRunWFInv (`si_*`), ParRunWFFr (`ks_*`, `cx_*`, `bs_*`, `bt_*`), ParRunWFPres (assembly).
+  Per-frame lemmas are GENERATED (python in the session; the pattern is the macro at the top of each file + one theorem per frame);
+  if `stepF` changes (Par1 fix), regenerate/fix only the affected frames. Cold build of all ParRun* ≈ 31 s.
 BLOCKER (reported to owner 2026-11-19): Par1 accepts MORE than ParSpec, so `Accepts ⇒ refParse` is FALSE today:
   (1) code 3 parses `if`/`let` as primaries (operands, if-conditions): `1 + if a < 2 then 3 else 4`, `1 + let b := a; b`, `if let b := a; b < 2 then …`;
   (2) input parameter = first `List UInt8` param regardless of binder group (ParSpec: only when alone in its group): `(x y : List UInt8) … rd x 0`;
@@ -50,8 +62,7 @@ BLOCKER (reported to owner 2026-11-19): Par1 accepts MORE than ParSpec, so `Acce
   Awaiting the decision: fix Par1 (box C) or widen ParSpec. Layer 2 mirrors CURRENT Par1; after a Par1 fix, update `stepF` + rerun runrun.
 Interface for box C (Layer 3): frames ↔ task cells as in `Frame`'s comments; `none` results that the machine does not have (shallow stack,
 `ty = none`, param index out of range) are to be excluded by a Layer-2 invariant `WF` (TODO, below).
-NEXT: (a) `WF fs st` + preservation (stack depths per frame, ty set where read, binds/params index ranges, arena nodes valid) for C;
-(b) soundness per ParSpec function, form: `StarN n (k ++ ks, st) ([], fin) → ∃ r, pX f … = some r ∧ StarN n' (ks, st') ([], fin)` for all
+NEXT: (b) soundness per ParSpec function, form: `StarN n (k ++ ks, st) ([], fin) → ∃ r, pX f … = some r ∧ StarN n' (ks, st') ([], fin)` for all
 fuel `f ≥ c·|toks| + d` (pTy: 2|ts|+2; expressions: 4|ts|+4 per the call-chain potential), relating nodes by `toNd` (drop input args/locals as v142);
 order: types (independent of the blocker), flatten (`flat`/`flatL` ↔ `Nd.ser ∘ toNd`), defs/binders/arms, expressions last (blocker).
 
