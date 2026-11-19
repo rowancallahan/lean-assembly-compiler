@@ -110,4 +110,8 @@ OPEN / NEXT (owner order 2026-11-19):
    Second direction still needed for ImplementsC's `space`: Sem ok ⇒ sv succeeds with enough stack room.
 2. MainTop subset: parsed ∧ Linear, compileC with the ownership check (after O).
 3. C-wide certificate generator (one Sem = Lean lemma per def) + kernel test of progEq on C's token stream.
+   MEASURED (decide +kernel, prefixes of self_S_input.txt + a stub main): 713 bytes → lexer `C.s10` 35 s / 5.9 GB, lexer +
+   `refParse` 36 s / 6.0 GB (parse is cheap next to the lexer); 7,714 bytes → killed at 9 GB.  So C's 66,620-byte text
+   cannot be lexed in the kernel in one piece; route: lex per chunk (Lexes is compositional at whitespace boundaries:
+   prove `Lexes (x₁ ++ x₂) (t₁ ++ t₂)` from both parts when x₁ ends in a newline), then `refParse` on the whole token list.
 Gen-side bounds (DB, < 251, < 2^20, serialization < 2^31) are not parser facts: routed to A via owner.
