@@ -160,11 +160,19 @@ AGREED (owner relay, 09:30): statement form = ty_sound's (∀ fuel ≥ F ⇒ `so
 Build runner for G: Haiku session_01MfKuVZqa87sKK2KCMC5w2M.
 DONE since (all pushed): `ParInvAtom.h_argAtom` (43, v120; LOC node via C's `rep_v5g`), `ParInvGroup.h_group` (67) + `rep_v6`,
 `ParInvAssign.h_assign` (68, v133) with `v201_eq`, `asgHeap` / `v133_eq` / `asg_eff` / `rep_asg`, `v133_full`, `row_frame'`.
-MACHINE HANDLERS OF G, STATUS: 43 ✓, 44 ✓, 45 ✓, 47 ✓, 48 ✓, 55 ✓, 61 ✓, 62 ✓, 66 ✓, 67 ✓, 68 ✓; 63 (tyPair, v130) OPEN.
+MACHINE HANDLERS OF G, STATUS: 43 ✓, 44 ✓, 45 ✓, 47 ✓, 48 ✓, 55 ✓, 61 ✓, 62 ✓, 63 ✓, 66 ✓, 67 ✓, 68 ✓ — ALL DONE.
 Side conditions the glue must supply (from B's `WF` / F's `SInv`): no flatten frame on the stack (43, 48, 55); `inDefF fs` (47, 48, 68);
-`k ≤ |vals|`, `k ≤ arity`, `calleeOK` (47); `d ≤ |vals|` (45); `n < 4096`, `calleeOK` (48); `st.ty.isSome` (62, 68); `i ≤ |binds|`,
+`k ≤ |vals|`, `k ≤ arity`, `calleeOK` (47); `d ≤ |vals|` (45); `n < 4096`, `calleeOK` (48); `st.ty.isSome` (62, 63, 68); `i ≤ |binds|`,
 `cur.nni < 2^63` (68).
-WAITING ON C: `ShapeCode.pr` bound `c < 5 + h[26]` + a Rep fact on h[26] ⇒ `h_tyPair` (63) from `ParInvIntern.v10_scan`: found row i ⇒
-h[25] := i + 5 with ShapeCode (needs "rows < h[26] decode" — an interning invariant in Rep), else allocate row h[26] (Nat components
-rejected, capacity d15, width cell = sum of the two v9 widths) — the frame must show old codes < 5 + h[26] keep decoding.
+PAIR TABLE (owner asked G to add it; C's `ShRows` landed first and G extended it): `ShRows h` (in `DefsRep`) = h[26] ≤ 8192 ∧ rows ≥ h[26]
+have left cell 0 ∧ every row < h[26] decodes (two `ShapeCode`s, width cell, no Nat component).  Whoever builds `DefsRep` by hand must
+supply the third part (sites: ParInvDefs, ParInvHdr, ParInvAssign; `defs_frame` does it).
+`Proof/ParInvShP.lean`: `ShPres h h'` (every shape code keeps its meaning) + the component frame rules under it (`RNRep.frameP`,
+`KidsR.frameP`, `arena_frameP`, `frameArgs_frameP`, `tasks_frameP`, `binds_frameP`, `row_frameP`, `defs_frameP`), `shPres_alloc`.
+`Proof/ParInvPair.lean`: `v10_alloc` / `v10_dead` / `alloc_eff`, `pairCode`, **`rep_intern`**:
+`Rep g ts st fs → ShapeCode g x l → ShapeCode g y r → bget (v10 16777216 g x y 0) 0 ≠ 0 →
+ l ≠ .nt ∧ r ≠ .nt ∧ Rep (v10 16777216 g x y 0) ts { st with ty := some (.p l r) } fs` (h[25] = the pair's code) — C uses it for mkPair (42);
+`h_tyPair` (63, v130).
+REMAINING for G: nothing blocked.  Open interfaces owned by others: B's `ParenH` (expression induction) for `args_spec` / `defcall_spec` /
+`primcall_spec`; F's row invariant `FirstLs` for `def_inpPair`; the glue's side conditions above.
 
