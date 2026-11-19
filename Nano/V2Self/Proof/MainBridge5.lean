@@ -119,4 +119,115 @@ theorem tr_spec {σ : AH} {Kk : List Nat} {Γ : List (Option Kd)} {env : List W}
   | [], _ :: _, _, _, _, _, h, _, _ | [], [], _ :: _, _, _, _, h, _, _ | _ :: _, [], _, _, _, _, h, _, _
   | _ :: _, _ :: _, [], _, _, _, h, _, _ => by simp [ResI] at h
 
+/-! ## static entry counts (value mode) -/
+
+theorem tr_len : ∀ (F F1 : List Bool) (es es1 : List Nat), OwnSpec.tr F es = some (F1, es1) → es1.length = es.length
+  | F, F1, [], es1, h => by simp only [OwnSpec.tr, Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl⟩ := h; rfl
+  | F, F1, e :: es, es1, h => by
+    simp only [OwnSpec.tr] at h
+    split at h
+    · split at h
+      · obtain ⟨⟨F2, es2⟩, ht, he⟩ := Option.map_eq_some_iff.1 h
+        simp only [Prod.mk.injEq] at he; obtain ⟨rfl, rfl⟩ := he
+        simp [tr_len _ _ _ _ ht]
+      · cases h
+    · split at h
+      · obtain ⟨⟨F2, es2⟩, ht, he⟩ := Option.map_eq_some_iff.1 h
+        simp only [Prod.mk.injEq] at he; obtain ⟨rfl, rfl⟩ := he
+        simp [tr_len _ _ _ _ ht]
+      · split at h
+        · obtain ⟨Fh, -, h⟩ := Option.bind_eq_some_iff.1 h
+          obtain ⟨⟨F2, es2⟩, ht, he⟩ := Option.map_eq_some_iff.1 h
+          simp only [Prod.mk.injEq] at he; obtain ⟨rfl, rfl⟩ := he
+          simp [tr_len _ _ _ _ ht]
+        · cases h
+
+theorem fin_len {ds : Option (List Nat)} {F F' : List Bool} {es es' : List Nat} (h : OwnSpec.fin ds F es = some (F', es')) :
+    es'.length = es.length := by
+  have key : ∀ F2, (if OwnSpec.finB ds F2 0 es = true then some (F2, OwnSpec.strip es) else none) = some (F', es') →
+      es'.length = es.length := by
+    intro F2 h2; split at h2
+    · simp only [Option.some.injEq, Prod.mk.injEq] at h2; rw [← h2.2]; simp [OwnSpec.strip]
+    · simp at h2
+  cases ds with
+  | none =>
+    simp only [OwnSpec.fin, if_true, Option.bind_eq_some_iff] at h
+    obtain ⟨F2, -, h2⟩ := h; exact key F2 h2
+  | some l =>
+    simp only [OwnSpec.fin, Option.bind_eq_some_iff] at h
+    split at h
+    · obtain ⟨F2, -, h2⟩ := Option.bind_eq_some_iff.1 h; exact key F2 h2
+    · simp at h
+
+theorem join_len {a b k : List Nat} (h : OwnSpec.join a b = some k) (hab : a.length = b.length) : k.length = a.length := by
+  unfold OwnSpec.join at h
+  split at h
+  · simp only [Option.some.injEq] at h; subst_vars; simp_all
+  · split at h
+    · simp only [Option.some.injEq] at h; subst_vars; rfl
+    · simp only [Option.some.injEq] at h; subst h; simp [List.length_zipWith, hab]
+
+/-- O's result kinds agree in length with the signatures -/
+def RsOK (oc : OwnSpec.Cx) (D : List Sig) : Prop :=
+  ∀ (i : Nat) R sg, oc.rs[i]? = some R → D[i]? = some sg → R.length = sg.2.length
+
+mutual
+theorem chk_len {oc : OwnSpec.Cx} {D : List Sig} (hR : RsOK oc D) : ∀ {Γ S e ks}, TyN D Γ S e ks → S = none →
+    ∀ F F' es, OwnSpec.chk oc e F = some (F', es) → es.length = ks.length
+  | _, _, _, _, .const, _, F, F', es, h => by
+    simp only [OwnSpec.chk, Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨-, rfl⟩ := h; rfl
+  | _, _, _, _, .loc hk, _, F, F', es, h => by
+    simp only [OwnSpec.chk] at h; split at h
+    · simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨-, rfl⟩ := h
+      have := congrArg List.length hk.2; have := hk.1; simp at *; simp [OwnSpec.locE]; omega
+    · cases h
+  | _, _, _, _, .bin _ _ _ _, _, F, F', es, h => by
+    simp only [OwnSpec.chk, Option.bind_eq_some_iff, Option.map_eq_some_iff] at h
+    obtain ⟨_, _, _, _, _, _, he⟩ := h; simp only [Prod.mk.injEq] at he; obtain ⟨-, rfl⟩ := he; rfl
+  | _, _, _, _, .ite _ _ _ ht he', hS, F, F', es, h => by
+    simp only [OwnSpec.chk, Option.bind_eq_some_iff, Option.map_eq_some_iff] at h
+    obtain ⟨a0, -, b0, -, y, -, t0, h1, t1, h2, e0, h3, e1, h4, k, hj, hk⟩ := h
+    simp only [Prod.mk.injEq] at hk; obtain ⟨-, rfl⟩ := hk
+    have lt := chk_len hR ht hS _ _ _ h1
+    have le := chk_len hR he' hS _ _ _ h3
+    have lt1 := tr_len _ _ _ _ h2
+    have le1 := tr_len _ _ _ _ h4
+    rw [join_len hj (by omega)]; omega
+  | _, _, _, _, .letE _ _ _ _ hb, hS, F, F', es, h => by
+    simp only [OwnSpec.chk, Option.bind_eq_some_iff] at h
+    obtain ⟨v0, -, v1, -, h⟩ := h
+    split at h
+    · exact chk_len hR hb hS _ _ _ h
+    · cases h
+  | _, _, _, _, .pair hl, _, F, F', es, h => by
+    simp only [OwnSpec.chk, Option.bind_eq_some_iff] at h
+    obtain ⟨x, hx, hf⟩ := h
+    rw [fin_len hf, lstA_len hR hl _ _ _ _ _ hx]; simp
+  | _, _, _, _, .call (i := i) hl hd, _, F, F', es, h => by
+    simp only [OwnSpec.chk] at h
+    split at h
+    · rename_i P R hP hRr
+      obtain ⟨x, -, h⟩ := Option.bind_eq_some_iff.1 h
+      obtain ⟨y, -, he⟩ := Option.map_eq_some_iff.1 h
+      simp only [Prod.mk.injEq] at he; obtain ⟨-, rfl⟩ := he
+      exact hR i R _ hRr hd
+    · cases h
+  | _, _, _, _, .prim _ hp _, _, F, F', es, h => by
+    simp only [OwnSpec.chk, Option.bind_eq_some_iff, Option.map_eq_some_iff] at h
+    obtain ⟨_, _, _, _, he⟩ := h; simp only [Prod.mk.injEq] at he; obtain ⟨-, rfl⟩ := he
+    simp [(primK_ar hp).1]
+  | _, _, _, _, .cont _, hS, _, _, _, _ => by cases hS
+theorem lstA_len {oc : OwnSpec.Cx} {D : List Sig} (hR : RsOK oc D) : ∀ {Γ cs ks}, TyL D Γ cs ks →
+    ∀ ds F es0 F' es', OwnSpec.lstA oc cs ds F es0 = some (F', es') → es'.length = es0.length + ks.length
+  | _, _, _, .nil, ds, F, es0, F', es', h => by
+    simp only [OwnSpec.lstA, Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨-, rfl⟩ := h; simp
+  | _, _, _, .cons hn hr, ds, F, es0, F', es', h => by
+    simp only [OwnSpec.lstA, Option.bind_eq_some_iff] at h
+    obtain ⟨x, hx, h⟩ := h
+    split at h
+    · have l1 := chk_len hR hn rfl _ _ _ hx
+      rw [lstA_len hR hr _ _ _ _ _ h]; simp; omega
+    · cases h
+end
+
 end NanoMain
