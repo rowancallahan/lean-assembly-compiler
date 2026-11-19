@@ -120,10 +120,12 @@ structure St where
   sslot : Nat
   out : List UInt64
   acc : Bool
+  /-- the whole token list (constant; `toks` is a suffix of it): the machine reads the token BEFORE the cursor once (v135, fix K) -/
+  all : List Tok
 
 def init (toks : List Tok) : St :=
   { toks, nx := 0, binds := [], defs := [], cur := DefR.fresh [], vals := [], arena := [], ty := none, stash := [], arm := false,
-    sslot := 0, out := [2], acc := false }
+    sslot := 0, out := [2], acc := false, all := toks }
 
 /-! ## helpers (machine subroutines) -/
 /-- `v9`: width of a shape code (code 0 counts 1) -/
@@ -168,6 +170,9 @@ def locOf (st : St) (bd : Bd) : Option St :=
   if bd.sh = some .nt then none else
   let nd := RN.mk 2 bd.slot (if bd.inp then 0 else cw bd.sh) bd.sh false []
   some { st with vals := nd :: st.vals, arena := st.arena ++ [nd] }
+
+/-- the token just before the cursor (`v135` reads `d11 + p - 1`) -/
+def prevTok (st : St) : Option Tok := (st.all.take (st.all.length - st.toks.length)).getLast?
 
 /-- the mode cell of a non-operand expression task -/
 def bm (tl : Bool) : Nat := if tl then 1 else 0
@@ -428,6 +433,8 @@ def stepF : Frame → St → Option (List Frame × St)
     match st.ty, st.binds[a]? with
     | some w, some bd =>
       if w = .nt then none else
+      -- fix J: a multi-name `List UInt8` group before the input is rejected
+      if w = .ls ∧ sz ≠ 1 ∧ !((st.binds.take a).any Bd.inp) then none else
       let n1 := w == .ls && sz == 1 && !((st.binds.take a).any Bd.inp)
       some ([.assign (a + 1) sz],
         { st with binds := st.binds.set a ⟨bd.name, st.nx, some w, n1⟩,
@@ -447,7 +454,7 @@ def stepF : Frame → St → Option (List Frame × St)
       let st := { st with cur := { st.cur with npw := st.nx, res := st.ty, loop := false } }
       some ([.expr 0 0, .defEnd], { st with toks := r })
     | .k 17 :: r =>
-      if st.ty = some .nt then
+      if st.ty = some .nt ∧ prevTok st = some (.k 35) then
         let c := { st.cur with npw := 1, loop := true, params := st.cur.params ++ [.nt], nni := st.cur.nni + 1 }
         some ([.tyAtom, .stateTy], { st with toks := r, cur := c })
       else none
@@ -548,5 +555,8 @@ def Accepts (toks : List Tok) (o : List UInt64) : Prop :=
 
 def runParse (fuel : Nat) (ts : List UInt64) : Option (List UInt64) :=
   (tokens ts).bind fun toks => (run fuel [.defs] (init toks)).bind fun st => if st.acc && mainOK st then some st.out else none
+
+/-- realize `stepF`'s equation lemmas HERE, once (sibling modules that each trigger them cannot be imported together) -/
+example := @stepF.eq_1
 
 end ParRun
