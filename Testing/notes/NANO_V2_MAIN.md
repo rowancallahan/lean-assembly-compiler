@@ -55,6 +55,9 @@ Options: (a) Par1 layout sized by the token count (offsets d1..d11 as functions 
 - `parsed_ok : ParsesProgram ts p → p[i]? = some d → ∀ K, K.p = d.npw → K.nl = d.nslots → K.nd = i → K.q = d.nres →
    (∀ j < i, p[j] = dj → K.npwOf j = dj.npw ∧ K.nresOf j = dj.nres) → OkV K d.body ∧ wd K d.body = d.nres ∧ d.npw ≤ d.nslots`;
   `parsed_main`: the last def has npw 0, nres 1.
+- `parsed_sc` (for E's `gen_top`): `ScV K d.body` (via `sc_of_okV`), body reads ⊆ parameters (`rd_body`), npw ≤ nslots.
+  NOT derivable from parsing (a parsed program may have 300 parameters or 2^40 let slots): `DB` (fields < 2^32, `NB`),
+  npw/nres < 251, npw < 2^20, `(serialize ds).length < 2^31` — these must come from Gen's success checks (A) or input size.
 
 ## In the owner's top-level vocabulary (`MainTop.lean`, 13 s; axioms = compiler #1's: Sail extern set + standard)
 | | compiler #1 (`Riscv/Back/S3Top.lean`) | C (`Nano/V2Self/Proof/MainTop.lean`) |

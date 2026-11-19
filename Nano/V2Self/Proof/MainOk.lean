@@ -3,6 +3,7 @@ every def of a parsed program.  From the kind judgment (`MainTy.TyN`/`TyB`, prod
 reads hit known slots, let writes hit fresh slots (so every read/write disjointness holds), widths = kind counts. -/
 import Nano.V2Self.Proof.MainTyP
 import Nano.V2Self.Proof.NdRun
+import Nano.V2Self.Proof.NdWidth
 
 namespace NanoMain
 open ParSpec Templates
@@ -287,5 +288,74 @@ theorem parsed_main {ts : List UInt64} {p : List DefA} (h : ParsesProgram ts p) 
   refine ⟨_, List.getElem?_eq_getElem hi, ?_⟩
   obtain ⟨h1, -, h3, -⟩ := ht _ _ _ (List.getElem?_eq_getElem hi) (by rw [hl] at hm; exact hm)
   simp at h1 h3; exact ⟨h1, h3.symm⟩
+
+/-! ## E's scoping form `ScV` (NdWidth) and reads ⊆ parameters -/
+
+mutual
+theorem sc_of_okV (K : SC) : ∀ e : Nd, OkV K e → ScV K e
+  | .const _, _ => by simp [ScV]
+  | .loc _ _, h => by simpa [OkV, ScV] using h
+  | .bin _ a b, h => by
+    simp only [OkV, ScV] at h ⊢; exact ⟨sc_of_okV K a h.1, sc_of_okV K b h.2.1, h.2.2.2.2⟩
+  | .ite _ a b t e, h => by
+    simp only [OkV, ScV] at h ⊢
+    obtain ⟨h1, h2, h3, h4, -, -, -, h8, h9, h10⟩ := h
+    exact ⟨sc_of_okV K a h1, sc_of_okV K b h2, sc_of_okV K t h3, sc_of_okV K e h4, h8, h9, h10⟩
+  | .letE _ _ v b, h => by
+    simp only [OkV, ScV] at h ⊢; exact ⟨sc_of_okV K v h.1, sc_of_okV K b h.2.1, h.2.2.2.1, h.2.2.2.2⟩
+  | .pair cs, h => by simp only [OkV, ScV] at h ⊢; exact sc_of_okL K cs h
+  | .call _ as, h => by simp only [OkV, ScV] at h ⊢; exact ⟨sc_of_okL K as h.1, h.2.1⟩
+  | .prim _ as, h => by simp only [OkV, ScV] at h ⊢; exact sc_of_okL K as h.1
+  | .loop z s, h => by
+    simp only [OkV, ScV] at h ⊢
+    exact ⟨sc_of_okT K z _ h.1, sc_of_okT K s _ h.2.1, h.2.2.1, h.2.2.2.1, h.2.2.2.2.1, h.2.2.2.2.2⟩
+  | .cont _, h => by simp [OkV] at h
+theorem sc_of_okT (K : SC) : ∀ (e : Nd) (w : Nat), OkT K e w → ScT K e
+  | .ite _ a b t e, w, h => by
+    simp only [OkT, ScT] at h ⊢
+    obtain ⟨h1, h2, h3, h4, -, -, h7, h8, h9⟩ := h
+    exact ⟨sc_of_okV K a h1, sc_of_okV K b h2, sc_of_okT K t w h3, sc_of_okT K e w h4, h7, h8, h9⟩
+  | .letE _ _ v b, w, h => by
+    simp only [OkT, ScT] at h ⊢; exact ⟨sc_of_okV K v h.1, sc_of_okT K b w h.2.1, h.2.2.2.1, h.2.2.2.2⟩
+  | .cont e, _, h => by simp only [OkT, ScT] at h ⊢; exact ⟨sc_of_okV K e h.1, h.2.2.1, h.2.2.2⟩
+  | .const _, w, h | .loc _ _, w, h | .bin _ _ _, w, h | .pair _, w, h | .call _ _, w, h | .prim _ _, w, h
+  | .loop _ _, w, h => by simp only [OkT, ScT] at h ⊢; exact sc_of_okV K _ h.1
+theorem sc_of_okL (K : SC) : ∀ cs : List Nd, OkL K cs → ScL K cs
+  | [], _ => by simp [ScL]
+  | c :: cs, h => by simp only [OkL, ScL] at h ⊢; exact ⟨sc_of_okV K c h.1, sc_of_okL K cs h.2.1, h.2.2⟩
+end
+
+/-- reads of a def body are parameters -/
+theorem rd_body {D : List Sig} {ps : List Kd} {m : Nat} {e : Nd} {ks : List Kd}
+    (h : TyB D (ps.map some ++ List.replicate m none) e ks) : ∀ j, Templates.rd e j → j < ps.length := by
+  have known : ∀ j kd, (ps.map some ++ List.replicate m none)[j]? = some (some kd) → j < ps.length := by
+    intro j kd e
+    refine Nat.lt_of_not_le (fun hj => ?_)
+    rw [List.getElem?_append_right (by simp; omega), List.getElem?_replicate] at e
+    split at e <;> simp at e
+  intro j hr
+  cases h with
+  | plain h => obtain ⟨kd, e⟩ := rd_known h j hr; exact known j kd e
+  | loop hΓ hz hs =>
+    rename_i z s sk n
+    have hps : ps = Kd.w :: sk := somes_eq _ (Kd.w :: sk) m n (by rw [hΓ]; rfl)
+    simp only [Templates.rd] at hr
+    rcases hr with hr | hr | hr
+    · obtain ⟨kd, e⟩ := rd_known hz j hr; exact known j kd e
+    · obtain ⟨kd, e⟩ := rd_known hs j hr; exact known j kd e
+    · subst hr; rw [hps]; simp
+
+/-- **the parser's per-def facts for E's `gen_top`**: scoping `ScV`, reads ⊆ parameters, npw ≤ nslots (plus `OkV`) -/
+theorem parsed_sc {ts : List UInt64} {p : List DefA} (h : ParsesProgram ts p) (i : Nat) (d : DefA) (hd : p[i]? = some d)
+    (K : SC) (hp : K.p = d.npw) (hn : K.nl = d.nslots) (hi : K.nd = i) (hq : K.q = d.nres)
+    (hc : ∀ j < i, ∀ dj, p[j]? = some dj → K.npwOf j = dj.npw ∧ K.nresOf j = dj.nres) :
+    ScV K d.body ∧ (∀ j, Templates.rd d.body j → j < d.npw) ∧ d.npw ≤ d.nslots := by
+  obtain ⟨o1, -, o3⟩ := parsed_ok h i d hd K hp hn hi hq hc
+  refine ⟨sc_of_okV K _ o1, ?_, o3⟩
+  obtain ⟨sigs, hl, ht, -⟩ := refParse_ty h
+  have hil : i < sigs.length := by rw [hl]; exact (List.getElem?_eq_some_iff.1 hd).1
+  obtain ⟨sg, hsg⟩ : ∃ sg, sigs[i]? = some sg := ⟨_, List.getElem?_eq_getElem hil⟩
+  obtain ⟨h1, -, -, h4⟩ := ht i d sg hd hsg
+  intro j hr; rw [h1]; exact rd_body h4 j hr
 
 end NanoMain
