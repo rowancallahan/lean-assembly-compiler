@@ -474,3 +474,10 @@ Nano programs always halt (only fuel loops on an explicit Nat). For long-running
 UNBOUNDED loop construct later. Correctness would be stated per step / over the output stream (a simulation or trace
 property), not as a final-result theorem. Separate from the spec-side fuel: the meaning interpreter and refParse use
 arbitrarily large fuel only so they are total Lean functions; "enough fuel" is a named hypothesis of the final theorem.
+
+## OWNER GOAL (2026-11-19): nano v2 correctness statement
+Main theorem: for every source in the nano subset and ALL input bytes, the code C compiles implements `Sem` of that source
+(Implements1-style, machine-state spec the owner reviewed), with named premises (fuel for refParse/Sem, work memory, size).
+Per-program bridge: the one-source certificate `Sem (parse src) = the Lean function` (first for small examples and C itself,
+later generated automatically) — gives "this code implements this Lean function" for each compiled program.
+Long term: grow the subset (parser spec + Sem + proofs, one construct at a time) until it covers most of Lean.
