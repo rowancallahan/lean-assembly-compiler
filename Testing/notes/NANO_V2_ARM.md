@@ -36,50 +36,57 @@ The measurements were taken on this box, 2026-11-19.
   outcome position-independent, so `Msp`/`spaceC` can stay ONE function of the input for both targets (stated
   per window, then shown equal). A small unit: "window-generic RunsDef".
 
-**Proposed Spec definition** (text only; the lead adds it after the migration):
+**Proposed Spec text, mirroring `Spec/Riscv.lean` + `Spec/RiscvMachine.lean`** (owner requirement: same
+structure, field names, order and doc-comment style; text only, the lead edits Spec after the migration).
+Two files: `Spec/Arm.lean` (≙ `Spec/Riscv.lean`) and `Spec/ArmMachine.lean` (≙ `Spec/RiscvMachine.lean`).
+`Spec/Machines.lean` (`armMapping`) already exists.
 
-```lean
-/- Spec/ArmMachine.lean: the Sail ARMv9 model (Arm/model) as a Machine. -/
-import Spec.Top
-import Armv9            -- the generated Sail model (Lean 4.35 after the migration)
-open Armv9 …
+Line by line:
 
-namespace Proven.Top
+| # | `Spec/Riscv.lean` (as is) | `Spec/Arm.lean` (proposal) |
+|---|---|---|
+| 1 | `/- Specification: what it means for RV64 machine code to implement a function, on the Sail model. -/` | `/- Specification: what it means for AArch64 machine code to implement a function, on the Sail ARMv9 model. -/` |
+| 2 | `import LeanRV64D` | `import Armv9` |
+| 3 | `namespace Proven` | `namespace Proven` (names suffixed `Arm`, so both files can be imported together) |
+| 4 | `abbrev St := SequentialState RegisterType trivialChoiceSource` | `abbrev StArm := Armv9.SequentialState Armv9.RegisterType trivialChoiceSource` (the model's state type) |
+| 5 | `/-- The control state we fix (Sail reset values): M-mode, hart active, mstatus.MIE = 0 (no interrupts), PMP entries off, …, one PMA region = RAM [0x80000000, 0x100000000) (rwx), … Everything else is arbitrary but must be present. -/` | `/-- The control state we fix: EL3, AArch64, stack pointer SP_EL3, no optional feature (only FEAT_AA64EL0), MMU off (SCTLR_EL3 = TCR_EL3 = MAIR_EL3 = 0), SCR_EL3 = 0, no pending interrupt, debug off, PMU/SPE/BRBE/timers off, 48-bit physical addresses. Everything else is arbitrary but must be present. -/` |
+| 6 | `structure Cfg (s : St) : Prop where` | `structure CfgArm (s : StArm) : Prop where` |
+| 7 | `priv : … .cur_privilege = some .Machine` | `pstate : ∃ p, s.regs.get? .PSTATE = some p ∧ p.EL = 3#2 ∧ p.nRW = 0#1 ∧ p.SP = 1#1 ∧ p.IL = 0#1` |
+| 8 | `misa : … .misa = some 0x8000…` | `feat : s.regs.get? .FeatureImpl = some featV` (only FEAT_AA64EL0) |
+| 9 | `mstatus`, `mcountinhibit`, `minstretcfg`, `pmpcfg`, `htif`, `elp`, `mseccfg` (one field per pinned register) | `scr`, `sctlr`, `tcr`, `mair`, `edscr`, `mdccsr`, `oslsr`, `mdcr3`, `mdcr2`, `mdscr`, `dbgen`, `spiden`, `edesr`, `gic`, `mpam3`, `mpam2`, `pa`, `spe`, `emu`, `pmcr`, `cntcr`, `cntp`, `cnthp`, `cntps`, `cntv`, `brbfcr`, `pcount`, `cnthpcv` (one field per pin of `Arm/proofs` `Pins`, same values) |
+| 10 | `pma : ∃ a b, … pma_regions = …` (RAM rwx) | — (MMU off: VA = PA; the RAM is the address range, below) |
+| 11 | `present : ∀ r ∈ [.PC, .x1, …, .x31, …], s.regs.contains r` | `present : ∀ r ∈ [._PC, .R0, …, .R30, .SP_EL3, .Branchtypetaken, .BTypeNext, .__cycle_count, …], s.regs.contains r` plus the two bookkeeping values of `ArmFull` (`Branchtypetaken ≠ RESET`, `BTypeNext = 0`) |
+| 12 | `def Retires (s s' : St)`: `run_hart_active` = `Retire_Success` (no trap) ∧ `try_step … = .ok false s'` | `def RetiresArm (s s' : StArm)`: `stepModel s = .ok () s'` ∧ no exception taken (the exact model predicate is open, see below) |
+| 13 | `def Steps : Nat → St → St → Prop` | `def StepsArm : Nat → StArm → StArm → Prop` (same two clauses) |
+| 14 | `def runsTo (s : St) (P : St → Prop)` | `def runsToArm (s : StArm) (P : StArm → Prop)` |
+| 15 | `def bytesAt (s : St) (a n : Nat) := (List.range n).map (s.mem[a + ·]?)` | `def bytesAtArm (s : StArm) (a n : Nat) := (List.range n).map (s.mem.get? (a + ·))` |
+| 16 | `structure Region`, `disjoint` | reused as is (machine-free) |
+| 17 | `def Region.inRAM (r) : 0x80000000 ≤ r.base ∧ r.base + r.len ≤ 0x100000000` | `def Region.inRAMArm (r) : 0x10000000 ≤ r.base ∧ r.base + r.len ≤ 0x20000000` |
+| 18 | `def unchangedOutside (s s' : St) …` | `def unchangedOutsideArm (s s' : StArm) …` (same body with `mem.get?`) |
+| 19 | `def calleeSavedKept (s s')`: x2, x8, x9, x18..x27 | `def calleeSavedKeptArm (s s')`: R19..R29, SP_EL3 (= `armMapping.kept`) |
+| 20 | `def codeBytes (code : List (BitVec 32))` (little-endian) | reused as is (AArch64 words are little-endian too) |
 
-/-- X0..X30 by number, 31 = the EL3 stack pointer (PSTATE.SP = 1, EL3: sp is SP_EL3) -/
-def armRegister (state : ArmSt) (number : Nat) : Option (BitVec 64) :=
-  if number < 31 then (state.regs.get? (xreg number)).map (cast (xreg_ty number))   -- = Arm/proofs `xget`
-  else if number = 31 then state.regs.get? .SP_EL3 else none
+| # | `Spec/RiscvMachine.lean` (as is) | `Spec/ArmMachine.lean` (proposal) |
+|---|---|---|
+| 1 | `/- Sail RV64 model as a Machine. -/` | `/- Sail ARMv9 model as a Machine. -/` |
+| 2 | `/-- Integer register by number. -/ def riscvRegister (state : St) (number : Nat)`: 1..31 ↦ .x1…, else none | `/-- Integer register by number: 0..30 = X0..X30, 31 = the stack pointer SP_EL3. -/ def armRegister (state : StArm) (number : Nat)`: 0..30 ↦ .R0…, 31 ↦ .SP_EL3, else none |
+| 3 | `/-- Missing values read as zero. -/ def riscvObserve (state : St) : MachineState` (programCounter = .PC, register = riscvRegister, memory = mem) | `/-- Missing values read as zero. -/ def armObserve (state : StArm) : MachineState` (programCounter = ._PC, register = armRegister, memory = mem) |
+| 4 | `/-- One retired instruction, else none. -/ noncomputable def riscvStep (state : St) : Option St` | `/-- One retired instruction, else none. -/ noncomputable def armStep (state : StArm) : Option StArm` (`some s'` iff `RetiresArm state s'`, by `match stepModel state`) |
+| 5 | `noncomputable def riscv : Machine where` | `noncomputable def arm : Machine where` |
+| 6 | `State := St` | `State := StArm` |
+| 7 | `step := riscvStep` | `step := armStep` |
+| 8 | `observe := riscvObserve` | `observe := armObserve` |
+| 9 | `configured := Cfg` | `configured := CfgArm` |
+| 10 | `mapping := riscvMapping` | `mapping := armMapping` |
+| 11 | `ramStart := 0x80000000` | `ramStart := 0x10000000` |
+| 12 | `ramEnd := 0x100000000` | `ramEnd := 0x20000000` |
 
-def armObserve (state : ArmSt) : MachineState where
-  programCounter := ((state.regs.get? ._PC).map UInt64.ofBitVec).getD 0
-  register number := ((armRegister state number).map UInt64.ofBitVec).getD 0
-  memory address := (state.mem.get? address.toNat).map UInt8.ofBitVec
-
-/-- one full model step (`elfmain.sail` step_model: SEE := -1; __TopLevel; __CycleEnd), else none -/
-noncomputable def armStepM (state : ArmSt) : Option ArmSt :=
-  match stepModel state with
-  | .ok () next => some next
-  | _ => none
-
-/-- the configuration the proofs assume: `Arm/proofs` `ArmFull` (EL3, AArch64, MMU off, no optional feature,
-interrupts/debug/PMU/SPE/timers off) and sp = SP_EL3 -/
-def ArmCfgSpec (state : ArmSt) : Prop := ArmFull state ∧ state.regs.get? .PSTATE_SP = some 1   -- exact field per the model
-
-noncomputable def arm : Machine where
-  State := ArmSt
-  step := armStepM
-  observe := armObserve
-  configured := ArmCfgSpec
-  mapping := armMapping
-  ramStart := 0x10000000
-  ramEnd := 0x20000000
-
-end Proven.Top
-```
-Open points for the lead's edit: (a) `ArmFull` and `xreg` live in `Arm/proofs` (`Full.lean`, `Base.lean`). The
-Spec should either import a small `Arm/proofs/Arm/Spec*.lean` (definitions only: `Pins`, `ArmFull`, `xreg`), or
-inline them, as `Spec/Riscv.lean` inlines `Cfg`. (b) `ArmFull` is satisfiable (`Arm/Witness.lean`), but cold reset
+Open points for the lead's edit: (a) `CfgArm` inlines the pins field by field (as `Cfg` does), so Spec does not
+import `Arm/proofs`. `Arm/proofs` then proves `CfgArm s ↔ ArmFull s ∧ sp-select` once. The constants `featV`,
+`edscrV` (in `Hooks.lean`) are written out as literals in the Spec. (a') RISC-V's `Retires` excludes traps
+(`Retire_Success`). The ARM analogue needs a model-level "no exception taken" condition for `stepModel`, e.g.
+PSTATE.EL and the exception syndrome unchanged, or the model's `__exception_taken`-style flag if it has one. To be
+fixed against the model source. (b) `ArmFull` is satisfiable (`Arm/Witness.lean`), but cold reset
 is not shown to establish it, the same status as RISC-V's `Cfg` (state it in the doc comment). (c) The exact
 PSTATE.SP accessor name, from the model.
 
