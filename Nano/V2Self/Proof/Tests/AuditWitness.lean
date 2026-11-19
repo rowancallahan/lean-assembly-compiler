@@ -6,7 +6,7 @@ for the audit `Testing/notes/NANO_V2_AUDIT.md`.  What is proved here and what is
 * `ex1_applies`: the theorem's conclusion for this program.  Its premise `memoryNeeded … ≤ workLength` is left as a
   hypothesis: `memoryNeeded` is `spaceC`, a `Classical.choose`, for which no upper bound is provable (audit finding 1). -/
 import Nano.V2Self.Proof.Parser.ParCapBnd
-import Nano.V2Self.Proof.MainCert
+import Nano.V2Self.Proof.Tests.MainCert
 import Nano.V2Self.Proof.Tests.MainWitness
 import Nano.V2Self.Proof.Tests.AuditSpace
 

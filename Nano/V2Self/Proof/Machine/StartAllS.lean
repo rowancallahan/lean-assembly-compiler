@@ -1,5 +1,6 @@
 /- EVS P7a (Opus box E): the whole start code as a SAFE run (`start_runX`): setup, main by `DefXS`, tail. -/
-import Nano.V2Self.Proof.Machine.StartAll
+import Nano.V2Self.Proof.Machine.StartRun
+import Nano.V2Self.Proof.Machine.NoW
 import Nano.V2Self.Proof.Machine.StartSafe
 import Nano.V2Self.Proof.Machine.EVSDefs
 namespace Templates
