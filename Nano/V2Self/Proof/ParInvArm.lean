@@ -71,7 +71,7 @@ theorem rep_arm {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs) (a
     defs_frame rD (e 12 (by decide)) (e 27 (by decide)) (e 26 (by decide)) (fun i a _ => e i (by omega)) et hn es,
     arena_frame rA (e 8 (by decide)) (e 9 (by decide)) (fun i a _ => e i (by omega)) es,
     fun s' hs' => by rw [e 25 (by decide)]; exact (r25 s' hs').frame es,
-    fun x hx hne => by rw [e 29 (by decide)]; exact nameAt_frame et (by omega) (r29 x hx hne),
+    fun x hx => by rw [e 29 (by decide)]; exact nameAt_frame et (by omega) (r29 x hx),
     bget_bset_eq _ _ _ _ rfl (by rw [u]; omega), by rw [e 32 (by decide)]; exact r32, out_frame rO (drop_bset _ _ _ (by decide)),
     tasks_frame rK (e 5 (by decide)) (fun i _ _ => e i (by omega)) et hn es (fun i a _ => e i (by omega)) har⟩
 
@@ -90,7 +90,7 @@ theorem rep_sslot {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs) 
     defs_frame rD (e 12 (by decide)) (e 27 (by decide)) (e 26 (by decide)) (fun i a _ => e i (by omega)) et hn es,
     arena_frame rA (e 8 (by decide)) (e 9 (by decide)) (fun i a _ => e i (by omega)) es,
     fun s' hs' => by rw [e 25 (by decide)]; exact (r25 s' hs').frame es,
-    fun x hx hne => by rw [e 29 (by decide)]; exact nameAt_frame et (by omega) (r29 x hx hne),
+    fun x hx => by rw [e 29 (by decide)]; exact nameAt_frame et (by omega) (r29 x hx),
     by rw [e 30 (by decide)]; exact r30, by rw [bget_bset_eq _ _ _ _ rfl (by rw [u]; omega)], out_frame rO (drop_bset _ _ _ (by decide)),
     tasks_frame rK (e 5 (by decide)) (fun i _ _ => e i (by omega)) et hn es (fun i a _ => e i (by omega)) har⟩
 
@@ -109,7 +109,7 @@ theorem rep_binds_clear {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts s
     defs_frame rD (e 12 (by decide)) (e 27 (by decide)) (e 26 (by decide)) (fun i a _ => e i (by omega)) et hn es,
     arena_frame rA (e 8 (by decide)) (e 9 (by decide)) (fun i a _ => e i (by omega)) es,
     fun s' hs' => by rw [e 25 (by decide)]; exact (r25 s' hs').frame es,
-    fun x hx hne => by rw [e 29 (by decide)]; exact nameAt_frame et (by omega) (r29 x hx hne),
+    fun x hx => by rw [e 29 (by decide)]; exact nameAt_frame et (by omega) (r29 x hx),
     by rw [e 30 (by decide)]; exact r30, by rw [e 32 (by decide)]; exact r32, out_frame rO (drop_bset _ _ _ (by decide)),
     tasks_frame rK (e 5 (by decide)) (fun i _ _ => e i (by omega)) et hn es (fun i a _ => e i (by omega)) har⟩
 
