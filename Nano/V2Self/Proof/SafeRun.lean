@@ -11,6 +11,7 @@ import Nano.V2Self.Proof.SimW
 import Nano.V2Self.Proof.Expr
 import Nano.V2Self.Proof.Templates
 import Nano.V2Self.Proof.CallA
+import Nano.V2Self.Proof.Heap
 namespace SafeRun
 open CallProbe SimW
 
@@ -441,5 +442,74 @@ theorem epi_srun {K : LayW} {C e p q} (s : St) (hC : At C e (epi p q))
       exact ⟨trivial, by decide, hra⟩
   rw [show 2 + 2 * q + 3 = 2 + (2 * q + 3) by omega]
   exact q1.add r2 (q2.add hr' q3)
+
+/-! ## BPUSH -/
+
+theorem bpush_srun {K : LayW} {C : List J} {pc tgt : Nat} (s : St) (hC : At C pc (bpushT tgt pc)) (hx0 : s.x 0 = 0)
+    (hsp : (s.x 31).toNat + 16 < 2 ^ 63)
+    (hlen : (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat < (s.m ((s.m ((s.x 31).toNat + 8)).toNat + 8)).toNat)
+    (hb : (s.m ((s.x 31).toNat + 8)).toNat + 16 + 8 * (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat < 2 ^ 62)
+    (w0 : wok K (s.x 31).toNat) (w1 : wok K ((s.x 31).toNat + 8)) (w2 : wok K (s.m ((s.x 31).toNat + 8)).toNat)
+    (w3 : wok K ((s.m ((s.x 31).toNat + 8)).toNat + 8))
+    (w4 : wok K ((s.m ((s.x 31).toNat + 8)).toNat + 16 + 8 * (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat)) :
+    ∃ s', SStar K C (pc, s) (pc + 12, s') ∧
+      s'.m = upd (upd s.m ((s.m ((s.x 31).toNat + 8)).toNat + 16 + 8 * (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat)
+                  (s.m (s.x 31).toNat))
+              (s.m ((s.x 31).toNat + 8)).toNat ((s.m (s.m ((s.x 31).toNat + 8)).toNat) + 1) ∧
+      (s'.x 31).toNat = (s.x 31).toNat + 8 ∧ s'.b = s.b ∧
+      (∀ r, r ≠ 5 → r ≠ 6 → r ≠ 7 → r ≠ 14 → r ≠ 15 → r ≠ 31 → s'.x r = s.x r) := by
+  obtain ⟨s', hr, rest⟩ := bpush_runK s hC hx0 hsp hlen hb
+  refine ⟨s', sstar_of_run hr ?_, rest⟩
+  intro j hj c hc
+
+  have hs : ∀ i, i < 12 → C[pc + i]? = (bpushT tgt pc)[i]? := fun i hi => hC i (by simp [bpushT]; omega)
+  have h0 := hs 0 (by omega); have h1 := hs 1 (by omega); have h2 := hs 2 (by omega); have h3 := hs 3 (by omega)
+  have h4 := hs 4 (by omega); have h5 := hs 5 (by omega); have h7 := hs 7 (by omega); have h8 := hs 8 (by omega)
+  have h9 := hs 9 (by omega); have h10 := hs 10 (by omega); have h11 := hs 11 (by omega)
+  simp [bpushT] at h0 h1 h2 h3 h4 h5 h7 h8 h9 h10 h11
+  have lt := (s.x 31).toNat_lt
+  have e0 : ea (s.x 31) 0 = (s.x 31).toNat := by simp [ea]
+  have e8 : ea (s.x 31) 8 = (s.x 31).toNat + 8 := by simp [ea]; omega
+  have t8 : (s.x 31 + 8).toNat = (s.x 31).toNat + 8 := by rw [UInt64.toNat_add]; simp; omega
+  have eb0 : ∀ b : UInt64, ea b 0 = b.toNat := fun b => by simp [ea]
+  have eb8 : ∀ b : UInt64, b.toNat + 8 < 2 ^ 64 → ea b 8 = b.toNat + 8 := fun b h => by simp [ea]; omega
+  have blt := (s.m ((s.x 31).toNat + 8)).toNat_lt
+  have sh : ((s.m (s.m ((s.x 31).toNat + 8)).toNat) <<< 3).toNat = 8 * (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat := by
+    have := (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat_lt
+    simp [UInt64.toNat_shiftLeft, Nat.shiftLeft_eq]; omega
+  have sa : ((s.m (s.m ((s.x 31).toNat + 8)).toNat <<< 3) + s.m ((s.x 31).toNat + 8)).toNat
+      = 8 * (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat + (s.m ((s.x 31).toNat + 8)).toNat := by
+    rw [UInt64.toNat_add, sh]; simp; omega
+  have ea16 : ea ((s.m (s.m ((s.x 31).toNat + 8)).toNat <<< 3) + s.m ((s.x 31).toNat + 8)) 16
+      = (s.m ((s.x 31).toNat + 8)).toNat + 16 + 8 * (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat := by
+    simp only [ea, sa]; omega
+  have hlt' : (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat < (s.m ((s.m ((s.x 31).toNat + 8)).toNat + 8)).toNat := hlen
+  have ebuf8 : ea (s.m ((s.x 31).toNat + 8)) 8 = (s.m ((s.x 31).toNat + 8)).toNat + 8 := eb8 _ (by omega)
+  have eL : UInt64.ofNat (ea (s.m (s.m ((s.x 31).toNat + 8)).toNat) 1) = s.m (s.m ((s.x 31).toNat + 8)).toNat + 1 := by
+    have := (s.m ((s.m ((s.x 31).toNat + 8)).toNat + 8)).toNat_lt
+    apply UInt64.toNat.inj; simp [ea, UInt64.toNat_add]
+  rcases (by omega : j = 0 ∨ j = 1 ∨ j = 2 ∨ j = 3 ∨ j = 4 ∨ j = 5 ∨ j = 6 ∨ j = 7 ∨ j = 8 ∨ j = 9 ∨ j = 10) with
+    rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl
+  · simp [run] at hc; subst hc; simp [Safe, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+  · simp [run, step, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 2).toNat = pc + 7 by omega] at hc; subst hc
+    simp [Safe, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+  · simp [run, step, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 2).toNat = pc + 7 by omega] at hc; subst hc
+    simp [Safe, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+  · simp [run, step, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 2).toNat = pc + 7 by omega] at hc; subst hc
+    simp [Safe, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+  · simp [run, step, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 2).toNat = pc + 7 by omega] at hc; subst hc
+    simp [Safe, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+  · simp [run, step, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 2).toNat = pc + 7 by omega] at hc; subst hc
+    simp [Safe, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+  · simp [run, step, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 2).toNat = pc + 7 by omega] at hc; subst hc
+    simp [Safe, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+  · simp [run, step, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 2).toNat = pc + 7 by omega] at hc; subst hc
+    simp [Safe, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+  · simp [run, step, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 2).toNat = pc + 7 by omega] at hc; subst hc
+    simp [Safe, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+  · simp [run, step, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 2).toNat = pc + 7 by omega] at hc; subst hc
+    simp [Safe, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+  · simp [run, step, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 2).toNat = pc + 7 by omega] at hc; subst hc
+    simp [Safe, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
 
 end SafeRun
