@@ -4,7 +4,7 @@
   the text is not a program or the run hits Gen's buffer capacity);
 * `compileC`: C's driver `mC` (when it emits code and the text is at most 2^20 bytes); `memoryNeeded` = the work bound
   of `ImplementsC` (chosen);
-* `C_correctL : ParStage → GenStage → CompileCorrectL riscv compileC`. -/
+* `C_correctL : ParStage → OwnStage → GenStage → CompileCorrectL riscv compileC`. -/
 import Nano.V2Self.Proof.MainTyP
 import Riscv.Back.Top
 import Compiler.AllocSpec
@@ -71,7 +71,7 @@ theorem g40_len : ∀ (n : Nat) (c : List UInt8) (w : Buf) (i : UInt64) (o : Lis
 
 theorem mC_len (x : List UInt8) : (mC x).length % 4 = 0 := by
   unfold mC C.g41 C.g42
-  generalize C.y16 (C.s10 x) = a
+  generalize C.o41 (C.y16 (C.s10 x)) = a
   split
   · rfl
   split
@@ -109,16 +109,17 @@ theorem kept_of {s s' : St} (hkept : abiSavedKept s s') : KeptRegisters riscv s 
     simp only [riscvObserve, riscvRegister, k2, k3, k4, k8, k9, k18, k19, k20, k21, k22, k23, k24, k25, k26, k27]
 
 /-- **C is correct** (owner's top-level statement), from the parser and codegen stage theorems -/
-theorem C_correctL (HP : ParStage) (HG : GenStage) : CompileCorrectL riscv compileC := by
+theorem C_correctL (HP : ParStage) (HO : OwnStage) (HG : GenStage) : CompileCorrectL riscv compileC := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight outputFits
     enough
   obtain ⟨x⟩ := program
   unfold compileC at compiles
   split at compiles
   · rename_i hc
-    cases compiles
+    have hcomp := Option.some.inj compiles
+    subst hcomp
     obtain ⟨hne, hx⟩ := hc
-    obtain ⟨ts, p, hL, hP, hI, -⟩ := compiler_correct' HP HG x hx hne
+    obtain ⟨ts, p, hL, hP, -, hI, -⟩ := compiler_correct' HP HO HG x hx hne
     have hpo := pOf_eq hL hP
     have hW : ImplementsCW (mC x) (Sem κC p) (spaceC x) := by
       unfold spaceC; rw [hpo]; simp only; rw [dif_pos hI]; exact Classical.choose_spec hI

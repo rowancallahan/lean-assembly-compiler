@@ -1,14 +1,17 @@
-/- Nano/V2Self/Proof/Main: the END-TO-END statement for C's driver `m x = g41 x (y16 (s10 x))` (build_self_S.py).
+/- Nano/V2Self/Proof/Main: the END-TO-END statement for C's driver `m x = g41 x (o41 (y16 (s10 x)))` (build_self_S.py).
 (1) `Sem`: the meaning of ParSpec's resolved program (`List DefA`) on an input, word level, with buffer capacity κ;
 (2) `ImplementsC`: bytes `B` loaded as RV64 code (Sail, `Spec/Implements1.lean` conventions) implement `f`, where the run
     may also end in out-of-memory, but only below a per-input work size `space x`;
-(3) the stage hypotheses `ParStage` (parser, = `ParInv.ParserSound`) and `GenStage` (codegen + machine bridge); the lexer is
-    proved (`LexSpec.s10_sound`);
-(4) `compiler_correct`: m x ≠ [] → ∃ ts p, Lexes x ts ∧ ParsesProgram ts p ∧ ImplementsC (m x) (Sem κ p).
+(3) the stage hypotheses `ParStage` (parser, = `ParInv.ParserSound`), `OwnStage` (O's ownership stage o41 accepts only
+    `LinearK` programs) and `GenStage` (codegen + machine bridge, for linear programs); the lexer is proved
+    (`LexSpec.s10_sound`);
+(4) `compiler_correct`: m x ≠ [] → ∃ ts p, Lexes x ts ∧ ParsesProgram ts p ∧ LinearK p ∧ ImplementsC (m x) (Sem κ p).
 Notes: Testing/notes/NANO_V2_MAIN.md. -/
 import Nano.V2Self.C.Lex2Sound
 import Nano.V2Self.C.Par1
 import Nano.V2Self.C.Gen
+import Nano.V2Self.C.Own
+import Nano.V2Self.Proof.OwnSpec
 import Nano.V2Self.Proof.ParInv
 import Spec.Implements1
 
@@ -16,7 +19,7 @@ namespace NanoMain
 open ParSpec
 
 /-- C's driver, verbatim from `Testing/nano/v2self/build_self_S.py` (not in `C/Main.lean`, which holds the old chain) -/
-def mC (x : List UInt8) : List UInt8 := C.g41 x (C.y16 (C.s10 x))
+def mC (x : List UInt8) : List UInt8 := C.g41 x (C.o41 (C.y16 (C.s10 x)))
 
 /-! ## the meaning of a resolved program -/
 
@@ -188,13 +191,28 @@ def ImplementsC (B : List UInt8) (f : List UInt8 → Except Stop (List UInt8)) (
 /-- the parser (boxes B/C): `ParInv.ParserSound` for token streams within Par1's fuel -/
 def ParStage : Prop := ∀ ts : List UInt64, ts.length ≤ 16777216 → ParInv.ParserSound ts
 
+/-- O's ownership discipline with slot kinds 0 (word) / 1 (owned) / 2 (read-only) -/
+def LinearK (p : List DefA) : Prop := ∃ Ks, OwnSpec.progOk [] [] Ks p = true ∧ ∀ K ∈ Ks, ∀ k ∈ K, k ≤ 2
+
+/-- the ownership stage (box O): a non-empty result of `o41` on a serialized program certifies `LinearK` -/
+def OwnStage : Prop := ∀ p : List DefA, C.o41 (serialize p) ≠ [] → LinearK p
+
 /-- codegen (box A: g41's output is the code of the AST; box E: that code runs on Sail as `Sem`): for every parsed
-program `p`, a non-empty result of Gen on `serialize p` implements `Sem κC p` -/
+linear program `p`, a non-empty result of Gen on `serialize p` implements `Sem κC p` -/
 def GenStage : Prop :=
-  ∀ (c : List UInt8) (ts : List UInt64) (p : List DefA), ParsesProgram ts p →
+  ∀ (c : List UInt8) (ts : List UInt64) (p : List DefA), ParsesProgram ts p → LinearK p →
     C.g41 c (serialize p) ≠ [] → ImplementsC (C.g41 c (serialize p)) (Sem κC p)
 
 /-! ## facts used by the composition -/
+
+/-- `o41` returns its input or nothing -/
+theorem o41_ne (x : Buf) (h : C.o41 x ≠ []) : C.o41 x = x := by
+  have key : ∀ r : UInt64, (if (r == 1) = true then x else bnew) ≠ [] → (if (r == 1) = true then x else bnew) = x := by
+    intro r hr
+    by_cases hc : (r == 1) = true
+    · rw [if_pos hc]
+    · rw [if_neg hc] at hr; exact absurd rfl hr
+  exact key _ h
 
 theorem g41_nil (c : List UInt8) : C.g41 c [] = [] := by
   simp [C.g41, C.g42, bget]
@@ -251,18 +269,22 @@ theorem lexes_len {x : List UInt8} {ts : List UInt64} (h : LexSpec.Lexes x ts) :
 /-- **C is sound on success**: if the driver emits code for source `x` (at most 2^20 bytes), then `x` lexes (Lex2Spec) and
 parses (ParSpec) to a program `p`, and the emitted bytes implement `p`'s meaning on Sail (outcomes: the result, the
 capacity trap when `Sem` reports it, out-of-memory only below the work bound). -/
-theorem compiler_correct (HP : ParStage) (HG : GenStage) (x : List UInt8) (hx : x.length ≤ 2 ^ 20) (h : mC x ≠ []) :
-    ∃ ts p, LexSpec.Lexes x ts ∧ ParsesProgram ts p ∧ ImplementsC (mC x) (Sem κC p) := by
-  have hy : C.y16 (C.s10 x) ≠ [] := fun e => h (by simp only [mC, e, g41_nil])
+theorem compiler_correct (HP : ParStage) (HO : OwnStage) (HG : GenStage) (x : List UInt8) (hx : x.length ≤ 2 ^ 20)
+    (h : mC x ≠ []) :
+    ∃ ts p, LexSpec.Lexes x ts ∧ ParsesProgram ts p ∧ LinearK p ∧ ImplementsC (mC x) (Sem κC p) := by
+  have hy0 : C.o41 (C.y16 (C.s10 x)) ≠ [] := fun e => h (by simp only [mC, e, g41_nil])
+  have hoe := o41_ne _ hy0
+  have hy : C.y16 (C.s10 x) ≠ [] := by rw [← hoe]; exact hy0
   by_cases h0 : C.s10 x = []
   · obtain ⟨p, hp, -⟩ := HP _ (by simp [h0]) hy
     rw [h0] at hp; simp [ParsesProgram, refParse_nil] at hp
   · have hL := LexSpec.s10_sound x (by omega) _ rfl h0
     have hb := lexes_len hL
     obtain ⟨p, hp, he⟩ := HP _ (by omega) hy
-    refine ⟨_, p, hL, hp, ?_⟩
-    have hg : C.g41 x (serialize p) ≠ [] := by rw [← he]; exact h
-    have := HG x _ p hp hg
-    simpa only [mC, he] using this
+    have hlin : LinearK p := HO p (by rw [← he]; exact hy0)
+    refine ⟨_, p, hL, hp, hlin, ?_⟩
+    have hg : C.g41 x (serialize p) ≠ [] := by rw [← he, ← hoe]; exact h
+    have := HG x _ p hp hlin hg
+    rw [mC, hoe, he]; exact this
 
 end NanoMain
