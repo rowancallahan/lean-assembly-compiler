@@ -23,7 +23,8 @@ The walk follows `NanoMain.ev`'s evaluation order and threads DEAD flags `F` (on
 * a fuel loop must be the whole def body; both arms start with all flags clear (each iteration rebinds the states);
 * word destinations (BIN / IF operands, indices, values) accept only words.
 Entries: an expression's value is a list of entries, one per word: a plain kind 0/1, or, for a LOCAL word of slot `s` of
-kind `k`, the tagged entry `k + 4 * (s + 1)` (the parent decides whether it is a transfer, a borrow or a pin). -/
+kind `k`, the tagged entry `k + 4 * (s + 1)` (the parent decides whether it is a transfer, a borrow or a pin); only a
+LOCAL node itself returns tagged entries (`let` bodies, branches, loop arms are transferred). -/
 import Nano.V2Self.Proof.ParSpec
 namespace OwnSpec
 open ParSpec
@@ -133,7 +134,9 @@ def chk (c : Cx) : Nd → List Bool → Option (List Bool × List Nat)
     (join t1.2 e1.2).map fun k => (orF t1.1 e1.1, k)
   | .letE s w v b, F =>
     (chk c v F).bind fun v0 => (tr v0.1 v0.2).bind fun v1 =>
-    if c.npw ≤ s ∧ s + w ≤ c.K.length ∧ v1.2 = (c.K.drop s).take w ∧ notDeadR v1.1 s w = true then chk c b v1.1 else none
+    if c.npw ≤ s ∧ s + w ≤ c.K.length ∧ v1.2 = (c.K.drop s).take w ∧ notDeadR v1.1 s w = true then
+      (chk c b v1.1).bind fun b0 => tr b0.1 b0.2
+    else none
   | .pair cs, F => (lstA c cs none F []).bind fun x => fin none x.1 x.2
   | .call i as, F =>
     match c.ps[i]?, c.rs[i]? with

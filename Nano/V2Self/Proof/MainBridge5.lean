@@ -197,7 +197,8 @@ theorem chk_len {oc : OwnSpec.Cx} {D : List Sig} (hR : RsOK oc D) : ∀ {Γ S e 
     simp only [OwnSpec.chk, Option.bind_eq_some_iff] at h
     obtain ⟨v0, -, v1, -, h⟩ := h
     split at h
-    · exact chk_len hR hb hS _ _ _ h
+    · obtain ⟨b0, hb0, hb1⟩ := Option.bind_eq_some_iff.mp h
+      rw [tr_len _ _ _ _ hb1]; exact chk_len hR hb hS _ _ _ hb0
     · cases h
   | _, _, _, _, .pair hl, _, F, F', es, h => by
     simp only [OwnSpec.chk, Option.bind_eq_some_iff] at h
