@@ -116,13 +116,21 @@ OPEN / NEXT (owner order 2026-11-19):
    succeeds, results related in σ', σ' differs from σ only at blocks of slots consumed by e and at fresh blocks, plain
    kind-1 result entries are fresh/consumed blocks not held by any live slot after; pinned entries = the slot's address.
    Layer 1 (MainBridge.lean): BufAt + per-prim agreement (done).
-   Layer 2 (MainBridge2): AHeap σ, VR, σ under BNEW/BPUSH/BSET (done).  Layer 3 (MainBridge3): EnvI (frame invariant,
-   incl. EnvOK), ResI (list-recursive result invariant, OwnFree), Ch (change frame), Mono, monotonicity lemmas, consume_spec
-   (done).  Layer 4 (MainBridge4): `NodeOK cx K oc D e` (value-mode claim; premises CtxOK, K values ≤ 2 [asked O to add
-   to defOk]); cases const, loc, bin DONE.  Layer 5 (MainBridge5): tr_spec (transfer) DONE.
-   NEXT: ite (two + branch + tr + join/orF weakening), letE (tr + setSlots/setW + fresh slots), pair/call/prim (lstA/fin
-   with pins: consume/borrow at the end), tail mode (cont) and loop (loopGo vs loopRun, flags reset), defs (defS vs
-   defMean, CtxR), program.
+   Layer 2 (MainBridge2): AHeap σ, VR, σ under BNEW/BPUSH/BSET (done).  Layer 3 (MainBridge3): EnvI, ResI, Ch, Mono,
+   consume_spec (done).  MainKeep: static facts of O's walk (value mode) — it kills only kind-1 slots (`chk_keep`),
+   tags carry their slot kind; `R2` = read-only slots live.
+   `NodeOK cx K oc D e` (MainBridge4) = value-mode claim.  Premises: CtxOK, O's K ≤ 2, R2 F, EnvI, AHeap, tops.
+   Conclusions: ev ok, AHeap, ResI, EnvI, Ch, Mono, tops, `Src` (an owned result whose block pre-existed is a slot
+   consumed by the node — needed for LET scoping and call results), entry shapes (≤ 1 or tagged).
+   DONE, all nodes (`node_all`, MainBridge11; no sorry, propext/choice/Quot.sound):
+   const/loc/bin (4), ite (6), letE (7), argument lists `lst_ok` + pair (8), prims (9: own0 / borrow via finB),
+   call (10: against the callee contract `DefR`/`CallR`).  Extra premises of node_all: RsOK (rs lengths = D),
+   RsW (O's result kinds ≤ 1), CtxR (K.κ = cx.κ, c29 = |inp|, K.inp = inpW inp, |inp| < 2^64), CallR (every callee
+   meets DefR: related args ⇒ related results; owned results fresh or owned-arg blocks, distinct; other blocks kept).
+   NEXT: tail mode (st: ifTS/letTS/contS/exitS ↔ ev Out .inl/.inr), loop (loopGo ↔ loopRun; arms start from F0, Γ
+   knows slot 0 + states; CONTINUE = fin (stD) re-establishes EnvI), def level (DefR for defS/defMean from node_all /
+   the loop lemma; ArgsR ⇒ initial EnvI), program level (CallR by induction over progOk), then Sem ⇐ machine.
+   Fuel-margin run on self_S (interpreted `lean --run`): did not finish in 40 min; needs a compiled exe.
 2. MainTop subset: parsed ∧ Linear, compileC with the ownership check (after O).
 3. C-wide certificate generator (one Sem = Lean lemma per def) + kernel test of progEq on C's token stream.
    MEASURED (decide +kernel, prefixes of self_S_input.txt + a stub main): 713 bytes → lexer `C.s10` 35 s / 5.9 GB, lexer +
