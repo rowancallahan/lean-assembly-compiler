@@ -1,0 +1,7 @@
+# Par1 ACCEPTS (parse) / spec REJECTS. Input-only loop; self-call passes []. Found at ce8fe08 by fuzzer.
+# Full compiler (B1 no args) rejects it (empty output); own stage (B1 own) rejects it. Parse-level disagreement only.
+# Expected: parse REJECT. Program follows.
+def g : Nat → List UInt8 → UInt64
+  | 0, x => 7
+  | n + 1, x => g n []
+def m (x : List UInt8) : List UInt8 := put ([]) (rd x 0)
