@@ -1,6 +1,6 @@
 /- Nano/V2Self/Proof/ParInvCall: Layer-3 handler preservation, ARGUMENTS / CALLS (box G): tasks 44 `args` (v119), 45 `mkCallN` (v121).
 Shape as ParInvExpr: `Rep h ts st (f :: fs) → bget (step h) 0 ≠ 0 → ∃ k st', stepF f st = some (k, st') ∧ Rep (step h) ts st' (k ++ fs)`,
-with the side facts the top glue has from `SInv` / `WF`: `inDefF fs` (a non-def frame never stands directly on `defs`), `d ≤ |vals|`.
+with the side fact the top glue has from `WF`: `d ≤ |vals|` (task 45).
 Generic: `rep_pop` (the popped heap still represents `fs`), `rep_push` (one `v1` push that did not fail). -/
 import Nano.V2Self.Proof.ParInvExpr
 import Nano.V2Self.Proof.ParRunCall
@@ -31,7 +31,7 @@ theorem rep_push {h ts : Buf} {st : St} {fs : List Frame} (f : Frame) (a b : UIn
 
 /-! ## task 44: `args c k` (v119) -/
 theorem h_args {h ts : Buf} {st : St} {c : Callee} {k : Nat} {fs : List Frame} (r : Rep h ts st (.args c k :: fs))
-    (hD : inDefF fs = true) (hs : bget (step h) 0 ≠ 0) :
+    (hs : bget (step h) 0 ≠ 0) :
     ∃ fr st', stepF (.args c k) st = some (fr, st') ∧ Rep (step h) ts st' (fr ++ fs) := by
   obtain ⟨E, ⟨ea, eb⟩, R1⟩ := rep_pop r (by simp [inDefF, Frame.isDefs])
   simp only [Frame.code] at E
@@ -56,7 +56,7 @@ theorem h_args {h ts : Buf} {st : St} {c : Callee} {k : Nat} {fs : List Frame} (
 
 /-! ## task 45: `mkCallN c d` (v121) -/
 theorem h_mkCallN {h ts : Buf} {st : St} {c : Callee} {d : Nat} {fs : List Frame} (r : Rep h ts st (.mkCallN c d :: fs))
-    (hD : inDefF fs = true) (hd : d ≤ st.vals.length) (hs : bget (step h) 0 ≠ 0) :
+    (hd : d ≤ st.vals.length) (hs : bget (step h) 0 ≠ 0) :
     ∃ fr st', stepF (.mkCallN c d) st = some (fr, st') ∧ Rep (step h) ts st' (fr ++ fs) := by
   obtain ⟨E, ⟨ea, eb⟩, R1⟩ := rep_pop r (by simp [inDefF, Frame.isDefs])
   simp only [Frame.code] at E
