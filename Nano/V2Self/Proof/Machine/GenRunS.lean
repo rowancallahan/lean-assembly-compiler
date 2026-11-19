@@ -1,8 +1,6 @@
 /- EVS P7 (Opus box E): **Gen's program on Sail**.  `gen_runS`: on g41 success, the emitted program C (stubs ++ def
 templates ++ start code) runs from word 0 as a SafeX J run to the host's return address with main's buffer bytes at a3;
-given the Sail code words are Gen's (`KL.W = C.map encG`), `SimW.sim_starX` turns it into retired Sail instructions
-keeping `RelW`. -/
-import Nano.V2Self.Proof.Machine.SimX
+a target turns it into machine steps (`JT.sim_star`; RISC-V: `SimW.sim_starX`). -/
 import Nano.V2Self.Proof.Machine.GenRun
 import Nano.V2Self.Proof.Machine.EVSProg
 import Nano.V2Self.Proof.Machine.StartAllS
@@ -41,14 +39,10 @@ theorem gen_runS (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length 
          (∀ i, i < N.toNat → SimW.sok KL ((s0.x 13).toNat + i)) →
          ∃ s3, SimW.SStarX KL C (0, s0) (11 + D.length + 31, s3) ∧ C[11 + D.length + 31]? = some (.jalr 0 1) ∧ (∀ j, keepR j = true → s3.x j = s0.x j) ∧ s3.b = s0.b ∧ s3.x 1 = s0.x 1 ∧
            s3.x 8 = s0.x 8 ∧ s3.x 10 = (if N = 0 then 1 else 0) ∧ s3.x 11 = N ∧
-           (∀ i, i < N.toNat → lbm s3.m ((s0.x 13).toNat + i) = bs i &&& 255) ∧
-           (KL.Ok → KL.W = (C.map encG).map UInt64.toNat → ∀ t, SimW.RelW KL (0, s0) t →
-             ∃ n t', Proven.Steps n t t' ∧ SimW.RelW KL (11 + D.length + 31, s3) t')) ∧
+           (∀ i, i < N.toNat → lbm s3.m ((s0.x 13).toNat + i) = bs i &&& 255)) ∧
          (∀ fk, fk ≠ .stuck → semAtF P ds (hs.length - 1) [] E0 ⟨(s0.x 12).toNat + 16, fun _ => none⟩ = .error fk →
          ∃ s2, SimW.SStarX KL C (0, s0) (stubW fk, s2) ∧ s2.m (s0.x 12).toNat = s0.x 1 ∧
-           s2.m ((s0.x 12).toNat + 8) = s0.x 8 ∧ s2.x 0 = 0 ∧ (∀ j, keepR j = true → s2.x j = s0.x j) ∧ s2.b = s0.b ∧
-           (KL.Ok → KL.W = (C.map encG).map UInt64.toNat → ∀ t, SimW.RelW KL (0, s0) t →
-             ∃ n t', Proven.Steps n t t' ∧ SimW.RelW KL (stubW fk, s2) t')))) := by
+           s2.m ((s0.x 12).toNat + 8) = s0.x 8 ∧ s2.x 0 = 0 ∧ (∀ j, keepR j = true → s2.x j = s0.x j) ∧ s2.b = s0.b))) := by
   obtain ⟨hs, T, o, hD, hne, hr⟩ := gen_C c ds hXl h hdb ((s0.x 12).toNat + 16) (s0.x 11) inp
   refine ⟨hs, T, o, hD, hne, ?_⟩
   obtain ⟨hg, np, nr, hcl, hopv, hbd, hTp, hpk, -⟩ := hr
@@ -98,11 +92,6 @@ theorem gen_runS (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length 
     have : 0 < (defT (scAt P ds (hs.length - 1)) (dA ds (hs.length - 1)).body (P.T (hs.length - 1))
       (dA ds (hs.length - 1)).nres).length := List.length_pos_iff.mpr (defT_ne _ _ _ _)
     omega
-  have hwords : (C.map encG).map UInt64.toNat = C.map SimW.encJX := by
-    rw [← hCd, ← hDd]
-    exact words_encJX (prog_good P ds _ _ hs.length (fun k hk => by
-      obtain ⟨c1, c2, c3, c4⟩ := hbd k hk
-      exact ⟨c2, c4, c3, (hpar k hk).1, hopv k hk⟩))
   have hIGe : ∀ s1, Entry s0 s1 (11 + D.length) → IGs s0 inp s1 := fun s1 en => ⟨en.x28, en.x29, fun i hi => by
         rw [en.m]
         have := Nat.mod_lt ((s0.x 10).toNat + i) (show 8 > 0 by omega)
@@ -128,13 +117,11 @@ theorem gen_runS (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length 
     obtain ⟨s2, h2, I2, z2, k2, b2⟩ := start_capX (KL := KL) hok A0 AS hMc s0 z0 hPhb ha8 hE0
       (by rw [hPhb]; exact hroom) hE62 (by have := lC; omega) hIGe (by rw [hPhb]; exact hSd) hlo hhi hbase hE8
       (by omega) hc18 hwl
-    refine ⟨s2, h2, I2.2.2.2.1, I2.2.2.2.2.1, z2, k2, b2, fun hK hW t hR => SimW.sim_starX hK ?_ h2 hR⟩
-    rw [hW]; exact hwords
+    exact ⟨s2, h2, I2.2.2.2.1, I2.2.2.2.2.1, z2, k2, b2⟩
   obtain ⟨s3, h3, c31, r1, r2, r3, r4, r5, r6⟩ := start_runX (KL := KL) hok A0 AS hM s0 z0 hPhb ha8 hE0 (by rw [hPhb]; exact hroom) hE62 (by have := lC; omega)
     hIGe
     (fun s hs => ⟨hs.2.2.2.1, hs.2.2.2.2.1⟩) (by rw [hPhb]; exact hSd) hN (by rw [hPhb]; exact hPb) hPN hbs hQ hout hlo hhi hbase hE8 (by omega) hc18
     hwl hwO
-  refine ⟨s3, h3, c31, fun j hj => star_keep hok h3.star hj, r1, r2, r3, r4, r5, r6, fun hK hW t hR => SimW.sim_starX hK ?_ h3 hR⟩
-  rw [hW]; exact hwords
+  exact ⟨s3, h3, c31, fun j hj => star_keep hok h3.star hj, r1, r2, r3, r4, r5, r6⟩
 
 end Templates

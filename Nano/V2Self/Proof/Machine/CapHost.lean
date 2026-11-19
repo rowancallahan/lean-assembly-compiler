@@ -165,7 +165,7 @@ theorem gen_host_cap (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : P
     olen, fun a => s.mem[a]?⟩
   have z0 : s0.x 0 = 0 := by rw [sx 0 (by omega)]; simp [getX, xval]
   have ol0 : olen = 0 := by simp [olen, hSem]
-  obtain ⟨s2, h2, m12, m8, z2, k2, b2, lift⟩ := (hrun KL E0 hE0 z0 (by rw [x12]; exact hw8) (by rw [x12]; omega) (by rw [x12]; omega) (by omega)
+  obtain ⟨s2, h2, m12, m8, z2, k2, b2⟩ := (hrun KL E0 hE0 z0 (by rw [x12]; exact hw8) (by rw [x12]; omega) (by rw [x12]; omega) (by omega)
     (by show entry.toNat + 4 * C.length < 2 ^ 64; omega) (by rw [x10, x11']; omega)
     (by rw [x10, x11', x12]; rcases dIW with d | d <;> first | exact Or.inl (by omega) | exact Or.inr (by omega)) (by rw [x12]; exact Nat.le_refl _)
     (Nat.le_refl _) rfl (fun i hi => by rw [x11'] at hi; rw [x10]; exact Or.inr (Or.inl ⟨by simp [KL], by simp [KL]; omega⟩))).2
@@ -197,7 +197,7 @@ theorem gen_host_cap (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : P
       · simp only [KL] at a1 a2
         rw [show a = input.base + (a - input.base) by omega, hxb _ (by omega)]; rfl
       · simp only [KL, ol0] at a1 a2; omega
-  obtain ⟨n, t', hSt, hR'⟩ := lift hK rfl s hR0
+  obtain ⟨n, t', hSt, hR'⟩ := sim_starX hK (hwd : KL.W = _) h2 hR0
   have hWi : ∀ (i : Nat) (j : J), C[i]? = some j → CallProbe.GoodX j → KL.W[i]? = some (SimW.encJX j) := by
     intro i j h g; simp [KL, h, CallProbe.encG_encJX j g]
   have cs : ∀ i, i < 11 → C[i]? = (stubJ S0)[i]? := fun i hi => by
@@ -341,7 +341,7 @@ theorem gen_host_oomX (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : 
     olen, fun a => s.mem[a]?⟩
   have z0 : s0.x 0 = 0 := by rw [sx 0 (by omega)]; simp [getX, xval]
   have ol0 : olen = 0 := rfl
-  obtain ⟨s2, h2, m12, m8, z2, k2, b2, lift⟩ := (hrun KL E0 hE0 z0 (by rw [x12]; exact hw8) (by rw [x12]; omega) (by rw [x12]; omega) (by omega)
+  obtain ⟨s2, h2, m12, m8, z2, k2, b2⟩ := (hrun KL E0 hE0 z0 (by rw [x12]; exact hw8) (by rw [x12]; omega) (by rw [x12]; omega) (by omega)
     (by show entry.toNat + 4 * C.length < 2 ^ 64; omega) (by rw [x10, x11']; omega)
     (by rw [x10, x11', x12]; rcases dIW with d | d <;> first | exact Or.inl (by omega) | exact Or.inr (by omega)) (by rw [x12]; exact Nat.le_refl _)
     (Nat.le_refl _) rfl (fun i hi => by rw [x11'] at hi; rw [x10]; exact Or.inr (Or.inl ⟨by simp [KL], by simp [KL]; omega⟩))).2
@@ -373,7 +373,7 @@ theorem gen_host_oomX (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : 
       · simp only [KL] at a1 a2
         rw [show a = input.base + (a - input.base) by omega, hxb _ (by omega)]; rfl
       · simp only [KL, ol0] at a1 a2; omega
-  obtain ⟨n, t', hSt, hR'⟩ := lift hK rfl s hR0
+  obtain ⟨n, t', hSt, hR'⟩ := sim_starX hK (hwd : KL.W = _) h2 hR0
   have hWi : ∀ (i : Nat) (j : J), C[i]? = some j → CallProbe.GoodX j → KL.W[i]? = some (SimW.encJX j) := by
     intro i j h g; simp [KL, h, CallProbe.encG_encJX j g]
   have cs : ∀ i, i < 11 → C[i]? = (stubJ S0)[i]? := fun i hi => by

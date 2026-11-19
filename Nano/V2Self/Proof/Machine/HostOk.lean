@@ -95,7 +95,7 @@ theorem host_ok (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List DefA}
     (fun i hi => by rw [x11'] at hi; rw [x10]; exact Or.inr (Or.inl ⟨by simp [KL], by simp [KL]; omega⟩))).1
     vs H' (by rw [x12, hx11]; exact hSd)
   rw [hSem] at hSem'; cases hSem'
-  obtain ⟨s3, h3, c31, kp, -, e1, e8, e10, e11, hby, -⟩ := hcont (by rw [x13]; omega) (by rw [x13, x12]; omega)
+  obtain ⟨s3, h3, c31, kp, -, e1, e8, e10, e11, hby⟩ := hcont (by rw [x13]; omega) (by rw [x13, x12]; omega)
     (fun i hi => by rw [x13]; exact Or.inr ⟨by simp [KL], by simp [KL]; omega⟩)
   obtain ⟨hl, hR0⟩ := enter L sc KL rfl rfl rfl rfl (by simp [KL, E0]; omega) rfl rfl rfl hy
   obtain ⟨s', r1, R1⟩ := sim_star L hl h3 hR0

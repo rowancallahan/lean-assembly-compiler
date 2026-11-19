@@ -80,14 +80,10 @@ theorem gen_main (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : Parse
            (∀ i, i < y.length → SimW.sok KL ((s0.x 13).toNat + i)) →
            ∃ s3, SimW.SStarX KL C (0, s0) (pr, s3) ∧ C[pr]? = some (.jalr 0 1) ∧ (∀ j, keepR j = true → s3.x j = s0.x j) ∧ s3.b = s0.b ∧ s3.x 1 = s0.x 1 ∧
              s3.x 8 = s0.x 8 ∧ s3.x 10 = (if y = [] then 1 else 0) ∧ s3.x 11 = UInt64.ofNat y.length ∧
-             (∀ i, i < y.length → lbm s3.m ((s0.x 13).toNat + i) = (y.getD i 0).toUInt64) ∧
-             (KL.Ok → KL.W = (C.map encG).map UInt64.toNat → ∀ t, SimW.RelW KL (0, s0) t →
-               ∃ n t', Proven.Steps n t t' ∧ SimW.RelW KL (pr, s3) t'))) ∧
+             (∀ i, i < y.length → lbm s3.m ((s0.x 13).toNat + i) = (y.getD i 0).toUInt64))) ∧
         (∀ fk, fk ≠ .stuck → semAtF P p (p.length - 1) [] E0 ⟨(s0.x 12).toNat + 16, fun _ => none⟩ = .error fk →
          ∃ s2, SimW.SStarX KL C (0, s0) (stubW fk, s2) ∧ s2.m (s0.x 12).toNat = s0.x 1 ∧
-           s2.m ((s0.x 12).toNat + 8) = s0.x 8 ∧ s2.x 0 = 0 ∧ (∀ j, keepR j = true → s2.x j = s0.x j) ∧ s2.b = s0.b ∧
-           (KL.Ok → KL.W = (C.map encG).map UInt64.toNat → ∀ t, SimW.RelW KL (0, s0) t →
-             ∃ n t', Proven.Steps n t t' ∧ SimW.RelW KL (stubW fk, s2) t')) := by
+           s2.m ((s0.x 12).toNat + 8) = s0.x 8 ∧ s2.x 0 = 0 ∧ (∀ j, keepR j = true → s2.x j = s0.x j) ∧ s2.b = s0.b) := by
   have hx11' : (s0.x 11).toNat = x.length := by rw [hx11]; exact NanoMain.toNat_ofNat_lt hxl
   obtain ⟨hs, T, o, hD, hne, hg, hc18, hst, hss, h32, hwd, hrun⟩ := gen_runS c p hXl h hdb s0 (NanoMain.inpW x)
     (fun i hi => by rw [hx11'] at hi; exact hxm i hi)
@@ -105,10 +101,10 @@ theorem gen_main (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : Parse
   simp only [List.length_map] at hQ hout hwO ⊢
   have hll' : l.length < 2 ^ 64 := by omega
   have hN := NanoMain.toNat_ofNat_lt hll'
-  obtain ⟨s3, h3, c31, kp, r1, r2, r3, r4, r5, r6, r7⟩ := hR.1 [a] H' (by rw [hsl]; exact hSd) (UInt64.ofNat l.length) (fun i => l.getD i 0) hm0 b1 (by simp only [List.getD_cons_zero]; omega)
+  obtain ⟨s3, h3, c31, kp, r1, r2, r3, r4, r5, r6⟩ := hR.1 [a] H' (by rw [hsl]; exact hSd) (UInt64.ofNat l.length) (fun i => l.getD i 0) hm0 b1 (by simp only [List.getD_cons_zero]; omega)
     (fun i hi => by rw [hN] at hi; simp only [List.getD_cons_zero]; rw [hcell i (by omega)]; simp [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem (show i < l.length by omega)])
     (by rw [hN]; exact hQ) (by rw [hN]; exact hout) (fun i hi => by rw [hN] at hi; exact hwO i hi)
-  refine ⟨s3, h3, c31, kp, r1, r2, r3, ?_, r5, fun i hi => ?_, r7⟩
+  refine ⟨s3, h3, c31, kp, r1, r2, r3, ?_, r5, fun i hi => ?_⟩
   · rw [r4]
     rcases l with _ | ⟨b, l⟩
     · rfl

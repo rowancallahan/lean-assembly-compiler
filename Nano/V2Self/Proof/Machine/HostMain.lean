@@ -107,7 +107,7 @@ theorem gen_host (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : Parse
     vs H' (by rw [x12, x11]; exact hSd)
   have hol : KL.ol = y.length := by simp [KL, olen, hSem]
   have hyo := hout y hSem
-  obtain ⟨s3, h3, c31, kp, b3, e1, e8, e10, e11, hby, lift⟩ := hcont (by rw [x13]; omega)
+  obtain ⟨s3, h3, c31, kp, b3, e1, e8, e10, e11, hby⟩ := hcont (by rw [x13]; omega)
     (by rw [x13, x12]; rcases dOW with d | d <;> first | exact Or.inl (by omega) | exact Or.inr (by omega))
     (fun i hi => by rw [x13]; exact Or.inr ⟨by simp [KL], by simp [KL, olen, hSem]; omega⟩)
   have hK : KL.Ok := {
@@ -139,7 +139,7 @@ theorem gen_host (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : Parse
       · simp only [KL, olen, hSem] at a1 a2
         have := hMo (a - output.base) (by omega)
         rwa [show output.base + (a - output.base) = a by omega] at this
-  obtain ⟨n, t', hSt, hR'⟩ := lift hK rfl s hR0
+  obtain ⟨n, t', hSt, hR'⟩ := sim_starX hK (hwd : KL.W = _) h3 hR0
   have hC : KL.W[pr]? = some (_root_.C.g2 _root_.C.g_103 0 0 (UInt64.ofNat 1) 0).toNat := by
     simp [KL, c31, encG]
   have r1 : (s3.x 1).toBitVec = ra := by rw [e1, x1]
