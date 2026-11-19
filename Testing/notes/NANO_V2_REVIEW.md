@@ -119,7 +119,9 @@ chunks concatenate to exactly those bytes. D's kernel-checked `SrcGen.link_pc` s
 1. **The memory bound is exact but not computed.** `memoryNeeded = max 16 (Msp p inp)` is the least sufficient work
    size (see `spaceC` above). `C_runs : ShiftInv → CompileRuns riscv compileC` (Main/RunsTop.lean) says the code
    returns with any work block and reports out-of-memory EXACTLY when `workLength < memoryNeeded`. D proved `ShiftInv`
-   as `shiftInv` (Bridge/MainShift4.lean); E's premise-free `C_runsO` is pending. Upper bound:
+   as `shiftInv` (Bridge/MainShift4.lean; axioms propext, Classical.choice, Quot.sound); E's premise-free `C_runsO` is
+   pending. A concrete value is kernel-checked: `AuditSpace.spaceC_ex1_eq : spaceC Witness.x2 [5] = 4194416`
+   (D, Tests/AuditSpace.lean), i.e. the audit example on input [5] needs exactly 4,194,416 work bytes. Upper bound:
    `spaceC_le` / `Msp_le` give at most D's work bound `gen_R` + 30 bytes. `gen_R`'s bound is itself an existential
    (`Classical.choose`), so there is still no closed-form number per program. [UNSURE] whether a closed form is
    planned.

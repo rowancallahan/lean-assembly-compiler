@@ -4,6 +4,8 @@ import Nano.V2Self.Proof.Parser.ParCapBnd
 import Nano.V2Self.Proof.Cert.All
 import Nano.V2Self.Proof.Main.SelfC
 import Nano.V2Self.Proof.Main.RunsTop
+import Nano.V2Self.Proof.Bridge.MainShift4
+import Nano.V2Self.Proof.Tests.AuditSpace
 
 open LeanRV64D Proven Proven.Top Proven.Top.Alloc NanoMain ParSpec
 
@@ -44,6 +46,11 @@ which main does not run out of room at ANY admissible 8-aligned work position; `
 #check @NanoMain.thr
 #check @NanoMain.Msp_le
 #check @NanoMain.spaceC_le
+#check @NanoMain.shiftInv
+#print axioms NanoMain.shiftInv
+-- a concrete value (D, Tests/AuditSpace.lean): the work bound of the audit example ex1 on input [5]
+#check @NanoMain.AuditSpace.spaceC_ex1_eq
+#print axioms NanoMain.AuditSpace.spaceC_ex1_eq
 -- PENDING (E): #check @NanoMain.C_runsO, @NanoMain.self_runs_C
 
 /-! ## 3. definitions the statement depends on (see NANO_V2_REVIEW.md for summaries) -/
