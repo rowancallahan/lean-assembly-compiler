@@ -146,5 +146,10 @@ WAITING ON C (asked 09:50): (1) `rep_v5` / `arena_v5` demand `A, B < 2^64`; a LO
 `t ≠ 2 → t ≠ 5 → …` (RNRep.mk already is) — then `h_argAtom` (43, v120): branches `(` → push 40, 1; numeral → push 3; id: `v7_findB`,
 free ⇒ push 55, bound ⇒ `v86_skip`, row cells, `v9_cw`, LOC via rep_v5 = `locOf` (code 4 ⇒ fail, `ShapeCode.nt_code`);
 (2) `ShapeCode.pr` bound `c < 5 + h[26]` + Rep fact on h[26] ⇒ `h_tyPair` (63, v130) from `v10_scan`, and `h_assign` (68, v133).
-NEXT after that: `h_group` (67, v132: id ⇒ `tok_id`, `v86_skip`, v6 row append with sh = none; `:` ⇒ push 66, 68, 4, 61).
+DONE since: `ParInvGroup` — `v6_eff` / `v6_ok` / `rep_v6` (binding append on Rep; let binders can reuse it), `v1_cell4`, `h_group` (67, v132);
+`ParInvAssign.v201_eq` (earlier-input scan = `(binds.take i).any Bd.inp`).
+NEXT (not blocked): `h_assign` (68, v133; no v10 involved): a = h[4] ⇒ pop; else w = h[25] (needs `st.ty.isSome`, a < |binds| from WF), code 4 ⇒ fail,
+fix-J guard via `v201_eq`, row a := (slot h[11], w, flag n1) = `binds.set a ⟨name, nx, some w, n1⟩`, `v9_cw` for the width, h[11] += width·(1 − n1)
+(mod 2^64, Rep has `= nx.toUInt64`), parameter code cell d7+4096+h[27] := w with h[27]+1 (< 4096 else fail; DefsRep's zero cells ≥ h[27]),
+current row +2 (nni) += 1 − n1 and +6 (count) += 1 ⇒ `cur.params ++ [w]`; then push 68 (a+1, sz).  Needs inDefF fs (current row).
 
