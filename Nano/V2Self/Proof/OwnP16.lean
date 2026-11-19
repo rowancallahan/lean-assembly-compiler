@@ -101,4 +101,89 @@ theorem ph2_if_cond {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : 
         (by omega) (by omega) _
     · exact err_o5 (by have := hS.1; omega)
 
+theorem tr_len' : ∀ (F F1 : List Bool) (es ks : List Nat), tr F es = some (F1, ks) → ks.length = es.length ∧ ∀ k ∈ ks, k ≤ 1
+  | F, F1, [], ks, h => by simp [tr] at h; obtain ⟨-, rfl⟩ := h; simp
+  | F, F1, e :: es, ks, h => by
+    simp only [tr] at h
+    split at h
+    · split at h
+      · simp only [Option.map_eq_some_iff] at h; obtain ⟨⟨F2, ks2⟩, h1, h2⟩ := h; simp at h2; obtain ⟨rfl, rfl⟩ := h2
+        have := tr_len' F _ es ks2 h1; refine ⟨by simp [this.1], fun k hk => ?_⟩
+        simp at hk; rcases hk with rfl | hk
+        · omega
+        · exact this.2 k hk
+      · cases h
+    · split at h
+      · simp only [Option.map_eq_some_iff] at h; obtain ⟨⟨F2, ks2⟩, h1, h2⟩ := h; simp at h2; obtain ⟨rfl, rfl⟩ := h2
+        have := tr_len' F _ es ks2 h1; refine ⟨by simp [this.1], fun k hk => ?_⟩
+        simp at hk; rcases hk with rfl | hk
+        · omega
+        · exact this.2 k hk
+      · split at h
+        · simp only [Option.bind_eq_some_iff, Option.map_eq_some_iff] at h
+          obtain ⟨F3, -, ⟨F2, ks2⟩, h1, h2⟩ := h; simp at h2; obtain ⟨rfl, rfl⟩ := h2
+          have := tr_len' F3 _ es ks2 h1; refine ⟨by simp [this.1], fun k hk => ?_⟩
+          simp at hk; rcases hk with rfl | hk
+          · omega
+          · exact this.2 k hk
+        · cases h
+
+/-- IF after its then-branch: transfer its entries, swap the flags with the snapshot (else-branch from the same flags) -/
+theorem ph1_if_then {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : A.ph = 1) {Φ0 : List Fr} {r : Fr}
+    (hΦ : A.Φ = Φ0 ++ [r]) (hg : r.g = 4) (hc : r.c = 2) {sn0 : List (List Bool)} {S : List Bool}
+    (hsn : A.sn = sn0 ++ [S]) (hb : r.b = sn0.length) {pre et : List Nat} (hes : A.es = pre ++ et)
+    (hpre : pre.length = r.vc) :
+    Reach W (s, f, v) (fun σ => ∃ Ft kt, tr A.F et = some (Ft, kt) ∧
+      St W σ.1 σ.2.1 σ.2.2 { A with F := S, es := pre ++ kt, sn := sn0 ++ [Ft], Φ := Φ0 ++ [Fr.set (Fr.set r 6 A.es.length) 2 3], ph := 2 }) := by
+  obtain ⟨hS, hF, hV, hT, hB⟩ := hSt
+  obtain ⟨f0, -, f2, -, -, f5, -, f7, hsm⟩ := frame_facts hS hB hΦ
+  have hesl : A.es.length = pre.length + et.length := by rw [hes]; simp
+  have hesb := hB.2.2.2.2.2.2.2.1
+  have hns := hB.1
+  apply reach_one hS
+  rw [stp_eq, o30_ph1 hS hp]
+  unfold o32
+  have r7 := (regs hS).2.2.2.2.2.2.1
+  have r6 := (regs hS).2.2.2.2.2.1
+  simp only [lit] at r7 r6 ⊢
+  simp only [nfr_ne hS hB hΦ, Bool.false_eq_true, if_false, f0, f2, f5, r7, r6, hg, hc,
+    show (u 4 == u 4) = true from rfl, if_true, show (u 2 < u 2) = False from by rw [u_lt' (by omega) (by omega)]; simp,
+    if_false, show (u 2 == u 2) = true from rfl]
+  rcases o15_ok 16777216 A f v r.vc hS hF hV hB (by omega) with ⟨Ft, kt, f', v', htr, ho15, hF1, hV1⟩ | herr
+  · rw [ho15]; simp only
+    have hdrop : A.es.drop r.vc = et := by rw [hes, ← hpre]; simp
+    have htake : A.es.take r.vc = pre := by rw [hes, ← hpre]; simp
+    rw [hdrop] at htr; rw [htake] at hV1
+    obtain ⟨hkl, hkv⟩ := tr_len' _ _ _ _ htr
+    rw [f7, hb]
+    left
+    refine ⟨Ft, kt, htr, ?_⟩
+    simp only [u_mul, u_add]
+    have hb30 := hB.2.2.2.2.2.1
+    have hS0 : RS W s { A with F := Ft, es := pre ++ kt } := rs_congr hS rfl rfl (by simp [hesl, hkl]) rfl rfl
+    have hS1 : RS W (bset s (u 11) (u 2)) { A with F := Ft, es := pre ++ kt, ph := 2 } :=
+      rs_set hS0 (r := 11) (by omega) _ (by simp [regL]) rfl
+    have hS2 := o2_eq hS1 (Φ0 := Φ0) (r := r) hΦ hb30 (k := 6) (by omega) A.es.length
+    have hS3 := o2_eq hS2 (Φ0 := Φ0) (r := r.set 6 A.es.length) rfl (by simpa [hΦ] using hb30) (k := 2) (by omega) 3
+    have hF2 := rf_swap (A := { A with F := Ft }) hF1 hB hsn
+    have hsm6 := small_set hsm (k := 6) (by omega) (show A.es.length < 2 ^ 60 by omega)
+    have hsm2 := small_set hsm6 (k := 2) (by omega) (show 3 < 2 ^ 60 by omega)
+    refine ⟨rs_congr hS3 rfl rfl rfl (by simp [hsn]) rfl, hF2, hV1, hT, ?_⟩
+    have hΦl : A.Φ.length = Φ0.length + 1 := by rw [hΦ]; simp
+    refine bnd_gen hB rfl ?_ ?_ ?_ ?_ ?_ ?_
+    · simp; omega
+    · simp; have := hB.2.2.2.2.2.2.1; rw [hsn] at this; simp at this; omega
+    · simp; omega
+    · intro e he; simp at he; rcases he with he | he
+      · exact hB.2.2.2.2.2.2.2.2.1 e (by rw [hes]; simp [he])
+      · have := hkv e he; omega
+    · intro x hx; rcases List.mem_append.mp hx with h | h
+      · exact hB.2.2.2.2.2.2.2.2.2.1 x (by rw [hΦ]; simp [h])
+      · simp at h; subst h; exact hsm2
+    · show 2 < 3; omega
+  · right
+    revert herr; generalize o15 16777216 s f v (u r.vc) (u A.es.length) = z; obtain ⟨s1, f1, v1⟩ := z; intro herr
+    simp only at herr ⊢
+    exact o2_err (o2_err (err_bset (by decide) herr) (by omega) (by omega) _) (by omega) (by omega) _
+
 end OwnP
