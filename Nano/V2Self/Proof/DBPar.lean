@@ -301,7 +301,9 @@ theorem pDef_par (fuel : Nat) (defs : List DefI) (ts : List Tok) (di : DefI) (da
                       obtain ⟨⟨sb, ts', r7, nx2⟩, hps, h⟩ := Option.bind_eq_some_iff.1 h
                       simp only at h
                       split at h
-                      · simp only [Option.some.injEq, Prod.mk.injEq] at h
+                      · split at h
+                        · cases h
+                        simp only [Option.some.injEq, Prod.mk.injEq] at h
                         obtain ⟨rfl, rfl, rfl⟩ := h
                         exact ⟨⟨hE _ _ _ _ _ _ _ _ hpz, hE _ _ _ _ _ _ _ _ hps⟩, Nat.le_refl 1, rfl⟩
                       · cases h
@@ -320,7 +322,9 @@ theorem pDef_par (fuel : Nat) (defs : List DefI) (ts : List Tok) (di : DefI) (da
               simp only at h
               split at h
               · cases h
-              · simp only [Option.some.injEq, Prod.mk.injEq] at h
+              · split at h
+                · cases h
+                simp only [Option.some.injEq, Prod.mk.injEq] at h
                 obtain ⟨rfl, rfl, rfl⟩ := h
                 exact ⟨hE _ _ _ _ _ _ _ _ hpe, Nat.zero_le 1, rfl⟩
           · cases h
