@@ -200,4 +200,48 @@ theorem ex_let (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hW : RsW oc
         exact ex_of_eq (fun sp => by simp only [Nat.sub_zero]; rfl) this
     · cases hc
 
+/-- argument lists -/
+theorem lst_ex (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hC : CtxOK cx D) (hK2 : ∀ s, oc.K.getD s 0 ≤ 2)
+    (hW : RsW oc) (hFM : ∀ i args, Mo (K.fs i args)) :
+    ∀ (cs : List ParSpec.Nd), (∀ n ∈ cs, NodeOK cx K oc D n ∧ NodeEx cx K oc D n) →
+    ∀ {Γ ks ds F F1 es0 esA env ew σ H v}, TyL D Γ cs ks → OwnSpec.lstA oc cs ds F es0 = some (F1, esA) →
+    EnvI σ oc.K F Γ env ew → AHeap K.hb K.κ H σ → H.top % 8 = 0 → K.hb ≤ H.top → R2 oc.K F →
+    evL cx cs env = .ok v → Ex (svL K cs ew) H
+  | [], _, _, _, _, _, _, _, _, _, _, _, H, _, _, _, _, _, _, _, _, _ => ⟨0, fun _ _ _ => ⟨([], H), by simp [svL, nilS]⟩⟩
+  | n :: r, hN, Γ, ks, ds, F, F1, es0, esA, env, ew, σ, H, v, hT, hl, hE, hA, h8, hb, hr, hev => by
+    cases hT with
+    | cons tn tr =>
+      simp only [OwnSpec.lstA, Option.bind_eq_some_iff] at hl
+      obtain ⟨x, hcn, hl⟩ := hl
+      split at hl
+      · simp only [evL, bind, Except.bind] at hev
+        cases en : val (ev cx n env) with
+        | error e => rw [en] at hev; cases hev
+        | ok vn =>
+          cases er : evL cx r env with
+          | error e => rw [en, er] at hev; cases hev
+          | ok vr =>
+            simp only [svL]
+            refine pairS_ex ((hN n (by simp)).2 hC hK2 Γ _ F _ _ env ew σ H vn tn hcn hE hA h8 hb hr (val_ok_of en))
+              (sv_mo K hFM n ew) fun sp r1 _ h1 => ?_
+            obtain ⟨σ1, v1, -, hA1, -, hE1, -, -, h81, hb1, -, -, -⟩ :=
+              (hN n (by simp)).1 hC hK2 Γ _ F _ _ env ew σ sp H r1.1 r1.2 tn hcn hE hA h8 hb hr h1
+            exact lst_ex cx K oc D hC hK2 hW hFM r (fun m hm => hN m (by simp [hm])) tr hl hE1 hA1 h81 hb1
+              (hr.keep (chk_keep hK2 hW tn rfl _ _ _ hcn).1) er
+      · cases hl
+
+theorem ex_pair (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hW : RsW oc) (hFM : ∀ i args, Mo (K.fs i args))
+    (cs : List ParSpec.Nd) (hN : ∀ n ∈ cs, NodeOK cx K oc D n ∧ NodeEx cx K oc D n) : NodeEx cx K oc D (.pair cs) := by
+  intro hC hK2 Γ ks F F' es env ew σ H v hT hc hE hA h8 hhb hr hev
+  cases hT with
+  | pair tl =>
+    simp only [OwnSpec.chk, Option.bind_eq_some_iff] at hc
+    obtain ⟨⟨x1, x2⟩, hl, -⟩ := hc
+    simp only [ev, bind, Except.bind] at hev
+    cases el : evL cx cs env with
+    | error e => rw [el] at hev; cases hev
+    | ok vl =>
+      simp only [sv]
+      exact lst_ex cx K oc D hC hK2 hW hFM cs hN tl hl hE hA h8 hhb hr el
+
 end NanoMain
