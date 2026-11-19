@@ -2,6 +2,7 @@
 import Nano.V2Self.Proof.ParRunAtom
 import Nano.V2Self.Proof.ParTreeOK
 import Nano.V2Self.Proof.ParSpecTail
+import Nano.V2Self.Proof.ParRunTy
 namespace ParRun
 open ParSpec
 
@@ -105,24 +106,10 @@ theorem pLoop_stop {f cx m a ta ts nx} (hf : 1 ≤ f) (hs : ∀ t r op p, ts = .
   · rfl
 
 
-/-- no `Nat` inside a pair (Par1 rejects code 4 as a pair component, v10) -/
-def _root_.ParSpec.Sh.nnt : Sh → Bool
-  | .p a b => a != .nt && b != .nt && a.nnt && b.nnt
-  | _ => true
-
 def ShNN (o : Option Sh) : Prop := ∃ s, o = some s ∧ s.nnt = true
 
 /-- the tables hold no nested Nat -/
 def CxNN (st : St) : Prop := (∀ bd ∈ st.binds, ShNN bd.sh) ∧ (∀ d ∈ rows st, ShNN d.res ∧ ∀ p ∈ d.params, p.nnt = true)
-
-theorem _root_.ParSpec.Sh.hasN_of_nnt {s : Sh} (h : s.nnt = true) (hn : s ≠ .nt) : s.hasN = false := by
-  induction s with
-  | p a b iha ihb =>
-    simp only [Sh.nnt, Bool.and_eq_true, bne_iff_ne, ne_eq] at h
-    obtain ⟨⟨⟨ha, hb⟩, ha'⟩, hb'⟩ := h
-    simp [Sh.hasN, iha ha' ha, ihb hb' hb]
-  | nt => exact absurd rfl hn
-  | _ => rfl
 
 theorem CxNN.transport {st st' : St} (h : CxNN st) (hb : st'.binds = st.binds) (hd : st'.defs = st.defs) (hc : st'.cur = st.cur) :
     CxNN st' := by
