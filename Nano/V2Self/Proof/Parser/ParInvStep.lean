@@ -420,7 +420,7 @@ theorem v1_ok (h : Buf) (c a b : UInt64) (hs : bget (v1 h c a b) 0 ≠ 0) : (bge
   · exact hc0
   exfalso
   have hc := hc0
-  have : ¬ bget h 5 < d12 := fun x => hc (by have := UInt64.lt_iff_toNat_lt.mp x; simpa using this)
+  have : ¬ bget h 5 < d12 := fun x => hc (by have := UInt64.lt_iff_toNat_lt.mp x; exact this)
   apply hs; unfold v1; simp only [this, if_false]; rw [bget_bset]; split <;> simp_all [bget, List.getD]
 
 /-! ## tokens at the cursor -/
