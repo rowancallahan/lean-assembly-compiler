@@ -137,11 +137,9 @@ theorem bsize_srun {K : LayW} {C pc} (s : St) (hC : At C pc bsizeT) (w0 : wok K 
 
 /-! ## li -/
 
-theorem li_srun {K : LayW} {C pc d} {v : UInt64} (s : St) (hd : d ≠ 0) (hd32 : d < 32) (hx0 : s.x 0 = 0)
-    (hC : At C pc (liT d v)) :
-    ∃ s', SStar K C (pc, s) (pc + (liT d v).length, s') ∧ s'.x = upd s.x d v ∧ s'.m = s.m ∧ s'.b = s.b := by
-  obtain ⟨s', hr, hx, hm, hb⟩ := li_run s hd hx0 hC
-  refine ⟨s', sstar_of_run hr fun i hi c hc => ?_, hx, hm, hb⟩
+theorem li_sr {K : LayW} {C pc d} {v : UInt64} (s : St) (hd : d ≠ 0) (hd32 : d < 32) (hx0 : s.x 0 = 0)
+    (hC : At C pc (liT d v)) : SR K C (liT d v).length (pc, s) := by
+  intro i hi c hc
   by_cases hv : v.toNat < 2048
   · have h0 := hC.at 0 (by simp [liT_len_small d v hv])
     simp [liT, hv] at h0
@@ -177,6 +175,12 @@ theorem li_srun {K : LayW} {C pc d} {v : UInt64} (s : St) (hd : d ≠ 0) (hd32 :
       simp [UInt64.toNat_shiftLeft, Nat.shiftLeft_eq]; omega
     rw [hs]
     refine ⟨hd32, hd32, by omega, by omega, by omega, by omega⟩
+
+theorem li_srun {K : LayW} {C pc d} {v : UInt64} (s : St) (hd : d ≠ 0) (hd32 : d < 32) (hx0 : s.x 0 = 0)
+    (hC : At C pc (liT d v)) :
+    ∃ s', SStar K C (pc, s) (pc + (liT d v).length, s') ∧ s'.x = upd s.x d v ∧ s'.m = s.m ∧ s'.b = s.b := by
+  obtain ⟨s', hr, hx, hm, hb⟩ := li_run s hd hx0 hC
+  exact ⟨s', sstar_of_run hr (li_sr s hd hd32 hx0 hC), hx, hm, hb⟩
 
 /-! ## CONST -/
 
@@ -717,5 +721,120 @@ theorem rd_srun {K : LayW} {C pc} (s : St) (hC : At C pc rdT) (hx0 : s.x 0 = 0) 
       simp [Safe, h0, h1, h2, h5, wr, e0, e1, hcc, hi, hx0, ea, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (29:Nat) ≠ 6 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), show ((pc : Int) + 1 + 1 + 3).toNat = pc + 5 by omega] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h5, wr, e0, e1, hcc, hi, hx0, ea, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (29:Nat) ≠ 6 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), show ((pc : Int) + 1 + 1 + 3).toNat = pc + 5 by omega] at hc; subst hc
       simp [Safe, h0, h1, h2, h5, wr, e0, e1, hcc, hi, hx0, ea, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (29:Nat) ≠ 6 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), show ((pc : Int) + 1 + 1 + 3).toNat = pc + 5 by omega] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+
+/-! ## BNEW -/
+
+theorem bnew_srun {L : LayW} {C : List J} {pc tgt κ : Nat} (s : St) (hC : At C pc (bnewT tgt pc κ)) (hx0 : s.x 0 = 0)
+    (hκ : κ < 2 ^ 40) (hsp : (s.x 31).toNat < 2 ^ 62)
+    (hroom : (s.x 30).toNat + 8 * (κ + 2) + 8 ≤ (s.x 31).toNat)
+    (w0 : wok L (s.x 30).toNat) (w1 : wok L ((s.x 30).toNat + 8)) (w2 : wok L ((s.x 31).toNat - 8)) :
+    ∃ s', SStar L C (pc, s) (pc + (bnewT tgt pc κ).length, s') ∧
+      (s'.x 31).toNat = (s.x 31).toNat - 8 ∧ (s'.x 30).toNat = (s.x 30).toNat + 8 * (κ + 2) ∧ s'.x 5 = s.x 30 ∧
+      s'.m = upd (upd (upd s.m (s.x 30).toNat 0) ((s.x 30).toNat + 8) (UInt64.ofNat κ)) ((s.x 31).toNat - 8) (s.x 30) ∧
+      s'.b = s.b ∧ (∀ r, r ≠ 5 → r ≠ 6 → r ≠ 7 → r ≠ 30 → r ≠ 31 → s'.x r = s.x r) := by
+  obtain ⟨s', hr, rest⟩ := bnew_runK s hC hx0 hκ hsp hroom
+  refine ⟨s', sstar_of_run hr ?_, rest⟩
+
+  have lt31 := (s.x 31).toNat_lt
+  have lt30 := (s.x 30).toNat_lt
+  have hC' : At C pc ([.addi 5 30 0] ++ (liT 6 (UInt64.ofNat ((κ + 2) * 8)) ++ ([.alu 1 6 6 30, .bgeu 31 6 2,
+      .jal 0 ((tgt : Int) - ((pc + 1 + (liT 6 (UInt64.ofNat ((κ + 2) * 8))).length + 2 : Nat) : Int))] ++
+      (liT 7 (UInt64.ofNat κ) ++ ([.sd 0 5 0, .sd 7 5 8, .addi 30 6 0] ++
+      pushA tgt (pc + 1 + (liT 6 (UInt64.ofNat ((κ + 2) * 8))).length + 3 + (liT 7 (UInt64.ofNat κ)).length + 3) 5))))) := hC
+  generalize hW : UInt64.ofNat ((κ + 2) * 8) = W at *
+  generalize hK : UInt64.ofNat κ = K at *
+  have hWn : W.toNat = (κ + 2) * 8 := by rw [← hW]; simp only [UInt64.toNat_ofNat']; omega
+  have hKn : K.toNat = κ := by rw [← hK]; simp only [UInt64.toNat_ofNat']; omega
+  have p1 := hC'.left
+  have R1 : At C (pc + 1) (liT 6 W ++ ([.alu 1 6 6 30, .bgeu 31 6 2,
+      .jal 0 ((tgt : Int) - ((pc + 1 + (liT 6 W).length + 2 : Nat) : Int))] ++
+      (liT 7 K ++ ([.sd 0 5 0, .sd 7 5 8, .addi 30 6 0] ++ pushA tgt (pc + 1 + (liT 6 W).length + 3 + (liT 7 K).length + 3) 5)))) := by
+    simpa using hC'.right
+  have p2 := R1.left
+  have R2 : At C (pc + 1 + (liT 6 W).length) ([.alu 1 6 6 30, .bgeu 31 6 2,
+      .jal 0 ((tgt : Int) - ((pc + 1 + (liT 6 W).length + 2 : Nat) : Int))] ++
+      (liT 7 K ++ ([.sd 0 5 0, .sd 7 5 8, .addi 30 6 0] ++ pushA tgt (pc + 1 + (liT 6 W).length + 3 + (liT 7 K).length + 3) 5))) := R1.right
+  have p3 := R2.left
+  have R3 : At C (pc + 1 + (liT 6 W).length + 3) (liT 7 K ++ ([.sd 0 5 0, .sd 7 5 8, .addi 30 6 0] ++
+      pushA tgt (pc + 1 + (liT 6 W).length + 3 + (liT 7 K).length + 3) 5)) := by simpa using R2.right
+  have p4 := R3.left
+  have R4 : At C (pc + 1 + (liT 6 W).length + 3 + (liT 7 K).length) ([.sd 0 5 0, .sd 7 5 8, .addi 30 6 0] ++
+      pushA tgt (pc + 1 + (liT 6 W).length + 3 + (liT 7 K).length + 3) 5) := R3.right
+  have p5 := R4.left
+  have p6 : At C (pc + 1 + (liT 6 W).length + 3 + (liT 7 K).length + 3)
+      (pushA tgt (pc + 1 + (liT 6 W).length + 3 + (liT 7 K).length + 3) 5) := by simpa using R4.right
+  have e30 : UInt64.ofNat (s.x 30).toNat = s.x 30 := by simp
+  -- 1: t0 := t5
+  have h1 := p1.at 0 (by simp); simp at h1
+  let s1 : St := ⟨upd s.x 5 (s.x 30), s.m, s.b⟩
+  have r1 : run C 1 (pc, s) = some (pc + 1, s1) := by
+    simp [run, step, h1, wr, ea, e30, s1]
+  have z1 : s1.x 0 = 0 := by simp [s1, upd_ne, hx0]
+  -- 2: li t1 W
+  obtain ⟨s2, r2, hx2, hm2, hb2⟩ := li_run (d := 6) s1 (by decide) z1 p2
+  have a30 : s2.x 30 = s.x 30 := by rw [hx2]; simp [s1, upd_ne]
+  have a31 : s2.x 31 = s.x 31 := by rw [hx2]; simp [s1, upd_ne]
+  have a6 : s2.x 6 = W := by rw [hx2]; simp [upd_same]
+  have a5 : s2.x 5 = s.x 30 := by rw [hx2]; simp [s1, upd_ne, upd_same]
+  have a0 : s2.x 0 = 0 := by rw [hx2]; simp [s1, upd_ne, hx0]
+  have mm2 : s2.m = s.m := hm2
+  -- 3: t1 := t1 + t5
+  have h3 := p3.at 0 (by simp); simp at h3
+  let s3 : St := ⟨upd s2.x 6 (W + s.x 30), s2.m, s2.b⟩
+  have r3 : run C 1 (pc + 1 + (liT 6 W).length, s2) = some (pc + 1 + (liT 6 W).length + 1, s3) := by
+    simp [run, step, h3, wr, aluf, a6, a30, s3]
+  -- 4: bgeu taken
+  have h4 := p3.at 1 (by simp); simp at h4
+  have hsum : (W + s.x 30).toNat = (κ + 2) * 8 + (s.x 30).toNat := by
+    rw [UInt64.toNat_add, hWn]; simp; omega
+  have r4 : step C (pc + 1 + (liT 6 W).length + 1, s3) = some (pc + 1 + (liT 6 W).length + 3, s3) := by
+    have : (s3.x 6).toNat ≤ (s3.x 31).toNat := by
+      simp [s3, upd_same, upd_ne, a31, hsum]; omega
+    rw [s_bgeu_t h4 (by simpa using this)]
+    first | rfl | (congr 1; congr 1; omega) | (congr 1; omega)
+  -- 5: li t2 K
+  have z3 : s3.x 0 = 0 := by simp [s3, upd_ne, a0]
+  obtain ⟨s5, r5, hx5, hm5, hb5⟩ := li_run (d := 7) s3 (by decide) z3 p4
+  have b30 : s5.x 30 = s.x 30 := by rw [hx5]; simp [s3, upd_ne, a30]
+  have b31 : s5.x 31 = s.x 31 := by rw [hx5]; simp [s3, upd_ne, a31]
+  have b6 : s5.x 6 = W + s.x 30 := by rw [hx5]; simp [s3, upd_ne, upd_same]
+  have b5 : s5.x 5 = s.x 30 := by rw [hx5]; simp [s3, upd_ne, a5]
+  have b7 : s5.x 7 = K := by rw [hx5]; simp [upd_same]
+  have b0 : s5.x 0 = 0 := by rw [hx5]; simp [s3, upd_ne, a0]
+  have mm5 : s5.m = s.m := by rw [hm5]; exact mm2
+  -- 6, 7, 8: len := 0; cap := κ; t5 := t1
+  have h6 := p5.at 0 (by simp); have h7 := p5.at 1 (by simp); have h8 := p5.at 2 (by simp)
+  simp at h6 h7 h8
+  have eT0 : ea (s5.x 5) 0 = (s.x 30).toNat := by simp [ea, b5]
+  have eT8 : ea (s5.x 5) 8 = (s.x 30).toNat + 8 := by simp [ea, b5]; omega
+  let s8 : St := ⟨upd s5.x 30 (W + s.x 30), upd (upd s5.m (s.x 30).toNat 0) ((s.x 30).toNat + 8) K, s5.b⟩
+  have ea0 : ∀ b : UInt64, ea b 0 = b.toNat := fun b => by simp [ea]
+  have e6 : UInt64.ofNat (ea (W + s.x 30) 0) = W + s.x 30 := by rw [ea0]; exact UInt64.ofNat_toNat
+  have r678 : run C 3 (pc + 1 + (liT 6 W).length + 3 + (liT 7 K).length, s5) =
+      some (pc + 1 + (liT 6 W).length + 3 + (liT 7 K).length + 3, s8) := by
+    simp [run, step, h6, h7, h8, wr, eT0, eT8, b0, b7, e6, b6, s8]
+  have y30 : s8.x 30 = W + s.x 30 := by simp [s8, upd_same]
+  have y31 : s8.x 31 = s.x 31 := by simp [s8, upd_ne, b31]
+  have y5 : s8.x 5 = s.x 30 := by simp [s8, upd_ne, b5]
+  have hh8 : (s8.x 30).toNat + 8 ≤ (s8.x 31).toNat := by
+    rw [y30, y31, hsum]; omega
+  have r4' : run C 1 (pc + 1 + (liT 6 W).length + 1, s3) = some (pc + 1 + (liT 6 W).length + 3, s3) := by simp [run, r4]
+  have r9 := push_run (s := s8) (by simpa [pushA] using p6) (by decide) (by decide) hh8
+  have q1 : SR L C 1 (pc, s) := SR.one (by simp [Safe, h1]; have := (s.x 30).toNat_lt; omega)
+  have q2 := li_sr (K := L) (d := 6) (v := W) s1 (by decide) (by decide) z1 p2
+  have q3 : SR L C 1 (pc + 1 + (liT 6 W).length, s2) := SR.one (by simp [Safe, h3])
+  have q4 : SR L C 1 (pc + 1 + (liT 6 W).length + 1, s3) := SR.one (by simp [Safe, h4])
+  have q5 := li_sr (K := L) (d := 7) (v := K) s3 (by decide) (by decide) z3 p4
+  have q6 : SR L C 3 (pc + 1 + (liT 6 W).length + 3 + (liT 7 K).length, s5) := by
+    intro j hj c hc
+    rcases (by omega : j = 0 ∨ j = 1 ∨ j = 2) with rfl | rfl | rfl
+    · simp [run] at hc; subst hc; simp only [Safe, h6, eT0]; exact ⟨by decide, by decide, by decide, by decide, by omega, w0⟩
+    · simp [run, step, h6, eT0] at hc; subst hc; simp only [Safe, h7, eT8]; exact ⟨by decide, by decide, by decide, by decide, by omega, w1⟩
+    · simp [run, step, h6, h7, eT0, eT8] at hc; subst hc
+      simp only [Safe, h8, b6]
+      refine ⟨by decide, by decide, by decide, by decide, by omega, ?_⟩
+      rw [hsum]; omega
+  have q9 := push_sr (K := L) (s := s8) (by simpa [pushA] using p6) (by decide) hh8 (by rw [y31]; exact w2)
+  exact q1.add r1 (q2.add r2 (q3.add r3 (q4.add r4' (q5.add r5 (q6.add r678 q9)))))
 
 end SafeRun
