@@ -496,3 +496,11 @@ For now ACCEPTED: B₁ is compiled by the Lean toolchain (trusted), and the fixe
 Future: prove B₂ = mC(T) in the Lean kernel (stage-by-stage, chunked kernel evaluation with intermediate literals), which removes
 the Lean-compiler trust and leaves only the kernel, the Sail model and Spec/. Feasibility unmeasured; do it after the
 certificate's text link (refParse(lex T) = PC.all), which is the first half of the same job.
+
+## NEXT (owner, 2026-11-19): ARM back end for compiler #2 (C)
+Goal: `CompileCorrect arm compileC_arm` and `CompileRuns arm compileC_arm` against the ARM Sail model, same statement shape as RISC-V
+(Spec/Alloc.lean, `armMapping` in Spec/Machines.lean). Reuse: C's front end, ownership and certificate unchanged; a new
+code generator to AArch64 from the same reference code (CG / J machine templates), proofs mirroring the RISC-V Machine/
+layer, built on the existing Arm/proofs full-step lemmas (b, bl, cbz/cbnz, b.cond, movz/movk, add/sub imm, mov, ldr/str/ldrb/strb/stur,
+register ALU ops). Later: write the ARM generator in the nano subset so C self-hosts on ARM (native on Apple Silicon).
+Starts after the post-proof organization pass.
