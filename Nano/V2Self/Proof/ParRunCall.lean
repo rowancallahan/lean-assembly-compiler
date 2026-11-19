@@ -83,8 +83,8 @@ inductive AtomLeaf (st : St) : St → Prop
   | bnew {r} : st.toks = .k 43 :: r → AtomLeaf st (leaf { st with toks := r } 9 5 0 .bf)
 
 theorem argAtom_inv {st st' : St} {fr : List Frame} (h : stepF .argAtom st = some (fr, st')) :
-    (∃ r, st.toks = .k 6 :: r ∧ fr = [.expr 0 false, .parenClose] ∧ st' = { st with toks := r }) ∨
-    (∃ v r, st.toks = .num v :: r ∧ fr = [.prim false] ∧ st' = st) ∨
+    (∃ r, st.toks = .k 6 :: r ∧ fr = [.expr 0 0, .parenClose] ∧ st' = { st with toks := r }) ∨
+    (∃ v r, st.toks = .num v :: r ∧ fr = [.prim 0] ∧ st' = st) ∨
     (∃ x r bd, st.toks = .id x :: r ∧ findB st.binds x = some bd ∧ fr = [] ∧ locOf { st with toks := r } bd = some st') ∨
     (fr = [.argName] ∧ st' = st ∧ ∀ x r, st.toks = .id x :: r → findB st.binds x = none) := by
   simp only [stepF] at h
@@ -123,13 +123,13 @@ theorem argName_inv {st st' : St} {fr : List Frame} (h : stepF .argName st = som
   · simp at h; exact ⟨h.1, Or.inr (Or.inr ⟨_, ‹_›, h.2.symm⟩)⟩
   · simp at h
 
-theorem prim_num {tl : Bool} {st : St} {v : Nat} {r : List Tok} (h : st.toks = .num v :: r) :
-    stepF (.prim tl) st = some ([], leaf { st with toks := r } 1 v 0 .uw) := by
+theorem prim_num {md : Nat} {st : St} {v : Nat} {r : List Tok} (h : st.toks = .num v :: r) :
+    stepF (.prim md) st = some ([], leaf { st with toks := r } 1 v 0 .uw) := by
   simp [stepF, h]
 
 /-- an argument atom: a parenthesised expression / tuple, or a leaf -/
 theorem atom_run {n : Nat} {ks : List Frame} {st fin : St} (h : StarN n (.argAtom :: ks, st) ([], fin)) :
-    (∃ r n', st.toks = .k 6 :: r ∧ n = n' + 1 ∧ StarN n' (.expr 0 false :: .parenClose :: ks, { st with toks := r }) ([], fin)) ∨
+    (∃ r n', st.toks = .k 6 :: r ∧ n = n' + 1 ∧ StarN n' (.expr 0 0 :: .parenClose :: ks, { st with toks := r }) ([], fin)) ∨
     (∃ st1 n', n' < n ∧ AtomLeaf st st1 ∧ StarN n' (ks, st1) ([], fin)) := by
   match n, h with
   | 0, h => exact absurd h.zero_nil.1 (by simp)

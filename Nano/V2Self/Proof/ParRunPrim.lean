@@ -29,8 +29,8 @@ theorem prim_tok {t : Nat} (h : (primSig t).isSome) : t ≠ 30 ∧ 38 < t ∧ t 
   unfold primSig at h
   split at h <;> simp at h <;> omega
 
-theorem prim_head {tl : Bool} {st : St} {t : Nat} {r : List Tok} (ht : st.toks = .k t :: r) (h1 : 38 < t) (h2 : t < 48) :
-    stepF (.prim tl) st =
+theorem prim_head {md : Nat} {st : St} {t : Nat} {r : List Tok} (ht : st.toks = .k t :: r) (h1 : 38 < t) (h2 : t < 48) :
+    stepF (.prim md) st =
       some ([.args (.pr (t - 38)) (primAr (t - 38)), .mkCallN (.pr (t - 38)) st.vals.length], { st with toks := r }) := by
   have ht' : t = 39 ∨ t = 40 ∨ t = 41 ∨ t = 42 ∨ t = 43 ∨ t = 44 ∨ t = 45 ∨ t = 46 ∨ t = 47 := by omega
   rcases ht' with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;> simp [stepF, ht]
