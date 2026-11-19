@@ -29,20 +29,20 @@ theorem bin_of {n : Nat} (hP : ∀ n' < n, PrimSpec n') (hL : ∀ n' < n, LoopSp
   simp only [List.cons_append, List.nil_append] at h1
   obtain ⟨a, st1, n1, hn1, hp1, hlt1, h2, hspa⟩ := hP n (by omega) 2 _ _ fin cx h1 hc (Or.inl rfl)
   let ta : Ty := if hva : VT (rows st) a then Classical.choose (hspa hva) else .bot
-  have hta : VT (rows st1) a → TyRel a ta := fun hva => by
+  have hta : VT (rows st1) a → TyRel a ta ∧ PT a := fun hva => by
     have hr : rows st1 = rows st := by simp [rows, hp1.defs, hp1.cur]
     rw [hr] at hva
-    simp only [ta, dif_pos hva]; exact (Classical.choose_spec (hspa hva)).1
-  obtain ⟨v, st', n', hn', hp, hsub, hrun, hspec⟩ :=
+    simp only [ta, dif_pos hva]; exact ⟨(Classical.choose_spec (hspa hva)).1, (Classical.choose_spec (hspa hva)).2.1⟩
+  obtain ⟨v, st', n', hn', hp, hsub, hrun, hstop, hspec⟩ :=
     hL n1 (by omega) m ks st1 fin cx a st.vals ta h2 hp1.vals (CxRel.transport hc hp1.binds hp1.defs) hta
   have hr : rows st1 = rows st := by simp [rows, hp1.defs, hp1.cur]
   refine ⟨v, st', n', by omega, ⟨hp.vals, by rw [hp.binds, hp1.binds], by rw [hp.defs, hp1.defs], by rw [hp.cur, hp1.cur],
     by rw [hp.arm, hp1.arm], by rw [hp.all, hp1.all], by have := hp.toks; omega, by have := hp.nx; have := hp1.nx; omega⟩,
-    by have := hp.toks; omega, hrun, fun hvt => ?_⟩
+    by have := hp.toks; omega, hrun, hstop, fun hvt => ?_⟩
   rw [hr] at hspec
-  obtain ⟨ty, hty, hf⟩ := hspec hvt
+  obtain ⟨ty, hty, hpt, hf⟩ := hspec hvt
   have hva : VT (rows st) a := fun u hu => hvt u (hsub u hu)
-  refine ⟨ty, hty, fun f hf' => ?_⟩
+  refine ⟨ty, hty, hpt, fun f hf' => ?_⟩
   obtain ⟨g, rfl⟩ : ∃ g, f = g + 1 := ⟨f - 1, by omega⟩
   have hpa := (Classical.choose_spec (hspa hva)).2.2 g (by omega)
   simp only [show (2 == 1) = false from rfl] at hpa
