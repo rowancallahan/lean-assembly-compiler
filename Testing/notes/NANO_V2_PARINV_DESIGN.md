@@ -135,10 +135,16 @@ Fuel arguments: argCheck accepts a Nat parameter for sh = nt, a bare numeral (ta
   `toNd`, type `.s res`), `primcall_spec` (prim application = prim clause of `pApp`; `prim_toNd`), `prim_inpPair` (the prim input rule from
   `nodeOK` of the built node).  Statement style = B's ty_sound (∀ fuel ≥ F ⇒ `some`); both call theorems take `InpPair` of the built node
   as a premise (deferred validation) and return the continuation run with the node pushed.
-NEXT: (1) `InpPair di.params kids` for def CALLs from `nodeOK` (`inpMatch d.params false kids`) + a row invariant "the row's first code-ls
-parameter is the DefI's `.inp`, no other" (to be added to `CxRel.row`; F establishes it at the def header; true since fix J); (2) the heads:
-`.prim md` on an id (def call, `findD (rows st)` vs `findDef`: j < |defs| unless self) / prim token ⇒ `pApp` via `defcall_spec` /
-`primcall_spec` — belongs to B's expression induction, lemmas are ready; (3) machine 43 (v120) and 55 (v126): name lookup on Rep
-(v7_lookup / v8_lookup ↔ findB / findD) and the LOC node — C was asked whether it owns these (no answer yet); (4) machine 63 (v130) with
-`v10_scan` once C bounds `ShapeCode` by h[26]; (5) binders 66–68 ↔ `pBinders`/`bindSlots` (stepF mirrors H/J: `assign i sz`).
+* Layer 3 [pushed, on C's stable Rep]: `ParInvBind.h_binders` (66, v131); `ParInvName` — `v85_drop` / `v8_drop` / `v7_drop`, `v8_val`
+  (h[22] = findD index + 1 / 0), `v7_findB` (h[21] ↔ `findB`), `bindTab_of`, `idxOf_findB`, `rep_same` (Rep across `Same 21/22`);
+  `ParInvArgName.h_argName` (55, v126; needs no flatten frame on the stack); `ParInvAtom` — `tok_num`, `v9_cw`, `ShapeCode.nt_code`.
+  `ParRunCallSpec.def_inpPair` / `inpMatch_get`: v210's `inpMatch` ⇒ `InpPair`, given the row invariant `FirstLs` (asked of F).
+AGREED (owner relay, 09:30): statement form = ty_sound's (∀ fuel ≥ F ⇒ `some`), no 3-valued spec; B adopts `CxRel` / `TyRel` and plugs
+`args_spec` / `defcall_spec` / `primcall_spec` into its expression induction via `ParenH`; F = defs / headers / arms / flatten / top.
+Build runner for G: Haiku session_01MfKuVZqa87sKK2KCMC5w2M.
+WAITING ON C (asked 09:50): (1) `rep_v5` / `arena_v5` demand `A, B < 2^64`; a LOC node's slot is only known mod 2^64 ⇒ relax to
+`t ≠ 2 → t ≠ 5 → …` (RNRep.mk already is) — then `h_argAtom` (43, v120): branches `(` → push 40, 1; numeral → push 3; id: `v7_findB`,
+free ⇒ push 55, bound ⇒ `v86_skip`, row cells, `v9_cw`, LOC via rep_v5 = `locOf` (code 4 ⇒ fail, `ShapeCode.nt_code`);
+(2) `ShapeCode.pr` bound `c < 5 + h[26]` + Rep fact on h[26] ⇒ `h_tyPair` (63, v130) from `v10_scan`, and `h_assign` (68, v133).
+NEXT after that: `h_group` (67, v132: id ⇒ `tok_id`, `v86_skip`, v6 row append with sh = none; `:` ⇒ push 66, 68, 4, 61).
 
