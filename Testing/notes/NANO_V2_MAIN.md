@@ -1,6 +1,6 @@
 # NANO_V2_MAIN: the end-to-end statement for C (Opus box D)
 
-File: `Nano/V2Self/Proof/Main.lean` (namespace `NanoMain`), builds in ~2 s. No sorry. Axioms of `compiler_correct`:
+File: `Nano/V2Self/Proof/Main/Main.lean` (namespace `NanoMain`), builds in ~2 s. No sorry. Axioms of `compiler_correct`:
 propext, Classical.choice, Quot.sound + the Sail extern set (from `Proven.Cfg` / `runsTo` in the statement).
 
 ## The statement
@@ -28,7 +28,7 @@ propext, Classical.choice, Quot.sound + the Sail extern set (from `Proven.Cfg` /
 - `compiler_correct (HP : ParStage) (HG : GenStage) x (hx : x.length ≤ 2^20) (h : mC x ≠ []) :
    ∃ ts p, LexSpec.Lexes x ts ∧ ParsesProgram ts p ∧ ImplementsC (mC x) (Sem κC p)` — PROVED from HP, HG.
 
-## Non-vacuity (`Nano/V2Self/Proof/MainWitness.lean`, 19 s, 2.4 GB, axioms propext/choice/Quot.sound)
+## Non-vacuity (`Nano/V2Self/Proof/Tests/MainWitness.lean`, 19 s, 2.4 GB, axioms propext/choice/Quot.sound)
 Per stage, `decide +kernel`, for 3 sources (`def m … := []`, ParSpec ex1 (call, RD/PUT/BNEW), ex3 (fuel loop, CONTINUE)):
 `C.s10 x = ts` (hence `Lexes x ts`), `refParse ts = some p` with `serialize p = a`, `C.g41 x a ≠ []` (428 / 720 / 796
 bytes); so `GenStage`'s premise holds with non-empty code, and `C.y16 ts = a → mC x ≠ []`.  `sem2`/`sem3`: `Sem` gives the
@@ -60,7 +60,7 @@ Options: (a) Par1 layout sized by the token count (offsets d1..d11 as functions 
   npw/nres < 251, npw < 2^20, `(serialize ds).length < 2^31` — these must come from Gen's success checks (A) or input size.
 
 ## In the owner's top-level vocabulary (`MainTop.lean`, 13 s; axioms = compiler #1's: Sail extern set + standard)
-| | compiler #1 (`Riscv/Back/S3Top.lean`) | C (`Nano/V2Self/Proof/MainTop.lean`) |
+| | compiler #1 (`Riscv/Back/S3Top.lean`) | C (`Nano/V2Self/Proof/Main/MainTop.lean`) |
 |---|---|---|
 | theorem | `compile_correctL : CompileCorrectL riscv compile` | `C_correctL : ParStage → GenStage → CompileCorrectL riscv compileC` |
 | programs `P` | its source AST | `Src` = source TEXT (bytes) |

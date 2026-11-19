@@ -6,7 +6,7 @@ What has to be trusted in C's correctness theorem. Companion file: `Nano/V2Self/
 
 ## 1. The theorems
 
-**`NanoMain.C_correctLO : CompileCorrectL riscv compileC`**, at `Nano/V2Self/Proof/ParCapBnd.lean:118`. It has no premises.
+**`NanoMain.C_correctLO : CompileCorrect riscv compileC`**, at `Nano/V2Self/Proof/Parser/ParCapBnd.lean:118`. It has no premises.
 
 In plain words: take any source text `s` that C compiles, so `compileC s = some compiled`, and any reading of `s` as a
 function `f : α → β`. A reading means `Computes`: for every `a : α`, the text's meaning on the bytes `encodeInput a` is
@@ -25,7 +25,7 @@ bytes of work memory. Then the machine reaches, by retired instructions only, a 
 is `r = .error .cap ∨ r = .ok v`: either a buffer overflowed, or the result is exactly the Lean function's. `stuck` is
 excluded.
 
-**C compiled by itself** (E, `Nano/V2Self/Proof/SelfC.lean`; the generic versions with `hsrc` as a hypothesis are in
+**C compiled by itself** (E, `Nano/V2Self/Proof/Main/SelfC.lean`; the generic versions with `hsrc` as a hypothesis are in
 `SelfLink.lean`). `SrcGen.X0` is the byte list of `Testing/nano/v2self/self_S_input.txt`: D's generator checks that its
 chunks concatenate to exactly those bytes. D's kernel-checked `SrcGen.link_pc` says `X0` lexes and parses to
 `Cert.PC.all`.
@@ -60,19 +60,21 @@ chunks concatenate to exactly those bytes. D's kernel-checked `SrcGen.link_pc` s
 - `Cfg` (Spec/Riscv.lean:12): the fixed control state. M-mode, hart active, fixed misa and mstatus (MIE = 0), PMP off,
   no HTIF, one rwx PMA region equal to RAM, and the listed registers present.
 
-### Correctness notion (`Compiler/AllocSpec.lean`: NOT under `Spec/`, NOT in FROZEN.sha256; its header says "Draft")
-- `CompileCorrectL` (:128): the shape described in section 1. `CompiledA` (:45) is code plus cell size plus memory events.
-  `memoryNeeded` (:51) is cell size × the peak of those events. `KeptRegisters` (:106) and `oomFlag` (:55) = all ones.
-- The owner should confirm that this draft file is the intended top-level statement and decide whether to freeze it.
+### Correctness notion (`Spec/Alloc.lean`, moved into Spec/ by owner instruction, adbf2d1)
+- `CompileCorrect` (:130): the shape described in section 1. It was formerly `CompileCorrectL` in
+  Compiler/AllocSpec.lean; the weaker forms are now `CompileCorrectWeak` (:81) and `CompileRunsWeak` (:65).
+- `CompiledA` (:47) is code plus cell size plus memory events. `memoryNeeded` (:53) is cell size × the peak of those
+  events. `KeptRegisters` (:108) and `oomFlag` (:57) = all ones.
+- `Spec/Alloc.lean` is NOT listed in `Spec/FROZEN.sha256` (as of 3ec5c4e). Whether to freeze it is the owner's call.
 
 ### Source language: lexer and parser
-- `LexSpec.step`, `LexSpec.Lexes` (Nano/V2Self/C/Lex2Spec.lean:49, :65): maximal-munch lexing, one token per step.
+- `LexSpec.step`, `LexSpec.Lexes` (Nano/V2Self/Proof/Lex/Lex2Spec.lean:49, :65): maximal-munch lexing, one token per step.
   - Spaces and newlines are skipped; tabs and CR are rejected.
   - Operators are matched longest first; words are `[A-Za-z0-9_']+`.
   - Keywords and prims come from a table; other words are identifiers.
   - A digit-led word must be all digits and is a number taken **mod 2^64** (no overflow error).
   - Any other byte is rejected.
-- `ParSpec.tokens`, `pDef`, `pDefs`, `refParse`, `ParsesProgram` (Nano/V2Self/Proof/ParSpec.lean:49, :379, :438, :447,
+- `ParSpec.tokens`, `pDef`, `pDefs`, `refParse`, `ParsesProgram` (Nano/V2Self/Proof/Parser/ParSpec.lean:49, :379, :438, :447,
   :455): the reference grammar. The file header (lines 1–19) is the summary:
   - first-order defs and fuel loops;
   - `UInt64` / `Buf` / `List UInt8` / tuples, where the first `List UInt8` parameter is the implicit input;
@@ -85,7 +87,7 @@ chunks concatenate to exactly those bytes. D's kernel-checked `SrcGen.link_pc` s
   ran out, the text would be rejected, not mis-parsed. [UNSURE] The header calls the bound "never reached"; O has not
   seen a proof of that. It only matters for completeness, i.e. whether the theorem covers a text, never for soundness.
 
-### Source language: semantics (Nano/V2Self/Proof/Main.lean)
+### Source language: semantics (Nano/V2Self/Proof/Main/Main.lean)
 - `Stop` (:35): `cap` means a buffer reached capacity κ. `stuck` means an ill-formed AST, which never happens for a
   parsed program (per NANO_V2_MAIN.md).
 - `ev`, `evL`, `loopRun`, `prim`, `binop`, `setSlots` (:85, :76, :59, :50, :47): a word-level evaluator over slots.
@@ -98,7 +100,7 @@ chunks concatenate to exactly those bytes. D's kernel-checked `SrcGen.link_pc` s
   The output is the **low byte of each word**.
 - `κC = 524288` (:142): buffer capacity in words. Exceeding it gives `.error .cap`.
 
-### The compiler as a function (Nano/V2Self/Proof/MainTop.lean)
+### The compiler as a function (Nano/V2Self/Proof/Main/MainTop.lean)
 - `SrcC` (:32) is a text. `pOf` (:37) is the program the text denotes, chosen with `Classical.choose`. It is still
   determined: lexing is deterministic (`lexes_det`) and `refParse` is a function (`pOf_eq`).
 - `srcRun` (:49): `pOf`, then `Sem κC`. `.cap` and `.stuck` both become `none`. This is the `Program SrcC` instance (:52).
@@ -111,14 +113,14 @@ chunks concatenate to exactly those bytes. D's kernel-checked `SrcGen.link_pc` s
 
 ## 3. Things a reviewer should know
 1. **The memory bound is not explicit.** `spaceC` is non-computable and chosen; no formula or numeric bound is proved.
-   The theorem says nothing when work memory is below that bound. In particular `CompileRunsL` (OOM flag iff out of
+   The theorem says nothing when work memory is below that bound. In particular `CompileRuns` (OOM flag iff out of
    memory) is **not** proved for C. Internally, `ImplementsC` allows an OOM return only below the bound, but that is not
    in the top-level statement.
 2. **`Computes` is for all arguments.** If `Sem` hits `cap` or `stuck` on some encoded input, `srcRun` is `none` there.
    Such an `f` cannot satisfy `Computes`, so pick `α` to exclude those inputs. E's SelfLink theorem does exactly this:
    it uses a restricted input type that excludes the inputs that hit `cap`. The machine-level behaviour on `cap`
    (a0 = −2, a1 = 0, memory outside the output and work blocks unchanged) is proved inside `ImplementsC`
-   (Main.lean:153 `Outcome`), but it is not exported by `CompileCorrectL`.
+   (Main.lean:153 `Outcome`), but it is not exported by `CompileCorrect`.
 3. **Limits.** Source text at most 2^20 bytes (`compileC`). Program input at most 2^20 bytes (`StartCorrect`). Token
    stream below 2^24 words is internal (it follows from at most 9 words per byte). Defs are capped at
    `nslots < 2^20` and result width `< 2^20`. Buffers hold at most 524288 words.
@@ -141,7 +143,7 @@ chunks concatenate to exactly those bytes. D's kernel-checked `SrcGen.link_pc` s
 - `#print axioms Cert.sem_C`: propext, Quot.sound.
 - No `sorry`, no `native_decide`, no `bv_decide`, no `extern` in the proofs.
 - Trusted: the Lean kernel; the Sail RV64 model (sail-riscv-lean, from the `build-cache` branch) as a description of
-  RISC-V; `Spec/` plus `Compiler/AllocSpec.lean`; the definitions in section 2.
+  RISC-V; `Spec/` (including `Spec/Alloc.lean`); the definitions in section 2.
 - **The binary.** The theorem is about `mC`, a Lean function. The shipped bytes `B2.bin` (337,856 B, sha256
   `bb5558a58c98b13ec24ad36e2147a41ff37a3b32debbe9d08523831266e0ec4e`) were produced by **B1**: `self_S.lean` compiled by
   the Lean toolchain (`lean -c` + `leanc`) with `BootPrelude.lean`, which uses Array buffers in place of the List

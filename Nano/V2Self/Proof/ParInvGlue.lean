@@ -1,11 +1,11 @@
 /- Nano/V2Self/Proof/ParInvGlue: box C's EXPRESSION-CORE handlers with their side conditions discharged from the Layer-2 invariants
 `WF` (B: ghost operand / binding counts, SInv), `CInv` (C: modes, flatten frames on top, stash before letPairSemi) and `DInv` (F: `.defs`
 only alone).  `h_core`: for every expression-core frame, a running machine step is a `stepF` step that keeps `Rep`. -/
-import Nano.V2Self.Proof.ParInvLetPair
-import Nano.V2Self.Proof.ParInvPrimary
-import Nano.V2Self.Proof.ParRunWF
-import Nano.V2Self.Proof.ParRunCInv
-import Nano.V2Self.Proof.ParRunSmall
+import Nano.V2Self.Proof.Parser.ParInvLetPair
+import Nano.V2Self.Proof.Parser.ParInvPrimary
+import Nano.V2Self.Proof.Parser.ParRunWF
+import Nano.V2Self.Proof.Parser.ParRunCInv
+import Nano.V2Self.Proof.Parser.ParRunSmall
 namespace ParInv
 open C BufL ParSpec ParRun
 

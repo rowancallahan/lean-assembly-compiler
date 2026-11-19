@@ -5,7 +5,7 @@ self-call") is the body's.  A provisional self-call (CONTINUE, pending = 1) insi
 visible to FINISH, and the binding is dropped.  Heap layout: h[8] operand depth, h[9] node count, operand ids at
 d3 + k, node records of 8 words at d5 + 8·id (tag, payload1, payload2, shape, pending, first child, count, next). -/
 import Nano.V2Self.C.Par1
-import Nano.V2Self.Proof.BufL
+import Nano.V2Self.Proof.Gen.BufL
 
 namespace ParLet
 open BufL C

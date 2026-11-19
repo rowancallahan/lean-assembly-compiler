@@ -2,7 +2,7 @@
 nslots = 2^(k+1) − 1 without a cap (k = 3 → 15, 12 → 8191, 16 → 131071; k = 63 wraps `serialize`).  With the cap,
 refParse must reject `src k` once nslots reaches 2^20 (k ≥ 19).  Run: `lake env lean Testing/nano/v2self/parcap/wrap.lean`
 (`Sh.width` is exponential to evaluate: keep k small). -/
-import Nano.V2Self.Proof.Main
+import Nano.V2Self.Proof.Main.Main
 open ParSpec
 def src (k : Nat) : String :=
   "def m (x : List UInt8) : List UInt8 := let a0 := 1; " ++

@@ -18,11 +18,11 @@ RULES = [
     ("Parser", r"(Par(Spec|SpecLen|SpecTail|Rep|TreeOK|SerLen|CapBnd|Run.*|Inv.*)|MainTyP|DBPar)"),
     ("Own", r"(Own(Spec|WF|Stage|P\d+)|MainKeep)"),
     ("Gen", r"(Gen(Ref|Top|Width|All)|Fixup|BufL|DBNode)"),
-    ("Bridge", r"(MainBridge\d*|MainConv.*|MainTy|MainOk|SemX)"),
-    ("Main", r"(Main|MainTop|MainTopE|DBStageE|GenStageE|SelfLink|SelfC)"),
+    ("Bridge", r"(MainBridge\d*|MainConv.*|MainShift\d*|MainTy|MainOk|SemX)"),
+    ("Main", r"(Main|MainTop|MainTopE|DBStageE|GenStageE|SelfLink|SelfC|RunsTop)"),
     ("SrcLink", r"SrcLink"),
     ("Machine", r"(Call|CallA|CallExact|Expr|ExprExact|ExprBridge|ExprEV|Templates|TmGood|Heap|HeapEV|Loop|SimW|SimX|SimXB|"
-                r"Bridge|MachExact|Nd.*|NoW|EV.*|SafeRun|RoomRun|Cap.*|Start.*|GenRun|GenRunS|Host.*|GenImpl|GenMain|Runs.*)"),
+                r"Bridge|MachExact|Nd.*|NoW|EV.*|SafeRun|RoomRun|Cap.*|Start.*|GenRun|GenRunS|Host.*|GenImpl|GenMain|Runs(Shift|Thr|Def))"),
 ]
 
 def cls(b):
@@ -73,7 +73,7 @@ files = subprocess.run(["git", "ls-files", "*.lean", "*.py", "*.sh", "*.md", "*.
 changed = []
 for f in files:
     if not os.path.isfile(f) or f.startswith(".lake"): continue
-    if f in ("Testing/notes/NANO_V2_REORG.md", "Testing/notes/NANO_V2_DEADCODE.md"): continue  # old names on purpose
+    if f in ("Testing/notes/NANO_V2_REORG.md", "Testing/notes/NANO_V2_DEADCODE.md", "Testing/scripts/reorg_move.py"): continue  # old names on purpose
     try: s = open(f, encoding="utf-8").read()
     except UnicodeDecodeError: continue
     s2 = rewrite(s)

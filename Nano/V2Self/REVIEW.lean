@@ -1,8 +1,8 @@
 /- OWNER REVIEW FILE: what to read and what to trust.  No new proofs.  Notes: Testing/notes/NANO_V2_REVIEW.md.
 Build: `lake build Nano.V2Self.REVIEW`.  The #print axioms output is the authoritative axiom list. -/
-import Nano.V2Self.Proof.ParCapBnd
+import Nano.V2Self.Proof.Parser.ParCapBnd
 import Nano.V2Self.Proof.Cert.All
-import Nano.V2Self.Proof.SelfC
+import Nano.V2Self.Proof.Main.SelfC
 
 open LeanRV64D Proven Proven.Top Proven.Top.Alloc NanoMain ParSpec
 
@@ -44,7 +44,7 @@ by running B1), nor that the shipped B2.bin is `compiled.code`. -/
 #check @Proven.Top.riscvObserve
 #check @Proven.Top.riscvMapping
 #check @Proven.Cfg
--- top-level correctness notion (Compiler/AllocSpec.lean: NOT in Spec/, not covered by FROZEN.sha256)
+-- top-level correctness notion (Spec/Alloc.lean; not listed in Spec/FROZEN.sha256 as of 3ec5c4e)
 #check @Proven.Top.Alloc.CompileCorrect
 #check @Proven.Top.Alloc.CompiledA
 #check @Proven.Top.Alloc.memoryNeeded

@@ -1,7 +1,7 @@
 /- Nano/V2Self/Proof/MainPure: the CAP-FREE meaning `pev` (certificate lead).  `pev` is `NanoMain.ev` with pushes that never fail;
 `ev_pev`: whenever `ev` returns a value, `pev` returns the same one.  Per-def certificates (MainCertC*) are EQUATIONS about
 `pev` (`pdefMean … args = .ok [the Lean function's value]`); `sem_pure` transfers them to `Sem`. -/
-import Nano.V2Self.Proof.Main
+import Nano.V2Self.Proof.Main.Main
 namespace NanoMain
 open ParSpec
 

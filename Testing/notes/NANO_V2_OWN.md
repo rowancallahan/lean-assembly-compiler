@@ -5,7 +5,7 @@ Gen's BPUSH / BSET / PUT update buffers IN PLACE; `NanoMain.Sem` is pure.  `let 
 gave [1] (C) vs [0] (Lean) (NANO_V2_MAIN.md "FINDING", `alias_d`).  Fix: a stage between Par1 and Gen that rejects
 non-linear buffer use.  Driver (build_self_S.py): `m x = g41 x (o41 (y16 (s10 x)))`.
 
-## Spec: `OwnSpec.Linear p := ∃ Ks, progOk [] [] Ks p = true` (Nano/V2Self/Proof/OwnSpec.lean, on ParSpec.Nd)
+## Spec: `OwnSpec.Linear p := ∃ Ks, progOk [] [] Ks p = true` (Nano/V2Self/Proof/Own/OwnSpec.lean, on ParSpec.Nd)
 * KINDS (existential, per def, static per slot): 0 word, 1 owned buffer, 2 read-only buffer (a borrowed param).
   Params = `K.take npw`; let slots: value kinds = slot kinds; CALL args fit the callee param kinds; CONTINUE payload fits
   the state kinds ⇒ "K s = 0 ⇒ the slot holds `.w`" is an invariant of `NanoMain.ev` (no scoping assumption).

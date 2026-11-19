@@ -1,6 +1,6 @@
 /- Nano/V2Self/C: the OWNERSHIP STAGE `o41` between the parser (Par1, `y16`) and the code generator (Gen, `g41`):
 AST (IR v2.1, Testing/notes/NANO_V2_IR.md) → the same AST if the program follows the ownership discipline
-`OwnSpec.Linear` (Nano/V2Self/Proof/OwnSpec.lean: buffers are affine, borrowed only by bsize/bget/read-only params),
+`OwnSpec.Linear` (Nano/V2Self/Proof/Own/OwnSpec.lean: buffers are affine, borrowed only by bsize/bget/read-only params),
 else the EMPTY Buf (reject).  Needed because Gen's BPUSH/BSET/PUT update buffers in place.  Notes:
 Testing/notes/NANO_V2_OWN.md.  Per def: the slot kinds K (0 word, 1 owned buffer, 2 read-only param) are INFERRED by
 rounds of the walk in mode 1 (unverified heuristic: params start "unused" (3), uses raise them 3 → 0 word → 2 borrowed →
