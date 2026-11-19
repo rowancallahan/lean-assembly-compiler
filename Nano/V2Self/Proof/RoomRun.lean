@@ -366,4 +366,66 @@ theorem pro_oom_srun {K : LayW} {C : List J} {f r tgt : Nat} {s : St} (hC : At C
   · simp [s4, s3, upd, zx]
   · simp [s4, zb]
 
+
+/-- **a def at any failure kind**: cap/stuck from the body as `defCap`; `room` also at the prologue's frame check -/
+theorem defCapK {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {f p nl hb E0 : Nat} {IG : St → Prop} {Rb : Nat → Prop}
+    {Sb : SemWX} (hIG : IGOK hb E0 IG) (hP : At C f (proA 1 f (nl - p)))
+    (hB : CapW fk tg KL C (f + 12) p nl (IGp IG E0 p) IG hb E0 Rb Sb)
+    (t1 : fk = .room → tg = 1) (hb2k : 2048 ≤ hb) (h1 : 1 < C.length) (hC18 : C.length < 2 ^ 18)
+    (hfl : f + 12 ≤ C.length)
+    (hpn : p ≤ nl) (hR : ∀ k, Rb k → k < p) (hnl : nl < 251) :
+    CapD fk tg KL C f p IG hb E0 (defSF p nl Sb) := by
+  by_cases hkr : fk = .room
+  rotate_left
+  · exact defCap hIG hP hB hkr hpn hR hnl
+  subst hkr
+  have t := t1 rfl
+  subst t
+  exact {
+    cap := fun s args H ret I0 z0 R0 hl ha hE0 hE62 hx1 hret hlo hhi hbase ha31 A0 hS => by
+      unfold defSF at hS
+      split at hS
+      rotate_left
+      · rename_i hc
+        have lt64 := (s.x 31).toNat_lt
+        have top0 : (s.x 30).toNat = H.top := R0.2.2.2.2.1
+        have hbt : hb ≤ H.top := R0.2.1
+        have h30 : (s.x 30).toNat ≤ (s.x 31).toNat := by have := R0.2.2.1; omega
+        have wk : ∀ a, hb ≤ a → a + 8 ≤ E0 → a % 8 = 0 → wok KL a := fun a h1 h2 h3 => ⟨by omega, by omega, h3⟩
+        obtain ⟨s', r, e0, e28, e29, eb, hm⟩ := pro_oom_srun (K := KL) (s := s) hP (by omega) (by omega) h30 (by omega)
+          (by omega) (fun h => wk _ (by omega) (by omega) (by omega)) (fun h => wk _ (by omega) (by omega) (by omega))
+          h1 hC18 hfl
+        exact ⟨s', SStarX.of r, hIG s s' I0 e28 e29 eb (fun a ha => hm a (by omega)), by rw [e0, z0]⟩
+      rename_i hc
+      have lt64 := (s.x 31).toNat_lt
+      have top0 : (s.x 30).toNat = H.top := R0.2.2.2.2.1
+      have hbt : hb ≤ H.top := R0.2.1
+      have wk : ∀ a, hb ≤ a → a + 8 ≤ E0 → a % 8 = 0 → wok KL a := fun a h1 h2 h3 => ⟨by omega, by omega, h3⟩
+      obtain ⟨s1, hr1, h31, h8, hx, hm1⟩ := pro_srun (K := KL) (s := s) hP (by omega) (by rw [top0]; exact hc) (by omega)
+        (wk _ (by omega) (by omega) (by omega)) (wk _ (by omega) (by omega) (by omega))
+      -- the frame
+      let env1 : Env := fun k => s1.m (slotAddr p ((s.x 31).toNat - 16) k)
+      have F1 : Frame p nl s1 env1 := by intro k hk; show s1.m (slotAddr p (s1.x 8).toNat k) = _; rw [h8]
+      have O1 : FrameOK p nl s1 := ⟨by rw [h31, h8]; omega, hpn, by rw [h8]; omega⟩
+      have m1 : ∀ a, a ≠ (s.x 31).toNat - 8 → a ≠ (s.x 31).toNat - 16 → s1.m a = s.m a := by
+        intro a h1 h2; rw [hm1, upd_other _ _ h2, upd_other _ _ h1]
+      have b1 : s1.b = s.b := hr1.star.b
+      have I1 : IGp IG E0 p s1 := by
+        refine ⟨hIG s s1 I0 (hx 28 (by decide) (by decide)) (hx 29 (by decide) (by decide)) b1 (fun a ha => ?_), ?_⟩
+        · apply m1 <;> intro e <;> apply ha <;> have := R0.2.1 <;> omega
+        · rw [h8]; omega
+      have z1 : s1.x 0 = 0 := by rw [hx 0 (by decide) (by decide), z0]
+      have R1 : HRel hb s1 H := HRel_stack R0 (hx 30 (by decide) (by decide)) (by rw [h31]; omega)
+        (fun a _ h2 => m1 a (by omega) (by omega))
+      have L1 : Lay KL hb E0 p s1 :=
+        ⟨hlo, hhi, by rw [b1, hbase], by rw [h8]; omega, by rw [h31]; omega, by rw [h8]; omega⟩
+      have hS1 : Sb env1 (s1.x 31).toNat H = .error .room := by
+        rw [h31, ← hS]; apply hB.stable; intro k hk
+        have hkp := hR k hk
+        simp only [env1, argEnv, hkp, if_true]
+        rw [slotAddr_param hkp, m1 _ (by omega) (by omega), ← ha k hkp]; congr 1; omega
+      obtain ⟨s2, r2, I2, z2⟩ := hB.cap s1 env1 H I1 z1 F1 O1 R1 L1 A0 hS1
+      exact ⟨s2, (SStarX.of hr1).trans r2, I2, z2⟩
+  }
+
 end Templates
