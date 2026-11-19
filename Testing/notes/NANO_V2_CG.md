@@ -295,6 +295,13 @@ DONE later the same day (all no sorry, standard axioms, each module ≤ 3 s / �
   `o.length < 2^24`), **gen_defs_run** (on any J program holding the templates every def, main included, satisfies
   DefX for `semAt`).
 - `SK.T` only for callable ids (< table size).
+- Widths discharged by A's width pass: `Proof/NdWidth.lean` (OkV split into widths `WdV/WdT/WdL` and scoping/slots
+  `ScV/ScT/ScL`, `okV_of`), `Proof/NdWidthB.lean` (A's `W` ⇒ `WdV` and the width agrees: `wV`/`wTx`/`wL`; W inversion
+  lemmas; width bound), `Proof/NdTop2.lean` (`ser_sk` (serialized node spans its length), `wchain` (WDefs aligned with
+  the program), **gen_top**: g41 success ⇒ code = stubs ++ def templates and every def satisfies DefX for `semAt`;
+  hypotheses left: DB, npw/nres < 251, ScV, body reads ⊆ params, npw ≤ nslots, npw < 2^20, o.length < 2^24).
+- A root LOOP's width is the def's nres (`SC.q`; was `wdT z`, not dischargeable when the zero arm's then-branch is a
+  CONTINUE).
 
 OPEN (in order of value):
 1. Start code g35 + stubs g34 on the machine: needs J extensions (`srli` = g2 g_19 5, `bne` = g4 1, `sb` = g3 0, `beq`
@@ -304,8 +311,8 @@ OPEN (in order of value):
    8-aligned in the ONE work region (input must lie in it), jal targets in code, jalr targets base+4j.  Mechanical but
    large (safe twins of const/push/bin/rd/bsize/bget/bnew/bpush/bset/li/local1/pro/epi/popN runs; contracts Star→SStar).
 3. OOM/capacity failure path (sv = none by room ⇒ stub 1/6 reached, a0 = −1/−2).
-4. Side conditions from the parser (ParSpec) + g53: `OkV`/`OkT` (NdRun), `NB`/`DB` (bounds), body reads ⊆ params,
-   npw ≤ nslots, body width = nres; and A: `o.length < 2^24` in gen41_ok's conclusion.
+4. Side conditions from the parser (ParSpec): `ScV` (NdWidth), `DB` (bounds), npw/nres < 251, body reads ⊆ params,
+   npw ≤ nslots, npw < 2^20 (widths are done); and A: `o.length < 2^24` in gen41_ok's conclusion.
 5. D: relate `semAt` (heap-address semantics) to the source semantics.
 
 ## HANDOFF — Safe retrofit (Opus box A, 2026-11-19)
