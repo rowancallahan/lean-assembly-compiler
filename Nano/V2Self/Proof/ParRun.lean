@@ -200,6 +200,11 @@ def nodeOK (ds : List DefR) (n : RN) : Bool :=
     else if n.tag = 6 then
       (if n.sh.isNone then (match ds.getLast? with
         | some d => d.params.length = n.kids.length + 1 && inpMatch d.params.tail false n.kids | none => false) else true)
+    else if n.tag = 11 then
+      -- fix M: a single-state CONTINUE (child not a state tuple) is matched against the state parameter like a tuple
+      (if (match n.kids with | k :: _ => k.tag = 6 && k.sh.isNone | [] => false) then true
+       else (match ds.getLast? with
+        | some d => d.params.length = n.kids.length + 1 && inpMatch d.params.tail false n.kids | none => false))
     else true
   r && r2
 
@@ -546,7 +551,7 @@ def run : Nat → List Frame → St → Option St
 /-- `v99`'s post-checks: at least one def, the last is `m` with exactly the input parameter and a `List UInt8` result -/
 def mainOK (st : St) : Bool :=
   match st.defs.getLast? with
-  | some d => d.name == [109] && d.nni == 0 && d.params.head? == some .ls && d.res == some .ls
+  | some d => d.name == [109] && d.nni == 0 && d.params.length == 1 && d.params.head? == some .ls && d.res == some .ls
   | none => false
 
 /-- the abstract parser: tokens ↦ emitted words -/

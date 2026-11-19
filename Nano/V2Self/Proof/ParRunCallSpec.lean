@@ -269,7 +269,7 @@ theorem prim_inpPair {t : Nat} (h1 : 38 < t) (h2 : t < 48) {ps : List Ps} {rs : 
   by_cases h4 : t - 38 < 4
   · by_cases hm : (kids.filter RN.isInp).length = 0
     · simp [hm, h4] at hok
-    · simp only [hm, if_false, h4, if_true, show ¬ (9 : Nat) = 8 from by decide, show ¬ (9 : Nat) = 6 from by decide,
+    · simp only [hm, if_false, h4, if_true, show ¬ (9 : Nat) = 8 from by decide, show ¬ (9 : Nat) = 6 from by decide, show ¬ (9 : Nat) = 11 from by decide,
         Bool.and_true, Bool.and_eq_true, decide_eq_true_eq] at hok
       obtain ⟨hm1, hp0⟩ := hok
       cases kids with

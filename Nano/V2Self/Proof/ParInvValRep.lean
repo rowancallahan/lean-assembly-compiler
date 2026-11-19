@@ -252,6 +252,54 @@ theorem v210_inpMatch (hW : IsInpW) {h : Buf} {f s1 : UInt64} {us : List UInt64}
   rw [hmap] at hv
   exact imC_inpMatch ps ws ks false hwl hp (fun i hi => by simpa [ws, List.getD, hi] using hcode i hi) (by simpa using hv)
 
+/-- the "current (last) row" half of `r2C` (state tuples, single-state CONTINUEs): the machine's check gives B's
+parameter count + input rule against the last def row -/
+theorem lastRow_ok (hW : IsInpW) {h : Buf} {st : St} {bb : Bool} {f : UInt64} {ks : List RN} {ids : List UInt64}
+    (hD : DefsRep h st bb) (k : KidsR h f ks ids) (hk : ks.length < 16777216)
+    (hc : (if bget h 12 == 0 then k0 else if bget h (d7 + 8 * (bget h 12 - 1) + 6) == ks.length.toUInt64 + 1 then
+      v210 16777216 h f (bget h (d7 + 8 * (bget h 12 - 1) + 5) + 1) 0 ks.length.toUInt64 0 else k0) = 1) :
+    (match st.defs.getLast? with
+      | some d => decide (d.params.length = ks.length + 1) && inpMatch d.params.tail false ks | none => false) = true := by
+  obtain ⟨us, hl, hlk, _, hr⟩ := kidsR_links k
+  have hr' : ∀ i (hi : i < ks.length), ∃ ids', RNRep h (us.getD i 0) (ks[i]'hi) ids' :=
+    fun i hi => by obtain ⟨ids', r', _⟩ := hr i hi; exact ⟨ids', r'⟩
+  obtain ⟨e12, hlt, _, hrows, _⟩ := hD
+  have k0' : k0 = 0 := rfl
+  by_cases hz : bget h 12 = 0
+  · simp [hz, k0'] at hc
+  · simp only [show (bget h 12 == 0) = false by simpa using hz, Bool.false_eq_true, if_false] at hc
+    have hpos : 0 < st.defs.length := by
+      rcases Nat.eq_zero_or_pos st.defs.length with e | e
+      · exact absurd (UInt64.toNat_inj.mp (by rw [e12, e]; rfl)) hz
+      · exact e
+    have hj : bget h 12 - 1 = (st.defs.length - 1).toUInt64 := by
+      apply UInt64.toNat_inj.mp
+      rw [UInt64.toNat_sub_of_le _ _ (by rw [UInt64.le_iff_toNat_le]; simp; omega)]
+      simp [Nat.toUInt64, e12]; omega
+    rw [hj] at hc
+    obtain ⟨⟨_, _, _, _, _, h6', hs5, hcodes⟩, _⟩ := hrows (st.defs.length - 1) (by omega)
+    rw [List.getLast?_eq_getElem?, List.getElem?_eq_getElem (by omega)]
+    simp only [Bool.and_eq_true, decide_eq_true_eq]
+    generalize hd : st.defs[st.defs.length - 1]'(by omega) = d at h6' hs5 hcodes
+    have hplen : d.params.length = ks.length + 1 := by
+      by_cases e : bget h (d7 + 8 * (st.defs.length - 1).toUInt64 + 6) = ks.length.toUInt64 + 1
+      · rw [e] at h6'
+        have : (ks.length.toUInt64 + 1).toNat = ks.length + 1 := by
+          rw [UInt64.toNat_add]; simp [Nat.toUInt64]; omega
+        omega
+      · simp [e, k0'] at hc
+    have e6 : bget h (d7 + 8 * (st.defs.length - 1).toUInt64 + 6) = ks.length.toUInt64 + 1 := by
+      apply UInt64.toNat_inj.mp; rw [h6', hplen, UInt64.toNat_add]; simp [Nat.toUInt64]; omega
+    simp only [e6, beq_self_eq_true, if_true] at hc
+    refine ⟨hplen, v210_inpMatch hW hl hlk hr' hk (by simp [hplen]) (fun i hi => ?_) hc⟩
+    have := hcodes (i + 1) (by simp at hi; omega)
+    have e' : d7 + 4096 + bget h (d7 + 8 * (st.defs.length - 1).toUInt64 + 5) + (i + 1).toUInt64 =
+        d7 + 4096 + (bget h (d7 + 8 * (st.defs.length - 1).toUInt64 + 5) + 1) + i.toUInt64 := by
+      simp [Nat.toUInt64]; grind
+    rw [e'] at this
+    simpa [List.getElem_tail] using this
+
+
 /-- the second part of the per-node check (`r2C`): CALL and CONTINUE-tuple arguments against the callee's parameter codes -/
 theorem r2C_ok (hW : IsInpW) {h : Buf} {st : St} {bb : Bool} {u : UInt64} {t a b : Nat} {sh : Option Sh} {p : Bool} {ks : List RN}
     {ids : List UInt64} (r : RNRep h u (.mk t a b sh p ks) ids) (hk : ks.length < 16777216) (hD : DefsRep h st bb)
@@ -260,7 +308,12 @@ theorem r2C_ok (hW : IsInpW) {h : Buf} {st : St} {bb : Bool} {u : UInt64} {t a b
         | some d => decide (d.params.length = ks.length) && inpMatch d.params false ks | none => false)
      else if t = 6 then (if sh.isNone then (match st.defs.getLast? with
         | some d => decide (d.params.length = ks.length + 1) && inpMatch d.params.tail false ks | none => false) else true)
+     else if t = 11 then
+      (if (match ks with | k :: _ => k.tag = 6 && k.sh.isNone | [] => false) then true
+       else (match st.defs.getLast? with
+        | some d => decide (d.params.length = ks.length + 1) && inpMatch d.params.tail false ks | none => false))
      else true) = true := by
+  have hD0 := hD
   cases r with
   | @mk u t a b sh p ks ids a0 a1 a2 a3 a4 a6 ht hab k =>
   obtain ⟨us, hl, hlk, _, hr⟩ := kidsR_links k
@@ -332,7 +385,52 @@ theorem r2C_ok (hW : IsInpW) {h : Buf} {st : St} {bb : Bool} {u : UInt64} {t a b
           simp [Nat.toUInt64]; grind
         rw [e'] at this
         simpa [List.getElem_tail] using this
-  · simp [h6]
+  have h6w : (t.toUInt64 == 6) = false := by
+    simp only [beq_eq_false_iff_ne, ne_eq]; intro e; exact h6 ((toU_eq ht (by decide)).mp e)
+  simp only [h6w, h6, if_false, Bool.false_eq_true] at hc ⊢
+  by_cases h11 : t = 11
+  · subst h11
+    simp only [show ((11 : Nat).toUInt64 == 11) = true from rfl, if_true] at hc ⊢
+    have LR := fun hc' => lastRow_ok hW hD0 k hk hc'
+    cases ks with
+    | nil =>
+      have e0 : (([] : List RN).length.toUInt64 == 0) = true := rfl
+      simp only [e0, if_true] at hc
+      simpa using LR hc
+    | cons k0 rest =>
+      have hk' : rest.length + 1 < 16777216 := by simpa using hk
+      have hne : ((k0 :: rest).length.toUInt64 == 0) = false := by
+        simp only [beq_eq_false_iff_ne, ne_eq]; intro e
+        have := congrArg UInt64.toNat e; simp [Nat.toUInt64] at this; omega
+      simp only [hne, Bool.false_eq_true, if_false] at hc
+      obtain ⟨b0, b3, bt⟩ : fld h (fld h u 5) 0 = k0.tag.toUInt64 ∧ ShOpt h (fld h (fld h u 5) 3) k0.sh ∧ k0.tag < 2 ^ 64 := by
+        cases k with
+        | cons r0 _ => cases r0 with
+          | mk e0 _ _ e3 _ _ et _ _ => exact ⟨e0, e3, et⟩
+      rw [b0] at hc
+      by_cases hk6' : (decide (k0.tag = 6) && k0.sh.isNone) = true
+      · simp only [hk6', if_true]
+      · simp only [hk6', Bool.false_eq_true, if_false]
+        have hk6 : k0.tag = 6 → ¬ k0.sh.isNone = true := by
+          intro a b; apply hk6'; simp [a, b]
+        apply LR
+        by_cases t6 : k0.tag = 6
+        · have hs := hk6 t6
+          obtain ⟨s0, hs0⟩ : ∃ s0, k0.sh = some s0 := by
+            cases e : k0.sh with
+            | none => rw [e] at hs; exact absurd rfl hs
+            | some s0 => exact ⟨s0, rfl⟩
+          have hsc : fld h (fld h u 5) 3 ≠ 0 := by
+            have := b3; rw [hs0] at this; exact shapeCode_ne0 this
+          have e1 : (k0.tag.toUInt64 == 6) = true := by simp [t6]
+          have e2 : (fld h (fld h u 5) 3 == 0) = false := by simpa using hsc
+          simp only [e1, if_true, e2, Bool.false_eq_true, if_false] at hc
+          exact hc
+        · have e1 : (k0.tag.toUInt64 == 6) = false := by
+            simp only [beq_eq_false_iff_ne, ne_eq]; intro e; exact t6 ((toU_eq bt (by decide)).mp e)
+          simp only [e1, Bool.false_eq_true, if_false] at hc
+          exact hc
+  · simp [h11]
 
 /-- **per-node validation**: the machine's check of a represented node implies B's `nodeOK` -/
 theorem nodeC_ok (hW : IsInpW) {h : Buf} {st : St} {bb : Bool} {u : UInt64} {n : RN} {ids : List UInt64}

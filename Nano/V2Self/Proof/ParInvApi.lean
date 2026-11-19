@@ -49,7 +49,7 @@ theorem main_of {h : Buf} {st : St} {b : Bool} (hD : DefsRep h st b) (h12 : 0 < 
   unfold mainOK
   rw [hlast]
   simp only [Bool.and_eq_true, beq_iff_eq]
-  refine ⟨⟨⟨?_, ?_⟩, ?_⟩, ?_⟩
+  refine ⟨⟨⟨⟨?_, ?_⟩, ?_⟩, ?_⟩, ?_⟩
   · obtain ⟨nm, ⟨_, hseq, _⟩, hmap⟩ := hname
     match nm, hseq, hmap with
     | [], _, hmap => exact absurd hmap.symm (by simpa using hdn)
@@ -66,6 +66,7 @@ theorem main_of {h : Buf} {st : St} {b : Bool} (hD : DefsRep h st b) (h12 : 0 < 
         rw [e3, m2] at ht
         exact absurd ht.1 (by decide)
   · rw [m3] at hnni; simpa using hnni.symm
+  · rw [hA] at hplen; simpa using hplen.symm
   · have hl1 : d.params.length = 1 := by rw [hA] at hplen; simpa using hplen.symm
     match hp : d.params, hl1 with
     | [p0], _ =>
