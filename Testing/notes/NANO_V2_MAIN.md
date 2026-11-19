@@ -145,7 +145,13 @@ OPEN / NEXT (owner order 2026-11-19):
    (b) the machine side from the start routine to `semAt main` (E's DefX chain + start words) — compose with
    main_bridge; (c) MainTop re-point to the o41 driver with subset = parsed ∧ Linear.
    Fuel-margin run on self_S (interpreted `lean --run`): did not finish in 40 min; needs a compiled exe.
-2. MainTop subset: parsed ∧ Linear, compileC with the ownership check (after O).
+2. DONE (caf51274): driver `mC x = g41 x (o41 (y16 (s10 x)))`; `LinearK p := ∃ Ks, progOk [] [] Ks p ∧ Ks ≤ 2`;
+   `OwnStage := ∀ p, o41 (serialize p) ≠ [] → LinearK p` (O's lemma, pending); `GenStage` now for parsed ∧ LinearK;
+   `compiler_correct HP HO HG` gives `Lexes ∧ ParsesProgram ∧ LinearK ∧ ImplementsC`; `C_correctL : ParStage → OwnStage →
+   GenStage → CompileCorrectL riscv compileC` (MainTop 12.6 s / 1.7 GB, axioms = compiler #1's).  `o41_ne`: o41 returns
+   its input or []. Witnesses (MainWitness, 36 s / 2.7 GB) now include `C.o41 a = a` and `LinearK p` with explicit Ks
+   ([[]], [[0,0],[]], [[0,0],[]]).  GenStage's Sem side is `main_bridge` (MainBridge15); what remains of GenStage is
+   the machine run from the start words to `semAt main` (E) and the converse direction for the `space`/cap outcomes.
 3. C-wide certificate generator (one Sem = Lean lemma per def) + kernel test of progEq on C's token stream.
    MEASURED (decide +kernel, prefixes of self_S_input.txt + a stub main): 713 bytes → lexer `C.s10` 35 s / 5.9 GB, lexer +
    `refParse` 36 s / 6.0 GB (parse is cheap next to the lexer); 7,714 bytes → killed at 9 GB.  So C's 66,620-byte text
