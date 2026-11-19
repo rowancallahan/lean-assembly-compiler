@@ -212,4 +212,169 @@ theorem h_mkBin {h ts : Buf} {st : St} {op : Nat} {fs : List Frame} (r : Rep h t
   · have : (bget h1 (d5 + 8 * bget h1 (d3 + bget h1 8 - 1) + 3) == 1) = false := by simpa using c1
     simp only [this] at hs; exact absurd (stat0 _ (by omega)) hs
 
+/-! ## the cursor -/
+/-- the token at the cursor, by its first cell -/
+theorem tok_cases {h ts : Buf} {p : UInt64} {toks : List Tok} (r : TokAt h p toks) (hT : TokensAt h ts) :
+    (toks = [] ∧ bget h (d11 + p) = 0) ∨ (∃ v rest, toks = .num v :: rest ∧ bget h (d11 + p) = 5) ∨
+    (∃ x rest, toks = .id x :: rest ∧ bget h (d11 + p) = 14) ∨
+    (∃ t rest, toks = .k t.toNat :: rest ∧ bget h (d11 + p) = t ∧ t ≠ 0 ∧ t ≠ 5 ∧ t ≠ 14 ∧ TokAt h (p + 1) rest) := by
+  cases r with
+  | nil e => left; exact ⟨rfl, by rw [e, hT.2.2.2]; exact hT.2.1⟩
+  | kw t _ b c d f x =>
+    right; right; right
+    refine ⟨t, _, rfl, b, fun e => ?_, c, d, x⟩
+    subst e; simp [okTag] at f
+  | num bs _ b => right; left; exact ⟨_, _, rfl, b⟩
+  | id nm a _ => right; right; left; exact ⟨_, _, rfl, a.1⟩
+
+/-- moving the cursor (h[3]) to a position that represents `toks'` -/
+theorem rep_set3 {h ts : Buf} {st : St} {fs : List Frame} {q : UInt64} {toks' : List Tok} (r : Rep h ts st fs)
+    (hq : TokAt h q toks') : Rep (bset h 3 q) ts { st with toks := toks' } fs := by
+  obtain ⟨hn, hl, har⟩ := rep_bounds r
+  have u3 : (3 : UInt64).toNat = 3 := rfl
+  have c : ∀ i : UInt64, i.toNat ≠ 3 → bget (bset h 3 q) i = bget h i := fun i hi => bget_bset' _ _ _ _ (by rw [u3]; omega)
+  have et : TokAgree h (bset h 3 q) := ⟨c 7 (by decide), fun i hi => c i (by omega)⟩
+  refine rep_tok r (length_bset _ _ _) (fun i _ h3 _ => c i h3) (drop_bset _ _ _ (by decide))
+    (by rw [bget_bset_eq _ _ _ _ rfl (by rw [u3]; omega)]; exact tokAt_frame et hn hq) ?_ rfl
+  exact tasks_frame r.2.2.2.2.2.2.2.2.2.2.2.2.2 (c 5 (by decide)) (fun i a _ => c i (by omega)) et hn
+    (fun i a _ => c i (by omega)) (fun i a _ => c i (by omega)) har
+
+/-! ## operator tables: `y8` / `y10` = `opInfo` -/
+theorem op_corr (t : UInt64) :
+    (y8 t = 0 ∧ opInfo t.toNat = none) ∨
+    ∃ op p, opInfo t.toNat = some (op, p) ∧ y8 t = op.toUInt64 ∧ y10 t = p.toUInt64 ∧ 1 ≤ op ∧ op ≤ 7 ∧ p ≤ 75 ∧
+      ((op = 6 ∨ op = 7) ↔ (t = 28 ∨ t = 29)) := by
+  by_cases e27 : t = 27; · subst e27; right; exact ⟨5, 55, rfl, rfl, rfl, by decide, by decide, by decide, by decide⟩
+  by_cases e26 : t = 26; · subst e26; right; exact ⟨4, 60, rfl, rfl, rfl, by decide, by decide, by decide, by decide⟩
+  by_cases e10 : t = 10; · subst e10; right; exact ⟨1, 65, rfl, rfl, rfl, by decide, by decide, by decide, by decide⟩
+  by_cases e11 : t = 11; · subst e11; right; exact ⟨2, 65, rfl, rfl, rfl, by decide, by decide, by decide, by decide⟩
+  by_cases e12 : t = 12; · subst e12; right; exact ⟨3, 70, rfl, rfl, rfl, by decide, by decide, by decide, by decide⟩
+  by_cases e28 : t = 28; · subst e28; right; exact ⟨6, 75, rfl, rfl, rfl, by decide, by decide, by decide, by decide⟩
+  by_cases e29 : t = 29; · subst e29; right; exact ⟨7, 75, rfl, rfl, rfl, by decide, by decide, by decide, by decide⟩
+  left
+  have tn : ∀ c : UInt64, ¬ t = c → t.toNat ≠ c.toNat := fun c h e => h (UInt64.toNat_inj.mp e)
+  have n27 := tn 27 e27; have n26 := tn 26 e26; have n10 := tn 10 e10; have n11 := tn 11 e11; have n12 := tn 12 e12
+  have n28 := tn 28 e28; have n29 := tn 29 e29
+  simp only [show (27 : UInt64).toNat = 27 from rfl, show (26 : UInt64).toNat = 26 from rfl, show (10 : UInt64).toNat = 10 from rfl,
+    show (11 : UInt64).toNat = 11 from rfl, show (12 : UInt64).toNat = 12 from rfl, show (28 : UInt64).toNat = 28 from rfl,
+    show (29 : UInt64).toNat = 29 from rfl] at n27 n26 n10 n11 n12 n28 n29
+  refine ⟨by simp [y8, e27, e26, e10, e11, e12, e28, e29], ?_⟩
+  unfold opInfo
+  split <;> first | rfl | omega
+
+/-! ## task 2: `binLoop m` (v101) -/
+theorem v101_eq (h : Buf) (a b : UInt64) : v101 h a b =
+    (if y8 (bget h (d11 + bget h 3)) == 0 then h else if y10 (bget h (d11 + bget h 3)) < a then h else
+      if bget h (d5 + 8 * bget h (d3 + bget h 8 - 1) + 4) == 0 then
+        (if y8 (bget h (d11 + bget h 3)) == 6 ∨ y8 (bget h (d11 + bget h 3)) == 7 then
+          v1 (v1 (bset h 3 (bget h 3 + 1)) 2 a 0) 49 (y8 (bget h (d11 + bget h 3))) 0
+        else v1 (v1 (v1 (bset h 3 (bget h 3 + 1)) 2 a 0) 5 (y8 (bget h (d11 + bget h 3))) 0) 1 (y10 (bget h (d11 + bget h 3)) + 1) 2)
+      else bset h 0 0) := by
+  simp only [v101, UInt64.add_zero]
+  split <;> (try rfl)
+  split <;> (try rfl)
+  split <;> (try rfl)
+  rename_i h6
+  by_cases e6 : y8 (bget h (d11 + bget h 3)) = 6
+  · simp [e6]
+  · by_cases e7 : y8 (bget h (d11 + bget h 3)) = 7
+    · simp [e7]
+    · simp [e6, e7]
+
+/-- the remaining (unfold-free) part of binLoop: no operator / weaker operator ⇒ nothing happens -/
+theorem h_binLoop {h ts : Buf} {st : St} {m : Nat} {fs : List Frame} (r : Rep h ts st (.binLoop m :: fs))
+    (hv : st.vals ≠ []) (hs : bget (step h) 0 ≠ 0) :
+    ∃ k st', stepF (.binLoop m) st = some (k, st') ∧ Rep (step h) ts st' (k ++ fs) := by
+  obtain ⟨E, ea, R1⟩ := rep_pop r (by simp [inDefF, Frame.isDefs])
+  simp only [FrameArgs] at ea
+  generalize (taskAt h fs.length).a = a at E ea
+  generalize (taskAt h fs.length).b = b at E
+  generalize hh : bset h 5 fs.length.toUInt64 = h1 at E R1
+  have ev : step h = v101 h1 a b := by rw [E]; simp [Frame.code, v96]
+  rw [ev, v101_eq] at hs ⊢
+  obtain ⟨hn7, hl, har⟩ := rep_bounds R1
+  have p3 := R1.2.2.2.1
+  -- the "nothing to do" outcome
+  have idle : ∀ (hst : stepF (.binLoop m) st = some ([], st)), ∃ k st', stepF (.binLoop m) st = some (k, st') ∧ Rep h1 ts st' (k ++ fs) :=
+    fun hst => ⟨[], st, hst, R1⟩
+  rcases tok_cases p3 R1.1 with ⟨et, hc⟩ | ⟨v, rest, et, hc⟩ | ⟨x, rest, et, hc⟩ | ⟨t, rest, et, hc, t0, t5, t14, tr⟩
+  · rw [hc] at hs ⊢; simp only [show y8 0 = 0 from rfl, beq_self_eq_true, if_true]
+    exact idle (by simp [stepF, et])
+  · rw [hc] at hs ⊢; simp only [show y8 5 = 0 from rfl, beq_self_eq_true, if_true]
+    exact idle (by simp [stepF, et])
+  · rw [hc] at hs ⊢; simp only [show y8 14 = 0 from rfl, beq_self_eq_true, if_true]
+    exact idle (by simp [stepF, et])
+  · rw [hc] at hs ⊢
+    rcases op_corr t with ⟨y0, oi⟩ | ⟨op, pr, oi, yo, yp, o1, o7, p75, osh⟩
+    · simp only [y0, beq_self_eq_true, if_true]
+      exact idle (by simp [stepF, et, oi])
+    · have yn : (y8 t == 0) = false := by
+        rw [yo]; apply beq_false_of_ne; intro e; have := congrArg UInt64.toNat e
+        rw [show (0 : UInt64).toNat = 0 from rfl] at this; simp at this; omega
+      simp only [yn, if_false] at hs ⊢
+      rw [yp] at hs ⊢
+      by_cases lt : pr.toUInt64 < a
+      · simp only [lt, if_true]
+        have pe : pr.toUInt64.toNat = pr := by simp; omega
+        have : pr < m := by have := UInt64.lt_iff_toNat_lt.mp lt; rw [pe] at this; omega
+        exact idle (by simp [stepF, et, oi, this])
+      · simp only [lt, if_false] at hs ⊢
+        have pe : pr.toUInt64.toNat = pr := by simp; omega
+        have nlt : ¬ pr < m := by
+          intro c; apply lt; apply UInt64.lt_iff_toNat_lt.mpr; rw [pe]; omega
+        obtain ⟨top, vs, evs⟩ : ∃ top vs, st.vals = top :: vs := by
+          match hq : st.vals with
+          | [] => exact absurd hq hv
+          | top :: vs => exact ⟨top, vs, rfl⟩
+        have rA := R1.2.2.2.2.2.2.2.1
+        have l0 : 0 < st.vals.length := by rw [evs]; simp
+        have o0 := opCell rA.2.2.1 rA.2.2.2.1 0 l0
+        simp only [show ((0 : Nat) + 1).toUInt64 = 1 from rfl] at o0
+        obtain ⟨_, rt⟩ := val_rep rA 0 l0
+        have fp : bget h1 (d5 + 8 * opAt h1 (st.vals.length - 1 - 0) + 4) = b01 (st.vals[0]'l0).pend := rt.fields.2.2.2.2
+        rw [o0, fp] at hs ⊢
+        simp only [evs, List.getElem_cons_zero] at hs ⊢
+        cases hp : top.pend with
+        | true => simp only [hp, b01] at hs; simp at hs; exact absurd (stat0 _ (by omega)) hs
+        | false =>
+          simp only [hp, b01, Bool.false_eq_true, if_false, beq_self_eq_true, if_true] at hs ⊢
+          have R2 := rep_set3 R1 tr
+          have p0 : ¬ (pr < m) := nlt
+          rw [yo] at hs ⊢
+          by_cases sh : op = 6 ∨ op = 7
+          · have c : (op.toUInt64 == 6 ∨ op.toUInt64 == 7) := by rcases sh with e | e <;> subst e <;> simp
+            simp only [c, if_true] at hs ⊢
+            have tsh := osh.mp sh
+            have tsh' : t.toNat = 28 ∨ t.toNat = 29 := by rcases tsh with e | e <;> subst e <;> simp
+            have R3 : Rep (v1 (bset h1 3 (bget h1 3 + 1)) 2 a 0) ts { st with toks := rest } (.binLoop m :: fs) :=
+              rep_push (.binLoop m) a 0 R2 (by simp [inDefF, Frame.isDefs]) ea (fun z => hs (v1_zero _ _ _ _ z))
+            have R4 : Rep (v1 (v1 (bset h1 3 (bget h1 3 + 1)) 2 a 0) 49 op.toUInt64 0) ts { st with toks := rest }
+                (.shiftNum op :: .binLoop m :: fs) :=
+              rep_push (.shiftNum op) op.toUInt64 0 R3 (by simp [inDefF, Frame.isDefs]) (by simp [FrameArgs]; omega) hs
+            refine ⟨[.shiftNum op, .binLoop m], _, ?_, R4⟩
+            simp [stepF, et, oi, p0, evs, hp, tsh']
+          · have c : ¬ (op.toUInt64 == 6 ∨ op.toUInt64 == 7) := by
+              intro e; apply sh
+              rcases e with e | e
+              · left; have := congrArg UInt64.toNat (eq_of_beq e); simp at this; omega
+              · right; have := congrArg UInt64.toNat (eq_of_beq e); simp at this; omega
+            simp only [c, if_false] at hs ⊢
+            have tsh' : ¬ (t.toNat = 28 ∨ t.toNat = 29) := by
+              intro e; apply sh; apply osh.mpr
+              rcases e with e | e
+              · left; exact UInt64.toNat_inj.mp (by simpa using e)
+              · right; exact UInt64.toNat_inj.mp (by simpa using e)
+            have R3 : Rep (v1 (bset h1 3 (bget h1 3 + 1)) 2 a 0) ts { st with toks := rest } (.binLoop m :: fs) :=
+              rep_push (.binLoop m) a 0 R2 (by simp [inDefF, Frame.isDefs]) ea (fun z => hs (v1_zero _ _ _ _ (v1_zero _ _ _ _ z)))
+            have R4 : Rep (v1 (v1 (bset h1 3 (bget h1 3 + 1)) 2 a 0) 5 op.toUInt64 0) ts { st with toks := rest }
+                (.mkBin op :: .binLoop m :: fs) :=
+              rep_push (.mkBin op) op.toUInt64 0 R3 (by simp [inDefF, Frame.isDefs]) (by simp [FrameArgs]; omega)
+                (fun z => hs (v1_zero _ _ _ _ z))
+            have R5 : Rep (v1 (v1 (v1 (bset h1 3 (bget h1 3 + 1)) 2 a 0) 5 op.toUInt64 0) 1 (pr.toUInt64 + 1) 2) ts
+                { st with toks := rest } (.expr (pr + 1) 2 :: .mkBin op :: .binLoop m :: fs) :=
+              rep_push (.expr (pr + 1) 2) (pr.toUInt64 + 1) 2 R4 (by simp [inDefF, Frame.isDefs])
+                (by simp only [FrameArgs]; refine ⟨?_, rfl⟩; rw [tn_add _ _ (by simp; omega)]; simp; omega) hs
+            refine ⟨[.expr (pr + 1) 2, .mkBin op, .binLoop m], _, ?_, R5⟩
+            simp [stepF, et, oi, p0, evs, hp, tsh']
+
 end ParInv
