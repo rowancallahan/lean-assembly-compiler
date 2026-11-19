@@ -69,9 +69,9 @@ theorem stackOK_append {k rest : List Frame} (hk : k.all (fun f => !isD f) = tru
     exact ⟨hr.1, hr.2, hk⟩
 
 /-- the stack invariant: well-shaped, and empty once accepted -/
-def SInv (c : List Frame × St) : Prop := StackOK c.1 = true ∧ (c.2.acc = true → c.1 = [])
+def StkInv (c : List Frame × St) : Prop := StackOK c.1 = true ∧ (c.2.acc = true → c.1 = [])
 
-theorem stepS_sinv {c d : List Frame × St} (hs : stepS c = some d) (hi : SInv c) : SInv d := by
+theorem stepS_stkinv {c d : List Frame × St} (hs : stepS c = some d) (hi : StkInv c) : StkInv d := by
   obtain ⟨fs, st⟩ := c
   cases fs with
   | nil => simp [stepS] at hs
@@ -91,11 +91,11 @@ theorem stepS_sinv {c d : List Frame × St} (hs : stepS c = some d) (hi : SInv c
       · exact absurd (hacc e2) (by simp)
       · simp [isD] at hD
 
-theorem Star.sinv {c d : List Frame × St} (h : Star c d) (hi : SInv c) : SInv d := by
+theorem Star.stkinv {c d : List Frame × St} (h : Star c d) (hi : StkInv c) : StkInv d := by
   induction h with
   | refl => exact hi
-  | step hs _ ih => exact ih (stepS_sinv hs hi)
+  | step hs _ ih => exact ih (stepS_stkinv hs hi)
 
-theorem sinv_init (toks : List ParSpec.Tok) : SInv ([.defs], init toks) := ⟨rfl, fun e => by simp [init] at e⟩
+theorem stkinv_init (toks : List ParSpec.Tok) : StkInv ([.defs], init toks) := ⟨rfl, fun e => by simp [init] at e⟩
 
 end ParRun
