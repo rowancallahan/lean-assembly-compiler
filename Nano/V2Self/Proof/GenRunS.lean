@@ -9,7 +9,7 @@ import Nano.V2Self.Proof.TmGood
 namespace Templates
 open CallProbe C GenRef ParSpec
 
-theorem gen_runS (KL : SimW.LayW) (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length < 2 ^ 31)
+theorem gen_runS (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length < 2 ^ 31)
     (h : g41 c (serialize ds) ≠ []) (hdb : ∀ d ∈ ds, DB d)
     (s0 : St) (inp : Nat → UInt64) (hinp : ∀ i, i < (s0.x 11).toNat → lbm s0.m ((s0.x 10).toNat + i) = inp i) :
     ∃ hs T o, DefsC (serialize ds) g_999 bnew 1 (g34 bnew) hs T (serialize ds).length o ∧ hs ≠ [] ∧
@@ -18,7 +18,7 @@ theorem gen_runS (KL : SimW.LayW) (c : List UInt8) (ds : List DefA) (hXl : (seri
         let D := defsJ P ds 0 hs.length
         let C := stubJ (11 + D.length) ++ D ++ startJ (11 + D.length) (P.T (hs.length - 1))
         g41 c (serialize ds) = g40 16777216 c (C.map encG) 0 [] ∧
-        ((∀ k, k < hs.length → ScV (scAt P ds k) (dA ds k).body ∧ ∀ j, rd (dA ds k).body j → j < (dA ds k).npw) →
+        ∀ KL : SimW.LayW, ((∀ k, k < hs.length → ScV (scAt P ds k) (dA ds k).body ∧ ∀ j, rd (dA ds k).body j → j < (dA ds k).npw) →
          ∀ E0, ((s0.x 2 >>> 3) <<< 3).toNat = E0 → s0.x 0 = 0 → (s0.x 12).toNat % 8 = 0 →
          (s0.x 12).toNat + 16 ≤ E0 → E0 < 2 ^ 62 → s0.b + 4 * C.length < 2 ^ 64 →
          (s0.x 10).toNat + (s0.x 11).toNat < 2 ^ 63 →
@@ -41,7 +41,7 @@ theorem gen_runS (KL : SimW.LayW) (c : List UInt8) (ds : List DefA) (hXl : (seri
   refine ⟨hs, T, o, hD, hne, ?_⟩
   obtain ⟨hg, np, nr, hcl, hopv, hbd, hTp, hpk, -⟩ := hr
   refine ⟨hg, ?_⟩
-  intro hpar E0 hE0 z0 ha8 hroom hE62 hcb hin63 hin vs H' hSd N bs hN hPb hPN hbs hQ hout hlo hhi hbase
+  intro KL hpar E0 hE0 z0 ha8 hroom hE62 hcb hin63 hin vs H' hSd N bs hN hPb hPN hbs hQ hout hlo hhi hbase
     hinw hwO
   have hE8 : E0 % 8 = 0 := by
     rw [← hE0]; simp only [UInt64.toNat_shiftLeft, UInt64.toNat_shiftRight]; simp; omega

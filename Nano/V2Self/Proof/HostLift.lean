@@ -56,7 +56,7 @@ theorem flat_le4 : ∀ (ws : List UInt64) (i k : Nat), i < ws.length → k < 4 �
     have := flat_le4 ws i k (by simp at h; omega) hk
     rw [show 4 * (i + 1) + k - (le4 w).length = 4 * i + k by simp [le4]; omega, this]; simp
 
-theorem byte_le4 (v : UInt64) (hv : v.toNat < 2 ^ 32) (k : Nat) (hk : k < 4) :
+theorem byte_le4 (v : UInt64) (k : Nat) (hk : k < 4) :
     ∃ b, (le4 v)[k]? = some b ∧ b.toBitVec = (BitVec.ofNat 32 v.toNat).extractLsb' (8 * k) 8 := by
   rcases (by omega : k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 3) with rfl | rfl | rfl | rfl <;>
     refine ⟨_, rfl, ?_⟩ <;> apply BitVec.eq_of_toNat_eq <;>
@@ -68,7 +68,7 @@ theorem len_le4 (ws : List UInt64) : (ws.flatMap le4).length = 4 * ws.length := 
   | cons w ws ih => simp only [List.flatMap_cons, List.length_append, ih]; simp [le4]; omega
 
 /-- the code bytes at `e` give every word as an instruction -/
-theorem code_at {t : Proven.St} {e : Nat} {ws : List UInt64} (hv : ∀ v ∈ ws, v.toNat < 2 ^ 32)
+theorem code_at {t : Proven.St} {e : Nat} {ws : List UInt64}
     (he : e + 4 * ws.length < 2 ^ 64)
     (hb : bytesAt t e (ws.flatMap le4).length = (ws.flatMap le4).map (some ·.toBitVec)) :
     ∀ i (h : i < ws.length), instrAt t (BitVec.ofNat 64 (e + 4 * i)) (BitVec.ofNat 32 ws[i].toNat) := by
@@ -80,7 +80,7 @@ theorem code_at {t : Proven.St} {e : Nat} {ws : List UInt64} (hv : ∀ v ∈ ws,
     simp only [bytesAt, List.getElem?_map, List.getElem?_range (show 4 * i + k < (ws.flatMap le4).length by omega),
       Option.map_some] at h1
     rw [flat_le4 ws i k h hk] at h1
-    obtain ⟨b, hb1, hb2⟩ := byte_le4 ws[i] (hv _ (List.getElem_mem h)) k hk
+    obtain ⟨b, hb1, hb2⟩ := byte_le4 ws[i] k hk
     rw [getElem!_pos ws i h, hb1] at h1
     simp at h1; rw [Nat.add_assoc, h1, hb2]
   have hn : (BitVec.ofNat 64 (e + 4 * i)).toNat = e + 4 * i := by simp; omega

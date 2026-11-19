@@ -57,7 +57,7 @@ theorem par_sc {ts : List UInt64} {p : List DefA} (hP : ParsesProgram ts p) (P :
 /-- **Gen's code runs main as `Sem`**: on g41 success for a parsed program `p` with an ownership witness (kinds ≤ 2), and
 input bytes `x` at a0 (a1 = |x|): if `semAt main` succeeds in the work area, then `Sem κC p x = .ok y` and C's code
 (safe J steps, simulated on Sail) returns to ra with a1 = |y| and `y` at a3. -/
-theorem gen_main (KL : SimW.LayW) (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : ParsesProgram ts p)
+theorem gen_main (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : ParsesProgram ts p)
     (Ks : List (List Nat)) (hO : OwnSpec.progOk [] [] Ks p = true) (hK2 : ∀ K ∈ Ks, ∀ k ∈ K, k ≤ 2)
     (hXl : (serialize p).length < 2 ^ 31) (h : g41 c (serialize p) ≠ []) (hdb : ∀ d ∈ p, DB d)
     (s0 : St) (x : List UInt8) (hx11 : s0.x 11 = UInt64.ofNat x.length) (hxl : x.length < 2 ^ 64)
@@ -65,7 +65,7 @@ theorem gen_main (KL : SimW.LayW) (c : List UInt8) {ts : List UInt64} {p : List 
     ∃ (C : List J) (pr : Nat) (T : Buf),
       let P := pcOf 524288 ((s0.x 12).toNat + 16) (s0.x 11) (NanoMain.inpW x) T
       g41 c (serialize p) = g40 16777216 c (C.map encG) 0 [] ∧
-      ∀ E0, ((s0.x 2 >>> 3) <<< 3).toNat = E0 → s0.x 0 = 0 → (s0.x 12).toNat % 8 = 0 →
+      ∀ (KL : SimW.LayW) E0, ((s0.x 2 >>> 3) <<< 3).toNat = E0 → s0.x 0 = 0 → (s0.x 12).toNat % 8 = 0 →
         (s0.x 12).toNat + 16 ≤ E0 → E0 < 2 ^ 62 → s0.b + 4 * C.length < 2 ^ 64 →
         (s0.x 10).toNat + (s0.x 11).toNat < 2 ^ 63 →
         ((s0.x 10).toNat + (s0.x 11).toNat ≤ (s0.x 12).toNat ∨ E0 ≤ (s0.x 10).toNat) →
@@ -82,11 +82,11 @@ theorem gen_main (KL : SimW.LayW) (c : List UInt8) {ts : List UInt64} {p : List 
              (KL.Ok → KL.W = (C.map encG).map UInt64.toNat → ∀ t, SimW.RelW KL (0, s0) t →
                ∃ n t', Proven.Steps n t t' ∧ SimW.RelW KL (pr, s3) t')) := by
   have hx11' : (s0.x 11).toNat = x.length := by rw [hx11]; exact NanoMain.toNat_ofNat_lt hxl
-  obtain ⟨hs, T, o, hD, hne, hg, hrun⟩ := gen_runS KL c p hXl h hdb s0 (NanoMain.inpW x)
+  obtain ⟨hs, T, o, hD, hne, hg, hrun⟩ := gen_runS c p hXl h hdb s0 (NanoMain.inpW x)
     (fun i hi => by rw [hx11'] at hi; exact hxm i hi)
   have hsl := hs_len c p hXl h hdb hD
   refine ⟨_, 11 + (defsJ (pcOf 524288 ((s0.x 12).toNat + 16) (s0.x 11) (NanoMain.inpW x) T) p 0 hs.length).length + 31, T, hg, ?_⟩
-  intro E0 hE0 z0 ha8 hroom hE62 hcb hin63 hin hlo hhi hbase hinw vs H' hSd
+  intro KL E0 hE0 z0 ha8 hroom hE62 hcb hin63 hin hlo hhi hbase hinw vs H' hSd
   obtain ⟨sigs, hTy⟩ := NanoMain.refParse_ty hP
   obtain ⟨a, l, rfl, hB, hS⟩ := NanoMain.main_bridge _ p sigs Ks x hTy hO hK2 hx11 rfl hxl E0 _ _ _
     (by show ((s0.x 12).toNat + 16) % 8 = 0; omega) (Nat.le_refl _) hSd
@@ -95,7 +95,7 @@ theorem gen_main (KL : SimW.LayW) (c : List UInt8) {ts : List UInt64} {p : List 
   simp only [List.length_map] at hQ hout hwO ⊢
   have hll' : l.length < 2 ^ 64 := by omega
   have hN := NanoMain.toNat_ofNat_lt hll'
-  obtain ⟨s3, h3, c31, kp, r1, r2, r3, r4, r5, r6, r7⟩ := hrun (fun k hk => par_sc hP _ k (by omega)) E0 hE0 z0 ha8 hroom hE62
+  obtain ⟨s3, h3, c31, kp, r1, r2, r3, r4, r5, r6, r7⟩ := hrun KL (fun k hk => par_sc hP _ k (by omega)) E0 hE0 z0 ha8 hroom hE62
     hcb hin63 hin [a] H' (by rw [hsl]; exact hSd) (UInt64.ofNat l.length) (fun i => l.getD i 0) hm0 b1 (by simp only [List.getD_cons_zero]; omega)
     (fun i hi => by rw [hN] at hi; simp only [List.getD_cons_zero]; rw [hcell i (by omega)]; simp [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem (show i < l.length by omega)])
     (by rw [hN]; exact hQ) (by rw [hN]; exact hout) hlo hhi hbase hinw (fun i hi => by rw [hN] at hi; exact hwO i hi)
