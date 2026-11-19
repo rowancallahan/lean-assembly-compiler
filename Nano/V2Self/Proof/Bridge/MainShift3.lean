@@ -15,7 +15,7 @@ theorem LR.get {δ : Nat} : ∀ {ks r r'}, LR δ ks r r' → ∀ i (hi : i < ks.
   | [], _, _, _, i, hi => absurd hi (by simp)
   | _ :: _, [], _, h, _, _ | _ :: _, _ :: _, [], h, _, _ => by simp [LR] at h
 
-theorem known_get {Γ : List (Option Kd)} {s w : Nat} {ks : List Kd} (h : known Γ s w ks) (i : Nat) (hi : i < ks.length) :
+theorem known_getS {Γ : List (Option Kd)} {s w : Nat} {ks : List Kd} (h : known Γ s w ks) (i : Nat) (hi : i < ks.length) :
     Γ[s + i]? = some (some ks[i]) := by
   obtain ⟨h1, h2⟩ := h
   have hl : ks.length = w := by have := congrArg List.length h2; simp at this; omega
@@ -122,7 +122,7 @@ theorem sv_sh : ∀ {Γ S e ks}, TyN D Γ S e ks →
   | Γ, _, _, ks, .loc (s := s) (w := w) hk => by
     simp only [svF]
     have hl : ks.length = w := by have := congrArg List.length hk.2; have := hk.1; simp at *; omega
-    exact localF_sim w s ks hl (fun i hi env env' he => he (s + i) _ (known_get hk i (by omega)))
+    exact localF_sim w s ks hl (fun i hi env env' he => he (s + i) _ (known_getS hk i (by omega)))
   | _, _, _, _, .bin _ _ ta tb => by
     simp only [svF]
     exact fin2F_sim (pairF_sim (sv_sh ta) (sv_sh tb)) (alu_sh _)
