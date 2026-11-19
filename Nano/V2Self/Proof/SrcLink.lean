@@ -103,7 +103,7 @@ theorem step_app {l m : List UInt8} {e : List UInt64} {r : List UInt8} (hl : l.g
           · cases h; rw [if_neg ‹_›, if_pos ‹_›]; exact ⟨rfl, suf _ sd⟩
           · cases h
 
-theorem lexes_app {x1 w1 : List UInt8} {x2 : List UInt8} {t1 t2 : List UInt64} (h1 : Lexes x1 t1) (h2 : Lexes x2 t2)
+theorem lexes_app {x1 : List UInt8} {x2 : List UInt8} {t1 t2 : List UInt64} (h1 : Lexes x1 t1) (h2 : Lexes x2 t2)
     (hl : x1 = [] ∨ x1.getLast? = some 10) : Lexes (x1 ++ x2) (t1 ++ t2) := by
   revert hl
   induction h1 with
@@ -363,14 +363,14 @@ theorem defBeq_eq {a b : DefA} (h : defBeq a b = true) : a = b := by
 /-- the per-def parse check -/
 def chkDef (o : Option (DefI × DefA × List Tok)) (di : DefI) (da : DefA) (r : List Tok) : Bool :=
   match o with
-  | some (a, b, c) => decide (a = di) && defBeq b da && decide (c = r)
+  | some (a, b, c) => decide (a = di) && defBeq b da && (c == r)
   | none => false
 
 theorem chkDef_sound {o : Option (DefI × DefA × List Tok)} {di : DefI} {da : DefA} {r : List Tok}
     (h : chkDef o di da r = true) : o = some (di, da, r) := by
   match o, h with
   | some (a, b, c), h =>
-    simp only [chkDef, Bool.and_eq_true, decide_eq_true_eq] at h
+    simp only [chkDef, Bool.and_eq_true, decide_eq_true_eq, beq_iff_eq] at h
     rw [h.1.1, defBeq_eq h.1.2, h.2]
 
 def lsBeq : List DefA → List DefA → Bool
