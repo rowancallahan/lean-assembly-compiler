@@ -680,7 +680,7 @@ theorem bget_srun {K : LayW} {C pc} (s : St) (hC : At C pc bgetT) (hx0 : s.x 0 =
 theorem rd_srun {K : LayW} {C pc} (s : St) (hC : At C pc rdT) (hx0 : s.x 0 = 0) (hb : (s.x 28).toNat + (s.x 29).toNat < 2 ^ 63)
     (w0 : wok K (s.x 31).toNat)
     (w1 : (s.m (s.x 31).toNat).toNat < (s.x 29).toNat →
-      wok K ((s.x 28).toNat + (s.m (s.x 31).toNat).toNat - ((s.x 28).toNat + (s.m (s.x 31).toNat).toNat) % 8)) :
+      bok K ((s.x 28).toNat + (s.m (s.x 31).toNat).toNat)) :
     SStar K C (pc, s) (pc + 6,
       ⟨upd (upd s.x 6 (s.m (s.x 31).toNat)) 5
           (if (s.m (s.x 31).toNat).toNat < (s.x 29).toNat then lbm s.m ((s.x 28).toNat + (s.m (s.x 31).toNat).toNat) else 0),

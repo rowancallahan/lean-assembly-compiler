@@ -22,7 +22,7 @@ theorem start_runX {KL : LayW} {C : List J} {S w hb E0 : Nat} {IG : St → Prop}
     (hout : (s0.x 13).toNat + N.toNat ≤ (s0.x 12).toNat ∨ E0 + 8 ≤ (s0.x 13).toNat)
     (hlo : KL.lo ≤ (s0.x 12).toNat) (hhi : E0 ≤ KL.hi) (hbase : s0.b = KL.base) (hE8 : E0 % 8 = 0)
     (hCl : S + 32 ≤ C.length) (hC18 : C.length < 2 ^ 18) (hwl : w < C.length)
-    (hwO : ∀ i, i < N.toNat → wok KL ((s0.x 13).toNat + i - ((s0.x 13).toNat + i) % 8))
+    (hwO : ∀ i, i < N.toNat → sok KL ((s0.x 13).toNat + i))
     (hra : ∃ j, (s0.x 1).toNat = KL.base + 4 * j) :
     ∃ s3, SStarX KL C (0, s0) (((s0.x 1).toNat - s0.b) / 4, s3) ∧ s3.b = s0.b ∧ s3.x 1 = s0.x 1 ∧ s3.x 8 = s0.x 8 ∧
       s3.x 10 = (if N = 0 then 1 else 0) ∧ s3.x 11 = N ∧

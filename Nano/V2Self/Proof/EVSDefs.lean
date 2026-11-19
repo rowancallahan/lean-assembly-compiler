@@ -28,7 +28,7 @@ def HAl (H : Hp) : Prop := ∀ a v, H.m a = some v → a % 8 = 0
 
 /-- the input bytes' aligned cells are work cells (carried by the invariant) -/
 def InpW (KL : LayW) (Inv : St → Prop) : Prop :=
-  ∀ s, Inv s → ∀ i, i < (s.x 29).toNat → wok KL ((s.x 28).toNat + i - ((s.x 28).toNat + i) % 8)
+  ∀ s, Inv s → ∀ i, i < (s.x 29).toNat → bok KL ((s.x 28).toNat + i)
 
 theorem Lay.wok {KL : LayW} {hb E0 p : Nat} {s : St} (h : Lay KL hb E0 p s) {a : Nat} (h1 : hb ≤ a) (h2 : a + 8 ≤ E0)
     (h3 : a % 8 = 0) : wok KL a :=

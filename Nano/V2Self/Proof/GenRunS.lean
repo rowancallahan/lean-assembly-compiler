@@ -30,8 +30,8 @@ theorem gen_runS (KL : SimW.LayW) (c : List UInt8) (ds : List DefA) (hXl : (seri
          (s0.x 13).toNat + N.toNat < 2 ^ 64 →
          ((s0.x 13).toNat + N.toNat ≤ (s0.x 12).toNat ∨ E0 + 8 ≤ (s0.x 13).toNat) →
          KL.lo ≤ (s0.x 12).toNat → E0 ≤ KL.hi → s0.b = KL.base →
-         (∀ i, i < (s0.x 11).toNat → SimW.wok KL ((s0.x 10).toNat + i - ((s0.x 10).toNat + i) % 8)) →
-         (∀ i, i < N.toNat → SimW.wok KL ((s0.x 13).toNat + i - ((s0.x 13).toNat + i) % 8)) →
+         (∀ i, i < (s0.x 11).toNat → SimW.bok KL ((s0.x 10).toNat + i)) →
+         (∀ i, i < N.toNat → SimW.sok KL ((s0.x 13).toNat + i)) →
          (∃ j, (s0.x 1).toNat = KL.base + 4 * j) →
          ∃ s3, SimW.SStarX KL C (0, s0) (((s0.x 1).toNat - s0.b) / 4, s3) ∧ s3.b = s0.b ∧ s3.x 1 = s0.x 1 ∧
            s3.x 8 = s0.x 8 ∧ s3.x 10 = (if N = 0 then 1 else 0) ∧ s3.x 11 = N ∧

@@ -15,6 +15,13 @@ structure LayW where
   W : List Nat
   lo : Nat
   hi : Nat
+  /-- input bytes `[ib, ib + il)` (read by lbu) and output bytes `[ob, ob + ol)` (written by sb) -/
+  ib : Nat := 0
+  il : Nat := 0
+  ob : Nat := 0
+  ol : Nat := 0
+  /-- the Sail memory at the start: bytes outside the work cells and the output bytes keep it -/
+  m0 : Nat → Option (BitVec 8) := fun _ => none
 
 structure LayW.Ok (K : LayW) : Prop where
   b4 : K.base % 4 = 0
@@ -23,8 +30,22 @@ structure LayW.Ok (K : LayW) : Prop where
   wlo : 0x80000000 ≤ K.lo
   whi : K.hi ≤ 0x100000000
   cw : K.base + 4 * K.W.length ≤ K.lo ∨ K.hi ≤ K.base
+  ibl : 0x80000000 ≤ K.ib
+  ibh : K.ib + K.il ≤ 0x100000000
+  obl : 0x80000000 ≤ K.ob
+  obh : K.ob + K.ol ≤ 0x100000000
+  oc : K.ob + K.ol ≤ K.base ∨ K.base + 4 * K.W.length ≤ K.ob
 
 def wok (K : LayW) (a : Nat) : Prop := K.lo ≤ a ∧ a + 8 ≤ K.hi ∧ a % 8 = 0
+
+/-- an output byte -/
+def outB (K : LayW) (a : Nat) : Prop := K.ob ≤ a ∧ a < K.ob + K.ol
+/-- an input or output byte -/
+def io (K : LayW) (a : Nat) : Prop := (K.ib ≤ a ∧ a < K.ib + K.il) ∨ outB K a
+/-- a byte lbu may read: in a work cell, or an input/output byte -/
+def bok (K : LayW) (a : Nat) : Prop := wok K (a - a % 8) ∨ io K a
+/-- a byte sb may write: in a work cell, or an output byte -/
+def sok (K : LayW) (a : Nat) : Prop := wok K (a - a % 8) ∨ outB K a
 
 structure RelW (K : LayW) (p : Nat × CallProbe.St) (t : Proven.St) : Prop where
   cfg : Proven.Cfg t
@@ -34,6 +55,8 @@ structure RelW (K : LayW) (p : Nat × CallProbe.St) (t : Proven.St) : Prop where
   bb : p.2.b = K.base
   x : ∀ j : Fin 32, getX t j = (p.2.x j.val).toBitVec
   w : ∀ a, wok K a → ∀ k < 8, t.mem[a + k]? = some ((p.2.m a).toBitVec.extractLsb' (8 * k) 8)
+  bw : ∀ a, io K a → t.mem[a]? = some ((p.2.m (a - a % 8)).toBitVec.extractLsb' (8 * (a % 8)) 8)
+  fr : ∀ a, ¬ wok K (a - a % 8) → ¬ outB K a → t.mem[a]? = K.m0 a
 
 theorem pcOKW {K : LayW} (hK : K.Ok) {pc : Nat} (h : pc < K.W.length) : pcOK (BitVec.ofNat 64 (K.base + 4 * pc)) := by
   have := hK.bhi; have := hK.blo; have := hK.b4
@@ -71,6 +94,9 @@ theorem rel_regW {K : LayW} {pc : Nat} {s : CallProbe.St} {t t' : Proven.St} (hR
       simp only [hj, false_and, if_false]; rw [hR.x j]; unfold CallProbe.wr; split <;> simp [CallProbe.upd, this]
   w := fun a ha k hk => by
     rw [hN.mem]; have := hR.w a ha k hk; unfold CallProbe.wr; split <;> simpa using this
+  bw := fun a ha => by
+    rw [hN.mem]; have := hR.bw a ha; unfold CallProbe.wr; split <;> simpa using this
+  fr := fun a h1 h2 => by rw [hN.mem]; exact hR.fr a h1 h2
 
 /-- J's addi value is the hardware's when the sum does not wrap -/
 theorem addi_val (b : UInt64) (imm : Int) (h0 : 0 ≤ (b.toNat : Int) + imm) (h1 : (b.toNat : Int) + imm < 2 ^ 64) :
@@ -172,7 +198,24 @@ theorem sim_sd {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.
       · subst e; rw [store8_in _ _ _ k hk]; simp [CallProbe.upd]; rfl
       · unfold wok at hc hw
         rw [store8_out _ _ _ _ (by omega)]
-        have := hR.w c hc k hk; simp [CallProbe.upd, e]; exact this }
+        have := hR.w c hc k hk; simp [CallProbe.upd, e]; exact this
+    bw := fun c hc => by
+      rw [hN.mem]
+      have hw' := hw; unfold wok at hw'
+      by_cases e : c - c % 8 = CallProbe.ea (s.x a) off
+      · have h8 := Nat.mod_lt c (show 8 > 0 by omega)
+        rw [show c = CallProbe.ea (s.x a) off + c % 8 by omega, store8_in _ _ _ _ h8]
+        simp only [Nat.add_mod, hw'.2.2, Nat.zero_add, Nat.mod_mod]
+        rw [show CallProbe.ea (s.x a) off + c % 8 - c % 8 = CallProbe.ea (s.x a) off by omega]
+        simp [CallProbe.upd]; rfl
+      · rw [store8_out _ _ _ _ (by omega)]
+        have := hR.bw c hc; simp [CallProbe.upd, e]; exact this
+    fr := fun c h1 h2 => by
+      rw [hN.mem]
+      have hw' := hw; unfold wok at hw'
+      by_cases e : c - c % 8 = CallProbe.ea (s.x a) off
+      · exact absurd (e ▸ hw) h1
+      · rw [store8_out _ _ _ _ (by omega)]; exact hR.fr c h1 h2 }
 
 /-- a retired control transfer that changes only the pc (and possibly writes `rd` with `v`) -/
 theorem rel_jumpW {K : LayW} {pc pc' : Nat} {s : CallProbe.St} {t t' : Proven.St} (hR : RelW K (pc, s) t)
@@ -199,6 +242,9 @@ theorem rel_jumpW {K : LayW} {pc pc' : Nat} {s : CallProbe.St} {t t' : Proven.St
       simp only [hj, false_and, if_false]; rw [hR.x j]; unfold CallProbe.wr; split <;> simp [CallProbe.upd, this]
   w := fun a ha k hk => by
     rw [hN.mem]; have := hR.w a ha k hk; unfold CallProbe.wr; split <;> simpa using this
+  bw := fun a ha => by
+    rw [hN.mem]; have := hR.bw a ha; unfold CallProbe.wr; split <;> simpa using this
+  fr := fun a h1 h2 => by rw [hN.mem]; exact hR.fr a h1 h2
 
 /-- **bgeu a, b, +8** (C's checked push: skip the OOM `jal` when t6 ≥ t5); J's offset is 2 instructions -/
 theorem sim_bgeu8 {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
@@ -493,20 +539,24 @@ theorem lbm_bv (m : UInt64) (k : Nat) (hk : k < 8) :
 theorem sim_lbuW {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
     {rd a : Nat} {off : Int} (hC : K.W[pc]? = some (I.lbu rd a off).enc) (hrd : rd < 32) (ha : a < 32)
     (hi1 : -2048 ≤ off) (hi2 : off < 2048) (h0 : 0 ≤ ((s.x a).toNat : Int) + off)
-    (hw : wok K (CallProbe.ea (s.x a) off - CallProbe.ea (s.x a) off % 8)) :
+    (hw : bok K (CallProbe.ea (s.x a) off)) :
     ∃ t', Retires t t' ∧ RelW K (pc + 1, CallProbe.wr s rd (CallProbe.lbm s.m (CallProbe.ea (s.x a) off))) t' := by
   obtain ⟨hi, hok⟩ := codeW hK hR hC
   let RD : Fin 32 := ⟨rd, hrd⟩
   let A : Fin 32 := ⟨a, ha⟩
-  have hW := hK.wlo; have hH := hK.whi
-  unfold wok at hw
+  have hW := hK.wlo; have hH := hK.whi; have := hK.ibh; have := hK.obh; have := hK.ibl; have := hK.obl
+  have hk : CallProbe.ea (s.x a) off % 8 < 8 := Nat.mod_lt _ (by decide)
+  have hrng : 0x80000000 ≤ CallProbe.ea (s.x a) off ∧ CallProbe.ea (s.x a) off + 1 ≤ 0x100000000 := by
+    rcases hw with hw | hw | hw <;> (try simp only [wok, outB] at hw) <;> omega
   have hlt : CallProbe.ea (s.x a) off < 2 ^ 64 := by omega
   have hea := eaW hR A off hi1 hi2 h0 (by show ((s.x a).toNat : Int) + off < 2 ^ 64; unfold CallProbe.ea at hlt; omega)
   have hi' : instrAt t (BitVec.ofNat 64 (K.base + 4 * pc)) (G.encL 4 (BitVec.ofNat 12 (bits off 12)) RD A) := by
     unfold G.encL; rw [imm12_toNat]; exact hi
-  have hk : CallProbe.ea (s.x a) off % 8 < 8 := Nat.mod_lt _ (by decide)
-  have hb := hR.w _ (show wok K _ from hw) (CallProbe.ea (s.x a) off % 8) hk
-  rw [show CallProbe.ea (s.x a) off - CallProbe.ea (s.x a) off % 8 + CallProbe.ea (s.x a) off % 8 = CallProbe.ea (s.x a) off by omega] at hb
+  have hb : t.mem[CallProbe.ea (s.x a) off]? = some ((s.m (CallProbe.ea (s.x a) off - CallProbe.ea (s.x a) off % 8)).toBitVec.extractLsb' (8 * (CallProbe.ea (s.x a) off % 8)) 8) := by
+    rcases hw with hw | hw
+    · have hb := hR.w _ hw (CallProbe.ea (s.x a) off % 8) hk
+      rwa [show CallProbe.ea (s.x a) off - CallProbe.ea (s.x a) off % 8 + CallProbe.ea (s.x a) off % 8 = CallProbe.ea (s.x a) off by omega] at hb
+    · exact hR.bw _ hw
   obtain ⟨t', hN⟩ := G.step_lbu hR.cfg hR.pc hok RD A _ hi' hea (by rw [toNat_lt64 hlt]; omega)
     (by rw [toNat_lt64 hlt]; exact hb)
   have := lbm_bv (s.m (CallProbe.ea (s.x a) off - CallProbe.ea (s.x a) off % 8)) (CallProbe.ea (s.x a) off % 8) hk
@@ -551,7 +601,7 @@ def Safe (K : LayW) (C : List CallProbe.J) : Nat × CallProbe.St → Prop
     | some (.alu op rd a b) => rd < 32 ∧ a < 32 ∧ b < 32 ∧ (1 ≤ op ∧ op ≤ 8) ∧ rd ≠ 0
     | some (.slli rd rs sh) => rd < 32 ∧ rs < 32 ∧ sh < 64
     | some (.lbu rd rs off) => rd < 32 ∧ rs < 32 ∧ -2048 ≤ off ∧ off < 2048 ∧ 0 ≤ ((s.x rs).toNat : Int) + off ∧
-        wok K (CallProbe.ea (s.x rs) off - CallProbe.ea (s.x rs) off % 8)
+        bok K (CallProbe.ea (s.x rs) off)
     | _ => False
 
 /-- **one step**: a safe J step on matching words is one retired Sail instruction, keeping `RelW` -/

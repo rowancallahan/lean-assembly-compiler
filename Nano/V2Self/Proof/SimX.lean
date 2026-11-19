@@ -109,7 +109,7 @@ theorem sbm_extract (x v : UInt64) (k j : Nat) (hk : k < 8) (hj : j < 8) :
 theorem sim_sbW {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
     {b a : Nat} {off : Int} (hC : K.W[pc]? = some (I.sb b a off).enc) (hb : b < 32) (ha : a < 32)
     (hi1 : -2048 ≤ off) (hi2 : off < 2048) (h0 : 0 ≤ ((s.x a).toNat : Int) + off)
-    (hw : wok K (CallProbe.ea (s.x a) off - CallProbe.ea (s.x a) off % 8)) :
+    (hw : sok K (CallProbe.ea (s.x a) off)) :
     ∃ t', Retires t t' ∧
       RelW K (pc + 1, { s with m := CallProbe.sbm s.m (CallProbe.ea (s.x a) off) (s.x b) }) t' := by
   obtain ⟨hi, hok⟩ := codeW hK hR hC
@@ -118,7 +118,10 @@ theorem sim_sbW {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K
   have hW := hK.wlo; have hH := hK.whi
   generalize hE : CallProbe.ea (s.x a) off = E at *
   have hk8 : E % 8 < 8 := Nat.mod_lt _ (by decide)
-  unfold wok at hw
+  have := hK.obh; have := hK.obl; have hoc := hK.oc
+  have hrng : 0x80000000 ≤ E ∧ E + 1 ≤ 0x100000000 ∧ (E + 1 ≤ K.base ∨ K.base + 4 * K.W.length ≤ E) := by
+    have hd := hK.cw
+    rcases hw with hw | hw <;> simp only [wok, outB] at hw <;> omega
   have hlt : E < 2 ^ 64 := by omega
   have hea := eaW hR A off hi1 hi2 h0 (by show ((s.x a).toNat : Int) + off < 2 ^ 64; unfold CallProbe.ea at hE; omega)
   rw [hE] at hea
@@ -156,7 +159,26 @@ theorem sim_sbW {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K
         · subst ek; rw [if_pos (by simp; omega), if_pos rfl]
         · rw [if_neg (by simp; omega), if_neg ek]; exact hR.w _ hc k hk
       · rw [if_neg (by simp; omega)]
-        simp only; rw [CallProbe.sbm_other' s.m E c (s.x b) ec]; exact hR.w c hc k hk }
+        simp only; rw [CallProbe.sbm_other' s.m E c (s.x b) ec]; exact hR.w c hc k hk
+    bw := fun c hc => by
+      rw [hN.mem, Std.ExtHashMap.getElem?_insert]
+      have hc8 : c % 8 < 8 := Nat.mod_lt _ (by decide)
+      by_cases ec : c - c % 8 = E - E % 8
+      · have hs : CallProbe.sbm s.m E (s.x b) (c - c % 8) = _ := if_pos ec
+        simp only; rw [hs, sbm_extract _ _ _ _ hk8 hc8]
+        by_cases ek : c = E
+        · subst ek; rw [if_pos (by simp), if_pos rfl]
+        · rw [if_neg (by simp; omega), if_neg (by omega)]
+          exact hR.bw c hc
+      · rw [if_neg (by simp; omega)]
+        simp only; rw [CallProbe.sbm_other' s.m E _ (s.x b) ec]; exact hR.bw c hc
+    fr := fun c h1 h2 => by
+      rw [hN.mem, Std.ExtHashMap.getElem?_insert]
+      have ne : c ≠ E := by
+        rintro rfl; rcases hw with hw | hw
+        · exact h1 hw
+        · exact h2 hw
+      rw [if_neg (by simp; omega)]; exact hR.fr c h1 h2 }
 
 /-! ## SimW's `encJ` words of the new instructions are the `I.enc` words the sims take -/
 
@@ -211,11 +233,11 @@ def SafeX (K : LayW) (C : List CallProbe.J) : Nat × CallProbe.St → Prop
     | some (.alu op rd a b) => rd < 32 ∧ a < 32 ∧ b < 32 ∧ (1 ≤ op ∧ op ≤ 8) ∧ rd ≠ 0
     | some (.slli rd rs sh) => rd < 32 ∧ rs < 32 ∧ sh < 64
     | some (.lbu rd rs off) => rd < 32 ∧ rs < 32 ∧ -2048 ≤ off ∧ off < 2048 ∧ 0 ≤ ((s.x rs).toNat : Int) + off ∧
-        wok K (CallProbe.ea (s.x rs) off - CallProbe.ea (s.x rs) off % 8)
+        bok K (CallProbe.ea (s.x rs) off)
     | some (.srli rd rs sh) => rd < 32 ∧ rs < 32 ∧ sh < 64
     | some (.bne a b o) => a < 32 ∧ b < 32 ∧ o = 4
     | some (.sb b a off) => b < 32 ∧ a < 32 ∧ -2048 ≤ off ∧ off < 2048 ∧ 0 ≤ ((s.x a).toNat : Int) + off ∧
-        wok K (CallProbe.ea (s.x a) off - CallProbe.ea (s.x a) off % 8)
+        sok K (CallProbe.ea (s.x a) off)
     | none => False
 
 theorem safeX_of {K : LayW} {C : List CallProbe.J} {a : Nat × CallProbe.St} (h : Safe K C a) : SafeX K C a := by

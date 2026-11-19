@@ -49,7 +49,7 @@ theorem copy_loopX {KL : LayW} {C : List J} {L : Nat} (hL : At C L loopJ) (hLC :
     (s.x 6).toNat + 8 * r < 2 ^ 64 → (s.x 14).toNat + r < 2 ^ 64 →
     (∀ i, i < r → ¬ K ((s.x 14).toNat + i - ((s.x 14).toNat + i) % 8)) → (∀ i, i < r → K ((s.x 6).toNat + 8 * i)) →
     (∀ i, i < r → wok KL ((s.x 6).toNat + 8 * i)) →
-    (∀ i, i < r → wok KL ((s.x 14).toNat + i - ((s.x 14).toNat + i) % 8)) →
+    (∀ i, i < r → sok KL ((s.x 14).toNat + i)) →
     ∃ s', SStarX KL C (L, s) (L + 7, s') ∧ s'.b = s.b ∧ (∀ c, K c → s'.m c = s.m c) ∧
       (∀ i, i < r → lbm s'.m ((s.x 14).toNat + i) = s.m ((s.x 6).toNat + 8 * i) &&& 255) ∧
       (∀ a, ¬ ((s.x 14).toNat ≤ a ∧ a < (s.x 14).toNat + r) → lbm s'.m a = lbm s.m a) ∧
@@ -136,7 +136,7 @@ theorem start_tailX {KL : LayW} {C : List J} {S w : Nat} (hS : At C S (startJ S 
     (hwA0 : wok KL (s2.x 12).toNat) (hwA8 : wok KL ((s2.x 12).toNat + 8))
     (hwB : ∀ i, i < (s2.m (s2.m (s2.x 31).toNat).toNat).toNat → wok KL ((s2.m (s2.x 31).toNat).toNat + 16 + 8 * i))
     (hwO : ∀ i, i < (s2.m (s2.m (s2.x 31).toNat).toNat).toNat →
-      wok KL ((s2.x 13).toNat + i - ((s2.x 13).toNat + i) % 8))
+      sok KL ((s2.x 13).toNat + i))
     (hra : ∃ j, (s2.m (s2.x 12).toNat).toNat = KL.base + 4 * j) :
     ∃ s3, SStarX KL C (S + 12, s2) (((s2.m (s2.x 12).toNat).toNat - s2.b) / 4, s3) ∧ s3.b = s2.b ∧
       s3.x 1 = s2.m (s2.x 12).toNat ∧ s3.x 8 = s2.m ((s2.x 12).toNat + 8) ∧ s3.x 2 = s2.x 2 ∧
