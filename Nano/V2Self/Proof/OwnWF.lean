@@ -320,4 +320,61 @@ theorem refParse_ar {ts : List UInt64} {p : List DefA} (h : refParse ts = some p
     · cases h
   · cases h
 
+/-! ## (2) kinding bounds every slot by nslots and every call id by the def count -/
+theorem primK_le {p : Nat} {ps rs : List Kd} (h : primK p ps = some rs) : p ≤ 9 := by
+  unfold primK at h; split at h <;> first | omega | cases h
+
+mutual
+theorem wfn_of {D : List Sig} (hD : D.length < 2 ^ 64) : ∀ {Γ S e ks}, TyN D Γ S e ks → Γ.length < 2 ^ 20 → NdAr e → WFN e
+  | _, _, _, _, .const, _, _ => trivial
+  | _, _, _, _, .loc hk, hl, _ => by have := hk.1; exact ⟨by omega, by omega⟩
+  | _, _, _, _, .bin _ _ ha hb, hl, na => ⟨wfn_of hD ha hl na.1, wfn_of hD hb hl na.2⟩
+  | _, _, _, _, .ite _ ha hb ht he, hl, na =>
+    ⟨wfn_of hD ha hl na.1, wfn_of hD hb hl na.2.1, wfn_of hD ht hl na.2.2.1, wfn_of hD he hl na.2.2.2⟩
+  | _, _, _, _, .letE (vs := vs) hv hw hs _ hb, hl, na => by
+    have hvs : _ + vs.length ≤ _ := hw ▸ hs
+    refine ⟨by omega, by omega, wfn_of hD hv hl na.1, wfn_of hD hb (by rw [setK_length hvs]; exact hl) na.2⟩
+  | _, _, _, _, .pair hc, hl, na => wfl_of hD hc hl na
+  | _, _, _, _, .call hc hd, hl, na => by
+    have := (List.getElem?_eq_some_iff.1 hd).1
+    exact ⟨by omega, wfl_of hD hc hl na⟩
+  | _, _, _, _, .prim hc hp _, hl, na => ⟨by have := primK_le hp; omega, na.1, wfl_of hD hc hl na.2⟩
+  | _, _, _, _, .cont he, hl, na => by simp only [WFN, NdAr] at na ⊢; exact wfn_of hD he hl na
+theorem wfl_of {D : List Sig} (hD : D.length < 2 ^ 64) : ∀ {Γ cs ks}, TyL D Γ cs ks → Γ.length < 2 ^ 20 → NdArL cs → WFL cs
+  | _, _, _, .nil, _, _ => trivial
+  | _, _, _, .cons hn hr, hl, na => ⟨wfn_of hD hn hl na.1, wfl_of hD hr hl na.2⟩
+end
+
+theorem tyN_notLoop {D : List Sig} {Γ S e ks} (h : TyN D Γ S e ks) : ∀ z s, e ≠ .loop z s := by
+  intro z s e; subst e; cases h
+
+theorem wfb_of {D : List Sig} (hD : D.length < 2 ^ 64) {Γ b ks} (h : TyB D Γ b ks) (hl : Γ.length < 2 ^ 20) (na : NdAr b) : WFB b := by
+  cases h with
+  | plain he =>
+    have := tyN_notLoop he
+    unfold WFB; split
+    · rename_i z s; exact absurd rfl (this z s)
+    · exact wfn_of hD he hl na
+  | loop _ hz hs => exact ⟨wfn_of hD hz hl na.1, wfn_of hD hs hl na.2⟩
+
+/-! ## (3) parser outputs -/
+/-- the well-formedness the ownership-stage proof needs (header numbers, node bounds, arities) -/
+def WFP (p : List DefA) : Prop := ∀ d ∈ p, d.npw < 2 ^ 64 ∧ d.nslots < 2 ^ 64 ∧ d.nres < 2 ^ 64 ∧ WFB d.body
+
+/-- the size bounds the parser cannot give (Gen: nslots, nres < 251; the def count is below the token count) -/
+def Bnd (p : List DefA) : Prop := p.length < 2 ^ 64 ∧ ∀ d ∈ p, d.nslots < 2 ^ 20 ∧ d.nres < 2 ^ 64
+
+theorem parsed_wfp {ts : List UInt64} {p : List DefA} (h : ParsesProgram ts p) (hb : Bnd p) : WFP p := by
+  obtain ⟨sigs, hl, hd, _⟩ := refParse_ty h
+  have har := refParse_ar h
+  intro d hm
+  obtain ⟨i, hi⟩ := List.mem_iff_getElem?.1 hm
+  have hi' : i < sigs.length := by rw [hl]; exact (List.getElem?_eq_some_iff.1 hi).1
+  obtain ⟨n1, n2, n3, hB⟩ := hd i d sigs[i] hi (List.getElem?_eq_getElem hi')
+  obtain ⟨hs, hr⟩ := hb.2 d hm
+  have hΓ : (sigs[i].1.map some ++ List.replicate (d.nslots - d.npw) none).length < 2 ^ 20 := by
+    simp; omega
+  have hp := hb.1
+  refine ⟨by omega, by omega, hr, wfb_of (by simp; omega) hB hΓ (har d hm)⟩
+
 end OwnWF
