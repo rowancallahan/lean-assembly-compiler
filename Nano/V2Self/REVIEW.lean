@@ -3,7 +3,7 @@ Build: `lake build Nano.V2Self.REVIEW`.  The #print axioms output is the authori
 import Nano.V2Self.Proof.Parser.ParCapBnd
 import Nano.V2Self.Proof.Cert.All
 import Nano.V2Self.Proof.Main.SelfC
-import Nano.V2Self.Proof.Main.RunsTop
+import Nano.V2Self.Proof.Main.RunsTopO
 import Nano.V2Self.Proof.Bridge.MainShift4
 import Nano.V2Self.Proof.Tests.AuditSpace
 
@@ -51,7 +51,11 @@ which main does not run out of room at ANY admissible 8-aligned work position; `
 -- a concrete value (D, Tests/AuditSpace.lean): the work bound of the audit example ex1 on input [5]
 #check @NanoMain.AuditSpace.spaceC_ex1_eq
 #print axioms NanoMain.AuditSpace.spaceC_ex1_eq
--- PENDING (E): #check @NanoMain.C_runsO, @NanoMain.self_runs_C
+-- premise-free (E, Main/RunsTopO.lean): C_runs with D's shiftInv, and the same for C compiled by itself
+#check @NanoMain.C_runsO
+#print axioms NanoMain.C_runsO
+#check @NanoMain.self_runs_C
+#print axioms NanoMain.self_runs_C
 
 /-! ## 3. definitions the statement depends on (see NANO_V2_REVIEW.md for summaries) -/
 -- machine / calling convention (Spec/, frozen by Spec/FROZEN.sha256)
