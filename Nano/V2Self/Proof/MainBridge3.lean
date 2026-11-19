@@ -91,4 +91,46 @@ theorem Ch.trans {σ σ1 σ2 : AH} {Γ : List (Option Kd)} {F F1 F2 : List Bool}
 
 theorem Ch.refl (σ : AH) (Γ F env ew) : Ch σ σ Γ F F env ew := fun _ _ _ => rfl
 
+theorem live_of_mono {F F1 : List Bool} (m : Mono F F1) {s : Nat} (h : OwnSpec.dead F1 s = false) :
+    OwnSpec.dead F s = false := by
+  cases hd : OwnSpec.dead F s
+  · rfl
+  · have := m s hd; rw [h] at this; cases this
+
+theorem EnvI.mono {σ Kk F F1 Γ env ew} (h : EnvI σ Kk F Γ env ew) (m : Mono F F1) : EnvI σ Kk F1 Γ env ew where
+  len := h.len
+  ty := h.ty
+  val := fun s hk hr => h.val s hk (hr.imp id (live_of_mono m))
+  dist := fun s t ls lt hst hs ht k1 k2 d1 d2 e1 e2 =>
+    h.dist s t ls lt hst hs ht k1 k2 (live_of_mono m d1) (live_of_mono m d2) e1 e2
+
+theorem ResI.mono {σ Kk F F1 Γ env ew} (m : Mono F F1) : ∀ {es : List Nat} {v : List W} {vs : List UInt64},
+    ResI σ Kk F Γ env ew es v vs → ResI σ Kk F1 Γ env ew es v vs
+  | [], [], [], _ => trivial
+  | _ :: _, _ :: _, _ :: _, ⟨c1, c2, c3, c4, c5⟩ =>
+    ⟨c1, c2, fun he l hl => let ⟨a, b⟩ := c3 he l hl; ⟨fun s ls k1 k2 d e => a s ls k1 k2 (live_of_mono m d) e, b⟩, c4,
+      ResI.mono m c5⟩
+  | [], _ :: _, _, h | [], [], _ :: _, h | _ :: _, [], _, h | _ :: _, _ :: _, [], h => by simp [ResI] at h
+
+theorem dead_set (F : List Bool) (s t : Nat) : OwnSpec.dead (F.set s true) t = (if t = s ∧ s < F.length then true else OwnSpec.dead F t) := by
+  simp only [OwnSpec.dead, List.getD_eq_getElem?_getD, List.getElem?_set]
+  by_cases h : s = t
+  · subst h; by_cases hl : s < F.length <;> simp [hl]
+  · simp [h, Ne.symm h]
+
+theorem consume_spec {F F1 : List Bool} {s : Nat} (h : OwnSpec.consume1 F s = some F1) :
+    OwnSpec.dead F s = false ∧ OwnSpec.dead F1 s = true ∧ Mono F F1 ∧ ∀ t, t ≠ s → OwnSpec.dead F1 t = OwnSpec.dead F t := by
+  unfold OwnSpec.consume1 at h
+  split at h
+  · cases h
+  · rename_i hd
+    simp only [Option.some.injEq] at h; subst h
+    simp only [Bool.not_eq_true] at hd
+    have hl : s < F.length := by
+      refine Nat.lt_of_not_le fun hl => ?_
+      simp only [OwnSpec.dead, List.getD_eq_getElem?_getD, List.getElem?_eq_none hl] at hd
+      simp at hd
+    refine ⟨hd, by rw [dead_set]; simp [hl], fun t ht => ?_, fun t ht => by rw [dead_set]; simp [ht]⟩
+    rw [dead_set]; split <;> simp_all
+
 end NanoMain
