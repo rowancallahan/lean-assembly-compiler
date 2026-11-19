@@ -70,7 +70,7 @@ theorem rep_ty {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs) (w 
   exact ⟨tokensAt_frame rT et rts, rts, by rw [e 0 (by decide)]; exact r0,
     by rw [e 3 (by decide)]; exact tokAt_frame et hn r3, by rw [e 11 (by decide)]; exact r11,
     binds_frame rB (e 4 (by decide)) (fun i a _ => e i (by omega)) et hn es,
-    defs_frame rD (e 12 (by decide)) (e 27 (by decide)) (fun i a _ => e i (by omega)) et hn es,
+    defs_frame rD (e 12 (by decide)) (e 27 (by decide)) (e 26 (by decide)) (fun i a _ => e i (by omega)) et hn es,
     arena_frame rA (e 8 (by decide)) (e 9 (by decide)) (fun i a _ => e i (by omega)) es,
     fun s' hs' => by
       cases hs'

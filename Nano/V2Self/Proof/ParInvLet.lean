@@ -215,7 +215,7 @@ theorem rep_set29 {h ts : Buf} {st : St} {fs : List Frame} {pos : UInt64} {x : L
   have ea : ArenaAgree h (bset h 29 pos) := fun i a _ => c i (by omega)
   refine ⟨tokensAt_frame rT et rts, rts, by rw [c 0 (by decide)]; exact r0, by rw [c 3 (by decide)]; exact tokAt_frame et hn r3,
     by rw [c 11 (by decide)]; exact r11, binds_frame rB (c 4 (by decide)) (fun i a _ => c i (by omega)) et hn es,
-    defs_frame rD (c 12 (by decide)) (c 27 (by decide)) (fun i a _ => c i (by omega)) et hn es,
+    defs_frame rD (c 12 (by decide)) (c 27 (by decide)) (c 26 (by decide)) (fun i a _ => c i (by omega)) et hn es,
     arena_frame rA (c 8 (by decide)) (c 9 (by decide)) (fun i a _ => c i (by omega)) es,
     fun s hs => by rw [c 25 (by decide)]; exact (r25 s hs).frame es,
     fun y hy _ => by rw [bget_bset_eq _ _ _ _ rfl (by rw [u, rO.1]; omega)]; subst hy; exact nameAt_frame et (by omega) hx,

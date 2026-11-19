@@ -170,7 +170,7 @@ theorem repZ_frame {h h' ts : Buf} {st : St} {toks' : List Tok} (r : RepZ h ts s
   exact ⟨tokensAt_frame rT et rts, rts, by rw [c 0 (by decide) (by decide) (by decide) (by decide)]; exact r0, hK,
     by rw [c 11 (by decide) (by decide) (by decide) (by decide)]; exact r11,
     binds_frame rB (c 4 (by decide) (by decide) (by decide) (by decide)) (fun i a _ => e i (by omega) (by omega) (by omega) (by omega)) et hn es,
-    defs_frame rD (c 12 (by decide) (by decide) (by decide) (by decide)) (c 27 (by decide) (by decide) (by decide) (by decide))
+    defs_frame rD (c 12 (by decide) (by decide) (by decide) (by decide)) (c 27 (by decide) (by decide) (by decide) (by decide)) (c 26 (by decide) (by decide) (by decide) (by decide))
       (fun i a _ => e i (by omega) (by omega) (by omega) (by omega)) et hn es,
     arena_frame rA (c 8 (by decide) (by decide) (by decide) (by decide)) (c 9 (by decide) (by decide) (by decide) (by decide))
       (fun i a _ => e i (by omega) (by omega) (by omega) (by omega)) es,
@@ -277,7 +277,7 @@ theorem rep_open {G H ts : Buf} {st : St} {fs' : List Frame} {p : UInt64} {x : L
     Rep H ts { st with toks := toks', cur := DefR.fresh x, binds := [], vals := [], arena := [], nx := 0, arm := false } fs' := by
   obtain ⟨hn, hlen, har⟩ := repZ_bounds R
   obtain ⟨rT, rts, r0, r3, r11, rB, rD, rA, r25, r29, r30, r32, rO⟩ := R
-  obtain ⟨d12, dlt, d27, drows, dcur, dz, d0⟩ := rD
+  obtain ⟨d12, dlt, d27, drows, dcur, dz, d0, ds26, ds⟩ := rD
   simp only [Bool.false_eq_true, if_false] at dcur
   have hjN : (bget G 12).toNat = st.defs.length := d12
   obtain ⟨v4, v8, v9, v11, v30, vR0, vR2, vR5, v12, v27⟩ := openW_vals G p hj hlen
@@ -350,7 +350,9 @@ theorem rep_open {G H ts : Buf} {st : St} {fs' : List Frame} {p : UInt64} {x : L
           (by rw [defCell j h2 k hk]; omega) (by rw [defCell j h2 k hk]; omega) (by rw [defCell j h2 k hk]; omega)
           (by rw [defCell j h2 k hk]; omega) (by rw [defCell j h2 k hk]; omega)]
         exact dz j h1 h2 k hk
-    · intro i h1 h2
+    · have c26 : bget H 26 = bget G 26 := cell 26 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)
+      refine ⟨fun i h1 h2 => ?_, by rw [c26]; exact ds26, fun k h1 h2 => by
+        rw [big _ (by rw [shRow0 k h2]; omega)]; exact ds k (by rw [← c26]; exact h1) h2⟩
       rw [w 27 (by decide), v27] at h1
       have e : (d7 + 4096 + i.toUInt64).toNat = 151616 + i := by
         rw [UInt64.toNat_add]; simp [Nat.toUInt64, show (d7 + 4096 : UInt64).toNat = 151616 from rfl]; omega
@@ -382,7 +384,7 @@ theorem rep_scratch22 {h h' ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts 
   exact ⟨tokensAt_frame rT et rts, rts, by rw [c 0 (by decide) (by decide)]; exact r0,
     by rw [c 3 (by decide) (by decide)]; exact tokAt_frame et hn r3, by rw [c 11 (by decide) (by decide)]; exact r11,
     binds_frame rB (c 4 (by decide) (by decide)) (fun i a _ => e i (by omega) (by omega)) et hn es,
-    defs_frame rD (c 12 (by decide) (by decide)) (c 27 (by decide) (by decide)) (fun i a _ => e i (by omega) (by omega)) et hn es,
+    defs_frame rD (c 12 (by decide) (by decide)) (c 27 (by decide) (by decide)) (c 26 (by decide) (by decide)) (fun i a _ => e i (by omega) (by omega)) et hn es,
     arena_frame rA (c 8 (by decide) (by decide)) (c 9 (by decide) (by decide)) (fun i a _ => e i (by omega) (by omega)) es,
     fun s hs => by rw [c 25 (by decide) (by decide)]; exact (r25 s hs).frame es,
     fun x hx hne => by rw [c 29 (by decide) (by decide)]; exact nameAt_frame et (by omega) (r29 x hx hne),
@@ -402,7 +404,7 @@ theorem rep_accept {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs)
   exact ⟨tokensAt_frame rT et rts, rts, by rw [bget_bset_eq _ _ _ _ rfl (by simp; omega)]; rfl,
     by rw [e 3 (by decide)]; exact tokAt_frame et hn r3, by rw [e 11 (by decide)]; exact r11,
     binds_frame rB (e 4 (by decide)) (fun i a _ => e i (by omega)) et hn es,
-    defs_frame rD (e 12 (by decide)) (e 27 (by decide)) (fun i a _ => e i (by omega)) et hn es,
+    defs_frame rD (e 12 (by decide)) (e 27 (by decide)) (e 26 (by decide)) (fun i a _ => e i (by omega)) et hn es,
     arena_frame rA (e 8 (by decide)) (e 9 (by decide)) (fun i a _ => e i (by omega)) es,
     fun s hs => by rw [e 25 (by decide)]; exact (r25 s hs).frame es,
     fun x hx hne => by rw [e 29 (by decide)]; exact nameAt_frame et (by omega) (r29 x hx hne),
@@ -536,7 +538,7 @@ theorem h_defs {h ts : Buf} {st : St} (r : Rep h ts st [.defs]) (hW : IsInpW) (h
     · have := R1.2.2.2.2.2.2.2.2.2.2.2.2.2
       simp only [bset]
       rw [List.drop_set_of_lt (by simp; omega), show 184385 + ts.length = 184384 + ts.length + 1 by omega]; exact this
-    · exact defs_frame rD (bget_bset' _ _ _ _ (by decide)) (bget_bset' _ _ _ _ (by decide))
+    · exact defs_frame rD (bget_bset' _ _ _ _ (by decide)) (bget_bset' _ _ _ _ (by decide)) (bget_bset' _ _ _ _ (by decide))
         (fun i a _ => bget_bset' _ _ _ _ (by simp; omega)) ⟨bget_bset' _ _ _ _ (by decide), fun i hi => bget_bset' _ _ _ _ (by simp; omega)⟩ hn
         (fun i a _ => bget_bset' _ _ _ _ (by simp; omega))
   have ca : ¬ ((bget g 3 == bget g 7) = true) := by simpa using hacc

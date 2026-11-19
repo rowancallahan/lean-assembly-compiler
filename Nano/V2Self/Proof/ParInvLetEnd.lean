@@ -19,7 +19,7 @@ theorem rep_take {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs) (
   obtain ⟨b4, bl, bk⟩ := rB
   refine ⟨tokensAt_frame rT et rts, rts, by rw [c 0 (by decide)]; exact r0, by rw [c 3 (by decide)]; exact tokAt_frame et hn r3,
     by rw [c 11 (by decide)]; exact r11, ⟨?_, by simp; omega, fun i hi => ?_⟩,
-    defs_frame rD (c 12 (by decide)) (c 27 (by decide)) (fun i a _ => c i (by omega)) et hn es,
+    defs_frame rD (c 12 (by decide)) (c 27 (by decide)) (c 26 (by decide)) (fun i a _ => c i (by omega)) et hn es,
     arena_frame rA (c 8 (by decide)) (c 9 (by decide)) (fun i a _ => c i (by omega)) es,
     fun s hs => by rw [c 25 (by decide)]; exact (r25 s hs).frame es,
     fun y hy hne => by rw [c 29 (by decide)]; exact nameAt_frame et (by omega) (r29 y hy hne),

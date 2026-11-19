@@ -53,7 +53,7 @@ theorem rep_same {r : Nat} {h h' ts : Buf} {st : St} {fs : List Frame} (R : Rep 
     by rw [c 3 (by decide) (by decide) (by decide)]; exact tokAt_frame et hn r3,
     by rw [c 11 (by decide) (by decide) (by decide)]; exact r11,
     binds_frame rB (c 4 (by decide) (by decide) (by decide)) (fun i a _ => e i (by omega) (by omega) (by omega)) et hn es,
-    defs_frame rD (c 12 (by decide) (by decide) (by decide)) (c 27 (by decide) (by decide) (by decide))
+    defs_frame rD (c 12 (by decide) (by decide) (by decide)) (c 27 (by decide) (by decide) (by decide)) (c 26 (by decide) (by decide) (by decide))
       (fun i a _ => e i (by omega) (by omega) (by omega)) et hn es,
     arena_frame rA (c 8 (by decide) (by decide) (by decide)) (c 9 (by decide) (by decide) (by decide))
       (fun i a _ => e i (by omega) (by omega) (by omega)) es,

@@ -219,6 +219,10 @@ theorem parCell (s : UInt64) (i : Nat) (hs : s.toNat + i < 4096) : (d7 + 4096 + 
 theorem parCell0 (i : Nat) (hi : i < 4096) : (d7 + 4096 + i.toUInt64).toNat = 151616 + i := by
   rw [UInt64.toNat_add, show (d7 + 4096 : UInt64).toNat = 151616 from rfl]; simp; omega
 
+theorem shRow0 (k : Nat) (hk : k < 8192) : (d7 + 8192 + 3 * k.toUInt64).toNat = 155712 + 3 * k := by
+  have e3 : (3 * k.toUInt64).toNat = 3 * k := by rw [UInt64.toNat_mul]; simp; omega
+  rw [UInt64.toNat_add, e3, show (d7 + 8192 : UInt64).toNat = 155712 from rfl]; omega
+
 theorem row_frame {h h' : Buf} {j : Nat} {d : DefR} (hj : j < 512) (r : RowRep h j d) (er : RegAgree h h' 147520 180288)
     (et : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShTabAgree h h') : RowRep h' j d := by
   have c : ∀ k : UInt64, k.toNat < 8 → bget h' (d7 + 8 * j.toUInt64 + k) = bget h (d7 + 8 * j.toUInt64 + k) :=
@@ -235,15 +239,17 @@ theorem rowZero_frame {h h' : Buf} {j : Nat} (hj : j < 512) (r : RowZero h j) (e
   fun k hk => by rw [er _ (by rw [defCell j hj k hk]; omega) (by rw [defCell j hj k hk]; omega)]; exact r k hk
 
 theorem defs_frame {h h' : Buf} {st : St} {b : Bool} (r : DefsRep h st b) (e12 : bget h' 12 = bget h 12) (e27 : bget h' 27 = bget h 27)
+    (e26 : bget h' 26 = bget h 26)
     (er : RegAgree h h' 147520 180288) (et : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShTabAgree h h') :
     DefsRep h' st b := by
-  obtain ⟨r12, rl, r27, rd, rc, rz, r0⟩ := r
+  obtain ⟨r12, rl, r27, rd, rc, rz, r0, rs26, rs⟩ := r
   have c5 : ∀ j, j < 512 → bget h' (d7 + 8 * j.toUInt64 + 5) = bget h (d7 + 8 * j.toUInt64 + 5) :=
     fun j hj => er _ (by rw [defCell j hj 5 (by decide), show (5 : UInt64).toNat = 5 from rfl]; omega)
       (by rw [defCell j hj 5 (by decide), show (5 : UInt64).toNat = 5 from rfl]; omega)
   refine ⟨by rw [e12]; exact r12, rl, by rw [e27]; exact r27, fun j hj => ⟨row_frame (by omega) (rd j hj).1 er et hn es,
     by rw [c5 j (by omega), e27]; exact (rd j hj).2⟩, ?_, fun j h1 h2 => rowZero_frame h2 (rz j h1 h2) er,
-    fun i h1 h2 => by rw [er _ (by rw [parCell0 i h2]; omega) (by rw [parCell0 i h2]; omega)]; exact r0 i (by rw [← e27]; exact h1) h2⟩
+    fun i h1 h2 => by rw [er _ (by rw [parCell0 i h2]; omega) (by rw [parCell0 i h2]; omega)]; exact r0 i (by rw [← e27]; exact h1) h2,
+    by rw [e26]; exact rs26, fun k h1 h2 => by rw [es _ (by rw [shRow0 k h2]; omega) (by rw [shRow0 k h2]; omega)]; exact rs k (by rw [← e26]; exact h1) h2⟩
   cases b with
   | true => simp only [if_true] at rc ⊢; exact ⟨row_frame (by omega) rc.1 er et hn es, by rw [c5 _ (by omega), e27]; exact rc.2⟩
   | false => simp only [Bool.false_eq_true, if_false] at rc ⊢; exact rowZero_frame (by omega) rc er
@@ -299,7 +305,7 @@ theorem rep_tasks {h h' ts : Buf} {st : St} {fs fs' : List Frame} (r : Rep h ts 
   refine ⟨tokensAt_frame rT et rts, rts, by rw [c 0 (by decide) (by decide)]; exact r0, by rw [c 3 (by decide) (by decide)]; exact tokAt_frame et hn r3,
     by rw [c 11 (by decide) (by decide)]; exact r11,
     binds_frame rB (c 4 (by decide) (by decide)) (fun i a _ => e i (by omega) (Or.inr (by omega))) et hn es,
-    by rw [hd]; exact defs_frame rD (c 12 (by decide) (by decide)) (c 27 (by decide) (by decide)) (fun i a _ => e i (by omega) (Or.inr (by omega))) et hn es,
+    by rw [hd]; exact defs_frame rD (c 12 (by decide) (by decide)) (c 27 (by decide) (by decide)) (c 26 (by decide) (by decide)) (fun i a _ => e i (by omega) (Or.inr (by omega))) et hn es,
     arena_frame rA (c 8 (by decide) (by decide)) (c 9 (by decide) (by decide)) (fun i a _ => e i (by omega) (Or.inr (by omega))) es,
     fun s hs => by rw [c 25 (by decide) (by decide)]; exact (r25 s hs).frame es,
     fun x hx hne => by rw [c 29 (by decide) (by decide)]; exact nameAt_frame et (by omega) (r29 x hx hne),
@@ -353,7 +359,7 @@ theorem rep_tok {h h' ts : Buf} {st : St} {fs fs' : List Frame} {toks' : List To
   refine ⟨tokensAt_frame rT et rts, rts, by rw [c 0 (by decide) (by decide) (by decide)]; exact r0, hK,
     by rw [c 11 (by decide) (by decide) (by decide)]; exact r11,
     binds_frame rB (c 4 (by decide) (by decide) (by decide)) (fun i a _ => e i (by omega) (by omega) (Or.inr (by omega))) et hn es,
-    (by rw [hd]; exact defs_frame rD (c 12 (by decide) (by decide) (by decide)) (c 27 (by decide) (by decide) (by decide)) (fun i a _ => e i (by omega) (by omega) (Or.inr (by omega))) et hn es),
+    (by rw [hd]; exact defs_frame rD (c 12 (by decide) (by decide) (by decide)) (c 27 (by decide) (by decide) (by decide)) (c 26 (by decide) (by decide) (by decide)) (fun i a _ => e i (by omega) (by omega) (Or.inr (by omega))) et hn es),
     arena_frame rA (c 8 (by decide) (by decide) (by decide)) (c 9 (by decide) (by decide) (by decide))
       (fun i a _ => e i (by omega) (by omega) (Or.inr (by omega))) es,
     fun s hs => by rw [c 25 (by decide) (by decide) (by decide)]; exact (r25 s hs).frame es,

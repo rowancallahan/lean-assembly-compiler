@@ -66,7 +66,7 @@ theorem rep_v6 {g ts : Buf} {st : St} {fs : List Frame} (R : Rep g ts st fs) (x 
   refine ⟨tokensAt_frame rT et rts, rts, by rw [cc 0 (by decide) (by decide)]; exact r0,
     by rw [cc 3 (by decide) (by decide)]; exact tokAt_frame et hn7 r3, by rw [cc 11 (by decide) (by decide)]; exact r11,
     ⟨by rw [e4]; simp; omega, by simp; omega, fun i hi => ?_⟩,
-    defs_frame rD (cc 12 (by decide) (by decide)) (cc 27 (by decide) (by decide)) (fun i a b => e i (by omega) (Or.inl (by omega))) et hn7 es,
+    defs_frame rD (cc 12 (by decide) (by decide)) (cc 27 (by decide) (by decide)) (cc 26 (by decide) (by decide)) (fun i a b => e i (by omega) (Or.inl (by omega))) et hn7 es,
     arena_frame rA (cc 8 (by decide) (by decide)) (cc 9 (by decide) (by decide)) (fun i a b => e i (by omega) (Or.inl (by omega))) es,
     fun s' hs' => by rw [cc 25 (by decide) (by decide)]; exact (r25 s' hs').frame es,
     fun y hy hne => by rw [cc 29 (by decide) (by decide)]; exact nameAt_frame et (by omega) (r29 y hy hne),

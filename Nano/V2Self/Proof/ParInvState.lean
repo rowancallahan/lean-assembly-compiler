@@ -88,6 +88,10 @@ def RowRep (h : Buf) (j : Nat) (d : DefR) : Prop :=
 
 def RowZero (h : Buf) (j : Nat) : Prop := ∀ k : UInt64, k.toNat < 8 → bget h (d7 + 8 * j.toUInt64 + k) = 0
 
+/-- the shape table: h[26] rows allocated (≤ 8192); every row from h[26] on has a zero left cell, so no shape code refers to it -/
+def ShRows (h : Buf) : Prop :=
+  (bget h 26).toNat ≤ 8192 ∧ ∀ k : Nat, (bget h 26).toNat ≤ k → k < 8192 → bget h (d7 + 8192 + 3 * k.toUInt64) = 0
+
 /-- the def table: finished rows, the current row (inside a def) or a zero row (between defs), zero rows above; h[27] = next free
 parameter cell, above every row's parameter list -/
 def DefsRep (h : Buf) (st : St) (inDef : Bool) : Prop :=
@@ -98,7 +102,10 @@ def DefsRep (h : Buf) (st : St) (inDef : Bool) : Prop :=
       (bget h (d7 + 8 * st.defs.length.toUInt64 + 5)).toNat + st.cur.params.length = (bget h 27).toNat
     else RowZero h st.defs.length) ∧
   (∀ j, st.defs.length < j → j < 512 → RowZero h j) ∧
-  ∀ i : Nat, (bget h 27).toNat ≤ i → i < 4096 → bget h (d7 + 4096 + i.toUInt64) = 0
+  (∀ i : Nat, (bget h 27).toNat ≤ i → i < 4096 → bget h (d7 + 4096 + i.toUInt64) = 0) ∧
+  ShRows h
+
+
 
 /-- the emitted words follow the token sentinel 0 at the end of the heap -/
 def OutRep (h : Buf) (ts : Buf) (out : List UInt64) : Prop :=
