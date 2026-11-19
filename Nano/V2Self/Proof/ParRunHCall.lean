@@ -217,4 +217,125 @@ theorem hcall_prim {n : Nat} (hE : ∀ n' < n, ExprSpec n') {md : Nat} {ks : Lis
   rw [htn, ← hmap]
   simp [Function.comp_def]
 
+/-! ## call of a finished def -/
+theorem findD_rows (st : St) (x : List Nat) :
+    findD (rows st) x = if st.cur.name = x then some st.defs.length else findD st.defs x := by
+  unfold findD rows
+  rw [List.reverse_append]
+  simp only [List.reverse_cons, List.reverse_nil, List.nil_append, List.singleton_append]
+  rw [List.findIdx?_cons]
+  by_cases hd : st.cur.name = x
+  · simp [hd]
+  · simp only [hd, beq_iff_eq, if_false, Option.map_map]
+    simp only [List.length_append, List.length_singleton]
+    cases hf : List.findIdx? (fun d => d.name == x) st.defs.reverse with
+    | none => simp
+    | some i =>
+      have := (List.findIdx?_eq_some_iff_getElem.mp hf).1
+      simp at this ⊢; omega
+
+theorem pApp_call {f : Nat} {cx : Cx} {tl : Bool} {x : List Nat} {r : List Tok} {nx : Nat} (henv : findEnv cx.env x = none)
+    (hself : ∀ sn sps, cx.self = some (sn, sps) → sn ≠ x) : pApp (f + 1) cx tl (.id x :: r) nx = pCallDef f cx x r nx := by
+  rw [pApp]
+  simp only [henv]
+  cases hs : cx.self with
+  | none => rfl
+  | some p =>
+    obtain ⟨sn, sps⟩ := p
+    have := hself sn sps hs
+    simp [this]
+
+theorem nodeOK_call {ds : List DefR} {j b : Nat} {sh : Option Sh} {pe : Bool} {kids : List RN} {d : DefR}
+    (h : nodeOK ds (RN.mk 8 j b sh pe kids) = true) (hd : ds[j]? = some d) : inpMatch d.params false kids = true := by
+  simp only [nodeOK, RN.tag, RN.a, RN.kids, hd] at h
+  simp at h
+  exact h.2
+
+theorem findD_ltG {l : List DefR} {x : List Nat} {j : Nat} (h : findD l x = some j) : j < l.length := by
+  unfold findD at h
+  cases h' : (l.reverse.findIdx? fun d => d.name == x) with
+  | none => simp [h'] at h
+  | some i => simp [h'] at h; have := List.findIdx?_eq_some_iff_findIdx_eq.mp h'; simp at this; omega
+
+/-- **call of a finished def** (B's `HCall`, `PrimCase.call`) -/
+theorem hcall_def {n : Nat} (hE : ∀ n' < n, ExprSpec n') {md : Nat} {ks : List Frame} {st fin : St} {cx : Cx} {x : List Nat}
+    {r : List Tok} {j : Nat} (h : StarN n (.prim md :: ks, st) ([], fin)) (hc : CxRel st cx) (hnn : CxNN st)
+    (ht : st.toks = .id x :: r) (hb : findB st.binds x = none) (hj : findD (rows st) x = some j) (hne : j ≠ st.defs.length) :
+    PrimConcl n md ks st fin cx := by
+  match n, h with
+  | 0, h => exact absurd h.zero_nil.1 (by simp)
+  | n0 + 1, h =>
+  obtain ⟨k, st0, hs, hrun⟩ := h.head
+  have hstep : stepF (.prim md) st = some ([.args (.df j) (arity st (.df j)), .mkCallN (.df j) st.vals.length], { st with toks := r }) := by
+    have hj' : findD (rows { st with toks := r }) x = some j := hj
+    simp [stepF, ht, hb, hj', hne]
+    rfl
+  rw [hstep] at hs; cases hs
+  -- the callee
+  have hcn : st.cur.name ≠ x := by
+    intro e; rw [findD_rows, if_pos e] at hj; cases hj; exact hne rfl
+  have hjd : findD st.defs x = some j := by rw [findD_rows, if_neg hcn] at hj; exact hj
+  have hjlt : j < st.defs.length := findD_ltG hjd
+  have hdf := hc.defs x
+  rw [hjd] at hdf
+  obtain ⟨⟨j', di⟩, hfd, hj'⟩ := Option.map_eq_some_iff.mp hdf
+  simp only at hj'; subst hj'
+  obtain ⟨dR, hrow, hpar, hres, hinv, hnnp⟩ := hc.row x _ di hfd
+  have hrows : (rows st)[j']? = some dR := by simp only [rows]; rw [List.getElem?_append_left hjlt]; exact hrow
+  have hplen : dR.params.length = di.params.length := by rw [← hpar]; simp
+  have har : arity st (.df j') = di.params.length := by simp [arity, hrows, hplen]
+  have hrun' : StarN n0 (.args (.df j') di.params.length :: .mkCallN (.df j') st.vals.length :: ks, { st with toks := r }) ([], fin) := by
+    rw [← har]; exact hrun
+  obtain ⟨st1, m, n1, hat, rfl, hk⟩ := args_run _ hrun'
+  obtain ⟨vs, hlen, hvals, hbb, hd, hcu, harm, hall', htk, hnx, hshs, hsps⟩ :=
+    argsV (N := m + n1 + di.params.length + 1) (fun k hk => hE k (by omega)) hat (by omega)
+      (CxRel.transport hc rfl rfl) (CxNN.transport hnn rfl rfl rfl)
+  have hrows1 : (rows st1)[j']? = some dR := by rw [rows_eq hd hcu]; exact hrows
+  obtain ⟨hall, nd, n', hnode, heq, hfin⟩ :=
+    call_tail (c := .df j') (as := vs.reverse) (base := st.vals) hvals rfl hk
+  simp only [List.length_reverse, List.reverse_reverse, callNode, hrows1, Option.map_some, Option.some.injEq] at hnode heq hall
+  subst hnode
+  have hmemR : dR ∈ rows st := List.mem_of_getElem? hrows
+  refine ⟨RN.mk 8 j' vs.length dR.res false vs,
+    { st1 with vals := RN.mk 8 j' vs.length dR.res false vs :: st.vals, arena := st1.arena ++ [RN.mk 8 j' vs.length dR.res false vs] },
+    n', by omega, ⟨rfl, hbb, hd, hcu, harm, hall', by rw [ht]; simp at htk ⊢; omega, hnx⟩,
+    by rw [ht]; simp at htk ⊢; omega, hfin, (hnn.2 _ hmemR).1, fun hvt => ?_⟩
+  obtain ⟨vts, hmap, hfacts, hpargs⟩ := hsps hvt.kids
+  have hlv : vts.length = vs.length := by rw [← hmap]; simp
+  have hinp : InpPair di.params vs := def_inpPair hinv hlen (nodeOK_call hvt.self hrows)
+  have hm : ArgsMatch di.params vts := by
+    refine argsMatch_of _ _ (by omega) fun idx i1 i2 => ?_
+    have i3 : idx < vs.length := by omega
+    obtain ⟨v, w, hv, hw, hcond⟩ := hall (vs.length - 1 - idx) (by omega)
+    have e1 := operand_idx vs st.vals idx i3
+    rw [hvals, e1] at hv; cases hv
+    have har1 : arity st1 (.df j') = vs.length := by simp [arity, hrows1, hplen, hlen]
+    have e2 : arity st1 (.df j') - (vs.length - 1 - idx + 1) = idx := by rw [har1]; omega
+    rw [e2] at hw
+    have e3 : w = psCode di.params[idx] := by
+      simp only [parCode, hrows1, Option.bind_some] at hw
+      have : dR.params[idx]? = some (psCode di.params[idx]) := by rw [← hpar]; simp [i1]
+      rw [this] at hw; cases hw; rfl
+    subst e3
+    have hvi : (vts[idx]).1 = vs[idx] := by
+      have := congrArg (fun l => l[idx]?) hmap
+      simpa [List.getElem?_eq_getElem i2, List.getElem?_eq_getElem i3] using this
+    obtain ⟨f1, f2, f3⟩ := hfacts _ (List.getElem_mem i2)
+    rw [hvi] at f1 f3
+    exact tyMatch_of2 f1 f2 f3 (hnnp _ (List.getElem_mem i1)) (by have := hinp.get idx i1 i3; simpa using this) hcond
+  have htn : (RN.mk 8 j' vs.length dR.res false vs).toNd = .call j' (dropInp di.params (vs.map RN.toNd)) := by
+    rw [← toNdL_dropInp hinp]; simp [RN.toNd]
+  have henv : findEnv cx.env x = none := by rw [hc.env x, hb]; rfl
+  have hself : ∀ sn sps, cx.self = some (sn, sps) → sn ≠ x := by
+    intro sn sps hs e; subst e
+    rw [hc.selfFresh _ _ hs] at hfd; cases hfd
+  refine ⟨.s di.res, ⟨hres, rfl, by simp [RN.tag]⟩, fun hc' => by rw [htn] at hc'; simp [Nd.tailCont] at hc', fun f hf => ?_⟩
+  obtain ⟨g, rfl⟩ : ∃ g, f = g + 2 := ⟨f - 2, by omega⟩
+  rw [ht, pApp_call henv hself, pCallDef]
+  simp only [hfd]
+  rw [hpargs di.params hm g (by rw [ht] at hf; simp at hf ⊢; omega)]
+  simp only [Option.map_some, List.map_map]
+  rw [htn, ← hmap]
+  simp [Function.comp_def]
+
 end ParRun
