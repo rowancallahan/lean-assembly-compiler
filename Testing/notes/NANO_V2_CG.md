@@ -446,3 +446,10 @@ nres < 251, npw ≤ nslots, main npw 0 / nres 1, def-phase code < 2^24 words.
     or ≥ E0 + 8; a3 + N < 2^64 and output [a3, a3+N) below a2 or ≥ E0 + 8; work region KL.lo ≤ a2, E0 ≤ KL.hi;
     code base s0.b = KL.base; input and output byte cells are `wok KL`; ra = KL.base + 4j; for the Sail statement:
     KL.Ok, KL.W = Gen's words, RelW KL (0, s0) t.
+
+## gen_main (GenMain.lean, box E, 2026-11-19)
+`gen_main`: gen_runS ∘ D's main_bridge. Hyps: ParsesProgram ts p, progOk [] [] Ks p with Ks ≤ 2, g41 ≠ [], DB, |serialize p| < 2^31,
+input x at a0 (a1 = |x|), gen_runS's layout, and `semAt main … = some (vs, H')`. Gives Sem κC p x = .ok y and the safe
+run to ra with a0 = (y = [] ? 1 : 0), a1 = |y|, y at a3, plus the Sail RelW lift. ScV/reads from parsed_sc (par_sc),
+hs.length = p.length (hs_len, via wlen on the width chain). Build ~2 s; axioms = Sail set.
+Open for GenStage: (A) semAt = none ⇒ OOM/cap exits; (B) host lift ImplementsCW ↔ RelW + layout; (C) DB, hXl.
