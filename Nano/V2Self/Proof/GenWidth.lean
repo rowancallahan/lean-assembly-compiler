@@ -390,4 +390,282 @@ theorem wreach_run {x st} {P : WSt → Prop} (h : WReach x st P) (N : Nat) (hok 
   · exact ⟨m, by omega, hp, e⟩
   · exfalso; rw [e] at hok; exact hok (g52_err x _ he (N - m))
 
+/-! ## g51 at a node (frames present, the top frame wants a child) -/
+
+/-- g51's node branch, on its inputs (cursor i, tag c, word i+1 e, #defs h, word i+2 p, frame count n) -/
+def gnode (s d : Buf) (i c e h p n : UInt64) : Buf × Buf :=
+  if c == 1 then (d, g49 (bset s 0 (i + 2)) 1)
+  else if c == 2 then (d, g49 (bset s 0 (i + 3)) p)
+  else if c == 3 then (d, g47 (bset s 0 (i + 2)) 3 2 0 0)
+  else if c == 4 then (d, g47 (bset s 0 (i + 2)) 4 4 0 0)
+  else if c == 5 then (d, g47 (bset s 0 (i + 3)) 5 2 0 p)
+  else if c == 6 then (d, g47 (bset s 0 (i + 2)) 6 e 0 0)
+  else if c == 8 then
+    if e < h then (d, g47 (bset s 0 (i + 3)) 8 p 0 e) else (d, g48 s)
+  else if c == 9 then (d, g47 (bset s 0 (i + 2)) 9 (g33 e) 0 0)
+  else if c == 10 then (if n == 1 then (d, g47 (bset s 0 (i + 1)) 10 2 0 0) else (d, g48 s))
+  else if c == 11 then (d, g47 (bset s 0 (i + 1)) 11 1 0 0)
+  else (d, g48 s)
+
+theorem n_ne0 (n : Nat) (h : n < 2 ^ 40) : ¬ ((n + 1).toUInt64 == 0) = true := by
+  simp [Nat.toUInt64]; intro e; have := congrArg UInt64.toNat e; simp at this; omega
+
+theorem g51_node (x : Buf) {D p q d s FL f} (hI : WI D p q d s (FL ++ [f])) (hr : f.2.1 ≠ 0) :
+    g51 x d s = gnode s d (bget s 0) (bget x (bget s 0)) (bget x (bget s 0 + 1)) (bsize d >>> 1) (bget x (bget s 0 + 2))
+      (bget s 4) := by
+  have hl : FL.length < 2 ^ 40 := by have := hI.fs.1; have := hI.sl; simp at *; omega
+  have h4 : ¬ (bget s 4 == 0) = true := by
+    rw [hI.r4, show (FL ++ [f]).length = FL.length + 1 by simp]; exact n_ne0 _ hl
+  have h1 : ¬ (g44 s 1 == 0) = true := by
+    rw [show g44 s 1 = f.2.1 from g44_top hI 1 (by decide)]; simpa using hr
+  unfold g51
+  extract_lets i c e h p' q' f' u v
+  rw [if_neg h4, if_neg h1]
+  rfl
+
+/-- g51 when the top frame has all its children: pop (g50) -/
+theorem g51_pop (x : Buf) {D p q d s FL t a e} (hI : WI D p q d s (FL ++ [(t, 0, a, e)])) :
+    g51 x d s = (d, g50 x s (bget d (2 * e)) (bget d (2 * e + 1))) := by
+  have hl : FL.length < 2 ^ 40 := by have := hI.fs.1; have := hI.sl; simp at *; omega
+  have h4 : ¬ (bget s 4 == 0) = true := by
+    rw [hI.r4]; simp only [List.length_append, List.length_singleton]; exact n_ne0 _ hl
+  have h1 : (g44 s 1 == 0) = true := by rw [g44_1 hI]; rfl
+  unfold g51
+  extract_lets i c e' h p' q' f' u v
+  rw [if_neg h4, if_pos h1]
+  have hf : f' = e := by simp only [f']; rw [if_neg h4, g44_3 hI]
+  simp only [u, v, hf]
+
+/-- g50's check on the popped frame (CALL arity, CONTINUE = npw − 1) -/
+def zp (t a u p : UInt64) : UInt64 :=
+  if t == 8 then (if a == u then g_0 else g_1) else if t == 11 then (if a + 1 == p then g_0 else g_1) else g_0
+/-- the popped frame's width -/
+def wf (t a v q : UInt64) : UInt64 :=
+  if t == 3 then g_1 else if t == 8 then v else if t == 9 then g_1 else if t == 10 then q else if t == 11 then q else a
+
+theorem g50_eq (x : Buf) {D p q d s FL t r a e} (hI : WI D p q d s (FL ++ [(t, r, a, e)])) (ht : t ≠ 100) (u v : UInt64) :
+    g50 x s u v = if zp t a u p == 1 then g48 (bset s 4 (bget s 4 - 1)) else g49 (bset s 4 (bget s 4 - 1)) (wf t a v q) := by
+  unfold g50
+  extract_lets t' a' e' p' q' s1 i
+  have h1 : t' = t := g44_0 hI
+  have h2 : a' = a := g44_2 hI
+  have h3 : p' = p := hI.r2
+  have h4 : q' = q := hI.r3
+  clear_value t' a' e' p' q'
+  subst h1 h2 h3 h4
+  rw [if_neg (by simpa using ht)]
+  rfl
+
+theorem g50_root (x : Buf) {D p q d s FL r a e} (hI : WI D p q d s (FL ++ [(100, r, a, e)])) (u v : UInt64) :
+    g50 x s u v = if a == q then (if bget x (bget s 0) == 21 then bset (bset s 4 (bget s 4 - 1)) 0 (bget s 0 + 1)
+      else g48 (bset s 4 (bget s 4 - 1))) else g48 (bset s 4 (bget s 4 - 1)) := by
+  have hb : bget (bset s 4 (bget s 4 - 1)) 0 = bget s 0 := by
+    rw [BufL.bget_bset, if_neg (fun ⟨e, _⟩ => by simp at e)]
+  unfold g50
+  extract_lets t' a' e' p' q' s1 i
+  have h1 : t' = 100 := g44_0 hI
+  have h2 : a' = a := g44_2 hI
+  have h4 : q' = q := hI.r3
+  have hi : i = bget s 0 := hb
+  clear_value t' a' e' p' q' i
+  subst h1 h2 h4 hi
+  rw [if_pos (by decide)]
+
+theorem g49_len (s : Buf) (c : UInt64) : (g49 s c).length = s.length := by
+  unfold g49; extract_lets t r a e q s1 z v
+  split <;> simp [g48, g46, bset, s1]
+
+theorem WI_len {D p q d s FL} (hI : WI D p q d s FL) : 8 ≤ s.length := by have := hI.fs.1; omega
+
+theorem uk1 (i : Nat) : i.toUInt64 + 1 = (i + 1).toUInt64 := u_add i 1
+theorem uk2 (i : Nat) : i.toUInt64 + 2 = (i + 2).toUInt64 := u_add i 2
+theorem uk3 (i : Nat) : i.toUInt64 + 3 = (i + 3).toUInt64 := u_add i 3
+theorem uk5 (i : Nat) : i.toUInt64 + 5 = (i + 5).toUInt64 := u_add i 5
+theorem uk6 (i : Nat) : i.toUInt64 + 6 = (i + 6).toUInt64 := u_add i 6
+theorem tk1 (X : Buf) (i : Nat) (h : i + 1 < 2 ^ 64) : bget X (i.toUInt64 + 1) = tg X (i + 1) := tg_u1 X i 1 h
+theorem tk2 (X : Buf) (i : Nat) (h : i + 2 < 2 ^ 64) : bget X (i.toUInt64 + 2) = tg X (i + 2) := tg_u1 X i 2 h
+theorem tk5 (X : Buf) (i : Nat) (h : i + 5 < 2 ^ 64) : bget X (i.toUInt64 + 5) = tg X (i + 5) := tg_u1 X i 5 h
+
+/-! ## visiting one node -/
+
+/-- after the node at i: its width w (W), cursor at i', the width delivered to the parent frame f -/
+def NP (X : Buf) (D : List (UInt64 × UInt64)) (p q : UInt64) (d0 : Buf) (FL : List Fr) (f : Fr) (i : Nat) (st : WSt) : Prop :=
+  ∃ w i', W X D p q FL.isEmpty i w i' ∧ i < i' ∧ i' ≤ X.length + 3 ∧ st.1 = d0 ∧ bget st.2 0 = i'.toUInt64 ∧
+    zf f.1 f.2.1 f.2.2.1 f.2.2.2 w q ≠ 1 ∧ WI D p q d0 st.2 (FL ++ [(f.1, f.2.1 - 1, vf f.1 f.2.2.1 w, f.2.2.2)])
+
+def NS (X : Buf) (D : List (UInt64 × UInt64)) (p q : UInt64) (i : Nat) : Prop :=
+  i ≤ X.length + 3 → ∀ d s FL f, WI D p q d s (FL ++ [f]) → bget s 0 = i.toUInt64 → f.2.1 ≠ 0 →
+    (FL ++ [f]).length ≤ i → WReach X (d, s) (NP X D p q d FL f i)
+
+/-- deliver width w at the end of a node (cursor i') -/
+theorem fin_node {X D p q d s FL f i i' w} (hI : WI D p q d s (FL ++ [f])) (hc : bget s 0 = i'.toUInt64)
+    (hW : W X D p q FL.isEmpty i w i') (hii : i < i') (hiX : i' ≤ X.length + 3) :
+    WReach X (d, g49 s w) (NP X D p q d FL f i) := by
+  obtain ⟨t, r, a, e⟩ := f
+  by_cases hz : zf t r a e w q = 1
+  · exact WReach.error (werr_of (g49_bad hI w hz) (by rw [g49_len]; have := WI_len hI; omega))
+  obtain ⟨hI2, h0⟩ := g49_ok hI w hz
+  exact WReach.done ⟨w, i', hW, hii, hiX, rfl, by rw [h0, hc], hz, hI2⟩
+
+theorem n_const {X D p q i} (hX : X.length < 2 ^ 31) (ht : tg X i = 1) : NS X D p q i := by
+  intro hiX d s FL f hI hr0 hr _
+  have hi := tg_lt X i (by rw [ht]; decide)
+  refine WReach.step (wlive_of hI) ?_
+  unfold wst; dsimp only
+  rw [g51_node X hI hr, hr0, tg_u _ _ (by omega), ht]
+  unfold gnode; rw [if_pos (by decide)]
+  have hI1 := WI_cur hI (i.toUInt64 + 2)
+  exact fin_node hI1 (by rw [cur_set hI, uk2]) (W.const ht) (by omega) (by omega)
+
+theorem n_local {X D p q i} (hX : X.length < 2 ^ 31) (ht : tg X i = 2) : NS X D p q i := by
+  intro hiX d s FL f hI hr0 hr _
+  have hi := tg_lt X i (by rw [ht]; decide)
+  refine WReach.step (wlive_of hI) ?_
+  unfold wst; dsimp only
+  rw [g51_node X hI hr, hr0, tg_u _ _ (by omega), ht, tk2 X i (by omega)]
+  unfold gnode; rw [if_neg (by decide), if_pos (by decide)]
+  have hI1 := WI_cur hI (i.toUInt64 + 3)
+  exact fin_node hI1 (by rw [cur_set hI, uk3]) (W.local ht) (by omega) (by omega)
+
+/-- a composite node's last step: pop its frame (g50), check, deliver its width -/
+theorem fin_pop {X D p q d s FL f t a e i i'} (hI : WI D p q d s ((FL ++ [f]) ++ [(t, 0, a, e)])) (ht : t ≠ 100)
+    (hc : bget s 0 = i'.toUInt64)
+    (hW : zp t a (bget d (2 * e)) p ≠ 1 → W X D p q FL.isEmpty i (wf t a (bget d (2 * e + 1)) q) i')
+    (hii : i < i') (hiX : i' ≤ X.length + 3) : WReach X (d, s) (NP X D p q d FL f i) := by
+  refine WReach.step (wlive_of hI) ?_
+  unfold wst; dsimp only
+  rw [g51_pop X hI, g50_eq X hI ht]
+  obtain ⟨hI1, h0⟩ := WI_pop hI
+  by_cases hz : zp t a (bget d (2 * e)) p = 1
+  · rw [if_pos (by simp [hz])]
+    exact WReach.error (werr_of (err_g48 _ (by have := WI_len hI1; omega)) (by unfold g48; simp [bset]; have := WI_len hI; omega))
+  rw [if_neg (by simpa using hz)]
+  exact fin_node hI1 (by rw [h0, hc]) (hW hz) hii hiX
+
+theorem WI_fr {D p q d s FL f} (f' : Fr) (h : WI D p q d s (FL ++ [f])) (e : f = f') : WI D p q d s (FL ++ [f']) := e ▸ h
+
+theorem ie (FL : List Fr) (f : Fr) : (FL ++ [f]).isEmpty = false := by simp
+
+theorem n_bin {X D p q i} (hX : X.length < 2 ^ 31) (IH : ∀ j, i < j → NS X D p q j) (ht : tg X i = 3) : NS X D p q i := by
+  intro hiX d s FL f hI hr0 hr hl
+  have hi := tg_lt X i (by rw [ht]; decide)
+  refine WReach.step (wlive_of hI) ?_
+  unfold wst; dsimp only
+  rw [g51_node X hI hr, hr0, tg_u _ _ (by omega), ht]
+  unfold gnode; rw [if_neg (by decide), if_neg (by decide), if_pos (by decide)]
+  obtain ⟨hI1, h0⟩ := WI_push (WI_cur hI (i.toUInt64 + 2)) (by simp at hl ⊢; omega) 3 2 0 0
+  refine (IH (i + 2) (by omega) (by omega) _ _ _ _ hI1 (by rw [h0, cur_set hI, uk2]) (by decide) (by simp at hl ⊢; omega)).bind ?_
+  rintro ⟨d1, s1⟩ ⟨w1, i1, hW1, hi1, hi1X, rfl, hc1, hz1, hI2⟩
+  rw [ie] at hW1
+  have e1 : w1 = 1 := Classical.byContradiction fun h => hz1 (by simp [zf, h, g_1])
+  subst e1
+  refine (IH i1 (by omega) hi1X _ _ _ _ hI2 hc1 (by simp) (by simp at hl ⊢; omega)).bind ?_
+  rintro ⟨d2, s2⟩ ⟨w2, i2, hW2, hi2, hi2X, rfl, hc2, hz2, hI3⟩
+  rw [ie] at hW2
+  have e2 : w2 = 1 := Classical.byContradiction fun h => hz2 (by simp [zf, h, g_1])
+  subst e2
+  exact fin_pop hI3 (by decide) hc2 (fun _ => W.bin ht hW1 hW2) (by omega) hi2X
+
+theorem n_ite {X D p q i} (hX : X.length < 2 ^ 31) (IH : ∀ j, i < j → NS X D p q j) (ht : tg X i = 4) : NS X D p q i := by
+  intro hiX d s FL f hI hr0 hr hl
+  have hi := tg_lt X i (by rw [ht]; decide)
+  refine WReach.step (wlive_of hI) ?_
+  unfold wst; dsimp only
+  rw [g51_node X hI hr, hr0, tg_u _ _ (by omega), ht]
+  unfold gnode; rw [if_neg (by decide), if_neg (by decide), if_neg (by decide), if_pos (by decide)]
+  obtain ⟨hI1, h0⟩ := WI_push (WI_cur hI (i.toUInt64 + 2)) (by simp at hl ⊢; omega) 4 4 0 0
+  refine (IH (i + 2) (by omega) (by omega) _ _ _ _ hI1 (by rw [h0, cur_set hI, uk2]) (by decide) (by simp at hl ⊢; omega)).bind ?_
+  rintro ⟨d1, s1⟩ ⟨w1, i1, hW1, hi1, hi1X, rfl, hc1, hz1, hI2⟩
+  rw [ie] at hW1
+  have e1 : w1 = 1 := Classical.byContradiction fun h => hz1 (by simp [zf, h, g_1])
+  subst e1
+  replace hI2 := WI_fr ((4 : UInt64), (3 : UInt64), (1 : UInt64), (0 : UInt64)) hI2 (by simp [vf])
+  refine (IH i1 (by omega) hi1X _ _ _ _ hI2 hc1 (by simp) (by simp at hl ⊢; omega)).bind ?_
+  rintro ⟨d2, s2⟩ ⟨w2, i2, hW2, hi2, hi2X, rfl, hc2, hz2, hI3⟩
+  rw [ie] at hW2
+  have e2 : w2 = 1 := Classical.byContradiction fun h => hz2 (by simp [zf, h, g_1])
+  subst e2
+  replace hI3 := WI_fr ((4 : UInt64), (2 : UInt64), (1 : UInt64), (0 : UInt64)) hI3 (by simp [vf])
+  refine (IH i2 (by omega) hi2X _ _ _ _ hI3 hc2 (by simp) (by simp at hl ⊢; omega)).bind ?_
+  rintro ⟨d3, s3⟩ ⟨w3, i3, hW3, hi3, hi3X, rfl, hc3, -, hI4⟩
+  rw [ie] at hW3
+  replace hI4 := WI_fr ((4 : UInt64), (1 : UInt64), w3, (0 : UInt64)) hI4 (by simp [vf])
+  refine (IH i3 (by omega) hi3X _ _ _ _ hI4 hc3 (by simp) (by simp at hl ⊢; omega)).bind ?_
+  rintro ⟨d4, s4⟩ ⟨w4, i4, hW4, hi4, hi4X, rfl, hc4, hz4, hI5⟩
+  rw [ie] at hW4
+  change zf 4 1 w3 0 w4 q ≠ 1 at hz4
+  have e4 : w4 = w3 := Classical.byContradiction fun h => hz4 (by simp [zf, h, g_1])
+  subst e4
+  replace hI5 := WI_fr ((4 : UInt64), (0 : UInt64), w4, (0 : UInt64)) hI5 (by simp [vf])
+  exact fin_pop hI5 (by decide) hc4 (fun _ => by simpa [wf, vf] using W.ite ht hW1 hW2 hW3 hW4) (by omega) hi4X
+
+theorem n_let {X D p q i} (hX : X.length < 2 ^ 31) (IH : ∀ j, i < j → NS X D p q j) (ht : tg X i = 5) : NS X D p q i := by
+  intro hiX d s FL f hI hr0 hr hl
+  have hi := tg_lt X i (by rw [ht]; decide)
+  refine WReach.step (wlive_of hI) ?_
+  unfold wst; dsimp only
+  rw [g51_node X hI hr, hr0, tg_u _ _ (by omega), ht, tk2 X i (by omega)]
+  unfold gnode; rw [if_neg (by decide), if_neg (by decide), if_neg (by decide), if_neg (by decide), if_pos (by decide)]
+  obtain ⟨hI1, h0⟩ := WI_push (WI_cur hI (i.toUInt64 + 3)) (by simp at hl ⊢; omega) 5 2 0 (tg X (i + 2))
+  refine (IH (i + 3) (by omega) (by omega) _ _ _ _ hI1 (by rw [h0, cur_set hI, uk3]) (by simp) (by simp at hl ⊢; omega)).bind ?_
+  rintro ⟨d1, s1⟩ ⟨w1, i1, hW1, hi1, hi1X, rfl, hc1, hz1, hI2⟩
+  rw [ie] at hW1
+  have e1 : w1 = tg X (i + 2) := Classical.byContradiction fun h => hz1 (by simp [zf, h, g_1])
+  subst e1
+  replace hI2 := WI_fr ((5 : UInt64), (1 : UInt64), tg X (i + 2), tg X (i + 2)) hI2 (by simp [vf])
+  refine (IH i1 (by omega) hi1X _ _ _ _ hI2 hc1 (by simp) (by simp at hl ⊢; omega)).bind ?_
+  rintro ⟨d2, s2⟩ ⟨w2, i2, hW2, hi2, hi2X, rfl, hc2, -, hI3⟩
+  rw [ie] at hW2
+  replace hI3 := WI_fr ((5 : UInt64), (0 : UInt64), w2, tg X (i + 2)) hI3 (by simp [vf])
+  exact fin_pop hI3 (by decide) hc2 (fun _ => by simpa [wf, vf] using W.lett ht hW1 hW2) (by omega) hi2X
+
+theorem n_cont {X D p q i} (hX : X.length < 2 ^ 31) (IH : ∀ j, i < j → NS X D p q j) (ht : tg X i = 11) : NS X D p q i := by
+  intro hiX d s FL f hI hr0 hr hl
+  have hi := tg_lt X i (by rw [ht]; decide)
+  refine WReach.step (wlive_of hI) ?_
+  unfold wst; dsimp only
+  rw [g51_node X hI hr, hr0, tg_u _ _ (by omega), ht]
+  unfold gnode
+  rw [if_neg (by decide), if_neg (by decide), if_neg (by decide), if_neg (by decide), if_neg (by decide), if_neg (by decide),
+    if_neg (by decide), if_neg (by decide), if_neg (by decide), if_pos (by decide)]
+  obtain ⟨hI1, h0⟩ := WI_push (WI_cur hI (i.toUInt64 + 1)) (by simp at hl ⊢; omega) 11 1 0 0
+  refine (IH (i + 1) (by omega) (by omega) _ _ _ _ hI1 (by rw [h0, cur_set hI, uk1]) (by decide) (by simp at hl ⊢; omega)).bind ?_
+  rintro ⟨d1, s1⟩ ⟨w1, i1, hW1, hi1, hi1X, rfl, hc1, -, hI2⟩
+  rw [ie] at hW1
+  replace hI2 := WI_fr ((11 : UInt64), (0 : UInt64), w1, (0 : UInt64)) hI2 (by simp [vf])
+  refine fin_pop hI2 (by decide) hc1 (fun hz => ?_) (by omega) hi1X
+  have e : w1 + 1 = p := Classical.byContradiction fun h => hz (by simp [zp, vf, h, g_1])
+  simpa [wf] using W.cont ht hW1 e
+
+theorem n_loop {X D p q i} (hX : X.length < 2 ^ 31) (IH : ∀ j, i < j → NS X D p q j) (ht : tg X i = 10) : NS X D p q i := by
+  intro hiX d s FL f hI hr0 hr hl
+  have hi := tg_lt X i (by rw [ht]; decide)
+  refine WReach.step (wlive_of hI) ?_
+  unfold wst; dsimp only
+  rw [g51_node X hI hr, hr0, tg_u _ _ (by omega), ht]
+  unfold gnode
+  rw [if_neg (by decide), if_neg (by decide), if_neg (by decide), if_neg (by decide), if_neg (by decide), if_neg (by decide),
+    if_neg (by decide), if_neg (by decide), if_pos (by decide)]
+  rcases FL with _ | ⟨g, FL'⟩
+  · rw [if_pos (by rw [hI.r4]; rfl)]
+    obtain ⟨hI1, h0⟩ := WI_push (WI_cur hI (i.toUInt64 + 1)) (by simp) 10 2 0 0
+    refine (IH (i + 1) (by omega) (by omega) _ _ _ _ hI1 (by rw [h0, cur_set hI, uk1]) (by decide) (by simp at hl ⊢; omega)).bind ?_
+    rintro ⟨d1, s1⟩ ⟨w1, i1, hW1, hi1, hi1X, rfl, hc1, hz1, hI2⟩
+    rw [ie] at hW1
+    have e1 : w1 = q := Classical.byContradiction fun h => hz1 (by simp [zf, h, g_1])
+    subst e1
+    replace hI2 := WI_fr ((10 : UInt64), (1 : UInt64), w1, (0 : UInt64)) hI2 (by simp [vf])
+    refine (IH i1 (by omega) hi1X _ _ _ _ hI2 hc1 (by simp) (by simp at hl ⊢; omega)).bind ?_
+    rintro ⟨d2, s2⟩ ⟨w2, i2, hW2, hi2, hi2X, rfl, hc2, hz2, hI3⟩
+    rw [ie] at hW2
+    change zf 10 1 w1 0 w2 w1 ≠ 1 at hz2
+    have e2 : w2 = w1 := Classical.byContradiction fun h => hz2 (by simp [zf, h, g_1])
+    subst e2
+    replace hI3 := WI_fr ((10 : UInt64), (0 : UInt64), w2, (0 : UInt64)) hI3 (by simp [vf])
+    exact fin_pop hI3 (by decide) hc2 (fun _ => by simpa [wf, vf] using W.loop ht hW1 hW2) (by omega) hi2X
+  · rw [if_neg]
+    · exact WReach.error (werr_of (err_g48 _ (by have := WI_len hI; omega)) (by unfold g48; simp [bset]; have := WI_len hI; omega))
+    · rw [hI.r4]; simp [Nat.toUInt64]; intro e; have := congrArg UInt64.toNat e; simp at this
+      have := hI.fs.1; have := hI.sl; simp at *; omega
+
 end GenRef
