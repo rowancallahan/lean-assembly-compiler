@@ -137,4 +137,71 @@ theorem rel_init {K : LayW} {t : Proven.St} (hc : Cfg t) (hpc : t.regs.get? .PC 
     rw [wordAt_byte t _ _ (Nat.mod_lt _ (by decide)), show c - c % 8 + c % 8 = c by omega]
   fr := fun a _ _ => by rw [hm0]
 
+/-! ## the end: the final `jalr x0, 0(ra)` and the spec's outcome -/
+
+theorem byte_lbm (w : UInt64) (k : Nat) (hk : k < 8) (y : UInt8) (h : (w >>> (8 * k).toUInt64) &&& 255 = y.toUInt64) :
+    w.toBitVec.extractLsb' (8 * k) 8 = y.toBitVec := by
+  have h2 := congrArg UInt64.toNat h
+  simp only [UInt64.toNat_and, UInt64.toNat_shiftRight, UInt8.toNat_toUInt64] at h2
+  apply BitVec.eq_of_toNat_eq
+  rw [BitVec.extractLsb'_toNat, Nat.shiftRight_eq_div_pow, UInt8.toNat_toBitVec, ← h2]
+  have e : (8 * k).toUInt64.toNat % 64 = 8 * k := by simp; omega
+  rw [e, Nat.shiftRight_eq_div_pow, show (255 : UInt64).toNat = 2 ^ 8 - 1 from rfl, Nat.and_two_pow_sub_one_eq_mod]; rfl
+
+/-- **the outcome**: from J's state at the final `jalr x0, 0(ra)` (ABI registers as at the start, the result
+bytes `y` at the output), one Sail step reaches ra with the spec's facts -/
+theorem fin_out {K : LayW} {pr : Nat} {s0 s3 : CallProbe.St} {t0 t3 : Proven.St} (hK : K.Ok) (hR : RelW K (pr, s3) t3)
+    (hC : K.W[pr]? = some (C.g2 C.g_103 0 0 (UInt64.ofNat 1) 0).toNat) (hra : (s3.x 1).toNat % 2 = 0)
+    (hc0 : Cfg t0) (hx0 : ∀ j : Fin 32, getX t0 j = (s0.x j).toBitVec)
+    (hkeep : ∀ j, Templates.keepR j = true → s3.x j = s0.x j) (hx8 : s3.x 8 = s0.x 8)
+    (hm0 : K.m0 = fun a => t0.mem[a]?) (work : Region) (hlo : work.base ≤ K.lo) (hhi : K.hi ≤ work.base + work.len)
+    (y : List UInt8) (hol : K.ol = y.length)
+    (hy : ∀ i, i < y.length → CallProbe.lbm s3.m (K.ob + i) = (y.getD i 0).toUInt64) :
+    ∃ t4, Retires t3 t4 ∧ t4.regs.get? .PC = some (s3.x 1).toBitVec ∧ abiSavedKept t0 t4 ∧ Cfg t4 ∧
+      t4.regs.get? .x10 = some (s3.x 10).toBitVec ∧ t4.regs.get? .x11 = some (s3.x 11).toBitVec ∧
+      bytesAt t4 K.ob y.length = y.map (some ·.toBitVec) ∧ unchangedOutside t0 t4 [⟨K.ob, y.length⟩, work] := by
+  obtain ⟨t4, v, hN⟩ := sim_ret hK hR (by omega) hC hra
+  have gx : ∀ j : Fin 32, getX t4 j = getX t3 j := fun j => by
+    rw [hN.x j]; simp only [show ¬ (j = 0 ∧ j ≠ 0) from fun h => h.2 h.1, if_false]
+  have kx : ∀ j : Fin 32, Templates.keepR j.val = true ∨ j.val = 8 → getX t4 j = getX t0 j := fun j hj => by
+    rw [gx, hR.x, hx0]; rcases hj with hj | hj
+    · rw [hkeep _ hj]
+    · simp only [hj]; rw [hx8]
+  refine ⟨t4, hN.ret, hN.pc, ?_, hN.cfg, by rw [hN.cfg.x10, gx, hR.x]; rfl, by rw [hN.cfg.x11, gx, hR.x]; rfl, ?_, ?_⟩
+  · intro r hr
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
+    rcases hr with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl
+    · rw [hN.cfg.x2, hc0.x2, kx 2 (by decide)]
+    · rw [hN.cfg.x3, hc0.x3, kx 3 (by decide)]
+    · rw [hN.cfg.x4, hc0.x4, kx 4 (by decide)]
+    · rw [hN.cfg.x8, hc0.x8, kx 8 (by decide)]
+    · rw [hN.cfg.x9, hc0.x9, kx 9 (by decide)]
+    · rw [hN.cfg.x18, hc0.x18, kx 18 (by decide)]
+    · rw [hN.cfg.x19, hc0.x19, kx 19 (by decide)]
+    · rw [hN.cfg.x20, hc0.x20, kx 20 (by decide)]
+    · rw [hN.cfg.x21, hc0.x21, kx 21 (by decide)]
+    · rw [hN.cfg.x22, hc0.x22, kx 22 (by decide)]
+    · rw [hN.cfg.x23, hc0.x23, kx 23 (by decide)]
+    · rw [hN.cfg.x24, hc0.x24, kx 24 (by decide)]
+    · rw [hN.cfg.x25, hc0.x25, kx 25 (by decide)]
+    · rw [hN.cfg.x26, hc0.x26, kx 26 (by decide)]
+    · rw [hN.cfg.x27, hc0.x27, kx 27 (by decide)]
+  · apply List.ext_getElem (by simp [bytesAt])
+    intro i h1 h2
+    have hi : i < y.length := by simpa [bytesAt] using h1
+    simp only [bytesAt, List.getElem_map, List.getElem_range, hN.mem]
+    have hio : io K (K.ob + i) := Or.inr ⟨by omega, by omega⟩
+    rw [hR.bw _ hio]
+    congr 1
+    have := hy i hi
+    unfold CallProbe.lbm at this
+    rw [byte_lbm _ _ (Nat.mod_lt _ (by decide)) _ this]
+    simp [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem hi]
+  · intro a ha
+    simp only [List.mem_cons, List.not_mem_nil, or_false, forall_eq_or_imp, forall_eq] at ha
+    rw [hN.mem]
+    have h1 : ¬ wok K (a - a % 8) := fun hw => by unfold wok at hw; omega
+    have h2 : ¬ outB K a := fun ho => by unfold outB at ho; omega
+    rw [hR.fr a h1 h2, hm0]
+
 end SimW

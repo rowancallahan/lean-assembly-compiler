@@ -76,7 +76,7 @@ theorem gen_main (KL : SimW.LayW) (c : List UInt8) {ts : List UInt64} {p : List 
           ((s0.x 13).toNat + y.length < 2 ^ 64 →
            ((s0.x 13).toNat + y.length ≤ (s0.x 12).toNat ∨ E0 ≤ (s0.x 13).toNat) →
            (∀ i, i < y.length → SimW.sok KL ((s0.x 13).toNat + i)) →
-           ∃ s3, SimW.SStarX KL C (0, s0) (pr, s3) ∧ C[pr]? = some (.jalr 0 1) ∧ s3.b = s0.b ∧ s3.x 1 = s0.x 1 ∧
+           ∃ s3, SimW.SStarX KL C (0, s0) (pr, s3) ∧ C[pr]? = some (.jalr 0 1) ∧ (∀ j, keepR j = true → s3.x j = s0.x j) ∧ s3.b = s0.b ∧ s3.x 1 = s0.x 1 ∧
              s3.x 8 = s0.x 8 ∧ s3.x 10 = (if y = [] then 1 else 0) ∧ s3.x 11 = UInt64.ofNat y.length ∧
              (∀ i, i < y.length → lbm s3.m ((s0.x 13).toNat + i) = (y.getD i 0).toUInt64) ∧
              (KL.Ok → KL.W = (C.map encG).map UInt64.toNat → ∀ t, SimW.RelW KL (0, s0) t →
@@ -95,11 +95,11 @@ theorem gen_main (KL : SimW.LayW) (c : List UInt8) {ts : List UInt64} {p : List 
   simp only [List.length_map] at hQ hout hwO ⊢
   have hll' : l.length < 2 ^ 64 := by omega
   have hN := NanoMain.toNat_ofNat_lt hll'
-  obtain ⟨s3, h3, c31, r1, r2, r3, r4, r5, r6, r7⟩ := hrun (fun k hk => par_sc hP _ k (by omega)) E0 hE0 z0 ha8 hroom hE62
+  obtain ⟨s3, h3, c31, kp, r1, r2, r3, r4, r5, r6, r7⟩ := hrun (fun k hk => par_sc hP _ k (by omega)) E0 hE0 z0 ha8 hroom hE62
     hcb hin63 hin [a] H' (by rw [hsl]; exact hSd) (UInt64.ofNat l.length) (fun i => l.getD i 0) hm0 b1 (by simp only [List.getD_cons_zero]; omega)
     (fun i hi => by rw [hN] at hi; simp only [List.getD_cons_zero]; rw [hcell i (by omega)]; simp [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem (show i < l.length by omega)])
     (by rw [hN]; exact hQ) (by rw [hN]; exact hout) hlo hhi hbase hinw (fun i hi => by rw [hN] at hi; exact hwO i hi)
-  refine ⟨s3, h3, c31, r1, r2, r3, ?_, r5, fun i hi => ?_, r7⟩
+  refine ⟨s3, h3, c31, kp, r1, r2, r3, ?_, r5, fun i hi => ?_, r7⟩
   · rw [r4]
     rcases l with _ | ⟨b, l⟩
     · rfl

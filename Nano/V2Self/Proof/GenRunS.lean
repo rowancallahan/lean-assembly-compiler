@@ -32,7 +32,7 @@ theorem gen_runS (KL : SimW.LayW) (c : List UInt8) (ds : List DefA) (hXl : (seri
          KL.lo ≤ (s0.x 12).toNat → E0 ≤ KL.hi → s0.b = KL.base →
          (∀ i, i < (s0.x 11).toNat → SimW.bok KL ((s0.x 10).toNat + i)) →
          (∀ i, i < N.toNat → SimW.sok KL ((s0.x 13).toNat + i)) →
-         ∃ s3, SimW.SStarX KL C (0, s0) (11 + D.length + 31, s3) ∧ C[11 + D.length + 31]? = some (.jalr 0 1) ∧ s3.b = s0.b ∧ s3.x 1 = s0.x 1 ∧
+         ∃ s3, SimW.SStarX KL C (0, s0) (11 + D.length + 31, s3) ∧ C[11 + D.length + 31]? = some (.jalr 0 1) ∧ (∀ j, keepR j = true → s3.x j = s0.x j) ∧ s3.b = s0.b ∧ s3.x 1 = s0.x 1 ∧
            s3.x 8 = s0.x 8 ∧ s3.x 10 = (if N = 0 then 1 else 0) ∧ s3.x 11 = N ∧
            (∀ i, i < N.toNat → lbm s3.m ((s0.x 13).toNat + i) = bs i &&& 255) ∧
            (KL.Ok → KL.W = (C.map encG).map UInt64.toNat → ∀ t, SimW.RelW KL (0, s0) t →
@@ -91,7 +91,7 @@ theorem gen_runS (KL : SimW.LayW) (c : List UInt8) (ds : List DefA) (hXl : (seri
       by rw [en.m, upd_other _ _ (by omega), upd_same], by rw [en.m, upd_same], en.b⟩)
     (fun s hs => ⟨hs.2.2.2.1, hs.2.2.2.2.1⟩) (by rw [hPhb]; exact hSd) hN (by rw [hPhb]; exact hPb) hPN hbs hQ hout hlo hhi hbase hE8 (by omega) hc18
     hwl hwO
-  refine ⟨s3, h3, c31, r1, r2, r3, r4, r5, r6, fun hK hW t hR => SimW.sim_starX hK ?_ h3 hR⟩
+  refine ⟨s3, h3, c31, fun j hj => star_keep hok h3.star hj, r1, r2, r3, r4, r5, r6, fun hK hW t hR => SimW.sim_starX hK ?_ h3 hR⟩
   rw [hW, ← hCd, ← hDd]
   exact words_encJX (prog_good P ds _ _ hs.length (fun k hk => by
     obtain ⟨c1, c2, c3, c4⟩ := hbd k hk
