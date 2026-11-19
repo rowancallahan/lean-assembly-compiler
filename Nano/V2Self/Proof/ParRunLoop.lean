@@ -159,4 +159,128 @@ theorem stateKinds_inp : ∀ (ts : List TyR), (∀ t ∈ ts, t ≠ .sh .ls) → 
         simp [pickPs, trRes, this]
       | lst => cases u <;> simp [pickPs, trRes]
 
+/-- what follows the last binder of an arm -/
+def armK : Bool → List Frame
+  | true => [.expr 0 1, .mkLoop, .defEnd]
+  | false => [.expr 0 0, .zeroDone]
+
+/-- the binding armBind (76) makes for parameter `b` -/
+def armBd (st : St) (b : Nat) (x : List Nat) (w : Sh) : Bd :=
+  ⟨x, st.sslot, some w, w == .ls && !(hasLs ((st.cur.params.take b).map some))⟩
+
+theorem armBind_inv {stp : Bool} {b : Nat} {st : St} {k : List Frame} {st' : St} (h : stepF (.armBind stp b) st = some (k, st')) :
+    ∃ w x t r, st.cur.params[b]? = some w ∧ st.toks = .id x :: t :: r ∧ findB st.binds x = none ∧
+      ((b + 1 < st.cur.params.length ∧ t = .k 15 ∧ k = [.armBind stp (b + 1)]) ∨
+       (¬ b + 1 < st.cur.params.length ∧ t = .k 19 ∧ k = armK stp)) ∧
+      st' = { st with toks := r, binds := st.binds ++ [armBd st b x w],
+                      sslot := if (armBd st b x w).inp then st.sslot else st.sslot + w.width } := by
+  simp only [stepF] at h
+  split at h
+  · rename_i w x t r hw ht
+    split at h
+    · cases h
+    · rename_i hb
+      split at h
+      · split at h
+        · simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl⟩ := h
+          exact ⟨w, x, t, r, hw, ht, hb, Or.inl ⟨‹_›, ‹_›, rfl⟩, rfl⟩
+        · cases h
+      · split at h
+        · split at h
+          · simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl⟩ := h
+            exact ⟨w, x, t, r, hw, ht, hb, Or.inr ⟨‹_›, ‹_›, by simp_all [armK]⟩, rfl⟩
+          · simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl⟩ := h
+            exact ⟨w, x, t, r, hw, ht, hb, Or.inr ⟨‹_›, ‹_›, by simp_all [armK]⟩, rfl⟩
+        · cases h
+  · cases h
+
+theorem n1_iff (Q : List Sh) (c : Nat) (h : c < Q.length) :
+    (Q[c] == .ls && !hasLs (((Sh.nt :: Q).take (c + 1)).map some)) = true ↔ FirstLs Q c := by
+  have e : hasLs (((Sh.nt :: Q).take (c + 1)).map some) = hasLs ((Q.take c).map some) := by
+    simp [hasLs, List.take_succ_cons]
+  rw [e]
+  simp only [Bool.and_eq_true, beq_iff_eq, Bool.not_eq_eq_eq_not, Bool.not_true, hasLs_false_iff]
+  unfold FirstLs
+  constructor
+  · rintro ⟨h1, h2⟩
+    refine ⟨by rw [List.getElem?_eq_getElem h, h1], fun j hj => ?_⟩
+    have := h2 j (by simp; omega)
+    rwa [List.getElem?_take, if_pos hj] at this
+  · rintro ⟨h1, h2⟩
+    refine ⟨by rw [List.getElem?_eq_getElem h] at h1; simpa using h1, fun j hj => ?_⟩
+    simp at hj
+    rw [List.getElem?_take, if_pos (by omega)]; exact h2 j (by omega)
+
+theorem mkEnv_cons (start : Nat) (p : Ps) (ps : List Ps) (x : List Nat) (ns : List (List Nat)) :
+    mkEnv start (p :: ps) (x :: ns) = (mkEnv (start + p.width) ps ns).map fun e => (x, start, p) :: e := by
+  rw [mkEnv]
+
+theorem armPat_bind (x : List Nat) (r : List Tok) :
+    armPat 0 (.k 15 :: .id x :: r) = (armPat 0 r).map fun (l, r') => (x :: l, r') := by rw [armPat]
+
+/-- **arm binders** (76): `x₁ , … , x_k =>` bind the parameters `c+1 …` exactly as `armPat` + `mkEnv` -/
+theorem armBind_spec (ps : List Ps) (hfuel : ∀ p ∈ ps, p ≠ .fuel)
+    (hinp : ∀ (i : Nat) (h : i < ps.length), (ps[i] = .inp ↔ FirstLs (ps.map psCode) i)) :
+    ∀ n {stp : Bool} {c : Nat} {ks : List Frame} {st fin : St}, st.cur.params = .nt :: ps.map psCode → c < ps.length →
+      StarN n (.armBind stp (c + 1) :: ks, st) ([], fin) →
+      ∃ names env r n' sl, n' < n ∧ armPat 0 (.k 15 :: st.toks) = some (names, r) ∧
+        mkEnv st.sslot (ps.drop c) names = some env ∧ (∀ x ∈ names, findB st.binds x = none) ∧ names.Nodup ∧
+        r.length < st.toks.length ∧
+        StarN n' (armK stp ++ ks, { st with toks := r, binds := st.binds ++ env.map toBd, sslot := sl }) ([], fin) := by
+  intro n
+  induction n using Nat.strongRecOn with
+  | _ n ih =>
+  intro stp c ks st fin hP hc h
+  match n, h with
+  | 0, h => exact absurd h.zero_nil.1 (by simp)
+  | m + 1, h =>
+  obtain ⟨k, st1, hs, h1⟩ := h.head
+  obtain ⟨w, x, t, r, hw, ht, hb, hk, rfl⟩ := armBind_inv hs
+  have hwc : w = psCode ps[c] := by rw [hP] at hw; simp [hc] at hw; exact hw.symm
+  have hbd : armBd st (c + 1) x w = toBd (x, st.sslot, ps[c]) := by
+    simp only [armBd, toBd, hwc]
+    congr 1
+    rw [hP]
+    have := n1_iff (ps.map psCode) c (by simpa using hc)
+    simp only [List.getElem_map] at this
+    rw [Bool.eq_iff_iff, this, ← hinp c hc]; simp
+  have hsl : (if (armBd st (c + 1) x w).inp then st.sslot else st.sslot + w.width) = st.sslot + ps[c].width := by
+    rw [hbd]; simp only [toBd, hwc]
+    have := Ps.width_code (hfuel _ (List.getElem_mem hc))
+    split <;> simp_all
+  rcases hk with ⟨hlt, rfl, rfl⟩ | ⟨hlt, rfl, rfl⟩
+  · -- more binders
+    have hc1 : c + 1 < ps.length := by rw [hP] at hlt; simpa using hlt
+    obtain ⟨names, env, r', n', sl, hn', hpat, henv, hfr, hnd, hlt', h2⟩ :=
+      ih m (by omega) (by exact hP) hc1 h1
+    simp only at hpat henv hfr hlt' h2
+    rw [hsl] at henv
+    refine ⟨x :: names, (x, st.sslot, ps[c]) :: env, r', n', sl, by omega, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    · rw [ht, armPat_bind, hpat]; rfl
+    · rw [List.drop_eq_getElem_cons hc, mkEnv_cons, henv]; rfl
+    · intro y hy
+      rcases List.mem_cons.mp hy with rfl | hy
+      · exact hb
+      · have := hfr y hy
+        rw [findB_push] at this
+        split at this
+        · cases this
+        · exact this
+    · refine List.nodup_cons.mpr ⟨fun hx => ?_, hnd⟩
+      have := hfr x hx
+      rw [findB_push] at this
+      simp [armBd] at this
+    · rw [ht]; simp; omega
+    · rw [hbd] at h2; simpa using h2
+  · -- the last binder
+    have hc1 : c + 1 = ps.length := by rw [hP] at hlt; simp at hlt; omega
+    have hdrop : ps.drop c = [ps[c]] := by
+      rw [List.drop_eq_getElem_cons hc, List.drop_eq_nil_of_le (by omega)]
+    refine ⟨[x], [(x, st.sslot, ps[c])], r, m, st.sslot + ps[c].width, by omega, ?_, ?_, ?_, by simp, ?_, ?_⟩
+    · rw [ht, armPat_bind, armPat]; rfl
+    · rw [hdrop, mkEnv_cons, mkEnv]; rfl
+    · intro y hy; simp at hy; subst hy; exact hb
+    · rw [ht]; simp; omega
+    · rw [hsl, hbd] at h1; simpa using h1
+
 end ParRun
