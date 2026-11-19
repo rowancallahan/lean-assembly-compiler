@@ -75,7 +75,7 @@ theorem rep_ty {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs) (w 
     fun s' hs' => by
       cases hs'
       rw [bget_bset_eq _ _ _ _ rfl (by rw [u25]; omega)]; exact hw.frame es,
-    fun x hx hne => by rw [e 29 (by decide)]; exact nameAt_frame et (by omega) (r29 x hx hne),
+    fun x hx => by rw [e 29 (by decide)]; exact nameAt_frame et (by omega) (r29 x hx),
     by rw [e 30 (by decide)]; exact r30, by rw [e 32 (by decide)]; exact r32, out_frame rO (drop_bset _ _ _ (by decide)),
     tasks_frame rK (e 5 (by decide)) (fun i _ _ => e i (by omega)) et hn es (fun i a _ => e i (by omega)) har⟩
 

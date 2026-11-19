@@ -35,7 +35,7 @@ structure CxRel (st : St) (cx : Cx) : Prop where
 
 /-- node ↔ ParSpec type -/
 def TyRel (v : RN) : Ty → Prop
-  | .s s => v.sh = some s ∧ v.isInp = false ∧ v.tag ≠ 1
+  | .s s => v.sh = some s ∧ (v.isInp = true → ∃ l r, s = .p l r) ∧ v.tag ≠ 1
   | .lit => v.sh = some .uw ∧ v.isInp = false
   | .inp => v.isInp = true ∧ v.sh = some .ls
   | .bot => v.pend = true
@@ -52,10 +52,10 @@ theorem atomLeaf_spec {st st1 : St} {cx : Cx} (hc : CxRel st cx) (h : AtomLeaf s
     refine ⟨_, .lit, _, rfl, ⟨rfl, rfl⟩, rfl, fun f => ?_⟩
     rw [ht]; simp [pAtom, RN.toNd]
   | nil ht =>
-    refine ⟨_, .s .ls, _, rfl, ⟨rfl, rfl, by decide⟩, rfl, fun f => ?_⟩
+    refine ⟨_, .s .ls, _, rfl, ⟨rfl, by simp [RN.isInp, RN.tag], by decide⟩, rfl, fun f => ?_⟩
     rw [ht]; simp [pAtom, RN.toNd, RN.toNdL]
   | bnew ht =>
-    refine ⟨_, .s .bf, _, rfl, ⟨rfl, rfl, by decide⟩, rfl, fun f => ?_⟩
+    refine ⟨_, .s .bf, _, rfl, ⟨rfl, by simp [RN.isInp, RN.tag], by decide⟩, rfl, fun f => ?_⟩
     rw [ht]; simp [pAtom, RN.toNd, RN.toNdL]
   | @loc x r bd _ ht hb hl =>
     unfold locOf at hl
@@ -78,7 +78,9 @@ theorem atomLeaf_spec {st st1 : St} {cx : Cx} (hc : CxRel st cx) (h : AtomLeaf s
           cases s <;> first | rfl | exact absurd rfl hnt
         simp only [Option.bind_some, hps, Option.map_some] at henv
         have hw := Sh.width_pos s
-        refine ⟨_, .s s, r, rfl, ⟨hs, by simp [RN.isInp, RN.tag, RN.b, hi', hs, cw]; omega, by simp [RN.tag]⟩, rfl, fun f => ?_⟩
+        have hpi : (RN.mk 2 bd.slot (if bd.inp = true then 0 else cw bd.sh) bd.sh false []).isInp = true → ∃ l r, s = .p l r := by
+          intro h1; cases s <;> simp_all [RN.isInp, RN.tag, RN.b, cw, Sh.width]
+        refine ⟨_, .s s, r, rfl, ⟨hs, hpi, by simp [RN.tag]⟩, rfl, fun f => ?_⟩
         rw [ht]; simp [pAtom, henv, RN.toNd, hi', hs, cw]
   | @cst x r j d _ ht hb hd hj hp hm =>
     obtain ⟨_, rfl⟩ := mkNode_inv hm
@@ -93,7 +95,7 @@ theorem atomLeaf_spec {st st1 : St} {cx : Cx} (hc : CxRel st cx) (h : AtomLeaf s
     have hemp : di.params = [] := by
       have : (di.params.map psCode).length = 0 := by rw [hpar]; exact hp
       simpa using this
-    refine ⟨_, .s di.res, r, rfl, ⟨hres, rfl, by simp [RN.tag]⟩, rfl, fun f => ?_⟩
+    refine ⟨_, .s di.res, r, rfl, ⟨hres, by simp [RN.isInp, RN.tag], by simp [RN.tag]⟩, rfl, fun f => ?_⟩
     rw [ht]; simp [pAtom, henv, hfd, hemp, RN.toNd, RN.toNdL]
 
 end ParRun

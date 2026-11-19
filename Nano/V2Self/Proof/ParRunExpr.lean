@@ -82,7 +82,10 @@ theorem CxRel.transport {st st' : St} {cx : Cx} (h : CxRel st cx) (hb : st'.bind
 
 theorem TyRel.notInp {v : RN} {ty : Ty} (h : TyRel v ty) (hu : v.sh = some .uw) (hb : ty ≠ .bot) : v.isInp = false := by
   cases ty with
-  | s s => exact h.2.1
+  | s s =>
+    cases hi : v.isInp
+    · rfl
+    · obtain ⟨l, r, rfl⟩ := h.2.1 hi; rw [h.1] at hu; cases hu
   | lit => exact h.2
   | inp => rw [h.2] at hu; cases hu
   | bot => exact absurd rfl hb
@@ -182,7 +185,7 @@ theorem loop_sound : ∀ n, (∀ n' < n, BinSpec n') → LoopSpec n := by
       simp only [leaf, hv, List.cons.injEq] at hv3
       obtain ⟨rfl, rfl, rfl⟩ := hv3
       simp only [List.nil_append] at h3
-      have hb : TyRel (RN.mk 3 op 0 (some .uw) false [a, RN.mk 1 kv 0 (some .uw) false []]) (.s .uw) := ⟨rfl, rfl, by simp [RN.tag]⟩
+      have hb : TyRel (RN.mk 3 op 0 (some .uw) false [a, RN.mk 1 kv 0 (some .uw) false []]) (.s .uw) := ⟨rfl, by simp [RN.isInp, RN.tag], by simp [RN.tag]⟩
       obtain ⟨v, st', n', hn', hp, hsub, hrun, hstop, hnv, hspec⟩ := ihL n (by omega) (fun n'' hn'' => IHB n'' (by omega)) m ks _ fin cx _ _ _ h3 rfl
         (CxRel.transport hc rfl rfl) (CxNN.transport hnn rfl rfl rfl) ⟨.uw, rfl, rfl⟩
         (fun _ => ⟨hb, PT_bin _ _ _⟩)
@@ -218,7 +221,7 @@ theorem loop_sound : ∀ n, (∀ n' < n, BinSpec n') → LoopSpec n := by
       simp only [hv, List.cons.injEq] at hv3
       obtain ⟨rfl, rfl, rfl⟩ := hv3
       simp only [List.nil_append] at h3
-      have hb : TyRel (RN.mk 3 op 0 (some .uw) false [a, y]) (.s .uw) := ⟨rfl, rfl, by simp [RN.tag]⟩
+      have hb : TyRel (RN.mk 3 op 0 (some .uw) false [a, y]) (.s .uw) := ⟨rfl, by simp [RN.isInp, RN.tag], by simp [RN.tag]⟩
       have hc3 : CxRel st3 cx := CxRel.transport hc (by rw [hst3]; exact hp2.binds) (by rw [hst3]; exact hp2.defs)
       have hv3' : st3.vals = RN.mk 3 op 0 (some .uw) false [a, y] :: rest := by rw [hst3]
       obtain ⟨v, st', n', hn', hp, hsub, hrun, hstop, hnv, hspec⟩ :=

@@ -71,10 +71,10 @@ theorem letPairY_inv {x tl st k st'} (h : stepF (.letPairY x tl) st = some (k, s
 theorem stash_eq (x : List Nat) (st : St) : stepF (.stash x) st = some ([], { st with stash := x }) := rfl
 
 theorem letPairSemi_inv {y tl st k st'} (h : stepF (.letPairSemi y tl) st = some (k, st')) :
-    ∃ r v rest l rr, st.toks = .k 13 :: r ∧ st.vals = v :: rest ∧ v.sh = some (.p l rr) ∧
+    ∃ r v rest l rr x, st.toks = .k 13 :: r ∧ st.vals = v :: rest ∧ st.stash = some x ∧ v.sh = some (.p l rr) ∧
       k = [.expr 0 (bm tl), .letEnd st.nx st.binds.length] ∧
       st' = { st with toks := r, nx := st.nx + cw v.sh,
-                      binds := st.binds ++ [⟨st.stash, st.nx, some l, false⟩, ⟨y, st.nx + l.width, some rr, false⟩] } := by
+                      binds := st.binds ++ [⟨x, st.nx, some l, false⟩, ⟨y, st.nx + l.width, some rr, false⟩] } := by
   inv_auto
   exact ⟨_, _, ⟨rfl, rfl⟩, rfl, rfl, rfl⟩
 

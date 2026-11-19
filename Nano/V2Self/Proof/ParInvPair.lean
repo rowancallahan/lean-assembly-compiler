@@ -151,7 +151,7 @@ theorem rep_intern {g ts : Buf} {st : St} {fs : List Frame} (R : Rep g ts st fs)
       arena_frameP rA (cS 8 (by decide) (by decide) (by decide) (by decide)) (cS 9 (by decide) (by decide) (by decide) (by decide))
         (fun j a b => cLo j (by omega) (by omega)) es,
       fun s' hs' => ?_,
-      fun z hz hne => by rw [cS 29 (by decide) (by decide) (by decide) (by decide)]; exact nameAt_frame et (by omega) (r29 z hz hne),
+      fun z hz => by rw [cS 29 (by decide) (by decide) (by decide) (by decide)]; exact nameAt_frame et (by omega) (r29 z hz),
       by rw [cS 30 (by decide) (by decide) (by decide) (by decide)]; exact r30,
       by rw [cS 32 (by decide) (by decide) (by decide) (by decide)]; exact r32, out_frame rO Dr,
       tasks_frameP rK (cS 5 (by decide) (by decide) (by decide) (by decide)) (fun j a b => cLo j a (by have := rK.2.1; omega)) et hn7 es

@@ -162,7 +162,7 @@ theorem join_rel {t e : RN} {tt te : Ty} (htt : TyRel t tt) (hte : TyRel e te) (
   | bot =>
     refine ⟨te, by cases te <;> rfl, ?_⟩
     cases te with
-    | s s => exact ⟨hte.1, rfl, by simp [RN.tag]⟩
+    | s s => exact ⟨hte.1, by simp [RN.isInp, RN.tag], by simp [RN.tag]⟩
     | lit => exact ⟨hte.1, rfl⟩
     | inp => exact absurd rfl hei
     | bot => simp [TyRel, RN.pend]; exact Or.inr hte
@@ -170,7 +170,7 @@ theorem join_rel {t e : RN} {tt te : Ty} (htt : TyRel t tt) (hte : TyRel e te) (
     cases te with
     | s s =>
       have hs : s = .uw := by rw [htt.1, hte.1] at hsh; cases hsh; rfl
-      subst hs; exact ⟨.s .uw, rfl, hte.1, rfl, by simp [RN.tag]⟩
+      subst hs; exact ⟨.s .uw, rfl, hte.1, by simp [RN.isInp, RN.tag], by simp [RN.tag]⟩
     | lit => exact ⟨.lit, rfl, hte.1, rfl⟩
     | inp => exact absurd rfl hei
     | bot => exact ⟨.lit, rfl, by rw [← hsh]; exact htt.1, rfl⟩
@@ -178,12 +178,12 @@ theorem join_rel {t e : RN} {tt te : Ty} (htt : TyRel t tt) (hte : TyRel e te) (
     cases te with
     | s s' =>
       have hs : s = s' := by rw [htt.1, hte.1] at hsh; cases hsh; rfl
-      subst hs; exact ⟨.s s, by simp [Ty.join], hte.1, rfl, by simp [RN.tag]⟩
+      subst hs; exact ⟨.s s, by simp [Ty.join], hte.1, by simp [RN.isInp, RN.tag], by simp [RN.tag]⟩
     | lit =>
       have hs : s = .uw := by rw [htt.1, hte.1] at hsh; cases hsh; rfl
-      subst hs; exact ⟨.s .uw, rfl, hte.1, rfl, by simp [RN.tag]⟩
+      subst hs; exact ⟨.s .uw, rfl, hte.1, by simp [RN.isInp, RN.tag], by simp [RN.tag]⟩
     | inp => exact absurd rfl hei
-    | bot => exact ⟨.s s, by cases s <;> rfl, by rw [← hsh]; exact htt.1, rfl, by simp [RN.tag]⟩
+    | bot => exact ⟨.s s, by cases s <;> rfl, by rw [← hsh]; exact htt.1, by simp [RN.isInp, RN.tag], by simp [RN.tag]⟩
 
 
 theorem binLoop_stop0 {ks st fin n} (h : StarN (n + 1) (.binLoop 0 :: ks, st) ([], fin)) (hs : Stop 0 st.toks) :
@@ -617,8 +617,8 @@ theorem expr_letpair {n : Nat} (hE : ∀ n' < n, ExprSpec n') {md ks st fin cx x
     | 0, h6 => exact absurd h6.zero_nil.1 (by simp)
     | nV + 1, h6 =>
     obtain ⟨k7, st7, hs7, h7⟩ := h6.head
-    obtain ⟨r2, v', rest, l, rr, hr2, hv7, hsv, rfl, rfl⟩ := letPairSemi_inv hs7
-    simp only at hv7 hr2
+    obtain ⟨r2, v', rest, l, rr, x', hr2, hv7, hx', hsv, rfl, rfl⟩ := letPairSemi_inv hs7
+    simp only [Option.some.injEq] at hv7 hr2 hx'; subst hx'
     rw [hpV.vals] at hv7; injection hv7 with hv7 hrest; subst hv7 hrest
     simp only [List.cons_append, List.nil_append] at h7
     obtain ⟨s, hsv', hsnn⟩ := hnvV
@@ -629,11 +629,11 @@ theorem expr_letpair {n : Nat} (hE : ∀ n' < n, ExprSpec n') {md ks st fin cx x
     have hc1 : CxRel { stV with binds := stV.binds ++ [⟨x, stV.nx, some l, false⟩] } { cx with env := (x, stV.nx, .sh l) :: cx.env } :=
       CxRel.push (CxRel.transport (st' := stV) hc (by rw [hpV.binds]) (by rw [hpV.defs])) hl rfl rfl
     have hcB := CxRel.push (x := y) (slot := stV.nx + l.width) hc1 hrr
-      (st' := { stV with toks := r2, nx := stV.nx + cw v.sh, stash := x, binds := stV.binds ++ [⟨x, stV.nx, some l, false⟩, ⟨y, stV.nx + l.width, some rr, false⟩] }) (by simp) rfl
+      (st' := { stV with toks := r2, nx := stV.nx + cw v.sh, stash := some x, binds := stV.binds ++ [⟨x, stV.nx, some l, false⟩, ⟨y, stV.nx + l.width, some rr, false⟩] }) (by simp) rfl
     have hn1 : CxNN { stV with binds := stV.binds ++ [⟨x, stV.nx, some l, false⟩] } :=
       CxNN.push (CxNN.transport (st' := stV) hnn hpV.binds hpV.defs hpV.cur) ⟨l, rfl, hlnn⟩ rfl rfl rfl
     have hnB := CxNN.push (bd := ⟨y, stV.nx + l.width, some rr, false⟩) hn1 ⟨rr, rfl, hrnn⟩
-      (st' := { stV with toks := r2, nx := stV.nx + cw v.sh, stash := x, binds := stV.binds ++ [⟨x, stV.nx, some l, false⟩, ⟨y, stV.nx + l.width, some rr, false⟩] }) (by simp) rfl rfl
+      (st' := { stV with toks := r2, nx := stV.nx + cw v.sh, stash := some x, binds := stV.binds ++ [⟨x, stV.nx, some l, false⟩, ⟨y, stV.nx + l.width, some rr, false⟩] }) (by simp) rfl rfl
     obtain ⟨b, stB, nB, hnB', hpB, hltB, hB, hstopB, hnvB, hspB⟩ :=
       hE nV (by omega) (bm (md == 1)) _ _ fin _ (by cases md == 1 <;> simp [bm]) h7 hcB hnB
     match nB, hB with

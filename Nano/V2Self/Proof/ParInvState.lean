@@ -132,7 +132,7 @@ def Rep (h : Buf) (ts : Buf) (st : St) (fs : List Frame) : Prop :=
   DefsRep h st (inDefF fs) ∧
   ArenaRep h st.arena st.vals ∧
   (∀ s, st.ty = some s → ShapeCode h (bget h 25) s) ∧
-  (∀ x, st.stash = x → x ≠ [] → NameAt h (bget h 29) x) ∧
+  (∀ x, st.stash = some x → NameAt h (bget h 29) x) ∧
   bget h 30 = b01 st.arm ∧
   bget h 32 = st.sslot.toUInt64 ∧
   OutRep h ts st.out ∧

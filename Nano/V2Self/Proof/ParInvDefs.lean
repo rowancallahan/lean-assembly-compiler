@@ -143,7 +143,7 @@ def RepZ (h : Buf) (ts : Buf) (st : St) : Prop :=
   DefsRep h st false ∧
   ArenaRep h st.arena st.vals ∧
   (∀ s, st.ty = some s → ShapeCode h (bget h 25) s) ∧
-  (∀ x, st.stash = x → x ≠ [] → NameAt h (bget h 29) x) ∧
+  (∀ x, st.stash = some x → NameAt h (bget h 29) x) ∧
   bget h 30 = b01 st.arm ∧
   bget h 32 = st.sslot.toUInt64 ∧
   OutRep h ts st.out
@@ -175,7 +175,7 @@ theorem repZ_frame {h h' ts : Buf} {st : St} {toks' : List Tok} (r : RepZ h ts s
     arena_frame rA (c 8 (by decide) (by decide) (by decide) (by decide)) (c 9 (by decide) (by decide) (by decide) (by decide))
       (fun i a _ => e i (by omega) (by omega) (by omega) (by omega)) es,
     fun s hs => by rw [c 25 (by decide) (by decide) (by decide) (by decide)]; exact (r25 s hs).frame es,
-    fun x hx hne => by rw [c 29 (by decide) (by decide) (by decide) (by decide)]; exact nameAt_frame et (by omega) (r29 x hx hne),
+    fun x hx => by rw [c 29 (by decide) (by decide) (by decide) (by decide)]; exact nameAt_frame et (by omega) (r29 x hx),
     by rw [c 30 (by decide) (by decide) (by decide) (by decide)]; exact r30,
     by rw [c 32 (by decide) (by decide) (by decide) (by decide)]; exact r32, out_frame rO ed⟩
 
@@ -370,9 +370,9 @@ theorem rep_open {G H ts : Buf} {st : St} {fs' : List Frame} {p : UInt64} {x : L
   · intro s hs
     rw [cell 25 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)]
     exact (r25 s hs).frame es
-  · intro y hy hne
+  · intro y hy
     rw [cell 29 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)]
-    exact nameAt_frame et (by omega) (r29 y hy hne)
+    exact nameAt_frame et (by omega) (r29 y hy)
   · rw [w 30 (by decide), v30]; rfl
   · rw [cell 32 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)]; exact r32
   · exact out_frame rO ed
@@ -393,7 +393,7 @@ theorem rep_scratch22 {h h' ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts 
     defs_frame rD (c 12 (by decide) (by decide)) (c 27 (by decide) (by decide)) (c 26 (by decide) (by decide)) (fun i a _ => e i (by omega) (by omega)) et hn es,
     arena_frame rA (c 8 (by decide) (by decide)) (c 9 (by decide) (by decide)) (fun i a _ => e i (by omega) (by omega)) es,
     fun s hs => by rw [c 25 (by decide) (by decide)]; exact (r25 s hs).frame es,
-    fun x hx hne => by rw [c 29 (by decide) (by decide)]; exact nameAt_frame et (by omega) (r29 x hx hne),
+    fun x hx => by rw [c 29 (by decide) (by decide)]; exact nameAt_frame et (by omega) (r29 x hx),
     by rw [c 30 (by decide) (by decide)]; exact r30, by rw [c 32 (by decide) (by decide)]; exact r32, out_frame rO ed,
     tasks_frame rK (c 5 (by decide) (by decide)) (fun i _ _ => e i (by omega) (by omega)) et hn es
       (fun i a _ => e i (by omega) (by omega)) rA.2.1⟩
@@ -413,7 +413,7 @@ theorem rep_accept {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs)
     defs_frame rD (e 12 (by decide)) (e 27 (by decide)) (e 26 (by decide)) (fun i a _ => e i (by omega)) et hn es,
     arena_frame rA (e 8 (by decide)) (e 9 (by decide)) (fun i a _ => e i (by omega)) es,
     fun s hs => by rw [e 25 (by decide)]; exact (r25 s hs).frame es,
-    fun x hx hne => by rw [e 29 (by decide)]; exact nameAt_frame et (by omega) (r29 x hx hne),
+    fun x hx => by rw [e 29 (by decide)]; exact nameAt_frame et (by omega) (r29 x hx),
     by rw [e 30 (by decide)]; exact r30, by rw [e 32 (by decide)]; exact r32, out_frame rO (drop_bset _ _ _ (by decide)),
     tasks_frame rK (e 5 (by decide)) (fun i _ _ => e i (by omega)) et hn es (fun i a _ => e i (by omega)) rA.2.1⟩
 

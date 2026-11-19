@@ -69,7 +69,7 @@ theorem rep_v6 {g ts : Buf} {st : St} {fs : List Frame} (R : Rep g ts st fs) (x 
     defs_frame rD (cc 12 (by decide) (by decide)) (cc 27 (by decide) (by decide)) (cc 26 (by decide) (by decide)) (fun i a b => e i (by omega) (Or.inl (by omega))) et hn7 es,
     arena_frame rA (cc 8 (by decide) (by decide)) (cc 9 (by decide) (by decide)) (fun i a b => e i (by omega) (Or.inl (by omega))) es,
     fun s' hs' => by rw [cc 25 (by decide) (by decide)]; exact (r25 s' hs').frame es,
-    fun y hy hne => by rw [cc 29 (by decide) (by decide)]; exact nameAt_frame et (by omega) (r29 y hy hne),
+    fun y hy => by rw [cc 29 (by decide) (by decide)]; exact nameAt_frame et (by omega) (r29 y hy),
     by rw [cc 30 (by decide) (by decide)]; exact r30, by rw [cc 32 (by decide) (by decide)]; exact r32, out_frame rO D,
     tasks_frame rK (cc 5 (by decide) (by decide)) (fun i a b => e i (by omega) (Or.inl (by have := rK.2.1; omega))) et hn7 es
       (fun i a b => e i (by omega) (Or.inl (by omega))) har⟩

@@ -202,7 +202,7 @@ theorem rep_asg {g ts : Buf} {st : St} {fs : List Frame} (R : Rep g ts st fs) (h
     arena_frame rA (cS 8 (by decide) (by decide) (by decide) (by decide)) (cS 9 (by decide) (by decide) (by decide) (by decide))
       (fun j a b => cLo j (by omega) b) es,
     fun s' hs' => by rw [cS 25 (by decide) (by decide) (by decide) (by decide)]; exact (r25 s' hs').frame es,
-    fun y hy hne => by rw [cS 29 (by decide) (by decide) (by decide) (by decide)]; exact nameAt_frame et (by omega) (r29 y hy hne),
+    fun y hy => by rw [cS 29 (by decide) (by decide) (by decide) (by decide)]; exact nameAt_frame et (by omega) (r29 y hy),
     by rw [cS 30 (by decide) (by decide) (by decide) (by decide)]; exact r30,
     by rw [cS 32 (by decide) (by decide) (by decide) (by decide)]; exact r32, out_frame rO Dr,
     tasks_frame rK (cS 5 (by decide) (by decide) (by decide) (by decide)) (fun j a b => cLo j a (by have := rK.2.1; omega)) et hn7 es

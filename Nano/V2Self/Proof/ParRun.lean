@@ -22,8 +22,8 @@ def b : RN → Nat | mk _ _ b .. => b
 def sh : RN → Option Sh | mk _ _ _ s .. => s
 def pend : RN → Bool | mk _ _ _ _ p _ => p
 def kids : RN → List RN | mk _ _ _ _ _ k => k
-/-- the width-0 INPUT LOCAL (`v205`/`v209`: tag 2, b = 0) -/
-def isInp (n : RN) : Bool := n.tag == 2 && n.b == 0
+/-- the INPUT LOCAL as the machine sees it (`v205`/`v209`: tag 2, payload CELL b mod 2^64 = 0) -/
+def isInp (n : RN) : Bool := n.tag == 2 && n.b % 2 ^ 64 == 0
 end RN
 
 /-- binding row (d9 + 4 i): name, slot, shape code (`none` = 0: a binder whose type is not parsed yet), input flag -/
@@ -115,7 +115,7 @@ structure St where
   vals : List RN
   arena : List RN
   ty : Option Sh
-  stash : List Nat
+  stash : Option (List Nat)
   arm : Bool
   sslot : Nat
   out : List UInt64
@@ -124,7 +124,7 @@ structure St where
   all : List Tok
 
 def init (toks : List Tok) : St :=
-  { toks, nx := 0, binds := [], defs := [], cur := DefR.fresh [], vals := [], arena := [], ty := none, stash := [], arm := false,
+  { toks, nx := 0, binds := [], defs := [], cur := DefR.fresh [], vals := [], arena := [], ty := none, stash := none, arm := false,
     sslot := 0, out := [2], acc := false, all := toks }
 
 /-! ## helpers (machine subroutines) -/
@@ -319,17 +319,17 @@ def stepF : Frame → St → Option (List Frame × St)
     match st.toks with
     | .id y :: .k 7 :: .k 9 :: r => some ([.expr 0 0, .stash x, .letPairSemi y tl], { st with toks := r })
     | _ => none
-  | .stash x, st => some ([], { st with stash := x })
+  | .stash x, st => some ([], { st with stash := some x })
   | .letPairSemi y tl, st =>
-    match st.toks, st.vals with
-    | .k 13 :: r, v :: _ =>
+    match st.toks, st.vals, st.stash with
+    | .k 13 :: r, v :: _, some x =>
       match v.sh with
       | some (.p l rr) =>
         some ([.expr 0 (bm tl), .letEnd st.nx st.binds.length],
           { st with toks := r, nx := st.nx + cw v.sh,
-                    binds := st.binds ++ [⟨st.stash, st.nx, some l, false⟩, ⟨y, st.nx + l.width, some rr, false⟩] })
+                    binds := st.binds ++ [⟨x, st.nx, some l, false⟩, ⟨y, st.nx + l.width, some rr, false⟩] })
       | _ => none
-    | _, _ => none
+    | _, _, _ => none
   | .args c k, st => match k with
     | 0 => some ([], st)
     | k + 1 => some ([.argAtom, .args c k], st)

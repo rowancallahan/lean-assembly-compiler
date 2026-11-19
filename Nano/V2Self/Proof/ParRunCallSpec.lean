@@ -32,7 +32,8 @@ theorem tyMatch_of {p : Ps} {v : RN} {ty : Ty} (hv : ValOK v ty) (hn : p ≠ .sh
     obtain ⟨hs, hni, ht1⟩ := hty
     cases p with
     | inp =>
-      have := hi.mp rfl; rw [hni] at this; cases this
+      obtain ⟨l, r, rfl⟩ := hni (hi.mp rfl)
+      rcases hsh with h | ⟨h1, _⟩ <;> simp_all [psCode]
     | fuel =>
       rcases hsh with h | ⟨_, h2⟩
       · rw [hs] at h; simp [psCode] at h; subst h; rfl
@@ -140,7 +141,7 @@ theorem defcall_spec {N : Nat} {cx : Cx} (hP : ParenH N cx) {n d j : Nat} {ks : 
     subst e3
     exact tyMatch_of (hok _ (List.getElem_mem h2)) (hnn _ (List.getElem_mem h1))
       (by have := hinp.get idx h1 (by simpa using h2); simpa using this) hcond
-  refine ⟨⟨⟨hres, rfl, by simp [RN.tag]⟩, rfl, fun h9 => by cases h9⟩, F + 1, fun f hf => ?_⟩
+  refine ⟨⟨⟨hres, by simp [RN.isInp, RN.tag], by simp [RN.tag]⟩, rfl, fun h9 => by cases h9⟩, F + 1, fun f hf => ?_⟩
   obtain ⟨g, rfl⟩ : ∃ g, f = g + 1 := ⟨f - 1, by omega⟩
   rw [pCallDef]
   simp only [hfd]
@@ -225,7 +226,7 @@ theorem primcall_spec {N : Nat} {cx : Cx} (hP : ParenH N cx) {n d t : Nat} {ks :
     cases ps with
     | nil => simp at this
     | cons q qs => simpa using this
-  refine ⟨⟨⟨rfl, rfl, by simp [RN.tag]⟩, rfl, fun _ ha => by simp only [RN.a] at ha; rw [ha]; rfl⟩, F + 1, fun f hf tl => ?_⟩
+  refine ⟨⟨⟨rfl, by simp [RN.isInp, RN.tag], by simp [RN.tag]⟩, rfl, fun _ ha => by simp only [RN.a] at ha; rw [ha]; rfl⟩, F + 1, fun f hf tl => ?_⟩
   obtain ⟨g, rfl⟩ : ∃ g, f = g + 1 := ⟨f - 1, by omega⟩
   rw [pApp]
   simp only [hsig]

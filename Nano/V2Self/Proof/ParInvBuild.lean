@@ -58,7 +58,7 @@ theorem rep_arena {h h' ts : Buf} {st : St} {fs fs' : List Frame} {arena' vals' 
     binds_frame rB (c 4 (by decide) (by decide) (by decide) (by decide)) (fun i a _ => e i (by omega) (by omega) (by omega) (Or.inr (by omega))) et hn es,
     (by rw [hd]; exact defs_frame rD (c 12 (by decide) (by decide) (by decide) (by decide)) (c 27 (by decide) (by decide) (by decide) (by decide)) (c 26 (by decide) (by decide) (by decide) (by decide)) (fun i a _ => e i (by omega) (by omega) (by omega) (Or.inr (by omega))) et hn es),
     hA, fun s hs => by rw [c 25 (by decide) (by decide) (by decide) (by decide)]; exact (r25 s hs).frame es,
-    fun x hx hne => by rw [c 29 (by decide) (by decide) (by decide) (by decide)]; exact nameAt_frame et (by omega) (r29 x hx hne),
+    fun x hx => by rw [c 29 (by decide) (by decide) (by decide) (by decide)]; exact nameAt_frame et (by omega) (r29 x hx),
     by rw [c 30 (by decide) (by decide) (by decide) (by decide)]; exact r30,
     by rw [c 32 (by decide) (by decide) (by decide) (by decide)]; exact r32, out_frame rO ed, hT⟩
 

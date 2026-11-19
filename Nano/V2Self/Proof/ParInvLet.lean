@@ -205,7 +205,7 @@ theorem h_letPairY {h ts : Buf} {st : St} {x : List Nat} {tl : Bool} {fs : List 
 
 /-! ## task 52: `stash x` (v115): h[29] := the position of x -/
 theorem rep_set29 {h ts : Buf} {st : St} {fs : List Frame} {pos : UInt64} {x : List Nat} (r : Rep h ts st fs) (hx : NameAt h pos x) :
-    Rep (bset h 29 pos) ts { st with stash := x } fs := by
+    Rep (bset h 29 pos) ts { st with stash := some x } fs := by
   obtain ⟨rT, rts, r0, r3, r11, rB, rD, rA, r25, _, r30, r32, rO, rK⟩ := r
   have hn : (bget h 7).toNat < 2 ^ 32 := by rw [rT.2.2.2]; simp; omega
   have u : (29 : UInt64).toNat = 29 := rfl
@@ -218,7 +218,7 @@ theorem rep_set29 {h ts : Buf} {st : St} {fs : List Frame} {pos : UInt64} {x : L
     defs_frame rD (c 12 (by decide)) (c 27 (by decide)) (c 26 (by decide)) (fun i a _ => c i (by omega)) et hn es,
     arena_frame rA (c 8 (by decide)) (c 9 (by decide)) (fun i a _ => c i (by omega)) es,
     fun s hs => by rw [c 25 (by decide)]; exact (r25 s hs).frame es,
-    fun y hy _ => by rw [bget_bset_eq _ _ _ _ rfl (by rw [u, rO.1]; omega)]; subst hy; exact nameAt_frame et (by omega) hx,
+    fun y hy => by rw [bget_bset_eq _ _ _ _ rfl (by rw [u, rO.1]; omega)]; simp only [Option.some.injEq] at hy; subst hy; exact nameAt_frame et (by omega) hx,
     by rw [c 30 (by decide)]; exact r30, by rw [c 32 (by decide)]; exact r32, out_frame rO (drop_bset _ _ _ (by decide)),
     tasks_frame rK (c 5 (by decide)) (fun i a _ => c i (by omega)) et hn es ea rA.2.1⟩
 

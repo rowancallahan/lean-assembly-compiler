@@ -61,7 +61,7 @@ theorem rep_cur {h h' ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs)
     binds_frame rB (low 4 (by decide) (by decide)) (fun i a _ => big i (by omega)) et hn es, ?_,
     arena_frame rA (low 8 (by decide) (by decide)) (low 9 (by decide) (by decide)) (fun i a b => low i b (by omega)) es,
     fun s hs => by rw [low 25 (by decide) (by decide)]; exact (r25 s hs).frame es,
-    fun x hx hne => by rw [low 29 (by decide) (by decide)]; exact nameAt_frame et (by omega) (r29 x hx hne),
+    fun x hx => by rw [low 29 (by decide) (by decide)]; exact nameAt_frame et (by omega) (r29 x hx),
     by rw [low 30 (by decide) (by decide)]; exact r30, by rw [low 32 (by decide) (by decide)]; exact r32, out_frame rO ed,
     tasks_frame rK (low 5 (by decide) (by decide)) (fun i a b => low i (by have := rK.2.1; omega) (by omega)) et hn es
       (fun i a b => low i b (by omega)) har⟩

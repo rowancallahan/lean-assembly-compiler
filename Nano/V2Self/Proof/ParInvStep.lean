@@ -320,7 +320,7 @@ theorem rep_tasks {h h' ts : Buf} {st : St} {fs fs' : List Frame} (r : Rep h ts 
     by rw [hd]; exact defs_frame rD (c 12 (by decide) (by decide)) (c 27 (by decide) (by decide)) (c 26 (by decide) (by decide)) (fun i a _ => e i (by omega) (Or.inr (by omega))) et hn es,
     arena_frame rA (c 8 (by decide) (by decide)) (c 9 (by decide) (by decide)) (fun i a _ => e i (by omega) (Or.inr (by omega))) es,
     fun s hs => by rw [c 25 (by decide) (by decide)]; exact (r25 s hs).frame es,
-    fun x hx hne => by rw [c 29 (by decide) (by decide)]; exact nameAt_frame et (by omega) (r29 x hx hne),
+    fun x hx => by rw [c 29 (by decide) (by decide)]; exact nameAt_frame et (by omega) (r29 x hx),
     by rw [c 30 (by decide) (by decide)]; exact r30, by rw [c 32 (by decide) (by decide)]; exact r32, out_frame rO ed, hT⟩
 
 /-- the status stays 0 through a push -/
@@ -375,7 +375,7 @@ theorem rep_tok {h h' ts : Buf} {st : St} {fs fs' : List Frame} {toks' : List To
     arena_frame rA (c 8 (by decide) (by decide) (by decide)) (c 9 (by decide) (by decide) (by decide))
       (fun i a _ => e i (by omega) (by omega) (Or.inr (by omega))) es,
     fun s hs => by rw [c 25 (by decide) (by decide) (by decide)]; exact (r25 s hs).frame es,
-    fun x hx hne => by rw [c 29 (by decide) (by decide) (by decide)]; exact nameAt_frame et (by omega) (r29 x hx hne),
+    fun x hx => by rw [c 29 (by decide) (by decide) (by decide)]; exact nameAt_frame et (by omega) (r29 x hx),
     by rw [c 30 (by decide) (by decide) (by decide)]; exact r30, by rw [c 32 (by decide) (by decide) (by decide)]; exact r32,
     out_frame rO ed, hT⟩
 
