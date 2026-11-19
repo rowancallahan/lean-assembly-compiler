@@ -289,4 +289,97 @@ theorem rep_asg {g ts : Buf} {st : St} {fs : List Frame} (R : Rep g ts st fs) (h
           simpa using scG
       · rw [c5, e27n]; simp only [List.length_append, List.length_singleton]; omega
 
+theorem ShapeCode.bound {h : Buf} {c : UInt64} {s : Sh} (r : ShapeCode h c s) : c.toNat < 5 + 8192 := by
+  cases r <;> first | decide | assumption
+
+theorem ShapeCode.ls_code {h : Buf} {c : UInt64} (r : ShapeCode h c .ls) : c = 3 := by
+  cases r; rfl
+
+/-- the parameter-code area is full: task 68 fails -/
+theorem v133_full (g : Buf) (a b : UInt64) (i0 : Nat) (ha : a = i0.toUInt64) (hi0 : i0 < 1024) (hl : 184384 ≤ g.length)
+    (hne : a ≠ bget g 4) (hJ : ¬ bget g 27 < 4096) : bget (v133 g a b) 0 = 0 := by
+  have r1 := rowCell i0 hi0 1 (by decide); have r2 := rowCell i0 hi0 2 (by decide); have r3 := rowCell i0 hi0 3 (by decide)
+  simp only [show (1 : UInt64).toNat = 1 from rfl, show (2 : UInt64).toNat = 2 from rfl, show (3 : UInt64).toNat = 3 from rfl] at r1 r2 r3
+  rw [← ha] at r1 r2 r3
+  have B27 : ∀ (x1 x2 x3 z v : UInt64),
+      bget (bset (bset (bset (bset (bset g (d9 + 4 * a + 1) x1) (d9 + 4 * a + 2) x2) (d9 + 4 * a + 3) x3) 31 z) 11 v) 27 = bget g 27 :=
+    fun x1 x2 x3 z v => by
+      rw [bget_bset' _ _ _ _ (by decide), bget_bset' _ _ _ _ (by decide), bget_bset' _ _ _ _ (by rw [r3, show (27 : UInt64).toNat = 27 from rfl]; omega),
+        bget_bset' _ _ _ _ (by rw [r2, show (27 : UInt64).toNat = 27 from rfl]; omega), bget_bset' _ _ _ _ (by rw [r1, show (27 : UInt64).toNat = 27 from rfl]; omega)]
+  unfold v133 v9
+  simp only [beq_iff_eq, hne, if_false, k0, k1]
+  by_cases c4 : bget g 25 = 4
+  · simp only [c4, if_true]; exact stat0 _ (by omega)
+  simp only [c4, if_false]
+  by_cases cg : (if bget g 25 = 3 then (if b = 1 then (0 : UInt64) else (if v201 16777216 g a = 0 then 1 else 0)) else 0) = 1
+  · simp only [cg, if_true]; exact stat0 _ (by omega)
+  simp only [cg, if_false, B27, hJ]
+  exact v1_zero _ _ _ _ (stat0 _ (by simp only [length_bset]; omega))
+
+/-! ## task 68: `assign i sz` (v133) -/
+theorem h_assign {h ts : Buf} {st : St} {i0 sz : Nat} {fs : List Frame} (r : Rep h ts st (.assign i0 sz :: fs))
+    (hD : inDefF fs = true) (hia : i0 ≤ st.binds.length) (hty : st.ty.isSome) (hnni : st.cur.nni < 2 ^ 63)
+    (hs : bget (step h) 0 ≠ 0) :
+    ∃ fr st', stepF (.assign i0 sz) st = some (fr, st') ∧ Rep (step h) ts st' (fr ++ fs) := by
+  obtain ⟨E, ⟨ea, eb⟩, R1⟩ := rep_pop r rfl
+  simp only [Frame.code] at E
+  generalize (taskAt h fs.length).a = a at E ea
+  generalize (taskAt h fs.length).b = b at E eb
+  generalize bset h 5 fs.length.toUInt64 = g at E R1
+  obtain ⟨hn, hl, har⟩ := rep_bounds R1
+  have rB := R1.2.2.2.2.2.1
+  have b4 := rB.1; have bl := rB.2.1
+  have ev : step h = v133 g a b := by rw [E]; simp [v96]
+  rw [ev] at hs ⊢
+  have ha : a = i0.toUInt64 := by rw [← ea]; simp
+  by_cases ceq : a = bget g 4
+  · have hlen : i0 = st.binds.length := by rw [← ea, ceq, b4]
+    have e0 : v133 g a b = g := by unfold v133; simp [ceq]
+    rw [e0]
+    exact ⟨[], st, by simp [stepF, hlen], R1⟩
+  have hne : i0 ≠ st.binds.length := fun e => ceq (by apply UInt64.toNat_inj.mp; rw [ea, b4, e])
+  have hilt : i0 < st.binds.length := by omega
+  have i1024 : i0 < 1024 := by omega
+  have hJ : bget g 27 < 4096 := by
+    by_cases hJ : bget g 27 < 4096
+    · exact hJ
+    · exact absurd (v133_full g a b i0 ha i1024 hl ceq hJ) hs
+  have hJ' := UInt64.lt_iff_toNat_lt.mp hJ
+  simp only [show (4096 : UInt64).toNat = 4096 from rfl] at hJ'
+  obtain ⟨w, hw⟩ := Option.isSome_iff_exists.mp hty
+  have sc := R1.2.2.2.2.2.2.2.2.1 w hw
+  have rD : DefsRep g st true := hD ▸ R1.2.2.2.2.2.2.1
+  have h12 : bget g 12 = st.defs.length.toUInt64 := by rw [← rD.1]; simp
+  have dead : ∀ X : Buf, X.length = g.length → bget X 0 ≠ 0 → X ≠ bset g 0 0 := fun X _ hx e => hx (by rw [e]; exact stat0 _ (by omega))
+  by_cases c4 : bget g 25 = 4
+  · exfalso; apply hs; unfold v133; simp only [beq_iff_eq, ceq, if_false, c4, if_true]; exact stat0 _ (by omega)
+  by_cases cg : (if bget g 25 = 3 then (if b = 1 then (0 : UInt64) else (if v201 16777216 g a = 0 then 1 else 0)) else 0) = 1
+  · exfalso; apply hs; unfold v133; simp only [beq_iff_eq, ceq, if_false, c4, k0, k1, cg, if_true]; exact stat0 _ (by omega)
+  rw [v133_eq g a b i0 st.defs.length (bget g 27).toNat ha i1024 h12 rD.2.1 (by simp) hJ' hl ceq c4 sc.bound cg] at hs ⊢
+  -- decode the machine's flags
+  have hw3 : bget g 25 = 3 ↔ w = .ls := ⟨fun e => ShapeCode.det (e ▸ sc) .ls, fun e => (e ▸ sc).ls_code⟩
+  have hb1 : b = 1 ↔ sz = 1 := ⟨fun e => by rw [← eb, e]; rfl, fun e => UInt64.toNat_inj.mp (by rw [eb, e]; rfl)⟩
+  have hv := v201_eq rB i0 16777216 hia (by omega)
+  rw [← ha] at hv
+  have hwnt : w ≠ .nt := fun e => c4 (e ▸ sc).nt_code
+  have en1 : (if (if bget g 25 = 3 then (if b = 1 then v201 16777216 g a else 1) else 1) = 0 then (1 : UInt64) else 0) =
+      b01 (w == .ls && sz == 1 && !((st.binds.take i0).any Bd.inp)) := by
+    rw [hv]
+    by_cases q1 : w = .ls <;> by_cases q2 : sz = 1 <;> cases q3 : (st.binds.take i0).any Bd.inp <;>
+      simp [hw3, hb1, q1, q2, b01]
+  have hgj : ¬ (w = .ls ∧ sz ≠ 1 ∧ (!((st.binds.take i0).any Bd.inp)) = true) := by
+    rintro ⟨q1, q2, q3⟩
+    apply cg
+    rw [hv]
+    simp only [Bool.not_eq_true'] at q3
+    simp [hw3, hb1, q1, q2, q3]
+  have ez : (if bget g 25 < 5 then 1 else bget g ((d7 + 8192) + 3 * (bget g 25 - 5) + 2)) = w.width.toUInt64 :=
+    v9_cw (o := some w) sc
+  rw [en1, ez, ha] at hs ⊢
+  have R2 := rep_asg R1 hD i0 hilt w hw (w == .ls && sz == 1 && !((st.binds.take i0).any Bd.inp)) hnni hJ'
+  have ea1 : (i0.toUInt64 + 1).toNat = i0 + 1 := by rw [tn_add _ _ (by simp; omega)]; simp; omega
+  have R3 := rep_push (.assign (i0 + 1) sz) (i0.toUInt64 + 1) b R2 rfl ⟨ea1, eb⟩ hs
+  refine ⟨[.assign (i0 + 1) sz], _, ?_, R3⟩
+  simp only [stepF, if_neg hne, hw, List.getElem?_eq_getElem hilt, if_neg hwnt, if_neg hgj]
+
 end ParInv
