@@ -94,28 +94,28 @@ EXPRESSION REFINEMENT (B, in progress). PUSHED: `Proof/ParRunExpr.lean` — `VT`
   NEXT (B): mirror fix L (drop `hL` and CxRel.self's `sps ≠ [.inp]`); help F at the def level on request.
 
 ## HANDOFF — parser lead (2026-11-19, keep current)
-Role: review of Layers 2/3; own families (after the split with G): def start/accept 60, plainBody 70, afterColon 73, stateTy 74,
-armsStart 75, FINISH 80, flatten 81–83, `v98`/`fin`, validation, top glue, 46/54 machine side, Layer-2 def level (headers/arms/defs).
-G has 76/77/79 (ParInvArm).  All files below pushed, no sorry, std axioms, each module < 10 s.
-DONE
-* pure (on B's `ParRun`): `ParTreeOK` (ArenaInv/CntInv, `ok_of_nodes`, `words_body`, `StarN.out_le`), `ParRunShape` (`StkInv`; `DInv`:
-  `.defs` only as the whole stack, `defs_not_below` = the glue's `inDefF fs` below popped frames), `ParRunNames` (`NInv`), `ParRunArena`
-  (kids < |arena|; `CallInv`), `ParRunRow` (`firstLs_snoc`/`firstLs_last`: input flag n1 ↔ G's FirstLs), `ParRunDefs` (`StarN.cut`,
-  `defEnd_tail`: defEnd → flatten → defClose → `.defs`), `ParTokWF` (`TokWF ts := ∃ toks, TokL ts toks`, D proves Lexes → TokWF).
-* machine: `ParInvFin`, `ParInvVal`, `ParInvFlatM` (`v141_eq`..`v144_eq`), `ParInvDefs` (`h_defs` task 60, `rep_open`, `idxOf_findD`).
-* on C's Rep: `ParInvApi`, `ParInvValRep` (`v209_nodeOK`), `ParInvFinish` (`h_defEnd_core` task 80 up to the output append),
-  `ParInvHdr` (`rep_cur`: current-row update keeps Rep; `rep_nxss`: h11/h32 writes; `v203_eq`; handlers `h_plainBody` 70,
-  `h_afterColon` 73, `h_stateTy` 74, `h_armsStart` 75).  Handler obligations carried as hypotheses for `api_of_rep`: `st.ty = some w`,
-  `nni < 2^63`, `npw + width < 2^64`, `hprev` (73: cell before the cursor = 35 → `prevTok st = some (.k 35)`).
-* glue: `ParInvTop` (`RepAPI`, `run_sim`, `parserSound_of`).
-OPEN / WAITING
-* C: `TokAgree` must be restricted to the token region `[184384, 184384 + h7 + 2)` — without it no frame lemma survives an output
-  append `H ++ ws`, so `rep_append` (tasks 80–83) is blocked.  Also: v99 main-arity check; `|defs| ≤ 512` in DefsRep; a Rep link between
-  `st.all` and the token cells (for `hprev`).
-* B: `RN.isInp` mod 2^64 (`IsInpW`).
-NEXT: Layer-2 header reflection (pBinders/bindSlots via binders/group/assign, pArrows/stateKinds via afterColon/stateTy, armPat/mkEnv via
-armsStart/armBind) → `DefSpec` (run from `.defs` to the next `.defs` = `pDef`) → `pDefs`/`refParse`; then 81–83 + `rep_append` once
-TokAgree is narrowed; then `api_of_rep`.
+Role: review of Layers 2/3; owns def start/accept 60, plainBody 70, afterColon 73, stateTy 74, armsStart 75, FINISH 80,
+flatten 81–83 (G handed them back), `v98`/`fin`, validation, top glue, 46/54 machine side, the Layer-2 DEF LEVEL (headers, plain defs,
+dispatcher; B does the fuel-loop path `ParRunLoop.loop_spec`).  All pushed, no sorry, std axioms, each module ≤ 11 s.
+DONE — Layer 2 (pure, on B's ParRun)
+* `ParRunHdr`: `group_spec`, `assign_spec`, `binders_spec` (binder list = `pBinders` + `bindSlots`, FixJ, run prefix as `Star`),
+  `DRel` (finished rows ↔ spec `DefI`s), `drel_snoc`, `cxrel_body` (G's CxRel at a body start), `InpInv`/`bindSlots_inpInv` (input rule).
+* `ParRunBody.body_spec` (plainBody → B's `expr_specs` → defEnd), `ParRunDefs` (`defEnd_tail`, `ty_star`, `StarN.head_star/cut`),
+  `ParRunDef`: `plainB_spec` / `plainC_spec` (plain defs ↔ `pDef` plain branch, output = `DefA.ser`), `stepF_toks`/`Star.toks`,
+  `loop_toks` (afterColon's prevTok ⇒ header is `Nat →`), **`defs_spec`: a run from `.defs` to `[]` is `pDefs`** (premises: `LoopStep`
+  = B's loop_spec in the needed shape, `NoL` = Par1 finding L).
+* earlier: `ParTreeOK`, `ParRunShape` (StkInv, DInv), `ParRunNames`, `ParRunArena`, `ParRunRow`, `ParTokWF` (D proved Lexes → TokWF).
+DONE — machine (on C's Rep): `ParInvDefs.h_defs` (60), `ParInvHdr` (70, 73, 74, 75, `rep_cur`, `rep_nxss`, `v203_eq`),
+`ParInvFinish.h_defEnd` (80, with C's `rep_append`), `ParInvValRep` (`v209_nodeOK`, `isInpW`), `ParInvFlatM` (v141–v144 cell lemmas),
+`ParInvFin`, `ParInvApi`, glue `ParInvTop` (`RepAPI`, `run_sim`, `parserSound_of`).
+OPEN
+* B: `loop_spec` — (1) `hnn : CxNN st` is unsatisfiable at a def start (fresh row has res = none): needs the finished-rows half only;
+  (2) add the run prefix `Star (.tyAtom :: .afterColon :: ks, st) (.defEnd :: ks, st')`, and `di.res.nnt ∧ params nnt`. Then
+  `LoopStep` is a theorem.
+* C: v99 main-arity fix; then `mainOK` gets `params.length = 1` (B mirrors) and I finish `Accepts ⇒ refParse` (the main check needs
+  either that or nni tracking in DRel; also `resLst ↔ res = ls` for plain rows).
+* Finding L (C): until fixed, `NoL` is a premise of the final theorem.
+NEXT (me): machine 81/82/83 (core + rep_append), then `accepts_sound` (Accepts ⇒ refParse ∧ serialize), then `api_of_rep`.
 
 ## HANDOFF — G: arguments / calls / prims / types (2026-11-19, keep current)
 Families: frames 43 argAtom, 44 args, 45 mkCallN, 47 argCheck, 48 mkCall, 55 argName, the prim / def-call heads of code 3, types 61–63 (machine side),
