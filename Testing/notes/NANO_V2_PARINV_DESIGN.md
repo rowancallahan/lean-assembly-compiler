@@ -98,21 +98,30 @@ B: `isInp` on b mod 2^64; prim 1..3 nodes need ≥ 1 child (WF: mkCall n = arity
 
 ## HANDOFF — G: arguments / calls / prims / types (2026-11-19, keep current)
 Families: frames 43 argAtom, 44 args, 45 mkCallN, 47 argCheck, 48 mkCall, 55 argName, the prim / def-call heads of code 3, types 61–63 (machine side),
-binders 66–68, shape interning v10 (split proposed to F, who keeps 46, 54, 60, 70, 73–83; no answer yet).
-DONE (pushed, no sorry, axioms propext/Quot.sound, 1.7 s): `Proof/ParRunCall.lean` (pure Layer 2, imports ParRunStar only) —
-`mkNode_inv`, `args_zero/succ`, `mkCallN_eq`, `argOK` + `argCheck_inv` / `argCheck_run` (k+1 steps, state unchanged), `mkCall_inv`, `argAtom_inv`,
-`argName_inv`, `AtomLeaf` (= the non-parenthesised clauses of `pAtom`) + `AtomLeaf.eff` (one childless non-pending node pushed, tokens shrink),
-`atom_run` (paren case handed back as a run of `expr 0 false :: parenClose :: ks` for the expression induction), `Atoms` / `args_run`
-(k atom segments), `callNode` / `call_tail` (45→47→48: arguments `as` above depth d checked, replaced by the CALL / PRIM node with kids `as.reverse`).
-FINDING J (Par1 ⊋ ParSpec, confirmed on native B1 vs `specrun`; sent to C, B, owner): fix H made v133 choose the input per binder group, but the call-site
-validation v210 still takes "first code-3 parameter" as the callee's input. `def f (a b : List UInt8) : UInt64 := 1` + `… put [] (f x [])` is ACCEPTED
-(CALL with 1 arg, callee npw 2: mis-compile), spec rejects; `(a b : List UInt8) (x : List UInt8)` + `f x [] []` likewise; the correct calls are rejected.
-Needs: the def row records its input parameter, v210 tests that; Layer 2 `inpMatch` / `assign` mirror it (B has not mirrored H yet).
+binders 66–68, shape interning v10 (split proposed to F, who keeps 46, 54, 60, 70, 73–83; no objection received).
+DONE (all pushed, no sorry, axioms ⊆ propext / Classical.choice / Quot.sound, every module < 3 s):
+* Layer 2, `Proof/ParRunCall.lean` (imports ParRunStar only): `mkNode_inv`, `args_zero/succ`, `mkCallN_eq`, `argOK` + `argCheck_inv` / `argCheck_run`
+  (k+1 steps, state unchanged), `mkCall_inv`, `argAtom_inv`, `argName_inv`, `AtomLeaf` (= the non-parenthesised clauses of `pAtom`) + `AtomLeaf.eff`,
+  `atom_run` (paren case handed back as a run of `expr 0 false :: parenClose :: ks`), `Atoms` / `args_run`, `callNode` / `call_tail` (45→47→48).
+* Layer 2, `Proof/ParRunPrim.lean`: `psCode`, `prim_sig` (Par1's prim tables = `ParSpec.primSig`: id, arity, result, parameter codes, input position),
+  `prim_tok`, `prim_head`.
+* Layer 3 on C's `Rep`: `Proof/ParInvCall.lean` — generic `rep_pop` / `rep_push`; `h_args` (44, v119), `h_mkCallN` (45, v121; needs `d ≤ |vals|`).
+  `Proof/ParInvPrim.lean` — `ShapeCode.det`, `ShOpt.det`, `u_beq`/`u_lt`, `v91_eq`, `v92_code`, `v90_code`.
+  `Proof/ParInvArg.lean` — `rep_scratch` (Rep ignores cells 21 / 31), `v122_eq`, `row_rep` (callee row from DefsRep), `calleeOK`, `arW_code`
+  (machine parameter code = `parCode`), `operand_fld`, `h_argCheck` (47, v122), `h_mkCall` (48, v123, on C's `rep_v5`).
+  Side conditions for the glue (`api_of_rep`), all from B's `WF` / F's `SInv`: `inDefF fs` (47, 48: the callee row is read), `k ≤ |vals|`,
+  `k ≤ arity st c`, `calleeOK st c` (row index in range / prim id < 2^32), `n < 4096` and no flatten frame on the stack (48, from `rep_v5`).
+FINDING J (Par1 ⊋ ParSpec, confirmed on native B1 vs `specrun`; sent to C, B, owner; = F's "fix H unsound"): fix H made v133 choose the input per binder
+group, but the call-site validation v210 still takes "first code-3 parameter" as the callee's input. `def f (a b : List UInt8) : UInt64 := 1` +
+`… put [] (f x [])` is ACCEPTED (CALL with 1 arg, callee npw 2: mis-compile), spec rejects; `(a b : List UInt8) (x : List UInt8)` + `f x [] []` likewise;
+the correct calls are rejected. Needs: the def row records its input parameter, v210 tests that; Layer 2 `inpMatch` / `assign` mirror it.
 Native B1 for such checks: `build_self_S.py; boot/build_B1.py; lean boot/B1.lean -c B1.c; leanc -O2 B1.c -o B1; B1 parse < p.txt | od -tu8`.
-OPEN (waiting for B): statement form of reflection after the fuel decision (ParSpec is still `Option`; "ok ∨ OutOfFuel" needs a 3-valued spec),
-and who owns the St↔Cx relation (binds↔env, rows↔DefI, cur/arm↔self) and RN↔(Nd × Ty).  Needed facts for pArgs: `v.toNd` = the spec node;
-Ty.s s ⇒ sh = s ∧ ¬isInp ∧ tag ≠ 1-unless-lit; Ty.lit ⇒ sh = uw; Ty.inp ⇒ isInp; argument i isInp ⇔ parameter i = `.inp` comes ONLY from the
+OPEN (no answer from B yet): statement form of reflection after the fuel decision (ParSpec is still `Option`; "ok ∨ OutOfFuel" needs a 3-valued spec),
+and who owns the St↔Cx relation (binds↔env, rows↔DefI, cur/arm↔self) and RN↔(Nd × Ty).  Facts pArgs reflection needs: `v.toNd` = the spec node;
+Ty.s s ⇒ sh = s ∧ ¬isInp (and tag 1 ⇒ Ty.lit); Ty.lit ⇒ sh = uw; Ty.inp ⇒ isInp; "argument i isInp ⇔ parameter i = `.inp`" comes ONLY from the
 deferred validation (`nodeOK` of the CALL node at the next `defs`), so call reflection takes `inpMatch`/nodeOK of the built node as a hypothesis.
 Fuel arguments: argCheck accepts a Nat parameter for sh = nt, a bare numeral (tag 1) or len' (tag 9, a = 1) — a subset of `tyMatch .fuel`.
-NEXT: (1) `pArgs` / `pCallDef` / prim-head reflection on top of `args_run` + `call_tail` (open recursion over the paren-expression hypothesis);
-(2) binders 66–68 ↔ `pBinders`/`bindSlots` after H is mirrored; (3) machine handlers on C's Rep when C says it is stable.
+NEXT: (1) machine 43 (v120) and 55 (v126): need the name lookup on Rep (v7_lookup / v8_lookup ↔ findB / findD) and the LOC node (shared with C's
+task 3 id case — ask C before writing); (2) machine types 61–63 (v128–v130; v10 pair interning: loop over the shape table, new row ⇒ ShapeCode for
+`.p l r`, ShTabAgree frame); (3) `pArgs` / `pCallDef` / prim-head reflection on `args_run` + `call_tail` once B fixes the statement form;
+(4) binders 66–68 ↔ `pBinders`/`bindSlots` after fix H/J are mirrored in `stepF`.
