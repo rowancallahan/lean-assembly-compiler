@@ -35,8 +35,17 @@ Debug: `lake env lean --run Testing/nano/v2self/own/own_dbg.lean AST.bin` (first
 DONE: spec, S stage, pipeline; C's own source accepted; fixpoint B3 == B2 = 336,204 bytes,
 sha256 5668cae4f3fc2b6d3d7219d4b9bef8a92d82bcd7846508e53beeca8866197929 (self-run work memory 80 MiB) (o41 checks every field it uses < 2^20, the AST < 2^40 words, value stack < 2^24, frames / snapshots < 2^30); alias_d + 5 aliasing programs rejected;
 qemu_regress OK.  The checker caught a real slip in o38's first draft (read after consume).
-NEXT: (1) soundness `C.o41 (serialize p) ≠ [] → WF p → Linear p` (WF: prim arities, numeric fields < 2^64; `Nd.ser`
-is not injective otherwise); (2) kernel/#guard accepted example; (3) `ParsesProgram → WF`; (4) fuzz patterns in pargen.py.
+PROOF DONE (Nano/V2Self/Proof/OwnP0..OwnP30, OwnStage, OwnNV; std axioms, no sorry):
+* `OwnP.o41_sound : (∀ d ∈ p, WFD d) → |serialize p| < 2^64 → o41 (serialize p) ≠ [] →
+  ∃ Ks, progOk [] [] Ks p ∧ ∀ K ∈ Ks, ∀ k ∈ K, k ≤ 2` (= Main.LinearK).
+* `OwnP.own_stage : ParsesProgram ts p → OwnWF.Bnd p → |serialize p| < 2^64 → o41 (serialize p) ≠ [] → LinearK`
+  (WF from C's `OwnWF.parsed_wfp`).  The two size premises are NOT derivable from o41: `serialize` writes fields mod
+  2^64, so a wrapped nslots / slot / AST length is invisible to it.  Bnd (nslots < 2^20, nres, |p| < 2^64) comes from
+  Gen's success (nslots, nres < 251); |serialize p| < 2^64 from the source size (x ≤ 2^20 bytes).
+* Non-vacuity: `OwnNV.pOk_acc` (`decide +kernel`, 2 s) → `pOk_linear`; `#guard` alias_d-shaped `pAlias` rejected.
+Proof map: P8 Reach/steps · P9-P20 frame steps per node kind · P21 `sim_all` (all nodes) · P22 root LOOP · P24 fuel ·
+P25 root body · P26 `o35_ok` (one verify walk) · P27-P29 table, o42, `o38_ok` · P30 `o39_ok`, `o41_sound`.
+OPEN: completeness gap (fuzzer: let-pair over a let-block of Bufs rejected); RG's semrun driver (owner request).
 
 ## HANDOFF
 See NEXT above.  D (Sem ⇐ sv bridge) builds on `OwnSpec` (MainBridge3/4).
