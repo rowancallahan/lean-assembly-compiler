@@ -64,3 +64,24 @@ variable would differ, and the generator would fail on it rather than pass.
   instructed. The size constraints (blocks in [0x80000000, 0x100000000), pairwise apart, input ≤ 2^20) are plainly
   compatible; `Cfg` I did not examine.
 - Whether `memoryNeeded ≤ workLength` is satisfiable: unknown by construction (finding A).
+
+### B (follow-up, G): acceptance is not kernel-proved — measurements and routes
+`compileC src = some _` needs `mC text ≠ []`, i.e. one run of the parser stage `C.y16`. Probe with `decide +kernel`:
+- the cost is inside `y16 = v99` alone (lexer, Own and Gen on small inputs already kernel-check in MainWitness);
+- v99 builds the fixed 184,384-word heap (`y15 = y5 184384`, one `bpush` per word on a `List`) and then every task reads
+  and writes it by index; the heap term is lazy, so each forced cell passes through all pending `bpush`/`bset` layers;
+- `(y5 n []).length = n`: n = 4,000 → 2 s / 0.5 GB; 16,000 → 4 s / 0.8 GB; 32,000 → 7 s / 1.2 GB;
+  `(y15 []).length = 184384`: not finished in 280 s; one read through one write (`bget (bset (y15 []) 7 3) 7 = 3`): not
+  finished in 280 s (D measured 28 s / 5.5 GB for a single read earlier);
+- the smallest program (`def m (x : List UInt8) : List UInt8 := []`, 20 token words) needs on the order of 10^3 heap
+  operations (estimate): orders of magnitude over 5 min / 8 GB.
+What does not help: per-stage intermediate literals (the cost is all in `y16`); a "bounded heap prefix" lemma (the layout
+is fixed, tokens sit at word 184,384 whatever the program size).
+Routes that would work (not started; lead's decision 2026-11-19: documented as a limit):
+- (c) completeness for one program: the converse of each machine handler it uses (`Rep ∧ stepF = some ⇒ status stays 1`);
+  the Layer-3 proofs only give "machine did not fail ⇒ spec step". Estimate 1–2 days for one prover.
+- (d) symbolic execution by rewriting, the heap kept as `base + finite map of written cells` over y5's closed form
+  `h ++ replicate n 0`: ~10^3 rewrites through ~40 tasks of `v96`. Estimate 1 day, moderate risk.
+- a representation change (Par1 over a compact heap + equivalence) or a token-count-dependent layout (compiler change, new
+  fixpoint): days.
+Native runs agree with the reference parser on all tested programs (fuzzer, the full C source).
