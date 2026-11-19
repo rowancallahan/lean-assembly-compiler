@@ -54,17 +54,23 @@ DONE (pushed, no sorry):
   Files: ParRunWF (defs), ParRunWFStep (`gh_*`), ParRunWFInv (`si_*`), ParRunWFFr (`ks_*`, `cx_*`, `bs_*`, `bt_*`), ParRunWFPres (assembly).
   Per-frame lemmas are GENERATED (python in the session; the pattern is the macro at the top of each file + one theorem per frame);
   if `stepF` changes (Par1 fix), regenerate/fix only the affected frames. Cold build of all ParRun* ≈ 31 s.
-BLOCKER (reported to owner 2026-11-19): Par1 accepts MORE than ParSpec, so `Accepts ⇒ refParse` is FALSE today:
-  (1) code 3 parses `if`/`let` as primaries (operands, if-conditions): `1 + if a < 2 then 3 else 4`, `1 + let b := a; b`, `if let b := a; b < 2 then …`;
-  (2) input parameter = first `List UInt8` param regardless of binder group (ParSpec: only when alone in its group): `(x y : List UInt8) … rd x 0`;
-  (3) Nat never rejected: Nat params / results / let values / tuple components / loop states, and a Nat `let` accepted as self-call fuel.
-  Completeness-only (Par1 rejects, spec accepts): zero-state loop; `(if c then x else x)` as the input argument.
-  Awaiting the decision: fix Par1 (box C) or widen ParSpec. Layer 2 mirrors CURRENT Par1; after a Par1 fix, update `stepF` + rerun runrun.
-Interface for box C (Layer 3): frames ↔ task cells as in `Frame`'s comments; `none` results that the machine does not have (shallow stack,
-`ty = none`, param index out of range) are to be excluded by a Layer-2 invariant `WF` (TODO, below).
-NEXT: (b) soundness per ParSpec function, form: `StarN n (k ++ ks, st) ([], fin) → ∃ r, pX f … = some r ∧ StarN n' (ks, st') ([], fin)` for all
-fuel `f ≥ c·|toks| + d` (pTy: 2|ts|+2; expressions: 4|ts|+4 per the call-chain potential), relating nodes by `toNd` (drop input args/locals as v142);
-order: types (independent of the blocker), flatten (`flat`/`flatL` ↔ `Nd.ser ∘ toNd`), defs/binders/arms, expressions last (blocker).
+RESOLVED (owner 2026-11-19): ParSpec unchanged, Par1 fixed (G 09c864d, H/I 21f717a, J/K d8aadd8). stepF mirrors d8aadd8 (b555635):
+  `expr (minp md)` / `prim md` (md = b cell: 0 not tail, 1 tail, 2 operand: if/let rejected), `assign (i sz)` (sz = group size; input only
+  alone in its group; a multi-name List group before the input rejected), Nat rejected (let value, pair components (v10), params, states,
+  results), `(Nat) →` rejected via `St.all` (constant token list) + `prevTok`. runrun == B1 (rebuilt from current self_S) on 4.9k fuzz.
+  B1 recipe: `python3 Testing/nano/v2self/build_self_S.py; python3 Testing/nano/v2self/boot/build_B1.py; lean -c B1.c boot/B1.lean;
+  leanc -O2 B1.c -o B1` (then `git checkout Testing/nano/v2self/boot/` — the generator rewrites B1.lean/B1L.lean); compare with
+  `cmp.py` = for each pN.txt, `B1 parse` words vs runrun line (script in the session scratchpad; trivial to rewrite).
+* `Proof/ParSpecTail.lean` (pure ParSpec): `tl_up`, `tl_down` (+ `Nd.tailCont`, `pLoop_noop`).
+EXPRESSION REFINEMENT (B, in progress, nothing pushed yet): one strong induction on the run length n, using G's `CxRel`/`TyRel`/`AtomLeaf`
+(ParRunAtom) and G's call/arg lemmas (ParRunCall) for call/prim heads. Statements (cx related by CxRel, ParSpec nx = st.nx):
+  prim md ↔ `pApp f cx (md == 1)` (md ≠ 2 also admits if/let ↔ `pExpr`'s if/let clauses); `binLoop m` with a on top ↔ `pLoop f cx m a.toNd ta`;
+  `expr 0 md` (md < 2) ↔ `pExpr f cx (md == 1)`; `expr m 2` ↔ `pBin f cx false m`; `parenClose` ↔ pAtom's `(` continuation; `tupRest` ↔ `pTup`.
+  Post-state: vals = v :: st.vals, binds/defs/cur/arm/out/sslot/acc/all unchanged, toks suffix, arena extended, nx ≥, ty/stash free.
+  Result: `VT v → (∀ f ≥ 4|toks| + c, pX f … = some (v.toNd, ty, st'.toks, st'.nx)) ∧ TyRel v ty`, VT v := every node of v passes
+  `nodeOK (st.defs ++ [st.cur])` (discharged at the def level by the next `defs` step's v209 check; F's `ParTreeOK.nodes`/`ArenaInv`).
+  Fuel constants: pExpr 4|ts|+4, pBin +3, pApp +2, pAtom/pLoop/pTup +1 (each recursive descent consumes a token or drops a level).
+  pBin's re-parse with tl = false: machine node not pending ⇒ no tail CONTINUE ⇒ `tl_down`; tuple re-parse: `tl_up`.
 
 ## HANDOFF — parser lead (2026-11-19, keep current)
 Role: review of Layers 2/3; own families: def start/accept 60, headers 66–70/73, loop arms 74–79, self-call 46/54, FINISH 80, flatten 81–83,
