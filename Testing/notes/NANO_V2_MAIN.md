@@ -152,7 +152,12 @@ OPEN / NEXT (owner order 2026-11-19):
    semAt main [] sp H = some ([a], H') ∧ BufAt hb κ H' a l ∧ y = l.map toUInt8.
    `main_room` (MainConv8): E's premise form — ∃ R uniform in the work base and in T (semAt_T: sv never reads K.T;
    unif_fin: finite max over base < 2^32), semAt (P with hb = base+16) main [] ((base+len)/8*8) ⟨base+16, ∅⟩ = some …
-   when R ≤ len.  NEXT: cap half (Sem = .error .cap ⇒ E reports cap) once E's semAtX (SemX.lean) is in.
+   when R ≤ len.
+   CAP HALF DONE (MainConvX1..X7, E's SemX: semAtF, Fail = cap | room | stuck): semAtF_mo (non-room outcomes stable
+   under more room), ExC/NodeExC/TailExC/DefExC/CallExC mirror of the Ex chain, main_cap, main_capR (uniform R, E's form).
+   ALL-ROOM KINDS DONE (MainConvF2..F7): forward failure bridge FailOK f r := f = room ∨ (f = cap ∧ r = cap);
+   NodeFail/TailFail/DefFail/CallFail; prog_fail; main_kind; `main_all`: for every sp, semAtF main = ok (BufAt, Sem ok
+   agreeing) ∨ room ∨ (cap ∧ Sem = cap) — never stuck.  E assembles ImplementsC (space x from main_room/main_capR).
    DB/Bnd: P64 is FALSE for parsed programs (doubling pair lets: nslots = 2^(k+1) − 1; Testing/nano/v2self/parcap/
    wrap.lean).  Fix approved: O adds a parser cap `nx + w < 2^20` (Par1 + refParse) and proves parsed_bnd; then D
    discharges `BndStage` (Main) and repairs ParSerLen/MainTyP for the new refParse.  hXl DONE: ParSerLen.ser_len
