@@ -186,3 +186,10 @@ The unconditional `args_spec` / `defcall_spec` / `primcall_spec` (ParenH form) a
 REMAINING for G: nothing blocked.  Open interfaces owned by others: F's `FirstLs` / `selfFresh` at def start; B's self-call (46 / 54);
 the glue's side conditions above.
 
+
+### G — arm handlers taken over from F (Proof/ParInvArm.lean, all pushed, axioms clean)
+- `h_mkLoop` (79), `h_zeroDone` (77), `h_armBind` (76). 75 and the rest of the header/def range stay with F.
+- Hypotheses left to the glue (`api_of_rep`): 79 — `inDefF fs`, no flatten frame; 77 — `inDefF fs`, `st.vals ≠ []`;
+  76 — `inDefF fs`, `b0 < st.cur.params.length` (the machine does not check the pattern index against the parameter count; the spec returns none there).
+- Reusable: `rep_arm`, `rep_sslot`, `rep_binds_clear`, `rep_flag` (rewrite the input flag of the newest binding row), `v6flag_sh`, `ShOpt.same`.
+- Build: ParInvArm ≈ 70 s cold.
