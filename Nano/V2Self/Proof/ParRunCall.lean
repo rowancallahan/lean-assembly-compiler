@@ -4,7 +4,8 @@
 * `argCheck_run`: `argCheck c k` is a pure check (k + 1 steps, state unchanged, every argument `argOK`);
 * `atom_run`: an argument atom is a parenthesised expression (left to the expression induction) or an `AtomLeaf` (numeral, local,
   constant def, `[]`, `bnew`: the non-recursive clauses of `ParSpec.pAtom`), which pushes exactly one leaf node;
-* `args_run`: `args c k` = k atom segments in sequence (`Atoms`). -/
+* `args_run`: `args c k` = k atom segments in sequence (`Atoms`);
+* `call_tail`: 45 → 47 → 48 checks the k pushed arguments (`argOK`) and replaces them by the CALL / PRIM node (`callNode`). -/
 import Nano.V2Self.Proof.ParRunStar
 namespace ParRun
 open ParSpec
@@ -191,5 +192,43 @@ theorem args_run {c : Callee} : ∀ (k : Nat) {n : Nat} {ks : List Frame} {st fi
     obtain ⟨sta, n1, n2, rfl, ha, hr⟩ := h1'.split
     obtain ⟨st', m, n', hat, rfl, hk⟩ := args_run k hr
     exact ⟨st', n1 + m, n', .cons ha hat, by omega, hk⟩
+
+/-! ## the call tail: 45 → 47 → 48 -/
+/-- the node `mkCall c k` builds: CALL `8 j k res` / PRIM `9 p 0 (primRes p)` -/
+def callNode (st : St) (c : Callee) (k : Nat) (kids : List RN) : Option RN :=
+  match c with
+  | .df j => (rows st)[j]?.map fun d => RN.mk 8 j k d.res false kids
+  | .pr p => some (RN.mk 9 p 0 (some (primRes p)) false kids)
+
+/-- after `k` arguments `as` (top first) were pushed above depth `d`: every argument is checked against its parameter and the
+node with children `as.reverse` (source order) replaces them -/
+theorem call_tail {c : Callee} {d n : Nat} {ks : List Frame} {st fin : St} {as base : List RN}
+    (hv : st.vals = as ++ base) (hd : d = base.length) (h : StarN n (.mkCallN c d :: ks, st) ([], fin)) :
+    (∀ i, i < as.length → argOK st c i) ∧
+    ∃ nd n', callNode st c as.length as.reverse = some nd ∧ n = n' + as.length + 3 ∧
+      StarN n' (ks, { st with vals := nd :: base, arena := st.arena ++ [nd] }) ([], fin) := by
+  match n, h with
+  | 0, h => exact absurd h.zero_nil.1 (by simp)
+  | n + 1, h =>
+  obtain ⟨fr, st1, hs, h1⟩ := h.head
+  rw [mkCallN_eq] at hs; cases hs
+  have hk : st.vals.length - d = as.length := by rw [hv, hd]; simp
+  rw [hk] at h1
+  obtain ⟨hall, n1, rfl, h2⟩ := argCheck_run as.length (ks := .mkCall c as.length :: ks) h1
+  refine ⟨hall, ?_⟩
+  match n1, h2 with
+  | 0, h2 => exact absurd h2.zero_nil.1 (by simp)
+  | n2 + 1, h2 =>
+  obtain ⟨fr3, st3, hs3, h3⟩ := h2.head
+  obtain ⟨rfl, hc⟩ := mkCall_inv hs3
+  have ht : (st.vals.take as.length).reverse = as.reverse := by rw [hv]; simp
+  have hdr : st.vals.drop as.length = base := by rw [hv]; simp
+  rcases hc with ⟨j, dd, rfl, hj, hm⟩ | ⟨p, rfl, hm⟩
+  · obtain ⟨_, rfl⟩ := mkNode_inv hm
+    rw [ht, hdr] at h3
+    exact ⟨_, n2, by simp [callNode, hj], by omega, h3⟩
+  · obtain ⟨_, rfl⟩ := mkNode_inv hm
+    rw [ht, hdr] at h3
+    exact ⟨_, n2, by simp [callNode], by omega, h3⟩
 
 end ParRun

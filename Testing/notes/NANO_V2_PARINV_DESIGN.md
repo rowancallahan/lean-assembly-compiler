@@ -84,3 +84,27 @@ NodeRep/OpsRep are restated on `RN`); (d) headers 60–70, loop arms 73–79, 46
 OPEN ISSUES: Par1 fix H unsound (multi-name List group before the input; C informed with programs); `(Nat) →` header accepted;
 C's Rep relates nx/slots/npw/RNRep a,b by toNat (must be mod 2^64) and ShapeCode lacks the width cell; DefsRep lacks zero code cells ≥ h[27];
 B: `isInp` on b mod 2^64; prim 1..3 nodes need ≥ 1 child (WF: mkCall n = arity) else flatten of a 0-child prim diverges from Par1.
+
+NEXT (in order): (b) pure bound `|out|` ≤ 6·steps (for `h.length < 2^64` in `fin_ne`); (c) machine lemmas for 81/82/83 and 80 on C's Rep (blocked until C's
+NodeRep/OpsRep are restated on `RN`); (d) headers 60–70, loop arms 73–79, 46/54; (e) top glue: Rep-simulation + `Accepts ⇒ refParse` ⇒ `ParserSound`.
+
+## HANDOFF — G: arguments / calls / prims / types (2026-11-19, keep current)
+Families: frames 43 argAtom, 44 args, 45 mkCallN, 47 argCheck, 48 mkCall, 55 argName, the prim / def-call heads of code 3, types 61–63 (machine side),
+binders 66–68, shape interning v10 (split proposed to F, who keeps 46, 54, 60, 70, 73–83; no answer yet).
+DONE (pushed, no sorry, axioms propext/Quot.sound, 1.7 s): `Proof/ParRunCall.lean` (pure Layer 2, imports ParRunStar only) —
+`mkNode_inv`, `args_zero/succ`, `mkCallN_eq`, `argOK` + `argCheck_inv` / `argCheck_run` (k+1 steps, state unchanged), `mkCall_inv`, `argAtom_inv`,
+`argName_inv`, `AtomLeaf` (= the non-parenthesised clauses of `pAtom`) + `AtomLeaf.eff` (one childless non-pending node pushed, tokens shrink),
+`atom_run` (paren case handed back as a run of `expr 0 false :: parenClose :: ks` for the expression induction), `Atoms` / `args_run`
+(k atom segments), `callNode` / `call_tail` (45→47→48: arguments `as` above depth d checked, replaced by the CALL / PRIM node with kids `as.reverse`).
+FINDING J (Par1 ⊋ ParSpec, confirmed on native B1 vs `specrun`; sent to C, B, owner): fix H made v133 choose the input per binder group, but the call-site
+validation v210 still takes "first code-3 parameter" as the callee's input. `def f (a b : List UInt8) : UInt64 := 1` + `… put [] (f x [])` is ACCEPTED
+(CALL with 1 arg, callee npw 2: mis-compile), spec rejects; `(a b : List UInt8) (x : List UInt8)` + `f x [] []` likewise; the correct calls are rejected.
+Needs: the def row records its input parameter, v210 tests that; Layer 2 `inpMatch` / `assign` mirror it (B has not mirrored H yet).
+Native B1 for such checks: `build_self_S.py; boot/build_B1.py; lean boot/B1.lean -c B1.c; leanc -O2 B1.c -o B1; B1 parse < p.txt | od -tu8`.
+OPEN (waiting for B): statement form of reflection after the fuel decision (ParSpec is still `Option`; "ok ∨ OutOfFuel" needs a 3-valued spec),
+and who owns the St↔Cx relation (binds↔env, rows↔DefI, cur/arm↔self) and RN↔(Nd × Ty).  Needed facts for pArgs: `v.toNd` = the spec node;
+Ty.s s ⇒ sh = s ∧ ¬isInp ∧ tag ≠ 1-unless-lit; Ty.lit ⇒ sh = uw; Ty.inp ⇒ isInp; argument i isInp ⇔ parameter i = `.inp` comes ONLY from the
+deferred validation (`nodeOK` of the CALL node at the next `defs`), so call reflection takes `inpMatch`/nodeOK of the built node as a hypothesis.
+Fuel arguments: argCheck accepts a Nat parameter for sh = nt, a bare numeral (tag 1) or len' (tag 9, a = 1) — a subset of `tyMatch .fuel`.
+NEXT: (1) `pArgs` / `pCallDef` / prim-head reflection on top of `args_run` + `call_tail` (open recursion over the paren-expression hypothesis);
+(2) binders 66–68 ↔ `pBinders`/`bindSlots` after H is mirrored; (3) machine handlers on C's Rep when C says it is stable.
