@@ -5,23 +5,11 @@ Sail instruction, keeping `RelW`.  Immediates are in range and address arithmeti
 template proofs discharge). -/
 import Nano.V2.Sim
 import Nano.V2Self.Proof.Machine.Call
+import Nano.V2Self.Proof.Machine.JLay
 import Nano.V2Self.Proof.Machine.Bridge
 
 namespace SimW
 open Proven Nano.V2B
-
-structure LayW where
-  base : Nat
-  W : List Nat
-  lo : Nat
-  hi : Nat
-  /-- input bytes `[ib, ib + il)` (read by lbu) and output bytes `[ob, ob + ol)` (written by sb) -/
-  ib : Nat := 0
-  il : Nat := 0
-  ob : Nat := 0
-  ol : Nat := 0
-  /-- the Sail memory at the start: bytes outside the work cells and the output bytes keep it -/
-  m0 : Nat → Option (BitVec 8) := fun _ => none
 
 structure LayW.Ok (K : LayW) : Prop where
   b4 : K.base % 4 = 0
@@ -35,17 +23,6 @@ structure LayW.Ok (K : LayW) : Prop where
   obl : 0x80000000 ≤ K.ob
   obh : K.ob + K.ol ≤ 0x100000000
   oc : K.ob + K.ol ≤ K.base ∨ K.base + 4 * K.W.length ≤ K.ob
-
-def wok (K : LayW) (a : Nat) : Prop := K.lo ≤ a ∧ a + 8 ≤ K.hi ∧ a % 8 = 0
-
-/-- an output byte -/
-def outB (K : LayW) (a : Nat) : Prop := K.ob ≤ a ∧ a < K.ob + K.ol
-/-- an input or output byte -/
-def io (K : LayW) (a : Nat) : Prop := (K.ib ≤ a ∧ a < K.ib + K.il) ∨ outB K a
-/-- a byte lbu may read: in a work cell, or an input/output byte -/
-def bok (K : LayW) (a : Nat) : Prop := wok K (a - a % 8) ∨ io K a
-/-- a byte sb may write: in a work cell, or an output byte -/
-def sok (K : LayW) (a : Nat) : Prop := wok K (a - a % 8) ∨ outB K a
 
 structure RelW (K : LayW) (p : Nat × CallProbe.St) (t : Proven.St) : Prop where
   cfg : Proven.Cfg t
@@ -584,26 +561,6 @@ def encJ : CallProbe.J → Nat
   | .bne a b off => (C.g4 1 (UInt64.ofNat a) (UInt64.ofNat b) (UInt64.ofInt (4 * off))).toNat
   | .sb r2 r1 off => (C.g3 0 (UInt64.ofNat r2) (UInt64.ofNat r1) (UInt64.ofInt off)).toNat
 
-/-- the side conditions of one J step that the Sail step needs (ranges, no wrap, work cells, aligned return) -/
-def Safe (K : LayW) (C : List CallProbe.J) : Nat × CallProbe.St → Prop
-  | (pc, s) => match C[pc]? with
-    | some (.addi rd rs imm) => rd < 32 ∧ rs < 32 ∧ -2048 ≤ imm ∧ imm < 2048 ∧
-        0 ≤ ((s.x rs).toNat : Int) + imm ∧ ((s.x rs).toNat : Int) + imm < 2 ^ 64
-    | some (.ld rd rs off) => rd < 32 ∧ rs < 32 ∧ -2048 ≤ off ∧ off < 2048 ∧
-        0 ≤ ((s.x rs).toNat : Int) + off ∧ wok K (CallProbe.ea (s.x rs) off)
-    | some (.sd b a off) => b < 32 ∧ a < 32 ∧ -2048 ≤ off ∧ off < 2048 ∧
-        0 ≤ ((s.x a).toNat : Int) + off ∧ wok K (CallProbe.ea (s.x a) off)
-    | some (.bgeu a b o) => a < 32 ∧ b < 32 ∧ (o = 2 ∨ o = 3 ∨ o = 4)
-    | some (.beq a b o) => a < 32 ∧ b < 32 ∧ o = 2
-    | some (.bltu a b o) => a < 32 ∧ b < 32 ∧ o = 2
-    | some (.jal rd off) => rd < 32 ∧ -2 ^ 18 ≤ off ∧ off < 2 ^ 18 ∧ 0 ≤ (pc : Int) + off ∧ (pc : Int) + off < C.length
-    | some (.jalr rd rs) => rd = 0 ∧ rs < 32 ∧ ∃ j, (s.x rs).toNat = K.base + 4 * j
-    | some (.alu op rd a b) => rd < 32 ∧ a < 32 ∧ b < 32 ∧ (1 ≤ op ∧ op ≤ 8) ∧ rd ≠ 0
-    | some (.slli rd rs sh) => rd < 32 ∧ rs < 32 ∧ sh < 64
-    | some (.lbu rd rs off) => rd < 32 ∧ rs < 32 ∧ -2048 ≤ off ∧ off < 2048 ∧ 0 ≤ ((s.x rs).toNat : Int) + off ∧
-        bok K (CallProbe.ea (s.x rs) off)
-    | _ => False
-
 /-- **one step**: a safe J step on matching words is one retired Sail instruction, keeping `RelW` -/
 theorem sim_stepW {K : LayW} {C : List CallProbe.J} (hK : K.Ok) (hW : K.W = C.map encJ)
     {a b : Nat × CallProbe.St} {t : Proven.St} (hR : RelW K a t) (hS : Safe K C a) (hs : CallProbe.step C a = some b) :
@@ -663,11 +620,6 @@ theorem sim_stepW {K : LayW} {C : List CallProbe.J} (hK : K.Ok) (hW : K.W = C.ma
     | srli _ _ _ => exact hS.elim
     | bne _ _ _ => exact hS.elim
     | sb _ _ _ => exact hS.elim
-
-/-- J runs whose every step is `Safe` -/
-inductive SStar (K : LayW) (C : List CallProbe.J) : Nat × CallProbe.St → Nat × CallProbe.St → Prop
-  | refl (a) : SStar K C a a
-  | head {a b c} : Safe K C a → CallProbe.step C a = some b → SStar K C b c → SStar K C a c
 
 /-- **runs**: a safe J run on C's words is a run of retired Sail instructions, keeping `RelW` -/
 theorem sim_starW {K : LayW} {C : List CallProbe.J} (hK : K.Ok) (hW : K.W = C.map encJ)

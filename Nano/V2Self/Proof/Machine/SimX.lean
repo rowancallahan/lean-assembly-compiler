@@ -217,38 +217,6 @@ def encJX : CallProbe.J → Nat
   | .beq a b o => (I.br .beq a b (4 * o)).enc
   | i => encJ i
 
-def SafeX (K : LayW) (C : List CallProbe.J) : Nat × CallProbe.St → Prop
-  | (pc, s) => match C[pc]? with
-    | some (.addi rd rs imm) => rd < 32 ∧ rs < 32 ∧ -2048 ≤ imm ∧ imm < 2048 ∧
-        0 ≤ ((s.x rs).toNat : Int) + imm ∧ ((s.x rs).toNat : Int) + imm < 2 ^ 64
-    | some (.ld rd rs off) => rd < 32 ∧ rs < 32 ∧ -2048 ≤ off ∧ off < 2048 ∧
-        0 ≤ ((s.x rs).toNat : Int) + off ∧ wok K (CallProbe.ea (s.x rs) off)
-    | some (.sd b a off) => b < 32 ∧ a < 32 ∧ -2048 ≤ off ∧ off < 2048 ∧
-        0 ≤ ((s.x a).toNat : Int) + off ∧ wok K (CallProbe.ea (s.x a) off)
-    | some (.bgeu a b o) => a < 32 ∧ b < 32 ∧ (o = 2 ∨ o = 3 ∨ o = 4)
-    | some (.beq a b o) => a < 32 ∧ b < 32 ∧ (o = 2 ∨ o = 7)
-    | some (.bltu a b o) => a < 32 ∧ b < 32 ∧ o = 2
-    | some (.jal rd off) => rd < 32 ∧ -2 ^ 18 ≤ off ∧ off < 2 ^ 18 ∧ 0 ≤ (pc : Int) + off ∧ (pc : Int) + off < C.length
-    | some (.jalr rd rs) => rd = 0 ∧ rs < 32 ∧ ∃ j, (s.x rs).toNat = K.base + 4 * j
-    | some (.alu op rd a b) => rd < 32 ∧ a < 32 ∧ b < 32 ∧ (1 ≤ op ∧ op ≤ 8) ∧ rd ≠ 0
-    | some (.slli rd rs sh) => rd < 32 ∧ rs < 32 ∧ sh < 64
-    | some (.lbu rd rs off) => rd < 32 ∧ rs < 32 ∧ -2048 ≤ off ∧ off < 2048 ∧ 0 ≤ ((s.x rs).toNat : Int) + off ∧
-        bok K (CallProbe.ea (s.x rs) off)
-    | some (.srli rd rs sh) => rd < 32 ∧ rs < 32 ∧ sh < 64
-    | some (.bne a b o) => a < 32 ∧ b < 32 ∧ o = 4
-    | some (.sb b a off) => b < 32 ∧ a < 32 ∧ -2048 ≤ off ∧ off < 2048 ∧ 0 ≤ ((s.x a).toNat : Int) + off ∧
-        sok K (CallProbe.ea (s.x a) off)
-    | none => False
-
-theorem safeX_of {K : LayW} {C : List CallProbe.J} {a : Nat × CallProbe.St} (h : Safe K C a) : SafeX K C a := by
-  obtain ⟨pc, s⟩ := a
-  simp only [Safe] at h; simp only [SafeX]
-  cases hc : C[pc]? with
-  | none => rw [hc] at h; exact h.elim
-  | some i =>
-    rw [hc] at h
-    cases i <;> simp only at h ⊢ <;> first | exact h | exact h.elim | exact ⟨h.1, h.2.1, Or.inl h.2.2⟩
-
 /-- **one step**: a safe J step on matching words is one retired Sail instruction, keeping `RelW` -/
 theorem sim_stepX {K : LayW} {C : List CallProbe.J} (hK : K.Ok) (hW : K.W = C.map encJX)
     {a b : Nat × CallProbe.St} {t : Proven.St} (hR : RelW K a t) (hS : SafeX K C a) (hs : CallProbe.step C a = some b) :
@@ -321,21 +289,6 @@ theorem sim_stepX {K : LayW} {C : List CallProbe.J} (hK : K.Ok) (hW : K.W = C.ma
       have hw := hWpc _ hc; simp only [encJX] at hw; rw [encJ_sb _ _ _ h1 h2 h3 h4] at hw
       simp only [Option.some.injEq] at hs; subst hs; exact sim_sbW hK hR hw h1 h2 h3 h4 h5 h6
 
-
-inductive SStarX (K : LayW) (C : List CallProbe.J) : Nat × CallProbe.St → Nat × CallProbe.St → Prop
-  | refl (a) : SStarX K C a a
-  | head {a b c} : SafeX K C a → CallProbe.step C a = some b → SStarX K C b c → SStarX K C a c
-
-theorem SStarX.of {K : LayW} {C : List CallProbe.J} {a b : Nat × CallProbe.St} (h : SStar K C a b) : SStarX K C a b := by
-  induction h with
-  | refl a => exact .refl a
-  | head hS hs _ ih => exact .head (safeX_of hS) hs ih
-
-theorem SStarX.trans {K : LayW} {C : List CallProbe.J} {a b c : Nat × CallProbe.St} (h1 : SStarX K C a b)
-    (h2 : SStarX K C b c) : SStarX K C a c := by
-  induction h1 with
-  | refl => exact h2
-  | head hS hs _ ih => exact .head hS hs (ih h2)
 
 /-- **runs** (start-code layer): a SafeX J run on Gen's words is a run of retired Sail instructions -/
 theorem sim_starX {K : LayW} {C : List CallProbe.J} (hK : K.Ok) (hW : K.W = C.map encJX)
