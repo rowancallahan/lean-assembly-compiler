@@ -182,8 +182,8 @@ theorem gh_group {a} {st k st' g1} (h : stepF (.group a) st = some (k, st')) (hv
     ∃ g2, effL st'.ctx k st'.g = some g2 ∧ (Frame.final (.group a) ∨ g1.le g2) := by
   ghost_auto
 
-theorem gh_assign {a} {st k st' g1} (h : stepF (.assign a) st = some (k, st')) (hv : ∀ x ∈ st.vals, x.sh.isSome) (he : effF st.ctx (.assign a) st.g = some g1) :
-    ∃ g2, effL st'.ctx k st'.g = some g2 ∧ (Frame.final (.assign a) ∨ g1.le g2) := by
+theorem gh_assign {a sz} {st k st' g1} (h : stepF (.assign a sz) st = some (k, st')) (hv : ∀ x ∈ st.vals, x.sh.isSome) (he : effF st.ctx (.assign a sz) st.g = some g1) :
+    ∃ g2, effL st'.ctx k st'.g = some g2 ∧ (Frame.final (.assign a sz) ∨ g1.le g2) := by
   ghost_auto
   all_goals exact ⟨_, ⟨by omega, rfl⟩, rfl, rfl, rfl⟩
 

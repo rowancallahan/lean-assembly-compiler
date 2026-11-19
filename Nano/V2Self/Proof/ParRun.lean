@@ -49,9 +49,9 @@ inductive Callee | df (j : Nat) | pr (p : Nat)
   deriving DecidableEq
 
 inductive Frame
-  | expr (minp : Nat) (tl : Bool)            -- 1  (a = minp, b = tail)
+  | expr (minp md : Nat)                     -- 1  (a = minp, b = mode: 0 not tail, 1 tail, 2 operand (no if/let))
   | binLoop (minp : Nat)                     -- 2
-  | prim (tl : Bool)                         -- 3  primary
+  | prim (md : Nat)                          -- 3  primary (b = mode)
   | rparen                                   -- 4  expect `)`
   | mkBin (op : Nat)                         -- 5
   | ifCmp (tl : Bool)                        -- 6
@@ -82,7 +82,7 @@ inductive Frame
   | tyPair (l : Sh)                          -- 63
   | binders                                  -- 66
   | group (start : Nat)                      -- 67
-  | assign (i : Nat)                         -- 68
+  | assign (i sz : Nat)                      -- 68 (b = number of names in the binder group)
   | plainBody                                -- 70
   | afterColon                               -- 73
   | stateTy                                  -- 74
@@ -102,7 +102,7 @@ def Frame.code : Frame → Nat
   | .mkIte _ => 9 | .letSemi .. => 11 | .letEnd .. => 12 | .parenClose => 40 | .letStart _ => 41 | .mkPair => 42 | .argAtom => 43
   | .args .. => 44 | .mkCallN .. => 45 | .selfArgs => 46 | .argCheck .. => 47 | .mkCall .. => 48 | .shiftNum _ => 49 | .letPairX _ => 50
   | .letPairY .. => 51 | .stash _ => 52 | .letPairSemi .. => 53 | .mkCont .. => 54 | .argName => 55 | .defs => 60 | .tyAtom => 61
-  | .tyCross => 62 | .tyPair _ => 63 | .binders => 66 | .group _ => 67 | .assign _ => 68 | .plainBody => 70 | .afterColon => 73
+  | .tyCross => 62 | .tyPair _ => 63 | .binders => 66 | .group _ => 67 | .assign .. => 68 | .plainBody => 70 | .afterColon => 73
   | .stateTy => 74 | .armsStart => 75 | .armBind .. => 76 | .zeroDone => 77 | .mkLoop => 79 | .defEnd => 80 | .flat _ => 81
   | .flatL _ => 82 | .defClose => 83 | .tupRest => 90
 
@@ -169,7 +169,10 @@ def locOf (st : St) (bd : Bd) : Option St :=
   let nd := RN.mk 2 bd.slot (if bd.inp then 0 else cw bd.sh) bd.sh false []
   some { st with vals := nd :: st.vals, arena := st.arena ++ [nd] }
 
-/-- `v201` / `v203`: a List (code 3) appears in the list -/
+/-- the mode cell of a non-operand expression task -/
+def bm (tl : Bool) : Nat := if tl then 1 else 0
+
+/-- `v203`: a List (code 3) appears in the list -/
 def hasLs (l : List (Option Sh)) : Bool := l.any (· == some .ls)
 
 /-- `v210`: argument i is the input local iff parameter i is the FIRST List parameter -/
@@ -197,13 +200,15 @@ def nodeOK (ds : List DefR) (n : RN) : Bool :=
 
 /-! ## the handlers -/
 def stepF : Frame → St → Option (List Frame × St)
-  | .expr m tl, st => some ([.prim tl, .binLoop m], st)
-  | .prim tl, st =>
+  | .expr m md, st => some ([.prim md, .binLoop m], st)
+  | .prim md, st =>
+    if md = 2 ∧ (st.toks.head? = some (.k 32) ∨ st.toks.head? = some (.k 2)) then none else
+    let tl := md == 1
     match st.toks with
-    | .k 32 :: r => some ([.expr 0 false, .ifCmp tl], { st with toks := r })
+    | .k 32 :: r => some ([.expr 0 2, .ifCmp tl], { st with toks := r })
     | .k 2 :: r => some ([.letStart tl], { st with toks := r })
     | .num v :: r => some ([], leaf { st with toks := r } 1 v 0 .uw)
-    | .k 6 :: r => some ([.expr 0 tl, .parenClose], { st with toks := r })
+    | .k 6 :: r => some ([.expr 0 (bm tl), .parenClose], { st with toks := r })
     | .id x :: r =>
       let st := { st with toks := r }
       match findB st.binds x with
@@ -230,7 +235,7 @@ def stepF : Frame → St → Option (List Frame × St)
         | top :: _ =>
           if top.pend then none else
           if t = 28 ∨ t = 29 then some ([.shiftNum op, .binLoop m], { st with toks := r })
-          else some ([.expr (p + 1) false, .mkBin op, .binLoop m], { st with toks := r })
+          else some ([.expr (p + 1) 2, .mkBin op, .binLoop m], { st with toks := r })
         | [] => none
     | _ => some ([], st)
   | .shiftNum op, st =>
@@ -244,12 +249,12 @@ def stepF : Frame → St → Option (List Frame × St)
   | .parenClose, st =>
     match st.toks with
     | .k 7 :: r => some ([], { st with toks := r })
-    | .k 15 :: r => some ([.expr 0 false, .tupRest, .mkPair], { st with toks := r })
+    | .k 15 :: r => some ([.expr 0 0, .tupRest, .mkPair], { st with toks := r })
     | _ => none
   | .tupRest, st =>
     match st.toks with
     | .k 7 :: r => some ([], { st with toks := r })
-    | .k 15 :: r => some ([.expr 0 false, .tupRest, .mkPair], { st with toks := r })
+    | .k 15 :: r => some ([.expr 0 0, .tupRest, .mkPair], { st with toks := r })
     | _ => none
   | .mkPair, st =>
     match st.vals with
@@ -257,6 +262,7 @@ def stepF : Frame → St → Option (List Frame × St)
       match x.sh, y.sh with
       | some l, some r =>
         if x.pend || y.pend then none else
+        if l = .nt ∨ r = .nt then none else
         (mkNode { st with ty := some (.p l r) } 6 2 0 (some (.p l r)) false 2).map fun st => ([], st)
       | _, _ => none
     | _ => none
@@ -266,12 +272,12 @@ def stepF : Frame → St → Option (List Frame × St)
     | _ => none
   | .ifCmp tl, st =>
     match st.toks with
-    | .k 23 :: r => some ([.expr 0 false, .ifThen 1 tl], { st with toks := r })
-    | .k 20 :: r => some ([.expr 0 false, .ifThen 2 tl], { st with toks := r })
+    | .k 23 :: r => some ([.expr 0 2, .ifThen 1 tl], { st with toks := r })
+    | .k 20 :: r => some ([.expr 0 2, .ifThen 2 tl], { st with toks := r })
     | _ => none
   | .ifThen c tl, st =>
     match st.toks with
-    | .k 33 :: r => some ([.expr 0 tl, .ifElse, .expr 0 tl, .mkIte c], { st with toks := r })
+    | .k 33 :: r => some ([.expr 0 (bm tl), .ifElse, .expr 0 (bm tl), .mkIte c], { st with toks := r })
     | _ => none
   | .ifElse, st =>
     match st.toks with
@@ -286,13 +292,14 @@ def stepF : Frame → St → Option (List Frame × St)
     | _ => none
   | .letStart tl, st =>
     match st.toks with
-    | .id x :: .k 9 :: r => some ([.expr 0 false, .letSemi x tl], { st with toks := r })
+    | .id x :: .k 9 :: r => some ([.expr 0 0, .letSemi x tl], { st with toks := r })
     | .k 6 :: r => some ([.letPairX tl], { st with toks := r })
     | _ => none
   | .letSemi x tl, st =>
     match st.toks, st.vals with
     | .k 13 :: r, v :: _ =>
-      some ([.expr 0 tl, .letEnd st.nx st.binds.length],
+      if v.sh = some .nt then none else
+      some ([.expr 0 (bm tl), .letEnd st.nx st.binds.length],
         { st with toks := r, nx := st.nx + cw v.sh, binds := st.binds ++ [⟨x, st.nx, v.sh, false⟩] })
     | _, _ => none
   | .letEnd s d, st =>
@@ -305,7 +312,7 @@ def stepF : Frame → St → Option (List Frame × St)
     | _ => none
   | .letPairY x tl, st =>
     match st.toks with
-    | .id y :: .k 7 :: .k 9 :: r => some ([.expr 0 false, .stash x, .letPairSemi y tl], { st with toks := r })
+    | .id y :: .k 7 :: .k 9 :: r => some ([.expr 0 0, .stash x, .letPairSemi y tl], { st with toks := r })
     | _ => none
   | .stash x, st => some ([], { st with stash := x })
   | .letPairSemi y tl, st =>
@@ -313,7 +320,7 @@ def stepF : Frame → St → Option (List Frame × St)
     | .k 13 :: r, v :: _ =>
       match v.sh with
       | some (.p l rr) =>
-        some ([.expr 0 tl, .letEnd st.nx st.binds.length],
+        some ([.expr 0 (bm tl), .letEnd st.nx st.binds.length],
           { st with toks := r, nx := st.nx + cw v.sh,
                     binds := st.binds ++ [⟨st.stash, st.nx, some l, false⟩, ⟨y, st.nx + l.width, some rr, false⟩] })
       | _ => none
@@ -323,8 +330,8 @@ def stepF : Frame → St → Option (List Frame × St)
     | k + 1 => some ([.argAtom, .args c k], st)
   | .argAtom, st =>
     match st.toks with
-    | .k 6 :: r => some ([.expr 0 false, .parenClose], { st with toks := r })
-    | .num _ :: _ => some ([.prim false], st)
+    | .k 6 :: r => some ([.expr 0 0, .parenClose], { st with toks := r })
+    | .num _ :: _ => some ([.prim 0], st)
     | .id x :: r =>
       match findB st.binds x with
       | some bd => (locOf { st with toks := r } bd).map fun st => ([], st)
@@ -390,7 +397,7 @@ def stepF : Frame → St → Option (List Frame × St)
     | _ => some ([], st)
   | .tyPair l, st =>
     match st.ty with
-    | some r => some ([], { st with ty := some (.p l r) })
+    | some r => if l = .nt ∨ r = .nt then none else some ([], { st with ty := some (.p l r) })
     | none => none
   -- defs
   | .defs, st =>
@@ -414,28 +421,31 @@ def stepF : Frame → St → Option (List Frame × St)
   | .group a, st =>
     match st.toks with
     | .id x :: r => some ([.group a], { st with toks := r, binds := st.binds ++ [⟨x, 0, none, false⟩] })
-    | .k 8 :: r => if a < st.binds.length then some ([.tyAtom, .rparen, .assign a, .binders], { st with toks := r }) else none
+    | .k 8 :: r => if a < st.binds.length then some ([.tyAtom, .rparen, .assign a (st.binds.length - a), .binders], { st with toks := r }) else none
     | _ => none
-  | .assign a, st =>
+  | .assign a sz, st =>
     if a = st.binds.length then some ([], st) else
     match st.ty, st.binds[a]? with
     | some w, some bd =>
-      let n1 := w == .ls && !(hasLs ((st.binds.take a).map Bd.sh))
-      some ([.assign (a + 1)],
+      if w = .nt then none else
+      let n1 := w == .ls && sz == 1 && !((st.binds.take a).any Bd.inp)
+      some ([.assign (a + 1) sz],
         { st with binds := st.binds.set a ⟨bd.name, st.nx, some w, n1⟩,
                   nx := if n1 then st.nx else st.nx + w.width,
                   cur := { st.cur with params := st.cur.params ++ [w], nni := if n1 then st.cur.nni else st.cur.nni + 1 } })
     | _, _ => none
   | .plainBody, st =>
+    if st.ty = some .nt then none else
     let st := { st with cur := { st.cur with npw := st.nx, res := st.ty, loop := false } }
     match st.toks with
-    | .k 9 :: r => some ([.expr 0 false, .defEnd], { st with toks := r })
+    | .k 9 :: r => some ([.expr 0 0, .defEnd], { st with toks := r })
     | _ => none
   | .afterColon, st =>
     match st.toks with
     | .k 9 :: r =>
+      if st.ty = some .nt then none else
       let st := { st with cur := { st.cur with npw := st.nx, res := st.ty, loop := false } }
-      some ([.expr 0 false, .defEnd], { st with toks := r })
+      some ([.expr 0 0, .defEnd], { st with toks := r })
     | .k 17 :: r =>
       if st.ty = some .nt then
         let c := { st.cur with npw := 1, loop := true, params := st.cur.params ++ [.nt], nni := st.cur.nni + 1 }
@@ -448,12 +458,14 @@ def stepF : Frame → St → Option (List Frame × St)
       let n1 := w == .ls && !(hasLs (st.cur.params.map some))
       match st.toks with
       | .k 17 :: r =>
+        if w = .nt then none else
         let c := { st.cur with npw := if n1 then st.cur.npw else st.cur.npw + w.width, params := st.cur.params ++ [w],
                                nni := if n1 then st.cur.nni else st.cur.nni + 1 }
         some ([.tyAtom, .stateTy], { st with toks := r, cur := c })
       | _ => if st.cur.params.length = 1 then none else some ([.armsStart], st)
     | none => none
   | .armsStart, st =>
+    if st.ty = some .nt then none else
     let st := { st with cur := { st.cur with res := st.ty }, nx := st.cur.npw }
     match st.toks with
     | .k 18 :: .num 0 :: .k 15 :: r => some ([.armBind false 1], { st with toks := r, sslot := 1 })
@@ -469,7 +481,7 @@ def stepF : Frame → St → Option (List Frame × St)
                             sslot := if n1 then st.sslot else st.sslot + w.width }
         if b + 1 < st.cur.params.length then (if t = .k 15 then some ([.armBind stp (b + 1)], st) else none)
         else if t = .k 19 then
-          (if stp then some ([.expr 0 true, .mkLoop, .defEnd], st) else some ([.expr 0 false, .zeroDone], st))
+          (if stp then some ([.expr 0 1, .mkLoop, .defEnd], st) else some ([.expr 0 0, .zeroDone], st))
         else none
     | _, _ => none
   | .zeroDone, st =>

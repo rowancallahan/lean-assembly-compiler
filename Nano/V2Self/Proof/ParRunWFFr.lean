@@ -8,7 +8,7 @@ open ParSpec
 def KOK (f : Frame) (k : List Frame) : Prop :=
   finalsLast k = true ∧ (f.final = false → ∀ x ∈ k, x.final = false) ∧ (f.isTy = true → ∀ x ∈ k, x.isTy = true) ∧
   (∀ a, .group a ∈ k → k = [.group a] ∧ f.final = true) ∧
-  (∀ a, .assign a ∈ k → (f = .group a ∧ k = [.tyAtom, .rparen, .assign a, .binders]) ∨ (f = .assign (a - 1) ∧ 1 ≤ a ∧ k = [.assign a]))
+  (∀ a sz, .assign a sz ∈ k → (f = .group a ∧ k = [.tyAtom, .rparen, .assign a sz, .binders]) ∨ (f = .assign (a - 1) sz ∧ 1 ≤ a ∧ k = [.assign a sz]))
 
 set_option hygiene false in
 macro "step_norm" : tactic => `(tactic| (
@@ -361,7 +361,7 @@ theorem bs_binders {st k st'} (h : stepF .binders st = some (k, st')) (hi : SInv
 theorem ks_group {a} {st k st'} (h : stepF (.group a) st = some (k, st')) : KOK (.group a) k := by
   step_norm <;> simp [KOK, finalsLast, Frame.final, Frame.isTy] <;> omega
 
-theorem ks_assign {a} {st k st'} (h : stepF (.assign a) st = some (k, st')) : KOK (.assign a) k := by
+theorem ks_assign {a sz} {st k st'} (h : stepF (.assign a sz) st = some (k, st')) : KOK (.assign a sz) k := by
   step_norm <;> simp [KOK, finalsLast, Frame.final, Frame.isTy] <;> omega
 
 theorem ks_plainBody {st k st'} (h : stepF .plainBody st = some (k, st')) : KOK .plainBody k := by

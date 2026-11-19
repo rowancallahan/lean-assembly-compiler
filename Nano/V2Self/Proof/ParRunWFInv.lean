@@ -167,7 +167,7 @@ theorem si_group {a} {st k st' g1} (h : stepF (.group a) st = some (k, st')) (he
     (hi : SInv st) : SInv st' := by
   si_auto
 
-theorem si_assign {a} {st k st' g1} (h : stepF (.assign a) st = some (k, st')) (he : effF st.ctx (.assign a) st.g = some g1)
+theorem si_assign {a sz} {st k st' g1} (h : stepF (.assign a sz) st = some (k, st')) (he : effF st.ctx (.assign a sz) st.g = some g1)
     (hi : SInv st) : SInv st' := by
   si_auto
 

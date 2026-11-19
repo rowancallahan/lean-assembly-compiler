@@ -77,7 +77,7 @@ def effF (c : Ctx) : Frame → G → Option G
   | .tyPair _, g => if g.t then some g else none
   | .flat _, g => some g
   | .flatL _, g => some g
-  | .assign a, g => if a ≤ g.b ∧ (a < g.b → g.t) then some g else none
+  | .assign a _, g => if a ≤ g.b ∧ (a < g.b → g.t) then some g else none
   | .group a, g => if a ≤ g.b then some g else none
   | .stateTy, g => if g.t ∧ 1 ≤ c.npar then some g else none
   | .plainBody, g => if g.t then some g else none
@@ -108,11 +108,11 @@ def finalsLast : List Frame → Bool
 def Shape (fs : List Frame) : Prop :=
   finalsLast fs ∧
   (∀ a, .group a ∈ fs → fs = [.group a]) ∧
-  (∀ a, .assign a ∈ fs → ∃ tys, (∀ f ∈ tys, f.isTy) ∧ fs = tys ++ [.assign a, .binders])
+  (∀ a sz, .assign a sz ∈ fs → ∃ tys, (∀ f ∈ tys, f.isTy) ∧ fs = tys ++ [.assign a sz, .binders])
 
 /-- binder placeholders (shape code 0) exist only while their group is being parsed -/
 def PhOK (fs : List Frame) (st : St) : Prop :=
-  ∀ i (h : i < st.binds.length), st.binds[i].sh = none → ∃ a ≤ i, .group a ∈ fs ∨ .assign a ∈ fs
+  ∀ i (h : i < st.binds.length), st.binds[i].sh = none → ∃ a ≤ i, .group a ∈ fs ∨ ∃ sz, .assign a sz ∈ fs
 
 /-- the state invariants -/
 def SInv (st : St) : Prop := (∀ x ∈ st.vals, x.sh.isSome) ∧ (∀ d ∈ st.defs, d.res.isSome) ∧ (st.arm → st.cur.res.isSome)
@@ -127,7 +127,7 @@ theorem wf_init (toks : List Tok) : WF [.defs] (init toks) := by
   refine ⟨by simp [effL, effF, St.g, init], ⟨?_, ?_, ?_⟩, ?_, ?_⟩
   · rfl
   · intro a ha; simp at ha
-  · intro a ha; simp at ha
+  · intro a sz ha; simp at ha
   · intro i h; simp [init] at h
   · simp [SInv, init]
 
