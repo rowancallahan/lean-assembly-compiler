@@ -288,7 +288,8 @@ DefX for def k from defs < k; program level over A's program theorem; Sail lift 
 Goal (owner): make the template runs SAFE J runs (`SimW.SStar K C`) so `SimW.sim_starW` lifts them to Sail.
 File Nano/V2Self/Proof/SafeRun.lean (spec at its top). Tool: `sstar_of_run` (a `run C k a = some b` whose every
 intermediate state is `SimW.Safe` is an `SStar`); `SimW.SStar.trans/one/star`.
-DONE twins: push_srun, len_srun, bin_srun, bsize_srun, li_srun, const_srun, local_srun (multi-word LOCAL) (side conditions: `wok K` of every
+DONE twins: push_srun, len_srun, bin_srun, bsize_srun, li_srun, const_srun, local_srun (multi-word LOCAL),
+popSlot_srun, popN_srun, pro_srun (proA), copy_sr, epi_srun; composable `SR K C k a` (SR.add / SR.one). (side conditions: `wok K` of every
 accessed cell; addi no-wrap is derived).
 NEXT: rd (lbu: aligned cell of x28 + idx is wok), bget, local1/localT, bnew/bpush/bset (Heap.lean), pro (CallA proA),
 epi (copy_run + the tail), popSlot/popN; then EVS.lean: `EVHwS` = EVHw with SStar K C and a layout hypothesis
