@@ -28,6 +28,17 @@ propext, Classical.choice, Quot.sound + the Sail extern set (from `Proven.Cfg` /
 - `compiler_correct (HP : ParStage) (HG : GenStage) x (hx : x.length ≤ 2^20) (h : mC x ≠ []) :
    ∃ ts p, LexSpec.Lexes x ts ∧ ParsesProgram ts p ∧ ImplementsC (mC x) (Sem κC p)` — PROVED from HP, HG.
 
+## Non-vacuity (`Nano/V2Self/Proof/MainWitness.lean`, 19 s, 2.4 GB, axioms propext/choice/Quot.sound)
+Per stage, `decide +kernel`, for 3 sources (`def m … := []`, ParSpec ex1 (call, RD/PUT/BNEW), ex3 (fuel loop, CONTINUE)):
+`C.s10 x = ts` (hence `Lexes x ts`), `refParse ts = some p` with `serialize p = a`, `C.g41 x a ≠ []` (428 / 720 / 796
+bytes); so `GenStage`'s premise holds with non-empty code, and `C.y16 ts = a → mC x ≠ []`.  `sem2`/`sem3`: `Sem` gives the
+expected outputs ([11], [4]).  The one step NOT kernel-checked: `C.y16 ts = a` (native `#eval` agrees on all three).
+Why: Par1's FIXED layout (tokens at word 184,384) — measured: one kernel `bget` at index 184,384 = 28 s / 5.5 GB; a
+whole y16 run, or even one `ParInv.step` on a run-length-stated heap, is killed at 9 GB; `List.length` of a 100k list =
+11 s / 2.7 GB.  The kernel has no fast path for long lists, so any witness that touches Par1's heap is out of budget.
+Options: (a) Par1 layout sized by the token count (offsets d1..d11 as functions of |ts|; compiler change, owner/C);
+(b) a representation-change theorem (Par1's code over a compact heap) — large; (c) accept per-stage witnesses.
+
 ## Trust / reading notes
 - The meaning is ParSpec's resolved AST + `Sem`, both independent of C's code. The link from ParSpec+Sem to Lean's own
   elaboration of the source text is a spec review item (or a later bridge to `Nano.V2` `Prog.eval`).
@@ -36,5 +47,6 @@ propext, Classical.choice, Quot.sound + the Sail extern set (from `Proven.Cfg` /
 
 ## HANDOFF
 DONE: statement, `Sem`, `ImplementsC`, stage hypotheses, `compiler_correct` (proved from HP, HG), `lexes_len`, `g41_nil`.
-NEXT: (1) agree `GenStage` / `ImplementsC` with A and E (owner relay); (2) non-vacuity witnesses (per-stage kernel
-evaluation; the Par1 heap layout of 184,384 words is the cost); (3) `parsed_not_stuck`; (4) phase 2 parser handlers.
+DONE: per-stage non-vacuity witnesses (MainWitness.lean); the parser run itself is not kernel-checkable at Par1's layout.
+NEXT: (1) agree `GenStage` / `ImplementsC` with A and E (owner relay; messages sent); (2) `parsed_not_stuck`
+(ParsesProgram ts p → Sem κ p inp ≠ .error .stuck); (3) phase 2 parser handlers after C publishes `Rep`.
