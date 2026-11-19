@@ -98,4 +98,51 @@ theorem Star.stkinv {c d : List Frame × St} (h : Star c d) (hi : StkInv c) : St
 
 theorem stkinv_init (toks : List ParSpec.Tok) : StkInv ([.defs], init toks) := ⟨rfl, fun e => by simp [init] at e⟩
 
+
+/-! ## `.defs` is only ever the whole stack -/
+/-- only `defClose` pushes `.defs`, and then alone -/
+theorem stepF_defs_mem {f : Frame} {st st' : St} {k : List Frame} (h : stepF f st = some (k, st')) (hm : Frame.defs ∈ k) :
+    k = [.defs] ∧ f = .defClose := by
+  cases f <;> simp only [stepF] at h <;> (repeat' split at h) <;>
+    first
+    | (cases h; done)
+    | (cases h; simp at hm; done)
+    | (cases h; exact ⟨rfl, rfl⟩)
+    | (obtain ⟨s2, h2, h3⟩ := Option.map_eq_some_iff.mp h; cases h3; simp at hm)
+
+/-- `.defs` occurs in a stack only as the whole stack -/
+def DInv (c : List Frame × St) : Prop := Frame.defs ∈ c.1 → c.1 = [.defs]
+
+theorem stepS_dinv {c d : List Frame × St} (hs : stepS c = some d) (hk : StkInv c) (hi : DInv c) : DInv d := by
+  obtain ⟨fs, st⟩ := c
+  cases fs with
+  | nil => simp [stepS] at hs
+  | cons f rest =>
+    obtain ⟨k, st', h1, rfl⟩ := stepS_some.mp hs
+    intro hm
+    rcases List.mem_append.mp hm with hm | hm
+    · obtain ⟨rfl, rfl⟩ := stepF_defs_mem h1 hm
+      rcases stackOK_cons hk.1 with ⟨rfl, _⟩ | ⟨_, hD, _⟩
+      · rfl
+      · simp [isD] at hD
+    · have := hi (List.mem_cons_of_mem _ hm)
+      simp at this
+      rw [this.2] at hm; simp at hm
+
+theorem Star.dinv {c d : List Frame × St} (h : Star c d) (hk : StkInv c) (hi : DInv c) : DInv d := by
+  induction h with
+  | refl => exact hi
+  | step hs _ ih => exact ih (stepS_stkinv hs hk) (stepS_dinv hs hk hi)
+
+theorem dinv_init (toks : List ParSpec.Tok) : DInv ([.defs], init toks) := fun _ => rfl
+
+/-- below a popped frame other than `.defs`, no `.defs` (the glue's `inDefF fs = true`) -/
+theorem defs_not_below {f : Frame} {fs : List Frame} {st : St} (hi : DInv (f :: fs, st)) (hf : f ≠ .defs) : ∀ g ∈ fs, g ≠ .defs := by
+  intro g hg e; subst e
+  have := hi (List.mem_cons_of_mem _ hg)
+  simp at this; exact hf this.1
+
+theorem dinv_reach {toks : List ParSpec.Tok} {fs : List Frame} {st : St} (h : Star ([.defs], init toks) (fs, st)) : DInv (fs, st) :=
+  h.dinv (stkinv_init toks) (dinv_init toks)
+
 end ParRun
