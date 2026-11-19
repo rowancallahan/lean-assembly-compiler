@@ -254,6 +254,9 @@ def lpHd (p : UInt64) : List UInt64 := [g11 5 8 (g24 p 0), g4 0 5 0 8]
 /-- LOOP's decrement (item 11) -/
 def lpDec (p : UInt64) : List UInt64 := [g10 5 5 g_901, g12 5 8 (g24 p 0)]
 
+/-- Gen's range check on a jump from word a to word b passed -/
+def JOk (a b : Nat) : Prop := g14 a.toUInt64 b.toUInt64 = 1
+
 mutual
 inductive CG (K : Cx) : Nat → Nat → Nat → List UInt64 → Nat → List Nat → Prop
   | const {d i h} : tg K.X i = 1 → CG K d i h (em (fun o => g21 (g23 o 5 (tg K.X (i + 1)))) h) (i + 2) []
@@ -266,6 +269,8 @@ inductive CG (K : Cx) : Nat → Nat → Nat → List UInt64 → Nat → List Nat
       CG K (d + 6) (i + 2) h ca i1 Ea → CG K (d + 5) i1 (h + ca.length) cb i2 Eb →
       CG K (d + 3) i2 (h + ca.length + cb.length + 5) ct i3 Et →
       CG K (d + 1) i3 (h + ca.length + cb.length + 5 + ct.length + 1) ce i4 Ee →
+      JOk (h + ca.length + cb.length + 4) (h + ca.length + cb.length + 5 + ct.length + 1) →
+      JOk (h + ca.length + cb.length + 5 + ct.length) (h + ca.length + cb.length + 5 + ct.length + 1 + ce.length) →
       CG K d i h (ca ++ cb ++ ifHd (tg K.X (i + 1)) ++
         [jw 0 (h + ca.length + cb.length + 4) (h + ca.length + cb.length + 5 + ct.length + 1)] ++ ct ++
         [jw 0 (h + ca.length + cb.length + 5 + ct.length) (h + ca.length + cb.length + 5 + ct.length + 1 + ce.length)] ++ ce)
@@ -278,6 +283,7 @@ inductive CG (K : Cx) : Nat → Nat → Nat → List UInt64 → Nat → List Nat
       CGs K d (i + 2) h (tg K.X (i + 1)).toNat c i' E → CG K d i h c i' E
   | call {d i h c i' E} : tg K.X i = 8 → tg K.X (i + 2) < 251 → tg K.X (i + 1) < bsize K.T →
       CGs K (d + 1) (i + 3) h (tg K.X (i + 2)).toNat c i' E →
+      g14 (h + c.length).toUInt64 (bget K.T (tg K.X (i + 1))) = 1 →
       CG K d i h (c ++ [g13 1 (h + c.length).toUInt64 (bget K.T (tg K.X (i + 1)))]) i' E
   | prim {d i h c i' E} : tg K.X i = 9 → tg K.X (i + 1) - 1 < 9 →
       CGs K (d + 1) (i + 2) h (g33 (tg K.X (i + 1))).toNat c i' E →
@@ -285,6 +291,7 @@ inductive CG (K : Cx) : Nat → Nat → Nat → List UInt64 → Nat → List Nat
   | loop {i h cz cs i1 i2 Ez Es} : tg K.X i = 10 →
       CT K h 3 (i + 1) (h + 3) cz i1 Ez →
       CT K h 1 i1 (h + 3 + cz.length + 2) cs i2 Es →
+      JOk (h + 2) (h + 3 + cz.length) →
       CG K 1 i h (lpHd K.p ++ [jw 0 (h + 2) (h + 3 + cz.length)] ++ cz ++ lpDec K.p ++ cs) i2 (Ez ++ Es)
 inductive CT (K : Cx) : Nat → Nat → Nat → Nat → List UInt64 → Nat → List Nat → Prop
   /-- a value node in tail position: value, then an exit placeholder -/
@@ -292,12 +299,15 @@ inductive CT (K : Cx) : Nat → Nat → Nat → Nat → List UInt64 → Nat → 
       CG K (d + 1) i h c i' E → CT K hd d i h (c ++ [0]) i' (E ++ [h + c.length])
   | cont {hd d i h c i'} : tg K.X i = 11 →
       CG K (d + 1) (i + 1) h c i' [] →
+      JOk (h + c.length + (em (g26 256 K.p 1 (K.p - 1)) (h + c.length)).length) hd →
       CT K hd d i h (c ++ em (g26 256 K.p 1 (K.p - 1)) (h + c.length) ++
         [jw 0 (h + c.length + (em (g26 256 K.p 1 (K.p - 1)) (h + c.length)).length) hd]) i' []
   | ite {hd d i h ca cb ct ce i1 i2 i3 i4 Ea Eb Et Ee} : tg K.X i = 4 → tg K.X (i + 1) - 1 < 2 →
       CG K (d + 6) (i + 2) h ca i1 Ea → CG K (d + 5) i1 (h + ca.length) cb i2 Eb →
       CT K hd (d + 3) i2 (h + ca.length + cb.length + 5) ct i3 Et →
       CT K hd (d + 1) i3 (h + ca.length + cb.length + 5 + ct.length + 1) ce i4 Ee →
+      JOk (h + ca.length + cb.length + 4) (h + ca.length + cb.length + 5 + ct.length + 1) →
+      JOk (h + ca.length + cb.length + 5 + ct.length) (h + ca.length + cb.length + 5 + ct.length + 1 + ce.length) →
       CT K hd d i h (ca ++ cb ++ ifHd (tg K.X (i + 1)) ++
         [jw 0 (h + ca.length + cb.length + 4) (h + ca.length + cb.length + 5 + ct.length + 1)] ++ ct ++
         [jw 0 (h + ca.length + cb.length + 5 + ct.length) (h + ca.length + cb.length + 5 + ct.length + 1 + ce.length)] ++ ce)
@@ -1071,7 +1081,8 @@ theorem v_if {K i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀ j,
   obtain ⟨p1, p2, p3⟩ := r6set s5.r hI5.rl (L.length + 2).toUInt64
   by_cases hg' : ¬ (g14 (bsize s3.o + 4) (bsize (bpush s5.o 0)) == 1) = true
   · rw [if_neg hg']; exact Reach.error (g16_err _ p1)
-  rw [if_pos (Classical.not_not.mp hg')]
+  have hg1 := Classical.not_not.mp hg'
+  rw [if_pos hg1]
   -- the code so far
   have hA : s5.o = (s.o ++ ca ++ cb ++ ifHd (tg K.X (i + 1))) ++ 0 :: ct := by
     rw [ho5, ho3']; simp [g30_eq, bpush, ifHd, List.append_assoc]
@@ -1079,6 +1090,10 @@ theorem v_if {K i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀ j,
   have hol3 := hI3.ol
   have hpj : bsize s3.o + 4 = (s.o.length + ca.length + cb.length + 4).toUInt64 := by
     rw [ulen _ _ hl3]; simp [Nat.toUInt64, UInt64.ofNat_add]
+  have j1 : JOk (s.o.length + ca.length + cb.length + 4) (s.o.length + ca.length + cb.length + 5 + ct.length + 1) := by
+    have hl5 : (bpush s5.o 0).length = s.o.length + ca.length + cb.length + 5 + ct.length + 1 := by
+      rw [bpush, hA]; simp [ifHd]; omega
+    unfold JOk; rw [← hpj, ← ulen _ _ hl5]; simpa using hg1
   have hP : (bsize s3.o + 4).toNat = (s.o ++ ca ++ cb ++ ifHd (tg K.X (i + 1))).length := by
     rw [hpj, u_toNat _ (by omega)]; simp [ifHd]; omega
   have ho6 : bset (bpush s5.o 0) (bsize s3.o + 4) (g13 0 (bsize s3.o + 4) (bsize (bpush s5.o 0))) =
@@ -1126,6 +1141,9 @@ theorem v_if {K i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀ j,
     ulen _ _ (by rw [hA]; simp [ifHd]; omega)
   have e2 : bsize s7.o = (s.o.length + ca.length + cb.length + 5 + ct.length + 1 + ce.length).toUInt64 :=
     ulen _ _ (by rw [ho7]; simp [ifHd]; omega)
+  have j2 : JOk (s.o.length + ca.length + cb.length + 5 + ct.length)
+      (s.o.length + ca.length + cb.length + 5 + ct.length + 1 + ce.length) := by
+    unfold JOk; rw [← e1, ← e2]; simpa using Classical.not_not.mp hg7
   have hQ : (s.o.length + ca.length + cb.length + 5 + ct.length).toUInt64.toNat = ((s.o ++ ca ++ cb ++ ifHd (tg K.X (i + 1))) ++
         jw 0 (s.o.length + ca.length + cb.length + 4) (s.o.length + ca.length + cb.length + 5 + ct.length + 1) :: ct).length := by
     have hl : s5.o.length < 2 ^ 24 := hI5.ol
@@ -1167,7 +1185,7 @@ theorem v_if {K i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀ j,
         jw 0 (s.o.length + ca.length + cb.length + 4) (s.o.length + ca.length + cb.length + 5 + ct.length + 1) :: (ct ++ [0])).length =
           s.o.length + ca.length + cb.length + 5 + ct.length + 1 := by simp [ifHd]; omega
       simp only at hce; rw [this] at hce; simpa using hce
-    exact .ite ht hb hca' hcb' hct' hce'
+    exact .ite ht hb hca' hcb' hct' hce' j1 j2
   · simpa using hI8
   · simp only [g15]; rw [w3 0 (by decide), hr7]
   · obtain ⟨ee, r3e⟩ := hd7 (by simp; omega)
@@ -1425,9 +1443,11 @@ theorem v_call {K i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀ 
   have hI3 := inv_mk hI2 (g15 s2.r 6 L.length.toUInt64) s2.k (bpush s2.o (g13 1 (bsize s2.o) (bget s2.t (tg K.X (i + 1))))) L
     (fun j a b => p3 j b) p1 (by simp only [g15]; rw [p2]) (stk_pop hI2.stk) hI2.kl (by omega) (by omega)
   have hl2 : s2.o.length = s.o.length + c.length := by rw [ho2]; simp
+  have jc : g14 (s.o.length + c.length).toUInt64 (bget K.T (tg K.X (i + 1))) = 1 := by
+    rw [← ulen _ _ hl2, ← ht2]; simpa using Classical.not_not.mp hg'
   refine Reach.done ⟨c ++ [g13 1 (s.o.length + c.length).toUInt64 (bget K.T (tg K.X (i + 1)))], i2, E, ?_, hI3, ?_, ?_, by omega,
     fun hd => ?_⟩
-  · exact .call ht hq (by rw [← ht2]; exact hD) (by simpa using hc)
+  · exact .call ht hq (by rw [← ht2]; exact hD) (by simpa using hc) jc
   · simp only; rw [bpush, ulen _ _ hl2, ho2, ht2]; simp
   · simp only [g15]; rw [p3 0 (by decide), hr2]
   · obtain ⟨e, r3⟩ := hd2 (by simp; omega)
@@ -1797,7 +1817,7 @@ theorem t_cont {K hd i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : �
   refine Reach.done ⟨c ++ em (g26 256 K.p 1 (K.p - 1)) (s.o.length + c.length) ++
     [jw 0 (s.o.length + c.length + (em (g26 256 K.p 1 (K.p - 1)) (s.o.length + c.length)).length) hd], i', [], ?_, ?_, ?_, ?_,
     by omega, ?_⟩
-  · exact .cont ht (by simpa using hc)
+  · exact .cont ht (by simpa using hc) (by unfold JOk; simpa using Classical.not_not.mp hg')
   · simpa using hI3
   · simp only; rw [bpush, hl2, ho2]; simp [jw]
   · simp only [g15]; rw [w3 0 (by decide), hr2]
@@ -1911,7 +1931,8 @@ theorem t_if {K hd i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀
   obtain ⟨p1, p2, p3⟩ := r6set s5.r hI5.rl (L.length + 2).toUInt64
   by_cases hg' : ¬ (g14 (bsize s3.o + 4) (bsize (bpush s5.o 0)) == 1) = true
   · rw [if_neg hg']; exact Reach.error (g16_err _ p1)
-  rw [if_pos (Classical.not_not.mp hg')]
+  have hg1 := Classical.not_not.mp hg'
+  rw [if_pos hg1]
   -- the code so far
   have hA : s5.o = (s.o ++ ca ++ cb ++ ifHd (tg K.X (i + 1))) ++ 0 :: ct := by
     rw [ho5, ho3']; simp [g30_eq, bpush, ifHd, List.append_assoc]
@@ -1919,6 +1940,10 @@ theorem t_if {K hd i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀
   have hol3 := hI3.ol
   have hpj : bsize s3.o + 4 = (s.o.length + ca.length + cb.length + 4).toUInt64 := by
     rw [ulen _ _ hl3]; simp [Nat.toUInt64, UInt64.ofNat_add]
+  have j1 : JOk (s.o.length + ca.length + cb.length + 4) (s.o.length + ca.length + cb.length + 5 + ct.length + 1) := by
+    have hl5 : (bpush s5.o 0).length = s.o.length + ca.length + cb.length + 5 + ct.length + 1 := by
+      rw [bpush, hA]; simp [ifHd]; omega
+    unfold JOk; rw [← hpj, ← ulen _ _ hl5]; simpa using hg1
   have hP : (bsize s3.o + 4).toNat = (s.o ++ ca ++ cb ++ ifHd (tg K.X (i + 1))).length := by
     rw [hpj, u_toNat _ (by omega)]; simp [ifHd]; omega
   have ho6 : bset (bpush s5.o 0) (bsize s3.o + 4) (g13 0 (bsize s3.o + 4) (bsize (bpush s5.o 0))) =
@@ -1968,6 +1993,9 @@ theorem t_if {K hd i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀
     ulen _ _ (by rw [hA]; simp [ifHd]; omega)
   have e2 : bsize s7.o = (s.o.length + ca.length + cb.length + 5 + ct.length + 1 + ce.length).toUInt64 :=
     ulen _ _ (by rw [ho7]; simp [ifHd]; omega)
+  have j2 : JOk (s.o.length + ca.length + cb.length + 5 + ct.length)
+      (s.o.length + ca.length + cb.length + 5 + ct.length + 1 + ce.length) := by
+    unfold JOk; rw [← e1, ← e2]; simpa using Classical.not_not.mp hg7
   have hQ : (s.o.length + ca.length + cb.length + 5 + ct.length).toUInt64.toNat = ((s.o ++ ca ++ cb ++ ifHd (tg K.X (i + 1))) ++
         jw 0 (s.o.length + ca.length + cb.length + 4) (s.o.length + ca.length + cb.length + 5 + ct.length + 1) :: ct).length := by
     have hl : s5.o.length < 2 ^ 24 := hI5.ol
@@ -2009,7 +2037,7 @@ theorem t_if {K hd i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (IH : ∀
         jw 0 (s.o.length + ca.length + cb.length + 4) (s.o.length + ca.length + cb.length + 5 + ct.length + 1) :: (ct ++ [0])).length =
           s.o.length + ca.length + cb.length + 5 + ct.length + 1 := by simp [ifHd]; omega
       simp only at hce; rw [this] at hce; simpa using hce
-    exact .ite ht hb hca' hcb' hct' hce'
+    exact .ite ht hb hca' hcb' hct' hce' j1 j2
   · simpa using hI8
   · simp only [g15]; rw [w3 0 (by decide), hr7]
   · simp only [g15]
@@ -2263,7 +2291,10 @@ theorem v_loop {K i} (hX : K.X.length < 2 ^ 31) (hi : i < K.X.length) (ht : tg K
       have : (s.o ++ (lpHd K.p ++ [jw 0 (s.o.length + 2) (s.o.length + 3 + cz.length)] ++ cz ++ lpDec K.p)).length =
           s.o.length + 3 + cz.length + 2 := by simp [lpHd, lpDec]; omega
       simp only at hcs; rw [this] at hcs; simpa [hL1] using hcs
-    exact .loop ht hcz' hcs'
+    refine .loop ht hcz' hcs' ?_
+    unfold JOk
+    rw [show (s.o.length + 2).toUInt64 = bsize s.o + 2 by simp [bsize_u, Nat.toUInt64, UInt64.ofNat_add], ← ulen _ _ hl2]
+    simpa using Classical.not_not.mp hg'
   · rw [List.map_append, ← List.append_assoc]; exact hI4
   · rw [ho4]; simp [List.append_assoc]
 
@@ -2490,7 +2521,8 @@ theorem g16_keep4 (r : Buf) (h : bget r 4 = 1) : bget (g16 r) 4 = 1 := by
 theorem g28_ok (n : Nat) : ∀ (F : List UInt64) (f r o : Buf), F.length ≤ n → F.length < 2 ^ 32 →
     (∀ j < F.length, f.getD j 0 = F.getD j 0) →
     (g28 n F.length.toUInt64 (f, (r, o))).1 = f ∧ (g28 n F.length.toUInt64 (f, (r, o))).2.2 = patchR (bsize o) o F.reverse ∧
-    ((g28 n F.length.toUInt64 (f, (r, o))).2.1 = r ∨ (5 ≤ r.length → bget (g28 n F.length.toUInt64 (f, (r, o))).2.1 4 = 1)) := by
+    (((g28 n F.length.toUInt64 (f, (r, o))).2.1 = r ∧ ∀ e ∈ F, g14 e (bsize o) = 1) ∨
+      (5 ≤ r.length → bget (g28 n F.length.toUInt64 (f, (r, o))).2.1 4 = 1)) := by
   induction n with
   | zero =>
     intro F f r o h _ _
@@ -2520,10 +2552,16 @@ theorem g28_ok (n : Nat) : ∀ (F : List UInt64) (f r o : Buf), F.length ≤ n �
     refine ⟨a1, ?_, ?_⟩
     · rw [a2, BufL.bsize_bset]; simp [patchR]
     · by_cases hg : (g14 e (bsize o) == 1) = true
-      · rw [if_pos hg] at hr'; subst hr'; exact a3
+      · rw [if_pos hg] at hr'; subst hr'
+        rcases a3 with ⟨a3, a4⟩ | a3
+        · refine .inl ⟨a3, fun e' he' => ?_⟩
+          rcases List.mem_append.mp he' with h1 | h1
+          · rw [← BufL.bsize_bset o e (g13 0 e (bsize o))]; exact a4 e' h1
+          · simp at h1; subst h1; simpa using hg
+        · exact .inr a3
       · rw [if_neg hg] at hr'; subst hr'
         right; intro hr
-        rcases a3 with a3 | a3
+        rcases a3 with ⟨a3, -⟩ | a3
         · rw [a3]; exact g16_4 _ hr
         · exact a3 (by unfold g16; rw [BufL.length_bset]; exact hr)
 
@@ -2687,13 +2725,15 @@ structure Bnd (X : Buf) (u : UInt64) (s : GS) : Prop where
 def dK (X : Buf) (u : UInt64) (T : Buf) (i : Nat) : Cx := ⟨X, tg X (i + 2), tg X (i + 3), u, T, tg X (i + 5)⟩
 
 /-- **one def** compiles: header fields valid, the body (root visit, depth 1) is CG with exits E, ENDDEF at i1;
-the code after it is: prologue ++ body (exits patched to the epilogue) ++ ld a4/a5 ++ copy-down epilogue -/
+the code after it is: prologue ++ body (exits patched to the epilogue) ++ ld a4/a5 ++ copy-down epilogue; every exit
+jump passed Gen's range check -/
 def DefC (X : Buf) (u : UInt64) (T : Buf) (i : Nat) (o o' : Buf) (i' : Nat) : Prop :=
   tg X i = 20 ∧ tg X (i + 3) < 251 ∧ tg X (i + 2) < tg X (i + 3) + 1 ∧ tg X (i + 5) < 251 ∧ tg X (i + 1) = bsize T ∧
   ∃ c i1 E, CG (dK X u (bpush T (bsize o)) i) 1 (i + 6) (proW (tg X (i + 2)) (tg X (i + 3)) o).length c i1 E ∧
     tg X i1 = 21 ∧ i' = i1 + 1 ∧
     o' = g29 512 (tg X (i + 2)) (tg X (i + 5)) 0 (bpush (bpush
       (patchR (bsize (proW (tg X (i + 2)) (tg X (i + 3)) o ++ c)) (proW (tg X (i + 2)) (tg X (i + 3)) o ++ c)
-        (E.map Nat.toUInt64).reverse) (g11 14 8 8)) (g11 15 8 0))
+        (E.map Nat.toUInt64).reverse) (g11 14 8 8)) (g11 15 8 0)) ∧
+    ∀ e ∈ E, JOk e (proW (tg X (i + 2)) (tg X (i + 3)) o ++ c).length
 
 end GenRef

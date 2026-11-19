@@ -44,7 +44,7 @@ def EPost (K : Cx) (F : List UInt64) (i1 : Nat) (s0 s : GS) : Prop :=
   tg K.X i1 = 21 ∧ s.x = s0.x ∧ s.k = s0.k ∧ s.t = s0.t ∧ s.f = s0.f ∧
   s.o = g29 512 K.p K.q 0 (bpush (bpush (patchR (bsize s0.o) s0.o F.reverse) (g11 14 8 8)) (g11 15 8 0)) ∧
   s.o.length < 2 ^ 24 ∧ s.r.length = 10 ∧ bget s.r 0 = (i1 + 1).toUInt64 ∧ bget s.r 6 = 0 ∧ bget s.r 8 = 0 ∧
-  ∀ j : UInt64, j ≠ 0 → j ≠ 6 → j ≠ 8 → bget s.r j = bget s0.r j
+  (∀ j : UInt64, j ≠ 0 → j ≠ 6 → j ≠ 8 → bget s.r j = bget s0.r j) ∧ ∀ e ∈ F, g14 e (bsize s0.o) = 1
 
 /-- the ENDDEF item: tag 21 at the cursor, exits patched, epilogue; else error -/
 theorem end_step {K s F i1} (hI : Inv K s [(12, 0, 0)] F) (hr0 : bget s.r 0 = i1.toUInt64) (hi1 : i1 < 2 ^ 32) :
@@ -76,7 +76,7 @@ theorem end_step {K s F i1} (hI : Inv K s [(12, 0, 0)] F) (hr0 : bget s.r 0 = i1
     rw [hif] at hst
     refine Run.ofReach (Reach.step hL ?_)
     rw [hst]
-    rcases a3 with a3 | a3
+    rcases a3 with ⟨a3, a5⟩ | a3
     · rw [a3]; subst a2 a1
       have hp : bget R2 1 = K.p := by rw [hg2, if_neg (by decide), if_neg (by decide), hI.r1]
       have hq : bget R2 2 = K.q := by rw [hg2, if_neg (by decide), if_neg (by decide), hI.r2]
@@ -91,7 +91,7 @@ theorem end_step {K s F i1} (hI : Inv K s [(12, 0, 0)] F) (hr0 : bget s.r 0 = i1
       · exact Reach.toobig ⟨hb, by dsimp only; omega⟩
       obtain ⟨l3, hg3⟩ : (g15 R2 8 0).length = 10 ∧ ∀ j : UInt64, bget (g15 R2 8 0) j = if 8 = j then 0 else bget R2 j :=
         ⟨by simp only [g15]; rw [BufL.length_bset]; exact l2, fun j => by simp only [g15]; rw [rget _ l2 8 j _ (by decide)]⟩
-      refine Reach.done ⟨h21, rfl, rfl, rfl, rfl, rfl, by dsimp only; omega, l3, ?_, ?_, ?_, fun j j0 j6 j8 => ?_⟩
+      refine Reach.done ⟨h21, rfl, rfl, rfl, rfl, rfl, by dsimp only; omega, l3, ?_, ?_, ?_, fun j j0 j6 j8 => ?_, a5⟩
       · rw [hg3, if_neg (by decide), hg2, if_pos rfl]
       · rw [hg3, if_neg (by decide), hg2, if_neg (by decide), if_pos rfl]
       · rw [hg3, if_pos rfl]
@@ -111,7 +111,7 @@ theorem end_step {K s F i1} (hI : Inv K s [(12, 0, 0)] F) (hr0 : bget s.r 0 = i1
     refine Run.ofReach (Reach.step hL ?_)
     rw [hst]
     have h4 : bget r3 4 = 1 := by
-      rcases a3 with a3 | a3
+      rcases a3 with ⟨a3, -⟩ | a3
       · rw [a3]; exact g16_err _ l1
       · exact a3 (by rw [l2]; omega)
     exact Reach.error (bset_keep4 _ _ _ (by decide) h4)
@@ -184,10 +184,12 @@ theorem def_run {X u s i} (hB : Bnd X u s) (hr0 : bget s.r 0 = i.toUInt64) (hi :
   rintro s' ⟨c, i1, E, hcg, hI', ho', hr0', ⟨hi1, hi1X⟩, -⟩
   simp only [List.nil_append, List.length_singleton] at hI' hcg
   refine (end_step hI' hr0' (by simp [dK] at hi1X; omega)).bind ?_
-  rintro s'' ⟨h21, ex, ek, et, ef, eo, hol, hrl, hr0'', hr6, hr8, hrj⟩
+  rintro s'' ⟨h21, ex, ek, et, ef, eo, hol, hrl, hr0'', hr6, hr8, hrj, hjx⟩
   have hi1l : i1 < X.length := tg_lt X i1 (by simp [dK] at h21; rw [h21]; decide)
-  refine Run.done ⟨i1 + 1, ⟨d1, d2, d3, d4, d5, c, i1, E, hcg, h21, rfl, ?_⟩, ?_, ?_, hr0'', by omega, by omega, ?_, ?_⟩
+  refine Run.done ⟨i1 + 1, ⟨d1, d2, d3, d4, d5, c, i1, E, hcg, h21, rfl, ?_, fun e he => ?_⟩, ?_, ?_, hr0'', by omega, by omega, ?_, ?_⟩
   · rw [eo, ho']; rfl
+  · have := hjx e.toUInt64 (by simp; exact ⟨e, he, rfl⟩)
+    rw [ho', bsize_u] at this; exact this
   · exact { x := by rw [ex, hI'.x]; rfl
             rl := hrl
             r4 := by rw [hrj 4 (by decide) (by decide) (by decide)]; exact hI'.r4

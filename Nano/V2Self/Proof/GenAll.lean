@@ -86,16 +86,16 @@ theorem cg_sk {K : Cx} : ∀ {d i h c i' E}, CG K d i h c i' E → Sk K.X i i'
   | _, _, _, _, _, _, .const ht => .const ht
   | _, _, _, _, _, _, .local ht _ => .local ht
   | _, _, _, _, _, _, .bin ht _ a b => .bin ht (cg_sk a) (cg_sk b)
-  | _, _, _, _, _, _, .ite ht _ a b t e => .ite ht (cg_sk a) (cg_sk b) (cg_sk t) (cg_sk e)
+  | _, _, _, _, _, _, .ite ht _ a b t e _ _ => .ite ht (cg_sk a) (cg_sk b) (cg_sk t) (cg_sk e)
   | _, _, _, _, _, _, .lett ht _ a b => .lett ht (cg_sk a) (cg_sk b)
   | _, _, _, _, _, _, .pair ht _ a => .pair ht (cgs_sk a)
-  | _, _, _, _, _, _, .call ht _ _ a => .call ht (cgs_sk a)
+  | _, _, _, _, _, _, .call ht _ _ a _ => .call ht (cgs_sk a)
   | _, _, _, _, _, _, .prim ht _ a => .prim ht (cgs_sk a)
-  | _, _, _, _, _, _, .loop ht a b => .loop ht (ct_sk a) (ct_sk b)
+  | _, _, _, _, _, _, .loop ht a b _ => .loop ht (ct_sk a) (ct_sk b)
 theorem ct_sk {K : Cx} : ∀ {hd d i h c i' E}, CT K hd d i h c i' E → Sk K.X i i'
   | _, _, _, _, _, _, _, .val _ _ _ a => cg_sk a
-  | _, _, _, _, _, _, _, .cont ht a => .cont ht (cg_sk a)
-  | _, _, _, _, _, _, _, .ite ht _ a b t e => .ite ht (cg_sk a) (cg_sk b) (ct_sk t) (ct_sk e)
+  | _, _, _, _, _, _, _, .cont ht a _ => .cont ht (cg_sk a)
+  | _, _, _, _, _, _, _, .ite ht _ a b t e _ _ => .ite ht (cg_sk a) (cg_sk b) (ct_sk t) (ct_sk e)
   | _, _, _, _, _, _, _, .lett ht _ a b => .lett ht (cg_sk a) (ct_sk b)
 theorem cgs_sk {K : Cx} : ∀ {d i h n c i' E}, CGs K d i h n c i' E → Sks K.X i n i'
   | _, _, _, _, _, _, _, .nil => .nil

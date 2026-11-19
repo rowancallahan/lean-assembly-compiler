@@ -235,6 +235,11 @@ Nano/V2Self/Proof/GenAll.lean: `Sk` (AST spans, `sk_det`), `cg_sk`/`ct_sk`/`cgs_
 **`gen41_full`**: |x| < 2^31 ∧ g41 c x ≠ [] ⇒ bget x 0 = 2 ∧ ∃ hs T o D, DefsC x g_999 bnew 1 (g34 bnew) hs T |x| o ∧
 WDefs x [] 1 hs D |x| ∧ hs ≠ [] ∧ main (last def) npw 0 / nres 1 ∧ output = g40 … (startW (word 0 patched) main-start).
 
+JUMP RANGES (2026-11-19): `JOk a b := g14 a.toUInt64 b.toUInt64 = 1` is now a trailing hypothesis of CG.ite / CT.ite
+(two: the compare branch patch and the jump over else), CG.loop (head jump), CT.cont (back jump to hd); CG.call has
+`g14 (h + |c|).toUInt64 (bget K.T id) = 1`; DefC ends with `∀ e ∈ E, JOk e |pro ++ c|` (exits → epilogue start).
+g28_ok / EPost carry the exit checks.
+
 EXACT NEXT STEP (box E): CG/DefC → machine, using gen41_full; per node, pair CG with W at the same word (cg_w_end).
 Possible extras if E asks: Nat bounds on widths (w ≤ 251·span), D entries = the headers' (npw, nres) by index.
 
