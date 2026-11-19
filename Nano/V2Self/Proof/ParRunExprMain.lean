@@ -549,4 +549,148 @@ theorem expr_let {n : Nat} (hE : ∀ n' < n, ExprSpec n') {md ks st fin cx x r} 
   | call ht' => rw [ht] at ht'; cases ht'
   | primTok ht' h1 h2 => rw [ht] at ht'; injection ht' with ht'; injection ht' with ht'; omega
 
+
+theorem pExpr_letpair {f cx tl x y r nx} :
+    pExpr (f + 1) cx tl (.k 2 :: .k 6 :: .id x :: .k 15 :: .id y :: .k 7 :: .k 9 :: r) nx =
+    (pExpr f cx false r nx).bind fun (v, tv, r1, nx1) =>
+      match tyShape tv, r1 with
+      | some (.p l rr), .k 13 :: r2 =>
+        (pExpr f { cx with env := (y, nx1 + l.width, .sh rr) :: (x, nx1, .sh l) :: cx.env } tl r2 (nx1 + l.width + rr.width)).map
+          fun (b, tb, r3, nx3) => (.letE nx1 (l.width + rr.width) v b, tb, r3, nx3)
+      | _, _ => none := by
+  simp only [pExpr]; rfl
+
+theorem expr_letpair {n : Nat} (hE : ∀ n' < n, ExprSpec n') {md ks st fin cx x y r} (hmd : md < 2)
+    (h : StarN n (.expr 0 md :: ks, st) ([], fin)) (hc : CxRel st cx) (hnn : CxNN st)
+    (ht : st.toks = .k 2 :: .k 6 :: .id x :: .k 15 :: .id y :: .k 7 :: .k 9 :: r) :
+    ∃ v st' n', n' < n ∧ Post st st' st.vals v ∧ st'.toks.length < st.toks.length ∧ StarN n' (ks, st') ([], fin) ∧ Stop 0 st'.toks ∧
+    ShNN v.sh ∧
+    (VT (rows st) v → ∃ ty, TyRel v ty ∧ PT v ∧
+      ∀ f, 4 * st.toks.length + 4 ≤ f → pExpr f cx (md == 1) st.toks st.nx = some (v.toNd, ty, st'.toks, st'.nx)) := by
+  classical
+  match n, h with
+  | 0, h => exact absurd h.zero_nil.1 (by simp)
+  | n + 1, h =>
+  obtain ⟨k, st1, hs, h1⟩ := h.head
+  rw [expr_eq] at hs; simp at hs; obtain ⟨rfl, rfl⟩ := hs
+  match n, h1 with
+  | 0, h1 => exact absurd h1.zero_nil.1 (by simp)
+  | n + 1, h1 =>
+  obtain ⟨k, st2, hs2, h2⟩ := h1.head
+  have hpc := prim_inv hs2
+  cases hpc with
+  | lets _ ht' =>
+    rw [ht] at ht'; injection ht' with _ hr; subst hr
+    simp only [List.cons_append, List.nil_append] at h2
+    match n, h2 with
+    | 0, h2 => exact absurd h2.zero_nil.1 (by simp)
+    | n + 1, h2 =>
+    obtain ⟨k3, st3, hs3, h3⟩ := h2.head
+    rcases letStart_inv hs3 with ⟨x', r', hx, _, _⟩ | ⟨r', hx, rfl, rfl⟩
+    · simp at hx
+    simp only at hx; injection hx with _ hx; subst hx
+    simp only [List.cons_append, List.nil_append] at h3
+    match n, h3 with
+    | 0, h3 => exact absurd h3.zero_nil.1 (by simp)
+    | n + 1, h3 =>
+    obtain ⟨k4, st4, hs4, h4⟩ := h3.head
+    obtain ⟨x', r4, hx4, rfl, rfl⟩ := letPairX_inv hs4
+    simp only [List.cons.injEq, Tok.id.injEq, true_and] at hx4; obtain ⟨rfl, rfl⟩ := hx4
+    simp only [List.cons_append, List.nil_append] at h4
+    match n, h4 with
+    | 0, h4 => exact absurd h4.zero_nil.1 (by simp)
+    | n + 1, h4 =>
+    obtain ⟨k5, st5, hs5, h5⟩ := h4.head
+    obtain ⟨y', r5, hy5, rfl, rfl⟩ := letPairY_inv hs5
+    simp only [List.cons.injEq, Tok.id.injEq, true_and] at hy5; obtain ⟨rfl, rfl⟩ := hy5
+    simp only [List.cons_append, List.nil_append] at h5
+    -- the value
+    obtain ⟨v, stV, nV, hnV, hpV, hltV, hV, _, hnvV, hspV⟩ :=
+      hE n (by omega) 0 _ _ fin cx (by omega) h5 (CxRel.transport hc rfl rfl) (CxNN.transport hnn rfl rfl rfl)
+    match nV, hV with
+    | 0, hV => exact absurd hV.zero_nil.1 (by simp)
+    | nV + 1, hV =>
+    obtain ⟨k6, st6, hs6, h6⟩ := hV.head
+    rw [stash_eq] at hs6; simp at hs6; obtain ⟨rfl, rfl⟩ := hs6
+    simp only [List.nil_append] at h6
+    match nV, h6 with
+    | 0, h6 => exact absurd h6.zero_nil.1 (by simp)
+    | nV + 1, h6 =>
+    obtain ⟨k7, st7, hs7, h7⟩ := h6.head
+    obtain ⟨r2, v', rest, l, rr, hr2, hv7, hsv, rfl, rfl⟩ := letPairSemi_inv hs7
+    simp only at hv7 hr2
+    rw [hpV.vals] at hv7; injection hv7 with hv7 hrest; subst hv7 hrest
+    simp only [List.cons_append, List.nil_append] at h7
+    obtain ⟨s, hsv', hsnn⟩ := hnvV
+    rw [hsv] at hsv'; cases hsv'
+    simp only [Sh.nnt, Bool.and_eq_true, bne_iff_ne, ne_eq] at hsnn
+    obtain ⟨⟨⟨hl, hrr⟩, hlnn⟩, hrnn⟩ := hsnn
+    -- the body, in the context extended by both components
+    have hc1 : CxRel { stV with binds := stV.binds ++ [⟨x, stV.nx, some l, false⟩] } { cx with env := (x, stV.nx, .sh l) :: cx.env } :=
+      CxRel.push (CxRel.transport (st' := stV) hc (by rw [hpV.binds]) (by rw [hpV.defs])) hl rfl rfl
+    have hcB := CxRel.push (x := y) (slot := stV.nx + l.width) hc1 hrr
+      (st' := { stV with toks := r2, nx := stV.nx + cw v.sh, stash := x, binds := stV.binds ++ [⟨x, stV.nx, some l, false⟩, ⟨y, stV.nx + l.width, some rr, false⟩] }) (by simp) rfl
+    have hn1 : CxNN { stV with binds := stV.binds ++ [⟨x, stV.nx, some l, false⟩] } :=
+      CxNN.push (CxNN.transport (st' := stV) hnn hpV.binds hpV.defs hpV.cur) ⟨l, rfl, hlnn⟩ rfl rfl rfl
+    have hnB := CxNN.push (bd := ⟨y, stV.nx + l.width, some rr, false⟩) hn1 ⟨rr, rfl, hrnn⟩
+      (st' := { stV with toks := r2, nx := stV.nx + cw v.sh, stash := x, binds := stV.binds ++ [⟨x, stV.nx, some l, false⟩, ⟨y, stV.nx + l.width, some rr, false⟩] }) (by simp) rfl rfl
+    obtain ⟨b, stB, nB, hnB', hpB, hltB, hB, hstopB, hnvB, hspB⟩ :=
+      hE nV (by omega) (bm (md == 1)) _ _ fin _ (by cases md == 1 <;> simp [bm]) h7 hcB hnB
+    match nB, hB with
+    | 0, hB => exact absurd hB.zero_nil.1 (by simp)
+    | nB + 1, hB =>
+    obtain ⟨k8, stL, hs8, hL⟩ := hB.head
+    obtain ⟨body, v'', rest, hv8, rfl, hstL⟩ := letEnd_inv hs8
+    rw [hpB.vals] at hv8; simp only [List.cons.injEq] at hv8; obtain ⟨rfl, hv8⟩ := hv8
+    rw [hpV.vals] at hv8; simp only [List.cons.injEq] at hv8; obtain ⟨rfl, rfl⟩ := hv8
+    simp only [List.nil_append] at hL
+    match nB, hL with
+    | 0, hL => exact absurd hL.zero_nil.1 (by simp)
+    | nB + 1, hL =>
+    have hL' := binLoop_stop0 hL (by rw [hstL]; exact hstopB)
+    have hsL : stL.toks = stB.toks := by rw [hstL]
+    have l0 : st.toks.length = r.length + 7 := by simp [ht]
+    have l1 : r2.length + 1 = stV.toks.length := by simp [hr2]
+    simp only at hltV hltB
+    have hbB := hpB.binds; simp only at hbB
+    refine ⟨_, stL, nB, by omega, ⟨by rw [hstL], ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩, by rw [hsL]; omega, hL', by rw [hsL]; exact hstopB,
+      by simpa [RN.sh] using hnvB, fun hvt => ?_⟩
+    · rw [hstL]; simp only; rw [hbB, hpV.binds]; simp
+    · rw [hstL]; simp [hpB.defs, hpV.defs]
+    · rw [hstL]; simp [hpB.cur, hpV.cur]
+    · rw [hstL]; simp [hpB.arm, hpV.arm]
+    · rw [hstL]; simp [hpB.all, hpV.all]
+    · rw [hsL]; omega
+    · rw [hstL]; have := hpB.nx; have := hpV.nx; simp at *; omega
+    have hok := hvt.self
+    have hni := nodeOK_noInp (by decide) hok
+    have hnv := hni v (by simp); have hnb := hni b (by simp)
+    have dV := hpV.defs; have cV := hpV.cur
+    simp only at dV cV
+    obtain ⟨tv, htv, _, hfV⟩ := hspV (by have := hvt.kid (k := v) (by simp); simpa [ParRun.rows] using this)
+    obtain ⟨tb, htb, hptb, hfB⟩ := hspB (by have := hvt.kid (k := b) (by simp); simpa [ParRun.rows, dV, cV] using this)
+    have hbi : tb ≠ .inp := by rintro rfl; rw [htb.1] at hnb; cases hnb
+    refine ⟨tb, body_rel htb rfl rfl hbi (by decide), ?_, fun f hf => ?_⟩
+    · intro hc'; rw [letNode_toNd hnv hnb] at hc'; simp only [Nd.tailCont] at hc'; exact hptb hc'
+    obtain ⟨g, rfl⟩ : ∃ g, f = g + 1 := ⟨f - 1, by omega⟩
+    have pV := hfV g (by simp; omega)
+    have pB := hfB g (by simp; omega)
+    rw [bm_eq] at pB
+    simp only [show (0 == 1) = false from rfl] at pV pB
+    have hvb : tv ≠ .bot := (nobot g).1 _ _ _ _ pV
+    have hvi : tv ≠ .inp := by rintro rfl; rw [htv.1] at hnv; cases hnv
+    have hnnt : (Sh.p l rr).nnt = true := by simp [Sh.nnt, hl, hrr, hlnn, hrnn]
+    have hshape := let_shape htv hsv hnnt (by simp) hvb hvi
+    rw [ht, pExpr_letpair, pV]; simp only [Option.bind_some, hshape, hr2]
+    rw [hsv] at pB; simp only [cw, Sh.width, Nat.add_assoc] at pB
+    simp only [Nat.add_assoc]
+    rw [pB]; simp only [Option.map_some, letNode_toNd hnv hnb, hsL, hsv, cw, Sh.width]
+    simp [hstL, Nat.add_assoc]
+  | ifs _ ht' => rw [ht] at ht'; cases ht'
+  | leaf hl _ => cases hl <;> simp_all
+  | paren ht' => rw [ht] at ht'; cases ht'
+  | self ht' => rw [ht] at ht'; cases ht'
+  | call ht' => rw [ht] at ht'; cases ht'
+  | primTok ht' h1 h2 => rw [ht] at ht'; injection ht' with ht'; injection ht' with ht'; omega
+
 end ParRun
