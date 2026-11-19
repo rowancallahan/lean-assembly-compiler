@@ -503,6 +503,8 @@ Goal: `CompileCorrect arm compileC_arm` and `CompileRuns arm compileC_arm` again
 code generator to AArch64 from the same reference code (CG / J machine templates), proofs mirroring the RISC-V Machine/
 layer, built on the existing Arm/proofs full-step lemmas (b, bl, cbz/cbnz, b.cond, movz/movk, add/sub imm, mov, ldr/str/ldrb/strb/stur,
 register ALU ops). Later: write the ARM generator in the nano subset so C self-hosts on ARM (native on Apple Silicon).
+Owner decisions (2026-11-19): an `arm : Machine` instance in Spec/ next to `riscv` is approved; code below 2^29 for now
+(expand later); an ARM RAM window is assumed (chosen from what Arm/proofs supports, MMU off at EL3).
 Order (owner, 2026-11-19): (1) organization pass + survey of moving everything to the newest Lean
 (Testing/notes/LEAN_435.md); (2) migrate the repo, both Sail models, Arm/proofs and Arm/apc to ONE Lean version; (3) then the
 ARM proof and the larger code work.
