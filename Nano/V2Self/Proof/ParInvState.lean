@@ -101,7 +101,7 @@ def DefsRep (h : Buf) (st : St) (inDef : Bool) : Prop :=
 
 /-- the emitted words follow the token sentinel 0 at the end of the heap -/
 def OutRep (h : Buf) (ts : Buf) (out : List UInt64) : Prop :=
-  h.length = 184384 + ts.length + 1 + out.length ∧ ∀ i (hi : i < out.length), bget h (184384 + ts.length + 1 + i).toUInt64 = out[i]'hi
+  h.length = 184384 + ts.length + 1 + out.length ∧ h.drop (184384 + ts.length + 1) = out
 
 /-- inside a def: the top frame is not `defs` (between defs the current row is still zero) -/
 def inDefF : List Frame → Bool

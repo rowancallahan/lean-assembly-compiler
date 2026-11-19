@@ -190,4 +190,139 @@ theorem step_top {h ts : Buf} {st : St} {f : Frame} {fs : List Frame} (r : Tasks
     refine ⟨this.1, frameArgs_frame ⟨bget_bset' _ _ _ _ (by rw [u5]; decide), fun i hi => bget_bset' _ _ _ _ (by rw [u5]; omega)⟩ hn
       (fun i hi _ => bget_bset' _ _ _ _ (by rw [u5]; omega)) (fun i hi _ => bget_bset' _ _ _ _ (by rw [u5]; omega)) har _ _ _ this.2⟩
 
+/-! ## component frames: each part of `Rep` reads a fixed set of cells -/
+/-- cells in `[lo, hi)` agree -/
+def RegAgree (h h' : Buf) (lo hi : Nat) : Prop := ∀ i : UInt64, lo ≤ i.toNat → i.toNat < hi → bget h' i = bget h i
+
+theorem rowCell (i : Nat) (hi : i < 1024) (k : UInt64) (hk : k.toNat < 4) : (d9 + 4 * i.toUInt64 + k).toNat = 180288 + 4 * i + k.toNat := by
+  have e4 : (4 * i.toUInt64).toNat = 4 * i := by rw [UInt64.toNat_mul]; simp; omega
+  rw [UInt64.toNat_add, UInt64.toNat_add, e4]; simp [show d9.toNat = 180288 from rfl]; omega
+
+theorem binds_frame {h h' : Buf} {bs : List Bd} (r : BindsRep h bs) (e4 : bget h' 4 = bget h 4) (er : RegAgree h h' 180288 184384)
+    (et : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShTabAgree h h') : BindsRep h' bs := by
+  obtain ⟨r4, rl, rk⟩ := r
+  refine ⟨by rw [e4]; exact r4, rl, fun i hi => ?_⟩
+  have c : ∀ k : UInt64, k.toNat < 4 → bget h' (d9 + 4 * i.toUInt64 + k) = bget h (d9 + 4 * i.toUInt64 + k) :=
+    fun k hk => er _ (by rw [rowCell i (by omega) k hk]; omega) (by rw [rowCell i (by omega) k hk]; omega)
+  have c0 := c 0 (by decide); simp only [UInt64.add_zero] at c0
+  obtain ⟨a0, a1, a2, a3⟩ := rk i hi
+  exact ⟨by rw [c0]; exact nameAt_frame et (by omega) a0, by rw [c 1 (by decide)]; exact a1, by rw [c 2 (by decide)]; exact a2.frame es,
+    by rw [c 3 (by decide)]; exact a3⟩
+
+theorem defCell (j : Nat) (hj : j < 512) (k : UInt64) (hk : k.toNat < 8) : (d7 + 8 * j.toUInt64 + k).toNat = 147520 + 8 * j + k.toNat := by
+  have e8 : (8 * j.toUInt64).toNat = 8 * j := by rw [UInt64.toNat_mul]; simp; omega
+  rw [UInt64.toNat_add, UInt64.toNat_add, e8]; simp [show d7.toNat = 147520 from rfl]; omega
+
+theorem parCell (s : UInt64) (i : Nat) (hs : s.toNat + i < 4096) : (d7 + 4096 + s + i.toUInt64).toNat = 151616 + s.toNat + i := by
+  rw [UInt64.toNat_add, UInt64.toNat_add, show (d7 + 4096 : UInt64).toNat = 151616 from rfl]; simp; omega
+
+theorem row_frame {h h' : Buf} {j : Nat} {d : DefR} (hj : j < 512) (r : RowRep h j d) (er : RegAgree h h' 147520 180288)
+    (et : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShTabAgree h h') : RowRep h' j d := by
+  have c : ∀ k : UInt64, k.toNat < 8 → bget h' (d7 + 8 * j.toUInt64 + k) = bget h (d7 + 8 * j.toUInt64 + k) :=
+    fun k hk => er _ (by rw [defCell j hj k hk]; omega) (by rw [defCell j hj k hk]; omega)
+  have c0 := c 0 (by decide); simp only [UInt64.add_zero] at c0
+  obtain ⟨a0, a1, a2, a3, a4, a6, a5, ap⟩ := r
+  refine ⟨by rw [c0]; exact nameAt_frame et (by omega) a0, by rw [c 1 (by decide)]; exact a1, by rw [c 2 (by decide)]; exact a2,
+    by rw [c 3 (by decide)]; exact a3.frame es, by rw [c 4 (by decide)]; exact a4, by rw [c 6 (by decide)]; exact a6,
+    by rw [c 5 (by decide)]; exact a5, fun i hi => ?_⟩
+  rw [c 5 (by decide), er _ (by rw [parCell _ _ (by omega)]; omega) (by rw [parCell _ _ (by omega)]; omega)]
+  exact (ap i hi).frame es
+
+theorem rowZero_frame {h h' : Buf} {j : Nat} (hj : j < 512) (r : RowZero h j) (er : RegAgree h h' 147520 180288) : RowZero h' j :=
+  fun k hk => by rw [er _ (by rw [defCell j hj k hk]; omega) (by rw [defCell j hj k hk]; omega)]; exact r k hk
+
+theorem defs_frame {h h' : Buf} {st : St} {b : Bool} (r : DefsRep h st b) (e12 : bget h' 12 = bget h 12) (e27 : bget h' 27 = bget h 27)
+    (er : RegAgree h h' 147520 180288) (et : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShTabAgree h h') :
+    DefsRep h' st b := by
+  obtain ⟨r12, rl, r27, rd, rc, rz⟩ := r
+  have c5 : ∀ j, j < 512 → bget h' (d7 + 8 * j.toUInt64 + 5) = bget h (d7 + 8 * j.toUInt64 + 5) :=
+    fun j hj => er _ (by rw [defCell j hj 5 (by decide), show (5 : UInt64).toNat = 5 from rfl]; omega)
+      (by rw [defCell j hj 5 (by decide), show (5 : UInt64).toNat = 5 from rfl]; omega)
+  refine ⟨by rw [e12]; exact r12, rl, by rw [e27]; exact r27, fun j hj => ⟨row_frame (by omega) (rd j hj).1 er et hn es,
+    by rw [c5 j (by omega), e27]; exact (rd j hj).2⟩, ?_, fun j h1 h2 => rowZero_frame h2 (rz j h1 h2) er⟩
+  cases b with
+  | true => simp only [if_true] at rc ⊢; exact ⟨row_frame (by omega) rc.1 er et hn es, by rw [c5 _ (by omega), e27]; exact rc.2⟩
+  | false => simp only [Bool.false_eq_true, if_false] at rc ⊢; exact rowZero_frame (by omega) rc er
+
+theorem arena_frame {h h' : Buf} {arena vals : List RN} (r : ArenaRep h arena vals) (e8 : bget h' 8 = bget h 8)
+    (e9 : bget h' 9 = bget h 9) (er : RegAgree h h' 12352 147520) (es : ShTabAgree h h') : ArenaRep h' arena vals := by
+  obtain ⟨r9, ral, r8, rvl, I, hI, hR, hD, hX⟩ := r
+  have ea : ArenaAgree h h' := fun i a b => er i (by omega) b
+  have op : ∀ k, k < 4096 → opAt h' k = opAt h k := fun k hk => er _ (by rw [d3k k hk]; omega) (by rw [d3k k hk]; omega)
+  refine ⟨by rw [e9]; exact r9, ral, by rw [e8]; exact r8, rvl, I, fun u hu => ?_, fun k hk => ?_, fun k1 k2 h1 h2 e => ?_,
+    fun k1 k2 h1 h2 h12 => ?_⟩
+  · obtain ⟨a, b, c⟩ := hI u hu
+    obtain ⟨t, et⟩ := a.head
+    refine ⟨a.frame (fun k hk => ?_) (recAgree_of ea (fun v hv => ?_)) es, b, c⟩
+    · have hu' : (u.toUInt64).toNat = u := by simp; omega
+      show bget h' _ = bget h _
+      exact ea _ (by rw [recK _ k (by omega) (by omega)]; omega) (by rw [recK _ k (by omega) (by omega)]; omega)
+    · have := c v (List.mem_of_mem_tail hv); omega
+  · simp only [op (vals.length - 1 - k) (by omega)]; exact hR k hk
+  · rw [op _ (by omega), op _ (by omega)] at e; exact hD k1 k2 h1 h2 e
+  · rw [op _ (by omega), op _ (by omega)]; exact hX k1 k2 h1 h2 h12
+
+theorem out_frame {h h' ts : Buf} {out : List UInt64} (r : OutRep h ts out) (e : h'.drop 184384 = h.drop 184384) :
+    OutRep h' ts out := by
+  obtain ⟨rl, rk⟩ := r
+  have l1 : h'.length = h.length := by
+    have := congrArg List.length e; simp at this; omega
+  refine ⟨by rw [l1]; exact rl, ?_⟩
+  have d1 : ∀ l : Buf, l.drop (184384 + ts.length + 1) = (l.drop 184384).drop (ts.length + 1) := by
+    intro l; rw [List.drop_drop, Nat.add_assoc]
+  rw [d1, e, ← d1]; exact rk
+
+/-- a write below the token region leaves the high part of the heap as a list -/
+theorem drop_bset (h : Buf) (i v : UInt64) (hi : i.toNat < 184384) : (bset h i v).drop 184384 = h.drop 184384 := by
+  simp only [bset]; exact List.drop_set_of_lt hi
+
+theorem tokensAt_frame {h h' ts : Buf} (r : TokensAt h ts) (et : TokAgree h h') (hts : ts.length < 2 ^ 24) : TokensAt h' ts := by
+  obtain ⟨a, b, c, d⟩ := r
+  refine ⟨fun i hi => ?_, ?_, ?_, by rw [et.1]; exact d⟩
+  · rw [et.2 _ (by rw [d11a _ (by simp; omega)]; omega)]; exact a i hi
+  · rw [et.2 _ (by rw [d11a _ (by simp; omega)]; omega)]; exact b
+  · rw [et.2 _ (by rw [d11a1 _ (by simp; omega)]; omega)]; exact c
+
+/-! ## Rep when only the task stack changed -/
+theorem rep_tasks {h h' ts : Buf} {st : St} {fs fs' : List Frame} (r : Rep h ts st fs) (hl : h'.length = h.length)
+    (e : ∀ i : UInt64, i.toNat ≠ 5 → (i.toNat < 64 ∨ 12352 ≤ i.toNat) → bget h' i = bget h i)
+    (ed : h'.drop 184384 = h.drop 184384) (hT : TasksRep h' st.arena fs') (hd : inDefF fs' = inDefF fs) : Rep h' ts st fs' := by
+  obtain ⟨rT, rts, r0, r3, r11, rB, rD, rA, r25, r29, r30, r32, rO, _⟩ := r
+  have hn : (bget h 7).toNat < 2 ^ 32 := by rw [rT.2.2.2]; simp; omega
+  have et : TokAgree h h' := ⟨e 7 (by decide) (Or.inl (by decide)), fun i hi => e i (by omega) (Or.inr (by omega))⟩
+  have es : ShTabAgree h h' := fun i a _ => e i (by omega) (Or.inr (by omega))
+  have c : ∀ n : UInt64, n.toNat < 64 → n.toNat ≠ 5 → bget h' n = bget h n := fun n hn h5 => e _ h5 (Or.inl hn)
+  refine ⟨tokensAt_frame rT et rts, rts, by rw [c 0 (by decide) (by decide)]; exact r0, by rw [c 3 (by decide) (by decide)]; exact tokAt_frame et hn r3,
+    by rw [c 11 (by decide) (by decide)]; exact r11,
+    binds_frame rB (c 4 (by decide) (by decide)) (fun i a _ => e i (by omega) (Or.inr (by omega))) et hn es,
+    by rw [hd]; exact defs_frame rD (c 12 (by decide) (by decide)) (c 27 (by decide) (by decide)) (fun i a _ => e i (by omega) (Or.inr (by omega))) et hn es,
+    arena_frame rA (c 8 (by decide) (by decide)) (c 9 (by decide) (by decide)) (fun i a _ => e i (by omega) (Or.inr (by omega))) es,
+    fun s hs => by rw [c 25 (by decide) (by decide)]; exact (r25 s hs).frame es,
+    fun x hx hne => by rw [c 29 (by decide) (by decide)]; exact nameAt_frame et (by omega) (r29 x hx hne),
+    by rw [c 30 (by decide) (by decide)]; exact r30, by rw [c 32 (by decide) (by decide)]; exact r32, out_frame rO ed, hT⟩
+
+/-- the status stays 0 through a push -/
+theorem v1_zero (h : Buf) (c a b : UInt64) (h0 : bget h 0 = 0) : bget (v1 h c a b) 0 = 0 := by
+  unfold v1
+  split
+  · rename_i hg
+    have hgN := UInt64.lt_iff_toNat_lt.mp hg
+    simp only [show d12.toNat = 4096 from rfl] at hgN
+    have c0 := taskCell (bget h 5).toNat hgN 0 (by decide); have c1 := taskCell (bget h 5).toNat hgN 1 (by decide)
+    have c2 := taskCell (bget h 5).toNat hgN 2 (by decide)
+    simp only [UInt64.add_zero, show (0 : UInt64).toNat = 0 from rfl, show (1 : UInt64).toNat = 1 from rfl,
+      show (2 : UInt64).toNat = 2 from rfl, UInt64.ofNat_toNat] at c0 c1 c2
+    rw [bget_bset' _ _ _ _ (by simp), bget_bset' _ _ _ _ (by rw [c2]; simp), bget_bset' _ _ _ _ (by rw [c1]; simp),
+      bget_bset' _ _ _ _ (by rw [c0]; simp)]; exact h0
+  · rw [bget_bset]; split <;> simp_all
+
+/-- a push that leaves the status nonzero succeeded (h[5] was below the capacity) -/
+theorem v1_ok (h : Buf) (c a b : UInt64) (hs : bget (v1 h c a b) 0 ≠ 0) : (bget h 5).toNat < 4096 := by
+  by_cases hc0 : (bget h 5).toNat < 4096
+  · exact hc0
+  exfalso
+  have hc := hc0
+  have : ¬ bget h 5 < d12 := fun x => hc (by have := UInt64.lt_iff_toNat_lt.mp x; simpa using this)
+  apply hs; unfold v1; simp only [this, if_false]; rw [bget_bset]; split <;> simp_all [bget, List.getD]
+
 end ParInv
