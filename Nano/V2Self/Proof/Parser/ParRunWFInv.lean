@@ -1,6 +1,7 @@
 /- Nano/V2Self/Proof/Parser/ParRunWFInv: preservation of the state parts of `WF` (stack values have a shape code, finished defs and the
 current def in a loop step arm have a result code), one lemma per frame (`si_<frame>`). -/
 import Nano.V2Self.Proof.Parser.ParRunWFStep
+set_option backward.isDefEq.respectTransparency false
 namespace ParRun
 open ParSpec
 

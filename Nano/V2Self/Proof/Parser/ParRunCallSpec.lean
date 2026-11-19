@@ -3,6 +3,7 @@
 input rule (argument is the input local ⇔ parameter is the input: the deferred validation v210) is ParSpec's `tyMatch`.
 `toNdL_dropInp`: the flattener's "skip input locals" is ParSpec's `dropInp`. -/
 import Nano.V2Self.Proof.Parser.ParRunArgs
+set_option backward.isDefEq.respectTransparency false
 namespace ParRun
 open ParSpec
 
