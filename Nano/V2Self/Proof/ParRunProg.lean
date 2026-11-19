@@ -6,9 +6,9 @@ namespace ParRun
 open ParSpec
 
 theorem loopStep : LoopStep := by
-  intro n ks st fin defs name r h ht hcur hb hv _ harm hD hNN hfr hL
+  intro n ks st fin defs name r h ht hcur hb hv _ harm hD hNN hfr _
   obtain ⟨lp, st', n', hn, hrun, hstar, hv', hd, ho, hal, hname, hloop, hlt, hspec⟩ :=
-    loop_spec h ht hcur hb hv harm hD hNN hfr hL
+    loop_spec h ht hcur hb hv harm hD hNN hfr
   exact ⟨lp, st', n', hn, hstar, hrun, hv', hd, ho, hname, hloop, hlt, hspec⟩
 
 end ParRun

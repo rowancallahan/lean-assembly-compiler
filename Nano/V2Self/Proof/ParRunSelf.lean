@@ -37,6 +37,19 @@ theorem nodeOK_spair {ds : List DefR} {k : Nat} {kids : List RN} (h : nodeOK ds 
   | none => simp
   | some d => intro h; simp at h; exact ⟨d, rfl, h.1, h.2⟩
 
+/-- fix M: a CONTINUE over one non-tuple state is checked against the last row like a tuple -/
+theorem nodeOK_cont1 {ds : List DefR} {sh : Option Sh} {c : RN} (h : nodeOK ds (RN.mk 11 0 0 sh true [c]) = true)
+    (hc : c.sh.isSome = true) :
+    ∃ d, ds.getLast? = some d ∧ d.params.length = [c].length + 1 ∧ inpMatch d.params.tail false [c] = true := by
+  obtain ⟨t, a, b, s, p, ks⟩ := c
+  simp only [RN.sh] at hc
+  obtain ⟨s0, rfl⟩ : ∃ s0, s = some s0 := by cases s <;> simp_all
+  cases hd : ds.getLast? with
+  | none => simp [nodeOK, RN.tag, RN.kids, RN.sh, hd] at h
+  | some d =>
+    simp [nodeOK, RN.tag, RN.kids, RN.sh, hd] at h
+    exact ⟨d, rfl, by simpa using h.2.1, h.2.2⟩
+
 theorem dropInp_ne_nil {ps : List Ps} {as : List Nd} (hl : ps.length = as.length) {i : Nat} (hi : i < ps.length)
     (hp : ps[i] ≠ .inp) : dropInp ps as ≠ [] := by
   induction ps generalizing as i with
@@ -136,7 +149,7 @@ theorem hcall_self {n : Nat} (hE : ∀ n' < n, ExprSpec n') {ks : List Frame} {s
     rw [findD_rows] at hj; split at hj
     · assumption
     · exact absurd (findD_ltG hj) (by omega)
-  obtain ⟨sps, hself, hsne, hL, hpar, hinv, hnnp⟩ := hc.self harm
+  obtain ⟨sps, hself, hsne, hpar, hinv, hnnp⟩ := hc.self harm
   rw [hcn] at hself
   have hspl : sps.length = st.cur.params.length - 1 := by
     have := congrArg List.length hpar; simpa using this
@@ -161,19 +174,29 @@ theorem hcall_self {n : Nat} (hE : ∀ n' < n, ExprSpec n') {ks : List Frame} {s
     · rw [hc1 h1]; intro v hv; simp at hv; subst hv; exact hvc
     · rw [hc2 h1] at hvc; intro v hv; exact hvc.kid hv
   have hlsp : vs.length = sps.length := by omega
+  obtain ⟨vts, hmap, hfacts, hpargs⟩ := hsps hvts
   have hinp : InpPair sps vs := by
     by_cases h1 : st.cur.params.length - 1 = 1
-    · have e := hc1 h1; subst e
-      obtain ⟨p, rfl⟩ : ∃ p, sps = [p] := by
-        match sps, hlsp with
-        | [p], _ => exact ⟨p, rfl⟩
-      have hp : p ≠ .inp := fun e => hL (by rw [e])
-      exact .cons ⟨fun e => absurd e hp, fun e => by rw [hci] at e; cases e⟩ .nil
+    · have e := hc1 h1
+      -- the lone state value has a shape (it is an argument value), so the CONT node's own check applies (fix M)
+      have hcs : c.sh.isSome = true := by
+        obtain ⟨⟨c', ty⟩, hcm, rfl⟩ : ∃ q ∈ vts, q.1 = c := by
+          have : c ∈ vts.map (·.1) := by rw [hmap, e]; simp
+          simpa using this
+        obtain ⟨f1, f2, _⟩ := hfacts _ hcm
+        cases ty with
+        | s s => simp [f1.1]
+        | lit => simp [f1.1]
+        | inp => simp [f1.2]
+        | bot => exact absurd rfl f2
+      obtain ⟨d, hd1, _, hm⟩ := nodeOK_cont1 hvt.self hcs
+      rw [rows_getLast] at hd1; cases hd1
+      rw [e]; rw [e] at hlsp
+      exact def_inpPair hinv hlsp hm
     · rw [hc2 h1] at hvc
       obtain ⟨d, hd1, _, hm⟩ := nodeOK_spair hvc.self
       rw [rows_getLast] at hd1; cases hd1
       exact def_inpPair hinv hlsp hm
-  obtain ⟨vts, hmap, hfacts, hpargs⟩ := hsps hvts
   have hlv : vts.length = vs.length := by rw [← hmap]; simp
   have hrw3 : rows st3 = rows st := rows_eq hd hcu
   have hm : ArgsMatch sps vts := by

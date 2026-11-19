@@ -373,7 +373,7 @@ theorem cxRel_arm {st0 st : St} {defs : List DefI} {E : List (List Nat × Nat ×
     (hinp : ∀ x bd, findB st.binds x = some bd → bd.inp = true → bd.sh = some .ls)
     (henv : ∀ x, findEnv E x = (findB st.binds x).bind fun bd => (bdPs bd).map fun p => (bd.slot, p))
     (hself : ∀ sn sps, self = some (sn, sps) → findDef defs sn = none)
-    (harm : st.arm = true → ∃ sps, self = some (st.cur.name, sps) ∧ sps ≠ [] ∧ sps ≠ [.inp] ∧
+    (harm : st.arm = true → ∃ sps, self = some (st.cur.name, sps) ∧ sps ≠ [] ∧
       sps.map psCode = st.cur.params.tail ∧
       (∀ (i : Nat) (h : i < sps.length), (sps[i] = .inp ↔ FirstLs st.cur.params.tail i)) ∧ ∀ p ∈ sps, p ≠ .sh .nt) :
     CxRel st ⟨defs, E, self⟩ :=
@@ -542,9 +542,7 @@ theorem loop_spec {n : Nat} {ks : List Frame} {st fin : St} {defs : List DefI} {
     (h : StarN n (.tyAtom :: .afterColon :: ks, st) ([], fin)) (ht : st.toks = .k 35 :: .k 17 :: r)
     (hcur : st.cur = DefR.fresh name) (hb : st.binds = []) (hv : st.vals = []) (harm : st.arm = false)
     (hD : CxRel st ⟨defs, [], none⟩) (hnn : ∀ d ∈ st.defs, ShNN d.res ∧ ∀ p ∈ d.params, p.nnt = true)
-    (hfresh : findDef defs name = none)
-    -- TEMPORARY (Par1 finding L): not exactly one state of type `List UInt8`
-    (hL : ∀ f res r', pArrows f r ≠ some ([.lst, res], r')) :
+    (hfresh : findDef defs name = none) :
     ∃ lp st' n', n' < n ∧ StarN n' (.defEnd :: ks, st') ([], fin) ∧
       Star (.tyAtom :: .afterColon :: ks, st) (.defEnd :: ks, st') ∧ st'.vals = [lp] ∧ st'.defs = st.defs ∧
       st'.out = st.out ∧ st'.all = st.all ∧ st'.cur.name = name ∧ st'.cur.loop = true ∧ st'.toks.length < st.toks.length ∧
@@ -675,25 +673,13 @@ theorem loop_spec {n : Nat} {ks : List Frame} {st fin : St} {defs : List DefI} {
     have := hfrS e.1 (mkEnv_mem _ _ _ _ henvS e he).2
     rw [heq] at this; simp [findB, nbBd] at this
   have hname : C.name = name := by rw [hfname, hcur]; rfl
-  have hpsne : stateKinds false ts ≠ [.inp] := by
-    intro e
-    obtain ⟨t, rfl⟩ : ∃ t, ts = [t] := by
-      have := congrArg List.length e; rw [stateKinds_length] at this
-      match ts, this with
-      | [t], _ => exact ⟨t, rfl⟩
-    have : t = .lst := by
-      cases t with
-      | sh s => simp [stateKinds, pickPs] at e
-      | lst => rfl
-    subst this
-    exact hL _ res r1 (hpA _ (Nat.le_refl _))
   have hc1 : CxRel S6 ⟨defs, (nb, 0, .fuel) :: envS.reverse, some (name, stateKinds false ts)⟩ := by
     refine cxRel_arm hD hd6 (fun x bd hx => ?_) (fun x bd hx => ?_) (fun x => ?_) (fun sn sps h => ?_) (fun _ => ?_)
     · rw [hb6] at hx; exact (toBd_typed (pre := [nbBd nb]) (by simp [nbBd]) (by simpa using hx)).1
     · rw [hb6] at hx; exact (toBd_typed (pre := [nbBd nb]) (by simp [nbBd]) (by simpa using hx)).2
     · rw [hb6]; exact env_step nb envS hSe hSn x
     · simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl⟩ := h; exact hfresh
-    · refine ⟨stateKinds false ts, by rw [hc6]; simp [hname], fun e => by rw [e] at hpsl; simp at hpsl, hpsne, ?_, ?_,
+    · refine ⟨stateKinds false ts, by rw [hc6]; simp [hname], fun e => by rw [e] at hpsl; simp at hpsl, ?_, ?_,
         sk_nont false ts (fun t ht => (hts t ht).1)⟩
       · rw [hc6]; simp [hP]
       · intro i hi; rw [hc6]; simp only [hP, List.tail_cons]; exact hinp i hi
