@@ -68,6 +68,14 @@ theorem ev_let {s w : Nat} {v b : Nd} {x env' r : List W} (hv : Ev inp ms v env 
   simp only [pev, bind, Except.bind]
   rw [hv]; simp only [hw, if_true, he]; exact hb
 
+/-- `let x := v; body` with a word value: the body is evaluated with `x` abstract, and the result is a real `let` -/
+theorem ev_letW {s : Nat} {v b : Nd} {x0 : UInt64} {E : UInt64 → List W} {R : UInt64 → List W}
+    (hv : Ev inp ms v env [.w x0]) (he : ∀ x, setSlots env s [.w x] = .ok (E x)) (hb : ∀ x, Ev inp ms b (E x) (R x)) :
+    Ev inp ms (.letE s 1 v b) env (let x := x0; R x) := ev_let hv rfl (he x0) (hb x0)
+theorem ev_letB {s : Nat} {v b : Nd} {x0 : List UInt64} {E : List UInt64 → List W} {R : List UInt64 → List W}
+    (hv : Ev inp ms v env [.b x0]) (he : ∀ x, setSlots env s [.b x] = .ok (E x)) (hb : ∀ x, Ev inp ms b (E x) (R x)) :
+    Ev inp ms (.letE s 1 v b) env (let x := x0; R x) := ev_let hv rfl (he x0) (hb x0)
+
 theorem evL_nil : EvL inp ms [] env [] := rfl
 theorem evL_cons {n : Nd} {r : List Nd} {v vs : List W} (h1 : Ev inp ms n env v) (h2 : EvL inp ms r env vs) :
     EvL inp ms (n :: r) env (v ++ vs) := by
@@ -79,6 +87,16 @@ theorem ev_pair {cs : List Nd} {vs : List W} (h : EvL inp ms cs env vs) : Ev inp
 theorem ev_call {i : Nat} {as : List Nd} {xs r : List W} {F : Fn} (ha : EvL inp ms as env xs) (hF : ms[i]? = some F)
     (hr : F xs = .ok r) : Ev inp ms (.call i as) env r := by
   unfold Ev EvL at *; simp only [pev, bind, Except.bind, ha, hF, hr]; rfl
+
+/-- marker for the `len' x`-fuel form of a loop def's equation -/
+def LenC (p : Prop) : Prop := p
+
+/-- a call whose fuel argument is `len' x` -/
+theorem ev_callL {i : Nat} {as : List Nd} {xs r : List W} {F : Fn} (ha : EvL inp ms as env xs) (hF : ms[i]? = some F)
+    (hr : LenC (F (.w inp.length.toUInt64 :: xs) = .ok r)) : Ev inp ms (.call i (.prim 1 [] :: as)) env r := by
+  unfold Ev EvL LenC at *
+  simp only [pev, pevL, pprim, val, bind, Except.bind, ha, hF]
+  simp only [pure, Except.pure, List.cons_append, List.nil_append, hr]
 
 theorem ev_prim {p : Nat} {as : List Nd} {xs r : List W} (ha : EvL inp ms as env xs) (hr : pprim inp p xs = .ok r) :
     Ev inp ms (.prim p as) env r := by
@@ -104,7 +122,20 @@ theorem pdef_of {d : DefA} {ps r : List W} (h1 : ps.length = d.npw) (h2 : d.npw 
     pdefMean inp ms d ps = .ok r := by
   unfold Ev at hb
   simp only [pdefMean, h1, h2, and_self, if_true, bind, Except.bind, hb, hr]; rfl
+
+/-- synthesis form with the initial environment given explicitly -/
+theorem pdef_env {d : DefA} {ps r r' : List W} (env0 : List W) (h1 : ps.length = d.npw) (h2 : d.npw ≤ d.nslots)
+    (he : ps ++ List.replicate (d.nslots - d.npw) (.w 0) = env0) (hb : Ev inp ms d.body env0 r) (hr : r'.length = d.nres)
+    (hf : r = r') : pdefMean inp ms d ps = .ok r' := by
+  subst he hf; exact pdef_of h1 h2 hb hr
+
+/-- synthesis form: evaluate the body to some `r`, then compare `r` with the Lean value once -/
+theorem pdef_of' {d : DefA} {ps r r' : List W} (h1 : ps.length = d.npw) (h2 : d.npw ≤ d.nslots)
+    (hb : Ev inp ms d.body (ps ++ List.replicate (d.nslots - d.npw) (.w 0)) r) (hr : r.length = d.nres) (hf : r = r') :
+    pdefMean inp ms d ps = .ok r' := hf ▸ pdef_of h1 h2 hb hr
 end
+
+attribute [irreducible] Ev EvL LenC
 
 def encW (x : UInt64) : List W := [.w x]
 def encB (l : List UInt64) : List W := [.b l]
@@ -116,39 +147,51 @@ macro_rules
   | `(tactic| ev_auto) => `(tactic| first
     | exact ev_const _
     | exact ev_loc (Nat.le_of_ble_eq_true rfl) rfl
-    | (refine ev_add ?_ ?_ <;> ev_auto)
-    | (refine ev_sub ?_ ?_ <;> ev_auto)
-    | (refine ev_mul ?_ ?_ <;> ev_auto)
-    | (refine ev_and ?_ ?_ <;> ev_auto)
-    | (refine ev_or ?_ ?_ <;> ev_auto)
-    | (refine ev_shl ?_ ?_ <;> ev_auto)
-    | (refine ev_shr ?_ ?_ <;> ev_auto)
-    | (refine ev_xor ?_ ?_ <;> ev_auto)
-    | (refine ev_ite1 (fun x => [W.w x]) ?_ ?_ ?_ ?_ <;> ev_auto)
-    | (refine ev_ite2 (fun x => [W.w x]) ?_ ?_ ?_ ?_ <;> ev_auto)
-    | (refine ev_ite1 (fun x => [W.b x]) ?_ ?_ ?_ ?_ <;> ev_auto)
-    | (refine ev_ite2 (fun x => [W.b x]) ?_ ?_ ?_ ?_ <;> ev_auto)
-    | (refine ev_rd ?_ <;> ev_auto)
+    | (apply ev_add; (case ha => ev_auto); (case hb => ev_auto))
+    | (apply ev_sub; (case ha => ev_auto); (case hb => ev_auto))
+    | (apply ev_mul; (case ha => ev_auto); (case hb => ev_auto))
+    | (apply ev_and; (case ha => ev_auto); (case hb => ev_auto))
+    | (apply ev_or; (case ha => ev_auto); (case hb => ev_auto))
+    | (apply ev_shl; (case ha => ev_auto); (case hb => ev_auto))
+    | (apply ev_shr; (case ha => ev_auto); (case hb => ev_auto))
+    | (apply ev_xor; (case ha => ev_auto); (case hb => ev_auto))
+    | (apply ev_ite1 (fun x => [W.w x]); (case ha => ev_auto); (case hb => ev_auto); (case ht => ev_auto); (case he => ev_auto))
+    | (apply ev_ite2 (fun x => [W.w x]); (case ha => ev_auto); (case hb => ev_auto); (case ht => ev_auto); (case he => ev_auto))
+    | (apply ev_ite1 (fun x => [W.b x]); (case ha => ev_auto); (case hb => ev_auto); (case ht => ev_auto); (case he => ev_auto))
+    | (apply ev_ite2 (fun x => [W.b x]); (case ha => ev_auto); (case hb => ev_auto); (case ht => ev_auto); (case he => ev_auto))
+    | (apply ev_rd; (case h => ev_auto))
     | exact ev_len
     | exact ev_bnew
-    | (refine ev_bsize ?_ <;> ev_auto)
-    | (refine ev_bget ?_ ?_ <;> ev_auto)
-    | (refine ev_bset ?_ ?_ ?_ <;> ev_auto)
-    | (refine ev_bpush ?_ ?_ <;> ev_auto)
-    | (refine ev_let (x := ?x) (env' := ?env') ?hv ?hw ?he ?hb
+    | (apply ev_bsize; (case h => ev_auto))
+    | (apply ev_bget; (case h => ev_auto); (case hi => ev_auto))
+    | (apply ev_bset; (case h => ev_auto); (case hi => ev_auto); (case hv => ev_auto))
+    | (apply ev_bpush; (case h => ev_auto); (case hv => ev_auto))
+    | (apply ev_letW
+       case hv => ev_auto
+       case he => (intro x; simp [setSlots]; first | rfl | done)
+       case hb => (intro x; ev_auto))
+    | (apply ev_letB
+       case hv => ev_auto
+       case he => (intro x; simp [setSlots]; first | rfl | done)
+       case hb => (intro x; ev_auto))
+    | (apply ev_let
        case hv => ev_auto
        case hw => rfl
        case he => rfl
        case hb => ev_auto)
-    | (refine ev_call (F := ?F) (xs := ?xs) ?ha ?hF ?hr
+    | (apply ev_callL
+       case ha => evl_auto
+       case hF => assumption
+       case hr => apply_assumption)
+    | (apply ev_call
        case ha => evl_auto
        case hF => assumption
        case hr => apply_assumption))
 macro_rules
   | `(tactic| evl_auto) => `(tactic| first
     | exact evL_nil
-    | (refine evL_cons (v := ?v) (vs := ?vs) ?_ ?_
-       · ev_auto
-       · evl_auto))
+    | (apply evL_cons
+       case h1 => ev_auto
+       case h2 => evl_auto))
 
 end NanoMain
