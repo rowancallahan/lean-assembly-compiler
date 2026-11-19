@@ -56,7 +56,7 @@ structure WI (D : List (UInt64 × UInt64)) (p q : UInt64) (d s : Buf) (FL : List
   r5 : bget s 5 ≠ 1
   fs : FS s FL
   sl : s.length < 2 ^ 40
-  Dl : D.length < 2 ^ 30
+  Dl : D.length < 2 ^ 32
 
 theorem bget_n (s : Buf) (n : Nat) (h : n < 2 ^ 64) : bget s n.toUInt64 = s.getD n 0 := by
   simp [bget, u_toNat n h]
@@ -307,7 +307,7 @@ theorem g49_bad {D p q d s FL t r a e} (hI : WI D p q d s (FL ++ [(t, r, a, e)])
 abbrev WSt := Buf × Buf
 
 def wst (x : Buf) (st : WSt) : WSt := g51 x st.1 st.2
-def wlive (st : WSt) : Prop := bget st.2 1 ≠ 1 ∧ bget st.2 5 ≠ 1
+def wlive (st : WSt) : Prop := bget st.2 1 ≠ 1 ∧ bget st.2 5 ≠ 1 ∧ 2 ≤ st.2.length
 def werr (st : WSt) : Prop := bget st.2 1 = 1 ∧ 2 ≤ st.2.length
 
 def wit (x : Buf) : Nat → WSt → WSt
@@ -342,14 +342,14 @@ theorem WReach.bind {x st} {P Q : WSt → Prop} (h : WReach x st P) (hq : ∀ st
       rwa [show j - m + m = j by omega] at this
   · exact ⟨m, hm, .inr he⟩
 
-theorem wlive_of {D p q d s FL} (hI : WI D p q d s FL) : wlive (d, s) := ⟨hI.e1, hI.r5⟩
+theorem wlive_of {D p q d s FL} (hI : WI D p q d s FL) : wlive (d, s) := ⟨hI.e1, hI.r5, by have := hI.fs.1; dsimp only; omega⟩
 theorem werr_of {d s : Buf} (h : bget s 1 = 1) (hl : 2 ≤ s.length) : werr (d, s) := ⟨h, hl⟩
 
 /-- g52 on a live state is one step -/
 theorem g52_step (x : Buf) (st : WSt) (h : wlive st) (n : Nat) :
     g52 (n + 1) (x, st) = g52 n (x, wst x st) := by
   obtain ⟨d, s⟩ := st
-  obtain ⟨h1, h5⟩ := h
+  obtain ⟨h1, h5, -⟩ := h
   simp only [g52]
   rw [if_neg (by simpa using h1), if_neg (by simpa using h5)]
   unfold wst
@@ -370,8 +370,7 @@ theorem g52_err (x : Buf) (st : WSt) (h : werr st) : ∀ n, bget (g52 n (x, st))
   | n + 1 => by obtain ⟨d, s⟩ := st; simp only [g52]; rw [if_pos (by simpa using h.1)]; exact h.1
 
 /-- the bridge: a pass ending without error passed through every `WReach` claim -/
-theorem wreach_run {x st} {P : WSt → Prop} (h : WReach x st P) (N : Nat) (hok : bget (g52 N (x, st)).2.2 1 ≠ 1)
-    (hlen : ∀ m, 2 ≤ (wit x m st).2.length) :
+theorem wreach_run {x st} {P : WSt → Prop} (h : WReach x st P) (N : Nat) (hok : bget (g52 N (x, st)).2.2 1 ≠ 1) :
     ∃ m, m ≤ N ∧ P (wit x m st) ∧ g52 N (x, st) = g52 (N - m) (x, wit x m st) := by
   obtain ⟨m, hm, hp⟩ := h
   by_cases hNm : N < m
@@ -383,7 +382,7 @@ theorem wreach_run {x st} {P : WSt → Prop} (h : WReach x st P) (N : Nat) (hok 
     generalize hw : wit x N st = w at hok
     obtain ⟨d, s⟩ := w
     simp only [g52]
-    exact err_g48 _ (by have := hlen N; rw [hw] at this; exact this)
+    exact err_g48 _ (by have := (hm N hNm).2.2; rw [hw] at this; exact this)
   have e := g52_iter x m (N - m) st hm
   rw [show N - m + m = N by omega] at e
   rcases hp with hp | he
@@ -822,5 +821,190 @@ theorem n_all {X D p q} (hX : X.length < 2 ^ 31) (i : Nat) : NS X D p q i := by
   · intro h; exact absurd h hiX
 termination_by X.length + 3 - i
 decreasing_by all_goals omega
+
+/-! ## defs and the whole pass -/
+
+/-- consecutive defs from cursor i: headers hs, each body (the root's child) of width nres, then ENDDEF -/
+inductive WDefs (X : Buf) : List (UInt64 × UInt64) → Nat → List Nat → List (UInt64 × UInt64) → Nat → Prop
+  | nil {D i} : WDefs X D i [] D i
+  | cons {D i i1 hs D' i'} : tg X i = 20 →
+      W X (D ++ [(tg X (i + 2), tg X (i + 5))]) (tg X (i + 2)) (tg X (i + 5)) true (i + 6) (tg X (i + 5)) i1 →
+      tg X i1 = 21 → WDefs X (D ++ [(tg X (i + 2), tg X (i + 5))]) (i1 + 1) hs D' i' → WDefs X D i (i :: hs) D' i'
+
+/-- g51 with no frames: a def header, the end, or an error -/
+theorem g51_top (x : Buf) {D p q d s} (hI : WI D p q d s []) :
+    g51 x d s = if bget s 0 < bsize x then
+      (if bget x (bget s 0) == 20 then (bpush (bpush d (bget x (bget s 0 + 2))) (bget x (bget s 0 + 5)),
+        g47 (bset (bset (bset s 0 (bget s 0 + 6)) 2 (bget x (bget s 0 + 2))) 3 (bget x (bget s 0 + 5))) 100 1 0 0)
+       else (d, g48 s))
+      else (d, bset s 5 1) := by
+  have h4 : (bget s 4 == 0) = true := by rw [hI.r4]; rfl
+  unfold g51
+  extract_lets i c e h p' q' f' u v
+  rw [if_pos h4]
+
+/-- a new def: npw, nres registers, its (npw, nres) appended to d -/
+theorem WI_def {D p q d s} (hI : WI D p q d s []) (a b : UInt64) (hD : D.length + 1 < 2 ^ 32) :
+    WI (D ++ [(a, b)]) a b (bpush (bpush d a) b) (bset (bset s 2 a) 3 b) [] := by
+  have hs8 := WI_len hI
+  have hb : ∀ i : UInt64, i ≠ 2 → i ≠ 3 → bget (bset (bset s 2 a) 3 b) i = bget s i := fun i h2 h3 => by
+    rw [BufL.bget_bset, if_neg (fun ⟨e, _⟩ => h3 (UInt64.toNat.inj e).symm), BufL.bget_bset,
+      if_neg (fun ⟨e, _⟩ => h2 (UInt64.toNat.inj e).symm)]
+  exact { dl := by simp [bpush, hI.dl]; omega
+          dv := fun j hj => by
+            have e : bpush (bpush d a) b = d ++ [a, b] := by simp [bpush]
+            rw [e]
+            simp only [List.length_append, List.length_singleton] at hj
+            rcases Nat.lt_or_ge j D.length with hjD | hjD
+            · have := hI.dv j hjD
+              simp only [List.getD_eq_getElem?_getD] at this ⊢
+              have q1 : (d ++ [a, b])[2 * j]? = d[2 * j]? := List.getElem?_append_left (by rw [hI.dl]; omega)
+              have q2 : (d ++ [a, b])[2 * j + 1]? = d[2 * j + 1]? := List.getElem?_append_left (by rw [hI.dl]; omega)
+              have q3 : (D ++ [(a, b)])[j]? = D[j]? := List.getElem?_append_left hjD
+              rw [q1, q2, q3]
+              exact this
+            · have : j = D.length := by omega
+              subst this
+              simp only [List.getD_eq_getElem?_getD]
+              have q1 : (d ++ [a, b])[2 * D.length]? = [a, b][0]? := by
+                rw [List.getElem?_append_right (by rw [hI.dl]; omega), hI.dl, Nat.sub_self]
+              have q2 : (d ++ [a, b])[2 * D.length + 1]? = [a, b][1]? := by
+                rw [List.getElem?_append_right (by rw [hI.dl]; omega), hI.dl]; simp
+              have q3 : (D ++ [(a, b)])[D.length]? = some (a, b) := by simp
+              rw [q1, q2, q3]
+              simp
+          e1 := by rw [hb 1 (by decide) (by decide)]; exact hI.e1
+          r2 := by rw [BufL.bget_bset, if_neg (fun ⟨e, _⟩ => by simp at e), BufL.bget_bset, if_pos ⟨rfl, by simp; omega⟩]
+          r3 := by rw [BufL.bget_bset, if_pos ⟨rfl, by rw [BufL.length_bset]; simp; omega⟩]
+          r4 := by rw [hb 4 (by decide) (by decide)]; exact hI.r4
+          r5 := by rw [hb 5 (by decide) (by decide)]; exact hI.r5
+          fs := ⟨by simp [bset]; omega, fun j hj => by simp at hj⟩
+          sl := by simp [bset]; exact hI.sl
+          Dl := by simp; omega }
+
+def DP (X : Buf) (D : List (UInt64 × UInt64)) (d0 : Buf) (i : Nat) (st : WSt) : Prop :=
+  ∃ i1, tg X i = 20 ∧ W X (D ++ [(tg X (i + 2), tg X (i + 5))]) (tg X (i + 2)) (tg X (i + 5)) true (i + 6) (tg X (i + 5)) i1 ∧
+    tg X i1 = 21 ∧ i + 6 < i1 ∧ i1 < X.length ∧ st.1 = bpush (bpush d0 (tg X (i + 2))) (tg X (i + 5)) ∧
+    bget st.2 0 = (i1 + 1).toUInt64 ∧ WI (D ++ [(tg X (i + 2), tg X (i + 5))]) (tg X (i + 2)) (tg X (i + 5)) st.1 st.2 []
+
+theorem werr_g48 {D p q d s FL} (hI : WI D p q d s FL) (d' : Buf) : werr (d', g48 s) :=
+  werr_of (err_g48 _ (by have := WI_len hI; omega)) (by unfold g48; simp [bset]; have := WI_len hI; omega)
+
+/-- any node with an invalid tag (also past the AST): error -/
+theorem n_err {X D p q i} (hi : i < 2 ^ 40) (h1 : tg X i ≠ 1) (h2 : tg X i ≠ 2) (h3 : tg X i ≠ 3) (h4 : tg X i ≠ 4)
+    (h5 : tg X i ≠ 5) (h6 : tg X i ≠ 6) (h8 : tg X i ≠ 8) (h9 : tg X i ≠ 9) (h10 : tg X i ≠ 10) (h11 : tg X i ≠ 11)
+    {d s FL f} (P : WSt → Prop) (hI : WI D p q d s (FL ++ [f])) (hr0 : bget s 0 = i.toUInt64) (hr : f.2.1 ≠ 0) :
+    WReach X (d, s) P := by
+  refine WReach.step (wlive_of hI) ?_
+  unfold wst; dsimp only
+  rw [g51_node X hI hr, hr0, tg_u _ _ (by omega)]
+  unfold gnode
+  rw [if_neg (by simpa using h1), if_neg (by simpa using h2), if_neg (by simpa using h3), if_neg (by simpa using h4),
+    if_neg (by simpa using h5), if_neg (by simpa using h6), if_neg (by simpa using h8), if_neg (by simpa using h9),
+    if_neg (by simpa using h10), if_neg (by simpa using h11)]
+  exact WReach.error (werr_g48 hI d)
+
+/-- one def -/
+theorem w_def {X D p q d s i} (hX : X.length < 2 ^ 31) (hI : WI D p q d s []) (hr0 : bget s 0 = i.toUInt64)
+    (hi : i < X.length) (hD : D.length ≤ i) : WReach X (d, s) (DP X D d i) := by
+  refine WReach.step (wlive_of hI) ?_
+  unfold wst; dsimp only
+  rw [g51_top X hI, hr0, if_pos (by rw [bsize_u, UInt64.lt_iff_toNat_lt, u_toNat _ (by omega), u_toNat _ (by omega)]; exact hi),
+    tg_u _ _ (by omega)]
+  by_cases h20 : ¬ tg X i = 20
+  · rw [if_neg (by simpa using h20)]
+    exact WReach.error (werr_of (err_g48 _ (by have := WI_len hI; omega)) (by unfold g48; simp [bset]; have := WI_len hI; omega))
+  rw [Classical.not_not] at h20
+  rw [if_pos (by simp [h20]), tk2 X i (by omega), tk5 X i (by omega)]
+  have hI0 := WI_def (WI_cur hI (i.toUInt64 + 6)) (tg X (i + 2)) (tg X (i + 5)) (by omega)
+  have hc0 : bget (bset (bset (bset s 0 (i.toUInt64 + 6)) 2 (tg X (i + 2))) 3 (tg X (i + 5))) 0 = (i + 6).toUInt64 := by
+    rw [BufL.bget_bset, if_neg (fun ⟨e, _⟩ => by simp at e), BufL.bget_bset, if_neg (fun ⟨e, _⟩ => by simp at e),
+      cur_set hI, uk6]
+  obtain ⟨hI1, h0⟩ := WI_push hI0 (by simp) 100 1 0 0
+  by_cases hfar : X.length + 3 < i + 6
+  · have t0 : tg X (i + 6) = 0 := by
+      simp [tg, List.getD_eq_getElem?_getD, List.getElem?_eq_none (by omega : X.length ≤ i + 6)]
+    exact n_err (i := i + 6) (by omega) (by simp [t0]) (by simp [t0]) (by simp [t0]) (by simp [t0]) (by simp [t0]) (by simp [t0])
+      (by simp [t0]) (by simp [t0]) (by simp [t0]) (by simp [t0]) _ (FL := []) hI1 (by rw [h0, hc0]) (by decide)
+  refine (n_all hX (i + 6) (by omega) _ _ [] _ hI1 (by rw [h0, hc0]) (by decide) (by simp)).bind ?_
+  rintro ⟨d1, s1⟩ ⟨w, i1, hW, hi1, hi1X, rfl, hc1, -, hI2⟩
+  replace hI2 := WI_fr ((100 : UInt64), (0 : UInt64), w, (0 : UInt64)) hI2 (by simp [vf])
+  refine WReach.step (wlive_of hI2) ?_
+  unfold wst; dsimp only
+  rw [g51_pop X hI2, g50_root X hI2]
+  obtain ⟨hI3, h3⟩ := WI_pop (FL := []) hI2
+  by_cases hq : ¬ w = tg X (i + 5)
+  · rw [if_neg (by simpa using hq)]
+    exact WReach.error (werr_g48 hI3 _)
+  rw [Classical.not_not] at hq
+  subst hq
+  rw [if_pos (by simp), hc1, tg_u _ _ (by omega)]
+  by_cases h21 : ¬ tg X i1 = 21
+  · rw [if_neg (by simpa using h21)]
+    exact WReach.error (werr_g48 hI3 _)
+  rw [Classical.not_not] at h21
+  rw [if_pos (by simp [h21])]
+  have hi1l := tg_lt X i1 (by rw [h21]; decide)
+  exact WReach.done ⟨i1, h20, hW, h21, hi1, hi1l, rfl, by rw [cur_set hI3, uk1], WI_cur hI3 _⟩
+
+def PD (X : Buf) (D : List (UInt64 × UInt64)) (i : Nat) (st : WSt) : Prop :=
+  ∃ hs D' i', WDefs X D i hs D' i' ∧ X.length ≤ i' ∧ bget st.2 1 ≠ 1 ∧ bget st.2 5 = 1
+
+/-- all defs, then the done flag -/
+theorem w_prog {X} (hX : X.length < 2 ^ 31) : ∀ n D p q d s i, X.length - i ≤ n → WI D p q d s [] →
+    bget s 0 = i.toUInt64 → D.length ≤ i → i < 2 ^ 32 → WReach X (d, s) (PD X D i) := by
+  intro n
+  induction n with
+  | zero =>
+    intro D p q d s i hn hI hr0 _ hi
+    refine WReach.step (wlive_of hI) ?_
+    unfold wst; dsimp only
+    rw [g51_top X hI, hr0, if_neg (by rw [bsize_u, UInt64.lt_iff_toNat_lt, u_toNat _ (by omega), u_toNat _ (by omega)]; omega)]
+    have hs8 := WI_len hI
+    exact WReach.done ⟨[], D, i, .nil, by omega,
+      by rw [BufL.bget_bset, if_neg (fun ⟨e, _⟩ => by simp at e)]; exact hI.e1,
+      by rw [BufL.bget_bset, if_pos ⟨rfl, by simp; omega⟩]⟩
+  | succ n ih =>
+    intro D p q d s i hn hI hr0 hD hi
+    by_cases hiX : ¬ i < X.length
+    · refine WReach.step (wlive_of hI) ?_
+      unfold wst; dsimp only
+      rw [g51_top X hI, hr0, if_neg (by rw [bsize_u, UInt64.lt_iff_toNat_lt, u_toNat _ (by omega), u_toNat _ (by omega)]; omega)]
+      have hs8 := WI_len hI
+      exact WReach.done ⟨[], D, i, .nil, by omega,
+        by rw [BufL.bget_bset, if_neg (fun ⟨e, _⟩ => by simp at e)]; exact hI.e1,
+        by rw [BufL.bget_bset, if_pos ⟨rfl, by simp; omega⟩]⟩
+    rw [Classical.not_not] at hiX
+    refine (w_def hX hI hr0 hiX hD).bind ?_
+    rintro ⟨d1, s1⟩ ⟨i1, h20, hW, h21, hi1, hi1l, hd1, hc1, hI1⟩
+    refine (ih _ _ _ d1 s1 (i1 + 1) (by omega) hI1 hc1 (by simp; omega) (by omega)).bind ?_
+    rintro st ⟨hs, D', i', hDs, hi', h1, h5⟩
+    exact WReach.done ⟨i :: hs, D', i', .cons h20 hW h21 hDs, hi', h1, h5⟩
+
+/-- **the width pass on success**: every def of the AST (from word 1) satisfies `W` with body width = nres -/
+theorem g53_ok (x : Buf) (hX : x.length < 2 ^ 31) (h : (g53 x).2 ≠ 0) :
+    ∃ hs D i', WDefs x [] 1 hs D i' ∧ x.length ≤ i' := by
+  let s0 : Buf := bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush bnew 1) 0) 0) 0) 0) 0) 0) 0
+  have hI : WI [] 0 0 bnew s0 [] := {
+    dl := rfl
+    dv := fun j hj => by simp at hj
+    e1 := by decide
+    r2 := rfl
+    r3 := rfl
+    r4 := rfl
+    r5 := by decide
+    fs := ⟨by decide, fun j hj => by simp at hj⟩
+    sl := by decide
+    Dl := by decide }
+  have hR := w_prog hX x.length [] 0 0 bnew s0 1 (by omega) hI rfl (by simp) (by decide)
+  unfold g53 at h
+  dsimp only at h
+  generalize hg : g52 16777216 (x, (bnew, s0)) = r at h
+  obtain ⟨x1, d1, s1⟩ := r
+  dsimp only at h
+  have hok : bget (g52 16777216 (x, (bnew, s0))).2.2 1 ≠ 1 := by
+    rw [hg]; intro e; apply h; simp only at e; rw [if_pos (by simp [e])]; rfl
+  obtain ⟨m, -, ⟨hs, D, i', hD, hi', -⟩, -⟩ := wreach_run hR 16777216 hok
+  exact ⟨hs, D, i', hD, hi'⟩
 
 end GenRef
