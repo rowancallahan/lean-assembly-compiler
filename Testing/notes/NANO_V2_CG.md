@@ -236,3 +236,36 @@ Open hypotheses / notes:
 - Technique: unfold Gen's big defs with `extract_lets` + `clear_value` (zeta blowup otherwise); never close a goal
   by defeq through an unreduced g19/g20/g28 match — rewrite with g19_eq/g20_eq or take the result as a hypothesis;
   g39 must stay a small recursion (g54/g55/g56), its old equation lemmas cost > 7 GB.
+
+### machine bridge (Opus box E, 2026-11-19)
+
+State (nano-v2-src, all no sorry, axioms propext/Classical.choice/Quot.sound, each file < 15 s / < 0.7 GB):
+- `Proof/MachExact.lean`: g26 = `popN`, g32 PUT/BPUSH = `bpushT 6`, BSET = `bsetT`, BNEW = `bnewT 1 q κ` (as `template.map encG`).
+- `Proof/EVX.lean`: multi-word HEAP contract `EVHw C pc len p nl Inv hb R W w S` (S : Env → sp → Hp → Option (words × Hp));
+  `ofEVH`/`toEVH` (HeapEV's EVH = w 1), `mono`/`len`/`wid`, `nilX`, `pairX`, `ifX` (multi-word arms, `ifHeadG`), `letX`.
+- `Proof/EVXT.lean`: TAIL contract `EVHt … w X Hd S` (S returns `.inl` exit words → jumps to X / `.inr` new state →
+  slots 1..p−1, jumps to Hd); `valT`, `contT`, `ifT`, `letT`.
+- `Proof/EVXL.lean`: LOOP: `loopS` (recursion on the fuel), `loop_pass` (induction), `loopX` (the root loop node is an EVHw
+  whose exits land at its end = the epilogue start).
+- `Proof/EVXF.lean`: Fin2 for BIN (`fin2_alu`), Fin1 for RD (`fin1_rd`, input facts `InpOK`).
+- `Proof/EVXC.lean`: global invariant `IG` (`IGOK`: reads x28, x29, code base, memory outside [hb, E0)), `IGp` per def;
+  def contract `DefX C f p q IG hb E0 Sd`; `defX` (proA ++ body ++ epi ⇒ DefX, semantics `defS`: prologue room check,
+  params from `argEnv`); `callX` (args, `jal ra`, DefX callee).
+- `Proof/EVXP.lean`: leaves `leafX`/`constX`/`lenX`/`local1X`/`localX`, closings `fin1X`/`fin2X`/`fin3X`, `bnewX`.
+- `Proof/NdSem.lean`: per-def context `SC`; semantics `sv`/`st`/`svL` on `ParSpec.Nd`; templates `tm`/`tmT`/`tmL` and
+  lengths `lnV`/`lnT`/`lnL` (`tm_len` …); `wd`, `rd`, `wr`.
+- `Proof/NdRun.lean`: **node theorem** `runV`/`runT`/`runL` (mutual, measure 2·sizeOf): OkV e ∧ At C h (tm K e h) ⇒
+  EVHw … (rd e) (wr p e) (wd e) (sv K e); tail version for `tmT`.  Hypotheses bundled in `RunCx` (IGOK, E0 < 2^62,
+  code-base bound, p < 2^20, InpOK, DefX for callees id < nd).
+- Change to HeapEV: `InvOKH` now also takes `s'.b = s.b` (invariants may mention the code base); unused `invOK_of_H` removed.
+
+Side conditions (`OkV`/`OkT`/`OkL`, NdRun.lean) to be discharged from the parser + g53: BIN/IF operands width 1, IF arms
+equal width, LET value width = w and s + w ≤ nslots, LOCAL s + w ≤ nslots, CALL Σ arg widths = callee npw and id < nd,
+PRIM Σ operand widths = arity (and no operands for ISIZE/LEN/BNEW), CONTINUE width = npw − 1, LOOP arms' exit width
+equal, lets ≥ npw, scoping (a later sibling / arm reads none of the earlier operands' lets; the loop arms read none
+of any arm's lets).
+
+NEXT (in order): (B) CG/CT/DefC words = `tm`.map encG with exits patched (uses ExprExact/CallExact/MachExact/Fixup;
+SC from GenRef.Cx: p = K.p.toNat, κ = K.u.toNat, T id = T[id].toNat); def level: `defX` with `runV` on the body,
+DefX for def k from defs < k; program level over A's program theorem; Sail lift with `SimW.sim_starW`
+(`encG_encJ`, `Safe`).  Not yet: the OOM/capacity FAILURE path (S = none by OOM ⇒ machine reaches stub 1/6).
