@@ -72,4 +72,44 @@ theorem Mt.patch {c : List UInt64} {l : List J} {h : Nat} {E : List Nat} {o0 : B
       · rw [(hf (j - h) hjl).2 (by rw [show h + (j - h) = j by omega]; exact hj), List.getElem?_map]
       · rw [List.getElem?_eq_none (by omega), List.getElem?_eq_none (by simp; omega)]
 
+theorem toNat_toU (x : UInt64) : x.toNat.toUInt64 = x := by simp [Nat.toUInt64]
+
+/-- **one def's words**: DefC's output is the def template `.map encG` (body = the AST node at i + 6) -/
+theorem defWords {X : Buf} {u : UInt64} {T : Buf} {i : Nat} {o o' : Buf} {i' : Nat} (hD : DefC X u T i o o' i')
+    {S : SC} {e : Nd} (hS : SK S (dK X u (bpush T (bsize o)) i)) (hnl : S.nl = (tg X (i + 3)).toNat)
+    (nb : NB S.p e) (sa : SerAt X (i + 6) e.ser) (hlen : o'.length < 2 ^ 24) :
+    i' = i + 6 + e.ser.length + 1 ∧ o' = o ++ (defT S e o.length (tg X (i + 5)).toNat).map encG := by
+  obtain ⟨t20, hns, hpn, hq, _, c, i1, E, hcg, t21, rfl, rfl, _⟩ := hD
+  have hp : S.p = (tg X (i + 2)).toNat := hS.p
+  have ns251 : (tg X (i + 3)).toNat < 251 := by rw [UInt64.lt_iff_toNat_lt] at hns; exact hns
+  have q251 : (tg X (i + 5)).toNat < 251 := by rw [UInt64.lt_iff_toNat_lt] at hq; exact hq
+  have pns : (tg X (i + 2)).toNat ≤ (tg X (i + 3)).toNat := by
+    rw [UInt64.lt_iff_toNat_lt, UInt64.toNat_add] at hpn; simp at hpn; omega
+  -- the prologue
+  have ensp : tg X (i + 3) - tg X (i + 2) = (S.nl - S.p).toUInt64 := by
+    apply UInt64.toNat.inj
+    rw [UInt64.toNat_sub_of_le _ _ (by rw [UInt64.le_iff_toNat_le]; omega), hnl, hp, toU_toNat_lt _ (by omega)]
+  -- the epilogue
+  have eq' : ∀ w : Buf, g29 512 (tg X (i + 2)) (tg X (i + 5)) 0 (bpush (bpush w (g11 14 8 8)) (g11 15 8 0)) =
+      w ++ (epi S.p (tg X (i + 5)).toNat).map encG := by
+    intro w
+    have := epi_exact w (tg X (i + 2)).toNat (tg X (i + 5)).toNat (by omega) q251
+    rw [toNat_toU, toNat_toU] at this
+    rw [hp]; exact this
+  rw [eq'] at hlen ⊢
+  simp only [List.length_append, patchR_len, List.length_map] at hlen
+  have hpo : o.length ≤ (proW (tg X (i + 2)) (tg X (i + 3)) o).length := by
+    rw [pi_pro _ _ o]; simp
+  have epro : proW (tg X (i + 2)) (tg X (i + 3)) o = o ++ (proA 1 o.length (S.nl - S.p)).map encG := by
+    unfold proW; rw [ensp]
+    exact pro_exact o _ (by omega) (by omega)
+  rw [epro] at hcg hlen ⊢
+  have lp : (proA 1 o.length (S.nl - S.p)).length = 12 := by simp [proA, pushA, push]
+  simp only [List.length_append, List.length_map, lp] at hcg hlen
+  obtain ⟨e1, m, _⟩ := cgV hS e 1 (i + 6) (o.length + 12) c i1 E nb sa hcg (Nat.le_refl 1) (by omega)
+  have hm := m.patch (o0 := o ++ (proA 1 o.length (S.nl - S.p)).map encG) (by simp [lp]) (by omega)
+  refine ⟨by rw [e1], ?_⟩
+  rw [hm]
+  simp [defT, List.append_assoc]
+
 end Templates
