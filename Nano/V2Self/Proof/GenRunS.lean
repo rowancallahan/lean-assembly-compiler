@@ -105,7 +105,8 @@ theorem gen_runS (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length 
       hs.length (g34 bnew).length (by rw [hPhb]; exact IGs_ok s0 _ E0 hE8 hin) hE62
       (fun s hs => by rw [hs.2.2.2.2.2]; exact hcb)
       (fun s hs => by rw [hPc, hPi]; exact ⟨hs.1, hs.2.1, hs.2.2.1, hin63⟩)
-      (fun s hs i hi => by rw [hs.1, hs.2.1] at *; exact hinw i hi) hc18 (by omega) (by rw [hDd]; exact AD)
+      (fun s hs i hi => by rw [hs.1, hs.2.1] at *; exact hinw i hi) hc18 (by omega) (fk := .cap) (tg := 6)
+      (by decide) (by decide) (fun _ => rfl) (by rw [hDd]; exact AD)
       (fun j hj => hTp j hj)
       (fun k hk => by
         obtain ⟨a3, a4⟩ := hpar k hk

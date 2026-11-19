@@ -5,15 +5,15 @@ import Nano.V2Self.Proof.StartAllS
 namespace Templates
 open CallProbe SimW
 
-theorem start_capX {KL : LayW} {C : List J} {S w hb E0 : Nat} {IG : St → Prop} {Sd : SemDX}
-    (hC : C.all dstOk = true) (h0 : At C 0 (stubJ S)) (hS : At C S (startJ S w)) (hM : CapD KL C w 0 IG hb E0 Sd)
+theorem start_capX {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {S w hb E0 : Nat} {IG : St → Prop} {Sd : SemDX}
+    (hC : C.all dstOk = true) (h0 : At C 0 (stubJ S)) (hS : At C S (startJ S w)) (hM : CapD fk tg KL C w 0 IG hb E0 Sd)
     (s0 : St) (z0 : s0.x 0 = 0) (hhb : hb = (s0.x 12).toNat + 16) (ha8 : (s0.x 12).toNat % 8 = 0)
     (hE0 : ((s0.x 2 >>> 3) <<< 3).toNat = E0) (hroom : hb ≤ E0) (hE62 : E0 < 2 ^ 62)
     (hret : s0.b + 4 * (S + 12) < 2 ^ 64)
-    (hIG : ∀ s1, Entry s0 s1 S → IG s1) (hSd : Sd [] E0 ⟨hb, fun _ => none⟩ = .error .cap)
+    (hIG : ∀ s1, Entry s0 s1 S → IG s1) (hSd : Sd [] E0 ⟨hb, fun _ => none⟩ = .error fk)
     (hlo : KL.lo ≤ (s0.x 12).toNat) (hhi : E0 ≤ KL.hi) (hbase : s0.b = KL.base) (hE8 : E0 % 8 = 0)
     (hCl : S + 32 ≤ C.length) (hC18 : C.length < 2 ^ 18) (hwl : w < C.length) :
-    ∃ s2, SStarX KL C (0, s0) (6, s2) ∧ IG s2 ∧ s2.x 0 = 0 ∧ (∀ j, keepR j = true → s2.x j = s0.x j) ∧ s2.b = s0.b := by
+    ∃ s2, SStarX KL C (0, s0) (tg, s2) ∧ IG s2 ∧ s2.x 0 = 0 ∧ (∀ j, keepR j = true → s2.x j = s0.x j) ∧ s2.b = s0.b := by
   subst hhb hE0
   have l12 := (s0.x 12).toNat_lt
   obtain ⟨s1, h1, en⟩ := start_setupX (K := KL) h0 hS s0 z0 (by omega) hroom ⟨hlo, by omega, ha8⟩

@@ -5,31 +5,32 @@ import Nano.V2Self.Proof.EVSRun
 namespace Templates
 open CallProbe SimW SafeRun ParSpec
 
-theorem CapW.mono {KL : LayW} {C : List J} {pc p nl hb E0 : Nat} {Inv G : St → Prop} {R R' : Nat → Prop} {S : SemWX}
-    (h : CapW KL C pc p nl Inv G hb E0 R S) (hR : ∀ k, R k → R' k) : CapW KL C pc p nl Inv G hb E0 R' S :=
+theorem CapW.mono {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {pc p nl hb E0 : Nat} {Inv G : St → Prop} {R R' : Nat → Prop} {S : SemWX}
+    (h : CapW fk tg KL C pc p nl Inv G hb E0 R S) (hR : ∀ k, R k → R' k) : CapW fk tg KL C pc p nl Inv G hb E0 R' S :=
   ⟨h.cap, fun env env' sp H hk => h.stable env env' sp H (fun k q => hk k (hR k q))⟩
 
-theorem CapT.mono {KL : LayW} {C : List J} {pc p nl hb E0 : Nat} {Inv G : St → Prop} {R R' : Nat → Prop} {S : SemTX}
-    (h : CapT KL C pc p nl Inv G hb E0 R S) (hR : ∀ k, R k → R' k) : CapT KL C pc p nl Inv G hb E0 R' S :=
+theorem CapT.mono {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {pc p nl hb E0 : Nat} {Inv G : St → Prop} {R R' : Nat → Prop} {S : SemTX}
+    (h : CapT fk tg KL C pc p nl Inv G hb E0 R S) (hR : ∀ k, R k → R' k) : CapT fk tg KL C pc p nl Inv G hb E0 R' S :=
   ⟨h.cap, fun env env' sp H hk => h.stable env env' sp H (fun k q => hk k (hR k q))⟩
 
-theorem CapW.pcEq {KL : LayW} {C : List J} {pc pc' p nl hb E0 : Nat} {Inv G : St → Prop} {R : Nat → Prop} {S : SemWX}
-    (h : CapW KL C pc p nl Inv G hb E0 R S) (e : pc = pc') : CapW KL C pc' p nl Inv G hb E0 R S := e ▸ h
-theorem CapT.pcEq {KL : LayW} {C : List J} {pc pc' p nl hb E0 : Nat} {Inv G : St → Prop} {R : Nat → Prop} {S : SemTX}
-    (h : CapT KL C pc p nl Inv G hb E0 R S) (e : pc = pc') : CapT KL C pc' p nl Inv G hb E0 R S := e ▸ h
+theorem CapW.pcEq {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {pc pc' p nl hb E0 : Nat} {Inv G : St → Prop} {R : Nat → Prop} {S : SemWX}
+    (h : CapW fk tg KL C pc p nl Inv G hb E0 R S) (e : pc = pc') : CapW fk tg KL C pc' p nl Inv G hb E0 R S := e ▸ h
+theorem CapT.pcEq {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {pc pc' p nl hb E0 : Nat} {Inv G : St → Prop} {R : Nat → Prop} {S : SemTX}
+    (h : CapT fk tg KL C pc p nl Inv G hb E0 R S) (e : pc = pc') : CapT fk tg KL C pc' p nl Inv G hb E0 R S := e ▸ h
 
-theorem leafF_ne (V : Env → UInt64) (env : Env) (sp : Nat) (H : Hp) : leafF V env sp H ≠ .error .cap := by
-  unfold leafF; split <;> simp
+theorem leafF_ne {fk : Fail} (hr : fk ≠ .room) (V : Env → UInt64) (env : Env) (sp : Nat) (H : Hp) :
+    leafF V env sp H ≠ .error fk := by
+  unfold leafF; split <;> simp; exact fun e => hr e.symm
 
-theorem localF_ne : ∀ (w k : Nat) (env : Env) (sp : Nat) (H : Hp), localF k w env sp H ≠ .error .cap
+theorem localF_ne {fk : Fail} (hr : fk ≠ .room) : ∀ (w k : Nat) (env : Env) (sp : Nat) (H : Hp), localF k w env sp H ≠ .error fk
   | 0, k, env, sp, H => by simp [localF, nilF]
   | w + 1, k, env, sp, H => by
     simp only [localF, pairF]
     intro h
     rcases bind_cap h with h1 | ⟨r, _, h2⟩
-    · exact leafF_ne _ _ _ _ h1
+    · exact leafF_ne hr _ _ _ _ h1
     rcases bind_cap h2 with h3 | ⟨_, _, h4⟩
-    · exact localF_ne w (k + 1) env _ _ h3
+    · exact localF_ne hr w (k + 1) env _ _ h3
     · simp at h4
 
 theorem localF_stable : ∀ (w k : Nat) (env env' : Env) (sp : Nat) (H : Hp), (∀ j, k ≤ j ∧ j < k + w → env j = env' j) →
@@ -43,27 +44,47 @@ theorem localF_stable : ∀ (w k : Nat) (env env' : Env) (sp : Nat) (H : Hp), (�
       rw [localF_stable w (k + 1) env env' _ _ (fun j hj => h j ⟨by omega, by omega⟩)]
     · rfl
 
+/-- BPUSH for any kind: `cap` is its full-buffer exit (word 6), it never fails with `room` -/
+theorem fin2_bpushK {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {q : Nat} {Inv G : St → Prop} {hb E0 pI : Nat}
+    (hk : fk ≠ .stuck) (t6 : fk = .cap → tg = 6) (hI : InvOKH hb pI Inv) (hG : ∀ s, Inv s → G s)
+    (hC : At C q (bpushT 6 q)) (h6 : 6 < C.length) (hC18 : C.length < 2 ^ 18) (he : E0 < 2 ^ 62) :
+    Fin2CapS fk tg KL C q Inv G hb E0 (bpushFF hb) := by
+  cases fk with
+  | cap => rw [t6 rfl]; exact fin2Cap_bpush hI hG hC h6 hC18 he
+  | stuck => exact absurd rfl hk
+  | room =>
+    intro s2 H2 _ _ _ _ _ _ h
+    exfalso; revert h; unfold bpushFF; split
+    · simp
+    · split
+      · exact ofO_ne_cap (by decide) _
+      · simp
+
 /-- the capacity side of the global facts: callees' kinded semantics and their cap contracts -/
-structure CapCx (K : SC) (C : List J) (IG : St → Prop) (E0 : Nat) (fsX : Nat → SemDX) (KL : LayW) : Prop where
+structure CapCx (fk : Fail) (tg : Nat) (K : SC) (C : List J) (IG : St → Prop) (E0 : Nat) (fsX : Nat → SemDX) (KL : LayW) : Prop where
   hf : ∀ n, K.fs n = oD (fsX n)
-  defs : ∀ id, id < K.nd → CapD KL C (K.T id) (K.npwOf id) IG K.hb E0 (fsX id)
+  defs : ∀ id, id < K.nd → CapD fk tg KL C (K.T id) (K.npwOf id) IG K.hb E0 (fsX id)
   h6 : 6 < C.length
+  hk : fk ≠ .stuck
+  nr : fk ≠ .room
+  t6 : fk = .cap → tg = 6
 
 section runCap
-variable {K : SC} {C : List J} {IG : St → Prop} {E0 : Nat} {c28 : UInt64} {KL : LayW} {fsX : Nat → SemDX}
+variable {K : SC} {C : List J} {IG : St → Prop} {E0 : Nat} {c28 : UInt64} {KL : LayW} {fsX : Nat → SemDX} {fk : Fail}
+  {tg : Nat}
 
-theorem ovS (Y : CapCx K C IG E0 fsX KL) (e : Nd) : oW (svF K fsX e) = sv K e := oW_sv K fsX Y.hf e
-theorem otS (Y : CapCx K C IG E0 fsX KL) (e : Nd) : oT (stF K fsX e) = st K e := oT_st K fsX Y.hf e
-theorem olS (Y : CapCx K C IG E0 fsX KL) (cs : List Nd) : oW (svLF K fsX cs) = svL K cs := oW_svL K fsX Y.hf cs
+theorem ovS (Y : CapCx fk tg K C IG E0 fsX KL) (e : Nd) : oW (svF K fsX e) = sv K e := oW_sv K fsX Y.hf e
+theorem otS (Y : CapCx fk tg K C IG E0 fsX KL) (e : Nd) : oT (stF K fsX e) = st K e := oT_st K fsX Y.hf e
+theorem olS (Y : CapCx fk tg K C IG E0 fsX KL) (cs : List Nd) : oW (svLF K fsX cs) = svL K cs := oW_svL K fsX Y.hf cs
 
 mutual
-theorem runVCap (X : RunCxS K C IG E0 c28 KL) (Y : CapCx K C IG E0 fsX KL) :
+theorem runVCap (X : RunCxS K C IG E0 c28 KL) (Y : CapCx fk tg K C IG E0 fsX KL) :
     ∀ (e : Nd) (h : Nat), OkV K e → OpV e → At C h (tm K e h) → h + lnV K e < C.length →
-    CapW KL C h K.p K.nl (IGp IG E0 K.p) IG K.hb E0 (rd e) (svF K fsX e)
+    CapW fk tg KL C h K.p K.nl (IGp IG E0 K.p) IG K.hb E0 (rd e) (svF K fsX e)
   | .const v, h, _, _, _, _ => by
-    simp only [rd, svF]; exact noCap (leafF_ne _) (fun _ _ _ _ _ => rfl)
+    simp only [rd, svF]; exact noCap (leafF_ne Y.nr _) (fun _ _ _ _ _ => rfl)
   | .loc s w, h, _, _, _, _ => by
-    simp only [rd, svF]; exact noCap (localF_ne w s) (fun env env' sp H hk => localF_stable w s env env' sp H hk)
+    simp only [rd, svF]; exact noCap (localF_ne Y.nr w s) (fun env env' sp H hk => localF_stable w s env env' sp H hk)
   | .bin op a b, h, hok, hop, hC, hl => by
     have hS := runVS X (.bin op a b) h hok hop hC hl
     simp only [tm, lnV, rd, wr, wd, sv, svF, OkV, OpV] at hok hop hC hl hS ⊢
@@ -77,7 +98,7 @@ theorem runVCap (X : RunCxS K C IG E0 c28 KL) (Y : CapCx K C IG E0 fsX KL) :
     rw [← ovS Y a, ← ovS Y b, ← oW_pair] at hP
     rw [← ovS Y a] at hA
     have cP := pairCap hA (runVCap X Y a h oa pa ca (by omega)) (runVCap X Y b _ ob pb cb (by omega)) sc
-    exact fin2Cap hP cP (fin2Cap_ofO _)
+    exact fin2Cap hP cP (fin2Cap_ofO Y.hk _)
   | .ite c a b t e, h, hok, hop, hC, hl => by
     simp only [tm, lnV, rd, wr, wd, sv, svF, OkV, OpV] at hok hop hC hl ⊢
     obtain ⟨oa, ob, ot, oe, wa, wb, we, sb, st', se⟩ := hok
@@ -130,32 +151,32 @@ theorem runVCap (X : RunCxS K C IG E0 c28 KL) (Y : CapCx K C IG E0 fsX KL) :
     unfold primT at hU
     unfold arity at wa
     by_cases p13 : pn = 1 ∨ pn = 3
-    · simp only [p13, if_true]; exact noCap (leafF_ne _) (fun _ _ _ _ _ => rfl)
+    · simp only [p13, if_true]; exact noCap (leafF_ne Y.nr _) (fun _ _ _ _ _ => rfl)
     simp only [p13, if_false] at hU ⊢
     by_cases p5 : pn = 5
     · simp only [p5, if_true]
       refine noCap (fun env sp H => ?_) (fun _ _ _ _ _ => rfl)
-      simp only [oneF, bnewF]; intro h; have := map_cap h; cases e : bnewS K.κ env sp H <;> simp [e, ofO] at this
+      simp only [oneF, bnewF]; intro h; have := map_cap h; cases e : bnewS K.κ env sp H <;> simp [e, ofO] at this; exact Y.nr this.symm
     simp only [p5, if_false] at hU ⊢
     have n135 : ¬ (pn = 1 ∨ pn = 3 ∨ pn = 5) := by omega
     simp only [n135, if_false] at wa
     by_cases p26 : pn = 2 ∨ pn = 6
     · simp only [p26, if_true] at wa ⊢
-      exact fin1Cap (hP.wid wa) cP
+      exact fin1Cap (hP.wid wa) cP Y.hk
     simp only [p26, if_false] at wa ⊢
     have n2 : pn ≠ 2 := by omega
     have n6 : pn ≠ 6 := by omega
     simp only [n2, n6, if_false] at hU ⊢
     by_cases p8 : pn = 8
     · simp only [p8, if_true] at wa hU ⊢
-      exact fin3Cap (hP.wid wa) cP
+      exact fin3Cap (hP.wid wa) cP Y.hk
     simp only [p8, if_false] at wa hU ⊢
     unfold primF2F
     by_cases p7 : pn = 7
     · simp only [p7, if_true] at hU ⊢
-      exact fin2Cap (hP.wid wa) cP (fin2Cap_ofO _)
+      exact fin2Cap (hP.wid wa) cP (fin2Cap_ofO Y.hk _)
     · simp only [p7, if_false] at hU ⊢
-      exact fin2Cap (hP.wid wa) cP (fin2Cap_bpush X.hI (fun _ q => q.1) hU Y.h6 X.c18 X.e62)
+      exact fin2Cap (hP.wid wa) cP (fin2_bpushK Y.hk Y.t6 X.hI (fun _ q => q.1) hU Y.h6 X.c18 X.e62)
   | .loop z s, h, hok, hop, hC, hl => by
     simp only [tm, lnV, rd, wr, wd, sv, svF, OkV, OpV] at hok hop hC hl ⊢
     obtain ⟨oz, os, hp, hpn, hWp, hsc⟩ := hok
@@ -170,13 +191,13 @@ theorem runVCap (X : RunCxS K C IG E0 c28 KL) (Y : CapCx K C IG E0 fsX KL) :
     have cZ' := runTCap X Y z _ _ _ _ oz hop.1 (At.cast cZ (show _ = h + 3 by omega)) (by omega) (by omega) (by omega)
     have cS' := runTCap X Y s _ _ _ _ os hop.2 (At.cast cS (show _ = h + 3 + lnT K z + 2 by omega)) (by omega)
       (by omega) (by omega)
-    exact loopWCap X.hI cH (At.cast cD (by omega)) hS cZ' cS' hp hpn hWp hsc X.nl251 (by omega) (by omega) X.c18
+    exact loopWCap X.hI cH (At.cast cD (by omega)) hS cZ' cS' Y.hk hp hpn hWp hsc X.nl251 (by omega) (by omega) X.c18
   | .cont _, _, hok, _, _, _ => by simp only [OkV] at hok
 termination_by e => 2 * sizeOf e
-theorem runTCap (X : RunCxS K C IG E0 c28 KL) (Y : CapCx K C IG E0 fsX KL) :
+theorem runTCap (X : RunCxS K C IG E0 c28 KL) (Y : CapCx fk tg K C IG E0 fsX KL) :
     ∀ (e : Nd) (h Xt Hd w : Nat), OkT K e w → OpV e →
     At C h (tmT K e h Xt Hd) → h + lnT K e ≤ C.length → Xt < C.length → Hd < C.length →
-    CapT KL C h K.p K.nl (IGp IG E0 K.p) IG K.hb E0 (rd e) (stF K fsX e)
+    CapT fk tg KL C h K.p K.nl (IGp IG E0 K.p) IG K.hb E0 (rd e) (stF K fsX e)
   | .ite c a b t e, h, Xt, Hd, w, hok, hop, hC, hl, hX, hH => by
     simp only [tmT, rd, wr, st, stF, OkT, OpV] at hok hop hC ⊢
     simp only [lnT] at hl
@@ -240,9 +261,9 @@ theorem runTCap (X : RunCxS K C IG E0 c28 KL) (Y : CapCx K C IG E0 fsX KL) :
     simp only [tmT, stF, OkT] at hok hC ⊢; simp only [lnT] at hl
     exact exitCap (runVCap X Y _ h hok.1 hop hC.left (by omega))
 termination_by e => 2 * sizeOf e + 1
-theorem runLCap (X : RunCxS K C IG E0 c28 KL) (Y : CapCx K C IG E0 fsX KL) :
+theorem runLCap (X : RunCxS K C IG E0 c28 KL) (Y : CapCx fk tg K C IG E0 fsX KL) :
     ∀ (cs : List Nd) (h : Nat), OkL K cs → OpL cs → At C h (tmL K cs h) → h + lnL K cs < C.length →
-    CapW KL C h K.p K.nl (IGp IG E0 K.p) IG K.hb E0 (rdL cs) (svLF K fsX cs)
+    CapW fk tg KL C h K.p K.nl (IGp IG E0 K.p) IG K.hb E0 (rdL cs) (svLF K fsX cs)
   | [], h, _, _, _, _ => by
     simp only [rdL, svLF]; exact noCap (fun _ _ _ => by simp [nilF]) (fun _ _ _ _ _ => rfl)
   | c :: cs, h, hok, hop, hC, hl => by
