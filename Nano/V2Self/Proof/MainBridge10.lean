@@ -211,4 +211,176 @@ theorem args_distinct {σ : AH} {Kk : List Nat} {x1 yF : List Bool} {Γ : List (
       rw [ua, ua']
       exact hE1.dist _ _ l l' hkk kn kn' (by omega) k0' d0 d0' ex ex'
 
+/-! ## building `ResI` / `Src` by index -/
+
+theorem ownFree_of_pair {u : UInt64} : ∀ {es : List Nat} {v : List W} {vs : List UInt64},
+    (∀ (j : Nat) (l' : List UInt64) (u' : UInt64), es[j]? = some 1 → v[j]? = some (W.b l') → vs[j]? = some u' → u' ≠ u) →
+    OwnFree es v vs u
+  | [], _, _, _ | _ :: _, [], _, _ | _ :: _, _ :: _, [], _ => by simp [OwnFree]
+  | _ :: _, _ :: _, _ :: _, h => ⟨fun e1 l hl => h 0 l _ (by simp [e1]) (by simp [hl]) rfl,
+      ownFree_of_pair fun j l' u' a b c => h (j + 1) l' u' a b c⟩
+
+theorem resI_of_idx {σ : AH} {Kk : List Nat} {F : List Bool} {Γ : List (Option Kd)} {env : List W} {ew : Env} :
+    ∀ {es : List Nat} {v : List W} {vs : List UInt64}, es.length = v.length → v.length = vs.length → (∀ e ∈ es, e ≤ 1) →
+    (∀ (j e : Nat) (x : W) (u : UInt64), es[j]? = some e → v[j]? = some x → vs[j]? = some u → VR σ x u ∧
+      (e = 0 → ∃ y, x = .w y) ∧ (e = 1 → ∀ l, x = .b l → ∀ s ls, Kn Γ s → Kk.getD s 0 ≠ 0 →
+        OwnSpec.dead F s = false → env[s]? = some (.b ls) → ew s ≠ u)) →
+    (∀ (j j' : Nat) (l l' : List UInt64) (u u' : UInt64), j < j' → es[j]? = some 1 → es[j']? = some 1 →
+      v[j]? = some (W.b l) → v[j']? = some (W.b l') → vs[j]? = some u → vs[j']? = some u' → u ≠ u') →
+    ResI σ Kk F Γ env ew es v vs
+  | [], [], [], _, _, _, _, _ => trivial
+  | e :: es, x :: v, u :: vs, l1, l2, h1, hi, hp => by
+    obtain ⟨c1, c2, c3⟩ := hi 0 e x u rfl rfl rfl
+    have he := h1 e (by simp)
+    refine ⟨fun _ => c1, c2, fun e1 l hl => ⟨c3 e1 l hl, ownFree_of_pair fun j l' u' a b c =>
+      Ne.symm (hp 0 (j + 1) l l' u u' (by omega) (by simp [e1]) a (by simp [hl]) b rfl c)⟩, fun h => by omega,
+      resI_of_idx (by simpa using l1) (by simpa using l2) (fun z hz => h1 z (by simp [hz]))
+        (fun j e x u a b c => hi (j + 1) e x u a b c)
+        (fun j j' l l' u u' hj a b c d f g => hp (j + 1) (j' + 1) l l' u u' (by omega) a b c d f g)⟩
+  | [], _ :: _, _, l1, _, _, _, _ | _ :: _, [], _, l1, _, _, _, _ => by simp at l1
+  | [], [], _ :: _, _, l2, _, _, _ | _ :: _, _ :: _, [], _, l2, _, _, _ => by simp at l2
+
+theorem src_of_idx {σ : AH} {Γ : List (Option Kd)} {F F' : List Bool} {env : List W} {ew : Env} :
+    ∀ {es : List Nat} {v : List W} {vs : List UInt64},
+    (∀ (j : Nat) (l : List UInt64) (u : UInt64), es[j]? = some 1 → v[j]? = some (W.b l) → vs[j]? = some u →
+      (σ u.toNat).isSome → ∃ j' l', Kn Γ j' ∧ Cons F F' j' ∧ env[j']? = some (.b l') ∧ ew j' = u) →
+    Src σ Γ F F' env ew es v vs
+  | [], _, _, _ | _ :: _, [], _, _ | _ :: _, _ :: _, [], _ => by simp [Src]
+  | _ :: _, _ :: _, _ :: _, h => ⟨fun e1 l hl hs => h 0 l _ (by simp [e1]) (by simp [hl]) rfl hs,
+      src_of_idx fun j l u a b c => h (j + 1) l u a b c⟩
+
+theorem EnvI.frame {σ σ' : AH} {Kk : List Nat} {F : List Bool} {Γ : List (Option Kd)} {env : List W} {ew : Env}
+    (hE : EnvI σ Kk F Γ env ew)
+    (hf : ∀ s ls, Kn Γ s → Kk.getD s 0 ≠ 0 → OwnSpec.dead F s = false → env[s]? = some (.b ls) →
+      σ' (ew s).toNat = σ (ew s).toNat) : EnvI σ' Kk F Γ env ew where
+  len := hE.len
+  ty := hE.ty
+  val s ks hr := by
+    obtain ⟨y, hy, vr, wd⟩ := hE.val s ks hr
+    refine ⟨y, hy, ?_, wd⟩
+    cases y with
+    | w z => exact vr
+    | b l =>
+      have k0 : Kk.getD s 0 ≠ 0 := fun k0 => by obtain ⟨z, hz⟩ := wd k0; cases hz
+      have live : OwnSpec.dead F s = false := by rcases hr with h | h; exact absurd h k0; exact h
+      show σ' (ew s).toNat = some l; rw [hf s l ks k0 live hy]; exact vr
+  dist := hE.dist
+
+/-! ## the callee contract -/
+
+/-- arguments as a callee with parameter kinds `P` receives them -/
+def ArgsR (σ : AH) (P : List Nat) (args : List W) (ws : List UInt64) : Prop :=
+  args.length = P.length ∧ ws.length = P.length ∧ (∀ (j : Nat) x u, args[j]? = some x → ws[j]? = some u → VR σ x u) ∧
+  (∀ (j : Nat) x, P[j]? = some 0 → args[j]? = some x → ∃ y, x = .w y) ∧
+  (∀ (j j' : Nat) (l l' : List UInt64) (u u' : UInt64), j ≠ j' → P[j]? = some 1 → args[j]? = some (W.b l) →
+    args[j']? = some (W.b l') → ws[j]? = some u → ws[j']? = some u' → u ≠ u')
+
+/-- **a def's contract**: E's def semantics `g` succeeding on related arguments gives `Sem`'s meaning `f` with related
+results; owned results are fresh or owned arguments' blocks, pairwise distinct; other existing blocks are untouched -/
+def DefR (hb κ : Nat) (P R : List Nat) (f : List W → Except Stop (List W))
+    (g : List UInt64 → Nat → Hp → Option (List UInt64 × Hp)) : Prop :=
+  ∀ σ args ws sp H rs H', AHeap hb κ H σ → H.top % 8 = 0 → hb ≤ H.top → ArgsR σ P args ws → g ws sp H = some (rs, H') →
+  ∃ σ' res, f args = .ok res ∧ AHeap hb κ H' σ' ∧ H'.top % 8 = 0 ∧ hb ≤ H'.top ∧ res.length = R.length ∧
+    rs.length = R.length ∧
+    (∀ (j e : Nat) (x : W) (u : UInt64), R[j]? = some e → res[j]? = some x → rs[j]? = some u → VR σ' x u ∧
+      (e = 0 → ∃ y, x = .w y) ∧ (e = 1 → ∀ l, x = .b l → σ u.toNat = none ∨
+        ∃ (j' : Nat) (l' : List UInt64), P[j']? = some 1 ∧ args[j']? = some (W.b l') ∧ ws[j']? = some u)) ∧
+    (∀ (j j' : Nat) (l l' : List UInt64) (u u' : UInt64), j ≠ j' → R[j]? = some 1 → R[j']? = some 1 →
+      res[j]? = some (W.b l) → res[j']? = some (W.b l') → rs[j]? = some u → rs[j']? = some u' → u ≠ u') ∧
+    (∀ a, (σ a).isSome → (∀ (j : Nat) (l : List UInt64) (u : UInt64), P[j]? = some 1 → args[j]? = some (W.b l) →
+      ws[j]? = some u → u.toNat ≠ a) → σ' a = σ a)
+
+/-- every callable def (as O's walk sees it) meets its contract -/
+def CallR (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) : Prop :=
+  ∀ (i : Nat) P R, oc.ps[i]? = some P → oc.rs[i]? = some R → ∃ f, cx.defs[i]? = some f ∧ DefR K.hb K.κ P R f (K.fs i)
+
+/-! ## CALL -/
+
+theorem node_call (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hW : RsW oc) (hCR : CallR cx K oc) (i : Nat)
+    (as : List ParSpec.Nd) (hN : ∀ n ∈ as, NodeOK cx K oc D n) : NodeOK cx K oc D (ParSpec.Nd.call i as) := by
+  intro hC hK2 Γ ks F F' es env ew σ sp H vs H' hT hc hE hA h8 hhb hr hs
+  cases hT with
+  | call tl hd =>
+    simp only [OwnSpec.chk] at hc
+    split at hc
+    · rename_i P R hP hRr
+      obtain ⟨⟨x1, x2⟩, hl, h⟩ := Option.bind_eq_some_iff.1 hc
+      obtain ⟨⟨yF, yE⟩, hf, he⟩ := Option.map_eq_some_iff.1 h
+      simp only [Prod.mk.injEq] at he; obtain ⟨rfl, rfl⟩ := he
+      simp only [sv, callS, Option.bind_eq_some_iff] at hs
+      obtain ⟨⟨ua, H1⟩, hsl, hg⟩ := hs
+      obtain ⟨σ1, v, esN, hesA, evl, hA1, hR1, hE1, hCh1, hM1, h81, hb1, hS1, -, hok⟩ :=
+        lst_ok cx K oc D hC hK2 hW as hN tl hl hE hA h8 hhb hr hsl
+      simp only [List.nil_append] at hesA; subst hesA
+      have hr1 : R2 oc.K x1 := hr.keep (lstA_keep hK2 hW tl _ _ _ _ _ hl (fun _ h => by simp at h)).1
+      obtain ⟨hlP, hfc, hfb⟩ := fin_some hf
+      simp only at hlP hfc hfb
+      have mf := finC_mono _ _ _ _ hfc
+      obtain ⟨f, hfd, hDR⟩ := hCR i P R hP hRr
+      have ln := hR1.len
+      have hok' : ∀ (j e : Nat), x2[j]? = some e → ∃ G, OwnSpec.ok1 G e (OwnSpec.dest (some P) j) = true := by
+        intro j e he; simpa using hok j e he
+      have hlive : ∀ (j e : Nat), x2[j]? = some e → OwnSpec.own e = true → OwnSpec.dead x1 (e / 4 - 1) = false := by
+        intro j e he ho
+        obtain ⟨G, hG⟩ := hok' j e he
+        simp only [OwnSpec.own, Bool.and_eq_true, decide_eq_true_eq, beq_iff_eq] at ho
+        unfold OwnSpec.ok1 at hG; rw [if_neg (by omega), if_neg (by omega), if_pos ho.2] at hG
+        simp only [Bool.and_eq_true, Bool.or_eq_true, beq_iff_eq] at hG
+        rcases hG.1 with hd | hd
+        · exact (finC_own1 _ _ _ _ hfc j e he (by simp [OwnSpec.own, ho.2]; omega) (by simpa using hd)).1
+        · exact live_of_mono mf (finB_own2 0 _ hfb j e he (by simp [OwnSpec.own, ho.2]; omega) (by simpa using hd))
+      have hArgs : ArgsR σ1 P v ua := by
+        refine ⟨by have := ln.1; have := ln.2; omega, by have := ln.1; have := ln.2; omega, fun j x u hv hu => ?_, fun j x hPj hv => ?_,
+          args_distinct hR1 hE1 hr1 hfc hfb hok'⟩
+        · obtain ⟨e, he⟩ := get_of_len ln.1 hv
+          obtain ⟨G, hG⟩ := hok' j e he
+          exact arg_vr hR1 hE1 hr1 he hv hu hG (hlive j e he)
+        · obtain ⟨e, he⟩ := get_of_len ln.1 hv
+          obtain ⟨u, hu⟩ := get_of_len ln.2.symm hv
+          obtain ⟨G, hG⟩ := hok' j e he
+          rw [dest_some hPj] at hG
+          exact ⟨u, arg_word hR1 hE1 he hv hu hG⟩
+      obtain ⟨σ', res, hfres, hA', h8', hb', lres, lrs, hres, hdis, hfr⟩ := hDR σ1 v ua _ H1 vs H' hA1 h81 hb1 hArgs hg
+      have oa : ∀ (j : Nat) (l : List UInt64) (u : UInt64), P[j]? = some 1 → v[j]? = some (W.b l) → ua[j]? = some u →
+          (∀ s ls, Kn Γ s → oc.K.getD s 0 ≠ 0 → OwnSpec.dead yF s = false → env[s]? = some (.b ls) → ew s ≠ u) ∧
+          ((σ u.toNat).isSome → ∃ j' l', Kn Γ j' ∧ Cons F yF j' ∧ env[j']? = some (.b l') ∧ ew j' = u) := by
+        intro j l u hPj hv hu
+        obtain ⟨e, he⟩ := get_of_len ln.1 hv
+        obtain ⟨G, hG⟩ := hok' j e he
+        rw [dest_some hPj] at hG
+        obtain ⟨-, a, b⟩ := own_idx hR1 hE1 hS1 hM1 hfc (dest_some hPj) he hv hu hG
+        exact ⟨a, b⟩
+      have hev : ev cx (ParSpec.Nd.call i as) env = .ok (.inl res) := by
+        simp [ev, evl, hfd, hfres, bind, Except.bind, pure, Except.pure]
+      have hRw := hW R (List.mem_of_getElem? hRr)
+      refine ⟨σ', res, hev, hA', ?_, ?_, ?_, hM1.trans mf, h8', hb', ?_, fun z hz => .inl (hRw z hz)⟩
+      · refine resI_of_idx (by omega) (by omega) hRw (fun j e x u he hx hu => ?_)
+          (fun j j' l l' u u' hj a b c d f g => hdis j j' l l' u u' (by omega) a b c d f g)
+        obtain ⟨c1, c2, c3⟩ := hres j e x u he hx hu
+        refine ⟨c1, c2, fun e1 l hl s ls ks k0 d es' => ?_⟩
+        rcases c3 e1 l hl with hn | ⟨j', l', hPj, hv, hu'⟩
+        · obtain ⟨y, hy, vr, -⟩ := hE1.val s ks (.inr (live_of_mono mf d))
+          rw [es'] at hy; cases hy
+          intro q; simp only [VR] at vr; rw [q, hn] at vr; cases vr
+        · exact (oa j' l' u hPj hv hu').1 s ls ks k0 d es'
+      · refine (hE1.mono mf).frame fun s ls ks k0 d es' => ?_
+        obtain ⟨y, hy, vr, -⟩ := hE1.val s ks (.inr (live_of_mono mf d))
+        rw [es'] at hy; cases hy
+        refine hfr _ (by simp only [VR] at vr; rw [vr]; rfl) fun j l u hPj hv hu q => ?_
+        exact (oa j l u hPj hv hu).1 s ls ks k0 d es' (UInt64.toNat_inj.1 q.symm)
+      · intro a ha hn
+        have e1 := (hCh1.weak mf) a ha hn
+        rw [← e1]
+        refine hfr a (by rw [e1]; exact ha) fun j l u hPj hv hu q => ?_
+        obtain ⟨j', l', kj, cj, ej, wj⟩ := (oa j l u hPj hv hu).2 (by rw [q]; exact ha)
+        exact hn j' l' kj cj ej (by rw [wj, q])
+      · refine src_of_idx fun j l u he hx hu hσ => ?_
+        rcases (hres j 1 (.b l) u he hx hu).2.2 rfl l rfl with hn | ⟨j', l', hPj, hv, hu'⟩
+        · by_cases hx' : ∃ j l', Kn Γ j ∧ Cons F x1 j ∧ env[j]? = some (.b l') ∧ (ew j).toNat = u.toNat
+          · obtain ⟨j, l', a, c, d, e⟩ := hx'; exact ⟨j, l', a, ⟨c.1, mf j c.2⟩, d, UInt64.toNat_inj.1 e⟩
+          · have e2 := hCh1 _ hσ fun t l' kt ct et hq => hx' ⟨t, l', kt, ct, et, hq⟩
+            rw [hn] at e2; rw [← e2] at hσ; cases hσ
+        · exact (oa j' l' u hPj hv hu').2 hσ
+    · cases hc
+
 end NanoMain
