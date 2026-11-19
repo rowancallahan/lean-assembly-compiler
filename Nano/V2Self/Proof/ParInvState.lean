@@ -63,7 +63,7 @@ def FrameArgs (h : Buf) (arena : List RN) : Frame → UInt64 → UInt64 → Prop
   | .mkLoop, _, _ => True
   | .defEnd, _, _ => True
   | .flat n, a, _ => ∃ hu : a.toNat < arena.length, arena[a.toNat]'hu = n
-  | .flatL ns, a, b => b.toNat = ns.length ∧ ∃ ids, KidsR h a ns ids
+  | .flatL ns, a, b => b.toNat = ns.length ∧ ∃ ids, KidsR h a ns ids ∧ ∀ v ∈ ids, v.toNat < arena.length
   | .defClose, _, _ => True
   | .tupRest, _, _ => True
 
