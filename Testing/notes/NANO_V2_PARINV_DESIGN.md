@@ -91,7 +91,14 @@ EXPRESSION REFINEMENT (B, in progress). PUSHED: `Proof/ParRunExpr.lean` — `VT`
   ≥ 4|toks|+8 (DefI facts for F's CxRel.row). Temporary hypothesis `hL` (finding L). `Post` now has `out` (expression runs keep out).
   EVS (Sail-lift safe retrofit, owner's reassignment): P4 `Proof/EVSLoop.lean` (loopXS, loop_passS; needs nl < 251, |C| < 2^18)
   and P5 `Proof/EVSCall.lean` (defXS, callXS; callXS takes the jal target as an Int equation) done; P3 is E's EVSTail.
-  NEXT (B): mirror fix L (drop `hL` and CxRel.self's `sps ≠ [.inp]`); help F at the def level on request.
+  FINDING L CLOSED (C's Par1 fixes L 68d9b63 / M 9dbdffd mirrored, 090518c / ee8afc7): nodeOK tag 11 (single-state CONTINUE
+  checked like a state tuple), mainOK `params.length == 1`; ParInvValRep `lastRow_ok` / `r2C_ok` tag 11; CxRel.self has no
+  temporary conjunct (hcall_self uses `nodeOK_cont1`); loop_spec has no hL.  runrun == B1 (9dbdffd) on 4,817 fuzz + 27 hand: 0 diff.
+  PROGRAM LEVEL DONE (e5f186e): `Proof/ParRunProg.lean` — `loopStep : LoopStep`, `pDef_resLst` / `pDefs_resLst`, `findDef_get`,
+  `findD_last`, and **`accepts_sound (htok : tokens ts = some toks) (hNoL : NoL toks) : ∀ o, Accepts toks o → ∃ p,
+  ParsesProgram ts p ∧ o = serialize p`** = the `sound` premise of `ParInvTop.parserSound_of`.  `NoL` is dead weight since fix M
+  (only threaded through F's LoopStep / defs_spec): drop it there, then here.
+  NEXT (B): drop NoL (with F); C-wide meaning certificate slice ids 14..122 (with G).
 
 ## HANDOFF — parser lead (2026-11-19, keep current)
 Role: review of Layers 2/3; owns def start/accept 60, plainBody 70, afterColon 73, stateTy 74, armsStart 75, FINISH 80,
