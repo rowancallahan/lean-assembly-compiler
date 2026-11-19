@@ -177,7 +177,7 @@ theorem DB_dA {ds : List DefA} (hdb : ∀ d ∈ ds, DB d) (k : Nat) : DB (dA ds 
 and, on any J program holding those templates, every def — main included — runs per its machine-level semantics.
 Widths come from Gen's width pass; the remaining hypotheses are the parser's. -/
 theorem gen_top (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length < 2 ^ 31)
-    (h : g41 c (serialize ds) ≠ []) (hdb : ∀ d ∈ ds, DB d) (h251 : ∀ d ∈ ds, d.npw < 251 ∧ d.nres < 251)
+    (h : g41 c (serialize ds) ≠ []) (hdb : ∀ d ∈ ds, DB d)
     (hb : Nat) (c29 : UInt64) (inp : Nat → UInt64) :
     ∃ hs T o, DefsC (serialize ds) g_999 bnew 1 (g34 bnew) hs T (serialize ds).length o ∧ hs ≠ [] ∧
       g41 c (serialize ds) = g40 16777216 c (startW (bset o 0 (g13 0 0 (bsize o))) (bget T (bsize T - 1))) 0 [] ∧
@@ -186,6 +186,8 @@ theorem gen_top (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length <
         o = g34 bnew ++ (defsJ (pcOf 524288 hb c29 inp T) ds 0 hs.length).map encG ∧
         (∀ j, j < hs.length → tg (serialize ds) (hs.getD j 0 + 2) = (dA ds j).npw.toUInt64 ∧
           tg (serialize ds) (hs.getD j 0 + 5) = (dA ds j).nres.toUInt64 ∧ OpV (dA ds j).body) ∧
+        (∀ j, j < hs.length → (dA ds j).npw < 251 ∧ (dA ds j).nslots < 251 ∧ (dA ds j).nres < 251 ∧
+          (dA ds j).npw ≤ (dA ds j).nslots) ∧
         (∀ j, j < hs.length → (pcOf 524288 hb c29 inp T).T j =
           (g34 bnew).length + (defsJ (pcOf 524288 hb c29 inp T) ds 0 j).length) ∧
         (∀ k, k < hs.length → ScV (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body →
@@ -212,7 +214,7 @@ theorem gen_top (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length <
     simp only [Nat.zero_add] at wc
     obtain ⟨i0, sa0, hWk⟩ := wc
     obtain ⟨_, dnp, dns, _, dnr, dnb⟩ := DB_dA hdb k
-    obtain ⟨p251, q251⟩ := h251_dA h251 k
+    obtain ⟨p251, -, q251, -⟩ := by simpa using cw.2.2.2 k hk
     have hK : WK (scAt (pcOf 524288 hb c29 inp T) ds k) (dD ds (k + 1)) (dA ds k).npw.toUInt64
         (dA ds k).nres.toUInt64 := {
       ep := by show (dA ds k).npw = _; rw [toU_lt _ dnp]
@@ -233,7 +235,7 @@ theorem gen_top (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length <
     have ewd : wd (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body = (dA ds k).nres :=
       ofNat_inj' (by simpa [Nat.toUInt64] using ew) (by omega) (by omega)
     exact ⟨okV_of _ _ wdv hsc, ewd⟩
-  refine ⟨cw.1, by simpa using cw.2.2, cw.2.1, perK, fun C IG E0 c28 hig he hcb hinp hC hpar k hk => ?_⟩
+  refine ⟨cw.1, by simpa using cw.2.2.1, by simpa using cw.2.2.2, cw.2.1, perK, fun C IG E0 c28 hig he hcb hinp hC hpar k hk => ?_⟩
   exact gen_defs_run _ ds C IG E0 c28 hs.length (g34 bnew).length hig he hcb hinp hC cw.2.1
     (fun k' hk' => by
       obtain ⟨hpw', hpn', hsc', hrd'⟩ := hpar k' hk'

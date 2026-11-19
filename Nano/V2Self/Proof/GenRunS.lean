@@ -10,7 +10,7 @@ namespace Templates
 open CallProbe C GenRef ParSpec
 
 theorem gen_runS (KL : SimW.LayW) (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length < 2 ^ 31)
-    (h : g41 c (serialize ds) ≠ []) (hdb : ∀ d ∈ ds, DB d) (h251 : ∀ d ∈ ds, d.npw < 251 ∧ d.nres < 251)
+    (h : g41 c (serialize ds) ≠ []) (hdb : ∀ d ∈ ds, DB d)
     (s0 : St) :
     ∃ hs T o, DefsC (serialize ds) g_999 bnew 1 (g34 bnew) hs T (serialize ds).length o ∧ hs ≠ [] ∧
       (o.length < 2 ^ 24 →
@@ -18,9 +18,7 @@ theorem gen_runS (KL : SimW.LayW) (c : List UInt8) (ds : List DefA) (hXl : (seri
         let D := defsJ P ds 0 hs.length
         let C := stubJ (11 + D.length) ++ D ++ startJ (11 + D.length) (P.T (hs.length - 1))
         g41 c (serialize ds) = g40 16777216 c (C.map encG) 0 [] ∧
-        ((∀ k, k < hs.length → (dA ds k).npw < 2 ^ 20 ∧ (dA ds k).npw ≤ (dA ds k).nslots ∧
-            ScV (scAt P ds k) (dA ds k).body ∧ (∀ j, rd (dA ds k).body j → j < (dA ds k).npw) ∧
-            (dA ds k).nslots < 251) →
+        ((∀ k, k < hs.length → ScV (scAt P ds k) (dA ds k).body ∧ ∀ j, rd (dA ds k).body j → j < (dA ds k).npw) →
          ∀ E0, ((s0.x 2 >>> 3) <<< 3).toNat = E0 → s0.x 0 = 0 → (s0.x 12).toNat % 8 = 0 →
          (s0.x 12).toNat + 16 ≤ E0 → E0 < 2 ^ 62 → s0.b + 4 * C.length < 2 ^ 64 →
          (s0.x 10).toNat + (s0.x 11).toNat < 2 ^ 63 →
@@ -40,10 +38,10 @@ theorem gen_runS (KL : SimW.LayW) (c : List UInt8) (ds : List DefA) (hXl : (seri
            (∀ i, i < N.toNat → lbm s3.m ((s0.x 13).toNat + i) = bs i &&& 255) ∧
            (KL.Ok → KL.W = (C.map encG).map UInt64.toNat → ∀ t, SimW.RelW KL (0, s0) t →
              ∃ n t', Proven.Steps n t t' ∧ SimW.RelW KL (((s0.x 1).toNat - s0.b) / 4, s3) t'))) := by
-  obtain ⟨hs, T, o, hD, hne, hr⟩ := gen_C c ds hXl h hdb h251 ((s0.x 12).toNat + 16) (s0.x 11)
+  obtain ⟨hs, T, o, hD, hne, hr⟩ := gen_C c ds hXl h hdb ((s0.x 12).toNat + 16) (s0.x 11)
     (fun i => lbm s0.m ((s0.x 10).toNat + i))
   refine ⟨hs, T, o, hD, hne, fun hol => ?_⟩
-  obtain ⟨hg, np, nr, hopv, hTp, hpk, -⟩ := hr hol
+  obtain ⟨hg, np, nr, hopv, hbd, hTp, hpk, -⟩ := hr hol
   refine ⟨hg, ?_⟩
   intro hpar E0 hE0 z0 ha8 hroom hE62 hcb hin63 hin vs H' hSd N bs hN hPb hPN hbs hQ hout hlo hhi hbase hc18
     hinw hwO hra
@@ -69,9 +67,10 @@ theorem gen_runS (KL : SimW.LayW) (c : List UInt8) (ds : List DefA) (hXl : (seri
     (fun s hs i hi => by rw [hs.1, hs.2.1] at *; exact hinw i hi) hc18 (by rw [hDd]; exact AD)
     (fun j hj => hTp j hj)
     (fun k hk => by
-      obtain ⟨a1, a2, a3, a4, a5⟩ := hpar k hk
+      obtain ⟨a3, a4⟩ := hpar k hk
       obtain ⟨b1, b2⟩ := hpk k hk a3
-      exact ⟨a1, a2, b1, b2, a4, hopv k hk, a5, (h251_dA h251 k).2⟩) (hs.length - 1) (by omega)
+      obtain ⟨c1, c2, c3, c4⟩ := hbd k hk
+      exact ⟨by omega, c4, b1, b2, a4, hopv k hk, c2, c3⟩) (hs.length - 1) (by omega)
   rw [np, nr] at hM
   have hok : C.all dstOk = true := by
     rw [← hCd]; simp only [List.all_append, stubJ_ok, startJ_ok, Bool.and_true, Bool.true_and]
@@ -96,7 +95,7 @@ theorem gen_runS (KL : SimW.LayW) (c : List UInt8) (ds : List DefA) (hXl : (seri
   refine ⟨s3, h3, r1, r2, r3, r4, r5, r6, fun hK hW t hR => SimW.sim_starX hK ?_ h3 hR⟩
   rw [hW, ← hCd, ← hDd]
   exact words_encJX (prog_good P ds _ _ hs.length (fun k hk => by
-    obtain ⟨_, a2, a3, _, a5⟩ := hpar k hk
-    exact ⟨a5, a2, (h251_dA h251 k).2, a3, hopv k hk⟩))
+    obtain ⟨c1, c2, c3, c4⟩ := hbd k hk
+    exact ⟨c2, c4, c3, (hpar k hk).1, hopv k hk⟩))
 
 end Templates
