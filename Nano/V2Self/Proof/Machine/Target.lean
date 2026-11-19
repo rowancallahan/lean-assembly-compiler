@@ -76,6 +76,8 @@ structure LayOK (M : Machine) (n : Nat) (K : LayW) : Prop where
 
 /-- **the laws a target proves** (per instruction kind, against the generic `Rel`) -/
 structure Laws : Prop where
+  /-- every J instruction is `blockLen` machine words -/
+  enc_len : ∀ j, (T.enc j).length = T.blockLen
   /-- the calling convention's registers, as J registers (a0..a3 = x10..x13, ra = x1, sp = x2) -/
   reg_map : T.reg 1 = T.M.mapping.returnAddress ∧ T.reg 2 = T.M.mapping.workTop ∧
     T.reg 10 = T.M.mapping.inputAddress ∧ T.reg 11 = T.M.mapping.inputLength ∧

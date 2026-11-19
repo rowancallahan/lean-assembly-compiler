@@ -143,6 +143,7 @@ theorem rel_of {K : LayW} {C : List J} {s0 : Proven.St} {p : Nat × CallProbe.St
     exact h.fr a (by unfold wok; omega) (by unfold outB; omega)
 
 theorem rvLaws : rvTarget.Laws where
+  enc_len _ := rfl
   reg_map := ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
   kept_map r hr := by
     left; refine ⟨r, ?_, ?_, rfl, ?_⟩ <;>
