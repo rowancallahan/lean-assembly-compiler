@@ -458,4 +458,56 @@ theorem bindSlots_inpInv : ∀ (g : List (List (List Nat) × TyR)) (u : Bool) (s
       | lst => cases u <;> simp [pickPs]
     | cons y l => simp [List.any_replicate]
 
+
+theorem findD_snoc' (l : List DefR) (d : DefR) (x : List Nat) :
+    findD (l ++ [d]) x = if d.name = x then some l.length else findD l x := by
+  unfold findD
+  rw [List.reverse_append]
+  simp only [List.reverse_cons, List.reverse_nil, List.nil_append, List.singleton_append]
+  rw [List.findIdx?_cons]
+  by_cases hd : d.name = x
+  · simp [hd]
+  · simp only [hd, beq_iff_eq, if_false, Option.map_map]
+    simp only [List.length_append, List.length_singleton]
+    cases hf : List.findIdx? (fun d => d.name == x) l.reverse with
+    | none => simp
+    | some i =>
+      have := (List.findIdx?_eq_some_iff_getElem.mp hf).1
+      simp at this ⊢; omega
+
+theorem findDef_snoc (l : List DefI) (d : DefI) (x : List Nat) :
+    findDef (l ++ [d]) x = (findDef l x).or (if d.name = x then some (l.length, d) else none) := by
+  unfold findDef
+  rw [List.zipIdx_append, List.find?_append]
+  cases hf : l.zipIdx.find? (fun e => e.1.name == x) with
+  | some e => simp
+  | none => by_cases hd : d.name = x <;> simp [hd]
+
+/-- the def table after `defClose`: a fresh row whose spec `DefI` matches -/
+theorem drel_snoc {ds : List DefR} {dis : List DefI} (hD : DRel ds dis) {cur : DefR} {di : DefI} (hfr : findD ds cur.name = none)
+    (hn : di.name = cur.name) (hp : di.params.map psCode = cur.params) (hr : cur.res = some di.res)
+    (hi : ∀ (i : Nat) (h : i < di.params.length), (di.params[i] = .inp ↔ FirstLs cur.params i)) (hnt : ∀ p ∈ di.params, p ≠ .sh .nt) :
+    DRel (ds ++ [cur]) (dis ++ [di]) := by
+  obtain ⟨hl, hf, hrow⟩ := hD
+  have hfr' : findDef dis cur.name = none := by
+    have := hf cur.name; rw [hfr] at this; cases h : findDef dis cur.name <;> simp_all
+  refine ⟨by simp [hl], fun x => ?_, fun x j d' h => ?_⟩
+  · rw [findDef_snoc, findD_snoc', hn]
+    by_cases hx : cur.name = x
+    · subst hx; simp [hfr', hl]
+    · rw [← hf x]; cases findDef dis x <;> simp [hx]
+  · rw [findDef_snoc, hn] at h
+    cases h1 : findDef dis x with
+    | some e =>
+      have h' : findDef dis x = some (j, d') := by rw [h1] at h ⊢; simpa using h
+      obtain ⟨d, hd, r1, r2, r3, r4⟩ := hrow x _ _ h'
+      have hj : j < ds.length := (List.getElem?_eq_some_iff.mp hd).1
+      exact ⟨d, by rw [List.getElem?_append_left hj]; exact hd, r1, r2, r3, r4⟩
+    | none =>
+      rw [h1] at h
+      by_cases hx : cur.name = x
+      · simp [hx] at h; obtain ⟨rfl, rfl⟩ := h
+        refine ⟨cur, by rw [← hl]; simp, hp, hr, hi, hnt⟩
+      · simp [hx] at h
+
 end ParRun
