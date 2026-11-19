@@ -65,6 +65,7 @@ theorem gen_main (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : Parse
     ∃ (C : List J) (pr S : Nat) (T : Buf),
       let P := pcOf 524288 ((s0.x 12).toNat + 16) (s0.x 11) (NanoMain.inpW x) T
       g41 c (serialize p) = g40 16777216 c (C.map encG) 0 [] ∧ C.length < 2 ^ 18 ∧ At C 0 (stubJ S) ∧
+      (∃ w, At C S (startJ S w)) ∧ S + 32 ≤ C.length ∧ (C.map encG).map UInt64.toNat = C.map SimW.encJX ∧
       ∀ (KL : SimW.LayW) E0, ((s0.x 2 >>> 3) <<< 3).toNat = E0 → s0.x 0 = 0 → (s0.x 12).toNat % 8 = 0 →
         2048 ≤ (s0.x 12).toNat →
         (s0.x 12).toNat + 16 ≤ E0 → E0 < 2 ^ 62 → s0.b + 4 * C.length < 2 ^ 64 →
@@ -88,10 +89,11 @@ theorem gen_main (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : Parse
            (KL.Ok → KL.W = (C.map encG).map UInt64.toNat → ∀ t, SimW.RelW KL (0, s0) t →
              ∃ n t', Proven.Steps n t t' ∧ SimW.RelW KL (stubW fk, s2) t')) := by
   have hx11' : (s0.x 11).toNat = x.length := by rw [hx11]; exact NanoMain.toNat_ofNat_lt hxl
-  obtain ⟨hs, T, o, hD, hne, hg, hc18, hst, hrun⟩ := gen_runS c p hXl h hdb s0 (NanoMain.inpW x)
+  obtain ⟨hs, T, o, hD, hne, hg, hc18, hst, hss, h32, hwd, hrun⟩ := gen_runS c p hXl h hdb s0 (NanoMain.inpW x)
     (fun i hi => by rw [hx11'] at hi; exact hxm i hi)
   have hsl := hs_len c p hXl h hdb hD
-  refine ⟨_, 11 + (defsJ (pcOf 524288 ((s0.x 12).toNat + 16) (s0.x 11) (NanoMain.inpW x) T) p 0 hs.length).length + 31, _, T, hg, hc18, hst, ?_⟩
+  refine ⟨_, 11 + (defsJ (pcOf 524288 ((s0.x 12).toNat + 16) (s0.x 11) (NanoMain.inpW x) T) p 0 hs.length).length + 31, _, T, hg, hc18, hst, ⟨_, hss⟩, h32,
+    hwd (fun k hk => (par_sc hP _ k (by omega)).1), ?_⟩
   intro KL E0 hE0 z0 ha8 h2k hroom hE62 hcb hin63 hin hlo hhi hbase hinw
   have hR := hrun KL (fun k hk => par_sc hP _ k (by omega)) E0 hE0 z0 ha8 h2k hroom hE62 hcb hin63 hin hlo hhi hbase hinw
   refine ⟨fun vs H' hSd => ?_, fun fk hk hSd => hR.2 fk hk (by rw [hsl]; exact hSd)⟩

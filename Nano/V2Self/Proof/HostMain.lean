@@ -78,7 +78,7 @@ theorem gen_host (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : Parse
     rw [x10]; show lbm (wordAt s) _ = _; rw [lbm_wordAt]
     unfold gb; rw [hxb i hi]
     apply UInt64.toNat_inj.1; simp
-  obtain ⟨C, pr, S0, T, hg, hc18, hst, hrun⟩ := gen_main c hP Ks hO hK2 hXl h hdb s0 x x11 (by omega) hxm
+  obtain ⟨C, pr, S0, T, hg, hc18, hst, hss, h32, hwd, hrun⟩ := gen_main c hP Ks hO hK2 hXl h hdb s0 x x11 (by omega) hxm
   have hgB : g41 c (serialize p) = (C.map encG).flatMap le4 := by
     have e0 : (0 : UInt64) = UInt64.ofNat 0 := rfl
     rw [hg, e0, g40_bytes c _ (by rw [List.length_map]; omega) 16777216 0 [] (by rw [List.length_map]; omega) (by omega)]
