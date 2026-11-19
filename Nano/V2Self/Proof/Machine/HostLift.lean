@@ -1,5 +1,6 @@
 /- Opus box E: the host lift (Sail `ImplementsCW` ↔ `SimW.RelW`).  `sim_ret`: the final `jalr x0, 0(ra)` as one Sail
 step to any (even) ra — J's pc cannot name a return address below the code. -/
+import Nano.V2Self.Proof.Main.Main
 import Nano.V2Self.Proof.Machine.GenMain
 namespace SimW
 open Proven Nano.V2B

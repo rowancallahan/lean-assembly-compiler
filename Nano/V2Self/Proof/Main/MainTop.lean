@@ -7,6 +7,7 @@
 * `C_correctL : BndStage → GenStage → CompileCorrect riscv compileC` (the parser stage is F's `ParInv.parserSound`,
   the ownership stage O's `OwnP.own_stage`). -/
 import Nano.V2Self.Proof.Parser.MainTyP
+import Nano.V2Self.Proof.Main.Main
 import Nano.V2Self.Proof.Parser.ParInvRun
 import Nano.V2Self.Proof.Own.OwnStage
 import Riscv.Back.Top
@@ -16,6 +17,15 @@ import Nano.V2Self.Proof.Machine.RunsDef
 open LeanRV64D
 namespace NanoMain
 open Proven Proven.Top Proven.Top.Alloc ParSpec
+
+/-- **the end-to-end theorem with progress**: as `compiler_correct`, and the meaning never gets stuck, so for every input
+the emitted code's run shows the program's output, the capacity trap, or (below the work bound) out-of-memory -/
+theorem compiler_correct' (HP : ParStage) (HO : OwnStage) (HB : BndStage) (HG : GenStage) (x : List UInt8) (hx : x.length ≤ 2 ^ 20)
+    (h : mC x ≠ []) :
+    ∃ ts p, LexSpec.Lexes x ts ∧ ParsesProgram ts p ∧ LinearK p ∧ ImplementsC (mC x) (Sem κC p) ∧
+      ∀ inp, Sem κC p inp ≠ .error .stuck := by
+  obtain ⟨ts, p, h1, h2, hl, h3⟩ := compiler_correct HP HO HB HG x hx h
+  exact ⟨ts, p, h1, h2, hl, h3, parsed_not_stuck h2 κC⟩
 
 theorem lexes_det : ∀ {x : List UInt8} {t t' : List UInt64}, LexSpec.Lexes x t → LexSpec.Lexes x t' → t = t'
   | _, _, _, .nil, h => by

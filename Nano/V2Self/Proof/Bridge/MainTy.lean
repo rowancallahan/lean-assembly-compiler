@@ -3,7 +3,7 @@ a well-kinded program never evaluates to `.error .stuck` (only to a value or the
 Kinds: `w` (word) / `b` (buffer).  `Γ : List (Option Kd)` = what each slot is known to hold (`none`: not readable,
 e.g. a let slot before its let, or after a loop iteration).  `S` = the CONTINUE payload kinds allowed here
 (`some sk` in a loop's step arm, else `none`).  Second half (to do): ParSpec's parser only produces well-kinded programs. -/
-import Nano.V2Self.Proof.Main.Main
+import Nano.V2Self.Proof.Main.Sem
 
 namespace NanoMain
 open ParSpec

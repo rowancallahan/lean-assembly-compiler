@@ -841,13 +841,4 @@ theorem parsed_not_stuck {ts : List UInt64} {p : List DefA} (h : ParsesProgram t
   obtain ⟨sigs, hs⟩ := refParse_ty h
   exact sem_ok κ p sigs hs inp
 
-/-- **the end-to-end theorem with progress**: as `compiler_correct`, and the meaning never gets stuck, so for every input
-the emitted code's run shows the program's output, the capacity trap, or (below the work bound) out-of-memory -/
-theorem compiler_correct' (HP : ParStage) (HO : OwnStage) (HB : BndStage) (HG : GenStage) (x : List UInt8) (hx : x.length ≤ 2 ^ 20)
-    (h : mC x ≠ []) :
-    ∃ ts p, LexSpec.Lexes x ts ∧ ParsesProgram ts p ∧ LinearK p ∧ ImplementsC (mC x) (Sem κC p) ∧
-      ∀ inp, Sem κC p inp ≠ .error .stuck := by
-  obtain ⟨ts, p, h1, h2, hl, h3⟩ := compiler_correct HP HO HB HG x hx h
-  exact ⟨ts, p, h1, h2, hl, h3, parsed_not_stuck h2 κC⟩
-
 end NanoMain

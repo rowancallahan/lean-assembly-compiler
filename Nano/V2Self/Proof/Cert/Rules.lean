@@ -3,7 +3,7 @@
 in environment `env` denotes the Lean value `t` (encoded by `Enc`); `DenK`: the same in tail position of a loop's step
 arm (a CONTINUE is discharged by the induction hypothesis); `DenP`: argument lists.  One rule per node kind; the rules
 are applied syntax-directed by the generated scripts (Cert/Tac.lean). -/
-import Nano.V2Self.Proof.Main.Main
+import Nano.V2Self.Proof.Main.Sem
 import Nano.V2Self.Prelude
 
 namespace Cert
