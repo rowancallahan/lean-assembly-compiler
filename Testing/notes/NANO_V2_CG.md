@@ -225,10 +225,18 @@ DONE (2026-11-19, Nano/V2Self/Proof/GenTop.lean, ≈ 4 s, no sorry, axioms prope
   `dsimp` (struct eta)).  Workarounds used: `g35_fun` (equation at function level, RHS = the same source text);
   `m28` (generic matcher equation, applied by `rw [m28 p f]` with explicit p, f); take g19/g20 results as hypotheses.
 
-EXACT NEXT STEP:
-1. Width pass soundness: from (g53 x).2 ≠ 0 derive the width facts the machine step needs (CONTINUE = npw−1, CALL
-   arity = callee npw, arm widths, def body = nres), as a predicate over the same CG derivations (or over the AST).
-2. (box E) CG/DefC → machine.
+DONE (2026-11-19, width pass): Nano/V2Self/Proof/GenWidth.lean (≈ 8 s): width relation `W X D p q top i w i'` /
+`Ws` (CONST 1, LOCAL w, BIN/PRIM operands 1, IF arms equal, LET value = slot width, PAIR Σ, CALL Σargs = callee
+npw and width = callee nres (D = (npw, nres) of the defs so far, callee id < |D|), LOOP only as def body
+(top = true) with both arms = nres, CONTINUE arg + 1 = npw and width nres), `WDefs` (each def: header 20,
+body W of width nres, ENDDEF 21), **`g53_ok`**: |x| < 2^31 ∧ (g53 x).2 ≠ 0 ⇒ ∃ hs D i', WDefs x [] 1 hs D i' ∧ |x| ≤ i'.
+Nano/V2Self/Proof/GenAll.lean: `Sk` (AST spans, `sk_det`), `cg_sk`/`ct_sk`/`cgs_sk`, `w_sk`/`ws_sk`,
+`cg_w_end`/`ct_w_end`/`cgs_ws_end` (CG and W nodes at the same word end at the same word), `chains`, and
+**`gen41_full`**: |x| < 2^31 ∧ g41 c x ≠ [] ⇒ bget x 0 = 2 ∧ ∃ hs T o D, DefsC x g_999 bnew 1 (g34 bnew) hs T |x| o ∧
+WDefs x [] 1 hs D |x| ∧ hs ≠ [] ∧ main (last def) npw 0 / nres 1 ∧ output = g40 … (startW (word 0 patched) main-start).
+
+EXACT NEXT STEP (box E): CG/DefC → machine, using gen41_full; per node, pair CG with W at the same word (cg_w_end).
+Possible extras if E asks: Nat bounds on widths (w ≤ 251·span), D entries = the headers' (npw, nres) by index.
 
 Open hypotheses / notes:
 - Width facts (CONTINUE = npw−1, CALL arity, LOOP arm widths) are NOT in CG; the machine step needs them from the
