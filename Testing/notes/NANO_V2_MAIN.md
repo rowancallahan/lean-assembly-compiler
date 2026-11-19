@@ -167,24 +167,26 @@ OPEN / NEXT (owner order 2026-11-19):
 Gen-side bounds (DB, < 251, < 2^20, serialization < 2^31) are not parser facts: routed to A via owner.
 
 ## HANDOFF — C-wide certificate (F, 2026-11-19, keep current)
-Goal: `Sem κC P_C inp = .ok y → y = C.m inp` (P_C = refParse of C's text, 233 defs, 46 fuel loops, pairs only in Own,
+Goal: `Sem κC P_C inp = .ok y → y = C.m inp` (P_C = refParse of C's text: 234 defs, 46 fuel loops, pairs only in Own,
 `List UInt8` results only in g42/g41/m), then the AST ↔ text link (chunked lexing, MAIN item 3).
-DONE: `Proof/MainPure.lean` — cap-free evaluator `pev` / `pdefMean` / `pmeans` (pushes never fail), `ev_pev`, `sem_pure`
-(accepted `Sem` run = cap-free main's value).  Certificates are EQUATIONS in the pev world, no cap case splits.
-PLAN (per def i, modular in the earlier meanings):
-  `c_i (ms) (h_j : ms[j]? = some F_j) (e_j : ∀ args, F_j (enc args) = .ok (enc (C.f_j args))) … :
-     ∀ args, pdefMean inp ms D_i (enc args) = .ok (enc (C.f_i args))`
-  enc: UInt64 ↦ `.w x`; Nat fuel ↦ `.w n` with the Lean argument `n.toNat`; Buf ↦ `.b l`; pairs flat; the input parameter is
-  dropped (= `inp`); `len' x` needs `inp.length < 2^64`.
-  Pilot (scratch, works): k255 by `rfl`; q0 by `simp [pdefMean, pev, pevL, val, pprim, binop, …]`.
-  For big bodies do NOT simp-unfold (s3 has 40 chained lets, each used ~4 times: zeta blows up).  Use a judgment
-  `Ev n env vs := val (pev inp ms n env) = .ok vs` with syntax-directed rules that BUILD the Lean term: ite c=1 gives
-  `if x == y then a else b` (per value shape: word / buffer), ite c=2 `if x < y …`, letE gives `let x := v; R x`
-  (function metavariable, so sharing is kept), loc by defeq on the concrete env, call by the callee equation, prims by
-  the Prelude functions (`bpush`, `bget`, …).  The built term is then syntactically the Lean def body: close with `rfl`.
-  Tail positions of loop arms need an `Out`-level judgment (inl / CONTINUE payload); loops by the Ex3 induction template
-  (MainCert.lean).  A Python generator (AST dump: scratch `dump.lean` = refParse + `repr body` per def on
-  Testing/nano/v2self/self_S_input.txt) should emit D_i, the statement (types from self_S.lean signatures) and the rule
-  script, in modules of ≤ 5 min.  Slot kinds (word/buffer) can be inferred in the generator to pick the ite rule.
-  Composition: fold the c_i along `pmeans` (list of 233), then `sem_pure`.
-G's certificate HANDOFF was never pushed; nothing beyond MainCert ex1/ex3 exists.
+DONE (pushed, no sorry, axioms propext/Quot.sound):
+* `Proof/MainPure.lean` — cap-free evaluator `pev` / `pdefMean` / `pmeans`, `ev_pev`, `sem_pure` (an accepted `Sem` run is
+  the cap-free main's value).  Certificates are EQUATIONS in the pev world.
+* `Proof/MainCertRules.lean` — `Ev inp ms n env vs` (irreducible) + rules that build the Lean term: bin ops, `ev_ite1/2`
+  (`if x == y` / `if x < y`, any encoding), `ev_letW/B` (result is a real `let`, env given explicitly), `ev_call`,
+  `ev_callL` (fuel = `len' x`, callee equation in `LenC` form), prims, `pdef_env`.  (`ev_auto` tactic exists but is
+  search-based and slow: not used.)
+* `Testing/nano/v2self/gen_cert.py` (+ `ast_dump.lean`, usage in its header) — infers node shapes (word/buffer) and emits
+  EXPLICIT proof terms.  `Proof/MainCertC0..8.lean` (GENERATED, 872 KB, ≤ 22 s each): for 164 plain defs
+  `c<i> : pdefMean inp ms D<i> [args] = .ok [C.f args]` under hypotheses per callee j:
+  `h<j> : ms[j]? = some F<j>`, `e<j> : ∀ args, F<j> [..] = .ok [C.f_j ..]` (Nat fuel a ↦ `a.toNat`), and for loop callees
+  `l<j>` = the same at fuel `.w inp.length.toUInt64` with Lean fuel `len' inp`.
+TODO, in order:
+1. the 46 loop defs: tail-mode judgment (`Out`: value or CONTINUE payload) + induction template (MainCert Ex3.loop);
+   generator support (kind = 1 in the AST dump).
+2. pairs (Own: wide `loc` / `letE` w > 1, `.pair`, results `Buf × Buf`) and the three `List UInt8`-result defs (g42, g41, m:
+   `put` pushes the word, value relation `l.map toUInt8`).
+3. composition: fold all c<i> along `pmeans inp [] P_C` (needs `inp.length < 2^64` for the `l<j>` forms), `sem_pure`.
+4. P_C = refParse of the text (progEq, chunked lexing).
+Skipped ids now (loops, pairs, List results, and their callers): printed by gen_cert.py.
+G's certificate HANDOFF was never pushed; nothing beyond MainCert ex1/ex3 existed.
