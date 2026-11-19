@@ -234,4 +234,58 @@ theorem primcall_spec {N : Nat} {cx : Cx} (hP : ParenH N cx) {n d t : Nat} {ks :
   rw [prim_toNd hinp h4]
   simp [Function.comp_def]
 
+/-! ## the input rule from the deferred validation (`nodeOK`, v209) — prims -/
+theorem inpPair_of : ∀ (ps : List Ps) (vs : List RN), ps.length = vs.length →
+    (∀ (i : Nat) (h1 : i < ps.length) (h2 : i < vs.length), (ps[i] = .inp ↔ vs[i].isInp = true)) → InpPair ps vs
+  | [], [], _, _ => .nil
+  | [], _ :: _, hl, _ => by simp at hl
+  | _ :: _, [], hl, _ => by simp at hl
+  | p :: ps, v :: vs, hl, h =>
+    .cons (h 0 (by simp) (by simp)) (inpPair_of ps vs (by simpa using hl) fun i h1 h2 => h (i + 1) (by simpa using h1) (by simpa using h2))
+
+theorem filter_len0 {ks : List RN} (h : (ks.filter RN.isInp).length = 0) : ∀ k ∈ ks, k.isInp = false := by
+  intro k hk
+  cases hi : k.isInp with
+  | false => rfl
+  | true =>
+    have : k ∈ ks.filter RN.isInp := List.mem_filter.mpr ⟨hk, hi⟩
+    rw [List.length_eq_zero_iff.mp h] at this; cases this
+
+/-- a validated PRIM node satisfies the input rule of its signature: rd / len / len' have the input local as first operand and
+nowhere else, the other prims have no input operand -/
+theorem prim_inpPair {t : Nat} (h1 : 38 < t) (h2 : t < 48) {ps : List Ps} {rs : Sh} (hsig : primSig t = some (t - 38, ps, rs))
+    {ds : List DefR} {b : Nat} {sh : Option Sh} {pe : Bool} {kids : List RN} (hl : kids.length = ps.length)
+    (hok : nodeOK ds (RN.mk 9 (t - 38) b sh pe kids) = true) : InpPair ps kids := by
+  obtain ⟨ps', hsig', _, _, hinpi, _⟩ := prim_sig h1 h2
+  rw [hsig] at hsig'; simp only [Option.some.injEq, Prod.mk.injEq, true_and] at hsig'
+  obtain ⟨rfl, _⟩ := hsig'
+  refine inpPair_of _ _ hl.symm fun i i1 i2 => ?_
+  have hget := hinpi i
+  rw [List.getElem?_eq_getElem i1] at hget
+  simp only [Option.some.injEq] at hget
+  rw [hget]
+  simp only [nodeOK, RN.kids, RN.tag, RN.a, RN.sh] at hok
+  by_cases h4 : t - 38 < 4
+  · by_cases hm : (kids.filter RN.isInp).length = 0
+    · simp [hm, h4] at hok
+    · simp only [hm, if_false, h4, if_true, show ¬ (9 : Nat) = 8 from by decide, show ¬ (9 : Nat) = 6 from by decide,
+        Bool.and_true, Bool.and_eq_true, decide_eq_true_eq] at hok
+      obtain ⟨hm1, hp0⟩ := hok
+      cases kids with
+      | nil => simp at hm
+      | cons k0 r =>
+        simp only at hp0
+        have hr : (r.filter RN.isInp).length = 0 := by
+          simp only [List.filter_cons, hp0, if_true, List.length_cons] at hm1; omega
+        cases i with
+        | zero => simp [h4, hp0]
+        | succ i =>
+          have hi : i < r.length := by simpa using i2
+          have := filter_len0 hr r[i] (List.getElem_mem hi)
+          simp [this]
+  · by_cases hm : (kids.filter RN.isInp).length = 0
+    · have := filter_len0 hm kids[i] (List.getElem_mem i2)
+      simp [this, h4]
+    · simp [hm, h4] at hok
+
 end ParRun

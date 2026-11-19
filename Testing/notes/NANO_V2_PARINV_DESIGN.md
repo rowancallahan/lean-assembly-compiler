@@ -128,10 +128,17 @@ and who owns the St↔Cx relation (binds↔env, rows↔DefI, cur/arm↔self) and
 Ty.s s ⇒ sh = s ∧ ¬isInp (and tag 1 ⇒ Ty.lit); Ty.lit ⇒ sh = uw; Ty.inp ⇒ isInp; "argument i isInp ⇔ parameter i = `.inp`" comes ONLY from the
 deferred validation (`nodeOK` of the CALL node at the next `defs`), so call reflection takes `inpMatch`/nodeOK of the built node as a hypothesis.
 Fuel arguments: argCheck accepts a Nat parameter for sh = nt, a bare numeral (tag 1) or len' (tag 9, a = 1) — a subset of `tyMatch .fuel`.
-NEXT: (1) `args_spec`: `Atoms k st st' m` + `CxRel` ⇒ `pArgs` (B-style: ∀ fuel ≥ bound), with the parenthesised atom as an open-recursion
-hypothesis (post-state: `vals = v :: st.vals`, binds/defs unchanged ⇒ `CxRel` transports; spec `nx` = `st.nx`); then `call_spec` from
-`call_tail`: `argOK` (shape codes) + `CxRel.row` + `inpMatch` (from the deferred `nodeOK`) ⇒ every `tyMatch`, and
-`(callNode …).toNd = .call j (dropInp ps args)` / `.prim p (dropInp …)` via `prim_sig`; (2) machine 43 (v120) and 55 (v126): name lookup on Rep
-(v7_lookup / v8_lookup ↔ findB / findD) and the LOC node — C was asked whether it owns these (no answer yet); (3) machine 63 (v130) with
-`v10_scan` once C bounds `ShapeCode` by h[26]; (4) binders 66–68 ↔ `pBinders`/`bindSlots` (stepF now mirrors H: `assign i sz`).
+* Layer 2 → spec [pushed]: `Proof/ParRunArgs.lean` — `Pushed`, `CxRel.transport`, `ValOK`, `AtomSpec`, `ParenH N cx` (the open-recursion
+  hypothesis on parenthesised atoms: B's expression induction supplies it), `atomSeg_spec`, `ArgsMatch`, `args_spec` (k atom segments =
+  `pArgs` at all large fuels for every parameter list the argument types match).  `Proof/ParRunCallSpec.lean` — `tyMatch_of` (argOK + input
+  rule ⇒ `tyMatch`), `InpPair` / `toNdL_dropInp` (flattener's skip = `dropInp`), `defcall_spec` (CALL of a finished def = `pCallDef`, node
+  `toNd`, type `.s res`), `primcall_spec` (prim application = prim clause of `pApp`; `prim_toNd`), `prim_inpPair` (the prim input rule from
+  `nodeOK` of the built node).  Statement style = B's ty_sound (∀ fuel ≥ F ⇒ `some`); both call theorems take `InpPair` of the built node
+  as a premise (deferred validation) and return the continuation run with the node pushed.
+NEXT: (1) `InpPair di.params kids` for def CALLs from `nodeOK` (`inpMatch d.params false kids`) + a row invariant "the row's first code-ls
+parameter is the DefI's `.inp`, no other" (to be added to `CxRel.row`; F establishes it at the def header; true since fix J); (2) the heads:
+`.prim md` on an id (def call, `findD (rows st)` vs `findDef`: j < |defs| unless self) / prim token ⇒ `pApp` via `defcall_spec` /
+`primcall_spec` — belongs to B's expression induction, lemmas are ready; (3) machine 43 (v120) and 55 (v126): name lookup on Rep
+(v7_lookup / v8_lookup ↔ findB / findD) and the LOC node — C was asked whether it owns these (no answer yet); (4) machine 63 (v130) with
+`v10_scan` once C bounds `ShapeCode` by h[26]; (5) binders 66–68 ↔ `pBinders`/`bindSlots` (stepF mirrors H/J: `assign i sz`).
 
