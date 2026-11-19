@@ -36,8 +36,8 @@ theorem start_run {C : List J} {S w hb E0 : Nat} {IG : St → Prop}
     (fun _ h => absurd h (Nat.not_lt_zero _)) (by rw [en.x31]; omega) hE62 (by rw [en.x1, b1]) (by rw [b1]; exact hret)
     (by rw [en.x31]; exact hSd)
   have b2 : s2.b = s0.b := by rw [Star.b h2, b1]
-  have k12 : s2.x 12 = s0.x 12 := by rw [star_keep hC h2 (Or.inl rfl), en.x12]
-  have k13 : s2.x 13 = s0.x 13 := by rw [star_keep hC h2 (Or.inr rfl), en.x13]
+  have k12 : s2.x 12 = s0.x 12 := by rw [star_keep hC h2 rfl, en.x12]
+  have k13 : s2.x 13 = s0.x 13 := by rw [star_keep hC h2 rfl, en.x13]
   rw [en.x31] at x31; simp only [Nat.mul_zero, Nat.add_zero, Nat.mul_one] at x31
   obtain ⟨_, _, htop, _, _, hHI⟩ := R2
   have hP2 : s2.m (s2.x 31).toNat = vs.getD 0 0 := by
