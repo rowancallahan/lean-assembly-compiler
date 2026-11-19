@@ -122,12 +122,15 @@ ARM output matters.
   * (C) Two environments, with the theorem stated in each over shared definitions. This does not give ONE checked
     theorem. Not acceptable as the final form, but usable during development.
 
-### 2a. Measurement: the Sail-free Nano modules under Lean 4.34.1
-IN PROGRESS. Set-up: a scratch lake project with toolchain 4.34.1 and `Nano/` + `Spec/` copied, building the 231
-modules that have no Sail import in their closure. Interim result: 83 modules built and 8 failed so far
-(Nano.V2Self.Proof.Cert.OutSpec Nano.V2Self.Proof.Machine.EVXP Nano.V2Self.Proof.Parser.ParInv Nano.V2Self.Proof.ParLet Nano.V2Self.Proof.Parser.ParRunFlat Nano.V2Self.Proof.Own.OwnP3 Nano.V2Self.Proof.Parser.ParRunWFStep Nano.V2Self.Proof.Parser.ParRunCInv). The failures so far are elaboration changes in `simp`/term elaboration (e.g. EVXP:
-"Type mismatch: After simplification"), not missing features. The J level (Call, Templates, Expr, Heap, EV*, the
-first 16 of 17 modules) built in 29 s wall. Final numbers will be added when the run completes.
+### 2a. Measurement: the Sail-free Nano modules under Lean 4.34.1 (data for the 4.35 migration)
+Set-up: a scratch lake project with toolchain 4.34.1 and `Nano/` + `Spec/` copied unchanged, building the 231
+modules whose import closure has no Sail model. One `lake build`, 232 jobs, 325 s wall on this box (4 cores).
+**Result: 105 built, 8 failed, the remaining ~118 not attempted** (they depend on a failed one). The failures:
+`Cert.OutSpec`, `Machine.EVXP`, `Parser.ParInv`, `ParLet`, `Parser.ParRunFlat`, `Own.OwnP3`,
+`Parser.ParRunWFStep`, `Parser.ParRunCInv`. Every failure seen is an elaboration/`simp` behaviour change (e.g.
+EVXP: "Type mismatch: After simplification"), none is a missing feature. The J level (Call, Templates, Expr, Heap,
+EV*: 16 of 17) builds unchanged. So the port is many small proof repairs, concentrated in Parser; the true
+failure count is only visible after the first 8 are fixed. This is a lower bound for the 4.35 migration (D).
 
 ## 3. Mapping: J instructions → A64 blocks
 Gen's code is a list of J instructions (`Machine/Call.lean`: addi ld sd jal jalr bgeu alu slli lbu beq bltu srli
