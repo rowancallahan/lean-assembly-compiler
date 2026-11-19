@@ -19,6 +19,7 @@ structure Post (st st' : St) (base : List RN) (v : RN) : Prop where
   all : st'.all = st.all
   toks : st'.toks.length ≤ st.toks.length
   nx : st.nx ≤ st'.nx
+  out : st'.out = st.out
 
 theorem binLoop_inv {m st k st'} (h : stepF (.binLoop m) st = some (k, st')) :
     (k = [] ∧ st' = st ∧ ∀ t r op p, st.toks = .k t :: r → opInfo t = some (op, p) → p < m) ∨
@@ -166,7 +167,7 @@ theorem loop_sound : ∀ n, (∀ n' < n, BinSpec n') → LoopSpec n := by
   rcases binLoop_inv hs with ⟨hk0, hst, hlt⟩ | ⟨t, r, op, p, top, rest', ht, hop, hmp, hv', hpend, rfl, hk⟩
   · -- no operator of precedence ≥ m: the loop returns `a`
     rw [hk0, hst] at h1
-    refine ⟨a, st, n, by omega, ⟨hv, rfl, rfl, rfl, rfl, rfl, Nat.le_refl _, Nat.le_refl _⟩, fun u hu => hu, h1, hlt, hna,
+    refine ⟨a, st, n, by omega, ⟨hv, rfl, rfl, rfl, rfl, rfl, Nat.le_refl _, Nat.le_refl _, rfl⟩, fun u hu => hu, h1, hlt, hna,
       fun hvt => ⟨ta, (ha hvt).1, (ha hvt).2, fun f hf => ?_⟩⟩
     exact pLoop_stop (by omega) hlt
   · rw [hv] at hv'; injection hv' with htop hrest; subst htop hrest
@@ -190,7 +191,7 @@ theorem loop_sound : ∀ n, (∀ n' < n, BinSpec n') → LoopSpec n := by
       obtain ⟨v, st', n', hn', hp, hsub, hrun, hstop, hnv, hspec⟩ := ihL n (by omega) (fun n'' hn'' => IHB n'' (by omega)) m ks _ fin cx _ _ _ h3 rfl
         (CxRel.transport hc rfl rfl rfl rfl) (CxNN.transport hnn rfl rfl rfl) ⟨.uw, rfl, rfl⟩
         (fun _ => ⟨hb, PT_bin _ _ _⟩)
-      refine ⟨v, st', n', by omega, ⟨hp.vals, hp.binds, hp.defs, hp.cur, hp.arm, hp.all, ?_, hp.nx⟩,
+      refine ⟨v, st', n', by omega, ⟨hp.vals, hp.binds, hp.defs, hp.cur, hp.arm, hp.all, ?_, hp.nx, hp.out⟩,
         fun u hu => hsub u (kid_nodes_sub (List.mem_cons_self ..) hu), hrun, hstop, hnv, fun hvt => ?_⟩
       · have := hp.toks; simp [ht, leaf] at this ⊢; omega
       obtain ⟨ty, hty, hpt, hf⟩ := hspec hvt
@@ -233,7 +234,7 @@ theorem loop_sound : ∀ n, (∀ n' < n, BinSpec n') → LoopSpec n := by
       rw [hrows] at hspec
       have hsubb : ∀ u ∈ nodes (RN.mk 3 op 0 (some .uw) false [a, y]), u ∈ nodes v := hsub
       refine ⟨v, st', n', by omega, ⟨hp.vals, by rw [hp.binds, hst3]; exact hp2.binds, by rw [hp.defs, hst3]; exact hp2.defs,
-        by rw [hp.cur, hst3]; exact hp2.cur, by rw [hp.arm, hst3]; exact hp2.arm, by rw [hp.all, hst3]; exact hp2.all, ?_, ?_⟩,
+        by rw [hp.cur, hst3]; exact hp2.cur, by rw [hp.arm, hst3]; exact hp2.arm, by rw [hp.all, hst3]; exact hp2.all, ?_, ?_, by rw [hp.out, hst3]; exact hp2.out⟩,
         fun u hu => hsubb u (kid_nodes_sub (List.mem_cons_self ..) hu), hrun, hstop, hnv, fun hvt => ?_⟩
       · have h1' := hp.toks; have h2' := hp2.toks; rw [hst3] at h1'; simp [ht] at h1' h2' hlt2 ⊢; omega
       · have h1' := hp.nx; have h2' := hp2.nx; rw [hst3] at h1'; simp at h1' h2' ⊢; omega

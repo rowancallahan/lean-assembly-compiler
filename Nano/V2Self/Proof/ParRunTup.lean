@@ -61,7 +61,7 @@ theorem tup_sound : ∀ n, (∀ n' ≤ n, ExprSpec n') → TupSpec n := by
     try simp only at hr hltE
     have l1 : r.length + 1 = stE.toks.length := by simp [hr]
     refine ⟨e, { stE with toks := r }, nE, by omega, ⟨hpE.vals, hpE.binds, hpE.defs, hpE.cur, hpE.arm, hpE.all,
-      by have := hpE.toks; simp; omega, hpE.nx⟩, by simp; omega, h1, hnvE, fun hvt hnt hni => ?_⟩
+      by have := hpE.toks; simp; omega, hpE.nx, hpE.out⟩, by simp; omega, h1, hnvE, fun hvt hnt hni => ?_⟩
     obtain ⟨s, hs, hsnn⟩ := hnvE
     obtain ⟨t, ht, _, hf⟩ := hspE hvt
     refine ⟨s, hs, fun f hf' => ?_⟩
@@ -87,7 +87,7 @@ theorem tup_sound : ∀ n, (∀ n' ≤ n, ExprSpec n') → TupSpec n := by
     have hb2 := hp2.binds; have hd2 := hp2.defs; have hc2 := hp2.cur; have ha2 := hp2.arm; have hl2 := hp2.all
     have ht2 := hp2.toks; have hn2' := hp2.nx
     simp only at hb2 hd2 hc2 ha2 hl2 ht2 hn2' hlt2
-    refine ⟨_, st3, n2, by omega, ⟨by rw [hst3], ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩, ?_, h3, ?_, fun hvt _ _ => ?_⟩
+    refine ⟨_, st3, n2, by omega, ⟨by rw [hst3], ?_, ?_, ?_, ?_, ?_, ?_, ?_, by have := hp2.out; simp only at this; rw [hst3]; simp [this, hpE.out]⟩, ?_, h3, ?_, fun hvt _ _ => ?_⟩
     · rw [hst3]; simp [hb2, hpE.binds]
     · rw [hst3]; simp [hd2, hpE.defs]
     · rw [hst3]; simp [hc2, hpE.cur]

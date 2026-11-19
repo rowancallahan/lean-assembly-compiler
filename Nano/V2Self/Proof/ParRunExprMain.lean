@@ -38,7 +38,7 @@ theorem bin_of {n : Nat} (hP : ∀ n' < n, PrimSpec n') (hL : ∀ n' < n, LoopSp
       (CxNN.transport hnn hp1.binds hp1.defs hp1.cur) hna hta
   have hr : rows st1 = rows st := by simp [rows, hp1.defs, hp1.cur]
   refine ⟨v, st', n', by omega, ⟨hp.vals, by rw [hp.binds, hp1.binds], by rw [hp.defs, hp1.defs], by rw [hp.cur, hp1.cur],
-    by rw [hp.arm, hp1.arm], by rw [hp.all, hp1.all], by have := hp.toks; omega, by have := hp.nx; have := hp1.nx; omega⟩,
+    by rw [hp.arm, hp1.arm], by rw [hp.all, hp1.all], by have := hp.toks; omega, by have := hp.nx; have := hp1.nx; omega, by rw [hp.out, hp1.out]⟩,
     by have := hp.toks; omega, hrun, hstop, hnv, fun hvt => ?_⟩
   rw [hr] at hspec
   obtain ⟨ty, hty, hpt, hf⟩ := hspec hvt
@@ -92,7 +92,7 @@ theorem expr_other {n : Nat} (hP : ∀ n' < n, PrimSpec n') (hL : ∀ n' < n, Lo
     hL n1 (by omega) 0 ks st1 fin cx a st.vals ta h2' hp1.vals (CxRel.transport hc hp1.binds hp1.defs hp1.cur hp1.arm)
       (CxNN.transport hnn hp1.binds hp1.defs hp1.cur) hna hta
   refine ⟨v, st', n', by omega, ⟨hp.vals, by rw [hp.binds, hp1.binds], by rw [hp.defs, hp1.defs], by rw [hp.cur, hp1.cur],
-    by rw [hp.arm, hp1.arm], by rw [hp.all, hp1.all], by have := hp.toks; omega, by have := hp.nx; have := hp1.nx; omega⟩,
+    by rw [hp.arm, hp1.arm], by rw [hp.all, hp1.all], by have := hp.toks; omega, by have := hp.nx; have := hp1.nx; omega, by rw [hp.out, hp1.out]⟩,
     by have := hp.toks; omega, hrun, hstop, hnv, fun hvt => ?_⟩
   rw [hr] at hspec
   obtain ⟨ty, hty, hpt, hf⟩ := hspec hvt
@@ -296,7 +296,7 @@ theorem expr_if {n : Nat} (hB : ∀ n' < n, BinSpec n') (hE : ∀ n' < n, ExprSp
     have l3 : r6.length + 1 = stT.toks.length := by simp [hr6]
     have l0 : st.toks.length = r.length + 1 := by simp [ht]
     simp only at hltA hltB hltT hltE
-    refine ⟨_, stI, nE, by omega, ⟨by rw [hstI], ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩, ?_, hI', by rw [hsI]; exact hstopE,
+    refine ⟨_, stI, nE, by omega, ⟨by rw [hstI], ?_, ?_, ?_, ?_, ?_, ?_, ?_, by rw [hstI]; simp [hpE.out, hpT.out, hpB.out, hpA.out]⟩, ?_, hI', by rw [hsI]; exact hstopE,
       by simpa [RN.sh] using hnE', fun hvt => ?_⟩
     · rw [hstI]; simp [hpE.binds, hpT.binds, hpB.binds, hpA.binds]
     · rw [hstI]; simp [hpE.defs, hpT.defs, hpB.defs, hpA.defs]
@@ -510,7 +510,7 @@ theorem expr_let {n : Nat} (hE : ∀ n' < n, ExprSpec n') {md ks st fin cx x r} 
       have l1 : r2.length + 1 = stV.toks.length := by simp [hr2]
       simp only at hltV hltB
       have hbB := hpB.binds; simp only at hbB
-      refine ⟨_, stL, nB, by omega, ⟨by rw [hstL], ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩, by rw [hsL]; omega, hL', by rw [hsL]; exact hstopB,
+      refine ⟨_, stL, nB, by omega, ⟨by rw [hstL], ?_, ?_, ?_, ?_, ?_, ?_, ?_, by rw [hstL]; simp [hpB.out, hpV.out]⟩, by rw [hsL]; omega, hL', by rw [hsL]; exact hstopB,
         by simpa [RN.sh] using hnvB, fun hvt => ?_⟩
       · rw [hstL]; simp only; rw [hbB, hpV.binds]; simp
       · rw [hstL]; simp [hpB.defs, hpV.defs]
@@ -654,7 +654,7 @@ theorem expr_letpair {n : Nat} (hE : ∀ n' < n, ExprSpec n') {md ks st fin cx x
     have l1 : r2.length + 1 = stV.toks.length := by simp [hr2]
     simp only at hltV hltB
     have hbB := hpB.binds; simp only at hbB
-    refine ⟨_, stL, nB, by omega, ⟨by rw [hstL], ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩, by rw [hsL]; omega, hL', by rw [hsL]; exact hstopB,
+    refine ⟨_, stL, nB, by omega, ⟨by rw [hstL], ?_, ?_, ?_, ?_, ?_, ?_, ?_, by rw [hstL]; simp [hpB.out, hpV.out]⟩, by rw [hsL]; omega, hL', by rw [hsL]; exact hstopB,
       by simpa [RN.sh] using hnvB, fun hvt => ?_⟩
     · rw [hstL]; simp only; rw [hbB, hpV.binds]; simp
     · rw [hstL]; simp [hpB.defs, hpV.defs]

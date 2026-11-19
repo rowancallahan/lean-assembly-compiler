@@ -30,7 +30,7 @@ theorem atomV_run {n : Nat} (hE : ∀ n' < n, ExprSpec n') {st st' : St} {cx : C
     cases he
     obtain ⟨r, v, hlt, hk, hp, hst⟩ := hl.eff
     refine ⟨v, ?_, by rw [hst]; exact hlt, ?_, fun _ => ?_⟩
-    · rw [hst]; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, by simp; omega, Nat.le_refl _⟩
+    · rw [hst]; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, by simp; omega, Nat.le_refl _, rfl⟩
     · cases hl with
       | num ht => simp [leaf] at hst; obtain ⟨_, rfl, _⟩ := hst; exact ⟨.uw, rfl, rfl⟩
       | nil ht => simp [leaf] at hst; obtain ⟨_, rfl, _⟩ := hst; exact ⟨.ls, rfl, rfl⟩
@@ -104,7 +104,7 @@ theorem rows_eq {st st' : St} (hd : st'.defs = st.defs) (hc : st'.cur = st.cur) 
 theorem argsV {N : Nat} (hE : ∀ n' < N, ExprSpec n') {cx : Cx} : ∀ {k m : Nat} {st st' : St}, Atoms k st st' m → m ≤ N →
     CxRel st cx → CxNN st →
     ∃ vs : List RN, vs.length = k ∧ st'.vals = vs.reverse ++ st.vals ∧ st'.binds = st.binds ∧ st'.defs = st.defs ∧ st'.cur = st.cur ∧
-      st'.arm = st.arm ∧ st'.all = st.all ∧ st'.toks.length ≤ st.toks.length ∧ st.nx ≤ st'.nx ∧ (∀ v ∈ vs, ShNN v.sh) ∧
+      st'.arm = st.arm ∧ st'.all = st.all ∧ st'.out = st.out ∧ st'.toks.length ≤ st.toks.length ∧ st.nx ≤ st'.nx ∧ (∀ v ∈ vs, ShNN v.sh) ∧
       ((∀ v ∈ vs, VT (rows st) v) → ∃ vts : List (RN × Ty), vts.map (·.1) = vs ∧
         (∀ p ∈ vts, TyRel p.1 p.2 ∧ p.2 ≠ .bot ∧ (p.1.tag = 9 → p.1.a = 1 → p.2 = .s .nt)) ∧
         ∀ ps, ArgsMatch ps vts → ∀ f, 4 * st.toks.length + 2 ≤ f →
@@ -113,7 +113,7 @@ theorem argsV {N : Nat} (hE : ∀ n' < N, ExprSpec n') {cx : Cx} : ∀ {k m : Na
   induction h with
   | nil st =>
     intro _ _ _
-    refine ⟨[], rfl, rfl, rfl, rfl, rfl, rfl, rfl, Nat.le_refl _, Nat.le_refl _, fun v hv => absurd hv (by simp), fun _ => ?_⟩
+    refine ⟨[], rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, Nat.le_refl _, Nat.le_refl _, fun v hv => absurd hv (by simp), fun _ => ?_⟩
     refine ⟨[], rfl, fun p hp => absurd hp (by simp), fun ps hps f hf => ?_⟩
     cases hps
     obtain ⟨g, rfl⟩ : ∃ g, f = g + 1 := ⟨f - 1, by omega⟩
@@ -123,10 +123,10 @@ theorem argsV {N : Nat} (hE : ∀ n' < N, ExprSpec n') {cx : Cx} : ∀ {k m : Na
     obtain ⟨v, hpo, hlt, hsh, hsp⟩ := atomV_run (fun k hk => hE k (by omega)) ha hc hnn
     have hc1 := CxRel.transport hc hpo.binds hpo.defs hpo.cur hpo.arm
     have hnn1 := CxNN.transport hnn hpo.binds hpo.defs hpo.cur
-    obtain ⟨vs, hlen, hvals, hb, hd, hcu, harm, hall, htk, hnx, hshs, hsps⟩ := ih (by omega) hc1 hnn1
+    obtain ⟨vs, hlen, hvals, hb, hd, hcu, harm, hall, hout, htk, hnx, hshs, hsps⟩ := ih (by omega) hc1 hnn1
     have hrows := rows_eq hpo.defs hpo.cur
     refine ⟨v :: vs, by simp [hlen], by rw [hvals, hpo.vals]; simp, hb.trans hpo.binds, hd.trans hpo.defs, hcu.trans hpo.cur,
-      harm.trans hpo.arm, hall.trans hpo.all, by omega, Nat.le_trans hpo.nx hnx, ?_, fun hvt => ?_⟩
+      harm.trans hpo.arm, hall.trans hpo.all, hout.trans hpo.out, by omega, Nat.le_trans hpo.nx hnx, ?_, fun hvt => ?_⟩
     · intro u hu
       rcases List.mem_cons.mp hu with rfl | hu
       · exact hsh
@@ -166,7 +166,7 @@ theorem hcall_prim {n : Nat} (hE : ∀ n' < n, ExprSpec n') {md : Nat} {ks : Lis
   have hrun' : StarN n0 (.args (.pr (t - 38)) (primAr (t - 38)) :: .mkCallN (.pr (t - 38)) st.vals.length :: ks,
       { st with toks := r }) ([], fin) := hrun
   obtain ⟨st1, m, n1, hat, rfl, hk⟩ := args_run _ hrun'
-  obtain ⟨vs, hlen, hvals, hb, hd, hcu, harm, hall', htk, hnx, hshs, hsps⟩ :=
+  obtain ⟨vs, hlen, hvals, hb, hd, hcu, harm, hall', hout', htk, hnx, hshs, hsps⟩ :=
     argsV (N := m + n1 + primAr (t - 38) + 1) (fun k hk => hE k (by omega)) hat (by omega)
       (CxRel.transport hc rfl rfl rfl rfl) (CxNN.transport hnn rfl rfl rfl)
   obtain ⟨hall, nd, n', hnode, heq, hfin⟩ :=
@@ -176,7 +176,7 @@ theorem hcall_prim {n : Nat} (hE : ∀ n' < n, ExprSpec n') {md : Nat} {ks : Lis
   refine ⟨RN.mk 9 (t - 38) 0 (some (primRes (t - 38))) false vs,
     { st1 with vals := RN.mk 9 (t - 38) 0 (some (primRes (t - 38))) false vs :: st.vals,
                arena := st1.arena ++ [RN.mk 9 (t - 38) 0 (some (primRes (t - 38))) false vs] },
-    n', by omega, ⟨rfl, hb, hd, hcu, harm, hall', by rw [ht]; simp at htk ⊢; omega, hnx⟩,
+    n', by omega, ⟨rfl, hb, hd, hcu, harm, hall', by rw [ht]; simp at htk ⊢; omega, hnx, hout'⟩,
     by rw [ht]; simp at htk ⊢; omega, hfin, ⟨_, rfl, primRes_nnt _⟩, fun hvt => ?_⟩
   obtain ⟨vts, hmap, hfacts, hpargs⟩ := hsps hvt.kids
   have hlv : vts.length = vs.length := by rw [← hmap]; simp
@@ -289,7 +289,7 @@ theorem hcall_def {n : Nat} (hE : ∀ n' < n, ExprSpec n') {md : Nat} {ks : List
   have hrun' : StarN n0 (.args (.df j') di.params.length :: .mkCallN (.df j') st.vals.length :: ks, { st with toks := r }) ([], fin) := by
     rw [← har]; exact hrun
   obtain ⟨st1, m, n1, hat, rfl, hk⟩ := args_run _ hrun'
-  obtain ⟨vs, hlen, hvals, hbb, hd, hcu, harm, hall', htk, hnx, hshs, hsps⟩ :=
+  obtain ⟨vs, hlen, hvals, hbb, hd, hcu, harm, hall', hout', htk, hnx, hshs, hsps⟩ :=
     argsV (N := m + n1 + di.params.length + 1) (fun k hk => hE k (by omega)) hat (by omega)
       (CxRel.transport hc rfl rfl rfl rfl) (CxNN.transport hnn rfl rfl rfl)
   have hrows1 : (rows st1)[j']? = some dR := by rw [rows_eq hd hcu]; exact hrows
@@ -300,7 +300,7 @@ theorem hcall_def {n : Nat} (hE : ∀ n' < n, ExprSpec n') {md : Nat} {ks : List
   have hmemR : dR ∈ rows st := List.mem_of_getElem? hrows
   refine ⟨RN.mk 8 j' vs.length dR.res false vs,
     { st1 with vals := RN.mk 8 j' vs.length dR.res false vs :: st.vals, arena := st1.arena ++ [RN.mk 8 j' vs.length dR.res false vs] },
-    n', by omega, ⟨rfl, hbb, hd, hcu, harm, hall', by rw [ht]; simp at htk ⊢; omega, hnx⟩,
+    n', by omega, ⟨rfl, hbb, hd, hcu, harm, hall', by rw [ht]; simp at htk ⊢; omega, hnx, hout'⟩,
     by rw [ht]; simp at htk ⊢; omega, hfin, (hnn.2 _ hmemR).1, fun hvt => ?_⟩
   obtain ⟨vts, hmap, hfacts, hpargs⟩ := hsps hvt.kids
   have hlv : vts.length = vs.length := by rw [← hmap]; simp

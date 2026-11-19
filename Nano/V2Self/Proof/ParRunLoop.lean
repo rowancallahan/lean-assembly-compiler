@@ -361,4 +361,397 @@ theorem toBd_typed {env : List (List Nat × Nat × Ps)} {pre : List Bd} (hpre : 
     refine ⟨rfl, fun hi => ?_⟩
     cases p <;> simp_all [toBd, psCode]
 
+theorem eraseDups_of_nodup {α : Type} [BEq α] [LawfulBEq α] : ∀ {l : List α}, l.Nodup → l.eraseDups = l
+  | [], _ => rfl
+  | a :: as, h => by
+    rw [List.eraseDups_cons]
+    obtain ⟨ha, has⟩ := List.nodup_cons.mp h
+    have hf : as.filter (fun b => !b == a) = as := by
+      rw [List.filter_eq_self]; intro b hb; simp only [Bool.not_eq_eq_eq_not, Bool.not_true, beq_eq_false_iff_ne, ne_eq]
+      intro e; subst e; exact ha hb
+    rw [hf, eraseDups_of_nodup has]
+
+theorem armsStart_inv {st k st'} (h : stepF .armsStart st = some (k, st')) :
+    st.ty ≠ some .nt ∧ ∃ r, st.toks = .k 18 :: .num 0 :: .k 15 :: r ∧ k = [.armBind false 1] ∧
+      st' = { st with cur := { st.cur with res := st.ty }, nx := st.cur.npw, toks := r, sslot := 1 } := by
+  simp only [stepF] at h
+  split at h
+  · cases h
+  · rename_i hty
+    refine ⟨hty, ?_⟩
+    split at h
+    · rename_i r ht
+      simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl⟩ := h
+      exact ⟨r, ht, rfl, rfl⟩
+    · cases h
+
+theorem zeroDone_inv {st k st'} (h : stepF .zeroDone st = some (k, st')) :
+    ∃ z rest nb r, st.vals = z :: rest ∧ z.sh = st.cur.res ∧ st.toks = .k 18 :: .id nb :: .k 10 :: .num 1 :: .k 15 :: r ∧
+      k = [.armBind true 1] ∧ st' = { st with toks := r, binds := [nbBd nb], arm := true, sslot := 1 } := by
+  simp only [stepF] at h
+  split at h
+  · rename_i z rest hv
+    split at h
+    · rename_i hz
+      split at h
+      · rename_i nb r ht
+        simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl⟩ := h
+        exact ⟨z, rest, nb, r, hv, hz, ht, rfl, rfl⟩
+      · cases h
+    · cases h
+  · cases h
+
+theorem mkLoop_inv {st k st'} (h : stepF .mkLoop st = some (k, st')) :
+    ∃ s z rest, st.vals = s :: z :: rest ∧ s.sh = st.cur.res ∧ k = [] ∧
+      st' = { st with vals := RN.mk 10 0 0 st.cur.res false [z, s] :: rest,
+                      arena := st.arena ++ [RN.mk 10 0 0 st.cur.res false [z, s]] } := by
+  simp only [stepF] at h
+  split at h
+  · rename_i s rest hv
+    split at h
+    · rename_i hs
+      obtain ⟨st2, hm, he⟩ := Option.map_eq_some_iff.mp h
+      simp only [Prod.mk.injEq] at he; obtain ⟨rfl, rfl⟩ := he
+      obtain ⟨hl, rfl⟩ := mkNode_inv hm
+      rw [hv] at hl ⊢
+      match rest, hl with
+      | z :: rest, _ => exact ⟨s, z, rest, rfl, hs, rfl, by simp⟩
+    · cases h
+  · cases h
+
+theorem pArrows_noLs : ∀ f ts l r, pArrows f ts = some (l, r) → ∀ t ∈ l, t ≠ .sh .ls := by
+  intro f
+  induction f with
+  | zero => intro ts l r h; simp [pArrows] at h
+  | succ f ih =>
+    intro ts l r h t ht
+    rw [pArrows_succ] at h
+    obtain ⟨⟨t0, r0⟩, h0, h1⟩ := Option.bind_eq_some_iff.mp h
+    have hn0 := (pTy_noLs f).2 ts t0 r0 h0
+    simp only at h1
+    split at h1
+    · obtain ⟨⟨l', r'⟩, h2, h3⟩ := Option.map_eq_some_iff.mp h1
+      simp only [Prod.mk.injEq] at h3; obtain ⟨rfl, rfl⟩ := h3
+      rcases List.mem_cons.mp ht with rfl | ht
+      · exact hn0
+      · exact ih _ _ _ h2 t ht
+    · simp only [Option.some.injEq, Prod.mk.injEq] at h1; obtain ⟨rfl, rfl⟩ := h1
+      simp at ht; subst ht; exact hn0
+
+theorem sk_codes : ∀ (u : Bool) (ts : List TyR), (stateKinds u ts).map psCode = ts.map trRes
+  | _, [] => rfl
+  | u, t :: ts => by
+    simp only [stateKinds, List.map_cons, sk_codes _ ts]
+    congr 1
+    cases t with
+    | sh s => rfl
+    | lst => cases u <;> rfl
+
+theorem sk_nofuel : ∀ (u : Bool) (ts : List TyR), ∀ p ∈ stateKinds u ts, p ≠ .fuel
+  | _, [], p, h => by simp [stateKinds] at h
+  | u, t :: ts, p, h => by
+    simp only [stateKinds, List.mem_cons] at h
+    rcases h with rfl | h
+    · cases t with
+      | sh s => simp [pickPs]
+      | lst => cases u <;> simp [pickPs]
+    · exact sk_nofuel _ ts p h
+
+theorem sk_nont (u : Bool) (ts : List TyR) (h : ∀ t ∈ ts, trRes t ≠ .nt) : ∀ p ∈ stateKinds u ts, p ≠ .sh .nt := by
+  intro p hp e; subst e
+  have : Sh.nt ∈ (stateKinds u ts).map psCode := List.mem_map.mpr ⟨_, hp, rfl⟩
+  rw [sk_codes] at this
+  obtain ⟨t, ht, e⟩ := List.mem_map.mp this
+  exact h t ht e
+
+theorem foldl_add_gen (l : List Nat) (a : Nat) : l.foldl (· + ·) a = a + l.sum := by
+  induction l generalizing a with
+  | nil => simp
+  | cons x l ih => simp only [List.foldl_cons, List.sum_cons]; rw [ih]; omega
+
+theorem foldl_add_eq_sum (l : List Nat) : l.foldl (· + ·) 0 = l.sum := by
+  rw [foldl_add_gen]; simp
+
+theorem mkEnv_mem : ∀ (s : Nat) (ps : List Ps) (ns : List (List Nat)) (env : List (List Nat × Nat × Ps)),
+    mkEnv s ps ns = some env → ∀ e ∈ env, e.2.2 ∈ ps ∧ e.1 ∈ ns
+  | _, [], [], env, h => by simp [mkEnv] at h; subst h; simp
+  | _, [], _ :: _, _, h => by simp [mkEnv] at h
+  | _, _ :: _, [], _, h => by simp [mkEnv] at h
+  | s, p :: ps, x :: ns, env, h => by
+    rw [mkEnv_cons] at h
+    obtain ⟨e', h1, rfl⟩ := Option.map_eq_some_iff.mp h
+    intro e he
+    rcases List.mem_cons.mp he with rfl | he
+    · simp
+    · obtain ⟨a, b⟩ := mkEnv_mem _ ps ns e' h1 e he; exact ⟨by simp [a], by simp [b]⟩
+
+theorem tyOk_of {v : RN} {t : Ty} {s : Sh} (h : TyRel v t) (hb : t ≠ .bot) (hi : v.isInp = false) (hs : v.sh = some s) :
+    tyOk s t = true := by
+  cases t with
+  | s s' => rw [h.1] at hs; cases hs; simp [tyOk]
+  | lit => rw [h.1] at hs; cases hs; rfl
+  | inp => rw [h.1] at hi; cases hi
+  | bot => exact absurd rfl hb
+
+theorem join_s_of {v : RN} {t : Ty} {s : Sh} (h : TyRel v t) (hi : v.isInp = false) (hs : v.sh = some s) :
+    ∃ x, t.join (.s s) = some (.s x) := by
+  cases t with
+  | s s' => rw [h.1] at hs; cases hs; exact ⟨s, by simp [Ty.join]⟩
+  | lit => rw [h.1] at hs; cases hs; exact ⟨.uw, rfl⟩
+  | inp => rw [h.1] at hi; cases hi
+  | bot => exact ⟨s, rfl⟩
+
+theorem loopNode_toNd {sh : Option Sh} {z s : RN} (hz : z.isInp = false) (hs : s.isInp = false) :
+    (RN.mk 10 0 0 sh false [z, s]).toNd = .loop z.toNd s.toNd := by
+  rw [RN.toNd_mk]; simp [RN.toNdL, hz, hs]
+
+theorem pTy_nat (f : Nat) (r : List Tok) : pTy (f + 2) (.k 35 :: .k 17 :: r) = some (.sh .nt, .k 17 :: r) := by
+  simp [pTy, pTyAtom]
+
+/-- **fuel-loop def** (61/73/74/75/76/1/77/76/1/79): from `def name :` (at `Nat →`) to `defEnd` -/
+theorem loop_spec {n : Nat} {ks : List Frame} {st fin : St} {defs : List DefI} {name : List Nat} {r : List Tok}
+    (h : StarN n (.tyAtom :: .afterColon :: ks, st) ([], fin)) (ht : st.toks = .k 35 :: .k 17 :: r)
+    (hcur : st.cur = DefR.fresh name) (hb : st.binds = []) (hv : st.vals = []) (harm : st.arm = false)
+    (hD : CxRel st ⟨defs, [], none⟩) (hnn : CxNN st) (hfresh : findDef defs name = none)
+    -- TEMPORARY (Par1 finding L): not exactly one state of type `List UInt8`
+    (hL : ∀ f res r', pArrows f r ≠ some ([.lst, res], r')) :
+    ∃ lp st' n', n' < n ∧ StarN n' (.defEnd :: ks, st') ([], fin) ∧ st'.vals = [lp] ∧ st'.defs = st.defs ∧
+      st'.out = st.out ∧ st'.all = st.all ∧ st'.cur.name = name ∧ st'.cur.loop = true ∧ st'.toks.length < st.toks.length ∧
+      (VT (rows st') lp →
+        ∃ di : DefI, di.name = name ∧ di.params.map psCode = st'.cur.params ∧ st'.cur.res = some di.res ∧
+          di.npw = st'.cur.npw ∧ (∀ (i : Nat) (h : i < di.params.length), (di.params[i] = .inp ↔ FirstLs st'.cur.params i)) ∧
+          (∀ p ∈ di.params, p ≠ .sh .nt) ∧
+          ∀ f, 4 * st.toks.length + 8 ≤ f → pDef f defs (.k 1 :: .id name :: .k 8 :: st.toks) =
+            some (di, { id := defs.length, npw := st'.cur.npw, nslots := st'.nx, kind := 1, nres := di.res.width,
+                        body := lp.toNd }, st'.toks)) := by
+  -- the `Nat` type and `→`
+  obtain ⟨t0, r0, n1, hn1, hlt0, hp0, h1, _⟩ := (ty_sound n).1 h
+  have ht0 : t0 = .sh .nt ∧ r0 = .k 17 :: r := by
+    have := hp0 (2 * st.toks.length + 2) (Nat.le_refl _)
+    rw [ht, show 2 * (Tok.k 35 :: Tok.k 17 :: r).length + 2 = (2 * r.length + 4) + 2 by simp; omega, pTy_nat] at this
+    cases this; exact ⟨rfl, rfl⟩
+  obtain ⟨rfl, rfl⟩ := ht0
+  match n1, h1 with
+  | 0, h1 => exact absurd h1.zero_nil.1 (by simp)
+  | m1 + 1, h1 =>
+  obtain ⟨k1, st1, hs1, h2⟩ := h1.head
+  simp only [stepF, St.withTy, trRes] at hs1
+  simp at hs1
+  obtain ⟨_, rfl, rfl⟩ := hs1
+  simp only [List.cons_append, List.nil_append] at h2
+  -- the state types
+  obtain ⟨ts, res, r1, n2, hn2, hlt1, hpA, hts, hres, hnil, h3⟩ := arrows_spec m1 h2
+  simp only at hlt1 hpA hnil h3
+  have hls : ∀ t ∈ ts, t ≠ .sh .ls := fun t ht =>
+    pArrows_noLs _ _ _ _ (hpA _ (Nat.le_refl _)) t (List.mem_append_left _ ht)
+  have hp1 : (st.cur.params ++ [Sh.nt]) = [Sh.nt] := by rw [hcur]; rfl
+  have hne : ts ≠ [] := fun e => hnil e (by rw [hp1]; rfl)
+  obtain ⟨hfp, hfn, hfname, hfres, hfloop⟩ := fold_stAdd ts hls
+    { st.cur with npw := 1, loop := true, params := st.cur.params ++ [.nt], nni := st.cur.nni + 1 }
+  have hu0 : hasLs ((st.cur.params ++ [Sh.nt]).map some) = false := by rw [hp1]; rfl
+  rw [hu0] at hfp hfn
+  have hP : ((ts.map trRes).foldl stAdd
+      { st.cur with npw := 1, loop := true, params := st.cur.params ++ [.nt], nni := st.cur.nni + 1 }).params =
+      .nt :: (stateKinds false ts).map psCode := by rw [hfp, hp1]; rfl
+  -- armsStart
+  match n2, h3 with
+  | 0, h3 => exact absurd h3.zero_nil.1 (by simp)
+  | m2 + 1, h3 =>
+  obtain ⟨k3, st3, hs3, h4⟩ := h3.head
+  obtain ⟨hty, r2, hr1, rfl, rfl⟩ := armsStart_inv hs3
+  simp only at hty hr1
+  simp only [List.cons_append, List.nil_append] at h4
+  -- the zero arm's binders
+  have hcodes : (stateKinds false ts).map psCode = ts.map trRes := sk_codes false ts
+  have hfuel := sk_nofuel false ts
+  have hinp : ∀ (i : Nat) (h : i < (stateKinds false ts).length),
+      ((stateKinds false ts)[i] = .inp ↔ FirstLs ((stateKinds false ts).map psCode) i) := by
+    intro i h; rw [hcodes, stateKinds_inp ts hls false i h]; simp
+  have hpsl : 0 < (stateKinds false ts).length := by
+    rw [stateKinds_length]; exact List.length_pos_iff.mpr hne
+  obtain ⟨zn, envZ, r3, n4, sl, hn4, hpatZ, henvZ, hfrZ, hndZ, hlt3, h5⟩ :=
+    armBind_spec (stateKinds false ts) hfuel hinp m2 (c := 0) (by exact hP) hpsl h4
+  simp only [List.drop_zero, armK, List.cons_append, List.nil_append] at hpatZ henvZ hfrZ hlt3 h5
+  generalize hC : (List.map trRes ts).foldl stAdd
+    { st.cur with npw := 1, loop := true, params := st.cur.params ++ [.nt], nni := st.cur.nni + 1 } = C at h5 hP hfp hfn hfname hfres hfloop
+  obtain ⟨S3, hb3, hd3, hc3, ha3, ht3, hn3, hv3, ho3, hal3, h5⟩ : ∃ S3 : St, S3.binds = envZ.map toBd ∧ S3.defs = st.defs ∧
+      S3.cur = { C with res := some (trRes res) } ∧ S3.arm = false ∧ S3.toks = r3 ∧ S3.nx = C.npw ∧ S3.vals = [] ∧
+      S3.out = st.out ∧ S3.all = st.all ∧ StarN n4 (.expr 0 0 :: .zeroDone :: ks, S3) ([], fin) :=
+    ⟨{ st with toks := r3, nx := C.npw, binds := st.binds ++ envZ.map toBd, cur := { C with res := some (trRes res) }, ty := some (trRes res), sslot := sl }, by simp [hb], rfl, rfl, harm, rfl, rfl, hv, rfl, rfl, h5⟩
+  -- the zero arm's context
+  have hpsP : ∀ p ∈ stateKinds false ts, p ≠ .fuel ∧ psCode p ≠ .nt ∧ (psCode p).nnt = true := by
+    intro p hp
+    have hm : psCode p ∈ ts.map trRes := by rw [← hcodes]; exact List.mem_map.mpr ⟨p, hp, rfl⟩
+    obtain ⟨t, ht', e⟩ := List.mem_map.mp hm
+    exact ⟨hfuel p hp, by rw [← e]; exact (hts t ht').1, by rw [← e]; exact (hts t ht').2⟩
+  have hZe : ∀ e ∈ envZ, e.2.2 ≠ .fuel ∧ psCode e.2.2 ≠ .nt := fun e he =>
+    let h := hpsP _ (mkEnv_mem _ _ _ _ henvZ e he).1; ⟨h.1, h.2.1⟩
+  have hc0 : CxRel S3 ⟨defs, envZ.reverse, none⟩ := by
+    refine cxRel_arm hD hd3 (fun x bd hx => ?_) (fun x bd hx => ?_) (fun x => ?_) (fun _ _ h => by cases h) (fun h => ?_)
+    · rw [hb3] at hx; exact (toBd_typed (pre := []) (by simp) (by simpa using hx)).1
+    · rw [hb3] at hx; exact (toBd_typed (pre := []) (by simp) (by simpa using hx)).2
+    · rw [hb3]; exact env_toBd envZ hZe x
+    · rw [ha3] at h; cases h
+  have hrows3 : rows S3 = st.defs ++ [{ C with res := some (trRes res) }] := by simp [rows, hd3, hc3]
+  have hnn3 : CxNN S3 := by
+    refine ⟨fun bd hbd => ?_, fun d hd => ?_⟩
+    · rw [hb3] at hbd
+      obtain ⟨e, he, rfl⟩ := List.mem_map.mp hbd
+      obtain ⟨_, _, h3⟩ := hpsP _ (mkEnv_mem _ _ _ _ henvZ e he).1
+      exact ⟨_, rfl, h3⟩
+    · rw [hrows3] at hd
+      rcases List.mem_append.mp hd with hd | hd
+      · exact hnn.2 d (by simp [rows, hd])
+      · simp at hd; subst hd
+        refine ⟨⟨_, rfl, hres⟩, fun p hp => ?_⟩
+        simp only [hP, List.mem_cons] at hp
+        rcases hp with rfl | hp
+        · rfl
+        · obtain ⟨q, hq, rfl⟩ := List.mem_map.mp hp; exact (hpsP q hq).2.2
+  obtain ⟨z, S4, n5, hn5, hpo4, hlt4, h6, _, hsh4, hsp4⟩ := (expr_specs n4).2.2.2 0 _ _ fin _ (by decide) h5 hc0 hnn3
+  -- zeroDone
+  match n5, h6 with
+  | 0, h6 => exact absurd h6.zero_nil.1 (by simp)
+  | m5 + 1, h6 =>
+  obtain ⟨k6, S5, hs6, h7⟩ := h6.head
+  obtain ⟨z', rest, nb, r5, hv4, hz, ht4, rfl, rfl⟩ := zeroDone_inv hs6
+  rw [hpo4.vals, hv3] at hv4; injection hv4 with e1 e2; subst e1 e2
+  simp only [List.cons_append, List.nil_append] at h7
+  have hcur4 : S4.cur = { C with res := some (trRes res) } := by rw [hpo4.cur, hc3]
+  -- the step arm's binders
+  obtain ⟨sn, envS, r6, n7, sl2, hn7, hpatS, henvS, hfrS, hndS, hlt6, h8⟩ :=
+    armBind_spec (stateKinds false ts) hfuel hinp m5 (c := 0) (by simp only; rw [hcur4]; exact hP) hpsl h7
+  simp only [List.drop_zero, armK, List.cons_append, List.nil_append] at hpatS henvS hfrS hlt6 h8
+  obtain ⟨S6, hb6, hd6, hc6, ha6, ht6, hn6, hv6, ho6, hal6, h8⟩ : ∃ S6 : St, S6.binds = nbBd nb :: envS.map toBd ∧ S6.defs = st.defs ∧
+      S6.cur = { C with res := some (trRes res) } ∧ S6.arm = true ∧ S6.toks = r6 ∧ S6.nx = S4.nx ∧ S6.vals = [z] ∧
+      S6.out = st.out ∧ S6.all = st.all ∧ StarN n7 (.expr 0 1 :: .mkLoop :: .defEnd :: ks, S6) ([], fin) :=
+    ⟨{ S4 with toks := r6, binds := nbBd nb :: envS.map toBd, arm := true, sslot := sl2 }, rfl, by rw [hpo4.defs, hd3], hcur4, rfl, rfl, rfl, by simp [hpo4.vals, hv3], by simp [hpo4.out, ho3], by simp [hpo4.all, hal3], h8⟩
+  -- the step arm's context
+  have hSe : ∀ e ∈ envS, e.2.2 ≠ .fuel ∧ psCode e.2.2 ≠ .nt := fun e he =>
+    let h := hpsP _ (mkEnv_mem _ _ _ _ henvS e he).1; ⟨h.1, h.2.1⟩
+  have hSn : ∀ e ∈ envS, e.1 ≠ nb := by
+    intro e he heq
+    have := hfrS e.1 (mkEnv_mem _ _ _ _ henvS e he).2
+    rw [heq] at this; simp [findB, nbBd] at this
+  have hname : C.name = name := by rw [hfname, hcur]; rfl
+  have hpsne : stateKinds false ts ≠ [.inp] := by
+    intro e
+    obtain ⟨t, rfl⟩ : ∃ t, ts = [t] := by
+      have := congrArg List.length e; rw [stateKinds_length] at this
+      match ts, this with
+      | [t], _ => exact ⟨t, rfl⟩
+    have : t = .lst := by
+      cases t with
+      | sh s => simp [stateKinds, pickPs] at e
+      | lst => rfl
+    subst this
+    exact hL _ res r1 (hpA _ (Nat.le_refl _))
+  have hc1 : CxRel S6 ⟨defs, (nb, 0, .fuel) :: envS.reverse, some (name, stateKinds false ts)⟩ := by
+    refine cxRel_arm hD hd6 (fun x bd hx => ?_) (fun x bd hx => ?_) (fun x => ?_) (fun sn sps h => ?_) (fun _ => ?_)
+    · rw [hb6] at hx; exact (toBd_typed (pre := [nbBd nb]) (by simp [nbBd]) (by simpa using hx)).1
+    · rw [hb6] at hx; exact (toBd_typed (pre := [nbBd nb]) (by simp [nbBd]) (by simpa using hx)).2
+    · rw [hb6]; exact env_step nb envS hSe hSn x
+    · simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl⟩ := h; exact hfresh
+    · refine ⟨stateKinds false ts, by rw [hc6]; simp [hname], fun e => by rw [e] at hpsl; simp at hpsl, hpsne, ?_, ?_,
+        sk_nont false ts (fun t ht => (hts t ht).1)⟩
+      · rw [hc6]; simp [hP]
+      · intro i hi; rw [hc6]; simp only [hP, List.tail_cons]; exact hinp i hi
+  have hrows6 : rows S6 = rows S3 := by simp [rows, hd6, hc6, hd3, hc3]
+  have hnn6 : CxNN S6 := by
+    refine ⟨fun bd hbd => ?_, fun d hd => by rw [hrows6] at hd; exact hnn3.2 d hd⟩
+    rw [hb6] at hbd
+    rcases List.mem_cons.mp hbd with rfl | hbd
+    · exact ⟨.nt, rfl, rfl⟩
+    · obtain ⟨e, he, rfl⟩ := List.mem_map.mp hbd
+      obtain ⟨_, _, h3⟩ := hpsP _ (mkEnv_mem _ _ _ _ henvS e he).1
+      exact ⟨_, rfl, h3⟩
+  obtain ⟨s', S7, n8, hn8, hpo7, hlt7, h9, _, hsh7, hsp7⟩ := (expr_specs n7).2.2.2 1 _ _ fin _ (by decide) h8 hc1 hnn6
+  -- mkLoop
+  match n8, h9 with
+  | 0, h9 => exact absurd h9.zero_nil.1 (by simp)
+  | m8 + 1, h9 =>
+  obtain ⟨k10, S8, hs10, h10⟩ := h9.head
+  obtain ⟨s'', z'', rest', hv7, hs7sh, rfl, rfl⟩ := mkLoop_inv hs10
+  rw [hpo7.vals, hv6] at hv7; injection hv7 with e1 e2; injection e2 with e3 e4; subst e1 e3 e4
+  simp only [List.nil_append] at h10
+  have hcur7 : S7.cur = { C with res := some (trRes res) } := by rw [hpo7.cur, hc6]
+  have hCloop : C.loop = true := by rw [hfloop]
+  have hl6 : r6.length < r5.length := hlt6
+  have ht4' : S4.toks.length = r5.length + 5 := by rw [ht4]; simp
+  have ht3' : S4.toks.length < r3.length := by rw [← ht3]; exact hlt4
+  have hr1l : r1.length = r2.length + 3 := by rw [hr1]; simp
+  have hrl : r.length + 2 = st.toks.length := by rw [ht]; simp
+  refine ⟨_, _, m8, by omega, h10, rfl, by simp [hpo7.defs, hd6], by simp [hpo7.out, ho6], by simp [hpo7.all, hal6],
+    by simp [hcur7, hname], by simp [hcur7, hCloop], ?_, fun hvt => ?_⟩
+  · have := hlt7; simp only [ht6] at this; simp; omega
+  -- the spec side
+  have hvt' : VT (rows S3) (RN.mk 10 0 0 S7.cur.res false [z, s']) := by
+    have e : rows S3 = S7.defs ++ [S7.cur] := by simp [rows, hpo7.defs, hpo7.cur, hd6, hc6, hd3, hc3]
+    rw [e]; simpa [rows] using hvt
+  have hnoi := nodeOK_noInp (by decide) hvt'.self
+  have hzi : z.isInp = false := hnoi z (by simp)
+  have hsi : s'.isInp = false := hnoi s' (by simp)
+  obtain ⟨tz, htz, _, hpz⟩ := hsp4 (hvt'.kid (by simp))
+  obtain ⟨tsx, htsx, _, hps⟩ := hsp7 (by rw [hrows6]; exact hvt'.kid (by simp))
+  have hzs : z.sh = some (trRes res) := by rw [hz, hcur4]
+  have hss : s'.sh = some (trRes res) := by rw [hs7sh, hcur7]
+  refine ⟨{ name, params := .fuel :: stateKinds false ts, res := trRes res, resLst := false, npw := 1 + ((stateKinds false ts).map Ps.width).foldl (· + ·) 0 }, rfl, ?_, ?_, ?_, ?_, ?_, fun f hf => ?_⟩
+  · simp [hcur7, hP, psCode]
+  · simp [hcur7]
+  · simp [hcur7, hfn, foldl_add_eq_sum]
+  · intro i hi
+    simp only [hcur7, hP]
+    cases i with
+    | zero => simp [FirstLs]
+    | succ i =>
+      rw [firstLs_cons_succ]
+      simp only [List.getElem_cons_succ]
+      rw [hinp i (by simpa using hi)]; simp
+  · intro p hp
+    rcases List.mem_cons.mp hp with rfl | hp
+    · simp
+    · exact sk_nont false ts (fun t ht => (hts t ht).1) p hp
+  · have hA := hpA f (by omega)
+    have hZ := hpz f (by rw [ht3]; omega)
+    rw [ht3, hn3] at hZ
+    have hS := hps f (by rw [ht6]; omega)
+    rw [ht6, hn6] at hS
+    rw [ht]
+    simp only [pDef, hfresh, Option.isSome_none, Bool.false_eq_true, if_false, hA, Option.bind_some, List.reverse_append,
+      List.reverse_cons, List.reverse_nil, List.nil_append, List.singleton_append, List.reverse_reverse]
+    have hN1 : (trRes res).hasN = false := Sh.hasN_of_nnt hres (fun e => hty (by rw [e]))
+    have hN2 : ∀ p ∈ stateKinds false ts, (match p with | Ps.sh s => s.hasN | _ => false) = false := by
+      intro p hp
+      have := hpsP p hp
+      cases p with
+      | sh s' => exact Sh.hasN_of_nnt this.2.2 this.2.1
+      | _ => rfl
+    have hnpw : C.npw = 1 + List.foldl (fun x1 x2 => x1 + x2) 0 (List.map Ps.width (stateKinds false ts)) := by
+      rw [hfn, foldl_add_eq_sum]
+    rw [hnpw] at hZ
+    simp only [show ((0 : Nat) == 1) = false from rfl] at hZ
+    simp only [show ((1 : Nat) == 1) = true from rfl] at hS
+    have hedZ : zn.eraseDups.length = zn.length := by rw [eraseDups_of_nodup hndZ]
+    have hndS' : (nb :: sn).Nodup := by
+      refine List.nodup_cons.mpr ⟨fun hx => ?_, hndS⟩
+      have := hfrS nb hx; simp [findB, nbBd] at this
+    have hedS : (nb :: sn).eraseDups.length = sn.length + 1 := by rw [eraseDups_of_nodup hndS']; rfl
+    have htz0 : tyOk (trRes res) tz = true := tyOk_of htz ((nobot f).1 _ _ _ _ hZ) hzi hzs
+    obtain ⟨xj, hxj⟩ := join_s_of htsx hsi hss
+    simp only [hr1, hpatZ, Option.bind_some, hedZ, bne_self_eq_false, henvZ, hZ, htz0, Bool.not_true, ht4, hpatS, hedS,
+      henvS, hS, hxj, Bool.false_eq_true, if_false]
+    split
+    · rename_i hcond
+      exfalso
+      rw [hN1, Bool.false_or, List.any_eq_true] at hcond
+      obtain ⟨p, hp, hpt⟩ := hcond
+      have := hpsP p hp
+      cases p with
+      | sh s' =>
+        have e : s'.hasN = false := Sh.hasN_of_nnt this.2.2 this.2.1
+        simp only at hpt; rw [e] at hpt; cases hpt
+      | _ => simp at hpt
+    · rw [hcur7, loopNode_toNd hzi hsi]
+      simp only [hnpw]
+
 end ParRun

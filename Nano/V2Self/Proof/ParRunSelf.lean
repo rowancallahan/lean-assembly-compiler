@@ -144,7 +144,7 @@ theorem hcall_self {n : Nat} (hE : ∀ n' < n, ExprSpec n') {ks : List Frame} {s
     have : sps.length ≠ 0 := fun h0 => hsne (List.eq_nil_of_length_eq_zero h0)
     omega
   obtain ⟨st3, m, n2, hat, hn1, hk⟩ := args_run _ hrun2
-  obtain ⟨vs, hlen, hvals, hbb, hd, hcu, harm3, hall', htk, hnx, hshs, hsps⟩ :=
+  obtain ⟨vs, hlen, hvals, hbb, hd, hcu, harm3, hall', hout', htk, hnx, hshs, hsps⟩ :=
     argsV (N := m + 1) (fun k hk => hE k (by omega)) hat (by omega)
       (CxRel.transport hc rfl rfl rfl rfl) (CxNN.transport hnn rfl rfl rfl)
   obtain ⟨hok, n3, hn2, hk3⟩ := argCheck_run _ hk
@@ -153,7 +153,7 @@ theorem hcall_self {n : Nat} (hE : ∀ n' < n, ExprSpec n') {ks : List Frame} {s
   have hmemR : st.cur ∈ rows st := List.mem_of_getElem? (rows_last st)
   refine ⟨RN.mk 11 0 0 st.cur.res true [c], { st3 with vals := RN.mk 11 0 0 st.cur.res true [c] :: st.vals, arena := ar },
     n4, by omega, ⟨rfl, hbb, hd, hcu, by simpa using harm3, by simpa using hall', by rw [ht]; simp at htk ⊢; omega,
-      by simpa using hnx⟩, by rw [ht]; simp at htk ⊢; omega, hfin, (hnn.2 _ hmemR).1, fun hvt => ?_⟩
+      by simpa using hnx, by simpa using hout'⟩, by rw [ht]; simp at htk ⊢; omega, hfin, (hnn.2 _ hmemR).1, fun hvt => ?_⟩
   have hci : c.isInp = false := nodeOK_cont hvt.self
   have hvc : VT (rows st) c := hvt.kid (by simp)
   have hvts : ∀ v ∈ vs, VT (rows st) v := by

@@ -50,7 +50,7 @@ theorem prim_leaf {n md ks st st1 fin cx} (hc : CxRel st cx) (hnn : CxNN st) (hl
     PrimConcl (n + 1) md ks st fin cx := by
   obtain ⟨r, v, hlt, hk, hp, hst⟩ := hl.eff
   refine ⟨v, st1, n, by omega, ?_, by rw [hst]; exact hlt, h1, ?_, fun _ => ?_⟩
-  · rw [hst]; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, by simp; omega, Nat.le_refl _⟩
+  · rw [hst]; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, by simp; omega, Nat.le_refl _, rfl⟩
   · cases hl with
     | num ht => simp [leaf] at hst; obtain ⟨_, rfl, _⟩ := hst; exact ⟨.uw, rfl, rfl⟩
     | nil ht => simp [leaf] at hst; obtain ⟨_, rfl, _⟩ := hst; exact ⟨.ls, rfl, rfl⟩
@@ -123,7 +123,7 @@ theorem prim_paren {n md ks st fin cx r} (hE : ∀ n' ≤ n, ExprSpec n') (hc : 
     simp only [List.nil_append] at h2
     have l1 : r2.length + 1 = stE.toks.length := by simp [hr2]
     refine ⟨e, { stE with toks := r2 }, nE, by omega, ⟨hpE.vals, hpE.binds, hpE.defs, hpE.cur, hpE.arm, hpE.all,
-      by have := hpE.toks; simp at this ⊢; omega, hpE.nx⟩, by simp; omega, h2, hnvE, fun hvt => ?_⟩
+      by have := hpE.toks; simp at this ⊢; omega, hpE.nx, hpE.out⟩, by simp; omega, h2, hnvE, fun hvt => ?_⟩
     obtain ⟨t, ht', hpt, hf⟩ := hspE (by simpa [ParRun.rows] using hvt)
     refine ⟨t, ht', hpt, fun f hf' => ?_⟩
     obtain ⟨g, rfl⟩ : ∃ g, f = g + 2 := ⟨f - 2, by omega⟩
@@ -147,7 +147,7 @@ theorem prim_paren {n md ks st fin cx r} (hE : ∀ n' ≤ n, ExprSpec n') (hc : 
     have hb2 := hp2.binds; have hd2 := hp2.defs; have hc2 := hp2.cur; have ha2 := hp2.arm; have hl2 := hp2.all
     have ht2 := hp2.toks; have hn2' := hp2.nx
     simp only at hb2 hd2 hc2 ha2 hl2 ht2 hn2' hlt2
-    refine ⟨_, st3, n2, by omega, ⟨by rw [hst3], ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩, ?_, h4, ?_, fun hvt => ?_⟩
+    refine ⟨_, st3, n2, by omega, ⟨by rw [hst3], ?_, ?_, ?_, ?_, ?_, ?_, ?_, by have := hp2.out; simp only at this; rw [hst3]; simp [this, hpE.out]⟩, ?_, h4, ?_, fun hvt => ?_⟩
     · rw [hst3]; simp [hb2, hpE.binds]
     · rw [hst3]; simp [hd2, hpE.defs]
     · rw [hst3]; simp [hc2, hpE.cur]
