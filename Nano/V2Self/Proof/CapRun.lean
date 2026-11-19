@@ -4,7 +4,7 @@ import Nano.V2Self.Proof.SemX
 import Nano.V2Self.Proof.EVSFin
 import Nano.V2Self.Proof.EVSComp
 namespace Templates
-open CallProbe SimW
+open CallProbe SimW SafeRun
 
 theorem bpush_capS {K : LayW} {C : List J} {pc : Nat} (s : St) (hC : At C pc (bpushT 6 pc)) (hx0 : s.x 0 = 0)
     (hsp : (s.x 31).toNat + 16 < 2 ^ 62)
@@ -312,5 +312,101 @@ theorem ifCap {KL : LayW} {C : List J} {pc lp lt p nl hb E0 cmp : Nat} {Inv : St
         rw [x31, cE.stable env1 env _ _ (fun k hk => ag1 k (sE k hk))]; exact h2
       obtain ⟨s3, r3, I3, z3⟩ := cE.cap s2 env1 H1 I2 z2 F2 O2 R2 L2 A1 hSE
       exact ⟨s3, r1.trans (st2.trans r3), I3, z3⟩
+
+/-! ## LET: the value's words into the slots, as a lemma -/
+
+theorem letMidS {KL : LayW} {C : List J} {q p nl hb E0 k0 w : Nat} {Inv : St → Prop} (hI : InvOKH hb p Inv)
+    (hS : At C q (popN p k0 w)) (hk0 : k0 + w ≤ nl) (hnl : nl < 251)
+    (s s1 : St) (env1 : Env) (H1 : Hp) (u : List UInt64) (O0 : FrameOK p nl s) (L0 : Lay KL hb E0 p s)
+    (I1 : Inv s1) (z1 : s1.x 0 = 0) (p1 : (s1.x 31).toNat = (s.x 31).toNat - 8 * w) (lu : u.length = w)
+    (v1 : ∀ i, i < w → s1.m ((s.x 31).toNat - 8 * (i + 1)) = u.getD i 0) (e81 : s1.x 8 = s.x 8)
+    (F1 : Frame p nl s1 env1) (R1 : HRel hb s1 H1) (eb : s1.b = s.b) :
+    ∃ s2, SStarX KL C (q, s1) (q + 3 * w, s2) ∧ Inv s2 ∧ s2.x 0 = 0 ∧
+      (s2.x 31).toNat = (s.x 31).toNat ∧ s2.x 8 = s.x 8 ∧ s2.b = s.b ∧ Frame p nl s2 (setW env1 k0 w u) ∧
+      FrameOK p nl s2 ∧ HRel hb s2 H1 ∧ Lay KL hb E0 p s2 ∧
+      (∀ a, (∀ j, j < w → a ≠ slotAddr p (s.x 8).toNat (k0 + j)) → s2.m a = s1.m a) := by
+  obtain ⟨o1, o2, o3⟩ := O0
+  have lt64 := (s.x 31).toNat_lt
+  have sp1 := hrel_sp R1
+  have T1 : (s1.x 31).toNat + 8 * w = (s.x 31).toNat := by rw [p1]; have := R1.2.2.1; omega
+  obtain ⟨s2, r2, p2, e82, ex2, eb2, ms2, mo2⟩ := popN_run (p := p) (k0 := k0) w q s1 hS (by omega)
+    (fun j j' hj hj' e => by have := slotAddr_inj (nl := nl) (by rw [e81]; omega) (by omega) (by omega) e; omega)
+    (fun j i hj hi => by
+      rw [e81]; have := slotAddr_ge (T := (s.x 31).toNat) (k := k0 + j) (by omega) o2 (by omega); omega)
+  have L1 : Lay KL hb E0 p s1 := L0.post e81 eb p1 (by have := R1.1; have := R1.2.1; have := R1.2.2.1; omega)
+  have ss2 : SStarX KL C (q, s1) (q + 3 * w, s2) := SStarX.of (popN_srun w q s1 hS (by omega)
+    (fun j hj => by
+      have hk : k0 + j < nl := by omega
+      obtain ⟨g1, g2, g3, g4⟩ := slotT_wok (k := k0 + j) L1 ⟨by rw [p1, e81]; omega, o2, by rw [e81]; omega⟩
+        (by have := R1.2.1; have := R1.2.2.1; omega) hk hnl
+      refine ⟨L1.wok (by have := R1.2.1; have := R1.2.2.1; omega) (by have := L0.top; omega)
+        (by have := L1.a31; omega), g1, g2, g3, g4⟩)
+    _ r2)
+  rw [e81] at ms2 mo2
+  have x31 : (s2.x 31).toNat = (s.x 31).toNat := by rw [p2, T1]
+  have x8 : s2.x 8 = s.x 8 := by rw [e82, e81]
+  have x30 : s2.x 30 = s1.x 30 := ex2 30 (by decide) (by decide)
+  have F2 : Frame p nl s2 (setW env1 k0 w u) := by
+    intro k hk
+    show s2.m (slotAddr p (s2.x 8).toNat k) = setW env1 k0 w u k
+    rw [x8]
+    by_cases e : k0 ≤ k ∧ k < k0 + w
+    · have := ms2 (k - k0) (by omega)
+      rw [show k0 + (k - k0) = k by omega] at this
+      rw [this, show (s1.x 31).toNat + 8 * (w - 1 - (k - k0)) = (s.x 31).toNat - 8 * (k - k0 + 1) by omega,
+        v1 (k - k0) (by omega)]
+      simp [setW, e]
+    · rw [mo2 _ (fun j hj h => e (by have := slotAddr_inj (nl := nl) (by omega) hk (by omega) h; omega))]
+      simp only [setW, e, if_false]; rw [← e81]; exact F1 k hk
+  have slot_hi : ∀ j, j < w → (s.x 31).toNat ≤ slotAddr p (s.x 8).toNat (k0 + j) ∧
+      slotAddr p (s.x 8).toNat (k0 + j) < (s.x 8).toNat + 8 * p + 16 := fun j hj =>
+    ⟨slotAddr_ge (T := (s.x 31).toNat) (k := k0 + j) (by omega) o2 (by omega), slotAddr_lt (nl := nl) (by omega) (by omega)⟩
+  have I2 : Inv s2 := by
+    apply hI s1 s2 I1 (by rw [e82]) (ex2 28 (by decide) (by decide)) (ex2 29 (by decide) (by decide)) eb2
+    intro a ha
+    apply mo2 a; intro j hj e; apply ha; rw [e81, e]
+    have hh := slot_hi j hj; have := R1.1; have := R1.2.1; have := R1.2.2.1
+    exact ⟨by omega, hh.2⟩
+  have z2 : s2.x 0 = 0 := by rw [ex2 0 (by decide) (by decide), z1]
+  have R2 : HRel hb s2 H1 := HRel_stack R1 x30 (by rw [x31]; have := R1.2.2.1; omega) (fun a h1 h2 => by
+    apply mo2 a; intro j hj e; have := slot_hi j hj; have := R1.2.2.1; omega)
+  have L2 : Lay KL hb E0 p s2 := L0.post' x8 (by rw [eb2, eb]) x31
+  exact ⟨s2, ss2, I2, z2, x31, x8, by rw [eb2, eb], F2, ⟨by rw [x31, x8]; omega, o2, by rw [x8]; omega⟩, R2, L2,
+    fun a ha => mo2 a (fun j hj e => ha j hj e)⟩
+
+theorem letCap {KL : LayW} {C : List J} {pc lv p nl hb E0 k0 w : Nat} {Inv : St → Prop} {Rv Wv Rb : Nat → Prop}
+    {SV SB : SemWX} (hI : InvOKH hb p Inv)
+    (hv : EVHwS KL C pc lv p nl Inv hb E0 Rv Wv w (oW SV)) (cv : CapW KL C pc p nl Inv hb E0 Rv SV)
+    (hS : At C (pc + lv) (popN p k0 w)) (cb : CapW KL C (pc + lv + 3 * w) p nl Inv hb E0 Rb SB)
+    (hk0 : k0 + w ≤ nl) (hsc : ∀ k, Rb k → ¬ (k0 ≤ k ∧ k < k0 + w) → ¬ Wv k) (hnl : nl < 251) :
+    CapW KL C pc p nl Inv hb E0 (fun k => Rv k ∨ (Rb k ∧ ¬ (k0 ≤ k ∧ k < k0 + w))) (letF k0 w SV SB) where
+  stable := fun env env' sp H h => by
+    simp only [letF]
+    rw [cv.stable env env' sp H (fun k hk => h k (Or.inl hk))]
+    cases SV env' sp H with
+    | error e => rfl
+    | ok r =>
+      simp only [Except.bind]
+      apply cb.stable; intro k hk
+      unfold setW
+      split
+      · rfl
+      · rename_i hk'; exact h k (Or.inr ⟨hk, hk'⟩)
+  cap := fun s env H I0 z0 F0 O0 R0 L0 A0 hS' => by
+    simp only [letF] at hS'
+    rcases bind_cap hS' with h1 | ⟨⟨u, H1⟩, hSV, h2⟩
+    · exact cv.cap s env H I0 z0 F0 O0 R0 L0 A0 h1
+    obtain ⟨s1, env1, r1, I1, z1, p1, lu, v1, e81, F1, ag1, R1, A1, m1⟩ :=
+      hv.run s env H u H1 I0 z0 F0 O0 R0 L0 A0 (by simp [oW, hSV])
+    obtain ⟨s2, ss2, I2, z2, x31, x8, _, F2, O2, R2, L2, _⟩ :=
+      letMidS hI hS hk0 hnl s s1 env1 H1 u O0 L0 I1 z1 p1 lu v1 e81 F1 R1 r1.star.b
+    have hSB2 : SB (setW env1 k0 w u) (s2.x 31).toNat H1 = .error .cap := by
+      rw [x31]; rw [← h2]; apply cb.stable; intro k hk
+      simp only [setW]
+      by_cases e : k0 ≤ k ∧ k < k0 + w
+      · simp [e]
+      · simp only [e, if_false]; exact ag1 k (hsc k hk e)
+    obtain ⟨s3, r3, I3, z3⟩ := cb.cap s2 _ H1 I2 z2 F2 O2 R2 L2 A1 hSB2
+    exact ⟨s3, (r1.trans ss2).trans r3, I3, z3⟩
 
 end Templates
