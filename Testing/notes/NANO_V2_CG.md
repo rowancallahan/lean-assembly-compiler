@@ -303,10 +303,19 @@ DONE later the same day (all no sorry, standard axioms, each module ≤ 3 s / �
 - A root LOOP's width is the def's nres (`SC.q`; was `wdT z`, not dischargeable when the zero arm's then-branch is a
   CONTINUE).
 
+- Start code on the J machine (DONE): J gained `srli`/`bne`/`sb` (Call/ExprExact/ExprBridge/SimW; SimW sims for them are
+  `hS.elim`, i.e. NOT yet Safe).  `Proof/StartCode.lean`: `startJ`/`stubJ`, `startW_exact`, `stubs_exact` (Gen words =
+  these J lists).  `Proof/StartRun.lean`: `start_setup` (word 0 → main entry: t5 = a2+16, t6 = sp&~7, ra/s0 saved at
+  a2), `copy_loop` (byte copy induction), `start_tail` (after main: empty check, copy, restore, return).
+  `Proof/NoW.lean`: no template/stub/start instruction writes x12/x13 (`defsJ_ok`, `star_keep`).
+  `Proof/StartAll.lean`: **start_run**: from word 0, any main with `DefX C w 0 1 IG hb E0 Sd` whose run succeeds ends
+  at ra with a0 = 0 (1 if empty), a1 = N, bytes `bs i &&& 255` at a3, ra/s0 restored.  Hypotheses: IG holds at entry
+  and keeps m[a2], m[a2+8]; a2 % 8 = 0; hb = a2+16 ≤ E0 = sp&~7 < 2^62; result buffer in the heap; output region
+  below a2 or ≥ E0+8.
+
 OPEN (in order of value):
-1. Start code g35 + stubs g34 on the machine: needs J extensions (`srli` = g2 g_19 5, `bne` = g4 1, `sb` = g3 0, `beq`
-   with offset ≠ +8) in Call.lean's J + SimW sims; then the output copy loop (bytes of main's buffer to a3) and the
-   exit registers a0/a1.  With that: g41 c (serialize ds) = bytes of the program whose run outputs main's buffer.
+1. Glue gen_top + start_run: C = stubJ ++ defsJ ++ startJ (At facts from gen_words/startW_exact), main = last def
+   (p = 0, q = 1 from the parser), IG instance (input facts + save slots); then g41 bytes run to the output.
 2. Sail lift: every template run lemma must become a Safe run (`SimW.SStar`): addi no-wrap, ld/sd/lbu addresses
    8-aligned in the ONE work region (input must lie in it), jal targets in code, jalr targets base+4j.  Mechanical but
    large (safe twins of const/push/bin/rd/bsize/bget/bnew/bpush/bset/li/local1/pro/epi/popN runs; contracts Star→SStar).
