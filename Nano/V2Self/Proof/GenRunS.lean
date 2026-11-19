@@ -17,7 +17,7 @@ theorem gen_runS (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length 
         let P := pcOf 524288 ((s0.x 12).toNat + 16) (s0.x 11) inp T
         let D := defsJ P ds 0 hs.length
         let C := stubJ (11 + D.length) ++ D ++ startJ (11 + D.length) (P.T (hs.length - 1))
-        g41 c (serialize ds) = g40 16777216 c (C.map encG) 0 [] ∧
+        g41 c (serialize ds) = g40 16777216 c (C.map encG) 0 [] ∧ C.length < 2 ^ 18 ∧
         ∀ KL : SimW.LayW, ((∀ k, k < hs.length → ScV (scAt P ds k) (dA ds k).body ∧ ∀ j, rd (dA ds k).body j → j < (dA ds k).npw) →
          ∀ E0, ((s0.x 2 >>> 3) <<< 3).toNat = E0 → s0.x 0 = 0 → (s0.x 12).toNat % 8 = 0 →
          (s0.x 12).toNat + 16 ≤ E0 → E0 < 2 ^ 62 → s0.b + 4 * C.length < 2 ^ 64 →
@@ -40,7 +40,7 @@ theorem gen_runS (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length 
   obtain ⟨hs, T, o, hD, hne, hr⟩ := gen_C c ds hXl h hdb ((s0.x 12).toNat + 16) (s0.x 11) inp
   refine ⟨hs, T, o, hD, hne, ?_⟩
   obtain ⟨hg, np, nr, hcl, hopv, hbd, hTp, hpk, -⟩ := hr
-  refine ⟨hg, ?_⟩
+  refine ⟨hg, by simp [stubJ, startJ]; omega, ?_⟩
   intro KL hpar E0 hE0 z0 ha8 hroom hE62 hcb hin63 hin vs H' hSd N bs hN hPb hPN hbs hQ hout hlo hhi hbase
     hinw hwO
   have hE8 : E0 % 8 = 0 := by
