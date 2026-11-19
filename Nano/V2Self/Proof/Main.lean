@@ -14,6 +14,7 @@ import Nano.V2Self.C.Own
 import Nano.V2Self.Proof.OwnSpec
 import Nano.V2Self.Proof.ParInv
 import Nano.V2Self.Proof.MainTokWF
+import Nano.V2Self.Proof.ParSerLen
 import Spec.Implements1
 
 namespace NanoMain
@@ -203,15 +204,14 @@ words, a non-empty result of `o41` certifies `LinearK` -/
 def OwnStage : Prop := ∀ (ts : List UInt64) (p : List DefA), ParsesProgram ts p → BndP p → (serialize p).length < 2 ^ 64 →
   C.o41 (serialize p) ≠ [] → LinearK p
 
-/-- the size bounds, from the parser (fields below 2^64) and Gen's success (nslots, nres < 251) — not parser facts
-alone: refParse caps no tuple width -/
-def BndStage : Prop := ∀ (c : List UInt8) (ts : List UInt64) (p : List DefA), ParsesProgram ts p →
-  C.g41 c (serialize p) ≠ [] → BndP p ∧ (serialize p).length < 2 ^ 64
+/-- the size bounds `BndP` (box O: the parser's width cap `nx + w < 2^20`, pending) -/
+def BndStage : Prop := ∀ (c : List UInt8) (ts : List UInt64) (p : List DefA), ParsesProgram ts p → ts.length < 2 ^ 24 →
+  C.g41 c (serialize p) ≠ [] → BndP p
 
 /-- codegen (box A: g41's output is the code of the AST; box E: that code runs on Sail as `Sem`): for every parsed
 linear program `p`, a non-empty result of Gen on `serialize p` implements `Sem κC p` -/
 def GenStage : Prop :=
-  ∀ (c : List UInt8) (ts : List UInt64) (p : List DefA), ParsesProgram ts p → LinearK p →
+  ∀ (c : List UInt8) (ts : List UInt64) (p : List DefA), ParsesProgram ts p → ts.length < 2 ^ 24 → LinearK p →
     C.g41 c (serialize p) ≠ [] → ImplementsC (C.g41 c (serialize p)) (Sem κC p)
 
 /-! ## facts used by the composition -/
@@ -293,10 +293,12 @@ theorem compiler_correct (HP : ParStage) (HO : OwnStage) (HB : BndStage) (HG : G
     have hb := lexes_len hL
     obtain ⟨p, hp, he⟩ := HP _ (lexes_tokWF hL) (by omega) hy
     have hg : C.g41 x (serialize p) ≠ [] := by rw [← he, ← hoe]; exact h
-    obtain ⟨hbd, hsl⟩ := HB x _ p hp hg
+    have hts : (C.s10 x).length < 2 ^ 24 := by omega
+    have hbd := HB x _ p hp hts hg
+    have hsl : (serialize p).length < 2 ^ 64 := by have := ParSerLen.ser_lt hp hts; omega
     have hlin : LinearK p := HO _ p hp hbd hsl (by rw [← he]; exact hy0)
     refine ⟨_, p, hL, hp, hlin, ?_⟩
-    have := HG x _ p hp hlin hg
+    have := HG x _ p hp hts hlin hg
     rw [mC, hoe, he]; exact this
 
 end NanoMain
