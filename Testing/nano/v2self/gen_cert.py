@@ -79,6 +79,11 @@ def parse_nd(t):
         return (c,) + tuple(atom() for _ in range(AR[c]))
     r = node(); ws(); assert pos == len(t); return r
 
+def nd_txt(nd):
+    if isinstance(nd, int): return str(nd)
+    if isinstance(nd, list): return '[' + ', '.join(nd_txt(x) for x in nd) + ']'
+    return '(.' + nd[0] + ''.join(' ' + nd_txt(x) for x in nd[1:]) + ')'
+
 class Unsupported(Exception): pass
 BIN = {1: 'ev_add', 2: 'ev_sub', 3: 'ev_mul', 4: 'ev_and', 5: 'ev_or', 6: 'ev_shl', 7: 'ev_shr', 8: 'ev_xor'}
 PRIMK = {2: 'w', 3: 'w', 5: 'b', 6: 'w', 7: 'w', 8: 'b', 9: 'b'}
@@ -87,13 +92,35 @@ PRIMR = {2: 'ev_rd', 3: 'ev_len', 5: 'ev_bnew', 6: 'ev_bsize', 7: 'ev_bget', 8: 
 class Gen:
     """explicit proof term `Ev inp ms n env _` for a value-mode node; env = list of (kind, lean expr)"""
     def __init__(self, sigs): self.sigs, self.n = sigs, 0
-    def env_txt(self, env): return '[' + ', '.join(f'W.{k} {e}' for k, e in env) + ']'
+    def env_txt(self, env): return '[' + ', '.join(e if k == 'raw' else f'W.{k} {e}' for k, e in env) + ']'
+    def tail(self, nd, env, rk, ih):
+        """tail-mode term `EvK inp ms n env (LoopK ..) _` for a loop's step arm; rk = result kind, ih = IH application"""
+        c = nd[0]
+        if c == 'ite':
+            (_, a), (_, b) = self.go(nd[2], env), self.go(nd[3], env)
+            return f'(ev_iteK{nd[1]} (fun x => [W.{rk} x]) {a} {b} {self.tail(nd[4], env, rk, ih)} {self.tail(nd[5], env, rk, ih)})'
+        if c == 'letE':
+            if nd[2] != 1: raise Unsupported('wide let')
+            k, v = self.go(nd[3], env)
+            self.n += 1; y = f'y{self.n}'
+            env2 = list(env); env2[nd[1]] = (k, y)
+            return f'(ev_letK{k.upper()} (E := fun {y} => {self.env_txt(env2)}) {v} (fun _ => rfl) (fun {y} => {self.tail(nd[4], env2, rk, ih)}))'
+        if c == 'cont':
+            e = nd[1]
+            if e[0] == 'pair':
+                xs = 'evL_nil'
+                for a in reversed(e[1]): xs = f'(evL_cons {self.go(a, env)[1]} {xs})'
+                pay = f'(ev_pair {xs})'
+            else: pay = self.go(e, env)[1]
+            return f'(ev_contK {pay} rfl {ih})'
+        return f'(ev_valK {self.go(nd, env)[1]})'
     def go(self, nd, env):
         c = nd[0]
         if c == 'const': return 'w', f'(ev_const {nd[1]})'
         if c == 'loc':
             if nd[2] != 1: raise Unsupported('wide loc')
             k, e = env[nd[1]]
+            if k == 'raw': raise Unsupported('raw slot read')
             return k, f'(ev_loc (s := {nd[1]}) (w := 1) (env := {self.env_txt(env)}) (vs := [W.{k} {e}]) (Nat.le_of_ble_eq_true rfl) rfl)'
         if c == 'bin':
             (_, a), (_, b) = self.go(nd[2], env), self.go(nd[3], env)
@@ -144,8 +171,54 @@ def main():
     for i, (a, sig) in enumerate(zip(ast, sigs)):
         body = a[5].replace('ParSpec.Nd.', '.')
         callees = sorted(set(int(x) for x in re.findall(r'\.call (\d+)', body)))
-        ok = a[3] == '0' and simple(sig) and all(simple(sigs[j]) for j in callees)
+        ok = simple(sig) and all(simple(sigs[j]) for j in callees)
         term = None
+        hyps = '' if not ok else ''.join(f' {{F{j} : Fn}} (h{j} : ms[{j}]? = some F{j}) (e{j} : {stmt(sigs[j], f"F{j}", "a")})' + lenstmt(sigs[j], j) for j in callees)
+        if ok and a[3] == '1':
+            try:
+                nd = parse_nd(body); assert nd[0] == 'loop'
+                bs, enc, app = args(sig, 'x')
+                r = ENC[sig[3]]
+                nloc = int(a[2]) - int(a[1])
+                ls = [f'l{q}' for q in range(nloc)]
+                aenv = [(e[1], e[3:]) for e in enc[1:]] + [('raw', l) for l in ls]
+                g = Gen(sigs)
+                zt = g.go(nd[1], [('w', 'N')] + aenv)[1]
+                ih = '(ih M.toNat_lt M' + ' _' * (len(enc) - 1 + nloc) + ')'
+                st = g.tail(nd[2], [('w', 'M')] + aenv, r, ih)
+                Z = body  # full loop node text; arms are re-extracted in Lean by `rfl` on D.body
+                lb = (' (' + ' '.join(ls) + ' : W)') if ls else ''
+                ab = ' '.join(bs[1:])
+                call = lambda f: ' '.join(['C.' + sig[0], f] + app[1:])
+                envt = lambda h: '[' + ', '.join([f'W.w {h}'] + enc[1:] + ls) + ']'
+                hn = ''.join(f' h{j} e{j}' + (f' l{j}' if sigs[j][1] else '') for j in callees)
+                intro = ' '.join(['N'] + [b.split()[0][1:] for b in bs[1:]] + ls)
+                txt = f'''def D{i} : DefA := ⟨{a[0]}, {a[1]}, {a[2]}, {a[3]}, {a[4]}, {body}⟩
+def Z{i} : Nd := {nd_txt(nd[1])}
+def S{i} : Nd := {nd_txt(nd[2])}
+theorem L{i} (inp : List UInt8) (ms : List Fn){hyps} : ∀ n : Nat, n < 2 ^ 64 → ∀ (N : UInt64) {ab}{lb},
+    loopRun (fun e => pev inp ms Z{i} e) (fun e => pev inp ms S{i} e) n {envt("N")} = .ok [.{r} ({call("n")})] := by
+  intro n
+  induction n with
+  | zero =>
+    intro _ {intro}
+    apply loop_zero
+    case h => exact {zt}
+    case hf => rfl
+  | succ n ih =>
+    intro hn {intro}
+    obtain ⟨M, rfl⟩ : ∃ M : UInt64, M.toNat = n := ⟨UInt64.ofNat n, by simp; omega⟩
+    apply loop_succ (env1 := {envt("M")}) rfl
+    case hk => exact {st}
+    case hf => rfl
+theorem c{i} (inp : List UInt8) (ms : List Fn){hyps} {" ".join(bs)} :
+    pdefMean inp ms D{i} [{", ".join(enc)}] = .ok [.{r} ({call("x0.toNat")})] :=
+  pdef_loop (z := Z{i}) (s := S{i}) [{", ".join(enc[1:] + [".w 0"] * nloc)}] rfl (by decide) rfl rfl
+    (L{i} inp ms{hn} x0.toNat x0.toNat_lt x0 {" ".join([b.split()[0][1:] for b in bs[1:]] + ["(.w 0)"] * nloc)}) rfl
+'''
+                todo.append((i, txt)); continue
+            except Unsupported as ex: ok = False
+        ok = ok and a[3] == '0'
         if ok:
             bs0, enc0, _ = args(sig, 'x')
             env = [(e[1], e[3:]) for e in enc0] + [('w', '0')] * (int(a[2]) - int(a[1]))
@@ -153,7 +226,6 @@ def main():
             except Unsupported as ex: ok = False
         (todo if ok else skipped).append(i)
         if not ok: continue
-        hyps = ''.join(f' {{F{j} : Fn}} (h{j} : ms[{j}]? = some F{j}) (e{j} : {stmt(sigs[j], f"F{j}", "a")})' + lenstmt(sigs[j], j) for j in callees)
         bs, enc, app = args(sig, 'x')
         r = ENC[sig[3]]
         call = ' '.join(['C.' + sig[0]] + app)

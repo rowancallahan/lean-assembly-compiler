@@ -44,6 +44,52 @@ theorem c4 (inp : List UInt8) (ms : List Fn) (x0 : UInt64) :
   case hr => rfl
   case hf => rfl
 
+def D5 : DefA := ⟨5, 2, 2, 1, 1, .loop (.loc 1 1) (.ite 2 (.loc 1 1) (.prim 3 []) (.ite 1 (.call 4 [.prim 2 [.loc 1 1]]) (.const 1) (.cont (.bin 1 (.loc 1 1) (.const 1))) (.loc 1 1)) (.loc 1 1))⟩
+def Z5 : Nd := (.loc 1 1)
+def S5 : Nd := (.ite 2 (.loc 1 1) (.prim 3 []) (.ite 1 (.call 4 [(.prim 2 [(.loc 1 1)])]) (.const 1) (.cont (.bin 1 (.loc 1 1) (.const 1))) (.loc 1 1)) (.loc 1 1))
+theorem L5 (inp : List UInt8) (ms : List Fn) {F4 : Fn} (h4 : ms[4]? = some F4) (e4 : ∀ (a0 : UInt64), F4 [.w a0] = .ok [.w (C.s0 a0)]) : ∀ n : Nat, n < 2 ^ 64 → ∀ (N : UInt64) (x1 : UInt64),
+    loopRun (fun e => pev inp ms Z5 e) (fun e => pev inp ms S5 e) n [W.w N, .w x1] = .ok [.w (C.s1 n inp x1)] := by
+  intro n
+  induction n with
+  | zero =>
+    intro _ N x1
+    apply loop_zero
+    case h => exact (ev_loc (s := 1) (w := 1) (env := [W.w N, W.w x1]) (vs := [W.w x1]) (Nat.le_of_ble_eq_true rfl) rfl)
+    case hf => rfl
+  | succ n ih =>
+    intro hn N x1
+    obtain ⟨M, rfl⟩ : ∃ M : UInt64, M.toNat = n := ⟨UInt64.ofNat n, by simp; omega⟩
+    apply loop_succ (env1 := [W.w M, .w x1]) rfl
+    case hk => exact (ev_iteK2 (fun x => [W.w x]) (ev_loc (s := 1) (w := 1) (env := [W.w M, W.w x1]) (vs := [W.w x1]) (Nat.le_of_ble_eq_true rfl) rfl) (ev_len) (ev_iteK1 (fun x => [W.w x]) (ev_call (evL_cons (ev_rd (ev_loc (s := 1) (w := 1) (env := [W.w M, W.w x1]) (vs := [W.w x1]) (Nat.le_of_ble_eq_true rfl) rfl)) evL_nil) h4 (e4 _)) (ev_const 1) (ev_contK (ev_add (ev_loc (s := 1) (w := 1) (env := [W.w M, W.w x1]) (vs := [W.w x1]) (Nat.le_of_ble_eq_true rfl) rfl) (ev_const 1)) rfl (ih M.toNat_lt M _)) (ev_valK (ev_loc (s := 1) (w := 1) (env := [W.w M, W.w x1]) (vs := [W.w x1]) (Nat.le_of_ble_eq_true rfl) rfl))) (ev_valK (ev_loc (s := 1) (w := 1) (env := [W.w M, W.w x1]) (vs := [W.w x1]) (Nat.le_of_ble_eq_true rfl) rfl)))
+    case hf => rfl
+theorem c5 (inp : List UInt8) (ms : List Fn) {F4 : Fn} (h4 : ms[4]? = some F4) (e4 : ∀ (a0 : UInt64), F4 [.w a0] = .ok [.w (C.s0 a0)]) (x0 : UInt64) (x1 : UInt64) :
+    pdefMean inp ms D5 [.w x0, .w x1] = .ok [.w (C.s1 x0.toNat inp x1)] :=
+  pdef_loop (z := Z5) (s := S5) [.w x1] rfl (by decide) rfl rfl
+    (L5 inp ms h4 e4 x0.toNat x0.toNat_lt x0 x1) rfl
+
+def D6 : DefA := ⟨6, 3, 3, 1, 1, .loop (.const 1) (.ite 2 (.loc 1 1) (.loc 2 1) (.ite 2 (.prim 2 [.loc 1 1]) (.const 48) (.const 0) (.ite 2 (.const 57) (.prim 2 [.loc 1 1]) (.const 0) (.cont (.pair [.bin 1 (.loc 1 1) (.const 1), .loc 2 1])))) (.const 1))⟩
+def Z6 : Nd := (.const 1)
+def S6 : Nd := (.ite 2 (.loc 1 1) (.loc 2 1) (.ite 2 (.prim 2 [(.loc 1 1)]) (.const 48) (.const 0) (.ite 2 (.const 57) (.prim 2 [(.loc 1 1)]) (.const 0) (.cont (.pair [(.bin 1 (.loc 1 1) (.const 1)), (.loc 2 1)])))) (.const 1))
+theorem L6 (inp : List UInt8) (ms : List Fn) : ∀ n : Nat, n < 2 ^ 64 → ∀ (N : UInt64) (x1 : UInt64) (x2 : UInt64),
+    loopRun (fun e => pev inp ms Z6 e) (fun e => pev inp ms S6 e) n [W.w N, .w x1, .w x2] = .ok [.w (C.s2 n inp x1 x2)] := by
+  intro n
+  induction n with
+  | zero =>
+    intro _ N x1 x2
+    apply loop_zero
+    case h => exact (ev_const 1)
+    case hf => rfl
+  | succ n ih =>
+    intro hn N x1 x2
+    obtain ⟨M, rfl⟩ : ∃ M : UInt64, M.toNat = n := ⟨UInt64.ofNat n, by simp; omega⟩
+    apply loop_succ (env1 := [W.w M, .w x1, .w x2]) rfl
+    case hk => exact (ev_iteK2 (fun x => [W.w x]) (ev_loc (s := 1) (w := 1) (env := [W.w M, W.w x1, W.w x2]) (vs := [W.w x1]) (Nat.le_of_ble_eq_true rfl) rfl) (ev_loc (s := 2) (w := 1) (env := [W.w M, W.w x1, W.w x2]) (vs := [W.w x2]) (Nat.le_of_ble_eq_true rfl) rfl) (ev_iteK2 (fun x => [W.w x]) (ev_rd (ev_loc (s := 1) (w := 1) (env := [W.w M, W.w x1, W.w x2]) (vs := [W.w x1]) (Nat.le_of_ble_eq_true rfl) rfl)) (ev_const 48) (ev_valK (ev_const 0)) (ev_iteK2 (fun x => [W.w x]) (ev_const 57) (ev_rd (ev_loc (s := 1) (w := 1) (env := [W.w M, W.w x1, W.w x2]) (vs := [W.w x1]) (Nat.le_of_ble_eq_true rfl) rfl)) (ev_valK (ev_const 0)) (ev_contK (ev_pair (evL_cons (ev_add (ev_loc (s := 1) (w := 1) (env := [W.w M, W.w x1, W.w x2]) (vs := [W.w x1]) (Nat.le_of_ble_eq_true rfl) rfl) (ev_const 1)) (evL_cons (ev_loc (s := 2) (w := 1) (env := [W.w M, W.w x1, W.w x2]) (vs := [W.w x2]) (Nat.le_of_ble_eq_true rfl) rfl) evL_nil))) rfl (ih M.toNat_lt M _ _)))) (ev_valK (ev_const 1)))
+    case hf => rfl
+theorem c6 (inp : List UInt8) (ms : List Fn) (x0 : UInt64) (x1 : UInt64) (x2 : UInt64) :
+    pdefMean inp ms D6 [.w x0, .w x1, .w x2] = .ok [.w (C.s2 x0.toNat inp x1 x2)] :=
+  pdef_loop (z := Z6) (s := S6) [.w x1, .w x2] rfl (by decide) rfl rfl
+    (L6 inp ms x0.toNat x0.toNat_lt x0 x1 x2) rfl
+
 def D7 : DefA := ⟨7, 2, 24, 0, 1, .letE 2 1 (.prim 2 [.loc 0 1]) (.letE 3 1 (.bin 2 (.loc 1 1) (.loc 0 1)) (.letE 4 1 (.const 14) (.letE 5 1 (.ite 1 (.loc 3 1) (.const 4) (.ite 1 (.loc 2 1) (.const 101) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 1)]) (.const 108) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 2)]) (.const 115) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 3)]) (.const 101) (.const 34) (.loc 4 1)) (.loc 4 1)) (.loc 4 1)) (.loc 4 1)) (.loc 4 1)) (.letE 6 1 (.ite 1 (.loc 3 1) (.const 4) (.ite 1 (.loc 2 1) (.const 116) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 1)]) (.const 104) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 2)]) (.const 101) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 3)]) (.const 110) (.const 33) (.loc 5 1)) (.loc 5 1)) (.loc 5 1)) (.loc 5 1)) (.loc 5 1)) (.letE 7 1 (.ite 1 (.loc 3 1) (.const 2) (.ite 1 (.loc 2 1) (.const 105) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 1)]) (.const 102) (.const 32) (.loc 6 1)) (.loc 6 1)) (.loc 6 1)) (.letE 8 1 (.ite 1 (.loc 3 1) (.const 3) (.ite 1 (.loc 2 1) (.const 108) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 1)]) (.const 101) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 2)]) (.const 116) (.const 2) (.loc 7 1)) (.loc 7 1)) (.loc 7 1)) (.loc 7 1)) (.letE 9 1 (.ite 1 (.loc 3 1) (.const 3) (.ite 1 (.loc 2 1) (.const 100) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 1)]) (.const 101) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 2)]) (.const 102) (.const 1) (.loc 8 1)) (.loc 8 1)) (.loc 8 1)) (.loc 8 1)) (.letE 10 1 (.ite 1 (.loc 3 1) (.const 4) (.ite 1 (.loc 2 1) (.const 76) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 1)]) (.const 105) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 2)]) (.const 115) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 3)]) (.const 116) (.const 37) (.loc 9 1)) (.loc 9 1)) (.loc 9 1)) (.loc 9 1)) (.loc 9 1)) (.letE 11 1 (.ite 1 (.loc 3 1) (.const 3) (.ite 1 (.loc 2 1) (.const 66) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 1)]) (.const 117) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 2)]) (.const 102) (.const 36) (.loc 10 1)) (.loc 10 1)) (.loc 10 1)) (.loc 10 1)) (.letE 12 1 (.ite 1 (.loc 3 1) (.const 3) (.ite 1 (.loc 2 1) (.const 78) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 1)]) (.const 97) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 2)]) (.const 116) (.const 35) (.loc 11 1)) (.loc 11 1)) (.loc 11 1)) (.loc 11 1)) (.letE 13 1 (.ite 1 (.loc 3 1) (.const 5) (.ite 1 (.loc 2 1) (.const 85) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 1)]) (.const 73) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 2)]) (.const 110) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 3)]) (.const 116) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 4)]) (.const 56) (.const 38) (.loc 12 1)) (.loc 12 1)) (.loc 12 1)) (.loc 12 1)) (.loc 12 1)) (.loc 12 1)) (.letE 14 1 (.ite 1 (.loc 3 1) (.const 6) (.ite 1 (.loc 2 1) (.const 85) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 1)]) (.const 73) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 2)]) (.const 110) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 3)]) (.const 116) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 4)]) (.const 54) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 5)]) (.const 52) (.const 3) (.loc 13 1)) (.loc 13 1)) (.loc 13 1)) (.loc 13 1)) (.loc 13 1)) (.loc 13 1)) (.loc 13 1)) (.letE 15 1 (.ite 1 (.loc 3 1) (.const 2) (.ite 1 (.loc 2 1) (.const 114) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 1)]) (.const 100) (.const 40) (.loc 14 1)) (.loc 14 1)) (.loc 14 1)) (.letE 16 1 (.ite 1 (.loc 3 1) (.const 3) (.ite 1 (.loc 2 1) (.const 108) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 1)]) (.const 101) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 2)]) (.const 110) (.const 41) (.loc 15 1)) (.loc 15 1)) (.loc 15 1)) (.loc 15 1)) (.letE 17 1 (.ite 1 (.loc 3 1) (.const 4) (.ite 1 (.loc 2 1) (.const 108) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 1)]) (.const 101) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 2)]) (.const 110) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 3)]) (.const 39) (.const 39) (.loc 16 1)) (.loc 16 1)) (.loc 16 1)) (.loc 16 1)) (.loc 16 1)) (.letE 18 1 (.ite 1 (.loc 3 1) (.const 3) (.ite 1 (.loc 2 1) (.const 112) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 1)]) (.const 117) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 2)]) (.const 116) (.const 42) (.loc 17 1)) (.loc 17 1)) (.loc 17 1)) (.loc 17 1)) (.letE 19 1 (.ite 1 (.loc 3 1) (.const 4) (.ite 1 (.loc 2 1) (.const 98) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 1)]) (.const 110) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 2)]) (.const 101) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 3)]) (.const 119) (.const 43) (.loc 18 1)) (.loc 18 1)) (.loc 18 1)) (.loc 18 1)) (.loc 18 1)) (.letE 20 1 (.ite 1 (.loc 3 1) (.const 5) (.ite 1 (.loc 2 1) (.const 98) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 1)]) (.const 115) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 2)]) (.const 105) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 3)]) (.const 122) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 4)]) (.const 101) (.const 44) (.loc 19 1)) (.loc 19 1)) (.loc 19 1)) (.loc 19 1)) (.loc 19 1)) (.loc 19 1)) (.letE 21 1 (.ite 1 (.loc 3 1) (.const 4) (.ite 1 (.loc 2 1) (.const 98) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 1)]) (.const 103) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 2)]) (.const 101) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 3)]) (.const 116) (.const 45) (.loc 20 1)) (.loc 20 1)) (.loc 20 1)) (.loc 20 1)) (.loc 20 1)) (.letE 22 1 (.ite 1 (.loc 3 1) (.const 4) (.ite 1 (.loc 2 1) (.const 98) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 1)]) (.const 115) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 2)]) (.const 101) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 3)]) (.const 116) (.const 46) (.loc 21 1)) (.loc 21 1)) (.loc 21 1)) (.loc 21 1)) (.loc 21 1)) (.letE 23 1 (.ite 1 (.loc 3 1) (.const 5) (.ite 1 (.loc 2 1) (.const 98) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 1)]) (.const 112) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 2)]) (.const 117) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 3)]) (.const 115) (.ite 1 (.prim 2 [.bin 1 (.loc 0 1) (.const 4)]) (.const 104) (.const 47) (.loc 22 1)) (.loc 22 1)) (.loc 22 1)) (.loc 22 1)) (.loc 22 1)) (.loc 22 1)) (.loc 23 1))))))))))))))))))))))⟩
 theorem c7 (inp : List UInt8) (ms : List Fn) (x0 : UInt64) (x1 : UInt64) :
     pdefMean inp ms D7 [.w x0, .w x1] = .ok [.w (C.s3 inp x0 x1)] := by
@@ -68,6 +114,52 @@ theorem c9 (inp : List UInt8) (ms : List Fn) {F5 : Fn} (h5 : ms[5]? = some F5) (
   case hr => rfl
   case hf => rfl
 
+def D10 : DefA := ⟨10, 4, 4, 1, 1, .loop (.loc 3 1) (.ite 2 (.loc 1 1) (.loc 2 1) (.cont (.pair [.bin 1 (.loc 1 1) (.const 1), .loc 2 1, .bin 1 (.bin 3 (.loc 3 1) (.const 10)) (.bin 2 (.prim 2 [.loc 1 1]) (.const 48))])) (.loc 3 1))⟩
+def Z10 : Nd := (.loc 3 1)
+def S10 : Nd := (.ite 2 (.loc 1 1) (.loc 2 1) (.cont (.pair [(.bin 1 (.loc 1 1) (.const 1)), (.loc 2 1), (.bin 1 (.bin 3 (.loc 3 1) (.const 10)) (.bin 2 (.prim 2 [(.loc 1 1)]) (.const 48)))])) (.loc 3 1))
+theorem L10 (inp : List UInt8) (ms : List Fn) : ∀ n : Nat, n < 2 ^ 64 → ∀ (N : UInt64) (x1 : UInt64) (x2 : UInt64) (x3 : UInt64),
+    loopRun (fun e => pev inp ms Z10 e) (fun e => pev inp ms S10 e) n [W.w N, .w x1, .w x2, .w x3] = .ok [.w (C.s6 n inp x1 x2 x3)] := by
+  intro n
+  induction n with
+  | zero =>
+    intro _ N x1 x2 x3
+    apply loop_zero
+    case h => exact (ev_loc (s := 3) (w := 1) (env := [W.w N, W.w x1, W.w x2, W.w x3]) (vs := [W.w x3]) (Nat.le_of_ble_eq_true rfl) rfl)
+    case hf => rfl
+  | succ n ih =>
+    intro hn N x1 x2 x3
+    obtain ⟨M, rfl⟩ : ∃ M : UInt64, M.toNat = n := ⟨UInt64.ofNat n, by simp; omega⟩
+    apply loop_succ (env1 := [W.w M, .w x1, .w x2, .w x3]) rfl
+    case hk => exact (ev_iteK2 (fun x => [W.w x]) (ev_loc (s := 1) (w := 1) (env := [W.w M, W.w x1, W.w x2, W.w x3]) (vs := [W.w x1]) (Nat.le_of_ble_eq_true rfl) rfl) (ev_loc (s := 2) (w := 1) (env := [W.w M, W.w x1, W.w x2, W.w x3]) (vs := [W.w x2]) (Nat.le_of_ble_eq_true rfl) rfl) (ev_contK (ev_pair (evL_cons (ev_add (ev_loc (s := 1) (w := 1) (env := [W.w M, W.w x1, W.w x2, W.w x3]) (vs := [W.w x1]) (Nat.le_of_ble_eq_true rfl) rfl) (ev_const 1)) (evL_cons (ev_loc (s := 2) (w := 1) (env := [W.w M, W.w x1, W.w x2, W.w x3]) (vs := [W.w x2]) (Nat.le_of_ble_eq_true rfl) rfl) (evL_cons (ev_add (ev_mul (ev_loc (s := 3) (w := 1) (env := [W.w M, W.w x1, W.w x2, W.w x3]) (vs := [W.w x3]) (Nat.le_of_ble_eq_true rfl) rfl) (ev_const 10)) (ev_sub (ev_rd (ev_loc (s := 1) (w := 1) (env := [W.w M, W.w x1, W.w x2, W.w x3]) (vs := [W.w x1]) (Nat.le_of_ble_eq_true rfl) rfl)) (ev_const 48))) evL_nil)))) rfl (ih M.toNat_lt M _ _ _)) (ev_valK (ev_loc (s := 3) (w := 1) (env := [W.w M, W.w x1, W.w x2, W.w x3]) (vs := [W.w x3]) (Nat.le_of_ble_eq_true rfl) rfl)))
+    case hf => rfl
+theorem c10 (inp : List UInt8) (ms : List Fn) (x0 : UInt64) (x1 : UInt64) (x2 : UInt64) (x3 : UInt64) :
+    pdefMean inp ms D10 [.w x0, .w x1, .w x2, .w x3] = .ok [.w (C.s6 x0.toNat inp x1 x2 x3)] :=
+  pdef_loop (z := Z10) (s := S10) [.w x1, .w x2, .w x3] rfl (by decide) rfl rfl
+    (L10 inp ms x0.toNat x0.toNat_lt x0 x1 x2 x3) rfl
+
+def D11 : DefA := ⟨11, 4, 4, 1, 1, .loop (.call 3 [.loc 3 1, .const 0]) (.ite 2 (.loc 1 1) (.loc 2 1) (.cont (.pair [.bin 1 (.loc 1 1) (.const 1), .loc 2 1, .call 3 [.call 3 [.loc 3 1, .const 1], .prim 2 [.loc 1 1]]])) (.call 3 [.loc 3 1, .const 0]))⟩
+def Z11 : Nd := (.call 3 [(.loc 3 1), (.const 0)])
+def S11 : Nd := (.ite 2 (.loc 1 1) (.loc 2 1) (.cont (.pair [(.bin 1 (.loc 1 1) (.const 1)), (.loc 2 1), (.call 3 [(.call 3 [(.loc 3 1), (.const 1)]), (.prim 2 [(.loc 1 1)])])])) (.call 3 [(.loc 3 1), (.const 0)]))
+theorem L11 (inp : List UInt8) (ms : List Fn) {F3 : Fn} (h3 : ms[3]? = some F3) (e3 : ∀ (a0 : List UInt64) (a1 : UInt64), F3 [.b a0, .w a1] = .ok [.b (C.q0 a0 a1)]) : ∀ n : Nat, n < 2 ^ 64 → ∀ (N : UInt64) (x1 : UInt64) (x2 : UInt64) (x3 : List UInt64),
+    loopRun (fun e => pev inp ms Z11 e) (fun e => pev inp ms S11 e) n [W.w N, .w x1, .w x2, .b x3] = .ok [.b (C.s7 n inp x1 x2 x3)] := by
+  intro n
+  induction n with
+  | zero =>
+    intro _ N x1 x2 x3
+    apply loop_zero
+    case h => exact (ev_call (evL_cons (ev_loc (s := 3) (w := 1) (env := [W.w N, W.w x1, W.w x2, W.b x3]) (vs := [W.b x3]) (Nat.le_of_ble_eq_true rfl) rfl) (evL_cons (ev_const 0) evL_nil)) h3 (e3 _ _))
+    case hf => rfl
+  | succ n ih =>
+    intro hn N x1 x2 x3
+    obtain ⟨M, rfl⟩ : ∃ M : UInt64, M.toNat = n := ⟨UInt64.ofNat n, by simp; omega⟩
+    apply loop_succ (env1 := [W.w M, .w x1, .w x2, .b x3]) rfl
+    case hk => exact (ev_iteK2 (fun x => [W.b x]) (ev_loc (s := 1) (w := 1) (env := [W.w M, W.w x1, W.w x2, W.b x3]) (vs := [W.w x1]) (Nat.le_of_ble_eq_true rfl) rfl) (ev_loc (s := 2) (w := 1) (env := [W.w M, W.w x1, W.w x2, W.b x3]) (vs := [W.w x2]) (Nat.le_of_ble_eq_true rfl) rfl) (ev_contK (ev_pair (evL_cons (ev_add (ev_loc (s := 1) (w := 1) (env := [W.w M, W.w x1, W.w x2, W.b x3]) (vs := [W.w x1]) (Nat.le_of_ble_eq_true rfl) rfl) (ev_const 1)) (evL_cons (ev_loc (s := 2) (w := 1) (env := [W.w M, W.w x1, W.w x2, W.b x3]) (vs := [W.w x2]) (Nat.le_of_ble_eq_true rfl) rfl) (evL_cons (ev_call (evL_cons (ev_call (evL_cons (ev_loc (s := 3) (w := 1) (env := [W.w M, W.w x1, W.w x2, W.b x3]) (vs := [W.b x3]) (Nat.le_of_ble_eq_true rfl) rfl) (evL_cons (ev_const 1) evL_nil)) h3 (e3 _ _)) (evL_cons (ev_rd (ev_loc (s := 1) (w := 1) (env := [W.w M, W.w x1, W.w x2, W.b x3]) (vs := [W.w x1]) (Nat.le_of_ble_eq_true rfl) rfl)) evL_nil)) h3 (e3 _ _)) evL_nil)))) rfl (ih M.toNat_lt M _ _ _)) (ev_valK (ev_call (evL_cons (ev_loc (s := 3) (w := 1) (env := [W.w M, W.w x1, W.w x2, W.b x3]) (vs := [W.b x3]) (Nat.le_of_ble_eq_true rfl) rfl) (evL_cons (ev_const 0) evL_nil)) h3 (e3 _ _))))
+    case hf => rfl
+theorem c11 (inp : List UInt8) (ms : List Fn) {F3 : Fn} (h3 : ms[3]? = some F3) (e3 : ∀ (a0 : List UInt64) (a1 : UInt64), F3 [.b a0, .w a1] = .ok [.b (C.q0 a0 a1)]) (x0 : UInt64) (x1 : UInt64) (x2 : UInt64) (x3 : List UInt64) :
+    pdefMean inp ms D11 [.w x0, .w x1, .w x2, .b x3] = .ok [.b (C.s7 x0.toNat inp x1 x2 x3)] :=
+  pdef_loop (z := Z11) (s := S11) [.w x1, .w x2, .b x3] rfl (by decide) rfl rfl
+    (L11 inp ms h3 e3 x0.toNat x0.toNat_lt x0 x1 x2 x3) rfl
+
 def D12 : DefA := ⟨12, 2, 2, 0, 1, .call 3 [.call 3 [.call 3 [.call 3 [.call 3 [.call 3 [.call 3 [.call 3 [.loc 1 1, .loc 0 1], .bin 7 (.loc 0 1) (.const 8)], .bin 7 (.loc 0 1) (.const 16)], .bin 7 (.loc 0 1) (.const 24)], .bin 7 (.loc 0 1) (.const 32)], .bin 7 (.loc 0 1) (.const 40)], .bin 7 (.loc 0 1) (.const 48)], .bin 7 (.loc 0 1) (.const 56)]⟩
 theorem c12 (inp : List UInt8) (ms : List Fn) {F3 : Fn} (h3 : ms[3]? = some F3) (e3 : ∀ (a0 : List UInt64) (a1 : UInt64), F3 [.b a0, .w a1] = .ok [.b (C.q0 a0 a1)]) (x0 : UInt64) (x1 : List UInt64) :
     pdefMean inp ms D12 [.w x0, .b x1] = .ok [.b (C.s8 x0 x1)] := by
@@ -76,6 +168,29 @@ theorem c12 (inp : List UInt8) (ms : List Fn) {F3 : Fn} (h3 : ms[3]? = some F3) 
   case hr => rfl
   case hf => rfl
 
+def D13 : DefA := ⟨13, 3, 4, 1, 1, .loop (.prim 5 []) (.letE 3 1 (.call 8 [.loc 1 1]) (.ite 1 (.loc 3 1) (.const 0) (.prim 5 []) (.ite 1 (.loc 3 1) (.const 91) (.loc 2 1) (.ite 1 (.loc 3 1) (.const 90) (.cont (.pair [.bin 1 (.loc 1 1) (.const 1), .loc 2 1])) (.ite 1 (.loc 3 1) (.const 5) (.cont (.pair [.call 9 [.loc 1 1, .loc 3 1], .call 12 [.call 10 [.prim 1 [], .loc 1 1, .call 9 [.loc 1 1, .loc 3 1], .const 0], .call 3 [.loc 2 1, .const 5]]])) (.ite 1 (.loc 3 1) (.const 14) (.cont (.pair [.call 9 [.loc 1 1, .loc 3 1], .call 11 [.prim 1 [], .loc 1 1, .call 9 [.loc 1 1, .loc 3 1], .call 3 [.loc 2 1, .const 14]]])) (.cont (.pair [.call 9 [.loc 1 1, .loc 3 1], .call 3 [.loc 2 1, .loc 3 1]]))))))))⟩
+def Z13 : Nd := (.prim 5 [])
+def S13 : Nd := (.letE 3 1 (.call 8 [(.loc 1 1)]) (.ite 1 (.loc 3 1) (.const 0) (.prim 5 []) (.ite 1 (.loc 3 1) (.const 91) (.loc 2 1) (.ite 1 (.loc 3 1) (.const 90) (.cont (.pair [(.bin 1 (.loc 1 1) (.const 1)), (.loc 2 1)])) (.ite 1 (.loc 3 1) (.const 5) (.cont (.pair [(.call 9 [(.loc 1 1), (.loc 3 1)]), (.call 12 [(.call 10 [(.prim 1 []), (.loc 1 1), (.call 9 [(.loc 1 1), (.loc 3 1)]), (.const 0)]), (.call 3 [(.loc 2 1), (.const 5)])])])) (.ite 1 (.loc 3 1) (.const 14) (.cont (.pair [(.call 9 [(.loc 1 1), (.loc 3 1)]), (.call 11 [(.prim 1 []), (.loc 1 1), (.call 9 [(.loc 1 1), (.loc 3 1)]), (.call 3 [(.loc 2 1), (.const 14)])])])) (.cont (.pair [(.call 9 [(.loc 1 1), (.loc 3 1)]), (.call 3 [(.loc 2 1), (.loc 3 1)])]))))))))
+theorem L13 (inp : List UInt8) (ms : List Fn) {F3 : Fn} (h3 : ms[3]? = some F3) (e3 : ∀ (a0 : List UInt64) (a1 : UInt64), F3 [.b a0, .w a1] = .ok [.b (C.q0 a0 a1)]) {F8 : Fn} (h8 : ms[8]? = some F8) (e8 : ∀ (a0 : UInt64), F8 [.w a0] = .ok [.w (C.s4 inp a0)]) {F9 : Fn} (h9 : ms[9]? = some F9) (e9 : ∀ (a0 : UInt64) (a1 : UInt64), F9 [.w a0, .w a1] = .ok [.w (C.s5 inp a0 a1)]) {F10 : Fn} (h10 : ms[10]? = some F10) (e10 : ∀ (a0 : UInt64) (a1 : UInt64) (a2 : UInt64) (a3 : UInt64), F10 [.w a0, .w a1, .w a2, .w a3] = .ok [.w (C.s6 a0.toNat inp a1 a2 a3)]) (l10 : ∀ (a1 : UInt64) (a2 : UInt64) (a3 : UInt64), LenC (F10 [.w inp.length.toUInt64, .w a1, .w a2, .w a3] = .ok [.w (C.s6 (len' inp) inp a1 a2 a3)])) {F11 : Fn} (h11 : ms[11]? = some F11) (e11 : ∀ (a0 : UInt64) (a1 : UInt64) (a2 : UInt64) (a3 : List UInt64), F11 [.w a0, .w a1, .w a2, .b a3] = .ok [.b (C.s7 a0.toNat inp a1 a2 a3)]) (l11 : ∀ (a1 : UInt64) (a2 : UInt64) (a3 : List UInt64), LenC (F11 [.w inp.length.toUInt64, .w a1, .w a2, .b a3] = .ok [.b (C.s7 (len' inp) inp a1 a2 a3)])) {F12 : Fn} (h12 : ms[12]? = some F12) (e12 : ∀ (a0 : UInt64) (a1 : List UInt64), F12 [.w a0, .b a1] = .ok [.b (C.s8 a0 a1)]) : ∀ n : Nat, n < 2 ^ 64 → ∀ (N : UInt64) (x1 : UInt64) (x2 : List UInt64) (l0 : W),
+    loopRun (fun e => pev inp ms Z13 e) (fun e => pev inp ms S13 e) n [W.w N, .w x1, .b x2, l0] = .ok [.b (C.s9 n inp x1 x2)] := by
+  intro n
+  induction n with
+  | zero =>
+    intro _ N x1 x2 l0
+    apply loop_zero
+    case h => exact (ev_bnew)
+    case hf => rfl
+  | succ n ih =>
+    intro hn N x1 x2 l0
+    obtain ⟨M, rfl⟩ : ∃ M : UInt64, M.toNat = n := ⟨UInt64.ofNat n, by simp; omega⟩
+    apply loop_succ (env1 := [W.w M, .w x1, .b x2, l0]) rfl
+    case hk => exact (ev_letKW (E := fun y1 => [W.w M, W.w x1, W.b x2, W.w y1]) (ev_call (evL_cons (ev_loc (s := 1) (w := 1) (env := [W.w M, W.w x1, W.b x2, l0]) (vs := [W.w x1]) (Nat.le_of_ble_eq_true rfl) rfl) evL_nil) h8 (e8 _)) (fun _ => rfl) (fun y1 => (ev_iteK1 (fun x => [W.b x]) (ev_loc (s := 3) (w := 1) (env := [W.w M, W.w x1, W.b x2, W.w y1]) (vs := [W.w y1]) (Nat.le_of_ble_eq_true rfl) rfl) (ev_const 0) (ev_valK (ev_bnew)) (ev_iteK1 (fun x => [W.b x]) (ev_loc (s := 3) (w := 1) (env := [W.w M, W.w x1, W.b x2, W.w y1]) (vs := [W.w y1]) (Nat.le_of_ble_eq_true rfl) rfl) (ev_const 91) (ev_valK (ev_loc (s := 2) (w := 1) (env := [W.w M, W.w x1, W.b x2, W.w y1]) (vs := [W.b x2]) (Nat.le_of_ble_eq_true rfl) rfl)) (ev_iteK1 (fun x => [W.b x]) (ev_loc (s := 3) (w := 1) (env := [W.w M, W.w x1, W.b x2, W.w y1]) (vs := [W.w y1]) (Nat.le_of_ble_eq_true rfl) rfl) (ev_const 90) (ev_contK (ev_pair (evL_cons (ev_add (ev_loc (s := 1) (w := 1) (env := [W.w M, W.w x1, W.b x2, W.w y1]) (vs := [W.w x1]) (Nat.le_of_ble_eq_true rfl) rfl) (ev_const 1)) (evL_cons (ev_loc (s := 2) (w := 1) (env := [W.w M, W.w x1, W.b x2, W.w y1]) (vs := [W.b x2]) (Nat.le_of_ble_eq_true rfl) rfl) evL_nil))) rfl (ih M.toNat_lt M _ _ _)) (ev_iteK1 (fun x => [W.b x]) (ev_loc (s := 3) (w := 1) (env := [W.w M, W.w x1, W.b x2, W.w y1]) (vs := [W.w y1]) (Nat.le_of_ble_eq_true rfl) rfl) (ev_const 5) (ev_contK (ev_pair (evL_cons (ev_call (evL_cons (ev_loc (s := 1) (w := 1) (env := [W.w M, W.w x1, W.b x2, W.w y1]) (vs := [W.w x1]) (Nat.le_of_ble_eq_true rfl) rfl) (evL_cons (ev_loc (s := 3) (w := 1) (env := [W.w M, W.w x1, W.b x2, W.w y1]) (vs := [W.w y1]) (Nat.le_of_ble_eq_true rfl) rfl) evL_nil)) h9 (e9 _ _)) (evL_cons (ev_call (evL_cons (ev_callL (evL_cons (ev_loc (s := 1) (w := 1) (env := [W.w M, W.w x1, W.b x2, W.w y1]) (vs := [W.w x1]) (Nat.le_of_ble_eq_true rfl) rfl) (evL_cons (ev_call (evL_cons (ev_loc (s := 1) (w := 1) (env := [W.w M, W.w x1, W.b x2, W.w y1]) (vs := [W.w x1]) (Nat.le_of_ble_eq_true rfl) rfl) (evL_cons (ev_loc (s := 3) (w := 1) (env := [W.w M, W.w x1, W.b x2, W.w y1]) (vs := [W.w y1]) (Nat.le_of_ble_eq_true rfl) rfl) evL_nil)) h9 (e9 _ _)) (evL_cons (ev_const 0) evL_nil))) h10 (l10 _ _ _)) (evL_cons (ev_call (evL_cons (ev_loc (s := 2) (w := 1) (env := [W.w M, W.w x1, W.b x2, W.w y1]) (vs := [W.b x2]) (Nat.le_of_ble_eq_true rfl) rfl) (evL_cons (ev_const 5) evL_nil)) h3 (e3 _ _)) evL_nil)) h12 (e12 _ _)) evL_nil))) rfl (ih M.toNat_lt M _ _ _)) (ev_iteK1 (fun x => [W.b x]) (ev_loc (s := 3) (w := 1) (env := [W.w M, W.w x1, W.b x2, W.w y1]) (vs := [W.w y1]) (Nat.le_of_ble_eq_true rfl) rfl) (ev_const 14) (ev_contK (ev_pair (evL_cons (ev_call (evL_cons (ev_loc (s := 1) (w := 1) (env := [W.w M, W.w x1, W.b x2, W.w y1]) (vs := [W.w x1]) (Nat.le_of_ble_eq_true rfl) rfl) (evL_cons (ev_loc (s := 3) (w := 1) (env := [W.w M, W.w x1, W.b x2, W.w y1]) (vs := [W.w y1]) (Nat.le_of_ble_eq_true rfl) rfl) evL_nil)) h9 (e9 _ _)) (evL_cons (ev_callL (evL_cons (ev_loc (s := 1) (w := 1) (env := [W.w M, W.w x1, W.b x2, W.w y1]) (vs := [W.w x1]) (Nat.le_of_ble_eq_true rfl) rfl) (evL_cons (ev_call (evL_cons (ev_loc (s := 1) (w := 1) (env := [W.w M, W.w x1, W.b x2, W.w y1]) (vs := [W.w x1]) (Nat.le_of_ble_eq_true rfl) rfl) (evL_cons (ev_loc (s := 3) (w := 1) (env := [W.w M, W.w x1, W.b x2, W.w y1]) (vs := [W.w y1]) (Nat.le_of_ble_eq_true rfl) rfl) evL_nil)) h9 (e9 _ _)) (evL_cons (ev_call (evL_cons (ev_loc (s := 2) (w := 1) (env := [W.w M, W.w x1, W.b x2, W.w y1]) (vs := [W.b x2]) (Nat.le_of_ble_eq_true rfl) rfl) (evL_cons (ev_const 14) evL_nil)) h3 (e3 _ _)) evL_nil))) h11 (l11 _ _ _)) evL_nil))) rfl (ih M.toNat_lt M _ _ _)) (ev_contK (ev_pair (evL_cons (ev_call (evL_cons (ev_loc (s := 1) (w := 1) (env := [W.w M, W.w x1, W.b x2, W.w y1]) (vs := [W.w x1]) (Nat.le_of_ble_eq_true rfl) rfl) (evL_cons (ev_loc (s := 3) (w := 1) (env := [W.w M, W.w x1, W.b x2, W.w y1]) (vs := [W.w y1]) (Nat.le_of_ble_eq_true rfl) rfl) evL_nil)) h9 (e9 _ _)) (evL_cons (ev_call (evL_cons (ev_loc (s := 2) (w := 1) (env := [W.w M, W.w x1, W.b x2, W.w y1]) (vs := [W.b x2]) (Nat.le_of_ble_eq_true rfl) rfl) (evL_cons (ev_loc (s := 3) (w := 1) (env := [W.w M, W.w x1, W.b x2, W.w y1]) (vs := [W.w y1]) (Nat.le_of_ble_eq_true rfl) rfl) evL_nil)) h3 (e3 _ _)) evL_nil))) rfl (ih M.toNat_lt M _ _ _)))))))))
+    case hf => rfl
+theorem c13 (inp : List UInt8) (ms : List Fn) {F3 : Fn} (h3 : ms[3]? = some F3) (e3 : ∀ (a0 : List UInt64) (a1 : UInt64), F3 [.b a0, .w a1] = .ok [.b (C.q0 a0 a1)]) {F8 : Fn} (h8 : ms[8]? = some F8) (e8 : ∀ (a0 : UInt64), F8 [.w a0] = .ok [.w (C.s4 inp a0)]) {F9 : Fn} (h9 : ms[9]? = some F9) (e9 : ∀ (a0 : UInt64) (a1 : UInt64), F9 [.w a0, .w a1] = .ok [.w (C.s5 inp a0 a1)]) {F10 : Fn} (h10 : ms[10]? = some F10) (e10 : ∀ (a0 : UInt64) (a1 : UInt64) (a2 : UInt64) (a3 : UInt64), F10 [.w a0, .w a1, .w a2, .w a3] = .ok [.w (C.s6 a0.toNat inp a1 a2 a3)]) (l10 : ∀ (a1 : UInt64) (a2 : UInt64) (a3 : UInt64), LenC (F10 [.w inp.length.toUInt64, .w a1, .w a2, .w a3] = .ok [.w (C.s6 (len' inp) inp a1 a2 a3)])) {F11 : Fn} (h11 : ms[11]? = some F11) (e11 : ∀ (a0 : UInt64) (a1 : UInt64) (a2 : UInt64) (a3 : List UInt64), F11 [.w a0, .w a1, .w a2, .b a3] = .ok [.b (C.s7 a0.toNat inp a1 a2 a3)]) (l11 : ∀ (a1 : UInt64) (a2 : UInt64) (a3 : List UInt64), LenC (F11 [.w inp.length.toUInt64, .w a1, .w a2, .b a3] = .ok [.b (C.s7 (len' inp) inp a1 a2 a3)])) {F12 : Fn} (h12 : ms[12]? = some F12) (e12 : ∀ (a0 : UInt64) (a1 : List UInt64), F12 [.w a0, .b a1] = .ok [.b (C.s8 a0 a1)]) (x0 : UInt64) (x1 : UInt64) (x2 : List UInt64) :
+    pdefMean inp ms D13 [.w x0, .w x1, .b x2] = .ok [.b (C.s9 x0.toNat inp x1 x2)] :=
+  pdef_loop (z := Z13) (s := S13) [.w x1, .b x2, .w 0] rfl (by decide) rfl rfl
+    (L13 inp ms h3 e3 h8 e8 h9 e9 h10 e10 l10 h11 e11 l11 h12 e12 x0.toNat x0.toNat_lt x0 x1 x2 (.w 0)) rfl
+
 def D14 : DefA := ⟨14, 0, 0, 0, 1, .call 13 [.const 16777216, .const 0, .prim 5 []]⟩
 theorem c14 (inp : List UInt8) (ms : List Fn) {F13 : Fn} (h13 : ms[13]? = some F13) (e13 : ∀ (a0 : UInt64) (a1 : UInt64) (a2 : List UInt64), F13 [.w a0, .w a1, .b a2] = .ok [.b (C.s9 a0.toNat inp a1 a2)]) (l13 : ∀ (a1 : UInt64) (a2 : List UInt64), LenC (F13 [.w inp.length.toUInt64, .w a1, .b a2] = .ok [.b (C.s9 (len' inp) inp a1 a2)]))  :
     pdefMean inp ms D14 [] = .ok [.b (C.s10 inp)] := by
@@ -83,6 +198,29 @@ theorem c14 (inp : List UInt8) (ms : List Fn) {F13 : Fn} (h13 : ms[13]? = some F
   case hb => exact (ev_call (evL_cons (ev_const 16777216) (evL_cons (ev_const 0) (evL_cons (ev_bnew) evL_nil))) h13 (e13 _ _ _))
   case hr => rfl
   case hf => rfl
+
+def D15 : DefA := ⟨15, 2, 2, 1, 1, .loop (.loc 1 1) (.cont (.prim 9 [.loc 1 1, .const 0]))⟩
+def Z15 : Nd := (.loc 1 1)
+def S15 : Nd := (.cont (.prim 9 [(.loc 1 1), (.const 0)]))
+theorem L15 (inp : List UInt8) (ms : List Fn) : ∀ n : Nat, n < 2 ^ 64 → ∀ (N : UInt64) (x1 : List UInt64),
+    loopRun (fun e => pev inp ms Z15 e) (fun e => pev inp ms S15 e) n [W.w N, .b x1] = .ok [.b (C.y5 n x1)] := by
+  intro n
+  induction n with
+  | zero =>
+    intro _ N x1
+    apply loop_zero
+    case h => exact (ev_loc (s := 1) (w := 1) (env := [W.w N, W.b x1]) (vs := [W.b x1]) (Nat.le_of_ble_eq_true rfl) rfl)
+    case hf => rfl
+  | succ n ih =>
+    intro hn N x1
+    obtain ⟨M, rfl⟩ : ∃ M : UInt64, M.toNat = n := ⟨UInt64.ofNat n, by simp; omega⟩
+    apply loop_succ (env1 := [W.w M, .b x1]) rfl
+    case hk => exact (ev_contK (ev_bpush (ev_loc (s := 1) (w := 1) (env := [W.w M, W.b x1]) (vs := [W.b x1]) (Nat.le_of_ble_eq_true rfl) rfl) (ev_const 0)) rfl (ih M.toNat_lt M _))
+    case hf => rfl
+theorem c15 (inp : List UInt8) (ms : List Fn) (x0 : UInt64) (x1 : List UInt64) :
+    pdefMean inp ms D15 [.w x0, .b x1] = .ok [.b (C.y5 x0.toNat x1)] :=
+  pdef_loop (z := Z15) (s := S15) [.b x1] rfl (by decide) rfl rfl
+    (L15 inp ms x0.toNat x0.toNat_lt x0 x1) rfl
 
 def D16 : DefA := ⟨16, 0, 0, 0, 1, .const 64⟩
 theorem c16 (inp : List UInt8) (ms : List Fn)  :
@@ -111,54 +249,6 @@ theorem c18 (inp : List UInt8) (ms : List Fn) {F16 : Fn} (h16 : ms[16]? = some F
 def D19 : DefA := ⟨19, 0, 0, 0, 1, .const 4096⟩
 theorem c19 (inp : List UInt8) (ms : List Fn)  :
     pdefMean inp ms D19 [] = .ok [.w (C.d4)] := by
-  apply pdef_env [] rfl (by decide) rfl
-  case hb => exact (ev_const 4096)
-  case hr => rfl
-  case hf => rfl
-
-def D20 : DefA := ⟨20, 0, 0, 0, 1, .bin 1 (.call 18 []) (.call 19 [])⟩
-theorem c20 (inp : List UInt8) (ms : List Fn) {F18 : Fn} (h18 : ms[18]? = some F18) (e18 : F18 [] = .ok [.w (C.d3)]) {F19 : Fn} (h19 : ms[19]? = some F19) (e19 : F19 [] = .ok [.w (C.d4)])  :
-    pdefMean inp ms D20 [] = .ok [.w (C.d5)] := by
-  apply pdef_env [] rfl (by decide) rfl
-  case hb => exact (ev_add (ev_call evL_nil h18 (e18)) (ev_call evL_nil h19 (e19)))
-  case hr => rfl
-  case hf => rfl
-
-def D21 : DefA := ⟨21, 0, 0, 0, 1, .const 131072⟩
-theorem c21 (inp : List UInt8) (ms : List Fn)  :
-    pdefMean inp ms D21 [] = .ok [.w (C.d6)] := by
-  apply pdef_env [] rfl (by decide) rfl
-  case hb => exact (ev_const 131072)
-  case hr => rfl
-  case hf => rfl
-
-def D22 : DefA := ⟨22, 0, 0, 0, 1, .bin 1 (.call 20 []) (.call 21 [])⟩
-theorem c22 (inp : List UInt8) (ms : List Fn) {F20 : Fn} (h20 : ms[20]? = some F20) (e20 : F20 [] = .ok [.w (C.d5)]) {F21 : Fn} (h21 : ms[21]? = some F21) (e21 : F21 [] = .ok [.w (C.d6)])  :
-    pdefMean inp ms D22 [] = .ok [.w (C.d7)] := by
-  apply pdef_env [] rfl (by decide) rfl
-  case hb => exact (ev_add (ev_call evL_nil h20 (e20)) (ev_call evL_nil h21 (e21)))
-  case hr => rfl
-  case hf => rfl
-
-def D23 : DefA := ⟨23, 0, 0, 0, 1, .const 32768⟩
-theorem c23 (inp : List UInt8) (ms : List Fn)  :
-    pdefMean inp ms D23 [] = .ok [.w (C.d8)] := by
-  apply pdef_env [] rfl (by decide) rfl
-  case hb => exact (ev_const 32768)
-  case hr => rfl
-  case hf => rfl
-
-def D24 : DefA := ⟨24, 0, 0, 0, 1, .bin 1 (.call 22 []) (.call 23 [])⟩
-theorem c24 (inp : List UInt8) (ms : List Fn) {F22 : Fn} (h22 : ms[22]? = some F22) (e22 : F22 [] = .ok [.w (C.d7)]) {F23 : Fn} (h23 : ms[23]? = some F23) (e23 : F23 [] = .ok [.w (C.d8)])  :
-    pdefMean inp ms D24 [] = .ok [.w (C.d9)] := by
-  apply pdef_env [] rfl (by decide) rfl
-  case hb => exact (ev_add (ev_call evL_nil h22 (e22)) (ev_call evL_nil h23 (e23)))
-  case hr => rfl
-  case hf => rfl
-
-def D25 : DefA := ⟨25, 0, 0, 0, 1, .const 4096⟩
-theorem c25 (inp : List UInt8) (ms : List Fn)  :
-    pdefMean inp ms D25 [] = .ok [.w (C.d10)] := by
   apply pdef_env [] rfl (by decide) rfl
   case hb => exact (ev_const 4096)
   case hr => rfl

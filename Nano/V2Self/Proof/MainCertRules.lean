@@ -135,7 +135,105 @@ theorem pdef_of' {d : DefA} {ps r r' : List W} (h1 : ps.length = d.npw) (h2 : d.
     pdefMean inp ms d ps = .ok r' := hf ▸ pdef_of h1 h2 hb hr
 end
 
-attribute [irreducible] Ev EvL LenC
+/-! ## fuel loops -/
+section
+variable {inp : List UInt8} {ms : List Fn} {env : List W}
+
+/-- what the loop does with a step arm's outcome: a value ends it, a CONTINUE payload goes to the state slots -/
+def LoopK (fz fs : List W → Out) (n : Nat) (env1 : List W) : List W ⊕ List W → Except Stop (List W)
+  | .inl v => pure v
+  | .inr st => do loopRun fz fs n (← setSlots env1 1 st)
+
+/-- tail mode: node `n`, then the continuation `K` -/
+def EvK (inp : List UInt8) (ms : List Fn) (n : Nd) (env : List W) (K : List W ⊕ List W → Except Stop (List W)) (r : List W) : Prop :=
+  (pev inp ms n env >>= K) = .ok r
+
+theorem ev_valK {n : Nd} {v : List W} {fz fs : List W → Out} {m : Nat} {env1 : List W} (h : Ev inp ms n env v) :
+    EvK inp ms n env (LoopK fz fs m env1) v := by
+  unfold Ev at h; unfold EvK
+  cases hp : pev inp ms n env with
+  | error e => rw [hp] at h; cases h
+  | ok o =>
+    rw [hp] at h
+    cases o with
+    | inl v' => cases h; rfl
+    | inr st => cases h
+
+theorem ev_contK {e : Nd} {st env1 env2 r : List W} {fz fs : List W → Out} {m : Nat} (he : Ev inp ms e env st)
+    (hs : setSlots env1 1 st = .ok env2) (hi : loopRun fz fs m env2 = .ok r) :
+    EvK inp ms (.cont e) env (LoopK fz fs m env1) r := by
+  unfold Ev at he; unfold EvK
+  simp only [pev, bind, Except.bind, he, pure, Except.pure, LoopK, hs]; exact hi
+
+theorem ev_iteK1 {α : Type} (enc : α → List W) {a b t e : Nd} {x y : UInt64} {p q : α} {K : List W ⊕ List W → Except Stop (List W)}
+    (ha : Ev inp ms a env [.w x]) (hb : Ev inp ms b env [.w y])
+    (ht : EvK inp ms t env K (enc p)) (he : EvK inp ms e env K (enc q)) :
+    EvK inp ms (.ite 1 a b t e) env K (enc (if x == y then p else q)) := by
+  unfold Ev at ha hb; unfold EvK at *
+  simp only [pev, bind, Except.bind]
+  rw [ha, hb]; dsimp only
+  by_cases h : x = y
+  · simp only [h, if_true, BEq.rfl]; subst h; exact ht
+  · have h' : (x == y) = false := by simpa using h
+    simp only [h, h', if_false, Bool.false_eq_true]; exact he
+
+theorem ev_iteK2 {α : Type} (enc : α → List W) {a b t e : Nd} {x y : UInt64} {p q : α} {K : List W ⊕ List W → Except Stop (List W)}
+    (ha : Ev inp ms a env [.w x]) (hb : Ev inp ms b env [.w y])
+    (ht : EvK inp ms t env K (enc p)) (he : EvK inp ms e env K (enc q)) :
+    EvK inp ms (.ite 2 a b t e) env K (enc (if x < y then p else q)) := by
+  unfold Ev at ha hb; unfold EvK at *
+  simp only [pev, bind, Except.bind]
+  rw [ha, hb]; dsimp only
+  by_cases h : x < y
+  · simp only [h, if_true]; exact ht
+  · simp only [h, if_false]; exact he
+
+theorem ev_letK {s : Nat} {v b : Nd} {x env' r : List W} {K : List W ⊕ List W → Except Stop (List W)}
+    (hv : Ev inp ms v env x) (hw : x.length = 1) (he : setSlots env s x = .ok env')
+    (hb : EvK inp ms b env' K r) : EvK inp ms (.letE s 1 v b) env K r := by
+  unfold Ev at hv; unfold EvK at *
+  simp only [pev, bind, Except.bind]
+  rw [hv]; simp only [hw, if_true, he]; exact hb
+
+theorem ev_letKW {s : Nat} {v b : Nd} {x0 : UInt64} {E : UInt64 → List W} {R : UInt64 → List W}
+    {K : List W ⊕ List W → Except Stop (List W)}
+    (hv : Ev inp ms v env [.w x0]) (he : ∀ x, setSlots env s [.w x] = .ok (E x))
+    (hb : ∀ x, EvK inp ms b (E x) K (R x)) :
+    EvK inp ms (.letE s 1 v b) env K (let x := x0; R x) := ev_letK hv rfl (he x0) (hb x0)
+theorem ev_letKB {s : Nat} {v b : Nd} {x0 : List UInt64} {E : List UInt64 → List W} {R : List UInt64 → List W}
+    {K : List W ⊕ List W → Except Stop (List W)}
+    (hv : Ev inp ms v env [.b x0]) (he : ∀ x, setSlots env s [.b x] = .ok (E x))
+    (hb : ∀ x, EvK inp ms b (E x) K (R x)) :
+    EvK inp ms (.letE s 1 v b) env K (let x := x0; R x) := ev_letK hv rfl (he x0) (hb x0)
+
+theorem loop_zero {z s : Nd} {r r' : List W} (h : Ev inp ms z env r) (hf : r = r') :
+    loopRun (fun e => pev inp ms z e) (fun e => pev inp ms s e) 0 env = .ok r' := by
+  subst hf; unfold Ev at h; exact h
+
+theorem loop_succ {z s : Nd} {M : UInt64} {env1 r r' : List W} (h1 : setSlots env 0 [.w M] = .ok env1)
+    (hk : EvK inp ms s env1 (LoopK (fun e => pev inp ms z e) (fun e => pev inp ms s e) M.toNat env1) r)
+    (hf : r = r') :
+    loopRun (fun e => pev inp ms z e) (fun e => pev inp ms s e) (M.toNat + 1) env = .ok r' := by
+  subst hf; unfold EvK at hk
+  simp only [loopRun, UInt64.ofNat_toNat, h1, bind, Except.bind] at hk ⊢
+  cases hp : pev inp ms s env1 with
+  | error e => rw [hp] at hk; cases hk
+  | ok o =>
+    rw [hp] at hk
+    cases o with
+    | inl v => exact hk
+    | inr st => exact hk
+
+/-- a loop def's certificate from the loop run at fuel `a0.toNat` -/
+theorem pdef_loop {d : DefA} {z s : Nd} {a0 : UInt64} {ps r : List W} (env0 : List W) (h1 : (W.w a0 :: ps).length = d.npw)
+    (h2 : d.npw ≤ d.nslots) (hb : d.body = .loop z s)
+    (he : (W.w a0 :: ps) ++ List.replicate (d.nslots - d.npw) (.w 0) = W.w a0 :: env0)
+    (hL : loopRun (fun e => pev inp ms z e) (fun e => pev inp ms s e) a0.toNat (W.w a0 :: env0) = .ok r)
+    (hr : r.length = d.nres) : pdefMean inp ms d (W.w a0 :: ps) = .ok r := by
+  simp only [pdefMean, h1, h2, and_self, if_true, hb, he, pev, bind, Except.bind, hL, val, pure, Except.pure, hr]
+end
+
+attribute [irreducible] Ev EvL LenC EvK LoopK
 
 def encW (x : UInt64) : List W := [.w x]
 def encB (l : List UInt64) : List W := [.b l]
