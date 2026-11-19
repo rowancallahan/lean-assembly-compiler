@@ -384,3 +384,26 @@ Expect most work in 3–4 (mechanical, ~1500 lines); keep files ≤ 5 min / 8 GB
 Generator for twins of long straight-line runs: /scratchpad gen.py idea — take the runK proof, rename `hc`→`hcc`,
 `simp only [if_pos hi]` → `… at hj`, and replace each closing `simp [run, step, SET]` by `rcases j` cases
 `simp [run, step, SET] at hc; subst hc; simp [Safe, SET] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩`.
+
+### EVS — Safe contract retrofit: split plan (Opus box E, 2026-11-19)
+Shared definitions are FIXED in `Nano/V2Self/Proof/EVSDefs.lean` (do not change statements without telling E/owner):
+`Lay KL hb E0 p s` (work region ⊇ [hb, E0), base = KL.base, frame top s0+8p+16 ≤ E0, t6 / s0 8-aligned; premise of
+every run, re-established by `Lay.post` / `Lay.post'`), `HAl H` (heap cells aligned; premise + conclusion), `InpW`
+(input byte cells are work cells, from the invariant), `Lay.wok` (cell in [hb, E0), aligned ⇒ `wok`), and the safe
+contracts `EVHS` / `EVHwS` / `EVHtS` / `DefXS` (= EVH / EVHw / EVHt / DefX with `SimW.SStarX KL C` runs + `Lay`,
+`HAl`).  Runs use E's start-code layer `SimX` (`SafeX ⊇ Safe`; A's SafeRun twins lift by `SStarX.of`; `SStarX.trans`,
+`SStarX.star`).  Gen's words are `C.map encJX` (`TmGood.words_encJX`, `prog_good`).
+Independent pieces (each a NEW file importing EVSDefs; state each twin exactly as the original with the S-contracts):
+- P1 `EVSLeaf.lean`: EVXP leafX/constX/lenX/local1X/localX/fin1X/fin2X/fin3X/bnewX; HeapEV bin_gen/un_gen/tri_gen and
+  the Fin1/Fin2/Fin3 closings (define FinS twins here); EVXF fin2_alu/fin1_rd (needs `InpW`).  Use SafeRun's
+  *_srun twins; every `wok` from `Lay.wok` + HRel (hb ≤ H.top ≤ t6) + FrameOK + `HAl` for heap cells.
+- P2 `EVSComp.lean`: EVX ofEVH/one/hd1 conversions, nilX/pairX/ifX/letX (+ glue: ifHeadG lds at t6, t6+8, cmpJ,
+  jal 0; popN_srun for LET).
+- P3 `EVSTail.lean`: EVXT valT/contT/ifT/letT.
+- P4 `EVSLoop.lean`: EVXL loopX/loop_pass (loopHead/loopDec slot cells).
+- P5 `EVSCall.lean`: EVXC defX/callX → DefXS (pro_srun/epi_srun; callee `Lay` from DefXS premises + IGp frame bound;
+  epilogue `jalr` target = s.b + 4·ret).
+- P6 `EVSRun.lean` (after P1–P5): NdRun runV/runT/runL twins, NdProg progRun twin (all defs DefXS).
+- P7 `GenSail.lean` (after P6): gen_run on Sail: StartSafe twins + main's DefXS + `sim_starX` + `words_encJX`.
+Jump targets: `SafeX` jal needs 0 ≤ target < |C| and |offset| < 2^18 — assume `C.length < 2^18` globally and get
+target < |C| from `At` facts (target position holds an instruction).
