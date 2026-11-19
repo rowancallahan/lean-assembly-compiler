@@ -11,14 +11,19 @@ open NanoMain ParSpec
 
 def Ref {α : Type} (r : Except Stop α) (v : α) : Prop := r = .error .cap ∨ r = .ok v
 
+/-- `wd`/`len`: the width is a property of the TYPE (so side conditions never look at a value: reducing a value such
+as a loop call with literal fuel to a pair is ruinous) -/
 class Enc (α : Type) where
   enc : α → List W
+  wd : Nat
+  len : ∀ a, (enc a).length = wd
 export Enc (enc)
-instance : Enc UInt64 := ⟨fun x => [.w x]⟩
-instance : Enc (List UInt64) := ⟨fun l => [.b l]⟩
-instance : Enc Nat := ⟨fun n => [.w (UInt64.ofNat n)]⟩
-instance : Enc Unit := ⟨fun _ => []⟩
-instance {α β : Type} [Enc α] [Enc β] : Enc (α × β) := ⟨fun p => enc p.1 ++ enc p.2⟩
+instance : Enc UInt64 := ⟨fun x => [.w x], 1, fun _ => rfl⟩
+instance : Enc (List UInt64) := ⟨fun l => [.b l], 1, fun _ => rfl⟩
+instance : Enc Nat := ⟨fun n => [.w (UInt64.ofNat n)], 1, fun _ => rfl⟩
+instance : Enc Unit := ⟨fun _ => [], 0, fun _ => rfl⟩
+instance {α β : Type} [Enc α] [Enc β] : Enc (α × β) :=
+  ⟨fun p => enc p.1 ++ enc p.2, Enc.wd α + Enc.wd β, fun p => by simp [Enc.len]⟩
 
 abbrev Fn := List W → Except Stop (List W)
 
@@ -66,10 +71,43 @@ theorem DenT.iteLt {α : Type} [Enc α] {a b t e : Nd} {x y : UInt64} {T E : α}
   · simp only [c, if_true]; exact ht
   · simp only [c, if_false]; exact he
 
+/-! a `let` of numerals only is a `Nat` for Lean and a word for C: comparisons agree below 2^64 -/
+theorem ofNat_inj {x y : Nat} (hx : x < 18446744073709551616) (hy : y < 18446744073709551616) :
+    UInt64.ofNat x = UInt64.ofNat y ↔ x = y := by
+  constructor
+  · intro h
+    have := congrArg UInt64.toNat h
+    simp only [UInt64.toNat_ofNat'] at this
+    rw [Nat.mod_eq_of_lt (by simpa using hx), Nat.mod_eq_of_lt (by simpa using hy)] at this; exact this
+  · intro h; rw [h]
+theorem ofNat_lt {x y : Nat} (hx : x < 18446744073709551616) (hy : y < 18446744073709551616) :
+    UInt64.ofNat x < UInt64.ofNat y ↔ x < y := by
+  rw [UInt64.lt_iff_toNat_lt]
+  simp only [UInt64.toNat_ofNat']
+  rw [Nat.mod_eq_of_lt (by simpa using hx), Nat.mod_eq_of_lt (by simpa using hy)]
+
+theorem DenT.iteEqN {α : Type} [Enc α] {a b t e : Nd} {x y : Nat} {T E : α} (ha : DenT cx a env x) (hb : DenT cx b env y)
+    (hx : x < 18446744073709551616) (hy : y < 18446744073709551616)
+    (ht : DenT cx t env T) (he : DenT cx e env E) : DenT cx (.ite 1 a b t e) env (if x == y then T else E) := by
+  rcases ha with ha | ha <;> rcases hb with hb | hb <;>
+    simp [DenT, Ref, ev, NanoMain.val, ha, hb, enc, bind, Except.bind]
+  by_cases c : x = y
+  · simp only [c, if_true]; exact ht
+  · simp only [c, if_false]; rw [if_neg (fun h => c ((ofNat_inj hx hy).mp h))]; exact he
+theorem DenT.iteLtN {α : Type} [Enc α] {a b t e : Nd} {x y : Nat} {T E : α} (ha : DenT cx a env x) (hb : DenT cx b env y)
+    (hx : x < 18446744073709551616) (hy : y < 18446744073709551616)
+    (ht : DenT cx t env T) (he : DenT cx e env E) : DenT cx (.ite 2 a b t e) env (if x < y then T else E) := by
+  rcases ha with ha | ha <;> rcases hb with hb | hb <;>
+    simp [DenT, Ref, ev, NanoMain.val, ha, hb, enc, bind, Except.bind]
+  by_cases c : x < y
+  · simp only [c, if_true]; rw [if_pos ((ofNat_lt hx hy).mpr c)]; exact ht
+  · simp only [c, if_false]; rw [if_neg (fun h => c ((ofNat_lt hx hy).mp h))]; exact he
+
 theorem DenT.letE {α β : Type} [Enc α] [Enc β] {s w : Nat} {v b : Nd} (a : α) (B : α → β) (hv : DenT cx v env a)
-    (hw : (enc a).length = w) (hb : ∀ y : α, ∃ env', setSlots env s (enc y) = .ok env' ∧ DenT cx b env' (B y)) :
+    (hw : Enc.wd α = w) (hb : ∀ y : α, y = a → ∃ env', setSlots env s (enc y) = .ok env' ∧ DenT cx b env' (B y)) :
     DenT cx (.letE s w v b) env (B a) := by
-  obtain ⟨env', h1, h2⟩ := hb a
+  obtain ⟨env', h1, h2⟩ := hb a rfl
+  have hw : (enc a).length = w := by rw [Enc.len]; exact hw
   rcases hv with hv | hv <;> simp [DenT, Ref, ev, NanoMain.val, hv, hw, h1, bind, Except.bind]
   exact h2
 
@@ -137,10 +175,28 @@ theorem DenK.iteLt {α : Type} [Enc α] {a b t e : Nd} {x y : UInt64} {T E : α}
   by_cases c : x < y
   · simp only [c, if_true]; exact ht
   · simp only [c, if_false]; exact he
+theorem DenK.iteEqN {α : Type} [Enc α] {a b t e : Nd} {x y : Nat} {T E : α} (ha : DenT cx a env x) (hb : DenT cx b env y)
+    (hx : x < 18446744073709551616) (hy : y < 18446744073709551616)
+    (ht : DenK cx K t env T) (he : DenK cx K e env E) : DenK cx K (.ite 1 a b t e) env (if x == y then T else E) := by
+  rcases ha with ha | ha <;> rcases hb with hb | hb <;>
+    simp [DenK, ev, NanoMain.val, ha, hb, enc, bind, Except.bind]
+  by_cases c : x = y
+  · simp only [c, if_true]; exact ht
+  · simp only [c, if_false]; rw [if_neg (fun h => c ((ofNat_inj hx hy).mp h))]; exact he
+theorem DenK.iteLtN {α : Type} [Enc α] {a b t e : Nd} {x y : Nat} {T E : α} (ha : DenT cx a env x) (hb : DenT cx b env y)
+    (hx : x < 18446744073709551616) (hy : y < 18446744073709551616)
+    (ht : DenK cx K t env T) (he : DenK cx K e env E) : DenK cx K (.ite 2 a b t e) env (if x < y then T else E) := by
+  rcases ha with ha | ha <;> rcases hb with hb | hb <;>
+    simp [DenK, ev, NanoMain.val, ha, hb, enc, bind, Except.bind]
+  by_cases c : x < y
+  · simp only [c, if_true]; rw [if_pos ((ofNat_lt hx hy).mpr c)]; exact ht
+  · simp only [c, if_false]; rw [if_neg (fun h => c ((ofNat_lt hx hy).mp h))]; exact he
+
 theorem DenK.letE {α β : Type} [Enc α] [Enc β] {s w : Nat} {v b : Nd} (a : α) (B : α → β) (hv : DenT cx v env a)
-    (hw : (enc a).length = w) (hb : ∀ y : α, ∃ env', setSlots env s (enc y) = .ok env' ∧ DenK cx K b env' (B y)) :
+    (hw : Enc.wd α = w) (hb : ∀ y : α, y = a → ∃ env', setSlots env s (enc y) = .ok env' ∧ DenK cx K b env' (B y)) :
     DenK cx K (.letE s w v b) env (B a) := by
-  obtain ⟨env', h1, h2⟩ := hb a
+  obtain ⟨env', h1, h2⟩ := hb a rfl
+  have hw : (enc a).length = w := by rw [Enc.len]; exact hw
   rcases hv with hv | hv <;> simp [DenK, ev, NanoMain.val, hv, hw, h1, bind, Except.bind]
   exact h2
 
@@ -176,10 +232,16 @@ theorem defMean_ref {inp : List UInt8} {κ : Nat} {ms : List Fn} {d : DefA} {ps 
 
 /-- `defMean_ref` with the body and the initial environment named explicitly (no unification through `DenT`) -/
 theorem defMean_den {inp : List UInt8} {κ : Nat} {ms : List Fn} {d : DefA} {ps : List W} {α : Type} [Enc α] (t : α) (e : Nd)
-    (env : List W) (hps : ps.length = d.npw) (hle : d.npw ≤ d.nslots) (hres : (enc t).length = d.nres) (hb : d.body = e)
+    (env : List W) (hps : ps.length = d.npw) (hle : d.npw ≤ d.nslots) (hres : Enc.wd α = d.nres) (hb : d.body = e)
     (henv : ps ++ List.replicate (d.nslots - d.npw) (.w 0) = env) (h : DenT ⟨inp, κ, ms⟩ e env t) :
     Ref (defMean inp κ ms d ps) (enc t) := by
-  subst hb henv; exact defMean_ref hps hle hres h.toVal
+  subst hb henv; exact defMean_ref hps hle (by rw [Enc.len]; exact hres) h.toVal
+
+/-- `defMean_ref` for a loop def, the result width taken from the type -/
+theorem defMean_loop {inp : List UInt8} {κ : Nat} {ms : List Fn} {d : DefA} {ps : List W} {α : Type} [Enc α] (t : α)
+    (hps : ps.length = d.npw) (hle : d.npw ≤ d.nslots) (hres : Enc.wd α = d.nres)
+    (h : Ref (NanoMain.val (ev ⟨inp, κ, ms⟩ d.body (ps ++ List.replicate (d.nslots - d.npw) (.w 0)))) (enc t)) :
+    Ref (defMean inp κ ms d ps) (enc t) := defMean_ref hps hle (by rw [Enc.len]; exact hres) h
 
 /-! the table of per-def specifications -/
 def Good (specs : List (Fn → Prop)) (ms : List Fn) (n : Nat) : Prop :=

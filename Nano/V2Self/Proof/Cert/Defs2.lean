@@ -42,7 +42,7 @@ theorem ok_10 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 184467440737
       unfold PC.s10
       den [hc]
   intro a0 a2 a3 a4 hn
-  refine defMean_ref (v := enc (C.s6 a0 inp a2 a3 a4)) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
+  refine defMean_loop (C.s6 a0 inp a2 a3 a4) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
   have h := L a0 hn (UInt64.ofNat a0) a2 a3 a4
   rwa [show (UInt64.ofNat a0).toNat = a0 from by simp [UInt64.toNat_ofNat', Nat.mod_eq_of_lt hn]]
 
@@ -64,7 +64,7 @@ theorem ok_11 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 184467440737
       unfold PC.s11
       den [hc]
   intro a0 a2 a3 a4 hn
-  refine defMean_ref (v := enc (C.s7 a0 inp a2 a3 a4)) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
+  refine defMean_loop (C.s7 a0 inp a2 a3 a4) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
   have h := L a0 hn (UInt64.ofNat a0) a2 a3 a4
   rwa [show (UInt64.ofNat a0).toNat = a0 from by simp [UInt64.toNat_ofNat', Nat.mod_eq_of_lt hn]]
 
@@ -94,7 +94,7 @@ theorem ok_13 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 184467440737
       unfold PC.s13
       den [hc]
   intro a0 a2 a3 hn
-  refine defMean_ref (v := enc (C.s9 a0 inp a2 a3)) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
+  refine defMean_loop (C.s9 a0 inp a2 a3) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
   have h := L a0 hn (UInt64.ofNat a0) a2 a3
   rwa [show (UInt64.ofNat a0).toNat = a0 from by simp [UInt64.toNat_ofNat', Nat.mod_eq_of_lt hn]]
 

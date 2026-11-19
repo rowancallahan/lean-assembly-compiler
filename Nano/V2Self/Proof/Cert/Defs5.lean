@@ -26,7 +26,7 @@ theorem ok_55 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 184467440737
       unfold PC.s55
       den [hc]
   intro a0 a1 a2 hn
-  refine defMean_ref (v := enc (C.v209 a0 a1 a2)) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
+  refine defMean_loop (C.v209 a0 a1 a2) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
   have h := L a0 hn (UInt64.ofNat a0) a1 a2
   rwa [show (UInt64.ofNat a0).toNat = a0 from by simp [UInt64.toNat_ofNat', Nat.mod_eq_of_lt hn]]
 

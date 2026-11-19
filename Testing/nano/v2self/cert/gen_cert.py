@@ -184,7 +184,7 @@ def main():
                       f"        fun {' '.join(pv)} _ _ h => DenK.cont h ⟨_, rfl, ih (by omega) _ {' '.join(pv)}⟩",
                       f"      unfold PC.s{i}", "      den [hc]",
                       f"  intro {' '.join(vs)} hn",
-                      f"  refine defMean_ref (v := enc ({app(d, vs)})) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat {vs[0]}) ?_)",
+                      f"  refine defMean_loop ({app(d, vs)}) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat {vs[0]}) ?_)",
                       f"  have h := L {vs[0]} hn (UInt64.ofNat {vs[0]}) {' '.join(sv)}",
                       f"  rwa [show (UInt64.ofNat {vs[0]}).toNat = {vs[0]} from by simp [UInt64.toNat_ofNat', Nat.mod_eq_of_lt hn]]"]
             T.append("")

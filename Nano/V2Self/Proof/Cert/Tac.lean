@@ -7,6 +7,9 @@ import Nano.V2Self.Proof.Cert.Rules
 namespace Cert
 open Lean Meta Elab Tactic
 
+/-- unused `have`s of the Lean value still have their `letE` node: the unifier must not drop them -/
+def noZU {α : Type} (x : TacticM α) : TacticM α := withConfig (fun c => { c with zetaUnused := false }) x
+
 /-- the elements of a list expression with a concrete spine -/
 partial def listSpine (e : Expr) (acc : Array Expr := #[]) : MetaM (Array Expr) := do
   let e ← whnf e
@@ -24,8 +27,10 @@ partial def tupleArgs (e T : Expr) (tys : List Expr) : MetaM (Array Expr × List
     if ← isDefEq T ty then return (#[e], rest)
     let T' ← whnf T
     unless T'.isAppOfArity ``Prod 2 do throwError "tupleArgs: a product expected{indentExpr T}"
-    let (l, tys1) ← tupleArgs (← mkAppM ``Prod.fst #[e]) T'.getAppArgs[0]! tys
-    let (r, tys2) ← tupleArgs (← mkAppM ``Prod.snd #[e]) T'.getAppArgs[1]! tys1
+    -- primitive projections: the form the kernel's structure eta produces (with `Prod.fst e` every later check
+    -- would re-normalize the whole body)
+    let (l, tys1) ← tupleArgs (.proj ``Prod 0 e) T'.getAppArgs[0]! tys
+    let (r, tys2) ← tupleArgs (.proj ``Prod 1 e) T'.getAppArgs[1]! tys1
     return (l ++ r, tys2)
 
 private def lamDomains : Expr → List Expr
@@ -34,7 +39,7 @@ private def lamDomains : Expr → List Expr
 
 /-- a `letE` node against `let y := a; B` or `match a with | (y₁, …) => B`: rule `letE` with `a`, `fun y => B` given
 explicitly; leaves the value goal and the body goal (the new variable introduced, the slots written) -/
-elab "den_let" : tactic => withMainContext do
+elab "den_let" : tactic => withMainContext <| noZU do
   let g ← getMainGoal
   let tgt := (← instantiateMVars (← g.getType)).cleanupAnnotations
   let nm := tgt.getAppFn.constName?.getD .anonymous
@@ -49,12 +54,17 @@ elab "den_let" : tactic => withMainContext do
       -- `B a` must be SYNTACTICALLY the goal's value after beta: a defeq check through the match would unfold `a`
       let B ← withLocalDeclD `y (← inferType d) fun y => mkLambdaFVars #[y] ({ m with discrs := #[y] }.toExpr)
       pure (d, B, `y, true)
+  -- present the value literally as `B a`: unifying `B a` with a `match a with …` would reduce `a` (a loop call with
+  -- literal fuel) on both sides
+  let gB ← g.replaceTargetDefEq (mkAppN tgt.getAppFn (tgt.getAppArgs.pop.push (mkApp B a)))
+  replaceMainGoal [gB]
   let lem := mkIdent (if nm == ``DenT then ``DenT.letE else ``DenK.letE)
   let aS ← Term.exprToSyntax a
   let bS ← Term.exprToSyntax B
   evalTactic (← `(tactic| refine $lem $aS $bS ?_ rfl ?_))
-  let [g1, g2] ← getGoals | throwError "den_let: two goals expected"
+  let g1 :: g2 :: rest ← getGoals | throwError "den_let: two goals expected"
   let (_, g2) ← g2.intro yn
+  let (_, g2) ← g2.intro (yn.appendAfter "_def")
   setGoals [g2]
   -- the new environment as a literal list (an unreduced `setSlots` chain makes later lookups exponential)
   let ex ← instantiateMVars (← g2.getType)
@@ -83,7 +93,7 @@ elab "den_let" : tactic => withMainContext do
     unless rest.isEmpty do throwError "den_let: pattern variables left over"
     t3 := (mkAppN alt as).headBeta
   let g3 ← g3.replaceTargetDefEq (mkAppN tgt3.getAppFn (args.pop.push t3))
-  setGoals [g1, g3]
+  setGoals (g1 :: g3 :: rest)
 
 /-- the Lean value is a loop def unfolded by `eq_def` at fuel `0` (`den_match 0`) or `n + 1` (`den_match 1`): pick the
 arm by hand (variable patterns only), keeping `let`s and inner matches -/
@@ -120,7 +130,7 @@ elab "den_unfold" : tactic => withMainContext do
   replaceMainGoal [← g.replaceTargetDefEq (mkAppN tgt.getAppFn (args.pop.push e.headBeta))]
 
 /-- a `call i` node: apply `Cert.call_<i>` -/
-elab "den_call" : tactic => withMainContext do
+elab "den_call" : tactic => withMainContext <| noZU do
   let g ← getMainGoal
   let tgt := (← instantiateMVars (← g.getType)).cleanupAnnotations
   unless tgt.getAppFn.constName? == some ``DenT do throwError "den_call: not a DenT goal"
@@ -130,13 +140,30 @@ elab "den_call" : tactic => withMainContext do
   let some i := ie.nat? <|> ie.rawNatLit? | throwError "den_call: the def id is not a literal"
   evalTactic (← `(tactic| apply $(mkIdent (Name.mkStr `Cert s!"call_{i}"))))
 
+/-- `x < 2^64` for a `let`-bound `x : Nat` whose value is a nest of `if`s over numerals: rewrite with `x = …` only -/
+elab "den_bound" : tactic => withMainContext do
+  let g ← getMainGoal
+  let tgt := (← instantiateMVars (← g.getType)).cleanupAnnotations
+  unless tgt.isAppOfArity ``LT.lt 4 do throwError "den_bound: not a bound"
+  let x := tgt.getAppArgs[2]!
+  unless x.isFVar do throwError "den_bound: not a variable"
+  for d in ← getLCtx do
+    let ty := (← instantiateMVars d.type).cleanupAnnotations
+    if ty.isAppOfArity ``Eq 3 && ty.getAppArgs[1]! == x then
+      let r ← g.rewrite tgt d.toExpr
+      let g' ← g.replaceTargetEq r.eNew r.eqProof
+      replaceMainGoal (g' :: r.mvarIds)
+      evalTactic (← `(tactic| (repeat' split) <;> decide))
+      return
+  throwError "den_bound: no defining equation"
+
 private def natArg (e : Expr) : MetaM Nat := do
   let e ← whnf e
   let some n := e.nat? <|> e.rawNatLit? | throwError "den: a literal expected{indentExpr e}"
   return n
 
 /-- one rule, chosen by the judgment and the node's constructor -/
-elab "den_step" : tactic => withMainContext do
+elab "den_step" : tactic => withMainContext <| noZU do
   let g ← getMainGoal
   let tgt := (← instantiateMVars (← g.getType)).cleanupAnnotations
   let nm := tgt.getAppFn.constName?.getD .anonymous
@@ -154,11 +181,20 @@ elab "den_step" : tactic => withMainContext do
     let a := e.getAppArgs
     if c == ``ParSpec.Nd.letE then run `(tactic| den_let)
     else if c == ``ParSpec.Nd.ite then
+      -- the branches are passed explicitly: assigning them by unification drops unused `have`s
+      let v := args.back!.consumeMData
+      unless v.isAppOfArity ``ite 5 do throwError "den: the value is not an if{indentExpr v}"
+      let tS ← Term.exprToSyntax v.getAppArgs[3]!
+      let eS ← Term.exprToSyntax v.getAppArgs[4]!
+      -- operands that Lean typed as `Nat` (a `let` of numerals only): the bounded rules
+      let c := v.getAppArgs[1]!
+      let opTy := if c.isAppOf ``Eq then c.getAppArgs[1]!.getAppArgs[0]! else c.getAppArgs[0]!
+      let isN := opTy.isConstOf ``Nat
       match (← natArg a[0]!), k with
-      | 1, false => run `(tactic| apply DenT.iteEq)
-      | 2, false => run `(tactic| apply DenT.iteLt)
-      | 1, true => run `(tactic| apply DenK.iteEq)
-      | 2, true => run `(tactic| apply DenK.iteLt)
+      | 1, false => if isN then run `(tactic| refine DenT.iteEqN (T := $tS) (E := $eS) ?_ ?_ ?_ ?_ ?_ ?_) else run `(tactic| refine DenT.iteEq (T := $tS) (E := $eS) ?_ ?_ ?_ ?_)
+      | 2, false => if isN then run `(tactic| refine DenT.iteLtN (T := $tS) (E := $eS) ?_ ?_ ?_ ?_ ?_ ?_) else run `(tactic| refine DenT.iteLt (T := $tS) (E := $eS) ?_ ?_ ?_ ?_)
+      | 1, true => if isN then run `(tactic| refine DenK.iteEqN (T := $tS) (E := $eS) ?_ ?_ ?_ ?_ ?_ ?_) else run `(tactic| refine DenK.iteEq (T := $tS) (E := $eS) ?_ ?_ ?_ ?_)
+      | 2, true => if isN then run `(tactic| refine DenK.iteLtN (T := $tS) (E := $eS) ?_ ?_ ?_ ?_ ?_ ?_) else run `(tactic| refine DenK.iteLt (T := $tS) (E := $eS) ?_ ?_ ?_ ?_)
       | _, _ => throwError "den: comparison code"
     else if k then run `(tactic| apply DenK.ofT)
     else if c == ``ParSpec.Nd.const then run `(tactic| first | exact DenT.const _ | exact DenT.constN rfl)
@@ -179,7 +215,7 @@ elab "den_step" : tactic => withMainContext do
       | 8 => run `(tactic| apply DenT.bset) | 9 => run `(tactic| apply DenT.bpush)
       | _ => throwError "den: prim code"
     else throwError "den: no rule for{indentExpr e}"
-  else run `(tactic| first | assumption | decide | omega)
+  else run `(tactic| first | assumption | decide | omega | den_bound)
 
 /-- `den`: value position; `den [h]`: tail position of a step arm, `h` = the CONTINUE rule from the induction hypothesis -/
 syntax "den" ("[" term "]")? : tactic

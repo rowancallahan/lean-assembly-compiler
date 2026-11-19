@@ -34,7 +34,7 @@ theorem ok_104 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073
       unfold PC.s104
       den [hc]
   intro a0 a1 a2 a3 hn
-  refine defMean_ref (v := enc (C.v203 a0 a1 a2 a3)) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
+  refine defMean_loop (C.v203 a0 a1 a2 a3) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
   have h := L a0 hn (UInt64.ofNat a0) a1 a2 a3
   rwa [show (UInt64.ofNat a0).toNat = a0 from by simp [UInt64.toNat_ofNat', Nat.mod_eq_of_lt hn]]
 

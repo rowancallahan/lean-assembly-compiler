@@ -117,7 +117,7 @@ theorem ok_53 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 184467440737
       unfold PC.s53
       den [hc]
   intro a0 a1 a2 a3 a4 hn
-  refine defMean_ref (v := enc (C.v205 a0 a1 a2 a3 a4)) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
+  refine defMean_loop (C.v205 a0 a1 a2 a3 a4) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
   have h := L a0 hn (UInt64.ofNat a0) a1 a2 a3 a4
   rwa [show (UInt64.ofNat a0).toNat = a0 from by simp [UInt64.toNat_ofNat', Nat.mod_eq_of_lt hn]]
 
@@ -139,7 +139,7 @@ theorem ok_54 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 184467440737
       unfold PC.s54
       den [hc]
   intro a0 a1 a2 a3 a4 a5 a6 hn
-  refine defMean_ref (v := enc (C.v210 a0 a1 a2 a3 a4 a5 a6)) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
+  refine defMean_loop (C.v210 a0 a1 a2 a3 a4 a5 a6) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
   have h := L a0 hn (UInt64.ofNat a0) a1 a2 a3 a4 a5 a6
   rwa [show (UInt64.ofNat a0).toNat = a0 from by simp [UInt64.toNat_ofNat', Nat.mod_eq_of_lt hn]]
 

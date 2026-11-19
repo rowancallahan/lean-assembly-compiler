@@ -26,7 +26,7 @@ theorem ok_152 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073
       unfold PC.s152
       den [hc]
   intro a0 a1 a2 a3 a4 a5 hn
-  refine defMean_ref (v := enc (C.o34 a0 a1 a2 a3 a4 a5)) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
+  refine defMean_loop (C.o34 a0 a1 a2 a3 a4 a5) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
   have h := L a0 hn (UInt64.ofNat a0) a1 a2 a3 a4 a5
   rwa [show (UInt64.ofNat a0).toNat = a0 from by simp [UInt64.toNat_ofNat', Nat.mod_eq_of_lt hn]]
 
@@ -56,7 +56,7 @@ theorem ok_154 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073
       unfold PC.s154
       den [hc]
   intro a0 a1 a2 a3 a4 a5 hn
-  refine defMean_ref (v := enc (C.o36 a0 a1 a2 a3 a4 a5)) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
+  refine defMean_loop (C.o36 a0 a1 a2 a3 a4 a5) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
   have h := L a0 hn (UInt64.ofNat a0) a1 a2 a3 a4 a5
   rwa [show (UInt64.ofNat a0).toNat = a0 from by simp [UInt64.toNat_ofNat', Nat.mod_eq_of_lt hn]]
 
@@ -78,7 +78,7 @@ theorem ok_155 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073
       unfold PC.s155
       den [hc]
   intro a0 a1 a2 a3 a4 a5 hn
-  refine defMean_ref (v := enc (C.o37 a0 a1 a2 a3 a4 a5)) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
+  refine defMean_loop (C.o37 a0 a1 a2 a3 a4 a5) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
   have h := L a0 hn (UInt64.ofNat a0) a1 a2 a3 a4 a5
   rwa [show (UInt64.ofNat a0).toNat = a0 from by simp [UInt64.toNat_ofNat', Nat.mod_eq_of_lt hn]]
 
@@ -100,7 +100,7 @@ theorem ok_156 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073
       unfold PC.s156
       den [hc]
   intro a0 a1 a2 hn
-  refine defMean_ref (v := enc (C.o40 a0 a1 a2)) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
+  refine defMean_loop (C.o40 a0 a1 a2) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
   have h := L a0 hn (UInt64.ofNat a0) a1 a2
   rwa [show (UInt64.ofNat a0).toNat = a0 from by simp [UInt64.toNat_ofNat', Nat.mod_eq_of_lt hn]]
 
