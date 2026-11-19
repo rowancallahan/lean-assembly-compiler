@@ -203,4 +203,56 @@ theorem v8_rows {h : Buf} {st : St} {p : UInt64} {nm : List UInt64} (hD : DefsRe
   refine ⟨s22, ?_⟩
   rw [h22, idxOf_findD tab (rows st) nm _ rfl (by omega) (fun i hi hi' => hnames i hi hi') _ (by omega), ← hr, List.take_length]
 
+/-- the identifier branch of v104b, up to the cursor move: v0 (scratch), v7 (bindings), v8 (all rows), v86 (skip) -/
+theorem prim_id_setup {g ts : Buf} {st : St} {fs : List Frame} (R1 : Rep g ts st fs) (hin : inDefF fs = true)
+    (c14 : bget g (d11 + bget g 3) = 14) :
+    ∃ (nm : List UInt64) (rest : List Tok) (q : UInt64), st.toks = .id (nm.map UInt64.toNat) :: rest ∧
+      let g1 := bset g 31 0
+      let g2 := v7 16777216 g1 (bget g1 4) (bget g 3)
+      let g3 := v8 16777216 g2 (bget g2 12 + 1) (bget g 3)
+      v86 16777216 g3 (bget g3 3 + 1) = bset g3 3 q ∧ bget (v0 g (bget g 3)) 31 = 0 ∧ v0 g (bget g 3) = g1 ∧
+      Rep (bset g3 3 q) ts { st with toks := rest } fs ∧
+      ((bget g3 21 = 0 ∧ findB st.binds (nm.map UInt64.toNat) = none) ∨
+        (∃ i, bget g3 21 = (i + 1).toUInt64 ∧ ∃ hi : i < st.binds.length,
+          findB st.binds (nm.map UInt64.toNat) = some (st.binds[i]'hi))) ∧
+      bget g3 22 = (((findD (rows st) (nm.map UInt64.toNat)).map (· + 1)).getD 0).toUInt64 ∧
+      Same 21 g g2 ∧ Same 22 g2 g3 := by
+  obtain ⟨hn7, hl, har⟩ := rep_bounds R1
+  have h7 : (bget g 7).toNat < 2 ^ 24 := by rw [R1.1.2.2.2]; have := R1.2.1; simp; omega
+  obtain ⟨nm, rest, et, hNm, tr⟩ := tok_id R1.2.2.2.1 R1.1 c14
+  have z0 : v0 g (bget g 3) = bset g 31 0 := by simp [v0, c14]
+  have R1' := rep_31 R1 0
+  have e31 : ∀ i : UInt64, i.toNat ≠ 31 → bget (bset g 31 0) i = bget g i := fun i hi => bget_bset' _ _ _ _ (by simp; omega)
+  have et1 : TokAgree g (bset g 31 0) := ⟨e31 7 (by decide), fun i hi => e31 i (by omega)⟩
+  have hNm1 : NameOK (bset g 31 0) (bget g 3) nm := nameOK_frame et1 (by omega) hNm
+  have h71 : (bget (bset g 31 0) 7).toNat < 2 ^ 24 := by rw [e31 7 (by decide)]; exact h7
+  have hl1 : 31 < (bset g 31 0).length := by simp [length_bset]; omega
+  obtain ⟨s21, hfb⟩ := v7_findB R1'.2.2.2.2.2.1 h71 hl1 hNm1
+  have R2 := rep_same R1' s21 (Or.inl rfl) (v7_drop _ _ _ _)
+  generalize hg2 : v7 16777216 (bset g 31 0) (bget (bset g 31 0) 4) (bget g 3) = g2 at s21 hfb R2
+  have et2 : TokAgree (bset g 31 0) g2 := ⟨s21.2 7 (by decide) (by decide), fun i hi => s21.2 i (by omega) (by omega)⟩
+  have hNm2 : NameOK g2 (bget g 3) nm := nameOK_frame et2 (by omega) hNm1
+  have h72 : (bget g2 7).toNat < 2 ^ 24 := by rw [et2.1]; exact h71
+  have hl2 : 31 < g2.length := by rw [s21.1]; exact hl1
+  have hD2 : DefsRep g2 st true := by have := R2.2.2.2.2.2.2.1; rwa [hin] at this
+  obtain ⟨s22, h22⟩ := v8_rows hD2 h72 hl2 hNm2
+  have R3 := rep_same R2 s22 (Or.inr rfl) (v8_drop _ _ _ _)
+  generalize hg3 : v8 16777216 g2 (bget g2 12 + 1) (bget g 3) = g3 at s22 h22 R3
+  have et3 : TokAgree g2 g3 := ⟨s22.2 7 (by decide) (by decide), fun i hi => s22.2 i (by omega) (by omega)⟩
+  have hNm3 : NameOK g3 (bget g 3) nm := nameOK_frame et3 (by omega) hNm2
+  have e33 : bget g3 3 = bget g 3 := by rw [s22.2 3 (by decide) (by decide), s21.2 3 (by decide) (by decide), e31 3 (by decide)]
+  have p1 : (bget g 3 + 1).toNat = (bget g 3).toNat + 1 := by have := hNm.2.2; rw [UInt64.toNat_add]; simp; omega
+  have sk := v86_skip nm 16777216 g3 (bget g 3 + 1) hNm3.2.1 (by have := hNm3.2.2; rw [p1]; omega) (by have := hNm.2.2; omega)
+  have eq : bget g 3 + 1 + 2 * nm.length.toUInt64 + 1 = bget g 3 + 2 + 2 * nm.length.toUInt64 := by
+    apply UInt64.toNat_inj.mp
+    have l2 : (2 * nm.length.toUInt64).toNat = 2 * nm.length := by have := hNm.2.2; rw [UInt64.toNat_mul]; simp; omega
+    rw [UInt64.toNat_add, UInt64.toNat_add, UInt64.toNat_add, UInt64.toNat_add, UInt64.toNat_add, l2]; simp; omega
+  rw [eq] at sk
+  have et13 : TokAgree g g3 := ⟨by rw [et3.1, et2.1, et1.1], fun i hi => by rw [et3.2 i hi, et2.2 i hi, et1.2 i hi]⟩
+  have c21 : bget g3 21 = bget g2 21 := s22.2 21 (by decide) (by decide)
+  subst hg3; subst hg2
+  refine ⟨nm, rest, _, et, by rw [e33]; exact sk, by rw [z0]; exact bget_bset_eq _ _ _ _ rfl (by simp; omega), z0,
+    rep_set3 R3 (tokAt_frame et13 hn7 tr), by rw [c21]; exact hfb, h22, ?_, s22⟩
+  exact ⟨by rw [s21.1, length_bset], fun i a b => by rw [s21.2 i a b, e31 i b]⟩
+
 end ParInv
