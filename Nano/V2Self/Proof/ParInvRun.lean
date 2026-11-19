@@ -35,6 +35,7 @@ import Nano.V2Self.Proof.ParRunShape
 import Nano.V2Self.Proof.ParRunArena
 import Nano.V2Self.Proof.ParRunDef
 import Nano.V2Self.Proof.ParRunProg
+import Nano.V2Self.Proof.ParRunBnd
 namespace ParInv
 open C BufL ParSpec ParRun
 
@@ -42,15 +43,10 @@ abbrev Reach (toks : List Tok) (fs : List Frame) (st : St) : Prop := Star ([.def
 
 /-- reachability facts the handlers need that are not yet derived from the Layer-2 invariants -/
 structure Obl (toks : List Tok) : Prop where
-  nni : ∀ {f fs st}, Reach toks (f :: fs) st → st.cur.nni < 2 ^ 63
-  npw : ∀ {fs st w}, Reach toks (.stateTy :: fs) st → st.ty = some w → st.cur.npw + w.width < 2 ^ 64
   assignTy : ∀ {i sz fs st}, Reach toks (.assign i sz :: fs) st → st.ty.isSome = true
   prev : ∀ {fs st}, Reach toks (.afterColon :: fs) st → ∃ t, prevTok st = some t ∧ ∀ v, t ≠ .num v
   selfP : ∀ {fs st}, Reach toks (.selfArgs :: fs) st → st.cur.params ≠ []
-  prim32 : ∀ {f fs st p}, Reach toks (f :: fs) st → (∃ k, f = .argCheck (.pr p) k ∨ f = .mkCall (.pr p) k) → p < 2 ^ 32
   names : ∀ {fs st}, Reach toks fs st → ∀ d ∈ st.defs, d.name ≠ []
-  flat : ∀ {n fs st}, Reach toks (.flat n :: fs) st → n.kids.length < 16384 ∧ (n.tag = 9 → n.a < 4 → n.kids ≠ []) ∧
-    (n.tag = 8 → (n.kids.filter RN.isInp).length ≤ n.b)
 
 theorem isFlat_eq : Frame.isFlat = Frame.isFl := by funext f; cases f <;> rfl
 
@@ -126,6 +122,15 @@ theorem step_sim {h ts : Buf} {toks : List Tok} (O : Obl toks)
   have hN := fun (e : f.isFl = false) => reach_noflat hR e
   have hsv := W.inv.1
   have hv4 : st.vals.length ≤ 4096 := r.2.2.2.2.2.2.2.1.2.2.2.1
+  have hnni : st.cur.nni < 2 ^ 63 := by
+    have rD := r.2.2.2.2.2.2.1
+    have hfd : f.isDefs = false := by cases f <;> first | rfl | exact absurd rfl hf
+    have hD2 : inDefF (f :: fs) = true := by
+      simp only [inDefF, List.all_cons, hfd, Bool.not_false, Bool.true_and]; exact hD
+    rw [hD2] at rD
+    have := rD.2.2.2.2.1.1.1.2.2.2.2.2.2.1
+    have := reach_nni hR
+    unfold NniOK at this; omega
   cases f with
   | expr m md => exact h_expr r hs
   | binLoop m => simp [effF, St.g] at hg; exact h_binLoop r (by intro e; simp [e] at hg) hs
@@ -152,13 +157,13 @@ theorem step_sim {h ts : Buf} {toks : List Tok} (O : Obl toks)
     · have := hg.1.2.1; cases c <;> simpa [arity, Ctx.arity, St.ctx] using this
     · cases c with
       | df j => have := hg.1.2.2; simpa [calleeOK, Ctx.callee, St.ctx] using this
-      | pr p => exact O.prim32 hR ⟨k, Or.inl rfl⟩
+      | pr p => exact reach_prim32 hR ⟨k, Or.inl rfl⟩
   | mkCall c n =>
     simp [effF, St.g] at hg
     refine h_mkCall r hD (hN rfl) (by have := hg.1.1; omega) ?_ hs
     cases c with
     | df j => have := hg.1.2; simp [calleeOK, Ctx.callTgt, St.ctx] at this ⊢; omega
-    | pr p => exact O.prim32 hR ⟨n, Or.inr rfl⟩
+    | pr p => exact reach_prim32 hR ⟨n, Or.inr rfl⟩
   | shiftNum op => exact h_shiftNum r (hN rfl) hs
   | letPairX tl => exact h_letPairX r hs
   | letPairY x tl => exact h_letPairY r hs
@@ -175,7 +180,7 @@ theorem step_sim {h ts : Buf} {toks : List Tok} (O : Obl toks)
   | tyPair l => simp [effF, St.g] at hg; exact h_tyPair r hg.1 hs
   | binders => exact h_binders r hs
   | group a => exact h_group r hs
-  | assign i sz => simp [effF, St.g] at hg; exact h_assign r hD hg.1.1 (O.assignTy hR) (O.nni hR) hs
+  | assign i sz => simp [effF, St.g] at hg; exact h_assign r hD hg.1.1 (O.assignTy hR) hnni hs
   | plainBody =>
     simp [effF, St.g] at hg
     obtain ⟨w, hw⟩ := Option.isSome_iff_exists.mp hg.1
@@ -183,11 +188,11 @@ theorem step_sim {h ts : Buf} {toks : List Tok} (O : Obl toks)
   | afterColon =>
     simp [effF, St.g] at hg
     obtain ⟨w, hw⟩ := Option.isSome_iff_exists.mp hg.1
-    exact h_afterColon r hD hw (O.nni hR) (hprev r hR) hs
+    exact h_afterColon r hD hw hnni (hprev r hR) hs
   | stateTy =>
     simp [effF, St.g] at hg
     obtain ⟨w, hw⟩ := Option.isSome_iff_exists.mp hg.1.1
-    exact h_stateTy r hD hw (O.nni hR) (O.npw hR hw) hs
+    exact h_stateTy r hD hw hnni hs
   | armsStart =>
     simp [effF, St.g] at hg
     obtain ⟨w, hw⟩ := Option.isSome_iff_exists.mp hg.1.1
@@ -198,7 +203,7 @@ theorem step_sim {h ts : Buf} {toks : List Tok} (O : Obl toks)
   | zeroDone => simp [effF, St.g] at hg; exact h_zeroDone r hD (by intro e; simp [e] at hg) hs
   | mkLoop => exact h_mkLoop r hD (hN rfl) hs
   | defEnd => exact h_defEnd r hD hs
-  | flat n => obtain ⟨a, b, c⟩ := O.flat hR; exact h_flat r hD a b c hs
+  | flat n => obtain ⟨a, b, c⟩ := reach_flat hR; exact h_flat r hD (by have := (rep_bounds r).2.2; omega) b c hs
   | flatL ns => exact h_flatL r hD hs
   | defClose => exact absurd rfl hf2
   | tupRest => exact h_tupRest r hs

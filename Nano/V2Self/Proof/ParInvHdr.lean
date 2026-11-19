@@ -400,7 +400,7 @@ theorem v203_eq (h : Buf) (s1 : UInt64) (ps : List Sh) (hs : s1.toNat + ps.lengt
 /-- **task 74** (loop-header state types `T₁ → T₂ → …`): on `→` the type `w` is appended as a parameter (the first List is the
 input: no slot, not counted); otherwise go to the arms (at least one state type) -/
 theorem h_stateTy {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.stateTy :: fs)) (hfs : inDefF fs = true)
-    {w : Sh} (hty : st.ty = some w) (hnni : st.cur.nni < 2 ^ 63) (hnpw : st.cur.npw + w.width < 2 ^ 64)
+    {w : Sh} (hty : st.ty = some w) (hnni : st.cur.nni < 2 ^ 63)
     (hs : bget (step h) 0 ≠ 0) :
     ∃ k st', stepF .stateTy st = some (k, st') ∧ Rep (step h) ts st' (k ++ fs) := by
   obtain ⟨E, _, R1⟩ := rep_pop r (by simp [inDefF, Frame.isDefs])
@@ -530,7 +530,6 @@ theorem h_stateTy {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.st
   have ed : H.drop 184384 = G1.drop 184384 := by
     rw [← hH, ← hH0, drop_bset _ _ _ (by rw [rk 6 (by decide)]; (try simp) <;> omega), drop_bset _ _ _ (by rw [rk 2 (by decide)]; (try simp) <;> omega),
       drop_bset _ _ _ (by decide), drop_bset _ _ _ (by rw [ip]; (try simp) <;> omega), drop_bset _ _ _ (by rw [rk 1 (by decide)]; (try simp) <;> omega)]
-  have wl : w.width < 2 ^ 64 := by omega
   have RC := rep_cur (h := G1) (h' := H) R2 hfs
     { st.cur with npw := if n1 then st.cur.npw else st.cur.npw + w.width, params := st.cur.params ++ [w],
                   nni := if n1 then st.cur.nni else st.cur.nni + 1 } 1 rfl
