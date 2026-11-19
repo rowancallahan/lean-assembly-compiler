@@ -96,9 +96,12 @@ EXPRESSION REFINEMENT (B, in progress). PUSHED: `Proof/ParRunExpr.lean` — `VT`
   temporary conjunct (hcall_self uses `nodeOK_cont1`); loop_spec has no hL.  runrun == B1 (9dbdffd) on 4,817 fuzz + 27 hand: 0 diff.
   PROGRAM LEVEL DONE (e5f186e): `Proof/ParRunProg.lean` — `loopStep : LoopStep`, `pDef_resLst` / `pDefs_resLst`, `findDef_get`,
   `findD_last`, and **`accepts_sound (htok : tokens ts = some toks) (hNoL : NoL toks) : ∀ o, Accepts toks o → ∃ p,
-  ParsesProgram ts p ∧ o = serialize p`** = the `sound` premise of `ParInvTop.parserSound_of`.  `NoL` is dead weight since fix M
-  (only threaded through F's LoopStep / defs_spec): drop it there, then here.
-  NEXT (B): drop NoL (with F); C-wide meaning certificate slice ids 14..122 (with G).
+  ParsesProgram ts p ∧ o = serialize p`** = the `sound` premise of `ParInvTop.parserSound_of`.  NoL DROPPED (782c454) everywhere.
+  OBL (e1c3588): `Proof/ParRunObl.lean` — `stepF_obl` (per-handler facts), `Star.lift` (invariant induction carrying StkInv/DInv),
+  `reach_assignTy` (TA: an `.assign` is below a pending `.tyAtom` until ty is set), `reach_selfP` (SInv), `reach_prev` (PInv: above
+  `.afterColon` only type frames; prevTok is the last type keyword), `reach_names (hT : TokL ts toks)` (IdsOK via `idsOK_of_tokL` + F's NInv).
+  = Obl fields assignTy / selfP / prev / names (F wires them into Obl).
+  NEXT (B): C-wide meaning certificate slice ids 14..122 (with G).
 
 ## HANDOFF — parser lead (2026-11-19, keep current)
 Role: review of Layers 2/3; owns def start/accept 60, plainBody 70, afterColon 73, stateTy 74, armsStart 75, FINISH 80,
