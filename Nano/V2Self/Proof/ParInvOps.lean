@@ -288,9 +288,9 @@ theorem mem_flat_range {Is : Nat → List UInt64} {m : Nat} {v : UInt64} (h : v 
 /-! ## B's `mkNode` is `v5` -/
 open ParRun in
 /-- **node builder**: `v5` with the fields of a Layer-2 node realises `mkNode` on the arena representation -/
-theorem arena_v5 (h : Buf) (arena vals : List RN) (n : Nat) (t A B : Nat) (sh : Option Sh) (p : Bool) (w : UInt64)
+theorem arena_v5g (h : Buf) (arena vals : List RN) (n : Nat) (t A B : Nat) (sh : Option Sh) (p : Bool) (w : UInt64)
     (hA : ArenaRep h arena vals) (hn : n ≤ vals.length) (hl : 147520 ≤ h.length) (hz : arena.length < 16384)
-    (hJ : vals.length - n < 4096) (hw : ShOpt h w sh) (ht : t < 2 ^ 64) (ha : A < 2 ^ 64) (hb : B < 2 ^ 64) :
+    (hJ : vals.length - n < 4096) (hw : ShOpt h w sh) (ht : t < 2 ^ 64) (hab : t ≠ 2 → t ≠ 5 → A < 2 ^ 64 ∧ B < 2 ^ 64) :
     let nd := RN.mk t A B sh p (vals.take n).reverse
     let h' := v5 h t.toUInt64 A.toUInt64 B.toUInt64 w (if p then 1 else 0) n.toUInt64
     h'.length = h.length ∧ ShTabAgree h h' ∧ ArenaRep h' (arena ++ [nd]) (nd :: vals.drop n) ∧
@@ -376,7 +376,7 @@ theorem arena_v5 (h : Buf) (arena vals : List RN) (n : Nat) (t A B : Nat) (sh : 
       (fun i hi => by simp at hi; have := Elink i (by omega); simpa using this)
       (fun i hi => kidRep i (by simp at hi; omega))
     simp only [List.length_reverse, List.length_take, Nat.min_eq_left hn, Nat.add_zero] at K
-    refine .mk F0 F1 F2 (by rw [F3]; exact hw.frame shtab) F4 (by rw [F6]; simp [Nat.min_eq_left hn]) ht (fun _ _ => ⟨ha, hb⟩) (by rw [F5]; exact K)
+    refine .mk F0 F1 F2 (by rw [F3]; exact hw.frame shtab) F4 (by rw [F6]; simp [Nat.min_eq_left hn]) ht hab (by rw [F5]; exact K)
   have newNodup : (bget h 9 :: ids).Nodup := by
     refine List.nodup_cons.mpr ⟨fun hm => by have := idsB _ hm; omega, ?_⟩
     refine nodup_flat_range _ n (fun i hi => (hI _ (rootAt i hi).1).2.1) (fun i j hi hj hij v h1 h2 => ?_)
@@ -483,5 +483,16 @@ theorem arena_v5 (h : Buf) (arena vals : List RN) (n : Nat) (t A B : Nat) (sh : 
   · intro i a1
     exact EU i (by omega) (by omega) (by omega) (Or.inr (by rw [h9]; omega)) (fun k hk => by have := (rootAt k (by omega)).1; omega)
   · exact ED
+
+open ParRun in
+theorem arena_v5 (h : Buf) (arena vals : List RN) (n : Nat) (t A B : Nat) (sh : Option Sh) (p : Bool) (w : UInt64)
+    (hA : ArenaRep h arena vals) (hn : n ≤ vals.length) (hl : 147520 ≤ h.length) (hz : arena.length < 16384)
+    (hJ : vals.length - n < 4096) (hw : ShOpt h w sh) (ht : t < 2 ^ 64) (ha : A < 2 ^ 64) (hb : B < 2 ^ 64) :
+    let nd := RN.mk t A B sh p (vals.take n).reverse
+    let h' := v5 h t.toUInt64 A.toUInt64 B.toUInt64 w (if p then 1 else 0) n.toUInt64
+    h'.length = h.length ∧ ShTabAgree h h' ∧ ArenaRep h' (arena ++ [nd]) (nd :: vals.drop n) ∧
+    (∀ i : UInt64, i.toNat < 12352 → i.toNat ≠ 8 → i.toNat ≠ 9 → bget h' i = bget h i) ∧
+    (∀ i : UInt64, 147520 ≤ i.toNat → bget h' i = bget h i) ∧ h'.drop 184384 = h.drop 184384 :=
+  arena_v5g h arena vals n t A B sh p w hA hn hl hz hJ hw ht (fun _ _ => ⟨ha, hb⟩)
 
 end ParInv

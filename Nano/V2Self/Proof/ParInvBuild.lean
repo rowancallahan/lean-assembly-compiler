@@ -88,9 +88,10 @@ theorem tasks_frame_nf {h h' : Buf} {arena : List RN} {fs : List Frame} (r : Tas
   exact ⟨(rk k hk).1, frameArgs_frame_nf et hn es _ nf _ _ (rk k hk).2⟩
 
 /-- **node builder on Rep**: a `v5` that leaves the status nonzero is B's `mkNode` (no flatten frame on the stack) -/
-theorem rep_v5 {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs) (hnf : fs.all (fun f => !f.isFlat))
-    (n t A B : Nat) (sh : Option Sh) (p : Bool) (w : UInt64) (hw : ShOpt h w sh) (ht : t < 2 ^ 64) (hA : A < 2 ^ 64)
-    (hB : B < 2 ^ 64) (hn : n < 4096) (hs : bget (v5 h t.toUInt64 A.toUInt64 B.toUInt64 w (b01 p) n.toUInt64) 0 ≠ 0) :
+theorem rep_v5g {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs) (hnf : fs.all (fun f => !f.isFlat))
+    (n t A B : Nat) (sh : Option Sh) (p : Bool) (w : UInt64) (hw : ShOpt h w sh) (ht : t < 2 ^ 64)
+    (hab : t ≠ 2 → t ≠ 5 → A < 2 ^ 64 ∧ B < 2 ^ 64) (hn : n < 4096)
+    (hs : bget (v5 h t.toUInt64 A.toUInt64 B.toUInt64 w (b01 p) n.toUInt64) 0 ≠ 0) :
     ∃ st', mkNode st t A B sh p n = some st' ∧ Rep (v5 h t.toUInt64 A.toUInt64 B.toUInt64 w (b01 p) n.toUInt64) ts st' fs := by
   obtain ⟨hn7, hl, har⟩ := rep_bounds r
   have rA := r.2.2.2.2.2.2.2.1
@@ -105,7 +106,7 @@ theorem rep_v5 {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs) (hn
   have g3' := UInt64.lt_iff_toNat_lt.mp g3
   rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr (by rw [en]; omega)), en] at g3'
   simp only [show d4.toNat = 4096 from rfl] at g3'
-  obtain ⟨L, ES, AR, LO, HI, DR⟩ := arena_v5 h st.arena st.vals n t A B sh p w rA hle (by omega) (by omega) (by omega) hw ht hA hB
+  obtain ⟨L, ES, AR, LO, HI, DR⟩ := arena_v5g h st.arena st.vals n t A B sh p w rA hle (by omega) (by omega) (by omega) hw ht hab
   simp only [b01] at hs ⊢
   refine ⟨{ st with vals := RN.mk t A B sh p (st.vals.take n).reverse :: st.vals.drop n, arena := st.arena ++ [RN.mk t A B sh p (st.vals.take n).reverse] },
     by simp [mkNode, hle], ?_⟩
@@ -120,6 +121,12 @@ theorem rep_v5 {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs) (hn
     ⟨LO 7 (by decide) (by decide) (by decide), fun i hi => HI i (by omega)⟩
   refine rep_arena r L e DR AR (tasks_arena_ext (tasks_frame_nf rT hnf (LO 5 (by decide) (by decide) (by decide))
     (fun i a b => LO i (by have := rT.2.1; omega) (by omega) (by omega)) et hn7 ES) ⟨_, rfl⟩) rfl
+
+theorem rep_v5 {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs) (hnf : fs.all (fun f => !f.isFlat))
+    (n t A B : Nat) (sh : Option Sh) (p : Bool) (w : UInt64) (hw : ShOpt h w sh) (ht : t < 2 ^ 64) (hA : A < 2 ^ 64)
+    (hB : B < 2 ^ 64) (hn : n < 4096) (hs : bget (v5 h t.toUInt64 A.toUInt64 B.toUInt64 w (b01 p) n.toUInt64) 0 ≠ 0) :
+    ∃ st', mkNode st t A B sh p n = some st' ∧ Rep (v5 h t.toUInt64 A.toUInt64 B.toUInt64 w (b01 p) n.toUInt64) ts st' fs :=
+  rep_v5g r hnf n t A B sh p w hw ht (fun _ _ => ⟨hA, hB⟩) hn hs
 
 /-! ## reading operands -/
 theorem ShapeCode.one {h : Buf} {s : Sh} (r : ShapeCode h 1 s) : s = .uw := by
