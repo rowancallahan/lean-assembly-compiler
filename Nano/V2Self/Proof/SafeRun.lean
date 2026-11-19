@@ -176,4 +176,66 @@ theorem const_srun {K : LayW} {C pc tgt} {v : UInt64} (s : St) (hx0 : s.x 0 = 0)
   · simp only; rw [e31, e5, hm1]
   · simp only; exact hb1
 
+/-! ## LOCAL (w words: ld from the slot, checked push) -/
+
+theorem local_srun {K : LayW} {C tgt p} : ∀ (w k pc : Nat) (st : St), At C pc (localT tgt p k pc w) →
+    (st.x 8).toNat < 2 ^ 62 → p < 2 ^ 20 →
+    (∀ i, i < w → (k + i < p ∨ 8 * (k + i - p + 1) ≤ (st.x 8).toNat) ∧ (st.x 31).toNat ≤ slotAddr p (k + i) (st.x 8).toNat) →
+    (st.x 30).toNat + 8 * w ≤ (st.x 31).toNat →
+    (∀ i, i < w → wok K (slotAddr p (k + i) (st.x 8).toNat) ∧ wok K ((st.x 31).toNat - 8 * (i + 1)) ∧
+      -2048 ≤ offOf p (k + i) ∧ offOf p (k + i) < 2048) →
+    ∀ b, run C (4 * w) (pc, st) = some b → SStar K C (pc, st) b
+  | 0, k, pc, st, _, _, _, _, _, _, b, hb => by simp [run] at hb; subst hb; exact .refl _
+  | w + 1, k, pc, st, hC, hs0, hp, hsl, hh, hw, b, hb => by
+    have hA : At C pc ([.ld 5 8 (offOf p k)] ++ pushA tgt (pc + 1) 5 ++ localT tgt p (k + 1) (pc + 5) w) := hC
+    have hL : At C pc [.ld 5 8 (offOf p k)] := hA.left.left
+    have hP : At C (pc + 1) (pushA tgt (pc + 1) 5) := by simpa using hA.left.right
+    have hR : At C (pc + 5) (localT tgt p (k + 1) (pc + 5) w) := by
+      have := hA.right
+      simpa [pushA, push] using this
+    have l0 := hL.at 0 (by simp); simp at l0
+    obtain ⟨hk0, hk1⟩ := hsl 0 (by omega)
+    obtain ⟨w0, w1, o1, o2⟩ := hw 0 (by omega)
+    simp only [Nat.add_zero] at hk0 hk1 w0 w1 o1 o2
+    have ea0 : ea (st.x 8) (offOf p k) = slotAddr p k (st.x 8).toNat :=
+      ea_slot p k _ hs0 hp hk0 _ rfl
+    let v := st.m (slotAddr p k (st.x 8).toNat)
+    let st1 : St := ⟨upd st.x 5 v, st.m, st.b⟩
+    have s1 : step C (pc, st) = some (pc + 1, st1) := by simp [step, l0, wr, ea0, v, st1]
+    have r1 : run C 1 (pc, st) = some (pc + 1, st1) := by simp [run, s1]
+    have x31 : st1.x 31 = st.x 31 := by simp [st1, upd_ne]
+    have x30 : st1.x 30 = st.x 30 := by simp [st1, upd_ne]
+    have x8' : st1.x 8 = st.x 8 := by simp [st1, upd_ne]
+    have hh1 : (st1.x 30).toNat + 8 ≤ (st1.x 31).toNat := by rw [x31, x30]; omega
+    have r2 := push_run (s := st1) (by simpa [pushA] using hP) (by decide) (by decide) hh1
+    have q2 := push_srun (K := K) (s := st1) (by simpa [pushA] using hP) (by decide) (by decide) (by decide) hh1
+      (by rw [x31]; simpa using w1)
+    have safe0 : Safe K C (pc, st) := by
+      simp only [Safe, l0]
+      refine ⟨by decide, by decide, o1, o2, ?_, ?_⟩
+      · unfold offOf; split <;> omega
+      · rw [ea0]; exact w0
+    let st2 : St := ⟨upd st1.x 31 (UInt64.ofNat ((st1.x 31).toNat - 8)), upd st1.m ((st1.x 31).toNat - 8) (st1.x 5), st1.b⟩
+    have sp1 : (st2.x 31).toNat = (st.x 31).toNat - 8 := by
+      simp only [st2, upd_same, x31]; simp only [UInt64.toNat_ofNat']; have := (st.x 31).toNat_lt; omega
+    have x8'' : st2.x 8 = st.x 8 := by simp [st2, upd_ne, x8']
+    have x30'' : st2.x 30 = st.x 30 := by simp [st2, upd_ne, x30]
+    have hsl2 : ∀ i, i < w → (k + 1 + i < p ∨ 8 * (k + 1 + i - p + 1) ≤ (st2.x 8).toNat) ∧
+        (st2.x 31).toNat ≤ slotAddr p (k + 1 + i) (st2.x 8).toNat := by
+      intro i hi
+      obtain ⟨a1, a2⟩ := hsl (i + 1) (by omega)
+      rw [x8'']; refine ⟨by rw [show k + 1 + i = k + (i + 1) by omega]; exact a1, ?_⟩
+      rw [sp1]; rw [show k + 1 + i = k + (i + 1) by omega]; omega
+    have hh2 : (st2.x 30).toNat + 8 * w ≤ (st2.x 31).toNat := by rw [x30'', sp1]; omega
+    have hw2 : ∀ i, i < w → wok K (slotAddr p (k + 1 + i) (st2.x 8).toNat) ∧ wok K ((st2.x 31).toNat - 8 * (i + 1)) ∧
+        -2048 ≤ offOf p (k + 1 + i) ∧ offOf p (k + 1 + i) < 2048 := by
+      intro i hi
+      obtain ⟨a1, a2, a3, a4⟩ := hw (i + 1) (by omega)
+      rw [x8'', sp1, show k + 1 + i = k + (i + 1) by omega]
+      refine ⟨a1, ?_, a3, a4⟩
+      rw [show (st.x 31).toNat - 8 - 8 * (i + 1) = (st.x 31).toNat - 8 * (i + 1 + 1) by omega]; exact a2
+    rw [show 4 * (w + 1) = 1 + (3 + 4 * w) by omega, run_add r1, run_add r2] at hb
+    have ih := local_srun w (k + 1) (pc + 5) st2 hR (by rw [x8'']; exact hs0) hp hsl2 hh2 hw2 b hb
+    exact (SStar.one safe0 s1).trans (q2.trans ih)
+
 end SafeRun
