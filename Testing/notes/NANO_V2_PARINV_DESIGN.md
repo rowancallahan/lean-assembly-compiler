@@ -66,9 +66,15 @@ EXPRESSION REFINEMENT (B, in progress). PUSHED: `Proof/ParRunExpr.lean` — `VT`
   `LoopSpec n` (binLoop ↔ pLoop), `loop_sound : (∀ n' < n, BinSpec n') → LoopSpec n` (no sorry); `Proof/ParRunExprInv.lean` — inversions for
   ifCmp/ifThen/ifElse/mkIte/letStart/letSemi/letEnd/letPairX/letPairY/letPairSemi/parenClose/tupRest/mkPair, `PrimCase` + `prim_inv`
   (ifs / lets / AtomLeaf / paren / self / call / primTok); `ParSpecTail.nobot` (tl=false ⇒ type ≠ bot).
-  TODO: PrimSpec (prim ↔ pApp: leaf via G's atomLeaf_spec, paren/tuple, calls via args (G's Atoms/args_run/call_tail; asked G whether
-  G or B writes args_spec), self-call 46/54), ExprSpec (expr 0 md ↔ pExpr: if/let/pair-let), then BinSpec from PrimSpec + loop_sound,
-  all in one `Nat.strongRecOn` over n. Plan as follows.
+  `Proof/ParRunExprMain.lean` (no sorry): `PrimSpec`, `ExprSpec`, `bin_of` (BinSpec n from PrimSpec/LoopSpec < n), `expr_other`
+  (expr 0 md at a non-if/let token, incl. the tl re-parse via `tl_down`), `expr_if`, `expr_let` (+ `CxRel.push`/`CxNN.push` for let
+  bindings, `join_rel`, `nodeOK_noInp`, `let_shape`, `body_rel`). All specs also give `Stop` (loop stopped), `PT` (tail CONTINUE ⇒
+  pending), `ShNN v.sh` (shape present, no nested Nat — ParSpec's `tyShape` needs `hasN = false`) and take `CxNN st` (tables NNT).
+  TODO (in order): `expr_letpair` (letStart `(` → letPairX/Y/stash/letPairSemi; pExpr's pair-let clause), `prim_sound` (PrimSpec n from
+  specs < n: leaf via G's `atomLeaf_spec`, paren + tuples (`parenClose`/`tupRest`/`mkPair` ↔ pAtom `(` / `pTup`, first component
+  re-parse via `tl_down` + `PT`), calls/prim tokens via args (G's `Atoms`/`args_run`/`call_tail`; still waiting for G's answer on who
+  writes `args_spec`), self-call 46/54 (needs a `SelfRel st cx`: arm ↔ cx.self, cur.params ↔ self params)), then the assembly
+  `∀ n, BinSpec n ∧ LoopSpec n ∧ PrimSpec n ∧ ExprSpec n` by `Nat.strongRecOn`, then def level (F) on top.
 PLAN (was: nothing pushed yet): one strong induction on the run length n, using G's `CxRel`/`TyRel`/`AtomLeaf`
 (ParRunAtom) and G's call/arg lemmas (ParRunCall) for call/prim heads. Statements (cx related by CxRel, ParSpec nx = st.nx):
   prim md ↔ `pApp f cx (md == 1)` (md ≠ 2 also admits if/let ↔ `pExpr`'s if/let clauses); `binLoop m` with a on top ↔ `pLoop f cx m a.toNd ta`;
