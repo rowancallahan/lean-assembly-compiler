@@ -82,7 +82,10 @@ theorem arrows_spec : ∀ n {ks : List Frame} {st fin : St}, StarN n (.tyAtom ::
       simp only [stepF, St.withTy] at hs
       by_cases hw : trRes t = .nt
       · simp [hw] at hs
-      · simp only [hw, if_false, Option.some.injEq, Prod.mk.injEq] at hs; obtain ⟨rfl, rfl⟩ := hs
+      · by_cases hcap : 2 ^ 20 ≤ (if (trRes t == Sh.ls && !hasLs (List.map some st.cur.params)) = true then st.cur.npw
+            else st.cur.npw + (trRes t).width)
+        · simp only [hw, hcap, ↓reduceIte, if_false] at hs; cases hs
+        simp only [hw, hcap, ↓reduceIte, if_false, Option.some.injEq, Prod.mk.injEq] at hs; obtain ⟨rfl, rfl⟩ := hs
         obtain ⟨ts, res, r2, n', hn', hlt2, hp2, hts, hres, hnil, h3, hT3⟩ := ih m (by omega) h2
         refine ⟨t :: ts, res, r2, n', by omega, by simp at hlt2 hlt ⊢; omega, fun f hf => ?_, ?_, hres, by simp, ?_, ?_⟩
         · obtain ⟨g, rfl⟩ : ∃ g, f = g + 1 := ⟨f - 1, by omega⟩
@@ -546,7 +549,7 @@ theorem loop_spec {n : Nat} {ks : List Frame} {st fin : St} {defs : List DefI} {
     ∃ lp st' n', n' < n ∧ StarN n' (.defEnd :: ks, st') ([], fin) ∧
       Star (.tyAtom :: .afterColon :: ks, st) (.defEnd :: ks, st') ∧ st'.vals = [lp] ∧ st'.defs = st.defs ∧
       st'.out = st.out ∧ st'.all = st.all ∧ st'.cur.name = name ∧ st'.cur.loop = true ∧ st'.toks.length < st.toks.length ∧
-      (VT (rows st') lp →
+      (VT (rows st') lp → st'.nx < 2 ^ 20 → cw st'.cur.res < 2 ^ 20 →
         ∃ di : DefI, di.name = name ∧ di.params.map psCode = st'.cur.params ∧ st'.cur.res = some di.res ∧
           di.npw = st'.cur.npw ∧ (∀ (i : Nat) (h : i < di.params.length), (di.params[i] = .inp ↔ FirstLs st'.cur.params i)) ∧
           (∀ p ∈ di.params, p ≠ .sh .nt) ∧ (di.res.nnt = true ∧ ∀ p ∈ st'.cur.params, p.nnt = true) ∧
@@ -711,7 +714,7 @@ theorem loop_spec {n : Nat} {ks : List Frame} {st fin : St} {defs : List DefI} {
   have hr1l : r1.length = r2.length + 3 := by rw [hr1]; simp
   have hrl : r.length + 2 = st.toks.length := by rw [ht]; simp
   refine ⟨_, _, m8, by omega, h10, by simpa using Tp9, rfl, by simp [hpo7.defs, hd6], by simp [hpo7.out, ho6], by simp [hpo7.all, hal6],
-    by simp [hcur7, hname], by simp [hcur7, hCloop], ?_, fun hvt => ?_⟩
+    by simp [hcur7, hname], by simp [hcur7, hCloop], ?_, fun hvt hcap1 hcap2 => ?_⟩
   · have := hlt7; simp only [ht6] at this; simp; omega
   -- the spec side
   have hvt' : VT (rows S3) (RN.mk 10 0 0 S7.cur.res false [z, s']) := by
@@ -786,6 +789,8 @@ theorem loop_spec {n : Nat} {ks : List Frame} {st fin : St} {defs : List DefI} {
         simp only at hpt; rw [e] at hpt; cases hpt
       | _ => simp at hpt
     · rw [hcur7, loopNode_toNd hzi hsi]
-      simp only [hnpw]
+      have hw20 : (trRes res).width < 2 ^ 20 := by have := hcap2; rw [hcur7] at this; simpa [cw] using this
+      have hn20 : S7.nx < 2 ^ 20 := by simpa using hcap1
+      simp only [hnpw, show ¬ (2 ^ 20 ≤ S7.nx ∨ 2 ^ 20 ≤ (trRes res).width) by omega, if_false]
 
 end ParRun

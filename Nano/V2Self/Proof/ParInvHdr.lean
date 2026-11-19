@@ -401,7 +401,7 @@ theorem v203_eq (h : Buf) (s1 : UInt64) (ps : List Sh) (hs : s1.toNat + ps.lengt
 input: no slot, not counted); otherwise go to the arms (at least one state type) -/
 theorem h_stateTy {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.stateTy :: fs)) (hfs : inDefF fs = true)
     {w : Sh} (hty : st.ty = some w) (hnni : st.cur.nni < 2 ^ 63)
-    (hs : bget (step h) 0 ≠ 0) :
+    (hnpw20 : st.cur.npw < 2 ^ 20) (hty20 : cw st.ty < 2 ^ 20) (hs : bget (step h) 0 ≠ 0) :
     ∃ k st', stepF .stateTy st = some (k, st') ∧ Rep (step h) ts st' (k ++ fs) := by
   obtain ⟨E, _, R1⟩ := rep_pop r (by simp [inDefF, Frame.isDefs])
   have ev : step h = v136 (bset h 5 fs.length.toUInt64) (taskAt h fs.length).a (taskAt h fs.length).b := by rw [E]; rfl
@@ -473,6 +473,19 @@ theorem h_stateTy {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.st
   have l1 : G1.length = g.length := by rw [← hG1, length_bset]
   have R2 := rep_scratch (h' := G1) R1 (fun i _ a => e1 i a) (by rw [← hG1]; exact drop_bset _ _ _ (by decide))
   generalize hQ : bget g (d7 + 8 * st.defs.length.toUInt64 + 1) + w.width.toUInt64 - w.width.toUInt64 * b01 n1 = Q at hs ⊢
+  have hw20 : w.width < 2 ^ 20 := by rw [hty] at hty20; exact hty20
+  by_cases hq : (1048575 : UInt64) < Q
+  · rw [if_pos hq] at hs; exact absurd (status_bset0 G1) hs
+  rw [if_neg hq] at hs ⊢
+  have capN : ¬ 2 ^ 20 ≤ (if n1 = true then st.cur.npw else st.cur.npw + w.width) := by
+    intro hle; apply hq
+    rw [← hQ, c1, UInt64.lt_iff_toNat_lt, show (1048575 : UInt64).toNat = 1048575 from rfl]
+    cases n1
+    · simp only [b01, Bool.false_eq_true, if_false, UInt64.mul_zero, UInt64.sub_zero] at hle ⊢
+      simp [Nat.toUInt64, UInt64.toNat_ofNat', Nat.mod_eq_of_lt (show st.cur.npw < 2 ^ 64 by omega),
+        Nat.mod_eq_of_lt (show w.width < 2 ^ 64 by omega), Nat.mod_eq_of_lt (show st.cur.npw + w.width < 2 ^ 64 by omega)]
+      omega
+    · simp only [if_true] at hle; omega
   generalize hH0 : bset G1 (d7 + 8 * st.defs.length.toUInt64 + 1) Q = H0 at hs ⊢
   have e0 : ∀ i : UInt64, i.toNat ≠ 147520 + 8 * st.defs.length + 1 → bget H0 i = bget G1 i := by
     intro i a1; rw [← hH0, bget_bset' _ _ _ _ (by rw [rk 1 (by decide)]; (try simp) <;> omega)]
@@ -573,8 +586,9 @@ theorem h_stateTy {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.st
   have R5 := rep_push .tyAtom 0 0 R4 (by simp [inDefF, Frame.isDefs]) trivial hs
   refine ⟨[.tyAtom, .stateTy], _, ?_, R5⟩
   simp only [show (17 : UInt64).toNat = 17 from rfl] at et
-  rw [← hn1']
-  simp [stepF, et, hty, hw]
+  rw [← hn1'] at capN ⊢
+  simp at capN
+  simp [stepF, et, hty, hw, capN]
 
 
 /-- writes to the scratch cells 21 / 31 and to h[11] (nx) and h[32] (sslot) -/

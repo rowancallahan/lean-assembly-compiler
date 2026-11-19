@@ -1,6 +1,6 @@
 /- Nano/V2Self/Proof/ParInvIntern: SHAPE INTERNING `v10` at cell level (box G; used by task 63 `tyPair` and the tuple / pair handlers).
 The pair table (rows of 3 words at d7 + 8192 + 3j: left code, right code, width; h[26] = number of rows) is scanned from row `j`:
-`v10_scan`: the result is `h[25] := i + 5` for the FIRST row `i ≥ j` equal to `(x, y)`, or, when there is none, the allocation
+`v10_scan`: the result is `h[25] := i + 5` for the FIRST row `i ≥ j` equal to `(x, y)` (status 0 if its width is ≥ 2^20), or, when there is none, the allocation
 step at row h[26] (`v10 1 g x y h[26]`: reject Nat components, capacity check, new row, h[26] + 1, h[25] := h[26] + 5). -/
 import Nano.V2Self.C.Par1
 import Nano.V2Self.Proof.BufL
@@ -14,7 +14,8 @@ def PairRow (g : Buf) (x y : UInt64) (i : Nat) : Prop :=
 theorem v10_scan (g : Buf) (x y : UInt64) (n : Nat) (hn : bget g 26 = n.toUInt64) (hn2 : n < 2 ^ 32) :
     ∀ (k N j : Nat), j + k = n → k < N →
       (∃ i, j ≤ i ∧ i < n ∧ PairRow g x y i ∧ (∀ i', j ≤ i' → i' < i → ¬ PairRow g x y i') ∧
-        v10 N g x y j.toUInt64 = bset g 25 (i.toUInt64 + 5)) ∨
+        v10 N g x y j.toUInt64 = if (1048575 : UInt64) < bget g (d7 + 8192 + 3 * i.toUInt64 + 2) then bset g 0 0
+          else bset g 25 (i.toUInt64 + 5)) ∨
       ((∀ i, j ≤ i → i < n → ¬ PairRow g x y i) ∧ v10 N g x y j.toUInt64 = v10 1 g x y n.toUInt64) := by
   intro k
   induction k with

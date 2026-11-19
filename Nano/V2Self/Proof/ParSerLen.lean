@@ -405,7 +405,9 @@ theorem pDef_len {fuel defs ts di da r} (h : pDef fuel defs ts = some (di, da, r
                       have e7 := pExpr_len h7
                       simp only at h
                       split at h
-                      · simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨-, rfl, rfl⟩ := h
+                      · split at h
+                        · cases h
+                        simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨-, rfl, rfl⟩ := h
                         simp only [DefA.ser, L, Nd.ser, List.length_append, List.length_cons, List.length_nil] at *
                         omega
                       · cases h
@@ -428,7 +430,9 @@ theorem pDef_len {fuel defs ts di da r} (h : pDef fuel defs ts = some (di, da, r
               simp only at h
               split at h
               · cases h
-              · simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨-, rfl, rfl⟩ := h
+              · split at h
+                · cases h
+                simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨-, rfl, rfl⟩ := h
                 simp only [DefA.ser, L, List.length_append, List.length_cons, List.length_nil] at *
                 omega
           · cases h

@@ -31,10 +31,22 @@ def asgHeap (g : Buf) (a wv n1 z : UInt64) : Buf :=
     11 (bget g 11 + z - z * n1)) ((d7 + 4096) + bget g 27) wv) 27 (bget g 27 + 1))
     (d7 + 8 * bget g 12 + 2) (bget g (d7 + 8 * bget g 12 + 2) + 1 - n1)) (d7 + 8 * bget g 12 + 2 + 4) (bget g (d7 + 8 * bget g 12 + 2 + 4) + 1)
 
+theorem stat0A (g : Buf) : bget (bset g 0 0) 0 = 0 := by
+  cases g with
+  | nil => rfl
+  | cons x r => rfl
+
+theorem ite0A (c : Prop) [Decidable c] (A B : Buf) (ha : bget A 0 = 0) (hb : bget B 0 = 0) :
+    bget (if c then A else B) 0 = 0 := by
+  split
+  · exact ha
+  · exact hb
+
 theorem v133_eq (g : Buf) (a b : UInt64) (i0 D J : Nat) (ha : a = i0.toUInt64) (hi0 : i0 < 1024) (h12 : bget g 12 = D.toUInt64)
     (hD : D < 512) (h27 : bget g 27 = J.toUInt64) (hJ : J < 4096) (hl : 184384 ≤ g.length) (hne : a ≠ bget g 4)
     (hw4 : bget g 25 ≠ 4) (hwb : (bget g 25).toNat < 5 + 8192)
-    (hgd : (if bget g 25 = 3 then (if b = 1 then (0 : UInt64) else (if v201 16777216 g a = 0 then 1 else 0)) else 0) ≠ 1) :
+    (hgd : (if bget g 25 = 3 then (if b = 1 then (0 : UInt64) else (if v201 16777216 g a = 0 then 1 else 0)) else 0) ≠ 1)
+    (hcap : ¬ (1048575 : UInt64) < bget g 11 + (if bget g 25 < 5 then 1 else bget g ((d7 + 8192) + 3 * (bget g 25 - 5) + 2)) - (if bget g 25 < 5 then 1 else bget g ((d7 + 8192) + 3 * (bget g 25 - 5) + 2)) * (if (if bget g 25 = 3 then (if b = 1 then v201 16777216 g a else 1) else 1) = 0 then 1 else 0)) :
     v133 g a b = v1 (asgHeap g a (bget g 25)
         (if (if bget g 25 = 3 then (if b = 1 then v201 16777216 g a else 1) else 1) = 0 then 1 else 0)
         (if bget g 25 < 5 then 1 else bget g ((d7 + 8192) + 3 * (bget g 25 - 5) + 2))) 68 (a + 1) b := by
@@ -92,6 +104,7 @@ theorem v133_eq (g : Buf) (a b : UInt64) (i0 D J : Nat) (ha : a = i0.toUInt64) (
   by_cases h5 : bget g 25 < 5
   · simp only [h5, if_true]
     simp only [B11, B27, j4, if_true, B31', C12, CCR, C6]
+    have hc := hcap; simp only [h5, if_true] at hc; rw [if_neg hc]
   · have h5' : 5 ≤ (bget g 25).toNat := by
       rcases Nat.lt_or_ge (bget g 25).toNat 5 with h | h
       · exact absurd (UInt64.lt_iff_toNat_lt.mpr h) h5
@@ -100,6 +113,78 @@ theorem v133_eq (g : Buf) (a b : UInt64) (i0 D J : Nat) (ha : a = i0.toUInt64) (
     simp only [h5, if_false]
     rw [A _ _ _ _ (Or.inl (by rw [sr]; simp; omega))]
     simp only [B11, B27, j4, if_true, B31', C12, CCR, C6]
+    have hc := hcap; simp only [h5, if_false] at hc; rw [if_neg hc]
+
+theorem v133_cap (g : Buf) (a b : UInt64) (i0 D J : Nat) (ha : a = i0.toUInt64) (hi0 : i0 < 1024) (h12 : bget g 12 = D.toUInt64)
+    (hD : D < 512) (h27 : bget g 27 = J.toUInt64) (hJ : J < 4096) (hl : 184384 ≤ g.length) (hne : a ≠ bget g 4)
+    (hw4 : bget g 25 ≠ 4) (hwb : (bget g 25).toNat < 5 + 8192)
+    (hgd : (if bget g 25 = 3 then (if b = 1 then (0 : UInt64) else (if v201 16777216 g a = 0 then 1 else 0)) else 0) ≠ 1)
+    (hcap : (1048575 : UInt64) < bget g 11 + (if bget g 25 < 5 then 1 else bget g ((d7 + 8192) + 3 * (bget g 25 - 5) + 2)) - (if bget g 25 < 5 then 1 else bget g ((d7 + 8192) + 3 * (bget g 25 - 5) + 2)) * (if (if bget g 25 = 3 then (if b = 1 then v201 16777216 g a else 1) else 1) = 0 then 1 else 0)) :
+    bget (v133 g a b) 0 = 0 := by
+  have r1 := rowCell i0 hi0 1 (by decide); have r2 := rowCell i0 hi0 2 (by decide); have r3 := rowCell i0 hi0 3 (by decide)
+  have cr2 := defCell D hD 2 (by decide); have cr6 := defCell D hD 6 (by decide)
+  simp only [show (1 : UInt64).toNat = 1 from rfl, show (2 : UInt64).toNat = 2 from rfl, show (3 : UInt64).toNat = 3 from rfl,
+    show (6 : UInt64).toNat = 6 from rfl] at r1 r2 r3 cr2 cr6
+  rw [← ha] at r1 r2 r3
+  rw [← h12] at cr2 cr6
+  have e6 : d7 + 8 * bget g 12 + 2 + 4 = d7 + 8 * bget g 12 + 6 := by rw [UInt64.add_assoc]; rfl
+  have pc : ((d7 + 4096) + bget g 27).toNat = 151616 + J := by
+    rw [h27, UInt64.toNat_add, show (d7 + 4096 : UInt64).toNat = 151616 from rfl]; simp; omega
+  have j4 : bget g 27 < 4096 := by rw [h27, UInt64.lt_iff_toNat_lt]; simp; omega
+  have u11 : (11 : UInt64).toNat = 11 := rfl
+  have u12 : (12 : UInt64).toNat = 12 := rfl
+  have u27 : (27 : UInt64).toNat = 27 := rfl
+  have u31 : (31 : UInt64).toNat = 31 := rfl
+  -- reads through the three binding-row writes
+  have A : ∀ (x1 x2 x3 j : UInt64), (j.toNat < 180288 ∨ 184384 ≤ j.toNat) →
+      bget (bset (bset (bset g (d9 + 4 * a + 1) x1) (d9 + 4 * a + 2) x2) (d9 + 4 * a + 3) x3) j = bget g j := fun x1 x2 x3 j hj => by
+    rw [bget_bset' _ _ _ _ (by rw [r3]; omega), bget_bset' _ _ _ _ (by rw [r2]; omega), bget_bset' _ _ _ _ (by rw [r1]; omega)]
+  have LA : ∀ (x1 x2 x3 : UInt64), (bset (bset (bset g (d9 + 4 * a + 1) x1) (d9 + 4 * a + 2) x2) (d9 + 4 * a + 3) x3).length = g.length :=
+    fun _ _ _ => by simp only [length_bset]
+  have B31 : ∀ (X : Buf) (z : UInt64), 31 < X.length → bget (bset X 31 z) 31 = z := fun X z h => bget_bset_same _ _ _ h
+  have B11 : ∀ (x1 x2 x3 z : UInt64),
+      bget (bset (bset (bset (bset g (d9 + 4 * a + 1) x1) (d9 + 4 * a + 2) x2) (d9 + 4 * a + 3) x3) 31 z) 11 = bget g 11 :=
+    fun x1 x2 x3 z => by rw [bget_bset' _ _ _ _ (by decide), A _ _ _ _ (Or.inl (by decide))]
+  have B27 : ∀ (x1 x2 x3 z v : UInt64),
+      bget (bset (bset (bset (bset (bset g (d9 + 4 * a + 1) x1) (d9 + 4 * a + 2) x2) (d9 + 4 * a + 3) x3) 31 z) 11 v) 27 = bget g 27 :=
+    fun x1 x2 x3 z v => by rw [bget_bset' _ _ _ _ (by decide), bget_bset' _ _ _ _ (by decide), A _ _ _ _ (Or.inl (by decide))]
+  have C : ∀ (x1 x2 x3 z v pv jv j : UInt64), j.toNat < 147520 + 8 * 512 → j.toNat ≠ 11 → j.toNat ≠ 27 → j.toNat ≠ 31 →
+      bget (bset (bset (bset (bset (bset (bset (bset g (d9 + 4 * a + 1) x1) (d9 + 4 * a + 2) x2) (d9 + 4 * a + 3) x3) 31 z) 11 v)
+        ((d7 + 4096) + bget g 27) pv) 27 jv) j = bget g j := fun x1 x2 x3 z v pv jv j h1 h2 h3 h4 => by
+    rw [bget_bset' _ _ _ _ (by rw [u27]; omega), bget_bset' _ _ _ _ (by rw [pc]; omega), bget_bset' _ _ _ _ (by rw [u11]; omega),
+      bget_bset' _ _ _ _ (by rw [u31]; omega), A _ _ _ _ (Or.inl (by omega))]
+  have C6 : ∀ (x1 x2 x3 z v pv jv cv : UInt64),
+      bget (bset (bset (bset (bset (bset (bset (bset (bset g (d9 + 4 * a + 1) x1) (d9 + 4 * a + 2) x2) (d9 + 4 * a + 3) x3) 31 z) 11 v)
+        ((d7 + 4096) + bget g 27) pv) 27 jv) (d7 + 8 * bget g 12 + 2) cv) (d7 + 8 * bget g 12 + 2 + 4) = bget g (d7 + 8 * bget g 12 + 2 + 4) :=
+    fun x1 x2 x3 z v pv jv cv => by
+      rw [bget_bset' _ _ _ _ (by rw [e6, cr2, cr6]; omega), C _ _ _ _ _ _ _ _ (by rw [e6, cr6]; omega) (by rw [e6, cr6]; omega)
+        (by rw [e6, cr6]; omega) (by rw [e6, cr6]; omega)]
+  have B31' : ∀ (x1 x2 x3 z : UInt64),
+      bget (bset (bset (bset (bset g (d9 + 4 * a + 1) x1) (d9 + 4 * a + 2) x2) (d9 + 4 * a + 3) x3) 31 z) 31 = z :=
+    fun x1 x2 x3 z => B31 _ z (by rw [LA]; omega)
+  have C12 : ∀ (x1 x2 x3 z v pv jv : UInt64),
+      bget (bset (bset (bset (bset (bset (bset (bset g (d9 + 4 * a + 1) x1) (d9 + 4 * a + 2) x2) (d9 + 4 * a + 3) x3) 31 z) 11 v)
+        ((d7 + 4096) + bget g 27) pv) 27 jv) 12 = bget g 12 :=
+    fun x1 x2 x3 z v pv jv => C x1 x2 x3 z v pv jv 12 (by decide) (by decide) (by decide) (by decide)
+  have CCR : ∀ (x1 x2 x3 z v pv jv : UInt64),
+      bget (bset (bset (bset (bset (bset (bset (bset g (d9 + 4 * a + 1) x1) (d9 + 4 * a + 2) x2) (d9 + 4 * a + 3) x3) 31 z) 11 v)
+        ((d7 + 4096) + bget g 27) pv) 27 jv) (d7 + 8 * bget g 12 + 2) = bget g (d7 + 8 * bget g 12 + 2) :=
+    fun x1 x2 x3 z v pv jv => C x1 x2 x3 z v pv jv _ (by rw [cr2]; omega) (by rw [cr2]; omega) (by rw [cr2]; omega) (by rw [cr2]; omega)
+  unfold v133 v9
+  simp only [beq_iff_eq, hne, hw4, k0, k1, if_false, hgd]
+  by_cases h5 : bget g 25 < 5
+  · simp only [h5, if_true]
+    simp only [B11, B27, j4, if_true, B31', C12, CCR, C6]
+    have hc := hcap; simp only [h5, if_true] at hc; rw [if_pos hc]; exact stat0A _
+  · have h5' : 5 ≤ (bget g 25).toNat := by
+      rcases Nat.lt_or_ge (bget g 25).toNat 5 with h | h
+      · exact absurd (UInt64.lt_iff_toNat_lt.mpr h) h5
+      · exact h
+    have sr := shapeRow (bget g 25) h5' hwb 2 (by decide)
+    simp only [h5, if_false]
+    rw [A _ _ _ _ (Or.inl (by rw [sr]; simp; omega))]
+    simp only [B11, B27, j4, if_true, B31', C12, CCR, C6]
+    have hc := hcap; simp only [h5, if_false] at hc; rw [if_pos hc]; exact stat0A _
 
 /-- the cells of `asgHeap` -/
 theorem asg_eff (g : Buf) (a wv n1 z : UInt64) (i0 D J : Nat) (ha : a = i0.toUInt64) (hi0 : i0 < 1024) (h12 : bget g 12 = D.toUInt64)
@@ -329,13 +414,15 @@ theorem v133_full (g : Buf) (a b : UInt64) (i0 : Nat) (ha : a = i0.toUInt64) (hi
   simp only [c4, if_false]
   by_cases cg : (if bget g 25 = 3 then (if b = 1 then (0 : UInt64) else (if v201 16777216 g a = 0 then 1 else 0)) else 0) = 1
   · simp only [cg, if_true]; exact stat0 _ (by omega)
-  simp only [cg, if_false, B27, hJ]
+  simp only [cg, if_false]
+  apply ite0A _ _ _ (stat0A _)
+  simp only [B27, hJ, if_false]
   exact v1_zero _ _ _ _ (stat0 _ (by simp only [length_bset]; omega))
 
 /-! ## task 68: `assign i sz` (v133) -/
 theorem h_assign {h ts : Buf} {st : St} {i0 sz : Nat} {fs : List Frame} (r : Rep h ts st (.assign i0 sz :: fs))
     (hD : inDefF fs = true) (hia : i0 ≤ st.binds.length) (hty : st.ty.isSome) (hnni : st.cur.nni < 2 ^ 63)
-    (hs : bget (step h) 0 ≠ 0) :
+    (hn20 : st.nx < 2 ^ 20) (hty20 : cw st.ty < 2 ^ 20) (hs : bget (step h) 0 ≠ 0) :
     ∃ fr st', stepF (.assign i0 sz) st = some (fr, st') ∧ Rep (step h) ts st' (fr ++ fs) := by
   obtain ⟨E, ⟨ea, eb⟩, R1⟩ := rep_pop r rfl
   simp only [Frame.code] at E
@@ -372,7 +459,9 @@ theorem h_assign {h ts : Buf} {st : St} {i0 sz : Nat} {fs : List Frame} (r : Rep
   by_cases cg : (if bget g 25 = 3 then (if b = 1 then (0 : UInt64) else (if v201 16777216 g a = 0 then 1 else 0)) else 0) = 1
   · exfalso; apply hs; unfold v133; simp only [beq_iff_eq, ceq, if_false, c4, k0, k1, cg, if_true]; exact stat0 _ (by omega)
   have dlt : st.defs.length < 512 := by have := rD.2.2.2.2.1; simp only [if_true] at this; exact this.2
-  rw [v133_eq g a b i0 st.defs.length (bget g 27).toNat ha i1024 h12 dlt (by simp) hJ' hl ceq c4 sc.bound cg] at hs ⊢
+  by_cases hcp : (1048575 : UInt64) < bget g 11 + (if bget g 25 < 5 then 1 else bget g ((d7 + 8192) + 3 * (bget g 25 - 5) + 2)) - (if bget g 25 < 5 then 1 else bget g ((d7 + 8192) + 3 * (bget g 25 - 5) + 2)) * (if (if bget g 25 = 3 then (if b = 1 then v201 16777216 g a else 1) else 1) = 0 then 1 else 0)
+  · exact absurd (v133_cap g a b i0 st.defs.length (bget g 27).toNat ha i1024 h12 dlt (by simp) hJ' hl ceq c4 sc.bound cg hcp) hs
+  rw [v133_eq g a b i0 st.defs.length (bget g 27).toNat ha i1024 h12 dlt (by simp) hJ' hl ceq c4 sc.bound cg hcp] at hs ⊢
   -- decode the machine's flags
   have hw3 : bget g 25 = 3 ↔ w = .ls := ⟨fun e => ShapeCode.det (e ▸ sc) .ls, fun e => (e ▸ sc).ls_code⟩
   have hb1 : b = 1 ↔ sz = 1 := ⟨fun e => by rw [← eb, e]; rfl, fun e => UInt64.toNat_inj.mp (by rw [eb, e]; rfl)⟩
@@ -392,11 +481,24 @@ theorem h_assign {h ts : Buf} {st : St} {i0 sz : Nat} {fs : List Frame} (r : Rep
     simp [hw3, hb1, q1, q2, q3]
   have ez : (if bget g 25 < 5 then 1 else bget g ((d7 + 8192) + 3 * (bget g 25 - 5) + 2)) = w.width.toUInt64 :=
     v9_cw (o := some w) sc
+  have r11 : bget g 11 = st.nx.toUInt64 := R1.2.2.2.2.1
+  have hw20 : w.width < 2 ^ 20 := by rw [hw] at hty20; exact hty20
+  have capN : ¬ 2 ^ 20 ≤ (if (w == .ls && sz == 1 && !((st.binds.take i0).any Bd.inp)) = true then st.nx
+      else st.nx + w.width) := by
+    rw [en1, ez, r11] at hcp
+    cases hn1 : (w == .ls && sz == 1 && !((st.binds.take i0).any Bd.inp))
+    · simp only [hn1, b01, Bool.false_eq_true, if_false] at hcp ⊢
+      intro hle; apply hcp
+      rw [UInt64.lt_iff_toNat_lt, show (1048575 : UInt64).toNat = 1048575 from rfl]
+      simp [Nat.toUInt64, UInt64.toNat_ofNat', Nat.mod_eq_of_lt (show st.nx < 2 ^ 64 by omega),
+        Nat.mod_eq_of_lt (show w.width < 2 ^ 64 by omega), Nat.mod_eq_of_lt (show st.nx + w.width < 2 ^ 64 by omega)]
+      omega
+    · simp only [if_true]; omega
   rw [en1, ez, ha] at hs ⊢
   have R2 := rep_asg R1 hD i0 hilt w hw (w == .ls && sz == 1 && !((st.binds.take i0).any Bd.inp)) hnni hJ'
   have ea1 : (i0.toUInt64 + 1).toNat = i0 + 1 := by rw [tn_add _ _ (by simp; omega)]; simp; omega
   have R3 := rep_push (.assign (i0 + 1) sz) (i0.toUInt64 + 1) b R2 rfl ⟨ea1, eb⟩ hs
   refine ⟨[.assign (i0 + 1) sz], _, ?_, R3⟩
-  simp only [stepF, if_neg hne, hw, List.getElem?_eq_getElem hilt, if_neg hwnt, if_neg hgj]
+  simp only [stepF, if_neg hne, hw, List.getElem?_eq_getElem hilt, if_neg hwnt, if_neg hgj, capN, if_false, ↓reduceIte]
 
 end ParInv

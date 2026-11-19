@@ -5,6 +5,7 @@ Written as a plain recursive descent over decoded tokens (fuel = a bound that is
 * tokens: Lex2's tag set minus the rejected ones (Int64 4, `≤` 21, `≠` 22, `&&` 24, `||` 25); idents `14 (1,b)* 0`, numbers `5` + 8 LE bytes;
 * types: UInt64 / Buf / Nat = one word, `A × B` right-nested; the FIRST `List UInt8` parameter (alone in its binder group) is the implicit INPUT (width 0),
   every other `List UInt8` (later parameters, tuple components, results) is a one-word byte buffer;
+* WIDTH CAP: a def's slot count (nslots) and result width are < 2^20, else rejected (see `pDef`);
 * defs: `def f (a b : T) (c : U) : R := e` (kind 0, constants included: Par1 and Gen never emit kind 2) and the fuel loop
   `def f : Nat → T1 → … → Tk → R | 0, x1,…,xk => Z | n + 1, y1,…,yk => S` (kind 1; fuel = slot 0, states after; body `LOOP Z S`); callee before caller;
 * expressions: `|||`55 `&&&`60 `+ -`65 `*`70 `<<< >>>`75 (left assoc, shift rhs = numeral), `if A (==|<) B then T else E`, `let x := v; b`,
@@ -372,7 +373,9 @@ def mkEnv (start : Nat) : List Ps → List (List Nat) → Option (List (List Nat
 
 def tyOk (res : Sh) (t : Ty) : Bool := match t with | .s s => s == res | .lit => res == .uw | _ => false
 
-/-- one def; returns the def info, its output and the rest -/
+/-- one def; returns the def info, its output and the rest.  WIDTH CAP (soundness fix, 2026-11-19): a def with
+`nslots ≥ 2^20` or a result width `≥ 2^20` is rejected (doubling lets `let a(i+1) := (a i, a i)` otherwise reach
+widths ≥ 2^64, which `serialize` would write mod 2^64).  Par1 enforces it at every slot allocation / pair shape. -/
 def pDef (fuel : Nat) (defs : List DefI) : List Tok → Option (DefI × DefA × List Tok)
   | .k 1 :: .id name :: ts =>
     if (findDef defs name).isSome then none else
@@ -404,6 +407,7 @@ def pDef (fuel : Nat) (defs : List DefI) : List Tok → Option (DefI × DefA × 
                         (pExpr fuel cx1 true r6 nx1).bind fun (s, ts', r7, nx2) =>
                           match ts'.join (.s res) with
                           | some (.s _) =>
+                            if 2 ^ 20 ≤ nx2 ∨ 2 ^ 20 ≤ res.width then none else
                             some ({ name, params := .fuel :: ps, res, resLst := false, npw },
                                   { id := defs.length, npw, nslots := nx2, kind := 1, nres := res.width, body := .loop z s }, r7)
                           | _ => none
@@ -424,6 +428,7 @@ def pDef (fuel : Nat) (defs : List DefI) : List Tok → Option (DefI × DefA × 
               (pExpr fuel cx0 false r4 npw).bind fun (b, tb, r5, nx) =>
                 let res := trRes resT
                 if !tyOk res tb then none else
+                if 2 ^ 20 ≤ nx ∨ 2 ^ 20 ≤ res.width then none else
                 some ({ name, params := ps, res, resLst := (match resT with | .lst => true | _ => false), npw },
                       { id := defs.length, npw, nslots := nx, kind := 0, nres := res.width, body := b }, r5)
             | _ => none

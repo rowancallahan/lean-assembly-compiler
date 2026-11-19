@@ -189,7 +189,7 @@ theorem plainB_spec {n : Nat} {ks : List Frame} {st0 fin : St} {x : List Nat} {d
         obtain ⟨q, hq, rfl⟩ := hp
         exact (hps q hq).2.2)
   simp only [St.withTy, bodyRow] at hP hV hstar ht4 hw
-  obtain ⟨z, n4, hn4, hz, hzs, hzi, hsE, h4⟩ := defEnd_tail h3
+  obtain ⟨z, n4, hn4, hz, hzs, hzi, hcap1, hcap2, hsE, h4⟩ := defEnd_tail h3
   have hsAll := (hsB.trans (hsT.trans (hsBody.trans hsE))).toks
   have hvz : z = v := by rw [hP.vals, hS.vals] at hz; simpa using hz.symm
   subst hvz
@@ -233,7 +233,9 @@ theorem plainB_spec {n : Nat} {ks : List Frame} {st0 fin : St} {x : List Nat} {d
       rw [hpT f (by omega)]
       simp only [Option.bind_some, hbs, hN1, hN2, Bool.or_false, Bool.false_eq_true, if_false]
       rw [hpE f (by omega)]
-      simp [hok]
+      have hw20 : (trRes resT).width < 2 ^ 20 := by
+        have := hcap2; rw [hP.cur] at this; simpa [cw] using this
+      simp [hok, hcap1, hw20]
       refine ⟨fun p hp => by simpa using List.any_eq_false.mp hN2 p hp, ?_⟩
       cases resT <;> rfl
   · have eo := (Star.noOut hstar (by simp [isD, isOutF])).1
@@ -441,7 +443,7 @@ def LoopStep : Prop := ∀ {n : Nat} {ks : List Frame} {st fin : St} {defs : Lis
   ∃ lp st' n', n' < n ∧ Star (.tyAtom :: .afterColon :: ks, st) (.defEnd :: ks, st') ∧ StarN n' (.defEnd :: ks, st') ([], fin) ∧
     st'.vals = [lp] ∧ st'.defs = st.defs ∧ st'.out = st.out ∧ st'.cur.name = name ∧ st'.cur.loop = true ∧
     st'.toks.length < st.toks.length ∧
-    (VT (rows st') lp →
+    (VT (rows st') lp → st'.nx < 2 ^ 20 → cw st'.cur.res < 2 ^ 20 →
       ∃ di : DefI, di.name = name ∧ di.params.map psCode = st'.cur.params ∧ st'.cur.res = some di.res ∧ di.npw = st'.cur.npw ∧
         (∀ (i : Nat) (h : i < di.params.length), (di.params[i] = .inp ↔ FirstLs st'.cur.params i)) ∧
         (∀ p ∈ di.params, p ≠ .sh .nt) ∧ (di.res.nnt = true ∧ ∀ p ∈ st'.cur.params, p.nnt = true) ∧
@@ -532,7 +534,7 @@ theorem defs_spec (hLS : LoopStep) : ∀ (n : Nat) {st fin : St} {dis : List Def
             have := hD.2.1 x; rw [hfr] at this; cases h : findDef dis x <;> simp_all
           obtain ⟨lp, st'', n'', hn'', hsL, h3, hv, hd, ho, hname, hloop, hlen, hVT⟩ :=
             hLS h2 rfl rfl rfl rfl rfl rfl (cxrel_body (env := []) hD rfl (by simp) rfl) hNN hfr'
-          obtain ⟨z, n4, hn4, hz, hzs, hzi, hsE, h4⟩ := defEnd_tail h3
+          obtain ⟨z, n4, hn4, hz, hzs, hzi, hcap1, hcap2, hsE, h4⟩ := defEnd_tail h3
           have hzl : z = lp := by rw [hv] at hz; simpa using hz.symm
           subst hzl
           have hsA := (hsL.trans hsE).toks
@@ -545,7 +547,7 @@ theorem defs_spec (hLS : LoopStep) : ∀ (n : Nat) {st fin : St} {dis : List Def
           have hA : st''.arena = nodes z := by rw [inv.1, hv]; simp
           have hall : ∀ m ∈ nodes z, cntOK m = true ∧ nodeOK (st''.defs ++ [st''.cur]) m = true := fun m hm =>
             ⟨inv.2 m (by rw [hA]; exact hm), List.all_eq_true.mp hval m (by rw [hA]; exact hm)⟩
-          obtain ⟨di, hn, hp, hres, hnpw, hi, hnt, ⟨hrn, hpn⟩, hpd⟩ := hVT (fun u hu => (hall u hu).2)
+          obtain ⟨di, hn, hp, hres, hnpw, hi, hnt, ⟨hrn, hpn⟩, hpd⟩ := hVT (fun u hu => (hall u hu).2) hcap1 hcap2
           have hwords := words_body hall
           refine ⟨di, { id := dis.length, npw := st''.cur.npw, nslots := st''.nx, kind := 1, nres := di.res.width, body := z.toNd },
             fun F hF => ?_, ?_, ?_, ?_⟩

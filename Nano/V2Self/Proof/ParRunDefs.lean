@@ -25,7 +25,7 @@ def defHdr (st : St) : List UInt64 :=
 /-- **def tail**: `defEnd` checks the single body value, then the header, the flattened body and `21` are emitted, the row is
 appended, and the run continues at `.defs` -/
 theorem defEnd_tail {n : Nat} {ks : List Frame} {st fin : St} (h : StarN n (.defEnd :: ks, st) ([], fin)) :
-    ∃ z n', n' < n ∧ st.vals = [z] ∧ z.sh = st.cur.res ∧ z.isInp = false ∧
+    ∃ z n', n' < n ∧ st.vals = [z] ∧ z.sh = st.cur.res ∧ z.isInp = false ∧ st.nx < 2 ^ 20 ∧ cw st.cur.res < 2 ^ 20 ∧
       Star (.defEnd :: ks, st) (.defs :: ks, { st with out := st.out ++ defHdr st ++ z.words ++ [21], defs := st.defs ++ [st.cur] }) ∧
       StarN n' (.defs :: ks, { st with out := st.out ++ defHdr st ++ z.words ++ [21], defs := st.defs ++ [st.cur] }) ([], fin) := by
   match n, h with
@@ -48,7 +48,7 @@ theorem defEnd_tail {n : Nat} {ks : List Frame} {st fin : St} (h : StarN n (.def
           out ++ defHdr ⟨toks, nx, binds, defs, cur, [z], arena, ty, stash, arm, sslot, out, acc, all⟩ ++ z.words, acc, all⟩)
           (by simp only [stepF]; rfl)
         obtain ⟨m', hm, h3⟩ := StarN.cut (r1.trans r2) h2
-        exact ⟨m', by omega, rfl, hc.1, by simpa using hc.2, hs0.trans (r1.trans r2), h3⟩
+        exact ⟨m', by omega, rfl, hc.1, by simpa using hc.2.1, hc.2.2.1, hc.2.2.2, hs0.trans (r1.trans r2), h3⟩
       · cases h1
 
 

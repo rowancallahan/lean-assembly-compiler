@@ -16,7 +16,7 @@ theorem cwC_eq {h : Buf} {w : UInt64} {o : Option Sh} (r : ShOpt h w o) : cwC h 
 
 /-- **task 80 core** -/
 theorem h_defEnd_core {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.defEnd :: fs)) (hW : IsInpW)
-    (hfs : inDefF fs = true) (hs : bget (step h) 0 ≠ 0) :
+    (hfs : inDefF fs = true) (hn20 : st.nx < 2 ^ 20) (hres20 : cw st.cur.res < 2 ^ 20) (hs : bget (step h) 0 ≠ 0) :
     ∃ H zn ws, step h = H ++ ws ∧
       stepF .defEnd st = some ([.flat zn, .defClose], { st with out := st.out ++ ws }) ∧
       Rep H ts st ([.flat zn, .defClose] ++ fs) := by
@@ -69,7 +69,7 @@ theorem h_defEnd_core {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st 
     have hH0 : bget (v1 (v1 (bset g 31 (cw st.cur.res).toUInt64) 83 0 0) 81 z 0) 0 ≠ 0 := by
       rw [bget_append_lt _ _ _ (by simp [v1_length, length_bset]; omega)] at hs; exact hs
     refine ⟨v1 (v1 (bset g 31 (cw st.cur.res).toUInt64) 83 0 0) 81 z 0, zn, _, rfl, ?_, ?_⟩
-    · simp [stepF, hvz, hshape, hni, b01]
+    · simp [stepF, hvz, hshape, hni, b01, hn20, hres20]
     · have R2 := rep_scratch (h' := bset g 31 (cw st.cur.res).toUInt64) R1
         (fun i _ a31 => bget_bset' g 31 i _ (fun e => a31 (by rw [← e]; rfl))) (drop_bset _ _ _ (by decide))
       have R3 := rep_push .defClose 0 0 R2 (by simp [inDefF, Frame.isDefs]) trivial (fun e => hH0 (v1_zero _ _ _ _ e))
@@ -85,8 +85,9 @@ theorem h_defEnd_core {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st 
 
 /-- **task 80** (FINISH a def) on C's Rep, including the output append -/
 theorem h_defEnd {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.defEnd :: fs)) (hfs : inDefF fs = true)
+    (hn20 : st.nx < 2 ^ 20) (hres20 : cw st.cur.res < 2 ^ 20)
     (hs : bget (step h) 0 ≠ 0) : ∃ k st', stepF .defEnd st = some (k, st') ∧ Rep (step h) ts st' (k ++ fs) := by
-  obtain ⟨H, zn, ws, e, e2, R⟩ := h_defEnd_core r isInpW hfs hs
+  obtain ⟨H, zn, ws, e, e2, R⟩ := h_defEnd_core r isInpW hfs hn20 hres20 hs
   exact ⟨_, _, e2, by rw [e]; exact rep_append R ws⟩
 
 end ParInv

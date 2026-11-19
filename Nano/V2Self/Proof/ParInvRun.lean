@@ -1,6 +1,7 @@
 /- Nano/V2Self/Proof/ParInvRun: `api_of_rep` (parser lead) — box C's `Rep` plus Layer-2 reachability meets `RepAPI`.
 The handlers' side conditions come from the reachability invariants (`WF` / `wf_pre`, `CInv`, `DInv`, `StkInv`, `ArenaInv`,
 `CallInv`); `WF`-independent ones are in ParRunBnd (parser lead) and ParRunObl (box B). -/
+import Nano.V2Self.Proof.ParRunSmall
 import Nano.V2Self.Proof.ParInvInit
 import Nano.V2Self.Proof.ParInvSelf
 import Nano.V2Self.Proof.ParInvDefs
@@ -115,6 +116,9 @@ theorem step_sim {h ts : Buf} {toks : List Tok}
   have hD := reach_inDef hR hf
   have hN := fun (e : f.isFl = false) => reach_noflat hR e
   have hsv := W.inv.1
+  have hSm := hR.small (small_init _)
+  obtain ⟨sm1, sm2, sm3, sm4, -, sm6, -, -, sm9⟩ := hSm
+  dsimp only at sm1 sm2 sm3 sm4 sm6 sm9
   have hv4 : st.vals.length ≤ 4096 := r.2.2.2.2.2.2.2.1.2.2.2.1
   have hnni : st.cur.nni < 2 ^ 63 := by
     have rD := r.2.2.2.2.2.2.1
@@ -135,12 +139,12 @@ theorem step_sim {h ts : Buf} {toks : List Tok}
   | ifThen c tl => exact h_ifThen r hs
   | ifElse => exact h_ifElse r hs
   | mkIte c => exact h_mkIte r (hN rfl) hs
-  | letSemi x tl => simp [effF, St.g] at hg; exact h_letSemi r (by intro e; simp [e] at hg) hs
+  | letSemi x tl => simp [effF, St.g] at hg; exact h_letSemi r (by intro e; simp [e] at hg) sm1 sm6 hs
   | letEnd sl d =>
     simp [effF, St.g] at hg; exact h_letEnd r hg.1.2 (hN rfl) hs
   | parenClose => exact h_parenClose r hs
   | letStart tl => exact h_letStart r hs
-  | mkPair => simp [effF, St.g] at hg; exact h_mkPair r (hN rfl) hg.1 hsv hs
+  | mkPair => simp [effF, St.g] at hg; exact h_mkPair r (hN rfl) hg.1 hsv sm6 hs
   | argAtom => exact h_argAtom r (hN rfl) hs
   | args c k => exact h_args r hs
   | mkCallN c d => simp [effF, St.g] at hg; exact h_mkCallN r hg.1.1 hs
@@ -163,7 +167,7 @@ theorem step_sim {h ts : Buf} {toks : List Tok}
   | letPairY x tl => exact h_letPairY r hs
   | stash x => exact h_stash r hs
   | letPairSemi y tl =>
-    simp [effF, St.g] at hg; exact h_letPairSemi r (by intro e; simp [e] at hg) (cinv_stash (hR.cinv (cinv_init _))) hs
+    simp [effF, St.g] at hg; exact h_letPairSemi r (by intro e; simp [e] at hg) (cinv_stash (hR.cinv (cinv_init _))) sm1 sm6 hs
   | mkCont f' k =>
     simp [effF, St.g] at hg
     exact h_mkCont r hD (hN rfl) (by have := hg.1.2.1; simp [St.ctx, rows] at this; omega) (by have := hg.1.1; omega) hs
@@ -171,10 +175,10 @@ theorem step_sim {h ts : Buf} {toks : List Tok}
   | defs => exact absurd rfl hf
   | tyAtom => exact h_tyAtom r hs
   | tyCross => simp [effF, St.g] at hg; exact h_tyCross r hg.1 hs
-  | tyPair l => simp [effF, St.g] at hg; exact h_tyPair r hg.1 hs
+  | tyPair l => simp [effF, St.g] at hg; exact h_tyPair r hg.1 (sm9 l (List.mem_cons_self ..)) sm3 hs
   | binders => exact h_binders r hs
   | group a => exact h_group r hs
-  | assign i sz => simp [effF, St.g] at hg; exact h_assign r hD hg.1.1 (reach_assignTy hR) hnni hs
+  | assign i sz => simp [effF, St.g] at hg; exact h_assign r hD hg.1.1 (reach_assignTy hR) hnni sm1 sm3 hs
   | plainBody =>
     simp [effF, St.g] at hg
     obtain ⟨w, hw⟩ := Option.isSome_iff_exists.mp hg.1
@@ -186,7 +190,7 @@ theorem step_sim {h ts : Buf} {toks : List Tok}
   | stateTy =>
     simp [effF, St.g] at hg
     obtain ⟨w, hw⟩ := Option.isSome_iff_exists.mp hg.1.1
-    exact h_stateTy r hD hw hnni hs
+    exact h_stateTy r hD hw hnni sm2 sm3 hs
   | armsStart =>
     simp [effF, St.g] at hg
     obtain ⟨w, hw⟩ := Option.isSome_iff_exists.mp hg.1.1
@@ -196,7 +200,7 @@ theorem step_sim {h ts : Buf} {toks : List Tok}
     exact h_armBind r hD (by have := hg.1.2.1; simpa [Ctx.npar, St.ctx, rows] using this) hs
   | zeroDone => simp [effF, St.g] at hg; exact h_zeroDone r hD (by intro e; simp [e] at hg) hs
   | mkLoop => exact h_mkLoop r hD (hN rfl) hs
-  | defEnd => exact h_defEnd r hD hs
+  | defEnd => exact h_defEnd r hD sm1 sm4 hs
   | flat n => obtain ⟨a, b, c⟩ := reach_flat hR; exact h_flat r hD (by have := (rep_bounds r).2.2; omega) b c hs
   | flatL ns => exact h_flatL r hD hs
   | defClose => exact absurd rfl hf2

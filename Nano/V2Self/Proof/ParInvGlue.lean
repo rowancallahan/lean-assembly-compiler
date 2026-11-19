@@ -5,6 +5,7 @@ import Nano.V2Self.Proof.ParInvLetPair
 import Nano.V2Self.Proof.ParInvPrimary
 import Nano.V2Self.Proof.ParRunWF
 import Nano.V2Self.Proof.ParRunCInv
+import Nano.V2Self.Proof.ParRunSmall
 namespace ParInv
 open C BufL ParSpec ParRun
 
@@ -34,9 +35,10 @@ theorem indef_of {f : Frame} {fs : List Frame} {st : St} (hD : DInv (f :: fs, st
   intro g hg
   cases g <;> simp [Frame.isDefs] <;> exact this _ hg rfl
 
-/-- **expression core**: every expression-core frame steps like `stepF` and keeps `Rep`, under WF ∧ CInv ∧ DInv -/
+/-- **expression core**: every expression-core frame steps like `stepF` and keeps `Rep`, under WF ∧ CInv ∧ DInv ∧ Small -/
 theorem h_core {h ts : Buf} {st : St} {f : Frame} {fs : List Frame} (r : Rep h ts st (f :: fs)) (hcore : f.isCore = true)
-    (hW : WF (f :: fs) st) (hC : CInv (f :: fs, st)) (hD : DInv (f :: fs, st)) (hs : bget (step h) 0 ≠ 0) :
+    (hW : WF (f :: fs) st) (hC : CInv (f :: fs, st)) (hD : DInv (f :: fs, st)) (hSm : Small (f :: fs, st))
+    (hs : bget (step h) 0 ≠ 0) :
     ∃ k st', stepF f st = some (k, st') ∧ Rep (step h) ts st' (k ++ fs) := by
   have gt := ghost_top hW.ghost
   have hv1 : ∀ g : G, (if 1 ≤ g.v then some g else none : Option G).isSome = true → 1 ≤ g.v := by
@@ -59,7 +61,7 @@ theorem h_core {h ts : Buf} {st : St} {f : Frame} {fs : List Frame} (r : Rep h t
   | letSemi x tl =>
     simp only [effF] at gt
     have := hv1 _ gt; simp only [St.g] at this
-    exact h_letSemi r (fun e => by rw [e] at this; simp at this) hs
+    exact h_letSemi r (fun e => by rw [e] at this; simp at this) hSm.1 hSm.2.2.2.2.2.1 hs
   | letEnd s d =>
     simp only [effF, St.g] at gt
     have hd : d ≤ st.binds.length := by
@@ -75,7 +77,7 @@ theorem h_core {h ts : Buf} {st : St} {f : Frame} {fs : List Frame} (r : Rep h t
       by_cases q : 2 ≤ st.vals.length
       · exact q
       · simp [q] at gt
-    exact h_mkPair r (noflat_of hC rfl) hv2 hW.inv.1 hs
+    exact h_mkPair r (noflat_of hC rfl) hv2 hW.inv.1 hSm.2.2.2.2.2.1 hs
   | shiftNum op => exact h_shiftNum r (noflat_of hC rfl) hs
   | letPairX tl => exact h_letPairX r hs
   | letPairY x tl => exact h_letPairY r hs
@@ -83,7 +85,7 @@ theorem h_core {h ts : Buf} {st : St} {f : Frame} {fs : List Frame} (r : Rep h t
   | letPairSemi y tl =>
     simp only [effF] at gt
     have := hv1 _ gt; simp only [St.g] at this
-    exact h_letPairSemi r (fun e => by rw [e] at this; simp at this) (cinv_stash hC) hs
+    exact h_letPairSemi r (fun e => by rw [e] at this; simp at this) (cinv_stash hC) hSm.1 hSm.2.2.2.2.2.1 hs
   | tupRest => exact h_tupRest r hs
   | _ => simp [Frame.isCore] at hcore
 

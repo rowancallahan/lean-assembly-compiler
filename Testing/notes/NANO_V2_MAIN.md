@@ -202,3 +202,9 @@ TODO, in order:
 4. P_C = refParse of the text (progEq, chunked lexing).
 Skipped ids now (loops, pairs, List results, and their callers): printed by gen_cert.py.
 G's certificate HANDOFF was never pushed; nothing beyond MainCert ex1/ex3 existed.
+
+## Parser WIDTH CAP (2026-11-19, O)
+Par1 / ParSpec / ParRun reject slot counts and shape widths ≥ 2^20 (see NANO_V2_OWN.md "WIDTH CAP"); parserSound stays proved.
+MainCertC3 / C4 / C5 (F's abandoned duplicate certificate) no longer build against the new Par1: NOT fixed, per the lead.  They are
+imported by nothing, and the `Nano` lib is not a default target.  Canonical certificate: Proof/Cert (PC.lean regenerated with
+gen_cert.py; all 46 tracked Cert files build, Defs35 still open as before).  ParSerLen / MainTyP (D) adapted to the pDef cap split.

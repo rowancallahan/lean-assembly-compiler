@@ -14,11 +14,22 @@ def allocHeap (g : Buf) (x y zx zy : UInt64) (n : Nat) : Buf :=
     (d7 + 8192 + 3 * n.toUInt64 + 2) (zx + zy)) 26 (n.toUInt64 + 1)) 25 (n.toUInt64 + 5)
 
 theorem v10_alloc (g : Buf) (x y : UInt64) (n : Nat) (hn : bget g 26 = n.toUInt64) (hx4 : x ≠ 4) (hy4 : y ≠ 4) (hcap : n < 8192)
-    (hl : 31 < g.length) :
+    (hl : 31 < g.length) (hw : ¬ (1048575 : UInt64) < v9w g x + v9w (bset g 31 (v9w g x)) y) :
     v10 1 g x y n.toUInt64 = allocHeap g x y (v9w g x) (v9w (bset g 31 (v9w g x)) y) n := by
   have hc : n.toUInt64 < d15 := by rw [UInt64.lt_iff_toNat_lt]; simp [show d15.toNat = 8192 from rfl]; omega
+  have hw' := hw; simp only [v9w, bb31 g hl, bb31' g hl] at hw'
   rw [v10]
-  simp only [hn, beq_self_eq_true, if_true, beq_iff_eq, hx4, hy4, if_false, hc, v9, allocHeap, v9w, bb31 g hl, bb31' g hl]
+  simp only [hn, beq_self_eq_true, if_true, beq_iff_eq, hx4, hy4, if_false, hc, v9, allocHeap, v9w, bb31 g hl, bb31' g hl, hw']
+
+/-- WIDTH CAP: a pair of width ≥ 2^20 is not allocated (status 0) -/
+theorem v10_capdead (g : Buf) (x y : UInt64) (n : Nat) (hn : bget g 26 = n.toUInt64) (hx4 : x ≠ 4) (hy4 : y ≠ 4) (hcap : n < 8192)
+    (hl : 31 < g.length) (hw : (1048575 : UInt64) < v9w g x + v9w (bset g 31 (v9w g x)) y) :
+    bget (v10 1 g x y n.toUInt64) 0 = 0 := by
+  have hc : n.toUInt64 < d15 := by rw [UInt64.lt_iff_toNat_lt]; simp [show d15.toNat = 8192 from rfl]; omega
+  have hw' := hw; simp only [v9w, bb31 g hl, bb31' g hl] at hw'
+  rw [v10]
+  simp only [hn, beq_self_eq_true, if_true, beq_iff_eq, hx4, hy4, if_false, hc, v9, bb31 g hl, bb31' g hl, hw']
+  exact stat0 _ (by simp [length_bset]; omega)
 
 theorem v10_dead (g : Buf) (x y : UInt64) (n : Nat) (hn : bget g 26 = n.toUInt64) (hn2 : n < 2 ^ 32) (hl : 0 < g.length)
     (hf : x = 4 ∨ y = 4 ∨ ¬ n < 8192) : bget (v10 1 g x y n.toUInt64) 0 = 0 := by
@@ -79,8 +90,9 @@ theorem pairCode {h : Buf} {i : Nat} (hi : i < 8192) {x y : UInt64} {l r : Sh}
 /-- **pair interning on Rep**: a `v10` that does not fail leaves h[25] = the code of `.p l r` (an existing row, or a new one);
 neither component is Nat -/
 theorem rep_intern {g ts : Buf} {st : St} {fs : List Frame} (R : Rep g ts st fs) (x y : UInt64) (l r : Sh)
-    (hx : ShapeCode g x l) (hy : ShapeCode g y r) (hs : bget (v10 16777216 g x y 0) 0 ≠ 0) :
-    l ≠ .nt ∧ r ≠ .nt ∧ Rep (v10 16777216 g x y 0) ts { st with ty := some (.p l r) } fs := by
+    (hx : ShapeCode g x l) (hy : ShapeCode g y r) (hlw : l.width < 2 ^ 20) (hrw : r.width < 2 ^ 20)
+    (hs : bget (v10 16777216 g x y 0) 0 ≠ 0) :
+    l ≠ .nt ∧ r ≠ .nt ∧ l.width + r.width < 2 ^ 20 ∧ Rep (v10 16777216 g x y 0) ts { st with ty := some (.p l r) } fs := by
   obtain ⟨hn7, hl, har⟩ := rep_bounds R
   obtain ⟨d12, dl, d27, drows, dcur, dzero, dz0, s26, sz, sd⟩ := R.2.2.2.2.2.2.1
   have hn : bget g 26 = (bget g 26).toNat.toUInt64 := by simp
@@ -93,7 +105,14 @@ theorem rep_intern {g ts : Buf} {st : St} {fs : List Frame} (R : Rep g ts st fs)
     rw [hrow.1] at sa; rw [hrow.2] at sb
     have el := ShapeCode.det sa hx; have er := ShapeCode.det sb hy
     subst el er
-    exact ⟨hl', hr', rep_ty R _ _ (pairCode (by omega) hrow.1 hrow.2 sw sa sb)⟩
+    by_cases hw : (1048575 : UInt64) < bget g (d7 + 8192 + 3 * i.toUInt64 + 2)
+    · rw [if_pos hw] at hs; exact absurd (stat0 _ (by omega)) hs
+    rw [if_neg hw] at hs ⊢
+    have hsum : l'.width + r'.width < 2 ^ 20 := by
+      rw [sw, UInt64.lt_iff_toNat_lt, show (1048575 : UInt64).toNat = 1048575 from rfl, Nat.toUInt64, UInt64.toNat_ofNat',
+        Nat.mod_eq_of_lt (by omega)] at hw
+      omega
+    exact ⟨hl', hr', hsum, rep_ty R _ _ (pairCode (by omega) hrow.1 hrow.2 sw sa sb)⟩
   · rw [hv] at hs ⊢
     by_cases hx4 : x = 4
     · exact absurd (v10_dead g x y n hn (by omega) (by omega) (Or.inl hx4)) hs
@@ -109,7 +128,16 @@ theorem rep_intern {g ts : Buf} {st : St} {fs : List Frame} (R : Rep g ts st fs)
     have c31 : ∀ (z j : UInt64), j.toNat ≠ 31 → bget (bset g 31 z) j = bget g j := fun z j a => bget_bset' _ _ _ _ (by simp; omega)
     have ezy : v9w (bset g 31 (v9w g x)) y = r.width.toUInt64 :=
       v9_cw (o := some r) (hy.frame (fun j a _ => c31 _ j (by omega)))
-    rw [v10_alloc g x y n hn hx4 hy4 hcap (by omega), ezy, ezx] at hs ⊢
+    have ewid0 : l.width.toUInt64 + r.width.toUInt64 = (l.width + r.width).toUInt64 := by simp
+    have hwc : ¬ (1048575 : UInt64) < v9w g x + v9w (bset g 31 (v9w g x)) y :=
+      fun hw => absurd (v10_capdead g x y n hn hx4 hy4 hcap (by omega) hw) hs
+    rw [v10_alloc g x y n hn hx4 hy4 hcap (by omega) hwc, ezy, ezx] at hs ⊢
+    have hsum : l.width + r.width < 2 ^ 20 := by
+      have q := hwc
+      rw [ezy, ezx, ewid0, UInt64.lt_iff_toNat_lt] at q
+      simp only [Nat.toUInt64, UInt64.toNat_ofNat', show (1048575 : UInt64).toNat = 1048575 from rfl,
+        Nat.mod_eq_of_lt (show l.width + r.width < 2 ^ 64 by omega)] at q
+      omega
     obtain ⟨L, e25, e26, eb0, eb1, eb2, U, Dr⟩ := alloc_eff g x y l.width.toUInt64 r.width.toUInt64 n hcap hl _ rfl
     generalize allocHeap g x y l.width.toUInt64 r.width.toUInt64 n = G at L e25 e26 eb0 eb1 eb2 U Dr ⊢
     obtain ⟨rT, rts, r0, r3, r11, rB, rD, rA, r25, r29, r30, r32, rO, rK⟩ := R
@@ -142,7 +170,7 @@ theorem rep_intern {g ts : Buf} {st : St} {fs : List Frame} (R : Rep g ts st fs)
         · have : k = n := by omega
           subst this
           exact ⟨l, r, by rw [eb0]; exact es _ _ hx, by rw [eb1]; exact es _ _ hy, by rw [eb2]; exact ewid, hlnt, hrnt⟩
-    refine ⟨hlnt, hrnt, tokensAt_frame rT et rts, rts, by rw [cS 0 (by decide) (by decide) (by decide) (by decide)]; exact r0,
+    refine ⟨hlnt, hrnt, hsum, tokensAt_frame rT et rts, rts, by rw [cS 0 (by decide) (by decide) (by decide) (by decide)]; exact r0,
       by rw [cS 3 (by decide) (by decide) (by decide) (by decide)]; exact tokAt_frame et hn7 r3,
       by rw [cS 11 (by decide) (by decide) (by decide) (by decide)]; exact r11,
       binds_frameP rB (cS 4 (by decide) (by decide) (by decide) (by decide)) (fun j a _ => cHi j a) et hn7 es,
@@ -162,7 +190,7 @@ theorem rep_intern {g ts : Buf} {st : St} {fs : List Frame} (R : Rep g ts st fs)
 
 /-! ## task 63: `tyPair l` (v130) -/
 theorem h_tyPair {h ts : Buf} {st : St} {l : Sh} {fs : List Frame} (r : Rep h ts st (.tyPair l :: fs)) (hty : st.ty.isSome)
-    (hs : bget (step h) 0 ≠ 0) :
+    (hl20 : l.width < 2 ^ 20) (hty20 : cw st.ty < 2 ^ 20) (hs : bget (step h) 0 ≠ 0) :
     ∃ fr st', stepF (.tyPair l) st = some (fr, st') ∧ Rep (step h) ts st' (fr ++ fs) := by
   obtain ⟨E, ea, R1⟩ := rep_pop r rfl
   simp only [Frame.code, FrameArgs] at E ea
@@ -174,8 +202,9 @@ theorem h_tyPair {h ts : Buf} {st : St} {l : Sh} {fs : List Frame} (r : Rep h ts
   have sc := R1.2.2.2.2.2.2.2.2.1 rr hr
   have ev : step h = v10 16777216 g a (bget g 25) 0 := by rw [E]; simp [v96, v130]
   rw [ev] at hs ⊢
-  obtain ⟨hl, hrn, R2⟩ := rep_intern R1 a (bget g 25) l rr ea' sc hs
+  have hrw : rr.width < 2 ^ 20 := by rw [hr] at hty20; exact hty20
+  obtain ⟨hl, hrn, hsum, R2⟩ := rep_intern R1 a (bget g 25) l rr ea' sc hl20 hrw hs
   refine ⟨[], _, ?_, R2⟩
-  simp [stepF, hr, hl, hrn]
+  simp [stepF, hr, hl, hrn, show ¬ 2 ^ 20 ≤ l.width + rr.width by omega]
 
 end ParInv

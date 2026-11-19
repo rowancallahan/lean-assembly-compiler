@@ -76,6 +76,8 @@ theorem tyPair_inv {st k st' l} (h : stepF (.tyPair l) st = some (k, st')) :
     split at h
     · simp at h
     · rename_i hn
+      split at h
+      · simp at h
       simp at h; obtain ⟨rfl, rfl⟩ := h
       exact ⟨_, hr, rfl, rfl, fun h => hn (Or.inl h), fun h => hn (Or.inr h)⟩
   · simp at h

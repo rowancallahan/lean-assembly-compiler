@@ -102,7 +102,9 @@ theorem mkPair_inv {st k st'} (h : stepF .mkPair st = some (k, st')) :
       · simp at h
       · split at h
         · simp at h
-        · obtain ⟨st2, hm, he⟩ := Option.map_eq_some_iff.mp h
+        · split at h
+          · simp at h
+          obtain ⟨st2, hm, he⟩ := Option.map_eq_some_iff.mp h
           simp at he; obtain ⟨rfl, rfl⟩ := he
           obtain ⟨_, rfl⟩ := mkNode_inv hm
           refine ⟨y, x, rest, l, r, hv, hl, hr, ?_, ?_, ?_, ?_, rfl, by simp [hv]⟩ <;> simp_all

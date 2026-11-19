@@ -148,6 +148,9 @@ theorem assign_spec {t : TyR} (ht : t ≠ .sh .ls) {used : Bool} {sz : Nat} :
       split at h1
       · cases h1
       rename_i hJ
+      by_cases hcap : 2 ^ 20 ≤ (if (trRes t == Sh.ls && sz == 1 && !P.any Bd.inp) = true then st.nx else st.nx + (trRes t).width)
+      · simp only [hcap, ↓reduceIte] at h1; cases h1
+      simp only [hcap, ↓reduceIte] at h1
       cases h1
       obtain ⟨pk, pw, pf⟩ := pick_ok ht used (sz == 1)
       have hn1 : (trRes t == .ls && sz == 1 && !P.any Bd.inp) = ((pickPs used (sz == 1) t).1 == .inp) := by

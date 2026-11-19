@@ -45,7 +45,9 @@ theorem pDef_resLst {f : Nat} {defs : List DefI} {ts : List Tok} {di : DefI} {da
             simp only [Option.bind_eq_some_iff] at h
             obtain ⟨envS, _, ⟨⟨s, ts'', r7, nx2⟩, _, h⟩⟩ := h
             split at h
-            · simp only [Option.some.injEq, Prod.mk.injEq] at h
+            · split at h
+              · cases h
+              simp only [Option.some.injEq, Prod.mk.injEq] at h
               obtain ⟨rfl, _, _⟩ := h
               exact hhd rfl
             · cases h
@@ -63,6 +65,8 @@ theorem pDef_resLst {f : Nat} {defs : List DefI} {ts : List Tok} {di : DefI} {da
           · cases h
           simp only [Option.bind_eq_some_iff] at h
           obtain ⟨⟨b, tb, r5, nx⟩, _, h⟩ := h
+          split at h
+          · cases h
           split at h
           · cases h
           simp only [Option.some.injEq, Prod.mk.injEq] at h

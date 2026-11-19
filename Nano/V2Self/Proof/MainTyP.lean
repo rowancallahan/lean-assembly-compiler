@@ -717,6 +717,8 @@ theorem pDef_ok (fuel : Nat) (defs : List DefI) (ts : List Tok) (di : DefI) (da 
                       simp only at h
                       split at h
                       · rename_i x hj
+                        split at h
+                        · cases h
                         simp only [Option.some.injEq, Prod.mk.injEq] at h
                         obtain ⟨rfl, rfl, rfl⟩ := h
                         generalize stateKinds false revSt.reverse = ps at hZ hS hpz hps ⊢
@@ -766,6 +768,8 @@ theorem pDef_ok (fuel : Nat) (defs : List DefI) (ts : List Tok) (di : DefI) (da 
               split at h
               · cases h
               · rename_i hok
+                split at h
+                · cases h
                 simp only [Option.some.injEq, Prod.mk.injEq] at h
                 obtain ⟨rfl, rfl, rfl⟩ := h
                 simp only [Bool.not_eq_true', Bool.not_eq_false] at hok

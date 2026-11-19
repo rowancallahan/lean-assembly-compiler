@@ -49,7 +49,8 @@ theorem v5_stat (h : Buf) (c a b w t n : UInt64) (h0 : bget h 0 = 0) : bget (v5 
 
 /-! ## task 42: `mkPair` (v107) -/
 theorem h_mkPair {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.mkPair :: fs))
-    (hnf : fs.all (fun f => !f.isFlat)) (hv2 : 2 ≤ st.vals.length) (hsv : ∀ x ∈ st.vals, x.sh.isSome) (hs : bget (step h) 0 ≠ 0) :
+    (hnf : fs.all (fun f => !f.isFlat)) (hv2 : 2 ≤ st.vals.length) (hsv : ∀ x ∈ st.vals, x.sh.isSome)
+    (hc20 : ∀ v ∈ st.vals, cw v.sh < 2 ^ 20) (hs : bget (step h) 0 ≠ 0) :
     ∃ k st', stepF .mkPair st = some (k, st') ∧ Rep (step h) ts st' (k ++ fs) := by
   obtain ⟨E, _, R1⟩ := rep_pop r (by simp [inDefF, Frame.isDefs])
   generalize (taskAt h fs.length).a = a at E
@@ -91,13 +92,16 @@ theorem h_mkPair {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.mkP
       have zy : pY = 0 := by rw [fY.2.2.2.2, hpy]; rfl
       simp only [zx, zy, beq_self_eq_true, if_true] at hs ⊢
       have hs2 : bget (v10 16777216 h1 cX cY 0) 0 ≠ 0 := fun z => hs (v5_stat _ _ _ _ _ _ _ z)
-      obtain ⟨nl, nr, R2⟩ := rep_intern R1 cX cY l rr sX sY hs2
+      have hlw : l.width < 2 ^ 20 := by have := hc20 vx (by rw [evs]; simp); rw [hxl] at this; exact this
+      have hrw : rr.width < 2 ^ 20 := by have := hc20 vy (by rw [evs]; simp); rw [hyr] at this; exact this
+      obtain ⟨nl, nr, hsum, R2⟩ := rep_intern R1 cX cY l rr sX sY hlw hrw hs2
       have w2 : ShOpt (v10 16777216 h1 cX cY 0) (bget (v10 16777216 h1 cX cY 0) 25) (some (.p l rr)) :=
         R2.2.2.2.2.2.2.2.2.1 _ rfl
       obtain ⟨st', em, R3⟩ := rep_v5g R2 hnf 2 6 2 0 (some (.p l rr)) false _ w2 (by decide) (fun _ _ => ⟨by decide, by decide⟩)
         (by decide) hs
       refine ⟨[], st', ?_, by simpa using R3⟩
-      simp only [stepF, evs, hxl, hyr, hpx, hpy, Bool.or_false, Bool.false_eq_true, if_false, nl, nr, or_self]
+      simp only [stepF, evs, hxl, hyr, hpx, hpy, Bool.or_false, Bool.false_eq_true, if_false, nl, nr, or_self,
+        show ¬ 2 ^ 20 ≤ l.width + rr.width by omega]
       rw [show (vy :: vx :: rest) = st.vals from evs.symm, em]; rfl
     · have zy : pY = 1 := by rw [fY.2.2.2.2, hpy]; rfl
       have zx : pX = 0 := by rw [fX.2.2.2.2, hpx]; rfl

@@ -4,7 +4,9 @@
 `some (k, st')` where `k` = the tasks it pushes, TOP FIRST (the machine pushes `k.reverse`), `none` = the machine fails (status 0).
 Abstract state `St` ↔ machine cells: toks ↔ cursor h3, nx h11, binds (table d9, machine order: row i = index i) h4, defs / cur (table d7) h12,
 vals (operand stack d3, TOP FIRST) h8, arena (d5, creation order) h9, ty h25, stash h29, arm h30, sslot h32, out = the emitted words, acc = status 2.
-No capacities (the machine only fails more often).  Reads of the machine that are only meaningful under an invariant (operand stack deep
+No capacities (the machine only fails more often), except the WIDTH CAP (= Par1's): a pair shape (mkPair, tyPair) of width ≥ 2^20
+and a slot allocation (letSemi, letPairSemi, assign, stateTy) reaching 2^20 fail; `.defEnd` re-checks nslots, result width < 2^20
+(= ParSpec.pDef).  `ParRunSmall`: every reachable state has nx, npw and all shapes < 2^20, so Par1's 64-bit cells never wrap.  Reads of the machine that are only meaningful under an invariant (operand stack deep
 enough, `ty` set, …) are `none` here; `WF` (ParRunWF) states the invariant that makes them `some`. -/
 import Nano.V2Self.Proof.ParSpec
 namespace ParRun
@@ -273,6 +275,7 @@ def stepF : Frame → St → Option (List Frame × St)
       | some l, some r =>
         if x.pend || y.pend then none else
         if l = .nt ∨ r = .nt then none else
+        if 2 ^ 20 ≤ l.width + r.width then none else
         (mkNode { st with ty := some (.p l r) } 6 2 0 (some (.p l r)) false 2).map fun st => ([], st)
       | _, _ => none
     | _ => none
@@ -309,6 +312,7 @@ def stepF : Frame → St → Option (List Frame × St)
     match st.toks, st.vals with
     | .k 13 :: r, v :: _ =>
       if v.sh = some .nt then none else
+      if 2 ^ 20 ≤ st.nx + cw v.sh then none else
       some ([.expr 0 (bm tl), .letEnd st.nx st.binds.length],
         { st with toks := r, nx := st.nx + cw v.sh, binds := st.binds ++ [⟨x, st.nx, v.sh, false⟩] })
     | _, _ => none
@@ -330,6 +334,7 @@ def stepF : Frame → St → Option (List Frame × St)
     | .k 13 :: r, v :: _, some x =>
       match v.sh with
       | some (.p l rr) =>
+        if 2 ^ 20 ≤ st.nx + cw v.sh then none else
         some ([.expr 0 (bm tl), .letEnd st.nx st.binds.length],
           { st with toks := r, nx := st.nx + cw v.sh,
                     binds := st.binds ++ [⟨x, st.nx, some l, false⟩, ⟨y, st.nx + l.width, some rr, false⟩] })
@@ -407,7 +412,8 @@ def stepF : Frame → St → Option (List Frame × St)
     | _ => some ([], st)
   | .tyPair l, st =>
     match st.ty with
-    | some r => if l = .nt ∨ r = .nt then none else some ([], { st with ty := some (.p l r) })
+    | some r => if l = .nt ∨ r = .nt then none else if 2 ^ 20 ≤ l.width + r.width then none else
+        some ([], { st with ty := some (.p l r) })
     | none => none
   -- defs
   | .defs, st =>
@@ -441,6 +447,7 @@ def stepF : Frame → St → Option (List Frame × St)
       -- fix J: a multi-name `List UInt8` group before the input is rejected
       if w = .ls ∧ sz ≠ 1 ∧ !((st.binds.take a).any Bd.inp) then none else
       let n1 := w == .ls && sz == 1 && !((st.binds.take a).any Bd.inp)
+      if 2 ^ 20 ≤ (if n1 then st.nx else st.nx + w.width) then none else
       some ([.assign (a + 1) sz],
         { st with binds := st.binds.set a ⟨bd.name, st.nx, some w, n1⟩,
                   nx := if n1 then st.nx else st.nx + w.width,
@@ -471,6 +478,7 @@ def stepF : Frame → St → Option (List Frame × St)
       match st.toks with
       | .k 17 :: r =>
         if w = .nt then none else
+        if 2 ^ 20 ≤ (if n1 then st.cur.npw else st.cur.npw + w.width) then none else
         let c := { st.cur with npw := if n1 then st.cur.npw else st.cur.npw + w.width, params := st.cur.params ++ [w],
                                nni := if n1 then st.cur.nni else st.cur.nni + 1 }
         some ([.tyAtom, .stateTy], { st with toks := r, cur := c })
@@ -513,7 +521,7 @@ def stepF : Frame → St → Option (List Frame × St)
   | .defEnd, st =>
     match st.vals with
     | [z] =>
-      if z.sh = st.cur.res ∧ !z.isInp then
+      if z.sh = st.cur.res ∧ !z.isInp ∧ st.nx < 2 ^ 20 ∧ cw st.cur.res < 2 ^ 20 then
         some ([.flat z, .defClose], { st with out := st.out ++
           [20, st.defs.length.toUInt64, st.cur.npw.toUInt64, st.nx.toUInt64, (if st.cur.loop then 1 else 0), (cw st.cur.res).toUInt64] })
       else none

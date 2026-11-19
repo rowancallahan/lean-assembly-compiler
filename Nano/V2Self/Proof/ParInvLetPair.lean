@@ -47,7 +47,8 @@ theorem ShapeCode.pair_inv {h : Buf} {w : UInt64} {s : Sh} (r : ShapeCode h w s)
 
 /-! ## task 53: `letPairSemi y tl` (v117) -/
 theorem h_letPairSemi {h ts : Buf} {st : St} {y : List Nat} {tl : Bool} {fs : List Frame}
-    (r : Rep h ts st (.letPairSemi y tl :: fs)) (hv : st.vals ≠ []) (hst : st.stash.isSome) (hs : bget (step h) 0 ≠ 0) :
+    (r : Rep h ts st (.letPairSemi y tl :: fs)) (hv : st.vals ≠ []) (hst : st.stash.isSome) (hn20 : st.nx < 2 ^ 20)
+    (hc20 : ∀ v ∈ st.vals, cw v.sh < 2 ^ 20) (hs : bget (step h) 0 ≠ 0) :
     ∃ k st', stepF (.letPairSemi y tl) st = some (k, st') ∧ Rep (step h) ts st' (k ++ fs) := by
   obtain ⟨E, ⟨ea, eb⟩, R1⟩ := rep_pop r (by simp [inDefF, Frame.isDefs])
   generalize (taskAt h fs.length).a = a at E ea
@@ -84,6 +85,7 @@ theorem h_letPairSemi {h ts : Buf} {st : St} {y : List Nat} {tl : Bool} {fs : Li
       intro z; apply hs
       have zb : ∀ (g : Buf) (k v : UInt64), k.toNat ≠ 0 → bget g 0 = 0 → bget (bset g k v) 0 = 0 :=
         fun g k v hk hg => by rw [bget_bset' _ _ _ _ (by simpa using hk)]; exact hg
+      refine ite0 _ _ _ (stat0' _) ?_
       split
       · apply v6_stat; apply v6_stat; apply zb _ 31 _ (by decide); apply zb _ 11 _ (by decide); apply zb _ 31 _ (by decide); exact z
       · exact stat0' _
@@ -111,6 +113,15 @@ theorem h_letPairSemi {h ts : Buf} {st : St} {y : List Nat} {tl : Bool} {fs : Li
     have en : st.nx.toUInt64 + (cw top.sh).toUInt64 = (st.nx + cw top.sh).toUInt64 := by
       apply UInt64.toNat_inj.mp; rw [UInt64.toNat_add]; simp
     rw [en] at hs ⊢
+    by_cases ccap : (1048575 : UInt64) < (st.nx + cw top.sh).toUInt64
+    · rw [if_pos ccap] at hs; exact absurd (stat0' _) hs
+    rw [if_neg ccap] at hs ⊢
+    have hcapN : ¬ 2 ^ 20 ≤ st.nx + cw top.sh := by
+      have ht := hc20 top (by rw [evs]; simp)
+      intro hle; apply ccap
+      rw [UInt64.lt_iff_toNat_lt, show (1048575 : UInt64).toNat = 1048575 from rfl, Nat.toUInt64, UInt64.toNat_ofNat',
+        Nat.mod_eq_of_lt (by omega)]
+      omega
     have R6 := rep_set11 R5 (st.nx + cw top.sh)
     have sh6 : ShTabAgree H4 (bset (bset H4 31 (cw top.sh).toUInt64) 11 (st.nx + cw top.sh).toUInt64) :=
       fun i x y => by rw [bget_bset' _ _ _ _ (by rw [show (11 : UInt64).toNat = 11 from rfl]; omega),
@@ -150,7 +161,8 @@ theorem h_letPairSemi {h ts : Buf} {st : St} {y : List Nat} {tl : Bool} {fs : Li
       have R9 := rep_v6 R8 a (st.nx + la.width).toUInt64 Rr y (st.nx + la.width) (some rb) (nameAt_ts R1.1 R8.1 R1.2.1 ea1) rfl
         srO hs
       refine ⟨[.expr 0 (bm tl), .letEnd st.nx st.binds.length], _, ?_, R9⟩
-      simp [stepF, et, evs, hx, hts]
+      rw [hts] at hcapN
+      simp [stepF, et, evs, hx, hts, hcapN]
     · simp only [w4, if_false] at hs; exact absurd (stat0' _) hs
   · have n : (bget h1 (d11 + bget h1 3) == 13) = false := by simpa using c13
     simp only [n, if_false] at hs; exact absurd (stat0' _) hs

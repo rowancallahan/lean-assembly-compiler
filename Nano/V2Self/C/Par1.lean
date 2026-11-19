@@ -1,5 +1,8 @@
 /- Nano/V2Self/C: parser driver of Astra round 12 (NANO_V2_ASTRA12.md), folded into the layout/lexer of this tree: typed params, pairs, prims, calls,
-multiple defs + main, fuel loops (provisional bit, CONTINUE width checks).  Entry: `y13` (fragments: no main required) and `y16` (whole program, last def `m`).
+multiple defs + main, fuel loops (provisional bit, CONTINUE width checks).
+WIDTH CAP: a pair shape of width ≥ 2^20 (v10, new or found) or a slot allocation reaching 2^20 (v116 / v117 lets, v133 binders,
+v136 loop states) fails, so every
+width and slot is exact in 64 bits (ParSpec mirrors it as nslots < 2^20 per def).  Entry: `y13` (fragments: no main required) and `y16` (whole program, last def `m`).
 Adapters: Lex2 tags (`,` 15 `×` 16 `→` 17 `|` 18 `=>` 19, Nat 35 Buf 36 List 37 UInt8 38, prims 39..47 = prim id + 38). -/
 import Nano.V2Self.C.Base
 namespace C
@@ -257,11 +260,12 @@ def v10 : Nat → Buf → UInt64 → UInt64 → UInt64 → Buf
         let h := v9 h y;
         let z22 := bget h 31;
         let w := z21 + z22;
+        if 1048575 < w then bset h 0 0 else
         bset (bset (bset (bset (bset h b x) (b + 1) y) (b + 2) w) 26 (j + 1)) 25 (j + 5)
       else bset h 0 0
     else if bget h b == x then
       let r1 := bget h (b + 1);
-      if r1 == y then bset h 25 (j + 5) else v10 n h x y (j + 1)
+      if r1 == y then (if 1048575 < bget h (b + 2) then bset h 0 0 else bset h 25 (j + 5)) else v10 n h x y (j + 1)
     else v10 n h x y (j + 1)
 
 def v14 (h : Buf) (x j : UInt64) : Buf :=
@@ -591,6 +595,7 @@ def v116 (h : Buf) (a b : UInt64) : Buf :=
     let h := v1 h 1 (0) (b);
     let h := v9 h (w);
     let z21 := bget h 31;
+    if 1048575 < s + z21 then bset h 0 0 else
     let h := bset h (11) (s + (z21));
     v6 h a s w
   else
@@ -607,6 +612,7 @@ def v117 (h : Buf) (a b : UInt64) : Buf :=
     let h := v1 h 1 (0) (b);
     let h := v9 h (w);
     let z21 := bget h 31;
+    if 1048575 < s + z21 then bset h 0 0 else
     let h := bset h (11) (s + (z21));
     if 4 < w then
       let x := (bget h 29);
@@ -930,6 +936,7 @@ def v133 (h : Buf) (a b : UInt64) : Buf :=
     let h := v9 h (w);
     let z21 := bget h 31;
     let z40 := ((bget h 11) + (z21) - (z21 * n1));
+    if 1048575 < z40 then bset h 0 0 else
     let h := bset h (11) z40;
     let h :=
     let j := (bget h 27);
@@ -1014,6 +1021,7 @@ def v136 (h : Buf) (a b : UInt64) : Buf :=
     let q := bget h (f+1);
     let h := v9 h w;
     let z := bget h 31;
+    if 1048575 < q + z - z * n1 then bset h 0 0 else
     let h := bset h (f+1) (q + z - z * n1);
     let h := v200 h w n1;
     let h := bset h 3 (p+1);

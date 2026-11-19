@@ -32,8 +32,8 @@ Debug: `lake env lean --run Testing/nano/v2self/own/own_dbg.lean AST.bin` (first
 `own_run.lean` = accept/reject per file.
 
 ## Status (2026-11-19)
-DONE: spec, S stage, pipeline; C's own source accepted; fixpoint B3 == B2 = 336,204 bytes,
-sha256 5668cae4f3fc2b6d3d7219d4b9bef8a92d82bcd7846508e53beeca8866197929 (self-run work memory 80 MiB) (o41 checks every field it uses < 2^20, the AST < 2^40 words, value stack < 2^24, frames / snapshots < 2^30); alias_d + 5 aliasing programs rejected;
+DONE: spec, S stage, pipeline; C's own source accepted; fixpoint B3 == B2 = 337,856 bytes,
+sha256 bb5558a58c98b13ec24ad36e2147a41ff37a3b32debbe9d08523831266e0ec4e (self-run work memory 80 MiB; with the parser width cap) (o41 checks every field it uses < 2^20, the AST < 2^40 words, value stack < 2^24, frames / snapshots < 2^30); alias_d + 5 aliasing programs rejected;
 qemu_regress OK.  The checker caught a real slip in o38's first draft (read after consume).
 PROOF DONE (Nano/V2Self/Proof/OwnP0..OwnP30, OwnStage, OwnNV; std axioms, no sorry):
 * `OwnP.o41_sound : (∀ d ∈ p, WFD d) → |serialize p| < 2^64 → o41 (serialize p) ≠ [] →
@@ -49,3 +49,16 @@ OPEN: completeness gap (fuzzer: let-pair over a let-block of Bufs rejected); RG'
 
 ## HANDOFF
 See NEXT above.  D (Sem ⇐ sv bridge) builds on `OwnSpec` (MainBridge3/4).
+
+## WIDTH CAP (2026-11-19, O; soundness fix found by D)
+Doubling lets `let a(i+1) := (a i, a i)` reach nslots ≥ 2^64 in ~1.6 KB, which `serialize` wraps.  Now:
+* Par1 (C): v10 rejects a pair shape of width ≥ 2^20 (new or found row); v116 / v117 (lets), v133 (binders), v136 (loop states)
+  reject a slot allocation reaching 2^20.
+* ParSpec.pDef: `nslots < 2^20 ∧ res.width < 2^20` (both branches).  ParRun mirrors every Par1 check (Nat) plus the def-end check.
+* `ParRunSmall`: Layer-2 invariant `Small` (nx, npw, every stored shape < 2^20) for all reachable states; the Layer-3 handlers
+  (letSemi, letPairSemi, assign, stateTy, tyPair, mkPair, defEnd) use it to show Par1's 64-bit checks equal ParRun's.
+  `ParInv.parserSound` stays proved (std axioms).
+* Regression: Testing/nano/v2self/parcap/cap_test.lean (#guard: Par1 accepts k = 19, rejects 20, 63) and cap_regress.py
+  (B1 and the self-compiled B2 reject k = 63, agree on k = 2).
+* Downstream: ParSerLen / MainTyP (D) adapted; Proof/Cert/PC.lean regenerated (gen_cert.py), all tracked Cert files build;
+  MainCertC3/4/5 (abandoned, unimported) left failing per the lead.
