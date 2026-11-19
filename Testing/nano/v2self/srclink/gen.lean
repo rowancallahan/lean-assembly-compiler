@@ -106,7 +106,7 @@ def main (args : List String) : IO Unit := do
       s := s ++ s!"theorem chk{i} : chkDef (pDef F D{i} T{i}) di{i} d{i} T{i+1} = true := by decide +kernel\n"
     IO.FS.writeFile s!"{out}/Chk{gi}.lean" (s ++ "\nend SrcGen\n")
   -- top module
-  let mut t := hdr ((List.range groups.size).map fun g => s!"Nano.V2Self.Proof.Src.Chk{g}")
+  let mut t := hdr ((List.range groups.size).map (fun g => s!"Nano.V2Self.Proof.Src.Chk{g}") ++ ["Nano.V2Self.Proof.Cert.PC"])
   t := t ++ "set_option maxRecDepth 100000\n\n"
   t := t ++ s!"theorem lx{n-1} : LexSpec.Lexes X{n-1} W{n-1} := lexAll_sound lex{n-1}\n"
   t := t ++ s!"theorem tk{n-1} : tokens W{n-1} = some T{n-1} := by\n  show tokens w{n-1} = some (S{n-1} ++ [])\n  rw [List.append_nil]; exact tok{n-1}\n"
@@ -129,5 +129,7 @@ def main (args : List String) : IO Unit := do
   t := t ++ s!"theorem hM : (D{n}.getLast?.map isMain) = some true := by decide +kernel\n"
   t := t ++ "/-- **the parse of the text** -/\ntheorem parse : refParse W0 = some Ls0 := refParse_of tk0 hK (hF ▸ ch0) hM\n"
   t := t ++ "/-- **the text lexes and parses to the AST** -/\ntheorem link : LexSpec.Lexes X0 W0 ∧ ParsesProgram W0 Ls0 := ⟨lx0, parse⟩\n"
+  t := t ++ "/-- the generated AST is the certificate's `Cert.PC.all` -/\ntheorem ls_pc : Ls0 = Cert.PC.all := lsBeq_eq (by decide +kernel)\n"
+  t := t ++ "/-- **C's source text lexes and parses to `Cert.PC.all`** -/\ntheorem link_pc : LexSpec.Lexes X0 W0 ∧ ParsesProgram W0 Cert.PC.all := ls_pc ▸ link\n"
   IO.FS.writeFile s!"{out}/Top.lean" (t ++ "\nend SrcGen\n")
   IO.println s!"defs {n}, groups {groups.size}, tokens {toks.length}, words {ws.length}"
