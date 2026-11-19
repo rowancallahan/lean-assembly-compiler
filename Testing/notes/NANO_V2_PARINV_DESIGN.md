@@ -111,9 +111,12 @@ DONE (all pushed, no sorry, axioms ⊆ propext / Classical.choice / Quot.sound, 
   (machine parameter code = `parCode`), `operand_fld`, `h_argCheck` (47, v122), `h_mkCall` (48, v123, on C's `rep_v5`).
   Side conditions for the glue (`api_of_rep`), all from B's `WF` / F's `SInv`: `inDefF fs` (47, 48: the callee row is read), `k ≤ |vals|`,
   `k ≤ arity st c`, `calleeOK st c` (row index in range / prim id < 2^32), `n < 4096` and no flatten frame on the stack (48, from `rep_v5`).
-* `Proof/ParInvTy.lean` — `tok_cell_k`, `rep_cursor` (generic cursor move), `h_tyCross` (62, v129; needs `st.ty.isSome`) [pushed];
-  `rep_ty` (h[25] := code), `ty_leaf`, `h_tyAtom` (61, v128) [compiled against 6c0f904, HELD LOCALLY: HEAD's ParInvState does not build since B's
-  d48d4ae changed `Frame.expr/prim/assign`; C is reworking it — push as soon as `lake build Nano.V2Self.Proof.ParInvTy` passes].
+* `Proof/ParInvTy.lean` [pushed] — `tok_cell_k`, `rep_cursor` (generic cursor move), `h_tyCross` (62, v129; needs `st.ty.isSome`),
+  `rep_ty` (h[25] := code), `ty_leaf`, `h_tyAtom` (61, v128).
+* Layer 2 → spec, `Proof/ParRunAtom.lean` [pushed] — `bdPs`, `CxRel st cx` (typed bindings, `findEnv` = `findB`, `findDef` = `findD` on finished
+  rows, row ↔ DefI: `params.map psCode`, `res`), `TyRel v ty`, `atomLeaf_spec`: an `AtomLeaf` step = the `pAtom` clause at every fuel ≥ 1,
+  result node `v.toNd`, one node pushed.  (ParRunCall now imports ParRunFlat: two sibling modules that both `simp [stepF]` cannot be imported
+  together — "environment already contains ParRun.stepF.eq_8" — B should realize stepF's equation lemmas once in ParRun.lean.)
 * `Proof/ParInvIntern.lean` (imports Par1 + BufL only) — `PairRow`, `v10_scan`: v10 from row j = `h[25] := i + 5` for the first matching row i,
   else the allocation step `v10 1 g x y h[26]`.
 FINDING J (found by G; fixed by C in d8aadd8, re-verified on native B1): v210's "first code-3 parameter is the callee's input" contradicted fix H;
@@ -127,7 +130,10 @@ and who owns the St↔Cx relation (binds↔env, rows↔DefI, cur/arm↔self) and
 Ty.s s ⇒ sh = s ∧ ¬isInp (and tag 1 ⇒ Ty.lit); Ty.lit ⇒ sh = uw; Ty.inp ⇒ isInp; "argument i isInp ⇔ parameter i = `.inp`" comes ONLY from the
 deferred validation (`nodeOK` of the CALL node at the next `defs`), so call reflection takes `inpMatch`/nodeOK of the built node as a hypothesis.
 Fuel arguments: argCheck accepts a Nat parameter for sh = nt, a bare numeral (tag 1) or len' (tag 9, a = 1) — a subset of `tyMatch .fuel`.
-NEXT: (1) machine 43 (v120) and 55 (v126): need the name lookup on Rep (v7_lookup / v8_lookup ↔ findB / findD) and the LOC node (shared with C's
-task 3 id case — ask C before writing); (2) machine types 61–63 (v128–v130; v10 pair interning: loop over the shape table, new row ⇒ ShapeCode for
-`.p l r`, ShTabAgree frame); (3) `pArgs` / `pCallDef` / prim-head reflection on `args_run` + `call_tail` once B fixes the statement form;
-(4) binders 66–68 ↔ `pBinders`/`bindSlots` after fix H/J are mirrored in `stepF`.
+NEXT: (1) `args_spec`: `Atoms k st st' m` + `CxRel` ⇒ `pArgs` (B-style: ∀ fuel ≥ bound), with the parenthesised atom as an open-recursion
+hypothesis (post-state: `vals = v :: st.vals`, binds/defs unchanged ⇒ `CxRel` transports; spec `nx` = `st.nx`); then `call_spec` from
+`call_tail`: `argOK` (shape codes) + `CxRel.row` + `inpMatch` (from the deferred `nodeOK`) ⇒ every `tyMatch`, and
+`(callNode …).toNd = .call j (dropInp ps args)` / `.prim p (dropInp …)` via `prim_sig`; (2) machine 43 (v120) and 55 (v126): name lookup on Rep
+(v7_lookup / v8_lookup ↔ findB / findD) and the LOC node — C was asked whether it owns these (no answer yet); (3) machine 63 (v130) with
+`v10_scan` once C bounds `ShapeCode` by h[26]; (4) binders 66–68 ↔ `pBinders`/`bindSlots` (stepF now mirrors H: `assign i sz`).
+
