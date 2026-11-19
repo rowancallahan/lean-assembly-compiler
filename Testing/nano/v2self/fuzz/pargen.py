@@ -1,19 +1,25 @@
 #!/usr/bin/env python3
 """Random typed S programs (valid-biased) + token-level mutations, for the Par1 vs ParSpec differential.
-usage: pargen.py DIR N SEED  -> DIR/p{i}.txt (mutated when i is odd)"""
+usage: pargen.py DIR N SEED [own]  -> DIR/p{i}.txt (mutated when i is odd)
+own: also Buf-typed params / lets / results reused freely (buffer ALIASING patterns for the ownership stage o41,
+Testing/notes/NANO_V2_OWN.md), no mutation, plus a fixed list of aliasing cases at the end (expected verdicts in DIR/own_expect.txt)."""
 import random, sys, os
 R = random.Random(int(sys.argv[3]))
+OWN = len(sys.argv) > 4 and sys.argv[4] == "own"
+B = 'b'   # Buf (only with OWN)
 W = 'w'
 L = 'l'   # List UInt8 as a value (only in defs that also have the input)
 ALLOWL = [False]
 def sstr(s, top=True):
     if s == W: return 'UInt64'
     if s == L: return 'List UInt8'
+    if s == B: return 'Buf'
     a = sstr(s[1], False); b = sstr(s[2], True)
     t = f"{a} × {b}"
     return t if top else f"({t})"
 def rshape(d=2):
     if ALLOWL[0] and R.random() < 0.25: return L
+    if OWN and R.random() < 0.3: return B
     if d == 0 or R.random() < 0.6: return W
     return ('p', rshape(d-1), rshape(d-1))
 class G:
@@ -46,6 +52,9 @@ class G:
         if sh == L:
             if c < 0.8: return f"(put {s.atom(s.expr(L, env, d-1, False, inp))} {s.atom(s.expr(W, env, d-1, False, inp))})"
             return s.call(sh, env, d, inp) or s.leaf(sh, env, inp)
+        if sh == B:
+            if c < 0.8: return s.bufexpr(env, d, inp)
+            return s.call(sh, env, d, inp) or s.leaf(sh, env, inp)
         if sh != W:
             if c < 0.8: return f"({s.expr(sh[1], env, d-1, False, inp)}, {s.expr(sh[2], env, d-1, False, inp)})"
             return s.call(sh, env, d, inp) or s.leaf(sh, env, inp)
@@ -62,6 +71,7 @@ class G:
         vs = s.shapevars(env, sh)
         if vs and R.random() < 0.7: return R.choice(vs)
         if sh == L: return '[]'
+        if sh == B: return 'bnew'
         if sh == W:
             if inp and R.random() < 0.3: return f"(rd {inp} {R.randrange(0, 5)})"
             return str(R.choice([0, 1, 2, 7, 255, R.randrange(0, 2**20), 2**64 - 1]))
@@ -76,8 +86,12 @@ class G:
     def atom(s, x): return x if x.isdigit() or x.isidentifier() or x.startswith('(') and x.endswith(')') and x.count('(') == 1 else f"({x})"
     def bufexpr(s, env, d, inp):
         c = R.random()
+        bv = s.shapevars(env, B)
+        if bv and c < 0.45: return R.choice(bv)
+        if OWN and d > 0 and R.random() < 0.15:
+            r = s.call(B, env, d, inp)
+            if r: return r
         if c < 0.3: return 'bnew'
-        vs = s.shapevars(env, W)
         if c < 0.75: return f"(bpush {s.atom(s.bufexpr(env, d-1, inp) if d > 0 else 'bnew')} {s.atom(s.expr(W, env, d-1, False, inp))})"
         return f"(bset {s.atom(s.bufexpr(env, d-1, inp) if d > 0 else 'bnew')} {R.randrange(0, 3)} {s.atom(s.expr(W, env, d-1, False, inp))})"
     def call(s, sh, env, d, inp):
@@ -155,8 +169,31 @@ def mutate(src):
 d, N = sys.argv[1], int(sys.argv[2]); os.makedirs(d, exist_ok=True)
 for i in range(N):
     p = gen_program()
-    if i % 2: p = mutate(p)
+    if i % 2 and not OWN: p = mutate(p)
     open(f"{d}/p{i}.txt", "w").write(p)
+if OWN:
+    # fixed buffer-aliasing cases: (expected o41 verdict, program); Lean meaning vs in-place update differ on every REJECT one
+    M = "def m (x : List UInt8) : List UInt8 := "
+    F2 = "def f (b : Buf) (c : Buf) : Buf := bpush c (bsize b)\n"
+    CASES = [("REJECT", M + "let b := bnew; let c := bpush b 7; put [] (bsize b)"),
+             ("ACCEPT", M + "let b := bnew; let c := bpush b 7; put [] (bsize c)"),
+             ("REJECT", M + "let o := put [] 1; let p := put o 2; put o 3"),
+             ("REJECT", F2 + M + "let b := bnew; let c := f b b; put [] (bsize c)"),
+             ("ACCEPT", F2 + M + "let b := bnew; let c := f b bnew; put [] (bsize b)"),
+             ("REJECT", F2 + M + "let b := bnew; let c := f bnew b; put [] (bsize b)"),
+             ("REJECT", M + "let b := bnew; let c := bset b 0 (bsize (bpush b 1)); put [] 1"),
+             ("ACCEPT", M + "let b := bpush bnew 5; let c := bset b 0 (bget b 0); put [] (bget c 0)"),
+             ("REJECT", M + "let b := bnew; let (c, d) := (b, b); put [] 1"),
+             ("REJECT", M + "let b := bnew; let c := (if rd x 0 == 1 then bpush b 1 else b); put [] (bsize b)"),
+             ("ACCEPT", M + "let b := bnew; let c := (if rd x 0 == 1 then bpush b 1 else b); put [] (bsize c)"),
+             ("REJECT", "def g : Nat → Buf → Buf\n  | 0, b => b\n  | n + 1, b => g n (bpush b n)\n" + M + "let b := bpush bnew 1; let c := g 3 b; put [] (bsize b)"),
+             ("ACCEPT", "def g : Nat → Buf → UInt64 → UInt64\n  | 0, b, a => a\n  | n + 1, b, a => g n b (a + bget b 0)\n" + M + "let b := bpush bnew 1; let c := g 3 b 0; put [] (c + bsize b)"),
+             ("REJECT", "def h (b : Buf) : Buf := b\n" + M + "let b := bnew; let c := h b; put [] (bsize (bpush b 1) + bsize c)"),
+             ("REJECT", M + "let b := bnew; put [] (bsize (bpush b 1) + bsize b)")]
+    with open(f"{d}/own_expect.txt", "w") as fe:
+        for v, src in CASES:
+            open(f"{d}/p{N}.txt", "w").write(src + "\n"); fe.write(f"{N} {v}\n"); N += 1
+    print(N); sys.exit(0)
 
 # ---- tail-position cases (Astra 9/10 traps): exhaustive contexts around one self-call, valid and invalid, appended after the random ones
 CTX = ["{c}", "({c})", "{c} + 1", "({c}) + 1", "1 + {c}", "1 + ({c})", "let q := {c}; q", "let q := 1; {c}", "if p < 3 then {c} else p",
