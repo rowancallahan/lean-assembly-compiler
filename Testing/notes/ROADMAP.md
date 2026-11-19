@@ -481,3 +481,11 @@ Main theorem: for every source in the nano subset and ALL input bytes, the code 
 Per-program bridge: the one-source certificate `Sem (parse src) = the Lean function` (first for small examples and C itself,
 later generated automatically) — gives "this code implements this Lean function" for each compiled program.
 Long term: grow the subset (parser spec + Sem + proofs, one construct at a time) until it covers most of Lean.
+
+## AFTER THE PROOF (owner, 2026-11-19): organize the nano v2 proofs
+Once C_correctL has no premises and the certificate closes, reorganize Nano/V2Self/Proof/ before merging:
+- merge duplicated or split files (e.g. ParInvExpr/ParInvExpr2, the ParRunWF* family, ParInvVal/ParInvValRep, the cert work in
+  MainCertC* vs Proof/Cert/*), and give directories a clear layout: Parser/, Own/, Gen/, Machine/, Bridge/, Cert/, Main/;
+- delete dead lemmas and scratch modules; keep each module ≤ 5 min / 8 GB;
+- one top-level file that states the final theorem and lists every remaining hypothesis, for the owner's review;
+- check axioms on the top theorem and the fixpoint after the reshuffle (moves only, no proof changes in the same commit).
