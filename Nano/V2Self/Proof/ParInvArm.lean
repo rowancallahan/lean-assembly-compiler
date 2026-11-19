@@ -212,4 +212,77 @@ theorem zd2_ok {h ts : Buf} {st : St} {fs : List Frame} (R : Rep h ts st fs) (hs
     exact ⟨r, by rw [et]; simp only at et3; rw [et3]; rfl, R3⟩
   · rw [if_neg c] at hs; exact absurd (stat0 _ (by omega)) hs
 
+theorem zd1_ok {h ts : Buf} {st : St} {fs : List Frame} (R : Rep h ts st fs) (hs : bget (zd1 h) 0 ≠ 0) :
+    ∃ nb r, st.toks = .id nb :: .k 10 :: .num 1 :: .k 15 :: r ∧
+      Rep (zd1 h) ts { st with toks := r, binds := [⟨nb, 0, some .nt, false⟩], arm := true, sslot := 1 } (.armBind true 1 :: fs) := by
+  obtain ⟨hn, hl, har⟩ := rep_bounds R
+  have rT := R.1
+  have h7 : (bget h 7).toNat < 2 ^ 24 := by rw [rT.2.2.2]; simp; have := R.2.1; omega
+  have p3 := R.2.2.2.1.le
+  unfold zd1 at hs ⊢
+  simp only [UInt64.add_zero, beq_iff_eq] at hs ⊢
+  by_cases c : bget h (d11 + bget h 3) = 14
+  · rw [if_pos c] at hs ⊢
+    obtain ⟨nm, t2, et, hNm, tr⟩ := tok_id R.2.2.2.1 rT c
+    have hskip := v86_skip nm 16777216 h (bget h 3 + 1) hNm.2.1
+      (by rw [tn_add _ _ (by simp; omega)]; have := hNm.2.2; simp; omega) (by have := hNm.2.2; omega)
+    rw [hskip] at hs ⊢
+    have epos : bget h 3 + 1 + 2 * nm.length.toUInt64 + 1 = bget h 3 + 2 + 2 * nm.length.toUInt64 := by
+      rw [show (2 : UInt64) = 1 + 1 from rfl]; ac_rfl
+    have R2 := rep_binds_clear (rep_cursor R (bget h 3 + 1 + 2 * nm.length.toUInt64 + 1) (by rw [epos]; exact tr))
+    generalize hg : bset (bset h 3 (bget h 3 + 1 + 2 * nm.length.toUInt64 + 1)) 4 0 = g at hs R2 ⊢
+    have etg : TokAgree h g := by
+      rw [← hg]
+      exact ⟨by rw [bget_bset' _ _ _ _ (by decide), bget_bset' _ _ _ _ (by decide)],
+        fun j hj => by rw [bget_bset' _ _ _ _ (by simp; omega), bget_bset' _ _ _ _ (by simp; omega)]⟩
+    have hx : NameAt g (bget h 3) (nm.map UInt64.toNat) := nameAt_frame etg (by omega) ⟨nm, hNm, rfl⟩
+    have lg : 12352 ≤ g.length := by rw [← hg]; simp only [length_bset]; omega
+    have hs6 : bget (v6 g (bget h 3) 0 4) 0 ≠ 0 := fun z => hs (zd2_zero _ (by
+      by_cases q : bget g 4 < d14
+      · unfold v6; simp only [q, if_true, length_bset]; exact lg
+      · unfold v6; simp only [q, if_false, length_bset]; exact lg) z)
+    have R3 := rep_v6 R2 (bget h 3) 0 4 (nm.map UInt64.toNat) 0 (some .nt) hx rfl ShapeCode.nt hs6
+    obtain ⟨r, et2, R4⟩ := zd2_ok R3 hs
+    exact ⟨nm.map UInt64.toNat, r, by rw [et]; simp only at et2; rw [et2], R4⟩
+  · rw [if_neg c] at hs; exact absurd (stat0 _ (by omega)) hs
+
+theorem h_zeroDone {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.zeroDone :: fs)) (hD : inDefF fs = true)
+    (hv : st.vals ≠ []) (hs : bget (step h) 0 ≠ 0) :
+    ∃ fr st', stepF .zeroDone st = some (fr, st') ∧ Rep (step h) ts st' (fr ++ fs) := by
+  obtain ⟨E, _, R1⟩ := rep_pop r rfl
+  simp only [Frame.code] at E
+  generalize (taskAt h fs.length).a = a at E
+  generalize (taskAt h fs.length).b = b at E
+  generalize bset h 5 fs.length.toUInt64 = g at E R1
+  obtain ⟨hn7, hl, har⟩ := rep_bounds R1
+  have ev : step h = v139 g a b := by rw [E]; simp [v96]
+  rw [ev, v139_eq] at hs ⊢
+  by_cases c1 : bget g (d5 + 8 * bget g (d3 + bget g 8 - 1) + 3) = bget g (d7 + 8 * bget g 12 + 3)
+  · rw [if_pos c1] at hs ⊢
+    have rA := R1.2.2.2.2.2.2.2.1
+    have rD : DefsRep g st true := hD ▸ R1.2.2.2.2.2.2.1
+    have h12 : bget g 12 = st.defs.length.toUInt64 := by rw [← rD.1]; simp
+    have hres : ShOpt g (bget g (d7 + 8 * bget g 12 + 3)) st.cur.res := by
+      rw [h12]; have := rD.2.2.2.2.1; simp only [if_true] at this; exact this.1.2.2.2.1
+    obtain ⟨z, rest, ev2⟩ : ∃ z rest, st.vals = z :: rest := by
+      match hv' : st.vals with
+      | z :: rest => exact ⟨z, rest, rfl⟩
+      | [] => exact absurd hv' hv
+    have l0 : 0 < st.vals.length := by rw [ev2]; simp
+    have o0 := opCell rA.2.2.1 rA.2.2.2.1 0 l0
+    simp only [show ((0 : Nat) + 1).toUInt64 = 1 from rfl] at o0
+    obtain ⟨_, rs⟩ := val_rep rA 0 l0
+    have fz : ShOpt g (bget g (d5 + 8 * opAt g (st.vals.length - 1 - 0) + 3)) (st.vals[0]'l0).sh := rs.fields.2.2.2.1
+    rw [← o0, c1] at fz
+    have hsh := ShOpt.same fz hres
+    simp only [ev2, List.getElem_cons_zero] at hsh
+    by_cases c18 : bget g (d11 + bget g 3) = 18
+    · rw [if_pos c18] at hs ⊢
+      obtain ⟨t1, et, tr⟩ := tok_kw R1.2.2.2.1 R1.1 R1.2.1 c18 (by decide) (by decide) (by decide)
+      obtain ⟨nb, rr, et1, R2⟩ := zd1_ok (rep_cursor R1 (bget g 3 + 1) tr) hs
+      simp only at et1
+      exact ⟨[.armBind true 1], _, by simp [stepF, ev2, hsh, et, et1], R2⟩
+    · rw [if_neg c18] at hs; exact absurd (stat0 _ (by omega)) hs
+  · rw [if_neg c1] at hs; exact absurd (stat0 _ (by omega)) hs
+
 end ParInv
