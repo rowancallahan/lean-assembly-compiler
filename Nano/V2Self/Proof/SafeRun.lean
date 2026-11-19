@@ -12,12 +12,12 @@ import Nano.V2Self.Proof.Expr
 namespace SafeRun
 open CallProbe SimW
 
-theorem SStar.trans {K : LayW} {C : List J} {a b c : Nat × St} (h1 : SStar K C a b) (h2 : SStar K C b c) : SStar K C a c := by
+theorem _root_.SimW.SStar.trans {K : LayW} {C : List J} {a b c : Nat × St} (h1 : SStar K C a b) (h2 : SStar K C b c) : SStar K C a c := by
   induction h1 with
   | refl => exact h2
   | head hs st _ ih => exact .head hs st (ih h2)
 
-theorem SStar.one {K : LayW} {C : List J} {a b : Nat × St} (hs : Safe K C a) (st : step C a = some b) : SStar K C a b :=
+theorem _root_.SimW.SStar.one {K : LayW} {C : List J} {a b : Nat × St} (hs : Safe K C a) (st : step C a = some b) : SStar K C a b :=
   .head hs st (.refl b)
 
 /-- a deterministic run whose every intermediate state is safe -/
@@ -33,7 +33,7 @@ theorem sstar_of_run {K : LayW} {C : List J} : ∀ {k : Nat} {a b : Nat × St}, 
       refine .head (hs 0 (by omega) a rfl) e (sstar_of_run h fun j hj d hd => hs (j + 1) (by omega) d ?_)
       simp [run, e, hd]
 
-theorem SStar.star {K : LayW} {C : List J} {a b : Nat × St} (h : SStar K C a b) : Star C a b := by
+theorem _root_.SimW.SStar.star {K : LayW} {C : List J} {a b : Nat × St} (h : SStar K C a b) : Star C a b := by
   induction h with
   | refl => exact .refl _
   | head _ st _ ih => exact (Star.one st).trans ih
@@ -112,5 +112,68 @@ theorem bsize_srun {K : LayW} {C pc} (s : St) (hC : At C pc bsizeT) (w0 : wok K 
   · simp [run, step, h0, wr] at hc; subst hc; simp [Safe, h1, ea, upd_same]; exact w1
   · simp [run, step, h0, h1, wr, upd_same] at hc; subst hc
     simp [Safe, h2, ea, upd_other _ _ (show (31:Nat) ≠ 5 by decide)]; exact w0
+
+/-! ## li -/
+
+theorem li_srun {K : LayW} {C pc d} {v : UInt64} (s : St) (hd : d ≠ 0) (hd32 : d < 32) (hx0 : s.x 0 = 0)
+    (hC : At C pc (liT d v)) :
+    ∃ s', SStar K C (pc, s) (pc + (liT d v).length, s') ∧ s'.x = upd s.x d v ∧ s'.m = s.m ∧ s'.b = s.b := by
+  obtain ⟨s', hr, hx, hm, hb⟩ := li_run s hd hx0 hC
+  refine ⟨s', sstar_of_run hr fun i hi c hc => ?_, hx, hm, hb⟩
+  by_cases hv : v.toNat < 2048
+  · have h0 := hC.at 0 (by simp [liT_len_small d v hv])
+    simp [liT, hv] at h0
+    rw [liT_len_small d v hv] at hi
+    have : i = 0 := by omega
+    subst this; simp [run] at hc; subst hc; simp [Safe, h0, hd32, hx0]; omega
+  rw [liT_len_big d v hv] at hi
+  have hC' : At C pc (.addi d 0 0 :: liB d v.toNat 8) := by simpa [liT, hv] using hC
+  have hT : At C (pc + 1) (liB d v.toNat 8) := hC'.cons_tail
+  rcases Nat.eq_zero_or_pos i with rfl | hpos
+  · have h0 := hC'.at 0 (by simp); simp at h0
+    simp [run] at hc; subst hc; simp [Safe, h0, hd32, hx0]
+  obtain ⟨j, hj⟩ : ∃ j, i = 1 + 2 * j ∨ i = 2 + 2 * j := ⟨(i - 1) / 2, by omega⟩
+  have hj7 : j ≤ 7 := by omega
+  have hA := liB_at hT (show j + 1 ≤ 8 by omega)
+  have h0 : C[pc + 1 + 2 * j]? = some (.slli d d 8) := by
+    have := hA.at (2 * j) (by simp [liB_len] <;> omega); simp [liB, liJ, liB_len] at this; exact this
+  have h1 : C[pc + 1 + 2 * j + 1]? = some (.addi d d (((v.toNat / 2 ^ (56 - 8 * j)) % 256 : Nat) : Int)) := by
+    have := hA.at (2 * j + 1) (by simp [liB_len] <;> omega)
+    simp [liB, liJ, liB_len] at this; rw [← Nat.add_assoc] at this; exact this
+  obtain ⟨sj, hrj, hxj, -, -⟩ := li_loop s hd hx0 hv hC j (by omega)
+  rcases hj with rfl | rfl
+  · rw [hrj] at hc; simp at hc; subst hc; simp [Safe, h0, hd32]
+  · rw [show 2 + 2 * j = (1 + 2 * j) + 1 by omega, run_add hrj] at hc
+    simp [run, step, h0, wr, hd] at hc; subst hc
+    simp only [Safe, show pc + 1 + 2 * j + 1 = pc + 1 + 2 * j + 1 from rfl, h1, upd_same, hxj]
+    have hAlt : v.toNat / 2 ^ (64 - 8 * j) < 2 ^ 56 := by
+      rw [Nat.div_lt_iff_lt_mul (Nat.two_pow_pos _)]
+      calc v.toNat < 2 ^ 64 := v.toNat_lt
+        _ ≤ 2 ^ 56 * 2 ^ (64 - 8 * j) := by rw [← Nat.pow_add]; exact Nat.pow_le_pow_right (by decide) (by omega)
+    have hb : (v.toNat / 2 ^ (56 - 8 * j)) % 256 < 256 := Nat.mod_lt _ (by decide)
+    have hs : (UInt64.ofNat (v.toNat / 2 ^ (64 - 8 * j)) <<< 8).toNat = v.toNat / 2 ^ (64 - 8 * j) * 256 := by
+      simp [UInt64.toNat_shiftLeft, Nat.shiftLeft_eq]; omega
+    rw [hs]
+    refine ⟨hd32, hd32, by omega, by omega, by omega, by omega⟩
+
+/-! ## CONST -/
+
+theorem const_srun {K : LayW} {C pc tgt} {v : UInt64} (s : St) (hx0 : s.x 0 = 0) (hC : At C pc (constT tgt pc v))
+    (hh : (s.x 30).toNat + 8 ≤ (s.x 31).toNat) (hw : wok K ((s.x 31).toNat - 8)) :
+    ∃ s', SStar K C (pc, s) (pc + (liT 5 v).length + 4, s') ∧
+      s'.x = upd (upd s.x 5 v) 31 (UInt64.ofNat ((s.x 31).toNat - 8)) ∧
+      s'.m = upd s.m ((s.x 31).toNat - 8) v ∧ s'.b = s.b := by
+  obtain ⟨s1, hr1, hx1, hm1, hb1⟩ := li_srun (K := K) (d := 5) s (by decide) (by decide) hx0 hC.left
+  have hP : At C (pc + (liT 5 v).length) (push 5 ((tgt : Int) - ((pc + (liT 5 v).length : Nat) + 2))) := by
+    simpa [constT, pushA] using hC.right
+  have e31 : s1.x 31 = s.x 31 := by rw [hx1]; exact upd_other _ _ (by decide)
+  have e30 : s1.x 30 = s.x 30 := by rw [hx1]; exact upd_other _ _ (by decide)
+  have e5 : s1.x 5 = v := by rw [hx1]; exact upd_same _ _ _
+  have r2 := push_srun (K := K) (s := s1) hP (by decide) (by decide) (by decide) (by rw [e31, e30]; exact hh)
+    (by rw [e31]; exact hw)
+  refine ⟨_, hr1.trans r2, ?_, ?_, ?_⟩
+  · simp only; rw [e31, hx1]
+  · simp only; rw [e31, e5, hm1]
+  · simp only; exact hb1
 
 end SafeRun

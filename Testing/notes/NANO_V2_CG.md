@@ -282,3 +282,16 @@ NEXT (in order): (B) CG/CT/DefC words = `tm`.map encG with exits patched (uses E
 SC from GenRef.Cx: p = K.p.toNat, κ = K.u.toNat, T id = T[id].toNat); def level: `defX` with `runV` on the body,
 DefX for def k from defs < k; program level over A's program theorem; Sail lift with `SimW.sim_starW`
 (`encG_encJ`, `Safe`).  Not yet: the OOM/capacity FAILURE path (S = none by OOM ⇒ machine reaches stub 1/6).
+
+## HANDOFF — Safe retrofit (Opus box A, started 2026-11-19)
+
+Goal (owner): make the template runs SAFE J runs (`SimW.SStar K C`) so `SimW.sim_starW` lifts them to Sail.
+File Nano/V2Self/Proof/SafeRun.lean (spec at its top). Tool: `sstar_of_run` (a `run C k a = some b` whose every
+intermediate state is `SimW.Safe` is an `SStar`); `SimW.SStar.trans/one/star`.
+DONE twins: push_srun, len_srun, bin_srun, bsize_srun, li_srun, const_srun (side conditions: `wok K` of every
+accessed cell; addi no-wrap is derived).
+NEXT: rd (lbu: aligned cell of x28 + idx is wok), bget, local1/localT, bnew/bpush/bset (Heap.lean), pro (CallA proA),
+epi (copy_run + the tail), popSlot/popN; then EVS.lean: `EVHwS` = EVHw with SStar K C and a layout hypothesis
+(lo ≤ hb, t6/s0/hb 8-aligned, frame top ≤ hi, input bytes' cells wok), S-twins of the composition lemmas.
+Technique: per template, `refine sstar_of_run (X_run …) fun j hj c hc => ?_`, then `rcases j` over the
+instruction indices, compute `hc` with the same simp set as the run lemma, `subst hc; simp [Safe, hK]`.
