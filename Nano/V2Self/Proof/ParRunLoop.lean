@@ -551,7 +551,7 @@ theorem loop_spec {n : Nat} {ks : List Frame} {st fin : St} {defs : List DefI} {
       (VT (rows st') lp →
         ∃ di : DefI, di.name = name ∧ di.params.map psCode = st'.cur.params ∧ st'.cur.res = some di.res ∧
           di.npw = st'.cur.npw ∧ (∀ (i : Nat) (h : i < di.params.length), (di.params[i] = .inp ↔ FirstLs st'.cur.params i)) ∧
-          (∀ p ∈ di.params, p ≠ .sh .nt) ∧
+          (∀ p ∈ di.params, p ≠ .sh .nt) ∧ (di.res.nnt = true ∧ ∀ p ∈ st'.cur.params, p.nnt = true) ∧
           ∀ f, 4 * st.toks.length + 8 ≤ f → pDef f defs (.k 1 :: .id name :: .k 8 :: st.toks) =
             some (di, { id := defs.length, npw := st'.cur.npw, nslots := st'.nx, kind := 1, nres := di.res.width,
                         body := lp.toNd }, st'.toks)) := by
@@ -738,7 +738,7 @@ theorem loop_spec {n : Nat} {ks : List Frame} {st fin : St} {defs : List DefI} {
   obtain ⟨tsx, htsx, _, hps⟩ := hsp7 (by rw [hrows6]; exact hvt'.kid (by simp))
   have hzs : z.sh = some (trRes res) := by rw [hz, hcur4]
   have hss : s'.sh = some (trRes res) := by rw [hs7sh, hcur7]
-  refine ⟨{ name, params := .fuel :: stateKinds false ts, res := trRes res, resLst := false, npw := 1 + ((stateKinds false ts).map Ps.width).foldl (· + ·) 0 }, rfl, ?_, ?_, ?_, ?_, ?_, fun f hf => ?_⟩
+  refine ⟨{ name, params := .fuel :: stateKinds false ts, res := trRes res, resLst := false, npw := 1 + ((stateKinds false ts).map Ps.width).foldl (· + ·) 0 }, rfl, ?_, ?_, ?_, ?_, ?_, ?_, fun f hf => ?_⟩
   · simp [hcur7, hP, psCode]
   · simp [hcur7]
   · simp [hcur7, hfn, foldl_add_eq_sum]
@@ -754,6 +754,11 @@ theorem loop_spec {n : Nat} {ks : List Frame} {st fin : St} {defs : List DefI} {
     rcases List.mem_cons.mp hp with rfl | hp
     · simp
     · exact sk_nont false ts (fun t ht => (hts t ht).1) p hp
+  · refine ⟨hres, fun q hq => ?_⟩
+    simp only [hcur7, hP, List.mem_cons] at hq
+    rcases hq with rfl | hq
+    · rfl
+    · obtain ⟨p', hp', rfl⟩ := List.mem_map.mp hq; exact (hpsP p' hp').2.2
   · have hA := hpA f (by omega)
     have hZ := hpz f (by rw [ht3]; omega)
     rw [ht3, hn3] at hZ
