@@ -101,4 +101,46 @@ theorem v133_eq (g : Buf) (a b : UInt64) (i0 D J : Nat) (ha : a = i0.toUInt64) (
     rw [A _ _ _ _ (Or.inl (by rw [sr]; simp; omega))]
     simp only [B11, B27, j4, if_true, B31', C12, CCR, C6]
 
+/-- the cells of `asgHeap` -/
+theorem asg_eff (g : Buf) (a wv n1 z : UInt64) (i0 D J : Nat) (ha : a = i0.toUInt64) (hi0 : i0 < 1024) (h12 : bget g 12 = D.toUInt64)
+    (hD : D < 512) (h27 : bget g 27 = J.toUInt64) (hJ : J < 4096) (hl : 184384 ≤ g.length) :
+    ∀ G, G = asgHeap g a wv n1 z →
+    G.length = g.length ∧ bget G (d9 + 4 * a + 1) = bget g 11 ∧ bget G (d9 + 4 * a + 2) = wv ∧ bget G (d9 + 4 * a + 3) = n1 ∧
+    bget G 11 = bget g 11 + z - z * n1 ∧ bget G ((d7 + 4096) + bget g 27) = wv ∧ bget G 27 = bget g 27 + 1 ∧
+    bget G (d7 + 8 * bget g 12 + 2) = bget g (d7 + 8 * bget g 12 + 2) + 1 - n1 ∧
+    bget G (d7 + 8 * bget g 12 + 6) = bget g (d7 + 8 * bget g 12 + 6) + 1 ∧
+    (∀ j : UInt64, j.toNat ≠ 11 → j.toNat ≠ 27 → j.toNat ≠ 31 → j.toNat ≠ 151616 + J → j.toNat ≠ 147520 + 8 * D + 2 →
+      j.toNat ≠ 147520 + 8 * D + 6 → (j.toNat < 180288 + 4 * i0 + 1 ∨ 180288 + 4 * i0 + 4 ≤ j.toNat) → bget G j = bget g j) ∧
+    G.drop 184384 = g.drop 184384 := by
+  intro G hG
+  subst hG
+  have r1 := rowCell i0 hi0 1 (by decide); have r2 := rowCell i0 hi0 2 (by decide); have r3 := rowCell i0 hi0 3 (by decide)
+  have cr2 := defCell D hD 2 (by decide); have cr6 := defCell D hD 6 (by decide)
+  simp only [show (1 : UInt64).toNat = 1 from rfl, show (2 : UInt64).toNat = 2 from rfl, show (3 : UInt64).toNat = 3 from rfl,
+    show (6 : UInt64).toNat = 6 from rfl] at r1 r2 r3 cr2 cr6
+  rw [← ha] at r1 r2 r3
+  rw [← h12] at cr2 cr6
+  have e6 : d7 + 8 * bget g 12 + 2 + 4 = d7 + 8 * bget g 12 + 6 := by rw [UInt64.add_assoc]; rfl
+  have pc : ((d7 + 4096) + bget g 27).toNat = 151616 + J := by
+    rw [h27, UInt64.toNat_add, show (d7 + 4096 : UInt64).toNat = 151616 from rfl]; simp; omega
+  have u11 : (11 : UInt64).toNat = 11 := rfl
+  have u27 : (27 : UInt64).toNat = 27 := rfl
+  have u31 : (31 : UInt64).toNat = 31 := rfl
+  unfold asgHeap
+  rw [e6]
+  refine ⟨by simp only [length_bset], ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · rw [bget_bset' _ _ _ _ (by rw [cr6, r1]; omega), bget_bset' _ _ _ _ (by rw [cr2, r1]; omega), bget_bset' _ _ _ _ (by rw [u27, r1]; omega), bget_bset' _ _ _ _ (by rw [pc, r1]; omega), bget_bset' _ _ _ _ (by rw [u11, r1]; omega), bget_bset' _ _ _ _ (by rw [u31, r1]; omega), bget_bset' _ _ _ _ (by rw [r3, r1]; omega), bget_bset' _ _ _ _ (by rw [r2, r1]; omega), bget_bset_same _ _ _ (by (try simp only [length_bset]); rw [r1]; omega)]
+  · rw [bget_bset' _ _ _ _ (by rw [cr6, r2]; omega), bget_bset' _ _ _ _ (by rw [cr2, r2]; omega), bget_bset' _ _ _ _ (by rw [u27, r2]; omega), bget_bset' _ _ _ _ (by rw [pc, r2]; omega), bget_bset' _ _ _ _ (by rw [u11, r2]; omega), bget_bset' _ _ _ _ (by rw [u31, r2]; omega), bget_bset' _ _ _ _ (by rw [r3, r2]; omega), bget_bset_same _ _ _ (by (try simp only [length_bset]); rw [r2]; omega)]
+  · rw [bget_bset' _ _ _ _ (by rw [cr6, r3]; omega), bget_bset' _ _ _ _ (by rw [cr2, r3]; omega), bget_bset' _ _ _ _ (by rw [u27, r3]; omega), bget_bset' _ _ _ _ (by rw [pc, r3]; omega), bget_bset' _ _ _ _ (by rw [u11, r3]; omega), bget_bset' _ _ _ _ (by rw [u31, r3]; omega), bget_bset_same _ _ _ (by (try simp only [length_bset]); rw [r3]; omega)]
+  · rw [bget_bset' _ _ _ _ (by rw [cr6, u11]; omega), bget_bset' _ _ _ _ (by rw [cr2, u11]; omega), bget_bset' _ _ _ _ (by rw [u27, u11]; omega), bget_bset' _ _ _ _ (by rw [pc, u11]; omega), bget_bset_same _ _ _ (by (try simp only [length_bset]); rw [u11]; omega)]
+  · rw [bget_bset' _ _ _ _ (by rw [cr6, pc]; omega), bget_bset' _ _ _ _ (by rw [cr2, pc]; omega), bget_bset' _ _ _ _ (by rw [u27, pc]; omega), bget_bset_same _ _ _ (by (try simp only [length_bset]); rw [pc]; omega)]
+  · rw [bget_bset' _ _ _ _ (by rw [cr6, u27]; omega), bget_bset' _ _ _ _ (by rw [cr2, u27]; omega), bget_bset_same _ _ _ (by (try simp only [length_bset]); rw [u27]; omega)]
+  · rw [bget_bset' _ _ _ _ (by rw [cr6, cr2]; omega), bget_bset_same _ _ _ (by (try simp only [length_bset]); rw [cr2]; omega)]
+  · rw [bget_bset_same _ _ _ (by (try simp only [length_bset]); rw [cr6]; omega)]
+  · intro j j11 j27 j31 jpc jc2 jc6 jrow
+    rw [bget_bset' _ _ _ _ (by rw [cr6]; omega), bget_bset' _ _ _ _ (by rw [cr2]; omega), bget_bset' _ _ _ _ (by rw [u27]; omega), bget_bset' _ _ _ _ (by rw [pc]; omega), bget_bset' _ _ _ _ (by rw [u11]; omega), bget_bset' _ _ _ _ (by rw [u31]; omega), bget_bset' _ _ _ _ (by rw [r3]; omega), bget_bset' _ _ _ _ (by rw [r2]; omega), bget_bset' _ _ _ _ (by rw [r1]; omega)]
+  · rw [drop_bset _ _ _ (by rw [cr6]; omega), drop_bset _ _ _ (by rw [cr2]; omega), drop_bset _ _ _ (by decide),
+      drop_bset _ _ _ (by rw [pc]; omega), drop_bset _ _ _ (by decide), drop_bset _ _ _ (by decide),
+      drop_bset _ _ _ (by rw [r3]; omega), drop_bset _ _ _ (by rw [r2]; omega), drop_bset _ _ _ (by rw [r1]; omega)]
+
 end ParInv
