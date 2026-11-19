@@ -278,10 +278,32 @@ PRIM Σ operand widths = arity (and no operands for ISIZE/LEN/BNEW), CONTINUE wi
 equal, lets ≥ npw, scoping (a later sibling / arm reads none of the earlier operands' lets; the loop arms read none
 of any arm's lets).
 
-NEXT (in order): (B) CG/CT/DefC words = `tm`.map encG with exits patched (uses ExprExact/CallExact/MachExact/Fixup;
-SC from GenRef.Cx: p = K.p.toNat, κ = K.u.toNat, T id = T[id].toNat); def level: `defX` with `runV` on the body,
-DefX for def k from defs < k; program level over A's program theorem; Sail lift with `SimW.sim_starW`
-(`encG_encJ`, `Safe`).  Not yet: the OOM/capacity FAILURE path (S = none by OOM ⇒ machine reaches stub 1/6).
+DONE later the same day (all no sorry, standard axioms, each module ≤ 3 s / ≤ 1.6 GB):
+- (B) `Proof/NdCG.lean` (matching relation `Mt c l h E X`, `Mt.app/plain/retarget/at/jal1`, `em_of`, `g13_enc`,
+  `jw_enc`, `ifHd_enc`, `lp_enc`, `g32_prim`; inversion lemmas `inv_*`/`invT_*`/`invS_*`, one per tag; bounds `NB`,
+  `SerAt`, context link `SK`), `NdCGv/w/t.lean` (one lemma per node case taking the IHs: `cgV_*`, `cgT_*`, `cgL_*`),
+  `NdCGm.lean` (**cgV/cgT/cgL**: a CG/CT/CGs derivation of e at cursor i emits `Mt c (tm S e h) h E (h + |c|)` etc.).
+  (One big mutual block took 302 s; split per case it is ≤ 3 s per file.)
+- `Proof/NdDef.lean`: `defT` (proA ++ body template ++ epi), **defRun** (template at f ⇒ `DefX` for
+  `defS p nl (sv S body)`), `patchR_get`, `Mt.patch`, **defWords** (A's `DefC` output = `o ++ (defT …).map encG`).
+- `Proof/NdProg.lean`: program semantics `semAt P ds k` (callee-first; context `scAt`), **progRun** (all defs satisfy
+  DefX, strong induction).  `Proof/NdProgW.lean`: `DefsC.prefix/olen`, **chainW** (A's def chain emits `defsJ` and each
+  def's start word).  `Proof/NdTop.lean`: **gen_words** (g41 success ⇒ the def phase emitted stubs ++ `defsJ`, given
+  `o.length < 2^24`), **gen_defs_run** (on any J program holding the templates every def, main included, satisfies
+  DefX for `semAt`).
+- `SK.T` only for callable ids (< table size).
+
+OPEN (in order of value):
+1. Start code g35 + stubs g34 on the machine: needs J extensions (`srli` = g2 g_19 5, `bne` = g4 1, `sb` = g3 0, `beq`
+   with offset ≠ +8) in Call.lean's J + SimW sims; then the output copy loop (bytes of main's buffer to a3) and the
+   exit registers a0/a1.  With that: g41 c (serialize ds) = bytes of the program whose run outputs main's buffer.
+2. Sail lift: every template run lemma must become a Safe run (`SimW.SStar`): addi no-wrap, ld/sd/lbu addresses
+   8-aligned in the ONE work region (input must lie in it), jal targets in code, jalr targets base+4j.  Mechanical but
+   large (safe twins of const/push/bin/rd/bsize/bget/bnew/bpush/bset/li/local1/pro/epi/popN runs; contracts Star→SStar).
+3. OOM/capacity failure path (sv = none by room ⇒ stub 1/6 reached, a0 = −1/−2).
+4. Side conditions from the parser (ParSpec) + g53: `OkV`/`OkT` (NdRun), `NB`/`DB` (bounds), body reads ⊆ params,
+   npw ≤ nslots, body width = nres; and A: `o.length < 2^24` in gen41_ok's conclusion.
+5. D: relate `semAt` (heap-address semantics) to the source semantics.
 
 ## HANDOFF — Safe retrofit (Opus box A, 2026-11-19)
 
