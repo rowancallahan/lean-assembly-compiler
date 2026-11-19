@@ -106,28 +106,21 @@ EXPRESSION REFINEMENT (B, in progress). PUSHED: `Proof/ParRunExpr.lean` — `VT`
   B STOOD DOWN (owner, 2026-11-19 18:20). F takes the Obl pieces; slice 14..122 unassigned.
 
 ## HANDOFF — parser lead (2026-11-19, keep current)
-Role: review of Layers 2/3; owns def start/accept 60, plainBody 70, afterColon 73, stateTy 74, armsStart 75, FINISH 80,
-flatten 81–83 (G handed them back), `v98`/`fin`, validation, top glue, 46/54 machine side, the Layer-2 DEF LEVEL (headers, plain defs,
-dispatcher; B does the fuel-loop path `ParRunLoop.loop_spec`).  All pushed, no sorry, std axioms, each module ≤ 11 s.
-DONE — Layer 2 (pure, on B's ParRun)
-* `ParRunHdr`: `group_spec`, `assign_spec`, `binders_spec` (binder list = `pBinders` + `bindSlots`, FixJ, run prefix as `Star`),
-  `DRel` (finished rows ↔ spec `DefI`s), `drel_snoc`, `cxrel_body` (G's CxRel at a body start), `InpInv`/`bindSlots_inpInv` (input rule).
-* `ParRunBody.body_spec` (plainBody → B's `expr_specs` → defEnd), `ParRunDefs` (`defEnd_tail`, `ty_star`, `StarN.head_star/cut`),
-  `ParRunDef`: `plainB_spec` / `plainC_spec` (plain defs ↔ `pDef` plain branch, output = `DefA.ser`), `stepF_toks`/`Star.toks`,
-  `loop_toks` (afterColon's prevTok ⇒ header is `Nat →`), **`defs_spec`: a run from `.defs` to `[]` is `pDefs`** (premises: `LoopStep`
-  = B's loop_spec in the needed shape, `NoL` = Par1 finding L).
-* earlier: `ParTreeOK`, `ParRunShape` (StkInv, DInv), `ParRunNames`, `ParRunArena`, `ParRunRow`, `ParTokWF` (D proved Lexes → TokWF).
-DONE — machine (on C's Rep): `ParInvDefs.h_defs` (60), `ParInvHdr` (70, 73, 74, 75, `rep_cur`, `rep_nxss`, `v203_eq`),
-`ParInvFinish.h_defEnd` (80, with C's `rep_append`), `ParInvValRep` (`v209_nodeOK`, `isInpW`), `ParInvFlatM` (v141–v144 cell lemmas),
-`ParInvFin`, `ParInvApi`, glue `ParInvTop` (`RepAPI`, `run_sim`, `parserSound_of`).
-OPEN
-* B: `loop_spec` — (1) `hnn : CxNN st` is unsatisfiable at a def start (fresh row has res = none): needs the finished-rows half only;
-  (2) add the run prefix `Star (.tyAtom :: .afterColon :: ks, st) (.defEnd :: ks, st')`, and `di.res.nnt ∧ params nnt`. Then
-  `LoopStep` is a theorem.
-* C: v99 main-arity fix; then `mainOK` gets `params.length = 1` (B mirrors) and I finish `Accepts ⇒ refParse` (the main check needs
-  either that or nni tracking in DRel; also `resLst ↔ res = ls` for plain rows).
-* Finding L (C): until fixed, `NoL` is a premise of the final theorem.
-NEXT (me): machine 81/82/83 (core + rep_append), then `accepts_sound` (Accepts ⇒ refParse ∧ serialize), then `api_of_rep`.
+
+**DONE: `ParInv.parserSound (hW : TokWF ts) (hts : ts.length < 2^24) : ParserSound ts`** (Proof/ParInvRun.lean, bc7798a;
+axioms propext / Classical.choice / Quot.sound; no Obl, no NoL). `parserSound_main` is the same with `TokL ts toks`.
+
+Assembly (all in Proof/):
+- ParInvInit: `rep_init` (loaded heap represents `init toks` with `[.defs]`), `tokAt_of` (TokL gives TokAt h 0 toks at any Rep heap).
+- ParInvRun: `step_sim` dispatches the 46 handlers; side conditions from `wf_pre` (WF), `CInv`, `DInv`, `StkInv`, `ArenaInv`,
+  `CallInv`, plus ParRunBnd (`reach_prim32`, `reach_nni`, `reach_flat`) and B's ParRunObl (`reach_assignTy/selfP/prev/names`);
+  `hprev_of` (task 73) via ParInvPrev.prev_cell; `api_of_rep : RepAPI ts toks (RepR ts toks)`; then `parserSound_of` +
+  B's `accepts_sound` + ParTokWF.`tokens_of`.
+- Changes made in others' files for this: rep_v5/rep_v5g/h_mkCall/h_mkCont take `n ≤ 4096`; `effF` mkCallN/mkCall carry
+  `Callee.need1` (prims 1..3 have ≥ 1 argument); h_stateTy lost its unused npw bound; ParRunObl helpers renamed
+  (mkNode_eqO, locOf_eqO, SelfInv).
+
+Open for ParStage: the caller must supply `ts.length < 2^24` (strict; `fin`/v99 only needs ≤) — from D's lexer length bound.
 
 ## HANDOFF — G: arguments / calls / prims / types (2026-11-19, keep current)
 Families: frames 43 argAtom, 44 args, 45 mkCallN, 47 argCheck, 48 mkCall, 55 argName, the prim / def-call heads of code 3, types 61–63 (machine side),
