@@ -70,11 +70,14 @@ EXPRESSION REFINEMENT (B, in progress). PUSHED: `Proof/ParRunExpr.lean` — `VT`
   (expr 0 md at a non-if/let token, incl. the tl re-parse via `tl_down`), `expr_if`, `expr_let` (+ `CxRel.push`/`CxNN.push` for let
   bindings, `join_rel`, `nodeOK_noInp`, `let_shape`, `body_rel`). All specs also give `Stop` (loop stopped), `PT` (tail CONTINUE ⇒
   pending), `ShNN v.sh` (shape present, no nested Nat — ParSpec's `tyShape` needs `hasN = false`) and take `CxNN st` (tables NNT).
-  TODO (in order): `expr_letpair` (letStart `(` → letPairX/Y/stash/letPairSemi; pExpr's pair-let clause), `prim_sound` (PrimSpec n from
-  specs < n: leaf via G's `atomLeaf_spec`, paren + tuples (`parenClose`/`tupRest`/`mkPair` ↔ pAtom `(` / `pTup`, first component
-  re-parse via `tl_down` + `PT`), calls/prim tokens via args (G's `Atoms`/`args_run`/`call_tail`; still waiting for G's answer on who
-  writes `args_spec`), self-call 46/54 (needs a `SelfRel st cx`: arm ↔ cx.self, cur.params ↔ self params)), then the assembly
-  `∀ n, BinSpec n ∧ LoopSpec n ∧ PrimSpec n ∧ ExprSpec n` by `Nat.strongRecOn`, then def level (F) on top.
+  DONE since: `expr_letpair`, `expr_sound` (ExprSpec n), `Proof/ParRunTup.lean` (`TupSpec`, `tup_sound`: tuple remainder = pTup),
+  `Proof/ParRunPrimS.lean` (`prim_leaf` via G's atomLeaf_spec, `prim_paren` (paren / tuple), `prim_sound`, and
+  `all_specs (hcallOf : ∀ n, (∀ n' < n, ExprSpec n') → HCall n) : ∀ n, BinSpec n ∧ LoopSpec n ∧ PrimSpec n ∧ ExprSpec n`). No sorry.
+  REMAINING for expressions: `HCall n` = the call-like primaries (def call `.id` unbound + findD row < defs.length; prim token 39..47;
+  self-call 46/54) ↔ pApp's prim / pCallDef / self clauses. Needs pArgs (args runs: G's Atoms/args_run/call_tail/argCheck_run; the
+  argument atoms are AtomLeaf or `(`-expressions = ExprSpec < n), the CALL node's toNd with dropInp (inputs dropped iff params .inp —
+  from the deferred v210 `inpMatch` in nodeOK, i.e. VT), and for self-calls a `SelfRel st cx` (st.arm ↔ cx.self = some (cur.name, ps),
+  ps.map psCode = cur.params.tail, cur.name not a finished def) which CxRel (G) does not cover yet.
 PLAN (was: nothing pushed yet): one strong induction on the run length n, using G's `CxRel`/`TyRel`/`AtomLeaf`
 (ParRunAtom) and G's call/arg lemmas (ParRunCall) for call/prim heads. Statements (cx related by CxRel, ParSpec nx = st.nx):
   prim md ↔ `pApp f cx (md == 1)` (md ≠ 2 also admits if/let ↔ `pExpr`'s if/let clauses); `binLoop m` with a on top ↔ `pLoop f cx m a.toNd ta`;
