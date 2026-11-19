@@ -134,4 +134,91 @@ theorem envI_slot0 {σ : AH} {Kk : List Nat} {F : List Bool} {Γ : List (Option 
     rw [hk (a + 1) (by omega), hk (b + 1) (by omega)]
     exact hE.dist (a + 1) (b + 1) la lb hab ka kb k1 k0 da db ea eb
 
+/-! ## a CONTINUE re-establishes the loop head's frame invariant -/
+
+theorem stD_get {Kk : List Nat} {npw i : Nat} (hi : i < npw - 1) (hl : npw ≤ Kk.length) :
+    (OwnSpec.stD Kk npw)[i]? = some (if Kk.getD (1 + i) 0 = 2 then 3 else Kk.getD (1 + i) 0) := by
+  simp only [OwnSpec.stD, List.getElem?_map, List.getElem?_take_of_lt hi, List.getElem?_drop]
+  rw [List.getElem?_eq_getElem (show 1 + i < Kk.length by omega)]
+  simp [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem (show 1 + i < Kk.length by omega)]
+
+theorem loopΓ_get (sk : List Kd) (m : Nat) :
+    ∀ k, (some Kd.w :: sk.map some ++ List.replicate m none)[k]? =
+      if k = 0 then some (some .w) else if k < 1 + sk.length then (sk[k - 1]?).map some
+      else if k < 1 + sk.length + m then some none else none := by
+  intro k
+  rcases k with _ | k
+  · simp
+  · simp only [List.cons_append, List.getElem?_cons_succ, Nat.succ_ne_zero, if_false]
+    by_cases h1 : k < sk.length
+    · rw [List.getElem?_append_left (by simpa using h1), if_pos (by omega)]; simp
+    · rw [List.getElem?_append_right (by simp; omega), if_neg (by omega)]
+      simp only [List.length_map, List.getElem?_replicate]
+      by_cases h2 : k - sk.length < m
+      · rw [if_pos h2, if_pos (by omega)]
+      · rw [if_neg h2, if_neg (by omega)]
+
+theorem envI_cont {σ : AH} {Kk : List Nat} {F : List Bool} {sk : List Kd} {m : Nat} {env1 st : List W} {ew1 : Env}
+    {ws : List UInt64} (hlen : Kk.length = 1 + sk.length + m)
+    (ht : EnvOK env1 (some Kd.w :: sk.map some ++ List.replicate m none)) (h0 : env1[0]? = some (.w (ew1 0)))
+    (hk : kOf st = sk) (hA : ArgsR σ (OwnSpec.stD Kk (1 + sk.length)) st ws) :
+    EnvI σ Kk F (some Kd.w :: sk.map some ++ List.replicate m none) (env1.take 1 ++ st ++ env1.drop (1 + st.length))
+      (setW ew1 1 sk.length ws) := by
+  have hst : st.length = sk.length := by rw [← hk, kOf_length]
+  have hl1 := ht.length_eq
+  simp only [List.length_cons, List.length_append, List.length_map, List.length_replicate] at hl1
+  obtain ⟨env', e1, he'⟩ := setSlots_ok (vs := st) (s := 1) ht (by simp; omega)
+  have he2 : env' = env1.take 1 ++ st ++ env1.drop (1 + st.length) := by
+    simp only [setSlots] at e1; rw [if_pos (by omega)] at e1; cases e1; rfl
+  subst he2
+  rw [hk, setK_loop1] at he'
+  have hP : ∀ i, i < sk.length → (OwnSpec.stD Kk (1 + sk.length))[i]? =
+      some (if Kk.getD (1 + i) 0 = 2 then 3 else Kk.getD (1 + i) 0) := fun i hi => stD_get (by omega) (by omega)
+  have hkn : ∀ k, Kn (some Kd.w :: sk.map some ++ List.replicate m none) k → k < 1 + sk.length := by
+    intro k ⟨kd, h⟩
+    rw [loopΓ_get] at h
+    by_cases a : k = 0
+    · omega
+    · rw [if_neg a] at h
+      by_cases b : k < 1 + sk.length
+      · exact b
+      · rw [if_neg b] at h; split at h <;> simp at h
+  refine ⟨he'.length_eq, he', fun k kn hr => ?_, fun a b la lb hab ka kb k1 k0 da db ea eb => ?_⟩
+  · have hk1 := hkn k kn
+    rcases k with _ | i
+    · refine ⟨.w (ew1 0), by rw [ss_out (by omega) (by omega)]; exact h0, by simp [VR, setW], fun _ => ⟨_, rfl⟩⟩
+    · have hi : i < sk.length := by omega
+      have e' : (env1.take 1 ++ st ++ env1.drop (1 + st.length))[i + 1]? = st[i]? := by
+        rw [show i + 1 = 1 + i by omega]; exact ss_in (by omega) (by omega)
+      obtain ⟨x, hx⟩ : ∃ x, st[i]? = some x := ⟨st[i]'(by omega), List.getElem?_eq_getElem (by omega)⟩
+      have hw : ws.length = sk.length := by
+        have := hA.2.1; rw [this]; simp [OwnSpec.stD]; omega
+      obtain ⟨u, hu⟩ : ∃ u, ws[i]? = some u := ⟨ws[i]'(by omega), List.getElem?_eq_getElem (by omega)⟩
+      have ew' : setW ew1 1 sk.length ws (i + 1) = u := by
+        rw [show i + 1 = 1 + i by omega, setW_in _ _ _ _ _ hi, List.getD_eq_getElem?_getD, hu]; rfl
+      refine ⟨x, by rw [e', hx], by rw [ew']; exact hA.2.2.1 i x u hx hu, fun h0' => ?_⟩
+      have := hP i hi
+      rw [show 1 + i = i + 1 by omega, h0'] at this
+      exact hA.2.2.2.1 i x (by simpa using this) hx
+  · have ha := hkn a ka
+    have hb := hkn b kb
+    rcases a with _ | a
+    · rw [ss_out (by omega) (by omega), h0] at ea; cases ea
+    rcases b with _ | b
+    · rw [ss_out (by omega) (by omega), h0] at eb; cases eb
+    have ea' : st[a]? = some (.b la) := by
+      rw [show a + 1 = 1 + a by omega, ss_in (by omega) (by omega)] at ea; exact ea
+    have eb' : st[b]? = some (.b lb) := by
+      rw [show b + 1 = 1 + b by omega, ss_in (by omega) (by omega)] at eb; exact eb
+    have hw : ws.length = sk.length := by
+      have := hA.2.1; rw [this]; simp [OwnSpec.stD]; omega
+    have pa := hP a (by omega)
+    rw [show 1 + a = a + 1 by omega, k1] at pa
+    simp only [show (1 : Nat) ≠ 2 by decide, if_false] at pa
+    rw [show a + 1 = 1 + a by omega, show b + 1 = 1 + b by omega, setW_in _ _ _ _ _ (by omega),
+      setW_in _ _ _ _ _ (by omega), List.getD_eq_getElem?_getD, List.getD_eq_getElem?_getD,
+      List.getElem?_eq_getElem (show a < ws.length by omega), List.getElem?_eq_getElem (show b < ws.length by omega)]
+    exact hA.2.2.2.2 a b la lb ws[a] ws[b] (by omega) pa ea' eb' (List.getElem?_eq_getElem _)
+      (List.getElem?_eq_getElem _)
+
 end NanoMain
