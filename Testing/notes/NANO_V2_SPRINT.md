@@ -28,3 +28,7 @@ itself if O's push lands before 23:10 UTC; otherwise they are sprint units.
 
 ## SPRINT UNITS (E)
 None. GenStage is assembled (`SimW.gen_stage`, GenStageE.lean, b3b101b), modulo O's `HDB` (∀ d ∈ p, DB d for accepted programs). The room primitives and the OOM stub are done (RoomRun, CapHost).
+
+## SPRINT UNITS (O)
+None.  Done before the sprint: parser width cap (ea78be9; Layer-2 width invariant = ParRunSmall, parserSound proved),
+DBPar adaptation (bd41e7d), parsed_cap / parsed_bnd / bndStage / capStage / C_correctLO (a5b7ba5, ParCapBnd.lean).
