@@ -83,7 +83,13 @@ EXPRESSION REFINEMENT (B, in progress). PUSHED: `Proof/ParRunExpr.lean` — `VT`
   to C; once fixed, mirror in stepF/nodeOK and derive it from VT instead.
   Interface changes this round: `RN.isInp` reads the cell (b % 2^64, F); `St.stash : Option (List Nat)` (C); `TyRel (.s s)` =
   `sh = s ∧ (isInp → s is a pair) ∧ tag ≠ 1`; `CxRel.transport/push` take `(hcu : cur eq) (har : arm eq)`; `Pushed.arm`.
-  NEXT (B): mirror fix L; help F at the def level on request.
+  LOOP DEFS DONE (c1bbe0d): `Proof/ParRunLoop.lean` — `arrows_spec` (state types ↔ pArrows, row grows by `stAdd`), `fold_stAdd` /
+  `stateKinds_inp` / `sk_codes` (row = stateKinds codes, widths, input = first List), `armBind_spec` (arm binders ↔ armPat + mkEnv, fresh &
+  distinct), `env_toBd` / `env_step` / `cxRel_arm` (arm contexts, fuel binder order), inversions armsStart/zeroDone/mkLoop, and
+  **`loop_spec`**: from `.tyAtom :: .afterColon :: ks` at `Nat → …` (binds = vals = [], cur fresh, arm false, `CxRel st ⟨defs, [], none⟩`,
+  `CxNN st`, name fresh) the run reaches `.defEnd :: ks` with vals = [loop node], and under VT it is pDef's loop branch at every fuel
+  ≥ 4|toks|+8 (DefI facts for F's CxRel.row). Temporary hypothesis `hL` (finding L). `Post` now has `out` (expression runs keep out).
+  NEXT (B): mirror fix L (drop `hL` and CxRel.self's `sps ≠ [.inp]`); help F at the def level on request.
 
 ## HANDOFF — parser lead (2026-11-19, keep current)
 Role: review of Layers 2/3; own families (after the split with G): def start/accept 60, plainBody 70, afterColon 73, stateTy 74,
