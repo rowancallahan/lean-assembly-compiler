@@ -110,6 +110,15 @@ elab "den_match" k:num : tactic => withMainContext do
   let last' := mkAppN last.getAppFn (last.getAppArgs.pop.push e)
   replaceMainGoal [← g.replaceTargetDefEq (mkAppN tgt.getAppFn (args.pop.push last'))]
 
+/-- unfold the Lean def at the head of the value by delta + beta (`unfold` is `simp`-based and drops unused `let`s,
+which still have their `letE` node) -/
+elab "den_unfold" : tactic => withMainContext do
+  let g ← getMainGoal
+  let tgt := (← instantiateMVars (← g.getType)).cleanupAnnotations
+  let args := tgt.getAppArgs
+  let some e ← delta? args.back! | throwError "den_unfold: not a def application{indentExpr args.back!}"
+  replaceMainGoal [← g.replaceTargetDefEq (mkAppN tgt.getAppFn (args.pop.push e.headBeta))]
+
 /-- a `call i` node: apply `Cert.call_<i>` -/
 elab "den_call" : tactic => withMainContext do
   let g ← getMainGoal

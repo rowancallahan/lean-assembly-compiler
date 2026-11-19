@@ -174,6 +174,13 @@ theorem defMean_ref {inp : List UInt8} {κ : Nat} {ms : List Fn} {d : DefA} {ps 
   rw [if_pos ⟨hps, hle⟩]
   rcases h with h | h <;> simp [Ref, h, hres, bind, Except.bind, pure, Except.pure]
 
+/-- `defMean_ref` with the body and the initial environment named explicitly (no unification through `DenT`) -/
+theorem defMean_den {inp : List UInt8} {κ : Nat} {ms : List Fn} {d : DefA} {ps : List W} {α : Type} [Enc α] (t : α) (e : Nd)
+    (env : List W) (hps : ps.length = d.npw) (hle : d.npw ≤ d.nslots) (hres : (enc t).length = d.nres) (hb : d.body = e)
+    (henv : ps ++ List.replicate (d.nslots - d.npw) (.w 0) = env) (h : DenT ⟨inp, κ, ms⟩ e env t) :
+    Ref (defMean inp κ ms d ps) (enc t) := by
+  subst hb henv; exact defMean_ref hps hle hres h.toVal
+
 /-! the table of per-def specifications -/
 def Good (specs : List (Fn → Prop)) (ms : List Fn) (n : Nat) : Prop :=
   ms.length = n ∧ ∀ (j : Nat) (F : Fn), ms[j]? = some F → ∃ S : Fn → Prop, specs[j]? = some S ∧ S F

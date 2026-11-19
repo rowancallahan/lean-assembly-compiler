@@ -8,88 +8,28 @@ set_option linter.unusedVariables false
 namespace Cert
 open NanoMain ParSpec
 
-theorem ok_168 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 168) :
-    Spec168 inp (defMean inp κC ms PC.d168) := by
-  refine defMean_ref (v := enc (C.g_63)) rfl (by decide) rfl (DenT.toVal ?_)
-  show DenT ⟨inp, κC, ms⟩ PC.b168 ([]) (C.g_63)
-  unfold C.g_63 PC.b168
+theorem ok_92 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 92) :
+    Spec92 inp (defMean inp κC ms PC.d92) := by
+  intro a0 a1 a2
+  refine defMean_den (C.v124 a0 a1 a2) PC.b92 ([.b a0, .w a1, .w a2] ++ List.replicate 10 (.w 0)) rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b92
+  den_unfold
   den
 
-theorem ok_169 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 169) :
-    Spec169 inp (defMean inp κC ms PC.d169) := by
-  refine defMean_ref (v := enc (C.g_99)) rfl (by decide) rfl (DenT.toVal ?_)
-  show DenT ⟨inp, κC, ms⟩ PC.b169 ([]) (C.g_99)
-  unfold C.g_99 PC.b169
+theorem ok_93 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 93) :
+    Spec93 inp (defMean inp κC ms PC.d93) := by
+  intro a0 a1 a2
+  refine defMean_den (C.v125 a0 a1 a2) PC.b93 ([.b a0, .w a1, .w a2] ++ List.replicate 2 (.w 0)) rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b93
+  den_unfold
   den
 
-theorem ok_170 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 170) :
-    Spec170 inp (defMean inp κC ms PC.d170) := by
-  refine defMean_ref (v := enc (C.g_103)) rfl (by decide) rfl (DenT.toVal ?_)
-  show DenT ⟨inp, κC, ms⟩ PC.b170 ([]) (C.g_103)
-  unfold C.g_103 PC.b170
-  den
-
-theorem ok_171 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 171) :
-    Spec171 inp (defMean inp κC ms PC.d171) := by
-  refine defMean_ref (v := enc (C.g_111)) rfl (by decide) rfl (DenT.toVal ?_)
-  show DenT ⟨inp, κC, ms⟩ PC.b171 ([]) (C.g_111)
-  unfold C.g_111 PC.b171
-  den
-
-theorem ok_172 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 172) :
-    Spec172 inp (defMean inp κC ms PC.d172) := by
-  refine defMean_ref (v := enc (C.g_127)) rfl (by decide) rfl (DenT.toVal ?_)
-  show DenT ⟨inp, κC, ms⟩ PC.b172 ([]) (C.g_127)
-  unfold C.g_127 PC.b172
-  den
-
-theorem ok_173 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 173) :
-    Spec173 inp (defMean inp κC ms PC.d173) := by
-  refine defMean_ref (v := enc (C.g_15)) rfl (by decide) rfl (DenT.toVal ?_)
-  show DenT ⟨inp, κC, ms⟩ PC.b173 ([]) (C.g_15)
-  unfold C.g_15 PC.b173
-  den
-
-theorem ok_174 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 174) :
-    Spec174 inp (defMean inp κC ms PC.d174) := by
-  refine defMean_ref (v := enc (C.g_255)) rfl (by decide) rfl (DenT.toVal ?_)
-  show DenT ⟨inp, κC, ms⟩ PC.b174 ([]) (C.g_255)
-  unfold C.g_255 PC.b174
-  den
-
-theorem ok_175 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 175) :
-    Spec175 inp (defMean inp κC ms PC.d175) := by
-  refine defMean_ref (v := enc (C.g_1023)) rfl (by decide) rfl (DenT.toVal ?_)
-  show DenT ⟨inp, κC, ms⟩ PC.b175 ([]) (C.g_1023)
-  unfold C.g_1023 PC.b175
-  den
-
-theorem ok_176 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 176) :
-    Spec176 inp (defMean inp κC ms PC.d176) := by
-  refine defMean_ref (v := enc (C.g_4095)) rfl (by decide) rfl (DenT.toVal ?_)
-  show DenT ⟨inp, κC, ms⟩ PC.b176 ([]) (C.g_4095)
-  unfold C.g_4095 PC.b176
-  den
-
-theorem ok_177 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 177) :
-    Spec177 inp (defMean inp κC ms PC.d177) := by
-  refine defMean_ref (v := enc (C.g_901)) rfl (by decide) rfl (DenT.toVal ?_)
-  show DenT ⟨inp, κC, ms⟩ PC.b177 ([]) (C.g_901)
-  unfold C.g_901 PC.b177
-  den
-
-theorem ok_178 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 178) :
-    Spec178 inp (defMean inp κC ms PC.d178) := by
-  refine defMean_ref (v := enc (C.g_902)) rfl (by decide) rfl (DenT.toVal ?_)
-  show DenT ⟨inp, κC, ms⟩ PC.b178 ([]) (C.g_902)
-  unfold C.g_902 PC.b178
-  den
-
-theorem ok_179 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 179) :
-    Spec179 inp (defMean inp κC ms PC.d179) := by
-  refine defMean_ref (v := enc (C.g_908)) rfl (by decide) rfl (DenT.toVal ?_)
-  show DenT ⟨inp, κC, ms⟩ PC.b179 ([]) (C.g_908)
-  unfold C.g_908 PC.b179
+theorem ok_94 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 94) :
+    Spec94 inp (defMean inp κC ms PC.d94) := by
+  intro a0 a1 a2
+  refine defMean_den (C.v126 a0 a1 a2) PC.b94 ([.b a0, .w a1, .w a2] ++ List.replicate 10 (.w 0)) rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b94
+  den_unfold
   den
 
 end Cert

@@ -17,12 +17,14 @@ def g40 : Nat → List UInt8 → Buf → UInt64 → Buf → Buf
     else o
 
 def g42 (c : List UInt8) (x : Buf) (u : UInt64) : Buf :=
+  if 2147483647 < bsize x then bnew else
   if bget x 0 == 2 then
     let (x2, w) := C.g53 x;
     if w == 0 then bnew else
     let r := bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush bnew 1) 0) 0) 0) 0) 0) 0) 0) 0) u;
     let (r1, o) := C.g39 16777216 x2 r (C.g34 bnew) bnew bnew bnew;
-    if bget r1 4 == 1 then bnew else if 16777215 < bsize o then bnew else g40 16777216 c o 0 bnew
+    if bget r1 4 == 1 then bnew else if 16777215 < bsize o then bnew else if 262143 < bsize o then bnew else
+    g40 16777216 c o 0 bnew
   else bnew
 
 def g41 (c : List UInt8) (x : Buf) : Buf := g42 c x C.g_999
@@ -45,6 +47,9 @@ theorem g42_map (c : List UInt8) (x : Buf) (u : UInt64) : (g42 c x u).map UInt64
   unfold g42 C.g42
   -- keep the fuel opaque: `simp` must not unfold the loops
   generalize (16777216 : Nat) = N
+  by_cases h0 : 2147483647 < bsize x
+  · simp only [h0, if_true]; rfl
+  simp only [h0, if_false]
   by_cases h1 : (bget x 0 == 2) = true
   · simp only [h1, if_true]
     rcases C.g53 x with ⟨x2, w⟩
@@ -60,7 +65,10 @@ theorem g42_map (c : List UInt8) (x : Buf) (u : UInt64) : (g42 c x u).map UInt64
       · simp only [h3]
         by_cases h4 : 16777215 < bsize o
         · simp only [h4, if_true]; rfl
-        · simp only [h4]; exact g40_map _ _ _ _ _
+        · simp only [h4]
+          by_cases h5 : 262143 < bsize o
+          · simp only [h5, if_true]; rfl
+          · simp only [h5]; exact g40_map _ _ _ _ _
   · simp only [h1]; rfl
 
 theorem m_map (x : List UInt8) : (m x).map UInt64.toUInt8 = mLean x := by
