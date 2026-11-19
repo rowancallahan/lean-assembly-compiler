@@ -10,21 +10,21 @@ open NanoMain ParSpec
 
 theorem ok_0 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 0) :
     Spec0 inp (defMean inp κC ms PC.d0) := by
-  refine defMean_den (C.k255) PC.b0 ([]) rfl (by decide) rfl rfl rfl ?_
+  refine defMean_den (C.k255) PC.b0 ([]) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b0
   den_unfold
   den
 
 theorem ok_1 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 1) :
     Spec1 inp (defMean inp κC ms PC.d1) := by
-  refine defMean_den (C.k0) PC.b1 ([]) rfl (by decide) rfl rfl rfl ?_
+  refine defMean_den (C.k0) PC.b1 ([]) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b1
   den_unfold
   den
 
 theorem ok_2 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 2) :
     Spec2 inp (defMean inp κC ms PC.d2) := by
-  refine defMean_den (C.k1) PC.b2 ([]) rfl (by decide) rfl rfl rfl ?_
+  refine defMean_den (C.k1) PC.b2 ([]) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b2
   den_unfold
   den
@@ -32,7 +32,7 @@ theorem ok_2 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 1844674407370
 theorem ok_3 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 3) :
     Spec3 inp (defMean inp κC ms PC.d3) := by
   intro a0 a1
-  refine defMean_den (C.q0 a0 a1) PC.b3 ([.b a0, .w a1]) rfl (by decide) rfl rfl rfl ?_
+  refine defMean_den (C.q0 a0 a1) PC.b3 ([.b a0, .w a1]) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b3
   den_unfold
   den
@@ -40,7 +40,7 @@ theorem ok_3 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 1844674407370
 theorem ok_4 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 4) :
     Spec4 inp (defMean inp κC ms PC.d4) := by
   intro a0
-  refine defMean_den (C.s0 a0) PC.b4 ([.w a0]) rfl (by decide) rfl rfl rfl ?_
+  refine defMean_den (C.s0 a0) PC.b4 ([.w a0]) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b4
   den_unfold
   den
@@ -63,7 +63,7 @@ theorem ok_5 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 1844674407370
       unfold PC.s5
       den [hc]
   intro a0 a2 hn
-  refine defMean_loop (C.s1 a0 inp a2) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
+  refine defMean_loop (C.s1 a0 inp a2) rfl rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
   have h := L a0 hn (UInt64.ofNat a0) a2
   rwa [show (UInt64.ofNat a0).toNat = a0 from by simp [UInt64.toNat_ofNat', Nat.mod_eq_of_lt hn]]
 
@@ -85,7 +85,7 @@ theorem ok_6 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 1844674407370
       unfold PC.s6
       den [hc]
   intro a0 a2 a3 hn
-  refine defMean_loop (C.s2 a0 inp a2 a3) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
+  refine defMean_loop (C.s2 a0 inp a2 a3) rfl rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
   have h := L a0 hn (UInt64.ofNat a0) a2 a3
   rwa [show (UInt64.ofNat a0).toNat = a0 from by simp [UInt64.toNat_ofNat', Nat.mod_eq_of_lt hn]]
 

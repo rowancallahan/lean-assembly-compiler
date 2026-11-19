@@ -8,6 +8,7 @@ import re, sys
 SRC = "Testing/nano/v2self/self_S_input.txt"
 OUT = "Nano/V2Self/Proof/Cert"
 N64 = "18446744073709551616"
+ALONE = {"o38", "o39"}   # slow defs (minutes each: Lean's own equation lemma / leading match on a loop call): one file each
 CHUNK = 5000   # characters of node text per Defs file (keeps every file well under the 5 min budget)
 
 def parse_ty(s):
@@ -146,12 +147,9 @@ def main():
     files = []; groups = [[]]; sz = 0
     for d, r in zip(auto, rows):
         n = sum(len(x) for x in r[2:])
-        if groups[-1] and sz + n > CHUNK: groups.append([]); sz = 0
+        if groups[-1] and (sz + n > CHUNK or d["name"] in ALONE): groups.append([]); sz = 0
         groups[-1].append(d); sz += n
-    # defs whose delta-unfolding sends the kernel through a `let (a, b) := g19 …` match into g14's `< 2097152`
-    # (deep recursion, NANO_V2_CG.md "KERNEL TRAP"): rewrite with the function-level equation instead, then beta only
-    FUNEQ = {"C.g35": ("Nano.V2Self.Proof.GenTop", "GenRef.g35_fun"), "C.g56": ("Nano.V2Self.Proof.Cert.Fun", "Cert.g56_fun")}
-    BETA = "  dsimp (config := { zeta := false, iota := false, proj := false, eta := false }) only []"
+        if d["name"] in ALONE: sz = CHUNK
     import glob, os
     for f in glob.glob(f"{OUT}/Defs*.lean"): os.remove(f)
     for k, grp in enumerate(groups):
@@ -168,9 +166,8 @@ def main():
             if not d["loop"]:
                 env = "[" + ", ".join(sum((cells(t, v) for v, (_, t) in zip(vs, d["args"])), [])) + "]" + zeros
                 if vs: T.append(f"  intro {' '.join(vs)}")
-                T += [f"  refine defMean_den ({app(d, vs)}) PC.b{i} ({env}) rfl (by decide) rfl rfl rfl ?_",
-                      f"  unfold PC.b{i}"] + ([f"  rw [{FUNEQ[d['lean']][1]}]", BETA] if d["lean"] in FUNEQ else ["  den_unfold"]) + ["  den"]
-                if d["lean"] in FUNEQ and f"import {FUNEQ[d['lean']][0]}" not in T: T.insert(4, f"import {FUNEQ[d['lean']][0]}")
+                T += [f"  refine defMean_den ({app(d, vs)}) PC.b{i} ({env}) rfl rfl (by decide) rfl rfl rfl ?_",
+                      f"  unfold PC.b{i}", "  den_unfold", "  den"]
             else:
                 st = d["args"][1:]; sv = vs[1:]
                 sbind = "".join(f" ({v} : {ty_str(t)})" for v, (_, t) in zip(sv, st))
@@ -189,7 +186,7 @@ def main():
                       f"        fun {' '.join(pv)} _ _ h => DenK.cont h ⟨_, rfl, ih (by omega) _ {' '.join(pv)}⟩",
                       f"      unfold PC.s{i}", "      den [hc]",
                       f"  intro {' '.join(vs)} hn",
-                      f"  refine defMean_loop ({app(d, vs)}) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat {vs[0]}) ?_)",
+                      f"  refine defMean_loop ({app(d, vs)}) rfl rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat {vs[0]}) ?_)",
                       f"  have h := L {vs[0]} hn (UInt64.ofNat {vs[0]}) {' '.join(sv)}",
                       f"  rwa [show (UInt64.ofNat {vs[0]}).toNat = {vs[0]} from by simp [UInt64.toNat_ofNat', Nat.mod_eq_of_lt hn]]"]
             T.append("")

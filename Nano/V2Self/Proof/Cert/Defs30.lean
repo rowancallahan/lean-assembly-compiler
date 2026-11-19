@@ -26,14 +26,14 @@ theorem ok_152 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073
       unfold PC.s152
       den [hc]
   intro a0 a1 a2 a3 a4 a5 hn
-  refine defMean_loop (C.o34 a0 a1 a2 a3 a4 a5) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
+  refine defMean_loop (C.o34 a0 a1 a2 a3 a4 a5) rfl rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
   have h := L a0 hn (UInt64.ofNat a0) a1 a2 a3 a4 a5
   rwa [show (UInt64.ofNat a0).toNat = a0 from by simp [UInt64.toNat_ofNat', Nat.mod_eq_of_lt hn]]
 
 theorem ok_153 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 153) :
     Spec153 inp (defMean inp κC ms PC.d153) := by
   intro a0 a1 a2 a3 a4 a5
-  refine defMean_den (C.o35 a0 a1 a2 a3 a4 a5) PC.b153 ([.b a0, .b a1, .b a2, .b a3, .b a4, .w a5] ++ List.replicate 8 (.w 0)) rfl (by decide) rfl rfl rfl ?_
+  refine defMean_den (C.o35 a0 a1 a2 a3 a4 a5) PC.b153 ([.b a0, .b a1, .b a2, .b a3, .b a4, .w a5] ++ List.replicate 8 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b153
   den_unfold
   den
@@ -56,7 +56,7 @@ theorem ok_154 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073
       unfold PC.s154
       den [hc]
   intro a0 a1 a2 a3 a4 a5 hn
-  refine defMean_loop (C.o36 a0 a1 a2 a3 a4 a5) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
+  refine defMean_loop (C.o36 a0 a1 a2 a3 a4 a5) rfl rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
   have h := L a0 hn (UInt64.ofNat a0) a1 a2 a3 a4 a5
   rwa [show (UInt64.ofNat a0).toNat = a0 from by simp [UInt64.toNat_ofNat', Nat.mod_eq_of_lt hn]]
 
@@ -78,7 +78,7 @@ theorem ok_155 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073
       unfold PC.s155
       den [hc]
   intro a0 a1 a2 a3 a4 a5 hn
-  refine defMean_loop (C.o37 a0 a1 a2 a3 a4 a5) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
+  refine defMean_loop (C.o37 a0 a1 a2 a3 a4 a5) rfl rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
   have h := L a0 hn (UInt64.ofNat a0) a1 a2 a3 a4 a5
   rwa [show (UInt64.ofNat a0).toNat = a0 from by simp [UInt64.toNat_ofNat', Nat.mod_eq_of_lt hn]]
 
@@ -100,7 +100,7 @@ theorem ok_156 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073
       unfold PC.s156
       den [hc]
   intro a0 a1 a2 hn
-  refine defMean_loop (C.o40 a0 a1 a2) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
+  refine defMean_loop (C.o40 a0 a1 a2) rfl rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
   have h := L a0 hn (UInt64.ofNat a0) a1 a2
   rwa [show (UInt64.ofNat a0).toNat = a0 from by simp [UInt64.toNat_ofNat', Nat.mod_eq_of_lt hn]]
 
@@ -122,7 +122,7 @@ theorem ok_157 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073
       unfold PC.s157
       den [hc]
   intro a0 a1 a2 a3 a4 hn
-  refine defMean_loop (C.o42 a0 a1 a2 a3 a4) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
+  refine defMean_loop (C.o42 a0 a1 a2 a3 a4) rfl rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
   have h := L a0 hn (UInt64.ofNat a0) a1 a2 a3 a4
   rwa [show (UInt64.ofNat a0).toNat = a0 from by simp [UInt64.toNat_ofNat', Nat.mod_eq_of_lt hn]]
 

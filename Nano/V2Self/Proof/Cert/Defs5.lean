@@ -26,14 +26,14 @@ theorem ok_55 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 184467440737
       unfold PC.s55
       den [hc]
   intro a0 a1 a2 hn
-  refine defMean_loop (C.v209 a0 a1 a2) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
+  refine defMean_loop (C.v209 a0 a1 a2) rfl rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
   have h := L a0 hn (UInt64.ofNat a0) a1 a2
   rwa [show (UInt64.ofNat a0).toNat = a0 from by simp [UInt64.toNat_ofNat', Nat.mod_eq_of_lt hn]]
 
 theorem ok_56 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 56) :
     Spec56 inp (defMean inp κC ms PC.d56) := by
   intro a0 a1 a2 a3
-  refine defMean_den (C.v1 a0 a1 a2 a3) PC.b56 ([.b a0, .w a1, .w a2, .w a3] ++ List.replicate 6 (.w 0)) rfl (by decide) rfl rfl rfl ?_
+  refine defMean_den (C.v1 a0 a1 a2 a3) PC.b56 ([.b a0, .w a1, .w a2, .w a3] ++ List.replicate 6 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b56
   den_unfold
   den

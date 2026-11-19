@@ -26,7 +26,7 @@ theorem ok_144 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073
       unfold PC.s144
       den [hc]
   intro a0 a1 a2 a3 a4 a5 a6 a7 hn
-  refine defMean_loop (C.o26 a0 a1 a2 a3 a4 a5 a6 a7) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
+  refine defMean_loop (C.o26 a0 a1 a2 a3 a4 a5 a6 a7) rfl rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
   have h := L a0 hn (UInt64.ofNat a0) a1 a2 a3 a4 a5 a6 a7
   rwa [show (UInt64.ofNat a0).toNat = a0 from by simp [UInt64.toNat_ofNat', Nat.mod_eq_of_lt hn]]
 
@@ -48,7 +48,7 @@ theorem ok_145 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073
       unfold PC.s145
       den [hc]
   intro a0 a1 a2 a3 a4 a5 a6 a7 hn
-  refine defMean_loop (C.o16 a0 a1 a2 a3 a4 a5 a6 a7) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
+  refine defMean_loop (C.o16 a0 a1 a2 a3 a4 a5 a6 a7) rfl rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
   have h := L a0 hn (UInt64.ofNat a0) a1 a2 a3 a4 a5 a6 a7
   rwa [show (UInt64.ofNat a0).toNat = a0 from by simp [UInt64.toNat_ofNat', Nat.mod_eq_of_lt hn]]
 
@@ -70,14 +70,14 @@ theorem ok_146 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073
       unfold PC.s146
       den [hc]
   intro a0 a1 a2 a3 a4 a5 a6 hn
-  refine defMean_loop (C.o27 a0 a1 a2 a3 a4 a5 a6) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
+  refine defMean_loop (C.o27 a0 a1 a2 a3 a4 a5 a6) rfl rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
   have h := L a0 hn (UInt64.ofNat a0) a1 a2 a3 a4 a5 a6
   rwa [show (UInt64.ofNat a0).toNat = a0 from by simp [UInt64.toNat_ofNat', Nat.mod_eq_of_lt hn]]
 
 theorem ok_147 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 147) :
     Spec147 inp (defMean inp κC ms PC.d147) := by
   intro a0 a1 a2 a3
-  refine defMean_den (C.o29 a0 a1 a2 a3) PC.b147 ([.b a0, .b a1, .b a2, .b a3] ++ List.replicate 9 (.w 0)) rfl (by decide) rfl rfl rfl ?_
+  refine defMean_den (C.o29 a0 a1 a2 a3) PC.b147 ([.b a0, .b a1, .b a2, .b a3] ++ List.replicate 9 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b147
   den_unfold
   den

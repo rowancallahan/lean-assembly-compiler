@@ -11,7 +11,7 @@ open NanoMain ParSpec
 theorem ok_99 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 99) :
     Spec99 inp (defMean inp κC ms PC.d99) := by
   intro a0 a1 a2
-  refine defMean_den (C.v131 a0 a1 a2) PC.b99 ([.b a0, .w a1, .w a2] ++ List.replicate 8 (.w 0)) rfl (by decide) rfl rfl rfl ?_
+  refine defMean_den (C.v131 a0 a1 a2) PC.b99 ([.b a0, .w a1, .w a2] ++ List.replicate 8 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b99
   den_unfold
   den
@@ -19,7 +19,7 @@ theorem ok_99 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 184467440737
 theorem ok_100 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 100) :
     Spec100 inp (defMean inp κC ms PC.d100) := by
   intro a0 a1 a2
-  refine defMean_den (C.v132 a0 a1 a2) PC.b100 ([.b a0, .w a1, .w a2] ++ List.replicate 11 (.w 0)) rfl (by decide) rfl rfl rfl ?_
+  refine defMean_den (C.v132 a0 a1 a2) PC.b100 ([.b a0, .w a1, .w a2] ++ List.replicate 11 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b100
   den_unfold
   den
@@ -42,14 +42,14 @@ theorem ok_101 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073
       unfold PC.s101
       den [hc]
   intro a0 a1 a2 hn
-  refine defMean_loop (C.v201 a0 a1 a2) rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
+  refine defMean_loop (C.v201 a0 a1 a2) rfl rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
   have h := L a0 hn (UInt64.ofNat a0) a1 a2
   rwa [show (UInt64.ofNat a0).toNat = a0 from by simp [UInt64.toNat_ofNat', Nat.mod_eq_of_lt hn]]
 
 theorem ok_102 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 102) :
     Spec102 inp (defMean inp κC ms PC.d102) := by
   intro a0 a1 a2
-  refine defMean_den (C.v133 a0 a1 a2) PC.b102 ([.b a0, .w a1, .w a2] ++ List.replicate 21 (.w 0)) rfl (by decide) rfl rfl rfl ?_
+  refine defMean_den (C.v133 a0 a1 a2) PC.b102 ([.b a0, .w a1, .w a2] ++ List.replicate 21 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b102
   den_unfold
   den

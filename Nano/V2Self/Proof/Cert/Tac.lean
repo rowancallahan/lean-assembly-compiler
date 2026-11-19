@@ -120,14 +120,26 @@ elab "den_match" k:num : tactic => withMainContext do
   let last' := mkAppN last.getAppFn (last.getAppArgs.pop.push e)
   replaceMainGoal [← g.replaceTargetDefEq (mkAppN tgt.getAppFn (args.pop.push last'))]
 
-/-- unfold the Lean def at the head of the value by delta + beta (`unfold` is `simp`-based and drops unused `let`s,
-which still have their `letE` node) -/
+/-- unfold the Lean def at the head of the value.  Not `unfold` (`simp`-based: drops unused `let`s, which still have
+their `letE` node) and not a bare defeq step: the kernel would compare `C.f a…` with the body by first evaluating the
+body's leading `match` (12 GB for `g35`).  Instead `C.f = <stored value>` by `rfl` (the kernel unfolds the constant and
+finds the very same term), then `congrFun` and beta. -/
 elab "den_unfold" : tactic => withMainContext do
   let g ← getMainGoal
   let tgt := (← instantiateMVars (← g.getType)).cleanupAnnotations
   let args := tgt.getAppArgs
-  let some e ← delta? args.back! | throwError "den_unfold: not a def application{indentExpr args.back!}"
-  replaceMainGoal [← g.replaceTargetDefEq (mkAppN tgt.getAppFn (args.pop.push e.headBeta))]
+  let v := args.back!
+  let .const c ls := v.getAppFn | throwError "den_unfold: not a def application{indentExpr v}"
+  let info ← getConstInfo c
+  let some val := info.value? | throwError "den_unfold: {c} has no value"
+  let lam := val.instantiateLevelParams info.levelParams ls
+  let mut h ← mkExpectedTypeHint (← mkEqRefl v.getAppFn) (← mkEq v.getAppFn lam)
+  for a in v.getAppArgs do h ← mkCongrFun h a
+  let body := (mkAppN lam v.getAppArgs).headBeta
+  let h2 ← mkExpectedTypeHint h (← mkEq v body)
+  let motive ← withLocalDeclD `v (← inferType v) fun x => mkLambdaFVars #[x] (mkAppN tgt.getAppFn (args.pop.push x))
+  let g' ← g.replaceTargetEq (mkAppN tgt.getAppFn (args.pop.push body)) (← mkCongrArg motive h2)
+  replaceMainGoal [g']
 
 /-- a `call i` node: apply `Cert.call_<i>` -/
 elab "den_call" : tactic => withMainContext <| noZU do

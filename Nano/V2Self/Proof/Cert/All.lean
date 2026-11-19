@@ -42,6 +42,7 @@ import Nano.V2Self.Proof.Cert.Defs38
 import Nano.V2Self.Proof.Cert.Defs39
 import Nano.V2Self.Proof.Cert.Defs40
 import Nano.V2Self.Proof.Cert.Defs41
+import Nano.V2Self.Proof.Cert.Defs42
 set_option maxRecDepth 100000
 namespace Cert
 open NanoMain ParSpec

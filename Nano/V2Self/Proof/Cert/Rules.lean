@@ -56,15 +56,15 @@ theorem DenT.shl {a b : Nd} {x y : UInt64} : DenT cx a env x → DenT cx b env y
 theorem DenT.shr {a b : Nd} {x y : UInt64} : DenT cx a env x → DenT cx b env y → DenT cx (.bin 7 a b) env (x >>> y) := DenT.bin rfl
 theorem DenT.xor {a b : Nd} {x y : UInt64} : DenT cx a env x → DenT cx b env y → DenT cx (.bin 8 a b) env (x ^^^ y) := DenT.bin rfl
 
-theorem DenT.iteEq {α : Type} [Enc α] {a b t e : Nd} {x y : UInt64} {T E : α} (ha : DenT cx a env x) (hb : DenT cx b env y)
-    (ht : DenT cx t env T) (he : DenT cx e env E) : DenT cx (.ite 1 a b t e) env (if x == y then T else E) := by
+theorem DenT.iteEq {α : Type} [Enc α] {a b t e : Nd} {x y : UInt64} {T E : α} {inst : Decidable ((x == y) = true)} (ha : DenT cx a env x) (hb : DenT cx b env y)
+    (ht : DenT cx t env T) (he : DenT cx e env E) : DenT cx (.ite 1 a b t e) env (@ite α ((x == y) = true) inst T E) := by
   rcases ha with ha | ha <;> rcases hb with hb | hb <;>
     simp [DenT, Ref, ev, NanoMain.val, ha, hb, enc, bind, Except.bind]
   by_cases c : x = y
   · simp only [c, if_true]; exact ht
   · simp only [c, if_false]; exact he
-theorem DenT.iteLt {α : Type} [Enc α] {a b t e : Nd} {x y : UInt64} {T E : α} (ha : DenT cx a env x) (hb : DenT cx b env y)
-    (ht : DenT cx t env T) (he : DenT cx e env E) : DenT cx (.ite 2 a b t e) env (if x < y then T else E) := by
+theorem DenT.iteLt {α : Type} [Enc α] {a b t e : Nd} {x y : UInt64} {T E : α} {inst : Decidable (x < y)} (ha : DenT cx a env x) (hb : DenT cx b env y)
+    (ht : DenT cx t env T) (he : DenT cx e env E) : DenT cx (.ite 2 a b t e) env (@ite α (x < y) inst T E) := by
   rcases ha with ha | ha <;> rcases hb with hb | hb <;>
     simp [DenT, Ref, ev, NanoMain.val, ha, hb, enc, bind, Except.bind]
   by_cases c : x < y
@@ -86,17 +86,17 @@ theorem ofNat_lt {x y : Nat} (hx : x < 18446744073709551616) (hy : y < 184467440
   simp only [UInt64.toNat_ofNat']
   rw [Nat.mod_eq_of_lt (by simpa using hx), Nat.mod_eq_of_lt (by simpa using hy)]
 
-theorem DenT.iteEqN {α : Type} [Enc α] {a b t e : Nd} {x y : Nat} {T E : α} (ha : DenT cx a env x) (hb : DenT cx b env y)
+theorem DenT.iteEqN {α : Type} [Enc α] {a b t e : Nd} {x y : Nat} {T E : α} {inst : Decidable ((x == y) = true)} (ha : DenT cx a env x) (hb : DenT cx b env y)
     (hx : x < 18446744073709551616) (hy : y < 18446744073709551616)
-    (ht : DenT cx t env T) (he : DenT cx e env E) : DenT cx (.ite 1 a b t e) env (if x == y then T else E) := by
+    (ht : DenT cx t env T) (he : DenT cx e env E) : DenT cx (.ite 1 a b t e) env (@ite α ((x == y) = true) inst T E) := by
   rcases ha with ha | ha <;> rcases hb with hb | hb <;>
     simp [DenT, Ref, ev, NanoMain.val, ha, hb, enc, bind, Except.bind]
   by_cases c : x = y
   · simp only [c, if_true]; exact ht
   · simp only [c, if_false]; rw [if_neg (fun h => c ((ofNat_inj hx hy).mp h))]; exact he
-theorem DenT.iteLtN {α : Type} [Enc α] {a b t e : Nd} {x y : Nat} {T E : α} (ha : DenT cx a env x) (hb : DenT cx b env y)
+theorem DenT.iteLtN {α : Type} [Enc α] {a b t e : Nd} {x y : Nat} {T E : α} {inst : Decidable (x < y)} (ha : DenT cx a env x) (hb : DenT cx b env y)
     (hx : x < 18446744073709551616) (hy : y < 18446744073709551616)
-    (ht : DenT cx t env T) (he : DenT cx e env E) : DenT cx (.ite 2 a b t e) env (if x < y then T else E) := by
+    (ht : DenT cx t env T) (he : DenT cx e env E) : DenT cx (.ite 2 a b t e) env (@ite α (x < y) inst T E) := by
   rcases ha with ha | ha <;> rcases hb with hb | hb <;>
     simp [DenT, Ref, ev, NanoMain.val, ha, hb, enc, bind, Except.bind]
   by_cases c : x < y
@@ -161,31 +161,31 @@ theorem DenK.cont {α β : Type} [Enc α] [Enc β] {e : Nd} {a : α} {t : β} (h
   rcases h with h | h
   · exact Or.inl (by simp [ev, NanoMain.val, h, bind, Except.bind])
   · exact Or.inr (Or.inr ⟨enc a, by simp [ev, NanoMain.val, h, bind, Except.bind, pure, Except.pure], hk⟩)
-theorem DenK.iteEq {α : Type} [Enc α] {a b t e : Nd} {x y : UInt64} {T E : α} (ha : DenT cx a env x) (hb : DenT cx b env y)
-    (ht : DenK cx K t env T) (he : DenK cx K e env E) : DenK cx K (.ite 1 a b t e) env (if x == y then T else E) := by
+theorem DenK.iteEq {α : Type} [Enc α] {a b t e : Nd} {x y : UInt64} {T E : α} {inst : Decidable ((x == y) = true)} (ha : DenT cx a env x) (hb : DenT cx b env y)
+    (ht : DenK cx K t env T) (he : DenK cx K e env E) : DenK cx K (.ite 1 a b t e) env (@ite α ((x == y) = true) inst T E) := by
   rcases ha with ha | ha <;> rcases hb with hb | hb <;>
     simp [DenK, ev, NanoMain.val, ha, hb, enc, bind, Except.bind]
   by_cases c : x = y
   · simp only [c, if_true]; exact ht
   · simp only [c, if_false]; exact he
-theorem DenK.iteLt {α : Type} [Enc α] {a b t e : Nd} {x y : UInt64} {T E : α} (ha : DenT cx a env x) (hb : DenT cx b env y)
-    (ht : DenK cx K t env T) (he : DenK cx K e env E) : DenK cx K (.ite 2 a b t e) env (if x < y then T else E) := by
+theorem DenK.iteLt {α : Type} [Enc α] {a b t e : Nd} {x y : UInt64} {T E : α} {inst : Decidable (x < y)} (ha : DenT cx a env x) (hb : DenT cx b env y)
+    (ht : DenK cx K t env T) (he : DenK cx K e env E) : DenK cx K (.ite 2 a b t e) env (@ite α (x < y) inst T E) := by
   rcases ha with ha | ha <;> rcases hb with hb | hb <;>
     simp [DenK, ev, NanoMain.val, ha, hb, enc, bind, Except.bind]
   by_cases c : x < y
   · simp only [c, if_true]; exact ht
   · simp only [c, if_false]; exact he
-theorem DenK.iteEqN {α : Type} [Enc α] {a b t e : Nd} {x y : Nat} {T E : α} (ha : DenT cx a env x) (hb : DenT cx b env y)
+theorem DenK.iteEqN {α : Type} [Enc α] {a b t e : Nd} {x y : Nat} {T E : α} {inst : Decidable ((x == y) = true)} (ha : DenT cx a env x) (hb : DenT cx b env y)
     (hx : x < 18446744073709551616) (hy : y < 18446744073709551616)
-    (ht : DenK cx K t env T) (he : DenK cx K e env E) : DenK cx K (.ite 1 a b t e) env (if x == y then T else E) := by
+    (ht : DenK cx K t env T) (he : DenK cx K e env E) : DenK cx K (.ite 1 a b t e) env (@ite α ((x == y) = true) inst T E) := by
   rcases ha with ha | ha <;> rcases hb with hb | hb <;>
     simp [DenK, ev, NanoMain.val, ha, hb, enc, bind, Except.bind]
   by_cases c : x = y
   · simp only [c, if_true]; exact ht
   · simp only [c, if_false]; rw [if_neg (fun h => c ((ofNat_inj hx hy).mp h))]; exact he
-theorem DenK.iteLtN {α : Type} [Enc α] {a b t e : Nd} {x y : Nat} {T E : α} (ha : DenT cx a env x) (hb : DenT cx b env y)
+theorem DenK.iteLtN {α : Type} [Enc α] {a b t e : Nd} {x y : Nat} {T E : α} {inst : Decidable (x < y)} (ha : DenT cx a env x) (hb : DenT cx b env y)
     (hx : x < 18446744073709551616) (hy : y < 18446744073709551616)
-    (ht : DenK cx K t env T) (he : DenK cx K e env E) : DenK cx K (.ite 2 a b t e) env (if x < y then T else E) := by
+    (ht : DenK cx K t env T) (he : DenK cx K e env E) : DenK cx K (.ite 2 a b t e) env (@ite α (x < y) inst T E) := by
   rcases ha with ha | ha <;> rcases hb with hb | hb <;>
     simp [DenK, ev, NanoMain.val, ha, hb, enc, bind, Except.bind]
   by_cases c : x < y
@@ -230,18 +230,20 @@ theorem defMean_ref {inp : List UInt8} {κ : Nat} {ms : List Fn} {d : DefA} {ps 
   rw [if_pos ⟨hps, hle⟩]
   rcases h with h | h <;> simp [Ref, h, hres, bind, Except.bind, pure, Except.pure]
 
-/-- `defMean_ref` with the body and the initial environment named explicitly (no unification through `DenT`) -/
-theorem defMean_den {inp : List UInt8} {κ : Nat} {ms : List Fn} {d : DefA} {ps : List W} {α : Type} [Enc α] (t : α) (e : Nd)
-    (env : List W) (hps : ps.length = d.npw) (hle : d.npw ≤ d.nslots) (hres : Enc.wd α = d.nres) (hb : d.body = e)
+/-- `defMean_ref` with the body and the initial environment named explicitly (no unification through `DenT`); the
+conclusion has a plain `v` (`hv` by `rfl`): unifying two `enc _` with a pending instance would unfold the value -/
+theorem defMean_den {inp : List UInt8} {κ : Nat} {ms : List Fn} {d : DefA} {ps v : List W} {α : Type} [Enc α] (t : α) (e : Nd)
+    (env : List W) (hv : v = enc t) (hps : ps.length = d.npw) (hle : d.npw ≤ d.nslots) (hres : Enc.wd α = d.nres) (hb : d.body = e)
     (henv : ps ++ List.replicate (d.nslots - d.npw) (.w 0) = env) (h : DenT ⟨inp, κ, ms⟩ e env t) :
-    Ref (defMean inp κ ms d ps) (enc t) := by
-  subst hb henv; exact defMean_ref hps hle (by rw [Enc.len]; exact hres) h.toVal
+    Ref (defMean inp κ ms d ps) v := by
+  subst hv hb henv; exact defMean_ref hps hle (by rw [Enc.len]; exact hres) h.toVal
 
 /-- `defMean_ref` for a loop def, the result width taken from the type -/
-theorem defMean_loop {inp : List UInt8} {κ : Nat} {ms : List Fn} {d : DefA} {ps : List W} {α : Type} [Enc α] (t : α)
-    (hps : ps.length = d.npw) (hle : d.npw ≤ d.nslots) (hres : Enc.wd α = d.nres)
+theorem defMean_loop {inp : List UInt8} {κ : Nat} {ms : List Fn} {d : DefA} {ps v : List W} {α : Type} [Enc α] (t : α)
+    (hv : v = enc t) (hps : ps.length = d.npw) (hle : d.npw ≤ d.nslots) (hres : Enc.wd α = d.nres)
     (h : Ref (NanoMain.val (ev ⟨inp, κ, ms⟩ d.body (ps ++ List.replicate (d.nslots - d.npw) (.w 0)))) (enc t)) :
-    Ref (defMean inp κ ms d ps) (enc t) := defMean_ref hps hle (by rw [Enc.len]; exact hres) h
+    Ref (defMean inp κ ms d ps) v := by
+  subst hv; exact defMean_ref hps hle (by rw [Enc.len]; exact hres) h
 
 /-! the table of per-def specifications -/
 def Good (specs : List (Fn → Prop)) (ms : List Fn) (n : Nat) : Prop :=

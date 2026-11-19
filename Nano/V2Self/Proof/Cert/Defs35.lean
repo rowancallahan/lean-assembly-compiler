@@ -2,35 +2,33 @@
 import Nano.V2Self.Proof.Cert.Specs
 import Nano.V2Self.C.Gen
 import Nano.V2Self.C.Own
-import Nano.V2Self.Proof.GenTop
 set_option maxHeartbeats 4000000
 set_option maxRecDepth 100000
 set_option linter.unusedVariables false
 namespace Cert
 open NanoMain ParSpec
 
-theorem ok_211 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 211) :
-    Spec211 inp (defMean inp κC ms PC.d211) := by
-  intro a0
-  refine defMean_den (C.g34 a0) PC.b211 ([.b a0] ++ List.replicate 1 (.w 0)) rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b211
+theorem ok_208 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 208) :
+    Spec208 inp (defMean inp κC ms PC.d208) := by
+  intro a0 a1
+  refine defMean_den (C.g31 a0 a1) PC.b208 ([.b a0, .w a1] ++ List.replicate 1 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b208
   den_unfold
   den
 
-theorem ok_212 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 212) :
-    Spec212 inp (defMean inp κC ms PC.d212) := by
+theorem ok_209 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 209) :
+    Spec209 inp (defMean inp κC ms PC.d209) := by
   intro a0 a1 a2
-  refine defMean_den (C.g35 a0 a1 a2) PC.b212 ([.b a0, .b a1, .w a2] ++ List.replicate 12 (.w 0)) rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b212
-  rw [GenRef.g35_fun]
-  dsimp (config := { zeta := false, iota := false, proj := false, eta := false }) only []
+  refine defMean_den (C.g32 a0 a1 a2) PC.b209 ([.b a0, .w a1, .w a2] ++ List.replicate 8 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b209
+  den_unfold
   den
 
-theorem ok_213 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 213) :
-    Spec213 inp (defMean inp κC ms PC.d213) := by
-  intro a0 a1 a2
-  refine defMean_den (C.g43 a0 a1 a2) PC.b213 ([.b a0, .w a1, .w a2]) rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b213
+theorem ok_210 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 210) :
+    Spec210 inp (defMean inp κC ms PC.d210) := by
+  intro a0
+  refine defMean_den (C.g33 a0) PC.b210 ([.w a0]) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b210
   den_unfold
   den
 

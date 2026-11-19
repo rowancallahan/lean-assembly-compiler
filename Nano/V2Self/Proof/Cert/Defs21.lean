@@ -11,7 +11,7 @@ open NanoMain ParSpec
 theorem ok_116 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 116) :
     Spec116 inp (defMean inp κC ms PC.d116) := by
   intro a0 a1 a2
-  refine defMean_den (C.v204 a0 a1 a2) PC.b116 ([.b a0, .w a1, .w a2] ++ List.replicate 3 (.w 0)) rfl (by decide) rfl rfl rfl ?_
+  refine defMean_den (C.v204 a0 a1 a2) PC.b116 ([.b a0, .w a1, .w a2] ++ List.replicate 3 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b116
   den_unfold
   den
@@ -19,7 +19,7 @@ theorem ok_116 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073
 theorem ok_117 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 117) :
     Spec117 inp (defMean inp κC ms PC.d117) := by
   intro a0 a1 a2 a3
-  refine defMean_den (C.v96 a0 a1 a2 a3) PC.b117 ([.b a0, .w a1, .w a2, .w a3]) rfl (by decide) rfl rfl rfl ?_
+  refine defMean_den (C.v96 a0 a1 a2 a3) PC.b117 ([.b a0, .w a1, .w a2, .w a3]) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b117
   den_unfold
   den
