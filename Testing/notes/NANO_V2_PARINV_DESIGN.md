@@ -54,3 +54,25 @@ NEXT: (a) `WF fs st` + preservation (stack depths per frame, ty set where read, 
 (b) soundness per ParSpec function, form: `StarN n (k ++ ks, st) ([], fin) → ∃ r, pX f … = some r ∧ StarN n' (ks, st') ([], fin)` for all
 fuel `f ≥ c·|toks| + d` (pTy: 2|ts|+2; expressions: 4|ts|+4 per the call-chain potential), relating nodes by `toNd` (drop input args/locals as v142);
 order: types (independent of the blocker), flatten (`flat`/`flatL` ↔ `Nd.ser ∘ toNd`), defs/binders/arms, expressions last (blocker).
+
+## HANDOFF — parser lead (2026-11-19, keep current)
+Role: review of Layers 2/3 + own families: loop defs 73–79, self-call 46/54, FINISH 80, def headers 60–70, flatten 81–83, `v98`/`fin`, validation.
+DONE (pushed, no sorry, std axioms; each module < 5 s):
+* `Proof/ParTree.lean` (pure, on `ParRun.RN`): `emit`/`emitL` = big-step of frames `.flat`/`.flatL`; `flat_run`, `flatL_run`
+  (`Star ([.flat n], st) ([], {st with out := st.out ++ emit n})`); `toNd` (raw tree → `ParSpec.Nd`, dropInp/mkPairFlat explicit); `ok`;
+  `emit_ser : ok n → emit n = (toNd n).ser`.
+* `Proof/ParInvFin.lean` (machine): `v98_eq` (output copy = heap suffix, or `[]` on fuel-out), `MainCells`, `fin_ne`
+  (`fin ts 1 h ≠ []` ⇒ status 2 ∧ a def exists ∧ main cells ∧ output = `h.drop (d11 + |ts| + 1)`).
+REVIEW FINDINGS (sent to B, C, owner):
+* Par1 ⊋ ParSpec, confirmed on native B1: (1) if/let operands [fixed: Par1 fix G]; (2) input = first List param regardless of binder group
+  (`(a b : List UInt8)`: npw 1 vs spec 2); (3) Nat outside fuel positions (let, tuple, param, result, state, under ×); (4) `: (Nat) →` loop header.
+  Proposed guards (C): v106, v130, v134, v137, v136, v116, v107 reject code 4; input rule: `pickPs` drops `single` or v132/v133 group flag.
+* `ParserSound` is false for arbitrary `ts`: v87 ORs numeral payload words (spec adds), v85/v86 accept any non-zero ident marker.
+  The top theorem needs `TokWF ts` (tokens decode ∧ payload words < 256), from Lex2Spec (D). Owner to confirm.
+* Design: Layer-2 state machine-typed (done by B: `RN`); validation is deferred (v209/v210 in the next v127); soundness direction is
+  run ⇒ spec (fuel-free machine grammar, then fuel bound 8|toks|+8); stack-typing `WF`; slots/widths only mod 2^64 (`isInp` must test
+  `b.toUInt64 == 0`; CALL emit `b.toUInt64 - ni.toUInt64`); step-arm env order (fuel binder outermost in Par1); def rows ≥ h[12] have
+  field 6 = 0 and param-code cells ≥ h[27] are 0; arena = consecutive postorder intervals (coverage for v209); pend tested only in v101/v107.
+NEXT (in order): (a) pure `shapeOK` (child counts per tag, preserved by mkNode sites) and `shapeOK ∧ nodeOK on every node ⇒ ok`;
+(b) pure bound `|out|` ≤ 6·steps (for `h.length < 2^64` in `fin_ne`); (c) machine lemmas for 81/82/83 and 80 on C's Rep (blocked until C's
+NodeRep/OpsRep are restated on `RN`); (d) headers 60–70, loop arms 73–79, 46/54; (e) top glue: Rep-simulation + `Accepts ⇒ refParse` ⇒ `ParserSound`.
