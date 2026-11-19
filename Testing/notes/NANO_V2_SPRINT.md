@@ -25,3 +25,6 @@ itself if O's push lands before 23:10 UTC; otherwise they are sprint units.
   `theorem NanoMain.C_correctG (HG : NanoMain.GenStage) : CompileCorrectL riscv compileC := NanoMain.C_correctL bndStage HG`
 - Proof: `fun _ _ _ hp hts _ => (parsed_bnd hp hts).1` (adjust to O's exact statement).
 - Build: `lake build Nano.V2Self.Proof.MainBnd` (MainTop ≈ 12 s). Deps: O's `parsed_bnd`.
+
+## SPRINT UNITS (E)
+None. GenStage is assembled (`SimW.gen_stage`, GenStageE.lean, b3b101b), modulo O's `HDB` (∀ d ∈ p, DB d for accepted programs). The room primitives and the OOM stub are done (RoomRun, CapHost).
