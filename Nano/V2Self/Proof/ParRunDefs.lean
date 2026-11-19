@@ -1,0 +1,51 @@
+/- Nano/V2Self/Proof/ParRunDefs: Layer-2 def level (parser lead), pure.  A run that finishes a def body passes through `.defs`
+with the def's header, flattened body and `21` emitted and the row appended (`defEnd_tail`). -/
+import Nano.V2Self.Proof.ParRunFlat
+namespace ParRun
+open ParSpec
+
+/-- a counted run to the empty stack can be cut at any intermediate configuration -/
+theorem StarN.cut {c d : List Frame × St} {m : Nat} {fin : St} (h1 : Star c d) (h2 : StarN m c ([], fin)) :
+    ∃ m', m' ≤ m ∧ StarN m' d ([], fin) := by
+  induction h1 generalizing m with
+  | refl => exact ⟨m, Nat.le_refl _, h2⟩
+  | step hs _ ih =>
+    cases h2 with
+    | refl => simp [stepS] at hs
+    | step hs' h' =>
+      rw [hs] at hs'; cases hs'
+      obtain ⟨m', hm, h3⟩ := ih h'
+      exact ⟨m', by omega, h3⟩
+
+/-- the def header words `defEnd` emits -/
+def defHdr (st : St) : List UInt64 :=
+  [20, st.defs.length.toUInt64, st.cur.npw.toUInt64, st.nx.toUInt64, (if st.cur.loop then 1 else 0), (cw st.cur.res).toUInt64]
+
+/-- **def tail**: `defEnd` checks the single body value, then the header, the flattened body and `21` are emitted, the row is
+appended, and the run continues at `.defs` -/
+theorem defEnd_tail {n : Nat} {ks : List Frame} {st fin : St} (h : StarN n (.defEnd :: ks, st) ([], fin)) :
+    ∃ z n', n' < n ∧ st.vals = [z] ∧ z.sh = st.cur.res ∧ z.isInp = false ∧
+      StarN n' (.defs :: ks, { st with out := st.out ++ defHdr st ++ z.words ++ [21], defs := st.defs ++ [st.cur] }) ([], fin) := by
+  match n, h with
+  | n + 1, h =>
+    obtain ⟨k, st1, h1, h2⟩ := h.head
+    obtain ⟨toks, nx, binds, defs, cur, vals, arena, ty, stash, arm, sslot, out, acc, all⟩ := st
+    simp only [stepF] at h1
+    match vals, h1 with
+    | [z], h1 =>
+      simp only at h1
+      split at h1
+      · rename_i hc
+        cases h1
+        refine ⟨z, ?_⟩
+        have r1 := flat_run z (.defClose :: ks)
+          ⟨toks, nx, binds, defs, cur, [z], arena, ty, stash, arm, sslot,
+            out ++ defHdr ⟨toks, nx, binds, defs, cur, [z], arena, ty, stash, arm, sslot, out, acc, all⟩, acc, all⟩
+        have r2 := Star.one (fs := ks) (f := .defClose) (st := ⟨toks, nx, binds, defs, cur, [z], arena, ty, stash, arm, sslot,
+          out ++ defHdr ⟨toks, nx, binds, defs, cur, [z], arena, ty, stash, arm, sslot, out, acc, all⟩ ++ z.words, acc, all⟩)
+          (by simp only [stepF]; rfl)
+        obtain ⟨m', hm, h3⟩ := StarN.cut (r1.trans r2) h2
+        exact ⟨m', by omega, rfl, hc.1, by simpa using hc.2, h3⟩
+      · cases h1
+
+end ParRun
