@@ -29,6 +29,10 @@ structure JTarget where
   scratch : List Nat
   /-- the target's side condition on a layout and program (ranges, window, encodability) -/
   lay : LayW → List J → Prop
+  /-- the entry memory as bytes (`LayW.m0` of the entry state) -/
+  m0 : M.State → Nat → Option (BitVec 8)
+  /-- a target-private invariant kept along `Rel` (RISC-V: Sail memory beyond 2^64 unchanged) -/
+  inv : LayW → M.State → Prop
 
 namespace JTarget
 variable (T : JTarget)
@@ -49,11 +53,16 @@ structure Rel (K : LayW) (C : List J) (s0 : T.M.State) (p : Nat × CallProbe.St)
     (T.M.observe s).register r = (T.M.observe s0).register r
   w : ∀ a, wok K a → ∀ k < 8, (T.M.observe s).memory (UInt64.ofNat (a + k)) = some (cbyte (p.2.m a) k)
   bw : ∀ a, io K a → (T.M.observe s).memory (UInt64.ofNat a) = some (cbyte (p.2.m (a - a % 8)) (a % 8))
-  fr : ∀ a, ¬ wok K (a - a % 8) → ¬ outB K a →
-    (T.M.observe s).memory (UInt64.ofNat a) = (T.M.observe s0).memory (UInt64.ofNat a)
+  fr : ∀ a, a < 2 ^ 64 → ¬ wok K (a - a % 8) → ¬ outB K a →
+    (T.M.observe s).memory (UInt64.ofNat a) = (K.m0 a).map UInt8.ofBitVec
+  inv : T.inv K s
 
 /-- **the laws a target proves** (per instruction kind, against the generic `Rel`) -/
 structure Laws : Prop where
+  /-- `m0` is what `observe` shows -/
+  m0_obs : ∀ (s : T.M.State) a, a < 2 ^ 64 → (T.M.observe s).memory (UInt64.ofNat a) = (T.m0 s a).map UInt8.ofBitVec
+  /-- the invariant holds at entry, for the entry memory -/
+  inv_init : ∀ (K : LayW) (s : T.M.State), K.m0 = T.m0 s → T.inv K s
   /-- one safe J step is a machine run -/
   step_ok : ∀ {K : LayW} {C : List J} {s0 : T.M.State} {a b : Nat × CallProbe.St} {s : T.M.State},
     T.lay K C → T.Rel K C s0 a s → SafeX K C a → CallProbe.step C a = some b →
