@@ -158,3 +158,26 @@ OPEN / NEXT (owner order 2026-11-19):
    cannot be lexed in the kernel in one piece; route: lex per chunk (Lexes is compositional at whitespace boundaries:
    prove `Lexes (x₁ ++ x₂) (t₁ ++ t₂)` from both parts when x₁ ends in a newline), then `refParse` on the whole token list.
 Gen-side bounds (DB, < 251, < 2^20, serialization < 2^31) are not parser facts: routed to A via owner.
+
+## HANDOFF — C-wide certificate (F, 2026-11-19, keep current)
+Goal: `Sem κC P_C inp = .ok y → y = C.m inp` (P_C = refParse of C's text, 233 defs, 46 fuel loops, pairs only in Own,
+`List UInt8` results only in g42/g41/m), then the AST ↔ text link (chunked lexing, MAIN item 3).
+DONE: `Proof/MainPure.lean` — cap-free evaluator `pev` / `pdefMean` / `pmeans` (pushes never fail), `ev_pev`, `sem_pure`
+(accepted `Sem` run = cap-free main's value).  Certificates are EQUATIONS in the pev world, no cap case splits.
+PLAN (per def i, modular in the earlier meanings):
+  `c_i (ms) (h_j : ms[j]? = some F_j) (e_j : ∀ args, F_j (enc args) = .ok (enc (C.f_j args))) … :
+     ∀ args, pdefMean inp ms D_i (enc args) = .ok (enc (C.f_i args))`
+  enc: UInt64 ↦ `.w x`; Nat fuel ↦ `.w n` with the Lean argument `n.toNat`; Buf ↦ `.b l`; pairs flat; the input parameter is
+  dropped (= `inp`); `len' x` needs `inp.length < 2^64`.
+  Pilot (scratch, works): k255 by `rfl`; q0 by `simp [pdefMean, pev, pevL, val, pprim, binop, …]`.
+  For big bodies do NOT simp-unfold (s3 has 40 chained lets, each used ~4 times: zeta blows up).  Use a judgment
+  `Ev n env vs := val (pev inp ms n env) = .ok vs` with syntax-directed rules that BUILD the Lean term: ite c=1 gives
+  `if x == y then a else b` (per value shape: word / buffer), ite c=2 `if x < y …`, letE gives `let x := v; R x`
+  (function metavariable, so sharing is kept), loc by defeq on the concrete env, call by the callee equation, prims by
+  the Prelude functions (`bpush`, `bget`, …).  The built term is then syntactically the Lean def body: close with `rfl`.
+  Tail positions of loop arms need an `Out`-level judgment (inl / CONTINUE payload); loops by the Ex3 induction template
+  (MainCert.lean).  A Python generator (AST dump: scratch `dump.lean` = refParse + `repr body` per def on
+  Testing/nano/v2self/self_S_input.txt) should emit D_i, the statement (types from self_S.lean signatures) and the rule
+  script, in modules of ≤ 5 min.  Slot kinds (word/buffer) can be inferred in the generator to pick the ite rule.
+  Composition: fold the c_i along `pmeans` (list of 233), then `sem_pure`.
+G's certificate HANDOFF was never pushed; nothing beyond MainCert ex1/ex3 exists.
