@@ -1,7 +1,6 @@
 /- Nano/V2Self/Proof/MainBridge4: the Sem ⇐ sv bridge, layer 4 — the node cases.  `NodeOK` = the value-mode claim
 for one node: E's `sv` succeeding implies `ev` succeeding with related results, invariants kept. -/
-import Nano.V2Self.Proof.MainBridge3
-import Nano.V2Self.Proof.MainOk
+import Nano.V2Self.Proof.MainKeep
 
 namespace NanoMain
 open Templates
@@ -39,13 +38,14 @@ theorem Src.pre {σ σ2 Γ F F2 F' env ew} (hCh : Ch σ σ2 Γ F F2 env ew) (m1 
 /-- the value-mode claim for node `e` in a frame (`Kk` = O's slot kinds, `oc` = O's def context) -/
 def NodeOK (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (e : ParSpec.Nd) : Prop :=
   CtxOK cx D → (∀ s, oc.K.getD s 0 ≤ 2) → ∀ Γ ks F F' es env ew σ sp H vs H', TyN D Γ none e ks → OwnSpec.chk oc e F = some (F', es) →
-    EnvI σ oc.K F Γ env ew → AHeap K.hb K.κ H σ → H.top % 8 = 0 → K.hb ≤ H.top → sv K e ew sp H = some (vs, H') →
+    EnvI σ oc.K F Γ env ew → AHeap K.hb K.κ H σ → H.top % 8 = 0 → K.hb ≤ H.top → R2 oc.K F →
+    sv K e ew sp H = some (vs, H') →
     ∃ σ' v, ev cx e env = .ok (.inl v) ∧ AHeap K.hb K.κ H' σ' ∧ ResI σ' oc.K F' Γ env ew es v vs ∧
       EnvI σ' oc.K F' Γ env ew ∧ Ch σ σ' Γ F F' env ew ∧ Mono F F' ∧ H'.top % 8 = 0 ∧ K.hb ≤ H'.top ∧
       Src σ Γ F F' env ew es v vs ∧ ∀ x ∈ es, x ≤ 1 ∨ 4 ≤ x
 
 theorem node_const (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (c : UInt64) : NodeOK cx K oc D (ParSpec.Nd.const c) := by
-  intro _ _ Γ ks F F' es env ew σ sp H vs H' _ hc hE hA h8 hb hs
+  intro _ _ Γ ks F F' es env ew σ sp H vs H' _ hc hE hA h8 hb _ hs
   simp only [OwnSpec.chk, Option.some.injEq, Prod.mk.injEq] at hc; obtain ⟨rfl, rfl⟩ := hc
   simp only [sv] at hs; obtain ⟨rfl, rfl⟩ := leafS_some hs
   exact ⟨σ, [.w c], rfl, hA, by simp [ResI, VR], hE, Ch.refl _ _ _ _ _, Mono.refl _, h8, hb, by simp [Src], by simp⟩
@@ -77,7 +77,7 @@ theorem resI_loc {σ : AH} {Kk : List Nat} {F : List Bool} {Γ : List (Option Kd
 
 theorem node_loc (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (s w : Nat) :
     NodeOK cx K oc D (ParSpec.Nd.loc s w) := by
-  intro _ hK2 Γ ks F F' es env ew σ sp H vs H' hT hc hE hA h8 hb hs
+  intro _ hK2 Γ ks F F' es env ew σ sp H vs H' hT hc hE hA h8 hb _ hs
   simp only [OwnSpec.chk] at hc; split at hc
   · simp only [Option.some.injEq, Prod.mk.injEq] at hc; obtain ⟨rfl, rfl⟩ := hc
     simp only [sv] at hs; obtain ⟨rfl, rfl⟩ := localS_some w s hs
@@ -167,9 +167,9 @@ theorem binop_aluf (op : Nat) (x y : UInt64) (h1 : 1 ≤ op) (h2 : op ≤ 8) : b
   unfold binop CallProbe.aluf
   rcases op with _ | _ | _ | _ | _ | _ | _ | _ | _ | op <;> simp_all <;> omega
 
-theorem node_bin (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (op : Nat) (a b : ParSpec.Nd)
+theorem node_bin (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hW : RsW oc) (op : Nat) (a b : ParSpec.Nd)
     (iha : NodeOK cx K oc D a) (ihb : NodeOK cx K oc D b) : NodeOK cx K oc D (ParSpec.Nd.bin op a b) := by
-  intro hC hK2 Γ ks F F' es env ew σ sp H vs H' hT hc hE hA h8 hhb hs
+  intro hC hK2 Γ ks F F' es env ew σ sp H vs H' hT hc hE hA h8 hhb hr hs
   cases hT with
   | bin o1 o2 ta tb =>
     simp only [OwnSpec.chk, Option.bind_eq_some_iff, Option.map_eq_some_iff] at hc
@@ -178,9 +178,9 @@ theorem node_bin (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (op : Nat)
     simp only [sv, fin2S, pairS, Option.bind_eq_some_iff] at hs
     obtain ⟨⟨u, Hu⟩, ⟨⟨ua, H1⟩, hsa, ⟨ub, H2⟩, hsb, hpe⟩, hfin⟩ := hs
     simp only [Option.some.injEq, Prod.mk.injEq] at hpe; obtain ⟨rfl, rfl⟩ := hpe
-    obtain ⟨σ1, v1, eva, hA1, hR1, hE1, hCh1, hM1, h81, hb1, -, -⟩ := iha hC hK2 Γ _ F _ _ env ew σ sp H ua H1 ta hca hE hA h8 hhb hsa
+    obtain ⟨σ1, v1, eva, hA1, hR1, hE1, hCh1, hM1, h81, hb1, -, -⟩ := iha hC hK2 Γ _ F _ _ env ew σ sp H ua H1 ta hca hE hA h8 hhb hr hsa
     obtain ⟨σ2, v2, evb, hA2, hR2, hE2, hCh2, hM2, h82, hb2, -, -⟩ :=
-      ihb hC hK2 Γ _ _ _ _ env ew σ1 _ H1 ub H2 tb hcb hE1 hA1 h81 hb1 hsb
+      ihb hC hK2 Γ _ _ _ _ env ew σ1 _ H1 ub H2 tb hcb hE1 hA1 h81 hb1 (hr.keep (chk_keep hK2 hW ta rfl _ _ _ hca).1) hsb
     obtain ⟨y1, hlen, wa, wb⟩ := two_spec hy
     obtain ⟨-, ka, -⟩ := ev_ok hC ta env hE.ty
     obtain ⟨-, kb, -⟩ := ev_ok hC tb env hE.ty

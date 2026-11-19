@@ -89,19 +89,21 @@ theorem okAll_idx {ds : Option (List Nat)} {F : List Bool} : ∀ {o : Nat} {es :
     have := okAll_idx h.2 i e he; rwa [show o + 1 + i = o + (i + 1) by omega] at this
 
 /-- **argument lists**: the list analogue of `NodeOK`, with the destination checks each entry passed -/
-theorem lst_ok (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hC : CtxOK cx D) (hK2 : ∀ s, oc.K.getD s 0 ≤ 2) :
+theorem lst_ok (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hC : CtxOK cx D) (hK2 : ∀ s, oc.K.getD s 0 ≤ 2)
+    (hW : RsW oc) :
     ∀ (cs : List ParSpec.Nd), (∀ n ∈ cs, NodeOK cx K oc D n) →
     ∀ {Γ ks ds F F1 es0 esA env ew σ sp H vs H'}, TyL D Γ cs ks → OwnSpec.lstA oc cs ds F es0 = some (F1, esA) →
-    EnvI σ oc.K F Γ env ew → AHeap K.hb K.κ H σ → H.top % 8 = 0 → K.hb ≤ H.top → svL K cs ew sp H = some (vs, H') →
+    EnvI σ oc.K F Γ env ew → AHeap K.hb K.κ H σ → H.top % 8 = 0 → K.hb ≤ H.top → R2 oc.K F →
+    svL K cs ew sp H = some (vs, H') →
     ∃ σ' v esN, esA = es0 ++ esN ∧ evL cx cs env = .ok v ∧ AHeap K.hb K.κ H' σ' ∧ ResI σ' oc.K F1 Γ env ew esN v vs ∧
       EnvI σ' oc.K F1 Γ env ew ∧ Ch σ σ' Γ F F1 env ew ∧ Mono F F1 ∧ H'.top % 8 = 0 ∧ K.hb ≤ H'.top ∧
       Src σ Γ F F1 env ew esN v vs ∧ (∀ x ∈ esN, x ≤ 1 ∨ 4 ≤ x) ∧
       ∀ i e, esN[i]? = some e → ∃ G, OwnSpec.ok1 G e (OwnSpec.dest ds (es0.length + i)) = true
-  | [], _, Γ, ks, ds, F, F1, es0, esA, env, ew, σ, sp, H, vs, H', _, hl, hE, hA, h8, hb, hs => by
+  | [], _, Γ, ks, ds, F, F1, es0, esA, env, ew, σ, sp, H, vs, H', _, hl, hE, hA, h8, hb, _, hs => by
     simp only [OwnSpec.lstA, Option.some.injEq, Prod.mk.injEq] at hl; obtain ⟨rfl, rfl⟩ := hl
     simp only [svL, nilS, Option.some.injEq, Prod.mk.injEq] at hs; obtain ⟨rfl, rfl⟩ := hs
     exact ⟨σ, [], [], by simp, rfl, hA, trivial, hE, Ch.refl _ _ _ _ _, Mono.refl _, h8, hb, trivial, by simp, by simp⟩
-  | n :: r, hN, Γ, ks, ds, F, F1, es0, esA, env, ew, σ, sp, H, vs, H', hT, hl, hE, hA, h8, hb, hs => by
+  | n :: r, hN, Γ, ks, ds, F, F1, es0, esA, env, ew, σ, sp, H, vs, H', hT, hl, hE, hA, h8, hb, hr, hs => by
     cases hT with
     | cons tn tr =>
       simp only [OwnSpec.lstA, Option.bind_eq_some_iff] at hl
@@ -112,9 +114,10 @@ theorem lst_ok (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hC : CtxOK 
         obtain ⟨⟨u1, H1⟩, hs1, ⟨u2, H2⟩, hs2, he⟩ := hs
         simp only [Option.some.injEq, Prod.mk.injEq] at he; obtain ⟨rfl, rfl⟩ := he
         obtain ⟨σ1, v1, evn, hA1, hR1, hE1, hCh1, hM1, h81, hb1, hS1, hsh1⟩ :=
-          hN n (by simp) hC hK2 Γ _ F _ _ env ew σ sp H u1 H1 tn hcn hE hA h8 hb hs1
+          hN n (by simp) hC hK2 Γ _ F _ _ env ew σ sp H u1 H1 tn hcn hE hA h8 hb hr hs1
         obtain ⟨σ2, v2, esR, hesA, evr, hA2, hR2, hE2, hCh2, hM2, h82, hb2, hS2, hsh2, hok2⟩ :=
-          lst_ok cx K oc D hC hK2 r (fun m hm => hN m (by simp [hm])) tr hl hE1 hA1 h81 hb1 hs2
+          lst_ok cx K oc D hC hK2 hW r (fun m hm => hN m (by simp [hm])) tr hl hE1 hA1 h81 hb1
+            (hr.keep (chk_keep hK2 hW tn rfl _ _ _ hcn).1) hs2
         have ln1 := hR1.len
         refine ⟨σ2, v1 ++ v2, x.2 ++ esR, by rw [hesA, List.append_assoc], ?_, hA2, ?_, hE2,
           Ch.trans hCh1 hCh2 hM1 hM2, hM1.trans hM2, h82, hb2, ?_, ?_, ?_⟩
@@ -178,16 +181,16 @@ theorem fin_none_tr {F F2 : List Bool} {es es2 : List Nat} (h : ∀ e ∈ es, (e
   simp only [Option.some.injEq, Prod.mk.injEq] at he; obtain ⟨rfl, rfl⟩ := he
   rw [tr_finC es F 0 h, h3]; rfl
 
-theorem node_pair (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (cs : List ParSpec.Nd)
+theorem node_pair (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hW : RsW oc) (cs : List ParSpec.Nd)
     (hN : ∀ n ∈ cs, NodeOK cx K oc D n) : NodeOK cx K oc D (ParSpec.Nd.pair cs) := by
-  intro hC hK2 Γ ks F F' es env ew σ sp H vs H' hT hc hE hA h8 hhb hs
+  intro hC hK2 Γ ks F F' es env ew σ sp H vs H' hT hc hE hA h8 hhb hr hs
   cases hT with
   | pair tl =>
     simp only [OwnSpec.chk, Option.bind_eq_some_iff] at hc
     obtain ⟨x, hl, hf⟩ := hc
     simp only [sv] at hs
     obtain ⟨σ1, v, esN, hesA, evl, hA1, hR1, hE1, hCh1, hM1, h81, hb1, hS1, -, hok⟩ :=
-      lst_ok cx K oc D hC hK2 cs hN tl hl hE hA h8 hhb hs
+      lst_ok cx K oc D hC hK2 hW cs hN tl hl hE hA h8 hhb hr hs
     simp only [List.nil_append] at hesA
     have hsh : ∀ e ∈ x.2, (e < 4 → e ≤ 1) ∧ (4 ≤ e → e % 4 ≤ 1) := by
       intro e he

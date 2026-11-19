@@ -212,10 +212,10 @@ theorem let_src1 {σ σ1 : AH} {Kk : List Nat} {F F1 G : List Bool} {Γ : List (
     obtain ⟨j, l', a, b, c, d⟩ := src_idx i hS esi et ri hs
     exact ⟨j, l', a, ⟨b.1, mG j b.2⟩, c, d⟩
 
-theorem node_let (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hRs : RsOK oc D) (s w : Nat)
+theorem node_let (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hRs : RsOK oc D) (hW : RsW oc) (s w : Nat)
     (v b : ParSpec.Nd) (ihv : NodeOK cx K oc D v) (ihb : NodeOK cx K oc D b) :
     NodeOK cx K oc D (ParSpec.Nd.letE s w v b) := by
-  intro hC hK2 Γ ks F F' es env ew σ sp H vs H' hT hc hE hA h8 hhb hs
+  intro hC hK2 Γ ks F F' es env ew σ sp H vs H' hT hc hE hA h8 hhb hr hs
   cases hT with
   | letE hv htv hsl hfr hb =>
     rename_i tv
@@ -228,7 +228,7 @@ theorem node_let (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hRs : RsO
       simp only [sv, letS, Option.bind_eq_some_iff] at hs
       obtain ⟨⟨r, H1⟩, hsv, hsb⟩ := hs
       obtain ⟨σ1, x, evv, hA1, hR1, hE1, hCh1, hM1, h81, hb1, hS1, -⟩ :=
-        ihv hC hK2 Γ tv F _ _ env ew σ sp H r H1 hv hcv hE hA h8 hhb hsv
+        ihv hC hK2 Γ tv F _ _ env ew σ sp H r H1 hv hcv hE hA h8 hhb hr hsv
       obtain ⟨m2, hR2, r2, -, -⟩ := tr_spec hK2 _ x r _ _ _ hR1 hE1 htr
       obtain ⟨-, hS2⟩ := tr_src _ _ _ _ _ _ hR1 hM1 hS1 htr
       obtain ⟨-, kv, -⟩ := ev_ok hC hv env hE.ty
@@ -240,9 +240,12 @@ theorem node_let (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hRs : RsO
       obtain ⟨env1, e1, he1⟩ := setSlots_ok (vs := x) (s := s) hE.ty (by omega)
       rw [hss] at e1; cases e1
       rw [hk] at he1
+      have hrv : R2 oc.K v1.1 := by
+        obtain ⟨kv, tv'⟩ := chk_keep hK2 hW hv rfl _ _ _ hcv
+        exact hr.keep (kv.trans (tr_keep _ _ _ _ tv' htr).1)
       have hEb := let_envI (r := r) (hE1.mono m2) hR2 hv12 r2 hxl hsK htv hsl hfr he1
       obtain ⟨σ2, y, evb, hA2, hR3, hE3, hCh3, hM3, h83, hb3, hS3, -⟩ :=
-        ihb hC hK2 _ ks _ _ _ _ _ σ1 sp H1 vs H' hb hcb hEb hA1 h81 hb1 hsb
+        ihb hC hK2 _ ks _ _ _ _ _ σ1 sp H1 vs H' hb hcb hEb hA1 h81 hb1 hrv hsb
       obtain ⟨m4, hR4, r4, -, -⟩ := tr_spec hK2 _ y vs _ _ _ hR3 hE3 htr2
       obtain ⟨-, hS4⟩ := tr_src _ _ _ _ _ _ hR3 hM3 hS3 htr2
       have P := let_outer (r := r) (ew := ew) hxl htv hsl hel hfr
