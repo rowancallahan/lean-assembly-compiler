@@ -1,7 +1,8 @@
-/- Nano/V2Self/Proof/ParInvArg: Layer-3 handler for task 47 `argCheck c k` (v122), box G.
+/- Nano/V2Self/Proof/ParInvArg: Layer-3 handlers for task 47 `argCheck c k` (v122) and task 48 `mkCall c n` (v123, on C's `rep_v5`), box G.
 `rep_scratch`: `Rep` does not read the scratch cells 21 / 31.  `v122_eq`: the handler as one expression. -/
 import Nano.V2Self.Proof.ParInvCall
 import Nano.V2Self.Proof.ParInvPrim
+import Nano.V2Self.Proof.ParInvBuild
 namespace ParInv
 open C BufL ParSpec ParRun
 
@@ -231,5 +232,46 @@ theorem h_argCheck {h ts : Buf} {st : St} {c : Callee} {k : Nat} {fs : List Fram
             · rw [if_neg c5] at hs; exact (dead hs).elim
           · rw [if_neg c4] at hs; exact (dead hs).elim
       · rw [if_neg c2] at hs; exact (dead hs).elim
+
+/-! ## task 48: `mkCall c n` (v123) -/
+theorem h_mkCall {h ts : Buf} {st : St} {c : Callee} {n : Nat} {fs : List Frame} (r : Rep h ts st (.mkCall c n :: fs))
+    (hD : inDefF fs = true) (hnf : fs.all (fun f => !f.isFlat)) (hn : n < 4096) (hc : calleeOK st c)
+    (hs : bget (step h) 0 ≠ 0) :
+    ∃ fr st', stepF (.mkCall c n) st = some (fr, st') ∧ Rep (step h) ts st' (fr ++ fs) := by
+  obtain ⟨E, ⟨ea, eb⟩, R1⟩ := rep_pop r rfl
+  simp only [Frame.code] at E
+  generalize (taskAt h fs.length).a = a at E ea
+  generalize (taskAt h fs.length).b = b at E eb
+  generalize bset h 5 fs.length.toUInt64 = g at E R1
+  have ebn : b = n.toUInt64 := by rw [← eb]; simp
+  have rD : DefsRep g st true := hD ▸ R1.2.2.2.2.2.2.1
+  subst ea ebn
+  cases c with
+  | df j =>
+    have hjl : j < (rows st).length := hc
+    obtain ⟨d, hd⟩ : ∃ d, (rows st)[j]? = some d := ⟨_, List.getElem?_eq_getElem hjl⟩
+    obtain ⟨hj512, _, _, _, rres, _⟩ := row_rep rD hd
+    have a512 : j.toUInt64 < 512 := by rw [UInt64.lt_iff_toNat_lt]; simp; omega
+    have ev : step h = v5 g (8 : Nat).toUInt64 j.toUInt64 n.toUInt64 (bget g (d7 + 8 * j.toUInt64 + 3)) (b01 false) n.toUInt64 := by
+      rw [E]; simp [v96, v123, calleeW, a512, b01]
+    rw [ev] at hs ⊢
+    obtain ⟨st', hm, R2⟩ := rep_v5 R1 hnf n 8 j n d.res false _ rres (by decide) (by omega) (by omega) hn hs
+    exact ⟨[], st', by simp [stepF, hd, hm], R2⟩
+  | pr p =>
+    have hp : p < 2 ^ 32 := hc
+    have a512 : ¬ (512 + p).toUInt64 < 512 := by rw [UInt64.lt_iff_toNat_lt]; simp; omega
+    have ep : (512 + p).toUInt64 - 512 = p.toUInt64 := by
+      apply UInt64.toNat_inj.mp
+      rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr (by simp; omega))]
+      simp; omega
+    have ev : step h = v5 g (9 : Nat).toUInt64 p.toUInt64 (0 : Nat).toUInt64 (v92 p.toUInt64) (b01 false) n.toUInt64 := by
+      have e0 : (512 + p).toUInt64 = 512 + UInt64.ofNat p := by simp
+      have a512' : ¬ (512 + UInt64.ofNat p < 512) := e0 ▸ a512
+      have ep' : 512 + UInt64.ofNat p - 512 = UInt64.ofNat p := by rw [← e0]; exact ep
+      rw [E]; simp [v96, v123, calleeW, a512', ep', b01]
+    rw [ev] at hs ⊢
+    obtain ⟨st', hm, R2⟩ := rep_v5 R1 hnf n 9 p 0 (some (primRes p)) false _ (v92_code g (by omega)) (by decide) (by omega)
+      (by decide) hn hs
+    exact ⟨[], st', by simp [stepF, hm], R2⟩
 
 end ParInv
