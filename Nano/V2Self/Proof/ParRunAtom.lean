@@ -14,6 +14,9 @@ def bdPs (bd : Bd) : Option Ps :=
   | some s => some (.sh s)
   | none => none
 
+/-- parameter `i` is the first code-`ls` parameter -/
+def FirstLs (ws : List Sh) (i : Nat) : Prop := ws[i]? = some .ls ∧ ∀ j, j < i → ws[j]? ≠ some .ls
+
 /-- Layer-2 tables ↔ ParSpec context -/
 structure CxRel (st : St) (cx : Cx) : Prop where
   /-- every binding is typed (binder placeholders exist only while a binder group is parsed) -/
@@ -24,8 +27,11 @@ structure CxRel (st : St) (cx : Cx) : Prop where
   env : ∀ x, findEnv cx.env x = (findB st.binds x).bind fun bd => (bdPs bd).map fun p => (bd.slot, p)
   /-- def lookup among the FINISHED defs -/
   defs : ∀ x, (findDef cx.defs x).map (fun e => e.1) = findD st.defs x
-  /-- a finished row is its DefI -/
-  row : ∀ x j di, findDef cx.defs x = some (j, di) → ∃ d, st.defs[j]? = some d ∧ di.params.map psCode = d.params ∧ d.res = some di.res
+  /-- a finished row is its DefI; its input parameter is the row's first List code (fix J), and no parameter is a bare Nat shape -/
+  row : ∀ x j di, findDef cx.defs x = some (j, di) → ∃ d, st.defs[j]? = some d ∧ di.params.map psCode = d.params ∧ d.res = some di.res ∧
+    (∀ (i : Nat) (h : i < di.params.length), (di.params[i] = .inp ↔ FirstLs d.params i)) ∧ ∀ p ∈ di.params, p ≠ .sh .nt
+  /-- the def being parsed (self-call target) is not among the finished defs (ParSpec.pDef rejects duplicates) -/
+  selfFresh : ∀ sn sps, cx.self = some (sn, sps) → findDef cx.defs sn = none
 
 /-- node ↔ ParSpec type -/
 def TyRel (v : RN) : Ty → Prop
@@ -82,7 +88,7 @@ theorem atomLeaf_spec {st st1 : St} {cx : Cx} (hc : CxRel st cx) (h : AtomLeaf s
     rw [hd] at hdf
     obtain ⟨⟨j', di⟩, hfd, hj'⟩ := Option.map_eq_some_iff.mp hdf
     simp only at hj'; subst hj'
-    obtain ⟨d', hd', hpar, hres⟩ := hc.row x _ di hfd
+    obtain ⟨d', hd', hpar, hres, _, _⟩ := hc.row x _ di hfd
     rw [hj] at hd'; cases hd'
     have hemp : di.params = [] := by
       have : (di.params.map psCode).length = 0 := by rw [hpar]; exact hp

@@ -289,9 +289,6 @@ theorem prim_inpPair {t : Nat} (h1 : 38 < t) (h2 : t < 48) {ps : List Ps} {rs : 
     · simp [hm, h4] at hok
 
 /-! ## the input rule from the deferred validation (`inpMatch`, v210) — def CALLs -/
-/-- parameter `i` is the first code-`ls` parameter -/
-def FirstLs (ws : List Sh) (i : Nat) : Prop := ws[i]? = some .ls ∧ ∀ j, j < i → ws[j]? ≠ some .ls
-
 theorem inpMatch_get : ∀ (ws : List Sh) (g : Bool) (ks : List RN), inpMatch ws g ks = true →
     ∀ (i : Nat) (hi : i < ks.length), (ks[i].isInp = true ↔ (g = false ∧ FirstLs ws i))
   | _, _, [], _, i, hi => absurd hi (by simp)

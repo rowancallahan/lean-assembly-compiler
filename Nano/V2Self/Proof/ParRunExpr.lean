@@ -77,8 +77,8 @@ theorem mkBin_inv {op st k st'} (h : stepF (.mkBin op) st = some (k, st')) :
 
 theorem CxRel.transport {st st' : St} {cx : Cx} (h : CxRel st cx) (hb : st'.binds = st.binds) (hd : st'.defs = st.defs) :
     CxRel st' cx := by
-  obtain ⟨h1, h2, h3, h4, h5⟩ := h
-  exact ⟨by rw [hb]; exact h1, by rw [hb]; exact h2, by rw [hb]; exact h3, by rw [hd]; exact h4, by rw [hd]; exact h5⟩
+  obtain ⟨h1, h2, h3, h4, h5, h6⟩ := h
+  exact ⟨by rw [hb]; exact h1, by rw [hb]; exact h2, by rw [hb]; exact h3, by rw [hd]; exact h4, by rw [hd]; exact h5, h6⟩
 
 theorem TyRel.notInp {v : RN} {ty : Ty} (h : TyRel v ty) (hu : v.sh = some .uw) (hb : ty ≠ .bot) : v.isInp = false := by
   cases ty with

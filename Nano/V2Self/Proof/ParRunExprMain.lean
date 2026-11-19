@@ -385,10 +385,10 @@ theorem findEnv_cons (env : List (List Nat × Nat × Ps)) (x : List Nat) (slot :
 theorem CxRel.push {st st' : St} {cx : Cx} {x : List Nat} {slot : Nat} {s : Sh} (hc : CxRel st cx) (hs : s ≠ .nt)
     (hb : st'.binds = st.binds ++ [⟨x, slot, some s, false⟩]) (hd : st'.defs = st.defs) :
     CxRel st' { cx with env := (x, slot, .sh s) :: cx.env } := by
-  obtain ⟨h1, h2, h3, h4, h5⟩ := hc
+  obtain ⟨h1, h2, h3, h4, h5, h6⟩ := hc
   have hps : bdPs ⟨x, slot, some s, false⟩ = some (.sh s) := by
     unfold bdPs; cases s <;> simp_all
-  refine ⟨?_, ?_, ?_, by rw [hd]; exact h4, by rw [hd]; exact h5⟩
+  refine ⟨?_, ?_, ?_, by rw [hd]; exact h4, by rw [hd]; exact h5, h6⟩
   · intro y bd hy; rw [hb, findB_push] at hy; split at hy
     · cases hy; rfl
     · exact h1 y bd hy

@@ -14,10 +14,10 @@ structure Pushed (st st' : St) (v : RN) : Prop where
   defs : st'.defs = st.defs
   cur : st'.cur = st.cur
 
-theorem CxRel.transport {st st' : St} {cx : Cx} (h : CxRel st cx) (hb : st'.binds = st.binds) (hd : st'.defs = st.defs) :
+theorem CxRel.transportG {st st' : St} {cx : Cx} (h : CxRel st cx) (hb : st'.binds = st.binds) (hd : st'.defs = st.defs) :
     CxRel st' cx := by
-  obtain ⟨a, b, c, d, e⟩ := h
-  exact ⟨by rw [hb]; exact a, by rw [hb]; exact b, by rw [hb]; exact c, by rw [hd]; exact d, by rw [hd]; exact e⟩
+  obtain ⟨a, b, c, d, e, f⟩ := h
+  exact ⟨by rw [hb]; exact a, by rw [hb]; exact b, by rw [hb]; exact c, by rw [hd]; exact d, by rw [hd]; exact e, f⟩
 
 /-- an argument value: typed, not a provisional self-call, and a `len'` node has the Nat code -/
 def ValOK (v : RN) (ty : Ty) : Prop := TyRel v ty ∧ v.pend = false ∧ (v.tag = 9 → v.a = 1 → v.sh = some .nt)
@@ -91,7 +91,7 @@ theorem args_spec {N : Nat} {cx : Cx} (hP : ParenH N cx) : ∀ {k m : Nat} {st s
   | @cons k st st1 st2 n1 n2 ha _ ih =>
     intro hm hc
     obtain ⟨v, ty, hpu, hty, F1, hp1⟩ := atomSeg_spec hP (by omega) ha hc
-    obtain ⟨vs, hlen, hvals, hb, hd, hcu, htys, F2, hp2⟩ := ih (by omega) (hc.transport hpu.binds hpu.defs)
+    obtain ⟨vs, hlen, hvals, hb, hd, hcu, htys, F2, hp2⟩ := ih (by omega) (hc.transportG hpu.binds hpu.defs)
     refine ⟨(v, ty) :: vs, by simp [hlen], ?_, hb.trans hpu.binds, hd.trans hpu.defs, hcu.trans hpu.cur, ?_, max F1 F2 + 1, ?_⟩
     · rw [hvals, hpu.vals]; simp
     · intro p hp
