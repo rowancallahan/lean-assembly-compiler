@@ -68,13 +68,13 @@ theorem gen_main (KL : SimW.LayW) (c : List UInt8) {ts : List UInt64} {p : List 
       ∀ E0, ((s0.x 2 >>> 3) <<< 3).toNat = E0 → s0.x 0 = 0 → (s0.x 12).toNat % 8 = 0 →
         (s0.x 12).toNat + 16 ≤ E0 → E0 < 2 ^ 62 → s0.b + 4 * C.length < 2 ^ 64 →
         (s0.x 10).toNat + (s0.x 11).toNat < 2 ^ 63 →
-        ((s0.x 10).toNat + (s0.x 11).toNat ≤ (s0.x 12).toNat ∨ E0 + 8 ≤ (s0.x 10).toNat) →
+        ((s0.x 10).toNat + (s0.x 11).toNat ≤ (s0.x 12).toNat ∨ E0 ≤ (s0.x 10).toNat) →
         KL.lo ≤ (s0.x 12).toNat → E0 ≤ KL.hi → s0.b = KL.base →
         (∀ i, i < (s0.x 11).toNat → SimW.bok KL ((s0.x 10).toNat + i)) →
         ∀ vs H', semAt P p (p.length - 1) [] E0 ⟨(s0.x 12).toNat + 16, fun _ => none⟩ = some (vs, H') →
         ∃ y, NanoMain.Sem NanoMain.κC p x = .ok y ∧
           ((s0.x 13).toNat + y.length < 2 ^ 64 →
-           ((s0.x 13).toNat + y.length ≤ (s0.x 12).toNat ∨ E0 + 8 ≤ (s0.x 13).toNat) →
+           ((s0.x 13).toNat + y.length ≤ (s0.x 12).toNat ∨ E0 ≤ (s0.x 13).toNat) →
            (∀ i, i < y.length → SimW.sok KL ((s0.x 13).toNat + i)) →
            ∃ s3, SimW.SStarX KL C (0, s0) (pr, s3) ∧ C[pr]? = some (.jalr 0 1) ∧ s3.b = s0.b ∧ s3.x 1 = s0.x 1 ∧
              s3.x 8 = s0.x 8 ∧ s3.x 10 = (if y = [] then 1 else 0) ∧ s3.x 11 = UInt64.ofNat y.length ∧

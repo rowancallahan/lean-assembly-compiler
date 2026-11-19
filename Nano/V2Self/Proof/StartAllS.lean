@@ -19,7 +19,7 @@ theorem start_runX {KL : LayW} {C : List J} {S w hb E0 : Nat} {IG : St → Prop}
     (hPN : (vs.getD 0 0).toNat + 16 + 8 * N.toNat ≤ H'.top)
     (hbs : ∀ i, i < N.toNat → H'.m ((vs.getD 0 0).toNat + 16 + 8 * i) = some (bs i))
     (hQ : (s0.x 13).toNat + N.toNat < 2 ^ 64)
-    (hout : (s0.x 13).toNat + N.toNat ≤ (s0.x 12).toNat ∨ E0 + 8 ≤ (s0.x 13).toNat)
+    (hout : (s0.x 13).toNat + N.toNat ≤ (s0.x 12).toNat ∨ E0 ≤ (s0.x 13).toNat)
     (hlo : KL.lo ≤ (s0.x 12).toNat) (hhi : E0 ≤ KL.hi) (hbase : s0.b = KL.base) (hE8 : E0 % 8 = 0)
     (hCl : S + 32 ≤ C.length) (hC18 : C.length < 2 ^ 18) (hwl : w < C.length)
     (hwO : ∀ i, i < N.toNat → sok KL ((s0.x 13).toNat + i)) :

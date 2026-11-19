@@ -22,13 +22,13 @@ theorem gen_runS (KL : SimW.LayW) (c : List UInt8) (ds : List DefA) (hXl : (seri
          ∀ E0, ((s0.x 2 >>> 3) <<< 3).toNat = E0 → s0.x 0 = 0 → (s0.x 12).toNat % 8 = 0 →
          (s0.x 12).toNat + 16 ≤ E0 → E0 < 2 ^ 62 → s0.b + 4 * C.length < 2 ^ 64 →
          (s0.x 10).toNat + (s0.x 11).toNat < 2 ^ 63 →
-         ((s0.x 10).toNat + (s0.x 11).toNat ≤ (s0.x 12).toNat ∨ E0 + 8 ≤ (s0.x 10).toNat) →
+         ((s0.x 10).toNat + (s0.x 11).toNat ≤ (s0.x 12).toNat ∨ E0 ≤ (s0.x 10).toNat) →
          ∀ vs H', semAt P ds (hs.length - 1) [] E0 ⟨(s0.x 12).toNat + 16, fun _ => none⟩ = some (vs, H') →
          ∀ (N : UInt64) (bs : Nat → UInt64), H'.m (vs.getD 0 0).toNat = some N →
          (s0.x 12).toNat + 16 ≤ (vs.getD 0 0).toNat → (vs.getD 0 0).toNat + 16 + 8 * N.toNat ≤ H'.top →
          (∀ i, i < N.toNat → H'.m ((vs.getD 0 0).toNat + 16 + 8 * i) = some (bs i)) →
          (s0.x 13).toNat + N.toNat < 2 ^ 64 →
-         ((s0.x 13).toNat + N.toNat ≤ (s0.x 12).toNat ∨ E0 + 8 ≤ (s0.x 13).toNat) →
+         ((s0.x 13).toNat + N.toNat ≤ (s0.x 12).toNat ∨ E0 ≤ (s0.x 13).toNat) →
          KL.lo ≤ (s0.x 12).toNat → E0 ≤ KL.hi → s0.b = KL.base →
          (∀ i, i < (s0.x 11).toNat → SimW.bok KL ((s0.x 10).toNat + i)) →
          (∀ i, i < N.toNat → SimW.sok KL ((s0.x 13).toNat + i)) →
@@ -60,7 +60,7 @@ theorem gen_runS (KL : SimW.LayW) (c : List UInt8) (ds : List DefA) (hXl : (seri
     rw [← hCd] at AC ⊢; exact At.cast (At.right AC) (by simp; rfl)
   have hsl : 0 < hs.length := List.length_pos_iff.mpr hne
   have hM := gen_defs_runS P ds C (IGs s0 inp) E0 (s0.x 10) KL
-    hs.length (g34 bnew).length (by rw [hPhb]; exact IGs_ok s0 _ E0 hin) hE62
+    hs.length (g34 bnew).length (by rw [hPhb]; exact IGs_ok s0 _ E0 hE8 hin) hE62
     (fun s hs => by rw [hs.2.2.2.2.2]; exact hcb)
     (fun s hs => by rw [hPc, hPi]; exact ⟨hs.1, hs.2.1, hs.2.2.1, hin63⟩)
     (fun s hs i hi => by rw [hs.1, hs.2.1] at *; exact hinw i hi) hc18 (by rw [hDd]; exact AD)

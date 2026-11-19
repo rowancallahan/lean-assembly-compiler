@@ -21,7 +21,7 @@ theorem start_run {C : List J} {S w hb E0 : Nat} {IG : St → Prop}
     (hPN : (vs.getD 0 0).toNat + 16 + 8 * N.toNat < H'.top)
     (hbs : ∀ i, i < N.toNat → H'.m ((vs.getD 0 0).toNat + 16 + 8 * i) = some (bs i))
     (hQ : (s0.x 13).toNat + N.toNat < 2 ^ 64)
-    (hout : (s0.x 13).toNat + N.toNat ≤ (s0.x 12).toNat ∨ E0 + 8 ≤ (s0.x 13).toNat) :
+    (hout : (s0.x 13).toNat + N.toNat ≤ (s0.x 12).toNat ∨ E0 ≤ (s0.x 13).toNat) :
     ∃ s3, Star C (0, s0) (((s0.x 1).toNat - s0.b) / 4, s3) ∧ s3.b = s0.b ∧ s3.x 1 = s0.x 1 ∧ s3.x 8 = s0.x 8 ∧
       s3.x 10 = (if N = 0 then 1 else 0) ∧ s3.x 11 = N ∧
       ∀ i, i < N.toNat → lbm s3.m ((s0.x 13).toNat + i) = bs i &&& 255 := by

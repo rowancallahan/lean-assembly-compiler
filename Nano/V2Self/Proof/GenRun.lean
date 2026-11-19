@@ -76,8 +76,8 @@ def IGs (s0 : St) (inp : Nat → UInt64) : St → Prop := fun s =>
 theorem lbm_eq {m m' : Nat → UInt64} {a : Nat} (h : m' (a - a % 8) = m (a - a % 8)) : lbm m' a = lbm m a := by
   unfold lbm; rw [h]
 
-theorem IGs_ok (s0 : St) (inp : Nat → UInt64) (E0 : Nat)
-    (hin : (s0.x 10).toNat + (s0.x 11).toNat ≤ (s0.x 12).toNat ∨ E0 + 8 ≤ (s0.x 10).toNat) :
+theorem IGs_ok (s0 : St) (inp : Nat → UInt64) (E0 : Nat) (hE8 : E0 % 8 = 0)
+    (hin : (s0.x 10).toNat + (s0.x 11).toNat ≤ (s0.x 12).toNat ∨ E0 ≤ (s0.x 10).toNat) :
     IGOK ((s0.x 12).toNat + 16) E0 (IGs s0 inp) := by
   intro s s' ⟨i28, i29, iin, ira, is8, ib⟩ e28 e29 eb hm
   refine ⟨by rw [e28, i28], by rw [e29, i29], fun i hi => ?_, by rw [hm _ (by omega), ira],
@@ -100,13 +100,13 @@ theorem gen_run (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length <
          ∀ E0, ((s0.x 2 >>> 3) <<< 3).toNat = E0 → s0.x 0 = 0 → (s0.x 12).toNat % 8 = 0 →
          (s0.x 12).toNat + 16 ≤ E0 → E0 < 2 ^ 62 → s0.b + 4 * C.length < 2 ^ 64 →
          (s0.x 10).toNat + (s0.x 11).toNat < 2 ^ 63 →
-         ((s0.x 10).toNat + (s0.x 11).toNat ≤ (s0.x 12).toNat ∨ E0 + 8 ≤ (s0.x 10).toNat) →
+         ((s0.x 10).toNat + (s0.x 11).toNat ≤ (s0.x 12).toNat ∨ E0 ≤ (s0.x 10).toNat) →
          ∀ vs H', semAt P ds (hs.length - 1) [] E0 ⟨(s0.x 12).toNat + 16, fun _ => none⟩ = some (vs, H') →
          ∀ (N : UInt64) (bs : Nat → UInt64), H'.m (vs.getD 0 0).toNat = some N →
          (s0.x 12).toNat + 16 ≤ (vs.getD 0 0).toNat → (vs.getD 0 0).toNat + 16 + 8 * N.toNat < H'.top →
          (∀ i, i < N.toNat → H'.m ((vs.getD 0 0).toNat + 16 + 8 * i) = some (bs i)) →
          (s0.x 13).toNat + N.toNat < 2 ^ 64 →
-         ((s0.x 13).toNat + N.toNat ≤ (s0.x 12).toNat ∨ E0 + 8 ≤ (s0.x 13).toNat) →
+         ((s0.x 13).toNat + N.toNat ≤ (s0.x 12).toNat ∨ E0 ≤ (s0.x 13).toNat) →
          ∃ s3, Star C (0, s0) (((s0.x 1).toNat - s0.b) / 4, s3) ∧ s3.b = s0.b ∧ s3.x 1 = s0.x 1 ∧
            s3.x 8 = s0.x 8 ∧ s3.x 10 = (if N = 0 then 1 else 0) ∧ s3.x 11 = N ∧
            ∀ i, i < N.toNat → lbm s3.m ((s0.x 13).toNat + i) = bs i &&& 255)) := by
@@ -126,7 +126,9 @@ theorem gen_run (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length <
   have AS : At C (11 + D.length) (startJ (11 + D.length) (P.T (hs.length - 1))) := by
     rw [← hCd] at AC ⊢; exact At.cast (At.right AC) (by simp; rfl)
   have hsl : 0 < hs.length := List.length_pos_iff.mpr hne
-  have hM := hX C (IGs s0 (fun i => lbm s0.m ((s0.x 10).toNat + i))) E0 (s0.x 10) (IGs_ok s0 _ E0 hin) hE62
+  have hE8 : E0 % 8 = 0 := by
+    rw [← hE0]; simp only [UInt64.toNat_shiftLeft, UInt64.toNat_shiftRight]; simp; omega
+  have hM := hX C (IGs s0 (fun i => lbm s0.m ((s0.x 10).toNat + i))) E0 (s0.x 10) (IGs_ok s0 _ E0 hE8 hin) hE62
     (fun s hs => by rw [hs.2.2.2.2.2]; exact hcb)
     (fun s hs => ⟨hs.1, hs.2.1, hs.2.2.1, hin63⟩) AD hpar (hs.length - 1) (by omega)
   rw [np, nr] at hM
