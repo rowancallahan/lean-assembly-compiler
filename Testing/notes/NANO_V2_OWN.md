@@ -22,7 +22,8 @@ non-linear buffer use.  Driver (build_self_S.py): `m x = g41 x (o41 (y16 (s10 x)
 ## Implementation: `C.o41` (Nano/V2Self/C/Own.lean, S subset, ~45 defs `o0..o41`)
 Per def: kind INFERENCE (mode 1, unverified heuristic) = rounds of the same walk until no change (params start "unused"
 3; strong evidence = prim buffer args / owned callee params / owned states; an unused param ends read-only; a let
-slot used as a buffer makes its LOCAL source one; pairs keep source tags in mode 1), then VERIFY (mode 0 = `chk`).
+slot used as a buffer makes its LOCAL source one; pairs keep source tags in mode 1), then VERIFY (mode 0 = `chk`).  Inference is a black box for the proof: o38 uses only its kinds f2[0, n) (clamped to
+≤ 2 by o22 c = 5), re-sets the registers verify reads, pads s to 16 words and rejects buffers ≥ 2^40.
 Buffers: `s` registers + 8-word frames, `f` = K | dead flags | IF snapshots, `v` value entries, `t` def table
 `[npw, nres, unused flags, P, R]`.  4 extra `bnew`s (16 MiB at κ = 2^19).
 Python reference model: `Testing/nano/v2self/own_ref.py AST.bin [--verbose]` (same kinds as o41 on C's AST).
@@ -30,8 +31,8 @@ Debug: `lake env lean --run Testing/nano/v2self/own/own_dbg.lean AST.bin` (first
 `own_run.lean` = accept/reject per file.
 
 ## Status (2026-11-19)
-DONE: spec, S stage, pipeline; C's own source accepted; fixpoint B3 == B2 = 329,732 bytes,
-sha256 be3b296f0b9af495dedd077c99655f992c211f11f521b19e8685d2e07406db5a (o41 checks every field it uses < 2^20, the AST < 2^40 words, value stack < 2^24, frames / snapshots < 2^30); alias_d + 5 aliasing programs rejected;
+DONE: spec, S stage, pipeline; C's own source accepted; fixpoint B3 == B2 = 334,004 bytes,
+sha256 a4dce497536bfc30b96e004c5060e7c8964ae8da23e0d8e41dbd974db18f173d (o41 checks every field it uses < 2^20, the AST < 2^40 words, value stack < 2^24, frames / snapshots < 2^30); alias_d + 5 aliasing programs rejected;
 qemu_regress OK.  The checker caught a real slip in o38's first draft (read after consume).
 NEXT: (1) soundness `C.o41 (serialize p) ≠ [] → WF p → Linear p` (WF: prim arities, numeric fields < 2^64; `Nd.ser`
 is not injective otherwise); (2) kernel/#guard accepted example; (3) `ParsesProgram → WF`; (4) fuzz patterns in pargen.py.

@@ -20,18 +20,19 @@ theorem it_add (W : WCx) : ∀ (a b : Nat) (σ : SB), it W (a + b) σ = it W b (
   | a + 1, b, σ => by rw [show a + 1 + b = (a + b) + 1 by omega, it, it, it_add W a b]
 
 def Reach (W : WCx) (σ : SB) (P : SB → Prop) : Prop :=
-  ∃ k, (∀ j < k, ¬ stopped (it W j σ)) ∧ (P (it W k σ) ∨ bget (it W k σ).1 1 = 1)
+  ∃ k, (∀ j < k, ¬ stopped (it W j σ) ∧ 2 ≤ (it W j σ).1.length) ∧ (P (it W k σ) ∨ bget (it W k σ).1 1 = 1)
 
 theorem reach_now {W : WCx} {σ : SB} {P : SB → Prop} (h : P σ) : Reach W σ P := ⟨0, fun _ h => absurd h (by omega), .inl h⟩
 
 theorem reach_err {W : WCx} {σ : SB} {P : SB → Prop} (h : bget σ.1 1 = 1) : Reach W σ P :=
   ⟨0, fun _ h => absurd h (by omega), .inr h⟩
 
-theorem reach_step {W : WCx} {σ : SB} {P : SB → Prop} (hn : ¬ stopped σ) (h : Reach W (stp W σ) P) : Reach W σ P := by
+theorem reach_step {W : WCx} {σ : SB} {P : SB → Prop} (hn : ¬ stopped σ) (hl : 2 ≤ σ.1.length)
+    (h : Reach W (stp W σ) P) : Reach W σ P := by
   obtain ⟨k, h1, h2⟩ := h
   refine ⟨k + 1, fun j hj => ?_, by rw [it]; exact h2⟩
   rcases j with _ | j
-  · exact hn
+  · exact ⟨hn, hl⟩
   · rw [it]; exact h1 j (by omega)
 
 theorem reach_trans {W : WCx} {σ : SB} {P Q : SB → Prop} (h : Reach W σ P) (hq : ∀ σ', P σ' → Reach W σ' Q) :
@@ -57,7 +58,7 @@ theorem st_run {W : WCx} {s f v : Buf} {A : AS} (h : RS W s A) : ¬ stopped (s, 
 /-- one step whose result is P or an error -/
 theorem reach_one {W : WCx} {s f v : Buf} {A : AS} {P : SB → Prop} (h : RS W s A)
     (hs : P (stp W (s, f, v)) ∨ bget (stp W (s, f, v)).1 1 = 1) : Reach W (s, f, v) P := by
-  apply reach_step (st_run h)
+  apply reach_step (st_run h) (by have := h.1; simp only; omega)
   rcases hs with h1 | h1
   · exact reach_now h1
   · exact reach_err h1
