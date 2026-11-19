@@ -71,7 +71,7 @@ theorem cntC_rn (hW : IsInpW) {h : Buf} : ∀ (us : List UInt64) (ns : List RN),
   | [], [], _, _ => rfl
   | u :: us, n :: ns, hl, hr => by
     obtain ⟨_, r0⟩ := hr 0 (by simp)
-    have ih := cntC_rn hW us ns (by simpa using hl) (fun i hi => by simpa using hr (i + 1) (by simpa using hi))
+    have ih := cntC_rn hW us ns (by simpa using hl) (fun i hi => hr (i + 1) (by simpa using hi))
     simp only [cntC, ih]
     simp only [List.getElem_cons_zero, List.getD_cons_zero] at r0
     rw [inpC_isInp hW r0]
@@ -110,7 +110,7 @@ theorem imC_inpMatch {h : Buf} : ∀ (ps : List Sh) (ws : List UInt64) (ks : Lis
     simp only [inpMatch, Bool.and_eq_true, beq_iff_eq]
     have hrec : ∀ g', imC ws (if g' then 1 else 0) (ks.map fun k => if k.isInp then 1 else 0) = 1 → inpMatch ps g' ks = true :=
       fun g' => imC_inpMatch ps ws ks g' (by simpa using hw) (by simpa using hk)
-        (fun i hi' => by simpa using hc (i + 1) (by simpa using hi'))
+        (fun i hi' => hc (i + 1) (by simpa using hi'))
     have k0' : k0 = 0 := rfl
     have k1' : k1 = 1 := rfl
     by_cases hp : p = .ls

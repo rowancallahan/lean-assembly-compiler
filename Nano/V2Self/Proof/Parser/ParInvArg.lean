@@ -208,7 +208,7 @@ theorem h_argCheck {h ts : Buf} {st : St} {c : Callee} {k : Nat} {fs : List Fram
       have R3 := rep_push (.argCheck c k) a (b - 1) R2 rfl ⟨ea, eb1⟩ hs'
       refine ⟨[.argCheck c k], st, ?_, R3⟩
       simp only [stepF, hv, hpc, RN.sh, RN.tag, RN.a]
-      rw [if_pos hcond]
+      exact if_pos hcond
     have dead : bget (bset (arG g a b) 0 0) 0 ≠ 0 → False := fun x => x (stat0 _ (by rw [arG_len]; omega))
     by_cases c1 : bget g (d5 + 8 * bget g (d3 + bget g 8 - b) + 3) = arW g a b
     · rw [if_pos c1] at hs ⊢
