@@ -6,7 +6,7 @@
   constant def, `[]`, `bnew`: the non-recursive clauses of `ParSpec.pAtom`), which pushes exactly one leaf node;
 * `args_run`: `args c k` = k atom segments in sequence (`Atoms`);
 * `call_tail`: 45 → 47 → 48 checks the k pushed arguments (`argOK`) and replaces them by the CALL / PRIM node (`callNode`). -/
-import Nano.V2Self.Proof.ParRunStar
+import Nano.V2Self.Proof.ParRunFlat
 namespace ParRun
 open ParSpec
 
