@@ -288,4 +288,51 @@ theorem binders_spec : ∀ (n : Nat) {ks : List Frame} {st fin : St} (b : Bool),
         simpa using h2
     · cases h1
 
+
+/-! ## the def table ↔ the spec's `DefI` list -/
+/-- finished Layer-2 rows ↔ the spec's finished defs (the `defs` / `row` fields of G's `CxRel`) -/
+def DRel (ds : List DefR) (dis : List DefI) : Prop :=
+  ds.length = dis.length ∧ (∀ x, (findDef dis x).map (fun e => e.1) = findD ds x) ∧
+  ∀ x j di, findDef dis x = some (j, di) → ∃ d, ds[j]? = some d ∧ di.params.map psCode = d.params ∧ d.res = some di.res ∧
+    (∀ (i : Nat) (h : i < di.params.length), (di.params[i] = .inp ↔ FirstLs d.params i)) ∧ ∀ p ∈ di.params, p ≠ .sh .nt
+
+/-- the kind a typed Layer-2 binding of a spec entry carries -/
+theorem bdPs_toBd {e : List Nat × Nat × Ps} (h1 : e.2.2 ≠ .fuel) (h2 : psCode e.2.2 ≠ .nt) : bdPs (toBd e) = some e.2.2 := by
+  obtain ⟨x, s, p⟩ := e
+  cases p with
+  | inp => rfl
+  | fuel => exact absurd rfl h1
+  | sh w =>
+    simp only [psCode] at h2
+    simp only [toBd, bdPs, psCode]
+    cases w <;> simp_all
+
+theorem findB_toBd (env : List (List Nat × Nat × Ps)) (x : List Nat) :
+    findB (env.map toBd) x = (env.reverse.find? fun e => e.1 == x).map toBd := by
+  simp only [findB, ← List.map_reverse, List.find?_map]
+  rfl
+
+/-- **G's `CxRel` at a plain body start**: bindings = the spec env (in order), no self, arm off -/
+theorem cxrel_body {st : St} {dis : List DefI} {env : List (List Nat × Nat × Ps)} (hD : DRel st.defs dis)
+    (hb : st.binds = env.map toBd) (he : ∀ e ∈ env, e.2.2 ≠ .fuel ∧ psCode e.2.2 ≠ .nt) (harm : st.arm = false) :
+    CxRel st { defs := dis, env := env.reverse, self := none } := by
+  refine ⟨fun x bd h => ?_, fun x bd h hi => ?_, fun x => ?_, hD.2.1, hD.2.2, fun _ _ e => (by cases e), fun e => (by rw [harm] at e; cases e)⟩
+  · rw [hb, findB_toBd] at h
+    obtain ⟨e, _, rfl⟩ := Option.map_eq_some_iff.mp h
+    simp [toBd]
+  · rw [hb, findB_toBd] at h
+    obtain ⟨e, _, rfl⟩ := Option.map_eq_some_iff.mp h
+    obtain ⟨x, s, p⟩ := e
+    simp only [toBd, beq_iff_eq] at hi ⊢
+    subst hi; rfl
+  · rw [hb, findB_toBd]
+    simp only [findEnv]
+    cases hf : env.reverse.find? (fun e => e.1 == x) with
+    | none => rfl
+    | some e =>
+      have hm : e ∈ env := List.mem_reverse.mp (List.mem_of_find?_eq_some hf)
+      obtain ⟨h1, h2⟩ := he e hm
+      simp only [Option.map_some, Option.bind_some, bdPs_toBd h1 h2]
+      rfl
+
 end ParRun
