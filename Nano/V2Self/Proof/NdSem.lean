@@ -26,6 +26,8 @@ structure SC where
   T : Nat → Nat
   /-- callable defs: ids below `nd` -/
   nd : Nat
+  /-- this def's nres (the width of its root LOOP) -/
+  q : Nat
 
 /-! ## widths, reads, writes -/
 mutual
@@ -38,7 +40,7 @@ def wd (K : SC) : Nd → Nat
   | .pair cs => wdL K cs
   | .call id _ => K.nresOf id
   | .prim _ _ => 1
-  | .loop z _ => wdT K z
+  | .loop _ _ => K.q
   | .cont _ => 0
 def wdT (K : SC) : Nd → Nat
   | .ite _ _ _ t _ => wdT K t

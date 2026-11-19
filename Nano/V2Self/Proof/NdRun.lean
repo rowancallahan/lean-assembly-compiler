@@ -22,7 +22,7 @@ def OkV (K : SC) : Nd → Prop
   | .pair cs => OkL K cs
   | .call id as => OkL K as ∧ id < K.nd ∧ wdL K as = K.npwOf id
   | .prim pn as => OkL K as ∧ wdL K as = arity pn ∧ ((pn = 1 ∨ pn = 3 ∨ pn = 5) → as = [])
-  | .loop z s => OkT K z (wdT K z) ∧ OkT K s (wdT K z) ∧ 1 ≤ K.p ∧ K.p ≤ K.nl ∧
+  | .loop z s => OkT K z K.q ∧ OkT K s K.q ∧ 1 ≤ K.p ∧ K.p ≤ K.nl ∧
       (∀ k, (wr K.p z k ∨ wr K.p s k) → K.p ≤ k) ∧ (∀ k, (rd z k ∨ rd s k) → ¬ (wr K.p z k ∨ wr K.p s k))
   | .cont _ => False
 /-- tail mode with exit width w -/

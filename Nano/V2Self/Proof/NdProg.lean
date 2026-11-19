@@ -22,14 +22,15 @@ def dA (ds : List DefA) (n : Nat) : DefA := ds.getD n ⟨0, 0, 0, 0, 0, .const 0
 
 def semAt (P : PC) (ds : List DefA) (k : Nat) : SemD :=
   defS (dA ds k).npw (dA ds k).nslots (sv ⟨(dA ds k).npw, (dA ds k).nslots, P.κ, P.hb, P.c29, P.inp,
-    fun n => if _h : n < k then semAt P ds n else dflt, fun n => (dA ds n).npw, fun n => (dA ds n).nres, P.T, k⟩
-    (dA ds k).body)
+    fun n => if _h : n < k then semAt P ds n else dflt, fun n => (dA ds n).npw, fun n => (dA ds n).nres, P.T, k,
+    (dA ds k).nres⟩ (dA ds k).body)
 termination_by k
 
 /-- the template context of def k -/
 def scAt (P : PC) (ds : List DefA) (k : Nat) : SC :=
   ⟨(dA ds k).npw, (dA ds k).nslots, P.κ, P.hb, P.c29, P.inp,
-    fun n => if _h : n < k then semAt P ds n else dflt, fun n => (dA ds n).npw, fun n => (dA ds n).nres, P.T, k⟩
+    fun n => if _h : n < k then semAt P ds n else dflt, fun n => (dA ds n).npw, fun n => (dA ds n).nres, P.T, k,
+    (dA ds k).nres⟩
 
 theorem semAt_eq (P : PC) (ds : List DefA) (k : Nat) :
     semAt P ds k = defS (dA ds k).npw (dA ds k).nslots (sv (scAt P ds k) (dA ds k).body) := by
