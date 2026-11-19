@@ -320,12 +320,35 @@ for LOCAL/popN/epi slots (p, q ≤ 250 in Gen) and epi's return address = base +
 DONE shared edits (owner-approved, E notified): SimW `encJ (.bgeu a b o)` uses 4·o, `Safe` bgeu o ∈ {2,3,4},
 sim_bgeu12/16; ExprBridge.encG_bgeu `rfl`; Expr/Heap `rd_runK bget_runK bnew_runK bpush_runK bset_runK` (explicit
 step counts; old ∃-forms are corollaries). E: extend ExprBridge.GoodW/encG_bgeu to o = 3, 4 for RD/BGET/BSET words.
-NEXT: (1) bnew_srun: refactor li_srun into `li_sr : SR K C |liT| (pc, s)`, then SR.add over bnew_runK's segments
-(addi 5 30 0 | li 6 W | alu, bgeu taken | li 7 κ | sd 0 5 0, sd 7 5 8 (heap cells t5, t5+8 wok), addi 30 6 0 | push);
-the segment states are s1..s8 in bnew_runK's proof (Heap.lean). (2) EVS.lean: `EVHwS K C …` = EVHw with SStar K C and a
-layout hypothesis (lo ≤ hb, t6/s0/hb 8-aligned, frame top ≤ hi, input cells wok), S-twins of the composition lemmas
-(nilX/pairX/ifX/letX/leafX/…/callX/defX/loopX); their glue instructions (ifHead, loopHead/Dec, jal/jalr) need Safe
-facts too (jal targets < |C| from the layout).
+DONE also: li_sr (safe prefix of li), bnew_srun (BNEW, by SR.add over bnew_runK's segments). ALL 16 leaf twins done.
+
+### EVS — exact next steps (for the next box; A stops here)
+New file Nano/V2Self/Proof/EVS.lean (import SafeRun + EVX/EVXP/EVXC/EVXL/EVXT/EVXF/HeapEV; only NEW names, do not edit
+E's files except by agreement). Goal: the node theorem NdRun.runV/runT/runL (and DefX/defX) with `SStar K C` instead
+of `Star C`, so `SimW.sim_starW` lifts every compiled def to Sail.
+1. Layout predicate `Lay K hb p s` (all over Nat, K : SimW.LayW): K.lo ≤ hb; hb % 8 = 0; (s.x 31) % 8 = 0;
+   (s.x 8) % 8 = 0; (s.x 8).toNat + 8 * p + 16 ≤ K.hi (frame top, args included; the caller frames above must also be
+   ≤ K.hi — carry the global stack top E0 ≤ K.hi as in EVXC's IGOK/E0); input cells: ∀ i < x29, wok K of the aligned
+   cell of x28 + i (RD's lbu); code base s.b = K.base. From HRel (hb ≤ H.top ≤ t6) + Lay every stack/heap/frame cell
+   the templates touch is `wok K` (lo ≤ hb ≤ cell, cell + 8 ≤ s0 + 8p + 16 ≤ hi, 8-aligned).
+2. `EVHwS K C pc len p nl Inv hb R W w S` = EVX.EVHw with `SStar K C` in `run` and the extra hypothesis `Lay K hb p s`
+   (preserved: Lay K hb p s' in the conclusion — t6 changes by multiples of 8, s0 unchanged). Same for EVH (one word,
+   HeapEV) and EVHt (EVXT, tail mode). `EVHwS.toEVHw` (SStar.star) for free.
+3. Leaves: EVXP.leafX/constX/lenX/local1X/localX, HeapEV bin_gen/un_gen/tri_gen/fin* + bnew_EVH, EVXF fin2_alu/fin1_rd:
+   re-prove with the SafeRun twins (const_srun, len_srun, bin_srun, bsize_srun, rd_srun, bget_srun, bpush_srun,
+   bset_srun, bnew_srun, local_srun); discharge each `wok` from Lay + HRel + the stack depth facts already in the proofs
+   (the twins take exactly the cells the run lemma reads/writes as `wok` hypotheses).
+4. Composition: EVX.nilX/pairX/ifX/letX, EVXT.valT/contT/ifT/letT, EVXL.loopX/loop_pass, EVXC.defX/callX: copy each proof,
+   replace Star by SStar (SStar.trans, SStar.one), and add Safe facts for the GLUE instructions they step by hand:
+   ifHead/ifHeadG (ld 6 31 0, ld 5 31 8: wok t6, t6+8; addi 31 31 16 no-wrap; beq/bltu offset 2; jal 0 lt: target < |C|),
+   loopHead (ld 5 8 slotOff p 0: wok slot; beq 5 0 2; jal 0 dS), loopDec (addi 5 5 −1: v ≠ 0 ⇒ no wrap; sd 5 8 …: wok slot),
+   CALL (jal 1 off: target f < |C|), prologue/epilogue via pro_srun/epi_srun (epi needs the return address =
+   base + 4j: from the caller's `jal ra` = s.b + 4(c+1), Lay's s.b = K.base), popN_srun for LET.
+   Jump targets < |C|: from `At C pos l` + the template lengths (the target is inside C), or a global `|C|` bound.
+5. Top: runV/runT/runL S-twins (copy NdRun's induction, use the S lemmas), then compose with Gen (GenAll.gen41_full,
+   E's NdCG Mt relation) and SimW.sim_starW with hW : K.W = C.map encJ (needs E's encG_bgeu for o = 3, 4).
+Expect most work in 3–4 (mechanical, ~1500 lines); keep files ≤ 5 min / 8 GB (split EVS into EVSLeaf/EVSComp/EVSRun).
+
 Generator for twins of long straight-line runs: /scratchpad gen.py idea — take the runK proof, rename `hc`→`hcc`,
 `simp only [if_pos hi]` → `… at hj`, and replace each closing `simp [run, step, SET]` by `rcases j` cases
 `simp [run, step, SET] at hc; subst hc; simp [Safe, SET] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩`.
