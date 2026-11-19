@@ -96,12 +96,18 @@ ParSpec and the same rejection to Par1 (compiler change: owner/C); (b) keep C, w
 - Lean `Nat` fuel is a word here (numerals are mod 2^64 already in Lex2Spec; `len' x` < 2^64).
 - `put` pushes the whole word, the output keeps the low byte (= Lean's `put` after `toUInt8`); Gen does the same.
 
-## HANDOFF
-DONE: statement, `Sem`, `ImplementsC`, stage hypotheses, `compiler_correct` (proved from HP, HG), `lexes_len`, `g41_nil`.
-DONE: per-stage non-vacuity witnesses (MainWitness.lean); the parser run itself is not kernel-checkable at Par1's layout.
-DONE: `parsed_not_stuck`, `compiler_correct'` (MainTy/MainTyP); E's `OkV` from ParSpec (`MainOk.parsed_ok`).
-OWNER QUEUE (2026-11-19): (2) bridge Sem ⇐ E's sv — PAUSED on the aliasing finding; (3) DONE (MainTop.C_correctL); (4) small examples DONE (MainCert), C itself not started.
-NEXT: (1) agree `GenStage` / `ImplementsC` with A and E (no reply yet); the bridge E's machine-level `sv`/`defS`
-(NdSem) ⇒ `Sem` is the natural meeting point — the `TyN` judgment gives the kind facts it needs; E's `OkV` scoping /
-width side conditions also have to come from ParSpec (same fuel-induction scheme as `p_all`); (2) phase 2 parser
-handlers after C publishes `Rep`.
+## HANDOFF (2026-11-19, keep current)
+Files (all no sorry, each ≤ 15 s): Main (statement, Sem, ImplementsC, ParStage/GenStage, compiler_correct), MainWitness
+(non-vacuity), MainTy (kind judgment TyN/TyB, sem_ok), MainTyP (parser ⇒ well-kinded, parsed_not_stuck, compiler_correct'),
+MainOk (E's OkV/ScV/reads ⊆ params: parsed_ok, parsed_sc, parsed_main), MainTop (C_correctL : ParStage → GenStage →
+CompileCorrectL riscv compileC), MainCert (meaning certificates ex1, ex3).
+OPEN / NEXT (owner order 2026-11-19):
+1. Sem ⇐ sv bridge (E's NdSem `sv`/`defS`/`loopGo`, heap image Hp): soundness direction "sv succeeds ⇒ ev succeeds with
+   related values" under a linearity hypothesis.  Value relation: word = word; buffer list ↔ pointer with `bufInfo` =
+   (len, κ) and cells.  Matching checked by reading: cmpF 2 = unsigned <, rdF1 = getD, bget/bset out of range as Sem,
+   bpush cap check `len < κ` = Sem's `push`, loopGo (env 0 = 0 / decE) = loopRun, len/len' = c29.  Needs the linearity
+   interface (asked O whether their ownership rule is on Nd; proposed `LinN` with own/ro/dead flags mirroring Nano/V2 Own).
+   Second direction still needed for ImplementsC's `space`: Sem ok ⇒ sv succeeds with enough stack room.
+2. MainTop subset: parsed ∧ Linear, compileC with the ownership check (after O).
+3. C-wide certificate generator (one Sem = Lean lemma per def) + kernel test of progEq on C's token stream.
+Gen-side bounds (DB, < 251, < 2^20, serialization < 2^31) are not parser facts: routed to A via owner.
