@@ -15,12 +15,14 @@ theorem defCapRun {S : SC} {C : List J} {IG : St → Prop} {E0 : Nat} {c28 : UIn
   rw [lp] at hB hE; rw [tm_len] at hE
   have le : 1 ≤ (epi S.p q).length := by simp [epi]
   simp only [defT, List.length_append, lp, tm_len] at hl
-  exact defCap X.ig hP (runVCap X Y e (f + 12) ok hop hB (by omega)) Y.nr hpn hR X.nl251
+  exact defCapK X.ig hP (runVCap X Y e (f + 12) ok hop hB (by omega)) Y.t1 Y.hb2k (by have := Y.h6; omega) X.c18
+    (by omega) hpn hR X.nl251
 
 theorem progCap (P : PC) (ds : List DefA) (C : List J) (IG : St → Prop) (E0 : Nat) (c28 : UInt64) (KL : LayW) {fk : Fail} {tg : Nat}
     (hig : IGOK P.hb E0 IG) (he : E0 < 2 ^ 62) (hcb : ∀ s, IG s → s.b + 4 * C.length < 2 ^ 64)
     (hinp : InpOK IG c28 P.c29 P.inp) (hinw : InpW KL IG) (hc18 : C.length < 2 ^ 18) (h6 : 6 < C.length)
-    (hkS : fk ≠ .stuck) (nr : fk ≠ .room) (t6 : fk = .cap → tg = 6) (N : Nat)
+    (hkS : fk ≠ .stuck) (t1 : fk = .room → tg = 1) (t6 : fk = .cap → tg = 6) (kap : P.κ < 2 ^ 40)
+    (hb2k : 2048 ≤ P.hb) (N : Nat)
     (hd : ∀ k, k < N → DefOKS P ds C k) :
     ∀ k, k < N → CapD fk tg KL C (P.T k) (dA ds k).npw IG P.hb E0 (semAtF P ds k) := by
   have hS := progRunS P ds C IG E0 c28 KL hig he hcb hinp hinw hc18 N hd
@@ -52,7 +54,7 @@ theorem progCap (P : PC) (ds : List DefA) (C : List J) (IG : St → Prop) (E0 : 
         show CapD fk tg KL C (P.T n) (dA ds n).npw IG P.hb E0 (if _h : n < k then semAtF P ds n else dfltF)
         have hn' : n < k := hn
         rw [dif_pos hn']; exact ih n hn' (by omega)
-      h6 := h6, hk := hkS, nr := nr, t6 := t6 }
+      h6 := h6, hk := hkS, t1 := t1, t6 := t6, kap := kap, hb2k := hb2k }
     rw [semAtF]
     exact defCapRun X Y D.base.ok D.op D.base.rd D.base.pn D.base.at_
 
@@ -60,14 +62,14 @@ theorem gen_defs_cap (P : PC) (ds : List DefA) (C : List J) (IG : St → Prop) (
     (KL : LayW) {fk : Fail} {tg : Nat} (n h : Nat)
     (hig : IGOK P.hb E0 IG) (he : E0 < 2 ^ 62) (hcb : ∀ s, IG s → s.b + 4 * C.length < 2 ^ 64)
     (hinp : InpOK IG c28 P.c29 P.inp) (hinw : InpW KL IG) (hc18 : C.length < 2 ^ 18) (h6 : 6 < C.length)
-    (hk : fk ≠ .stuck) (nr : fk ≠ .room) (t6 : fk = .cap → tg = 6)
-    (hC : At C h (defsJ P ds 0 n))
+    (hk : fk ≠ .stuck) (t1 : fk = .room → tg = 1) (t6 : fk = .cap → tg = 6) (kap : P.κ < 2 ^ 40)
+    (hb2k : 2048 ≤ P.hb) (hC : At C h (defsJ P ds 0 n))
     (hT : ∀ j, j < n → P.T j = h + (defsJ P ds 0 j).length)
     (hd : ∀ k, k < n → (dA ds k).npw < 2 ^ 20 ∧ (dA ds k).npw ≤ (dA ds k).nslots ∧ OkV (scAt P ds k) (dA ds k).body ∧
       wd (scAt P ds k) (dA ds k).body = (dA ds k).nres ∧ (∀ j, rd (dA ds k).body j → j < (dA ds k).npw) ∧
       OpV (dA ds k).body ∧ (dA ds k).nslots < 251 ∧ (dA ds k).nres < 251) :
     ∀ k, k < n → CapD fk tg KL C (P.T k) (dA ds k).npw IG P.hb E0 (semAtF P ds k) := by
-  apply progCap P ds C IG E0 c28 KL hig he hcb hinp hinw hc18 h6 hk nr t6 n
+  apply progCap P ds C IG E0 c28 KL hig he hcb hinp hinw hc18 h6 hk t1 t6 kap hb2k n
   intro k hk
   obtain ⟨a1, a2, a3, a4, a5, a6, a7, a8⟩ := hd k hk
   have := At_defsJ n 0 h hC (fun j hj => by rw [Nat.zero_add]; exact hT j hj) k hk

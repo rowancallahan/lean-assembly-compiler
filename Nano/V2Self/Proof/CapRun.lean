@@ -827,4 +827,18 @@ theorem callCap {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {pc la p nl pa f
         (by rw [jb, b1, L0.base]) ja A1 hSd'
     exact ⟨s', r1.trans (.head saj stj st'), I', z'⟩
 
+
+theorem CapW.mono {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {pc p nl hb E0 : Nat} {Inv G : St → Prop} {R R' : Nat → Prop} {S : SemWX}
+    (h : CapW fk tg KL C pc p nl Inv G hb E0 R S) (hR : ∀ k, R k → R' k) : CapW fk tg KL C pc p nl Inv G hb E0 R' S :=
+  ⟨h.cap, fun env env' sp H hk => h.stable env env' sp H (fun k q => hk k (hR k q))⟩
+
+theorem CapT.mono {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {pc p nl hb E0 : Nat} {Inv G : St → Prop} {R R' : Nat → Prop} {S : SemTX}
+    (h : CapT fk tg KL C pc p nl Inv G hb E0 R S) (hR : ∀ k, R k → R' k) : CapT fk tg KL C pc p nl Inv G hb E0 R' S :=
+  ⟨h.cap, fun env env' sp H hk => h.stable env env' sp H (fun k q => hk k (hR k q))⟩
+
+theorem CapW.pcEq {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {pc pc' p nl hb E0 : Nat} {Inv G : St → Prop} {R : Nat → Prop} {S : SemWX}
+    (h : CapW fk tg KL C pc p nl Inv G hb E0 R S) (e : pc = pc') : CapW fk tg KL C pc' p nl Inv G hb E0 R S := e ▸ h
+theorem CapT.pcEq {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {pc pc' p nl hb E0 : Nat} {Inv G : St → Prop} {R : Nat → Prop} {S : SemTX}
+    (h : CapT fk tg KL C pc p nl Inv G hb E0 R S) (e : pc = pc') : CapT fk tg KL C pc' p nl Inv G hb E0 R S := e ▸ h
+
 end Templates

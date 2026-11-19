@@ -100,7 +100,7 @@ theorem gen_host (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : Parse
     olen, fun a => s.mem[a]?⟩
   obtain ⟨vs, H', hSd⟩ := hS T
   have z0 : s0.x 0 = 0 := by rw [sx 0 (by omega)]; simp [getX, xval]
-  obtain ⟨y, hSem, hcont⟩ := (hrun KL E0 hE0 z0 (by rw [x12]; exact hw8) (by rw [x12]; omega) (by omega)
+  obtain ⟨y, hSem, hcont⟩ := (hrun KL E0 hE0 z0 (by rw [x12]; exact hw8) (by rw [x12]; omega) (by rw [x12]; omega) (by omega)
     (by show entry.toNat + 4 * C.length < 2 ^ 64; omega) (by rw [x10, x11']; omega)
     (by rw [x10, x11', x12]; rcases dIW with d | d <;> first | exact Or.inl (by omega) | exact Or.inr (by omega)) (by rw [x12]; exact Nat.le_refl _)
     (Nat.le_refl _) rfl (fun i hi => by rw [x11'] at hi; rw [x10]; exact Or.inr (Or.inl ⟨by simp [KL], by simp [KL]; omega⟩))).1

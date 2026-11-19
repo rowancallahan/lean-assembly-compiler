@@ -1,6 +1,6 @@
 /- Opus box E: the out-of-memory exit (`room`) of the leaf templates as SAFE runs: the checked push finds no room
 (t6 − 8 < t5) and jumps to the OOM stub (word 1). -/
-import Nano.V2Self.Proof.CapNode
+import Nano.V2Self.Proof.CapRun
 import Nano.V2Self.Proof.EVSLeaf
 namespace Templates
 open CallProbe SimW SafeRun

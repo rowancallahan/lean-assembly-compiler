@@ -20,7 +20,7 @@ theorem gen_runS (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length 
         let C := stubJ (11 + D.length) ++ D ++ startJ (11 + D.length) (P.T (hs.length - 1))
         g41 c (serialize ds) = g40 16777216 c (C.map encG) 0 [] ∧ C.length < 2 ^ 18 ∧ At C 0 (stubJ (11 + D.length)) ∧
         ∀ KL : SimW.LayW, ((∀ k, k < hs.length → ScV (scAt P ds k) (dA ds k).body ∧ ∀ j, rd (dA ds k).body j → j < (dA ds k).npw) →
-         ∀ E0, ((s0.x 2 >>> 3) <<< 3).toNat = E0 → s0.x 0 = 0 → (s0.x 12).toNat % 8 = 0 →
+         ∀ E0, ((s0.x 2 >>> 3) <<< 3).toNat = E0 → s0.x 0 = 0 → (s0.x 12).toNat % 8 = 0 → 2048 ≤ (s0.x 12).toNat →
          (s0.x 12).toNat + 16 ≤ E0 → E0 < 2 ^ 62 → s0.b + 4 * C.length < 2 ^ 64 →
          (s0.x 10).toNat + (s0.x 11).toNat < 2 ^ 63 →
          ((s0.x 10).toNat + (s0.x 11).toNat ≤ (s0.x 12).toNat ∨ E0 ≤ (s0.x 10).toNat) →
@@ -47,7 +47,7 @@ theorem gen_runS (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length 
   refine ⟨hs, T, o, hD, hne, ?_⟩
   obtain ⟨hg, np, nr, hcl, hopv, hbd, hTp, hpk, -⟩ := hr
   refine ⟨hg, by simp [stubJ, startJ]; omega, fun i hi => by rw [Nat.zero_add, List.append_assoc, List.getElem?_append_left hi], ?_⟩
-  intro KL hpar E0 hE0 z0 ha8 hroom hE62 hcb hin63 hin hlo hhi hbase hinw
+  intro KL hpar E0 hE0 z0 ha8 h2k hroom hE62 hcb hin63 hin hlo hhi hbase hinw
   have hE8 : E0 % 8 = 0 := by
     rw [← hE0]; simp only [UInt64.toNat_shiftLeft, UInt64.toNat_shiftRight]; simp; omega
   generalize hPd : pcOf 524288 ((s0.x 12).toNat + 16) (s0.x 11) inp T = P at *
@@ -106,7 +106,8 @@ theorem gen_runS (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length 
       (fun s hs => by rw [hs.2.2.2.2.2]; exact hcb)
       (fun s hs => by rw [hPc, hPi]; exact ⟨hs.1, hs.2.1, hs.2.2.1, hin63⟩)
       (fun s hs i hi => by rw [hs.1, hs.2.1] at *; exact hinw i hi) hc18 (by omega) (fk := .cap) (tg := 6)
-      (by decide) (by decide) (fun _ => rfl) (by rw [hDd]; exact AD)
+      (by decide) (fun h => by cases h) (fun _ => rfl) (by rw [← hPd]; show 524288 < 2 ^ 40; decide) (by rw [hPhb]; omega)
+      (by rw [hDd]; exact AD)
       (fun j hj => hTp j hj)
       (fun k hk => by
         obtain ⟨a3, a4⟩ := hpar k hk

@@ -1,22 +1,9 @@
 /- Opus box E: the node theorem at the capacity exit (`runVCap` / `runTCap` / `runLCap`): for every node Gen compiles,
 the kinded semantics failing with `cap` means the node's code reaches the cap stub (word 6) with `IG`. -/
-import Nano.V2Self.Proof.CapRun
+import Nano.V2Self.Proof.RoomRun
 import Nano.V2Self.Proof.EVSRun
 namespace Templates
 open CallProbe SimW SafeRun ParSpec
-
-theorem CapW.mono {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {pc p nl hb E0 : Nat} {Inv G : St → Prop} {R R' : Nat → Prop} {S : SemWX}
-    (h : CapW fk tg KL C pc p nl Inv G hb E0 R S) (hR : ∀ k, R k → R' k) : CapW fk tg KL C pc p nl Inv G hb E0 R' S :=
-  ⟨h.cap, fun env env' sp H hk => h.stable env env' sp H (fun k q => hk k (hR k q))⟩
-
-theorem CapT.mono {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {pc p nl hb E0 : Nat} {Inv G : St → Prop} {R R' : Nat → Prop} {S : SemTX}
-    (h : CapT fk tg KL C pc p nl Inv G hb E0 R S) (hR : ∀ k, R k → R' k) : CapT fk tg KL C pc p nl Inv G hb E0 R' S :=
-  ⟨h.cap, fun env env' sp H hk => h.stable env env' sp H (fun k q => hk k (hR k q))⟩
-
-theorem CapW.pcEq {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {pc pc' p nl hb E0 : Nat} {Inv G : St → Prop} {R : Nat → Prop} {S : SemWX}
-    (h : CapW fk tg KL C pc p nl Inv G hb E0 R S) (e : pc = pc') : CapW fk tg KL C pc' p nl Inv G hb E0 R S := e ▸ h
-theorem CapT.pcEq {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {pc pc' p nl hb E0 : Nat} {Inv G : St → Prop} {R : Nat → Prop} {S : SemTX}
-    (h : CapT fk tg KL C pc p nl Inv G hb E0 R S) (e : pc = pc') : CapT fk tg KL C pc' p nl Inv G hb E0 R S := e ▸ h
 
 theorem leafF_ne {fk : Fail} (hr : fk ≠ .room) (V : Env → UInt64) (env : Env) (sp : Nat) (H : Hp) :
     leafF V env sp H ≠ .error fk := by
@@ -66,7 +53,9 @@ structure CapCx (fk : Fail) (tg : Nat) (K : SC) (C : List J) (IG : St → Prop) 
   defs : ∀ id, id < K.nd → CapD fk tg KL C (K.T id) (K.npwOf id) IG K.hb E0 (fsX id)
   h6 : 6 < C.length
   hk : fk ≠ .stuck
-  nr : fk ≠ .room
+  t1 : fk = .room → tg = 1
+  kap : K.κ < 2 ^ 40
+  hb2k : 2048 ≤ K.hb
   t6 : fk = .cap → tg = 6
 
 section runCap
@@ -81,10 +70,20 @@ mutual
 theorem runVCap (X : RunCxS K C IG E0 c28 KL) (Y : CapCx fk tg K C IG E0 fsX KL) :
     ∀ (e : Nd) (h : Nat), OkV K e → OpV e → At C h (tm K e h) → h + lnV K e < C.length →
     CapW fk tg KL C h K.p K.nl (IGp IG E0 K.p) IG K.hb E0 (rd e) (svF K fsX e)
-  | .const v, h, _, _, _, _ => by
-    simp only [rd, svF]; exact noCap (leafF_ne Y.nr _) (fun _ _ _ _ _ => rfl)
-  | .loc s w, h, _, _, _, _ => by
-    simp only [rd, svF]; exact noCap (localF_ne Y.nr w s) (fun env env' sp H hk => localF_stable w s env env' sp H hk)
+  | .const v, h, _, _, hC, hl => by
+    simp only [tm, lnV, rd, svF] at hC hl ⊢
+    have h6 := Y.h6
+    cases fk with
+    | cap => exact noCap (leafF_ne (by decide) _) (fun _ _ _ _ _ => rfl)
+    | stuck => exact absurd rfl Y.hk
+    | room => rw [Y.t1 rfl]; exact constRoom X.hI (fun _ q => q.1) hC (by omega) X.c18 (by omega)
+  | .loc s w, h, hok, _, hC, hl => by
+    simp only [tm, lnV, rd, svF, OkV] at hok hC hl ⊢
+    have h6 := Y.h6
+    cases fk with
+    | cap => exact noCap (localF_ne (by decide) w s) (fun env env' sp H hk => localF_stable w s env env' sp H hk)
+    | stuck => exact absurd rfl Y.hk
+    | room => rw [Y.t1 rfl]; exact localRoom X.hI (fun _ q => q.1) X.p20 X.nl251 (by omega) X.c18 w s h hok hC (by omega)
   | .bin op a b, h, hok, hop, hC, hl => by
     have hS := runVS X (.bin op a b) h hok hop hC hl
     simp only [tm, lnV, rd, wr, wd, sv, svF, OkV, OpV] at hok hop hC hl hS ⊢
@@ -151,12 +150,32 @@ theorem runVCap (X : RunCxS K C IG E0 c28 KL) (Y : CapCx fk tg K C IG E0 fsX KL)
     unfold primT at hU
     unfold arity at wa
     by_cases p13 : pn = 1 ∨ pn = 3
-    · simp only [p13, if_true]; exact noCap (leafF_ne Y.nr _) (fun _ _ _ _ _ => rfl)
+    · have := h0 (p13.elim Or.inl (fun q => Or.inr (Or.inl q))); subst this
+      simp only [p13, if_true] at hU ⊢
+      have h6 := Y.h6
+      cases fk with
+      | cap => exact noCap (leafF_ne (by decide) _) (fun _ _ _ _ _ => rfl)
+      | stuck => exact absurd rfl Y.hk
+      | room =>
+        rw [Y.t1 rfl]
+        exact lenRoom X.hI (fun _ q => q.1) (by simpa [lnL] using hU) (by omega) X.c18
+          (by unfold primLen at hl; simp [lnL, p13] at hl ⊢; omega)
     simp only [p13, if_false] at hU ⊢
     by_cases p5 : pn = 5
-    · simp only [p5, if_true]
-      refine noCap (fun env sp H => ?_) (fun _ _ _ _ _ => rfl)
-      simp only [oneF, bnewF]; intro h; have := map_cap h; cases e : bnewS K.κ env sp H <;> simp [e, ofO] at this; exact Y.nr this.symm
+    · have := h0 (Or.inr (Or.inr p5)); subst this
+      simp only [p5, if_true] at hU ⊢
+      have h6 := Y.h6
+      cases fk with
+      | cap =>
+        refine noCap (fun env sp H => ?_) (fun _ _ _ _ _ => rfl)
+        simp only [oneF, bnewF]; intro h; have := map_cap h; cases e : bnewS K.κ env sp H <;> simp [e, ofO] at this
+      | stuck => exact absurd rfl Y.hk
+      | room =>
+        rw [Y.t1 rfl]
+        exact bnewRoom X.hI (fun _ q => q.1) (by simpa [lnL] using hU) Y.kap X.e62 (by omega) X.c18
+          (by
+            have e := bnewT_len 1 0 K.κ; have e' := bnewT_len 1 h K.κ
+            unfold primLen at hl; rw [if_neg (by omega), if_pos p5] at hl; simp only [lnL] at hl ⊢; omega)
     simp only [p5, if_false] at hU ⊢
     have n135 : ¬ (pn = 1 ∨ pn = 3 ∨ pn = 5) := by omega
     simp only [n135, if_false] at wa
