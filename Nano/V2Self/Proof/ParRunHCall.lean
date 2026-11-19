@@ -145,4 +145,76 @@ theorem argsV {N : Nat} (hE : ∀ n' < N, ExprSpec n') {cx : Cx} : ∀ {k m : Na
           rw [hpargs _ hrest g (by omega)]
           rfl
 
+theorem primRes_nnt (p : Nat) : (primRes p).nnt = true := by
+  unfold primRes; split <;> (try split) <;> (try split) <;> rfl
+
+theorem VT.kids {ds : List DefR} {t a b : Nat} {sh : Option Sh} {pe : Bool} {ks : List RN} (h : VT ds (.mk t a b sh pe ks)) :
+    ∀ v ∈ ks, VT ds v := fun _ hv u hu => h u (kid_nodes_sub hv hu)
+
+/-- **prim application** (B's `HCall`, prim-token case) -/
+theorem hcall_prim {n : Nat} (hE : ∀ n' < n, ExprSpec n') {md : Nat} {ks : List Frame} {st fin : St} {cx : Cx} {t : Nat} {r : List Tok}
+    (h : StarN n (.prim md :: ks, st) ([], fin)) (hc : CxRel st cx) (hnn : CxNN st) (ht : st.toks = .k t :: r) (h1 : 38 < t)
+    (h2 : t < 48) : PrimConcl n md ks st fin cx := by
+  match n, h with
+  | 0, h => exact absurd h.zero_nil.1 (by simp)
+  | n0 + 1, h =>
+  obtain ⟨k, st0, hs, hrun⟩ := h.head
+  rw [prim_head ht h1 h2] at hs; cases hs
+  obtain ⟨ps, hsig, hpl, hcode, hinpi, hnf⟩ := prim_sig h1 h2
+  have hrun' : StarN n0 (.args (.pr (t - 38)) (primAr (t - 38)) :: .mkCallN (.pr (t - 38)) st.vals.length :: ks,
+      { st with toks := r }) ([], fin) := hrun
+  obtain ⟨st1, m, n1, hat, rfl, hk⟩ := args_run _ hrun'
+  obtain ⟨vs, hlen, hvals, hb, hd, hcu, harm, hall', htk, hnx, hshs, hsps⟩ :=
+    argsV (N := m + n1 + primAr (t - 38) + 1) (fun k hk => hE k (by omega)) hat (by omega)
+      (CxRel.transport hc rfl rfl) (CxNN.transport hnn rfl rfl rfl)
+  obtain ⟨hall, nd, n', hnode, heq, hfin⟩ :=
+    call_tail (c := .pr (t - 38)) (as := vs.reverse) (base := st.vals) hvals rfl hk
+  simp only [List.length_reverse, List.reverse_reverse, callNode, Option.some.injEq] at hnode heq hall
+  subst hnode
+  refine ⟨RN.mk 9 (t - 38) 0 (some (primRes (t - 38))) false vs,
+    { st1 with vals := RN.mk 9 (t - 38) 0 (some (primRes (t - 38))) false vs :: st.vals,
+               arena := st1.arena ++ [RN.mk 9 (t - 38) 0 (some (primRes (t - 38))) false vs] },
+    n', by omega, ⟨rfl, hb, hd, hcu, harm, hall', by rw [ht]; simp at htk ⊢; omega, hnx⟩,
+    by rw [ht]; simp at htk ⊢; omega, hfin, ⟨_, rfl, primRes_nnt _⟩, fun hvt => ?_⟩
+  obtain ⟨vts, hmap, hfacts, hpargs⟩ := hsps hvt.kids
+  have hlv : vts.length = vs.length := by rw [← hmap]; simp
+  have hinp : InpPair ps vs := prim_inpPair h1 h2 hsig (by omega) hvt.self
+  have hm : ArgsMatch ps vts := by
+    refine argsMatch_of _ _ (by omega) fun idx i1 i2 => ?_
+    have i3 : idx < vs.length := by omega
+    obtain ⟨v, w, hv, hw, hcond⟩ := hall (vs.length - 1 - idx) (by omega)
+    have e1 := operand_idx vs st.vals idx i3
+    rw [hvals, e1] at hv; cases hv
+    have e2 : arity st1 (.pr (t - 38)) - (vs.length - 1 - idx + 1) = idx := by
+      have : arity st1 (.pr (t - 38)) = primAr (t - 38) := rfl
+      rw [this]; omega
+    rw [e2] at hw
+    have hc1 := hcode idx i1
+    rw [List.getElem?_eq_getElem i1] at hc1
+    simp only [Option.map_some, Option.some.injEq] at hc1
+    have e3 : w = psCode ps[idx] := by
+      simp only [parCode, Option.some.injEq] at hw; rw [hc1]; exact hw.symm
+    subst e3
+    have hne : ps[idx] ≠ .sh .nt := fun e => primPar_ne_nt (t - 38) idx (by rw [← hc1, e]; rfl)
+    have hvi : (vts[idx]).1 = vs[idx] := by
+      have := congrArg (fun l => l[idx]?) hmap
+      simpa [List.getElem?_eq_getElem i2, List.getElem?_eq_getElem i3] using this
+    obtain ⟨f1, f2, f3⟩ := hfacts _ (List.getElem_mem i2)
+    rw [hvi] at f1 f3
+    exact tyMatch_of2 f1 f2 f3 hne (by have := hinp.get idx i1 i3; simpa using this) hcond
+  have h4 : t - 38 < 4 → ps.head? = some .inp := by
+    intro h; have := (hinpi 0).mpr ⟨rfl, h⟩
+    cases ps with
+    | nil => simp at this
+    | cons q qs => simpa using this
+  have htn := prim_toNd (p := t - 38) (sh := some (primRes (t - 38))) hinp h4
+  refine ⟨.s (primRes (t - 38)), ⟨rfl, rfl, by simp [RN.tag]⟩, fun hc' => by rw [htn] at hc'; simp [Nd.tailCont] at hc', fun f hf => ?_⟩
+  obtain ⟨g, rfl⟩ : ∃ g, f = g + 1 := ⟨f - 1, by omega⟩
+  rw [ht, pApp]
+  simp only [hsig]
+  rw [hpargs ps hm g (by rw [ht] at hf; simp at hf ⊢; omega)]
+  simp only [Option.map_some, List.map_map]
+  rw [htn, ← hmap]
+  simp [Function.comp_def]
+
 end ParRun
