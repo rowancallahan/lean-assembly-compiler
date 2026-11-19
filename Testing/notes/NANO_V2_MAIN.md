@@ -67,6 +67,16 @@ Options: (a) Par1 layout sized by the token count (offsets d1..d11 as functions 
 Open in this form: `ParStage`, `GenStage` are hypotheses; `CompileRuns(L)` (OOM flag ⇔ out of memory) is NOT claimed (ImplementsC only
 allows OOM below the bound); `Computes` holds only for programs whose meaning is defined on every input (capacity never hit).
 
+## Per-program meaning certificates (`MainCert.lean`, 15 s, propext/choice/Quot.sound)
+`cert_of` / `cert_of'`: `C.s10 x = ts` (kernel; `s10_sound`), `progEq (refParse ts) P = true` (kernel; Boolean AST
+equality `ndEq`/`progEq` with soundness `progEq_eq` — Lean's `rfl` will not unfold refParse), `Sem κC P inp = .ok (f inp)`
+for symbolic `inp` ⇒ `srcRun ⟨x⟩ inp = some (f inp)`.
+- `Ex1.cert`: ParSpec's `ex1` text means `Ex1.m` (two defs, call, prims) — `Sem` by `rfl`.
+- `Ex3.cert`: ParSpec's `ex3` text means `Ex3.m` for inputs < 2^64 bytes (fuel loop): `loop` = induction on the fuel
+  against `loopRun`, `f0` = the loop def's meaning, `sem` = main.
+With `C_correctL`, for these texts: C's code implements the Lean function `m` (given ParStage, GenStage).
+For C itself (186 defs) the `Sem = Lean` part needs one lemma per def (generated, as above); not started.
+
 ## FINDING (2026-11-19): C miscompiles non-linear buffer use — the end-to-end statement is FALSE as is
 Source `def m (x : List UInt8) : List UInt8 := let b := bnew; let c := bpush b 7; put [] (bsize b)`:
 C accepts it (`mC` = 800 bytes); Lean / ParSpec+`Sem` meaning: output `[0]`; QEMU run of C's code: output `[1]`
@@ -87,7 +97,7 @@ ParSpec and the same rejection to Par1 (compiler change: owner/C); (b) keep C, w
 DONE: statement, `Sem`, `ImplementsC`, stage hypotheses, `compiler_correct` (proved from HP, HG), `lexes_len`, `g41_nil`.
 DONE: per-stage non-vacuity witnesses (MainWitness.lean); the parser run itself is not kernel-checkable at Par1's layout.
 DONE: `parsed_not_stuck`, `compiler_correct'` (MainTy/MainTyP); E's `OkV` from ParSpec (`MainOk.parsed_ok`).
-OWNER QUEUE (2026-11-19): (2) bridge Sem ⇐ E's sv; (3) final theorem in Spec/Top + Implements1 vocabulary next to compiler #1's; (4) per-program meaning certificate.
+OWNER QUEUE (2026-11-19): (2) bridge Sem ⇐ E's sv — PAUSED on the aliasing finding; (3) DONE (MainTop.C_correctL); (4) small examples DONE (MainCert), C itself not started.
 NEXT: (1) agree `GenStage` / `ImplementsC` with A and E (no reply yet); the bridge E's machine-level `sv`/`defS`
 (NdSem) ⇒ `Sem` is the natural meeting point — the `TyN` judgment gives the kind facts it needs; E's `OkV` scoping /
 width side conditions also have to come from ParSpec (same fuel-induction scheme as `p_all`); (2) phase 2 parser
