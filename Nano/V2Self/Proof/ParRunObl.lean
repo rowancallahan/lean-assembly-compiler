@@ -147,4 +147,62 @@ theorem reach_selfP {toks : List Tok} {fs : List Frame} {st : St}
     ⟨fun e => by simp [init] at e, fun e => by simp at e, fun g hg => by simp at hg, fun e => by simp at e⟩
   exact this.1 (this.2.2.2 rfl)
 
+/-! ## prev: above `.afterColon` only type frames run, and each leaves a keyword token just before the cursor -/
+def PInv (c : List Frame × St) : Prop :=
+  (∃ pre, c.2.all = pre ++ c.2.toks) ∧
+  (Frame.afterColon ∈ c.1 → (∀ g ∈ c.1, g = .afterColon ∨ isTyF g = true) ∧
+    (c.1.head? ≠ some .tyAtom → ∃ t, prevTok c.2 = some t ∧ ∀ v, t ≠ .num v))
+
+theorem prevTok_eq {st : St} {pre : List Tok} (h : st.all = pre ++ st.toks) : prevTok st = pre.getLast? := by
+  simp only [prevTok, h, List.length_append, Nat.add_sub_cancel, List.take_left']
+
+theorem prevTok_cons1 {st st' : St} {pre r : List Tok} {t : Tok} (h : st.all = pre ++ st.toks) (ht : st.toks = t :: r)
+    (ha : st'.all = st.all) (hr : st'.toks = r) : prevTok st' = some t := by
+  rw [prevTok_eq (pre := pre ++ [t]) (by rw [ha, h, ht, hr]; simp)]; simp
+
+theorem prevTok_cons2 {st st' : St} {pre r : List Tok} {t u : Tok} (h : st.all = pre ++ st.toks) (ht : st.toks = t :: u :: r)
+    (ha : st'.all = st.all) (hr : st'.toks = r) : prevTok st' = some u := by
+  rw [prevTok_eq (pre := pre ++ [t, u]) (by rw [ha, h, ht, hr]; simp)]; simp
+
+theorem stepS_pinv {c d : List Frame × St} (hs : stepS c = some d) (hk : StkInv c) (hd : DInv c) (hi : PInv c) : PInv d := by
+  obtain ⟨⟨pre, hpre⟩, hac⟩ := hi
+  obtain ⟨ha', ⟨q, hq⟩⟩ := (Star.step hs (.refl _)).toks
+  refine ⟨⟨pre ++ q, by rw [ha', hpre, ← hq, List.append_assoc]⟩, ?_⟩
+  obtain ⟨fs, st⟩ := c
+  cases fs with
+  | nil => simp [stepS] at hs
+  | cons f rest =>
+  obtain ⟨k, st', h1, rfl⟩ := stepS_some.mp hs
+  simp only at hpre hac ⊢
+  intro hm
+  rcases List.mem_append.mp hm with hm | hm
+  · obtain ⟨rfl, rfl⟩ := (stepF_obl h1).2.1 hm
+    have : rest = [] := by have := hd (by simp); simpa using this
+    subst this
+    refine ⟨fun g hg => ?_, fun hh => absurd rfl hh⟩
+    simp at hg; rcases hg with rfl | rfl <;> simp [isTyF]
+  · obtain ⟨hall, hpv⟩ := hac (List.mem_cons_of_mem _ hm)
+    have hrest : ∀ g ∈ rest, g = .afterColon ∨ isTyF g = true := fun g hg => hall g (List.mem_cons_of_mem _ hg)
+    rcases hall f (by simp) with rfl | hf
+    · rcases stackOK_cons hk.1 with ⟨rfl, _⟩ | ⟨_, hD, _⟩
+      · cases hm
+      · simp [isD] at hD
+    cases f <;> simp [isTyF] at hf <;> simp only [stepF] at h1 <;> (repeat' split at h1) <;> (try cases h1) <;>
+      (refine ⟨fun g hg => ?_, fun hh => ?_⟩
+       · simp only [List.mem_append, List.mem_cons, List.not_mem_nil, or_false] at hg
+         rcases hg with hg | hg
+         · first | (subst hg; simp [isTyF]) | (rcases hg with rfl | rfl | rfl <;> simp [isTyF]) | (rcases hg with rfl | rfl <;> simp [isTyF])
+         · exact hrest g hg
+       · first
+         | exact absurd rfl hh
+         | exact ⟨_, prevTok_cons1 hpre (by assumption) rfl rfl, by simp⟩
+         | exact ⟨_, prevTok_cons2 hpre (by assumption) rfl rfl, by simp⟩
+         | exact hpv (by simp))
+
+theorem reach_prev {toks : List Tok} {fs : List Frame} {st : St}
+    (h : Star ([.defs], init toks) (.afterColon :: fs, st)) : ∃ t, prevTok st = some t ∧ ∀ v, t ≠ .num v := by
+  have := h.lift (P := PInv) (fun hs hk hd hi => stepS_pinv hs hk hd hi) (stkinv_init toks) (dinv_init toks)
+    ⟨⟨[], by simp [init]⟩, fun e => by simp at e⟩
+  exact (this.2 (by simp)).2 (by simp)
+
 end ParRun
