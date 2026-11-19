@@ -158,4 +158,34 @@ theorem sim_sbW {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K
       · rw [if_neg (by simp; omega)]
         simp only; rw [CallProbe.sbm_other' s.m E c (s.x b) ec]; exact hR.w c hc k hk }
 
+/-! ## SimW's `encJ` words of the new instructions are the `I.enc` words the sims take -/
+
+theorem sI_ofNat (n : Nat) (h : n < 2 ^ 63) : Bridge.sI (UInt64.ofNat n) = n := by
+  unfold Bridge.sI; simp [UInt64.toNat_ofNat, Nat.mod_eq_of_lt (show n < 2 ^ 64 by omega), h]
+
+theorem sI_ofInt (z : Int) (h1 : -2 ^ 63 ≤ z) (h2 : z < 2 ^ 63) : Bridge.sI (UInt64.ofInt z) = z := by
+  unfold Bridge.sI
+  have : ((UInt64.ofInt z).toNat : Int) = z % 2 ^ 64 := by
+    rw [ofInt_toNat64]; omega
+  split <;> omega
+
+theorem encJ_srli (rd rs sh : Nat) (hd : rd < 32) (hs : rs < 32) (hh : sh < 64) :
+    encJ (.srli rd rs sh) = (I.i .srli rd rs (sh : Int)).enc := by
+  simp only [encJ]
+  rw [Bridge.g2_enc _ _ _ _ _ (by decide) (by decide) (by simp; omega) (by simp; omega), sI_ofNat _ (by omega)]
+  simp [I.enc, UInt64.toNat_ofNat, Nat.mod_eq_of_lt (show rd < 2 ^ 64 by omega),
+    Nat.mod_eq_of_lt (show rs < 2 ^ 64 by omega)]; rfl
+
+theorem encJ_bne (a b : Nat) (ha : a < 32) (hb : b < 32) :
+    encJ (.bne a b 4) = (I.br .bne a b 16).enc := by
+  simp only [encJ]
+  rw [Bridge.g4_bne _ _ _ (by simp; omega) (by simp; omega), sI_ofInt _ (by omega) (by omega)]
+  simp [UInt64.toNat_ofNat, Nat.mod_eq_of_lt (show a < 2 ^ 64 by omega), Nat.mod_eq_of_lt (show b < 2 ^ 64 by omega)]
+
+theorem encJ_sb (b a : Nat) (off : Int) (hb : b < 32) (ha : a < 32) (h1 : -2048 ≤ off) (h2 : off < 2048) :
+    encJ (.sb b a off) = (I.sb b a off).enc := by
+  simp only [encJ]
+  rw [Bridge.g3_enc _ _ _ _ (by decide) (by simp; omega) (by simp; omega), sI_ofInt _ (by omega) (by omega)]
+  simp [I.enc, UInt64.toNat_ofNat, Nat.mod_eq_of_lt (show a < 2 ^ 64 by omega), Nat.mod_eq_of_lt (show b < 2 ^ 64 by omega)]
+
 end SimW
