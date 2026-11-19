@@ -288,7 +288,7 @@ def DefR (hb κ : Nat) (P R : List Nat) (f : List W → Except Stop (List W))
     (∀ (j j' : Nat) (l l' : List UInt64) (u u' : UInt64), j ≠ j' → R[j]? = some 1 → R[j']? = some 1 →
       res[j]? = some (W.b l) → res[j']? = some (W.b l') → rs[j]? = some u → rs[j']? = some u' → u ≠ u') ∧
     (∀ a, (σ a).isSome → (∀ (j : Nat) (l : List UInt64) (u : UInt64), P[j]? = some 1 → args[j]? = some (W.b l) →
-      ws[j]? = some u → u.toNat ≠ a) → σ' a = σ a)
+      ws[j]? = some u → u.toNat ≠ a) → σ' a = σ a) ∧ Grow σ σ'
 
 /-- every callable def (as O's walk sees it) meets its contract -/
 def CallR (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) : Prop :=
@@ -309,7 +309,7 @@ theorem node_call (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hW : RsW
       simp only [Prod.mk.injEq] at he; obtain ⟨rfl, rfl⟩ := he
       simp only [sv, callS, Option.bind_eq_some_iff] at hs
       obtain ⟨⟨ua, H1⟩, hsl, hg⟩ := hs
-      obtain ⟨σ1, v, esN, hesA, evl, hA1, hR1, hE1, hCh1, hM1, h81, hb1, hS1, -, hok⟩ :=
+      obtain ⟨σ1, v, esN, hesA, evl, hA1, hR1, hE1, hCh1, hM1, h81, hb1, hS1, -, hGr, hok⟩ :=
         lst_ok cx K oc D hC hK2 hW as hN tl hl hE hA h8 hhb hr hsl
       simp only [List.nil_append] at hesA; subst hesA
       have hr1 : R2 oc.K x1 := hr.keep (lstA_keep hK2 hW tl _ _ _ _ _ hl (fun _ h => by simp at h)).1
@@ -340,7 +340,7 @@ theorem node_call (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hW : RsW
           obtain ⟨G, hG⟩ := hok' j e he
           rw [dest_some hPj] at hG
           exact ⟨u, arg_word hR1 hE1 he hv hu hG⟩
-      obtain ⟨σ', res, hfres, hA', h8', hb', lres, lrs, hres, hdis, hfr⟩ := hDR σ1 v ua _ H1 vs H' hA1 h81 hb1 hArgs hg
+      obtain ⟨σ', res, hfres, hA', h8', hb', lres, lrs, hres, hdis, hfr, hGd⟩ := hDR σ1 v ua _ H1 vs H' hA1 h81 hb1 hArgs hg
       have oa : ∀ (j : Nat) (l : List UInt64) (u : UInt64), P[j]? = some 1 → v[j]? = some (W.b l) → ua[j]? = some u →
           (∀ s ls, Kn Γ s → oc.K.getD s 0 ≠ 0 → OwnSpec.dead yF s = false → env[s]? = some (.b ls) → ew s ≠ u) ∧
           ((σ u.toNat).isSome → ∃ j' l', Kn Γ j' ∧ Cons F yF j' ∧ env[j']? = some (.b l') ∧ ew j' = u) := by
@@ -353,7 +353,7 @@ theorem node_call (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hW : RsW
       have hev : ev cx (ParSpec.Nd.call i as) env = .ok (.inl res) := by
         simp [ev, evl, hfd, hfres, bind, Except.bind, pure, Except.pure]
       have hRw := hW R (List.mem_of_getElem? hRr)
-      refine ⟨σ', res, hev, hA', ?_, ?_, ?_, hM1.trans mf, h8', hb', ?_, fun z hz => .inl (hRw z hz)⟩
+      refine ⟨σ', res, hev, hA', ?_, ?_, ?_, hM1.trans mf, h8', hb', ?_, fun z hz => .inl (hRw z hz), hGr.trans hGd⟩
       · refine resI_of_idx (by omega) (by omega) hRw (fun j e x u he hx hu => ?_)
           (fun j j' l l' u u' hj a b c d f g => hdis j j' l l' u u' (by omega) a b c d f g)
         obtain ⟨c1, c2, c3⟩ := hres j e x u he hx hu

@@ -227,7 +227,7 @@ theorem node_let (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hRs : RsO
       obtain ⟨b0, hcb, htr2⟩ := Option.bind_eq_some_iff.1 hc
       simp only [sv, letS, Option.bind_eq_some_iff] at hs
       obtain ⟨⟨r, H1⟩, hsv, hsb⟩ := hs
-      obtain ⟨σ1, x, evv, hA1, hR1, hE1, hCh1, hM1, h81, hb1, hS1, -⟩ :=
+      obtain ⟨σ1, x, evv, hA1, hR1, hE1, hCh1, hM1, h81, hb1, hS1, -, hG1⟩ :=
         ihv hC hK2 Γ tv F _ _ env ew σ sp H r H1 hv hcv hE hA h8 hhb hr hsv
       obtain ⟨m2, hR2, r2, -, -⟩ := tr_spec hK2 _ x r _ _ _ hR1 hE1 htr
       obtain ⟨-, hS2⟩ := tr_src _ _ _ _ _ _ hR1 hM1 hS1 htr
@@ -244,7 +244,7 @@ theorem node_let (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hRs : RsO
         obtain ⟨kv, tv'⟩ := chk_keep hK2 hW hv rfl _ _ _ hcv
         exact hr.keep (kv.trans (tr_keep _ _ _ _ tv' htr).1)
       have hEb := let_envI (r := r) (hE1.mono m2) hR2 hv12 r2 hxl hsK htv hsl hfr he1
-      obtain ⟨σ2, y, evb, hA2, hR3, hE3, hCh3, hM3, h83, hb3, hS3, -⟩ :=
+      obtain ⟨σ2, y, evb, hA2, hR3, hE3, hCh3, hM3, h83, hb3, hS3, -, hG3⟩ :=
         ihb hC hK2 _ ks _ _ _ _ _ σ1 sp H1 vs H' hb hcb hEb hA1 h81 hb1 hrv hsb
       obtain ⟨m4, hR4, r4, -, -⟩ := tr_spec hK2 _ y vs _ _ _ hR3 hE3 htr2
       obtain ⟨-, hS4⟩ := tr_src _ _ _ _ _ _ hR3 hM3 hS3 htr2
@@ -256,7 +256,7 @@ theorem node_let (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hRs : RsO
       have hev : ev cx (ParSpec.Nd.letE s w v b) env = .ok (.inl y) := by
         simp only [ev, evv, val, bind, Except.bind]; rw [if_pos hxl]; simp only [hss]; exact evb
       refine ⟨σ2, y, hev, hA2, resI_restrict P hR4 (fun e he => by have := r4 e he; omega),
-        envI_restrict P (hE3.mono m4) hel hE.ty, ?_, mF1.trans mG, h83, hb3, ?_, fun z hz => .inl (r4 z hz)⟩
+        envI_restrict P (hE3.mono m4) hel hE.ty, ?_, mF1.trans mG, h83, hb3, ?_, fun z hz => .inl (r4 z hz), hG1.trans hG3⟩
       · intro a ha hn
         have e1 : σ1 a = σ a := hCh1' a ha fun t l kt ct et => hn t l kt ⟨ct.1, mG t ct.2⟩ et
         rw [← e1]

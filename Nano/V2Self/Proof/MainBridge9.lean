@@ -261,13 +261,13 @@ theorem node_prim (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hW : RsW
       simp (config := { decide := true }) only [sv, if_true, if_false] at hs
       obtain ⟨rfl, rfl⟩ := leafS_some hs
       refine ⟨σ, [.w cx.inp.length.toUInt64], by simp [ev, evL, prim, bind, Except.bind, pure, Except.pure], hA, ?_, hE,
-        Ch.refl _ _ _ _ _, Mono.refl _, h8, hhb, by simp [Src, OwnSpec.rk], by simp [OwnSpec.rk]⟩
+        Ch.refl _ _ _ _ _, Mono.refl _, h8, hhb, by simp [Src, OwnSpec.rk], by simp [OwnSpec.rk], Grow.refl _⟩
       simp [ResI, VR, OwnSpec.rk, hX.c29, Nat.toUInt64_eq]
     · -- 2 RD
       simp (config := { decide := true }) only [sv, if_true, if_false] at hs
       unfold fin1S at hs
       obtain ⟨⟨ua, H1⟩, hsl, hrest⟩ := Option.bind_eq_some_iff.1 hs
-      obtain ⟨σ1, v, esN, hesA, evl, hA1, hR1, hE1, hCh1, hM1, h81, hb1, hS1, -, hok⟩ :=
+      obtain ⟨σ1, v, esN, hesA, evl, hA1, hR1, hE1, hCh1, hM1, h81, hb1, hS1, -, hGr, hok⟩ :=
         lst_ok cx K oc D hC hK2 hW as hN tl hl hE hA h8 hhb hr hsl
       simp only [List.nil_append] at hesA; subst hesA
       have kv := hk v evl
@@ -283,7 +283,7 @@ theorem node_prim (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hW : RsW
       obtain ⟨rfl, rfl⟩ := hrest
       have := finC_none1 _ _ _ _ (fun i hi => by simp at hi; subst hi; simp [OwnSpec.dest, OwnSpec.dsP]) hfc; subst this
       refine ⟨σ1, [.w (cx.inp.getD x.toNat 0).toUInt64], by simp [ev, evl, prim, bind, Except.bind, pure, Except.pure],
-        hA1, ?_, hE1, hCh1, hM1, h81, hb1, by simp [Src, OwnSpec.rk], by simp [OwnSpec.rk]⟩
+        hA1, ?_, hE1, hCh1, hM1, h81, hb1, by simp [Src, OwnSpec.rk], by simp [OwnSpec.rk], hGr⟩
       simp [ResI, VR, OwnSpec.rk]
     · -- 3
       have h0 : as = [] := hnil (by decide)
@@ -293,13 +293,13 @@ theorem node_prim (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hW : RsW
       simp (config := { decide := true }) only [sv, if_true, if_false] at hs
       obtain ⟨rfl, rfl⟩ := leafS_some hs
       refine ⟨σ, [.w cx.inp.length.toUInt64], by simp [ev, evL, prim, bind, Except.bind, pure, Except.pure], hA, ?_, hE,
-        Ch.refl _ _ _ _ _, Mono.refl _, h8, hhb, by simp [Src, OwnSpec.rk], by simp [OwnSpec.rk]⟩
+        Ch.refl _ _ _ _ _, Mono.refl _, h8, hhb, by simp [Src, OwnSpec.rk], by simp [OwnSpec.rk], Grow.refl _⟩
       simp [ResI, VR, OwnSpec.rk, hX.c29, Nat.toUInt64_eq]
     · -- 4 PUT
       simp (config := { decide := true }) only [sv, if_true, if_false] at hs
       unfold fin2S at hs
       obtain ⟨⟨ua, H1⟩, hsl, hrest⟩ := Option.bind_eq_some_iff.1 hs
-      obtain ⟨σ1, v, esN, hesA, evl, hA1, hR1, hE1, hCh1, hM1, h81, hb1, hS1, -, hok⟩ :=
+      obtain ⟨σ1, v, esN, hesA, evl, hA1, hR1, hE1, hCh1, hM1, h81, hb1, hS1, -, hGr, hok⟩ :=
         lst_ok cx K oc D hC hK2 hW as hN tl hl hE hA h8 hhb hr hsl
       simp only [List.nil_append] at hesA; subst hesA
       have kv := hk v evl
@@ -340,7 +340,7 @@ theorem node_prim (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hW : RsW
       refine ⟨upd σ1 a.toNat (l ++ [xw]), [.b (l ++ [xw])], hev,
         aheap_update hA1 hσ (by rwa [UInt64.ofNat_toNat]) ht2 (by rwa [UInt64.ofNat_toNat]), ?_,
         (hE1.mono mf).upd _ hn, fun a' ha hn' => ?_, hM1.trans mf, by rw [ht2]; exact h81, by rw [ht2]; exact hb1, ?_,
-        by simp [rk1]⟩
+        by simp [rk1], hGr.trans (grow_upd _ _ _)⟩
       · rw [rk1]
         exact ⟨fun _ => by simp [VR, upd], fun h => absurd h (by decide), fun _ l' hl' => ⟨hn, trivial⟩,
           fun h => absurd h (by decide), trivial⟩
@@ -367,7 +367,7 @@ theorem node_prim (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hW : RsW
         simp only [VR] at vr; rw [q, hfresh] at vr; cases vr
       refine ⟨upd σ a.toNat [], [.b []], by simp [ev, evL, prim, bind, Except.bind, pure, Except.pure], hA', ?_,
         hE.upd [] hn, fun a' ha _ => ?_, Mono.refl _, by show H2.top % 8 = 0; omega, by show K.hb ≤ H2.top; omega, ?_,
-        by simp [OwnSpec.rk]⟩
+        by simp [OwnSpec.rk], grow_upd _ _ _⟩
       · refine ⟨fun _ => by simp [VR, upd], fun h => by simp [OwnSpec.rk] at h, fun _ l hl => ⟨?_, trivial⟩,
           fun h => by simp [OwnSpec.rk] at h, trivial⟩
         cases hl; exact hn
@@ -379,7 +379,7 @@ theorem node_prim (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hW : RsW
       simp (config := { decide := true }) only [sv, if_true, if_false] at hs
       unfold fin1S at hs
       obtain ⟨⟨ua, H1⟩, hsl, hrest⟩ := Option.bind_eq_some_iff.1 hs
-      obtain ⟨σ1, v, esN, hesA, evl, hA1, hR1, hE1, hCh1, hM1, h81, hb1, hS1, -, hok⟩ :=
+      obtain ⟨σ1, v, esN, hesA, evl, hA1, hR1, hE1, hCh1, hM1, h81, hb1, hS1, -, hGr, hok⟩ :=
         lst_ok cx K oc D hC hK2 hW as hN tl hl hE hA h8 hhb hr hsl
       simp only [List.nil_append] at hesA; subst hesA
       have kv := hk v evl
@@ -397,13 +397,13 @@ theorem node_prim (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hW : RsW
         Option.some.injEq, Prod.mk.injEq] at hrest
       obtain ⟨rfl, rfl⟩ := hrest
       refine ⟨σ1, [.w l.length.toUInt64], by simp [ev, evl, prim, bind, Except.bind, pure, Except.pure],
-        hA1, ?_, hE1, hCh1, hM1, h81, hb1, by simp [Src, OwnSpec.rk], by simp [OwnSpec.rk]⟩
+        hA1, ?_, hE1, hCh1, hM1, h81, hb1, by simp [Src, OwnSpec.rk], by simp [OwnSpec.rk], hGr⟩
       simp [ResI, VR, OwnSpec.rk, Nat.toUInt64_eq]
     · -- 7 BGET
       simp (config := { decide := true }) only [sv, if_true, if_false] at hs
       unfold fin2S at hs
       obtain ⟨⟨ua, H1⟩, hsl, hrest⟩ := Option.bind_eq_some_iff.1 hs
-      obtain ⟨σ1, v, esN, hesA, evl, hA1, hR1, hE1, hCh1, hM1, h81, hb1, hS1, -, hok⟩ :=
+      obtain ⟨σ1, v, esN, hesA, evl, hA1, hR1, hE1, hCh1, hM1, h81, hb1, hS1, -, hGr, hok⟩ :=
         lst_ok cx K oc D hC hK2 hW as hN tl hl hE hA h8 hhb hr hsl
       simp only [List.nil_append] at hesA; subst hesA
       have kv := hk v evl
@@ -426,13 +426,13 @@ theorem node_prim (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hW : RsW
         Option.some.injEq, Prod.mk.injEq] at hrest
       obtain ⟨rfl, rfl⟩ := hrest
       refine ⟨σ1, [.w (l.getD iw.toNat 0)], by simp [ev, evl, prim, bind, Except.bind, pure, Except.pure],
-        hA1, ?_, hE1, hCh1, hM1, h81, hb1, by simp [Src, OwnSpec.rk], by simp [OwnSpec.rk]⟩
+        hA1, ?_, hE1, hCh1, hM1, h81, hb1, by simp [Src, OwnSpec.rk], by simp [OwnSpec.rk], hGr⟩
       simp [ResI, VR, OwnSpec.rk]
     · -- 8 BSET
       simp (config := { decide := true }) only [sv, if_true, if_false] at hs
       unfold fin3S at hs
       obtain ⟨⟨ua, H1⟩, hsl, hrest⟩ := Option.bind_eq_some_iff.1 hs
-      obtain ⟨σ1, v, esN, hesA, evl, hA1, hR1, hE1, hCh1, hM1, h81, hb1, hS1, -, hok⟩ :=
+      obtain ⟨σ1, v, esN, hesA, evl, hA1, hR1, hE1, hCh1, hM1, h81, hb1, hS1, -, hGr, hok⟩ :=
         lst_ok cx K oc D hC hK2 hW as hN tl hl hE hA h8 hhb hr hsl
       simp only [List.nil_append] at hesA; subst hesA
       have kv := hk v evl
@@ -461,7 +461,7 @@ theorem node_prim (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hW : RsW
       refine ⟨upd σ1 a.toNat (l.set iw.toNat xw), [.b (l.set iw.toNat xw)], hev,
         aheap_update hA1 hσ (by rwa [UInt64.ofNat_toNat]) ht2 (by rwa [UInt64.ofNat_toNat]), ?_,
         (hE1.mono mf).upd _ hn, fun a' ha hn' => ?_, hM1.trans mf, by rw [ht2]; exact h81, by rw [ht2]; exact hb1, ?_,
-        by simp [rk1]⟩
+        by simp [rk1], hGr.trans (grow_upd _ _ _)⟩
       · rw [rk1]
         exact ⟨fun _ => by simp [VR, upd], fun h => absurd h (by decide), fun _ l' hl' => ⟨hn, trivial⟩,
           fun h => absurd h (by decide), trivial⟩
@@ -476,7 +476,7 @@ theorem node_prim (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hW : RsW
       simp (config := { decide := true }) only [sv, if_true, if_false] at hs
       unfold fin2S at hs
       obtain ⟨⟨ua, H1⟩, hsl, hrest⟩ := Option.bind_eq_some_iff.1 hs
-      obtain ⟨σ1, v, esN, hesA, evl, hA1, hR1, hE1, hCh1, hM1, h81, hb1, hS1, -, hok⟩ :=
+      obtain ⟨σ1, v, esN, hesA, evl, hA1, hR1, hE1, hCh1, hM1, h81, hb1, hS1, -, hGr, hok⟩ :=
         lst_ok cx K oc D hC hK2 hW as hN tl hl hE hA h8 hhb hr hsl
       simp only [List.nil_append] at hesA; subst hesA
       have kv := hk v evl
@@ -517,7 +517,7 @@ theorem node_prim (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hW : RsW
       refine ⟨upd σ1 a.toNat (l ++ [xw]), [.b (l ++ [xw])], hev,
         aheap_update hA1 hσ (by rwa [UInt64.ofNat_toNat]) ht2 (by rwa [UInt64.ofNat_toNat]), ?_,
         (hE1.mono mf).upd _ hn, fun a' ha hn' => ?_, hM1.trans mf, by rw [ht2]; exact h81, by rw [ht2]; exact hb1, ?_,
-        by simp [rk1]⟩
+        by simp [rk1], hGr.trans (grow_upd _ _ _)⟩
       · rw [rk1]
         exact ⟨fun _ => by simp [VR, upd], fun h => absurd h (by decide), fun _ l' hl' => ⟨hn, trivial⟩,
           fun h => absurd h (by decide), trivial⟩
