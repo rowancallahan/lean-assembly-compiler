@@ -218,8 +218,9 @@ theorem bsize_run {C pc} (s : St) (hC : At C pc bsizeT) :
 /-! ## RD (g32 p = 2): top := the input byte at index top (0 if out of range); t3 = input base, t4 = input length -/
 def rdT : List J := [.ld 6 31 0, .addi 5 0 0, .bgeu 6 29 3, .alu 1 5 28 6, .lbu 5 5 0, .sd 5 31 0]
 
-theorem rd_run {C pc} (s : St) (hC : At C pc rdT) (hx0 : s.x 0 = 0) (hb : (s.x 28).toNat + (s.x 29).toNat < 2 ^ 63) :
-    ∃ k, run C k (pc, s) = some (pc + 6,
+/-- RD with its exact step count (6 in range, 4 out of range) -/
+theorem rd_runK {C pc} (s : St) (hC : At C pc rdT) (hx0 : s.x 0 = 0) (hb : (s.x 28).toNat + (s.x 29).toNat < 2 ^ 63) :
+    run C (if (s.m (s.x 31).toNat).toNat < (s.x 29).toNat then 6 else 4) (pc, s) = some (pc + 6,
       ⟨upd (upd s.x 6 (s.m (s.x 31).toNat)) 5
           (if (s.m (s.x 31).toNat).toNat < (s.x 29).toNat then lbm s.m ((s.x 28).toNat + (s.m (s.x 31).toNat).toNat) else 0),
        upd s.m (s.x 31).toNat
@@ -230,7 +231,7 @@ theorem rd_run {C pc} (s : St) (hC : At C pc rdT) (hx0 : s.x 0 = 0) (hb : (s.x 2
   have e0 : ea (s.x 31) 0 = (s.x 31).toNat := by simp [ea]
   have e1 : ∀ b : UInt64, ea b 0 = b.toNat := by intro b; simp [ea]
   by_cases hi : (s.m (s.x 31).toNat).toNat < (s.x 29).toNat
-  · refine ⟨6, ?_⟩
+  · rw [if_pos hi]
     have hs : (s.x 28 + s.m (s.x 31).toNat).toNat = (s.x 28).toNat + (s.m (s.x 31).toNat).toNat := by
       rw [UInt64.toNat_add]; simp; omega
     have hc : ¬ (s.x 29).toNat ≤ (s.m (s.x 31).toNat).toNat := by omega
@@ -239,20 +240,30 @@ theorem rd_run {C pc} (s : St) (hC : At C pc rdT) (hx0 : s.x 0 = 0) (hb : (s.x 2
       upd_other _ _ (show (28:Nat) ≠ 5 by decide), upd_other _ _ (show (28:Nat) ≠ 6 by decide),
       upd_other _ _ (show (6:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide),
       upd_other _ _ (show (29:Nat) ≠ 6 by decide)]
-  · refine ⟨4, ?_⟩
+  · rw [if_neg hi]
     have hc : (s.x 29).toNat ≤ (s.m (s.x 31).toNat).toNat := by omega
     simp [run, step, h0, h1, h2, h5, wr, e0, e1, hc, hi, hx0, ea, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide),
       upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide),
       upd_other _ _ (show (29:Nat) ≠ 6 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), show ((pc : Int) + 1 + 1 + 3).toNat = pc + 5 by omega]
 
+theorem rd_run {C pc} (s : St) (hC : At C pc rdT) (hx0 : s.x 0 = 0) (hb : (s.x 28).toNat + (s.x 29).toNat < 2 ^ 63) :
+    ∃ k, run C k (pc, s) = some (pc + 6,
+      ⟨upd (upd s.x 6 (s.m (s.x 31).toNat)) 5
+          (if (s.m (s.x 31).toNat).toNat < (s.x 29).toNat then lbm s.m ((s.x 28).toNat + (s.m (s.x 31).toNat).toNat) else 0),
+       upd s.m (s.x 31).toNat
+          (if (s.m (s.x 31).toNat).toNat < (s.x 29).toNat then lbm s.m ((s.x 28).toNat + (s.m (s.x 31).toNat).toNat) else 0), s.b⟩) :=
+  ⟨_, rd_runK s hC hx0 hb⟩
+
 /-! ## BGET (g32 p = 7): top = index, below = buffer (layout [len][cap][words…]); result over the new top -/
 def bgetT : List J :=
   [.ld 6 31 0, .ld 5 31 8, .addi 31 31 8, .ld 7 5 0, .addi 14 0 0, .bgeu 6 7 4, .slli 6 6 3, .alu 1 5 5 6, .ld 14 5 16, .sd 14 31 0]
 
-theorem bget_run {C pc} (s : St) (hC : At C pc bgetT) (hx0 : s.x 0 = 0) (hlt : (s.x 31).toNat + 16 < 2 ^ 63)
+/-- BGET with its exact step count (10 in range, 7 out of range) -/
+theorem bget_runK {C pc} (s : St) (hC : At C pc bgetT) (hx0 : s.x 0 = 0) (hlt : (s.x 31).toNat + 16 < 2 ^ 63)
     (hb : (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat > (s.m (s.x 31).toNat).toNat →
       (s.m ((s.x 31).toNat + 8)).toNat + 16 + 8 * (s.m (s.x 31).toNat).toNat < 2 ^ 63) :
-    ∃ k s', run C k (pc, s) = some (pc + 10, s') ∧
+    ∃ s', run C (if (s.m (s.x 31).toNat).toNat < (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat then 10 else 7) (pc, s)
+      = some (pc + 10, s') ∧
       s'.m = upd s.m ((s.x 31).toNat + 8)
         (if (s.m (s.x 31).toNat).toNat < (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat
          then s.m ((s.m ((s.x 31).toNat + 8)).toNat + 16 + 8 * (s.m (s.x 31).toNat).toNat) else 0) ∧
@@ -272,7 +283,7 @@ theorem bget_run {C pc} (s : St) (hC : At C pc bgetT) (hx0 : s.x 0 = 0) (hlt : (
   have e1 : ∀ b : UInt64, ea b 0 = b.toNat := by intro b; simp [ea]
   by_cases hi : (s.m (s.x 31).toNat).toNat < (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat
   · have hb' := hb hi
-    refine ⟨10, ?_⟩
+    simp only [if_pos hi]
     have s3 : (s.m (s.x 31).toNat <<< 3).toNat = 8 * (s.m (s.x 31).toNat).toNat := by
       simp [UInt64.toNat_shiftLeft, Nat.shiftLeft_eq]; omega
     have hc : ¬ (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat ≤ (s.m (s.x 31).toNat).toNat := by omega
@@ -285,12 +296,24 @@ theorem bget_run {C pc} (s : St) (hC : At C pc bgetT) (hx0 : s.x 0 = 0) (hlt : (
     simp [run, step, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hc, t8, t8', s3, ea16]
     intro r h5' h6' h7' h14' h31'
     simp [upd, h5', h6', h7', h14', h31']
-  · refine ⟨7, ?_⟩
+  · simp only [if_neg hi]
     have hc : (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat ≤ (s.m (s.x 31).toNat).toNat := by omega
     simp [run, step, h0, h1, h2, h3, h4, h5, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hc, t8, t8',
       show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 4).toNat = pc + 9 by omega]
     intro r h5' h6' h7' h14' h31'
     simp [upd, h5', h6', h7', h14', h31']
+
+theorem bget_run {C pc} (s : St) (hC : At C pc bgetT) (hx0 : s.x 0 = 0) (hlt : (s.x 31).toNat + 16 < 2 ^ 63)
+    (hb : (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat > (s.m (s.x 31).toNat).toNat →
+      (s.m ((s.x 31).toNat + 8)).toNat + 16 + 8 * (s.m (s.x 31).toNat).toNat < 2 ^ 63) :
+    ∃ k s', run C k (pc, s) = some (pc + 10, s') ∧
+      s'.m = upd s.m ((s.x 31).toNat + 8)
+        (if (s.m (s.x 31).toNat).toNat < (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat
+         then s.m ((s.m ((s.x 31).toNat + 8)).toNat + 16 + 8 * (s.m (s.x 31).toNat).toNat) else 0) ∧
+      s'.x 31 = UInt64.ofNat ((s.x 31).toNat + 8) ∧
+      ∀ r, r ≠ 5 → r ≠ 6 → r ≠ 7 → r ≠ 14 → r ≠ 31 → s'.x r = s.x r := by
+  obtain ⟨s', h, r⟩ := bget_runK s hC hx0 hlt hb
+  exact ⟨_, s', h, r⟩
 
 /-! ## LOCAL (g25 + g24): for each word, `ld t0, off(s0)` then the checked push.  Slot k < p (an argument slot) at
 s0 + 16 + 8(p−1−k), slot k ≥ p at s0 − 8(k−p+1). -/

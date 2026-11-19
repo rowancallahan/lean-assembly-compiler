@@ -19,10 +19,12 @@ theorem bnewT_len (tgt q κ : Nat) : (bnewT tgt q κ).length =
   simp only [List.length_append, pushA_len', List.length_cons, List.length_nil]
   omega
 
-theorem bnew_run {C : List J} {pc tgt κ : Nat} (s : St) (hC : At C pc (bnewT tgt pc κ)) (hx0 : s.x 0 = 0)
+/-- BNEW with its exact step count -/
+theorem bnew_runK {C : List J} {pc tgt κ : Nat} (s : St) (hC : At C pc (bnewT tgt pc κ)) (hx0 : s.x 0 = 0)
     (hκ : κ < 2 ^ 40) (hsp : (s.x 31).toNat < 2 ^ 62)
     (hroom : (s.x 30).toNat + 8 * (κ + 2) + 8 ≤ (s.x 31).toNat) :
-    ∃ k s', run C k (pc, s) = some (pc + (bnewT tgt pc κ).length, s') ∧
+    ∃ s', run C (1 + ((liT 6 (UInt64.ofNat ((κ + 2) * 8))).length + (1 + (1 + ((liT 7 (UInt64.ofNat κ)).length + (3 + 3)))))) (pc, s)
+      = some (pc + (bnewT tgt pc κ).length, s') ∧
       (s'.x 31).toNat = (s.x 31).toNat - 8 ∧ (s'.x 30).toNat = (s.x 30).toNat + 8 * (κ + 2) ∧ s'.x 5 = s.x 30 ∧
       s'.m = upd (upd (upd s.m (s.x 30).toNat 0) ((s.x 30).toNat + 8) (UInt64.ofNat κ)) ((s.x 31).toNat - 8) (s.x 30) ∧
       s'.b = s.b ∧ (∀ r, r ≠ 5 → r ≠ 6 → r ≠ 7 → r ≠ 30 → r ≠ 31 → s'.x r = s.x r) := by
@@ -111,8 +113,8 @@ theorem bnew_run {C : List J} {pc tgt κ : Nat} (s : St) (hC : At C pc (bnewT tg
     rw [y30, y31, hsum]; omega
   have r4' : run C 1 (pc + 1 + (liT 6 W).length + 1, s3) = some (pc + 1 + (liT 6 W).length + 3, s3) := by simp [run, r4]
   have r9 := push_run (s := s8) (by simpa [pushA] using p6) (by decide) (by decide) hh8
-  refine ⟨1 + ((liT 6 W).length + (1 + (1 + ((liT 7 K).length + (3 + 3))))),
-    ⟨upd s8.x 31 (UInt64.ofNat ((s8.x 31).toNat - 8)), upd s8.m ((s8.x 31).toNat - 8) (s8.x 5), s8.b⟩, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  refine ⟨⟨upd s8.x 31 (UInt64.ofNat ((s8.x 31).toNat - 8)), upd s8.m ((s8.x 31).toNat - 8) (s8.x 5), s8.b⟩,
+    ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · rw [run_add r1, run_add r2, run_add r3, run_add r4', run_add r5, run_add r678, r9]
     have : (bnewT tgt pc κ).length = 1 + (liT 6 W).length + 3 + (liT 7 K).length + 3 + 4 := by
       rw [bnewT_len, hW, hK]
@@ -133,6 +135,16 @@ theorem bnew_run {C : List J} {pc tgt κ : Nat} (s : St) (hC : At C pc (bnewT tg
 
 /-- BNEW at the capacity exit: not enough room for the buffer plus the pushed address.  Control reaches the stub `tgt`;
 s0, x0 and every stack cell at or above the entry t6 are untouched (the header writes are below it). -/
+theorem bnew_run {C : List J} {pc tgt κ : Nat} (s : St) (hC : At C pc (bnewT tgt pc κ)) (hx0 : s.x 0 = 0)
+    (hκ : κ < 2 ^ 40) (hsp : (s.x 31).toNat < 2 ^ 62)
+    (hroom : (s.x 30).toNat + 8 * (κ + 2) + 8 ≤ (s.x 31).toNat) :
+    ∃ k s', run C k (pc, s) = some (pc + (bnewT tgt pc κ).length, s') ∧
+      (s'.x 31).toNat = (s.x 31).toNat - 8 ∧ (s'.x 30).toNat = (s.x 30).toNat + 8 * (κ + 2) ∧ s'.x 5 = s.x 30 ∧
+      s'.m = upd (upd (upd s.m (s.x 30).toNat 0) ((s.x 30).toNat + 8) (UInt64.ofNat κ)) ((s.x 31).toNat - 8) (s.x 30) ∧
+      s'.b = s.b ∧ (∀ r, r ≠ 5 → r ≠ 6 → r ≠ 7 → r ≠ 30 → r ≠ 31 → s'.x r = s.x r) := by
+  obtain ⟨s', h, r⟩ := bnew_runK s hC hx0 hκ hsp hroom
+  exact ⟨_, s', h, r⟩
+
 theorem bnew_oom {C : List J} {pc tgt κ : Nat} (s : St) (hC : At C pc (bnewT tgt pc κ)) (hx0 : s.x 0 = 0)
     (hκ : κ < 2 ^ 40) (hsp : (s.x 31).toNat < 2 ^ 62) (hT : (s.x 30).toNat < 2 ^ 62) (h8 : 8 ≤ (s.x 31).toNat)
     (hroom : (s.x 31).toNat < (s.x 30).toNat + 8 * (κ + 2) + 8) :
@@ -266,11 +278,12 @@ def bpushT (tgt q : Nat) : List J :=
   [.ld 6 31 0, .ld 5 31 8, .addi 31 31 8, .ld 7 5 0, .ld 14 5 8, .bltu 7 14 2, .jal 0 ((tgt : Int) - ((q + 6 : Nat) : Int)),
    .slli 15 7 3, .alu 1 15 15 5, .sd 6 15 16, .addi 7 7 1, .sd 7 5 0]
 
-theorem bpush_run {C : List J} {pc tgt : Nat} (s : St) (hC : At C pc (bpushT tgt pc)) (hx0 : s.x 0 = 0)
+/-- BPUSH with its exact step count -/
+theorem bpush_runK {C : List J} {pc tgt : Nat} (s : St) (hC : At C pc (bpushT tgt pc)) (hx0 : s.x 0 = 0)
     (hsp : (s.x 31).toNat + 16 < 2 ^ 63)
     (hlen : (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat < (s.m ((s.m ((s.x 31).toNat + 8)).toNat + 8)).toNat)
     (hb : (s.m ((s.x 31).toNat + 8)).toNat + 16 + 8 * (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat < 2 ^ 62) :
-    ∃ k s', run C k (pc, s) = some (pc + 12, s') ∧
+    ∃ s', run C 11 (pc, s) = some (pc + 12, s') ∧
       s'.m = upd (upd s.m ((s.m ((s.x 31).toNat + 8)).toNat + 16 + 8 * (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat)
                   (s.m (s.x 31).toNat))
               (s.m ((s.x 31).toNat + 8)).toNat ((s.m (s.m ((s.x 31).toNat + 8)).toNat) + 1) ∧
@@ -302,13 +315,25 @@ theorem bpush_run {C : List J} {pc tgt : Nat} (s : St) (hC : At C pc (bpushT tgt
   have eL : UInt64.ofNat (ea (s.m (s.m ((s.x 31).toNat + 8)).toNat) 1) = s.m (s.m ((s.x 31).toNat + 8)).toNat + 1 := by
     have := (s.m ((s.m ((s.x 31).toNat + 8)).toNat + 8)).toNat_lt
     apply UInt64.toNat.inj; simp [ea, UInt64.toNat_add]
-  refine ⟨11, ?_⟩
   simp [run, step, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16,
     upd_same, upd_upd, upd_ne, hlt', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 2).toNat = pc + 7 by omega]
   intro r h5 h6 h7 h14 h15 h31
   simp [upd, h5, h6, h7, h14, h15, h31]
 
 /-- BPUSH on a full buffer: the capacity exit (word `tgt`); memory is untouched -/
+theorem bpush_run {C : List J} {pc tgt : Nat} (s : St) (hC : At C pc (bpushT tgt pc)) (hx0 : s.x 0 = 0)
+    (hsp : (s.x 31).toNat + 16 < 2 ^ 63)
+    (hlen : (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat < (s.m ((s.m ((s.x 31).toNat + 8)).toNat + 8)).toNat)
+    (hb : (s.m ((s.x 31).toNat + 8)).toNat + 16 + 8 * (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat < 2 ^ 62) :
+    ∃ k s', run C k (pc, s) = some (pc + 12, s') ∧
+      s'.m = upd (upd s.m ((s.m ((s.x 31).toNat + 8)).toNat + 16 + 8 * (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat)
+                  (s.m (s.x 31).toNat))
+              (s.m ((s.x 31).toNat + 8)).toNat ((s.m (s.m ((s.x 31).toNat + 8)).toNat) + 1) ∧
+      (s'.x 31).toNat = (s.x 31).toNat + 8 ∧ s'.b = s.b ∧
+      (∀ r, r ≠ 5 → r ≠ 6 → r ≠ 7 → r ≠ 14 → r ≠ 15 → r ≠ 31 → s'.x r = s.x r) := by
+  obtain ⟨s', h, r⟩ := bpush_runK s hC hx0 hsp hlen hb
+  exact ⟨_, s', h, r⟩
+
 theorem bpush_cap {C : List J} {pc tgt : Nat} (s : St) (hC : At C pc (bpushT tgt pc)) (hx0 : s.x 0 = 0)
     (hsp : (s.x 31).toNat + 16 < 2 ^ 62)
     (hlen : (s.m ((s.m ((s.x 31).toNat + 8)).toNat + 8)).toNat ≤ (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat)
@@ -335,11 +360,13 @@ theorem bpush_cap {C : List J} {pc tgt : Nat} (s : St) (hC : At C pc (bpushT tgt
 def bsetT : List J :=
   [.ld 14 31 0, .ld 6 31 8, .ld 5 31 16, .addi 31 31 16, .ld 7 5 0, .bgeu 6 7 4, .slli 6 6 3, .alu 1 6 5 6, .sd 14 6 16]
 
-theorem bset_run {C : List J} {pc : Nat} (s : St) (hC : At C pc bsetT) (hx0 : s.x 0 = 0)
+/-- BSET with its exact step count (9 in range, 6 out of range) -/
+theorem bset_runK {C : List J} {pc : Nat} (s : St) (hC : At C pc bsetT) (hx0 : s.x 0 = 0)
     (hsp : (s.x 31).toNat + 24 < 2 ^ 62)
     (hb : (s.m (s.m ((s.x 31).toNat + 16)).toNat).toNat > (s.m ((s.x 31).toNat + 8)).toNat →
       (s.m ((s.x 31).toNat + 16)).toNat + 16 + 8 * (s.m ((s.x 31).toNat + 8)).toNat < 2 ^ 62) :
-    ∃ k s', run C k (pc, s) = some (pc + 9, s') ∧
+    ∃ s', run C (if (s.m ((s.x 31).toNat + 8)).toNat < (s.m (s.m ((s.x 31).toNat + 16)).toNat).toNat then 9 else 6) (pc, s)
+      = some (pc + 9, s') ∧
       s'.m = (if (s.m ((s.x 31).toNat + 8)).toNat < (s.m (s.m ((s.x 31).toNat + 16)).toNat).toNat
               then upd s.m ((s.m ((s.x 31).toNat + 16)).toNat + 16 + 8 * (s.m ((s.x 31).toNat + 8)).toNat) (s.m (s.x 31).toNat)
               else s.m) ∧
@@ -367,16 +394,30 @@ theorem bset_run {C : List J} {pc : Nat} (s : St) (hC : At C pc bsetT) (hx0 : s.
     have ea16 : ea ((s.m ((s.x 31).toNat + 16)) + (s.m ((s.x 31).toNat + 8)) <<< 3) 16
         = (s.m ((s.x 31).toNat + 16)).toNat + 16 + 8 * (s.m ((s.x 31).toNat + 8)).toNat := by
       simp only [ea, sa]; omega
-    refine ⟨9, ?_⟩
+    simp only [if_pos hi]
     have hc : ¬ (s.m (s.m ((s.x 31).toNat + 16)).toNat).toNat ≤ (s.m ((s.x 31).toNat + 8)).toNat := by omega
     simp [run, step, h0, h1, h2, h3, h4, h5, h6, h7, h8, wr, e0, e8, e16, t16, eb0, aluf, ea16, hc, hi, upd_ne, upd_same]
     intro r h5 h6 h7 h14 h31
     simp [upd, h5, h6, h7, h14, h31]
-  · refine ⟨6, ?_⟩
+  · simp only [if_neg hi]
     have hc : (s.m (s.m ((s.x 31).toNat + 16)).toNat).toNat ≤ (s.m ((s.x 31).toNat + 8)).toNat := by omega
     simp [run, step, h0, h1, h2, h3, h4, h5, wr, e0, e8, e16, t16, eb0, hc, hi, upd_ne, upd_same,
       show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 4).toNat = pc + 9 by omega]
     intro r h5 h6 h7 h14 h31
     simp [upd, h5, h6, h7, h14, h31]
+
+
+theorem bset_run {C : List J} {pc : Nat} (s : St) (hC : At C pc bsetT) (hx0 : s.x 0 = 0)
+    (hsp : (s.x 31).toNat + 24 < 2 ^ 62)
+    (hb : (s.m (s.m ((s.x 31).toNat + 16)).toNat).toNat > (s.m ((s.x 31).toNat + 8)).toNat →
+      (s.m ((s.x 31).toNat + 16)).toNat + 16 + 8 * (s.m ((s.x 31).toNat + 8)).toNat < 2 ^ 62) :
+    ∃ k s', run C k (pc, s) = some (pc + 9, s') ∧
+      s'.m = (if (s.m ((s.x 31).toNat + 8)).toNat < (s.m (s.m ((s.x 31).toNat + 16)).toNat).toNat
+              then upd s.m ((s.m ((s.x 31).toNat + 16)).toNat + 16 + 8 * (s.m ((s.x 31).toNat + 8)).toNat) (s.m (s.x 31).toNat)
+              else s.m) ∧
+      (s'.x 31).toNat = (s.x 31).toNat + 16 ∧ s'.b = s.b ∧
+      (∀ r, r ≠ 5 → r ≠ 6 → r ≠ 7 → r ≠ 14 → r ≠ 31 → s'.x r = s.x r) := by
+  obtain ⟨s', h, r⟩ := bset_runK s hC hx0 hsp hb
+  exact ⟨_, s', h, r⟩
 
 end CallProbe
