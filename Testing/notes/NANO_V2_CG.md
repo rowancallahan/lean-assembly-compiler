@@ -453,3 +453,15 @@ input x at a0 (a1 = |x|), gen_runS's layout, and `semAt main … = some (vs, H')
 run to ra with a0 = (y = [] ? 1 : 0), a1 = |y|, y at a3, plus the Sail RelW lift. ScV/reads from parsed_sc (par_sc),
 hs.length = p.length (hs_len, via wlen on the width chain). Build ~2 s; axioms = Sail set.
 Open for GenStage: (A) semAt = none ⇒ OOM/cap exits; (B) host lift ImplementsCW ↔ RelW + layout; (C) DB, hXl.
+
+## Host lift (B), box E, 2026-11-19 — success path DONE
+`HostMain.gen_host`: ImplementsCW's hypotheses (Cfg, code bytes = g41 output at entry, a0..a3/sp/ra, input bytes,
+regions in RAM + pairwise disjoint, output/work Mapped) + parsed ∧ progOk Ks (Ks ≤ 2) ∧ DB ∧ |serialize p| < 2^31 ∧
+g41 ≠ [] ∧ work.len ≥ 16 ∧ (∀ T, semAt main (pcOf κC (work.base+16) |x| (inpW x) T) … E0 ⟨work.base+16, ∅⟩ = some _)
+⇒ runsTo s (Outcome s ra output work (Sem κC p x) oomOK), via the `.ok` disjunct.  E0 = (work.base+work.len)/8*8.
+Pieces: SimW RelW gained byte-level input/output (`bw`, `bok`/`sok`, LayW ib/il/ob/ol) and a frame vs the start
+memory (`fr`, LayW.m0); NoW.dstOk forbids writes to sp/gp/tp/s1..s11 (keepR); start code / gen_runS / gen_main stop at
+the final `jalr x0, 0(ra)` (ra may be below the code) and HostLift.sim_ret takes it on Sail; HostLift: g40_bytes,
+code_at, wordAt/jOf, rel_init, fin_out.  Axioms = Sail set.
+Open: (A) semAt failure ⇒ OOM/cap exits (+ D's converse: enough space ⇒ semAt some, Sem cap ⇒ semAtX cap);
+then ImplementsCW with space x := max 16 (D's R x) + slack; hXl from g42's input check; DB (D).
