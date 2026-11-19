@@ -1,6 +1,6 @@
 /- Nano/V2Self/Proof/MainTop: C's end-to-end theorem in the owner's top-level vocabulary (`Spec/Top.lean` +
 `Compiler/AllocSpec.lean`), the same shape as compiler #1's `compile_correctL : CompileCorrectL riscv compile`.
-* `Src`: a source text; `Program Src` runs it by its MEANING: lex (Lex2Spec), parse (ParSpec), `Sem κC` (no result when
+* `SrcC`: a source text; `Program SrcC` runs it by its MEANING: lex (Lex2Spec), parse (ParSpec), `Sem κC` (no result when
   the text is not a program or the run hits Gen's buffer capacity);
 * `compileC`: C's driver `mC` (when it emits code and the text is at most 2^20 bytes); `memoryNeeded` = the work bound
   of `ImplementsC` (chosen);
@@ -29,7 +29,7 @@ theorem lexes_det : ∀ {x : List UInt8} {t t' : List UInt64}, LexSpec.Lexes x t
       rw [lexes_det h1 h2]
 
 /-- a source text -/
-structure Src where
+structure SrcC where
   text : List UInt8
 
 open Classical in
@@ -46,10 +46,10 @@ theorem pOf_eq {x : List UInt8} {ts : List UInt64} {p : List DefA} (hl : LexSpec
   unfold ParsesProgram at hp hp'; rw [hp'] at hp; cases hp; rfl
 
 /-- **the meaning of a text** on an input -/
-noncomputable def srcRun (s : Src) (inp : List UInt8) : Option (List UInt8) :=
+noncomputable def srcRun (s : SrcC) (inp : List UInt8) : Option (List UInt8) :=
   (pOf s.text).bind fun p => (Sem κC p inp).toOption
 
-noncomputable instance : Program Src := ⟨srcRun⟩
+noncomputable instance : Program SrcC := ⟨srcRun⟩
 
 open Classical in
 /-- the work bound of C's code for a text (from `ImplementsC`) -/
@@ -59,7 +59,7 @@ noncomputable def spaceC (x : List UInt8) : List UInt8 → Nat :=
   | none => fun _ => 0
 
 /-- **C as a compiler** -/
-noncomputable def compileC (s : Src) : Option CompiledA :=
+noncomputable def compileC (s : SrcC) : Option CompiledA :=
   if mC s.text ≠ [] ∧ s.text.length ≤ 2 ^ 20 then some ⟨mC s.text, 1, fun inp => [.alloc (spaceC s.text inp)]⟩
   else none
 
