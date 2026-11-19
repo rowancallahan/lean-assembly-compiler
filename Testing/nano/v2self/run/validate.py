@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Validate nanorun (UNPROVEN glue): (1) self-compile: nanorun B2 on C's source must give B2 byte for byte;
 (2) the qemu_regress programs: compile with nanorun B2, run with nanorun on 5 inputs, compare with the Python model of
-the Lean semantics and, with QEMU=1, with qemu-system-riscv64 (cg_test.py);  (3) too little work memory gives a0 = -1.
+the Lean semantics and, with QEMU=1, with qemu-system-riscv64 (cg_test.py);  (3) too little work memory gives a0 = -1;
+(4) with SHIM="qemu-riscv64-static /tmp/shim_rv": the same through the native shim (shim/shim_rv.c).
 usage (from the repository root):  python3 Testing/nano/v2self/run/validate.py [NANORUN]   (default: builds /tmp/nanorun)"""
 import functools, hashlib, os, subprocess, sys, tempfile, time
 V = "Testing/nano/v2self"; M = (1 << 64) - 1
@@ -57,4 +58,17 @@ for name, (src, model) in PROGS.items():
         assert q.returncode == 0, (name, (q.stdout + q.stderr)[-400:])
     print(f"{name}: compiled by nanorun B2 in {dt:.2f} s ({len(code)} bytes); {len(INS)} inputs agree with the model" +
           (f" and with QEMU ({tq:.0f} s)" if os.environ.get("QEMU") else ""))
+# the native shim (shim/shim_rv.c), e.g. SHIM="qemu-riscv64-static /tmp/shim_rv" (or just the binary on a RISC-V machine)
+if os.environ.get("SHIM"):
+    sh = os.environ["SHIM"].split()
+    t = time.time(); r = subprocess.run(sh + [f"{V}/B2.bin", f"{V}/self_S_input.txt"], capture_output=True)
+    assert r.returncode == 0 and r.stdout == b2, r.stderr
+    print(f"shim self-compile: stdout == B2, {time.time() - t:.1f} s")
+    for name, (src, model) in PROGS.items():
+        code = subprocess.run(sh + [f"{V}/B2.bin", f"{T}/{name}.lean"], capture_output=True, check=True).stdout
+        assert code == open(f"{T}/{name}.bin", "rb").read(), name
+        for xs in INS:
+            r = subprocess.run(sh + [f"{T}/{name}.bin", "-", "20"], input=bytes(xs), capture_output=True)
+            assert r.returncode == 0 and r.stdout == bytes(model(xs)), (name, xs, r.stderr)
+        print(f"shim {name}: same code as nanorun; {len(INS)} inputs (stdin) agree with the model")
 print("ALL OK")
