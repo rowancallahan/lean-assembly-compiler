@@ -171,4 +171,46 @@ theorem fin3XS {KL : LayW} {C : List J} {pc lp lu p nl hb E0 : Nat} {Inv : St �
     exact finTailS hI s s1 s3 env env1 H3 v I1 z1 O0 e81 F1 ag1 m1 r1 st3 A3 q31 qv R3 qx qm (by omega) (by omega)
 
 
+theorem fin2_aluS {KL : LayW} {C : List J} {q op : Nat} {Inv : St → Prop} {hb E0 : Nat} (hC : At C q (binT op))
+    (hop : 1 ≤ op ∧ op ≤ 8) : Fin2S KL C q 5 Inv hb E0 (aluF2 op) := by
+  intro s2 H2 v H3 I2 z2 hR hl K2 A2 hF
+  simp only [aluF2, Option.some.injEq, Prod.mk.injEq] at hF
+  obtain ⟨rfl, rfl⟩ := hF
+  have h31 : hb ≤ (s2.x 31).toNat := by have := hR.2.1; have := hR.2.2.1; omega
+  have hr := bin_srun (K := KL) s2 hC hl hop (by simpa using K2.wok h31 (i := 0) (by omega)) (K2.wok h31 (i := 1) (by omega))
+  have t8' : (s2.x 31 + 8).toNat = (s2.x 31).toNat + 8 := by rw [UInt64.toNat_add]; simp; omega
+  refine ⟨_, SStarX.of hr, ?_, ?_, ?_, A2, ?_, ?_⟩
+  · simp [upd, t8']
+  · simp [upd_same]
+  · refine HRel_stack hR (by simp [upd_ne]) (by simp [upd, t8']; have := hR.2.2.1; omega) ?_
+    intro a h1 h2; simp only []; rw [upd_other _ _ (by have := hR.2.2.1; omega)]
+  · intro r h5 h6 _ _ _ h31; simp [upd_ne, h5, h6, h31]
+  · intro a ha _; simp only []; rw [upd_other _ _ ha]
+
+theorem fin1_rdS {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {hb E0 : Nat} {c28 c29 : UInt64}
+    {inp : Nat → UInt64} (hC : At C q rdT) (hInv : InpOK Inv c28 c29 inp) (hW : InpW KL Inv) :
+    Fin1S KL C q 6 Inv hb E0 (rdF1 c29 inp) := by
+  intro s1 H1 v H2 I1 z1 hR K1 A1 hF
+  simp only [rdF1, Option.some.injEq, Prod.mk.injEq] at hF
+  obtain ⟨rfl, rfl⟩ := hF
+  obtain ⟨h28, h29, hin, hb'⟩ := hInv s1 I1
+  have h31 : hb ≤ (s1.x 31).toNat := by have := hR.2.1; have := hR.2.2.1; omega
+  have hk := rd_srun (K := KL) s1 hC z1 (by rw [h28, h29]; exact hb') (by simpa using K1.wok h31 (i := 0) (by omega))
+    (fun hi => hW s1 I1 _ hi)
+  have ev : (if (s1.m (s1.x 31).toNat).toNat < (s1.x 29).toNat then
+      lbm s1.m ((s1.x 28).toNat + (s1.m (s1.x 31).toNat).toNat) else 0) =
+      (if (s1.m (s1.x 31).toNat).toNat < c29.toNat then inp (s1.m (s1.x 31).toNat).toNat else 0) := by
+    rw [h29, h28]
+    by_cases hi : (s1.m (s1.x 31).toNat).toNat < c29.toNat
+    · simp only [hi, if_true]; rw [hin _ hi]
+    · simp only [hi, if_false]
+  rw [ev] at hk
+  refine ⟨_, SStarX.of hk, ?_, ?_, ?_, A1, ?_, ?_⟩
+  · simp [upd_ne]
+  · simp [upd_same]
+  · refine HRel_stack hR (by simp [upd_ne]) (by simp [upd_ne]; exact hR.2.2.1) ?_
+    intro a h1 h2; simp only []; rw [upd_other _ _ (by have := hR.2.2.1; omega)]
+  · intro r h5 h6 _ _ _; simp [upd_ne, h5, h6]
+  · intro a ha _; simp only []; rw [upd_other _ _ ha]
+
 end Templates
