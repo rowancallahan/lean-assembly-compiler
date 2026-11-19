@@ -431,4 +431,160 @@ theorem loop_toks {ks : List Frame} {S st' fin : St} {n' : Nat} {r : List Tok} (
       · rw [h] at hprev; simp at hprev
     · cases h1
 
+
+/-! ## the def-level dispatcher -/
+/-- B's loop lemma in the shape the dispatcher needs (finished-rows NN, the run prefix) -/
+def LoopStep : Prop := ∀ {n : Nat} {ks : List Frame} {st fin : St} {defs : List DefI} {name : List Nat} {r : List Tok},
+  StarN n (.tyAtom :: .afterColon :: ks, st) ([], fin) → st.toks = .k 35 :: .k 17 :: r → st.cur = DefR.fresh name →
+  st.binds = [] → st.vals = [] → st.arena = [] → st.arm = false → CxRel st ⟨defs, [], none⟩ → DefsNN st.defs →
+  findDef defs name = none → (∀ f res r', pArrows f r ≠ some ([.lst, res], r')) →
+  ∃ lp st' n', n' < n ∧ Star (.tyAtom :: .afterColon :: ks, st) (.defEnd :: ks, st') ∧ StarN n' (.defEnd :: ks, st') ([], fin) ∧
+    st'.vals = [lp] ∧ st'.defs = st.defs ∧ st'.out = st.out ∧ st'.cur.name = name ∧ st'.cur.loop = true ∧
+    st'.toks.length < st.toks.length ∧
+    (VT (rows st') lp →
+      ∃ di : DefI, di.name = name ∧ di.params.map psCode = st'.cur.params ∧ st'.cur.res = some di.res ∧ di.npw = st'.cur.npw ∧
+        (∀ (i : Nat) (h : i < di.params.length), (di.params[i] = .inp ↔ FirstLs st'.cur.params i)) ∧
+        (∀ p ∈ di.params, p ≠ .sh .nt) ∧ (di.res.nnt = true ∧ ∀ p ∈ st'.cur.params, p.nnt = true) ∧
+        ∀ f, 4 * st.toks.length + 8 ≤ f → pDef f defs (.k 1 :: .id name :: .k 8 :: st.toks) =
+          some (di, { id := defs.length, npw := st'.cur.npw, nslots := st'.nx, kind := 1, nres := di.res.width,
+                      body := lp.toNd }, st'.toks))
+
+/-- the `.defs` step validates the arena -/
+theorem defs_valid {n : Nat} {ks : List Frame} {st fin : St} (h : StarN n (.defs :: ks, st) ([], fin)) :
+    st.arena.all (nodeOK st.defs) = true := by
+  match n, h with
+  | n + 1, h =>
+    obtain ⟨k, st', h1, _⟩ := h.head
+    simp only [stepF] at h1
+    split at h1
+    · cases h1
+    · rename_i hc; simpa using hc
+
+
+/-- the spec's loop-state rule that Par1 does not enforce yet (finding L): no loop with exactly one `List UInt8` state -/
+def NoL (toks : List Tok) : Prop := ∀ pre name r f res r', toks = pre ++ .k 1 :: .id name :: .k 8 :: .k 35 :: .k 17 :: r →
+  pArrows f r ≠ some ([.lst, res], r')
+
+theorem pDefs_cons (F G : Nat) (dis : List DefI) (t : Tok) (ts : List Tok) :
+    pDefs F (G + 1) dis (t :: ts) = (pDef F dis (t :: ts)).bind fun (di, da, r) =>
+      (pDefs F G (dis ++ [di]) r).map fun (ds, as) => (ds, da :: as) := by
+  rw [pDefs]; simp
+
+/-- **the def level**: a run from `.defs` to the empty stack is `pDefs` -/
+theorem defs_spec (hLS : LoopStep) : ∀ (n : Nat) {st fin : St} {dis : List DefI}, StarN n ([.defs], st) ([], fin) →
+    DRel st.defs dis → DefsNN st.defs → (∃ pre, st.all = pre ++ st.toks) → NoL st.all →
+    ∃ dis' as, (∀ F G, 4 * st.toks.length + 8 ≤ F → st.toks.length + 1 ≤ G → pDefs F G dis st.toks = some (dis', as)) ∧
+      fin.out = st.out ++ as.flatMap DefA.ser ∧ DRel fin.defs dis' ∧ fin.acc = true := by
+  intro n
+  induction n using Nat.strongRecOn with
+  | _ n ih =>
+  intro st fin dis h hD hNN hall hNoL
+  match n, h with
+  | n + 1, h =>
+    obtain ⟨k, st1, h1, h2⟩ := h.head
+    simp only [stepF] at h1
+    split at h1
+    · cases h1
+    split at h1
+    · -- end of input
+      rename_i ht
+      simp only [Option.some.injEq, Prod.mk.injEq] at h1
+      obtain ⟨rfl, rfl⟩ := h1
+      cases h2 with
+      | refl =>
+        refine ⟨dis, [], fun F G _ hG => ?_, by simp, hD, rfl⟩
+        obtain ⟨G, rfl⟩ : ∃ g, G = g + 1 := ⟨G - 1, by omega⟩
+        rw [ht, pDefs]
+      | step hs _ => simp [stepS] at hs
+    · -- a def
+      rename_i x r ht
+      split at h1
+      · cases h1
+      rename_i hfr
+      obtain ⟨pre, hpre⟩ := hall
+      have finish : ∀ (st2 : St) (n' : Nat), n' < n + 1 → StarN n' ([.defs], st2) ([], fin) → st2.toks.length < st.toks.length →
+          st2.all = st.all → st2.toks <:+ st.toks →
+          (st2.arena.all (nodeOK st2.defs) = true → ∃ di da,
+            (∀ F, 4 * st.toks.length + 8 ≤ F → pDef F dis st.toks = some (di, da, st2.toks)) ∧ st2.out = st.out ++ da.ser ∧
+            DRel st2.defs (dis ++ [di]) ∧ DefsNN st2.defs) →
+          ∃ dis' as, (∀ F G, 4 * st.toks.length + 8 ≤ F → st.toks.length + 1 ≤ G → pDefs F G dis st.toks = some (dis', as)) ∧
+            fin.out = st.out ++ as.flatMap DefA.ser ∧ DRel fin.defs dis' ∧ fin.acc = true := by
+        intro st2 n' hn' h2' hl ha hsu hv
+        obtain ⟨di, da, hpd, hout, hD', hNN'⟩ := hv (defs_valid h2')
+        obtain ⟨pre2, hpre2⟩ := hsu
+        obtain ⟨dis', as, hp, ho, hD'', hacc⟩ := ih n' hn' h2' hD' hNN' ⟨pre ++ pre2, by rw [ha, hpre, ← hpre2, List.append_assoc]⟩
+          (by rw [ha]; exact hNoL)
+        refine ⟨dis', da :: as, fun F G hF hG => ?_, by rw [ho, hout]; simp, hD'', hacc⟩
+        obtain ⟨G, rfl⟩ : ∃ g, G = g + 1 := ⟨G - 1, by omega⟩
+        rw [ht, pDefs_cons, ← ht, hpd F hF]
+        simp only [Option.bind_some]
+        rw [hp F G (by omega) (by omega)]
+        rfl
+      split at h1
+      · -- `def x : …`: plain without binders, or a fuel loop
+        rename_i _ r2
+        simp only [Option.some.injEq, Prod.mk.injEq] at h1
+        obtain ⟨rfl, rfl⟩ := h1
+        simp only [List.cons_append, List.nil_append] at h2
+        have hrs : (Tok.k 8 :: r2) <:+ st.toks := by rw [ht]; exact (List.suffix_cons _ _).trans (List.suffix_cons _ _)
+        rcases plainC_spec h2 ⟨rfl, rfl, rfl, rfl, rfl, rfl⟩ hD hNN hfr with
+          ⟨st', n1, hn1, e1, e2, r'', ht''⟩ | ⟨st2, n', hn', h2', hl, ha, hsu, hv⟩
+        · -- the fuel loop
+          have hr2 := loop_toks ⟨pre ++ [.k 1, .id x, .k 8], by simp [hpre, ht]⟩ e1 e2 ht''
+          dsimp only at hr2
+          subst hr2
+          have hfr' : findDef dis x = none := by
+            have := hD.2.1 x; rw [hfr] at this; cases h : findDef dis x <;> simp_all
+          have hL : ∀ f res r', pArrows f r'' ≠ some ([.lst, res], r') :=
+            fun f res r' => hNoL pre x r'' f res r' (by rw [hpre, ht])
+          obtain ⟨lp, st'', n'', hn'', hsL, h3, hv, hd, ho, hname, hloop, hlen, hVT⟩ :=
+            hLS h2 rfl rfl rfl rfl rfl rfl (cxrel_body (env := []) hD rfl (by simp) rfl) hNN hfr' hL
+          obtain ⟨z, n4, hn4, hz, hzs, hzi, hsE, h4⟩ := defEnd_tail h3
+          have hzl : z = lp := by rw [hv] at hz; simpa using hz.symm
+          subst hzl
+          have hsA := (hsL.trans hsE).toks
+          dsimp only at hsA hlen
+          refine finish _ n4 (by omega) h4 (by rw [ht]; simp at hlen ⊢; omega) hsA.1
+            (hsA.2.trans (by rw [ht]; exact (List.suffix_cons _ _).trans ((List.suffix_cons _ _).trans (List.suffix_cons _ _)))) (fun hval => ?_)
+          dsimp only at hval
+          have inv := Star.inv hsL ⟨by simp [ArenaInv], by simp [CntInv]⟩
+          dsimp only at inv
+          have hA : st''.arena = nodes z := by rw [inv.1, hv]; simp
+          have hall : ∀ m ∈ nodes z, cntOK m = true ∧ nodeOK (st''.defs ++ [st''.cur]) m = true := fun m hm =>
+            ⟨inv.2 m (by rw [hA]; exact hm), List.all_eq_true.mp hval m (by rw [hA]; exact hm)⟩
+          obtain ⟨di, hn, hp, hres, hnpw, hi, hnt, ⟨hrn, hpn⟩, hpd⟩ := hVT (fun u hu => (hall u hu).2)
+          have hwords := words_body hall
+          refine ⟨di, { id := dis.length, npw := st''.cur.npw, nslots := st''.nx, kind := 1, nres := di.res.width, body := z.toNd },
+            fun F hF => ?_, ?_, ?_, ?_⟩
+          · rw [ht]; exact hpd F (by rw [ht] at hF; simp at hF ⊢; omega)
+          · simp only [ho, defHdr, hd, hD.1, hloop, hres, DefA.ser, hwords, cw, List.append_assoc, if_true]
+            rfl
+          · show DRel (st''.defs ++ [st''.cur]) _
+            rw [hd]
+            exact drel_snoc hD (by rw [hname]; exact hfr) (by rw [hn, hname]) hp hres hi hnt
+          · show DefsNN (st''.defs ++ [st''.cur])
+            rw [hd]
+            intro d hd'
+            rcases List.mem_append.mp hd' with hd' | hd'
+            · exact hNN d hd'
+            · simp at hd'; subst hd'
+              exact ⟨⟨_, hres, hrn⟩, hpn⟩
+        · refine finish st2 n' (by omega) h2' (by rw [ht]; simp at hl ⊢; omega) ha (hsu.trans hrs) (fun hval => ?_)
+          obtain ⟨di, da, hpd, hout, hD', hNN'⟩ := hv hval
+          dsimp only at hpd
+          exact ⟨di, da, fun F hF => by rw [ht]; exact hpd F (by rw [ht] at hF; simp at hF; omega), hout, hD', hNN'⟩
+      · -- `def x (…) : … := …`
+        rename_i hr
+        simp only [Option.some.injEq, Prod.mk.injEq] at h1
+        obtain ⟨rfl, rfl⟩ := h1
+        simp only [List.singleton_append] at h2
+        obtain ⟨st2, n', hn', h2', hl, ha, hsu, hv⟩ := plainB_spec h2 ⟨rfl, rfl, rfl, rfl, rfl, rfl⟩ hD hNN hfr
+          (fun r' e => hr _ e)
+        have hrs : r <:+ st.toks := by rw [ht]; exact (List.suffix_cons _ _).trans (List.suffix_cons _ _)
+        refine finish st2 n' (by omega) h2' (by rw [ht]; simp at hl ⊢; omega) ha (hsu.trans hrs) (fun hval => ?_)
+        obtain ⟨di, da, hpd, hout, hD', hNN'⟩ := hv hval
+        dsimp only at hpd hl
+        exact ⟨di, da, fun F hF => by rw [ht]; exact hpd F (by rw [ht] at hF; simp at hF; omega), hout, hD', hNN'⟩
+    · cases h1
+
 end ParRun
