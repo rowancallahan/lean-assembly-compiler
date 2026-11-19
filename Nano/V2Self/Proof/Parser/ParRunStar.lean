@@ -36,22 +36,6 @@ theorem stepS_some {f fs st d} : stepS (f :: fs, st) = some d ↔ ∃ k st', ste
     · rintro rfl; exact ⟨_, _, rfl, rfl⟩
     · rintro ⟨_, _, h1, rfl⟩; cases h1; rfl
 
-/-- the empty stack does not step -/
-theorem Star.nil_eq {st c} (h : Star ([], st) c) : c = ([], st) := by
-  cases h with
-  | refl => rfl
-  | step hs _ => simp [stepS] at hs
-
-/-- determinism: two runs from the same configuration to the empty stack end in the same state -/
-theorem Star.det {c s1 s2} (h1 : Star c ([], s1)) (h2 : Star c ([], s2)) : s1 = s2 := by
-  generalize he : (([] : List Frame), s1) = e at h1
-  induction h1 generalizing s2 with
-  | refl => cases he; have := h2.nil_eq; simp_all
-  | step hs _ ih =>
-    cases h2 with
-    | refl => simp [stepS] at hs
-    | step hs' h2' => rw [hs] at hs'; cases hs'; exact ih h2' he
-
 /-- frame discipline (lifting): a run of `k` lifts to a run of `k ++ ks` that stops at `ks` -/
 theorem Star.append {k st kf stf} (ks : List Frame) (h : Star (k, st) (kf, stf)) : Star (k ++ ks, st) (kf ++ ks, stf) := by
   generalize hc : (k, st) = c at h
@@ -91,12 +75,6 @@ theorem StarN.split {n k ks st fin} (h : StarN n (k ++ ks, st) ([], fin)) :
         rw [← List.append_assoc] at h'
         obtain ⟨st', n1, n2, hn, r1, r2⟩ := ih h'
         exact ⟨st', n1 + 1, n2, by omega, .step (stepS_some.mpr ⟨_, _, h2, rfl⟩) r1, r2⟩
-
-theorem Star.split {k ks st fin} (h : Star (k ++ ks, st) ([], fin)) :
-    ∃ st', Star (k, st) ([], st') ∧ Star (ks, st') ([], fin) := by
-  obtain ⟨n, h⟩ := h.toN
-  obtain ⟨st', _, _, _, r1, r2⟩ := h.split
-  exact ⟨st', r1.toStar, r2.toStar⟩
 
 /-- one step of a single frame inside a larger stack -/
 theorem StarN.head {n f fs st fin} (h : StarN (n + 1) (f :: fs, st) ([], fin)) :

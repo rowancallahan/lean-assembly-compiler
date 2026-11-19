@@ -216,37 +216,6 @@ theorem v5_eff (h : Buf) (c a b w t n : UInt64) (hl : 147520 ≤ h.length) (hz :
   · rw [hv, drop_bset0 _ _ _ (by decide), drop_bset0 _ _ _ (by decide), drop_bset0 _ _ _ (by rw [ed]; omega), D2, D1]
 
 /-! ## list helpers -/
-theorem mem_getD_flat {α : Type} : ∀ (L : List (List α)) (i : Nat) (x : α), x ∈ L.getD i [] → x ∈ L.flatten
-  | [], i, x, hx => by simp at hx
-  | a :: L, 0, x, hx => by simp at hx; simp [hx]
-  | a :: L, i + 1, x, hx => by simp only [List.getD_cons_succ] at hx; simp only [List.flatten_cons, List.mem_append]; exact Or.inr (mem_getD_flat L i x hx)
-
-theorem flat_disj {α : Type} : ∀ (L : List (List α)), L.flatten.Nodup → ∀ i j, i < j → ∀ x, x ∈ L.getD i [] → x ∈ L.getD j [] → False
-  | [], _, _, _, _, _, hx, _ => by simp at hx
-  | a :: L, hn, 0, j + 1, _, x, hx, hy => by
-    rw [List.flatten_cons, List.nodup_append] at hn
-    simp only [List.getD_cons_zero, List.getD_cons_succ] at hx hy
-    exact hn.2.2 x hx x (mem_getD_flat L j x hy) rfl
-  | a :: L, hn, i + 1, j + 1, hij, x, hx, hy => by
-    rw [List.flatten_cons, List.nodup_append] at hn
-    simp only [List.getD_cons_succ] at hx hy
-    exact flat_disj L hn.2.1 i j (by omega) x hx hy
-
-theorem getD_eq {α : Type} (l : List α) (i : Nat) (d : α) (hi : i < l.length) : l.getD i d = l[i] := by
-  simp [List.getD_eq_getElem?_getD, hi]
-
-theorem nodup_getD {α : Type} : ∀ (L : List (List α)) (i : Nat), L.flatten.Nodup → (L.getD i []).Nodup
-  | [], i, _ => by simp
-  | a :: L, 0, hn => by rw [List.flatten_cons, List.nodup_append] at hn; simpa using hn.1
-  | a :: L, i + 1, hn => by rw [List.flatten_cons, List.nodup_append] at hn; simpa using nodup_getD L i hn.2.1
-
-theorem getD_rev_take {α : Type} (L : List (List α)) (n r : Nat) (hn : n ≤ L.length) (hr : r < n) :
-    (L.take n).reverse.getD r [] = L.getD (n - 1 - r) [] := by
-  rw [getD_eq _ _ _ (by simp; omega), getD_eq _ _ _ (by omega), List.getElem_reverse, List.getElem_take]
-  congr 1; simp; omega
-
-theorem getD_drop {α : Type} (L : List (List α)) (n i : Nat) : (L.drop n).getD i [] = L.getD (n + i) [] := by
-  simp [List.getD_eq_getElem?_getD]
 
 /-! ## child chains of Layer-2 trees -/
 theorem kidsR_chain (h : Buf) : ∀ (ns : List ParRun.RN) (f : Nat → UInt64) (Is : Nat → List UInt64),
@@ -483,16 +452,5 @@ theorem arena_v5g (h : Buf) (arena vals : List RN) (n : Nat) (t A B : Nat) (sh :
   · intro i a1
     exact EU i (by omega) (by omega) (by omega) (Or.inr (by rw [h9]; omega)) (fun k hk => by have := (rootAt k (by omega)).1; omega)
   · exact ED
-
-open ParRun in
-theorem arena_v5 (h : Buf) (arena vals : List RN) (n : Nat) (t A B : Nat) (sh : Option Sh) (p : Bool) (w : UInt64)
-    (hA : ArenaRep h arena vals) (hn : n ≤ vals.length) (hl : 147520 ≤ h.length) (hz : arena.length < 16384)
-    (hJ : vals.length - n < 4096) (hw : ShOpt h w sh) (ht : t < 2 ^ 64) (ha : A < 2 ^ 64) (hb : B < 2 ^ 64) :
-    let nd := RN.mk t A B sh p (vals.take n).reverse
-    let h' := v5 h t.toUInt64 A.toUInt64 B.toUInt64 w (if p then 1 else 0) n.toUInt64
-    h'.length = h.length ∧ ShTabAgree h h' ∧ ArenaRep h' (arena ++ [nd]) (nd :: vals.drop n) ∧
-    (∀ i : UInt64, i.toNat < 12352 → i.toNat ≠ 8 → i.toNat ≠ 9 → bget h' i = bget h i) ∧
-    (∀ i : UInt64, 147520 ≤ i.toNat → bget h' i = bget h i) ∧ h'.drop 184384 = h.drop 184384 :=
-  arena_v5g h arena vals n t A B sh p w hA hn hl hz hJ hw ht (fun _ _ => ⟨ha, hb⟩)
 
 end ParInv

@@ -9,8 +9,6 @@ open C BufL ParSpec ParRun
 /-- every shape code keeps its meaning -/
 def ShPres (h h' : Buf) : Prop := ∀ (c : UInt64) (s : Sh), ShapeCode h c s → ShapeCode h' c s
 
-theorem ShPres.of_agree {h h' : Buf} (e : ShTabAgree h h') : ShPres h h' := fun _ _ r => r.frame e
-
 theorem ShOpt.pres {h h' : Buf} {c : UInt64} {o : Option Sh} (r : ShOpt h c o) (e : ShPres h h') : ShOpt h' c o := by
   cases o with
   | none => exact r

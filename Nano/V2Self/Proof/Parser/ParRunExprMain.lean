@@ -10,14 +10,6 @@ def PrimSpec (n : Nat) : Prop := ∀ md ks st fin cx, StarN n (.prim md :: ks, s
     (VT (rows st) v → ∃ ty, TyRel v ty ∧ (v.toNd.tailCont = true → v.pend = true) ∧
       ∀ f, 4 * st.toks.length + 2 ≤ f → pApp f cx (md == 1) st.toks st.nx = some (v.toNd, ty, st'.toks, st'.nx))
 
-theorem prim_two_ifs {ks st fin n} (h : StarN n (.prim 2 :: ks, st) ([], fin)) :
-    (∀ r, st.toks ≠ .k 32 :: r) ∧ (∀ r, st.toks ≠ .k 2 :: r) := by
-  match n, h with
-  | 0, h => exact absurd h.zero_nil.1 (by simp)
-  | n + 1, h =>
-    obtain ⟨k, st1, hs, _⟩ := h.head
-    constructor <;> intro r hr <;> simp [stepF, hr] at hs
-
 theorem bin_of {n : Nat} (hP : ∀ n' < n, PrimSpec n') (hL : ∀ n' < n, LoopSpec n') : BinSpec n := by
   classical
   intro m ks st fin cx h hc hnn
@@ -212,10 +204,6 @@ theorem pExpr_if {f cx tl r nx} : pExpr (f + 1) cx tl (.k 32 :: r) nx =
       | _, _ => none := by
   simp only [pExpr]; rfl
 
-
-/-- `rows` only reads `defs` and `cur` -/
-theorem Post.rowsEq {st st' : St} {b : List RN} {v : RN} (h : Post st st' b v) : ParRun.rows st' = ParRun.rows st := by
-  unfold ParRun.rows; rw [h.defs, h.cur]
 
 theorem expr_if {n : Nat} (hB : ∀ n' < n, BinSpec n') (hE : ∀ n' < n, ExprSpec n') {md ks st fin cx r} (hmd : md < 2)
     (h : StarN n (.expr 0 md :: ks, st) ([], fin)) (hc : CxRel st cx) (hnn : CxNN st) (ht : st.toks = .k 32 :: r) :

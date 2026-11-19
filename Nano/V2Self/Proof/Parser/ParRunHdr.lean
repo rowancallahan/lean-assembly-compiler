@@ -386,13 +386,6 @@ theorem cxrel_body {st : St} {dis : List DefI} {env : List (List Nat × Nat × P
 def InpInv (Q : List Ps) : Prop :=
   (∀ i (h : i < Q.length), (Q[i] = .inp ↔ FirstLs (Q.map psCode) i)) ∧ ((∀ q ∈ Q, q ≠ .inp) → ∀ q ∈ Q, psCode q ≠ .ls)
 
-theorem firstLs_append_left {L M : List Sh} {i : Nat} (hi : i < L.length) : FirstLs (L ++ M) i ↔ FirstLs L i := by
-  unfold FirstLs
-  rw [List.getElem?_append_left hi]
-  constructor
-  · rintro ⟨h1, h2⟩; exact ⟨h1, fun j hj => by rw [← List.getElem?_append_left (by omega : j < L.length) (l₂ := M)]; exact h2 j hj⟩
-  · rintro ⟨h1, h2⟩; exact ⟨h1, fun j hj => by rw [List.getElem?_append_left (by omega : j < L.length)]; exact h2 j hj⟩
-
 theorem inpInv_snoc {Q : List Ps} {p : Ps} (hQ : InpInv Q)
     (hp1 : p = .inp → (∀ q ∈ Q, q ≠ .inp)) (hp2 : psCode p = .ls → p ≠ .inp → .inp ∈ Q) : InpInv (Q ++ [p]) := by
   obtain ⟨h1, h2⟩ := hQ

@@ -331,13 +331,6 @@ theorem env_toBd (env : List (List Nat × Nat × Ps)) (h : ∀ e ∈ env, e.2.2 
     obtain ⟨y, sl, p⟩ := e
     simp only [Option.map_some, Option.bind_some, this]; rfl
 
-theorem findB_toBd_isSome {env : List (List Nat × Nat × Ps)} {x : List Nat} {bd : Bd}
-    (h : findB (env.map toBd) x = some bd) : ∃ e ∈ env, bd = toBd e := by
-  unfold findB at h
-  rw [← List.map_reverse, List.find?_map] at h
-  obtain ⟨e, he, rfl⟩ := Option.map_eq_some_iff.mp h
-  exact ⟨e, List.mem_reverse.mp (List.mem_of_find?_eq_some he), rfl⟩
-
 /-- the fuel binder of a step arm (zeroDone, 77) -/
 def nbBd (nb : List Nat) : Bd := ⟨nb, 0, some .nt, false⟩
 

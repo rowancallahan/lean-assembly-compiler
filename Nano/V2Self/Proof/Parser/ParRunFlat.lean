@@ -22,15 +22,6 @@ def RN.wordsL : List RN → List UInt64
   | n :: r => (if n.isInp then [] else RN.words n) ++ RN.wordsL r
 end
 
-/-- deterministic cut: a run to `[]` passes through every configuration reachable on the way -/
-theorem Star.cut {c d fin} (h1 : Star c d) (h2 : Star c ([], fin)) : Star d ([], fin) := by
-  induction h1 with
-  | refl => exact h2
-  | step hs _ ih =>
-    cases h2 with
-    | refl => simp [stepS] at hs
-    | step hs' h2' => rw [hs] at hs'; cases hs'; exact ih h2'
-
 theorem Star.one {f fs st k st'} (h : stepF f st = some (k, st')) : Star (f :: fs, st) (k ++ fs, st') :=
   .step (stepS_some.mpr ⟨k, st', h, rfl⟩) (.refl _)
 
@@ -156,11 +147,6 @@ theorem RN.ok_mk (t a b : Nat) (sh : Option Sh) (p : Bool) (ks : List RN) : RN.o
 
 theorem RN.okL_cons (n : RN) (r : List RN) : RN.okL (n :: r) = (RN.ok n && RN.okL r) := by
   rw [RN.okL.eq_def]
-
-theorem serL_append (a b : List Nd) : serL (a ++ b) = serL a ++ serL b := by
-  induction a with
-  | nil => simp [serL]
-  | cons x r ih => simp [serL, ih]
 
 theorem RN.toNdL_length (ks : List RN) : (RN.toNdL ks).length = ks.length - (ks.filter RN.isInp).length := by
   induction ks with

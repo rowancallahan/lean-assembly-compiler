@@ -24,11 +24,6 @@ theorem prim_sig {t : Nat} (h1 : 38 < t) (h2 : t < 48) :
          | 2 => decide
          | _ + 3 => simp)
 
-/-- the prim head of code 3 (`.prim tl` on a prim token): the tokens Par1 dispatches as prims are exactly ParSpec's `primSig` domain -/
-theorem prim_tok {t : Nat} (h : (primSig t).isSome) : t ≠ 30 ∧ 38 < t ∧ t < 48 := by
-  unfold primSig at h
-  split at h <;> simp at h <;> omega
-
 theorem prim_head {md : Nat} {st : St} {t : Nat} {r : List Tok} (ht : st.toks = .k t :: r) (h1 : 38 < t) (h2 : t < 48) :
     stepF (.prim md) st =
       some ([.args (.pr (t - 38)) (primAr (t - 38)), .mkCallN (.pr (t - 38)) st.vals.length], { st with toks := r }) := by

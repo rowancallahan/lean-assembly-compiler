@@ -261,7 +261,6 @@ def NameOK (h : Buf) (pos : UInt64) (n : List UInt64) : Prop :=
 /-- `h'` differs from `h` at most in the result cell h[r] and the scratch cell h[31] (r = 21 for v7, 22 for v8) -/
 def Same (r : Nat) (h h' : Buf) : Prop := h'.length = h.length ∧ ∀ i : UInt64, i.toNat ≠ r → i.toNat ≠ 31 → bget h' i = bget h i
 
-theorem Same.refl (r : Nat) (h : Buf) : Same r h h := ⟨rfl, fun _ _ _ => rfl⟩
 theorem Same.trans {r : Nat} {h h' h'' : Buf} (a : Same r h h') (b : Same r h' h'') : Same r h h'' :=
   ⟨b.1.trans a.1, fun i i1 i2 => (b.2 i i1 i2).trans (a.2 i i1 i2)⟩
 theorem same_bset (r : Nat) (h : Buf) (i v : UInt64) (hi : i.toNat = r ∨ i.toNat = 31) : Same r h (bset h i v) :=

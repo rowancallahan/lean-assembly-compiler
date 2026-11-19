@@ -18,12 +18,6 @@ theorem _root_.ParSpec.Sh.hasN_of_nnt {s : Sh} (h : s.nnt = true) (hn : s ≠ .n
   | nt => exact absurd rfl hn
   | _ => rfl
 
-theorem pTy_succ (f : Nat) (ts : List Tok) : pTy (f + 1) ts = (pTyAtom f ts).bind fun (a, r) =>
-    match r with
-    | .k 16 :: r1 => (pTy f r1).bind fun (b, r2) => some (.sh (.p (trRes a) (trRes b)), r2)
-    | _ => some (a, r) := by
-  rw [pTy]; rfl
-
 /-- the state after a type: only the tokens and `ty` change -/
 def St.withTy (st : St) (r : List Tok) (s : Sh) : St := { st with toks := r, ty := some s }
 

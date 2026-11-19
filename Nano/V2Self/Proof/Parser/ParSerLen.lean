@@ -19,9 +19,6 @@ theorem serL_dropInp : ∀ (ps : List Ps) (xs : List Nd), (serL (dropInp ps xs))
     simp only [dropInp, List.zip_cons_cons, List.filterMap_cons] at ih ⊢
     cases p <;> simp only [serL, List.length_append] <;> omega
 
-theorem serL_dropInp_eq {ps : List Ps} {xs cs : List Nd} (h : dropInp ps xs = cs) :
-    (serL cs).length ≤ (serL xs).length := h ▸ serL_dropInp ps xs
-
 theorem L_mkPairFlat : ∀ cs : List Nd, L (mkPairFlat cs) ≤ 2 + (serL cs).length
   | [] => by simp [L, mkPairFlat, Nd.ser, serL]
   | [c] => by simp [mkPairFlat, serL]
