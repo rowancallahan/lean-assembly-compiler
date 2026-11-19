@@ -89,26 +89,28 @@ PLAN (was: nothing pushed yet): one strong induction on the run length n, using 
   pBin's re-parse with tl = false: machine node not pending ⇒ no tail CONTINUE ⇒ `tl_down`; tuple re-parse: `tl_up`.
 
 ## HANDOFF — parser lead (2026-11-19, keep current)
-Role: review of Layers 2/3; own families: def start/accept 60, headers 66–70/73, loop arms 74–79, self-call 46/54, FINISH 80, flatten 81–83,
-`v98`/`fin`, validation, top glue.  All files below pushed, no sorry, std axioms, each module < 10 s.
+Role: review of Layers 2/3; own families (after the split with G): def start/accept 60, plainBody 70, afterColon 73, stateTy 74,
+armsStart 75, FINISH 80, flatten 81–83, `v98`/`fin`, validation, top glue, 46/54 machine side, Layer-2 def level (headers/arms/defs).
+G has 76/77/79 (ParInvArm).  All files below pushed, no sorry, std axioms, each module < 10 s.
 DONE
-* pure (on B's `ParRun`): `ParTreeOK` (ArenaInv/CntInv invariants of every handler, `ok_of_nodes`, `words_body`, `StarN.out_le`),
-  `ParRunShape` (`StackOK`/`StkInv`: def-level frames only at the bottom, acc ⇒ empty stack), `ParRunNames` (`NInv`: def names non-empty
-  given non-empty identifier tokens), `ParRunArena` (kids < |arena|; `CallInv` along runs via B's `wf_star`/`wf_pre`).
-* machine: `ParInvFin` (`v98_eq`, `fin_ne`, `MainCells`), `ParInvVal` (`v205_eq`, `v210_eq`, `v209_eq`), `ParInvFlatM` (`v1_append`,
-  `v141_eq`..`v144_eq`: tasks 80–83 = low-cell effect ++ appended words), `ParInvDefs` (`v86_skip`, `idxOf_findD` = v8 lookup vs `findD`,
-  `defTab_of`).
-* on C's Rep: `ParInvApi` (`out_of`, `ntasks_of`, `main_of`), `ParInvValRep` (`v209_nodeOK`: machine validation ⇒ B's `nodeOK` on
-  every arena node; needs `IsInpW`, i.e. B's `RN.isInp` comparing the width mod 2^64 — requested).
-* glue: `ParInvTop` (`RepAPI`, `run_sim`, `parserSound_of : RepAPI → |ts| ≤ 2^24 → Layer-2 soundness → ParserSound ts`).
+* pure (on B's `ParRun`): `ParTreeOK` (ArenaInv/CntInv, `ok_of_nodes`, `words_body`, `StarN.out_le`), `ParRunShape` (`StkInv`; `DInv`:
+  `.defs` only as the whole stack, `defs_not_below` = the glue's `inDefF fs` below popped frames), `ParRunNames` (`NInv`), `ParRunArena`
+  (kids < |arena|; `CallInv`), `ParRunRow` (`firstLs_snoc`/`firstLs_last`: input flag n1 ↔ G's FirstLs), `ParRunDefs` (`StarN.cut`,
+  `defEnd_tail`: defEnd → flatten → defClose → `.defs`), `ParTokWF` (`TokWF ts := ∃ toks, TokL ts toks`, D proves Lexes → TokWF).
+* machine: `ParInvFin`, `ParInvVal`, `ParInvFlatM` (`v141_eq`..`v144_eq`), `ParInvDefs` (`h_defs` task 60, `rep_open`, `idxOf_findD`).
+* on C's Rep: `ParInvApi`, `ParInvValRep` (`v209_nodeOK`), `ParInvFinish` (`h_defEnd_core` task 80 up to the output append),
+  `ParInvHdr` (`rep_cur`: current-row update keeps Rep; `rep_nxss`: h11/h32 writes; `v203_eq`; handlers `h_plainBody` 70,
+  `h_afterColon` 73, `h_stateTy` 74, `h_armsStart` 75).  Handler obligations carried as hypotheses for `api_of_rep`: `st.ty = some w`,
+  `nni < 2^63`, `npw + width < 2^64`, `hprev` (73: cell before the cursor = 35 → `prevTok st = some (.k 35)`).
+* glue: `ParInvTop` (`RepAPI`, `run_sim`, `parserSound_of`).
 OPEN / WAITING
-* Par1: main arity check missing in v99 (Par1 accepts `def m : List UInt8 := []` when 4096 parameter codes are used) — fix requested
-  from C; then mirror in `ParInvFin.fin`/`MainCells` and drop `main_of`'s arity hypothesis.
-* C's Rep: `inDefF [] = true` makes Rep false at the accepting state (current row is zero) — requested `!fs.isEmpty && …`.
-* B: `RN.isInp` mod 2^64 (`IsInpW`); `CxOK` + expression-lemma shape for the def-level Layer-2 soundness (pDef/pDefs) that I take.
-* `TokWF ts` hypothesis for `ParserSound` (numeral payload bytes < 256, identifiers non-empty): owner to confirm, D to derive from Lex2Spec.
-NEXT: `h_defs` (task 60 on C's Rep, using `v209_nodeOK`, `v86_skip`, `idxOf_findD`), then 80–83 step lemmas (cell lemmas done), then
-`api_of_rep` (RepAPI from Rep ∧ StkInv ∧ NInv), then def-level Layer-2 soundness.
+* C: `TokAgree` must be restricted to the token region `[184384, 184384 + h7 + 2)` — without it no frame lemma survives an output
+  append `H ++ ws`, so `rep_append` (tasks 80–83) is blocked.  Also: v99 main-arity check; `|defs| ≤ 512` in DefsRep; a Rep link between
+  `st.all` and the token cells (for `hprev`).
+* B: `RN.isInp` mod 2^64 (`IsInpW`).
+NEXT: Layer-2 header reflection (pBinders/bindSlots via binders/group/assign, pArrows/stateKinds via afterColon/stateTy, armPat/mkEnv via
+armsStart/armBind) → `DefSpec` (run from `.defs` to the next `.defs` = `pDef`) → `pDefs`/`refParse`; then 81–83 + `rep_append` once
+TokAgree is narrowed; then `api_of_rep`.
 
 ## HANDOFF — G: arguments / calls / prims / types (2026-11-19, keep current)
 Families: frames 43 argAtom, 44 args, 45 mkCallN, 47 argCheck, 48 mkCall, 55 argName, the prim / def-call heads of code 3, types 61–63 (machine side),
