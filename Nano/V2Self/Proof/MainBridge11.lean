@@ -17,7 +17,7 @@ theorem node_cont (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (e : ParS
 mutual
 /-- **value mode, every node**: E's `sv` succeeding gives `ev` succeeding with related results -/
 theorem node_all (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hRs : RsOK oc D) (hW : RsW oc) (hX : CtxR cx K)
-    (hCR : CallR cx K oc) : ∀ e : ParSpec.Nd, NodeOK cx K oc D e
+    (hCR : CallR cx K oc D) : ∀ e : ParSpec.Nd, NodeOK cx K oc D e
   | .const c => node_const cx K oc D c
   | .loc s w => node_loc cx K oc D s w
   | .bin op a b => node_bin cx K oc D hW op a b (node_all cx K oc D hRs hW hX hCR a) (node_all cx K oc D hRs hW hX hCR b)
@@ -29,7 +29,7 @@ theorem node_all (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hRs : RsO
   | .loop z s => node_loop cx K oc D z s
   | .cont e => node_cont cx K oc D e
 theorem nodes_all (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hRs : RsOK oc D) (hW : RsW oc) (hX : CtxR cx K)
-    (hCR : CallR cx K oc) : ∀ cs : List ParSpec.Nd, ∀ n ∈ cs, NodeOK cx K oc D n
+    (hCR : CallR cx K oc D) : ∀ cs : List ParSpec.Nd, ∀ n ∈ cs, NodeOK cx K oc D n
   | [] => fun _ h => by simp at h
   | c :: cs => fun n hn => by
     rcases List.mem_cons.1 hn with h | h

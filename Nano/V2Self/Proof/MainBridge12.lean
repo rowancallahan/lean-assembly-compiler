@@ -454,7 +454,7 @@ theorem tail_loop (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (z s : Pa
 
 /-- **tail mode, every node** -/
 theorem tail_all (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hRs : RsOK oc D) (hW : RsW oc) (hX : CtxR cx K)
-    (hCR : CallR cx K oc) : ∀ e : ParSpec.Nd, TailOK cx K oc D e
+    (hCR : CallR cx K oc D) : ∀ e : ParSpec.Nd, TailOK cx K oc D e
   | .ite c a b t e => tail_ite cx K oc D hRs hW (node_all cx K oc D hRs hW hX hCR) c a b t e
       (tail_all cx K oc D hRs hW hX hCR t) (tail_all cx K oc D hRs hW hX hCR e)
   | .letE s w v b => tail_let cx K oc D hRs hW (node_all cx K oc D hRs hW hX hCR) s w v b

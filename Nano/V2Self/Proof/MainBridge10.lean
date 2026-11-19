@@ -277,9 +277,10 @@ def ArgsR (σ : AH) (P : List Nat) (args : List W) (ws : List UInt64) : Prop :=
 
 /-- **a def's contract**: E's def semantics `g` succeeding on related arguments gives `Sem`'s meaning `f` with related
 results; owned results are fresh or owned arguments' blocks, pairwise distinct; other existing blocks are untouched -/
-def DefR (hb κ : Nat) (P R : List Nat) (f : List W → Except Stop (List W))
+def DefR (hb κ : Nat) (Pk : List Kd) (P R : List Nat) (f : List W → Except Stop (List W))
     (g : List UInt64 → Nat → Hp → Option (List UInt64 × Hp)) : Prop :=
-  ∀ σ args ws sp H rs H', AHeap hb κ H σ → H.top % 8 = 0 → hb ≤ H.top → ArgsR σ P args ws → g ws sp H = some (rs, H') →
+  ∀ σ args ws sp H rs H', AHeap hb κ H σ → H.top % 8 = 0 → hb ≤ H.top → kOf args = Pk → ArgsR σ P args ws →
+    g ws sp H = some (rs, H') →
   ∃ σ' res, f args = .ok res ∧ AHeap hb κ H' σ' ∧ H'.top % 8 = 0 ∧ hb ≤ H'.top ∧ res.length = R.length ∧
     rs.length = R.length ∧
     (∀ (j e : Nat) (x : W) (u : UInt64), R[j]? = some e → res[j]? = some x → rs[j]? = some u → VR σ' x u ∧
@@ -291,12 +292,13 @@ def DefR (hb κ : Nat) (P R : List Nat) (f : List W → Except Stop (List W))
       ws[j]? = some u → u.toNat ≠ a) → σ' a = σ a) ∧ Grow σ σ'
 
 /-- every callable def (as O's walk sees it) meets its contract -/
-def CallR (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) : Prop :=
-  ∀ (i : Nat) P R, oc.ps[i]? = some P → oc.rs[i]? = some R → ∃ f, cx.defs[i]? = some f ∧ DefR K.hb K.κ P R f (K.fs i)
+def CallR (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) : Prop :=
+  ∀ (i : Nat) P R, oc.ps[i]? = some P → oc.rs[i]? = some R → ∃ f, cx.defs[i]? = some f ∧
+    ∀ sg, D[i]? = some sg → DefR K.hb K.κ sg.1 P R f (K.fs i)
 
 /-! ## CALL -/
 
-theorem node_call (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hW : RsW oc) (hCR : CallR cx K oc) (i : Nat)
+theorem node_call (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hW : RsW oc) (hCR : CallR cx K oc D) (i : Nat)
     (as : List ParSpec.Nd) (hN : ∀ n ∈ as, NodeOK cx K oc D n) : NodeOK cx K oc D (ParSpec.Nd.call i as) := by
   intro hC hK2 Γ ks F F' es env ew σ sp H vs H' hT hc hE hA h8 hhb hr hs
   cases hT with
@@ -340,7 +342,8 @@ theorem node_call (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hW : RsW
           obtain ⟨G, hG⟩ := hok' j e he
           rw [dest_some hPj] at hG
           exact ⟨u, arg_word hR1 hE1 he hv hu hG⟩
-      obtain ⟨σ', res, hfres, hA', h8', hb', lres, lrs, hres, hdis, hfr, hGd⟩ := hDR σ1 v ua _ H1 vs H' hA1 h81 hb1 hArgs hg
+      obtain ⟨σ', res, hfres, hA', h8', hb', lres, lrs, hres, hdis, hfr, hGd⟩ :=
+        hDR _ hd σ1 v ua _ H1 vs H' hA1 h81 hb1 ((evL_ok hC tl env hE.ty).2 v evl) hArgs hg
       have oa : ∀ (j : Nat) (l : List UInt64) (u : UInt64), P[j]? = some 1 → v[j]? = some (W.b l) → ua[j]? = some u →
           (∀ s ls, Kn Γ s → oc.K.getD s 0 ≠ 0 → OwnSpec.dead yF s = false → env[s]? = some (.b ls) → ew s ≠ u) ∧
           ((σ u.toNat).isSome → ∃ j' l', Kn Γ j' ∧ Cons F yF j' ∧ env[j']? = some (.b l') ∧ ew j' = u) := by
