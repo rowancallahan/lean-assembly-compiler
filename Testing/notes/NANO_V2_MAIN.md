@@ -97,6 +97,12 @@ ParSpec and the same rejection to Par1 (compiler change: owner/C); (b) keep C, w
 - `put` pushes the whole word, the output keeps the low byte (= Lean's `put` after `toUInt8`); Gen does the same.
 
 ## HANDOFF (2026-11-19, keep current)
+SOURCE LINK (D, 74c831c8): `SrcGen.link_pc : LexSpec.Lexes SrcGen.X0 SrcGen.W0 ∧ ParsesProgram SrcGen.W0 Cert.PC.all`
+(axioms propext, Quot.sound).  Generic lemmas: Proof/SrcLink.lean (lexAll ⇒ Lexes, Lexes composes across '\n',
+tokens composes, pDefs chain, refParse_of, defBeq/chkDef/lsBeq).  Generated: Proof/Src/{Data,Chk}0..30, Chain, Top by
+`lake env lean --run Testing/nano/v2self/srclink/gen.lean Testing/nano/v2self/self_S_input.txt Nano/V2Self/Proof/Src 800`
+(per-def text chunks cut before "\ndef "; full refParse in one kernel check runs out of memory, so per def; groups of
+~800 tokens; full build ≈ 5 min wall in parallel).  Rerun the generator whenever self_S_input.txt or ParSpec changes.
 Files (all no sorry, each ≤ 15 s): Main (statement, Sem, ImplementsC, ParStage/GenStage, compiler_correct), MainWitness
 (non-vacuity), MainTy (kind judgment TyN/TyB, sem_ok), MainTyP (parser ⇒ well-kinded, parsed_not_stuck, compiler_correct'),
 MainOk (E's OkV/ScV/reads ⊆ params: parsed_ok, parsed_sc, parsed_main), MainTop (C_correctL : ParStage → GenStage →
