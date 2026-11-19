@@ -2,7 +2,7 @@
 from the existing Sail-RV simulation (SimW/SimX `sim_stepX`, HostLift `sim_ret`) through one bridge `RelW ↔ Rel`. -/
 import Nano.V2Self.Proof.Machine.Target
 import Nano.V2Self.Proof.Machine.SimX
-import Nano.V2Self.Proof.Machine.HostLift
+import Nano.V2Self.Proof.Machine.CapHost
 import Riscv.Back.LinkL
 namespace JT
 open Proven Proven.Top SimW CallProbe
@@ -159,6 +159,11 @@ theorem rvLaws : rvTarget.Laws where
   step_ok := by
     intro K C s0 a b s hl hR hS hs
     obtain ⟨t', hr, hR'⟩ := sim_stepX hl.1 hl.2 (relW_of hl hR) hS hs
+    exact ⟨t', .step (Top.step_of_retires hr) .stop, rel_of hl hR'⟩
+  addi_ok := by
+    intro K C s0 pc st s rd rs imm hl hR hC h1 h2 h3 h4
+    have hWc : K.W[pc]? = some (encJ (.addi rd rs imm)) := by rw [hl.2]; simp [hC, encJX]
+    obtain ⟨t', hr, hR'⟩ := sim_addiN hl.1 (relW_of hl hR) hWc h1 h2 h3 h4
     exact ⟨t', .step (Top.step_of_retires hr) .stop, rel_of hl hR'⟩
   ret_ok := by
     intro K C s0 pc st s hl hR hC h4
