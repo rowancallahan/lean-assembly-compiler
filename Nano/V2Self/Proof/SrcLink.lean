@@ -270,4 +270,119 @@ theorem refParse_of {ws : List UInt64} {toks : List Tok} {Dn : List DefI} {ds : 
   | none => rw [e] at hm; cases hm
   | some d => rw [e] at hm; simp only [Option.map_some, Option.some.injEq] at hm; simp [hm]
 
+/-! ## (5) a checkable equality for the parse results -/
+mutual
+def ndBeq : Nd → Nd → Bool
+  | .const a, .const b => a == b
+  | .loc a b, .loc c d => a == c && b == d
+  | .bin o a b, .bin o' a' b' => o == o' && ndBeq a a' && ndBeq b b'
+  | .ite c a b t e, .ite c' a' b' t' e' => c == c' && ndBeq a a' && ndBeq b b' && ndBeq t t' && ndBeq e e'
+  | .letE s w v b, .letE s' w' v' b' => s == s' && w == w' && ndBeq v v' && ndBeq b b'
+  | .pair cs, .pair cs' => ndBeqL cs cs'
+  | .call i as, .call i' as' => i == i' && ndBeqL as as'
+  | .prim p as, .prim p' as' => p == p' && ndBeqL as as'
+  | .loop z s, .loop z' s' => ndBeq z z' && ndBeq s s'
+  | .cont e, .cont e' => ndBeq e e'
+  | _, _ => false
+def ndBeqL : List Nd → List Nd → Bool
+  | [], [] => true
+  | a :: as, b :: bs => ndBeq a b && ndBeqL as bs
+  | _, _ => false
+end
+
+mutual
+theorem ndBeq_eq : ∀ a b : Nd, ndBeq a b = true → a = b
+  | .const a, .const b, h => by simp [ndBeq] at h; rw [h]
+  | .loc a b, .loc c d, h => by simp [ndBeq] at h; rw [h.1, h.2]
+  | .bin o a b, .bin o' a' b', h => by
+    simp only [ndBeq, Bool.and_eq_true, beq_iff_eq] at h
+    rw [h.1.1, ndBeq_eq a a' h.1.2, ndBeq_eq b b' h.2]
+  | .ite c a b t e, .ite c' a' b' t' e', h => by
+    simp only [ndBeq, Bool.and_eq_true, beq_iff_eq] at h
+    rw [h.1.1.1.1, ndBeq_eq a a' h.1.1.1.2, ndBeq_eq b b' h.1.1.2, ndBeq_eq t t' h.1.2, ndBeq_eq e e' h.2]
+  | .letE s w v b, .letE s' w' v' b', h => by
+    simp only [ndBeq, Bool.and_eq_true, beq_iff_eq] at h
+    rw [h.1.1.1, h.1.1.2, ndBeq_eq v v' h.1.2, ndBeq_eq b b' h.2]
+  | .pair cs, .pair cs', h => by simp only [ndBeq] at h; rw [ndBeqL_eq cs cs' h]
+  | .call i as, .call i' as', h => by
+    simp only [ndBeq, Bool.and_eq_true, beq_iff_eq] at h; rw [h.1, ndBeqL_eq as as' h.2]
+  | .prim p as, .prim p' as', h => by
+    simp only [ndBeq, Bool.and_eq_true, beq_iff_eq] at h; rw [h.1, ndBeqL_eq as as' h.2]
+  | .loop z s, .loop z' s', h => by
+    simp only [ndBeq, Bool.and_eq_true] at h; rw [ndBeq_eq z z' h.1, ndBeq_eq s s' h.2]
+  | .cont e, .cont e', h => by simp only [ndBeq] at h; rw [ndBeq_eq e e' h]
+  | .const _, .loc _ _, h | .const _, .bin _ _ _, h | .const _, .ite _ _ _ _ _, h | .const _, .letE _ _ _ _, h
+  | .const _, .pair _, h | .const _, .call _ _, h | .const _, .prim _ _, h | .const _, .loop _ _, h
+  | .const _, .cont _, h => by simp [ndBeq] at h
+  | .loc _ _, .const _, h | .loc _ _, .bin _ _ _, h | .loc _ _, .ite _ _ _ _ _, h | .loc _ _, .letE _ _ _ _, h
+  | .loc _ _, .pair _, h | .loc _ _, .call _ _, h | .loc _ _, .prim _ _, h | .loc _ _, .loop _ _, h
+  | .loc _ _, .cont _, h => by simp [ndBeq] at h
+  | .bin _ _ _, .const _, h | .bin _ _ _, .loc _ _, h | .bin _ _ _, .ite _ _ _ _ _, h | .bin _ _ _, .letE _ _ _ _, h
+  | .bin _ _ _, .pair _, h | .bin _ _ _, .call _ _, h | .bin _ _ _, .prim _ _, h | .bin _ _ _, .loop _ _, h
+  | .bin _ _ _, .cont _, h => by simp [ndBeq] at h
+  | .ite _ _ _ _ _, .const _, h | .ite _ _ _ _ _, .loc _ _, h | .ite _ _ _ _ _, .bin _ _ _, h
+  | .ite _ _ _ _ _, .letE _ _ _ _, h | .ite _ _ _ _ _, .pair _, h | .ite _ _ _ _ _, .call _ _, h
+  | .ite _ _ _ _ _, .prim _ _, h | .ite _ _ _ _ _, .loop _ _, h | .ite _ _ _ _ _, .cont _, h => by simp [ndBeq] at h
+  | .letE _ _ _ _, .const _, h | .letE _ _ _ _, .loc _ _, h | .letE _ _ _ _, .bin _ _ _, h
+  | .letE _ _ _ _, .ite _ _ _ _ _, h | .letE _ _ _ _, .pair _, h | .letE _ _ _ _, .call _ _, h
+  | .letE _ _ _ _, .prim _ _, h | .letE _ _ _ _, .loop _ _, h | .letE _ _ _ _, .cont _, h => by simp [ndBeq] at h
+  | .pair _, .const _, h | .pair _, .loc _ _, h | .pair _, .bin _ _ _, h | .pair _, .ite _ _ _ _ _, h
+  | .pair _, .letE _ _ _ _, h | .pair _, .call _ _, h | .pair _, .prim _ _, h | .pair _, .loop _ _, h
+  | .pair _, .cont _, h => by simp [ndBeq] at h
+  | .call _ _, .const _, h | .call _ _, .loc _ _, h | .call _ _, .bin _ _ _, h | .call _ _, .ite _ _ _ _ _, h
+  | .call _ _, .letE _ _ _ _, h | .call _ _, .pair _, h | .call _ _, .prim _ _, h | .call _ _, .loop _ _, h
+  | .call _ _, .cont _, h => by simp [ndBeq] at h
+  | .prim _ _, .const _, h | .prim _ _, .loc _ _, h | .prim _ _, .bin _ _ _, h | .prim _ _, .ite _ _ _ _ _, h
+  | .prim _ _, .letE _ _ _ _, h | .prim _ _, .pair _, h | .prim _ _, .call _ _, h | .prim _ _, .loop _ _, h
+  | .prim _ _, .cont _, h => by simp [ndBeq] at h
+  | .loop _ _, .const _, h | .loop _ _, .loc _ _, h | .loop _ _, .bin _ _ _, h | .loop _ _, .ite _ _ _ _ _, h
+  | .loop _ _, .letE _ _ _ _, h | .loop _ _, .pair _, h | .loop _ _, .call _ _, h | .loop _ _, .prim _ _, h
+  | .loop _ _, .cont _, h => by simp [ndBeq] at h
+  | .cont _, .const _, h | .cont _, .loc _ _, h | .cont _, .bin _ _ _, h | .cont _, .ite _ _ _ _ _, h
+  | .cont _, .letE _ _ _ _, h | .cont _, .pair _, h | .cont _, .call _ _, h | .cont _, .prim _ _, h
+  | .cont _, .loop _ _, h => by simp [ndBeq] at h
+theorem ndBeqL_eq : ∀ a b : List Nd, ndBeqL a b = true → a = b
+  | [], [], _ => rfl
+  | a :: as, b :: bs, h => by
+    simp only [ndBeqL, Bool.and_eq_true] at h; rw [ndBeq_eq a b h.1, ndBeqL_eq as bs h.2]
+  | [], _ :: _, h => by simp [ndBeqL] at h
+  | _ :: _, [], h => by simp [ndBeqL] at h
+end
+
+deriving instance DecidableEq for ParSpec.DefI
+
+def defBeq (a b : DefA) : Bool :=
+  a.id == b.id && a.npw == b.npw && a.nslots == b.nslots && a.kind == b.kind && a.nres == b.nres && ndBeq a.body b.body
+
+theorem defBeq_eq {a b : DefA} (h : defBeq a b = true) : a = b := by
+  cases a; cases b
+  simp only [defBeq, Bool.and_eq_true, beq_iff_eq] at h
+  obtain ⟨⟨⟨⟨⟨h1, h2⟩, h3⟩, h4⟩, h5⟩, h6⟩ := h
+  rw [h1, h2, h3, h4, h5, ndBeq_eq _ _ h6]
+
+/-- the per-def parse check -/
+def chkDef (o : Option (DefI × DefA × List Tok)) (di : DefI) (da : DefA) (r : List Tok) : Bool :=
+  match o with
+  | some (a, b, c) => decide (a = di) && defBeq b da && decide (c = r)
+  | none => false
+
+theorem chkDef_sound {o : Option (DefI × DefA × List Tok)} {di : DefI} {da : DefA} {r : List Tok}
+    (h : chkDef o di da r = true) : o = some (di, da, r) := by
+  match o, h with
+  | some (a, b, c), h =>
+    simp only [chkDef, Bool.and_eq_true, decide_eq_true_eq] at h
+    rw [h.1.1, defBeq_eq h.1.2, h.2]
+
+def lsBeq : List DefA → List DefA → Bool
+  | [], [] => true
+  | a :: as, b :: bs => defBeq a b && lsBeq as bs
+  | _, _ => false
+
+theorem lsBeq_eq : ∀ {a b : List DefA}, lsBeq a b = true → a = b
+  | [], [], _ => rfl
+  | a :: as, b :: bs, h => by
+    simp only [lsBeq, Bool.and_eq_true] at h; rw [defBeq_eq h.1, lsBeq_eq h.2]
+  | [], _ :: _, h => by simp [lsBeq] at h
+  | _ :: _, [], h => by simp [lsBeq] at h
+
 end SrcLink
