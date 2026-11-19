@@ -100,4 +100,35 @@ theorem defTab_of {h : Buf} {st : St} {bb : Bool} (hD : DefsRep h st bb) (h7 : (
   exact ⟨tab, hl, fun i hi => ⟨(ht i hi (by omega)).1, (ht i hi (by omega)).2.1, (ht i hi (by omega)).2.2.1⟩,
     fun i hi hi' => (ht i hi hi').2.2.2⟩
 
+/-- an identifier token under the cursor -/
+theorem tok_id {h ts : Buf} {p : UInt64} {toks : List Tok} (r : TokAt h p toks) (hT : TokensAt h ts) (hc : bget h (d11 + p) = 14) :
+    ∃ nm rest, toks = .id (nm.map UInt64.toNat) :: rest ∧ NameOK h p nm ∧ TokAt h (p + 2 + 2 * nm.length.toUInt64) rest := by
+  cases r with
+  | nil e => exfalso; rw [e, hT.2.2.2, hT.2.1] at hc; exact absurd hc (by decide)
+  | kw t _ b t5 t14 _ _ => rw [b] at hc; exact absurd hc t14
+  | num _ _ b => rw [b] at hc; exact absurd hc (by decide)
+  | id nm a x => exact ⟨nm, _, rfl, a, x⟩
+
+/-- **def lookup**: scanning the finished rows for the identifier at `p` finds nothing iff B's `findD` finds nothing; only the
+scratch cells 22 and 31 change -/
+theorem v8_findD {h : Buf} {st : St} {bb : Bool} {p : UInt64} {nm : List UInt64} (hD : DefsRep h st bb)
+    (h7 : (bget h 7).toNat < 2 ^ 24) (hl : 31 < h.length) (hn : NameOK h p nm) :
+    Same 22 h (v8 16777216 h (bget h 12) p) ∧
+      (bget (v8 16777216 h (bget h 12) p) 22 = 0 ↔ findD st.defs (nm.map UInt64.toNat) = none) := by
+  obtain ⟨tab, htl, hTab, hnames⟩ := defTab_of hD h7
+  obtain ⟨e12, hlt, _⟩ := hD
+  have hnm : nm.length < 2 ^ 24 := by obtain ⟨_, _, hb⟩ := hn; omega
+  obtain ⟨hS, h22⟩ := v8_lookup tab p nm st.defs.length 16777216 h (bget h 12) e12 (by omega) (by omega) (by omega) hl
+    (by omega) hTab hn hnm
+  refine ⟨hS, ?_⟩
+  rw [h22, idxOf_findD tab st.defs nm _ rfl htl (fun i hi hi' => hnames i hi hi') _ (Nat.le_refl _), List.take_length]
+  cases hf : findD st.defs (nm.map UInt64.toNat) with
+  | none => simp
+  | some j =>
+    simp only [Option.map_some, Option.getD_some, reduceCtorEq, iff_false]
+    intro e
+    have := congrArg UInt64.toNat e
+    have hj := findD_lt hf
+    simp [Nat.toUInt64] at this; omega
+
 end ParInv
