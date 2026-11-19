@@ -3,6 +3,7 @@ Build: `lake build Nano.V2Self.REVIEW`.  The #print axioms output is the authori
 import Nano.V2Self.Proof.Parser.ParCapBnd
 import Nano.V2Self.Proof.Cert.All
 import Nano.V2Self.Proof.Main.SelfC
+import Nano.V2Self.Proof.Main.RunsTop
 
 open LeanRV64D Proven Proven.Top Proven.Top.Alloc NanoMain ParSpec
 
@@ -30,6 +31,20 @@ by running B1), nor that the shipped B2.bin is `compiled.code`. -/
 #check @NanoMain.self_correct_C
 #check @NanoMain.SelfIn
 #print axioms NanoMain.self_correct_C
+
+/-! ## 2c. memory (E, Proof/Main/RunsTop.lean, Proof/Machine/RunsDef.lean, RunsThr.lean).  `memoryNeeded` of `compileC`
+is `spaceC x inp = max 16 (Msp p inp)`: `thr p x` = the LEAST number of usable bytes (above the 16-byte reserve) with
+which main does not run out of room at ANY admissible 8-aligned work position; `Msp` rounds `16 + thr` up to 8 bytes.
+`C_runs`: `CompileRuns` (the owner's run statement: any work block; OOM flag exactly below `memoryNeeded`), given
+`ShiftInv` (D proved it as `shiftInv`, c771775; E's premise-free `C_runsO` / `self_runs_C` are pending). `Msp_le` /
+`spaceC_le`: the bound is at most D's work bound `gen_R` (an existential) + 30 bytes. -/
+#check @NanoMain.C_runs
+#print axioms NanoMain.C_runs
+#check @NanoMain.Msp
+#check @NanoMain.thr
+#check @NanoMain.Msp_le
+#check @NanoMain.spaceC_le
+-- PENDING (E): #check @NanoMain.C_runsO, @NanoMain.self_runs_C
 
 /-! ## 3. definitions the statement depends on (see NANO_V2_REVIEW.md for summaries) -/
 -- machine / calling convention (Spec/, frozen by Spec/FROZEN.sha256)
@@ -69,5 +84,6 @@ by running B1), nor that the shipped B2.bin is `compiled.code`. -/
 #check @NanoMain.pOf
 #check @NanoMain.srcRun
 #check @NanoMain.spaceC
+#check @Proven.Top.Alloc.CompileRuns
 #check @NanoMain.compileC
 #check @NanoMain.mC

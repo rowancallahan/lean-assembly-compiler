@@ -18,6 +18,17 @@ Program: ParSpec's `ex1` (two defs, a call, prims), Lean function `Ex1.m`.
 ### 2. Findings, most serious first
 **A. `memoryNeeded` is an unconstrained `Classical.choose` — the memory premise cannot be discharged, and the theorem
 does not exclude always-out-of-memory code.**
+**STATUS: FIXED (339d759, E; recorded by O).** `spaceC x inp := max 16 (Msp p inp)`, where `Msp p x =
+(16 + thr p x + 7) / 8 * 8` and `thr p x` is the LEAST number of usable bytes with which main does not run out of room
+at any admissible 8-aligned work position (Proof/Machine/RunsDef.lean). So `memoryNeeded` is a definite, minimal
+quantity, not an arbitrary choice. Both sides are pinned:
+- `C_runs : ShiftInv → CompileRuns riscv compileC` (Proof/Main/RunsTop.lean): OOM is reported exactly below
+  `memoryNeeded`, and the output block is untouched on OOM.
+- `ShiftInv` is proved by D as `shiftInv` (c771775).
+- `Msp_le` / `spaceC_le`: at most D's work bound + 30.
+
+This rules out the always-OOM reading in consequence 1. Consequence 2 is reduced: the bound is minimal and finite, but
+not given in closed form, because `gen_R`'s bound is an existential.
 `compileC` reports `events inp = [.alloc (spaceC x inp)]`, so `memoryNeeded = spaceC x inp`, and
 `spaceC := Classical.choose (h : ImplementsC (mC x) (Sem κC p))` with `ImplementsC B f := ∃ space, ImplementsCW B f space`.
 `ImplementsCW` gets WEAKER as `space` grows (`oomOK := work.len < space x` only enables the OOM outcome), and with

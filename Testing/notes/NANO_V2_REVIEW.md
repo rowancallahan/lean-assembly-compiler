@@ -101,21 +101,28 @@ chunks concatenate to exactly those bytes. D's kernel-checked `SrcGen.link_pc` s
 - `κC = 524288` (:142): buffer capacity in words. Exceeding it gives `.error .cap`.
 
 ### The compiler as a function (Nano/V2Self/Proof/Main/MainTop.lean)
-- `SrcC` (:32) is a text. `pOf` (:37) is the program the text denotes, chosen with `Classical.choose`. It is still
+- `SrcC` (:33) is a text. `pOf` (:38) is the program the text denotes, chosen with `Classical.choose`. It is still
   determined: lexing is deterministic (`lexes_det`) and `refParse` is a function (`pOf_eq`).
-- `srcRun` (:49): `pOf`, then `Sem κC`. `.cap` and `.stuck` both become `none`. This is the `Program SrcC` instance (:52).
-- `spaceC` (:56): the work-memory bound. It is chosen by `Classical.choose` from the existential in `ImplementsC`, or 0
-  if there is none.
-- `compileC` (:62): `some ⟨mC text, cellSize 1, events = [alloc (spaceC text inp)]⟩` when `mC text ≠ []` and the text
+- `srcRun` (:50): `pOf`, then `Sem κC`. `.cap` and `.stuck` both become `none`. This is the `Program SrcC` instance (:53).
+- `spaceC` (MainTop.lean:82): the work-memory bound, `max 16 (Msp p inp)` for the program `p = pOf x` (0 if the text
+  is not a program). `Msp` (Machine/RunsDef.lean:48) is `(16 + thr p inp + 7) / 8 * 8`, where `thr p inp` (:45) is
+  the LEAST number of usable bytes (above the 16-byte reserve) with which main does not run out of room at ANY
+  admissible 8-aligned work-block position (searched up to 2^32). It is defined as a least element, so
+  `Classical` decidability is used, but it is a definite number, not an arbitrary choice (audit finding A, fixed in
+  339d759).
+- `compileC` (:93): `some ⟨mC text, cellSize 1, events = [alloc (spaceC text inp)]⟩` when `mC text ≠ []` and the text
   is at most 2^20 bytes; otherwise `none`. So `memoryNeeded = spaceC text inp`.
 - `mC` (Main.lean:24) is C's driver as Lean code: `g41 x (o41 (y16 (s10 x)))`. It is the implementation, not a
   specification; the theorem covers it.
 
 ## 3. Things a reviewer should know
-1. **The memory bound is not explicit.** `spaceC` is non-computable and chosen; no formula or numeric bound is proved.
-   The theorem says nothing when work memory is below that bound. In particular `CompileRuns` (OOM flag iff out of
-   memory) is **not** proved for C. Internally, `ImplementsC` allows an OOM return only below the bound, but that is not
-   in the top-level statement.
+1. **The memory bound is exact but not computed.** `memoryNeeded = max 16 (Msp p inp)` is the least sufficient work
+   size (see `spaceC` above). `C_runs : ShiftInv → CompileRuns riscv compileC` (Main/RunsTop.lean) says the code
+   returns with any work block and reports out-of-memory EXACTLY when `workLength < memoryNeeded`. D proved `ShiftInv`
+   as `shiftInv` (Bridge/MainShift4.lean); E's premise-free `C_runsO` is pending. Upper bound:
+   `spaceC_le` / `Msp_le` give at most D's work bound `gen_R` + 30 bytes. `gen_R`'s bound is itself an existential
+   (`Classical.choose`), so there is still no closed-form number per program. [UNSURE] whether a closed form is
+   planned.
 2. **`Computes` is for all arguments.** If `Sem` hits `cap` or `stuck` on some encoded input, `srcRun` is `none` there.
    Such an `f` cannot satisfy `Computes`, so pick `α` to exclude those inputs. E's SelfLink theorem does exactly this:
    it uses a restricted input type that excludes the inputs that hit `cap`. The machine-level behaviour on `cap`
@@ -124,7 +131,7 @@ chunks concatenate to exactly those bytes. D's kernel-checked `SrcGen.link_pc` s
 3. **Limits.** Source text at most 2^20 bytes (`compileC`). Program input at most 2^20 bytes (`StartCorrect`). Token
    stream below 2^24 words is internal (it follows from at most 9 words per byte). Defs are capped at
    `nslots < 2^20` and result width `< 2^20`. Buffers hold at most 524288 words.
-4. **`Classical.choice`** appears in `pOf` and `spaceC`, so `compileC`, `srcRun` and `riscv` are noncomputable.
+4. **`Classical.choice`** appears in `pOf` and in `thr` (least-element search), so `compileC`, `srcRun` and `riscv` are noncomputable.
    `compileC`'s code component is the computable `mC`.
 5. **Rejections are not errors in the statement.** `compileC = none` whenever `mC` returns `[]`. The theorem says
    nothing about which texts C accepts; there is no completeness theorem.
