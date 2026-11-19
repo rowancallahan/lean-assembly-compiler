@@ -1,7 +1,7 @@
 /- Nano/V2Self/C: the DRIVER.  `m` = lex, parse, inline, expand, assemble, then copy the final `Buf` to the output. -/
-import Nano.V2Self.C.Expand
-import Nano.V2Self.C.Lex
-import Nano.V2Self.C.Parse
+import Nano.V2Self.Legacy.C.Expand
+import Nano.V2Self.Legacy.C.Lex
+import Nano.V2Self.Legacy.C.Parse
 namespace C
 
 def m1 : Nat → Buf → UInt64 → List UInt8 → List UInt8

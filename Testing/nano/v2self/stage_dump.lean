@@ -1,5 +1,5 @@
 import Nano.V2Self.C.Lex2
-import Nano.V2Self.C.Par0
+import Nano.V2Self.Legacy.C.Par0
 import Nano.V2Self.C.Gen
 /- Stage-boundary dump for B₁ (native Lean) of C on one source file: tokens (C.s10), AST words (C.y13), code bytes (C.g41),
 one hex value per line, in `OUT.tok`, `OUT.ast`, `OUT.code`.  The B₂/B₃ dumps use the same format, so the first differing

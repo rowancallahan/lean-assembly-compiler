@@ -1,5 +1,5 @@
-/- Nano/V2Self/C: parser stage on Buf (from Nano/V2Self/Parse.lean) -/
-import Nano.V2Self.C.Inl
+/- Nano/V2Self/C: parser stage on Buf (from Nano/V2Self/Legacy/Parse.lean) -/
+import Nano.V2Self.Legacy.C.Inl
 namespace C
 
 def w0 : UInt64 := 0

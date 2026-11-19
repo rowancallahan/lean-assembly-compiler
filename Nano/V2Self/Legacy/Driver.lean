@@ -1,12 +1,12 @@
 /- Nano/V2Self: the driver.  The compiler is `asm ∘ mexp ∘ inl ∘ parse ∘ lex`.  As Lean it is `chainS`; as nano source it
 still needs buffer-to-buffer stage interfaces (the front end reads only the program INPUT with `rd`/`len` and extends only
 the OUTPUT with `put`; a stage output cannot be re-read) — see Testing/notes/NANO_V2_CHECKPOINT.md. -/
-import Nano.V2Self.Asm
-import Nano.V2Self.Expand
-import Nano.V2Self.Lex
-import Nano.V2Self.Inl
-import Nano.V2Self.Parse
-import Nano.V2Self.Bridge
+import Nano.V2Self.Legacy.Asm
+import Nano.V2Self.Legacy.Expand
+import Nano.V2Self.Legacy.Lex
+import Nano.V2Self.Legacy.Inl
+import Nano.V2Self.Legacy.Parse
+import Nano.V2Self.Legacy.Bridge
 import Nano.V2S.InlT
 import Nano.V2S.Parse
 import Nano.V2S.Lex

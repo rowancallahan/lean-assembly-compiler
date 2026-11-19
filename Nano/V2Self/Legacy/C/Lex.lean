@@ -1,4 +1,4 @@
-/- Nano/V2Self/C: lexer stage, program input in, Buf out (from Nano/V2Self/Lex.lean) -/
+/- Nano/V2Self/C: lexer stage, program input in, Buf out (from Nano/V2Self/Legacy/Lex.lean) -/
 import Nano.V2Self.C.Base
 namespace C
 

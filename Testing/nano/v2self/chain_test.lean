@@ -1,7 +1,7 @@
 -- the chained nano driver `C.m` against the list-based chain (`chainS`) and the v1 compiler `Nano.selfHosted`'s stages
 -- (run: lake env lean Testing/nano/v2self/chain_test.lean; first number = mismatches, expected 0)
-import Nano.V2Self.C.Main
-import Nano.V2Self.Driver
+import Nano.V2Self.Legacy.C.Main
+import Nano.V2Self.Legacy.Driver
 def lcg (s : Nat) : Nat := (s * 6364136223846793005 + 1442695040888963407) % 2^64
 def pieces : List String := ["def ", "f", " (x y : UInt64) : UInt64 := ", "x", " + ", "y", " * ", "(", ")", "let ", "z", " := ", "; ", "\n", "\n ", "12", "-", ":", "g ", "g(", " ", "\ndef", "UInt64", "Int64"]
 def gen : Nat → Nat → String → String × Nat

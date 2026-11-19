@@ -1,5 +1,5 @@
 /- Nano/V2Self: the assembler stage (Nano/V2S/Asm.lean) in the nano subset.  Equal to `Nano.V2S.asmV` by `rfl`
-(Nano/V2Self/Bridge.lean). -/
+(Nano/V2Self/Legacy/Bridge.lean). -/
 import Nano.V2Self.Prelude
 
 def k3 : UInt64 := 3

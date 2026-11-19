@@ -1,4 +1,4 @@
-/- Nano/V2Self/C: inliner stage on Buf (from Nano/V2Self/Inl.lean) -/
+/- Nano/V2Self/C: inliner stage on Buf (from Nano/V2Self/Legacy/Inl.lean) -/
 import Nano.V2Self.C.Base
 namespace C
 

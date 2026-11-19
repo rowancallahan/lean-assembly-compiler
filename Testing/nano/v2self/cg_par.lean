@@ -1,5 +1,5 @@
 import Nano.V2Self.C.Lex2
-import Nano.V2Self.C.Par0
+import Nano.V2Self.Legacy.C.Par0
 import Nano.V2Self.C.Gen
 /- Main-shaped sources through the WHOLE chain C.s10 → C.y13 → C.g41 [] (no hand-written AST), expected output = the
 same text as native Lean (the prelude's real definitions).  Writes Testing/asm/ir-words/cgp_K.{words,cases}; run each

@@ -1,4 +1,4 @@
-import Nano.V2Self.C.Main
+import Nano.V2Self.Legacy.C.Main
 /- `lean --run sizes.lean SRC`: words (Buf entries) after each chained stage: lex, parse, inline, expand, asm. -/
 def main (a : List String) : IO Unit := do
   let x := (← IO.FS.readFile a[0]!).toUTF8.toList

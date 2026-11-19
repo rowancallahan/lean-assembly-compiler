@@ -1,7 +1,7 @@
 /- Nano/V2Self: the rewritten stage texts equal the Nano/V2S stages (Testing/notes/NANO_V2_CHECKPOINT.md).
 Assembler, expander: renames, hex literals as constants and `let` reshaping only. -/
-import Nano.V2Self.Asm
-import Nano.V2Self.Expand
+import Nano.V2Self.Legacy.Asm
+import Nano.V2Self.Legacy.Expand
 import Nano.V2S.Asm
 import Nano.V2S.Expand
 

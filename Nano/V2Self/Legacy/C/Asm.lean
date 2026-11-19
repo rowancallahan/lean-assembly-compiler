@@ -1,4 +1,4 @@
-/- Nano/V2Self/C: assembler stage on Buf (from Nano/V2Self/Asm.lean) -/
+/- Nano/V2Self/C: assembler stage on Buf (from Nano/V2Self/Legacy/Asm.lean) -/
 import Nano.V2Self.C.Base
 namespace C
 

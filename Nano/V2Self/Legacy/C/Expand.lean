@@ -1,5 +1,5 @@
-/- Nano/V2Self/C: expander stage on Buf (from Nano/V2Self/Expand.lean) -/
-import Nano.V2Self.C.Asm
+/- Nano/V2Self/C: expander stage on Buf (from Nano/V2Self/Legacy/Expand.lean) -/
+import Nano.V2Self.Legacy.C.Asm
 namespace C
 
 def e0 (p q : UInt64) (o : Buf) : Buf :=

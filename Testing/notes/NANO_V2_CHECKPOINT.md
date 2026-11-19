@@ -22,7 +22,7 @@ Known gaps: (1) Par1 relies on Astra's shape checks and does not itself reject w
 
 Branch `nano-v2-src` (merged with origin/main and origin/nano-v2 at eccd515). Folder `Nano/V2Self/`. No sorry, no new
 axioms (Bridge/Driver: propext, Quot.sound). Everything below was run here with `Testing/nano/v2self/check.sh`
-(`lake build Nano.V2Self.Driver`, the front-end acceptance script, the differential test); each module builds in < 10 s.
+(`lake build Nano.V2Self.Legacy.Driver`, the front-end acceptance script, the differential test); each module builds in < 10 s.
 
 ## Files and acceptance by nano's own front end (`frontElabK 256`)
 

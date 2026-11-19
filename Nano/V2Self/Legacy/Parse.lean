@@ -4,7 +4,7 @@ moved, so the lookups `r5`/`r6` return the buffer back; they step over buffer PO
 `findV` returns `3·number` instead of `number`), the number of a new def is read off the last table entry; `rdW` uses
 two multiplications by 65536; the token fuel `n` is `16 * len' x + 16`; constants `w0..w13` type the tuple components.  Output-carrying
 helpers take the output last. -/
-import Nano.V2Self.Inl
+import Nano.V2Self.Legacy.Inl
 
 def w0 : UInt64 := 0
 def w1 : UInt64 := 1

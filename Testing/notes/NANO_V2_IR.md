@@ -16,7 +16,7 @@ Every node = a tag word followed by its operands; child nodes follow in order (p
 Rejected (the stage outputs the EMPTY Buf): any token outside Nano/V2Self/C's restricted set (Int64, `&&`, `||`, `≤`, `≠`, `>`, `match`, general `Nat`), undefined names, a use before definition, non-tail recursion, a tuple width mismatch.
 Expander+assembler are fused (Opus box): they read this AST and emit machine code with a fixed frame per def (fp-relative slots, saved ra/fp), a memory expression stack, short inverted branch over a fixed-size long `jal`, call = fixed-size `jal`.
 
-## Status of the parser (increment A, `Nano/V2Self/C/Par0.lean`, test `Testing/nano/v2self/par0_test.lean`)
+## Status of the parser (increment A, `Nano/V2Self/Legacy/C/Par0.lean`, test `Testing/nano/v2self/par0_test.lean`)
 Implemented: `def f (a b : UInt64) (c : UInt64) : UInt64 := EXPR`, EXPR = literals, parameters, parentheses, `|||` `&&&` `+ -` `*` `<<<` `>>>` with Lean precedences (55 60 65 70 75, left assoc; shift rhs = numeral).
 Output words: `2 (IRV), 20 (DEF), 0 (id), nparams, nslots, 0 (kind), pre-order nodes, 21 (ENDDEF)`; node tags in use: CONST 1 v, LOCAL 2 slot, BIN 3 op (add 1 sub 2 mul 3 and 4 or 5 shl 6 shr 7) a b. Reserved for the next increments: IF 4, LET 5, PAIR 6, SPLIT 7, CALL 8, PRIM 9, LOOP 10, CONTINUE 11.
 Test: 3000 random trees printed with minimal parentheses, lexed, parsed, decoded and evaluated: 0 mismatches; 6 rejection cases (dangling operator, unclosed paren, unknown name, shift by a variable, trailing token, Int64) give the empty Buf. Accepted by `frontElab` (13 defs).
