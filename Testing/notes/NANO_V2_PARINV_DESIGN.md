@@ -101,7 +101,9 @@ EXPRESSION REFINEMENT (B, in progress). PUSHED: `Proof/ParRunExpr.lean` — `VT`
   `reach_assignTy` (TA: an `.assign` is below a pending `.tyAtom` until ty is set), `reach_selfP` (SInv), `reach_prev` (PInv: above
   `.afterColon` only type frames; prevTok is the last type keyword), `reach_names (hT : TokL ts toks)` (IdsOK via `idsOK_of_tokL` + F's NInv).
   = Obl fields assignTy / selfP / prev / names (F wires them into Obl).
-  NEXT (B): C-wide meaning certificate slice ids 14..122 (with G).
+  Obl NOT done by B: nni, npw, contK/callN (C derived these in 9325910), prim32, flat (F's). Obl wiring into ParInvRun.Obl: not done (F).
+  CERTIFICATE SLICE ids 14..122: NOT STARTED — G's generator / Defs files were not on nano-v2-src at 3ebb5e9; asked G for status, no reply.
+  B STOOD DOWN (owner, 2026-11-19 18:20). F takes the Obl pieces; slice 14..122 unassigned.
 
 ## HANDOFF — parser lead (2026-11-19, keep current)
 Role: review of Layers 2/3; owns def start/accept 60, plainBody 70, afterColon 73, stateTy 74, armsStart 75, FINISH 80,
