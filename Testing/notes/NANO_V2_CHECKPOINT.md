@@ -276,4 +276,7 @@ DONE (pushed, no sorry, std axioms):
   along the run), `tokAt_pos` (cursor position determined), `prev_cell` (cell before the cursor = last keyword of `pre`, or 0 after an
   identifier, or `pre` ends with a NUMBER — a number's last byte may be 35, so hprev also needs "previous token not a num" from Layer 2;
   plus `st.all = pre ++ st.toks` from Layer 2).
-NEXT (box C): 53 letPairSemi (B made `stash : Option`; unblocked).
+  53 h_letPairSemi (LetPair; side conditions `st.vals ≠ []`, `st.stash.isSome`; v6_stat, v6_shtab, ShapeCode.pair_inv).
+  => the EXPRESSION core is complete on the machine side: tasks 1–12, 40–42, 49–53, 90 (+ G's call/prim/type families).
+NEXT (box C): open for reassignment — glue obligations collected above (vals ≠ [] / |vals| ≥ 2, SInv sh.isSome, no flat frame,
+inDefF, d ≤ |binds|, stash.isSome, md ≤ 2) are Layer-2 WF facts for B/F's api_of_rep.
