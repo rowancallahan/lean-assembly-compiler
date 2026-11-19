@@ -93,6 +93,7 @@ theorem v99_eq (x : Buf) (b : UInt64) (hx : x.length ≤ 16777216) :
     omega
   unfold v99
   simp only [hy, hsz, beq_self_eq_true, if_true, fin, entryHeap]
+  rfl
 
 /-! ## decoded view of the machine state -/
 structure Task where
