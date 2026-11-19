@@ -108,6 +108,14 @@ OPEN / NEXT (owner order 2026-11-19):
    bpush cap check `len < κ` = Sem's `push`, loopGo (env 0 = 0 / decE) = loopRun, len/len' = c29.  Needs the linearity
    interface (asked O whether their ownership rule is on Nd; proposed `LinN` with own/ro/dead flags mirroring Nano/V2 Own).
    Second direction still needed for ImplementsC's `space`: Sem ok ⇒ sv succeeds with enough stack room.
+   LINEARITY = O's `OwnSpec.Linear p` (∃ Ks, progOk [] [] Ks p; walk `chk` with dead flags, kinds 0 word / 1 owned /
+   2 read-only param; pins in argument lists).  BRIDGE DESIGN (layer 2, to do): ghost abstract heap σ : Nat → Option
+   (List UInt64); `AHeap H σ` = every σ-block is `BufAt` in H, σ-blocks pairwise disjoint; value relation .w x ↔ word x,
+   .b l ↔ σ addr = some l; slot invariant over Γ-known slots (TyN): kind 0 ⇒ word, kind ≥ 1 ∧ live ⇒ related, owned live
+   slots' addresses distinct from every other live buffer slot.  Node theorem (mutual on TyN ∧ chk): sv succeeds ⇒ ev
+   succeeds, results related in σ', σ' differs from σ only at blocks of slots consumed by e and at fresh blocks, plain
+   kind-1 result entries are fresh/consumed blocks not held by any live slot after; pinned entries = the slot's address.
+   Layer 1 (MainBridge.lean): BufAt + per-prim agreement (done).
 2. MainTop subset: parsed ∧ Linear, compileC with the ownership check (after O).
 3. C-wide certificate generator (one Sem = Lean lemma per def) + kernel test of progEq on C's token stream.
    MEASURED (decide +kernel, prefixes of self_S_input.txt + a stub main): 713 bytes → lexer `C.s10` 35 s / 5.9 GB, lexer +
