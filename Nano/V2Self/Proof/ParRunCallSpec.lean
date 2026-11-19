@@ -243,7 +243,7 @@ theorem inpPair_of : ∀ (ps : List Ps) (vs : List RN), ps.length = vs.length �
   | p :: ps, v :: vs, hl, h =>
     .cons (h 0 (by simp) (by simp)) (inpPair_of ps vs (by simpa using hl) fun i h1 h2 => h (i + 1) (by simpa using h1) (by simpa using h2))
 
-theorem filter_len0 {ks : List RN} (h : (ks.filter RN.isInp).length = 0) : ∀ k ∈ ks, k.isInp = false := by
+theorem filter_inp0 {ks : List RN} (h : (ks.filter RN.isInp).length = 0) : ∀ k ∈ ks, k.isInp = false := by
   intro k hk
   cases hi : k.isInp with
   | false => rfl
@@ -281,10 +281,10 @@ theorem prim_inpPair {t : Nat} (h1 : 38 < t) (h2 : t < 48) {ps : List Ps} {rs : 
         | zero => simp [h4, hp0]
         | succ i =>
           have hi : i < r.length := by simpa using i2
-          have := filter_len0 hr r[i] (List.getElem_mem hi)
+          have := filter_inp0 hr r[i] (List.getElem_mem hi)
           simp [this]
   · by_cases hm : (kids.filter RN.isInp).length = 0
-    · have := filter_len0 hm kids[i] (List.getElem_mem i2)
+    · have := filter_inp0 hm kids[i] (List.getElem_mem i2)
       simp [this, h4]
     · simp [hm, h4] at hok
 
