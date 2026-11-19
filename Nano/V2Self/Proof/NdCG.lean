@@ -179,4 +179,82 @@ theorem invS_cons {d i h n c i' E} (hc : CGs K d i h (n + 1) c i' E) :
 
 end inv
 
+/-! ## bounds on an AST node, serialization at a cursor, the context link -/
+
+mutual
+/-- field bounds (all < 2^32), prim operand counts as Gen reads them, CONTINUE only with p ≥ 1 -/
+def NB (p : Nat) : Nd → Prop
+  | .const _ => True
+  | .loc s w => s < 2 ^ 32 ∧ w < 2 ^ 32
+  | .bin op a b => op < 2 ^ 32 ∧ NB p a ∧ NB p b
+  | .ite c a b t e => c < 2 ^ 32 ∧ NB p a ∧ NB p b ∧ NB p t ∧ NB p e
+  | .letE s w v b => s < 2 ^ 32 ∧ w < 2 ^ 32 ∧ NB p v ∧ NB p b
+  | .pair cs => cs.length < 2 ^ 32 ∧ NBL p cs
+  | .call id as => id < 2 ^ 32 ∧ as.length < 2 ^ 32 ∧ NBL p as
+  | .prim pn as => pn < 2 ^ 32 ∧ as.length = (g33 pn.toUInt64).toNat ∧ NBL p as
+  | .loop z s => NB p z ∧ NB p s
+  | .cont e => 1 ≤ p ∧ NB p e
+def NBL (p : Nat) : List Nd → Prop
+  | [] => True
+  | c :: cs => NB p c ∧ NBL p cs
+end
+
+def SerAt (X : Buf) (i : Nat) (l : List UInt64) : Prop := ∀ j, j < l.length → tg X (i + j) = l.getD j 0
+
+theorem SerAt.app {X : Buf} {i : Nat} {l1 l2 : List UInt64} (h : SerAt X i (l1 ++ l2)) :
+    SerAt X i l1 ∧ SerAt X (i + l1.length) l2 := by
+  refine ⟨fun j hj => ?_, fun j hj => ?_⟩
+  · rw [h j (by simp; omega)]; simp [List.getD_eq_getElem?_getD, List.getElem?_append_left hj]
+  · rw [show i + l1.length + j = i + (l1.length + j) by omega, h _ (by simp; omega)]
+    simp [List.getD_eq_getElem?_getD, List.getElem?_append_right]
+
+theorem SerAt.cons {X : Buf} {i : Nat} {a : UInt64} {l : List UInt64} (h : SerAt X i (a :: l)) :
+    tg X i = a ∧ SerAt X (i + 1) l := by
+  refine ⟨by simpa using h 0 (by simp), fun j hj => ?_⟩
+  rw [show i + 1 + j = i + (j + 1) by omega, h _ (by simp; omega)]; simp
+
+/-- the template context agrees with Gen's def context -/
+structure SK (S : SC) (K : GenRef.Cx) : Prop where
+  p : S.p = K.p.toNat
+  κ : S.κ = K.u.toNat
+  T : ∀ n : Nat, S.T n = (bget K.T n.toUInt64).toNat
+  Tb : ∀ n : Nat, (bget K.T n.toUInt64).toNat < 2 ^ 32
+  p251 : K.p < 251
+  ns251 : K.ns < 251
+
+theorem Mt.retarget {c : List UInt64} {l : List J} {h X : Nat} (m : Mt c l h [] X) (X' : Nat) : Mt c l h [] X' :=
+  ⟨m.1, by simp, fun j hj => ⟨by simp, fun _ => (m.2.2 j hj).2 (by simp)⟩⟩
+
+theorem Mt.len {c : List UInt64} {l : List J} {h : Nat} {E : List Nat} {X : Nat} (m : Mt c l h E X) :
+    c.length = l.length := m.1
+
+theorem Mt.at {c : List UInt64} {l : List J} {h h' : Nat} {E : List Nat} {X X' : Nat} (m : Mt c l h E X)
+    (e1 : h = h') (e2 : X = X') : Mt c l h' E X' := e1 ▸ e2 ▸ m
+
+theorem Mt.jal1 (A B : Nat) (z : Int) (hA : A < 2 ^ 32) (hB : B < 2 ^ 32) (hz : (B : Int) - (A : Int) = z)
+    (h X : Nat) : Mt [jw 0 A B] [.jal 0 z] h [] X := by
+  have := Mt.plain [J.jal 0 z] h X
+  rw [jw_enc A B hA hB, hz]; simpa using this
+
+theorem toU_lt (n : Nat) (h : n < 2 ^ 32) : n.toUInt64.toNat = n := by simp [Nat.toUInt64]; omega
+
+/-- every prim's code (g32) is its template -/
+theorem g32_prim (S : SC) (pn : Nat) (h1 : 1 ≤ pn) (h9 : pn ≤ 9) (o : Buf) (ho : o.length + 50 < 2 ^ 32) :
+    g32 o pn.toUInt64 (UInt64.ofNat S.κ) = o ++ (primT S pn o.length).map encG := by
+  have hl : o.length < 2 ^ 32 := by omega
+  unfold primT
+  rcases (show pn = 1 ∨ pn = 2 ∨ pn = 3 ∨ pn = 4 ∨ pn = 5 ∨ pn = 6 ∨ pn = 7 ∨ pn = 8 ∨ pn = 9 by omega) with
+    e | e | e | e | e | e | e | e | e <;> subst e <;> simp only [Nat.reduceEqDiff, or_self, or_false, false_or,
+      if_true, if_false]
+  · exact g32_len o _ hl
+  · exact g32_rd o _
+  · exact g32_len3 o _ hl
+  · exact g32_put o _ (by omega)
+  · exact g32_bnew o S.κ (by omega)
+  · exact g32_bsize o _
+  · exact g32_bget o _
+  · exact g32_bset o _
+  · exact g32_bpush o _ (by omega)
+
+/-! ## the matching theorem -/
 end Templates
