@@ -8,6 +8,7 @@ for the audit `Testing/notes/NANO_V2_AUDIT.md`.  What is proved here and what is
 import Nano.V2Self.Proof.Parser.ParCapBnd
 import Nano.V2Self.Proof.MainCert
 import Nano.V2Self.Proof.Tests.MainWitness
+import Nano.V2Self.Proof.Tests.AuditSpace
 
 namespace NanoMain.Audit
 open Proven Proven.Top Proven.Top.Alloc ParSpec
@@ -34,5 +35,17 @@ theorem ex1_applies (hy : C.y16 (C.s10 Witness.x2) = Witness.a2) (inp : List UIn
   obtain ⟨fin, h1, h2, h3, h4, -⟩ := C_correctLO src _ Ex1.m id id inp startState call (ex1_compiles hy) ex1_computes hs ho
     (by simpa [memoryNeeded, peak, inUse] using hm)
   exact ⟨fin, h1, h2, h3, h4⟩
+
+/-- the same on the input `[5]` with the memory premise DISCHARGED (D's `AuditSpace.spaceC_ex1_eq`, after `spaceC` became
+E's explicit bound): 4,194,416 bytes of work memory suffice, and the output is the single byte `Ex1.m [5]`.  The only
+hypotheses left are the native-only parser run `hy` and the start state. -/
+theorem ex1_applies_5 (hy : C.y16 (C.s10 Witness.x2) = Witness.a2) (startState : riscv.State) (call : Call)
+    (hs : StartCorrect riscv startState call (mC Witness.x2) [5]) (ho : 1 ≤ call.outputLength)
+    (hw : 4194416 ≤ call.workLength) :
+    ∃ finishState, Runs riscv startState finishState ∧
+      (riscv.observe finishState).programCounter = call.returnAddress ∧
+      (riscv.observe finishState).register riscv.mapping.status ≠ oomFlag ∧
+      readMemory (riscv.observe finishState) call.outputAddress 1 = some (Ex1.m [5]) :=
+  ex1_applies hy [5] startState call hs ho (by rw [AuditSpace.spaceC_ex1_eq]; exact hw)
 
 end NanoMain.Audit

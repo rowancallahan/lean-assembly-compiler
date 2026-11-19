@@ -96,3 +96,11 @@ Routes that would work (not started; lead's decision 2026-11-19: documented as a
 - a representation change (Par1 over a compact heap + equivalence) or a token-count-dependent layout (compiler change, new
   fixpoint): days.
 Native runs agree with the reference parser on all tested programs (fuzzer, the full C source).
+
+### A (follow-up): the memory premise is now dischargeable for the example
+E replaced the `Classical.choose` in `spaceC` by the explicit bound (`max 16 ∘ Msp`, 339d759) and D proved
+`AuditSpace.spaceC_ex1_eq : spaceC Witness.x2 [5] = 4194416` (72fc9830). `Tests/AuditWitness.ex1_applies_5` plugs it in:
+for ex1 on input `[5]`, with a start state, 1 byte of output space and 4,194,416 bytes of work memory, C's code runs to
+`ra`, status ≠ oomFlag, output `Ex1.m [5]`. Remaining hypotheses: `StartCorrect` (abstract) and the native-only parser run
+(finding B). Finding A's loophole (always-OOM code admitted) is closed by the explicit `spaceC` as far as the top
+statement goes; `ImplementsC` (the existential form) is still satisfiable by always-OOM code wherever it is used alone.
