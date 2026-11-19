@@ -13,6 +13,7 @@ import Nano.V2Self.C.Gen
 import Nano.V2Self.C.Own
 import Nano.V2Self.Proof.OwnSpec
 import Nano.V2Self.Proof.ParInv
+import Nano.V2Self.Proof.MainTokWF
 import Spec.Implements1
 
 namespace NanoMain
@@ -188,8 +189,8 @@ def ImplementsC (B : List UInt8) (f : List UInt8 → Except Stop (List UInt8)) (
 
 /-! ## the stage hypotheses -/
 
-/-- the parser (boxes B/C): `ParInv.ParserSound` for token streams within Par1's fuel -/
-def ParStage : Prop := ∀ ts : List UInt64, ts.length ≤ 16777216 → ParInv.ParserSound ts
+/-- the parser (boxes B/C): `ParInv.ParserSound` for well-formed token streams below 2^24 words (F: `ParInv.parserSound`) -/
+def ParStage : Prop := ∀ ts : List UInt64, ParSpec.TokWF ts → ts.length < 2 ^ 24 → ParInv.ParserSound ts
 
 /-- O's ownership discipline with slot kinds 0 (word) / 1 (owned) / 2 (read-only) -/
 def LinearK (p : List DefA) : Prop := ∃ Ks, OwnSpec.progOk [] [] Ks p = true ∧ ∀ K ∈ Ks, ∀ k ∈ K, k ≤ 2
@@ -276,11 +277,11 @@ theorem compiler_correct (HP : ParStage) (HO : OwnStage) (HG : GenStage) (x : Li
   have hoe := o41_ne _ hy0
   have hy : C.y16 (C.s10 x) ≠ [] := by rw [← hoe]; exact hy0
   by_cases h0 : C.s10 x = []
-  · obtain ⟨p, hp, -⟩ := HP _ (by simp [h0]) hy
+  · obtain ⟨p, hp, -⟩ := HP _ ⟨[], by rw [h0]; exact ParSpec.TokL.nil⟩ (by simp [h0]) hy
     rw [h0] at hp; simp [ParsesProgram, refParse_nil] at hp
   · have hL := LexSpec.s10_sound x (by omega) _ rfl h0
     have hb := lexes_len hL
-    obtain ⟨p, hp, he⟩ := HP _ (by omega) hy
+    obtain ⟨p, hp, he⟩ := HP _ (lexes_tokWF hL) (by omega) hy
     have hlin : LinearK p := HO p (by rw [← he]; exact hy0)
     refine ⟨_, p, hL, hp, hlin, ?_⟩
     have hg : C.g41 x (serialize p) ≠ [] := by rw [← he, ← hoe]; exact h

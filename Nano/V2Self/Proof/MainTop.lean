@@ -4,8 +4,9 @@
   the text is not a program or the run hits Gen's buffer capacity);
 * `compileC`: C's driver `mC` (when it emits code and the text is at most 2^20 bytes); `memoryNeeded` = the work bound
   of `ImplementsC` (chosen);
-* `C_correctL : ParStage → OwnStage → GenStage → CompileCorrectL riscv compileC`. -/
+* `C_correctL : OwnStage → GenStage → CompileCorrectL riscv compileC` (the parser stage is F's `ParInv.parserSound`). -/
 import Nano.V2Self.Proof.MainTyP
+import Nano.V2Self.Proof.ParInvRun
 import Riscv.Back.Top
 import Compiler.AllocSpec
 
@@ -108,8 +109,12 @@ theorem kept_of {s s' : St} (hkept : abiSavedKept s s') : KeptRegisters riscv s 
   rcases hnumber with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
     simp only [riscvObserve, riscvRegister, k2, k3, k4, k8, k9, k18, k19, k20, k21, k22, k23, k24, k25, k26, k27]
 
-/-- **C is correct** (owner's top-level statement), from the parser and codegen stage theorems -/
-theorem C_correctL (HP : ParStage) (HO : OwnStage) (HG : GenStage) : CompileCorrectL riscv compileC := by
+/-- the parser stage, discharged (F) -/
+theorem parStage : ParStage := fun _ hW hts => ParInv.parserSound hW hts
+
+/-- **C is correct** (owner's top-level statement), from the ownership and codegen stage theorems -/
+theorem C_correctL (HO : OwnStage) (HG : GenStage) : CompileCorrectL riscv compileC := by
+  have HP := parStage
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight outputFits
     enough
   obtain ⟨x⟩ := program
