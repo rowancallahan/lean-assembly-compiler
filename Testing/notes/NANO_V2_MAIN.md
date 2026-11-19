@@ -47,6 +47,15 @@ Options: (a) Par1 layout sized by the token count (offsets d1..d11 as functions 
   `parsed_not_stuck : ParsesProgram ts p → Sem κ p inp ≠ .error .stuck`.
 - `compiler_correct'` = `compiler_correct` + `∀ inp, Sem κC p inp ≠ .error .stuck`.
 
+## E's side conditions from the parser (`MainOk.lean`, 4 s, propext/choice/Quot.sound)
+- `TyN` tightened: a let's slots must be fresh (`none` in Γ), loops only as def bodies (`TyB`), prims 1/3/5 have no
+  argument nodes; MainTyP re-proved (EnvT now also says: slots ≥ nx are fresh).
+- `rd_known` (reads hit known slots), `wr_fresh` (let writes hit fresh slots) ⇒ every rd/wr disjointness of `OkV`/`OkT`;
+  `wd_ok` (width = kind count), `okV`, `okL`, `okT` (loop arms, CONTINUE width = p − 1), `okBody` (plain body or loop).
+- `parsed_ok : ParsesProgram ts p → p[i]? = some d → ∀ K, K.p = d.npw → K.nl = d.nslots → K.nd = i →
+   (∀ j < i, p[j] = dj → K.npwOf j = dj.npw ∧ K.nresOf j = dj.nres) → OkV K d.body ∧ wd K d.body = d.nres ∧ d.npw ≤ d.nslots`;
+  `parsed_main`: the last def has npw 0, nres 1.
+
 ## Trust / reading notes
 - The meaning is ParSpec's resolved AST + `Sem`, both independent of C's code. The link from ParSpec+Sem to Lean's own
   elaboration of the source text is a spec review item (or a later bridge to `Nano.V2` `Prog.eval`).
@@ -56,7 +65,8 @@ Options: (a) Par1 layout sized by the token count (offsets d1..d11 as functions 
 ## HANDOFF
 DONE: statement, `Sem`, `ImplementsC`, stage hypotheses, `compiler_correct` (proved from HP, HG), `lexes_len`, `g41_nil`.
 DONE: per-stage non-vacuity witnesses (MainWitness.lean); the parser run itself is not kernel-checkable at Par1's layout.
-DONE: `parsed_not_stuck`, `compiler_correct'` (MainTy/MainTyP).
+DONE: `parsed_not_stuck`, `compiler_correct'` (MainTy/MainTyP); E's `OkV` from ParSpec (`MainOk.parsed_ok`).
+OWNER QUEUE (2026-11-19): (2) bridge Sem ⇐ E's sv; (3) final theorem in Spec/Top + Implements1 vocabulary next to compiler #1's; (4) per-program meaning certificate.
 NEXT: (1) agree `GenStage` / `ImplementsC` with A and E (no reply yet); the bridge E's machine-level `sv`/`defS`
 (NdSem) ⇒ `Sem` is the natural meeting point — the `TyN` judgment gives the kind facts it needs; E's `OkV` scoping /
 width side conditions also have to come from ParSpec (same fuel-induction scheme as `p_all`); (2) phase 2 parser
