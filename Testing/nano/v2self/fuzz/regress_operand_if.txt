@@ -5,3 +5,11 @@ def f (a : UInt64) : UInt64 := a * if a == 1 then 2 else 3 def m (x : List UInt8
 def f (a : UInt64) : UInt64 := if if a == 1 then 1 else 0 == 1 then 2 else 3 def m (x : List UInt8) : List UInt8 := []
 # must ACCEPT:
 def f (a : UInt64) : UInt64 := (if a == 1 then 2 else 3) + 1 def m (x : List UInt8) : List UInt8 := []
+# fix H (input only alone in its binder group, exactly ParSpec.pickPs) and fix I (no Nat as data), 2026-11-19. must REJECT:
+def f (x y : List UInt8) : UInt64 := rd x 0 def m (x : List UInt8) : List UInt8 := []
+def f (a : Nat) : UInt64 := 1 def m (x : List UInt8) : List UInt8 := []
+def f (x : List UInt8) : UInt64 := let n := len' x; 1 def m (x : List UInt8) : List UInt8 := []
+def f (x : List UInt8) : UInt64 := let p := (len' x, 1); 1 def m (x : List UInt8) : List UInt8 := []
+def f (a : Nat × UInt64) : UInt64 := 1 def m (x : List UInt8) : List UInt8 := []
+# must ACCEPT:
+def f (a b : List UInt8) (x : List UInt8) : UInt64 := len x def m (x : List UInt8) : List UInt8 := []

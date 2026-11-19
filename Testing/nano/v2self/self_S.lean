@@ -372,6 +372,7 @@ def v10 : Nat → Buf → UInt64 → UInt64 → UInt64 → Buf
   | n + 1, h, x, y, j =>
     let b := d7 + 8192 + 3*j;
     if j == bget h 26 then
+      if x == 4 then bset h 0 0 else if y == 4 then bset h 0 0 else
       if j < d15 then
         let h := v9 h x;
         let z21 := bget h 31;
@@ -706,6 +707,7 @@ def v116 (h : Buf) (a b : UInt64) : Buf :=
     let h := bset h (3) z40;
     let s := (bget h 11);
     let w := (bget h ((d5 + 8 * (bget h (d3 + (bget h 8) - 1))) + 3));
+    if w == 4 then bset h 0 0 else
     let j := (bget h 4);
     let h := v1 h 12 (s) (j);
     let h := v1 h 1 (0) (b);
@@ -1017,7 +1019,7 @@ def v132 (h : Buf) (a b : UInt64) : Buf :=
       let h := bset h (3) z40;
       if a < (bget h 4) then
         let h := v1 h 66 (0) (0);
-        let h := v1 h 68 (a) (0);
+        let h := v1 h 68 (a) ((bget h 4) - a);
         let h := v1 h 4 (0) (0);
         let h := v1 h 61 (0) (0);
         h
@@ -1030,7 +1032,7 @@ def v201 : Nat → Buf → UInt64 → UInt64
   | 0, h, i => 0
   | n + 1, h, i =>
     if i == 0 then 0
-    else if bget h (d9 + 4*(i - 1) + 2) == 3 then 1
+    else if bget h (d9 + 4*(i - 1) + 3) == 1 then 1
     else v201 n h (i - 1)
 
 def v133 (h : Buf) (a b : UInt64) : Buf :=
@@ -1038,7 +1040,8 @@ def v133 (h : Buf) (a b : UInt64) : Buf :=
     h
   else
     let w := (bget h 25);
-    let i1 := if w == 3 then v201 16777216 h a else 1;
+    if w == 4 then bset h 0 0 else
+    let i1 := if w == 3 then (if b == 1 then v201 16777216 h a else 1) else 1;
     let n1 := if i1 == 0 then k1 else k0;
     let z40 := ((bget h 11));
     let h := bset h (d9 + 4*a + 1) z40;
@@ -1060,10 +1063,11 @@ def v133 (h : Buf) (a b : UInt64) : Buf :=
           h
         else
           bset h 0 0;
-    let h := v1 h 68 (a + 1) (0);
+    let h := v1 h 68 (a + 1) b;
     h
 
 def v134 (h : Buf) (a b : UInt64) : Buf :=
+  if bget h 25 == 4 then bset h 0 0 else
   let z40 := (d7 + 8 * ((bget h 12)) + 1);
   let z41 := ((bget h 11));
   let h := bset h z40 z41;
@@ -1124,6 +1128,7 @@ def v136 (h : Buf) (a b : UInt64) : Buf :=
   let i1 := if w == 3 then v203 16777216 h s1 c1 else 1;
   let n1 := if i1 == 0 then k1 else k0;
   if bget h (d11+p) == k42 then
+    if w == 4 then bset h 0 0 else
     let q := bget h (f+1);
     let h := v9 h w;
     let z := bget h 31;
@@ -1135,6 +1140,7 @@ def v136 (h : Buf) (a b : UInt64) : Buf :=
   else if bget h (f+6) == 1 then bset h 0 0 else v1 h 75 0 0
 
 def v137 (h : Buf) (a b : UInt64) : Buf :=
+  if bget h 25 == 4 then bset h 0 0 else
   let z40 := (d7 + 8 * ((bget h 12)) + 3);
   let z41 := ((bget h 25));
   let h := bset h z40 z41;
