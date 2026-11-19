@@ -91,10 +91,10 @@ def RowZero (h : Buf) (j : Nat) : Prop := ∀ k : UInt64, k.toNat < 8 → bget h
 /-- the shape table: h[26] rows allocated (≤ 8192); every row from h[26] on has a zero left cell, so no shape code refers to it -/
 def ShRows (h : Buf) : Prop :=
   (bget h 26).toNat ≤ 8192 ∧ (∀ k : Nat, (bget h 26).toNat ≤ k → k < 8192 → bget h (d7 + 8192 + 3 * k.toUInt64) = 0) ∧
-  -- every allocated row decodes (v10 may return an existing row: its code must be a `ShapeCode`)
+  -- every allocated row decodes, and has no Nat component (v10 may return an existing row: its code must be a `ShapeCode`)
   ∀ k : Nat, k < (bget h 26).toNat → ∃ l r, ShapeCode h (bget h (d7 + 8192 + 3 * k.toUInt64)) l ∧
     ShapeCode h (bget h (d7 + 8192 + 3 * k.toUInt64 + 1)) r ∧
-    bget h (d7 + 8192 + 3 * k.toUInt64 + 2) = (l.width + r.width).toUInt64
+    bget h (d7 + 8192 + 3 * k.toUInt64 + 2) = (l.width + r.width).toUInt64 ∧ l ≠ .nt ∧ r ≠ .nt
 
 /-- the def table: finished rows, the current row (inside a def) or a zero row (between defs), zero rows above; h[27] = next free
 parameter cell, above every row's parameter list -/
