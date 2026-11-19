@@ -27,7 +27,7 @@ RULES = [
 
 def cls(b):
     if b in STAY: return None
-    if b in TESTS: return "Tests"
+    if b in TESTS or re.search(r"NV|Witness|^Audit", b): return "Tests"
     hits = [c for c, r in RULES if re.fullmatch(r, b)]
     assert len(hits) == 1, f"cannot classify {b}: {hits}"
     return hits[0]
