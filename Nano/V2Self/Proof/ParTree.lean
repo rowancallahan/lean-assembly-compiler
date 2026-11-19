@@ -129,9 +129,9 @@ def okF : List RN → Bool
 def okL : List RN → Bool
   | [] => true
   | k :: r => (k.isInp || ok k) && okL r
-/-- PRIM 1..3: a first child exists (it is dropped) -/
+/-- PRIM 1..3: the first child is dropped -/
 def okT : List RN → Bool
-  | [] => false
+  | [] => true
   | _ :: r => okL r
 end
 
@@ -224,7 +224,7 @@ theorem emitL_ser : ∀ ks : List RN, okL ks = true → emitL ks = serL (toNdL k
     · simp [hk] at h
       simp [emitL, toNdL, hk, serL, emit_ser k h.1, emitL_ser r h.2]
 theorem emitT_ser : ∀ ks : List RN, okT ks = true → emitT ks = serL (toNdT ks)
-  | [] => by intro h; simp [okT] at h
+  | [] => by intro _; simp [emitT, toNdT, serL]
   | _ :: r => by intro h; simp [okT] at h; simp [emitT, toNdT, emitL_ser r h]
 end
 
