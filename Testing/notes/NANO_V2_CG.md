@@ -288,10 +288,15 @@ DefX for def k from defs < k; program level over A's program theorem; Sail lift 
 Goal (owner): make the template runs SAFE J runs (`SimW.SStar K C`) so `SimW.sim_starW` lifts them to Sail.
 File Nano/V2Self/Proof/SafeRun.lean (spec at its top). Tool: `sstar_of_run` (a `run C k a = some b` whose every
 intermediate state is `SimW.Safe` is an `SStar`); `SimW.SStar.trans/one/star`.
-DONE twins: push_srun, len_srun, bin_srun, bsize_srun, li_srun, const_srun (side conditions: `wok K` of every
+DONE twins: push_srun, len_srun, bin_srun, bsize_srun, li_srun, const_srun, local_srun (multi-word LOCAL) (side conditions: `wok K` of every
 accessed cell; addi no-wrap is derived).
 NEXT: rd (lbu: aligned cell of x28 + idx is wok), bget, local1/localT, bnew/bpush/bset (Heap.lean), pro (CallA proA),
 epi (copy_run + the tail), popSlot/popN; then EVS.lean: `EVHwS` = EVHw with SStar K C and a layout hypothesis
 (lo ≤ hb, t6/s0/hb 8-aligned, frame top ≤ hi, input bytes' cells wok), S-twins of the composition lemmas.
+ISSUES (2026-11-19): (a) rdT has `bgeu 6 29 3`, bgetT/bsetT `bgeu 6 7 4`; SimW.Safe/sim_stepW only lift bgeu with
+offset 2 → SimW needs bgeu +12/+16 (encBt12/16_eq, boff 6#12/8#12, sim_stepW case) — owner asked whether A may edit SimW.
+(b) bnew/bpush/bset/rd/bget run lemmas state `∃ k s', run C k …`; `sstar_of_run` needs Safe at run C j for all
+j < k, so the twin needs the run's exact k (the proofs use explicit k: 11, 7, 9, 6, 1 + |li| + …). Either state those
+lemmas with the explicit k (owner of Expr/Heap) or duplicate the proofs in SafeRun with explicit k.
 Technique: per template, `refine sstar_of_run (X_run …) fun j hj c hc => ?_`, then `rcases j` over the
 instruction indices, compute `hc` with the same simp set as the run lemma, `subst hc; simp [Safe, hK]`.
