@@ -16,7 +16,7 @@ theorem start_runX {KL : LayW} {C : List J} {S w hb E0 : Nat} {IG : St → Prop}
     {vs : List UInt64} {H' : Hp} (hSd : Sd [] E0 ⟨hb, fun _ => none⟩ = some (vs, H'))
     {N : UInt64} {bs : Nat → UInt64}
     (hN : H'.m (vs.getD 0 0).toNat = some N) (hPb : hb ≤ (vs.getD 0 0).toNat)
-    (hPN : (vs.getD 0 0).toNat + 16 + 8 * N.toNat < H'.top)
+    (hPN : (vs.getD 0 0).toNat + 16 + 8 * N.toNat ≤ H'.top)
     (hbs : ∀ i, i < N.toNat → H'.m ((vs.getD 0 0).toNat + 16 + 8 * i) = some (bs i))
     (hQ : (s0.x 13).toNat + N.toNat < 2 ^ 64)
     (hout : (s0.x 13).toNat + N.toNat ≤ (s0.x 12).toNat ∨ E0 + 8 ≤ (s0.x 13).toNat)
