@@ -208,3 +208,6 @@ Par1 / ParSpec / ParRun reject slot counts and shape widths ≥ 2^20 (see NANO_V
 MainCertC3 / C4 / C5 (F's abandoned duplicate certificate) no longer build against the new Par1: NOT fixed, per the lead.  They are
 imported by nothing, and the `Nano` lib is not a default target.  Canonical certificate: Proof/Cert (PC.lean regenerated with
 gen_cert.py; all 46 tracked Cert files build, Defs35 still open as before).  ParSerLen / MainTyP (D) adapted to the pDef cap split.
+`ParCapBnd` (O): `parsed_cap` (every parsed def: nslots, nres < 2^20), `parsed_bnd` (OwnWF.Bnd ∧ DB), `bndStage : BndStage`,
+`capStage : CapStage`, hence `C_correctLO : CompileCorrectL riscv compileC` with no premises.  Axioms: propext,
+Classical.choice, Quot.sound plus the Sail model's opaque platform/float externs (sail-riscv-lean RiscvExtras), no sorryAx.
