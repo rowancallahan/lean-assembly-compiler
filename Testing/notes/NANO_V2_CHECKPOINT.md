@@ -236,3 +236,20 @@ Second soundness caveat (open, for the statement): `ParserSound ts` quantifies o
 (H) the input parameter: Par1 took the first `List UInt8` of ANY binder group (`(x y : List UInt8) … rd x 0` accepted). Now v132 passes the group size in task 68's b, v133 marks the input only for a group of one binder with no earlier INPUT-flagged binding (v201 tests the flag, +3, not code 3) = `ParSpec.pickPs`; `(a b : List UInt8) (x : List UInt8) … len x` is now accepted (spec accepts).
 (I) Nat as data: v10 (pair interning, types and tuple values) rejects a Nat component; v133 (params), v136 (`→` loop states), v116 (let value), v134 (plain/constant result), v137 (loop result) reject code 4.
 Results: fixpoint B3 == B2, 254,552 bytes, **sha256 b8f76d42bd8cfa647ee591ad51ff473f6395ee1d78c67ca26f96d31a19f0408e** (supersedes 085748d9…); fuzz 6,000 (seed 21) + 4,000 (seed 22): 0 disagreements; regressions `fuzz/regress_operand_if.txt` 9 reject / 2 accept as expected. Box B must mirror G/H/I in `ParRun.stepF` (sent: mode 0/1/2 for tasks 1/3, `assign (i sz)`, Nat rejections).
+
+## HANDOFF — Opus box C, parser Layer 3 (2026-11-19, keep current)
+Build here: no lake deps in this container; `lean -o` per module with LEAN_PATH (each module < 10 s, < 1 GB).
+DONE (pushed, no sorry, std axioms):
+* Par1 fixes G (no if/let as operands), H (input = pickPs), I (no Nat as data): B3 == B2 sha256 b8f76d42…408e, fuzz 0 disagreements.
+* `Proof/ParInvRep.lean`: `TokAt` (token cursor ↔ `List Tok`), `fld`, `ShOpt` (code ↔ Option Sh, 0 = none), `RNRep`/`KidsR` (arena record +
+  child chain ↔ B's `RN` exactly), frame rules (`RNRep.frame`, `KidsR.frame`, `ShapeCode.frame`, `ShOpt.frame`), `opAt`, `ArenaRep`
+  (h9 = |arena|, record u ↔ arena[u], operand k ↔ vals[k], distinct roots, roots in no other subtree, root subtrees disjoint).
+* `Proof/ParInvOps.lean`: `v2_eff`, `v5_eff` (exact cell effect of the node builder), `kidsR_chain`, **`arena_v5`** (B's `mkNode` ↔ `v5`:
+  new ArenaRep, shape table / low cells / cells ≥ 147520 unchanged).
+* `Proof/ParInvState.lean`: **`Rep h ts st fs`** (DRAFT until B mirrors fixes G/H/I in `Frame`: `expr`/`prim` mode, `assign` size, stash
+  as Option): TokensAt, status ↔ acc, TokAt h3, nx h11, `BindsRep` (d9), `DefsRep` (d7 rows, current row inside a def / zero row between
+  defs, zero rows above, h27 param allocator), `ArenaRep`, ty h25, stash h29, arm h30, sslot h32, `OutRep` (heap tail), `TasksRep`
+  (h5 + `FrameArgs` per constructor: names ↔ token positions, `calleeW`, flat ↔ arena id, flatL ↔ first id + KidsR).
+NEXT: (1) step lemma (top task decode, `v1_eff` push), region frame lemmas per Rep component; (2) expression handlers in
+`ParInvExpr.lean` (expr, binLoop, shiftNum, mkBin, prim const/paren/name, parenClose/tupRest/mkPair, if family, let family); D takes
+calls/types/defs/loops/flatten on the same pattern.
