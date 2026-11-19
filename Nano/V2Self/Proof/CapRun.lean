@@ -3,6 +3,7 @@ on safe steps, memory untouched. -/
 import Nano.V2Self.Proof.SemX
 import Nano.V2Self.Proof.EVSFin
 import Nano.V2Self.Proof.EVSComp
+import Nano.V2Self.Proof.EVSTail
 namespace Templates
 open CallProbe SimW SafeRun
 
@@ -408,5 +409,98 @@ theorem letCap {KL : LayW} {C : List J} {pc lv p nl hb E0 k0 w : Nat} {Inv : St 
       · simp only [e, if_false]; exact ag1 k (hsc k hk e)
     obtain ⟨s3, r3, I3, z3⟩ := cb.cap s2 _ H1 I2 z2 F2 O2 R2 L2 A1 hSB2
     exact ⟨s3, (r1.trans ss2).trans r3, I3, z3⟩
+
+/-! ## tail mode -/
+
+/-- **CapT** (tail-mode semantics) -/
+structure CapT (KL : LayW) (C : List J) (pc p nl : Nat) (Inv : St → Prop) (hb E0 : Nat) (R : Nat → Prop)
+    (S : SemTX) : Prop where
+  cap : ∀ (s : St) (env : Env) (H : Hp), Inv s → s.x 0 = 0 → Frame p nl s env → FrameOK p nl s → HRel hb s H →
+    Lay KL hb E0 p s → HAl H → S env (s.x 31).toNat H = .error .cap →
+    ∃ s', SStarX KL C (pc, s) (6, s') ∧ Inv s' ∧ s'.x 0 = 0
+  stable : ∀ env env' sp H, (∀ k, R k → env k = env' k) → S env sp H = S env' sp H
+
+theorem exitCap {KL : LayW} {C : List J} {pc p nl hb E0 : Nat} {Inv : St → Prop} {R : Nat → Prop} {S : SemWX}
+    (c : CapW KL C pc p nl Inv hb E0 R S) : CapT KL C pc p nl Inv hb E0 R (exitF S) where
+  stable := fun env env' sp H h => by simp only [exitF]; rw [c.stable env env' sp H h]
+  cap := fun s env H I0 z0 F0 O0 R0 L0 A0 hS => c.cap s env H I0 z0 F0 O0 R0 L0 A0 (map_cap hS)
+
+theorem contCap {KL : LayW} {C : List J} {pc p nl hb E0 : Nat} {Inv : St → Prop} {R : Nat → Prop} {S : SemWX}
+    (c : CapW KL C pc p nl Inv hb E0 R S) : CapT KL C pc p nl Inv hb E0 R (contF S) where
+  stable := fun env env' sp H h => by simp only [contF]; rw [c.stable env env' sp H h]
+  cap := fun s env H I0 z0 F0 O0 R0 L0 A0 hS => c.cap s env H I0 z0 F0 O0 R0 L0 A0 (map_cap hS)
+
+theorem ifTCap {KL : LayW} {C : List J} {pc lp lt p nl hb E0 cmp : Nat} {Inv : St → Prop} {RP WP RT RE : Nat → Prop}
+    {SP : SemWX} {ST SE : SemTX} (hI : InvOKH hb p Inv)
+    (hP : EVHwS KL C pc lp p nl Inv hb E0 RP WP 2 (oW SP)) (cP : CapW KL C pc p nl Inv hb E0 RP SP)
+    (hH : At C (pc + lp) (ifHeadG cmp lt))
+    (cT : CapT KL C (pc + lp + 5) p nl Inv hb E0 RT ST) (cE : CapT KL C (pc + lp + 6 + lt) p nl Inv hb E0 RE SE)
+    (sT : ∀ k, RT k → ¬ WP k) (sE : ∀ k, RE k → ¬ WP k) (hCl : pc + lp + 6 + lt < C.length)
+    (hC18 : C.length < 2 ^ 18) :
+    CapT KL C pc p nl Inv hb E0 (fun k => RP k ∨ RT k ∨ RE k) (ifTF cmp SP ST SE) where
+  stable := fun env env' sp H h => by
+    simp only [ifTF]
+    rw [cP.stable env env' sp H (fun k hk => h k (Or.inl hk))]
+    cases SP env' sp H with
+    | error e => rfl
+    | ok r =>
+      simp only [Except.bind]
+      rw [cT.stable env env' sp r.2 (fun k hk => h k (Or.inr (Or.inl hk))),
+        cE.stable env env' sp r.2 (fun k hk => h k (Or.inr (Or.inr hk)))]
+  cap := fun s env H I0 z0 F0 O0 R0 L0 A0 hS => by
+    simp only [ifTF] at hS
+    rcases bind_cap hS with h1 | ⟨⟨ab, H1⟩, hSP, h2⟩
+    · exact cP.cap s env H I0 z0 F0 O0 R0 L0 A0 h1
+    obtain ⟨s1, env1, r1, I1, z1, p1, l1, v1, e81, F1, ag1, R1, A1, m1⟩ :=
+      hP.run s env H ab H1 I0 z0 F0 O0 R0 L0 A0 (by simp [oW, hSP])
+    match ab, l1, h2, hSP with
+    | [a, b], _, h2, hSP =>
+    dsimp only at h2
+    obtain ⟨s2, env2, st2, I2, z2, x31, x8, F2, O2, R2, L2, A2, ag2, _⟩ :=
+      ifPreS hI hP hH s env H a b H1 I0 z0 F0 O0 R0 L0 A0 (by simp [oW, hSP]) hCl hC18
+    by_cases hc : cmpF cmp a b
+    · rw [if_pos hc] at h2 st2
+      have hST : ST env2 (s2.x 31).toNat H1 = .error .cap := by
+        rw [x31, cT.stable env2 env _ _ (fun k hk => ag2 k (sT k hk))]; exact h2
+      obtain ⟨s3, r3, I3, z3⟩ := cT.cap s2 env2 H1 I2 z2 F2 O2 R2 L2 A2 hST
+      exact ⟨s3, st2.trans r3, I3, z3⟩
+    · rw [if_neg hc] at h2 st2
+      have hSE : SE env2 (s2.x 31).toNat H1 = .error .cap := by
+        rw [x31, cE.stable env2 env _ _ (fun k hk => ag2 k (sE k hk))]; exact h2
+      obtain ⟨s3, r3, I3, z3⟩ := cE.cap s2 env2 H1 I2 z2 F2 O2 R2 L2 A2 hSE
+      exact ⟨s3, st2.trans r3, I3, z3⟩
+
+theorem letTCap {KL : LayW} {C : List J} {pc lv p nl hb E0 k0 w : Nat} {Inv : St → Prop} {Rv Wv Rb : Nat → Prop}
+    {SV : SemWX} {SB : SemTX} (hI : InvOKH hb p Inv)
+    (hv : EVHwS KL C pc lv p nl Inv hb E0 Rv Wv w (oW SV)) (cv : CapW KL C pc p nl Inv hb E0 Rv SV)
+    (hS : At C (pc + lv) (popN p k0 w)) (cb : CapT KL C (pc + lv + 3 * w) p nl Inv hb E0 Rb SB)
+    (hk0 : k0 + w ≤ nl) (hsc : ∀ k, Rb k → ¬ (k0 ≤ k ∧ k < k0 + w) → ¬ Wv k) (hnl : nl < 251) :
+    CapT KL C pc p nl Inv hb E0 (fun k => Rv k ∨ (Rb k ∧ ¬ (k0 ≤ k ∧ k < k0 + w))) (letTF k0 w SV SB) where
+  stable := fun env env' sp H h => by
+    simp only [letTF]
+    rw [cv.stable env env' sp H (fun k hk => h k (Or.inl hk))]
+    cases SV env' sp H with
+    | error e => rfl
+    | ok r =>
+      simp only [Except.bind]
+      apply cb.stable; intro k hk
+      unfold setW
+      split
+      · rfl
+      · rename_i hk'; exact h k (Or.inr ⟨hk, hk'⟩)
+  cap := fun s env H I0 z0 F0 O0 R0 L0 A0 hS' => by
+    simp only [letTF] at hS'
+    rcases bind_cap hS' with h1 | ⟨⟨u, H1⟩, hSV, h2⟩
+    · exact cv.cap s env H I0 z0 F0 O0 R0 L0 A0 h1
+    obtain ⟨s2, env1, st2, I2, z2, x31, x8, F2, O2, R2, L2, A2, ag1, _⟩ :=
+      letPreS hI hv hS hk0 hnl s env H u H1 I0 z0 F0 O0 R0 L0 A0 (by simp [oW, hSV])
+    have hSB2 : SB (setW env1 k0 w u) (s2.x 31).toNat H1 = .error .cap := by
+      rw [x31]; rw [← h2]; apply cb.stable; intro k hk
+      simp only [setW]
+      by_cases e : k0 ≤ k ∧ k < k0 + w
+      · simp [e]
+      · simp only [e, if_false]; exact ag1 k (hsc k hk e)
+    obtain ⟨s3, r3, I3, z3⟩ := cb.cap s2 _ H1 I2 z2 F2 O2 R2 L2 A2 hSB2
+    exact ⟨s3, st2.trans r3, I3, z3⟩
 
 end Templates
