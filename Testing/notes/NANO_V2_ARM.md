@@ -36,6 +36,8 @@ The measurements were taken on this box, 2026-11-19.
   outcome position-independent, so `Msp`/`spaceC` can stay ONE function of the input for both targets (stated
   per window, then shown equal). A small unit: "window-generic RunsDef".
 
+**Lead decision (2026-11-19): the pins are INLINED into `Spec/Arm.lean` as `CfgArm` (exactly as `Cfg`); Spec stays self-contained, and `Arm/proofs` proves `ArmFull ↔ CfgArm`.**
+
 **Proposed Spec text, mirroring `Spec/Riscv.lean` + `Spec/RiscvMachine.lean`** (owner requirement: same
 structure, field names, order and doc-comment style; text only, the lead edits Spec after the migration).
 Two files: `Spec/Arm.lean` (≙ `Spec/Riscv.lean`) and `Spec/ArmMachine.lean` (≙ `Spec/RiscvMachine.lean`).
@@ -89,6 +91,81 @@ PSTATE.EL and the exception syndrome unchanged, or the model's `__exception_take
 fixed against the model source. (b) `ArmFull` is satisfiable (`Arm/Witness.lean`), but cold reset
 is not shown to establish it, the same status as RISC-V's `Cfg` (state it in the doc comment). (c) The exact
 PSTATE.SP accessor name, from the model.
+
+### 0-adapter. ONE shared machine adapter `JTarget` (owner: "a few small adapters, different only in machine words and register locations")
+**Principle.** The Spec side is already generic: `CompileCorrect`/`CompileRuns` take any `M : Machine`
+(Spec/Top + Spec/Alloc). The proof side gets one adapter structure `JTarget`, and everything from "J run" to
+"CompileCorrect M" is proved ONCE over it. A target supplies only machine words, register locations, and one
+step lemma per J instruction kind.
+
+**Reuse of `Compiler/Iface.lean`? No, but copy its shape.** Iface's `Mach.Base` + laws is the middle-layer
+interface of the `Exp`/`Stmt`/`Arr` compilers (Arm/apc instantiates it). Its abstraction does not fit J: 15
+abstract registers (`Fin 15`), `AOp` without 64-bit `ld/sd`, calls/links (`jal`/`jalr` with link values), or
+two-register compare-branches, and its laws are per *abstract operation*, not per *instruction of a fixed
+program with a memory relation*. Extending it would change the interface both RISC-V and apc already prove,
+for no gain. Kept from Iface: the style (a data record + one law per operation, pure core Lean so it compiles
+in any toolchain) and the `instrAt`/`runsTo`/`keep` vocabulary.
+
+**The adapter** (proposal; every field small and named):
+
+```lean
+structure JTarget where
+  M : Proven.Top.Machine            -- Spec's machine (riscv / arm): states, step, observe, configured, mapping, RAM window
+  -- (a) machine words
+  blockLen : Nat                    -- words per J instruction (RV 1, ARM 4)
+  enc : J → List (BitVec 32)        -- J instruction ↦ its block (length blockLen)
+  encOK : J → Prop                  -- which J instructions it can encode (immediate/offset/register ranges)
+  -- (b) register locations
+  reg : Nat → Nat                   -- J register ↦ target register number in M.observe (RV: id; ARM: π, 0 ↦ xzr)
+  scratch : List Nat                -- target registers the blocks may clobber (RV: []; ARM: [16, 17])
+  regOK : reg 10 = M.mapping.inputAddress ∧ reg 11 = M.mapping.inputLength ∧ reg 12 = M.mapping.workAddress ∧
+          reg 13 = M.mapping.outputAddress ∧ reg 1 = M.mapping.returnAddress ∧ reg 2 = M.mapping.workTop ∧
+          reg 10 = M.mapping.status ∧ reg 11 = M.mapping.outputLength ∧ (kept/scratch disjointness, injectivity)
+  -- (c) per-instruction steps: ONE law per J kind, against the GENERIC relation `Rel` below
+  step_ok : ∀ C base K pc s t j, C[pc]? = some j → encOK j → SafeX K C (pc, s) → Rel this C base K (pc, s) t →
+            ∃ t', Runs M t t' ∧ Rel this C base K (step C (pc, s)).get! t'
+  -- the only J-level constant that is machine-specific
+  W : Nat := 4 * blockLen           -- the link width: `jal` links base + W·(pc+1)  (§0a, V2)
+```
+`Rel` is defined once, through `M.observe` only (no Sail-specific accessors):
+`Rel t (pc, s)` := `M.configured t` ∧ PC = base + W·pc ∧ ∀ r live, `register (reg r) = s.x r` ∧ registers outside
+the image of `reg` and `scratch` = their entry values ∧ the code bytes = `(C.map enc)` little-endian ∧ the work/io
+bytes = the J cells (`wok`/`io`, as in `RelW.w/bw`) ∧ every other byte = its entry value (`RelW.fr`). That is
+SimW's `RelW`, restated through `MachineState`, so it is target-independent.
+
+**Shared, proved once over `t : JTarget`:**
+* `sim_star t`: SStarX run ⇒ `Runs t.M` + `Rel` (induction over `step_ok`; today SimX.sim_starX).
+* The stubs/start/cap/oom/tiny exits: these are J runs plus `sim_star`. The return to the host is the `jalr 0 1`
+  law at the host's ra (with V2 no special case).
+* The host lift: `StartCorrect t.M` ⇒ `Rel` at entry (registers via `M.mapping` + `regOK`, code via
+  `bytesAt`/observe), and `Rel` at the exits ⇒ the `CompileCorrect`/`CompileRuns` conclusions (PC = ra, status/length
+  registers, output bytes, unchanged-outside, kept registers, configured). Today this is HostLift + HostMain +
+  CapHost + HostTiny + GenImpl + MainTop's riscv glue + RunsTop (≈ 1,450 lines, all written against Sail-RV
+  `St`/`getX`/`riscvObserve`). It becomes ONE generic copy.
+* Final theorems: `C_correct_on (t : JTarget) : CompileCorrect t.M (compileC_on t)` and
+  `C_runs_on t : CompileRuns t.M (compileC_on t)`, with `compileC_on t s := (compileC s).map (code := encode t ∘
+  decodeJ)`. Corollaries: `riscv` (encode rvTarget ∘ decodeJ = id on Gen's output, so it is today's `compileC`)
+  and `arm`. Also `self_*_on t` from SrcLink + Cert (machine-free).
+* The window (`M.ramStart/ramEnd`) enters only through `Region.inRAM`-style premises. RunsDef/GoodU/gen_runS
+  take it as a parameter (the "window-generic RunsDef" unit).
+
+**What cannot be machine-independent, listed as adapter fields**: `blockLen`/`enc` (machine words), `W` (link
+width, derived), `reg` + `scratch` (register locations, incl. the zero register), `encOK` (immediate ranges), and
+from `M`: `configured` (the Cfg pins), the RAM window, the calling-convention mapping. Nothing else.
+
+**Sizes (estimates).**
+| part | lines | lemmas |
+|---|---|---|
+| shared: `Rel`, `sim_star`, host lift, exits, final `*_on` theorems | ≈ 1,500 (generalizing ≈ 1,450 RV lines) | ≈ 40 |
+| J-level refactors: W-parameter (V2) and window parameters | ≈ 300 edited lines in ≈ 25 files | 0 new |
+| **adapter `rvTarget`** | ≈ 250: `enc` = `[encG j]`, `reg` = id, and `step_ok` = the existing `sim_*W`/`sim_*X` lemmas restated through `riscvObserve` (one bridge lemma `RelW ↔ Rel`) | ≈ 16 (1 bridge + 14 wrappers + regOK) |
+| **adapter `armTarget`** | ≈ 120 for `enc`/`reg`/`regOK`/`encOK`; ≈ 900 for the 14 `step_ok` cases (each a short composition of `Arm/proofs` full steps) | ≈ 20 |
+| `Arm/proofs` additions (missing full steps: movn, madd, ubfm, reg ALU ×7, cmp-reg, br, nop) | ≈ 1,200 (BrFull/Mem style) | ≈ 12 |
+So the per-machine part is the encoding table, the register map and one step lemma per J kind (≈ 1 kLOC for ARM,
+≈ 0.25 kLOC for RV). Everything else (≈ 1.5 kLOC shared + the unchanged J level and semantics, ≈ 400 modules) is
+written once. **Wrapping RV costs ≈ 250 lines.** The existing RV host files (HostLift/HostMain/CapHost/
+HostTiny/RunsTop glue) are retired once the generic lift reproves `C_correctLO`/`C_runsO` as `rvTarget`
+corollaries.
 
 ### 0a. Is J abstract enough for the lift?
 J (`Machine/Call.lean`) is a small abstract machine: registers `x : Nat → UInt64`, memory as 8-byte cells
