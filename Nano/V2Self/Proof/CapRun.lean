@@ -59,7 +59,7 @@ theorem bind_cap {α β : Type} {x : Except Fail α} {f : α → Except Fail β}
   | error e => left; simpa [Except.bind] using h
   | ok a => right; exact ⟨a, rfl, h⟩
 
-theorem pairCap {KL : LayW} {C : List J} {pc la p nl hb E0 wa wb : Nat} {Inv : St → Prop} {G : St → Prop}
+theorem pairCap {KL : LayW} {C : List J} {pc la p nl hb E0 wa : Nat} {Inv : St → Prop} {G : St → Prop}
     {RA WA RB : Nat → Prop} {SA SB : SemWX}
     (hA : EVHwS KL C pc la p nl Inv hb E0 RA WA wa (oW SA)) (cA : CapW KL C pc p nl Inv G hb E0 RA SA)
     (cB : CapW KL C (pc + la) p nl Inv G hb E0 RB SB) (sB : ∀ k, RB k → ¬ WA k) :
@@ -112,7 +112,7 @@ theorem fin2Cap_ofO {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {G : 
   intro s2 H2 _ _ _ _ _ _ h
   cases e : F (s2.m ((s2.x 31).toNat + 8)) (s2.m (s2.x 31).toNat) (s2.x 31).toNat H2 <;> simp [e, ofO] at h
 
-theorem fin2Cap_bpush {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {G : St → Prop} {hb E0 : Nat} (hI : ∀ p, InvOKH hb p Inv)
+theorem fin2Cap_bpush {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {G : St → Prop} {hb E0 pI : Nat} (hI : InvOKH hb pI Inv)
     (hG : ∀ s, Inv s → G s) (hC : At C q (bpushT 6 q)) (h6 : 6 < C.length) (hC18 : C.length < 2 ^ 18)
     (he : E0 < 2 ^ 62) :
     Fin2CapS KL C q Inv G hb E0 (bpushFF hb) := by
@@ -137,7 +137,7 @@ theorem fin2Cap_bpush {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {G 
         (by rw [ml, mc]; simp at hlt; omega) (by omega)
         (by simpa using K2.wok h31 (i := 0) (by omega)) (K2.wok h31 (i := 1) (by omega))
         (hread_wok hR K2 A2 hrl) (hread_wok hR K2 A2 hrc) h6 hC18
-      refine ⟨s3, st3, hG _ <| hI 0 s2 s3 I2 (x3 8 (by decide) (by decide) (by decide) (by decide) (by decide))
+      refine ⟨s3, st3, hG _ <| hI s2 s3 I2 (x3 8 (by decide) (by decide) (by decide) (by decide) (by decide))
         (x3 28 (by decide) (by decide) (by decide) (by decide) (by decide))
         (x3 29 (by decide) (by decide) (by decide) (by decide) (by decide)) b3 (fun a _ => by rw [m3]), z3⟩
 
