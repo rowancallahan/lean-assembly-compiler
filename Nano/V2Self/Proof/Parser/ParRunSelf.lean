@@ -1,5 +1,6 @@
 /- Nano/V2Self/Proof/Parser/ParRunSelf: the self-call (CONTINUE) primary, tasks 46 / 54 (box B) ↔ the self clause of ParSpec `pApp`. -/
 import Nano.V2Self.Proof.Parser.ParRunHCall
+set_option backward.isDefEq.respectTransparency false
 namespace ParRun
 open ParSpec
 
