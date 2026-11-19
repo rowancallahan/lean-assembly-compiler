@@ -238,4 +238,94 @@ theorem ifX {C : List J} {pc lp lt le p nl hb w cmp : Nat} {Inv : St → Prop} {
         rw [m5 a' (by rw [x31]; exact ha) (fun k hk wk => by rw [x8]; exact hW k hk (Or.inr (Or.inr wk))),
           mm a' ha (fun k hk wk => hW k hk (Or.inl wk))]
 
+/-! ## LET of width w -/
+
+/-- slots k0 … k0+w−1 get the words of `vs` -/
+def setW (env : Env) (k0 w : Nat) (vs : List UInt64) : Env :=
+  fun k => if k0 ≤ k ∧ k < k0 + w then vs.getD (k - k0) 0 else env k
+
+def letS (k0 w : Nat) (SV SB : SemW) : SemW :=
+  fun env sp H => (SV env sp H).bind fun r => SB (setW env k0 w r.1) sp r.2
+
+/-- **LET** (width w): value; pop into slots k0 … k0+w−1 (g26); body.  Scoping: the body reads none of the value's own
+lets (other than through the bound slots). -/
+theorem letX {C : List J} {pc lv lb p nl hb k0 w wb : Nat} {Inv : St → Prop} {Rv Wv Rb Wb : Nat → Prop}
+    {SV SB : SemW} (hI : InvOKH hb p Inv)
+    (hv : EVHw C pc lv p nl Inv hb Rv Wv w SV) (hS : At C (pc + lv) (popN p k0 w))
+    (hb' : EVHw C (pc + lv + 3 * w) lb p nl Inv hb Rb Wb wb SB)
+    (hk0 : k0 + w ≤ nl) (hsc : ∀ k, Rb k → ¬ (k0 ≤ k ∧ k < k0 + w) → ¬ Wv k) :
+    EVHw C pc (lv + 3 * w + lb) p nl Inv hb (fun k => Rv k ∨ (Rb k ∧ ¬ (k0 ≤ k ∧ k < k0 + w)))
+      (fun k => Wv k ∨ (k0 ≤ k ∧ k < k0 + w) ∨ Wb k) wb (letS k0 w SV SB) where
+  stable := fun env env' sp H h => by
+    simp only [letS]
+    rw [hv.stable env env' sp H (fun k hk => h k (Or.inl hk))]
+    cases SV env' sp H with
+    | none => rfl
+    | some r =>
+      simp only [Option.bind_some]
+      apply hb'.stable; intro k hk
+      unfold setW
+      split
+      · rfl
+      · rename_i hk'; exact h k (Or.inr ⟨hk, hk'⟩)
+  run := fun s env H vs H' I0 z0 F0 O0 R0 hS' => by
+    simp only [letS, Option.bind_eq_some_iff] at hS'
+    obtain ⟨⟨u, H1⟩, hSV, hSB⟩ := hS'
+    obtain ⟨s1, env1, r1, I1, z1, p1, lu, v1, e81, F1, ag1, R1, m1⟩ := hv.run s env H u H1 I0 z0 F0 O0 R0 hSV
+    obtain ⟨o1, o2, o3⟩ := O0
+    have lt64 := (s.x 31).toNat_lt
+    have sp1 := hrel_sp R1
+    have T1 : (s1.x 31).toNat + 8 * w = (s.x 31).toNat := by rw [p1]; have := R1.2.2.1; omega
+    obtain ⟨s2, r2, p2, e82, ex2, eb2, ms2, mo2⟩ := popN_run (p := p) (k0 := k0) w (pc + lv) s1 hS (by omega)
+      (fun j j' hj hj' e => by have := slotAddr_inj (nl := nl) (by rw [e81]; omega) (by omega) (by omega) e; omega)
+      (fun j i hj hi => by
+        rw [e81]; have := slotAddr_ge (T := (s.x 31).toNat) (k := k0 + j) (by omega) o2 (by omega); omega)
+    rw [e81] at ms2 mo2
+    have x31 : (s2.x 31).toNat = (s.x 31).toNat := by rw [p2, T1]
+    have x8 : s2.x 8 = s.x 8 := by rw [e82, e81]
+    have x30 : s2.x 30 = s1.x 30 := ex2 30 (by decide) (by decide)
+    let env2 := setW env1 k0 w u
+    have F2 : Frame p nl s2 env2 := by
+      intro k hk
+      show s2.m (slotAddr p (s2.x 8).toNat k) = env2 k
+      rw [x8]
+      by_cases e : k0 ≤ k ∧ k < k0 + w
+      · have := ms2 (k - k0) (by omega)
+        rw [show k0 + (k - k0) = k by omega] at this
+        rw [this, show (s1.x 31).toNat + 8 * (w - 1 - (k - k0)) = (s.x 31).toNat - 8 * (k - k0 + 1) by omega,
+          v1 (k - k0) (by omega)]
+        simp [env2, setW, e]
+      · rw [mo2 _ (fun j hj h => e (by have := slotAddr_inj (nl := nl) (by omega) hk (by omega) h; omega))]
+        simp only [env2, setW, e, if_false]; rw [← e81]; exact F1 k hk
+    have slot_hi : ∀ j, j < w → (s.x 31).toNat ≤ slotAddr p (s.x 8).toNat (k0 + j) ∧
+        slotAddr p (s.x 8).toNat (k0 + j) < (s.x 8).toNat + 8 * p + 16 := fun j hj =>
+      ⟨slotAddr_ge (T := (s.x 31).toNat) (k := k0 + j) (by omega) o2 (by omega), slotAddr_lt (nl := nl) (by omega) (by omega)⟩
+    have I2 : Inv s2 := by
+      apply hI s1 s2 I1 (by rw [e82]) (ex2 28 (by decide) (by decide)) (ex2 29 (by decide) (by decide))
+      intro a ha
+      apply mo2 a; intro j hj e; apply ha; rw [e81, e]
+      have hh := slot_hi j hj; have := R1.1; have := R1.2.1; have := R1.2.2.1
+      exact ⟨by omega, hh.2⟩
+    have z2 : s2.x 0 = 0 := by rw [ex2 0 (by decide) (by decide), z1]
+    have R2 : HRel hb s2 H1 := HRel_stack R1 x30 (by rw [x31]; have := R1.2.2.1; omega) (fun a h1 h2 => by
+      apply mo2 a; intro j hj e; have := slot_hi j hj; have := R1.2.2.1; omega)
+    have hSB2 : SB env2 (s2.x 31).toNat H1 = some (vs, H') := by
+      rw [x31]; rw [← hSB]; apply hb'.stable; intro k hk
+      simp only [env2, setW]
+      by_cases e : k0 ≤ k ∧ k < k0 + w
+      · simp [e]
+      · simp only [e, if_false]; exact ag1 k (hsc k hk e)
+    obtain ⟨s3, env3, r3, I3, z3, p3, l3, v3, e83, F3, ag3, R3, m3⟩ :=
+      hb'.run s2 env2 H1 vs H' I2 z2 F2 ⟨by rw [x31, x8]; omega, o2, by rw [x8]; omega⟩ R2 hSB2
+    refine ⟨s3, env3, ?_, I3, z3, by rw [p3, x31], l3, ?_, by rw [e83, x8], F3, ?_, R3, ?_⟩
+    · have : pc + lv + 3 * w + lb = pc + (lv + 3 * w + lb) := by omega
+      rw [← this]; exact (r1.trans (run_star r2)).trans r3
+    · intro i hi; rw [x31] at v3; exact v3 i hi
+    · intro k hk; simp only [not_or] at hk
+      rw [ag3 k hk.2.2]; simp only [env2, setW, hk.2.1, if_false]; exact ag1 k hk.1
+    · intro a ha hW
+      rw [m3 a (by rw [x31]; exact ha) (fun k hk wk => by rw [x8]; exact hW k hk (Or.inr (Or.inr wk)))]
+      rw [mo2 a (fun j hj e => hW (k0 + j) (by omega) (Or.inr (Or.inl ⟨by omega, by omega⟩)) e)]
+      exact m1 a ha (fun k hk wk => hW k hk (Or.inl wk))
+
 end Templates
