@@ -11,6 +11,7 @@ int main(int argc, char **argv) {
     if (!f) return fprintf(stderr, "usage: shim_rv CODE.bin < input > output\n"), 2;
     unsigned char *code = mmap(0, CODE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     long code_len = fread(code, 1, CODE, f), in_len = fread(in, 1, IN, stdin);
+    if (code == MAP_FAILED || code_len == CODE || in_len == IN) return fprintf(stderr, "shim_rv: no executable memory, or code/input too large\n"), 2;
     __builtin___clear_cache((char *)code, (char *)code + code_len);
 
     /* the code's convention: a0 input, a1 its length, a2 work base, a3 output, sp = work top, ra = return */
@@ -24,7 +25,7 @@ int main(int argc, char **argv) {
 
     /* a0: 0 ok, 1 ok with empty output, -1 out of work memory, -2 buffer capacity; a1: output length */
     fprintf(stderr, "shim_rv: status %ld, %ld output bytes\n", a0, a1);
-    if (a0 != 0 && a0 != 1) return 1;
+    if ((a0 != 0 && a0 != 1) || a1 < 0 || a1 > OUT) return 1;
     fwrite(out, 1, a1, stdout);
     return 0;
 }

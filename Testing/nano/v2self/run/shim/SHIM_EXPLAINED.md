@@ -56,6 +56,8 @@ for instructions, and it may still hold what was there before.
 ## 6. Status codes (the value of `a0` on return)
 `0` success. `1` success with empty output. `−1` the work block was too small. `−2` a buffer inside the program reached
 its fixed capacity. For 0 and 1 the shim writes `a1` bytes to stdout and exits 0; otherwise it exits 1.
+Before the call the shim itself exits with 2 if the code file or the input does not fit its buffer, or if the system
+refuses executable memory.
 
 ## 7. Two steps: compile, then run
 The compiler is itself such a code file (`B2.bin`), so the same shim runs both steps:

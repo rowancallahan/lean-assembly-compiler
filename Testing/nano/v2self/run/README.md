@@ -84,7 +84,7 @@ About 107 million interpreted instructions per second. Not yet run on macOS (no 
 
 ## Native shim (`shim/`): run the code as an ordinary process
 
-`nanorun` interprets. `shim/shim_rv.c` (30 lines) loads the code into executable memory and jumps to it, on a RISC-V
+`nanorun` interprets. `shim/shim_rv.c` (31 lines) loads the code into executable memory and jumps to it, on a RISC-V
 Linux machine or under user-mode QEMU. Also unproven glue.
 
 ```
@@ -101,8 +101,9 @@ Fixed sizes: code up to 4 MiB, input 1 MiB, output 2 MiB, work memory 80 MiB.
 What it does: `mmap` a read-write-execute block for the code, read the input into a static buffer, flush the
 instruction cache, then one line of inline assembly: park the host stack pointer in `s1`, set `sp` to the top of the
 work block, `jalr` to the code with `a0..a3` set, restore the host stack. It relies on the code keeping `sp` and
-`s0..s11` (part of the proved contract). Unlike `nanorun` there are no checks of any kind: wrong code, or an input
-longer than 1 MiB being cut off, is not detected.
+`s0..s11` (part of the proved contract). It exits with status 2 and a message when the code file or the input fills
+its buffer (instead of truncating) or executable memory is refused, and refuses an output length above 2 MiB. Unlike
+`nanorun` it has no memory bounds checks: wrong code corrupts or crashes the process.
 
 Tested here under `qemu-riscv64-static` 8.2 (`SHIM="qemu-riscv64-static /tmp/shim_rv" python3 …/validate.py`):
 self-compile output equals `B2.bin` byte for byte in 1.1 s (nanorun: 13.5 s); the four regress programs give the same

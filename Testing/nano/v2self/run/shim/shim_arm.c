@@ -12,18 +12,21 @@ static void sys_icache_invalidate(void *p, long n) { __builtin___clear_cache((ch
 #endif
 enum { CODE = 4 << 20, IN = 1 << 20, OUT = 2 << 20, WORK = 80 << 20 };
 static unsigned char in[IN], out[OUT];
-static long work[WORK / 8];
+static long work[WORK / 8] __attribute__((aligned(16)));                        /* AArch64: sp must be 16-aligned */
 
 int main(int argc, char **argv) {
     FILE *f = argc == 2 ? fopen(argv[1], "rb") : 0;
     if (!f) return fprintf(stderr, "usage: shim_arm CODE.bin < input > output\n"), 2;
     unsigned char *code = mmap(0, CODE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT, -1, 0);
+    if (code == MAP_FAILED) return fprintf(stderr, "shim_arm: the host refuses writable+executable memory\n"), 2;
     pthread_jit_write_protect_np(0);
     long code_len = fread(code, 1, CODE, f), in_len = fread(in, 1, IN, stdin);
+    if (code_len == CODE || in_len == IN) return fprintf(stderr, "shim_arm: code or input too large\n"), 2;
     pthread_jit_write_protect_np(1);
     sys_icache_invalidate(code, code_len);
 
-    /* x0 input, x1 its length, x2 work base, x3 output, sp = work top, x30 = return; our sp waits in x19 */
+    /* x0 input, x1 its length, x2 work base, x3 output, sp = work top, x30 = return; our sp waits in x19.
+       x0..x17 and x30 may be overwritten by the code; x18 (reserved by macOS) must not be touched by it. */
     register long x0 __asm__("x0") = (long)in, x1 __asm__("x1") = in_len;
     register long x2 __asm__("x2") = (long)work, x3 __asm__("x3") = (long)out;
     long top = (long)work + WORK;
@@ -32,7 +35,7 @@ int main(int argc, char **argv) {
         : "x4", "x5", "x6", "x7", "x8", "x9", "x10", "x11", "x12", "x13", "x14", "x15", "x16", "x17", "x19", "x30", "memory");
 
     fprintf(stderr, "shim_arm: status %ld, %ld output bytes\n", x0, x1);
-    if (x0 != 0 && x0 != 1) return 1;
+    if ((x0 != 0 && x0 != 1) || x1 < 0 || x1 > OUT) return 1;
     fwrite(out, 1, x1, stdout);
     return 0;
 }
