@@ -15,7 +15,7 @@ def GoodW : J → Prop
   | .addi rd rs imm => rd < 32 ∧ rs < 32 ∧ -2048 ≤ imm ∧ imm < 2048
   | .ld rd rs off => rd < 32 ∧ rs < 32 ∧ -2048 ≤ off ∧ off < 2048
   | .sd b a off => b < 32 ∧ a < 32 ∧ -2048 ≤ off ∧ off < 2048
-  | .bgeu a b o => a < 32 ∧ b < 32 ∧ o = 2
+  | .bgeu a b o => a < 32 ∧ b < 32 ∧ (o = 2 ∨ o = 3 ∨ o = 4)
   | .beq a b o => a < 32 ∧ b < 32 ∧ o = 2
   | .bltu a b o => a < 32 ∧ b < 32 ∧ o = 2
   | .jal rd _ => rd < 32
@@ -52,13 +52,11 @@ theorem iu8 : iu (4 * 2) = 8 := by decide
 
 theorem encG_bgeu (a b : Nat) (o : Int) (h : GoodW (.bgeu a b o)) :
     (encG (.bgeu a b o)).toNat = SimW.encJ (.bgeu a b o) := by
-  obtain ⟨h1, h2, rfl⟩ := h
+  obtain ⟨h1, h2, ho⟩ := h
   simp only [encG, SimW.encJ]
   rw [g4_bgeu _ _ _ (by rw [toU_toNat _ (by omega)]; exact h1) (by rw [toU_toNat _ (by omega)]; exact h2),
-    toU_toNat _ (by omega), toU_toNat _ (by omega), iu8]
-  have : sI 8 = 8 := by decide
-  rw [this]
-  rfl
+    toU_toNat _ (by omega), toU_toNat _ (by omega)]
+  rcases ho with rfl | rfl | rfl <;> rfl
 
 theorem encG_beq (a b : Nat) (o : Int) (h : GoodW (.beq a b o)) :
     (encG (.beq a b o)).toNat = SimW.encJ (.beq a b o) := by
