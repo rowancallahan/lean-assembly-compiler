@@ -51,9 +51,13 @@ theorem gh_binLoop {m} {st k st' g1} (h : stepF (.binLoop m) st = some (k, st'))
 theorem gh_prim {tl} {st k st' g1} (h : stepF (.prim tl) st = some (k, st')) (hv : ∀ x ∈ st.vals, x.sh.isSome) (he : effF st.ctx (.prim tl) st.g = some g1) :
     ∃ g2, effL st'.ctx k st'.g = some g2 ∧ (Frame.final (.prim tl) ∨ g1.le g2) := by
   ghost_auto
-  · refine ⟨_, ⟨⟨by omega, ?_⟩, rfl⟩, rfl, rfl, id⟩
+  · refine ⟨_, ⟨⟨by omega, ?_, by simp [Callee.need1]⟩, rfl⟩, rfl, rfl, id⟩
     have := findD_lt ‹findD _ _ = some _›; simp at this; omega
-  · exact ⟨_, ⟨by omega, rfl⟩, rfl, rfl, id⟩
+  · rename_i t _ _ _ _ _ ht
+    refine ⟨_, ⟨⟨by omega, fun hp => ?_⟩, rfl⟩, rfl, rfl, id⟩
+    simp [Callee.need1] at hp
+    obtain rfl | rfl | rfl : t = 39 ∨ t = 40 ∨ t = 41 := by omega
+    all_goals decide
 
 theorem gh_rparen {st k st' g1} (h : stepF .rparen st = some (k, st')) (hv : ∀ x ∈ st.vals, x.sh.isSome) (he : effF st.ctx .rparen st.g = some g1) :
     ∃ g2, effL st'.ctx k st'.g = some g2 ∧ (Frame.final .rparen ∨ g1.le g2) := by
@@ -111,9 +115,10 @@ theorem gh_mkCallN {c d} {st k st' g1} (h : stepF (.mkCallN c d) st = some (k, s
     ∃ g2, effL st'.ctx k st'.g = some g2 ∧ (Frame.final (.mkCallN c d) ∨ g1.le g2) := by
   ghost_auto
   cases c <;> dsimp only at * <;> simp_all
-  · rw [if_pos (by omega)]; simp only [Option.bind_some]; rw [if_pos (by omega)]
+  · rw [if_pos (by omega)]; simp only [Option.bind_some]; rw [if_pos ⟨by omega, by simp [Callee.need1]⟩]
     exact ⟨_, rfl, by simp; omega, rfl, id⟩
-  · omega
+  · rename_i hl
+    exact ⟨_, ⟨fun hp => by have := hl.2.2 hp; omega, rfl⟩, by simp; omega, rfl, id⟩
 
 theorem gh_selfArgs {st k st' g1} (h : stepF .selfArgs st = some (k, st')) (hv : ∀ x ∈ st.vals, x.sh.isSome) (he : effF st.ctx .selfArgs st.g = some g1) :
     ∃ g2, effL st'.ctx k st'.g = some g2 ∧ (Frame.final .selfArgs ∨ g1.le g2) := by

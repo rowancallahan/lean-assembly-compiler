@@ -109,7 +109,7 @@ theorem si_argCheck {c n} {st k st' g1} (h : stepF (.argCheck c n) st = some (k,
 theorem si_mkCall {c n} {st k st' g1} (h : stepF (.mkCall c n) st = some (k, st')) (he : effF st.ctx (.mkCall c n) st.g = some g1)
     (hi : SInv st) : SInv st' := by
   si_auto
-  exact ⟨hi.2.1 _ (rows_get_lt he.1.2 ‹_›), fun a ha => hi.1 a (List.mem_of_mem_drop ha)⟩
+  exact ⟨hi.2.1 _ (rows_get_lt he.1.2.1 ‹_›), fun a ha => hi.1 a (List.mem_of_mem_drop ha)⟩
 
 theorem si_shiftNum {op} {st k st' g1} (h : stepF (.shiftNum op) st = some (k, st')) (he : effF st.ctx (.shiftNum op) st.g = some g1)
     (hi : SInv st) : SInv st' := by

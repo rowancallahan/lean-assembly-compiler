@@ -31,6 +31,11 @@ def Ctx.callTgt (c : Ctx) : Callee → Prop
   | .df j => j + 1 < c.rows.length
   | .pr _ => True
 
+/-- prims 1..3 (`p < 4`) take at least one argument: their node's first child is read by the flattener -/
+def _root_.ParRun.Callee.need1 : Callee → Bool
+  | .pr p => decide (p < 4)
+  | .df _ => false
+
 /-- the parameter count of the current (last) row -/
 def Ctx.npar (c : Ctx) : Nat := (c.rows.getLast?.map fun d => d.params.length).getD 0
 
@@ -67,9 +72,9 @@ def effF (c : Ctx) : Frame → G → Option G
   | .args _ k, ⟨v, b, t⟩ => some ⟨v + k, b, t⟩
   | .argAtom, ⟨v, b, t⟩ => some ⟨v + 1, b, t⟩
   | .argName, ⟨v, b, t⟩ => some ⟨v + 1, b, t⟩
-  | .mkCallN x d, ⟨v, b, t⟩ => if d ≤ v ∧ v - d ≤ c.arity x ∧ c.callTgt x then some ⟨d + 1, b, t⟩ else none
+  | .mkCallN x d, ⟨v, b, t⟩ => if d ≤ v ∧ v - d ≤ c.arity x ∧ c.callTgt x ∧ (x.need1 = true → d < v) then some ⟨d + 1, b, t⟩ else none
   | .argCheck x k, g => if k ≤ g.v ∧ k ≤ c.arity x ∧ c.callee x then some g else none
-  | .mkCall x n, ⟨v, b, t⟩ => if n ≤ v ∧ c.callTgt x then some ⟨v - n + 1, b, t⟩ else none
+  | .mkCall x n, ⟨v, b, t⟩ => if n ≤ v ∧ c.callTgt x ∧ (x.need1 = true → 1 ≤ n) then some ⟨v - n + 1, b, t⟩ else none
   | .selfArgs, ⟨v, b, t⟩ => if c.arm then some ⟨v + 1, b, t⟩ else none
   | .mkCont f k, ⟨v, b, t⟩ => if k ≤ v ∧ f + 1 = c.rows.length ∧ c.arm then some ⟨v - k + 1, b, t⟩ else none
   | .tyAtom, ⟨v, b, _⟩ => some ⟨v, b, true⟩
