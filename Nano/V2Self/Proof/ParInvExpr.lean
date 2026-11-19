@@ -79,13 +79,6 @@ theorem h_expr {h ts : Buf} {st : St} {m md : Nat} {fs : List Frame} (r : Rep h 
     drop_v1 _ _ _ _ (by simp [length_bset]; omega), drop_bset _ _ _ (by simp)]
 
 /-! ## tasks 4 / 8: expect `)` / `else` -/
-theorem TokAt.le {h : Buf} {p : UInt64} {toks : List Tok} (r : TokAt h p toks) : p.toNat ≤ (bget h 7).toNat := by
-  cases r with
-  | nil e => rw [← e]; exact Nat.le_refl _
-  | kw _ a => exact Nat.le_of_lt (UInt64.lt_iff_toNat_lt.mp a)
-  | num _ a => exact Nat.le_of_lt (UInt64.lt_iff_toNat_lt.mp a)
-  | id _ a => have := a.2.2; omega
-
 theorem stat0 (h : Buf) (hl : 0 < h.length) : bget (bset h 0 0) 0 = 0 := bget_bset_eq _ _ _ _ rfl (by simpa using hl)
 
 /-- the common shape of v106 / v110: the token at the cursor must be `T`, then the cursor advances -/

@@ -9,6 +9,29 @@ open C BufL ParSpec ParRun
 /-- cell 7 (token count) and every cell from the token region on agree -/
 def TokAgree (h h' : Buf) : Prop := bget h' 7 = bget h 7 ∧ ∀ i : UInt64, 184384 ≤ i.toNat → bget h' i = bget h i
 
+/-- the NARROW agreement the frame lemmas need: cell 7 and the token cells, the sentinel and the IRV word
+`[184384, 184386 + h[7])` — it survives an output append `H ++ ws` (`TokAgree` is the wide form; it coerces) -/
+def TokAgreeN (h h' : Buf) : Prop :=
+  bget h' 7 = bget h 7 ∧ ∀ i : UInt64, 184384 ≤ i.toNat → i.toNat < 184386 + (bget h 7).toNat → bget h' i = bget h i
+
+theorem TokAgree.n {h h' : Buf} (e : TokAgree h h') : TokAgreeN h h' := ⟨e.1, fun i a _ => e.2 i a⟩
+
+
+/-- `NameSeq` reads cells `d11 + a .. d11 + a + 2|l|` only -/
+theorem nameSeq_frameN {h h' : Buf} (e : TokAgreeN h h') (hn : (bget h 7).toNat < 2 ^ 40) :
+    ∀ (l : List UInt64) (a : UInt64), a.toNat + 2 * l.length < (bget h 7).toNat → NameSeq h a l → NameSeq h' a l
+  | [], a, ha, x => by
+    simp only [NameSeq] at x ⊢
+    rw [e.2 _ (by rw [d11a a (by omega)]; omega) (by rw [d11a a (by omega)]; simp at ha; omega)]; exact x
+  | c :: t, a, ha, x => by
+    simp only [NameSeq] at x ⊢
+    obtain ⟨e1, e2, e3⟩ := x
+    simp at ha
+    have a2 : (a + 2).toNat = a.toNat + 2 := by rw [UInt64.toNat_add]; simp; omega
+    refine ⟨?_, ?_, nameSeq_frameN e hn t (a + 2) (by rw [a2]; omega) e3⟩
+    · rw [e.2 _ (by rw [d11a a (by omega)]; omega) (by rw [d11a a (by omega)]; omega)]; exact e1
+    · rw [e.2 _ (by rw [d11a1 a (by omega)]; omega) (by rw [d11a1 a (by omega)]; omega)]; exact e2
+
 theorem nameSeq_frame {h h' : Buf} (e : TokAgree h h') :
     ∀ (l : List UInt64) (a : UInt64), a.toNat + 2 * l.length + 1 < 2 ^ 40 → NameSeq h a l → NameSeq h' a l
   | [], a, ha, x => by
@@ -22,36 +45,54 @@ theorem nameSeq_frame {h h' : Buf} (e : TokAgree h h') :
     · rw [e.2 _ (by rw [d11a a (by simp at ha; omega)]; omega)]; exact e1
     · rw [e.2 _ (by rw [d11a1 a (by simp at ha; omega)]; omega)]; exact e2
 
-theorem nameOK_frame {h h' : Buf} (e : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 40) {pos : UInt64} {n : List UInt64}
+theorem nameOK_frameN {h h' : Buf} (e : TokAgreeN h h') (hn : (bget h 7).toNat < 2 ^ 40) {pos : UInt64} {n : List UInt64}
     (x : NameOK h pos n) : NameOK h' pos n := by
   obtain ⟨e1, e2, e3⟩ := x
   have p1 : (pos + 1).toNat = pos.toNat + 1 := by rw [UInt64.toNat_add]; simp; omega
-  refine ⟨?_, nameSeq_frame e n (pos + 1) (by rw [p1]; omega) e2, by rw [e.1]; exact e3⟩
-  rw [e.2 _ (by rw [d11a pos (by omega)]; omega)]; exact e1
+  refine ⟨?_, nameSeq_frameN e hn n (pos + 1) (by rw [p1]; omega) e2, by rw [e.1]; exact e3⟩
+  rw [e.2 _ (by rw [d11a pos (by omega)]; omega) (by rw [d11a pos (by omega)]; omega)]; exact e1
+
+theorem nameOK_frame {h h' : Buf} (e : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 40) {pos : UInt64} {n : List UInt64}
+    (x : NameOK h pos n) : NameOK h' pos n := nameOK_frameN e.n hn x
+
+theorem nameAt_frameN {h h' : Buf} (e : TokAgreeN h h') (hn : (bget h 7).toNat < 2 ^ 40) {pos : UInt64} {x : List Nat}
+    (r : NameAt h pos x) : NameAt h' pos x := by
+  obtain ⟨nm, a, b⟩ := r; exact ⟨nm, nameOK_frameN e hn a, b⟩
 
 theorem nameAt_frame {h h' : Buf} (e : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 40) {pos : UInt64} {x : List Nat}
-    (r : NameAt h pos x) : NameAt h' pos x := by
-  obtain ⟨nm, a, b⟩ := r; exact ⟨nm, nameOK_frame e hn a, b⟩
+    (r : NameAt h pos x) : NameAt h' pos x := nameAt_frameN e.n hn r
 
-theorem tokAt_frame {h h' : Buf} (e : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 32) {p : UInt64} {toks : List Tok}
+theorem TokAt.le {h : Buf} {p : UInt64} {toks : List Tok} (r : TokAt h p toks) : p.toNat ≤ (bget h 7).toNat := by
+  cases r with
+  | nil e => rw [← e]; exact Nat.le_refl _
+  | kw _ a => exact Nat.le_of_lt (UInt64.lt_iff_toNat_lt.mp a)
+  | num _ a => exact Nat.le_of_lt (UInt64.lt_iff_toNat_lt.mp a)
+  | id _ a => have := a.2.2; omega
+
+theorem tokAt_frameN {h h' : Buf} (e : TokAgreeN h h') (hn : (bget h 7).toNat < 2 ^ 32) {p : UInt64} {toks : List Tok}
     (r : TokAt h p toks) : TokAt h' p toks := by
   induction r with
   | nil e0 => exact .nil (by rw [e.1]; exact e0)
   | kw t a b c d f _ ih =>
     have hp := UInt64.lt_iff_toNat_lt.mp a
-    exact .kw t (by rw [e.1]; exact a) (by rw [e.2 _ (by rw [d11a _ (by omega)]; omega)]; exact b) c d f ih
-  | @num p r bs a b c d f _ ih =>
+    exact .kw t (by rw [e.1]; exact a) (by rw [e.2 _ (by rw [d11a _ (by omega)]; omega) (by rw [d11a _ (by omega)]; omega)]; exact b) c d f ih
+  | @num p r bs a b c d f tl ih =>
     have hp := UInt64.lt_iff_toNat_lt.mp a
-    refine .num bs (by rw [e.1]; exact a) (by rw [e.2 _ (by rw [d11a _ (by omega)]; omega)]; exact b) c (fun i hi => ?_) f ih
-    have q : (p + 1 + i.toUInt64 : UInt64).toNat < 2 ^ 40 := by
-      have hi' : i < 8 := hi
-      have hp' : p.toNat < 2 ^ 40 := by omega
+    have h9 := TokAt.le tl
+    have hp9 : (p + 9).toNat = p.toNat + 9 := by rw [UInt64.toNat_add]; simp; omega
+    rw [hp9] at h9
+    refine .num bs (by rw [e.1]; exact a) (by rw [e.2 _ (by rw [d11a _ (by omega)]; omega) (by rw [d11a _ (by omega)]; omega)]; exact b) c
+      (fun i hi => ?_) f ih
+    have hi' : i < 8 := hi
+    have q : (p + 1 + i.toUInt64 : UInt64).toNat = p.toNat + 1 + i := by
       have e1 : (p + 1).toNat = p.toNat + 1 := by rw [UInt64.toNat_add]; simp; omega
       have e2 : i.toUInt64.toNat = i := by simp; omega
-      rw [UInt64.toNat_add, e1, e2]
-      omega
-    rw [e.2 _ (by rw [d11a _ q]; omega)]; exact d i hi
-  | id nm a _ ih => exact .id nm (nameOK_frame e (by omega) a) ih
+      rw [UInt64.toNat_add, e1, e2]; omega
+    rw [e.2 _ (by rw [d11a _ (by rw [q]; omega)]; omega) (by rw [d11a _ (by rw [q]; omega), q]; omega)]; exact d i hi
+  | id nm a _ ih => exact .id nm (nameOK_frameN e (by omega) a) ih
+
+theorem tokAt_frame {h h' : Buf} (e : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 32) {p : UInt64} {toks : List Tok}
+    (r : TokAt h p toks) : TokAt h' p toks := tokAt_frameN e.n hn r
 
 /-! ## the arena region -/
 /-- the arena records [16448, 147520) agree -/
@@ -63,7 +104,7 @@ theorem recAgree_of {h h' : Buf} (e : ArenaAgree h h') {ids : List UInt64} (hb :
   simp only [fld]; exact e _ (by rw [recK v k (by omega) hk]; omega) (by rw [recK v k (by omega) hk]; omega)
 
 /-! ## frames -/
-theorem frameArgs_frame {h h' : Buf} {arena : List RN} (et : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 32)
+theorem frameArgs_frameN {h h' : Buf} {arena : List RN} (et : TokAgreeN h h') (hn : (bget h 7).toNat < 2 ^ 32)
     (es : ShTabAgree h h') (ea : ArenaAgree h h') (har : arena.length ≤ 16384) :
     ∀ (f : Frame) (a b : UInt64), FrameArgs h arena f a b → FrameArgs h' arena f a b := by
   have hn' : (bget h 7).toNat < 2 ^ 40 := by omega
@@ -71,11 +112,15 @@ theorem frameArgs_frame {h h' : Buf} {arena : List RN} (et : TokAgree h h') (hn 
   cases f <;> simp only [FrameArgs] at r ⊢
   all_goals first
     | exact r
-    | exact ⟨nameAt_frame et hn' r.1, r.2⟩
-    | exact nameAt_frame et hn' r
+    | exact ⟨nameAt_frameN et hn' r.1, r.2⟩
+    | exact nameAt_frameN et hn' r
     | exact ShapeCode.frame r es
     | (obtain ⟨r1, ids, k, kb⟩ := r
        exact ⟨r1, ids, k.frame (recAgree_of ea (fun v hv => by have := kb v hv; omega)) es, kb⟩)
+
+theorem frameArgs_frame {h h' : Buf} {arena : List RN} (et : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 32)
+    (es : ShTabAgree h h') (ea : ArenaAgree h h') (har : arena.length ≤ 16384) :
+    ∀ (f : Frame) (a b : UInt64), FrameArgs h arena f a b → FrameArgs h' arena f a b := frameArgs_frameN et.n hn es ea har
 
 /-! ## pushing a task: `v1` -/
 theorem taskCell (g : Nat) (hg : g < 4096) (k : UInt64) (hk : k.toNat < 3) : (d1 + 3 * g.toUInt64 + k).toNat = 64 + 3 * g + k.toNat := by
@@ -121,16 +166,21 @@ theorem taskAt_frame {h h' : Buf} (i : Nat) (hi : i < 4096)
   simp only [taskAt, e0, e1, e2]
 
 /-- the task records below `n` and the regions the frame arguments read are unchanged -/
-theorem tasks_frame {h h' : Buf} {arena : List RN} {fs : List Frame} (r : TasksRep h arena fs) (e5 : bget h' 5 = bget h 5)
+theorem tasks_frameN {h h' : Buf} {arena : List RN} {fs : List Frame} (r : TasksRep h arena fs) (e5 : bget h' 5 = bget h 5)
     (er : ∀ i : UInt64, 64 ≤ i.toNat → i.toNat < 64 + 3 * fs.length → bget h' i = bget h i)
-    (et : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShTabAgree h h') (ea : ArenaAgree h h') (har : arena.length ≤ 16384) :
+    (et : TokAgreeN h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShTabAgree h h') (ea : ArenaAgree h h') (har : arena.length ≤ 16384) :
     TasksRep h' arena fs := by
   obtain ⟨r5, rl, rk⟩ := r
   refine ⟨by rw [e5]; exact r5, rl, fun k hk => ?_⟩
   have tk : taskAt h' (fs.length - 1 - k) = taskAt h (fs.length - 1 - k) :=
     taskAt_frame _ (by omega) (fun c hc => er _ (by rw [taskCell _ (by omega) c hc]; omega) (by rw [taskCell _ (by omega) c hc]; omega))
   simp only [tk]
-  exact ⟨(rk k hk).1, frameArgs_frame et hn es ea har _ _ _ (rk k hk).2⟩
+  exact ⟨(rk k hk).1, frameArgs_frameN et hn es ea har _ _ _ (rk k hk).2⟩
+
+theorem tasks_frame {h h' : Buf} {arena : List RN} {fs : List Frame} (r : TasksRep h arena fs) (e5 : bget h' 5 = bget h 5)
+    (er : ∀ i : UInt64, 64 ≤ i.toNat → i.toNat < 64 + 3 * fs.length → bget h' i = bget h i)
+    (et : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShTabAgree h h') (ea : ArenaAgree h h') (har : arena.length ≤ 16384) :
+    TasksRep h' arena fs := tasks_frameN r e5 er et.n hn es ea har
 
 theorem v1_agree (h : Buf) (c a b : UInt64) (hg : (bget h 5).toNat < 4096) (hl : 12352 ≤ h.length) :
     TokAgree h (v1 h c a b) ∧ ShTabAgree h (v1 h c a b) ∧ ArenaAgree h (v1 h c a b) := by
@@ -198,16 +248,19 @@ theorem rowCell (i : Nat) (hi : i < 1024) (k : UInt64) (hk : k.toNat < 4) : (d9 
   have e4 : (4 * i.toUInt64).toNat = 4 * i := by rw [UInt64.toNat_mul]; simp; omega
   rw [UInt64.toNat_add, UInt64.toNat_add, e4]; simp [show d9.toNat = 180288 from rfl]; omega
 
-theorem binds_frame {h h' : Buf} {bs : List Bd} (r : BindsRep h bs) (e4 : bget h' 4 = bget h 4) (er : RegAgree h h' 180288 184384)
-    (et : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShTabAgree h h') : BindsRep h' bs := by
+theorem binds_frameN {h h' : Buf} {bs : List Bd} (r : BindsRep h bs) (e4 : bget h' 4 = bget h 4) (er : RegAgree h h' 180288 184384)
+    (et : TokAgreeN h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShTabAgree h h') : BindsRep h' bs := by
   obtain ⟨r4, rl, rk⟩ := r
   refine ⟨by rw [e4]; exact r4, rl, fun i hi => ?_⟩
   have c : ∀ k : UInt64, k.toNat < 4 → bget h' (d9 + 4 * i.toUInt64 + k) = bget h (d9 + 4 * i.toUInt64 + k) :=
     fun k hk => er _ (by rw [rowCell i (by omega) k hk]; omega) (by rw [rowCell i (by omega) k hk]; omega)
   have c0 := c 0 (by decide); simp only [UInt64.add_zero] at c0
   obtain ⟨a0, a1, a2, a3⟩ := rk i hi
-  exact ⟨by rw [c0]; exact nameAt_frame et (by omega) a0, by rw [c 1 (by decide)]; exact a1, by rw [c 2 (by decide)]; exact a2.frame es,
+  exact ⟨by rw [c0]; exact nameAt_frameN et (by omega) a0, by rw [c 1 (by decide)]; exact a1, by rw [c 2 (by decide)]; exact a2.frame es,
     by rw [c 3 (by decide)]; exact a3⟩
+
+theorem binds_frame {h h' : Buf} {bs : List Bd} (r : BindsRep h bs) (e4 : bget h' 4 = bget h 4) (er : RegAgree h h' 180288 184384)
+    (et : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShTabAgree h h') : BindsRep h' bs := binds_frameN r e4 er et.n hn es
 
 theorem defCell (j : Nat) (hj : j < 512) (k : UInt64) (hk : k.toNat < 8) : (d7 + 8 * j.toUInt64 + k).toNat = 147520 + 8 * j + k.toNat := by
   have e8 : (8 * j.toUInt64).toNat = 8 * j := by rw [UInt64.toNat_mul]; simp; omega
@@ -223,17 +276,20 @@ theorem shRow0 (k : Nat) (hk : k < 8192) : (d7 + 8192 + 3 * k.toUInt64).toNat = 
   have e3 : (3 * k.toUInt64).toNat = 3 * k := by rw [UInt64.toNat_mul]; simp; omega
   rw [UInt64.toNat_add, e3, show (d7 + 8192 : UInt64).toNat = 155712 from rfl]; omega
 
-theorem row_frame {h h' : Buf} {j : Nat} {d : DefR} (hj : j < 512) (r : RowRep h j d) (er : RegAgree h h' 147520 180288)
-    (et : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShTabAgree h h') : RowRep h' j d := by
+theorem row_frameN {h h' : Buf} {j : Nat} {d : DefR} (hj : j < 512) (r : RowRep h j d) (er : RegAgree h h' 147520 180288)
+    (et : TokAgreeN h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShTabAgree h h') : RowRep h' j d := by
   have c : ∀ k : UInt64, k.toNat < 8 → bget h' (d7 + 8 * j.toUInt64 + k) = bget h (d7 + 8 * j.toUInt64 + k) :=
     fun k hk => er _ (by rw [defCell j hj k hk]; omega) (by rw [defCell j hj k hk]; omega)
   have c0 := c 0 (by decide); simp only [UInt64.add_zero] at c0
   obtain ⟨a0, a1, a2, a3, a4, a6, a5, ap⟩ := r
-  refine ⟨by rw [c0]; exact nameAt_frame et (by omega) a0, by rw [c 1 (by decide)]; exact a1, by rw [c 2 (by decide)]; exact a2,
+  refine ⟨by rw [c0]; exact nameAt_frameN et (by omega) a0, by rw [c 1 (by decide)]; exact a1, by rw [c 2 (by decide)]; exact a2,
     by rw [c 3 (by decide)]; exact a3.frame es, by rw [c 4 (by decide)]; exact a4, by rw [c 6 (by decide)]; exact a6,
     by rw [c 5 (by decide)]; exact a5, fun i hi => ?_⟩
   rw [c 5 (by decide), er _ (by rw [parCell _ _ (by omega)]; omega) (by rw [parCell _ _ (by omega)]; omega)]
   exact (ap i hi).frame es
+
+theorem row_frame {h h' : Buf} {j : Nat} {d : DefR} (hj : j < 512) (r : RowRep h j d) (er : RegAgree h h' 147520 180288)
+    (et : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShTabAgree h h') : RowRep h' j d := row_frameN hj r er et.n hn es
 
 theorem rowZero_frame {h h' : Buf} {j : Nat} (hj : j < 512) (r : RowZero h j) (er : RegAgree h h' 147520 180288) : RowZero h' j :=
   fun k hk => by rw [er _ (by rw [defCell j hj k hk]; omega) (by rw [defCell j hj k hk]; omega)]; exact r k hk
@@ -243,15 +299,15 @@ theorem shRowK (i : Nat) (hi : i < 8192) (k : UInt64) (hk : k.toNat < 3) :
   have e3 : (3 * i.toUInt64).toNat = 3 * i := by rw [UInt64.toNat_mul]; simp; omega
   rw [UInt64.toNat_add, UInt64.toNat_add, e3, show (d7 + 8192 : UInt64).toNat = 155712 from rfl]; omega
 
-theorem defs_frame {h h' : Buf} {st : St} {b : Bool} (r : DefsRep h st b) (e12 : bget h' 12 = bget h 12) (e27 : bget h' 27 = bget h 27)
+theorem defs_frameN {h h' : Buf} {st : St} {b : Bool} (r : DefsRep h st b) (e12 : bget h' 12 = bget h 12) (e27 : bget h' 27 = bget h 27)
     (e26 : bget h' 26 = bget h 26)
-    (er : RegAgree h h' 147520 180288) (et : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShTabAgree h h') :
+    (er : RegAgree h h' 147520 180288) (et : TokAgreeN h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShTabAgree h h') :
     DefsRep h' st b := by
   obtain ⟨r12, rl, r27, rd, rc, rz, r0, rs26, rs, rsd⟩ := r
   have c5 : ∀ j, j < 512 → bget h' (d7 + 8 * j.toUInt64 + 5) = bget h (d7 + 8 * j.toUInt64 + 5) :=
     fun j hj => er _ (by rw [defCell j hj 5 (by decide), show (5 : UInt64).toNat = 5 from rfl]; omega)
       (by rw [defCell j hj 5 (by decide), show (5 : UInt64).toNat = 5 from rfl]; omega)
-  refine ⟨by rw [e12]; exact r12, rl, by rw [e27]; exact r27, fun j hj => ⟨row_frame (by omega) (rd j hj).1 er et hn es,
+  refine ⟨by rw [e12]; exact r12, rl, by rw [e27]; exact r27, fun j hj => ⟨row_frameN (by omega) (rd j hj).1 er et hn es,
     by rw [c5 j (by omega), e27]; exact (rd j hj).2⟩, ?_, fun j h1 h2 => rowZero_frame h2 (rz j h1 h2) er,
     fun i h1 h2 => by rw [er _ (by rw [parCell0 i h2]; omega) (by rw [parCell0 i h2]; omega)]; exact r0 i (by rw [← e27]; exact h1) h2,
     by rw [e26]; exact rs26, fun k h1 h2 => by rw [es _ (by rw [shRow0 k h2]; omega) (by rw [shRow0 k h2]; omega)]; exact rs k (by rw [← e26]; exact h1) h2,
@@ -263,8 +319,13 @@ theorem defs_frame {h h' : Buf} {st : St} {b : Bool} (r : DefsRep h st b) (e12 :
       have c0 := c 0 (by decide); simp only [UInt64.add_zero] at c0
       exact ⟨l, r, by rw [c0]; exact a.frame es, by rw [c 1 (by decide)]; exact b.frame es, by rw [c 2 (by decide)]; exact w⟩⟩
   cases b with
-  | true => simp only [if_true] at rc ⊢; exact ⟨row_frame (by omega) rc.1 er et hn es, by rw [c5 _ (by omega), e27]; exact rc.2⟩
+  | true => simp only [if_true] at rc ⊢; exact ⟨row_frameN (by omega) rc.1 er et hn es, by rw [c5 _ (by omega), e27]; exact rc.2⟩
   | false => simp only [Bool.false_eq_true, if_false] at rc ⊢; exact rowZero_frame (by omega) rc er
+
+theorem defs_frame {h h' : Buf} {st : St} {b : Bool} (r : DefsRep h st b) (e12 : bget h' 12 = bget h 12) (e27 : bget h' 27 = bget h 27)
+    (e26 : bget h' 26 = bget h 26)
+    (er : RegAgree h h' 147520 180288) (et : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShTabAgree h h') :
+    DefsRep h' st b := defs_frameN r e12 e27 e26 er et.n hn es
 
 theorem arena_frame {h h' : Buf} {arena vals : List RN} (r : ArenaRep h arena vals) (e8 : bget h' 8 = bget h 8)
     (e9 : bget h' 9 = bget h 9) (er : RegAgree h h' 12352 147520) (es : ShTabAgree h h') : ArenaRep h' arena vals := by
@@ -298,12 +359,16 @@ theorem out_frame {h h' ts : Buf} {out : List UInt64} (r : OutRep h ts out) (e :
 theorem drop_bset (h : Buf) (i v : UInt64) (hi : i.toNat < 184384) : (bset h i v).drop 184384 = h.drop 184384 := by
   simp only [bset]; exact List.drop_set_of_lt hi
 
-theorem tokensAt_frame {h h' ts : Buf} (r : TokensAt h ts) (et : TokAgree h h') (hts : ts.length < 2 ^ 24) : TokensAt h' ts := by
+theorem tokensAt_frameN {h h' ts : Buf} (r : TokensAt h ts) (et : TokAgreeN h h') (hts : ts.length < 2 ^ 24) : TokensAt h' ts := by
   obtain ⟨a, b, c, d⟩ := r
+  have d' : (bget h 7).toNat = ts.length := by rw [d]; simp; omega
   refine ⟨fun i hi => ?_, ?_, ?_, by rw [et.1]; exact d⟩
-  · rw [et.2 _ (by rw [d11a _ (by simp; omega)]; omega)]; exact a i hi
-  · rw [et.2 _ (by rw [d11a _ (by simp; omega)]; omega)]; exact b
-  · rw [et.2 _ (by rw [d11a1 _ (by simp; omega)]; omega)]; exact c
+  · rw [et.2 _ (by rw [d11a _ (by simp; omega)]; omega) (by rw [d11a _ (by simp; omega)]; simp; omega)]; exact a i hi
+  · rw [et.2 _ (by rw [d11a _ (by simp; omega)]; omega) (by rw [d11a _ (by simp; omega)]; simp; omega)]; exact b
+  · rw [et.2 _ (by rw [d11a1 _ (by simp; omega)]; omega) (by rw [d11a1 _ (by simp; omega)]; simp; omega)]; exact c
+
+theorem tokensAt_frame {h h' ts : Buf} (r : TokensAt h ts) (et : TokAgree h h') (hts : ts.length < 2 ^ 24) : TokensAt h' ts :=
+  tokensAt_frameN r et.n hts
 
 /-! ## Rep when only the task stack changed -/
 theorem rep_tasks {h h' ts : Buf} {st : St} {fs fs' : List Frame} (r : Rep h ts st fs) (hl : h'.length = h.length)
