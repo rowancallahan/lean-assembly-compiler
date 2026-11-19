@@ -29,3 +29,24 @@ Accepting stop: `fs = []`, status 2, `fin` checks ⇒ `serialize` words = output
 ## Cost / order
 1. Layer 2 refinement (largest pure part; reviewable first). 2. `Frame`↔task-code table and `TasksRep`, `NodeRep`/`OpsRep`. 3. Handler lemmas, expression core first (codes for const/name/bin/if/let/pair/call/prim), then types, defs, loops, `defsLoop`. Each module ≤ 5 min: split by task-code family (ParInvExpr, ParInvDef, …).
 Questions for review: (a) is `Run` with an explicit `Frame` datatype acceptable, or should Layer 2 be a relational small-step? (b) `NodeRep` via the sibling chain (field 7) vs via the flattened-words view — I propose the arena chain (v5/v2 are already proved on it in ParLet). (c) the machine does not backtrack, so `stepF`'s `Option` can be read as "machine would fail"; ok?
+
+## HANDOFF — Opus box B, parser Layer 2 (2026-11-19, keep current)
+DONE (pushed, no sorry):
+* `Proof/ParRun.lean`: `Frame` (one constructor per v96 task code, `Frame.code`), `RN` (arena node: tag a b sh pend kids), `Bd`, `DefR`, `Callee`, `St`
+  (cell map in the file header), `stepF` (pushed frames TOP FIRST), `stepS`, `Star`, fuel `run`, `mainOK` (v99 post-checks), `Accepts`, `runParse`.
+* Validation: `Testing/nano/v2self/fuzz/runrun.lean DIR N` (Layer-2 run on the spec tokens) == native Par1 (`B1 parse`, B1 from boot/build_B1.py
+  + `lean -c` + `leanc`) on 4,890 pargen programs (seeds 7, 11, 12, 13), 22 hand cases and the full C source (29,224 words): 0 differences.
+* `Proof/ParRunStar.lean`: `StarN`, `Star.det`, `Star.append` (lift a sub-run under a stack suffix), `Star.split` / `StarN.split`
+  (a run of `k ++ ks` to `[]` passes through `ks`), `StarN.head`. These give each ParSpec function its "Run (k ++ ks) st = Run ks st'" lemma shape.
+BLOCKER (reported to owner 2026-11-19): Par1 accepts MORE than ParSpec, so `Accepts ⇒ refParse` is FALSE today:
+  (1) code 3 parses `if`/`let` as primaries (operands, if-conditions): `1 + if a < 2 then 3 else 4`, `1 + let b := a; b`, `if let b := a; b < 2 then …`;
+  (2) input parameter = first `List UInt8` param regardless of binder group (ParSpec: only when alone in its group): `(x y : List UInt8) … rd x 0`;
+  (3) Nat never rejected: Nat params / results / let values / tuple components / loop states, and a Nat `let` accepted as self-call fuel.
+  Completeness-only (Par1 rejects, spec accepts): zero-state loop; `(if c then x else x)` as the input argument.
+  Awaiting the decision: fix Par1 (box C) or widen ParSpec. Layer 2 mirrors CURRENT Par1; after a Par1 fix, update `stepF` + rerun runrun.
+Interface for box C (Layer 3): frames ↔ task cells as in `Frame`'s comments; `none` results that the machine does not have (shallow stack,
+`ty = none`, param index out of range) are to be excluded by a Layer-2 invariant `WF` (TODO, below).
+NEXT: (a) `WF fs st` + preservation (stack depths per frame, ty set where read, binds/params index ranges, arena nodes valid) for C;
+(b) soundness per ParSpec function, form: `StarN n (k ++ ks, st) ([], fin) → ∃ r, pX f … = some r ∧ StarN n' (ks, st') ([], fin)` for all
+fuel `f ≥ c·|toks| + d` (pTy: 2|ts|+2; expressions: 4|ts|+4 per the call-chain potential), relating nodes by `toNd` (drop input args/locals as v142);
+order: types (independent of the blocker), flatten (`flat`/`flatL` ↔ `Nd.ser ∘ toNd`), defs/binders/arms, expressions last (blocker).
