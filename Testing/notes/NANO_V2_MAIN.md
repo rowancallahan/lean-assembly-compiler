@@ -56,6 +56,16 @@ Options: (a) Par1 layout sized by the token count (offsets d1..d11 as functions 
    (∀ j < i, p[j] = dj → K.npwOf j = dj.npw ∧ K.nresOf j = dj.nres) → OkV K d.body ∧ wd K d.body = d.nres ∧ d.npw ≤ d.nslots`;
   `parsed_main`: the last def has npw 0, nres 1.
 
+## FINDING (2026-11-19): C miscompiles non-linear buffer use — the end-to-end statement is FALSE as is
+Source `def m (x : List UInt8) : List UInt8 := let b := bnew; let c := bpush b 7; put [] (bsize b)`:
+C accepts it (`mC` = 800 bytes); Lean / ParSpec+`Sem` meaning: output `[0]`; QEMU run of C's code: output `[1]`
+(Gen's BPUSH/BSET update the buffer in place, so `b` sees the push).  Reproduce: `Testing/asm/ir-words/alias_d.{words,cases}`,
+`NOSAIL=1 BIG=16777216 python3 Testing/nano/v2self/cg_test.py alias_d` (fails: qemu output 01, expected 00).
+Cause: neither Par1 nor ParSpec has the nano front end's ownership rule (a Buf is consumed when passed / used once per
+branch; Nano/V2 Own/OwnP).  So `GenStage` is unprovable for such programs.  Fix options: (a) add a linearity check to
+ParSpec and the same rejection to Par1 (compiler change: owner/C); (b) keep C, weaken the theorem to programs with a
+`Linear p` predicate checked by ... nothing in C today — (a) is the sound route.
+
 ## Trust / reading notes
 - The meaning is ParSpec's resolved AST + `Sem`, both independent of C's code. The link from ParSpec+Sem to Lean's own
   elaboration of the source text is a spec review item (or a later bridge to `Nano.V2` `Prog.eval`).
