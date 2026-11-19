@@ -20,7 +20,7 @@ The walk follows `NanoMain.ev`'s evaluation order and threads DEAD flags `F` (on
   other arguments ran — so `f h (bget h 0)` is fine, `bset b 0 (bsize (bpush b 1))` and `f b b` are not;
   consumptions are applied before the borrow re-checks (an owned and a borrowed copy of one buffer in one call fail);
 * `if` branches start from the same flags, the union of deaths continues; a `let` slot must not be dead when written;
-* the two arms of a fuel loop (the whole def body) start with all flags clear;
+* a fuel loop must be the whole def body; both arms start with all flags clear (each iteration rebinds the states);
 * word destinations (BIN / IF operands, indices, values) accept only words.
 Entries: an expression's value is a list of entries, one per word: a plain kind 0/1, or, for a LOCAL word of slot `s` of
 kind `k`, the tagged entry `k + 4 * (s + 1)` (the parent decides whether it is a transfer, a borrow or a pin). -/
@@ -140,10 +140,7 @@ def chk (c : Cx) : Nd → List Bool → Option (List Bool × List Nat)
     | some P, some R => (lstA c as (some P) F []).bind fun x => (fin (some P) x.1 x.2).map fun y => (y.1, R)
     | _, _ => none
   | .prim p as, F => (lstA c as (some (dsP p)) F []).bind fun x => (fin (some (dsP p)) x.1 x.2).map fun y => (y.1, [rk p])
-  | .loop z s, F =>
-    (chk c z (F.map fun _ => false)).bind fun z0 => (tr z0.1 z0.2).bind fun z1 =>
-    (chk c s (F.map fun _ => false)).bind fun s0 => (tr s0.1 s0.2).bind fun s1 =>
-    (join z1.2 s1.2).map fun k => (F, k)
+  | .loop _ _, _ => none
   | .cont e, F =>
     match e with
     | .pair cs => (lstA c cs (some (stD c.K c.npw)) F []).bind fun x => (fin (some (stD c.K c.npw)) x.1 x.2).map fun y => (y.1, [])
@@ -159,8 +156,14 @@ end
 /-- one def with slot kinds `K`: its result kinds -/
 def defOk (ps rs : List (List Nat)) (K : List Nat) (d : DefA) : Option (List Nat) :=
   if K.length = d.nslots ∧ d.npw ≤ d.nslots then
-    (chk ⟨ps, rs, K, d.npw⟩ d.body (List.replicate d.nslots false)).bind fun x =>
-    (tr x.1 x.2).bind fun y => if y.2.length = d.nres then some y.2 else none
+    let c : Cx := ⟨ps, rs, K, d.npw⟩
+    let F0 := List.replicate d.nslots false
+    let r := match d.body with
+      | .loop z s =>
+        (chk c z F0).bind fun z0 => (tr z0.1 z0.2).bind fun z1 =>
+        (chk c s F0).bind fun s0 => (tr s0.1 s0.2).bind fun s1 => join z1.2 s1.2
+      | b => (chk c b F0).bind fun x => (tr x.1 x.2).map fun (y : List Bool × List Nat) => y.2
+    r.bind fun k => if k.length = d.nres then some k else none
   else none
 
 /-- the program, defs in order, with per-def slot kinds `Ks` -/
