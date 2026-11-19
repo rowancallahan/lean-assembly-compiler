@@ -6,7 +6,7 @@ namespace ParRun
 open ParSpec
 
 theorem loopStep : LoopStep := by
-  intro n ks st fin defs name r h ht hcur hb hv _ harm hD hNN hfr _
+  intro n ks st fin defs name r h ht hcur hb hv _ harm hD hNN hfr
   obtain ⟨lp, st', n', hn, hrun, hstar, hv', hd, ho, hal, hname, hloop, hlt, hspec⟩ :=
     loop_spec h ht hcur hb hv harm hD hNN hfr
   exact ⟨lp, st', n', hn, hstar, hrun, hv', hd, ho, hname, hloop, hlt, hspec⟩
@@ -110,16 +110,15 @@ theorem findD_last {ds : List DefR} {d : DefR} (h : ds.getLast? = some d) : find
   obtain ⟨init, rfl⟩ : ∃ init, ds = init ++ [d] := List.getLast?_eq_some_iff.mp h
   simp [List.findIdx?_cons]
 
-/-- **Layer-2 parser soundness**: an accepted run's output is the serialization of the reference parse.  `NoL` (no
-single-List-state loop header) is F's premise of `defs_spec`; it is dischargeable since Par1 fix M (see HANDOFF). -/
-theorem accepts_sound {ts : List UInt64} {toks : List Tok} (htok : tokens ts = some toks) (hNoL : NoL toks) :
+/-- **Layer-2 parser soundness**: an accepted run's output is the serialization of the reference parse. -/
+theorem accepts_sound {ts : List UInt64} {toks : List Tok} (htok : tokens ts = some toks) :
     ∀ o, Accepts toks o → ∃ p, ParsesProgram ts p ∧ o = serialize p := by
   intro o ⟨fin, hstar, hacc, hmain, hout⟩
   obtain ⟨n, hN⟩ := hstar.toN
   have hD0 : DRel (init toks).defs [] :=
     ⟨rfl, fun x => by simp [findDef, findD, init], fun x j di h => by simp [findDef] at h⟩
   have hNN0 : DefsNN (init toks).defs := by simp [DefsNN, init]
-  obtain ⟨dis', as, hp, hfo, hDR, _⟩ := defs_spec loopStep n hN hD0 hNN0 ⟨[], rfl⟩ hNoL
+  obtain ⟨dis', as, hp, hfo, hDR, _⟩ := defs_spec loopStep n hN hD0 hNN0 ⟨[], rfl⟩
   -- the main row
   unfold mainOK at hmain
   split at hmain

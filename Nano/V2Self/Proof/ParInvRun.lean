@@ -273,9 +273,9 @@ theorem api_of_rep (ts : Buf) (toks : List Tok) (hT : TokL ts toks) (hts : ts.le
       rw [r.2.2] at this; simp [hd] at this
 
 
-/-- **the parser theorem** modulo the reachability obligations `Obl` and B's `NoL` (finding L, to be dropped) -/
-theorem parserSound_main {ts : Buf} {toks : List Tok} (hT : TokL ts toks) (hts : ts.length < 2 ^ 24) (O : Obl toks)
-    (hNoL : NoL toks) : ParserSound ts :=
-  parserSound_of (api_of_rep ts toks hT hts O) (by omega) (accepts_sound (tokens_of hT) hNoL)
+/-- **the parser theorem** modulo the reachability obligations `Obl` -/
+theorem parserSound_main {ts : Buf} {toks : List Tok} (hT : TokL ts toks) (hts : ts.length < 2 ^ 24) (O : Obl toks) :
+    ParserSound ts :=
+  parserSound_of (api_of_rep ts toks hT hts O) (by omega) (accepts_sound (tokens_of hT))
 
 end ParInv

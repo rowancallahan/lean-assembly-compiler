@@ -437,7 +437,7 @@ theorem loop_toks {ks : List Frame} {S st' fin : St} {n' : Nat} {r : List Tok} (
 def LoopStep : Prop := ∀ {n : Nat} {ks : List Frame} {st fin : St} {defs : List DefI} {name : List Nat} {r : List Tok},
   StarN n (.tyAtom :: .afterColon :: ks, st) ([], fin) → st.toks = .k 35 :: .k 17 :: r → st.cur = DefR.fresh name →
   st.binds = [] → st.vals = [] → st.arena = [] → st.arm = false → CxRel st ⟨defs, [], none⟩ → DefsNN st.defs →
-  findDef defs name = none → (∀ f res r', pArrows f r ≠ some ([.lst, res], r')) →
+  findDef defs name = none →
   ∃ lp st' n', n' < n ∧ Star (.tyAtom :: .afterColon :: ks, st) (.defEnd :: ks, st') ∧ StarN n' (.defEnd :: ks, st') ([], fin) ∧
     st'.vals = [lp] ∧ st'.defs = st.defs ∧ st'.out = st.out ∧ st'.cur.name = name ∧ st'.cur.loop = true ∧
     st'.toks.length < st.toks.length ∧
@@ -461,10 +461,6 @@ theorem defs_valid {n : Nat} {ks : List Frame} {st fin : St} (h : StarN n (.defs
     · rename_i hc; simpa using hc
 
 
-/-- the spec's loop-state rule that Par1 does not enforce yet (finding L): no loop with exactly one `List UInt8` state -/
-def NoL (toks : List Tok) : Prop := ∀ pre name r f res r', toks = pre ++ .k 1 :: .id name :: .k 8 :: .k 35 :: .k 17 :: r →
-  pArrows f r ≠ some ([.lst, res], r')
-
 theorem pDefs_cons (F G : Nat) (dis : List DefI) (t : Tok) (ts : List Tok) :
     pDefs F (G + 1) dis (t :: ts) = (pDef F dis (t :: ts)).bind fun (di, da, r) =>
       (pDefs F G (dis ++ [di]) r).map fun (ds, as) => (ds, da :: as) := by
@@ -472,13 +468,13 @@ theorem pDefs_cons (F G : Nat) (dis : List DefI) (t : Tok) (ts : List Tok) :
 
 /-- **the def level**: a run from `.defs` to the empty stack is `pDefs` -/
 theorem defs_spec (hLS : LoopStep) : ∀ (n : Nat) {st fin : St} {dis : List DefI}, StarN n ([.defs], st) ([], fin) →
-    DRel st.defs dis → DefsNN st.defs → (∃ pre, st.all = pre ++ st.toks) → NoL st.all →
+    DRel st.defs dis → DefsNN st.defs → (∃ pre, st.all = pre ++ st.toks) →
     ∃ dis' as, (∀ F G, 4 * st.toks.length + 8 ≤ F → st.toks.length + 1 ≤ G → pDefs F G dis st.toks = some (dis', as)) ∧
       fin.out = st.out ++ as.flatMap DefA.ser ∧ DRel fin.defs dis' ∧ fin.acc = true := by
   intro n
   induction n using Nat.strongRecOn with
   | _ n ih =>
-  intro st fin dis h hD hNN hall hNoL
+  intro st fin dis h hD hNN hall
   match n, h with
   | n + 1, h =>
     obtain ⟨k, st1, h1, h2⟩ := h.head
@@ -513,7 +509,6 @@ theorem defs_spec (hLS : LoopStep) : ∀ (n : Nat) {st fin : St} {dis : List Def
         obtain ⟨di, da, hpd, hout, hD', hNN'⟩ := hv (defs_valid h2')
         obtain ⟨pre2, hpre2⟩ := hsu
         obtain ⟨dis', as, hp, ho, hD'', hacc⟩ := ih n' hn' h2' hD' hNN' ⟨pre ++ pre2, by rw [ha, hpre, ← hpre2, List.append_assoc]⟩
-          (by rw [ha]; exact hNoL)
         refine ⟨dis', da :: as, fun F G hF hG => ?_, by rw [ho, hout]; simp, hD'', hacc⟩
         obtain ⟨G, rfl⟩ : ∃ g, G = g + 1 := ⟨G - 1, by omega⟩
         rw [ht, pDefs_cons, ← ht, hpd F hF]
@@ -535,10 +530,8 @@ theorem defs_spec (hLS : LoopStep) : ∀ (n : Nat) {st fin : St} {dis : List Def
           subst hr2
           have hfr' : findDef dis x = none := by
             have := hD.2.1 x; rw [hfr] at this; cases h : findDef dis x <;> simp_all
-          have hL : ∀ f res r', pArrows f r'' ≠ some ([.lst, res], r') :=
-            fun f res r' => hNoL pre x r'' f res r' (by rw [hpre, ht])
           obtain ⟨lp, st'', n'', hn'', hsL, h3, hv, hd, ho, hname, hloop, hlen, hVT⟩ :=
-            hLS h2 rfl rfl rfl rfl rfl rfl (cxrel_body (env := []) hD rfl (by simp) rfl) hNN hfr' hL
+            hLS h2 rfl rfl rfl rfl rfl rfl (cxrel_body (env := []) hD rfl (by simp) rfl) hNN hfr'
           obtain ⟨z, n4, hn4, hz, hzs, hzi, hsE, h4⟩ := defEnd_tail h3
           have hzl : z = lp := by rw [hv] at hz; simpa using hz.symm
           subst hzl
