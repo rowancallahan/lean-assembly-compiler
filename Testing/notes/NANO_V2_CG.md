@@ -482,3 +482,6 @@ Sem ≠ stuck.  Remaining: the final ImplementsCW assembly (case split on Sem), 
 and `HD : ∀ x ≤ 2^20, ∀ wb wl, wb%8=0 → 2^31 ≤ wb → wb+wl ≤ 2^32 → wb+16 ≤ (wb+wl)/8*8 → SemCases p R x wb wl`
 (ok ∧ semAt succeeds ∀T | Sem cap ∧ semAtF cap ∀T | semAtF room ∀T ∧ wl < R x). Tiny work blocks are handled without HD.
 HANDOFF: machine side complete; remaining = D's proof of HD, plus hXl/DB discharge, then wire into GenStage.
+`GenStageE.gen_stage (HDB) : NanoMain.GenStage` — HD discharged (`gen_HD`) from D's `gen_R` (R ≤ wl) and `gen_all` (wl < R) plus
+T-independence (`semAtF_T`/`semAt_T`); hXl = `ParSerLen.ser_lt`. Only remaining hypothesis: O's `HDB` (parsed ∧ |ts|<2^24 ∧
+LinearK ∧ g41 ≠ [] ⇒ ∀ d ∈ p, DB d).
