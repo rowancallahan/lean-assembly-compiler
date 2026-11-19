@@ -325,4 +325,36 @@ theorem v1_ok (h : Buf) (c a b : UInt64) (hs : bget (v1 h c a b) 0 ≠ 0) : (bge
   have : ¬ bget h 5 < d12 := fun x => hc (by have := UInt64.lt_iff_toNat_lt.mp x; simpa using this)
   apply hs; unfold v1; simp only [this, if_false]; rw [bget_bset]; split <;> simp_all [bget, List.getD]
 
+/-! ## tokens at the cursor -/
+/-- a keyword cell (not 0 / 5 / 14) at the cursor is the spec token `.k t` -/
+theorem tok_kw {h ts : Buf} {p t : UInt64} {toks : List Tok} (r : TokAt h p toks) (hT : TokensAt h ts) (hts : ts.length < 2 ^ 24)
+    (hc : bget h (d11 + p) = t) (t0 : t ≠ 0) (t5 : t ≠ 5) (t14 : t ≠ 14) : ∃ rest, toks = .k t.toNat :: rest ∧ TokAt h (p + 1) rest := by
+  cases r with
+  | nil e =>
+    exfalso; apply t0; rw [← hc, e, hT.2.2.2]; exact hT.2.1
+  | kw t' _ b _ _ _ x => rw [b] at hc; subst hc; exact ⟨_, rfl, x⟩
+  | num _ _ b => rw [b] at hc; exact absurd hc.symm t5
+  | id _ a _ => rw [a.1] at hc; exact absurd hc.symm t14
+
+/-- Rep when only the cursor h[3], h[5] and task records changed (the cursor now represents `toks'`) -/
+theorem rep_tok {h h' ts : Buf} {st : St} {fs fs' : List Frame} {toks' : List Tok} (r : Rep h ts st fs) (hl : h'.length = h.length)
+    (e : ∀ i : UInt64, i.toNat ≠ 5 → i.toNat ≠ 3 → (i.toNat < 64 ∨ 12352 ≤ i.toNat) → bget h' i = bget h i)
+    (ed : h'.drop 184384 = h.drop 184384) (hK : TokAt h' (bget h' 3) toks') (hT : TasksRep h' st.arena fs')
+    (hd : inDefF fs' = inDefF fs) : Rep h' ts { st with toks := toks' } fs' := by
+  obtain ⟨rT, rts, r0, r3, r11, rB, rD, rA, r25, r29, r30, r32, rO, _⟩ := r
+  have hn : (bget h 7).toNat < 2 ^ 32 := by rw [rT.2.2.2]; simp; omega
+  have et : TokAgree h h' := ⟨e 7 (by decide) (by decide) (Or.inl (by decide)), fun i hi => e i (by omega) (by omega) (Or.inr (by omega))⟩
+  have es : ShTabAgree h h' := fun i a _ => e i (by omega) (by omega) (Or.inr (by omega))
+  have c : ∀ n : UInt64, n.toNat < 64 → n.toNat ≠ 5 → n.toNat ≠ 3 → bget h' n = bget h n := fun n hn h5 h3 => e _ h5 h3 (Or.inl hn)
+  refine ⟨tokensAt_frame rT et rts, rts, by rw [c 0 (by decide) (by decide) (by decide)]; exact r0, hK,
+    by rw [c 11 (by decide) (by decide) (by decide)]; exact r11,
+    binds_frame rB (c 4 (by decide) (by decide) (by decide)) (fun i a _ => e i (by omega) (by omega) (Or.inr (by omega))) et hn es,
+    (by rw [hd]; exact defs_frame rD (c 12 (by decide) (by decide) (by decide)) (c 27 (by decide) (by decide) (by decide)) (fun i a _ => e i (by omega) (by omega) (Or.inr (by omega))) et hn es),
+    arena_frame rA (c 8 (by decide) (by decide) (by decide)) (c 9 (by decide) (by decide) (by decide))
+      (fun i a _ => e i (by omega) (by omega) (Or.inr (by omega))) es,
+    fun s hs => by rw [c 25 (by decide) (by decide) (by decide)]; exact (r25 s hs).frame es,
+    fun x hx hne => by rw [c 29 (by decide) (by decide) (by decide)]; exact nameAt_frame et (by omega) (r29 x hx hne),
+    by rw [c 30 (by decide) (by decide) (by decide)]; exact r30, by rw [c 32 (by decide) (by decide) (by decide)]; exact r32,
+    out_frame rO ed, hT⟩
+
 end ParInv

@@ -74,8 +74,70 @@ theorem h_expr {h ts : Buf} {st : St} {m : Nat} {tl : Bool} {fs : List Frame} (r
   simp only [show (Frame.prim tl).code.toUInt64 = 3 from rfl] at T3
   have fl2 : fs.length + 1 < 4096 := by have := T2.1; rw [List.length_cons] at this; omega
   obtain ⟨PL, PU⟩ := push2_cells (bset h 5 fs.length.toUInt64) 2 a 0 3 0 (b01 tl) (by omega) l1
-  refine rep_tasks r (by rw [PL]; simp [length_bset]) (fun i h5 hi => by rw [PU i h5 hi, bget_bset' _ _ _ _ (by simp; omega)]) ?_ T3 rfl
+  refine rep_tasks r (by rw [PL]; simp [length_bset]) (fun i h5 hi => by rw [PU i h5 hi, bget_bset' _ _ _ _ (by simp; omega)]) ?_ T3
+    (by simp [inDefF, Frame.isDefs])
   rw [drop_v1 _ _ _ _ (by obtain ⟨L, _⟩ := v1_eff _ 2 a 0 o1 l1; rw [L]; simp [length_bset]; omega),
     drop_v1 _ _ _ _ (by simp [length_bset]; omega), drop_bset _ _ _ (by simp)]
+
+/-! ## tasks 4 / 8: expect `)` / `else` -/
+theorem TokAt.le {h : Buf} {p : UInt64} {toks : List Tok} (r : TokAt h p toks) : p.toNat ≤ (bget h 7).toNat := by
+  cases r with
+  | nil e => rw [← e]; exact Nat.le_refl _
+  | kw _ a => exact Nat.le_of_lt (UInt64.lt_iff_toNat_lt.mp a)
+  | num _ a => exact Nat.le_of_lt (UInt64.lt_iff_toNat_lt.mp a)
+  | id _ a => have := a.2.2; omega
+
+theorem stat0 (h : Buf) (hl : 0 < h.length) : bget (bset h 0 0) 0 = 0 := bget_bset_eq _ _ _ _ rfl (by simpa using hl)
+
+/-- the common shape of v106 / v110: the token at the cursor must be `T`, then the cursor advances -/
+theorem expect_tok {h ts : Buf} {st : St} {f : Frame} {fs : List Frame} (T : UInt64) (r : Rep h ts st (f :: fs))
+    (T0 : T ≠ 0) (T5 : T ≠ 5) (T14 : T ≠ 14) (hf : f.isDefs = false)
+    (ev : ∀ a b, v96 (bset h 5 fs.length.toUInt64) f.code.toUInt64 a b =
+      let h1 := bset h 5 fs.length.toUInt64
+      if bget h1 (d11 + bget h1 3 + 0) == T then bset h1 3 (bget h1 3 + 1) else bset h1 0 0)
+    (hs : bget (step h) 0 ≠ 0) :
+    ∃ rest, st.toks = .k T.toNat :: rest ∧ Rep (step h) ts { st with toks := rest } fs := by
+  obtain ⟨hn, hl, har⟩ := rep_bounds r
+  have rT := r.2.2.2.2.2.2.2.2.2.2.2.2.2
+  obtain ⟨E, _, T1⟩ := step_top (ts := ts) rT (by omega) hn har
+  rw [E, ev] at hs ⊢
+  simp only [] at hs ⊢
+  have fl := T1.2.1
+  have g3 : bget (bset h 5 fs.length.toUInt64) 3 = bget h 3 := bget_bset' _ _ _ _ (by decide)
+  have p3 := r.2.2.2.1
+  have hK : (bget h 3).toNat ≤ (bget h 7).toNat := p3.le
+  have gc : bget (bset h 5 fs.length.toUInt64) (d11 + bget h 3 + 0) = bget h (d11 + bget h 3) := by
+    rw [UInt64.add_zero]; exact bget_bset' _ _ _ _ (by rw [d11a _ (by omega), show (5 : UInt64).toNat = 5 from rfl]; omega)
+  rw [g3, gc] at hs ⊢
+  by_cases hc : bget h (d11 + bget h 3) = T
+  · simp only [hc, beq_self_eq_true, if_true] at hs ⊢
+    obtain ⟨rest, et, tr⟩ := tok_kw p3 r.1 r.2.1 hc T0 T5 T14
+    refine ⟨rest, et, ?_⟩
+    have l1 : (bset h 5 fs.length.toUInt64).length = h.length := length_bset _ _ _
+    have u3 : (3 : UInt64).toNat = 3 := rfl
+    have u5 : (5 : UInt64).toNat = 5 := rfl
+    have cells : ∀ i : UInt64, i.toNat ≠ 5 → i.toNat ≠ 3 → bget (bset (bset h 5 fs.length.toUInt64) 3 (bget h 3 + 1)) i = bget h i :=
+      fun i a b => by rw [bget_bset' _ _ _ _ (by rw [u3]; omega), bget_bset' _ _ _ _ (by rw [u5]; omega)]
+    have et' : TokAgree h (bset (bset h 5 fs.length.toUInt64) 3 (bget h 3 + 1)) :=
+      ⟨cells 7 (by decide) (by decide), fun i hi => cells i (by omega) (by omega)⟩
+    refine rep_tok r (by simp [length_bset]) (fun i a b _ => cells i a b) (by rw [drop_bset _ _ _ (by decide), drop_bset _ _ _ (by decide)])
+      (by rw [bget_bset_eq _ _ _ _ rfl (by rw [l1, u3]; omega)]; exact tokAt_frame et' hn tr) ?_ (by simp [inDefF, hf])
+    refine tasks_frame T1 (by rw [bget_bset' _ _ _ _ (by decide)]) (fun i a b => bget_bset' _ _ _ _ (by rw [u3]; omega))
+      ⟨by rw [bget_bset' _ _ _ _ (by decide), bget_bset' _ _ _ _ (by decide)], fun i hi => bget_bset' _ _ _ _ (by rw [u3]; omega)⟩
+      (by rw [bget_bset' _ _ _ _ (by decide)]; exact hn) (fun i a _ => bget_bset' _ _ _ _ (by rw [u3]; omega))
+      (fun i a _ => bget_bset' _ _ _ _ (by rw [u3]; omega)) har
+  · have : (bget h (d11 + bget h 3) == T) = false := by simpa using hc
+    simp only [this] at hs
+    exact absurd (stat0 _ (by simp [length_bset]; omega)) hs
+
+theorem h_rparen {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.rparen :: fs)) (hs : bget (step h) 0 ≠ 0) :
+    ∃ k st', stepF .rparen st = some (k, st') ∧ Rep (step h) ts st' (k ++ fs) := by
+  obtain ⟨rest, et, rr⟩ := expect_tok 7 r (by decide) (by decide) (by decide) rfl (fun a b => by simp [Frame.code, v96, v106]) hs
+  exact ⟨[], _, by simp [stepF, et], rr⟩
+
+theorem h_ifElse {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.ifElse :: fs)) (hs : bget (step h) 0 ≠ 0) :
+    ∃ k st', stepF .ifElse st = some (k, st') ∧ Rep (step h) ts st' (k ++ fs) := by
+  obtain ⟨rest, et, rr⟩ := expect_tok 34 r (by decide) (by decide) (by decide) rfl (fun a b => by simp [Frame.code, v96, v110]) hs
+  exact ⟨[], _, by simp [stepF, et], rr⟩
 
 end ParInv

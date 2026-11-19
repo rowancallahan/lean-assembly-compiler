@@ -103,10 +103,12 @@ def DefsRep (h : Buf) (st : St) (inDef : Bool) : Prop :=
 def OutRep (h : Buf) (ts : Buf) (out : List UInt64) : Prop :=
   h.length = 184384 + ts.length + 1 + out.length ∧ h.drop (184384 + ts.length + 1) = out
 
-/-- inside a def: the top frame is not `defs` (between defs the current row is still zero) -/
-def inDefF : List Frame → Bool
-  | .defs :: _ => false
-  | _ => true
+def _root_.ParRun.Frame.isDefs : Frame → Bool
+  | .defs => true
+  | _ => false
+
+/-- inside a def: no `defs` frame on the stack (between defs — top frame `defs` — the current row is still zero) -/
+def inDefF (fs : List Frame) : Bool := fs.all fun f => !f.isDefs
 
 /-- **the invariant** -/
 def Rep (h : Buf) (ts : Buf) (st : St) (fs : List Frame) : Prop :=
