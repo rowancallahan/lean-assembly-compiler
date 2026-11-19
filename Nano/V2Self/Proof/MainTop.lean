@@ -11,6 +11,7 @@ import Nano.V2Self.Proof.ParInvRun
 import Nano.V2Self.Proof.OwnStage
 import Riscv.Back.Top
 import Compiler.AllocSpec
+import Nano.V2Self.Proof.RunsDef
 
 open LeanRV64D
 namespace NanoMain
@@ -76,22 +77,17 @@ def ExactCW (B : List UInt8) (f : List UInt8 → Except Stop (List UInt8)) (spac
     Mapped s output → Mapped s work →
     ∀ y, f x = .ok y → work.len < space x → runsTo s (OomOutM s ra output work)
 
-open Classical in
-/-- the work bound of C's code for a text: an exact one (`ImplementsCW ∧ ExactCW`) when there is one, else any
-`ImplementsC` bound -/
+/-- **the work bound of C's code for a text**: EXPLICIT, the exact threshold `Msp` (RunsDef: the least work size with
+which main never runs out of room, at least 16), bounded by `Msp_le` -/
 noncomputable def spaceC (x : List UInt8) : List UInt8 → Nat :=
   match pOf x with
-  | some p =>
-    if h : ∃ sp, ImplementsCW (mC x) (Sem κC p) sp ∧ ExactCW (mC x) (Sem κC p) sp then Classical.choose h
-    else if h : ImplementsC (mC x) (Sem κC p) then Classical.choose h else fun _ => 0
+  | some p => fun inp => max 16 (Msp p inp)
   | none => fun _ => 0
 
-theorem spaceC_impl {x : List UInt8} {p : List DefA} (hpo : pOf x = some p) (hI : ImplementsC (mC x) (Sem κC p)) :
-    ImplementsCW (mC x) (Sem κC p) (spaceC x) := by
-  unfold spaceC; rw [hpo]; simp only
-  split
-  · rename_i h; exact (Classical.choose_spec h).1
-  · exact Classical.choose_spec hI
+/-- codegen with C's explicit work bound -/
+def GenStageM : Prop :=
+  ∀ (c : List UInt8) (ts : List UInt64) (p : List DefA), ParsesProgram ts p → ts.length < 2 ^ 24 → LinearK p →
+    C.g41 c (serialize p) ≠ [] → ImplementsCW (C.g41 c (serialize p)) (Sem κC p) (fun x => max 16 (Msp p x))
 
 /-- **C as a compiler** -/
 noncomputable def compileC (s : SrcC) : Option CompiledA :=
@@ -152,10 +148,30 @@ theorem parStage : ParStage := fun _ hW hts => ParInv.parserSound hW hts
 /-- the ownership stage, discharged (O) -/
 theorem ownStage : OwnStage := fun _ _ hp hb hl h => OwnP.own_stage hp hb hl h
 
+/-- as `compiler_correct`, with the explicit work bound -/
+theorem compiler_correctM (HB : BndStage) (HG : GenStageM) (x : List UInt8) (hx : x.length ≤ 2 ^ 20) (h : mC x ≠ []) :
+    ∃ ts p, LexSpec.Lexes x ts ∧ ParsesProgram ts p ∧ LinearK p ∧
+      ImplementsCW (mC x) (Sem κC p) (fun inp => max 16 (Msp p inp)) := by
+  have hy0 : C.o41 (C.y16 (C.s10 x)) ≠ [] := fun e => h (by simp only [mC, e, g41_nil])
+  have hoe := o41_ne _ hy0
+  have hy : C.y16 (C.s10 x) ≠ [] := by rw [← hoe]; exact hy0
+  by_cases h0 : C.s10 x = []
+  · obtain ⟨p, hp, -⟩ := parStage _ ⟨[], by rw [h0]; exact ParSpec.TokL.nil⟩ (by simp [h0]) hy
+    rw [h0] at hp; simp [ParsesProgram, refParse_nil] at hp
+  · have hL := LexSpec.s10_sound x (by omega) _ rfl h0
+    have hb := lexes_len hL
+    obtain ⟨p, hp, he⟩ := parStage _ (lexes_tokWF hL) (by omega) hy
+    have hg : C.g41 x (serialize p) ≠ [] := by rw [← he, ← hoe]; exact h
+    have hts : (C.s10 x).length < 2 ^ 24 := by omega
+    have hbd := HB x _ p hp hts hg
+    have hsl : (serialize p).length < 2 ^ 64 := by have := ParSerLen.ser_lt hp hts; omega
+    have hlin : LinearK p := ownStage _ p hp hbd hsl (by rw [← he]; exact hy0)
+    refine ⟨_, p, hL, hp, hlin, ?_⟩
+    have := HG x _ p hp hts hlin hg
+    rw [mC, hoe, he]; exact this
+
 /-- **C is correct** (owner's top-level statement), from the size-bound and codegen stage theorems -/
-theorem C_correctL (HB : BndStage) (HG : GenStage) : CompileCorrect riscv compileC := by
-  have HP := parStage
-  have HO := ownStage
+theorem C_correctL (HB : BndStage) (HG : GenStageM) : CompileCorrect riscv compileC := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight outputFits
     enough
   obtain ⟨x⟩ := program
@@ -165,9 +181,9 @@ theorem C_correctL (HB : BndStage) (HG : GenStage) : CompileCorrect riscv compil
     have hcomp := Option.some.inj compiles
     subst hcomp
     obtain ⟨hne, hx⟩ := hc
-    obtain ⟨ts, p, hL, hP, -, hI, -⟩ := compiler_correct' HP HO HB HG x hx hne
+    obtain ⟨ts, p, hL, hP, -, hI⟩ := compiler_correctM HB HG x hx hne
     have hpo := pOf_eq hL hP
-    have hW : ImplementsCW (mC x) (Sem κC p) (spaceC x) := spaceC_impl hpo hI
+    have hW : ImplementsCW (mC x) (Sem κC p) (spaceC x) := by unfold spaceC; rw [hpo]; exact hI
     have hrun : Sem κC p (encodeInput argument) = .ok (encodeOutput (f argument)) := by
       have := computes argument
       change srcRun ⟨x⟩ (encodeInput argument) = _ at this

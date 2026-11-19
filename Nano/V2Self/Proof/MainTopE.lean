@@ -12,8 +12,12 @@ def DBStage : Prop := ∀ (c : List UInt8) (ts : List UInt64) (p : List DefA), P
 
 theorem genStage (HDB : DBStage) : GenStage := SimW.gen_stage HDB
 
+/-- codegen with the explicit exact work bound -/
+theorem genStageM (HDB : DBStage) : GenStageM := fun c ts p hp hts hL h =>
+  gen_implementsMD c hp hts hL h (HDB c ts p hp hts hL h)
+
 /-- **C is correct**, given the size bounds -/
 theorem C_correctLE (HB : BndStage) (HDB : DBStage) : CompileCorrect riscv compileC :=
-  C_correctL HB (genStage HDB)
+  C_correctL HB (genStageM HDB)
 
 end NanoMain
