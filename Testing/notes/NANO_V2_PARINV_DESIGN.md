@@ -89,6 +89,8 @@ EXPRESSION REFINEMENT (B, in progress). PUSHED: `Proof/ParRunExpr.lean` — `VT`
   **`loop_spec`**: from `.tyAtom :: .afterColon :: ks` at `Nat → …` (binds = vals = [], cur fresh, arm false, `CxRel st ⟨defs, [], none⟩`,
   `CxNN st`, name fresh) the run reaches `.defEnd :: ks` with vals = [loop node], and under VT it is pDef's loop branch at every fuel
   ≥ 4|toks|+8 (DefI facts for F's CxRel.row). Temporary hypothesis `hL` (finding L). `Post` now has `out` (expression runs keep out).
+  EVS (Sail-lift safe retrofit, owner's reassignment): P4 `Proof/EVSLoop.lean` (loopXS, loop_passS; needs nl < 251, |C| < 2^18)
+  and P5 `Proof/EVSCall.lean` (defXS, callXS; callXS takes the jal target as an Int equation) done; P3 is E's EVSTail.
   NEXT (B): mirror fix L (drop `hL` and CxRel.self's `sps ≠ [.inp]`); help F at the def level on request.
 
 ## HANDOFF — parser lead (2026-11-19, keep current)
