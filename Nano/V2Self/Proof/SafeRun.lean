@@ -9,6 +9,8 @@
 Tool: `sstar_of_run` — a deterministic run whose every intermediate state is `Safe` is an `SStar`. -/
 import Nano.V2Self.Proof.SimW
 import Nano.V2Self.Proof.Expr
+import Nano.V2Self.Proof.Templates
+import Nano.V2Self.Proof.CallA
 namespace SafeRun
 open CallProbe SimW
 
@@ -237,5 +239,52 @@ theorem local_srun {K : LayW} {C tgt p} : ∀ (w k pc : Nat) (st : St), At C pc 
     rw [show 4 * (w + 1) = 1 + (3 + 4 * w) by omega, run_add r1, run_add r2] at hb
     have ih := local_srun w (k + 1) (pc + 5) st2 hR (by rw [x8'']; exact hs0) hp hsl2 hh2 hw2 b hb
     exact (SStar.one safe0 s1).trans (q2.trans ih)
+
+/-! ## popSlot / popN (LET, the epilogue's argument pops) -/
+
+theorem popSlot_srun {K : LayW} {C : List J} {pc p k : Nat} (s : St) (hS : At C pc (Templates.popSlot p k))
+    (hlt : (s.x 31).toNat + 8 < 2 ^ 64) (w0 : wok K (s.x 31).toNat)
+    (o1 : -2048 ≤ Templates.slotOff p k) (o2 : Templates.slotOff p k < 2048)
+    (hn : 0 ≤ ((s.x 8).toNat : Int) + Templates.slotOff p k) (ws : wok K (Templates.slotAddr p (s.x 8).toNat k)) :
+    SStar K C (pc, s) (pc + 3, ⟨upd (upd s.x 5 (s.m (s.x 31).toNat)) 31 (UInt64.ofNat ((s.x 31).toNat + 8)),
+      upd s.m (Templates.slotAddr p (s.x 8).toNat k) (s.m (s.x 31).toNat), s.b⟩) := by
+  refine sstar_of_run (Templates.popSlot_run s hS hlt) fun j hj c hc => ?_
+  have c0 := hS.at 0 (by simp [Templates.popSlot]); have c1 := hS.at 1 (by simp [Templates.popSlot])
+  have c2 := hS.at 2 (by simp [Templates.popSlot])
+  simp [Templates.popSlot] at c0 c1 c2
+  rcases (by omega : j = 0 ∨ j = 1 ∨ j = 2) with rfl | rfl | rfl
+  · simp [run] at hc; subst hc; simp [Safe, c0, ea]; exact w0
+  · simp [run, step, c0, wr] at hc; subst hc; simp [Safe, c1, upd]; omega
+  · simp [run, step, c0, c1, wr] at hc; subst hc
+    simp only [Safe, c2]
+    refine ⟨by decide, by decide, o1, o2, by simpa [upd] using hn, ?_⟩
+    simpa [ea, upd, Templates.slotAddr] using ws
+
+/-- **pop w words into slots** (the slots and stack cells are work cells, offsets in range) -/
+theorem popN_srun {K : LayW} {C : List J} {p k0 : Nat} : ∀ (w pc : Nat) (s : St), At C pc (Templates.popN p k0 w) →
+    (s.x 31).toNat + 8 * w < 2 ^ 63 →
+    (∀ j, j < w → wok K ((s.x 31).toNat + 8 * j) ∧ wok K (Templates.slotAddr p (s.x 8).toNat (k0 + j)) ∧
+      -2048 ≤ Templates.slotOff p (k0 + j) ∧ Templates.slotOff p (k0 + j) < 2048 ∧
+      0 ≤ ((s.x 8).toNat : Int) + Templates.slotOff p (k0 + j)) →
+    ∀ b, run C (3 * w) (pc, s) = some b → SStar K C (pc, s) b
+  | 0, pc, s, _, _, _, b, hb => by simp [run] at hb; subst hb; exact .refl _
+  | w + 1, pc, s, hC, hlt, hw, b, hb => by
+    have hC' : At C pc (Templates.popSlot p (k0 + w) ++ Templates.popN p k0 w) := hC
+    have A1 : At C pc (Templates.popSlot p (k0 + w)) := hC'.left
+    have A2 : At C (pc + 3) (Templates.popN p k0 w) := by have := hC'.right; simpa [Templates.popSlot] using this
+    obtain ⟨a0, -, -, -, -⟩ := hw 0 (by omega)
+    obtain ⟨-, a1, a2, a3, a4⟩ := hw w (by omega)
+    have r1 := Templates.popSlot_run (k := k0 + w) s A1 (by omega)
+    have q1 := popSlot_srun (K := K) (k := k0 + w) s A1 (by omega) (by simpa using a0) a2 a3 a4 a1
+    generalize hs1 : (⟨upd (upd s.x 5 (s.m (s.x 31).toNat)) 31 (UInt64.ofNat ((s.x 31).toNat + 8)),
+      upd s.m (Templates.slotAddr p (s.x 8).toNat (k0 + w)) (s.m (s.x 31).toNat), s.b⟩ : St) = s1 at r1 q1
+    have t1 : (s1.x 31).toNat = (s.x 31).toNat + 8 := by subst hs1; simp [upd]; omega
+    have x81 : s1.x 8 = s.x 8 := by subst hs1; simp [upd]
+    rw [show 3 * (w + 1) = 3 + 3 * w by omega, run_add r1] at hb
+    refine q1.trans (popN_srun w (pc + 3) s1 A2 (by omega) (fun j hj => ?_) b hb)
+    obtain ⟨b0, b1, b2, b3, b4⟩ := hw (j + 1) (by omega)
+    obtain ⟨-, c1, c2, c3, c4⟩ := hw j (by omega)
+    rw [t1, x81]
+    exact ⟨by rw [show (s.x 31).toNat + 8 + 8 * j = (s.x 31).toNat + 8 * (j + 1) by omega]; exact b0, c1, c2, c3, c4⟩
 
 end SafeRun
