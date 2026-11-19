@@ -121,4 +121,82 @@ theorem rep_cur {h h' ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs)
         fun q hq => big _ (by have := dsr.1; rw [shRowK k' (by omega) q hq]; omega)
       have cq0 := cq 0 (by decide); simp only [UInt64.add_zero] at cq0
       exact ⟨l, r, by rw [cq0]; exact sa.frame es, by rw [cq 1 (by decide)]; exact sb.frame es, by rw [cq 2 (by decide)]; exact sw⟩
+
+theorem ShapeCode.nt_eq {h : Buf} {c : UInt64} (r : ShapeCode h c .nt) : c = 4 := by cases r; rfl
+
+/-- **task 70** (plain body `:= e`): the current row gets npw = nx, res = ty, loop = false; push defEnd, expr -/
+theorem h_plainBody {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.plainBody :: fs)) (hfs : inDefF fs = true)
+    {w : Sh} (hty : st.ty = some w) (hs : bget (step h) 0 ≠ 0) :
+    ∃ st', stepF .plainBody st = some ([.expr 0 0, .defEnd], st') ∧ Rep (step h) ts st' ([.expr 0 0, .defEnd] ++ fs) := by
+  obtain ⟨E, _, R1⟩ := rep_pop r (by simp [inDefF, Frame.isDefs])
+  generalize (taskAt h fs.length).a = a at E
+  generalize (taskAt h fs.length).b = b at E
+  generalize bset h 5 fs.length.toUInt64 = g at E R1
+  have ev : step h = v134 g a b := by rw [E]; rfl
+  rw [ev] at hs ⊢
+  obtain ⟨hn, hlen, har⟩ := rep_bounds R1
+  have rD := R1.2.2.2.2.2.2.1
+  rw [hfs] at rD
+  obtain ⟨d12, dlt, d27, _, dcur, _, _, _⟩ := rD
+  simp only [if_true] at dcur
+  obtain ⟨⟨_, _, c2, _, _, c6, _, _⟩, _⟩ := dcur
+  have hj : bget g 12 = st.defs.length.toUInt64 := by apply UInt64.toNat_inj.mp; rw [d12]; simp [Nat.toUInt64]; omega
+  have r11 : bget g 11 = st.nx.toUInt64 := R1.2.2.2.2.1
+  have sw : ShapeCode g (bget g 25) w := R1.2.2.2.2.2.2.2.2.1 w hty
+  unfold v134 at hs ⊢
+  by_cases h4 : bget g 25 = 4
+  · simp only [h4, beq_self_eq_true, if_true] at hs; exact absurd (status_bset0 g) hs
+  have hw : w ≠ .nt := fun e => by subst e; exact h4 sw.nt_eq
+  simp only [show (bget g 25 == 4) = false from by simpa using h4, Bool.false_eq_true, if_false] at hs ⊢
+  have rk : ∀ k : UInt64, k.toNat < 8 → (d7 + 8 * st.defs.length.toUInt64 + k).toNat = 147520 + 8 * st.defs.length + k.toNat :=
+    fun k hk => defCell _ dlt k hk
+  have f1 : ∀ (b : Buf) (v i : UInt64), i.toNat < 147520 → bget (bset b (d7 + 8 * st.defs.length.toUInt64 + 1) v) i = bget b i :=
+    fun b v i hi => bget_bset' _ _ _ _ (by rw [rk 1 (by decide)]; simp; omega)
+  have f3 : ∀ (b : Buf) (v i : UInt64), i.toNat < 147520 → bget (bset b (d7 + 8 * st.defs.length.toUInt64 + 3) v) i = bget b i :=
+    fun b v i hi => bget_bset' _ _ _ _ (by rw [rk 3 (by decide)]; simp; omega)
+  have f4 : ∀ (b : Buf) (v i : UInt64), i.toNat < 147520 → bget (bset b (d7 + 8 * st.defs.length.toUInt64 + 4) v) i = bget b i :=
+    fun b v i hi => bget_bset' _ _ _ _ (by rw [rk 4 (by decide)]; simp; omega)
+  rw [hj] at hs ⊢
+  simp (disch := decide) only [f1, f3, f4, hj, r11] at hs ⊢
+  generalize hH : bset (bset (bset g (d7 + 8 * st.defs.length.toUInt64 + 1) st.nx.toUInt64)
+    (d7 + 8 * st.defs.length.toUInt64 + 3) (bget g 25)) (d7 + 8 * st.defs.length.toUInt64 + 4) 0 = H at hs ⊢
+  have eH : ∀ i : UInt64, i.toNat ≠ 147520 + 8 * st.defs.length + 1 → i.toNat ≠ 147520 + 8 * st.defs.length + 3 →
+      i.toNat ≠ 147520 + 8 * st.defs.length + 4 → bget H i = bget g i := by
+    intro i a1 a3 a4; rw [← hH]
+    rw [bget_bset' _ _ _ _ (by rw [rk 4 (by decide)]; simp; omega), bget_bset' _ _ _ _ (by rw [rk 3 (by decide)]; simp; omega),
+      bget_bset' _ _ _ _ (by rw [rk 1 (by decide)]; simp; omega)]
+  have lH : H.length = g.length := by rw [← hH]; simp [length_bset]
+  have g1 : bget H (d7 + 8 * st.defs.length.toUInt64 + 1) = st.nx.toUInt64 := by
+    rw [← hH, bget_bset' _ _ _ _ (by rw [rk 4 (by decide), rk 1 (by decide)]; simp), bget_bset' _ _ _ _ (by rw [rk 3 (by decide), rk 1 (by decide)]; simp),
+      bget_bset_eq _ _ _ _ rfl (by rw [rk 1 (by decide)]; simp; omega)]
+  have g3 : bget H (d7 + 8 * st.defs.length.toUInt64 + 3) = bget g 25 := by
+    rw [← hH, bget_bset' _ _ _ _ (by rw [rk 4 (by decide), rk 3 (by decide)]; simp),
+      bget_bset_eq _ _ _ _ rfl (by rw [rk 3 (by decide)]; simp [length_bset]; omega)]
+  have g4 : bget H (d7 + 8 * st.defs.length.toUInt64 + 4) = 0 := by
+    rw [← hH, bget_bset_eq _ _ _ _ rfl (by rw [rk 4 (by decide)]; simp [length_bset]; omega)]
+  have k2 : bget H (d7 + 8 * st.defs.length.toUInt64 + 2) = bget g (d7 + 8 * st.defs.length.toUInt64 + 2) :=
+    eH _ (by rw [rk 2 (by decide)]; simp) (by rw [rk 2 (by decide)]; simp) (by rw [rk 2 (by decide)]; simp)
+  have k6 : bget H (d7 + 8 * st.defs.length.toUInt64 + 6) = bget g (d7 + 8 * st.defs.length.toUInt64 + 6) :=
+    eH _ (by rw [rk 6 (by decide)]; simp) (by rw [rk 6 (by decide)]; simp) (by rw [rk 6 (by decide)]; simp)
+  have es : ShTabAgree g H := fun i a _ => eH i (by omega) (by omega) (by omega)
+  have RH := rep_cur (h' := H) R1 hfs { st.cur with npw := st.nx, res := some w, loop := false } 0 rfl (fun i hi => ⟨hi, rfl⟩) rfl
+    (by omega) lH (by rw [← hH]; simp only [drop_bset _ _ _ (by rw [rk 4 (by decide)]; simp; omega), drop_bset _ _ _ (by rw [rk 3 (by decide)]; simp; omega),
+      drop_bset _ _ _ (by rw [rk 1 (by decide)]; simp; omega)])
+    (fun i _ c _ => eH i (by omega) (by omega) (by omega)) (by rw [eH 27 (by (try simp) <;> omega) (by (try simp) <;> omega) (by (try simp) <;> omega)]; rfl) g1
+    (by rw [k2]; exact c2) (by rw [g3]; exact sw.frame es) (by rw [g4]; rfl) (by rw [k6]; exact c6) (fun i hi => absurd hi (Nat.not_lt_zero _))
+  have p3 : bget H 3 = bget g 3 := eH 3 (by (try simp) <;> omega) (by (try simp) <;> omega) (by (try simp) <;> omega)
+  have hK : TokAt H (bget g 3) st.toks := by rw [← p3]; exact RH.2.2.2.1
+  have hT := RH.1
+  rw [UInt64.add_zero] at hs ⊢
+  by_cases ht : bget H (d11 + bget g 3) = 9
+  · obtain ⟨rest, et, kr⟩ := tok_kw hK hT RH.2.1 ht (by decide) (by decide) (by decide)
+    simp only [ht, beq_self_eq_true, if_true] at hs ⊢
+    have R2 := rep_cursor RH (bget g 3 + 1) kr
+    have hs1 : bget (v1 (bset H 3 (bget g 3 + 1)) 80 0 0) 0 ≠ 0 := fun e => hs (v1_zero _ _ _ _ e)
+    have R3 := rep_push .defEnd 0 0 R2 (by simp [inDefF, Frame.isDefs]) trivial (fun e => hs1 e)
+    have R4 := rep_push (.expr 0 0) 0 0 R3 (by simp [inDefF, Frame.isDefs]) ⟨rfl, rfl⟩ hs
+    refine ⟨_, ?_, R4⟩
+    simp [stepF, hty, hw, et]
+  · simp only [show (bget H (d11 + bget g 3) == 9) = false from by simpa using ht, Bool.false_eq_true, if_false] at hs
+    exact absurd (status_bset0 H) hs
 end ParInv
