@@ -58,9 +58,9 @@ order: types (independent of the blocker), flatten (`flat`/`flatL` ↔ `Nd.ser �
 ## HANDOFF — parser lead (2026-11-19, keep current)
 Role: review of Layers 2/3 + own families: loop defs 73–79, self-call 46/54, FINISH 80, def headers 60–70, flatten 81–83, `v98`/`fin`, validation.
 DONE (pushed, no sorry, std axioms; each module < 5 s):
-* `Proof/ParTree.lean` (pure, on `ParRun.RN`): `emit`/`emitL` = big-step of frames `.flat`/`.flatL`; `flat_run`, `flatL_run`
-  (`Star ([.flat n], st) ([], {st with out := st.out ++ emit n})`); `toNd` (raw tree → `ParSpec.Nd`, dropInp/mkPairFlat explicit); `ok`;
-  `emit_ser : ok n → emit n = (toNd n).ser`.
+* `Proof/ParTreeOK.lean` (pure, on B's `ParRunFlat`): `nodes` (postorder), `ArenaInv st` (arena = nodes of the operand trees), `cntOK`/`CntInv`
+  (child count per tag); `stepF_arena`, `stepF_cnt`, `Star.inv` (both are invariants of every handler, proved by one `cases f` script);
+  `ok_of_nodes` (every node cntOK ∧ nodeOK ⇒ `RN.ok`), `words_body : z.words = z.toNd.ser`. (My duplicate `ParTree.lean` of B's ParRunFlat was removed.)
 * `Proof/ParInvFin.lean` (machine): `v98_eq` (output copy = heap suffix, or `[]` on fuel-out), `MainCells`, `fin_ne`
   (`fin ts 1 h ≠ []` ⇒ status 2 ∧ a def exists ∧ main cells ∧ output = `h.drop (d11 + |ts| + 1)`).
 REVIEW FINDINGS (sent to B, C, owner):
@@ -73,6 +73,5 @@ REVIEW FINDINGS (sent to B, C, owner):
   run ⇒ spec (fuel-free machine grammar, then fuel bound 8|toks|+8); stack-typing `WF`; slots/widths only mod 2^64 (`isInp` must test
   `b.toUInt64 == 0`; CALL emit `b.toUInt64 - ni.toUInt64`); step-arm env order (fuel binder outermost in Par1); def rows ≥ h[12] have
   field 6 = 0 and param-code cells ≥ h[27] are 0; arena = consecutive postorder intervals (coverage for v209); pend tested only in v101/v107.
-NEXT (in order): (a) pure `shapeOK` (child counts per tag, preserved by mkNode sites) and `shapeOK ∧ nodeOK on every node ⇒ ok`;
-(b) pure bound `|out|` ≤ 6·steps (for `h.length < 2^64` in `fin_ne`); (c) machine lemmas for 81/82/83 and 80 on C's Rep (blocked until C's
+NEXT (in order): (b) pure bound `|out|` ≤ 6·steps (for `h.length < 2^64` in `fin_ne`); (c) machine lemmas for 81/82/83 and 80 on C's Rep (blocked until C's
 NodeRep/OpsRep are restated on `RN`); (d) headers 60–70, loop arms 73–79, 46/54; (e) top glue: Rep-simulation + `Accepts ⇒ refParse` ⇒ `ParserSound`.

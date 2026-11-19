@@ -1,8 +1,9 @@
 /- Nano/V2Self/Proof/ParTreeOK: from the machine's checks to emittable trees, pure (parser lead).
 * `nodes n` : all nodes of a raw tree in creation (post-)order; `ArenaInv st` : the arena is exactly the nodes of the operand trees.
 * `cntOK`   : the child counts the node builders give each tag (local, per node).
-* `ok_of_nodes` : every node of `n` has `cntOK` and passes the validation `nodeOK` (`v209`) ⇒ `ok n`, hence `emit n = (toNd n).ser`. -/
-import Nano.V2Self.Proof.ParTree
+* `ok_of_nodes` : every node of `n` has `cntOK` and passes the validation `nodeOK` (`v209`) ⇒ `n.ok` (ParRunFlat), hence
+  `words_body : z.words = z.toNd.ser`. -/
+import Nano.V2Self.Proof.ParRunFlat
 namespace ParRun
 open ParSpec
 
@@ -42,42 +43,25 @@ def cntOK (n : RN) : Bool :=
   else if n.tag = 9 then true
   else false
 
-theorem no_inp_of_cnt {ks : List RN} (h : (ks.filter RN.isInp).length = 0) : ∀ k ∈ ks, k.isInp = false := by
-  intro k hk
-  cases hi : k.isInp with
-  | false => rfl
-  | true =>
-    have : k ∈ ks.filter RN.isInp := List.mem_filter.mpr ⟨hk, hi⟩
-    have := List.length_pos_of_mem this
-    omega
+theorem filter_len0 {ks : List RN} (h : (ks.filter RN.isInp).length = 0) : (ks.filter RN.isInp).isEmpty = true := by
+  simpa using List.length_eq_zero_iff.mp h
 
-theorem okF_of {ks : List RN} (h1 : ∀ k ∈ ks, k.isInp = false) (h2 : ∀ k ∈ ks, ok k = true) : okF ks = true := by
+theorem okL_of {ks : List RN} (h : ∀ k ∈ ks, k.ok = true) : RN.okL ks = true := by
   induction ks with
-  | nil => simp [okF]
-  | cons k r ih =>
-    simp [okF, h1 k (by simp), h2 k (by simp)]
-    exact ih (fun k hk => h1 k (by simp [hk])) (fun k hk => h2 k (by simp [hk]))
-
-theorem okL_of {ks : List RN} (h2 : ∀ k ∈ ks, k.isInp = false → ok k = true) : okL ks = true := by
-  induction ks with
-  | nil => simp [okL]
-  | cons k r ih =>
-    have := ih (fun k hk => h2 k (by simp [hk]))
-    cases hi : k.isInp with
-    | true => simp [okL, hi, this]
-    | false => simp [okL, hi, this, h2 k (by simp) hi]
+  | nil => rfl
+  | cons k r ih => rw [RN.okL_cons, h k (by simp), ih (fun k hk => h k (by simp [hk]))]; rfl
 
 mutual
-/-- **validation ⇒ emittable** -/
-theorem ok_of_nodes (ds : List DefR) : ∀ n : RN, (∀ m ∈ nodes n, cntOK m = true ∧ nodeOK ds m = true) → ok n = true
+/-- **validation ⇒ emittable**: every node has its tag's child count and passes `nodeOK` (`v209`) -/
+theorem ok_of_nodes (ds : List DefR) : ∀ n : RN, (∀ m ∈ nodes n, cntOK m = true ∧ nodeOK ds m = true) → n.ok = true
   | .mk t a b s p ks => by
     intro h
-    have hk : ∀ k ∈ ks, ok k = true := kids_ok ds ks (fun k hk m hm => h m (kid_nodes_sub hk hm))
+    have hk : RN.okL ks = true := okL_of (kids_ok ds ks (fun k hk m hm => h m (kid_nodes_sub hk hm)))
     obtain ⟨hc, hn⟩ := h _ (self_mem_nodes _)
     simp only [cntOK, RN.tag, RN.kids, RN.b] at hc
     simp only [nodeOK, RN.tag, RN.kids, RN.a, RN.sh, Bool.and_eq_true] at hn
     have hr := hn.1
-    unfold ok
+    rw [RN.ok_mk, hk, Bool.true_and]
     by_cases h12 : t = 1 ∨ t = 2
     · simpa [h12] using hc
     simp only [h12, if_false] at hc ⊢
@@ -87,7 +71,8 @@ theorem ok_of_nodes (ds : List DefR) : ∀ n : RN, (∀ m ∈ nodes n, cntOK m =
         · exact hm
         · rcases h3 with e | e | e <;> subst e <;> simp [hm] at hr
       simp only [h3, if_true] at hc ⊢
-      simp [hc, okF_of (no_inp_of_cnt hm) hk]
+      simp at hc
+      simp [hc, hm, filter_len0 hm]
     simp only [h3, if_false] at hc ⊢
     by_cases h4 : t = 4
     · have hm : (ks.filter RN.isInp).length = 0 := by
@@ -95,7 +80,8 @@ theorem ok_of_nodes (ds : List DefR) : ∀ n : RN, (∀ m ∈ nodes n, cntOK m =
         · exact hm
         · subst h4; simp [hm] at hr
       simp only [h4, if_true] at hc ⊢
-      simp [hc, okF_of (no_inp_of_cnt hm) hk]
+      simp at hc
+      simp [hc, hm, filter_len0 hm]
     simp only [h4, if_false] at hc ⊢
     by_cases h11 : t = 11
     · have hm : (ks.filter RN.isInp).length = 0 := by
@@ -103,27 +89,29 @@ theorem ok_of_nodes (ds : List DefR) : ∀ n : RN, (∀ m ∈ nodes n, cntOK m =
         · exact hm
         · subst h11; simp [hm] at hr
       simp only [h11, if_true] at hc ⊢
-      simp [hc, okF_of (no_inp_of_cnt hm) hk]
+      simp at hc
+      simp [hc, hm, filter_len0 hm]
     simp only [h11, if_false] at hc ⊢
     by_cases h6 : t = 6
-    · simp only [h6, if_true]
-      exact okL_of (fun k hk' _ => hk k hk')
+    · simp [h6]
     simp only [h6, if_false] at hc ⊢
     by_cases h8 : t = 8
     · simp only [h8, if_true] at hc ⊢
-      simp [hc, okL_of (fun k hk' _ => hk k hk')]
+      simpa using hc
     simp only [h8, if_false] at hc ⊢
     by_cases h9 : t = 9
-    · simp only [h9, if_true] at hc ⊢
+    · subst h9
       by_cases ha : a < 4
-      · simp only [ha, if_true]
-        match ks, hk with
-        | [], _ => simp [okT]
-        | _ :: r, hk => exact okL_of (fun k hk' _ => hk k (by simp [hk']))
-      · simp only [ha, if_false]
-        exact okL_of (fun k hk' _ => hk k hk')
+      · cases ks with
+        | nil => simp [ha] at hr
+        | cons k r =>
+          by_cases hm : ((k :: r).filter RN.isInp).length = 0
+          · simp [hm, ha] at hr
+          · simp [hm, ha] at hr
+            simp [ha, hr.2]
+      · simp [ha]
     simp [h9] at hc
-theorem kids_ok (ds : List DefR) : ∀ ks : List RN, (∀ k ∈ ks, ∀ m ∈ nodes k, cntOK m = true ∧ nodeOK ds m = true) → ∀ k ∈ ks, ok k = true
+theorem kids_ok (ds : List DefR) : ∀ ks : List RN, (∀ k ∈ ks, ∀ m ∈ nodes k, cntOK m = true ∧ nodeOK ds m = true) → ∀ k ∈ ks, k.ok = true
   | [], _ => by intro k hk; cases hk
   | k0 :: r, h => by
     intro k hk
@@ -133,8 +121,8 @@ theorem kids_ok (ds : List DefR) : ∀ ks : List RN, (∀ k ∈ ks, ∀ m ∈ no
 end
 
 /-- the def body: validated arena ⇒ the emitted words are the serialization of its spec node -/
-theorem emit_body {ds : List DefR} {z : RN} (h : ∀ m ∈ nodes z, cntOK m = true ∧ nodeOK ds m = true) : emit z = (toNd z).ser :=
-  emit_ser z (ok_of_nodes ds z h)
+theorem words_body {ds : List DefR} {z : RN} (h : ∀ m ∈ nodes z, cntOK m = true ∧ nodeOK ds m = true) : z.words = (z.toNd).ser :=
+  RN.words_eq z (ok_of_nodes ds z h)
 
 /-! ## the two arena invariants are preserved by every handler -/
 theorem arena_congr {st st' : St} (hv : st'.vals = st.vals) (ha : st'.arena = st.arena) (h : ArenaInv st) : ArenaInv st' := by
