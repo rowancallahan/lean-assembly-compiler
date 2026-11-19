@@ -6,7 +6,7 @@ import Nano.V2Self.C.Own
 namespace OwnP
 open C
 
-abbrev u (n : Nat) : UInt64 := UInt64.ofNat n
+def u (n : Nat) : UInt64 := UInt64.ofNat n
 
 theorem u_toNat {n : Nat} (h : n < 2 ^ 64) : (u n).toNat = n := by simp [u]; omega
 theorem u_add (a b : Nat) : u a + u b = u (a + b) := (UInt64.ofNat_add a b).symm
@@ -17,6 +17,7 @@ theorem u_sub {a b : Nat} (h : b ≤ a) (ha : a < 2 ^ 64) : u a - u b = u (a - b
     u_toNat ha, u_toNat (by omega), u_toNat (by omega)]
 theorem u_lt {a b : Nat} (ha : a < 2 ^ 64) (hb : b < 2 ^ 64) : (u a < u b) ↔ a < b := by
   rw [UInt64.lt_iff_toNat_lt, u_toNat ha, u_toNat hb]
+theorem u_sub' {a b : Nat} (h : b ≤ a) (ha : a < 2 ^ 64) : u a - u b = u (a - b) := u_sub h ha
 theorem u_inj {a b : Nat} (ha : a < 2 ^ 64) (hb : b < 2 ^ 64) : u a = u b ↔ a = b := by
   constructor
   · intro h; have := congrArg UInt64.toNat h; rwa [u_toNat ha, u_toNat hb] at this
@@ -26,6 +27,9 @@ theorem u_beq {a b : Nat} (ha : a < 2 ^ 64) (hb : b < 2 ^ 64) : (u a == u b) = d
   · subst h; simp
   · have : u a ≠ u b := fun e => h ((u_inj ha hb).mp e)
     simp [h, this]
+/-- every UInt64 literal as `u n` -/
+theorem lit (n : Nat) : (no_index (OfNat.ofNat n : UInt64)) = u n := rfl
+theorem u_lt' {a b : Nat} (ha : a < 2 ^ 64) (hb : b < 2 ^ 64) : (u a < u b) = (a < b) := propext (u_lt ha hb)
 theorem u_zero : (0 : UInt64) = u 0 := rfl
 theorem u_one : (1 : UInt64) = u 1 := rfl
 theorem u_and3 {a : Nat} (ha : a < 2 ^ 64) : u a &&& 3 = u (a % 4) := by
