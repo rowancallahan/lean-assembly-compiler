@@ -221,4 +221,108 @@ theorem exc_ite (cx : Ctx) (K : SC) (fsX : Nat → SemDX) (hf : ∀ n, K.fs n = 
               exact ⟨N, fun sp' a b => by simp only [hcmp, if_false]; exact hN sp' a b⟩)
         exact exc_of_eq (fun sp => by simp only [Nat.sub_zero]; rfl) this
 
+theorem exc_let (cx : Ctx) (K : SC) (fsX : Nat → SemDX) (hf : ∀ n, K.fs n = oD (fsX n)) (oc : OwnSpec.Cx) (D : List Sig)
+    (hW : RsW oc) (hFM : ∀ i args, Mo (K.fs i args)) (s w : Nat) (v b : ParSpec.Nd) (hNv : NodeOK cx K oc D v)
+    (hEv : NodeEx cx K oc D v) (hCv : NodeExC cx K fsX oc D v) (hCb : NodeExC cx K fsX oc D b) :
+    NodeExC cx K fsX oc D (.letE s w v b) := by
+  intro hC hK2 Γ ks F F' es env ew σ H hT hc hE hA h8 hhb hr hev
+  cases hT with
+  | letE hv htv hsl hfr hb =>
+    rename_i tv
+    simp only [OwnSpec.chk, Option.bind_eq_some_iff] at hc
+    obtain ⟨v0, hcv, v1, htr, hc⟩ := hc
+    split at hc
+    · rename_i hcond
+      obtain ⟨-, hsK, hv12, -⟩ := hcond
+      obtain ⟨b0, hcb, htr2⟩ := Option.bind_eq_some_iff.1 hc
+      have hev0 := hev
+      simp only [ev, bind, Except.bind] at hev
+      simp only [svF]
+      cases ea : val (ev cx v env) with
+      | error e' =>
+        rw [ea] at hev; cases hev
+        exact exc_bind_of (hCv hC hK2 Γ tv F _ _ env ew σ H hv hcv hE hA h8 hhb hr (val_cap ea)) (fun sp => rfl)
+      | ok x0 =>
+        have evx := val_ok_of ea
+        have := exc_seq (T := fun r1 sp' H' => svF K fsX b (setW ew s w r1.1) sp' H') 0 Prod.snd
+          (svF_ex K fsX hf (hEv hC hK2 Γ tv F _ _ env ew σ H x0 hv hcv hE hA h8 hhb hr evx)) (svF_mo' K fsX hf hFM v ew)
+          (fun sp r1 _ hs1 => by
+            have hs1' : sv K v ew sp H = some r1 := by rw [← svF_eq K fsX hf, hs1]; rfl
+            obtain ⟨σ1, x, evv, hA1, hR1, hE1, -, hM1, h81, hb1, -, -, -⟩ :=
+              hNv hC hK2 Γ tv F _ _ env ew σ sp H r1.1 r1.2 hv hcv hE hA h8 hhb hr hs1'
+            rw [evx] at evv
+            have hx0 : x0 = x := by simpa using evv
+            subst x0
+            obtain ⟨m2, hR2, r2, -, -⟩ := tr_spec hK2 _ x r1.1 _ _ _ hR1 hE1 htr
+            obtain ⟨-, kv, -⟩ := ev_ok hC hv env hE.ty
+            have hk := kv x evx
+            have hxl : x.length = w := by rw [← kOf_length, hk, htv]
+            have hel := hE.len
+            have hss : setSlots env s x = .ok (env.take s ++ x ++ env.drop (s + x.length)) := by
+              simp only [setSlots]; rw [if_pos (by omega)]
+            obtain ⟨env1, e1, he1⟩ := setSlots_ok (vs := x) (s := s) hE.ty (by omega)
+            rw [hss] at e1; cases e1
+            rw [hk] at he1
+            have hrv : R2 oc.K v1.1 := by
+              obtain ⟨kv', tv'⟩ := chk_keep hK2 hW hv rfl _ _ _ hcv
+              exact hr.keep (kv'.trans (tr_keep _ _ _ _ tv' htr).1)
+            have hEb' := let_envI (r := r1.1) (hE1.mono m2) hR2 hv12 r2 hxl hsK htv hsl hfr he1
+            have hle : ev cx (ParSpec.Nd.letE s w v b) env = ev cx b (env.take s ++ x ++ env.drop (s + x.length)) := by
+              simp only [ev, evx, val, bind, Except.bind]; rw [if_pos hxl]; simp only [hss]
+            rw [hle] at hev0
+            exact hCb hC hK2 _ ks _ _ _ _ _ σ1 r1.2 hb hcb hEb' hA1 h81 hb1 hrv hev0)
+        exact exc_of_eq (fun sp => by simp only [Nat.sub_zero]; rfl) this
+    · cases hc
+
+/-- argument lists -/
+theorem lst_exc (cx : Ctx) (K : SC) (fsX : Nat → SemDX) (hf : ∀ n, K.fs n = oD (fsX n)) (oc : OwnSpec.Cx) (D : List Sig)
+    (hC : CtxOK cx D) (hK2 : ∀ s, oc.K.getD s 0 ≤ 2) (hW : RsW oc) (hFM : ∀ i args, Mo (K.fs i args)) :
+    ∀ (cs : List ParSpec.Nd), (∀ n ∈ cs, NodeOK cx K oc D n ∧ NodeEx cx K oc D n ∧ NodeExC cx K fsX oc D n) →
+    ∀ {Γ ks ds F F1 es0 esA env ew σ H}, TyL D Γ cs ks → OwnSpec.lstA oc cs ds F es0 = some (F1, esA) →
+    EnvI σ oc.K F Γ env ew → AHeap K.hb K.κ H σ → H.top % 8 = 0 → K.hb ≤ H.top → R2 oc.K F →
+    evL cx cs env = .error .cap → ExC (svLF K fsX cs ew) H
+  | [], _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, hev => by simp [evL] at hev
+  | n :: r, hN, Γ, ks, ds, F, F1, es0, esA, env, ew, σ, H, hT, hl, hE, hA, h8, hb, hr, hev => by
+    cases hT with
+    | cons tn tr =>
+      simp only [OwnSpec.lstA, Option.bind_eq_some_iff] at hl
+      obtain ⟨x, hcn, hl⟩ := hl
+      split at hl
+      · simp only [evL, bind, Except.bind] at hev
+        simp only [svLF]
+        cases en : val (ev cx n env) with
+        | error e =>
+          rw [en] at hev; cases hev
+          exact pairF_excL ((hN n (by simp)).2.2 hC hK2 Γ _ F _ _ env ew σ H tn hcn hE hA h8 hb hr (val_cap en))
+        | ok vn =>
+          cases er : evL cx r env with
+          | error e =>
+            rw [en, er] at hev; cases hev
+            refine pairF_excR (svF_ex K fsX hf ((hN n (by simp)).2.1 hC hK2 Γ _ F _ _ env ew σ H vn tn hcn hE hA h8 hb hr
+              (val_ok_of en))) (svF_mo' K fsX hf hFM n ew) fun sp r1 _ h1 => ?_
+            have h1' : sv K n ew sp H = some r1 := by rw [← svF_eq K fsX hf, h1]; rfl
+            obtain ⟨σ1, v1, -, hA1, -, hE1, -, -, h81, hb1, -, -, -⟩ :=
+              (hN n (by simp)).1 hC hK2 Γ _ F _ _ env ew σ sp H r1.1 r1.2 tn hcn hE hA h8 hb hr h1'
+            exact lst_exc cx K fsX hf oc D hC hK2 hW hFM r (fun m hm => hN m (by simp [hm])) tr hl hE1 hA1 h81 hb1
+              (hr.keep (chk_keep hK2 hW tn rfl _ _ _ hcn).1) er
+          | ok vr => rw [en, er] at hev; cases hev
+      · cases hl
+
+theorem exc_pair (cx : Ctx) (K : SC) (fsX : Nat → SemDX) (hf : ∀ n, K.fs n = oD (fsX n)) (oc : OwnSpec.Cx) (D : List Sig)
+    (hW : RsW oc) (hFM : ∀ i args, Mo (K.fs i args)) (cs : List ParSpec.Nd)
+    (hN : ∀ n ∈ cs, NodeOK cx K oc D n ∧ NodeEx cx K oc D n ∧ NodeExC cx K fsX oc D n) :
+    NodeExC cx K fsX oc D (.pair cs) := by
+  intro hC hK2 Γ ks F F' es env ew σ H hT hc hE hA h8 hhb hr hev
+  cases hT with
+  | pair tl =>
+    simp only [OwnSpec.chk, Option.bind_eq_some_iff] at hc
+    obtain ⟨⟨x1, x2⟩, hl, -⟩ := hc
+    simp only [ev, bind, Except.bind] at hev
+    cases el : evL cx cs env with
+    | error e =>
+      rw [el] at hev; cases hev
+      simp only [svF]
+      exact lst_exc cx K fsX hf oc D hC hK2 hW hFM cs hN tl hl hE hA h8 hhb hr el
+    | ok vl => rw [el] at hev; cases hev
+
 end NanoMain
