@@ -22,7 +22,7 @@ structure RepAPI (ts : Buf) (toks : List Tok) (Rep : Buf → List Frame → St �
     ∃ k st', stepF f st = some (k, st') ∧ Rep (step h) (k ++ fs) st'
   /-- heap = 184384 layout cells, the tokens, the sentinel 0, then the output words (which start with the IRV word 2) -/
   len : ∀ {h fs st}, Rep h fs st → h.length = 184385 + ts.length + st.out.length
-  out : ∀ {h fs st}, Rep h fs st → h.drop (184385 + ts.length) = st.out
+  out : ∀ {h fs st}, Rep h fs st → h.length < 2 ^ 64 → h.drop (184385 + ts.length) = st.out
   /-- the cells `fin` checks are `mainOK` -/
   main : ∀ {h fs st}, Rep h fs st → bget h 0 = 2 → 0 < bget h 12 → MainCells h → mainOK st = true
 
@@ -76,15 +76,15 @@ theorem parserSound_of {ts : Buf} {toks : List Tok} {Rep : Buf → List Frame �
   obtain ⟨m, st', hm, hs, hr, ha⟩ := run_sim api 16777216 _ _ _ api.init (by rw [hH]; exact h2)
   rw [hH] at hr
   have hlen := api.len hr
-  have hout := api.out hr
   have hob : st'.out.length ≤ 1 + 6 * m := by
     have := hs.out_le
     simpa [ParRun.init] using this
   have hj : (d11 + bsize ts + 1).toNat = 184385 + ts.length := by
     have e1 : (bsize ts).toNat = ts.length := by simp [bsize, Nat.toUInt64]; omega
     rw [UInt64.toNat_add, UInt64.toNat_add, d11v, e1]; simp; omega
-  obtain ⟨_, h12, hmc, hfin⟩ := fin_ne ts H (by rw [hlen]; omega) (by rw [hj, hlen]; omega) hne
-  rw [hfin, hj, hout]
+  have hHl : H.length < 2 ^ 64 := by rw [hlen]; omega
+  obtain ⟨_, h12, hmc, hfin⟩ := fin_ne ts H hHl (by rw [hj, hlen]; omega) hne
+  rw [hfin, hj, api.out hr hHl]
   exact sound _ ⟨st', hs.toStar, ha, api.main hr h2 h12 hmc, rfl⟩
 
 end ParInv
