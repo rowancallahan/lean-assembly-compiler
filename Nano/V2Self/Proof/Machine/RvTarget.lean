@@ -16,6 +16,7 @@ noncomputable def rvTarget : JTarget where
   lay K C := K.Ok ∧ K.W = C.map encJX
   m0 s a := s.mem[a]?
   inv K s := ∀ a, 2 ^ 64 ≤ a → s.mem[a]? = K.m0 a
+  words C := C.map encJX
 
 theorem obs_mem (t : Proven.St) {a : Nat} (ha : a < 2 ^ 64) :
     (riscvObserve t).memory (UInt64.ofNat a) = (t.mem[a]?).map UInt8.ofBitVec := by
@@ -142,6 +143,16 @@ theorem rel_of {K : LayW} {C : List J} {s0 : Proven.St} {p : Nat × CallProbe.St
     exact h.fr a (by unfold wok; omega) (by unfold outB; omega)
 
 theorem rvLaws : rvTarget.Laws where
+  reg_map := ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  kept_map r hr := by
+    left; refine ⟨r, ?_, ?_, rfl, ?_⟩ <;>
+      simp [rvTarget, riscv, riscvMapping] at hr <;> rcases hr with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;> decide
+  ram := by simp [rvTarget, riscv]
+  lay_init K C h hW := by
+    have hn : 4 * rvTarget.blockLen * C.length = 4 * K.W.length := by
+      rw [hW]; simp [rvTarget]
+    rw [hn] at h
+    exact ⟨⟨h.b4, h.blo, h.bhi, h.wlo, h.whi, h.cw, h.ibl, h.ibh, h.obl, h.obh, h.oc⟩, hW⟩
   m0_obs s a ha := obs_mem s ha
   inv_init K s h a _ := by rw [h]; rfl
   step_ok := by

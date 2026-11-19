@@ -8,6 +8,7 @@ run to the owner's `CompileCorrect`/`CompileRuns` is proved ONCE over a `JTarget
 `Rel` (the J ↔ machine relation) is defined here, through `M.observe` only. -/
 import Spec.Top
 import Nano.V2Self.Proof.Machine.JLay
+import Nano.V2Self.Proof.Machine.NoW
 namespace JT
 open Proven.Top SimW CallProbe
 
@@ -33,6 +34,8 @@ structure JTarget where
   m0 : M.State → Nat → Option (BitVec 8)
   /-- a target-private invariant kept along `Rel` (RISC-V: Sail memory beyond 2^64 unchanged) -/
   inv : LayW → M.State → Prop
+  /-- the code words the layout records (`LayW.W`; RISC-V: the RV64 words) -/
+  words : List J → List Nat
 
 namespace JTarget
 variable (T : JTarget)
@@ -57,8 +60,34 @@ structure Rel (K : LayW) (C : List J) (s0 : T.M.State) (p : Nat × CallProbe.St)
     (T.M.observe s).memory (UInt64.ofNat a) = (K.m0 a).map UInt8.ofBitVec
   inv : T.inv K s
 
+/-- the generic layout conditions (`LayW.Ok` with the machine's RAM window and `n` code bytes) -/
+structure LayOK (M : Machine) (n : Nat) (K : LayW) : Prop where
+  b4 : K.base % 4 = 0
+  blo : M.ramStart ≤ K.base
+  bhi : K.base + n ≤ M.ramEnd
+  wlo : M.ramStart ≤ K.lo
+  whi : K.hi ≤ M.ramEnd
+  cw : K.base + n ≤ K.lo ∨ K.hi ≤ K.base
+  ibl : M.ramStart ≤ K.ib
+  ibh : K.ib + K.il ≤ M.ramEnd
+  obl : M.ramStart ≤ K.ob
+  obh : K.ob + K.ol ≤ M.ramEnd
+  oc : K.ob + K.ol ≤ K.base ∨ K.base + n ≤ K.ob
+
 /-- **the laws a target proves** (per instruction kind, against the generic `Rel`) -/
 structure Laws : Prop where
+  /-- the calling convention's registers, as J registers (a0..a3 = x10..x13, ra = x1, sp = x2) -/
+  reg_map : T.reg 1 = T.M.mapping.returnAddress ∧ T.reg 2 = T.M.mapping.workTop ∧
+    T.reg 10 = T.M.mapping.inputAddress ∧ T.reg 11 = T.M.mapping.inputLength ∧
+    T.reg 12 = T.M.mapping.workAddress ∧ T.reg 13 = T.M.mapping.outputAddress ∧
+    T.M.mapping.status = T.reg 10 ∧ T.M.mapping.outputLength = T.reg 11
+  /-- every kept register is a J register Gen keeps (`keepR`, or s0 = x8), or one no block touches -/
+  kept_map : ∀ r ∈ T.M.mapping.kept, (∃ j, 0 < j ∧ j < 32 ∧ T.reg j = r ∧ (Templates.keepR j = true ∨ j = 8)) ∨
+    ((∀ j, 0 < j → j < 32 → T.reg j ≠ r) ∧ r ∉ T.scratch)
+  /-- the RAM window lies in [2048, 2^32) -/
+  ram : 2048 ≤ T.M.ramStart ∧ T.M.ramEnd ≤ 2 ^ 32
+  /-- the generic layout conditions give the target's -/
+  lay_init : ∀ (K : LayW) (C : List J), LayOK T.M (4 * T.blockLen * C.length) K → K.W = T.words C → T.lay K C
   /-- `m0` is what `observe` shows -/
   m0_obs : ∀ (s : T.M.State) a, a < 2 ^ 64 → (T.M.observe s).memory (UInt64.ofNat a) = (T.m0 s a).map UInt8.ofBitVec
   /-- the invariant holds at entry, for the entry memory -/
