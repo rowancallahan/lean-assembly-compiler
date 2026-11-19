@@ -28,20 +28,30 @@ def Cons (F F' : List Bool) (s : Nat) : Prop := OwnSpec.dead F s = false ∧ Own
 def Ch (σ σ' : AH) (Γ : List (Option Kd)) (F F' : List Bool) (env : List W) (ew : Env) : Prop :=
   ∀ a, (σ a).isSome → (∀ s l, Kn Γ s → Cons F F' s → env[s]? = some (.b l) → (ew s).toNat ≠ a) → σ' a = σ a
 
-/-- **result invariant** for entries `es` (OwnSpec): 0 a word; 1 an owned block that no readable live buffer slot
-holds (pairwise distinct among the 1-entries); a tagged entry of slot s = slot s's value and word -/
-def ResI (σ : AH) (Kk : List Nat) (F : List Bool) (Γ : List (Option Kd)) (env : List W) (ew : Env)
-    (es : List Nat) (v : List W) (vs : List UInt64) : Prop :=
-  es.length = v.length ∧ v.length = vs.length ∧
-  ∀ i (h1 : i < es.length) (h2 : i < v.length) (h3 : i < vs.length),
-    (es[i] < 4 → VR σ v[i] vs[i]) ∧
-    (es[i] = 0 → ∃ x, v[i] = .w x) ∧
-    (es[i] = 1 → ∀ l, v[i] = .b l →
-      (∀ s ls, Kn Γ s → Kk.getD s 0 ≠ 0 → OwnSpec.dead F s = false → env[s]? = some (.b ls) → ew s ≠ vs[i]) ∧
-      ∀ j (g1 : j < es.length) (g2 : j < v.length) (g3 : j < vs.length) lj, j ≠ i → es[j] = 1 → v[j] = .b lj →
-        vs[j] ≠ vs[i]) ∧
-    (4 ≤ es[i] → vs[i] = ew (es[i] / 4 - 1) ∧ env[es[i] / 4 - 1]? = some v[i] ∧
-      es[i] % 4 = Kk.getD (es[i] / 4 - 1) 0 ∧ Kn Γ (es[i] / 4 - 1))
+/-- no owned buffer entry of the list sits at address `u` -/
+def OwnFree : List Nat → List W → List UInt64 → UInt64 → Prop
+  | e :: es, x :: v, u' :: vs, u => (e = 1 → ∀ l, x = .b l → u' ≠ u) ∧ OwnFree es v vs u
+  | _, _, _, _ => True
+
+/-- **result invariant** for entries `es` (OwnSpec): < 4 related; 0 a word; 1 a buffer that no readable live buffer
+slot holds and no later owned buffer entry repeats; a tagged entry = slot (e/4 − 1)'s value and word, of that kind -/
+def ResI (σ : AH) (Kk : List Nat) (F : List Bool) (Γ : List (Option Kd)) (env : List W) (ew : Env) :
+    List Nat → List W → List UInt64 → Prop
+  | [], [], [] => True
+  | e :: es, x :: v, u :: vs =>
+    (e < 4 → VR σ x u) ∧ (e = 0 → ∃ y, x = .w y) ∧
+    (e = 1 → ∀ l, x = .b l →
+      (∀ s ls, Kn Γ s → Kk.getD s 0 ≠ 0 → OwnSpec.dead F s = false → env[s]? = some (.b ls) → ew s ≠ u) ∧
+      OwnFree es v vs u) ∧
+    (4 ≤ e → u = ew (e / 4 - 1) ∧ env[e / 4 - 1]? = some x ∧ e % 4 = Kk.getD (e / 4 - 1) 0 ∧ Kn Γ (e / 4 - 1)) ∧
+    ResI σ Kk F Γ env ew es v vs
+  | _, _, _ => False
+
+theorem ResI.len {σ Kk F Γ env ew} : ∀ {es : List Nat} {v : List W} {vs : List UInt64},
+    ResI σ Kk F Γ env ew es v vs → es.length = v.length ∧ v.length = vs.length
+  | [], [], [], _ => ⟨rfl, rfl⟩
+  | _ :: _, _ :: _, _ :: _, h => by have := ResI.len h.2.2.2.2; simp [this.1, this.2]
+  | [], _ :: _, _, h | [], [], _ :: _, h | _ :: _, [], _, h | _ :: _, _ :: _, [], h => by simp [ResI] at h
 
 theorem leafS_some {V : Env → UInt64} {ew : Env} {sp : Nat} {H H' : Hp} {vs : List UInt64}
     (h : leafS V ew sp H = some (vs, H')) : vs = [V ew] ∧ H' = H := by

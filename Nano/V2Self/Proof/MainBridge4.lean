@@ -17,10 +17,35 @@ theorem node_const (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (c : UIn
   intro _ _ Γ ks F F' es env ew σ sp H vs H' _ hc hE hA h8 hb hs
   simp only [OwnSpec.chk, Option.some.injEq, Prod.mk.injEq] at hc; obtain ⟨rfl, rfl⟩ := hc
   simp only [sv] at hs; obtain ⟨rfl, rfl⟩ := leafS_some hs
-  refine ⟨σ, [.w c], rfl, hA, ⟨rfl, rfl, fun i h1 h2 h3 => ?_⟩, hE, Ch.refl _ _ _ _ _, Mono.refl _, h8, hb⟩
-  simp at h1; subst h1; simp [VR]
+  exact ⟨σ, [.w c], rfl, hA, by simp [ResI, VR], hE, Ch.refl _ _ _ _ _, Mono.refl _, h8, hb⟩
 
-theorem node_loc (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (s w : Nat) : NodeOK cx K oc D (ParSpec.Nd.loc s w) := by
+theorem locE_succ (Kk : List Nat) (s w : Nat) :
+    OwnSpec.locE Kk s (w + 1) = (Kk.getD s 0 + 4 * (s + 1)) :: OwnSpec.locE Kk (s + 1) w := by
+  simp only [OwnSpec.locE, List.range_succ_eq_map, List.map_cons, List.map_map]
+  congr 1; apply List.map_congr_left; intro j _; simp only [Function.comp]
+  rw [show s + 1 + j = s + (j + 1) by omega]
+
+theorem resI_loc {σ : AH} {Kk : List Nat} {F : List Bool} {Γ : List (Option Kd)} {env : List W} {ew : Env}
+    (hK2 : ∀ s, Kk.getD s 0 ≤ 2) : ∀ (w s : Nat), s + w ≤ env.length → (∀ j, s ≤ j → j < s + w → Kn Γ j) →
+    ResI σ Kk F Γ env ew (OwnSpec.locE Kk s w) ((env.drop s).take w) ((List.range w).map fun j => ew (s + j))
+  | 0, s, _, _ => by simp [OwnSpec.locE, ResI]
+  | w + 1, s, hl, hk => by
+    rw [locE_succ, List.range_succ_eq_map]
+    have hd : (env.drop s).take (w + 1) = env[s]'(by omega) :: (env.drop (s + 1)).take w := by
+      rw [List.drop_eq_getElem_cons (show s < env.length by omega), List.take_succ_cons]
+    rw [hd]
+    simp only [List.map_cons, List.map_map]
+    have := hK2 s
+    have e1 : (Kk.getD s 0 + 4 * (s + 1)) / 4 - 1 = s := by omega
+    refine ⟨fun h => by omega, fun h => by omega, fun h => by omega, fun _ => ?_, ?_⟩
+    · rw [e1]; refine ⟨by simp, by simp [List.getElem?_eq_getElem (show s < env.length by omega)], by omega,
+        hk s (Nat.le_refl _) (by omega)⟩
+    · have := resI_loc (σ := σ) (F := F) (env := env) (ew := ew) hK2 w (s + 1) (by omega)
+        (fun j h1 h2 => hk j (by omega) (by omega))
+      simpa [Function.comp, Nat.add_assoc, Nat.add_comm 1] using this
+
+theorem node_loc (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (s w : Nat) :
+    NodeOK cx K oc D (ParSpec.Nd.loc s w) := by
   intro _ hK2 Γ ks F F' es env ew σ sp H vs H' hT hc hE hA h8 hb hs
   simp only [OwnSpec.chk] at hc; split at hc
   · simp only [Option.some.injEq, Prod.mk.injEq] at hc; obtain ⟨rfl, rfl⟩ := hc
@@ -30,16 +55,8 @@ theorem node_loc (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (s w : Nat
       have hk1 := hk.1
       have hl := hE.len
       have he : ev cx (ParSpec.Nd.loc s w) env = .ok (.inl ((env.drop s).take w)) := by simp [ev, hl, hk1]
-      refine ⟨σ, _, he, hA, ⟨by simp [OwnSpec.locE]; omega, by simp; omega, fun i h1 h2 h3 => ?_⟩, hE,
+      exact ⟨σ, _, he, hA, resI_loc hK2 w s (by omega) (fun j h1 h2 => known_get hk j h1 h2), hE,
         Ch.refl _ _ _ _ _, Mono.refl _, h8, hb⟩
-      simp only [OwnSpec.locE, List.length_map, List.length_range] at h1
-      simp only [OwnSpec.locE, List.getElem_map, List.getElem_range]
-      refine ⟨fun h => by omega, fun h => by omega, fun h => by omega, fun _ => ?_⟩
-      have := hK2 (s + i)
-      have e1 : (oc.K.getD (s + i) 0 + 4 * (s + i + 1)) / 4 - 1 = s + i := by omega
-      rw [e1]; simp only [List.getElem_take, List.getElem_drop]
-      refine ⟨by simp, by rw [List.getElem?_eq_getElem (by omega)], by omega, ?_⟩
-      exact known_get hk (s + i) (by omega) (by omega)
   · cases hc
 
 /-! ## word operands -/
@@ -100,11 +117,10 @@ theorem two_spec {a0 b0 y : List Bool × List Nat} (h : OwnSpec.two a0 b0 = some
 theorem word_of {σ : AH} {Kk : List Nat} {F : List Bool} {Γ : List (Option Kd)} {env : List W} {ew : Env}
     {e : Nat} {v : List W} {vs : List UInt64} (hR : ResI σ Kk F Γ env ew [e] v vs) (hE : EnvI σ Kk F Γ env ew)
     (he : e = 0 ∨ (4 ≤ e ∧ e % 4 = 0)) : ∃ x, v = [.w x] ∧ vs = [x] := by
-  obtain ⟨l1, l2, hr⟩ := hR
-  match v, vs, l1, l2 with
-  | [v0], [u0], _, _ =>
-    obtain ⟨c1, c2, -, c4⟩ := hr 0 (by simp) (by simp) (by simp)
-    simp only [List.getElem_cons_zero] at c1 c2 c4
+  obtain ⟨l1, l2⟩ := hR.len
+  obtain ⟨v0, rfl⟩ := List.length_eq_one_iff.1 l1.symm
+  obtain ⟨u0, rfl⟩ := List.length_eq_one_iff.1 l2.symm
+  · obtain ⟨c1, c2, -, c4, -⟩ := hR
     rcases he with rfl | ⟨h4, h0⟩
     · obtain ⟨x, rfl⟩ := c2 rfl; have := c1 (by omega); simp only [VR] at this; exact ⟨x, rfl, by rw [this]⟩
     · obtain ⟨e1, e2, e3, hk⟩ := c4 h4
@@ -137,8 +153,8 @@ theorem node_bin (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (op : Nat)
     obtain ⟨-, kb, -⟩ := ev_ok hC tb env hE.ty
     obtain ⟨x1, rfl⟩ := kw1 (ka v1 eva)
     obtain ⟨x2, rfl⟩ := kw1 (kb v2 evb)
-    have la : a0.2.length = 1 := by rw [hR1.1]; rfl
-    have lb : b0.2.length = 1 := by rw [hR2.1]; rfl
+    have la : a0.2.length = 1 := by rw [hR1.len.1]; rfl
+    have lb : b0.2.length = 1 := by rw [hR2.len.1]; rfl
     obtain ⟨ea, hea⟩ : ∃ ea, a0.2 = [ea] := by
       match h : a0.2, la with | [ea], _ => exact ⟨ea, rfl⟩
     obtain ⟨eb, heb⟩ : ∃ eb, b0.2 = [eb] := by
@@ -153,7 +169,7 @@ theorem node_bin (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (op : Nat)
     have hev : ev cx (ParSpec.Nd.bin op a b) env = .ok (.inl [.w (CallProbe.aluf op x1 x2)]) := by
       simp [ev, eva, evb, val, binop_aluf op x1 x2 o1 o2, bind, Except.bind, pure, Except.pure]
     rw [y1]
-    refine ⟨σ2, _, hev, hA2, ⟨rfl, rfl, fun i h1 h2 h3 => ?_⟩, hE2, Ch.trans hCh1 hCh2 hM1 hM2, hM1.trans hM2, h82, hb2⟩
-    simp at h1; subst h1; simp [VR]
+    refine ⟨σ2, _, hev, hA2, ?_, hE2, Ch.trans hCh1 hCh2 hM1 hM2, hM1.trans hM2, h82, hb2⟩
+    simp [ResI, VR]
 
 end NanoMain
