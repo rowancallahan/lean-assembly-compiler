@@ -26,6 +26,19 @@ theorem inpC_rn {h : Buf} {u : UInt64} {n : RN} {ids : List UInt64} (r : RNRep h
 /-- B's input test, as the machine reads it (holds once `RN.isInp` compares the width mod 2^64) -/
 def IsInpW : Prop := ∀ n : RN, n.isInp = (n.tag == 2 && n.b.toUInt64 == 0)
 
+theorem toU_beq0 (b : Nat) : (b.toUInt64 == 0) = (b % 2 ^ 64 == 0) := by
+  have hz : b.toUInt64 = 0 ↔ b % 2 ^ 64 = 0 := by
+    constructor
+    · intro h; have := congrArg UInt64.toNat h; simpa using this
+    · intro h; apply UInt64.toNat_inj.mp; simpa using h
+  cases h1 : (b.toUInt64 == 0) <;> cases h2 : (b % 2 ^ 64 == 0) <;> simp_all
+
+/-- B's `RN.isInp` compares the width word mod 2^64, so `IsInpW` holds -/
+theorem isInpW : IsInpW := by
+  intro n
+  cases n with
+  | mk t a b sh p ks => simp only [RN.isInp, RN.tag, RN.b, toU_beq0]
+
 theorem inpC_isInp (hW : IsInpW) {h : Buf} {u : UInt64} {n : RN} {ids : List UInt64} (r : RNRep h u n ids) :
     inpC h u = if n.isInp then 1 else 0 := by
   rw [inpC_rn r, hW n]
