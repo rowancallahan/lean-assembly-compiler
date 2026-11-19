@@ -19,9 +19,12 @@ theorem CxRel.transport {st st' : St} {cx : Cx} (h : CxRel st cx) (hb : st'.bind
   obtain ⟨a, b, c, d, e⟩ := h
   exact ⟨by rw [hb]; exact a, by rw [hb]; exact b, by rw [hb]; exact c, by rw [hd]; exact d, by rw [hd]; exact e⟩
 
+/-- an argument value: typed, not a provisional self-call, and a `len'` node has the Nat code -/
+def ValOK (v : RN) (ty : Ty) : Prop := TyRel v ty ∧ v.pend = false ∧ (v.tag = 9 → v.a = 1 → v.sh = some .nt)
+
 /-- an atom segment as the spec sees it -/
 def AtomSpec (cx : Cx) (st st' : St) : Prop :=
-  ∃ v ty, Pushed st st' v ∧ TyRel v ty ∧ ∃ F, ∀ f, F ≤ f → pAtom f cx false st.toks st.nx = some (v.toNd, ty, st'.toks, st'.nx)
+  ∃ v ty, Pushed st st' v ∧ ValOK v ty ∧ ∃ F, ∀ f, F ≤ f → pAtom f cx false st.toks st.nx = some (v.toNd, ty, st'.toks, st'.nx)
 
 /-- the hypothesis on parenthesised atoms (runs shorter than `N`) -/
 def ParenH (N : Nat) (cx : Cx) : Prop :=
@@ -39,8 +42,22 @@ theorem atomSeg_spec {N : Nat} {cx : Cx} (hP : ParenH N cx) {n : Nat} (hn : n �
   · exact hP n' (by omega) st st' r ht hrun hc
   · obtain ⟨_, he⟩ := hrun.nil_inv
     cases he
-    obtain ⟨v, ty, r, rfl, hty, _, hp⟩ := atomLeaf_spec hc hl false st.nx
-    exact ⟨v, ty, ⟨rfl, rfl, rfl, rfl⟩, hty, 1, fun f hf => by
+    obtain ⟨v, ty, r, rfl, hty, hpe, hp⟩ := atomLeaf_spec hc hl false st.nx
+    have h9 : v.tag = 9 → v.a = 1 → v.sh = some .nt := by
+      intro h9 h1
+      cases hl with
+      | num _ => cases h9
+      | nil _ => cases h1
+      | bnew _ => cases h1
+      | loc _ _ hl' =>
+        unfold locOf at hl'; split at hl'
+        · simp at hl'
+        · simp only [Option.some.injEq] at hl'
+          have := congrArg St.vals hl'; simp at this; rw [← this] at h9; cases h9
+      | cst _ _ _ _ _ hm =>
+        obtain ⟨_, he⟩ := mkNode_inv hm
+        have := congrArg St.vals he; simp at this; rw [this] at h9; cases h9
+    exact ⟨v, ty, ⟨rfl, rfl, rfl, rfl⟩, ⟨hty, hpe, h9⟩, 1, fun f hf => by
       obtain ⟨g, rfl⟩ : ∃ g, f = g + 1 := ⟨f - 1, by omega⟩
       exact hp g⟩
 
@@ -60,7 +77,7 @@ inductive ArgsMatch : List Ps → List (RN × Ty) → Prop
 /-- `k` atom segments are `pArgs` for every parameter list they match -/
 theorem args_spec {N : Nat} {cx : Cx} (hP : ParenH N cx) : ∀ {k m : Nat} {st st' : St}, Atoms k st st' m → m ≤ N → CxRel st cx →
     ∃ vs : List (RN × Ty), vs.length = k ∧ st'.vals = (vs.map (·.1)).reverse ++ st.vals ∧ st'.binds = st.binds ∧ st'.defs = st.defs ∧
-      st'.cur = st.cur ∧ (∀ p ∈ vs, TyRel p.1 p.2) ∧
+      st'.cur = st.cur ∧ (∀ p ∈ vs, ValOK p.1 p.2) ∧
       ∃ F, ∀ f, F ≤ f → ∀ ps : List Ps, ArgsMatch ps vs →
         pArgs f cx ps st.toks st.nx = some (vs.map (fun p => (p.1.toNd, p.2)), st'.toks, st'.nx) := by
   intro k m st st' h
