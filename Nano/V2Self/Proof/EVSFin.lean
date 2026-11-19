@@ -442,4 +442,81 @@ theorem fin3_bsetS {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {hb E0
     · intro a ha hn; rw [hm]
 
 
+theorem bnew_EVHS {KL : LayW} {C : List J} {pc tgt κ p nl hb E0 : Nat} {Inv : St → Prop} (hI : InvOKH hb p Inv)
+    (hC : At C pc (bnewT tgt pc κ)) :
+    EVHS KL C pc (bnewT tgt pc κ).length p nl Inv hb E0 (fun _ => False) (fun _ => False) (bnewS κ) where
+  stable := fun _ _ _ _ _ => rfl
+  run := fun s env H v H' I0 hx0 hF hO hR L0 A0 hS => by
+    have hR0 := hR
+    obtain ⟨hb16, hb1, htop, hal, hx30, hcells⟩ := hR
+    simp only [bnewS] at hS
+    by_cases hg : H.top + 8 * (κ + 2) + 8 ≤ (s.x 31).toNat ∧ (s.x 31).toNat < 2 ^ 62 ∧ κ < 2 ^ 40
+    · simp only [hg, and_self, if_true, Option.some.injEq, Prod.mk.injEq] at hS
+      obtain ⟨hv, hH⟩ := hS
+      subst hH
+      obtain ⟨hr, hsp, hk⟩ := hg
+      have hO' := hO
+      obtain ⟨o1, o2, o3⟩ := hO'
+      have hE : (s.x 31).toNat ≤ E0 := by have := L0.top; omega
+      obtain ⟨s', hk', x31, x30, x5, hm, hb', hxr⟩ := bnew_srun (L := KL) s hC hx0 hk hsp (by rw [hx30]; exact hr)
+        (by rw [hx30]; exact L0.wok (by omega) (by omega) hal) (by rw [hx30]; exact L0.wok (by omega) (by omega) (by omega))
+        (L0.wok (by omega) (by omega) (by have := L0.a31; omega))
+      have lt64 := (s.x 31).toNat_lt
+      have lt30 := (s.x 30).toNat_lt
+      have e30 : s.x 30 = UInt64.ofNat H.top := by rw [← hx30]; simp
+      have hFK := hO
+      obtain ⟨hf1, hf2, hf3⟩ := hO
+      have sl : ∀ k, k < nl → (s.x 31).toNat ≤ slotAddr p (s.x 8).toNat k := fun k hk => slotAddr_ge hf1 hf2 hk
+      rw [hx30] at hm
+      have hne1 : ∀ a, a < (s.x 31).toNat - 8 → a ≠ (s.x 31).toNat - 8 := fun a h => by omega
+      refine ⟨s', env, SStarX.of hk', ?_, hxr 0 (by decide) (by decide) (by decide) (by decide) (by decide) ▸ hx0, x31, ?_,
+        hxr 8 (by decide) (by decide) (by decide) (by decide) (by decide), ?_, fun _ _ => rfl, ?_, ?_, ?_⟩
+      · apply hI s s' I0 (hxr 8 (by decide) (by decide) (by decide) (by decide) (by decide))
+          (hxr 28 (by decide) (by decide) (by decide) (by decide) (by decide))
+          (hxr 29 (by decide) (by decide) (by decide) (by decide) (by decide)) hb'
+        intro a ha
+        rw [hm, upd_other _ _ (by omega), upd_other _ _ (by omega), upd_other _ _ (by omega)]
+      · rw [hm, upd_same, e30]; exact hv
+      · intro k hk
+        rw [hxr 8 (by decide) (by decide) (by decide) (by decide) (by decide), hm, upd_other _ _ (by have := sl k hk; omega),
+          upd_other _ _ (by have := sl k hk; omega), upd_other _ _ (by have := sl k hk; omega)]
+        exact hF k hk
+      · refine ⟨hb16, (by show hb ≤ H.top + 8 * (κ + 2); omega), ?_, (by show (H.top + 8 * (κ + 2)) % 8 = 0; omega), ?_, ?_⟩
+        · show H.top + 8 * (κ + 2) ≤ (s'.x 31).toNat; omega
+        · show (s'.x 30).toNat = H.top + 8 * (κ + 2); omega
+        · intro a w h1 h2 hw
+          show s'.m a = w
+          rw [hm]
+          have h2' : a < H.top + 8 * (κ + 2) := h2
+          by_cases ha : a = H.top
+          · subst ha; simp only [if_true, Option.some.injEq] at hw
+            rw [← hw, upd_other _ _ (by omega), upd_other _ _ (by omega), upd_same]
+          · by_cases hb8 : a = H.top + 8
+            · subst hb8; simp only [ha, if_false, if_true, Option.some.injEq] at hw
+              rw [← hw, upd_other _ _ (by omega), upd_same]
+            · by_cases hlt : a < H.top
+              · simp only [ha, hb8, hlt, if_false, if_true] at hw
+                rw [upd_other _ _ (by omega), upd_other _ _ (by omega), upd_other _ _ (by omega)]
+                exact hcells a w h1 hlt hw
+              · simp only [ha, hb8, hlt, if_false] at hw; exact absurd hw (by simp)
+      · intro a w hw
+        simp only [] at hw
+        by_cases ha : a = H.top
+        · omega
+        · by_cases hb8 : a = H.top + 8
+          · omega
+          · by_cases hlt : a < H.top
+            · simp only [ha, hb8, hlt, if_false, if_true] at hw; exact A0 a w hw
+            · simp only [ha, hb8, hlt, if_false] at hw; exact absurd hw (by simp)
+      · intro a ha _
+        rw [hm, upd_other _ _ (by omega), upd_other _ _ (by omega), upd_other _ _ (by omega)]
+    · simp only [hg, if_false] at hS; exact absurd hS (by simp)
+
+
+/-- BNEW κ -/
+theorem bnewXS {KL : LayW} {C : List J} {pc κ p nl hb E0 : Nat} {Inv : St → Prop} {R W : Nat → Prop}
+    (hI : InvOKH hb p Inv) (hC : At C pc (bnewT 1 pc κ)) :
+    EVHwS KL C pc (bnewT 1 pc κ).length p nl Inv hb E0 R W 1 (one (bnewS κ)) :=
+  (ofEVHS (bnew_EVHS (nl := nl) hI hC)).mono (fun _ h => h.elim) (fun _ h => h.elim)
+
 end Templates
