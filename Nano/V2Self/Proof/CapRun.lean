@@ -199,4 +199,118 @@ theorem fin3Cap {KL : LayW} {C : List J} {pc lp p nl hb E0 : Nat} {Inv : St → 
     obtain ⟨l, H'⟩ := r; rcases l with _ | ⟨a, _ | ⟨b, _ | ⟨c, _ | ⟨d, l⟩⟩⟩⟩ <;> simp only [] <;>
       first | exact map_ne_cap _ (ofO_ne_cap _) | simp)
 
+/-! ## IF: the head (pop the two operands, compare, branch) as a lemma -/
+
+theorem ifHeadS {KL : LayW} {C : List J} {q lt p nl hb E0 cmp : Nat} {Inv : St → Prop} (hI : InvOKH hb p Inv)
+    (hH : At C q (ifHeadG cmp lt)) (hCl : q + 6 + lt < C.length) (hC18 : C.length < 2 ^ 18)
+    (s s1 : St) (env1 : Env) (H1 : Hp) (a b : UInt64) (O0 : FrameOK p nl s) (L0 : Lay KL hb E0 p s)
+    (I1 : Inv s1) (z1 : s1.x 0 = 0) (p1 : (s1.x 31).toNat = (s.x 31).toNat - 8 * 2)
+    (va : s1.m ((s.x 31).toNat - 8) = a) (vb : s1.m ((s.x 31).toNat - 8 - 8) = b) (e81 : s1.x 8 = s.x 8)
+    (F1 : Frame p nl s1 env1) (R1 : HRel hb s1 H1) (eb : s1.b = s.b) :
+    ∃ s2, SStarX KL C (q, s1) (if cmpF cmp a b then q + 5 else q + 6 + lt, s2) ∧ Inv s2 ∧ s2.x 0 = 0 ∧
+      (s2.x 31).toNat = (s.x 31).toNat ∧ s2.x 8 = s.x 8 ∧ s2.m = s1.m ∧ s2.b = s.b ∧ Frame p nl s2 env1 ∧
+      FrameOK p nl s2 ∧ HRel hb s2 H1 ∧ Lay KL hb E0 p s2 := by
+  obtain ⟨o1, o2, o3⟩ := O0
+  have lt64 := (s.x 31).toNat_lt
+  have L1 : Lay KL hb E0 p s1 := L0.post e81 eb p1 (by have := R1.1; have := R1.2.1; have := R1.2.2.1; omega)
+  have c0 := hH.at 0 (by simp [ifHeadG]); have c1 := hH.at 1 (by simp [ifHeadG])
+  have c2 := hH.at 2 (by simp [ifHeadG]); have c3 := hH.at 3 (by simp [ifHeadG])
+  have c4 := hH.at 4 (by simp [ifHeadG])
+  simp only [ifHeadG, List.getElem?_cons_zero, List.getElem?_cons_succ, Nat.add_zero] at c0 c1 c2 c3 c4
+  have sp1 := hrel_sp R1
+  have ea0 : ea (s1.x 31) 0 = (s.x 31).toNat - 8 - 8 := by simp [ea, p1]; omega
+  have ea8 : ea (s1.x 31) 8 = (s.x 31).toNat - 8 := by simp [ea, p1]; omega
+  have ea16 : ea (s1.x 31) 16 = (s.x 31).toNat := by simp [ea, p1]; omega
+  let s2 : St := ⟨upd (upd (upd s1.x 6 b) 5 a) 31 (UInt64.ofNat (s.x 31).toNat), s1.m, s1.b⟩
+  have r2 : CallProbe.run C 3 (q, s1) = some (q + 3, s2) := by
+    simp [CallProbe.run, CallProbe.step, c0, c1, c2, CallProbe.wr, ea0, ea8, va, vb, upd_other _ _ (show (31:Nat) ≠ 6 by decide),
+      upd_other _ _ (show (31:Nat) ≠ 5 by decide), ea16, s2]
+  have x31 : (s2.x 31).toNat = (s.x 31).toNat := by simp [s2, upd]
+  have x8 : s2.x 8 = s.x 8 := by simp [s2, upd, e81]
+  have x30 : s2.x 30 = s1.x 30 := by simp [s2, upd]
+  have x5 : s2.x 5 = a := by simp [s2, upd]
+  have x6 : s2.x 6 = b := by simp [s2, upd]
+  have z2 : s2.x 0 = 0 := by simp [s2, upd, z1]
+  have I2 : Inv s2 := hI s1 s2 I1 (by simp [s2, upd]) (by simp [s2, upd]) (by simp [s2, upd]) rfl (fun _ _ => rfl)
+  have F2 : Frame p nl s2 env1 := by
+    intro k hk; show s1.m (slotAddr p (s2.x 8).toNat k) = env1 k; rw [x8, ← e81]; exact F1 k hk
+  have O2 : FrameOK p nl s2 := ⟨by rw [x31, x8]; omega, o2, by rw [x8]; omega⟩
+  have R2 : HRel hb s2 H1 := HRel_stack R1 x30 (by rw [x31]; have := R1.2.2.1; omega) (fun _ _ _ => rfl)
+  have w1a : wok KL ((s.x 31).toNat - 8 - 8) := L1.wok (by have := R1.2.1; have := R1.2.2.1; omega)
+    (by have := L0.top; omega) (by have := L1.a31; omega)
+  have w1b : wok KL ((s.x 31).toNat - 8) := L1.wok (by have := R1.2.1; have := R1.2.2.1; omega)
+    (by have := L0.top; omega) (by have := L1.a31; omega)
+  have st2 : SStarX KL C (q, s1) (q + 3, s2) := sstarX_of_run r2 (fun j hj c hc => by
+    rcases j with _ | _ | _ | j
+    · simp [CallProbe.run] at hc; subst hc; simp only [SafeX, c0]; rw [ea0]
+      exact ⟨by decide, by decide, by decide, by decide, by omega, w1a⟩
+    · simp [CallProbe.run, CallProbe.step, c0, CallProbe.wr, ea0] at hc; subst hc; simp only [SafeX, c1]
+      refine ⟨by decide, by decide, by decide, by decide, ?_, ?_⟩
+      · simp [upd]; omega
+      · have : ea (upd s1.x 6 (s1.m ((s.x 31).toNat - 8 - 8)) 31) 8 = (s.x 31).toNat - 8 := by simpa [upd] using ea8
+        simpa [this] using w1b
+    · simp [CallProbe.run, CallProbe.step, c0, c1, CallProbe.wr, ea0, ea8, upd] at hc; subst hc; simp only [SafeX, c2]; simp [upd]; omega
+    · omega)
+  have safe3 : SafeX KL C (q + 3, s2) := by
+    have hc3 := c3; unfold cmpJ at hc3; split at hc3 <;> (simp only [SafeX, hc3]; decide)
+  have sc := step_cmp (s := s2) c3
+  rw [x5, x6] at sc
+  have L2 : Lay KL hb E0 p s2 := L0.post' x8 (by show s1.b = s.b; exact eb) (by rw [x31])
+  by_cases hc : cmpF cmp a b
+  · rw [if_pos hc] at sc ⊢
+    exact ⟨s2, st2.trans (.head safe3 sc (.refl _)), I2, z2, x31, x8, rfl, eb, F2, O2, R2, L2⟩
+  · rw [if_neg hc] at sc ⊢
+    have sj0 : CallProbe.step C (q + 4, s2) = some (q + 6 + lt, CallProbe.wr s2 0 (UInt64.ofNat (s2.b + 4 * (q + 4 + 1)))) := by
+      simp [CallProbe.step, c4]; omega
+    have w2 : CallProbe.wr s2 0 (UInt64.ofNat (s2.b + 4 * (q + 4 + 1))) = s2 := by simp [CallProbe.wr]
+    rw [w2] at sj0
+    have sj2 : SafeX KL C (q + 4, s2) := by simp only [SafeX, c4]; simp; omega
+    exact ⟨s2, st2.trans (.head safe3 sc (.head sj2 sj0 (.refl _))), I2, z2, x31, x8, rfl, eb, F2, O2, R2, L2⟩
+
+theorem ifCap {KL : LayW} {C : List J} {pc lp lt p nl hb E0 cmp : Nat} {Inv : St → Prop} {RP WP RT RE : Nat → Prop}
+    {SP ST SE : SemWX} (hI : InvOKH hb p Inv)
+    (hP : EVHwS KL C pc lp p nl Inv hb E0 RP WP 2 (oW SP)) (cP : CapW KL C pc p nl Inv hb E0 RP SP)
+    (hH : At C (pc + lp) (ifHeadG cmp lt))
+    (cT : CapW KL C (pc + lp + 5) p nl Inv hb E0 RT ST) (cE : CapW KL C (pc + lp + 6 + lt) p nl Inv hb E0 RE SE)
+    (sT : ∀ k, RT k → ¬ WP k) (sE : ∀ k, RE k → ¬ WP k) (hCl : pc + lp + 6 + lt < C.length)
+    (hC18 : C.length < 2 ^ 18) :
+    CapW KL C pc p nl Inv hb E0 (fun k => RP k ∨ RT k ∨ RE k) (ifF cmp SP ST SE) where
+  stable := fun env env' sp H h => by
+    simp only [ifF]
+    rw [cP.stable env env' sp H (fun k hk => h k (Or.inl hk))]
+    cases SP env' sp H with
+    | error e => rfl
+    | ok r =>
+      simp only [Except.bind]
+      rw [cT.stable env env' sp r.2 (fun k hk => h k (Or.inr (Or.inl hk))),
+        cE.stable env env' sp r.2 (fun k hk => h k (Or.inr (Or.inr hk)))]
+  cap := fun s env H I0 z0 F0 O0 R0 L0 A0 hS => by
+    simp only [ifF] at hS
+    rcases bind_cap hS with h1 | ⟨⟨ab, H1⟩, hSP, h2⟩
+    · exact cP.cap s env H I0 z0 F0 O0 R0 L0 A0 h1
+    obtain ⟨s1, env1, r1, I1, z1, p1, l1, v1, e81, F1, ag1, R1, A1, m1⟩ :=
+      hP.run s env H ab H1 I0 z0 F0 O0 R0 L0 A0 (by simp [oW, hSP])
+    match ab, l1, h2, v1 with
+    | [a, b], _, h2, v1 =>
+    have lt64 := (s.x 31).toNat_lt
+    have sp1 := hrel_sp R1
+    have va : s1.m ((s.x 31).toNat - 8) = a := by simpa using v1 0 (by omega)
+    have vb : s1.m ((s.x 31).toNat - 8 - 8) = b := by
+      have := v1 1 (by omega); rw [show (s.x 31).toNat - 8 * (1 + 1) = (s.x 31).toNat - 8 - 8 by omega] at this
+      simpa using this
+    dsimp only at h2
+    obtain ⟨s2, st2, I2, z2, x31, x8, _, _, F2, O2, R2, L2⟩ :=
+      ifHeadS hI hH hCl hC18 s s1 env1 H1 a b O0 L0 I1 z1 p1 va vb e81 F1 R1 r1.star.b
+    by_cases hc : cmpF cmp a b
+    · rw [if_pos hc] at h2 st2
+      have hST : ST env1 (s2.x 31).toNat H1 = .error .cap := by
+        rw [x31, cT.stable env1 env _ _ (fun k hk => ag1 k (sT k hk))]; exact h2
+      obtain ⟨s3, r3, I3, z3⟩ := cT.cap s2 env1 H1 I2 z2 F2 O2 R2 L2 A1 hST
+      exact ⟨s3, r1.trans (st2.trans r3), I3, z3⟩
+    · rw [if_neg hc] at h2 st2
+      have hSE : SE env1 (s2.x 31).toNat H1 = .error .cap := by
+        rw [x31, cE.stable env1 env _ _ (fun k hk => ag1 k (sE k hk))]; exact h2
+      obtain ⟨s3, r3, I3, z3⟩ := cE.cap s2 env1 H1 I2 z2 F2 O2 R2 L2 A1 hSE
+      exact ⟨s3, r1.trans (st2.trans r3), I3, z3⟩
+
 end Templates
