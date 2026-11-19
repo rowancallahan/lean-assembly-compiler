@@ -101,6 +101,47 @@ theorem mem_bindSlots_kind : ∀ (g : List (List (List Nat) × TyR)) (s : Nat) (
     · exact List.mem_append_right _ (mem_bindSlots_kind g _ _ e he)
 
 
+/-! ## tokens are consumed from the front -/
+theorem mkNode_toks {st st' : St} {t a b : Nat} {s : Option Sh} {p : Bool} {n : Nat}
+    (h : mkNode st t a b s p n = some st') : st'.toks = st.toks ∧ st'.all = st.all := by
+  unfold mkNode at h; split at h <;> cases h; exact ⟨rfl, rfl⟩
+
+theorem locOf_toks {st st' : St} {bd : Bd} (h : locOf st bd = some st') : st'.toks = st.toks ∧ st'.all = st.all := by
+  unfold locOf at h; split at h <;> cases h; exact ⟨rfl, rfl⟩
+
+/-- every handler keeps `all` and leaves a suffix of the tokens -/
+theorem stepF_toks {f : Frame} {st st' : St} {k : List Frame} (h : stepF f st = some (k, st')) :
+    st'.all = st.all ∧ st'.toks <:+ st.toks := by
+  cases f <;> simp only [stepF] at h <;> (repeat' split at h) <;>
+    first
+    | (cases h; done)
+    | (cases h; exact ⟨rfl, List.suffix_refl _⟩)
+    | (cases h; refine ⟨rfl, ?_⟩; simp_all [List.suffix_cons_iff]; done)
+    | (cases h; refine ⟨rfl, ?_⟩; simp [leaf]; done)
+    | (cases h; refine ⟨rfl, ?_⟩; simp_all [leaf, List.suffix_cons_iff]; done)
+    | (cases h; refine ⟨rfl, ?_⟩; simp_all; done)
+    | (obtain ⟨s2, h2, h3⟩ := Option.map_eq_some_iff.mp h; cases h3
+       first
+       | (obtain ⟨e1, e2⟩ := mkNode_toks h2; rw [e1, e2]; simp_all [List.suffix_cons_iff]; done)
+       | (obtain ⟨e1, e2⟩ := locOf_toks h2; rw [e1, e2]; simp_all [List.suffix_cons_iff]; done)
+       | (obtain ⟨s1, h1, h2'⟩ := Option.bind_eq_some_iff.mp h2
+          obtain ⟨e1, e2⟩ := mkNode_toks h1
+          obtain ⟨e3, e4⟩ := mkNode_toks h2'
+          rw [e3, e4, e1, e2]; simp_all [List.suffix_cons_iff]))
+
+
+theorem Star.toks {c d : List Frame × St} (h : Star c d) : d.2.all = c.2.all ∧ d.2.toks <:+ c.2.toks := by
+  induction h with
+  | refl => exact ⟨rfl, List.suffix_refl _⟩
+  | @step c c1 d hs _ ih =>
+    obtain ⟨fs, st⟩ := c
+    cases fs with
+    | nil => simp [stepS] at hs
+    | cons f rest =>
+      obtain ⟨k, st', h1, rfl⟩ := stepS_some.mp hs
+      obtain ⟨e1, e2⟩ := stepF_toks h1
+      exact ⟨ih.1.trans e1, ih.2.trans e2⟩
+
 /-- the state right after `.defs` opened def `x` -/
 structure DefStart (st : St) (x : List Nat) : Prop where
   binds : st.binds = []
@@ -118,23 +159,24 @@ theorem plainB_spec {n : Nat} {ks : List Frame} {st0 fin : St} {x : List Nat} {d
     (h : StarN n (.binders :: ks, st0) ([], fin)) (hS : DefStart st0 x) (hD : DRel st0.defs dis) (hNN : DefsNN st0.defs)
     (hfr : findD st0.defs x = none) (hnl : ∀ r, st0.toks ≠ .k 8 :: .k 35 :: .k 17 :: r) :
     ∃ st2 n', n' < n ∧ StarN n' (.defs :: ks, st2) ([], fin) ∧ st2.toks.length < st0.toks.length ∧
+      st2.all = st0.all ∧ st2.toks <:+ st0.toks ∧
       (st2.arena.all (nodeOK st2.defs) = true →
         ∃ di da, (∀ f, 4 * st0.toks.length + 4 ≤ f → pDef f dis (.k 1 :: .id x :: st0.toks) = some (di, da, st2.toks)) ∧
           st2.out = st0.out ++ da.ser ∧ DRel st2.defs (dis ++ [di]) ∧ DefsNN st2.defs) := by
-  obtain ⟨g, r, n1, ty', nni', hn1, hlr, hpB, hps, hFJ, h1⟩ := binders_spec n true h
-  simp only [hS.binds, hS.nx, List.any_nil, List.nil_append] at hps hFJ h1
+  obtain ⟨g, r, n1, ty', nni', hn1, hlr, hpB, hps, hFJ, hsB, h1⟩ := binders_spec n true h
+  simp only [hS.binds, hS.nx, List.any_nil, List.nil_append] at hps hFJ hsB h1
   have hkind := mem_bindSlots_kind g 0 false
   have hinp := bindSlots_inpInv g false 0 [] ⟨fun i h => absurd h (by simp), fun _ q hq => by simp at hq⟩ rfl hFJ
     (pBinders_noLs _ true _ g _ (hpB _ (Nat.le_refl _)))
-  generalize hbs : bindSlots 0 false g = BS at hps h1 hkind hinp
+  generalize hbs : bindSlots 0 false g = BS at hps hsB h1 hkind hinp
   obtain ⟨E, PS, NPW⟩ := BS
   simp only [List.nil_append] at hinp
-  dsimp only at hps h1
-  obtain ⟨resT, r3, n2, hn2, hl3, hpT, h2, hnnt⟩ := (ty_sound n1).1 h1
+  dsimp only at hps hsB h1
+  obtain ⟨resT, r3, n2, hn2, hl3, hpT, hsT, h2, hnnt⟩ := ty_star h1
   dsimp only at hl3 hpT h2
   have hcur0 : st0.cur.params = [] := by rw [hS.cur]; rfl
   have hE : ∀ e ∈ E, e.2.2 ≠ .fuel ∧ psCode e.2.2 ≠ .nt := fun e he => let h := hps _ (hkind e he); ⟨h.1, h.2.1⟩
-  obtain ⟨r4, v, st', n3, hn3, ht4, hw, hP, h3, hstar, hNNv, _, hV⟩ := body_spec h2 rfl (cxrel_body hD rfl hE hS.arm) hS.arm (by
+  obtain ⟨r4, v, st', n3, hn3, ht4, hw, hP, hsBody, h3, hstar, hNNv, _, hV⟩ := body_spec h2 rfl (cxrel_body hD rfl hE hS.arm) hS.arm (by
     refine ⟨fun bd hbd => ?_, fun d hd => ?_⟩
     · simp only [St.withTy, List.mem_map] at hbd
       obtain ⟨e, he, rfl⟩ := hbd
@@ -147,12 +189,13 @@ theorem plainB_spec {n : Nat} {ks : List Frame} {st0 fin : St} {x : List Nat} {d
         obtain ⟨q, hq, rfl⟩ := hp
         exact (hps q hq).2.2)
   simp only [St.withTy, bodyRow] at hP hV hstar ht4 hw
-  obtain ⟨z, n4, hn4, hz, hzs, hzi, h4⟩ := defEnd_tail h3
+  obtain ⟨z, n4, hn4, hz, hzs, hzi, hsE, h4⟩ := defEnd_tail h3
+  have hsAll := (hsB.trans (hsT.trans (hsBody.trans hsE))).toks
   have hvz : z = v := by rw [hP.vals, hS.vals] at hz; simpa using hz.symm
   subst hvz
   have hl4 : st'.toks.length < st0.toks.length := by
     have := hP.toks; simp only at this; rw [ht4] at hl3; simp at hl3; omega
-  refine ⟨_, n4, by omega, h4, hl4, fun hval => ?_⟩
+  refine ⟨_, n4, by omega, h4, hl4, hsAll.1, hsAll.2, fun hval => ?_⟩
   dsimp only at hval
   have inv := Star.inv hstar ⟨by simp [ArenaInv, hS.arena, hS.vals], by simp [CntInv, hS.arena]⟩
   dsimp only at inv
@@ -261,6 +304,7 @@ theorem plainC_spec {n : Nat} {ks : List Frame} {S fin : St} {x : List Nat} {dis
     (hfr : findD S.defs x = none) :
     (∃ st' n', n' ≤ n ∧ Star ([.tyAtom], S) ([], st') ∧ StarN n' (.afterColon :: ks, st') ([], fin) ∧ ∃ r, st'.toks = .k 17 :: r) ∨
     (∃ st2 n', n' ≤ n ∧ StarN n' (.defs :: ks, st2) ([], fin) ∧ st2.toks.length < S.toks.length + 1 ∧
+      st2.all = S.all ∧ st2.toks <:+ (.k 8 :: S.toks) ∧
       (st2.arena.all (nodeOK st2.defs) = true →
         ∃ di da, (∀ f, 4 * (S.toks.length + 1) + 4 ≤ f → pDef f dis (.k 1 :: .id x :: .k 8 :: S.toks) = some (di, da, st2.toks)) ∧
           st2.out = S.out ++ da.ser ∧ DRel st2.defs (dis ++ [di]) ∧ DefsNN st2.defs)) := by
@@ -296,52 +340,11 @@ theorem plainC_spec {n : Nat} {ks : List Frame} {S fin : St} {x : List Nat} {dis
           have hst : st'.toks = r' := by have := congrArg (fun c => c.2.toks) he; simpa using this
           rw [ht, ← hr'] at hst
           simp at hst
-        obtain ⟨st2, n', hn', h2, hl, hv⟩ := plainB_spec hB ⟨hS.binds, hS.vals, hS.arena, hS.nx, hS.arm, hS.cur⟩ hD hNN hfr hnl
-        exact ⟨st2, n', by omega, h2, by simpa using hl, fun hval => by simpa using hv hval⟩
+        obtain ⟨st2, n', hn', h2, hl, ha, hsu, hv⟩ := plainB_spec hB ⟨hS.binds, hS.vals, hS.arena, hS.nx, hS.arm, hS.cur⟩ hD hNN hfr hnl
+        exact ⟨st2, n', by omega, h2, by simpa using hl, by simpa using ha, by simpa using hsu, fun hval => by simpa using hv hval⟩
       · match n2, e2 with
         | n2 + 1, e2 => obtain ⟨_, _, h1, _⟩ := e2.head; simp [stepF, ht, c9, c17] at h1
 
-
-/-! ## tokens are consumed from the front -/
-theorem mkNode_toks {st st' : St} {t a b : Nat} {s : Option Sh} {p : Bool} {n : Nat}
-    (h : mkNode st t a b s p n = some st') : st'.toks = st.toks ∧ st'.all = st.all := by
-  unfold mkNode at h; split at h <;> cases h; exact ⟨rfl, rfl⟩
-
-theorem locOf_toks {st st' : St} {bd : Bd} (h : locOf st bd = some st') : st'.toks = st.toks ∧ st'.all = st.all := by
-  unfold locOf at h; split at h <;> cases h; exact ⟨rfl, rfl⟩
-
-/-- every handler keeps `all` and leaves a suffix of the tokens -/
-theorem stepF_toks {f : Frame} {st st' : St} {k : List Frame} (h : stepF f st = some (k, st')) :
-    st'.all = st.all ∧ st'.toks <:+ st.toks := by
-  cases f <;> simp only [stepF] at h <;> (repeat' split at h) <;>
-    first
-    | (cases h; done)
-    | (cases h; exact ⟨rfl, List.suffix_refl _⟩)
-    | (cases h; refine ⟨rfl, ?_⟩; simp_all [List.suffix_cons_iff]; done)
-    | (cases h; refine ⟨rfl, ?_⟩; simp [leaf]; done)
-    | (cases h; refine ⟨rfl, ?_⟩; simp_all [leaf, List.suffix_cons_iff]; done)
-    | (cases h; refine ⟨rfl, ?_⟩; simp_all; done)
-    | (obtain ⟨s2, h2, h3⟩ := Option.map_eq_some_iff.mp h; cases h3
-       first
-       | (obtain ⟨e1, e2⟩ := mkNode_toks h2; rw [e1, e2]; simp_all [List.suffix_cons_iff]; done)
-       | (obtain ⟨e1, e2⟩ := locOf_toks h2; rw [e1, e2]; simp_all [List.suffix_cons_iff]; done)
-       | (obtain ⟨s1, h1, h2'⟩ := Option.bind_eq_some_iff.mp h2
-          obtain ⟨e1, e2⟩ := mkNode_toks h1
-          obtain ⟨e3, e4⟩ := mkNode_toks h2'
-          rw [e3, e4, e1, e2]; simp_all [List.suffix_cons_iff]))
-
-
-theorem Star.toks {c d : List Frame × St} (h : Star c d) : d.2.all = c.2.all ∧ d.2.toks <:+ c.2.toks := by
-  induction h with
-  | refl => exact ⟨rfl, List.suffix_refl _⟩
-  | @step c c1 d hs _ ih =>
-    obtain ⟨fs, st⟩ := c
-    cases fs with
-    | nil => simp [stepS] at hs
-    | cons f rest =>
-      obtain ⟨k, st', h1, rfl⟩ := stepS_some.mp hs
-      obtain ⟨e1, e2⟩ := stepF_toks h1
-      exact ⟨ih.1.trans e1, ih.2.trans e2⟩
 
 /-- how the spec's type parser can produce `Nat`: the bare keyword, or a parenthesized type (last token `)`) -/
 theorem pTy_nt_form : ∀ (f : Nat) (T R : List Tok), pTy f T = some (.sh .nt, R) →

@@ -26,10 +26,12 @@ def defHdr (st : St) : List UInt64 :=
 appended, and the run continues at `.defs` -/
 theorem defEnd_tail {n : Nat} {ks : List Frame} {st fin : St} (h : StarN n (.defEnd :: ks, st) ([], fin)) :
     ∃ z n', n' < n ∧ st.vals = [z] ∧ z.sh = st.cur.res ∧ z.isInp = false ∧
+      Star (.defEnd :: ks, st) (.defs :: ks, { st with out := st.out ++ defHdr st ++ z.words ++ [21], defs := st.defs ++ [st.cur] }) ∧
       StarN n' (.defs :: ks, { st with out := st.out ++ defHdr st ++ z.words ++ [21], defs := st.defs ++ [st.cur] }) ([], fin) := by
   match n, h with
   | n + 1, h =>
     obtain ⟨k, st1, h1, h2⟩ := h.head
+    have hs0 := Star.one (fs := ks) h1
     obtain ⟨toks, nx, binds, defs, cur, vals, arena, ty, stash, arm, sslot, out, acc, all⟩ := st
     simp only [stepF] at h1
     match vals, h1 with
@@ -46,7 +48,7 @@ theorem defEnd_tail {n : Nat} {ks : List Frame} {st fin : St} (h : StarN n (.def
           out ++ defHdr ⟨toks, nx, binds, defs, cur, [z], arena, ty, stash, arm, sslot, out, acc, all⟩ ++ z.words, acc, all⟩)
           (by simp only [stepF]; rfl)
         obtain ⟨m', hm, h3⟩ := StarN.cut (r1.trans r2) h2
-        exact ⟨m', by omega, rfl, hc.1, by simpa using hc.2, h3⟩
+        exact ⟨m', by omega, rfl, hc.1, by simpa using hc.2, hs0.trans (r1.trans r2), h3⟩
       · cases h1
 
 
@@ -84,5 +86,24 @@ theorem trRes_ls {t : TyR} (h : t ≠ .sh .ls) : trRes t = .ls ↔ t = .lst := b
   | sh s => simp only [trRes]; constructor
             · intro e; subst e; exact absurd rfl h
             · intro e; cases e
+
+
+/-- B's `ty_sound` with the run prefix: the type run as a `Star` -/
+theorem ty_star {n : Nat} {ks : List Frame} {st fin : St} (h : StarN n (.tyAtom :: ks, st) ([], fin)) :
+    ∃ t r n', n' < n ∧ r.length < st.toks.length ∧ (∀ f, 2 * st.toks.length + 2 ≤ f → pTy f st.toks = some (t, r)) ∧
+      Star (.tyAtom :: ks, st) (ks, st.withTy r (trRes t)) ∧ StarN n' (ks, st.withTy r (trRes t)) ([], fin) ∧
+      (trRes t).nnt = true := by
+  obtain ⟨st'', n1, n2, hn, e1, e2⟩ := StarN.split (k := [.tyAtom]) (ks := ks) h
+  obtain ⟨t, r, n', hn', hl, hp, e3, hnt⟩ := (ty_sound n1).1 e1
+  cases e3 with
+  | refl => exact ⟨t, r, n2, by omega, hl, hp, by simpa using Star.append ks e1.toStar, e2, hnt⟩
+  | step hs _ => simp [stepS] at hs
+
+
+/-- the first step of a counted run, with its `Star` -/
+theorem StarN.head_star {n : Nat} {f : Frame} {fs : List Frame} {st fin : St} (h : StarN (n + 1) (f :: fs, st) ([], fin)) :
+    ∃ k st', stepF f st = some (k, st') ∧ Star (f :: fs, st) (k ++ fs, st') ∧ StarN n (k ++ fs, st') ([], fin) := by
+  obtain ⟨k, st', h1, h2⟩ := h.head
+  exact ⟨k, st', h1, Star.one h1, h2⟩
 
 end ParRun

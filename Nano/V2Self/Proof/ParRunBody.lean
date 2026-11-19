@@ -19,6 +19,7 @@ def bodyRow (st : St) : DefR := { st.cur with npw := st.nx, res := st.ty, loop :
 theorem body_spec {n : Nat} {ks : List Frame} {st fin : St} {cx : Cx} {w : Sh} (h : StarN n (.plainBody :: ks, st) ([], fin))
     (hty : st.ty = some w) (hc : CxRel st cx) (harm : st.arm = false) (hn : CxNN { st with cur := bodyRow st }) :
     ∃ r4 v st' n', n' < n ∧ st.toks = .k 9 :: r4 ∧ w ≠ .nt ∧ Post { st with cur := bodyRow st, toks := r4 } st' st.vals v ∧
+      Star (.plainBody :: ks, st) (.defEnd :: ks, st') ∧
       StarN n' (.defEnd :: ks, st') ([], fin) ∧ Star ([.expr 0 0], { st with cur := bodyRow st, toks := r4 }) ([], st') ∧
       ShNN v.sh ∧ Stop 0 st'.toks ∧
       (VT (rows { st with cur := bodyRow st }) v → ∃ ty, TyRel v ty ∧ PT v ∧
@@ -26,6 +27,7 @@ theorem body_spec {n : Nat} {ks : List Frame} {st fin : St} {cx : Cx} {w : Sh} (
   match n, h with
   | n + 1, h =>
     obtain ⟨k, st1, h1, h2⟩ := h.head
+    have hs0 := Star.one (fs := ks) h1
     have hw : w ≠ .nt := by
       intro e; subst e; simp [stepF, hty] at h1
     obtain ⟨r4, ht⟩ : ∃ r4, st.toks = .k 9 :: r4 := by
@@ -40,6 +42,7 @@ theorem body_spec {n : Nat} {ks : List Frame} {st fin : St} {cx : Cx} {w : Sh} (
         | id x => simp [stepF, hty, hw, ht] at h1
     simp [stepF, hty, hw, ht] at h1
     obtain ⟨rfl, rfl⟩ := h1
+    simp only [List.cons_append, List.nil_append] at hs0
     have hc' := hc.cur_change harm (bodyRow st) r4
     have hn' : CxNN { st with cur := bodyRow st, toks := r4 } := hn
     obtain ⟨st'', n1, n2, hn12, e1, e2⟩ := StarN.split (k := [.expr 0 0]) (ks := .defEnd :: ks) h2
@@ -48,7 +51,8 @@ theorem body_spec {n : Nat} {ks : List Frame} {st fin : St} {cx : Cx} {w : Sh} (
     obtain ⟨rfl, he⟩ := StarN.nil_inv h3
     have e3 : st' = st'' := by have := congrArg Prod.snd he; simpa using this.symm
     subst e3
-    refine ⟨r4, v, st', n2, by omega, ht, hw, by simpa [bodyRow, hty] using hP, e2, by simpa [bodyRow, hty] using e1.toStar,
+    refine ⟨r4, v, st', n2, by omega, ht, hw, by simpa [bodyRow, hty] using hP,
+      hs0.trans (by simpa using Star.append (.defEnd :: ks) e1.toStar), e2, by simpa [bodyRow, hty] using e1.toStar,
       hNN, hS, fun hvt => ?_⟩
     obtain ⟨ty, h4, h5, h6⟩ := hV (by simpa [bodyRow, hty, rows] using hvt)
     exact ⟨ty, h4, h5, fun f hf => by simpa using h6 f (by simpa using hf)⟩
