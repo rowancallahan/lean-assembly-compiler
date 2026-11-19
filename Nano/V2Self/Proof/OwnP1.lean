@@ -91,7 +91,7 @@ def RT (W : WCx) : Prop :=
 /-- bounds -/
 def Bnd (W : WCx) (A : AS) : Prop :=
   W.ns < 2 ^ 20 ∧ W.npw ≤ W.ns ∧ (∀ k ∈ W.K, k ≤ 2) ∧ W.x.length < 2 ^ 40 ∧ A.i < 2 ^ 40 ∧
-  A.Φ.length ≤ 2 ^ 30 ∧ A.sn.length ≤ 2 ^ 30 ∧ A.es.length ≤ 2 ^ 40 ∧ (∀ e ∈ A.es, e < 2 ^ 30) ∧
+  A.Φ.length ≤ 2 ^ 30 ∧ A.sn.length ≤ 2 ^ 30 ∧ A.es.length ≤ 2 ^ 24 ∧ (∀ e ∈ A.es, e < 2 ^ 30) ∧
   (∀ r ∈ A.Φ, r.small) ∧ A.ph < 3
 
 /-- the whole state -/

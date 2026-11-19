@@ -31,7 +31,7 @@ Debug: `lake env lean --run Testing/nano/v2self/own/own_dbg.lean AST.bin` (first
 
 ## Status (2026-11-19)
 DONE: spec, S stage, pipeline; C's own source accepted; fixpoint B3 == B2 = 329,732 bytes,
-sha256 441df4d27d883165f71a98650dc4ffaabb59d7778cd35d6fa3cad70f6fe0d7dd (o41 checks every field it uses < 2^20, the AST < 2^40 words, value stack < 2^40, frames / snapshots < 2^30); alias_d + 5 aliasing programs rejected;
+sha256 be3b296f0b9af495dedd077c99655f992c211f11f521b19e8685d2e07406db5a (o41 checks every field it uses < 2^20, the AST < 2^40 words, value stack < 2^24, frames / snapshots < 2^30); alias_d + 5 aliasing programs rejected;
 qemu_regress OK.  The checker caught a real slip in o38's first draft (read after consume).
 NEXT: (1) soundness `C.o41 (serialize p) ≠ [] → WF p → Linear p` (WF: prim arities, numeric fields < 2^64; `Nd.ser`
 is not injective otherwise); (2) kernel/#guard accepted example; (3) `ParsesProgram → WF`; (4) fuzz patterns in pargen.py.

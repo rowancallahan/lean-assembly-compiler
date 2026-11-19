@@ -1442,7 +1442,7 @@ def o5 (s : Buf) : Buf := bset (bset s 1 1) 5 1
 
 def o6 (s v : Buf) (e : UInt64) : Buf × Buf :=
   let u := bget s 7;
-  if u < 1099511627776 then (bset s 7 (u + 1), o0 v u e) else (o5 s, v)
+  if u < 16777216 then (bset s 7 (u + 1), o0 v u e) else (o5 s, v)
 
 def o7 (s f : Buf) (q : UInt64) : UInt64 :=
   let n := bget s 6;

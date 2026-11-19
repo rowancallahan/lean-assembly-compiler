@@ -1464,10 +1464,10 @@ def o3 (s : Buf) (g n d a b : UInt64) : Buf :=
 /-- hard error: stop the walk -/
 def o5 (s : Buf) : Buf := bset (bset s 1 1) 5 1
 
-/-- push a value entry (at most 2^40) -/
+/-- push a value entry (at most 2^24: the entry loops have fuel 2^24) -/
 def o6 (s v : Buf) (e : UInt64) : Buf × Buf :=
   let u := bget s 7;
-  if u < 1099511627776 then (bset s 7 (u + 1), o0 v u e) else (o5 s, v)
+  if u < 16777216 then (bset s 7 (u + 1), o0 v u e) else (o5 s, v)
 
 /-- slot q is dead (or no slot) -/
 def o7 (s f : Buf) (q : UInt64) : UInt64 :=
