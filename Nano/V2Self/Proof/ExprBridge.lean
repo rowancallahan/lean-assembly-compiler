@@ -55,6 +55,7 @@ theorem encG_bgeu (a b : Nat) (o : Int) (h : GoodW (.bgeu a b o)) :
     toU_toNat _ (by omega), toU_toNat _ (by omega), iu8]
   have : sI 8 = 8 := by decide
   rw [this]
+  rfl
 
 theorem encG_beq (a b : Nat) (o : Int) (h : GoodW (.beq a b o)) :
     (encG (.beq a b o)).toNat = SimW.encJ (.beq a b o) := by
