@@ -29,7 +29,7 @@ the closure, all 369 modules are mapped, and none is unassigned.
 
 ## Deletions (after the owner agrees; all are outside REVIEW's closure or have no reachable declaration)
 
-1. **F's abandoned certificate:** `Proof/MainCert`, `MainCertC0`–`C9`, `MainCertRules`, `MainPure` (about 2,900 lines).
+1. **F's abandoned certificate:** `Proof/MainCert`, `MainCertC0`–`C9`, `MainCertRules`, `MainPure` (about 2,870 lines).
    `Proof/Cert` supersedes it, and nothing imports it. C3–C5 do not even build.
 2. **The old compiler chain:** `Nano/V2Self/{Asm,Bridge,Driver,Expand,Inl,Lex,Parse}.lean` and
    `Nano/V2Self/C/{Asm,Expand,Inl,Lex,Main,Par0,Parse}.lean` (about 1,440 lines). Only Testing scripts use them:
@@ -37,8 +37,10 @@ the closure, all 369 modules are mapped, and none is unassigned.
    them together with those scripts, or move all of it to `Nano/V2Self/Legacy/` (owner's choice).
 3. **Superseded proof modules:** `ParInvGlue` (`h_core`; ParInvRun proves the step without it), `ParLet` (Astra-11
    parser probe), `MainConvX1` (31 lemmas, none reachable; imported only by MainConvX2), and `StartAll` (`start_run`,
-   superseded by StartAllS's `start_runX`; it needs its two importers re-pointed first). Mark each [check] before
-   deleting.
+   superseded by StartAllS's `start_runX`; it needs its two importers re-pointed first), and `Cert/Fun.lean`
+   (`g56_fun`, unused since G's generic `den_unfold`). `GenRef.g35_fun` in GenTop is still reachable through Gen's
+   proofs, so it stays. Mark each [check] before deleting. Not dead: `RunsShift` (E's new, in-progress statement for
+   D).
 4. **The 310 unreachable declarations** in live modules (list in NANO_V2_DEADCODE.md §4). The large groups are in
    `ParInv` (31), `Templates` (26), `ParRunArgs` (12), `ExprEV` (11), `Call` (9) and `GenRef` (8). Delete them per
    module, with one build per module.
@@ -69,8 +71,8 @@ the closure, all 369 modules are mapped, and none is unassigned.
 2. Rewrite every `import Nano.V2Self.Proof.X` line repo-wide with a sed script generated from the same table:
    `Nano/`, `Testing/` scripts, `REVIEW.lean` and `Testing/scripts/deadcode.lean`.
 3. Update the generators that print import lines:
-   - `Testing/nano/v2self/cert/gen_cert.py`: Cert paths stay; its FUNEQ entry `Nano.V2Self.Proof.GenTop` becomes
-     `…Gen.GenTop`.
+   - `Testing/nano/v2self/cert/gen_cert.py`: the Cert paths stay. Since G's generic `den_unfold` (728a92b) it has no
+     FUNEQ table, so there is nothing else to change.
    - `Testing/nano/v2self/srclink/gen.lean` prints `Nano.V2Self.Proof.Src.*` and imports `Proof.ParSpec`. Either
      change it to `Proof.SrcLink.*`, or keep the subfolder name `Src` under `SrcLink/` to leave the generator alone.
 4. `lakefile.toml` needs no change (the `Nano` lib glob is `Nano.+`).
@@ -398,12 +400,12 @@ call per module, so they fit as separate small units, one per module group.
 | `Nano.V2Self.Proof.Cert.Defs4` | (same) |
 | `Nano.V2Self.Proof.Cert.Defs40` | (same) |
 | `Nano.V2Self.Proof.Cert.Defs41` | (same) |
+| `Nano.V2Self.Proof.Cert.Defs42` | (same) |
 | `Nano.V2Self.Proof.Cert.Defs5` | (same) |
 | `Nano.V2Self.Proof.Cert.Defs6` | (same) |
 | `Nano.V2Self.Proof.Cert.Defs7` | (same) |
 | `Nano.V2Self.Proof.Cert.Defs8` | (same) |
 | `Nano.V2Self.Proof.Cert.Defs9` | (same) |
-| `Nano.V2Self.Proof.Cert.Fun` | (same) |
 | `Nano.V2Self.Proof.Cert.OutSpec` | (same) |
 | `Nano.V2Self.Proof.Cert.PC` | (same) |
 | `Nano.V2Self.Proof.Cert.Rules` | (same) |

@@ -12,15 +12,15 @@ from the roots. Constructors of a reachable inductive also count.
 **What is counted:** user declarations only. Auxiliary names are skipped: `match_`, `proof_`, `eq_`, `_`-internal
 names, recursors, `noConfusion`, `inj`, `sizeOf` and instances.
 
-**Result:** 39024 constants are reachable in total.
-In Nano.V2Self modules: 9641 of 9993 counted declarations are reachable.
+**Result:** 39022 constants are reachable in total.
+In Nano.V2Self modules: 9640 of 9992 counted declarations are reachable.
 
 **Caveats:**
 - Tactic-only modules (`Cert.Tac`) define tactics, not constants, so they show as dead although the certificate needs them to build.
 - `#guard`, `example` and non-vacuity files (`OwnNV`) are tests, not dead code.
 - A DECL-DEAD lemma may still be used by another dead lemma.
 
-## 1. Modules outside REVIEW's import closure (32): nothing on the path to the roots imports them
+## 1. Modules outside REVIEW's import closure (34): nothing on the path to the roots imports them
 
 | module | lines | note |
 |---|---|---|
@@ -38,6 +38,7 @@ In Nano.V2Self modules: 9641 of 9993 counted declarations are reachable.
 | `Nano.V2Self.Inl` | 59 | OLD chain (pre-Par1/Gen), used only by Testing/nano/v2self scripts |
 | `Nano.V2Self.Lex` | 109 | OLD chain (pre-Par1/Gen), used only by Testing/nano/v2self scripts |
 | `Nano.V2Self.Parse` | 275 | OLD chain (pre-Par1/Gen), used only by Testing/nano/v2self scripts |
+| `Nano.V2Self.Proof.Cert.Fun` | 21 | O's g56_fun (FUNEQ), unused since G's generic den_unfold (728a92b) |
 | `Nano.V2Self.Proof.MainCert` | 209 | F's abandoned certificate (superseded by Proof/Cert) |
 | `Nano.V2Self.Proof.MainCertC0` | 257 | F's abandoned certificate (superseded by Proof/Cert) |
 | `Nano.V2Self.Proof.MainCertC1` | 227 | F's abandoned certificate (superseded by Proof/Cert) |
@@ -55,6 +56,7 @@ In Nano.V2Self modules: 9641 of 9993 counted declarations are reachable.
 | `Nano.V2Self.Proof.OwnNV` | 21 | TEST: non-vacuity examples of the ownership spec (keep, or move to Testing) |
 | `Nano.V2Self.Proof.ParInvGlue` | 92 | box C's expression-core handlers (`h_core`); ParInvRun does not import it, so its own step proof replaced it [check before deleting] |
 | `Nano.V2Self.Proof.ParLet` | 235 | Astra-11 probe 1 (scoped let in Par1), an early probe; ParInvLet* cover the let tasks [check before deleting] |
+| `Nano.V2Self.Proof.RunsShift` | 22 | NEW, in progress (9e99f6b: statement ShiftInv for D), not dead |
 | `Nano.V2Self.REVIEW` | 73 | the review file (a root importer, not dead) |
 
 ## 2. Modules in the closure with NO reachable declaration
@@ -95,7 +97,7 @@ In Nano.V2Self modules: 9641 of 9993 counted declarations are reachable.
 - `Nano.V2Self.Proof.CallExact`: `Templates.ifHead_eq_exact` 123, `Templates.ifHead_lt_exact` 131, `Templates.popSlot_exact` 112
 - `Nano.V2Self.Proof.CapNode`: `Templates.runLCap` 283, `Templates.runTCap` 216
 - `Nano.V2Self.Proof.CapRun`: `Templates.CapT.mono` 841
-- `Nano.V2Self.Proof.Cert.Rules`: `Cert.DenK.iteEqN` 178, `Cert.DenK.iteLtN` 186, `Cert.DenT.constN` 41, `Cert.DenT.iteLtN` 97, `Cert.DenT.xor` 57, `Cert.means_good` 258, `Cert.ofNat_lt` 83
+- `Nano.V2Self.Proof.Cert.Rules`: `Cert.DenK.iteEqN` 178, `Cert.DenK.iteLtN` 186, `Cert.DenT.constN` 41, `Cert.DenT.iteLtN` 97, `Cert.DenT.xor` 57, `Cert.means_good` 260, `Cert.ofNat_lt` 83
 - `Nano.V2Self.Proof.Cert.Specs`: `Cert.call_121` 729, `Cert.call_233` 1177, `Cert.call_33` 377, `Cert.call_34` 381, `Cert.call_35` 385, `Cert.call_47` 433
 - `Nano.V2Self.Proof.DBNode`: `Templates.nbl_ty` 75
 - `Nano.V2Self.Proof.EVSComp`: `Templates.toEVHS` 20
