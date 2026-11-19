@@ -468,3 +468,9 @@ runner; re-enable triggers trig_01Lbdjhesnym2ZPegRnLPVmf (team check) and trig_0
 - Reproduced independently by the main session from a clean worktree: `Testing/nano/v2self/boot/fixpoint.sh OUT` (37 s), same sha256.
 - Architecture: Astra rounds 7–13 advice (notes NANO_V2_ASTRA7..13). Not yet: Sail run of B₂/B₃ on the full source,
   determinism under different work-memory fill, proofs (Astra 11 plan: soundness on success + acceptance witnesses).
+
+## LATER (owner, 2026-11-19): unbounded loops in nano
+Nano programs always halt (only fuel loops on an explicit Nat). For long-running programs (servers, event loops) consider an
+UNBOUNDED loop construct later. Correctness would be stated per step / over the output stream (a simulation or trace
+property), not as a final-result theorem. Separate from the spec-side fuel: the meaning interpreter and refParse use
+arbitrarily large fuel only so they are total Lean functions; "enough fuel" is a named hypothesis of the final theorem.
