@@ -33,7 +33,9 @@ structure CxRel (st : St) (cx : Cx) : Prop where
   /-- the def being parsed (self-call target) is not among the finished defs (ParSpec.pDef rejects duplicates) -/
   selfFresh : ∀ sn sps, cx.self = some (sn, sps) → findDef cx.defs sn = none
   /-- in a step arm (box B, self-calls): the self context is the current row minus its fuel parameter -/
-  self : st.arm = true → ∃ sps, cx.self = some (st.cur.name, sps) ∧ sps.map psCode = st.cur.params.tail ∧
+  self : st.arm = true → ∃ sps, cx.self = some (st.cur.name, sps) ∧ sps ≠ [] ∧
+    sps ≠ [.inp] ∧ -- TEMPORARY (Par1 finding L: a lone input state); derivable from validation once Par1 checks it
+    sps.map psCode = st.cur.params.tail ∧
     (∀ (i : Nat) (h : i < sps.length), (sps[i] = .inp ↔ FirstLs st.cur.params.tail i)) ∧ ∀ p ∈ sps, p ≠ .sh .nt
 
 /-- node ↔ ParSpec type -/
