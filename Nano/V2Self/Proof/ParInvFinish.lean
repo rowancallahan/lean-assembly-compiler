@@ -3,6 +3,8 @@
 import Nano.V2Self.Proof.ParInvDefs
 import Nano.V2Self.Proof.ParInvFlatM
 import Nano.V2Self.Proof.ParInvIte
+import Nano.V2Self.Proof.ParInvAppend
+import Nano.V2Self.Proof.ParInvValRep
 namespace ParInv
 open C BufL ParSpec ParRun
 
@@ -74,5 +76,12 @@ theorem h_defEnd_core {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st 
       have R4 := rep_push (.flat zn) z 0 R3 (by simp [inDefF, Frame.isDefs]) ⟨hzA, hzn⟩ hH0
       exact R4
   · rw [if_neg hc] at hs; exact absurd (status_bset0 g) hs
+
+
+/-- **task 80** (FINISH a def) on C's Rep, including the output append -/
+theorem h_defEnd {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.defEnd :: fs)) (hfs : inDefF fs = true)
+    (hs : bget (step h) 0 ≠ 0) : ∃ k st', stepF .defEnd st = some (k, st') ∧ Rep (step h) ts st' (k ++ fs) := by
+  obtain ⟨H, zn, ws, e, e2, R⟩ := h_defEnd_core r isInpW hfs hs
+  exact ⟨_, _, e2, by rw [e]; exact rep_append R ws⟩
 
 end ParInv
