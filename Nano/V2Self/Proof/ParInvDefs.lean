@@ -277,7 +277,7 @@ theorem rep_open {G H ts : Buf} {st : St} {fs' : List Frame} {p : UInt64} {x : L
     Rep H ts { st with toks := toks', cur := DefR.fresh x, binds := [], vals := [], arena := [], nx := 0, arm := false } fs' := by
   obtain ⟨hn, hlen, har⟩ := repZ_bounds R
   obtain ⟨rT, rts, r0, r3, r11, rB, rD, rA, r25, r29, r30, r32, rO⟩ := R
-  obtain ⟨d12, dlt, d27, drows, dcur, dz, d0, ds26, ds⟩ := rD
+  obtain ⟨d12, dlt, d27, drows, dcur, dz, d0, ds26, ds, dsd⟩ := rD
   simp only [Bool.false_eq_true, if_false] at dcur
   have hjN : (bget G 12).toNat = st.defs.length := d12
   obtain ⟨v4, v8, v9, v11, v30, vR0, vR2, vR5, v12, v27⟩ := openW_vals G p hj hlen
@@ -352,7 +352,13 @@ theorem rep_open {G H ts : Buf} {st : St} {fs' : List Frame} {p : UInt64} {x : L
         exact dz j h1 h2 k hk
     · have c26 : bget H 26 = bget G 26 := cell 26 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)
       refine ⟨fun i h1 h2 => ?_, by rw [c26]; exact ds26, fun k h1 h2 => by
-        rw [big _ (by rw [shRow0 k h2]; omega)]; exact ds k (by rw [← c26]; exact h1) h2⟩
+        rw [big _ (by rw [shRow0 k h2]; omega)]; exact ds k (by rw [← c26]; exact h1) h2, fun k hk => by
+        rw [c26] at hk
+        obtain ⟨l, r, sa, sb, sw⟩ := dsd k hk
+        have cq : ∀ q : UInt64, q.toNat < 3 → bget H (d7 + 8192 + 3 * k.toUInt64 + q) = bget G (d7 + 8192 + 3 * k.toUInt64 + q) :=
+          fun q hq => big _ (by rw [shRowK k (by omega) q hq]; omega)
+        have cq0 := cq 0 (by decide); simp only [UInt64.add_zero] at cq0
+        exact ⟨l, r, by rw [cq0]; exact sa.frame es, by rw [cq 1 (by decide)]; exact sb.frame es, by rw [cq 2 (by decide)]; exact sw⟩⟩
       rw [w 27 (by decide), v27] at h1
       have e : (d7 + 4096 + i.toUInt64).toNat = 151616 + i := by
         rw [UInt64.toNat_add]; simp [Nat.toUInt64, show (d7 + 4096 : UInt64).toNat = 151616 from rfl]; omega

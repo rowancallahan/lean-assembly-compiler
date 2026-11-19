@@ -110,9 +110,15 @@ theorem rep_cur {h h' ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs)
     rw [e _ (by rw [eidx]; omega) (Or.inr (Or.inl (by rw [eidx]; omega))) (Or.inr (by rw [eidx]; omega))]
     exact d0 i (by omega) hi2
 
-  · refine ⟨by rw [low 26 (by decide) (by decide)]; exact dsr.1, fun k' h1 h2 => ?_⟩
-    rw [low 26 (by decide) (by decide)] at h1
-    have ek : (d7 + 8192 + 3 * k'.toUInt64).toNat = 155712 + 3 * k' := by
-      rw [UInt64.toNat_add, UInt64.toNat_mul, show (d7 + 8192 : UInt64).toNat = 155712 from rfl]; simp; omega
-    rw [big _ (by omega)]; exact dsr.2 k' h1 h2
+  · refine ⟨by rw [low 26 (by decide) (by decide)]; exact dsr.1, fun k' h1 h2 => ?_, fun k' hk' => ?_⟩
+    · rw [low 26 (by decide) (by decide)] at h1
+      have ek : (d7 + 8192 + 3 * k'.toUInt64).toNat = 155712 + 3 * k' := by
+        rw [UInt64.toNat_add, UInt64.toNat_mul, show (d7 + 8192 : UInt64).toNat = 155712 from rfl]; simp; omega
+      rw [big _ (by omega)]; exact dsr.2.1 k' h1 h2
+    · rw [low 26 (by decide) (by decide)] at hk'
+      obtain ⟨l, r, sa, sb, sw⟩ := dsr.2.2 k' hk'
+      have cq : ∀ q : UInt64, q.toNat < 3 → bget h' (d7 + 8192 + 3 * k'.toUInt64 + q) = bget h (d7 + 8192 + 3 * k'.toUInt64 + q) :=
+        fun q hq => big _ (by have := dsr.1; rw [shRowK k' (by omega) q hq]; omega)
+      have cq0 := cq 0 (by decide); simp only [UInt64.add_zero] at cq0
+      exact ⟨l, r, by rw [cq0]; exact sa.frame es, by rw [cq 1 (by decide)]; exact sb.frame es, by rw [cq 2 (by decide)]; exact sw⟩
 end ParInv
