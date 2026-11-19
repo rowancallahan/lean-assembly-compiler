@@ -286,5 +286,10 @@ DONE (pushed, no sorry, std axioms):
   plus `st.all = pre ++ st.toks` from Layer 2).
   53 h_letPairSemi (LetPair; side conditions `st.vals ≠ []`, `st.stash.isSome`; v6_stat, v6_shtab, ShapeCode.pair_inv).
   => the EXPRESSION core is complete on the machine side: tasks 1–12, 40–42, 49–53, 90 (+ G's call/prim/type families).
-NEXT (box C): open for reassignment — glue obligations collected above (vals ≠ [] / |vals| ≥ 2, SInv sh.isSome, no flat frame,
-inDefF, d ≤ |binds|, stash.isSome, md ≤ 2) are Layer-2 WF facts for B/F's api_of_rep.
+* Par1 fix M (single-state CONTINUE param match), see above.
+* GLUE (done): `ParRunCInv` (pure Layer 2): `CInv` = modes ≤ 2 ∧ flatten frames only on top ∧ (stash set ∨ a stash frame above every
+  letPairSemi); `stepS_cinv`, `Star.cinv`, `cinv_init`, extractors `cinv_mode/noflat/stash`.  `ParInvGlue.h_core`: for every
+  expression-core frame (`Frame.isCore`), `Rep h ts st (f :: fs) → WF (f :: fs) st → CInv (f :: fs, st) → DInv (f :: fs, st) →
+  running → ∃ k st', stepF f st = some (k, st') ∧ Rep (step h) ts st' (k ++ fs)` — no other hypotheses.  F's api_of_rep calls it with
+  WF (B), CInv (here) and DInv (F's ParRunShape) carried along the run.
+NEXT (box C): open for reassignment.
