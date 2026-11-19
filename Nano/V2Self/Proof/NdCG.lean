@@ -77,4 +77,106 @@ theorem lp_enc (p : Nat) (hp : p < 251) :
   have im : iu (-1) = g_901 := by decide
   refine ⟨?_, ?_⟩ <;> simp [lpHd, lpDec, encG, g, ho, i4, im] <;> rfl
 
+/-! ## inversion of the reference relation, one lemma per node tag -/
+section inv
+variable {K : GenRef.Cx}
+
+theorem inv_const {d i h c i' E} (hc : CG K d i h c i' E) (t : tg K.X i = 1) :
+    c = em (fun o => g21 (g23 o 5 (tg K.X (i + 1)))) h ∧ i' = i + 2 ∧ E = [] := by
+  cases hc <;> first | exact ⟨rfl, rfl, rfl⟩ | simp_all
+
+theorem inv_local {d i h c i' E} (hc : CG K d i h c i' E) (t : tg K.X i = 2) :
+    SlotOk K (tg K.X (i + 1)) (tg K.X (i + 2)) ∧
+    c = em (g25 256 K.p (tg K.X (i + 1)) (tg K.X (i + 2))) h ∧ i' = i + 3 ∧ E = [] := by
+  cases hc <;> first | exact ⟨by assumption, rfl, rfl, rfl⟩ | simp_all
+
+theorem inv_bin {d i h c i' E} (hc : CG K d i h c i' E) (t : tg K.X i = 3) :
+    ∃ ca cb i1 Ea Eb, tg K.X (i + 1) - 1 < 8 ∧ CG K (d + 2) (i + 2) h ca i1 Ea ∧
+      CG K (d + 1) i1 (h + ca.length) cb i' Eb ∧
+      c = ca ++ cb ++ em (fun o => g31 o (tg K.X (i + 1))) (h + ca.length + cb.length) ∧ E = Ea ++ Eb := by
+  cases hc <;> first | exact ⟨_, _, _, _, _, by assumption, by assumption, by assumption, rfl, rfl⟩ | simp_all
+
+theorem inv_ite {d i h c i' E} (hc : CG K d i h c i' E) (t : tg K.X i = 4) :
+    ∃ ca cb ct ce i1 i2 i3 Ea Eb Et Ee, tg K.X (i + 1) - 1 < 2 ∧
+      CG K (d + 6) (i + 2) h ca i1 Ea ∧ CG K (d + 5) i1 (h + ca.length) cb i2 Eb ∧
+      CG K (d + 3) i2 (h + ca.length + cb.length + 5) ct i3 Et ∧
+      CG K (d + 1) i3 (h + ca.length + cb.length + 5 + ct.length + 1) ce i' Ee ∧
+      c = ca ++ cb ++ ifHd (tg K.X (i + 1)) ++
+        [jw 0 (h + ca.length + cb.length + 4) (h + ca.length + cb.length + 5 + ct.length + 1)] ++ ct ++
+        [jw 0 (h + ca.length + cb.length + 5 + ct.length) (h + ca.length + cb.length + 5 + ct.length + 1 + ce.length)] ++ ce ∧
+      E = Ea ++ Eb ++ Et ++ Ee := by
+  cases hc <;> first
+    | exact ⟨_, _, _, _, _, _, _, _, _, _, _, by assumption, by assumption, by assumption, by assumption, by assumption,
+        rfl, rfl⟩
+    | simp_all
+
+theorem inv_lett {d i h c i' E} (hc : CG K d i h c i' E) (t : tg K.X i = 5) :
+    ∃ cv cb i1 Ev Eb, SlotOk K (tg K.X (i + 1)) (tg K.X (i + 2)) ∧ CG K (d + 2) (i + 3) h cv i1 Ev ∧
+      CG K d i1 (h + cv.length + (em (g26 256 K.p (tg K.X (i + 1)) (tg K.X (i + 2))) (h + cv.length)).length) cb i' Eb ∧
+      c = cv ++ em (g26 256 K.p (tg K.X (i + 1)) (tg K.X (i + 2))) (h + cv.length) ++ cb ∧ E = Ev ++ Eb := by
+  cases hc <;> first | exact ⟨_, _, _, _, _, by assumption, by assumption, by assumption, rfl, rfl⟩ | simp_all
+
+theorem inv_pair {d i h c i' E} (hc : CG K d i h c i' E) (t : tg K.X i = 6) :
+    tg K.X (i + 1) < 251 ∧ CGs K d (i + 2) h (tg K.X (i + 1)).toNat c i' E := by
+  cases hc <;> first | exact ⟨by assumption, by assumption⟩ | simp_all
+
+theorem inv_call {d i h c i' E} (hc : CG K d i h c i' E) (t : tg K.X i = 8) :
+    ∃ ca, tg K.X (i + 2) < 251 ∧ tg K.X (i + 1) < bsize K.T ∧ CGs K (d + 1) (i + 3) h (tg K.X (i + 2)).toNat ca i' E ∧
+      c = ca ++ [g13 1 (h + ca.length).toUInt64 (bget K.T (tg K.X (i + 1)))] := by
+  cases hc <;> first | exact ⟨_, by assumption, by assumption, by assumption, rfl⟩ | simp_all
+
+theorem inv_prim {d i h c i' E} (hc : CG K d i h c i' E) (t : tg K.X i = 9) :
+    ∃ ca, tg K.X (i + 1) - 1 < 9 ∧ CGs K (d + 1) (i + 2) h (g33 (tg K.X (i + 1))).toNat ca i' E ∧
+      c = ca ++ em (fun o => g32 o (tg K.X (i + 1)) K.u) (h + ca.length) := by
+  cases hc <;> first | exact ⟨_, by assumption, by assumption, rfl⟩ | simp_all
+
+theorem inv_loop {d i h c i' E} (hc : CG K d i h c i' E) (t : tg K.X i = 10) :
+    ∃ cz cs i1 Ez Es, d = 1 ∧ CT K h 3 (i + 1) (h + 3) cz i1 Ez ∧ CT K h 1 i1 (h + 3 + cz.length + 2) cs i' Es ∧
+      c = lpHd K.p ++ [jw 0 (h + 2) (h + 3 + cz.length)] ++ cz ++ lpDec K.p ++ cs ∧ E = Ez ++ Es := by
+  cases hc <;> first | exact ⟨_, _, _, _, _, rfl, by assumption, by assumption, rfl, rfl⟩ | simp_all
+
+theorem inv_cont11 {d i h c i' E} (hc : CG K d i h c i' E) (t : tg K.X i = 11) : False := by
+  cases hc <;> simp_all
+
+theorem invT_val {hd d i h c i' E} (hc : CT K hd d i h c i' E) (t4 : tg K.X i ≠ 4) (t5 : tg K.X i ≠ 5)
+    (t11 : tg K.X i ≠ 11) :
+    ∃ cv Ev, CG K (d + 1) i h cv i' Ev ∧ c = cv ++ [0] ∧ E = Ev ++ [h + cv.length] := by
+  cases hc <;> first | exact ⟨_, _, by assumption, rfl, rfl⟩ | simp_all
+
+theorem invT_cont {hd d i h c i' E} (hc : CT K hd d i h c i' E) (t : tg K.X i = 11) :
+    ∃ cv, CG K (d + 1) (i + 1) h cv i' [] ∧ E = [] ∧
+      c = cv ++ em (g26 256 K.p 1 (K.p - 1)) (h + cv.length) ++
+        [jw 0 (h + cv.length + (em (g26 256 K.p 1 (K.p - 1)) (h + cv.length)).length) hd] := by
+  cases hc <;> first | exact ⟨_, by assumption, rfl, rfl⟩ | simp_all
+
+theorem invT_ite {hd d i h c i' E} (hc : CT K hd d i h c i' E) (t : tg K.X i = 4) :
+    ∃ ca cb ct ce i1 i2 i3 Ea Eb Et Ee, tg K.X (i + 1) - 1 < 2 ∧
+      CG K (d + 6) (i + 2) h ca i1 Ea ∧ CG K (d + 5) i1 (h + ca.length) cb i2 Eb ∧
+      CT K hd (d + 3) i2 (h + ca.length + cb.length + 5) ct i3 Et ∧
+      CT K hd (d + 1) i3 (h + ca.length + cb.length + 5 + ct.length + 1) ce i' Ee ∧
+      c = ca ++ cb ++ ifHd (tg K.X (i + 1)) ++
+        [jw 0 (h + ca.length + cb.length + 4) (h + ca.length + cb.length + 5 + ct.length + 1)] ++ ct ++
+        [jw 0 (h + ca.length + cb.length + 5 + ct.length) (h + ca.length + cb.length + 5 + ct.length + 1 + ce.length)] ++ ce ∧
+      E = Ea ++ Eb ++ Et ++ Ee := by
+  cases hc <;> first
+    | exact ⟨_, _, _, _, _, _, _, _, _, _, _, by assumption, by assumption, by assumption, by assumption, by assumption,
+        rfl, rfl⟩
+    | simp_all
+
+theorem invT_lett {hd d i h c i' E} (hc : CT K hd d i h c i' E) (t : tg K.X i = 5) :
+    ∃ cv cb i1 Ev Eb, SlotOk K (tg K.X (i + 1)) (tg K.X (i + 2)) ∧ CG K (d + 2) (i + 3) h cv i1 Ev ∧
+      CT K hd d i1 (h + cv.length + (em (g26 256 K.p (tg K.X (i + 1)) (tg K.X (i + 2))) (h + cv.length)).length) cb i' Eb ∧
+      c = cv ++ em (g26 256 K.p (tg K.X (i + 1)) (tg K.X (i + 2))) (h + cv.length) ++ cb ∧ E = Ev ++ Eb := by
+  cases hc <;> first | exact ⟨_, _, _, _, _, by assumption, by assumption, by assumption, rfl, rfl⟩ | simp_all
+
+theorem invS_nil {d i h c i' E} (hc : CGs K d i h 0 c i' E) : c = [] ∧ i' = i ∧ E = [] := by
+  cases hc; exact ⟨rfl, rfl, rfl⟩
+
+theorem invS_cons {d i h n c i' E} (hc : CGs K d i h (n + 1) c i' E) :
+    ∃ c1 cs i1 E1 Es, CG K (d + n) i h c1 i1 E1 ∧ CGs K d i1 (h + c1.length) n cs i' Es ∧ c = c1 ++ cs ∧
+      E = E1 ++ Es := by
+  cases hc; exact ⟨_, _, _, _, _, by assumption, by assumption, rfl, rfl⟩
+
+end inv
+
 end Templates
