@@ -103,7 +103,8 @@ placeholder for it.
    memory) is **not** proved for C. Internally, `ImplementsC` allows an OOM return only below the bound, but that is not
    in the top-level statement.
 2. **`Computes` is for all arguments.** If `Sem` hits `cap` or `stuck` on some encoded input, `srcRun` is `none` there.
-   Such an `f` cannot satisfy `Computes`, so pick `α` to exclude those inputs. The machine-level behaviour on `cap`
+   Such an `f` cannot satisfy `Computes`, so pick `α` to exclude those inputs. E's SelfLink theorem does exactly this:
+   it uses a restricted input type that excludes the inputs that hit `cap`. The machine-level behaviour on `cap`
    (a0 = −2, a1 = 0, memory outside the output and work blocks unchanged) is proved inside `ImplementsC`
    (Main.lean:153 `Outcome`), but it is not exported by `CompileCorrectL`.
 3. **Limits.** Source text at most 2^20 bytes (`compileC`). Program input at most 2^20 bytes (`StartCorrect`). Token
@@ -133,7 +134,12 @@ placeholder for it.
   `bb5558a58c98b13ec24ad36e2147a41ff37a3b32debbe9d08523831266e0ec4e`) were produced by **B1**: `self_S.lean` compiled by
   the Lean toolchain (`lean -c` + `leanc`) with `BootPrelude.lean`, which uses Array buffers in place of the List
   prelude and is marked TRUSTED in build_B1.py.
-  - Trusted for B2 = `mC (C's text)`: the Lean compiler, BootPrelude ≡ Prelude, and `self_S.lean` ≡ the `C.*`
-    definitions. [UNSURE] Whether the pending SelfLink theorem removes any of these.
+  - Kernel-checked: the meaning (`Sem`) of C's source text equals `mC`, the Lean `C.*` definitions. This is `Cert.sem_C`
+    plus D's link `pOf text = some PC.all`. `self_S.lean` is a plain concatenation of `Nano/V2Self/C/{Base,Lex2,Par1,
+    Own,Gen}.lean` plus the driver line (build_self_S.py).
+  - Still trusted for B2 = `mC (C's text)`:
+    - the Lean compiler that builds B1;
+    - BootPrelude ≡ Prelude (Array vs List buffers), including build_B1.py's textual rewrite of `List UInt8` to
+      `Array UInt8` and `[]` to `#[]` in the copy of self_S.lean that B1 is built from.
   - The fixpoint B3 == B2, with B3 = B2 run on QEMU on its own source, is a **test** on QEMU, not on Sail, and not a
     proof.
