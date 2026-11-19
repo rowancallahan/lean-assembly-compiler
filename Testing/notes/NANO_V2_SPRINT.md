@@ -16,27 +16,30 @@ None. GenStage is assembled (`SimW.gen_stage`, GenStageE.lean, b3b101b), modulo 
 None.  Done before the sprint: parser width cap (ea78be9; Layer-2 width invariant = ParRunSmall, parserSound proved),
 DBPar adaptation (bd41e7d), parsed_cap / parsed_bnd / bndStage / capStage / C_correctLO (a5b7ba5, ParCapBnd.lean).
 
-## SPRINT UNITS (O): deletions and pruning, on the NEW layout (2a02149)
-**PENDING the owner's OK on the deletion list (lead).**
+## SPRINT UNITS (O): pruning, on the layout after the cleanup (4d17b0a)
+The owner APPROVED the cleanup.
+- O-D1 is DONE (5024388). F's MainCertC0–C9, MainCertRules and MainPure are deleted. MainCert holds the Ex1/Ex3
+  example certificates used by AuditWitness, so it is kept as `Proof/Tests/MainCert.lean`.
+- O-D2 is DONE (5024388). ParInvGlue, ParLet, Cert/Fun and Machine/StartAll are deleted, along with
+  `GenRun.gen_run`, StartAll's only user. Bridge/MainConvX1 is KEPT: E's RunsDef uses `semAtF_mo`.
+- O-D3 is DONE (4d17b0a). The old chain is in `Nano/V2Self/Legacy/` and `Legacy/C/`, and its 8 Testing scripts are
+  re-pointed.
+
+Pruning units: 324 unreachable declarations in live modules. The full list is in NANO_V2_DEADCODE.md §4, with new
+module names.
 
 Common rules for every unit:
-- Source of truth: NANO_V2_DEADCODE.md. It uses the old module names; `python3 Testing/scripts/reorg_move.py --dry`
-  maps them to the new paths.
-- After every unit, rerun `Testing/scripts/deadcode.sh`. The reachable count must be unchanged (9640), and the
-  `#print axioms` lines in Nano/V2Self/REVIEW.lean must be byte-identical.
-- No proof edits beyond deleting declarations and import lines. Build only the touched modules plus REVIEW.
-- One unit per agent. Each unit stays in its own folder, so units do not conflict.
+- Roots: `Testing/scripts/deadcode.lean` (all REVIEW theorems plus every Proof/Tests declaration).
+- After the unit, `Testing/scripts/deadcode.sh` must report `REACHABLE 39729` (or the count at your start), and REVIEW's
+  `#print axioms` lines must be byte-identical.
+- Only delete declarations and now-unused imports. Delete in reverse dependency order, because a dead lemma may be used
+  only by another dead lemma.
+- Build the touched modules plus `Nano.V2Self.REVIEW`. One folder per agent, so units do not conflict.
 
-| id | what | files (new paths) | check |
-|---|---|---|---|
-| O-D1 | delete F's abandoned certificate | `Proof/MainCert.lean`, `MainCertC0`–`C9`, `MainCertRules`, `MainPure`. FIRST: `Proof/Tests/AuditWitness.lean` imports MainCert; drop that import, or ask G | `lake build Nano.V2Self.Proof.Tests.AuditWitness Nano.V2Self.REVIEW` |
-| O-D2 | delete superseded proof modules | `Proof/ParInvGlue.lean`, `Proof/ParLet.lean`, `Proof/Cert/Fun.lean` (12 GB, unused), `Proof/Bridge/MainConvX1.lean` (drop its import in MainConvX2), `Proof/Machine/StartAll.lean` (re-point GenRun / StartAllS to what they use, or inline `start_run` if it is used) | build the importers plus REVIEW |
-| O-D3 | the old V2Self chain (OWNER CHOICE: delete or move to `Nano/V2Self/Legacy/`) | `Nano/V2Self/{Asm,Bridge,Driver,Expand,Inl,Lex,Parse}.lean`, `Nano/V2Self/C/{Asm,Expand,Inl,Lex,Main,Par0,Parse}.lean`, and the Testing scripts that import them: diff_test, chain_test, native_ref, sizes, cg_par, cg_chain, cg_witness, stage_dump | `lake build Nano` (the glob) has no missing imports |
-| O-P1 | prune dead declarations in Parser/ (117 in 33 files; the big ones are ParInv 31, ParRunArgs 12, ParInvOps 7, ParSpec 7) | `Proof/Parser/*` | deadcode.sh |
-| O-P2 | Machine/ (105 in 26 files: Templates 26, ExprEV 11, Call 9, Loop 6, Expr 5, StartRun 5) | `Proof/Machine/*` | deadcode.sh |
-| O-P3 | Bridge/ + Main/ + SrcLink/ (29: MainOk 6, MainConvX2 4, MainConv8 3, SemX 3, …) | `Proof/Bridge/*`, `Proof/Main/*`, `Proof/SrcLink/SrcLink.lean` | deadcode.sh |
-| O-P4 | Gen/ + Lex/ + Own/ (46: GenRef 8, GenAll 7, Lex2Sound 4, OwnP0 4, …) | `Proof/Gen/*`, `Proof/Lex/*`, `Proof/Own/*` | deadcode.sh |
-| O-P5 | Cert/ (13: Rules 7, Specs 6). Specs.lean is GENERATED, so edit gen_cert.py, not the file. Coordinate with G | `Proof/Cert/Rules.lean`, `Testing/nano/v2self/cert/gen_cert.py` | regenerate, then deadcode.sh |
-
-Caveat for the pruning units: a DECL-DEAD lemma may be used only by another DECL-DEAD lemma. Delete in reverse
-dependency order and rebuild until `lake build` is green. A declaration used by a Tests/ file is not dead; keep it.
+| id | folder | dead decls (files) | largest | build check |
+|---|---|---|---|---|
+| O-P1 | `Proof/Parser/` | 115 (34) | ParInv 31, ParRunArgs 12, ParInvOps 7, ParRunTy 5, ParRep 4, ParRunCallSpec 4 | touched modules + REVIEW |
+| O-P2 | `Proof/Machine/` | 105 (26) | Templates 26, ExprEV 11, Call 9, Loop 6, Expr 5, StartRun 5 | touched modules + REVIEW |
+| O-P3 | `Proof/Bridge/` + `Proof/Main/` + `Proof/SrcLink/SrcLink.lean` | 45 (23) | MainOk 6, MainConvX2 4, MainConv8 3, MainShift3 3, MainShift4 3, SemX 3, Main 3 | touched modules + REVIEW |
+| O-P4 | `Proof/Gen/` + `Proof/Own/` + `Proof/Lex/` | 46 (20) | GenRef 8, GenAll 7, OwnP0 4, Lex2Sound 4, OwnP28 3, Fixup 3 | touched modules + REVIEW |
+| O-P5 | `Proof/Cert/` | 13 (2) | Rules 7, Specs 6. **Specs.lean is GENERATED**: change `Testing/nano/v2self/cert/gen_cert.py`, regenerate, and coordinate with G | All.lean + REVIEW |

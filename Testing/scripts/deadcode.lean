@@ -1,6 +1,7 @@
 /- Dead-code finder for Nano/V2Self.  usage:
      lake build Nano.V2Self.REVIEW && lake env lean Testing/scripts/deadcode.lean > report.txt
-   Roots: the theorems of REVIEW.lean (C_correctLO, sem_C, the SelfC theorems) and SrcGen.link_pc.  Computes every constant
+   Roots: the theorems of REVIEW.lean (C_correctLO, sem_C, the SelfC theorems, C_runs / C_runsO / self_runs_C,
+   shiftInv, Msp_le / spaceC_le), SrcGen.link_pc, and every declaration of a Proof/Tests module.  Computes every constant
    reachable from the roots (types and values, transitively), then, per `Nano.V2Self.*` module in REVIEW's import
    closure: declarations total / reachable.  Lines starting with:
      MOD-LIVE  module name, reachable / total user declarations
@@ -8,17 +9,25 @@
      DECL-DEAD an unreachable theorem/def in a live module (`name line`; auxiliary `_`-names and instances skipped)
    Modules of Nano/V2Self outside REVIEW's closure are listed by deadcode.sh (filesystem minus closure). -/
 import Nano.V2Self.REVIEW
+import Nano.V2Self.Proof.Tests.AuditWitness
+import Nano.V2Self.Proof.Tests.OwnNV
 open Lean Meta
 
 def roots : List Name := [``NanoMain.C_correctLO, ``Cert.sem_C, ``NanoMain.self_meaning_C, ``NanoMain.self_computes_C,
-  ``NanoMain.self_correct_C, ``SrcGen.link_pc]
+  ``NanoMain.self_correct_C, ``SrcGen.link_pc, ``NanoMain.C_runs, ``NanoMain.C_runsO, ``NanoMain.self_runs_C,
+  ``NanoMain.shiftInv, ``NanoMain.Msp_le, ``NanoMain.spaceC_le]
 
 #eval show CoreM Unit from do
   let env ← getEnv
   -- reachability
   let mut seen : NameHashSet := {}
-  let mut todo : Array Name := roots.toArray
   for r in roots do assert! env.contains r
+  -- every declaration of a Tests/ module is a root too (the owner keeps the non-vacuity tests)
+  let mods0 := env.allImportedModuleNames
+  let tests := env.constants.map₁.toList.filterMap fun (n, _) => do
+    let i ← env.getModuleIdxFor? n
+    if (`Nano.V2Self.Proof.Tests).isPrefixOf mods0[i.toNat]! then some n else none
+  let mut todo : Array Name := roots.toArray ++ tests.toArray
   while h : todo.size > 0 do
     let n := todo.back
     todo := todo.pop
