@@ -145,6 +145,13 @@ OPEN / NEXT (owner order 2026-11-19):
    (b) the machine side from the start routine to `semAt main` (E's DefX chain + start words) — compose with
    main_bridge; (c) MainTop re-point to the o41 driver with subset = parsed ∧ Linear.
    Fuel-margin run on self_S (interpreted `lean --run`): did not finish in 40 min; needs a compiled exe.
+   CONVERSE (A, 2026-11-19, MainConv1..7, no sorry, propext/choice/Quot.sound): `Mo` room monotonicity (semAt_mo:
+   more stack room ⇒ same result); `Ex S H` = ∃ N, ∀ sp, H.top + N ≤ sp < 2^62 ⇒ S sp H ≠ none; NodeEx/TailEx/DefEx/CallEx
+   (ex_all, tex_all, loop_ex, def_ex); `prog_both` (every def meets DefR and DefEx); `main_ex` (MainConv7, 70 s with deps):
+   TyProg ∧ progOk (Ks ≤ 2) ∧ c29/inp ∧ κ < 2^40 ∧ H 8-aligned above hb ∧ `Sem P.κ ds inp = .ok y` ⇒ ∃ N, ∀ sp ∈ [H.top+N, 2^62),
+   semAt main [] sp H = some ([a], H') ∧ BufAt hb κ H' a l ∧ y = l.map toUInt8.
+   NEXT: cap half (Sem = .error .cap ⇒ E reports cap, never room) once E fixes the failure-kind form (svX/Fail); then (C)
+   the DB fact (serialize fields < 2^32 for parsed programs); hXl only if E does not cover it.
 2. DONE (caf51274): driver `mC x = g41 x (o41 (y16 (s10 x)))`; `LinearK p := ∃ Ks, progOk [] [] Ks p ∧ Ks ≤ 2`;
    `OwnStage := ∀ p, o41 (serialize p) ≠ [] → LinearK p` (O's lemma, pending); `GenStage` now for parsed ∧ LinearK;
    `compiler_correct HP HO HG` gives `Lexes ∧ ParsesProgram ∧ LinearK ∧ ImplementsC`; `C_correctL : ParStage → OwnStage →
