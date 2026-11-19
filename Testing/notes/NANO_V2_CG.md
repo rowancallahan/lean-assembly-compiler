@@ -415,9 +415,12 @@ EVSLoop, EVSCall (box B's), EVSRun (`RunCxS`, `runVS/runTS/runLS`), EVSProg (`de
 code runs from word 0 as a SafeX run to the host's ra with main's buffer bytes at a3 (a0/a1 set), and with
 `KL.Ok` and `KL.W = (C.map encG).map toNat` it is a Sail `Steps` run keeping `RelW`.
 Remaining hypotheses of gen_runS (all stated explicitly):
-- size bounds from Gen success not yet exported: DB, npw/nres < 251 (h251), nslots < 251, o.length < 2^24,
-  C.length < 2^18, (serialize ds).length < 2^31;
-- parser facts (D): npw < 2^20, npw ≤ nslots, ScV, reads ⊆ params;
+- DERIVED from Gen success since: npw/nslots/nres < 251, npw ≤ nslots (chainW's 4th conjunct from DefC's header
+  checks + DB), o.length < 2^24 (Bnd.ol exported by gen_ok/gen41_ok/gen41_full), OpV, main npw = 0 / nres = 1;
+- still assumed: DB (fields < 2^32: a representation fact, Gen sees wrapped words), (serialize ds).length < 2^31
+  (Gen does not check it), C.length < 2^18 (SafeX's jal range is checked against a global code bound; Gen's own
+  per-jump range checks JOk / g14 in CG/DefC would remove it but need threading through the templates);
+- parser facts (D): ScV, reads ⊆ params;
 - semantics: main's `semAt` run succeeds; result buffer facts in H' (length cell, byte cells in the heap) — for D's
   Sem ⇐ sv bridge;
 - host layout: a2 % 8 = 0, a2+16 ≤ E0 = sp&~7 < 2^62, work region [KL.lo, KL.hi) ⊇ [a2, E0), code base = KL.base,
