@@ -324,6 +324,8 @@ OPEN (in order of value):
    Main's npw = 0 / nres = 1 are derived (chainW's third conjunct: each def's header fields at hs[j]; gen_top exposes
    gen41_full's tg facts).
 1. Heap invariant for main's result buffer (length cell and byte cells inside [hb, H'.top)).
+1b. Safe twins (SStarX) of start_setup / copy_loop / start_tail; GoodX for defsJ (templates); one LayW work region
+   holding stack, heap, a2 save area, input and output.
 2. Sail lift: every template run lemma must become a Safe run (`SimW.SStar`): addi no-wrap, ld/sd/lbu addresses
    8-aligned in the ONE work region (input must lie in it), jal targets in code, jalr targets base+4j.  Mechanical but
    large (safe twins of const/push/bin/rd/bsize/bget/bnew/bpush/bset/li/local1/pro/epi/popN runs; contracts Star→SStar).
