@@ -295,4 +295,15 @@ DONE (pushed, no sorry, std axioms):
 * OwnWF.lean (for O, done): `WFP` (O's statement), `Bnd` (nslots < 2^20, nres < 2^64, |p| < 2^64 — NOT parser facts),
   `parsed_wfp : ParsesProgram ts p → Bnd p → WFP p`; NdAr/refParse_ar (PRIM arities by fuel induction over the parser),
   wfn_of/wfb_of (bounds from D's TyN).
-NEXT (box C): asked O for the next piece (o41 program fold / #guard example / pargen ownership patterns).
+BOX C STOOD DOWN (2026-11-19 18:30).  Final handoff:
+* OwnWF.lean → O.  Theorems: `OwnWF.NdAr`/`NdArL`, `prim_arity`, `pExpr_ar`, `pDef_ar`, `pDefs_ar`, `refParse_ar`
+  (∀ d ∈ p, NdAr d.body), `wfn_of` / `wfl_of` (TyN D Γ S e ks → Γ.length < 2^20 → |D| < 2^64 → NdAr e → OwnP.WFN e),
+  `wfb_of`, `WFP p := ∀ d ∈ p, npw < 2^64 ∧ nslots < 2^64 ∧ nres < 2^64 ∧ OwnP.WFB d.body`,
+  `Bnd p := |p| < 2^64 ∧ ∀ d ∈ p, nslots < 2^20 ∧ nres < 2^64`, `parsed_wfp : ParsesProgram ts p → Bnd p → WFP p`.
+  Interface for O's top theorem: `C.o41 (serialize p) ≠ [] → WFP p → Linear p` (kinds ≤ 2; D's `LinearK p` = Linear with
+  kinds ≤ 2); compose with `parsed_wfp`.  LEFT: `Bnd` is not a parser fact (nested pair lets double widths) — supply it from
+  Gen (nslots/nres < 251, def count < token count) or weaken WFN's letE < 2^20; then O's o38/o39/o41 program fold.
+* Parser glue → F: `ParInvGlue.h_core` (expression core under WF ∧ CInv ∧ DInv), `ParRunCInv` (CInv + preservation),
+  `ParInvPrev.prev_cell` (hprev needs `st.all = pre ++ st.toks` + "previous token not a num" from Layer 2).
+* Par1: fixes L (v99 main arity) and M (single-state CONTINUE param match); last fixpoint sha recorded above; B mirrors M in
+  nodeOK to drop hL.
