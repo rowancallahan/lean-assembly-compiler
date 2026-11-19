@@ -289,4 +289,81 @@ theorem bnewRoom {KL : LayW} {C : List J} {pc κ p nl hb E0 : Nat} {Inv G : St �
       · rw [hm']
       · apply hm a <;> intro e <;> apply ha <;> obtain ⟨o1, o2, o3⟩ := O0 <;> omega
 
+
+/-- the def prologue at the OOM exit: one of the two checked pushes or the frame check finds no room -/
+theorem pro_oom_srun {K : LayW} {C : List J} {f r tgt : Nat} {s : St} (hC : At C f (proA tgt f r))
+    (hr : r < 251) (hlo : 16 + 8 * r ≤ (s.x 30).toNat) (h31 : (s.x 30).toNat ≤ (s.x 31).toNat) (hlt : (s.x 31).toNat < 2 ^ 63)
+    (hroom : (s.x 31).toNat < (s.x 30).toNat + 16 + 8 * r)
+    (w8 : (s.x 30).toNat + 8 ≤ (s.x 31).toNat → wok K ((s.x 31).toNat - 8))
+    (w16 : (s.x 30).toNat + 16 ≤ (s.x 31).toNat → wok K ((s.x 31).toNat - 16))
+    (ht : tgt < C.length) (hC18 : C.length < 2 ^ 18) (hl : f + 12 ≤ C.length) :
+    ∃ s', SStar K C (f, s) (tgt, s') ∧ s'.x 0 = s.x 0 ∧ s'.x 28 = s.x 28 ∧ s'.x 29 = s.x 29 ∧ s'.b = s.b ∧
+      ∀ a, (a < (s.x 30).toNat ∨ (s.x 31).toNat ≤ a) → s'.m a = s.m a := by
+  have A1 : At C f (push 1 ((tgt : Int) - ((f : Int) + 2))) := hC.left
+  have R1 : At C (f + 4) (push 8 ((tgt : Int) - (((f + 4 : Nat) : Int) + 2)) ++
+      [.addi 8 31 0, .addi 31 31 (-8 * (r : Int)), .bgeu 31 30 2, .jal 0 ((tgt : Int) - ((f : Int) + 11))]) := by
+    simpa [proA, pushA, push] using hC.right
+  have A2 : At C (f + 4) (push 8 ((tgt : Int) - (((f + 4 : Nat) : Int) + 2))) := R1.left
+  have A3 : At C (f + 8) [.addi 8 31 0, .addi 31 31 (-8 * (r : Int)), .bgeu 31 30 2, .jal 0 ((tgt : Int) - ((f : Int) + 11))] := by
+    simpa [push] using R1.right
+  have lt : (s.x 31).toNat < 2 ^ 64 := (s.x 31).toNat_lt
+  have t8 : (UInt64.ofNat ((s.x 31).toNat - 8)).toNat = (s.x 31).toNat - 8 := by simp; omega
+  by_cases c1 : (s.x 30).toNat + 8 ≤ (s.x 31).toNat
+  rotate_left
+  · have r := push_oom_srun (K := K) (s := s) A1 (by omega) (by omega) ht hC18 (by omega)
+    exact ⟨_, r, by simp [upd], by simp [upd], by simp [upd], rfl, fun a _ => rfl⟩
+  have r1 := push_srun (K := K) (s := s) A1 (by decide) (by decide) (by decide) c1 (w8 c1)
+  generalize hs1 : (⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)), upd s.m ((s.x 31).toNat - 8) (s.x 1), s.b⟩ : St) = s1 at r1
+  have y31 : (s1.x 31).toNat = (s.x 31).toNat - 8 := by rw [← hs1]; simp [upd_same, t8]
+  have y30 : s1.x 30 = s.x 30 := by rw [← hs1]; simp [upd]
+  have ym : ∀ a, a ≠ (s.x 31).toNat - 8 → s1.m a = s.m a := by intro a ha; rw [← hs1]; simp [upd, ha]
+  have yx : ∀ i, i ≠ 31 → s1.x i = s.x i := by intro i hi; rw [← hs1]; simp [upd, hi]
+  have yb : s1.b = s.b := by rw [← hs1]
+  by_cases c2 : (s.x 30).toNat + 16 ≤ (s.x 31).toNat
+  rotate_left
+  · have r := push_oom_srun (K := K) (s := s1) A2 (by rw [y31]; omega) (by rw [y31, y30]; omega) ht hC18 (by omega)
+    refine ⟨_, r1.trans r, by simp [upd, yx], by simp [upd, yx], by simp [upd, yx], by simp [yb], fun a ha => ?_⟩
+    simp only; exact ym a (by omega)
+  have r2 := push_srun (K := K) (s := s1) A2 (by decide) (by decide) (by decide) (by rw [y31, y30]; omega)
+    (by rw [y31, show (s.x 31).toNat - 8 - 8 = (s.x 31).toNat - 16 by omega]; exact w16 c2)
+  generalize hs2 : (⟨upd s1.x 31 (UInt64.ofNat ((s1.x 31).toNat - 8)), upd s1.m ((s1.x 31).toNat - 8) (s1.x 8), s1.b⟩ : St) = s2 at r2
+  have z31 : (s2.x 31).toNat = (s.x 31).toNat - 16 := by rw [← hs2]; simp [upd_same, y31]; omega
+  have z30 : s2.x 30 = s.x 30 := by rw [← hs2]; simp [upd, y30]
+  have zm : ∀ a, a ≠ (s.x 31).toNat - 8 → a ≠ (s.x 31).toNat - 16 → s2.m a = s.m a := by
+    intro a h1 h2; rw [← hs2]; simp only [upd, y31]; rw [if_neg (by omega)]; exact ym a h1
+  have zx : ∀ i, i ≠ 31 → s2.x i = s.x i := by intro i hi; rw [← hs2]; simp [upd, hi, yx]
+  have zb : s2.b = s.b := by rw [← hs2]; simp [yb]
+  have b0 := A3.at 0 (by simp); have b1 := A3.at 1 (by simp); have b2 := A3.at 2 (by simp); have b3 := A3.at 3 (by simp)
+  simp at b0 b1 b2 b3
+  have e0 : ea (s2.x 31) 0 = (s.x 31).toNat - 16 := by simp [ea, z31]
+  let s3 : St := ⟨upd s2.x 8 (UInt64.ofNat ((s.x 31).toNat - 16)), s2.m, s2.b⟩
+  have e3 : ea (s3.x 31) (-8 * (r : Int)) = (s.x 31).toNat - 16 - 8 * r := by
+    simp [s3, upd, ea, z31]; omega
+  let s4 : St := ⟨upd s3.x 31 (UInt64.ofNat ((s.x 31).toNat - 16 - 8 * r)), s2.m, s2.b⟩
+  have t4 : (UInt64.ofNat ((s.x 31).toNat - 16 - 8 * r)).toNat = (s.x 31).toNat - 16 - 8 * r := by simp; omega
+  have cb : ¬ (s4.x 30).toNat ≤ (s4.x 31).toNat := by simp [s4, s3, upd, z30, t4]; omega
+  have hc' : ¬ ((upd (upd s2.x 8 (UInt64.ofNat ((s.x 31).toNat - 16))) 31
+      (UInt64.ofNat ((s.x 31).toNat - 16 - 8 * r)) 30).toNat ≤
+      (upd (upd s2.x 8 (UInt64.ofNat ((s.x 31).toNat - 16))) 31 (UInt64.ofNat ((s.x 31).toNat - 16 - 8 * r)) 31).toNat) := by
+    simp [upd, z30, t4]; omega
+  have b3' : C[f + 8 + 1 + 1 + 1]? = some (.jal 0 ((tgt : Int) - ((f : Int) + 11))) := by
+    rw [show f + 8 + 1 + 1 + 1 = f + 8 + 3 by omega]; exact b3
+  have run3 : CallProbe.run C 3 (f + 8, s2) = some (f + 8 + 1 + 1 + 1, s4) := by
+    simp [CallProbe.run, CallProbe.step, b0, b1, b2, CallProbe.wr, e0, s3, e3, s4, hc']
+  have run4 : CallProbe.run C 4 (f + 8, s2) = some (tgt, s4) := by
+    simp [CallProbe.run, CallProbe.step, b0, b1, b2, CallProbe.wr, e0, s3, e3, s4, hc', b3']
+    omega
+  have ss : SStar K C (f + 8, s2) (tgt, s4) := sstar_of_run run4 (fun j hj c hc => by
+    rcases (by omega : j = 0 ∨ j = 1 ∨ j = 2 ∨ j = 3) with rfl | rfl | rfl | rfl
+    · simp [CallProbe.run] at hc; subst hc; simp [Safe, b0]; have := (s2.x 31).toNat_lt; omega
+    · simp [CallProbe.run, CallProbe.step, b0, CallProbe.wr, e0] at hc; subst hc; simp [Safe, b1]
+      simp only [upd, show (31:Nat) ≠ 8 by decide, if_false]; rw [z31]; omega
+    · simp [CallProbe.run, CallProbe.step, b0, b1, CallProbe.wr, e0, e3] at hc; subst hc; simp [Safe, b2]
+    · rw [run3] at hc; simp at hc; subst hc; simp [Safe, b3']; omega)
+  refine ⟨s4, r1.trans (r2.trans ss), ?_, ?_, ?_, ?_, fun a ha => zm a (by omega) (by omega)⟩
+  · simp [s4, s3, upd, zx]
+  · simp [s4, s3, upd, zx]
+  · simp [s4, s3, upd, zx]
+  · simp [s4, zb]
+
 end Templates
