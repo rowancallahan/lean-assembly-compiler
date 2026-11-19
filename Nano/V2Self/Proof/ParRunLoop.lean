@@ -16,18 +16,6 @@ theorem pArrows_succ (f : Nat) (ts : List Tok) : pArrows (f + 1) ts = (pTy f ts)
     | _ => some ([t], r) := by
   rw [pArrows]; rfl
 
-/-- `ty_sound` plus the run prefix as a `Star` (the type frames are self-contained) -/
-theorem ty_star {n : Nat} {ks : List Frame} {st fin : St} (h : StarN n (.tyAtom :: ks, st) ([], fin)) :
-    ∃ t r n', n' < n ∧ r.length < st.toks.length ∧ (∀ f, 2 * st.toks.length + 2 ≤ f → pTy f st.toks = some (t, r)) ∧
-      StarN n' (ks, st.withTy r (trRes t)) ([], fin) ∧ (trRes t).nnt = true ∧
-      Star (.tyAtom :: ks, st) (ks, st.withTy r (trRes t)) := by
-  obtain ⟨X, n1, n2, hn, e1, e2⟩ := StarN.split (k := [.tyAtom]) (ks := ks) h
-  obtain ⟨t, r, n', hn', hlt, hp, h3, hnnt⟩ := (ty_sound n1).1 (ks := []) e1
-  obtain ⟨rfl, he⟩ := StarN.nil_inv h3
-  have eX : X = st.withTy r (trRes t) := by have := congrArg Prod.snd he; simpa using this
-  subst eX
-  exact ⟨t, r, n2, by omega, hlt, hp, e2, hnnt, by simpa using Star.append ks e1.toStar⟩
-
 /-- `ExprSpec` plus the run prefix as a `Star` (an expression frame is self-contained) -/
 theorem expr_star {n md : Nat} {ks : List Frame} {st fin : St} {cx : Cx} (hmd : md < 2)
     (h : StarN n (.expr 0 md :: ks, st) ([], fin)) (hc : CxRel st cx) (hnn : CxNN st) :
@@ -55,7 +43,7 @@ theorem arrows_spec : ∀ n {ks : List Frame} {st fin : St}, StarN n (.tyAtom ::
   induction n using Nat.strongRecOn with
   | _ n ih =>
   intro ks st fin h
-  obtain ⟨t, r, n1, hn1, hlt, hpTy, h1, hnnt, hT⟩ := ty_star h
+  obtain ⟨t, r, n1, hn1, hlt, hpTy, hT, h1, hnnt⟩ := ty_star h
   match n1, h1 with
   | 0, h1 => exact absurd h1.zero_nil.1 (by simp)
   | m + 1, h1 =>
@@ -553,7 +541,8 @@ theorem pTy_nat (f : Nat) (r : List Tok) : pTy (f + 2) (.k 35 :: .k 17 :: r) = s
 theorem loop_spec {n : Nat} {ks : List Frame} {st fin : St} {defs : List DefI} {name : List Nat} {r : List Tok}
     (h : StarN n (.tyAtom :: .afterColon :: ks, st) ([], fin)) (ht : st.toks = .k 35 :: .k 17 :: r)
     (hcur : st.cur = DefR.fresh name) (hb : st.binds = []) (hv : st.vals = []) (harm : st.arm = false)
-    (hD : CxRel st ⟨defs, [], none⟩) (hnn : CxNN st) (hfresh : findDef defs name = none)
+    (hD : CxRel st ⟨defs, [], none⟩) (hnn : ∀ d ∈ st.defs, ShNN d.res ∧ ∀ p ∈ d.params, p.nnt = true)
+    (hfresh : findDef defs name = none)
     -- TEMPORARY (Par1 finding L): not exactly one state of type `List UInt8`
     (hL : ∀ f res r', pArrows f r ≠ some ([.lst, res], r')) :
     ∃ lp st' n', n' < n ∧ StarN n' (.defEnd :: ks, st') ([], fin) ∧
@@ -567,7 +556,7 @@ theorem loop_spec {n : Nat} {ks : List Frame} {st fin : St} {defs : List DefI} {
             some (di, { id := defs.length, npw := st'.cur.npw, nslots := st'.nx, kind := 1, nres := di.res.width,
                         body := lp.toNd }, st'.toks)) := by
   -- the `Nat` type and `→`
-  obtain ⟨t0, r0, n1, hn1, hlt0, hp0, h1, _, hT0⟩ := ty_star h
+  obtain ⟨t0, r0, n1, hn1, hlt0, hp0, hT0, h1, _⟩ := ty_star h
   have ht0 : t0 = .sh .nt ∧ r0 = .k 17 :: r := by
     have := hp0 (2 * st.toks.length + 2) (Nat.le_refl _)
     rw [ht, show 2 * (Tok.k 35 :: Tok.k 17 :: r).length + 2 = (2 * r.length + 4) + 2 by simp; omega, pTy_nat] at this
@@ -649,7 +638,7 @@ theorem loop_spec {n : Nat} {ks : List Frame} {st fin : St} {defs : List DefI} {
       exact ⟨_, rfl, h3⟩
     · rw [hrows3] at hd
       rcases List.mem_append.mp hd with hd | hd
-      · exact hnn.2 d (by simp [rows, hd])
+      · exact hnn d hd
       · simp at hd; subst hd
         refine ⟨⟨_, rfl, hres⟩, fun p hp => ?_⟩
         simp only [hP, List.mem_cons] at hp
