@@ -16,6 +16,7 @@ def Rd (Kk : List Nat) (F : List Bool) (s : Nat) : Prop := Kk.getD s 0 = 0 ∨ O
 block is held by no other readable buffer slot -/
 structure EnvI (σ : AH) (Kk : List Nat) (F : List Bool) (Γ : List (Option Kd)) (env : List W) (ew : Env) : Prop where
   len : env.length = Γ.length
+  ty : EnvOK env Γ
   val : ∀ s, Kn Γ s → Rd Kk F s → ∃ v, env[s]? = some v ∧ VR σ v (ew s) ∧ (Kk.getD s 0 = 0 → ∃ x, v = .w x)
   dist : ∀ s t, s ≠ t → Kn Γ s → Kn Γ t → Kk.getD s 0 = 1 → Kk.getD t 0 ≠ 0 →
     OwnSpec.dead F s = false → OwnSpec.dead F t = false → ew s ≠ ew t
