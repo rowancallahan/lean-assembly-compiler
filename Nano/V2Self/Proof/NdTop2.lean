@@ -181,7 +181,7 @@ theorem gen_top (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length <
     (hb : Nat) (c29 : UInt64) (inp : Nat → UInt64) :
     ∃ hs T o, DefsC (serialize ds) g_999 bnew 1 (g34 bnew) hs T (serialize ds).length o ∧ hs ≠ [] ∧
       g41 c (serialize ds) = g40 16777216 c (startW (bset o 0 (g13 0 0 (bsize o))) (bget T (bsize T - 1))) 0 [] ∧
-      tg (serialize ds) (hs.getLastD 0 + 2) = 0 ∧ tg (serialize ds) (hs.getLastD 0 + 5) = 1 ∧ o.length < 2 ^ 24 ∧
+      tg (serialize ds) (hs.getLastD 0 + 2) = 0 ∧ tg (serialize ds) (hs.getLastD 0 + 5) = 1 ∧ o.length < 2 ^ 24 ∧ o.length + 32 < 2 ^ 18 ∧
       (o.length < 2 ^ 24 →
         o = g34 bnew ++ (defsJ (pcOf 524288 hb c29 inp T) ds 0 hs.length).map encG ∧
         (∀ j, j < hs.length → tg (serialize ds) (hs.getD j 0 + 2) = (dA ds j).npw.toUInt64 ∧
@@ -200,8 +200,8 @@ theorem gen_top (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length <
             ScV (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body ∧ ∀ j, rd (dA ds k).body j → j < (dA ds k).npw) →
           ∀ k, k < hs.length → DefX C ((pcOf 524288 hb c29 inp T).T k) (dA ds k).npw (dA ds k).nres IG hb E0
             (semAt (pcOf 524288 hb c29 inp T) ds k)) := by
-  obtain ⟨_, hs, T, o, D, hD, hW, hne, l2, l5, hg, hol0⟩ := gen41_full c (serialize ds) hXl h
-  refine ⟨hs, T, o, hD, hne, hg, l2, l5, hol0, fun hol => ?_⟩
+  obtain ⟨_, hs, T, o, D, hD, hW, hne, l2, l5, hg, hol0, hc18⟩ := gen41_full c (serialize ds) hXl h
+  refine ⟨hs, T, o, hD, hne, hg, l2, l5, hol0, hc18, fun hol => ?_⟩
   have cw := chainW (P := pcOf 524288 hb c29 inp T) (ds := ds) (u := g_999) rfl (Tf := T) (fun j => rfl) hD rfl ds
     (by simp [bnew]) (SerAt_serialize ds) (by simp [serialize]; omega) hdb (by simp [bnew]) (by simp [bnew]) hol
   simp only [bnew, List.length_nil, Nat.zero_add] at cw

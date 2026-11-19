@@ -29,7 +29,7 @@ theorem gen_runS (KL : SimW.LayW) (c : List UInt8) (ds : List DefA) (hXl : (seri
          (∀ i, i < N.toNat → H'.m ((vs.getD 0 0).toNat + 16 + 8 * i) = some (bs i)) →
          (s0.x 13).toNat + N.toNat < 2 ^ 64 →
          ((s0.x 13).toNat + N.toNat ≤ (s0.x 12).toNat ∨ E0 + 8 ≤ (s0.x 13).toNat) →
-         KL.lo ≤ (s0.x 12).toNat → E0 ≤ KL.hi → s0.b = KL.base → C.length < 2 ^ 18 →
+         KL.lo ≤ (s0.x 12).toNat → E0 ≤ KL.hi → s0.b = KL.base →
          (∀ i, i < (s0.x 11).toNat → SimW.wok KL ((s0.x 10).toNat + i - ((s0.x 10).toNat + i) % 8)) →
          (∀ i, i < N.toNat → SimW.wok KL ((s0.x 13).toNat + i - ((s0.x 13).toNat + i) % 8)) →
          (∃ j, (s0.x 1).toNat = KL.base + 4 * j) →
@@ -41,9 +41,9 @@ theorem gen_runS (KL : SimW.LayW) (c : List UInt8) (ds : List DefA) (hXl : (seri
   obtain ⟨hs, T, o, hD, hne, hr⟩ := gen_C c ds hXl h hdb ((s0.x 12).toNat + 16) (s0.x 11)
     (fun i => lbm s0.m ((s0.x 10).toNat + i))
   refine ⟨hs, T, o, hD, hne, ?_⟩
-  obtain ⟨hg, np, nr, hopv, hbd, hTp, hpk, -⟩ := hr
+  obtain ⟨hg, np, nr, hcl, hopv, hbd, hTp, hpk, -⟩ := hr
   refine ⟨hg, ?_⟩
-  intro hpar E0 hE0 z0 ha8 hroom hE62 hcb hin63 hin vs H' hSd N bs hN hPb hPN hbs hQ hout hlo hhi hbase hc18
+  intro hpar E0 hE0 z0 ha8 hroom hE62 hcb hin63 hin vs H' hSd N bs hN hPb hPN hbs hQ hout hlo hhi hbase
     hinw hwO hra
   have hE8 : E0 % 8 = 0 := by
     rw [← hE0]; simp only [UInt64.toNat_shiftLeft, UInt64.toNat_shiftRight]; simp; omega
@@ -53,6 +53,7 @@ theorem gen_runS (KL : SimW.LayW) (c : List UInt8) (ds : List DefA) (hXl : (seri
   have hPi : P.inp = fun i => lbm s0.m ((s0.x 10).toNat + i) := by rw [← hPd]; rfl
   generalize hDd : defsJ P ds 0 hs.length = D at *
   generalize hCd : stubJ (11 + D.length) ++ D ++ startJ (11 + D.length) (P.T (hs.length - 1)) = C at *
+  have hc18 : C.length < 2 ^ 18 := by rw [← hCd]; simp [stubJ, startJ]; omega
   have AC : At C 0 C := fun i _ => by simp
   have A0 : At C 0 (stubJ (11 + D.length)) := by rw [← hCd] at AC ⊢; exact AC.left.left
   have AD : At C (g34 bnew).length D := by

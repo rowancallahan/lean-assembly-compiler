@@ -73,6 +73,8 @@ theorem mC_len (x : List UInt8) : (mC x).length % 4 = 0 := by
   unfold mC C.g41 C.g42
   generalize C.y16 (C.s10 x) = a
   split
+  · rfl
+  split
   · generalize C.g53 a = q
     obtain ⟨x2, w⟩ := q
     simp only
@@ -85,7 +87,9 @@ theorem mC_len (x : List UInt8) : (mC x).length % 4 = 0 := by
       · rfl
       · split
         · rfl
-        · exact g40_len _ _ _ _ _ rfl
+        · split
+          · rfl
+          · exact g40_len _ _ _ _ _ rfl
   · rfl
 
 theorem toOption_some {r : Except Stop (List UInt8)} {y : List UInt8} (h : r.toOption = some y) : r = .ok y := by

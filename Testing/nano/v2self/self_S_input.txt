@@ -2336,12 +2336,14 @@ def g53 (x : Buf) : Buf × UInt64 :=
   (x1, (if bget s1 1 == 1 then g_0 else g_1))
 
 def g42 (c : List UInt8) (x : Buf) (u : UInt64) : List UInt8 :=
+  if 2147483647 < bsize x then [] else
   if bget x 0 == 2 then
     let (x2, w) := g53 x;
     if w == 0 then [] else
     let r := bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush (bpush bnew 1) 0) 0) 0) 0) 0) 0) 0) 0) u;
     let (r1, o) := g39 16777216 x2 r (g34 bnew) bnew bnew bnew;
-    if bget r1 4 == 1 then [] else if 16777215 < bsize o then [] else g40 16777216 c o 0 []
+    if bget r1 4 == 1 then [] else if 16777215 < bsize o then [] else if 262143 < bsize o then [] else
+    g40 16777216 c o 0 []
   else []
 
 def g41 (c : List UInt8) (x : Buf) : List UInt8 := g42 c x g_999

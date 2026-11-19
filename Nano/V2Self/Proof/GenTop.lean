@@ -360,8 +360,11 @@ theorem gen_ok (c : List UInt8) (x : Buf) (u : UInt64) (hX : x.length < 2 ^ 31) 
     bget x 0 = 2 ∧ (g53 x).2 ≠ 0 ∧ ∃ hs T o, DefsC x u bnew 1 (g34 bnew) hs T x.length o ∧ hs ≠ [] ∧
       tg x (hs.getLastD 0 + 2) = 0 ∧ tg x (hs.getLastD 0 + 5) = 1 ∧
       g42 c x u = g40 16777216 c (startW (bset o 0 (g13 0 0 (bsize o))) (bget T (bsize T - 1))) 0 [] ∧
-      o.length < 2 ^ 24 := by
+      o.length < 2 ^ 24 ∧ o.length + 32 < 2 ^ 18 := by
   unfold g42 at h ⊢
+  by_cases hbig : 2147483647 < bsize x
+  · rw [if_pos hbig] at h; exact absurd rfl h
+  rw [if_neg hbig] at h ⊢
   by_cases h0 : ¬ (bget x 0 == 2) = true
   · rw [if_neg h0] at h; exact absurd rfl h
   rw [Classical.not_not] at h0
@@ -388,7 +391,10 @@ theorem gen_ok (c : List UInt8) (x : Buf) (u : UInt64) (hX : x.length < 2 ^ 31) 
   rw [if_neg he] at h ⊢
   by_cases hz : 16777215 < bsize o1
   · rw [if_pos hz] at h; exact absurd rfl h
-  rw [if_neg hz]
+  rw [if_neg hz] at h ⊢
+  by_cases hz2 : 262143 < bsize o1
+  · rw [if_pos hz2] at h; exact absurd rfl h
+  rw [if_neg hz2]
   have hx1 : 1 ≤ x.length := by
     have : bget x 0 = 2 := by simpa using h0
     rcases x with _ | ⟨a, x⟩
@@ -420,15 +426,21 @@ theorem gen_ok (c : List UInt8) (x : Buf) (u : UInt64) (hX : x.length < 2 ^ 31) 
   have hsn : hs ≠ [] := by
     rintro rfl; obtain ⟨e, -, -⟩ := hD.nil_eq; rw [← e] at a1; exact a1 rfl
   obtain ⟨b1, b2⟩ := hc hsn
-  refine ⟨hs, s'.t, s'.o, hD, hsn, by rw [← b1, a2], by rw [← b2, a3], by rw [← a4, ← hE], ?_⟩
-  exact hB'.ol
+  refine ⟨hs, s'.t, s'.o, hD, hsn, by rw [← b1, a2], by rw [← b2, a3], by rw [← a4, ← hE], hB'.ol, ?_⟩
+  have e1 : o1 = startW (bset s'.o 0 (g13 0 0 (bsize s'.o))) (bget s'.t (bsize s'.t - 1)) := by
+    rw [← a4]; have := congrArg Prod.snd hE; simpa using this
+  have hl : o1.length = s'.o.length + 32 := by
+    rw [e1]; simp [startW, stT, stH, bpush, BufL.length_bset]
+  have := hB'.ol
+  rw [bsize_u, UInt64.lt_iff_toNat_lt, u_toNat _ (by omega)] at hz2
+  simp at hz2; omega
 
 /-- the same for g41 (κ = g_999) -/
 theorem gen41_ok (c : List UInt8) (x : Buf) (hX : x.length < 2 ^ 31) (h : g41 c x ≠ []) :
     bget x 0 = 2 ∧ (g53 x).2 ≠ 0 ∧ ∃ hs T o, DefsC x g_999 bnew 1 (g34 bnew) hs T x.length o ∧ hs ≠ [] ∧
       tg x (hs.getLastD 0 + 2) = 0 ∧ tg x (hs.getLastD 0 + 5) = 1 ∧
       g41 c x = g40 16777216 c (startW (bset o 0 (g13 0 0 (bsize o))) (bget T (bsize T - 1))) 0 [] ∧
-      o.length < 2 ^ 24 :=
+      o.length < 2 ^ 24 ∧ o.length + 32 < 2 ^ 18 :=
   gen_ok c x g_999 hX h
 
 end GenRef

@@ -158,7 +158,7 @@ theorem gen41_full (c : List UInt8) (x : Buf) (hX : x.length < 2 ^ 31) (h : g41 
     bget x 0 = 2 ∧ ∃ hs T o D, DefsC x g_999 bnew 1 (g34 bnew) hs T x.length o ∧ WDefs x [] 1 hs D x.length ∧ hs ≠ [] ∧
       tg x (hs.getLastD 0 + 2) = 0 ∧ tg x (hs.getLastD 0 + 5) = 1 ∧
       g41 c x = g40 16777216 c (startW (bset o 0 (g13 0 0 (bsize o))) (bget T (bsize T - 1))) 0 [] ∧
-      o.length < 2 ^ 24 := by
+      o.length < 2 ^ 24 ∧ o.length + 32 < 2 ^ 18 := by
   obtain ⟨h0, hw, hs, T, o, hD, hne, h2, h5, he⟩ := gen41_ok c x hX h
   obtain ⟨hs', D, i', hW, hi'⟩ := g53_ok x hX hw
   obtain ⟨e1, e2⟩ := chains hD hW rfl hi'

@@ -20,6 +20,7 @@ theorem gen_C (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length < 2
           startJ (11 + (defsJ (pcOf 524288 hb c29 inp T) ds 0 hs.length).length)
             ((pcOf 524288 hb c29 inp T).T (hs.length - 1))).map encG) 0 [] ∧
         (dA ds (hs.length - 1)).npw = 0 ∧ (dA ds (hs.length - 1)).nres = 1 ∧
+        11 + (defsJ (pcOf 524288 hb c29 inp T) ds 0 hs.length).length + 32 < 2 ^ 18 ∧
         (∀ k, k < hs.length → OpV (dA ds k).body) ∧
         (∀ j, j < hs.length → (dA ds j).npw < 251 ∧ (dA ds j).nslots < 251 ∧ (dA ds j).nres < 251 ∧
           (dA ds j).npw ≤ (dA ds j).nslots) ∧
@@ -35,7 +36,7 @@ theorem gen_C (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length < 2
             ScV (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body ∧ ∀ j, rd (dA ds k).body j → j < (dA ds k).npw) →
           ∀ k, k < hs.length → DefX C ((pcOf 524288 hb c29 inp T).T k) (dA ds k).npw (dA ds k).nres IG hb E0
             (semAt (pcOf 524288 hb c29 inp T) ds k)) := by
-  obtain ⟨hs, T, o, hD, hne, hg, l2, l5, hol, hrest⟩ := gen_top c ds hXl h hdb hb c29 inp
+  obtain ⟨hs, T, o, hD, hne, hg, l2, l5, hol, hc18, hrest⟩ := gen_top c ds hXl h hdb hb c29 inp
   refine ⟨hs, T, o, hD, hne, ?_⟩
   obtain ⟨ho, hhd, hbd, hTp, hpk, hX⟩ := hrest hol
   have hsl : 0 < hs.length := List.length_pos_iff.mpr hne
@@ -48,7 +49,9 @@ theorem gen_C (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length < 2
     have := congrArg UInt64.toNat h2; simp [Nat.toUInt64] at this; omega
   have nr : (dA ds (hs.length - 1)).nres = 1 := by
     have := congrArg UInt64.toNat h5; simp [Nat.toUInt64] at this; omega
-  refine ⟨?_, np, nr, fun k hk => (hhd k hk).2.2, hbd, hTp, hpk, hX⟩
+  refine ⟨?_, np, nr, ?_, fun k hk => (hhd k hk).2.2, hbd, hTp, hpk, hX⟩
+  rotate_left
+  · have := congrArg List.length ho; simp [g34_len] at this; omega
   have hTl : T.length = hs.length := by have := (DefsC.prefix hD).2; simpa [bnew] using this
   have hT1 : bsize T - 1 = (hs.length - 1).toUInt64 := by
     unfold bsize; rw [hTl]
@@ -110,7 +113,7 @@ theorem gen_run (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length <
   obtain ⟨hs, T, o, hD, hne, hr⟩ := gen_C c ds hXl h hdb ((s0.x 12).toNat + 16) (s0.x 11)
     (fun i => lbm s0.m ((s0.x 10).toNat + i))
   refine ⟨hs, T, o, hD, hne, ?_⟩
-  obtain ⟨hg, np, nr, -, -, -, -, hX⟩ := hr
+  obtain ⟨hg, np, nr, -, -, -, -, -, hX⟩ := hr
   refine ⟨hg, ?_⟩
   intro hpar E0 hE0 z0 ha8 hroom hE62 hcb hin63 hin vs H' hSd N bs hN hPb hPN hbs hQ hout
   generalize pcOf 524288 ((s0.x 12).toNat + 16) (s0.x 11) (fun i => lbm s0.m ((s0.x 10).toNat + i)) T = P at *
