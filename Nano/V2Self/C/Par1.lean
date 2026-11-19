@@ -133,7 +133,8 @@ def v210 : Nat → Buf → UInt64 → UInt64 → UInt64 → UInt64 → UInt64 �
 
 /-- arena validation (after the parse): the width-0 INPUT LOCAL may only appear as the first operand of rd / len / len' (prims 1..3, which then
 must have it), or as an argument of a CALL or of a CONTINUE state tuple (PAIR with shape 0); everywhere else (data, let value, if, prim operand,
-single-state CONTINUE) the node is rejected.  Checks every arena node: tag t, payload a, shape w, child count c, first child f. -/
+single-state CONTINUE) the node is rejected.  A single-state CONTINUE (tag 11 whose child is not a state tuple) is matched against the
+loop's state parameter like a tuple (fix M: `g n []` for an input-only loop).  Checks every arena node: tag t, payload a, shape w, child count c, first child f. -/
 def v209 : Nat → Buf → UInt64 → UInt64
   | 0, h, u => 0
   | n + 1, h, u =>
@@ -153,6 +154,10 @@ def v209 : Nat → Buf → UInt64 → UInt64
       let d := (bget h 12) - 1;
       let r2 := if t == 8 then (if bget h (d7 + 8*a + 6) == c then v210 16777216 h f (bget h (d7 + 8*a + 5)) 0 c 0 else k0)
                 else if t == 6 then (if w == 0 then (if bget h 12 == 0 then k0 else if bget h (d7 + 8*d + 6) == c + 1 then v210 16777216 h f (bget h (d7 + 8*d + 5) + 1) 0 c 0 else k0) else k1)
+                else if t == 11 then
+                  (if c == 0 then (if bget h 12 == 0 then k0 else if bget h (d7 + 8*d + 6) == c + 1 then v210 16777216 h f (bget h (d7 + 8*d + 5) + 1) 0 c 0 else k0)
+                   else if bget h ((d5 + 8*f) + 0) == 6 then (if bget h ((d5 + 8*f) + 3) == 0 then k1 else (if bget h 12 == 0 then k0 else if bget h (d7 + 8*d + 6) == c + 1 then v210 16777216 h f (bget h (d7 + 8*d + 5) + 1) 0 c 0 else k0))
+                   else (if bget h 12 == 0 then k0 else if bget h (d7 + 8*d + 6) == c + 1 then v210 16777216 h f (bget h (d7 + 8*d + 5) + 1) 0 c 0 else k0))
                 else k1;
       if r == 1 then (if r2 == 1 then v209 n h (u + 1) else 0) else 0
     else 1

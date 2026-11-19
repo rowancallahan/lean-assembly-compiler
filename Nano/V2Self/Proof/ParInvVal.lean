@@ -111,6 +111,10 @@ def r2C (h : Buf) (u : UInt64) : UInt64 :=
   let d := (bget h 12) - 1;
   if t == 8 then (if bget h (d7 + 8*a + 6) == c then v210 16777216 h f (bget h (d7 + 8*a + 5)) 0 c 0 else k0)
             else if t == 6 then (if w == 0 then (if bget h 12 == 0 then k0 else if bget h (d7 + 8*d + 6) == c + 1 then v210 16777216 h f (bget h (d7 + 8*d + 5) + 1) 0 c 0 else k0) else k1)
+            else if t == 11 then
+              (if c == 0 then (if bget h 12 == 0 then k0 else if bget h (d7 + 8*d + 6) == c + 1 then v210 16777216 h f (bget h (d7 + 8*d + 5) + 1) 0 c 0 else k0)
+               else if bget h ((d5 + 8*f) + 0) == 6 then (if bget h ((d5 + 8*f) + 3) == 0 then k1 else (if bget h 12 == 0 then k0 else if bget h (d7 + 8*d + 6) == c + 1 then v210 16777216 h f (bget h (d7 + 8*d + 5) + 1) 0 c 0 else k0))
+               else (if bget h 12 == 0 then k0 else if bget h (d7 + 8*d + 6) == c + 1 then v210 16777216 h f (bget h (d7 + 8*d + 5) + 1) 0 c 0 else k0))
             else k1
 
 /-- the per-node check of `v209` -/

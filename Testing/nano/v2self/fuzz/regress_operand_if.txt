@@ -22,3 +22,8 @@ def f (x : List UInt8) (a b : List UInt8) : UInt64 := len x def m (x : List UInt
 #   fuzz/regress_main4096.txt (64 defs x 64 params = 4096 codes, shape row 0 = (List, UInt64), then `def m : List UInt8 := []`;
 #   without the check v99 read main's "first code" at d7+4096+4096 = shape row 0's left code 3 and accepted)
 def m : List UInt8 := []
+# fix M (single-state CONTINUE matched against the loop's state parameter like a tuple; input-only loop `g n []`), 2026-11-19.
+# must REJECT (one program, lines joined):
+def g : Nat → List UInt8 → UInt64 | 0, x => 7 | n + 1, x => g n [] def m (x : List UInt8) : List UInt8 := put ([]) (rd x 0)
+# must ACCEPT:
+def g : Nat → UInt64 → UInt64 | 0, a => a | n + 1, a => g n (a + 1) def h : Nat → List UInt8 → UInt64 → UInt64 | 0, x, a => a | n + 1, x, a => h n x (a + 1) def m (x : List UInt8) : List UInt8 := put ([]) (g 3 (h 2 x 0))

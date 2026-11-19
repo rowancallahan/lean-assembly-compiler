@@ -251,6 +251,14 @@ Results: fixpoint B3 == B2, 255,668 bytes, **sha256 e840bd9a7613fa45295eea345327
 d71d7c97…), before the Own stage landed; with Own (064f0ef): 327,580 bytes, **sha256 dcc74d862dceeff1866ee6f739c412326664f9b64ba4535768301e608bf14986**
 (supersedes 41f637f8…). Fuzz (Par1 `parse`) 2,000 (seed 61): 0 disagreements.
 
+## Par1 fix M (2026-11-19, box C; found by the fuzzer, branch nano-v2-fuzz-found-input-only-loop d4836a3)
+A CONTINUE with ONE state (tag 11, no state-tuple child) skipped v209's parameter match (only tuples, tag 6 shape 0, ran v210), so
+`| n + 1, x => g n []` (input-only loop passing `[]`) was accepted.  Fix: v209's r2 for tag 11 whose child is not a state tuple (or
+c = 0) runs the tuple check: loop param count = c + 1 and v210 from the first state parameter (the tag-8/tag-6 branches are verbatim
+unchanged; `ParInvVal.r2C` mirrors it).  Layer 2 (B): `nodeOK` gets the same clause for tag 11, then `hL` can go.
+Results: fixpoint B3 == B2, 332,756 bytes, **sha256 9e6d13f5d5d6a454968e0585a77862f54d9409334bdade49f1c7c50996076e7e**; fuzz 3,000
+(seed 71): 0 disagreements; regressions appended to `fuzz/regress_operand_if.txt`.
+
 ## HANDOFF — Opus box C, parser Layer 3 (2026-11-19, keep current)
 Build here: no lake deps in this container; `lean -o` per module with LEAN_PATH (scratch script topo-sorts the imports); every
 ParRun*/ParInv*/ParTree* module builds, each < 20 s, < 1 GB.
