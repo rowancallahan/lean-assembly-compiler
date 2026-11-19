@@ -73,20 +73,17 @@ EXPRESSION REFINEMENT (B, in progress). PUSHED: `Proof/ParRunExpr.lean` — `VT`
   DONE since: `expr_letpair`, `expr_sound` (ExprSpec n), `Proof/ParRunTup.lean` (`TupSpec`, `tup_sound`: tuple remainder = pTup),
   `Proof/ParRunPrimS.lean` (`prim_leaf` via G's atomLeaf_spec, `prim_paren` (paren / tuple), `prim_sound`, and
   `all_specs (hcallOf : ∀ n, (∀ n' < n, ExprSpec n') → HCall n) : ∀ n, BinSpec n ∧ LoopSpec n ∧ PrimSpec n ∧ ExprSpec n`). No sorry.
-  REMAINING for expressions: `HCall n` = the call-like primaries (def call `.id` unbound + findD row < defs.length; prim token 39..47;
-  self-call 46/54) ↔ pApp's prim / pCallDef / self clauses. Needs pArgs (args runs: G's Atoms/args_run/call_tail/argCheck_run; the
-  argument atoms are AtomLeaf or `(`-expressions = ExprSpec < n), the CALL node's toNd with dropInp (inputs dropped iff params .inp —
-  from the deferred v210 `inpMatch` in nodeOK, i.e. VT), and for self-calls a `SelfRel st cx` (st.arm ↔ cx.self = some (cur.name, ps),
-  ps.map psCode = cur.params.tail, cur.name not a finished def) which CxRel (G) does not cover yet.
-PLAN (was: nothing pushed yet): one strong induction on the run length n, using G's `CxRel`/`TyRel`/`AtomLeaf`
-(ParRunAtom) and G's call/arg lemmas (ParRunCall) for call/prim heads. Statements (cx related by CxRel, ParSpec nx = st.nx):
-  prim md ↔ `pApp f cx (md == 1)` (md ≠ 2 also admits if/let ↔ `pExpr`'s if/let clauses); `binLoop m` with a on top ↔ `pLoop f cx m a.toNd ta`;
-  `expr 0 md` (md < 2) ↔ `pExpr f cx (md == 1)`; `expr m 2` ↔ `pBin f cx false m`; `parenClose` ↔ pAtom's `(` continuation; `tupRest` ↔ `pTup`.
-  Post-state: vals = v :: st.vals, binds/defs/cur/arm/out/sslot/acc/all unchanged, toks suffix, arena extended, nx ≥, ty/stash free.
-  Result: `VT v → (∀ f ≥ 4|toks| + c, pX f … = some (v.toNd, ty, st'.toks, st'.nx)) ∧ TyRel v ty`, VT v := every node of v passes
-  `nodeOK (st.defs ++ [st.cur])` (discharged at the def level by the next `defs` step's v209 check; F's `ParTreeOK.nodes`/`ArenaInv`).
-  Fuel constants: pExpr 4|ts|+4, pBin +3, pApp +2, pAtom/pLoop/pTup +1 (each recursive descent consumes a token or drops a level).
-  pBin's re-parse with tl = false: machine node not pending ⇒ no tail CONTINUE ⇒ `tl_down`; tuple re-parse: `tl_up`.
+  EXPRESSIONS DONE (3c7e52b): `Proof/ParRunSelf.lean` — `hcall_self` (self-call: prim 1 → selfArgs → args/argCheck → mkCont ↔ pApp's self
+  clause; `mkCont_run`, `pApp_self`, `toNd_spair`, `toNd_cont`, `nodeOK_cont`/`nodeOK_spair`), `hcall_all` (G's `hcall_def`/`hcall_prim` +
+  `hcall_self`), and **`expr_specs : ∀ n, BinSpec n ∧ LoopSpec n ∧ PrimSpec n ∧ ExprSpec n`** (no hypotheses; axioms propext/choice/Quot.sound).
+  Interface for F (def level): `ExprSpec n` (ParRunExprMain) under `CxRel st cx` (G, ParRunAtom) + `CxNN st`; result needs `VT (rows st) v`.
+  `CxRel.self` (B): `st.arm → ∃ sps, cx.self = some (cur.name, sps) ∧ sps ≠ [] ∧ sps ≠ [.inp] ∧ sps.map psCode = cur.params.tail ∧
+  (sps[i] = .inp ↔ FirstLs cur.params.tail i) ∧ no .sh .nt`. `sps ≠ [.inp]` is TEMPORARY: Par1 finding L (a loop whose only state is the
+  input: `| n + 1, x => g n []` is accepted by Par1/Layer 2 — CONT with one argument skips the v209 input rule — ParSpec rejects); reported
+  to C; once fixed, mirror in stepF/nodeOK and derive it from VT instead.
+  Interface changes this round: `RN.isInp` reads the cell (b % 2^64, F); `St.stash : Option (List Nat)` (C); `TyRel (.s s)` =
+  `sh = s ∧ (isInp → s is a pair) ∧ tag ≠ 1`; `CxRel.transport/push` take `(hcu : cur eq) (har : arm eq)`; `Pushed.arm`.
+  NEXT (B): mirror fix L; help F at the def level on request.
 
 ## HANDOFF — parser lead (2026-11-19, keep current)
 Role: review of Layers 2/3; own families (after the split with G): def start/accept 60, plainBody 70, afterColon 73, stateTy 74,
