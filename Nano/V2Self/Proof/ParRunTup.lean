@@ -74,7 +74,7 @@ theorem tup_sound : ∀ n, (∀ n' ≤ n, ExprSpec n') → TupSpec n := by
     simp only [List.cons_append, List.nil_append] at h1
     try simp only at hr hltE
     obtain ⟨w, st2, n2, hn2, hp2, hlt2, h2, hnv2, hsp2⟩ := ihT nE (by omega) (fun n' hn' => hE n' (by omega)) _ _ fin cx h1
-      (CxRel.transport hc (by simp [hpE.binds]) (by simp [hpE.defs]))
+      (CxRel.transport hc (by simp [hpE.binds]) (by simp [hpE.defs]) (by simp [hpE.cur]) (by simp [hpE.arm]))
       (CxNN.transport hnn (by simp [hpE.binds]) (by simp [hpE.defs]) (by simp [hpE.cur]))
     match n2, h2 with
     | 0, h2 => exact absurd h2.zero_nil.1 (by simp)

@@ -34,7 +34,7 @@ theorem bin_of {n : Nat} (hP : ∀ n' < n, PrimSpec n') (hL : ∀ n' < n, LoopSp
     rw [hr] at hva
     simp only [ta, dif_pos hva]; exact ⟨(Classical.choose_spec (hspa hva)).1, (Classical.choose_spec (hspa hva)).2.1⟩
   obtain ⟨v, st', n', hn', hp, hsub, hrun, hstop, hnv, hspec⟩ :=
-    hL n1 (by omega) m ks st1 fin cx a st.vals ta h2 hp1.vals (CxRel.transport hc hp1.binds hp1.defs)
+    hL n1 (by omega) m ks st1 fin cx a st.vals ta h2 hp1.vals (CxRel.transport hc hp1.binds hp1.defs hp1.cur hp1.arm)
       (CxNN.transport hnn hp1.binds hp1.defs hp1.cur) hna hta
   have hr : rows st1 = rows st := by simp [rows, hp1.defs, hp1.cur]
   refine ⟨v, st', n', by omega, ⟨hp.vals, by rw [hp.binds, hp1.binds], by rw [hp.defs, hp1.defs], by rw [hp.cur, hp1.cur],
@@ -89,7 +89,7 @@ theorem expr_other {n : Nat} (hP : ∀ n' < n, PrimSpec n') (hL : ∀ n' < n, Lo
     simp only [ta, dif_pos hva]; exact ⟨(Classical.choose_spec (hspa hva)).1, (Classical.choose_spec (hspa hva)).2.1⟩
   -- the first step of the loop decides whether an operator follows
   obtain ⟨v, st', n', hn', hp, hsub, hrun, hstop, hnv, hspec⟩ :=
-    hL n1 (by omega) 0 ks st1 fin cx a st.vals ta h2' hp1.vals (CxRel.transport hc hp1.binds hp1.defs)
+    hL n1 (by omega) 0 ks st1 fin cx a st.vals ta h2' hp1.vals (CxRel.transport hc hp1.binds hp1.defs hp1.cur hp1.arm)
       (CxNN.transport hnn hp1.binds hp1.defs hp1.cur) hna hta
   refine ⟨v, st', n', by omega, ⟨hp.vals, by rw [hp.binds, hp1.binds], by rw [hp.defs, hp1.defs], by rw [hp.cur, hp1.cur],
     by rw [hp.arm, hp1.arm], by rw [hp.all, hp1.all], by have := hp.toks; omega, by have := hp.nx; have := hp1.nx; omega⟩,
@@ -240,7 +240,7 @@ theorem expr_if {n : Nat} (hB : ∀ n' < n, BinSpec n') (hE : ∀ n' < n, ExprSp
     rw [ht] at ht'; injection ht' with _ hr; subst hr
     simp only [List.cons_append, List.nil_append] at h2
     -- condition A
-    obtain ⟨a, stA, nA, hnA, hpA, hltA, hA, _, _, hspA⟩ := hB n (by omega) 0 _ _ fin cx h2 (CxRel.transport hc rfl rfl)
+    obtain ⟨a, stA, nA, hnA, hpA, hltA, hA, _, _, hspA⟩ := hB n (by omega) 0 _ _ fin cx h2 (CxRel.transport hc rfl rfl rfl rfl)
       (CxNN.transport hnn rfl rfl rfl)
     match nA, hA with
     | 0, hA => exact absurd hA.zero_nil.1 (by simp)
@@ -250,7 +250,7 @@ theorem expr_if {n : Nat} (hB : ∀ n' < n, BinSpec n') (hE : ∀ n' < n, ExprSp
     simp only [List.cons_append, List.nil_append] at hA'
     -- condition B
     obtain ⟨b, stB, nB, hnB, hpB, hltB, hBr, _, _, hspB⟩ :=
-      hB nA (by omega) 0 _ _ fin cx hA' (CxRel.transport hc (by simp [hpA.binds]) (by simp [hpA.defs]))
+      hB nA (by omega) 0 _ _ fin cx hA' (CxRel.transport hc (by simp [hpA.binds]) (by simp [hpA.defs]) (by simp [hpA.cur]) (by simp [hpA.arm]))
         (CxNN.transport hnn (by simp [hpA.binds]) (by simp [hpA.defs]) (by simp [hpA.cur]))
     match nB, hBr with
     | 0, hBr => exact absurd hBr.zero_nil.1 (by simp)
@@ -261,7 +261,7 @@ theorem expr_if {n : Nat} (hB : ∀ n' < n, BinSpec n') (hE : ∀ n' < n, ExprSp
     -- then branch
     obtain ⟨t, stT, nT, hnT, hpT, hltT, hT, _, _, hspT⟩ :=
       hE nB (by omega) (bm (md == 1)) _ _ fin cx (by cases md == 1 <;> simp [bm]) hB'
-        (CxRel.transport hc (by simp [hpB.binds, hpA.binds]) (by simp [hpB.defs, hpA.defs]))
+        (CxRel.transport hc (by simp [hpB.binds, hpA.binds]) (by simp [hpB.defs, hpA.defs]) (by simp [hpB.cur, hpA.cur]) (by simp [hpB.arm, hpA.arm]))
         (CxNN.transport hnn (by simp [hpB.binds, hpA.binds]) (by simp [hpB.defs, hpA.defs]) (by simp [hpB.cur, hpA.cur]))
     match nT, hT with
     | 0, hT => exact absurd hT.zero_nil.1 (by simp)
@@ -272,7 +272,7 @@ theorem expr_if {n : Nat} (hB : ∀ n' < n, BinSpec n') (hE : ∀ n' < n, ExprSp
     -- else branch
     obtain ⟨e, stE, nE, hnE, hpE, hltE, hEr, hstopE, hnE', hspE⟩ :=
       hE nT (by omega) (bm (md == 1)) _ _ fin cx (by cases md == 1 <;> simp [bm]) hT'
-        (CxRel.transport hc (by simp [hpT.binds, hpB.binds, hpA.binds]) (by simp [hpT.defs, hpB.defs, hpA.defs]))
+        (CxRel.transport hc (by simp [hpT.binds, hpB.binds, hpA.binds]) (by simp [hpT.defs, hpB.defs, hpA.defs]) (by simp [hpT.cur, hpB.cur, hpA.cur]) (by simp [hpT.arm, hpB.arm, hpA.arm]))
         (CxNN.transport hnn (by simp [hpT.binds, hpB.binds, hpA.binds]) (by simp [hpT.defs, hpB.defs, hpA.defs])
           (by simp [hpT.cur, hpB.cur, hpA.cur]))
     match nE, hEr with
@@ -383,12 +383,13 @@ theorem findEnv_cons (env : List (List Nat × Nat × Ps)) (x : List Nat) (slot :
 
 /-- a typed, non-input, non-Nat binding extends the context relation -/
 theorem CxRel.push {st st' : St} {cx : Cx} {x : List Nat} {slot : Nat} {s : Sh} (hc : CxRel st cx) (hs : s ≠ .nt)
-    (hb : st'.binds = st.binds ++ [⟨x, slot, some s, false⟩]) (hd : st'.defs = st.defs) :
+    (hb : st'.binds = st.binds ++ [⟨x, slot, some s, false⟩]) (hd : st'.defs = st.defs)
+    (hcu : st'.cur = st.cur) (har : st'.arm = st.arm) :
     CxRel st' { cx with env := (x, slot, .sh s) :: cx.env } := by
-  obtain ⟨h1, h2, h3, h4, h5, h6⟩ := hc
+  obtain ⟨h1, h2, h3, h4, h5, h6, h7⟩ := hc
   have hps : bdPs ⟨x, slot, some s, false⟩ = some (.sh s) := by
     unfold bdPs; cases s <;> simp_all
-  refine ⟨?_, ?_, ?_, by rw [hd]; exact h4, by rw [hd]; exact h5, h6⟩
+  refine ⟨?_, ?_, ?_, by rw [hd]; exact h4, by rw [hd]; exact h5, h6, by rw [hcu, har]; exact h7⟩
   · intro y bd hy; rw [hb, findB_push] at hy; split at hy
     · cases hy; rfl
     · exact h1 y bd hy
@@ -474,7 +475,7 @@ theorem expr_let {n : Nat} (hE : ∀ n' < n, ExprSpec n') {md ks st fin cx x r} 
       simp only [List.cons_append, List.nil_append] at h3
       -- the value
       obtain ⟨v, stV, nV, hnV, hpV, hltV, hV, _, hnvV, hspV⟩ :=
-        hE n (by omega) 0 _ _ fin cx (by omega) h3 (CxRel.transport hc rfl rfl) (CxNN.transport hnn rfl rfl rfl)
+        hE n (by omega) 0 _ _ fin cx (by omega) h3 (CxRel.transport hc rfl rfl rfl rfl) (CxNN.transport hnn rfl rfl rfl)
       match nV, hV with
       | 0, hV => exact absurd hV.zero_nil.1 (by simp)
       | nV + 1, hV =>
@@ -487,7 +488,7 @@ theorem expr_let {n : Nat} (hE : ∀ n' < n, ExprSpec n') {md ks st fin cx x r} 
       -- the body, in the extended context
       have hcB : CxRel { stV with toks := r2, nx := stV.nx + cw v.sh, binds := stV.binds ++ [⟨x, stV.nx, v.sh, false⟩] }
           { cx with env := (x, stV.nx, .sh s) :: cx.env } :=
-        CxRel.push (CxRel.transport (st' := stV) hc (by rw [hpV.binds]) (by rw [hpV.defs])) hsnt (by simp [hsv]) rfl
+        CxRel.push (CxRel.transport (st' := stV) hc (by rw [hpV.binds]) (by rw [hpV.defs]) (by rw [hpV.cur]) (by rw [hpV.arm])) hsnt (by simp [hsv]) rfl rfl rfl
       have hnB : CxNN { stV with toks := r2, nx := stV.nx + cw v.sh, binds := stV.binds ++ [⟨x, stV.nx, v.sh, false⟩] } :=
         CxNN.push (CxNN.transport (st' := stV) hnn hpV.binds hpV.defs hpV.cur) ⟨s, hsv, hsnn⟩ rfl rfl rfl
       obtain ⟨b, stB, nB, hnB', hpB, hltB, hB, hstopB, hnvB, hspB⟩ :=
@@ -606,7 +607,7 @@ theorem expr_letpair {n : Nat} (hE : ∀ n' < n, ExprSpec n') {md ks st fin cx x
     simp only [List.cons_append, List.nil_append] at h5
     -- the value
     obtain ⟨v, stV, nV, hnV, hpV, hltV, hV, _, hnvV, hspV⟩ :=
-      hE n (by omega) 0 _ _ fin cx (by omega) h5 (CxRel.transport hc rfl rfl) (CxNN.transport hnn rfl rfl rfl)
+      hE n (by omega) 0 _ _ fin cx (by omega) h5 (CxRel.transport hc rfl rfl rfl rfl) (CxNN.transport hnn rfl rfl rfl)
     match nV, hV with
     | 0, hV => exact absurd hV.zero_nil.1 (by simp)
     | nV + 1, hV =>
@@ -627,9 +628,9 @@ theorem expr_letpair {n : Nat} (hE : ∀ n' < n, ExprSpec n') {md ks st fin cx x
     obtain ⟨⟨⟨hl, hrr⟩, hlnn⟩, hrnn⟩ := hsnn
     -- the body, in the context extended by both components
     have hc1 : CxRel { stV with binds := stV.binds ++ [⟨x, stV.nx, some l, false⟩] } { cx with env := (x, stV.nx, .sh l) :: cx.env } :=
-      CxRel.push (CxRel.transport (st' := stV) hc (by rw [hpV.binds]) (by rw [hpV.defs])) hl rfl rfl
+      CxRel.push (CxRel.transport (st' := stV) hc (by rw [hpV.binds]) (by rw [hpV.defs]) (by rw [hpV.cur]) (by rw [hpV.arm])) hl rfl rfl rfl rfl
     have hcB := CxRel.push (x := y) (slot := stV.nx + l.width) hc1 hrr
-      (st' := { stV with toks := r2, nx := stV.nx + cw v.sh, stash := some x, binds := stV.binds ++ [⟨x, stV.nx, some l, false⟩, ⟨y, stV.nx + l.width, some rr, false⟩] }) (by simp) rfl
+      (st' := { stV with toks := r2, nx := stV.nx + cw v.sh, stash := some x, binds := stV.binds ++ [⟨x, stV.nx, some l, false⟩, ⟨y, stV.nx + l.width, some rr, false⟩] }) (by simp) rfl rfl rfl
     have hn1 : CxNN { stV with binds := stV.binds ++ [⟨x, stV.nx, some l, false⟩] } :=
       CxNN.push (CxNN.transport (st' := stV) hnn hpV.binds hpV.defs hpV.cur) ⟨l, rfl, hlnn⟩ rfl rfl rfl
     have hnB := CxNN.push (bd := ⟨y, stV.nx + l.width, some rr, false⟩) hn1 ⟨rr, rfl, hrnn⟩

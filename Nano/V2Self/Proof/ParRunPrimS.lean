@@ -110,7 +110,7 @@ theorem prim_paren {n md ks st fin cx r} (hE : ∀ n' ≤ n, ExprSpec n') (hc : 
     (h1 : StarN n (.expr 0 (bm (md == 1)) :: .parenClose :: ks, { st with toks := r }) ([], fin)) :
     PrimConcl (n + 1) md ks st fin cx := by
   obtain ⟨e, stE, nE, hnE, hpE, hltE, hEr, _, hnvE, hspE⟩ :=
-    hE n (Nat.le_refl _) (bm (md == 1)) _ _ fin cx (by cases md == 1 <;> simp [bm]) h1 (CxRel.transport hc rfl rfl)
+    hE n (Nat.le_refl _) (bm (md == 1)) _ _ fin cx (by cases md == 1 <;> simp [bm]) h1 (CxRel.transport hc rfl rfl rfl rfl)
       (CxNN.transport hnn rfl rfl rfl)
   match nE, hEr with
   | 0, hEr => exact absurd hEr.zero_nil.1 (by simp)
@@ -134,7 +134,7 @@ theorem prim_paren {n md ks st fin cx r} (hE : ∀ n' ≤ n, ExprSpec n') (hc : 
     simp only [List.cons_append, List.nil_append] at h2
     have l1 : r2.length + 1 = stE.toks.length := by simp [hr2]
     obtain ⟨w, st2, n2, hn2, hp2, hlt2, h3, hnv2, hsp2⟩ := tup_sound nE (fun n' hn' => hE n' (by omega)) _ _ fin cx h2
-      (CxRel.transport hc (by simp [hpE.binds]) (by simp [hpE.defs]))
+      (CxRel.transport hc (by simp [hpE.binds]) (by simp [hpE.defs]) (by simp [hpE.cur]) (by simp [hpE.arm]))
       (CxNN.transport hnn (by simp [hpE.binds]) (by simp [hpE.defs]) (by simp [hpE.cur]))
     match n2, h3 with
     | 0, h3 => exact absurd h3.zero_nil.1 (by simp)

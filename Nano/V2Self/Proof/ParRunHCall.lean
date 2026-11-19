@@ -75,7 +75,9 @@ theorem tyMatch_of2 {p : Ps} {v : RN} {ty : Ty} (hty : TyRel v ty) (hnb : ty ≠
   | s t =>
     obtain ⟨hs, hni, ht1⟩ := hty
     cases p with
-    | inp => have := hi.mp rfl; rw [hni] at this; cases this
+    | inp =>
+      obtain ⟨l, r, rfl⟩ := hni (hi.mp rfl)
+      rcases hok with h | ⟨h1, _⟩ <;> simp_all [psCode]
     | fuel =>
       rcases hok with h | ⟨_, h2 | ⟨h2, h3⟩⟩
       · rw [hs] at h; simp [psCode] at h; subst h; rfl
@@ -119,7 +121,7 @@ theorem argsV {N : Nat} (hE : ∀ n' < N, ExprSpec n') {cx : Cx} : ∀ {k m : Na
   | @cons k st st1 st2 n1 n2 ha _ ih =>
     intro hm hc hnn
     obtain ⟨v, hpo, hlt, hsh, hsp⟩ := atomV_run (fun k hk => hE k (by omega)) ha hc hnn
-    have hc1 := CxRel.transport hc hpo.binds hpo.defs
+    have hc1 := CxRel.transport hc hpo.binds hpo.defs hpo.cur hpo.arm
     have hnn1 := CxNN.transport hnn hpo.binds hpo.defs hpo.cur
     obtain ⟨vs, hlen, hvals, hb, hd, hcu, harm, hall, htk, hnx, hshs, hsps⟩ := ih (by omega) hc1 hnn1
     have hrows := rows_eq hpo.defs hpo.cur
@@ -166,7 +168,7 @@ theorem hcall_prim {n : Nat} (hE : ∀ n' < n, ExprSpec n') {md : Nat} {ks : Lis
   obtain ⟨st1, m, n1, hat, rfl, hk⟩ := args_run _ hrun'
   obtain ⟨vs, hlen, hvals, hb, hd, hcu, harm, hall', htk, hnx, hshs, hsps⟩ :=
     argsV (N := m + n1 + primAr (t - 38) + 1) (fun k hk => hE k (by omega)) hat (by omega)
-      (CxRel.transport hc rfl rfl) (CxNN.transport hnn rfl rfl rfl)
+      (CxRel.transport hc rfl rfl rfl rfl) (CxNN.transport hnn rfl rfl rfl)
   obtain ⟨hall, nd, n', hnode, heq, hfin⟩ :=
     call_tail (c := .pr (t - 38)) (as := vs.reverse) (base := st.vals) hvals rfl hk
   simp only [List.length_reverse, List.reverse_reverse, callNode, Option.some.injEq] at hnode heq hall
@@ -208,7 +210,7 @@ theorem hcall_prim {n : Nat} (hE : ∀ n' < n, ExprSpec n') {md : Nat} {ks : Lis
     | nil => simp at this
     | cons q qs => simpa using this
   have htn := prim_toNd (p := t - 38) (sh := some (primRes (t - 38))) hinp h4
-  refine ⟨.s (primRes (t - 38)), ⟨rfl, rfl, by simp [RN.tag]⟩, fun hc' => by rw [htn] at hc'; simp [Nd.tailCont] at hc', fun f hf => ?_⟩
+  refine ⟨.s (primRes (t - 38)), ⟨rfl, by simp [RN.isInp, RN.tag], by simp [RN.tag]⟩, fun hc' => by rw [htn] at hc'; simp [Nd.tailCont] at hc', fun f hf => ?_⟩
   obtain ⟨g, rfl⟩ : ∃ g, f = g + 1 := ⟨f - 1, by omega⟩
   rw [ht, pApp]
   simp only [hsig]
@@ -289,7 +291,7 @@ theorem hcall_def {n : Nat} (hE : ∀ n' < n, ExprSpec n') {md : Nat} {ks : List
   obtain ⟨st1, m, n1, hat, rfl, hk⟩ := args_run _ hrun'
   obtain ⟨vs, hlen, hvals, hbb, hd, hcu, harm, hall', htk, hnx, hshs, hsps⟩ :=
     argsV (N := m + n1 + di.params.length + 1) (fun k hk => hE k (by omega)) hat (by omega)
-      (CxRel.transport hc rfl rfl) (CxNN.transport hnn rfl rfl rfl)
+      (CxRel.transport hc rfl rfl rfl rfl) (CxNN.transport hnn rfl rfl rfl)
   have hrows1 : (rows st1)[j']? = some dR := by rw [rows_eq hd hcu]; exact hrows
   obtain ⟨hall, nd, n', hnode, heq, hfin⟩ :=
     call_tail (c := .df j') (as := vs.reverse) (base := st.vals) hvals rfl hk
@@ -329,7 +331,7 @@ theorem hcall_def {n : Nat} (hE : ∀ n' < n, ExprSpec n') {md : Nat} {ks : List
   have hself : ∀ sn sps, cx.self = some (sn, sps) → sn ≠ x := by
     intro sn sps hs e; subst e
     rw [hc.selfFresh _ _ hs] at hfd; cases hfd
-  refine ⟨.s di.res, ⟨hres, rfl, by simp [RN.tag]⟩, fun hc' => by rw [htn] at hc'; simp [Nd.tailCont] at hc', fun f hf => ?_⟩
+  refine ⟨.s di.res, ⟨hres, by simp [RN.isInp, RN.tag], by simp [RN.tag]⟩, fun hc' => by rw [htn] at hc'; simp [Nd.tailCont] at hc', fun f hf => ?_⟩
   obtain ⟨g, rfl⟩ : ∃ g, f = g + 2 := ⟨f - 2, by omega⟩
   rw [ht, pApp_call henv hself, pCallDef]
   simp only [hfd]

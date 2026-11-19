@@ -75,10 +75,11 @@ theorem mkBin_inv {op st k st'} (h : stepF (.mkBin op) st = some (k, st')) :
     · simp at h
   · simp at h
 
-theorem CxRel.transport {st st' : St} {cx : Cx} (h : CxRel st cx) (hb : st'.binds = st.binds) (hd : st'.defs = st.defs) :
-    CxRel st' cx := by
-  obtain ⟨h1, h2, h3, h4, h5, h6⟩ := h
-  exact ⟨by rw [hb]; exact h1, by rw [hb]; exact h2, by rw [hb]; exact h3, by rw [hd]; exact h4, by rw [hd]; exact h5, h6⟩
+theorem CxRel.transport {st st' : St} {cx : Cx} (h : CxRel st cx) (hb : st'.binds = st.binds) (hd : st'.defs = st.defs)
+    (hcu : st'.cur = st.cur) (har : st'.arm = st.arm) : CxRel st' cx := by
+  obtain ⟨h1, h2, h3, h4, h5, h6, h7⟩ := h
+  exact ⟨by rw [hb]; exact h1, by rw [hb]; exact h2, by rw [hb]; exact h3, by rw [hd]; exact h4, by rw [hd]; exact h5, h6,
+    by rw [hcu, har]; exact h7⟩
 
 theorem TyRel.notInp {v : RN} {ty : Ty} (h : TyRel v ty) (hu : v.sh = some .uw) (hb : ty ≠ .bot) : v.isInp = false := by
   cases ty with
@@ -187,7 +188,7 @@ theorem loop_sound : ∀ n, (∀ n' < n, BinSpec n') → LoopSpec n := by
       simp only [List.nil_append] at h3
       have hb : TyRel (RN.mk 3 op 0 (some .uw) false [a, RN.mk 1 kv 0 (some .uw) false []]) (.s .uw) := ⟨rfl, by simp [RN.isInp, RN.tag], by simp [RN.tag]⟩
       obtain ⟨v, st', n', hn', hp, hsub, hrun, hstop, hnv, hspec⟩ := ihL n (by omega) (fun n'' hn'' => IHB n'' (by omega)) m ks _ fin cx _ _ _ h3 rfl
-        (CxRel.transport hc rfl rfl) (CxNN.transport hnn rfl rfl rfl) ⟨.uw, rfl, rfl⟩
+        (CxRel.transport hc rfl rfl rfl rfl) (CxNN.transport hnn rfl rfl rfl) ⟨.uw, rfl, rfl⟩
         (fun _ => ⟨hb, PT_bin _ _ _⟩)
       refine ⟨v, st', n', by omega, ⟨hp.vals, hp.binds, hp.defs, hp.cur, hp.arm, hp.all, ?_, hp.nx⟩,
         fun u hu => hsub u (kid_nodes_sub (List.mem_cons_self ..) hu), hrun, hstop, hnv, fun hvt => ?_⟩
@@ -210,7 +211,7 @@ theorem loop_sound : ∀ n, (∀ n' < n, BinSpec n') → LoopSpec n := by
     · -- operator with a parsed right operand
       simp only [List.cons_append, List.nil_append] at h1
       obtain ⟨y, st2, n2, hn2, hp2, hlt2, h2, _, _, hspec2⟩ :=
-        IHB n (by omega) (p + 1) (.mkBin op :: .binLoop m :: ks) _ fin cx h1 (CxRel.transport hc rfl rfl) (CxNN.transport hnn rfl rfl rfl)
+        IHB n (by omega) (p + 1) (.mkBin op :: .binLoop m :: ks) _ fin cx h1 (CxRel.transport hc rfl rfl rfl rfl) (CxNN.transport hnn rfl rfl rfl)
       match n2, h2 with
       | 0, h2 => exact absurd h2.zero_nil.1 (by simp)
       | n2 + 1, h2 =>
@@ -222,7 +223,7 @@ theorem loop_sound : ∀ n, (∀ n' < n, BinSpec n') → LoopSpec n := by
       obtain ⟨rfl, rfl, rfl⟩ := hv3
       simp only [List.nil_append] at h3
       have hb : TyRel (RN.mk 3 op 0 (some .uw) false [a, y]) (.s .uw) := ⟨rfl, by simp [RN.isInp, RN.tag], by simp [RN.tag]⟩
-      have hc3 : CxRel st3 cx := CxRel.transport hc (by rw [hst3]; exact hp2.binds) (by rw [hst3]; exact hp2.defs)
+      have hc3 : CxRel st3 cx := CxRel.transport hc (by rw [hst3]; exact hp2.binds) (by rw [hst3]; exact hp2.defs) (by rw [hst3]; exact hp2.cur) (by rw [hst3]; exact hp2.arm)
       have hv3' : st3.vals = RN.mk 3 op 0 (some .uw) false [a, y] :: rest := by rw [hst3]
       obtain ⟨v, st', n', hn', hp, hsub, hrun, hstop, hnv, hspec⟩ :=
         ihL n2 (by omega) (fun n'' hn'' => IHB n'' (by omega)) m ks _ fin cx _ _ _ h3 hv3' hc3
