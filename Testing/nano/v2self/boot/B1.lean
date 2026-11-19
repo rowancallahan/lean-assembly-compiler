@@ -1471,15 +1471,17 @@ def o3 (s : Buf) (g n d a b : UInt64) : Buf :=
   let q := bget s 4;
   let y := 16 + 8 * q;
   let u := bget s 7;
-  bset (o0 (o0 (o0 (o0 (o0 (o0 (o0 (o0 s y g) (y + 1) n) (y + 2) 0) (y + 3) d) (y + 4) u) (y + 5) u) (y + 6) a) (y + 7) b) 4 (q + 1)
+  if q < 1073741824 then
+    bset (o0 (o0 (o0 (o0 (o0 (o0 (o0 (o0 s y g) (y + 1) n) (y + 2) 0) (y + 3) d) (y + 4) u) (y + 5) u) (y + 6) a) (y + 7) b) 4 (q + 1)
+  else bset (bset s 1 1) 5 1
 
 /-- hard error: stop the walk -/
 def o5 (s : Buf) : Buf := bset (bset s 1 1) 5 1
 
-/-- push a value entry -/
+/-- push a value entry (at most 2^40) -/
 def o6 (s v : Buf) (e : UInt64) : Buf × Buf :=
   let u := bget s 7;
-  (bset s 7 (u + 1), o0 v u e)
+  if u < 1099511627776 then (bset s 7 (u + 1), o0 v u e) else (o5 s, v)
 
 /-- slot q is dead (or no slot) -/
 def o7 (s f : Buf) (q : UInt64) : UInt64 :=
@@ -1837,8 +1839,10 @@ def o33 (x s f v t : Buf) : Buf × (Buf × Buf) :=
         (let (s1, f1) := o29 s f v t;
          let a := o1 s1 4;
          let j := bget s1 10;
-         let f2 := o22 16777216 f1 n (2 * n + n * j) 0 n 0;
-         (o2 (o2 (bset (bset (bset s1 7 a) 10 (j + 1)) 11 0) 5 a) 7 j, (f2, v)))
+         if j < 1073741824 then
+           (let f2 := o22 16777216 f1 n (2 * n + n * j) 0 n 0;
+            (o2 (o2 (bset (bset (bset s1 7 a) 10 (j + 1)) 11 0) 5 a) 7 j, (f2, v)))
+         else (o5 s1, (f1, v)))
        else (o2 (bset s 11 0) 5 b, (f, v)))
      else if g == 10 then (o2 (bset s 11 0) 5 b, (o22 16777216 f n n 0 n 3, v))
      else (o2 (bset s 11 0) 5 b, (f, v)))
