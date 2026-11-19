@@ -104,4 +104,48 @@ theorem row_frameP {h h' : Buf} {j : Nat} {d : DefR} (hj : j < 512) (r : RowRep 
   rw [c 5 (by decide), er _ (by rw [parCell _ _ (by omega)]; omega) (by rw [parCell _ _ (by omega)]; omega)]
   exact es _ _ (ap i hi)
 
+/-- the def table (all but the pair-table part) under shape-code preservation -/
+theorem defs_frameP {h h' : Buf} {st : St} {b : Bool} (r : DefsRep h st b) (e12 : bget h' 12 = bget h 12) (e27 : bget h' 27 = bget h 27)
+    (er : RegAgree h h' 147520 155712) (et : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShPres h h') (hsr : ShRows h') :
+    DefsRep h' st b := by
+  obtain ⟨r12, rl, r27, rd, rc, rz, r0, _⟩ := r
+  have c5 : ∀ j, j < 512 → bget h' (d7 + 8 * j.toUInt64 + 5) = bget h (d7 + 8 * j.toUInt64 + 5) :=
+    fun j hj => er _ (by rw [defCell j hj 5 (by decide), show (5 : UInt64).toNat = 5 from rfl]; omega)
+      (by rw [defCell j hj 5 (by decide), show (5 : UInt64).toNat = 5 from rfl]; omega)
+  have zr : ∀ j, j < 512 → RowZero h j → RowZero h' j := fun j hj z k hk => by
+    rw [er _ (by rw [defCell j hj k hk]; omega) (by rw [defCell j hj k hk]; omega)]; exact z k hk
+  refine ⟨by rw [e12]; exact r12, rl, by rw [e27]; exact r27, fun j hj => ⟨row_frameP (by omega) (rd j hj).1 er et hn es,
+    by rw [c5 j (by omega), e27]; exact (rd j hj).2⟩, ?_, fun j h1 h2 => zr j h2 (rz j h1 h2),
+    fun i h1 h2 => by rw [er _ (by rw [parCell0 i h2]; omega) (by rw [parCell0 i h2]; omega)]; exact r0 i (by rw [← e27]; exact h1) h2,
+    hsr⟩
+  cases b with
+  | true => simp only [if_true] at rc ⊢; exact ⟨row_frameP (by omega) rc.1 er et hn es, by rw [c5 _ (by omega), e27]; exact rc.2⟩
+  | false => simp only [Bool.false_eq_true, if_false] at rc ⊢; exact zr _ (by omega) rc
+
+/-- **allocation frame**: if the pair rows below `n` are unchanged and every row from `n` on had a zero left cell, all shape codes
+keep their meaning (no code can refer to a row ≥ n: its left component would be code 0) -/
+theorem shPres_alloc {g G : Buf} (n : Nat) (hz : ∀ k : Nat, n ≤ k → k < 8192 → bget g (d7 + 8192 + 3 * k.toUInt64) = 0)
+    (hag : ∀ i : UInt64, 155712 ≤ i.toNat → i.toNat < 155712 + 3 * n → bget G i = bget g i) : ShPres g G := by
+  intro c s r
+  induction r with
+  | uw => exact .uw
+  | bf => exact .bf
+  | ls => exact .ls
+  | nt => exact .nt
+  | @pr c l r a b h5 hlt el er ew sa sb iha ihb =>
+    have ck : c - 5 = (c.toNat - 5).toUInt64 := by
+      apply UInt64.toNat_inj.mp
+      rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr (by simp; omega))]; simp; omega
+    have hk : c.toNat - 5 < n := by
+      rcases Nat.lt_or_ge (c.toNat - 5) n with h | h
+      · exact h
+      · exfalso
+        have z := hz (c.toNat - 5) h (by omega)
+        rw [← ck, el] at z
+        exact sa.ne0 z
+    have cc : ∀ q : UInt64, q.toNat < 3 → bget G (d7 + 8192 + 3 * (c - 5) + q) = bget g (d7 + 8192 + 3 * (c - 5) + q) :=
+      fun q hq => hag _ (by rw [shapeRow c h5 hlt q hq]; omega) (by rw [shapeRow c h5 hlt q hq]; omega)
+    have c0 := cc 0 (by decide); simp only [UInt64.add_zero] at c0
+    exact .pr h5 hlt (by rw [c0]; exact el) (by rw [cc 1 (by decide)]; exact er) (by rw [cc 2 (by decide)]; exact ew) iha ihb
+
 end ParInv
