@@ -292,4 +292,7 @@ DONE (pushed, no sorry, std axioms):
   expression-core frame (`Frame.isCore`), `Rep h ts st (f :: fs) → WF (f :: fs) st → CInv (f :: fs, st) → DInv (f :: fs, st) →
   running → ∃ k st', stepF f st = some (k, st') ∧ Rep (step h) ts st' (k ++ fs)` — no other hypotheses.  F's api_of_rep calls it with
   WF (B), CInv (here) and DInv (F's ParRunShape) carried along the run.
-NEXT (box C): open for reassignment.
+NEXT (box C): reassigned (2026-11-19 18:20) to help O with the ownership-stage soundness proof.  Proposed to O: OwnWF.lean,
+`ParsesProgram ts p → WFS p` (prim arities, call ids, consts, loop/cont placement).  Caveat sent: O's WFN asks letE slot/width
+< 2^20, which the parser cannot give (64 nested pair lets ⇒ width 2^64): those bounds must come from Gen (nslots < 251) or an o41
+check.  Waiting for O's program-level WF definition.  F owns the parser glue (ParInvRun; imports ParInvGlue.h_core).
