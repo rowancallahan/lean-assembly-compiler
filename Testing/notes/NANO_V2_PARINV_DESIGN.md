@@ -62,7 +62,14 @@ RESOLVED (owner 2026-11-19): ParSpec unchanged, Par1 fixed (G 09c864d, H/I 21f71
   leanc -O2 B1.c -o B1` (then `git checkout Testing/nano/v2self/boot/` — the generator rewrites B1.lean/B1L.lean); compare with
   `cmp.py` = for each pN.txt, `B1 parse` words vs runrun line (script in the session scratchpad; trivial to rewrite).
 * `Proof/ParSpecTail.lean` (pure ParSpec): `tl_up`, `tl_down` (+ `Nd.tailCont`, `pLoop_noop`).
-EXPRESSION REFINEMENT (B, in progress, nothing pushed yet): one strong induction on the run length n, using G's `CxRel`/`TyRel`/`AtomLeaf`
+EXPRESSION REFINEMENT (B, in progress). PUSHED: `Proof/ParRunExpr.lean` — `VT`, `Post`, `BinSpec n` (expr m 2 ↔ pBin false m),
+  `LoopSpec n` (binLoop ↔ pLoop), `loop_sound : (∀ n' < n, BinSpec n') → LoopSpec n` (no sorry); `Proof/ParRunExprInv.lean` — inversions for
+  ifCmp/ifThen/ifElse/mkIte/letStart/letSemi/letEnd/letPairX/letPairY/letPairSemi/parenClose/tupRest/mkPair, `PrimCase` + `prim_inv`
+  (ifs / lets / AtomLeaf / paren / self / call / primTok); `ParSpecTail.nobot` (tl=false ⇒ type ≠ bot).
+  TODO: PrimSpec (prim ↔ pApp: leaf via G's atomLeaf_spec, paren/tuple, calls via args (G's Atoms/args_run/call_tail; asked G whether
+  G or B writes args_spec), self-call 46/54), ExprSpec (expr 0 md ↔ pExpr: if/let/pair-let), then BinSpec from PrimSpec + loop_sound,
+  all in one `Nat.strongRecOn` over n. Plan as follows.
+PLAN (was: nothing pushed yet): one strong induction on the run length n, using G's `CxRel`/`TyRel`/`AtomLeaf`
 (ParRunAtom) and G's call/arg lemmas (ParRunCall) for call/prim heads. Statements (cx related by CxRel, ParSpec nx = st.nx):
   prim md ↔ `pApp f cx (md == 1)` (md ≠ 2 also admits if/let ↔ `pExpr`'s if/let clauses); `binLoop m` with a on top ↔ `pLoop f cx m a.toNd ta`;
   `expr 0 md` (md < 2) ↔ `pExpr f cx (md == 1)`; `expr m 2` ↔ `pBin f cx false m`; `parenClose` ↔ pAtom's `(` continuation; `tupRest` ↔ `pTup`.
