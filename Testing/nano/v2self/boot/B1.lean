@@ -1439,8 +1439,10 @@ def v99 (x : Buf) (b : UInt64) : Buf :=
           if bget h (d11+x+2) == 109 then
             if bget h (d11+x+3) == 0 then
               if bget h (j+2) == 0 then
-                if bget h (d7+4096+u) == 3 then
-                  if bget h (j+3) == 3 then v98 16777216 h (d11+c+1) bnew else bnew
+                if bget h (j+6) == 1 then
+                  if bget h (d7+4096+u) == 3 then
+                    if bget h (j+3) == 3 then v98 16777216 h (d11+c+1) bnew else bnew
+                  else bnew
                 else bnew
               else bnew
             else bnew

@@ -26,9 +26,9 @@ theorem shapeCode3 {h : Buf} {s : Sh} (r : ShapeCode h 3 s) : s = .ls := by
   | nt => simp at hc
   | pr h5 => subst hc; simp at h5
 
-/-- the main-def cells (with the arity cell that v99 must check, `= 1`) give `mainOK` -/
+/-- the main-def cells (incl. the arity cell `= 1`) give `mainOK` -/
 theorem main_of {h : Buf} {st : St} {b : Bool} (hD : DefsRep h st b) (h12 : 0 < bget h 12) (hm : MainCells h)
-    (hA : bget h (d7 + 8 * (bget h 12 - 1) + 6) = 1) (hne : ∀ d ∈ st.defs, d.name ≠ []) : mainOK st = true := by
+    (hne : ∀ d ∈ st.defs, d.name ≠ []) : mainOK st = true := by
   obtain ⟨e12, hlt, _, hrows, _⟩ := hD
   have hpos : 0 < st.defs.length := by
     have := UInt64.lt_iff_toNat_lt.mp h12; simp at this; omega
@@ -43,8 +43,8 @@ theorem main_of {h : Buf} {st : St} {b : Bool} (hD : DefsRep h st b) (h12 : 0 < 
   have hdn : d.name ≠ [] := hne d (by rw [← hd]; exact List.getElem_mem _)
   obtain ⟨hname, _, hnni, hres, _, hplen, _, hpar⟩ := hrow
   unfold MainCells at hm
-  rw [hj] at hm hA
-  obtain ⟨m1, m2, m3, m4, m5⟩ := hm
+  rw [hj] at hm
+  obtain ⟨m1, m2, m3, hA, m4, m5⟩ := hm
   generalize hr : d7 + 8 * (st.defs.length - 1).toUInt64 = r at m1 m2 m3 m4 m5 hA hname hnni hres hplen hpar
   unfold mainOK
   rw [hlast]

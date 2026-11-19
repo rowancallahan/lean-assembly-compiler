@@ -241,12 +241,21 @@ Results: fixpoint B3 == B2, 254,552 bytes, **sha256 b8f76d42bd8cfa647ee591ad51ff
 (J) after fix H the call-site validation v210 still took "first List parameter = the callee's input": `def f (a b : List UInt8) …` + `f x []` was accepted (mis-compile). Fix: v133 rejects a `List UInt8` binder in a group of ≥ 2 while no input has been chosen (so the first List parameter IS the input; completeness loss: `(a b : List UInt8) (x : List UInt8)` is rejected, spec accepts). (K) `def f : (Nat) → …` was accepted (ParSpec needs the bare `Nat` token): v135 requires token 35 right before the first `→`.
 Results: fixpoint B3 == B2, 255,324 bytes, **sha256 d71d7c978c2fde818be200e6c0380d0ef2289918f1e1f133c46ac408e7084fe0** (supersedes b8f76d42…); fuzz 6,000 (seed 31) + 4,000 (seed 32): 0 disagreements; regressions file extended.
 
+## Par1 fix L (2026-11-19, box C; found by FZ/F)
+v99's main check read main's first parameter code at `d7+4096+u` (u = row word 5) without checking the row has a parameter: with
+4096 codes before a parameterless `def m : List UInt8 := []`, that cell is shape row 0's left code (3 for `List UInt8 × UInt64`)
+and Par1 accepted (ParSpec.mainOK rejects). Fix: v99 (and its proof mirror `ParInv.fin`) requires row word 6 (param count) = 1
+first; `MainCells` gains that conjunct, `main_of` takes it from MainCells (no separate hA). Regression `fuzz/regress_main4096.txt`
+(old B1 accepts, new rejects).
+Results: fixpoint B3 == B2, 255,668 bytes, **sha256 e840bd9a7613fa45295eea3453279194c3fa6e860913bd7a972bd94a8fbcd466** (supersedes
+d71d7c97…); fuzz 2,000 (seed 61): 0 disagreements.
+
 ## HANDOFF — Opus box C, parser Layer 3 (2026-11-19, keep current)
 Build here: no lake deps in this container; `lean -o` per module with LEAN_PATH (scratch script topo-sorts the imports); every
 ParRun*/ParInv*/ParTree* module builds, each < 20 s, < 1 GB.
 DONE (pushed, no sorry, std axioms):
 * Par1 fixes G (no if/let as operands), H (input = pickPs), I (no Nat as data), J (List group before the input rejected), K (`(Nat) →`):
-  B3 == B2 sha256 d71d7c97…4fe0, fuzz 0 disagreements (B mirrored G–K in ParRun).
+  L (v99 main arity = 1): B3 == B2 sha256 e840bd9a…d466, fuzz 0 disagreements (B mirrored G–K in ParRun; L is v99/fin only).
 * `ParInvRep` (TokAt, RNRep/KidsR ↔ B's RN, ShOpt, ArenaRep, frames), `ParInvOps` (v2_eff, v5_eff, arena_v5g), `ParInvState` (**Rep**;
   DefsRep incl. `ShRows` = h[26] shape rows, zero left cells above; G extended ShRows with row decoding), `ParInvStep` (region frames,
   push/pop, rep_tasks/rep_tok, tok_kw, defs_frame with e12/e27/e26), `ParInvBuild` (rep_arena, rep_v5g, val_rep, opCell, tok_cases,
@@ -254,8 +263,8 @@ DONE (pushed, no sorry, std axioms):
 * Handlers (task: lemma, module): 1 h_expr, 4 h_rparen, 8 h_ifElse (Expr); 2 h_binLoop, 5 h_mkBin (Build); 40 h_parenClose,
   90 h_tupRest, 6 h_ifCmp, 7 h_ifThen (Expr2); 41 h_letStart, 50 h_letPairX, 51 h_letPairY, 52 h_stash (Let); 12 h_letEnd (LetEnd);
   9 h_mkIte (Ite); 11 h_letSemi (LetSemi); 49 h_shiftNum + v87_word/v87_tok/rep_const (Num); 3 non-identifier part `prim_nonid`,
-  `v8_rows` (def lookup over defs ++ [cur]) (Primary).
+  `v8_rows` (def lookup over defs ++ [cur]), identifier part `prim_id`, 3 h_prim (Primary).
   Side conditions from B's WF / SInv (glue): binLoop/letSemi `st.vals ≠ []`; node builders `fs.all (!·.isFlat)`; letEnd `d ≤ |binds|`.
-NEXT (box C): task 3 identifier branch (v7_findB → LOC like G's h_argAtom; v8_rows → self (46) / call heads (45, 44)) and `h_prim`
-(mode wrapper v104: md = 2 rejects 32/2, then v104b with b01 (md == 1)); 53 letPairSemi (needs B's `stash : Option`); 42 mkPair
-(v107 + v10: waiting for G's rep_v10, asked).
+  h_prim side conditions: md ≤ 2, inDefF fs, no flat frame.
+NEXT (box C): 42 mkPair (ParInvMkPair: v2_stat/v5_stat done; needs SInv `∀ x ∈ vals, x.sh.isSome` + |vals| ≥ 2, G's rep_intern);
+F's items (|defs| ≤ 512 in Rep, `.flat` FrameArgs ∃ids, prev-token link for task 73, TokAgree narrowing); 53 letPairSemi (needs B's `stash : Option`).

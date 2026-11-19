@@ -18,3 +18,7 @@ def f (a b : List UInt8) : UInt64 := 1 def m (x : List UInt8) : List UInt8 := pu
 def f : (Nat) → UInt64 → UInt64 | 0, a => a | n + 1, a => f n a def m (x : List UInt8) : List UInt8 := []
 # must ACCEPT:
 def f (x : List UInt8) (a b : List UInt8) : UInt64 := len x def m (x : List UInt8) : List UInt8 := []
+# fix L (v99 main arity: main row must have exactly 1 parameter before its first code is read), 2026-11-19. must REJECT:
+#   fuzz/regress_main4096.txt (64 defs x 64 params = 4096 codes, shape row 0 = (List, UInt64), then `def m : List UInt8 := []`;
+#   without the check v99 read main's "first code" at d7+4096+4096 = shape row 0's left code 3 and accepted)
+def m : List UInt8 := []

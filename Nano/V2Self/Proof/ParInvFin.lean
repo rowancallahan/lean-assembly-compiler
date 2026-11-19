@@ -28,11 +28,11 @@ theorem v98_eq : ∀ (n : Nat) (h : Buf) (j : UInt64) (o : Buf), h.length < 2 ^ 
       simp only [v98, hlt, if_false]
       right; simp [List.drop_eq_nil_of_le (show h.length ≤ j.toNat by omega)]
 
-/-- the cells `fin` checks on the last def row: name spelled `m`, no non-input parameter, first parameter code 3 (List), result code 3 -/
+/-- the cells `fin` checks on the last def row: name spelled `m`, no non-input parameter, exactly one parameter, its code 3 (List), result code 3 -/
 def MainCells (h : Buf) : Prop :=
   let j := d7 + 8 * (bget h 12 - 1)
   bget h (d11 + bget h j + 2) = 109 ∧ bget h (d11 + bget h j + 3) = 0 ∧ bget h (j + 2) = 0 ∧
-    bget h (d7 + 4096 + bget h (j + 5)) = 3 ∧ bget h (j + 3) = 3
+    bget h (j + 6) = 1 ∧ bget h (d7 + 4096 + bget h (j + 5)) = 3 ∧ bget h (j + 3) = 3
 
 /-- **acceptance tail**: a non-empty result of `fin` is the heap from the IRV word on, of an accepted (status 2) state whose last def is main -/
 theorem fin_ne (ts h : Buf) (hl : h.length < 2 ^ 64) (hj : (d11 + bsize ts + 1).toNat ≤ h.length) (hne : fin ts 1 h ≠ []) :
@@ -47,15 +47,17 @@ theorem fin_ne (ts h : Buf) (hl : h.length < 2 ^ 64) (hj : (d11 + bsize ts + 1).
       by_cases c1 : bget h (d11 + bget h (d7 + 8 * (bget h 12 - 1)) + 2) = 109
       · by_cases c2 : bget h (d11 + bget h (d7 + 8 * (bget h 12 - 1)) + 3) = 0
         · by_cases c3 : bget h (d7 + 8 * (bget h 12 - 1) + 2) = 0
-          · by_cases c4 : bget h (d7 + 4096 + bget h (d7 + 8 * (bget h 12 - 1) + 5)) = 3
-            · by_cases c5 : bget h (d7 + 8 * (bget h 12 - 1) + 3) = 3
-              · simp only [c1, c2, c3, c4, c5, beq_self_eq_true, if_true] at hne ⊢
-                refine ⟨trivial, trivial, ⟨c1, c2, c3, c4, c5⟩, ?_⟩
-                rcases v98_eq 16777216 h (d11 + bsize ts + 1) bnew hl hj with e | e
-                · exact absurd e hne
-                · rw [e]; rfl
-              · exfalso; apply hne; simp [c1, c2, c3, c4, c5, bnew]
-            · exfalso; apply hne; simp [c1, c2, c3, c4, bnew]
+          · by_cases c6 : bget h (d7 + 8 * (bget h 12 - 1) + 6) = 1
+            · by_cases c4 : bget h (d7 + 4096 + bget h (d7 + 8 * (bget h 12 - 1) + 5)) = 3
+              · by_cases c5 : bget h (d7 + 8 * (bget h 12 - 1) + 3) = 3
+                · simp only [c1, c2, c3, c6, c4, c5, beq_self_eq_true, if_true] at hne ⊢
+                  refine ⟨trivial, trivial, ⟨c1, c2, c3, c6, c4, c5⟩, ?_⟩
+                  rcases v98_eq 16777216 h (d11 + bsize ts + 1) bnew hl hj with e | e
+                  · exact absurd e hne
+                  · rw [e]; rfl
+                · exfalso; apply hne; simp [c1, c2, c3, c6, c4, c5, bnew]
+              · exfalso; apply hne; simp [c1, c2, c3, c6, c4, bnew]
+            · exfalso; apply hne; simp [c1, c2, c3, c6, bnew]
           · exfalso; apply hne; simp [c1, c2, c3, bnew]
         · exfalso; apply hne; simp [c1, c2, bnew]
       · exfalso; apply hne; simp [c1, bnew]
