@@ -151,4 +151,87 @@ theorem defcall_spec {N : Nat} {cx : Cx} (hP : ParenH N cx) {n d j : Nat} {ks : 
   rw [ht, toNdL_dropInp hinp]
   simp [Function.comp_def]
 
+/-! ## prims -/
+theorem primPar_ne_nt (p i : Nat) : primPar p i ≠ .nt := by
+  unfold primPar; split <;> (try split) <;> simp
+
+theorem toNd_prim1 (p b : Nat) (sh : Option Sh) (pe : Bool) (kids : List RN) (hp : p < 4) :
+    (RN.mk 9 p b sh pe kids).toNd = .prim p (RN.toNdL kids.tail) := by
+  rw [RN.toNd.eq_def]
+  simp only [hp, and_self, if_true]
+  cases kids <;> simp [RN.toNdL]
+
+theorem toNd_prim2 (p b : Nat) (sh : Option Sh) (pe : Bool) (kids : List RN) (hp : ¬ p < 4) :
+    (RN.mk 9 p b sh pe kids).toNd = .prim p (RN.toNdL kids) := by
+  rw [RN.toNd.eq_def]
+  simp only [hp, and_false, if_false]
+  simp
+
+theorem prim_toNd {p : Nat} {sh : Option Sh} {ps : List Ps} {kids : List RN} (hi : InpPair ps kids)
+    (h4 : p < 4 → ps.head? = some .inp) :
+    (RN.mk 9 p 0 sh false kids).toNd = .prim p (dropInp ps (kids.map RN.toNd)) := by
+  rw [← toNdL_dropInp hi]
+  by_cases hp : p < 4
+  · rw [toNd_prim1 _ _ _ _ _ hp]
+    cases hi with
+    | nil => rfl
+    | @cons q qs v vs hq _ =>
+      have hq' : q = .inp := by simpa using h4 hp
+      have hv : v.isInp = true := hq.mp hq'
+      simp [toNdL_cons, hv]
+  · rw [toNd_prim2 _ _ _ _ _ hp]
+
+/-- **PRIM application**: the run `args; mkCallN` after a prim token is the prim clause of `ParSpec.pApp`, provided the built node
+passes the input rule (deferred validation: rd / len / len' take the input first, no other prim takes it) -/
+theorem primcall_spec {N : Nat} {cx : Cx} (hP : ParenH N cx) {n d t : Nat} {ks : List Frame} {st fin : St}
+    (hc : CxRel st cx) (h1 : 38 < t) (h2 : t < 48) (hd : d = st.vals.length) (hn : n ≤ N)
+    (h : StarN n (.args (.pr (t - 38)) (primAr (t - 38)) :: .mkCallN (.pr (t - 38)) d :: ks, st) ([], fin)) :
+    ∃ (ps : List Ps) (vs : List (RN × Ty)) (st1 : St) (n' : Nat), primSig t = some (t - 38, ps, primRes (t - 38)) ∧ n' < n ∧
+      vs.length = ps.length ∧ st1.binds = st.binds ∧ st1.defs = st.defs ∧ st1.cur = st.cur ∧
+      StarN n' (ks, { st1 with vals := RN.mk 9 (t - 38) 0 (some (primRes (t - 38))) false (vs.map (·.1)) :: st.vals,
+                               arena := st1.arena ++ [RN.mk 9 (t - 38) 0 (some (primRes (t - 38))) false (vs.map (·.1))] }) ([], fin) ∧
+      (InpPair ps (vs.map (·.1)) →
+        ValOK (RN.mk 9 (t - 38) 0 (some (primRes (t - 38))) false (vs.map (·.1))) (.s (primRes (t - 38))) ∧
+        ∃ F, ∀ f, F ≤ f → ∀ tl, pApp f cx tl (.k t :: st.toks) st.nx =
+          some ((RN.mk 9 (t - 38) 0 (some (primRes (t - 38))) false (vs.map (·.1))).toNd, .s (primRes (t - 38)), st1.toks, st1.nx)) := by
+  obtain ⟨ps, hsig, hpl, hcode, hinpi, hnf⟩ := prim_sig h1 h2
+  obtain ⟨st1, m, n1, hat, rfl, hk⟩ := args_run _ h
+  obtain ⟨vs, hlen, hvals, hb, hdd, hcu, hok, F, hp⟩ := args_spec hP hat (by omega) hc
+  obtain ⟨hall, nd, n', hnode, heq, hrun⟩ := call_tail (c := .pr (t - 38)) (as := (vs.map (·.1)).reverse) (base := st.vals) hvals hd hk
+  simp only [List.length_reverse, List.length_map, List.reverse_reverse, callNode, Option.some.injEq] at hnode heq hall
+  subst hnode
+  refine ⟨ps, vs, st1, n', hsig, by omega, by omega, hb, hdd, hcu, hrun, fun hinp => ?_⟩
+  have hm : ArgsMatch ps vs := by
+    refine argsMatch_of _ _ (by omega) fun idx i1 i2 => ?_
+    obtain ⟨v, w, hv, hw, hcond⟩ := hall (vs.length - 1 - idx) (by omega)
+    have e1 := operand_idx (vs.map (·.1)) st.vals idx (by simpa using i2)
+    simp only [List.length_map, List.getElem_map] at e1
+    rw [hvals, e1] at hv; cases hv
+    have e2 : arity st1 (.pr (t - 38)) - (vs.length - 1 - idx + 1) = idx := by
+      have : arity st1 (.pr (t - 38)) = primAr (t - 38) := rfl
+      rw [this]; omega
+    rw [e2] at hw
+    have hc1 := hcode idx i1
+    rw [List.getElem?_eq_getElem i1] at hc1
+    simp only [Option.map_some, Option.some.injEq] at hc1
+    have e3 : w = psCode ps[idx] := by
+      simp only [parCode, Option.some.injEq] at hw; rw [hc1]; exact hw.symm
+    subst e3
+    have hne : ps[idx] ≠ .sh .nt := fun e => primPar_ne_nt (t - 38) idx (by rw [← hc1, e]; rfl)
+    exact tyMatch_of (hok _ (List.getElem_mem i2)) hne
+      (by have := hinp.get idx i1 (by simpa using i2); simpa using this) hcond
+  have h4 : t - 38 < 4 → ps.head? = some .inp := by
+    intro h; have := (hinpi 0).mpr ⟨rfl, h⟩
+    cases ps with
+    | nil => simp at this
+    | cons q qs => simpa using this
+  refine ⟨⟨⟨rfl, rfl, by simp [RN.tag]⟩, rfl, fun _ ha => by simp only [RN.a] at ha; rw [ha]; rfl⟩, F + 1, fun f hf tl => ?_⟩
+  obtain ⟨g, rfl⟩ : ∃ g, f = g + 1 := ⟨f - 1, by omega⟩
+  rw [pApp]
+  simp only [hsig]
+  rw [hp g (by omega) _ hm]
+  simp only [Option.map_some, List.map_map]
+  rw [prim_toNd hinp h4]
+  simp [Function.comp_def]
+
 end ParRun
