@@ -67,6 +67,23 @@ theorem one_hd1 {S : SemW} (h : ∀ env sp H vs H', S env sp H = some (vs, H') �
     match vs, this with
     | [x], _ => rfl
 
+/-- weakening: more read slots, more written slots -/
+theorem EVHw.mono {C : List J} {pc len p nl hb w : Nat} {Inv : St → Prop} {R W R' W' : Nat → Prop} {S : SemW}
+    (h : EVHw C pc len p nl Inv hb R W w S) (hR : ∀ k, R k → R' k) (hW : ∀ k, W k → W' k) :
+    EVHw C pc len p nl Inv hb R' W' w S where
+  stable := fun env env' sp H hk => h.stable env env' sp H (fun k q => hk k (hR k q))
+  run := fun s env H vs H' I0 z0 F0 O0 R0 hS => by
+    obtain ⟨s', env', r, I, z, p31, l, v, e8, F, ag, hRl, mm⟩ := h.run s env H vs H' I0 z0 F0 O0 R0 hS
+    exact ⟨s', env', r, I, z, p31, l, v, e8, F, fun k hk => ag k (fun q => hk (hW k q)), hRl,
+      fun a ha hw => mm a ha (fun k hk q => hw k hk (hW k q))⟩
+
+/-- a fragment's length can be restated -/
+theorem EVHw.len {C : List J} {pc len len' p nl hb w : Nat} {Inv : St → Prop} {R W : Nat → Prop} {S : SemW}
+    (h : EVHw C pc len p nl Inv hb R W w S) (e : len = len') : EVHw C pc len' p nl Inv hb R W w S := e ▸ h
+
+theorem EVHw.wid {C : List J} {pc len p nl hb w w' : Nat} {Inv : St → Prop} {R W : Nat → Prop} {S : SemW}
+    (h : EVHw C pc len p nl Inv hb R W w S) (e : w = w') : EVHw C pc len p nl Inv hb R W w' S := e ▸ h
+
 /-! ## the empty fragment and sequencing -/
 
 def nilS : SemW := fun _ _ H => some ([], H)
