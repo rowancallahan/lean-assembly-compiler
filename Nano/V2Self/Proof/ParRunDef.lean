@@ -116,7 +116,7 @@ def DefsNN (ds : List DefR) : Prop := ∀ d ∈ ds, ShNN d.res ∧ ∀ p ∈ d.p
 /-- **plain def with binders**: from `.binders` (after `def x`, first token `(`) to the next `.defs` -/
 theorem plainB_spec {n : Nat} {ks : List Frame} {st0 fin : St} {x : List Nat} {dis : List DefI}
     (h : StarN n (.binders :: ks, st0) ([], fin)) (hS : DefStart st0 x) (hD : DRel st0.defs dis) (hNN : DefsNN st0.defs)
-    (hfr : findD st0.defs x = none) (hn8 : ∀ r, st0.toks ≠ .k 8 :: r) :
+    (hfr : findD st0.defs x = none) (hnl : ∀ r, st0.toks ≠ .k 8 :: .k 35 :: .k 17 :: r) :
     ∃ st2 n', n' < n ∧ StarN n' (.defs :: ks, st2) ([], fin) ∧ st2.toks.length < st0.toks.length ∧
       (st2.arena.all (nodeOK st2.defs) = true →
         ∃ di da, (∀ f, 4 * st0.toks.length + 4 ≤ f → pDef f dis (.k 1 :: .id x :: st0.toks) = some (di, da, st2.toks)) ∧
@@ -167,8 +167,6 @@ theorem plainB_spec {n : Nat} {ks : List Frame} {st0 fin : St} {x : List Nat} {d
     { id := dis.length, npw := NPW, nslots := st'.nx, kind := 0, nres := (trRes resT).width, body := z.toNd },
     fun f hf => ?_, ?_, ?_, ?_⟩
   · simp only [pDef, hfr', Option.isSome_none, Bool.false_eq_true, if_false]
-    split
-    · rename_i r' he; exact absurd he (hn8 _)
     · have hzres : z.sh = some (trRes resT) := by rw [hzs, hP.cur]
       have hok : tyOk (trRes resT) ty = true := by
         cases ty with
@@ -224,5 +222,83 @@ theorem plainB_spec {n : Nat} {ks : List Frame} {st0 fin : St} {x : List Nat} {d
       simp only [hcur0, List.nil_append, List.mem_map] at hp
       obtain ⟨q, hq, rfl⟩ := hp
       exact (hps q hq).2.2
+
+
+/-- counted runs concatenate along a frame split -/
+theorem StarN.cat {n1 n2 : Nat} {k ks : List Frame} {S S' fin : St} (h1 : StarN n1 (k, S) ([], S')) (h2 : StarN n2 (ks, S') ([], fin)) :
+    StarN (n1 + n2) (k ++ ks, S) ([], fin) := by
+  induction n1 generalizing k S with
+  | zero => obtain ⟨rfl, rfl⟩ := h1.zero_nil; simpa using h2
+
+  | succ n ih =>
+    match k, h1 with
+    | f :: k', h1 =>
+      obtain ⟨k2, st2, e1, e2⟩ := h1.head
+      have := ih e2
+      rw [List.append_assoc] at this
+      rw [show n + 1 + n2 = (n + n2) + 1 by omega]
+      exact .step (stepS_some.mpr ⟨_, _, e1, rfl⟩) this
+
+/-- on `:=`, `afterColon` behaves as `plainBody` -/
+theorem afterColon_k9 {st : St} {r : List Tok} (ht : st.toks = .k 9 :: r) : stepF .afterColon st = stepF .plainBody st := by
+  simp only [stepF, ht]
+  try (by_cases h : st.ty = some .nt <;> simp [h])
+
+theorem StarN.afterColon_k9 {n : Nat} {ks : List Frame} {st fin : St} {r : List Tok} (ht : st.toks = .k 9 :: r)
+    (h : StarN n (.afterColon :: ks, st) ([], fin)) : StarN n (.plainBody :: ks, st) ([], fin) := by
+  cases h with
+  | step hs h' => exact .step (by rw [stepS_cons, ← ParRun.afterColon_k9 ht, ← stepS_cons]; exact hs) h'
+
+
+theorem pTy_nat_arrow (f : Nat) (r : List Tok) : pTy (f + 2) (.k 35 :: .k 17 :: r) = some (.sh .nt, .k 17 :: r) := by
+  rw [pTy_succ']
+  simp [pTyAtom, crossK]
+
+/-- **plain def without binders** (`def x : T := e`): reduces to `plainB_spec` (the binders frame on `:` pushes exactly
+`[tyAtom, plainBody]`); otherwise the run is the fuel-loop header (`afterColon` on `→`, B's `loop_spec`) -/
+theorem plainC_spec {n : Nat} {ks : List Frame} {S fin : St} {x : List Nat} {dis : List DefI}
+    (h : StarN n (.tyAtom :: .afterColon :: ks, S) ([], fin)) (hS : DefStart S x) (hD : DRel S.defs dis) (hNN : DefsNN S.defs)
+    (hfr : findD S.defs x = none) :
+    (∃ st' n', n' ≤ n ∧ Star ([.tyAtom], S) ([], st') ∧ StarN n' (.afterColon :: ks, st') ([], fin) ∧ ∃ r, st'.toks = .k 17 :: r) ∨
+    (∃ st2 n', n' ≤ n ∧ StarN n' (.defs :: ks, st2) ([], fin) ∧ st2.toks.length < S.toks.length + 1 ∧
+      (st2.arena.all (nodeOK st2.defs) = true →
+        ∃ di da, (∀ f, 4 * (S.toks.length + 1) + 4 ≤ f → pDef f dis (.k 1 :: .id x :: .k 8 :: S.toks) = some (di, da, st2.toks)) ∧
+          st2.out = S.out ++ da.ser ∧ DRel st2.defs (dis ++ [di]) ∧ DefsNN st2.defs)) := by
+  obtain ⟨st', n1, n2, hn, e1, e2⟩ := StarN.split (k := [.tyAtom]) (ks := .afterColon :: ks) h
+  rcases ht : st'.toks with _ | ⟨tk, r9⟩
+  · match n2, e2 with
+    | n2 + 1, e2 => obtain ⟨_, _, h1, _⟩ := e2.head; simp [stepF, ht] at h1
+  · cases tk with
+    | num v => match n2, e2 with
+      | n2 + 1, e2 => obtain ⟨_, _, h1, _⟩ := e2.head; simp [stepF, ht] at h1
+    | id y => match n2, e2 with
+      | n2 + 1, e2 => obtain ⟨_, _, h1, _⟩ := e2.head; simp [stepF, ht] at h1
+    | k c =>
+      by_cases c17 : c = 17
+      · subst c17; exact Or.inl ⟨st', n2, by omega, e1.toStar, e2, r9, ht⟩
+      by_cases c9 : c = 9
+      · subst c9
+        right
+        have e2' := StarN.afterColon_k9 ht e2
+        have hcat := StarN.cat e1 e2'
+        have hB : StarN (n1 + n2 + 1) (.binders :: ks, { S with toks := .k 8 :: S.toks }) ([], fin) :=
+          .step (stepS_some.mpr ⟨[.tyAtom, .plainBody], S, by simp [stepF], rfl⟩) hcat
+        have hnl : ∀ r, (.k 8 :: S.toks : List Tok) ≠ .k 8 :: .k 35 :: .k 17 :: r := by
+          intro r e
+          simp only [List.cons.injEq, true_and] at e
+          obtain ⟨t, r', n', _, _, hpT, e3, _⟩ := (ty_sound n1).1 e1
+          obtain ⟨_, he⟩ := StarN.nil_inv e3
+          have := hpT (2 * S.toks.length + 2) (Nat.le_refl _)
+          rw [e, show 2 * (Tok.k 35 :: Tok.k 17 :: r).length + 2 = (2 * (Tok.k 35 :: Tok.k 17 :: r).length) + 2 from rfl,
+            pTy_nat_arrow] at this
+          simp only [Option.some.injEq, Prod.mk.injEq] at this
+          obtain ⟨_, hr'⟩ := this
+          have hst : st'.toks = r' := by have := congrArg (fun c => c.2.toks) he; simpa using this
+          rw [ht, ← hr'] at hst
+          simp at hst
+        obtain ⟨st2, n', hn', h2, hl, hv⟩ := plainB_spec hB ⟨hS.binds, hS.vals, hS.arena, hS.nx, hS.arm, hS.cur⟩ hD hNN hfr hnl
+        exact ⟨st2, n', by omega, h2, by simpa using hl, fun hval => by simpa using hv hval⟩
+      · match n2, e2 with
+        | n2 + 1, e2 => obtain ⟨_, _, h1, _⟩ := e2.head; simp [stepF, ht, c9, c17] at h1
 
 end ParRun
