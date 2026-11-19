@@ -267,5 +267,6 @@ DONE (pushed, no sorry, std axioms):
   `v8_rows` (def lookup over defs ++ [cur]), identifier part `prim_id`, 3 h_prim (Primary).
   Side conditions from B's WF / SInv (glue): binLoop/letSemi `st.vals ≠ []`; node builders `fs.all (!·.isFlat)`; letEnd `d ≤ |binds|`.
   h_prim side conditions: md ≤ 2, inDefF fs, no flat frame.
-X
+  42 h_mkPair (MkPair; side conditions SInv `∀ x ∈ vals, x.sh.isSome`, |vals| ≥ 2, no flat frame; v2_stat/v5_stat: status 0 absorbing).
+NEXT (box C):
 F's items (|defs| ≤ 512 in Rep, `.flat` FrameArgs ∃ids, prev-token link for task 73, TokAgree narrowing); 53 letPairSemi (needs B's `stash : Option`).
