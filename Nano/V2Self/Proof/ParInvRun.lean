@@ -34,6 +34,7 @@ import Nano.V2Self.Proof.ParRunCInv
 import Nano.V2Self.Proof.ParRunShape
 import Nano.V2Self.Proof.ParRunArena
 import Nano.V2Self.Proof.ParRunDef
+import Nano.V2Self.Proof.ParRunProg
 namespace ParInv
 open C BufL ParSpec ParRun
 
@@ -270,5 +271,11 @@ theorem api_of_rep (ts : Buf) (toks : List Tok) (hT : TokL ts toks) (hts : ts.le
       obtain ⟨k, st', a, b⟩ := step_any hT O r hd hs
       have := (stepF_shape a).2 (status_acc2 b s2)
       rw [r.2.2] at this; simp [hd] at this
+
+
+/-- **the parser theorem** modulo the reachability obligations `Obl` and B's `NoL` (finding L, to be dropped) -/
+theorem parserSound_main {ts : Buf} {toks : List Tok} (hT : TokL ts toks) (hts : ts.length < 2 ^ 24) (O : Obl toks)
+    (hNoL : NoL toks) : ParserSound ts :=
+  parserSound_of (api_of_rep ts toks hT hts O) (by omega) (accepts_sound (tokens_of hT) hNoL)
 
 end ParInv
