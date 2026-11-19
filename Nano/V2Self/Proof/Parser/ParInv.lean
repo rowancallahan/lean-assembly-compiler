@@ -100,54 +100,8 @@ structure Task where
   a : UInt64
   b : UInt64
 
-structure Node where
-  tag : UInt64
-  p1 : UInt64
-  p2 : UInt64
-  shape : UInt64
-  pend : UInt64
-  first : UInt64
-  count : UInt64
-  next : UInt64
-
-/-- the cells the parser machine reads and writes, decoded -/
-structure View where
-  status : UInt64          -- h[0]: 1 running, 2 done, 0 failed
-  cur : UInt64             -- h[3] token cursor
-  depth : UInt64           -- h[4] binding depth
-  ntasks : UInt64          -- h[5]
-  ntok : UInt64            -- h[7]
-  nops : UInt64            -- h[8]
-  nnodes : UInt64          -- h[9]
-  slot : UInt64            -- h[11] next free slot
-  ndefs : UInt64           -- h[12]
-  tasks : List Task        -- the stack, bottom first
-  ops : List UInt64        -- operand node ids, bottom first
-  nodes : List Node        -- the arena
-
 def taskAt (h : Buf) (i : Nat) : Task :=
   ⟨bget h (d1 + 3 * i.toUInt64), bget h (d1 + 3 * i.toUInt64 + 1), bget h (d1 + 3 * i.toUInt64 + 2)⟩
-
-def nodeAt (h : Buf) (i : Nat) : Node :=
-  let q := d5 + 8 * i.toUInt64
-  ⟨bget h q, bget h (q + 1), bget h (q + 2), bget h (q + 3), bget h (q + 4), bget h (q + 5), bget h (q + 6), bget h (q + 7)⟩
-
-def view (h : Buf) : View where
-  status := bget h 0
-  cur := bget h 3
-  depth := bget h 4
-  ntasks := bget h 5
-  ntok := bget h 7
-  nops := bget h 8
-  nnodes := bget h 9
-  slot := bget h 11
-  ndefs := bget h 12
-  tasks := (List.range (bget h 5).toNat).map (taskAt h)
-  ops := (List.range (bget h 8).toNat).map fun i => bget h (d3 + i.toUInt64)
-  nodes := (List.range (bget h 9).toNat).map (nodeAt h)
-
-/-- the machine state `h` represents the view `v` (the view is a function of the cells; invariants are stated on views) -/
-def HeapRep (h : Buf) (v : View) : Prop := view h = v
 
 /-- the token region of the heap holds `ts` (followed by the sentinel 0, 2) -/
 def TokensAt (h : Buf) (ts : Buf) : Prop :=
@@ -158,18 +112,6 @@ def TokensAt (h : Buf) (ts : Buf) : Prop :=
 /-- what the parser finally promises -/
 def ParserSound (ts : Buf) : Prop :=
   y16 ts ≠ [] → ∃ p, ParSpec.ParsesProgram ts p ∧ y16 ts = ParSpec.serialize p
-
-/-- from machine state `h`, everything the task machine finally ACCEPTS (non-empty output of `fin`) is the serialization of a parse of `ts` -/
-def Completes (ts : Buf) (h : Buf) : Prop :=
-  ∀ N, fin ts 1 (v97 N h) ≠ [] → ∃ p, ParSpec.ParsesProgram ts p ∧ fin ts 1 (v97 N h) = ParSpec.serialize p
-
-/-- **Entry**: it suffices that the initial task completes -/
-theorem entry (ts : Buf) (hx : ts.length ≤ 16777216)
-    (h : Completes ts (v1 (entryHeap ts) 60 0 0)) : ParserSound ts := by
-  intro hne
-  have e : y16 ts = fin ts 1 (v97 16777216 (v1 (entryHeap ts) 60 0 0)) := v99_eq ts 1 hx
-  rw [e] at hne ⊢
-  exact h 16777216 hne
 
 /-- the machine's one step (the body of `v97`): pop the top task and run its handler -/
 def step (h : Buf) : Buf :=
@@ -185,19 +127,6 @@ theorem v97_running (n : Nat) (h : Buf) (hs : bget h 0 = 1) (hg : bget h 5 ≠ 0
 theorem v97_stopped (n : Nat) (h : Buf) (hs : bget h 0 ≠ 1) : v97 (n + 1) h = h := by
   have : (bget h 0 == 1) = false := by simpa using hs
   simp [v97, this]
-
-/-- one machine step preserves `Completes` backwards: if the successor completes, so does the running state -/
-theorem completes_step (ts h : Buf) (hs : bget h 0 = 1) (hg : bget h 5 ≠ 0) (hc : Completes ts (step h)) : Completes ts h := by
-  intro N hN
-  cases N with
-  | zero =>
-    exfalso; apply hN
-    have h0 : bget (v97 0 h) 0 = 0 := by
-      simp only [v97]; rw [bget_bset]; by_cases hl : 0 < h.length <;> simp [hl, bget, List.getD]
-    simp [fin, h0, bnew]
-  | succ n =>
-    rw [v97_running n h hs hg] at hN ⊢
-    exact hc n hN
 
 /-! ## names: `v85` compares two zero-terminated identifier spellings in the token region -/
 /-- the identifier spelling `(1, b)* 0` (without the leading tag 14) starts at token position `a` and spells `n` -/

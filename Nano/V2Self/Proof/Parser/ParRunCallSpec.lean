@@ -6,43 +6,6 @@ import Nano.V2Self.Proof.Parser.ParRunArgs
 namespace ParRun
 open ParSpec
 
-theorem tyMatch_of {p : Ps} {v : RN} {ty : Ty} (hv : ValOK v ty) (hn : p ≠ .sh .nt) (hi : p = .inp ↔ v.isInp = true)
-    (hok : v.sh = some (psCode p) ∨ (psCode p = .nt ∧ (v.tag = 1 ∨ (v.tag = 9 ∧ v.a = 1)))) : tyMatch p ty = true := by
-  obtain ⟨hty, hpe, h9⟩ := hv
-  have hsh : v.sh = some (psCode p) ∨ (psCode p = .nt ∧ v.tag = 1) := by
-    rcases hok with h | ⟨h1, h2 | ⟨h2, h3⟩⟩
-    · exact Or.inl h
-    · exact Or.inr ⟨h1, h2⟩
-    · exact Or.inl (by rw [h1]; exact h9 h2 h3)
-  cases ty with
-  | bot => simp [TyRel] at hty; rw [hpe] at hty; cases hty
-  | inp =>
-    obtain ⟨hin, hls⟩ := hty
-    have := hi.mpr hin; subst this; rfl
-  | lit =>
-    obtain ⟨huw, hni⟩ := hty
-    cases p with
-    | inp => have := hi.mp rfl; rw [hni] at this; cases this
-    | fuel => rfl
-    | sh s =>
-      rcases hsh with h | ⟨h1, _⟩
-      · rw [huw] at h; simp [psCode] at h; subst h; rfl
-      · exact absurd (by simpa [psCode] using h1) hn
-  | s t =>
-    obtain ⟨hs, hni, ht1⟩ := hty
-    cases p with
-    | inp =>
-      obtain ⟨l, r, rfl⟩ := hni (hi.mp rfl)
-      rcases hsh with h | ⟨h1, _⟩ <;> simp_all [psCode]
-    | fuel =>
-      rcases hsh with h | ⟨_, h2⟩
-      · rw [hs] at h; simp [psCode] at h; subst h; rfl
-      · exact absurd h2 ht1
-    | sh s =>
-      rcases hsh with h | ⟨h1, _⟩
-      · rw [hs] at h; simp [psCode] at h; subst h; simp [tyMatch]
-      · exact absurd (by simpa [psCode] using h1) hn
-
 /-- the input rule, position by position: the parameter is the input iff the argument is the input local -/
 inductive InpPair : List Ps → List RN → Prop
   | nil : InpPair [] []
