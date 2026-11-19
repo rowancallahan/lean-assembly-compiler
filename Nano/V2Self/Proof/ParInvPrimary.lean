@@ -2,6 +2,7 @@
 `prim_nonid`: every branch except an identifier at the cursor (if, let, numeral, paren, `[]`, prim heads). -/
 import Nano.V2Self.Proof.ParInvNum
 import Nano.V2Self.Proof.ParInvPrim
+import Nano.V2Self.Proof.ParRunWFStep
 namespace ParInv
 open C BufL ParSpec ParRun
 
@@ -254,5 +255,167 @@ theorem prim_id_setup {g ts : Buf} {st : St} {fs : List Frame} (R1 : Rep g ts st
   refine ⟨nm, rest, _, et, by rw [e33]; exact sk, by rw [z0]; exact bget_bset_eq _ _ _ _ rfl (by simp; omega), z0,
     rep_set3 R3 (tokAt_frame et13 hn7 tr), by rw [c21]; exact hfb, h22, ?_, s22⟩
   exact ⟨by rw [s21.1, length_bset], fun i a b => by rw [s21.2 i a b, e31 i b]⟩
+
+/-- **identifiers** (task 3, cell 14): bound name = LOC, def name = call heads, the current def = self-call (tail mode + arm) -/
+theorem prim_id {g ts : Buf} {st : St} {fs : List Frame} {a : UInt64} {md : Nat} (R1 : Rep g ts st fs) (hin : inDefF fs = true)
+    (hnf : fs.all (fun f => !f.isFlat)) (c14 : bget g (d11 + bget g 3) = 14) (hs : bget (v104b g a (b01 (md == 1))) 0 ≠ 0) :
+    ∃ k st', stepF (.prim md) st = some (k, st') ∧ Rep (v104b g a (b01 (md == 1))) ts st' (k ++ fs) := by
+  obtain ⟨hn7, hl, har⟩ := rep_bounds R1
+  obtain ⟨nm, rest, q, et, sk, u0, z0, R4, hfb, h22, s21, s22⟩ := prim_id_setup R1 hin c14
+  have u0' : bget (bset g 31 0) 31 = 0 := by rw [← z0]; exact u0
+  simp only [v104b, UInt64.add_zero, c14, beq_self_eq_true, if_true, show ((14 : UInt64) == 32) = false from rfl,
+    show ((14 : UInt64) == 2) = false from rfl, show ((14 : UInt64) == 5) = false from rfl,
+    show ((14 : UInt64) == 6) = false from rfl, Bool.false_eq_true, if_false, z0, u0', sk, k0] at hs ⊢
+  have e21 : ∀ X : Buf, bget (bset X 3 q) 21 = bget X 21 := fun X => bget_bset' _ _ _ _ (by decide)
+  have e22 : ∀ X : Buf, bget (bset X 3 q) 22 = bget X 22 := fun X => bget_bset' _ _ _ _ (by decide)
+  rw [← e21] at hfb; rw [← e22] at h22
+  generalize hG : bset (v8 16777216 (v7 16777216 (bset g 31 0) (bget (bset g 31 0) 4) (bget g 3))
+    (bget (v7 16777216 (bset g 31 0) (bget (bset g 31 0) 4) (bget g 3)) 12 + 1) (bget g 3)) 3 q = G at hs R4 hfb h22 ⊢
+  obtain ⟨hn4, hl4, har4⟩ := rep_bounds R4
+  have dead : ∀ X : Buf, X = bset G 0 0 → bget X 0 ≠ 0 → False := fun X e hx => hx (by rw [e]; exact stat0 _ (by omega))
+  have g12 : (bget G 12).toNat = st.defs.length := R4.2.2.2.2.2.2.1.1
+  have g30 : bget G 30 = b01 st.arm := R4.2.2.2.2.2.2.2.2.2.2.1
+  have g8 : (bget G 8).toNat = st.vals.length := R4.2.2.2.2.2.2.2.1.2.2.1
+  have hdl : st.defs.length < 512 := R4.2.2.2.2.2.2.1.2.1
+  rcases hfb with ⟨h21, hnone⟩ | ⟨i, h21, hi, hsome⟩
+  · rw [h21] at hs ⊢; simp only [beq_self_eq_true, if_true] at hs ⊢
+    cases hfd : findD (rows st) (nm.map UInt64.toNat) with
+    | none =>
+      rw [hfd] at h22; simp at h22
+      rw [h22] at hs; simp at hs; exact (dead _ rfl hs).elim
+    | some j =>
+      rw [hfd] at h22; simp only [Option.map_some, Option.getD_some] at h22
+      have jl0 := findD_lt hfd
+      have jl : j < st.defs.length + 1 := by simpa [rows] using jl0
+      have t1 : ((j + 1).toUInt64).toNat = j + 1 := by simp; omega
+      have n0 : (bget G 22 == 0) = false := by
+        rw [h22]; apply beq_false_of_ne; intro e; have := congrArg UInt64.toNat e; rw [t1] at this; simp at this
+      have ej : bget G 22 - 1 = j.toUInt64 := by
+        rw [h22]; apply UInt64.toNat_inj.mp
+        rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr (by rw [t1]; simp)), t1]; simp; omega
+      simp only [n0, Bool.false_eq_true, if_false, ej] at hs ⊢
+      by_cases jd : j = st.defs.length
+      · have c : (j.toUInt64 == bget G 12) = true := by
+          apply beq_iff_eq.mpr; apply UInt64.toNat_inj.mp; rw [g12]; simp; omega
+        simp only [c, if_true] at hs ⊢
+        cases hm : (md == 1) with
+        | false => simp [hm, b01] at hs; exact (dead _ rfl hs).elim
+        | true =>
+          simp only [hm, b01, if_true, beq_self_eq_true] at hs ⊢
+          cases ha : st.arm with
+          | false => rw [g30, ha] at hs; simp [b01] at hs; exact (dead _ rfl hs).elim
+          | true =>
+            rw [g30, ha] at hs ⊢; simp only [b01, if_true, beq_self_eq_true] at hs ⊢
+            have R5 := rep_push .selfArgs 0 0 R4 (by simp [inDefF, Frame.isDefs]) trivial hs
+            refine ⟨[.selfArgs], _, ?_, R5⟩
+            have nm2 : ¬ (md = 2 ∧ (some (Tok.id (nm.map UInt64.toNat)) = some (.k 32) ∨ some (Tok.id (nm.map UInt64.toNat)) = some (.k 2))) := by
+              simp
+            have hfd' : findD (st.defs ++ [st.cur]) (nm.map UInt64.toNat) = some j := hfd
+            simp [stepF, et, nm2, hnone, rows, hfd', jd, hm, ha]
+      · have c : (j.toUInt64 == bget G 12) = false := by
+          apply beq_false_of_ne; intro e; have := congrArg UInt64.toNat e; rw [g12] at this; simp at this; omega
+        simp only [c, Bool.false_eq_true, if_false] at hs ⊢
+        have jlt : j < st.defs.length := by omega
+        have o1 := v1_ok _ _ _ _ (pushOK hs)
+        obtain ⟨_, _, _, U1⟩ := v1_eff G 45 j.toUInt64 (bget G 8) o1 (by omega)
+        have cell6 : bget (v1 G 45 j.toUInt64 (bget G 8)) (d7 + 8 * j.toUInt64 + 6) = bget G (d7 + 8 * j.toUInt64 + 6) :=
+          U1 _ (by rw [defCell j (by omega) 6 (by decide)]; simp) (Or.inr (by rw [defCell j (by omega) 6 (by decide)]; omega))
+        rw [cell6] at hs ⊢
+        have rowj := (R4.2.2.2.2.2.2.1.2.2.2.1 j jlt).1
+        have a6 : (bget G (d7 + 8 * j.toUInt64 + 6)).toNat = (st.defs[j]'jlt).params.length := rowj.2.2.2.2.2.1
+        have R5 := rep_push (.mkCallN (.df j) st.vals.length) j.toUInt64 (bget G 8) R4 (by simp [inDefF, Frame.isDefs])
+          ⟨rfl, g8⟩ (pushOK hs)
+        have ar : arity { st with toks := rest } (.df j) = (st.defs[j]'jlt).params.length := by
+          simp only [arity, rows]; rw [List.getElem?_append_left jlt]; simp [List.getElem?_eq_getElem jlt]
+        have R6 := rep_push (.args (.df j) (arity { st with toks := rest } (.df j))) j.toUInt64 (bget G (d7 + 8 * j.toUInt64 + 6)) R5
+          (by simp [inDefF, Frame.isDefs]) ⟨rfl, by rw [ar, a6]⟩ hs
+        refine ⟨[.args (.df j) (arity { st with toks := rest } (.df j)), .mkCallN (.df j) st.vals.length], _, ?_, R6⟩
+        have nm2 : ¬ (md = 2 ∧ (some (Tok.id (nm.map UInt64.toNat)) = some (.k 32) ∨ some (Tok.id (nm.map UInt64.toNat)) = some (.k 2))) := by
+          simp
+        have hfd' : findD (st.defs ++ [st.cur]) (nm.map UInt64.toNat) = some j := hfd
+        simp [stepF, et, nm2, hnone, rows, hfd', jd]
+  · have rB := R4.2.2.2.2.2.1
+    have i1024 : i < 1024 := by have := rB.2.1; simp at this; omega
+    have n0 : (bget G 21 == 0) = false := by
+      rw [h21]; apply beq_false_of_ne; intro e; have := congrArg UInt64.toNat e; simp at this; omega
+    have ei : bget G 21 - 1 = i.toUInt64 := by
+      rw [h21]; apply UInt64.toNat_inj.mp
+      rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr (by simp; omega))]; simp; omega
+    simp only [n0, Bool.false_eq_true, if_false, ei] at hs ⊢
+    obtain ⟨_, a1, a2, a3⟩ := rB.2.2 i hi
+    simp only at a1 a2 a3
+    generalize hw : bget G (d9 + 4 * i.toUInt64 + 2) = w at hs a2 ⊢
+    by_cases w4 : w = 4
+    · simp only [w4, beq_self_eq_true, if_true] at hs; exact (dead _ rfl hs).elim
+    have nw : (w == 4) = false := by simpa using w4
+    simp only [nw, Bool.false_eq_true, if_false] at hs ⊢
+    have hnt : (st.binds[i]'hi).sh ≠ some .nt := by intro e; rw [e] at a2; exact w4 (ShapeCode.nt_code a2)
+    have ev9 : v9 G w = bset G 31 (cw (st.binds[i]'hi).sh).toUInt64 := by unfold v9; rw [v9_cw a2]
+    rw [ev9] at hs ⊢
+    have c31 : ∀ k : UInt64, k.toNat ≠ 31 → bget (bset G 31 (cw (st.binds[i]'hi).sh).toUInt64) k = bget G k :=
+      fun k hk => bget_bset' _ _ _ _ (by simp; omega)
+    have e3 : bget (bset G 31 (cw (st.binds[i]'hi).sh).toUInt64) (d9 + 4 * i.toUInt64 + 3) = bget G (d9 + 4 * i.toUInt64 + 3) :=
+      c31 _ (by rw [rowCell i i1024 3 (by decide)]; simp; omega)
+    have e1 : bget (bset G 31 (cw (st.binds[i]'hi).sh).toUInt64) (d9 + 4 * i.toUInt64 + 1) = bget G (d9 + 4 * i.toUInt64 + 1) :=
+      c31 _ (by rw [rowCell i i1024 1 (by decide)]; simp; omega)
+    have e31 : bget (bset G 31 (cw (st.binds[i]'hi).sh).toUInt64) 31 = (cw (st.binds[i]'hi).sh).toUInt64 :=
+      bget_bset_eq _ _ _ _ rfl (by simp; omega)
+    rw [e3, e31, a3, a1] at hs ⊢
+    have eB : (if b01 (st.binds[i]'hi).inp == 1 then (0 : UInt64) else (cw (st.binds[i]'hi).sh).toUInt64) =
+        (if (st.binds[i]'hi).inp then 0 else cw (st.binds[i]'hi).sh).toUInt64 := by
+      cases (st.binds[i]'hi).inp <;> simp [b01]
+    rw [eB] at hs ⊢
+    have R5 := rep_31 R4 (cw (st.binds[i]'hi).sh).toUInt64
+    have es : ShTabAgree G (bset G 31 (cw (st.binds[i]'hi).sh).toUInt64) := fun k x y => c31 k (by omega)
+    obtain ⟨st', hm, R6⟩ := rep_v5g R5 hnf 0 2 (st.binds[i]'hi).slot (if (st.binds[i]'hi).inp then 0 else cw (st.binds[i]'hi).sh)
+      (st.binds[i]'hi).sh false w (a2.frame es) (by decide) (fun h2 => absurd rfl h2) (by decide) (by simpa [b01] using hs)
+    refine ⟨[], st', ?_, by simpa [b01] using R6⟩
+    have nm2 : ¬ (md = 2 ∧ (some (Tok.id (nm.map UInt64.toNat)) = some (.k 32) ∨ some (Tok.id (nm.map UInt64.toNat)) = some (.k 2))) := by
+      simp
+    simp only [mkNode, Nat.zero_le, if_true, List.take_zero, List.reverse_nil, List.drop_zero] at hm
+    cases hm
+    simp [stepF, et, nm2, hsome, locOf, hnt]
+
+
+/-! ## task 3: `prim md` (v104: operand mode 2 rejects `if` / `let`, then v104b) -/
+theorem h_prim {h ts : Buf} {st : St} {md : Nat} {fs : List Frame} (r : Rep h ts st (.prim md :: fs)) (hmd : md ≤ 2)
+    (hin : inDefF fs = true) (hnf : fs.all (fun f => !f.isFlat)) (hs : bget (step h) 0 ≠ 0) :
+    ∃ k st', stepF (.prim md) st = some (k, st') ∧ Rep (step h) ts st' (k ++ fs) := by
+  obtain ⟨E, eb, R1⟩ := rep_pop r (by simp [inDefF, Frame.isDefs])
+  simp only [FrameArgs] at eb
+  generalize (taskAt h fs.length).a = a at E
+  generalize (taskAt h fs.length).b = b at E eb
+  generalize hh : bset h 5 fs.length.toUInt64 = g at E R1
+  have ev : step h = v104 g a b := by rw [E]; simp [Frame.code, v96]
+  rw [ev] at hs ⊢
+  obtain ⟨hn7, hl, har⟩ := rep_bounds R1
+  have branch : ∀ (hm2 : md = 2 → bget g (d11 + bget g 3) ≠ 32 ∧ bget g (d11 + bget g 3) ≠ 2),
+      bget (v104b g a (b01 (md == 1))) 0 ≠ 0 →
+      ∃ k st', stepF (.prim md) st = some (k, st') ∧ Rep (v104b g a (b01 (md == 1))) ts st' (k ++ fs) := by
+    intro hm2 hs'
+    by_cases c14 : bget g (d11 + bget g 3) = 14
+    · exact prim_id R1 hin hnf c14 hs'
+    · exact prim_nonid R1 hnf c14 hm2 hs'
+  by_cases m2 : md = 2
+  · subst m2
+    have b2 : b = 2 := UInt64.toNat_inj.mp (by rw [eb]; rfl)
+    subst b2
+    simp only [v104, UInt64.add_zero, beq_self_eq_true, if_true] at hs ⊢
+    by_cases c32 : bget g (d11 + bget g 3) = 32
+    · simp only [c32, beq_self_eq_true, if_true] at hs; exact absurd (stat0 _ (by omega)) hs
+    have n32 : (bget g (d11 + bget g 3) == 32) = false := by simpa using c32
+    simp only [n32, Bool.false_eq_true, if_false] at hs ⊢
+    by_cases c2 : bget g (d11 + bget g 3) = 2
+    · simp only [c2, beq_self_eq_true, if_true] at hs; exact absurd (stat0 _ (by omega)) hs
+    have n2 : (bget g (d11 + bget g 3) == 2) = false := by simpa using c2
+    simp only [n2, Bool.false_eq_true, if_false] at hs ⊢
+    exact branch (fun _ => ⟨c32, c2⟩) hs
+  · have bb : b = b01 (md == 1) := by
+      apply UInt64.toNat_inj.mp; rw [eb]
+      rcases (by omega : md = 0 ∨ md = 1) with e | e <;> subst e <;> rfl
+    have nb : (b == 2) = false := by rw [bb]; cases (md == 1) <;> rfl
+    simp only [v104, UInt64.add_zero, nb, Bool.false_eq_true, if_false] at hs ⊢
+    rw [bb] at hs ⊢
+    exact branch (fun e => absurd e m2) hs
 
 end ParInv
