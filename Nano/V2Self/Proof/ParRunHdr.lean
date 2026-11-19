@@ -15,6 +15,16 @@ theorem ids_id (x : List Nat) (r : List Tok) :
 theorem ids_k (t : Nat) (r : List Tok) : pBinders.ids (.k t :: r) = some ([], .k t :: r) := by
   rw [pBinders.ids.eq_def]
 
+theorem ids_len : ∀ (ts : List Tok) (ns : List (List Nat)) (r : List Tok), pBinders.ids ts = some (ns, r) → r.length ≤ ts.length
+  | [], ns, r, h => by rw [pBinders.ids.eq_def] at h; simp at h; simp [← h.2]
+  | .id x :: t, ns, r, h => by
+    rw [ids_id] at h
+    obtain ⟨⟨l, r'⟩, h1, h2⟩ := Option.map_eq_some_iff.mp h
+    simp only [Prod.mk.injEq] at h2; obtain ⟨_, rfl⟩ := h2
+    have := ids_len t l r' h1; simp; omega
+  | .k t :: tl, ns, r, h => by rw [ids_k] at h; simp at h; simp [← h.2]
+  | .num v :: tl, ns, r, h => by rw [pBinders.ids.eq_def] at h; simp at h; simp [← h.2]
+
 theorem group_spec : ∀ (n : Nat) {a : Nat} {ks : List Frame} {st fin : St}, StarN n (.group a :: ks, st) ([], fin) →
     ∃ ns r n', n' < n ∧ pBinders.ids st.toks = some (ns, .k 8 :: r) ∧ a < st.binds.length + ns.length ∧
       StarN n' (.tyAtom :: .rparen :: .assign a (st.binds.length + ns.length - a) :: .binders :: ks,
@@ -147,5 +157,135 @@ theorem assign_spec {t : TyR} (ht : t ≠ .sh .ls) {used : Bool} {sz : Nat} :
       | inp => simpa [Ps.width, toBd, List.append_assoc, hty] using h3
       | fuel => exact absurd rfl pf
       | sh s => simpa [Ps.width, psCode, toBd, List.append_assoc, Nat.add_assoc, Nat.add_comm 1, hty] using h3
+
+
+theorem any_go (p : Ps) : ∀ (s : Nat) (ns : List (List Nat)), ns ≠ [] →
+    (List.map toBd (bindSlots.go p s ns).1).any Bd.inp = (p == .inp) := by
+  intro s ns hne
+  induction ns generalizing s with
+  | nil => exact absurd rfl hne
+  | cons x l ih =>
+    rw [go_cons]
+    cases l with
+    | nil => simp [go_nil, toBd]
+    | cons y l' =>
+      simp only [List.map_cons, List.any_cons]
+      rw [ih _ (by simp)]
+      simp [toBd]
+
+theorem mem_go (p : Ps) : ∀ (s : Nat) (ns : List (List Nat)) (q : Ps), q ∈ (bindSlots.go p s ns).2.1 → q = p := by
+  intro s ns q hq
+  induction ns generalizing s with
+  | nil => simp [go_nil] at hq
+  | cons x l ih =>
+    rw [go_cons] at hq
+    simp only [List.mem_cons] at hq
+    rcases hq with rfl | hq
+    · rfl
+    · exact ih _ hq
+
+theorem pick_used (used single : Bool) (t : TyR) :
+    (pickPs used single t).2 = (used || ((pickPs used single t).1 == .inp)) := by
+  cases t with
+  | sh s => simp [pickPs]
+  | lst => cases used <;> cases single <;> simp [pickPs]
+
+theorem bindSlots_nil (s : Nat) (used : Bool) : bindSlots s used [] = ([], [], s) := by rw [bindSlots]
+
+theorem bindSlots_cons (s : Nat) (used : Bool) (ns : List (List Nat)) (t : TyR) (g : List (List (List Nat) × TyR)) :
+    bindSlots s used ((ns, t) :: g) =
+      ((bindSlots.go (pickPs used (ns.length == 1) t).1 s ns).1 ++
+          (bindSlots (bindSlots.go (pickPs used (ns.length == 1) t).1 s ns).2.2 (pickPs used (ns.length == 1) t).2 g).1,
+        (bindSlots.go (pickPs used (ns.length == 1) t).1 s ns).2.1 ++
+          (bindSlots (bindSlots.go (pickPs used (ns.length == 1) t).1 s ns).2.2 (pickPs used (ns.length == 1) t).2 g).2.1,
+        (bindSlots (bindSlots.go (pickPs used (ns.length == 1) t).1 s ns).2.2 (pickPs used (ns.length == 1) t).2 g).2.2) := by
+  rw [bindSlots.eq_2]
+
+
+/-- **binder list** `(a b : T) (c : U) … :` ↔ `pBinders` + `bindSlots` from the current slot / input flag -/
+theorem binders_spec : ∀ (n : Nat) {ks : List Frame} {st fin : St} (b : Bool), StarN n (.binders :: ks, st) ([], fin) →
+    ∃ groups r n' ty' nni', n' < n ∧
+      (∀ f, 3 * st.toks.length + 3 ≤ f → pBinders f b st.toks = some (groups, .k 8 :: r)) ∧
+      (∀ p ∈ (bindSlots st.nx (st.binds.any Bd.inp) groups).2.1, p ≠ .fuel ∧ psCode p ≠ .nt ∧ (psCode p).nnt = true) ∧
+      StarN n' (.tyAtom :: .plainBody :: ks, { st with
+        toks := r
+        binds := st.binds ++ List.map toBd (bindSlots st.nx (st.binds.any Bd.inp) groups).1
+        nx := (bindSlots st.nx (st.binds.any Bd.inp) groups).2.2
+        ty := ty'
+        cur := { st.cur with
+          params := st.cur.params ++ List.map psCode (bindSlots st.nx (st.binds.any Bd.inp) groups).2.1
+          nni := nni' } }) ([], fin) := by
+  intro n
+  induction n using Nat.strongRecOn with
+  | _ n ih =>
+  intro ks st fin b h
+  match n, h with
+  | n + 1, h =>
+    obtain ⟨k, st1, h1, h2⟩ := h.head
+    simp only [stepF] at h1
+    split at h1
+    · -- `(` : a group
+      rename_i r0 ht0
+      cases h1
+      simp only [List.singleton_append] at h2
+      obtain ⟨ns, r1, n2, hn2, hids, hlt, h3⟩ := group_spec n h2
+      have hne : ns ≠ [] := by intro e; subst e; simp at hlt
+      obtain ⟨t, r2, n3, hn3, hl2, hpTy, h4, hnnt⟩ := (ty_sound n2).1 h3
+      dsimp only at hl2 hpTy
+      have htl : t ≠ .sh .ls := (pTy_noLs (2 * r1.length + 2)).2 r1 t r2 (hpTy _ (Nat.le_refl _))
+      match n3, h4 with
+      | n3 + 1, h4 =>
+      obtain ⟨k5, st5, h5, h6⟩ := h4.head
+      simp only [stepF, St.withTy] at h5
+      obtain ⟨r4, rfl⟩ : ∃ r4, r2 = .k 7 :: r4 := by
+        match r2, h5 with
+        | .k 7 :: r4, _ => exact ⟨r4, rfl⟩
+      simp only [Option.some.injEq, Prod.mk.injEq] at h5
+      obtain ⟨rfl, rfl⟩ := h5
+      have hsz : st.binds.length + ns.length - st.binds.length = ns.length := by omega
+      simp only [List.nil_append, hsz] at h6
+      obtain ⟨n4, hn4, hnt, h7⟩ := assign_spec htl (used := st.binds.any Bd.inp) ns n3 st.binds.length st.binds h6 rfl rfl rfl
+        (fun _ _ => rfl) (fun e => by omega)
+      obtain ⟨g, r, n5, ty', nni', hn5, hpB, hps, h8⟩ := ih n4 (by omega) false h7
+      dsimp only at hpB hps h8
+      have hused : (st.binds ++ List.map toBd (bindSlots.go (pickPs (st.binds.any Bd.inp) (ns.length == 1) t).1 st.nx ns).1).any
+          Bd.inp = (pickPs (st.binds.any Bd.inp) (ns.length == 1) t).2 := by
+        rw [List.any_append, any_go _ _ _ hne, pick_used]
+      rw [hused] at hps h8
+      refine ⟨(ns, t) :: g, r, n5, ty', nni', by omega, ?_, ?_, ?_⟩
+      · intro f hf
+        have l1 := ids_len _ _ _ hids
+        simp only [List.length_cons] at l1
+        rw [ht0] at hf ⊢
+        simp only [List.length_cons] at hf
+        obtain ⟨f, rfl⟩ : ∃ g, f = g + 1 := ⟨f - 1, by omega⟩
+        rw [pBinders.eq_def]
+        simp only []
+        rw [hids]
+        obtain ⟨y, ys, rfl⟩ : ∃ y ys, ns = y :: ys := by cases ns <;> simp_all
+        have l2 : r4.length + 1 = (Tok.k 7 :: r4).length := by simp
+        simp only [Option.bind_some]
+        rw [hpTy f (by omega)]
+        simp only [Option.bind_some]
+        cases t <;> simp [hpB f (by omega)]
+      · intro p hp
+        rw [bindSlots_cons] at hp
+        rcases List.mem_append.mp hp with hp | hp
+        · have := mem_go _ _ _ _ hp
+          subst this
+          obtain ⟨pk, _, pf⟩ := pick_ok htl (st.binds.any Bd.inp) (ns.length == 1)
+          exact ⟨pf, by rw [pk]; exact hnt hne, by rw [pk]; exact hnnt⟩
+        · exact hps p hp
+      · rw [bindSlots_cons]
+        simpa [List.append_assoc, List.map_append] using h8
+    · -- `:` : end of the binders
+      rename_i r0 ht0
+      cases h1
+      refine ⟨[], r0, n, st.ty, st.cur.nni, by omega, fun f hf => ?_, by simp [bindSlots_nil], ?_⟩
+      · obtain ⟨f, rfl⟩ : ∃ g, f = g + 1 := ⟨f - 1, by omega⟩
+        rw [ht0]; rw [pBinders.eq_def]
+      · simp only [bindSlots_nil, List.map_nil, List.append_nil]
+        simpa using h2
+    · cases h1
 
 end ParRun
