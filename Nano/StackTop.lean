@@ -2,8 +2,8 @@
 `Nano/Gen.lean`) for programs whose variables are in scope and whose stack depth fits the 8-bit offsets
 (`depth p ≤ 256`); the events of a run are one allocation of `depth p` 8-byte cells, so `memoryNeeded = 8 · depth p`.
 
-* `nano_stack_runs : CompileRuns riscv nanoCompileA` (returns, frame kept, `oomFlag` exactly when out of memory);
-* `nano_stack_correct : CompileCorrect riscv nanoCompileA` (with `memoryNeeded` bytes: the result, no flag),
+* `nano_stack_runs : CompileRunsWeak riscv nanoCompileA` (returns, frame kept, `oomFlag` exactly when out of memory);
+* `nano_stack_correct : CompileCorrectWeak riscv nanoCompileA` (with `memoryNeeded` bytes: the result, no flag),
 for the `Program Prog` instance of `Nano/Proof.lean` (`nanoRun`: 8-byte little-endian argument words, `Prog.eval`,
 the result as 8 little-endian bytes).  Proof: the record machine runs `genR p` (`genR_ok`/`genR_oom`,
 `Nano/StackRun.lean`), the Sail model refines it (`sim_star`/`sim_halt`, `Nano/StackSim.lean`). -/
@@ -289,9 +289,9 @@ theorem stack_run {p : Prog} {compiled : CompiledA} {input out : List UInt8} {st
     refine ⟨tf, hr, hpcf, hfr, .inr ⟨by omega, ?_⟩⟩
     rw [hx10, h10']; rfl
 
-/-- **L2, what happens** (`CompileRuns`): the stack code returns to the caller, changes nothing outside the output and
+/-- **L2, what happens** (`CompileRunsWeak`): the stack code returns to the caller, changes nothing outside the output and
 work blocks, and the status register holds `oomFlag` exactly when the work block is smaller than `8 · depth p`. -/
-theorem nano_stack_runs : CompileRuns riscv nanoCompileA := by
+theorem nano_stack_runs : CompileRunsWeak riscv nanoCompileA := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
     outputFits
   obtain ⟨finishState, hruns, hpc, hframe, hcase⟩ := stack_run compiles (computes argument) startsRight outputFits
@@ -301,9 +301,9 @@ theorem nano_stack_runs : CompileRuns riscv nanoCompileA := by
   · exact ⟨fun h => absurd h hne, fun h => absurd h (Nat.not_lt.2 hle)⟩
   · exact ⟨fun _ => hlt, fun _ => heq⟩
 
-/-- **L2, what comes out** (`CompileCorrect`): with `memoryNeeded` bytes of work the stack code returns with the
+/-- **L2, what comes out** (`CompileCorrectWeak`): with `memoryNeeded` bytes of work the stack code returns with the
 program's result (`Prog.eval` on the argument words) in the output block and no flag. -/
-theorem nano_stack_correct : CompileCorrect riscv nanoCompileA := by
+theorem nano_stack_correct : CompileCorrectWeak riscv nanoCompileA := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
     outputFits enoughMemory
   obtain ⟨finishState, hruns, hpc, hframe, hcase⟩ := stack_run compiles (computes argument) startsRight outputFits

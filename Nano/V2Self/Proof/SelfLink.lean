@@ -1,7 +1,7 @@
 /- Opus box E: the FINAL LINK: C compiled by itself.  For C's own source text `x` (whose parse is the certified AST
 `Cert.PC.all`, hypothesis `hsrc` until D's source link lands): the meaning of `x` is the driver `mC`, except where the
 meaning hits Gen's buffer capacity (2^19 words); hence the code `compileC` emits for `x` computes `mC` on every such
-input, in the owner's `CompileCorrectL` terms (via `C_correctLO`). -/
+input, in the owner's `CompileCorrect` terms (via `C_correctLO`). -/
 import Nano.V2Self.Proof.ParCapBnd
 import Nano.V2Self.Proof.Cert.All
 open LeanRV64D

@@ -1,6 +1,6 @@
 import Riscv.Back.S3Top
-#print axioms Proven.Top.Alloc.CompileCorrectL.correct
-#print axioms Proven.Top.Alloc.CompileRunsL.runs
+#print axioms Proven.Top.Alloc.CompileCorrect.weak
+#print axioms Proven.Top.Alloc.CompileRuns.weak
 #print axioms Proven.Ir.machine_runL
 #print axioms Proven.Ir.ir_compile_correctL
 #print axioms Proven.Ir.ir_compile_correctRV

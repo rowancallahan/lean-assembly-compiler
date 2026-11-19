@@ -13,7 +13,7 @@ def DBStage : Prop := ∀ (c : List UInt8) (ts : List UInt64) (p : List DefA), P
 theorem genStage (HDB : DBStage) : GenStage := SimW.gen_stage HDB
 
 /-- **C is correct**, given the size bounds -/
-theorem C_correctLE (HB : BndStage) (HDB : DBStage) : CompileCorrectL riscv compileC :=
+theorem C_correctLE (HB : BndStage) (HDB : DBStage) : CompileCorrect riscv compileC :=
   C_correctL HB (genStage HDB)
 
 end NanoMain

@@ -4,7 +4,7 @@ generator `Testing/nano/v2self/srclink/gen.lean` reads the file with `IO.FS.read
 modules unless the chunks concatenate to exactly those bytes (`cut does not cover the text`).  D's kernel-checked
 `SrcGen.link_pc` says X0 lexes and parses to the certified AST `Cert.PC.all`; the certificate `Cert.sem_C` says that
 AST means `mC`; `C_correctLO` says compiled code runs as the meaning.  No hypotheses remain except, in `self_correct_C`,
-the ones every `CompileCorrectL` statement has: `compileC ⟨X0⟩ = some compiled` (holds iff `mC X0 ≠ []`; the
+the ones every `CompileCorrect` statement has: `compileC ⟨X0⟩ = some compiled` (holds iff `mC X0 ≠ []`; the
 bootstrap fixpoint shows it empirically, a proof needs kernel evaluation of `mC` on the 66 KB text), a correct start,
 and enough output and work space. -/
 import Nano.V2Self.Proof.SelfLink

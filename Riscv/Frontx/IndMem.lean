@@ -1,5 +1,5 @@
-/- The inductive path (`Compiler/Ind.lean`, NOTES §17/§21) with run-time memory: `CompileCorrect riscv compile` and
-`CompileRuns riscv compile` (`Compiler/AllocSpec.lean`) for the compiler `compile : IndProg → Option CompiledA`.
+/- The inductive path (`Compiler/Ind.lean`, NOTES §17/§21) with run-time memory: `CompileCorrectWeak riscv compile` and
+`CompileRunsWeak riscv compile` (`Compiler/AllocSpec.lean`) for the compiler `compile : IndProg → Option CompiledA`.
 
 * `IndProg`: an inductive-path program (shapes, the functions `pg :: hs`, the second input, the word argument,
   the output format); its meaning `IndProg.run` reads the input as the byte format of its values (`inBytesA`)
@@ -218,10 +218,10 @@ theorem machine_run {p : IndProg} {compiled : CompiledA} {α β : Type} {f : α 
   rw [hmn]
   exact hcase
 
-/-- **What happens** (`CompileRuns`, `Compiler/AllocSpec.lean`) for the inductive path with run-time memory: the
+/-- **What happens** (`CompileRunsWeak`, `Compiler/AllocSpec.lean`) for the inductive path with run-time memory: the
 code returns to the caller, changes nothing outside the output and work blocks, and the status register holds
 `oomFlag` exactly when the run's memory (`memoryNeeded`, from its events) exceeds the work block. -/
-theorem compile_runs : CompileRuns riscv compile := by
+theorem compile_runs : CompileRunsWeak riscv compile := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
     outputFits
   obtain ⟨σ', out0, finishState, -, -, hruns, hpc, hframe, hcase⟩ :=
@@ -232,9 +232,9 @@ theorem compile_runs : CompileRuns riscv compile := by
   · exact ⟨fun h => absurd h hne, fun h => absurd h (Nat.not_lt.2 hle)⟩
   · exact ⟨fun _ => hlt, fun _ => heq⟩
 
-/-- **What comes out** (`CompileCorrect`, `Compiler/AllocSpec.lean`) for the inductive path with run-time memory:
+/-- **What comes out** (`CompileCorrectWeak`, `Compiler/AllocSpec.lean`) for the inductive path with run-time memory:
 with `memoryNeeded ≤ workLength` the code returns with the right output and no flag. -/
-theorem compile_correct : CompileCorrect riscv compile := by
+theorem compile_correct : CompileCorrectWeak riscv compile := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
     outputFits enoughMemory
   obtain ⟨σ', out0, finishState, hh, hl0, hruns, hpc, hframe, hcase⟩ :=

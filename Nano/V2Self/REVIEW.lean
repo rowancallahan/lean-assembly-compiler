@@ -45,7 +45,7 @@ by running B1), nor that the shipped B2.bin is `compiled.code`. -/
 #check @Proven.Top.riscvMapping
 #check @Proven.Cfg
 -- top-level correctness notion (Compiler/AllocSpec.lean: NOT in Spec/, not covered by FROZEN.sha256)
-#check @Proven.Top.Alloc.CompileCorrectL
+#check @Proven.Top.Alloc.CompileCorrect
 #check @Proven.Top.Alloc.CompiledA
 #check @Proven.Top.Alloc.memoryNeeded
 #check @Proven.Top.Alloc.KeptRegisters

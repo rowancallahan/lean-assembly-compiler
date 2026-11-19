@@ -1,6 +1,6 @@
 /- **The IR compiler on RISC-V**: `Ir.compile : Ir.Prog VReg → Option CompiledA` (trivial allocation, list-order
 linearisation, long branches, placement, `alloc` with the out-of-memory exit; `Compiler/Ir/Lin.lean`) with the
-owner's statements `CompileRuns riscv compile` and `CompileCorrect riscv compile` (`Compiler/AllocSpec.lean`).
+owner's statements `CompileRunsWeak riscv compile` and `CompileCorrectWeak riscv compile` (`Compiler/AllocSpec.lean`).
 
 The meaning of a program is its IR run (`Prog.meaning`, `Compiler/Ir/Sem.lean`): the output bytes of the run of
 `main` from the input.  The events of `compile` are the events of that run plus the frame of `main`
@@ -294,9 +294,9 @@ theorem machine_run {P : Prog VReg} {compiled : CompiledA} {α β : Type} {f : �
   · exact .inl ⟨h1, h2, h3⟩
   · exact .inr h
 
-/-- **What happens** (`CompileRuns`): the code returns to the caller, changes nothing outside the output and work
+/-- **What happens** (`CompileRunsWeak`): the code returns to the caller, changes nothing outside the output and work
 blocks, and the status register holds `oomFlag` exactly when the run's memory exceeds the work block. -/
-theorem ir_compile_runs : CompileRuns riscv compile := by
+theorem ir_compile_runs : CompileRunsWeak riscv compile := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
     outputFits
   obtain ⟨finishState, hruns, hpc, hframe, hcase⟩ := machine_run compiles (fun _ => computes argument) startsRight outputFits
@@ -306,9 +306,9 @@ theorem ir_compile_runs : CompileRuns riscv compile := by
   · exact ⟨fun h => absurd h hne, fun h => absurd h (Nat.not_lt.2 hle)⟩
   · exact ⟨fun _ => hlt, fun _ => heq⟩
 
-/-- **What comes out** (`CompileCorrect`): with `memoryNeeded ≤ workLength` the code returns with the right output
+/-- **What comes out** (`CompileCorrectWeak`): with `memoryNeeded ≤ workLength` the code returns with the right output
 and no flag. -/
-theorem ir_compile_correct : CompileCorrect riscv compile := by
+theorem ir_compile_correct : CompileCorrectWeak riscv compile := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
     outputFits enoughMemory
   obtain ⟨finishState, hruns, hpc, hframe, hcase⟩ := machine_run compiles (fun _ => computes argument) startsRight outputFits
@@ -316,7 +316,7 @@ theorem ir_compile_correct : CompileCorrect riscv compile := by
   · exact ⟨finishState, hruns, hpc, hne, hread⟩
   · exact absurd enoughMemory (Nat.not_le.2 hlt)
 
-/-! ## The strengthened statements (`CompileCorrectL`) -/
+/-! ## The strengthened statements (`CompileCorrect`) -/
 
 /-- an IR program whose `main` returns the output length: its meaning counts only when `main` returns `[w n]` with
 `n` the length of the output -/
@@ -354,10 +354,10 @@ theorem meaningL_inv {P : ProgL} {input o : List UInt8} (h : P.meaning input = s
         · cases hr'; exact hv
       · exact nomatch h
 
-/-- **What comes out, strengthened** (`CompileCorrectL`): with enough memory the code returns with the right output,
+/-- **What comes out, strengthened** (`CompileCorrect`): with enough memory the code returns with the right output,
 its length in `a1`, the callee-saved registers kept, `Cfg`, and nothing changed outside the result and the work
 block -/
-theorem ir_compile_correctL : CompileCorrectL riscv compileL := by
+theorem ir_compile_correctL : CompileCorrect riscv compileL := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
     outputFits enoughMemory
   have hc := computes argument

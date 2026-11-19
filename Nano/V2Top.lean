@@ -1,5 +1,5 @@
 /- nano v2, increment 1: **the v2 stack compiler is correct on RISC-V (Sail)**: `nano_stack_correct :
-CompileCorrect riscv nanoCompileA` and `nano_stack_runs : CompileRuns riscv nanoCompileA` for `Nano.V2.Prog` (v1's
+CompileCorrectWeak riscv nanoCompileA` and `nano_stack_runs : CompileRunsWeak riscv nanoCompileA` for `Nano.V2.Prog` (v1's
 language plus `if a ⋈ b then t else e`).  Copy of v1's `Nano/StackTop.lean` over `Nano.V2.genR`: the record-level
 theorems are `Nano.V2R.genR_ok`/`genR_oom` (Nano/V2Run.lean), the records are in v1's families (`Nano.V2.af_genR`,
 Nano/V2Fam.lean), so v1's Sail refinement (`sim_star`/`sim_halt`) is reused unchanged. -/
@@ -262,9 +262,9 @@ theorem stack_run {p : Nano.V2.Prog} {compiled : CompiledA} {input out : List UI
     refine ⟨tf, hr, hpcf, hfr, .inr ⟨by omega, ?_⟩⟩
     rw [hx10, h10']; rfl
 
-/-- **L2, what happens** (`CompileRuns`): the stack code returns to the caller, changes nothing outside the output and
+/-- **L2, what happens** (`CompileRunsWeak`): the stack code returns to the caller, changes nothing outside the output and
 work blocks, and the status register holds `oomFlag` exactly when the work block is smaller than `8 · depth p`. -/
-theorem nano_stack_runs : CompileRuns riscv nanoCompileA := by
+theorem nano_stack_runs : CompileRunsWeak riscv nanoCompileA := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
     outputFits
   obtain ⟨finishState, hruns, hpc, hframe, hcase⟩ := stack_run compiles (computes argument) startsRight outputFits
@@ -274,9 +274,9 @@ theorem nano_stack_runs : CompileRuns riscv nanoCompileA := by
   · exact ⟨fun h => absurd h hne, fun h => absurd h (Nat.not_lt.2 hle)⟩
   · exact ⟨fun _ => hlt, fun _ => heq⟩
 
-/-- **L2, what comes out** (`CompileCorrect`): with `memoryNeeded` bytes of work the stack code returns with the
+/-- **L2, what comes out** (`CompileCorrectWeak`): with `memoryNeeded` bytes of work the stack code returns with the
 program's result (`Prog.eval` on the argument words) in the output block and no flag. -/
-theorem nano_stack_correct : CompileCorrect riscv nanoCompileA := by
+theorem nano_stack_correct : CompileCorrectWeak riscv nanoCompileA := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
     outputFits enoughMemory
   obtain ⟨finishState, hruns, hpc, hframe, hcase⟩ := stack_run compiles (computes argument) startsRight outputFits

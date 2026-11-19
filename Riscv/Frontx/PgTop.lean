@@ -1,4 +1,4 @@
-/- Paged arrays (NOTES section 35): `CompileRuns` and `CompileCorrect` (`Compiler/AllocSpec.lean`) for the paged
+/- Paged arrays (NOTES section 35): `CompileRunsWeak` and `CompileCorrectWeak` (`Compiler/AllocSpec.lean`) for the paged
 compiler `compile : PgProg → Option CompiledA`.
 
 * `PgProg`: a paged program over the input bytes (`Pg [.ar .ba] R`, scalar or array result).  Its meaning
@@ -376,10 +376,10 @@ theorem machine_run {q : PgProg} {compiled : CompiledA} {α β : Type} {f : α �
     rw [hout]; exact ⟨h1, h2⟩
   · exact hnofit (by unfold PgProg.fitsM; rw [← hmn]; exact hlt)
 
-/-- **What happens** (`CompileRuns`, `Compiler/AllocSpec.lean`) for the paged compiler: the code returns to the
+/-- **What happens** (`CompileRunsWeak`, `Compiler/AllocSpec.lean`) for the paged compiler: the code returns to the
 caller, changes nothing outside the output and work blocks, and the status register (`a0`) holds `oomFlag` exactly
 when the run's pages and the frame page (`memoryNeeded`) exceed the work block. -/
-theorem compile_runs : CompileRuns riscv compile := by
+theorem compile_runs : CompileRunsWeak riscv compile := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
     outputFits
   obtain ⟨fin, hruns, hpc, hframe, hfit, hnofit⟩ := machine_run compiles computes startsRight outputFits
@@ -389,9 +389,9 @@ theorem compile_runs : CompileRuns riscv compile := by
   · exact ⟨fun e => absurd e (hfit h).1, fun e => absurd h (Nat.not_le.2 e)⟩
   · exact ⟨fun _ => Nat.not_le.1 h, fun _ => hnofit h⟩
 
-/-- **What comes out** (`CompileCorrect`, `Compiler/AllocSpec.lean`) for the paged compiler: with
+/-- **What comes out** (`CompileCorrectWeak`, `Compiler/AllocSpec.lean`) for the paged compiler: with
 `memoryNeeded ≤ workLength` the code returns with the right output and no flag. -/
-theorem compile_correct : CompileCorrect riscv compile := by
+theorem compile_correct : CompileCorrectWeak riscv compile := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
     outputFits enoughMemory
   obtain ⟨fin, hruns, hpc, -, hfit, -⟩ := machine_run compiles computes startsRight outputFits

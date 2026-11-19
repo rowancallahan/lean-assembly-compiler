@@ -1,6 +1,6 @@
 /- nano from source text: `nanoCompileSrcIR src = nanoElab src >>= nanoCompileIR`, with the meaning of a source
-`nanoElab` (the spec of nano) followed by `nanoRun`.  `nano_src_correct : CompileCorrect riscv nanoCompileSrcIR` and
-`nano_src_runs : CompileRuns riscv nanoCompileSrcIR`, from the theorems on programs (`Nano/ProofTop.lean`). -/
+`nanoElab` (the spec of nano) followed by `nanoRun`.  `nano_src_correct : CompileCorrectWeak riscv nanoCompileSrcIR` and
+`nano_src_runs : CompileRunsWeak riscv nanoCompileSrcIR`, from the theorems on programs (`Nano/ProofTop.lean`). -/
 import Nano.ProofTop
 import Nano.Elab
 
@@ -36,7 +36,7 @@ theorem computes_src {s : Src} {p : Prog} (hr : ∀ input, srcRun s input = nano
   rw [hr] at this; exact this
 
 /-- **What comes out** from source text -/
-theorem nano_src_correct : CompileCorrect riscv nanoCompileSrcIR := by
+theorem nano_src_correct : CompileCorrectWeak riscv nanoCompileSrcIR := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
     outputFits enoughMemory
   obtain ⟨p, -, hc, hr⟩ := src_inv compiles
@@ -44,7 +44,7 @@ theorem nano_src_correct : CompileCorrect riscv nanoCompileSrcIR := by
     startsRight outputFits enoughMemory
 
 /-- **What happens** from source text -/
-theorem nano_src_runs : CompileRuns riscv nanoCompileSrcIR := by
+theorem nano_src_runs : CompileRunsWeak riscv nanoCompileSrcIR := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
     outputFits
   obtain ⟨p, -, hc, hr⟩ := src_inv compiles

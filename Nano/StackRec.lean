@@ -4,7 +4,7 @@ Proved: every block (`push_ok`, `ld_ok`, `addSp_ok`, `sd0_ok`, `rop_ok`, `binop_
 **`genE_ok`/`genA_ok`** (an expression's records push `den e env` on the value stack `Stk` in the work block, for
 scoped expressions `ScE` within the 8-bit offset limits), `pro_ok` (the arguments pushed), `wr_loop` (the result
 bytes).  Remaining (Testing/notes/NANO_PROOF.md): `genR` as a whole on the record machine, the record machine
-refined by Sail (record -> word lemmas by `decide +kernel`, `G.step_*`), glue to `CompileCorrect`. -/
+refined by Sail (record -> word lemmas by `decide +kernel`, `G.step_*`), glue to `CompileCorrectWeak`. -/
 import Nano.Gen
 import Spec.Encode
 import Compiler.IndBytes

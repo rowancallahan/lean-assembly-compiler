@@ -61,6 +61,6 @@ def CapStage : Prop := ∀ (ts : List UInt64) (p : List ParSpec.DefA), ParSpec.P
 theorem dbStage (HC : CapStage) : DBStage := fun _ ts p hp hts _ _ => Templates.parsed_DB hp hts (HC ts p hp hts)
 
 /-- **C is correct**, given the size bounds and the width cap -/
-theorem C_correctLC (HB : BndStage) (HC : CapStage) : CompileCorrectL riscv compileC := C_correctLE HB (dbStage HC)
+theorem C_correctLC (HB : BndStage) (HC : CapStage) : CompileCorrect riscv compileC := C_correctLE HB (dbStage HC)
 
 end NanoMain

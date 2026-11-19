@@ -1,10 +1,10 @@
 /- Nano/V2Self/Proof/MainTop: C's end-to-end theorem in the owner's top-level vocabulary (`Spec/Top.lean` +
-`Compiler/AllocSpec.lean`), the same shape as compiler #1's `compile_correctL : CompileCorrectL riscv compile`.
+`Compiler/AllocSpec.lean`), the same shape as compiler #1's `compile_correctL : CompileCorrect riscv compile`.
 * `SrcC`: a source text; `Program SrcC` runs it by its MEANING: lex (Lex2Spec), parse (ParSpec), `Sem κC` (no result when
   the text is not a program or the run hits Gen's buffer capacity);
 * `compileC`: C's driver `mC` (when it emits code and the text is at most 2^20 bytes); `memoryNeeded` = the work bound
   of `ImplementsC` (chosen);
-* `C_correctL : BndStage → GenStage → CompileCorrectL riscv compileC` (the parser stage is F's `ParInv.parserSound`,
+* `C_correctL : BndStage → GenStage → CompileCorrect riscv compileC` (the parser stage is F's `ParInv.parserSound`,
   the ownership stage O's `OwnP.own_stage`). -/
 import Nano.V2Self.Proof.MainTyP
 import Nano.V2Self.Proof.ParInvRun
@@ -153,7 +153,7 @@ theorem parStage : ParStage := fun _ hW hts => ParInv.parserSound hW hts
 theorem ownStage : OwnStage := fun _ _ hp hb hl h => OwnP.own_stage hp hb hl h
 
 /-- **C is correct** (owner's top-level statement), from the size-bound and codegen stage theorems -/
-theorem C_correctL (HB : BndStage) (HG : GenStage) : CompileCorrectL riscv compileC := by
+theorem C_correctL (HB : BndStage) (HG : GenStage) : CompileCorrect riscv compileC := by
   have HP := parStage
   have HO := ownStage
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight outputFits

@@ -1,5 +1,5 @@
 /- **The nano compiler is correct on RISC-V** (the owner's statements, `Compiler/AllocSpec.lean`):
-`Nano.nano_compile_correct : CompileCorrect riscv nanoCompileIR` and `Nano.nano_compile_runs : CompileRuns riscv
+`Nano.nano_compile_correct : CompileCorrectWeak riscv nanoCompileIR` and `Nano.nano_compile_runs : CompileRunsWeak riscv
 nanoCompileIR`, for `nanoCompileIR p = Ir.compile (lower p)` (code = `nanoGenIR p`, `nanoGenIR_code`).  The program meaning is
 `nanoRun` (`Nano/Proof.lean`: arguments as 8-byte LE words, `Prog.eval`, result as 8 LE bytes); the lowering is
 proved there (`lower_ok`), the IR compiler in `Riscv/Back/IrTop.lean` (`Ir.machine_run`). -/
@@ -28,8 +28,8 @@ theorem computes_of {p : Prog} {α β : Type} {f : α → β} {encodeInput : α 
     (lower p).meaning (encodeInput argument) = some (encodeOutput (f argument)) :=
   lower_ok p _ _ (computes argument) hsmall
 
-/-- **What happens** (`CompileRuns`) -/
-theorem nano_compile_runs : CompileRuns riscv nanoCompileIR := by
+/-- **What happens** (`CompileRunsWeak`) -/
+theorem nano_compile_runs : CompileRunsWeak riscv nanoCompileIR := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
     outputFits
   obtain ⟨finishState, hruns, hpc, hframe, hcase⟩ :=
@@ -40,8 +40,8 @@ theorem nano_compile_runs : CompileRuns riscv nanoCompileIR := by
   · exact ⟨fun h => absurd h hne, fun h => absurd h (Nat.not_lt.2 hle)⟩
   · exact ⟨fun _ => hlt, fun _ => heq⟩
 
-/-- **What comes out** (`CompileCorrect`) -/
-theorem nano_compile_correct : CompileCorrect riscv nanoCompileIR := by
+/-- **What comes out** (`CompileCorrectWeak`) -/
+theorem nano_compile_correct : CompileCorrectWeak riscv nanoCompileIR := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
     outputFits enoughMemory
   obtain ⟨finishState, hruns, hpc, hframe, hcase⟩ :=
