@@ -14,7 +14,7 @@ def Fr.ok (W : WCx) (r : Fr) : Prop := r.d ≤ 4 ∧ (r.d = 2 → r.a < 10) ∧ 
 
 theorem b2n_lt (b : Bool) : b2n b < 2 := by cases b <;> simp [b2n]
 
-theorem u_b2n_beq0 (b : Bool) : (u (b2n b) == 0) = !b := by cases b <;> decide
+theorem u_b2n_beq0 (b : Bool) : (u (b2n b) == u 0) = !b := by cases b <;> decide
 
 theorem o7_eq {W : WCx} {s f : Buf} {A : AS} (hS : RS W s A) (hF : RF W f A) (hB : Bnd W A) {q : Nat} (hq : q < 2 ^ 40) :
     o7 s f (u q) = if q < W.ns then u (b2n (A.F.getD q false)) else 1 := by
@@ -27,7 +27,7 @@ theorem o7_eq {W : WCx} {s f : Buf} {A : AS} (hS : RS W s A) (hF : RF W f A) (hB
   · rw [if_neg (fun e => h ((u_lt (by omega) (by omega)).mp e)), if_neg h]
 
 theorem o7_dead {W : WCx} {s f : Buf} {A : AS} (hS : RS W s A) (hF : RF W f A) (hB : Bnd W A) {q : Nat} (hq : q < 2 ^ 40) :
-    (o7 s f (u q) == 0) = !dead A.F q := by
+    (o7 s f (u q) == u 0) = !dead A.F q := by
   rw [o7_eq hS hF hB hq]
   unfold dead
   by_cases h : q < W.ns
@@ -35,8 +35,9 @@ theorem o7_dead {W : WCx} {s f : Buf} {A : AS} (hS : RS W s A) (hF : RF W f A) (
     have : q < A.F.length := by rw [hF.1]; exact h
     simp [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem this]
   · rw [if_neg h]
+    show (u 1 == u 0) = _
     have : A.F.length ≤ q := by rw [hF.1]; omega
-    simp [List.getD_eq_getElem?_getD, List.getElem?_eq_none this]
+    simp [List.getD_eq_getElem?_getD, List.getElem?_eq_none this]; decide
 
 theorem o10_eq {p o : Nat} (hp : p < 10) (ho : o < 2 ^ 40) : o10 (u p) (u o) = u (dest (some (dsP p)) o) := by
   unfold o10 dest
@@ -107,5 +108,33 @@ theorem o9_eq {W : WCx} {s f : Buf} {A : AS} (hS : RS W s A) (hF : RF W f A) (hT
     by_cases k2 : k = 2 <;> simp [k2] <;> rfl
   · rw [if_neg ho1]
     congr 1; simp [List.getD_eq_getElem?_getD, List.getElem?_eq_none (show (stD W.K W.npw).length ≤ o by omega)]
+
+theorem err_set1 {s : Buf} (h : 2 ≤ s.length) : bget (bset s 1 1) 1 = 1 := by
+  simp only [bget, bset]; rw [show (1 : UInt64).toNat = 1 from rfl, getD_set]; simp; omega
+
+theorem err_o5 {s : Buf} (h : 6 ≤ s.length) : bget (o5 s) 1 = 1 := by
+  unfold o5; simp only [bget, bset]
+  rw [show (1 : UInt64).toNat = 1 from rfl, show (5 : UInt64).toNat = 5 from rfl, getD_set, getD_set]; simp; omega
+
+theorem o12_eq {W : WCx} {s f : Buf} {A : AS} (hS : RS W s A) (hF : RF W f A) (hB : Bnd W A) {e d : Nat}
+    (he : e < 2 ^ 30) (hd : d < 2 ^ 30) : o12 s f (u e) (u d) = u (if ok1 A.F e d then 1 else 0) := by
+  unfold o12 ok1
+  simp only [lit]
+  simp (disch := omega) only [u_lt', u_beq, u_and3, u_shr2, u_sub']
+  by_cases e4 : e < 4
+  · simp only [e4, if_true]
+    rcases (by omega : e = 0 ∨ e = 1 ∨ e = 2 ∨ e = 3) with h | h | h | h <;> subst h <;>
+      by_cases d4 : d < 4 <;> by_cases d1 : d = 1 <;> by_cases d2 : d = 2 <;> simp [d4, d1, d2]
+  · simp only [e4, if_false]
+    have q1 : 1 ≤ e / 4 := by omega
+    rw [o7_dead hS hF hB (q := e / 4 - 1) (by omega)]
+    by_cases k0 : e % 4 = 0
+    · simp [k0]; by_cases d4 : d < 4 <;> simp [d4]
+    by_cases k1 : e % 4 = 1
+    · simp [k1]
+      by_cases d1 : d = 1 <;> by_cases d2 : d = 2 <;> by_cases dd : dead A.F (e / 4 - 1) <;> simp [d1, d2, dd] <;> omega
+    by_cases k2 : e % 4 = 2
+    · simp [k2]; by_cases d2 : d = 2 <;> by_cases d3 : d = 3 <;> simp [d2, d3] <;> omega
+    · simp [k0, k1, k2]
 
 end OwnP
