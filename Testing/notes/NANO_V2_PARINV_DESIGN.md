@@ -85,9 +85,6 @@ OPEN ISSUES: Par1 fix H unsound (multi-name List group before the input; C infor
 C's Rep relates nx/slots/npw/RNRep a,b by toNat (must be mod 2^64) and ShapeCode lacks the width cell; DefsRep lacks zero code cells ≥ h[27];
 B: `isInp` on b mod 2^64; prim 1..3 nodes need ≥ 1 child (WF: mkCall n = arity) else flatten of a 0-child prim diverges from Par1.
 
-NEXT (in order): (b) pure bound `|out|` ≤ 6·steps (for `h.length < 2^64` in `fin_ne`); (c) machine lemmas for 81/82/83 and 80 on C's Rep (blocked until C's
-NodeRep/OpsRep are restated on `RN`); (d) headers 60–70, loop arms 73–79, 46/54; (e) top glue: Rep-simulation + `Accepts ⇒ refParse` ⇒ `ParserSound`.
-
 ## HANDOFF — G: arguments / calls / prims / types (2026-11-19, keep current)
 Families: frames 43 argAtom, 44 args, 45 mkCallN, 47 argCheck, 48 mkCall, 55 argName, the prim / def-call heads of code 3, types 61–63 (machine side),
 binders 66–68, shape interning v10 (split proposed to F, who keeps 46, 54, 60, 70, 73–83; no answer yet).
