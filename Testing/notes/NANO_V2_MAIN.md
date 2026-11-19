@@ -52,7 +52,7 @@ Options: (a) Par1 layout sized by the token count (offsets d1..d11 as functions 
   argument nodes; MainTyP re-proved (EnvT now also says: slots ≥ nx are fresh).
 - `rd_known` (reads hit known slots), `wr_fresh` (let writes hit fresh slots) ⇒ every rd/wr disjointness of `OkV`/`OkT`;
   `wd_ok` (width = kind count), `okV`, `okL`, `okT` (loop arms, CONTINUE width = p − 1), `okBody` (plain body or loop).
-- `parsed_ok : ParsesProgram ts p → p[i]? = some d → ∀ K, K.p = d.npw → K.nl = d.nslots → K.nd = i →
+- `parsed_ok : ParsesProgram ts p → p[i]? = some d → ∀ K, K.p = d.npw → K.nl = d.nslots → K.nd = i → K.q = d.nres →
    (∀ j < i, p[j] = dj → K.npwOf j = dj.npw ∧ K.nresOf j = dj.nres) → OkV K d.body ∧ wd K d.body = d.nres ∧ d.npw ≤ d.nslots`;
   `parsed_main`: the last def has npw 0, nres 1.
 

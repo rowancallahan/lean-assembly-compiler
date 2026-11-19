@@ -219,8 +219,8 @@ theorem somes_eq : ∀ (a b : List Kd) (m n : Nat), a.map some ++ List.replicate
 
 /-- **a def body** (E's `OkV` at the def's frame `K.p`, `K.nl`) -/
 theorem okBody {K : SC} {D : List Sig} (hK : KD K D) {ps : List Kd} {m : Nat} {e : Nd} {ks : List Kd}
-    (h : TyB D (ps.map some ++ List.replicate m none) e ks) (hp : K.p = ps.length) (hl : ps.length + m = K.nl) :
-    OkV K e ∧ wd K e = ks.length := by
+    (h : TyB D (ps.map some ++ List.replicate m none) e ks) (hp : K.p = ps.length) (hl : ps.length + m = K.nl)
+    (hq : K.q = ks.length) : OkV K e ∧ wd K e = ks.length := by
   have hlen : (ps.map some ++ List.replicate m none).length = K.nl := by simp; omega
   cases h with
   | plain h => exact ⟨okV hK h rfl hlen, (wd_ok hK h rfl).1⟩
@@ -240,10 +240,9 @@ theorem okBody {K : SC} {D : List Sig} (hK : KD K D) {ps : List Kd} {m : Nat} {e
       | zero => simp at e
       | succ k => simp at e
     rw [hΓ] at hlen hz hs
-    have hwz := (wd_ok hK hz rfl).2
     simp only [OkV, wd]
-    refine ⟨⟨by rw [hwz]; exact okT hK hz hlen (fun _ e => by cases e), by rw [hwz]; exact okT hK hs hlen hS,
-      by simp at hp; omega, by simp at hp hlen; omega, fun k w => ?_, fun k r w => ?_⟩, hwz⟩
+    refine ⟨⟨by rw [hq]; exact okT hK hz hlen (fun _ e => by cases e), by rw [hq]; exact okT hK hs hlen hS,
+      by simp at hp; omega, by simp at hp hlen; omega, fun k w => ?_, fun k r w => ?_⟩, hq⟩
     · rcases w with w | w
       · exact big k (wr_fresh K.p hz k w)
       · exact big k (wr_fresh K.p hs k w)
@@ -254,9 +253,9 @@ theorem okBody {K : SC} {D : List Sig} (hK : KD K D) {ps : List Kd} {m : Nat} {e
       · exact rw_disj K.p hs hs k r w
 
 /-- **E's side conditions for every def of a parsed program**: at def `i`'s frame (`K.p` = npw, `K.nl` = nslots, the
-callees = the earlier defs), the body satisfies `OkV` and has width `nres`; also `npw ≤ nslots`. -/
+callees = the earlier defs, `K.q` = nres), the body satisfies `OkV` and has width `nres`; also `npw ≤ nslots`. -/
 theorem parsed_ok {ts : List UInt64} {p : List DefA} (h : ParsesProgram ts p) (i : Nat) (d : DefA) (hd : p[i]? = some d)
-    (K : SC) (hp : K.p = d.npw) (hn : K.nl = d.nslots) (hi : K.nd = i)
+    (K : SC) (hp : K.p = d.npw) (hn : K.nl = d.nslots) (hi : K.nd = i) (hq : K.q = d.nres)
     (hc : ∀ j < i, ∀ dj, p[j]? = some dj → K.npwOf j = dj.npw ∧ K.nresOf j = dj.nres) :
     OkV K d.body ∧ wd K d.body = d.nres ∧ d.npw ≤ d.nslots := by
   obtain ⟨sigs, hl, ht, -⟩ := refParse_ty h
@@ -274,7 +273,7 @@ theorem parsed_ok {ts : List UInt64} {p : List DefA} (h : ParsesProgram ts p) (i
       obtain ⟨c1, c2⟩ := hc j hji dj hdj
       exact ⟨by omega, by rw [c1, g1], by rw [c2, g3]⟩
     · cases hj
-  obtain ⟨o1, o2⟩ := okBody hK h4 (by rw [hp, h1]) (by rw [hn, ← h1]; omega)
+  obtain ⟨o1, o2⟩ := okBody hK h4 (by rw [hp, h1]) (by rw [hn, ← h1]; omega) (by rw [hq, h3])
   exact ⟨o1, by rw [o2, h3], h2⟩
 
 /-- the last def of a parsed program is main: no parameters, one result word -/
