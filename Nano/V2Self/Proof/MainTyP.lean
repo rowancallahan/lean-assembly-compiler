@@ -339,4 +339,196 @@ theorem pL_step (f : Nat) (hB : PB f) (hL : PL f) : PL (f + 1) := by
   · simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl, rfl, rfl⟩ := h
     exact ⟨Nat.le_refl _, fun Γ Q _ _ ha _ => ha⟩
 
+theorem pC_step (f : Nat) (hG : PG f) : PC (f + 1) := by
+  intro cx n ts nx e ty r nx' h
+  unfold pCallDef at h
+  split at h
+  · rename_i id d hd
+    obtain ⟨⟨as, r1, nx1⟩, ha, he⟩ := Option.map_eq_some_iff.1 h
+    simp only [Prod.mk.injEq] at he; obtain ⟨rfl, rfl, rfl, rfl⟩ := he
+    obtain ⟨m1, hl1, t1⟩ := hG _ _ _ _ _ _ _ ha
+    refine ⟨m1, fun Γ hΓ hl S ks hk => ?_⟩
+    cases hk
+    exact .call (ps := (sigOf d).1) (dropInp_ty _ _ hl1 (t1 Γ hΓ hl)) (by simp [findDef_get hd]; rfl)
+  · cases h
+
+theorem pG_step (f : Nat) (hT : PT f) (hG : PG f) : PG (f + 1) := by
+  intro cx ps ts nx as r nx' h
+  unfold pArgs at h
+  split at h
+  · cases h
+  · simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl, rfl⟩ := h
+    exact ⟨Nat.le_refl _, rfl, fun _ _ _ i h1 => by simp at h1⟩
+  · rename_i f0 p ps0 heq
+    simp at heq; subst heq
+    obtain ⟨⟨a, ta, r1, nx1⟩, ha, h⟩ := Option.bind_eq_some_iff.1 h
+    simp only at h
+    split at h
+    · rename_i hm
+      obtain ⟨⟨as0, r2, nx2⟩, has, he⟩ := Option.map_eq_some_iff.1 h
+      simp only [Prod.mk.injEq] at he; obtain ⟨rfl, rfl, rfl⟩ := he
+      obtain ⟨m1, t1⟩ := hT _ _ _ _ _ _ _ _ ha
+      obtain ⟨m2, hl2, t2⟩ := hG _ _ _ _ _ _ _ has
+      refine ⟨by omega, by simp [hl2], fun Γ hΓ hl i h1 h2 => ?_⟩
+      cases i with
+      | zero => exact ⟨tyMatch_fits _ _ hm, fun ks hk => t1 Γ hΓ (by omega) none ks (.inl rfl) hk⟩
+      | succ i => exact t2 Γ (hΓ.mono m1) hl i (by simpa using h1) (by simpa using h2)
+    · cases h
+
+theorem pA_step (f : Nat) (hT : PT f) (hG : PG f) (hC : PC f) : PA (f + 1) := by
+  intro cx tl ts nx e ty r nx' h
+  unfold pApp at h
+  split at h
+  · cases h
+  · rename_i f0 t r0 heq
+    simp at heq; subst heq
+    split at h
+    · rename_i pid ps rs hp
+      obtain ⟨⟨as, r1, nx1⟩, ha, he⟩ := Option.map_eq_some_iff.1 h
+      simp only [Prod.mk.injEq] at he; obtain ⟨rfl, rfl, rfl, rfl⟩ := he
+      obtain ⟨m1, hl1, t1⟩ := hG _ _ _ _ _ _ _ ha
+      refine ⟨m1, fun Γ hΓ hl S ks hS hk => ?_⟩
+      cases hk
+      exact .prim (dropInp_ty _ _ hl1 (t1 Γ hΓ hl)) (primSig_ok _ _ _ _ hp)
+    · exact hT _ _ _ _ _ _ _ _ h
+  · rename_i cx tl nx _ _ _ _ _ f0 n r0 heq
+    simp at heq; subst heq
+    split at h
+    · exact hT _ _ _ _ _ _ _ _ h
+    · split at h
+      · rename_i sn sps hself
+        split at h
+        · split at h
+          · split at h
+            · rename_i fn r1
+              split at h
+              · obtain ⟨⟨as, r2, nx2⟩, ha, h⟩ := Option.bind_eq_some_iff.1 h
+                simp only at h
+                split at h
+                · cases h
+                · rename_i _ hne
+                  simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl, rfl, rfl⟩ := h
+                  obtain ⟨m1, hl1, t1⟩ := hG _ _ _ _ _ _ _ ha
+                  refine ⟨m1, fun Γ hΓ hl S ks hS hk => ?_⟩
+                  rcases hS with hS | hS | hS
+                  · simp_all
+                  · simp_all
+                  · have hS' : S = some (sps.flatMap Ps.kinds) := by simp [hS, selfK, hself]
+                    subst hS'
+                    have := dropInp_ty (D := cx.defs.map sigOf) (Γ := Γ) _ _ hl1 (t1 Γ hΓ hl)
+                    exact .cont (mkPairFlat_ty this (by intro e; exact hne e))
+              · cases h
+            · cases h
+          · cases h
+        · exact hC _ _ _ _ _ _ _ _ h |>.imp id fun h Γ hΓ hl S ks _ hk => h Γ hΓ hl S ks hk
+      · exact hC _ _ _ _ _ _ _ _ h |>.imp id fun h Γ hΓ hl S ks _ hk => h Γ hΓ hl S ks hk
+  · rename_i cx tl ts nx _ _ _ _ _ f0 heq _ _
+    simp at heq; subst heq
+    exact hT _ _ _ _ _ _ _ _ h
+
+theorem pU_step (f : Nat) (hE : PE f) (hU : PU f) : PU (f + 1) := by
+  intro cx ts nx e sh r nx' h
+  unfold pTup at h
+  split at h
+  · cases h
+  · rename_i cx nx _ _ _ _ f0 r0 heq
+    simp at heq; subst heq
+    obtain ⟨⟨e1, t1, r1, nx1⟩, he1, h⟩ := Option.bind_eq_some_iff.1 h
+    simp only at h
+    obtain ⟨m1, k1⟩ := hE _ _ _ _ _ _ _ _ he1
+    split at h
+    · rename_i s r2 hs
+      simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl, rfl, rfl⟩ := h
+      exact ⟨m1, fun Γ hΓ hl S => k1 Γ hΓ hl S _ (.inl rfl) (tyShape_fits hs)⟩
+    · rename_i s r2 hs
+      obtain ⟨⟨rest, sr, r3, nx3⟩, hr, he⟩ := Option.map_eq_some_iff.1 h
+      simp only [Prod.mk.injEq] at he; obtain ⟨rfl, rfl, rfl, rfl⟩ := he
+      obtain ⟨m2, k2⟩ := hU _ _ _ _ _ _ _ hr
+      refine ⟨by omega, fun Γ hΓ hl S => ?_⟩
+      have := TyL.cons (k1 Γ hΓ (by omega) none _ (.inl rfl) (tyShape_fits hs)) (TyL.cons (k2 Γ (hΓ.mono m1) hl none) .nil)
+      simp only [List.append_nil] at this
+      exact .pair this
+    · cases h
+  · cases h
+
+theorem pT_step (f : Nat) (hE : PE f) (hU : PU f) : PT (f + 1) := by
+  intro cx tl ts nx e ty r nx' h
+  unfold pAtom at h
+  split at h
+  · cases h
+  · simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl, rfl, rfl⟩ := h
+    exact ⟨Nat.le_refl _, fun Γ hΓ hl S ks hS hk => by cases hk; exact .const⟩
+  · simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl, rfl, rfl⟩ := h
+    exact ⟨Nat.le_refl _, fun Γ hΓ hl S ks hS hk => by cases hk; exact .prim .nil rfl⟩
+  · simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl, rfl, rfl⟩ := h
+    exact ⟨Nat.le_refl _, fun Γ hΓ hl S ks hS hk => by cases hk; exact .prim .nil rfl⟩
+  · rename_i cx tl nx _ _ _ _ _ f0 n r0 heq
+    split at h
+    · rename_i slot s hf
+      simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl, rfl, rfl⟩ := h
+      refine ⟨Nat.le_refl _, fun Γ hΓ hl S ks hS hk => ?_⟩
+      cases hk
+      exact .loc ((hΓ _ (findEnv_mem hf)).2.2 s rfl)
+    · rename_i slot hf
+      simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl, rfl, rfl⟩ := h
+      refine ⟨Nat.le_refl _, fun Γ hΓ hl S ks hS hk => ?_⟩
+      cases hk
+      have := (hΓ _ (findEnv_mem hf)).2.1
+      exact .loc ⟨by simpa [Ps.width] using this, by simp⟩
+    · cases h
+    · split at h
+      · rename_i id d hd
+        split at h
+        · rename_i hp
+          simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl, rfl, rfl⟩ := h
+          refine ⟨Nat.le_refl _, fun Γ hΓ hl S ks hS hk => ?_⟩
+          cases hk
+          have hp' : d.params = [] := by simpa using hp
+          exact .call (ps := []) .nil (by simp [findDef_get hd, sigOf, hp'])
+        · cases h
+      · cases h
+  · rename_i cx tl nx _ _ _ _ _ f0 r0 heq
+    simp at heq; subst heq
+    obtain ⟨⟨e1, t1, r1, nx1⟩, he1, h⟩ := Option.bind_eq_some_iff.1 h
+    simp only at h
+    obtain ⟨m1, k1⟩ := hE _ _ _ _ _ _ _ _ he1
+    split at h
+    · rename_i r2
+      simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl, rfl, rfl⟩ := h
+      exact ⟨m1, k1⟩
+    · obtain ⟨⟨e2, t2, r2, nx2⟩, he2, h⟩ := Option.bind_eq_some_iff.1 h
+      simp only at h
+      obtain ⟨m2, k2⟩ := hE _ _ _ _ _ _ _ _ he2
+      split at h
+      · rename_i s1 hs
+        obtain ⟨⟨rest, st, r3, nx3⟩, hr, he⟩ := Option.map_eq_some_iff.1 h
+        simp only [Prod.mk.injEq] at he; obtain ⟨rfl, rfl, rfl, rfl⟩ := he
+        obtain ⟨m3, k3⟩ := hU _ _ _ _ _ _ _ hr
+        refine ⟨by omega, fun Γ hΓ hl S ks hS hk => ?_⟩
+        cases hk
+        have := TyL.cons (k2 Γ hΓ (by omega) none _ (.inl rfl) (tyShape_fits hs)) (TyL.cons (k3 Γ (hΓ.mono m2) hl none) .nil)
+        simp only [List.append_nil] at this
+        exact .pair this
+      · cases h
+    · cases h
+  · cases h
+
+theorem p_all : ∀ f, PE f ∧ PB f ∧ PL f ∧ PA f ∧ PC f ∧ PG f ∧ PT f ∧ PU f
+  | 0 => by
+    refine ⟨fun _ _ _ _ _ _ _ _ h => ?_, fun _ _ _ _ _ _ _ _ _ h => ?_, fun _ _ _ _ _ _ _ _ _ _ h => ?_,
+      fun _ _ _ _ _ _ _ _ h => ?_, fun _ _ _ _ _ _ _ _ h => ?_, fun _ _ _ _ _ _ _ h => ?_, fun _ _ _ _ _ _ _ _ h => ?_,
+      fun _ _ _ _ _ _ _ h => ?_⟩
+    · rw [pExpr.eq_1] at h; cases h
+    · rw [pBin.eq_1] at h; cases h
+    · rw [pLoop.eq_1] at h; cases h
+    · rw [pApp.eq_1] at h; cases h
+    · rw [pCallDef.eq_1] at h; cases h
+    · rw [pArgs.eq_1] at h; cases h
+    · rw [pAtom.eq_1] at h; cases h
+    · rw [pTup.eq_1] at h; cases h
+  | f + 1 => by
+    obtain ⟨hE, hB, hL, hA, hC, hG, hT, hU⟩ := p_all f
+    exact ⟨pE_step f hB hE, pB_step f hA hL, pL_step f hB hL, pA_step f hT hG hC, pC_step f hG, pG_step f hT hG,
+      pT_step f hE hU, pU_step f hE hU⟩
+
 end NanoMain
