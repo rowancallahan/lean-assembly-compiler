@@ -14,7 +14,7 @@ def Keep (Kk : List Nat) (F F' : List Bool) : Prop :=
 def TagsOK (Kk : List Nat) (es : List Nat) : Prop := ∀ x ∈ es, 4 ≤ x → x % 4 = Kk.getD (x / 4 - 1) 0
 
 /-- O's def result kinds are plain -/
-def RsW (oc : OwnSpec.Cx) : Prop := ∀ R ∈ oc.rs, ∀ x ∈ R, x < 4
+def RsW (oc : OwnSpec.Cx) : Prop := ∀ R ∈ oc.rs, ∀ x ∈ R, x ≤ 1
 
 /-- every read-only slot is live -/
 def R2 (Kk : List Nat) (F : List Bool) : Prop := ∀ s, Kk.getD s 0 = 2 → OwnSpec.dead F s = false
@@ -206,7 +206,7 @@ theorem chk_keep {oc : OwnSpec.Cx} {D : List Sig} (hK2 : ∀ s, oc.K.getD s 0 �
       obtain ⟨y, hy, he⟩ := Option.map_eq_some_iff.1 h
       simp only [Prod.mk.injEq] at he; obtain ⟨rfl, rfl⟩ := he
       obtain ⟨k1, t1⟩ := lstA_keep hK2 hW hl _ _ _ _ _ hx (fun _ h => by simp at h)
-      exact ⟨k1.trans (fin_keep t1 hy).1, tags_plain (hW R (List.mem_of_getElem? hRr))⟩
+      exact ⟨k1.trans (fin_keep t1 hy).1, tags_plain fun x hx => by have := hW R (List.mem_of_getElem? hRr) x hx; omega⟩
     · cases h
   | _, _, _, _, .prim hl _ _, _, F, F', es, h => by
     simp only [OwnSpec.chk, Option.bind_eq_some_iff, Option.map_eq_some_iff] at h
