@@ -150,8 +150,15 @@ OPEN / NEXT (owner order 2026-11-19):
    (ex_all, tex_all, loop_ex, def_ex); `prog_both` (every def meets DefR and DefEx); `main_ex` (MainConv7, 70 s with deps):
    TyProg ∧ progOk (Ks ≤ 2) ∧ c29/inp ∧ κ < 2^40 ∧ H 8-aligned above hb ∧ `Sem P.κ ds inp = .ok y` ⇒ ∃ N, ∀ sp ∈ [H.top+N, 2^62),
    semAt main [] sp H = some ([a], H') ∧ BufAt hb κ H' a l ∧ y = l.map toUInt8.
-   NEXT: cap half (Sem = .error .cap ⇒ E reports cap, never room) once E fixes the failure-kind form (svX/Fail); then (C)
-   the DB fact (serialize fields < 2^32 for parsed programs); hXl only if E does not cover it.
+   `main_room` (MainConv8): E's premise form — ∃ R uniform in the work base and in T (semAt_T: sv never reads K.T;
+   unif_fin: finite max over base < 2^32), semAt (P with hb = base+16) main [] ((base+len)/8*8) ⟨base+16, ∅⟩ = some …
+   when R ≤ len.  NEXT: cap half (Sem = .error .cap ⇒ E reports cap) once E's semAtX (SemX.lean) is in.
+   DB/Bnd: P64 is FALSE for parsed programs (doubling pair lets: nslots = 2^(k+1) − 1; Testing/nano/v2self/parcap/
+   wrap.lean).  Fix approved: O adds a parser cap `nx + w < 2^20` (Par1 + refParse) and proves parsed_bnd; then D
+   discharges `BndStage` (Main) and repairs ParSerLen/MainTyP for the new refParse.  hXl DONE: ParSerLen.ser_len
+   |serialize p| ≤ 4·|ts| + 1, ser_lt < 2^31; GenStage/BndStage carry ts.length < 2^24.
+   STAGES (Main/MainTop): ParStage discharged (parStage = F's parserSound), OwnStage discharged (ownStage = O's
+   own_stage); C_correctL : BndStage → GenStage → CompileCorrectL.
 2. DONE (caf51274): driver `mC x = g41 x (o41 (y16 (s10 x)))`; `LinearK p := ∃ Ks, progOk [] [] Ks p ∧ Ks ≤ 2`;
    `OwnStage := ∀ p, o41 (serialize p) ≠ [] → LinearK p` (O's lemma, pending); `GenStage` now for parsed ∧ LinearK;
    `compiler_correct HP HO HG` gives `Lexes ∧ ParsesProgram ∧ LinearK ∧ ImplementsC`; `C_correctL : ParStage → OwnStage →
