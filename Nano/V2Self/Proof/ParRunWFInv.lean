@@ -4,8 +4,6 @@ import Nano.V2Self.Proof.ParRunWFStep
 namespace ParRun
 open ParSpec
 
-/-- the state invariants -/
-def SInv (st : St) : Prop := (∀ x ∈ st.vals, x.sh.isSome) ∧ (∀ d ∈ st.defs, d.res.isSome) ∧ (st.arm → st.cur.res.isSome)
 
 theorem findB_mem {bs : List Bd} {x bd} (h : findB bs x = some bd) : bd ∈ bs := by
   unfold findB at h; exact List.mem_reverse.mp (List.mem_of_find?_eq_some h)

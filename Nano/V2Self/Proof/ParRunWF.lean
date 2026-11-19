@@ -98,22 +98,37 @@ def Frame.isTy : Frame → Bool
   | .tyAtom | .tyCross | .tyPair _ | .rparen => true
   | _ => false
 
+/-- the shape of a task stack: final frames only at the bottom, a binder group's `group` frame alone, `assign` only directly
+above `binders` with type frames above it -/
+def finalsLast : List Frame → Bool
+  | [] => true
+  | [_] => true
+  | x :: r => !x.final && finalsLast r
+
+def Shape (fs : List Frame) : Prop :=
+  finalsLast fs ∧
+  (∀ a, .group a ∈ fs → fs = [.group a]) ∧
+  (∀ a, .assign a ∈ fs → ∃ tys, (∀ f ∈ tys, f.isTy) ∧ fs = tys ++ [.assign a, .binders])
+
+/-- binder placeholders (shape code 0) exist only while their group is being parsed -/
+def PhOK (fs : List Frame) (st : St) : Prop :=
+  ∀ i (h : i < st.binds.length), st.binds[i].sh = none → ∃ a ≤ i, .group a ∈ fs ∨ .assign a ∈ fs
+
+/-- the state invariants -/
+def SInv (st : St) : Prop := (∀ x ∈ st.vals, x.sh.isSome) ∧ (∀ d ∈ st.defs, d.res.isSome) ∧ (st.arm → st.cur.res.isSome)
+
 structure WF (fs : List Frame) (st : St) : Prop where
   ghost : (effL st.ctx fs st.g).isSome
-  final : ∀ i (h : i < fs.length), fs[i].final → i + 1 = fs.length
-  assignCtx : ∀ a, .assign a ∈ fs → ∀ f ∈ fs, f.isTy ∨ f = .assign a ∨ f = .binders
-  placeholder : ∀ i (h : i < st.binds.length), st.binds[i].sh = none → ∃ a ≤ i, .group a ∈ fs ∨ .assign a ∈ fs
-  vals : ∀ x ∈ st.vals, x.sh.isSome
-  defsRes : ∀ d ∈ st.defs, d.res.isSome
-  armRes : st.arm → st.cur.res.isSome
+  shape : Shape fs
+  ph : PhOK fs st
+  inv : SInv st
 
 theorem wf_init (toks : List Tok) : WF [.defs] (init toks) := by
-  refine ⟨by simp [effL, effF, St.g, init], ?_, ?_, ?_, ?_, ?_, ?_⟩
-  · intro i h _; simp only [List.length_cons, List.length_nil] at h ⊢; omega
+  refine ⟨by simp [effL, effF, St.g, init], ⟨?_, ?_, ?_⟩, ?_, ?_⟩
+  · rfl
+  · intro a ha; simp at ha
   · intro a ha; simp at ha
   · intro i h; simp [init] at h
-  · simp [init]
-  · simp [init]
-  · simp [init]
+  · simp [SInv, init]
 
 end ParRun
