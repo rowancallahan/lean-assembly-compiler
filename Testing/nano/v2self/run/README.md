@@ -84,30 +84,30 @@ About 107 million interpreted instructions per second. Not yet run on macOS (no 
 
 ## Native shim (`shim/`): run the code as an ordinary process
 
-`nanorun` interprets. `shim/shim_rv.c` instead loads the code into executable memory and jumps to it, on a RISC-V Linux
-machine (or under user-mode QEMU). About 55 lines; also unproven glue.
+`nanorun` interprets. `shim/shim_rv.c` (30 lines) loads the code into executable memory and jumps to it, on a RISC-V
+Linux machine or under user-mode QEMU. Also unproven glue.
 
 ```
 riscv64-linux-gnu-gcc -O2 -static shim/shim_rv.c -o shim_rv
-./shim_rv B2.bin prog.lean > prog.bin        # compile: code file, input file (or - for stdin), output on stdout
-./shim_rv prog.bin input.bin > out.bin       # run the compiled program
-./shim_rv prog.bin - 20 < input.bin > out.bin   # stdin, 20 MiB of work memory (default 80)
+./shim_rv B2.bin < prog.lean > prog.bin      # compile: the code file is the only argument
+./shim_rv prog.bin < input.bin > out.bin     # run the compiled program
 ```
 
 On a machine that is not RISC-V: `qemu-riscv64-static ./shim_rv …` (Debian/Ubuntu package `qemu-user-static`).
-The status goes to stderr (`a0`, `a1`); exit status 0 on success, 1 when the code reported −1 or −2.
+Input comes from stdin, the output bytes go to stdout, the status line to stderr; exit status 0 on success (status 0 or
+1), 1 when the code reported −1 (out of work memory) or −2 (buffer capacity), 2 on a usage error.
+Fixed sizes: code up to 4 MiB, input 1 MiB, output 2 MiB, work memory 80 MiB.
 
-What it does: `mmap` one read-write-execute block for the code and one zeroed block for the work memory, `malloc` the
-input and a 2 MiB output block, flush the instruction cache, then with five lines of inline assembly: park the host
-stack pointer in `s1`, set `sp` to the top of the work block, `jalr` to the code with `a0..a3` set, read `sp` back and
-restore the host stack. It relies on the code keeping `sp`, `gp`, `tp` and `s0..s11` (part of the proved contract) and
-checks that `sp` came back. Unlike `nanorun` there are no bounds checks: wrong code corrupts or crashes the process.
+What it does: `mmap` a read-write-execute block for the code, read the input into a static buffer, flush the
+instruction cache, then one line of inline assembly: park the host stack pointer in `s1`, set `sp` to the top of the
+work block, `jalr` to the code with `a0..a3` set, restore the host stack. It relies on the code keeping `sp` and
+`s0..s11` (part of the proved contract). Unlike `nanorun` there are no checks of any kind: wrong code, or an input
+longer than 1 MiB being cut off, is not detected.
 
 Tested here under `qemu-riscv64-static` 8.2 (`SHIM="qemu-riscv64-static /tmp/shim_rv" python3 …/validate.py`):
 self-compile output equals `B2.bin` byte for byte in 1.1 s (nanorun: 13.5 s); the four regress programs give the same
-code as through nanorun and the model's outputs on five inputs each (input on stdin); 1 MiB of work memory gives −1.
-Not run on real RISC-V hardware.
+code as through nanorun and the model's outputs on five inputs each. Not run on real RISC-V hardware.
 
 `shim/shim_arm.c` is the same for AArch64 (`x0..x3`, `sp`, `x30`; on macOS `MAP_JIT`, `pthread_jit_write_protect_np`,
 `sys_icache_invalidate`). It is **for the future ARM back end and untested**: the compiler emits RISC-V only, so there
-is no code it could run, and it has not even been compiled here (no AArch64 toolchain on this box).
+is no code it could run, and it has not been compiled here (no AArch64 toolchain on this box).

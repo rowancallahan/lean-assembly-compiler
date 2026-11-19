@@ -61,14 +61,14 @@ for name, (src, model) in PROGS.items():
 # the native shim (shim/shim_rv.c), e.g. SHIM="qemu-riscv64-static /tmp/shim_rv" (or just the binary on a RISC-V machine)
 if os.environ.get("SHIM"):
     sh = os.environ["SHIM"].split()
-    t = time.time(); r = subprocess.run(sh + [f"{V}/B2.bin", f"{V}/self_S_input.txt"], capture_output=True)
+    t = time.time(); r = subprocess.run(sh + [f"{V}/B2.bin"], input=open(f"{V}/self_S_input.txt", "rb").read(), capture_output=True)
     assert r.returncode == 0 and r.stdout == b2, r.stderr
     print(f"shim self-compile: stdout == B2, {time.time() - t:.1f} s")
     for name, (src, model) in PROGS.items():
-        code = subprocess.run(sh + [f"{V}/B2.bin", f"{T}/{name}.lean"], capture_output=True, check=True).stdout
+        code = subprocess.run(sh + [f"{V}/B2.bin"], input=src.encode(), capture_output=True, check=True).stdout
         assert code == open(f"{T}/{name}.bin", "rb").read(), name
         for xs in INS:
-            r = subprocess.run(sh + [f"{T}/{name}.bin", "-", "20"], input=bytes(xs), capture_output=True)
+            r = subprocess.run(sh + [f"{T}/{name}.bin"], input=bytes(xs), capture_output=True)
             assert r.returncode == 0 and r.stdout == bytes(model(xs)), (name, xs, r.stderr)
         print(f"shim {name}: same code as nanorun; {len(INS)} inputs (stdin) agree with the model")
 print("ALL OK")
