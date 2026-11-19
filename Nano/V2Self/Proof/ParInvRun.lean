@@ -1,6 +1,6 @@
 /- Nano/V2Self/Proof/ParInvRun: `api_of_rep` (parser lead) — box C's `Rep` plus Layer-2 reachability meets `RepAPI`.
 The handlers' side conditions come from the reachability invariants (`WF` / `wf_pre`, `CInv`, `DInv`, `StkInv`, `ArenaInv`,
-`CallInv`); the ones not yet derived are the fields of `Obl toks`. -/
+`CallInv`); `WF`-independent ones are in ParRunBnd (parser lead) and ParRunObl (box B). -/
 import Nano.V2Self.Proof.ParInvInit
 import Nano.V2Self.Proof.ParInvSelf
 import Nano.V2Self.Proof.ParInvDefs
@@ -36,17 +36,11 @@ import Nano.V2Self.Proof.ParRunArena
 import Nano.V2Self.Proof.ParRunDef
 import Nano.V2Self.Proof.ParRunProg
 import Nano.V2Self.Proof.ParRunBnd
+import Nano.V2Self.Proof.ParRunObl
 namespace ParInv
 open C BufL ParSpec ParRun
 
 abbrev Reach (toks : List Tok) (fs : List Frame) (st : St) : Prop := Star ([.defs], init toks) (fs, st)
-
-/-- reachability facts the handlers need that are not yet derived from the Layer-2 invariants -/
-structure Obl (toks : List Tok) : Prop where
-  assignTy : ∀ {i sz fs st}, Reach toks (.assign i sz :: fs) st → st.ty.isSome = true
-  prev : ∀ {fs st}, Reach toks (.afterColon :: fs) st → ∃ t, prevTok st = some t ∧ ∀ v, t ≠ .num v
-  selfP : ∀ {fs st}, Reach toks (.selfArgs :: fs) st → st.cur.params ≠ []
-  names : ∀ {fs st}, Reach toks fs st → ∀ d ∈ st.defs, d.name ≠ []
 
 theorem isFlat_eq : Frame.isFlat = Frame.isFl := by funext f; cases f <;> rfl
 
@@ -84,11 +78,11 @@ theorem rep_tok0 {h ts : Buf} {st : St} {fs : List Frame} {toks : List Tok} (hT 
     TokAt h 0 toks := tokAt_of r.1.1 r.2.1 r.1.2.2.2 hT 0 (Nat.zero_le _) rfl
 
 /-- `hprev` of task 73 from the reachability obligation "the token before `afterColon` is no numeral" -/
-theorem hprev_of {h ts : Buf} {toks : List Tok} (hT : TokL ts toks) (O : Obl toks) {fs : List Frame} {st : St}
+theorem hprev_of {h ts : Buf} {toks : List Tok} (hT : TokL ts toks) {fs : List Frame} {st : St}
     (r : Rep h ts st (.afterColon :: fs)) (hR : Reach toks (.afterColon :: fs) st) :
     bget h (d11 + bget h 3 - 1) = 35 → prevTok st = some (.k 35) := by
   intro hc
-  obtain ⟨t, ht, hnum⟩ := O.prev hR
+  obtain ⟨t, ht, hnum⟩ := reach_prev hR
   obtain ⟨hall, ⟨pre, hpre⟩⟩ := hR.toks
   simp only [ParRun.init] at hall hpre
   have hp : prevTok st = pre.getLast? := by
@@ -110,7 +104,7 @@ theorem hprev_of {h ts : Buf} {toks : List Tok} (hT : TokL ts toks) (O : Obl tok
   · rw [e1] at ht; cases ht; exact absurd rfl (hnum v)
 
 /-- **one running step** of every frame but `.defs` / `.defClose` -/
-theorem step_sim {h ts : Buf} {toks : List Tok} (O : Obl toks)
+theorem step_sim {h ts : Buf} {toks : List Tok} 
     (hprev : ∀ {fs st}, Rep h ts st (.afterColon :: fs) → Reach toks (.afterColon :: fs) st →
       bget h (d11 + bget h 3 - 1) = 35 → prevTok st = some (.k 35))
     {f : Frame} {fs : List Frame} {st : St} (r : Rep h ts st (f :: fs)) (hR : Reach toks (f :: fs) st)
@@ -150,7 +144,7 @@ theorem step_sim {h ts : Buf} {toks : List Tok} (O : Obl toks)
   | argAtom => exact h_argAtom r (hN rfl) hs
   | args c k => exact h_args r hs
   | mkCallN c d => simp [effF, St.g] at hg; exact h_mkCallN r hg.1.1 hs
-  | selfArgs => exact h_selfArgs r hD (O.selfP hR) hs
+  | selfArgs => exact h_selfArgs r hD (reach_selfP hR) hs
   | argCheck c k =>
     simp [effF, St.g] at hg
     refine h_argCheck r hD hg.1.1 ?_ ?_ hs
@@ -180,7 +174,7 @@ theorem step_sim {h ts : Buf} {toks : List Tok} (O : Obl toks)
   | tyPair l => simp [effF, St.g] at hg; exact h_tyPair r hg.1 hs
   | binders => exact h_binders r hs
   | group a => exact h_group r hs
-  | assign i sz => simp [effF, St.g] at hg; exact h_assign r hD hg.1.1 (O.assignTy hR) hnni hs
+  | assign i sz => simp [effF, St.g] at hg; exact h_assign r hD hg.1.1 (reach_assignTy hR) hnni hs
   | plainBody =>
     simp [effF, St.g] at hg
     obtain ⟨w, hw⟩ := Option.isSome_iff_exists.mp hg.1
@@ -235,17 +229,17 @@ theorem status_acc2 {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs
   · rfl
 
 /-- the step of every frame (incl. `.defs` / `.defClose`) as long as the machine keeps running or is not `.defs` -/
-theorem step_any {h ts : Buf} {toks : List Tok} (hT : TokL ts toks) (O : Obl toks) {f : Frame} {fs : List Frame} {st : St}
+theorem step_any {h ts : Buf} {toks : List Tok} (hT : TokL ts toks) {f : Frame} {fs : List Frame} {st : St}
     (r : RepR ts toks h (f :: fs) st) (hf : f ≠ .defs) (hs : bget (step h) 0 ≠ 0) :
     ∃ k st', stepF f st = some (k, st') ∧ Rep (step h) ts st' (k ++ fs) := by
   obtain ⟨r, hR, _⟩ := r
   by_cases hc : f = .defClose
   · subst hc; have e := reach_defClose hR; subst e
     obtain ⟨k, st', a, b⟩ := h_defClose r; exact ⟨k, st', a, by simpa using b⟩
-  · exact step_sim O (fun r hR => hprev_of hT O r hR) r hR hf hc hs
+  · exact step_sim (fun r hR => hprev_of hT r hR) r hR hf hc hs
 
 /-- **Layer 3 meets `RepAPI`** -/
-theorem api_of_rep (ts : Buf) (toks : List Tok) (hT : TokL ts toks) (hts : ts.length < 2 ^ 24) (O : Obl toks) :
+theorem api_of_rep (ts : Buf) (toks : List Tok) (hT : TokL ts toks) (hts : ts.length < 2 ^ 24) :
     RepAPI ts toks (RepR ts toks) where
   init := ⟨rep_init ts toks hT hts, .refl _, rfl⟩
   running := fun r => by have := r.1.2.2.1; rw [r.2.2] at this; simpa using this
@@ -259,7 +253,7 @@ theorem api_of_rep (ts : Buf) (toks : List Tok) (hT : TokL ts toks) (hts : ts.le
       have e := reach_defs hR; subst e
       obtain ⟨k, st', a, b⟩ := (h_defs r0 isInpW ((hR.inv (init_inv toks)).1) (callInv_star hR) ha hs).1 s1
       exact ⟨k, st', a, by simpa using b, by simpa using hR.trans (Star.one (fs := []) a), status_acc b s1⟩
-    · obtain ⟨k, st', a, b⟩ := step_any hT O r hd hs
+    · obtain ⟨k, st', a, b⟩ := step_any hT r hd hs
       exact ⟨k, st', a, b, r.2.1.trans (Star.one a), status_acc b s1⟩
   accept := by
     intro h f fs st r s2
@@ -270,16 +264,20 @@ theorem api_of_rep (ts : Buf) (toks : List Tok) (hT : TokL ts toks) (hts : ts.le
       have e := reach_defs hR; subst e
       obtain ⟨st', a, hacc, hl, hdrop, hD⟩ := (h_defs r0 isInpW ((hR.inv (init_inv toks)).1) (callInv_star hR) ha hs).2 s2
       have hR' : Reach toks [] st' := by simpa using hR.trans (Star.one (fs := []) a)
-      exact ⟨st', a, rfl, hacc, hl, fun _ => hdrop, fun h12 hm => main_of hD h12 hm (O.names hR')⟩
+      exact ⟨st', a, rfl, hacc, hl, fun _ => hdrop, fun h12 hm => main_of hD h12 hm (reach_names hT hR')⟩
     · exfalso
-      obtain ⟨k, st', a, b⟩ := step_any hT O r hd hs
+      obtain ⟨k, st', a, b⟩ := step_any hT r hd hs
       have := (stepF_shape a).2 (status_acc2 b s2)
       rw [r.2.2] at this; simp [hd] at this
 
 
-/-- **the parser theorem** modulo the reachability obligations `Obl` -/
-theorem parserSound_main {ts : Buf} {toks : List Tok} (hT : TokL ts toks) (hts : ts.length < 2 ^ 24) (O : Obl toks) :
+/-- **the parser theorem** -/
+theorem parserSound_main {ts : Buf} {toks : List Tok} (hT : TokL ts toks) (hts : ts.length < 2 ^ 24) :
     ParserSound ts :=
-  parserSound_of (api_of_rep ts toks hT hts O) (by omega) (accepts_sound (tokens_of hT))
+  parserSound_of (api_of_rep ts toks hT hts) (by omega) (accepts_sound (tokens_of hT))
+
+/-- **ParserSound** for every well-formed token buffer below 2^24 words -/
+theorem parserSound {ts : Buf} (hW : TokWF ts) (hts : ts.length < 2 ^ 24) : ParserSound ts := by
+  obtain ⟨toks, hT⟩ := hW; exact parserSound_main hT hts
 
 end ParInv

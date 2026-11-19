@@ -5,11 +5,11 @@ import Nano.V2Self.Proof.ParTokWF
 namespace ParRun
 open ParSpec
 
-theorem mkNode_eq {st st' : St} {t a b : Nat} {s : Option Sh} {p : Bool} {n : Nat}
+theorem mkNode_eqO {st st' : St} {t a b : Nat} {s : Option Sh} {p : Bool} {n : Nat}
     (h : mkNode st t a b s p n = some st') : ∃ v ar, st' = { st with vals := v, arena := ar } := by
   unfold mkNode at h; split at h <;> cases h; exact ⟨_, _, rfl⟩
 
-theorem locOf_eq {st st' : St} {bd : Bd} (h : locOf st bd = some st') : ∃ v ar, st' = { st with vals := v, arena := ar } := by
+theorem locOf_eqO {st st' : St} {bd : Bd} (h : locOf st bd = some st') : ∃ v ar, st' = { st with vals := v, arena := ar } := by
   unfold locOf at h; split at h <;> cases h; exact ⟨_, _, rfl⟩
 
 def isTyF : Frame → Bool
@@ -32,11 +32,11 @@ theorem stepF_obl {f : Frame} {st st' : St} {k : List Frame} (h : stepF f st = s
     | (cases h; simp_all; intro e; simp [e] at *)
     | (obtain ⟨s2, h2, h3⟩ := Option.map_eq_some_iff.mp h; cases h3
        first
-       | (obtain ⟨v, ar, rfl⟩ := mkNode_eq h2; simp_all; done)
-       | (obtain ⟨v, ar, rfl⟩ := locOf_eq h2; simp_all; done)
+       | (obtain ⟨v, ar, rfl⟩ := mkNode_eqO h2; simp_all; done)
+       | (obtain ⟨v, ar, rfl⟩ := locOf_eqO h2; simp_all; done)
        | (obtain ⟨s1, h1, h2'⟩ := Option.bind_eq_some_iff.mp h2
-          obtain ⟨v, ar, rfl⟩ := mkNode_eq h2'
-          first | (obtain ⟨v, ar, rfl⟩ := mkNode_eq h1) | cases h1
+          obtain ⟨v, ar, rfl⟩ := mkNode_eqO h2'
+          first | (obtain ⟨v, ar, rfl⟩ := mkNode_eqO h1) | cases h1
           all_goals simp_all))
 
 theorem Star.lift {P : List Frame × St → Prop} (hp : ∀ {c d}, stepS c = some d → StkInv c → DInv c → P c → P d)
@@ -62,11 +62,11 @@ theorem stepF_ta {f : Frame} {st st' : St} {k rest : List Frame} (h : stepF f st
     | (cases h; simp_all [TA, leaf]; done)
     | (obtain ⟨s2, h2, h3⟩ := Option.map_eq_some_iff.mp h; cases h3
        first
-       | (obtain ⟨v, ar, rfl⟩ := mkNode_eq h2; simp_all [TA]; done)
-       | (obtain ⟨v, ar, rfl⟩ := locOf_eq h2; simp_all [TA]; done)
+       | (obtain ⟨v, ar, rfl⟩ := mkNode_eqO h2; simp_all [TA]; done)
+       | (obtain ⟨v, ar, rfl⟩ := locOf_eqO h2; simp_all [TA]; done)
        | (obtain ⟨s1, h1, h2'⟩ := Option.bind_eq_some_iff.mp h2
-          obtain ⟨v, ar, rfl⟩ := mkNode_eq h2'
-          first | (obtain ⟨v, ar, rfl⟩ := mkNode_eq h1) | cases h1
+          obtain ⟨v, ar, rfl⟩ := mkNode_eqO h2'
+          first | (obtain ⟨v, ar, rfl⟩ := mkNode_eqO h1) | cases h1
           all_goals simp_all [TA]))
 
 theorem reach_assignTy {toks : List Tok} {i sz : Nat} {fs : List Frame} {st : St}
@@ -97,14 +97,14 @@ theorem reach_names {ts : List UInt64} {toks : List Tok} (hT : ParSpec.TokL ts t
   (h.ninv (ninv_init (idsOK_of_tokL hT))).2.1
 
 /-! ## selfP: `.selfArgs` is pushed only in an arm, alone, and is executed at once; arms need a non-empty parameter list -/
-def SInv (c : List Frame × St) : Prop :=
+def SelfInv (c : List Frame × St) : Prop :=
   (c.2.arm = true → c.2.cur.params ≠ []) ∧ (Frame.zeroDone ∈ c.1 → c.2.cur.params ≠ []) ∧
   (∀ g ∈ c.1.tail, g ≠ .selfArgs) ∧ (c.1.head? = some .selfArgs → c.2.arm = true)
 
 theorem prefix_ne {l l' : List Sh} (h : l <+: l') (hl : l ≠ []) : l' ≠ [] := by
   rintro rfl; exact hl (List.prefix_nil.mp h)
 
-theorem stepS_sinv {c d : List Frame × St} (hs : stepS c = some d) (hd : DInv c) (hi : SInv c) : SInv d := by
+theorem stepS_sinv {c d : List Frame × St} (hs : stepS c = some d) (hd : DInv c) (hi : SelfInv c) : SelfInv d := by
   obtain ⟨fs, st⟩ := c
   cases fs with
   | nil => simp [stepS] at hs
@@ -143,7 +143,7 @@ theorem stepS_sinv {c d : List Frame × St} (hs : stepS c = some d) (hd : DInv c
 
 theorem reach_selfP {toks : List Tok} {fs : List Frame} {st : St}
     (h : Star ([.defs], init toks) (.selfArgs :: fs, st)) : st.cur.params ≠ [] := by
-  have := h.lift (P := SInv) (fun hs _ hd hi => stepS_sinv hs hd hi) (stkinv_init toks) (dinv_init toks)
+  have := h.lift (P := SelfInv) (fun hs _ hd hi => stepS_sinv hs hd hi) (stkinv_init toks) (dinv_init toks)
     ⟨fun e => by simp [init] at e, fun e => by simp at e, fun g hg => by simp at hg, fun e => by simp at e⟩
   exact this.1 (this.2.2.2 rfl)
 
