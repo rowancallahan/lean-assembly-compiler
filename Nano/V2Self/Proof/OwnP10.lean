@@ -9,7 +9,7 @@ def SimOK (W : WCx) (n : Nd) : Prop :=
     W.x.drop A.i = n.ser ++ rest → Reach W (s, f, v) (Done W A n)
 
 /-- the frame after its children: same but `c`, `vc` -/
-def Fr.after (r r' : Fr) : Prop := r'.g = r.g ∧ r'.n = r.n ∧ r'.c = r.n ∧ r'.d = r.d ∧ r'.vb = r.vb ∧ r'.a = r.a ∧ r'.b = r.b
+def Fr.after (r r' : Fr) : Prop := r'.g = r.g ∧ r'.n = r.n ∧ r'.d = r.d ∧ r'.vb = r.vb ∧ r'.a = r.a ∧ r'.b = r.b
 
 theorem serL_cons (n : Nd) (cs : List Nd) : serL (n :: cs) = n.ser ++ serL cs := rfl
 
@@ -22,12 +22,13 @@ theorem ok_set {W : WCx} {r : Fr} (hr : r.ok W) {k : Nat} (hk : k = 2 ∨ k = 5)
 theorem lst_sim (W : WCx) : ∀ (cs : List Nd), (∀ n ∈ cs, SimOK W n) →
     ∀ (A : AS) (s f v : Buf) (rest : List UInt64) (Φ0 : List Fr) (r : Fr) (pre acc : List Nat),
     St W s f v A → A.ph = 2 → A.Φ = Φ0 ++ [r] → r.ok W → r.g ≠ 5 → r.g ≠ 10 → (r.g = 4 → r.c + cs.length ≤ 2) →
-    r.c + cs.length = r.n → A.es = pre ++ acc → pre.length = r.vb → W.x.drop A.i = serL cs ++ rest →
+    r.c + cs.length ≤ r.n → A.es = pre ++ acc → pre.length = r.vb → W.x.drop A.i = serL cs ++ rest →
     Reach W (s, f, v) (fun σ => ∃ F' acc' r', lstA W.oc cs (dsOf W r) A.F acc = some (F', acc') ∧ r.after r' ∧
+      r'.c = r.c + cs.length ∧
       St W σ.1 σ.2.1 σ.2.2 { A with i := A.i + (serL cs).length, F := F', es := pre ++ acc', Φ := Φ0 ++ [r'], ph := 2 })
   | [], _, A, s, f, v, rest, Φ0, r, pre, acc, hSt, hp, hΦ, hr, h5, h10, h4, hn, hes, hpre, hx => by
     apply reach_now
-    refine ⟨A.F, acc, r, by simp [lstA], ⟨rfl, rfl, by simpa using hn, rfl, rfl, rfl, rfl⟩, ?_⟩
+    refine ⟨A.F, acc, r, by simp [lstA], ⟨rfl, rfl, rfl, rfl, rfl, rfl⟩, by simp, ?_⟩
     have : { A with i := A.i + (serL []).length, F := A.F, es := pre ++ acc, Φ := Φ0 ++ [r], ph := 2 } = A := by
       cases A; simp_all [serL]
     rw [this]; exact hSt
@@ -51,17 +52,18 @@ theorem lst_sim (W : WCx) : ∀ (cs : List Nd), (∀ n ∈ cs, SimOK W n) →
       (by simp [Fr.set] at hn ⊢; omega) (by simp [hes]) (by simp [Fr.set, hpre])
       (by simp only; rw [show A.i + n.ser.length = A.i + n.ser.length from rfl, ← List.drop_drop, hx1, List.drop_left])
     apply reach_mono ih
-    intro σ ⟨F', acc', r', hl', hafter, hσ⟩
-    refine ⟨F', acc', r', ?_, ?_, ?_⟩
+    intro σ ⟨F', acc', r', hl', hafter, hc', hσ⟩
+    refine ⟨F', acc', r', ?_, ?_, ?_, ?_⟩
     · simp only [lstA, hchk, Option.bind_some]
       rw [dsOf_set W (r.set 5 A.es.length) (k := 2) (Or.inl rfl), dsOf_set W r (k := 5) (Or.inr rfl)] at hl'
       have hok' : okAll (dsOf W r) F1 acc.length en = true := by
         rw [dsOf_set W r (k := 5) (Or.inr rfl)] at hok
         simpa [Fr.set, hesl, hpre] using hok
       simp only [hok', if_true]; exact hl'
-    · obtain ⟨a1, a2, a3, a4, a5, a6, a7⟩ := hafter
-      simp [Fr.set] at a1 a2 a3 a4 a5 a6 a7
-      exact ⟨a1, a2, a3, a4, a5, a6, a7⟩
+    · obtain ⟨a1, a2, a4, a5, a6, a7⟩ := hafter
+      simp [Fr.set] at a1 a2 a4 a5 a6 a7
+      exact ⟨a1, a2, a4, a5, a6, a7⟩
+    · rw [hc']; simp [Fr.set]; omega
     · have e1 : A.i + n.ser.length + (serL cs).length = A.i + (serL (n :: cs)).length := by simp [serL_cons]; omega
       simp only [e1] at hσ
       exact hσ

@@ -66,13 +66,13 @@ theorem o31_pair {W : WCx} {s f v : Buf} {A : AS} (hS : RS W s A) (hB : Bnd W A)
     Bool.false_eq_true, if_false, if_true]
 
 theorem after_ok {W : WCx} {r r' : Fr} (h : r.after r') (hr : r.ok W) : r'.ok W := by
-  obtain ⟨-, -, -, hd, -, ha, -⟩ := h
+  obtain ⟨-, -, hd, -, ha, -⟩ := h
   obtain ⟨h1, h2, h3⟩ := hr
   exact ⟨by rw [hd]; exact h1, fun e => by rw [ha]; exact h2 (by rw [← hd]; exact e),
     fun e => by rw [ha]; exact h3 (by rw [← hd]; exact e)⟩
 
 theorem after_ds {W : WCx} {r r' : Fr} (h : r.after r') : dsOf W r' = dsOf W r := by
-  obtain ⟨-, -, -, hd, -, ha, -⟩ := h; unfold dsOf; rw [hd, ha]
+  obtain ⟨-, -, hd, -, ha, -⟩ := h; unfold dsOf; rw [hd, ha]
 
 theorem drop_hdr {x : Buf} {i k : Nat} {hdr l rest : List UInt64} (hx : x.drop i = hdr ++ l ++ rest) (hk : hdr.length = k) :
     x.drop (i + k) = l ++ rest := by
@@ -91,10 +91,10 @@ theorem sim_pair {W : WCx} {cs : List Nd} (hsim : ∀ c ∈ cs, SimOK W c) {A : 
   have hx1 : W.x.drop (A.i + 2) = serL cs ++ rest := drop_hdr (hdr := [6, cs.length.toUInt64]) (by simpa [Nd.ser] using hx) rfl
   apply reach_trans (lst_sim W cs hsim _ σ1.1 σ1.2.1 σ1.2.2 rest A.Φ ⟨6, cs.length, 0, 0, A.es.length, A.es.length, 0, 0⟩
     A.es [] h1 rfl rfl ⟨by simp, by simp, by simp⟩ (by simp) (by simp) (by simp) (by simp) (by simp) rfl hx1)
-  intro σ2 ⟨F', acc', r', hl, haf, h2⟩
+  intro σ2 ⟨F', acc', r', hl, haf, hc3, h2⟩
   have hok := after_ok (W := W) haf ⟨by simp, by simp, by simp⟩
-  obtain ⟨a1, a2, a3, a4, a5, a6, a7⟩ := haf
-  apply reach_mono (fin_pair h2 rfl (Φ0 := A.Φ) (r := r') rfl hok (by rw [a1]) (by rw [a3, a2]) (pre := A.es) (acc := acc')
+  obtain ⟨a1, a2, a4, a5, a6, a7⟩ := haf
+  apply reach_mono (fin_pair h2 rfl (Φ0 := A.Φ) (r := r') rfl hok (by rw [a1]) (by rw [hc3, a2]; simp) (pre := A.es) (acc := acc')
     rfl (by rw [a5]))
   intro σ3 ⟨F2, hfin, h3⟩
   refine ⟨F2, strip acc', ?_, ?_⟩
@@ -129,12 +129,12 @@ theorem sim_list {W : WCx} {cs : List Nd} (hsim : ∀ c ∈ cs, SimOK W c) {A : 
   apply reach_trans (lst_sim W cs hsim _ σ1.1 σ1.2.1 σ1.2.2 rest A.Φ ⟨g, cs.length, 0, d, A.es.length, A.es.length, a, 0⟩
     A.es [] h1 rfl rfl hok (by simpa using hg5) (by simpa using hg10) (fun h => absurd h (by simpa using hg4)) (by simp)
     (by simp) (by simp) hx)
-  intro σ2 ⟨F', acc', r', hl, haf, h2⟩
+  intro σ2 ⟨F', acc', r', hl, haf, hc3, h2⟩
   have hok' := after_ok haf hok
   have hds := after_ds (W := W) haf
-  obtain ⟨a1, a2, a3, a4, a5, a6, a7⟩ := haf
+  obtain ⟨a1, a2, a4, a5, a6, a7⟩ := haf
   apply reach_mono (hfin _ σ2.1 σ2.2.1 σ2.2.2 r' acc' h2 rfl rfl hok' (by rw [a1]) (by rw [a4]) (by rw [a6])
-    (by rw [a3, a2]) (by simp) (by rw [a5]))
+    (by rw [hc3, a2]; simp) (by simp) (by rw [a5]))
   intro σ3 ⟨F2, hfin2, h3⟩
   refine ⟨F', acc', F2, by exact hl, by rw [hds] at hfin2; exact hfin2, ?_⟩
   unfold Fin at h3
