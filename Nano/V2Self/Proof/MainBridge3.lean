@@ -18,15 +18,15 @@ structure EnvI (σ : AH) (Kk : List Nat) (F : List Bool) (Γ : List (Option Kd))
   len : env.length = Γ.length
   ty : EnvOK env Γ
   val : ∀ s, Kn Γ s → Rd Kk F s → ∃ v, env[s]? = some v ∧ VR σ v (ew s) ∧ (Kk.getD s 0 = 0 → ∃ x, v = .w x)
-  dist : ∀ s t, s ≠ t → Kn Γ s → Kn Γ t → Kk.getD s 0 = 1 → Kk.getD t 0 ≠ 0 →
-    OwnSpec.dead F s = false → OwnSpec.dead F t = false → ew s ≠ ew t
+  dist : ∀ s t ls lt, s ≠ t → Kn Γ s → Kn Γ t → Kk.getD s 0 = 1 → Kk.getD t 0 ≠ 0 →
+    OwnSpec.dead F s = false → OwnSpec.dead F t = false → env[s]? = some (.b ls) → env[t]? = some (.b lt) → ew s ≠ ew t
 
 /-- slot `s` was consumed: live in `F`, dead in `F'` -/
 def Cons (F F' : List Bool) (s : Nat) : Prop := OwnSpec.dead F s = false ∧ OwnSpec.dead F' s = true
 
-/-- **change frame**: an existing block changes only if a slot consumed between F and F' points to it -/
-def Ch (σ σ' : AH) (Γ : List (Option Kd)) (F F' : List Bool) (ew : Env) : Prop :=
-  ∀ a, (σ a).isSome → (∀ s, Kn Γ s → Cons F F' s → (ew s).toNat ≠ a) → σ' a = σ a
+/-- **change frame**: an existing block changes only if a buffer slot consumed between F and F' points to it -/
+def Ch (σ σ' : AH) (Γ : List (Option Kd)) (F F' : List Bool) (env : List W) (ew : Env) : Prop :=
+  ∀ a, (σ a).isSome → (∀ s l, Kn Γ s → Cons F F' s → env[s]? = some (.b l) → (ew s).toNat ≠ a) → σ' a = σ a
 
 /-- **result invariant** for entries `es` (OwnSpec): 0 a word; 1 an owned block that no readable live buffer slot
 holds (pairwise distinct among the 1-entries); a tagged entry of slot s = slot s's value and word -/
@@ -36,8 +36,10 @@ def ResI (σ : AH) (Kk : List Nat) (F : List Bool) (Γ : List (Option Kd)) (env 
   ∀ i (h1 : i < es.length) (h2 : i < v.length) (h3 : i < vs.length),
     (es[i] < 4 → VR σ v[i] vs[i]) ∧
     (es[i] = 0 → ∃ x, v[i] = .w x) ∧
-    (es[i] = 1 → (∃ l, v[i] = .b l) ∧ (∀ s, Kn Γ s → Kk.getD s 0 ≠ 0 → OwnSpec.dead F s = false → ew s ≠ vs[i]) ∧
-      ∀ j (g1 : j < es.length) (g3 : j < vs.length), j ≠ i → es[j] = 1 → vs[j] ≠ vs[i]) ∧
+    (es[i] = 1 → ∀ l, v[i] = .b l →
+      (∀ s ls, Kn Γ s → Kk.getD s 0 ≠ 0 → OwnSpec.dead F s = false → env[s]? = some (.b ls) → ew s ≠ vs[i]) ∧
+      ∀ j (g1 : j < es.length) (g2 : j < v.length) (g3 : j < vs.length) lj, j ≠ i → es[j] = 1 → v[j] = .b lj →
+        vs[j] ≠ vs[i]) ∧
     (4 ≤ es[i] → vs[i] = ew (es[i] / 4 - 1) ∧ env[es[i] / 4 - 1]? = some v[i] ∧
       es[i] % 4 = Kk.getD (es[i] / 4 - 1) 0 ∧ Kn Γ (es[i] / 4 - 1))
 
@@ -66,16 +68,17 @@ def Mono (F F' : List Bool) : Prop := ∀ s, OwnSpec.dead F s = true → OwnSpec
 theorem Mono.refl (F : List Bool) : Mono F F := fun _ h => h
 theorem Mono.trans {F F1 F2 : List Bool} (h1 : Mono F F1) (h2 : Mono F1 F2) : Mono F F2 := fun s h => h2 s (h1 s h)
 
-theorem Ch.trans {σ σ1 σ2 : AH} {Γ : List (Option Kd)} {F F1 F2 : List Bool} {ew : Env} (h1 : Ch σ σ1 Γ F F1 ew)
-    (h2 : Ch σ1 σ2 Γ F1 F2 ew) (m1 : Mono F F1) (m2 : Mono F1 F2) : Ch σ σ2 Γ F F2 ew := by
+theorem Ch.trans {σ σ1 σ2 : AH} {Γ : List (Option Kd)} {F F1 F2 : List Bool} {env : List W} {ew : Env}
+    (h1 : Ch σ σ1 Γ F F1 env ew) (h2 : Ch σ1 σ2 Γ F1 F2 env ew) (m1 : Mono F F1) (m2 : Mono F1 F2) :
+    Ch σ σ2 Γ F F2 env ew := by
   intro a ha hn
-  have e1 : σ1 a = σ a := h1 a ha fun s hk hc => hn s hk ⟨hc.1, m2 s hc.2⟩
+  have e1 : σ1 a = σ a := h1 a ha fun s l hk hc hl => hn s l hk ⟨hc.1, m2 s hc.2⟩ hl
   rw [← e1]
-  refine h2 a (by rw [e1]; exact ha) fun s hk hc => hn s hk ⟨?_, hc.2⟩
+  refine h2 a (by rw [e1]; exact ha) fun s l hk hc hl => hn s l hk ⟨?_, hc.2⟩ hl
   cases hd : OwnSpec.dead F s
   · rfl
   · have := m1 s hd; rw [hc.1] at this; cases this
 
-theorem Ch.refl (σ : AH) (Γ F ew) : Ch σ σ Γ F F ew := fun _ _ _ => rfl
+theorem Ch.refl (σ : AH) (Γ F env ew) : Ch σ σ Γ F F env ew := fun _ _ _ => rfl
 
 end NanoMain
