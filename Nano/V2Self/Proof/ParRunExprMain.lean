@@ -4,9 +4,9 @@ namespace ParRun
 open ParSpec
 
 /-- a primary (`prim md`, not at `if` / `let` unless md = 2) ↔ `pApp f cx (md == 1)` -/
-def PrimSpec (n : Nat) : Prop := ∀ md ks st fin cx, StarN n (.prim md :: ks, st) ([], fin) → CxRel st cx →
+def PrimSpec (n : Nat) : Prop := ∀ md ks st fin cx, StarN n (.prim md :: ks, st) ([], fin) → CxRel st cx → CxNN st →
   (md = 2 ∨ ((∀ r, st.toks ≠ .k 32 :: r) ∧ (∀ r, st.toks ≠ .k 2 :: r))) →
-  ∃ v st' n', n' < n ∧ Post st st' st.vals v ∧ st'.toks.length < st.toks.length ∧ StarN n' (ks, st') ([], fin) ∧
+  ∃ v st' n', n' < n ∧ Post st st' st.vals v ∧ st'.toks.length < st.toks.length ∧ StarN n' (ks, st') ([], fin) ∧ ShNN v.sh ∧
     (VT (rows st) v → ∃ ty, TyRel v ty ∧ (v.toNd.tailCont = true → v.pend = true) ∧
       ∀ f, 4 * st.toks.length + 2 ≤ f → pApp f cx (md == 1) st.toks st.nx = some (v.toNd, ty, st'.toks, st'.nx))
 
@@ -20,25 +20,26 @@ theorem prim_two_ifs {ks st fin n} (h : StarN n (.prim 2 :: ks, st) ([], fin)) :
 
 theorem bin_of {n : Nat} (hP : ∀ n' < n, PrimSpec n') (hL : ∀ n' < n, LoopSpec n') : BinSpec n := by
   classical
-  intro m ks st fin cx h hc
+  intro m ks st fin cx h hc hnn
   match n, h with
   | 0, h => exact absurd h.zero_nil.1 (by simp)
   | n + 1, h =>
   obtain ⟨k, st1, hs, h1⟩ := h.head
   rw [expr_eq] at hs; simp at hs; obtain ⟨rfl, rfl⟩ := hs
   simp only [List.cons_append, List.nil_append] at h1
-  obtain ⟨a, st1, n1, hn1, hp1, hlt1, h2, hspa⟩ := hP n (by omega) 2 _ _ fin cx h1 hc (Or.inl rfl)
+  obtain ⟨a, st1, n1, hn1, hp1, hlt1, h2, hna, hspa⟩ := hP n (by omega) 2 _ _ fin cx h1 hc hnn (Or.inl rfl)
   let ta : Ty := if hva : VT (rows st) a then Classical.choose (hspa hva) else .bot
   have hta : VT (rows st1) a → TyRel a ta ∧ PT a := fun hva => by
     have hr : rows st1 = rows st := by simp [rows, hp1.defs, hp1.cur]
     rw [hr] at hva
     simp only [ta, dif_pos hva]; exact ⟨(Classical.choose_spec (hspa hva)).1, (Classical.choose_spec (hspa hva)).2.1⟩
-  obtain ⟨v, st', n', hn', hp, hsub, hrun, hstop, hspec⟩ :=
-    hL n1 (by omega) m ks st1 fin cx a st.vals ta h2 hp1.vals (CxRel.transport hc hp1.binds hp1.defs) hta
+  obtain ⟨v, st', n', hn', hp, hsub, hrun, hstop, hnv, hspec⟩ :=
+    hL n1 (by omega) m ks st1 fin cx a st.vals ta h2 hp1.vals (CxRel.transport hc hp1.binds hp1.defs)
+      (CxNN.transport hnn hp1.binds hp1.defs hp1.cur) hna hta
   have hr : rows st1 = rows st := by simp [rows, hp1.defs, hp1.cur]
   refine ⟨v, st', n', by omega, ⟨hp.vals, by rw [hp.binds, hp1.binds], by rw [hp.defs, hp1.defs], by rw [hp.cur, hp1.cur],
     by rw [hp.arm, hp1.arm], by rw [hp.all, hp1.all], by have := hp.toks; omega, by have := hp.nx; have := hp1.nx; omega⟩,
-    by have := hp.toks; omega, hrun, hstop, fun hvt => ?_⟩
+    by have := hp.toks; omega, hrun, hstop, hnv, fun hvt => ?_⟩
   rw [hr] at hspec
   obtain ⟨ty, hty, hpt, hf⟩ := hspec hvt
   have hva : VT (rows st) a := fun u hu => hvt u (hsub u hu)
@@ -54,8 +55,9 @@ theorem bin_of {n : Nat} (hP : ∀ n' < n, PrimSpec n') (hL : ∀ n' < n, LoopSp
 
 
 /-- a full expression (`expr 0 md`, md < 2) ↔ `pExpr f cx (md == 1)` -/
-def ExprSpec (n : Nat) : Prop := ∀ md ks st fin cx, md < 2 → StarN n (.expr 0 md :: ks, st) ([], fin) → CxRel st cx →
+def ExprSpec (n : Nat) : Prop := ∀ md ks st fin cx, md < 2 → StarN n (.expr 0 md :: ks, st) ([], fin) → CxRel st cx → CxNN st →
   ∃ v st' n', n' < n ∧ Post st st' st.vals v ∧ st'.toks.length < st.toks.length ∧ StarN n' (ks, st') ([], fin) ∧ Stop 0 st'.toks ∧
+    ShNN v.sh ∧
     (VT (rows st) v → ∃ ty, TyRel v ty ∧ PT v ∧
       ∀ f, 4 * st.toks.length + 4 ≤ f → pExpr f cx (md == 1) st.toks st.nx = some (v.toNd, ty, st'.toks, st'.nx))
 
@@ -66,9 +68,10 @@ theorem pExpr_other {f cx tl ts nx} (h32 : ∀ r, ts ≠ .k 32 :: r) (h2 : ∀ r
 
 /-- `expr 0 md` at a token that is neither `if` nor `let`: the primary, then the operator loop at precedence 0 -/
 theorem expr_other {n : Nat} (hP : ∀ n' < n, PrimSpec n') (hL : ∀ n' < n, LoopSpec n') {md ks st fin cx} (hmd : md < 2)
-    (h : StarN n (.expr 0 md :: ks, st) ([], fin)) (hc : CxRel st cx)
+    (h : StarN n (.expr 0 md :: ks, st) ([], fin)) (hc : CxRel st cx) (hnn : CxNN st)
     (h32 : ∀ r, st.toks ≠ .k 32 :: r) (h2 : ∀ r, st.toks ≠ .k 2 :: r) :
     ∃ v st' n', n' < n ∧ Post st st' st.vals v ∧ st'.toks.length < st.toks.length ∧ StarN n' (ks, st') ([], fin) ∧ Stop 0 st'.toks ∧
+    ShNN v.sh ∧
     (VT (rows st) v → ∃ ty, TyRel v ty ∧ PT v ∧
       ∀ f, 4 * st.toks.length + 4 ≤ f → pExpr f cx (md == 1) st.toks st.nx = some (v.toNd, ty, st'.toks, st'.nx)) := by
   classical
@@ -78,18 +81,19 @@ theorem expr_other {n : Nat} (hP : ∀ n' < n, PrimSpec n') (hL : ∀ n' < n, Lo
   obtain ⟨k, st1, hs, h1⟩ := h.head
   rw [expr_eq] at hs; simp at hs; obtain ⟨rfl, rfl⟩ := hs
   simp only [List.cons_append, List.nil_append] at h1
-  obtain ⟨a, st1, n1, hn1, hp1, hlt1, h2', hspa⟩ := hP n (by omega) md _ _ fin cx h1 hc (Or.inr ⟨h32, h2⟩)
+  obtain ⟨a, st1, n1, hn1, hp1, hlt1, h2', hna, hspa⟩ := hP n (by omega) md _ _ fin cx h1 hc hnn (Or.inr ⟨h32, h2⟩)
   let ta : Ty := if hva : VT (rows st) a then Classical.choose (hspa hva) else .bot
   have hr : rows st1 = rows st := by simp [rows, hp1.defs, hp1.cur]
   have hta : VT (rows st1) a → TyRel a ta ∧ PT a := fun hva => by
     rw [hr] at hva
     simp only [ta, dif_pos hva]; exact ⟨(Classical.choose_spec (hspa hva)).1, (Classical.choose_spec (hspa hva)).2.1⟩
   -- the first step of the loop decides whether an operator follows
-  obtain ⟨v, st', n', hn', hp, hsub, hrun, hstop, hspec⟩ :=
-    hL n1 (by omega) 0 ks st1 fin cx a st.vals ta h2' hp1.vals (CxRel.transport hc hp1.binds hp1.defs) hta
+  obtain ⟨v, st', n', hn', hp, hsub, hrun, hstop, hnv, hspec⟩ :=
+    hL n1 (by omega) 0 ks st1 fin cx a st.vals ta h2' hp1.vals (CxRel.transport hc hp1.binds hp1.defs)
+      (CxNN.transport hnn hp1.binds hp1.defs hp1.cur) hna hta
   refine ⟨v, st', n', by omega, ⟨hp.vals, by rw [hp.binds, hp1.binds], by rw [hp.defs, hp1.defs], by rw [hp.cur, hp1.cur],
     by rw [hp.arm, hp1.arm], by rw [hp.all, hp1.all], by have := hp.toks; omega, by have := hp.nx; have := hp1.nx; omega⟩,
-    by have := hp.toks; omega, hrun, hstop, fun hvt => ?_⟩
+    by have := hp.toks; omega, hrun, hstop, hnv, fun hvt => ?_⟩
   rw [hr] at hspec
   obtain ⟨ty, hty, hpt, hf⟩ := hspec hvt
   have hva : VT (rows st) a := fun u hu => hvt u (hsub u hu)
@@ -214,8 +218,9 @@ theorem Post.rowsEq {st st' : St} {b : List RN} {v : RN} (h : Post st st' b v) :
   unfold ParRun.rows; rw [h.defs, h.cur]
 
 theorem expr_if {n : Nat} (hB : ∀ n' < n, BinSpec n') (hE : ∀ n' < n, ExprSpec n') {md ks st fin cx r} (hmd : md < 2)
-    (h : StarN n (.expr 0 md :: ks, st) ([], fin)) (hc : CxRel st cx) (ht : st.toks = .k 32 :: r) :
+    (h : StarN n (.expr 0 md :: ks, st) ([], fin)) (hc : CxRel st cx) (hnn : CxNN st) (ht : st.toks = .k 32 :: r) :
     ∃ v st' n', n' < n ∧ Post st st' st.vals v ∧ st'.toks.length < st.toks.length ∧ StarN n' (ks, st') ([], fin) ∧ Stop 0 st'.toks ∧
+    ShNN v.sh ∧
     (VT (rows st) v → ∃ ty, TyRel v ty ∧ PT v ∧
       ∀ f, 4 * st.toks.length + 4 ≤ f → pExpr f cx (md == 1) st.toks st.nx = some (v.toNd, ty, st'.toks, st'.nx)) := by
   classical
@@ -235,7 +240,8 @@ theorem expr_if {n : Nat} (hB : ∀ n' < n, BinSpec n') (hE : ∀ n' < n, ExprSp
     rw [ht] at ht'; injection ht' with _ hr; subst hr
     simp only [List.cons_append, List.nil_append] at h2
     -- condition A
-    obtain ⟨a, stA, nA, hnA, hpA, hltA, hA, _, hspA⟩ := hB n (by omega) 0 _ _ fin cx h2 (CxRel.transport hc rfl rfl)
+    obtain ⟨a, stA, nA, hnA, hpA, hltA, hA, _, _, hspA⟩ := hB n (by omega) 0 _ _ fin cx h2 (CxRel.transport hc rfl rfl)
+      (CxNN.transport hnn rfl rfl rfl)
     match nA, hA with
     | 0, hA => exact absurd hA.zero_nil.1 (by simp)
     | nA + 1, hA =>
@@ -243,8 +249,9 @@ theorem expr_if {n : Nat} (hB : ∀ n' < n, BinSpec n') (hE : ∀ n' < n, ExprSp
     obtain ⟨c, r2, hcr, rfl, rfl⟩ := ifCmp_inv hs3
     simp only [List.cons_append, List.nil_append] at hA'
     -- condition B
-    obtain ⟨b, stB, nB, hnB, hpB, hltB, hBr, _, hspB⟩ :=
+    obtain ⟨b, stB, nB, hnB, hpB, hltB, hBr, _, _, hspB⟩ :=
       hB nA (by omega) 0 _ _ fin cx hA' (CxRel.transport hc (by simp [hpA.binds]) (by simp [hpA.defs]))
+        (CxNN.transport hnn (by simp [hpA.binds]) (by simp [hpA.defs]) (by simp [hpA.cur]))
     match nB, hBr with
     | 0, hBr => exact absurd hBr.zero_nil.1 (by simp)
     | nB + 1, hBr =>
@@ -252,9 +259,10 @@ theorem expr_if {n : Nat} (hB : ∀ n' < n, BinSpec n') (hE : ∀ n' < n, ExprSp
     obtain ⟨r4, hr4, rfl, rfl⟩ := ifThen_inv hs4
     simp only [List.cons_append, List.nil_append] at hB'
     -- then branch
-    obtain ⟨t, stT, nT, hnT, hpT, hltT, hT, _, hspT⟩ :=
+    obtain ⟨t, stT, nT, hnT, hpT, hltT, hT, _, _, hspT⟩ :=
       hE nB (by omega) (bm (md == 1)) _ _ fin cx (by cases md == 1 <;> simp [bm]) hB'
         (CxRel.transport hc (by simp [hpB.binds, hpA.binds]) (by simp [hpB.defs, hpA.defs]))
+        (CxNN.transport hnn (by simp [hpB.binds, hpA.binds]) (by simp [hpB.defs, hpA.defs]) (by simp [hpB.cur, hpA.cur]))
     match nT, hT with
     | 0, hT => exact absurd hT.zero_nil.1 (by simp)
     | nT + 1, hT =>
@@ -262,9 +270,11 @@ theorem expr_if {n : Nat} (hB : ∀ n' < n, BinSpec n') (hE : ∀ n' < n, ExprSp
     obtain ⟨r6, hr6, rfl, rfl⟩ := ifElse_inv hs5
     simp only [List.nil_append] at hT'
     -- else branch
-    obtain ⟨e, stE, nE, hnE, hpE, hltE, hEr, hstopE, hspE⟩ :=
+    obtain ⟨e, stE, nE, hnE, hpE, hltE, hEr, hstopE, hnE', hspE⟩ :=
       hE nT (by omega) (bm (md == 1)) _ _ fin cx (by cases md == 1 <;> simp [bm]) hT'
         (CxRel.transport hc (by simp [hpT.binds, hpB.binds, hpA.binds]) (by simp [hpT.defs, hpB.defs, hpA.defs]))
+        (CxNN.transport hnn (by simp [hpT.binds, hpB.binds, hpA.binds]) (by simp [hpT.defs, hpB.defs, hpA.defs])
+          (by simp [hpT.cur, hpB.cur, hpA.cur]))
     match nE, hEr with
     | 0, hEr => exact absurd hEr.zero_nil.1 (by simp)
     | nE + 1, hEr =>
@@ -286,7 +296,8 @@ theorem expr_if {n : Nat} (hB : ∀ n' < n, BinSpec n') (hE : ∀ n' < n, ExprSp
     have l3 : r6.length + 1 = stT.toks.length := by simp [hr6]
     have l0 : st.toks.length = r.length + 1 := by simp [ht]
     simp only at hltA hltB hltT hltE
-    refine ⟨_, stI, nE, by omega, ⟨by rw [hstI], ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩, ?_, hI', by rw [hsI]; exact hstopE, fun hvt => ?_⟩
+    refine ⟨_, stI, nE, by omega, ⟨by rw [hstI], ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩, ?_, hI', by rw [hsI]; exact hstopE,
+      by simpa [RN.sh] using hnE', fun hvt => ?_⟩
     · rw [hstI]; simp [hpE.binds, hpT.binds, hpB.binds, hpA.binds]
     · rw [hstI]; simp [hpE.defs, hpT.defs, hpB.defs, hpA.defs]
     · rw [hstI]; simp [hpE.cur, hpT.cur, hpB.cur, hpA.cur]

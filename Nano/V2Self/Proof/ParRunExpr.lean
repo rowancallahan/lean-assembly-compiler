@@ -105,6 +105,29 @@ theorem pLoop_stop {f cx m a ta ts nx} (hf : 1 ≤ f) (hs : ∀ t r op p, ts = .
   · rfl
 
 
+/-- no `Nat` inside a pair (Par1 rejects code 4 as a pair component, v10) -/
+def _root_.ParSpec.Sh.nnt : Sh → Bool
+  | .p a b => a != .nt && b != .nt && a.nnt && b.nnt
+  | _ => true
+
+def ShNN (o : Option Sh) : Prop := ∀ s, o = some s → s.nnt = true
+
+/-- the tables hold no nested Nat -/
+def CxNN (st : St) : Prop := (∀ bd ∈ st.binds, ShNN bd.sh) ∧ (∀ d ∈ rows st, ShNN d.res ∧ ∀ p ∈ d.params, p.nnt = true)
+
+theorem _root_.ParSpec.Sh.hasN_of_nnt {s : Sh} (h : s.nnt = true) (hn : s ≠ .nt) : s.hasN = false := by
+  induction s with
+  | p a b iha ihb =>
+    simp only [Sh.nnt, Bool.and_eq_true, bne_iff_ne, ne_eq] at h
+    obtain ⟨⟨⟨ha, hb⟩, ha'⟩, hb'⟩ := h
+    simp [Sh.hasN, iha ha' ha, ihb hb' hb]
+  | nt => exact absurd rfl hn
+  | _ => rfl
+
+theorem CxNN.transport {st st' : St} (h : CxNN st) (hb : st'.binds = st.binds) (hd : st'.defs = st.defs) (hc : st'.cur = st.cur) :
+    CxNN st' := by
+  unfold CxNN ParRun.rows at *; rw [hb, hd, hc]; exact h
+
 /-- a tail CONTINUE inside `v` makes `v` pending (what `binLoop` / `mkPair` test instead of the spec's tail flag) -/
 def PT (v : RN) : Prop := v.toNd.tailCont = true → v.pend = true
 
@@ -112,15 +135,17 @@ def PT (v : RN) : Prop := v.toNd.tailCont = true → v.pend = true
 def Stop (m : Nat) (ts : List Tok) : Prop := ∀ t r op p, ts = .k t :: r → opInfo t = some (op, p) → p < m
 
 /-- the operand parse (`expr m 2` ↔ `pBin f cx false m`) for runs of length `n` -/
-def BinSpec (n : Nat) : Prop := ∀ m ks st fin cx, StarN n (.expr m 2 :: ks, st) ([], fin) → CxRel st cx →
+def BinSpec (n : Nat) : Prop := ∀ m ks st fin cx, StarN n (.expr m 2 :: ks, st) ([], fin) → CxRel st cx → CxNN st →
   ∃ v st' n', n' < n ∧ Post st st' st.vals v ∧ st'.toks.length < st.toks.length ∧ StarN n' (ks, st') ([], fin) ∧ Stop m st'.toks ∧
+    ShNN v.sh ∧
     (VT (rows st) v → ∃ ty, TyRel v ty ∧ PT v ∧
       ∀ f, 4 * st.toks.length + 3 ≤ f → pBin f cx false m st.toks st.nx = some (v.toNd, ty, st'.toks, st'.nx))
 
 /-- the operator loop (`binLoop m` with `a` on top ↔ `pLoop f cx m a.toNd ta`) -/
 def LoopSpec (n : Nat) : Prop := ∀ m ks st fin cx a rest ta, StarN n (.binLoop m :: ks, st) ([], fin) → st.vals = a :: rest →
-  CxRel st cx → (VT (rows st) a → TyRel a ta ∧ PT a) →
+  CxRel st cx → CxNN st → ShNN a.sh → (VT (rows st) a → TyRel a ta ∧ PT a) →
   ∃ v st' n', n' < n ∧ Post st st' rest v ∧ (∀ u ∈ nodes a, u ∈ nodes v) ∧ StarN n' (ks, st') ([], fin) ∧ Stop m st'.toks ∧
+    ShNN v.sh ∧
     (VT (rows st) v → ∃ ty, TyRel v ty ∧ PT v ∧
       ∀ f, 4 * st.toks.length + 1 ≤ f → pLoop f cx m a.toNd ta st.toks st.nx = some (v.toNd, ty, st'.toks, st'.nx))
 
@@ -142,7 +167,7 @@ theorem loop_sound : ∀ n, (∀ n' < n, BinSpec n') → LoopSpec n := by
   intro n
   induction n using Nat.strongRecOn with
   | _ n ihL =>
-  intro IHB m ks st fin cx a rest ta h hv hc ha
+  intro IHB m ks st fin cx a rest ta h hv hc hnn hna ha
   match n, h with
   | 0, h => exact absurd h.zero_nil.1 (by simp)
   | n + 1, h =>
@@ -150,7 +175,7 @@ theorem loop_sound : ∀ n, (∀ n' < n, BinSpec n') → LoopSpec n := by
   rcases binLoop_inv hs with ⟨hk0, hst, hlt⟩ | ⟨t, r, op, p, top, rest', ht, hop, hmp, hv', hpend, rfl, hk⟩
   · -- no operator of precedence ≥ m: the loop returns `a`
     rw [hk0, hst] at h1
-    refine ⟨a, st, n, by omega, ⟨hv, rfl, rfl, rfl, rfl, rfl, Nat.le_refl _, Nat.le_refl _⟩, fun u hu => hu, h1, hlt,
+    refine ⟨a, st, n, by omega, ⟨hv, rfl, rfl, rfl, rfl, rfl, Nat.le_refl _, Nat.le_refl _⟩, fun u hu => hu, h1, hlt, hna,
       fun hvt => ⟨ta, (ha hvt).1, (ha hvt).2, fun f hf => ?_⟩⟩
     exact pLoop_stop (by omega) hlt
   · rw [hv] at hv'; injection hv' with htop hrest; subst htop hrest
@@ -171,10 +196,11 @@ theorem loop_sound : ∀ n, (∀ n' < n, BinSpec n') → LoopSpec n := by
       obtain ⟨rfl, rfl, rfl⟩ := hv3
       simp only [List.nil_append] at h3
       have hb : TyRel (RN.mk 3 op 0 (some .uw) false [a, RN.mk 1 kv 0 (some .uw) false []]) (.s .uw) := ⟨rfl, rfl, by simp [RN.tag]⟩
-      obtain ⟨v, st', n', hn', hp, hsub, hrun, hstop, hspec⟩ := ihL n (by omega) (fun n'' hn'' => IHB n'' (by omega)) m ks _ fin cx _ _ _ h3 rfl
-        (CxRel.transport hc rfl rfl) (fun _ => ⟨hb, PT_bin _ _ _⟩)
+      obtain ⟨v, st', n', hn', hp, hsub, hrun, hstop, hnv, hspec⟩ := ihL n (by omega) (fun n'' hn'' => IHB n'' (by omega)) m ks _ fin cx _ _ _ h3 rfl
+        (CxRel.transport hc rfl rfl) (CxNN.transport hnn rfl rfl rfl) (by intro s hs; simp [RN.sh] at hs; subst hs; rfl)
+        (fun _ => ⟨hb, PT_bin _ _ _⟩)
       refine ⟨v, st', n', by omega, ⟨hp.vals, hp.binds, hp.defs, hp.cur, hp.arm, hp.all, ?_, hp.nx⟩,
-        fun u hu => hsub u (kid_nodes_sub (List.mem_cons_self ..) hu), hrun, hstop, fun hvt => ?_⟩
+        fun u hu => hsub u (kid_nodes_sub (List.mem_cons_self ..) hu), hrun, hstop, hnv, fun hvt => ?_⟩
       · have := hp.toks; simp [ht, leaf] at this ⊢; omega
       obtain ⟨ty, hty, hpt, hf⟩ := hspec hvt
       refine ⟨ty, hty, hpt, fun f hf' => ?_⟩
@@ -193,8 +219,8 @@ theorem loop_sound : ∀ n, (∀ n' < n, BinSpec n') → LoopSpec n := by
       simpa [RN.toNd_mk, leaf] using this
     · -- operator with a parsed right operand
       simp only [List.cons_append, List.nil_append] at h1
-      obtain ⟨y, st2, n2, hn2, hp2, hlt2, h2, _, hspec2⟩ :=
-        IHB n (by omega) (p + 1) (.mkBin op :: .binLoop m :: ks) _ fin cx h1 (CxRel.transport hc rfl rfl)
+      obtain ⟨y, st2, n2, hn2, hp2, hlt2, h2, _, _, hspec2⟩ :=
+        IHB n (by omega) (p + 1) (.mkBin op :: .binLoop m :: ks) _ fin cx h1 (CxRel.transport hc rfl rfl) (CxNN.transport hnn rfl rfl rfl)
       match n2, h2 with
       | 0, h2 => exact absurd h2.zero_nil.1 (by simp)
       | n2 + 1, h2 =>
@@ -208,14 +234,16 @@ theorem loop_sound : ∀ n, (∀ n' < n, BinSpec n') → LoopSpec n := by
       have hb : TyRel (RN.mk 3 op 0 (some .uw) false [a, y]) (.s .uw) := ⟨rfl, rfl, by simp [RN.tag]⟩
       have hc3 : CxRel st3 cx := CxRel.transport hc (by rw [hst3]; exact hp2.binds) (by rw [hst3]; exact hp2.defs)
       have hv3' : st3.vals = RN.mk 3 op 0 (some .uw) false [a, y] :: rest := by rw [hst3]
-      obtain ⟨v, st', n', hn', hp, hsub, hrun, hstop, hspec⟩ :=
-        ihL n2 (by omega) (fun n'' hn'' => IHB n'' (by omega)) m ks _ fin cx _ _ _ h3 hv3' hc3 (fun _ => ⟨hb, PT_bin _ _ _⟩)
+      obtain ⟨v, st', n', hn', hp, hsub, hrun, hstop, hnv, hspec⟩ :=
+        ihL n2 (by omega) (fun n'' hn'' => IHB n'' (by omega)) m ks _ fin cx _ _ _ h3 hv3' hc3
+          (CxNN.transport hnn (by rw [hst3]; exact hp2.binds) (by rw [hst3]; exact hp2.defs) (by rw [hst3]; exact hp2.cur))
+          (by intro s hs; simp [RN.sh] at hs; subst hs; rfl) (fun _ => ⟨hb, PT_bin _ _ _⟩)
       have hrows : rows st3 = rows st := by simp [hst3, rows, hp2.defs, hp2.cur]
       rw [hrows] at hspec
       have hsubb : ∀ u ∈ nodes (RN.mk 3 op 0 (some .uw) false [a, y]), u ∈ nodes v := hsub
       refine ⟨v, st', n', by omega, ⟨hp.vals, by rw [hp.binds, hst3]; exact hp2.binds, by rw [hp.defs, hst3]; exact hp2.defs,
         by rw [hp.cur, hst3]; exact hp2.cur, by rw [hp.arm, hst3]; exact hp2.arm, by rw [hp.all, hst3]; exact hp2.all, ?_, ?_⟩,
-        fun u hu => hsubb u (kid_nodes_sub (List.mem_cons_self ..) hu), hrun, hstop, fun hvt => ?_⟩
+        fun u hu => hsubb u (kid_nodes_sub (List.mem_cons_self ..) hu), hrun, hstop, hnv, fun hvt => ?_⟩
       · have h1' := hp.toks; have h2' := hp2.toks; rw [hst3] at h1'; simp [ht] at h1' h2' hlt2 ⊢; omega
       · have h1' := hp.nx; have h2' := hp2.nx; rw [hst3] at h1'; simp at h1' h2' ⊢; omega
       obtain ⟨ty, hty, hpt, hf⟩ := hspec hvt
