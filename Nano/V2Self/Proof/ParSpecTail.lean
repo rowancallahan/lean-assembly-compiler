@@ -157,4 +157,100 @@ theorem tl_down : ∀ f, (∀ cx ts nx r, pExpr f cx true ts nx = some r → r.1
         rw [hy]; simpa [heq] using h3
       · intro h2; simp at h2
 
+
+theorem join_ne_bot {a b c : Ty} (h : a.join b = some c) (ha : a ≠ .bot) : c ≠ .bot := by
+  rintro rfl
+  cases a <;> cases b <;> simp_all [Ty.join] <;> (try (split at h <;> simp_all))
+
+theorem pLoop_ne_bot : ∀ f cx m a ta ts nx r, pLoop f cx m a ta ts nx = some r → ta ≠ .bot → r.2.1 ≠ .bot := by
+  intro f
+  induction f with
+  | zero => intros; simp_all [pLoop]
+  | succ f ih =>
+    intro cx m a ta ts nx r h hta
+    rw [pLoop.eq_def] at h
+    (repeat' split at h) <;> (try simp_all [-Prod.forall]) <;> (try subst_vars)
+    all_goals (first
+      | (simpa using hta)
+      | (subst h; simpa using hta)
+      | (exact ih _ _ _ _ _ _ _ h (by simp))
+      | (obtain ⟨_, _, h⟩ := Option.bind_eq_some_iff.mp h; split at h; exact ih _ _ _ _ _ _ _ h (by simp); simp at h))
+
+theorem pCallDef_ne_bot {f cx n ts nx r} (h : pCallDef f cx n ts nx = some r) : r.2.1 ≠ .bot := by
+  cases f with
+  | zero => simp [pCallDef] at h
+  | succ f =>
+    simp only [pCallDef] at h
+    split at h
+    · obtain ⟨_, _, rfl⟩ := Option.map_eq_some_iff.mp h; simp
+    · simp at h
+
+/-- with the tail flag off, no parse has type `bot` (a CONTINUE needs the flag) -/
+theorem nobot : ∀ f, (∀ cx ts nx r, pExpr f cx false ts nx = some r → r.2.1 ≠ .bot) ∧
+    (∀ cx m ts nx r, pBin f cx false m ts nx = some r → r.2.1 ≠ .bot) ∧
+    (∀ cx ts nx r, pApp f cx false ts nx = some r → r.2.1 ≠ .bot) ∧
+    (∀ cx ts nx r, pAtom f cx false ts nx = some r → r.2.1 ≠ .bot) := by
+  intro f
+  induction f with
+  | zero => refine ⟨?_, ?_, ?_, ?_⟩ <;> intros <;> simp_all [pExpr, pBin, pApp, pAtom]
+  | succ f ih =>
+    obtain ⟨iE, iB, iP, iA⟩ := ih
+    refine ⟨?_, ?_, ?_, ?_⟩
+    · intro cx ts nx r h
+      rw [pExpr.eq_def] at h
+      (repeat' split at h) <;> (try simp_all [-Prod.forall])
+      all_goals (repeat' (first
+        | (split at h <;> (try (simp at h; done)))
+        | (rw [Option.bind_eq_some_iff] at h; obtain ⟨_, _, h⟩ := h)
+        | (rw [Option.map_eq_some_iff] at h; obtain ⟨_, _, rfl⟩ := h)))
+      all_goals (try (obtain ⟨_, _, _, _, rfl⟩ := h))
+      all_goals (try (obtain ⟨_, _, _, _, _, rfl⟩ := h))
+      all_goals (try simp only)
+      all_goals (first
+        | simp
+        | exact iE _ _ _ _ ‹_› | exact iB _ _ _ _ _ ‹_› | exact iP _ _ _ _ ‹_› | exact iA _ _ _ _ ‹_›
+        | exact iE _ _ _ _ h | exact iB _ _ _ _ _ h | exact iP _ _ _ _ h | exact iA _ _ _ _ h
+        | exact join_ne_bot ‹_› (iE _ _ _ _ ‹_›)
+        | exact pCallDef_ne_bot h
+        | (subst h; simp))
+    · intro cx m ts nx r h
+      rw [pBin.eq_def] at h
+      simp only at h
+      obtain ⟨x, hx, h⟩ := Option.bind_eq_some_iff.mp h
+      exact pLoop_ne_bot _ _ _ _ _ _ _ _ h (iP _ _ _ _ hx)
+    · intro cx ts nx r h
+      rw [pApp.eq_def] at h
+      (repeat' split at h) <;> (try simp_all [-Prod.forall])
+      all_goals (repeat' (first
+        | (split at h <;> (try (simp at h; done)))
+        | (rw [Option.bind_eq_some_iff] at h; obtain ⟨_, _, h⟩ := h)
+        | (rw [Option.map_eq_some_iff] at h; obtain ⟨_, _, rfl⟩ := h)))
+      all_goals (try (obtain ⟨_, _, _, _, rfl⟩ := h))
+      all_goals (try (obtain ⟨_, _, _, _, _, rfl⟩ := h))
+      all_goals (try simp only)
+      all_goals (first
+        | simp
+        | exact iE _ _ _ _ ‹_› | exact iB _ _ _ _ _ ‹_› | exact iP _ _ _ _ ‹_› | exact iA _ _ _ _ ‹_›
+        | exact iE _ _ _ _ h | exact iB _ _ _ _ _ h | exact iP _ _ _ _ h | exact iA _ _ _ _ h
+        | exact join_ne_bot ‹_› (iE _ _ _ _ ‹_›)
+        | exact pCallDef_ne_bot h
+        | (subst h; simp))
+    · intro cx ts nx r h
+      rw [pAtom.eq_def] at h
+      (repeat' split at h) <;> (try simp_all [-Prod.forall])
+      all_goals (repeat' (first
+        | (split at h <;> (try (simp at h; done)))
+        | (rw [Option.bind_eq_some_iff] at h; obtain ⟨_, _, h⟩ := h)
+        | (rw [Option.map_eq_some_iff] at h; obtain ⟨_, _, rfl⟩ := h)))
+      all_goals (try (obtain ⟨_, _, _, _, rfl⟩ := h))
+      all_goals (try (obtain ⟨_, _, _, _, _, rfl⟩ := h))
+      all_goals (try simp only)
+      all_goals (first
+        | simp
+        | exact iE _ _ _ _ ‹_› | exact iB _ _ _ _ _ ‹_› | exact iP _ _ _ _ ‹_› | exact iA _ _ _ _ ‹_›
+        | exact iE _ _ _ _ h | exact iB _ _ _ _ _ h | exact iP _ _ _ _ h | exact iA _ _ _ _ h
+        | exact join_ne_bot ‹_› (iE _ _ _ _ ‹_›)
+        | exact pCallDef_ne_bot h
+        | (subst h; simp))
+
 end ParSpec
