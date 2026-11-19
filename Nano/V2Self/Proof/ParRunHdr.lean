@@ -345,4 +345,117 @@ theorem cxrel_body {st : St} {dis : List DefI} {env : List (List Nat × Nat × P
       simp only [Option.map_some, Option.bind_some, bdPs_toBd h1 h2]
       rfl
 
+
+/-! ## the input rule of a plain def's parameters -/
+/-- parameter kinds obey the input rule: the input is exactly the first List code; without an input there is no List code -/
+def InpInv (Q : List Ps) : Prop :=
+  (∀ i (h : i < Q.length), (Q[i] = .inp ↔ FirstLs (Q.map psCode) i)) ∧ ((∀ q ∈ Q, q ≠ .inp) → ∀ q ∈ Q, psCode q ≠ .ls)
+
+theorem firstLs_append_left {L M : List Sh} {i : Nat} (hi : i < L.length) : FirstLs (L ++ M) i ↔ FirstLs L i := by
+  unfold FirstLs
+  rw [List.getElem?_append_left hi]
+  constructor
+  · rintro ⟨h1, h2⟩; exact ⟨h1, fun j hj => by rw [← List.getElem?_append_left (by omega : j < L.length) (l₂ := M)]; exact h2 j hj⟩
+  · rintro ⟨h1, h2⟩; exact ⟨h1, fun j hj => by rw [List.getElem?_append_left (by omega : j < L.length)]; exact h2 j hj⟩
+
+theorem inpInv_snoc {Q : List Ps} {p : Ps} (hQ : InpInv Q)
+    (hp1 : p = .inp → (∀ q ∈ Q, q ≠ .inp)) (hp2 : psCode p = .ls → p ≠ .inp → .inp ∈ Q) : InpInv (Q ++ [p]) := by
+  obtain ⟨h1, h2⟩ := hQ
+  refine ⟨fun i hi => ?_, fun hn q hq => ?_⟩
+  · simp only [List.map_append, List.map_cons, List.map_nil]
+    rw [firstLs_snoc]
+    by_cases hiQ : i < Q.length
+    · rw [List.getElem_append_left hiQ, h1 i hiQ]
+      constructor
+      · intro h; exact Or.inl ⟨by simpa using hiQ, h⟩
+      · rintro (⟨_, h⟩ | ⟨e, _⟩)
+        · exact h
+        · simp at e; omega
+    · have e : i = Q.length := by simp at hi; omega
+      subst e
+      rw [List.getElem_append_right (Nat.le_refl _)]
+      simp only [Nat.sub_self, List.getElem_cons_zero, List.length_map]
+      rw [hasLs_false_iff]
+      constructor
+      · intro hpi
+        have hnoinp := hp1 hpi
+        refine Or.inr ⟨by simp, by rw [hpi]; rfl, fun j hj e => ?_⟩
+        simp only [List.getElem?_map, List.length_map] at hj e
+        rw [List.getElem?_eq_getElem hj] at e
+        simp at e
+        exact h2 hnoinp _ (List.getElem_mem hj) e
+      · rintro (⟨h, _⟩ | ⟨_, hl, hno⟩)
+        · simp at h
+        · by_cases hpi : p = .inp
+          · exact hpi
+          · obtain ⟨j, hj, hje⟩ := List.getElem_of_mem (hp2 hl hpi)
+            have := (h1 j hj).mp hje
+            exact absurd (by simpa [List.getElem?_map, List.getElem?_eq_getElem hj] using this.1) (hno j (by simpa using hj))
+  · rcases List.mem_append.mp hq with hq | hq
+    · exact h2 (fun q' hq' => hn q' (List.mem_append_left _ hq')) q hq
+    · simp at hq; subst hq
+      intro hl
+      by_cases hpi : q = .inp
+      · exact hn q (by simp [hpi]) hpi
+      · obtain ⟨j, hj, hje⟩ := List.getElem_of_mem (hp2 hl hpi)
+        exact hn _ (List.mem_append_left _ (List.getElem_mem hj)) hje
+
+
+theorem go_ps (p : Ps) : ∀ (s : Nat) (ns : List (List Nat)), (bindSlots.go p s ns).2.1 = List.replicate ns.length p
+  | s, [] => by simp [go_nil]
+  | s, x :: l => by rw [go_cons]; simp [go_ps p _ l, List.replicate_succ]
+
+theorem inpInv_rep {Q : List Ps} {p : Ps} (hQ : InpInv Q) (k : Nat) (hk : p = .inp → k ≤ 1 ∧ ∀ q ∈ Q, q ≠ .inp)
+    (hl : psCode p = .ls → p ≠ .inp → .inp ∈ Q) : InpInv (Q ++ List.replicate k p) := by
+  induction k with
+  | zero => simpa using hQ
+  | succ k ih =>
+    rw [List.replicate_succ', ← List.append_assoc]
+    refine inpInv_snoc (ih (fun e => ⟨by have := (hk e).1; omega, (hk e).2⟩)) (fun e q hq => ?_) (fun e1 e2 => List.mem_append_left _ (hl e1 e2))
+    obtain ⟨hk1, hQ'⟩ := hk e
+    rcases List.mem_append.mp hq with hq | hq
+    · exact hQ' q hq
+    · have : k = 0 := by omega
+      subst this; simp at hq
+
+/-- **input rule**: under fix J, the parameter kinds of a binder list obey `InpInv` -/
+theorem bindSlots_inpInv : ∀ (g : List (List (List Nat) × TyR)) (u : Bool) (s : Nat) (Q : List Ps), InpInv Q →
+    u = Q.any (· == .inp) → FixJ u g → (∀ x ∈ g, x.2 ≠ .sh .ls) → InpInv (Q ++ (bindSlots s u g).2.1)
+  | [], u, s, Q, hQ, _, _, _ => by simpa [bindSlots_nil] using hQ
+  | (ns, t) :: g, u, s, Q, hQ, hu, hF, hT => by
+    rw [bindSlots_cons, ← List.append_assoc, go_ps]
+    have ht : t ≠ .sh .ls := hT (ns, t) (by simp)
+    obtain ⟨hF1, hF2⟩ := hF
+    have h1 : InpInv (Q ++ List.replicate ns.length (pickPs u (ns.length == 1) t).1) := by
+      apply inpInv_rep hQ
+      · intro e
+        cases t with
+        | sh w => simp [pickPs] at e
+        | lst =>
+          cases u <;> cases h : (ns.length == 1) <;> simp [pickPs, h] at e
+          refine ⟨by simp at h; omega, fun q hq hqi => ?_⟩
+          have : Q.any (· == .inp) = true := List.any_eq_true.mpr ⟨q, hq, by simp [hqi]⟩
+          rw [← hu] at this; cases this
+      · intro hl hni
+        cases t with
+        | sh w => simp [pickPs, psCode] at hl; subst hl; exact absurd rfl ht
+        | lst =>
+          have hu1 : u = true := by
+            cases h : (ns.length == 1)
+            · exact hF1 rfl (by simpa using h)
+            · cases u
+              · simp [pickPs, h] at hni
+              · rfl
+          rw [hu1] at hu
+          obtain ⟨q, hq, hqe⟩ := List.any_eq_true.mp hu.symm
+          simp at hqe; subst hqe; exact hq
+    refine bindSlots_inpInv g _ _ _ h1 ?_ hF2 (fun x hx => hT x (by simp [hx]))
+    rw [pick_used, List.any_append, ← hu]
+    cases ns with
+    | nil =>
+      cases t with
+      | sh w => simp [pickPs]
+      | lst => cases u <;> simp [pickPs]
+    | cons y l => simp [List.any_replicate]
+
 end ParRun
