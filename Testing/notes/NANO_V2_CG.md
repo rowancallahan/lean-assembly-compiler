@@ -29,12 +29,15 @@ Written registers: t0–t6, a0, a1, a4, a5, s0 (restored), ra (restored).
 ## Status
 - Vertical example (Testing/nano/v2self/cg_vertical.lean: a fuel loop copying the input into a buffer, a helper
   with its own loop returning a pair, output): QEMU == Sail == native Lean on 5 inputs + the out-of-memory case
-  (`BIG=2097152 python3 Testing/nano/v2self/cg_test.py cg_vertical`), 476 words.
+  (`BIG=16777216 python3 Testing/nano/v2self/cg_test.py cg_vertical`), 476 words.
 - Gen.lean ACCEPTED by nano's front end (check.lean: 58 defs).
 - Chain test (Testing/nano/v2self/cg_chain.lean N): random scalar defs (params, let, if, all BIN ops; Par0 increments A-C)
   → C.s10 → C.y13 → + hand-written main (4 args from input bytes + 64-bit constants, 8 result bytes) → C.g41.
-  40 programs x 5 inputs: QEMU == native tree eval (40/40, `BIG=8388608 NOSAIL=1 cg_test.py cgc_K`); Sail also on
-  cgc_0/6/13 (483-1737 words). Note: work must hold the κ = 2^18 buffers (≥ 2 MiB each); 4 KiB work ⇒ a0 = −1 by design.
+  40 programs x 5 inputs: QEMU == native tree eval (40/40, `BIG=16777216 NOSAIL=1 cg_test.py cgc_K`); Sail also on
+  cgc_0/6/13 (483-1737 words). Note: work must hold every buffer the program allocates, each (κ + 2)·8 bytes with
+  κ = 2^19 (≈ 4 MiB); 4 KiB work ⇒ a0 = −1 by design.  (2026-11-19 triage: cg_vertical / cgp_1-3 failing at
+  BIG = 2 or 8 MiB is this, not a Gen bug: they allocate 2 buffers (the data buffer and the `[]` output), so EVERY case
+  OOMs below ~8 MiB + stack; cg_test.py stops at the first failing case, which is L = 0. All pass at BIG = 16 MiB.)
 - Astra-10 "rule out now" audit of Gen.lean (fail loudly instead of silent truncation): fixed-fuel loops now reject
   instead of cutting off — LOCAL/LET slot ranges must be non-empty and inside nslots (g43), PAIR/CALL arity ≤ 250,
   ≤ 65536 exit fixups per def, code < 2^24 words; the LAST def must be main-shaped (npw 0, nres 1). Already true:
