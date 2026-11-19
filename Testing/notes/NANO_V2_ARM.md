@@ -5,6 +5,62 @@ Goal: the owner's statements for an ARM version of C, in `Spec/Alloc.lean`'s for
 `SelfC`/`RunsTopO` do for RISC-V). Status: design only. Nothing below is built in the main repo yet.
 The measurements were taken on this box, 2026-11-19.
 
+## 0. Decisions so far (lead/owner, 2026-11-19)
+* **Design = LIFT the existing proof, not redo it** (§3–§4): a proven instruction-level translation J → AArch64.
+  Everything above J is reused unchanged. Only the per-instruction simulation and the host lift to `armMapping`
+  are new.
+* **Toolchain: both stacks move to Lean 4.35.0** (D is measuring; branch `lean-4.35`). So the ARM model and this
+  repo end up in ONE environment. The staging option (A) of §2 is no longer the plan. §2a stays as data on the
+  migration's difficulty.
+* For now: organization and survey only. No ARM code.
+
+### 0a. Is J abstract enough for the lift?
+J (`Machine/Call.lean`) is a small abstract machine: registers `x : Nat → UInt64`, memory as 8-byte cells
+`m : Nat → UInt64` (bytes via `lbm`/`sbm`, little-endian), the code base `b`, a `pc : Nat` in instructions.
+It is **not** the RV64 Sail semantics: the Sail relation lives in SimW/SimX (`RelW`, `wok`/`io`/`fr`). Everything
+above J (EVS, templates, start/cap/oom, `gen_runS`'s J part) talks only about `SStarX`/`SafeX` on J. So a second
+target needs exactly a second `RelW`-style relation and per-instruction simulation lemmas, as the lead's plan
+says. Two places where J is RV-shaped:
+1. **The link value**: `jal rd off` writes `b + 4·(pc+1)`, and `jalr rd rs` jumps to `(x[rs] − b)/4`. The "4" is
+   RV's instruction size. Gen's code never does arithmetic on code addresses (the only producer is `jal`'s
+   link, saved and reloaded through frames; `epi`'s `jalr 0 14` reloads it). So link values only travel through
+   memory. Two ways for ARM, with a fixed block of k = 4 A64 words per J instruction:
+   * **V1 (J unchanged): J-shaped return addresses.** ARM computes and stores J's value
+     (`adr x30, #(4 − 12·pc)` for `jal 1`) and converts on `jalr 0 r`
+     (`adr x17 (= b); sub; add …, lsl #2; br`). The three host returns (stub words 5/10, start 31) become `ret`.
+     Memory is byte-identical between J and ARM. Cost: adr/br/add-shifted lemmas and three special-cased indices.
+   * **V2 (J parameterized by the link width W):** `jal` links `b + W·(pc+1)`, `jalr` jumps to `(x − b)/W`.
+     RV is W = 4 (unchanged results); ARM is W = 16 = 4 words · 4 bytes. Then `bl` as the LAST word of each block
+     links exactly `b + 16·(pc+1)`, `jalr 0 r` = `br xr`, and host returns are `ret` with no special case. Cost: a
+     mechanical refactor of the J-level files that mention 4·pc or /4: about 25 files, mostly Machine/
+     (Templates 12, Call 11, EVXC 9, EVSCall 8, CapRun 8, CallA 6, SimW 5, StartRun 4, EVXT 4, …). The hits in
+     Bridge/Own are unrelated divisions.
+   **Recommendation: V2** if the 4.35 migration touches these files anyway. Otherwise V1 (no edits above J).
+2. **Byte vs cell memory, alignment**: unchanged. AArch64 is little-endian with the MMU off and `SCTLR_EL3.A = 0`
+   (no alignment faults), so the `bw`/`w` relation of SimW carries over byte for byte.
+3. **x0 = 0 / register count**: RV x0 ↦ `xzr` (31 in ALU/compare encodings). Never as a base register or as
+   add-imm source/destination (31 = sp there): the translator emits `movz`/`movn` or `nop` in those cases.
+
+### 0b. Uniform blocks vs a PC map
+With a fixed block size (k = 4, nop-padded) the PC map is `pc ↦ 16·pc + base` and branch relocation is ×4. The
+simulation is "1 J step = ≤ 4 A64 steps" with no relocation lemma at all. A variable-length expansion
+(1–4 words) would save about half the code size but needs a prefix-sum PC map and relocation proofs for every
+branch and every link value (and V2 would no longer apply). Ranges with k = 4: Gen caps code at 2^18 J words, so
+2^20 A64 words = 4 MB, under the 2^29 fetch bound. `b`/`bl` reach ±128 MB. `b.cond` reaches ±1 MB, i.e. J offsets
+< 2^16: IF/loop branches are local; to be checked on C's own output by the translator (fail ⇒ `compileC_arm`
+returns `none`).
+
+### 0c. Cost: lift vs a native ARM generator
+| | lift (this design) | native ARM Gen in C + per-template proofs |
+|---|---|---|
+| compiler source | translator (Lean def; later in nano) | a second Gen (`g41_arm`), in nano |
+| new proofs | ~12 A64 full-step lemmas, `SimA` + 14 block lemmas, the host lift (~ HostMain/CapHost/HostTiny), top theorems | everything in Machine/Gen redone: word-level Gen proofs (GenRef, Templates, StartCode, g40 bytes), every template's run proof (EVS*, Call*, Loop, Heap), start/cap/oom, plus the same host lift |
+| reuse | all of Lex/Parser/Own/Bridge/Cert/SrcLink and the whole J level | only Lex/Parser/Own/Bridge/Cert/SrcLink |
+| size estimate | ≈ 60–80 prover-hours (§5) | ≈ the RISC-V Machine/ + Gen/ effort again (76 modules here; weeks) |
+| code quality | 4× code size, extra moves | native, smaller |
+The lift is far cheaper, as the lead expected. A native generator only pays off if code size or speed of the
+ARM output matters.
+
 ## 1. Target statement and what the Spec lacks
 * `Spec/Machines.lean` has `armMapping` (ra x30, a0..a3 = x0..x3, workTop = 31 (sp), status x0, length x1,
   kept x19..x29, sp). There is **no `arm : Machine`**. `Spec/RiscvMachine.lean` defines `riscv` on the Sail RV64
@@ -101,9 +157,9 @@ instruction** (nop-padded), so J index pc ↦ A64 word 4·pc, and J offsets scal
 | `slli/srli rd rs sh` | `ubfm` (lsl/lsr #sh) | **missing** |
 | `beq/bne/bltu/bgeu a b o` | `subs xzr, xa, xb` (cmp); `b.eq/ne/lo/hs 4·o − 1` | b.cond full **exists**; **cmp (subs reg) full step missing** (exec exists) |
 | `jal 0 off` | `b 4·off` | exists |
-| `jal 1 off` | `adr x30, #…; b …` | b exists; **adr missing** |
-| `jalr 0 r` (J return/jump) | `adr; sub; add (shifted reg, lsl #2); br` | **adr, add-shifted, br missing** |
-| host `jalr 0 1` | `ret` | exists (`full_ret`) |
+| `jal 1 off` | V1: `adr x30, #…; b …` · V2: `nop; nop; nop; bl 4·off−3` | V1: **adr missing** · V2: bl exists |
+| `jalr 0 r` (J return/jump) | V1: `adr; sub; add (shifted reg, lsl #2); br` · V2: `br xr` | V1: **adr, add-shifted, br missing** · V2: **br missing** |
+| host `jalr 0 1` | `ret` (V1: special-cased index; V2: just `br x30`) | exists (`full_ret`) |
 | padding | `nop` (HINT) | **missing** (or pad with `add x16, x16, #0`, which exists) |
 
 Missing A64 lemmas, as `full_*` steps under `ArmFull` with symbolic registers: movn, madd, ubfm (lsl/lsr imm),
@@ -138,8 +194,9 @@ Also the RV-side word facts: `g41 … = g40 … (C.map encG)`, `words_encJX`.
 |---|---|---|---|
 | A0 | owner: `Spec/ArmMachine.lean` (`arm : Machine`), the RAM window, `compileC_arm` + translator approval | — | owner |
 | A1 | env: cloud environment with prebuilt `armv9-lean` + 4.34.1, a stage script (`Arm/nano/stage.sh`) | A0 | 1–2 h (infra) |
-| A2 | split `Main/Main.lean` → `Main/Sem` + `Main/Rv`; split `Machine/SimW` → `SimJ` + `SimW`; split `gen_runS`'s lift | — | 3–4 h (4.29, main repo) |
-| A3 | 4.34.1 port fixes for the staged chain (§2a list), as `stage.sh` edits or upstream-compatible edits | A2 | §2a |
+| A2 | split `gen_runS`'s conclusion into the J run + a target-generic lift hook; split `Machine/SimW` → `SimJ` (LayW/wok/SafeX/SStarX) + `SimW` (Sail RV) | — | 3–4 h |
+| A2b | (V2 only) parameterize J's link width W (`jal`/`jalr`), re-check the ~25 J-level files at W = 4 | — | 4–6 h, splits per folder |
+| A3 | (owner decision 2026-11-19) the Lean 4.35.0 migration of both stacks (D) | — | D's measurement |
 | A4–A9 | the missing A64 full steps: A4 movn+nop, A5 reg-ALU ×7 (shared SymDec pattern), A6 madd, A7 ubfm lsl/lsr, A8 cmp-reg, A9 adr+br+add-shifted | A1 | 1.5–3 h each, parallel |
 | A10 | translator `A` + `decodeRV∘encG` + the block table (Lean) | — | 3 h |
 | A11 | `SimA` relation + `sim_starA` skeleton | A1, A10 | 4 h |
