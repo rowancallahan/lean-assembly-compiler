@@ -1,6 +1,7 @@
 /- Nano/V2Self/Proof/ParRunDefs: Layer-2 def level (parser lead), pure.  A run that finishes a def body passes through `.defs`
 with the def's header, flattened body and `21` emitted and the row appended (`defEnd_tail`). -/
 import Nano.V2Self.Proof.ParRunFlat
+import Nano.V2Self.Proof.ParRunTy
 namespace ParRun
 open ParSpec
 
@@ -47,5 +48,41 @@ theorem defEnd_tail {n : Nat} {ks : List Frame} {st fin : St} (h : StarN n (.def
         obtain ⟨m', hm, h3⟩ := StarN.cut (r1.trans r2) h2
         exact ⟨m', by omega, rfl, hc.1, by simpa using hc.2, h3⟩
       · cases h1
+
+
+/-- the spec's type parser never yields `.sh .ls` (a `List UInt8` is `.lst`), so `trRes` loses nothing at the top -/
+theorem pTy_noLs : ∀ f, (∀ ts t r, pTyAtom f ts = some (t, r) → t ≠ .sh .ls) ∧ (∀ ts t r, pTy f ts = some (t, r) → t ≠ .sh .ls) := by
+  intro f
+  induction f with
+  | zero => exact ⟨fun ts t r h => by simp [pTyAtom] at h, fun ts t r h => by simp [pTy] at h⟩
+  | succ f ih =>
+    refine ⟨fun ts t r h => ?_, fun ts t r h => ?_⟩
+    · rw [pTyAtom.eq_def] at h
+      simp only at h
+      split at h
+      all_goals first
+        | (cases h; done)
+        | (simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl⟩ := h; simp)
+        | (obtain rfl : f = _ := Nat.succ.inj ‹f + 1 = _›
+           obtain ⟨⟨t1, r1⟩, h1, h2⟩ := Option.bind_eq_some_iff.mp h
+           simp only at h2
+           split at h2
+           · simp only [Option.some.injEq, Prod.mk.injEq] at h2; obtain ⟨rfl, rfl⟩ := h2; exact ih.2 _ _ _ h1
+           · cases h2)
+    · rw [pTy_succ'] at h
+      obtain ⟨⟨a, r1⟩, h1, h2⟩ := Option.bind_eq_some_iff.mp h
+      unfold crossK at h2
+      simp only at h2
+      split at h2
+      · obtain ⟨⟨b, r3⟩, _, h4⟩ := Option.bind_eq_some_iff.mp h2
+        simp only [Option.some.injEq, Prod.mk.injEq] at h4; obtain ⟨rfl, rfl⟩ := h4; simp
+      · simp only [Option.some.injEq, Prod.mk.injEq] at h2; obtain ⟨rfl, rfl⟩ := h2; exact ih.1 _ _ _ h1
+
+theorem trRes_ls {t : TyR} (h : t ≠ .sh .ls) : trRes t = .ls ↔ t = .lst := by
+  cases t with
+  | lst => simp [trRes]
+  | sh s => simp only [trRes]; constructor
+            · intro e; subst e; exact absurd rfl h
+            · intro e; cases e
 
 end ParRun
