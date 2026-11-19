@@ -87,4 +87,74 @@ theorem rep_v6 {g ts : Buf} {st : St} {fs : List Frame} (R : Rep g ts st fs) (x 
     simp only [List.getElem_append_right (Nat.le_refl _), Nat.sub_self, List.getElem_cons_zero]
     exact ⟨by rw [c0]; exact nameAt_frame et (by omega) hx, by rw [c1]; exact hsl, by rw [c2]; exact hw.frame es, by rw [c3]; rfl⟩
 
+/-! ## task 67: `group start` (v132) -/
+theorem v1_cell4 (h : Buf) (c a b : UInt64) : bget (v1 h c a b) 4 = bget h 4 := by
+  unfold v1
+  split
+  · rename_i hg
+    have hgN := UInt64.lt_iff_toNat_lt.mp hg
+    simp only [show d12.toNat = 4096 from rfl] at hgN
+    have c0 := taskCell (bget h 5).toNat hgN 0 (by decide); have c1 := taskCell (bget h 5).toNat hgN 1 (by decide)
+    have c2 := taskCell (bget h 5).toNat hgN 2 (by decide)
+    simp only [UInt64.add_zero, show (0 : UInt64).toNat = 0 from rfl, show (1 : UInt64).toNat = 1 from rfl,
+      show (2 : UInt64).toNat = 2 from rfl, UInt64.ofNat_toNat] at c0 c1 c2
+    have u4 : (4 : UInt64).toNat = 4 := rfl
+    rw [bget_bset' _ _ _ _ (by decide), bget_bset' _ _ _ _ (by rw [c2, u4]; omega), bget_bset' _ _ _ _ (by rw [c1, u4]; omega),
+      bget_bset' _ _ _ _ (by rw [c0, u4]; omega)]
+  · exact bget_bset' _ _ _ _ (by decide)
+
+theorem h_group {h ts : Buf} {st : St} {start : Nat} {fs : List Frame} (r : Rep h ts st (.group start :: fs))
+    (hs : bget (step h) 0 ≠ 0) :
+    ∃ fr st', stepF (.group start) st = some (fr, st') ∧ Rep (step h) ts st' (fr ++ fs) := by
+  obtain ⟨E, ea, R1⟩ := rep_pop r rfl
+  simp only [Frame.code, FrameArgs] at E ea
+  generalize (taskAt h fs.length).a = a at E ea
+  generalize (taskAt h fs.length).b = b at E
+  generalize bset h 5 fs.length.toUInt64 = g at E R1
+  obtain ⟨hn, hl, har⟩ := rep_bounds R1
+  have rT := R1.1; have rts := R1.2.1; have r3 := R1.2.2.2.1
+  have rB4 : (bget g 4).toNat = st.binds.length := R1.2.2.2.2.2.1.1
+  have h7 : (bget g 7).toNat < 2 ^ 24 := by rw [rT.2.2.2]; simp; omega
+  have p3 := r3.le
+  by_cases c14 : bget g (d11 + bget g 3) = 14
+  · obtain ⟨nm, rest, et, hNm, tr⟩ := tok_id r3 rT c14
+    have ev : step h = v1 (v6 (v86 16777216 g (bget g 3 + 1)) (bget g 3) 0 0) 67 a 0 := by rw [E]; simp [v96, v132, c14]
+    have hskip := v86_skip nm 16777216 g (bget g 3 + 1) hNm.2.1
+      (by rw [tn_add _ _ (by simp; omega)]; have := hNm.2.2; simp; omega) (by have := hNm.2.2; omega)
+    rw [ev, hskip] at hs ⊢
+    have epos : bget g 3 + 1 + 2 * nm.length.toUInt64 + 1 = bget g 3 + 2 + 2 * nm.length.toUInt64 := by
+      rw [show (2 : UInt64) = 1 + 1 from rfl]; ac_rfl
+    have R2 := rep_cursor R1 (bget g 3 + 1 + 2 * nm.length.toUInt64 + 1) (by rw [epos]; exact tr)
+    have et3 : TokAgree g (bset g 3 (bget g 3 + 1 + 2 * nm.length.toUInt64 + 1)) :=
+      ⟨bget_bset' _ _ _ _ (by decide), fun i hi => bget_bset' _ _ _ _ (by simp; omega)⟩
+    have hx : NameAt (bset g 3 (bget g 3 + 1 + 2 * nm.length.toUInt64 + 1)) (bget g 3) (nm.map UInt64.toNat) :=
+      nameAt_frame et3 (by omega) ⟨nm, hNm, rfl⟩
+    have R3 := rep_v6 R2 (bget g 3) 0 0 (nm.map UInt64.toNat) 0 none hx rfl rfl (fun z => hs (v1_zero _ _ _ _ z))
+    have R4 := rep_push (.group start) a 0 R3 rfl ea hs
+    exact ⟨[.group start], _, by simp [stepF, et], R4⟩
+  by_cases c8 : bget g (d11 + bget g 3) = 8
+  · have g4 : ∀ v, bget (bset g 3 v) 4 = bget g 4 := fun v => bget_bset' _ _ _ _ (by decide)
+    have ev : step h = (if a < bget g 4 then
+        v1 (v1 (v1 (v1 (bset g 3 (bget g 3 + 1)) 66 0 0) 68 a (bget g 4 - a)) 4 0 0) 61 0 0 else bset (bset g 3 (bget g 3 + 1)) 0 0) := by
+      rw [E]; simp [v96, v132, c8, g4, v1_cell4]
+    rw [ev] at hs ⊢
+    by_cases ca : a < bget g 4
+    · rw [if_pos ca] at hs ⊢
+      have ca' := UInt64.lt_iff_toNat_lt.mp ca
+      rw [ea, rB4] at ca'
+      obtain ⟨rest, et, tr⟩ := tok_kw r3 rT rts c8 (by decide) (by decide) (by decide)
+      have R2 := rep_cursor R1 (bget g 3 + 1) tr
+      have esz : (bget g 4 - a).toNat = st.binds.length - start := by
+        rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr (by omega))]; omega
+      have R3 := rep_push .binders 0 0 R2 rfl trivial (fun z => hs (v1_zero _ _ _ _ (v1_zero _ _ _ _ (v1_zero _ _ _ _ z))))
+      have R4 := rep_push (.assign start (st.binds.length - start)) a (bget g 4 - a) R3 rfl ⟨ea, esz⟩
+        (fun z => hs (v1_zero _ _ _ _ (v1_zero _ _ _ _ z)))
+      have R5 := rep_push .rparen 0 0 R4 rfl trivial (fun z => hs (v1_zero _ _ _ _ z))
+      have R6 := rep_push .tyAtom 0 0 R5 rfl trivial hs
+      exact ⟨[.tyAtom, .rparen, .assign start (st.binds.length - start), .binders], { st with toks := rest },
+        by simp [stepF, et, ca'], R6⟩
+    · rw [if_neg ca] at hs; exact absurd (stat0 _ (by simp [length_bset]; omega)) hs
+  · have ev : step h = bset g 0 0 := by rw [E]; simp [v96, v132, c14, c8]
+    rw [ev] at hs; exact absurd (stat0 _ (by omega)) hs
+
 end ParInv
