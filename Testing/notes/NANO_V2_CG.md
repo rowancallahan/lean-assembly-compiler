@@ -324,8 +324,10 @@ OPEN (in order of value):
    Main's npw = 0 / nres = 1 are derived (chainW's third conjunct: each def's header fields at hs[j]; gen_top exposes
    gen41_full's tg facts).
 1. Heap invariant for main's result buffer (length cell and byte cells inside [hb, H'.top)).
-1b. Safe twins (SStarX) of start_setup / copy_loop / start_tail; GoodX for defsJ (templates); one LayW work region
-   holding stack, heap, a2 save area, input and output.
+1b. DONE: `Proof/StartSafe.lean` — `start_setupX`, `copy_loopX`, `start_tailX` (SStarX twins; layout hypotheses:
+   a2 / a2+8 / t6 top / buffer cells / output byte cells are `wok`, ra = base + 4j, C.length < 2^18).
+   OPEN: main's run as SStarX = the contracts (EVHw/EVHt/DefX …) restated over SStar(X) on top of A's leaf twins;
+   GoodX for defsJ (templates' immediates in range); then `gen_run` lifted with `sim_starX`.
 2. Sail lift: every template run lemma must become a Safe run (`SimW.SStar`): addi no-wrap, ld/sd/lbu addresses
    8-aligned in the ONE work region (input must lie in it), jal targets in code, jalr targets base+4j.  Mechanical but
    large (safe twins of const/push/bin/rd/bsize/bget/bnew/bpush/bset/li/local1/pro/epi/popN runs; contracts Star→SStar).
