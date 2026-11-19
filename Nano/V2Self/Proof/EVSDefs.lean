@@ -105,7 +105,7 @@ structure DefXS (KL : LayW) (C : List J) (f p q : Nat) (IG : St → Prop) (hb E0
 
 /-! ## forgetting safety -/
 
-theorem SStarX.star {KL : LayW} {C : List J} {a b : Nat × St} (h : SStarX KL C a b) : Star C a b := by
+theorem _root_.SimW.SStarX.star {KL : LayW} {C : List J} {a b : Nat × St} (h : SStarX KL C a b) : Star C a b := by
   induction h with
   | refl => exact .refl _
   | head _ st _ ih => exact (Star.one st).trans ih
