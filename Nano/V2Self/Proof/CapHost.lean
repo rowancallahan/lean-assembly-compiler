@@ -168,7 +168,7 @@ theorem gen_host_cap (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : P
     (by show entry.toNat + 4 * C.length < 2 ^ 64; omega) (by rw [x10, x11']; omega)
     (by rw [x10, x11', x12]; rcases dIW with d | d <;> first | exact Or.inl (by omega) | exact Or.inr (by omega)) (by rw [x12]; exact Nat.le_refl _)
     (Nat.le_refl _) rfl (fun i hi => by rw [x11'] at hi; rw [x10]; exact Or.inr (Or.inl ⟨by simp [KL], by simp [KL]; omega⟩))).2
-    (by rw [x12, x11]; exact hS T)
+    .cap (by decide) (by rw [x12, x11]; exact hS T)
   have hK : KL.Ok := {
     b4 := he4
     blo := by simp [KL]; omega

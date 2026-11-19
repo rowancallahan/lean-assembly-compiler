@@ -38,11 +38,11 @@ theorem gen_runS (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length 
            (∀ i, i < N.toNat → lbm s3.m ((s0.x 13).toNat + i) = bs i &&& 255) ∧
            (KL.Ok → KL.W = (C.map encG).map UInt64.toNat → ∀ t, SimW.RelW KL (0, s0) t →
              ∃ n t', Proven.Steps n t t' ∧ SimW.RelW KL (11 + D.length + 31, s3) t')) ∧
-         (semAtF P ds (hs.length - 1) [] E0 ⟨(s0.x 12).toNat + 16, fun _ => none⟩ = .error .cap →
-         ∃ s2, SimW.SStarX KL C (0, s0) (6, s2) ∧ s2.m (s0.x 12).toNat = s0.x 1 ∧
+         (∀ fk, fk ≠ .stuck → semAtF P ds (hs.length - 1) [] E0 ⟨(s0.x 12).toNat + 16, fun _ => none⟩ = .error fk →
+         ∃ s2, SimW.SStarX KL C (0, s0) (stubW fk, s2) ∧ s2.m (s0.x 12).toNat = s0.x 1 ∧
            s2.m ((s0.x 12).toNat + 8) = s0.x 8 ∧ s2.x 0 = 0 ∧ (∀ j, keepR j = true → s2.x j = s0.x j) ∧ s2.b = s0.b ∧
            (KL.Ok → KL.W = (C.map encG).map UInt64.toNat → ∀ t, SimW.RelW KL (0, s0) t →
-             ∃ n t', Proven.Steps n t t' ∧ SimW.RelW KL (6, s2) t')))) := by
+             ∃ n t', Proven.Steps n t t' ∧ SimW.RelW KL (stubW fk, s2) t')))) := by
   obtain ⟨hs, T, o, hD, hne, hr⟩ := gen_C c ds hXl h hdb ((s0.x 12).toNat + 16) (s0.x 11) inp
   refine ⟨hs, T, o, hD, hne, ?_⟩
   obtain ⟨hg, np, nr, hcl, hopv, hbd, hTp, hpk, -⟩ := hr
@@ -98,15 +98,15 @@ theorem gen_runS (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length 
         have := Nat.mod_lt ((s0.x 10).toNat + i) (show 8 > 0 by omega)
         exact (lbm_eq (by rw [upd_other _ _ (by omega), upd_other _ _ (by omega)])).trans (hinp i hi),
       by rw [en.m, upd_other _ _ (by omega), upd_same], by rw [en.m, upd_same], en.b⟩
-  refine ⟨fun vs H' hSd N bs hN hPb hPN hbs hQ hout hwO => ?_, fun hSd => ?_⟩
+  refine ⟨fun vs H' hSd N bs hN hPb hPN hbs hQ hout hwO => ?_, fun fk hk hSd => ?_⟩
   rotate_left
   · -- the capacity exit
     have hMc := gen_defs_cap P ds C (IGs s0 inp) E0 (s0.x 10) KL
       hs.length (g34 bnew).length (by rw [hPhb]; exact IGs_ok s0 _ E0 hE8 hin) hE62
       (fun s hs => by rw [hs.2.2.2.2.2]; exact hcb)
       (fun s hs => by rw [hPc, hPi]; exact ⟨hs.1, hs.2.1, hs.2.2.1, hin63⟩)
-      (fun s hs i hi => by rw [hs.1, hs.2.1] at *; exact hinw i hi) hc18 (by omega) (fk := .cap) (tg := 6)
-      (by decide) (fun h => by cases h) (fun _ => rfl) (by rw [← hPd]; show 524288 < 2 ^ 40; decide) (by rw [hPhb]; omega)
+      (fun s hs i hi => by rw [hs.1, hs.2.1] at *; exact hinw i hi) hc18 (by omega) (fk := fk) (tg := stubW fk)
+      hk (fun h => by subst h; rfl) (fun h => by subst h; rfl) (by rw [← hPd]; show 524288 < 2 ^ 40; decide) (by rw [hPhb]; omega)
       (by rw [hDd]; exact AD)
       (fun j hj => hTp j hj)
       (fun k hk => by

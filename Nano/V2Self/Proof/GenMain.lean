@@ -82,11 +82,11 @@ theorem gen_main (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : Parse
              (∀ i, i < y.length → lbm s3.m ((s0.x 13).toNat + i) = (y.getD i 0).toUInt64) ∧
              (KL.Ok → KL.W = (C.map encG).map UInt64.toNat → ∀ t, SimW.RelW KL (0, s0) t →
                ∃ n t', Proven.Steps n t t' ∧ SimW.RelW KL (pr, s3) t'))) ∧
-        (semAtF P p (p.length - 1) [] E0 ⟨(s0.x 12).toNat + 16, fun _ => none⟩ = .error .cap →
-         ∃ s2, SimW.SStarX KL C (0, s0) (6, s2) ∧ s2.m (s0.x 12).toNat = s0.x 1 ∧
+        (∀ fk, fk ≠ .stuck → semAtF P p (p.length - 1) [] E0 ⟨(s0.x 12).toNat + 16, fun _ => none⟩ = .error fk →
+         ∃ s2, SimW.SStarX KL C (0, s0) (stubW fk, s2) ∧ s2.m (s0.x 12).toNat = s0.x 1 ∧
            s2.m ((s0.x 12).toNat + 8) = s0.x 8 ∧ s2.x 0 = 0 ∧ (∀ j, keepR j = true → s2.x j = s0.x j) ∧ s2.b = s0.b ∧
            (KL.Ok → KL.W = (C.map encG).map UInt64.toNat → ∀ t, SimW.RelW KL (0, s0) t →
-             ∃ n t', Proven.Steps n t t' ∧ SimW.RelW KL (6, s2) t')) := by
+             ∃ n t', Proven.Steps n t t' ∧ SimW.RelW KL (stubW fk, s2) t')) := by
   have hx11' : (s0.x 11).toNat = x.length := by rw [hx11]; exact NanoMain.toNat_ofNat_lt hxl
   obtain ⟨hs, T, o, hD, hne, hg, hc18, hst, hrun⟩ := gen_runS c p hXl h hdb s0 (NanoMain.inpW x)
     (fun i hi => by rw [hx11'] at hi; exact hxm i hi)
@@ -94,7 +94,7 @@ theorem gen_main (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : Parse
   refine ⟨_, 11 + (defsJ (pcOf 524288 ((s0.x 12).toNat + 16) (s0.x 11) (NanoMain.inpW x) T) p 0 hs.length).length + 31, _, T, hg, hc18, hst, ?_⟩
   intro KL E0 hE0 z0 ha8 h2k hroom hE62 hcb hin63 hin hlo hhi hbase hinw
   have hR := hrun KL (fun k hk => par_sc hP _ k (by omega)) E0 hE0 z0 ha8 h2k hroom hE62 hcb hin63 hin hlo hhi hbase hinw
-  refine ⟨fun vs H' hSd => ?_, fun hSd => hR.2 (by rw [hsl]; exact hSd)⟩
+  refine ⟨fun vs H' hSd => ?_, fun fk hk hSd => hR.2 fk hk (by rw [hsl]; exact hSd)⟩
   obtain ⟨sigs, hTy⟩ := NanoMain.refParse_ty hP
   obtain ⟨a, l, rfl, hB, hS⟩ := NanoMain.main_bridge _ p sigs Ks x hTy hO hK2 hx11 rfl hxl E0 _ _ _
     (by show ((s0.x 12).toNat + 16) % 8 = 0; omega) (Nat.le_refl _) hSd

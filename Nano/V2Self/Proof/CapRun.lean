@@ -43,6 +43,12 @@ theorem bpush_capS {K : LayW} {C : List J} {pc : Nat} (s : St) (hC : At C pc (bp
     simp [Safe, h0, h1, h2, h3, h4, h5, h6', CallProbe.wr, e0, e8, eb0, ebuf8, hc, upd_ne, upd_same, hx0] <;>
     first | omega | assumption | exact ⟨by omega, by assumption⟩
 
+/-- the stub word of a failure kind: cap → 6, room (out of memory) → 1 -/
+def stubW : Fail → Nat
+  | .cap => 6
+  | .room => 1
+  | .stuck => 0
+
 /-! ## the capacity contracts: the kinded semantics fails with `cap` ⇒ the run reaches the cap stub (word 6) -/
 
 /-- **CapW** (multi-word results): `cap` ⇒ a safe run to word 6 keeping the invariant; reads only `R` -/
