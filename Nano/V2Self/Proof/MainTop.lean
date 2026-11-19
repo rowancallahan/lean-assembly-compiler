@@ -4,9 +4,11 @@
   the text is not a program or the run hits Gen's buffer capacity);
 * `compileC`: C's driver `mC` (when it emits code and the text is at most 2^20 bytes); `memoryNeeded` = the work bound
   of `ImplementsC` (chosen);
-* `C_correctL : OwnStage → GenStage → CompileCorrectL riscv compileC` (the parser stage is F's `ParInv.parserSound`). -/
+* `C_correctL : BndStage → GenStage → CompileCorrectL riscv compileC` (the parser stage is F's `ParInv.parserSound`,
+  the ownership stage O's `OwnP.own_stage`). -/
 import Nano.V2Self.Proof.MainTyP
 import Nano.V2Self.Proof.ParInvRun
+import Nano.V2Self.Proof.OwnStage
 import Riscv.Back.Top
 import Compiler.AllocSpec
 
@@ -112,9 +114,13 @@ theorem kept_of {s s' : St} (hkept : abiSavedKept s s') : KeptRegisters riscv s 
 /-- the parser stage, discharged (F) -/
 theorem parStage : ParStage := fun _ hW hts => ParInv.parserSound hW hts
 
-/-- **C is correct** (owner's top-level statement), from the ownership and codegen stage theorems -/
-theorem C_correctL (HO : OwnStage) (HG : GenStage) : CompileCorrectL riscv compileC := by
+/-- the ownership stage, discharged (O) -/
+theorem ownStage : OwnStage := fun _ _ hp hb hl h => OwnP.own_stage hp hb hl h
+
+/-- **C is correct** (owner's top-level statement), from the size-bound and codegen stage theorems -/
+theorem C_correctL (HB : BndStage) (HG : GenStage) : CompileCorrectL riscv compileC := by
   have HP := parStage
+  have HO := ownStage
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight outputFits
     enough
   obtain ⟨x⟩ := program
@@ -124,7 +130,7 @@ theorem C_correctL (HO : OwnStage) (HG : GenStage) : CompileCorrectL riscv compi
     have hcomp := Option.some.inj compiles
     subst hcomp
     obtain ⟨hne, hx⟩ := hc
-    obtain ⟨ts, p, hL, hP, -, hI, -⟩ := compiler_correct' HP HO HG x hx hne
+    obtain ⟨ts, p, hL, hP, -, hI, -⟩ := compiler_correct' HP HO HB HG x hx hne
     have hpo := pOf_eq hL hP
     have hW : ImplementsCW (mC x) (Sem κC p) (spaceC x) := by
       unfold spaceC; rw [hpo]; simp only; rw [dif_pos hI]; exact Classical.choose_spec hI

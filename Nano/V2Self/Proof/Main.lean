@@ -195,8 +195,18 @@ def ParStage : Prop := ∀ ts : List UInt64, ParSpec.TokWF ts → ts.length < 2 
 /-- O's ownership discipline with slot kinds 0 (word) / 1 (owned) / 2 (read-only) -/
 def LinearK (p : List DefA) : Prop := ∃ Ks, OwnSpec.progOk [] [] Ks p = true ∧ ∀ K ∈ Ks, ∀ k ∈ K, k ≤ 2
 
-/-- the ownership stage (box O): a non-empty result of `o41` on a serialized program certifies `LinearK` -/
-def OwnStage : Prop := ∀ p : List DefA, C.o41 (serialize p) ≠ [] → LinearK p
+/-- size bounds O's stage needs (= `OwnWF.Bnd`): `serialize` writes numbers mod 2^64 -/
+def BndP (p : List DefA) : Prop := p.length < 2 ^ 64 ∧ ∀ d ∈ p, d.nslots < 2 ^ 20 ∧ d.nres < 2 ^ 64
+
+/-- the ownership stage (box O, `OwnP.own_stage`): on a parsed program within `BndP` whose serialization is below 2^64
+words, a non-empty result of `o41` certifies `LinearK` -/
+def OwnStage : Prop := ∀ (ts : List UInt64) (p : List DefA), ParsesProgram ts p → BndP p → (serialize p).length < 2 ^ 64 →
+  C.o41 (serialize p) ≠ [] → LinearK p
+
+/-- the size bounds, from the parser (fields below 2^64) and Gen's success (nslots, nres < 251) — not parser facts
+alone: refParse caps no tuple width -/
+def BndStage : Prop := ∀ (c : List UInt8) (ts : List UInt64) (p : List DefA), ParsesProgram ts p →
+  C.g41 c (serialize p) ≠ [] → BndP p ∧ (serialize p).length < 2 ^ 64
 
 /-- codegen (box A: g41's output is the code of the AST; box E: that code runs on Sail as `Sem`): for every parsed
 linear program `p`, a non-empty result of Gen on `serialize p` implements `Sem κC p` -/
@@ -270,7 +280,7 @@ theorem lexes_len {x : List UInt8} {ts : List UInt64} (h : LexSpec.Lexes x ts) :
 /-- **C is sound on success**: if the driver emits code for source `x` (at most 2^20 bytes), then `x` lexes (Lex2Spec) and
 parses (ParSpec) to a program `p`, and the emitted bytes implement `p`'s meaning on Sail (outcomes: the result, the
 capacity trap when `Sem` reports it, out-of-memory only below the work bound). -/
-theorem compiler_correct (HP : ParStage) (HO : OwnStage) (HG : GenStage) (x : List UInt8) (hx : x.length ≤ 2 ^ 20)
+theorem compiler_correct (HP : ParStage) (HO : OwnStage) (HB : BndStage) (HG : GenStage) (x : List UInt8) (hx : x.length ≤ 2 ^ 20)
     (h : mC x ≠ []) :
     ∃ ts p, LexSpec.Lexes x ts ∧ ParsesProgram ts p ∧ LinearK p ∧ ImplementsC (mC x) (Sem κC p) := by
   have hy0 : C.o41 (C.y16 (C.s10 x)) ≠ [] := fun e => h (by simp only [mC, e, g41_nil])
@@ -282,9 +292,10 @@ theorem compiler_correct (HP : ParStage) (HO : OwnStage) (HG : GenStage) (x : Li
   · have hL := LexSpec.s10_sound x (by omega) _ rfl h0
     have hb := lexes_len hL
     obtain ⟨p, hp, he⟩ := HP _ (lexes_tokWF hL) (by omega) hy
-    have hlin : LinearK p := HO p (by rw [← he]; exact hy0)
-    refine ⟨_, p, hL, hp, hlin, ?_⟩
     have hg : C.g41 x (serialize p) ≠ [] := by rw [← he, ← hoe]; exact h
+    obtain ⟨hbd, hsl⟩ := HB x _ p hp hg
+    have hlin : LinearK p := HO _ p hp hbd hsl (by rw [← he]; exact hy0)
+    refine ⟨_, p, hL, hp, hlin, ?_⟩
     have := HG x _ p hp hlin hg
     rw [mC, hoe, he]; exact this
 
