@@ -51,12 +51,47 @@ noncomputable def srcRun (s : SrcC) (inp : List UInt8) : Option (List UInt8) :=
 
 noncomputable instance : Program SrcC := ⟨srcRun⟩
 
+/-- the definite out-of-memory return: a0 = −1, a1 = 0, only the output and work blocks changed -/
+def OomOutM (s : St) (ra : BitVec 64) (output work : Region) (s' : St) : Prop :=
+  s'.regs.get? .PC = some ra ∧ abiSavedKept s s' ∧ Cfg s' ∧ s'.regs.get? .x10 = some a0Oom ∧
+    s'.regs.get? .x11 = some 0 ∧ unchangedOutside s s' [output, work]
+
+/-- **the work bound is exact**: same premises as `ImplementsCW`; when `f` has a result and the work block is below
+`space x`, the run ends in the out-of-memory return (with `ImplementsCW`: out of memory iff below the bound) -/
+def ExactCW (B : List UInt8) (f : List UInt8 → Except Stop (List UInt8)) (space : List UInt8 → Nat)
+    (maxLen : Nat := 2 ^ 20) : Prop :=
+  ∀ (x : List UInt8) (s : St) (entry ra : BitVec 64) (input output work : Region),
+    let codeR : Region := ⟨entry.toNat, B.length⟩
+    x.length ≤ maxLen → Cfg s → s.regs.get? .PC = some entry → entry.toNat % 4 = 0 → B.length % 4 = 0 →
+    bytesAt s entry.toNat B.length = B.map (some ·.toBitVec) →
+    s.regs.get? .x10 = some (BitVec.ofNat 64 input.base) →
+    s.regs.get? .x11 = some (BitVec.ofNat 64 x.length) →
+    s.regs.get? .x12 = some (BitVec.ofNat 64 work.base) →
+    s.regs.get? .x13 = some (BitVec.ofNat 64 output.base) →
+    s.regs.get? .x2 = some (BitVec.ofNat 64 (work.base + work.len)) →
+    s.regs.get? .x1 = some ra → ra.toNat % 4 = 0 → disjoint ⟨ra.toNat, 4⟩ codeR →
+    bytesAt s input.base x.length = x.map (some ·.toBitVec) →
+    input.len = x.length → (∀ y, f x = .ok y → y.length ≤ output.len) → work.base % 8 = 0 →
+    (∀ r ∈ [input, output, work, codeR], r.inRAM) → [input, output, work, codeR].Pairwise disjoint →
+    Mapped s output → Mapped s work →
+    ∀ y, f x = .ok y → work.len < space x → runsTo s (OomOutM s ra output work)
+
 open Classical in
-/-- the work bound of C's code for a text (from `ImplementsC`) -/
+/-- the work bound of C's code for a text: an exact one (`ImplementsCW ∧ ExactCW`) when there is one, else any
+`ImplementsC` bound -/
 noncomputable def spaceC (x : List UInt8) : List UInt8 → Nat :=
   match pOf x with
-  | some p => if h : ImplementsC (mC x) (Sem κC p) then Classical.choose h else fun _ => 0
+  | some p =>
+    if h : ∃ sp, ImplementsCW (mC x) (Sem κC p) sp ∧ ExactCW (mC x) (Sem κC p) sp then Classical.choose h
+    else if h : ImplementsC (mC x) (Sem κC p) then Classical.choose h else fun _ => 0
   | none => fun _ => 0
+
+theorem spaceC_impl {x : List UInt8} {p : List DefA} (hpo : pOf x = some p) (hI : ImplementsC (mC x) (Sem κC p)) :
+    ImplementsCW (mC x) (Sem κC p) (spaceC x) := by
+  unfold spaceC; rw [hpo]; simp only
+  split
+  · rename_i h; exact (Classical.choose_spec h).1
+  · exact Classical.choose_spec hI
 
 /-- **C as a compiler** -/
 noncomputable def compileC (s : SrcC) : Option CompiledA :=
@@ -132,8 +167,7 @@ theorem C_correctL (HB : BndStage) (HG : GenStage) : CompileCorrectL riscv compi
     obtain ⟨hne, hx⟩ := hc
     obtain ⟨ts, p, hL, hP, -, hI, -⟩ := compiler_correct' HP HO HB HG x hx hne
     have hpo := pOf_eq hL hP
-    have hW : ImplementsCW (mC x) (Sem κC p) (spaceC x) := by
-      unfold spaceC; rw [hpo]; simp only; rw [dif_pos hI]; exact Classical.choose_spec hI
+    have hW : ImplementsCW (mC x) (Sem κC p) (spaceC x) := spaceC_impl hpo hI
     have hrun : Sem κC p (encodeInput argument) = .ok (encodeOutput (f argument)) := by
       have := computes argument
       change srcRun ⟨x⟩ (encodeInput argument) = _ at this
