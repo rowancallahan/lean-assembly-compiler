@@ -186,6 +186,11 @@ theorem gen_top (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length <
         o = g34 bnew ++ (defsJ (pcOf 524288 hb c29 inp T) ds 0 hs.length).map encG ∧
         (∀ j, j < hs.length → tg (serialize ds) (hs.getD j 0 + 2) = (dA ds j).npw.toUInt64 ∧
           tg (serialize ds) (hs.getD j 0 + 5) = (dA ds j).nres.toUInt64 ∧ OpV (dA ds j).body) ∧
+        (∀ j, j < hs.length → (pcOf 524288 hb c29 inp T).T j =
+          (g34 bnew).length + (defsJ (pcOf 524288 hb c29 inp T) ds 0 j).length) ∧
+        (∀ k, k < hs.length → ScV (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body →
+          OkV (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body ∧
+          wd (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body = (dA ds k).nres) ∧
         ∀ (C : List J) (IG : St → Prop) (E0 : Nat) (c28 : UInt64), IGOK hb E0 IG → E0 < 2 ^ 62 →
           (∀ s, IG s → s.b + 4 * C.length < 2 ^ 64) → InpOK IG c28 c29 inp →
           At C (g34 bnew).length (defsJ (pcOf 524288 hb c29 inp T) ds 0 hs.length) →
@@ -198,10 +203,10 @@ theorem gen_top (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length <
   have cw := chainW (P := pcOf 524288 hb c29 inp T) (ds := ds) (u := g_999) rfl (Tf := T) (fun j => rfl) hD rfl ds
     (by simp [bnew]) (SerAt_serialize ds) (by simp [serialize]; omega) hdb (by simp [bnew]) (by simp [bnew]) hol
   simp only [bnew, List.length_nil, Nat.zero_add] at cw
-  refine ⟨cw.1, by simpa using cw.2.2, fun C IG E0 c28 hig he hcb hinp hC hpar k hk => ?_⟩
-  have perK : ∀ k, k < hs.length → OkV (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body ∧
+  have perK : ∀ k, k < hs.length → ScV (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body →
+      OkV (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body ∧
       wd (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body = (dA ds k).nres := by
-    intro k hk
+    intro k hk hsc
     have wc := wchain (ds := ds) hW 0 ds (by simp) (by simp [dD]) (by simp) (SerAt_serialize ds)
       (by simp [serialize]; omega) hdb k hk
     simp only [Nat.zero_add] at wc
@@ -219,7 +224,6 @@ theorem gen_top (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length <
       nres := fun n hn => by
         show (dA ds n).nres = _; rw [dD_get' ds _ n hn]; exact (toU_lt _ (DB_dA hdb n).2.2.2.2.1).symm
       r32 := fun n => (DB_dA hdb n).2.2.2.2.1 }
-    obtain ⟨_, _, hsc, _⟩ := hpar k hk
     simp only [DefA.ser] at sa0
     have sb : SerAt (serialize ds) (i0 + 6) (dA ds k).body.ser := by
       obtain ⟨sa1, _⟩ := sa0.app; obtain ⟨_, sb⟩ := sa1.app; simpa using sb
@@ -229,9 +233,10 @@ theorem gen_top (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length <
     have ewd : wd (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body = (dA ds k).nres :=
       ofNat_inj' (by simpa [Nat.toUInt64] using ew) (by omega) (by omega)
     exact ⟨okV_of _ _ wdv hsc, ewd⟩
+  refine ⟨cw.1, by simpa using cw.2.2, cw.2.1, perK, fun C IG E0 c28 hig he hcb hinp hC hpar k hk => ?_⟩
   exact gen_defs_run _ ds C IG E0 c28 hs.length (g34 bnew).length hig he hcb hinp hC cw.2.1
     (fun k' hk' => by
-      obtain ⟨hpw', hpn', _, hrd'⟩ := hpar k' hk'
-      exact ⟨hpw', hpn', (perK k' hk').1, (perK k' hk').2, hrd'⟩) k hk
+      obtain ⟨hpw', hpn', hsc', hrd'⟩ := hpar k' hk'
+      exact ⟨hpw', hpn', (perK k' hk' hsc').1, (perK k' hk' hsc').2, hrd'⟩) k hk
 
 end Templates
