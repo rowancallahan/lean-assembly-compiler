@@ -149,14 +149,13 @@ Fuel arguments: argCheck accepts a Nat parameter for sh = nt, a bare numeral (ta
 AGREED (owner relay, 09:30): statement form = ty_sound's (∀ fuel ≥ F ⇒ `some`), no 3-valued spec; B adopts `CxRel` / `TyRel` and plugs
 `args_spec` / `defcall_spec` / `primcall_spec` into its expression induction via `ParenH`; F = defs / headers / arms / flatten / top.
 Build runner for G: Haiku session_01MfKuVZqa87sKK2KCMC5w2M.
-WAITING ON C (asked 09:50): (1) `rep_v5` / `arena_v5` demand `A, B < 2^64`; a LOC node's slot is only known mod 2^64 ⇒ relax to
-`t ≠ 2 → t ≠ 5 → …` (RNRep.mk already is) — then `h_argAtom` (43, v120): branches `(` → push 40, 1; numeral → push 3; id: `v7_findB`,
-free ⇒ push 55, bound ⇒ `v86_skip`, row cells, `v9_cw`, LOC via rep_v5 = `locOf` (code 4 ⇒ fail, `ShapeCode.nt_code`);
-(2) `ShapeCode.pr` bound `c < 5 + h[26]` + Rep fact on h[26] ⇒ `h_tyPair` (63, v130) from `v10_scan`, and `h_assign` (68, v133).
-DONE since: `ParInvGroup` — `v6_eff` / `v6_ok` / `rep_v6` (binding append on Rep; let binders can reuse it), `v1_cell4`, `h_group` (67, v132);
-`ParInvAssign.v201_eq` (earlier-input scan = `(binds.take i).any Bd.inp`).
-NEXT (not blocked): `h_assign` (68, v133; no v10 involved): a = h[4] ⇒ pop; else w = h[25] (needs `st.ty.isSome`, a < |binds| from WF), code 4 ⇒ fail,
-fix-J guard via `v201_eq`, row a := (slot h[11], w, flag n1) = `binds.set a ⟨name, nx, some w, n1⟩`, `v9_cw` for the width, h[11] += width·(1 − n1)
-(mod 2^64, Rep has `= nx.toUInt64`), parameter code cell d7+4096+h[27] := w with h[27]+1 (< 4096 else fail; DefsRep's zero cells ≥ h[27]),
-current row +2 (nni) += 1 − n1 and +6 (count) += 1 ⇒ `cur.params ++ [w]`; then push 68 (a+1, sz).  Needs inDefF fs (current row).
+DONE since (all pushed): `ParInvAtom.h_argAtom` (43, v120; LOC node via C's `rep_v5g`), `ParInvGroup.h_group` (67) + `rep_v6`,
+`ParInvAssign.h_assign` (68, v133) with `v201_eq`, `asgHeap` / `v133_eq` / `asg_eff` / `rep_asg`, `v133_full`, `row_frame'`.
+MACHINE HANDLERS OF G, STATUS: 43 ✓, 44 ✓, 45 ✓, 47 ✓, 48 ✓, 55 ✓, 61 ✓, 62 ✓, 66 ✓, 67 ✓, 68 ✓; 63 (tyPair, v130) OPEN.
+Side conditions the glue must supply (from B's `WF` / F's `SInv`): no flatten frame on the stack (43, 48, 55); `inDefF fs` (47, 48, 68);
+`k ≤ |vals|`, `k ≤ arity`, `calleeOK` (47); `d ≤ |vals|` (45); `n < 4096`, `calleeOK` (48); `st.ty.isSome` (62, 68); `i ≤ |binds|`,
+`cur.nni < 2^63` (68).
+WAITING ON C: `ShapeCode.pr` bound `c < 5 + h[26]` + a Rep fact on h[26] ⇒ `h_tyPair` (63) from `ParInvIntern.v10_scan`: found row i ⇒
+h[25] := i + 5 with ShapeCode (needs "rows < h[26] decode" — an interning invariant in Rep), else allocate row h[26] (Nat components
+rejected, capacity d15, width cell = sum of the two v9 widths) — the frame must show old codes < 5 + h[26] keep decoding.
 
