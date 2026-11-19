@@ -127,9 +127,23 @@ OPEN / NEXT (owner order 2026-11-19):
    call (10: against the callee contract `DefR`/`CallR`).  Extra premises of node_all: RsOK (rs lengths = D),
    RsW (O's result kinds ≤ 1), CtxR (K.κ = cx.κ, c29 = |inp|, K.inp = inpW inp, |inp| < 2^64), CallR (every callee
    meets DefR: related args ⇒ related results; owned results fresh or owned-arg blocks, distinct; other blocks kept).
-   NEXT: tail mode (st: ifTS/letTS/contS/exitS ↔ ev Out .inl/.inr), loop (loopGo ↔ loopRun; arms start from F0, Γ
-   knows slot 0 + states; CONTINUE = fin (stD) re-establishes EnvI), def level (DefR for defS/defMean from node_all /
-   the loop lemma; ArgsR ⇒ initial EnvI), program level (CallR by induction over progOk), then Sem ⇐ machine.
+   DONE (2026-11-19), all no sorry, propext/choice/Quot.sound, each file ≤ 6 s / 1.7 GB:
+   - tail mode `tail_all` (MainBridge12): `TailOK` = exit related as NodeOK, or CONTINUE states `StOK` (ArgsR at the
+     state kinds stD + owned-state source + read-only states are read-only slots' blocks); `st_none` (value-mode
+     tail template = exitS ∘ sv), `chk_len_tail`, `fin_args`.
+   - loop `loop_run` (MainBridge13): E's `loopGo` succeeding ⇒ `Sem`'s `loopRun` with `ResR` (results in the callee
+     contract's form) and `Frame0` (blocks existing at the call and not owned arguments' unchanged); invariant `LI`;
+     `chk_keep_tail` (tail walk kills only owned slots), `envI_cont`, `envI_slot0`.
+   - def `def_ok` (MainBridge14): plain body via node_all, loop body via loop_run ⇒ `DefR` for
+     `defS npw nslots (sv K body)` vs `defMean`.  `NodeOK`/`DefR` also carry `Grow` (σ blocks never removed).
+   - program (MainBridge15): `prog_ok` — for an O-accepted (progOk [] [] Ks ds, Ks entries ≤ 2), well-kinded (TyProg)
+     program every `semAt P ds i` meets `DefR` against `(means inp P.κ [] ds)[i]` (E's PC with c29 = |inp|,
+     inp = inpW inp); `main_bridge` — `semAt P ds (|ds|−1) [] sp H = some (vs, H')` (H.top 8-aligned, hb ≤ H.top) ⇒
+     vs = [a], `BufAt hb κ H' a l`, `Sem P.κ ds inp = .ok (l.map toUInt8)`.
+   OPEN for the end-to-end statement: (a) O's Linear has no slot-kind bound; the bridge needs every Ks entry ≤ 2
+   (a kind ≥ 4 would decode tags to the wrong slot) — asked O to add it to defOk or prove it for o41's Ks;
+   (b) the machine side from the start routine to `semAt main` (E's DefX chain + start words) — compose with
+   main_bridge; (c) MainTop re-point to the o41 driver with subset = parsed ∧ Linear.
    Fuel-margin run on self_S (interpreted `lean --run`): did not finish in 40 min; needs a compiled exe.
 2. MainTop subset: parsed ∧ Linear, compileC with the ownership check (after O).
 3. C-wide certificate generator (one Sem = Lean lemma per def) + kernel test of progEq on C's token stream.
