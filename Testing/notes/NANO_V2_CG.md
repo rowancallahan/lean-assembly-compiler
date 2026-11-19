@@ -313,9 +313,16 @@ DONE later the same day (all no sorry, standard axioms, each module ≤ 3 s / �
   and keeps m[a2], m[a2+8]; a2 % 8 = 0; hb = a2+16 ≤ E0 = sp&~7 < 2^62; result buffer in the heap; output region
   below a2 or ≥ E0+8.
 
+- `Proof/GenRun.lean`: `gen_C` (g41 success ⇒ g41 = g40 … (C.map encG) with C = stubJ S ++ defsJ ++ startJ S w,
+  w = main's start word), `IGs` (start invariant) + `IGs_ok`, **gen_run**: J-level end-to-end — on g41 success the
+  emitted program, run from word 0, returns to ra with main's buffer bytes at a3.  Hypotheses still open: per-def
+  side conditions (npw < 2^20, npw ≤ nslots, ScV, reads ⊆ params), main npw = 0 / nres = 1 (Gen checks these:
+  `gen41_full`'s tg facts; not yet tied to `dA`), `semAt` main run succeeds, result buffer facts in H' (length cell,
+  byte cells inside the heap — a heap well-formedness invariant of `sv` would discharge these), host layout
+  (a2 % 8 = 0, a2+16 ≤ sp&~7 < 2^62, input/output regions disjoint from [a2, E0+8)), o.length < 2^24.
+
 OPEN (in order of value):
-1. Glue gen_top + start_run: C = stubJ ++ defsJ ++ startJ (At facts from gen_words/startW_exact), main = last def
-   (p = 0, q = 1 from the parser), IG instance (input facts + save slots); then g41 bytes run to the output.
+1. Tie main npw/nres to `gen41_full` (tg x (last+2) = 0, tg x (last+5) = 1); heap invariant for main's buffer.
 2. Sail lift: every template run lemma must become a Safe run (`SimW.SStar`): addi no-wrap, ld/sd/lbu addresses
    8-aligned in the ONE work region (input must lie in it), jal targets in code, jalr targets base+4j.  Mechanical but
    large (safe twins of const/push/bin/rd/bsize/bget/bnew/bpush/bset/li/local1/pro/epi/popN runs; contracts Star→SStar).
