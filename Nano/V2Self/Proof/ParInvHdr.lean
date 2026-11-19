@@ -596,7 +596,7 @@ theorem rep_nxss {h h' ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs
     arena_frame rA (c 8 (by decide) (by decide) (by decide) (by decide)) (c 9 (by decide) (by decide) (by decide) (by decide))
       (fun i a _ => e i (by omega) (by omega) (by omega) (by omega)) es,
     fun s hs => by rw [c 25 (by decide) (by decide) (by decide) (by decide)]; exact (r25 s hs).frame es,
-    fun x hx hne => by rw [c 29 (by decide) (by decide) (by decide) (by decide)]; exact nameAt_frame et (by omega) (r29 x hx hne),
+    fun x hx => by rw [c 29 (by decide) (by decide) (by decide) (by decide)]; exact nameAt_frame et (by omega) (r29 x hx),
     by rw [c 30 (by decide) (by decide) (by decide) (by decide)]; exact r30, h32, out_frame rO ed,
     tasks_frame rK (c 5 (by decide) (by decide) (by decide) (by decide)) (fun i _ _ => e i (by omega) (by omega) (by omega) (by omega)) et hn es
       (fun i a _ => e i (by omega) (by omega) (by omega) (by omega)) rA.2.1⟩
