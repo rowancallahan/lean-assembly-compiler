@@ -248,14 +248,15 @@ and Par1 accepted (ParSpec.mainOK rejects). Fix: v99 (and its proof mirror `ParI
 first; `MainCells` gains that conjunct, `main_of` takes it from MainCells (no separate hA). Regression `fuzz/regress_main4096.txt`
 (old B1 accepts, new rejects).
 Results: fixpoint B3 == B2, 255,668 bytes, **sha256 e840bd9a7613fa45295eea3453279194c3fa6e860913bd7a972bd94a8fbcd466** (supersedes
-d71d7c97…); fuzz 2,000 (seed 61): 0 disagreements.
+d71d7c97…), before the Own stage landed; with Own (064f0ef): 327,580 bytes, **sha256 dcc74d862dceeff1866ee6f739c412326664f9b64ba4535768301e608bf14986**
+(supersedes 41f637f8…). Fuzz (Par1 `parse`) 2,000 (seed 61): 0 disagreements.
 
 ## HANDOFF — Opus box C, parser Layer 3 (2026-11-19, keep current)
 Build here: no lake deps in this container; `lean -o` per module with LEAN_PATH (scratch script topo-sorts the imports); every
 ParRun*/ParInv*/ParTree* module builds, each < 20 s, < 1 GB.
 DONE (pushed, no sorry, std axioms):
 * Par1 fixes G (no if/let as operands), H (input = pickPs), I (no Nat as data), J (List group before the input rejected), K (`(Nat) →`):
-  L (v99 main arity = 1): B3 == B2 sha256 e840bd9a…d466, fuzz 0 disagreements (B mirrored G–K in ParRun; L is v99/fin only).
+  L (v99 main arity = 1): B3 == B2 sha256 dcc74d86…4986 (with Own), fuzz 0 disagreements (B mirrored G–K in ParRun; L is v99/fin only).
 * `ParInvRep` (TokAt, RNRep/KidsR ↔ B's RN, ShOpt, ArenaRep, frames), `ParInvOps` (v2_eff, v5_eff, arena_v5g), `ParInvState` (**Rep**;
   DefsRep incl. `ShRows` = h[26] shape rows, zero left cells above; G extended ShRows with row decoding), `ParInvStep` (region frames,
   push/pop, rep_tasks/rep_tok, tok_kw, defs_frame with e12/e27/e26), `ParInvBuild` (rep_arena, rep_v5g, val_rep, opCell, tok_cases,
