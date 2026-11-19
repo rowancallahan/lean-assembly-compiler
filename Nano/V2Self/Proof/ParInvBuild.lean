@@ -34,8 +34,8 @@ theorem tasks_arena_ext {h : Buf} {arena arena' : List RN} {fs : List Frame} (r 
   cases f <;> simp only [FrameArgs] at this ⊢
   all_goals first
     | exact this
-    | (obtain ⟨hu, e⟩ := this
-       exact ⟨by simp; omega, by rw [List.getElem_append_left hu]; exact e⟩)
+    | (obtain ⟨ids, k1, kb⟩ := this
+       exact ⟨ids, k1, fun v hv => by have := kb v hv; simp; omega⟩)
     | (obtain ⟨b1, ids, k1, kb⟩ := this
        exact ⟨b1, ids, k1, fun v hv => by have := kb v hv; simp; omega⟩)
 

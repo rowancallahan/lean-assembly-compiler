@@ -73,7 +73,12 @@ theorem h_defEnd_core {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st 
     · have R2 := rep_scratch (h' := bset g 31 (cw st.cur.res).toUInt64) R1
         (fun i _ a31 => bget_bset' g 31 i _ (fun e => a31 (by rw [← e]; rfl))) (drop_bset _ _ _ (by decide))
       have R3 := rep_push .defClose 0 0 R2 (by simp [inDefF, Frame.isDefs]) trivial (fun e => hH0 (v1_zero _ _ _ _ e))
-      have R4 := rep_push (.flat zn) z 0 R3 (by simp [inDefF, Frame.isDefs]) ⟨hzA, hzn⟩ hH0
+      have hf : FrameArgs (v1 (bset g 31 (cw st.cur.res).toUInt64) 83 0 0) st.arena (.flat zn) z 0 := by
+        obtain ⟨_, _, _, _, I3, hI3, _⟩ := R3.2.2.2.2.2.2.2.1
+        obtain ⟨rz3, _, hb3⟩ := hI3 z.toNat hzA
+        rw [hzn, zz] at rz3
+        exact ⟨I3 z.toNat, rz3, hb3⟩
+      have R4 := rep_push (.flat zn) z 0 R3 (by simp [inDefF, Frame.isDefs]) hf hH0
       exact R4
   · rw [if_neg hc] at hs; exact absurd (status_bset0 g) hs
 

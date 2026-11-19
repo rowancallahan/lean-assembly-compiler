@@ -69,6 +69,10 @@ theorem frameArgs_frameP {h h' : Buf} {arena : List RN} (et : TokAgree h h') (hn
     | exact es _ _ r
     | (obtain ⟨r1, ids, k, kb⟩ := r
        exact ⟨r1, ids, k.frameP (recAgree_of ea (fun v hv => by have := kb v hv; omega)) es, kb⟩)
+    | (obtain ⟨ids, k, kb⟩ := r
+       have hb : ∀ v ∈ ids, v.toNat < 16384 := fun v hv => by have := kb v hv; omega
+       exact ⟨ids, k.frameP (fun q hq => recAgree_of ea hb _ k.mem q (by omega))
+         (fun v hv q hq => recAgree_of ea hb v (List.mem_of_mem_tail hv) q hq) es, kb⟩)
 
 theorem tasks_frameP {h h' : Buf} {arena : List RN} {fs : List Frame} (r : TasksRep h arena fs) (e5 : bget h' 5 = bget h 5)
     (er : ∀ i : UInt64, 64 ≤ i.toNat → i.toNat < 64 + 3 * fs.length → bget h' i = bget h i)

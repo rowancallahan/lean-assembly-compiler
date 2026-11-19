@@ -104,6 +104,12 @@ theorem recAgree_of {h h' : Buf} (e : ArenaAgree h h') {ids : List UInt64} (hb :
   simp only [fld]; exact e _ (by rw [recK v k (by omega) hk]; omega) (by rw [recK v k (by omega) hk]; omega)
 
 /-! ## frames -/
+/-- a node whose records all lie in the arena keeps its representation when the arena region agrees -/
+theorem rnRep_frameA {h h' : Buf} {u : UInt64} {n : RN} {ids : List UInt64} (r : RNRep h u n ids) (ea : ArenaAgree h h')
+    (es : ShTabAgree h h') (hb : ∀ v ∈ ids, v.toNat < 16384) : RNRep h' u n ids :=
+  r.frame (fun k hk => recAgree_of ea hb u r.mem k (by omega))
+    (fun v hv k hk => recAgree_of ea hb v (List.mem_of_mem_tail hv) k hk) es
+
 theorem frameArgs_frameN {h h' : Buf} {arena : List RN} (et : TokAgreeN h h') (hn : (bget h 7).toNat < 2 ^ 32)
     (es : ShTabAgree h h') (ea : ArenaAgree h h') (har : arena.length ≤ 16384) :
     ∀ (f : Frame) (a b : UInt64), FrameArgs h arena f a b → FrameArgs h' arena f a b := by
@@ -117,6 +123,8 @@ theorem frameArgs_frameN {h h' : Buf} {arena : List RN} (et : TokAgreeN h h') (h
     | exact ShapeCode.frame r es
     | (obtain ⟨r1, ids, k, kb⟩ := r
        exact ⟨r1, ids, k.frame (recAgree_of ea (fun v hv => by have := kb v hv; omega)) es, kb⟩)
+    | (obtain ⟨ids, k, kb⟩ := r
+       exact ⟨ids, rnRep_frameA k ea es (fun v hv => by have := kb v hv; omega), kb⟩)
 
 theorem frameArgs_frame {h h' : Buf} {arena : List RN} (et : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 32)
     (es : ShTabAgree h h') (ea : ArenaAgree h h') (har : arena.length ≤ 16384) :
