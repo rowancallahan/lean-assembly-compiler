@@ -114,9 +114,5 @@ theorem capStage : CapStage := fun _ _ hp _ d hd => by
 
 theorem bndStage : BndStage := fun _ _ _ hp hts _ => (Templates.parsed_bnd hp hts).1
 
-/-- **C is correct**: `C_correctLC` with both of its premises proved -/
-theorem C_correctLO : CompileCorrect riscv compileC := C_correctLC bndStage capStage
-
 end NanoMain
 
-#print axioms NanoMain.C_correctLO

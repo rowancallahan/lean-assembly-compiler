@@ -34,12 +34,15 @@ theorem rv_enc : EncOK rvTarget id := by
 theorem compileOn_id : compileOn id = compileC := by
   funext s; unfold compileOn compileC; rw [id_eq]
 
-/-- **C is correct** (RISC-V), from the generic route -/
-theorem C_correctR : CompileCorrect riscv compileC := by
+/-- **C is correct** (RISC-V): the generic `C_correct_on` for `rvTarget` -/
+theorem C_correctLO : CompileCorrect riscv compileC := by
   rw [← compileOn_id]; exact C_correct_on rvLaws id rv_enc (by decide)
 
-/-- **C runs correctly with any work block** (RISC-V), from the generic route -/
-theorem C_runsR : CompileRuns riscv compileC := by
+/-- **C runs correctly with any work block** (owner's `CompileRuns`, RISC-V: the generic `C_runs_on` for `rvTarget`):
+return to the caller, memory changed only in the work block and the result prefix of the output block, callee-saved
+registers kept, configured, and out of memory reported (a0 = −1) exactly when the work block is smaller than
+`memoryNeeded`. -/
+theorem C_runsO : CompileRuns riscv compileC := by
   rw [← compileOn_id]; exact C_runs_on rvLaws id rv_enc (by decide)
 
 end NanoMain

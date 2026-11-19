@@ -1,6 +1,6 @@
 /- OWNER REVIEW FILE: what to read and what to trust.  No new proofs.  Notes: Testing/notes/NANO_V2_REVIEW.md.
 Build: `lake build Nano.V2Self.REVIEW`.  The #print axioms output is the authoritative axiom list. -/
-import Nano.V2Self.Proof.Main.ParCapBnd
+import Nano.V2Self.Proof.Main.RvTop
 import Nano.V2Self.Proof.Cert.All
 import Nano.V2Self.Proof.Main.SelfC
 import Nano.V2Self.Proof.Main.RunsTopO
