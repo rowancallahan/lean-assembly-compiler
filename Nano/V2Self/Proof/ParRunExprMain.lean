@@ -693,4 +693,59 @@ theorem expr_letpair {n : Nat} (hE : ∀ n' < n, ExprSpec n') {md ks st fin cx x
   | call ht' => rw [ht] at ht'; cases ht'
   | primTok ht' h1 h2 => rw [ht] at ht'; injection ht' with ht'; injection ht' with ht'; omega
 
+
+/-- a run through `let` reaches one of the two let forms -/
+theorem let_forms {n md ks st fin r} (h : StarN n (.expr 0 md :: ks, st) ([], fin)) (ht : st.toks = .k 2 :: r) :
+    (∃ x r', r = .id x :: .k 9 :: r') ∨ (∃ x y r', r = .k 6 :: .id x :: .k 15 :: .id y :: .k 7 :: .k 9 :: r') := by
+  match n, h with
+  | 0, h => exact absurd h.zero_nil.1 (by simp)
+  | n + 1, h =>
+  obtain ⟨k, st1, hs, h1⟩ := h.head
+  rw [expr_eq] at hs; simp at hs; obtain ⟨rfl, rfl⟩ := hs
+  match n, h1 with
+  | 0, h1 => exact absurd h1.zero_nil.1 (by simp)
+  | n + 1, h1 =>
+  obtain ⟨k, st2, hs2, h2⟩ := h1.head
+  cases prim_inv hs2 with
+  | lets _ ht' =>
+    rw [ht] at ht'; injection ht' with _ hr; subst hr
+    match n, h2 with
+    | 0, h2 => exact absurd h2.zero_nil.1 (by simp)
+    | n + 1, h2 =>
+    obtain ⟨k3, st3, hs3, h3⟩ := h2.head
+    rcases letStart_inv hs3 with ⟨x, r', hx, _, _⟩ | ⟨r', hx, rfl, rfl⟩
+    · exact Or.inl ⟨x, r', hx⟩
+    simp only [List.cons_append, List.nil_append] at h3
+    match n, h3 with
+    | 0, h3 => exact absurd h3.zero_nil.1 (by simp)
+    | n + 1, h3 =>
+    obtain ⟨k4, st4, hs4, h4⟩ := h3.head
+    obtain ⟨x, r4, hx4, rfl, rfl⟩ := letPairX_inv hs4
+    simp only [List.cons_append, List.nil_append] at h4
+    match n, h4 with
+    | 0, h4 => exact absurd h4.zero_nil.1 (by simp)
+    | n + 1, h4 =>
+    obtain ⟨k5, st5, hs5, _⟩ := h4.head
+    obtain ⟨y, r5, hy5, _, _⟩ := letPairY_inv hs5
+    simp only at hx hx4 hy5
+    exact Or.inr ⟨x, y, r5, by rw [hx, hx4, hy5]⟩
+  | ifs _ ht' => rw [ht] at ht'; cases ht'
+  | leaf hl _ => cases hl <;> simp_all
+  | paren ht' => rw [ht] at ht'; cases ht'
+  | self ht' => rw [ht] at ht'; cases ht'
+  | call ht' => rw [ht] at ht'; cases ht'
+  | primTok ht' h1 h2 => rw [ht] at ht'; injection ht' with ht'; injection ht' with ht'; omega
+
+theorem expr_sound {n : Nat} (hB : ∀ n' < n, BinSpec n') (hE : ∀ n' < n, ExprSpec n') (hP : ∀ n' < n, PrimSpec n')
+    (hL : ∀ n' < n, LoopSpec n') : ExprSpec n := by
+  intro md ks st fin cx hmd h hc hnn
+  by_cases h32 : ∃ r, st.toks = .k 32 :: r
+  · obtain ⟨r, ht⟩ := h32; exact expr_if hB hE hmd h hc hnn ht
+  by_cases h2 : ∃ r, st.toks = .k 2 :: r
+  · obtain ⟨r, ht⟩ := h2
+    rcases let_forms h ht with ⟨x, r', rfl⟩ | ⟨x, y, r', rfl⟩
+    · exact expr_let hE hmd h hc hnn ht
+    · exact expr_letpair hE hmd h hc hnn ht
+  exact expr_other hP hL hmd h hc hnn (fun r h' => h32 ⟨r, h'⟩) (fun r h' => h2 ⟨r, h'⟩)
+
 end ParRun
