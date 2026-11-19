@@ -179,4 +179,109 @@ theorem h_flatL {h ts : Buf} {st : St} {ns : List RN} {fs : List Frame} (r : Rep
           (frameArgs_frame et hn7 es ea har _ _ _ FAn) hs
         exact ⟨[.flat n, .flatL rest], st, by simp [stepF, hi], R3⟩
 
+
+theorem toU_eq_iff {m k : Nat} (hm : m < 2 ^ 64) (hk : k < 2 ^ 64) : m.toUInt64 = k.toUInt64 ↔ m = k := by
+  constructor
+  · intro e; have := congrArg UInt64.toNat e; simpa [Nat.mod_eq_of_lt hm, Nat.mod_eq_of_lt hk] using this
+  · rintro rfl; rfl
+
+/-- **task 81** (flatten one node): a 1-component PAIR is transparent; otherwise the node's words are emitted and its kids
+(without a prim's implicit first argument) flattened -/
+theorem h_flat {h ts : Buf} {st : St} {n : RN} {fs : List Frame} (r : Rep h ts st (.flat n :: fs)) (hfs : inDefF fs = true)
+    (hkl : n.kids.length < 16384) (hk : n.tag = 9 → n.a < 4 → n.kids ≠ [])
+    (hc8 : n.tag = 8 → (n.kids.filter RN.isInp).length ≤ n.b) (hs : bget (step h) 0 ≠ 0) :
+    ∃ k st', stepF (.flat n) st = some (k, st') ∧ Rep (step h) ts st' (k ++ fs) := by
+  obtain ⟨E, FA, R1⟩ := rep_pop r (by simp [inDefF, Frame.isDefs])
+  have FA' := frameArgs_pop r fs.length.toUInt64 FA
+  generalize (taskAt h fs.length).a = a at E FA'
+  generalize (taskAt h fs.length).b = b at E FA'
+  generalize bset h 5 fs.length.toUInt64 = g at E R1 FA'
+  obtain ⟨hn7, hlg, har⟩ := rep_bounds R1
+  have ev : step h = v142 g a b := by rw [E]; rfl
+  obtain ⟨ids, hn, hids⟩ := FA'
+  cases hn with
+  | @mk _ t x y sh p ks ids' a0 a1 a2 a3 a4 a6 ht64 hab kR =>
+  simp only [RN.kids, RN.tag, RN.a, RN.b] at hkl hk hc8
+  obtain ⟨us, hul, hlk, hum, hur⟩ := kidsR_links kR
+  have hc : v205 16777216 g (fld g a 5) ks.length.toUInt64 0 = ((ks.filter RN.isInp).length : Nat).toUInt64 := by
+    rw [v205_eq g us 16777216 _ _ 0 (by omega) (by simp; omega) hlk, cntC_rn isInpW us ks hul
+      (fun i hi => let ⟨ids2, h2, _⟩ := hur i hi; ⟨ids2, h2⟩)]
+    simp
+  have hni : (ks.filter RN.isInp).length ≤ ks.length := List.length_filter_le _ _
+  rw [ev, v142_eq g a b (by omega) _ _ _ _ _ _ a0 a1 a2 rfl a6 hc] at hs ⊢
+  generalize hni' : (ks.filter RN.isInp).length = ni at hni hc8 hs ⊢
+  have esub : ks.length.toUInt64 - ni.toUInt64 = (ks.length - ni).toUInt64 := by
+    apply UInt64.toNat_inj.mp
+    rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr (by simp; omega))]; simp; omega
+  rw [esub] at hs ⊢
+  have e6 : t.toUInt64 = 6 ↔ t = 6 := toU_eq_iff ht64 (by decide)
+  have e1 : (ks.length - ni).toUInt64 = 1 ↔ ks.length - ni = 1 := toU_eq_iff (by omega) (by decide)
+  have e9 : t.toUInt64 = 9 ∧ x.toUInt64 < 4 ↔ t = 9 ∧ x < 4 := by
+    have e9' : t.toUInt64 = 9 ↔ t = 9 := toU_eq_iff ht64 (by decide)
+    constructor
+    · rintro ⟨h9, h4⟩
+      have h9 := e9'.mp h9; subst h9
+      have := (hab (by decide) (by decide)).1
+      exact ⟨rfl, by rw [UInt64.lt_iff_toNat_lt] at h4; simpa [Nat.mod_eq_of_lt this] using h4⟩
+    · rintro ⟨rfl, h4⟩; have := (hab (by decide) (by decide)).1
+      exact ⟨e9'.mpr rfl, by rw [UInt64.lt_iff_toNat_lt]; simpa [Nat.mod_eq_of_lt this] using h4⟩
+  have hidsK : ∀ v ∈ ids', v.toNat < st.arena.length := fun v hv => hids v (List.mem_cons_of_mem _ hv)
+  have hlen64 : (ks.length.toUInt64).toNat = ks.length := by simp; omega
+  by_cases c1 : t = 6 ∧ ks.length - ni = 1
+  · have c1' : t.toUInt64 = 6 ∧ (ks.length - ni).toUInt64 = 1 := ⟨e6.mpr c1.1, e1.mpr c1.2⟩
+    rw [if_pos c1'] at hs ⊢
+    refine ⟨[.flatL ks], st, by simp [stepF, RN.kids, RN.tag, hni', c1], ?_⟩
+    exact rep_push (.flatL ks) _ _ R1 (by simp [inDefF, Frame.isDefs, hfs]) ⟨hlen64, ids', kR, hidsK⟩ hs
+  · have c1' : ¬ (t.toUInt64 = 6 ∧ (ks.length - ni).toUInt64 = 1) := fun e => c1 ⟨e6.mp e.1, e1.mp e.2⟩
+    rw [if_neg c1'] at hs ⊢
+    have hw : hdrW t.toUInt64 x.toUInt64 y.toUInt64 (ks.length - ni).toUInt64 ni.toUInt64 =
+        [t.toUInt64] ++ (if t = 6 then [(ks.length - ni).toUInt64] else if t < 10 then [x.toUInt64] else []) ++
+          (if t = 2 ∨ t = 5 then [y.toUInt64] else if t = 8 then [(y - ni).toUInt64] else []) := by
+      have bt : ∀ c : Nat, c < 2 ^ 64 → (t.toUInt64 == c.toUInt64) = decide (t = c) := fun c hc => by
+        rw [Bool.eq_iff_iff, beq_iff_eq, decide_eq_true_iff]; exact toU_eq_iff ht64 hc
+      have lt10 : (t.toUInt64 < 10) ↔ t < 10 := by
+        rw [UInt64.lt_iff_toNat_lt]; simp [Nat.mod_eq_of_lt ht64]
+      unfold hdrW
+      rw [show (6 : UInt64) = (6 : Nat).toUInt64 from rfl, show (2 : UInt64) = (2 : Nat).toUInt64 from rfl,
+        show (5 : UInt64) = (5 : Nat).toUInt64 from rfl, show (8 : UInt64) = (8 : Nat).toUInt64 from rfl,
+        bt 6 (by decide), bt 2 (by decide), bt 5 (by decide), bt 8 (by decide)]
+      by_cases t6 : t = 6
+      · subst t6; simp
+      by_cases t2 : t = 2
+      · subst t2; simp
+      by_cases t5 : t = 5
+      · subst t5; simp
+      by_cases t8 : t = 8
+      · subst t8
+        have hy := (hab (by decide) (by decide)).2
+        have hle := hc8 rfl
+        have : y.toUInt64 - ni.toUInt64 = (y - ni).toUInt64 := by
+          apply UInt64.toNat_inj.mp
+          rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr (by simp; omega))]; simp; omega
+        simp [this]
+      simp [t6, t2, t5, t8, lt10]
+    rw [hw] at hs ⊢
+    by_cases c9 : t = 9 ∧ x < 4
+    · rw [if_pos (e9.mpr c9), if_pos (e9.mpr c9)] at hs ⊢
+      obtain ⟨k0, ks', rfl⟩ : ∃ k0 ks', ks = k0 :: ks' := by
+        cases ks with
+        | nil => exact absurd rfl (hk c9.1 c9.2)
+        | cons k0 ks' => exact ⟨k0, ks', rfl⟩
+      cases kR with
+      | cons hk0 hrest =>
+        rename_i i1 ids2
+        have FAr : FrameArgs g st.arena (.flatL ks') (fld g (fld g a 5) 7) ((k0 :: ks').length.toUInt64 - 1) :=
+          ⟨by simp at hkl ⊢; omega, ids2, hrest, fun v hv => hidsK v (List.mem_append_right _ hv)⟩
+        have hs1 : bget (v1 g 82 (fld g (fld g a 5) 7) ((k0 :: ks').length.toUInt64 - 1)) 0 ≠ 0 := by
+          rwa [bget_append_lt _ _ _ (by rw [v1_length]; simp; omega)] at hs
+        have R2 := rep_push (.flatL ks') _ _ R1 (by simp [inDefF, Frame.isDefs, hfs]) FAr hs1
+        refine ⟨[.flatL ks'], _, ?_, rep_append R2 _⟩
+        simp [stepF, RN.kids, RN.tag, RN.a, RN.b, hni', c1, c9]
+    · rw [if_neg (fun e => c9 (e9.mp e)), if_neg (fun e => c9 (e9.mp e))] at hs ⊢
+      have hs1 : bget (v1 g 82 (fld g a 5) ks.length.toUInt64) 0 ≠ 0 := by
+        rwa [bget_append_lt _ _ _ (by rw [v1_length]; simp; omega)] at hs
+      have R2 := rep_push (.flatL ks) _ _ R1 (by simp [inDefF, Frame.isDefs, hfs]) ⟨hlen64, ids', kR, hidsK⟩ hs1
+      refine ⟨[.flatL ks], _, ?_, rep_append R2 _⟩
+      simp [stepF, RN.kids, RN.tag, RN.a, RN.b, hni', c1, c9]
+
 end ParInv
