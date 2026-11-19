@@ -485,3 +485,6 @@ HANDOFF: machine side complete; remaining = D's proof of HD, plus hXl/DB dischar
 `GenStageE.gen_stage (HDB) : NanoMain.GenStage` — HD discharged (`gen_HD`) from D's `gen_R` (R ≤ wl) and `gen_all` (wl < R) plus
 T-independence (`semAtF_T`/`semAt_T`); hXl = `ParSerLen.ser_lt`. Only remaining hypothesis: O's `HDB` (parsed ∧ |ts|<2^24 ∧
 LinearK ∧ g41 ≠ [] ⇒ ∀ d ∈ p, DB d).
+DB discharged modulo the width cap (DBNode/DBPar/DBStageE): `NanoMain.C_correctLC (HB : BndStage) (HC : CapStage)`,
+CapStage := parsed ∧ |ts|<2^24 ⇒ ∀ d ∈ p, nslots < 2^32 ∧ nres < 2^32 (O's parsed_bnd). Ingredients: `nb_ty` (NB from TyN +
+ser length + PAr), `q_all`/`parsed_par` (parser: prim operand counts = g33, kind ≤ 1, id = index), `parsed_DB`.
