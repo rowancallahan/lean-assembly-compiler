@@ -1,5 +1,6 @@
 /- Nano/V2Self/Proof/Parser/ParRunWFStep: preservation of the ghost part of `WF` (one lemma per frame, `gh_<frame>`). -/
 import Nano.V2Self.Proof.Parser.ParRunWF
+set_option backward.isDefEq.respectTransparency false
 namespace ParRun
 open ParSpec
 

@@ -3,6 +3,7 @@
 * `FlatOK`: flatten frames (`flat`, `flatL`) only form a top segment of the stack (node builders need no flatten frame below them);
 * `StashOK`: either the stash is set, or scanning from the top a `stash` frame comes before any `letPairSemi` (task 53 reads h[29]). -/
 import Nano.V2Self.Proof.Parser.ParRunShape
+set_option backward.isDefEq.respectTransparency false
 namespace ParRun
 
 def Frame.modeOK : Frame → Bool
