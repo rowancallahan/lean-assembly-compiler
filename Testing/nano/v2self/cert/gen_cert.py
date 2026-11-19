@@ -2,7 +2,7 @@
 """Generate the C-wide meaning certificate (Nano/V2Self/Proof/Cert/{PC,Specs,Defs*}.lean).
 usage: gen_cert.py PCDUMP   (PCDUMP = output of `lake env lean --run Testing/nano/v2self/cert/dump_pc.lean self_S_input.txt`)
 Per def i of Testing/nano/v2self/self_S_input.txt: `Spec<i>` (the def's meaning refines the Lean def `C.<name>`),
-`call_<i>` (the rule for a call node), `ok_<i>` (the proof, by the tactic `den`).  Defs that build the OUTPUT byte list
+`call_<i>` (the rule for a call node; only for defs that are called), `ok_<i>` (the proof, by the tactic `den`).  Defs that build the OUTPUT byte list
 (`put`) are listed in MANUAL and proved by hand in Cert/Out.lean."""
 import re, sys
 SRC = "Testing/nano/v2self/self_S_input.txt"
@@ -127,7 +127,10 @@ def main():
         inp = "inp" if d["inp"] is not None else "_inp"
         S.append(f"def Spec{i} ({inp} : List UInt8) (F : Fn) : Prop := {q}{hn}Ref (F (enc {tup(vs)})) (enc ({app(d, vs)}))")
     S += ["", "def specs (inp : List UInt8) : List (Fn → Prop) := [" + ", ".join(f"Spec{d['id']} inp" for d in defs) + "]", ""]
+    called = {int(x) for r in rows for x in re.findall(r"\(\.call (\d+) \[", "".join(r[2:]))}   # a call rule only for defs that are called
+    assert called < {d["id"] for d in defs}, called
     for d in defs:
+        if d["id"] not in called: continue
         i = d["id"]; vs = [f"a{k}" for k, _ in d["args"]]; es = [f"e{k}" for k, _ in d["args"]]
         imp = (" {" + " ".join(es) + " : Nd}" if es else "") + "".join(f" {{{v} : {ty_str(t)}}}" for v, (_, t) in zip(vs, d["args"]))
         hn = f" (hn : {vs[0]} < {N64})" if d["loop"] else ""

@@ -374,18 +374,6 @@ theorem call_32 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 : Nd} {a0 : Nat} {
     DenT cx (.call 32 [e0, e1, e2]) env (C.y0 a0 a1 a2) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec32 cx.inp) rfl
   exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.one h2))) (hS a0 a1 a2 hn)
-theorem call_33 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 33 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
-    DenT cx (.call 33 [e0, e1]) env (C.y1 a0 a1) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec33 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
-theorem call_34 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 e2 e3 : Nd} {a0 : Nat} {a1 : Buf} {a2 : UInt64} {a3 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 34 < n) (hn : a0 < 18446744073709551616) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) (h2 : DenT cx e2 env a2) (h3 : DenT cx e3 env a3) :
-    DenT cx (.call 34 [e0, e1, e2, e3]) env (C.y2 a0 a1 a2 a3) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec34 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.cons h1 (DenP.cons h2 (DenP.one h3)))) (hS a0 a1 a2 a3 hn)
-theorem call_35 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 35 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
-    DenT cx (.call 35 [e0, e1]) env (C.y7 a0 a1) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec35 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
 theorem call_36 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 36 < n) (h0 : DenT cx e0 env a0) :
     DenT cx (.call 36 [e0]) env (C.y8 a0) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec36 cx.inp) rfl
@@ -429,10 +417,6 @@ theorem call_45 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 
 theorem call_46 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 46 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
     DenT cx (.call 46 [e0, e1]) env (C.v94 a0 a1) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec46 cx.inp) rfl
-  exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
-theorem call_47 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1 : UInt64} (G : Good (specs cx.inp) cx.defs n) (hi : 47 < n) (h0 : DenT cx e0 env a0) (h1 : DenT cx e1 env a1) :
-    DenT cx (.call 47 [e0, e1]) env (C.v95 a0 a1) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec47 cx.inp) rfl
   exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
 theorem call_48 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 48 < n) :
     DenT cx (.call 48 []) env (C.k40) := by
@@ -726,10 +710,6 @@ theorem call_120 {cx : Ctx} {env : List W} {n : Nat} {e0 e1 : Nd} {a0 : Buf} {a1
     DenT cx (.call 120 [e0, e1]) env (C.v99 a0 a1) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec120 cx.inp) rfl
   exact DenT.call hF (DenP.cons h0 (DenP.one h1)) (hS a0 a1)
-theorem call_121 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 121 < n) (h0 : DenT cx e0 env a0) :
-    DenT cx (.call 121 [e0]) env (C.y13 a0) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec121 cx.inp) rfl
-  exact DenT.call hF (DenP.one h0) (hS a0)
 theorem call_122 {cx : Ctx} {env : List W} {n : Nat} {e0 : Nd} {a0 : Buf} (G : Good (specs cx.inp) cx.defs n) (hi : 122 < n) (h0 : DenT cx e0 env a0) :
     DenT cx (.call 122 [e0]) env (C.y16 a0) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec122 cx.inp) rfl
@@ -1174,8 +1154,4 @@ theorem call_232 {cx : Ctx} {env : List W} {n : Nat} {e1 : Nd} {a1 : Buf} (G : G
     DenT cx (.call 232 [e1]) env (Sh.g41 cx.inp a1) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec232 cx.inp) rfl
   exact DenT.call hF (DenP.one h0) (hS a1)
-theorem call_233 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 233 < n) :
-    DenT cx (.call 233 []) env (Sh.m cx.inp) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec233 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
 end Cert
