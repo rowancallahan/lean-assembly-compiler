@@ -164,4 +164,43 @@ theorem prim_nonid {g ts : Buf} {st : St} {fs : List Frame} {a : UInt64} {md : N
       simp only [z, beq_self_eq_true, if_true] at hs
       exact absurd (stat0 _ (by simp [length_bset]; omega)) hs
 
+/-! ## identifiers: the def lookup over all rows (finished defs and the current one) -/
+theorem defTabRows_of {h : Buf} {st : St} (hD : DefsRep h st true) (h7 : (bget h 7).toNat < 2 ^ 24) :
+    ∃ tab : List (UInt64 × List UInt64), tab.length = (rows st).length ∧ DefTabRep h tab ∧
+      ∀ i (hi : i < tab.length) (hi' : i < (rows st).length), (tab[i].2).map UInt64.toNat = ((rows st)[i]'hi').name := by
+  obtain ⟨tab, hl, hT, hn⟩ := defTab_of hD h7
+  obtain ⟨_, _, _, _, rc, _⟩ := hD
+  simp only [if_true] at rc
+  obtain ⟨⟨nm, hok, hmap⟩, _⟩ := rc.1
+  refine ⟨tab ++ [(bget h (d7 + 8 * st.defs.length.toUInt64), nm)], by simp [rows, hl], fun i hi => ?_, fun i hi hi' => ?_⟩
+  · by_cases hin : i < tab.length
+    · rw [List.getElem_append_left hin]; exact hT i hin
+    · have : i = st.defs.length := by simp at hi; omega
+      subst this
+      rw [List.getElem_append_right (by omega)]
+      simp only [hl, Nat.sub_self, List.getElem_cons_zero]
+      exact ⟨by simp, hok, by obtain ⟨_, _, hb⟩ := hok; omega⟩
+  · by_cases hin : i < tab.length
+    · rw [List.getElem_append_left hin]
+      have := hn i hin (by omega)
+      simp only [rows]; rw [List.getElem_append_left (by omega)]; exact this
+    · have : i = st.defs.length := by simp at hi; omega
+      subst this
+      rw [List.getElem_append_right (by omega)]
+      simp only [rows, hl, Nat.sub_self, List.getElem_cons_zero]
+      rw [List.getElem_append_right (by omega)]; simp [hmap]
+
+theorem v8_rows {h : Buf} {st : St} {p : UInt64} {nm : List UInt64} (hD : DefsRep h st true)
+    (h7 : (bget h 7).toNat < 2 ^ 24) (hl : 31 < h.length) (hn : NameOK h p nm) :
+    Same 22 h (v8 16777216 h (bget h 12 + 1) p) ∧
+    bget (v8 16777216 h (bget h 12 + 1) p) 22 = (((findD (rows st) (nm.map UInt64.toNat)).map (· + 1)).getD 0).toUInt64 := by
+  obtain ⟨tab, htl, hTab, hnames⟩ := defTabRows_of hD h7
+  have e12 := hD.1; have hlt := hD.2.1
+  have hnm : nm.length < 2 ^ 24 := by obtain ⟨_, _, hb⟩ := hn; omega
+  have hr : (rows st).length = st.defs.length + 1 := by simp [rows]
+  obtain ⟨s22, h22⟩ := v8_lookup tab p nm (st.defs.length + 1) 16777216 h (bget h 12 + 1)
+    (by rw [tn_add _ _ (by simp; omega), e12]; rfl) (by omega) (by omega) (by omega) hl (by omega) hTab hn hnm
+  refine ⟨s22, ?_⟩
+  rw [h22, idxOf_findD tab (rows st) nm _ rfl (by omega) (fun i hi hi' => hnames i hi hi') _ (by omega), ← hr, List.take_length]
+
 end ParInv

@@ -243,19 +243,19 @@ Results: fixpoint B3 == B2, 255,324 bytes, **sha256 d71d7c978c2fde818be200e6c038
 
 ## HANDOFF — Opus box C, parser Layer 3 (2026-11-19, keep current)
 Build here: no lake deps in this container; `lean -o` per module with LEAN_PATH (scratch script topo-sorts the imports); every
-ParRun*/ParInv*/ParTree* module builds, each < 10 s, < 1 GB.
+ParRun*/ParInv*/ParTree* module builds, each < 20 s, < 1 GB.
 DONE (pushed, no sorry, std axioms):
 * Par1 fixes G (no if/let as operands), H (input = pickPs), I (no Nat as data), J (List group before the input rejected), K (`(Nat) →`):
   B3 == B2 sha256 d71d7c97…4fe0, fuzz 0 disagreements (B mirrored G–K in ParRun).
-* `ParInvRep`: TokAt, fld, ShOpt, RNRep/KidsR (exact arena ↔ B's RN; t < 2^64, a/b < 2^64 except tags 2/5), frame rules, ArenaRep.
-* `ParInvOps`: v2_eff, v5_eff, arena_v5 (B's mkNode ↔ v5; heap high part preserved).
-* `ParInvState`: **Rep h ts st fs** (stable): FrameArgs per frame, TasksRep, BindsRep, RowRep/DefsRep (zero rows/param cells), OutRep (heap drop),
-  inDefF = no `defs` frame on the stack; nx/slots/npw/sslot mod 2^64.
-* `ParInvStep`: region frames, v1_eff, tasks_push, step_top, rep_tasks, rep_tok, tok_kw, v1_zero/v1_ok.
-* `ParInvExpr`: h_expr (1), h_rparen (4), h_ifElse (8), expect_tok. `ParInvBuild`: v5_guards, rep_arena, rep_v5, val_rep, opCell,
-  tok_cases, rep_set3, op_corr, h_mkBin (5), h_binLoop (2). `ParInvExpr2`: cur_tok, h_parenClose (40), h_tupRest (90), h_ifCmp (6),
-  h_ifThen (7). `ParInvLet`: cur_id (ident + v86), nameAt_ts, rep_set29, h_letStart (41), h_letPairX (50), h_letPairY (51), h_stash (52).
-  Side conditions taken from B's WF / SInv by the glue: binLoop `st.vals ≠ []`; mkBin `fs.all (!·.isFlat)`.
-NEXT (box C): letSemi (11, v116: v9 width + v6 bind), letPairSemi (53, v117), letEnd (12, v118 = rep_v5 + binds.take), mkIte (9, v111),
-mkPair (42, v107 + v10 interning — coordinate with G's ParInvIntern), shiftNum (49, v102: v87 byte OR = bytesVal), prim (3, v104: const,
-paren, if/let entry, name → local/call/self, `[]`, prim heads).
+* `ParInvRep` (TokAt, RNRep/KidsR ↔ B's RN, ShOpt, ArenaRep, frames), `ParInvOps` (v2_eff, v5_eff, arena_v5g), `ParInvState` (**Rep**;
+  DefsRep incl. `ShRows` = h[26] shape rows, zero left cells above; G extended ShRows with row decoding), `ParInvStep` (region frames,
+  push/pop, rep_tasks/rep_tok, tok_kw, defs_frame with e12/e27/e26), `ParInvBuild` (rep_arena, rep_v5g, val_rep, opCell, tok_cases,
+  rep_set3, op_corr).
+* Handlers (task: lemma, module): 1 h_expr, 4 h_rparen, 8 h_ifElse (Expr); 2 h_binLoop, 5 h_mkBin (Build); 40 h_parenClose,
+  90 h_tupRest, 6 h_ifCmp, 7 h_ifThen (Expr2); 41 h_letStart, 50 h_letPairX, 51 h_letPairY, 52 h_stash (Let); 12 h_letEnd (LetEnd);
+  9 h_mkIte (Ite); 11 h_letSemi (LetSemi); 49 h_shiftNum + v87_word/v87_tok/rep_const (Num); 3 non-identifier part `prim_nonid`,
+  `v8_rows` (def lookup over defs ++ [cur]) (Primary).
+  Side conditions from B's WF / SInv (glue): binLoop/letSemi `st.vals ≠ []`; node builders `fs.all (!·.isFlat)`; letEnd `d ≤ |binds|`.
+NEXT (box C): task 3 identifier branch (v7_findB → LOC like G's h_argAtom; v8_rows → self (46) / call heads (45, 44)) and `h_prim`
+(mode wrapper v104: md = 2 rejects 32/2, then v104b with b01 (md == 1)); 53 letPairSemi (needs B's `stash : Option`); 42 mkPair
+(v107 + v10: waiting for G's rep_v10, asked).
