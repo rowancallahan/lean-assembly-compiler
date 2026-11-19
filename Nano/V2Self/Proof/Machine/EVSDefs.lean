@@ -11,7 +11,7 @@ import Nano.V2Self.Proof.Machine.EVXL
 import Nano.V2Self.Proof.Machine.EVXT
 import Nano.V2Self.Proof.Machine.EVXP
 import Nano.V2Self.Proof.Machine.SafeRun
-import Nano.V2Self.Proof.Machine.SimX
+import Nano.V2Self.Proof.Machine.JLay
 namespace Templates
 open CallProbe SimW
 

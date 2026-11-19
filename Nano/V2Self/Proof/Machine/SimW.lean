@@ -4,9 +4,24 @@ the work block's 8-aligned cells as 8 LE bytes.  One J step on a word that is th
 Sail instruction, keeping `RelW`.  Immediates are in range and address arithmetic does not wrap (side conditions the
 template proofs discharge). -/
 import Nano.V2.Sim
+import Nano.V2.Enc
 import Nano.V2Self.Proof.Machine.Call
 import Nano.V2Self.Proof.Machine.JLay
+import Nano.V2Self.Proof.Machine.RvEnc
 import Nano.V2Self.Proof.Machine.Bridge
+
+namespace Bridge
+open Nano.V2B
+set_option maxRecDepth 100000 in
+/-- C's `jal rd, off` (`g5 d v`, v even) is Sail's `wJ rd o` with o = (v mod 2^21) / 2 -/
+theorem g5_wJ (d v : UInt64) (hd : d.toNat < 32) :
+    BitVec.ofNat 32 (C.g5 d v).toNat = Proven.wJ (.ofFin ⟨d.toNat, hd⟩) (BitVec.ofNat 20 ((v.toNat % 2097152) / 2)) := by
+  rw [g5_enc _ _ hd]; unfold encJt; rw [bits_sI21]
+  have hu : v.toNat % 2097152 < 2097152 := Nat.mod_lt _ (by decide)
+  generalize v.toNat % 2097152 = u at *
+  encbits
+
+end Bridge
 
 namespace SimW
 open Proven Nano.V2B
@@ -363,9 +378,6 @@ theorem sim_bltu8 {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK :
     have := rel_jumpW hR 0 0 (by simpa using hN)
     rw [w0] at this; rw [if_neg hc]; exact ⟨t', hN.ret, this⟩
 
-theorem ofInt_toNat64 (x : Int) : (UInt64.ofInt x).toNat = (x % 2 ^ 64).toNat := by
-  rw [← UInt64.toNat_toBitVec, ofInt_bv, BitVec.toNat_ofInt]; simp
-
 /-- **jal rd, off** (C's `g5 d (4·off)`; J offsets are in instructions): writes the byte return address -/
 theorem sim_jal {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
     {d : Nat} {off : Int} (hd : d < 32) (hC : K.W[pc]? = some (C.g5 (UInt64.ofNat d) (UInt64.ofInt (4 * off))).toNat)
@@ -419,23 +431,6 @@ theorem sim_jalr {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : 
   exact ⟨t', hN.ret, this⟩
 
 /-! ## ALU, slli, lbu (expression templates) -/
-
-/-- J's ALU numbering (Gen's BIN: add 1 sub 2 mul 3 and 4 or 5 sll 6 srl 7 xor 8) as nano-v2's `ROp` -/
-def ropOf (op : Nat) : ROp :=
-  if op = 1 then .add else if op = 2 then .sub else if op = 3 then .mul else if op = 4 then .and
-  else if op = 5 then .or else if op = 6 then .sll else if op = 7 then .srl else .xor
-
-theorem shl_mod (a b : UInt64) : a <<< b = a <<< (b % 64) := by
-  apply UInt64.toBitVec_inj.1; rw [shl_bv, UInt64.toBitVec_shiftLeft]; simp [BitVec.shiftLeft_eq', UInt64.toBitVec_mod]
-theorem shr_mod (a b : UInt64) : a >>> b = a >>> (b % 64) := by
-  apply UInt64.toBitVec_inj.1; rw [shr_bv, UInt64.toBitVec_shiftRight]; simp [BitVec.ushiftRight_eq', UInt64.toBitVec_mod]
-
-theorem aluf_eval (op : Nat) (x y : UInt64) (h : 1 ≤ op ∧ op ≤ 8) : CallProbe.aluf op x y = (ropOf op).eval x y := by
-  obtain ⟨h1, h2⟩ := h
-  rcases (by omega : op = 1 ∨ op = 2 ∨ op = 3 ∨ op = 4 ∨ op = 5 ∨ op = 6 ∨ op = 7 ∨ op = 8) with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
-    simp [CallProbe.aluf, ropOf, ROp.eval]
-  · exact shl_mod x y
-  · exact shr_mod x y
 
 /-- **R-type** (any `ROp`; `add`/`or` with rd = 0 decode as hints, so rd ≠ 0 there) -/
 theorem sim_rW {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
@@ -543,23 +538,6 @@ theorem sim_lbuW {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : 
 
 
 /-! ## whole runs: a J run on code whose words are the J instructions' encodings is a Sail run -/
-
-/-- the word C emits for a J instruction (branches only as `bgeu a b +2 instructions`, returns only `jalr x0`) -/
-def encJ : CallProbe.J → Nat
-  | .addi rd rs imm => (I.i .addi rd rs imm).enc
-  | .ld rd rs off => (I.ld rd rs off).enc
-  | .sd b a off => (I.sd b a off).enc
-  | .bgeu a b o => (I.br .bgeu a b (4 * o)).enc
-  | .beq a b _ => (I.br .beq a b 8).enc
-  | .bltu a b _ => (I.br .bltu a b 8).enc
-  | .jal rd off => (C.g5 (UInt64.ofNat rd) (UInt64.ofInt (4 * off))).toNat
-  | .jalr _ rs => (C.g2 C.g_103 0 0 (UInt64.ofNat rs) 0).toNat
-  | .alu op rd a b => (I.r (ropOf op) rd a b).enc
-  | .slli rd rs sh => (I.i .slli rd rs (sh : Int)).enc
-  | .lbu rd rs off => (I.lbu rd rs off).enc
-  | .srli rd rs sh => (C.g2 C.g_19 5 (UInt64.ofNat rd) (UInt64.ofNat rs) (UInt64.ofNat sh)).toNat
-  | .bne a b off => (C.g4 1 (UInt64.ofNat a) (UInt64.ofNat b) (UInt64.ofInt (4 * off))).toNat
-  | .sb r2 r1 off => (C.g3 0 (UInt64.ofNat r2) (UInt64.ofNat r1) (UInt64.ofInt off)).toNat
 
 /-- **one step**: a safe J step on matching words is one retired Sail instruction, keeping `RelW` -/
 theorem sim_stepW {K : LayW} {C : List CallProbe.J} (hK : K.Ok) (hW : K.W = C.map encJ)

@@ -2,6 +2,7 @@
 templates ++ start code) runs from word 0 as a SafeX J run to the host's return address with main's buffer bytes at a3;
 given the Sail code words are Gen's (`KL.W = C.map encG`), `SimW.sim_starX` turns it into retired Sail instructions
 keeping `RelW`. -/
+import Nano.V2Self.Proof.Machine.SimX
 import Nano.V2Self.Proof.Machine.GenRun
 import Nano.V2Self.Proof.Machine.EVSProg
 import Nano.V2Self.Proof.Machine.StartAllS

@@ -1,7 +1,8 @@
 /- Closing the link template ↔ Sail: for every J instruction the expression templates use, the word C's encoders emit
 (`CallProbe.encG`, Proof/ExprExact.lean) is the word nano-v2/Sail runs (`SimW.encJ`, which `sim_stepW` consumes). -/
 import Nano.V2Self.Proof.Machine.ExprExact
-import Nano.V2Self.Proof.Machine.SimW
+import Nano.V2Self.Proof.Machine.RvEnc
+import Nano.V2Self.Proof.Machine.JLay
 namespace CallProbe
 open Bridge Nano.V2B
 

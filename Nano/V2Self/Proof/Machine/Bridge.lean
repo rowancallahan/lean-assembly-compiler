@@ -1,7 +1,8 @@
 /- Bridge (Astra-11): C's word encoders (Nano/V2Self/C/Gen.lean g1–g5, g10–g13) produce exactly nano-v2's
-`I.enc` words (Nano/V2/Gen.lean), which Nano/V2/Enc.lean + Sim.lean already tie to the Sail step lemmas.
+`I.enc` words (Nano/V2/Gen.lean), which Nano/V2/Enc.lean + Sim.lean already tie to the Sail step lemmas.  Sail-free (the one Sail-word lemma
+`g5_wJ` lives in SimW).
 Immediates: C passes a UInt64 two's-complement value `v`; the instruction's signed immediate is `sI v`. -/
-import Nano.V2.Enc
+import Nano.V2.Gen
 import Nano.V2Self.C.Gen
 
 namespace Bridge
@@ -142,15 +143,6 @@ theorem g5_jal0 (v : UInt64) : (C.g5 0 v).toNat = (I.jal (sI v)).enc := by
   rw [g5_enc _ _ (by decide)]; simp [I.enc]
 
 /-! ## calls and returns: the Sail words of `jal rd` and `jalr x0, rs` -/
-set_option maxRecDepth 100000 in
-/-- C's `jal rd, off` (`g5 d v`, v even) is Sail's `wJ rd o` with o = (v mod 2^21) / 2 -/
-theorem g5_wJ (d v : UInt64) (hd : d.toNat < 32) :
-    BitVec.ofNat 32 (C.g5 d v).toNat = Proven.wJ (.ofFin ⟨d.toNat, hd⟩) (BitVec.ofNat 20 ((v.toNat % 2097152) / 2)) := by
-  rw [g5_enc _ _ hd]; unfold encJt; rw [bits_sI21]
-  have hu : v.toNat % 2097152 < 2097152 := Nat.mod_lt _ (by decide)
-  generalize v.toNat % 2097152 = u at *
-  encbits
-
 /-- C's return `jalr x0, 0(rs)` (`g2 103 0 0 a 0`) is the word of Sail's `step_jalr` with imm 0, rd 0 -/
 theorem g2_jalr (a : UInt64) (ha : a.toNat < 32) :
     BitVec.ofNat 32 (C.g2 C.g_103 0 0 a 0).toNat =

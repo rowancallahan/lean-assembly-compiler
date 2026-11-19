@@ -1,7 +1,8 @@
 /- Machine bridge (Opus box E): Gen's words are the start-code Safe layer's words: `(encG i).toNat = encJX i` under
 `GoodX` (GoodW plus beq +7, srli, bne +4, sb). -/
 import Nano.V2Self.Proof.Machine.ExprBridge
-import Nano.V2Self.Proof.Machine.SimX
+import Nano.V2Self.Proof.Machine.RvEnc
+import Nano.V2Self.Proof.Machine.JLay
 import Nano.V2Self.Proof.Machine.StartCode
 namespace CallProbe
 open Bridge Nano.V2B

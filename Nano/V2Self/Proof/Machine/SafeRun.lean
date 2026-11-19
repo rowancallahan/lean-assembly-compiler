@@ -7,7 +7,7 @@
   * jal: the target is inside the code (< |C|);  jalr: the target is base + 4j;
   * registers < 32, branch offsets 2, ALU op 1..8 with rd ≠ 0 (structural, discharged here).
 Tool: `sstar_of_run` — a deterministic run whose every intermediate state is `Safe` is an `SStar`. -/
-import Nano.V2Self.Proof.Machine.SimW
+import Nano.V2Self.Proof.Machine.JLay
 import Nano.V2Self.Proof.Machine.Expr
 import Nano.V2Self.Proof.Machine.Templates
 import Nano.V2Self.Proof.Machine.CallA

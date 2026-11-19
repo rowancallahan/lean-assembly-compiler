@@ -1,7 +1,7 @@
 /- Machine bridge (Opus box E): the start code's runs are SAFE (`SimW.SStarX`), so `SimW.sim_starX` lifts them to
 Sail.  Layout facts: the a2 save cells are work cells, the code is short enough for Gen's jumps. -/
 import Nano.V2Self.Proof.Machine.StartRun
-import Nano.V2Self.Proof.Machine.SimX
+import Nano.V2Self.Proof.Machine.JLay
 namespace Templates
 open CallProbe SimW
 
