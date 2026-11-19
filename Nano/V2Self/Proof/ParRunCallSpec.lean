@@ -288,4 +288,40 @@ theorem prim_inpPair {t : Nat} (h1 : 38 < t) (h2 : t < 48) {ps : List Ps} {rs : 
       simp [this, h4]
     · simp [hm, h4] at hok
 
+/-! ## the input rule from the deferred validation (`inpMatch`, v210) — def CALLs -/
+/-- parameter `i` is the first code-`ls` parameter -/
+def FirstLs (ws : List Sh) (i : Nat) : Prop := ws[i]? = some .ls ∧ ∀ j, j < i → ws[j]? ≠ some .ls
+
+theorem inpMatch_get : ∀ (ws : List Sh) (g : Bool) (ks : List RN), inpMatch ws g ks = true →
+    ∀ (i : Nat) (hi : i < ks.length), (ks[i].isInp = true ↔ (g = false ∧ FirstLs ws i))
+  | _, _, [], _, i, hi => absurd hi (by simp)
+  | [], _, _ :: _, h, _, _ => by simp [inpMatch] at h
+  | w :: ws, g, k :: ks, h, i, hi => by
+    simp only [inpMatch, Bool.and_eq_true, beq_iff_eq] at h
+    obtain ⟨h1, h2⟩ := h
+    cases i with
+    | zero =>
+      simp only [List.getElem_cons_zero, ← h1, FirstLs, List.getElem?_cons_zero, Option.some.injEq]
+      cases g <;> cases hw : (w == Sh.ls) <;> simp_all
+    | succ i =>
+      have ih := inpMatch_get ws (g || w == .ls) ks h2 i (by simpa using hi)
+      simp only [List.getElem_cons_succ]
+      rw [ih]
+      simp only [FirstLs, List.getElem?_cons_succ, Bool.or_eq_false_iff, beq_eq_false_iff_ne, ne_eq]
+      constructor
+      · rintro ⟨⟨hg, hw⟩, hl, hf⟩
+        refine ⟨hg, hl, fun j hj => ?_⟩
+        cases j with
+        | zero => simpa using hw
+        | succ j => simpa using hf j (by omega)
+      · rintro ⟨hg, hl, hf⟩
+        refine ⟨⟨hg, by simpa using hf 0 (by omega)⟩, hl, fun j hj => ?_⟩
+        simpa using hf (j + 1) (by omega)
+
+/-- a validated CALL node satisfies the input rule of its callee, when the callee's row marks its input as the first List code -/
+theorem def_inpPair {ps : List Ps} {ws : List Sh} {kids : List RN} (hinv : ∀ (i : Nat) (h : i < ps.length), (ps[i] = .inp ↔ FirstLs ws i))
+    (hl : kids.length = ps.length) (hok : inpMatch ws false kids = true) : InpPair ps kids :=
+  inpPair_of _ _ hl.symm fun i i1 i2 => by
+    rw [hinv i i1, inpMatch_get ws false kids hok i i2]; simp
+
 end ParRun
