@@ -111,11 +111,17 @@ DONE (all pushed, no sorry, axioms ⊆ propext / Classical.choice / Quot.sound, 
   (machine parameter code = `parCode`), `operand_fld`, `h_argCheck` (47, v122), `h_mkCall` (48, v123, on C's `rep_v5`).
   Side conditions for the glue (`api_of_rep`), all from B's `WF` / F's `SInv`: `inDefF fs` (47, 48: the callee row is read), `k ≤ |vals|`,
   `k ≤ arity st c`, `calleeOK st c` (row index in range / prim id < 2^32), `n < 4096` and no flatten frame on the stack (48, from `rep_v5`).
-FINDING J (Par1 ⊋ ParSpec, confirmed on native B1 vs `specrun`; sent to C, B, owner; = F's "fix H unsound"): fix H made v133 choose the input per binder
-group, but the call-site validation v210 still takes "first code-3 parameter" as the callee's input. `def f (a b : List UInt8) : UInt64 := 1` +
-`… put [] (f x [])` is ACCEPTED (CALL with 1 arg, callee npw 2: mis-compile), spec rejects; `(a b : List UInt8) (x : List UInt8)` + `f x [] []` likewise;
-the correct calls are rejected. Needs: the def row records its input parameter, v210 tests that; Layer 2 `inpMatch` / `assign` mirror it.
-Native B1 for such checks: `build_self_S.py; boot/build_B1.py; lean boot/B1.lean -c B1.c; leanc -O2 B1.c -o B1; B1 parse < p.txt | od -tu8`.
+* `Proof/ParInvTy.lean` — `tok_cell_k`, `rep_cursor` (generic cursor move), `h_tyCross` (62, v129; needs `st.ty.isSome`) [pushed];
+  `rep_ty` (h[25] := code), `ty_leaf`, `h_tyAtom` (61, v128) [compiled against 6c0f904, HELD LOCALLY: HEAD's ParInvState does not build since B's
+  d48d4ae changed `Frame.expr/prim/assign`; C is reworking it — push as soon as `lake build Nano.V2Self.Proof.ParInvTy` passes].
+* `Proof/ParInvIntern.lean` (imports Par1 + BufL only) — `PairRow`, `v10_scan`: v10 from row j = `h[25] := i + 5` for the first matching row i,
+  else the allocation step `v10 1 g x y h[26]`.
+FINDING J (found by G; fixed by C in d8aadd8, re-verified on native B1): v210's "first code-3 parameter is the callee's input" contradicted fix H;
+`def f (a b : List UInt8) : UInt64 := 1` + `f x []` was accepted with a 1-arg CALL. Now a List group before the input is rejected at the def
+(Par1 ⊂ ParSpec there: completeness only); input first then a group (`(x : List UInt8) (a b : List UInt8)`) agrees with the spec.
+DESIGN GAP for 63 / pairs (sent to C): `ShapeCode.pr` has no width cell (+2, read by v9) and no bound against h[26] (rows allocated), and `Rep`
+does not mention h[26]; v10's allocation writes row h[26], so `ShTabAgree` (whole region) cannot be used as its frame — needs
+`c < 5 + h[26]` in `ShapeCode.pr`, `(bget h 26).toNat ≤ 8192` in Rep and a frame lemma over rows < h[26].
 OPEN (no answer from B yet): statement form of reflection after the fuel decision (ParSpec is still `Option`; "ok ∨ OutOfFuel" needs a 3-valued spec),
 and who owns the St↔Cx relation (binds↔env, rows↔DefI, cur/arm↔self) and RN↔(Nd × Ty).  Facts pArgs reflection needs: `v.toNd` = the spec node;
 Ty.s s ⇒ sh = s ∧ ¬isInp (and tag 1 ⇒ Ty.lit); Ty.lit ⇒ sh = uw; Ty.inp ⇒ isInp; "argument i isInp ⇔ parameter i = `.inp`" comes ONLY from the
