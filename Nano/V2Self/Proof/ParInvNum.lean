@@ -65,4 +65,57 @@ theorem v87_tok {h : Buf} {p : UInt64} {v : Nat} {rest : List Tok} (r : TokAt h 
     apply UInt64.toNat_inj.mp
     rw [w]; simp; omega
 
+theorem mkNode_leaf0 (st : St) (t a b : Nat) (sh : Sh) : mkNode st t a b (some sh) false 0 = some (leaf st t a b sh) := by
+  simp [mkNode, leaf]
+
+/-- a numeral at the cursor becomes a CONST leaf (v87, cursor + 9, `v5 … 1 v 0 1 0 0`) -/
+theorem rep_const {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs) (hnf : fs.all (fun f => !f.isFlat))
+    (hc : bget h (d11 + bget h 3) = 5)
+    (hs : bget (v5 (bset (v87 h (bget h 3)) 3 (bget (v87 h (bget h 3)) 3 + 9)) 1 (bget (v87 h (bget h 3)) 31) 0 1 0 0) 0 ≠ 0) :
+    ∃ v rest, st.toks = .num v :: rest ∧
+      Rep (v5 (bset (v87 h (bget h 3)) 3 (bget (v87 h (bget h 3)) 3 + 9)) 1 (bget (v87 h (bget h 3)) 31) 0 1 0 0) ts
+        (leaf { st with toks := rest } 1 v 0 .uw) fs := by
+  rcases tok_cases r.2.2.2.1 r.1 with ⟨_, h0⟩ | ⟨v, rest, et, _⟩ | ⟨_, _, _, h14⟩ | ⟨t, _, _, ht, _, t5, _, _⟩
+  · rw [hc] at h0; exact absurd h0 (by decide)
+  · have p3 := r.2.2.2.1
+    rw [et] at p3
+    obtain ⟨hn7, hl, har⟩ := rep_bounds r
+    obtain ⟨E87, vl, tr, _⟩ := v87_tok p3 hn7
+    rw [E87] at hs ⊢
+    have g31 : bget (bset h 31 v.toUInt64) 31 = v.toUInt64 := bget_bset_eq _ _ _ _ rfl (by rw [show (31 : UInt64).toNat = 31 from rfl]; omega)
+    have g3 : bget (bset h 31 v.toUInt64) 3 = bget h 3 := bget_bset' _ _ _ _ (by decide)
+    rw [g31, g3] at hs ⊢
+    have R1 := rep_31 r v.toUInt64
+    have tr' : TokAt (bset h 31 v.toUInt64) (bget h 3 + 9) rest :=
+      tokAt_frame ⟨bget_bset' _ _ _ _ (by decide), fun i hi => bget_bset' _ _ _ _ (by rw [show (31 : UInt64).toNat = 31 from rfl]; omega)⟩ hn7 tr
+    have R2 := rep_set3 R1 tr'
+    obtain ⟨st', em, R3⟩ := rep_v5g R2 hnf 0 1 v 0 (some .uw) false 1 .uw (by decide) (fun _ _ => ⟨vl, by decide⟩) (by decide)
+      (by simpa [b01] using hs)
+    rw [mkNode_leaf0] at em
+    cases em
+    exact ⟨v, rest, et, by simpa [b01] using R3⟩
+  · rw [hc] at h14; exact absurd h14 (by decide)
+  · rw [hc] at ht; exact absurd ht.symm t5
+
+/-! ## task 49: `shiftNum op` (v102): the shift amount numeral, then the BIN node -/
+theorem h_shiftNum {h ts : Buf} {st : St} {op : Nat} {fs : List Frame} (r : Rep h ts st (.shiftNum op :: fs))
+    (hnf : fs.all (fun f => !f.isFlat)) (hs : bget (step h) 0 ≠ 0) :
+    ∃ k st', stepF (.shiftNum op) st = some (k, st') ∧ Rep (step h) ts st' (k ++ fs) := by
+  obtain ⟨E, ea, R1⟩ := rep_pop r (by simp [inDefF, Frame.isDefs])
+  simp only [FrameArgs] at ea
+  generalize (taskAt h fs.length).a = a at E ea
+  generalize (taskAt h fs.length).b = b at E
+  generalize hh : bset h 5 fs.length.toUInt64 = h1 at E R1
+  have ev : step h = v102 h1 a b := by rw [E]; simp [Frame.code, v96]
+  rw [ev] at hs ⊢
+  simp only [v102, UInt64.add_zero] at hs ⊢
+  obtain ⟨hn7, hl, har⟩ := rep_bounds R1
+  by_cases c5 : bget h1 (d11 + bget h1 3) = 5
+  · simp only [c5, beq_self_eq_true, if_true] at hs ⊢
+    obtain ⟨v, rest, et, R2⟩ := rep_const R1 hnf c5 (pushOK hs)
+    have R3 := rep_push (.mkBin op) a 0 R2 (by simp [inDefF, Frame.isDefs]) ea hs
+    exact ⟨[.mkBin op], _, by simp [stepF, et], R3⟩
+  · have n : (bget h1 (d11 + bget h1 3) == 5) = false := by simpa using c5
+    simp only [n, if_false] at hs; exact absurd (stat0 _ (by omega)) hs
+
 end ParInv
