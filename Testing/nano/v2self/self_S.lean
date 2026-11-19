@@ -431,7 +431,7 @@ def v101 (h : Buf) (a b : UInt64) : Buf :=
           let h := v1 h 49 (o) (0);
           h else let h := v1 h 2 (a) (0);
           let h := v1 h 5 (o) (0);
-          let h := v1 h 1 (r + 1) (0);
+          let h := v1 h 1 (r + 1) (2);
           h
       else
         bset h 0 0
@@ -459,12 +459,12 @@ def v103 (h : Buf) (a b : UInt64) : Buf :=
   else
     bset h 0 0
 
-def v104 (h : Buf) (a b : UInt64) : Buf :=
+def v104b (h : Buf) (a b : UInt64) : Buf :=
   if (bget h (d11 + (bget h 3) + 0)) == 32 then
     let z40 := ((bget h 3) + 1);
     let h := bset h (3) z40;
     let h := v1 h 6 (0) (b);
-    let h := v1 h 1 (0) (0);
+    let h := v1 h 1 (0) (2);
     h
   else
     if (bget h (d11 + (bget h 3) + 0)) == 2 then
@@ -547,6 +547,13 @@ def v104 (h : Buf) (a b : UInt64) : Buf :=
               else bset h 0 0
             else v93 h z40 b
 
+/-- an OPERAND position (binary operand, comparison operand: b = 2) is ParSpec's `pBin`, not `pExpr`: no `if` / `let` there -/
+def v104 (h : Buf) (a b : UInt64) : Buf :=
+  let t := bget h (d11 + (bget h 3) + 0);
+  if b == 2 then
+    if t == 32 then bset h 0 0 else if t == 2 then bset h 0 0 else v104b h a 0
+  else v104b h a b
+
 def v105 (h : Buf) (a b : UInt64) : Buf :=
   if (bget h (d11 + (bget h 3) + 0)) == 7 then
     let z40 := ((bget h 3) + 1);
@@ -593,7 +600,7 @@ def v108 (h : Buf) (a b : UInt64) : Buf :=
     let z40 := ((bget h 3) + 1);
     let h := bset h (3) z40;
     let h := v1 h 7 (c) (b);
-    let h := v1 h 1 (0) (0);
+    let h := v1 h 1 (0) (2);
     h
 
 def v109 (h : Buf) (a b : UInt64) : Buf :=

@@ -1,0 +1,7 @@
+# Par1 must REJECT (ParSpec rejects: binary/comparison operands are pBin, no if/let), fixed 2026-11-19:
+def f (a : UInt64) : UInt64 := 1 + if a == 1 then 2 else 3 def m (x : List UInt8) : List UInt8 := []
+def f (a : UInt64) : UInt64 := 1 + let y := a; y def m (x : List UInt8) : List UInt8 := []
+def f (a : UInt64) : UInt64 := a * if a == 1 then 2 else 3 def m (x : List UInt8) : List UInt8 := []
+def f (a : UInt64) : UInt64 := if if a == 1 then 1 else 0 == 1 then 2 else 3 def m (x : List UInt8) : List UInt8 := []
+# must ACCEPT:
+def f (a : UInt64) : UInt64 := (if a == 1 then 2 else 3) + 1 def m (x : List UInt8) : List UInt8 := []
