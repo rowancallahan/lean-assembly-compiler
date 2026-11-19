@@ -157,6 +157,10 @@ theorem row_frame' {h h' : Buf} {j : Nat} {d : DefR} (r : RowRep h j d)
   rw [c 5 (by decide), cp i hi]
   exact (ap i hi).frame es
 
+theorem pairCell0 (k : Nat) (hk : k < 8192) : (d7 + 8192 + 3 * k.toUInt64).toNat = 155712 + 3 * k := by
+  have e3 : (3 * k.toUInt64).toNat = 3 * k := by rw [UInt64.toNat_mul]; simp; omega
+  rw [UInt64.toNat_add, e3, show (d7 + 8192 : UInt64).toNat = 155712 from rfl]; omega
+
 /-- **Rep after v133's writes**: binding `i0` typed (slot = nx, code, input flag), nx advanced by the width unless it is the
 input, the current row extended by the parameter code -/
 theorem rep_asg {g ts : Buf} {st : St} {fs : List Frame} (R : Rep g ts st fs) (hD : inDefF fs = true) (i0 : Nat)
@@ -170,7 +174,7 @@ theorem rep_asg {g ts : Buf} {st : St} {fs : List Frame} (R : Rep g ts st fs) (h
   obtain ⟨rT, rts, r0, r3, r11, rB, rD, rA, r25, r29, r30, r32, rO, rK⟩ := R
   rw [hD] at rD
   obtain ⟨b4, bl, brows⟩ := rB
-  obtain ⟨d12, dl, d27, drows, dcur, dzero, dz0⟩ := rD
+  obtain ⟨d12, dl, d27, drows, dcur, dzero, dz0, ds26, dsz⟩ := rD
   simp only [if_true] at dcur
   obtain ⟨⟨k0, k1, k2, k3, k4, k6, k5, kp⟩, kJ⟩ := dcur
   have i1024 : i0 < 1024 := by omega
@@ -251,7 +255,12 @@ theorem rep_asg {g ts : Buf} {st : St} {fs : List Frame} (R : Rep g ts st fs) (h
         have c := parCell0 i h2
         rw [U _ (by rw [c]; omega) (by rw [c]; omega) (by rw [c]; omega) (by rw [c]; omega) (by rw [c]; omega) (by rw [c]; omega)
           (Or.inl (by rw [c]; omega))]
-        exact dz0 i (by omega) h2⟩
+        exact dz0 i (by omega) h2,
+      by rw [cS 26 (by decide) (by decide) (by decide) (by decide)]; exact ds26,
+      fun k h1 h2 => by
+        rw [cS 26 (by decide) (by decide) (by decide) (by decide)] at h1
+        have c := pairCell0 k h2
+        rw [cSh _ (by rw [c]; omega) (by rw [c]; omega)]; exact dsz k h1 h2⟩
     · have hb := (drows j hj).2
       refine ⟨row_frame' (drows j hj).1 (fun k hk => cDef j (by omega) k hk (Or.inl (by omega)))
         (fun i hi' => cPar _ i (by omega) (by omega)) et hn7 es, ?_⟩
