@@ -531,4 +531,295 @@ theorem p_all : ∀ f, PE f ∧ PB f ∧ PL f ∧ PA f ∧ PC f ∧ PG f ∧ PT 
     exact ⟨pE_step f hB hE, pB_step f hA hL, pL_step f hB hL, pA_step f hT hG hC, pC_step f hG, pG_step f hT hG,
       pT_step f hE hU, pU_step f hE hU⟩
 
+/-- every binding names a parameter `ps[i]` at its packed slot -/
+def Lay (ps : List Ps) (start : Nat) (env : List (List Nat × Nat × Ps)) : Prop :=
+  ∀ e ∈ env, ∃ i, ∃ h : i < ps.length, ps[i] = e.2.2 ∧ e.2.1 = start + ((ps.take i).flatMap Ps.kinds).length
+
+theorem Lay.nil (ps start) : Lay ps start [] := fun _ h => by simp at h
+
+theorem Lay.cons_ps {ps : List Ps} {start env} (p : Ps) (h : Lay ps (start + p.width) env) : Lay (p :: ps) start env := by
+  intro e he
+  obtain ⟨i, hi, h1, h2⟩ := h e he
+  refine ⟨i + 1, by simp; omega, by simpa using h1, ?_⟩
+  simp [h2, Ps.kinds_length]; omega
+
+theorem Lay.append_ps {ps : List Ps} {start env} (qs : List Ps) (h : Lay ps start env) : Lay (ps ++ qs) start env := by
+  intro e he
+  obtain ⟨i, hi, h1, h2⟩ := h e he
+  refine ⟨i, by simp; omega, by rw [List.getElem_append_left hi]; exact h1, ?_⟩
+  rw [List.take_append_of_le_length (by omega)]; exact h2
+
+theorem Lay.prepend_ps {ps : List Ps} {start env} (qs : List Ps) (h : Lay ps (start + (qs.flatMap Ps.kinds).length) env) :
+    Lay (qs ++ ps) start env := by
+  induction qs generalizing start with
+  | nil => simpa using h
+  | cons q qs ih =>
+    have := ih (start := start + q.width) (by simp [Ps.kinds_length] at h ⊢; rw [Nat.add_assoc]; exact h)
+    exact Lay.cons_ps q this
+
+theorem mkEnv_lay : ∀ (start : Nat) (ps : List Ps) (ns : List (List Nat)) env, mkEnv start ps ns = some env → Lay ps start env
+  | _, [], [], env, h => by simp [mkEnv] at h; subst h; exact Lay.nil _ _
+  | start, p :: ps, n :: ns, env, h => by
+    simp only [mkEnv, Option.map_eq_some_iff] at h
+    obtain ⟨env', h1, rfl⟩ := h
+    have ih := Lay.cons_ps p (mkEnv_lay (start + p.width) ps ns env' h1)
+    intro e he
+    rcases List.mem_cons.1 he with rfl | he
+    · exact ⟨0, by simp, rfl, by simp⟩
+    · exact ih e he
+  | _, [], _ :: _, _, h | _, _ :: _, [], _, h => by simp [mkEnv] at h
+
+theorem go_lay (p : Ps) : ∀ (ns : List (List Nat)) (s : Nat) e ps s', bindSlots.go p s ns = (e, ps, s') →
+    Lay ps s e ∧ s' = s + (ps.flatMap Ps.kinds).length
+  | [], s, e, ps, s', h => by simp [bindSlots.go] at h; obtain ⟨rfl, rfl, rfl⟩ := h; exact ⟨Lay.nil _ _, by simp⟩
+  | n :: l, s, e, ps, s', h => by
+    rcases hgo : bindSlots.go p (s + p.width) l with ⟨e1, ps1, s1⟩
+    obtain ⟨ih1, ih2⟩ := go_lay p l (s + p.width) e1 ps1 s1 hgo
+    simp only [bindSlots.go, hgo] at h
+    obtain ⟨rfl, rfl, rfl⟩ := h
+    refine ⟨?_, by rw [ih2, List.flatMap_cons, List.length_append, Ps.kinds_length]; omega⟩
+    intro e he
+    rcases List.mem_cons.1 he with rfl | he
+    · exact ⟨0, by simp, rfl, by simp⟩
+    · exact Lay.cons_ps p ih1 e he
+
+theorem bindSlots_lay : ∀ (groups : List (List (List Nat) × TyR)) (start : Nat) (used : Bool) e ps s',
+    bindSlots start used groups = (e, ps, s') → Lay ps start e ∧ s' = start + (ps.flatMap Ps.kinds).length
+  | [], start, used, e, ps, s', h => by
+    simp [bindSlots] at h; obtain ⟨rfl, rfl, rfl⟩ := h; exact ⟨Lay.nil _ _, by simp⟩
+  | (ns, t) :: g, start, used, e, ps, s', h => by
+    unfold bindSlots at h
+    rcases hp : pickPs used (ns.length == 1) t with ⟨p, used'⟩
+    rcases hgo : bindSlots.go p start ns with ⟨e1, ps1, s1⟩
+    obtain ⟨g1, g2⟩ := go_lay p ns start e1 ps1 s1 hgo
+    rcases hb : bindSlots s1 used' g with ⟨e2, ps2, s2⟩
+    obtain ⟨b1, b2⟩ := bindSlots_lay g s1 used' e2 ps2 s2 hb
+    simp only [hp, hgo, hb] at h
+    obtain ⟨rfl, rfl, rfl⟩ := h
+    refine ⟨?_, ?_⟩
+    · intro e he
+      rcases List.mem_append.1 he with he | he
+      · exact Lay.append_ps _ g1 e he
+      · rw [g2] at b1; exact Lay.prepend_ps _ b1 e he
+    · rw [b2, g2]; simp; omega
+
+theorem flatMap_split (ps : List Ps) (i : Nat) (hi : i < ps.length) :
+    ps.flatMap Ps.kinds = (ps.take i).flatMap Ps.kinds ++ ps[i].kinds ++ (ps.drop (i + 1)).flatMap Ps.kinds := by
+  conv => lhs; rw [← List.take_append_drop i ps]
+  rw [List.drop_eq_getElem_cons hi, List.flatMap_append, List.flatMap_cons, List.append_assoc]
+
+theorem lay_envT {ps : List Ps} {start env} (hL : Lay ps start env) (pre post : List (Option Kd)) (hpre : pre.length = start) :
+    EnvT env.reverse (pre ++ (ps.flatMap Ps.kinds).map some ++ post) (start + (ps.flatMap Ps.kinds).length) := by
+  intro e he
+  rw [List.mem_reverse] at he
+  obtain ⟨i, hi, h1, h2⟩ := hL e he
+  have hs := flatMap_split ps i hi
+  generalize (ps.take i).flatMap Ps.kinds = A at hs h2
+  generalize (ps.drop (i + 1)).flatMap Ps.kinds = B at hs
+  generalize hK : ps[i].kinds = K at hs
+  have hw : e.2.2.width = K.length := by rw [← hK, Ps.kinds_length, h1]
+  rw [hs]
+  have hl : (pre ++ (A ++ K ++ B).map some ++ post).length = start + A.length + K.length + B.length + post.length := by
+    simp only [List.length_append, List.length_map]; omega
+  refine ⟨?_, ?_, fun s hsh => ⟨?_, ?_⟩⟩
+  · simp only [List.length_append]; omega
+  · rw [hl]; omega
+  · rw [hl]; rw [hsh] at hw; simp only [Ps.width] at hw; omega
+  have hk : s.kinds = K := by rw [← hK, h1, hsh]; rfl
+  have hΓ : pre ++ (A ++ K ++ B).map some ++ post = (pre ++ A.map some) ++ (K.map some ++ (B.map some ++ post)) := by
+    simp only [List.map_append, List.append_assoc]
+  rw [h2, hΓ, List.drop_left' (by simp; omega), ← Sh.kinds_length, hk, List.take_left' (by simp)]
+
+theorem tyOk_fits {res : Sh} {t : Ty} (h : tyOk res t = true) : t.fits res.kinds := by
+  cases t with
+  | s s => simp [tyOk] at h; subst h; rfl
+  | lit => simp [tyOk] at h; subst h; rfl
+  | inp => simp [tyOk] at h
+  | bot => simp [tyOk] at h
+
+theorem join_s {a : Ty} {res x : Sh} (h : a.join (.s res) = some (.s x)) : x = res := by
+  cases a with
+  | bot => simp [Ty.join] at h; exact h.symm
+  | lit => unfold Ty.join at h; split at h <;> simp_all
+  | s a => unfold Ty.join at h; split at h <;> simp_all
+  | inp => unfold Ty.join at h; split at h <;> simp_all
+
+theorem foldl_add (l : List Nat) (a : Nat) : l.foldl (· + ·) a = a + l.sum := by
+  induction l generalizing a with
+  | nil => simp
+  | cons x l ih => simp [ih]; omega
+
+theorem width_sum (ps : List Ps) : (ps.map Ps.width).foldl (· + ·) 0 = (ps.flatMap Ps.kinds).length := by
+  rw [foldl_add]; induction ps with
+  | nil => rfl
+  | cons p ps ih => simp [Ps.kinds_length] at ih ⊢
+
+theorem pDef_ok (fuel : Nat) (defs : List DefI) (ts : List Tok) (di : DefI) (da : DefA) (r : List Tok)
+    (h : pDef fuel defs ts = some (di, da, r)) :
+    TyDef (defs.map sigOf) da (sigOf di) ∧ da.id = defs.length ∧ (di.resLst = true → di.res = .ls) := by
+  obtain ⟨hE, -⟩ := p_all fuel
+  unfold pDef at h
+  split at h
+  · rename_i name ts0
+    split at h
+    · cases h
+    · split at h
+      · rename_i r0
+        obtain ⟨⟨tys, r1⟩, ha, h⟩ := Option.bind_eq_some_iff.1 h
+        simp only at h
+        split at h
+        · rename_i resT revSt hrev
+          split at h
+          · cases h
+          · split at h
+            · rename_i r2
+              obtain ⟨⟨zn, r3⟩, hz, h⟩ := Option.bind_eq_some_iff.1 h
+              simp only at h
+              split at h
+              · cases h
+              · obtain ⟨envZ, hZ, h⟩ := Option.bind_eq_some_iff.1 h
+                obtain ⟨⟨z, tz, r4, nx1⟩, hpz, h⟩ := Option.bind_eq_some_iff.1 h
+                simp only at h
+                split at h
+                · cases h
+                · rename_i hokz
+                  split at h
+                  · rename_i nb r5
+                    obtain ⟨⟨sn, r6⟩, hs, h⟩ := Option.bind_eq_some_iff.1 h
+                    simp only at h
+                    split at h
+                    · cases h
+                    · obtain ⟨envS, hS, h⟩ := Option.bind_eq_some_iff.1 h
+                      obtain ⟨⟨sb, ts', r7, nx2⟩, hps, h⟩ := Option.bind_eq_some_iff.1 h
+                      simp only at h
+                      split at h
+                      · rename_i x hj
+                        simp only [Option.some.injEq, Prod.mk.injEq] at h
+                        obtain ⟨rfl, rfl, rfl⟩ := h
+                        generalize stateKinds false revSt.reverse = ps at hZ hS hpz hps ⊢
+                        generalize trRes resT = res at hokz hj ⊢
+                        have hx := join_s hj; subst hx
+                        simp only [width_sum] at hpz hps ⊢
+                        generalize hL : ps.flatMap Ps.kinds = L at hpz hps ⊢
+                        obtain ⟨mz, tzz⟩ := hE _ _ _ _ _ _ _ _ hpz
+                        obtain ⟨ms, tss⟩ := hE _ _ _ _ _ _ _ _ hps
+                        refine ⟨⟨by simp [sigOf, Ps.kinds, hL]; omega, by show 1 + L.length ≤ nx2; omega,
+                          by simp [sigOf, Sh.kinds_length], ?_⟩, trivial, by simp⟩
+                        simp only [sigOf, List.flatMap_cons, Ps.kinds, hL]
+                        have hΓ : ([Kd.w] ++ L).map some ++ List.replicate (nx2 - (1 + L.length)) none =
+                            [some Kd.w] ++ L.map some ++ List.replicate (nx2 - (1 + L.length)) none := by simp
+                        rw [hΓ]
+                        have eZ := lay_envT (mkEnv_lay 1 ps zn envZ hZ) [some Kd.w] (List.replicate (nx2 - (1 + L.length)) none) rfl
+                        have eS := lay_envT (mkEnv_lay 1 ps sn envS hS) [some Kd.w] (List.replicate (nx2 - (1 + L.length)) none) rfl
+                        rw [hL] at eZ eS
+                        have hlen : ([some Kd.w] ++ L.map some ++ List.replicate (nx2 - (1 + L.length)) none).length = nx2 := by
+                          simp only [List.length_append, List.length_map, List.length_replicate, List.length_singleton]; omega
+                        refine TyN.loop (sk := L) (n := nx2 - (1 + L.length)) (by simp) ?_ ?_
+                        · exact tzz _ eZ (by omega) none _ (.inl rfl) (tyOk_fits (by simpa using hokz))
+                        · refine tss _ ?_ (by omega) (some L) _ (.inr (.inr (by simp [selfK, hL]))) (join_fits hj rfl).1
+                          intro e he
+                          rcases List.mem_cons.1 he with rfl | he
+                          · exact ⟨by simp [Ps.width]; omega, by rw [hlen]; simp [Ps.width]; omega, fun s hs => by cases hs⟩
+                          · exact (eS.mono (by omega)) e he
+                      · cases h
+                  · cases h
+            · cases h
+        · cases h
+      · obtain ⟨⟨groups, r1⟩, hb, h⟩ := Option.bind_eq_some_iff.1 h
+        simp only at h
+        split at h
+        · rename_i r2
+          obtain ⟨⟨resT, r3⟩, ht, h⟩ := Option.bind_eq_some_iff.1 h
+          simp only at h
+          split at h
+          · rename_i r4
+            rcases hbs : bindSlots 0 false groups with ⟨env, ps, npw⟩
+            obtain ⟨hlay, hnpw⟩ := bindSlots_lay groups 0 false env ps npw hbs
+            simp only [hbs] at h
+            split at h
+            · cases h
+            · obtain ⟨⟨b, tb, r5, nx⟩, hpe, h⟩ := Option.bind_eq_some_iff.1 h
+              simp only at h
+              split at h
+              · cases h
+              · rename_i hok
+                simp only [Option.some.injEq, Prod.mk.injEq] at h
+                obtain ⟨rfl, rfl, rfl⟩ := h
+                simp only [Bool.not_eq_true', Bool.not_eq_false] at hok
+                obtain ⟨m, t⟩ := hE _ _ _ _ _ _ _ _ hpe
+                refine ⟨⟨by simp [sigOf, hnpw], m, by simp [sigOf, Sh.kinds_length], ?_⟩, rfl, fun hr => ?_⟩
+                · have he := lay_envT hlay [] (List.replicate (nx - npw) none) rfl
+                  rw [← hnpw] at he
+                  simp only [List.nil_append] at he
+                  exact t _ he (by simp only [List.length_append, List.length_map, List.length_replicate]; omega) none _ (.inl rfl) (tyOk_fits (by simpa using hok))
+                · cases resT <;> simp_all [trRes]
+          · cases h
+        · cases h
+  · cases h
+
+theorem pDefs_ok (fuel : Nat) : ∀ (f : Nat) (defs : List DefI) (ts : List Tok) (ds : List DefI) (as : List DefA),
+    pDefs fuel f defs ts = some (ds, as) → ∃ nw : List DefI, ds = defs ++ nw ∧ nw.length = as.length ∧
+      (∀ (i : Nat) d di, as[i]? = some d → nw[i]? = some di → TyDef ((defs ++ nw.take i).map sigOf) d (sigOf di)) ∧
+      (∀ di ∈ nw, di.resLst = true → di.res = .ls)
+  | 0, _, _, _, _, h => by simp [pDefs] at h
+  | f + 1, defs, [], ds, as, h => by
+    simp [pDefs] at h; obtain ⟨rfl, rfl⟩ := h; exact ⟨[], by simp, rfl, by simp, by simp⟩
+  | f + 1, defs, t :: ts, ds, as, h => by
+    simp only [pDefs] at h
+    obtain ⟨⟨di, da, r⟩, hd, h⟩ := Option.bind_eq_some_iff.1 h
+    obtain ⟨⟨ds', as'⟩, hr, he⟩ := Option.map_eq_some_iff.1 h
+    simp only [Prod.mk.injEq] at he; obtain ⟨rfl, rfl⟩ := he
+    obtain ⟨t1, -, t3⟩ := pDef_ok fuel defs _ di da r hd
+    obtain ⟨nw, rfl, hl, ht, hm⟩ := pDefs_ok fuel f (defs ++ [di]) r ds' as' hr
+    refine ⟨di :: nw, by simp, by simp [hl], fun i d di' h1 h2 => ?_, fun d' hd' => ?_⟩
+    rotate_left
+    · rcases List.mem_cons.1 hd' with rfl | hd'
+      · exact t3
+      · exact hm d' hd'
+    cases i with
+    | zero => simp at h1 h2; subst h1; subst h2; simpa using t1
+    | succ i =>
+      have := ht i d di' (by simpa using h1) (by simpa using h2)
+      simpa [List.take_succ_cons] using this
+
+theorem refParse_ty {ts : List UInt64} {p : List DefA} (h : refParse ts = some p) : ∃ sigs, TyProg p sigs := by
+  unfold refParse at h
+  obtain ⟨toks, -, h⟩ := Option.bind_eq_some_iff.1 h
+  obtain ⟨⟨ds, as⟩, hd, h⟩ := Option.bind_eq_some_iff.1 h
+  simp only at h
+  split at h
+  · rename_i d hl
+    split at h
+    · rename_i hm
+      cases h
+      obtain ⟨nw, rfl, hlen, ht, hm'⟩ := pDefs_ok _ _ _ _ _ _ hd
+      refine ⟨ds.map sigOf, by simp [hlen], fun i d' sg h1 h2 => ?_, ?_⟩
+      · rw [List.getElem?_map] at h2
+        cases h3 : ds[i]? with
+        | none => simp [h3] at h2
+        | some di =>
+          simp [h3] at h2; subst h2
+          have := ht i d' di h1 h3
+          simpa [List.map_take] using this
+      · rw [List.getLast?_map, hl]
+        simp [isMain] at hm
+        obtain ⟨⟨-, hp⟩, hr⟩ := hm
+        have := hm' d (List.mem_of_getLast? hl) hr
+        simp [sigOf, hp, Ps.kinds, this, Sh.kinds]
+    · cases h
+  · cases h
+
+theorem parsed_not_stuck {ts : List UInt64} {p : List DefA} (h : ParsesProgram ts p) (κ : Nat) (inp : List UInt8) :
+    Sem κ p inp ≠ .error .stuck := by
+  obtain ⟨sigs, hs⟩ := refParse_ty h
+  exact sem_ok κ p sigs hs inp
+
+/-- **the end-to-end theorem with progress**: as `compiler_correct`, and the meaning never gets stuck, so for every input
+the emitted code's run shows the program's output, the capacity trap, or (below the work bound) out-of-memory -/
+theorem compiler_correct' (HP : ParStage) (HG : GenStage) (x : List UInt8) (hx : x.length ≤ 2 ^ 20) (h : mC x ≠ []) :
+    ∃ ts p, LexSpec.Lexes x ts ∧ ParsesProgram ts p ∧ ImplementsC (mC x) (Sem κC p) ∧
+      ∀ inp, Sem κC p inp ≠ .error .stuck := by
+  obtain ⟨ts, p, h1, h2, h3⟩ := compiler_correct HP HG x hx h
+  exact ⟨ts, p, h1, h2, h3, parsed_not_stuck h2 κC⟩
+
 end NanoMain
