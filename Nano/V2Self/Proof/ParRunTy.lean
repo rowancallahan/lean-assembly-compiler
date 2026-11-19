@@ -56,7 +56,12 @@ theorem tyCross_inv {st k st'} (h : stepF .tyCross st = some (k, st')) :
 theorem tyPair_inv {st k st' l} (h : stepF (.tyPair l) st = some (k, st')) :
     ∃ r, st.ty = some r ∧ k = [] ∧ st' = { st with ty := some (.p l r) } := by
   simp only [stepF] at h
-  split at h <;> simp at h; obtain ⟨rfl, rfl⟩ := h; exact ⟨_, ‹_›, rfl, rfl⟩
+  split at h
+  · rename_i r hr
+    split at h
+    · simp at h
+    · simp at h; obtain ⟨rfl, rfl⟩ := h; exact ⟨_, hr, rfl, rfl⟩
+  · simp at h
 
 theorem St.withTy_self {st : St} {s : Sh} (h : st.ty = some s) : st.withTy st.toks s = st := by
   cases st; simp_all [St.withTy]
