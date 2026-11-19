@@ -370,4 +370,44 @@ theorem expr_if {n : Nat} (hB : ∀ n' < n, BinSpec n') (hE : ∀ n' < n, ExprSp
   | call ht' => rw [ht] at ht'; cases ht'
   | primTok ht' h1 h2 => rw [ht] at ht'; injection ht' with ht'; injection ht' with ht'; omega
 
+
+theorem findB_push (bs : List Bd) (bd : Bd) (y : List Nat) :
+    findB (bs ++ [bd]) y = if bd.name == y then some bd else findB bs y := by
+  unfold findB; simp only [List.reverse_append, List.reverse_cons, List.reverse_nil, List.nil_append, List.singleton_append,
+    List.find?_cons]
+  split <;> simp_all
+
+theorem findEnv_cons (env : List (List Nat × Nat × Ps)) (x : List Nat) (slot : Nat) (p : Ps) (y : List Nat) :
+    findEnv ((x, slot, p) :: env) y = if x == y then some (slot, p) else findEnv env y := by
+  unfold findEnv; simp only [List.find?_cons]; split <;> simp_all
+
+/-- a typed, non-input, non-Nat binding extends the context relation -/
+theorem CxRel.push {st st' : St} {cx : Cx} {x : List Nat} {slot : Nat} {s : Sh} (hc : CxRel st cx) (hs : s ≠ .nt)
+    (hb : st'.binds = st.binds ++ [⟨x, slot, some s, false⟩]) (hd : st'.defs = st.defs) :
+    CxRel st' { cx with env := (x, slot, .sh s) :: cx.env } := by
+  obtain ⟨h1, h2, h3, h4, h5⟩ := hc
+  have hps : bdPs ⟨x, slot, some s, false⟩ = some (.sh s) := by
+    unfold bdPs; cases s <;> simp_all
+  refine ⟨?_, ?_, ?_, by rw [hd]; exact h4, by rw [hd]; exact h5⟩
+  · intro y bd hy; rw [hb, findB_push] at hy; split at hy
+    · cases hy; rfl
+    · exact h1 y bd hy
+  · intro y bd hy hi; rw [hb, findB_push] at hy; split at hy
+    · cases hy; cases hi
+    · exact h2 y bd hy hi
+  · intro y
+    rw [hb, findB_push, findEnv_cons]
+    by_cases hxy : x = y
+    · subst hxy; simp [hps]
+    · have : (x == y) = false := by simpa using hxy
+      simp only [this, Bool.false_eq_true, if_false]; exact h3 y
+
+theorem CxNN.push {st st' : St} {bd : Bd} (h : CxNN st) (hbd : ShNN bd.sh) (hb : st'.binds = st.binds ++ [bd])
+    (hd : st'.defs = st.defs) (hcu : st'.cur = st.cur) : CxNN st' := by
+  obtain ⟨h1, h2⟩ := h
+  refine ⟨fun b hm => ?_, by unfold ParRun.rows at *; rw [hd, hcu]; exact h2⟩
+  rw [hb] at hm; rcases List.mem_append.mp hm with hm | hm
+  · exact h1 b hm
+  · simp at hm; subst hm; exact hbd
+
 end ParRun

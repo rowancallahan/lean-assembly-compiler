@@ -110,7 +110,7 @@ def _root_.ParSpec.Sh.nnt : Sh → Bool
   | .p a b => a != .nt && b != .nt && a.nnt && b.nnt
   | _ => true
 
-def ShNN (o : Option Sh) : Prop := ∀ s, o = some s → s.nnt = true
+def ShNN (o : Option Sh) : Prop := ∃ s, o = some s ∧ s.nnt = true
 
 /-- the tables hold no nested Nat -/
 def CxNN (st : St) : Prop := (∀ bd ∈ st.binds, ShNN bd.sh) ∧ (∀ d ∈ rows st, ShNN d.res ∧ ∀ p ∈ d.params, p.nnt = true)
@@ -197,7 +197,7 @@ theorem loop_sound : ∀ n, (∀ n' < n, BinSpec n') → LoopSpec n := by
       simp only [List.nil_append] at h3
       have hb : TyRel (RN.mk 3 op 0 (some .uw) false [a, RN.mk 1 kv 0 (some .uw) false []]) (.s .uw) := ⟨rfl, rfl, by simp [RN.tag]⟩
       obtain ⟨v, st', n', hn', hp, hsub, hrun, hstop, hnv, hspec⟩ := ihL n (by omega) (fun n'' hn'' => IHB n'' (by omega)) m ks _ fin cx _ _ _ h3 rfl
-        (CxRel.transport hc rfl rfl) (CxNN.transport hnn rfl rfl rfl) (by intro s hs; simp [RN.sh] at hs; subst hs; rfl)
+        (CxRel.transport hc rfl rfl) (CxNN.transport hnn rfl rfl rfl) ⟨.uw, rfl, rfl⟩
         (fun _ => ⟨hb, PT_bin _ _ _⟩)
       refine ⟨v, st', n', by omega, ⟨hp.vals, hp.binds, hp.defs, hp.cur, hp.arm, hp.all, ?_, hp.nx⟩,
         fun u hu => hsub u (kid_nodes_sub (List.mem_cons_self ..) hu), hrun, hstop, hnv, fun hvt => ?_⟩
@@ -237,7 +237,7 @@ theorem loop_sound : ∀ n, (∀ n' < n, BinSpec n') → LoopSpec n := by
       obtain ⟨v, st', n', hn', hp, hsub, hrun, hstop, hnv, hspec⟩ :=
         ihL n2 (by omega) (fun n'' hn'' => IHB n'' (by omega)) m ks _ fin cx _ _ _ h3 hv3' hc3
           (CxNN.transport hnn (by rw [hst3]; exact hp2.binds) (by rw [hst3]; exact hp2.defs) (by rw [hst3]; exact hp2.cur))
-          (by intro s hs; simp [RN.sh] at hs; subst hs; rfl) (fun _ => ⟨hb, PT_bin _ _ _⟩)
+          ⟨.uw, rfl, rfl⟩ (fun _ => ⟨hb, PT_bin _ _ _⟩)
       have hrows : rows st3 = rows st := by simp [hst3, rows, hp2.defs, hp2.cur]
       rw [hrows] at hspec
       have hsubb : ∀ u ∈ nodes (RN.mk 3 op 0 (some .uw) false [a, y]), u ∈ nodes v := hsub
