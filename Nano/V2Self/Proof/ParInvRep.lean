@@ -85,7 +85,7 @@ def ValRep (h : Buf) (res : UInt64) (u : UInt64) (v : Nd × Ty) (ids : List UInt
 def OpsRep (h : Buf) (res : UInt64) (vals : List (Nd × Ty)) : Prop :=
   (bget h 8).toNat = vals.length ∧ vals.length ≤ 4096 ∧ (bget h 9).toNat ≤ 16384 ∧
   ∃ idss : List (List UInt64), idss.length = vals.length ∧ idss.flatten.Nodup ∧
-    (∀ ids ∈ idss, ∀ v ∈ ids, v < bget h 9) ∧
+    (∀ v ∈ idss.flatten, v < bget h 9) ∧
     ∀ (i : Nat) (hi : i < vals.length),
       ValRep h res (bget h (d3 + (vals.length - 1 - i).toUInt64)) (vals[i]'hi) (idss.getD i [])
 

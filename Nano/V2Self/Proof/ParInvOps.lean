@@ -208,4 +208,280 @@ theorem v5_eff (h : Buf) (c a b w t n : UInt64) (hl : 147520 ≤ h.length) (hz :
   · intro i a1 a2 a3 a4 a5
     rw [top i a1 a2 a3, U2 i a5, U1 i a4]
 
+/-! ## frame lemmas for the type side -/
+theorem shapeRow (c : UInt64) (h1 : 5 ≤ c.toNat) (h2 : c.toNat < 5 + 8192) (k : UInt64) (hk : k.toNat < 3) :
+    (d7 + 8192 + 3 * (c - 5) + k).toNat = 155712 + 3 * (c.toNat - 5) + k.toNat := by
+  have e5 : (c - 5).toNat = c.toNat - 5 := by rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr (by simp; omega))]; simp
+  have e3 : (3 * (c - 5)).toNat = 3 * (c.toNat - 5) := by
+    rw [UInt64.toNat_mul, e5, show (3 : UInt64).toNat = 3 from rfl]; exact Nat.mod_eq_of_lt (by omega)
+  have a1 : (d7 + 8192 : UInt64).toNat = 155712 := rfl
+  have a2 : (d7 + 8192 + 3 * (c - 5)).toNat = 155712 + 3 * (c.toNat - 5) := by rw [tn_add _ _ (by rw [a1, e3]; omega), a1, e3]
+  rw [tn_add _ _ (by rw [a2]; omega), a2]
+
+/-- the shape table region `[155712, 155712 + 3·8192)` -/
+def ShTabAgree (h h' : Buf) : Prop := ∀ i : UInt64, 155712 ≤ i.toNat → i.toNat < 155712 + 3 * 8192 → bget h' i = bget h i
+
+theorem ShapeCode.frame {h h' : Buf} {c : UInt64} {s : Sh} (r : ShapeCode h c s) (e : ShTabAgree h h') : ShapeCode h' c s := by
+  induction r with
+  | uw => exact .uw
+  | bf => exact .bf
+  | ls => exact .ls
+  | nt => exact .nt
+  | pr h1 h2 hl hr _ _ il ir =>
+    have r0 := shapeRow _ h1 h2 0 (by decide)
+    have r1 := shapeRow _ h1 h2 1 (by decide)
+    simp only [UInt64.add_zero, show (0 : UInt64).toNat = 0 from rfl, show (1 : UInt64).toNat = 1 from rfl, Nat.add_zero] at r0 r1
+    exact .pr h1 h2 (by rw [e _ (by omega) (by omega)]; exact hl) (by rw [e _ (by omega) (by omega)]; exact hr) il ir
+
+theorem TyRep.frame {h h' : Buf} {res u : UInt64} {ty : Ty} (r : TyRep h res u ty)
+    (e0 : ∀ k : UInt64, k.toNat < 7 → fld h' u k = fld h u k) (e : ShTabAgree h h') : TyRep h' res u ty := by
+  have i0 := e0 0 (by decide); have i2 := e0 2 (by decide); have i3 := e0 3 (by decide)
+  have ii : InpLoc h' u ↔ InpLoc h u := by simp only [InpLoc, i0, i2]
+  cases ty with
+  | s s => exact ⟨by rw [i3]; exact r.1.frame e, by rw [i0]; exact r.2.1, by rw [ii]; exact r.2.2⟩
+  | lit => exact ⟨by rw [i3]; exact r.1, by rw [ii]; exact r.2⟩
+  | inp => exact ⟨ii.mpr r.1, by rw [i3]; exact r.2⟩
+  | bot => exact ⟨by rw [i3]; exact r.1, by rw [i0]; exact r.2.1, by rw [ii]; exact r.2.2⟩
+
+theorem ValRep.frame {h h' : Buf} {res u : UInt64} {v : Nd × Ty} {ids : List UInt64} (r : ValRep h res u v ids)
+    (e0 : ∀ k : UInt64, k.toNat < 7 → fld h' u k = fld h u k) (e : RecAgree h h' ids.tail) (es : ShTabAgree h h') :
+    ValRep h' res u v ids :=
+  ⟨r.1.frame e0 e, r.2.1.frame e0 es, by rw [e0 4 (by decide)]; exact r.2.2⟩
+
+/-! ## popped operands become the new node's child chain -/
+/-- the visible children (input locals dropped), bottom first -/
+def visible (vs : List (Nd × Ty)) : List Nd := (vs.filter fun v => decide (v.2 ≠ .inp)).map (·.1)
+
+theorem NodeRep.inp_ids {h : Buf} {u : UInt64} {nd : Nd} {ids : List UInt64} (r : NodeRep h u nd ids) (hi : InpLoc h u) : ids = [u] := by
+  cases r with
+  | loc => rfl
+  | _ => rename_i a _; simp_all [InpLoc]
+
+theorem TyRep.inp_iff {h : Buf} {res u : UInt64} {ty : Ty} (r : TyRep h res u ty) : InpLoc h u ↔ ty = .inp := by
+  cases ty with
+  | inp => exact ⟨fun _ => rfl, fun _ => r.1⟩
+  | s s => exact ⟨fun x => absurd x r.2.2, fun x => by cases x⟩
+  | lit => exact ⟨fun x => absurd x r.2, fun x => by cases x⟩
+  | bot => exact ⟨fun x => absurd x r.2.2, fun x => by cases x⟩
+
+theorem kids_chain (h : Buf) (res : UInt64) : ∀ (vs : List (Nd × Ty)) (idss : List (List UInt64)) (f : Nat → UInt64) (k0 : Nat),
+    idss.length = vs.length →
+    (∀ i, i + 1 < vs.length → fld h (f (k0 + i)) 7 = f (k0 + i + 1)) →
+    (∀ i (hi : i < vs.length), ValRep h res (f (k0 + i)) (vs[i]'hi) (idss.getD i [])) →
+    Kids h (f k0) vs.length (visible vs) idss.flatten
+  | [], [], _, _, _, _, _ => .nil
+  | v :: vs, ids :: idss, f, k0, hL, hk, hv => by
+    have hL' : idss.length = vs.length := by simpa using hL
+    have ih := kids_chain h res vs idss f (k0 + 1) hL'
+      (fun i hi => by have := hk (i + 1) (by simp; omega); rw [show k0 + (i + 1) = k0 + 1 + i by omega] at this; exact this)
+      (fun i hi => by have := hv (i + 1) (by simp; omega); rw [show k0 + (i + 1) = k0 + 1 + i by omega] at this; simpa using this)
+    have nx : Kids h (fld h (f k0) 7) vs.length (visible vs) idss.flatten := by
+      cases vs with
+      | nil => cases idss with
+        | nil => exact .nil
+        | cons _ _ => simp at hL'
+      | cons _ _ => have := hk 0 (by simp); simp only [Nat.add_zero] at this; rw [this]; exact ih
+    have v0 := hv 0 (by simp)
+    simp only [Nat.add_zero, List.getElem_cons_zero, List.getD_cons_zero] at v0
+    by_cases hi : v.2 = .inp
+    · have il : InpLoc h (f k0) := (v0.2.1.inp_iff).mpr hi
+      have e := v0.1.inp_ids il
+      have : visible (v :: vs) = visible vs := by simp [visible, hi]
+      rw [this, List.flatten_cons, e]
+      exact .skip il nx
+    · have il : ¬ InpLoc h (f k0) := fun x => hi ((v0.2.1.inp_iff).mp x)
+      have : visible (v :: vs) = v.1 :: visible vs := by simp [visible, hi]
+      rw [this, List.flatten_cons]
+      exact .cons v0.1 il nx
+  | [], _ :: _, _, _, hL, _, _ => by simp at hL
+  | _ :: _, [], _, _, hL, _, _ => by simp at hL
+
+/-! ## list helpers -/
+theorem mem_getD_flat {α : Type} : ∀ (L : List (List α)) (i : Nat) (x : α), x ∈ L.getD i [] → x ∈ L.flatten
+  | [], i, x, hx => by simp at hx
+  | a :: L, 0, x, hx => by simp at hx; simp [hx]
+  | a :: L, i + 1, x, hx => by simp only [List.getD_cons_succ] at hx; simp only [List.flatten_cons, List.mem_append]; exact Or.inr (mem_getD_flat L i x hx)
+
+theorem flat_disj {α : Type} : ∀ (L : List (List α)), L.flatten.Nodup → ∀ i j, i < j → ∀ x, x ∈ L.getD i [] → x ∈ L.getD j [] → False
+  | [], _, _, _, _, _, hx, _ => by simp at hx
+  | a :: L, hn, 0, j + 1, _, x, hx, hy => by
+    rw [List.flatten_cons, List.nodup_append] at hn
+    simp only [List.getD_cons_zero, List.getD_cons_succ] at hx hy
+    exact hn.2.2 x hx x (mem_getD_flat L j x hy) rfl
+  | a :: L, hn, i + 1, j + 1, hij, x, hx, hy => by
+    rw [List.flatten_cons, List.nodup_append] at hn
+    simp only [List.getD_cons_succ] at hx hy
+    exact flat_disj L hn.2.1 i j (by omega) x hx hy
+
+theorem getD_eq {α : Type} (l : List α) (i : Nat) (d : α) (hi : i < l.length) : l.getD i d = l[i] := by
+  simp [List.getD_eq_getElem?_getD, hi]
+
+theorem nodup_getD {α : Type} : ∀ (L : List (List α)) (i : Nat), L.flatten.Nodup → (L.getD i []).Nodup
+  | [], i, _ => by simp
+  | a :: L, 0, hn => by rw [List.flatten_cons, List.nodup_append] at hn; simpa using hn.1
+  | a :: L, i + 1, hn => by rw [List.flatten_cons, List.nodup_append] at hn; simpa using nodup_getD L i hn.2.1
+
+theorem getD_rev_take {α : Type} (L : List (List α)) (n r : Nat) (hn : n ≤ L.length) (hr : r < n) :
+    (L.take n).reverse.getD r [] = L.getD (n - 1 - r) [] := by
+  rw [getD_eq _ _ _ (by simp; omega), getD_eq _ _ _ (by omega), List.getElem_reverse, List.getElem_take]
+  congr 1; simp; omega
+
+theorem getD_drop {α : Type} (L : List (List α)) (n i : Nat) : (L.drop n).getD i [] = L.getD (n + i) [] := by
+  simp [List.getD_eq_getElem?_getD]
+
+theorem NodeRep.head {h : Buf} {u : UInt64} {nd : Nd} {ids : List UInt64} (r : NodeRep h u nd ids) : ∃ t, ids = u :: t := by
+  cases r <;> exact ⟨_, rfl⟩
+
+/-! ## OPS / REDUCE: v5 over the operand-stack representation -/
+/-- the hypotheses of `v5_eff`, from the operand-stack representation (top `pre` popped) -/
+theorem ops_v5_hyps (h : Buf) (res : UInt64) (pre vals : List (Nd × Ty)) (hO : OpsRep h res (pre ++ vals)) :
+    let n := pre.length.toUInt64
+    (bget h 8).toNat ≤ 4096 ∧ n.toNat ≤ (bget h 8).toNat ∧ (bget h 8).toNat - n.toNat = vals.length ∧ n.toNat = pre.length ∧
+    (∀ i, i < n.toNat → (opAt h ((bget h 8).toNat - n.toNat + i)).toNat < (bget h 9).toNat) ∧
+    ((List.range n.toNat).map fun i => (opAt h ((bget h 8).toNat - n.toNat + i)).toNat).Nodup := by
+  intro n
+  obtain ⟨h8, hm, h9, idss, hL, hnd, hbel, hv⟩ := hO
+  simp only [List.length_append] at h8 hm hL hv
+  have en : n.toNat = pre.length := by simp [n]; omega
+  have root : ∀ i (hi : i < pre.length + vals.length), opAt h (pre.length + vals.length - 1 - i) ∈ idss.getD i [] :=
+    fun i hi => (hv i (by simpa using hi)).1.mem
+  have idx : ∀ r, r < pre.length → (bget h 8).toNat - n.toNat + r = pre.length + vals.length - 1 - (pre.length - 1 - r) := by
+    intro r hr; omega
+  refine ⟨by omega, by omega, by omega, en, fun r hr => ?_, ?_⟩
+  · rw [idx r (by omega)]
+    have := hbel _ (mem_getD_flat _ _ _ (root (pre.length - 1 - r) (by omega)))
+    exact UInt64.lt_iff_toNat_lt.mp this
+  · unfold List.Nodup
+    rw [List.pairwise_iff_getElem]
+    intro r1 r2 h1 h2 h12
+    simp only [List.length_map, List.length_range] at h1 h2
+    simp only [List.getElem_map, List.getElem_range]
+    rw [idx r1 (by omega), idx r2 (by omega)]
+    intro e
+    have e' := UInt64.toNat_inj.mp e
+    exact flat_disj idss hnd (pre.length - 1 - r2) (pre.length - 1 - r1) (by omega) _
+      (root _ (by omega)) (by rw [← e']; exact root _ (by omega))
+
+/-- **OPS/REDUCE**: `v5` pops `pre` (top first) and pushes node z = h[9]: the popped operands form z's child chain (input locals
+skipped), and any representation of z on top of the untouched rest gives the new operand-stack representation -/
+theorem ops_reduce (h : Buf) (res c a b w t : UInt64) (pre vals : List (Nd × Ty)) (hO : OpsRep h res (pre ++ vals))
+    (hl : 147520 ≤ h.length) (hz : (bget h 9).toNat < 16384) (hJ : vals.length < 4096) :
+    let z := bget h 9
+    let h' := v5 h c a b w t pre.length.toUInt64
+    ShTabAgree h h' ∧
+    ∃ ids, Kids h' (fld h' z 5) pre.length (visible pre.reverse) ids ∧ (∀ v ∈ ids, v < z) ∧
+      ∀ v, ValRep h' res z v (z :: ids) → OpsRep h' res (v :: vals) := by
+  intro z h'
+  obtain ⟨hm, hn, hJv, en, hb, hd⟩ := ops_v5_hyps h res pre vals hO
+  have E := v5_eff h c a b w t pre.length.toUInt64 hl hz hm hn (by omega) hb hd
+  have hJv' : (bget h 8).toNat - pre.length = vals.length := by omega
+  simp only [en] at E
+  simp only [hJv'] at E
+  obtain ⟨EL, _, _, _, _, _, E5, _, Elink, Eop, E8, E9, EU⟩ := E
+  obtain ⟨h8, _, h9, idss, hL, hnd, hbel, hv⟩ := hO
+  simp only [List.length_append] at h8 hL hv
+  have hz' : z.toNat < 16384 := hz
+  have zz : z.toNat = (bget h 9).toNat := rfl
+  have root : ∀ i (hi : i < pre.length + vals.length), opAt h (pre.length + vals.length - 1 - i) ∈ idss.getD i [] :=
+    fun i hi => (hv i (by simpa using hi)).1.mem
+  have below : ∀ v ∈ idss.flatten, v.toNat < z.toNat := fun v hv => UInt64.lt_iff_toNat_lt.mp (hbel v hv)
+  -- a record of the old operand trees is unchanged except possibly a popped root's next field
+  have keep : ∀ (v : UInt64), v ∈ idss.flatten → ∀ k : UInt64, k.toNat < 8 →
+      (k.toNat = 7 → ∀ k', k' + 1 < pre.length → v ≠ opAt h (vals.length + k')) → fld h' v k = fld h v k := by
+    intro v hv k hk h7
+    have vz := below v hv
+    simp only [fld]
+    have r := recK v k (by omega) hk
+    refine EU _ (by rw [r]; omega) (by rw [r]; omega) (by rw [r]; omega) (by rw [r]; omega) ?_
+    intro k' hk' e
+    rw [r] at e
+    have hk7 : k.toNat = 7 := by omega
+    exact h7 hk7 k' hk' (UInt64.toNat_inj.mp (by omega))
+  have nL : pre.length ≤ idss.length := by omega
+  -- entries: the popped ones (i < n) and the kept ones (n ≤ i)
+  have notPopped : ∀ i v, i < pre.length + vals.length → v ∈ idss.getD i [] → ∀ k', k' + 1 < pre.length →
+      (i ≥ pre.length ∨ v ≠ opAt h (pre.length + vals.length - 1 - i)) → v ≠ opAt h (vals.length + k') := by
+    intro i v hi hv k' hk' hc e
+    have hr := root (pre.length - 1 - k') (by omega)
+    rw [show pre.length + vals.length - 1 - (pre.length - 1 - k') = vals.length + k' by omega] at hr
+    rcases Nat.lt_trichotomy i (pre.length - 1 - k') with c1 | c1 | c1
+    · exact flat_disj idss hnd _ _ c1 v hv (e ▸ hr)
+    · subst c1
+      rcases hc with c2 | c2
+      · omega
+      · exact c2 (by rw [show pre.length + vals.length - 1 - (pre.length - 1 - k') = vals.length + k' by omega]; exact e)
+    · exact flat_disj idss hnd _ _ c1 v (e ▸ hr) hv
+  have shtab : ShTabAgree h h' := fun i hi1 hi2 => EU i (by omega) (by omega) (by omega) (Or.inr (by omega)) (fun k hk => by
+      have := below _ (mem_getD_flat _ _ _ (root (pre.length - 1 - k) (by omega)))
+      rw [show pre.length + vals.length - 1 - (pre.length - 1 - k) = vals.length + k by omega] at this
+      omega)
+  -- frame for one old entry, given the new position of its root is unchanged
+  have frameEntry : ∀ i (hi : i < pre.length + vals.length),
+      ValRep h' res (opAt h (pre.length + vals.length - 1 - i)) ((pre ++ vals)[i]'(by simpa using hi)) (idss.getD i []) := by
+    intro i hi
+    have V := hv i (by simpa using hi)
+    obtain ⟨t, et⟩ := V.1.head
+    have nd := nodup_getD idss i hnd
+    rw [et] at nd
+    have hu : opAt h (pre.length + vals.length - 1 - i) ∈ idss.flatten := mem_getD_flat _ _ _ (root i hi)
+    refine V.frame (fun k hk => keep _ hu k (by omega) (fun e => by omega)) (fun v hvt k hk => ?_) ?_
+    · rw [et] at hvt
+      have hvm : v ∈ idss.getD i [] := by rw [et]; exact List.mem_cons_of_mem _ hvt
+      refine keep v (mem_getD_flat _ _ _ hvm) k hk (fun _ k' hk' => notPopped i v hi hvm k' hk' (Or.inr ?_))
+      intro e; rw [e] at hvt; exact (List.nodup_cons.mp nd).1 hvt
+    · exact shtab
+  refine ⟨shtab, ((idss.take pre.length).reverse).flatten, ?_, ?_, ?_⟩
+  · -- the child chain
+    have K := kids_chain h' res pre.reverse ((idss.take pre.length).reverse) (fun k => opAt h k) vals.length
+      (by simp; omega) (fun i hi => by simp at hi; exact Elink i hi) (fun r hr => by
+        simp only [List.length_reverse] at hr
+        rw [getD_rev_take _ _ _ nL hr]
+        have := frameEntry (pre.length - 1 - r) (by omega)
+        rw [show pre.length + vals.length - 1 - (pre.length - 1 - r) = vals.length + r by omega] at this
+        rw [List.getElem_reverse]
+        rw [List.getElem_append_left (by omega)] at this
+        exact this)
+    simp only [List.length_reverse] at K
+    rw [E5]; exact K
+  · intro v hv
+    rw [List.mem_flatten] at hv
+    obtain ⟨l, hl1, hl2⟩ := hv
+    rw [List.mem_reverse] at hl1
+    have : v ∈ idss.flatten := List.mem_flatten.mpr ⟨l, List.mem_of_mem_take hl1, hl2⟩
+    exact UInt64.lt_iff_toNat_lt.mpr (below v this)
+  · intro v V
+    have perm : (((idss.take pre.length).reverse).flatten ++ (idss.drop pre.length).flatten).Perm idss.flatten := by
+      have := (List.Perm.flatten (List.reverse_perm (idss.take pre.length))).append_right (idss.drop pre.length).flatten
+      rw [← List.flatten_append, ← List.flatten_append, List.take_append_drop] at this
+      rw [List.flatten_append] at this
+      exact this
+    refine ⟨?_, by simp; omega, ?_, (z :: ((idss.take pre.length).reverse).flatten) :: idss.drop pre.length, by simp; omega, ?_, ?_, ?_⟩
+    · rw [E8]; simp; omega
+    · rw [E9, tn_add _ _ (by simp; omega)]; simp; omega
+    · rw [List.flatten_cons, List.cons_append, List.nodup_cons]
+      refine ⟨fun hm => ?_, perm.nodup_iff.mpr hnd⟩
+      have := below z (perm.subset hm); omega
+    · intro x hx
+      rw [E9]
+      rw [List.flatten_cons, List.cons_append, List.mem_cons] at hx
+      apply UInt64.lt_iff_toNat_lt.mpr
+      rw [tn_add _ _ (by simp; omega)]
+      have e1 : (1 : UInt64).toNat = 1 := rfl
+      rcases hx with hx | hx
+      · subst hx; omega
+      · have := below x (perm.subset hx); omega
+    · intro i hi
+      cases i with
+      | zero => simpa [opAt] using (show ValRep h' res (opAt h' vals.length) v (z :: ((idss.take pre.length).reverse).flatten) by rw [Eop]; exact V)
+      | succ i =>
+        simp only [List.length_cons] at hi
+        have F := frameEntry (pre.length + i) (by omega)
+        rw [List.getElem_append_right (by omega)] at F
+        simp only [List.getElem_cons_succ, List.getD_cons_succ, getD_drop]
+        have eo : bget h' (d3 + (vals.length + 1 - 1 - (i + 1)).toUInt64) = opAt h (pre.length + vals.length - 1 - (pre.length + i)) := by
+          rw [show pre.length + vals.length - 1 - (pre.length + i) = vals.length + 1 - 1 - (i + 1) by omega]
+          apply EU <;> (try rw [d3k _ (by omega)]) <;> (try omega)
+        rw [show (v :: vals).length - 1 - (i + 1) = vals.length + 1 - 1 - (i + 1) by simp, eo]
+        simpa using F
+
 end ParInv
