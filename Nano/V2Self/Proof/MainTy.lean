@@ -37,17 +37,23 @@ inductive TyN (D : List Sig) : List (Option Kd) → Option (List Kd) → Nd → 
   | ite {Γ S c a b t e ks} : (c = 1 ∨ c = 2) → TyN D Γ none a [.w] → TyN D Γ none b [.w] →
       TyN D Γ S t ks → TyN D Γ S e ks → TyN D Γ S (.ite c a b t e) ks
   | letE {Γ S s w v b vs ks} : TyN D Γ none v vs → vs.length = w → s + w ≤ Γ.length →
+      (∀ k, s ≤ k → k < s + w → Γ[k]? = some none) →
       TyN D (setK Γ s vs) S b ks → TyN D Γ S (.letE s w v b) ks
   | pair {Γ S cs ks} : TyL D Γ cs ks → TyN D Γ S (.pair cs) ks
   | call {Γ S i as ps rs} : TyL D Γ as ps → D[i]? = some (ps, rs) → TyN D Γ S (.call i as) rs
-  | prim {Γ S p as ps rs} : TyL D Γ as ps → primK p ps = some rs → TyN D Γ S (.prim p as) rs
-  | loop {Γ S z s sk n ks} : Γ = some .w :: sk.map some ++ List.replicate n none →
-      TyN D Γ none z ks → TyN D Γ (some sk) s ks → TyN D Γ S (.loop z s) ks
+  | prim {Γ S p as ps rs} : TyL D Γ as ps → primK p ps = some rs → ((p = 1 ∨ p = 3 ∨ p = 5) → as = []) →
+      TyN D Γ S (.prim p as) rs
   | cont {Γ sk e ks} : TyN D Γ none e sk → TyN D Γ (some sk) (.cont e) ks
 inductive TyL (D : List Sig) : List (Option Kd) → List Nd → List Kd → Prop
   | nil {Γ} : TyL D Γ [] []
   | cons {Γ n r k ks} : TyN D Γ none n k → TyL D Γ r ks → TyL D Γ (n :: r) (k ++ ks)
 end
+
+/-- a def body: an expression, or the fuel loop (slot 0 = fuel, then the states `sk`, then let slots) -/
+inductive TyB (D : List Sig) : List (Option Kd) → Nd → List Kd → Prop
+  | plain {Γ e ks} : TyN D Γ none e ks → TyB D Γ e ks
+  | loop {Γ z s sk n ks} : Γ = some .w :: sk.map some ++ List.replicate n none →
+      TyN D Γ none z ks → TyN D Γ (some sk) s ks → TyB D Γ (.loop z s) ks
 
 /-- slot value vs. known kind -/
 def RK (v : W) (o : Option Kd) : Prop := ∀ k, o = some k → v.k = k
@@ -231,7 +237,7 @@ theorem ev_ok {cx : Ctx} {D : List Sig} (hc : CtxOK cx D) : ∀ {Γ S e ks}, TyN
     · simp only [show (2 : Nat) ≠ 1 by decide, if_false, if_true]; split
       · exact ev_ok hc ht env he
       · exact ev_ok hc he' env he
-  | _, _, _, _, .letE (vs := vs) hv hw hs hb, env, he => by
+  | _, _, _, _, .letE (vs := vs) hv hw hs _ hb, env, he => by
     obtain ⟨nv, kv⟩ := val_ok (ev_ok hc hv env he)
     simp only [ev]
     rcases ex_cases nv with ev' | ⟨x, ev'⟩
@@ -263,7 +269,7 @@ theorem ev_ok {cx : Ctx} {D : List Sig} (hc : CtxOK cx D) : ∀ {Γ S e ks}, TyN
     · simp [e2]; exact out_cap
     · simp only [e2, pure, Except.pure]
       exact ⟨by simp, fun v' h => by cases h; exact r2 _ e2, by simp⟩
-  | _, _, _, _, .prim (p := p) hl hp, env, he => by
+  | _, _, _, _, .prim (p := p) hl hp _, env, he => by
     obtain ⟨n1, k1⟩ := evL_ok hc hl env he
     simp only [ev]
     rcases ex_cases n1 with e | ⟨v, e⟩
@@ -276,21 +282,6 @@ theorem ev_ok {cx : Ctx} {D : List Sig} (hc : CtxOK cx D) : ∀ {Γ S e ks}, TyN
     · simp [e2]; exact out_cap
     · simp only [e2, pure, Except.pure]
       exact ⟨by simp, fun v' h => by cases h; exact r2 _ e2, by simp⟩
-  | _, _, _, _, .loop (sk := sk) (n := n) hΓ hz hs, env, he => by
-    subst hΓ
-    cases he with
-    | cons h0 he1 =>
-      rename_i v0 l
-      have : ∃ x, v0 = .w x := by
-        have := h0 .w rfl; cases v0 with | w x => exact ⟨x, rfl⟩ | b _ => cases this
-      obtain ⟨x, rfl⟩ := this
-      have he' : EnvOK (W.w x :: l) (some .w :: sk.map some ++ List.replicate n none) := .cons h0 he1
-      obtain ⟨n1, k1⟩ := loopRun_ok (fun env h => ev_ok hc hz env h) (fun env h => ev_ok hc hs env h) x.toNat _ he'
-      simp only [ev]
-      rcases ex_cases n1 with e | ⟨v, e⟩
-      · simp [e, bind, Except.bind]; exact out_cap
-      · simp only [e, bind, Except.bind, pure, Except.pure]
-        exact ⟨by simp, fun v' h => by cases h; exact k1 _ e, by simp⟩
   | _, _, _, _, .cont (sk := sk) hc', env, he => by
     obtain ⟨n1, k1⟩ := val_ok (ev_ok hc hc' env he)
     simp only [ev]
@@ -314,12 +305,31 @@ theorem evL_ok {cx : Ctx} {D : List Sig} (hc : CtxOK cx D) : ∀ {Γ cs ks}, TyL
       exact ⟨by simp, fun v' h => by cases h; rw [kOf_append, k1 _ e, k2 _ e2]⟩
 end
 
+theorem evB_ok {cx : Ctx} {D : List Sig} (hc : CtxOK cx D) : ∀ {Γ e ks}, TyB D Γ e ks → ∀ env, EnvOK env Γ →
+    OutOK none ks (ev cx e env)
+  | _, _, _, .plain h, env, he => ev_ok hc h env he
+  | _, _, _, .loop (sk := sk) (n := n) hΓ hz hs, env, he => by
+    subst hΓ
+    cases he with
+    | cons h0 he1 =>
+      rename_i v0 l
+      have : ∃ x, v0 = .w x := by
+        have := h0 .w rfl; cases v0 with | w x => exact ⟨x, rfl⟩ | b _ => cases this
+      obtain ⟨x, rfl⟩ := this
+      have he' : EnvOK (W.w x :: l) (some .w :: sk.map some ++ List.replicate n none) := .cons h0 he1
+      obtain ⟨n1, k1⟩ := loopRun_ok (fun env h => ev_ok hc hz env h) (fun env h => ev_ok hc hs env h) x.toNat _ he'
+      simp only [ev]
+      rcases ex_cases n1 with e | ⟨v, e⟩
+      · simp [e, bind, Except.bind]; exact out_cap
+      · simp only [e, bind, Except.bind, pure, Except.pure]
+        exact ⟨by simp, fun v' h => by cases h; exact k1 _ e, by simp⟩
+
 /-! ## defs and programs -/
 
 /-- a def is well-kinded for signature `sg` against the earlier signatures `D` -/
 def TyDef (D : List Sig) (d : DefA) (sg : Sig) : Prop :=
   d.npw = sg.1.length ∧ d.npw ≤ d.nslots ∧ sg.2.length = d.nres ∧
-  TyN D (sg.1.map some ++ List.replicate (d.nslots - d.npw) none) none d.body sg.2
+  TyB D (sg.1.map some ++ List.replicate (d.nslots - d.npw) none) d.body sg.2
 
 /-- a well-kinded program: every def against the signatures before it; main takes nothing and returns a buffer -/
 def TyProg (p : List DefA) (sigs : List Sig) : Prop :=
@@ -337,7 +347,7 @@ theorem defMean_ok {inp κ ms D d sg} (hc : CtxOK ⟨inp, κ, ms⟩ D) (hd : TyD
   have hl : xs.length = d.npw := by rw [h1, ← hx, kOf_length]
   have he : EnvOK (xs ++ List.replicate (d.nslots - d.npw) (W.w 0)) (sg.1.map some ++ List.replicate (d.nslots - d.npw) none) := by
     rw [← hx]; exact (f2_kOf xs).append (envOK_rep _)
-  obtain ⟨n1, k1⟩ := val_ok (ev_ok hc h4 _ he)
+  obtain ⟨n1, k1⟩ := val_ok (evB_ok hc h4 _ he)
   simp only [defMean, hl, h2, and_self, if_true]
   rcases ex_cases n1 with e | ⟨v, e⟩
   · simp [e, bind, Except.bind]

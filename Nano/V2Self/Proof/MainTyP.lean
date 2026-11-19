@@ -18,8 +18,9 @@ def SOK (cx : Cx) (tl : Bool) (S : Option (List Kd)) : Prop := tl = false ∨ cx
 
 /-- every binding of the parse environment lies below the slot counter and is known in `Γ` -/
 def EnvT (env : List (List Nat × Nat × Ps)) (Γ : List (Option Kd)) (nx : Nat) : Prop :=
-  ∀ e ∈ env, e.2.1 + e.2.2.width ≤ nx ∧ e.2.1 + e.2.2.width ≤ Γ.length ∧
-    ∀ s, e.2.2 = .sh s → known Γ e.2.1 s.width s.kinds
+  (∀ e ∈ env, e.2.1 + e.2.2.width ≤ nx ∧ e.2.1 + e.2.2.width ≤ Γ.length ∧
+    ∀ s, e.2.2 = .sh s → known Γ e.2.1 s.width s.kinds) ∧
+  ∀ k, nx ≤ k → k < Γ.length → Γ[k]? = some none
 
 theorem _root_.ParSpec.Sh.kinds_length : ∀ s : Sh, s.kinds.length = s.width
   | .uw => rfl | .bf => rfl | .ls => rfl | .nt => rfl
@@ -44,6 +45,12 @@ theorem primSig_ok : ∀ t pid ps rs, primSig t = some (pid, ps, rs) → primK p
   intro t pid ps rs h
   unfold primSig at h
   split at h <;> cases h <;> rfl
+
+theorem primSig_noarg {t pid ps rs} (h : primSig t = some (pid, ps, rs)) (h0 : pid = 1 ∨ pid = 3 ∨ pid = 5)
+    (as : List Nd) : dropInp ps as = [] := by
+  unfold primSig at h
+  split at h <;> cases h <;> simp at h0 <;>
+    (match as with | [] => rfl | a :: _ => simp [dropInp, List.zip])
 
 theorem findEnv_mem {env n slot p} (h : findEnv env n = some (slot, p)) : (n, slot, p) ∈ env := by
   unfold findEnv at h
@@ -88,16 +95,25 @@ theorem known_setK_at {Γ : List (Option Kd)} {s : Nat} {ks : List Kd} (hs : s +
   exact List.take_of_length_le (by simp)
 
 theorem EnvT.mono {env Γ nx nx'} (h : EnvT env Γ nx) (hle : nx ≤ nx') : EnvT env Γ nx' :=
-  fun e he => let ⟨a, b, c⟩ := h e he; ⟨by omega, b, c⟩
+  ⟨fun e he => let ⟨a, b, c⟩ := h.1 e he; ⟨by omega, b, c⟩, fun k hk hl => h.2 k (by omega) hl⟩
+
+theorem setK_get_above {Γ : List (Option Kd)} {s : Nat} {ks : List Kd} (h : s + ks.length ≤ Γ.length) (k : Nat)
+    (hk : s + ks.length ≤ k) : (setK Γ s ks)[k]? = Γ[k]? := by
+  unfold setK
+  have h1 : (List.take s Γ ++ ks.map some).length = s + ks.length := by simp; omega
+  rw [List.getElem?_append_right (by omega), h1, List.getElem?_drop]; congr 1; omega
 
 theorem EnvT.push {env Γ nx s} (x : List Nat) (sh : Sh) (h : EnvT env Γ nx) (hs : nx ≤ s) (hΓ : s + sh.width ≤ Γ.length) :
     EnvT ((x, s, .sh sh) :: env) (setK Γ s sh.kinds) (s + sh.width) := by
   have hΓ' : s + sh.kinds.length ≤ Γ.length := by rw [Sh.kinds_length]; exact hΓ
-  intro e he
+  refine ⟨fun e he => ?_, fun k hk hl => ?_⟩
+  rotate_left
+  · rw [setK_get_above hΓ' k (by rw [Sh.kinds_length]; exact hk)]
+    exact h.2 k (by omega) (by rw [setK_length hΓ'] at hl; exact hl)
   rcases List.mem_cons.1 he with rfl | he
   · refine ⟨Nat.le_refl _, by rw [setK_length hΓ']; exact hΓ, fun s' e' => ?_⟩
     cases e'; have := known_setK_at hΓ'; rwa [Sh.kinds_length] at this
-  · obtain ⟨a, b, c⟩ := h e he
+  · obtain ⟨a, b, c⟩ := h.1 e he
     exact ⟨by omega, by rw [setK_length hΓ']; exact b, fun s' e' => known_setK_below (c s' e') (by rw [e'] at a; simp [Ps.width] at a; omega) hΓ'⟩
 
 /-- the non-input arguments, kinds of the parameters -/
@@ -201,7 +217,8 @@ theorem pE_step (f : Nat) (hB : PB f) (hE : PE f) : PE (f + 1) := by
       obtain ⟨m2, t2⟩ := hE _ _ _ _ _ _ _ _ hb
       refine ⟨by omega, fun Γ hΓ hl S ks hS hk => ?_⟩
       have hw : nx1 + s.width ≤ Γ.length := by omega
-      refine TyN.letE (vs := s.kinds) (t1 Γ hΓ (by omega) none _ (.inl rfl) (tyShape_fits hs)) (Sh.kinds_length s) hw ?_
+      refine TyN.letE (vs := s.kinds) (t1 Γ hΓ (by omega) none _ (.inl rfl) (tyShape_fits hs)) (Sh.kinds_length s) hw
+        (fun k h1 h2 => hΓ.2 k (by omega) (by omega)) ?_
       exact t2 _ (EnvT.push x s (hΓ.mono m1) (Nat.le_refl _) hw) (by rw [setK_length (by rw [Sh.kinds_length]; exact hw)]; omega) S ks hS hk
     · cases h
   · rename_i cx tl nx _ _ _ _ _ f0 x y r0 heq
@@ -218,7 +235,7 @@ theorem pE_step (f : Nat) (hB : PB f) (hE : PE f) : PE (f + 1) := by
       have hw : nx1 + l.width + rr.width ≤ Γ.length := by omega
       have hl1 : nx1 + l.kinds.length + rr.kinds.length ≤ Γ.length := by rw [Sh.kinds_length, Sh.kinds_length]; exact hw
       refine TyN.letE (vs := l.kinds ++ rr.kinds) (t1 Γ hΓ (by omega) none _ (.inl rfl) (tyShape_fits hs))
-        (by simp [Sh.kinds_length]) (by omega) ?_
+        (by simp [Sh.kinds_length]) (by omega) (fun k h1 h2 => hΓ.2 k (by omega) (by omega)) ?_
       rw [setK_append _ _ _ _ hl1, Sh.kinds_length]
       have hL1 : (setK Γ nx1 l.kinds).length = Γ.length := setK_length (by rw [Sh.kinds_length]; omega)
       have e1 := EnvT.push x l (hΓ.mono m1) (Nat.le_refl _) (by omega)
@@ -389,7 +406,7 @@ theorem pA_step (f : Nat) (hT : PT f) (hG : PG f) (hC : PC f) : PA (f + 1) := by
       obtain ⟨m1, hl1, t1⟩ := hG _ _ _ _ _ _ _ ha
       refine ⟨m1, fun Γ hΓ hl S ks hS hk => ?_⟩
       cases hk
-      exact .prim (dropInp_ty _ _ hl1 (t1 Γ hΓ hl)) (primSig_ok _ _ _ _ hp)
+      exact .prim (dropInp_ty _ _ hl1 (t1 Γ hΓ hl)) (primSig_ok _ _ _ _ hp) (fun h0 => primSig_noarg hp h0 _)
     · exact hT _ _ _ _ _ _ _ _ h
   · rename_i cx tl nx _ _ _ _ _ f0 n r0 heq
     simp at heq; subst heq
@@ -459,21 +476,21 @@ theorem pT_step (f : Nat) (hE : PE f) (hU : PU f) : PT (f + 1) := by
   · simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl, rfl, rfl⟩ := h
     exact ⟨Nat.le_refl _, fun Γ hΓ hl S ks hS hk => by cases hk; exact .const⟩
   · simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl, rfl, rfl⟩ := h
-    exact ⟨Nat.le_refl _, fun Γ hΓ hl S ks hS hk => by cases hk; exact .prim .nil rfl⟩
+    exact ⟨Nat.le_refl _, fun Γ hΓ hl S ks hS hk => by cases hk; exact .prim .nil rfl (fun _ => rfl)⟩
   · simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl, rfl, rfl⟩ := h
-    exact ⟨Nat.le_refl _, fun Γ hΓ hl S ks hS hk => by cases hk; exact .prim .nil rfl⟩
+    exact ⟨Nat.le_refl _, fun Γ hΓ hl S ks hS hk => by cases hk; exact .prim .nil rfl (fun _ => rfl)⟩
   · rename_i cx tl nx _ _ _ _ _ f0 n r0 heq
     split at h
     · rename_i slot s hf
       simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl, rfl, rfl⟩ := h
       refine ⟨Nat.le_refl _, fun Γ hΓ hl S ks hS hk => ?_⟩
       cases hk
-      exact .loc ((hΓ _ (findEnv_mem hf)).2.2 s rfl)
+      exact .loc ((hΓ.1 _ (findEnv_mem hf)).2.2 s rfl)
     · rename_i slot hf
       simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl, rfl, rfl⟩ := h
       refine ⟨Nat.le_refl _, fun Γ hΓ hl S ks hS hk => ?_⟩
       cases hk
-      have := (hΓ _ (findEnv_mem hf)).2.1
+      have := (hΓ.1 _ (findEnv_mem hf)).2.1
       exact .loc ⟨by simpa [Ps.width] using this, by simp⟩
     · cases h
     · split at h
@@ -608,9 +625,15 @@ theorem flatMap_split (ps : List Ps) (i : Nat) (hi : i < ps.length) :
   conv => lhs; rw [← List.take_append_drop i ps]
   rw [List.drop_eq_getElem_cons hi, List.flatMap_append, List.flatMap_cons, List.append_assoc]
 
-theorem lay_envT {ps : List Ps} {start env} (hL : Lay ps start env) (pre post : List (Option Kd)) (hpre : pre.length = start) :
-    EnvT env.reverse (pre ++ (ps.flatMap Ps.kinds).map some ++ post) (start + (ps.flatMap Ps.kinds).length) := by
-  intro e he
+theorem lay_envT {ps : List Ps} {start env} (hL : Lay ps start env) (pre : List (Option Kd)) (n : Nat) (hpre : pre.length = start) :
+    EnvT env.reverse (pre ++ (ps.flatMap Ps.kinds).map some ++ List.replicate n none) (start + (ps.flatMap Ps.kinds).length) := by
+  refine ⟨fun e he => ?_, fun k hk hl => ?_⟩
+  rotate_left
+  · have h1 : (pre ++ (ps.flatMap Ps.kinds).map some).length = start + (ps.flatMap Ps.kinds).length := by simp [hpre]
+    rw [List.getElem?_append_right (by omega), List.getElem?_replicate]
+    simp only [List.length_append, List.length_replicate, List.length_map] at hl h1
+    rw [if_pos (by simp only [List.length_append, List.length_map]; omega)]
+  generalize hpost : List.replicate n (none : Option Kd) = post
   rw [List.mem_reverse] at he
   obtain ⟨i, hi, h1, h2⟩ := hL e he
   have hs := flatMap_split ps i hi
@@ -709,18 +732,18 @@ theorem pDef_ok (fuel : Nat) (defs : List DefI) (ts : List Tok) (di : DefI) (da 
                         have hΓ : ([Kd.w] ++ L).map some ++ List.replicate (nx2 - (1 + L.length)) none =
                             [some Kd.w] ++ L.map some ++ List.replicate (nx2 - (1 + L.length)) none := by simp
                         rw [hΓ]
-                        have eZ := lay_envT (mkEnv_lay 1 ps zn envZ hZ) [some Kd.w] (List.replicate (nx2 - (1 + L.length)) none) rfl
-                        have eS := lay_envT (mkEnv_lay 1 ps sn envS hS) [some Kd.w] (List.replicate (nx2 - (1 + L.length)) none) rfl
+                        have eZ := lay_envT (mkEnv_lay 1 ps zn envZ hZ) [some Kd.w] (nx2 - (1 + L.length)) rfl
+                        have eS := lay_envT (mkEnv_lay 1 ps sn envS hS) [some Kd.w] (nx2 - (1 + L.length)) rfl
                         rw [hL] at eZ eS
                         have hlen : ([some Kd.w] ++ L.map some ++ List.replicate (nx2 - (1 + L.length)) none).length = nx2 := by
                           simp only [List.length_append, List.length_map, List.length_replicate, List.length_singleton]; omega
-                        refine TyN.loop (sk := L) (n := nx2 - (1 + L.length)) (by simp) ?_ ?_
+                        refine TyB.loop (sk := L) (n := nx2 - (1 + L.length)) (by simp) ?_ ?_
                         · exact tzz _ eZ (by omega) none _ (.inl rfl) (tyOk_fits (by simpa using hokz))
                         · refine tss _ ?_ (by omega) (some L) _ (.inr (.inr (by simp [selfK, hL]))) (join_fits hj rfl).1
-                          intro e he
+                          refine ⟨fun e he => ?_, (eS.mono (by omega)).2⟩
                           rcases List.mem_cons.1 he with rfl | he
                           · exact ⟨by simp [Ps.width]; omega, by rw [hlen]; simp [Ps.width]; omega, fun s hs => by cases hs⟩
-                          · exact (eS.mono (by omega)) e he
+                          · exact (eS.mono (by omega)).1 e he
                       · cases h
                   · cases h
             · cases h
@@ -748,10 +771,10 @@ theorem pDef_ok (fuel : Nat) (defs : List DefI) (ts : List Tok) (di : DefI) (da 
                 simp only [Bool.not_eq_true', Bool.not_eq_false] at hok
                 obtain ⟨m, t⟩ := hE _ _ _ _ _ _ _ _ hpe
                 refine ⟨⟨by simp [sigOf, hnpw], m, by simp [sigOf, Sh.kinds_length], ?_⟩, rfl, fun hr => ?_⟩
-                · have he := lay_envT hlay [] (List.replicate (nx - npw) none) rfl
+                · have he := lay_envT hlay [] (nx - npw) rfl
                   rw [← hnpw] at he
                   simp only [List.nil_append] at he
-                  exact t _ he (by simp only [List.length_append, List.length_map, List.length_replicate]; omega) none _ (.inl rfl) (tyOk_fits (by simpa using hok))
+                  exact .plain <| t _ he (by simp only [List.length_append, List.length_map, List.length_replicate]; omega) none _ (.inl rfl) (tyOk_fits (by simpa using hok))
                 · cases resT <;> simp_all [trRes]
           · cases h
         · cases h
