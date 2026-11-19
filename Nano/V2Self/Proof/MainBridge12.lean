@@ -362,4 +362,116 @@ theorem tail_ite (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hRs : RsO
           · exact src_join_r hR4 sT (tr_le1 _ _ _ _ h2) r4 hj
       · exact .inr ⟨st', ws, rfl, rfl, StOK.pre hCh2 hM2 ((hM3.trans me).trans mo) (StOK.mono (me.trans mo) hst)⟩
 
+theorem tail_let (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hRs : RsOK oc D) (hW : RsW oc)
+    (hAll : ∀ n, NodeOK cx K oc D n) (s w : Nat) (v b : ParSpec.Nd) (ihb : TailOK cx K oc D b) :
+    TailOK cx K oc D (ParSpec.Nd.letE s w v b) := by
+  intro hC hK2 Γ sk ks F F' es env ew σ sp H rr H' hT hc hE hA h8 hhb hr hs
+  cases hT with
+  | letE hv htv hsl hfr hb =>
+    rename_i tv
+    simp only [OwnSpec.chk, Option.bind_eq_some_iff] at hc
+    obtain ⟨v0, hcv, v1, htr, hc⟩ := hc
+    split at hc
+    · rename_i hcond
+      obtain ⟨-, hsK, hv12, -⟩ := hcond
+      obtain ⟨b0, hcb, htr2⟩ := Option.bind_eq_some_iff.1 hc
+      simp only [st, letTS, Option.bind_eq_some_iff] at hs
+      obtain ⟨⟨r, H1⟩, hsv, hsb⟩ := hs
+      obtain ⟨σ1, x, evv, hA1, hR1, hE1, hCh1, hM1, h81, hb1, hS1, -, hG1⟩ :=
+        hAll v hC hK2 Γ tv F _ _ env ew σ sp H r H1 hv hcv hE hA h8 hhb hr hsv
+      obtain ⟨m2, hR2, r2, -, -⟩ := tr_spec hK2 _ x r _ _ _ hR1 hE1 htr
+      obtain ⟨-, hS2⟩ := tr_src _ _ _ _ _ _ hR1 hM1 hS1 htr
+      obtain ⟨-, kv, -⟩ := ev_ok hC hv env hE.ty
+      have hk := kv x evv
+      have hxl : x.length = w := by rw [← kOf_length, hk, htv]
+      have hel := hE.len
+      have hss : setSlots env s x = .ok (env.take s ++ x ++ env.drop (s + x.length)) := by
+        simp only [setSlots]; rw [if_pos (by omega)]
+      obtain ⟨env1, e1, he1⟩ := setSlots_ok (vs := x) (s := s) hE.ty (by omega)
+      rw [hss] at e1; cases e1
+      rw [hk] at he1
+      have hrv : R2 oc.K v1.1 := by
+        obtain ⟨kv, tv'⟩ := chk_keep hK2 hW hv rfl _ _ _ hcv
+        exact hr.keep (kv.trans (tr_keep _ _ _ _ tv' htr).1)
+      have hEb := let_envI (r := r) (hE1.mono m2) hR2 hv12 r2 hxl hsK htv hsl hfr he1
+      obtain ⟨σ2, out, evb, hA2, hE3, hCh3, hM3, h83, hb3, hG3, hout⟩ :=
+        ihb hC hK2 _ sk ks _ _ _ _ _ σ1 sp H1 rr H' hb hcb hEb hA1 h81 hb1 hrv hsb
+      have m4 := tr_mono _ _ _ _ htr2
+      have P := let_outer (r := r) (ew := ew) hxl htv hsl hel hfr
+      have mF1 : Mono F v1.1 := hM1.trans m2
+      have mG : Mono v1.1 F' := hM3.trans m4
+      have S1 := let_src1 (σ := σ) hR2 hS2 hv12 r2 hxl hsK htv hsl hel mF1 mG
+      have hCh1' := hCh1.weak m2
+      have hev : ev cx (ParSpec.Nd.letE s w v b) env = .ok out := by
+        simp only [ev, evv, val, bind, Except.bind]; rw [if_pos hxl]; simp only [hss]; exact evb
+      refine ⟨σ2, out, hev, hA2, envI_restrict P (hE3.mono m4) hel hE.ty, ?_, mF1.trans mG, h83, hb3, hG1.trans hG3, ?_⟩
+      · intro a ha hn
+        have e1 : σ1 a = σ a := hCh1' a ha fun t l kt ct et => hn t l kt ⟨ct.1, mG t ct.2⟩ et
+        rw [← e1]
+        refine hCh3 a (by rw [e1]; exact ha) fun t l kt ct et hq => ?_
+        obtain ⟨j, l', kj, cj, ej, wj⟩ := S1 t l kt et (by rw [hq]; exact ha) ⟨ct.1, m4 t ct.2⟩
+        exact hn j l' kj cj ej (by rw [wj]; exact hq)
+      · -- the outer-frame image of an owned block's source
+        have back : ∀ u, (σ u.toNat).isSome → ((σ1 u.toNat).isSome → ∃ j l', Kn (setK Γ s tv) j ∧ Cons v1.1 F' j ∧
+            (env.take s ++ x ++ env.drop (s + x.length))[j]? = some (.b l') ∧ setW ew s w r j = u) →
+            ∃ j l', Kn Γ j ∧ Cons F F' j ∧ env[j]? = some (.b l') ∧ ew j = u := by
+          intro u hu H
+          by_cases hx : ∃ j l', Kn Γ j ∧ Cons F v1.1 j ∧ env[j]? = some (.b l') ∧ (ew j).toNat = u.toNat
+          · obtain ⟨j, l', a, c, d, e⟩ := hx; exact ⟨j, l', a, ⟨c.1, mG j c.2⟩, d, UInt64.toNat_inj.1 e⟩
+          · have e2 := hCh1' _ hu fun t l' kt ct et hq => hx ⟨t, l', kt, ct, et, hq⟩
+            obtain ⟨j, l', kj, cj, ej, wj⟩ := H (by rw [e2]; exact hu)
+            obtain ⟨j', l'', a, c, d, e⟩ := S1 j l' kj ej (by rw [wj]; exact hu) cj
+            exact ⟨j', l'', a, c, d, by rw [e, wj]⟩
+        rcases hout with ⟨y, vs, rfl, rfl, hR3, hS3, -⟩ | ⟨st', ws, rfl, rfl, hst⟩
+        · left
+          obtain ⟨m4', hR4, r4, -, -⟩ := tr_spec hK2 _ y vs _ _ _ hR3 hE3 htr2
+          obtain ⟨-, hS4⟩ := tr_src _ _ _ _ _ _ hR3 hM3 hS3 htr2
+          exact ⟨y, vs, rfl, rfl, resI_restrict P hR4 (fun e he => by have := r4 e he; omega),
+            Src.imp (fun u hu H => back u hu (fun h => H h)) hS4, fun z hz => .inl (r4 z hz)⟩
+        · right
+          refine ⟨st', ws, rfl, rfl, hst.1, fun j l u a b c hu => back u hu fun h => ?_, fun j l u a b c => ?_⟩
+          · obtain ⟨j', l', kj, cj, ej, wj⟩ := hst.2.1 j l u a b c h
+            exact ⟨j', l', kj, ⟨cj.1, m4 j' cj.2⟩, ej, wj⟩
+          · obtain ⟨k, l', kk, k2, ek, wk⟩ := hst.2.2 j l u a b c
+            have ho : k < s ∨ s + w ≤ k := by
+              refine Classical.byContradiction fun h => ?_
+              have hi : k - s < w := by omega
+              have e' : v1.2[k - s]? = some (oc.K.getD k 0) := by
+                rw [hv12, List.getElem?_take_of_lt hi, List.getElem?_drop, show s + (k - s) = k by omega,
+                  List.getD_eq_getElem?_getD, List.getElem?_eq_getElem (show k < oc.K.length by omega)]
+                rfl
+              have := r2 _ (List.mem_of_getElem? e'); omega
+            obtain ⟨kd, hkd⟩ := kk
+            refine ⟨k, l', ⟨kd, by rw [← setK_get_out (Γ := Γ) (s := s) (ks := tv) (by omega) k (by omega), hkd]⟩, k2,
+              by rw [← ss_out (x := x) (s := s) (by omega) (by omega)]; exact ek, ?_⟩
+            rw [← wk, setW_out _ _ _ _ _ ho]
+    · cases hc
+
+theorem tail_loop (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (z s : ParSpec.Nd) :
+    TailOK cx K oc D (ParSpec.Nd.loop z s) := by
+  intro _ _ Γ sk ks F F' es env ew σ sp H r H' _ hc
+  simp [OwnSpec.chk] at hc
+
+/-- **tail mode, every node** -/
+theorem tail_all (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hRs : RsOK oc D) (hW : RsW oc) (hX : CtxR cx K)
+    (hCR : CallR cx K oc) : ∀ e : ParSpec.Nd, TailOK cx K oc D e
+  | .ite c a b t e => tail_ite cx K oc D hRs hW (node_all cx K oc D hRs hW hX hCR) c a b t e
+      (tail_all cx K oc D hRs hW hX hCR t) (tail_all cx K oc D hRs hW hX hCR e)
+  | .letE s w v b => tail_let cx K oc D hRs hW (node_all cx K oc D hRs hW hX hCR) s w v b
+      (tail_all cx K oc D hRs hW hX hCR b)
+  | .cont e => tail_cont hW (node_all cx K oc D hRs hW hX hCR) e
+  | .loop z s => tail_loop cx K oc D z s
+  | .const v => tail_exit (node_all cx K oc D hRs hW hX hCR _) (fun _ _ _ h => by cases h; exact .const)
+      (fun _ _ _ => by simp only [st])
+  | .loc s w => tail_exit (node_all cx K oc D hRs hW hX hCR _) (fun _ _ _ h => by cases h with | loc hk => exact .loc hk)
+      (fun _ _ _ => by simp only [st])
+  | .bin op a b => tail_exit (node_all cx K oc D hRs hW hX hCR _)
+      (fun _ _ _ h => by cases h with | bin o1 o2 ta tb => exact .bin o1 o2 ta tb) (fun _ _ _ => by simp only [st])
+  | .pair cs => tail_exit (node_all cx K oc D hRs hW hX hCR _)
+      (fun _ _ _ h => by cases h with | pair tl => exact .pair tl) (fun _ _ _ => by simp only [st])
+  | .call i as => tail_exit (node_all cx K oc D hRs hW hX hCR _)
+      (fun _ _ _ h => by cases h with | call tl hd => exact .call tl hd) (fun _ _ _ => by simp only [st])
+  | .prim p as => tail_exit (node_all cx K oc D hRs hW hX hCR _)
+      (fun _ _ _ h => by cases h with | prim tl hp hn => exact .prim tl hp hn) (fun _ _ _ => by simp only [st])
+
 end NanoMain
