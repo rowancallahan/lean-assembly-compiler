@@ -78,4 +78,84 @@ theorem sim_bne16 {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK :
     rw [w0] at this
     rw [if_pos hc, show ((pc : Int) + 4).toNat = pc + 4 by omega]; exact ⟨t', hN.ret, this⟩
 
+theorem _root_.CallProbe.sbm_other' (m : Nat → UInt64) (a c : Nat) (v : UInt64) (h : c ≠ a - a % 8) :
+    CallProbe.sbm m a v c = m c := by unfold CallProbe.sbm; rw [if_neg h]
+
+theorem g255' (j : Nat) : (255#64).getLsbD j = decide (j < 8) := by
+  rw [BitVec.getLsbD_ofNat, show (255 : Nat) = 2 ^ 8 - 1 from rfl, Nat.testBit_two_pow_sub_one]
+  by_cases h : j < 8 <;> simp [h] <;> omega
+
+theorem g255e (i : Nat) (h : i < 64) : (255#64)[i] = decide (i < 8) := by
+  rw [← BitVec.getLsbD_eq_getElem]; exact g255' i
+
+/-- byte j of the word after a byte store at byte k -/
+theorem sbm_extract (x v : UInt64) (k j : Nat) (hk : k < 8) (hj : j < 8) :
+    ((x &&& ~~~((255 : UInt64) <<< (8 * k).toUInt64)) ||| ((v &&& 255) <<< (8 * k).toUInt64)).toBitVec.extractLsb' (8 * j) 8
+      = if j = k then v.toBitVec.setWidth 8 else x.toBitVec.extractLsb' (8 * j) 8 := by
+  apply BitVec.eq_of_getLsbD_eq
+  intro i hi
+  have e : 8 * k % 64 = 8 * k := by omega
+  by_cases hjk : j = k
+  · subst hjk
+    simp [BitVec.getLsbD_shiftLeft, g255', e, hi, show 8 * j + i < 64 by omega, g255e,
+      BitVec.getLsbD_eq_getElem, show i < 64 by omega, show ¬ 8 * j + i < 8 * j by omega]
+  · simp only [if_neg hjk]
+    simp [BitVec.getLsbD_shiftLeft, g255', e, hi, show 8 * j + i < 64 by omega]
+    by_cases h2 : 8 * j + i < 8 * k
+    · simp [h2]
+    · rw [g255e _ (by omega)]; simp [show ¬ 8 * j + i - 8 * k < 8 by omega]
+
+/-- **sb b, off(a)** (the start code's output copy): the byte lands in its aligned word cell (`sbm`) -/
+theorem sim_sbW {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
+    {b a : Nat} {off : Int} (hC : K.W[pc]? = some (I.sb b a off).enc) (hb : b < 32) (ha : a < 32)
+    (hi1 : -2048 ≤ off) (hi2 : off < 2048) (h0 : 0 ≤ ((s.x a).toNat : Int) + off)
+    (hw : wok K (CallProbe.ea (s.x a) off - CallProbe.ea (s.x a) off % 8)) :
+    ∃ t', Retires t t' ∧
+      RelW K (pc + 1, { s with m := CallProbe.sbm s.m (CallProbe.ea (s.x a) off) (s.x b) }) t' := by
+  obtain ⟨hi, hok⟩ := codeW hK hR hC
+  let B : Fin 32 := ⟨b, hb⟩
+  let A : Fin 32 := ⟨a, ha⟩
+  have hW := hK.wlo; have hH := hK.whi
+  generalize hE : CallProbe.ea (s.x a) off = E at *
+  have hk8 : E % 8 < 8 := Nat.mod_lt _ (by decide)
+  unfold wok at hw
+  have hlt : E < 2 ^ 64 := by omega
+  have hea := eaW hR A off hi1 hi2 h0 (by show ((s.x a).toNat : Int) + off < 2 ^ 64; unfold CallProbe.ea at hE; omega)
+  rw [hE] at hea
+  have hi' : instrAt t (BitVec.ofNat 64 (K.base + 4 * pc)) (G.encS 0 (BitVec.ofNat 12 (bits off 12)) B A) := by
+    have e := encSt_eq 0 (by decide) B A (bits off 12) (bits_lt off 12)
+    have hi2 : instrAt t (BitVec.ofNat 64 (K.base + 4 * pc))
+        (BitVec.ofNat 32 (encSt 0 B.val A.val ((bits off 12 : Nat) : Int))) := by rw [← encSt_bits]; exact hi
+    rw [e] at hi2; exact hi2
+  obtain ⟨t', hN⟩ := G.step_sb hR.cfg hR.pc hok B A _ hi' hea (by rw [toNat_lt64 hlt]; omega)
+  rw [toNat_lt64 hlt, hR.x B] at hN
+  refine ⟨t', hN.ret, ?_⟩
+  exact {
+    cfg := hN.cfg
+    pc := by rw [hN.pc, ofNat_pc4]
+    code := fun i h => by
+      have hc := hR.code i h
+      have hl : K.base + 4 * i < 2 ^ 64 := by have := hK.bhi; omega
+      unfold instrAt at hc ⊢; rw [hN.mem]; rw [toNat_lt64 hl] at hc ⊢
+      have hd := hK.cw
+      obtain ⟨c0, c1, c2, c3⟩ := hc
+      refine ⟨?_, ?_, ?_, ?_⟩ <;>
+        (rw [Std.ExtHashMap.getElem?_insert, if_neg (by simp; omega)]; assumption)
+    x0 := hR.x0
+    bb := hR.bb
+    x := fun j => by
+      rw [hN.x j]; simp only [show ¬ (j = 0 ∧ j ≠ 0) from fun h => h.2 h.1, if_false]; exact hR.x j
+    w := fun c hc k hk => by
+      rw [hN.mem, Std.ExtHashMap.getElem?_insert]
+      unfold wok at hc
+      by_cases ec : c = E - E % 8
+      · subst ec
+        have hs : CallProbe.sbm s.m E (s.x b) (E - E % 8) = _ := if_pos rfl
+        simp only; rw [hs, sbm_extract _ _ _ _ hk8 hk]
+        by_cases ek : k = E % 8
+        · subst ek; rw [if_pos (by simp; omega), if_pos rfl]
+        · rw [if_neg (by simp; omega), if_neg ek]; exact hR.w _ hc k hk
+      · rw [if_neg (by simp; omega)]
+        simp only; rw [CallProbe.sbm_other' s.m E c (s.x b) ec]; exact hR.w c hc k hk }
+
 end SimW
