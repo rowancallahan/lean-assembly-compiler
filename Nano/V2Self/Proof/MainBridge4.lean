@@ -6,18 +6,49 @@ import Nano.V2Self.Proof.MainOk
 namespace NanoMain
 open Templates
 
+/-- **source of owned results**: an owned result whose block already existed in `σ` is the block of a slot consumed
+between `F` and `F'` (so a LET that binds it and later consumes it changes only blocks its own scope accounts for) -/
+def Src (σ : AH) (Γ : List (Option Kd)) (F F' : List Bool) (env : List W) (ew : Env) :
+    List Nat → List W → List UInt64 → Prop
+  | e :: es, x :: v, u :: vs => (e = 1 → ∀ l, x = .b l → (σ u.toNat).isSome →
+      ∃ j l', Kn Γ j ∧ Cons F F' j ∧ env[j]? = some (.b l') ∧ ew j = u) ∧ Src σ Γ F F' env ew es v vs
+  | _, _, _ => True
+
+theorem src_ne1 {σ Γ F F' env ew} : ∀ {es : List Nat} {v : List W} {vs : List UInt64}, (∀ e ∈ es, e ≠ 1) →
+    Src σ Γ F F' env ew es v vs
+  | [], _, _, _ | _ :: _, [], _, _ | _ :: _, _ :: _, [], _ => by simp [Src]
+  | e :: es, _ :: _, _ :: _, h => ⟨fun h1 => absurd h1 (h e (by simp)), src_ne1 fun z hz => h z (by simp [hz])⟩
+
+theorem Src.mono {σ Γ F F1 F2 env ew} (m : Mono F1 F2) : ∀ {es : List Nat} {v : List W} {vs : List UInt64},
+    Src σ Γ F F1 env ew es v vs → Src σ Γ F F2 env ew es v vs
+  | [], _, _, _ | _ :: _, [], _, _ | _ :: _, _ :: _, [], _ => by simp [Src]
+  | _ :: _, _ :: _, _ :: _, ⟨h, t⟩ => ⟨fun h1 l hl hs => by
+      obtain ⟨j, l', a, b, c, d⟩ := h h1 l hl hs; exact ⟨j, l', a, ⟨b.1, m j b.2⟩, c, d⟩, Src.mono m t⟩
+
+/-- move the start of a `Src` back over a step that changed `σ` only at consumed slots -/
+theorem Src.pre {σ σ2 Γ F F2 F' env ew} (hCh : Ch σ σ2 Γ F F2 env ew) (m1 : Mono F F2) (m2 : Mono F2 F') :
+    ∀ {es : List Nat} {v : List W} {vs : List UInt64}, Src σ2 Γ F2 F' env ew es v vs → Src σ Γ F F' env ew es v vs
+  | [], _, _, _ | _ :: _, [], _, _ | _ :: _, _ :: _, [], _ => by simp [Src]
+  | _ :: _, _ :: _, u :: _, ⟨h, t⟩ => ⟨fun h1 l hl hs => by
+      by_cases hx : ∃ j l', Kn Γ j ∧ Cons F F2 j ∧ env[j]? = some (.b l') ∧ (ew j).toNat = u.toNat
+      · obtain ⟨j, l', a, b, c, d⟩ := hx; exact ⟨j, l', a, ⟨b.1, m2 j b.2⟩, c, UInt64.toNat_inj.1 d⟩
+      · have e2 := hCh _ hs fun s l' hk hc hl' hq => hx ⟨s, l', hk, hc, hl', hq⟩
+        obtain ⟨j, l', a, b, c, d⟩ := h h1 l hl (by rw [e2]; exact hs)
+        exact ⟨j, l', a, ⟨live_of_mono m1 b.1, b.2⟩, c, d⟩, Src.pre hCh m1 m2 t⟩
+
 /-- the value-mode claim for node `e` in a frame (`Kk` = O's slot kinds, `oc` = O's def context) -/
 def NodeOK (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (e : ParSpec.Nd) : Prop :=
   CtxOK cx D → (∀ s, oc.K.getD s 0 ≤ 2) → ∀ Γ ks F F' es env ew σ sp H vs H', TyN D Γ none e ks → OwnSpec.chk oc e F = some (F', es) →
     EnvI σ oc.K F Γ env ew → AHeap K.hb K.κ H σ → H.top % 8 = 0 → K.hb ≤ H.top → sv K e ew sp H = some (vs, H') →
     ∃ σ' v, ev cx e env = .ok (.inl v) ∧ AHeap K.hb K.κ H' σ' ∧ ResI σ' oc.K F' Γ env ew es v vs ∧
-      EnvI σ' oc.K F' Γ env ew ∧ Ch σ σ' Γ F F' env ew ∧ Mono F F' ∧ H'.top % 8 = 0 ∧ K.hb ≤ H'.top
+      EnvI σ' oc.K F' Γ env ew ∧ Ch σ σ' Γ F F' env ew ∧ Mono F F' ∧ H'.top % 8 = 0 ∧ K.hb ≤ H'.top ∧
+      Src σ Γ F F' env ew es v vs
 
 theorem node_const (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (c : UInt64) : NodeOK cx K oc D (ParSpec.Nd.const c) := by
   intro _ _ Γ ks F F' es env ew σ sp H vs H' _ hc hE hA h8 hb hs
   simp only [OwnSpec.chk, Option.some.injEq, Prod.mk.injEq] at hc; obtain ⟨rfl, rfl⟩ := hc
   simp only [sv] at hs; obtain ⟨rfl, rfl⟩ := leafS_some hs
-  exact ⟨σ, [.w c], rfl, hA, by simp [ResI, VR], hE, Ch.refl _ _ _ _ _, Mono.refl _, h8, hb⟩
+  exact ⟨σ, [.w c], rfl, hA, by simp [ResI, VR], hE, Ch.refl _ _ _ _ _, Mono.refl _, h8, hb, by simp [Src]⟩
 
 theorem locE_succ (Kk : List Nat) (s w : Nat) :
     OwnSpec.locE Kk s (w + 1) = (Kk.getD s 0 + 4 * (s + 1)) :: OwnSpec.locE Kk (s + 1) w := by
@@ -56,7 +87,8 @@ theorem node_loc (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (s w : Nat
       have hl := hE.len
       have he : ev cx (ParSpec.Nd.loc s w) env = .ok (.inl ((env.drop s).take w)) := by simp [ev, hl, hk1]
       exact ⟨σ, _, he, hA, resI_loc hK2 w s (by omega) (fun j h1 h2 => known_get hk j h1 h2), hE,
-        Ch.refl _ _ _ _ _, Mono.refl _, h8, hb⟩
+        Ch.refl _ _ _ _ _, Mono.refl _, h8, hb, src_ne1 fun z hz => by
+          simp only [OwnSpec.locE, List.mem_map] at hz; obtain ⟨j, -, rfl⟩ := hz; omega⟩
   · cases hc
 
 /-! ## word operands -/
@@ -145,8 +177,8 @@ theorem node_bin (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (op : Nat)
     simp only [sv, fin2S, pairS, Option.bind_eq_some_iff] at hs
     obtain ⟨⟨u, Hu⟩, ⟨⟨ua, H1⟩, hsa, ⟨ub, H2⟩, hsb, hpe⟩, hfin⟩ := hs
     simp only [Option.some.injEq, Prod.mk.injEq] at hpe; obtain ⟨rfl, rfl⟩ := hpe
-    obtain ⟨σ1, v1, eva, hA1, hR1, hE1, hCh1, hM1, h81, hb1⟩ := iha hC hK2 Γ _ F _ _ env ew σ sp H ua H1 ta hca hE hA h8 hhb hsa
-    obtain ⟨σ2, v2, evb, hA2, hR2, hE2, hCh2, hM2, h82, hb2⟩ :=
+    obtain ⟨σ1, v1, eva, hA1, hR1, hE1, hCh1, hM1, h81, hb1, -⟩ := iha hC hK2 Γ _ F _ _ env ew σ sp H ua H1 ta hca hE hA h8 hhb hsa
+    obtain ⟨σ2, v2, evb, hA2, hR2, hE2, hCh2, hM2, h82, hb2, -⟩ :=
       ihb hC hK2 Γ _ _ _ _ env ew σ1 _ H1 ub H2 tb hcb hE1 hA1 h81 hb1 hsb
     obtain ⟨y1, hlen, wa, wb⟩ := two_spec hy
     obtain ⟨-, ka, -⟩ := ev_ok hC ta env hE.ty
@@ -169,7 +201,8 @@ theorem node_bin (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (op : Nat)
     have hev : ev cx (ParSpec.Nd.bin op a b) env = .ok (.inl [.w (CallProbe.aluf op x1 x2)]) := by
       simp [ev, eva, evb, val, binop_aluf op x1 x2 o1 o2, bind, Except.bind, pure, Except.pure]
     rw [y1]
-    refine ⟨σ2, _, hev, hA2, ?_, hE2, Ch.trans hCh1 hCh2 hM1 hM2, hM1.trans hM2, h82, hb2⟩
-    simp [ResI, VR]
+    refine ⟨σ2, _, hev, hA2, ?_, hE2, Ch.trans hCh1 hCh2 hM1 hM2, hM1.trans hM2, h82, hb2, ?_⟩
+    · simp [ResI, VR]
+    · simp [Src]
 
 end NanoMain
