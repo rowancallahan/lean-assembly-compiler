@@ -110,4 +110,94 @@ theorem ex_bin (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hW : RsW oc
         simp only [sv, fin2S]
         exact ex_of_eq (fun sp => by simp only [Nat.sub_zero]; rfl) this
 
+theorem ex_ite (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hW : RsW oc) (hFM : ∀ i args, Mo (K.fs i args))
+    (c : Nat) (a b t e : ParSpec.Nd) (hNa : NodeOK cx K oc D a) (hNb : NodeOK cx K oc D b) (hEa : NodeEx cx K oc D a)
+    (hEb : NodeEx cx K oc D b) (hEt : NodeEx cx K oc D t) (hEe : NodeEx cx K oc D e) :
+    NodeEx cx K oc D (.ite c a b t e) := by
+  intro hC hK2 Γ ks F F' es env ew σ H v hT hc hE hA h8 hhb hr hev
+  cases hT with
+  | ite hc12 ta tb tt te =>
+    simp only [OwnSpec.chk, Option.bind_eq_some_iff, Option.map_eq_some_iff] at hc
+    obtain ⟨a0, hca, b0, hcb, y, hy, t0, h1, t1, h2, e0, h3, e1, h4, k, hj, hk⟩ := hc
+    have hry : R2 oc.K y.1 := by
+      obtain ⟨ka, ta'⟩ := chk_keep hK2 hW ta rfl _ _ _ hca
+      obtain ⟨kb, tb'⟩ := chk_keep hK2 hW tb rfl _ _ _ hcb
+      exact hr.keep ((ka.trans kb).trans (two_keep ta' tb' hy))
+    have hev0 := hev
+    simp only [ev, bind, Except.bind] at hev
+    cases ea : val (ev cx a env) with
+    | error e' => rw [ea] at hev; cases hev
+    | ok va =>
+      cases eb : val (ev cx b env) with
+      | error e' => rw [ea, eb] at hev; cases hev
+      | ok vb =>
+        have hp := operands_ex hNa hEa hEb hC hK2 hW hFM ta tb hca hcb hE hA h8 hhb hr (val_ok_of ea) (val_ok_of eb)
+        have := ex_seq (T := fun r1 sp' H' => match r1.1 with
+            | [x, z] => if cmpF c x z then sv K t ew sp' H' else sv K e ew sp' H' | _ => none) 0 Prod.snd hp
+          (pairS_mo (sv_mo K hFM a) (sv_mo K hFM b) ew) (fun sp r1 _ hr1 => by
+            obtain ⟨σ2, x1, x2, eva, evb, hu, hA2, hE2, -, -, h82, hb2, -⟩ := operands2 hNa hNb hC hK2 hW ta tb hca hcb hy
+              hE hA h8 hhb hr (show pairS 1 (sv K a) (sv K b) ew sp H = some (r1.1, r1.2) from hr1)
+            have hev' : ev cx (ParSpec.Nd.ite c a b t e) env =
+                (if (if c = 1 then x1 = x2 else x1 < x2) then ev cx t env else ev cx e env) := by
+              rcases hc12 with rfl | rfl <;> simp [ev, eva, evb, val, bind, Except.bind]
+            rw [hev'] at hev0
+            simp only [hu]
+            by_cases hcmp : cmpF c x1 x2
+            · rw [if_pos ((cmpF_iff c hc12 x1 x2).1 hcmp)] at hev0
+              obtain ⟨N, hN⟩ := hEt hC hK2 Γ ks _ _ _ env ew σ2 r1.2 v tt h1 hE2 hA2 h82 hb2 hry hev0
+              exact ⟨N, fun sp' a b => by simp only [hcmp, if_true]; exact hN sp' a b⟩
+            · rw [if_neg (fun h => hcmp ((cmpF_iff c hc12 x1 x2).2 h))] at hev0
+              obtain ⟨N, hN⟩ := hEe hC hK2 Γ ks _ _ _ env ew σ2 r1.2 v te h3 hE2 hA2 h82 hb2 hry hev0
+              exact ⟨N, fun sp' a b => by simp only [hcmp, if_false]; exact hN sp' a b⟩)
+        simp only [sv, ifS]
+        exact ex_of_eq (fun sp => by simp only [Nat.sub_zero]; rfl) this
+
+theorem ex_let (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (hW : RsW oc) (hFM : ∀ i args, Mo (K.fs i args))
+    (s w : Nat) (v b : ParSpec.Nd) (hNv : NodeOK cx K oc D v) (hEv : NodeEx cx K oc D v) (hEb : NodeEx cx K oc D b) :
+    NodeEx cx K oc D (.letE s w v b) := by
+  intro hC hK2 Γ ks F F' es env ew σ H vv hT hc hE hA h8 hhb hr hev
+  cases hT with
+  | letE hv htv hsl hfr hb =>
+    rename_i tv
+    simp only [OwnSpec.chk, Option.bind_eq_some_iff] at hc
+    obtain ⟨v0, hcv, v1, htr, hc⟩ := hc
+    split at hc
+    · rename_i hcond
+      obtain ⟨-, hsK, hv12, -⟩ := hcond
+      obtain ⟨b0, hcb, htr2⟩ := Option.bind_eq_some_iff.1 hc
+      have hev0 := hev
+      simp only [ev, bind, Except.bind] at hev
+      cases ea : val (ev cx v env) with
+      | error e' => rw [ea] at hev; cases hev
+      | ok x0 =>
+        have evx := val_ok_of ea
+        have := ex_seq (T := fun r1 sp' H' => sv K b (setW ew s w r1.1) sp' H') 0 Prod.snd
+          (hEv hC hK2 Γ tv F _ _ env ew σ H x0 hv hcv hE hA h8 hhb hr evx) (sv_mo K hFM v ew) (fun sp r1 _ hs1 => by
+            obtain ⟨σ1, x, evv, hA1, hR1, hE1, -, hM1, h81, hb1, -, -, -⟩ :=
+              hNv hC hK2 Γ tv F _ _ env ew σ sp H r1.1 r1.2 hv hcv hE hA h8 hhb hr hs1
+            rw [evx] at evv
+            have hx0 : x0 = x := by simpa using evv
+            subst x0
+            obtain ⟨m2, hR2, r2, -, -⟩ := tr_spec hK2 _ x r1.1 _ _ _ hR1 hE1 htr
+            obtain ⟨-, kv, -⟩ := ev_ok hC hv env hE.ty
+            have hk := kv x evx
+            have hxl : x.length = w := by rw [← kOf_length, hk, htv]
+            have hel := hE.len
+            have hss : setSlots env s x = .ok (env.take s ++ x ++ env.drop (s + x.length)) := by
+              simp only [setSlots]; rw [if_pos (by omega)]
+            obtain ⟨env1, e1, he1⟩ := setSlots_ok (vs := x) (s := s) hE.ty (by omega)
+            rw [hss] at e1; cases e1
+            rw [hk] at he1
+            have hrv : R2 oc.K v1.1 := by
+              obtain ⟨kv', tv'⟩ := chk_keep hK2 hW hv rfl _ _ _ hcv
+              exact hr.keep (kv'.trans (tr_keep _ _ _ _ tv' htr).1)
+            have hEb' := let_envI (r := r1.1) (hE1.mono m2) hR2 hv12 r2 hxl hsK htv hsl hfr he1
+            have hle : ev cx (ParSpec.Nd.letE s w v b) env = ev cx b (env.take s ++ x ++ env.drop (s + x.length)) := by
+              simp only [ev, evx, val, bind, Except.bind]; rw [if_pos hxl]; simp only [hss]
+            rw [hle] at hev0
+            exact hEb hC hK2 _ ks _ _ _ _ _ σ1 r1.2 vv hb hcb hEb' hA1 h81 hb1 hrv hev0)
+        simp only [sv, letS]
+        exact ex_of_eq (fun sp => by simp only [Nat.sub_zero]; rfl) this
+    · cases hc
+
 end NanoMain
