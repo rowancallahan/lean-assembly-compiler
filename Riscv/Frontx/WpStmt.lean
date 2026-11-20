@@ -68,7 +68,7 @@ theorem arrsP_append {Γ : List Sl} {L : List PLoc} {c : Vals Γ} {env : Mach.BE
     exact arrsP_append (by simpa using h)
   | .ar _ :: Δ, l :: st, s, h => by
     simp only [List.cons_append, arrsP, List.tail_cons, List.headD_cons, Vals.app]
-    rw [arrsP_append (by simpa using h)]; split <;> rfl
+    rw [arrsP_append (by simpa using h)]; by_cases hi : l.inp = true <;> simp [hi]
 
 theorem RelP.app {Γ : List Sl} {L : List PLoc} {c : Vals Γ} {σ : MSt} : ∀ {Δ : List Sl} {st : List PLoc}
     {s : Vals Δ}, st.length = Δ.length →
@@ -492,8 +492,8 @@ theorem Args.arrOKP (L : List PLoc) {Γ : List Sl} (w : PLoc) (v : Vals Γ) (σu
     · subst hlw
       have hnot : l ∉ st := fun hm => hnd.1 (List.mem_map_of_mem hm)
       refine ⟨?_, Args.arrOKP L l v σu hvar as st cw' hwf hnd.2 (by simpa using hl) (fun hm => absurd hm hnot)⟩
-      have := hw (List.mem_cons_self ..); rw [if_pos rfl] at this; exact this
-    · rw [if_neg hlw] at hw
+      have := hw (List.mem_cons_self ..); simp only [↓reduceIte] at this; exact this
+    · simp only [hlw, ↓reduceIte] at hw
       refine ⟨?_, Args.arrOKP L w v σu hvar as st cw' hwf hnd.2 (by simpa using hl) (fun hm => hw (List.mem_cons_of_mem _ hm))⟩
       cases a with
       | var m =>
@@ -545,9 +545,9 @@ theorem workLocs_sub : ∀ {Δ : List Sl} {st : List PLoc} {l : PLoc}, st.length
   | .ar _ :: _, x :: st, l, hl, h => by
     simp only [workLocs, List.mem_append, List.headD_cons, List.tail_cons] at h
     rcases h with h | h
-    · split at h
-      · simp at h
+    · cases hx : x.inp <;> simp only [hx, Bool.false_eq_true, ↓reduceIte] at h
       · simp only [List.mem_singleton] at h; subst h; exact List.mem_cons_self ..
+      · simp at h
     · exact List.mem_cons_of_mem _ (workLocs_sub (by simpa using hl) h)
 
 set_option maxHeartbeats 8000000 in
