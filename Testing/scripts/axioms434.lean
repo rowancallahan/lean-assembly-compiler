@@ -11,3 +11,5 @@ import Nano.V2Self.Proof.SrcLink.Top
 #print axioms NanoMain.C_runs_arm
 #print axioms Cert.sem_C
 #print axioms SrcGen.link_pc
+#print axioms NanoMain.C_correct_rv2arm
+#print axioms NanoMain.C_runs_rv2arm
