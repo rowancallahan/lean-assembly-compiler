@@ -7,6 +7,7 @@ where μ = `MU`, an identifier no Lean text can spell; `| _ => e` becomes `else 
 yet), 2 closed.  A match ends at the `)` of its depth, the next `def` (depth 0 only) or the end of the text, and must be
 closed by then; an arm after the catch-all arm is rejected; a match inside a scrutinee is rejected. -/
 import Nano.V2Self.Prelude
+import Nano.V2Self.Proof.Lex.Lex2Spec
 namespace DsSpec
 
 /-- the identifier `$` (not a Lean name): the scrutinee's slot -/
@@ -100,5 +101,8 @@ def ds (ts : List UInt64) : Option (List UInt64) :=
     if noMatch (ts.length + 1) ts then some ts
     else (go (ts.length + 1) ts [0] false).bind fun o => if o.length < 2 ^ 24 then some o else none
   else none
+
+/-- **the token words a text means**: it lexes (`LexSpec.Lexes`) and the lexer's words desugar (`ds`) to `ts` -/
+def LexesD (x : List UInt8) (ts : List UInt64) : Prop := ∃ t0, LexSpec.Lexes x t0 ∧ ds t0 = some ts
 
 end DsSpec
