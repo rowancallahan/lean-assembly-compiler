@@ -300,3 +300,21 @@ logic, so a silent 0 agrees with Lean's meaning and with `bget`. Options:
   new stop reason. That is a trusted-definition change and needs proof work in Gen/Machine (a new stop path).
 - (iii) **Only proven-in-bounds forms**: accept `a[i]'h` or `if h : i < a.size then a[i] else …` and reject `a[i]!`.
   No semantic gap. The desugar stage drops `h` (a proof term), and the bound check becomes an ordinary `if`.
+
+### Memory reduction attempt (time-boxed, stopped; nothing committed beyond these notes)
+- **Tried:** pack the cell stack into one UInt64 (2 bits per depth, depth ≤ 31). With `cget s d = (s >>> (d+d)) &&& 3`
+  and `cset s d v = (s - (s &&& (3 <<< (d+d)))) ||| (v <<< (d+d))`, `bv_omega` cannot prove
+  `cget (cset s d v) d = v`: the shift amount is a variable. Case-splitting d (32 cases, and 32×31 for the "other
+  digit unchanged" lemma) is too slow, and `bv_decide` is not allowed.
+- **Workable route, not done:**
+  - write the update arithmetically, `cset s d v = s - (cget s d <<< 2d) + (v <<< 2d)`;
+  - prove the base-4 digit lemmas in Nat (`S = A·4^{d+1} + c·4^d + R`; digits below/above d are unchanged; standard
+    `Nat.add_mul_div` lemmas);
+  - change `Rep` to a word, the spec to "`(` fails at depth 32" (a trusted change, to be listed), and the three cell
+    updates in `t9_sound`;
+  - regenerate Cert/SrcLink/Tests ids.
+  Estimate 3–4 h. Gain: **−4 MiB only.** A small program with `match` would then need about 77–80 MiB, so it fits the
+  80 MiB default, but just barely.
+- **Removing the other 4 MiB** (the output buffer) needs the fused lexer-desugar described above (about 1 day).
+- **Recommendation:** if memory matters most, do the fused version directly; it removes both buffers. The packed word
+  alone is a half-measure.
