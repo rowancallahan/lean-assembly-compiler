@@ -1718,12 +1718,12 @@ theorem _root_.{P}.sem : ∀ (t : {tyOf Ttn}) (a : {aTy}) (b : {bTy}), {hyps}{P}
   | (simp only [{gS}, {P}.arms, Proven.Mach.Ind.Pg.sem, Proven.Mach.Ind.ev, {embs}, {smalls}, List.getElem?_cons_succ,
       List.getElem?_cons_zero, List.getElem?_nil, Bool.false_eq_true, if_false, if_true] at *
      try simp only [Proven.Mach.Ind.C.nodes] at *
-     simp (disch := first | omega | (simp_all -failIfUnchanged; done)) only [*, {cmpW}, {words0}, ↓reduceIte, ite_true, ite_false{extra}]
-     all_goals (try simp (disch := first | omega | (simp_all -failIfUnchanged; done)) only [Proven.Mach.Ind.ev, Proven.Frontx.Ind.natSubW_ofNat,
+     simp (disch := first | omega | (simp_all; done)) only [*, {cmpW}, {words0}, ↓reduceIte, ite_true, ite_false{extra}]
+     all_goals (try simp (disch := first | omega | (simp_all; done)) only [Proven.Mach.Ind.ev, Proven.Frontx.Ind.natSubW_ofNat,
        Proven.Frontx.Ind.nat_add, Proven.Frontx.Ind.bw_eq0, Proven.Frontx.Ind.bw_eq0', decide_eq_false_iff_not,
        decide_eq_true_eq] at *)
      all_goals (repeat' split)
-     all_goals (simp_all [{embs}, Proven.Frontx.Ind.bw]; try omega)
+     all_goals (simp_all [{gS}, {embs}, Proven.Frontx.Ind.bw]; try omega)
      done)
   | (simp only [{Ttn}.emb, {P}.arms, Proven.Mach.Ind.Pg.sem, Proven.Mach.Ind.ev, List.getElem?_cons_zero,
       List.getElem?_cons_succ, Bool.false_eq_true, if_true, if_false, {words}] at *
