@@ -69,10 +69,12 @@ structure Mid (K : LayW) (C : List J) (s0 : M.State) (p : Nat × CallProbe.St) (
   bw : ∀ a, io K a → (M.observe s).memory (UInt64.ofNat a) = some (cbyte (p.2.m (a - a % 8)) (a % 8))
   fr : ∀ a, a < 2 ^ 64 → ¬ wok K (a - a % 8) → ¬ outB K a →
     (M.observe s).memory (UInt64.ofNat a) = (K.m0 a).map UInt8.ofBitVec
+  /-- the layout (the code and data blocks in RAM) -/
+  lay : JTarget.LayOK M (16 * C.length) K
 
 theorem mid_of_rel {K : LayW} {C : List J} {s0 s : M.State} {p : Nat × CallProbe.St}
-    (h : (armTarget M).Rel K C s0 p s) : Mid K C s0 p 0 s :=
-  ⟨h.cfg, by have := h.pc; simp only [JTarget.addr, armTarget] at this; rw [this]; congr 1, h.code, h.x0, h.bb, h.ww, h.x, h.keep, h.w, h.bw, h.fr⟩
+    (hL : JTarget.LayOK M (16 * C.length) K) (h : (armTarget M).Rel K C s0 p s) : Mid K C s0 p 0 s :=
+  ⟨h.cfg, by have := h.pc; simp only [JTarget.addr, armTarget] at this; rw [this]; congr 1, h.code, h.x0, h.bb, h.ww, h.x, h.keep, h.w, h.bw, h.fr, hL⟩
 
 theorem rel_of_mid {K : LayW} {C : List J} {s0 s : M.State} {p : Nat × CallProbe.St}
     (h : Mid K C s0 p 0 s) : (armTarget M).Rel K C s0 p s :=
@@ -100,6 +102,7 @@ theorem mid_regs {K : LayW} {C : List J} {s0 s s' : M.State} {p : Nat × CallPro
   w := fun a ha k hk => by rw [hmem, hm]; exact hM.w a ha k hk
   bw := fun a ha => by rw [hmem, hm]; exact hM.bw a ha
   fr := fun a ha h1 h2 => by rw [hmem]; exact hM.fr a ha h1 h2
+  lay := hM.lay
 
 theorem ofNat_add4 (a : Nat) : UInt64.ofNat a + 4 = UInt64.ofNat (a + 4) := by
   apply UInt64.toNat_inj.1; simp [UInt64.toNat_add]
@@ -165,6 +168,14 @@ theorem mid_pcN {K : LayW} {C : List J} {s0 s : M.State} {p : Nat × CallProbe.S
 theorem ofInt_toNat' (f : Int) : (UInt64.ofInt f).toNat = (f % 2 ^ 64).toNat := by
   simp [UInt64.ofInt]; omega
 
+/-- the pc of word `k` of a block is fetchable -/
+theorem mid_pcok {K : LayW} {C : List J} {s0 s : M.State} {p : Nat × CallProbe.St} {k : Nat}
+    (hM : Mid K C s0 p k s) (hB : K.base + 16 * C.length ≤ 2 ^ 32) (hpcl : p.1 < C.length) (hk : k < 4) :
+    PcOK M (M.observe s) := by
+  have := hM.lay.b4; have := hM.lay.blo; have := hM.lay.bhi
+  have e : (UInt64.ofNat (K.base + 16 * p.1 + 4 * k)).toNat = K.base + 16 * p.1 + 4 * k := by simp; omega
+  unfold PcOK; rw [hM.pc, e]; omega
+
 /-- a branch offset `f` words from the pc -/
 theorem ofNat_addInt (a : Nat) (f : Int) (h : 0 ≤ (a : Int) + 4 * f) (h2 : (a : Int) + 4 * f < 2 ^ 64) :
     UInt64.ofNat a + 4 * UInt64.ofInt f = UInt64.ofNat ((a : Int) + 4 * f).toNat := by
@@ -187,7 +198,7 @@ theorem run_pads (S : A64Sem M) {K : LayW} {C : List J} {s0 : M.State} {p : Nat 
   | n + 1, k, s, hk, hM, hpad => by
     have hw := mid_word hM hC k (by omega)
     rw [hpad k (Nat.le_refl _) (by omega), ← mid_pcN hM (by omega)] at hw
-    obtain ⟨s1, r1, M1, -⟩ := mid_scr hM (Or.inl rfl) (S.addi s 16 16 0 hM.cfg (by decide) (by decide) (by decide) hw)
+    obtain ⟨s1, r1, M1, -⟩ := mid_scr hM (Or.inl rfl) (S.addi s 16 16 0 hM.cfg (mid_pcok hM hB hpcl (by omega)) (by decide) (by decide) (by decide) hw)
     obtain ⟨s2, r2, M2⟩ := run_pads S hC hB hpcl n (k + 1) s1 (by omega) M1 (fun i h1 h2 => hpad i (by omega) h2)
     exact ⟨s2, Runs.trans r1 r2, M2⟩
 
@@ -208,7 +219,7 @@ theorem pads_mid (S : A64Sem M) {K : LayW} {C : List J} {s0 : M.State} {p : Nat 
   | n + 1, k, s, hk, hM, hpad => by
     have hw := mid_word hM hC k (by omega)
     rw [hpad k (Nat.le_refl _) (by omega), ← mid_pcN hM (by omega)] at hw
-    obtain ⟨s1, r1, M1, -⟩ := mid_scr hM (Or.inl rfl) (S.addi s 16 16 0 hM.cfg (by decide) (by decide) (by decide) hw)
+    obtain ⟨s1, r1, M1, -⟩ := mid_scr hM (Or.inl rfl) (S.addi s 16 16 0 hM.cfg (mid_pcok hM hB hpcl (by omega)) (by decide) (by decide) (by decide) hw)
     obtain ⟨s2, r2, M2⟩ := pads_mid S hC hB hpcl n (k + 1) s1 (by omega) M1 (fun i h1 h2 => hpad i (by omega) (by omega))
     exact ⟨s2, Runs.trans r1 r2, by rw [show k + (n + 1) = k + 1 + n by omega]; exact M2⟩
 
@@ -229,7 +240,7 @@ theorem blk_jal0 (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : N
   have hw := mid_word hM hC 0 (by decide)
   simp only [blockJ, body, pad4, if_true] at hw
   rw [show K.base + 16 * pc + 4 * 0 = K.base + 16 * pc + 4 * 0 from rfl, ← mid_pcN hM (by omega)] at hw
-  have g := S.b s (4 * o) hM.cfg (by omega) (by omega) (by simpa using hw)
+  have g := S.b s (4 * o) hM.cfg (mid_pcok hM hB hpcl (by omega)) (by omega) (by omega) (by simpa using hw)
   rw [hM.pc, show K.base + 16 * pc + 4 * 0 = K.base + 16 * pc by omega, ofNat_addInt _ _ (by omega) (by omega),
     show ((K.base + 16 * pc : Nat) + 4 * (4 * o) : Int).toNat = K.base + 16 * ((pc : Int) + o).toNat by omega] at g
   exact mid_jump hM g
@@ -241,7 +252,7 @@ theorem blk_b (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : Nat}
     (hpcl : pc < C.length) (h1 : -2 ^ 18 ≤ o) (h2 : o < 2 ^ 18) (h3 : 0 ≤ (pc : Int) + o) (h4 : (pc : Int) + o < C.length) :
     ∃ s', Runs M s s' ∧ Mid K C s0 (((pc : Int) + o).toNat, st) 0 s' := by
   have hw := word_pc hM hC hB hpcl (by decide) hw0
-  have g := S.b s (4 * o) hM.cfg (by omega) (by omega) hw
+  have g := S.b s (4 * o) hM.cfg (mid_pcok hM hB hpcl (by omega)) (by omega) (by omega) hw
   rw [hM.pc, show K.base + 16 * pc + 4 * 0 = K.base + 16 * pc by omega, ofNat_addInt _ _ (by omega) (by omega),
     show ((K.base + 16 * pc : Nat) + 4 * (4 * o) : Int).toNat = K.base + 16 * ((pc : Int) + o).toNat by omega] at g
   exact mid_jump hM g
@@ -256,7 +267,7 @@ theorem blk_jal1 (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : N
   obtain ⟨s1, r1, M1⟩ := pads_mid S (p := (pc, st)) hC hB hpcl 3 0 s (by decide) hM
     (fun i _ hi => by rw [hb]; rcases (by omega : i = 0 ∨ i = 1 ∨ i = 2) with rfl | rfl | rfl <;> rfl)
   have hw := word_pc M1 hC hB hpcl (by decide) (w := blB (4 * o - 3)) (by rw [hb]; rfl)
-  obtain ⟨s2, r2, c2, o2⟩ := S.bl s1 (4 * o - 3) M1.cfg (by omega) (by omega) hw
+  obtain ⟨s2, r2, c2, o2⟩ := S.bl s1 (4 * o - 3) M1.cfg (mid_pcok M1 hB hpcl (by omega)) (by omega) (by omega) hw
   have hw16 : st.w = 16 := by unfold CallProbe.St.w; rw [M1.ww]
   have hpc1 := M1.pc
   refine ⟨s2, Runs.trans r1 r2, mid_regs M1 c2 ?_ (by rw [o2]) (fun j h0 h32 => ?_) (fun r hr _ => ?_) ?_ ?_ ?_ ?_⟩
@@ -281,7 +292,7 @@ theorem blk_jalr (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : N
     (hj : (st.x rs).toNat = K.base + st.w * jt) :
     ∃ s', Runs M s s' ∧ Mid K C s0 (((st.x rs).toNat - st.b) / st.w, st) 0 s' := by
   have hw := word_pc hM hC hB hpcl (by decide) (w := brR (armReg rs)) (by simp [blockJ, body, pad4])
-  have g := S.br s (armReg rs) hM.cfg hlt hw
+  have g := S.br s (armReg rs) hM.cfg (mid_pcok hM hB hpcl (by omega)) hlt hw
   have hw16 : st.w = 16 := by unfold CallProbe.St.w; rw [hM.ww]
   have e : ((st.x rs).toNat - st.b) / st.w = jt := by rw [hj, hM.bb, hw16]; omega
   rw [hM.x rs (by omega) hrs, ← @UInt64.ofNat_toNat (st.x rs), hj, hw16] at g
@@ -317,7 +328,8 @@ theorem cmp_tail (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc k :
   have w2 := mid_word hM hC (k + 1) (by omega)
   rw [hwB, show K.base + 16 * pc + 4 * (k + 1) = (M.observe s).programCounter.toNat + 4 by
     rw [mid_pcN hM (by omega)]; omega] at w2
-  have g := S.cmpbr s c n m (4 * o - 1 - k) hM.cfg hc hn hm (by omega) (by omega) w1 w2
+  have g := S.cmpbr s c n m (4 * o - 1 - k) hM.cfg (mid_pcok hM hB hpcl (by omega)) hc hn hm (by omega) (by omega)
+    (by rw [mid_pcN hM (by omega)]; have := hM.lay.bhi; have := hM.lay.blo; omega) w1 w2
   rw [vn, vm] at g
   obtain ⟨s2, r2, c2, o2⟩ := g
   have hpcA := hM.pc
@@ -350,7 +362,7 @@ theorem blk_cmp (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : Na
   by_cases hz : a = 0 ∨ b = 0
   · rw [if_pos hz] at hblk
     have w0 := word_pc hM hC hB hpcl (by decide) (w := movz 17 0) (by rw [hblk]; rfl)
-    obtain ⟨s1, r1, M1, o1⟩ := mid_scr hM (Or.inr rfl) (S.movz s 17 0 hM.cfg (by decide) (by decide) w0)
+    obtain ⟨s1, r1, M1, o1⟩ := mid_scr hM (Or.inr rfl) (S.movz s 17 0 hM.cfg (mid_pcok hM hB hpcl (by omega)) (by decide) (by decide) w0)
     have r17 : (M.observe s1).register 17 = 0 := by rw [o1]; simp [setReg]
     obtain ⟨s2, r2, M2⟩ := cmp_tail S M1 (Nat.le_refl _) hC hB hpcl hc (opR_lt ha) (opR_lt hb)
       (by rw [hblk]; rfl) (by rw [hblk]; show bc c (4 * o - 2) = _; congr 1; omega)
@@ -373,7 +385,7 @@ theorem blk_cbz (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : Na
     (h1 : -65535 ≤ o) (h2 : o ≤ 65535) (h3 : 0 ≤ (pc : Int) + o) (h4 : (pc : Int) + o < C.length) :
     ∃ s', Runs M s s' ∧ Mid K C s0 (if st.x a = 0 then ((pc : Int) + o).toNat else pc + 1, st) 0 s' := by
   have w0 := word_pc hM hC hB hpcl (by decide) (w := cbz (armReg a) (4 * o)) (by rw [hblk]; rfl)
-  obtain ⟨s1, r1, c1, o1⟩ := S.cbz s (armReg a) (4 * o) hM.cfg (armReg_lt ha a0) (by omega) (by omega) w0
+  obtain ⟨s1, r1, c1, o1⟩ := S.cbz s (armReg a) (4 * o) hM.cfg (mid_pcok hM hB hpcl (by omega)) (armReg_lt ha a0) (by omega) (by omega) w0
   rw [hM.x a (by omega) (mapped_lt ha)] at o1
   have hpcA := hM.pc
   by_cases hz : st.x a = 0
@@ -434,17 +446,17 @@ theorem blk_addi (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : N
     · have hb : blockJ (.addi rd 0 imm) = [movz (armReg rd) (65536 - imm.natAbs), movk (armReg rd) 65535 1,
           movk (armReg rd) 65535 2, movk (armReg rd) 65535 3] := by simp [blockJ, body, pad4, hd, hn]
       have w0 := word_pc hM hC hB hpcl (by decide) (w := movz (armReg rd) (65536 - imm.natAbs)) (by rw [hb]; rfl)
-      obtain ⟨s1, r1, M1⟩ := mid_set hM hrd hd (S.movz s _ _ hM.cfg hdl (by omega) w0)
+      obtain ⟨s1, r1, M1⟩ := mid_set hM hrd hd (S.movz s _ _ hM.cfg (mid_pcok hM hB hpcl (by omega)) hdl (by omega) w0)
       have w1 := word_pc M1 hC hB hpcl (by decide) (w := movk (armReg rd) 65535 1) (by rw [hb]; rfl)
-      have g1 := S.movk s1 _ _ _ M1.cfg hdl (by decide) (by decide) w1
+      have g1 := S.movk s1 _ _ _ M1.cfg (mid_pcok M1 hB hpcl (by omega)) hdl (by decide) (by decide) w1
       rw [M1.x rd (by omega) (mapped_lt hrd)] at g1
       obtain ⟨s2, r2, M2⟩ := mid_set M1 hrd hd g1
       have w2 := word_pc M2 hC hB hpcl (by decide) (w := movk (armReg rd) 65535 2) (by rw [hb]; rfl)
-      have g2 := S.movk s2 _ _ _ M2.cfg hdl (by decide) (by decide) w2
+      have g2 := S.movk s2 _ _ _ M2.cfg (mid_pcok M2 hB hpcl (by omega)) hdl (by decide) (by decide) w2
       rw [M2.x rd (by omega) (mapped_lt hrd)] at g2
       obtain ⟨s3, r3, M3⟩ := mid_set M2 hrd hd g2
       have w3 := word_pc M3 hC hB hpcl (by decide) (w := movk (armReg rd) 65535 3) (by rw [hb]; rfl)
-      have g3 := S.movk s3 _ _ _ M3.cfg hdl (by decide) (by decide) w3
+      have g3 := S.movk s3 _ _ _ M3.cfg (mid_pcok M3 hB hpcl (by omega)) hdl (by decide) (by decide) w3
       rw [M3.x rd (by omega) (mapped_lt hrd)] at g3
       obtain ⟨s4, r4, M4⟩ := mid_set M3 hrd hd g3
       refine ⟨s4, Runs.trans r1 (Runs.trans r2 (Runs.trans r3 r4)), ?_⟩
@@ -455,7 +467,7 @@ theorem blk_addi (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : N
     · have hb : blockJ (.addi rd 0 imm) = [movz (armReg rd) imm.toNat, PAD, PAD, PAD] := by
         simp [blockJ, body, pad4, hd, hn]
       have w0 := word_pc hM hC hB hpcl (by decide) (w := movz (armReg rd) imm.toNat) (by rw [hb]; rfl)
-      obtain ⟨s1, r1, M1⟩ := mid_set hM hrd hd (S.movz s _ _ hM.cfg hdl (by omega) w0)
+      obtain ⟨s1, r1, M1⟩ := mid_set hM hrd hd (S.movz s _ _ hM.cfg (mid_pcok hM hB hpcl (by omega)) hdl (by omega) w0)
       obtain ⟨s2, r2, M2⟩ := run_pads S hC hB hpcl 3 1 s1 (by decide) M1
         (fun i h1 h2 => by rcases (by omega : i = 1 ∨ i = 2 ∨ i = 3) with rfl | rfl | rfl <;> rw [hb] <;> rfl)
       rw [ofNat_imm (by omega)] at M2
@@ -465,7 +477,7 @@ theorem blk_addi (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : N
     · have hb : blockJ (.addi rd rs imm) = [subi (armReg rd) (armReg rs) imm.natAbs, PAD, PAD, PAD] := by
         simp [blockJ, body, pad4, hd, hs, hn]
       have w0 := word_pc hM hC hB hpcl (by decide) (w := subi (armReg rd) (armReg rs) imm.natAbs) (by rw [hb]; rfl)
-      have g := S.subi s _ _ _ hM.cfg hdl hsl (by omega) w0
+      have g := S.subi s _ _ _ hM.cfg (mid_pcok hM hB hpcl (by omega)) hdl hsl (by omega) w0
       rw [hM.x rs (by omega) (mapped_lt hrs), sub_imm _ hn hi1] at g
       obtain ⟨s1, r1, M1⟩ := mid_set hM hrd hd g
       obtain ⟨s2, r2, M2⟩ := run_pads S hC hB hpcl 3 1 s1 (by decide) M1
@@ -474,7 +486,7 @@ theorem blk_addi (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : N
     · have hb : blockJ (.addi rd rs imm) = [addi (armReg rd) (armReg rs) imm.toNat, PAD, PAD, PAD] := by
         simp [blockJ, body, pad4, hd, hs, hn]
       have w0 := word_pc hM hC hB hpcl (by decide) (w := addi (armReg rd) (armReg rs) imm.toNat) (by rw [hb]; rfl)
-      have g := S.addi s _ _ _ hM.cfg hdl hsl (by omega) w0
+      have g := S.addi s _ _ _ hM.cfg (mid_pcok hM hB hpcl (by omega)) hdl hsl (by omega) w0
       rw [hM.x rs (by omega) (mapped_lt hrs), ofNat_imm (by omega)] at g
       obtain ⟨s1, r1, M1⟩ := mid_set hM hrd hd g
       obtain ⟨s2, r2, M2⟩ := run_pads S hC hB hpcl 3 1 s1 (by decide) M1
@@ -499,10 +511,10 @@ theorem blk_alu (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : Na
   · have hbk : blockJ (.alu op rd a b) = [movz 17 0, rr (aluC op) (armReg rd) (opR a) (opR b), PAD, PAD] := by
       simp [blockJ, body, pad4, hd, hz, zpre]
     have w0 := word_pc hM hC hB hpcl (by decide) (w := movz 17 0) (by rw [hbk]; rfl)
-    obtain ⟨s1, r1, M1, o1⟩ := mid_scr hM (Or.inr rfl) (S.movz s 17 0 hM.cfg (by decide) (by decide) w0)
+    obtain ⟨s1, r1, M1, o1⟩ := mid_scr hM (Or.inr rfl) (S.movz s 17 0 hM.cfg (mid_pcok hM hB hpcl (by omega)) (by decide) (by decide) w0)
     have r17 : (M.observe s1).register 17 = 0 := by rw [o1]; simp [setReg]
     have w1 := word_pc M1 hC hB hpcl (by decide) (w := rr (aluC op) (armReg rd) (opR a) (opR b)) (by rw [hbk]; rfl)
-    have g := S.alu s1 op _ _ _ M1.cfg h1 h8 hdl (opR_lt ha) (opR_lt hb) w1
+    have g := S.alu s1 op _ _ _ M1.cfg (mid_pcok M1 hB hpcl (by omega)) h1 h8 hdl (opR_lt ha) (opR_lt hb) w1
     rw [opR_val M1 ha (fun _ => r17), opR_val M1 hb (fun _ => r17), r17, aluV_eq _ _ _ _ (Or.inr rfl)] at g
     obtain ⟨s2, r2, M2⟩ := mid_set M1 hrd hd g
     obtain ⟨s3, r3, M3⟩ := run_pads S hC hB hpcl 2 2 s2 (by decide) M2
@@ -514,7 +526,7 @@ theorem blk_alu (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : Na
     have hbk : blockJ (.alu op rd a b) = [rr (aluC op) (armReg rd) (opR a) (opR b), PAD, PAD, PAD] := by
       simp [blockJ, body, pad4, hd, hz, zpre]
     have w0 := word_pc hM hC hB hpcl (by decide) (w := rr (aluC op) (armReg rd) (opR a) (opR b)) (by rw [hbk]; rfl)
-    have g := S.alu s op _ _ _ hM.cfg h1 h8 hdl (opR_lt ha) (opR_lt hb) w0
+    have g := S.alu s op _ _ _ hM.cfg (mid_pcok hM hB hpcl (by omega)) h1 h8 hdl (opR_lt ha) (opR_lt hb) w0
     rw [opR_val hM ha (fun e => absurd e a0), opR_val hM hb (fun e => absurd e b0), aluV_eq _ _ _ _ (Or.inl o3)] at g
     obtain ⟨s1, r1, M1⟩ := mid_set hM hrd hd g
     obtain ⟨s2, r2, M2⟩ := run_pads S hC hB hpcl 3 1 s1 (by decide) M1
@@ -545,9 +557,9 @@ theorem blk_shift (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : 
       ∃ s', Runs M s1 s' ∧ Mid K C s0 (pc + 1, CallProbe.wr st rd (aluV op (st.x rs) (UInt64.ofNat sh) 0)) 0 s' := by
     intro k s1 hk M1 e1 e2 e3 z17
     have w1 := word_pc M1 hC hB hpcl (by omega) e1
-    obtain ⟨s2, r2, M2, o2⟩ := mid_scr M1 (Or.inl rfl) (S.movz s1 16 sh M1.cfg (by decide) (by omega) w1)
+    obtain ⟨s2, r2, M2, o2⟩ := mid_scr M1 (Or.inl rfl) (S.movz s1 16 sh M1.cfg (mid_pcok M1 hB hpcl (by omega)) (by decide) (by omega) w1)
     have w2 := word_pc M2 hC hB hpcl (by omega) e2
-    have g := S.alu s2 op _ _ _ M2.cfg (by omega) (by omega) hdl (opR_lt hrs) (by decide) w2
+    have g := S.alu s2 op _ _ _ M2.cfg (mid_pcok M2 hB hpcl (by omega)) (by omega) (by omega) hdl (opR_lt hrs) (by decide) w2
     have r16 : (M.observe s2).register 16 = UInt64.ofNat sh := by rw [o2]; simp [setReg]
     have z2 : rs = 0 → (M.observe s2).register 17 = 0 := fun e => by rw [o2]; simp [setReg]; exact z17 e
     rw [opR_val M2 hrs z2, r16, hv] at g
@@ -558,7 +570,7 @@ theorem blk_shift (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : 
   · have hb : blockJ j = [movz 17 0, movz 16 sh, rr (aluC op) (armReg rd) (opR rs) 16, PAD] := by
       simp [blockJ, hbody, pad4, hd, hs, zpre]
     have w0 := word_pc hM hC hB hpcl (by decide) (w := movz 17 0) (by rw [hb]; rfl)
-    obtain ⟨s1, r1, M1, o1⟩ := mid_scr hM (Or.inr rfl) (S.movz s 17 0 hM.cfg (by decide) (by decide) w0)
+    obtain ⟨s1, r1, M1, o1⟩ := mid_scr hM (Or.inr rfl) (S.movz s 17 0 hM.cfg (mid_pcok hM hB hpcl (by omega)) (by decide) (by decide) w0)
     obtain ⟨s2, r2, M2⟩ := tail 1 s1 (Nat.le_refl _) M1 (by rw [hb]; rfl) (by rw [hb]; rfl)
       (fun i h1 h2 => by rw [show i = 3 by omega, hb]; rfl) (fun _ => by rw [o1]; simp [setReg])
     exact ⟨s2, Runs.trans r1 r2, M2⟩
@@ -602,7 +614,7 @@ theorem mid_store8 {K : LayW} {C : List J} {s0 s : M.State} {pc k : Nat} {st : C
   have hib := hL.ibh; have hob := hL.obh; have hil := hL.ibl; have hol := hL.obl
   unfold wok at ha
   refine ⟨s', r, ⟨c, by rw [o]; simp only [store8]; rw [hpc, ofNat_add4]; congr 1, ?_, hM.x0, hM.bb, hM.ww,
-    fun j h0 h32 => by rw [o]; exact hM.x j h0 h32, fun r' h1 h2 => by rw [o]; exact hM.keep r' h1 h2, ?_, ?_, ?_⟩⟩
+    fun j h0 h32 => by rw [o]; exact hM.x j h0 h32, fun r' h1 h2 => by rw [o]; exact hM.keep r' h1 h2, ?_, ?_, ?_, hM.lay⟩⟩
   · intro i h k' hk' b hb
     rw [o]; simp only [store8]
     rw [blk_len] at hk'
@@ -639,7 +651,7 @@ theorem mid_store1 {K : LayW} {C : List J} {s0 s : M.State} {pc k : Nat} {st : C
   have ha' : (K.lo ≤ a - a % 8 ∧ a - a % 8 + 8 ≤ K.hi) ∨ (K.ob ≤ a ∧ a < K.ob + K.ol) := by
     unfold sok wok outB at ha; omega
   refine ⟨s', r, ⟨c, by rw [o]; simp only [store1]; rw [hpc, ofNat_add4]; congr 1, ?_, hM.x0, hM.bb, hM.ww,
-    fun j h0 h32 => by rw [o]; exact hM.x j h0 h32, fun r' h1 h2 => by rw [o]; exact hM.keep r' h1 h2, ?_, ?_, ?_⟩⟩
+    fun j h0 h32 => by rw [o]; exact hM.x j h0 h32, fun r' h1 h2 => by rw [o]; exact hM.keep r' h1 h2, ?_, ?_, ?_, hM.lay⟩⟩
   · intro i h k' hk' b hb
     rw [o]; simp only [store1]
     rw [blk_len] at hk'
@@ -680,14 +692,14 @@ theorem addr_x16 (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc k :
   split at hw
   · rename_i hn
     have w := word_pc hM hC hB hpcl hk hw
-    obtain ⟨s1, r1, M1, o1⟩ := mid_scr hM (Or.inl rfl) (S.subi s 16 _ _ hM.cfg (by decide) hsl (by omega) w)
+    obtain ⟨s1, r1, M1, o1⟩ := mid_scr hM (Or.inl rfl) (S.subi s 16 _ _ hM.cfg (mid_pcok hM hB hpcl (by omega)) (by decide) hsl (by omega) w)
     refine ⟨s1, r1, M1, ?_, by rw [o1]; simp [setReg]⟩
     rw [o1]; simp only [setReg, if_true]; rw [xr]
     apply UInt64.toNat_inj.1
     rw [UInt64.toNat_sub]; simp [CallProbe.ea]; omega
   · rename_i hn
     have w := word_pc hM hC hB hpcl hk hw
-    obtain ⟨s1, r1, M1, o1⟩ := mid_scr hM (Or.inl rfl) (S.addi s 16 _ _ hM.cfg (by decide) hsl (by omega) w)
+    obtain ⟨s1, r1, M1, o1⟩ := mid_scr hM (Or.inl rfl) (S.addi s 16 _ _ hM.cfg (mid_pcok hM hB hpcl (by omega)) (by decide) hsl (by omega) w)
     refine ⟨s1, r1, M1, ?_, by rw [o1]; simp [setReg]⟩
     rw [o1]; simp only [setReg, if_true]; rw [xr]
     apply UInt64.toNat_inj.1
@@ -719,7 +731,7 @@ theorem blk_ld (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : Nat
       ∃ s', Runs M s1 s' ∧ Mid K C s0 (pc + 1, CallProbe.wr st rd (st.m (CallProbe.ea (st.x rs) off))) 0 s' := by
     intro k s1 n f M1 hk hn hf8 hf hea e1 e2
     have w := word_pc M1 hC hB hpcl hk e1
-    have g := S.ldr s1 _ n f (st.m (CallProbe.ea (st.x rs) off)) M1.cfg hdl hn hf8 hf (by omega) (by omega)
+    have g := S.ldr s1 _ n f (st.m (CallProbe.ea (st.x rs) off)) M1.cfg (mid_pcok M1 hB hpcl (by omega)) hdl hn hf8 hf (by omega) (by omega)
       (by omega) (by omega) (fun k' hk' => by rw [hea]; exact M1.w _ hwk k' hk') w
     obtain ⟨s2, r2, M2⟩ := mid_set M1 hrd hd g
     obtain ⟨s3, r3, M3⟩ := run_pads S hC hB hpcl (4 - (k + 1)) (k + 1) s2 (by omega) M2 e2
@@ -775,7 +787,7 @@ theorem blk_lbu (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : Na
     intro k s1 n f M1 hk hn hf hea e1 e2
     have w := word_pc M1 hC hB hpcl hk e1
     obtain ⟨hby, hr1, hr2⟩ := byte_bok M1 hL hbk
-    have g := S.ldrb s1 _ n f _ M1.cfg hdl hn hf (by omega) (by omega) (by omega) (by rw [hea]; exact hby) w
+    have g := S.ldrb s1 _ n f _ M1.cfg (mid_pcok M1 hB hpcl (by omega)) hdl hn hf (by omega) (by omega) (by omega) (by rw [hea]; exact hby) w
     rw [← lbm_cbyte] at g
     obtain ⟨s2, r2, M2⟩ := mid_set M1 hrd hd g
     obtain ⟨s3, r3, M3⟩ := run_pads S hC hB hpcl (4 - (k + 1)) (k + 1) s2 (by omega) M2 e2
@@ -817,7 +829,7 @@ theorem blk_sd (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : Nat
         Mid K C s0 (pc + 1, { st with m := CallProbe.upd st.m (CallProbe.ea (st.x r1) off) (st.x r2) }) 0 s' := by
     intro k s1 n f M1 hk hn hf8 hf hea hv e1 e2
     have w := word_pc M1 hC hB hpcl hk e1
-    have g := S.str s1 _ n f M1.cfg (opR_lt hr2) hn hf8 hf (by omega) (by omega) (by omega) (by omega) w
+    have g := S.str s1 _ n f M1.cfg (mid_pcok M1 hB hpcl (by omega)) (opR_lt hr2) hn hf8 hf (by omega) (by omega) (by omega) (by omega) w
     rw [hea, hv] at g
     obtain ⟨s2, r2', M2⟩ := mid_store8 M1 hL hR hpcl hk hwk g
     obtain ⟨s3, r3, M3⟩ := run_pads S hC hB hpcl (4 - (k + 1)) (k + 1) s2 (by omega) M2 e2
@@ -827,7 +839,7 @@ theorem blk_sd (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : Nat
   · subst e
     have w0 := word_pc hM hC hB hpcl (by decide) (w := movz 17 0) (by
       simp only [blockJ, body, zpre, if_true, pad4]; split <;> rfl)
-    obtain ⟨s1, rr1, M1, o1⟩ := mid_scr hM (Or.inr rfl) (S.movz s 17 0 hM.cfg (by decide) (by decide) w0)
+    obtain ⟨s1, rr1, M1, o1⟩ := mid_scr hM (Or.inr rfl) (S.movz s 17 0 hM.cfg (mid_pcok hM hB hpcl (by omega)) (by decide) (by decide) w0)
     have z1 : (M.observe s1).register 17 = 0 := by rw [o1]; simp [setReg]
     by_cases d : off % 8 = 0 ∧ 0 ≤ off ∧ off < 32768
     · have hb : blockJ (.sd 0 r1 off) = [movz 17 0, str 17 (armReg r1) off.toNat, PAD, PAD] := by
@@ -879,7 +891,7 @@ theorem blk_sb (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : Nat
         Mid K C s0 (pc + 1, { st with m := CallProbe.sbm st.m (CallProbe.ea (st.x r1) off) (st.x r2) }) 0 s' := by
     intro k s1 n f M1 hk hn hf hea hv e1 e2
     have w := word_pc M1 hC hB hpcl hk e1
-    have g := S.strb s1 _ n f M1.cfg (opR_lt hr2) hn hf (by omega) (by omega) (by omega) w
+    have g := S.strb s1 _ n f M1.cfg (mid_pcok M1 hB hpcl (by omega)) (opR_lt hr2) hn hf (by omega) (by omega) (by omega) w
     rw [hea, hv] at g
     obtain ⟨s2, r2', M2⟩ := mid_store1 M1 hL hR hpcl hk hwk g
     obtain ⟨s3, r3, M3⟩ := run_pads S hC hB hpcl (4 - (k + 1)) (k + 1) s2 (by omega) M2 e2
@@ -889,7 +901,7 @@ theorem blk_sb (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : Nat
   · subst e
     have w0 := word_pc hM hC hB hpcl (by decide) (w := movz 17 0) (by
       simp only [blockJ, body, zpre, if_true, pad4]; split <;> rfl)
-    obtain ⟨s1, rr1, M1, o1⟩ := mid_scr hM (Or.inr rfl) (S.movz s 17 0 hM.cfg (by decide) (by decide) w0)
+    obtain ⟨s1, rr1, M1, o1⟩ := mid_scr hM (Or.inr rfl) (S.movz s 17 0 hM.cfg (mid_pcok hM hB hpcl (by omega)) (by decide) (by decide) w0)
     have z1 : (M.observe s1).register 17 = 0 := by rw [o1]; simp [setReg]
     by_cases d : 0 ≤ off ∧ off < 4096
     · have hb : blockJ (.sb 0 r1 off) = [movz 17 0, strb 17 (armReg r1) off.toNat, PAD, PAD] := by
@@ -939,7 +951,7 @@ theorem arm_step (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {a b : 
     (hs : CallProbe.step C a = some b) : ∃ s', Runs M s s' ∧ (armTarget M).Rel K C s0 b s' := by
   obtain ⟨pc, st⟩ := a
   obtain ⟨hL, hP⟩ := hl
-  have hM := mid_of_rel hR
+  have hM := mid_of_rel hL hR
   have hR2 := S.ram.2
   have hB : K.base + 16 * C.length ≤ 2 ^ 32 := by have := hL.bhi; omega
   suffices h : ∃ s', Runs M s s' ∧ Mid K C s0 b 0 s' by
@@ -1062,15 +1074,15 @@ theorem armLaws (S : A64Sem M) : (armTarget M).Laws where
     have hpcl : pc < C.length := (List.getElem?_eq_some_iff.1 hC).1
     have hok := progOK_at hl.2 hC
     simp only [armOK, imm12, Bool.and_eq_true, decide_eq_true_eq] at hok
-    obtain ⟨s', r, m⟩ := blk_addi S (mid_of_rel hR) hC hB hpcl hok.1.2 hok.1.1 h3 h4
+    obtain ⟨s', r, m⟩ := blk_addi S (mid_of_rel hl.1 hR) hC hB hpcl hok.1.2 hok.1.1 h3 h4
     exact ⟨s', r, rel_of_mid m⟩
   ret_ok := by
     intro K C s0 pc st s hl hR hC h4
     have hB : K.base + 16 * C.length ≤ 2 ^ 32 := by have := hl.1.bhi; have := S.ram.2; omega
     have hpcl : pc < C.length := (List.getElem?_eq_some_iff.1 hC).1
-    have hM := mid_of_rel hR
+    have hM := mid_of_rel hl.1 hR
     have hw := word_pc hM hC hB hpcl (by decide) (w := brR 30) (by simp [blockJ, body, pad4]; rfl)
-    obtain ⟨s', r, c, o⟩ := S.br s 30 hM.cfg (by decide) hw
+    obtain ⟨s', r, c, o⟩ := S.br s 30 hM.cfg (mid_pcok hM hB hpcl (by omega)) (by decide) hw
     refine ⟨s', r, ?_, fun r' => by show (M.observe s').register r' = _; rw [o]; rfl,
       by show (M.observe s').memory = _; rw [o]; rfl, c⟩
     show (M.observe s').programCounter = _; rw [o]; exact hM.x 1 (by decide) (by decide)

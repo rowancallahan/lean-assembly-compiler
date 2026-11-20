@@ -1,8 +1,8 @@
 /- The ABSTRACT AArch64 step interface `A64Sem M` for the ARM adapter (Sail-free; any `Machine` whose instructions
 behave so). One field per instruction form the rv2arm blocks use (ArmEnc.body; Testing/nano/v2self/arm/PROOF_NOTES.md),
 each stated through `observe` only, like the Sail `full_*` lemmas:
-* the word sits at the pc (`WordAt`, little-endian bytes), the machine is `configured`, register fields are < 31
-  (no xzr / sp), immediates are in range;
+* the word sits at the pc (`WordAt`, little-endian bytes), the pc is a 4-aligned address in RAM (`PcOK`), the
+  machine is `configured`, register fields are < 31 (no xzr / sp), immediates are in range;
 * then the machine RUNS (`Goes`: some `Runs`, configured again) to the stated observable state.
 Model providers (the DeepMind surrogate `Arm/apc`, later the Sail model) instantiate it; `ArmTarget` proves the
 adapter's laws from it.  `subs` + `b.cond` are ONE field (`cmpbr`): NZCV is not observable, and the blocks only
@@ -15,6 +15,10 @@ open Proven.Top
 /-- the 32-bit word `w` is stored little-endian at byte address `a` -/
 def WordAt (o : MachineState) (a w : Nat) : Prop :=
   ∀ k < 4, o.memory (UInt64.ofNat (a + k)) = some (wbyte (BitVec.ofNat 32 w) k)
+
+/-- the pc is a 4-aligned word address in RAM (what a model needs to fetch) -/
+def PcOK (M : Machine) (o : MachineState) : Prop :=
+  o.programCounter.toNat % 4 = 0 ∧ M.ramStart ≤ o.programCounter.toNat ∧ o.programCounter.toNat + 4 ≤ M.ramEnd
 
 /-- the machine runs from `s` to a configured state that shows `o` -/
 def Goes (M : Machine) (s : M.State) (o : MachineState) : Prop :=
@@ -55,29 +59,29 @@ structure A64Sem (M : Machine) : Prop where
   map : M.mapping = armMapping
   ram : 2048 ≤ M.ramStart ∧ M.ramEnd ≤ 2 ^ 32
   /-- `movz xd, #i` -/
-  movz : ∀ (s : M.State) (d i : Nat), M.configured s → d < 31 → i < 2 ^ 16 →
+  movz : ∀ (s : M.State) (d i : Nat), M.configured s → PcOK M (M.observe s) → d < 31 → i < 2 ^ 16 →
     WordAt (M.observe s) (M.observe s).programCounter.toNat (ArmEnc.movz d i) →
     Goes M s (setReg (M.observe s) d (UInt64.ofNat i))
   /-- `movk xd, #i, lsl 16h` -/
-  movk : ∀ (s : M.State) (d i h : Nat), M.configured s → d < 31 → i < 2 ^ 16 → h < 4 →
+  movk : ∀ (s : M.State) (d i h : Nat), M.configured s → PcOK M (M.observe s) → d < 31 → i < 2 ^ 16 → h < 4 →
     WordAt (M.observe s) (M.observe s).programCounter.toNat (ArmEnc.movk d i h) →
     Goes M s (setReg (M.observe s) d (movkV ((M.observe s).register d) i h))
   /-- `add xd, xn, #i` -/
-  addi : ∀ (s : M.State) (d n i : Nat), M.configured s → d < 31 → n < 31 → i < 4096 →
+  addi : ∀ (s : M.State) (d n i : Nat), M.configured s → PcOK M (M.observe s) → d < 31 → n < 31 → i < 4096 →
     WordAt (M.observe s) (M.observe s).programCounter.toNat (ArmEnc.addi d n i) →
     Goes M s (setReg (M.observe s) d ((M.observe s).register n + UInt64.ofNat i))
   /-- `sub xd, xn, #i` -/
-  subi : ∀ (s : M.State) (d n i : Nat), M.configured s → d < 31 → n < 31 → i < 4096 →
+  subi : ∀ (s : M.State) (d n i : Nat), M.configured s → PcOK M (M.observe s) → d < 31 → n < 31 → i < 4096 →
     WordAt (M.observe s) (M.observe s).programCounter.toNat (ArmEnc.subi d n i) →
     Goes M s (setReg (M.observe s) d ((M.observe s).register n - UInt64.ofNat i))
   /-- the register ALU `add/sub/madd(+x17)/and/orr/lslv/lsrv/eor xd, xn, xm` -/
-  alu : ∀ (s : M.State) (op d n m : Nat), M.configured s → 1 ≤ op → op ≤ 8 → d < 31 → n < 31 → m < 31 →
+  alu : ∀ (s : M.State) (op d n m : Nat), M.configured s → PcOK M (M.observe s) → 1 ≤ op → op ≤ 8 → d < 31 → n < 31 → m < 31 →
     WordAt (M.observe s) (M.observe s).programCounter.toNat (ArmEnc.rr (ArmEnc.aluC op) d n m) →
     Goes M s (setReg (M.observe s) d (aluV op ((M.observe s).register n) ((M.observe s).register m)
       ((M.observe s).register 17)))
   /-- `subs x16, xn, xm; b.cond f` (c: EQ 0, NE 1, HS 2, LO 3; f in words, from the b.cond) -/
-  cmpbr : ∀ (s : M.State) (c n m : Nat) (f : Int), M.configured s → c < 4 → n < 31 → m < 31 →
-    -2 ^ 18 ≤ f → f < 2 ^ 18 →
+  cmpbr : ∀ (s : M.State) (c n m : Nat) (f : Int), M.configured s → PcOK M (M.observe s) → c < 4 → n < 31 → m < 31 →
+    -2 ^ 18 ≤ f → f < 2 ^ 18 → (M.observe s).programCounter.toNat + 8 ≤ M.ramEnd →
     WordAt (M.observe s) (M.observe s).programCounter.toNat (ArmEnc.subsR n m) →
     WordAt (M.observe s) ((M.observe s).programCounter.toNat + 4) (ArmEnc.bc c f) →
     Goes M s ⟨if condV c ((M.observe s).register n) ((M.observe s).register m)
@@ -85,45 +89,45 @@ structure A64Sem (M : Machine) : Prop where
       fun r => if r = 16 then (M.observe s).register n - (M.observe s).register m else (M.observe s).register r,
       (M.observe s).memory⟩
   /-- `cbz xt, f` -/
-  cbz : ∀ (s : M.State) (t : Nat) (f : Int), M.configured s → t < 31 → -2 ^ 18 ≤ f → f < 2 ^ 18 →
+  cbz : ∀ (s : M.State) (t : Nat) (f : Int), M.configured s → PcOK M (M.observe s) → t < 31 → -2 ^ 18 ≤ f → f < 2 ^ 18 →
     WordAt (M.observe s) (M.observe s).programCounter.toNat (ArmEnc.cbz t f) →
     Goes M s (jumpTo (M.observe s) (if (M.observe s).register t = 0
       then (M.observe s).programCounter + 4 * UInt64.ofInt f else (M.observe s).programCounter + 4))
   /-- `b f` -/
-  b : ∀ (s : M.State) (f : Int), M.configured s → -2 ^ 25 ≤ f → f < 2 ^ 25 →
+  b : ∀ (s : M.State) (f : Int), M.configured s → PcOK M (M.observe s) → -2 ^ 25 ≤ f → f < 2 ^ 25 →
     WordAt (M.observe s) (M.observe s).programCounter.toNat (ArmEnc.bB f) →
     Goes M s (jumpTo (M.observe s) ((M.observe s).programCounter + 4 * UInt64.ofInt f))
   /-- `bl f` (x30 := the next word's address) -/
-  bl : ∀ (s : M.State) (f : Int), M.configured s → -2 ^ 25 ≤ f → f < 2 ^ 25 →
+  bl : ∀ (s : M.State) (f : Int), M.configured s → PcOK M (M.observe s) → -2 ^ 25 ≤ f → f < 2 ^ 25 →
     WordAt (M.observe s) (M.observe s).programCounter.toNat (ArmEnc.blB f) →
     Goes M s ⟨(M.observe s).programCounter + 4 * UInt64.ofInt f,
       fun r => if r = 30 then (M.observe s).programCounter + 4 else (M.observe s).register r, (M.observe s).memory⟩
   /-- `br xn` -/
-  br : ∀ (s : M.State) (n : Nat), M.configured s → n < 31 →
+  br : ∀ (s : M.State) (n : Nat), M.configured s → PcOK M (M.observe s) → n < 31 →
     WordAt (M.observe s) (M.observe s).programCounter.toNat (ArmEnc.brR n) →
     Goes M s (jumpTo (M.observe s) ((M.observe s).register n))
   /-- `ldr xt, [xn, #f]` (8-aligned address in RAM; the loaded value is the one whose bytes are there) -/
-  ldr : ∀ (s : M.State) (t n f : Nat) (v : UInt64), M.configured s → t < 31 → n < 31 → f % 8 = 0 → f < 32768 →
+  ldr : ∀ (s : M.State) (t n f : Nat) (v : UInt64), M.configured s → PcOK M (M.observe s) → t < 31 → n < 31 → f % 8 = 0 → f < 32768 →
     ((M.observe s).register n).toNat + f < 2 ^ 64 → (((M.observe s).register n).toNat + f) % 8 = 0 →
     M.ramStart ≤ ((M.observe s).register n).toNat + f → ((M.observe s).register n).toNat + f + 8 ≤ M.ramEnd →
     (∀ k < 8, (M.observe s).memory (UInt64.ofNat (((M.observe s).register n).toNat + f + k)) = some (cbyte v k)) →
     WordAt (M.observe s) (M.observe s).programCounter.toNat (ArmEnc.ldr t n f) →
     Goes M s (setReg (M.observe s) t v)
   /-- `str xt, [xn, #f]` -/
-  str : ∀ (s : M.State) (t n f : Nat), M.configured s → t < 31 → n < 31 → f % 8 = 0 → f < 32768 →
+  str : ∀ (s : M.State) (t n f : Nat), M.configured s → PcOK M (M.observe s) → t < 31 → n < 31 → f % 8 = 0 → f < 32768 →
     ((M.observe s).register n).toNat + f < 2 ^ 64 → (((M.observe s).register n).toNat + f) % 8 = 0 →
     M.ramStart ≤ ((M.observe s).register n).toNat + f → ((M.observe s).register n).toNat + f + 8 ≤ M.ramEnd →
     WordAt (M.observe s) (M.observe s).programCounter.toNat (ArmEnc.str t n f) →
     Goes M s (store8 (M.observe s) (((M.observe s).register n).toNat + f) ((M.observe s).register t))
   /-- `ldrb wt, [xn, #f]` (zero-extended) -/
-  ldrb : ∀ (s : M.State) (t n f : Nat) (b : UInt8), M.configured s → t < 31 → n < 31 → f < 4096 →
+  ldrb : ∀ (s : M.State) (t n f : Nat) (b : UInt8), M.configured s → PcOK M (M.observe s) → t < 31 → n < 31 → f < 4096 →
     ((M.observe s).register n).toNat + f < 2 ^ 64 →
     M.ramStart ≤ ((M.observe s).register n).toNat + f → ((M.observe s).register n).toNat + f < M.ramEnd →
     (M.observe s).memory (UInt64.ofNat (((M.observe s).register n).toNat + f)) = some b →
     WordAt (M.observe s) (M.observe s).programCounter.toNat (ArmEnc.ldrb t n f) →
     Goes M s (setReg (M.observe s) t b.toUInt64)
   /-- `strb wt, [xn, #f]` -/
-  strb : ∀ (s : M.State) (t n f : Nat), M.configured s → t < 31 → n < 31 → f < 4096 →
+  strb : ∀ (s : M.State) (t n f : Nat), M.configured s → PcOK M (M.observe s) → t < 31 → n < 31 → f < 4096 →
     ((M.observe s).register n).toNat + f < 2 ^ 64 →
     M.ramStart ≤ ((M.observe s).register n).toNat + f → ((M.observe s).register n).toNat + f < M.ramEnd →
     WordAt (M.observe s) (M.observe s).programCounter.toNat (ArmEnc.strb t n f) →
