@@ -1,5 +1,7 @@
 # Low-level proof cleanup plan (Nano/V2Self/Proof/{Gen,Machine,Main})
 
+§0–§4 are the phase-1 survey (pre-cleanup state); current status in §5.
+
 Phase 1 survey (read-only, against origin/main f06eecb4). Paths are relative to `Nano/V2Self/Proof/` and may move
 with reorg-nano (to re-check after the merge). Goal: cheap proofs for later optimizations and for a native
 ARM `JTarget`. Rules kept throughout: no Spec/ change, no new axioms/sorry/native_decide/bv_decide, REVIEW statements

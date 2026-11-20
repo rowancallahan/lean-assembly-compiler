@@ -254,7 +254,7 @@ theorem ifHeadS {KL : LayW} {C : List J} {q lt p nl hb E0 cmp : Nat} {Inv : St �
     (by have := L0.top; omega) (by have := L1.a31; omega)
   have w1b : wok KL ((s.x 31).toNat - 8) := L1.wok (by have := R1.2.1; have := R1.2.2.1; omega)
     (by have := L0.top; omega) (by have := L1.a31; omega)
-  have st2 : SStarX KL C (q, s1) (q + 3, s2) := sstarX_of_run r2 (fun j hj c hc => by
+  have st2 : SStarX KL C (q, s1) (q + 3, s2) := sstar_of_run r2 (fun j hj c hc => by
     rcases j with _ | _ | _ | j
     · simp [CallProbe.run] at hc; subst hc; simp only [SafeX, c0]; rw [ea0]
       exact ⟨by decide, by decide, by decide, by decide, by omega, w1a⟩
@@ -641,7 +641,7 @@ theorem loopCap {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {h S len p nl hb
     have lt5 := (env_m 0).toNat_lt
     have nz5 : (env_m 0).toNat ≠ 0 := fun e => hz' (UInt64.toNat_inj.mp (by simpa using e))
     have sx3 : SafeX KL C (h + 2, CallProbe.wr s 5 (env_m 0)) := by simp only [SafeX, c2]; simp; omega
-    have s45 : SStarX KL C (S, CallProbe.wr s 5 (env_m 0)) (S + 2, s4) := sstarX_of_run st45 (fun j hj c hc => by
+    have s45 : SStarX KL C (S, CallProbe.wr s 5 (env_m 0)) (S + 2, s4) := sstar_of_run st45 (fun j hj c hc => by
       rcases j with _ | _ | j
       · simp [CallProbe.run] at hc; subst hc; simp only [SafeX, d0]; rw [x51]
         exact ⟨by decide, by decide, by decide, by decide, by omega, by omega⟩

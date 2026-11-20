@@ -1,12 +1,12 @@
-/- Safe retrofit, part 1 (Opus box A): the leaf template runs as SAFE runs (`SimW.SStar`), so the Sail lift
-`SimW.sim_starW` applies.  Spec: for each leaf run lemma `X_run` (Expr / Heap / Call / CallA / Templates) a twin
-`X_srun` with the same hypotheses plus exactly the `SimW.Safe` side conditions of the instructions it executes:
+/- Safe retrofit, part 1 (Opus box A): the leaf template runs as SAFE runs (`SimW.SStarX`), so a target's lift
+`JT.sim_star` applies.  Spec: for each leaf run lemma `X_run` (Expr / Heap / Call / CallA / Templates) a twin
+`X_srun` with the same hypotheses plus exactly the `SimW.SafeX` side conditions of the instructions it executes:
   * addi: the sum does not wrap (follows from the run lemma's own bounds where it can);
   * ld / sd: the effective address is a work cell (`wok K a`: lo ≤ a, a + 8 ≤ hi, 8-aligned);
   * lbu: the aligned cell containing the byte is a work cell (input bytes live in the work region);
   * jal: the target is inside the code (< |C|);  jalr: the target is base + 4j;
-  * registers < 32, branch offsets 2, ALU op 1..8 with rd ≠ 0 (structural, discharged here).
-Tool: `sstar_of_run` — a deterministic run whose every intermediate state is `Safe` is an `SStar`. -/
+  * registers < 32, branch offsets as `SafeX` lists them, ALU op 1..8 with rd ≠ 0 (structural, discharged here).
+Tool: `sstar_of_run` — a deterministic run whose every intermediate state is `SafeX` is an `SStarX`. -/
 import Nano.V2Self.Proof.Machine.JLay
 import Nano.V2Self.Proof.Machine.Expr
 import Nano.V2Self.Proof.Machine.Templates

@@ -190,7 +190,7 @@ theorem host_tiny (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List Def
     have : ¬ (sc'.x 30).toNat ≤ (sc'.x 31).toNat := by rw [sc30, sc31]; omega
     simp [CallProbe.run, CallProbe.step, q0, c0, c1, c2, c3, e12, sa, sb, sc', CallProbe.wr, CallProbe.upd] at this ⊢
     exact fun hh => absurd hh (Nat.not_le.mpr this)
-  have hsx : SStarX KL Cj (0, s0) (S0 + 4, sc') := sstarX_of_run hrun (fun j hj c hc => by
+  have hsx : SStarX KL Cj (0, s0) (S0 + 4, sc') := SafeRun.sstar_of_run hrun (fun j hj c hc => by
     rcases (by omega : j = 0 ∨ j = 1 ∨ j = 2 ∨ j = 3 ∨ j = 4) with rfl | rfl | rfl | rfl | rfl
     · simp [CallProbe.run] at hc; subst hc; simp [SafeX, q0]; omega
     all_goals simp [CallProbe.run, CallProbe.step, q0, c0, c1, c2, e12, CallProbe.wr, CallProbe.upd] at hc

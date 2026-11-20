@@ -1,5 +1,5 @@
-/- Safe retrofit (EVS), shared definitions (Opus box E).  The Safe twins of the contracts EVH / EVHw / EVHt / DefX:
-the same statements with `SimW.SStarX KL C` runs, plus
+/- Safe retrofit (EVS), shared definitions (Opus box E).  The Safe twins of the plain contracts EVH / EVHw / DefX, and the
+tail contract `EVHtS` (its plain form is deleted): the same statements with `SimW.SStarX KL C` runs, plus
   * `Lay KL hb E0 p s` — the per-state layout: work region [KL.lo, KL.hi) ⊇ [hb, E0) (heap … stack … frames),
     code base = KL.base, this frame's top s0 + 8p + 16 ≤ E0, t6 and s0 8-aligned.  Contracts preserve it (s0 and the
     code base are kept, t6 moves by 8w), so it is a premise of every run and needs no conclusion;
@@ -72,7 +72,7 @@ structure EVHS (KL : LayW) (C : List J) (pc len p nl : Nat) (Inv : St → Prop) 
       ∀ a, (s.x 31).toNat ≤ a → (∀ k, k < nl → W k → a ≠ slotAddr p (s.x 8).toNat k) → s'.m a = s.m a
   stable : ∀ env env' sp H, (∀ k, R k → env k = env' k) → S env sp H = S env' sp H
 
-/-- **EVHt, safe** (tail mode: exit to X, or CONTINUE to Hd) -/
+/-- **the tail contract** (tail mode: exit to X, or CONTINUE to Hd) -/
 structure EVHtS (KL : LayW) (C : List J) (pc p nl : Nat) (Inv : St → Prop) (hb E0 : Nat) (R W : Nat → Prop)
     (w X Hd : Nat) (S : SemT) : Prop where
   exit : ∀ (s : St) (env : Env) (H : Hp) (vs : List UInt64) (H' : Hp), Inv s → s.x 0 = 0 → Frame p nl s env →

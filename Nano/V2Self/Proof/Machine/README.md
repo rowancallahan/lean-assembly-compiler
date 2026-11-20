@@ -22,9 +22,12 @@
 
 **Design decisions.**
 * One safe-run predicate for the shared layer: `SafeX`/`SStarX` (`JLay`). The older `Safe`/`SStar` (no start-code
-  instructions, beq +2 only) remains only inside the RISC-V Sail lift (`SimW.sim_stepW`/`sim_starW`), which the RV
-  adapter builds on. Rejected: keeping both in the shared layer (every template proved twice).
-* Templates are proved once, as safe runs; there is no plain-run twin of a contract.
+  instructions, beq +2 only) and their Sail lift `SimW.sim_stepW`/`sim_starW` had no users left and are deleted;
+  the RV adapter uses the per-instruction `sim_*` lemmas (`rvSteps`). Rejected: keeping both predicates (every
+  template proved twice).
+* The tail, loop, node, def and program run theorems exist once, as safe runs. Plain-run contracts and proofs
+  remain for the leaves and compositions (`EVH` in `HeapEV`, `EVHw` in `EVX`/`EVXP`/`EVXF`, `DefX` in `EVXC`,
+  `ExprEV`, `StartRun`) next to their `…S` twins; removing them is CLEANUP_PLAN step 5 b/c.
 * Known limits: J is RISC-V-shaped (immediates ±2048, jal ±2^18 J words, fixed short branch skips in `SafeX`); code
   layout is uniform (`addr base pc = base + 4·blockLen·pc`), which blocks non-padded variable-length targets
   (see Testing/notes/CLEANUP_PLAN.md).
