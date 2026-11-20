@@ -75,6 +75,11 @@ def tick (what : String) (e : Expr) : M Unit := do
   if sail_eval.trace.get (← getOptions) then
     traceLine s!"[{← get}] {what}: {e.getAppFn}"
 
+/-- `e.appArg!` that fails with a tagged error instead of a PANIC -/
+def argOf (tag : String) (e : Expr) : MetaM Expr := do
+  let .app _ a := e | throwError "sail_eval internal: {tag}: not an application{indentExpr e}"
+  return a
+
 /-- weak-head normalise a closed term with the kernel (defeq, so no proof needed) -/
 def kernelWhnf? (e : Expr) : MetaM (Option Expr) := do
   if e.hasFVar || e.hasMVar then return none
@@ -87,18 +92,21 @@ def kernelWhnf? (e : Expr) : MetaM (Option Expr) := do
 def closedPre : Simp.Simproc := fun e => do
   -- `x + c` with a closed "negative" `c` becomes `x - m`: a sum of a symbolic value and a
   -- 64-bit literal `≥ 2^63` makes the kernel recurse deeply (`Nat.add` unfolds its literal arg)
-  if e.isAppOfArity ``HAdd.hAdd 6 && !e.appArg!.hasFVar && !e.appArg!.hasMVar then
+  -- nested `if`s: on Lean 4.34.1 the interpreter evaluated `e.appArg!` in `isAppOfArity .. && !e.appArg!..`
+  -- even when the guard was false (PANIC: application expected)
+  if e.isAppOfArity ``HAdd.hAdd 6 then
+   if !(← argOf "hadd" e).hasFVar && !(← argOf "hadd" e).hasMVar then
     let ty ← whnfR (← inferType e)
     if ty.isAppOfArity ``BitVec 1 then
-      if let some (.lit (.natVal w)) ← kernelWhnf? ty.appArg! then
-        if let some (.lit (.natVal n)) ← kernelWhnf? (mkApp2 (mkConst ``BitVec.toNat) ty.appArg! e.appArg!) then
+      if let some (.lit (.natVal w)) ← kernelWhnf? (← argOf "bvty" ty) then
+        if let some (.lit (.natVal n)) ← kernelWhnf? (mkApp2 (mkConst ``BitVec.toNat) (← argOf "bvty2" ty) (← argOf "hadd2" e)) then
           if 2 ^ w < 2 * n then
             let m := mkNatLit (2 ^ w - n)
-            let c := e.appArg!
+            let c ← argOf "hadd3" e
             let h ← mkDecideProof (← mkEq (← mkAppM ``HAdd.hAdd #[c, mkApp2 (mkConst ``BitVec.ofNat) (mkNatLit w) m])
               (← mkAppOptM ``OfNat.ofNat #[ty, mkNatLit 0, none]))
-            let e' ← mkAppM ``HSub.hSub #[e.appFn!.appArg!, mkApp2 (mkConst ``BitVec.ofNat) (mkNatLit w) m]
-            return .visit { expr := e', proof? := ← mkAppM ``add_neg_lit #[e.appFn!.appArg!, c, m, h] }
+            let e' ← mkAppM ``HSub.hSub #[(← argOf "hadd4" e.appFn!), mkApp2 (mkConst ``BitVec.ofNat) (mkNatLit w) m]
+            return .visit { expr := e', proof? := ← mkAppM ``add_neg_lit #[(← argOf "hadd4" e.appFn!), c, m, h] }
   if e.hasFVar || e.hasMVar || e.hasLooseBVars || e.isConstOf ``true || e.isConstOf ``false
     || e.isConstOf ``True || e.isConstOf ``False then return .continue
   let ty ← inferType e
@@ -126,9 +134,15 @@ def closedPre : Simp.Simproc := fun e => do
   if ty.isAppOfArity ``BitVec 1 then
     if e.isAppOfArity ``BitVec.ofNat 2 && (e.getArg! 1).nat?.isSome then return .continue
     if e.isAppOfArity ``OfNat.ofNat 3 then return .continue
-    let some (.lit (.natVal w)) ← kernelWhnf? ty.appArg! | return .continue
-    if let some (.lit (.natVal n)) ← kernelWhnf? (mkApp2 (mkConst ``BitVec.toNat) ty.appArg! e) then
-      return ← byDecide (mkApp2 (mkConst ``BitVec.ofNat) (mkNatLit w) (mkNatLit n))
+    let some (.lit (.natVal w)) ← kernelWhnf? (← argOf "bvty" ty) | return .continue
+    if let some (.lit (.natVal n)) ← kernelWhnf? (mkApp2 (mkConst ``BitVec.toNat) (← argOf "bvty3" ty) e) then
+      -- explicit `BitVec w` equality and instance: the width of `e`'s type may be a closed term
+      -- (`(regidx_bit_width -i 1).toNat - 0 + 1`) that 4.34 instance synthesis does not unify with `w`
+      let bw := mkApp (mkConst ``BitVec) (mkNatLit w)
+      let r := mkApp2 (mkConst ``BitVec.ofNat) (mkNatLit w) (mkNatLit n)
+      let p := mkApp3 (mkConst ``Eq [1]) bw e r
+      let inst := mkApp3 (mkConst ``instDecidableEqBitVec) (mkNatLit w) e r
+      return .done { expr := r, proof? := mkApp3 (mkConst ``of_decide_eq_true) p inst (mkApp2 (mkConst ``Eq.refl [1]) (mkConst ``Bool) (mkConst ``true)) }
     return .continue
   unless ty.isProp do return .continue
   let some inst ← (try synthInstance? (mkApp (mkConst ``Decidable) e) catch _ => pure none) | return .continue
@@ -203,7 +217,8 @@ def isEStateM (m : Expr) : MetaM Bool := do
 
 def isExceptTEStateM (m : Expr) : MetaM Bool := do
   let m ← whnfR m
-  return m.isAppOfArity ``ExceptT 2 && (← isEStateM m.appArg!)
+  unless m.isAppOfArity ``ExceptT 2 do return false
+  isEStateM (← argOf "exceptT" m)
 
 /-- unfold a recursive definition with its unfolding equation -/
 def unfoldEqn? (e : Expr) : MetaM (Option Simp.Result) := do
@@ -296,7 +311,8 @@ def decidableBool (a : Expr) : M Bool := do
   -- simp only (as for the `toBool` discriminant): `normPure` would unfold `&&` to `Bool.rec`
   let c ← simpE (← mkEq a (mkConst ``Bool.true))
   if c.expr.isTrue || c.expr.isFalse then return true
-  return (← omega? c.expr).isSome || (← omega? (mkNot c.expr)).isSome
+  if (← omega? c.expr).isSome then return true
+  return (← omega? (mkNot c.expr)).isSome
 
 mutual
 /-- evaluate `e : EStateM.Result ε σ α` to `.ok a s'` / `.error e s'` -/
@@ -323,7 +339,7 @@ partial def evalCore (e : Expr) : M Simp.Result := do
     if fn' == fn then stuck e else
       let e' := mkAppN fn' args; trans (← rflStep e e') (← eval e')
   | .const n _ =>
-    if n == ``Bind.bind && args.size == 7 && (← isEStateM args[0]!) then
+    if n == ``Bind.bind && args.size == 7 && (← (if args.size == 7 then isEStateM args[0]! else pure false)) then
       tick "bind" args[4]!
       let x := args[4]!; let f := args[5]!; let s := args[6]!
       let r ← eval (mkApp x s)
@@ -400,8 +416,10 @@ partial def evalCore (e : Expr) : M Simp.Result := do
           | .reduced e'' => trans { expr := e', proof? := pf? } (← trans (← rflStep e' e'') (← eval e''))
           | _ => stuck e'
     else
-      if (n == ``andM || n == ``orM) && args.size == 7 && ((← isEStateM args[0]!) || (← isExceptTEStateM args[0]!)) then
-        if let some r ← evalShortcut? n args then return r
+      -- nested: a `(← ..)` inside `&&` is evaluated before the `&&`, so guard `args[0]!` by a separate `if`
+      if (n == ``andM || n == ``orM) && args.size == 7 then
+        if (← isEStateM args[0]!) || (← isExceptTEStateM args[0]!) then
+          if let some r ← evalShortcut? n args then return r
       tick "call" (mkAppN fn (args.extract 0 (args.size - 1)))
       -- 1. user lemma / simp at the root
       let r ← checkR "root simp" e (← simpE e (root := true))
@@ -423,7 +441,7 @@ partial def evalShortcut? (n : Name) (args : Array Expr) : M (Option Simp.Result
   let exc ← isExceptTEStateM args[0]!
   -- in `ExceptT`, the value is `Except.ok a` (an `Except.error` is not a short-circuit case)
   let okVal (v : Expr) : Option Expr :=
-    if !exc then some v else if v.isAppOfArity ``Except.ok 3 then some v.appArg! else none
+    if !exc then some v else match v with | .app (.app (.app (.const ``Except.ok _) _) _) a => some a | _ => none
   let some a := okVal rx.expr.getAppArgs[3]! | return none
   let s₁ := rx.expr.getAppArgs[4]!
   if ← decidableBool a then return none
