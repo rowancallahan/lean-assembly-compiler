@@ -117,7 +117,8 @@ theorem enter (L : T.Laws) {s : T.M.State} {call : Call} {C : List J} {x : List 
   have ilen := sc.inputLength
   have b4 := sc.codeAligned
   rw [hn] at d2 e3 f2 g1
-  refine ⟨L.lay_init K C ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ hW hv, rel_entry L sc.configured ?_ ?_ ?_ ?_ hm0⟩
+  refine ⟨L.lay_init K C ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ hW hv, rel_entry L sc.configured ?_ ?_ ?_ ?_ hm0
+    (L.inv_init K C s call _ x sc (tbytes_len L C) hb hW hm0 hlo hhi hib hil hob hol)⟩
   all_goals try (rw [hb] <;> omega)
   all_goals try omega
   · rw [hb]; simp
