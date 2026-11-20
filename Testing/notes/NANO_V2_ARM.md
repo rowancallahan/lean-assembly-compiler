@@ -209,9 +209,11 @@ corollaries, `C_runs`). Its step lemmas are the existing Sail library SimW/SimX 
    `ShiftInv`/`shiftInv`, `no_room`/`lt_room` and `gen_HD`'s use quantify over work positions `hb ≥ 2^31`. ARM's
    window [2^28, 2^29) needs those lowered (e.g. to 2048). This is proof-only work in D's `ShiftInv` area. RV's
    `spaceC` is unchanged if the threshold stays position-independent.
-2. **Link width:** `enc` is position-independent, so the internal `jalr 0 r` and the host return `jalr 0 1` share one
-   block. That rules out §0a V1 (special-cased host returns) and requires **V2**: J's `jal` links `b + W·(pc+1)` with
-   W = 4·blockLen, and `jalr` divides by W (`Rel.pc` already uses `4·blockLen·pc`). Until then `blockLen` must be 1.
+2. **Link width: DONE (7536764).** J's state has `wk` with link width `w = 4·(wk+1)`. `jal` links `b + w·(pc+1)`,
+   `jalr` jumps to `(x − b)/w`, and SafeX's jalr condition is `x = base + w·j`. `Rel.ww : wk = blockLen − 1`, so
+   `w = 4·blockLen`, the byte size of a block: with blockLen = 4, `bl` as the LAST word of the block links the next
+   block (`base + 16·(pc+1)`) and `jalr 0 r` = `br r`, exactly the rv2arm layout (Testing/nano/v2self/arm). RISC-V:
+   `wk = 0` (`RelW.ww`), unchanged. `Laws.blk_pos : 0 < blockLen`.
 3. **Instruction kinds** for ARM `step_ok` (no Gen change): §3's mapping. slli/srli become `movz x16` + lslv/lsrv,
    negative addi from x0 becomes movz + sub, and padding is `add x16, x16, #0`. Missing Arm/proofs lemmas: reg-ALU ×8
    (incl. madd), cmp-reg, br.
