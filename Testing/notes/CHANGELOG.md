@@ -62,7 +62,9 @@ What changed (compiler C, parser stage Par1 only; lexer, Own, Gen, the machine a
 - Tokens start at `d11 = 185408` (was 184384). The 512-def cap (def ids 512 + j) is unchanged.
 
 Built/checked on the B1 toolchains:
-- Lean 4.29.0: `lake build Nano.V2Self.REVIEW` and `Testing/scripts/review_axioms.sh`: PENDING (Parser folder green).
+- Lean 4.29.0: `lake build Nano.V2Self.REVIEW` OK (13 min warm); `Testing/scripts/review_axioms.sh` -> `OK: 8 theorems, axioms as
+  pinned`; every `Nano/V2Self` module builds (Tests included). Full REVIEW run at the tip; commit (a) differs from it only in
+  the generated Cert/SrcLink/B2 for the summed layout constants.
   Proof changes: new `Proof/Parser/ParInvHash.lean` (`v8_lookup`: the chain walk = the linear `idxOf`; `HashRep`, kept in
   `DefsRep`); the Parser frame lemmas carry `HashRep`; `TokAgreeN` covers the token region only; `Cert/` and `SrcLink/`
   regenerated (both generators reproduce the committed files exactly from the old text first).
