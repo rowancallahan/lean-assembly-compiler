@@ -8,27 +8,27 @@ set_option linter.unusedVariables false
 namespace Cert
 open NanoMain ParSpec
 
-theorem ok_115 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 115) :
-    Spec115 inp (defMean inp κC ms PC.d115) := by
+theorem ok_122 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 122) :
+    Spec122 inp (defMean inp κC ms PC.d122) := by
   intro a0 a1 a2
-  refine defMean_den (C.v140 a0 a1 a2) PC.b115 ([.b a0, .w a1, .w a2] ++ List.replicate 1 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b115
+  refine defMean_den (C.v135 a0 a1 a2) PC.b122 ([.b a0, .w a1, .w a2] ++ List.replicate 8 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b122
   den_unfold
   den
 
-theorem ok_116 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 116) :
-    Spec116 inp (defMean inp κC ms PC.d116) := by
+theorem ok_123 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 123) :
+    Spec123 inp (defMean inp κC ms PC.d123) := by
   intro a0 a1 a2
-  refine defMean_den (C.v141 a0 a1 a2) PC.b116 ([.b a0, .w a1, .w a2] ++ List.replicate 18 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b116
+  refine defMean_den (C.v136 a0 a1 a2) PC.b123 ([.b a0, .w a1, .w a2] ++ List.replicate 14 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b123
   den_unfold
   den
 
-theorem ok_117 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 117) :
-    Spec117 inp (defMean inp κC ms PC.d117) := by
+theorem ok_124 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 124) :
+    Spec124 inp (defMean inp κC ms PC.d124) := by
   intro a0 a1 a2
-  refine defMean_den (C.v142 a0 a1 a2) PC.b117 ([.b a0, .w a1, .w a2] ++ List.replicate 16 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b117
+  refine defMean_den (C.v137 a0 a1 a2) PC.b124 ([.b a0, .w a1, .w a2] ++ List.replicate 16 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b124
   den_unfold
   den
 

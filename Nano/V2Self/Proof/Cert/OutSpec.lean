@@ -5,6 +5,7 @@ import Nano.V2Self.C.Gen
 import Nano.V2Self.C.Own
 import Nano.V2Self.C.Par1
 import Nano.V2Self.C.Lex2
+import Nano.V2Self.C.Dsg
 
 namespace Cert.Sh
 
@@ -29,10 +30,10 @@ def g42 (c : List UInt8) (x : Buf) (u : UInt64) : Buf :=
 
 def g41 (c : List UInt8) (x : Buf) : Buf := g42 c x C.g_999
 
-def m (x : List UInt8) : Buf := g41 x (C.o41 (C.y16 (C.s10 x)))
+def m (x : List UInt8) : Buf := g41 x (C.o41 (C.y16 (C.t10 (C.s10 x))))
 
 /-- the driver of `build_self_S.py` as a Lean function -/
-def mLean (x : List UInt8) : List UInt8 := C.g41 x (C.o41 (C.y16 (C.s10 x)))
+def mLean (x : List UInt8) : List UInt8 := C.g41 x (C.o41 (C.y16 (C.t10 (C.s10 x))))
 
 theorem g40_map : ∀ (n : Nat) (c : List UInt8) (w : Buf) (i : UInt64) (o : Buf),
     (g40 n c w i o).map UInt64.toUInt8 = C.g40 n c w i (o.map UInt64.toUInt8)

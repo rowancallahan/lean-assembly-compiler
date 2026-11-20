@@ -14,7 +14,7 @@ theorem mLean_eq : Cert.Sh.mLean = mC := rfl
 /-- **C's text means `mC`.** If `x` lexes and parses to C's certified AST, then on every input shorter than 2^64 bytes
 the meaning of `x` is exactly `mC inp`, unless the meaning stops at the buffer capacity; in that case (and only then)
 the meaning has no result (`srcRun = none`).  The meaning never gets stuck. -/
-theorem self_meaning (x : List UInt8) (hsrc : ∃ ts, LexSpec.Lexes x ts ∧ ParsesProgram ts Cert.PC.all)
+theorem self_meaning (x : List UInt8) (hsrc : ∃ ts, DsSpec.LexesD x ts ∧ ParsesProgram ts Cert.PC.all)
     (inp : List UInt8) (hin : inp.length < 2 ^ 64) :
     (Sem κC Cert.PC.all inp = .error .cap ∧ srcRun ⟨x⟩ inp = none) ∨
     (Sem κC Cert.PC.all inp = .ok (mC inp) ∧ srcRun ⟨x⟩ inp = some (mC inp)) := by
@@ -28,7 +28,7 @@ theorem self_meaning (x : List UInt8) (hsrc : ∃ ts, LexSpec.Lexes x ts ∧ Par
 def SelfIn : Type := {inp : List UInt8 // inp.length < 2 ^ 64 ∧ Sem κC Cert.PC.all inp ≠ .error .cap}
 
 /-- C's text computes `mC` (on `SelfIn`, bytes in, bytes out) -/
-theorem self_computes (x : List UInt8) (hsrc : ∃ ts, LexSpec.Lexes x ts ∧ ParsesProgram ts Cert.PC.all) :
+theorem self_computes (x : List UInt8) (hsrc : ∃ ts, DsSpec.LexesD x ts ∧ ParsesProgram ts Cert.PC.all) :
     Computes (⟨x⟩ : SrcC) (fun a : SelfIn => mC a.1) Subtype.val id := by
   unfold Computes
   intro a
@@ -41,7 +41,7 @@ theorem self_computes (x : List UInt8) (hsrc : ∃ ts, LexSpec.Lexes x ts ∧ Pa
 `compiled` be what C emits for it.  Then on every input that does not hit the 2^19-word buffer capacity, the emitted
 RISC-V code, started per the calling convention with enough output and work space, returns to the caller with output
 `mC inp`, length register set, memory outside the output and work blocks and the kept registers unchanged. -/
-theorem self_correct (x : List UInt8) (hsrc : ∃ ts, LexSpec.Lexes x ts ∧ ParsesProgram ts Cert.PC.all)
+theorem self_correct (x : List UInt8) (hsrc : ∃ ts, DsSpec.LexesD x ts ∧ ParsesProgram ts Cert.PC.all)
     (compiled : CompiledA) (a : SelfIn) (startState : riscv.State) (call : Call)
     (compiles : compileC ⟨x⟩ = some compiled)
     (startsRight : StartCorrect riscv startState call compiled.code a.1)

@@ -5,20 +5,17 @@ open ParSpec SrcLink
 
 set_option maxRecDepth 100000
 
-theorem lex234 : lexAll (x234.length + 1) x234 = some w234 := by decide +kernel
-theorem tok234 : tokens w234 = some S234 := by decide +kernel
-theorem nl234 : x234.getLast? = some 10 := by decide +kernel
-theorem chk234 : chkDef (pDef F D234 T234) di234 d234 T235 = true := by decide +kernel
-theorem lex235 : lexAll (x235.length + 1) x235 = some w235 := by decide +kernel
-theorem tok235 : tokens w235 = some S235 := by decide +kernel
-theorem nl235 : x235.getLast? = some 10 := by decide +kernel
-theorem chk235 : chkDef (pDef F D235 T235) di235 d235 T236 = true := by decide +kernel
-theorem lex236 : lexAll (x236.length + 1) x236 = some w236 := by decide +kernel
-theorem tok236 : tokens w236 = some S236 := by decide +kernel
-theorem nl236 : x236.getLast? = some 10 := by decide +kernel
-theorem chk236 : chkDef (pDef F D236 T236) di236 d236 T237 = true := by decide +kernel
-theorem lex237 : lexAll (x237.length + 1) x237 = some w237 := by decide +kernel
-theorem tok237 : tokens w237 = some S237 := by decide +kernel
-theorem chk237 : chkDef (pDef F D237 T237) di237 d237 T238 = true := by decide +kernel
+theorem lex243 : lexAll (x243.length + 1) x243 = some w243 := by decide +kernel
+theorem tok243 : tokens w243 = some S243 := by decide +kernel
+theorem nl243 : x243.getLast? = some 10 := by decide +kernel
+theorem chk243 : chkDef (pDef F D243 T243) di243 d243 T244 = true := by decide +kernel
+theorem lex244 : lexAll (x244.length + 1) x244 = some w244 := by decide +kernel
+theorem tok244 : tokens w244 = some S244 := by decide +kernel
+theorem nl244 : x244.getLast? = some 10 := by decide +kernel
+theorem chk244 : chkDef (pDef F D244 T244) di244 d244 T245 = true := by decide +kernel
+theorem lex245 : lexAll (x245.length + 1) x245 = some w245 := by decide +kernel
+theorem tok245 : tokens w245 = some S245 := by decide +kernel
+theorem nl245 : x245.getLast? = some 10 := by decide +kernel
+theorem chk245 : chkDef (pDef F D245 T245) di245 d245 T246 = true := by decide +kernel
 
 end SrcGen

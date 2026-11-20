@@ -4,6 +4,7 @@ Method: the lexer run `C.s10 x = ts` (kernel; sound by `s10_sound`), the referen
 `progEq (refParse ts) P = true` (kernel; `progEq_eq`), and `Sem κC P inp = .ok (f inp)` for symbolic `inp` (definitional
 unfolding, or induction for loops). -/
 import Nano.V2Self.Proof.Main.Compile
+import Nano.V2Self.Proof.Lex.DsSound
 
 namespace NanoMain
 open ParSpec
@@ -107,19 +108,19 @@ theorem progEq_eq : ∀ {o : Option (List DefA)} {m : List DefA}, progEq o m = t
 
 /-- **the certificate rule** -/
 theorem cert_of {x : List UInt8} {ts : List UInt64} {p : List DefA} (f : List UInt8 → List UInt8) (hx : x.length < 2 ^ 32)
-    (hl : C.s10 x = ts) (hts : ts ≠ []) (hp : progEq (refParse ts) p = true) (hs : ∀ inp, Sem κC p inp = .ok (f inp)) :
+    (hl : C.s10 x = ts) (hd : DsSpec.ds ts = some ts) (hts : ts ≠ []) (hp : progEq (refParse ts) p = true) (hs : ∀ inp, Sem κC p inp = .ok (f inp)) :
     ∀ inp, srcRun ⟨x⟩ inp = some (f inp) := by
   intro inp
-  have hpo := pOf_eq (LexSpec.s10_sound x hx ts hl hts) (progEq_eq hp)
+  have hpo := pOf_eq ⟨ts, LexSpec.s10_sound x hx ts hl hts, hd⟩ (progEq_eq hp)
   simp [srcRun, hpo, hs inp, Except.toOption]
 
 /-- the certificate rule for inputs of bounded length (fuel loops count input bytes in a 64-bit word) -/
 theorem cert_of' {x : List UInt8} {ts : List UInt64} {p : List DefA} (f : List UInt8 → List UInt8) (hx : x.length < 2 ^ 32)
-    (hl : C.s10 x = ts) (hts : ts ≠ []) (hp : progEq (refParse ts) p = true)
+    (hl : C.s10 x = ts) (hd : DsSpec.ds ts = some ts) (hts : ts ≠ []) (hp : progEq (refParse ts) p = true)
     (hs : ∀ inp, inp.length < 2 ^ 64 → Sem κC p inp = .ok (f inp)) :
     ∀ inp, inp.length < 2 ^ 64 → srcRun ⟨x⟩ inp = some (f inp) := by
   intro inp hi
-  have hpo := pOf_eq (LexSpec.s10_sound x hx ts hl hts) (progEq_eq hp)
+  have hpo := pOf_eq ⟨ts, LexSpec.s10_sound x hx ts hl hts, hd⟩ (progEq_eq hp)
   simp [srcRun, hpo, hs inp hi, Except.toOption]
 
 end NanoMain
@@ -136,7 +137,7 @@ def P : List DefA :=
      body := .prim 4 [.prim 5 [], .call 0 [.prim 2 [.const 0], .const 2]] }]
 
 theorem cert : ∀ inp, srcRun ⟨ex1.toUTF8.toList⟩ inp = some (m inp) :=
-  cert_of (p := P) m (by decide +kernel) rfl (by decide +kernel) (by decide +kernel) (fun _ => rfl)
+  cert_of (p := P) m (by decide +kernel) rfl (by decide +kernel) (by decide +kernel) (by decide +kernel) (fun _ => rfl)
 
 end NanoMain.Ex1
 
@@ -204,6 +205,6 @@ theorem sem (inp : List UInt8) (hl : inp.length < 2 ^ 64) : Sem κC P inp = .ok 
 
 /-- **certificate**: ParSpec's `ex3` text (a fuel loop with CONTINUE) means `m` -/
 theorem cert : ∀ inp, inp.length < 2 ^ 64 → srcRun ⟨ex3.toUTF8.toList⟩ inp = some (m inp) :=
-  cert_of' (p := P) m (by decide +kernel) rfl (by decide +kernel) (by decide +kernel) sem
+  cert_of' (p := P) m (by decide +kernel) rfl (by decide +kernel) (by decide +kernel) (by decide +kernel) sem
 
 end NanoMain.Ex3

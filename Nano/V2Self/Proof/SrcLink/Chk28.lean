@@ -5,13 +5,25 @@ open ParSpec SrcLink
 
 set_option maxRecDepth 100000
 
-theorem lex219 : lexAll (x219.length + 1) x219 = some w219 := by decide +kernel
-theorem tok219 : tokens w219 = some S219 := by decide +kernel
-theorem nl219 : x219.getLast? = some 10 := by decide +kernel
-theorem chk219 : chkDef (pDef F D219 T219) di219 d219 T220 = true := by decide +kernel
-theorem lex220 : lexAll (x220.length + 1) x220 = some w220 := by decide +kernel
-theorem tok220 : tokens w220 = some S220 := by decide +kernel
-theorem nl220 : x220.getLast? = some 10 := by decide +kernel
-theorem chk220 : chkDef (pDef F D220 T220) di220 d220 T221 = true := by decide +kernel
+theorem lex226 : lexAll (x226.length + 1) x226 = some w226 := by decide +kernel
+theorem tok226 : tokens w226 = some S226 := by decide +kernel
+theorem nl226 : x226.getLast? = some 10 := by decide +kernel
+theorem chk226 : chkDef (pDef F D226 T226) di226 d226 T227 = true := by decide +kernel
+theorem lex227 : lexAll (x227.length + 1) x227 = some w227 := by decide +kernel
+theorem tok227 : tokens w227 = some S227 := by decide +kernel
+theorem nl227 : x227.getLast? = some 10 := by decide +kernel
+theorem chk227 : chkDef (pDef F D227 T227) di227 d227 T228 = true := by decide +kernel
+theorem lex228 : lexAll (x228.length + 1) x228 = some w228 := by decide +kernel
+theorem tok228 : tokens w228 = some S228 := by decide +kernel
+theorem nl228 : x228.getLast? = some 10 := by decide +kernel
+theorem chk228 : chkDef (pDef F D228 T228) di228 d228 T229 = true := by decide +kernel
+theorem lex229 : lexAll (x229.length + 1) x229 = some w229 := by decide +kernel
+theorem tok229 : tokens w229 = some S229 := by decide +kernel
+theorem nl229 : x229.getLast? = some 10 := by decide +kernel
+theorem chk229 : chkDef (pDef F D229 T229) di229 d229 T230 = true := by decide +kernel
+theorem lex230 : lexAll (x230.length + 1) x230 = some w230 := by decide +kernel
+theorem tok230 : tokens w230 = some S230 := by decide +kernel
+theorem nl230 : x230.getLast? = some 10 := by decide +kernel
+theorem chk230 : chkDef (pDef F D230 T230) di230 d230 T231 = true := by decide +kernel
 
 end SrcGen

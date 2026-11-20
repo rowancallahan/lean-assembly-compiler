@@ -9,7 +9,7 @@ model (as on `rv-regen-434`); that change is **not committed** (release-434 stil
 | # | construct | status | C delta (lines) | proof delta (lines) | difficulty | next-step estimate |
 |---|---|---|---|---|---|---|
 | 1 | comments, nested block comments, docstrings, `@[…]`, `namespace`/`open`/`section`/`end`, `private` | **done + proved** (lexer only) | Lex2 +28 −3 | Lex2Sound +417 −56, Lex2Spec +27, MainTokWF +34 −22, SrcLink +115 −27, Sem +55 −21 (regenerated Cert/SrcLink/Tests not counted) | S (≈4 h incl. regen) | — |
-| 2 | `match` | design only, see §2 | — | — | M | see §2 |
+| 2 | `match` on UInt64 literals, `_`, a variable, a pair | **done + proved** (new desugar stage; branch `exp-syntax-match`, see §2 for build status) | new Dsg +106 (12 defs) | DsSpec +108 (trusted spec), DsSound +1299, DsTok +298, Compile +24 −13, SelfC +15, Tests ≈ +30 (generated Cert/SrcLink and Tests ids not counted) | M (≈5 h) | — |
 | 3 | `a[i]!`, `a.size`, `a.push` | not started | — | — | S–M | see §3 |
 
 ## 1. Trivia in the lexer
@@ -77,3 +77,173 @@ New `step` cases, emitting **no tokens**:
 - Lean's block comments nest, so this module's own doc comments must not mention slash-dash literally (it opened a
   nested comment and the file did not parse).
 - A third consumer of `LexSpec.step` existed (`Main/Sem.step_len`). It was found only by the full build.
+
+## 2. `match` (new stage `t10` between lexer and parser)
+
+### What is accepted (spec: `DsSpec.ds`, `Nano/V2Self/Proof/Lex/DsSpec.lean`)
+- `match E with | 3 => a | 7 => b | y => c` desugars at token level to
+  `let $ := E; if $ == 3 then a else if $ == 7 then b else let y := $; c`.
+  - `$` (identifier `14 1 36 0`) cannot be spelled in Lean, so it cannot clash with user names.
+  - `| _ => e` becomes `else e`.
+  - A **first** arm `| (x, y) => e` becomes `let (x, y) := $; e`.
+- `match` and `with` are recognised as identifier spellings (they are Lean keywords, so they are never user names). The
+  lexer is unchanged.
+- A match ends at the `)` of its paren depth, at the next `def`, or at the end of the text. By then it must have a
+  catch-all arm (`_`, a variable or a pair).
+- Rejected, which is what Lean does too or close to it:
+  - an arm after the catch-all;
+  - a match without a catch-all;
+  - `match` inside a scrutinee;
+  - `| (x, y)` as a later arm;
+  - multi-scrutinee matches, `| 1 | 2 =>`, Nat/Bool/enum patterns (out of scope).
+- Checked against real Lean: the if-chain ends at `else` and `;` the same way Lean's `match` does. `if c then match … | _ => 2
+  else 3` and `let y := match … | _ => 2; y` give the same values under `lake env lean` (`#eval`) as in our compiler.
+- Conservative difference: after a match that ends at `;` or `else`, a later `|` at the same paren depth (for example the
+  next fuel arm) is rejected, although Lean accepts it. Workaround: parenthesise the match.
+- **A text without the token `match` passes through unchanged and allocates nothing** (`t11` scan; spec `noMatch`).
+  - Match-free programs need exactly the old work memory.
+  - A program with `match` needs about 8 MiB more (two buffers at κ capacity). `examples_syntax/run_syntax.sh` uses
+    120 MiB; the nanorun default is 80.
+
+### Statement change (owner decision)
+- `pOf` (`Proof/Main/Compile.lean`): `∃ ts, Lexes x ts ∧ ParsesProgram ts p` becomes
+  `∃ ts, DsSpec.LexesD x ts ∧ ParsesProgram ts p`, where `LexesD x ts := ∃ t0, Lexes x t0 ∧ ds t0 = some ts`.
+  `DsSpec.ds`/`go`/`pat`/`armCode`/`splitTok`/`noMatch` are new trusted definitions (≈80 lines, readable). They should
+  go into REVIEW §3.
+- `mC = g41 x (o41 (y16 (t10 (s10 x))))`.
+- The main theorems keep their names and shapes: `compiler_correctG`, `TopOn`, `C_correctLO`, `C_runsO`,
+  `self_correct_C`.
+
+### Proofs
+- `DsSound.t10_sound : t.length < 2^24 → C.t10 t ≠ [] → ds t = some (C.t10 t)`. Axioms: propext, Classical.choice,
+  Quot.sound. Its parts:
+  - token splitting (`t0_sound`, `t1_sound`);
+  - word tests (`t2_eq`/`t3_eq`/`t4_eq`, via generated linear case chains);
+  - emit (`t5_eq`, `t6_eq`);
+  - arms (`t7_sound`, `t8_sound`);
+  - the scan (`t11_sound`) and `go_noMatch`;
+  - the cell stack (`Rep`, `rep_set`/`rep_push`/`rep_pop`/`rep_zero`);
+  - the main loop `t9_sound`;
+  - the output bound `go_len` (≤ 3 words per input word).
+- `DsTok.ds_tokWF`: the desugared words are `TokWF` and below 2^24 words, which is what `parStage` needs.
+  `DsTok.ds_id`: a `TokL` stream without the token `match` desugars to itself.
+- `SelfC.hsrc_C`: C's own text has no `match`. This is checked by `decide +kernel` on SrcLink's token list `T0` (under 5 s).
+  So `LexesD X0 W0` holds and `self_correct_C` keeps its statement.
+- Tests:
+  - `MainWitness`/`MainCert` gain one kernel-checked premise per witness (`C.t10 ts = ts` or `ds ts = some ts`);
+  - `SelfInPath`: def ids ≥ 17 shift by 12; new `X27`/`X28` for the empty-input path through `t11`/`t10`;
+  - `SelfInQuiet.S` gains the push-free 17–21 and 27.
+
+### Tests
+- Differential, C `t10` against spec `ds`:
+  - 17 hand cases;
+  - 20,000 random fragment soups;
+  - 20,000 generated nested matches with mutations (1,010 of them really desugared).
+  0 disagreements.
+- Fixpoint (nanorun, default 80 MiB): B3 = B2 = 376,088 B, sha256 `37a6be1c…`. 721,873,615 instructions (+0.0 % for the
+  scan; the old B2 compiles the new source identically).
+- The 8 old examples give byte-identical code. `examples_syntax/matchdemo.lean` (literal, `_`, variable and pair arms;
+  nested in `let` and in a call argument) passes and matches real Lean.
+
+## Trusted-statement changes (owner review)
+
+Every definition below is listed in REVIEW §3 or used by `pOf`/`mC`. Each is shown as a verbatim `git diff` against `origin/release-434`.
+
+### (1) `LexSpec.step` and its new helpers (Nano/V2Self/Proof/Lex/Lex2Spec.lean)
+```diff
+@@ -3,6 +3,9 @@
+ whitespace (space, newline) is skipped; the operator table is searched longest-first; a word is a maximal run of
+ [A-Za-z0-9_'] (a keyword/prim, an identifier `14 (1,b)* 0`, or, when it starts with a digit, a decimal number
+ `5` + 8 little-endian bytes of the value mod 2^64, all characters of the word must then be digits).
++Trivia (no tokens; exp-syntax, Testing/notes/SYNTAX_EXP.md): two dashes up to the newline; a nested block comment
++(slash-dash ... dash-slash, docstrings included; unterminated: rejected); an attribute `@[ … ]` up to the first `]` (none: rejected); the
++words `namespace`, `open`, `section`, `end` up to the newline; the word `private`.
+ Anything else (and a digit-led word with a non-digit) is rejected: no `step`, so no `Lexes`. -/
+ import Nano.V2Self.Prelude
+ namespace LexSpec
+@@ -40,6 +43,21 @@ def kwTable : List (List UInt8 × UInt64) :=
+    ([98, 115, 101, 116], 46),
+    ([98, 112, 117, 115, 104], 47)]
+ 
++/-- words that skip the rest of their line: namespace open section end -/
++def lineKw : List (List UInt8) :=
++  [[110, 97, 109, 101, 115, 112, 97, 99, 101], [111, 112, 101, 110], [115, 101, 99, 116, 105, 111, 110], [101, 110, 100]]
++/-- words that are dropped: private -/
++def dropKw : List (List UInt8) := [[112, 114, 105, 118, 97, 116, 101]]
++
++/-- the rest after the dash-slash closing a block comment; `d` = comments still open inside it -/
++def blockEnd : Nat → List UInt8 → Option (List UInt8)
++  | _, [] => none
++  | _, [_] => none
++  | d, c :: c' :: r =>
++    if c = 45 ∧ c' = 47 then (if d = 0 then some r else blockEnd (d - 1) r)
++    else if c = 47 ∧ c' = 45 then blockEnd (d + 1) r
++    else blockEnd d (c' :: r)
++
+ /-- decimal value mod 2^64 -/
+ def numVal (w : List UInt8) : Nat := w.foldl (fun a b => (a * 10 + (b.toNat - 48)) % 2 ^ 64) 0
+ /-- 8 little-endian bytes -/
+@@ -50,6 +68,12 @@ def step : List UInt8 → Option (List UInt64 × List UInt8)
+   | [] => none
+   | c :: r =>
+     if c == 32 || c == 10 then some ([], r)
++    else if c == 45 && r.head? == some 45 then some ([], r.tail.dropWhile (· != 10))
++    else if c == 47 && r.head? == some 45 then (blockEnd 0 r.tail).map fun t => ([], t)
++    else if c == 64 && r.head? == some 91 then
++      (match r.tail.dropWhile (· != 93) with
++       | [] => none
++       | _ :: t => some ([], t))
+     else match opTable.find? (fun e => e.1.isPrefixOf (c :: r)) with
+       | some (s, k) => some ([k], (c :: r).drop s.length)
+       | none =>
+@@ -57,7 +81,9 @@ def step : List UInt8 → Option (List UInt64 × List UInt8)
+         let rest := (c :: r).dropWhile isW
+         if isD c then (if w.all isD then some (5 :: le8 (numVal w), rest) else none)
+         else if isW c then
+-          some ((match kwTable.lookup w with
++          if lineKw.contains w then some ([], rest.dropWhile (· != 10))
++          else if dropKw.contains w then some ([], rest)
++          else some ((match kwTable.lookup w with
+                  | some k => [k]
+                  | none => 14 :: (w.flatMap fun b => [1, b.toUInt64]) ++ [0]), rest)
+         else none
+```
+
+### (2) `pOf` and `mC`, branch exp-syntax-match only (Proof/Main/Compile.lean, Proof/Main/Sem.lean)
+```diff
++theorem lexesD_det {x : List UInt8} {t t' : List UInt64} (h : DsSpec.LexesD x t) (h' : DsSpec.LexesD x t') : t = t' := by
+-/-- the program a text denotes (Lex2Spec, then ParSpec) -/
++/-- the program a text denotes (Lex2Spec, the match desugaring DsSpec, then ParSpec) -/
+-  if h : ∃ p, ∃ ts, LexSpec.Lexes x ts ∧ ParsesProgram ts p then some (Classical.choose h) else none
++  if h : ∃ p, ∃ ts, DsSpec.LexesD x ts ∧ ParsesProgram ts p then some (Classical.choose h) else none
+-theorem pOf_eq {x : List UInt8} {ts : List UInt64} {p : List DefA} (hl : LexSpec.Lexes x ts) (hp : ParsesProgram ts p) :
++theorem pOf_eq {x : List UInt8} {ts : List UInt64} {p : List DefA} (hl : DsSpec.LexesD x ts) (hp : ParsesProgram ts p) :
+-  have h : ∃ p, ∃ ts, LexSpec.Lexes x ts ∧ ParsesProgram ts p := ⟨p, ts, hl, hp⟩
++  have h : ∃ p, ∃ ts, DsSpec.LexesD x ts ∧ ParsesProgram ts p := ⟨p, ts, hl, hp⟩
+-    ∃ ts p, LexSpec.Lexes x ts ∧ ParsesProgram ts p ∧ LinearK p ∧ Q (mC x) p := by
++    ∃ ts p, DsSpec.LexesD x ts ∧ ParsesProgram ts p ∧ LinearK p ∧ Q (mC x) p := by
+-def mC (x : List UInt8) : List UInt8 := C.g41 x (C.o41 (C.y16 (C.s10 x)))
++def mC (x : List UInt8) : List UInt8 := C.g41 x (C.o41 (C.y16 (C.t10 (C.s10 x))))
+```
+
+The new trusted definitions (`MU`, `MATCH`, `WITH`, `WILD`, `identTok`, `splitTok`, `Pat`, `pat`, `armCode`, `cell`, `go`, `noMatch`, `ds`, `LexesD`) are all of Nano/V2Self/Proof/Lex/DsSpec.lean (≈100 lines). The owner should read that file whole.
+
+**Why `pOf` has to change for `match`.** The lead preferred leaving the statement untouched and proving the desugaring
+semantics-preserving inside the proof. That is not possible here. The meaning of a text is `pOf` (lex, then
+`refParse`). A text containing `match` lexes to a token stream with the identifier `match`, and `refParse` rejects it
+(the S grammar has no such form). So under the old `pOf` every match program has no meaning (`srcRun = none`), and
+`Computes`, a premise of `CompileCorrect`, can never hold. The theorem would be true but vacuous for exactly the new
+programs. Giving them a meaning means changing the definition of meaning. The change is kept minimal: one extra stage
+`ds`, specified independently of C's code. On match-free texts it is the identity, so the meaning of every old program
+is unchanged (`DsTok.ds_id`).
+
+## Open owner decisions
+1. **Namespaces are flattened** (construct 1). `A.f` and `B.f` collide, and the duplicate-def check rejects them;
+   qualified references are rejected. Proper qualified names would cost:
+   - lexing `.` inside identifiers (Lean names), `namespace` tracking in a pre-pass, and name resolution
+     (current namespace, then `open`ed ones, then the root);
+   - in nano this means the desugar stage rewrites each identifier to its fully qualified spelling.
+   That is about the size of construct 2 (M: ≈150 lines of C, ≈1k lines of proof), plus a decision on how `open`
+   interacts with shadowing.
+2. **Accept the `pOf` change** for `match` (above), or keep only construct 1.
+3. `match` programs need about 8 MiB more work memory. Packing the cell stack into one word (depth ≤ 31) would halve that.

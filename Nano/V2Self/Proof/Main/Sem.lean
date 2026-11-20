@@ -4,6 +4,7 @@ the driver `mC`, the meaning `Sem` of a resolved program (word level, buffer cap
 contract (`Outcome`, `ImplementsCW`, `GenStage`, `compiler_correct`) stays in Main.lean.-/
 import Nano.V2Self.Proof.Lex.Lex2Sound
 import Nano.V2Self.C.Par1
+import Nano.V2Self.C.Dsg
 import Nano.V2Self.C.Gen
 import Nano.V2Self.C.Own
 import Nano.V2Self.Proof.Own.OwnSpec
@@ -15,7 +16,7 @@ namespace NanoMain
 open ParSpec
 
 /-- C's driver, verbatim from `Testing/nano/v2self/build_self_S.py` (not in `C/Main.lean`, which holds the old chain) -/
-def mC (x : List UInt8) : List UInt8 := C.g41 x (C.o41 (C.y16 (C.s10 x)))
+def mC (x : List UInt8) : List UInt8 := C.g41 x (C.o41 (C.y16 (C.t10 (C.s10 x))))
 
 /-! ## the meaning of a resolved program -/
 

@@ -13,7 +13,21 @@ open LeanRV64D
 namespace NanoMain
 open Proven.Top Proven.Top.Alloc ParSpec
 
-theorem hsrc_C : ∃ ts, LexSpec.Lexes SrcGen.X0 ts ∧ ParsesProgram ts Cert.PC.all := ⟨_, SrcGen.link_pc⟩
+set_option maxRecDepth 200000 in
+/-- C's own text has no `match` (checked by the kernel on its token list) -/
+theorem noMatch_C : DsSpec.matchTok ∉ SrcGen.T0 := by decide +kernel
+
+set_option maxRecDepth 200000 in
+theorem len_C : SrcGen.W0.length < 2 ^ 24 := by decide +kernel
+
+/-- C's text means its certified AST: it lexes, its words desugar to themselves (no `match`), and they parse -/
+theorem hsrc_C : ∃ ts, DsSpec.LexesD SrcGen.X0 ts ∧ ParsesProgram ts Cert.PC.all := by
+  obtain ⟨hl, hp⟩ := SrcGen.link_pc
+  obtain ⟨toks, ht⟩ := lexes_tokWF hl
+  have e : toks = SrcGen.T0 := by
+    have := ParSpec.tokens_of ht; rw [SrcGen.tk0] at this; cases this; rfl
+  subst e
+  exact ⟨_, ⟨_, hl, DsSpec.ds_id ht noMatch_C len_C⟩, hp⟩
 
 /-- **C's text means `mC`**: for every input shorter than 2^64 bytes, the meaning of C's source text is `mC inp`,
 except on inputs where the meaning hits Gen's buffer capacity (2^19 words): there, and only there, it has no result. -/

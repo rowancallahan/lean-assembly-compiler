@@ -7,6 +7,7 @@ import Nano.V2Self.Proof.Parser.ParInvRun
 import Nano.V2Self.Proof.Own.OwnStage
 import Compiler.AllocSpec
 import Nano.V2Self.Proof.Machine.RunsDef
+import Nano.V2Self.Proof.Lex.DsTok
 namespace NanoMain
 open Proven.Top Proven.Top.Alloc ParSpec
 
@@ -22,21 +23,29 @@ theorem lexes_det : ∀ {x : List UInt8} {t t' : List UInt64}, LexSpec.Lexes x t
       rw [hs] at hs'; simp only [Option.some.injEq, Prod.mk.injEq] at hs'; obtain ⟨rfl, rfl⟩ := hs'
       rw [lexes_det h1 h2]
 
+theorem lexesD_det {x : List UInt8} {t t' : List UInt64} (h : DsSpec.LexesD x t) (h' : DsSpec.LexesD x t') : t = t' := by
+  obtain ⟨a, ha, hda⟩ := h
+  obtain ⟨b, hb, hdb⟩ := h'
+  rw [lexes_det ha hb, hdb] at hda
+  cases hda; rfl
+
+theorem t10_nil : C.t10 [] = [] := by decide
+
 /-- a source text -/
 structure SrcC where
   text : List UInt8
 
 open Classical in
-/-- the program a text denotes (Lex2Spec, then ParSpec) -/
+/-- the program a text denotes (Lex2Spec, the match desugaring DsSpec, then ParSpec) -/
 noncomputable def pOf (x : List UInt8) : Option (List DefA) :=
-  if h : ∃ p, ∃ ts, LexSpec.Lexes x ts ∧ ParsesProgram ts p then some (Classical.choose h) else none
+  if h : ∃ p, ∃ ts, DsSpec.LexesD x ts ∧ ParsesProgram ts p then some (Classical.choose h) else none
 
-theorem pOf_eq {x : List UInt8} {ts : List UInt64} {p : List DefA} (hl : LexSpec.Lexes x ts) (hp : ParsesProgram ts p) :
+theorem pOf_eq {x : List UInt8} {ts : List UInt64} {p : List DefA} (hl : DsSpec.LexesD x ts) (hp : ParsesProgram ts p) :
     pOf x = some p := by
-  have h : ∃ p, ∃ ts, LexSpec.Lexes x ts ∧ ParsesProgram ts p := ⟨p, ts, hl, hp⟩
+  have h : ∃ p, ∃ ts, DsSpec.LexesD x ts ∧ ParsesProgram ts p := ⟨p, ts, hl, hp⟩
   unfold pOf; rw [dif_pos h]
   obtain ⟨ts', hl', hp'⟩ := Classical.choose_spec h
-  rw [lexes_det hl hl'] at hp
+  rw [lexesD_det hl hl'] at hp
   unfold ParsesProgram at hp hp'; rw [hp'] at hp; cases hp; rfl
 
 /-- **the meaning of a text** on an input -/
@@ -69,22 +78,24 @@ theorem compiler_correctG (HB : BndStage) (Q : List UInt8 → List DefA → Prop
     (HG : ∀ (c : List UInt8) (ts : List UInt64) (p : List DefA), ParsesProgram ts p → ts.length < 2 ^ 24 → LinearK p →
       C.g41 c (serialize p) ≠ [] → Q (C.g41 c (serialize p)) p)
     (x : List UInt8) (hx : x.length ≤ 2 ^ 20) (h : mC x ≠ []) :
-    ∃ ts p, LexSpec.Lexes x ts ∧ ParsesProgram ts p ∧ LinearK p ∧ Q (mC x) p := by
-  have hy0 : C.o41 (C.y16 (C.s10 x)) ≠ [] := fun e => h (by simp only [mC, e, g41_nil])
+    ∃ ts p, DsSpec.LexesD x ts ∧ ParsesProgram ts p ∧ LinearK p ∧ Q (mC x) p := by
+  have hy0 : C.o41 (C.y16 (C.t10 (C.s10 x))) ≠ [] := fun e => h (by simp only [mC, e, g41_nil])
   have hoe := o41_ne _ hy0
-  have hy : C.y16 (C.s10 x) ≠ [] := by rw [← hoe]; exact hy0
-  by_cases h0 : C.s10 x = []
+  have hy : C.y16 (C.t10 (C.s10 x)) ≠ [] := by rw [← hoe]; exact hy0
+  by_cases h0 : C.t10 (C.s10 x) = []
   · obtain ⟨p, hp, -⟩ := parStage _ ⟨[], by rw [h0]; exact ParSpec.TokL.nil⟩ (by simp [h0]) hy
     rw [h0] at hp; simp [ParsesProgram, refParse_nil] at hp
-  · have hL := LexSpec.s10_sound x (by omega) _ rfl h0
+  · have hs0 : C.s10 x ≠ [] := fun e => h0 (by rw [e]; exact t10_nil)
+    have hL := LexSpec.s10_sound x (by omega) _ rfl hs0
     have hb := lexes_len hL
-    obtain ⟨p, hp, he⟩ := parStage _ (lexes_tokWF hL) (by omega) hy
+    have hd := DsSpec.t10_sound _ (by omega) h0
+    obtain ⟨hW, hts⟩ := DsSpec.ds_tokWF (lexes_tokWF hL) hd
+    obtain ⟨p, hp, he⟩ := parStage _ hW hts hy
     have hg : C.g41 x (serialize p) ≠ [] := by rw [← he, ← hoe]; exact h
-    have hts : (C.s10 x).length < 2 ^ 24 := by omega
     have hbd := HB x _ p hp hts hg
     have hsl : (serialize p).length < 2 ^ 64 := by have := ParSerLen.ser_lt hp hts; omega
     have hlin : LinearK p := ownStage _ p hp hbd hsl (by rw [← he]; exact hy0)
-    refine ⟨_, p, hL, hp, hlin, ?_⟩
+    refine ⟨_, p, ⟨_, hL, hd⟩, hp, hlin, ?_⟩
     have := HG x _ p hp hts hlin hg
     rw [mC, hoe, he]; exact this
 
