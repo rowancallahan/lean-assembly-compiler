@@ -82,6 +82,15 @@ theorem one_pads {C : List J} {b i : Nat} {j : J} {t : Arm64.State} {A : AState}
   refine Reach.cons s1 ((pads 3 1 rfl m1 hp).mono ?_)
   intro t' ⟨m', a', p', q'⟩; exact ⟨m', a'.trans a1, p'.trans p1, q'.trans q1⟩
 
+/-- word `k` (falls through, memory unchanged), then PADs -/
+theorem word_pads {C : List J} {b i : Nat} {j : J} {k : Nat} {t : Arm64.State} {A : AState} (h : Mid C b i j k t)
+    (hk : k < 4) (hS : At t (bw j k) → ∃ t', Arm64.Step Pg t t' ∧ abs t' = A ∧ Post t t' (t.pc + 4) t.mem)
+    (hp : PadsFrom j (k + 1)) :
+    Reach t fun t' => Mid C b i j 4 t' ∧ abs t' = A ∧ t'.sp = t.sp ∧ t'.mem = t.mem := by
+  obtain ⟨t1, s1, m1, a1, p1, q1⟩ := seq1 h hk (hS (h.at hk))
+  refine Reach.cons s1 ((pads (3 - k) (k + 1) (by omega) m1 hp).mono ?_)
+  intro t' ⟨m', a', p', q'⟩; exact ⟨m', a'.trans a1, p'.trans p1, q'.trans q1⟩
+
 /-- `bw j k` from the list of block words -/
 theorem bw_of {j : J} {l : List Nat} (h : blockJ j = l) (k : Nat) : bw j k = wd (l.getD k 0) := by
   simp only [bw, h]
