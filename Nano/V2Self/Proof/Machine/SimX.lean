@@ -1,6 +1,6 @@
 /- Machine bridge (Opus box E): Sail sims of the start code's extra instructions (srli, beq +28, bne +16, sb), in the
-form of SimW's sims (a J step on a matching word is one retired Sail instruction keeping `RelW`).  Wiring them into
-`SimW.Safe` / `encJ` / `sim_stepW` is a shared edit (A's Safe retrofit), proposed separately. -/
+form of SimW's sims (a J step on a matching word is one retired Sail instruction keeping `RelW`).  They are wired in per
+instruction kind by `JT.rvSteps` (Machine/RvTarget.lean), over `encJX` / `SafeX`. -/
 import Nano.V2Self.Proof.Machine.SimW
 namespace SimW
 open Proven Nano.V2B
@@ -183,7 +183,7 @@ theorem sim_sbW {K : LayRv} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : 
 
 /-! ## SimW's `encJ` words of the new instructions are the `I.enc` words the sims take -/
 
-/-! ## the start code's Safe layer: `encJX` (beq offsets in instructions, like bgeu), `SafeX` (Safe plus beq +7,
-srli, bne +4, sb; the per-instruction dispatch is `rvSteps`, Machine/RvTarget.lean), `SStarX`, and `SStar → SStarX` (A's template twins carry over) -/
+/-! ## the words of the safe layer: `encJX` (beq offsets in instructions, like bgeu) for `SafeX` (JLay: beq +2 / +7,
+srli, bne +4, sb); the per-instruction dispatch is `rvSteps`, Machine/RvTarget.lean -/
 
 end SimW

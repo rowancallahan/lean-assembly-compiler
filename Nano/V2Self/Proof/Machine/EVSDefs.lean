@@ -75,7 +75,7 @@ structure EVHS (KL : LayW) (C : List J) (pc len p nl : Nat) (Inv : St → Prop) 
       ∀ a, (s.x 31).toNat ≤ a → (∀ k, k < nl → W k → a ≠ slotAddr p (s.x 8).toNat k) → s'.m a = s.m a
   stable : ∀ env env' sp H, (∀ k, R k → env k = env' k) → S env sp H = S env' sp H
 
-/-- **EVHt, safe** (tail mode: exit to X, or CONTINUE to Hd) -/
+/-- **the tail contract** (tail mode: exit to X, or CONTINUE to Hd) -/
 structure EVHtS (KL : LayW) (C : List J) (pc p nl : Nat) (Inv : St → Prop) (hb E0 : Nat) (R W : Nat → Prop)
     (w X Hd : Nat) (S : SemT) : Prop where
   exit : ∀ (s : St) (env : Env) (H : Hp) (vs : List UInt64) (H' : Hp), Inv s → s.x 0 = 0 → Frame p nl s env →

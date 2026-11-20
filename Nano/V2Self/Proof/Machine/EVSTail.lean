@@ -140,7 +140,7 @@ theorem ifPre {KL : LayW} {C : List J} {pc lp lt p nl hb E0 cmp : Nat} {Inv : St
     (by have := L0.top; omega) (by have := L1.a31; omega)
   have w1b : wok KL ((s.x 31).toNat - 8) := L1.wok (by have := R1.2.1; have := R1.2.2.1; omega)
     (by have := L0.top; omega) (by have := L1.a31; omega)
-  have st2 : SStarX KL C (pc, s) (pc + lp + 3, s2) := r1.trans (sstarX_of_run r2 (fun j hj c hc => by
+  have st2 : SStarX KL C (pc, s) (pc + lp + 3, s2) := r1.trans (sstar_of_run r2 (fun j hj c hc => by
     rcases j with _ | _ | _ | j
     · simp [run] at hc; subst hc; simp only [SafeX, c0]; rw [ea0]
       exact ⟨by decide, by decide, by decide, by decide, by omega, w1a⟩

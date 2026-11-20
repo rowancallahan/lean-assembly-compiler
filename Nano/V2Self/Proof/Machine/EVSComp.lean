@@ -108,19 +108,6 @@ theorem localX {KL : LayW} {C : List J} {p nl hb E0 : Nat} {Inv : St → Prop}
       (fun j q => by rcases q with e | ⟨e1, e2⟩ <;> constructor <;> omega)
       (fun j q => by rcases q with e | e <;> exact e)).len (len' := 5 * (w + 1)) (by omega) |>.wid (by omega)
 
-/-- a deterministic run whose every intermediate state is SafeX -/
-theorem sstarX_of_run {KL : LayW} {C : List J} : ∀ {k : Nat} {a b : Nat × St}, run C k a = some b →
-    (∀ j, j < k → ∀ c, run C j a = some c → SafeX KL C c) → SStarX KL C a b
-  | 0, a, b, h, _ => by simp [run] at h; subst h; exact .refl _
-  | k + 1, a, b, h, hs => by
-    simp only [run] at h
-    cases e : step C a with
-    | none => simp [e] at h
-    | some c =>
-      simp [e] at h
-      refine .head (hs 0 (by omega) a rfl) e (sstarX_of_run h fun j hj d hd => hs (j + 1) (by omega) d ?_)
-      simp [run, e, hd]
-
 theorem ifX {KL : LayW} {C : List J} {pc lp lt le p nl hb E0 w cmp : Nat} {Inv : St → Prop} {RP WP RT WT RE WE : Nat → Prop}
     {SP ST SE : SemW} (hI : InvOKH hb p Inv)
     (hP : EVHwS KL C pc lp p nl Inv hb E0 RP WP 2 SP) (hH : At C (pc + lp) (ifHeadG cmp lt))
@@ -181,7 +168,7 @@ theorem ifX {KL : LayW} {C : List J} {pc lp lt le p nl hb E0 w cmp : Nat} {Inv :
       (by have := L0.top; omega) (by have := L1.a31; omega)
     have w1b : wok KL ((s.x 31).toNat - 8) := L1.wok (by have := R1.2.1; have := R1.2.2.1; omega)
       (by have := L0.top; omega) (by have := L1.a31; omega)
-    have st2 : SStarX KL C (pc, s) (pc + lp + 3, s2) := r1.trans (sstarX_of_run r2 (fun j hj c hc => by
+    have st2 : SStarX KL C (pc, s) (pc + lp + 3, s2) := r1.trans (sstar_of_run r2 (fun j hj c hc => by
       rcases j with _ | _ | _ | j
       · simp [run] at hc; subst hc; simp only [SafeX, c0]; rw [ea0]
         exact ⟨by decide, by decide, by decide, by decide, by omega, w1a⟩
