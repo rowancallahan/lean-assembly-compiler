@@ -653,4 +653,76 @@ theorem mid_store1 {K : LayW} {C : List J} {s0 s : M.State} {pc k : Nat} {st : C
     rw [o]; simp only [store1]; rw [toNat_ofNat_lt hx]
     rw [if_neg (fun e => by subst e; unfold sok at ha; exact ha.elim h1 h2)]; exact hM.fr x hx h1 h2
 
+/-- `add/sub x16, xs, #|f|`: x16 := the effective address (no wrap: J's address is ≥ 0) -/
+theorem addr_x16 (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc k : Nat} {st : CallProbe.St} {j : J}
+    (hM : Mid K C s0 (pc, st) k s) (hC : C[pc]? = some j) (hB : K.base + 16 * C.length ≤ 2 ^ 32)
+    (hpcl : pc < C.length) (hk : k < 4) {rs : Nat} {f : Int} (hrs : mapped rs = true) (rs0 : rs ≠ 0)
+    (hf1 : -2048 ≤ f) (hf2 : f < 2048) (hw : (blockJ j).getD k 0 = addr16 rs f)
+    (h0 : 0 ≤ ((st.x rs).toNat : Int) + f) :
+    ∃ s', Runs M s s' ∧ Mid K C s0 (pc, st) (k + 1) s' ∧
+      (M.observe s').register 16 = UInt64.ofNat (CallProbe.ea (st.x rs) f) := by
+  have hsl := armReg_lt hrs rs0
+  have xr := hM.x rs (by omega) (mapped_lt hrs)
+  unfold addr16 at hw
+  split at hw
+  · rename_i hn
+    have w := word_pc hM hC hB hpcl hk hw
+    obtain ⟨s1, r1, M1, o1⟩ := mid_scr hM (Or.inl rfl) (S.subi s 16 _ _ hM.cfg (by decide) hsl (by omega) w)
+    refine ⟨s1, r1, M1, ?_⟩
+    rw [o1]; simp only [setReg, if_true]; rw [xr]
+    apply UInt64.toNat_inj.1
+    rw [UInt64.toNat_sub]; simp [CallProbe.ea]; omega
+  · rename_i hn
+    have w := word_pc hM hC hB hpcl hk hw
+    obtain ⟨s1, r1, M1, o1⟩ := mid_scr hM (Or.inl rfl) (S.addi s 16 _ _ hM.cfg (by decide) hsl (by omega) w)
+    refine ⟨s1, r1, M1, ?_⟩
+    rw [o1]; simp only [setReg, if_true]; rw [xr]
+    apply UInt64.toNat_inj.1
+    simp [CallProbe.ea, UInt64.toNat_add]; omega
+
+/-- `ld rd, off(rs)` from the work cell `ea`: `ldr d, [s, #off]`, or `add/sub x16` + `ldr d, [x16]`; PADs for x0 -/
+theorem blk_ld (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : Nat} {st : CallProbe.St}
+    {rd rs : Nat} {off : Int}
+    (hM : Mid K C s0 (pc, st) 0 s) (hC : C[pc]? = some (.ld rd rs off)) (hB : K.base + 16 * C.length ≤ 2 ^ 32)
+    (hpcl : pc < C.length) (hL : JTarget.LayOK M (16 * C.length) K) (hR : M.ramEnd ≤ 2 ^ 32)
+    (hrd : mapped rd = true) (hrs : mapped rs = true) (rs0 : rs ≠ 0) (hf1 : -2048 ≤ off) (hf2 : off < 2048)
+    (h0 : 0 ≤ ((st.x rs).toNat : Int) + off) (hwk : wok K (CallProbe.ea (st.x rs) off)) :
+    ∃ s', Runs M s s' ∧ Mid K C s0 (pc + 1, CallProbe.wr st rd (st.m (CallProbe.ea (st.x rs) off))) 0 s' := by
+  by_cases hd : rd = 0
+  · subst hd; rw [wr_zero]
+    have hb : blockJ (.ld 0 rs off) = [PAD, PAD, PAD, PAD] := rfl
+    exact run_pads S hC hB hpcl 4 0 s (by decide) hM (fun i _ h2 => by
+      rcases (by omega : i = 0 ∨ i = 1 ∨ i = 2 ∨ i = 3) with rfl | rfl | rfl | rfl <;> rw [hb] <;> rfl)
+  have hdl := armReg_lt hrd hd
+  have hsl := armReg_lt hrs rs0
+  have wl := hL.wlo; have wh := hL.whi
+  have hwk' := hwk
+  unfold wok at hwk'
+  -- the load itself from base register n with offset f, word k
+  have ld_at : ∀ k (s1 : M.State) (n f : Nat), Mid K C s0 (pc, st) k s1 → k < 4 → n < 31 → f % 8 = 0 → f < 32768 →
+      ((M.observe s1).register n).toNat + f = CallProbe.ea (st.x rs) off →
+      (blockJ (.ld rd rs off)).getD k 0 = ldr (armReg rd) n f →
+      (∀ i, k + 1 ≤ i → i < 4 → (blockJ (.ld rd rs off)).getD i 0 = PAD) →
+      ∃ s', Runs M s1 s' ∧ Mid K C s0 (pc + 1, CallProbe.wr st rd (st.m (CallProbe.ea (st.x rs) off))) 0 s' := by
+    intro k s1 n f M1 hk hn hf8 hf hea e1 e2
+    have w := word_pc M1 hC hB hpcl hk e1
+    have g := S.ldr s1 _ n f (st.m (CallProbe.ea (st.x rs) off)) M1.cfg hdl hn hf8 hf (by omega) (by omega)
+      (by omega) (by omega) (fun k' hk' => by rw [hea]; exact M1.w _ hwk k' hk') w
+    obtain ⟨s2, r2, M2⟩ := mid_set M1 hrd hd g
+    obtain ⟨s3, r3, M3⟩ := run_pads S hC hB hpcl (4 - (k + 1)) (k + 1) s2 (by omega) M2 e2
+    exact ⟨s3, Runs.trans r2 r3, M3⟩
+  by_cases hdir : off % 8 = 0 ∧ 0 ≤ off ∧ off < 32768
+  · have hb : blockJ (.ld rd rs off) = [ldr (armReg rd) (armReg rs) off.toNat, PAD, PAD, PAD] := by
+      simp [blockJ, body, pad4, hd, hdir]
+    exact ld_at 0 s (armReg rs) off.toNat hM (by decide) hsl (by omega) (by omega)
+      (by rw [hM.x rs (by omega) (mapped_lt hrs)]; simp [CallProbe.ea]; omega) (by rw [hb]; rfl)
+      (fun i h1 h2 => by rcases (by omega : i = 1 ∨ i = 2 ∨ i = 3) with rfl | rfl | rfl <;> rw [hb] <;> rfl)
+  · have hb : blockJ (.ld rd rs off) = [addr16 rs off, ldr (armReg rd) 16 0, PAD, PAD] := by
+      simp [blockJ, body, pad4, hd, hdir]
+    obtain ⟨s1, r1, M1, x16⟩ := addr_x16 S hM hC hB hpcl (by decide) hrs rs0 hf1 hf2 (by rw [hb]; rfl) h0
+    obtain ⟨s2, r2, M2⟩ := ld_at 1 s1 16 0 M1 (by decide) (by decide) (by decide) (by decide)
+      (by rw [x16, toNat_ofNat_lt (by omega), Nat.add_zero]) (by rw [hb]; rfl)
+      (fun i h1 h2 => by rcases (by omega : i = 2 ∨ i = 3) with rfl | rfl <;> rw [hb] <;> rfl)
+    exact ⟨s2, Runs.trans r1 r2, M2⟩
+
 end JT
