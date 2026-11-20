@@ -8,8 +8,8 @@
 
 | theorem | file | statement |
 |---|---|---|
-| `C_correctLO` | `Proof/Main/ParCapBnd.lean` | `CompileCorrect riscv compileC` |
-| `C_runsO` | `Proof/Main/RunsTopO.lean` | `CompileRuns riscv compileC` (OOM exactly below `memoryNeeded`) |
+| `C_correctLO` | `Proof/Main/RvTop.lean` | `CompileCorrect riscv compileC` (generic form: `C_correct_on`, `Main/TopOn.lean`) |
+| `C_runsO` | `Proof/Main/RvTop.lean` | `CompileRuns riscv compileC` (OOM exactly below `memoryNeeded`) |
 | `self_correct_C`, `self_runs_C` | `Proof/Main/SelfC.lean`, `RunsTopO.lean` | the same, for C compiled by itself |
 | `Cert.sem_C` | `Proof/Cert/All.lean` | the meaning of C's own source text is C's Lean function |
 
@@ -17,14 +17,14 @@
 | folder | contents |
 |---|---|
 | `Prelude.lean` | buffers and prims of the self-language |
-| `C/` | **the compiler**: `Base`, `Lex2` (lexer `s10`), `Par1` (parser `y16`), `Own` (ownership check `o41`), `Gen` (code generator `g41`). The driver is `mC x = g41 x (o41 (y16 (s10 x)))` (`Proof/Main/Main.lean`) |
+| `C/` | **the compiler**: `Base`, `Lex2` (lexer `s10`), `Par1` (parser `y16`), `Own` (ownership check `o41`), `Gen` (code generator `g41`). The driver is `mC x = g41 x (o41 (y16 (s10 x)))` (`Proof/Main/Sem.lean`) |
 | `Proof/Lex/` | lexer spec `LexSpec.Lexes` (`Lex2Spec`), its soundness (`Lex2Sound`), token well-formedness |
 | `Proof/Parser/` | reference grammar `ParSpec` (`refParse`, `ParsesProgram`), the abstract parser `ParRun*`, `ParInv*` (Par1 ↔ ParRun; `ParInv.parserSound`) |
 | `Proof/Own/` | ownership spec `OwnSpec`, `OwnP0`–`OwnP30`, `OwnStage.own_stage` |
 | `Proof/Gen/` | Gen's code and width relations on success (`GenRef`, `GenTop`, `GenWidth`, `GenAll`) |
 | `Proof/Machine/` | the abstract machine J, Gen's templates, the node / def / program theorems, the Sail lift (`SimW`), start code, capacity / OOM exits, the host lift, the exact work bound (`RunsDef`: `Msp`) |
 | `Proof/Bridge/` | `Sem` ⇐ E's machine semantics (`MainBridge*`), the converse (`MainConv*`), the shift invariant (`MainShift*`: `shiftInv`) |
-| `Proof/Main/` | `Main` (`Sem`, `ImplementsC`, stage props), `MainTop` (`compileC`, `spaceC`), the final theorems |
+| `Proof/Main/` | `Sem` (the semantics, stage props), `Compile` (`compileC`, `spaceC`), `TopOn` (generic top theorems over a `JTarget`), `RvTop` (RISC-V instances), `SelfC` / `RunsTopO` (self-compilation) |
 | `Proof/Cert/` | **GENERATED** meaning certificate (`sem_C`). Do not edit by hand |
 | `Proof/SrcLink/` | `SrcLink.lean` plus **GENERATED** chunks: C's text lexes and parses to `Cert.PC.all` (`SrcGen.link_pc`) |
 | `Proof/Tests/` | non-vacuity tests and audit witnesses (`OwnNV`, `MainWitness`, `MainCert`, `AuditWitness`, `AuditSpace`) |
@@ -45,6 +45,7 @@ Namespaces do not follow the folders (for example `NanoMain`, `ParSpec`, `Templa
   `python3 Testing/nano/v2self/cert/gen_cert.py pcdump` (writes `Proof/Cert/`).
 - Source link, after any change to C's source text: `lake env lean --run Testing/nano/v2self/srclink/gen.lean SRC
   OUTDIR GROUPTOKS` (writes `Proof/SrcLink/` chunks; see the file header).
+- Axioms of the REVIEW theorems against the pinned list: `Testing/scripts/review_axioms.sh`.
 - Dead code: `Testing/scripts/deadcode.sh` (report: `Testing/notes/NANO_V2_DEADCODE.md`).
 - Rules: no `sorry`; no new axioms; no `native_decide`, `bv_decide` or `extern`; each module ≤ 5 min and ≤ 8 GB
   (12 GB tolerated by the owner); `Spec/` is the owner's.

@@ -1,9 +1,16 @@
 
 ## Soundness / loophole audit of the final statement (box G, 2026-11-19)
 
-Statement read: `NanoMain.C_correctLO : CompileCorrectL riscv compileC` (ParCapBnd.lean), with `Spec/Top.lean`,
-`Compiler/AllocSpec.lean`, `Spec/RiscvMachine.lean`, `MainTop.lean` (SrcC, pOf, srcRun, spaceC, compileC), `Main.lean`
-(Sem, ImplementsCW/ImplementsC). Read-only; the only new file is `Proof/AuditWitness.lean`.
+> **Names updated 2026-11-20 (O).** The audit below was written against the names of its time. Since then:
+> `CompileCorrectL` → `CompileCorrect` and `CompileRunsL` → `CompileRuns`, in `Spec/Alloc.lean` (moved from
+> `Compiler/AllocSpec.lean`, adbf2d1; frozen with Spec/, 4dd99338). `C_correctLO` is in `Proof/Main/RvTop.lean`.
+> `MainTop.lean` was split into `Main/Compile.lean` (SrcC, pOf, srcRun, spaceC, compileC) and `Main/Sem.lean` (Sem).
+> The RISC-V `ImplementsCW` / `ImplementsC` contract is replaced by the generic target layer (`Main/TopOn.lean`).
+> `AuditWitness` is `Proof/Tests/AuditWitness.lean`. Finding A is FIXED (below); finding B is OPEN.
+
+Statement read: `NanoMain.C_correctLO : CompileCorrect riscv compileC` (then `CompileCorrectL`, ParCapBnd.lean), with
+`Spec/Top.lean`, `Spec/Alloc.lean` (then `Compiler/AllocSpec.lean`), `Spec/RiscvMachine.lean`, `Main/Compile.lean`
+(SrcC, pOf, srcRun, spaceC, compileC), `Main/Sem.lean` (Sem; then also ImplementsCW/ImplementsC). Read-only; the only new file is `Proof/AuditWitness.lean`.
 
 ### 1. Non-vacuity: the theorem instantiated for a real program (`Proof/AuditWitness.lean`, builds, no sorry)
 Program: ParSpec's `ex1` (two defs, a call, prims), Lean function `Ex1.m`.
@@ -66,8 +73,9 @@ variable would differ, and the generator would fail on it rather than pass.
 - Conclusion not trivially true: zero steps would need pc = `returnAddress`, excluded by `returnOutsideCode` with
   non-empty code (`compileC` requires `mC ≠ []`) and `codeLoaded`; the output equation `readMemory … = some (f a)` and the
   length register are substantive; missing registers read as 0 in `riscvObserve`, but `configured` (Cfg) is also concluded.
-- `CompileCorrectL → CompileCorrect` is proved in AllocSpec; `CompileRuns(L)` (OOM flag ⇔ out of memory) is NOT claimed
-  for C anywhere.
+- (then) `CompileCorrectL → CompileCorrect` was proved in AllocSpec; `CompileRuns(L)` (OOM flag ⇔ out of memory) was
+  NOT claimed for C. **Now**: the strong forms are `CompileCorrect` / `CompileRuns` themselves, and
+  `C_runsO : CompileRuns riscv compileC` is proved (Main/RvTop.lean).
 - `Sem .error .stuck` gives `True` in `Outcome`, harmless: `Computes` forces `.ok`.
 
 ### 4. Not determined

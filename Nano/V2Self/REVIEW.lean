@@ -15,7 +15,11 @@ text is at most 2^20 bytes), and every way of reading the text as a function `f 
 meaning `srcRun` returns `encodeOutput (f a)` on `encodeInput a`, for EVERY `a`), the bytes `compiled.code`, loaded and
 called on the Sail RV64 model per `StartCorrect` (input ≤ 2^20 bytes), with an output block big enough and at least
 `memoryNeeded` bytes of work memory, return to the caller with the output, length register, no OOM flag, callee-saved
-registers kept, configuration kept, and memory changed only in the work block and the output prefix. -/
+registers kept, configuration kept, and memory changed only in the work block and the output prefix.
+LIMITS (see NANO_V2_REVIEW.md §1): `compileC s = some _` is not kernel-proved for any text (audit finding B);
+`Computes` is for ALL inputs, so a program that can hit `cap` anywhere needs a restricted `α`; `memoryNeeded` is the
+exact threshold of the code's own run, so `CompileRuns`' "OOM iff below memoryNeeded" is close to definitional (what
+it adds: OOM is reported, never a wrong answer or a crash). Spec/ incl. Spec/Alloc.lean is frozen (4dd99338). -/
 #check @NanoMain.C_correctLO
 #print axioms NanoMain.C_correctLO
 
@@ -23,7 +27,7 @@ registers kept, configuration kept, and memory changed only in the work block an
 #check @Cert.sem_C
 #print axioms Cert.sem_C
 
-/-! ## 2b. C compiled by itself (E, Proof/SelfC.lean; generic versions in Proof/SelfLink.lean).  `SrcGen.X0` = the bytes
+/-! ## 2b. C compiled by itself (E, Proof/Main/SelfC.lean; generic versions in Proof/Main/SelfLink.lean).  `SrcGen.X0` = the bytes
 of Testing/nano/v2self/self_S_input.txt (D's generator refuses to write the modules unless its chunks concatenate to
 exactly those bytes).  `SelfIn` = inputs shorter than 2^64 bytes on which `Sem κC Cert.PC.all` does not hit `cap`.
 NOT proved: `compileC ⟨X0⟩ = some compiled` (it is a hypothesis of self_correct_C; holds iff `mC X0 ≠ []`, shown only
