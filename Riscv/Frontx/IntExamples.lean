@@ -6,6 +6,7 @@ import Riscv.Frontx.LeanSvgFixed
 
 /-! ## glue: signed words from the input (two's complement, little-endian, `0` past the end) -/
 
+set_option backward.isDefEq.respectTransparency false
 namespace Proven.Frontx.IntEx
 open Proven.Frontx.Scal
 

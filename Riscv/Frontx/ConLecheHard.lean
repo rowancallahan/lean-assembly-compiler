@@ -7,6 +7,7 @@ import Riscv.Frontx.ExprExamples
 import Riscv.Frontx.ConLecheBlk
 import Riscv.Frontx.IndExamples
 
+set_option backward.isDefEq.respectTransparency false
 set_option linter.unusedVariables false
 
 namespace ConLeche.Expr
