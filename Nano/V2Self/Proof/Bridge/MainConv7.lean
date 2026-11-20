@@ -93,7 +93,7 @@ theorem prog_both (P : Templates.PC) (ds : List ParSpec.DefA) (sigs : List Sig) 
           cases h : K[s]? with
           | none => simp
           | some k => exact hK2 K hKmem k (List.mem_of_getElem? h))
-        ds[n] sigs[n] R ⟨t1, t2, t3, t4⟩ hd rfl (by simp only [scAt, hda]; rfl)
+        ds[n] sigs[n] R ⟨t1, t2, t3, t4⟩ hd rfl (by simp only [scAt, hda]; try rfl)
       have hDE := def_ex ⟨inp, P.κ, (means inp P.κ [] ds).take n⟩ (scAt P ds n) ⟨ps, rs, K, ds[n].npw⟩ (sigs.take n)
         (fun i R' sg' hr hs => by
           have hi : i < n := by rw [← hl2]; exact (List.getElem?_eq_some_iff.1 hr).1
@@ -115,7 +115,7 @@ theorem prog_both (P : Templates.PC) (ds : List ParSpec.DefA) (sigs : List Sig) 
           cases h : K[s]? with
           | none => simp
           | some k => exact hK2 K hKmem k (List.mem_of_getElem? h))
-        ds[n] sigs[n] R ⟨t1, t2, t3, t4⟩ hd rfl (by simp only [scAt, hda]; rfl)
+        ds[n] sigs[n] R ⟨t1, t2, t3, t4⟩ hd rfl (by simp only [scAt, hda]; try rfl)
       refine ⟨ps ++ [K.take ds[n].npw], rs ++ [R], by simp [hl1], by simp [hl2], ?_, fun i hi => ?_⟩
       · have e1 : Ks.drop (n + 1) = Ks' := by
           have := congrArg List.tail hK; simpa [List.tail_drop] using this
@@ -126,7 +126,7 @@ theorem prog_both (P : Templates.PC) (ds : List ParSpec.DefA) (sigs : List Sig) 
             by rw [List.getElem?_append_left (by omega)]; exact c, rest⟩
         · have hin : i = n := by omega
           subst hin
-          refine ⟨R, by simp [hl2], hR1, by rw [hda]; exact hRl, by simp [hl1, hda]; rw [← hKn]; simp [List.getD_eq_getElem?_getD]; rfl, ?_⟩
+          refine ⟨R, by simp [hl2], hR1, by rw [hda]; exact hRl, by simp [hl1, hda]; rw [← hKn]; simp [List.getD_eq_getElem?_getD]; try rfl, ?_⟩
           have hmg := means_get inp P.κ ds [] i (by omega)
           simp only [List.length_nil, Nat.zero_add] at hmg
           refine ⟨_, hmg, ?_⟩
