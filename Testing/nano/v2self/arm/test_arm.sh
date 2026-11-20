@@ -50,6 +50,18 @@ cmp -s "$T/B2_arm.bin" "$D/B2_arm.bin" && ok "B2 translated by the ARM translato
 "$QEMU" "$T/shim_arm" "$T/B2_arm.bin" < "$V/self_S_input.txt" > "$T/self.bin" 2> /dev/null
 cmp -s "$T/self.bin" "$V/B2.bin" && ok "ARM-B2 self-compile = B2.bin" || bad "ARM-B2 self-compile"
 
+# instruction set (§0-min): only these mnemonics (objdump aliases), no sp, no stored xzr, never x18..x29
+if command -v aarch64-linux-gnu-objdump > /dev/null; then
+  for f in "$T/B2_arm.bin" "$T/rv2arm_arm.bin"; do
+    aarch64-linux-gnu-objdump -D -b binary -m aarch64 "$f" | awk -F'\t' 'NF >= 3 {print $3 "\t" $4}' > "$T/dis"
+    other=$(cut -f1 "$T/dis" | sort -u | grep -vxE 'mov|movk|add|sub|neg|and|orr|eor|lsl|lsr|mul|cmp|b\.(eq|ne|cs|cc)|cbz|b|bl|br|ldr|str|ldrb|strb' || true)
+    bad=$(grep -cE '\bsp\b|^(str|strb)\s+[wx]zr|\b[xw](1[89]|2[0-9])\b' "$T/dis" || true)
+    movs=$(grep -cP '^mov\t' "$T/dis"); movz=$(aarch64-linux-gnu-objdump -D -b binary -m aarch64 "$f" | grep -cP '\td2[89a-f][0-9a-f]{5}\s+\tmov\t' || true)
+    if [ -z "$other" ] && [ "$bad" = 0 ] && [ "$movs" = "$movz" ]; then ok "instruction set of $(basename "$f")"
+    else bad "instruction set of $(basename "$f"): other=[$other] sp/xzr-store/x18-29=$bad mov=$movs movz=$movz"; fi
+  done
+fi
+
 printf '\x73\x00\x00\x00' > "$T/bad1"; printf '\x13\x05\xf0' > "$T/bad2"
 for b in bad1 bad2; do
   if RUN="$ARM" "$D/rv2arm.sh" "$T/$b" > /dev/null 2>&1; then bad "$b accepted"; else ok "$b refused"; fi

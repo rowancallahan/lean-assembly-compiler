@@ -68,8 +68,9 @@ The compiler is itself such a code file (`B2.bin`), so the same shim runs both s
 ```
 On a machine that is not RISC-V, put `qemu-riscv64-static` in front of each command.
 
-## 8. What changes on ARM (`shim_arm.c`, for a future back end, untested)
-Same idea, other names: arguments in `x0..x3` instead of `a0..a3`; the return address lives in `x30`; the call is
+## 8. What changes on ARM (`shim_arm.c`; tested under qemu-aarch64 with `arm/test_arm.sh`)
+Same idea, other names: arguments in `x0..x3` instead of `a0..a3`, plus the work top in `x4` (the back end
+`Testing/nano/v2self/arm/rv2arm` maps RISC-V's `sp` to `x4` and never uses the ARM `sp`; the shim still sets `sp` too); the return address lives in `x30`; the call is
 `blr reg` (branch with link to register) instead of `jalr`, and a plain jump is `br`; the saved register used to park
 `sp` is `x19`. On Apple Silicon, executable memory must be requested with `MAP_JIT`, writing to it is switched on and
 off with `pthread_jit_write_protect_np`, and the cache call is `sys_icache_invalidate`.

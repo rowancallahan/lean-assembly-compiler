@@ -12,19 +12,20 @@ import Nano.V2Self.Proof.Machine.Call
 namespace ArmBlock
 open CallProbe Proven.Top
 
-/-! ## register map π (RV → A64; 31 = xzr in register forms, sp in imm/base forms) -/
+/-! ## register map π (RV → A64; 31 = xzr, used only as an ALU/compare operand; RV sp (x2) ↦ x4) -/
 def pi (r : Nat) : Nat :=
   match r with
-  | 0 => 31 | 1 => 30 | 2 => 31 | 10 => 0 | 11 => 1 | 12 => 2 | 13 => 3 | 28 => 12 | 29 => 13 | 30 => 10 | 31 => 11
+  | 0 => 31 | 1 => 30 | 2 => 4 | 10 => 0 | 11 => 1 | 12 => 2 | 13 => 3 | 28 => 12 | 29 => 13 | 30 => 10 | 31 => 11
   | 5 => 5 | 6 => 6 | 7 => 7 | 8 => 8 | 14 => 14 | 15 => 15 | _ => 99
-/-- RV registers that live in an A64 general register (not x0, not sp) -/
-def live (r : Nat) : Prop := pi r < 31 ∧ r ≠ 0 ∧ r ≠ 2
-/-- RV register usable as a source (mapped, or sp) / as a destination (mapped or x0, not sp) -/
-def rdOK (r : Nat) : Prop := r = 2 ∨ pi r < 32
-def wrOK (r : Nat) : Prop := r ≠ 2 ∧ pi r < 32
+/-- RV registers that live in an A64 general register (all mapped ones but x0) -/
+def live (r : Nat) : Prop := pi r < 31 ∧ r ≠ 0
+/-- RV register that rv2arm accepts (mapped, x0 included) -/
+def rdOK (r : Nat) : Prop := pi r < 32
+def wrOK (r : Nat) : Prop := pi r < 32
 
 /-! ## A64 words (64-bit forms), as in rv2arm -/
 def movz (d i : Nat) : Nat := 0xD2800000 + i * 2^5 + d
+def movk (d i h : Nat) : Nat := 0xF2800000 + h * 2^21 + i * 2^5 + d
 def addi (d n i : Nat) : Nat := 0x91000000 + i * 2^10 + n * 2^5 + d
 def subi (d n i : Nat) : Nat := 0xD1000000 + i * 2^10 + n * 2^5 + d
 def rr (c d n m : Nat) : Nat := c + m * 2^16 + n * 2^5 + d
@@ -32,53 +33,51 @@ def cmpR (n m : Nat) : Nat := 0xEB000000 + m * 2^16 + n * 2^5 + 31
 def mo (f : Int) (k : Nat) : Nat := (f % ((2 ^ k : Nat) : Int)).toNat
 def ldr (t n f : Nat) : Nat := 0xF9400000 + (f / 8) * 2^10 + n * 2^5 + t
 def str (t n f : Nat) : Nat := 0xF9000000 + (f / 8) * 2^10 + n * 2^5 + t
-def ldur (t n : Nat) (f : Int) : Nat := 0xF8400000 + mo f 9 * 2^12 + n * 2^5 + t
-def stur (t n : Nat) (f : Int) : Nat := 0xF8000000 + mo f 9 * 2^12 + n * 2^5 + t
 def ldrb (t n f : Nat) : Nat := 0x39400000 + f * 2^10 + n * 2^5 + t
 def strb (t n f : Nat) : Nat := 0x39000000 + f * 2^10 + n * 2^5 + t
 def bB (f : Int) : Nat := 0x14000000 + mo f 26
 def blB (f : Int) : Nat := 0x94000000 + mo f 26
 def bc (c : Nat) (f : Int) : Nat := 0x54000000 + mo f 19 * 2^5 + c
+def cbz (t : Nat) (f : Int) : Nat := 0xB4000000 + mo f 19 * 2^5 + t
 def brR (n : Nat) : Nat := 0xD61F0000 + n * 2^5
 def PAD : Nat := addi 16 16 0
 def aluC (op : Nat) : Nat :=
   match op with
   | 1 => 0x8B000000 | 2 => 0xCB000000 | 3 => 0x9B007C00 | 4 => 0x8A000000 | 5 => 0xAA000000
   | 6 => 0x9AC02000 | 7 => 0x9AC02400 | _ => 0xCA000000
-/-- imm/base operand of RV register r -/
-def base (r : Nat) : Nat := pi r
-/-- x16 := x[rs] + f -/
-def addr16 (rs : Nat) (f : Int) : Nat := if f < 0 then subi 16 (base rs) f.natAbs else addi 16 (base rs) f.toNat
-/-- sp copies (to x16 for operand a, x17 for b), and the operand registers -/
-def pre (a b : Nat) : List Nat := (if a = 2 then [addi 16 31 0] else []) ++ (if b = 2 then [addi 17 31 0] else [])
-def opA (a : Nat) : Nat := if a = 2 then 16 else pi a
-def opB (b : Nat) : Nat := if b = 2 then 17 else pi b
+/-- x16 := x[rs] + f (rs ≠ x0) -/
+def addr16 (rs : Nat) (f : Int) : Nat := if f < 0 then subi 16 (pi rs) f.natAbs else addi 16 (pi rs) f.toNat
 def pad4 (l : List Nat) : List Nat := l ++ List.replicate (4 - l.length) PAD
+/-- a store of x0 stores a zeroed x17 (xzr is never stored) -/
+def zpre (r : Nat) : List Nat := if r = 0 then [movz 17 0] else []
+def dat (r : Nat) : Nat := if r = 0 then 17 else pi r
+def cmpBr (c a b : Nat) (o : Int) : List Nat := [cmpR (pi a) (pi b), bc c (4 * o - 1)]
 
-/-- the real words of the block of J instruction `j` at J index `pc` (before padding) -/
+/-- the real words of the block of J instruction `j` (before padding) -/
 def body : J → List Nat
   | .addi rd rs imm =>
     if rd = 0 then [] else if rs = 0 then
-      (if imm < 0 then [movz 16 imm.natAbs, rr 0xCB000000 (pi rd) 31 16] else [movz (pi rd) imm.toNat])
-    else if imm < 0 then [subi (pi rd) (base rs) imm.natAbs] else [addi (pi rd) (base rs) imm.toNat]
+      (if imm < 0 then [movz (pi rd) (65536 - imm.natAbs), movk (pi rd) 65535 1, movk (pi rd) 65535 2, movk (pi rd) 65535 3]
+       else [movz (pi rd) imm.toNat])
+    else if imm < 0 then [subi (pi rd) (pi rs) imm.natAbs] else [addi (pi rd) (pi rs) imm.toNat]
   | .ld rd rs f =>
-    if rd = 0 then [] else if f % 8 = 0 ∧ 0 ≤ f ∧ f < 32768 then [ldr (pi rd) (base rs) f.toNat]
-    else if -256 ≤ f ∧ f < 256 then [ldur (pi rd) (base rs) f] else [addr16 rs f, ldr (pi rd) 16 0]
+    if rd = 0 then [] else if f % 8 = 0 ∧ 0 ≤ f ∧ f < 32768 then [ldr (pi rd) (pi rs) f.toNat]
+    else [addr16 rs f, ldr (pi rd) 16 0]
   | .sd r2 r1 f =>
-    if f % 8 = 0 ∧ 0 ≤ f ∧ f < 32768 then [str (pi r2) (base r1) f.toNat]
-    else if -256 ≤ f ∧ f < 256 then [stur (pi r2) (base r1) f] else [addr16 r1 f, str (pi r2) 16 0]
+    zpre r2 ++ if f % 8 = 0 ∧ 0 ≤ f ∧ f < 32768 then [str (dat r2) (pi r1) f.toNat] else [addr16 r1 f, str (dat r2) 16 0]
   | .lbu rd rs f =>
-    if rd = 0 then [] else if 0 ≤ f ∧ f < 4096 then [ldrb (pi rd) (base rs) f.toNat] else [addr16 rs f, ldrb (pi rd) 16 0]
-  | .sb r2 r1 f => if 0 ≤ f ∧ f < 4096 then [strb (pi r2) (base r1) f.toNat] else [addr16 r1 f, strb (pi r2) 16 0]
-  | .alu op rd a b => if rd = 0 then [] else pre a b ++ [rr (aluC op) (pi rd) (opA a) (opB b)]
-  | .slli rd rs sh =>
-    if rd = 0 then [] else (if rs = 2 then [addi 17 31 0] else []) ++ [movz 16 sh, rr 0x9AC02000 (pi rd) (opB rs) 16]
-  | .srli rd rs sh =>
-    if rd = 0 then [] else (if rs = 2 then [addi 17 31 0] else []) ++ [movz 16 sh, rr 0x9AC02400 (pi rd) (opB rs) 16]
-  | .beq a b o => pre a b ++ [cmpR (opA a) (opB b), bc 0 (4 * o - (pre a b).length - 1)]
-  | .bne a b o => pre a b ++ [cmpR (opA a) (opB b), bc 1 (4 * o - (pre a b).length - 1)]
-  | .bltu a b o => pre a b ++ [cmpR (opA a) (opB b), bc 3 (4 * o - (pre a b).length - 1)]
-  | .bgeu a b o => pre a b ++ [cmpR (opA a) (opB b), bc 2 (4 * o - (pre a b).length - 1)]
+    if rd = 0 then [] else if 0 ≤ f ∧ f < 4096 then [ldrb (pi rd) (pi rs) f.toNat] else [addr16 rs f, ldrb (pi rd) 16 0]
+  | .sb r2 r1 f =>
+    zpre r2 ++ if 0 ≤ f ∧ f < 4096 then [strb (dat r2) (pi r1) f.toNat] else [addr16 r1 f, strb (dat r2) 16 0]
+  | .alu op rd a b => if rd = 0 then [] else [rr (aluC op) (pi rd) (pi a) (pi b)]
+  | .slli rd rs sh => if rd = 0 then [] else [movz 16 sh, rr 0x9AC02000 (pi rd) (pi rs) 16]
+  | .srli rd rs sh => if rd = 0 then [] else [movz 16 sh, rr 0x9AC02400 (pi rd) (pi rs) 16]
+  | .beq a b o =>
+    if a = 0 ∧ b = 0 then [bB (4 * o)] else if b = 0 then [cbz (pi a) (4 * o)] else if a = 0 then [cbz (pi b) (4 * o)]
+    else cmpBr 0 a b o
+  | .bne a b o => cmpBr 1 a b o
+  | .bltu a b o => cmpBr 3 a b o
+  | .bgeu a b o => cmpBr 2 a b o
   | .jal rd o => if rd = 0 then [bB (4 * o)] else [PAD, PAD, PAD, blB (4 * o - 3)]
   | .jalr _ rs => [brR (pi rs)]
 
@@ -111,14 +110,15 @@ def codeA (C : List J) : List UInt8 := codeBytes ((C.map blockJ).flatten)
 
 /-- `RelA M C D K (pc, s) t`: A64 state t represents J state (pc, s) of program C.
 `D` = the data addresses (8-aligned cells of J memory: work block, input, output), `K` = the values of the
-registers the code must keep (x18..x29). Scratch x16/x17, NZCV and every other piece of machine state are free. -/
+registers the code must keep (x18..x29, and sp = register 31, which the blocks never touch; RV sp lives in x4).
+Scratch x16/x17, NZCV and every other piece of machine state are free. -/
 structure RelA (M : Machine) (C : List J) (D : Nat → Prop) (K : Nat → UInt64) (ps : Nat × St) (t : M.State) : Prop where
   cfg : M.configured t
   pc : (M.observe t).programCounter.toNat = ps.2.b + 16 * ps.1
   regs : ∀ r, live r → (M.observe t).register (pi r) = ps.2.x r
-  sp : (M.observe t).register 31 = ps.2.x 2
   zero : ps.2.x 0 = 0
   keep : ∀ r, 18 ≤ r → r ≤ 29 → (M.observe t).register r = K r
+  spKeep : (M.observe t).register 31 = K 31
   code : ∀ i (h : i < (codeA C).length), (M.observe t).memory (UInt64.ofNat (ps.2.b + i)) = some (codeA C)[i]
   mem : ∀ a k, D a → k < 8 → (M.observe t).memory (UInt64.ofNat (a + k)) = some ((ps.2.m a >>> (8 * k).toUInt64).toUInt8)
   dAl : ∀ a, D a → a % 8 = 0

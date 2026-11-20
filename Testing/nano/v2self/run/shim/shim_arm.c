@@ -1,4 +1,4 @@
-/* shim_arm: the same for AArch64 (macOS, Linux).  FOR THE FUTURE ARM BACK END, UNTESTED (the compiler emits RISC-V only).
+/* shim_arm: the same for AArch64 (macOS, Linux), for code from Testing/nano/v2self/arm/rv2arm (tested under qemu-aarch64).
    Usage: ./shim_arm CODE.bin < input > output.   Build: cc -O2 shim_arm.c -o shim_arm.   UNPROVEN GLUE. */
 #include <stdio.h>
 #include <sys/mman.h>
@@ -25,14 +25,15 @@ int main(int argc, char **argv) {
     pthread_jit_write_protect_np(1);
     sys_icache_invalidate(code, code_len);
 
-    /* x0 input, x1 its length, x2 work base, x3 output, sp = work top, x30 = return; our sp waits in x19.
+    /* x0 input, x1 its length, x2 work base, x3 output, x4 = sp = work top, x30 = return; our sp waits in x19.
+       (rv2arm code reads the work top from x4 and never uses sp; sp is still set, for code that reads it.)
        x0..x17 and x30 may be overwritten by the code; x18 (reserved by macOS) must not be touched by it. */
     register long x0 __asm__("x0") = (long)in, x1 __asm__("x1") = in_len;
     register long x2 __asm__("x2") = (long)work, x3 __asm__("x3") = (long)out;
-    long top = (long)work + WORK;
+    register long x4 __asm__("x4") = (long)work + WORK;
     __asm__ volatile("mov x19, sp\n mov sp, %[top]\n blr %[code]\n mov sp, x19"
-        : "+r"(x0), "+r"(x1), "+r"(x2), "+r"(x3) : [top] "r"(top), [code] "r"(code)
-        : "x4", "x5", "x6", "x7", "x8", "x9", "x10", "x11", "x12", "x13", "x14", "x15", "x16", "x17", "x19", "x30", "memory");
+        : "+r"(x0), "+r"(x1), "+r"(x2), "+r"(x3), "+r"(x4) : [top] "r"(x4), [code] "r"(code)
+        : "x5", "x6", "x7", "x8", "x9", "x10", "x11", "x12", "x13", "x14", "x15", "x16", "x17", "x19", "x30", "memory");
 
     fprintf(stderr, "shim_arm: status %ld, %ld output bytes\n", x0, x1);
     if ((x0 != 0 && x0 != 1) || x1 < 0 || x1 > OUT) return 1;
