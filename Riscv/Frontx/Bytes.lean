@@ -88,14 +88,14 @@ theorem storeC_exec {β : Type} (b : β) (X : List (BitVec 8)) (env : BEnv) :
     have := BExec.assign' (v := 4) (e := .var 4) (σ := ⟨env, [X, O]⟩) rfl
     simp only [BExp.denote] at this
     rw [show env.set 4 (env 4) = env from funext fun j => by simp [BEnv.set]; intro h; rw [h]] at this
-    simpa [encC, wrO_nil] using this
+    simp [encC, wrO_nil]; exact this
   | [(v, k, r)], o, O, ha, hk, hl, hO => by
     have hk' : 1 ≤ k ∧ k ≤ 8 := hk _ (List.mem_singleton_self _)
     have hv : env v = r b := ha _ (List.mem_singleton_self _)
     have hl' : o + k ≤ O.length := by simpa [encC, leN_length] using hl
     have := storeW_exec v (r b) X (k - 1) o 0 O env hv (by omega) hO (by omega)
     rw [show k - 1 + 1 = k by omega, Nat.pow_zero, Nat.div_one] at this
-    simpa [encC] using this
+    simp [encC]; exact this
   | (v, k, r) :: c2 :: cs, o, O, ha, hk, hl, hO => by
     have hk' : 1 ≤ k ∧ k ≤ 8 := hk _ (List.mem_cons_self ..)
     have hv : env v = r b := ha _ (List.mem_cons_self ..)

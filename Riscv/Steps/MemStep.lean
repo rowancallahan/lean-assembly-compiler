@@ -59,7 +59,7 @@ theorem storeBytes_le8 (m : Mem) (a : Nat) (x : BitVec 64) : storeBytes m a (le8
 set_option hygiene false in
 macro "mem_word_core" : tactic => `(tactic| (
   · intro s h hpc hi hQ
-    simp only [Proven.getX_eq] at hQ
+    try simp only [Proven.getX_eq] at hQ
     have hok' := hok; obtain ⟨_, _, _⟩ := hok'
     have hram := Proven.in_ram (by decide) hQ.1.1 hQ.1.2
     have hf := Proven.fetch_cfg h hpc hok hi (by decide)

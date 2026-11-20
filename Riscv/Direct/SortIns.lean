@@ -242,7 +242,7 @@ theorem ins_exec (xs arr0 : List (BitVec 8)) (σ : AState) (hh : σ.heap = [xs, 
       have k2 : σ₄.env 2 = env 2 := by
         rw [hex₄.env_keep (by decide)]; simp [env₃, AEnv.set]
       have e2 := toNat_inc (show (env 2).toNat < arr0.length by omega) (show arr0.length < 2 ^ 64 by omega)
-      refine ⟨_, .seq (.load (b := 1) (by simp) (by simpa using hi)) (.seq .assign (.seq .assign
+      refine ⟨_, .seq (.load (b := 1) (by simp) (by simp; exact hi)) (.seq .assign (.seq .assign
         (.seq hex₄ .assign))), ⟨?_, ?_, ?_⟩, ?_⟩
       · simp only [AEnv.set, Fin.reduceEq, if_false]; exact k1.trans h1
       · simp only [AEnv.set, if_true, AExp.denote, Op.eval, k2]; rw [e2]; omega

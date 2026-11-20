@@ -1849,7 +1849,7 @@ open MachineF Proven.Top.Alloc
 def stubEnv (env : BEnv) : BEnv := (((env.set 4 0).set 5 0).set 6 0).set hvar 0
 
 theorem stubEnv_lt4 (env : BEnv) {i : Nat} (h : i < 4) : stubEnv env i = env i := by
-  simp only [stubEnv, BEnv.set, hvar]; rw [if_neg (by omega), if_neg (by omega), if_neg (by omega), if_neg (by omega)]
+  simp only [stubEnv, BEnv.set]; rw [if_neg (by simp only [hvar]; omega), if_neg (by omega), if_neg (by omega), if_neg (by omega)]
 
 namespace MachineM
 variable {M : MachineM} {P : Prog} {bv : List Nat} {wb : Fin 8}

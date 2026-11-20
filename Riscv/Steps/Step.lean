@@ -74,6 +74,11 @@ theorem access0 {pc : BitVec 64} (h : pc.toNat % 4 = 0) : Sail.BitVec.access pc 
   have : pc[0] = false := by rw [BitVec.getElem_eq_testBit_toNat]; simp [Nat.testBit]; omega
   simp [Sail.BitVec.access, this]
 
+/-- bit 1 of a 4-aligned address (the short-circuit `<&&>` in `fetch` decides it before reading `Zca`) -/
+theorem access1 {pc : BitVec 64} (h : pc.toNat % 4 = 0) : Sail.BitVec.access pc 1 = 0#1 := by
+  have : pc[1] = false := by rw [BitVec.getElem_eq_testBit_toNat]; simp [Nat.testBit]; omega
+  simp [Sail.BitVec.access, this]
+
 theorem aligned_v {pc : BitVec 64} (h : pc.toNat % 4 = 0) : is_aligned_vaddr (.Virtaddr pc) 4 = true := by
   simp [is_aligned_vaddr, toNatInt_eq, Int.tmod_eq_emod]; omega
 
@@ -190,7 +195,7 @@ theorem fetch_ok (s : St) (a : PMA) (b : Bool) (pc : BitVec 64) (b0 b1 b2 b3 : B
     (m2 : s.mem[pc.toNat + 2]? = some b2) (m3 : s.mem[pc.toNat + 3]? = some b3)
     (hrvc : isRVC (BitVec.setWidth 16 (b3 ++ b2 ++ b1 ++ b0)) = false) :
     fetch () s = .ok (.F_Base (b3 ++ b2 ++ b1 ++ b0)) s := by
-  have := access0 hal; have := aligned_v hal; have := aligned_p hal
+  have := access0 hal; have := access1 hal; have := aligned_v hal; have := aligned_p hal
   have := in_ram (n := 4) (by decide) hlo hhi
   sail_eval [*, hartSupports, matching_pma_region, matching_pma_region_bits_range, override_PMA,
     Functions.not]
@@ -348,7 +353,7 @@ set_option hygiene false in
 /-- the `run_hart_active` part of `step_word` -/
 macro "step_word_core" : tactic => `(tactic| (
   · intro s h hpc hi hQ
-    simp only [Proven.getX_eq] at hQ
+    try simp only [Proven.getX_eq] at hQ
     have hok' := hok; obtain ⟨_, _, _⟩ := hok'
     have hf := Proven.fetch_cfg h hpc hok hi (by decide)
     have hd := Proven.dispatch_cfg h

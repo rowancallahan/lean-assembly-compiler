@@ -111,7 +111,7 @@ theorem br_ok {m : Mem} {regs : Nat → Val} {s : T.S} {q : Nat} {rest : List (B
   refine ⟨hR.Same d.ok d.keep hm hs, hs, fun ht => ⟨d.ok, ?_, hU⟩, fun hf => ⟨d.ok, ?_, hU⟩⟩
   · have hpc := d.hpc
     simp only [Base.getO] at hpc
-    rw [if_pos ht] at hpc
+    simp only [ht, if_true] at hpc
     cases k
     · have := tgt_fwd C.pc0 (q := q) (t := q + n) (Nat.le_add_right q n)
       rw [show q + n - q = n by omega] at this
@@ -121,7 +121,7 @@ theorem br_ok {m : Mem} {regs : Nat → Val} {s : T.S} {q : Nat} {rest : List (B
       rw [this] at hpc; simpa using hpc
   · have hpc := d.hpc
     simp only [Base.getO] at hpc
-    rw [if_neg (by rw [hf]; decide), next_add] at hpc
+    simp only [hf, Bool.false_eq_true, if_false] at hpc; rw [next_add] at hpc
     exact hpc
 
 theorem jW_len {q t : Nat} {o : EOp} (hj : T.jW q t = some o) : (T.encO o).length = T.lenJ := by

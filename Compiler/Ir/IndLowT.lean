@@ -53,7 +53,7 @@ theorem lowT_ok (hF0 : ∃ B, F.blocks.lookup 0 = some B ∧ B.params = [0, 1, 2
     obtain ⟨B, hB0, hp⟩ := hF0
     refine ⟨_, .seq (.seq x₁ x₂) (.jmp hB0 (by rw [hp]; rfl)), rfl, ml₁.trans ml₂, by rw [o₂, o₁], rfl, ch, ev self x l r a b ea, ev self x l r a b eb, ?_⟩
     simp only [hp, List.map, Arg.eval, setMany, upd, h1]
-    exact ⟨by simpa using hv, rfl, by simpa using r₂, rfl⟩
+    exact ⟨by simpa using hv, rfl, r₂, rfl⟩
   | ite c e₁ e₂ ihc ih₁ ih₂ =>
     intro self ks ρ n g m hok ht hn hρ hR hB hC
     simp only [E.okc, Bool.and_eq_true] at hok
@@ -185,12 +185,12 @@ theorem pg_ok (fi : FId) (xk : List Kd) (pg : Pg rk) (hF : P.funcs[fi]? = some (
   -- the default region: `ret 0`
   have retE : EndsAt P fi F (pg.arms.length + 1) 0 g m (.ret [.w 0] m) := by
     have := flatT_ok hF (.term (.ret [.i 0])) (g := g) (m := m) .ret _ okE
-    simpa using this
+    exact this
   cases c with
   | z =>
     have hz : g 0 = .w 0 := by generalize g 0 = v0 at h0; cases h0; rfl
     have := flatT_ok hF (entryTC pg.arms.length) (g := g) (m := m) (.iteF (by rw [nz_w hz]; rfl) .ret) _ ok0
-    exact ⟨.w 0, m, by simpa using this, MLe.refl m, rfl, by rw [sem_z]; exact RvK.dflt m rk⟩
+    exact ⟨.w 0, m, this, MLe.refl m, rfl, by rw [sem_z]; exact RvK.dflt m rk⟩
   | c t x l r =>
     obtain ⟨bk, c0, vl, vr, hv, hb, ht, e0, e1, e2, e3, rl, rr⟩ := h0.inv
     -- the four loads
@@ -238,15 +238,15 @@ theorem pg_ok (fi : FId) (xk : List Kd) (pg : Pg rk) (hF : P.funcs[fi]? = some (
       have hdr : r.depth < N := by simp [C.depth] at hc; omega
       have hC : Calls P fi xk (cnOf pg t x l r) l r := by
         refine ⟨fun ch a' b' v vb mm hv' hb' => ?_, fun c₁ c₂ a' b' v vb mm hv' hb' => ?_, hX⟩
-        · have := ihF (if ch then r else l) (by cases ch <;> simpa) a' b' _ mm (by simpa using hv') (regs0 v vb a').2.1
-            (by simpa using hb')
+        · have := ihF (if ch then r else l) (by cases ch <;> simpa) a' b' _ mm hv' (regs0 v vb a').2.1
+            hb'
           have e : pg.sem (if ch then r else l) a' b' = (cnOf pg t x l r).f ch a' b' := by cases ch <;> rfl
           rw [e] at this
           exact fret_returns hF hFp hFe this
         · have hd : ((if c₂ then C.rv else C.lv) (if c₁ then r else l)).depth < N + 1 - 1 := by
             have := depth_lv (if c₁ then r else l); have := depth_rv (if c₁ then r else l)
             cases c₁ <;> cases c₂ <;> simp at * <;> omega
-          have := ihF _ hd a' b' _ mm (by simpa using hv') (regs0 v vb a').2.1 (by simpa using hb')
+          have := ihF _ hd a' b' _ mm hv' (regs0 v vb a').2.1 hb'
           rw [← cnOf_g pg t x l r c₁ c₂ a' b'] at this
           exact fret_returns hF hFp hFe this
       have hR : Regs (cnOf pg t x l r) x l r a b g₁ m :=
@@ -275,7 +275,7 @@ theorem pg_ok (fi : FId) (xk : List Kd) (pg : Pg rk) (hF : P.funcs[fi]? = some (
       rw [sem_c, he]
       have retE' : EndsAt P fi F (pg.arms.length + 1) 0 g₁ m (.ret [.w 0] m) := by
         have := flatT_ok hF (.term (.ret [.i 0])) (g := g₁) (m := m) .ret _ okE
-        simpa using this
+        exact this
       exact ⟨.w 0, m, EndsAt.pre reach retE', MLe.refl m, rfl, RvK.dflt m rk⟩
 
 end Proven.Ir.IndLow

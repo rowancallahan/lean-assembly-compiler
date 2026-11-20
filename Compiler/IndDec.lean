@@ -202,7 +202,7 @@ theorem dDisp_skip {K : Nat} {t : Nat} (st : Nat) (ht : t < 256) :
       env 8 = BitVec.ofNat 64 t → CExec P K (dDisp st ss i) ⟨env, H, Wh⟩ ⟨env, H, Wh⟩
   | [], i, _, _, env, H, Wh, _ => by
     have := CExec.base (P := P) (k := K) (asg_exec 9 (vE 9) ⟨env, H, Wh⟩)
-    simpa [vE, BExp.denote, set_same] using this
+    simp [vE, BExp.denote, set_same] at this; exact this
   | fs :: ss, i, hi, hl, env, H, Wh, he => by
     simp only [List.length_cons] at hl
     have hn := CExec.base (P := P) (k := K) (asg_exec 9 (vE 9) ⟨env, H, Wh⟩)
@@ -426,7 +426,7 @@ theorem eDisp_skip {K : Nat} {t : Nat} (ht : t < 256) :
       env 9 = BitVec.ofNat 64 t → CExec P K (eDisp ss i) ⟨env, H, Wh⟩ ⟨env, H, Wh⟩
   | [], i, _, _, env, H, Wh, _ => by
     have := CExec.base (P := P) (k := K) (asg_exec 10 (vE 10) ⟨env, H, Wh⟩)
-    simpa [vE, BExp.denote, set_same] using this
+    simp [vE, BExp.denote, set_same] at this; exact this
   | fs :: ss, i, hi, hl, env, H, Wh, he => by
     simp only [List.length_cons] at hl
     have hn := CExec.base (P := P) (k := K) (asg_exec 10 (vE 10) ⟨env, H, Wh⟩)

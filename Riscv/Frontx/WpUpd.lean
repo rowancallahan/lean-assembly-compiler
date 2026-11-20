@@ -23,9 +23,9 @@ theorem arr_get_push {α : Type} [Inhabited α] (a : Array α) (x : α) (j : Nat
     · rw [if_neg h2]; simp [getElem!_def, Array.getElem?_push, h2]; rw [Array.getElem?_eq_none (by omega)]
 
 theorem AK.size_push : ∀ (k : AK) (a : k.T) (x : k.el.T), AK.size k (AK.push k a x) = AK.size k a + 1
-  | .ba, a, x => by show (a.data.push x).size = a.data.size + 1; simp
+  | .ba, a, x => by show (a.data.push x).size = a.data.size + 1; exact Array.size_push ..
   | .arr .u8, _, _ | .arr .u16, _, _ | .arr .u32, _, _ | .arr .u64, _, _ | .arr .nat, _, _
-  | .arr .bool, _, _ | .arr .int, _, _ => by simp [AK.size, AK.push]
+  | .arr .bool, _, _ | .arr .int, _, _ => by exact Array.size_push ..
 
 theorem AK.get_push : ∀ (k : AK) (a : k.T) (x : k.el.T) (j : Nat),
     AK.get k (AK.push k a x) j = if j < AK.size k a then AK.get k a j else if j = AK.size k a then x else default
@@ -350,7 +350,7 @@ theorem A.stP_ok (l : PLoc) (sc : Nat) {Γ : List Sl} {k : AK} (C : Nat) (pt : N
         rw [finE_append, fin1]
         simp only [pageCount_cons, List.length_append, List.length_cons, List.length_nil, words_length, npages_push]
         split <;> simp [finE, stepE] <;> omega
-      refine ⟨_, W3, .seq e1 (.seq .assign (by simpa [σ2, hw1] using hw)), by simp [σ2, hh1], rfl,
+      refine ⟨_, W3, .seq e1 (.seq .assign (by simp [σ2, hw1]; exact hw)), by simp [σ2, hh1], rfl,
         fun j a b c' d f => ?_, ?_⟩
       · simp only [set_ne (show j ≠ sc by omega)]
         rw [k3 j b c' d f (by omega)]; simp only [σ2, set_ne (show j ≠ sc by omega)]

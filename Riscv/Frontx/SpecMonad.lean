@@ -113,6 +113,10 @@ theorem mon_bind_et_ite [Monad m] (c : Prop) [Decidable c] (a b : ExceptT ε m �
 theorem mon_bind_et_bind [Monad m] (x : ExceptT ε m γ) (f : γ → ExceptT ε m α) (k : Except ε α → m β) :
     (((x >>= f : ExceptT ε m α)) >>= k : m β) = (ExceptT.run (x >>= f) >>= k) := rfl
 
+/-- Lean 4.34.1 `do`: a lifted action can be left bound in `m` without a `>>=` or `ite` around it -/
+theorem mon_bind_et_monadLift [Monad m] (x : m α) (k : Except ε α → m β) :
+    ((monadLift x : ExceptT ε m α) >>= k : m β) = (ExceptT.run (monadLift x : ExceptT ε m α) >>= k) := rfl
+
 /-- a `StateT` action applied to a state as a function (`block 0`): its `run` -/
 theorem mon_st_bind_app [Monad m] (x : StateT σ m α) (f : α → StateT σ m β) (s : σ) :
     (x >>= f) s = (x >>= f).run s := rfl
@@ -149,7 +153,7 @@ def monLemmas : List (Name × Bool) :=
    (``mon_st_run_modifyThe, false), (``mon_rd_run_modify, false), (``mon_rd_run_get, false),
    (``mon_rd_run_set, false), (``mon_rd_run_throwSt, false),
    (``ExceptT.run_bind, false), (``ExceptT.run_pure, false), (``ExceptT.run_throw, false),
-   (``mon_et_run_ite, false), (``mon_bind_et_ite, false), (``mon_bind_et_bind, false), (``mon_et_run_monadLift, false), (``mon_opt_map_some, false),
+   (``mon_et_run_ite, false), (``mon_bind_et_ite, false), (``mon_bind_et_bind, false), (``mon_bind_et_monadLift, false), (``mon_et_run_monadLift, false), (``mon_opt_map_some, false),
    (``mon_opt_map_bind, false), (``mon_opt_bind_pure, false), (``bind_pure, false),
    (``mon_st_bind_app, false), (``List.forIn_cons, false), (``List.forIn_nil, false),
    (``pure_bind, false), (``bind_assoc, false), (``Function.comp_apply, false), (``cond_eq_if, false)]

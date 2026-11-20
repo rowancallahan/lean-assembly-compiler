@@ -1,6 +1,8 @@
 /- Paged arrays (NOTES section 30), part 13: an LZ77 copy that reads the array it writes (the shape of lean-zip's
 `copyLoopGo`: `out := out.push out[out.size - distance]`), after a prefix taken with `ByteArray.extract`. -/
 import Riscv.Frontx.WpEx
+-- Lean 4.34.1: as WpEx (instance arguments of reflected `decide` conditions)
+set_option backward.isDefEq.respectTransparency false
 
 set_option linter.unusedVariables false
 set_option linter.unusedSimpArgs false

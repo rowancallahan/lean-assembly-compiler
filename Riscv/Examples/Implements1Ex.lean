@@ -67,7 +67,7 @@ theorem mapK_exec (K g : Mach.BExp) (f : BitVec 8 → BitVec 8)
       have hx : (env 5).toNat < xs.length := by omega
       have ho : (env 5).toNat < out.length := by omega
       have e5 := toNat_inc (show (env 5).toNat < m by omega) (show m < 2 ^ 64 by omega)
-      refine ⟨_, .seq (.load (by simp) (by simpa using hx))
+      refine ⟨_, .seq (.load (by simp) (by simp; exact hx))
         (.seq (.store (by simp) (by simp [Mach.BEnv.set, Mach.BExp.denote]; omega)) .assign), ⟨?_, ?_, ?_, ?_⟩, ?_⟩
       all_goals simp only [Mach.BEnv.set, Mach.BExp.denote, Op.eval]
       all_goals simp only [show (5 : Nat) ≠ 6 by decide, show (4 : Nat) ≠ 5 by decide,
@@ -174,7 +174,7 @@ theorem sumP_exec (σ : Mach.BState) (xs out : List (BitVec 8)) (hh : σ.heap = 
     (fun ⟨env, heap, wheap⟩ ⟨hh, h1, hle, hs⟩ hc => by
       dsimp only at hh h1 hle hs; subst hh
       simp only [Mach.BExp.denote, ult_ne, h1, toNat_ofNat_lt hn] at hc
-      refine ⟨_, .seq (.load (by simp) (by simpa using hc)) (.seq .assign .assign), ?_⟩
+      refine ⟨_, .seq (.load (by simp) (by simp; exact hc)) (.seq .assign .assign), ?_⟩
       have e5 := toNat_inc hc hn
       refine ⟨⟨rfl, ?_, ?_, ?_⟩, ?_⟩
       all_goals simp only [Mach.BEnv.set, Mach.BExp.denote, Op.eval]
@@ -233,7 +233,7 @@ alignment); a variable-length result, so its length is returned in `a1` (`retLen
 theorem take_implements1 (k : Nat) (hk : k < 2 ^ 64) :
     Implements1Raw (takeCode1 k) (fun xs => xs.take k) (fun _ => 15) (retLen := true) := by
   refine implements1_of_exec encRaw encRaw _ 0 (by omega) _ (take_wf k) (fun _ => 0) (fun _ => 15)
-    (fun n => by dsimp only; omega) _ true ?_
+    (fun n => by (try dsimp only); omega) _ true ?_
   intro a out tbl env h1 h8 hmax hlt hout hol htl
   simp only [encRaw] at h1 hlt hout ⊢
   have hK : (Mach.BExp.denote env (.const (BitVec.ofNat 64 k))).toNat = k := by
@@ -256,7 +256,7 @@ theorem take_implements1 (k : Nat) (hk : k < 2 ^ 64) :
 /-- **`List.map (· + 1)`** in `Implements1` form -/
 theorem inc_implements1 : Implements1Raw incCode1 (List.map (· + 1)) (fun _ => 15) := by
   refine implements1_of_exec encRaw encRaw _ 0 (by omega) _ inc_wf (fun _ => 0) (fun _ => 15)
-    (fun n => by dsimp only; omega) _ false ?_
+    (fun n => by (try dsimp only); omega) _ false ?_
   intro a out tbl env h1 h8 hmax hlt hout hol htl
   simp only [encRaw] at h1 hlt hout ⊢
   have hK : (Mach.BExp.denote env (.var 1)).toNat = a.length := by
@@ -280,7 +280,7 @@ theorem length_enc64 (w : BitVec 64) : (Proven.enc w).length = 8 := leN_length 8
 /-- **The byte sum** (a 64-bit word, `enc` = 8 little-endian bytes) in `Implements1` form -/
 theorem sum_implements1 : Implements1With encRaw Proven.enc sumCode1 sumBytesU (fun _ => 15) := by
   refine implements1_of_exec encRaw Proven.enc _ 0 (by omega) _ sum_wf (fun _ => 0) (fun _ => 15)
-    (fun n => by dsimp only; omega) _ false ?_
+    (fun n => by (try dsimp only); omega) _ false ?_
   intro a out tbl env h1 h8 hmax hlt hout hol htl
   simp only [encRaw, length_enc64] at h1 hlt hout ⊢
   obtain ⟨σ', out', hex, hh, ht, hd⟩ := sumP_exec ⟨env, [a.map (·.toBitVec), out], [tbl]⟩ (a.map (·.toBitVec)) out

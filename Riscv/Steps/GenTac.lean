@@ -255,7 +255,7 @@ set_option hygiene false in
 `hlow : f.extractLsb' 0 2 = 0` must be provable by `gfield` -/
 macro "gstep_core" : tactic => `(tactic| (
   · intro s h hpc hi hQ
-    simp only [Proven.getX_eq] at hQ
+    try simp only [Proven.getX_eq] at hQ
     have hok' := hok; obtain ⟨_, _, _⟩ := hok'
     have hf := Proven.fetch_cfg h hpc hok hi (Proven.G.rvc_or (by decide) (by first | with_reducible exact Proven.G.fR_low2 .. | with_reducible exact Proven.G.fI_low2 .. | with_reducible exact Proven.G.fSh_low2 .. | with_reducible exact Proven.G.fU_low2 .. | with_reducible exact Proven.G.fS_low2 .. | with_reducible exact Proven.G.fB_low2 .. | with_reducible exact Proven.G.fJ_low2 ..))
     rw [Proven.bytes_eq] at hf
@@ -274,8 +274,9 @@ macro "gstep_core" : tactic => `(tactic| (
       Proven.G.fR_rd, Proven.G.fR_rs1, Proven.G.fR_rs2, Proven.G.fR_zero, Proven.G.fR_rdne, Proven.G.fR_known, Proven.G.fR_mismatch, Proven.G.fR_ne, Proven.G.fI_rd, Proven.G.fI_rs1, Proven.G.fI_imm, Proven.G.fI_zero, Proven.G.fI_rdne, Proven.G.fI_known, Proven.G.fI_mismatch, Proven.G.fI_ne, Proven.G.fSh_rd, Proven.G.fSh_rs1, Proven.G.fSh_sh, Proven.G.fSh_zero, Proven.G.fSh_rdne, Proven.G.fSh_known, Proven.G.fSh_mismatch, Proven.G.fSh_ne, Proven.G.fU_rd, Proven.G.fU_imm, Proven.G.fU_zero, Proven.G.fU_rdne, Proven.G.fU_known, Proven.G.fU_mismatch, Proven.G.fU_ne, Proven.G.fS_rs1, Proven.G.fS_rs2, Proven.G.fS_hi, Proven.G.fS_lo, Proven.G.fS_zero, Proven.G.fS_known, Proven.G.fS_mismatch, Proven.G.fS_ne, Proven.G.fB_rs1, Proven.G.fB_rs2, Proven.G.fB_zero, Proven.G.fB_known, Proven.G.fB_mismatch, Proven.G.fB_ne, Proven.G.fJ_rd, Proven.G.fJ_zero, Proven.G.fJ_rdne, Proven.G.fJ_known, Proven.G.fJ_mismatch, Proven.G.fJ_ne,
       Proven.sail_ext, Proven.setw_ext,
       Proven.rX_bits_ok, Proven.wX_bits_ok, Proven.G.reg_matches, Proven.G.reg_back, Proven.xpresent_insert]
-    all_goals simp [Proven.stepF, Proven.update0_even, Proven.ze32, Proven.boff, Proven.joff, Proven.G.update0_evenB, *]
-  all_goals simp))
+    -- Lean 4.34.1: `if c = true then ..` sides can differ only in the `Decidable` instance, which simp's rfl check misses
+    all_goals (simp [Proven.stepF, Proven.update0_even, Proven.ze32, Proven.boff, Proven.joff, Proven.G.update0_evenB, *] <;> rfl)
+  all_goals (simp <;> rfl)))
 
 open Lean Meta Elab Tactic in
 /-- `step_word` for words with symbolic fields (same interface) -/

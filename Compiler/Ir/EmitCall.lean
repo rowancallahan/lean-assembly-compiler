@@ -77,7 +77,7 @@ theorem zeros_ok {m : Mem} {fb n : Nat} {v : BitVec 64} {M : Nat → Option (Bit
         C.Above (fb + 8 * (n + 1)) s s'
   | 0, j, s, q, rest, hjk, hA, hR, h7, hfit, hn, _ => by
     subst hjk
-    exact T.runsTo_of ⟨by simpa [Target.len, Target.words] using hA, by simpa using hR, fun _ => rfl, Above.refl _ _⟩
+    exact T.runsTo_of ⟨by simp only [Target.len, Target.words, List.range_zero, List.map_nil, List.flatMap_nil, List.length_nil, Nat.add_zero]; exact hA, by simpa using hR, fun _ => rfl, Above.refl _ _⟩
   | k + 1, j, s, q, rest, hjk, hA, hR, h7, hfit, hn, hin => by
     have hin' : InW C.W q (T.encO (.w (.stS j R7)) ++
         (T.words ((List.range k).map fun i => EOp.w (.stS (j + 1 + i) R7)) ++ rest)) := by

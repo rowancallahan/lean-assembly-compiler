@@ -104,7 +104,7 @@ theorem first {s : St} {pc : BitVec 64} {w : BitVec 32} {ws} (hA : core.At s pc 
   · obtain ⟨h1, h2, h3⟩ := hA.codeOK
     have h3' : pc.toNat + 4 * (ws.length + 1) ≤ 0x100000000 := h3
     exact ⟨h1, h2, by omega⟩
-  · have := hA.code 0 (by simp); simpa using this
+  · have := hA.code 0 (by simp); simp at this; exact this
 
 theorem first1 {s : St} {pc : BitVec 64} {w : BitVec 32} (hA : core.At s pc [w]) :
     Cfg s ∧ s.regs.get? .PC = some pc ∧ pcOK pc ∧ instrAt s pc w := first hA
@@ -209,7 +209,7 @@ theorem law_bin {op : Op} {d a b : Reg} {s : St} {pc : BitVec 64} (hd : d.val < 
     rw [show pc + 4 + 4 = next pc 2 from next_add pc 1 1] at hn₂
     refine runsTo_next hn₁ (run1 hn₂ ⟨Core.Done.trans _ d₁ (ofNext hn₂ (.inr ⟨a, rfl⟩)), ?_, (memOf hn₂).trans (memOf hn₁)⟩)
     have := Core.Set1.trans _ (set1Of hn₁) (set1Of hn₂)
-    simpa [Op.raw, Op.eval, xor_eq_zero] using this
+    simp [Op.raw, Op.eval, xor_eq_zero] at this ⊢; exact this
   · rw [ite_neg he] at hA ⊢
     obtain ⟨h, hpc, hok, hi⟩ := first1 hA
     obtain ⟨s₁, hn₁⟩ := step_op h hpc hok op a.val hd hi

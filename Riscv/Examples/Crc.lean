@@ -292,8 +292,7 @@ theorem mainLoop_exec (σ : Mach.BState) (xs : List UInt8) (out : List (BitVec 8
       · show (e4 4).toNat ≤ _; simp only [e4, Mach.BEnv.set, ite_true]; omega
       · show e4 5 = _; simp only [e4, e3, Mach.BEnv.set, show (5 : Nat) ≠ 4 by decide, if_false, ite_true]
         simp only [ite_true, hinc, foldl_take_succ _ _ hc, hcd]
-      · show xs.length - (e4 4).toNat < xs.length - (env 4).toNat
-        simp only [e4, Mach.BEnv.set, ite_true]; omega)
+      · simp only [e4, Mach.BEnv.set, ite_true]; omega)
     (fun ⟨env, heap, wheap⟩ ⟨hh', hw', h1', hle, h5'⟩ hc => by
       dsimp only at hh' hw' h1' hle h5' ⊢
       have : ¬ (env 4).toNat < xs.length := fun hlt =>
@@ -348,7 +347,7 @@ theorem crc_wf : rvF.wfB 0 [0, 3] [2] crcP := by
 `crc32`, work space `2048 + 15` bytes (the table, the frame cell saving `gp`, alignment). -/
 theorem crc32_implements1 : Implements1With encRaw enc32 crcCode crc32 (fun _ => 2063) := by
   refine implements1_of_exec encRaw enc32 crc32 0 (by omega) crcP crc_wf (fun _ => 256) (fun _ => 2063)
-    (fun n => by dsimp only; omega) _ false ?_
+    (fun n => by (try dsimp only); omega) _ false ?_
   intro a out tbl env h1 h8 hmax hlt hout hol htl
   have hl4 : (enc32 (crc32 a)).length = 4 := leN_length 4 _
   simp only [encRaw, hl4] at h1 hlt hout htl ⊢

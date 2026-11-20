@@ -259,7 +259,7 @@ theorem w_bin {op : Op} {d a b : Reg} {s : St} {pc : BitVec 64} (hA : core.At s 
     refine two hA (fun h hpc hok hi => step_xor h hpc hok _ _ _ hi) fun s₁ pc₁ e₁ h hpc hok hi => ?_
     have := step_sltiu h hpc hok (phys d) (phys d) 1 hi
     rw [e₁, sltiu1] at this
-    simpa only [Op.eval, xor_eq_zero] using this
+    simp only [xor_eq_zero] at this; exact this
   · rw [ite_neg he] at hA ⊢
     exact one hA fun h hpc hok hi => step_rop h hpc hok op he _ _ _ (phys_ne0 d) hi
 
@@ -305,7 +305,7 @@ theorem w_bini {op : Op} {d a : Reg} {c : BitVec 64} {s : St} {pc : BitVec 64} (
   · refine two hA (fun h hpc hok hi => step_xori h hpc hok _ _ _ hi) fun s₁ pc₁ e₁ h hpc hok hi => ?_
     have := step_sltiu h hpc hok (phys d) (phys d) 1 hi
     rw [e₁, sltiu1, fits12_eq hc] at this
-    simpa only [Op.eval, xor_eq_zero] using this
+    simp only [xor_eq_zero] at this; exact this
 
 theorem w_lbu {d a : Reg} {off : BitVec 64} {s : St} {pc : BitVec 64} {v : BitVec 8} (ho : fits12 off = true)
     (hA : core.At s pc (wenc (.lbu d a off))) (hr : core.inRAM (core.get s a + off).toNat 1)

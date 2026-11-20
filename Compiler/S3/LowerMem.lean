@@ -46,7 +46,7 @@ theorem RepL.get {m : Ir.Mem} : ∀ {vs : List V} {c : Nat}, RepL m vs c → ∀
 theorem RepL.of_get {m : Ir.Mem} : ∀ {vs : List V} {c : Nat}, (∀ k (hk : k < vs.length),
     ∃ x, m.cells[c + k]? = some (some x) ∧ Rep m vs[k] x) → RepL m vs c
   | [], _, _ => trivial
-  | v :: vs, c, h => ⟨by simpa using h 0 (by simp), RepL.of_get fun k hk => by
+  | v :: vs, c, h => ⟨h 0 (by simp), RepL.of_get fun k hk => by
       obtain ⟨x, hx, hr⟩ := h (k + 1) (by simp; omega)
       exact ⟨x, by rw [show c + 1 + k = c + (k + 1) by omega]; exact hx, by simpa using hr⟩⟩
 

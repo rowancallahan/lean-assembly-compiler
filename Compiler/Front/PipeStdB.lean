@@ -215,8 +215,8 @@ theorem msortB_exec (s0 : Nat) (hs0 : s0 = 0 ∨ s0 = 2) {A0 J0 out scr : List (
   have hl : (tbs cur).length = m := by simp [hm]
   have hS : H0[s0]'(by simp [H0]; omega) = tbs cur := by
     rcases hs0 with rfl | rfl
-    · simpa using hsrc
-    · simpa using hsrc
+    · exact hsrc
+    · exact hsrc
   obtain ⟨σ', hex, T, hT, hh'⟩ := msortG_mergeSort s0 1 2 (by omega) (by decide) H0 (tbs cur)
     (by simp [H0]; omega) (by simp [H0]) (by simp [H0]) hS (by simp [H0, hl]; omega) (by simp [H0, hl]; omega)
     ⟨env, H0⟩ rfl (by show env 1 = _; rw [h1, hl]) (by rw [hl]; exact hn)
