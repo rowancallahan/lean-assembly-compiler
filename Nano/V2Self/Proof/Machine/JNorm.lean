@@ -1,7 +1,16 @@
-/- Normal jal offsets: `norm` replaces a jal offset `o` by `jw o`, its value modulo 2^19 in [−2^18, 2^18).  Gen's words
-do not change (`encG_norm`: the J-type immediate keeps 21 bits of `4·o`), and safe runs do not change (`SafeX` bounds
-every executed jal by ±2^18, where `norm` is the identity: `sstarX_norm`).  So Gen's program may be taken with every
-instruction `JOK` (GoodX, jal offsets in ±2^18), what a byte translator such as rv2arm needs to read it back. -/
+/- Normal jal offsets: `norm` replaces a jal offset `o` by `jw o`, its value modulo 2^19 in [−2^18, 2^18).
+
+PROOF NOTES.
+* Why Gen's words do not change (`encG_norm`): `encG (.jal rd o) = g5 rd (iu (4·o))`. `g5` reads only bits 1..20
+  of its immediate v, through `(v >>> 20) &&& 1`, `(v >>> 1) &&& 1023`, `(v >>> 11) &&& 1` and `(v >>> 12) &&& 255`.
+  Since `jw o ≡ o (mod 2^19)`, `4·jw o ≡ 4·o (mod 2^21)`, so those four fields agree, each by `toNat` and omega.
+* Why safe runs do not change (`getN`, `safeX_norm`, `sstarX_norm`): `SafeX K C (pc, s)` for a jal requires
+  `−2^18 ≤ o < 2^18` (JLay.SafeX), and on that range `jw o = o` (`jw_id`). So at every state of an `SStarX` run,
+  `(C.map norm)[pc]? = C[pc]?`, with the same `SafeX` (the length is unchanged) and the same `step`.
+* What this buys: every instruction of `C.map norm` is `JOK` (`jok_norm`: `GoodX` ∧ jal offset in [−2^18, 2^18)).
+  That is the range in which rv2arm's decoder (21-bit J-type immediate) reads the offset back exactly. Gen itself
+  refuses jumps beyond ±1 MiB (C.g14), but that check is not exported by the Gen proof; this route needs no layout
+  lemma. `GenMainN.gen_mainN` = `gen_main` for `C.map norm`. -/
 import Nano.V2Self.Proof.Machine.ArmRA
 namespace SimW
 open CallProbe
