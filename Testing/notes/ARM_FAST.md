@@ -23,6 +23,28 @@ Expected result: ARM day-to-day loop = restore 42 MB, or build the core in 4.5 m
 checking for the core layer (measured file times, serial). The glue layer adds an estimated 2 to 3 minutes against
 cached full-model oleans.
 
+### 0.1 Addendum: if no cache of the full model is wanted (lead's input, read after the first version)
+
+The lead's point: GitHub holds a multi-GB cache badly, so a slice that compiles from scratch in minutes should weigh
+most. The slice does that (40k lines, 34 small modules, 4.5 min, §1.2), and it then moves to rank 1. The limit is
+that `stepModel` itself is not in the slice (§3), so one obligation still needs the full model. Confine it:
+
+* State the glue as a hypothesis over core constants. Let `GlueLaws (step : SailM Unit) : Prop` say, for each
+  instruction form: if the word at the PC matches the form's opcode bits, then `step` equals fetch, then that form's
+  `decode_*` function on the prepared state, then cycle end (the statement of `step_ok` composed with `dec_*sym`).
+  Every name in it is in the core.
+* Prove everything else, up to the final theorem, as `GlueLaws step → …` for an arbitrary `step`. That whole tree
+  builds from scratch in minutes with no cache.
+* One file, `Arm/Glue.lean`, imports the full model and proves `GlueLaws stepModel`, and a last file applies it. Only
+  these two need the full model. They change only when the model or the instruction list changes, so they can be
+  checked on a big box or in CI, not in the edit loop.
+
+Sound: the unconditional theorem exists only where `GlueLaws stepModel` is proved against the real model. The
+conditional theorems are true as stated and cannot be mistaken for it, provided the axioms file prints the final
+theorem only from the full build.
+Cost: about 1 day on top of options 2 and 3. Size of the full-model cache if it is kept at all: estimated 250 MB
+compressed (3 files under 100 MB), not multi-GB, but that is extrapolated and unverified (§8).
+
 ## 1. Measurements
 
 ### 1.1 What the 15 instructions reach (static)
