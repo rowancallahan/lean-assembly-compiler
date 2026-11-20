@@ -130,15 +130,15 @@ def y5 : Nat → Buf → Buf
 
 def d1 : UInt64 := 64
 def d2 : UInt64 := 12288
-def d3 : UInt64 := d1 + d2
+def d3 : UInt64 := 12352
 def d4 : UInt64 := 4096
-def d5 : UInt64 := d3 + d4
+def d5 : UInt64 := 16448
 def d6 : UInt64 := 131072
-def d7 : UInt64 := d5 + d6
+def d7 : UInt64 := 147520
 def d8 : UInt64 := 32768
-def d9 : UInt64 := d7 + d8
+def d9 : UInt64 := 180288
 def d10 : UInt64 := 4096
-def d11 : UInt64 := d9 + d10 + 1024
+def d11 : UInt64 := 185408
 def d12 : UInt64 := 4096
 def d13 : UInt64 := 16384
 def d14 : UInt64 := 1024

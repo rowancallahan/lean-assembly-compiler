@@ -312,10 +312,6 @@ theorem call_16 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.
     DenT cx (.call 16 []) env (C.d1) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec16 cx.inp) rfl
   exact DenT.call hF DenP.nil (hS )
-theorem call_17 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 17 < n) :
-    DenT cx (.call 17 []) env (C.d2) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec17 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
 theorem call_18 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 18 < n) :
     DenT cx (.call 18 []) env (C.d3) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec18 cx.inp) rfl
@@ -328,17 +324,9 @@ theorem call_20 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.
     DenT cx (.call 20 []) env (C.d5) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec20 cx.inp) rfl
   exact DenT.call hF DenP.nil (hS )
-theorem call_21 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 21 < n) :
-    DenT cx (.call 21 []) env (C.d6) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec21 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
 theorem call_22 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 22 < n) :
     DenT cx (.call 22 []) env (C.d7) := by
   obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec22 cx.inp) rfl
-  exact DenT.call hF DenP.nil (hS )
-theorem call_23 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 23 < n) :
-    DenT cx (.call 23 []) env (C.d8) := by
-  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec23 cx.inp) rfl
   exact DenT.call hF DenP.nil (hS )
 theorem call_24 {cx : Ctx} {env : List W} {n : Nat} (G : Good (specs cx.inp) cx.defs n) (hi : 24 < n) :
     DenT cx (.call 24 []) env (C.d9) := by

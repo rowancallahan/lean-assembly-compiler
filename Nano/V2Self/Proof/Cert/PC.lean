@@ -45,23 +45,23 @@ def b16 : Nd := (.const 64)
 def d16 : DefA := { id := 16, npw := 0, nslots := 0, kind := 0, nres := 1, body := b16 }
 def b17 : Nd := (.const 12288)
 def d17 : DefA := { id := 17, npw := 0, nslots := 0, kind := 0, nres := 1, body := b17 }
-def b18 : Nd := (.bin 1 (.call 16 []) (.call 17 []))
+def b18 : Nd := (.const 12352)
 def d18 : DefA := { id := 18, npw := 0, nslots := 0, kind := 0, nres := 1, body := b18 }
 def b19 : Nd := (.const 4096)
 def d19 : DefA := { id := 19, npw := 0, nslots := 0, kind := 0, nres := 1, body := b19 }
-def b20 : Nd := (.bin 1 (.call 18 []) (.call 19 []))
+def b20 : Nd := (.const 16448)
 def d20 : DefA := { id := 20, npw := 0, nslots := 0, kind := 0, nres := 1, body := b20 }
 def b21 : Nd := (.const 131072)
 def d21 : DefA := { id := 21, npw := 0, nslots := 0, kind := 0, nres := 1, body := b21 }
-def b22 : Nd := (.bin 1 (.call 20 []) (.call 21 []))
+def b22 : Nd := (.const 147520)
 def d22 : DefA := { id := 22, npw := 0, nslots := 0, kind := 0, nres := 1, body := b22 }
 def b23 : Nd := (.const 32768)
 def d23 : DefA := { id := 23, npw := 0, nslots := 0, kind := 0, nres := 1, body := b23 }
-def b24 : Nd := (.bin 1 (.call 22 []) (.call 23 []))
+def b24 : Nd := (.const 180288)
 def d24 : DefA := { id := 24, npw := 0, nslots := 0, kind := 0, nres := 1, body := b24 }
 def b25 : Nd := (.const 4096)
 def d25 : DefA := { id := 25, npw := 0, nslots := 0, kind := 0, nres := 1, body := b25 }
-def b26 : Nd := (.bin 1 (.bin 1 (.call 24 []) (.call 25 [])) (.const 1024))
+def b26 : Nd := (.const 185408)
 def d26 : DefA := { id := 26, npw := 0, nslots := 0, kind := 0, nres := 1, body := b26 }
 def b27 : Nd := (.const 4096)
 def d27 : DefA := { id := 27, npw := 0, nslots := 0, kind := 0, nres := 1, body := b27 }
