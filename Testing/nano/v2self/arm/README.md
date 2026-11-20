@@ -27,6 +27,7 @@ Quick start (all on ARM; Mac native, Linux via qemu-aarch64):
 ./compile.sh prog.lean > prog.arm          # compile a Lean program to ARM code
 ./run.sh prog.arm input.txt output.txt     # run it (prog.lean also works: compiles first)
 ./try_arm.sh                               # self-check + all examples
+./cross_check.sh                           # Linux: RISC-V and ARM (QEMU) build each other's compiler; all = self-compile
 ./try_arm.sh prog.lean input.txt           # compile + run, print the output as hex and as text
 ```
 `output.txt` from `run.sh` is the raw output bytes, so `cat output.txt` shows text output directly; `xxd output.txt`
