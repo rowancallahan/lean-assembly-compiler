@@ -110,7 +110,7 @@ theorem gcdProg_exec (σ : Env) : ∃ σ', Exec gcdProg σ σ' ∧ σ' 0 = gcdSu
       rw [← hI, gcdSub.eq_def]
       by_cases ha : τ 0 = 0
       · simp [ha]
-      · have hb : τ 1 = 0 := by simp [Exp.denote] at hc; exact hc ha
+      · have hb : τ 1 = 0 := by have ha' : ¬ τ 0 = 0#64 := ha; simp [Exp.denote, ha'] at hc; exact hc
         simp [ha, hb])
     σ rfl
   exact ⟨_, .seq hl .assign, by simp [Env.set, Exp.denote, Op.eval, hq]⟩
