@@ -21,7 +21,7 @@ ARM_ENV = dict(ENV, RUN=' '.join(['qemu-aarch64-static', str(W / 'shim_arm'), st
 NANORUN = [str(W / 'nanorun_asan')]
 RV = ['qemu-riscv64-static', str(W / 'shim_rv')]
 ARM = ['qemu-aarch64-static', str(W / 'shim_arm')]
-FOUND, CASE = W / 'found', W / 'case'
+FOUND, CASE = W / 'found', W / f'case-{SEED}'      # per-process scratch: two fuzzers must not share files
 CASE.mkdir(parents=True, exist_ok=True)
 rng = random.Random(SEED)
 stats = Counter()
@@ -112,14 +112,18 @@ def case(src, inputs):
     arm.write_bytes(out)
     arm_b = out
     for inp in inputs:
-        nr = nano(code, inp)
-        sr_rv = shim(RV + [str(code)], inp)
-        sr_arm = shim(ARM + [str(arm)], inp)
-        for name, sr in (('rv', sr_rv), ('arm', sr_arm)):
-            v = verdict(nr, sr, inp)
-            stats[f'{name}:{v}'] += 1
-            if v not in ('ok', 'nanorun-refused', 'known-input-2^20'):
-                record(f'{name}-{v}', src, code_b, arm_b, inp, nr, sr_rv, sr_arm)
+        sr_rv = shim(RV + [str(code)], inp)                # primary RISC-V reference
+        sr_arm = shim(ARM + [str(arm)], inp)               # primary ARM reference
+        nr = nano(code, inp)                               # third opinion
+        if sr_rv != sr_arm and not (len(inp) == CAP and sr_rv[0] == 2):
+            stats['arm-vs-rv:DIFF'] += 1
+            record('arm-vs-rv', src, code_b, arm_b, inp, nr, sr_rv, sr_arm)
+        else:
+            stats['arm-vs-rv:ok'] += 1
+        v = verdict(nr, sr_rv, inp)
+        stats[f'rv-vs-nanorun:{v}'] += 1
+        if v not in ('ok', 'nanorun-refused', 'known-input-2^20'):
+            record(f'rv-vs-nanorun-{v}', src, code_b, arm_b, inp, nr, sr_rv, sr_arm)
 
 
 def mutate(s):

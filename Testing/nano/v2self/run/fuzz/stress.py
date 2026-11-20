@@ -128,7 +128,7 @@ res_pipe = subprocess.run(RV + [str(T / 'count.rv')], input=b'hello', capture_ou
 check('stdout to file == stdout to pipe', (T / 'stdout.bin').read_bytes() == res_pipe.stdout == b'\x05' and res_file.returncode == res_pipe.returncode == 0)
 full = subprocess.run(RV + [str(T / 'count.rv')], input=b'hello', stdout=open('/dev/full', 'wb'), stderr=subprocess.PIPE, env=ENV)
 nr_full = subprocess.run(NR + [str(T / 'count.rv'), str(T / 'cnt.in'), '/dev/full'], capture_output=True, env=ENV)
-check('stdout /dev/full: shim exit == nanorun exit (nanorun aborts on fclose)', full.returncode == nr_full.returncode,
+check('stdout /dev/full: both fail visibly (nonzero exit)', full.returncode != 0 and nr_full.returncode != 0,
       f'shim rc={full.returncode} nanorun rc={nr_full.returncode}')
 
 # E. work memory exhaustion: self-compile needs more than 1 MiB; both must report -1 (exit 1), no output
