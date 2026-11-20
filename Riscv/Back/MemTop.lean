@@ -102,7 +102,7 @@ theorem memRaw {P : Prog} {res main : Nat} (hwf : WfMem P res main) (hP : progCl
     · show 8 * (NS + 1) ≤ work.base; simp only [NS]; omega
   have hra' : getX s 1 = ra := getX_of (h.x1.symm.trans h1) rfl
   have hwb : envOf s wb2.val = BitVec.ofNat 64 work.base := by
-    simpa [envOf, wb2] using getX_of (h.x12.symm.trans h12) rfl
+    simp [envOf, wb2]; exact getX_of (h.x12.symm.trans h12) rfl
   refine runsTo_mono (rvM.compPM_ok hP hres hexec ⟨h, hpc, codeAt_of_codeBytes hok hcode, hok⟩ hwf
     (by intro x hx; simp at hx; omega) (by decide) (by decide)
     (fun hfit => by
@@ -112,8 +112,8 @@ theorem memRaw {P : Prog} {res main : Nat} (hwf : WfMem P res main) (hP : progCl
     hL (fun i => by show getX s (phys (avar i)) = _; rw [phys_avar]; simp [envOf]) hwb rfl rfl
     (fun b hb => by
       obtain _ | _ | b := b
-      · exact getX_of (h.x10.symm.trans h10) rfl
-      · exact getX_of (h.x13.symm.trans h13) rfl
+      · simp [envOf]; exact getX_of (h.x10.symm.trans h10) rfl
+      · simp [envOf]; exact getX_of (h.x13.symm.trans h13) rfl
       · exact absurd hb (by show ¬(b + 1 + 1 < 2); omega))
     (fun b hb => by
       obtain _ | _ | b := b
@@ -146,7 +146,7 @@ theorem memRaw {P : Prog} {res main : Nat} (hwf : WfMem P res main) (hP : progCl
         rw [show rvM.get s' (avar ⟨0, by decide⟩) = getX s' 10 from rfl] at this
         rw [this]; have := hb.base 0 (by simp [R]); simpa [R] using this
       · have := hb.rbytes 1 (by simp [R])
-        exact (bytes_eq s' _ _).symm.trans (by simpa [R] using this)
+        exact (bytes_eq s' _ _).symm.trans (by simp [R] at this ⊢; exact this)
     · refine .inr ⟨by omega, ?_⟩
       rw [show getX s' 10 = rvM.get s' (avar 0) from rfl, a0]
 
@@ -229,7 +229,7 @@ theorem memSpec {P : Prog} {res main : Nat} (hwf : WfMem P res main) (hP : progC
       simp only [riscvObserve, Option.isSome_map] at this
       rwa [toNat_add_offset (by omega) hoffset] at this)
   refine ⟨envOf startState, out0, ?_, fun i hi => ?_, hl0, fun {E σ'} hexec => ?_⟩
-  · exact getX_of (configured.x11.symm.trans h11) rfl
+  · simp [envOf]; exact getX_of (configured.x11.symm.trans h11) rfl
   · simp only [envOf]; rw [dif_neg (by omega)]
   obtain ⟨steps, finishState, hsteps, hpcF, hcfg, hun, hcase⟩ := run hexec
   refine ⟨finishState, runs_of_steps steps _ _ hsteps, ?_, ?_, ?_⟩

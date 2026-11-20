@@ -51,7 +51,7 @@ theorem bootImage_ok {code input : List UInt8} (hcode : code.length ≤ 0xFF000)
     refine holds_other ?_ _ _ (by simp [lenAddr, inputBase, encLen, le8_length])
     have := holds_load (loadBytes (loadBytes ∅ 0x80000000 (codeBytes8 stub)) codeBase (code.map (·.toBitVec)))
       lenAddr (encLen input.length)
-    simpa [encLen, List.map_map] using this
+    simp [encLen, List.map_map] at this ⊢; exact this
   input := holds_load _ _ _
 
 /-- the example's compiled program -/
