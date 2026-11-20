@@ -566,3 +566,15 @@ bite); (2) speed of compiled programs; (3) grow the parser's accepted syntax unt
 - Sail ARM: the theorem temporarily makes no claim about sp (register 31; Sail-local mapping, see Arm/sail/NOTES.md).
   Later: restore sp (prove it unchanged / reset on exit) by exporting SP_EL0/SP_EL3/PSTATE.SP from the full_* lemmas.
 - Later: reset the memory chunks (work/scratch regions) on exit, so the caller gets them back in a defined state.
+
+## Next after release-434: generated-code speed (owner, 2026-11-20)
+Goal: no obviously slow patterns in the code the compiler emits. Before syntax growth.
+Evidence (B2.bin disassembly): stack-machine codegen; every push = addi + bgeu + j + sd; `x < 65` ≈ 15 instructions
+(good code: 2). B2 has ~10.9k per-push overflow checks and ~14k sd.
+Order (each: measure on BENCH.md programs + self-compile, then prove; proofs green, no regression):
+1. one stack-overflow check per function (max depth) instead of per push
+2. small-immediate operands for ALU ops and compares
+3. direct conditional branch when the target is in range (else branch-over-jal)
+4. inline constant defs (zero-arg defs returning a literal)
+5. top-of-stack in a register (drops push/pop pairs) — biggest win, most proof work
+6. ARM: shorter rv2arm sequences for common forms (currently fixed 4-word blocks, ~3.6x)
