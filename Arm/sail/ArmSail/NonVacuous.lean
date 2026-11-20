@@ -7,12 +7,13 @@ in `x0..x4, x30`, and code/input bytes in memory. Here: for ANY `pc`, ANY `x : N
 the bytes of `m`. So `configured` constrains nothing that `StartCorrect` can see, and every remaining `StartCorrect`
 premise is a statement about a freely chosen observation.
 
-STATUS: written without a model build on the authoring box (no toolchain, 15 GB); to be compiled with
-`lake env lean ArmSail/NonVacuous.lean` in Arm/sail once the partitioned model is built. -/
+STATUS: compiled by the independent verifier O on its partitioned model build (0 errors; axioms of all theorems:
+`propext, Classical.choice, Quot.sound`). Run: `lake env lean ArmSail/NonVacuous.lean` in Arm/sail. -/
 import ArmSail.Machine
 import Arm.Witness
 namespace ArmSail
-open Proven.Top ArmProof
+open Proven.Top ArmProof Armv9 Armv9.Functions Sail Sail.ConcurrencyInterfaceV1
+set_option maxRecDepth 1000000
 
 /-- write `x 0 .. x (k-1)` into `X0 .. X(k-1)` -/
 def setXs (m : Regs) (x : Nat → BitVec 64) : Nat → Regs
