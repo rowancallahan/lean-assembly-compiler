@@ -55,9 +55,10 @@ def run_file(cmd, path):
     return p.returncode, p.stdout, status(p.stderr.decode(errors='replace'))
 
 
-def nano(code, inp_path):
+def nano(code, inp_path, work_mb=None):
     out = T / 'nr.out'; out.unlink(missing_ok=True)
-    p = subprocess.run(NR + [str(code), str(inp_path), str(out)], capture_output=True, env=ENV)
+    p = subprocess.run(NR + [str(code), str(inp_path), str(out)] + ([str(work_mb)] if work_mb else []),
+                       capture_output=True, env=ENV)
     return p.returncode, status(p.stderr.decode(errors='replace')), out.read_bytes() if out.exists() else None
 
 
@@ -160,5 +161,19 @@ for mb in (72, 73):
         check(f'work {mb} MiB: self-compile gives B2.bin', rc == 0 and st == 0 and out == want, f'rc={rc} st={st} n={len(out)}')
 rc, out, st = run_pipe(RV + [str(B2)], src.read_bytes(), seed=1024)
 check('work 1 GiB (shipped): self-compile gives B2.bin', rc == 0 and st == 0 and out == want, f'rc={rc} st={st} n={len(out)}')
+
+# H. fresh-list work-memory programs (workmem_fresh.lean, ~4 MiB per input byte): 50 bytes needs 205 MiB,
+# 300 bytes needs more than 1.1 GiB. At the shipped 1 GiB: 50 bytes gives 1 output byte, 300 bytes gives -1.
+wm = compile_nano((V / 'run' / 'fuzz' / 'workmem_fresh.lean').read_bytes(), 'wm')
+for n, want_st in ((50, 0), (300, -1)):
+    data = random.Random(n).randbytes(n)
+    (T / 'wm.in').write_bytes(data)
+    nr = nano(T / 'wm.rv', T / 'wm.in', 1024)
+    rc_p, out_p, st_p = run_pipe(RV + [str(T / 'wm.rv')], data, seed=n)
+    arm = translate(T / 'wm.rv', 'wm')
+    rc_a, out_a, st_a = run_pipe(ARM + [str(arm)], data, seed=n + 1)
+    ok = nr[1] == st_p == st_a == want_st and out_p == out_a and (nr[2] or b'') == out_p
+    check(f'fresh-list {n} bytes at 1 GiB: nanorun == shim_rv == shim_arm (status {want_st})', ok,
+          f'nanorun st={nr[1]} rv st={st_p} arm st={st_a} len={len(out_p)}')
 
 print(f'done: {fails} DIFF', flush=True)
