@@ -4,6 +4,20 @@ Base: `origin/release-434` @ 56e2584. Toolchain: Lean 4.34.1. RISC-V model: `dep
 `6ac35da9… 161`, checked). Locally the root `lake-manifest.json` was switched to lean-sail v10 to build the regenerated
 model (as on `rv-regen-434`); that change is **not committed** (release-434 still pins v5).
 
+## Morning summary (SYNTAX-EXP, 2026-11-20)
+| branch | content | 4.34.1 REVIEW | review_axioms | non-Legacy Nano/V2Self | fixpoint (nanorun, 80 MiB) |
+|---|---|---|---|---|---|
+| `exp-syntax` | (1) comments/docstrings/attributes/namespace…/private; release-434 + rv-regen-434 | OK | OK (8 theorems, as pinned) | 691 jobs OK | B2 = B3, `395f0b9d…` |
+| `exp-syntax-match` | (1) + (2) `match` (new desugar stage) | OK | OK | 699 jobs OK | B2 = B3, `37a6be1c…` |
+
+Owner decisions:
+1. Namespace flattening (1).
+2. Accept the `pOf` change that gives `match` programs a meaning (2); verbatim diffs are below.
+3. Index-notation semantics (3), options (i)–(iii).
+4. Memory for `match` programs (+8 MiB; the fused lexer-desugar is recommended).
+
+Baseline, not ours: `Nano.V2S.Asm` and `Nano.ElabBProof` fail on 4.34.1, on rv-regen-434 itself too.
+
 ## Decision table
 
 | # | construct | status | C delta (lines) | proof delta (lines) | difficulty | next-step estimate |
