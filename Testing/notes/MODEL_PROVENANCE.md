@@ -11,6 +11,22 @@ toolchain changes.
 | DeepMind arm64 | `google-deepmind/code-verification` @ `b0f729a` | no | ours: 4.34.1 (theirs: 4.34.0) / no lean-sail | none | `Arm/apc` (`Apc`, `Blocks`: `C_correct_armDM`) |
 | RISC-V regenerated (`rv-regen-434`) | not yet on origin | n/a | target 4.34.1 / `v10` | n/a | nothing yet |
 
+## Content hashes (one command for every model)
+
+`Testing/scripts/model_hash.sh DIR` does
+`cd DIR && find . -path ./.lake -prune -o -type f -name '*.lean' -print | LC_ALL=C sort | xargs sha256sum | sha256sum`.
+Paths are relative to DIR, the order is byte order (locale-independent), and `.lake` (lake's packages and build) is
+excluded. It prints the hash and the file count.
+
+| model | DIR | hash | files | old value (other command) |
+|---|---|---|---:|---|
+| Sail RISC-V @ 51c635c | `../deps/sail-riscv-lean` | `aa2a82c9e3ad746da34678c0405250a1a7b35e6a413e82f5137e32d40d338059` | 161 | `d6dbd722…` = `find LeanRV64D LeanRV64D.lean …` run in DIR |
+| Sail ARM, committed | `Arm/model` | `8f79d6b294568b8d6e8d4916be6c8a67bfe475717513dd5b0535c69ff2e7344f` | 35 | `cbfbcd50…` = `find Arm/model/Armv9 …` at the repo root (no `Armv9.lean`) |
+| Sail ARM, partitioned (`partition.py` output) | the partition's output dir | `a4b93808fc510f6413a7bdcec606b866a43f11f23a94a93eef094189524cef46` | 118 | `389f6d21…` (Sail agent, `find Armv9 Armv9Core Armv9.lean …`) |
+| DeepMind arm64 @ b0f729a | `code-verification/arm64-semantics/Arm64` | `82094c4a51657bcc084fd3136a4741d94154e0ce018771c1e182fad164a6d9d4` | 134 | none recorded |
+
+Single-file hashes, such as the partitioned definition dump `76a23330…` (ARM_FAST.md §9), are plain `sha256sum FILE`.
+
 ## 1. Sail RISC-V model (trusted for every RISC-V theorem)
 
 * **Repo and commit:** `https://github.com/opencompl/sail-riscv-lean` @ `51c635c460125ac87955d061fcd902ce03b8011f`
@@ -37,9 +53,8 @@ toolchain changes.
   `lake-manifest.json` and the repo's `lake-manifest.json` (`"inputRev": "v5"`); `git ls-remote --tags` shows `v5` is a
   lightweight tag on that commit.
 * **Patches:** none on the trusted branches.
-* **Content hash:** sha256 over the sorted per-file sha256 of `LeanRV64D.lean` + `LeanRV64D/*.lean` (160 files) is
-  `d6dbd722e6dd33f2918a54384ad6c0bf7fd213d4267d9163a11253de776008be`. Command:
-  `find LeanRV64D LeanRV64D.lean -name '*.lean' | sort | xargs sha256sum | sha256sum`.
+* **Content hash** (`Testing/scripts/model_hash.sh ../deps/sail-riscv-lean`, see "Content hashes" above):
+  `aa2a82c9e3ad746da34678c0405250a1a7b35e6a413e82f5137e32d40d338059`, 161 files.
 * **Axioms it adds:** the model declares opaque platform and float primitives as `axiom`
   (`LeanRV64D/RiscvExtras.lean`, e.g. `plat_term_write`, `load_reservation`).
   * 74 of them reach the REVIEW theorems: `cancel_reservation`, `get_16_random_bits`, `load_reservation`,
@@ -91,10 +106,10 @@ toolchain changes.
   (`Arm/model/lake-manifest.json`). `e234ce9`, as written in `DIFFS.md`, is the annotated tag object of `v10`, which
   points to `e4745c8` (`git ls-remote --tags`); both name the same code.
 * **Generated text:** committed in `Arm/model/` (`Armv9.lean`, `Armv9/*.lean`, 34 modules).
-  * sha256 over the sorted per-file sha256 of `Arm/model/Armv9/*.lean` is
-    `cbfbcd50df4f655008febb6cbe24a8cd3677b5745ae6cd23df47cfaf9ffbf8ab` (the same pipeline as the last line of `regen.sh`).
-  * **Byte-identical regeneration has not been verified** (DIFFS.md, "Not yet verified"); `regen.sh` prints the hash
-    to compare.
+  * Content hash (`Testing/scripts/model_hash.sh Arm/model`):
+    `8f79d6b294568b8d6e8d4916be6c8a67bfe475717513dd5b0535c69ff2e7344f`, 35 files (`Armv9.lean` + 34 modules).
+  * **Byte-identical regeneration has not been verified** (DIFFS.md, "Not yet verified"). `regen.sh` now prints
+    `model_hash.sh $OUT` to compare with this value, and `Testing/scripts/bigbox` step 2 compares file by file.
 * **Partition step:** `Arm/gen/partition.py`, called at the end of `regen.sh`, writes `$OUT-part`. Details in
   `Testing/notes/ARM_FAST.md` §9.
   * It moves declarations verbatim into a core layer `Armv9Core.{V8Base,Instrs64,Fetch,Interrupts,Devices}` (the
@@ -125,9 +140,15 @@ toolchain changes.
       * Partitioned tree, `cd /home/user/armv9-lean && find Armv9 Armv9Core Armv9.lean -name '*.lean' | sort |
         xargs sha256sum | sha256sum` = `389f6d21…2eb55a370`
         (full: `389f6d2157a7c55ca3fc3c9de2d757d57ee275c30b0f68bfffc672c2eb55a370`). 117 files under `Armv9`/`Armv9Core`.
-    * **Not reconciled:** neither `Arm/model` hash above equals the `cbfbcd50…` recorded under "Generated text". The
-      `regen.sh` pipeline hashes path strings, so the value depends on where it is run; how `cbfbcd50…` was computed
-      is not recorded. Content-only variants were tried; none matched.
+    * **Reconciled (O, 2026-11-20):** `cbfbcd50…` was run at the repo root as
+      `find Arm/model/Armv9 -name '*.lean' | sort | xargs sha256sum | sha256sum`. That hashes the path strings
+      `Arm/model/Armv9/…` and leaves out the top file `Armv9.lean`. Reproduced exactly; it is replaced by the
+      `model_hash.sh` value above. The `8f79d6b2…` here is the same as `model_hash.sh Arm/model`.
+    * Independent rebuild (O, 2026-11-20, for the `Arm/sail` check): `partition.py` of f617794f's `Arm/model` with
+      f617794f's proof files gives a tree byte-identical to the one above. Under the command above it is again
+      `389f6d21…`; `model_hash.sh` of the partitioned tree is
+      `a4b93808fc510f6413a7bdcec606b866a43f11f23a94a93eef094189524cef46`, 118 files. The core roots did not change
+      between 0d06146f and f617794f.
 * **Reproduce:** `W=… OUT=… Arm/gen/regen.sh` (needs opam with Sail's deps and z3), then compare the printed hash with
   the one above. Build with `lake build` plus `lake build Armv9.<M>` for the modules `Armv9.lean` does not import
   (DIFFS.md, "Build notes"; V8Base needs about 12 GB).
@@ -145,6 +166,9 @@ toolchain changes.
   `b0f729accbc21a0413e7ca4e1da43fa45b5f2e1b` (2026-11-11, "Verify 10 more library routines in the binary; trusted hooks
   37 → 27 (#2)"). Package `arm64` (`arm64-semantics/Arm64/lakefile.toml`, no dependencies, `lake-manifest.json` has an
   empty package list). Apache-2.0 (`Arm/apc/README.md`).
+  * Content hash (`Testing/scripts/model_hash.sh .../arm64-semantics/Arm64`):
+    `82094c4a51657bcc084fd3136a4741d94154e0ce018771c1e182fad164a6d9d4`, 134 files (the package directory:
+    `Arm64.lean`, `Trusted`, `Legacy`, `Testing`).
   * Pinned by `Arm/apc/check.sh`, which aborts unless the checkout is at `b0f729a`, and by `Arm/apc/README.md`.
   * Referenced by path (`Arm/apc/lakefile.toml`: `path = "../../../deps/code-verification/arm64-semantics/Arm64"`);
     never copied into this repo.

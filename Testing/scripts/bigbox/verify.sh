@@ -106,7 +106,7 @@ s2() {
     cmp -s "$A/$f" "$B/$f" || echo "DIFFERS: $f"
   done
   git diff --no-index --stat "$B/Armv9" "$A/Armv9" > "$OUT/regen.diffstat" || true
-  local h=$(cd "$A" && find Armv9 -name '*.lean' | sort | xargs sha256sum | sha256sum | cut -c1-16)
+  local h=$("$R/Testing/scripts/model_hash.sh" "$A" | cut -c1-16)
   if cmp -s <(cd "$A" && find Armv9.lean Armv9 -name '*.lean' | sort | xargs sha256sum) \
             <(cd "$B" && find Armv9.lean Armv9 -name '*.lean' | sort | xargs sha256sum); then
     echo "regenerated model byte-identical to Arm/model (sha ${h}…)" > "$NOTE"
@@ -138,7 +138,7 @@ s3b() {
   need 2 3
   # a copy of Arm/gen whose patch differs in one constant; regen.sh's last step needs ../proofs/Arm beside it
   local N=$WORK/gen-nosve/Arm; rm -rf "$WORK/gen-nosve" "$WORK/regen-nosve-work" "$WORK/regen-nosve"
-  mkdir -p "$N"; cp -r "$G" "$N/gen"; ln -s "$R/Arm/proofs" "$N/proofs"
+  mkdir -p "$N"; cp -r "$G" "$N/gen"; ln -s "$R/Arm/proofs" "$N/proofs"; ln -s "$R/Testing" "$WORK/gen-nosve/Testing"
   sed -i 's/^+let if_chain_min = 1000$/+let if_chain_min = max_int/' "$N/gen/patches/sail/0001-lean-backend-fixes.patch"
   grep -q '^+let if_chain_min = max_int$' "$N/gen/patches/sail/0001-lean-backend-fixes.patch"
   eval "$(opam env)"
