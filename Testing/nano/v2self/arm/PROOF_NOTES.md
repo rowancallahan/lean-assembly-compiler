@@ -116,7 +116,9 @@ Removed in two steps:
 
 `ArmBlock.BlockOK M`: for every program C, data region D, kept values K, J state (pc, s) and A64 state t, if
 * `C[pc]? = some j`,
-* `validJ C.length pc j` (rv2arm's validation at the J level),
+* `validJ C.length pc j` (rv2arm's validation at the J level, plus `imm12` for addi/ld/sd/lbu/sb: RV's 12-bit
+  immediates, which rv2arm gets for free from the encoding; = `ArmEnc.armOK`, lake-built by O in
+  `Nano/V2Self/Proof/Machine/ArmEnc.lean`),
 * `AccOK C D (pc, s)` (memory accesses in D; a `jalr` target is a block address), and
 * `RelA M C D K (pc, s) t`,
 
