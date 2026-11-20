@@ -17,7 +17,7 @@ noncomputable def compileOn (enc : List UInt8 → List UInt8) (s : SrcC) : Optio
 def EncOK (T : JTarget) (enc : List UInt8 → List UInt8) : Prop :=
   enc [] = [] ∧
   ∀ (c : List UInt8) (Cj : List CallProbe.J), Cj.length < 2 ^ 18 →
-    (Cj.map CallProbe.encG).map UInt64.toNat = Cj.map SimW.encJX →
+    (∀ j ∈ Cj, SimW.JOK j) →
     enc (C.g40 16777216 c (Cj.map CallProbe.encG) 0 []) ≠ [] →
     enc (C.g40 16777216 c (Cj.map CallProbe.encG) 0 []) = tbytes T Cj ∧ T.valid Cj
 
@@ -112,7 +112,7 @@ theorem C_runs_on (L : T.Laws) (enc : List UInt8 → List UInt8) (hE : EncOK T e
       obtain ⟨Ks, hO, hK2⟩ := hL
       have hBe : ∀ Cj : List CallProbe.J, Cj.length < 2 ^ 18 →
           C.g41 c (serialize p) = C.g40 16777216 c (Cj.map CallProbe.encG) 0 [] →
-          (Cj.map CallProbe.encG).map UInt64.toNat = Cj.map SimW.encJX → enc (mC x) = tbytes T Cj ∧ T.valid Cj :=
+          (∀ j ∈ Cj, SimW.JOK j) → enc (mC x) = tbytes T Cj ∧ T.valid Cj :=
         fun Cj hc' hg hw => by rw [hB, hg]; exact hE.2 c Cj hc' hw (by rw [← hg, ← hB]; exact hc.1)
       obtain ⟨-, -, -, -, c1, c2, -, -, -, -, -, -, -, -, -⟩ := blocks_of L startsRight
       have r32 := L.ram.2

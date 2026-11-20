@@ -29,7 +29,7 @@ theorem rv_enc : EncOK rvTarget id := by
   have e0 : (0 : UInt64) = UInt64.ofNat 0 := rfl
   rw [id, e0, SimW.g40_bytes c _ (by rw [List.length_map]; omega) 16777216 0 [] (by rw [List.length_map]; omega)
     (by omega)]
-  simpa using flat_rv Cj hw
+  simpa using flat_rv Cj (Templates.words_encJX (fun j hj => (hw j hj).1))
 
 theorem compileOn_id : compileOn id = compileC := by
   funext s; unfold compileOn compileC; rw [id_eq]

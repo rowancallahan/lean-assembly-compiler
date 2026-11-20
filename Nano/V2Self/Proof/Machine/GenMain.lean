@@ -65,7 +65,7 @@ theorem gen_main (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : Parse
     ∃ (C : List J) (pr S : Nat) (T : Buf),
       let P := pcOf 524288 ((s0.x 12).toNat + 16) (s0.x 11) (NanoMain.inpW x) T
       g41 c (serialize p) = g40 16777216 c (C.map encG) 0 [] ∧ C.length < 2 ^ 18 ∧ At C 0 (stubJ S) ∧
-      (∃ w, At C S (startJ S w)) ∧ S + 32 ≤ C.length ∧ (C.map encG).map UInt64.toNat = C.map SimW.encJX ∧
+      (∃ w, At C S (startJ S w)) ∧ S + 32 ≤ C.length ∧ GL C ∧
       ∀ (KL : SimW.LayW) E0, ((s0.x 2 >>> 3) <<< 3).toNat = E0 → s0.x 0 = 0 → (s0.x 12).toNat % 8 = 0 →
         2048 ≤ (s0.x 12).toNat →
         (s0.x 12).toNat + 16 ≤ E0 → E0 < 2 ^ 62 → s0.b + s0.w * C.length < 2 ^ 64 →
