@@ -9,6 +9,7 @@ import Blocks.KBr
 import Blocks.KMem
 import Blocks.BlockOK
 import Blocks.A64Inst
+import Blocks.ArmDMTop
 open Proven.Apc.Blocks
 #print axioms dm_movz
 #print axioms dm_movk
@@ -62,3 +63,5 @@ open Proven.Apc.Blocks
 #print axioms F_ldrb
 #print axioms F_strb
 #print axioms a64DM
+#print axioms C_correct_armDM
+#print axioms C_runs_armDM

@@ -116,8 +116,9 @@ Per-form fields, in `A64Sem`'s exact statement (`GoesK`, `FetchX`, `PcOK`): `F_m
 builds on 4.34.1 since 12ddcd53; the earlier verbatim copy is gone). The loader layout is `JT.LoaderPerm`, a premise
 of the ARM top theorems (f8e28ee), not a field.
 
-**Caveat on `LoaderPerm` for `armDM`.** It quantifies over ALL `StartCorrect` states. `StartCorrect` sees only
-`observe`, so some of them map an input byte read-only (or the code rw-): `LoaderPerm armDM XD WD` is FALSE, and a
-theorem taking it as a hypothesis is vacuous for `armDM`. The non-vacuous DeepMind statement needs the layout as a
-premise on the START STATE (CompileCorrect with an extra per-start-state hypothesis), or a Spec-level loaded-predicate
-(owner decision).
+**Top theorems** (`ArmDMTop.lean`, E's 37939cd): `C_correct_armDM : CompileCorrectP armDM (JT.ArmLoader XD WD)
+(compileOn ArmRA.rv2arm)` and `C_runs_armDM` (the same for `CompileRunsP`) = `C_correct_rv2arm a64DM` / `C_runs_rv2arm
+a64DM`. They are Spec's `CompileCorrect` / `CompileRuns` plus one premise on the START state (`ArmLoader`: code bytes
+executable, input/output/work blocks readable+writable). Axioms: the standard three. Joint build: this lake package
+(`lake build Blocks.ArmDMTop`, Lean 4.34.1) compiles the Nano chain of `Main/ArmTop` (271 modules, ~6 min the first
+time, one build at a time on 15 GB) next to DeepMind's `arm64`.
