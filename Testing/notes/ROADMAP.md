@@ -636,7 +636,9 @@ parts from Nano/V2Self/Proof/Machine, so the move is complete in one go. Same ch
   Proof/Gen), Nano/Run (Proof/Machine, target-generic; RISC-V parts to Riscv/), Nano/SelfHost (Cert, CertArm, SrcLink,
   Bridge), Nano/Main (top theorems + REVIEW.lean), Nano/Tests, Nano/Base. Module paths change; def/theorem names do not.
   Trusted parser/grammar definition later in Spec/Source/ (Spec/ reorg); its proof stays in Nano/Parser.
-- README.md in every stage/target folder (owner): what the stage does, its input/output, the main definitions and
+- README.md in every stage/target folder (owner): what is in the folder (one line per file or subfolder), what this
+  part does and where it sits in the whole (which stage feeds it, which uses it), design decisions made here and why
+  (with alternatives rejected), what the stage does, its input/output, the main definitions and
   theorems (file:name), what it assumes from the stages before it and guarantees to the next, how to build/check it,
   and known limits. Written for a human reader and for an agent starting cold. Kept short; updated in the same PR as
   any change that makes it wrong.
