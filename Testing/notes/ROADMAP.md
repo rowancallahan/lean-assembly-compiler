@@ -510,3 +510,15 @@ Order (owner, 2026-11-19): (1) organization pass + survey of moving everything t
 model and Arm/proofs already work there; most breakage is 4.29->4.34), prove ARM there, THEN step everything to 4.35.0 (owner;
 4.36 rejected: it caps field-carrying constructors at 244, and the RISC-V Sail model's `instruction` has 353); (3) then the
 ARM proof and the larger code work.
+
+## STATUS + GOALS (owner, 2026-11-20)
+- Unproven ARM back end WORKS (Testing/nano/v2self/arm/ on nano-v2-src): nano translator rv2arm.lean; ARM-B2 self-compiles to
+  B2.bin byte for byte under qemu-aarch64. Prove it next ("get it working, then prove, rewrite slightly where unprovable").
+- Rule: every new piece of code carries proof notes next to it (PROOF_NOTES.md / header comments: intended semantics,
+  invariants, register/memory conventions, which lemma will cover it).
+- Limits for now (owner OK): output <= 512 KB (nano buffer capacity 2^19), input < 1 MB (2^20). Enough for answers.
+- LATER: raise the buffer capacity, compiled-code size and input size (a compiler + spec change, then rebuild and
+  re-check proofs). Needed for the goal below.
+- GOAL: compile con-leche (leanprover/con-leche, the Lean kernel checker; ~22k lines in the checker core's import closure,
+  see Testing/notes/CONLECHE_*.md). Needs (a) a much larger nano subset: user inductives incl. Expr (>2 recursive fields),
+  structures, Name/String/Char, Array, HashMap, Except/state monads, partial; (b) the larger capacities above.
