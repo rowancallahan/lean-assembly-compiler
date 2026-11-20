@@ -609,3 +609,10 @@ Order (each: measure on BENCH.md programs + self-compile, then prove; proofs gre
   work blocks (today only writes are confined: memory outside the output prefix + work block is proved unchanged).
   Out-of-memory remains the only failure mode. Process isolation is out of scope (bare-machine model; the OS is a
   separate layer).
+
+## ARM in the spec (owner-approved 2026-11-20; after the reorg-nano merge)
+- Define the ARM machine(s) in `Spec/` (as `riscv` is), so `C_correct_armSail` is stated against a reviewed `Spec/`
+  machine, not one defined in `Arm/sail`. Owner reviews the new `Spec/` text; re-freeze FROZEN.sha256 only after approval.
+- DeepMind's `ArmLoader` precondition (code executable, data blocks readable+writable) is met by any normal loader /
+  shim mapping; state that in the shim notes. Memory wiping on exit is the separate "reset memory chunks" item.
+- Later: native ARM backend (no RISC-V translation); notes in TRUST.md say how the current ARM theorems are built.
