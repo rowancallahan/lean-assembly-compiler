@@ -8,14 +8,6 @@ open CallProbe C GenRef ParSpec
 /-- the def template at word f: prologue (r = nl − p local words), body at f + 12, epilogue -/
 def defT (S : SC) (e : Nd) (f q : Nat) : List J := proA 1 f (S.nl - S.p) ++ tm S e (f + 12) ++ epi S.p q
 
-theorem defRun {S : SC} {C : List J} {IG : St → Prop} {E0 : Nat} {c28 : UInt64} (X : RunCx S C IG E0 c28)
-    {e : Nd} {f q : Nat} (ok : OkV S e) (hw : wd S e = q) (hR : ∀ k, rd e k → k < S.p) (hpn : S.p ≤ S.nl)
-    (hC : At C f (defT S e f q)) : DefX C f S.p q IG S.hb E0 (defS S.p S.nl (sv S e)) := by
-  obtain ⟨hP, hB, hE⟩ := At.mid hC
-  have lp : (proA 1 f (S.nl - S.p)).length = 12 := by simp [proA, pushA, push]
-  rw [lp] at hB hE; rw [tm_len] at hE
-  exact defX X.ig hP ((runV X e (f + 12) ok hB).wid hw) hE hpn hR
-
 /-- patching the exit placeholders: every listed word becomes the jump to H, nothing else changes -/
 theorem patchR_get (H : UInt64) : ∀ (L : List UInt64) (o : Buf) (j : Nat), (∀ e ∈ L, e.toNat < o.length) →
     (patchR H o L)[j]? = if (∃ e ∈ L, e.toNat = j) then some (g13 0 j.toUInt64 H) else o[j]?

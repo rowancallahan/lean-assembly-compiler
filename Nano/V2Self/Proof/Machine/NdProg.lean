@@ -45,23 +45,4 @@ structure DefOK (P : PC) (ds : List DefA) (C : List J) (k : Nat) : Prop where
   rd : ∀ j, rd (dA ds k).body j → j < (dA ds k).npw
   at_ : At C (P.T k) (defT (scAt P ds k) (dA ds k).body (P.T k) (dA ds k).nres)
 
-/-- **program level**: every def k < N satisfies its contract -/
-theorem progRun (P : PC) (ds : List DefA) (C : List J) (IG : St → Prop) (E0 : Nat) (c28 : UInt64)
-    (hig : IGOK P.hb E0 IG) (he : E0 < 2 ^ 62) (hcb : ∀ s, IG s → s.b + s.w * C.length < 2 ^ 64)
-    (hinp : InpOK IG c28 P.c29 P.inp) (N : Nat) (hd : ∀ k, k < N → DefOK P ds C k) :
-    ∀ k, k < N → DefX C (P.T k) (dA ds k).npw (dA ds k).nres IG P.hb E0 (semAt P ds k) := by
-  intro k
-  induction k using Nat.strongRecOn with
-  | _ k ih =>
-    intro hk
-    have D := hd k hk
-    have X : RunCx (scAt P ds k) C IG E0 c28 := {
-      ig := hig, e62 := he, cb := hcb, p20 := D.p20, inp := hinp,
-      defs := fun n hn => by
-        show DefX C (P.T n) (dA ds n).npw (dA ds n).nres IG P.hb E0 (if _h : n < k then semAt P ds n else dflt)
-        have hn' : n < k := hn
-        rw [dif_pos hn']; exact ih n hn' (by omega) }
-    rw [semAt_eq]
-    exact defRun X D.ok D.wd D.rd D.pn D.at_
-
 end Templates

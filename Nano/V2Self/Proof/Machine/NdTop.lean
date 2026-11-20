@@ -49,19 +49,4 @@ theorem gen_words (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length
     (by simp [bnew]) (SerAt_serialize ds) (by simp [serialize]; omega) hdb (by simp [bnew]) (by simp [bnew]) hol
   simp [bnew] at this; exact ⟨this.1, this.2.1⟩
 
-/-- **every def runs per its semantics** on a J program holding the def templates (Gen's words, by `gen_words`) -/
-theorem gen_defs_run (P : PC) (ds : List DefA) (C : List J) (IG : St → Prop) (E0 : Nat) (c28 : UInt64) (n h : Nat)
-    (hig : IGOK P.hb E0 IG) (he : E0 < 2 ^ 62) (hcb : ∀ s, IG s → s.b + s.w * C.length < 2 ^ 64)
-    (hinp : InpOK IG c28 P.c29 P.inp) (hC : At C h (defsJ P ds 0 n))
-    (hT : ∀ j, j < n → P.T j = h + (defsJ P ds 0 j).length)
-    (hd : ∀ k, k < n → (dA ds k).npw < 2 ^ 20 ∧ (dA ds k).npw ≤ (dA ds k).nslots ∧ OkV (scAt P ds k) (dA ds k).body ∧
-      wd (scAt P ds k) (dA ds k).body = (dA ds k).nres ∧ ∀ j, rd (dA ds k).body j → j < (dA ds k).npw) :
-    ∀ k, k < n → DefX C (P.T k) (dA ds k).npw (dA ds k).nres IG P.hb E0 (semAt P ds k) := by
-  apply progRun P ds C IG E0 c28 hig he hcb hinp n
-  intro k hk
-  obtain ⟨a1, a2, a3, a4, a5⟩ := hd k hk
-  have := At_defsJ n 0 h hC (fun j hj => by rw [Nat.zero_add]; exact hT j hj) k hk
-  rw [Nat.zero_add] at this
-  exact ⟨a1, a2, a3, a4, a5, this⟩
-
 end Templates
