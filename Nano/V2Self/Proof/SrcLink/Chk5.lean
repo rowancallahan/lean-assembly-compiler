@@ -33,9 +33,5 @@ theorem lex64 : lexAll (x64.length + 1) x64 = some w64 := by decide +kernel
 theorem tok64 : tokens w64 = some S64 := by decide +kernel
 theorem nl64 : x64.getLast? = some 10 := by decide +kernel
 theorem chk64 : chkDef (pDef F D64 T64) di64 d64 T65 = true := by decide +kernel
-theorem lex65 : lexAll (x65.length + 1) x65 = some w65 := by decide +kernel
-theorem tok65 : tokens w65 = some S65 := by decide +kernel
-theorem nl65 : x65.getLast? = some 10 := by decide +kernel
-theorem chk65 : chkDef (pDef F D65 T65) di65 d65 T66 = true := by decide +kernel
 
 end SrcGen

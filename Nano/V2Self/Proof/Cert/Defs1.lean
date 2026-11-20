@@ -11,7 +11,7 @@ open NanoMain ParSpec
 theorem ok_7 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 7) :
     Spec7 inp (defMean inp κC ms PC.d7) := by
   intro a1 a2
-  refine defMean_den (C.s3 inp a1 a2) PC.b7 ([.w a1, .w a2] ++ List.replicate 22 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  refine defMean_den (C.s3 inp a1 a2) PC.b7 ([.w a1, .w a2] ++ List.replicate 27 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b7
   den_unfold
   den

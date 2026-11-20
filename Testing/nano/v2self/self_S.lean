@@ -50,7 +50,12 @@ def s3 (x : List UInt8) (p e : UInt64) : UInt64 :=
   let r17 := if d == 4 then if c == 98 then if rd x (p + 1) == 103 then if rd x (p + 2) == 101 then if rd x (p + 3) == 116 then 45 else r16 else r16 else r16 else r16 else r16;
   let r18 := if d == 4 then if c == 98 then if rd x (p + 1) == 115 then if rd x (p + 2) == 101 then if rd x (p + 3) == 116 then 46 else r17 else r17 else r17 else r17 else r17;
   let r19 := if d == 5 then if c == 98 then if rd x (p + 1) == 112 then if rd x (p + 2) == 117 then if rd x (p + 3) == 115 then if rd x (p + 4) == 104 then 47 else r18 else r18 else r18 else r18 else r18 else r18;
-  r19
+  let r20 := if d == 3 then if c == 101 then if rd x (p + 1) == 110 then if rd x (p + 2) == 100 then 92 else r19 else r19 else r19 else r19;
+  let r21 := if d == 4 then if c == 111 then if rd x (p + 1) == 112 then if rd x (p + 2) == 101 then if rd x (p + 3) == 110 then 92 else r20 else r20 else r20 else r20 else r20;
+  let r22 := if d == 7 then if c == 115 then if rd x (p + 1) == 101 then if rd x (p + 2) == 99 then if rd x (p + 3) == 116 then if rd x (p + 4) == 105 then if rd x (p + 5) == 111 then if rd x (p + 6) == 110 then 92 else r21 else r21 else r21 else r21 else r21 else r21 else r21 else r21;
+  let r23 := if d == 9 then if c == 110 then if rd x (p + 1) == 97 then if rd x (p + 2) == 109 then if rd x (p + 3) == 101 then if rd x (p + 4) == 115 then if rd x (p + 5) == 112 then if rd x (p + 6) == 97 then if rd x (p + 7) == 99 then if rd x (p + 8) == 101 then 92 else r22 else r22 else r22 else r22 else r22 else r22 else r22 else r22 else r22 else r22;
+  let r24 := if d == 7 then if c == 112 then if rd x (p + 1) == 114 then if rd x (p + 2) == 105 then if rd x (p + 3) == 118 then if rd x (p + 4) == 97 then if rd x (p + 5) == 116 then if rd x (p + 6) == 101 then 93 else r23 else r23 else r23 else r23 else r23 else r23 else r23 else r23;
+  r24
 
 def s4 (x : List UInt8) (p : UInt64) : UInt64 := if p < len x then
     let c := rd x p;
@@ -61,7 +66,7 @@ def s4 (x : List UInt8) (p : UInt64) : UInt64 := if p < len x then
     else if c == 40 then 6
     else if c == 41 then 7
     else if c == 43 then 10
-    else if c == 45 then 11
+    else if c == 45 then if d == 45 then 94 else 11
     else if c == 42 then 12
     else if c == 59 then 13
     else if c == 44 then 15
@@ -75,6 +80,8 @@ def s4 (x : List UInt8) (p : UInt64) : UInt64 := if p < len x then
     else if c == 62 then if d == 62 then if f == 62 then 29 else 0 else 0
     else if c == 195 then if d == 151 then 16 else 0
     else if c == 226 then if d == 134 then if f == 146 then 17 else 0 else 0
+    else if c == 47 then if d == 45 then 95 else 0
+    else if c == 64 then if d == 91 then 96 else 0
     else if c < 48 then if c == 39 then s3 x p (s1 (len' x) x p) else 0
     else if c < 58 then if s2 (len' x) x p (s1 (len' x) x p) == 1 then 5 else 0
     else if s0 c == 1 then s3 x p (s1 (len' x) x p)
@@ -117,6 +124,18 @@ def s7 : Nat → List UInt8 → UInt64 → UInt64 → Buf → Buf
 def s8 (v : UInt64) (o : Buf) : Buf := q0 (q0 (q0 (q0 (q0 (q0 (q0 (q0 o v) (v >>> 8)) (v >>> 16)) (v >>> 24)) (v >>> 32)) (v >>> 40)) (v >>> 48))
     (v >>> 56)
 
+def s11 : Nat → List UInt8 → UInt64 → UInt64 → UInt64
+  | 0, x, i, d => 0
+  | n + 1, x, i, d => if i < len x then
+      if rd x i == 45 then if rd x (i + 1) == 47 then if d == 0 then i + 2 else s11 n x (i + 2) (d - 1) else s11 n x (i + 1) d
+      else if rd x i == 47 then if rd x (i + 1) == 45 then s11 n x (i + 2) (d + 1) else s11 n x (i + 1) d
+      else s11 n x (i + 1) d
+    else 0
+
+def s12 : Nat → List UInt8 → UInt64 → UInt64 → UInt64
+  | 0, x, i, b => i
+  | n + 1, x, i, b => if i < len x then if rd x i == b then i else s12 n x (i + 1) b else i
+
 def s9 : Nat → List UInt8 → UInt64 → Buf → Buf
   | 0, x, p, o => bnew
   | n + 1, x, p, o =>
@@ -126,6 +145,11 @@ def s9 : Nat → List UInt8 → UInt64 → Buf → Buf
     else if k == 90 then s9 n x (p + 1) o
     else if k == 5 then s9 n x (s5 x p k) (s8 (s6 (len' x) x p (s5 x p k) 0) (q0 o 5))
     else if k == 14 then s9 n x (s5 x p k) (s7 (len' x) x p (s5 x p k) (q0 o 14))
+    else if k == 94 then s9 n x (s12 (len' x) x (p + 2) 10) o
+    else if k == 92 then s9 n x (s12 (len' x) x (s5 x p k) 10) o
+    else if k == 93 then s9 n x (s5 x p k) o
+    else if k == 95 then if s11 (len' x) x (p + 2) 0 == 0 then bnew else s9 n x (s11 (len' x) x (p + 2) 0) o
+    else if k == 96 then if s12 (len' x) x (p + 2) 93 < len x then s9 n x (s12 (len' x) x (p + 2) 93 + 1) o else bnew
     else s9 n x (s5 x p k) (q0 o k)
 
 def s10 (x : List UInt8) : Buf := s9 16777216 x 0 bnew

@@ -76,26 +76,4 @@ theorem ok_12 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 184467440737
   den_unfold
   den
 
-theorem ok_13 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 13) :
-    Spec13 inp (defMean inp κC ms PC.d13) := by
-  have L : ∀ (n : Nat), n < 18446744073709551616 → ∀ (w0 : UInt64) (a2 : UInt64) (a3 : Buf),
-      Ref (loopRun (fun e => ev ⟨inp, κC, ms⟩ PC.z13 e) (fun e => ev ⟨inp, κC, ms⟩ PC.s13 e) n ([.w w0, .w a2, .b a3] ++ List.replicate 1 (.w 0))) (enc (C.s9 n inp a2 a3)) := by
-    intro n
-    induction n with
-    | zero => intro _ w0 a2 a3; rw [C.s9.eq_def]; den_match 0; unfold PC.z13; exact loop_zero (by den)
-    | succ n ih =>
-      intro hn w0 a2 a3
-      rw [C.s9.eq_def]
-      den_match 1
-      refine loop_succ (env1 := [.w (UInt64.ofNat n), .w a2, .b a3] ++ List.replicate 1 (.w 0)) rfl ?_
-      have hc : ∀ (a2' : UInt64) (a3' : Buf) {e : Nd} {env : List W}, DenT ⟨inp, κC, ms⟩ e env (a2', a3') →
-          DenK ⟨inp, κC, ms⟩ (KL ⟨inp, κC, ms⟩ (fun e => ev ⟨inp, κC, ms⟩ PC.z13 e) PC.s13 n ([.w (UInt64.ofNat n), .w a2, .b a3] ++ List.replicate 1 (.w 0))) (.cont e) env (C.s9 n inp a2' a3') :=
-        fun a2' a3' _ _ h => DenK.cont h ⟨_, rfl, ih (by omega) _ a2' a3'⟩
-      unfold PC.s13
-      den [hc]
-  intro a0 a2 a3 hn
-  refine defMean_loop (C.s9 a0 inp a2 a3) rfl rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat a0) ?_)
-  have h := L a0 hn (UInt64.ofNat a0) a2 a3
-  rwa [show (UInt64.ofNat a0).toNat = a0 from by simp [UInt64.toNat_ofNat', Nat.mod_eq_of_lt hn]]
-
 end Cert

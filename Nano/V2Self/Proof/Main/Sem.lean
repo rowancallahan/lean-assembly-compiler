@@ -180,35 +180,69 @@ theorem isD_isW (c : UInt8) (h : LexSpec.isD c = true) : LexSpec.isW c = true :=
 theorem sum2 (L : List UInt8) : (L.map (fun _ => (2 : Nat))).sum = 2 * L.length := by
   induction L <;> simp_all; omega
 
+theorem blockEnd_len : ∀ (d : Nat) (l t : List UInt8), LexSpec.blockEnd d l = some t → t.length ≤ l.length
+  | _, [], _, h => by simp [LexSpec.blockEnd] at h
+  | _, [_], _, h => by simp [LexSpec.blockEnd] at h
+  | d, c :: c' :: r, t, h => by
+    simp only [LexSpec.blockEnd] at h
+    split at h
+    · split at h
+      · cases h; simp; omega
+      · have := blockEnd_len _ r t h; simp; omega
+    · split at h
+      · have := blockEnd_len _ r t h; simp; omega
+      · have := blockEnd_len _ (c' :: r) t h; simp at this ⊢; omega
+
+theorem dw_len {p : UInt8 → Bool} (l : List UInt8) : (l.dropWhile p).length ≤ l.length :=
+  (List.dropWhile_suffix p).length_le
+
 theorem step_len (l : List UInt8) (e : List UInt64) (r : List UInt8) (h : LexSpec.step l = some (e, r)) :
     e.length + 9 * r.length ≤ 9 * l.length := by
   match l, h with
   | c :: rr, h =>
     simp only [LexSpec.step] at h
+    have htl : rr.tail.length ≤ rr.length := by cases rr <;> simp
     split at h
     · cases h; simp; omega
+    split at h
+    · cases h; have := dw_len (p := (· != 10)) rr.tail; simp; omega
+    split at h
+    · obtain ⟨t, hb, he⟩ := Option.map_eq_some_iff.1 h
+      simp only [Prod.mk.injEq] at he; obtain ⟨rfl, rfl⟩ := he
+      have := blockEnd_len 0 _ _ hb; simp; omega
+    split at h
     · split at h
-      · rename_i s k hf
-        cases h
-        have hm := List.mem_of_find?_eq_some hf
-        have h1 := op_ne _ hm
-        simp at h1 ⊢; omega
-      · have hw : ((c :: rr).takeWhile LexSpec.isW).length + ((c :: rr).dropWhile LexSpec.isW).length = rr.length + 1 := by
-          have := List.takeWhile_append_dropWhile (p := LexSpec.isW) (l := c :: rr)
-          have := congrArg List.length this; simp only [List.length_append] at this; simpa using this
-        have hc : ∀ hc : LexSpec.isW c = true, ((c :: rr).takeWhile LexSpec.isW).length ≥ 1 := by
-          intro hc; simp [hc]
-        split at h
-        · split at h
-          · cases h; have := hc (isD_isW c ‹_›); simp [LexSpec.le8]; omega
-          · cases h
-        · split at h
-          · cases h; have := hc ‹_›
-            split
-            · simp; omega
-            · simp only [List.length_cons, List.length_append, List.length_flatMap, List.length_nil]
-              simp [sum2]; omega
-          · cases h
+      · cases h
+      · rename_i a t' hdw
+        simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl⟩ := h
+        have := dw_len (p := (· != 93)) rr.tail; rw [hdw] at this; simp at this ⊢; omega
+    split at h
+    · rename_i s k hf
+      cases h
+      have hm := List.mem_of_find?_eq_some hf
+      have h1 := op_ne _ hm
+      simp at h1 ⊢; omega
+    · have hw : ((c :: rr).takeWhile LexSpec.isW).length + ((c :: rr).dropWhile LexSpec.isW).length = rr.length + 1 := by
+        have := List.takeWhile_append_dropWhile (p := LexSpec.isW) (l := c :: rr)
+        have := congrArg List.length this; simp only [List.length_append] at this; simpa using this
+      have hc : ∀ hc : LexSpec.isW c = true, ((c :: rr).takeWhile LexSpec.isW).length ≥ 1 := by
+        intro hc; simp [hc]
+      split at h
+      · split at h
+        · cases h; have := hc (isD_isW c ‹_›); simp [LexSpec.le8]; omega
+        · cases h
+      · split at h
+        · have := hc ‹_›
+          split at h
+          · cases h; have := dw_len (p := (· != 10)) ((c :: rr).dropWhile LexSpec.isW); simp; omega
+          split at h
+          · cases h; simp; omega
+          cases h
+          split
+          · simp; omega
+          · simp only [List.length_cons, List.length_append, List.length_flatMap, List.length_nil]
+            simp [sum2]; omega
+        · cases h
 
 /-- the lexer's output is at most 9 words per input byte -/
 theorem lexes_len {x : List UInt8} {ts : List UInt64} (h : LexSpec.Lexes x ts) : ts.length ≤ 9 * x.length := by

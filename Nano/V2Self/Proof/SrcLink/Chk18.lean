@@ -5,6 +5,18 @@ open ParSpec SrcLink
 
 set_option maxRecDepth 100000
 
+theorem lex134 : lexAll (x134.length + 1) x134 = some w134 := by decide +kernel
+theorem tok134 : tokens w134 = some S134 := by decide +kernel
+theorem nl134 : x134.getLast? = some 10 := by decide +kernel
+theorem chk134 : chkDef (pDef F D134 T134) di134 d134 T135 = true := by decide +kernel
+theorem lex135 : lexAll (x135.length + 1) x135 = some w135 := by decide +kernel
+theorem tok135 : tokens w135 = some S135 := by decide +kernel
+theorem nl135 : x135.getLast? = some 10 := by decide +kernel
+theorem chk135 : chkDef (pDef F D135 T135) di135 d135 T136 = true := by decide +kernel
+theorem lex136 : lexAll (x136.length + 1) x136 = some w136 := by decide +kernel
+theorem tok136 : tokens w136 = some S136 := by decide +kernel
+theorem nl136 : x136.getLast? = some 10 := by decide +kernel
+theorem chk136 : chkDef (pDef F D136 T136) di136 d136 T137 = true := by decide +kernel
 theorem lex137 : lexAll (x137.length + 1) x137 = some w137 := by decide +kernel
 theorem tok137 : tokens w137 = some S137 := by decide +kernel
 theorem nl137 : x137.getLast? = some 10 := by decide +kernel
@@ -13,13 +25,5 @@ theorem lex138 : lexAll (x138.length + 1) x138 = some w138 := by decide +kernel
 theorem tok138 : tokens w138 = some S138 := by decide +kernel
 theorem nl138 : x138.getLast? = some 10 := by decide +kernel
 theorem chk138 : chkDef (pDef F D138 T138) di138 d138 T139 = true := by decide +kernel
-theorem lex139 : lexAll (x139.length + 1) x139 = some w139 := by decide +kernel
-theorem tok139 : tokens w139 = some S139 := by decide +kernel
-theorem nl139 : x139.getLast? = some 10 := by decide +kernel
-theorem chk139 : chkDef (pDef F D139 T139) di139 d139 T140 = true := by decide +kernel
-theorem lex140 : lexAll (x140.length + 1) x140 = some w140 := by decide +kernel
-theorem tok140 : tokens w140 = some S140 := by decide +kernel
-theorem nl140 : x140.getLast? = some 10 := by decide +kernel
-theorem chk140 : chkDef (pDef F D140 T140) di140 d140 T141 = true := by decide +kernel
 
 end SrcGen
