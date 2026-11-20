@@ -112,8 +112,8 @@ theorem memRaw {P : Prog} {res main : Nat} (hwf : WfMem P res main) (hP : progCl
     hL (fun i => by show getX s (phys (avar i)) = _; rw [phys_avar]; simp [envOf]) hwb rfl rfl
     (fun b hb => by
       obtain _ | _ | b := b
-      · simpa [envOf] using getX_of (h.x10.symm.trans h10) rfl
-      · simpa [envOf] using getX_of (h.x13.symm.trans h13) rfl
+      · exact getX_of (h.x10.symm.trans h10) rfl
+      · exact getX_of (h.x13.symm.trans h13) rfl
       · exact absurd hb (by show ¬(b + 1 + 1 < 2); omega))
     (fun b hb => by
       obtain _ | _ | b := b
@@ -229,7 +229,7 @@ theorem memSpec {P : Prog} {res main : Nat} (hwf : WfMem P res main) (hP : progC
       simp only [riscvObserve, Option.isSome_map] at this
       rwa [toNat_add_offset (by omega) hoffset] at this)
   refine ⟨envOf startState, out0, ?_, fun i hi => ?_, hl0, fun {E σ'} hexec => ?_⟩
-  · simpa [envOf] using getX_of (configured.x11.symm.trans h11) rfl
+  · exact getX_of (configured.x11.symm.trans h11) rfl
   · simp only [envOf]; rw [dif_neg (by omega)]
   obtain ⟨steps, finishState, hsteps, hpcF, hcfg, hun, hcase⟩ := run hexec
   refine ⟨finishState, runs_of_steps steps _ _ hsteps, ?_, ?_, ?_⟩

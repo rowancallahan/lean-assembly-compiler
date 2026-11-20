@@ -62,7 +62,7 @@ theorem implements1_of_execB (N : Nat) (hN : N ≤ 16) {prog : BStmt} (hwf : pro
       bytesAt s work.base (wl a.length) = wk0.map some :=
     ⟨_, by simp [bytesAt], bytesAt_hosted fun i hi => hmapW i (by omega)⟩
   obtain ⟨σ', wk', hexec, hh, hrl⟩ := hex a wk0 out0 (envOf s)
-    (by simpa [envOf] using getX_of (h.x11.symm.trans h11) rfl) hmax hwl (by omega) (by omega)
+    (getX_of (h.x11.symm.trans h11) rfl) hmax hwl (by omega) (by omega)
   let R : List Region := [⟨input.base, a.length⟩, ⟨work.base, wl a.length⟩, ⟨output.base, output.len⟩]
   have hR : RegOK R := by
     refine ⟨fun r hr => ?_, ?_⟩
@@ -84,9 +84,9 @@ theorem implements1_of_execB (N : Nat) (hN : N ≤ 16) {prog : BStmt} (hwf : pro
   have hheap : HeapRel [0, 2, 3] R ⟨envOf s, [tbs a, wk0, out0]⟩ s :=
     ⟨rfl, rfl, fun b hb => by
         obtain _ | _ | _ | b := b
-        · simpa [envOf] using getX_of (h.x10.symm.trans h10) rfl
-        · simpa [envOf] using getX_of (h.x12.symm.trans h12) rfl
-        · simpa [envOf] using getX_of (h.x13.symm.trans h13) rfl
+        · exact getX_of (h.x10.symm.trans h10) rfl
+        · exact getX_of (h.x12.symm.trans h12) rfl
+        · exact getX_of (h.x13.symm.trans h13) rfl
         · simp [R] at hb; omega,
       fun b hb => by
         obtain _ | _ | _ | b := b
