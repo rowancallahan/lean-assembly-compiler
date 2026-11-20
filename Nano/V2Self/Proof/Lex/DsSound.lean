@@ -757,3 +757,543 @@ theorem go_noMatch : ∀ (f g : Nat) (ts : List UInt64) (cs : List Nat) (out : L
     rw [go_noMatch f g r cs o' hr hc h2, hts]
 
 end DsSpec
+
+namespace DsSpec
+open C
+
+/-! ### the match cells: `s[d - k]` is the cell of depth `d - k` = `cs[k]` -/
+
+def Rep (s : Buf) (d : UInt64) (cs : List Nat) : Prop :=
+  cs.length = d.toNat + 1 ∧ d.toNat < s.length ∧ ∀ k, k ≤ d.toNat → cs.getD k 0 = (s.getD (d.toNat - k) 0).toNat
+
+theorem rep_head {s : Buf} {d : UInt64} {cs : List Nat} (h : Rep s d cs) : cs.head? = some (bget s d).toNat := by
+  obtain ⟨h1, -, h3⟩ := h
+  have := h3 0 (by omega)
+  cases cs with
+  | nil => simp at h1
+  | cons c cs => simp at this ⊢; rw [this, bget_eq, List.getD_eq_getElem?_getD]
+
+theorem rep_set {s : Buf} {d v : UInt64} {cs : List Nat} (h : Rep s d cs) : Rep (bset s d v) d (v.toNat :: cs.tail) := by
+  obtain ⟨h1, h2, h3⟩ := h
+  refine ⟨by cases cs <;> simp_all, by simp [bset]; omega, fun k hk => ?_⟩
+  simp only [bset]
+  cases k with
+  | zero => simp [List.getElem?_set, h2]
+  | succ k =>
+    have := h3 (k + 1) hk
+    cases cs with
+    | nil => simp at h1
+    | cons c cs =>
+      simp only [List.getD_cons_succ, List.tail_cons] at this ⊢
+      rw [this, List.getD_eq_getElem?_getD, List.getD_eq_getElem?_getD, List.getElem?_set_ne (by omega)]
+
+theorem rep_pop {s : Buf} {d : UInt64} {cs : List Nat} (h : Rep s d cs) (hd : d ≠ 0) :
+    Rep (bset s d 0) (d - 1) cs.tail := by
+  obtain ⟨h1, h2, h3⟩ := h
+  have hd' : d.toNat ≠ 0 := fun e => hd (UInt64.toNat_inj.1 (by simpa using e))
+  have hs : (d - 1).toNat = d.toNat - 1 := by
+    rw [UInt64.toNat_sub_of_le]; · simp
+    · rw [UInt64.le_iff_toNat_le]; simp; omega
+  unfold Rep; rw [hs]
+  refine ⟨by cases cs <;> simp_all; omega, by simp [bset]; omega, fun k hk => ?_⟩
+  have := h3 (k + 1) (by omega)
+  cases cs with
+  | nil => simp at h1
+  | cons c cs =>
+    simp only [List.getD_cons_succ, List.tail_cons] at this ⊢
+    rw [this, show d.toNat - (k + 1) = d.toNat - 1 - k by omega]
+    simp only [bset, List.getD_eq_getElem?_getD]
+    rw [List.getElem?_set_ne (by omega)]
+
+theorem rep_push {s : Buf} {d : UInt64} {cs : List Nat} (h : Rep s d cs) (hd : d.toNat + 1 < 16777216)
+    (hs : s.length < 16777216) :
+    Rep (if d + 1 < bsize s then bset s (d + 1) 0 else bpush s 0) (d + 1) (0 :: cs) := by
+  obtain ⟨h1, h2, h3⟩ := h
+  have e1 := add1 (p := d) (by omega)
+  have key : ∀ s' : Buf, s'.length > d.toNat + 1 → (∀ j, j ≤ d.toNat → s'.getD j 0 = s.getD j 0) →
+      s'.getD (d.toNat + 1) 0 = 0 → Rep s' (d + 1) (0 :: cs) := by
+    intro s' l1 l2 l3
+    rw [Rep, e1]
+    refine ⟨by simp; omega, l1, fun k hk => ?_⟩
+    cases k with
+    | zero => simp only [List.getD_cons_zero, Nat.sub_zero]; rw [l3]; rfl
+    | succ k =>
+      simp only [List.getD_cons_succ]
+      rw [h3 k (by omega), show d.toNat + 1 - (k + 1) = d.toNat - k by omega, l2 _ (by omega)]
+  split
+  · rename_i hlt
+    have hlt' : d.toNat + 1 < s.length := by rw [← e1]; exact (lt_bsize hs).1 hlt
+    apply key
+    · simp [bset]; omega
+    · intro j hj; simp only [bset, List.getD_eq_getElem?_getD]; rw [List.getElem?_set_ne (by omega)]
+    · simp only [bset, List.getD_eq_getElem?_getD, e1]; rw [List.getElem?_set_self (by omega)]; rfl
+  · rename_i hlt
+    have hle : s.length ≤ d.toNat + 1 := by
+      have := (not_congr (lt_bsize (p := d + 1) hs)).1 hlt; rw [e1] at this; omega
+    have hseq : s.length = d.toNat + 1 := by omega
+    apply key
+    · simp [bpush]; omega
+    · intro j hj; simp only [bpush, List.getD_eq_getElem?_getD]; rw [List.getElem?_append_left (by omega)]
+    · simp only [bpush, List.getD_eq_getElem?_getD]; rw [List.getElem?_append_right (by omega)]; simp [hseq]
+
+theorem rep_len1 {s : Buf} {d : UInt64} {cs : List Nat} (h : Rep s d cs) : cs.length = 1 ↔ d = 0 := by
+  rw [h.1]; constructor
+  · intro e; apply UInt64.toNat_inj.1; simp; omega
+  · intro e; subst e; simp
+
+theorem rep_zero {s : Buf} {cs : List Nat} (h : Rep s 0 cs) : Rep (bset s 0 0) 0 [0] := by
+  obtain ⟨h1, h2, h3⟩ := h
+  refine ⟨by simp, by simp [bset] at h2 ⊢; omega, fun k hk => ?_⟩
+  simp at hk; subst hk; simp [bset, List.getElem?_set, show 0 < s.length by simpa using h2]
+
+end DsSpec
+
+namespace DsSpec
+open C
+
+theorem bT {a b : UInt64} (h : a = b) : (a == b) = true := by simp [h]
+theorem bF {a b : UInt64} (h : a ≠ b) : (a == b) = false := by simpa using h
+
+theorem b01 : ((0 : UInt64) == 1) = false := by decide
+theorem b11 : ((1 : UInt64) == 1) = true := by decide
+
+theorem cell_lt (c : Bool) : (cell c).toUInt64.toNat = cell c ∧ (cell c).toUInt64.toNat < 4 := by
+  cases c <;> simp [cell]
+
+theorem cell_ne0 (c : Bool) : (cell c).toUInt64 ≠ 0 := by cases c <;> decide
+
+/-- the C state after an arm: cell, position, output -/
+theorem arm_step {t : Buf} {i d : UInt64} {s : Buf} {cs : List Nat} {q : UInt64} {pos : Nat} {cc : Bool}
+    (ht : t.length < 16777216) (hd : d.toNat ≤ i.toNat) (hs : s.length ≤ i.toNat + 1) (hr : Rep s d cs)
+    (hip : i.toNat < pos) (hpl : pos ≤ t.length) (hq : q = pos.toUInt64 * 4 + (cell cc).toUInt64) :
+    (q >>> 2).toNat = pos ∧ d.toNat ≤ (q >>> 2).toNat ∧ (bset s d (q &&& 3)).length ≤ (q >>> 2).toNat + 1 ∧
+      Rep (bset s d (q &&& 3)) d (cell cc :: cs.tail) := by
+  obtain ⟨p1, p2⟩ := qpack pos (cell cc).toUInt64 (by omega) (cell_lt cc).2
+  rw [hq, p1, p2]
+  have hp : (pos.toUInt64).toNat = pos := by simp; omega
+  refine ⟨hp, by omega, by simp [bset]; omega, ?_⟩
+  have := rep_set (v := (cell cc).toUInt64) hr
+  rwa [(cell_lt cc).1] at this
+
+set_option maxHeartbeats 4000000 in
+theorem t9_sound : ∀ (n : Nat) (t : Buf) (i d : UInt64) (s : Buf) (c : UInt64) (o : Buf) (cs : List Nat) (f : Nat),
+    t.length < 16777216 → i.toNat ≤ t.length → d.toNat ≤ i.toNat → s.length ≤ i.toNat + 1 → Rep s d cs →
+    (c = 0 ∨ c = 1) → t.length - i.toNat < f → t9 n t i d s c o ≠ [] →
+    ∃ out, go f (t.drop i.toNat) cs (c == 1) = some out ∧ t9 n t i d s c o = o ++ out
+  | 0, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, hne => by simp [t9, bnew] at hne
+  | n + 1, t, i, d, s, c, o, cs, f, ht, hi, hd, hs, hr, hc, hf, hne => by
+    obtain ⟨f, rfl⟩ : ∃ f', f = f' + 1 := ⟨f - 1, by omega⟩
+    by_cases hlt : i < bsize t
+    · have hl := (lt_bsize ht).1 hlt
+      have hsz : s.length < 16777216 := by omega
+      simp only [t9, if_pos hlt] at hne ⊢
+      have c1 : t0 t i ≠ 0 := by
+        intro e'; simp only [e', beq_self_eq_true, if_true, ite_true] at hne; exact hne rfl
+      simp only [bF c1, Bool.false_eq_true, if_false, ite_false] at hne ⊢
+      obtain ⟨e1, e2, e3⟩ := t0_sound t i ht hl c1
+      have hhead := slice_head t i.toNat (t0 t i).toNat e1 e2
+      rw [← bget_eq] at hhead
+      have single : ∀ x : UInt64, x ≠ 5 → x ≠ 14 → (slice t i.toNat (t0 t i).toNat = [x] ↔ bget t i = x) :=
+        fun x h5 h14 => tok_single t i ht hl c1 x h5 h14
+      rw [t2_eq t i _ ht e1 e2, t3_eq t i _ ht e1 e2] at hne ⊢
+      generalize hE : t0 t i = E at *
+      generalize hA : slice t i.toNat E.toNat = A at *
+      have e3' := e3
+      rw [drop_cons' hl] at e3' ⊢
+      simp only [go, e3', Option.bind_some]
+      -- the copy step: continue at E with the token copied
+      have copyIH : ∀ (c' : UInt64), (c' = 0 ∨ c' = 1) → t9 n t E d s c' (t6 16777216 t i E o) ≠ [] →
+          ∃ out, go f (t.drop E.toNat) cs (c' == 1) = some out ∧ t9 n t E d s c' (t6 16777216 t i E o) = o ++ (A ++ out) := by
+        intro c' hc' hn'
+        obtain ⟨out, h1, h2⟩ := t9_sound n t E d s c' _ cs f ht e2 (by omega) (by omega) hr hc' (by omega) hn'
+        refine ⟨out, h1, ?_⟩
+        rw [h2, t6_eq _ t _ _ _ ht e2 (by omega) (by omega), hA]; simp
+      rcases hc with rfl | rfl
+      · -- outside a scrutinee
+        simp only [show ((0 : UInt64) == 1) = false by decide, Bool.false_eq_true, if_false, ite_false] at hne ⊢
+        by_cases hm : A = MATCH
+        · simp only [hm, if_true, ite_true, show ((1 : UInt64) == 1) = true by decide] at hne ⊢
+          have hh := rep_head hr
+          by_cases h1 : bget s d = 1
+          · simp only [bT h1, if_true, ite_true] at hne; exact absurd rfl hne
+          simp only [bF h1, Bool.false_eq_true, if_false, ite_false] at hne ⊢
+          rw [hh]
+          have : ¬ (some (bget s d).toNat = some 1) := by
+            intro e'; apply h1; apply UInt64.toNat_inj.1; simpa using e'
+          rw [if_neg this]
+          obtain ⟨out, g1, g2⟩ := t9_sound n t E d s 1 _ cs f ht e2 (by omega) (by omega) hr (Or.inr rfl) (by omega) hne
+          refine ⟨_, by simp only [b01, b11] at g1; rw [g1]; rfl, ?_⟩
+          rw [g2, t5_eq]; simp [bpush, MU]
+        simp only [hm, if_false, ite_false, show ((0 : UInt64) == 1) = false by decide, Bool.false_eq_true] at hne ⊢
+        by_cases hw : A = WITH
+        · simp only [hw, if_true, ite_true, show ((1 : UInt64) == 1) = true by decide] at hne; exact absurd rfl hne
+        simp only [hw, if_false, ite_false, show ((0 : UInt64) == 1) = false by decide, Bool.false_eq_true] at hne ⊢
+        have hh := rep_head hr
+        by_cases k18 : bget t i = 18
+        · have hA18 : A = [18] := (single 18 (by decide) (by decide)).2 k18
+          simp only [bT k18, if_true, ite_true, hA18] at hne ⊢
+          rw [hh]
+          by_cases h1 : bget s d = 1
+          · have hs1 : some (bget s d).toNat = some 1 := by rw [h1]; rfl
+            simp only [bT h1, if_true, ite_true, hs1] at hne ⊢
+            generalize hT : t7 t E 0 o = T at hne
+            obtain ⟨q, o1⟩ := T
+            simp only at hne
+            have hq : q ≠ 0 := by intro e'; simp [e', bnew] at hne
+            simp only [bF hq, Bool.false_eq_true, if_false, ite_false] at hne ⊢
+            obtain ⟨p, pos, w, cc, s1, s2, s3, s4, s5, s6⟩ := t7_sound t E 0 o ht e2 q o1 hT hq
+            obtain ⟨a1, a2, a3, a4⟩ := arm_step ht (by omega) (by omega) hr (by omega) s5 s6
+            rw [s1]
+            simp only [Option.bind_some]
+            rw [show ((0 : UInt64) == 1) = false by decide] at s2
+            rw [s2]; simp only [Option.bind_some]
+            obtain ⟨out, g1, g2⟩ := t9_sound n t (q >>> 2) d _ 0 o1 _ f ht (by omega) a2 a3 a4 (Or.inl rfl) (by omega) hne
+            rw [a1] at g1
+            refine ⟨_, by simp only [b01, b11] at g1; rw [g1]; rfl, ?_⟩
+            rw [g2, s3]; simp
+          have hs1 : ¬ some (bget s d).toNat = some 1 := by
+            intro e'; apply h1; apply UInt64.toNat_inj.1; simpa using e'
+          simp only [bF h1, Bool.false_eq_true, if_false, ite_false, hs1] at hne ⊢
+          by_cases h2 : bget s d = 2
+          · simp only [bT h2, if_true, ite_true] at hne; exact absurd rfl hne
+          have hs2 : ¬ some (bget s d).toNat = some 2 := by
+            intro e'; apply h2; apply UInt64.toNat_inj.1; simpa using e'
+          simp only [bF h2, Bool.false_eq_true, if_false, ite_false, hs2] at hne ⊢
+          obtain ⟨out, g1, g2⟩ := t9_sound n t E d s 0 _ cs f ht e2 (by omega) (by omega) hr (Or.inl rfl) (by omega) hne
+          refine ⟨_, by simp only [b01, b11] at g1; rw [g1]; rfl, ?_⟩
+          rw [g2]; simp [bpush]
+        have nA18 : A ≠ [18] := fun e' => k18 ((single 18 (by decide) (by decide)).1 e')
+        simp only [bF k18, Bool.false_eq_true, if_false, ite_false, nA18] at hne ⊢
+        by_cases k6 : bget t i = 6
+        · have hA6 : A = [6] := (single 6 (by decide) (by decide)).2 k6
+          simp only [bT k6, if_true, ite_true, hA6] at hne ⊢
+          have hE1 : E.toNat = i.toNat + 1 := by
+            rw [← hE]; exact (t0_one t i ht hl (by rw [k6]; decide) (by rw [k6]; decide)).1
+          have hd1 := add1 (p := d) (by omega)
+          obtain ⟨out, g1, g2⟩ := t9_sound n t E (d + 1) _ 0 _ (0 :: cs) f ht e2 (by omega)
+            (by split <;> simp [bset, bpush] <;> omega) (rep_push hr (by omega) hsz) (Or.inl rfl) (by omega) hne
+          refine ⟨_, by simp only [b01, b11] at g1; rw [g1]; rfl, ?_⟩
+          rw [g2]; simp [bpush]
+        have nA6 : A ≠ [6] := fun e' => k6 ((single 6 (by decide) (by decide)).1 e')
+        simp only [bF k6, Bool.false_eq_true, if_false, ite_false, nA6] at hne ⊢
+        by_cases k7 : bget t i = 7
+        · have hA7 : A = [7] := (single 7 (by decide) (by decide)).2 k7
+          simp only [bT k7, if_true, ite_true, hA7] at hne ⊢
+          rw [hh]
+          by_cases h1 : bget s d = 1
+          · simp only [bT h1, if_true, ite_true] at hne; exact absurd rfl hne
+          simp only [bF h1, Bool.false_eq_true, if_false, ite_false] at hne ⊢
+          by_cases h0 : d = 0
+          · simp only [bT h0, if_true, ite_true] at hne; exact absurd rfl hne
+          simp only [bF h0, Bool.false_eq_true, if_false, ite_false] at hne ⊢
+          have hcond : ¬ (some (bget s d).toNat = some 1 ∨ cs.length ≤ 1) := by
+            rintro (e' | e')
+            · apply h1; apply UInt64.toNat_inj.1; simpa using e'
+            · apply h0; apply UInt64.toNat_inj.1; have := hr.1; simp; omega
+          rw [if_neg hcond]
+          have hsub : (d - 1).toNat = d.toNat - 1 := by
+            have hd' : d.toNat ≠ 0 := fun e => h0 (UInt64.toNat_inj.1 (by simpa using e))
+            rw [UInt64.toNat_sub_of_le]; · simp
+            · rw [UInt64.le_iff_toNat_le]; simp; omega
+          obtain ⟨out, g1, g2⟩ := t9_sound n t E (d - 1) _ 0 _ cs.tail f ht e2 (by omega) (by simp [bset]; omega)
+            (rep_pop hr h0) (Or.inl rfl) (by omega) hne
+          refine ⟨_, by simp only [b01, b11] at g1; rw [g1]; rfl, ?_⟩
+          rw [g2]; simp [bpush]
+        have nA7 : A ≠ [7] := fun e' => k7 ((single 7 (by decide) (by decide)).1 e')
+        simp only [bF k7, Bool.false_eq_true, if_false, ite_false, nA7] at hne ⊢
+        by_cases k1 : bget t i = 1
+        · have hA1 : A = [1] := (single 1 (by decide) (by decide)).2 k1
+          simp only [bT k1, if_true, ite_true, hA1] at hne ⊢
+          by_cases h0 : d = 0
+          · subst h0
+            simp only [beq_self_eq_true, if_true, ite_true] at hne ⊢
+            by_cases h1 : bget s 0 = 1
+            · simp only [bT h1, if_true, ite_true] at hne; exact absurd rfl hne
+            simp only [bF h1, Bool.false_eq_true, if_false, ite_false] at hne ⊢
+            have hcond : cs.length = 1 ∧ cs.head? ≠ some 1 := by
+              refine ⟨(rep_len1 hr).2 rfl, ?_⟩
+              rw [rep_head hr]; intro e'; apply h1; apply UInt64.toNat_inj.1; simpa using e'
+            rw [if_pos hcond]
+            obtain ⟨out, g1, g2⟩ := t9_sound n t E 0 _ 0 _ [0] f ht e2 (by simp) (by simp [bset]; omega)
+              (rep_zero hr) (Or.inl rfl) (by omega) hne
+            refine ⟨_, by simp only [b01, b11] at g1; rw [g1]; rfl, ?_⟩
+            rw [g2]; simp [bpush]
+          · simp only [bF h0, Bool.false_eq_true, if_false, ite_false] at hne; exact absurd rfl hne
+        have nA1 : A ≠ [1] := fun e' => k1 ((single 1 (by decide) (by decide)).1 e')
+        simp only [bF k1, Bool.false_eq_true, if_false, ite_false, nA1] at hne ⊢
+        obtain ⟨out, g1, g2⟩ := copyIH 0 (Or.inl rfl) hne
+        exact ⟨_, by simp only [b01, b11] at g1; rw [g1]; rfl, g2⟩
+      · -- inside a scrutinee
+        simp only [show ((1 : UInt64) == 1) = true by decide, if_true, ite_true] at hne ⊢
+        by_cases hw : A = WITH
+        · simp only [hw, if_true, ite_true, show ((1 : UInt64) == 1) = true by decide] at hne ⊢
+          by_cases h18 : bget t E = 18
+          · simp only [bT h18, if_true, ite_true] at hne ⊢
+            rw [drop_bget h18 (by decide)]
+            simp only
+            have hE1 := add1 (p := E) (by omega)
+            generalize hT : t7 t (E + 1) 1 (bpush o 13) = T at hne
+            obtain ⟨q, o1⟩ := T
+            simp only at hne
+            have hq : q ≠ 0 := by intro e'; simp [e', bnew] at hne
+            simp only [bF hq, Bool.false_eq_true, if_false, ite_false] at hne ⊢
+            have l18 := bget_pos h18 (by decide)
+            obtain ⟨p, pos, w, cc, s1, s2, s3, s4, s5, s6⟩ := t7_sound t (E + 1) 1 _ ht (by omega) q o1 hT hq
+            rw [hE1] at s1 s4
+            obtain ⟨a1, a2, a3, a4⟩ := arm_step ht (by omega) (by omega) hr (by omega) s5 s6
+            rw [s1]
+            simp only [Option.bind_some]
+            rw [show ((1 : UInt64) == 1) = true by decide] at s2
+            rw [s2]; simp only [Option.bind_some]
+            obtain ⟨out, g1, g2⟩ := t9_sound n t (q >>> 2) d _ 0 o1 _ f ht (by omega) a2 a3 a4 (Or.inl rfl) (by omega) hne
+            rw [a1] at g1
+            refine ⟨_, by simp only [b01, b11] at g1; rw [g1]; rfl, ?_⟩
+            rw [g2, s3]; simp [bpush]
+          · simp only [bF h18, Bool.false_eq_true, if_false, ite_false] at hne; exact absurd rfl hne
+        simp only [hw, if_false, ite_false, show ((0 : UInt64) == 1) = false by decide, Bool.false_eq_true] at hne ⊢
+        by_cases hm : A = MATCH
+        · simp only [hm, if_true, ite_true, show ((1 : UInt64) == 1) = true by decide] at hne; exact absurd rfl hne
+        simp only [hm, if_false, ite_false, show ((0 : UInt64) == 1) = false by decide, Bool.false_eq_true] at hne ⊢
+        by_cases k18 : bget t i = 18
+        · simp only [bT k18, if_true, ite_true] at hne; exact absurd rfl hne
+        simp only [bF k18, Bool.false_eq_true, if_false, ite_false] at hne ⊢
+        by_cases k19 : bget t i = 19
+        · simp only [bT k19, if_true, ite_true] at hne; exact absurd rfl hne
+        simp only [bF k19, Bool.false_eq_true, if_false, ite_false] at hne ⊢
+        have nA18 : A ≠ [18] := fun e' => k18 ((single 18 (by decide) (by decide)).1 e')
+        have nA19 : A ≠ [19] := fun e' => k19 ((single 19 (by decide) (by decide)).1 e')
+        rw [if_neg (by simp [hm, nA18, nA19])]
+        obtain ⟨out, g1, g2⟩ := copyIH 1 (Or.inr rfl) hne
+        exact ⟨_, by simp only [b01, b11] at g1; rw [g1]; rfl, g2⟩
+    · -- the end of the text
+      have hiE : i.toNat = t.length := by have := (not_congr (lt_bsize ht)).1 hlt; omega
+      simp only [t9, if_neg hlt] at hne ⊢
+      rw [hiE, List.drop_length]
+      simp only [go]
+      rcases hc with rfl | rfl
+      · simp only [show ((0 : UInt64) == 1) = false by decide, Bool.false_eq_true, if_false, ite_false] at hne ⊢
+        by_cases h0 : d = 0
+        · subst h0
+          simp only [beq_self_eq_true, if_true, ite_true] at hne ⊢
+          by_cases h1 : bget s 0 = 1
+          · simp only [bT h1, if_true, ite_true] at hne; exact absurd rfl hne
+          simp only [bF h1, Bool.false_eq_true, if_false, ite_false]
+          have hcond : (!false) = true ∧ cs.length = 1 ∧ cs.head? ≠ some 1 := by
+            refine ⟨rfl, (rep_len1 hr).2 rfl, ?_⟩
+            rw [rep_head hr]; intro e'; apply h1; apply UInt64.toNat_inj.1; simpa using e'
+          rw [if_pos hcond]; exact ⟨[], rfl, by simp⟩
+        · simp only [bF h0, Bool.false_eq_true, if_false, ite_false] at hne; exact absurd rfl hne
+      · simp only [show ((1 : UInt64) == 1) = true by decide, if_true, ite_true] at hne; exact absurd rfl hne
+
+end DsSpec
+
+namespace DsSpec
+open C
+
+/-! ### the output is at most 3 words per input word -/
+
+theorem splitTok_len {l a r : List UInt64} (h : splitTok l = some (a, r)) : 1 ≤ a.length := by
+  match l, h with
+  | k :: l', h =>
+    simp only [splitTok] at h
+    by_cases h5 : k = 5
+    · rw [if_pos h5] at h; split at h
+      · simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl⟩ := h; simp
+      · cases h
+    · rw [if_neg h5] at h
+      by_cases h14 : k = 14
+      · rw [if_pos h14] at h
+        obtain ⟨⟨w, r'⟩, -, he⟩ := Option.map_eq_some_iff.1 h
+        simp only [Prod.mk.injEq] at he; obtain ⟨rfl, rfl⟩ := he; simp
+      · rw [if_neg h14] at h
+        simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl⟩ := h; simp
+
+theorem pre_len (b : Bool) : (if b then ([] : List UInt64) else [34]).length ≤ 1 := by split <;> simp
+
+theorem pat_len {r1 r2 w : List UInt64} {p : Pat} {b c : Bool} (hp : pat r1 = some (p, r2))
+    (ha : armCode b p = some (w, c)) : w.length + 3 * r2.length ≤ 3 + 3 * r1.length := by
+  unfold pat at hp
+  obtain ⟨⟨a, r⟩, hs, hp⟩ := Option.bind_eq_some_iff.1 hp
+  simp only at hp
+  have e1 := splitTok_app hs
+  have l1 := splitTok_len hs
+  rw [e1]
+  have hpre := pre_len b
+  -- the three one-token patterns `a =>`
+  have one : ∀ (r' : List UInt64), r = 19 :: r' → r2 = r' → w.length ≤ 8 + a.length →
+      w.length + 3 * r2.length ≤ 3 + 3 * (a ++ r).length := by
+    intro r' h1 h2 h3; subst h1; subst h2; simp; omega
+  by_cases c5 : a.head? = some 5
+  · rw [if_pos c5] at hp
+    split at hp
+    · simp only [Option.some.injEq, Prod.mk.injEq] at hp; obtain ⟨rfl, rfl⟩ := hp
+      simp only [armCode, Option.some.injEq, Prod.mk.injEq] at ha; obtain ⟨rfl, rfl⟩ := ha
+      exact one _ rfl rfl (by simp [MU]; omega)
+    · cases hp
+  rw [if_neg c5] at hp
+  by_cases cw : a = WILD
+  · rw [if_pos cw] at hp
+    split at hp
+    · simp only [Option.some.injEq, Prod.mk.injEq] at hp; obtain ⟨rfl, rfl⟩ := hp
+      simp only [armCode, Option.some.injEq, Prod.mk.injEq] at ha; obtain ⟨rfl, rfl⟩ := ha
+      exact one _ rfl rfl (by omega)
+    · cases hp
+  rw [if_neg cw] at hp
+  by_cases c14 : a.head? = some 14
+  · rw [if_pos c14] at hp
+    split at hp
+    · simp only [Option.some.injEq, Prod.mk.injEq] at hp; obtain ⟨rfl, rfl⟩ := hp
+      simp only [armCode, Option.some.injEq, Prod.mk.injEq] at ha; obtain ⟨rfl, rfl⟩ := ha
+      exact one _ rfl rfl (by simp [MU]; omega)
+    · cases hp
+  rw [if_neg c14] at hp
+  by_cases c6 : a = [6]
+  · rw [if_pos c6] at hp
+    subst c6
+    obtain ⟨⟨x, r1'⟩, hx, hp⟩ := Option.bind_eq_some_iff.1 hp
+    simp only at hp
+    have ex := splitTok_app hx
+    split at hp
+    · split at hp
+      · rename_i r2' _
+        obtain ⟨⟨y, r3⟩, hy, hp⟩ := Option.bind_eq_some_iff.1 hp
+        simp only at hp
+        have ey := splitTok_app hy
+        split at hp
+        · split at hp
+          · simp only [Option.some.injEq, Prod.mk.injEq] at hp; obtain ⟨rfl, rfl⟩ := hp
+            rename_i r4 _ _
+            cases b
+            · simp [armCode] at ha
+            · simp only [armCode, if_true, Option.some.injEq, Prod.mk.injEq] at ha; obtain ⟨rfl, rfl⟩ := ha
+              subst ex; subst ey
+              simp [MU]; omega
+          · cases hp
+        · cases hp
+      · cases hp
+    · cases hp
+  · rw [if_neg c6] at hp; cases hp
+
+/-- the code `go` emits is at most 3 words per input word -/
+theorem go_len : ∀ (f : Nat) (ts : List UInt64) (cs : List Nat) (sc : Bool) (out : List UInt64),
+    go f ts cs sc = some out → out.length ≤ 3 * ts.length
+  | 0, _, _, _, _, h => by simp [go] at h
+  | f + 1, [], cs, sc, out, h => by
+    simp only [go] at h; split at h
+    · cases h; simp
+    · cases h
+  | f + 1, x :: xs, cs, sc, out, h => by
+    simp only [go] at h
+    obtain ⟨⟨a, r⟩, hs, h⟩ := Option.bind_eq_some_iff.1 h
+    simp only at h
+    have e1 := splitTok_app hs
+    have l1 := splitTok_len hs
+    rw [e1]
+    -- the copy / fixed-code steps
+    have step : ∀ (pre : List UInt64) (cs' : List Nat) (sc' : Bool) (o' : List UInt64), go f r cs' sc' = some o' →
+        pre.length ≤ 3 * a.length → (pre ++ o').length ≤ 3 * (a ++ r).length := by
+      intro pre cs' sc' o' h1 h2
+      have := go_len f r cs' sc' o' h1; simp; omega
+    -- an arm after `| `
+    have arm : ∀ (pre : List UInt64) (r1 : List UInt64) (p : Pat) (r2 w : List UInt64) (bb c' : Bool) (cs' : List Nat) (o' : List UInt64),
+        r = r1 → pat r1 = some (p, r2) → armCode bb p = some (w, c') → go f r2 cs' false = some o' →
+        pre.length + 3 ≤ 3 * a.length → (pre ++ w ++ o').length ≤ 3 * (a ++ r).length := by
+      intro pre r1 p r2 w bb c' cs' o' hr h1 h2 h3 h4
+      have := go_len f r2 cs' false o' h3
+      have := pat_len h1 h2
+      subst hr; simp; omega
+    split at h
+    · split at h
+      · split at h
+        · obtain ⟨⟨p, r2⟩, h1, h⟩ := Option.bind_eq_some_iff.1 h
+          obtain ⟨⟨w, c'⟩, h2, h⟩ := Option.bind_eq_some_iff.1 h
+          obtain ⟨o', h3, rfl⟩ := Option.map_eq_some_iff.1 h
+          have := go_len f r2 _ false o' h3
+          have := pat_len h1 h2
+          rw [‹a = WITH›]; simp [WITH]; omega
+        · cases h
+      · split at h
+        · cases h
+        · obtain ⟨o', h1, rfl⟩ := Option.map_eq_some_iff.1 h
+          exact step a cs true o' h1 (by omega)
+    · split at h
+      · split at h
+        · cases h
+        · obtain ⟨o', h1, rfl⟩ := Option.map_eq_some_iff.1 h
+          have := step ([2] ++ MU ++ [9]) cs true o' h1 (by rw [‹a = MATCH›]; simp [MU, MATCH])
+          simpa using this
+      · split at h
+        · cases h
+        · split at h
+          · split at h
+            · obtain ⟨⟨p, r2⟩, h1, h⟩ := Option.bind_eq_some_iff.1 h
+              obtain ⟨⟨w, c'⟩, h2, h⟩ := Option.bind_eq_some_iff.1 h
+              obtain ⟨o', h3, rfl⟩ := Option.map_eq_some_iff.1 h
+              have := arm [] r p r2 w false c' _ o' rfl h1 h2 h3 (by rw [‹a = [18]›]; simp)
+              simpa using this
+            · split at h
+              · cases h
+              · obtain ⟨o', h1, rfl⟩ := Option.map_eq_some_iff.1 h
+                have := step [18] cs false o' h1 (by rw [‹a = [18]›]; simp)
+                simpa using this
+          · split at h
+            · obtain ⟨o', h1, rfl⟩ := Option.map_eq_some_iff.1 h
+              have := step [6] _ false o' h1 (by rw [‹a = [6]›]; simp)
+              simpa using this
+            · split at h
+              · split at h
+                · cases h
+                · obtain ⟨o', h1, rfl⟩ := Option.map_eq_some_iff.1 h
+                  have := step [7] _ false o' h1 (by rw [‹a = [7]›]; simp)
+                  simpa using this
+              · split at h
+                · split at h
+                  · obtain ⟨o', h1, rfl⟩ := Option.map_eq_some_iff.1 h
+                    have := step [1] _ false o' h1 (by rw [‹a = [1]›]; simp)
+                    simpa using this
+                  · cases h
+                · obtain ⟨o', h1, rfl⟩ := Option.map_eq_some_iff.1 h
+                  exact step a cs false o' h1 (by omega)
+
+end DsSpec
+
+namespace DsSpec
+open C
+
+theorem rep0 : Rep (bpush bnew 0) 0 [0] := ⟨rfl, by simp [bpush, bnew], fun k hk => by simp at hk; subst hk; rfl⟩
+
+/-- **the match desugaring is sound**: if `C.t10` accepts a token buffer (below 2^24 words), its output is the
+specification's `ds` -/
+theorem t10_sound (t : Buf) (ht : t.length < 16777216) (h : t10 t ≠ []) : ds t = some (t10 t) := by
+  have hb : bsize t < 16777216 := by
+    rw [UInt64.lt_iff_toNat_lt, bsize_toNat ht]; simpa using ht
+  unfold t10 at h ⊢
+  rw [if_pos hb] at h ⊢
+  unfold ds
+  rw [if_pos (by simpa using ht)]
+  by_cases h11 : t11 16777216 t 0 = 1
+  · rw [if_pos (bT h11)]
+    have := t11_sound _ (t.length + 1) t 0 ht (by simp) (by simp) h11
+    simp only [UInt64.toNat_zero, List.drop_zero] at this
+    rw [if_pos this]
+  simp only [bF h11, Bool.false_eq_true, if_false, ite_false] at h ⊢
+  have hne : t9 16777216 t 0 0 (bpush bnew 0) 0 bnew ≠ [] := by
+    intro e; rw [e] at h; simp [bsize, bnew] at h
+  obtain ⟨out, g1, g2⟩ := t9_sound 16777216 t 0 0 (bpush bnew 0) 0 bnew [0] (t.length + 1) ht (by simp) (by simp)
+    (by simp [bpush, bnew]) rep0 (Or.inl rfl) (by simp) hne
+  simp only [UInt64.toNat_zero, List.drop_zero, b01] at g1
+  rw [g2] at h ⊢
+  simp only [bnew, List.nil_append] at h ⊢
+  have hl := go_len _ _ _ _ _ g1
+  have hO : bsize out < 16777216 := by
+    cases Decidable.em (bsize out < 16777216) with
+    | inl e => exact e
+    | inr e => simp only [e, if_false, ite_false] at h; exact absurd rfl h
+  have hO' : out.length < 16777216 := by
+    rw [UInt64.lt_iff_toNat_lt] at hO; simp [bsize] at hO; omega
+  simp only [hO, if_true, ite_true]
+  by_cases hm : noMatch (t.length + 1) t = true
+  · rw [if_pos hm, go_noMatch _ _ t [0] out hm (by simp) g1]
+  · rw [if_neg hm, g1]; simp [hO']
+
+end DsSpec
