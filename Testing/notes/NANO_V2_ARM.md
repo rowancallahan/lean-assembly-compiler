@@ -290,17 +290,21 @@ Remaining for a concrete ARM theorem:
 3. **`hwin`,** until D's `shiftInvL`; after that it follows from `A64Sem.ram`.
 
 ### 0-enc. rv2arm as the encoder, W^X, the composed ARM theorem (box E, 2026-11-20; nano-v2-src @ 62b9613)
-No sorry; `C_correct_rv2arm` / `C_runs_rv2arm` (Main/ArmTop): `CompileCorrect M (compileOn ArmRA.rv2arm)` and
-`CompileRuns M (compileOn ArmRA.rv2arm)` for every `S : A64Sem M X W` with `2^31 ≤ M.ramStart`, under the
-**loader contract** `hperm : LoaderPerm M X W` (A64Sem.lean): at `StartCorrect`, the code bytes are executable and the
-input/output/work blocks read-write. This is an ASSUMPTION about the loader/shim, not a machine fact: `StartCorrect`
-constrains only `observe`, and on a W^X model (DeepMind) permissions are unobservable, so Spec's unconditional
-`CompileCorrect` is false there without it. For Sail (X = W = True) it holds trivially. Lead decision 2026-11-20. Axioms: propext,
-Classical.choice, Quot.sound.
+No sorry; `C_correct_rv2arm` / `C_runs_rv2arm` (Main/ArmTop): `CompileCorrectP M (ArmLoader X W) (compileOn
+ArmRA.rv2arm)` and `CompileRunsP M (ArmLoader X W) (compileOn ArmRA.rv2arm)` for every `S : A64Sem M X W` with
+`2^31 ≤ M.ramStart`. Axioms: propext, Classical.choice, Quot.sound.
+**Loader contract** (lead decision 2026-11-20, per start state): `CompileCorrectP`/`CompileRunsP` (Main/TopOn) are
+Spec's `CompileCorrect`/`CompileRuns` with one more premise on the start state, `ArmLoader X W s call code x`: the
+code bytes executable and the input/output/work blocks read-write. This is an ASSUMPTION about the loader/shim, not a
+machine fact: `StartCorrect` constrains only `observe`, and DeepMind's W^X permissions are unobservable, so the
+unconditional `CompileCorrect` is false there (a start state may map its code non-executable), and a ∀-start-states
+premise would be vacuous. With `ld = True` the P-forms are Spec's (`cc_of_P`, `cr_of_P`; RISC-V: `rvTarget.loader =
+True`, statements unchanged). For Sail (X = W = True) `ArmLoader` always holds. Generic: `JTarget.loader`, passed by
+`enter` to `Laws.inv_init`.
 
 | file | content |
 |---|---|
-| Machine/A64Sem | `A64Sem M X W`: permissions X (exec) / W (read-write). Fetch needs `FetchX` at the pc (8 bytes for `cmpbr`); `ldr/str/ldrb/strb` need W on their bytes. `GoesK` = runs, configured, permissions kept. the loader contract `LoaderPerm` is a premise of the top theorems (not a field). Sail: X = W = True |
+| Machine/A64Sem | `A64Sem M X W`: permissions X (exec) / W (read-write). Fetch needs `FetchX` at the pc (8 bytes for `cmpbr`); `ldr/str/ldrb/strb` need W on their bytes. `GoesK` = runs, configured, permissions kept. the loader contract `ArmLoader` is a per-start-state premise (`JTarget.loader`, `CompileCorrectP`). Sail: X = W = True |
 | Machine/ArmTarget | `armTarget M X W`. `Rel.inv` = `PermOK` (code bytes X, layout data bytes W). `K.W` has one entry per instruction. `Laws.inv_init` now receives the entry facts |
 | Machine/ArmRA | per-field decode on Gen's words: every RA word builder equals O's ArmEnc word; `t0_*` for each of the 14 J kinds = the bytes of `blockJ` |
 | Machine/ArmRA2 | `t0_ok` (all kinds, under `JOK ∧ armOK`) and `c0_ok`: rv2arm's validation accepts ⇒ `armOK` |

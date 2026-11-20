@@ -38,6 +38,9 @@ structure JTarget where
   words : List J → List Nat
   /-- the programs the target encodes faithfully (its translator's validation; RISC-V: all) -/
   valid : List J → Prop
+  /-- the loader contract on a start state (call, code, input) beyond `StartCorrect`: what the target's machine needs
+  but `observe` cannot show (RISC-V: nothing; a W^X ARM model: code executable, data blocks read-write) -/
+  loader : M.State → Call → List UInt8 → List UInt8 → Prop
 
 namespace JTarget
 variable (T : JTarget)
@@ -102,7 +105,7 @@ structure Laws : Prop where
   /-- the invariant holds at entry: a `StartCorrect` state with `C`'s code at `K.base`, the entry memory `m0`, and
   the layout's data inside the call's blocks (work cells in the work block, input, output bytes in the output block) -/
   inv_init : ∀ (K : LayW) (C : List J) (s : T.M.State) (call : Call) (code x : List UInt8),
-    StartCorrect T.M s call code x → code.length = 4 * T.blockLen * C.length →
+    StartCorrect T.M s call code x → T.loader s call code x → code.length = 4 * T.blockLen * C.length →
     K.base = (T.M.observe s).programCounter.toNat → K.W = T.words C → K.m0 = T.m0 s →
     K.lo = call.workAddress.toNat → K.hi ≤ call.workAddress.toNat + call.workLength →
     K.ib = call.inputAddress.toNat → K.il = x.length → K.ob = call.outputAddress.toNat → K.ol ≤ call.outputLength →

@@ -106,7 +106,7 @@ theorem blocks_of (L : T.Laws) {s : T.M.State} {call : Call} {code x : List UInt
 its J view at pc 0, for a layout inside the call's blocks (work cells in the work block, output bytes in the output
 block) -/
 theorem enter (L : T.Laws) {s : T.M.State} {call : Call} {C : List J} {x : List UInt8}
-    (sc : StartCorrect T.M s call (tbytes T C) x) (K : LayW)
+    (sc : StartCorrect T.M s call (tbytes T C) x) (hld : T.loader s call (tbytes T C) x) (K : LayW)
     (hb : K.base = (T.M.observe s).programCounter.toNat) (hW : K.W = T.words C) (hm0 : K.m0 = T.m0 s)
     (hlo : K.lo = call.workAddress.toNat) (hhi : K.hi ≤ call.workAddress.toNat + call.workLength)
     (hib : K.ib = call.inputAddress.toNat) (hil : K.il = x.length)
@@ -118,7 +118,7 @@ theorem enter (L : T.Laws) {s : T.M.State} {call : Call} {C : List J} {x : List 
   have b4 := sc.codeAligned
   rw [hn] at d2 e3 f2 g1
   refine ⟨L.lay_init K C ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ hW hv, rel_entry L sc.configured ?_ ?_ ?_ ?_ hm0
-    (L.inv_init K C s call _ x sc (tbytes_len L C) hb hW hm0 hlo hhi hib hil hob hol)⟩
+    (L.inv_init K C s call _ x sc hld (tbytes_len L C) hb hW hm0 hlo hhi hib hil hob hol)⟩
   all_goals try (rw [hb] <;> omega)
   all_goals try omega
   · rw [hb]; simp

@@ -48,7 +48,7 @@ theorem host_room (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List Def
     (B : List UInt8) (hB : ∀ Cj : List J, Cj.length < 2 ^ 18 →
       C.g41 c (serialize p) = C.g40 16777216 c (Cj.map encG) 0 [] →
       (∀ j ∈ Cj, SimW.JOK j) → B = tbytes T Cj ∧ T.valid Cj)
-    {s : T.M.State} {call : Call} {x : List UInt8} (sc : StartCorrect T.M s call B x)
+    {s : T.M.State} {call : Call} {x : List UInt8} (sc : StartCorrect T.M s call B x) (hld : T.loader s call B x)
     (h16 : call.workAddress.toNat + 16 ≤ (call.workAddress.toNat + call.workLength) / 8 * 8)
     (hS : ∀ Tb, semAtF (pcOf 524288 (call.workAddress.toNat + 16) (UInt64.ofNat x.length)
       (NanoMain.inpW x) Tb) p (p.length - 1) [] ((call.workAddress.toNat + call.workLength) / 8 * 8)
@@ -97,7 +97,7 @@ theorem host_room (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List Def
     (by rw [x10, x11', x12]; omega) (by rw [x12]; exact Nat.le_refl _) (Nat.le_refl _) jb
     (fun i hi => by rw [x11'] at hi; rw [x10]; exact Or.inr (Or.inl ⟨by simp [KL], by simp [KL]; omega⟩))).2
     .room (by decide) (by rw [x12, hx11]; exact hS Tb)
-  obtain ⟨hl, hR0⟩ := enter L sc KL rfl rfl rfl rfl (by simp [KL, E0]; omega) rfl rfl rfl (Nat.zero_le _) hv
+  obtain ⟨hl, hR0⟩ := enter L sc hld KL rfl rfl rfl rfl (by simp [KL, E0]; omega) rfl rfl rfl (Nat.zero_le _) hv
   obtain ⟨s', r1, R1⟩ := sim_star L hl h2 hR0
   have cs : ∀ i, i < 11 → Cj[i]? = (stubJ S0)[i]? := fun i hi => by
     have := hst i (by simp [stubJ]; omega); rwa [Nat.zero_add] at this
@@ -127,7 +127,7 @@ theorem host_tiny (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List Def
     (B : List UInt8) (hB : ∀ Cj : List J, Cj.length < 2 ^ 18 →
       C.g41 c (serialize p) = C.g40 16777216 c (Cj.map encG) 0 [] →
       (∀ j ∈ Cj, SimW.JOK j) → B = tbytes T Cj ∧ T.valid Cj)
-    {s : T.M.State} {call : Call} {x : List UInt8} (sc : StartCorrect T.M s call B x)
+    {s : T.M.State} {call : Call} {x : List UInt8} (sc : StartCorrect T.M s call B x) (hld : T.loader s call B x)
     (hsm : (call.workAddress.toNat + call.workLength) / 8 * 8 < call.workAddress.toNat + 16) :
     ∃ s', Runs T.M s s' ∧ (T.M.observe s').programCounter = call.returnAddress ∧
       (T.M.observe s').register T.M.mapping.status = oomFlag ∧
@@ -166,7 +166,7 @@ theorem host_tiny (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List Def
     simp [Nat.shiftLeft_eq, Nat.shiftRight_eq_div_pow, E0]; omega
   let KL : LayW := ⟨base, T.words Cj, wb, E0, call.inputAddress.toNat, x.length, call.outputAddress.toNat,
     0, T.m0 s⟩
-  obtain ⟨hl, hR0⟩ := enter L sc KL rfl rfl rfl rfl (by simp [KL, E0]; omega) rfl rfl rfl (Nat.zero_le _) hv
+  obtain ⟨hl, hR0⟩ := enter L sc hld KL rfl rfl rfl rfl (by simp [KL, E0]; omega) rfl rfl rfl (Nat.zero_le _) hv
   -- the start code's size check
   have hsw := hss
   have q0 : Cj[0]? = some (.jal 0 (S0 : Int)) := by have := hst 0 (by simp [stubJ]); simpa [stubJ] using this

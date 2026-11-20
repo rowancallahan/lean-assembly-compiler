@@ -18,6 +18,7 @@ noncomputable def rvTarget : JTarget where
   inv K s := ∀ a, 2 ^ 64 ≤ a → s.mem[a]? = K.m0 a
   words C := C.map encJX
   valid _ := True
+  loader _ _ _ _ := True
 
 theorem obs_mem (t : Proven.St) {a : Nat} (ha : a < 2 ^ 64) :
     (riscvObserve t).memory (UInt64.ofNat a) = (t.mem[a]?).map UInt8.ofBitVec := by
@@ -155,7 +156,7 @@ theorem rvLaws : rvTarget.Laws where
     rw [hn] at h
     exact ⟨⟨h.b4, h.blo, h.bhi, h.wlo, h.whi, h.cw, h.ibl, h.ibh, h.obl, h.obh, h.oc⟩, hW⟩
   m0_obs s a ha := obs_mem s ha
-  inv_init K _ s _ _ _ _ _ _ _ h _ _ _ _ _ _ a _ := by rw [h]; rfl
+  inv_init K _ s _ _ _ _ _ _ _ _ h _ _ _ _ _ _ a _ := by rw [h]; rfl
   step_ok := by
     intro K C s0 a b s hl hR hS hs
     obtain ⟨t', hr, hR'⟩ := sim_stepX hl.1 hl.2 (relW_of hl hR) hS hs

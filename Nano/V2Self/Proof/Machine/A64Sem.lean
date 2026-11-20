@@ -68,14 +68,13 @@ def store8 (o : MachineState) (a : Nat) (v : UInt64) : MachineState :=
 def store1 (o : MachineState) (a : Nat) (v : UInt64) : MachineState :=
   ⟨o.programCounter + 4, o.register, fun u => if u.toNat = a then some v.toUInt8 else o.memory u⟩
 
-/-- **the loader contract** (an ASSUMPTION about the loader / shim, not a machine fact): at a call's start the code
-bytes are executable and the input, output and work blocks are readable and writable.  `StartCorrect` constrains only
-what `observe` shows, so on a machine with unobservable permissions (DeepMind's W^X model) this is a premise of the
-top theorems; for Sail (X = W = True) it holds trivially. -/
-def LoaderPerm (M : Machine) (X W : M.State → Nat → Prop) : Prop :=
-  ∀ (s : M.State) (call : Call) (code x : List UInt8), StartCorrect M s call code x →
-    (∀ a, (M.observe s).programCounter.toNat ≤ a → a < (M.observe s).programCounter.toNat + code.length → X s a) ∧
-    (∀ a, InBlocks call a → W s a)
+/-- **the loader contract** on one start state (an ASSUMPTION about the loader / shim, not a machine fact): the code
+bytes are executable and the input, output and work blocks readable and writable.  `StartCorrect` constrains only what
+`observe` shows; on a machine with unobservable permissions (DeepMind's W^X model) the top theorems hold for the start
+states that meet it (`CompileCorrectP`); for Sail (X = W = True) it always holds. -/
+def ArmLoader {M : Machine} (X W : M.State → Nat → Prop) (s : M.State) (call : Call) (code _x : List UInt8) : Prop :=
+  (∀ a, (M.observe s).programCounter.toNat ≤ a → a < (M.observe s).programCounter.toNat + code.length → X s a) ∧
+  (∀ a, InBlocks call a → W s a)
 
 /-- **the A64 step facts the ARM blocks need** (all register fields < 31), over permission predicates `X`
 (byte executable) and `W` (byte readable and writable): fetches need `X` at the pc, loads and stores need `W` on the

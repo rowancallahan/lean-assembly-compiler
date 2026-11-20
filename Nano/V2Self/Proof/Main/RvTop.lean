@@ -36,14 +36,14 @@ theorem compileOn_id : compileOn id = compileC := by
 
 /-- **C is correct** (RISC-V): the generic `C_correct_on` for `rvTarget` -/
 theorem C_correctLO : CompileCorrect riscv compileC := by
-  rw [← compileOn_id]; exact C_correct_on rvLaws id rv_enc (by decide)
+  rw [← compileOn_id]; exact cc_of_P (C_correct_on rvLaws id rv_enc (by decide))
 
 /-- **C runs correctly with any work block** (owner's `CompileRuns`, RISC-V: the generic `C_runs_on` for `rvTarget`):
 return to the caller, memory changed only in the work block and the result prefix of the output block, callee-saved
 registers kept, configured, and out of memory reported (a0 = −1) exactly when the work block is smaller than
 `memoryNeeded`. -/
 theorem C_runsO : CompileRuns riscv compileC := by
-  rw [← compileOn_id]; exact C_runs_on rvLaws id rv_enc (by decide)
+  rw [← compileOn_id]; exact cr_of_P (C_runs_on rvLaws id rv_enc (by decide))
 
 /-- `C_runsO` under the former premise `ShiftInv` (D's `shiftInv` proves it; kept as a REVIEW root) -/
 theorem C_runs (_HS : ShiftInv) : CompileRuns riscv compileC := C_runsO

@@ -48,10 +48,59 @@ theorem ok_ne_oom (y : List UInt8) : (if y = [] then (1 : UInt64) else 0) ≠ oo
 
 variable {T : JTarget}
 
+/-- `CompileCorrect` for the start states that also meet a loader contract `ld` (Spec's statement when `ld` is `True`) -/
+def CompileCorrectP {P : Type} [Program P] (machine : Machine) (ld : machine.State → Call → List UInt8 → List UInt8 → Prop)
+    (compile : P → Option CompiledA) : Prop :=
+  ∀ {α β : Type} (program : P) (compiled : CompiledA) (f : α → β) (encodeInput : α → List UInt8)
+    (encodeOutput : β → List UInt8) (argument : α) (startState : machine.State) (call : Call),
+    compile program = some compiled →
+    Computes program f encodeInput encodeOutput →
+    StartCorrect machine startState call compiled.code (encodeInput argument) →
+    ld startState call compiled.code (encodeInput argument) →
+    (encodeOutput (f argument)).length ≤ call.outputLength →
+    memoryNeeded compiled (encodeInput argument) ≤ call.workLength →
+    ∃ finishState, Runs machine startState finishState ∧
+      (machine.observe finishState).programCounter = call.returnAddress ∧
+      (machine.observe finishState).register machine.mapping.status ≠ oomFlag ∧
+      readMemory (machine.observe finishState) call.outputAddress (encodeOutput (f argument)).length
+        = some (encodeOutput (f argument)) ∧
+      (machine.observe finishState).register machine.mapping.outputLength = (encodeOutput (f argument)).length.toUInt64 ∧
+      (∀ address, Outside address (call.outputAddress, (encodeOutput (f argument)).length) →
+        Outside address (call.workAddress, call.workLength) →
+        (machine.observe finishState).memory address = (machine.observe startState).memory address) ∧
+      KeptRegisters machine startState finishState ∧ machine.configured finishState
+
+/-- `CompileRuns` for the start states that also meet a loader contract `ld` -/
+def CompileRunsP {P : Type} [Program P] (machine : Machine) (ld : machine.State → Call → List UInt8 → List UInt8 → Prop)
+    (compile : P → Option CompiledA) : Prop :=
+  ∀ {α β : Type} (program : P) (compiled : CompiledA) (f : α → β) (encodeInput : α → List UInt8)
+    (encodeOutput : β → List UInt8) (argument : α) (startState : machine.State) (call : Call),
+    compile program = some compiled →
+    Computes program f encodeInput encodeOutput →
+    StartCorrect machine startState call compiled.code (encodeInput argument) →
+    ld startState call compiled.code (encodeInput argument) →
+    (encodeOutput (f argument)).length ≤ call.outputLength →
+    ∃ finishState, Runs machine startState finishState ∧
+      (machine.observe finishState).programCounter = call.returnAddress ∧
+      (∀ address, Outside address (call.outputAddress, (encodeOutput (f argument)).length) →
+        Outside address (call.workAddress, call.workLength) →
+        (machine.observe finishState).memory address = (machine.observe startState).memory address) ∧
+      ((machine.observe finishState).register machine.mapping.status = oomFlag ↔
+        OutOfMemory compiled (encodeInput argument) call.workLength) ∧
+      KeptRegisters machine startState finishState ∧ machine.configured finishState
+
+theorem cc_of_P {P : Type} [Program P] {machine : Machine} {compile : P → Option CompiledA}
+    (h : CompileCorrectP machine (fun _ _ _ _ => True) compile) : CompileCorrect machine compile :=
+  fun program compiled f eI eO a s call h1 h2 h3 h4 h5 => h program compiled f eI eO a s call h1 h2 h3 trivial h4 h5
+
+theorem cr_of_P {P : Type} [Program P] {machine : Machine} {compile : P → Option CompiledA}
+    (h : CompileRunsP machine (fun _ _ _ _ => True) compile) : CompileRuns machine compile :=
+  fun program compiled f eI eO a s call h1 h2 h3 h4 => h program compiled f eI eO a s call h1 h2 h3 trivial h4
+
 /-- the normal return when the work block holds at least `Msp` bytes -/
 theorem run_ok (L : T.Laws) {enc : List UInt8 → List UInt8} (hE : EncOK T enc) (hwin : 2 ^ 31 ≤ T.M.ramStart)
     {B : List UInt8} {p : List DefA} (hG : GenFacts B p) {s : T.M.State} {call : Call} {x y : List UInt8}
-    (hne : enc B ≠ []) (sc : StartCorrect T.M s call (enc B) x) (hSem : Sem κC p x = .ok y) (hy : y.length ≤ call.outputLength)
+    (hne : enc B ≠ []) (sc : StartCorrect T.M s call (enc B) x) (hld : T.loader s call (enc B) x) (hSem : Sem κC p x = .ok y) (hy : y.length ≤ call.outputLength)
     (hmem : max 16 (Msp p x) ≤ call.workLength) :
     ∃ s', Runs T.M s s' ∧ (T.M.observe s').programCounter = call.returnAddress ∧
       (T.M.observe s').register T.M.mapping.status ≠ oomFlag ∧
@@ -72,16 +121,16 @@ theorem run_ok (L : T.Laws) {enc : List UInt8 → List UInt8} (hE : EncOK T enc)
   · rw [hSem] at hS'; cases hS'
     obtain ⟨s', r, pc, st, ol, rd, fr, kp, cf⟩ := host_ok L c hP Ks hO hK2 (ParSerLen.ser_lt hP hts) h
       (dbStage capStage c ts p hP hts ⟨Ks, hO, hK2⟩ h) _
-      (fun Cj hc hg hw => by rw [hg]; exact hE.2 c Cj hc hw (by rw [← hg]; exact hne)) sc y hSem hy (by omega) hS
+      (fun Cj hc hg hw => by rw [hg]; exact hE.2 c Cj hc hw (by rw [← hg]; exact hne)) sc hld y hSem hy (by omega) hS
     exact ⟨s', r, pc, by rw [st]; exact ok_ne_oom y, rd, ol, fr, kp, cf⟩
   · rw [hSem] at hS'; cases hS'
   · omega
 
 /-- **C is correct on any target** (owner's `CompileCorrect`) -/
 theorem C_correct_on (L : T.Laws) (enc : List UInt8 → List UInt8) (hE : EncOK T enc) (hwin : 2 ^ 31 ≤ T.M.ramStart) :
-    CompileCorrect T.M (compileOn enc) := by
-  intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight outputFits
-    enough
+    CompileCorrectP T.M T.loader (compileOn enc) := by
+  intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight loads
+    outputFits enough
   obtain ⟨x⟩ := program
   unfold compileOn at compiles
   split at compiles
@@ -90,13 +139,14 @@ theorem C_correct_on (L : T.Laws) (enc : List UInt8 → List UInt8) (hE : EncOK 
     obtain ⟨p, hG, hsp, hSem⟩ := src_facts (mC_ne hE hc.1) hc.2 computes argument
     have hmem : max 16 (Msp p (encodeInput argument)) ≤ call.workLength := by
       have := enough; simp only [memoryNeeded, peak, inUse, hsp] at this; simpa using this
-    exact run_ok L hE hwin hG hc.1 startsRight hSem outputFits hmem
+    exact run_ok L hE hwin hG hc.1 startsRight loads hSem outputFits hmem
   · cases compiles
 
 /-- **C runs correctly on any target, with any work block** (owner's `CompileRuns`) -/
 theorem C_runs_on (L : T.Laws) (enc : List UInt8 → List UInt8) (hE : EncOK T enc) (hwin : 2 ^ 31 ≤ T.M.ramStart) :
-    CompileRuns T.M (compileOn enc) := by
-  intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight outputFits
+    CompileRunsP T.M T.loader (compileOn enc) := by
+  intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight loads
+    outputFits
   obtain ⟨x⟩ := program
   unfold compileOn at compiles
   split at compiles
@@ -127,12 +177,12 @@ theorem C_runs_on (L : T.Laws) (enc : List UInt8 → List UInt8) (hE : EncOK T e
         fun s' hst hfr => ⟨⟨fun _ => hlt, fun _ => hst⟩, fun a _ hw => hfr a hw⟩
       by_cases hsm : (call.workAddress.toNat + call.workLength) / 8 * 8 < call.workAddress.toNat + 16
       · obtain ⟨s', r, pc, st, fr, kp, cf⟩ := host_tiny L c hP Ks hO hK2 (ParSerLen.ser_lt hP hts) h
-          (dbStage capStage c ts p hP hts ⟨Ks, hO, hK2⟩ h) _ hBe startsRight hsm
+          (dbStage capStage c ts p hP hts ⟨Ks, hO, hK2⟩ h) _ hBe startsRight loads hsm
         exact ⟨s', r, pc, (fin s' st fr).2, (fin s' st fr).1, kp, cf⟩
       · have hl16 : 16 ≤ Msp p (encodeInput argument) := Msp_ge p _
         have hxl := startsRight.inputSmall
         obtain ⟨s', r, pc, st, fr, kp, cf⟩ := host_room L c hP Ks hO hK2 (ParSerLen.ser_lt hP hts) h
-          (dbStage capStage c ts p hP hts ⟨Ks, hO, hK2⟩ h) _ hBe startsRight (by omega) (fun Tb => by
+          (dbStage capStage c ts p hP hts ⟨Ks, hO, hK2⟩ h) _ hBe startsRight loads (by omega) (fun Tb => by
             have e : (call.workAddress.toNat + call.workLength) / 8 * 8 =
                 call.workAddress.toNat + 16 + (call.workLength / 8 * 8 - 16) := by omega
             have := lt_room shiftInv hP hts ⟨Ks, hO, hK2⟩ hxl (T := Tb) (hb := call.workAddress.toNat + 16)
@@ -140,7 +190,7 @@ theorem C_runs_on (L : T.Laws) (enc : List UInt8 → List UInt8) (hE : EncOK T e
             unfold RS at this; rw [e]; exact this)
         exact ⟨s', r, pc, (fin s' st fr).2, (fin s' st fr).1, kp, cf⟩
     · -- at or above the bound: the normal return
-      obtain ⟨s', r, pc, st, -, -, fr, kp, cf⟩ := run_ok L hE hwin hG hc.1 startsRight hSem outputFits (by omega)
+      obtain ⟨s', r, pc, st, -, -, fr, kp, cf⟩ := run_ok L hE hwin hG hc.1 startsRight loads hSem outputFits (by omega)
       exact ⟨s', r, pc, fr, ⟨fun h => absurd h st, fun h => absurd h hlt⟩, kp, cf⟩
   · cases compiles
 

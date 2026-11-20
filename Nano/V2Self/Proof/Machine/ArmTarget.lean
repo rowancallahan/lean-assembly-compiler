@@ -34,6 +34,7 @@ def armTarget (M : Machine) (X W : M.State → Nat → Prop) : JTarget where
   inv K s := PermOK X W K (16 * K.W.length) s
   words C := C.map fun _ => 0
   valid C := progOK C = true
+  loader := ArmLoader X W
 
 variable {M : Machine} {X W : M.State → Nat → Prop}
 
@@ -1088,7 +1089,7 @@ theorem kept_out (r : Nat) (hr : r ∈ armMapping.kept) :
   simp only [armScratch, List.mem_cons, List.not_mem_nil, or_false]; omega
 
 /-- **the ARM adapter's laws, from the abstract A64 steps** -/
-theorem armLaws (S : A64Sem M X W) (hperm : LoaderPerm M X W) : (armTarget M X W).Laws where
+theorem armLaws (S : A64Sem M X W) : (armTarget M X W).Laws where
   blk_pos := by show 0 < 4; decide
   enc_len := blk_len
   reg_map := by
@@ -1104,8 +1105,8 @@ theorem armLaws (S : A64Sem M X W) (hperm : LoaderPerm M X W) : (armTarget M X W
   m0_obs s a _ := by
     show (M.observe s).memory (UInt64.ofNat a) = (((M.observe s).memory (UInt64.ofNat a)).map UInt8.toBitVec).map _
     cases (M.observe s).memory (UInt64.ofNat a) <;> rfl
-  inv_init K C s call code x sc hlen hb hW _ hlo hhi hib hil hob hol := by
-    obtain ⟨hx, hw⟩ := hperm s call code x sc
+  inv_init K C s call code x sc hld hlen hb hW _ hlo hhi hib hil hob hol := by
+    obtain ⟨hx, hw⟩ := hld
     have hn : K.W.length = C.length := by rw [hW]; simp [armTarget]
     have hl4 : code.length = 16 * C.length := by rw [hlen]; show 4 * 4 * C.length = _; omega
     have hxl := sc.inputLength
