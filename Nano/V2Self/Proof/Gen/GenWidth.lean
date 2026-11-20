@@ -741,7 +741,7 @@ theorem n_prim {X D p q i} (hX : X.length < 2 ^ 31) (IH : ∀ j, i < j → NS X 
   refine (wseq IH 9 0 (by simp) (FL ++ [f]) (by simp) _ (i + 2) d _ 0 (by omega) (by omega) (UInt64.toNat_lt _) hI1
     (by rw [h0, cur_set hI, uk2]) (by simp at hl ⊢; omega)).bind ?_
   rintro ⟨d1, s1⟩ ⟨ws, j', hWs, hlen, hj', hj'X, rfl, hc, h1, hI2⟩
-  exact fin_pop hI2 (by decide) hc (fun _ => by simpa [wf] using W.prim ht hWs hlen (h1 rfl)) (by omega) hj'X
+  exact fin_pop hI2 (by decide) hc (fun _ => W.prim ht hWs hlen (h1 rfl)) (by omega) hj'X
 
 theorem nd_eq {D p q d s FL} (hI : WI D p q d s FL) : bsize d >>> 1 = D.length.toUInt64 := by
   have h1 := hI.dl; have h2 := hI.Dl
@@ -994,13 +994,15 @@ theorem g53_ok (x : Buf) (hX : x.length < 2 ^ 31) (h : (g53 x).2 ≠ 0) :
     Dl := by decide }
   have hR := w_prog hX x.length [] 0 0 bnew s0 1 (by omega) hI rfl (by simp) (by decide)
   unfold g53 at h
+  -- Lean 4.34.1: hide the fuel from the kernel, which otherwise unfolds `g52 16777216` when re-checking `dsimp`
+  revert h; generalize hN : (16777216 : Nat) = N; revert N; apply id; intro N hN h
   dsimp only at h
-  generalize hg : g52 16777216 (x, (bnew, s0)) = r at h
+  generalize hg : g52 N (x, (bnew, s0)) = r at h
   obtain ⟨x1, d1, s1⟩ := r
   dsimp only at h
-  have hok : bget (g52 16777216 (x, (bnew, s0))).2.2 1 ≠ 1 := by
+  have hok : bget (g52 N (x, (bnew, s0))).2.2 1 ≠ 1 := by
     rw [hg]; intro e; apply h; simp only at e; rw [if_pos (by simp [e])]; rfl
-  obtain ⟨m, -, ⟨hs, D, i', hD, hi', -⟩, -⟩ := wreach_run hR 16777216 hok
+  obtain ⟨m, -, ⟨hs, D, i', hD, hi', -⟩, -⟩ := wreach_run hR N hok
   exact ⟨hs, D, i', hD, hi'⟩
 
 end GenRef
