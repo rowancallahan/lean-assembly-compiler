@@ -70,7 +70,7 @@ theorem X14 : F [] 16 PC.d16 [] = .ok [.b []] := g14 _ _ (cal 15 16 PC.d15 rfl) 
 theorem X27 : F [] 27 PC.d27 [.w 16777216, .b [], .w 0] = .ok [.w 1] := by
   have h := exact (ok_27 [] _ (by decide) (good 27 (by decide)) 16777216 [] 0 (by decide)) (quiet [] 27 (by decide) (by decide) _)
   have e : C.t11 16777216 [] 0 = 1 := by decide
-  simpa [enc, Enc.enc, e] using h
+  simpa [enc, Enc.enc, e, F] using h
 
 theorem g28 (ms : List Fn) (G27 : Fn) (h27 : ms[27]? = some G27) (e27 : G27 [.w 16777216, .b [], .w 0] = .ok [.w 1]) :
     defMean [] κC ms PC.d28 [.b []] = .ok [.b []] := by
