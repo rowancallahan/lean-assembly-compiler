@@ -13,6 +13,10 @@ import Nano.V2Self.Proof.Tests.AuditWitness
 import Nano.V2Self.Proof.Tests.OwnNV
 open Lean Meta
 
+/-- files whose identifiers are roots (tactic dispatch tables, certificate / source-link generators) -/
+def nameFiles : List String := ["Nano/V2Self/Proof/Cert/Tac.lean", "Testing/nano/v2self/cert/gen_cert.py",
+  "Testing/nano/v2self/cert/dump_pc.lean", "Testing/nano/v2self/srclink/gen.lean"]
+
 def roots : List Name := [``NanoMain.C_correctLO, ``Cert.sem_C, ``NanoMain.self_meaning_C, ``NanoMain.self_computes_C,
   ``NanoMain.self_correct_C, ``SrcGen.link_pc, ``NanoMain.C_runs, ``NanoMain.C_runsO, ``NanoMain.self_runs_C,
   ``NanoMain.shiftInv, ``NanoMain.Msp_le, ``NanoMain.spaceC_le]
@@ -27,7 +31,20 @@ def roots : List Name := [``NanoMain.C_correctLO, ``Cert.sem_C, ``NanoMain.self_
   let tests := env.constants.map₁.toList.filterMap fun (n, _) => do
     let i ← env.getModuleIdxFor? n
     if (`Nano.V2Self.Proof.Tests).isPrefixOf mods0[i.toNat]! then some n else none
-  let mut todo : Array Name := roots.toArray ++ tests.toArray
+  -- names that tactics, generators and scripts refer to BY NAME (they never appear in a proof term of the roots, but
+  -- certificates of other programs need them): every identifier token of these files that resolves to a constant,
+  -- as written or under the namespaces the files open
+  let mut named : Array Name := #[]
+  for f in (if (← IO.getEnv "DEADCODE_NONAMED").isSome then [] else nameFiles) do
+    let txt ← IO.FS.readFile f
+    let toks := (txt.split fun c => !(c.isAlphanum || c == '_' || c == '.' || c == '\'')).filter (·.length > 1)
+    for t in toks do
+      let n := t.toName
+      for pre in [Name.anonymous, `Cert, `NanoMain, `Templates, `SrcGen, `SrcLink, `ParSpec] do
+        let m := pre ++ n
+        if env.contains m && !named.contains m then named := named.push m
+  IO.println s!"NAMED-ROOTS {named.size}"
+  let mut todo : Array Name := roots.toArray ++ tests.toArray ++ named
   while h : todo.size > 0 do
     let n := todo.back
     todo := todo.pop
@@ -72,3 +89,6 @@ def roots : List Name := [``NanoMain.C_correctLO, ``Cert.sem_C, ``NanoMain.self_
       let ln := (← findDeclarationRanges? n).map (·.range.pos.line) |>.getD 0
       IO.println s!"DECL-DEAD {mods[i]!} {n} {ln}"
   IO.println s!"REACHABLE {seen.size} constants"
+  -- DEADCODE_DUMP=file: write every reachable constant (sorted), to diff two runs
+  if let some f ← IO.getEnv "DEADCODE_DUMP" then
+    IO.FS.writeFile f ("\n".intercalate ((seen.toList.map toString).toArray.qsort (· < ·)).toList)
