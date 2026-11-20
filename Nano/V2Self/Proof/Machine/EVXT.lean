@@ -1,7 +1,7 @@
-/- Machine bridge (Opus box E): the TAIL contract `EVHt` (loop arms, Gen's CT).  A tail fragment either EXITS (pushes
-the w result words and jumps to the exit target `X`, the def's epilogue start) or CONTINUEs (writes the new state into
-slots 1 … p−1 and jumps to the loop head `Hd` with t6 restored).  Templates: `valT` (CT.val: value, then the exit jump),
-`contT` (CT.cont), `ifT` (CT.ite), `letT` (CT.lett). -/
+/- Machine bridge (Opus box E): TAIL mode (loop arms, Gen's CT), semantics only.  A tail fragment either EXITS
+(`.inl vs`: pushes the result words and jumps to the def's epilogue) or CONTINUEs (`.inr st`: new loop state, jump to the
+loop head).  Here: the result type `TRes`/`SemT` and the semantics combinators `exitS`, `contS`, `ifTS`, `letTS`.
+The run theorems are the safe ones in EVSTail.lean (`valTS`, `contTS`, `ifTS'`, `letTS'`; contract `EVHtS` in EVSDefs.lean). -/
 import Nano.V2Self.Proof.Machine.EVX
 namespace Templates
 open CallProbe

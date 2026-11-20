@@ -1,9 +1,7 @@
-/- Machine bridge (Opus box E): the J-level program theorem.
+/- Machine bridge (Opus box E): the J-level program, code shape.
 `gen_words`: if Gen succeeds on the serialized resolved program `ds`, the code after the def phase is the stub code
-followed by the def templates (`defsJ`), def k at its table start word.
-`gen_defs_run`: on any J program holding those templates, every def satisfies its contract `DefX` for `semAt` (the
-machine-level semantics of the program) — in particular main.  Remaining for the full chain: the start code (g35:
-needs J's srli/bne/sb), the Sail lift (Safe runs), side conditions from the parser + g53. -/
+followed by the def templates (`defsJ`), def k at its table start word.  `At_defsJ`: each def's template inside it.
+That every def runs per its contract is `gen_defs_runS` (EVSProg.lean). -/
 import Nano.V2Self.Proof.Machine.NdProgW
 namespace Templates
 open CallProbe C GenRef ParSpec

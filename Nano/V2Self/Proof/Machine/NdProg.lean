@@ -1,7 +1,7 @@
-/- Machine bridge (Opus box E): the program level on the J machine.  `semAt P ds k` = the semantics of def k of the
-resolved program `ds` (ParSpec.DefA list, callee before caller): `defS` of its body's `sv` in the context `scAt`
-whose callees are the defs below k.  `progRun`: if every def's template sits at its start word `P.T k` and meets the
-side conditions, every def satisfies the def contract `DefX` (strong induction on k = call-graph order). -/
+/- Machine bridge (Opus box E): the program level on the J machine, definitions.  `semAt P ds k` = the semantics of
+def k of the resolved program `ds` (ParSpec.DefA list, callee before caller): `defS` of its body's `sv` in the context
+`scAt` whose callees are the defs below k.  `DefOK`: the per-def side conditions.  The run theorem is `progRunS`
+(EVSProg.lean). -/
 import Nano.V2Self.Proof.Machine.NdDef
 namespace Templates
 open CallProbe ParSpec

@@ -1,7 +1,7 @@
-/- Machine bridge (Opus box E): the LOOP node (Gen's CG.loop, only at a def's root) under the heap contract.
+/- Machine bridge (Opus box E): the LOOP node (Gen's CG.loop, only at a def's root), semantics and templates.
 Layout: HEAD h: ld t0, fuel(s0); beq t0, x0, +2; jal STEP; zero arm Z (tail) …; STEP S: t0 −= 1; sd t0, fuel(s0);
 step arm (tail).  Exits of both arms go to X = h + len (the epilogue start), CONTINUE goes back to h.
-Semantics `loopS`: by recursion on the fuel (slot 0); the result is an `EVHw` value contract for the whole node. -/
+Semantics `loopS`: by recursion on the fuel (slot 0).  The run theorem is `loopXS` (EVSLoop.lean). -/
 import Nano.V2Self.Proof.Machine.EVXT
 import Nano.V2Self.Proof.Machine.Loop
 namespace Templates

@@ -1,7 +1,6 @@
-/- Machine bridge (Opus box E): **the node theorem** — by induction on the AST node, the J template of every node
-satisfies the heap contract for its machine-level semantics: `runV` (value mode, `EVHw`), `runT` (tail mode, `EVHt`),
-`runL` (operand sequences).  Side conditions `OkV` / `OkT` / `OkL`: widths (Gen's g53 pass) and scoping (the parser's
-slot discipline); callees satisfy `DefX` (call-graph order, discharged def by def). -/
+/- Machine bridge (Opus box E): the side conditions of the node theorem, `OkV` / `OkT` / `OkL`: widths (Gen's g53
+pass) and scoping (the parser's slot discipline), and `At` helpers.  The node theorem itself is `runVS` / `runTS` /
+`runLS` (EVSRun.lean, safe contracts). -/
 import Nano.V2Self.Proof.Machine.NdSem
 namespace Templates
 open CallProbe ParSpec
