@@ -642,3 +642,7 @@ parts from Nano/V2Self/Proof/Machine, so the move is complete in one go. Same ch
   theorems (file:name), what it assumes from the stages before it and guarantees to the next, how to build/check it,
   and known limits. Written for a human reader and for an agent starting cold. Kept short; updated in the same PR as
   any change that makes it wrong.
+- Native ARM backend target order (owner, 2026-11-20): prove it on DeepMind ARM first (faster to build and check), fuzz
+  it heavily under QEMU, and treat that as enough for now; the Sail ARM proof follows later via the same A64Sem
+  interface. Note: the two ARM models are NOT proved equal to each other; the compiler is proved correct on each
+  separately through A64Sem.
