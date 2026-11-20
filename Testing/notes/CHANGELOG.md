@@ -38,3 +38,13 @@ Verified by session O on a clean tree:
 
 Rule: every merge to main appends an entry here with the commit, what changed, and the build/axiom results on the
 previous baseline's toolchain(s) and on the new one.
+
+## Benchmark entry (vs baseline B1, no compiler/shim/Spec change)
+
+- Added `Testing/notes/BENCH.md` and `Testing/nano/v2self/bench/` (run_bench.sh, profile_self.sh, nanorun_prof.c = run/nanorun.c
+  plus an optional `NANORUN_PROF` per-word count, make_inputs.py, profile_regions.py, synth_scaling.py, results/).
+- Checked: self-compile = 1,454,349,112 instructions (plain and profiling build), output = B2.bin byte for byte.
+- Findings: run costs are linear in input size (no superlinear growth); compile cost is superlinear in the number of defs
+  (flat and chain families grow about K^2 over K = 10..320, output linear); 11 generic return stubs are ~48% of the
+  self-compile's instructions; function names for the profile are not resolved.
+- ARM counts not done: no qemu-user / aarch64 toolchain here (package install refused by the session's permission check).
