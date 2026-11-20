@@ -54,7 +54,7 @@ generic J-run proof and needs one lemma per template on the A64 side (see the pr
 * B2 compiles `self_A` (C with the native back end). Fixpoint: GA_arm (native A64) compiles `self_A` to its own bytes.
 * GA_arm compiles C's RISC-V source to B2_na (B2 as native A64, 311 KB; rv2arm's B2_arm: 1361 KB; B2: 340 KB);
   B2_na compiles C's source to **B2.bin exactly**.
-* examples + edge, 5 inputs each: identical status and output. Fuzz (`fuzz_native.py`): see the PR for counts.
+* examples + edge, 5 inputs each: identical status and output. Fuzz (`fuzz_native.py`, final version): 4000 cases (1763 accepted and run on 6–7 inputs each, 2237 rejected by both), 0 mismatches; earlier version 6000 cases, 0 real mismatches.
 * Static code words: native A64 = 0.74–0.96 × RISC-V (rv2arm 4.0 ×). Dynamic, examples: native 1.00–1.06 × RISC-V
   (rv2arm 3.6 ×); B2 compiling rle.lean: RISC-V 7.77 M, rv2arm 27.9 M, native 7.70 M instructions.
 
