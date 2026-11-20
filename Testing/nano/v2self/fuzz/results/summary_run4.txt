@@ -1,0 +1,6 @@
+seed=4 programs=400 mutated=195 inputs/program=4
+  168  reject agrees (ref REJ; lean fails)
+  133  agree
+   52  reject agrees (ref REJ; lean ok)
+   47  resource: b2 oom at 80 MiB, ok at 1 GiB with ref output
+alarms=0
