@@ -94,14 +94,21 @@ Proof-side changes vs `lean-4.34` (56 `.lean` files, +303/-174). Two causes:
    in `Decidable` instances → `rfl`. In `sail_eval`, the closed-`BitVec` simproc builds `instDecidableEqBitVec w`
    explicitly, and guards are nested (on 4.34.1 a hoisted `(← …)`/`appArg!` inside `&&` ran unguarded: PANICs).
 
-Built by me only along the REVIEW closure. Remaining default-target modules (lib `Riscv` outside the REVIEW closure:
-`Examples/Implements1Opt`, `Back/MemTop`, `Back/IrTop`, `Examples/BootEx`, …) were in progress with the helpers when this was written.
-- `Riscv/Back/BootReset.lean`: `resetSysWith` is a hand copy of `reset_sys` with the reservation hook as a parameter. **Hand copy
-  re-synced with the model REGENERATED with Sail 97aa617dc**: the `Ext_Zicfilp` branch is now `let _ ← ((do if … ) : SailM Unit)`
-  as in the model. With the old copy `reset_eq : reset () = resetWith (cancel_reservation ()) := rfl` did not terminate (>150 s);
-  with the re-synced copy it checks in 1 s. Only the statement shape changed, not the proof.
-- `Riscv/Back/BootV.lean` `wr_misa`, `acc_misa`, `se_misa` (`by rfl` through the new `if b == 0x301#12` chains of `write_CSR` /
-  `is_CSR_accessible`): pass unchanged when checked against the model alone (4 s each).
+**Final gate (merge criterion), commit `2c635337`, Lean 4.34.1, regenerated model (`deps-rv-regen434` @`4cf120c8`):**
+`lake build Spec Compiler Riscv Arm Frontx Nano.V2Self.REVIEW Chain434` finished with "Build completed successfully (899 jobs)",
+exit 0, 0 `error:` lines, 0 `sorry` warnings and 0 PANICs, in 1472 s with 5.45 GB peak RSS. `Testing/scripts/review_axioms.sh` gives "OK: 8 theorems, axioms as pinned".
+`defaultTargets` is main's set (`Spec Compiler Riscv Arm Frontx`); `Chain434` stays as a non-default lib (it has the ARM modules).
+Further Lean 4.34.1 port changes from the helpers (FABLE-RV, FABLE-RV2, FABLE-PERF; merged here) touch proofs only. In the
+front-end generators `WaCmd`/`WpCmd`/`IndCmd`, the generated theorems run with `backward.isDefEq.respectTransparency false`
+(audit: never on a `def`, never in Spec/Compiler/Steps), and one `frontx_ind` discharger step also unfolds the function.
+`Compiler/S3/Cert.lean` gains the `enc_prod` simp lemma, because simp no longer unfolds `Enc.enc` at pairs.
+`Compiler/S3/Front.lean` `isRecursive` now uses the structural/WF eqnInfo, because on 4.34 `getUnfoldEqnFor?` returns `eq_def`
+for non-recursive definitions. It was checked to leave the emitted code unchanged.
+
+**Open item for the owner (not part of the gate):** `Testing/asm/ir-words/s3_*`. 15 files are already stale on 4.29
+(nano-v2-src). On 4.34.1, `s3_find` and `s3_stexc` compile to shorter code with lower `memoryNeeded`. The regenerated words
+pass QEMU = Sail-C = Lean on 50 cases each. They are on the side branch `s3-words-refresh` @`e3ae2685`
+(`Testing/notes/S3_WORDS.md`) and not merged; the release keeps the committed words.
 
 ## 5. Conformance / fuzz tests
 The repo's Sail tests (`Testing/asm/*_test.py`, `cosim.py`, FUZZ6–10) run the Sail **C emulator** binary
