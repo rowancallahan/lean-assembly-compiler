@@ -1,5 +1,5 @@
 /- Machine bridge (Opus box E): Gen's final words are the J program `stubJ S ++ defsJ ++ startJ S w` (w = main's
-start word), and running it from word 0 outputs main's buffer (`start_run` with every def's `DefX` from `gen_top`). -/
+start word).  The run itself is `gen_runS` (GenRunS.lean, safe contracts). -/
 import Nano.V2Self.Proof.Machine.StartRun
 import Nano.V2Self.Proof.Machine.NoW
 namespace Templates
@@ -29,17 +29,10 @@ theorem gen_C (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length < 2
           (g34 bnew).length + (defsJ (pcOf 524288 hb c29 inp T) ds 0 j).length) ∧
         (∀ k, k < hs.length → ScV (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body →
           OkV (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body ∧
-          wd (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body = (dA ds k).nres) ∧
-        ∀ (C : List J) (IG : St → Prop) (E0 : Nat) (c28 : UInt64), IGOK hb E0 IG → E0 < 2 ^ 62 →
-          (∀ s, IG s → s.b + s.w * C.length < 2 ^ 64) → InpOK IG c28 c29 inp →
-          At C (g34 bnew).length (defsJ (pcOf 524288 hb c29 inp T) ds 0 hs.length) →
-          (∀ k, k < hs.length → (dA ds k).npw < 2 ^ 20 ∧ (dA ds k).npw ≤ (dA ds k).nslots ∧
-            ScV (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body ∧ ∀ j, rd (dA ds k).body j → j < (dA ds k).npw) →
-          ∀ k, k < hs.length → DefX C ((pcOf 524288 hb c29 inp T).T k) (dA ds k).npw (dA ds k).nres IG hb E0
-            (semAt (pcOf 524288 hb c29 inp T) ds k)) := by
+          wd (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body = (dA ds k).nres)) := by
   obtain ⟨hs, T, o, hD, hne, hg, l2, l5, hol, hc18, hrest⟩ := gen_top c ds hXl h hdb hb c29 inp
   refine ⟨hs, T, o, hD, hne, ?_⟩
-  obtain ⟨ho, hhd, hbd, hTp, hpk, hX⟩ := hrest hol
+  obtain ⟨ho, hhd, hbd, hTp, hpk⟩ := hrest hol
   have hsl : 0 < hs.length := List.length_pos_iff.mpr hne
   have hlast : hs.getLastD 0 = hs.getD (hs.length - 1) 0 := by
     rw [List.getLastD_eq_getLast?, List.getLast?_eq_getElem?]; simp [List.getD_eq_getElem?_getD]
@@ -50,7 +43,7 @@ theorem gen_C (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length < 2
     have := congrArg UInt64.toNat h2; simp [Nat.toUInt64] at this; omega
   have nr : (dA ds (hs.length - 1)).nres = 1 := by
     have := congrArg UInt64.toNat h5; simp [Nat.toUInt64] at this; omega
-  refine ⟨?_, np, nr, ?_, fun k hk => (hhd k hk).2.2, hbd, hTp, hpk, hX⟩
+  refine ⟨?_, np, nr, ?_, fun k hk => (hhd k hk).2.2, hbd, hTp, hpk⟩
   rotate_left
   · have := congrArg List.length ho; simp [g34_len] at this; omega
   have hTl : T.length = hs.length := by have := (DefsC.prefix hD).2; simpa [bnew] using this
