@@ -15,6 +15,9 @@ plan for a proved version (`armTarget`, `Testing/notes/NANO_V2_ARM.md`).
 | `rv2arm.py` | test oracle only (same bytes as the nano translator) |
 | `test_arm.sh` | the Linux/qemu test below |
 | `SHA256SUMS` | of the three binaries |
+| `PROOF_NOTES.md` | per-block proof plan, lemma map (AL1–AL6), register-31 gaps |
+| `ArmBlock.lean` | DRAFT Lean statement of block correctness (`BlockOK`), no proofs, not in the lake build |
+| `gen_check.py`, `check_lean.sh` | Lean check: `ArmBlock.lean` elaborates, and its `blockJ` = the oracle on 13,361 J instructions |
 
 ## Use on a Mac (Apple Silicon), from this directory
 
