@@ -5,11 +5,14 @@ usage: fuzz_arm.py WORKDIR SHARD/NSHARD [MAX_CASES]     (run forever if MAX_CASE
        fuzz_arm.py WORKDIR replay SEED                  (re-run one case, print its result)
 
 Per case: mutate a compiler source (an example with comments stripped, or self_S_input.txt).
-  1. compile: nanorun B2.bin vs qemu-aarch64 shim_arm B2_arm.bin. (status, bytes) must be equal.
-  2. if accepted (status 0, non-empty): translate with rv2arm.sh (ARM translator under qemu), then run the
-     program on 3 inputs: nanorun vs qemu shim_arm. (status, bytes) must be equal.
+Reference = RISC-V under QEMU (qemu-riscv64 + static shim_rv); nanorun is a third opinion.
+  1. compile: qemu-riscv64 shim_rv B2.bin vs qemu-aarch64 shim_arm B2_arm.bin. (status, bytes) must be equal.
+     nanorun B2.bin must also agree with the reference (kind 'nanorun').
+  2. if accepted (status 0, non-empty): translate with rv2arm.sh (ARM translator under qemu-aarch64), then run the
+     program on 3 inputs: qemu-riscv64 shim_rv vs qemu-aarch64 shim_arm (nanorun third opinion as above).
 Mismatch, one-sided crash, or a run over HANG_S seconds: the case is saved in WORKDIR/findings and minimized.
-Needs: cc, aarch64-linux-gnu-gcc, qemu-aarch64-static (QEMU env overrides).
+Needs: cc, aarch64-linux-gnu-gcc, riscv64-linux-gnu-gcc, qemu-aarch64-static, qemu-riscv64-static
+(QEMU / QEMU_RV env override).
 """
 import os, re, sys, random, subprocess, time, glob, json
 
@@ -21,6 +24,7 @@ B2A = os.path.join(ARMD, 'B2_arm.bin')
 RV2ARM = os.path.join(ARMD, 'rv2arm.sh')
 RV2ARM_ARM = os.path.join(ARMD, 'rv2arm_arm.bin')
 QEMU = os.environ.get('QEMU') or 'qemu-aarch64-static'
+QEMU_RV = os.environ.get('QEMU_RV') or 'qemu-riscv64-static'
 HANG_S = 120
 MIN_BUDGET_S = 900
 STATUS_EVERY_S = 1800
@@ -30,8 +34,9 @@ MODE = sys.argv[2]
 MAX = int(sys.argv[3]) if len(sys.argv) > 3 else 0
 NR = os.path.join(W, 'nanorun')
 SH = os.path.join(W, 'shim_arm')
+SHR = os.path.join(W, 'shim_rv')
 RV_RE = re.compile(r'nanorun: a0 = (-?\d+) .*?a1 = (\d+) output bytes')
-ARM_RE = re.compile(r'shim_arm: status (-?\d+), (-?\d+) output bytes')
+SHIM_RE = re.compile(r'shim_(?:rv|arm): status (-?\d+), (-?\d+) output bytes')
 
 KW = ['def', 'match', 'with', 'let', 'in', 'fun', 'if', 'then', 'else', 'where', 'Nat', 'List', 'UInt8', 'UInt64',
       'Bool', 'true', 'false', 'put', 'len', 'rd', 'f', 'm', 'x', 'n', 'a', 'i']
@@ -77,10 +82,10 @@ def norm_rv(res, out):
     return ('ST', st, data)
 
 
-def norm_arm(res, out):
+def norm_shim(res, out):
     rc, err = res
     if rc == 'HANG': return ('HANG',)
-    m = ARM_RE.search(err)
+    m = SHIM_RE.search(err)
     if not m: return ('CRASH', rc)
     st, n = int(m.group(1)), int(m.group(2))
     if rc != (0 if st in (0, 1) else 1): return ('CRASH', rc)
@@ -96,7 +101,9 @@ def build():
         run(['cc', '-O2', os.path.join(V, 'run', 'nanorun.c'), '-o', NR])
     if not os.path.exists(SH):
         run(['aarch64-linux-gnu-gcc', '-O2', '-static', os.path.join(V, 'run', 'shim', 'shim_arm.c'), '-o', SH])
-    assert os.path.exists(NR) and os.path.exists(SH), 'build failed'
+    if not os.path.exists(SHR):
+        run(['riscv64-linux-gnu-gcc', '-O2', '-static', os.path.join(V, 'run', 'shim', 'shim_rv.c'), '-o', SHR])
+    assert all(os.path.exists(f) for f in (NR, SH, SHR)), 'build failed'
 
 
 # ---------- mutations (on latin-1 text) ----------
@@ -259,32 +266,39 @@ def make_case(seed):
 def check(srcb, inputs, d):
     """Returns (kind, detail). kind None means agreement (and records accepted/program stats)."""
     os.makedirs(d, exist_ok=True)
-    sp, rv, ar, parm = (os.path.join(d, f) for f in ('src', 'p.rv', 'b.arm', 'p.arm'))
-    for f in (rv, ar, parm):
+    sp, rv, ar, parm, nrv = (os.path.join(d, f) for f in ('src', 'p.rv', 'b.arm', 'p.arm', 'n.rv'))
+    for f in (rv, ar, parm, nrv):
         if os.path.exists(f): os.remove(f)
     open(sp, 'wb').write(srcb)
-    nr = norm_rv(run([NR, B2, sp, rv]), rv)
-    ac = norm_arm(run([QEMU, SH, B2A], inp=sp, out=ar), ar)
-    S = {'compile_rv': nr[:2] if nr[0] == 'ST' else nr, 'compile_arm': ac[:2] if ac[0] == 'ST' else ac}
-    if 'HANG' in (nr[0], ac[0]): return 'hang', S
-    if 'CRASH' in (nr[0], ac[0]): return 'crash', S
-    if nr != ac: return 'compile', S
-    if not (nr[1] == 0 and len(nr[2]) > 0):
-        return None, {'accepted': False, 'st': nr[1]}
+    ref = norm_shim(run([QEMU_RV, SHR, B2], inp=sp, out=rv), rv)
+    arm = norm_shim(run([QEMU, SH, B2A], inp=sp, out=ar), ar)
+    nan = norm_rv(run([NR, B2, sp, nrv]), nrv)
+    S = {'ref': ref[:2] if ref[0] == 'ST' else ref, 'arm': arm[:2] if arm[0] == 'ST' else arm,
+         'nanorun': nan[:2] if nan[0] == 'ST' else nan}
+    if 'HANG' in (ref[0], arm[0], nan[0]): return 'hang', S
+    if 'CRASH' in (ref[0], arm[0]): return 'crash', S
+    if arm != ref: return 'compile', S
+    if nan != ref: return 'nanorun', S
+    if not (ref[1] == 0 and len(ref[2]) > 0):
+        return None, {'accepted': False, 'st': ref[1]}
     t = run(['sh', RV2ARM, rv], out=parm, env={'RUN': f'{QEMU} {SH} {RV2ARM_ARM}'})
     if t[0] != 0:
         return 'translate', dict(S, translate_rc=t[0], err=t[1][-300:])
     for i, inp_b in enumerate(inputs):
         ip = os.path.join(d, f'in{i}'); open(ip, 'wb').write(inp_b)
-        o_rv, o_arm = os.path.join(d, f'o{i}.rv'), os.path.join(d, f'o{i}.arm')
-        for f in (o_rv, o_arm):
+        o_ref, o_arm, o_nan = (os.path.join(d, f'o{i}.{x}') for x in ('ref', 'arm', 'nan'))
+        for f in (o_ref, o_arm, o_nan):
             if os.path.exists(f): os.remove(f)
-        rr = norm_rv(run([NR, rv, ip, o_rv]), o_rv)
-        ra = norm_arm(run([QEMU, SH, parm], inp=ip, out=o_arm), o_arm)
-        if 'HANG' in (rr[0], ra[0]): return 'hang', dict(S, input=i)
-        if rr[0] == 'CRASH' and ra[0] == 'CRASH': S.setdefault('both_trap', 0); S['both_trap'] += 1; continue
-        if rr != ra: return 'program', dict(S, input=i, prog_rv=rr[:2] if rr[0] == 'ST' else rr,
-                                             prog_arm=ra[:2] if ra[0] == 'ST' else ra)
+        pr = norm_shim(run([QEMU_RV, SHR, rv], inp=ip, out=o_ref), o_ref)
+        pa = norm_shim(run([QEMU, SH, parm], inp=ip, out=o_arm), o_arm)
+        pn = norm_rv(run([NR, rv, ip, o_nan]), o_nan)
+        if 'HANG' in (pr[0], pa[0], pn[0]): return 'hang', dict(S, input=i)
+        if pr[0] == 'CRASH' and pa[0] == 'CRASH': S['both_trap'] = S.get('both_trap', 0) + 1; continue
+        if 'CRASH' in (pr[0], pa[0]) or pa != pr:
+            return 'program', dict(S, input=i, prog_ref=pr[:2] if pr[0] == 'ST' else pr,
+                                   prog_arm=pa[:2] if pa[0] == 'ST' else pa)
+        if pn != pr:
+            return 'nanorun', dict(S, input=i, prog_nanorun=pn[:2] if pn[0] == 'ST' else pn)
     return None, dict(S, accepted=True, prog_len=len(open(rv, 'rb').read()))
 
 
@@ -330,7 +344,8 @@ def main():
     shard, nsh = map(int, MODE.split('/'))
     shard_dir = os.path.join(W, f'shard{shard}'); cd = os.path.join(shard_dir, 'case')
     os.makedirs(cd, exist_ok=True)
-    cnt = dict(cases=0, accepted=0, rejected=0, programs=0, mismatches=0, hangs=0, crashes=0, translate=0, both_trap=0)
+    cnt = dict(cases=0, accepted=0, rejected=0, programs=0, mismatches=0, nanorun=0, hangs=0, crashes=0, translate=0,
+               both_trap=0)
     t0 = last = time.time(); n = 0
     while MAX == 0 or n < MAX:
         seed = 1000003 * shard + n * nsh + shard
@@ -341,8 +356,8 @@ def main():
         elif kind is None: cnt['rejected'] += 1
         cnt['both_trap'] += S.get('both_trap', 0)
         if kind:
-            cnt[{'compile': 'mismatches', 'program': 'mismatches', 'hang': 'hangs', 'crash': 'crashes',
-                 'translate': 'translate'}[kind]] += 1
+            cnt[{'compile': 'mismatches', 'program': 'mismatches', 'nanorun': 'nanorun', 'hang': 'hangs',
+                 'crash': 'crashes', 'translate': 'translate'}[kind]] += 1
             report(seed, name, desc, kind, S, srcb, inputs, shard_dir)
         if time.time() - last >= STATUS_EVERY_S or (MAX and n == MAX):
             last = time.time()
