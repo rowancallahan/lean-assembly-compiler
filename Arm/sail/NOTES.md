@@ -54,3 +54,23 @@ depend on the generated model and the lean-sail package. That is an owner decisi
 * `Fields.lean`: one `F_*` per field, each `pre` → `full_X` → rewrite the slices to the field numbers →
   `goes_set`/`goes_jump`/`goes1`. `cmpbr` = `full_subsr` then `full_bc` (`condP_abs`, `cond_sub`); stores compare
   `wrD` (`wrD_get`) / `insert` with `store8` / `store1`; `br` uses `full_brB` (ends in `ArmFullB _ 1`).
+
+## Configuration caveats (non-vacuity review, branch `sailv-fable`)
+
+`C_correct_armSail` / `C_runs_armSail` cover a **hand-pinned EL3 configuration** (`ArmFullB`), not a state shown to be
+reached from the model's reset. The pins are consistent (`ArmProof.witness_full`; `ArmSail/NonVacuous.lean` adds any
+PC / `x0..x30` / memory), but these differ from what `__InitSystem` / `TakeReset` leave:
+
+* `SCTLR_EL3 = 0`: reset sets the RES1 bits 29:28, 23, 18, 16, 5:4 (`Arm/model/Armv9/V8Base.lean:81216-81227`).
+* `OSLSR_EL1 = 0`: cold reset sets `OSLK = 1` (`Sysregs.lean:660`).
+* `CNTCR = 0`: `__InitSystem` sets `EN = 1` (`Reset.lean:111`); `PhysicalCount = 0` stays pinned only because the
+  counter is off.
+* `FeatureImpl = featV` (only `FEAT_AA64EL0`): reset rebuilds it from the `FEAT_*_IMPLEMENTED` registers
+  (`V8Base.lean:8395`); `featV` is accepted by the model (`HaveEL` is constantly true) but is not an Armv9.4-compliant
+  feature set.
+
+All four are software- or configuration-writable after reset; that path is not proved.
+
+Stack pointer: `obsS` reads register 31 as 0 while `armMapping.kept` contains 31, so "sp kept" is `0 = 0` on `armSail`
+(`armDM` observes `t.sp` and has no such gap). The model's SP is `SP_EL0` when `PSTATE.SP = 0`, else `SP_EL3`
+(`SP_read`, `V8Base.lean:63122`); `PSTATE.SP` is not pinned, and no `full_*` conclusion mentions either register.
