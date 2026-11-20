@@ -41,7 +41,7 @@ previous baseline's toolchain(s) and on the new one.
 
 ## Benchmark entry (vs baseline B1, no compiler/shim/Spec change)
 
-- Added `Testing/notes/BENCH.md` and `Testing/nano/v2self/bench/` (run_bench.sh, profile_self.sh, nanorun_prof.c = run/nanorun.c
+- Added `Testing/notes/BENCH.md` and `Testing/bench/nano-compile/` (run_bench.sh, profile_self.sh, nanorun_prof.c = run/nanorun.c
   plus an optional `NANORUN_PROF` per-word count, make_inputs.py, profile_regions.py, synth_scaling.py, results/).
 - Checked: self-compile = 1,454,349,112 instructions (plain and profiling build), output = B2.bin byte for byte.
 - Findings: run costs are linear in input size (no superlinear growth); compile cost is superlinear in the number of defs

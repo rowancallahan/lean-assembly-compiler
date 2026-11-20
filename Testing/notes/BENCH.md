@@ -1,6 +1,6 @@
 # Benchmarks: exact instruction counts (baseline B1, main @ 935c0ac1)
 
-Scripts and raw results: `Testing/nano/v2self/bench/` (`results/riscv.csv`, `results/scaling.csv`, `results/self_S_regions.txt`).
+Scripts and raw results: `Testing/bench/nano-compile/` (`results/riscv.csv`, `results/scaling.csv`, `results/self_S_regions.txt`).
 All RISC-V numbers are **exact executed-instruction counts** from `run/nanorun.c` (one count per interpreted instruction;
 deterministic). The self-compile count reproduces B1 (1,454,349,112) both in the plain and in the profiling build.
 ARM counts are **not available** (see "ARM: blocked").
@@ -120,8 +120,8 @@ The next largest single items are the dispatch (#1) and the per-character step (
 ## Reproduce
 
 ```
-Testing/nano/v2self/bench/run_bench.sh        # riscv.csv, scaling.csv (about 2 min)
-Testing/nano/v2self/bench/profile_self.sh     # self_S_regions.txt (about 15 s)
+Testing/bench/nano-compile/run_bench.sh        # riscv.csv, scaling.csv (about 2 min)
+Testing/bench/nano-compile/profile_self.sh     # self_S_regions.txt (about 15 s)
 ```
 Needs a C compiler (no QEMU). Inputs are generated, not stored.
 
@@ -166,4 +166,4 @@ measured separately. Whether constant defs (`def k : UInt64 := ...`) also count 
 Practical consequence: the self-compile (234 defs) is well under the cap, but any program with more than 511 defs is rejected
 silently (empty output, no error message).
 
-Reproduce: `Testing/nano/v2self/bench/synth_scaling.py` (chain/flat/expr families); bisect by hand with `nanorun B2.bin src`.
+Reproduce: `Testing/bench/nano-compile/synth_scaling.py` (chain/flat/expr families); bisect by hand with `nanorun B2.bin src`.

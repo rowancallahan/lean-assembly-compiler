@@ -9,7 +9,7 @@ def demo2E : Exp := .ite (.bin .xor (.bin .ult (v 0) (v 1)) (.bin .slt (v 0) (v 
   (.bin .add (.bin .shl (v 0) (v 3)) (.bin .lshr (v 1) (v 2)))
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
 def emit (n : String) (ws : List (BitVec 32)) : IO Unit :=
-  IO.FS.writeFile s!"bench/exp-words/{n}.words" (String.intercalate "\n" (ws.map hex8) ++ "\n")
+  IO.FS.writeFile s!"Testing/bench/vs-c/exp-words/{n}.words" (String.intercalate "\n" (ws.map hex8) ++ "\n")
 #eval show IO Unit from do
   for (n, e) in [("demo", demoE), ("demo2", demo2E)] do
     emit (n ++ "-rv-std") (compile e); emit (n ++ "-rv-fast") (Fast.compile e)

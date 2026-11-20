@@ -4,7 +4,7 @@
 # usage: run_bench.sh [WORKDIR]     WORKDIR default: a new mktemp directory.   Output: bench/results/riscv.csv
 # Needs a C compiler only. Takes about 2-3 minutes on the 2026 build box.
 set -euo pipefail
-D=$(cd "$(dirname "$0")" && pwd); V=$(cd "$D/.." && pwd)              # V = Testing/nano/v2self
+D=$(cd "$(dirname "$0")" && pwd); V=$(cd "$D/../../nano/v2self" && pwd)              # V = Testing/nano/v2self
 W=${1:-$(mktemp -d)}; mkdir -p "$W" "$D/results"
 cc -O2 "$V/run/nanorun.c" -o "$W/nanorun"
 python3 "$D/make_inputs.py" "$W"

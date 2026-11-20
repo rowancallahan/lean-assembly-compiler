@@ -5,7 +5,7 @@ RV64: csrr minstret before/after; AArch64: PMU INST_RETIRED (pmevcntr0) before/a
 and subtracted, so the number is "instructions executed inside the function" (including its final ret).
 usage: bench.py [FUNC ...] [--sizes 100,1000,100000] [--opt-only | --quick (ours, ours-opt, gcc -O2 RV64)]   results appended to bench/results.json"""
 import json, os, random, re, subprocess, sys, time
-D = os.path.dirname(os.path.abspath(__file__)); R = os.path.dirname(D); W = os.path.join(D, "work"); os.makedirs(W, exist_ok=True)
+D = os.path.dirname(os.path.abspath(__file__)); R = os.path.dirname(os.path.dirname(os.path.dirname(D))); W = os.path.join(D, "work"); os.makedirs(W, exist_ok=True)
 p = lambda f: os.path.join(W, f)
 sh = lambda c: subprocess.run(c, shell=True, check=True, capture_output=True, text=True)
 M64 = 2**64 - 1

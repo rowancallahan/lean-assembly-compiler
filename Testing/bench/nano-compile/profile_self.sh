@@ -2,7 +2,7 @@
 # Per-function profile of the self-compile (B2 compiles self_S_input.txt) with bench/nanorun_prof.c (NANORUN_PROF).
 # Writes results/self_S_regions.txt (top 25 function regions). usage: profile_self.sh [WORKDIR]   (about 15 s)
 set -euo pipefail
-D=$(cd "$(dirname "$0")" && pwd); V=$(cd "$D/.." && pwd)
+D=$(cd "$(dirname "$0")" && pwd); V=$(cd "$D/../../nano/v2self" && pwd)
 W=${1:-$(mktemp -d)}; mkdir -p "$W" "$D/results"
 cc -O2 "$D/nanorun_prof.c" -o "$W/nanorun_prof"
 NANORUN_PROF="$W/self_S.prof" "$W/nanorun_prof" "$V/B2.bin" "$V/self_S_input.txt" "$W/B2_again.bin"
