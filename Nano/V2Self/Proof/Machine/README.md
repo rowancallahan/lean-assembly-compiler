@@ -1,5 +1,37 @@
 # Proof/Machine
 
+**What it does.** The bridge from Gen's emitted code to a machine run. Input: Gen's words for a parsed program
+(Proof/Gen: words = templates). Output: every safe J run of those templates is a run of the target machine
+(`JT.sim_star`), lifted to the host contract (`Host*`), used by Proof/Main (`C_correct_on`, `C_runs_on`).
+
+**Files, by layer.**
+* J and templates: `Call`, `CallA`, `Expr`, `Templates`, `Heap`, `Loop` (the IR `CallProbe.J`, Gen's templates, plain
+  `Star` runs of the leaf templates); `NdSem` (a node's J template); exactness `ExprExact`, `CallExact`, `MachExact`,
+  `NdCG*` (Gen's words = `template.map encG`); `Bridge`, `ExprBridge`, `TmGood` (encoders, `GoodX`).
+* Safe-run layer (the one the top uses): `JLay` (`LayW`, `SafeX`, `SStarX`), `SafeRun` (leaf runs as `SStarX`),
+  `EVSDefs`…`EVSProg` (contracts `EVHwS`/`EVHtS`/`DefXS`, node theorem `runVS/runTS/runLS`, defs/program),
+  `StartSafe`, `StartAllS`, `GenRunS` (whole program).
+* Exits: `RoomRun` (out of room → stub word 1), `CapRun`, `CapNode`, `CapProg`, `CapStart` (buffer cap → stub 6),
+  `SemCases`, `RunsDef`, `RunsShift` (exact work bound).
+* Plain layer (`EVX*`, `HeapEV`, `ExprEV`, `NdRun`, `NdDef`, `NdProg`, `NdTop*`, `StartRun`, `GenRun`, `GenMain*`):
+  semantics (`SemW`/`SemT`, `loopS`, `semAt`), side conditions (`OkV/OkT/OkL`, `DefOK`) and helpers shared by the
+  safe layer. No tail/loop/node/def/program run theorem lives here any more (they were only consumed by a conjunct
+  `gen_runS` discarded).
+* Targets: `Target`, `RvTarget` (+ `SimW`, `SimX`, `SimXB`, `RvStep`, `RvEnc`), `ArmTarget` (+ `A64Sem`, `ArmEnc*`,
+  `ArmRA*`), host lift `HostOn`, `HostGen`, `HostOk`, `HostOom`; `NoW`, `JNorm`.
+
+**Design decisions.**
+* One safe-run predicate for the shared layer: `SafeX`/`SStarX` (`JLay`). The older `Safe`/`SStar` (no start-code
+  instructions, beq +2 only) remains only inside the RISC-V Sail lift (`SimW.sim_stepW`/`sim_starW`), which the RV
+  adapter builds on. Rejected: keeping both in the shared layer (every template proved twice).
+* Templates are proved once, as safe runs; there is no plain-run twin of a contract.
+* Known limits: J is RISC-V-shaped (immediates ±2048, jal ±2^18 J words, fixed short branch skips in `SafeX`); code
+  layout is uniform (`addr base pc = base + 4·blockLen·pc`), which blocks non-padded variable-length targets
+  (see Testing/notes/CLEANUP_PLAN.md).
+
+**Build/check.** `lake build Nano.V2Self.REVIEW`, `Testing/scripts/review_axioms.sh`; ARM: `Arm/apc` `Blocks.ArmDMTop`.
+
+
 ## Target interface and adapters (`Target.lean`, `RvTarget.lean`, `ArmTarget.lean`, `Host*.lean`)
 
 What it does: states once what a machine must provide for Gen's J programs to run on it (`JT.JTarget` + `Laws`),
