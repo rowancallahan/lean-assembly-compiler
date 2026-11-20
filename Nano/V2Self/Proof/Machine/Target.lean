@@ -33,9 +33,7 @@ structure JTarget where
   /-- the entry memory as bytes (`LayW.m0` of the entry state) -/
   m0 : M.State → Nat → Option (BitVec 8)
   /-- a target-private invariant kept along `Rel` (RISC-V: Sail memory beyond 2^64 unchanged) -/
-  inv : LayW → M.State → Prop
-  /-- the code words the layout records (`LayW.W`; RISC-V: the RV64 words) -/
-  words : List J → List Nat
+  inv : LayW → List J → M.State → Prop
   /-- the programs the target encodes faithfully (its translator's validation; RISC-V: all) -/
   valid : List J → Prop
   /-- the loader contract on a start state (call, code, input) beyond `StartCorrect`: what the target's machine needs
@@ -65,7 +63,7 @@ structure Rel (K : LayW) (C : List J) (s0 : T.M.State) (p : Nat × CallProbe.St)
   bw : ∀ a, io K a → (T.M.observe s).memory (UInt64.ofNat a) = some (cbyte (p.2.m (a - a % 8)) (a % 8))
   fr : ∀ a, a < 2 ^ 64 → ¬ wok K (a - a % 8) → ¬ outB K a →
     (T.M.observe s).memory (UInt64.ofNat a) = (K.m0 a).map UInt8.ofBitVec
-  inv : T.inv K s
+  inv : T.inv K C s
 
 /-- the generic layout conditions (`LayW.Ok` with the machine's RAM window and `n` code bytes) -/
 structure LayOK (M : Machine) (n : Nat) (K : LayW) : Prop where
@@ -98,7 +96,7 @@ structure Laws : Prop where
   /-- the RAM window lies in [2048, 2^32) -/
   ram : 2048 ≤ T.M.ramStart ∧ T.M.ramEnd ≤ 2 ^ 32
   /-- the generic layout conditions give the target's -/
-  lay_init : ∀ (K : LayW) (C : List J), LayOK T.M (4 * T.blockLen * C.length) K → K.W = T.words C → T.valid C →
+  lay_init : ∀ (K : LayW) (C : List J), LayOK T.M (4 * T.blockLen * C.length) K → T.valid C →
     T.lay K C
   /-- `m0` is what `observe` shows -/
   m0_obs : ∀ (s : T.M.State) a, a < 2 ^ 64 → (T.M.observe s).memory (UInt64.ofNat a) = (T.m0 s a).map UInt8.ofBitVec
@@ -106,10 +104,10 @@ structure Laws : Prop where
   the layout's data inside the call's blocks (work cells in the work block, input, output bytes in the output block) -/
   inv_init : ∀ (K : LayW) (C : List J) (s : T.M.State) (call : Call) (code x : List UInt8),
     StartCorrect T.M s call code x → T.loader s call code x → code.length = 4 * T.blockLen * C.length →
-    K.base = (T.M.observe s).programCounter.toNat → K.W = T.words C → K.m0 = T.m0 s →
+    K.base = (T.M.observe s).programCounter.toNat → K.m0 = T.m0 s →
     K.lo = call.workAddress.toNat → K.hi ≤ call.workAddress.toNat + call.workLength →
     K.ib = call.inputAddress.toNat → K.il = x.length → K.ob = call.outputAddress.toNat → K.ol ≤ call.outputLength →
-    T.inv K s
+    T.inv K C s
   /-- one safe J step is a machine run -/
   step_ok : ∀ {K : LayW} {C : List J} {s0 : T.M.State} {a b : Nat × CallProbe.St} {s : T.M.State},
     T.lay K C → T.Rel K C s0 a s → SafeX K C a → CallProbe.step C a = some b →

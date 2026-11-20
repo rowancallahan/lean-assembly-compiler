@@ -53,7 +53,7 @@ theorem rel_entry (L : T.Laws) {K : LayW} {C : List J} {s : T.M.State} (hc : T.M
       (T.M.observe s).memory (UInt64.ofNat (T.addr K.base i + 4 * k + b)) = some (wbyte (T.enc C[i])[k] b))
     (hw : ∀ a, wok K a → ∀ k < 8, ((T.M.observe s).memory (UInt64.ofNat (a + k))).isSome)
     (hio : ∀ a, io K a → ((T.M.observe s).memory (UInt64.ofNat a)).isSome) (hm0 : K.m0 = T.m0 s)
-    (hinv : T.inv K s) :
+    (hinv : T.inv K C s) :
     T.Rel K C s (0, jOfT T s K.base) s where
   cfg := hc
   pc := by rw [hpc]; simp [JTarget.addr]
