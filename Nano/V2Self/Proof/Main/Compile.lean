@@ -124,4 +124,16 @@ theorem compiler_correctG (HB : BndStage) (Q : List UInt8 → List DefA → Prop
 def DBStage : Prop := ∀ (c : List UInt8) (ts : List UInt64) (p : List DefA), ParsesProgram ts p →
   ts.length < 2 ^ 24 → LinearK p → C.g41 c (serialize p) ≠ [] → ∀ d ∈ p, Templates.DB d
 
+/-- **`memoryNeeded` is finite and bounded**: for a text denoting a parsed linear program, C's explicit work bound is
+at most D's uniform work bound `gen_R` + 30 bytes -/
+theorem spaceC_le {x : List UInt8} {ts : List UInt64} {p : List DefA} (hpo : pOf x = some p)
+    (hp : ParsesProgram ts p) (hL : LinearK p) (inp : List UInt8) (hin : inp.length ≤ 2 ^ 20) :
+    spaceC x inp ≤ Classical.choose (gen_R hp hL inp hin) + 30 := by
+  have hR := Classical.choose_spec (gen_R hp hL inp hin)
+  have := Msp_le hp inp _ fun T base len h8 h32 hle => by
+    obtain ⟨h1, h2⟩ := hR T base len h8 h32 hle
+    exact ⟨fun y hy => by obtain ⟨a, l, H', e, -⟩ := h1 y hy; exact ⟨_, _, e⟩, h2⟩
+  have h16 := Msp_ge p inp
+  unfold spaceC; rw [hpo]; simp only; omega
+
 end NanoMain

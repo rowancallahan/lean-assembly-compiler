@@ -34,11 +34,11 @@ by running B1), nor that the shipped B2.bin is `compiled.code`. -/
 #check @NanoMain.SelfIn
 #print axioms NanoMain.self_correct_C
 
-/-! ## 2c. memory (E, Proof/Main/RunsTop.lean, Proof/Machine/RunsDef.lean, RunsThr.lean).  `memoryNeeded` of `compileC`
+/-! ## 2c. memory (E, Proof/Main/RvTop.lean + TopOn.lean, Proof/Machine/RunsDef.lean).  `memoryNeeded` of `compileC`
 is `spaceC x inp = max 16 (Msp p inp)`: `thr p x` = the LEAST number of usable bytes (above the 16-byte reserve) with
 which main does not run out of room at ANY admissible 8-aligned work position; `Msp` rounds `16 + thr` up to 8 bytes.
-`C_runs`: `CompileRuns` (the owner's run statement: any work block; OOM flag exactly below `memoryNeeded`), given
-`ShiftInv` (D proved it as `shiftInv`, c771775; E's premise-free `C_runsO` / `self_runs_C` are pending). `Msp_le` /
+`C_runsO`: `CompileRuns` (the owner's run statement: any work block; OOM flag exactly below `memoryNeeded`);
+`C_runs` = the same under the former premise `ShiftInv` (D proved it as `shiftInv`). `Msp_le` /
 `spaceC_le`: the bound is at most D's work bound `gen_R` (an existential) + 30 bytes. -/
 #check @NanoMain.C_runs
 #print axioms NanoMain.C_runs
@@ -51,7 +51,7 @@ which main does not run out of room at ANY admissible 8-aligned work position; `
 -- a concrete value (D, Tests/AuditSpace.lean): the work bound of the audit example ex1 on input [5]
 #check @NanoMain.AuditSpace.spaceC_ex1_eq
 #print axioms NanoMain.AuditSpace.spaceC_ex1_eq
--- premise-free (E, Main/RunsTopO.lean): C_runs with D's shiftInv, and the same for C compiled by itself
+-- premise-free (E, Main/RvTop.lean, Main/RunsTopO.lean): C_runsO, and the same for C compiled by itself
 #check @NanoMain.C_runsO
 #print axioms NanoMain.C_runsO
 #check @NanoMain.self_runs_C

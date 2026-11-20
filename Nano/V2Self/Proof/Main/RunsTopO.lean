@@ -1,5 +1,4 @@
 /- Opus box E: `C_runsO` (`CompileRuns` for C, Main/RvTop.lean) for C's own source text. -/
-import Nano.V2Self.Proof.Main.RunsTop
 import Nano.V2Self.Proof.Main.RvTop
 import Nano.V2Self.Proof.Bridge.MainShift4
 import Nano.V2Self.Proof.Main.SelfC

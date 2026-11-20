@@ -1,8 +1,8 @@
 /- The RISC-V adapter: `rvTarget` (one RV64 word per J instruction, `encJX`; J register = RV register) and its laws,
-from the existing Sail-RV simulation (SimW/SimX `sim_stepX`, HostLift `sim_ret`) through one bridge `RelW ↔ Rel`. -/
+from the existing Sail-RV simulation (SimW/SimX `sim_stepX`, RvStep `sim_ret` / `sim_addiN`) through one bridge `RelW ↔ Rel`. -/
 import Nano.V2Self.Proof.Machine.Target
 import Nano.V2Self.Proof.Machine.SimX
-import Nano.V2Self.Proof.Machine.CapHost
+import Nano.V2Self.Proof.Machine.RvStep
 import Riscv.Back.LinkL
 namespace JT
 open Proven Proven.Top SimW CallProbe

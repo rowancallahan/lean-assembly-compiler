@@ -45,4 +45,7 @@ registers kept, configured, and out of memory reported (a0 = −1) exactly when 
 theorem C_runsO : CompileRuns riscv compileC := by
   rw [← compileOn_id]; exact C_runs_on rvLaws id rv_enc (by decide)
 
+/-- `C_runsO` under the former premise `ShiftInv` (D's `shiftInv` proves it; kept as a REVIEW root) -/
+theorem C_runs (_HS : ShiftInv) : CompileRuns riscv compileC := C_runsO
+
 end NanoMain
