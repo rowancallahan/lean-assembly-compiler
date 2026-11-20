@@ -568,9 +568,16 @@ bite); (2) speed of compiled programs; (3) grow the parser's accepted syntax unt
 - Later: reset the memory chunks (work/scratch regions) on exit, so the caller gets them back in a defined state.
 
 ## Order after release-434 (owner, 2026-11-20)
-1. Organize: low-risk cleanups from CODE_SIZE.md (archive dead code, prune dead decls, dedupe the rv2arm table); no big proof rewrites while integrating.
-2. Grow the accepted syntax toward con-leche (raise the 511-def cap, parser node cap, clear errors), proofs green, no speed regression.
-3. Generated-code speed: deferred. Only small LOCAL fixes (cheap proofs) if the FABLE-CGSPEED analysis finds them; the big ones (top-of-stack in a register, ARM sequences) later.
+1. Cleanup (low risk) that also prepares optimization: archive dead code, prune dead decls, dedupe the rv2arm table,
+   and factor the Gen proofs so the room/OOM check and branch offsets sit behind a few shared lemmas
+   (CODEGEN_SPEED.md: that is what makes the speedups PERVASIVE today).
+2. Core codegen optimizations, bounded (target ~2x fewer executed instructions on BENCH, then stop): one overflow
+   check per function, small-immediate operands, maybe top-of-stack in a register.
+3. ARM-specific speed so ARM is not much slower than RISC-V (shorter rv2arm sequences; later a native ARM backend).
+4. Before growing: assess four target programs — con-leche (Lean checker), LeanZip, Lean SVG, Lean Align — for what
+   each needs from the language/compiler (features, def count, sizes, memory) and what is easy vs hard.
+5. Syntax growth toward those four, starting with con-leche (raise the 511-def cap, parser node cap, clear errors),
+   proofs green, no speed regression.
 
 ## Generated-code speed (analysis only for now)
 Goal: no obviously slow patterns in the code the compiler emits.
