@@ -188,4 +188,61 @@ theorem b5_eq (t : UInt64) (z : Int) (ht : t.toNat < 32) : RA.b5 t (iu z) = (cbz
   rw [CallProbe.toU_toNat _ (by omega)]; wnorm; rw [iu_mod19]
   simp (disch := omega) only [Nat.mod_eq_of_lt]; orsum
 
+theorem m64 {a : Nat} (h : a < 2 ^ 64) : a % 18446744073709551616 = a := Nat.mod_eq_of_lt h
+
+theorem u5_eq {y : UInt64} {z : Int} (h1 : -4096 ≤ z) (h2 : z < 4096) (h : y.toNat = (z % 8192).toNat) :
+    RA.u5 y = iu z := by
+  apply u64; rw [CallProbe.iu_toNat]; unfold RA.u5
+  split
+  · rename_i hl; rw [UInt64.lt_iff_toNat_lt] at hl; simp at hl; omega
+  · rename_i hl; rw [UInt64.lt_iff_toNat_lt] at hl; simp at hl; rw [UInt64.toNat_sub]; simp; omega
+theorem u6_eq {y : UInt64} {z : Int} (h1 : -1048576 ≤ z) (h2 : z < 1048576) (h : y.toNat = (z % 2097152).toNat) :
+    RA.u6 y = iu z := by
+  apply u64; rw [CallProbe.iu_toNat]; unfold RA.u6
+  split
+  · rename_i hl; rw [UInt64.lt_iff_toNat_lt] at hl; simp at hl; omega
+  · rename_i hl; rw [UInt64.lt_iff_toNat_lt] at hl; simp at hl; rw [UInt64.toNat_sub]; simp; omega
+
+theorem o6_eq {v : UInt64} {z : Int} (h1 : -2048 ≤ z) (h2 : z < 2048) (hv : v.toNat < 2 ^ 32)
+    (h : v.toNat / 2 ^ 25 * 32 + v.toNat / 128 % 32 = (z % 4096).toNat) : RA.o6 v = iu z := by
+  unfold RA.o6; refine u4_eq h1 h2 ?_; wnorm
+  simp (disch := omega) only [Nat.mod_eq_of_lt]; orsum; omega
+theorem o7_eq {v : UInt64} {z : Int} (h1 : -4096 ≤ z) (h2 : z < 4096) (hv : v.toNat < 2 ^ 32)
+    (h : v.toNat / 2 ^ 31 % 2 * 4096 + v.toNat / 128 % 2 * 2048 + v.toNat / 2 ^ 25 % 64 * 32 + v.toNat / 256 % 16 * 2
+      = (z % 8192).toNat) : RA.o7 v = iu z := by
+  unfold RA.o7; refine u5_eq h1 h2 ?_; wnorm
+  simp (disch := omega) only [m64]; orsum; rw [← h]
+theorem o8_eq {v : UInt64} {z : Int} (h1 : -1048576 ≤ z) (h2 : z < 1048576) (hv : v.toNat < 2 ^ 32)
+    (h : v.toNat / 2 ^ 31 % 2 * 2 ^ 20 + v.toNat / 4096 % 256 * 4096 + v.toNat / 2 ^ 20 % 2 * 2048 +
+      v.toNat / 2 ^ 21 % 1024 * 2 = (z % 2097152).toNat) : RA.o8 v = iu z := by
+  unfold RA.o8; refine u6_eq h1 h2 ?_; wnorm
+  simp (disch := omega) only [m64]; orsum; rw [← h]
+
+theorem g1_sum (f7 f3 d a b : UInt64) (h7 : f7.toNat < 128) (hf : f3.toNat < 8) (hd : d.toNat < 32) (ha : a.toNat < 32)
+    (hb : b.toNat < 32) : (C.g1 f7 f3 d a b).toNat =
+      f7.toNat * 2 ^ 25 + b.toNat * 2 ^ 20 + a.toNat * 2 ^ 15 + f3.toNat * 2 ^ 12 + d.toNat * 2 ^ 7 + 51 := by
+  unfold C.g1; wnorm; simp only [show C.g_51.toNat = 51 from rfl]
+  simp (disch := omega) only [Nat.mod_eq_of_lt]; orsum
+theorem g3_sum (f3 b a v : UInt64) (hf : f3.toNat < 8) (hb : b.toNat < 32) (ha : a.toNat < 32) :
+    (C.g3 f3 b a v).toNat = v.toNat / 32 % 128 * 2 ^ 25 + b.toNat * 2 ^ 20 + a.toNat * 2 ^ 15 + f3.toNat * 2 ^ 12 +
+      v.toNat % 32 * 2 ^ 7 + 35 := by
+  unfold C.g3; wnorm
+  simp only [show C.g_127.toNat = 127 from rfl, show C.g_31.toNat = 31 from rfl, show C.g_35.toNat = 35 from rfl,
+    and127, and31]
+  simp (disch := omega) only [Nat.mod_eq_of_lt]; orsum
+theorem g4_sum (f3 a b v : UInt64) (hf : f3.toNat < 8) (ha : a.toNat < 32) (hb : b.toNat < 32) :
+    (C.g4 f3 a b v).toNat = v.toNat / 4096 % 2 * 2 ^ 31 + v.toNat / 32 % 64 * 2 ^ 25 + b.toNat * 2 ^ 20 +
+      a.toNat * 2 ^ 15 + f3.toNat * 2 ^ 12 + v.toNat / 2 % 16 * 2 ^ 8 + v.toNat / 2048 % 2 * 2 ^ 7 + 99 := by
+  unfold C.g4; wnorm
+  simp only [show C.g_1.toNat = 1 from rfl, show C.g_63.toNat = 63 from rfl, show C.g_15.toNat = 15 from rfl,
+    show C.g_99.toNat = 99 from rfl, Bridge.land1, Bridge.land15, Bridge.land63]
+  simp (disch := omega) only [Nat.mod_eq_of_lt]; orsum
+theorem g5_sum (d v : UInt64) (hd : d.toNat < 32) :
+    (C.g5 d v).toNat = v.toNat / 2 ^ 20 % 2 * 2 ^ 31 + v.toNat / 2 % 1024 * 2 ^ 21 + v.toNat / 2048 % 2 * 2 ^ 20 +
+      v.toNat / 4096 % 256 * 2 ^ 12 + d.toNat * 2 ^ 7 + 111 := by
+  unfold C.g5; wnorm
+  simp only [show C.g_1.toNat = 1 from rfl, show C.g_1023.toNat = 1023 from rfl, show C.g_255.toNat = 255 from rfl,
+    show C.g_111.toNat = 111 from rfl, Bridge.land1, Bridge.land1023, Bridge.land255]
+  simp (disch := omega) only [Nat.mod_eq_of_lt]; orsum
+
 end ArmRA
