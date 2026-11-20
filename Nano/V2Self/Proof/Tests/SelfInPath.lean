@@ -1,4 +1,4 @@
-/- Nano/V2Self/Proof/Tests/SelfInWitness: step C towards `Nonempty SelfIn`: on the EMPTY input the meaning of C's source
+/- Nano/V2Self/Proof/Tests/SelfInPath: step C towards `Nonempty SelfIn`: on the EMPTY input the meaning of C's source
 does not report `cap`.  The 169 push-free defs are exact by `SelfInQuiet.quiet` + the certificate; the 13 defs on the
 empty-input path that contain or reach a push are evaluated by hand below (`X<i>`). -/
 import Nano.V2Self.Proof.Tests.SelfInQuiet
@@ -209,5 +209,57 @@ theorem HA_z (i : Nat) (h1 : 0 < i) (h2 : i < 184384) : HA[i]?.getD 0 = 0 := by
   · split
     · split <;> rfl
     · exact this
+
+/-- the heap with task 60 pushed -/
+theorem H5_eq : C.v1 HA 60 0 0 = (((HA.set 64 60).set 65 0).set 66 0).set 5 1 := by
+  have a5 : bget HA 5 = 0 := by rw [bget_eq]; exact HA_z 5 (by decide) (by decide)
+  have dj : C.d1 + 3 * (0 : UInt64) = 64 := by decide
+  have g5 : (((HA.set 64 60).set 65 0).set 66 0)[5]?.getD 0 = 0 := by
+    simp only [List.getElem?_set, List.length_set, HA_len]
+    simpa using HA_z 5 (by decide) (by decide)
+  unfold C.v1
+  rw [a5, if_pos (by decide)]
+  simp only [dj]
+  have e1 : (64 : UInt64) + 1 = 65 := by decide
+  have e2 : (64 : UInt64) + 2 = 66 := by decide
+  simp only [e1, e2, bget_eq, bset]
+  show ((((HA.set 64 60).set 65 0).set 66 0).set 5 ((((HA.set 64 60).set 65 0).set 66 0)[5]?.getD 0 + 1)) = _
+  rw [g5]; rfl
+
+/-- the heap task 60 runs on (the loop has popped the task) -/
+def HT : List UInt64 := ((((HA.set 64 60).set 65 0).set 66 0).set 5 1).set 5 0
+theorem HT_len : HT.length = 184386 := by simp [HT, HA_len]
+theorem H5_0 : (C.v1 HA 60 0 0)[0]?.getD 0 = 1 := by
+  rw [H5_eq]; simp only [List.getElem?_set, List.length_set, HA_len]; simpa using HA_0
+theorem H5_5 : (C.v1 HA 60 0 0)[5]?.getD 0 = 1 := by
+  rw [H5_eq]; simp [List.getElem?_set, HA_len]
+theorem H5_64 : (C.v1 HA 60 0 0)[64]?.getD 0 = 60 := by
+  rw [H5_eq]; simp [List.getElem?_set, HA_len]
+theorem H5_65 : (C.v1 HA 60 0 0)[65]?.getD 0 = 0 := by
+  rw [H5_eq]; simp [List.getElem?_set, HA_len]
+theorem H5_66 : (C.v1 HA 60 0 0)[66]?.getD 0 = 0 := by
+  rw [H5_eq]; simp [List.getElem?_set, HA_len]
+theorem HT_z (i : Nat) (h1 : 0 < i) (h2 : i < 64) : HT[i]?.getD 0 = 0 := by
+  have := HA_z i h1 (by omega)
+  simp only [HT, List.getElem?_set, List.length_set, HA_len]
+  repeat' split
+  all_goals first | rfl | omega | exact this
+
+/-- task 60 leaves status 0 or 2 when the cursor is at the end (cells 3 and 7 agree) -/
+theorem v127_cases (h : List UInt64) (a b : UInt64) (e : bget h 3 = bget h 7) :
+    C.v127 h a b = bset h 0 0 ∨ C.v127 h a b = bset h 0 2 := by
+  unfold C.v127
+  split
+  · exact Or.inl rfl
+  · rw [if_pos (by rw [e]; exact beq_self_eq_true _)]; exact Or.inr rfl
+
+theorem R_facts : (C.v127 ((C.v1 HA 60 0 0).set 5 0) 0 0)[0]?.getD 0 ≠ 1 ∧ (C.v127 ((C.v1 HA 60 0 0).set 5 0) 0 0)[12]?.getD 0 = 0 := by
+  have eT : (C.v1 HA 60 0 0).set 5 0 = HT := by rw [H5_eq]; rfl
+  rw [eT]
+  have e37 : bget HT 3 = bget HT 7 := by
+    rw [bget_eq, bget_eq]; exact (HT_z 3 (by decide) (by decide)).trans (HT_z 7 (by decide) (by decide)).symm
+  have h12 := HT_z 12 (by decide) (by decide)
+  have hl := HT_len
+  rcases v127_cases HT 0 0 e37 with h | h <;> rw [h] <;> simp [bset, hl] <;> simpa [hl] using h12
 
 end Cert.CapFree
