@@ -18,7 +18,7 @@ git clone https://github.com/opencompl/sail-riscv-lean.git regen && git -C regen
 G=sail-riscv/build/model/Lean_RV64D
 rm -rf regen/LeanRV64D regen/LeanRV64D.lean
 cp -r $G/LeanRV64D $G/LeanRV64D.lean $G/lakefile.toml $G/lean-toolchain $G/lake-manifest.json regen/
-B="RISC-V model REGENERATED with Sail $SAIL_REV (sail2; riscv/sail-riscv $RISCV_REV) (not the trusted model)"
+B="RISC-V model REGENERATED with Sail $SAIL_REV (rems-project/sail sail2, untagged) from riscv/sail-riscv $RISCV_REV (not the trusted model); provenance: Riscv/gen/PROVENANCE.md in lean-assembly-compiler"
 for f in regen/LeanRV64D.lean regen/LeanRV64D/*.lean; do sed -i "1i -- $B" "$f"; done
 sed -i "1i # $B" regen/lakefile.toml
 (cd regen && lake update)
