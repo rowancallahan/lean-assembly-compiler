@@ -10,7 +10,13 @@ and lifts the J-level run theorems to any such machine (`HostOn`, `HostGen`, `Ho
 * `Target.lean:JTarget` — machine `M`, `blockLen`, `enc` (words of one J instruction), `reg`, `scratch`,
   `lay : LayW → List J → Prop`, `m0`, `inv : LayW → List J → M.State → Prop`, `valid`, `loader`.
 * `Target.lean:JTarget.Rel` — J state ↔ machine state through `observe`; `Laws` — what a target proves
-  (`step_ok`, `addi_ok`, `ret_ok`, `lay_init`, `inv_init`, `m0_obs`, `reg_map`, `kept_map`, `ram`).
+  (`steps`, `addi_ok`, `ret_ok`, `lay_init`, `inv_init`, `m0_obs`, `reg_map`, `kept_map`, `ram`).
+* `Target.lean:StepAt j` — the obligation for one J instruction `j`: at `C[pc]? = some j`, a `SafeX` step is a
+  machine run keeping `Rel`. `StepLaws` — one field `StepAt (.k …)` per J constructor (14).
+  `StepLaws.step_ok` / `Laws.step_ok` — the dispatch over `C[pc]?`, proved once. Tactic `jcase` reduces `hS`/`hs`
+  to `j`'s clauses inside a field proof.
+* `RvTarget.lean:rv_at`, `rvSteps` — each field is one Sail simulation lemma (`SimW`/`SimX` `sim_*`).
+* `ArmTarget.lean:arm_at`, `armSteps` — each field is that kind's block run (`blk_*`).
 * `RvTarget.lean:rvTarget`, `rvLaws` — RISC-V (one RV64 word per J instruction), from the Sail simulation
   (`SimW`/`SimX`/`RvStep`) through `relW_of` / `rel_of`.
 * `ArmTarget.lean:armTarget`, `armLaws` — AArch64 over any `A64Sem` machine (4-word rv2arm blocks).
@@ -25,7 +31,14 @@ Design decisions:
 * `inv` and `lay` take the J program `C`, so a target states code-dependent facts (ARM: `PermOK … (16 * C.length)`)
   from `C` directly instead of through a recorded word list.
 
-Assumes: `SafeX` J steps (ranges, work cells) from the run layer. Guarantees: `Laws.step_ok` (one safe J step = a
+* The step law is per J constructor (`StepLaws`), not one `step_ok` with a `cases` inside each target: a new J
+  instruction adds one constructor clause in `step`/`SafeX`, one `StepLaws` field, one dispatch line, and one field
+  proof per target; existing fields are untouched. Each field is stated uniformly through `SafeX`/`step`
+  (`StepAt`) instead of restating the side condition and result per kind (rejected: 14 hand-written statements
+  that must be kept in sync with `SafeX` and `step`). The former dispatchers `SimX.sim_stepX` and
+  `ArmTarget.arm_step` are gone; their case bodies are the fields.
+
+Assumes: `SafeX` J steps (ranges, work cells) from the run layer. Guarantees: `Laws.step_ok` (from `steps`; one safe J step = a
 machine run keeping `Rel`), hence `host_ok` / `host_tiny` / `host_room` for `tbytes T Cj`.
 
 Known limits: `enc : J → List (BitVec 32)` with `enc_len = blockLen` and `addr = base + 4·blockLen·pc` fix uniform

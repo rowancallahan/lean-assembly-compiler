@@ -1,5 +1,5 @@
 /- The RISC-V adapter: `rvTarget` (one RV64 word per J instruction, `encJX`; J register = RV register) and its laws,
-from the existing Sail-RV simulation (SimW/SimX `sim_stepX`, RvStep `sim_ret` / `sim_addiN`) through one bridge `RelW ↔ Rel`. -/
+from the existing Sail-RV simulation (SimW/SimX `sim_*`, one per J instruction kind: `rvSteps`; RvStep `sim_ret` / `sim_addiN`) through one bridge `RelW ↔ Rel`. -/
 import Nano.V2Self.Proof.Machine.Target
 import Nano.V2Self.Proof.Machine.SimX
 import Nano.V2Self.Proof.Machine.RvStep
@@ -153,6 +153,66 @@ theorem rel_of {K : LayW} {C : List J} {s0 : Proven.St} {p : Nat × CallProbe.St
   · intro a ha
     exact h.fr a (show ¬ wok K (a - a % 8) by unfold wok; omega) (show ¬ outB K a by unfold outB; omega)
 
+/-- a Sail-RV simulation lemma at the word of `j` gives the generic obligation for `j` (through `relW_of` / `rel_of`) -/
+theorem rv_at {j : J}
+    (h : ∀ {K : LayRv} {C : List J} {pc : Nat} {s : CallProbe.St} {t : Proven.St} {b : Nat × CallProbe.St},
+      K.Ok → RelW K (pc, s) t → K.W[pc]? = some (encJX j) → C.length = K.W.length → SafeX K C (pc, s) →
+      C[pc]? = some j → CallProbe.step C (pc, s) = some b → ∃ t', Retires t t' ∧ RelW K b t') :
+    rvTarget.StepAt j := by
+  intro K C s0 pc st s b hl hR hc hS hs
+  obtain ⟨t', hr, hR'⟩ := h (K := rvLay K C) hl (relW_of hl hR) (by simp [hc]) (by simp) hS hc hs
+  exact ⟨t', .step (Top.step_of_retires hr) .stop, rel_of hl hR'⟩
+
+/-- **RISC-V, one J instruction kind at a time**: each is one retired Sail instruction (SimW/SimX's `sim_*`) -/
+theorem rvSteps : rvTarget.StepLaws where
+  addi rd rs imm := rv_at fun hK hR hw hl hS hc hs => by
+    jcase; obtain ⟨h1, h2, h3, h4, h5, h6⟩ := hS; exact sim_addi hK hR hw h1 h2 h3 h4 h5 h6
+  ld rd rs off := rv_at fun hK hR hw hl hS hc hs => by
+    jcase; obtain ⟨h1, h2, h3, h4, h5, h6⟩ := hS; exact sim_ld hK hR hw h1 h2 h3 h4 h5 h6
+  sd rs2 rs1 off := rv_at fun hK hR hw hl hS hc hs => by
+    jcase; obtain ⟨h1, h2, h3, h4, h5, h6⟩ := hS; exact sim_sd hK hR hw h1 h2 h3 h4 h5 h6
+  jal rd off := rv_at fun hK hR hw hl hS hc hs => by
+    jcase; obtain ⟨h1, h2, h3, h4, h5⟩ := hS
+    exact sim_jal hK hR h1 hw h2 h3 h4 (by rw [← hl]; exact h5)
+  jalr rd rs := rv_at fun {K C pc s t b} hK hR hw hl hS hc hs => by
+    jcase; obtain ⟨rfl, h2, j, hj⟩ := hS
+    have hb : s.b = K.base := hR.bb
+    obtain ⟨t', ht, hr⟩ := sim_jalr hK hR h2 hw (by rw [hj, hR.w4])
+    refine ⟨t', ht, ?_⟩
+    have : ((s.x rs).toNat - s.b) / s.w = j := by rw [hj, hb, hR.w4]; omega
+    simp [this, CallProbe.wr]; exact hr
+  bgeu a b off := rv_at fun hK hR hw hl hS hc hs => by
+    jcase; obtain ⟨h1, h2, ho⟩ := hS
+    rcases ho with rfl | rfl | rfl
+    · exact sim_bgeu8 hK hR hw h1 h2
+    · exact sim_bgeu12 hK hR hw h1 h2
+    · exact sim_bgeu16 hK hR hw h1 h2
+  alu op rd a b := rv_at fun hK hR hw hl hS hc hs => by
+    jcase; obtain ⟨h1, h2, h3, h4, h5⟩ := hS; exact sim_aluW hK hR hw h1 h2 h3 h4 h5
+  slli rd rs sh := rv_at fun hK hR hw hl hS hc hs => by
+    jcase; obtain ⟨h1, h2, h3⟩ := hS; exact sim_slliW hK hR hw h1 h2 h3
+  lbu rd rs off := rv_at fun hK hR hw hl hS hc hs => by
+    jcase; obtain ⟨h1, h2, h3, h4, h5, h6⟩ := hS; exact sim_lbuW hK hR hw h1 h2 h3 h4 h5 h6
+  beq a b off := rv_at fun hK hR hw hl hS hc hs => by
+    jcase; obtain ⟨h1, h2, ho⟩ := hS
+    rcases ho with rfl | rfl
+    · exact sim_beq8 hK hR hw h1 h2
+    · exact sim_beq28 hK hR hw h1 h2
+  bltu a b off := rv_at fun hK hR hw hl hS hc hs => by
+    jcase; obtain ⟨h1, h2, rfl⟩ := hS; exact sim_bltu8 hK hR hw h1 h2
+  srli rd rs sh := rv_at fun hK hR hw hl hS hc hs => by
+    jcase; obtain ⟨h1, h2, h3⟩ := hS
+    simp only [encJX] at hw; rw [encJ_srli _ _ _ h1 h2 h3] at hw
+    exact sim_srliW hK hR hw h1 h2 h3
+  bne a b off := rv_at fun hK hR hw hl hS hc hs => by
+    jcase; obtain ⟨h1, h2, rfl⟩ := hS
+    simp only [encJX] at hw; rw [encJ_bne _ _ h1 h2] at hw
+    exact sim_bne16 hK hR hw h1 h2
+  sb rs2 rs1 off := rv_at fun hK hR hw hl hS hc hs => by
+    jcase; obtain ⟨h1, h2, h3, h4, h5, h6⟩ := hS
+    simp only [encJX] at hw; rw [encJ_sb _ _ _ h1 h2 h3 h4] at hw
+    exact sim_sbW hK hR hw h1 h2 h3 h4 h5 h6
+
 theorem rvLaws : rvTarget.Laws where
   blk_pos := by decide
   enc_len _ := rfl
@@ -167,10 +227,7 @@ theorem rvLaws : rvTarget.Laws where
     exact ⟨h.b4, h.blo, h.bhi, h.wlo, h.whi, h.cw, h.ibl, h.ibh, h.obl, h.obh, h.oc⟩
   m0_obs s a ha := obs_mem s ha
   inv_init K _ s _ _ _ _ _ _ _ h _ _ _ _ _ _ a _ := by rw [h]; rfl
-  step_ok := by
-    intro K C s0 a b s hl hR hS hs
-    obtain ⟨t', hr, hR'⟩ := sim_stepX (K := rvLay K C) hl rfl (relW_of hl hR) hS hs
-    exact ⟨t', .step (Top.step_of_retires hr) .stop, rel_of hl hR'⟩
+  steps := rvSteps
   addi_ok := by
     intro K C s0 pc st s rd rs imm hl hR hC h1 h2 h3 h4
     have hWc : (rvLay K C).W[pc]? = some (encJ (.addi rd rs imm)) := by simp [hC, encJX]
