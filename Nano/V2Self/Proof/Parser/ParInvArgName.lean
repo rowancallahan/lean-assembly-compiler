@@ -54,15 +54,15 @@ theorem h_argName {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.ar
     have rD := R1.2.2.2.2.2.2.1
     obtain ⟨s22, _⟩ := v8_findD rD (by omega) hl31 hNm
     have hval := v8_val rD (by omega) hl31 hNm
-    have hdrop := v8_drop 16777216 g (bget g 12) (bget g 3)
-    have ev : step h = (if bget (v8 16777216 g (bget g 12) (bget g 3)) 22 = 0 then bset (v8 16777216 g (bget g 12) (bget g 3)) 0 0
-        else if bget (v8 16777216 g (bget g 12) (bget g 3)) (d7 + 8 * (bget (v8 16777216 g (bget g 12) (bget g 3)) 22 - 1) + 6) = 0 then
-          v5 (v86 16777216 (v8 16777216 g (bget g 12) (bget g 3)) (bget g 3 + 1)) (8 : Nat).toUInt64
-            (bget (v8 16777216 g (bget g 12) (bget g 3)) 22 - 1) (0 : Nat).toUInt64
-            (bget (v8 16777216 g (bget g 12) (bget g 3)) (d7 + 8 * (bget (v8 16777216 g (bget g 12) (bget g 3)) 22 - 1) + 3))
+    have hdrop := v8_drop g (bget g 12) (bget g 3)
+    have ev : step h = (if bget (v8 g (bget g 12) (bget g 3)) 22 = 0 then bset (v8 g (bget g 12) (bget g 3)) 0 0
+        else if bget (v8 g (bget g 12) (bget g 3)) (d7 + 8 * (bget (v8 g (bget g 12) (bget g 3)) 22 - 1) + 6) = 0 then
+          v5 (v86 16777216 (v8 g (bget g 12) (bget g 3)) (bget g 3 + 1)) (8 : Nat).toUInt64
+            (bget (v8 g (bget g 12) (bget g 3)) 22 - 1) (0 : Nat).toUInt64
+            (bget (v8 g (bget g 12) (bget g 3)) (d7 + 8 * (bget (v8 g (bget g 12) (bget g 3)) 22 - 1) + 3))
             (b01 false) (0 : Nat).toUInt64
-        else bset (v8 16777216 g (bget g 12) (bget g 3)) 0 0) := by rw [E]; simp [v96, v126, c14, b01]
-    generalize v8 16777216 g (bget g 12) (bget g 3) = g1 at ev s22 hval hdrop
+        else bset (v8 g (bget g 12) (bget g 3)) 0 0) := by rw [E]; simp [v96, v126, c14, b01]
+    generalize v8 g (bget g 12) (bget g 3) = g1 at ev s22 hval hdrop
     rw [ev] at hs ⊢
     have dead : bget (bset g1 0 0) 0 ≠ 0 → False := fun x => x (stat0 _ (by rw [s22.1]; omega))
     cases hf : findD st.defs (nm.map UInt64.toNat) with

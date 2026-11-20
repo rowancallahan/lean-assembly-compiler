@@ -117,7 +117,7 @@ theorem rep_tag {m : Ir.Mem} {w : V} {a : Val} {rest : List UInt8} (hr : Rep m w
   cases rest with
   | nil =>
     rw [bytesOut_nil h] at hr
-    obtain ⟨b, c0, e, hb, hc, -⟩ := (by simpa only [Rep] using hr : ∃ b c0, a = .p b 0 ∧ m.blk b = some (c0, 0 + 1) ∧
+    obtain ⟨b, c0, e, hb, hc, -⟩ := (by simp only [Rep] at hr; exact hr : ∃ b c0, a = .p b 0 ∧ m.blk b = some (c0, 0 + 1) ∧
       m.cells[c0]? = some (some (.w (BitVec.ofNat 64 0))) ∧ RepL m [] (c0 + 1))
     exact ⟨b, c0, _, e, hb, by omega, by simpa [tagOf] using hc⟩
   | cons x rest =>

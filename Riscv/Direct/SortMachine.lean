@@ -60,7 +60,7 @@ theorem codeAt_of_codeBytes {s : St} : ∀ {code : List (BitVec 32)} {pc : BitVe
         by simpa using g 3 (by omega)⟩
     have hok' := (codeOK_append (a := 1) (b := ws.length) (by simpa [Nat.add_comm] using hok)).2
     have e := pc_toNat hok (a := 1) (by simp)
-    have ih := codeAt_of_codeBytes hok' (by rw [e]; simpa using hb2)
+    have ih := codeAt_of_codeBytes hok' (by rw [e]; simp at hb2 ⊢; exact hb2)
     exact (codeAt_append (l₁ := [w])).2 ⟨fun k hk => by simp at hk; subst hk; simpa using hi, ih⟩
 
 /-- `Implements` (`Proven/Spec.lean`) plus one hosting hypothesis: the output bytes are present in the

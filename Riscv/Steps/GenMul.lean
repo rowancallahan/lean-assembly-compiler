@@ -101,27 +101,34 @@ theorem tbt_int (z : Int) : (to_bits_truncate (l := 64) z) = BitVec.ofInt 64 z :
   · next h => rw [h, Int.tmod_zero]
   · rfl
 
+/-- `execute_MUL` of the regenerated model passes `mult_to_bits_half (l := xlen) ..` straight to `wX_bits`; the root
+rewrite with `wX_bits_ok` does not see through `xlen` there, so the product is rewritten in the same step -/
+theorem wX_bits_mul (s : St) (i : BitVec 5) (a b : BitVec 64) :
+    wX_bits (.Regidx i) (mult_to_bits_half (l := LeanRV64D.Functions.xlen) Signedness.Signed Signedness.Signed a b
+      VectorHalf.Low) s = .ok () { s with regs := xset s.regs i.toFin (a * b) } := by
+  rw [mul_low_x]; exact wX_bits_ok s i (a * b)
+
 /-! ## Step lemmas -/
 
 variable {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? .PC = some pc) (hok : pcOK pc)
 include h hpc hok
 
 theorem step_mul (rd rs1 rs2 : Fin 32) (hi : instrAt s pc (encR 1 0 rd rs1 rs2)) :
-    ∃ s', Next s s' (pc + 4) rd (getX s rs1 * getX s rs2) s.mem := by genc; gstep
+    ∃ s', Next s s' (pc + 4) rd (getX s rs1 * getX s rs2) s.mem := by
+  genc; have hmul := @wX_bits_mul; gstep
 theorem step_divu (rd rs1 rs2 : Fin 32) (hi : instrAt s pc (encR 1 5 rd rs1 rs2)) :
     ∃ s', Next s s' (pc + 4) rd (divu (getX s rs1) (getX s rs2)) s.mem := by genc; gstep
 theorem step_remu (rd rs1 rs2 : Fin 32) (hi : instrAt s pc (encR 1 7 rd rs1 rs2)) :
     ∃ s', Next s s' (pc + 4) rd (getX s rs1 % getX s rs2) s.mem := by genc; gstep
+theorem step_div (rd rs1 rs2 : Fin 32) (hi : instrAt s pc (encR 1 4 rd rs1 rs2)) :
+    ∃ s', Next s s' (pc + 4) rd (Mach.MOp.eval .div (getX s rs1) (getX s rs2)) s.mem := by genc; gstep
 /-- the model's signed quotient as `execute_DIV` writes it -/
-
 theorem step_div0 (rd rs1 rs2 : Fin 32) (hi : instrAt s pc (encR 1 4 rd rs1 rs2)) :
     ∃ s', Next s s' (pc + 4) rd (to_bits_truncate (l := 64)
       (if (2 : Int) ^ (63 : Int) ≤ (if (getX s rs2).toInt = 0 then -1 else (getX s rs1).toInt.tdiv (getX s rs2).toInt)
         then -9223372036854775808 else if (getX s rs2).toInt = 0 then -1 else (getX s rs1).toInt.tdiv (getX s rs2).toInt))
-      s.mem := by genc; gstep
-theorem step_div (rd rs1 rs2 : Fin 32) (hi : instrAt s pc (encR 1 4 rd rs1 rs2)) :
-    ∃ s', Next s s' (pc + 4) rd (Mach.MOp.eval .div (getX s rs1) (getX s rs2)) s.mem := by
-  have := step_div0 h hpc hok rd rs1 rs2 hi; rwa [div_eq] at this
+      s.mem := by
+  rw [div_eq]; exact step_div h hpc hok rd rs1 rs2 hi
 theorem step_rem (rd rs1 rs2 : Fin 32) (hi : instrAt s pc (encR 1 6 rd rs1 rs2)) :
     ∃ s', Next s s' (pc + 4) rd (Mach.MOp.eval .rem (getX s rs1) (getX s rs2)) s.mem := by genc; gstep
 

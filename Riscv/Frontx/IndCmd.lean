@@ -22,7 +22,7 @@ namespace Proven.Frontx.IndCmd
 open Lean Meta Elab Command Term
 
 def runCmd (s : String) : CommandElabM Unit := do
-  match Parser.runParserCategory (← getEnv) `command ("set_option linter.unusedSimpArgs false in\n" ++ s) with
+  match Parser.runParserCategory (← getEnv) `command ("set_option linter.unusedSimpArgs false in\nset_option backward.isDefEq.respectTransparency false in\n" ++ s) with
   | .ok stx => elabCommand stx
   | .error e => throwError "frontx_ind: generated text does not parse ({e}):\n{s}"
 
@@ -1723,7 +1723,7 @@ theorem _root_.{P}.sem : ∀ (t : {tyOf Ttn}) (a : {aTy}) (b : {bTy}), {hyps}{P}
        Proven.Frontx.Ind.nat_add, Proven.Frontx.Ind.bw_eq0, Proven.Frontx.Ind.bw_eq0', decide_eq_false_iff_not,
        decide_eq_true_eq] at *)
      all_goals (repeat' split)
-     all_goals (simp_all [{embs}, Proven.Frontx.Ind.bw]; try omega)
+     all_goals (simp_all [{gS}, {embs}, Proven.Frontx.Ind.bw]; try omega)
      done)
   | (simp only [{Ttn}.emb, {P}.arms, Proven.Mach.Ind.Pg.sem, Proven.Mach.Ind.ev, List.getElem?_cons_zero,
       List.getElem?_cons_succ, Bool.false_eq_true, if_true, if_false, {words}] at *

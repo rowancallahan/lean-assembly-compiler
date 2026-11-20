@@ -132,7 +132,7 @@ theorem stub_ok {Q : Prog Nat} {L : Lay} {F : Func Nat} {c : List EOp} {rest : L
     have hin5' : InW C.W (T.len T.stub1 + T.len exit0) (T.encO (.w (.bin .sub RLim R0 R2)) ++ (T.encO (.enter 0) ++
         (T.encO (.enterC 0) ++ (T.encO (.w (.mov R0 RIn)) ++ (T.encO (.w (.mov R1 RLen)) ++ (T.encO (.w (.mov R2 ROut)) ++
         (T.words c ++ rest))))))) := by
-      have := hin5.right; rw [hst1]; simpa only [Nat.zero_add, Nat.add_assoc] using this
+      have := hin5.right; rw [hst1]; simp only [Nat.zero_add, Nat.add_assoc] at this ⊢; exact this
     refine T.toCore.runsTo_trans (C.op hA5 hin5' fun h => T.toCore.runsTo_mono (T.w_bin h)
       fun s' ⟨d, st, hm⟩ => ⟨d, hm, st⟩) fun s6 ⟨hA6, hk6, hm6, st6⟩ => ?_
     have hk06 : T.keep C.s0 s6 := T.keep_trans hk05 hk6

@@ -44,7 +44,7 @@ theorem ite01 (p : Prop) [Decidable p] : ((if p then 1 else 0 : BitVec 64) = 0) 
 theorem ByteExp.tr_ok (a x : UInt8) (env : AEnv) (h6 : env 6 = zx x) :
     ∀ e : ByteExp, (e.noAcc = true ∨ env 5 = zx a) → e.tr.denote env = zx (e.denote a x)
   | .x, _ => h6
-  | .acc, h => by simpa [ByteExp.noAcc] using h
+  | .acc, h => by simp [ByteExp.noAcc] at h; simpa [ByteExp.tr, ByteExp.denote, AExp.denote] using h
   | .lit c, _ => rfl
   | .bin op p q, h => by
     have h' : (p.noAcc = true ∨ env 5 = zx a) ∧ (q.noAcc = true ∨ env 5 = zx a) := by
@@ -703,7 +703,7 @@ theorem stage_exec {L : Nat} {xs : List UInt8} (hx : xs.length < 2 ^ 32) (hL : L
     have hbd := hI.bound; have hcur := hI.cur; dsimp only at hbd hcur
     have hk := minN_val (env := env) hn
     have hset : ∀ a, (minN n).denote (env.set 4 a) = (minN n).denote env := fun a => by
-      simp [minN, AExp.denote, AEnv.set]
+      simp [minN, AExp.denote, AEnv.set]; rfl
     have hBl : (if cs.onOut then out else xs).length < 2 ^ 32 := by have := hI.olen; split <;> omega
     generalize hB : (if cs.onOut then out else xs) = B at *
     generalize hs : (env 4).toNat = s at *
@@ -737,7 +737,7 @@ theorem stage_exec {L : Nat} {xs : List UInt8} (hx : xs.length < 2 ^ 32) (hL : L
     have hbd := hI.bound; have hcur := hI.cur; dsimp only at hbd hcur
     have hk := minN_val (env := env) hn
     have hset : ∀ a, (minN n).denote (env.set 4 a) = (minN n).denote env := fun a => by
-      simp [minN, AExp.denote, AEnv.set]
+      simp [minN, AExp.denote, AEnv.set]; rfl
     have hBl : (if cs.onOut then out else xs).length < 2 ^ 32 := by have := hI.olen; split <;> omega
     generalize hB : (if cs.onOut then out else xs) = B at *
     generalize hs : (env 4).toNat = s at *

@@ -202,6 +202,10 @@ instance {α β : Type} [Enc α] [Enc β] : Enc (α × β) where
   dec | .c 0 [a, b] => (Enc.dec a, Enc.dec b) | _ => (Enc.dec (.w 0), Enc.dec (.w 0))
   dec_enc p := by simp
 
+/-- Lean 4.34.1: `simp` no longer unfolds `Enc.enc` at the pair instance for a pair that is not a constructor
+application (e.g. the result of a call); certificates then cannot match on its encoding -/
+@[simp] theorem enc_prod {α β : Type} [Enc α] [Enc β] (p : α × β) : Enc.enc p = .c 0 [Enc.enc p.1, Enc.enc p.2] := rfl
+
 instance {α : Type} [Enc α] : Enc (Option α) where
   enc | none => .c 0 [] | some a => .c 1 [Enc.enc a]
   dec | .c 1 [a] => some (Enc.dec a) | _ => none

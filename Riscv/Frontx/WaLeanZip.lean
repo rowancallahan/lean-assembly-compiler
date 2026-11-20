@@ -4,6 +4,8 @@ Source: github.com/rowancallahan/lean-zip @ 7e10583 (Lean 4.34.0), definitions c
 `file:line` per block; doc comments and proofs are not copied, nothing else is changed (the same text compiles on
 Lean 4.29.0).  The entry points (`…E : ByteArray → β`) fix the other arguments; they are not library code. -/
 import Riscv.Frontx.WaCmd
+-- Lean 4.34.1: instance arguments are compared at restricted transparency; the generated proofs need the old check
+set_option backward.isDefEq.respectTransparency false
 
 /-! ## CRC-32, table-driven -/
 

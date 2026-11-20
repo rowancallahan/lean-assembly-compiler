@@ -33,9 +33,10 @@ def resetSysWith (cancel : SailM Unit) : SailM Unit := do
     (bool_to_bit (false : Bool)))
   writeReg mseccfg (Sail.BitVec.updateSubrange (← readReg mseccfg) 8 8
     (bool_to_bit (false : Bool)))
-  if ((hartSupports Ext_Zicfilp) : Bool)
-  then writeReg mseccfg (Sail.BitVec.updateSubrange (← readReg mseccfg) 10 10 0#1)
-  else (pure ())
+  let _ ← (( do
+    if ((hartSupports Ext_Zicfilp) : Bool)
+    then writeReg mseccfg (Sail.BitVec.updateSubrange (← readReg mseccfg) 10 10 0#1)
+    else (pure ()) ) : SailM Unit )
   (reset_stateen ())
   writeReg vstart (zeros (n := 64))
   writeReg vl (zeros (n := 64))

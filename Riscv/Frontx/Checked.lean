@@ -29,7 +29,7 @@ theorem implements1_listC (f : ByteArray → List UInt8) (N : Nat) (hN : N ≤ N
     Implements1With (fun xs : ByteArray => xs.data.toList) (fun l => l) (listCodeC N t spl p) f
       (fun _ => 8 * (N + 1) + 7) (retLen := true) := by
   refine implements1_of_execC _ (fun l => l) f N hN (listProg p) _ _ hc (fun _ => 0) _
-    (fun n => by dsimp only; omega) _ true ?_
+    (fun n => by (try dsimp only); omega) _ true ?_
   intro a out tbl env h1 h8 hmax hlt hout hol htl
   have hsz : a.data.toList.length = a.size := Array.length_toList
   obtain ⟨σ', hx, h4, hh⟩ := hex a out env (by rw [h1, hsz]; rfl) (by rw [← hsz]; exact hlt) h8 hout hol
@@ -87,7 +87,7 @@ theorem implements1_resC {β : Type} [Res β] (f : ByteArray → β) (N : Nat) (
       (fun _ => 8 * (N + 1) + 7) := by
   have hk := Res.hk (β := β)
   refine implements1_of_execC _ Res.enc f N hN (resProg β p) _ _ hc (fun _ => 0) _
-    (fun n => by dsimp only; omega) _ false ?_
+    (fun n => by (try dsimp only); omega) _ false ?_
   intro a out tbl env h1 h8 hmax hlt hout hol htl
   have hsz : a.data.toList.length = a.size := Array.length_toList
   obtain ⟨σ', hx, h4, hh⟩ := hex a env (by rw [h1, hsz]; rfl) (by rw [← hsz]; exact hlt) h8

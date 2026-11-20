@@ -25,7 +25,7 @@ theorem arrsP_cons1 {s : Sl} {Γ : List Sl} {l : PLoc} {L : List PLoc} {x : s.T}
     arrsP (s :: Γ) (l :: L) (x, v) env = arrsP [s] [l] (x, ()) env ++ arrsP Γ L v env := by
   cases s with
   | sc t => rfl
-  | ar k => simp only [arrsP, List.headD_cons, List.tail_cons]; split <;> rfl
+  | ar k => simp only [arrsP, List.headD_cons, List.tail_cons]; by_cases hi : l.inp = true <;> simp [hi]
 
 /-- permutations of appended lists, by counting -/
 macro "perm_tac" : tactic => `(tactic| (rw [List.perm_iff_count]; intro a; simp only [List.count_append]; omega))

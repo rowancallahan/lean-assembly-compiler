@@ -1,6 +1,6 @@
 /- Nano/V2Self/Proof/Parser/ParInvAppend: `rep_append` — Rep survives an output append `H ++ ws` (box C, for the parser lead's tasks 80–83).
 Every cell Rep reads lies below |H| (the IRV word d11 + |ts| + 1 is the first output word, so |out| ≥ 1); the token frame lemmas
-need only `TokAgreeN` (cells below 184386 + h[7]). -/
+need only `TokAgreeN` (cells below 185410 + h[7]). -/
 import Nano.V2Self.Proof.Parser.ParInvFlatM
 import Nano.V2Self.Proof.Parser.ParInvExpr
 namespace ParInv
@@ -15,12 +15,12 @@ theorem rep_append {H ts : Buf} {st : St} {fs : List Frame} (r : Rep H ts st fs)
   have hout : 1 ≤ st.out.length := by
     rcases Nat.eq_zero_or_pos st.out.length with hz' | hp
     · have := rT.2.2.1
-      have hi : (d11 + ts.length.toUInt64 + 1).toNat = 184385 + ts.length := by rw [d11a1 _ (by simp; omega)]; simp; omega
+      have hi : (d11 + ts.length.toUInt64 + 1).toNat = 185409 + ts.length := by rw [d11a1 _ (by simp; omega)]; simp; omega
       rw [show bget H (d11 + ts.length.toUInt64 + 1) = 0 by
         simp only [bget, List.getD_eq_getElem?_getD]; rw [List.getElem?_eq_none (by rw [hi]; omega)]; rfl] at this
       exact absurd this (by decide)
     · omega
-  have e : ∀ i : UInt64, i.toNat < 184385 + ts.length + 1 → bget (H ++ ws) i = bget H i :=
+  have e : ∀ i : UInt64, i.toNat < 185409 + ts.length + 1 → bget (H ++ ws) i = bget H i :=
     fun i hi => bget_append_lt _ _ _ (by omega)
   have et : TokAgreeN H (H ++ ws) := ⟨e 7 (by simp only [show (7 : UInt64).toNat = 7 from rfl]; omega), fun i _ b => e i (by omega)⟩
   have es : ShTabAgree H (H ++ ws) := fun i _ b => e i (by omega)
@@ -29,7 +29,8 @@ theorem rep_append {H ts : Buf} {st : St} {fs : List Frame} (r : Rep H ts st fs)
   refine ⟨tokensAt_frameN rT et rts, rts, by rw [c 0 (by decide)]; exact r0, by rw [c 3 (by decide)]; exact tokAt_frameN et hn7 r3,
     by rw [c 11 (by decide)]; exact r11,
     binds_frameN rB (c 4 (by decide)) (fun i _ b => e i (by omega)) et hn7 es,
-    defs_frameN rD (c 12 (by decide)) (c 27 (by decide)) (c 26 (by decide)) (fun i _ b => e i (by omega)) et hn7 es,
+    defs_frameN rD (c 12 (by decide)) (c 27 (by decide)) (c 26 (by decide)) (fun i _ b => e i (by omega)) et hn7 es
+      (fun i _ b => e i (by omega)),
     arena_frame rA (c 8 (by decide)) (c 9 (by decide)) (fun i _ b => e i (by omega)) es,
     fun s hs => by rw [c 25 (by decide)]; exact (r25 s hs).frame es,
     fun x hx => by rw [c 29 (by decide)]; exact nameAt_frameN et (by omega) (r29 x hx),

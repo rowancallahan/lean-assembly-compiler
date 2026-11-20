@@ -189,8 +189,8 @@ chunks concatenate to exactly those bytes. D's kernel-checked `SrcGen.link_pc` s
     `mC` by `rfl`.
   - `Testing/nano/v2self/srclink/gen.lean`: writes `Proof/SrcLink/`. Kernel-checked like the certificate.
 - **The shipped `B2.bin` = `compiled.code` is NOT proved** (see "The binary" below).
-- **The binary.** The theorem is about `mC`, a Lean function. The shipped bytes `B2.bin` (337,856 B, sha256
-  `bb5558a58c98b13ec24ad36e2147a41ff37a3b32debbe9d08523831266e0ec4e`) were produced by **B1**: `self_S.lean` compiled by
+- **The binary.** The theorem is about `mC`, a Lean function. The shipped bytes `B2.bin` (340,296 B, sha256
+  `24759aa0f757e50e92e67d498a84f28ec7a0b13da6f2c9fc3d76cd0679699ed4`; before perf-names 337,856 B, `bb5558a5…`) were produced by **B1**: `self_S.lean` compiled by
   the Lean toolchain (`lean -c` + `leanc`) with `BootPrelude.lean`, which uses Array buffers in place of the List
   prelude and is marked TRUSTED in build_B1.py.
   - Kernel-checked: the meaning (`Sem`) of C's source text equals `mC`, the Lean `C.*` definitions. This is `Cert.sem_C`

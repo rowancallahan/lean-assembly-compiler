@@ -94,7 +94,7 @@ theorem rep_intern {g ts : Buf} {st : St} {fs : List Frame} (R : Rep g ts st fs)
     (hs : bget (v10 16777216 g x y 0) 0 ≠ 0) :
     l ≠ .nt ∧ r ≠ .nt ∧ l.width + r.width < 2 ^ 20 ∧ Rep (v10 16777216 g x y 0) ts { st with ty := some (.p l r) } fs := by
   obtain ⟨hn7, hl, har⟩ := rep_bounds R
-  obtain ⟨d12, dl, d27, drows, dcur, dzero, dz0, s26, sz, sd⟩ := R.2.2.2.2.2.2.1
+  obtain ⟨d12, dl, d27, drows, dcur, dzero, dz0, ⟨s26, sz, sd⟩, _⟩ := R.2.2.2.2.2.2.1
   have hn : bget g 26 = (bget g 26).toNat.toUInt64 := by simp
   generalize hnn : (bget g 26).toNat = n at hn s26 sz sd
   have hsc := v10_scan g x y n hn (by omega) n 16777216 0 (by omega) (by omega)

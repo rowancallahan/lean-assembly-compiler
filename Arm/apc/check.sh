@@ -29,7 +29,7 @@ rm -f "$B/Br/Flags.lean" "$B/Br/Flags.olean"
 sed 's/^import Apc.Small$/import Arm.Words/; s/^open Proven.Arm$/open ArmProof/' "$H/Apc/Agree.lean" > "$B/Br/Agree.lean"
 sed 's/^import Apc.Agree$/import Br.Agree/; s/^open Proven.Arm$/open ArmProof/' "$H/Apc/AgreeAll.lean" > "$B/Br/AgreeAll.lean"
 for f in Bridge BridgeBr BridgeRun BridgeMem; do cp "$H/$f.lean" "$B/Br/$f.lean"; done
-cd /home/user/armv9-lean
+cd "${ARMV9:-/home/user/armv9-lean}"   # ARMV9: the built model (Testing/scripts/bigbox sets it)
 export LEAN_PATH="$B:$H/.lake/build/lib/lean:$R/Arm/proofs/build:$A/.lake/build/lib/lean:$(lake env printenv LEAN_PATH)"
 for f in Br/Agree Br/AgreeAll Br/Bridge Br/BridgeBr Br/BridgeRun Br/BridgeMem; do
   echo "-- $f"; t lean --root="$B" --tstack=400000 -o "$B/$f.olean" "$B/$f.lean"

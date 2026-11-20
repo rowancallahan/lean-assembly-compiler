@@ -12,7 +12,7 @@ mkdir -p "$D/build/Proven" "$D/build/Spec" "$D/build/Arm" "$D/build/src/Proven" 
 rm -f "$D/build/src/Proven/Code.lean" "$D/build/Proven/Code.olean"
 cp "$R/Spec/Code.lean" "$D/build/src/Spec/Code.lean"
 cp "$R/Arm/CompilerArm.lean" "$D/build/src/Proven/CompilerArm.lean"
-cd /home/user/armv9-lean
+cd "${ARMV9:-/home/user/armv9-lean}"   # ARMV9: the built model (Testing/scripts/bigbox sets it)
 BASE=$(lake env printenv LEAN_PATH)
 export LEAN_PATH="$D/build:$BASE"
 for f in ${@:-Spec/Code Proven/CompilerArm Arm/Base Arm/Exec Arm/Flags Arm/Small Arm/Words Arm/Compiler Arm/Ret Arm/Hooks Arm/Fetch Arm/Step Arm/Full Arm/Machine Arm/Witness Arm/Branch Arm/SymDec Arm/BrFull Arm/Mem Arm/FullAluAdd Arm/FullAluLogic Arm/FullAluShift Arm/FullCmp Arm/FullSubs Arm/FullMul Arm/FullBrLdur Arm/Axioms}; do

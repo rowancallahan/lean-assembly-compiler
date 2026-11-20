@@ -36,10 +36,14 @@ open ParSpec SrcLink
 
 set_option maxRecDepth 100000
 
-theorem lx233 : LexSpec.Lexes X233 W233 := lexAll_sound lex233
-theorem tk233 : tokens W233 = some T233 := by
-  show tokens w233 = some (S233 ++ [])
-  rw [List.append_nil]; exact tok233
+theorem lx235 : LexSpec.Lexes X235 W235 := lexAll_sound lex235
+theorem tk235 : tokens W235 = some T235 := by
+  show tokens w235 = some (S235 ++ [])
+  rw [List.append_nil]; exact tok235
+theorem lx234 : LexSpec.Lexes X234 W234 := lexes_app (lexAll_sound lex234) lx235 (.inr nl234)
+theorem tk234 : tokens W234 = some T234 := tokens_app tok234 tk235
+theorem lx233 : LexSpec.Lexes X233 W233 := lexes_app (lexAll_sound lex233) lx234 (.inr nl233)
+theorem tk233 : tokens W233 = some T233 := tokens_app tok233 tk234
 theorem lx232 : LexSpec.Lexes X232 W232 := lexes_app (lexAll_sound lex232) lx233 (.inr nl232)
 theorem tk232 : tokens W232 = some T232 := tokens_app tok232 tk233
 theorem lx231 : LexSpec.Lexes X231 W231 := lexes_app (lexAll_sound lex231) lx232 (.inr nl231)
@@ -506,947 +510,955 @@ theorem lx1 : LexSpec.Lexes X1 W1 := lexes_app (lexAll_sound lex1) lx2 (.inr nl1
 theorem tk1 : tokens W1 = some T1 := tokens_app tok1 tk2
 theorem lx0 : LexSpec.Lexes X0 W0 := lexes_app (lexAll_sound lex0) lx1 (.inr nl0)
 theorem tk0 : tokens W0 = some T0 := tokens_app tok0 tk1
-theorem ch234 : ∀ G, pDefs F (G + 1) D234 T234 = some (D234, Ls234) := pDefs_base F D234
-theorem ch233 : ∀ G, pDefs F (G + 2) D233 T233 = some (D234, Ls233) :=
+theorem ch236 : ∀ G, pDefs F (G + 1) D236 T236 = some (D236, Ls236) := pDefs_base F D236
+theorem ch235 : ∀ G, pDefs F (G + 2) D235 T235 = some (D236, Ls235) :=
+  pDefs_step (chkDef_sound chk235) (by intro h; cases h) ch236
+theorem ch234 : ∀ G, pDefs F (G + 3) D234 T234 = some (D236, Ls234) :=
+  pDefs_step (chkDef_sound chk234) (by intro h; cases h) ch235
+theorem ch233 : ∀ G, pDefs F (G + 4) D233 T233 = some (D236, Ls233) :=
   pDefs_step (chkDef_sound chk233) (by intro h; cases h) ch234
-theorem ch232 : ∀ G, pDefs F (G + 3) D232 T232 = some (D234, Ls232) :=
+theorem ch232 : ∀ G, pDefs F (G + 5) D232 T232 = some (D236, Ls232) :=
   pDefs_step (chkDef_sound chk232) (by intro h; cases h) ch233
-theorem ch231 : ∀ G, pDefs F (G + 4) D231 T231 = some (D234, Ls231) :=
+theorem ch231 : ∀ G, pDefs F (G + 6) D231 T231 = some (D236, Ls231) :=
   pDefs_step (chkDef_sound chk231) (by intro h; cases h) ch232
-theorem ch230 : ∀ G, pDefs F (G + 5) D230 T230 = some (D234, Ls230) :=
+theorem ch230 : ∀ G, pDefs F (G + 7) D230 T230 = some (D236, Ls230) :=
   pDefs_step (chkDef_sound chk230) (by intro h; cases h) ch231
-theorem ch229 : ∀ G, pDefs F (G + 6) D229 T229 = some (D234, Ls229) :=
+theorem ch229 : ∀ G, pDefs F (G + 8) D229 T229 = some (D236, Ls229) :=
   pDefs_step (chkDef_sound chk229) (by intro h; cases h) ch230
-theorem ch228 : ∀ G, pDefs F (G + 7) D228 T228 = some (D234, Ls228) :=
+theorem ch228 : ∀ G, pDefs F (G + 9) D228 T228 = some (D236, Ls228) :=
   pDefs_step (chkDef_sound chk228) (by intro h; cases h) ch229
-theorem ch227 : ∀ G, pDefs F (G + 8) D227 T227 = some (D234, Ls227) :=
+theorem ch227 : ∀ G, pDefs F (G + 10) D227 T227 = some (D236, Ls227) :=
   pDefs_step (chkDef_sound chk227) (by intro h; cases h) ch228
-theorem ch226 : ∀ G, pDefs F (G + 9) D226 T226 = some (D234, Ls226) :=
+theorem ch226 : ∀ G, pDefs F (G + 11) D226 T226 = some (D236, Ls226) :=
   pDefs_step (chkDef_sound chk226) (by intro h; cases h) ch227
-theorem ch225 : ∀ G, pDefs F (G + 10) D225 T225 = some (D234, Ls225) :=
+theorem ch225 : ∀ G, pDefs F (G + 12) D225 T225 = some (D236, Ls225) :=
   pDefs_step (chkDef_sound chk225) (by intro h; cases h) ch226
-theorem ch224 : ∀ G, pDefs F (G + 11) D224 T224 = some (D234, Ls224) :=
+theorem ch224 : ∀ G, pDefs F (G + 13) D224 T224 = some (D236, Ls224) :=
   pDefs_step (chkDef_sound chk224) (by intro h; cases h) ch225
-theorem ch223 : ∀ G, pDefs F (G + 12) D223 T223 = some (D234, Ls223) :=
+theorem ch223 : ∀ G, pDefs F (G + 14) D223 T223 = some (D236, Ls223) :=
   pDefs_step (chkDef_sound chk223) (by intro h; cases h) ch224
-theorem ch222 : ∀ G, pDefs F (G + 13) D222 T222 = some (D234, Ls222) :=
+theorem ch222 : ∀ G, pDefs F (G + 15) D222 T222 = some (D236, Ls222) :=
   pDefs_step (chkDef_sound chk222) (by intro h; cases h) ch223
-theorem ch221 : ∀ G, pDefs F (G + 14) D221 T221 = some (D234, Ls221) :=
+theorem ch221 : ∀ G, pDefs F (G + 16) D221 T221 = some (D236, Ls221) :=
   pDefs_step (chkDef_sound chk221) (by intro h; cases h) ch222
-theorem ch220 : ∀ G, pDefs F (G + 15) D220 T220 = some (D234, Ls220) :=
+theorem ch220 : ∀ G, pDefs F (G + 17) D220 T220 = some (D236, Ls220) :=
   pDefs_step (chkDef_sound chk220) (by intro h; cases h) ch221
-theorem ch219 : ∀ G, pDefs F (G + 16) D219 T219 = some (D234, Ls219) :=
+theorem ch219 : ∀ G, pDefs F (G + 18) D219 T219 = some (D236, Ls219) :=
   pDefs_step (chkDef_sound chk219) (by intro h; cases h) ch220
-theorem ch218 : ∀ G, pDefs F (G + 17) D218 T218 = some (D234, Ls218) :=
+theorem ch218 : ∀ G, pDefs F (G + 19) D218 T218 = some (D236, Ls218) :=
   pDefs_step (chkDef_sound chk218) (by intro h; cases h) ch219
-theorem ch217 : ∀ G, pDefs F (G + 18) D217 T217 = some (D234, Ls217) :=
+theorem ch217 : ∀ G, pDefs F (G + 20) D217 T217 = some (D236, Ls217) :=
   pDefs_step (chkDef_sound chk217) (by intro h; cases h) ch218
-theorem ch216 : ∀ G, pDefs F (G + 19) D216 T216 = some (D234, Ls216) :=
+theorem ch216 : ∀ G, pDefs F (G + 21) D216 T216 = some (D236, Ls216) :=
   pDefs_step (chkDef_sound chk216) (by intro h; cases h) ch217
-theorem ch215 : ∀ G, pDefs F (G + 20) D215 T215 = some (D234, Ls215) :=
+theorem ch215 : ∀ G, pDefs F (G + 22) D215 T215 = some (D236, Ls215) :=
   pDefs_step (chkDef_sound chk215) (by intro h; cases h) ch216
-theorem ch214 : ∀ G, pDefs F (G + 21) D214 T214 = some (D234, Ls214) :=
+theorem ch214 : ∀ G, pDefs F (G + 23) D214 T214 = some (D236, Ls214) :=
   pDefs_step (chkDef_sound chk214) (by intro h; cases h) ch215
-theorem ch213 : ∀ G, pDefs F (G + 22) D213 T213 = some (D234, Ls213) :=
+theorem ch213 : ∀ G, pDefs F (G + 24) D213 T213 = some (D236, Ls213) :=
   pDefs_step (chkDef_sound chk213) (by intro h; cases h) ch214
-theorem ch212 : ∀ G, pDefs F (G + 23) D212 T212 = some (D234, Ls212) :=
+theorem ch212 : ∀ G, pDefs F (G + 25) D212 T212 = some (D236, Ls212) :=
   pDefs_step (chkDef_sound chk212) (by intro h; cases h) ch213
-theorem ch211 : ∀ G, pDefs F (G + 24) D211 T211 = some (D234, Ls211) :=
+theorem ch211 : ∀ G, pDefs F (G + 26) D211 T211 = some (D236, Ls211) :=
   pDefs_step (chkDef_sound chk211) (by intro h; cases h) ch212
-theorem ch210 : ∀ G, pDefs F (G + 25) D210 T210 = some (D234, Ls210) :=
+theorem ch210 : ∀ G, pDefs F (G + 27) D210 T210 = some (D236, Ls210) :=
   pDefs_step (chkDef_sound chk210) (by intro h; cases h) ch211
-theorem ch209 : ∀ G, pDefs F (G + 26) D209 T209 = some (D234, Ls209) :=
+theorem ch209 : ∀ G, pDefs F (G + 28) D209 T209 = some (D236, Ls209) :=
   pDefs_step (chkDef_sound chk209) (by intro h; cases h) ch210
-theorem ch208 : ∀ G, pDefs F (G + 27) D208 T208 = some (D234, Ls208) :=
+theorem ch208 : ∀ G, pDefs F (G + 29) D208 T208 = some (D236, Ls208) :=
   pDefs_step (chkDef_sound chk208) (by intro h; cases h) ch209
-theorem ch207 : ∀ G, pDefs F (G + 28) D207 T207 = some (D234, Ls207) :=
+theorem ch207 : ∀ G, pDefs F (G + 30) D207 T207 = some (D236, Ls207) :=
   pDefs_step (chkDef_sound chk207) (by intro h; cases h) ch208
-theorem ch206 : ∀ G, pDefs F (G + 29) D206 T206 = some (D234, Ls206) :=
+theorem ch206 : ∀ G, pDefs F (G + 31) D206 T206 = some (D236, Ls206) :=
   pDefs_step (chkDef_sound chk206) (by intro h; cases h) ch207
-theorem ch205 : ∀ G, pDefs F (G + 30) D205 T205 = some (D234, Ls205) :=
+theorem ch205 : ∀ G, pDefs F (G + 32) D205 T205 = some (D236, Ls205) :=
   pDefs_step (chkDef_sound chk205) (by intro h; cases h) ch206
-theorem ch204 : ∀ G, pDefs F (G + 31) D204 T204 = some (D234, Ls204) :=
+theorem ch204 : ∀ G, pDefs F (G + 33) D204 T204 = some (D236, Ls204) :=
   pDefs_step (chkDef_sound chk204) (by intro h; cases h) ch205
-theorem ch203 : ∀ G, pDefs F (G + 32) D203 T203 = some (D234, Ls203) :=
+theorem ch203 : ∀ G, pDefs F (G + 34) D203 T203 = some (D236, Ls203) :=
   pDefs_step (chkDef_sound chk203) (by intro h; cases h) ch204
-theorem ch202 : ∀ G, pDefs F (G + 33) D202 T202 = some (D234, Ls202) :=
+theorem ch202 : ∀ G, pDefs F (G + 35) D202 T202 = some (D236, Ls202) :=
   pDefs_step (chkDef_sound chk202) (by intro h; cases h) ch203
-theorem ch201 : ∀ G, pDefs F (G + 34) D201 T201 = some (D234, Ls201) :=
+theorem ch201 : ∀ G, pDefs F (G + 36) D201 T201 = some (D236, Ls201) :=
   pDefs_step (chkDef_sound chk201) (by intro h; cases h) ch202
-theorem ch200 : ∀ G, pDefs F (G + 35) D200 T200 = some (D234, Ls200) :=
+theorem ch200 : ∀ G, pDefs F (G + 37) D200 T200 = some (D236, Ls200) :=
   pDefs_step (chkDef_sound chk200) (by intro h; cases h) ch201
-theorem ch199 : ∀ G, pDefs F (G + 36) D199 T199 = some (D234, Ls199) :=
+theorem ch199 : ∀ G, pDefs F (G + 38) D199 T199 = some (D236, Ls199) :=
   pDefs_step (chkDef_sound chk199) (by intro h; cases h) ch200
-theorem ch198 : ∀ G, pDefs F (G + 37) D198 T198 = some (D234, Ls198) :=
+theorem ch198 : ∀ G, pDefs F (G + 39) D198 T198 = some (D236, Ls198) :=
   pDefs_step (chkDef_sound chk198) (by intro h; cases h) ch199
-theorem ch197 : ∀ G, pDefs F (G + 38) D197 T197 = some (D234, Ls197) :=
+theorem ch197 : ∀ G, pDefs F (G + 40) D197 T197 = some (D236, Ls197) :=
   pDefs_step (chkDef_sound chk197) (by intro h; cases h) ch198
-theorem ch196 : ∀ G, pDefs F (G + 39) D196 T196 = some (D234, Ls196) :=
+theorem ch196 : ∀ G, pDefs F (G + 41) D196 T196 = some (D236, Ls196) :=
   pDefs_step (chkDef_sound chk196) (by intro h; cases h) ch197
-theorem ch195 : ∀ G, pDefs F (G + 40) D195 T195 = some (D234, Ls195) :=
+theorem ch195 : ∀ G, pDefs F (G + 42) D195 T195 = some (D236, Ls195) :=
   pDefs_step (chkDef_sound chk195) (by intro h; cases h) ch196
-theorem ch194 : ∀ G, pDefs F (G + 41) D194 T194 = some (D234, Ls194) :=
+theorem ch194 : ∀ G, pDefs F (G + 43) D194 T194 = some (D236, Ls194) :=
   pDefs_step (chkDef_sound chk194) (by intro h; cases h) ch195
-theorem ch193 : ∀ G, pDefs F (G + 42) D193 T193 = some (D234, Ls193) :=
+theorem ch193 : ∀ G, pDefs F (G + 44) D193 T193 = some (D236, Ls193) :=
   pDefs_step (chkDef_sound chk193) (by intro h; cases h) ch194
-theorem ch192 : ∀ G, pDefs F (G + 43) D192 T192 = some (D234, Ls192) :=
+theorem ch192 : ∀ G, pDefs F (G + 45) D192 T192 = some (D236, Ls192) :=
   pDefs_step (chkDef_sound chk192) (by intro h; cases h) ch193
-theorem ch191 : ∀ G, pDefs F (G + 44) D191 T191 = some (D234, Ls191) :=
+theorem ch191 : ∀ G, pDefs F (G + 46) D191 T191 = some (D236, Ls191) :=
   pDefs_step (chkDef_sound chk191) (by intro h; cases h) ch192
-theorem ch190 : ∀ G, pDefs F (G + 45) D190 T190 = some (D234, Ls190) :=
+theorem ch190 : ∀ G, pDefs F (G + 47) D190 T190 = some (D236, Ls190) :=
   pDefs_step (chkDef_sound chk190) (by intro h; cases h) ch191
-theorem ch189 : ∀ G, pDefs F (G + 46) D189 T189 = some (D234, Ls189) :=
+theorem ch189 : ∀ G, pDefs F (G + 48) D189 T189 = some (D236, Ls189) :=
   pDefs_step (chkDef_sound chk189) (by intro h; cases h) ch190
-theorem ch188 : ∀ G, pDefs F (G + 47) D188 T188 = some (D234, Ls188) :=
+theorem ch188 : ∀ G, pDefs F (G + 49) D188 T188 = some (D236, Ls188) :=
   pDefs_step (chkDef_sound chk188) (by intro h; cases h) ch189
-theorem ch187 : ∀ G, pDefs F (G + 48) D187 T187 = some (D234, Ls187) :=
+theorem ch187 : ∀ G, pDefs F (G + 50) D187 T187 = some (D236, Ls187) :=
   pDefs_step (chkDef_sound chk187) (by intro h; cases h) ch188
-theorem ch186 : ∀ G, pDefs F (G + 49) D186 T186 = some (D234, Ls186) :=
+theorem ch186 : ∀ G, pDefs F (G + 51) D186 T186 = some (D236, Ls186) :=
   pDefs_step (chkDef_sound chk186) (by intro h; cases h) ch187
-theorem ch185 : ∀ G, pDefs F (G + 50) D185 T185 = some (D234, Ls185) :=
+theorem ch185 : ∀ G, pDefs F (G + 52) D185 T185 = some (D236, Ls185) :=
   pDefs_step (chkDef_sound chk185) (by intro h; cases h) ch186
-theorem ch184 : ∀ G, pDefs F (G + 51) D184 T184 = some (D234, Ls184) :=
+theorem ch184 : ∀ G, pDefs F (G + 53) D184 T184 = some (D236, Ls184) :=
   pDefs_step (chkDef_sound chk184) (by intro h; cases h) ch185
-theorem ch183 : ∀ G, pDefs F (G + 52) D183 T183 = some (D234, Ls183) :=
+theorem ch183 : ∀ G, pDefs F (G + 54) D183 T183 = some (D236, Ls183) :=
   pDefs_step (chkDef_sound chk183) (by intro h; cases h) ch184
-theorem ch182 : ∀ G, pDefs F (G + 53) D182 T182 = some (D234, Ls182) :=
+theorem ch182 : ∀ G, pDefs F (G + 55) D182 T182 = some (D236, Ls182) :=
   pDefs_step (chkDef_sound chk182) (by intro h; cases h) ch183
-theorem ch181 : ∀ G, pDefs F (G + 54) D181 T181 = some (D234, Ls181) :=
+theorem ch181 : ∀ G, pDefs F (G + 56) D181 T181 = some (D236, Ls181) :=
   pDefs_step (chkDef_sound chk181) (by intro h; cases h) ch182
-theorem ch180 : ∀ G, pDefs F (G + 55) D180 T180 = some (D234, Ls180) :=
+theorem ch180 : ∀ G, pDefs F (G + 57) D180 T180 = some (D236, Ls180) :=
   pDefs_step (chkDef_sound chk180) (by intro h; cases h) ch181
-theorem ch179 : ∀ G, pDefs F (G + 56) D179 T179 = some (D234, Ls179) :=
+theorem ch179 : ∀ G, pDefs F (G + 58) D179 T179 = some (D236, Ls179) :=
   pDefs_step (chkDef_sound chk179) (by intro h; cases h) ch180
-theorem ch178 : ∀ G, pDefs F (G + 57) D178 T178 = some (D234, Ls178) :=
+theorem ch178 : ∀ G, pDefs F (G + 59) D178 T178 = some (D236, Ls178) :=
   pDefs_step (chkDef_sound chk178) (by intro h; cases h) ch179
-theorem ch177 : ∀ G, pDefs F (G + 58) D177 T177 = some (D234, Ls177) :=
+theorem ch177 : ∀ G, pDefs F (G + 60) D177 T177 = some (D236, Ls177) :=
   pDefs_step (chkDef_sound chk177) (by intro h; cases h) ch178
-theorem ch176 : ∀ G, pDefs F (G + 59) D176 T176 = some (D234, Ls176) :=
+theorem ch176 : ∀ G, pDefs F (G + 61) D176 T176 = some (D236, Ls176) :=
   pDefs_step (chkDef_sound chk176) (by intro h; cases h) ch177
-theorem ch175 : ∀ G, pDefs F (G + 60) D175 T175 = some (D234, Ls175) :=
+theorem ch175 : ∀ G, pDefs F (G + 62) D175 T175 = some (D236, Ls175) :=
   pDefs_step (chkDef_sound chk175) (by intro h; cases h) ch176
-theorem ch174 : ∀ G, pDefs F (G + 61) D174 T174 = some (D234, Ls174) :=
+theorem ch174 : ∀ G, pDefs F (G + 63) D174 T174 = some (D236, Ls174) :=
   pDefs_step (chkDef_sound chk174) (by intro h; cases h) ch175
-theorem ch173 : ∀ G, pDefs F (G + 62) D173 T173 = some (D234, Ls173) :=
+theorem ch173 : ∀ G, pDefs F (G + 64) D173 T173 = some (D236, Ls173) :=
   pDefs_step (chkDef_sound chk173) (by intro h; cases h) ch174
-theorem ch172 : ∀ G, pDefs F (G + 63) D172 T172 = some (D234, Ls172) :=
+theorem ch172 : ∀ G, pDefs F (G + 65) D172 T172 = some (D236, Ls172) :=
   pDefs_step (chkDef_sound chk172) (by intro h; cases h) ch173
-theorem ch171 : ∀ G, pDefs F (G + 64) D171 T171 = some (D234, Ls171) :=
+theorem ch171 : ∀ G, pDefs F (G + 66) D171 T171 = some (D236, Ls171) :=
   pDefs_step (chkDef_sound chk171) (by intro h; cases h) ch172
-theorem ch170 : ∀ G, pDefs F (G + 65) D170 T170 = some (D234, Ls170) :=
+theorem ch170 : ∀ G, pDefs F (G + 67) D170 T170 = some (D236, Ls170) :=
   pDefs_step (chkDef_sound chk170) (by intro h; cases h) ch171
-theorem ch169 : ∀ G, pDefs F (G + 66) D169 T169 = some (D234, Ls169) :=
+theorem ch169 : ∀ G, pDefs F (G + 68) D169 T169 = some (D236, Ls169) :=
   pDefs_step (chkDef_sound chk169) (by intro h; cases h) ch170
-theorem ch168 : ∀ G, pDefs F (G + 67) D168 T168 = some (D234, Ls168) :=
+theorem ch168 : ∀ G, pDefs F (G + 69) D168 T168 = some (D236, Ls168) :=
   pDefs_step (chkDef_sound chk168) (by intro h; cases h) ch169
-theorem ch167 : ∀ G, pDefs F (G + 68) D167 T167 = some (D234, Ls167) :=
+theorem ch167 : ∀ G, pDefs F (G + 70) D167 T167 = some (D236, Ls167) :=
   pDefs_step (chkDef_sound chk167) (by intro h; cases h) ch168
-theorem ch166 : ∀ G, pDefs F (G + 69) D166 T166 = some (D234, Ls166) :=
+theorem ch166 : ∀ G, pDefs F (G + 71) D166 T166 = some (D236, Ls166) :=
   pDefs_step (chkDef_sound chk166) (by intro h; cases h) ch167
-theorem ch165 : ∀ G, pDefs F (G + 70) D165 T165 = some (D234, Ls165) :=
+theorem ch165 : ∀ G, pDefs F (G + 72) D165 T165 = some (D236, Ls165) :=
   pDefs_step (chkDef_sound chk165) (by intro h; cases h) ch166
-theorem ch164 : ∀ G, pDefs F (G + 71) D164 T164 = some (D234, Ls164) :=
+theorem ch164 : ∀ G, pDefs F (G + 73) D164 T164 = some (D236, Ls164) :=
   pDefs_step (chkDef_sound chk164) (by intro h; cases h) ch165
-theorem ch163 : ∀ G, pDefs F (G + 72) D163 T163 = some (D234, Ls163) :=
+theorem ch163 : ∀ G, pDefs F (G + 74) D163 T163 = some (D236, Ls163) :=
   pDefs_step (chkDef_sound chk163) (by intro h; cases h) ch164
-theorem ch162 : ∀ G, pDefs F (G + 73) D162 T162 = some (D234, Ls162) :=
+theorem ch162 : ∀ G, pDefs F (G + 75) D162 T162 = some (D236, Ls162) :=
   pDefs_step (chkDef_sound chk162) (by intro h; cases h) ch163
-theorem ch161 : ∀ G, pDefs F (G + 74) D161 T161 = some (D234, Ls161) :=
+theorem ch161 : ∀ G, pDefs F (G + 76) D161 T161 = some (D236, Ls161) :=
   pDefs_step (chkDef_sound chk161) (by intro h; cases h) ch162
-theorem ch160 : ∀ G, pDefs F (G + 75) D160 T160 = some (D234, Ls160) :=
+theorem ch160 : ∀ G, pDefs F (G + 77) D160 T160 = some (D236, Ls160) :=
   pDefs_step (chkDef_sound chk160) (by intro h; cases h) ch161
-theorem ch159 : ∀ G, pDefs F (G + 76) D159 T159 = some (D234, Ls159) :=
+theorem ch159 : ∀ G, pDefs F (G + 78) D159 T159 = some (D236, Ls159) :=
   pDefs_step (chkDef_sound chk159) (by intro h; cases h) ch160
-theorem ch158 : ∀ G, pDefs F (G + 77) D158 T158 = some (D234, Ls158) :=
+theorem ch158 : ∀ G, pDefs F (G + 79) D158 T158 = some (D236, Ls158) :=
   pDefs_step (chkDef_sound chk158) (by intro h; cases h) ch159
-theorem ch157 : ∀ G, pDefs F (G + 78) D157 T157 = some (D234, Ls157) :=
+theorem ch157 : ∀ G, pDefs F (G + 80) D157 T157 = some (D236, Ls157) :=
   pDefs_step (chkDef_sound chk157) (by intro h; cases h) ch158
-theorem ch156 : ∀ G, pDefs F (G + 79) D156 T156 = some (D234, Ls156) :=
+theorem ch156 : ∀ G, pDefs F (G + 81) D156 T156 = some (D236, Ls156) :=
   pDefs_step (chkDef_sound chk156) (by intro h; cases h) ch157
-theorem ch155 : ∀ G, pDefs F (G + 80) D155 T155 = some (D234, Ls155) :=
+theorem ch155 : ∀ G, pDefs F (G + 82) D155 T155 = some (D236, Ls155) :=
   pDefs_step (chkDef_sound chk155) (by intro h; cases h) ch156
-theorem ch154 : ∀ G, pDefs F (G + 81) D154 T154 = some (D234, Ls154) :=
+theorem ch154 : ∀ G, pDefs F (G + 83) D154 T154 = some (D236, Ls154) :=
   pDefs_step (chkDef_sound chk154) (by intro h; cases h) ch155
-theorem ch153 : ∀ G, pDefs F (G + 82) D153 T153 = some (D234, Ls153) :=
+theorem ch153 : ∀ G, pDefs F (G + 84) D153 T153 = some (D236, Ls153) :=
   pDefs_step (chkDef_sound chk153) (by intro h; cases h) ch154
-theorem ch152 : ∀ G, pDefs F (G + 83) D152 T152 = some (D234, Ls152) :=
+theorem ch152 : ∀ G, pDefs F (G + 85) D152 T152 = some (D236, Ls152) :=
   pDefs_step (chkDef_sound chk152) (by intro h; cases h) ch153
-theorem ch151 : ∀ G, pDefs F (G + 84) D151 T151 = some (D234, Ls151) :=
+theorem ch151 : ∀ G, pDefs F (G + 86) D151 T151 = some (D236, Ls151) :=
   pDefs_step (chkDef_sound chk151) (by intro h; cases h) ch152
-theorem ch150 : ∀ G, pDefs F (G + 85) D150 T150 = some (D234, Ls150) :=
+theorem ch150 : ∀ G, pDefs F (G + 87) D150 T150 = some (D236, Ls150) :=
   pDefs_step (chkDef_sound chk150) (by intro h; cases h) ch151
-theorem ch149 : ∀ G, pDefs F (G + 86) D149 T149 = some (D234, Ls149) :=
+theorem ch149 : ∀ G, pDefs F (G + 88) D149 T149 = some (D236, Ls149) :=
   pDefs_step (chkDef_sound chk149) (by intro h; cases h) ch150
-theorem ch148 : ∀ G, pDefs F (G + 87) D148 T148 = some (D234, Ls148) :=
+theorem ch148 : ∀ G, pDefs F (G + 89) D148 T148 = some (D236, Ls148) :=
   pDefs_step (chkDef_sound chk148) (by intro h; cases h) ch149
-theorem ch147 : ∀ G, pDefs F (G + 88) D147 T147 = some (D234, Ls147) :=
+theorem ch147 : ∀ G, pDefs F (G + 90) D147 T147 = some (D236, Ls147) :=
   pDefs_step (chkDef_sound chk147) (by intro h; cases h) ch148
-theorem ch146 : ∀ G, pDefs F (G + 89) D146 T146 = some (D234, Ls146) :=
+theorem ch146 : ∀ G, pDefs F (G + 91) D146 T146 = some (D236, Ls146) :=
   pDefs_step (chkDef_sound chk146) (by intro h; cases h) ch147
-theorem ch145 : ∀ G, pDefs F (G + 90) D145 T145 = some (D234, Ls145) :=
+theorem ch145 : ∀ G, pDefs F (G + 92) D145 T145 = some (D236, Ls145) :=
   pDefs_step (chkDef_sound chk145) (by intro h; cases h) ch146
-theorem ch144 : ∀ G, pDefs F (G + 91) D144 T144 = some (D234, Ls144) :=
+theorem ch144 : ∀ G, pDefs F (G + 93) D144 T144 = some (D236, Ls144) :=
   pDefs_step (chkDef_sound chk144) (by intro h; cases h) ch145
-theorem ch143 : ∀ G, pDefs F (G + 92) D143 T143 = some (D234, Ls143) :=
+theorem ch143 : ∀ G, pDefs F (G + 94) D143 T143 = some (D236, Ls143) :=
   pDefs_step (chkDef_sound chk143) (by intro h; cases h) ch144
-theorem ch142 : ∀ G, pDefs F (G + 93) D142 T142 = some (D234, Ls142) :=
+theorem ch142 : ∀ G, pDefs F (G + 95) D142 T142 = some (D236, Ls142) :=
   pDefs_step (chkDef_sound chk142) (by intro h; cases h) ch143
-theorem ch141 : ∀ G, pDefs F (G + 94) D141 T141 = some (D234, Ls141) :=
+theorem ch141 : ∀ G, pDefs F (G + 96) D141 T141 = some (D236, Ls141) :=
   pDefs_step (chkDef_sound chk141) (by intro h; cases h) ch142
-theorem ch140 : ∀ G, pDefs F (G + 95) D140 T140 = some (D234, Ls140) :=
+theorem ch140 : ∀ G, pDefs F (G + 97) D140 T140 = some (D236, Ls140) :=
   pDefs_step (chkDef_sound chk140) (by intro h; cases h) ch141
-theorem ch139 : ∀ G, pDefs F (G + 96) D139 T139 = some (D234, Ls139) :=
+theorem ch139 : ∀ G, pDefs F (G + 98) D139 T139 = some (D236, Ls139) :=
   pDefs_step (chkDef_sound chk139) (by intro h; cases h) ch140
-theorem ch138 : ∀ G, pDefs F (G + 97) D138 T138 = some (D234, Ls138) :=
+theorem ch138 : ∀ G, pDefs F (G + 99) D138 T138 = some (D236, Ls138) :=
   pDefs_step (chkDef_sound chk138) (by intro h; cases h) ch139
-theorem ch137 : ∀ G, pDefs F (G + 98) D137 T137 = some (D234, Ls137) :=
+theorem ch137 : ∀ G, pDefs F (G + 100) D137 T137 = some (D236, Ls137) :=
   pDefs_step (chkDef_sound chk137) (by intro h; cases h) ch138
-theorem ch136 : ∀ G, pDefs F (G + 99) D136 T136 = some (D234, Ls136) :=
+theorem ch136 : ∀ G, pDefs F (G + 101) D136 T136 = some (D236, Ls136) :=
   pDefs_step (chkDef_sound chk136) (by intro h; cases h) ch137
-theorem ch135 : ∀ G, pDefs F (G + 100) D135 T135 = some (D234, Ls135) :=
+theorem ch135 : ∀ G, pDefs F (G + 102) D135 T135 = some (D236, Ls135) :=
   pDefs_step (chkDef_sound chk135) (by intro h; cases h) ch136
-theorem ch134 : ∀ G, pDefs F (G + 101) D134 T134 = some (D234, Ls134) :=
+theorem ch134 : ∀ G, pDefs F (G + 103) D134 T134 = some (D236, Ls134) :=
   pDefs_step (chkDef_sound chk134) (by intro h; cases h) ch135
-theorem ch133 : ∀ G, pDefs F (G + 102) D133 T133 = some (D234, Ls133) :=
+theorem ch133 : ∀ G, pDefs F (G + 104) D133 T133 = some (D236, Ls133) :=
   pDefs_step (chkDef_sound chk133) (by intro h; cases h) ch134
-theorem ch132 : ∀ G, pDefs F (G + 103) D132 T132 = some (D234, Ls132) :=
+theorem ch132 : ∀ G, pDefs F (G + 105) D132 T132 = some (D236, Ls132) :=
   pDefs_step (chkDef_sound chk132) (by intro h; cases h) ch133
-theorem ch131 : ∀ G, pDefs F (G + 104) D131 T131 = some (D234, Ls131) :=
+theorem ch131 : ∀ G, pDefs F (G + 106) D131 T131 = some (D236, Ls131) :=
   pDefs_step (chkDef_sound chk131) (by intro h; cases h) ch132
-theorem ch130 : ∀ G, pDefs F (G + 105) D130 T130 = some (D234, Ls130) :=
+theorem ch130 : ∀ G, pDefs F (G + 107) D130 T130 = some (D236, Ls130) :=
   pDefs_step (chkDef_sound chk130) (by intro h; cases h) ch131
-theorem ch129 : ∀ G, pDefs F (G + 106) D129 T129 = some (D234, Ls129) :=
+theorem ch129 : ∀ G, pDefs F (G + 108) D129 T129 = some (D236, Ls129) :=
   pDefs_step (chkDef_sound chk129) (by intro h; cases h) ch130
-theorem ch128 : ∀ G, pDefs F (G + 107) D128 T128 = some (D234, Ls128) :=
+theorem ch128 : ∀ G, pDefs F (G + 109) D128 T128 = some (D236, Ls128) :=
   pDefs_step (chkDef_sound chk128) (by intro h; cases h) ch129
-theorem ch127 : ∀ G, pDefs F (G + 108) D127 T127 = some (D234, Ls127) :=
+theorem ch127 : ∀ G, pDefs F (G + 110) D127 T127 = some (D236, Ls127) :=
   pDefs_step (chkDef_sound chk127) (by intro h; cases h) ch128
-theorem ch126 : ∀ G, pDefs F (G + 109) D126 T126 = some (D234, Ls126) :=
+theorem ch126 : ∀ G, pDefs F (G + 111) D126 T126 = some (D236, Ls126) :=
   pDefs_step (chkDef_sound chk126) (by intro h; cases h) ch127
-theorem ch125 : ∀ G, pDefs F (G + 110) D125 T125 = some (D234, Ls125) :=
+theorem ch125 : ∀ G, pDefs F (G + 112) D125 T125 = some (D236, Ls125) :=
   pDefs_step (chkDef_sound chk125) (by intro h; cases h) ch126
-theorem ch124 : ∀ G, pDefs F (G + 111) D124 T124 = some (D234, Ls124) :=
+theorem ch124 : ∀ G, pDefs F (G + 113) D124 T124 = some (D236, Ls124) :=
   pDefs_step (chkDef_sound chk124) (by intro h; cases h) ch125
-theorem ch123 : ∀ G, pDefs F (G + 112) D123 T123 = some (D234, Ls123) :=
+theorem ch123 : ∀ G, pDefs F (G + 114) D123 T123 = some (D236, Ls123) :=
   pDefs_step (chkDef_sound chk123) (by intro h; cases h) ch124
-theorem ch122 : ∀ G, pDefs F (G + 113) D122 T122 = some (D234, Ls122) :=
+theorem ch122 : ∀ G, pDefs F (G + 115) D122 T122 = some (D236, Ls122) :=
   pDefs_step (chkDef_sound chk122) (by intro h; cases h) ch123
-theorem ch121 : ∀ G, pDefs F (G + 114) D121 T121 = some (D234, Ls121) :=
+theorem ch121 : ∀ G, pDefs F (G + 116) D121 T121 = some (D236, Ls121) :=
   pDefs_step (chkDef_sound chk121) (by intro h; cases h) ch122
-theorem ch120 : ∀ G, pDefs F (G + 115) D120 T120 = some (D234, Ls120) :=
+theorem ch120 : ∀ G, pDefs F (G + 117) D120 T120 = some (D236, Ls120) :=
   pDefs_step (chkDef_sound chk120) (by intro h; cases h) ch121
-theorem ch119 : ∀ G, pDefs F (G + 116) D119 T119 = some (D234, Ls119) :=
+theorem ch119 : ∀ G, pDefs F (G + 118) D119 T119 = some (D236, Ls119) :=
   pDefs_step (chkDef_sound chk119) (by intro h; cases h) ch120
-theorem ch118 : ∀ G, pDefs F (G + 117) D118 T118 = some (D234, Ls118) :=
+theorem ch118 : ∀ G, pDefs F (G + 119) D118 T118 = some (D236, Ls118) :=
   pDefs_step (chkDef_sound chk118) (by intro h; cases h) ch119
-theorem ch117 : ∀ G, pDefs F (G + 118) D117 T117 = some (D234, Ls117) :=
+theorem ch117 : ∀ G, pDefs F (G + 120) D117 T117 = some (D236, Ls117) :=
   pDefs_step (chkDef_sound chk117) (by intro h; cases h) ch118
-theorem ch116 : ∀ G, pDefs F (G + 119) D116 T116 = some (D234, Ls116) :=
+theorem ch116 : ∀ G, pDefs F (G + 121) D116 T116 = some (D236, Ls116) :=
   pDefs_step (chkDef_sound chk116) (by intro h; cases h) ch117
-theorem ch115 : ∀ G, pDefs F (G + 120) D115 T115 = some (D234, Ls115) :=
+theorem ch115 : ∀ G, pDefs F (G + 122) D115 T115 = some (D236, Ls115) :=
   pDefs_step (chkDef_sound chk115) (by intro h; cases h) ch116
-theorem ch114 : ∀ G, pDefs F (G + 121) D114 T114 = some (D234, Ls114) :=
+theorem ch114 : ∀ G, pDefs F (G + 123) D114 T114 = some (D236, Ls114) :=
   pDefs_step (chkDef_sound chk114) (by intro h; cases h) ch115
-theorem ch113 : ∀ G, pDefs F (G + 122) D113 T113 = some (D234, Ls113) :=
+theorem ch113 : ∀ G, pDefs F (G + 124) D113 T113 = some (D236, Ls113) :=
   pDefs_step (chkDef_sound chk113) (by intro h; cases h) ch114
-theorem ch112 : ∀ G, pDefs F (G + 123) D112 T112 = some (D234, Ls112) :=
+theorem ch112 : ∀ G, pDefs F (G + 125) D112 T112 = some (D236, Ls112) :=
   pDefs_step (chkDef_sound chk112) (by intro h; cases h) ch113
-theorem ch111 : ∀ G, pDefs F (G + 124) D111 T111 = some (D234, Ls111) :=
+theorem ch111 : ∀ G, pDefs F (G + 126) D111 T111 = some (D236, Ls111) :=
   pDefs_step (chkDef_sound chk111) (by intro h; cases h) ch112
-theorem ch110 : ∀ G, pDefs F (G + 125) D110 T110 = some (D234, Ls110) :=
+theorem ch110 : ∀ G, pDefs F (G + 127) D110 T110 = some (D236, Ls110) :=
   pDefs_step (chkDef_sound chk110) (by intro h; cases h) ch111
-theorem ch109 : ∀ G, pDefs F (G + 126) D109 T109 = some (D234, Ls109) :=
+theorem ch109 : ∀ G, pDefs F (G + 128) D109 T109 = some (D236, Ls109) :=
   pDefs_step (chkDef_sound chk109) (by intro h; cases h) ch110
-theorem ch108 : ∀ G, pDefs F (G + 127) D108 T108 = some (D234, Ls108) :=
+theorem ch108 : ∀ G, pDefs F (G + 129) D108 T108 = some (D236, Ls108) :=
   pDefs_step (chkDef_sound chk108) (by intro h; cases h) ch109
-theorem ch107 : ∀ G, pDefs F (G + 128) D107 T107 = some (D234, Ls107) :=
+theorem ch107 : ∀ G, pDefs F (G + 130) D107 T107 = some (D236, Ls107) :=
   pDefs_step (chkDef_sound chk107) (by intro h; cases h) ch108
-theorem ch106 : ∀ G, pDefs F (G + 129) D106 T106 = some (D234, Ls106) :=
+theorem ch106 : ∀ G, pDefs F (G + 131) D106 T106 = some (D236, Ls106) :=
   pDefs_step (chkDef_sound chk106) (by intro h; cases h) ch107
-theorem ch105 : ∀ G, pDefs F (G + 130) D105 T105 = some (D234, Ls105) :=
+theorem ch105 : ∀ G, pDefs F (G + 132) D105 T105 = some (D236, Ls105) :=
   pDefs_step (chkDef_sound chk105) (by intro h; cases h) ch106
-theorem ch104 : ∀ G, pDefs F (G + 131) D104 T104 = some (D234, Ls104) :=
+theorem ch104 : ∀ G, pDefs F (G + 133) D104 T104 = some (D236, Ls104) :=
   pDefs_step (chkDef_sound chk104) (by intro h; cases h) ch105
-theorem ch103 : ∀ G, pDefs F (G + 132) D103 T103 = some (D234, Ls103) :=
+theorem ch103 : ∀ G, pDefs F (G + 134) D103 T103 = some (D236, Ls103) :=
   pDefs_step (chkDef_sound chk103) (by intro h; cases h) ch104
-theorem ch102 : ∀ G, pDefs F (G + 133) D102 T102 = some (D234, Ls102) :=
+theorem ch102 : ∀ G, pDefs F (G + 135) D102 T102 = some (D236, Ls102) :=
   pDefs_step (chkDef_sound chk102) (by intro h; cases h) ch103
-theorem ch101 : ∀ G, pDefs F (G + 134) D101 T101 = some (D234, Ls101) :=
+theorem ch101 : ∀ G, pDefs F (G + 136) D101 T101 = some (D236, Ls101) :=
   pDefs_step (chkDef_sound chk101) (by intro h; cases h) ch102
-theorem ch100 : ∀ G, pDefs F (G + 135) D100 T100 = some (D234, Ls100) :=
+theorem ch100 : ∀ G, pDefs F (G + 137) D100 T100 = some (D236, Ls100) :=
   pDefs_step (chkDef_sound chk100) (by intro h; cases h) ch101
-theorem ch99 : ∀ G, pDefs F (G + 136) D99 T99 = some (D234, Ls99) :=
+theorem ch99 : ∀ G, pDefs F (G + 138) D99 T99 = some (D236, Ls99) :=
   pDefs_step (chkDef_sound chk99) (by intro h; cases h) ch100
-theorem ch98 : ∀ G, pDefs F (G + 137) D98 T98 = some (D234, Ls98) :=
+theorem ch98 : ∀ G, pDefs F (G + 139) D98 T98 = some (D236, Ls98) :=
   pDefs_step (chkDef_sound chk98) (by intro h; cases h) ch99
-theorem ch97 : ∀ G, pDefs F (G + 138) D97 T97 = some (D234, Ls97) :=
+theorem ch97 : ∀ G, pDefs F (G + 140) D97 T97 = some (D236, Ls97) :=
   pDefs_step (chkDef_sound chk97) (by intro h; cases h) ch98
-theorem ch96 : ∀ G, pDefs F (G + 139) D96 T96 = some (D234, Ls96) :=
+theorem ch96 : ∀ G, pDefs F (G + 141) D96 T96 = some (D236, Ls96) :=
   pDefs_step (chkDef_sound chk96) (by intro h; cases h) ch97
-theorem ch95 : ∀ G, pDefs F (G + 140) D95 T95 = some (D234, Ls95) :=
+theorem ch95 : ∀ G, pDefs F (G + 142) D95 T95 = some (D236, Ls95) :=
   pDefs_step (chkDef_sound chk95) (by intro h; cases h) ch96
-theorem ch94 : ∀ G, pDefs F (G + 141) D94 T94 = some (D234, Ls94) :=
+theorem ch94 : ∀ G, pDefs F (G + 143) D94 T94 = some (D236, Ls94) :=
   pDefs_step (chkDef_sound chk94) (by intro h; cases h) ch95
-theorem ch93 : ∀ G, pDefs F (G + 142) D93 T93 = some (D234, Ls93) :=
+theorem ch93 : ∀ G, pDefs F (G + 144) D93 T93 = some (D236, Ls93) :=
   pDefs_step (chkDef_sound chk93) (by intro h; cases h) ch94
-theorem ch92 : ∀ G, pDefs F (G + 143) D92 T92 = some (D234, Ls92) :=
+theorem ch92 : ∀ G, pDefs F (G + 145) D92 T92 = some (D236, Ls92) :=
   pDefs_step (chkDef_sound chk92) (by intro h; cases h) ch93
-theorem ch91 : ∀ G, pDefs F (G + 144) D91 T91 = some (D234, Ls91) :=
+theorem ch91 : ∀ G, pDefs F (G + 146) D91 T91 = some (D236, Ls91) :=
   pDefs_step (chkDef_sound chk91) (by intro h; cases h) ch92
-theorem ch90 : ∀ G, pDefs F (G + 145) D90 T90 = some (D234, Ls90) :=
+theorem ch90 : ∀ G, pDefs F (G + 147) D90 T90 = some (D236, Ls90) :=
   pDefs_step (chkDef_sound chk90) (by intro h; cases h) ch91
-theorem ch89 : ∀ G, pDefs F (G + 146) D89 T89 = some (D234, Ls89) :=
+theorem ch89 : ∀ G, pDefs F (G + 148) D89 T89 = some (D236, Ls89) :=
   pDefs_step (chkDef_sound chk89) (by intro h; cases h) ch90
-theorem ch88 : ∀ G, pDefs F (G + 147) D88 T88 = some (D234, Ls88) :=
+theorem ch88 : ∀ G, pDefs F (G + 149) D88 T88 = some (D236, Ls88) :=
   pDefs_step (chkDef_sound chk88) (by intro h; cases h) ch89
-theorem ch87 : ∀ G, pDefs F (G + 148) D87 T87 = some (D234, Ls87) :=
+theorem ch87 : ∀ G, pDefs F (G + 150) D87 T87 = some (D236, Ls87) :=
   pDefs_step (chkDef_sound chk87) (by intro h; cases h) ch88
-theorem ch86 : ∀ G, pDefs F (G + 149) D86 T86 = some (D234, Ls86) :=
+theorem ch86 : ∀ G, pDefs F (G + 151) D86 T86 = some (D236, Ls86) :=
   pDefs_step (chkDef_sound chk86) (by intro h; cases h) ch87
-theorem ch85 : ∀ G, pDefs F (G + 150) D85 T85 = some (D234, Ls85) :=
+theorem ch85 : ∀ G, pDefs F (G + 152) D85 T85 = some (D236, Ls85) :=
   pDefs_step (chkDef_sound chk85) (by intro h; cases h) ch86
-theorem ch84 : ∀ G, pDefs F (G + 151) D84 T84 = some (D234, Ls84) :=
+theorem ch84 : ∀ G, pDefs F (G + 153) D84 T84 = some (D236, Ls84) :=
   pDefs_step (chkDef_sound chk84) (by intro h; cases h) ch85
-theorem ch83 : ∀ G, pDefs F (G + 152) D83 T83 = some (D234, Ls83) :=
+theorem ch83 : ∀ G, pDefs F (G + 154) D83 T83 = some (D236, Ls83) :=
   pDefs_step (chkDef_sound chk83) (by intro h; cases h) ch84
-theorem ch82 : ∀ G, pDefs F (G + 153) D82 T82 = some (D234, Ls82) :=
+theorem ch82 : ∀ G, pDefs F (G + 155) D82 T82 = some (D236, Ls82) :=
   pDefs_step (chkDef_sound chk82) (by intro h; cases h) ch83
-theorem ch81 : ∀ G, pDefs F (G + 154) D81 T81 = some (D234, Ls81) :=
+theorem ch81 : ∀ G, pDefs F (G + 156) D81 T81 = some (D236, Ls81) :=
   pDefs_step (chkDef_sound chk81) (by intro h; cases h) ch82
-theorem ch80 : ∀ G, pDefs F (G + 155) D80 T80 = some (D234, Ls80) :=
+theorem ch80 : ∀ G, pDefs F (G + 157) D80 T80 = some (D236, Ls80) :=
   pDefs_step (chkDef_sound chk80) (by intro h; cases h) ch81
-theorem ch79 : ∀ G, pDefs F (G + 156) D79 T79 = some (D234, Ls79) :=
+theorem ch79 : ∀ G, pDefs F (G + 158) D79 T79 = some (D236, Ls79) :=
   pDefs_step (chkDef_sound chk79) (by intro h; cases h) ch80
-theorem ch78 : ∀ G, pDefs F (G + 157) D78 T78 = some (D234, Ls78) :=
+theorem ch78 : ∀ G, pDefs F (G + 159) D78 T78 = some (D236, Ls78) :=
   pDefs_step (chkDef_sound chk78) (by intro h; cases h) ch79
-theorem ch77 : ∀ G, pDefs F (G + 158) D77 T77 = some (D234, Ls77) :=
+theorem ch77 : ∀ G, pDefs F (G + 160) D77 T77 = some (D236, Ls77) :=
   pDefs_step (chkDef_sound chk77) (by intro h; cases h) ch78
-theorem ch76 : ∀ G, pDefs F (G + 159) D76 T76 = some (D234, Ls76) :=
+theorem ch76 : ∀ G, pDefs F (G + 161) D76 T76 = some (D236, Ls76) :=
   pDefs_step (chkDef_sound chk76) (by intro h; cases h) ch77
-theorem ch75 : ∀ G, pDefs F (G + 160) D75 T75 = some (D234, Ls75) :=
+theorem ch75 : ∀ G, pDefs F (G + 162) D75 T75 = some (D236, Ls75) :=
   pDefs_step (chkDef_sound chk75) (by intro h; cases h) ch76
-theorem ch74 : ∀ G, pDefs F (G + 161) D74 T74 = some (D234, Ls74) :=
+theorem ch74 : ∀ G, pDefs F (G + 163) D74 T74 = some (D236, Ls74) :=
   pDefs_step (chkDef_sound chk74) (by intro h; cases h) ch75
-theorem ch73 : ∀ G, pDefs F (G + 162) D73 T73 = some (D234, Ls73) :=
+theorem ch73 : ∀ G, pDefs F (G + 164) D73 T73 = some (D236, Ls73) :=
   pDefs_step (chkDef_sound chk73) (by intro h; cases h) ch74
-theorem ch72 : ∀ G, pDefs F (G + 163) D72 T72 = some (D234, Ls72) :=
+theorem ch72 : ∀ G, pDefs F (G + 165) D72 T72 = some (D236, Ls72) :=
   pDefs_step (chkDef_sound chk72) (by intro h; cases h) ch73
-theorem ch71 : ∀ G, pDefs F (G + 164) D71 T71 = some (D234, Ls71) :=
+theorem ch71 : ∀ G, pDefs F (G + 166) D71 T71 = some (D236, Ls71) :=
   pDefs_step (chkDef_sound chk71) (by intro h; cases h) ch72
-theorem ch70 : ∀ G, pDefs F (G + 165) D70 T70 = some (D234, Ls70) :=
+theorem ch70 : ∀ G, pDefs F (G + 167) D70 T70 = some (D236, Ls70) :=
   pDefs_step (chkDef_sound chk70) (by intro h; cases h) ch71
-theorem ch69 : ∀ G, pDefs F (G + 166) D69 T69 = some (D234, Ls69) :=
+theorem ch69 : ∀ G, pDefs F (G + 168) D69 T69 = some (D236, Ls69) :=
   pDefs_step (chkDef_sound chk69) (by intro h; cases h) ch70
-theorem ch68 : ∀ G, pDefs F (G + 167) D68 T68 = some (D234, Ls68) :=
+theorem ch68 : ∀ G, pDefs F (G + 169) D68 T68 = some (D236, Ls68) :=
   pDefs_step (chkDef_sound chk68) (by intro h; cases h) ch69
-theorem ch67 : ∀ G, pDefs F (G + 168) D67 T67 = some (D234, Ls67) :=
+theorem ch67 : ∀ G, pDefs F (G + 170) D67 T67 = some (D236, Ls67) :=
   pDefs_step (chkDef_sound chk67) (by intro h; cases h) ch68
-theorem ch66 : ∀ G, pDefs F (G + 169) D66 T66 = some (D234, Ls66) :=
+theorem ch66 : ∀ G, pDefs F (G + 171) D66 T66 = some (D236, Ls66) :=
   pDefs_step (chkDef_sound chk66) (by intro h; cases h) ch67
-theorem ch65 : ∀ G, pDefs F (G + 170) D65 T65 = some (D234, Ls65) :=
+theorem ch65 : ∀ G, pDefs F (G + 172) D65 T65 = some (D236, Ls65) :=
   pDefs_step (chkDef_sound chk65) (by intro h; cases h) ch66
-theorem ch64 : ∀ G, pDefs F (G + 171) D64 T64 = some (D234, Ls64) :=
+theorem ch64 : ∀ G, pDefs F (G + 173) D64 T64 = some (D236, Ls64) :=
   pDefs_step (chkDef_sound chk64) (by intro h; cases h) ch65
-theorem ch63 : ∀ G, pDefs F (G + 172) D63 T63 = some (D234, Ls63) :=
+theorem ch63 : ∀ G, pDefs F (G + 174) D63 T63 = some (D236, Ls63) :=
   pDefs_step (chkDef_sound chk63) (by intro h; cases h) ch64
-theorem ch62 : ∀ G, pDefs F (G + 173) D62 T62 = some (D234, Ls62) :=
+theorem ch62 : ∀ G, pDefs F (G + 175) D62 T62 = some (D236, Ls62) :=
   pDefs_step (chkDef_sound chk62) (by intro h; cases h) ch63
-theorem ch61 : ∀ G, pDefs F (G + 174) D61 T61 = some (D234, Ls61) :=
+theorem ch61 : ∀ G, pDefs F (G + 176) D61 T61 = some (D236, Ls61) :=
   pDefs_step (chkDef_sound chk61) (by intro h; cases h) ch62
-theorem ch60 : ∀ G, pDefs F (G + 175) D60 T60 = some (D234, Ls60) :=
+theorem ch60 : ∀ G, pDefs F (G + 177) D60 T60 = some (D236, Ls60) :=
   pDefs_step (chkDef_sound chk60) (by intro h; cases h) ch61
-theorem ch59 : ∀ G, pDefs F (G + 176) D59 T59 = some (D234, Ls59) :=
+theorem ch59 : ∀ G, pDefs F (G + 178) D59 T59 = some (D236, Ls59) :=
   pDefs_step (chkDef_sound chk59) (by intro h; cases h) ch60
-theorem ch58 : ∀ G, pDefs F (G + 177) D58 T58 = some (D234, Ls58) :=
+theorem ch58 : ∀ G, pDefs F (G + 179) D58 T58 = some (D236, Ls58) :=
   pDefs_step (chkDef_sound chk58) (by intro h; cases h) ch59
-theorem ch57 : ∀ G, pDefs F (G + 178) D57 T57 = some (D234, Ls57) :=
+theorem ch57 : ∀ G, pDefs F (G + 180) D57 T57 = some (D236, Ls57) :=
   pDefs_step (chkDef_sound chk57) (by intro h; cases h) ch58
-theorem ch56 : ∀ G, pDefs F (G + 179) D56 T56 = some (D234, Ls56) :=
+theorem ch56 : ∀ G, pDefs F (G + 181) D56 T56 = some (D236, Ls56) :=
   pDefs_step (chkDef_sound chk56) (by intro h; cases h) ch57
-theorem ch55 : ∀ G, pDefs F (G + 180) D55 T55 = some (D234, Ls55) :=
+theorem ch55 : ∀ G, pDefs F (G + 182) D55 T55 = some (D236, Ls55) :=
   pDefs_step (chkDef_sound chk55) (by intro h; cases h) ch56
-theorem ch54 : ∀ G, pDefs F (G + 181) D54 T54 = some (D234, Ls54) :=
+theorem ch54 : ∀ G, pDefs F (G + 183) D54 T54 = some (D236, Ls54) :=
   pDefs_step (chkDef_sound chk54) (by intro h; cases h) ch55
-theorem ch53 : ∀ G, pDefs F (G + 182) D53 T53 = some (D234, Ls53) :=
+theorem ch53 : ∀ G, pDefs F (G + 184) D53 T53 = some (D236, Ls53) :=
   pDefs_step (chkDef_sound chk53) (by intro h; cases h) ch54
-theorem ch52 : ∀ G, pDefs F (G + 183) D52 T52 = some (D234, Ls52) :=
+theorem ch52 : ∀ G, pDefs F (G + 185) D52 T52 = some (D236, Ls52) :=
   pDefs_step (chkDef_sound chk52) (by intro h; cases h) ch53
-theorem ch51 : ∀ G, pDefs F (G + 184) D51 T51 = some (D234, Ls51) :=
+theorem ch51 : ∀ G, pDefs F (G + 186) D51 T51 = some (D236, Ls51) :=
   pDefs_step (chkDef_sound chk51) (by intro h; cases h) ch52
-theorem ch50 : ∀ G, pDefs F (G + 185) D50 T50 = some (D234, Ls50) :=
+theorem ch50 : ∀ G, pDefs F (G + 187) D50 T50 = some (D236, Ls50) :=
   pDefs_step (chkDef_sound chk50) (by intro h; cases h) ch51
-theorem ch49 : ∀ G, pDefs F (G + 186) D49 T49 = some (D234, Ls49) :=
+theorem ch49 : ∀ G, pDefs F (G + 188) D49 T49 = some (D236, Ls49) :=
   pDefs_step (chkDef_sound chk49) (by intro h; cases h) ch50
-theorem ch48 : ∀ G, pDefs F (G + 187) D48 T48 = some (D234, Ls48) :=
+theorem ch48 : ∀ G, pDefs F (G + 189) D48 T48 = some (D236, Ls48) :=
   pDefs_step (chkDef_sound chk48) (by intro h; cases h) ch49
-theorem ch47 : ∀ G, pDefs F (G + 188) D47 T47 = some (D234, Ls47) :=
+theorem ch47 : ∀ G, pDefs F (G + 190) D47 T47 = some (D236, Ls47) :=
   pDefs_step (chkDef_sound chk47) (by intro h; cases h) ch48
-theorem ch46 : ∀ G, pDefs F (G + 189) D46 T46 = some (D234, Ls46) :=
+theorem ch46 : ∀ G, pDefs F (G + 191) D46 T46 = some (D236, Ls46) :=
   pDefs_step (chkDef_sound chk46) (by intro h; cases h) ch47
-theorem ch45 : ∀ G, pDefs F (G + 190) D45 T45 = some (D234, Ls45) :=
+theorem ch45 : ∀ G, pDefs F (G + 192) D45 T45 = some (D236, Ls45) :=
   pDefs_step (chkDef_sound chk45) (by intro h; cases h) ch46
-theorem ch44 : ∀ G, pDefs F (G + 191) D44 T44 = some (D234, Ls44) :=
+theorem ch44 : ∀ G, pDefs F (G + 193) D44 T44 = some (D236, Ls44) :=
   pDefs_step (chkDef_sound chk44) (by intro h; cases h) ch45
-theorem ch43 : ∀ G, pDefs F (G + 192) D43 T43 = some (D234, Ls43) :=
+theorem ch43 : ∀ G, pDefs F (G + 194) D43 T43 = some (D236, Ls43) :=
   pDefs_step (chkDef_sound chk43) (by intro h; cases h) ch44
-theorem ch42 : ∀ G, pDefs F (G + 193) D42 T42 = some (D234, Ls42) :=
+theorem ch42 : ∀ G, pDefs F (G + 195) D42 T42 = some (D236, Ls42) :=
   pDefs_step (chkDef_sound chk42) (by intro h; cases h) ch43
-theorem ch41 : ∀ G, pDefs F (G + 194) D41 T41 = some (D234, Ls41) :=
+theorem ch41 : ∀ G, pDefs F (G + 196) D41 T41 = some (D236, Ls41) :=
   pDefs_step (chkDef_sound chk41) (by intro h; cases h) ch42
-theorem ch40 : ∀ G, pDefs F (G + 195) D40 T40 = some (D234, Ls40) :=
+theorem ch40 : ∀ G, pDefs F (G + 197) D40 T40 = some (D236, Ls40) :=
   pDefs_step (chkDef_sound chk40) (by intro h; cases h) ch41
-theorem ch39 : ∀ G, pDefs F (G + 196) D39 T39 = some (D234, Ls39) :=
+theorem ch39 : ∀ G, pDefs F (G + 198) D39 T39 = some (D236, Ls39) :=
   pDefs_step (chkDef_sound chk39) (by intro h; cases h) ch40
-theorem ch38 : ∀ G, pDefs F (G + 197) D38 T38 = some (D234, Ls38) :=
+theorem ch38 : ∀ G, pDefs F (G + 199) D38 T38 = some (D236, Ls38) :=
   pDefs_step (chkDef_sound chk38) (by intro h; cases h) ch39
-theorem ch37 : ∀ G, pDefs F (G + 198) D37 T37 = some (D234, Ls37) :=
+theorem ch37 : ∀ G, pDefs F (G + 200) D37 T37 = some (D236, Ls37) :=
   pDefs_step (chkDef_sound chk37) (by intro h; cases h) ch38
-theorem ch36 : ∀ G, pDefs F (G + 199) D36 T36 = some (D234, Ls36) :=
+theorem ch36 : ∀ G, pDefs F (G + 201) D36 T36 = some (D236, Ls36) :=
   pDefs_step (chkDef_sound chk36) (by intro h; cases h) ch37
-theorem ch35 : ∀ G, pDefs F (G + 200) D35 T35 = some (D234, Ls35) :=
+theorem ch35 : ∀ G, pDefs F (G + 202) D35 T35 = some (D236, Ls35) :=
   pDefs_step (chkDef_sound chk35) (by intro h; cases h) ch36
-theorem ch34 : ∀ G, pDefs F (G + 201) D34 T34 = some (D234, Ls34) :=
+theorem ch34 : ∀ G, pDefs F (G + 203) D34 T34 = some (D236, Ls34) :=
   pDefs_step (chkDef_sound chk34) (by intro h; cases h) ch35
-theorem ch33 : ∀ G, pDefs F (G + 202) D33 T33 = some (D234, Ls33) :=
+theorem ch33 : ∀ G, pDefs F (G + 204) D33 T33 = some (D236, Ls33) :=
   pDefs_step (chkDef_sound chk33) (by intro h; cases h) ch34
-theorem ch32 : ∀ G, pDefs F (G + 203) D32 T32 = some (D234, Ls32) :=
+theorem ch32 : ∀ G, pDefs F (G + 205) D32 T32 = some (D236, Ls32) :=
   pDefs_step (chkDef_sound chk32) (by intro h; cases h) ch33
-theorem ch31 : ∀ G, pDefs F (G + 204) D31 T31 = some (D234, Ls31) :=
+theorem ch31 : ∀ G, pDefs F (G + 206) D31 T31 = some (D236, Ls31) :=
   pDefs_step (chkDef_sound chk31) (by intro h; cases h) ch32
-theorem ch30 : ∀ G, pDefs F (G + 205) D30 T30 = some (D234, Ls30) :=
+theorem ch30 : ∀ G, pDefs F (G + 207) D30 T30 = some (D236, Ls30) :=
   pDefs_step (chkDef_sound chk30) (by intro h; cases h) ch31
-theorem ch29 : ∀ G, pDefs F (G + 206) D29 T29 = some (D234, Ls29) :=
+theorem ch29 : ∀ G, pDefs F (G + 208) D29 T29 = some (D236, Ls29) :=
   pDefs_step (chkDef_sound chk29) (by intro h; cases h) ch30
-theorem ch28 : ∀ G, pDefs F (G + 207) D28 T28 = some (D234, Ls28) :=
+theorem ch28 : ∀ G, pDefs F (G + 209) D28 T28 = some (D236, Ls28) :=
   pDefs_step (chkDef_sound chk28) (by intro h; cases h) ch29
-theorem ch27 : ∀ G, pDefs F (G + 208) D27 T27 = some (D234, Ls27) :=
+theorem ch27 : ∀ G, pDefs F (G + 210) D27 T27 = some (D236, Ls27) :=
   pDefs_step (chkDef_sound chk27) (by intro h; cases h) ch28
-theorem ch26 : ∀ G, pDefs F (G + 209) D26 T26 = some (D234, Ls26) :=
+theorem ch26 : ∀ G, pDefs F (G + 211) D26 T26 = some (D236, Ls26) :=
   pDefs_step (chkDef_sound chk26) (by intro h; cases h) ch27
-theorem ch25 : ∀ G, pDefs F (G + 210) D25 T25 = some (D234, Ls25) :=
+theorem ch25 : ∀ G, pDefs F (G + 212) D25 T25 = some (D236, Ls25) :=
   pDefs_step (chkDef_sound chk25) (by intro h; cases h) ch26
-theorem ch24 : ∀ G, pDefs F (G + 211) D24 T24 = some (D234, Ls24) :=
+theorem ch24 : ∀ G, pDefs F (G + 213) D24 T24 = some (D236, Ls24) :=
   pDefs_step (chkDef_sound chk24) (by intro h; cases h) ch25
-theorem ch23 : ∀ G, pDefs F (G + 212) D23 T23 = some (D234, Ls23) :=
+theorem ch23 : ∀ G, pDefs F (G + 214) D23 T23 = some (D236, Ls23) :=
   pDefs_step (chkDef_sound chk23) (by intro h; cases h) ch24
-theorem ch22 : ∀ G, pDefs F (G + 213) D22 T22 = some (D234, Ls22) :=
+theorem ch22 : ∀ G, pDefs F (G + 215) D22 T22 = some (D236, Ls22) :=
   pDefs_step (chkDef_sound chk22) (by intro h; cases h) ch23
-theorem ch21 : ∀ G, pDefs F (G + 214) D21 T21 = some (D234, Ls21) :=
+theorem ch21 : ∀ G, pDefs F (G + 216) D21 T21 = some (D236, Ls21) :=
   pDefs_step (chkDef_sound chk21) (by intro h; cases h) ch22
-theorem ch20 : ∀ G, pDefs F (G + 215) D20 T20 = some (D234, Ls20) :=
+theorem ch20 : ∀ G, pDefs F (G + 217) D20 T20 = some (D236, Ls20) :=
   pDefs_step (chkDef_sound chk20) (by intro h; cases h) ch21
-theorem ch19 : ∀ G, pDefs F (G + 216) D19 T19 = some (D234, Ls19) :=
+theorem ch19 : ∀ G, pDefs F (G + 218) D19 T19 = some (D236, Ls19) :=
   pDefs_step (chkDef_sound chk19) (by intro h; cases h) ch20
-theorem ch18 : ∀ G, pDefs F (G + 217) D18 T18 = some (D234, Ls18) :=
+theorem ch18 : ∀ G, pDefs F (G + 219) D18 T18 = some (D236, Ls18) :=
   pDefs_step (chkDef_sound chk18) (by intro h; cases h) ch19
-theorem ch17 : ∀ G, pDefs F (G + 218) D17 T17 = some (D234, Ls17) :=
+theorem ch17 : ∀ G, pDefs F (G + 220) D17 T17 = some (D236, Ls17) :=
   pDefs_step (chkDef_sound chk17) (by intro h; cases h) ch18
-theorem ch16 : ∀ G, pDefs F (G + 219) D16 T16 = some (D234, Ls16) :=
+theorem ch16 : ∀ G, pDefs F (G + 221) D16 T16 = some (D236, Ls16) :=
   pDefs_step (chkDef_sound chk16) (by intro h; cases h) ch17
-theorem ch15 : ∀ G, pDefs F (G + 220) D15 T15 = some (D234, Ls15) :=
+theorem ch15 : ∀ G, pDefs F (G + 222) D15 T15 = some (D236, Ls15) :=
   pDefs_step (chkDef_sound chk15) (by intro h; cases h) ch16
-theorem ch14 : ∀ G, pDefs F (G + 221) D14 T14 = some (D234, Ls14) :=
+theorem ch14 : ∀ G, pDefs F (G + 223) D14 T14 = some (D236, Ls14) :=
   pDefs_step (chkDef_sound chk14) (by intro h; cases h) ch15
-theorem ch13 : ∀ G, pDefs F (G + 222) D13 T13 = some (D234, Ls13) :=
+theorem ch13 : ∀ G, pDefs F (G + 224) D13 T13 = some (D236, Ls13) :=
   pDefs_step (chkDef_sound chk13) (by intro h; cases h) ch14
-theorem ch12 : ∀ G, pDefs F (G + 223) D12 T12 = some (D234, Ls12) :=
+theorem ch12 : ∀ G, pDefs F (G + 225) D12 T12 = some (D236, Ls12) :=
   pDefs_step (chkDef_sound chk12) (by intro h; cases h) ch13
-theorem ch11 : ∀ G, pDefs F (G + 224) D11 T11 = some (D234, Ls11) :=
+theorem ch11 : ∀ G, pDefs F (G + 226) D11 T11 = some (D236, Ls11) :=
   pDefs_step (chkDef_sound chk11) (by intro h; cases h) ch12
-theorem ch10 : ∀ G, pDefs F (G + 225) D10 T10 = some (D234, Ls10) :=
+theorem ch10 : ∀ G, pDefs F (G + 227) D10 T10 = some (D236, Ls10) :=
   pDefs_step (chkDef_sound chk10) (by intro h; cases h) ch11
-theorem ch9 : ∀ G, pDefs F (G + 226) D9 T9 = some (D234, Ls9) :=
+theorem ch9 : ∀ G, pDefs F (G + 228) D9 T9 = some (D236, Ls9) :=
   pDefs_step (chkDef_sound chk9) (by intro h; cases h) ch10
-theorem ch8 : ∀ G, pDefs F (G + 227) D8 T8 = some (D234, Ls8) :=
+theorem ch8 : ∀ G, pDefs F (G + 229) D8 T8 = some (D236, Ls8) :=
   pDefs_step (chkDef_sound chk8) (by intro h; cases h) ch9
-theorem ch7 : ∀ G, pDefs F (G + 228) D7 T7 = some (D234, Ls7) :=
+theorem ch7 : ∀ G, pDefs F (G + 230) D7 T7 = some (D236, Ls7) :=
   pDefs_step (chkDef_sound chk7) (by intro h; cases h) ch8
-theorem ch6 : ∀ G, pDefs F (G + 229) D6 T6 = some (D234, Ls6) :=
+theorem ch6 : ∀ G, pDefs F (G + 231) D6 T6 = some (D236, Ls6) :=
   pDefs_step (chkDef_sound chk6) (by intro h; cases h) ch7
-theorem ch5 : ∀ G, pDefs F (G + 230) D5 T5 = some (D234, Ls5) :=
+theorem ch5 : ∀ G, pDefs F (G + 232) D5 T5 = some (D236, Ls5) :=
   pDefs_step (chkDef_sound chk5) (by intro h; cases h) ch6
-theorem ch4 : ∀ G, pDefs F (G + 231) D4 T4 = some (D234, Ls4) :=
+theorem ch4 : ∀ G, pDefs F (G + 233) D4 T4 = some (D236, Ls4) :=
   pDefs_step (chkDef_sound chk4) (by intro h; cases h) ch5
-theorem ch3 : ∀ G, pDefs F (G + 232) D3 T3 = some (D234, Ls3) :=
+theorem ch3 : ∀ G, pDefs F (G + 234) D3 T3 = some (D236, Ls3) :=
   pDefs_step (chkDef_sound chk3) (by intro h; cases h) ch4
-theorem ch2 : ∀ G, pDefs F (G + 233) D2 T2 = some (D234, Ls2) :=
+theorem ch2 : ∀ G, pDefs F (G + 235) D2 T2 = some (D236, Ls2) :=
   pDefs_step (chkDef_sound chk2) (by intro h; cases h) ch3
-theorem ch1 : ∀ G, pDefs F (G + 234) D1 T1 = some (D234, Ls1) :=
+theorem ch1 : ∀ G, pDefs F (G + 236) D1 T1 = some (D236, Ls1) :=
   pDefs_step (chkDef_sound chk1) (by intro h; cases h) ch2
-theorem ch0 : ∀ G, pDefs F (G + 235) D0 T0 = some (D234, Ls0) :=
+theorem ch0 : ∀ G, pDefs F (G + 237) D0 T0 = some (D236, Ls0) :=
   pDefs_step (chkDef_sound chk0) (by intro h; cases h) ch1
-theorem len234 : T234.length = 0 := rfl
-theorem len233 : T233.length = 24 := by
-  show (S233 ++ T234).length = 24; rw [List.length_append, len234]; rfl
-theorem len232 : T232.length = 45 := by
-  show (S232 ++ T233).length = 45; rw [List.length_append, len233]; rfl
-theorem len231 : T231.length = 201 := by
-  show (S231 ++ T232).length = 201; rw [List.length_append, len232]; rfl
-theorem len230 : T230.length = 292 := by
-  show (S230 ++ T231).length = 292; rw [List.length_append, len231]; rfl
-theorem len229 : T229.length = 427 := by
-  show (S229 ++ T230).length = 427; rw [List.length_append, len230]; rfl
-theorem len228 : T228.length = 906 := by
-  show (S228 ++ T229).length = 906; rw [List.length_append, len229]; rfl
-theorem len227 : T227.length = 1109 := by
-  show (S227 ++ T228).length = 1109; rw [List.length_append, len228]; rfl
-theorem len226 : T226.length = 1341 := by
-  show (S226 ++ T227).length = 1341; rw [List.length_append, len227]; rfl
-theorem len225 : T225.length = 1355 := by
-  show (S225 ++ T226).length = 1355; rw [List.length_append, len226]; rfl
-theorem len224 : T224.length = 1429 := by
-  show (S224 ++ T225).length = 1429; rw [List.length_append, len225]; rfl
-theorem len223 : T223.length = 1463 := by
-  show (S223 ++ T224).length = 1463; rw [List.length_append, len224]; rfl
-theorem len222 : T222.length = 1495 := by
-  show (S222 ++ T223).length = 1495; rw [List.length_append, len223]; rfl
-theorem len221 : T221.length = 1590 := by
-  show (S221 ++ T222).length = 1590; rw [List.length_append, len222]; rfl
-theorem len220 : T220.length = 1711 := by
-  show (S220 ++ T221).length = 1711; rw [List.length_append, len221]; rfl
-theorem len219 : T219.length = 1861 := by
-  show (S219 ++ T220).length = 1861; rw [List.length_append, len220]; rfl
-theorem len218 : T218.length = 1921 := by
-  show (S218 ++ T219).length = 1921; rw [List.length_append, len219]; rfl
-theorem len217 : T217.length = 2057 := by
-  show (S217 ++ T218).length = 2057; rw [List.length_append, len218]; rfl
-theorem len216 : T216.length = 2379 := by
-  show (S216 ++ T217).length = 2379; rw [List.length_append, len217]; rfl
-theorem len215 : T215.length = 3100 := by
-  show (S215 ++ T216).length = 3100; rw [List.length_append, len216]; rfl
-theorem len214 : T214.length = 4361 := by
-  show (S214 ++ T215).length = 4361; rw [List.length_append, len215]; rfl
-theorem len213 : T213.length = 4414 := by
-  show (S213 ++ T214).length = 4414; rw [List.length_append, len214]; rfl
-theorem len212 : T212.length = 4787 := by
-  show (S212 ++ T213).length = 4787; rw [List.length_append, len213]; rfl
-theorem len211 : T211.length = 4897 := by
-  show (S211 ++ T212).length = 4897; rw [List.length_append, len212]; rfl
-theorem len210 : T210.length = 4950 := by
-  show (S210 ++ T211).length = 4950; rw [List.length_append, len211]; rfl
-theorem len209 : T209.length = 5466 := by
-  show (S209 ++ T210).length = 5466; rw [List.length_append, len210]; rfl
-theorem len208 : T208.length = 5593 := by
-  show (S208 ++ T209).length = 5593; rw [List.length_append, len209]; rfl
-theorem len207 : T207.length = 5634 := by
-  show (S207 ++ T208).length = 5634; rw [List.length_append, len208]; rfl
-theorem len206 : T206.length = 5777 := by
-  show (S206 ++ T207).length = 5777; rw [List.length_append, len207]; rfl
-theorem len205 : T205.length = 5867 := by
-  show (S205 ++ T206).length = 5867; rw [List.length_append, len206]; rfl
-theorem len204 : T204.length = 5927 := by
-  show (S204 ++ T205).length = 5927; rw [List.length_append, len205]; rfl
-theorem len203 : T203.length = 6023 := by
-  show (S203 ++ T204).length = 6023; rw [List.length_append, len204]; rfl
-theorem len202 : T202.length = 6102 := by
-  show (S202 ++ T203).length = 6102; rw [List.length_append, len203]; rfl
-theorem len201 : T201.length = 6145 := by
-  show (S201 ++ T202).length = 6145; rw [List.length_append, len202]; rfl
-theorem len200 : T200.length = 6427 := by
-  show (S200 ++ T201).length = 6427; rw [List.length_append, len201]; rfl
-theorem len199 : T199.length = 6488 := by
-  show (S199 ++ T200).length = 6488; rw [List.length_append, len200]; rfl
-theorem len198 : T198.length = 6544 := by
-  show (S198 ++ T199).length = 6544; rw [List.length_append, len199]; rfl
-theorem len197 : T197.length = 6603 := by
-  show (S197 ++ T198).length = 6603; rw [List.length_append, len198]; rfl
-theorem len196 : T196.length = 6661 := by
-  show (S196 ++ T197).length = 6661; rw [List.length_append, len197]; rfl
-theorem len195 : T195.length = 6709 := by
-  show (S195 ++ T196).length = 6709; rw [List.length_append, len196]; rfl
-theorem len194 : T194.length = 6739 := by
-  show (S194 ++ T195).length = 6739; rw [List.length_append, len195]; rfl
-theorem len193 : T193.length = 6753 := by
-  show (S193 ++ T194).length = 6753; rw [List.length_append, len194]; rfl
-theorem len192 : T192.length = 6773 := by
-  show (S192 ++ T193).length = 6773; rw [List.length_append, len193]; rfl
-theorem len191 : T191.length = 6805 := by
-  show (S191 ++ T192).length = 6805; rw [List.length_append, len192]; rfl
-theorem len190 : T190.length = 6828 := by
-  show (S190 ++ T191).length = 6828; rw [List.length_append, len191]; rfl
-theorem len189 : T189.length = 6845 := by
-  show (S189 ++ T190).length = 6845; rw [List.length_append, len190]; rfl
-theorem len188 : T188.length = 6863 := by
-  show (S188 ++ T189).length = 6863; rw [List.length_append, len189]; rfl
-theorem len187 : T187.length = 6881 := by
-  show (S187 ++ T188).length = 6881; rw [List.length_append, len188]; rfl
-theorem len186 : T186.length = 6955 := by
-  show (S186 ++ T187).length = 6955; rw [List.length_append, len187]; rfl
-theorem len185 : T185.length = 7043 := by
-  show (S185 ++ T186).length = 7043; rw [List.length_append, len186]; rfl
-theorem len184 : T184.length = 7099 := by
-  show (S184 ++ T185).length = 7099; rw [List.length_append, len185]; rfl
-theorem len183 : T183.length = 7142 := by
-  show (S183 ++ T184).length = 7142; rw [List.length_append, len184]; rfl
-theorem len182 : T182.length = 7187 := by
-  show (S182 ++ T183).length = 7187; rw [List.length_append, len183]; rfl
-theorem len181 : T181.length = 7193 := by
-  show (S181 ++ T182).length = 7193; rw [List.length_append, len182]; rfl
-theorem len180 : T180.length = 7201 := by
-  show (S180 ++ T181).length = 7201; rw [List.length_append, len181]; rfl
-theorem len179 : T179.length = 7209 := by
-  show (S179 ++ T180).length = 7209; rw [List.length_append, len180]; rfl
-theorem len178 : T178.length = 7217 := by
-  show (S178 ++ T179).length = 7217; rw [List.length_append, len179]; rfl
-theorem len177 : T177.length = 7223 := by
-  show (S177 ++ T178).length = 7223; rw [List.length_append, len178]; rfl
-theorem len176 : T176.length = 7229 := by
-  show (S176 ++ T177).length = 7229; rw [List.length_append, len177]; rfl
-theorem len175 : T175.length = 7235 := by
-  show (S175 ++ T176).length = 7235; rw [List.length_append, len176]; rfl
-theorem len174 : T174.length = 7241 := by
-  show (S174 ++ T175).length = 7241; rw [List.length_append, len175]; rfl
-theorem len173 : T173.length = 7247 := by
-  show (S173 ++ T174).length = 7247; rw [List.length_append, len174]; rfl
-theorem len172 : T172.length = 7253 := by
-  show (S172 ++ T173).length = 7253; rw [List.length_append, len173]; rfl
-theorem len171 : T171.length = 7259 := by
-  show (S171 ++ T172).length = 7259; rw [List.length_append, len172]; rfl
-theorem len170 : T170.length = 7265 := by
-  show (S170 ++ T171).length = 7265; rw [List.length_append, len171]; rfl
-theorem len169 : T169.length = 7271 := by
-  show (S169 ++ T170).length = 7271; rw [List.length_append, len170]; rfl
-theorem len168 : T168.length = 7277 := by
-  show (S168 ++ T169).length = 7277; rw [List.length_append, len169]; rfl
-theorem len167 : T167.length = 7283 := by
-  show (S167 ++ T168).length = 7283; rw [List.length_append, len168]; rfl
-theorem len166 : T166.length = 7289 := by
-  show (S166 ++ T167).length = 7289; rw [List.length_append, len167]; rfl
-theorem len165 : T165.length = 7295 := by
-  show (S165 ++ T166).length = 7295; rw [List.length_append, len166]; rfl
-theorem len164 : T164.length = 7301 := by
-  show (S164 ++ T165).length = 7301; rw [List.length_append, len165]; rfl
-theorem len163 : T163.length = 7307 := by
-  show (S163 ++ T164).length = 7307; rw [List.length_append, len164]; rfl
-theorem len162 : T162.length = 7313 := by
-  show (S162 ++ T163).length = 7313; rw [List.length_append, len163]; rfl
-theorem len161 : T161.length = 7319 := by
-  show (S161 ++ T162).length = 7319; rw [List.length_append, len162]; rfl
-theorem len160 : T160.length = 7392 := by
-  show (S160 ++ T161).length = 7392; rw [List.length_append, len161]; rfl
-theorem len159 : T159.length = 7564 := by
-  show (S159 ++ T160).length = 7564; rw [List.length_append, len160]; rfl
-theorem len158 : T158.length = 8088 := by
-  show (S158 ++ T159).length = 8088; rw [List.length_append, len159]; rfl
-theorem len157 : T157.length = 8178 := by
-  show (S157 ++ T158).length = 8178; rw [List.length_append, len158]; rfl
-theorem len156 : T156.length = 8221 := by
-  show (S156 ++ T157).length = 8221; rw [List.length_append, len157]; rfl
-theorem len155 : T155.length = 8315 := by
-  show (S155 ++ T156).length = 8315; rw [List.length_append, len156]; rfl
-theorem len154 : T154.length = 8439 := by
-  show (S154 ++ T155).length = 8439; rw [List.length_append, len155]; rfl
-theorem len153 : T153.length = 8582 := by
-  show (S153 ++ T154).length = 8582; rw [List.length_append, len154]; rfl
-theorem len152 : T152.length = 8706 := by
-  show (S152 ++ T153).length = 8706; rw [List.length_append, len153]; rfl
-theorem len151 : T151.length = 8763 := by
-  show (S151 ++ T152).length = 8763; rw [List.length_append, len152]; rfl
-theorem len150 : T150.length = 9431 := by
-  show (S150 ++ T151).length = 9431; rw [List.length_append, len151]; rfl
-theorem len149 : T149.length = 10182 := by
-  show (S149 ++ T150).length = 10182; rw [List.length_append, len150]; rfl
-theorem len148 : T148.length = 10827 := by
-  show (S148 ++ T149).length = 10827; rw [List.length_append, len149]; rfl
-theorem len147 : T147.length = 11006 := by
-  show (S147 ++ T148).length = 11006; rw [List.length_append, len148]; rfl
-theorem len146 : T146.length = 11120 := by
-  show (S146 ++ T147).length = 11120; rw [List.length_append, len147]; rfl
-theorem len145 : T145.length = 11306 := by
-  show (S145 ++ T146).length = 11306; rw [List.length_append, len146]; rfl
-theorem len144 : T144.length = 11501 := by
-  show (S144 ++ T145).length = 11501; rw [List.length_append, len145]; rfl
-theorem len143 : T143.length = 11600 := by
-  show (S143 ++ T144).length = 11600; rw [List.length_append, len144]; rfl
-theorem len142 : T142.length = 11711 := by
-  show (S142 ++ T143).length = 11711; rw [List.length_append, len143]; rfl
-theorem len141 : T141.length = 11969 := by
-  show (S141 ++ T142).length = 11969; rw [List.length_append, len142]; rfl
-theorem len140 : T140.length = 12073 := by
-  show (S140 ++ T141).length = 12073; rw [List.length_append, len141]; rfl
-theorem len139 : T139.length = 12173 := by
-  show (S139 ++ T140).length = 12173; rw [List.length_append, len140]; rfl
-theorem len138 : T138.length = 12352 := by
-  show (S138 ++ T139).length = 12352; rw [List.length_append, len139]; rfl
-theorem len137 : T137.length = 12559 := by
-  show (S137 ++ T138).length = 12559; rw [List.length_append, len138]; rfl
-theorem len136 : T136.length = 12949 := by
-  show (S136 ++ T137).length = 12949; rw [List.length_append, len137]; rfl
-theorem len135 : T135.length = 13118 := by
-  show (S135 ++ T136).length = 13118; rw [List.length_append, len136]; rfl
-theorem len134 : T134.length = 13551 := by
-  show (S134 ++ T135).length = 13551; rw [List.length_append, len135]; rfl
-theorem len133 : T133.length = 13721 := by
-  show (S133 ++ T134).length = 13721; rw [List.length_append, len134]; rfl
-theorem len132 : T132.length = 13857 := by
-  show (S132 ++ T133).length = 13857; rw [List.length_append, len133]; rfl
-theorem len131 : T131.length = 13910 := by
-  show (S131 ++ T132).length = 13910; rw [List.length_append, len132]; rfl
-theorem len130 : T130.length = 14046 := by
-  show (S130 ++ T131).length = 14046; rw [List.length_append, len131]; rfl
-theorem len129 : T129.length = 14083 := by
-  show (S129 ++ T130).length = 14083; rw [List.length_append, len130]; rfl
-theorem len128 : T128.length = 14135 := by
-  show (S128 ++ T129).length = 14135; rw [List.length_append, len129]; rfl
-theorem len127 : T127.length = 14154 := by
-  show (S127 ++ T128).length = 14154; rw [List.length_append, len128]; rfl
-theorem len126 : T126.length = 14287 := by
-  show (S126 ++ T127).length = 14287; rw [List.length_append, len127]; rfl
-theorem len125 : T125.length = 14321 := by
-  show (S125 ++ T126).length = 14321; rw [List.length_append, len126]; rfl
-theorem len124 : T124.length = 14353 := by
-  show (S124 ++ T125).length = 14353; rw [List.length_append, len125]; rfl
-theorem len123 : T123.length = 14383 := by
-  show (S123 ++ T124).length = 14383; rw [List.length_append, len124]; rfl
-theorem len122 : T122.length = 14396 := by
-  show (S122 ++ T123).length = 14396; rw [List.length_append, len123]; rfl
-theorem len121 : T121.length = 14409 := by
-  show (S121 ++ T122).length = 14409; rw [List.length_append, len122]; rfl
-theorem len120 : T120.length = 14674 := by
-  show (S120 ++ T121).length = 14674; rw [List.length_append, len121]; rfl
-theorem len119 : T119.length = 14735 := by
-  show (S119 ++ T120).length = 14735; rw [List.length_append, len120]; rfl
-theorem len118 : T118.length = 14848 := by
-  show (S118 ++ T119).length = 14848; rw [List.length_append, len119]; rfl
-theorem len117 : T117.length = 15329 := by
-  show (S117 ++ T118).length = 15329; rw [List.length_append, len118]; rfl
-theorem len116 : T116.length = 15440 := by
-  show (S116 ++ T117).length = 15440; rw [List.length_append, len117]; rfl
-theorem len115 : T115.length = 15502 := by
-  show (S115 ++ T116).length = 15502; rw [List.length_append, len116]; rfl
-theorem len114 : T114.length = 15618 := by
-  show (S114 ++ T115).length = 15618; rw [List.length_append, len115]; rfl
-theorem len113 : T113.length = 15935 := by
-  show (S113 ++ T114).length = 15935; rw [List.length_append, len114]; rfl
-theorem len112 : T112.length = 16284 := by
-  show (S112 ++ T113).length = 16284; rw [List.length_append, len113]; rfl
-theorem len111 : T111.length = 16399 := by
-  show (S111 ++ T112).length = 16399; rw [List.length_append, len112]; rfl
-theorem len110 : T110.length = 16801 := by
-  show (S110 ++ T111).length = 16801; rw [List.length_append, len111]; rfl
-theorem len109 : T109.length = 17133 := by
-  show (S109 ++ T110).length = 17133; rw [List.length_append, len110]; rfl
-theorem len108 : T108.length = 17430 := by
-  show (S108 ++ T109).length = 17430; rw [List.length_append, len109]; rfl
-theorem len107 : T107.length = 17659 := by
-  show (S107 ++ T108).length = 17659; rw [List.length_append, len108]; rfl
-theorem len106 : T106.length = 17818 := by
-  show (S106 ++ T107).length = 17818; rw [List.length_append, len107]; rfl
-theorem len105 : T105.length = 17937 := by
-  show (S105 ++ T106).length = 17937; rw [List.length_append, len106]; rfl
-theorem len104 : T104.length = 18005 := by
-  show (S104 ++ T105).length = 18005; rw [List.length_append, len105]; rfl
-theorem len103 : T103.length = 18212 := by
-  show (S103 ++ T104).length = 18212; rw [List.length_append, len104]; rfl
-theorem len102 : T102.length = 18605 := by
-  show (S102 ++ T103).length = 18605; rw [List.length_append, len103]; rfl
-theorem len101 : T101.length = 18668 := by
-  show (S101 ++ T102).length = 18668; rw [List.length_append, len102]; rfl
-theorem len100 : T100.length = 18877 := by
-  show (S100 ++ T101).length = 18877; rw [List.length_append, len101]; rfl
-theorem len99 : T99.length = 19033 := by
-  show (S99 ++ T100).length = 19033; rw [List.length_append, len100]; rfl
-theorem len98 : T98.length = 19064 := by
-  show (S98 ++ T99).length = 19064; rw [List.length_append, len99]; rfl
-theorem len97 : T97.length = 19160 := by
-  show (S97 ++ T98).length = 19160; rw [List.length_append, len98]; rfl
-theorem len96 : T96.length = 19427 := by
-  show (S96 ++ T97).length = 19427; rw [List.length_append, len97]; rfl
-theorem len95 : T95.length = 19870 := by
-  show (S95 ++ T96).length = 19870; rw [List.length_append, len96]; rfl
-theorem len94 : T94.length = 20093 := by
-  show (S94 ++ T95).length = 20093; rw [List.length_append, len95]; rfl
-theorem len93 : T93.length = 20151 := by
-  show (S93 ++ T94).length = 20151; rw [List.length_append, len94]; rfl
-theorem len92 : T92.length = 20333 := by
-  show (S92 ++ T93).length = 20333; rw [List.length_append, len93]; rfl
-theorem len91 : T91.length = 20421 := by
-  show (S91 ++ T92).length = 20421; rw [List.length_append, len92]; rfl
-theorem len90 : T90.length = 20694 := by
-  show (S90 ++ T91).length = 20694; rw [List.length_append, len91]; rfl
-theorem len89 : T89.length = 20748 := by
-  show (S89 ++ T90).length = 20748; rw [List.length_append, len90]; rfl
-theorem len88 : T88.length = 21077 := by
-  show (S88 ++ T89).length = 21077; rw [List.length_append, len89]; rfl
-theorem len87 : T87.length = 21129 := by
-  show (S87 ++ T88).length = 21129; rw [List.length_append, len88]; rfl
-theorem len86 : T86.length = 21299 := by
-  show (S86 ++ T87).length = 21299; rw [List.length_append, len87]; rfl
-theorem len85 : T85.length = 21589 := by
-  show (S85 ++ T86).length = 21589; rw [List.length_append, len86]; rfl
-theorem len84 : T84.length = 21788 := by
-  show (S84 ++ T85).length = 21788; rw [List.length_append, len85]; rfl
-theorem len83 : T83.length = 21817 := by
-  show (S83 ++ T84).length = 21817; rw [List.length_append, len84]; rfl
-theorem len82 : T82.length = 22021 := by
-  show (S82 ++ T83).length = 22021; rw [List.length_append, len83]; rfl
-theorem len81 : T81.length = 22152 := by
-  show (S81 ++ T82).length = 22152; rw [List.length_append, len82]; rfl
-theorem len80 : T80.length = 22353 := by
-  show (S80 ++ T81).length = 22353; rw [List.length_append, len81]; rfl
-theorem len79 : T79.length = 22627 := by
-  show (S79 ++ T80).length = 22627; rw [List.length_append, len80]; rfl
-theorem len78 : T78.length = 22691 := by
-  show (S78 ++ T79).length = 22691; rw [List.length_append, len79]; rfl
-theorem len77 : T77.length = 22807 := by
-  show (S77 ++ T78).length = 22807; rw [List.length_append, len78]; rfl
-theorem len76 : T76.length = 22919 := by
-  show (S76 ++ T77).length = 22919; rw [List.length_append, len77]; rfl
-theorem len75 : T75.length = 23116 := by
-  show (S75 ++ T76).length = 23116; rw [List.length_append, len76]; rfl
-theorem len74 : T74.length = 23180 := by
-  show (S74 ++ T75).length = 23180; rw [List.length_append, len75]; rfl
-theorem len73 : T73.length = 23327 := by
-  show (S73 ++ T74).length = 23327; rw [List.length_append, len74]; rfl
-theorem len72 : T72.length = 23394 := by
-  show (S72 ++ T73).length = 23394; rw [List.length_append, len73]; rfl
-theorem len71 : T71.length = 24173 := by
-  show (S71 ++ T72).length = 24173; rw [List.length_append, len72]; rfl
-theorem len70 : T70.length = 24285 := by
-  show (S70 ++ T71).length = 24285; rw [List.length_append, len71]; rfl
-theorem len69 : T69.length = 24414 := by
-  show (S69 ++ T70).length = 24414; rw [List.length_append, len70]; rfl
-theorem len68 : T68.length = 24642 := by
-  show (S68 ++ T69).length = 24642; rw [List.length_append, len69]; rfl
-theorem len67 : T67.length = 24685 := by
-  show (S67 ++ T68).length = 24685; rw [List.length_append, len68]; rfl
-theorem len66 : T66.length = 24794 := by
-  show (S66 ++ T67).length = 24794; rw [List.length_append, len67]; rfl
-theorem len65 : T65.length = 24844 := by
-  show (S65 ++ T66).length = 24844; rw [List.length_append, len66]; rfl
-theorem len64 : T64.length = 24908 := by
-  show (S64 ++ T65).length = 24908; rw [List.length_append, len65]; rfl
-theorem len63 : T63.length = 25155 := by
-  show (S63 ++ T64).length = 25155; rw [List.length_append, len64]; rfl
-theorem len62 : T62.length = 25204 := by
-  show (S62 ++ T63).length = 25204; rw [List.length_append, len63]; rfl
-theorem len61 : T61.length = 25310 := by
-  show (S61 ++ T62).length = 25310; rw [List.length_append, len62]; rfl
-theorem len60 : T60.length = 25416 := by
-  show (S60 ++ T61).length = 25416; rw [List.length_append, len61]; rfl
-theorem len59 : T59.length = 25536 := by
-  show (S59 ++ T60).length = 25536; rw [List.length_append, len60]; rfl
-theorem len58 : T58.length = 25796 := by
-  show (S58 ++ T59).length = 25796; rw [List.length_append, len59]; rfl
-theorem len57 : T57.length = 25899 := by
-  show (S57 ++ T58).length = 25899; rw [List.length_append, len58]; rfl
-theorem len56 : T56.length = 26007 := by
-  show (S56 ++ T57).length = 26007; rw [List.length_append, len57]; rfl
-theorem len55 : T55.length = 26627 := by
-  show (S55 ++ T56).length = 26627; rw [List.length_append, len56]; rfl
-theorem len54 : T54.length = 26809 := by
-  show (S54 ++ T55).length = 26809; rw [List.length_append, len55]; rfl
-theorem len53 : T53.length = 26926 := by
-  show (S53 ++ T54).length = 26926; rw [List.length_append, len54]; rfl
-theorem len52 : T52.length = 26932 := by
-  show (S52 ++ T53).length = 26932; rw [List.length_append, len53]; rfl
-theorem len51 : T51.length = 26938 := by
-  show (S51 ++ T52).length = 26938; rw [List.length_append, len52]; rfl
-theorem len50 : T50.length = 26944 := by
-  show (S50 ++ T51).length = 26944; rw [List.length_append, len51]; rfl
-theorem len49 : T49.length = 26950 := by
-  show (S49 ++ T50).length = 26950; rw [List.length_append, len50]; rfl
-theorem len48 : T48.length = 26956 := by
-  show (S48 ++ T49).length = 26956; rw [List.length_append, len49]; rfl
-theorem len47 : T47.length = 26972 := by
-  show (S47 ++ T48).length = 26972; rw [List.length_append, len48]; rfl
-theorem len46 : T46.length = 27035 := by
-  show (S46 ++ T47).length = 27035; rw [List.length_append, len47]; rfl
-theorem len45 : T45.length = 27086 := by
-  show (S45 ++ T46).length = 27086; rw [List.length_append, len46]; rfl
-theorem len44 : T44.length = 27112 := by
-  show (S44 ++ T45).length = 27112; rw [List.length_append, len45]; rfl
-theorem len43 : T43.length = 27158 := by
-  show (S43 ++ T44).length = 27158; rw [List.length_append, len44]; rfl
-theorem len42 : T42.length = 27211 := by
-  show (S42 ++ T43).length = 27211; rw [List.length_append, len43]; rfl
-theorem len41 : T41.length = 27371 := by
-  show (S41 ++ T42).length = 27371; rw [List.length_append, len42]; rfl
-theorem len40 : T40.length = 27441 := by
-  show (S40 ++ T41).length = 27441; rw [List.length_append, len41]; rfl
-theorem len39 : T39.length = 27585 := by
-  show (S39 ++ T40).length = 27585; rw [List.length_append, len40]; rfl
-theorem len38 : T38.length = 27646 := by
-  show (S38 ++ T39).length = 27646; rw [List.length_append, len39]; rfl
-theorem len37 : T37.length = 27706 := by
-  show (S37 ++ T38).length = 27706; rw [List.length_append, len38]; rfl
-theorem len36 : T36.length = 27766 := by
-  show (S36 ++ T37).length = 27766; rw [List.length_append, len37]; rfl
-theorem len35 : T35.length = 27918 := by
-  show (S35 ++ T36).length = 27918; rw [List.length_append, len36]; rfl
-theorem len34 : T34.length = 28023 := by
-  show (S34 ++ T35).length = 28023; rw [List.length_append, len35]; rfl
-theorem len33 : T33.length = 28076 := by
-  show (S33 ++ T34).length = 28076; rw [List.length_append, len34]; rfl
-theorem len32 : T32.length = 28135 := by
-  show (S32 ++ T33).length = 28135; rw [List.length_append, len33]; rfl
-theorem len31 : T31.length = 28148 := by
-  show (S31 ++ T32).length = 28148; rw [List.length_append, len32]; rfl
-theorem len30 : T30.length = 28154 := by
-  show (S30 ++ T31).length = 28154; rw [List.length_append, len31]; rfl
-theorem len29 : T29.length = 28160 := by
-  show (S29 ++ T30).length = 28160; rw [List.length_append, len30]; rfl
-theorem len28 : T28.length = 28166 := by
-  show (S28 ++ T29).length = 28166; rw [List.length_append, len29]; rfl
-theorem len27 : T27.length = 28172 := by
-  show (S27 ++ T28).length = 28172; rw [List.length_append, len28]; rfl
-theorem len26 : T26.length = 28180 := by
-  show (S26 ++ T27).length = 28180; rw [List.length_append, len27]; rfl
-theorem len25 : T25.length = 28186 := by
-  show (S25 ++ T26).length = 28186; rw [List.length_append, len26]; rfl
-theorem len24 : T24.length = 28194 := by
-  show (S24 ++ T25).length = 28194; rw [List.length_append, len25]; rfl
-theorem len23 : T23.length = 28200 := by
-  show (S23 ++ T24).length = 28200; rw [List.length_append, len24]; rfl
-theorem len22 : T22.length = 28208 := by
-  show (S22 ++ T23).length = 28208; rw [List.length_append, len23]; rfl
-theorem len21 : T21.length = 28214 := by
-  show (S21 ++ T22).length = 28214; rw [List.length_append, len22]; rfl
-theorem len20 : T20.length = 28222 := by
-  show (S20 ++ T21).length = 28222; rw [List.length_append, len21]; rfl
-theorem len19 : T19.length = 28228 := by
-  show (S19 ++ T20).length = 28228; rw [List.length_append, len20]; rfl
-theorem len18 : T18.length = 28236 := by
-  show (S18 ++ T19).length = 28236; rw [List.length_append, len19]; rfl
-theorem len17 : T17.length = 28242 := by
-  show (S17 ++ T18).length = 28242; rw [List.length_append, len18]; rfl
-theorem len16 : T16.length = 28248 := by
-  show (S16 ++ T17).length = 28248; rw [List.length_append, len17]; rfl
-theorem len15 : T15.length = 28276 := by
-  show (S15 ++ T16).length = 28276; rw [List.length_append, len16]; rfl
-theorem len14 : T14.length = 28292 := by
-  show (S14 ++ T15).length = 28292; rw [List.length_append, len15]; rfl
-theorem len13 : T13.length = 28450 := by
-  show (S13 ++ T14).length = 28450; rw [List.length_append, len14]; rfl
-theorem len12 : T12.length = 28524 := by
-  show (S12 ++ T13).length = 28524; rw [List.length_append, len13]; rfl
-theorem len11 : T11.length = 28597 := by
-  show (S11 ++ T12).length = 28597; rw [List.length_append, len12]; rfl
-theorem len10 : T10.length = 28666 := by
-  show (S10 ++ T11).length = 28666; rw [List.length_append, len11]; rfl
-theorem len9 : T9.length = 28888 := by
-  show (S9 ++ T10).length = 28888; rw [List.length_append, len10]; rfl
-theorem len8 : T8.length = 29246 := by
-  show (S8 ++ T9).length = 29246; rw [List.length_append, len9]; rfl
-theorem len7 : T7.length = 30320 := by
-  show (S7 ++ T8).length = 30320; rw [List.length_append, len8]; rfl
-theorem len6 : T6.length = 30388 := by
-  show (S6 ++ T7).length = 30388; rw [List.length_append, len7]; rfl
-theorem len5 : T5.length = 30444 := by
-  show (S5 ++ T6).length = 30444; rw [List.length_append, len6]; rfl
-theorem len4 : T4.length = 30511 := by
-  show (S4 ++ T5).length = 30511; rw [List.length_append, len5]; rfl
-theorem len3 : T3.length = 30533 := by
-  show (S3 ++ T4).length = 30533; rw [List.length_append, len4]; rfl
-theorem len2 : T2.length = 30539 := by
-  show (S2 ++ T3).length = 30539; rw [List.length_append, len3]; rfl
-theorem len1 : T1.length = 30545 := by
-  show (S1 ++ T2).length = 30545; rw [List.length_append, len2]; rfl
-theorem len0 : T0.length = 30551 := by
-  show (S0 ++ T1).length = 30551; rw [List.length_append, len1]; rfl
+theorem len236 : T236.length = 0 := rfl
+theorem len235 : T235.length = 24 := by
+  show (S235 ++ T236).length = 24; rw [List.length_append, len236]; rfl
+theorem len234 : T234.length = 45 := by
+  show (S234 ++ T235).length = 45; rw [List.length_append, len235]; rfl
+theorem len233 : T233.length = 201 := by
+  show (S233 ++ T234).length = 201; rw [List.length_append, len234]; rfl
+theorem len232 : T232.length = 292 := by
+  show (S232 ++ T233).length = 292; rw [List.length_append, len233]; rfl
+theorem len231 : T231.length = 427 := by
+  show (S231 ++ T232).length = 427; rw [List.length_append, len232]; rfl
+theorem len230 : T230.length = 906 := by
+  show (S230 ++ T231).length = 906; rw [List.length_append, len231]; rfl
+theorem len229 : T229.length = 1109 := by
+  show (S229 ++ T230).length = 1109; rw [List.length_append, len230]; rfl
+theorem len228 : T228.length = 1341 := by
+  show (S228 ++ T229).length = 1341; rw [List.length_append, len229]; rfl
+theorem len227 : T227.length = 1355 := by
+  show (S227 ++ T228).length = 1355; rw [List.length_append, len228]; rfl
+theorem len226 : T226.length = 1429 := by
+  show (S226 ++ T227).length = 1429; rw [List.length_append, len227]; rfl
+theorem len225 : T225.length = 1463 := by
+  show (S225 ++ T226).length = 1463; rw [List.length_append, len226]; rfl
+theorem len224 : T224.length = 1495 := by
+  show (S224 ++ T225).length = 1495; rw [List.length_append, len225]; rfl
+theorem len223 : T223.length = 1590 := by
+  show (S223 ++ T224).length = 1590; rw [List.length_append, len224]; rfl
+theorem len222 : T222.length = 1711 := by
+  show (S222 ++ T223).length = 1711; rw [List.length_append, len223]; rfl
+theorem len221 : T221.length = 1861 := by
+  show (S221 ++ T222).length = 1861; rw [List.length_append, len222]; rfl
+theorem len220 : T220.length = 1921 := by
+  show (S220 ++ T221).length = 1921; rw [List.length_append, len221]; rfl
+theorem len219 : T219.length = 2057 := by
+  show (S219 ++ T220).length = 2057; rw [List.length_append, len220]; rfl
+theorem len218 : T218.length = 2379 := by
+  show (S218 ++ T219).length = 2379; rw [List.length_append, len219]; rfl
+theorem len217 : T217.length = 3100 := by
+  show (S217 ++ T218).length = 3100; rw [List.length_append, len218]; rfl
+theorem len216 : T216.length = 4361 := by
+  show (S216 ++ T217).length = 4361; rw [List.length_append, len217]; rfl
+theorem len215 : T215.length = 4414 := by
+  show (S215 ++ T216).length = 4414; rw [List.length_append, len216]; rfl
+theorem len214 : T214.length = 4787 := by
+  show (S214 ++ T215).length = 4787; rw [List.length_append, len215]; rfl
+theorem len213 : T213.length = 4897 := by
+  show (S213 ++ T214).length = 4897; rw [List.length_append, len214]; rfl
+theorem len212 : T212.length = 4950 := by
+  show (S212 ++ T213).length = 4950; rw [List.length_append, len213]; rfl
+theorem len211 : T211.length = 5466 := by
+  show (S211 ++ T212).length = 5466; rw [List.length_append, len212]; rfl
+theorem len210 : T210.length = 5593 := by
+  show (S210 ++ T211).length = 5593; rw [List.length_append, len211]; rfl
+theorem len209 : T209.length = 5634 := by
+  show (S209 ++ T210).length = 5634; rw [List.length_append, len210]; rfl
+theorem len208 : T208.length = 5777 := by
+  show (S208 ++ T209).length = 5777; rw [List.length_append, len209]; rfl
+theorem len207 : T207.length = 5867 := by
+  show (S207 ++ T208).length = 5867; rw [List.length_append, len208]; rfl
+theorem len206 : T206.length = 5927 := by
+  show (S206 ++ T207).length = 5927; rw [List.length_append, len207]; rfl
+theorem len205 : T205.length = 6023 := by
+  show (S205 ++ T206).length = 6023; rw [List.length_append, len206]; rfl
+theorem len204 : T204.length = 6102 := by
+  show (S204 ++ T205).length = 6102; rw [List.length_append, len205]; rfl
+theorem len203 : T203.length = 6145 := by
+  show (S203 ++ T204).length = 6145; rw [List.length_append, len204]; rfl
+theorem len202 : T202.length = 6427 := by
+  show (S202 ++ T203).length = 6427; rw [List.length_append, len203]; rfl
+theorem len201 : T201.length = 6488 := by
+  show (S201 ++ T202).length = 6488; rw [List.length_append, len202]; rfl
+theorem len200 : T200.length = 6544 := by
+  show (S200 ++ T201).length = 6544; rw [List.length_append, len201]; rfl
+theorem len199 : T199.length = 6603 := by
+  show (S199 ++ T200).length = 6603; rw [List.length_append, len200]; rfl
+theorem len198 : T198.length = 6661 := by
+  show (S198 ++ T199).length = 6661; rw [List.length_append, len199]; rfl
+theorem len197 : T197.length = 6709 := by
+  show (S197 ++ T198).length = 6709; rw [List.length_append, len198]; rfl
+theorem len196 : T196.length = 6739 := by
+  show (S196 ++ T197).length = 6739; rw [List.length_append, len197]; rfl
+theorem len195 : T195.length = 6753 := by
+  show (S195 ++ T196).length = 6753; rw [List.length_append, len196]; rfl
+theorem len194 : T194.length = 6773 := by
+  show (S194 ++ T195).length = 6773; rw [List.length_append, len195]; rfl
+theorem len193 : T193.length = 6805 := by
+  show (S193 ++ T194).length = 6805; rw [List.length_append, len194]; rfl
+theorem len192 : T192.length = 6828 := by
+  show (S192 ++ T193).length = 6828; rw [List.length_append, len193]; rfl
+theorem len191 : T191.length = 6845 := by
+  show (S191 ++ T192).length = 6845; rw [List.length_append, len192]; rfl
+theorem len190 : T190.length = 6863 := by
+  show (S190 ++ T191).length = 6863; rw [List.length_append, len191]; rfl
+theorem len189 : T189.length = 6881 := by
+  show (S189 ++ T190).length = 6881; rw [List.length_append, len190]; rfl
+theorem len188 : T188.length = 6955 := by
+  show (S188 ++ T189).length = 6955; rw [List.length_append, len189]; rfl
+theorem len187 : T187.length = 7043 := by
+  show (S187 ++ T188).length = 7043; rw [List.length_append, len188]; rfl
+theorem len186 : T186.length = 7099 := by
+  show (S186 ++ T187).length = 7099; rw [List.length_append, len187]; rfl
+theorem len185 : T185.length = 7142 := by
+  show (S185 ++ T186).length = 7142; rw [List.length_append, len186]; rfl
+theorem len184 : T184.length = 7187 := by
+  show (S184 ++ T185).length = 7187; rw [List.length_append, len185]; rfl
+theorem len183 : T183.length = 7193 := by
+  show (S183 ++ T184).length = 7193; rw [List.length_append, len184]; rfl
+theorem len182 : T182.length = 7201 := by
+  show (S182 ++ T183).length = 7201; rw [List.length_append, len183]; rfl
+theorem len181 : T181.length = 7209 := by
+  show (S181 ++ T182).length = 7209; rw [List.length_append, len182]; rfl
+theorem len180 : T180.length = 7217 := by
+  show (S180 ++ T181).length = 7217; rw [List.length_append, len181]; rfl
+theorem len179 : T179.length = 7223 := by
+  show (S179 ++ T180).length = 7223; rw [List.length_append, len180]; rfl
+theorem len178 : T178.length = 7229 := by
+  show (S178 ++ T179).length = 7229; rw [List.length_append, len179]; rfl
+theorem len177 : T177.length = 7235 := by
+  show (S177 ++ T178).length = 7235; rw [List.length_append, len178]; rfl
+theorem len176 : T176.length = 7241 := by
+  show (S176 ++ T177).length = 7241; rw [List.length_append, len177]; rfl
+theorem len175 : T175.length = 7247 := by
+  show (S175 ++ T176).length = 7247; rw [List.length_append, len176]; rfl
+theorem len174 : T174.length = 7253 := by
+  show (S174 ++ T175).length = 7253; rw [List.length_append, len175]; rfl
+theorem len173 : T173.length = 7259 := by
+  show (S173 ++ T174).length = 7259; rw [List.length_append, len174]; rfl
+theorem len172 : T172.length = 7265 := by
+  show (S172 ++ T173).length = 7265; rw [List.length_append, len173]; rfl
+theorem len171 : T171.length = 7271 := by
+  show (S171 ++ T172).length = 7271; rw [List.length_append, len172]; rfl
+theorem len170 : T170.length = 7277 := by
+  show (S170 ++ T171).length = 7277; rw [List.length_append, len171]; rfl
+theorem len169 : T169.length = 7283 := by
+  show (S169 ++ T170).length = 7283; rw [List.length_append, len170]; rfl
+theorem len168 : T168.length = 7289 := by
+  show (S168 ++ T169).length = 7289; rw [List.length_append, len169]; rfl
+theorem len167 : T167.length = 7295 := by
+  show (S167 ++ T168).length = 7295; rw [List.length_append, len168]; rfl
+theorem len166 : T166.length = 7301 := by
+  show (S166 ++ T167).length = 7301; rw [List.length_append, len167]; rfl
+theorem len165 : T165.length = 7307 := by
+  show (S165 ++ T166).length = 7307; rw [List.length_append, len166]; rfl
+theorem len164 : T164.length = 7313 := by
+  show (S164 ++ T165).length = 7313; rw [List.length_append, len165]; rfl
+theorem len163 : T163.length = 7319 := by
+  show (S163 ++ T164).length = 7319; rw [List.length_append, len164]; rfl
+theorem len162 : T162.length = 7392 := by
+  show (S162 ++ T163).length = 7392; rw [List.length_append, len163]; rfl
+theorem len161 : T161.length = 7564 := by
+  show (S161 ++ T162).length = 7564; rw [List.length_append, len162]; rfl
+theorem len160 : T160.length = 8088 := by
+  show (S160 ++ T161).length = 8088; rw [List.length_append, len161]; rfl
+theorem len159 : T159.length = 8178 := by
+  show (S159 ++ T160).length = 8178; rw [List.length_append, len160]; rfl
+theorem len158 : T158.length = 8221 := by
+  show (S158 ++ T159).length = 8221; rw [List.length_append, len159]; rfl
+theorem len157 : T157.length = 8315 := by
+  show (S157 ++ T158).length = 8315; rw [List.length_append, len158]; rfl
+theorem len156 : T156.length = 8439 := by
+  show (S156 ++ T157).length = 8439; rw [List.length_append, len157]; rfl
+theorem len155 : T155.length = 8582 := by
+  show (S155 ++ T156).length = 8582; rw [List.length_append, len156]; rfl
+theorem len154 : T154.length = 8706 := by
+  show (S154 ++ T155).length = 8706; rw [List.length_append, len155]; rfl
+theorem len153 : T153.length = 8763 := by
+  show (S153 ++ T154).length = 8763; rw [List.length_append, len154]; rfl
+theorem len152 : T152.length = 9431 := by
+  show (S152 ++ T153).length = 9431; rw [List.length_append, len153]; rfl
+theorem len151 : T151.length = 10182 := by
+  show (S151 ++ T152).length = 10182; rw [List.length_append, len152]; rfl
+theorem len150 : T150.length = 10827 := by
+  show (S150 ++ T151).length = 10827; rw [List.length_append, len151]; rfl
+theorem len149 : T149.length = 11006 := by
+  show (S149 ++ T150).length = 11006; rw [List.length_append, len150]; rfl
+theorem len148 : T148.length = 11120 := by
+  show (S148 ++ T149).length = 11120; rw [List.length_append, len149]; rfl
+theorem len147 : T147.length = 11306 := by
+  show (S147 ++ T148).length = 11306; rw [List.length_append, len148]; rfl
+theorem len146 : T146.length = 11501 := by
+  show (S146 ++ T147).length = 11501; rw [List.length_append, len147]; rfl
+theorem len145 : T145.length = 11600 := by
+  show (S145 ++ T146).length = 11600; rw [List.length_append, len146]; rfl
+theorem len144 : T144.length = 11711 := by
+  show (S144 ++ T145).length = 11711; rw [List.length_append, len145]; rfl
+theorem len143 : T143.length = 11969 := by
+  show (S143 ++ T144).length = 11969; rw [List.length_append, len144]; rfl
+theorem len142 : T142.length = 12073 := by
+  show (S142 ++ T143).length = 12073; rw [List.length_append, len143]; rfl
+theorem len141 : T141.length = 12173 := by
+  show (S141 ++ T142).length = 12173; rw [List.length_append, len142]; rfl
+theorem len140 : T140.length = 12352 := by
+  show (S140 ++ T141).length = 12352; rw [List.length_append, len141]; rfl
+theorem len139 : T139.length = 12559 := by
+  show (S139 ++ T140).length = 12559; rw [List.length_append, len140]; rfl
+theorem len138 : T138.length = 12949 := by
+  show (S138 ++ T139).length = 12949; rw [List.length_append, len139]; rfl
+theorem len137 : T137.length = 13118 := by
+  show (S137 ++ T138).length = 13118; rw [List.length_append, len138]; rfl
+theorem len136 : T136.length = 13551 := by
+  show (S136 ++ T137).length = 13551; rw [List.length_append, len137]; rfl
+theorem len135 : T135.length = 13721 := by
+  show (S135 ++ T136).length = 13721; rw [List.length_append, len136]; rfl
+theorem len134 : T134.length = 13857 := by
+  show (S134 ++ T135).length = 13857; rw [List.length_append, len135]; rfl
+theorem len133 : T133.length = 13910 := by
+  show (S133 ++ T134).length = 13910; rw [List.length_append, len134]; rfl
+theorem len132 : T132.length = 14046 := by
+  show (S132 ++ T133).length = 14046; rw [List.length_append, len133]; rfl
+theorem len131 : T131.length = 14083 := by
+  show (S131 ++ T132).length = 14083; rw [List.length_append, len132]; rfl
+theorem len130 : T130.length = 14135 := by
+  show (S130 ++ T131).length = 14135; rw [List.length_append, len131]; rfl
+theorem len129 : T129.length = 14154 := by
+  show (S129 ++ T130).length = 14154; rw [List.length_append, len130]; rfl
+theorem len128 : T128.length = 14287 := by
+  show (S128 ++ T129).length = 14287; rw [List.length_append, len129]; rfl
+theorem len127 : T127.length = 14321 := by
+  show (S127 ++ T128).length = 14321; rw [List.length_append, len128]; rfl
+theorem len126 : T126.length = 14353 := by
+  show (S126 ++ T127).length = 14353; rw [List.length_append, len127]; rfl
+theorem len125 : T125.length = 14383 := by
+  show (S125 ++ T126).length = 14383; rw [List.length_append, len126]; rfl
+theorem len124 : T124.length = 14396 := by
+  show (S124 ++ T125).length = 14396; rw [List.length_append, len125]; rfl
+theorem len123 : T123.length = 14409 := by
+  show (S123 ++ T124).length = 14409; rw [List.length_append, len124]; rfl
+theorem len122 : T122.length = 14674 := by
+  show (S122 ++ T123).length = 14674; rw [List.length_append, len123]; rfl
+theorem len121 : T121.length = 14735 := by
+  show (S121 ++ T122).length = 14735; rw [List.length_append, len122]; rfl
+theorem len120 : T120.length = 14848 := by
+  show (S120 ++ T121).length = 14848; rw [List.length_append, len121]; rfl
+theorem len119 : T119.length = 15329 := by
+  show (S119 ++ T120).length = 15329; rw [List.length_append, len120]; rfl
+theorem len118 : T118.length = 15440 := by
+  show (S118 ++ T119).length = 15440; rw [List.length_append, len119]; rfl
+theorem len117 : T117.length = 15502 := by
+  show (S117 ++ T118).length = 15502; rw [List.length_append, len118]; rfl
+theorem len116 : T116.length = 15618 := by
+  show (S116 ++ T117).length = 15618; rw [List.length_append, len117]; rfl
+theorem len115 : T115.length = 15935 := by
+  show (S115 ++ T116).length = 15935; rw [List.length_append, len116]; rfl
+theorem len114 : T114.length = 16284 := by
+  show (S114 ++ T115).length = 16284; rw [List.length_append, len115]; rfl
+theorem len113 : T113.length = 16399 := by
+  show (S113 ++ T114).length = 16399; rw [List.length_append, len114]; rfl
+theorem len112 : T112.length = 16801 := by
+  show (S112 ++ T113).length = 16801; rw [List.length_append, len113]; rfl
+theorem len111 : T111.length = 17133 := by
+  show (S111 ++ T112).length = 17133; rw [List.length_append, len112]; rfl
+theorem len110 : T110.length = 17430 := by
+  show (S110 ++ T111).length = 17430; rw [List.length_append, len111]; rfl
+theorem len109 : T109.length = 17659 := by
+  show (S109 ++ T110).length = 17659; rw [List.length_append, len110]; rfl
+theorem len108 : T108.length = 17818 := by
+  show (S108 ++ T109).length = 17818; rw [List.length_append, len109]; rfl
+theorem len107 : T107.length = 17937 := by
+  show (S107 ++ T108).length = 17937; rw [List.length_append, len108]; rfl
+theorem len106 : T106.length = 18005 := by
+  show (S106 ++ T107).length = 18005; rw [List.length_append, len107]; rfl
+theorem len105 : T105.length = 18212 := by
+  show (S105 ++ T106).length = 18212; rw [List.length_append, len106]; rfl
+theorem len104 : T104.length = 18605 := by
+  show (S104 ++ T105).length = 18605; rw [List.length_append, len105]; rfl
+theorem len103 : T103.length = 18668 := by
+  show (S103 ++ T104).length = 18668; rw [List.length_append, len104]; rfl
+theorem len102 : T102.length = 18877 := by
+  show (S102 ++ T103).length = 18877; rw [List.length_append, len103]; rfl
+theorem len101 : T101.length = 19033 := by
+  show (S101 ++ T102).length = 19033; rw [List.length_append, len102]; rfl
+theorem len100 : T100.length = 19064 := by
+  show (S100 ++ T101).length = 19064; rw [List.length_append, len101]; rfl
+theorem len99 : T99.length = 19160 := by
+  show (S99 ++ T100).length = 19160; rw [List.length_append, len100]; rfl
+theorem len98 : T98.length = 19427 := by
+  show (S98 ++ T99).length = 19427; rw [List.length_append, len99]; rfl
+theorem len97 : T97.length = 19937 := by
+  show (S97 ++ T98).length = 19937; rw [List.length_append, len98]; rfl
+theorem len96 : T96.length = 20159 := by
+  show (S96 ++ T97).length = 20159; rw [List.length_append, len97]; rfl
+theorem len95 : T95.length = 20217 := by
+  show (S95 ++ T96).length = 20217; rw [List.length_append, len96]; rfl
+theorem len94 : T94.length = 20399 := by
+  show (S94 ++ T95).length = 20399; rw [List.length_append, len95]; rfl
+theorem len93 : T93.length = 20487 := by
+  show (S93 ++ T94).length = 20487; rw [List.length_append, len94]; rfl
+theorem len92 : T92.length = 20760 := by
+  show (S92 ++ T93).length = 20760; rw [List.length_append, len93]; rfl
+theorem len91 : T91.length = 20814 := by
+  show (S91 ++ T92).length = 20814; rw [List.length_append, len92]; rfl
+theorem len90 : T90.length = 21143 := by
+  show (S90 ++ T91).length = 21143; rw [List.length_append, len91]; rfl
+theorem len89 : T89.length = 21195 := by
+  show (S89 ++ T90).length = 21195; rw [List.length_append, len90]; rfl
+theorem len88 : T88.length = 21365 := by
+  show (S88 ++ T89).length = 21365; rw [List.length_append, len89]; rfl
+theorem len87 : T87.length = 21655 := by
+  show (S87 ++ T88).length = 21655; rw [List.length_append, len88]; rfl
+theorem len86 : T86.length = 21854 := by
+  show (S86 ++ T87).length = 21854; rw [List.length_append, len87]; rfl
+theorem len85 : T85.length = 21883 := by
+  show (S85 ++ T86).length = 21883; rw [List.length_append, len86]; rfl
+theorem len84 : T84.length = 22087 := by
+  show (S84 ++ T85).length = 22087; rw [List.length_append, len85]; rfl
+theorem len83 : T83.length = 22218 := by
+  show (S83 ++ T84).length = 22218; rw [List.length_append, len84]; rfl
+theorem len82 : T82.length = 22419 := by
+  show (S82 ++ T83).length = 22419; rw [List.length_append, len83]; rfl
+theorem len81 : T81.length = 22693 := by
+  show (S81 ++ T82).length = 22693; rw [List.length_append, len82]; rfl
+theorem len80 : T80.length = 22757 := by
+  show (S80 ++ T81).length = 22757; rw [List.length_append, len81]; rfl
+theorem len79 : T79.length = 22873 := by
+  show (S79 ++ T80).length = 22873; rw [List.length_append, len80]; rfl
+theorem len78 : T78.length = 22985 := by
+  show (S78 ++ T79).length = 22985; rw [List.length_append, len79]; rfl
+theorem len77 : T77.length = 23182 := by
+  show (S77 ++ T78).length = 23182; rw [List.length_append, len78]; rfl
+theorem len76 : T76.length = 23246 := by
+  show (S76 ++ T77).length = 23246; rw [List.length_append, len77]; rfl
+theorem len75 : T75.length = 23393 := by
+  show (S75 ++ T76).length = 23393; rw [List.length_append, len76]; rfl
+theorem len74 : T74.length = 23460 := by
+  show (S74 ++ T75).length = 23460; rw [List.length_append, len75]; rfl
+theorem len73 : T73.length = 24238 := by
+  show (S73 ++ T74).length = 24238; rw [List.length_append, len74]; rfl
+theorem len72 : T72.length = 24350 := by
+  show (S72 ++ T73).length = 24350; rw [List.length_append, len73]; rfl
+theorem len71 : T71.length = 24479 := by
+  show (S71 ++ T72).length = 24479; rw [List.length_append, len72]; rfl
+theorem len70 : T70.length = 24707 := by
+  show (S70 ++ T71).length = 24707; rw [List.length_append, len71]; rfl
+theorem len69 : T69.length = 24750 := by
+  show (S69 ++ T70).length = 24750; rw [List.length_append, len70]; rfl
+theorem len68 : T68.length = 24859 := by
+  show (S68 ++ T69).length = 24859; rw [List.length_append, len69]; rfl
+theorem len67 : T67.length = 24909 := by
+  show (S67 ++ T68).length = 24909; rw [List.length_append, len68]; rfl
+theorem len66 : T66.length = 24973 := by
+  show (S66 ++ T67).length = 24973; rw [List.length_append, len67]; rfl
+theorem len65 : T65.length = 25220 := by
+  show (S65 ++ T66).length = 25220; rw [List.length_append, len66]; rfl
+theorem len64 : T64.length = 25269 := by
+  show (S64 ++ T65).length = 25269; rw [List.length_append, len65]; rfl
+theorem len63 : T63.length = 25313 := by
+  show (S63 ++ T64).length = 25313; rw [List.length_append, len64]; rfl
+theorem len62 : T62.length = 25443 := by
+  show (S62 ++ T63).length = 25443; rw [List.length_append, len63]; rfl
+theorem len61 : T61.length = 25512 := by
+  show (S61 ++ T62).length = 25512; rw [List.length_append, len62]; rfl
+theorem len60 : T60.length = 25618 := by
+  show (S60 ++ T61).length = 25618; rw [List.length_append, len61]; rfl
+theorem len59 : T59.length = 25738 := by
+  show (S59 ++ T60).length = 25738; rw [List.length_append, len60]; rfl
+theorem len58 : T58.length = 25998 := by
+  show (S58 ++ T59).length = 25998; rw [List.length_append, len59]; rfl
+theorem len57 : T57.length = 26101 := by
+  show (S57 ++ T58).length = 26101; rw [List.length_append, len58]; rfl
+theorem len56 : T56.length = 26209 := by
+  show (S56 ++ T57).length = 26209; rw [List.length_append, len57]; rfl
+theorem len55 : T55.length = 26829 := by
+  show (S55 ++ T56).length = 26829; rw [List.length_append, len56]; rfl
+theorem len54 : T54.length = 27011 := by
+  show (S54 ++ T55).length = 27011; rw [List.length_append, len55]; rfl
+theorem len53 : T53.length = 27128 := by
+  show (S53 ++ T54).length = 27128; rw [List.length_append, len54]; rfl
+theorem len52 : T52.length = 27134 := by
+  show (S52 ++ T53).length = 27134; rw [List.length_append, len53]; rfl
+theorem len51 : T51.length = 27140 := by
+  show (S51 ++ T52).length = 27140; rw [List.length_append, len52]; rfl
+theorem len50 : T50.length = 27146 := by
+  show (S50 ++ T51).length = 27146; rw [List.length_append, len51]; rfl
+theorem len49 : T49.length = 27152 := by
+  show (S49 ++ T50).length = 27152; rw [List.length_append, len50]; rfl
+theorem len48 : T48.length = 27158 := by
+  show (S48 ++ T49).length = 27158; rw [List.length_append, len49]; rfl
+theorem len47 : T47.length = 27174 := by
+  show (S47 ++ T48).length = 27174; rw [List.length_append, len48]; rfl
+theorem len46 : T46.length = 27237 := by
+  show (S46 ++ T47).length = 27237; rw [List.length_append, len47]; rfl
+theorem len45 : T45.length = 27288 := by
+  show (S45 ++ T46).length = 27288; rw [List.length_append, len46]; rfl
+theorem len44 : T44.length = 27314 := by
+  show (S44 ++ T45).length = 27314; rw [List.length_append, len45]; rfl
+theorem len43 : T43.length = 27360 := by
+  show (S43 ++ T44).length = 27360; rw [List.length_append, len44]; rfl
+theorem len42 : T42.length = 27413 := by
+  show (S42 ++ T43).length = 27413; rw [List.length_append, len43]; rfl
+theorem len41 : T41.length = 27573 := by
+  show (S41 ++ T42).length = 27573; rw [List.length_append, len42]; rfl
+theorem len40 : T40.length = 27643 := by
+  show (S40 ++ T41).length = 27643; rw [List.length_append, len41]; rfl
+theorem len39 : T39.length = 27787 := by
+  show (S39 ++ T40).length = 27787; rw [List.length_append, len40]; rfl
+theorem len38 : T38.length = 27848 := by
+  show (S38 ++ T39).length = 27848; rw [List.length_append, len39]; rfl
+theorem len37 : T37.length = 27908 := by
+  show (S37 ++ T38).length = 27908; rw [List.length_append, len38]; rfl
+theorem len36 : T36.length = 27968 := by
+  show (S36 ++ T37).length = 27968; rw [List.length_append, len37]; rfl
+theorem len35 : T35.length = 28120 := by
+  show (S35 ++ T36).length = 28120; rw [List.length_append, len36]; rfl
+theorem len34 : T34.length = 28225 := by
+  show (S34 ++ T35).length = 28225; rw [List.length_append, len35]; rfl
+theorem len33 : T33.length = 28278 := by
+  show (S33 ++ T34).length = 28278; rw [List.length_append, len34]; rfl
+theorem len32 : T32.length = 28337 := by
+  show (S32 ++ T33).length = 28337; rw [List.length_append, len33]; rfl
+theorem len31 : T31.length = 28350 := by
+  show (S31 ++ T32).length = 28350; rw [List.length_append, len32]; rfl
+theorem len30 : T30.length = 28356 := by
+  show (S30 ++ T31).length = 28356; rw [List.length_append, len31]; rfl
+theorem len29 : T29.length = 28362 := by
+  show (S29 ++ T30).length = 28362; rw [List.length_append, len30]; rfl
+theorem len28 : T28.length = 28368 := by
+  show (S28 ++ T29).length = 28368; rw [List.length_append, len29]; rfl
+theorem len27 : T27.length = 28374 := by
+  show (S27 ++ T28).length = 28374; rw [List.length_append, len28]; rfl
+theorem len26 : T26.length = 28380 := by
+  show (S26 ++ T27).length = 28380; rw [List.length_append, len27]; rfl
+theorem len25 : T25.length = 28386 := by
+  show (S25 ++ T26).length = 28386; rw [List.length_append, len26]; rfl
+theorem len24 : T24.length = 28392 := by
+  show (S24 ++ T25).length = 28392; rw [List.length_append, len25]; rfl
+theorem len23 : T23.length = 28398 := by
+  show (S23 ++ T24).length = 28398; rw [List.length_append, len24]; rfl
+theorem len22 : T22.length = 28404 := by
+  show (S22 ++ T23).length = 28404; rw [List.length_append, len23]; rfl
+theorem len21 : T21.length = 28410 := by
+  show (S21 ++ T22).length = 28410; rw [List.length_append, len22]; rfl
+theorem len20 : T20.length = 28416 := by
+  show (S20 ++ T21).length = 28416; rw [List.length_append, len21]; rfl
+theorem len19 : T19.length = 28422 := by
+  show (S19 ++ T20).length = 28422; rw [List.length_append, len20]; rfl
+theorem len18 : T18.length = 28428 := by
+  show (S18 ++ T19).length = 28428; rw [List.length_append, len19]; rfl
+theorem len17 : T17.length = 28434 := by
+  show (S17 ++ T18).length = 28434; rw [List.length_append, len18]; rfl
+theorem len16 : T16.length = 28440 := by
+  show (S16 ++ T17).length = 28440; rw [List.length_append, len17]; rfl
+theorem len15 : T15.length = 28468 := by
+  show (S15 ++ T16).length = 28468; rw [List.length_append, len16]; rfl
+theorem len14 : T14.length = 28484 := by
+  show (S14 ++ T15).length = 28484; rw [List.length_append, len15]; rfl
+theorem len13 : T13.length = 28642 := by
+  show (S13 ++ T14).length = 28642; rw [List.length_append, len14]; rfl
+theorem len12 : T12.length = 28716 := by
+  show (S12 ++ T13).length = 28716; rw [List.length_append, len13]; rfl
+theorem len11 : T11.length = 28789 := by
+  show (S11 ++ T12).length = 28789; rw [List.length_append, len12]; rfl
+theorem len10 : T10.length = 28858 := by
+  show (S10 ++ T11).length = 28858; rw [List.length_append, len11]; rfl
+theorem len9 : T9.length = 29080 := by
+  show (S9 ++ T10).length = 29080; rw [List.length_append, len10]; rfl
+theorem len8 : T8.length = 29438 := by
+  show (S8 ++ T9).length = 29438; rw [List.length_append, len9]; rfl
+theorem len7 : T7.length = 30512 := by
+  show (S7 ++ T8).length = 30512; rw [List.length_append, len8]; rfl
+theorem len6 : T6.length = 30580 := by
+  show (S6 ++ T7).length = 30580; rw [List.length_append, len7]; rfl
+theorem len5 : T5.length = 30636 := by
+  show (S5 ++ T6).length = 30636; rw [List.length_append, len6]; rfl
+theorem len4 : T4.length = 30703 := by
+  show (S4 ++ T5).length = 30703; rw [List.length_append, len5]; rfl
+theorem len3 : T3.length = 30725 := by
+  show (S3 ++ T4).length = 30725; rw [List.length_append, len4]; rfl
+theorem len2 : T2.length = 30731 := by
+  show (S2 ++ T3).length = 30731; rw [List.length_append, len3]; rfl
+theorem len1 : T1.length = 30737 := by
+  show (S1 ++ T2).length = 30737; rw [List.length_append, len2]; rfl
+theorem len0 : T0.length = 30743 := by
+  show (S0 ++ T1).length = 30743; rw [List.length_append, len1]; rfl
 theorem hF : 8 * T0.length + 8 = F := by rw [len0]; rfl
-theorem hK : 235 ≤ T0.length + 1 := by rw [len0]; decide
-theorem hM : (D234.getLast?.map isMain) = some true := by decide +kernel
+theorem hK : 237 ≤ T0.length + 1 := by rw [len0]; decide
+theorem hM : (D236.getLast?.map isMain) = some true := by decide +kernel
 /-- **the parse of the text** -/
 theorem parse : refParse W0 = some Ls0 := refParse_of tk0 hK (hF ▸ ch0) hM
 /-- **the text lexes and parses to the AST** -/

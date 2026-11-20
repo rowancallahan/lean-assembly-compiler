@@ -149,9 +149,9 @@ theorem pg_core {α β : Type} (encA : α → List UInt8) (encB : β → List UI
       (by simp [bytesAt])
     exact ⟨ws, hl, by rw [hw]; exact bytesAt_hosted fun i hi => hmapW i (by omega)⟩
   obtain ⟨σ', out', hexec, hh, hdr, hfit, hnofit, hQ⟩ := hex a out0 tbl0 (envOf s) work.base work.len
-    (by simpa [envOf] using getX_of (h.x11.symm.trans h11) rfl)
-    (by simpa [envOf] using getX_of (h.x12.symm.trans h12) rfl)
-    (by simpa [envOf] using getX_of (h.x14.symm.trans h14) rfl) hwal (by omega) (by omega) hws
+    (getX_of (h.x11.symm.trans h11) rfl)
+    (getX_of (h.x12.symm.trans h12) rfl)
+    (getX_of (h.x14.symm.trans h14) rfl) hwal (by omega) (by omega) hws
     (fun j hj => by simp [envOf]; omega)
     hmax (by show x.length < 2 ^ 32; omega) (by show y.length ≤ out0.length; omega) (by omega) htl
   -- the layout
@@ -198,8 +198,8 @@ theorem pg_core {α β : Type} (encA : α → List UInt8) (encB : β → List UI
     refine ⟨rfl, rfl, fun b hb => ?_, fun b hb => ?_, fun b hb => ?_, rfl, rfl, fun b hb => ?_, fun b hb => ?_,
       fun b hb => ?_⟩
     · obtain _ | _ | b := b
-      · simpa [envOf] using getX_of (h.x10.symm.trans h10) rfl
-      · simpa [envOf] using getX_of (h.x13.symm.trans h13) rfl
+      · exact getX_of (h.x10.symm.trans h10) rfl
+      · exact getX_of (h.x13.symm.trans h13) rfl
       · exact absurd hb (by show ¬(b + 1 + 1 < 2); omega)
     · obtain _ | _ | b := b
       · simp [R]
@@ -212,7 +212,7 @@ theorem pg_core {α β : Type} (encA : α → List UInt8) (encB : β → List UI
         exact (bytes_eq s _ _).trans (by simpa using ho)
       · exact absurd hb (by show ¬(b + 1 + 1 < 2); omega)
     · obtain _ | b := b
-      · simpa [envOf] using getX_of (h.x12.symm.trans h12) rfl
+      · exact getX_of (h.x12.symm.trans h12) rfl
       · exact absurd hb (by show ¬(b + 1 < 1); omega)
     · obtain _ | b := b
       · show 8 * tbl0.length = 8 * wl work.len; rw [htl]
@@ -229,14 +229,14 @@ theorem pg_core {α β : Type} (encA : α → List UInt8) (encB : β → List UI
   have e0 := p3.rbytes 0 (by simp [R]); have e1 := p3.rbytes 1 (by simp [R])
   simp only [hh] at e0 e1
   have e1' : bytesAt s' output.base output.len = out'.map some := by
-    have := (bytes_eq s' _ _).symm.trans e1; simpa using this
+    have := (bytes_eq s' _ _).symm.trans e1; exact this
   refine ⟨by rw [← hra']; exact p1, ?_, abi_of_keep h p5 p6, p5, fun hf => ?_, fun hf => ?_,
     ⟨getX s' 17, p5.x17, ?_⟩⟩
   · intro q hq
     have a2 := hq ⟨output.base, y.length⟩ (by simp); have a3 := hq work (by simp)
     dsimp only at a2
     have e0' : bytesAt s' input.base x.length = (x.map (·.toBitVec)).map some := by
-      have := (bytes_eq s' _ _).symm.trans e0; simpa using this
+      have := (bytes_eq s' _ _).symm.trans e0; exact this
     by_cases hqi : input.base ≤ q ∧ q < input.base + input.len
     · have e0x : bytesAt s' input.base x.length = bytesAt s input.base x.length := by
         rw [e0', hx, List.map_map]; rfl
@@ -304,7 +304,7 @@ theorem pg_of_spec {α β : Type} (encA : α → List UInt8) (encB : β → List
   unfold Region.inRAM at rc
   simp only [codeR, List.length_cons] at rc
   have hok : codeOK entry (code.length + 1) := ⟨hal, rc.1, by omega⟩
-  have hA : rvF.At s entry (mvA4 :: code) := ⟨h, hpc, codeAt_of_codeBytes (by simpa using hok) hcode, by simpa using hok⟩
+  have hA : rvF.At s entry (mvA4 :: code) := ⟨h, hpc, codeAt_of_codeBytes hok hcode, hok⟩
   have sp := Core.At.split _ (l₁ := [mvA4]) (l₂ := code) hA
   obtain ⟨hh, hpc0, hok0, hi0⟩ := first1 sp.1
   obtain ⟨s1, hn⟩ := G.step_addi hh hpc0 hok0 14 2 0 hi0

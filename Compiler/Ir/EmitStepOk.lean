@@ -140,7 +140,7 @@ theorem stepC_ok {Q : Prog Nat} {L : Lay} {qs : Nat} (hK : Code C Q L qs) {st st
       · have h2 := hin'
         rw [T.words_append, List.append_assoc] at h2
         have h3 := h2.right
-        simpa only [T.words_append, List.append_assoc] using h3
+        simp only [T.words_append, List.append_assoc] at h3 ⊢; exact h3
       · rw [show fb - 8 * (G.slots + 1) + 8 * (G.slots + 1) = fb by omega]; exact (Snap.blks).1 hsnap
       · rw [show fb - 8 * (G.slots + 1) + 8 * (G.slots + 1) = fb by omega]; exact hS
     · rw [hev, inUse, hiu]; have := C.T0_al; dsimp only; omega
@@ -171,9 +171,9 @@ theorem stepJ_ok {Q : Prog Nat} {L : Lay} {qs : Nat} (hK : Code C Q L qs) {st st
   rw [step_term hst hF hB hk] at hs
   have hd : B.body.drop fr.pc = [] := List.drop_eq_nil_of_le (by simpa using hk)
   rw [hd] at hc; simp only [Target.emitIs, Option.some.injEq] at hc; subst hc
-  have hct' : T.emitT F (C.fa F.slots fb sv M).nS (L.posF fr.f) q B.term = some ct := by simpa [Target.len] using hct
+  have hct' : T.emitT F (C.fa F.slots fb sv M).nS (L.posF fr.f) q B.term = some ct := by simp [Target.len] at hct; exact hct
   refine T.toCore.runsTo_mono (Ctx.termJ_ok (C := C.fa F.slots fb sv M) (rest := []) hA hR hct'
-    (by simpa [Target.words] using hin) hs hnr) fun s' ⟨l', g', B', e, hB', hA', hR'⟩ => ?_
+    (by simp [Target.words] at hin ⊢; exact hin) hs hnr) fun s' ⟨l', g', B', e, hB', hA', hR'⟩ => ?_
   subst e
   obtain ⟨c', ct', hc', hct'', hin'⟩ := (hK.fn _ _ hF).blocks _ _ hB'
   exact ⟨_, below, F, B', fb, sv, M, L.posF fr.f l', c', ct', rfl, hF, hB', by simpa using hc', hct'', hin', hA', hR',
@@ -212,7 +212,7 @@ theorem stepR_ok {Q : Prog Nat} {L : Lay} {qs : Nat} (hK : Code C Q L qs) {st st
   have hfitc := hS'.fit
   have hfb := hR.fit; have hal := hR.fal; simp only [fa_F0, fa_nS, fa_T0] at hfb hal
   refine T.toCore.runsTo_trans (Ctx.ret_ok (C := C.fa F.slots fb sv M) (rest := []) hA hR hv7 hvok
-    (by simpa using hin) (by rw [fa_sv, hsv]; exact retOK_at hinr))
+    (by simp at hin ⊢; exact hin) (by rw [fa_sv, hsv]; exact retOK_at hinr))
     fun s1 ⟨hpc1', hP1, hab1, hv1⟩ => ?_
   rw [fa_sv, hsv] at hpc1'
   have hA1 : C.AtQ s1 qr := ⟨hP1.ok, hpc1', hP1.unch⟩
@@ -223,7 +223,7 @@ theorem stepR_ok {Q : Prog Nat} {L : Lay} {qs : Nat} (hK : Code C Q L qs) {st st
     rw [fa_F0, show fb + 8 * (F.slots + 1) - 8 * (F.slots + 1) = fb by omega]; exact Pre.fa (Pre.unfa hP1)
   have hsnap1 : (C.fa Fc.slots (fb + 8 * (F.slots + 1)) svc Mc).Snap st.mem cfr.regs (T.mem s1) :=
     Snap.congr ((Snap.blks).2 hsnap) (by simp only [fa_F0, fa_nS, fa_T0]; omega)
-      (fun x h1 h2 => by simp only [fa_F0, fa_T0] at h1 h2; exact hab1 x (by simpa using h1) h2)
+      (fun x h1 h2 => by simp only [fa_F0, fa_T0] at h1 h2; exact hab1 x h1 h2)
   refine T.toCore.runsTo_mono (Ctx.resume_ok (C := C.fa Fc.slots (fb + 8 * (F.slots + 1)) svc Mc) (n := F.slots)
     (vals := vs.map (Arg.eval fr.regs)) hA1 hP1' (by simp only [fa_F0]; omega) hsnap1 hval hKc.nsl
     (by simp only [fa_F0, fa_nS, fa_T0]; omega) (by simp only [fa_F0]; omega) hKF.big hinr' hdl
@@ -238,7 +238,7 @@ theorem stepR_ok {Q : Prog Nat} {L : Lay} {qs : Nat} (hK : Code C Q L qs) {st st
   · refine peak_cons_le ?_ hpk
     show inUse (MemEvent.free (F.slots + 1) :: (st.ev ++ [Ctx.base Q])) ≤ _
     rw [inUse, hiu]
-    have := fits_of (C := C) (cells := st.mem.cells.length) (fb := fb) (by have := hR.cap; simpa using this) (by omega) hal
+    have := fits_of (C := C) (cells := st.mem.cells.length) (fb := fb) (by have := hR.cap; exact this) (by omega) hal
     omega
 
 
@@ -298,7 +298,7 @@ theorem done_ok {Q : Prog Nat} {L : Lay} {qs : Nat} (hK : Code C Q L qs) {st : S
       obtain ⟨rs, hin3⟩ := hK.stub
       have hfb := hR.fal; simp only [fa_F0] at hfb
       refine T.toCore.runsTo_trans (Ctx.ret_ok (C := C.fa F.slots fb sv M) (rest := []) hA hR hv7 hvok
-        (by simpa using hin) (by rw [fa_sv, hsv]; exact retOK_at hin3)) fun s1 ⟨hpc1, hP1, hab1, hv1⟩ => ?_
+        (by simp at hin ⊢; exact hin) (by rw [fa_sv, hsv]; exact retOK_at hin3)) fun s1 ⟨hpc1, hP1, hab1, hv1⟩ => ?_
       rw [fa_sv, hsv] at hpc1
       have hP1' := Pre.unfa hP1
       simp only [fa_F0, fa_nS] at hP1'

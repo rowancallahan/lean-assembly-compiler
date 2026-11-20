@@ -60,7 +60,7 @@ theorem implements1_indM {rk : Kd} {γ β : Type} (sh shO : Shape) (pg : Pg rk) 
       have := hr ht'
       simp only [ht', if_true] at this
       exact this)
-  simpa [spaceA] using this
+  simp [spaceA] at this ⊢; exact this
 
 /-- **User inductives ⇒ `Implements1`** (one function: at most `M` cells per input node). -/
 theorem implements1_ind {rk : Kd} {γ β : Type} (sh : Shape) (pg : Pg rk) (bi : BIn) (a0 : BitVec 64) (nb : Nat)
