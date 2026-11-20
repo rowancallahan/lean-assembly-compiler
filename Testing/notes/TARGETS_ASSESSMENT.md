@@ -4,7 +4,7 @@ Sources: the nine reports `Testing/notes/assess/{conleche-1..3,leanzip-1..2,lean
 All counts are the reports' grep counts (lines, not constructs, comments included): treat as ±20 %. Nothing was built or run by any assessor. "Not counted" means no report measured it.
 Abbreviations: CL = con-leche, ZIP = LeanZip, SVG = Lean SVG, ALIGN = Lean Align.
 
-What the nano v2 source language accepts today (from `NANO_V2_IR.md`): `UInt64`, `Buf`, `List UInt8` input, pairs/tuples, `let`, `if a == b / a < b`, `+ - * &&& ||| <<< >>>`, calls, fuel loops (`| 0 … | n+1 …`, tail self-calls only), prims `rd len put bnew bsize bget bset bpush`. Names are one letter + digits. No comments, `match`, structures, inductives, strings, `Nat`/`Int`, signed ops, division. Caps: 511 defs, 16,384 parser nodes, 1 MiB input, 1 GiB work memory, frame ≤ 250 words, `jal` range 1 MiB (self_S already gives 1,049,932 bytes of code, see IR note).
+What the nano v2 source language accepts today (from `NANO_V2_IR.md`): `UInt64`, `Buf`, `List UInt8` input, pairs/tuples, `let`, `if a == b / a < b`, `+ - * &&& ||| <<< >>>`, calls, fuel loops (`| 0 … | n+1 …`, tail self-calls only), prims `rd len put bnew bsize bget bset bpush`. Names are one letter + digits. No comments, `match`, structures, inductives, strings, `Nat`/`Int`, signed ops, division. Caps: 511 defs, 16,384 parser nodes, 1 MiB input, 1 GiB work memory, frame ≤ 250 words, `jal` range 1 MiB. (Lead correction: the 1,049,932 B figure is the old Nano.V2B `gen` route; the current self-hosted compiler B2 compiles self_S to 340,296 B, so self_S is NOT over the jal range today.)
 
 ## 1. Programs
 
@@ -111,7 +111,7 @@ What the front end must therefore handle (not tactics, but tactic-built terms in
 
 ## 5. Limits: programs vs our caps
 
-Our caps: 511 defs, 16,384 parser nodes (`d3` capacity, self_S uses 10,859), input 1 MiB, work memory 1 GiB (4 `bnew`), frame ≤ 250 words, code ≤ 1 MiB (`jal` range; self_S is 1,049,932 B on `gen`).
+Our caps: 511 defs, 16,384 parser nodes (`d3` capacity, self_S uses 10,859), input 1 MiB, work memory 1 GiB (4 `bnew`), frame ≤ 250 words, code ≤ 1 MiB (`jal` range; self_S is 340,296 B with B2 — the 1,049,932 B figure was the old `gen` route).
 
 | | defs (whole executable) | defs (realistic first slice) | parser nodes | input | output | memory |
 |---|---|---|---|---|---|---|
@@ -120,7 +120,7 @@ Our caps: 511 defs, 16,384 parser nodes (`d3` capacity, self_S uses 10,859), inp
 | **SVG** | ≥ 1,750 (slices ~1,021 + ~726; part 2 says whole repo > 1,500, part 1 says 2,000+) | 250–350 (no fonts/filters/JPEG/GIF/Woff) | `Svg.lean` 5,050 lines, `Filter` 1,144, `Font` 1,154 each plausibly 10 k+ nodes (estimate) | nominal 64 MiB; test SVGs ≪ 1 MiB OK; fonts 24–32 MB cannot be inlined | PNG stored deflate ≈ raw RGBA; e.g. 800×600 = 3.8 MB as Buf words | canvas up to 16.7 M px (67 MB RGBA, layers up to 268 MB); fine at small widths; fuel up to 10^7–10^8 iterations per pixel loop |
 | **ALIGN** | ≈1,293 (part 1) + ≈600 (mapper) + index/kernels; whole path est. 1,500–2,500 | single kernel: a few dozen defs | `TierRouter.lean` alone 2,001 lines; whole path certainly over | real: multi-GB index, GB FASTQ; 8 MiB FASTQ chunk > 1 MiB cap; only micro tests (tiny genome, few reads) | SAM ≈ 300–500 B/pair | hg38 index ≫ 1 GiB; toy genome (chr21 ≈ 12 MB 2-bit) plausible |
 
-Cap-related fixes, ranked by how many programs they unblock: (a) defs cap 511 → ≥ 2,500 (all four); (b) node cap 16,384 → ≥ 100 k (all four; self_S already needs κ ≥ 2^19 and 10,859 of 16,384 nodes); (c) code size > 1 MiB: long-jump encoding (`auipc`+`jalr`) or range-checked `gen` (all four; self_S is already over); (d) input cap 1 MiB (CL, ALIGN real data, SVG fonts; not for tests); (e) frame ≤ 250 words (ZIP matcher state, ALIGN `GW`/`TierOut`, SVG rasteriser `let mut` sets).
+Cap-related fixes, ranked by how many programs they unblock: (a) defs cap 511 → ≥ 2,500 (all four); (b) node cap 16,384 → ≥ 100 k (all four; self_S already needs κ ≥ 2^19 and 10,859 of 16,384 nodes); (c) code size > 1 MiB: long-jump encoding (`auipc`+`jalr`) or range-checked `gen` (all four whole programs; self_S itself is at 340 KB, not over); (d) input cap 1 MiB (CL, ALIGN real data, SVG fonts; not for tests); (e) frame ≤ 250 words (ZIP matcher state, ALIGN `GW`/`TierOut`, SVG rasteriser `let mut` sets).
 
 ## 6. Open questions and evidence quality
 
