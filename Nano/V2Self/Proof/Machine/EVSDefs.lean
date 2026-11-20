@@ -49,7 +49,10 @@ theorem Lay.post' {KL : LayW} {hb E0 p : Nat} {s s' : St} (h : Lay KL hb E0 p s)
     (e31 : (s'.x 31).toNat = (s.x 31).toNat) : Lay KL hb E0 p s' :=
   h.post (w := 0) e8 eb (by rw [e31]; omega) (by omega)
 
-/-- **EVHw, safe**: as `EVHw` with a SafeX run; premises `Lay`, `HAl H`; conclusion `HAl H'` -/
+/-- **the value contract** (w words): if the semantics `S env sp H` succeeds with `(vs, H')`, the code at [pc, pc+len)
+pushes the w words `vs` (component i at old t6 − 8(i+1)) by a SafeX run, keeps s0, the frame up to its own lets `W`,
+every cell at or above the old t6 except those slots, `Inv`, x0 = 0, and moves the heap relation from H to H'.  `S`
+reads only the slots in `R`.  Premises `Lay`, `HAl H`; conclusion `HAl H'`. -/
 structure EVHwS (KL : LayW) (C : List J) (pc len p nl : Nat) (Inv : St → Prop) (hb E0 : Nat) (R W : Nat → Prop)
     (w : Nat) (S : SemW) : Prop where
   run : ∀ (s : St) (env : Env) (H : Hp) (vs : List UInt64) (H' : Hp), Inv s → s.x 0 = 0 → Frame p nl s env →
