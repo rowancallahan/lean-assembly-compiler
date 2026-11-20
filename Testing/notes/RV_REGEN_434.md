@@ -72,6 +72,12 @@ FakeReal classes are not equal in general. They are behaviour fixes in Sail's Le
 
 ## 4. Repo modules against the regenerated model (Lean 4.34.1)
 See §5 (filled in when the build finishes).
+- `Riscv/Back/BootReset.lean`: `resetSysWith` is a hand copy of `reset_sys` with the reservation hook as a parameter. **Hand copy
+  re-synced with the model REGENERATED with Sail 97aa617dc**: the `Ext_Zicfilp` branch is now `let _ ← ((do if … ) : SailM Unit)`
+  as in the model. With the old copy `reset_eq : reset () = resetWith (cancel_reservation ()) := rfl` did not terminate (>150 s);
+  with the re-synced copy it checks in 1 s. Only the statement shape changed, not the proof.
+- `Riscv/Back/BootV.lean` `wr_misa`, `acc_misa`, `se_misa` (`by rfl` through the new `if b == 0x301#12` chains of `write_CSR` /
+  `is_CSR_accessible`): pass unchanged when checked against the model alone (4 s each).
 
 ## 5. Conformance / fuzz tests
 The repo's Sail tests (`Testing/asm/*_test.py`, `cosim.py`, FUZZ6–10) run the Sail **C emulator** binary
