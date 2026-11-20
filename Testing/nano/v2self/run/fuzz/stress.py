@@ -151,4 +151,14 @@ print(f'INFO odd-size code on shim_rv: rc={rc_o} (no check: shim has no code-siz
 rc_e = subprocess.run(RV + [str(T / 'empty.rv')], input=b'x', capture_output=True, env=ENV).returncode
 print(f'INFO empty code on shim_rv: rc={rc_e} (nanorun asserts on empty code)')
 
+# G. work-limit boundary: self-compile needs 73 MiB (nanorun); 72 MiB must give -1, 73 MiB must give B2.bin
+for mb in (72, 73):
+    rc, out, st = run_pipe(['qemu-riscv64-static', str(W / f'shim_rv_{mb}M'), str(B2)], src.read_bytes(), seed=mb)
+    if mb == 72:
+        check(f'work {mb} MiB: self-compile gives -1, exit 1, no output', rc == 1 and st == -1 and out == b'', f'rc={rc} st={st}')
+    else:
+        check(f'work {mb} MiB: self-compile gives B2.bin', rc == 0 and st == 0 and out == want, f'rc={rc} st={st} n={len(out)}')
+rc, out, st = run_pipe(RV + [str(B2)], src.read_bytes(), seed=1024)
+check('work 1 GiB (shipped): self-compile gives B2.bin', rc == 0 and st == 0 and out == want, f'rc={rc} st={st} n={len(out)}')
+
 print(f'done: {fails} DIFF', flush=True)
