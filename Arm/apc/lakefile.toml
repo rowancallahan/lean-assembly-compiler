@@ -34,3 +34,8 @@ globs = ["Apc.Small", "Apc.Flags", "Apc.Sym", "Apc.Mach", "Apc.Mem8", "Apc.Frame
 [[require]]
 name = "arm64"
 path = "../../../deps/code-verification/arm64-semantics/Arm64"
+
+# per-instruction-form step lemmas and the rv2arm block proof on DeepMind's model (interim target; Blocks/NOTES.md)
+[[lean_lib]]
+name = "Blocks"
+globs = ["Blocks.+"]
