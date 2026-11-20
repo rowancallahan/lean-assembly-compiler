@@ -41,10 +41,11 @@ model. On Linux (x86-64), with `gcc-riscv64-linux-gnu gcc-aarch64-linux-gnu qemu
 ```
 riscv64-linux-gnu-gcc -O2 -static ../run/shim/shim_rv.c -o shim_rv
 aarch64-linux-gnu-gcc -O2 -static ../run/shim/shim_arm.c -o shim_arm      # rv2arm.sh runs it under qemu-aarch64
-grep -v '^--' rv2arm.lean > rv2arm.src && qemu-riscv64 ./shim_rv ../B2.bin < rv2arm.src > rv2arm_rv.bin
-RUN="qemu-riscv64 ./shim_rv rv2arm_rv.bin" ./rv2arm.sh rv2arm_rv.bin > rv2arm_arm.bin   # bootstrap: RISC-V translator
+grep -v '^--' rv2arm.lean > rv2arm.src && qemu-riscv64-static ./shim_rv ../B2.bin < rv2arm.src > rv2arm_rv.bin
+RUN="qemu-riscv64-static ./shim_rv rv2arm_rv.bin" ./rv2arm.sh rv2arm_rv.bin > rv2arm_arm.bin   # bootstrap
 ./rv2arm.sh ../B2.bin > B2_arm.bin                                                      # ARM translator from now on
 ```
+(`qemu-riscv64` where the non-static build is installed.) This reproduces `SHA256SUMS` (checked 2026-11-20).
 On a Mac there is no RISC-V machine (qemu-riscv64 user mode is Linux-only). Use the checked-in `rv2arm_arm.bin`.
 Or, as a fallback only, bootstrap with the interpreter:
 `RUN="./nanorun rv2arm_rv.bin /dev/stdin /dev/stdout"` (`cc -O2 ../run/nanorun.c -o nanorun`).
