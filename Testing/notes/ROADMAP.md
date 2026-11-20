@@ -631,3 +631,8 @@ parts from Nano/V2Self/Proof/Machine, so the move is complete in one go. Same ch
   (`Testing/scripts/model_hash.sh` value + file count) next to it; release_check's `hashes` gate reads those files.
   Today: RISC-V regen in Testing/riscv/gen (moves to Riscv/gen), Sail ARM in Arm/gen, hashes only in the central
   Testing/notes/MODEL_PROVENANCE.md, DeepMind has a pinned commit + hash but no fetch script (to add).
+- Rename Nano/V2Self by compiler stage, code + proof together (owner; same pass as the per-target move): Nano/Lexer
+  (C/Lex2 + Proof/Lex), Nano/Parser (C/Par1 + Proof/Parser), Nano/Ownership (C/Own + Proof/Own), Nano/Codegen (C/Gen +
+  Proof/Gen), Nano/Run (Proof/Machine, target-generic; RISC-V parts to Riscv/), Nano/SelfHost (Cert, CertArm, SrcLink,
+  Bridge), Nano/Main (top theorems + REVIEW.lean), Nano/Tests, Nano/Base. Module paths change; def/theorem names do not.
+  Trusted parser/grammar definition later in Spec/Source/ (Spec/ reorg); its proof stays in Nano/Parser.
