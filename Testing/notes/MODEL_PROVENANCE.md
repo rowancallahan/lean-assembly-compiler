@@ -110,8 +110,24 @@ toolchain changes.
   * Agents must not rebuild it (AGENT_OVERVIEW.md, Rules).
   * It is not in every container. It is absent from this one, so `Arm/proofs` and the `Arm/apc` bridges cannot be
     checked here.
-  * Which layout it holds (unpartitioned `Arm/model` or the partition) is not recorded in a committed file. **TODO:**
-    the Sail agent should record its source hash.
+  * **Layout of the build used for `Arm/sail` (`C_correct_armSail`, f617794f) and for `Arm/proofs` since 36959daa**
+    (recorded by the Sail agent, 2026-11-20): the **partition**, built from scratch in a fresh container:
+    * Source: `Arm/model` as committed. Its last change is ae0e92cf. Lean 4.34.1; lean-sail `e4745c8`, checked out by
+      hand after copying `Arm/model/lake-manifest.json` (a `lake update` had moved it to `e234ce9`).
+    * Partition: `python3 Arm/gen/partition.py Arm/model /home/user/armv9-lean Arm/proofs/Arm`, run at 0d06146f.
+      `partition.py` last changed in 020876c4. The proof files read for the core roots were those of 0d06146f.
+    * Build: `Arm/gen/build_part.sh /home/user/armv9-lean 1`, 131 jobs, 0 errors. One container restart; lake
+      resumed. Peak RSS 13.15 GB (SysregsAutogen.P19).
+    * Hashes (sha256 of the `sha256sum` listing, file names included, so the hash depends on the working directory):
+      * `cd Arm/model && find . -name '*.lean' | sort | xargs sha256sum | sha256sum` = `8f79d6b2…2e7344f`
+        (full: `8f79d6b294568b8d6e8d4916be6c8a67bfe475717513dd5b0535c69ff2e7344f`).
+      * `cd Arm/model && find Armv9 -name '*.lean' | sort | xargs sha256sum | sha256sum` = `619d40d1…1e76a08`.
+      * Partitioned tree, `cd /home/user/armv9-lean && find Armv9 Armv9Core Armv9.lean -name '*.lean' | sort |
+        xargs sha256sum | sha256sum` = `389f6d21…2eb55a370`
+        (full: `389f6d2157a7c55ca3fc3c9de2d757d57ee275c30b0f68bfffc672c2eb55a370`). 117 files under `Armv9`/`Armv9Core`.
+    * **Not reconciled:** neither `Arm/model` hash above equals the `cbfbcd50…` recorded under "Generated text". The
+      `regen.sh` pipeline hashes path strings, so the value depends on where it is run; how `cbfbcd50…` was computed
+      is not recorded. Content-only variants were tried; none matched.
 * **Reproduce:** `W=… OUT=… Arm/gen/regen.sh` (needs opam with Sail's deps and z3), then compare the printed hash with
   the one above. Build with `lake build` plus `lake build Armv9.<M>` for the modules `Armv9.lean` does not import
   (DIFFS.md, "Build notes"; V8Base needs about 12 GB).
