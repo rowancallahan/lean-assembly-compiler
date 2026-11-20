@@ -553,3 +553,8 @@ nano-v2-src: the same ARM theorem on the official Sail ARM model (C_correct_armS
 with the official Sail tool on 4.34.1.
 NEXT (owner, 2026-11-20), in order: (1) expected total program size (code vs source, where the 512 KB / 1 MB limits
 bite); (2) speed of compiled programs; (3) grow the parser's accepted syntax until it can express con-leche.
+- ORDER + RULES (owner, 2026-11-20): (a) all machines on ONE Lean version (RISC-V regenerated model + ARM on 4.34.1);
+  (b) basic speed work, measured by exact executed-instruction counts (Testing/notes/BENCH.md baseline);
+  (c) THEN grow the accepted syntax toward con-leche, one construct at a time. Every growth step must keep all proofs
+  green (REVIEW axioms as pinned, RISC-V + ARM theorems build) AND must not regress the benchmark baseline
+  (self-compile instruction count and the example table); each step gets a CHANGELOG entry.
