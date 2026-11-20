@@ -561,3 +561,8 @@ bite); (2) speed of compiled programs; (3) grow the parser's accepted syntax unt
   Also per step: a short code check: total code size per area (compiler source, proofs, glue) does not grow
   without reason, no dead code (deadcode tool), shared abstractions reused instead of duplicated (e.g. one generic
   machine adapter, one block table). Size table kept in Testing/notes/CODE_SIZE.md.
+
+## Later (owner, 2026-11-20)
+- Sail ARM: the theorem temporarily makes no claim about sp (register 31; Sail-local mapping, see Arm/sail/NOTES.md).
+  Later: restore sp (prove it unchanged / reset on exit) by exporting SP_EL0/SP_EL3/PSTATE.SP from the full_* lemmas.
+- Later: reset the memory chunks (work/scratch regions) on exit, so the caller gets them back in a defined state.
