@@ -1,7 +1,7 @@
 /- **The S3 compiler on RISC-V** (`Testing/notes/IR_S3.md`): `S3.compile : S3.Prog → Option CompiledA` lowers a
 typed S3 program to RTL (`Compiler/S3/Lower.lean`) and compiles it with the IR compiler (`Riscv/Back/IrTop.lean`).
-Its theorems have the owner's shapes (`Compiler/AllocSpec.lean`): `S3.compile_runs : CompileRuns riscv compile`,
-`S3.compile_correct : CompileCorrect riscv compile`, proved ONCE for every S3 program by composing the lowering
+Its theorems have the owner's shapes (`Compiler/AllocSpec.lean`): `S3.compile_runs : CompileRunsWeak riscv compile`,
+`S3.compile_correct : CompileCorrectWeak riscv compile`, proved ONCE for every S3 program by composing the lowering
 simulation (`Compiler/S3/LowerMain.lean`: `lower_meaning`) with `Ir.machine_run`. -/
 import Riscv.Back.IrTop
 import Compiler.S3.LowerMain
@@ -36,8 +36,8 @@ theorem computes_of {P : Prog} (hG : Accepted P) {α β : Type} {f : α → β} 
   obtain ⟨v, hD, ho⟩ := Prog.run_some (computes argument)
   exact lower_meaning P hG _ _ v hD ho (by omega) (by omega)
 
-/-- **What happens** (`CompileRuns`) for every S3 program -/
-theorem compile_runs : CompileRuns riscv compile := by
+/-- **What happens** (`CompileRunsWeak`) for every S3 program -/
+theorem compile_runs : CompileRunsWeak riscv compile := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
     outputFits
   obtain ⟨hG, hc⟩ := compile_inv compiles
@@ -50,8 +50,8 @@ theorem compile_runs : CompileRuns riscv compile := by
   · exact ⟨fun h => absurd h hne, fun h => absurd h (Nat.not_lt.2 hle)⟩
   · exact ⟨fun _ => hlt, fun _ => heq⟩
 
-/-- **What comes out** (`CompileCorrect`) for every S3 program -/
-theorem compile_correct : CompileCorrect riscv compile := by
+/-- **What comes out** (`CompileCorrectWeak`) for every S3 program -/
+theorem compile_correct : CompileCorrectWeak riscv compile := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
     outputFits enoughMemory
   obtain ⟨hG, hc⟩ := compile_inv compiles
@@ -75,9 +75,9 @@ theorem result_of {P : Prog} (hG : Accepted P) {α β : Type} {f : α → β} {e
   intro r' hr'
   rw [hr] at hr'; cases hr'; exact hvs
 
-/-- **What comes out, strengthened** (`CompileCorrectL`) for every S3 program: the output, its length in `a1`, the
+/-- **What comes out, strengthened** (`CompileCorrect`) for every S3 program: the output, its length in `a1`, the
 callee-saved registers kept, `Cfg`, nothing changed outside the result and the work block -/
-theorem compile_correctL : CompileCorrectL riscv compile := by
+theorem compile_correctL : CompileCorrect riscv compile := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
     outputFits enoughMemory
   obtain ⟨hG, hc⟩ := compile_inv compiles

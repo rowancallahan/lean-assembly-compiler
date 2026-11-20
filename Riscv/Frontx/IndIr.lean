@@ -3,7 +3,7 @@
 (`Compiler/Ir/IndLow.lean`: cells as blocks of 4, field reads as `ld`, dispatch as `switch`, tail calls as jumps,
 `dec` / `enc` as RTL functions, strings as length + UTF-8 bytes) and compiles it with `Ir.compile` (calls with frames,
 `Riscv/Back/IrTop.lean`).  Its theorems have the owner's shapes (`Compiler/AllocSpec.lean`):
-`IndIr.compile_runs : CompileRuns riscv compile`, `IndIr.compile_correct : CompileCorrect riscv compile`, with exactly
+`IndIr.compile_runs : CompileRunsWeak riscv compile`, `IndIr.compile_correct : CompileCorrectWeak riscv compile`, with exactly
 the Sail axioms; `memoryNeeded` is the peak of the Lin run's events (frames and cells), so out of memory is exact.
 
 **The lowering is proved** (`Compiler/Ir/IndLow*.lean`, `lower_ok`): on the input bytes of well-formed values the
@@ -70,8 +70,8 @@ theorem computes_of {p : IndProg} (hok : LowerOk p) {α β : Type} {f : α → �
   obtain ⟨x, hv, hin, hout'⟩ := run_some (computes argument)
   rw [hin] at hsmall ⊢; rw [hout'] at hout ⊢; exact hok x hv hsmall hout
 
-/-- **What happens** (`CompileRuns`) on the IR route -/
-theorem compile_runs : CompileRuns riscv compile := by
+/-- **What happens** (`CompileRunsWeak`) on the IR route -/
+theorem compile_runs : CompileRunsWeak riscv compile := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
     outputFits
   obtain ⟨hok, hc⟩ := compile_inv compiles
@@ -84,8 +84,8 @@ theorem compile_runs : CompileRuns riscv compile := by
   · exact ⟨fun h => absurd h hne, fun h => absurd h (Nat.not_lt.2 hle)⟩
   · exact ⟨fun _ => hlt, fun _ => heq⟩
 
-/-- **What comes out** (`CompileCorrect`) on the IR route -/
-theorem compile_correct : CompileCorrect riscv compile := by
+/-- **What comes out** (`CompileCorrectWeak`) on the IR route -/
+theorem compile_correct : CompileCorrectWeak riscv compile := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
     outputFits enoughMemory
   obtain ⟨hok, hc⟩ := compile_inv compiles

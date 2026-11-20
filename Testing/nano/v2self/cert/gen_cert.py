@@ -1,0 +1,271 @@
+#!/usr/bin/env python3
+"""Generate the C-wide meaning certificate (Nano/V2Self/Proof/Cert/{PC,Specs,Defs*}.lean).
+usage: gen_cert.py PCDUMP   (PCDUMP = output of `lake env lean --run Testing/nano/v2self/cert/dump_pc.lean self_S_input.txt`)
+Per def i of Testing/nano/v2self/self_S_input.txt: `Spec<i>` (the def's meaning refines the Lean def `C.<name>`),
+`call_<i>` (the rule for a call node; only for defs that are called), `ok_<i>` (the proof, by the tactic `den`).  Defs that build the OUTPUT byte list
+(`put`) are listed in MANUAL and proved by hand in Cert/Out.lean.
+The rv2arm translator (UNPROVEN ARM glue; this certifies only that its source text MEANS the Lean function `RA.m`):
+  grep -v '^--' Testing/nano/v2self/arm/rv2arm.lean > /tmp/rv2arm.src
+  lake env lean --tstack=1000000 --run Testing/nano/v2self/cert/dump_pc.lean /tmp/rv2arm.src > /tmp/pc_arm.txt
+  python3 Testing/nano/v2self/cert/gen_cert.py /tmp/pc_arm.txt arm     # writes Nano/V2Self/Proof/CertArm/*
+  lake build Nano.V2Self.Proof.CertArm.All                              # `CertArm.sem_rv2arm`, about 10 s
+Not a theorem: that `CertArm.PC.all` is the reference parse of the file (it is dump_pc's output, pasted)."""
+import re, sys
+# target "C" (default): the compiler's own source.  target "arm" (argv[2]): the rv2arm translator; there the Lean
+# module of the defs (Src.lean) and the output shadows with their `_map` lemmas (OutSpec.lean) are generated too.
+ARM = len(sys.argv) > 2 and sys.argv[2] == "arm"
+SRC = "Testing/nano/v2self/arm/rv2arm.lean" if ARM else "Testing/nano/v2self/self_S_input.txt"
+OUT = "Nano/V2Self/Proof/CertArm" if ARM else "Nano/V2Self/Proof/Cert"
+MOD = OUT.replace("/", ".")
+NS = "CertArm" if ARM else "Cert"          # namespace of the generated files
+LNS = "RA." if ARM else "C."               # namespace of the Lean defs
+# the tactic `den` looks call rules up as `Cert.call_<i>` (Cert/Tac.lean), so the arm rules live there too:
+# never import Cert.Specs and CertArm.Specs into one file
+CALL = "_root_.Cert.call_" if ARM else "call_"
+DEFIMPORTS = [f"import {MOD}.Src"] if ARM else ["import Nano.V2Self.C.Gen", "import Nano.V2Self.C.Own"]
+N64 = "18446744073709551616"
+ALONE = {"o38", "o39"}   # slow defs (minutes each: Lean's own equation lemma / leading match on a loop call): one file each
+CHUNK = 5000   # characters of node text per Defs file (keeps every file well under the 5 min budget)
+
+def parse_ty(s):
+    """type -> nested tuple tree: 'w' | 'b' | 'n' | 'l' | (t1, t2)"""
+    s = s.strip()
+    toks = re.findall(r"List UInt8|UInt64|Buf|Nat|×|\(|\)", s)
+    assert "".join(toks).replace(" ", "") == s.replace(" ", ""), s
+    pos = 0
+    def prod():
+        nonlocal pos
+        a = atom()
+        if pos < len(toks) and toks[pos] == "×":
+            pos += 1
+            return (a, prod())
+        return a
+    def atom():
+        nonlocal pos
+        t = toks[pos]; pos += 1
+        if t == "(":
+            r = prod(); assert toks[pos] == ")"; pos += 1; return r
+        return {"UInt64": "w", "Buf": "b", "Nat": "n", "List UInt8": "l"}[t]
+    r = prod(); assert pos == len(toks), s
+    return r
+
+def ty_str(t):
+    return {"w": "UInt64", "b": "Buf", "n": "Nat", "l": "List UInt8"}[t] if isinstance(t, str) else f"({ty_str(t[0])} × {ty_str(t[1])})"
+def width(t): return 1 if isinstance(t, str) else width(t[0]) + width(t[1])
+def cells(t, v):
+    if t == "w": return [f".w {v}"]
+    if t == "b": return [f".b {v}"]
+    if t == "n": return [f".w (UInt64.ofNat {v})"]
+    return cells(t[0], f"{v}.1") + cells(t[1], f"{v}.2")
+def has_l(t): return t == "l" if isinstance(t, str) else has_l(t[0]) or has_l(t[1])
+
+def split_arrows(s):
+    out, depth, cur = [], 0, ""
+    for ch in s:
+        if ch == "(": depth += 1
+        if ch == ")": depth -= 1
+        if ch == "→" and depth == 0: out.append(cur); cur = ""
+        else: cur += ch
+    out.append(cur)
+    return [x.strip() for x in out]
+
+def read_defs():
+    defs = []
+    for l in open(SRC).read().split("\n"):
+        if not l.startswith("def "): continue
+        m = re.match(r"def (\w+)\s*(.*)$", l)
+        name, rest = m.group(1), m.group(2)
+        if rest.startswith(":") and "→" in rest.split(":=")[0]:
+            tys = [parse_ty(x) for x in split_arrows(rest[1:].split(":=")[0])]
+            assert tys[0] == "n", l
+            defs.append(dict(name=name, loop=True, params=tys[:-1], res=tys[-1]))
+        else:
+            head = rest.split(":=")[0]
+            params = []
+            while head.startswith("("):
+                j = head.index(")"); grp = head[1:j]; head = head[j + 1:].strip()
+                names, ty = grp.split(":"); ty = parse_ty(ty)
+                # a parenthesised product type inside a binder group: re-scan to the matching paren
+                params += [ty] * len(names.split())
+            assert head.startswith(":"), l
+            defs.append(dict(name=name, loop=False, params=params, res=parse_ty(head[1:])))
+    return defs
+
+def gen_arm(defs):
+    """Src.lean: rv2arm.lean in namespace RA.  OutSpec.lean: the defs with an output list as word-level shadows
+    (`put ↦ bpush`, `[] ↦ bnew`, the output type ↦ Buf) and `<f>_map`: the shadow's low bytes are the Lean def."""
+    lines = [l for l in open(SRC).read().split("\n") if not l.startswith("--")]
+    open(f"{OUT}/Src.lean", "w").write("\n".join(
+        [f"/- GENERATED by Testing/nano/v2self/cert/gen_cert.py from {SRC} (comment lines removed).  Do not edit. -/",
+         "import Nano.V2Self.Prelude", "set_option linter.unusedVariables false", "namespace RA"] + lines + ["end RA"]) + "\n")
+    blocks = []
+    for l in lines:
+        if l.startswith("def "): blocks.append([l])
+        elif l.strip(): blocks[-1].append(l)
+    assert len(blocks) == len(defs)
+    B = "UInt64.toUInt8"
+    O = [f"/- GENERATED by Testing/nano/v2self/cert/gen_cert.py: word-level shadows of the defs of rv2arm that build the output",
+         "byte list, and `<f>_map`: their low bytes are the Lean defs.  Do not edit. -/", f"import {MOD}.Src",
+         "set_option linter.unusedVariables false", "set_option linter.unusedSimpArgs false", f"namespace {NS}.Sh", "open RA", ""]
+    maps = []
+    for d, b in zip(defs, blocks):
+        if not d["out"]: continue
+        assert d["inp"] is not None
+        head, body = b[0], b[1:]
+        if not d["loop"]: j = head.index(":="); head, body = head[:j], [head[j:]] + body
+        k = head.index("List UInt8") + 10
+        head = head[:k] + head[k:].replace("List UInt8", "Buf")
+        body = [re.sub(r"\bput\b", "bpush", l).replace("[]", "bnew") for l in body]
+        O += [head + (" " + body[0] if not d["loop"] else "")] + (body[1:] if not d["loop"] else body) + [""]
+        vs = [f"a{k}" for k in range(len(d["params"]))]
+        tys = ["List UInt8" if k == d["inp"] else "Buf" if t == "l" else ty_str(t) for k, t in enumerate(d["params"])]
+        rhs = [f"({v}.map {B})" if t == "Buf" else v for v, t in zip(vs, tys)]
+        stmt = f"({d['name']} {' '.join(vs)}).map {B} = RA.{d['name']} {' '.join(rhs)}"
+        simp = f"simp only [{d['name']}, RA.{d['name']}, apply_ite (List.map {B}), bpush, put, bnew, List.map_append, List.map_cons, List.map_nil" + "".join(f", {m}_map" for m in maps)
+        if d["loop"]:
+            O += [f"theorem {d['name']}_map : ∀ " + " ".join(f"({v} : {t})" for v, t in zip(vs, tys)) + f", {stmt}",
+                  "  | 0, " + ", ".join(["_"] * (len(vs) - 1)) + f" => by simp only [{d['name']}, RA.{d['name']}]",
+                  "  | n + 1, " + ", ".join(vs[1:]) + f" => by {simp}, {d['name']}_map n]", ""]
+        else:
+            O += [f"theorem {d['name']}_map " + " ".join(f"({v} : {t})" for v, t in zip(vs, tys)) + f" : {stmt} := by", f"  {simp}]", ""]
+        maps.append(d["name"])
+    O.append(f"end {NS}.Sh")
+    open(f"{OUT}/OutSpec.lean", "w").write("\n".join(O) + "\n")
+
+def main():
+    rows = [l.rstrip("\n").split("\t") for l in open(sys.argv[1])]
+    defs = read_defs()
+    assert len(rows) == len(defs), (len(rows), len(defs))
+    manual = []
+    for i, (r, d) in enumerate(zip(rows, defs)):
+        idn, npw, nsl, kind, nres = map(int, r[0].split())
+        d.update(id=idn, npw=npw, nsl=nsl, nres=nres)
+        assert idn == i and (kind == 1) == d["loop"] == (r[1] == "L"), d
+        # the input = the first List parameter; any other List (or a List result) is the output byte list
+        ls = [k for k, t in enumerate(d["params"]) if t == "l"]
+        d["inp"] = ls[0] if ls else None
+        d["args"] = [(k, t) for k, t in enumerate(d["params"]) if k != d["inp"]]
+        assert not any(has_l(t) and t != "l" for t in d["params"]), d
+        # a second List parameter / a List result is the OUTPUT byte list: certified against the word-level shadow Cert.Sh.<name>
+        out = len(ls) > 1 or has_l(d["res"])
+        if out:
+            assert d["res"] == "l" and len(ls) <= 2, d
+            manual.append(d["name"]); d["res"] = "b"
+            d["args"] = [(k, "b" if t == "l" else t) for k, t in d["args"]]
+        d["lean"] = ("Sh." if out else LNS) + d["name"]; d["out"] = out
+        assert sum(width(t) for _, t in d["args"]) == npw, d
+        assert width(d["res"]) == nres, d
+    if ARM: gen_arm(defs)
+    # ---- PC.lean
+    out = ["/- GENERATED by Testing/nano/v2self/cert/gen_cert.py: the reference parse of self_S_input.txt.  Do not edit. -/",
+           "import Nano.V2Self.Proof.Parser.ParSpec", f"namespace {NS}.PC", "open ParSpec", ""]
+    for r, d in zip(rows, defs):
+        i = d["id"]
+        if d["loop"]:
+            out += [f"def z{i} : Nd := {r[2]}", f"def s{i} : Nd := {r[3]}"]; body = f".loop z{i} s{i}"
+        else:
+            out.append(f"def b{i} : Nd := {r[2]}"); body = f"b{i}"
+        out.append(f"def d{i} : DefA := {{ id := {i}, npw := {d['npw']}, nslots := {d['nsl']}, kind := {1 if d['loop'] else 0}, nres := {d['nres']}, body := {body} }}")
+    out += ["def all : List DefA := [" + ", ".join(f"d{d['id']}" for d in defs) + "]", f"end {NS}.PC"]
+    open(f"{OUT}/PC.lean", "w").write("\n".join(out) + "\n")
+    # ---- Specs.lean
+    def app(d, vs, inp="inp"):
+        """C.name applied to the argument variables in parameter order, the input at its place"""
+        it = iter(vs); xs = [inp if k == d["inp"] else next(it) for k in range(len(d["params"]))]
+        return " ".join([d["lean"]] + xs)
+    def tup(vs): return "()" if not vs else vs[0] if len(vs) == 1 else "(" + ", ".join(vs) + ")"
+    S = ["/- GENERATED by Testing/nano/v2self/cert/gen_cert.py: per-def specifications and call rules.  Do not edit. -/",
+         "import Nano.V2Self.Proof.Cert.Tac", f"import {MOD}.PC", f"import {MOD}.OutSpec",
+         f"namespace {NS}", "open NanoMain ParSpec" + (" Cert" if ARM else ""), ""]
+    for d in defs:
+        i = d["id"]; vs = [f"a{k}" for k, _ in d["args"]]
+        bind = "".join(f" ({v} : {ty_str(t)})" for v, (_, t) in zip(vs, d["args"]))
+        hn = f"{vs[0]} < {N64} → " if d["loop"] else ""
+        q = f"∀{bind}, " if vs else ""
+        inp = "inp" if d["inp"] is not None else "_inp"
+        S.append(f"def Spec{i} ({inp} : List UInt8) (F : Fn) : Prop := {q}{hn}Ref (F (enc {tup(vs)})) (enc ({app(d, vs)}))")
+    S += ["", "def specs (inp : List UInt8) : List (Fn → Prop) := [" + ", ".join(f"Spec{d['id']} inp" for d in defs) + "]", ""]
+    called = {int(x) for r in rows for x in re.findall(r"\(\.call (\d+) \[", "".join(r[2:]))}   # a call rule only for defs that are called
+    assert called < {d["id"] for d in defs}, called
+    for d in defs:
+        if d["id"] not in called: continue
+        i = d["id"]; vs = [f"a{k}" for k, _ in d["args"]]; es = [f"e{k}" for k, _ in d["args"]]
+        imp = (" {" + " ".join(es) + " : Nd}" if es else "") + "".join(f" {{{v} : {ty_str(t)}}}" for v, (_, t) in zip(vs, d["args"]))
+        hn = f" (hn : {vs[0]} < {N64})" if d["loop"] else ""
+        hs = "".join(f" (h{k} : DenT cx {e} env {v})" for k, (e, v) in enumerate(zip(es, vs)))
+        chain = "DenP.nil"
+        if es:
+            chain = f"(DenP.one h{len(es) - 1})"
+            for k in range(len(es) - 2, -1, -1): chain = f"(DenP.cons h{k} {chain})"
+        S += [f"theorem {CALL}{i} {{cx : Ctx}} {{env : List W}} {{n : Nat}}{imp} (G : Good (specs cx.inp) cx.defs n) (hi : {i} < n){hn}{hs} :",
+              f"    DenT cx (.call {i} [{', '.join(es)}]) env ({app(d, vs, 'cx.inp')}) := by",
+              f"  obtain ⟨F, hF, hS⟩ := G.get hi (S := Spec{i} cx.inp) rfl",
+              f"  exact DenT.call hF {chain} (hS {' '.join(vs)}{' hn' if d['loop'] else ''})"]
+    S.append(f"end {NS}")
+    open(f"{OUT}/Specs.lean", "w").write("\n".join(S) + "\n")
+    # ---- Defs<k>.lean
+    auto = defs
+    files = []; groups = [[]]; sz = 0
+    for d, r in zip(auto, rows):
+        n = sum(len(x) for x in r[2:])
+        if groups[-1] and (sz + n > CHUNK or d["name"] in ALONE): groups.append([]); sz = 0
+        groups[-1].append(d); sz += n
+        if d["name"] in ALONE: sz = CHUNK
+    import glob, os
+    for f in glob.glob(f"{OUT}/Defs*.lean"): os.remove(f)
+    for k, grp in enumerate(groups):
+        files.append(f"Defs{k}")
+        T = ["/- GENERATED by Testing/nano/v2self/cert/gen_cert.py: per-def meaning certificates.  Do not edit. -/",
+             f"import {MOD}.Specs"] + DEFIMPORTS + [
+             "set_option maxHeartbeats 4000000", "set_option maxRecDepth 100000", "set_option linter.unusedVariables false", f"namespace {NS}", "open NanoMain ParSpec" + (" Cert" if ARM else ""), ""]
+        for d in grp:
+            i = d["id"]; vs = [f"a{k}" for k, _ in d["args"]]
+            cx = "⟨inp, κC, ms⟩"
+            zeros = f" ++ List.replicate {d['nsl'] - d['npw']} (.w 0)" if d["nsl"] > d["npw"] else ""
+            T += [f"theorem ok_{i} (inp : List UInt8) (ms : List Fn) (hin : inp.length < {N64}) (G : Good (specs inp) ms {i}) :",
+                  f"    Spec{i} inp (defMean inp κC ms PC.d{i}) := by"]
+            if not d["loop"]:
+                env = "[" + ", ".join(sum((cells(t, v) for v, (_, t) in zip(vs, d["args"])), [])) + "]" + zeros
+                if vs: T.append(f"  intro {' '.join(vs)}")
+                T += [f"  refine defMean_den ({app(d, vs)}) PC.b{i} ({env}) rfl rfl (by decide) rfl rfl rfl ?_",
+                      f"  unfold PC.b{i}", "  den_unfold", "  den"]
+            else:
+                st = d["args"][1:]; sv = vs[1:]
+                sbind = "".join(f" ({v} : {ty_str(t)})" for v, (_, t) in zip(sv, st))
+                def env(w0, names): return "[" + ", ".join([f".w {w0}"] + sum((cells(t, v) for v, (_, t) in zip(names, st)), [])) + "]" + zeros
+                lr = f"loopRun (fun e => ev {cx} PC.z{i} e) (fun e => ev {cx} PC.s{i} e)"
+                pv = [v + "'" for v in sv]
+                pbind = "".join(f" ({v} : {ty_str(t)})" for v, (_, t) in zip(pv, st))
+                T += [f"  have L : ∀ (n : Nat), n < {N64} → ∀ (w0 : UInt64){sbind},",
+                      f"      Ref ({lr} n ({env('w0', sv)})) (enc ({app(d, ['n'] + sv)})) := by",
+                      "    intro n", "    induction n with",
+                      f"    | zero => intro _ w0 {' '.join(sv)}; rw [{d['lean']}.eq_def]; den_match 0; unfold PC.z{i}; exact loop_zero (by den)",
+                      "    | succ n ih =>", f"      intro hn w0 {' '.join(sv)}", f"      rw [{d['lean']}.eq_def]", "      den_match 1",
+                      f"      refine loop_succ (env1 := {env('(UInt64.ofNat n)', sv)}) rfl ?_",
+                      f"      have hc : ∀{pbind} {{e : Nd}} {{env : List W}}, DenT {cx} e env {tup(pv)} →",
+                      f"          DenK {cx} (KL {cx} (fun e => ev {cx} PC.z{i} e) PC.s{i} n ({env('(UInt64.ofNat n)', sv)})) (.cont e) env ({app(d, ['n'] + pv)}) :=",
+                      f"        fun {' '.join(pv)} _ _ h => DenK.cont h ⟨_, rfl, ih (by omega) _ {' '.join(pv)}⟩",
+                      f"      unfold PC.s{i}", "      den [hc]",
+                      f"  intro {' '.join(vs)} hn",
+                      f"  refine defMean_loop ({app(d, vs)}) rfl rfl (by decide) rfl (loop_ref (w0 := UInt64.ofNat {vs[0]}) ?_)",
+                      f"  have h := L {vs[0]} hn (UInt64.ofNat {vs[0]}) {' '.join(sv)}",
+                      f"  rwa [show (UInt64.ofNat {vs[0]}).toNat = {vs[0]} from by simp [UInt64.toNat_ofNat', Nat.mod_eq_of_lt hn]]"]
+            T.append("")
+        T.append(f"end {NS}")
+        open(f"{OUT}/Defs{k}.lean", "w").write("\n".join(T) + "\n")
+    A = ["/- GENERATED by Testing/nano/v2self/cert/gen_cert.py: all defs of C meet their specifications.  Do not edit. -/",
+         "import Nano.V2Self.Proof.Cert.Asm"] + [f"import {MOD}.{f}" for f in files] + [
+         "set_option maxRecDepth 100000", f"namespace {NS}", "open NanoMain ParSpec" + (" Cert" if ARM else ""), "",
+         f"theorem all_ok (inp : List UInt8) (hin : inp.length < {N64}) : AllOk inp κC (specs inp) 0 PC.all :=",
+         "  ⟨" + ",\n   ".join(f"fun ms G => ⟨_, rfl, ok_{d['id']} inp ms hin G⟩" for d in defs) + ",\n   trivial⟩", "",
+         "/-- **the meaning of rv2arm's source text** (ParSpec's parse `PC.all`, `Sem`) is the Lean function `RA.m`, up to the buffer capacity -/" if ARM else
+         "/-- **the meaning of C's source text** (ParSpec's parse `PC.all`, `Sem`) is the Lean function `mLean`, up to the buffer capacity -/",
+         f"theorem sem_rv2arm (inp : List UInt8) (hin : inp.length < {N64}) : Ref (Sem κC PC.all inp) (RA.m inp) := by" if ARM else
+         f"theorem sem_C (inp : List UInt8) (hin : inp.length < {N64}) : Ref (Sem κC PC.all inp) (Sh.mLean inp) := by",
+         "  have G := means_all inp κC (specs inp) PC.all [] 0 ⟨rfl, by simp⟩ (all_ok inp hin)",
+         f"  have h := sem_of_good (n := {len(defs) - 1}) (S := Spec{len(defs) - 1} inp) (out := Sh.m inp) G rfl (fun F hF => hF)",
+         "  rwa [Sh.m_map] at h", f"end {NS}"]
+    open(f"{OUT}/All.lean", "w").write("\n".join(A) + "\n")
+    print("defs", len(defs), "output shadows", manual, "files", len(files))
+
+main()

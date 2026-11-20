@@ -36,16 +36,25 @@ theorem readBytes4 {s : St} {a : Nat} {w : BitVec 32} (h : MemWord s.mem a w) :
   simp only [PreSail.readBytes, PreSail.readByte, bind, pure, EStateM.bind, EStateM.pure, get, getThe, MonadStateOf.get, EStateM.get, h0, h1, h2, h3, Nat.add_assoc]
   rw [w_split]
 
-theorem dev_ne (va : BitVec 64) (h : va.toNat < 2 ^ 29) :
+/-- **an accessible virtual address** (MMU off, EL3: va = pa): below `2^48` (translation) and not in the GIC
+(`0x2C00_0000`) or UART (`0x3C00_0000`) 64 KiB device page.  Every byte the proofs fetch, load or store satisfies it;
+it replaced the earlier `va < 2^29` (`va29`), so that the RAM window `[2^31, 3·2^30)` is covered too (`vaRam`). -/
+def VaOK (n : Nat) : Prop := n < 2 ^ 48 ∧ n / 65536 ≠ 0x2C00 ∧ n / 65536 ≠ 0x3C00
+
+theorem va29 {n : Nat} (h : n < 2 ^ 29) : VaOK n := ⟨by omega, by omega, by omega⟩
+theorem vaRam {n : Nat} (h1 : 2 ^ 31 ≤ n) (h2 : n < 3 * 2 ^ 30) : VaOK n := ⟨by omega, by omega, by omega⟩
+
+theorem dev_ne (va : BitVec 64) (h : VaOK va.toNat) :
     BitVec.ofNat 40 (va.toNat >>> 16) ≠ ZeroExtend1 GIC_BASE ∧
     BitVec.ofNat 40 (va.toNat >>> 16) ≠ ZeroExtend1 UART_BASE := by
   have e1 : (ZeroExtend1 GIC_BASE : BitVec 40) = 0x2C00#40 := rfl
   have e2 : (ZeroExtend1 UART_BASE : BitVec 40) = 0x3C00#40 := rfl
+  obtain ⟨h0, h1, h2⟩ := h
   rw [e1, e2, Nat.shiftRight_eq_div_pow]
   constructor <;> intro hh <;> have := congrArg BitVec.toNat hh <;> simp at this <;> omega
 
-theorem setw56 (va : BitVec 64) (h : va.toNat < 2 ^ 29) : (BitVec.setWidth 56 va).toNat = va.toNat := by
-  simp; omega
+theorem setw56 (va : BitVec 64) (h : VaOK va.toNat) : (BitVec.setWidth 56 va).toNat = va.toNat := by
+  have := h.1; simp; omega
 
 theorem u_InstrEnc (s : St) : undefined___InstrEnc () s = .ok .__A64 s := rfl
 theorem u_ExceptionRecord (s : St) : undefined_ExceptionRecord () s = .ok (uval (undefined_ExceptionRecord ())) s := rfl
@@ -117,10 +126,10 @@ theorem tr_ok (va : BitVec 64) (hva : va.toNat < 2 ^ 48) :
   simp only [choice_unit] at hr hf
   esimp
 
-theorem memread_ok (va : BitVec 64) (w : BitVec 32) (hva : va.toNat < 2 ^ 29) (hal : va.toNat % 4 = 0)
+theorem memread_ok (va : BitVec 64) (w : BitVec 32) (hva : VaOK va.toNat) (hal : va.toNat % 4 = 0)
     (hw : MemWord s.mem va.toNat w) :
     AArch64_MemSingle_read va 4 accIF true s = .ok w { s with regs := s.regs.insert .InGuardedPage false } := by
-  obtain ⟨r, hr, h1, h2, h3⟩ := tr_ok hc va (by omega)
+  obtain ⟨r, hr, h1, h2, h3⟩ := tr_ok hc va hva.1
   have := aligned4 va hal; have := dev_ne va hva; have := setw56 va hva; have := u_PhysMemRetStatus
   have := readBytes4 (s := { s with regs := s.regs.insert .InGuardedPage false }) hw
   have : accIF.tagchecked = false := rfl; have : accIF.exclusive = false := rfl
@@ -131,9 +140,9 @@ theorem memread_ok (va : BitVec 64) (w : BitVec 32) (hva : va.toNat < 2 ^ 29) (h
   simp only [ConcurrencyInterfaceV1.sail_mem_read, PreSail.sail_mem_read, read_request, CreatePhysMemRetStatus] at *
   esimp
 
-/-- **instruction fetch**: at `PC = pc` (4-aligned, below `2^29`) holding `w`, `__FetchInstr` returns `(A64, w)` and
+/-- **instruction fetch**: at `PC = pc` (4-aligned, `VaOK`) holding `w`, `__FetchInstr` returns `(A64, w)` and
 writes only `BTypeCompatible := false`, `__InstructionStep := false`, `InGuardedPage := false` -/
-theorem fetch_ok (pc : BitVec 64) (w : BitVec 32) (hpc : s.regs.get? ._PC = some pc) (hlt : pc.toNat < 2 ^ 29)
+theorem fetch_ok (pc : BitVec 64) (w : BitVec 32) (hpc : s.regs.get? ._PC = some pc) (hlt : VaOK pc.toNat)
     (hal : pc.toNat % 4 = 0) (hw : MemWord s.mem pc.toNat w) (x : BitVec 64) :
     __FetchInstr x s = .ok (.__A64, w) { s with regs := ((s.regs.insert .BTypeCompatible false).insert .__InstructionStep false).insert .InGuardedPage false } := by
   have := ifetch_ok hc; have := u_InstrEnc; have := u_ExceptionRecord; have := u_int

@@ -5,7 +5,7 @@ L2 (A-normal form, `Nano/S3L2.lean`) → L3/L4 (S3 word expressions under the by
 `Nano/S3L3.lean`, `Nano/S3L4.lean`) → `S3.compile` (proved once, `Riscv/Back/S3Top.lean`).
 * `nanoToS3_run`: the chain preserves the byte-level meaning (`nanoRun p input = some out → (nanoToS3 p).run input =
   some out`), from `tr1_eval`, `tr2_eval`, `toS3_run`;
-* **`nano_s3_correct : CompileCorrect riscv nanoCompileS3`**, **`nano_s3_runs : CompileRuns riscv nanoCompileS3`**:
+* **`nano_s3_correct : CompileCorrectWeak riscv nanoCompileS3`**, **`nano_s3_runs : CompileRunsWeak riscv nanoCompileS3`**:
   S3's theorems + the chain, nothing proved at the machine level here;
 * `nano_s3_chain` / `nano_s3_chain_int`: source text to machine, `UInt64` and `Int64` (`chain_of`/`chain_int_of`). -/
 import Nano.S3L4
@@ -48,15 +48,15 @@ theorem small_S0 : Proven.S3.Small S0 := by
 /-- every program of the chain passes S3's check -/
 theorem accepted (p : Nano.Prog) : Proven.S3.Accepted (nanoToS3 p) := ⟨small_S0, rfl⟩
 
-/-- **What comes out** (`CompileCorrect`) for every nano program, through S3 -/
-theorem nano_s3_correct : CompileCorrect riscv nanoCompileS3 := by
+/-- **What comes out** (`CompileCorrectWeak`) for every nano program, through S3 -/
+theorem nano_s3_correct : CompileCorrectWeak riscv nanoCompileS3 := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
     outputFits enoughMemory
   exact Proven.S3.compile_correct (nanoToS3 program) compiled f encodeInput encodeOutput argument startState call
     compiles (computes_tr computes) startsRight outputFits enoughMemory
 
-/-- **What happens** (`CompileRuns`) for every nano program, through S3 -/
-theorem nano_s3_runs : CompileRuns riscv nanoCompileS3 := by
+/-- **What happens** (`CompileRunsWeak`) for every nano program, through S3 -/
+theorem nano_s3_runs : CompileRunsWeak riscv nanoCompileS3 := by
   intro α β program compiled f encodeInput encodeOutput argument startState call compiles computes startsRight
     outputFits
   exact Proven.S3.compile_runs (nanoToS3 program) compiled f encodeInput encodeOutput argument startState call

@@ -419,6 +419,9 @@ git tags. nano v1 FINAL = this commit: main contains nano-parse-s3 rc2 (152f05b,
   Once compiler #2 self-hosts, its features move onto compiler #2 incrementally ("start small and grow the
   self-hosting one" rather than self-hosting #1 with all features at once).
 - Terminology: v1 `Nano.selfHosted` = proven bare-metal nano compiler built by compiler #1; "compiles itself" = v2.
+- STATUS (branch nano-v2, 2026-11-17): plan + increment 1 (comparisons + `if`) in Testing/notes/NANO_V2.md:
+  `Nano.V2.nano_stack_correct` proved (Sail axioms only), oracle fuzz 0 differences, QEMU+Sail 1344 pairs; v1 untouched.
+  Found: v1 `nanoElab` accepts an empty binder group `( : UInt64)` (Lean rejects) — NANO_V2.md C1.
 
 ### NANO_V2_SPEC (owner, 2026-11-17 19:25): work may proceed on it without a separate confirmation (the content is Astra-advised, not owner-chosen)
 The frozen spec on branch nano-v2 (v1 constructs unchanged + exactly the Astra-decided additions; v1 stage formats;
@@ -540,3 +543,13 @@ ARM proof and the larger code work.
   with the capacity work: growable lists or reuse.
 - ARM MEMORY (owner, 2026-11-20): ARM RAM window = 1 GiB at [2^31, 3*2^30) (E, 9ddb1d4); meets the existing 2^31 bound, so no window proof change; avoids GIC/UART device pages; expand later if
   easy. The shims give 1 GiB of work memory (unproven glue); the ARM theorem will cover runs whose work fits the window.
+
+## MERGED TO MAIN (2026-11-20)
+nano-v2-src merged into main: RISC-V proven (Lean 4.29, unmodified Sail RISC-V model; C_correctLO / C_runsO);
+ARM proven on DeepMind's arm64 model (Lean 4.34.1; C_correct_armDM / C_runs_armDM, loader premise ArmLoader;
+independently rebuilt by two sessions, standard 3 axioms). Working ARM back end + nano translator rv2arm (certified
+source meaning, CertArm), shims (1 GiB work), compile.sh / run.sh / try_arm.sh / cross_check.sh. In progress on
+nano-v2-src: the same ARM theorem on the official Sail ARM model (C_correct_armSail), then RISC-V model regeneration
+with the official Sail tool on 4.34.1.
+NEXT (owner, 2026-11-20), in order: (1) expected total program size (code vs source, where the 512 KB / 1 MB limits
+bite); (2) speed of compiled programs; (3) grow the parser's accepted syntax until it can express con-leche.

@@ -10,8 +10,8 @@ against Lean's elaborator) → `Prog` → `nanoCompileIR = Ir.compile ∘ lower`
   out-of-memory flag, with the output block holding `p.eval args` as 8 little-endian bytes.
 * `nano_chain_int`: the same for an `Int64` source (`nanoElabT src = some (true, p)`): arguments and result as
   8-byte little-endian two's complement, the result is `p.evalI args` (Lean's `Int64` arithmetic).
-* `nano_chain_runs`: `CompileRuns` form (no memory hypothesis): returns, frame kept, flag iff out of memory.
-These are corollaries of `CompileCorrect riscv nanoCompileIR` / `CompileRuns riscv nanoCompileIR` with
+* `nano_chain_runs`: `CompileRunsWeak` form (no memory hypothesis): returns, frame kept, flag iff out of memory.
+These are corollaries of `CompileCorrectWeak riscv nanoCompileIR` / `CompileRunsWeak riscv nanoCompileIR` with
 `f` = the program's meaning on argument lists of the right length (`Computes` holds by definition of `nanoRun`,
 and for Int64 by `nanoRun_int`). -/
 import Nano.ProofSrc
@@ -64,11 +64,11 @@ theorem computes_int (p : Prog) :
   show nanoRun p (encIs args) = _
   rw [nanoRun_int p args h]; unfold Prog.evalI; rw [if_pos h]; rfl
 
-/-! ## any proved nano back end (`CompileCorrect riscv compile`): the source-level corollaries
-(for `nanoCompileIR` below; for nano-proof's `asm ∘ genR` route once its `CompileCorrect` theorem lands) -/
+/-! ## any proved nano back end (`CompileCorrectWeak riscv compile`): the source-level corollaries
+(for `nanoCompileIR` below; for nano-proof's `asm ∘ genR` route once its `CompileCorrectWeak` theorem lands) -/
 
 /-- **`UInt64`, for any proved back end** -/
-theorem chain_of {compile : Prog → Option CompiledA} (correct : CompileCorrect riscv compile) (src : List UInt8)
+theorem chain_of {compile : Prog → Option CompiledA} (correct : CompileCorrectWeak riscv compile) (src : List UInt8)
     (p : Prog) (c : CompiledA) (helab : nanoElab src = some p) (hc : compile p = some c) (args : List UInt64)
     (harity : args.length = p.1) (startState : riscv.State) (call : Call)
     (startsRight : StartCorrect riscv startState call c.code (encWs args))
@@ -84,7 +84,7 @@ theorem chain_of {compile : Prog → Option CompiledA} (correct : CompileCorrect
   simpa only [leN_length] using this
 
 /-- **`Int64`, for any proved back end** -/
-theorem chain_int_of {compile : Prog → Option CompiledA} (correct : CompileCorrect riscv compile)
+theorem chain_int_of {compile : Prog → Option CompiledA} (correct : CompileCorrectWeak riscv compile)
     (src : List UInt8) (p : Prog) (c : CompiledA) (helab : nanoElabT src = some (true, p)) (hc : compile p = some c)
     (args : List Int64) (harity : args.length = p.1) (startState : riscv.State) (call : Call)
     (startsRight : StartCorrect riscv startState call c.code (encIs args))

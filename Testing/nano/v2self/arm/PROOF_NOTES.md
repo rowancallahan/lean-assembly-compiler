@@ -1,0 +1,169 @@
+# rv2arm proof notes: the plan for `armTarget.step_ok` (code UNPROVEN; these notes are the proof plan)
+
+The code is `rv2arm.lean` (nano). `rv2arm.py` is a test oracle and emits the same bytes.
+J semantics: `CallProbe.step` in `Nano/V2Self/Proof/Machine/Call.lean`. The RV words are those of `SimW.encJX`.
+Instruction choice follows `Testing/notes/NANO_V2_ARM.md` §0-min (2026-11-20):
+* no `ldur`/`stur`;
+* no SP-relative form (sp is never used);
+* no store of xzr;
+* no `movn`/`ubfm`/`adr`;
+* **no emitted word has a register field = 31** (lead decision, 2026-11-20): no xzr, wzr or sp anywhere.
+
+`test_arm.sh` checks this on the emitted code with objdump: the mnemonics; no xzr/wzr/sp; x18..x29 unused.
+
+## Global facts (every block)
+
+* **Block shape.** K = 4 A64 words per J instruction. The real words come first, then `PAD = add x16, x16, #0`
+  (0x91000210, lemma `full_addi`). J index pc ↦ A64 byte address `base + 16·pc`.
+  Exception: `jal x1` puts PAD first and `bl` last.
+* **Register map π** (RV → A64):
+  * 0 ↦ no register: an x0 operand or stored x0 is read from x17 after `movz x17, #0` in the same block;
+  * 1 ↦ x30;
+  * 2 (RV sp) ↦ x4, an ordinary register: the host passes the work top in x4;
+  * 10..13 ↦ x0..x3;
+  * 28 ↦ x12, 29 ↦ x13, 30 ↦ x10, 31 ↦ x11;
+  * 5..8, 14, 15 ↦ the same number.
+
+  π is injective on the non-zero registers and avoids 16..29 and 31. Any other RV register (in any field, also of a
+  no-op with rd = x0) and `jalr` through x0 make the validation pass return the EMPTY output.
+  For `Rel`: `X[π r] = s.x r` for r ∈ dom π \ {0}.
+* **Scratch.** x16 and x17 only. They are not in π's image, so `Rel` says nothing about them.
+  * x16: address (`add/sub x16, s, #abs`) and shift amount (`movz x16, #sh`); PAD adds 0 to it.
+  * x17: the zero (`movz x17, #0`) for an x0 operand, a store of x0, and `madd`'s addend.
+
+  Both are dead at every block boundary: no block reads them before writing them in the same block.
+* **Never written:** x18 (macOS platform register), x19..x29 (`armMapping.kept`), sp (never even read).
+* **NZCV.** Only `subs x16, a, b` writes NZCV (also x16), and only in compare-branch blocks. The `b.cond` of the same block
+  reads it. NZCV is dead at every block boundary, so `Rel` need not mention it. `cbz` reads no flags.
+* **Alignment.** 8-byte accesses (`ldr`/`str`, unsigned-offset form only) are emitted only for J `ld`/`sd`. They
+  access ea = x[rs] + off with ea % 8 = 0, which Gen guarantees (frames and the expression stack are 8-aligned, and
+  offsets are multiples of 8). A negative or unaligned-imm offset goes through `x16 = x[rs] ± abs` with
+  `[x16, #0]`; the address is the same ea. The `Arm/proofs` lemmas need exactly this premise (8-aligned, < 2^29).
+  Byte accesses (`ldrb`/`strb`) have no alignment premise.
+* **Branch relocation.** For RV byte offset B = 4·o (J offset o) in block pc, with the branch word in slot k:
+  the A64 word offset = 4·(pc + o) − (4·pc + k) = B − k. So:
+  * `b`, `cbz`: B (slot 0);
+  * `b.cond`: B − 1 (slot 1, after `subs`), or B − 2 when the block starts with `movz x17, #0` (an x0 operand);
+  * `bl`: B − 3 (slot 3).
+
+  Validation requires the target 0 ≤ pc + o < n and |B| ≤ 262140 (±1 MiB for b.cond/cbz).
+* **Links (V2, W = 16).** `jal x1` links x30 = base + 16·(pc + 1), the address of the next block. `jalr x0, 0(r)`
+  is `br π r`. A link value lives in J registers and memory as an A64 address. Gen never does arithmetic on link
+  values; it only stores, reloads and jumps to them. J is parameterized by the link width (7536764):
+  w = 4·(wk+1), and for ARM wk = 3, w = 16. `BlockOK` uses J's own `step` with the premise `s.wk = 3`.
+* **Encoding ranges.** RV I/S immediates are |imm| ≤ 2048 < 4096, so they fit add/sub imm12 directly.
+  movz/movk take imm16; slli/srli shift amounts are < 64.
+
+## Per J instruction
+
+Notation: d = π rd, s = π rs, a = π ra, b = π rb. The lemmas are the existing `Arm/proofs` full steps and D's AL
+drafts (table below).
+
+| J (semantics from `step`) | A64 block (then PAD) | scratch | NZCV | lemmas |
+|---|---|---|---|---|
+| any rd = 0 write (addi/ld/lbu/alu/slli/srli): no-op | PAD ×4 | x16 | – | full_addi ×4 |
+| `addi rd x0 imm`, imm ≥ 0: x[rd] := imm | `movz d, #imm` | – | – | full_movz |
+| `addi rd x0 imm`, imm < 0: x[rd] := 2^64 + imm | `movz d, #(65536 + imm); movk d, #0xFFFF, lsl 16/32/48` | – | – | full_movz + full_movk ×3 |
+| `addi rd rs imm` (rs ≠ x0): x[rd] := x[rs] + imm | `add d, s, #imm` / `sub d, s, #abs` | – | – | full_addi / full_subi |
+| `ld rd rs off`: x[rd] := m(ea) | `ldr d, [s, #off]` (off ∈ 8ℕ, < 32768) · else `add/sub x16, s, #abs; ldr d, [x16]` | x16 (2nd form) | – | full_ldr (+ full_addi\|subi) |
+| `sd r2 r1 off`: m(ea) := x[r2] | the same with `str`; r2 = x0: `movz x17, #0` first, then store x17 | x16, x17 | – | full_str (+ full_addi\|subi, full_movz) |
+| `lbu rd rs off`: x[rd] := byte(ea) | `ldrb d, [s, #off]` (0 ≤ off < 4096) · else `add/sub x16, s, #abs; ldrb d, [x16]` | x16 (2nd form) | – | full_ldrb (+ full_addi\|subi) |
+| `sb r2 r1 off`: byte(ea) := x[r2] & 255 | `strb` (the same forms); r2 = x0: via x17 = 0 | x16, x17 | – | full_strb (+ full_addi\|subi, full_movz) |
+| `alu op rd a b`: x[rd] := aluf op | [`movz x17, #0` if a or b is x0, or op = mul] `add/sub/and/orr/lslv/lsrv/eor d, a', b'`; mul = `madd d, a', b', x17` (a' = x17 for x0) | x17 | – | (full_movz +) AL1/AL2/AL3/AL5. lslv/lsrv take the amount mod 64 = RV's `sll`/`srl` (`shl_mod`/`shr_mod`) |
+| `slli/srli rd rs sh` | [`movz x17, #0` if rs = x0] `movz x16, #sh; lslv/lsrv d, s', x16` | x16 (x17) | – | full_movz + AL3 |
+| `beq a x0 o` / `beq x0 b o` | `cbz a|b, B` | – | – | full_cbz (taken/not taken) |
+| `beq x0 x0 o` | `b B` | – | – | full_b |
+| other `beq`, `bne`, `bltu`, `bgeu a b o` | `subs x16, a, b; b.eq/ne/lo/hs (B − 1)`; with an x0 operand: `movz x17, #0; subs x16, a', b'; b.cond (B − 2)` | x16 (x17) | set by subs, read by b.cond, dead after | (full_movz +) AL4 + full_bc. bltu = lo (C = 0), bgeu = hs (C = 1): unsigned, as in J |
+| `jal x0 o` | `b B` | – | – | full_b |
+| `jal x1 o`: x1 := link, pc := pc + o | `PAD; PAD; PAD; bl (B − 3)` | x16 (PAD) | – | full_addi ×3 + full_bl |
+| `jalr x0 r` (imm 0): pc := (x[r] − base)/16 | `br π r` (host return: `br x30`) | – | – | AL6 (br; full_ret covers x30) |
+
+The not-taken path of a branch block runs the trailing PADs (full_addi). The taken path leaves the block early.
+Either way, the block takes ≤ 4 A64 steps per J step, and `sim_star` composes them.
+
+## Lemma map (lead, 2026-11-20). AL drafts are fuzz-confirmed but not yet Lean-checked
+
+| lemma | covers | used by blocks |
+|---|---|---|
+| AL1 | add/sub (register) | alu add/sub |
+| AL2 | and/orr/eor (register) | alu and/or/xor |
+| AL3 (branch al3-shift) | lslv/lsrv/asrv | alu sll/srl, slli/srli |
+| AL4 (branch al4-fullcmp) | subs (register, Rd = x16) + NZCV | compare-branch blocks, with full_bc |
+| AL5 | madd | alu mul (`madd d, a, b, x17`, x17 = 0) |
+| AL6 | br (+ ldur, now unused) | jalr |
+| full_movz / full_movk | movz, movk | addi x0, shift amounts, the zero for x0 stores |
+| full_addi / full_subi | add/sub immediate | addi, PAD, x16 address forms |
+| full_ldr / full_str | 8-byte, unsigned imm | ld, sd |
+| full_ldrb / full_strb | byte | lbu, sb |
+| full_b / full_bl / full_bc / full_cbz | branches | jal x0, beq x0 x0 / jal x1 / compare branches / beq against x0 |
+
+**Register 31: none.** No emitted word has a register field = 31. Every existing `full_*` lemma and every AL lemma
+can therefore keep its "< 31" premises. B2's ARM code, per objdump:
+* 0 xzr/wzr;
+* 0 sp;
+* 0 x18..x29.
+
+Removed in two steps:
+* `str xzr` → x17 = 0;
+* sp as a base or source → RV sp ↦ x4;
+* `ldur`/`stur` → the x16 address path;
+* `sub d, xzr, x16` → movz/movk;
+* `cmp a, xzr` for `beq` → cbz;
+* `cmp` (Rd = 31) → `subs x16`;
+* `madd …, xzr` → `madd …, x17`;
+* x0 operands → x17.
+
+## The statement (draft): `ArmBlock.lean`
+
+`ArmBlock.BlockOK M`: for every program C, data region D, kept values K, J state (pc, s) and A64 state t, if
+* `C[pc]? = some j`,
+* `validJ C.length pc j` (rv2arm's validation at the J level, plus `imm12` for addi/ld/sd/lbu/sb: RV's 12-bit
+  immediates, which rv2arm gets for free from the encoding; = `ArmEnc.armOK`, lake-built by O in
+  `Nano/V2Self/Proof/Machine/ArmEnc.lean`),
+* `s.wk = 3` (link width 16),
+* `AccOK C D (pc, s)` (memory accesses in D; a `jalr` target is a block address; NO WRAP: 0 ≤ x[rs] + imm < 2^64
+  for addi/ld/sd/lbu/sb, the no-wrap part of `JLay.SafeX`), and
+* `RelA M C D K (pc, s) t`,
+
+and `step C (pc, s) = some ps'`, then `∃ t', Runs M t t' ∧ RelA M C D K ps' t'`.
+
+Without NO WRAP the statement is FALSE (found by the DeepMind agent, b252549): J's `ea` clamps `x[rs] + imm` with
+`Int.toNat`, while A64 add/sub wrap mod 2^64. For example, `addi rd x0 -1` gives 0 in J but 2^64 − 1 in A64. The wrapping
+`addi` case is covered separately by `JTarget.addi_ok`.
+
+`RelA` = configured, PC = b + 16·pc, `X[π r] = x r` for live r (RV sp in x4), x 0 = 0, x18..x29 and sp = K (sp is register 31 of the Spec observation, never touched), the code bytes
+`codeA C` at b, every D cell's 8 bytes = J's cell (little-endian), D 8-aligned, D disjoint from the code, and both
+inside the RAM window.
+`blockJ` mirrors rv2arm at the J level. `ArmBlockCheck.lean` (generated by `gen_check.py`) checks with `#guard` that
+`blockJ j` = the oracle's block on all 13,502 distinct J instructions of B2, the translator, the examples and
+`synth_rv.py`'s program (x0/x2 operands, mul, far offsets, x0 stores). All pass (Lean 4.29, 70 s; run `check_lean.sh`).
+E's proof-side `Rel` (NANO_V2_ARM.md §0-min, ca35f99, which points to the block table above as the proof plan)
+maps J registers outside dom π to a never-written A64 register (proposed: x18). The validation already refuses every
+program that names such a register, so the emitted bytes do not depend on that choice.
+Open for the proof:
+* the step count (≤ 4, also on the branch-taken path);
+* `M := arm` (Spec's machine, after the 4.35 migration);
+* the bridge from `RelA` to Arm/proofs' `Abs`/`ArmFull`;
+* x18 is in `keep` although `armMapping.kept` lists x19..x29 + sp: an extra, stronger guarantee, for macOS;
+* the calling convention: RV sp ↦ x4 = `armMapping.workTop` (Spec, owner-approved, 1437a98). The shim passes the
+  work top in x4 and still sets sp.
+
+## Translator-level facts for the Lean equation
+
+* The output is `(C.map block).flatten` as little-endian bytes, emitted in chunks of CHUNK_WORDS = `z0` = 32000 RV words, because a nano
+  list holds < 2^19 elements. `rv2arm.sh` concatenates the chunks. A Lean statement can be made about `l0` over the
+  whole range directly.
+* Validation `c0` = `ArmEnc.armOK` = `validJ`, with the A64 field ranges checked explicitly:
+  * `c2` = imm12 on addi / ld / sd / lbu / sb;
+  * shift < 64 (bits 26.. zero);
+  * b.cond/cbz |B| ≤ 262140 (±65535 J instructions);
+  * `c3` = b/bl |B| ≤ 2^25 − 4, i.e. −2^23 < o < 2^23 J instructions (also in `validJ`'s jal clause);
+  * targets inside the program.
+
+  RV field widths already imply the immediate limits, so `c2`/`c3` are defensive and cannot be hit by an RV word.
+  `test_arm.sh` has refusal tests for every limit an RV word can exceed: targets out of the program, misaligned
+  offsets, a shift field with bit 26, srai, and jal rd ∉ {0, 1}.
+* Validation `c1` runs over the whole program before any byte is emitted. An invalid program gives the EMPTY output
+  (so `compileC_arm` would return `none`).
+* Decode facts needed: `o7 (encJX (branch a b o)) = 4·o` (sign-extended), `o8 (encJX (.jal rd o)) = 4·o`,
+  `o5`/`o6` = the I/S immediates, field extractors o1..o4 = rd, funct3, rs1, rs2.

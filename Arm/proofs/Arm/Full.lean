@@ -11,13 +11,17 @@ namespace ArmProof
 
 /-- **The configuration for full steps.** `Pins` (the pinned system registers: EL3, AArch64, MMU off, interrupts
 not pending, debug/PMU/SPE/timers off, the feature set `featOn`, see `gen/pins.py`), plus the branch bookkeeping
-the step reads: `Branchtypetaken ≠ RESET`, `BTypeNext = 0`, a cycle counter, and every `X` register present. -/
-structure ArmFull (s : St) : Prop where
+the step reads: `Branchtypetaken ≠ RESET`, `BTypeNext = n`, a cycle counter, and every `X` register present. -/
+structure ArmFullB (s : St) (n : BitVec 2) : Prop where
   pins : Pins s.regs
   bt : ∃ b, s.regs.get? .Branchtypetaken = some b ∧ (b == .BranchType_RESET) = false
-  btn : s.regs.get? .BTypeNext = some 0
+  btn : s.regs.get? .BTypeNext = some n
   cc : ∃ c, s.regs.get? .__cycle_count = some c
   x : ∀ i < 31, (xget s.regs i).isSome
+
+/-- `ArmFullB s n` with `BTypeNext = 0`.  `BTypeNext` is not reset by ordinary instructions (BTI is off, so it is
+never read either): `br` leaves `0b01`, `blr` `0b10` (FullBrLdur), so the per-form full steps take any `n` and keep it. -/
+abbrev ArmFull (s : St) : Prop := ArmFullB s 0
 
 theorem ins_swap {m : Regs} {a b : Register} {x : RegisterType a} {y : RegisterType b} (h : a ≠ b) :
     (m.insert a x).insert b y = (m.insert b y).insert a x :=
@@ -86,9 +90,9 @@ theorem abs_post {s1 : St} {a : AState} (ha : Abs s1 a) {q : ProcState} (hq : s1
 
 theorem full_post {s1 : St} (hc : Pins s1.regs) {q : ProcState} (hq : s1.regs.get? .PSTATE = some q)
     {b : BranchType} (hb : s1.regs.get? .Branchtypetaken = some b) (hbr : (b == .BranchType_RESET) = false)
-    (hbn : s1.regs.get? .BTypeNext = some 0) (hx : ∀ i < 31, (xget s1.regs i).isSome)
+    {n : BitVec 2} (hbn : s1.regs.get? .BTypeNext = some n) (hx : ∀ i < 31, (xget s1.regs i).isSome)
     (btn : BitVec 2) (bt : Bool) (pc1 : BitVec 64) (c : Int) :
-    ArmFull { s1 with regs := (postRegs s1.regs q btn bt pc1).insert .__cycle_count c } := by
+    ArmFullB { s1 with regs := (postRegs s1.regs q btn bt pc1).insert .__cycle_count c } n := by
   have hq3 : q.EL = 3#2 ∧ q.nRW = 0#1 ∧ q.IL = 0#1 := by
     obtain ⟨q', hq', h⟩ := hc.ps; rw [hq] at hq'; cases hq'; exact h
   have h1 := pins_pstate { q with BTYPE := btn } hq3 ((pins_insert (r := .InGuardedPage) (m := s1.regs) false rfl).2 hc)
@@ -105,7 +109,7 @@ theorem full_post {s1 : St} (hc : Pins s1.regs) {q : ProcState} (hq : s1.regs.ge
 word `w` stored little-endian at the PC, `stepModel` succeeds; the new state is abstracted by `armStep w a`,
 satisfies `ArmFull` again, has `PC + 4` in the PC, and the same memory. -/
 theorem full_word {w : BitVec 32} (hw : w ∈ emitted) {s : St} {a : AState} (hf : ArmFull s) (ha : Abs s a)
-    {pc : BitVec 64} (hpc : s.regs.get? ._PC = some pc) (hlt : pc.toNat < 2 ^ 29) (hal : pc.toNat % 4 = 0)
+    {pc : BitVec 64} (hpc : s.regs.get? ._PC = some pc) (hlt : VaOK pc.toNat) (hal : pc.toNat % 4 = 0)
     (hm : MemWord s.mem pc.toNat w) :
     ∃ s', stepModel s = .ok () s' ∧ Abs s' (armStep w a) ∧ ArmFull s' ∧ s'.regs.get? ._PC = some (pc + 4) ∧
       s'.mem = s.mem := by

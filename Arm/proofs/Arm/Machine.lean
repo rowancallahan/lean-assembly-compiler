@@ -17,7 +17,7 @@ theorem retcfg_of {s : St} (hc : Pins s.regs) : RetCfg s := by
 
 /-- **F2a: `ret` as a full machine step**: PC := x30, nothing else visible changes. -/
 theorem full_ret {s : St} {a : AState} (hf : ArmFull s) (ha : Abs s a)
-    {pc : BitVec 64} (hpc : s.regs.get? ._PC = some pc) (hlt : pc.toNat < 2 ^ 29) (hal : pc.toNat % 4 = 0)
+    {pc : BitVec 64} (hpc : s.regs.get? ._PC = some pc) (hlt : VaOK pc.toNat) (hal : pc.toNat % 4 = 0)
     (hm : MemWord s.mem pc.toNat Arm.iRet) :
     ∃ s', stepModel s = .ok () s' ∧ Abs s' a ∧ ArmFull s' ∧ s'.regs.get? ._PC = some (a.x 30) ∧ s'.mem = s.mem := by
   obtain ⟨b, hb, hbr⟩ := hf.bt
@@ -106,7 +106,7 @@ theorem run_full : ∀ (ws : List (BitVec 32)) (s : St) (a : AState) (pc : BitVe
   | w :: ws, s, a, pc, hw, hf, ha, hpc, hal, hlt, hcode => by
     have h0 : MemWord s.mem pc.toNat w := by have := hcode 0 (by simp); simpa using this
     obtain ⟨s₁, h₁, ha₁, hf₁, hpc₁, hm₁⟩ :=
-      full_word (hw w (List.mem_cons_self ..)) hf ha hpc (by simp at hlt; omega) hal h0
+      full_word (hw w (List.mem_cons_self ..)) hf ha hpc (va29 (by simp at hlt; omega)) hal h0
     have e : (pc + 4).toNat = pc.toNat + 4 := by simp [BitVec.toNat_add]; simp at hlt; omega
     obtain ⟨s₂, h₂, ha₂, hf₂, hpc₂, hm₂⟩ := run_full ws s₁ (armStep w a) (pc + 4)
       (fun w' h => hw w' (List.mem_cons_of_mem _ h)) hf₁ ha₁ hpc₁ (by omega) (by simp at hlt; omega)
@@ -148,7 +148,7 @@ theorem compile_ok (e : Exp) (he : e.depth < 11) {s : St} (hf : ArmFull s) {pc :
     (fun i hi => by have := hcode i (by omega); rwa [List.getElem_of_eq hc, List.getElem_append_left hi] at this)
   have e1 : (pc + BitVec.ofNat 64 (4 * ws.length)).toNat = pc.toNat + 4 * ws.length := by
     simp [BitVec.toNat_add]; omega
-  obtain ⟨s₂, h₂, ha₂, hf₂, hpc₂, hm₂⟩ := full_ret hf₁ ha₁ hpc₁ (by omega) (by omega) (by
+  obtain ⟨s₂, h₂, ha₂, hf₂, hpc₂, hm₂⟩ := full_ret hf₁ ha₁ hpc₁ (va29 (by omega)) (by omega) (by
     rw [hm₁, e1]; have := hcode ws.length (by omega)
     rw [List.getElem_of_eq hc, List.getElem_append_right (by omega)] at this; simpa using this)
   have henv' : ∀ i : Fin 4, a.x i = env i := fun i => rfl

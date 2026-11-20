@@ -8,13 +8,13 @@ outputs is correct machine code.  For every source text `src` (in the domain `D`
   (`asm (genR p)`, the stack generator) in the output block and their number in `a1`;
 * `correct`/`correctInt`: those bytes, run on the Sail model on the arguments (8-byte little-endian words; two's
   complement for `Int64`), return with `p.eval args` (`p.evalI args`) in the output block and no out-of-memory flag,
-  when the work block has `memoryNeeded` bytes (`CompileCorrect` form);
+  when the work block has `memoryNeeded` bytes (`CompileCorrectWeak` form);
 * `runs`: without the memory hypothesis they return with everything outside output and work unchanged, and the flag
-  is set exactly when the work block is too small (`CompileRuns` form).
+  is set exactly when the work block is too small (`CompileRunsWeak` form).
 
 `selfHosted_of` proves it from the two lemmas:
 (L1) `B` computes the compiler: `Implements1With` for a byte function `cb` with `cb src = nanoGen p`;
-(L2) `CompileCorrect riscv compile` and `CompileRuns riscv compile` for a `compile` whose code is `nanoGen p`.
+(L2) `CompileCorrectWeak riscv compile` and `CompileRunsWeak riscv compile` for a `compile` whose code is `nanoGen p`.
 Trusted: `nanoElab`/`Prog.eval` (spec), the Sail model, the statements in `Spec/` and `Compiler/AllocSpec.lean`. -/
 import Nano.Chain
 import Nano.Gen
@@ -78,7 +78,7 @@ theorem selfHosted_of {B : List (BitVec 32)} {space : Nat → Nat} {D : List UIn
     (L1 : Implements1With (α := SrcIn D) (fun s => s.1) encRaw B (fun s => cb s.1) space (retLen := true))
     (hcb : ∀ src p, D src → nanoElab src = some p → cb src = nanoGen p)
     (hcode : ∀ p c, compile p = some c → c.code = nanoGen p)
-    (L2 : CompileCorrect riscv compile) (L2r : CompileRuns riscv compile) : SelfHosted B space D compile where
+    (L2 : CompileCorrectWeak riscv compile) (L2r : CompileRunsWeak riscv compile) : SelfHosted B space D compile where
   code := hcode
   emits := fun src p c hD helab hc startState call startsRight outputFits enough => by
     have e : cb src = c.code := by rw [hcb src p hD helab, hcode p c hc]
@@ -111,7 +111,7 @@ theorem selfHosted_stages {ce cg ca : List (BitVec 32)} {fe fg fa : ByteArray �
       (fg (ofL (fe (ofL src)))).length ≤ K ∧ sa (fg (ofL (fe (ofL src)))).length ≤ K)
     (heq : ∀ src p, D src → nanoElab src = some p → fa (ofL (fg (ofL (fe (ofL src))))) = nanoGen p)
     (hcode : ∀ p c, compile p = some c → c.code = nanoGen p)
-    (L2 : CompileCorrect riscv compile) (L2r : CompileRuns riscv compile) :
+    (L2 : CompileCorrectWeak riscv compile) (L2r : CompileRunsWeak riscv compile) :
     SelfHosted (link (link ce cg) ca) (fun _ => 4 * (4 * K + 96) + 96) D compile := by
   have h1 := link_stage (α := SrcIn D) K (comap he fun s : SrcIn D => ofL s.1) hg hcg fun a _ => by
     obtain ⟨h1, h2, h3, h4, -⟩ := hD a.1 a.2; exact ⟨h1, h2, h3, h4⟩

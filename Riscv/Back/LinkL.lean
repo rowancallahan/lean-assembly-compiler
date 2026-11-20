@@ -1,5 +1,5 @@
-/- **The chaining adapter**: a compiler with the strengthened statement `CompileCorrectL riscv compile`
-(`Compiler/AllocSpec.lean`) yields `Implements1With encA encB code f space maxLen retLen` for every program it compiles
+/- **The chaining adapter**: a compiler with the strengthened statement `CompileCorrect riscv compile`
+(`Spec/Alloc.lean`) yields `Implements1With encA encB code f space maxLen retLen` for every program it compiles
 (code bytes `wordBytes code`), whenever `space` bounds `memoryNeeded`.  `Implements1With` is the form
 `Nano.Link.link_stage` chains (with `retLen = true`).  The reverse of `implements1_top` (`Riscv/Back/Top.lean`). -/
 import Riscv.Back.Top
@@ -68,7 +68,7 @@ theorem obs_reg {s : St} (h : Cfg s) : ∀ (j : Fin 32), j ≠ 0 →
   | ⟨31, _⟩, _ => by simp [riscvObserve, riscvRegister, h.x31]
   | ⟨n + 32, hn⟩, _ => absurd hn (by omega)
 
-/-- **`CompileCorrectL` on RISC-V with the frame on every address of the Sail memory map.** `Spec/Top.lean` observes
+/-- **`CompileCorrect` on RISC-V with the frame on every address of the Sail memory map.** `Spec/Top.lean` observes
 memory at `UInt64` addresses only, while `Implements1With` (`unchangedOutside`) frames every `Nat` key of the Sail
 memory map; this statement adds that (the RISC-V back ends prove it, `Ir.machine_runL`). -/
 def CompileCorrectRV {P : Type} [Program P] (compile : P → Option CompiledA) : Prop :=
@@ -92,7 +92,7 @@ def CompileCorrectRV {P : Type} [Program P] (compile : P → Option CompiledA) :
       KeptRegisters riscv startState finishState ∧ Cfg finishState
 
 theorem CompileCorrectRV.correctL {P : Type} [Program P] {compile : P → Option CompiledA}
-    (h : CompileCorrectRV compile) : CompileCorrectL riscv compile := by
+    (h : CompileCorrectRV compile) : CompileCorrect riscv compile := by
   intro α β program compiled f encodeInput encodeOutput argument startState call hc hf hs ho hm
   obtain ⟨finish, hr, hpc, hflag, hread, hlen, hframe, hkept, hcfg⟩ :=
     h program compiled f encodeInput encodeOutput argument startState call hc hf hs ho hm
@@ -101,7 +101,7 @@ theorem CompileCorrectRV.correctL {P : Type} [Program P] {compile : P → Option
   show (finish.mem[address.toNat]?).map UInt8.ofBitVec = (startState.mem[address.toNat]?).map UInt8.ofBitVec
   rw [hframe address.toNat h1 h2]
 
-/-- **The adapter**: `CompileCorrectRV` (`CompileCorrectL` with the full memory frame) for a compiler gives `Implements1With` for each compiled program -/
+/-- **The adapter**: `CompileCorrectRV` (`CompileCorrect` with the full memory frame) for a compiler gives `Implements1With` for each compiled program -/
 theorem implements_of_compileL {P : Type} [Program P] {compile : P → Option CompiledA}
     (correct : CompileCorrectRV compile) {program : P} {compiled : CompiledA} {code : List (BitVec 32)}
     {α β : Type} {encA : α → List UInt8} {encB : β → List UInt8} {f : α → β} {space : Nat → Nat}
