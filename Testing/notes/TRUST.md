@@ -12,6 +12,19 @@ unverified C compiler — but their details are not guaranteed and should be tak
 | ARM (DeepMind) | DeepMind arm64 Lean model | written in Lean by its authors | third-party model, not Arm's; coverage of what we use only |
 | x86-64 (planned) | Sail x86 translated from ACL2 x86isa | ACL2 → Sail translator → Sail Lean backend | community/translated, two generation steps, possibly incomplete or out of sync with current Sail |
 
+How the ARM theorems are built (affects trust; owner, 2026-11-20):
+- **ARM code is a translation of RISC-V code.** nano compiles to RISC-V; `rv2arm` translates those words to AArch64.
+  `C_correct_armSail` / `C_correct_armDM` prove compiler + translator on each ARM model (both from the generic
+  `C_correct_arm` over the `A64Sem` interface). A native ARM backend is planned (ROADMAP); until then ARM code inherits
+  RISC-V's shape (about 3.6x more ARM instructions than RISC-V on rle.lean).
+- **Statement level.** RISC-V: `CompileCorrect riscv compileC`, machine defined in `Spec/`. Sail ARM:
+  `CompileCorrect armSail …`, same `Spec/` definition, but the `armSail` machine is defined OUTSIDE `Spec/` (gap; owner
+  approved moving it into `Spec/`, pending). DeepMind ARM: `CompileCorrectP armDM (ArmLoader XD WD) …`, i.e. only for
+  start states where the loader mapped the code executable and the input/output/work blocks readable+writable
+  (DeepMind's model has page permissions; Sail ARM has none, so the condition is always true there).
+- **ARM self-hosting** (the ARM build of the compiler compiling itself) is tested (cross_check 8/8, fuzzing), not a
+  separate theorem.
+
 Mitigations: the compiler only uses a few dozen basic instructions (moves, ALU, shifts, multiply, compare/branch,
 loads/stores, call/return), where these models are most likely right; every model is fuzzed against QEMU on
 real binaries; RISC-V and ARM are proved on independent models where possible (Sail ARM and DeepMind ARM);
