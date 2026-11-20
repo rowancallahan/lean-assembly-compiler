@@ -10,7 +10,7 @@ enum { MAP_JIT = 0 };
 static void pthread_jit_write_protect_np(int on) { (void)on; }
 static void sys_icache_invalidate(void *p, long n) { __builtin___clear_cache((char *)p, (char *)p + n); }
 #endif
-enum { CODE = 4 << 20, IN = 1 << 20, OUT = 2 << 20, WORK = 80 << 20 };
+enum { CODE = 4 << 20, IN = 1 << 20, OUT = 2 << 20, WORK = 1 << 30 };
 static unsigned char in[IN + 1], out[OUT];                                      /* +1: detect too long */
 static long work[WORK / 8] __attribute__((aligned(16)));                        /* AArch64: sp must be 16-aligned */
 

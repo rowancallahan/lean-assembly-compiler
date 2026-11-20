@@ -102,7 +102,7 @@ riscv64-linux-gnu-gcc -O2 -static shim/shim_rv.c -o shim_rv
 On a machine that is not RISC-V: `qemu-riscv64-static ./shim_rv …` (Debian/Ubuntu package `qemu-user-static`).
 Input comes from stdin, the output bytes go to stdout, the status line to stderr; exit status 0 on success (status 0 or
 1), 1 when the code reported −1 (out of work memory) or −2 (buffer capacity), 2 on a usage error.
-Fixed sizes: code up to 4 MiB, input 1 MiB, output 2 MiB, work memory 80 MiB.
+Fixed sizes: code up to 4 MiB, input 1 MiB, output 2 MiB, work memory 1 GiB.
 
 What it does: `mmap` a read-write-execute block for the code, read the input into a static buffer, flush the
 instruction cache, then one line of inline assembly: park the host stack pointer in `s1`, set `sp` to the top of the
