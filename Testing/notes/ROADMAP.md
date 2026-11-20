@@ -567,8 +567,13 @@ bite); (2) speed of compiled programs; (3) grow the parser's accepted syntax unt
   Later: restore sp (prove it unchanged / reset on exit) by exporting SP_EL0/SP_EL3/PSTATE.SP from the full_* lemmas.
 - Later: reset the memory chunks (work/scratch regions) on exit, so the caller gets them back in a defined state.
 
-## Next after release-434: generated-code speed (owner, 2026-11-20)
-Goal: no obviously slow patterns in the code the compiler emits. Before syntax growth.
+## Order after release-434 (owner, 2026-11-20)
+1. Organize: low-risk cleanups from CODE_SIZE.md (archive dead code, prune dead decls, dedupe the rv2arm table); no big proof rewrites while integrating.
+2. Grow the accepted syntax toward con-leche (raise the 511-def cap, parser node cap, clear errors), proofs green, no speed regression.
+3. Generated-code speed: deferred. Only small LOCAL fixes (cheap proofs) if the FABLE-CGSPEED analysis finds them; the big ones (top-of-stack in a register, ARM sequences) later.
+
+## Generated-code speed (analysis only for now)
+Goal: no obviously slow patterns in the code the compiler emits.
 Evidence (B2.bin disassembly): stack-machine codegen; every push = addi + bgeu + j + sd; `x < 65` ≈ 15 instructions
 (good code: 2). B2 has ~10.9k per-push overflow checks and ~14k sd.
 Order (each: measure on BENCH.md programs + self-compile, then prove; proofs green, no regression):
