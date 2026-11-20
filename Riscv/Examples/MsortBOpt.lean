@@ -39,14 +39,14 @@ theorem msortCodeO2_ok_k {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get
   have hsl : scr.length = xs.length := by simpa [bytesAt] using (congrArg List.length hs).symm
   have hol : out.length = xs.length := by simpa [bytesAt] using (congrArg List.length ho).symm
   obtain ⟨σ', hex, scr', hh⟩ := msortProgB_mergeSort xs scr out ⟨envOf s, [xs, scr, out]⟩ rfl
-    (by simpa [envOf] using h1) hn hsl hol
+    (h1) hn hsl hol
   have hheap : HeapRel [0, 2, 3] [⟨inb, xs.length⟩, ⟨scb, xs.length⟩, ⟨outb, xs.length⟩]
       ⟨envOf s, [xs, scr, out]⟩ s :=
     ⟨rfl, rfl, fun b hb => by
         obtain _ | _ | _ | b := b
-        · simpa [envOf] using h0
-        · simpa [envOf] using h2
-        · simpa [envOf] using h3
+        · exact h0
+        · exact h2
+        · exact h3
         · simp at hb; omega,
       fun b hb => by
         obtain _ | _ | _ | b := b

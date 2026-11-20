@@ -323,7 +323,7 @@ theorem insProgB_wf : rvF.wfB 0 [0, 3] [2] insProgB := by
 15 bytes of work space (the frame cell saving `gp`, plus alignment) -/
 theorem insCodeO_implements1 : Implements1Raw insCodeO (fun x => x.mergeSort leU) (fun _ => 15) := by
   refine implements1_of_execO encRaw encRaw _ 0 (by omega) _ insProgB_wf (fun _ => 0) (fun _ => 15)
-    (fun n => by dsimp only; omega) _ false ?_
+    (fun n => by (try dsimp only); omega) _ false ?_
   intro a out tbl env h1 h8 hmax hlt hout hol htl
   simp only [encRaw, List.length_mergeSort] at h1 hlt hout ⊢
   obtain ⟨σ', hex, hh⟩ := insProgB_exec (a.map (·.toBitVec)) out ⟨env, [a.map (·.toBitVec), out], [tbl]⟩ rfl

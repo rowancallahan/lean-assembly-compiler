@@ -269,7 +269,7 @@ theorem countP_core (p : UInt8 → Bool) (q : BPred) (hq : q.noAcc = true) (hpq 
     (fun env => rfl)
     (fun _ env a x h5 h6 => by
       simp only [AExp.denote, Op.eval, h5, BPred.bit_tr hq env x h6, b01_ofNat, hpq, BitVec.ofNat_add])
-    (fun env a h5 => h5) (fun env a h5 h1 => h1) (fun _ => Nat.le_refl _) (by dsimp only; omega) hI hkL hx hL
+    (fun env a h5 => h5) (fun env a h5 h1 => h1) (fun _ => Nat.le_refl _) (by (try dsimp only); omega) hI hkL hx hL
   refine ⟨σ', h, ?_⟩
   simpa only [if_true, foldl_countP, Nat.zero_add, leBytes_w8] using hI'
 
@@ -282,7 +282,7 @@ theorem any_core (p : UInt8 → Bool) (q : BPred) (hq : q.noAcc = true) (hpq : �
     (fun _ => false) b01 (fun _ => 1) ⟨.const 0, true, .bin .or (.var 5) q.bit.tr, none, 1, none⟩
     (fun env => rfl)
     (fun _ env a x h5 h6 => by simp only [AExp.denote, Op.eval, h5, BPred.bit_tr hq env x h6, b01_or, hpq])
-    (fun env a h5 => h5) (fun env a h5 h1 => h1) (fun _ => Nat.le_refl _) (by dsimp only; omega) hI hkL hx hL
+    (fun env a h5 => h5) (fun env a h5 h1 => h1) (fun _ => Nat.le_refl _) (by (try dsimp only); omega) hI hkL hx hL
   refine ⟨σ', h, ?_⟩
   simpa only [if_true, foldl_any, Bool.false_or, leBytes_b01] using hI'
 
@@ -295,7 +295,7 @@ theorem all_core (p : UInt8 → Bool) (q : BPred) (hq : q.noAcc = true) (hpq : �
     (fun _ => true) b01 (fun _ => 1) ⟨.const 1, true, .bin .and (.var 5) q.bit.tr, none, 1, none⟩
     (fun env => rfl)
     (fun _ env a x h5 h6 => by simp only [AExp.denote, Op.eval, h5, BPred.bit_tr hq env x h6, b01_and, hpq])
-    (fun env a h5 => h5) (fun env a h5 h1 => h1) (fun _ => Nat.le_refl _) (by dsimp only; omega) hI hkL hx hL
+    (fun env a h5 => h5) (fun env a h5 h1 => h1) (fun _ => Nat.le_refl _) (by (try dsimp only); omega) hI hkL hx hL
   refine ⟨σ', h, ?_⟩
   simpa only [if_true, foldl_all, Bool.true_and, leBytes_b01] using hI'
 
@@ -356,7 +356,7 @@ theorem opt_core (F : Option UInt8 → UInt8 → Option UInt8) (S : AExp)
   obtain ⟨σ', h, hI'⟩ := red_exec (α := Option UInt8) oW F (fun _ => none) oW (fun o => if o.isSome then 2 else 1)
     ⟨.const 0, true, S, none, 2, some (.bin .add optTagE (.const 1))⟩
     (fun env => rfl) (fun _ => hS) (fun env a h5 => h5) (fun env a h5 h1 => tag1_val h5)
-    (fun o => by dsimp only; split <;> omega) (by dsimp only; omega) hI hkL hx hL
+    (fun o => by dsimp only; split <;> omega) (by (try dsimp only); omega) hI hkL hx hL
   refine ⟨σ', h, ?_⟩
   simpa only [if_true, oW_bytes] using hI'
 
@@ -414,7 +414,7 @@ theorem findIdx_core (p : UInt8 → Bool) (q : BPred) (hq : q.noAcc = true) (hpq
       cases f <;> cases hp : p x <;> simp only [fiF, fiW, if_true, Bool.false_eq_true, if_false, Op.eval, hp] <;>
         (apply BitVec.eq_of_toNat_eq; simp only [BitVec.toNat_add, BitVec.toNat_ofNat]; simp only [show (1 : BitVec 64).toNat = 1 from rfl, show (2 : BitVec 64).toNat = 2 from rfl]; omega))
     (fun env a h5 => by simp only [Option.getD_some, AExp.denote, Op.eval, h5]; rfl)
-    (fun env a h5 h1 => h1) (fun _ => Nat.le_refl _) (by dsimp only; omega) hI hkL hx hL
+    (fun env a h5 h1 => h1) (fun _ => Nat.le_refl _) (by (try dsimp only); omega) hI hkL hx hL
   refine ⟨σ', h, ?_⟩
   have hfi := foldl_fi p cur 0
   have hle := List.findIdx_le_length (p := p) (xs := cur)
