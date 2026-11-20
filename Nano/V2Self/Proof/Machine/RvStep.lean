@@ -36,12 +36,15 @@ theorem g40_bytes (c : List UInt8) (ws : List UInt64) (hl : ws.length < 2 ^ 64) 
         rw [UInt64.lt_iff_toNat_lt, hi]; simp; omega
       have e1 : UInt64.ofNat i + 1 = UInt64.ofNat (i + 1) := by
         apply UInt64.toNat_inj.1; simp; all_goals omega
-      rw [if_pos this, e1, g40_bytes c ws hl n (i + 1) _ (by omega) (by omega), hi]
+      -- Lean 4.34.1: `if_pos` misses (the `Decidable` instance differs), so `simp only`
+      simp only [this, ↓reduceIte]
+      rw [e1, g40_bytes c ws hl n (i + 1) _ (by omega) (by omega), hi]
       simp [put, le4, List.getD_eq_getElem?_getD, List.getElem?_eq_getElem h]
       rw [List.drop_eq_getElem_cons h, List.flatMap_cons]; rfl
     · have : ¬ UInt64.ofNat i < ws.length.toUInt64 := by
         rw [UInt64.lt_iff_toNat_lt, hi]; simp; omega
-      rw [if_neg this, List.drop_of_length_le (by omega)]; simp
+      simp only [this, ↓reduceIte]
+      rw [List.drop_of_length_le (by omega)]; simp
 
 section
 open Templates CallProbe C GenRef ParSpec

@@ -86,7 +86,7 @@ theorem gcd_ok_concrete :
 
 theorem step_on {s : St} {pc : BitVec 64} {w : BitVec 32} {ws : List (BitVec 32)}
     (hc : codeAt s pc (w :: ws)) (hok : codeOK pc (w :: ws).length) : pcOK pc ∧ instrAt s pc w :=
-  ⟨codeOK_pcOK hok (by simp), by simpa using hc 0 (by simp)⟩
+  ⟨codeOK_pcOK hok (by simp), by have := hc 0 (by simp); simp at this; exact this⟩
 
 theorem after {s s' : St} {pc : BitVec 64} {rd v} {w : BitVec 32} {ws : List (BitVec 32)}
     (hn : Next s s' (pc + 4) rd v s.mem) (hc : codeAt s pc (w :: ws)) (hok : codeOK pc (w :: ws).length) :

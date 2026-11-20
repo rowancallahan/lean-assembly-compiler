@@ -229,7 +229,7 @@ theorem condE_ne (env : BEnv) : ∀ p : BExp × Bool, (condE p).denote env ≠ 0
   | (c, true) => by simp [condE]
   | (c, false) => by
     simp only [condE, eqz, BExp.denote, Op.eval]
-    by_cases h : c.denote env = 0 <;> simp [h]
+    by_cases h : c.denote env = 0#64 <;> simp [h]
 
 theorem condE_vlt {m : Nat} {p : BExp × Bool} (h : p.1.vlt m) : (condE p).vlt m := by
   obtain ⟨c, b⟩ := p
@@ -787,7 +787,7 @@ theorem ite_ne (env : BEnv) (c a : BExp) : (BExp.ite c a (.const 0)).denote env 
 
 theorem eqz_ne (env : BEnv) (c : BExp) : (eqz c).denote env ≠ 0 ↔ c.denote env = 0 := by
   simp only [eqz, BExp.denote, Op.eval]
-  by_cases h : c.denote env = 0 <;> simp [h]
+  by_cases h : c.denote env = 0#64 <;> simp [h]
 
 /-- **a search loop** (`X`, then the test `c'`: continue with the `call` branch `S2` or leave and run `R`) keeps
 the invariant -/
@@ -1041,7 +1041,9 @@ theorem common_wf (L : Lay) (S : Tree) (hw : S.wf L) : (Tree.call (common S)).wf
 theorem splitG_K (W : List Nat) (K : List (Nat × BitVec 64)) (cs : List (BExp × Bool)) (env : BEnv)
     (h1 : ∀ c ∈ (splitG W K cs).1, c.denote env ≠ 0) : ∀ p ∈ K, env p.1 = p.2 := fun p hp => by
   have := h1 _ (List.mem_append_left _ (List.mem_map.2 ⟨p, hp, rfl⟩))
-  simpa [BExp.denote, Op.eval] using this
+  by_cases h : env p.1 = p.2
+  · exact h
+  · simp [BExp.denote, Op.eval, h] at this
 
 theorem splitG_ok (W : List Nat) (K : List (Nat × BitVec 64)) (cs : List (BExp × Bool)) (env : BEnv)
     (h1 : ∀ c ∈ (splitG W K cs).1, c.denote env ≠ 0) (h2 : ∀ c ∈ (splitG W K cs).2, c.denote env ≠ 0) :

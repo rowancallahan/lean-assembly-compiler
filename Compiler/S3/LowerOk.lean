@@ -55,7 +55,7 @@ theorem ex_lowCmp {g : VReg → Val} (m : Ir.Mem) (c : Cmp) (n a b : Nat) {x y :
   cases c with
   | eq => exact ⟨_, ex_op m .eq n _ _ hA hB, by simp [Op.eval, bv, Cmp.eval], upd_lt (Nat.le_refl n) _⟩
   | ult => exact ⟨_, ex_op m .ult n _ _ hA hB, by simp [Op.eval, bv, Cmp.eval], upd_lt (Nat.le_refl n) _⟩
-  | slt => exact ⟨_, ex_op m .slt n _ _ hA hB, by simp [Op.eval, bv, Cmp.eval], upd_lt (Nat.le_refl n) _⟩
+  | slt => exact ⟨_, ex_op m .slt n _ _ hA hB, by simp [Op.eval, bv, Cmp.eval]; rfl, upd_lt (Nat.le_refl n) _⟩
   | ne =>
     obtain ⟨g', h1, h2, h3⟩ := two .eq _ _ x y hA hB
     refine ⟨g', h1, ?_, h3⟩

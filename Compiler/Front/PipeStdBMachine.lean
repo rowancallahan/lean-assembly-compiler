@@ -181,15 +181,15 @@ theorem implementsS_of_execB {prog : BStmt} (hwf : prog.wf 7 [0, 3, 2]) {f : Lis
     simp only [R, List.mem_cons, List.not_mem_nil, or_false] at hr
     rcases hr with rfl | rfl | rfl | rfl <;> (unfold disjoint; dsimp only; omega)
   have hra' : getX s 1 = ra := getX_of (h.x1.symm.trans h1) rfl
-  have e1 : envOf s 1 = .ofNat 64 x.length := by simpa [envOf] using getX_of (h.x11.symm.trans h11) rfl
+  have e1 : envOf s 1 = .ofNat 64 x.length := by simp [envOf]; exact getX_of (h.x11.symm.trans h11) rfl
   obtain ⟨τ', out', scr', hexec, hh, hlen, htk, he1⟩ := hex x out0 scr0 (envOf s) e1 (by omega)
     (by omega) (by omega) (by omega) (by omega)
   have hheap : HeapRel [0, 3, 2] R ⟨envOf s, [tbs x, out0, scr0]⟩ s :=
     ⟨rfl, rfl, fun b hb => by
         obtain _ | _ | _ | b := b
-        · simpa [envOf] using getX_of (h.x10.symm.trans h10) rfl
-        · simpa [envOf] using getX_of (h.x13.symm.trans h13) rfl
-        · simpa [envOf] using getX_of (h.x12.symm.trans h12) rfl
+        · simp [envOf]; exact getX_of (h.x10.symm.trans h10) rfl
+        · simp [envOf]; exact getX_of (h.x13.symm.trans h13) rfl
+        · simp [envOf]; exact getX_of (h.x12.symm.trans h12) rfl
         · simp [R] at hb; omega,
       fun b hb => by
         obtain _ | _ | _ | b := b

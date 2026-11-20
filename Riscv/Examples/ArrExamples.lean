@@ -53,7 +53,7 @@ theorem sumProg_exec (σ : AState) (xs : List (BitVec 8)) (hh : σ.heap = [xs])
     (fun ⟨env, heap⟩ ⟨hh, h1, hle, hs⟩ hc => by
       dsimp only at hh h1 hle hs; subst hh
       simp only [AExp.denote, ult_ne, h1, toNat_ofNat_lt hn] at hc
-      refine ⟨_, .seq (.load (by simp) (by simpa using hc)) (.seq .assign .assign), ?_⟩
+      refine ⟨_, .seq (.load (by simp) (by simp; exact hc)) (.seq .assign .assign), ?_⟩
       have e3 := toNat_inc hc hn
       refine ⟨⟨rfl, ?_, ?_, ?_⟩, ?_⟩
       all_goals simp only [AEnv.set, AExp.denote, Op.eval]
@@ -114,7 +114,7 @@ theorem mapProg_exec (g : AExp) (f : BitVec 8 → BitVec 8)
       have hx : (env 5).toNat < xs.length := by omega
       have ho : (env 5).toNat < out.length := by omega
       have e5 := toNat_inc (show (env 5).toNat < m by omega) (show m < 2 ^ 64 by omega)
-      refine ⟨_, .seq (.load (by simp) (by simpa using hx))
+      refine ⟨_, .seq (.load (by simp) (by simp; exact hx))
         (.seq (.store (by simp) (by simp [AEnv.set, AExp.denote]; omega)) .assign), ⟨?_, ?_, ?_⟩, ?_⟩
       all_goals simp only [AEnv.set, AExp.denote, Op.eval]
       all_goals simp only [Fin.reduceEq, if_false, if_true]
@@ -227,7 +227,7 @@ theorem mapCode_ok (g : AExp) (f : BitVec 8 → BitVec 8)
   rintro s' ⟨p1, p2, p3, p4, p5⟩
   have e0 := p2.bytes 0 (by simp); have e1 := p2.bytes 1 (by simp)
   simp only [hh] at e0 e1
-  exact ⟨p1, by simpa using e1, by simpa using e0, unchanged_drop p3 (by simpa [hx] using e0), p4, p5⟩
+  exact ⟨p1, e1, by simpa using e0, unchanged_drop p3 (by simpa [hx] using e0), p4, p5⟩
 
 theorem setWidth_inc (x : BitVec 8) : (x.setWidth 64 + 1).setWidth 8 = x + 1 := by
   apply BitVec.eq_of_toNat_eq

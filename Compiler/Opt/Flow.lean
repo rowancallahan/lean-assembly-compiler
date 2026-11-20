@@ -263,7 +263,7 @@ theorem onceL_ok {p b : Code Nat} {t : Tst Nat} {σ σ' : St Nat} (h : Exec ram 
       simp only [Bool.and_eq_true, decide_eq_true_eq] at hc
       obtain ⟨⟨⟨hp, rfl⟩, rfl⟩, rfl⟩ := hc
       have tz : ∀ s : St Nat, Tst.eval s.reg ⟨.ne, .r a', .i 0⟩ = false → s.reg a' = 0 := fun s ht => by
-        simpa [Tst.eval, Cond.eval, Arg.eval] using ht
+        simp [Tst.eval, Cond.eval, Arg.eval] at ht; exact of_decide_eq_true ht
       cases h with
       | loopF h₁ ht =>
         rw [triv_exec h₁ hp] at ht ⊢
@@ -371,7 +371,7 @@ theorem killF_ok {F : Fs} {σ : Regs Nat} (h : FOK F σ) (d : Nat) (v : BitVec 6
 
 theorem cmpOp_eval {op : Op} {c : Cond} (h : cmpOp op = some c) (a b : BitVec 64) :
     op.eval a b = if c.eval a b then 1 else 0 := by
-  cases op <;> simp only [cmpOp, reduceCtorEq] at h <;> cases h <;> simp [Op.eval, Cond.eval]
+  cases op <;> simp only [cmpOp, reduceCtorEq] at h <;> cases h <;> simp [Op.eval, Cond.eval] <;> rfl
 
 theorem afterF_ok {F : Fs} {i : Ins Nat} {σ σ' : St Nat} (hst : Step ram fp i σ σ') (h : FOK F σ.reg) :
     FOK (afterF F i) σ'.reg := by
@@ -492,7 +492,7 @@ theorem seq_inv {a b : Code Nat} {σ σ' : St Nat} (h : Exec ram fp (.seq a b) �
   cases h with | seq h₁ h₂ => exact ⟨_, h₁, h₂⟩
 
 theorem tne {s : Regs Nat} {k : Nat} : Tst.eval s ⟨.ne, .r k, .i 0⟩ = true ↔ s k ≠ 0 := by
-  simp [Tst.eval, Cond.eval, Arg.eval]
+  simp [Tst.eval, Cond.eval, Arg.eval]; exact decide_eq_false_iff_not
 
 theorem rotL_ok {p₁ p₂ b : Code Nat} {t₁ t₂ : Tst Nat} {k : Nat} (hk : t₂ = ⟨.ne, .r k, .i 0⟩) {σ σ' : St Nat}
     (h : Exec ram fp (.loop2 p₁ t₁ p₂ t₂ b) σ σ') (h0 : σ.reg k ≠ 0) : Exec ram fp (rotL p₁ t₁ p₂ t₂ b) σ σ' := by
@@ -513,7 +513,7 @@ theorem rotL_ok {p₁ p₂ b : Code Nat} {t₁ t₂ : Tst Nat} {k : Nat} (hk : t
       | loop2B x₁ ht₁ x₂ ht₂ =>
         cases hc
         rw [triv_exec x₂ hp₂, triv_exec x₁ hp₁] at ht₂
-        exact absurd (by simpa [Tst.eval, Cond.eval, Arg.eval] using ht₂) h0
+        exact absurd (by simp [Tst.eval, Cond.eval, Arg.eval] at ht₂; exact of_decide_eq_true ht₂) h0
       | @loop2T _ _ _ _ _ s s₁ s₂ s₃ s₄ x₁ ht₁ x₂ ht₂ xb hl _ _ _ ih =>
         cases hc
         rw [triv_exec x₂ hp₂] at xb ht₂
@@ -522,7 +522,7 @@ theorem rotL_ok {p₁ p₂ b : Code Nat} {t₁ t₂ : Tst Nat} {k : Nat} (hk : t
         have hYt : tS.eval sY.reg = Tst.eval sY.reg ⟨.ne, .r k, .i 0⟩ := by
           rw [← hT]; exact rwT_eval (fuse_ok xY (F := []) FOK.nil).2 _ _
         have hk0 : tS.eval sY.reg = false → sY.reg k = 0 := fun htS => by
-          have := hYt ▸ htS; simpa [Tst.eval, Cond.eval, Arg.eval] using this
+          have := hYt ▸ htS; simp [Tst.eval, Cond.eval, Arg.eval] at this; exact of_decide_eq_true this
         cases xw with
         | whenT htS xS =>
           have hk3 : s₃.reg k ≠ 0 := by
