@@ -1,0 +1,16 @@
+LeanRV64D.ExceptionType.match_on_same_ctor._@.LeanRV64D.Defs.3432798784._hygCtx._hyg.139	LeanRV64D.Defs	def
+LeanRV64D.ExceptionType.match_on_same_ctor.het._@.LeanRV64D.Defs.3432798784._hygCtx._hyg.139	LeanRV64D.Defs	def
+LeanRV64D.Functions.check_pma_regions._f	LeanRV64D.ValidateConfig	def
+LeanRV64D.Functions.matching_pma_region_bits_range._f	LeanRV64D.Pma	def
+LeanRV64D.is_fp_bits	LeanRV64D.Defs	def
+LeanRV64D.is_mem_width	LeanRV64D.Defs	def
+LeanRV64D.is_sew_bitsize	LeanRV64D.Defs	def
+LeanRV64D.is_sv_mode	LeanRV64D.Defs	def
+LeanRV64D.nfields_range	LeanRV64D.Defs	def
+LeanRV64D.nfields_range_pow2	LeanRV64D.Defs	def
+LeanRV64D.prerr_bits_effect	LeanRV64D.SpecializationV1	def
+LeanRV64D.prerr_effect	LeanRV64D.SpecializationV1	def
+LeanRV64D.prerr_endline_effect	LeanRV64D.SpecializationV1	def
+LeanRV64D.prerr_int_effect	LeanRV64D.SpecializationV1	def
+LeanRV64D.sail_assert	LeanRV64D.SpecializationV1	def
+LeanRV64D.valid_misaligned_order	LeanRV64D.Defs	def
