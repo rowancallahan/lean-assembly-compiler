@@ -526,3 +526,8 @@ ARM proof and the larger code work.
   DeepMind's arm64 Lean model (Arm/apc), with lemmas stated in the same shape as the Sail full_* lemmas.
   LATER: the DeepMind <-> Sail equivalence (per instruction form we use) on a big-memory machine (e.g. a large cloud box),
   so the final theorem is against Sail.
+- LEAN VERSIONS (owner, 2026-11-20): never hand-edit the Sail RISC-V model (it is trusted; "very dangerous").
+  For now each machine may be proved on its own Lean version ("ok-ish"): RISC-V on 4.29 with the unchanged model,
+  ARM on 4.34.1/4.35 with the machine-independent chain. Wanted: RISC-V on 4.34; ideal: both on 4.35. Route for
+  RISC-V: regenerate with the official Sail Lean backend (same sail-riscv commit), show the owner the generated diff
+  and a definition-level comparison, re-run the RISC-V conformance tests; no hand patches.
