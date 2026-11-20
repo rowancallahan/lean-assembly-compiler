@@ -98,13 +98,19 @@ def validJ (n pc : Nat) : J → Prop
   | .jal rd o => (rd = 0 ∨ rd = 1) ∧ 0 ≤ (pc : Int) + o ∧ (pc : Int) + o < n
   | .jalr rd rs => rd = 0 ∧ rs ≠ 0 ∧ pi rs < 31
 
-/-- the J step's memory accesses hit D (8-byte: the cell itself; byte: its cell), and a `jalr` target is a block -/
+/-- the J step's memory accesses hit D (8-byte: the cell itself; byte: its cell), and a `jalr` target is a block.
+Also no wrap (the no-wrap part of `JLay.SafeX`): J's `ea` clamps `x[rs] + imm` with `Int.toNat`, while the A64
+add/sub (and the x16 address forms) wrap mod 2^64, so the two agree only for 0 ≤ x[rs] + imm < 2^64. In particular
+`addi rd x0 imm` with imm < 0 (J: 0; A64: 2^64 + imm) is excluded here; that wrapping case is the separate
+`JTarget.addi_ok`. -/
+def NoWrap (v : UInt64) (i : Int) : Prop := 0 ≤ (v.toNat : Int) + i ∧ (v.toNat : Int) + i < 2 ^ 64
 def AccOK (C : List J) (D : Nat → Prop) : Nat × St → Prop
   | (pc, s) => match C[pc]? with
-    | some (.ld _ rs off) => D (ea (s.x rs) off)
-    | some (.sd _ r1 off) => D (ea (s.x r1) off)
-    | some (.lbu _ rs off) => D (ea (s.x rs) off - ea (s.x rs) off % 8)
-    | some (.sb _ r1 off) => D (ea (s.x r1) off - ea (s.x r1) off % 8)
+    | some (.addi _ rs imm) => NoWrap (s.x rs) imm
+    | some (.ld _ rs off) => NoWrap (s.x rs) off ∧ D (ea (s.x rs) off)
+    | some (.sd _ r1 off) => NoWrap (s.x r1) off ∧ D (ea (s.x r1) off)
+    | some (.lbu _ rs off) => NoWrap (s.x rs) off ∧ D (ea (s.x rs) off - ea (s.x rs) off % 8)
+    | some (.sb _ r1 off) => NoWrap (s.x r1) off ∧ D (ea (s.x r1) off - ea (s.x r1) off % 8)
     | some (.jalr _ rs) => s.b ≤ (s.x rs).toNat ∧ ((s.x rs).toNat - s.b) % 16 = 0
     | _ => True
 
