@@ -17,27 +17,13 @@ theorem v85_drop : ∀ (n : Nat) (h : Buf) (a b : UInt64), (v85 n h a b).drop 18
       | exact drop_bset _ _ _ (by decide)
       | exact v85_drop n h _ _
 
-theorem v8_drop : ∀ (n : Nat) (h : Buf) (j x : UInt64), (v8 n h j x).drop 184384 = h.drop 184384
-  | 0, h, j, x => by rw [v8]; exact drop_bset _ _ _ (by decide)
-  | n + 1, h, j, x => by
-    rw [v8]
-    simp only []
-    repeat' split
-    all_goals first
-      | exact drop_bset _ _ _ (by decide)
-      | (rw [drop_bset _ _ _ (by decide)]; exact v85_drop _ _ _ _)
-      | (rw [v8_drop n]; exact v85_drop _ _ _ _)
+theorem v8_drop (h : Buf) (j x : UInt64) : (v8 h j x).drop 184384 = h.drop 184384 := drop_v8 h j x
 
 /-- **def lookup, value**: h[22] = index + 1 of the innermost finished def with this name, 0 if none -/
 theorem v8_val {h : Buf} {st : St} {bb : Bool} {p : UInt64} {nm : List UInt64} (hD : DefsRep h st bb)
     (h7 : (bget h 7).toNat < 2 ^ 24) (hl : 31 < h.length) (hn : NameOK h p nm) :
-    bget (v8 16777216 h (bget h 12) p) 22 = (((findD st.defs (nm.map UInt64.toNat)).map (· + 1)).getD 0).toUInt64 := by
-  obtain ⟨tab, htl, hTab, hnames⟩ := defTab_of hD h7
-  obtain ⟨e12, hlt, _⟩ := hD
-  have hnm : nm.length < 2 ^ 24 := by obtain ⟨_, _, hb⟩ := hn; omega
-  obtain ⟨_, h22⟩ := v8_lookup tab p nm st.defs.length 16777216 h (bget h 12) e12 (by omega) (by omega) (by omega) hl
-    (by omega) hTab hn hnm
-  rw [h22, idxOf_findD tab st.defs nm _ rfl htl (fun i hi hi' => hnames i hi hi') _ (Nat.le_refl _), List.take_length]
+    bget (v8 h (bget h 12) p) 22 = (((findD st.defs (nm.map UInt64.toNat)).map (· + 1)).getD 0).toUInt64 :=
+  (v8_findV hD h7 hl hn).2
 
 /-- `Rep` ignores the scratch cells 21, 22 and 31 -/
 theorem rep_same {r : Nat} {h h' ts : Buf} {st : St} {fs : List Frame} (R : Rep h ts st fs) (s : Same r h h')

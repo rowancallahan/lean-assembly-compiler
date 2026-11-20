@@ -92,33 +92,33 @@ theorem tokAt_of (h7 : bget h 7 = ts.length.toUInt64) {r : List UInt64} {toks : 
 end
 
 /-! ## the loaded heap -/
-def entryBase (ts : Buf) : Buf := List.replicate 184384 0 ++ ts ++ [0, 2]
+def entryBase (ts : Buf) : Buf := List.replicate 185408 0 ++ ts ++ [0, 2]
 
-theorem entryBase_len (ts : Buf) : (entryBase ts).length = 184386 + ts.length := by
+theorem entryBase_len (ts : Buf) : (entryBase ts).length = 185410 + ts.length := by
   simp only [entryBase, List.length_append, List.length_replicate, List.length_cons, List.length_nil]; omega
 
 theorem entry_eq (ts : Buf) : entryHeap ts = ((entryBase ts).set 7 (bsize ts)).set 0 1 := by
   unfold entryHeap entryBase
-  have hz : (List.replicate 184384 (0 : UInt64)).length = 184384 := List.length_replicate
-  generalize List.replicate 184384 (0 : UInt64) = Z at hz ⊢
+  have hz : (List.replicate 185408 (0 : UInt64)).length = 185408 := List.length_replicate
+  generalize List.replicate 185408 (0 : UInt64) = Z at hz ⊢
   simp only [bpush, bset, show (7 : UInt64).toNat = 7 from rfl, show (0 : UInt64).toNat = 0 from rfl]
   have e1 : ∀ W : Buf, ((Z ++ W).set 7 (bsize ts)).set 0 1 = (Z.set 7 (bsize ts)).set 0 1 ++ W := by
     intro W; rw [List.set_append_left _ _ (by omega), List.set_append_left _ _ (by simp; omega)]
   rw [e1, List.append_assoc Z, e1]; simp
 
-theorem base_lo (ts : Buf) (i : Nat) (hi : i < 184384) : (entryBase ts).getD i 0 = 0 := by
+theorem base_lo (ts : Buf) (i : Nat) (hi : i < 185408) : (entryBase ts).getD i 0 = 0 := by
   unfold entryBase
   rw [List.append_assoc, List.getD_eq_getElem?_getD, List.getElem?_append_left (by rw [List.length_replicate]; exact hi),
     List.getElem?_replicate, if_pos hi]
   rfl
 
-theorem base_tok (ts : Buf) (i : Nat) : (entryBase ts).getD (184384 + i) 0 = (ts ++ [0, 2]).getD i 0 := by
+theorem base_tok (ts : Buf) (i : Nat) : (entryBase ts).getD (185408 + i) 0 = (ts ++ [0, 2]).getD i 0 := by
   unfold entryBase
   rw [List.append_assoc, List.getD_eq_getElem?_getD, List.getD_eq_getElem?_getD,
     List.getElem?_append_right (by rw [List.length_replicate]; exact Nat.le_add_right _ _), List.length_replicate,
     Nat.add_sub_cancel_left]
 
-theorem entry_cells (ts : Buf) : (v1 (entryHeap ts) 60 0 0).length = 184386 + ts.length ∧
+theorem entry_cells (ts : Buf) : (v1 (entryHeap ts) 60 0 0).length = 185410 + ts.length ∧
     ∀ i : UInt64, bget (v1 (entryHeap ts) 60 0 0) i =
       if i.toNat = 0 ∨ i.toNat = 5 then 1 else if i.toNat = 7 then bsize ts else if i.toNat = 64 then 60 else bget (entryBase ts) i := by
   have hl := entryBase_len ts
@@ -139,20 +139,20 @@ theorem entry_cells (ts : Buf) : (v1 (entryHeap ts) 60 0 0).length = 184386 + ts
   have c66 : i.toNat = 66 → bget B i = 0 := fun h => by rw [show i = 66 from UInt64.toNat_inj.mp h]; exact b66
   clear e h5
   have J : ∀ k, (k = i.toNat) ↔ (i.toNat = k) := fun k => ⟨Eq.symm, Eq.symm⟩
-  have L : ∀ k, k < 67 → (k < 184386 + ts.length) = True := fun k hk => eq_true (by omega)
+  have L : ∀ k, k < 67 → (k < 185410 + ts.length) = True := fun k hk => eq_true (by omega)
   by_cases i0 : i.toNat = 0 <;> by_cases i5 : i.toNat = 5 <;> by_cases i7 : i.toNat = 7 <;> by_cases i64 : i.toNat = 64 <;>
     by_cases i65 : i.toNat = 65 <;> by_cases i66 : i.toNat = 66 <;> (try omega) <;>
     simp [i0, i5, i7, i64, i65, i66, L, b5, c65, c66, J]
 
-theorem init_lo (ts : Buf) (i : UInt64) (h1 : i.toNat < 184384) (h0 : i.toNat ≠ 0) (h5 : i.toNat ≠ 5) (h7 : i.toNat ≠ 7)
+theorem init_lo (ts : Buf) (i : UInt64) (h1 : i.toNat < 185408) (h0 : i.toNat ≠ 0) (h5 : i.toNat ≠ 5) (h7 : i.toNat ≠ 7)
     (h64 : i.toNat ≠ 64) : bget (v1 (entryHeap ts) 60 0 0) i = 0 := by
   rw [(entry_cells ts).2]; simp only [h0, h5, h7, h64, false_or, if_false]; exact base_lo ts _ h1
 
 theorem init_tok (ts : Buf) (hts : ts.length < 2 ^ 24) (i : Nat) (hi : i < ts.length + 2) :
     bget (v1 (entryHeap ts) 60 0 0) (d11 + i.toUInt64) = (ts ++ [0, 2]).getD i 0 := by
-  have e : (d11 + i.toUInt64).toNat = 184384 + i := by rw [d11a _ (by simp; omega)]; simp; omega
+  have e : (d11 + i.toUInt64).toNat = 185408 + i := by rw [d11a _ (by simp; omega)]; simp; omega
   rw [(entry_cells ts).2, e]
-  simp only [show ¬(184384 + i = 0 ∨ 184384 + i = 5) by omega, show 184384 + i ≠ 7 by omega, show 184384 + i ≠ 64 by omega,
+  simp only [show ¬(185408 + i = 0 ∨ 185408 + i = 5) by omega, show 185408 + i ≠ 7 by omega, show 185408 + i ≠ 64 by omega,
     if_false]
   simp only [bget, e]; exact base_tok ts i
 
@@ -170,7 +170,7 @@ theorem rep_init (ts : Buf) (toks : List Tok) (hT : TokL ts toks) (hts : ts.leng
   have lo := fun i h1 h0 h5 h7 h64 => hH ▸ init_lo ts i h1 h0 h5 h7 h64
   have tk := fun i hi => hH ▸ init_tok ts hts i hi
   have rz := fun j hj => hH ▸ rowZero_init ts j hj
-  have z : ∀ c : UInt64, c.toNat < 184384 → c.toNat ≠ 0 → c.toNat ≠ 5 → c.toNat ≠ 7 → c.toNat ≠ 64 → bget H c = 0 := lo
+  have z : ∀ c : UInt64, c.toNat < 185408 → c.toNat ≠ 0 → c.toNat ≠ 5 → c.toNat ≠ 7 → c.toNat ≠ 64 → bget H c = 0 := lo
   have h0 : bget H 0 = 1 := by rw [E]; rfl
   have h5 : bget H 5 = 1 := by rw [E]; rfl
   have h7 : bget H 7 = ts.length.toUInt64 := by rw [E]; rfl
@@ -183,7 +183,7 @@ theorem rep_init (ts : Buf) (toks : List Tok) (hT : TokL ts toks) (hts : ts.leng
     have e1 : ts.length.toUInt64 + 1 = (ts.length + 1).toUInt64 := tu_add ts.length 1 hl1
     rw [UInt64.add_assoc, e1, tk (ts.length + 1) (by omega)]
     simp [List.getD_eq_getElem?_getD]
-  have c : ∀ c : UInt64, c.toNat < 184384 → c.toNat ≠ 0 → c.toNat ≠ 5 → c.toNat ≠ 7 → c.toNat ≠ 64 → (bget H c).toNat = 0 :=
+  have c : ∀ c : UInt64, c.toNat < 185408 → c.toNat ≠ 0 → c.toNat ≠ 5 → c.toNat ≠ 7 → c.toNat ≠ 64 → (bget H c).toNat = 0 :=
     fun c a b d e f => by rw [z c a b d e f]; rfl
   have h3 : bget H 3 = 0 := z 3 (by decide) (by decide) (by decide) (by decide) (by decide)
   refine ⟨⟨hc, s0, s2, h7⟩, hts, by rw [h0]; rfl, ?_, z 11 (by decide) (by decide) (by decide) (by decide) (by decide),
@@ -196,7 +196,7 @@ theorem rep_init (ts : Buf) (toks : List Tok) (hT : TokL ts toks) (hts : ts.leng
     have row0 : ∀ j, j < 512 → RowZero H j := rz
     refine ⟨c 12 (by decide) (by decide) (by decide) (by decide) (by decide), by simp [ParRun.init],
       by rw [c 27 (by decide) (by decide) (by decide) (by decide) (by decide)]; decide, fun j hj => by simp [ParRun.init] at hj, ?_,
-      fun j _ hj => row0 j hj, ?_, ?_⟩
+      fun j _ hj => row0 j hj, ?_, ?_, ?_⟩
     · simp only [inDefF, List.all_cons, List.all_nil, Frame.isDefs, Bool.not_true, Bool.false_and, Bool.false_eq_true, if_false]
       exact fun _ => row0 0 (by decide)
     · intro i _ hi
@@ -209,13 +209,14 @@ theorem rep_init (ts : Buf) (toks : List Tok) (hT : TokL ts toks) (hts : ts.leng
           rw [UInt64.toNat_mul, show (3 : UInt64).toNat = 3 from rfl, tn24 (by omega)]; exact Nat.mod_eq_of_lt (by omega)
         rw [UInt64.toNat_add, this, d7v]; simp; omega
       apply z <;> omega
+    · exact hashRep_nil (fun i a b => z i (by omega) (by omega) (by omega) (by omega) (by omega))
   · -- ArenaRep
     refine ⟨c 9 (by decide) (by decide) (by decide) (by decide) (by decide), by simp [ParRun.init],
       c 8 (by decide) (by decide) (by decide) (by decide) (by decide), by simp [ParRun.init], fun _ => [], ?_, ?_, ?_, ?_⟩ <;>
       simp [ParRun.init]
   · -- OutRep
     refine ⟨by simp [ParRun.init]; omega, ?_⟩
-    have e2 : (d11 + (ts.length + 1).toUInt64).toNat = 184384 + ts.length + 1 := by rw [d11a _ (by simp; omega)]; simp; omega
+    have e2 : (d11 + (ts.length + 1).toUInt64).toNat = 185408 + ts.length + 1 := by rw [d11a _ (by simp; omega)]; simp; omega
     have g := tk (ts.length + 1) (by omega)
     simp only [bget, e2] at g
     apply List.ext_getElem?
@@ -223,7 +224,7 @@ theorem rep_init (ts : Buf) (toks : List Tok) (hT : TokL ts toks) (hts : ts.leng
     rw [List.getElem?_drop]
     cases k with
     | zero =>
-      have hk : 184384 + ts.length + 1 < H.length := by omega
+      have hk : 185408 + ts.length + 1 < H.length := by omega
       simp only [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem hk, Option.getD_some] at g
       rw [List.getElem?_eq_getElem hk, g]; simp [ParRun.init]
     | succ k =>

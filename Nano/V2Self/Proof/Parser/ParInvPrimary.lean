@@ -165,44 +165,16 @@ theorem prim_nonid {g ts : Buf} {st : St} {fs : List Frame} {a : UInt64} {md : N
       simp only [z, beq_self_eq_true, if_true] at hs
       exact absurd (stat0 _ (by simp [length_bset]; omega)) hs
 
-/-! ## identifiers: the def lookup over all rows (finished defs and the current one) -/
-theorem defTabRows_of {h : Buf} {st : St} (hD : DefsRep h st true) (h7 : (bget h 7).toNat < 2 ^ 24) :
-    ∃ tab : List (UInt64 × List UInt64), tab.length = (rows st).length ∧ DefTabRep h tab ∧
-      ∀ i (hi : i < tab.length) (hi' : i < (rows st).length), (tab[i].2).map UInt64.toNat = ((rows st)[i]'hi').name := by
-  obtain ⟨tab, hl, hT, hn⟩ := defTab_of hD h7
-  obtain ⟨_, _, _, _, rc, _⟩ := hD
-  simp only [if_true] at rc
-  obtain ⟨⟨nm, hok, hmap⟩, _⟩ := rc.1.1
-  refine ⟨tab ++ [(bget h (d7 + 8 * st.defs.length.toUInt64), nm)], by simp [rows, hl], fun i hi => ?_, fun i hi hi' => ?_⟩
-  · by_cases hin : i < tab.length
-    · rw [List.getElem_append_left hin]; exact hT i hin
-    · have : i = st.defs.length := by simp at hi; omega
-      subst this
-      rw [List.getElem_append_right (by omega)]
-      simp only [hl, Nat.sub_self, List.getElem_cons_zero]
-      exact ⟨by simp, hok, by obtain ⟨_, _, hb⟩ := hok; omega⟩
-  · by_cases hin : i < tab.length
-    · rw [List.getElem_append_left hin]
-      have := hn i hin (by omega)
-      simp only [rows]; rw [List.getElem_append_left (by omega)]; exact this
-    · have : i = st.defs.length := by simp at hi; omega
-      subst this
-      rw [List.getElem_append_right (by omega)]
-      simp only [rows, hl, Nat.sub_self, List.getElem_cons_zero]
-      rw [List.getElem_append_right (by omega)]; simp [hmap]
-
 theorem v8_rows {h : Buf} {st : St} {p : UInt64} {nm : List UInt64} (hD : DefsRep h st true)
     (h7 : (bget h 7).toNat < 2 ^ 24) (hl : 31 < h.length) (hn : NameOK h p nm) :
-    Same 22 h (v8 16777216 h (bget h 12 + 1) p) ∧
-    bget (v8 16777216 h (bget h 12 + 1) p) 22 = (((findD (rows st) (nm.map UInt64.toNat)).map (· + 1)).getD 0).toUInt64 := by
-  obtain ⟨tab, htl, hTab, hnames⟩ := defTabRows_of hD h7
+    Same 22 h (v8 h (bget h 12 + 1) p) ∧
+    bget (v8 h (bget h 12 + 1) p) 22 = (((findD (rows st) (nm.map UInt64.toNat)).map (· + 1)).getD 0).toUInt64 := by
   have e12 := hD.1; have hlt := hD.2.1
-  have hnm : nm.length < 2 ^ 24 := by obtain ⟨_, _, hb⟩ := hn; omega
   have hr : (rows st).length = st.defs.length + 1 := by simp [rows]
-  obtain ⟨s22, h22⟩ := v8_lookup tab p nm (st.defs.length + 1) 16777216 h (bget h 12 + 1)
-    (by rw [tn_add _ _ (by simp; omega), e12]; rfl) (by omega) (by omega) (by omega) hl (by omega) hTab hn hnm
-  refine ⟨s22, ?_⟩
-  rw [h22, idxOf_findD tab (rows st) nm _ rfl (by omega) (fun i hi hi' => hnames i hi hi') _ (by omega), ← hr, List.take_length]
+  have w := v8_find hD h7 hl hn (bget h 12 + 1) (st.defs.length + 1)
+    (by rw [tn_add _ _ (by simp; omega), e12]; rfl) (by simp only [if_true]; omega)
+  simp only [if_true] at w
+  rwa [← hr, List.take_length] at w
 
 /-- the identifier branch of v104b, up to the cursor move: v0 (scratch), v7 (bindings), v8 (all rows), v86 (skip) -/
 theorem prim_id_setup {g ts : Buf} {st : St} {fs : List Frame} (R1 : Rep g ts st fs) (hin : inDefF fs = true)
@@ -210,7 +182,7 @@ theorem prim_id_setup {g ts : Buf} {st : St} {fs : List Frame} (R1 : Rep g ts st
     ∃ (nm : List UInt64) (rest : List Tok) (q : UInt64), st.toks = .id (nm.map UInt64.toNat) :: rest ∧
       let g1 := bset g 31 0
       let g2 := v7 16777216 g1 (bget g1 4) (bget g 3)
-      let g3 := v8 16777216 g2 (bget g2 12 + 1) (bget g 3)
+      let g3 := v8 g2 (bget g2 12 + 1) (bget g 3)
       v86 16777216 g3 (bget g3 3 + 1) = bset g3 3 q ∧ bget (v0 g (bget g 3)) 31 = 0 ∧ v0 g (bget g 3) = g1 ∧
       Rep (bset g3 3 q) ts { st with toks := rest } fs ∧
       ((bget g3 21 = 0 ∧ findB st.binds (nm.map UInt64.toNat) = none) ∨
@@ -237,8 +209,8 @@ theorem prim_id_setup {g ts : Buf} {st : St} {fs : List Frame} (R1 : Rep g ts st
   have hl2 : 31 < g2.length := by rw [s21.1]; exact hl1
   have hD2 : DefsRep g2 st true := by have := R2.2.2.2.2.2.2.1; rwa [hin] at this
   obtain ⟨s22, h22⟩ := v8_rows hD2 h72 hl2 hNm2
-  have R3 := rep_same R2 s22 (Or.inr rfl) (v8_drop _ _ _ _)
-  generalize hg3 : v8 16777216 g2 (bget g2 12 + 1) (bget g 3) = g3 at s22 h22 R3
+  have R3 := rep_same R2 s22 (Or.inr rfl) (v8_drop _ _ _)
+  generalize hg3 : v8 g2 (bget g2 12 + 1) (bget g 3) = g3 at s22 h22 R3
   have et3 : TokAgree g2 g3 := ⟨s22.2 7 (by decide) (by decide), fun i hi => s22.2 i (by omega) (by omega)⟩
   have hNm3 : NameOK g3 (bget g 3) nm := nameOK_frame et3 (by omega) hNm2
   have e33 : bget g3 3 = bget g 3 := by rw [s22.2 3 (by decide) (by decide), s21.2 3 (by decide) (by decide), e31 3 (by decide)]
@@ -269,7 +241,7 @@ theorem prim_id {g ts : Buf} {st : St} {fs : List Frame} {a : UInt64} {md : Nat}
   have e21 : ∀ X : Buf, bget (bset X 3 q) 21 = bget X 21 := fun X => bget_bset' _ _ _ _ (by decide)
   have e22 : ∀ X : Buf, bget (bset X 3 q) 22 = bget X 22 := fun X => bget_bset' _ _ _ _ (by decide)
   rw [← e21] at hfb; rw [← e22] at h22
-  generalize hG : bset (v8 16777216 (v7 16777216 (bset g 31 0) (bget (bset g 31 0) 4) (bget g 3))
+  generalize hG : bset (v8 (v7 16777216 (bset g 31 0) (bget (bset g 31 0) 4) (bget g 3))
     (bget (v7 16777216 (bset g 31 0) (bget (bset g 31 0) 4) (bget g 3)) 12 + 1) (bget g 3)) 3 q = G at hs R4 hfb h22 ⊢
   obtain ⟨hn4, hl4, har4⟩ := rep_bounds R4
   have dead : ∀ X : Buf, X = bset G 0 0 → bget X 0 ≠ 0 → False := fun X e hx => hx (by rw [e]; exact stat0 _ (by omega))
