@@ -65,6 +65,20 @@ generic J-run proof and needs one lemma per template on the A64 side (see the pr
 | rle | 412 / 1648 / 365 | 10059 / 36275 / 10585 |
 | upper | 274 / 1096 / 235 | 6692 / 23816 / 7072 |
 
+## Uniform (U) vs variable (V) blocks: what the non-uniform proof buys
+The proof's layout layer assumes one fixed-size block per J instruction. GenArm is V (variable, per template).
+`uniform_est.py` models U: rv2arm's per-J-instruction A64 sequences padded to K words, weighted by the RISC-V run's
+per-PC counts (a model, not an implemented back end). Every J instruction fits in 2 words except 4 stub/start-code
+blocks (`addi a0, x0, −1`: 1 word with movn), so K = 2 is the best uniform choice.
+
+| (fib / hex / rle / upper) | static × RISC-V | dynamic × RISC-V |
+|---|---|---|
+| rv2arm (U, K = 4), measured | 4.00 | 3.60 |
+| U, K = 2 (model) | 2.00 | 1.94–1.95 |
+| V = GenArm, measured | 0.86–0.89 | 1.01–1.06 |
+
+So V is ≈ 2.3× smaller and ≈ 1.9× faster than the best uniform layout, and ≈ 3.5× faster than rv2arm.
+
 ## Run
 `./test_native.sh` (all checks), `python3 fuzz_native.py SEED N WORKDIR [MUT]` (after test_native.sh built the
 binaries). Native code for one program: `grep -v '^--' prog.lean | qemu-aarch64 shim_arm GA_arm.bin > prog.a64`,
