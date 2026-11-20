@@ -56,38 +56,6 @@ noncomputable def compileC (s : SrcC) : Option CompiledA :=
   if mC s.text ≠ [] ∧ s.text.length ≤ 2 ^ 20 then some ⟨mC s.text, 1, fun inp => [.alloc (spaceC s.text inp)]⟩
   else none
 
-theorem g40_len : ∀ (n : Nat) (c : List UInt8) (w : Buf) (i : UInt64) (o : List UInt8), o.length % 4 = 0 →
-    (C.g40 n c w i o).length % 4 = 0
-  | 0, _, _, _, _, h => by simpa [C.g40] using h
-  | n + 1, c, w, i, o, h => by
-    simp only [C.g40]
-    split
-    · exact g40_len n c w _ _ (by simp [put]; omega)
-    · exact h
-
-theorem mC_len (x : List UInt8) : (mC x).length % 4 = 0 := by
-  unfold mC C.g41 C.g42
-  generalize C.o41 (C.y16 (C.s10 x)) = a
-  split
-  · rfl
-  split
-  · generalize C.g53 a = q
-    obtain ⟨x2, w⟩ := q
-    simp only
-    split
-    · rfl
-    · generalize C.g39 _ _ _ _ _ _ _ = q2
-      obtain ⟨r1, o⟩ := q2
-      simp only
-      split
-      · rfl
-      · split
-        · rfl
-        · split
-          · rfl
-          · exact g40_len _ _ _ _ _ rfl
-  · rfl
-
 theorem toOption_some {r : Except Stop (List UInt8)} {y : List UInt8} (h : r.toOption = some y) : r = .ok y := by
   cases r <;> simp [Except.toOption] at h; rw [h]
 /-- the parser stage, discharged (F) -/

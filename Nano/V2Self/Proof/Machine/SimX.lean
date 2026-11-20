@@ -183,7 +183,7 @@ theorem sim_sbW {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K
 /-! ## SimW's `encJ` words of the new instructions are the `I.enc` words the sims take -/
 
 /-! ## the start code's Safe layer: `encJX` (beq offsets in instructions, like bgeu), `SafeX` (Safe plus beq +7,
-srli, bne +4, sb), `sim_stepX` / `SStarX` / `sim_starX`, and `SStar → SStarX` (A's template twins carry over) -/
+srli, bne +4, sb), `sim_stepX` / `SStarX`, and `SStar → SStarX` (A's template twins carry over) -/
 
 /-- **one step**: a safe J step on matching words is one retired Sail instruction, keeping `RelW` -/
 theorem sim_stepX {K : LayW} {C : List CallProbe.J} (hK : K.Ok) (hW : K.W = C.map encJX)
@@ -257,17 +257,5 @@ theorem sim_stepX {K : LayW} {C : List CallProbe.J} (hK : K.Ok) (hW : K.W = C.ma
       have hw := hWpc _ hc; simp only [encJX] at hw; rw [encJ_sb _ _ _ h1 h2 h3 h4] at hw
       simp only [Option.some.injEq] at hs; subst hs; exact sim_sbW hK hR hw h1 h2 h3 h4 h5 h6
 
-
-/-- **runs** (start-code layer): a SafeX J run on Gen's words is a run of retired Sail instructions -/
-theorem sim_starX {K : LayW} {C : List CallProbe.J} (hK : K.Ok) (hW : K.W = C.map encJX)
-    {a b : Nat × CallProbe.St} (h : SStarX K C a b) :
-    ∀ {t : Proven.St}, RelW K a t → ∃ n t', Steps n t t' ∧ RelW K b t' := by
-  induction h with
-  | refl a => intro t hR; exact ⟨0, t, rfl, hR⟩
-  | head hS hs _ ih =>
-    intro t hR
-    obtain ⟨t1, hr, hR1⟩ := sim_stepX hK hW hR hS hs
-    obtain ⟨n, t', hst, hR'⟩ := ih hR1
-    exact ⟨n + 1, t', ⟨t1, hr, hst⟩, hR'⟩
 
 end SimW

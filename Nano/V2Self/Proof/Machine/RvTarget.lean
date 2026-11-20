@@ -40,8 +40,6 @@ theorem cbyte_eq (v : UInt64) (k : Nat) (hk : k < 8) :
   have : (8 * k) % 64 = 8 * k := Nat.mod_eq_of_lt (by omega)
   simp [cbyte, BitVec.extractLsb'_toNat, UInt64.toNat_shiftRight, UInt8.toNat_ofBitVec, this]
 
-theorem wbyte_eq (w : BitVec 32) (b : Nat) : UInt8.ofBitVec (w.extractLsb' (8 * b) 8) = wbyte w b := rfl
-
 theorem reg_none (t : Proven.St) {r : Nat} (h : r = 0 ∨ 32 ≤ r) : (riscvObserve t).register r = 0 := by
   simp only [riscvObserve]
   have : riscvRegister t r = none := by

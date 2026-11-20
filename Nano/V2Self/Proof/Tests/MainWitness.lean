@@ -4,7 +4,7 @@ O's acceptance `C.o41 a = a` with `LinearK p` (explicit slot kinds `Ks`), and Ge
 `OwnStage`'s and `GenStage`'s premises hold with non-empty code, and `mC x ≠ []` follows from the
 single parser run `C.y16 ts = a` (checked natively, NOT in the kernel: Par1's fixed layout puts the tokens at word 184,384,
 and one kernel `bget` at that index alone costs 28 s / 5.5 GB; see Testing/notes/NANO_V2_MAIN.md). -/
-import Nano.V2Self.Proof.Main.Main
+import Nano.V2Self.Proof.Main.Sem
 namespace NanoMain.Witness
 open ParSpec
 

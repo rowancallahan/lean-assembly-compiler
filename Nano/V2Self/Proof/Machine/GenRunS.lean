@@ -1,6 +1,6 @@
 /- EVS P7 (Opus box E): **Gen's program on Sail**.  `gen_runS`: on g41 success, the emitted program C (stubs ++ def
 templates ++ start code) runs from word 0 as a SafeX J run to the host's return address with main's buffer bytes at a3;
-a target turns it into machine steps (`JT.sim_star`; RISC-V: `SimW.sim_starX`). -/
+a target turns it into machine steps (`JT.sim_star`). -/
 import Nano.V2Self.Proof.Machine.GenRun
 import Nano.V2Self.Proof.Machine.EVSProg
 import Nano.V2Self.Proof.Machine.StartAllS
