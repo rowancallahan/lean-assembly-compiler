@@ -1,5 +1,7 @@
 # lean-assembly-compiler
 
+> **Trust note:** the theorems are relative to machine models (Sail RISC-V, Sail ARM, DeepMind ARM) turned into Lean by tools that are partly experimental. See [Testing/notes/TRUST.md](Testing/notes/TRUST.md) before citing a result.
+
 A compiler from small pure Lean programs (bytes in, bytes out) to RISC-V and AArch64 machine code, with
 kernel-checked proofs in Lean 4 that the machine code computes the Lean function on the Sail-generated
 CPU models. No `sorry`, no extra axioms beyond the models' own, no `native_decide`/`bv_decide`.

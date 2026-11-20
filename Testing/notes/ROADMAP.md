@@ -447,3 +447,165 @@ draft the owner may review later; changes after the freeze still go through the 
 - Until then: interim self-host / self-compile checks are fine (e.g. compiled stages on their own text, partial fixed
   points), but no final self-hosting route is locked in.
 - Astra round 6 (E/F/G proofs) did not arrive (Astra out of tokens); work from NANO_V2_SKELETONS.lean.
+
+### PAUSED (owner, 2026-11-17 21:00). All boxes archived; recurring checks disabled.
+Branch heads (each has a HANDOFF section):
+- nano-v2 f3fe8b9: language + back end (increments 1–4 + products/loops/buffers front end, codegen proofs except
+  buffers; HANDOFF "pause 20:50" in Testing/notes/NANO_V2.md).
+- nano-v2-src 33b1ab5: OWNER REVIEW CHECKPOINT. Nano/V2Self/ = whole nano compiler as nano-subset source, ALL accepted
+  by nano's own front end incl. the nano driver `m`; Testing/notes/NANO_V2_CHECKPOINT.md (HANDOFF inside).
+- nano-v2-boot 2e49781: bootstrap B₁ via S3 (4 stages + parser bridge p2bVS_eq; parser S3 compile unverified);
+  HANDOFF in Testing/notes/NANO_V2_BOOT.md. Optional until the owner chooses the self-hosting route.
+- Templates on main: Testing/notes/NANO_V2_SKELETONS.lean (round 5) and NANO_V2_SKELETONS6.lean (round 6), verified 4.29.
+- s3-rec 6e9e02a (con-leche WIP, paused earlier).
+RESUME: owner reviews Nano/V2Self/ and decides the self-hosting route. Then restart one Opus language+back-end box
+(buffer proof via round-6 F, Sail loop layer via E, result/status + ImplementsBytes), Sonnet boxes as needed, a Haiku
+runner; re-enable triggers trig_01Lbdjhesnym2ZPegRnLPVmf (team check) and trig_01XTKyxsqmfYZouFjjRfeHdt (3-hourly).
+- Note for resume: the parser S3 probe (nano-v2-boot bf6ba78, ProbeParse) ran ~16 min without finishing before the pause; likely over the 5-min rule, needs an s3.depth-4 probe / split first.
+
+## 2026-11-18 01:50 UTC — NANO v2 SELF-COMPILE FIXED POINT (tested, NOT yet proved)
+- Branch nano-v2-src @ 09e97b6. Self-source S = `Testing/nano/v2self/self_S.lean` (186 defs: Base + Lex2 + Par1 + Gen + driver m),
+  generated from the C files by `build_self_S.py`; input text `self_S_input.txt`.
+- B₁ = Lean-toolchain-compiled S (TRUSTED: Lean compiler; Array-backed bootstrap prelude, checked equal to the List
+  prelude on 20 sources). B₂ := B₁(S) = 248,632 bytes, sha256 2ceffa2c…2ebce. B₃ := B₂(S) on QEMU (64 MiB, 1.6 s) == B₂.
+- Reproduced independently by the main session from a clean worktree: `Testing/nano/v2self/boot/fixpoint.sh OUT` (37 s), same sha256.
+- Architecture: Astra rounds 7–13 advice (notes NANO_V2_ASTRA7..13). Not yet: Sail run of B₂/B₃ on the full source,
+  determinism under different work-memory fill, proofs (Astra 11 plan: soundness on success + acceptance witnesses).
+
+## LATER (owner, 2026-11-19): unbounded loops in nano
+Nano programs always halt (only fuel loops on an explicit Nat). For long-running programs (servers, event loops) consider an
+UNBOUNDED loop construct later. Correctness would be stated per step / over the output stream (a simulation or trace
+property), not as a final-result theorem. Separate from the spec-side fuel: the meaning interpreter and refParse use
+arbitrarily large fuel only so they are total Lean functions; "enough fuel" is a named hypothesis of the final theorem.
+
+## OWNER GOAL (2026-11-19): nano v2 correctness statement
+Main theorem: for every source in the nano subset and ALL input bytes, the code C compiles implements `Sem` of that source
+(Implements1-style, machine-state spec the owner reviewed), with named premises (fuel for refParse/Sem, work memory, size).
+Per-program bridge: the one-source certificate `Sem (parse src) = the Lean function` (first for small examples and C itself,
+later generated automatically) — gives "this code implements this Lean function" for each compiled program.
+Long term: grow the subset (parser spec + Sem + proofs, one construct at a time) until it covers most of Lean.
+
+## AFTER THE PROOF (owner, 2026-11-19): organize the nano v2 proofs
+Once C_correctL has no premises and the certificate closes, reorganize Nano/V2Self/Proof/ before merging:
+- merge duplicated or split files (e.g. ParInvExpr/ParInvExpr2, the ParRunWF* family, ParInvVal/ParInvValRep, the cert work in
+  MainCertC* vs Proof/Cert/*), and give directories a clear layout: Parser/, Own/, Gen/, Machine/, Bridge/, Cert/, Main/;
+- delete dead lemmas and scratch modules; keep each module ≤ 5 min / 8 GB;
+- one top-level file that states the final theorem and lists every remaining hypothesis, for the owner's review;
+- check axioms on the top theorem and the fixpoint after the reshuffle (moves only, no proof changes in the same commit).
+
+## LATER (owner, 2026-11-19): remove trust in the bootstrap toolchain
+For now ACCEPTED: B₁ is compiled by the Lean toolchain (trusted), and the fixed point B₃ == B₂ is evidence that B₂ = mC(T)
+(T = C's source). With the main theorem + certificate (Sem(parse T) = mC) this gives "B₂ implements mC" modulo that trust.
+Future: prove B₂ = mC(T) in the Lean kernel (stage-by-stage, chunked kernel evaluation with intermediate literals), which removes
+the Lean-compiler trust and leaves only the kernel, the Sail model and Spec/. Feasibility unmeasured; do it after the
+certificate's text link (refParse(lex T) = PC.all), which is the first half of the same job.
+
+## NEXT (owner, 2026-11-19): ARM back end for compiler #2 (C)
+Goal: `CompileCorrect arm compileC_arm` and `CompileRuns arm compileC_arm` against the ARM Sail model, same statement shape as RISC-V
+(Spec/Alloc.lean, `armMapping` in Spec/Machines.lean). Reuse: C's front end, ownership and certificate unchanged; a new
+code generator to AArch64 from the same reference code (CG / J machine templates), proofs mirroring the RISC-V Machine/
+layer, built on the existing Arm/proofs full-step lemmas (b, bl, cbz/cbnz, b.cond, movz/movk, add/sub imm, mov, ldr/str/ldrb/strb/stur,
+register ALU ops). Later: write the ARM generator in the nano subset so C self-hosts on ARM (native on Apple Silicon).
+Owner decisions (2026-11-19): an `arm : Machine` instance in Spec/ next to `riscv` is approved; code below 2^29 for now
+(expand later); an ARM RAM window is assumed (chosen from what Arm/proofs supports, MMU off at EL3).
+Order (owner, 2026-11-19): (1) organization pass + survey of moving everything to the newest Lean
+(Testing/notes/LEAN_435.md); (2) migrate the repo, both Sail models, Arm/proofs and Arm/apc to ONE Lean version: FIRST 4.34.1 (owner, 2026-11-19: the ARM
+model and Arm/proofs already work there; most breakage is 4.29->4.34), prove ARM there, THEN step everything to 4.35.0 (owner;
+4.36 rejected: it caps field-carrying constructors at 244, and the RISC-V Sail model's `instruction` has 353); (3) then the
+ARM proof and the larger code work.
+
+## STATUS + GOALS (owner, 2026-11-20)
+- Unproven ARM back end WORKS (Testing/nano/v2self/arm/ on nano-v2-src): nano translator rv2arm.lean; ARM-B2 self-compiles to
+  B2.bin byte for byte under qemu-aarch64. Prove it next ("get it working, then prove, rewrite slightly where unprovable").
+- Rule: every new piece of code carries proof notes next to it (PROOF_NOTES.md / header comments: intended semantics,
+  invariants, register/memory conventions, which lemma will cover it).
+- Limits for now (owner OK): output <= 512 KB (nano buffer capacity 2^19), input < 1 MB (2^20). Enough for answers.
+- LATER: raise the buffer capacity, compiled-code size and input size (a compiler + spec change, then rebuild and
+  re-check proofs). Needed for the goal below.
+- GOAL: compile con-leche (leanprover/con-leche, the Lean kernel checker; ~22k lines in the checker core's import closure,
+  see Testing/notes/CONLECHE_*.md). Needs (a) a much larger nano subset: user inductives incl. Expr (>2 recursive fields),
+  structures, Name/String/Char, Array, HashMap, Except/state monads, partial; (b) the larger capacities above.
+- INTERIM (owner, 2026-11-20): while the full Sail ARM model does not build on 15 GB boxes, prove the ARM blocks against
+  DeepMind's arm64 Lean model (Arm/apc), with lemmas stated in the same shape as the Sail full_* lemmas.
+  LATER: the DeepMind <-> Sail equivalence (per instruction form we use) on a big-memory machine (e.g. a large cloud box),
+  so the final theorem is against Sail.
+- LEAN VERSIONS (owner, 2026-11-20): never hand-edit the Sail RISC-V model (it is trusted; "very dangerous").
+  For now each machine may be proved on its own Lean version ("ok-ish"): RISC-V on 4.29 with the unchanged model,
+  ARM on 4.34.1/4.35 with the machine-independent chain. Wanted: RISC-V on 4.34; ideal: both on 4.35. Route for
+  RISC-V: regenerate with the official Sail Lean backend (same sail-riscv commit), show the owner the generated diff
+  and a definition-level comparison, re-run the RISC-V conformance tests; no hand patches.
+- BRANCHES (owner, 2026-11-20): nano-v2-src = Lean 4.29, RISC-V proven, unmodified RISC-V model.
+  lean-4.34 = Lean 4.34.1, machine-independent chain + ARM (RISC-V model not built there).
+  rv434-experiment = both on 4.34.1 with a HAND-EDITED RISC-V model (clearly marked; never merged without owner review).
+  See Testing/notes/BRANCHES.md.
+- LATER (fuzz finding, 2026-11-20): each fresh list reserves a fixed 4 MiB (2^19 x 8 B) of work memory that is never
+  reused, so ~20 fresh lists exhaust 80 MiB. Correct (OOM is reported, never a wrong answer) but wasteful. Fix together
+  with the capacity work: growable lists or reuse.
+- ARM MEMORY (owner, 2026-11-20): ARM RAM window = 1 GiB at [2^31, 3*2^30) (E, 9ddb1d4); meets the existing 2^31 bound, so no window proof change; avoids GIC/UART device pages; expand later if
+  easy. The shims give 1 GiB of work memory (unproven glue); the ARM theorem will cover runs whose work fits the window.
+
+## MERGED TO MAIN (2026-11-20)
+nano-v2-src merged into main: RISC-V proven (Lean 4.29, unmodified Sail RISC-V model; C_correctLO / C_runsO);
+ARM proven on DeepMind's arm64 model (Lean 4.34.1; C_correct_armDM / C_runs_armDM, loader premise ArmLoader;
+independently rebuilt by two sessions, standard 3 axioms). Working ARM back end + nano translator rv2arm (certified
+source meaning, CertArm), shims (1 GiB work), compile.sh / run.sh / try_arm.sh / cross_check.sh. In progress on
+nano-v2-src: the same ARM theorem on the official Sail ARM model (C_correct_armSail), then RISC-V model regeneration
+with the official Sail tool on 4.34.1.
+NEXT (owner, 2026-11-20), in order: (1) expected total program size (code vs source, where the 512 KB / 1 MB limits
+bite); (2) speed of compiled programs; (3) grow the parser's accepted syntax until it can express con-leche.
+- ORDER + RULES (owner, 2026-11-20): (a) all machines on ONE Lean version (RISC-V regenerated model + ARM on 4.34.1);
+  (b) basic speed work, measured by exact executed-instruction counts (Testing/notes/BENCH.md baseline);
+  (c) THEN grow the accepted syntax toward con-leche, one construct at a time. Every growth step must keep all proofs
+  green (REVIEW axioms as pinned, RISC-V + ARM theorems build) AND must not regress the benchmark baseline
+  (self-compile instruction count and the example table); each step gets a CHANGELOG entry.
+  Also per step: a short code check: total code size per area (compiler source, proofs, glue) does not grow
+  without reason, no dead code (deadcode tool), shared abstractions reused instead of duplicated (e.g. one generic
+  machine adapter, one block table). Size table kept in Testing/notes/CODE_SIZE.md.
+
+## Later (owner, 2026-11-20)
+- Sail ARM: the theorem temporarily makes no claim about sp (register 31; Sail-local mapping, see Arm/sail/NOTES.md).
+  Later: restore sp (prove it unchanged / reset on exit) by exporting SP_EL0/SP_EL3/PSTATE.SP from the full_* lemmas.
+- Later: reset the memory chunks (work/scratch regions) on exit, so the caller gets them back in a defined state.
+
+## Order after release-434 (owner, 2026-11-20)
+1. Cleanup (low risk) that also prepares optimization: archive dead code, prune dead decls, dedupe the rv2arm table,
+   and factor the Gen proofs so the room/OOM check and branch offsets sit behind a few shared lemmas
+   (CODEGEN_SPEED.md: that is what makes the speedups PERVASIVE today).
+2. Core codegen optimizations, bounded (target ~2x fewer executed instructions on BENCH, then stop): one overflow
+   check per function, small-immediate operands, maybe top-of-stack in a register.
+3. ARM-specific speed so ARM is not much slower than RISC-V (shorter rv2arm sequences; later a native ARM backend).
+4. Before growing: assess four target programs — con-leche (Lean checker), LeanZip, Lean SVG, Lean Align — for what
+   each needs from the language/compiler (features, def count, sizes, memory) and what is easy vs hard.
+5. Syntax growth toward those four, starting with con-leche (raise the 511-def cap, parser node cap, clear errors),
+   proofs green, no speed regression.
+
+## Generated-code speed (analysis only for now)
+Goal: no obviously slow patterns in the code the compiler emits.
+Evidence (B2.bin disassembly): stack-machine codegen; every push = addi + bgeu + j + sd; `x < 65` ≈ 15 instructions
+(good code: 2). B2 has ~10.9k per-push overflow checks and ~14k sd.
+Order (each: measure on BENCH.md programs + self-compile, then prove; proofs green, no regression):
+1. one stack-overflow check per function (max depth) instead of per push
+2. small-immediate operands for ALU ops and compares
+3. direct conditional branch when the target is in range (else branch-over-jal)
+4. inline constant defs (zero-arg defs returning a literal)
+5. top-of-stack in a register (drops push/pop pairs) — biggest win, most proof work
+6. ARM: shorter rv2arm sequences for common forms (currently fixed 4-word blocks, ~3.6x)
+
+## Later (owner, 2026-11-20), after con-leche syntax
+- Native ARM backend: generate AArch64 directly from the IR (no rv2arm translation) for speed; proved against the
+  same A64 machine interface (A64Sem / Sail ARM), RISC-V path unchanged.
+- Verified inline assembly ("skip through the compiler"): a Lean value {words, f, proof : code implements f on the
+  Sail model (Spec Implements-style contract + the compiler's register/stack/heap/OOM convention)}; the compiler
+  copies the words verbatim, the source semantics sees only f, the correctness proof gets one new case. No unproved
+  blocks accepted. ARM: free if the block uses only rv2arm-supported forms, else an ARM block + its own proof.
+- x86-64 backend (owner, 2026-11-20; later): preferred model = Sail x86 (REMS sail-x86-from-acl2, translated from
+  ACL2 x86isa) via the existing Sail→Lean pipeline; alternatives ACL2 x86isa directly, K x86-64 semantics (no Lean
+  backend). No vendor-official model exists: record in MODEL_PROVENANCE.md exactly where the model comes from, which
+  commit, how it is generated (commands, toolchain, patches), and that it is community/translated. Re-adapt when the
+  model updates. Approach as for ARM: an X86Sem-style interface over the few dozen instruction forms the compiler
+  emits, a RISC-V→x86 translator first, native generation later.
+- Spec strengthening, read confinement (owner, 2026-11-20; later, needs owner-approved Spec change + re-freeze):
+  add to CompileCorrect/CompileRuns that the compiled code never READS memory outside its code, input, output and
+  work blocks (today only writes are confined: memory outside the output prefix + work block is proved unchanged).
+  Out-of-memory remains the only failure mode. Process isolation is out of scope (bare-machine model; the OS is a
+  separate layer).
