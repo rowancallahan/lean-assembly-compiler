@@ -274,9 +274,7 @@ theorem o29_ok {W : WCx} {s f v : Buf} {A : AS} {Φ0 : List Fr} {r : Fr} (hr : r
     rcases pass with ⟨F2, f', h1, h2, h3, h4⟩ | h
     · left; exact ⟨F2, f', finEq F2 h1 h2 hc, h3, h4⟩
     · right; exact h
-  -- `lit` as a hypothesis: a proper rewrite, not a `rfl` step the kernel has to re-check on the whole goal
-  have lit' : ∀ n : Nat, (OfNat.ofNat n : UInt64) = u n := fun n => lit n
-  unfold o29; simp only [lit] at h7 h8 h2; simp only [lit']
+  unfold o29; simp only [lit] at h7 h8 h2 ⊢
   simp only [h3, h4, h6, h7, h8, h2, beq_self_eq_true, if_true]
   have e : ∀ k : Nat, k < 10 → (u r.d == u k) = decide (r.d = k) := fun k hk => u_beq (by omega) (by omega)
   simp only [e 0 (by omega), e 1 (by omega), e 2 (by omega), e 3 (by omega), u_sub' hvb (by omega)]
