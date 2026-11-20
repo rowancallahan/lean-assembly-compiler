@@ -11,13 +11,14 @@ TRANS = os.path.join(ARM, "rv2arm_arm.bin")
 W = os.path.abspath(sys.argv[1]); os.makedirs(W + "/fail", exist_ok=True)
 FIRST = int(sys.argv[2]) if len(sys.argv) > 2 else 1
 COUNT = int(sys.argv[3]) if len(sys.argv) > 3 else 10**9
-NANORUN, SHIM = W + "/nanorun", W + "/shim_arm"
-QEMU = "qemu-aarch64-static"
+NANORUN, SHIM, SHIM_RV = W + "/nanorun", W + "/shim_arm", W + "/shim_rv"
+QEMU, QEMU_RV = "qemu-aarch64-static", "qemu-riscv64-static"
 LOG = open(W + "/log.txt", "a")
 
 def build():
     subprocess.run(["cc", "-O2", os.path.join(V2, "run/nanorun.c"), "-o", NANORUN], check=True)
     subprocess.run(["aarch64-linux-gnu-gcc", "-O2", "-static", os.path.join(V2, "run/shim/shim_arm.c"), "-o", SHIM], check=True)
+    subprocess.run(["riscv64-linux-gnu-gcc", "-O2", "-static", os.path.join(V2, "run/shim/shim_rv.c"), "-o", SHIM_RV], check=True)
 
 def run(args, timeout, env=None, stdin=None, stdout=None):
     t = time.time()
@@ -43,16 +44,30 @@ def fail(seed, src, why, extra):
         if f.startswith("in_"): shutil.copy(W + "/cur/" + f, d)
     print("FAIL seed %d: %s" % (seed, why), file=LOG, flush=True)
 
+def run_shim(qemu, shim, code, ip, out):
+    # run a code file under a shim (qemu) on input ip; returns (status or None, output bytes or None, why)
+    with open(ip, "rb") as fi, open(out, "wb") as fo:
+        rc, e, _ = run([qemu, shim, code], 60, stdin=fi, stdout=fo)
+    if rc == "TIMEOUT": return None, None, "HANG"
+    m = re.search(r"status (-?\d+)", e)
+    if not m or rc not in (0, 1): return None, None, "rc=%s %s" % (rc, e.strip())
+    return int(m.group(1)), open(out, "rb").read(), ""
+
 def one(seed, stats):
     rng = random.Random(seed * 7919 + 1)
     src = gen.gen(seed)
     cur = W + "/cur"; os.makedirs(cur, exist_ok=True)
     for f in os.listdir(cur): os.remove(os.path.join(cur, f))
     open(cur + "/prog.src", "w").write(src)
-    rc, err, _ = run([NANORUN, B2, cur + "/prog.src", cur + "/prog.rv"], 120)
+    # reference compile: RISC-V shim under qemu (nanorun must give the same code)
+    with open(cur + "/prog.src", "rb") as fi, open(cur + "/prog.rv", "wb") as fo:
+        rc, err, _ = run([QEMU_RV, SHIM_RV, B2], 300, stdin=fi, stdout=fo)
     if rc != 0 or os.path.getsize(cur + "/prog.rv") == 0:
         stats["reject"] += 1
-        return fail(seed, src, "B2 compile: rc=%s %s" % (rc, err.strip()), "compiled size 0 or failed")
+        return fail(seed, src, "B2 compile under qemu-riscv: rc=%s %s" % (rc, err.strip()), "empty code")
+    rc, err, _ = run([NANORUN, B2, cur + "/prog.src", cur + "/nano.rv"], 120)
+    if rc != 0 or open(cur + "/nano.rv", "rb").read() != open(cur + "/prog.rv", "rb").read():
+        return fail(seed, src, "compile: nanorun code != qemu-riscv code", "")
     stats["programs"] += 1
     env = dict(os.environ, RUN="%s %s %s" % (QEMU, SHIM, TRANS))
     rc, err, _ = run([RV2ARM, cur + "/prog.rv"], 300, env=env, stdout=open(cur + "/prog.arm", "wb"))
@@ -64,26 +79,25 @@ def one(seed, stats):
     for name, data in inputs(rng):
         ip = cur + "/in_" + name
         open(ip, "wb").write(data)
-        rc, rerr, t1 = run([NANORUN, cur + "/prog.rv", ip, cur + "/o.rv"], 60)
-        if rc == "TIMEOUT": return fail(seed, src, "HANG nanorun on input %s" % name, "")
-        if rc == 3: return fail(seed, src, "TRAP nanorun on input %s" % name, rerr)
+        s_rv, out_rv, why = run_shim(QEMU_RV, SHIM_RV, cur + "/prog.rv", ip, cur + "/o.rv")
+        if why: return fail(seed, src, "RISC-V qemu shim on %s: %s" % (name, why), "")
+        s_arm, out_arm, why = run_shim(QEMU, SHIM, cur + "/prog.arm", ip, cur + "/o.arm")
+        if why: return fail(seed, src, "AArch64 qemu shim on %s: %s" % (name, why), "")
+        rc, rerr, _ = run([NANORUN, cur + "/prog.rv", ip, cur + "/n.rv"], 60)
+        if rc == "TIMEOUT": return fail(seed, src, "HANG nanorun (third opinion) on %s" % name, "")
         m1 = re.search(r"a0 = (-?\d+)", rerr)
-        if not m1 or rc not in (0, 1): return fail(seed, src, "nanorun odd exit %s on %s" % (rc, name), rerr)
-        s_rv = int(m1.group(1))
-        out_rv = open(cur + "/o.rv", "rb").read() if s_rv in (0, 1) and os.path.exists(cur + "/o.rv") else b""
-        if os.path.exists(cur + "/o.rv"): os.remove(cur + "/o.rv")
-        with open(ip, "rb") as fi, open(cur + "/o.arm", "wb") as fo:
-            rc, aerr, t2 = run([QEMU, SHIM, cur + "/prog.arm"], 60, stdin=fi, stdout=fo)
-        if rc == "TIMEOUT": return fail(seed, src, "HANG qemu shim_arm on input %s" % name, "")
-        m2 = re.search(r"status (-?\d+)", aerr)
-        if not m2 or rc not in (0, 1): return fail(seed, src, "qemu shim_arm rc=%s on %s" % (rc, name), aerr)
-        s_arm = int(m2.group(1))
-        out_arm = open(cur + "/o.arm", "rb").read()
+        s_nano = int(m1.group(1)) if m1 else None
+        out_nano = open(cur + "/n.rv", "rb").read() if s_nano in (0, 1) and os.path.exists(cur + "/n.rv") else b""
+        if os.path.exists(cur + "/n.rv"): os.remove(cur + "/n.rv")
         stats["status_%d" % s_rv] += 1; stats["inputs"] += 1
         if s_rv != s_arm or out_rv != out_arm:
-            return fail(seed, src, "MISMATCH on input %s: rv status %d (%d B), arm status %d (%d B)"
+            return fail(seed, src, "MISMATCH rv(qemu) vs arm(qemu) on input %s: rv status %d (%d B), arm status %d (%d B)"
                         % (name, s_rv, len(out_rv), s_arm, len(out_arm)), "rv_out=%s\narm_out=%s"
                         % (out_rv[:64].hex(), out_arm[:64].hex()))
+        if s_nano != s_rv or out_nano != out_rv:
+            stats["nanorun_disagree"] += 1
+            return fail(seed, src, "nanorun (third opinion) disagrees with qemu-riscv on %s: qemu %s/%dB, nanorun %s/%dB"
+                        % (name, s_rv, len(out_rv), s_nano, len(out_nano)), "")
         print("ok seed %d %s len %d status %d out %d" % (seed, name, len(data), s_rv, len(out_rv)), file=LOG, flush=True)
         if s_rv not in (0, 1): break   # later inputs of a failed-capacity program add nothing new
 
