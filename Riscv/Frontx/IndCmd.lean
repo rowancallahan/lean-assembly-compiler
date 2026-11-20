@@ -22,7 +22,7 @@ namespace Proven.Frontx.IndCmd
 open Lean Meta Elab Command Term
 
 def runCmd (s : String) : CommandElabM Unit := do
-  match Parser.runParserCategory (← getEnv) `command ("set_option linter.unusedSimpArgs false in\n" ++ s) with
+  match Parser.runParserCategory (← getEnv) `command ("set_option linter.unusedSimpArgs false in\nset_option backward.isDefEq.respectTransparency false in\n" ++ s) with
   | .ok stx => elabCommand stx
   | .error e => throwError "frontx_ind: generated text does not parse ({e}):\n{s}"
 
@@ -1718,8 +1718,8 @@ theorem _root_.{P}.sem : ∀ (t : {tyOf Ttn}) (a : {aTy}) (b : {bTy}), {hyps}{P}
   | (simp only [{gS}, {P}.arms, Proven.Mach.Ind.Pg.sem, Proven.Mach.Ind.ev, {embs}, {smalls}, List.getElem?_cons_succ,
       List.getElem?_cons_zero, List.getElem?_nil, Bool.false_eq_true, if_false, if_true] at *
      try simp only [Proven.Mach.Ind.C.nodes] at *
-     simp (disch := first | omega | (simp_all; done)) only [*, {cmpW}, {words0}, ↓reduceIte, ite_true, ite_false{extra}]
-     all_goals (try simp (disch := first | omega | (simp_all; done)) only [Proven.Mach.Ind.ev, Proven.Frontx.Ind.natSubW_ofNat,
+     simp (disch := first | omega | ((try simp_all); done)) only [*, {cmpW}, {words0}, ↓reduceIte, ite_true, ite_false{extra}]
+     all_goals (try simp (disch := first | omega | ((try simp_all); done)) only [Proven.Mach.Ind.ev, Proven.Frontx.Ind.natSubW_ofNat,
        Proven.Frontx.Ind.nat_add, Proven.Frontx.Ind.bw_eq0, Proven.Frontx.Ind.bw_eq0', decide_eq_false_iff_not,
        decide_eq_true_eq] at *)
      all_goals (repeat' split)
