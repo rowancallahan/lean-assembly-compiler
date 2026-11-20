@@ -725,4 +725,61 @@ theorem blk_ld (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : Nat
       (fun i h1 h2 => by rcases (by omega : i = 2 ∨ i = 3) with rfl | rfl <;> rw [hb] <;> rfl)
     exact ⟨s2, Runs.trans r1 r2, M2⟩
 
+/-- a byte `lbu` may read: its value in memory and its place in RAM -/
+theorem byte_bok {K : LayW} {C : List J} {s0 s : M.State} {p : Nat × CallProbe.St} {k : Nat}
+    (hM : Mid K C s0 p k s) (hL : JTarget.LayOK M (16 * C.length) K) {a : Nat} (ha : bok K a) :
+    (M.observe s).memory (UInt64.ofNat a) = some (cbyte (p.2.m (a - a % 8)) (a % 8)) ∧
+      M.ramStart ≤ a ∧ a < M.ramEnd := by
+  have wl := hL.wlo; have wh := hL.whi; have il := hL.ibl; have ih := hL.ibh; have ol := hL.obl; have oh := hL.obh
+  rcases ha with hw | hio
+  · have := hM.w _ hw (a % 8) (Nat.mod_lt _ (by decide))
+    rw [show a - a % 8 + a % 8 = a by omega] at this
+    unfold wok at hw
+    exact ⟨this, by omega, by omega⟩
+  · refine ⟨hM.bw a hio, ?_, ?_⟩ <;> (unfold io outB at hio; omega)
+
+/-- `lbu rd, off(rs)`: `ldrb d, [s, #off]`, or `add/sub x16` + `ldrb d, [x16]`; PADs for x0 -/
+theorem blk_lbu (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : Nat} {st : CallProbe.St}
+    {rd rs : Nat} {off : Int}
+    (hM : Mid K C s0 (pc, st) 0 s) (hC : C[pc]? = some (.lbu rd rs off)) (hB : K.base + 16 * C.length ≤ 2 ^ 32)
+    (hpcl : pc < C.length) (hL : JTarget.LayOK M (16 * C.length) K) (hR : M.ramEnd ≤ 2 ^ 32)
+    (hrd : mapped rd = true) (hrs : mapped rs = true) (rs0 : rs ≠ 0) (hf1 : -2048 ≤ off) (hf2 : off < 2048)
+    (h0 : 0 ≤ ((st.x rs).toNat : Int) + off) (hbk : bok K (CallProbe.ea (st.x rs) off)) :
+    ∃ s', Runs M s s' ∧ Mid K C s0 (pc + 1, CallProbe.wr st rd (CallProbe.lbm st.m (CallProbe.ea (st.x rs) off))) 0 s' := by
+  by_cases hd : rd = 0
+  · subst hd; rw [wr_zero]
+    have hb : blockJ (.lbu 0 rs off) = [PAD, PAD, PAD, PAD] := rfl
+    exact run_pads S hC hB hpcl 4 0 s (by decide) hM (fun i _ h2 => by
+      rcases (by omega : i = 0 ∨ i = 1 ∨ i = 2 ∨ i = 3) with rfl | rfl | rfl | rfl <;> rw [hb] <;> rfl)
+  have hdl := armReg_lt hrd hd
+  have hsl := armReg_lt hrs rs0
+  have ld_at : ∀ k (s1 : M.State) (n f : Nat), Mid K C s0 (pc, st) k s1 → k < 4 → n < 31 → f < 4096 →
+      ((M.observe s1).register n).toNat + f = CallProbe.ea (st.x rs) off →
+      (blockJ (.lbu rd rs off)).getD k 0 = ldrb (armReg rd) n f →
+      (∀ i, k + 1 ≤ i → i < 4 → (blockJ (.lbu rd rs off)).getD i 0 = PAD) →
+      ∃ s', Runs M s1 s' ∧
+        Mid K C s0 (pc + 1, CallProbe.wr st rd (CallProbe.lbm st.m (CallProbe.ea (st.x rs) off))) 0 s' := by
+    intro k s1 n f M1 hk hn hf hea e1 e2
+    have w := word_pc M1 hC hB hpcl hk e1
+    obtain ⟨hby, hr1, hr2⟩ := byte_bok M1 hL hbk
+    have g := S.ldrb s1 _ n f _ M1.cfg hdl hn hf (by omega) (by omega) (by omega) (by rw [hea]; exact hby) w
+    rw [← lbm_cbyte] at g
+    obtain ⟨s2, r2, M2⟩ := mid_set M1 hrd hd g
+    obtain ⟨s3, r3, M3⟩ := run_pads S hC hB hpcl (4 - (k + 1)) (k + 1) s2 (by omega) M2 e2
+    exact ⟨s3, Runs.trans r2 r3, M3⟩
+  by_cases hdir : 0 ≤ off ∧ off < 4096
+  · have hb : blockJ (.lbu rd rs off) = [ldrb (armReg rd) (armReg rs) off.toNat, PAD, PAD, PAD] := by
+      simp [blockJ, body, pad4, hd, hdir]
+    exact ld_at 0 s (armReg rs) off.toNat hM (by decide) hsl (by omega)
+      (by rw [hM.x rs (by omega) (mapped_lt hrs)]; simp [CallProbe.ea]; omega) (by rw [hb]; rfl)
+      (fun i h1 h2 => by rcases (by omega : i = 1 ∨ i = 2 ∨ i = 3) with rfl | rfl | rfl <;> rw [hb] <;> rfl)
+  · have hb : blockJ (.lbu rd rs off) = [addr16 rs off, ldrb (armReg rd) 16 0, PAD, PAD] := by
+      simp [blockJ, body, pad4, hd, hdir]
+    obtain ⟨hby, hr1, hr2⟩ := byte_bok hM hL hbk
+    obtain ⟨s1, r1, M1, x16⟩ := addr_x16 S hM hC hB hpcl (by decide) hrs rs0 hf1 hf2 (by rw [hb]; rfl) h0
+    obtain ⟨s2, r2, M2⟩ := ld_at 1 s1 16 0 M1 (by decide) (by decide) (by decide)
+      (by rw [x16, toNat_ofNat_lt (by omega), Nat.add_zero]) (by rw [hb]; rfl)
+      (fun i h1 h2 => by rcases (by omega : i = 2 ∨ i = 3) with rfl | rfl <;> rw [hb] <;> rfl)
+    exact ⟨s2, Runs.trans r1 r2, M2⟩
+
 end JT
