@@ -135,11 +135,12 @@ factor 8.9 for K x4, so quadratic in total). Factor = instructions at K=320 / K=
   - the 11 return stubs: 6049 (24 w), 6073 (40 w), 6113 (26 w), 6139 (40 w), 6179 (26 w), 6205 (40 w), 6245 (26 w),
     6271 (40 w), 6311 (26 w), 6337 (40 w), 6377 (26 w). Calls grow 11.7-14.9x; instructions per call stay 36 (40-word
     stubs), 23 (26-word), 20 (24-word). So the K^2 comes from the number of calls, not from the stubs getting longer.
-  - entry 14382, 298 words: calls 241 -> 961 (4x) but instructions per call 7,440 -> 29,280 (4x): a loop whose trip count
-    grows with K, run a number of times that also grows with K, so its total is K^2. Factor 15.7.
+  - entry 14382, 298 words: calls 241 -> 961 (4x) but instructions per call 7,440 -> 29,280 (4x): its per-call work grows with K
+    (4x) and so does its call count (4x), so its total is K^2. Factor 15.7.
 - **Grow linearly** (factor 4.0): 42037 (1515 w, 7,231 -> 28,831 calls, 372 instr/call), 45541 (94 w), 43552 (335 w, once),
   12535 (275 w), 60831 (231 w), 3494 (942 w), 4436 (711 w), 58872 (1803 w), 130, 322, 79722 (211 w, once). Per call constant.
-- Totals: the K^2 entries together are about 70% of the large run's instructions (the 11 stubs alone about 48%).
+- Totals: the K^2 entries (8055, the 11 stubs, 14382) are about 80% of the K=320 run's instructions (the 11 stubs alone 65%;
+  in the self-compile they are 48% and 6% respectively).
   So the K^2 part of the compile cost is the call count times a per-call cost, and the call count is the number of call
   sites that the generated code runs. The compiler's own `m` makes K calls and the per-def work is paid once per call.
 
