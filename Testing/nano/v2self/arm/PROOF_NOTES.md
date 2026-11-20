@@ -157,7 +157,7 @@ Open for the proof:
   * `c2` = imm12 on addi / ld / sd / lbu / sb;
   * shift < 64 (bits 26.. zero);
   * b.cond/cbz |B| ≤ 262140 (±65535 J instructions);
-  * `c3` = b/bl |B| ≤ 2^25 − 4;
+  * `c3` = b/bl |B| ≤ 2^25 − 4, i.e. −2^23 < o < 2^23 J instructions (also in `validJ`'s jal clause);
   * targets inside the program.
 
   RV field widths already imply the immediate limits, so `c2`/`c3` are defensive and cannot be hit by an RV word.

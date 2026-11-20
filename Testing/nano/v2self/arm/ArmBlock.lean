@@ -102,7 +102,7 @@ def validJ (n pc : Nat) : J → Prop
   | .slli rd rs sh | .srli rd rs sh => sh < 64 ∧ rdOK rs ∧ wrOK rd
   | .beq a b o | .bne a b o | .bltu a b o | .bgeu a b o =>
     rdOK a ∧ rdOK b ∧ 0 ≤ (pc : Int) + o ∧ (pc : Int) + o < n ∧ -65535 ≤ o ∧ o ≤ 65535
-  | .jal rd o => (rd = 0 ∨ rd = 1) ∧ 0 ≤ (pc : Int) + o ∧ (pc : Int) + o < n
+  | .jal rd o => (rd = 0 ∨ rd = 1) ∧ 0 ≤ (pc : Int) + o ∧ (pc : Int) + o < n ∧ -2 ^ 23 < o ∧ o < 2 ^ 23   -- b/bl imm26 reach (rv2arm c3)
   | .jalr rd rs => rd = 0 ∧ rs ≠ 0 ∧ pi rs < 31
 
 /-! ## J with link width W: no definition needed any more. J's state carries `wk` (7536764), `step` links with
