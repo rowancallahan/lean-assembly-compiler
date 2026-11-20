@@ -26,7 +26,7 @@ def decode(w):
     op, rd, f3, rs1, rs2, f7 = w & 127, w >> 7 & 31, w >> 12 & 7, w >> 15 & 31, w >> 20 & 31, w >> 25
     iimm = sx(w >> 20, 12)
     if op == 0x13 and f3 == 0: return ('addi', rd, rs1, iimm)
-    if op == 0x13 and f3 == 1: assert f7 == 0 and rs2 < 32; return ('slli', rd, rs1, w >> 20 & 63)
+    if op == 0x13 and f3 == 1: assert w >> 26 == 0; return ('slli', rd, rs1, w >> 20 & 63)
     if op == 0x13 and f3 == 5: assert w >> 26 == 0; return ('srli', rd, rs1, w >> 20 & 63)
     if op == 0x03 and f3 == 3: return ('ld', rd, rs1, iimm)
     if op == 0x03 and f3 == 4: return ('lbu', rd, rs1, iimm)
