@@ -23,6 +23,7 @@ B2 = os.path.join(V, 'B2.bin')
 B2A = os.path.join(ARMD, 'B2_arm.bin')
 RV2ARM = os.path.join(ARMD, 'rv2arm.sh')
 RV2ARM_ARM = os.path.join(ARMD, 'rv2arm_arm.bin')
+RV2ARM_RV = os.path.join(ARMD, 'rv2arm_rv.bin')
 QEMU = os.environ.get('QEMU') or 'qemu-aarch64-static'
 QEMU_RV = os.environ.get('QEMU_RV') or 'qemu-riscv64-static'
 HANG_S = 120
@@ -284,6 +285,11 @@ def check(srcb, inputs, d):
     t = run(['sh', RV2ARM, rv], out=parm, env={'RUN': f'{QEMU} {SH} {RV2ARM_ARM}'})
     if t[0] != 0:
         return 'translate', dict(S, translate_rc=t[0], err=t[1][-300:])
+    # cross-wise: the same program translated by the RISC-V translator under qemu-riscv64 must give the same ARM code
+    parm_rv = os.path.join(d, 'p.arm.rvtr')
+    t2 = run(['sh', RV2ARM, rv], out=parm_rv, env={'RUN': f'{QEMU_RV} {SHR} {RV2ARM_RV}'})
+    if t2[0] != 0 or read(parm_rv) != read(parm):
+        return 'translate_cross', dict(S, translate_rc=t2[0])
     for i, inp_b in enumerate(inputs):
         ip = os.path.join(d, f'in{i}'); open(ip, 'wb').write(inp_b)
         o_ref, o_arm, o_nan = (os.path.join(d, f'o{i}.{x}') for x in ('ref', 'arm', 'nan'))
@@ -357,7 +363,7 @@ def main():
         cnt['both_trap'] += S.get('both_trap', 0)
         if kind:
             cnt[{'compile': 'mismatches', 'program': 'mismatches', 'nanorun': 'nanorun', 'hang': 'hangs',
-                 'crash': 'crashes', 'translate': 'translate'}[kind]] += 1
+                 'crash': 'crashes', 'translate': 'translate', 'translate_cross': 'translate'}[kind]] += 1
             report(seed, name, desc, kind, S, srcb, inputs, shard_dir)
         if time.time() - last >= STATUS_EVERY_S or (MAX and n == MAX):
             last = time.time()
