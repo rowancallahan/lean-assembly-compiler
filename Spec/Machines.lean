@@ -26,13 +26,13 @@ def riscvMapping : RegisterMapping where
   outputLength := 11
   kept := [2, 3, 4, 8, 9, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]
 
-/-- AArch64: x30, x0–x3, sp. -/
+/-- AArch64: x30, x0–x3, x4 (work top; sp is not used by the code). -/
 def armMapping : RegisterMapping where
   returnAddress := 30
   inputAddress := 0
   inputLength := 1
   workAddress := 2
-  workTop := 31
+  workTop := 4
   outputAddress := 3
   status := 0
   outputLength := 1

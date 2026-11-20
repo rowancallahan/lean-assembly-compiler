@@ -3,7 +3,7 @@ input `[5]`, C's work bound `spaceC` (= `memoryNeeded` of `compileC`) is at most
 The run of main with that much room is evaluated in the kernel at one position (2^31, empty output buffer); `shiftInv`
 moves it to every admissible position, `semAtF_pcT` to every output buffer. -/
 import Nano.V2Self.Proof.Bridge.MainShift4
-import Nano.V2Self.Proof.Machine.RunsThr
+import Nano.V2Self.Proof.Main.Compile
 import Nano.V2Self.Proof.Tests.MainWitness
 namespace NanoMain.AuditSpace
 open ParSpec Templates

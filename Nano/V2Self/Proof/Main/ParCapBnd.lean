@@ -1,5 +1,5 @@
 /- Box O: the parser's WIDTH CAP gives every parsed def `nslots < 2^20` and `nres < 2^20`.  This proves `BndStage` and
-`CapStage`, so `C_correctLC` loses both premises (`C_correctL`). -/
+`CapStage` (the premises of codegen's field bounds and of the size-bound stage). -/
 import Nano.V2Self.Proof.Main.DBStageE
 namespace Templates
 open ParSpec NanoMain
@@ -105,7 +105,6 @@ theorem parsed_bnd {ts : List UInt64} {p : List DefA} (hp : ParsesProgram ts p) 
 
 end Templates
 
-open LeanRV64D
 namespace NanoMain
 open Proven.Top Proven.Top.Alloc
 
@@ -114,9 +113,5 @@ theorem capStage : CapStage := fun _ _ hp _ d hd => by
 
 theorem bndStage : BndStage := fun _ _ _ hp hts _ => (Templates.parsed_bnd hp hts).1
 
-/-- **C is correct**: `C_correctLC` with both of its premises proved -/
-theorem C_correctLO : CompileCorrect riscv compileC := C_correctLC bndStage capStage
-
 end NanoMain
 
-#print axioms NanoMain.C_correctLO

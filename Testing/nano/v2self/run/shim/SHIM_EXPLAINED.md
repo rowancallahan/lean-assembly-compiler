@@ -56,8 +56,9 @@ for instructions, and it may still hold what was there before.
 ## 6. Status codes (the value of `a0` on return)
 `0` success. `1` success with empty output. `−1` the work block was too small. `−2` a buffer inside the program reached
 its fixed capacity. For 0 and 1 the shim writes `a1` bytes to stdout and exits 0; otherwise it exits 1.
-Before the call the shim itself exits with 2 if the code file or the input does not fit its buffer, or if the system
-refuses executable memory.
+Before the call the shim itself exits with 2 if the code file is over 4 MiB, the input is over 2^20 bytes (exactly 2^20
+is accepted, as in nanorun and the contract), or the system refuses executable memory. After the call it exits with 3
+if writing the output fails (e.g. a full disk or `/dev/full`), so lost output is never reported as success.
 
 ## 7. Two steps: compile, then run
 The compiler is itself such a code file (`B2.bin`), so the same shim runs both steps:
@@ -67,8 +68,9 @@ The compiler is itself such a code file (`B2.bin`), so the same shim runs both s
 ```
 On a machine that is not RISC-V, put `qemu-riscv64-static` in front of each command.
 
-## 8. What changes on ARM (`shim_arm.c`, for a future back end, untested)
-Same idea, other names: arguments in `x0..x3` instead of `a0..a3`; the return address lives in `x30`; the call is
+## 8. What changes on ARM (`shim_arm.c`; tested under qemu-aarch64 with `arm/test_arm.sh`)
+Same idea, other names: arguments in `x0..x3` instead of `a0..a3`, plus the work top in `x4` (the back end
+`Testing/nano/v2self/arm/rv2arm` maps RISC-V's `sp` to `x4` and never uses the ARM `sp`; the shim still sets `sp` too); the return address lives in `x30`; the call is
 `blr reg` (branch with link to register) instead of `jalr`, and a plain jump is `br`; the saved register used to park
 `sp` is `x19`. On Apple Silicon, executable memory must be requested with `MAP_JIT`, writing to it is switched on and
 off with `pthread_jit_write_protect_np`, and the cache call is `sys_icache_invalidate`.

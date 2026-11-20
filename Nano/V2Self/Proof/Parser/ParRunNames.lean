@@ -11,15 +11,6 @@ def IdsOK (toks : List Tok) : Prop := ∀ x, Tok.id x ∈ toks → x ≠ []
 def NInv (c : List Frame × St) : Prop :=
   IdsOK c.2.toks ∧ (∀ d ∈ c.2.defs, d.name ≠ []) ∧ (c.2.cur.name ≠ [] ∨ ∀ f ∈ c.1, f = .defs)
 
-theorem idsOK_sfx {p r : List Tok} (h : IdsOK (p ++ r)) : IdsOK r := fun x hx => h x (List.mem_append_right _ hx)
-
-theorem mkNode_names {st st' : St} {t a b : Nat} {s : Option Sh} {p : Bool} {n : Nat}
-    (h : mkNode st t a b s p n = some st') : st'.toks = st.toks ∧ st'.defs = st.defs ∧ st'.cur = st.cur := by
-  unfold mkNode at h; split at h <;> cases h; exact ⟨rfl, rfl, rfl⟩
-
-theorem locOf_names {st st' : St} {bd : Bd} (h : locOf st bd = some st') : st'.toks = st.toks ∧ st'.defs = st.defs ∧ st'.cur = st.cur := by
-  unfold locOf at h; split at h <;> cases h; exact ⟨rfl, rfl, rfl⟩
-
 /-- per handler: identifier tokens stay non-empty (the tokens shrink to a suffix), the rows only grow by the current row
 (`defClose`), the current row's name changes only at `.defs` (to a token spelling) -/
 theorem stepF_names {f : Frame} {st st' : St} {k : List Frame} (h : stepF f st = some (k, st')) :

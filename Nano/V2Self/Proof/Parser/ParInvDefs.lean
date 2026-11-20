@@ -379,44 +379,6 @@ theorem rep_open {G H ts : Buf} {st : St} {fs' : List Frame} {p : UInt64} {x : L
   · exact out_frame rO ed
 
 /-! ## task 60 -/
-/-- Rep ignores the scratch cells 22 and 31 (the def-lookup result) -/
-theorem rep_scratch22 {h h' ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs)
-    (e : ∀ i : UInt64, i.toNat ≠ 22 → i.toNat ≠ 31 → bget h' i = bget h i)
-    (ed : h'.drop 184384 = h.drop 184384) : Rep h' ts st fs := by
-  obtain ⟨rT, rts, r0, r3, r11, rB, rD, rA, r25, r29, r30, r32, rO, rK⟩ := r
-  have hn : (bget h 7).toNat < 2 ^ 32 := by rw [rT.2.2.2]; simp; omega
-  have et : TokAgree h h' := ⟨e 7 (by decide) (by decide), fun i hi => e i (by omega) (by omega)⟩
-  have es : ShTabAgree h h' := fun i a _ => e i (by omega) (by omega)
-  have c : ∀ n : UInt64, n.toNat ≠ 22 → n.toNat ≠ 31 → bget h' n = bget h n := e
-  exact ⟨tokensAt_frame rT et rts, rts, by rw [c 0 (by decide) (by decide)]; exact r0,
-    by rw [c 3 (by decide) (by decide)]; exact tokAt_frame et hn r3, by rw [c 11 (by decide) (by decide)]; exact r11,
-    binds_frame rB (c 4 (by decide) (by decide)) (fun i a _ => e i (by omega) (by omega)) et hn es,
-    defs_frame rD (c 12 (by decide) (by decide)) (c 27 (by decide) (by decide)) (c 26 (by decide) (by decide)) (fun i a _ => e i (by omega) (by omega)) et hn es,
-    arena_frame rA (c 8 (by decide) (by decide)) (c 9 (by decide) (by decide)) (fun i a _ => e i (by omega) (by omega)) es,
-    fun s hs => by rw [c 25 (by decide) (by decide)]; exact (r25 s hs).frame es,
-    fun x hx => by rw [c 29 (by decide) (by decide)]; exact nameAt_frame et (by omega) (r29 x hx),
-    by rw [c 30 (by decide) (by decide)]; exact r30, by rw [c 32 (by decide) (by decide)]; exact r32, out_frame rO ed,
-    tasks_frame rK (c 5 (by decide) (by decide)) (fun i _ _ => e i (by omega) (by omega)) et hn es
-      (fun i a _ => e i (by omega) (by omega)) rA.2.1⟩
-
-/-- the accepting write: status 2 -/
-theorem rep_accept {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs) :
-    Rep (bset h 0 2) ts { st with acc := true } fs := by
-  obtain ⟨rT, rts, r0, r3, r11, rB, rD, rA, r25, r29, r30, r32, rO, rK⟩ := r
-  have hn : (bget h 7).toNat < 2 ^ 32 := by rw [rT.2.2.2]; simp; omega
-  have hl : 184384 ≤ h.length := by rw [rO.1]; omega
-  have e : ∀ i : UInt64, i.toNat ≠ 0 → bget (bset h 0 2) i = bget h i := fun i a => bget_bset' _ _ _ _ (by simp; omega)
-  have et : TokAgree h (bset h 0 2) := ⟨e 7 (by decide), fun i hi => e i (by omega)⟩
-  have es : ShTabAgree h (bset h 0 2) := fun i a _ => e i (by omega)
-  exact ⟨tokensAt_frame rT et rts, rts, by rw [bget_bset_eq _ _ _ _ rfl (by simp; omega)]; rfl,
-    by rw [e 3 (by decide)]; exact tokAt_frame et hn r3, by rw [e 11 (by decide)]; exact r11,
-    binds_frame rB (e 4 (by decide)) (fun i a _ => e i (by omega)) et hn es,
-    defs_frame rD (e 12 (by decide)) (e 27 (by decide)) (e 26 (by decide)) (fun i a _ => e i (by omega)) et hn es,
-    arena_frame rA (e 8 (by decide)) (e 9 (by decide)) (fun i a _ => e i (by omega)) es,
-    fun s hs => by rw [e 25 (by decide)]; exact (r25 s hs).frame es,
-    fun x hx => by rw [e 29 (by decide)]; exact nameAt_frame et (by omega) (r29 x hx),
-    by rw [e 30 (by decide)]; exact r30, by rw [e 32 (by decide)]; exact r32, out_frame rO (drop_bset _ _ _ (by decide)),
-    tasks_frame rK (e 5 (by decide)) (fun i _ _ => e i (by omega)) et hn es (fun i a _ => e i (by omega)) rA.2.1⟩
 
 /-- a token list at the end of the token region is empty -/
 theorem tokAt_end {h : Buf} {p : UInt64} {toks : List Tok} (r : TokAt h p toks) (he : p = bget h 7) : toks = [] := by
@@ -453,20 +415,6 @@ theorem drop_openW (G : Buf) (p : UInt64) (hj : (bget G 12).toNat < 512) : (open
   rw [drop_bset _ _ _ (by decide), drop_bset _ _ _ (by decide), drop_bset _ _ _ (by decide), drop_bset _ _ _ (by decide),
     drop_bset _ _ _ (by decide), drop_bset _ _ _ (by rw [r2]; omega), drop_bset _ _ _ (by rw [r5]; omega),
     drop_bset _ _ _ (by rw [r0]; omega)]
-
-/-- cells that agree from 184384 on give equal tails -/
-theorem drop_of_cells {h h' : Buf} (hl : h'.length = h.length) (e : ∀ i : UInt64, 184384 ≤ i.toNat → bget h' i = bget h i)
-    (h64 : h.length < 2 ^ 64) : h'.drop 184384 = h.drop 184384 := by
-  apply List.ext_getElem (by simp [hl])
-  intro i h1 h2
-  have := e (184384 + i).toUInt64 (by simp [Nat.toUInt64]; simp at h1; omega)
-  simp only [bget, List.getD, Nat.toUInt64] at this
-  have hn : (UInt64.ofNat (184384 + i)).toNat = 184384 + i := by
-    simp only [UInt64.toNat_ofNat']; simp at h1; omega
-  rw [hn] at this
-  simp only [List.getElem_drop]
-  rw [List.getElem?_eq_getElem (by simp at h1; omega), List.getElem?_eq_getElem (by simp at h2; omega)] at this
-  simpa using this
 
 theorem drop_v85 : ∀ (n : Nat) (h : Buf) (a b : UInt64), (v85 n h a b).drop 184384 = h.drop 184384
   | 0, h, a, b => by simp only [v85]; exact drop_bset _ _ _ (by decide)

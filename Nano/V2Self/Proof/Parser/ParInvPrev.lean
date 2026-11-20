@@ -8,23 +8,6 @@ import Nano.V2Self.Proof.Parser.ParInvExpr
 namespace ParInv
 open C BufL ParSpec ParRun
 
-/-- two heaps holding the same token buffer agree on the narrow token region -/
-theorem tokAgree_of_tokensAt {h h' ts : Buf} (r : TokensAt h ts) (r' : TokensAt h' ts) (hts : ts.length < 2 ^ 24) : TokAgreeN h h' := by
-  obtain ⟨a, b, c, d⟩ := r
-  obtain ⟨a', b', c', d'⟩ := r'
-  have h7 : (bget h 7).toNat = ts.length := by rw [d]; simp; omega
-  refine ⟨by rw [d, d'], fun i i1 i2 => ?_⟩
-  rw [h7] at i2
-  have ei : i = d11 + (i.toNat - 184384).toUInt64 := by
-    apply UInt64.toNat_inj.mp; rw [d11a _ (by simp; omega)]; simp; omega
-  by_cases hl : i.toNat - 184384 < ts.length
-  · rw [ei, a' _ hl, a _ hl]
-  · by_cases hs : i.toNat - 184384 = ts.length
-    · rw [ei, hs, b, b']
-    · have e1 : i = d11 + ts.length.toUInt64 + 1 := by
-        apply UInt64.toNat_inj.mp; rw [d11a1 _ (by simp; omega)]; simp; omega
-      rw [e1, c, c']
-
 /-- size in cells of a token -/
 def tokSz : Tok → Nat
   | .k _ => 1

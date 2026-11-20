@@ -30,11 +30,6 @@ theorem ShapeCode.det {h : Buf} {c : UInt64} {s s' : Sh} (r : ShapeCode h c s) (
       subst el er el' er'
       rw [iha ra, ihb rb]
 
-theorem ShOpt.det {h : Buf} {c : UInt64} {o o' : Option Sh} (r : ShOpt h c o) (r' : ShOpt h c o') (hs : o.isSome) (hs' : o'.isSome) :
-    o = o' := by
-  match o, o', hs, hs' with
-  | some s, some s', _, _ => exact congrArg some (ShapeCode.det r r')
-
 /-- a small Nat as a machine word compares like the Nat -/
 theorem u_beq {p : Nat} (hp : p < 2 ^ 64) (c : Nat) (hc : c < 2 ^ 64) : (p.toUInt64 == c.toUInt64) = decide (p = c) := by
   by_cases e : p = c

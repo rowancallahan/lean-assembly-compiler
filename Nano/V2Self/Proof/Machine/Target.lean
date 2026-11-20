@@ -76,6 +76,8 @@ structure LayOK (M : Machine) (n : Nat) (K : LayW) : Prop where
 
 /-- **the laws a target proves** (per instruction kind, against the generic `Rel`) -/
 structure Laws : Prop where
+  /-- every J instruction is `blockLen` machine words -/
+  enc_len : ∀ j, (T.enc j).length = T.blockLen
   /-- the calling convention's registers, as J registers (a0..a3 = x10..x13, ra = x1, sp = x2) -/
   reg_map : T.reg 1 = T.M.mapping.returnAddress ∧ T.reg 2 = T.M.mapping.workTop ∧
     T.reg 10 = T.M.mapping.inputAddress ∧ T.reg 11 = T.M.mapping.inputLength ∧
@@ -96,6 +98,11 @@ structure Laws : Prop where
   step_ok : ∀ {K : LayW} {C : List J} {s0 : T.M.State} {a b : Nat × CallProbe.St} {s : T.M.State},
     T.lay K C → T.Rel K C s0 a s → SafeX K C a → CallProbe.step C a = some b →
     ∃ s', Runs T.M s s' ∧ T.Rel K C s0 b s'
+  /-- addi with the machine's (wrapping) sum, no range condition on the result (the stubs' a0 = −1 / −2) -/
+  addi_ok : ∀ {K : LayW} {C : List J} {s0 : T.M.State} {pc : Nat} {st : CallProbe.St} {s : T.M.State}
+    {rd rs : Nat} {imm : Int}, T.lay K C → T.Rel K C s0 (pc, st) s → C[pc]? = some (.addi rd rs imm) →
+    rd < 32 → rs < 32 → -2048 ≤ imm → imm < 2048 →
+    ∃ s', Runs T.M s s' ∧ T.Rel K C s0 (pc + 1, CallProbe.wr st rd (st.x rs + UInt64.ofInt imm)) s'
   /-- the return to the host: `jalr x0, 0(x1)` with any 4-aligned `x1` runs to pc = `x1`, keeping registers, memory
   and the configuration -/
   ret_ok : ∀ {K : LayW} {C : List J} {s0 : T.M.State} {pc : Nat} {st : CallProbe.St} {s : T.M.State},

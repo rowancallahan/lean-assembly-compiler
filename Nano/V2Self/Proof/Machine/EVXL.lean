@@ -158,7 +158,7 @@ theorem loop_pass {C : List J} {h S len p nl hb w : Nat} {Inv : St → Prop} {RZ
       simp [step, c2, wr]; omega
     let v := env_m 0 - 1
     let a0 := slotAddr p (s.x 8).toNat 0
-    let s4 : St := ⟨upd s.x 5 v, upd s.m a0 v, s.b⟩
+    let s4 : St := ⟨upd s.x 5 v, upd s.m a0 v, s.b, s.w⟩
     have ev : UInt64.ofNat (ea ((wr s 5 (env_m 0)).x 5) (-1)) = v := by rw [x51]; exact ea_dec _ hz'
     have st45 : run C 2 (S, wr s 5 (env_m 0)) = some (S + 2, s4) := by
       have q : ea ((wr (wr s 5 (env_m 0)) 5 v).x 8) (slotOff p 0) = a0 := by

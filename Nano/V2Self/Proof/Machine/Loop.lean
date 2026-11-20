@@ -31,7 +31,7 @@ theorem loop_ok {C : List J} {H S E : Nat} {off0 dS : Int} {P : Env → St → P
     (hH : At C H (head off0 dS)) (hdS : ((H : Int) + 2 + dS).toNat = S) (hP : At C S (stepPre off0))
     (fuel : ∀ env s, P env s → s.m (ea (s.x 8) off0) = env 0 ∧ s.x 0 = 0)
     (hDec : ∀ env s, P env s → env 0 ≠ 0 →
-      P (dec env) ⟨upd s.x 5 (UInt64.ofNat (ea (env 0) (-1))), upd s.m (ea (s.x 8) off0) (UInt64.ofNat (ea (env 0) (-1))), s.b⟩)
+      P (dec env) ⟨upd s.x 5 (UInt64.ofNat (ea (env 0) (-1))), upd s.m (ea (s.x 8) off0) (UInt64.ofNat (ea (env 0) (-1))), s.b, s.w⟩)
     (hZ : ∀ env s, P env s → env 0 = 0 → ∃ s', Star C (H + 3, wr s 5 (env 0)) (E, s') ∧ QZ env s')
     (hS : ∀ env s, P env s → ∃ s', (Star C (S + 2, s) (E, s') ∧ QS env s') ∨
       ∃ env', Star C (S + 2, s) (H, s') ∧ Cont env env' ∧ P env' s')
@@ -68,7 +68,7 @@ theorem loop_ok {C : List J} {H S E : Nat} {off0 dS : Int} {P : Env → St → P
       have := (show step C (H + 2, s1) = some (((H + 2 : Nat) : Int) + dS |>.toNat, s2) by simp [step, c2, s2])
       rw [w2] at this; rw [this]; congr 2; try omega
     let v := UInt64.ofNat (ea (env 0) (-1))
-    let s4 : St := ⟨upd s.x 5 v, upd s.m (ea (s.x 8) off0) v, s.b⟩
+    let s4 : St := ⟨upd s.x 5 v, upd s.m (ea (s.x 8) off0) v, s.b, s.w⟩
     have r45 : run C 2 (S, s1) = some (S + 2, s4) := by
       simp [run, step, d0, d1, s1, wr, s4, v, upd_same, upd_other _ _ (show (8:Nat) ≠ 5 by decide), upd2]
     have hp4 := hDec env s hp h0

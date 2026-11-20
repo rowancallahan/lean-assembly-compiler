@@ -3,7 +3,7 @@ written in it: `∀ inp, srcRun ⟨x⟩ inp = some (f inp)` — the meaning that
 Method: the lexer run `C.s10 x = ts` (kernel; sound by `s10_sound`), the reference parse checked by a Boolean equality
 `progEq (refParse ts) P = true` (kernel; `progEq_eq`), and `Sem κC P inp = .ok (f inp)` for symbolic `inp` (definitional
 unfolding, or induction for loops). -/
-import Nano.V2Self.Proof.Main.MainTop
+import Nano.V2Self.Proof.Main.Compile
 
 namespace NanoMain
 open ParSpec

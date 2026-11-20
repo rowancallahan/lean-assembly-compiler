@@ -1,6 +1,6 @@
 /- Opus box E: Gen's node bounds `NB` (NdCG) from the kind typing `TyN` (MainTy), the serialization length and the prim
 operand counts `PAr` (a parser fact). -/
-import Nano.V2Self.Proof.Main.MainTopE
+import Nano.V2Self.Proof.Main.Compile
 namespace Templates
 open ParSpec NanoMain
 

@@ -296,9 +296,6 @@ theorem row_frameN {h h' : Buf} {j : Nat} {d : DefR} (hj : j < 512) (r : RowRep 
   rw [c 5 (by decide), er _ (by rw [parCell _ _ (by omega)]; omega) (by rw [parCell _ _ (by omega)]; omega)]
   exact (ap i hi).frame es
 
-theorem row_frame {h h' : Buf} {j : Nat} {d : DefR} (hj : j < 512) (r : RowRep h j d) (er : RegAgree h h' 147520 180288)
-    (et : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShTabAgree h h') : RowRep h' j d := row_frameN hj r er et.n hn es
-
 theorem rowZero_frame {h h' : Buf} {j : Nat} (hj : j < 512) (r : RowZero h j) (er : RegAgree h h' 147520 180288) : RowZero h' j :=
   fun k hk => by rw [er _ (by rw [defCell j hj k hk]; omega) (by rw [defCell j hj k hk]; omega)]; exact r k hk
 

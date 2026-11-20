@@ -35,16 +35,4 @@ theorem firstLs_snoc (ps : List Sh) (w : Sh) (i : Nat) :
     · exact ⟨by rw [ga i hi]; exact h1, fun j hj => by rw [ga j (by omega)]; exact h2 j hj⟩
     · exact ⟨by rw [List.getElem?_append_right (Nat.le_refl _)]; simp, fun j hj => by rw [ga j hj]; exact h2 j hj⟩
 
-/-- the input flag of a new last parameter -/
-theorem firstLs_last (ps : List Sh) (w : Sh) :
-    FirstLs (ps ++ [w]) ps.length ↔ (w == .ls && !hasLs (ps.map some)) = true := by
-  rw [firstLs_snoc]
-  constructor
-  · rintro (⟨h, _⟩ | ⟨_, rfl, h⟩)
-    · omega
-    · simp [h]
-  · intro h
-    simp only [Bool.and_eq_true, beq_iff_eq, Bool.not_eq_eq_eq_not, Bool.not_true] at h
-    exact Or.inr ⟨rfl, h.1, h.2⟩
-
 end ParRun

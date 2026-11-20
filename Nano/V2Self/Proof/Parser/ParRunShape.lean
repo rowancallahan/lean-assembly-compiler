@@ -91,11 +91,6 @@ theorem stepS_stkinv {c d : List Frame × St} (hs : stepS c = some d) (hi : StkI
       · exact absurd (hacc e2) (by simp)
       · simp [isD] at hD
 
-theorem Star.stkinv {c d : List Frame × St} (h : Star c d) (hi : StkInv c) : StkInv d := by
-  induction h with
-  | refl => exact hi
-  | step hs _ ih => exact ih (stepS_stkinv hs hi)
-
 theorem stkinv_init (toks : List ParSpec.Tok) : StkInv ([.defs], init toks) := ⟨rfl, fun e => by simp [init] at e⟩
 
 
@@ -135,12 +130,6 @@ theorem Star.dinv {c d : List Frame × St} (h : Star c d) (hk : StkInv c) (hi : 
   | step hs _ ih => exact ih (stepS_stkinv hs hk) (stepS_dinv hs hk hi)
 
 theorem dinv_init (toks : List ParSpec.Tok) : DInv ([.defs], init toks) := fun _ => rfl
-
-/-- below a popped frame other than `.defs`, no `.defs` (the glue's `inDefF fs = true`) -/
-theorem defs_not_below {f : Frame} {fs : List Frame} {st : St} (hi : DInv (f :: fs, st)) (hf : f ≠ .defs) : ∀ g ∈ fs, g ≠ .defs := by
-  intro g hg e; subst e
-  have := hi (List.mem_cons_of_mem _ hg)
-  simp at this; exact hf this.1
 
 theorem dinv_reach {toks : List ParSpec.Tok} {fs : List Frame} {st : St} (h : Star ([.defs], init toks) (fs, st)) : DInv (fs, st) :=
   h.dinv (stkinv_init toks) (dinv_init toks)

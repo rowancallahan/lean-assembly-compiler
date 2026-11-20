@@ -1,16 +1,10 @@
-/- Opus box E: `CompileRuns` for C with no premises (D's `shiftInv` discharges `ShiftInv`), and its instance for C's
-own source text. -/
-import Nano.V2Self.Proof.Main.RunsTop
+/- Opus box E: `C_runsO` (`CompileRuns` for C, Main/RvTop.lean) for C's own source text. -/
+import Nano.V2Self.Proof.Main.RvTop
 import Nano.V2Self.Proof.Bridge.MainShift4
 import Nano.V2Self.Proof.Main.SelfC
 open LeanRV64D
 namespace NanoMain
 open Proven Proven.Top Proven.Top.Alloc ParSpec
-
-/-- **C runs correctly with any work block** (owner's `CompileRuns`): return to the caller, memory changed only in
-the work block and the result prefix of the output block, callee-saved registers kept, configured, and out of memory
-reported (a0 = −1) exactly when the work block is smaller than `memoryNeeded`. -/
-theorem C_runsO : CompileRuns riscv compileC := C_runs shiftInv
 
 /-- **the code C emits for its own source text, with any work block**: for every input that does not hit the 2^19-word
 capacity, the run returns to the caller, changes memory only in the work block and the first `|mC a|` output bytes,

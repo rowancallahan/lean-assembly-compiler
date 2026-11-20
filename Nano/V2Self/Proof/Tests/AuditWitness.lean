@@ -5,7 +5,7 @@ for the audit `Testing/notes/NANO_V2_AUDIT.md`.  What is proved here and what is
   checked natively only (Par1's fixed heap layout is out of the kernel's reach, see MainWitness);
 * `ex1_applies`: the theorem's conclusion for this program.  Its premise `memoryNeeded … ≤ workLength` is left as a
   hypothesis: `memoryNeeded` is `spaceC`, a `Classical.choose`, for which no upper bound is provable (audit finding 1). -/
-import Nano.V2Self.Proof.Main.ParCapBnd
+import Nano.V2Self.Proof.Main.RvTop
 import Nano.V2Self.Proof.Tests.MainCert
 import Nano.V2Self.Proof.Tests.MainWitness
 import Nano.V2Self.Proof.Tests.AuditSpace

@@ -9,15 +9,10 @@ open ParSpec
 theorem findB_mem {bs : List Bd} {x bd} (h : findB bs x = some bd) : bd ∈ bs := by
   unfold findB at h; exact List.mem_reverse.mp (List.mem_of_find?_eq_some h)
 
-theorem take_mem {l : List RN} {n x} (h : x ∈ (l.take n).reverse) : x ∈ l := List.mem_of_mem_take (List.mem_reverse.mp h)
-
 @[simp] theorem RN.sh_mk (t a b : Nat) (s : Option Sh) (p : Bool) (k : List RN) : (RN.mk t a b s p k).sh = s := rfl
 
 theorem rows_get_lt {st : St} {j d} (hj : j < st.defs.length) (h : (st.defs ++ [st.cur])[j]? = some d) : d ∈ st.defs := by
   rw [List.getElem?_append_left hj] at h; exact List.mem_of_getElem? h
-
-theorem rows_get_last {st : St} {d} (h : (st.defs ++ [st.cur])[st.defs.length]? = some d) : d = st.cur := by
-  simp at h; exact h.symm
 
 set_option hygiene false in
 macro "si_auto" : tactic => `(tactic| (

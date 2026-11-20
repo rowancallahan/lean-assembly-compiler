@@ -64,15 +64,6 @@ theorem callInv_leaf {st : St} {t a b : Nat} {s : Sh} (ht : t ≠ 8) (hi : CallI
   · exact hi m hm h8
   · rw [List.mem_singleton.mp hm] at h8; exact absurd h8 ht
 
-theorem callInv_locOf {st st' : St} {bd : Bd} (h : locOf st bd = some st') (hi : CallInv st) : CallInv st' := by
-  unfold locOf at h; split at h
-  · cases h
-  · cases h
-    intro m hm h8
-    rcases List.mem_append.mp hm with hm | hm
-    · exact hi m hm h8
-    · rw [List.mem_singleton.mp hm] at h8; simp [RN.tag] at h8
-
 theorem callInv_mono {st st' : St} (ha : st'.arena = st.arena) (hd : st.defs.length ≤ st'.defs.length) (hi : CallInv st) :
     CallInv st' := fun m hm h8 => by rw [ha] at hm; have := hi m hm h8; omega
 

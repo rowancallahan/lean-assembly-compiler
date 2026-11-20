@@ -1,8 +1,8 @@
 /- The RISC-V adapter: `rvTarget` (one RV64 word per J instruction, `encJX`; J register = RV register) and its laws,
-from the existing Sail-RV simulation (SimW/SimX `sim_stepX`, HostLift `sim_ret`) through one bridge `RelW ↔ Rel`. -/
+from the existing Sail-RV simulation (SimW/SimX `sim_stepX`, RvStep `sim_ret` / `sim_addiN`) through one bridge `RelW ↔ Rel`. -/
 import Nano.V2Self.Proof.Machine.Target
 import Nano.V2Self.Proof.Machine.SimX
-import Nano.V2Self.Proof.Machine.HostLift
+import Nano.V2Self.Proof.Machine.RvStep
 import Riscv.Back.LinkL
 namespace JT
 open Proven Proven.Top SimW CallProbe
@@ -39,8 +39,6 @@ theorem cbyte_eq (v : UInt64) (k : Nat) (hk : k < 8) :
   apply UInt8.toNat_inj.1
   have : (8 * k) % 64 = 8 * k := Nat.mod_eq_of_lt (by omega)
   simp [cbyte, BitVec.extractLsb'_toNat, UInt64.toNat_shiftRight, UInt8.toNat_ofBitVec, this]
-
-theorem wbyte_eq (w : BitVec 32) (b : Nat) : UInt8.ofBitVec (w.extractLsb' (8 * b) 8) = wbyte w b := rfl
 
 theorem reg_none (t : Proven.St) {r : Nat} (h : r = 0 ∨ 32 ≤ r) : (riscvObserve t).register r = 0 := by
   simp only [riscvObserve]
@@ -143,6 +141,7 @@ theorem rel_of {K : LayW} {C : List J} {s0 : Proven.St} {p : Nat × CallProbe.St
     exact h.fr a (by unfold wok; omega) (by unfold outB; omega)
 
 theorem rvLaws : rvTarget.Laws where
+  enc_len _ := rfl
   reg_map := ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
   kept_map r hr := by
     left; refine ⟨r, ?_, ?_, rfl, ?_⟩ <;>
@@ -158,6 +157,11 @@ theorem rvLaws : rvTarget.Laws where
   step_ok := by
     intro K C s0 a b s hl hR hS hs
     obtain ⟨t', hr, hR'⟩ := sim_stepX hl.1 hl.2 (relW_of hl hR) hS hs
+    exact ⟨t', .step (Top.step_of_retires hr) .stop, rel_of hl hR'⟩
+  addi_ok := by
+    intro K C s0 pc st s rd rs imm hl hR hC h1 h2 h3 h4
+    have hWc : K.W[pc]? = some (encJ (.addi rd rs imm)) := by rw [hl.2]; simp [hC, encJX]
+    obtain ⟨t', hr, hR'⟩ := sim_addiN hl.1 (relW_of hl hR) hWc h1 h2 h3 h4
     exact ⟨t', .step (Top.step_of_retires hr) .stop, rel_of hl hR'⟩
   ret_ok := by
     intro K C s0 pc st s hl hR hC h4

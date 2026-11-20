@@ -3,15 +3,16 @@
 #include <stdio.h>
 #include <sys/mman.h>
 enum { CODE = 4 << 20, IN = 1 << 20, OUT = 2 << 20, WORK = 80 << 20 };          /* fixed sizes, bytes */
-static unsigned char in[IN], out[OUT];
+static unsigned char in[IN + 1], out[OUT];                                      /* +1: detect too long */
 static long work[WORK / 8];                                                      /* 8-aligned, zero */
 
 int main(int argc, char **argv) {
     FILE *f = argc == 2 ? fopen(argv[1], "rb") : 0;
     if (!f) return fprintf(stderr, "usage: shim_rv CODE.bin < input > output\n"), 2;
-    unsigned char *code = mmap(0, CODE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    long code_len = fread(code, 1, CODE, f), in_len = fread(in, 1, IN, stdin);
-    if (code == MAP_FAILED || code_len == CODE || in_len == IN) return fprintf(stderr, "shim_rv: no executable memory, or code/input too large\n"), 2;
+    unsigned char *code = mmap(0, CODE + 1, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (code == MAP_FAILED) return fprintf(stderr, "shim_rv: no executable memory\n"), 2;
+    long code_len = fread(code, 1, CODE + 1, f), in_len = fread(in, 1, IN + 1, stdin);   /* limits: <= CODE, <= IN */
+    if (code_len > CODE || in_len > IN) return fprintf(stderr, "shim_rv: code > 4 MiB or input > 2^20 bytes\n"), 2;
     __builtin___clear_cache((char *)code, (char *)code + code_len);
 
     /* the code's convention: a0 input, a1 its length, a2 work base, a3 output, sp = work top, ra = return */
@@ -26,6 +27,6 @@ int main(int argc, char **argv) {
     /* a0: 0 ok, 1 ok with empty output, -1 out of work memory, -2 buffer capacity; a1: output length */
     fprintf(stderr, "shim_rv: status %ld, %ld output bytes\n", a0, a1);
     if ((a0 != 0 && a0 != 1) || a1 < 0 || a1 > OUT) return 1;
-    fwrite(out, 1, a1, stdout);
+    if (fwrite(out, 1, a1, stdout) != (size_t)a1 || fclose(stdout)) return fprintf(stderr, "shim_rv: write failed\n"), 3;
     return 0;
 }

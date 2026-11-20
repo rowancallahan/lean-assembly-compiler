@@ -1,6 +1,6 @@
 /- OWNER REVIEW FILE: what to read and what to trust.  No new proofs.  Notes: Testing/notes/NANO_V2_REVIEW.md.
 Build: `lake build Nano.V2Self.REVIEW`.  The #print axioms output is the authoritative axiom list. -/
-import Nano.V2Self.Proof.Main.ParCapBnd
+import Nano.V2Self.Proof.Main.RvTop
 import Nano.V2Self.Proof.Cert.All
 import Nano.V2Self.Proof.Main.SelfC
 import Nano.V2Self.Proof.Main.RunsTopO
@@ -15,7 +15,11 @@ text is at most 2^20 bytes), and every way of reading the text as a function `f 
 meaning `srcRun` returns `encodeOutput (f a)` on `encodeInput a`, for EVERY `a`), the bytes `compiled.code`, loaded and
 called on the Sail RV64 model per `StartCorrect` (input ≤ 2^20 bytes), with an output block big enough and at least
 `memoryNeeded` bytes of work memory, return to the caller with the output, length register, no OOM flag, callee-saved
-registers kept, configuration kept, and memory changed only in the work block and the output prefix. -/
+registers kept, configuration kept, and memory changed only in the work block and the output prefix.
+LIMITS (see NANO_V2_REVIEW.md §1): `compileC s = some _` is not kernel-proved for any text (audit finding B);
+`Computes` is for ALL inputs, so a program that can hit `cap` anywhere needs a restricted `α`; `memoryNeeded` is the
+exact threshold of the code's own run, so `CompileRuns`' "OOM iff below memoryNeeded" is close to definitional (what
+it adds: OOM is reported, never a wrong answer or a crash). Spec/ incl. Spec/Alloc.lean is frozen (4dd99338). -/
 #check @NanoMain.C_correctLO
 #print axioms NanoMain.C_correctLO
 
@@ -23,7 +27,7 @@ registers kept, configuration kept, and memory changed only in the work block an
 #check @Cert.sem_C
 #print axioms Cert.sem_C
 
-/-! ## 2b. C compiled by itself (E, Proof/SelfC.lean; generic versions in Proof/SelfLink.lean).  `SrcGen.X0` = the bytes
+/-! ## 2b. C compiled by itself (E, Proof/Main/SelfC.lean; generic versions in Proof/Main/SelfLink.lean).  `SrcGen.X0` = the bytes
 of Testing/nano/v2self/self_S_input.txt (D's generator refuses to write the modules unless its chunks concatenate to
 exactly those bytes).  `SelfIn` = inputs shorter than 2^64 bytes on which `Sem κC Cert.PC.all` does not hit `cap`.
 NOT proved: `compileC ⟨X0⟩ = some compiled` (it is a hypothesis of self_correct_C; holds iff `mC X0 ≠ []`, shown only
@@ -34,11 +38,11 @@ by running B1), nor that the shipped B2.bin is `compiled.code`. -/
 #check @NanoMain.SelfIn
 #print axioms NanoMain.self_correct_C
 
-/-! ## 2c. memory (E, Proof/Main/RunsTop.lean, Proof/Machine/RunsDef.lean, RunsThr.lean).  `memoryNeeded` of `compileC`
+/-! ## 2c. memory (E, Proof/Main/RvTop.lean + TopOn.lean, Proof/Machine/RunsDef.lean).  `memoryNeeded` of `compileC`
 is `spaceC x inp = max 16 (Msp p inp)`: `thr p x` = the LEAST number of usable bytes (above the 16-byte reserve) with
 which main does not run out of room at ANY admissible 8-aligned work position; `Msp` rounds `16 + thr` up to 8 bytes.
-`C_runs`: `CompileRuns` (the owner's run statement: any work block; OOM flag exactly below `memoryNeeded`), given
-`ShiftInv` (D proved it as `shiftInv`, c771775; E's premise-free `C_runsO` / `self_runs_C` are pending). `Msp_le` /
+`C_runsO`: `CompileRuns` (the owner's run statement: any work block; OOM flag exactly below `memoryNeeded`);
+`C_runs` = the same under the former premise `ShiftInv` (D proved it as `shiftInv`). `Msp_le` /
 `spaceC_le`: the bound is at most D's work bound `gen_R` (an existential) + 30 bytes. -/
 #check @NanoMain.C_runs
 #print axioms NanoMain.C_runs
@@ -51,7 +55,7 @@ which main does not run out of room at ANY admissible 8-aligned work position; `
 -- a concrete value (D, Tests/AuditSpace.lean): the work bound of the audit example ex1 on input [5]
 #check @NanoMain.AuditSpace.spaceC_ex1_eq
 #print axioms NanoMain.AuditSpace.spaceC_ex1_eq
--- premise-free (E, Main/RunsTopO.lean): C_runs with D's shiftInv, and the same for C compiled by itself
+-- premise-free (E, Main/RvTop.lean, Main/RunsTopO.lean): C_runsO, and the same for C compiled by itself
 #check @NanoMain.C_runsO
 #print axioms NanoMain.C_runsO
 #check @NanoMain.self_runs_C
