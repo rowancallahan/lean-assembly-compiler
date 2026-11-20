@@ -1714,7 +1714,7 @@ theorem _root_.{P}.sem : ∀ (t : {tyOf Ttn}) (a : {aTy}) (b : {bTy}), {hyps}{P}
        simp_all [{fnsS}, {embs}, {words}, Proven.Op.eval] | frontx_emb_cases)
      done)
   | ({caseB}simp_all [{gS}, {P}.arms, Proven.Mach.Ind.Pg.sem, Proven.Mach.Ind.ev, {embs}, {smalls}, {words}, {cmpW}, Proven.Frontx.Ind.bw_eqz{extra}] <;>
-     (repeat' split) <;> simp_all -failIfUnchanged [Proven.Frontx.Ind.bw]; done)
+     (repeat' split) <;> simp_all [Proven.Frontx.Ind.bw]; done)
   | (simp only [{gS}, {P}.arms, Proven.Mach.Ind.Pg.sem, Proven.Mach.Ind.ev, {embs}, {smalls}, List.getElem?_cons_succ,
       List.getElem?_cons_zero, List.getElem?_nil, Bool.false_eq_true, if_false, if_true] at *
      try simp only [Proven.Mach.Ind.C.nodes] at *
