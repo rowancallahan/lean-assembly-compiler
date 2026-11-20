@@ -469,7 +469,7 @@ theorem Red.core_exec (r : Red) (hc : r.chk = none) {L : Nat} {cs : CS} {xs cur 
       (fun n => .ofNat 64 n) (fun _ => 8) Red.length.code (fun env => by simp [Red.code, AExp.denote])
       (fun h => by simp [Red.code] at h) (fun env a h5 => h5) (fun env a h5 h1 => h1) (fun _ => Nat.le_refl _)
       (by decide) hI hkL hx hL
-    exact ⟨σ', h, by simpa only [Red.code, Bool.false_eq_true, if_false, id, leBytes_w8] using hI'⟩
+    exact ⟨σ', h, by simp only [Red.code, Bool.false_eq_true, if_false, id, leBytes_w8] at hI'; exact hI'⟩
   | isEmpty =>
     obtain ⟨σ', h, hI'⟩ := red_exec (α := Bool) b01 (fun a _ => a) (fun n => n == 0) b01 (fun _ => 1)
       Red.isEmpty.code (fun env => by
@@ -477,7 +477,7 @@ theorem Red.core_exec (r : Red) (hc : r.chk = none) {L : Nat} {cs : CS} {xs cur 
         by_cases h0 : env 1 = 0
         · simp [h0, b01]
         · have : (env 1).toNat ≠ 0 := fun e => h0 (BitVec.eq_of_toNat_eq (by simpa using e))
-          rw [if_neg h0]; simp [this, b01])
+          have h0' : ¬ env 1 = 0#64 := h0; simp [h0', this, b01])
       (fun h => by simp [Red.code] at h) (fun env a h5 => h5) (fun env a h5 h1 => h1) (fun _ => Nat.le_refl _)
       (by decide) hI hkL hx hL
     refine ⟨σ', h, ?_⟩
@@ -489,14 +489,14 @@ theorem Red.core_exec (r : Red) (hc : r.chk = none) {L : Nat} {cs : CS} {xs cur 
       (fun env => rfl) (fun _ env a x h5 h6 => ByteExp.tr_ok a x env h6 _ (.inr h5)) (fun env a h5 => h5)
       (fun env a h5 h1 => h1) (fun _ => Nat.le_refl _) (by decide) hI hkL hx hL
     refine ⟨σ', h, ?_⟩
-    simpa only [Red.code, if_true, leBytes_zx, foldl_u8sum, UInt8.zero_add] using hI'
+    simp only [Red.code, if_true, leBytes_zx, foldl_u8sum, UInt8.zero_add] at hI'; exact hI'
   | sum64 =>
     obtain ⟨σ', h, hI'⟩ := red_exec (α := Nat) (fun n => BitVec.ofNat 64 n) (fun a x => a + x.toNat) (fun _ => 0)
       (fun n => .ofNat 64 n) (fun _ => 8) Red.sum64.code (fun env => rfl)
       (fun _ env a x h5 h6 => by simp only [Red.code, AExp.denote, Op.eval, h5, h6, zx_ofNat, BitVec.ofNat_add])
       (fun env a h5 => h5) (fun env a h5 h1 => h1) (fun _ => Nat.le_refl _) (by decide) hI hkL hx hL
     refine ⟨σ', h, ?_⟩
-    simpa only [Red.code, if_true, leBytes_w8, foldl_natsum, Nat.zero_add] using hI'
+    simp only [Red.code, if_true, leBytes_w8, foldl_natsum, Nat.zero_add] at hI'; exact hI'
   | countP p => exact countP_core p.denote p (hp p hc) (fun _ => rfl) hI hkL hx hL
   | count b => exact countP_core (· == b) (eqB b) rfl (fun _ => rfl) hI hkL hx hL
   | any p => exact any_core p.denote p (hp p hc) (fun _ => rfl) hI hkL hx hL

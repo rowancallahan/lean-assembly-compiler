@@ -117,7 +117,7 @@ theorem implements1_of_frontxW {β : Type} (f : ByteArray → β) (encB : β →
     Implements1With (fun xs : ByteArray => xs.data.toList) encB
       (compBFO N [0, 3] [2] (.seq (toMS p) (store8 k))) f (fun _ => 8 * (N + 1) + 7) := by
   refine implements1_of_execOW _ encB f N hN (.seq (toMS p) (store8 k)) (show rvF.wfB N [0, 3] [2] (toMS p) ∧ _ from ⟨wfB_up N _ _ p hwf hnw, store8_wf N k hk⟩) (fun _ => 0) _
-    (fun n => by dsimp only; omega) _ false ?_
+    (fun n => by (try dsimp only); omega) _ false ?_
   intro a out tbl env h1 h8 hmax hlt hout hol htl
   have hsz : a.data.toList.length = a.size := Array.length_toList
   obtain ⟨σ', hx, h4, hh⟩ := hex a env (by rw [h1, hsz]; rfl) (by rw [← hsz]; exact hlt) h8
@@ -162,7 +162,7 @@ theorem implements1_listW (f : ByteArray → List UInt8) (N : Nat) (hN : N ≤ N
   refine implements1_of_execOW _ (fun l => l) f N hN (.seq (toMS p) (.assign 1 (.var 4)))
     (show rvF.wfB N [0, 3] [2] (toMS p) ∧ _ from ⟨wfB_up N _ _ p hwf hnw, by
       simp [MachineF.wfB, Mach.BExp.depth, Mach.BExp.vlt]; omega⟩) (fun _ => 0) _
-    (fun n => by dsimp only; omega) _ true ?_
+    (fun n => by (try dsimp only); omega) _ true ?_
   intro a out tbl env h1 h8 hmax hlt hout hol htl
   have hsz : a.data.toList.length = a.size := Array.length_toList
   obtain ⟨σ', hx, h4, hh⟩ := hex a out env (by rw [h1, hsz]; rfl) (by rw [← hsz]; exact hlt) h8 hout hol
@@ -185,7 +185,7 @@ theorem implements1_bytesW {β : Type} (f : ByteArray → β) (encB : β → Lis
     Implements1With (fun xs : ByteArray => xs.data.toList) encB (compBFO N [0, 3] [2] (toMS p)) f
       (fun _ => 8 * (N + 1) + 7) := by
   refine implements1_of_execOW _ encB f N hN (toMS p) (wfB_up N _ _ p hwf hnw) (fun _ => 0) _
-    (fun n => by dsimp only; omega) _ false ?_
+    (fun n => by (try dsimp only); omega) _ false ?_
   intro a out tbl env h1 h8 hmax hlt hout hol htl
   have hsz : a.data.toList.length = a.size := Array.length_toList
   obtain ⟨σ', hx, hh⟩ := hex a out env (by rw [h1, hsz]; rfl) (by rw [← hsz]; exact hlt) h8 hout hol

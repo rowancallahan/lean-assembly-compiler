@@ -58,7 +58,7 @@ theorem implements1_of_cexec {α β : Type} (encA : α → List UInt8) (encB : �
       bytesAt s output.base output.len = out0.map some :=
     ⟨_, by simp [bytesAt], bytesAt_hosted fun i hi => hmapO i hi⟩
   obtain ⟨σ', out', hexec, hh, htk, hdr, hrl⟩ := hex a out0 (envOf s)
-    (by simpa [envOf] using getX_of (h.x11.symm.trans h11) rfl) hmax (by show x.length < 2 ^ 32; omega)
+    (getX_of (h.x11.symm.trans h11) rfl) hmax (by show x.length < 2 ^ 32; omega)
     (by show y.length ≤ out0.length; omega) (by omega)
   have hen : rvC.enterOK s 0 := (⟨by rw [hfb]; omega, by rw [hfb]; omega, by rw [hfb]; omega, by decide⟩ :
     FrOK 0 (frameBase 0 (getX s 2)))
@@ -89,8 +89,8 @@ theorem implements1_of_cexec {α β : Type} (encA : α → List UInt8) (encB : �
     refine ⟨rfl, rfl, fun b hb => ?_, fun b hb => ?_, fun b hb => ?_, rfl, rfl, fun b hb => (nomatch hb),
       fun b hb => (nomatch hb), fun b hb => nomatch hb⟩
     · obtain _ | _ | b := b
-      · simpa [envOf] using getX_of (h.x10.symm.trans h10) rfl
-      · simpa [envOf] using getX_of (h.x13.symm.trans h13) rfl
+      · exact getX_of (h.x10.symm.trans h10) rfl
+      · exact getX_of (h.x13.symm.trans h13) rfl
       · exact absurd hb (by show ¬(b + 1 + 1 < 2); omega)
     · obtain _ | _ | b := b
       · simp [R]
@@ -112,9 +112,9 @@ theorem implements1_of_cexec {α β : Type} (encA : α → List UInt8) (encB : �
   have e0 := p3.rbytes 0 (by simp [R]); have e1 := p3.rbytes 1 (by simp [R])
   simp only [hh] at e0 e1
   have e0' : bytesAt s' input.base x.length = (x.map (·.toBitVec)).map some := by
-    have := (bytes_eq s' _ _).symm.trans e0; simpa using this
+    have := (bytes_eq s' _ _).symm.trans e0; exact this
   have e1' : bytesAt s' output.base output.len = out'.map some := by
-    have := (bytes_eq s' _ _).symm.trans e1; simpa using this
+    have := (bytes_eq s' _ _).symm.trans e1; exact this
   refine ⟨by rw [← hra']; exact p1, ?_, ?_, abi_of_keep h p5 p6, p5, fun hr => ?_⟩
   · rw [← bytesAt_take' s' output.base hol', e1', ← List.map_take, htk]; simp [List.map_map, y]
   · intro q hq

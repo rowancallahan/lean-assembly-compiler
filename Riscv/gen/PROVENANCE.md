@@ -13,6 +13,7 @@ comment added at the top of each file, nothing was edited by hand.
 | lean-sail | `https://github.com/rems-project/lean-sail` tag `v10` = commit `e4745c82fe329f162700020dcd31da6b342473b9` (pinned in `lake-manifest.json` after `lake update`) |
 | Lean | `leanprover/lean4:v4.34.1` (emitted by Sail into `lean-toolchain`) |
 | generated tree sha256 | `Testing/notes/rvregen434/model_tree.sha256` holds the sha256 of every model file (banner included). Its own sha256 is `01996c3499f8dd365819a2ae2b9ff226501eb5f87e34f5533b75e073d34c2612` |
+| `Testing/scripts/model_hash.sh` (from nano-v2-src) | `6ac35da94bf8af379ce9160b39bf3f93b28dd463b0356b6803d40316dcb8bfae 161` (the 161 `.lean` files; also on the orphan branch `deps-rv-regen434` @`4cf120c8`, which runners check out at `../deps/sail-riscv-lean`) |
 | diff vs `51c635c` | `Testing/notes/rvregen434/model.diff.gz` (`git apply --index` on a `51c635c` checkout reproduces the tree; this was checked) and `model.diffstat` (164 files, +14511/-31093) |
 
 ## Generation command
