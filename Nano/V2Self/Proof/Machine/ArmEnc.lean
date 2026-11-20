@@ -2,6 +2,9 @@
 `armTarget : JT.JTarget` (Machine/Target.lean). The words are rv2arm's block table, the same as
 Testing/nano/v2self/arm/ArmBlock.lean `blockJ` (checked there against the Python oracle on every instruction of B2;
 `Testing/nano/v2self/arm/check_armenc.sh` checks `ArmEnc.blk = ArmBlock.blockJ` on the same instructions).
+The tie to rv2arm's Lean model is PROVEN (E, 62b9613): ArmRA/ArmRA2/ArmRA3 show `RA.t0 (encG j)` = the bytes of
+`blockJ j` for all 14 J kinds, and that `RA.c0` accepting implies `armOK`; ArmEncOK / ArmTop `C_correct_rv2arm` use
+them. Any change to `body`, `blockJ` or `armOK` means rebuilding ArmRA* (the per-kind lemmas are in ArmRA).
 
 PROOF NOTES (owner rule: semantics, conventions, which lemma covers it):
 * Shape: `blockLen = 4`. J instruction pc ↦ byte `base + 16·pc`. The real words come first, then

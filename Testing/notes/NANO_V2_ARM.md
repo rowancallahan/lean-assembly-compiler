@@ -289,6 +289,27 @@ Remaining for a concrete ARM theorem:
 2. **`EncOK` for a Lean byte translator:** decode Gen's RV words to J, then `blk`. `valid` = `progOK`, and empty output when the translator rejects.
 3. **`hwin`,** until D's `shiftInvL`; after that it follows from `A64Sem.ram`.
 
+### 0-enc. rv2arm as the encoder, W^X, the composed ARM theorem (box E, 2026-11-20; nano-v2-src @ 62b9613)
+No sorry; `C_correct_rv2arm` / `C_runs_rv2arm` (Main/ArmTop): `CompileCorrect M (compileOn ArmRA.rv2arm)` and
+`CompileRuns M (compileOn ArmRA.rv2arm)` for every `S : A64Sem M X W` with `2^31 ≤ M.ramStart`. Axioms: propext,
+Classical.choice, Quot.sound.
+
+| file | content |
+|---|---|
+| Machine/A64Sem | `A64Sem M X W`: permissions X (exec) / W (read-write). Fetch needs `FetchX` at the pc (8 bytes for `cmpbr`); `ldr/str/ldrb/strb` need W on their bytes. `GoesK` = runs, configured, permissions kept. `perm_init` at `StartCorrect`: code exec, input/output/work rw. Sail: X = W = True |
+| Machine/ArmTarget | `armTarget M X W`. `Rel.inv` = `PermOK` (code bytes X, layout data bytes W). `K.W` has one entry per instruction. `Laws.inv_init` now receives the entry facts |
+| Machine/ArmRA | per-field decode on Gen's words: every RA word builder equals O's ArmEnc word; `t0_*` for each of the 14 J kinds = the bytes of `blockJ` |
+| Machine/ArmRA2 | `t0_ok` (all kinds, under `JOK ∧ armOK`) and `c0_ok`: rv2arm's validation accepts ⇒ `armOK` |
+| Machine/ArmRA3 | `rv2arm` = the `rv2arm.sh` chunk loop around `RA.m` (4-byte chunk index header, 32000 words per chunk), as a Lean def. `rv2arm_ok`: on Gen's words a nonempty output is every block's bytes ∧ `progOK` |
+| Machine/JNorm | `norm`: jal offset mod 2^19 into [−2^18, 2^18). It gives the same Gen words (`encG_norm`) and the same safe runs (`sstarX_norm`; `SafeX` bounds executed jals). `JOK` = GoodX ∧ jal bound |
+| Machine/GenMainN | `gen_main` for `C.map norm`: every instruction `JOK`; start code prefix `startPre` |
+| Machine/ArmEncOK | `rv2arm_enc : EncOK (armTarget M X W) rv2arm` (`g40_le4`, `bytes_tbytes`) |
+
+`EncOK`'s hypothesis is now `∀ j ∈ Cj, JOK j`, replacing the encJX equation; RV's `rv_enc` recovers the equation via `words_encJX`.
+Two things remain open:
+- an `A64Sem` instance: the DeepMind agent's `armDM`, or Sail ARM;
+- `hwin`: the chosen ARM window [0x8000_0000, 0xC000_0000) satisfies it.
+
 ### 0a. Is J abstract enough for the lift?
 J (`Machine/Call.lean`) is a small abstract machine: registers `x : Nat → UInt64`, memory as 8-byte cells
 `m : Nat → UInt64` (bytes via `lbm`/`sbm`, little-endian), the code base `b`, a `pc : Nat` in instructions.

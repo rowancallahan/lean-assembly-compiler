@@ -22,7 +22,7 @@ theorem gen_runS (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length 
         let C := stubJ (11 + D.length) ++ D ++ startJ (11 + D.length) (P.T (hs.length - 1))
         g41 c (serialize ds) = g40 16777216 c (C.map encG) 0 [] ∧ C.length < 2 ^ 18 ∧ At C 0 (stubJ (11 + D.length)) ∧
         At C (11 + D.length) (startJ (11 + D.length) (P.T (hs.length - 1))) ∧ 11 + D.length + 32 ≤ C.length ∧
-        ((∀ k, k < hs.length → ScV (scAt P ds k) (dA ds k).body) → (C.map encG).map UInt64.toNat = C.map SimW.encJX) ∧
+        ((∀ k, k < hs.length → ScV (scAt P ds k) (dA ds k).body) → GL C) ∧
         ∀ KL : SimW.LayW, ((∀ k, k < hs.length → ScV (scAt P ds k) (dA ds k).body ∧ ∀ j, rd (dA ds k).body j → j < (dA ds k).npw) →
          ∀ E0, ((s0.x 2 >>> 3) <<< 3).toNat = E0 → s0.x 0 = 0 → (s0.x 12).toNat % 8 = 0 → 2048 ≤ (s0.x 12).toNat →
          (s0.x 12).toNat + 16 ≤ E0 → E0 < 2 ^ 62 → s0.b + s0.w * C.length < 2 ^ 64 →
@@ -48,7 +48,7 @@ theorem gen_runS (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length 
   obtain ⟨hg, np, nr, hcl, hopv, hbd, hTp, hpk, -⟩ := hr
   refine ⟨hg, by simp [stubJ, startJ]; omega, fun i hi => by rw [Nat.zero_add, List.append_assoc, List.getElem?_append_left hi],
     At.cast (At_app3 _ _ _) (by simp [stubJ]), by simp [stubJ, startJ]; omega,
-    fun hsc => words_encJX (prog_good _ ds _ _ hs.length (fun k hk => by
+    fun hsc => (prog_good _ ds _ _ hs.length (fun k hk => by
       obtain ⟨c1, c2, c3, c4⟩ := hbd k hk
       exact ⟨c2, c4, c3, hsc k hk, hopv k hk⟩)), ?_⟩
   intro KL hpar E0 hE0 z0 ha8 h2k hroom hE62 hcb hin63 hin hlo hhi hbase hinw

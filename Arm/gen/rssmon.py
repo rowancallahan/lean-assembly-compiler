@@ -3,6 +3,10 @@
 the .lean file it compiles; rewrite OUT as "peak_MB seconds file" lines. Run it beside a build; kill it after."""
 import os, sys, time
 out, seen = sys.argv[1], {}
+if os.path.exists(out):  # keep the records of an earlier (interrupted) run of the same build
+    for l in open(out):
+        h, t, f = l.split()
+        seen[("old", f)] = (int(h) * 1024, 0, float(t))
 while True:
     for p in os.listdir("/proc"):
         if not p.isdigit(): continue

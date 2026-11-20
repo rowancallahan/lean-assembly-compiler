@@ -47,7 +47,7 @@ theorem host_room (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List Def
     (hXl : (serialize p).length < 2 ^ 31) (h : C.g41 c (serialize p) ≠ []) (hdb : ∀ d ∈ p, DB d)
     (B : List UInt8) (hB : ∀ Cj : List J, Cj.length < 2 ^ 18 →
       C.g41 c (serialize p) = C.g40 16777216 c (Cj.map encG) 0 [] →
-      (Cj.map encG).map UInt64.toNat = Cj.map SimW.encJX → B = tbytes T Cj ∧ T.valid Cj)
+      (∀ j ∈ Cj, SimW.JOK j) → B = tbytes T Cj ∧ T.valid Cj)
     {s : T.M.State} {call : Call} {x : List UInt8} (sc : StartCorrect T.M s call B x)
     (h16 : call.workAddress.toNat + 16 ≤ (call.workAddress.toNat + call.workLength) / 8 * 8)
     (hS : ∀ Tb, semAtF (pcOf 524288 (call.workAddress.toNat + 16) (UInt64.ofNat x.length)
@@ -72,7 +72,7 @@ theorem host_room (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List Def
     rw [lbm_wordT, j10]; unfold gbT; rw [hr i hi, List.getElem?_eq_getElem hi]
     simp [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem hi]
   obtain ⟨Cj, pr, S0, Tb, hg, hc18, hst, -, -, hwd, hrun⟩ :=
-    gen_main c hP Ks hO hK2 hXl h hdb s0 x hx11 (by omega) hxm
+    gen_mainN c hP Ks hO hK2 hXl h hdb s0 x hx11 (by omega) hxm
   obtain ⟨hBe, hv⟩ := hB Cj hc18 hg hwd
   subst hBe
   have hn := tbytes_len L Cj
@@ -126,7 +126,7 @@ theorem host_tiny (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List Def
     (hXl : (serialize p).length < 2 ^ 31) (h : C.g41 c (serialize p) ≠ []) (hdb : ∀ d ∈ p, DB d)
     (B : List UInt8) (hB : ∀ Cj : List J, Cj.length < 2 ^ 18 →
       C.g41 c (serialize p) = C.g40 16777216 c (Cj.map encG) 0 [] →
-      (Cj.map encG).map UInt64.toNat = Cj.map SimW.encJX → B = tbytes T Cj ∧ T.valid Cj)
+      (∀ j ∈ Cj, SimW.JOK j) → B = tbytes T Cj ∧ T.valid Cj)
     {s : T.M.State} {call : Call} {x : List UInt8} (sc : StartCorrect T.M s call B x)
     (hsm : (call.workAddress.toNat + call.workLength) / 8 * 8 < call.workAddress.toNat + 16) :
     ∃ s', Runs T.M s s' ∧ (T.M.observe s').programCounter = call.returnAddress ∧
@@ -148,7 +148,7 @@ theorem host_tiny (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List Def
     rw [lbm_wordT, j10]; unfold gbT; rw [hr i hi, List.getElem?_eq_getElem hi]
     simp [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem hi]
   obtain ⟨Cj, pr, S0, Tb, hg, hc18, hst, hss, h32, hwd, -⟩ :=
-    gen_main c hP Ks hO hK2 hXl h hdb s0 x hx11 (by omega) hxm
+    gen_mainN c hP Ks hO hK2 hXl h hdb s0 x hx11 (by omega) hxm
   obtain ⟨hBe, hv⟩ := hB Cj hc18 hg hwd
   subst hBe
   have hn := tbytes_len L Cj
@@ -168,13 +168,13 @@ theorem host_tiny (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List Def
     0, T.m0 s⟩
   obtain ⟨hl, hR0⟩ := enter L sc KL rfl rfl rfl rfl (by simp [KL, E0]; omega) rfl rfl rfl (Nat.zero_le _) hv
   -- the start code's size check
-  obtain ⟨w, hsw⟩ := hss
+  have hsw := hss
   have q0 : Cj[0]? = some (.jal 0 (S0 : Int)) := by have := hst 0 (by simp [stubJ]); simpa [stubJ] using this
-  have c0 := At.get hsw 0 (by simp [startJ]); have c1 := At.get hsw 1 (by simp [startJ])
-  have c2 := At.get hsw 2 (by simp [startJ]); have c3 := At.get hsw 3 (by simp [startJ])
-  have c4 := At.get hsw 4 (by simp [startJ]); have c5 := At.get hsw 5 (by simp [startJ])
-  have c6 := At.get hsw 6 (by simp [startJ])
-  simp only [startJ, List.getElem?_cons_zero, List.getElem?_cons_succ, Nat.add_zero] at c0 c1 c2 c3 c4 c5 c6
+  have c0 := At.get hsw 0 (by simp [startPre]); have c1 := At.get hsw 1 (by simp [startPre])
+  have c2 := At.get hsw 2 (by simp [startPre]); have c3 := At.get hsw 3 (by simp [startPre])
+  have c4 := At.get hsw 4 (by simp [startPre]); have c5 := At.get hsw 5 (by simp [startPre])
+  have c6 := At.get hsw 6 (by simp [startPre])
+  simp only [startPre, List.getElem?_cons_zero, List.getElem?_cons_succ, Nat.add_zero] at c0 c1 c2 c3 c4 c5 c6
   have l12 : (s0.x 12).toNat + 16 < 2 ^ 64 := by rw [x12]; omega
   have e12 : CallProbe.ea (s0.x 12) 16 = (s0.x 12).toNat + 16 := by simp [CallProbe.ea]; omega
   let sa : CallProbe.St := CallProbe.wr s0 30 (UInt64.ofNat ((s0.x 12).toNat + 16))

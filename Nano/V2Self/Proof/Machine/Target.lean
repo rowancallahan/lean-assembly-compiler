@@ -99,8 +99,14 @@ structure Laws : Prop where
     T.lay K C
   /-- `m0` is what `observe` shows -/
   m0_obs : ∀ (s : T.M.State) a, a < 2 ^ 64 → (T.M.observe s).memory (UInt64.ofNat a) = (T.m0 s a).map UInt8.ofBitVec
-  /-- the invariant holds at entry, for the entry memory -/
-  inv_init : ∀ (K : LayW) (s : T.M.State), K.m0 = T.m0 s → T.inv K s
+  /-- the invariant holds at entry: a `StartCorrect` state with `C`'s code at `K.base`, the entry memory `m0`, and
+  the layout's data inside the call's blocks (work cells in the work block, input, output bytes in the output block) -/
+  inv_init : ∀ (K : LayW) (C : List J) (s : T.M.State) (call : Call) (code x : List UInt8),
+    StartCorrect T.M s call code x → code.length = 4 * T.blockLen * C.length →
+    K.base = (T.M.observe s).programCounter.toNat → K.W = T.words C → K.m0 = T.m0 s →
+    K.lo = call.workAddress.toNat → K.hi ≤ call.workAddress.toNat + call.workLength →
+    K.ib = call.inputAddress.toNat → K.il = x.length → K.ob = call.outputAddress.toNat → K.ol ≤ call.outputLength →
+    T.inv K s
   /-- one safe J step is a machine run -/
   step_ok : ∀ {K : LayW} {C : List J} {s0 : T.M.State} {a b : Nat × CallProbe.St} {s : T.M.State},
     T.lay K C → T.Rel K C s0 a s → SafeX K C a → CallProbe.step C a = some b →

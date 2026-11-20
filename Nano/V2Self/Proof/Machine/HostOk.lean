@@ -3,7 +3,7 @@ parsed, linear program, loaded as `tbytes T Cj`, called per `StartCorrect`: if `
 block, the run returns to the caller with status = (y = [] ? 1 : 0), the length register = |y|, `y` in the output
 block, memory changed only in the work block and the result prefix, the kept registers, configured. -/
 import Nano.V2Self.Proof.Machine.HostGen
-import Nano.V2Self.Proof.Machine.GenMain
+import Nano.V2Self.Proof.Machine.GenMainN
 import Spec.Alloc
 namespace JT
 open Proven.Top Proven.Top.Alloc SimW CallProbe ParSpec Templates
@@ -38,7 +38,7 @@ theorem host_ok (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List DefA}
     (hXl : (serialize p).length < 2 ^ 31) (h : C.g41 c (serialize p) ≠ []) (hdb : ∀ d ∈ p, DB d)
     (B : List UInt8) (hB : ∀ Cj : List J, Cj.length < 2 ^ 18 →
       C.g41 c (serialize p) = C.g40 16777216 c (Cj.map encG) 0 [] →
-      (Cj.map encG).map UInt64.toNat = Cj.map SimW.encJX → B = tbytes T Cj ∧ T.valid Cj)
+      (∀ j ∈ Cj, SimW.JOK j) → B = tbytes T Cj ∧ T.valid Cj)
     {s : T.M.State} {call : Call} {x : List UInt8} (sc : StartCorrect T.M s call B x)
     (y : List UInt8) (hSem : NanoMain.Sem NanoMain.κC p x = .ok y) (hy : y.length ≤ call.outputLength)
     (h16 : call.workAddress.toNat + 16 ≤ (call.workAddress.toNat + call.workLength) / 8 * 8)
@@ -67,7 +67,7 @@ theorem host_ok (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List DefA}
     show lbm (wordT T s) _ = _
     rw [lbm_wordT, j10]; unfold gbT; rw [hr i hi, List.getElem?_eq_getElem hi]
     simp [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem hi]
-  obtain ⟨Cj, pr, S0, Tb, hg, hc18, -, -, -, hwd, hrun⟩ := gen_main c hP Ks hO hK2 hXl h hdb s0 x hx11 hxl hxm
+  obtain ⟨Cj, pr, S0, Tb, hg, hc18, -, -, -, hwd, hrun⟩ := gen_mainN c hP Ks hO hK2 hXl h hdb s0 x hx11 hxl hxm
   obtain ⟨hBe, hv⟩ := hB Cj hc18 hg hwd
   subst hBe
   have hn := tbytes_len L Cj

@@ -52,7 +52,8 @@ theorem rel_entry (L : T.Laws) {K : LayW} {C : List J} {s : T.M.State} (hc : T.M
     (hcode : ∀ i (h : i < C.length) k (hk : k < (T.enc C[i]).length) b, b < 4 →
       (T.M.observe s).memory (UInt64.ofNat (T.addr K.base i + 4 * k + b)) = some (wbyte (T.enc C[i])[k] b))
     (hw : ∀ a, wok K a → ∀ k < 8, ((T.M.observe s).memory (UInt64.ofNat (a + k))).isSome)
-    (hio : ∀ a, io K a → ((T.M.observe s).memory (UInt64.ofNat a)).isSome) (hm0 : K.m0 = T.m0 s) :
+    (hio : ∀ a, io K a → ((T.M.observe s).memory (UInt64.ofNat a)).isSome) (hm0 : K.m0 = T.m0 s)
+    (hinv : T.inv K s) :
     T.Rel K C s (0, jOfT T s K.base) s where
   cfg := hc
   pc := by rw [hpc]; simp [JTarget.addr]
@@ -67,7 +68,7 @@ theorem rel_entry (L : T.Laws) {K : LayW} {C : List J} {s : T.M.State} (hc : T.M
     rw [gbT_some (hio c hc)]; simp only [jOfT]
     rw [cbyte_wordT s _ _ (Nat.mod_lt _ (by decide)), show c - c % 8 + c % 8 = c by omega]
   fr := fun a ha _ _ => by rw [hm0, L.m0_obs s a ha]
-  inv := L.inv_init K s hm0
+  inv := hinv
 
 theorem lbm_cbyte (m : Nat → UInt64) (a : Nat) : CallProbe.lbm m a = (cbyte (m (a - a % 8)) (a % 8)).toUInt64 := by
   apply UInt64.toNat_inj.1
