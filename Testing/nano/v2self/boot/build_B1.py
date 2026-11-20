@@ -31,8 +31,9 @@ def main (args : List String) : IO UInt32 := do
   let stdout ← IO.getStdout
   match args with
   | ["lex"] => stdout.write (ByteArray.mk (wordsToBytes (C.s10 x)))
-  | ["parse"] => stdout.write (ByteArray.mk (wordsToBytes (C.y16 (C.s10 x))))
-  | ["own"] => stdout.write (ByteArray.mk (wordsToBytes (C.o41 (C.y16 (C.s10 x)))))
+  | ["dsg"] => stdout.write (ByteArray.mk (wordsToBytes (C.t10 (C.s10 x))))
+  | ["parse"] => stdout.write (ByteArray.mk (wordsToBytes (C.y16 (C.t10 (C.s10 x)))))
+  | ["own"] => stdout.write (ByteArray.mk (wordsToBytes (C.o41 (C.y16 (C.t10 (C.s10 x))))))
   | _ => let out := C.m x
          stdout.write (ByteArray.mk (OUTCONV))
   return 0

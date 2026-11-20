@@ -24,6 +24,6 @@ open(f"{O}/P.words", "w").write("B2 code\n" + " ".join(f"{int.from_bytes(b[i:i+4
 open(f"{O}/src.txt", "wb").write(open(f"{V}/self_S_input.txt", "rb").read())
 PY
 rm -f "$O/O.bin"
-python3 $V/selfrun.py "$O" 80 512
+python3 $V/selfrun.py "$O" 96 512
 cmp "$O/O.bin" "$O/B2.bin"
 echo "FIXED POINT: B3 == B2 ($(stat -c %s "$O/B2.bin") bytes, sha256 $(sha256sum "$O/B2.bin" | cut -d' ' -f1))"
