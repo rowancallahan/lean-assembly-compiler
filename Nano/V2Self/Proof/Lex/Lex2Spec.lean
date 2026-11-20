@@ -3,6 +3,9 @@
 whitespace (space, newline) is skipped; the operator table is searched longest-first; a word is a maximal run of
 [A-Za-z0-9_'] (a keyword/prim, an identifier `14 (1,b)* 0`, or, when it starts with a digit, a decimal number
 `5` + 8 little-endian bytes of the value mod 2^64, all characters of the word must then be digits).
+Trivia (no tokens; exp-syntax, Testing/notes/SYNTAX_EXP.md): two dashes up to the newline; a nested block comment
+(slash-dash ... dash-slash, docstrings included; unterminated: rejected); an attribute `@[ … ]` up to the first `]` (none: rejected); the
+words `namespace`, `open`, `section`, `end` up to the newline; the word `private`.
 Anything else (and a digit-led word with a non-digit) is rejected: no `step`, so no `Lexes`. -/
 import Nano.V2Self.Prelude
 namespace LexSpec
@@ -40,6 +43,21 @@ def kwTable : List (List UInt8 × UInt64) :=
    ([98, 115, 101, 116], 46),
    ([98, 112, 117, 115, 104], 47)]
 
+/-- words that skip the rest of their line: namespace open section end -/
+def lineKw : List (List UInt8) :=
+  [[110, 97, 109, 101, 115, 112, 97, 99, 101], [111, 112, 101, 110], [115, 101, 99, 116, 105, 111, 110], [101, 110, 100]]
+/-- words that are dropped: private -/
+def dropKw : List (List UInt8) := [[112, 114, 105, 118, 97, 116, 101]]
+
+/-- the rest after the dash-slash closing a block comment; `d` = comments still open inside it -/
+def blockEnd : Nat → List UInt8 → Option (List UInt8)
+  | _, [] => none
+  | _, [_] => none
+  | d, c :: c' :: r =>
+    if c = 45 ∧ c' = 47 then (if d = 0 then some r else blockEnd (d - 1) r)
+    else if c = 47 ∧ c' = 45 then blockEnd (d + 1) r
+    else blockEnd d (c' :: r)
+
 /-- decimal value mod 2^64 -/
 def numVal (w : List UInt8) : Nat := w.foldl (fun a b => (a * 10 + (b.toNat - 48)) % 2 ^ 64) 0
 /-- 8 little-endian bytes -/
@@ -50,6 +68,12 @@ def step : List UInt8 → Option (List UInt64 × List UInt8)
   | [] => none
   | c :: r =>
     if c == 32 || c == 10 then some ([], r)
+    else if c == 45 && r.head? == some 45 then some ([], r.tail.dropWhile (· != 10))
+    else if c == 47 && r.head? == some 45 then (blockEnd 0 r.tail).map fun t => ([], t)
+    else if c == 64 && r.head? == some 91 then
+      (match r.tail.dropWhile (· != 93) with
+       | [] => none
+       | _ :: t => some ([], t))
     else match opTable.find? (fun e => e.1.isPrefixOf (c :: r)) with
       | some (s, k) => some ([k], (c :: r).drop s.length)
       | none =>
@@ -57,7 +81,9 @@ def step : List UInt8 → Option (List UInt64 × List UInt8)
         let rest := (c :: r).dropWhile isW
         if isD c then (if w.all isD then some (5 :: le8 (numVal w), rest) else none)
         else if isW c then
-          some ((match kwTable.lookup w with
+          if lineKw.contains w then some ([], rest.dropWhile (· != 10))
+          else if dropKw.contains w then some ([], rest)
+          else some ((match kwTable.lookup w with
                  | some k => [k]
                  | none => 14 :: (w.flatMap fun b => [1, b.toUInt64]) ++ [0]), rest)
         else none

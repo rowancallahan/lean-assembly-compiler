@@ -201,8 +201,13 @@ theorem tu (a : UInt8) (n : Nat) (h : n < 256) : a.toUInt64 = UInt64.ofNat n ↔
 theorem tu2 (a : UInt8) (n : Nat) (h : n < 256) :
     a.toUInt64 = (no_index (OfNat.ofNat n : UInt64)) ↔ a = (no_index (OfNat.ofNat n : UInt8)) := tu a n h
 
+/-- the keyword table s3 implements: `kwTable` plus the trivia words (92: skip the line, 93: drop) -/
+def kwX : List (List UInt8 × UInt64) :=
+  kwTable ++ [([101, 110, 100], 92), ([111, 112, 101, 110], 92), ([115, 101, 99, 116, 105, 111, 110], 92),
+    ([110, 97, 109, 101, 115, 112, 97, 99, 101], 92), ([112, 114, 105, 118, 97, 116, 101], 93)]
+
 /-- s3 with its reads made parameters (definitionally the same body) -/
-def s3' (d c c1 c2 c3 c4 c5 : UInt64) : UInt64 :=
+def s3' (d c c1 c2 c3 c4 c5 c6 c7 c8 : UInt64) : UInt64 :=
   let r0 := 14;
   let r1 := if d == 4 then if c == 101 then if c1 == 108 then if c2 == 115 then if c3 == 101 then 34 else r0 else r0 else r0 else r0 else r0;
   let r2 := if d == 4 then if c == 116 then if c1 == 104 then if c2 == 101 then if c3 == 110 then 33 else r1 else r1 else r1 else r1 else r1;
@@ -223,29 +228,36 @@ def s3' (d c c1 c2 c3 c4 c5 : UInt64) : UInt64 :=
   let r17 := if d == 4 then if c == 98 then if c1 == 103 then if c2 == 101 then if c3 == 116 then 45 else r16 else r16 else r16 else r16 else r16;
   let r18 := if d == 4 then if c == 98 then if c1 == 115 then if c2 == 101 then if c3 == 116 then 46 else r17 else r17 else r17 else r17 else r17;
   let r19 := if d == 5 then if c == 98 then if c1 == 112 then if c2 == 117 then if c3 == 115 then if c4 == 104 then 47 else r18 else r18 else r18 else r18 else r18 else r18;
-  r19
+  let r20 := if d == 3 then if c == 101 then if c1 == 110 then if c2 == 100 then 92 else r19 else r19 else r19 else r19;
+  let r21 := if d == 4 then if c == 111 then if c1 == 112 then if c2 == 101 then if c3 == 110 then 92 else r20 else r20 else r20 else r20 else r20;
+  let r22 := if d == 7 then if c == 115 then if c1 == 101 then if c2 == 99 then if c3 == 116 then if c4 == 105 then if c5 == 111 then if c6 == 110 then 92 else r21 else r21 else r21 else r21 else r21 else r21 else r21 else r21;
+  let r23 := if d == 9 then if c == 110 then if c1 == 97 then if c2 == 109 then if c3 == 101 then if c4 == 115 then if c5 == 112 then if c6 == 97 then if c7 == 99 then if c8 == 101 then 92 else r22 else r22 else r22 else r22 else r22 else r22 else r22 else r22 else r22 else r22;
+  let r24 := if d == 7 then if c == 112 then if c1 == 114 then if c2 == 105 then if c3 == 118 then if c4 == 97 then if c5 == 116 then if c6 == 101 then 93 else r23 else r23 else r23 else r23 else r23 else r23 else r23 else r23;
+  r24
 
 theorem s3_eq_s3' (x : List UInt8) (p e : UInt64) :
-    s3 x p e = s3' (e - p) (rd x p) (rd x (p + 1)) (rd x (p + 2)) (rd x (p + 3)) (rd x (p + 4)) (rd x (p + 5)) := rfl
+    s3 x p e = s3' (e - p) (rd x p) (rd x (p + 1)) (rd x (p + 2)) (rd x (p + 3)) (rd x (p + 4)) (rd x (p + 5))
+      (rd x (p + 6)) (rd x (p + 7)) (rd x (p + 8)) := rfl
 
 theorem nest {α : Type} (p q : Prop) [Decidable p] [Decidable q] (x y : α) :
     (if p then (if q then x else y) else y) = (if p ∧ q then x else y) := by
   by_cases hp : p <;> by_cases hq : q <;> simp [hp, hq]
 
-set_option maxHeartbeats 1000000 in
-theorem s3'_eq (w : List UInt8) (c0 c1 c2 c3 c4 c5 : UInt64) (hl : w.length < 2 ^ 32)
-    (h : ∀ j, j < 6 → j < w.length → [c0, c1, c2, c3, c4, c5].getD j 0 = (w.getD j 0).toUInt64) :
-    s3' w.length.toUInt64 c0 c1 c2 c3 c4 c5 = (kwTable.lookup w).getD 14 := by
-  rcases w with _ | ⟨a, _ | ⟨b, _ | ⟨c, _ | ⟨d, _ | ⟨e, _ | ⟨f, _ | ⟨g, r⟩⟩⟩⟩⟩⟩⟩
-  · simp (config := {zeta := false}) only [s3', nest]
-    try simp [kwTable, tu2, List.lookup]
+set_option maxHeartbeats 4000000 in
+theorem s3'_eq (w : List UInt8) (c0 c1 c2 c3 c4 c5 c6 c7 c8 : UInt64) (hl : w.length < 2 ^ 32)
+    (h : ∀ j, j < 9 → j < w.length → [c0, c1, c2, c3, c4, c5, c6, c7, c8].getD j 0 = (w.getD j 0).toUInt64) :
+    s3' w.length.toUInt64 c0 c1 c2 c3 c4 c5 c6 c7 c8 = (kwX.lookup w).getD 14 := by
+  rcases w with _ | ⟨a, _ | ⟨b, _ | ⟨c, _ | ⟨d, _ | ⟨e, _ | ⟨f, _ | ⟨g, _ | ⟨i, _ | ⟨j, _ | ⟨k, r⟩⟩⟩⟩⟩⟩⟩⟩⟩⟩
+  · clear h
+    simp (config := {zeta := false}) only [s3', nest]
+    try simp [kwX, kwTable, tu2, List.lookup]
     try ((repeat' split) <;> simp_all)
   · have h0 := h 0 (by decide) (by simp)
     simp at h0
     subst_vars
     clear h
     simp (config := {zeta := false}) only [s3', nest]
-    try simp [kwTable, tu2, List.lookup]
+    try simp [kwX, kwTable, tu2, List.lookup]
     try ((repeat' split) <;> simp_all)
   · have h0 := h 0 (by decide) (by simp)
     have h1 := h 1 (by decide) (by simp)
@@ -253,7 +265,7 @@ theorem s3'_eq (w : List UInt8) (c0 c1 c2 c3 c4 c5 : UInt64) (hl : w.length < 2 
     subst_vars
     clear h
     simp (config := {zeta := false}) only [s3', nest]
-    try simp [kwTable, tu2, List.lookup]
+    try simp [kwX, kwTable, tu2, List.lookup]
     try ((repeat' split) <;> simp_all)
   · have h0 := h 0 (by decide) (by simp)
     have h1 := h 1 (by decide) (by simp)
@@ -262,7 +274,7 @@ theorem s3'_eq (w : List UInt8) (c0 c1 c2 c3 c4 c5 : UInt64) (hl : w.length < 2 
     subst_vars
     clear h
     simp (config := {zeta := false}) only [s3', nest]
-    try simp [kwTable, tu2, List.lookup]
+    try simp [kwX, kwTable, tu2, List.lookup]
     try ((repeat' split) <;> simp_all)
   · have h0 := h 0 (by decide) (by simp)
     have h1 := h 1 (by decide) (by simp)
@@ -272,7 +284,7 @@ theorem s3'_eq (w : List UInt8) (c0 c1 c2 c3 c4 c5 : UInt64) (hl : w.length < 2 
     subst_vars
     clear h
     simp (config := {zeta := false}) only [s3', nest]
-    try simp [kwTable, tu2, List.lookup]
+    try simp [kwX, kwTable, tu2, List.lookup]
     try ((repeat' split) <;> simp_all)
   · have h0 := h 0 (by decide) (by simp)
     have h1 := h 1 (by decide) (by simp)
@@ -283,7 +295,7 @@ theorem s3'_eq (w : List UInt8) (c0 c1 c2 c3 c4 c5 : UInt64) (hl : w.length < 2 
     subst_vars
     clear h
     simp (config := {zeta := false}) only [s3', nest]
-    try simp [kwTable, tu2, List.lookup]
+    try simp [kwX, kwTable, tu2, List.lookup]
     try ((repeat' split) <;> simp_all)
   · have h0 := h 0 (by decide) (by simp)
     have h1 := h 1 (by decide) (by simp)
@@ -295,7 +307,7 @@ theorem s3'_eq (w : List UInt8) (c0 c1 c2 c3 c4 c5 : UInt64) (hl : w.length < 2 
     subst_vars
     clear h
     simp (config := {zeta := false}) only [s3', nest]
-    try simp [kwTable, tu2, List.lookup]
+    try simp [kwX, kwTable, tu2, List.lookup]
     try ((repeat' split) <;> simp_all)
   · have h0 := h 0 (by decide) (by simp)
     have h1 := h 1 (by decide) (by simp)
@@ -303,12 +315,57 @@ theorem s3'_eq (w : List UInt8) (c0 c1 c2 c3 c4 c5 : UInt64) (hl : w.length < 2 
     have h3 := h 3 (by decide) (by simp)
     have h4 := h 4 (by decide) (by simp)
     have h5 := h 5 (by decide) (by simp)
-    simp at h0 h1 h2 h3 h4 h5
+    have h6 := h 6 (by decide) (by simp)
+    simp at h0 h1 h2 h3 h4 h5 h6
     subst_vars
     clear h
     simp (config := {zeta := false}) only [s3', nest]
-    have hd : (a :: b :: c :: d :: e :: f :: g :: r).length = r.length + 7 := by simp
-    obtain ⟨N, hN⟩ : ∃ N, N = r.length + 7 := ⟨_, rfl⟩
+    try simp [kwX, kwTable, tu2, List.lookup]
+    try ((repeat' split) <;> simp_all)
+  · have h0 := h 0 (by decide) (by simp)
+    have h1 := h 1 (by decide) (by simp)
+    have h2 := h 2 (by decide) (by simp)
+    have h3 := h 3 (by decide) (by simp)
+    have h4 := h 4 (by decide) (by simp)
+    have h5 := h 5 (by decide) (by simp)
+    have h6 := h 6 (by decide) (by simp)
+    have h7 := h 7 (by decide) (by simp)
+    simp at h0 h1 h2 h3 h4 h5 h6 h7
+    subst_vars
+    clear h
+    simp (config := {zeta := false}) only [s3', nest]
+    try simp [kwX, kwTable, tu2, List.lookup]
+    try ((repeat' split) <;> simp_all)
+  · have h0 := h 0 (by decide) (by simp)
+    have h1 := h 1 (by decide) (by simp)
+    have h2 := h 2 (by decide) (by simp)
+    have h3 := h 3 (by decide) (by simp)
+    have h4 := h 4 (by decide) (by simp)
+    have h5 := h 5 (by decide) (by simp)
+    have h6 := h 6 (by decide) (by simp)
+    have h7 := h 7 (by decide) (by simp)
+    have h8 := h 8 (by decide) (by simp)
+    simp at h0 h1 h2 h3 h4 h5 h6 h7 h8
+    subst_vars
+    clear h
+    simp (config := {zeta := false}) only [s3', nest]
+    try simp [kwX, kwTable, tu2, List.lookup]
+    try ((repeat' split) <;> simp_all)
+  · have h0 := h 0 (by decide) (by simp)
+    have h1 := h 1 (by decide) (by simp)
+    have h2 := h 2 (by decide) (by simp)
+    have h3 := h 3 (by decide) (by simp)
+    have h4 := h 4 (by decide) (by simp)
+    have h5 := h 5 (by decide) (by simp)
+    have h6 := h 6 (by decide) (by simp)
+    have h7 := h 7 (by decide) (by simp)
+    have h8 := h 8 (by decide) (by simp)
+    simp at h0 h1 h2 h3 h4 h5 h6 h7 h8
+    subst_vars
+    clear h
+    simp (config := {zeta := false}) only [s3', nest]
+    have hd : (a :: b :: c :: d :: e :: f :: g :: i :: j :: k :: r).length = r.length + 10 := by simp
+    obtain ⟨N, hN⟩ : ∃ N, N = r.length + 10 := ⟨_, rfl⟩
     rw [hd, ← hN]
     rw [hd] at hl
     have hl' : N < 2 ^ 32 := by omega
@@ -317,7 +374,9 @@ theorem s3'_eq (w : List UInt8) (c0 c1 c2 c3 c4 c5 : UInt64) (hl : w.length < 2 
     have n4 : N.toUInt64 ≠ 4 := by intro e; have := congrArg UInt64.toNat e; simp at this; omega
     have n5 : N.toUInt64 ≠ 5 := by intro e; have := congrArg UInt64.toNat e; simp at this; omega
     have n6 : N.toUInt64 ≠ 6 := by intro e; have := congrArg UInt64.toNat e; simp at this; omega
-    simp [kwTable, List.lookup, n2, n3, n4, n5, n6]
+    have n7 : N.toUInt64 ≠ 7 := by intro e; have := congrArg UInt64.toNat e; simp at this; omega
+    have n9 : N.toUInt64 ≠ 9 := by intro e; have := congrArg UInt64.toNat e; simp at this; omega
+    simp [kwX, kwTable, List.lookup, n2, n3, n4, n5, n6, n7, n9]
 
 theorem rd_seg (x : List UInt8) (p q : UInt64) (m j : Nat) (hj : j < m) (hq : q.toNat = p.toNat + j) :
     rd x q = (((x.drop p.toNat).take m).getD j 0).toUInt64 := by
@@ -325,24 +384,27 @@ theorem rd_seg (x : List UInt8) (p q : UInt64) (m j : Nat) (hj : j < m) (hq : q.
   simp [List.getD_eq_getElem?_getD, List.getElem?_take, List.getElem?_drop, hj, Nat.add_comm]
 
 theorem s3_eq (x : List UInt8) (p e : UInt64) (hx : x.length < 2 ^ 32) (he : e.toNat ≤ x.length) (hp : p.toNat ≤ e.toNat) :
-    s3 x p e = (kwTable.lookup ((x.drop p.toNat).take (e.toNat - p.toNat))).getD 14 := by
+    s3 x p e = (kwX.lookup ((x.drop p.toNat).take (e.toNat - p.toNat))).getD 14 := by
   rw [s3_eq_s3']
   have hw : ((x.drop p.toNat).take (e.toNat - p.toNat)).length = e.toNat - p.toNat := by simp; omega
   have hd : e - p = ((x.drop p.toNat).take (e.toNat - p.toNat)).length.toUInt64 := by
     apply UInt64.toNat.inj; rw [hw]; simp [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.2 hp)]
     omega
   rw [hd]
-  apply s3'_eq _ _ _ _ _ _ _ (by rw [hw]; omega)
+  apply s3'_eq _ _ _ _ _ _ _ _ _ _ (by rw [hw]; omega)
   intro j hj hjw
   rw [hw] at hjw
   have hrd : ∀ q : UInt64, q.toNat = p.toNat + j → rd x q = _ := fun q hq => rd_seg x p q _ j hjw hq
-  obtain rfl | rfl | rfl | rfl | rfl | rfl : j = 0 ∨ j = 1 ∨ j = 2 ∨ j = 3 ∨ j = 4 ∨ j = 5 := by omega
+  obtain rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl : j = 0 ∨ j = 1 ∨ j = 2 ∨ j = 3 ∨ j = 4 ∨ j = 5 ∨ j = 6 ∨ j = 7 ∨ j = 8 := by omega
   · simp; exact hrd p (by omega)
   · simp; exact hrd (p + 1) (by simp [UInt64.toNat_add]; omega)
   · simp; exact hrd (p + 2) (by simp [UInt64.toNat_add]; omega)
   · simp; exact hrd (p + 3) (by simp [UInt64.toNat_add]; omega)
   · simp; exact hrd (p + 4) (by simp [UInt64.toNat_add]; omega)
   · simp; exact hrd (p + 5) (by simp [UInt64.toNat_add]; omega)
+  · simp; exact hrd (p + 6) (by simp [UInt64.toNat_add]; omega)
+  · simp; exact hrd (p + 7) (by simp [UInt64.toNat_add]; omega)
+  · simp; exact hrd (p + 8) (by simp [UInt64.toNat_add]; omega)
 
 /-! ### the token kind (s4) -/
 
@@ -353,7 +415,7 @@ def s4' (c d f A B : UInt64) : UInt64 :=
     else if c == 40 then 6
     else if c == 41 then 7
     else if c == 43 then 10
-    else if c == 45 then 11
+    else if c == 45 then if d == 45 then 94 else 11
     else if c == 42 then 12
     else if c == 59 then 13
     else if c == 44 then 15
@@ -367,6 +429,8 @@ def s4' (c d f A B : UInt64) : UInt64 :=
     else if c == 62 then if d == 62 then if f == 62 then 29 else 0 else 0
     else if c == 195 then if d == 151 then 16 else 0
     else if c == 226 then if d == 134 then if f == 146 then 17 else 0 else 0
+    else if c == 47 then if d == 45 then 95 else 0
+    else if c == 64 then if d == 91 then 96 else 0
     else if c < 48 then (if c == 39 then B else 0)
     else if c < 58 then (if A == 1 then 5 else 0)
     else if s0 c == 1 then B
@@ -419,8 +483,11 @@ theorem tailc (c : UInt8) (A B : UInt64) :
 
 theorem s4'_eq (c d f : UInt8) (A B : UInt64) :
     s4' c.toUInt64 d.toUInt64 f.toUInt64 A B =
-      if c = 32 ∨ c = 10 then 90 else
-      match opTable.find? (fun e => e.1.isPrefixOf [c, d, f]) with
+      if c = 32 ∨ c = 10 then 90
+      else if c = 45 ∧ d = 45 then 94
+      else if c = 47 ∧ d = 45 then 95
+      else if c = 64 ∧ d = 91 then 96
+      else match opTable.find? (fun e => e.1.isPrefixOf [c, d, f]) with
       | some (_, t) => t
       | none => if isD c then (if A == 1 then 5 else 0) else if isW c then B else 0 := by
   by_cases h32 : c = 32
@@ -434,7 +501,8 @@ theorem s4'_eq (c d f : UInt8) (A B : UInt64) :
   by_cases h43 : c = 43
   · subst h43; simp [s4', opTable, List.find?, List.isPrefixOf, tu2, isD_iff, s0_eq, bcomm]
   by_cases h45 : c = 45
-  · subst h45; simp [s4', opTable, List.find?, List.isPrefixOf, tu2, isD_iff, s0_eq, bcomm]
+  · subst h45
+    cases d45 : (d == 45) <;> simp [s4', opTable, List.find?, List.isPrefixOf, tu2, isD_iff, s0_eq, bcomm, d45] <;> simp_all (config := {decide := true}) [isD, isW]
   by_cases h42 : c = 42
   · subst h42; simp [s4', opTable, List.find?, List.isPrefixOf, tu2, isD_iff, s0_eq, bcomm]
   by_cases h59 : c = 59
@@ -469,6 +537,12 @@ theorem s4'_eq (c d f : UInt8) (A B : UInt64) :
   by_cases h226 : c = 226
   · subst h226
     cases d134 : (d == 134) <;> cases f146 : (f == 146) <;> simp [s4', opTable, List.find?, List.isPrefixOf, tu2, isD_iff, s0_eq, bcomm, d134, f146] <;> simp_all (config := {decide := true}) [isD, isW]
+  by_cases h47 : c = 47
+  · subst h47
+    cases d45 : (d == 45) <;> simp [s4', opTable, List.find?, List.isPrefixOf, tu2, isD_iff, s0_eq, bcomm, d45] <;> simp_all (config := {decide := true}) [isD, isW]
+  by_cases h64 : c = 64
+  · subst h64
+    cases d91 : (d == 91) <;> simp [s4', opTable, List.find?, List.isPrefixOf, tu2, isD_iff, s0_eq, bcomm, d91] <;> simp_all (config := {decide := true}) [isD, isW]
   have b32 : (c == 32) = false := by simpa using h32
   have b10 : (c == 10) = false := by simpa using h10
   have b40 : (c == 40) = false := by simpa using h40
@@ -488,7 +562,9 @@ theorem s4'_eq (c d f : UInt8) (A B : UInt64) :
   have b62 : (c == 62) = false := by simpa using h62
   have b195 : (c == 195) = false := by simpa using h195
   have b226 : (c == 226) = false := by simpa using h226
-  simp [s4', opTable, List.find?, List.isPrefixOf, tu2, bcomm, b32, b10, b40, b41, b43, b45, b42, b59, b44, b91, b93, b58, b61, b38, b124, b60, b62, b195, b226, h32, h10, h40, h41, h43, h45, h42, h59, h44, h91, h93, h58, h61, h38, h124, h60, h62, h195, h226]
+  have b47 : (c == 47) = false := by simpa using h47
+  have b64 : (c == 64) = false := by simpa using h64
+  simp [s4', opTable, List.find?, List.isPrefixOf, tu2, bcomm, b32, b10, b40, b41, b43, b45, b42, b59, b44, b91, b93, b58, b61, b38, b124, b60, b62, b195, b226, b47, b64, h32, h10, h40, h41, h43, h45, h42, h59, h44, h91, h93, h58, h61, h38, h124, h60, h62, h195, h226, h47, h64]
   exact tailc c A B
 
 /-! ### s4 = spec kind -/
@@ -497,12 +573,15 @@ def kind (l : List UInt8) : UInt64 :=
   match l with
   | [] => 91
   | c :: r =>
-    if c = 32 ∨ c = 10 then 90 else
-    match opTable.find? (fun e => e.1.isPrefixOf (c :: r)) with
+    if c = 32 ∨ c = 10 then 90
+    else if c = 45 ∧ r.getD 0 0 = 45 then 94
+    else if c = 47 ∧ r.getD 0 0 = 45 then 95
+    else if c = 64 ∧ r.getD 0 0 = 91 then 96
+    else match opTable.find? (fun e => e.1.isPrefixOf (c :: r)) with
     | some (_, t) => t
     | none =>
       if isD c then (if ((c :: r).takeWhile isW).all isD then 5 else 0)
-      else if isW c then (kwTable.lookup ((c :: r).takeWhile isW)).getD 14 else 0
+      else if isW c then (kwX.lookup ((c :: r).takeWhile isW)).getD 14 else 0
 
 theorem find_pad (l : List UInt8) :
     opTable.find? (fun e => e.1.isPrefixOf l) = opTable.find? (fun e => e.1.isPrefixOf [l.getD 0 0, l.getD 1 0, l.getD 2 0]) := by
@@ -571,6 +650,11 @@ theorem s5_op : ∀ e ∈ opTable, ∀ (x : List UInt8) (p : UInt64), s5 x p e.2
   simp only [opTable, List.mem_cons, List.not_mem_nil, or_false] at he
   rcases he with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;> simp [s5]
 
+theorem op_props2 : ∀ e ∈ opTable, e.2 ≠ 92 ∧ e.2 ≠ 93 ∧ e.2 ≠ 94 ∧ e.2 ≠ 95 ∧ e.2 ≠ 96 := by decide
+theorem kw_props2 : ∀ e ∈ kwTable, e.2 ≠ 92 ∧ e.2 ≠ 93 ∧ e.2 ≠ 94 ∧ e.2 ≠ 95 ∧ e.2 ≠ 96 := by decide
+theorem s5_92 (x : List UInt8) (p : UInt64) : s5 x p 92 = s1 (len' x) x p := by simp [s5]
+theorem s5_93 (x : List UInt8) (p : UInt64) : s5 x p 93 = s1 (len' x) x p := by simp [s5]
+
 theorem op_len : ∀ e ∈ opTable, e.1.length ≤ 3 := by decide
 
 theorem s5_word (x : List UInt8) (p k : UInt64) (hk : k = 5 ∨ k = 14 ∨ ∃ e ∈ kwTable, e.2 = k) :
@@ -594,40 +678,120 @@ theorem lookup_mem : ∀ (L : List (List UInt8 × UInt64)) (w : List UInt8) (k :
       · obtain ⟨e, he, h2⟩ := lookup_mem L w k h
         exact ⟨e, by simp [he], h2⟩
 
+theorem lookup_key : ∀ (L : List (List UInt8 × UInt64)) (w : List UInt8) (k : UInt64), L.lookup w = some k →
+    ∃ e ∈ L, e.1 = w ∧ e.2 = k
+  | [], w, k, h => by simp [List.lookup] at h
+  | (a, b) :: L, w, k, h => by
+      simp only [List.lookup] at h
+      split at h
+      · rename_i hw; exact ⟨(a, b), by simp, by simpa using (beq_iff_eq.1 hw).symm, by simpa using h⟩
+      · obtain ⟨e, he, h2⟩ := lookup_key L w k h
+        exact ⟨e, by simp [he], h2⟩
+
+theorem lookup_app : ∀ (L M : List (List UInt8 × UInt64)) (w : List UInt8),
+    (L ++ M).lookup w = (L.lookup w).or (M.lookup w)
+  | [], M, w => by simp [List.lookup]
+  | (a, b) :: L, M, w => by
+      simp only [List.cons_append, List.lookup]
+      split <;> simp [lookup_app L M w]
+
+theorem kwX_line (w : List UInt8) (h : lineKw.contains w = true) : kwX.lookup w = some 92 := by
+  have : w ∈ lineKw := by simpa using h
+  simp only [lineKw, List.mem_cons, List.not_mem_nil, or_false] at this
+  rcases this with rfl | rfl | rfl | rfl <;> decide
+
+theorem kwX_drop (w : List UInt8) (h : dropKw.contains w = true) : kwX.lookup w = some 93 := by
+  have : w ∈ dropKw := by simpa using h
+  simp only [dropKw, List.mem_cons, List.not_mem_nil, or_false] at this
+  rcases this with rfl <;> decide
+
+theorem kwX_old (w : List UInt8) (h1 : ¬ lineKw.contains w = true) (h2 : ¬ dropKw.contains w = true) :
+    kwX.lookup w = kwTable.lookup w := by
+  rw [kwX, lookup_app]
+  rcases hm : List.lookup w [([101, 110, 100], 92), ([111, 112, 101, 110], 92), ([115, 101, 99, 116, 105, 111, 110], 92),
+    ([110, 97, 109, 101, 115, 112, 97, 99, 101], 92), ([112, 114, 105, 118, 97, 116, 101], 93)] with _ | k
+  · simp
+  · exfalso
+    obtain ⟨e, he, rfl, -⟩ := lookup_key _ _ _ hm
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at he
+    rcases he with rfl | rfl | rfl | rfl | rfl <;> simp_all (config := {decide := true}) [lineKw, dropKw]
+
+theorem head_getD (r : List UInt8) (b : UInt8) (hb : b ≠ 0) : (r.head? = some b) ↔ (r.getD 0 0 = b) := by
+  cases r with
+  | nil => simp; exact fun e => hb e.symm
+  | cons a r => simp
+
 theorem kind_spec (c : UInt8) (r : List UInt8) :
     (kind (c :: r) = 90 ∧ step (c :: r) = some ([], r)) ∨
+    (kind (c :: r) = 94 ∧ c = 45 ∧ r.head? = some 45 ∧ step (c :: r) = some ([], r.tail.dropWhile (· != 10))) ∨
+    (kind (c :: r) = 95 ∧ c = 47 ∧ r.head? = some 45 ∧ step (c :: r) = (blockEnd 0 r.tail).map fun t => ([], t)) ∨
+    (kind (c :: r) = 96 ∧ c = 64 ∧ r.head? = some 91 ∧
+      ∀ a t, r.tail.dropWhile (· != 93) = a :: t → step (c :: r) = some ([], t)) ∨
     (∃ e ∈ opTable, kind (c :: r) = e.2 ∧ step (c :: r) = some ([e.2], (c :: r).drop e.1.length) ∧
         e.1.isPrefixOf (c :: r) = true) ∨
     (kind (c :: r) = 5 ∧ ((c :: r).takeWhile isW).all isD = true ∧ step (c :: r) = some (5 :: le8 (numVal ((c :: r).takeWhile isW)), (c :: r).dropWhile isW)) ∨
     kind (c :: r) = 0 ∨
     (∃ e ∈ kwTable, kind (c :: r) = e.2 ∧ step (c :: r) = some ([e.2], (c :: r).dropWhile isW)) ∨
     (kind (c :: r) = 14 ∧ step (c :: r) = some (14 :: (((c :: r).takeWhile isW).flatMap fun b => [1, b.toUInt64]) ++ [0],
-      (c :: r).dropWhile isW)) := by
+      (c :: r).dropWhile isW)) ∨
+    (kind (c :: r) = 92 ∧ step (c :: r) = some ([], ((c :: r).dropWhile isW).dropWhile (· != 10))) ∨
+    (kind (c :: r) = 93 ∧ step (c :: r) = some ([], (c :: r).dropWhile isW)) := by
   unfold kind step
   by_cases hws : c = 32 ∨ c = 10
   · have : (c == 32 || c == 10) = true := by simpa using hws
     simp [hws, this]
-  · have : ¬ (c == 32 || c == 10) = true := by simpa using hws
-    simp only [hws, this, if_false, Bool.false_eq_true]
-    rcases hf : opTable.find? (fun e => e.1.isPrefixOf (c :: r)) with _ | ⟨s, t⟩
-    · simp only [hf]
-      by_cases hd : isD c = true
-      · by_cases ha : ((c :: r).takeWhile isW).all isD = true
-        · simp [hd, ha]
-        · simp [hd, ha]
-      · by_cases hw : isW c = true
-        · simp only [hd, hw, if_true, if_false]
-          rcases hl : kwTable.lookup ((c :: r).takeWhile isW) with _ | k
-          · simp [hl]
-          · obtain ⟨e, he, rfl⟩ := lookup_mem _ _ _ hl
-            simp only [hl, Bool.false_eq_true, if_false, Option.getD_some]
-            exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inl ⟨e, he, rfl, rfl⟩))))
-        · simp [hd, hw]
-    · have hmem := List.mem_of_find?_eq_some hf
-      have hpre := List.find?_some hf
-      simp only [hf]
-      right; left
-      exact ⟨(s, t), hmem, rfl, rfl, by simpa using hpre⟩
+  have : ¬ (c == 32 || c == 10) = true := by simpa using hws
+  simp only [hws, this, if_false, Bool.false_eq_true]
+  have e45 := head_getD r 45 (by decide)
+  have e91 := head_getD r 91 (by decide)
+  by_cases a1 : c = 45 ∧ r.head? = some 45
+  · have k1 : c = 45 ∧ r.getD 0 0 = 45 := ⟨a1.1, e45.1 a1.2⟩
+    have b1 : (c == 45 && r.head? == some 45) = true := by simp [a1]
+    right; left; rw [if_pos k1, if_pos b1]; exact ⟨rfl, a1.1, a1.2, rfl⟩
+  have k1 : ¬ (c = 45 ∧ r.getD 0 0 = 45) := fun h => a1 ⟨h.1, e45.2 h.2⟩
+  have b1 : ¬ (c == 45 && r.head? == some 45) = true := by simpa using a1
+  rw [if_neg k1, if_neg b1]
+  by_cases a2 : c = 47 ∧ r.head? = some 45
+  · have k2 : c = 47 ∧ r.getD 0 0 = 45 := ⟨a2.1, e45.1 a2.2⟩
+    have b2 : (c == 47 && r.head? == some 45) = true := by simp [a2]
+    right; right; left; rw [if_pos k2, if_pos b2]; exact ⟨rfl, a2.1, a2.2, rfl⟩
+  have k2 : ¬ (c = 47 ∧ r.getD 0 0 = 45) := fun h => a2 ⟨h.1, e45.2 h.2⟩
+  have b2 : ¬ (c == 47 && r.head? == some 45) = true := by simpa using a2
+  rw [if_neg k2, if_neg b2]
+  by_cases a3 : c = 64 ∧ r.head? = some 91
+  · have k3 : c = 64 ∧ r.getD 0 0 = 91 := ⟨a3.1, e91.1 a3.2⟩
+    have b3 : (c == 64 && r.head? == some 91) = true := by simp [a3]
+    right; right; right; left; rw [if_pos k3, if_pos b3]
+    exact ⟨rfl, a3.1, a3.2, fun a t ht => by rw [ht]⟩
+  have k3 : ¬ (c = 64 ∧ r.getD 0 0 = 91) := fun h => a3 ⟨h.1, e91.2 h.2⟩
+  have b3 : ¬ (c == 64 && r.head? == some 91) = true := by simpa using a3
+  rw [if_neg k3, if_neg b3]
+  right; right; right; right
+  rcases hf : opTable.find? (fun e => e.1.isPrefixOf (c :: r)) with _ | ⟨s, t⟩
+  · simp only [hf]
+    by_cases hd : isD c = true
+    · by_cases ha : ((c :: r).takeWhile isW).all isD = true
+      · simp [hd, ha]
+      · simp [hd, ha]
+    · by_cases hw : isW c = true
+      · simp only [hd, hw, if_true, if_false, Bool.false_eq_true]
+        by_cases hlk : lineKw.contains ((c :: r).takeWhile isW) = true
+        · rw [kwX_line _ hlk, if_pos hlk]; simp
+        rw [if_neg hlk]
+        by_cases hdk : dropKw.contains ((c :: r).takeWhile isW) = true
+        · rw [kwX_drop _ hdk, if_pos hdk]; simp
+        rw [if_neg hdk, kwX_old _ hlk hdk]
+        rcases hl : kwTable.lookup ((c :: r).takeWhile isW) with _ | k
+        · simp
+        · obtain ⟨e, he, rfl⟩ := lookup_mem _ _ _ hl
+          simp only [Option.getD_some]
+          exact Or.inr (Or.inr (Or.inr (Or.inl ⟨e, he, rfl, rfl⟩)))
+      · simp [hd, hw]
+  · have hmem := List.mem_of_find?_eq_some hf
+    have hpre := List.find?_some hf
+    simp only [hf]
+    left
+    exact ⟨(s, t), hmem, rfl, rfl, by simpa using hpre⟩
 
 theorem dw_eq (l : List UInt8) : l.dropWhile isW = l.drop (l.takeWhile isW).length := by
   have h := List.takeWhile_append_dropWhile (p := isW) (l := l)
@@ -655,6 +819,144 @@ theorem word_end (x : List UInt8) (p : UInt64) (hx : x.length < 2 ^ 32) (c : UIn
   · rw [he, dw_eq, ← hdp, drop_drop']
   · rw [hdp, he, Nat.add_sub_cancel_left]; exact take_takeWhile _
 
+/-! ### trivia scanners (s12: first byte `b`; s11: nested block comment end) -/
+
+theorem u8_beq (a b : UInt8) : (a.toUInt64 == b.toUInt64) = (a == b) := by
+  cases h : a == b
+  · have : a ≠ b := by simpa using h
+    have : a.toUInt64 ≠ b.toUInt64 := fun e => this (UInt8.toUInt64_inj.1 e)
+    simpa using this
+  · have : a = b := by simpa using h
+    simp [this]
+
+/-- s12 stops at the first byte `b` (or the end) -/
+theorem s12_eq : ∀ (n : Nat) (x : List UInt8) (p : UInt64) (b : UInt8), x.length < 2 ^ 32 → p.toNat ≤ x.length →
+    x.length - p.toNat ≤ n →
+    (s12 n x p b.toUInt64).toNat = p.toNat + ((x.drop p.toNat).takeWhile (· != b)).length
+  | 0, x, p, b, hx, hp, hn => by
+      have : p.toNat = x.length := by omega
+      simp [s12, this]
+  | n + 1, x, p, b, hx, hp, hn => by
+      simp only [s12]
+      by_cases hl : p.toNat < x.length
+      · have hlt : p < len x := (lt_len hx).2 hl
+        rw [drop_cons hl, if_pos hlt, rd_eq, u8_beq]
+        generalize x.getD p.toNat 0 = a
+        by_cases ha : (a == b) = true
+        · have := beq_iff_eq.1 ha; subst this; rw [if_pos ha]; simp [List.takeWhile_cons]
+        · have hp1 : (p + 1).toNat = p.toNat + 1 := inc_toNat hl hx
+          have := s12_eq n x (p + 1) b hx (by omega) (by omega)
+          rw [hp1] at this
+          rw [if_neg ha, this]
+          simp at ha; simp [List.takeWhile_cons, ha]; omega
+      · have : p.toNat = x.length := by omega
+        have : ¬ p < len x := by rw [lt_len hx]; omega
+        simp [*]
+
+theorem dropWhile_eq_drop {p : UInt8 → Bool} (l : List UInt8) : l.dropWhile p = l.drop (l.takeWhile p).length := by
+  have h := List.takeWhile_append_dropWhile (p := p) (l := l)
+  calc l.dropWhile p = ((l.takeWhile p) ++ (l.dropWhile p)).drop (l.takeWhile p).length := (List.drop_left' rfl).symm
+    _ = _ := by rw [h]
+
+theorem s12_drop (x : List UInt8) (p : UInt64) (b : UInt8) (hx : x.length < 2 ^ 32) (hp : p.toNat ≤ x.length) :
+    (s12 (len' x) x p b.toUInt64).toNat ≤ x.length ∧
+    x.drop (s12 (len' x) x p b.toUInt64).toNat = (x.drop p.toNat).dropWhile (· != b) := by
+  have he := s12_eq (len' x) x p b hx hp (by unfold len'; omega)
+  have htw : ((x.drop p.toNat).takeWhile (· != b)).length ≤ (x.drop p.toNat).length := by
+    exact (List.takeWhile_prefix _).length_le
+  refine ⟨by simp at htw; omega, ?_⟩
+  rw [he, dropWhile_eq_drop, List.drop_drop]
+
+theorem s11_end (m : Nat) (x : List UInt8) (q d : UInt64) (hx : x.length < 2 ^ 32) (hq : q.toNat = x.length) :
+    s11 m x q d = 0 := by
+  cases m with
+  | zero => rfl
+  | succ m => have : ¬ q < len x := by rw [lt_len hx]; omega
+              simp [s11, this]
+
+theorem u64_lit (a : UInt8) (k : UInt8) : (a.toUInt64 == k.toUInt64) = true ↔ a = k := by rw [u8_beq]; simp
+
+/-- s11 (when it does not reject) finds the end of the nested block comment -/
+theorem s11_sound : ∀ (n : Nat) (x : List UInt8) (i d : UInt64), x.length < 2 ^ 32 → i.toNat ≤ x.length →
+    d.toNat ≤ i.toNat → s11 n x i d ≠ 0 →
+    (s11 n x i d).toNat ≤ x.length ∧ blockEnd d.toNat (x.drop i.toNat) = some (x.drop (s11 n x i d).toNat)
+  | 0, x, i, d, hx, hi, hd, h => by simp [s11] at h
+  | n + 1, x, i, d, hx, hi, hd, h => by
+      have hlt : i < len x := by
+        cases Decidable.em (i < len x) with
+        | inl h' => exact h'
+        | inr h' => simp only [s11, if_neg h'] at h; exact absurd rfl h
+      have hl : i.toNat < x.length := (lt_len hx).1 hlt
+      have hi1 := inc_toNat hl hx
+      have IH1 : s11 n x (i + 1) d ≠ 0 → (s11 n x (i + 1) d).toNat ≤ x.length ∧
+          blockEnd d.toNat (x.drop (i.toNat + 1)) = some (x.drop (s11 n x (i + 1) d).toNat) := by
+        intro h2; have := s11_sound n x (i + 1) d hx (by omega) (by omega) h2; rwa [hi1] at this
+      have hs : s11 (n + 1) x i d = if rd x i == 45 then if rd x (i + 1) == 47 then if d == 0 then i + 2 else s11 n x (i + 2) (d - 1) else s11 n x (i + 1) d
+          else if rd x i == 47 then if rd x (i + 1) == 45 then s11 n x (i + 2) (d + 1) else s11 n x (i + 1) d
+          else s11 n x (i + 1) d := by simp only [s11, if_pos hlt]
+      rw [hs] at h ⊢
+      rw [drop_cons hl]
+      have hra : rd x i = (x.getD i.toNat 0).toUInt64 := rd_eq x i
+      generalize x.getD i.toNat 0 = a at hra
+      rw [hra] at h ⊢
+      have l45 : (45 : UInt64) = (45 : UInt8).toUInt64 := rfl
+      have l47 : (47 : UInt64) = (47 : UInt8).toUInt64 := rfl
+      rcases hr : x.drop (i.toNat + 1) with _ | ⟨a', r'⟩
+      · have hend : i.toNat + 1 = x.length := by
+          have := congrArg List.length hr; simp at this; omega
+        have hrd1 : rd x (i + 1) = 0 := by
+          rw [rd_eq, hi1]; simp [List.getD_eq_getElem?_getD, List.getElem?_eq_none (by omega : x.length ≤ i.toNat + 1)]
+        have hz := s11_end n x (i + 1) d hx (by omega)
+        rw [hrd1] at h; simp [hz] at h
+      have hl1 : i.toNat + 1 < x.length := by
+        have := congrArg List.length hr; simp at this; omega
+      have hi2 : (i + 2).toNat = i.toNat + 2 := by rw [UInt64.toNat_add]; simp; omega
+      have hd2 : drop_cons hl1 = drop_cons hl1 := rfl
+      have hr2 := drop_cons hl1
+      rw [hr] at hr2
+      simp only [List.cons.injEq] at hr2
+      obtain ⟨ea', er'⟩ := hr2
+      have hrb : rd x (i + 1) = a'.toUInt64 := by rw [rd_eq, hi1, ea']
+      have er2 : x.drop (i.toNat + 2) = r' := by rw [show i.toNat + 2 = i.toNat + 1 + 1 by omega]; exact er'.symm
+      rw [hrb] at h ⊢
+      have IH2 : ∀ d' : UInt64, d'.toNat ≤ i.toNat + 2 → s11 n x (i + 2) d' ≠ 0 → (s11 n x (i + 2) d').toNat ≤ x.length ∧
+          blockEnd d'.toNat r' = some (x.drop (s11 n x (i + 2) d').toNat) := by
+        intro d' h1 h2; have := s11_sound n x (i + 2) d' hx (by omega) (by omega) h2; rwa [hi2, er2] at this
+      rw [l45, l47] at h ⊢
+      simp only [blockEnd]
+      by_cases c45 : a = 45
+      · subst c45
+        by_cases c47 : a' = 47
+        · subst c47
+          simp only [u64_lit, if_true, true_and, and_self] at h ⊢
+          by_cases d0 : d = 0
+          · subst d0; simp [hi2, er2]; omega
+          · have d0' : d.toNat ≠ 0 := fun e => d0 (UInt64.toNat.inj (by simpa using e))
+            rw [if_neg d0'] at ⊢; simp only [d0', beq_iff_eq, if_false, d0] at h ⊢
+            have hsub : (d - 1).toNat = d.toNat - 1 := by
+              rw [UInt64.toNat_sub_of_le]; · simp
+              · rw [UInt64.le_iff_toNat_le]; simp; omega
+            have := IH2 (d - 1) (by omega) h; rwa [hsub] at this
+        · have : ¬ (a'.toUInt64 == (47 : UInt8).toUInt64) = true := by rw [u64_lit]; exact c47
+          simp only [u64_lit, if_true, true_and, this, if_false, c47] at h ⊢
+          have := IH1 h; rw [hr] at this; simpa using this
+      · have n45 : ¬ (a.toUInt64 == (45 : UInt8).toUInt64) = true := by rw [u64_lit]; exact c45
+        simp only [n45, if_false, c45, false_and] at h ⊢
+        by_cases c47 : a = 47
+        · subst c47
+          by_cases c45' : a' = 45
+          · subst c45'
+            simp only [u64_lit, if_true, and_self] at h ⊢
+            have := IH2 (d + 1) (by rw [UInt64.toNat_add]; simp; omega) h
+            have hadd : (d + 1).toNat = d.toNat + 1 := by rw [UInt64.toNat_add]; simp; omega
+            rwa [hadd] at this
+          · have : ¬ (a'.toUInt64 == (45 : UInt8).toUInt64) = true := by rw [u64_lit]; exact c45'
+            simp only [u64_lit, if_true, this, if_false, c45', and_false] at h ⊢
+            have := IH1 h; rw [hr] at this; simpa using this
+        · have n47 : ¬ (a.toUInt64 == (47 : UInt8).toUInt64) = true := by rw [u64_lit]; exact c47
+          simp only [n47, if_false, c47, false_and] at h ⊢
+          have := IH1 h; rw [hr] at this; simpa using this
+
 theorem s9_sound : ∀ (n : Nat) (x : List UInt8) (p : UInt64) (o t : Buf), x.length < 2 ^ 32 → p.toNat ≤ x.length →
     s9 n x p o = t → t ≠ [] → ∃ t', Lexes (x.drop p.toNat) t' ∧ t = o ++ t'
   | 0, x, p, o, t, hx, hp, h, ht => by
@@ -672,14 +974,59 @@ theorem s9_sound : ∀ (n : Nat) (x : List UInt8) (p : UInt64) (o t : Buf), x.le
         have hl : p.toNat < x.length := by
           have := congrArg List.length hdp; simp at this; omega
         have hr : ∀ m, x.drop (p.toNat + m) = (c :: r).drop m := fun m => by rw [← hdp, drop_drop']
-        rcases kind_spec c r with ⟨hk90, hst⟩ | ⟨e, he, hke, hst, hpre⟩ | ⟨hk5, hall, hst⟩ | hk0 | ⟨e, he, hke, hst⟩ | ⟨hk14, hst⟩
+        have hlenc : (c :: r).length = x.length - p.toNat := by rw [← hdp]; simp
+        have l10 : (10 : UInt64) = (10 : UInt8).toUInt64 := rfl
+        have l93 : (93 : UInt64) = (93 : UInt8).toUInt64 := rfl
+        have two : ∀ b : UInt8, r.head? = some b → (p + 2).toNat = p.toNat + 2 ∧ p.toNat + 2 ≤ x.length ∧
+            x.drop (p.toNat + 2) = r.tail := fun b hb => by
+          clear h
+          cases r with
+          | nil => simp at hb
+          | cons a r' =>
+            simp only [List.length_cons] at hlenc
+            refine ⟨by rw [UInt64.toNat_add]; simp; omega, by omega, ?_⟩
+            rw [hr 2]; simp
+        rcases kind_spec c r with ⟨hk90, hst⟩ | ⟨hk94, -, hr0, hst⟩ | ⟨hk95, -, hr0, hst⟩ | ⟨hk96, -, hr0, hst⟩ |
+            ⟨e, he, hke, hst, hpre⟩ | ⟨hk5, hall, hst⟩ | hk0 | ⟨e, he, hke, hst⟩ | ⟨hk14, hst⟩ | ⟨hk92, hst⟩ | ⟨hk93, hst⟩
         · simp [hk90] at h
           have hp1 := inc_toNat (p := p) (n := x.length) hl hx
           obtain ⟨t', hL, ht'⟩ := s9_sound n x (p + 1) o t hx (by omega) h ht
           rw [hp1, hr 1] at hL
           exact ⟨[] ++ t', Lexes.cons hst (by simpa using hL), by simpa using ht'⟩
+        · simp [hk94] at h
+          obtain ⟨hp2, hp2l, hr2⟩ := two 45 hr0
+          rw [l10] at h
+          obtain ⟨hq1, hq2⟩ := s12_drop x (p + 2) 10 hx (by omega)
+          obtain ⟨t', hL, ht'⟩ := s9_sound n x _ o t hx hq1 h ht
+          rw [hq2, hp2, hr2] at hL
+          exact ⟨[] ++ t', Lexes.cons hst hL, by simpa using ht'⟩
+        · simp [hk95] at h
+          obtain ⟨hp2, hp2l, hr2⟩ := two 45 hr0
+          split at h
+          · exact absurd (by simpa [bnew] using h.symm) ht
+          · rename_i hne
+            obtain ⟨hq1, hq2⟩ := s11_sound _ x (p + 2) 0 hx (by omega) (by simp) hne
+            rw [hp2, hr2] at hq2
+            obtain ⟨t', hL, ht'⟩ := s9_sound n x _ o t hx hq1 h ht
+            refine ⟨[] ++ t', Lexes.cons (by rw [hst]; simp at hq2; simp [hq2]) hL, by simpa using ht'⟩
+        · simp [hk96] at h
+          obtain ⟨hp2, hp2l, hr2⟩ := two 91 hr0
+          rw [l93] at h
+          obtain ⟨hq1, hq2⟩ := s12_drop x (p + 2) 93 hx (by omega)
+          split at h
+          · rename_i hlt
+            have hjl := (lt_len hx).1 hlt
+            have hj1 := inc_toNat hjl hx
+            have hdj := drop_cons hjl
+            rw [hp2, hr2] at hq2
+            have hst' := hst _ _ (hq2.symm.trans hdj)
+            obtain ⟨t', hL, ht'⟩ := s9_sound n x _ o t hx (by omega) h ht
+            rw [hj1] at hL
+            exact ⟨[] ++ t', Lexes.cons hst' hL, by simpa using ht'⟩
+          · exact absurd (by simpa [bnew] using h.symm) ht
         · obtain ⟨h0, h5, h14, h90, h91, h256⟩ := op_props e he
-          simp [hke, h0, h5, h14, h90, h91] at h
+          obtain ⟨g1, g2, g3, g4, g5⟩ := op_props2 e he
+          simp [hke, h0, h5, h14, h90, h91, g1, g2, g3, g4, g5] at h
           rw [s5_op e he x p] at h
           have hpre' := (List.isPrefixOf_iff_prefix.1 hpre).length_le
           have hlen3 := op_len e he
@@ -706,7 +1053,8 @@ theorem s9_sound : ∀ (n : Nat) (x : List UInt8) (p : UInt64) (o t : Buf), x.le
           rw [hnv, h5']; simp
         · simp [hk0] at h; exact absurd h.symm ht
         · obtain ⟨h0, h5, h14, h90, h91, h256⟩ := kw_props e he
-          simp [hke, h0, h5, h14, h90, h91] at h
+          obtain ⟨g1, g2, g3, g4, g5⟩ := kw_props2 e he
+          simp [hke, h0, h5, h14, h90, h91, g1, g2, g3, g4, g5] at h
           obtain ⟨wb1, wb2, wb3, wb4⟩ := word_end x p hx c r hdp
           rw [s5_word x p e.2 (Or.inr (Or.inr ⟨e, he, rfl⟩))] at h
           generalize hed : s1 (len' x) x p = ee at *
@@ -728,6 +1076,19 @@ theorem s9_sound : ∀ (n : Nat) (x : List UInt8) (p : UInt64) (o t : Buf), x.le
           rw [ht', q0_eq]
           have h14' : (14 : UInt64) &&& 255 = 14 := by decide
           rw [h14']; simp
+        · simp [hk92] at h
+          obtain ⟨wb1, wb2, wb3, wb4⟩ := word_end x p hx c r hdp
+          rw [s5_92, l10] at h
+          obtain ⟨hq1, hq2⟩ := s12_drop x (s1 (len' x) x p) 10 hx wb2
+          obtain ⟨t', hL, ht'⟩ := s9_sound n x _ o t hx hq1 h ht
+          rw [hq2, wb3] at hL
+          exact ⟨[] ++ t', Lexes.cons hst hL, by simpa using ht'⟩
+        · simp [hk93] at h
+          obtain ⟨wb1, wb2, wb3, wb4⟩ := word_end x p hx c r hdp
+          rw [s5_93] at h
+          obtain ⟨t', hL, ht'⟩ := s9_sound n x _ o t hx wb2 h ht
+          rw [wb3] at hL
+          exact ⟨[] ++ t', Lexes.cons hst hL, by simpa using ht'⟩
 
 /-- Lexer soundness: if `C.s10` returns a nonempty buffer, the input lexes to exactly that buffer
 (`Lexes` = Nano/V2Self/Proof/Lex/Lex2Spec.lean; inputs under 2^32 bytes). -/

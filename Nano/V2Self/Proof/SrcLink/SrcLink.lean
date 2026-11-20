@@ -61,6 +61,42 @@ theorem last_of_suffix {l s : List UInt8} (h : s <:+ l) (hs : s ≠ []) : s.getL
   | none => simp at e; exact absurd e hs
   | some _ => rfl
 
+theorem mem_dropWhile {p : UInt8 → Bool} {x : UInt8} : ∀ (l : List UInt8), x ∈ l → p x = false → x ∈ l.dropWhile p
+  | [], h, _ => by simp at h
+  | y :: l, h, hx => by
+    by_cases hy : p y = true
+    · rw [List.dropWhile_cons_of_pos hy]
+      rcases List.mem_cons.1 h with rfl | h'
+      · rw [hy] at hx; cases hx
+      · exact mem_dropWhile l h' hx
+    · rw [List.dropWhile_cons_of_neg hy]; exact h
+
+theorem dw_head {p : UInt8 → Bool} : ∀ (l : List UInt8) (a : UInt8) (t : List UInt8), l.dropWhile p = a :: t → p a = false
+  | [], _, _, h => by simp at h
+  | y :: l, a, t, h => by
+    by_cases hy : p y = true
+    · rw [List.dropWhile_cons_of_pos hy] at h; exact dw_head l a t h
+    · rw [List.dropWhile_cons_of_neg hy] at h; cases h; simpa using hy
+
+theorem blockEnd_app : ∀ (d : Nat) (l m t : List UInt8), blockEnd d l = some t → blockEnd d (l ++ m) = some (t ++ m) ∧ t <:+ l
+  | _, [], _, _, h => by simp [blockEnd] at h
+  | _, [_], _, _, h => by simp [blockEnd] at h
+  | d, c :: c' :: r, m, t, h => by
+    simp only [List.cons_append, blockEnd] at h ⊢
+    have s1 : r <:+ c :: c' :: r := (List.suffix_cons _ _).trans (List.suffix_cons _ _)
+    have s2 : c' :: r <:+ c :: c' :: r := List.suffix_cons _ _
+    split at h
+    · rename_i h1; rw [if_pos h1]
+      split at h
+      · rename_i h2; rw [if_pos h2]; cases h; exact ⟨rfl, s1⟩
+      · rename_i h2; rw [if_neg h2]; obtain ⟨a, b⟩ := blockEnd_app _ r m t h; exact ⟨a, b.trans s1⟩
+    · rename_i h1; rw [if_neg h1]
+      split at h
+      · rename_i h2; rw [if_pos h2]; obtain ⟨a, b⟩ := blockEnd_app _ r m t h; exact ⟨a, b.trans s1⟩
+      · rename_i h2; rw [if_neg h2]
+        obtain ⟨a, b⟩ := blockEnd_app _ (c' :: r) m t h
+        simp only [List.cons_append] at a; exact ⟨a, b.trans s2⟩
+
 theorem step_app {l m : List UInt8} {e : List UInt64} {r : List UInt8} (hl : l.getLast? = some 10)
     (h : step l = some (e, r)) : step (l ++ m) = some (e, r ++ m) ∧ (r = [] ∨ r.getLast? = some 10) := by
   match l, hl, h with
@@ -69,39 +105,91 @@ theorem step_app {l m : List UInt8} {e : List UInt64} {r : List UInt8} (hl : l.g
       by_cases e : s = []
       · exact .inl e
       · exact .inr (by rw [last_of_suffix hs e, hl])
+    have h10 : (10 : UInt8) ∈ c :: r0 := List.mem_of_getLast? hl
     simp only [step] at h ⊢
     simp only [List.cons_append]
     split at h
     · rename_i hw; rw [if_pos hw]; cases h
       exact ⟨rfl, suf _ (List.suffix_cons _ _)⟩
-    · rename_i hw; rw [if_neg hw]
-      have hf : opTable.find? (fun e => e.1.isPrefixOf (c :: (r0 ++ m))) =
-          opTable.find? (fun e => e.1.isPrefixOf (c :: r0)) :=
-        find?_congr _ (fun x hx => by
-          have := isPrefixOf_app x.1 (c :: r0) m (op_no10 x hx) hl; simpa using this)
-      rw [hf]
+    rename_i hw; rw [if_neg hw]
+    have hne : r0 ≠ [] := by
+      rintro rfl; simp at hl; subst hl; exact hw (by decide)
+    obtain ⟨a0, r1, rfl⟩ : ∃ a0 r1, r0 = a0 :: r1 := by
+      cases r0 with
+      | nil => exact absurd rfl hne
+      | cons a0 r1 => exact ⟨a0, r1, rfl⟩
+    simp only [List.cons_append, List.head?_cons, List.tail_cons] at h ⊢
+    have hc10 : c ≠ 10 := fun e => hw (by simp [e])
+    have h10r : (10 : UInt8) ∈ a0 :: r1 := by
+      rcases List.mem_cons.1 h10 with e | e
+      · exact absurd e.symm hc10
+      · exact e
+    have sr1 : r1 <:+ c :: a0 :: r1 := (List.suffix_cons _ _).trans (List.suffix_cons _ _)
+    split at h
+    · rename_i h45; rw [if_pos h45]; cases h
+      have ha0 : a0 = 45 := by simp at h45; exact h45.2
+      have hm : (10 : UInt8) ∈ r1 := by
+        rcases List.mem_cons.1 h10r with e | e
+        · rw [ha0] at e; cases e
+        · exact e
+      obtain ⟨-, t2⟩ := takeWhile_app (p := (· != 10)) r1 m ⟨10, hm, by decide⟩
+      rw [t2]; exact ⟨rfl, suf _ ((List.dropWhile_suffix _).trans sr1)⟩
+    rename_i h45; rw [if_neg h45]
+    split at h
+    · rename_i h47; rw [if_pos h47]
+      obtain ⟨t, hb, he⟩ := Option.map_eq_some_iff.1 h
+      simp only [Prod.mk.injEq] at he; obtain ⟨rfl, rfl⟩ := he
+      obtain ⟨b1, b2⟩ := blockEnd_app 0 r1 m t hb
+      rw [b1]; exact ⟨rfl, suf _ (b2.trans sr1)⟩
+    rename_i h47; rw [if_neg h47]
+    split at h
+    · rename_i h64; rw [if_pos h64]
       split at h
-      · rename_i s k hfd
-        cases h
-        have hpre : s.isPrefixOf (c :: r0) = true := by
-          have := List.find?_some hfd; simpa using this
-        have hle : s.length ≤ (c :: r0).length := (List.isPrefixOf_iff_prefix.1 hpre).length_le
-        refine ⟨?_, suf _ (List.drop_suffix _ _)⟩
-        have := List.drop_append_of_le_length (l₁ := c :: r0) (l₂ := m) hle
-        simp only [List.cons_append] at this; rw [this]
-      · have h10 : ∃ x ∈ c :: r0, isW x = false :=
-          ⟨10, List.mem_of_getLast? hl, by decide⟩
-        obtain ⟨t1, t2⟩ := takeWhile_app (p := isW) (c :: r0) m h10
-        simp only [List.cons_append] at t1 t2
-        rw [t1, t2]
-        have sd : (c :: r0).dropWhile isW <:+ c :: r0 := List.dropWhile_suffix _
-        split at h
-        · split at h
-          · cases h; rw [if_pos ‹_›, if_pos ‹_›]; exact ⟨rfl, suf _ sd⟩
-          · cases h
-        · split at h
-          · cases h; rw [if_neg ‹_›, if_pos ‹_›]; exact ⟨rfl, suf _ sd⟩
-          · cases h
+      · cases h
+      rename_i a t hdw
+      simp only [Option.some.injEq, Prod.mk.injEq] at h; obtain ⟨rfl, rfl⟩ := h
+      have ha := dw_head r1 a t hdw
+      have hsa : a :: t <:+ r1 := by rw [← hdw]; exact List.dropWhile_suffix _
+      obtain ⟨-, t2⟩ := takeWhile_app (p := (· != 93)) r1 m ⟨a, hsa.subset (by simp), ha⟩
+      rw [t2, hdw]
+      exact ⟨rfl, suf _ ((List.suffix_cons _ _).trans (hsa.trans sr1))⟩
+    rename_i h64; rw [if_neg h64]
+    have hf : opTable.find? (fun e => e.1.isPrefixOf (c :: a0 :: (r1 ++ m))) =
+        opTable.find? (fun e => e.1.isPrefixOf (c :: a0 :: r1)) :=
+      find?_congr _ (fun x hx => by
+        have := isPrefixOf_app x.1 (c :: a0 :: r1) m (op_no10 x hx) hl; simpa using this)
+    rw [hf]
+    split at h
+    · rename_i s k hfd
+      cases h
+      have hpre : s.isPrefixOf (c :: a0 :: r1) = true := by
+        have := List.find?_some hfd; simpa using this
+      have hle : s.length ≤ (c :: a0 :: r1).length := (List.isPrefixOf_iff_prefix.1 hpre).length_le
+      refine ⟨?_, suf _ (List.drop_suffix _ _)⟩
+      have := List.drop_append_of_le_length (l₁ := c :: a0 :: r1) (l₂ := m) hle
+      simp only [List.cons_append] at this; rw [this]
+    · have h10' : ∃ x ∈ c :: a0 :: r1, isW x = false := ⟨10, h10, by decide⟩
+      obtain ⟨t1, t2⟩ := takeWhile_app (p := isW) (c :: a0 :: r1) m h10'
+      simp only [List.cons_append] at t1 t2
+      rw [t1, t2]
+      have sd : (c :: a0 :: r1).dropWhile isW <:+ c :: a0 :: r1 := List.dropWhile_suffix _
+      split at h
+      · split at h
+        · cases h; rw [if_pos ‹_›, if_pos ‹_›]; exact ⟨rfl, suf _ sd⟩
+        · cases h
+      · split at h
+        · rename_i hd hwc
+          rw [if_neg hd, if_pos hwc]
+          split at h
+          · rename_i hlk; cases h; rw [if_pos hlk]
+            have hm := mem_dropWhile (p := isW) _ h10 (by decide)
+            obtain ⟨-, t3⟩ := takeWhile_app (p := (· != 10)) _ m ⟨10, hm, by decide⟩
+            rw [t3]; exact ⟨rfl, suf _ ((List.dropWhile_suffix _).trans sd)⟩
+          · rename_i hlk; rw [if_neg hlk]
+            split at h
+            · cases h; rw [if_pos ‹_›]; exact ⟨rfl, suf _ sd⟩
+            · cases h; rw [if_neg ‹_›]; exact ⟨rfl, suf _ sd⟩
+        · cases h
 
 theorem lexes_app {x1 : List UInt8} {x2 : List UInt8} {t1 t2 : List UInt64} (h1 : Lexes x1 t1) (h2 : Lexes x2 t2)
     (hl : x1 = [] ∨ x1.getLast? = some 10) : Lexes (x1 ++ x2) (t1 ++ t2) := by

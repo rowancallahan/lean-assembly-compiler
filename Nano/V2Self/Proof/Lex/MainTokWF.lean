@@ -31,30 +31,42 @@ theorem step_tok {l : List UInt8} {e : List UInt64} {r : List UInt8} (h : LexSpe
     simp only [LexSpec.step] at h
     split at h
     · cases h; exact ⟨_, ht⟩
+    split at h
+    · cases h; exact ⟨_, ht⟩
+    split at h
+    · obtain ⟨_, -, he⟩ := Option.map_eq_some_iff.1 h; cases he; exact ⟨_, ht⟩
+    split at h
     · split at h
-      · rename_i s k hf
-        cases h
-        obtain ⟨a, b, c'⟩ := op_tags _ (List.mem_of_find?_eq_some hf)
-        exact ⟨_, .kw k a b c' ht⟩
+      · cases h
+      · cases h; exact ⟨_, ht⟩
+    split at h
+    · rename_i s k hf
+      cases h
+      obtain ⟨a, b, c'⟩ := op_tags _ (List.mem_of_find?_eq_some hf)
+      exact ⟨_, .kw k a b c' ht⟩
+    · split at h
       · split at h
-        · split at h
-          · cases h
-            obtain ⟨l8, lb⟩ := le8_spec (LexSpec.numVal ((c :: rr).takeWhile LexSpec.isW))
-            exact ⟨_, .num _ l8 lb ht⟩
-          · cases h
-        · split at h
-          · rename_i hw
-            cases h
-            split
-            · rename_i k hk
-              obtain ⟨a', hm⟩ := lookup_mem _ _ _ hk
-              obtain ⟨a, b, c'⟩ := kw_tags _ hm
-              exact ⟨_, .kw k a b c' ht⟩
-            · have hne : ((c :: rr).takeWhile LexSpec.isW).map UInt8.toUInt64 ≠ [] := by simp [hw]
-              have := TokL.id (((c :: rr).takeWhile LexSpec.isW).map UInt8.toUInt64) hne ht
-              exact ⟨Tok.id ((((c :: rr).takeWhile LexSpec.isW).map UInt8.toUInt64).map UInt64.toNat) :: toks,
-                by simpa [List.flatMap_map, List.append_assoc] using this⟩
-          · cases h
+        · cases h
+          obtain ⟨l8, lb⟩ := le8_spec (LexSpec.numVal ((c :: rr).takeWhile LexSpec.isW))
+          exact ⟨_, .num _ l8 lb ht⟩
+        · cases h
+      · split at h
+        · rename_i hw
+          split at h
+          · cases h; exact ⟨_, ht⟩
+          split at h
+          · cases h; exact ⟨_, ht⟩
+          cases h
+          split
+          · rename_i k hk
+            obtain ⟨a', hm⟩ := lookup_mem _ _ _ hk
+            obtain ⟨a, b, c'⟩ := kw_tags _ hm
+            exact ⟨_, .kw k a b c' ht⟩
+          · have hne : ((c :: rr).takeWhile LexSpec.isW).map UInt8.toUInt64 ≠ [] := by simp [hw]
+            have := TokL.id (((c :: rr).takeWhile LexSpec.isW).map UInt8.toUInt64) hne ht
+            exact ⟨Tok.id ((((c :: rr).takeWhile LexSpec.isW).map UInt8.toUInt64).map UInt64.toNat) :: toks,
+              by simpa [List.flatMap_map, List.append_assoc] using this⟩
+        · cases h
 
 theorem lexes_tokWF {x : List UInt8} {ts : List UInt64} (h : LexSpec.Lexes x ts) : TokWF ts := by
   induction h with
