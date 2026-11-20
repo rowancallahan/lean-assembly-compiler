@@ -148,7 +148,7 @@ theorem compile_ok (e : Exp) (he : e.depth < 11) {s : St} (hf : ArmFull s) {pc :
     (fun i hi => by have := hcode i (by omega); rwa [List.getElem_of_eq hc, List.getElem_append_left hi] at this)
   have e1 : (pc + BitVec.ofNat 64 (4 * ws.length)).toNat = pc.toNat + 4 * ws.length := by
     simp [BitVec.toNat_add]; omega
-  obtain ⟨s₂, h₂, ha₂, hf₂, hpc₂, hm₂⟩ := full_ret hf₁ ha₁ hpc₁ (by omega) (by omega) (by
+  obtain ⟨s₂, h₂, ha₂, hf₂, hpc₂, hm₂⟩ := full_ret hf₁ ha₁ hpc₁ (va29 (by omega)) (by omega) (by
     rw [hm₁, e1]; have := hcode ws.length (by omega)
     rw [List.getElem_of_eq hc, List.getElem_append_right (by omega)] at this; simpa using this)
   have henv' : ∀ i : Fin 4, a.x i = env i := fun i => rfl

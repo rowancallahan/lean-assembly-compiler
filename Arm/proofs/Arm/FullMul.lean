@@ -49,10 +49,11 @@ theorem dec_mulsym (s : St) (pc see : Int) (hs : see < 1) (h : s.regs.get? .SEE 
 
 theorem sub_madd (x y z : BitVec 64) :
     integer_subrange ((z.toNat : Int) + (x.toNat : Int) * (y.toNat : Int)) 63 0 = z + x * y := by
+  simp only [integer_subrange, get_slice_int]
+  rw [show ((z.toNat : Int) + (x.toNat : Int) * (y.toNat : Int)) = ((z.toNat + x.toNat * y.toNat : Nat) : Int) by
+    push_cast; rfl, BitVec.ofInt_natCast]
   apply BitVec.eq_of_toNat_eq
-  simp [integer_subrange, Sail.BitVec.length, get_slice_int, BitVec.toNat_add, BitVec.toNat_mul]
-  norm_cast
-  simp [Nat.add_mod, Nat.mul_mod]
+  simp [BitVec.toNat_add, BitVec.toNat_mul]
 
 section
 variable {s : St} {d n m r : Nat} {x y z : BitVec 64}
@@ -64,6 +65,7 @@ theorem madd_exec (hd : d < 31) (hn : n < 31) (hm : m < 31) (hr : r < 31) (hx : 
   idx d; idx n; idx m; idx r
   dsimp only [decode_madd_aarch64_instrs_integer_arithmetic_mul_uniform_add_sub]; dsimp
   have hsm := sub_madd x y z
+  have := u_int
   simp only [execute_aarch64_instrs_integer_arithmetic_mul_uniform_add_sub]
   exec_simp
 
@@ -73,8 +75,13 @@ theorem mul_exec (hd : d < 31) (hn : n < 31) (hm : m < 31) (hx : xget s.regs n =
       31#5 0#1 (BitVec.ofNat 5 m) 1#1 s = .ok () { s with regs := xset s.regs d (x * y) } := by
   idx d; idx n; idx m
   dsimp only [decode_madd_aarch64_instrs_integer_arithmetic_mul_uniform_add_sub]; dsimp
-  have := sub_madd x y 0
-  rw [BitVec.zero_add] at this
+  have : integer_subrange ((x.toNat : Int) * (y.toNat : Int)) 63 0 = x * y := by
+    simp only [integer_subrange, get_slice_int]
+    rw [show ((x.toNat : Int) * (y.toNat : Int)) = ((x.toNat * y.toNat : Nat) : Int) by push_cast; rfl,
+      BitVec.ofInt_natCast]
+    apply BitVec.eq_of_toNat_eq
+    simp [BitVec.toNat_mul]
+  have := u_int
   simp only [execute_aarch64_instrs_integer_arithmetic_mul_uniform_add_sub]
   exec_simp
 end
