@@ -22,7 +22,8 @@ PROOF NOTES (owner rule: semantics, conventions, which lemma covers it):
   "outside the image of reg and outside scratch" disjunct.
 * `armOK` = rv2arm's validation (ArmBlock.validJ) PLUS the encoding ranges that rv2arm takes for granted because its
   input is RV code: |imm| < 2048 (RV I/S immediates) for addi / ld / sd / lbu / sb, so `add`/`sub` imm12 and the x16
-  address forms fit; shift < 64; branch offsets within ±65535 J instructions (b.cond / cbz reach ±1 MiB).
+  address forms fit; shift < 64; branch offsets within ±65535 J instructions (b.cond / cbz reach ±1 MiB); jal offsets
+  within ±(2^23 − 1) J instructions (b / bl imm26; rv2arm b400ca6).
 * Per-block lemmas (`armTarget.step_ok`): Testing/nano/v2self/arm/PROOF_NOTES.md, one row per J kind. -/
 import Nano.V2Self.Proof.Machine.Call
 namespace ArmEnc
@@ -131,7 +132,7 @@ def armOK (n pc : Nat) : J → Bool
   | .slli rd rs sh | .srli rd rs sh => sh < 64 && mapped rs && mapped rd
   | .beq a b o | .bne a b o | .bltu a b o | .bgeu a b o =>
     mapped a && mapped b && 0 ≤ (pc : Int) + o && (pc : Int) + o < n && -65535 ≤ o && o ≤ 65535
-  | .jal rd o => (rd == 0 || rd == 1) && 0 ≤ (pc : Int) + o && (pc : Int) + o < n
+  | .jal rd o => (rd == 0 || rd == 1) && 0 ≤ (pc : Int) + o && (pc : Int) + o < n && -2 ^ 23 < o && o < 2 ^ 23
   | .jalr rd rs => rd == 0 && rs != 0 && mapped rs
 
 /-- every instruction of the program is encodable -/
