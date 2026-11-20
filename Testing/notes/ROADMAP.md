@@ -538,3 +538,5 @@ ARM proof and the larger code work.
 - LATER (fuzz finding, 2026-11-20): each fresh list reserves a fixed 4 MiB (2^19 x 8 B) of work memory that is never
   reused, so ~20 fresh lists exhaust 80 MiB. Correct (OOM is reported, never a wrong answer) but wasteful. Fix together
   with the capacity work: growable lists or reuse.
+- ARM MEMORY (owner, 2026-11-20): the ARM proof's RAM window [2^28, 2^29) (256 MB) is fine for now; expand later if
+  easy. The shims give 1 GiB of work memory (unproven glue); the ARM theorem will cover runs whose work fits the window.
