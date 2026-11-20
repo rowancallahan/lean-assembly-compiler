@@ -1,5 +1,5 @@
 /- The J-level layout and safe runs, machine-independent (split out of SimW/SimX: no Sail model here).
-`LayW`: code base and words, work cells `[lo, hi)`, input/output bytes, the entry memory `m0`; `wok`/`io`/`bok`/`sok`:
+`LayW`: code base, work cells `[lo, hi)`, input/output bytes, the entry memory `m0`; `wok`/`io`/`bok`/`sok`:
 which addresses a J load/store may touch; `Safe`/`SafeX`: the side conditions of one J step that a target needs;
 `SStar`/`SStarX`: J runs whose every step satisfies them.  Names stay in namespace `SimW`. -/
 import Nano.V2Self.Proof.Machine.Call
@@ -8,7 +8,6 @@ namespace SimW
 
 structure LayW where
   base : Nat
-  W : List Nat
   lo : Nat
   hi : Nat
   /-- input bytes `[ib, ib + il)` (read by lbu) and output bytes `[ob, ob + ol)` (written by sb) -/

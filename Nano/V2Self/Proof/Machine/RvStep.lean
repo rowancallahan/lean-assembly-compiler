@@ -6,7 +6,7 @@ namespace SimW
 open Proven Nano.V2B
 
 /-- **the return**: `jalr x0, 0(a)` at a related state retires to pc = the register's value; registers and memory kept -/
-theorem sim_ret {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
+theorem sim_ret {K : LayRv} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
     {a : Nat} (ha : a < 32) (hC : K.W[pc]? = some (C.g2 C.g_103 0 0 (UInt64.ofNat a) 0).toNat)
     (he : (s.x a).toNat % 2 = 0) :
     ∃ t' v, Next t t' (s.x a).toBitVec 0 v t.mem := by
@@ -50,7 +50,7 @@ section
 open Templates CallProbe C GenRef ParSpec
 
 /-- **addi**, any sum: the J register gets the hardware's value `x[a] + imm` -/
-theorem sim_addiN {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
+theorem sim_addiN {K : LayRv} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.Ok) (hR : RelW K (pc, s) t)
     {rd a : Nat} {imm : Int} (hC : K.W[pc]? = some (I.i .addi rd a imm).enc) (hrd : rd < 32) (ha : a < 32)
     (hi1 : -2048 ≤ imm) (hi2 : imm < 2048) :
     ∃ t', Retires t t' ∧ RelW K (pc + 1, CallProbe.wr s rd (s.x a + UInt64.ofInt imm)) t' := by
