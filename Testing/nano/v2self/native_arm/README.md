@@ -1,0 +1,71 @@
+# native_arm: a native AArch64 back end for C — PROTOTYPE, UNPROVEN
+
+**Nothing here is proved and nothing here is wired into the proven compiler.** `C/Gen.lean`, B2, `rv2arm` and every
+proof file are unchanged. The proof plan is `Testing/notes/NATIVE_ARM_PROOF_PLAN.md`.
+
+| file | what |
+|---|---|
+| `Nano/V2Self/C/GenArm.lean` | the back end: `a31` (= `g41` with A64 output). Nano subset, same style as `Gen.lean`; plain defs, no proofs |
+| `build_self_A.py` | writes `self_A.lean` / `self_A_input.txt`: Base + Lex2 + Par1 + Own + Gen + GenArm + driver `m = a31 …` (generated, not committed) |
+| `test_native.sh` | builds everything with B2 and runs the checks below |
+| `diff_run.sh` | one program, one input: RISC-V (B2) vs native A64, status + output bytes |
+| `fuzz_native.py` | differential fuzzer (nanogen + nanofuzz.mutate + mutated examples / C's own source) |
+| `dyn_count.sh` | dynamic instruction count of generated code under QEMU (exec log, one instruction per TB) |
+| `edge/` | targeted programs: large constants (movz/movn/movk paths), frames past the ldur range, OOM (−1), capacity (−2) |
+
+## How it fits
+`a31 c x` takes the same input as `g41` (the AST from `o41 (y16 (s10 x))`) and runs the same machine: one fuel loop
+over the same work items (`g36`/`g37` ↔ `a24`/`a25`), the same width pre-pass (`g53`, reused), the same frame layout,
+calling convention (`armMapping`), heap/buffer layout, word 0 = jump to start, words 1–5 out-of-memory stub, 6–10
+capacity stub. Only the emitted words differ: each template is written directly as A64. Reused from Gen unchanged:
+`g14 g15 g16 g17 g18 g24 g27 g33 g40 g43 g53 g55`. Because the structure is Gen's, the later proof can reuse the
+generic J-run proof and needs one lemma per template on the A64 side (see the proof plan).
+
+## Design decisions
+* **Registers** = rv2arm's map (RV t0 t1 t2 s0 a4 a5 → x5 x6 x7 x8 x14 x15, t3/t4 → x12/x13, heap top t5 → x10,
+  stack t6 → x11, ra → x30, a0–a3 → x0–x3, sp → x4). Same shim, same `armMapping`; x9, x18–x29 never touched.
+* **No register field 31** (no xzr, no sp), as for rv2arm: compares are `subs x16, a, b`, zero comes from
+  `movz x17, #0` where needed (mul addend, a stored zero). Keeps the instruction set inside what both ARM models
+  are known to handle; avoids the sp/xzr ambiguity.
+* **Small instruction vocabulary** (27 forms): add/sub imm; add/sub/and/orr/eor/lslv/lsrv/madd reg; `subs x16`
+  always directly followed by its `b.cond`; add with lsl #3; movz/movk/movn; ldr/str (scaled uimm), ldur/stur, ldp;
+  ldrb (register offset, RD only), strb (start loop only); b, bl, cbz, cbnz, br (the return is `br x30`). No pre/post-index, no csel: every
+  extra form is an extra lemma per ARM model.
+* **Better than translation where A64 allows it**: constants by movz/movn + movk only for the chunks that need it
+  (≤ 4 words, RV `li` is up to 17); real offsets (`ldr [x8, #off]`, `ldur` for −256..−1); `ldp` for pops;
+  `add x16, buf, idx, lsl #3` + `ldr [x16, #16]` for buffer access; IF = compare + one inverted `b.cond` straight to
+  the else branch (RV: branch over a `jal`); LOOP head = `ldr` + `cbnz` (RV: `ld; beq; jal`); `bl`/`br`/`ret`.
+* **Labels**: placeholders are the branch word with offset 0 (`b`, `b.cond`, `cbnz`); `a18` patches by opcode
+  (imm26 or imm19). The ±1 MiB range check is Gen's `g14`, so every branch form is always in range.
+* **Accept set**: the same checks as Gen, but the 2^18-word code limit applies to A64 words. Native code is smaller on
+  every test, so in practice it accepts whatever B2 accepts; a pathological program could differ (not seen).
+
+## Per template (words: RISC-V / native A64; rv2arm = 4 × RISC-V)
+| template | RV | A64 |
+|---|---|---|
+| push | 4 (3 run) | 4 (4 run: A64 has no register-register compare-and-branch) |
+| const v | 1–17 + push | 1–4 + push |
+| binop | 5 (mul 5) | 4 (mul 5) |
+| IF compare | 5 | 4 |
+| LOOP head | 3 | 2 |
+| BGET / BSET / BPUSH | 10 / 9 / 12 | 9 / 8 / 9 |
+
+## Results (2026-11-20, QEMU 8.2.2)
+* B2 compiles `self_A` (C with the native back end). Fixpoint: GA_arm (native A64) compiles `self_A` to its own bytes.
+* GA_arm compiles C's RISC-V source to B2_na (B2 as native A64, 311 KB; rv2arm's B2_arm: 1361 KB; B2: 340 KB);
+  B2_na compiles C's source to **B2.bin exactly**.
+* examples + edge, 5 inputs each: identical status and output. Fuzz (`fuzz_native.py`): see the PR for counts.
+* Static code words: native A64 = 0.74–0.96 × RISC-V (rv2arm 4.0 ×). Dynamic, examples: native 1.00–1.06 × RISC-V
+  (rv2arm 3.6 ×); B2 compiling rle.lean: RISC-V 7.77 M, rv2arm 27.9 M, native 7.70 M instructions.
+
+| example | static RV / rv2arm / native | dynamic RV / rv2arm / native |
+|---|---|---|
+| fib | 311 / 1244 / 271 | 1159 / 4171 / 1175 |
+| hex | 327 / 1308 / 283 | 9177 / 33134 / 9684 |
+| rle | 412 / 1648 / 365 | 10059 / 36275 / 10585 |
+| upper | 274 / 1096 / 235 | 6692 / 23816 / 7072 |
+
+## Run
+`./test_native.sh` (all checks), `python3 fuzz_native.py SEED N WORKDIR [MUT]` (after test_native.sh built the
+binaries). Native code for one program: `grep -v '^--' prog.lean | qemu-aarch64 shim_arm GA_arm.bin > prog.a64`,
+then `qemu-aarch64 shim_arm prog.a64 < input > output`.
