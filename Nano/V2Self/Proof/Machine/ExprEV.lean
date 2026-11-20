@@ -63,13 +63,13 @@ theorem local1_run {C : List J} {pc tgt p k : Nat} (s : St) (hC : At C pc (local
   have l0 := hL.at 0 (by simp); simp at l0
   have ea0 : ea (s.x 8) (offOf p k) = CallProbe.slotAddr p k (s.x 8).toNat := ea_slot p k _ hs0 hp hk _ rfl
   let v := s.m (CallProbe.slotAddr p k (s.x 8).toNat)
-  let s1 : St := ⟨upd s.x 5 v, s.m, s.b⟩
+  let s1 : St := ⟨upd s.x 5 v, s.m, s.b, s.w⟩
   have r1 : run C 1 (pc, s) = some (pc + 1, s1) := by simp [run, step, l0, wr, ea0, v, s1]
   have x31 : s1.x 31 = s.x 31 := by simp [s1, upd_ne]
   have x30 : s1.x 30 = s.x 30 := by simp [s1, upd_ne]
   have hh1 : (s1.x 30).toNat + 8 ≤ (s1.x 31).toNat := by rw [x31, x30]; exact hh
   have r2 := push_run (s := s1) (by simpa [pushA] using hP) (by decide) (by decide) hh1
-  refine ⟨⟨upd (upd s.x 5 v) 31 (UInt64.ofNat ((s.x 31).toNat - 8)), upd s.m ((s.x 31).toNat - 8) v, s.b⟩, ?_, rfl, rfl⟩
+  refine ⟨⟨upd (upd s.x 5 v) 31 (UInt64.ofNat ((s.x 31).toNat - 8)), upd s.m ((s.x 31).toNat - 8) v, s.b, s.w⟩, ?_, rfl, rfl⟩
   rw [show 4 = 1 + 3 from rfl, run_add r1, r2]
   have e5 : s1.x 5 = v := by simp [s1, upd_same]
   rw [e5, x31]

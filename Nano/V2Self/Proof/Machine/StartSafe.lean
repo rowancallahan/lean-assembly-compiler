@@ -76,7 +76,7 @@ theorem copy_loopX {KL : LayW} {C : List J} {L : Nat} (hL : At C L loopJ) (hLC :
     let p := (s.x 6).toNat
     let q := (s.x 14).toNat
     let s5 : St := ⟨upd (upd (upd (upd s.x 15 (s.m p)) 6 (s.x 6 + 8)) 14 (s.x 14 + 1)) 7
-      (UInt64.ofNat r), sbm s.m q (s.m p), s.b⟩
+      (UInt64.ofNat r), sbm s.m q (s.m p), s.b, s.w⟩
     have ne : s.x 7 ≠ s.x 0 := by
       rw [h7, z0]; intro h; have := congrArg UInt64.toNat h; simp at this; omega
     have w60 := hW6 0 (by omega); have w140 := hW14 0 (by omega)
@@ -181,7 +181,7 @@ theorem start_tailX {KL : LayW} {C : List J} {S w : Nat} (hS : At C S (startJ S 
     all_goals simp only [SafeX]
     all_goals simp [c29, c30, CallProbe.wr, upd_same, upd_other, e0, e8, h12, m0, hb]
     all_goals first | exact hwA0 | exact ⟨by omega, hwA8⟩
-  let sa : St := ⟨upd (upd s2.x 5 P) 7 N, s2.m, s2.b⟩
+  let sa : St := ⟨upd (upd s2.x 5 P) 7 N, s2.m, s2.b, s2.w⟩
   obtain ⟨sX, hX, eX⟩ : ∃ sX, SStarX KL C (S + 12, s2) (S + 14, sX) ∧ sX = sa := by
     refine ⟨_, hd ?_ (s_ld c12) (hd ?_ (s_ld (by simpa using c13)) (.refl _)), by simp [CallProbe.wr, sa, e0, hPd, upd_same, hNd]⟩
     all_goals simp only [SafeX]
@@ -189,7 +189,7 @@ theorem start_tailX {KL : LayW} {C : List J} {S w : Nat} (hS : At C S (startJ S 
     all_goals first | exact hw31 | exact hwP
   subst eX
   by_cases hN : N = 0
-  · let sb : St := ⟨upd (upd sa.x 10 1) 11 0, s2.m, s2.b⟩
+  · let sb : St := ⟨upd (upd sa.x 10 1) 11 0, s2.m, s2.b, s2.w⟩
     have bn : step C (S + 14, sa) = some (S + 15, sa) := by simp [step, c14, sa, upd_same, upd_other, z0, hN]
     obtain ⟨sY, hY, eY⟩ : ∃ sY, SStarX KL C (S + 14, sa) (S + 29, sY) ∧ sY = sb := by
       refine ⟨_, hd ?_ bn (hd ?_ (s_addi (by simpa using c15))
@@ -207,7 +207,7 @@ theorem start_tailX {KL : LayW} {C : List J} {S w : Nat} (hS : At C S (startJ S 
     · rw [xk 10 (by omega) (by omega), if_pos hN]; simp [sb, sa, upd]
     · rw [xk 11 (by omega) (by omega), hN]; simp [sb, sa, upd]
     · subst hN; simp at hi
-  · let sc : St := ⟨upd (upd (upd sa.x 11 N) 6 (P + 16)) 14 (s2.x 13), s2.m, s2.b⟩
+  · let sc : St := ⟨upd (upd (upd sa.x 11 N) 6 (P + 16)) 14 (s2.x 13), s2.m, s2.b, s2.w⟩
     have bn : step C (S + 14, sa) = some (S + 18, sa) := by
       simp [step, c14, sa, upd_same, upd_other, z0, hN]; omega
     obtain ⟨sY, hY, eY⟩ : ∃ sY, SStarX KL C (S + 14, sa) (S + 21, sY) ∧ sY = sc := by

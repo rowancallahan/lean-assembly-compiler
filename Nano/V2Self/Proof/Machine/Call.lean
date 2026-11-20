@@ -33,6 +33,8 @@ structure St where
   m : Nat → UInt64
   /-- the code base (byte address of instruction 0): return addresses are byte addresses `b + 4·pc` -/
   b : Nat
+  /-- the link width: bytes of target code per J instruction (RISC-V 4; AArch64 blocks of 4 words: 16) -/
+  w : Nat
 
 def upd {α} (f : Nat → α) (k : Nat) (v : α) : Nat → α := fun i => if i = k then v else f i
 
@@ -91,6 +93,20 @@ theorem Star.b {C : List J} {a c : Nat × St} (h : Star C a c) : c.2.b = a.2.b :
   induction h with
   | refl => rfl
   | tail _ hs ih => rw [step_b hs, ih]
+
+theorem wr_w (s : St) (r : Nat) (v : UInt64) : (wr s r v).w = s.w := by unfold wr; split <;> rfl
+
+/-- steps never change the link width -/
+theorem step_w {C : List J} {a c : Nat × St} (h : step C a = some c) : c.2.w = a.2.w := by
+  obtain ⟨pc, s⟩ := a
+  simp only [step] at h
+  split at h <;> simp at h <;> (try split at h) <;> (try simp at h) <;> (try (obtain ⟨_, rfl⟩ := h)) <;> (try subst h) <;>
+    simp [wr_w]
+
+theorem Star.w {C : List J} {a c : Nat × St} (h : Star C a c) : c.2.w = a.2.w := by
+  induction h with
+  | refl => rfl
+  | tail _ hs ih => rw [step_w hs, ih]
 
 /-- `l` sits in `C` at `pos` -/
 def At (C : List J) (pos : Nat) (l : List J) : Prop := ∀ i, i < l.length → C[pos + i]? = l[i]?
@@ -159,7 +175,7 @@ theorem At.at {C pos l} (h : At C pos l) (i) (hi : i < l.length) : C[pos + i]? =
 theorem push_run {C pc s r oom} (hC : At C pc (push r oom)) (hr : r ≠ 31) (hr0 : r ≠ 0)
     (hh : (s.x 30).toNat + 8 ≤ (s.x 31).toNat) :
     run C 3 (pc, s) = some (pc + 4, ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)),
-                                     upd s.m ((s.x 31).toNat - 8) (s.x r), s.b⟩) := by
+                                     upd s.m ((s.x 31).toNat - 8) (s.x r), s.b, s.w⟩) := by
   have lt : (s.x 31).toNat < 2 ^ 64 := (s.x 31).toNat_lt
   have e : ea (s.x 31) (-8) = (s.x 31).toNat - 8 := by simp [ea]; omega
   have t6' : (UInt64.ofNat ((s.x 31).toNat - 8)).toNat = (s.x 31).toNat - 8 := by
@@ -217,7 +233,7 @@ theorem copy_run {C pc p q} (s : St) (hq : ∀ k, k ≤ q → At C pc (copy p q 
     have e1 : ea (s'.x 31) (8 * ((q - 1 - k : Nat) : Int)) = (s.x 31).toNat + 8 * (q - 1 - k) := by simp [ea, x31]; omega
     have e2 : ea (s'.x 8) (8 * (p : Int) + 16 - 8 * ((k + 1 : Nat) : Int)) = (s.x 8).toNat + 8 * p + 16 - 8 * (k + 1) := by
       simp [ea, x8]; omega
-    refine ⟨⟨upd s'.x 5 (s.m ((s.x 31).toNat + 8 * (q - 1 - k))), Mc s.m (s.x 31).toNat ((s.x 8).toNat + 8 * p + 16) q (k + 1), s'.b⟩, ?_, ?_, rfl, hb⟩
+    refine ⟨⟨upd s'.x 5 (s.m ((s.x 31).toNat + 8 * (q - 1 - k))), Mc s.m (s.x 31).toNat ((s.x 8).toNat + 8 * p + 16) q (k + 1), s'.b, s'.w⟩, ?_, ?_, rfl, hb⟩
     · rw [show 2 * (k + 1) = 2 * k + 2 by omega, run_add hr]
       have rd : s'.m ((s.x 31).toNat + 8 * (q - 1 - k)) = s.m ((s.x 31).toNat + 8 * (q - 1 - k)) := by
         rw [hm]; exact Mc_src s.m _ _ q (by omega) k k (Nat.le_refl _) (by omega)
@@ -254,7 +270,7 @@ theorem pro_run {C f s r oom} (hC : At C f (pro r oom)) (hlt : (s.x 31).toNat < 
   have lt : (s.x 31).toNat < 2 ^ 64 := (s.x 31).toNat_lt
   have t8 : (UInt64.ofNat ((s.x 31).toNat - 8)).toNat = (s.x 31).toNat - 8 := by simp; omega
   have t16 : (UInt64.ofNat ((s.x 31).toNat - 8 - 8)).toNat = (s.x 31).toNat - 16 := by simp; omega
-  have r2 := push_run (s := ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)), upd s.m ((s.x 31).toNat - 8) (s.x 1), s.b⟩) A2 (by decide) (by decide)
+  have r2 := push_run (s := ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)), upd s.m ((s.x 31).toNat - 8) (s.x 1), s.b, s.w⟩) A2 (by decide) (by decide)
     (by simp [upd, t8]; omega)
   simp only [upd_same, upd_other _ _ (show (30:Nat) ≠ 31 by decide), upd_other _ _ (show (8:Nat) ≠ 31 by decide), t8] at r2
   have r12 := run_add (l := 3) r1
@@ -267,7 +283,7 @@ theorem pro_run {C f s r oom} (hC : At C f (pro r oom)) (hlt : (s.x 31).toNat < 
   rw [e16] at r12
   refine ⟨⟨upd (upd (upd (upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8))) 31 (UInt64.ofNat ((s.x 31).toNat - 16)))
       8 (UInt64.ofNat ((s.x 31).toNat - 16))) 31 (UInt64.ofNat ((s.x 31).toNat - 16 - 8 * r)),
-    upd (upd s.m ((s.x 31).toNat - 8) (s.x 1)) ((s.x 31).toNat - 16) (s.x 8), s.b⟩, ?_, ?_, ?_, ?_, rfl⟩
+    upd (upd s.m ((s.x 31).toNat - 8) (s.x 1)) ((s.x 31).toNat - 16) (s.x 8), s.b, s.w⟩, ?_, ?_, ?_, ?_, rfl⟩
   · rw [show 9 = (3 + 3) + 3 by rfl, run_add r12]
     have ea1 : ea (UInt64.ofNat ((s.x 31).toNat - 16)) 0 = (s.x 31).toNat - 16 := by simp [ea, t16']
     have ea2 : ea (UInt64.ofNat ((s.x 31).toNat - 16)) (-8 * (r : Int)) = (s.x 31).toNat - 16 - 8 * r := by
@@ -312,7 +328,7 @@ theorem epi_run {C e p q} (s : St) (hC : At C e (epi p q))
   have e8 : ea (s.x 8) 8 = (s.x 8).toNat + 8 := by simp [ea]; omega
   have e0 : ea (s.x 8) 0 = (s.x 8).toNat := by simp [ea]
   -- after the two loads
-  let s' : St := ⟨upd (upd s.x 14 (s.m ((s.x 8).toNat + 8))) 15 (s.m (s.x 8).toNat), s.m, s.b⟩
+  let s' : St := ⟨upd (upd s.x 14 (s.m ((s.x 8).toNat + 8))) 15 (s.m (s.x 8).toNat), s.m, s.b, s.w⟩
   have r2 : run C 2 (e, s) = some (e + 2, s') := by
     simp [run, step, a0, a1, wr, e8, e0, upd_other _ _ (show (8:Nat) ≠ 14 by decide), s']
   have x31 : s'.x 31 = s.x 31 := by simp [s', upd]
@@ -328,7 +344,7 @@ theorem epi_run {C e p q} (s : St) (hC : At C e (epi p q))
   have tA : (UInt64.ofNat ((s.x 8).toNat + 8 * p + 16 - 8 * q)).toNat = (s.x 8).toNat + 8 * p + 16 - 8 * q := by
     simp; omega
   have eB : ea (s.m (s.x 8).toNat) 0 = (s.m (s.x 8).toNat).toNat := by simp [ea]
-  refine ⟨⟨upd (upd s''.x 31 (UInt64.ofNat ((s.x 8).toNat + 8 * p + 16 - 8 * q))) 8 (s.m (s.x 8).toNat), s''.m, s''.b⟩,
+  refine ⟨⟨upd (upd s''.x 31 (UInt64.ofNat ((s.x 8).toNat + 8 * p + 16 - 8 * q))) 8 (s.m (s.x 8).toNat), s''.m, s''.b, s''.w⟩,
     ?_, ?_, ?_, ?_, ?_, ?_⟩
   · have b2 : s''.b = s.b := hbb
     rw [show 2 + 2 * q + 3 = (2 + 2 * q) + 3 by omega, run_add r22]

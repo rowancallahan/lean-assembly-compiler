@@ -235,7 +235,7 @@ theorem ifHeadS {KL : LayW} {C : List J} {q lt p nl hb E0 cmp : Nat} {Inv : St �
   have ea0 : ea (s1.x 31) 0 = (s.x 31).toNat - 8 - 8 := by simp [ea, p1]; omega
   have ea8 : ea (s1.x 31) 8 = (s.x 31).toNat - 8 := by simp [ea, p1]; omega
   have ea16 : ea (s1.x 31) 16 = (s.x 31).toNat := by simp [ea, p1]; omega
-  let s2 : St := ⟨upd (upd (upd s1.x 6 b) 5 a) 31 (UInt64.ofNat (s.x 31).toNat), s1.m, s1.b⟩
+  let s2 : St := ⟨upd (upd (upd s1.x 6 b) 5 a) 31 (UInt64.ofNat (s.x 31).toNat), s1.m, s1.b, s1.w⟩
   have r2 : CallProbe.run C 3 (q, s1) = some (q + 3, s2) := by
     simp [CallProbe.run, CallProbe.step, c0, c1, c2, CallProbe.wr, ea0, ea8, va, vb, upd_other _ _ (show (31:Nat) ≠ 6 by decide),
       upd_other _ _ (show (31:Nat) ≠ 5 by decide), ea16, s2]
@@ -607,7 +607,7 @@ theorem loopCap {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {h S len p nl hb
       simp [CallProbe.step, c2, CallProbe.wr]; omega
     let v := env_m 0 - 1
     let a0 := slotAddr p (s.x 8).toNat 0
-    let s4 : St := ⟨upd s.x 5 v, upd s.m a0 v, s.b⟩
+    let s4 : St := ⟨upd s.x 5 v, upd s.m a0 v, s.b, s.w⟩
     have ev : UInt64.ofNat (ea ((CallProbe.wr s 5 (env_m 0)).x 5) (-1)) = v := by rw [x51]; exact ea_dec _ hz'
     have st45 : CallProbe.run C 2 (S, CallProbe.wr s 5 (env_m 0)) = some (S + 2, s4) := by
       have q : ea ((CallProbe.wr (CallProbe.wr s 5 (env_m 0)) 5 v).x 8) (slotOff p 0) = a0 := by

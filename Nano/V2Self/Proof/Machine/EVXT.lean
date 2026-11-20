@@ -133,7 +133,7 @@ theorem ifPre {C : List J} {pc lp lt p nl hb cmp : Nat} {Inv : St → Prop} {RP 
   have ea0 : ea (s1.x 31) 0 = (s.x 31).toNat - 8 - 8 := by simp [ea, p1]; omega
   have ea8 : ea (s1.x 31) 8 = (s.x 31).toNat - 8 := by simp [ea, p1]; omega
   have ea16 : ea (s1.x 31) 16 = (s.x 31).toNat := by simp [ea, p1]; omega
-  let s2 : St := ⟨upd (upd (upd s1.x 6 b) 5 a) 31 (UInt64.ofNat (s.x 31).toNat), s1.m, s1.b⟩
+  let s2 : St := ⟨upd (upd (upd s1.x 6 b) 5 a) 31 (UInt64.ofNat (s.x 31).toNat), s1.m, s1.b, s1.w⟩
   have r2 : run C 3 (pc + lp, s1) = some (pc + lp + 3, s2) := by
     simp [run, step, c0, c1, c2, wr, ea0, ea8, va, vb, upd_other _ _ (show (31:Nat) ≠ 6 by decide),
       upd_other _ _ (show (31:Nat) ≠ 5 by decide), ea16, s2]
