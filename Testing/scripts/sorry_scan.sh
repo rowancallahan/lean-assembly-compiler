@@ -5,6 +5,8 @@
 # recovery, an auxiliary definition, or a `decreasing_by` that fell back to `sorry`.  Also lists every `axiom`
 # declaration the modules reach (expected: the RISC-V model's platform/float opaques only).
 # usage: Testing/scripts/sorry_scan.sh [LIB ...]   (after the libraries are built; prints, exits 1 if any sorryAx)
+#   SCAN_ONLY / SCAN_EXCLUDE: Python regexes on module names.  Modules that cannot be imported together (Cert and
+#   CertArm both define `Cert.*`) are scanned in two runs:  SCAN_EXCLUDE=CertArm …  then  SCAN_ONLY=CertArm …
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 export PATH=$HOME/.elan/bin:$PATH
@@ -24,6 +26,10 @@ for n in libs:
     for g in l.get("globs", []):
         if g.endswith(".+"): mods |= {m for m in files if m == g[:-2] or m.startswith(g[:-2] + ".")}
         else: mods.add(g)
+import re
+if os.environ.get("SCAN_ONLY"): mods = {m for m in mods if re.search(os.environ["SCAN_ONLY"], m)}
+if os.environ.get("SCAN_EXCLUDE"): mods = {m for m in mods if not re.search(os.environ["SCAN_EXCLUDE"], m)}
+assert mods, "no module selected"
 missing = [m for m in mods if m not in files]
 assert not missing, missing
 open(out, "w").write("\n".join(sorted(mods)) + "\n")
