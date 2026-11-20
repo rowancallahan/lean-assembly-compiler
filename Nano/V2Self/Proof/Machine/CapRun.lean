@@ -36,11 +36,11 @@ theorem bpush_capS {K : LayW} {C : List J} {pc : Nat} (s : St) (hC : At C pc (bp
     refine ⟨_, ⟨by omega, rfl⟩, rfl, rfl, by simp [upd_ne, hx0], fun r r5 r6 r7 r14 r31 => ?_⟩
     simp [upd, r5, r6, r7, r14, r31]
   obtain ⟨s', hr, rest⟩ := hr
-  refine ⟨s', SStarX.of (SafeRun.sstar_of_run hr ?_), rest⟩
+  refine ⟨s', (SafeRun.sstar_of_run hr ?_), rest⟩
   intro j hj c hc'
   rcases (by omega : j = 0 ∨ j = 1 ∨ j = 2 ∨ j = 3 ∨ j = 4 ∨ j = 5 ∨ j = 6) with rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
     simp [CallProbe.run, CallProbe.step, h0, h1, h2, h3, h4, h5, h6', CallProbe.wr, e0, e8, eb0, ebuf8, hc, upd_ne, upd_same] at hc' <;> subst hc' <;>
-    simp [Safe, h0, h1, h2, h3, h4, h5, h6', CallProbe.wr, e0, e8, eb0, ebuf8, hc, upd_ne, upd_same, hx0] <;>
+    simp [SafeX, h0, h1, h2, h3, h4, h5, h6', CallProbe.wr, e0, e8, eb0, ebuf8, hc, upd_ne, upd_same, hx0] <;>
     first | omega | assumption | exact ⟨by omega, by assumption⟩
 
 /-- the stub word of a failure kind: cap → 6, room (out of memory) → 1 -/
@@ -254,7 +254,7 @@ theorem ifHeadS {KL : LayW} {C : List J} {q lt p nl hb E0 cmp : Nat} {Inv : St �
     (by have := L0.top; omega) (by have := L1.a31; omega)
   have w1b : wok KL ((s.x 31).toNat - 8) := L1.wok (by have := R1.2.1; have := R1.2.2.1; omega)
     (by have := L0.top; omega) (by have := L1.a31; omega)
-  have st2 : SStarX KL C (q, s1) (q + 3, s2) := sstarX_of_run r2 (fun j hj c hc => by
+  have st2 : SStarX KL C (q, s1) (q + 3, s2) := sstar_of_run r2 (fun j hj c hc => by
     rcases j with _ | _ | _ | j
     · simp [CallProbe.run] at hc; subst hc; simp only [SafeX, c0]; rw [ea0]
       exact ⟨by decide, by decide, by decide, by decide, by omega, w1a⟩
@@ -348,7 +348,7 @@ theorem letMidS {KL : LayW} {C : List J} {q p nl hb E0 k0 w : Nat} {Inv : St →
     (fun j i hj hi => by
       rw [e81]; have := slotAddr_ge (T := (s.x 31).toNat) (k := k0 + j) (by omega) o2 (by omega); omega)
   have L1 : Lay KL hb E0 p s1 := L0.post e81 eb p1 (by have := R1.1; have := R1.2.1; have := R1.2.2.1; omega)
-  have ss2 : SStarX KL C (q, s1) (q + 3 * w, s2) := SStarX.of (popN_srun w q s1 hS (by omega)
+  have ss2 : SStarX KL C (q, s1) (q + 3 * w, s2) := (popN_srun w q s1 hS (by omega)
     (fun j hj => by
       have hk : k0 + j < nl := by omega
       obtain ⟨g1, g2, g3, g4⟩ := slotT_wok (k := k0 + j) L1 ⟨by rw [p1, e81]; omega, o2, by rw [e81]; omega⟩
@@ -641,7 +641,7 @@ theorem loopCap {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {h S len p nl hb
     have lt5 := (env_m 0).toNat_lt
     have nz5 : (env_m 0).toNat ≠ 0 := fun e => hz' (UInt64.toNat_inj.mp (by simpa using e))
     have sx3 : SafeX KL C (h + 2, CallProbe.wr s 5 (env_m 0)) := by simp only [SafeX, c2]; simp; omega
-    have s45 : SStarX KL C (S, CallProbe.wr s 5 (env_m 0)) (S + 2, s4) := sstarX_of_run st45 (fun j hj c hc => by
+    have s45 : SStarX KL C (S, CallProbe.wr s 5 (env_m 0)) (S + 2, s4) := sstar_of_run st45 (fun j hj c hc => by
       rcases j with _ | _ | j
       · simp [CallProbe.run] at hc; subst hc; simp only [SafeX, d0]; rw [x51]
         exact ⟨by decide, by decide, by decide, by decide, by omega, by omega⟩
@@ -781,7 +781,7 @@ theorem defCap {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {f p nl hb E0 : N
       simp only [env1, argEnv, hkp, if_true]
       rw [slotAddr_param hkp, m1 _ (by omega) (by omega), ← ha k hkp]; congr 1; omega
     obtain ⟨s2, r2, I2, z2⟩ := hB.cap s1 env1 H I1 z1 F1 O1 R1 L1 A0 hS1
-    exact ⟨s2, (SStarX.of hr1).trans r2, I2, z2⟩
+    exact ⟨s2, (hr1).trans r2, I2, z2⟩
 
 theorem callCap {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {pc la p nl pa f hb E0 : Nat} {IG : St → Prop} {RA WA : Nat → Prop}
     {SA : SemWX} {Sd : SemDX} {off : Int}

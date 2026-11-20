@@ -1,5 +1,5 @@
 /- The RISC-V instance of the generic top theorems (Main/TopOn.lean): Gen's bytes ARE the RISC-V code bytes of its J
-program (`rv_enc`), and `compileOn id = compileC`, so `CompileCorrect riscv compileC` and `CompileRuns riscv compileC`
+program (`rv_enc`), so C's driver `mC` is a generator for `rvTarget` (`rv_gen`) and `compileGen mC = compileC`, so `CompileCorrect riscv compileC` and `CompileRuns riscv compileC`
 follow from `rvLaws`. -/
 import Nano.V2Self.Proof.Main.TopOn
 import Nano.V2Self.Proof.Machine.RvTarget
@@ -31,19 +31,22 @@ theorem rv_enc : EncOK rvTarget id := by
     (by omega)]
   simpa using flat_rv Cj (Templates.words_encJX (fun j hj => (hw j hj).1))
 
-theorem compileOn_id : compileOn id = compileC := by
-  funext s; unfold compileOn compileC; rw [id_eq]
+theorem rv_gen : GenOK rvTarget mC := by
+  have h := genOK_of_enc rv_enc
+  rwa [Function.id_comp] at h
+
+theorem compileGen_mC : compileGen mC = compileC := rfl
 
 /-- **C is correct** (RISC-V): the generic `C_correct_on` for `rvTarget` -/
 theorem C_correctLO : CompileCorrect riscv compileC := by
-  rw [← compileOn_id]; exact cc_of_P (C_correct_on rvLaws id rv_enc (by decide))
+  rw [← compileGen_mC]; exact cc_of_P (C_correct_on rvLaws mC rv_gen (by decide))
 
 /-- **C runs correctly with any work block** (owner's `CompileRuns`, RISC-V: the generic `C_runs_on` for `rvTarget`):
 return to the caller, memory changed only in the work block and the result prefix of the output block, callee-saved
 registers kept, configured, and out of memory reported (a0 = −1) exactly when the work block is smaller than
 `memoryNeeded`. -/
 theorem C_runsO : CompileRuns riscv compileC := by
-  rw [← compileOn_id]; exact cr_of_P (C_runs_on rvLaws id rv_enc (by decide))
+  rw [← compileGen_mC]; exact cr_of_P (C_runs_on rvLaws mC rv_gen (by decide))
 
 /-- `C_runsO` under the former premise `ShiftInv` (D's `shiftInv` proves it; kept as a REVIEW root) -/
 theorem C_runs (_HS : ShiftInv) : CompileRuns riscv compileC := C_runsO

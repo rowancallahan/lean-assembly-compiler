@@ -1,7 +1,7 @@
 /- The fixup lemma (Astra-11): Gen's jump emission and patching (`g19` / `g20`, Nano/V2Self/C/Gen.lean).
 A patched placeholder (`g20 r o p`, no error) is the word C emits for J's `jal x0, (h − p)` — the jump from word p to
 the current end h of the code — and every other word is unchanged; `g19` appends the same kind of word.  With
-`SimW.encJ` this is the word `sim_stepW` runs. -/
+`SimW.encJ` this is the word the Sail simulation `SimW.sim_jal` runs. -/
 import Nano.V2Self.Proof.Machine.RvEnc
 import Nano.V2Self.Proof.Gen.BufL
 

@@ -1,9 +1,7 @@
-/- Machine bridge (Opus box E): the J-level program theorem.
+/- Machine bridge (Opus box E): the J-level program, code shape.
 `gen_words`: if Gen succeeds on the serialized resolved program `ds`, the code after the def phase is the stub code
-followed by the def templates (`defsJ`), def k at its table start word.
-`gen_defs_run`: on any J program holding those templates, every def satisfies its contract `DefX` for `semAt` (the
-machine-level semantics of the program) — in particular main.  Remaining for the full chain: the start code (g35:
-needs J's srli/bne/sb), the Sail lift (Safe runs), side conditions from the parser + g53. -/
+followed by the def templates (`defsJ`), def k at its table start word.  `At_defsJ`: each def's template inside it.
+That every def runs per its contract is `gen_defs_runS` (EVSProg.lean). -/
 import Nano.V2Self.Proof.Machine.NdProgW
 namespace Templates
 open CallProbe C GenRef ParSpec
@@ -48,20 +46,5 @@ theorem gen_words (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length
   have := chainW (P := pcOf 524288 hb c29 inp T) (ds := ds) (u := g_999) rfl (Tf := T) (fun j => rfl) hD rfl ds
     (by simp [bnew]) (SerAt_serialize ds) (by simp [serialize]; omega) hdb (by simp [bnew]) (by simp [bnew]) hol
   simp [bnew] at this; exact ⟨this.1, this.2.1⟩
-
-/-- **every def runs per its semantics** on a J program holding the def templates (Gen's words, by `gen_words`) -/
-theorem gen_defs_run (P : PC) (ds : List DefA) (C : List J) (IG : St → Prop) (E0 : Nat) (c28 : UInt64) (n h : Nat)
-    (hig : IGOK P.hb E0 IG) (he : E0 < 2 ^ 62) (hcb : ∀ s, IG s → s.b + s.w * C.length < 2 ^ 64)
-    (hinp : InpOK IG c28 P.c29 P.inp) (hC : At C h (defsJ P ds 0 n))
-    (hT : ∀ j, j < n → P.T j = h + (defsJ P ds 0 j).length)
-    (hd : ∀ k, k < n → (dA ds k).npw < 2 ^ 20 ∧ (dA ds k).npw ≤ (dA ds k).nslots ∧ OkV (scAt P ds k) (dA ds k).body ∧
-      wd (scAt P ds k) (dA ds k).body = (dA ds k).nres ∧ ∀ j, rd (dA ds k).body j → j < (dA ds k).npw) :
-    ∀ k, k < n → DefX C (P.T k) (dA ds k).npw (dA ds k).nres IG P.hb E0 (semAt P ds k) := by
-  apply progRun P ds C IG E0 c28 hig he hcb hinp n
-  intro k hk
-  obtain ⟨a1, a2, a3, a4, a5⟩ := hd k hk
-  have := At_defsJ n 0 h hC (fun j hj => by rw [Nat.zero_add]; exact hT j hj) k hk
-  rw [Nat.zero_add] at this
-  exact ⟨a1, a2, a3, a4, a5, this⟩
 
 end Templates

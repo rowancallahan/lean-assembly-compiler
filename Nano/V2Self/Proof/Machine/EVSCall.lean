@@ -79,7 +79,7 @@ theorem defXS {KL : LayW} {C : List J} {f lb p nl q hb E0 : Nat} {IG : St → Pr
     rw [x82, show (s.x 31).toNat - 16 + 8 * p + 16 = (s.x 31).toNat + 8 * p by omega] at hm3 p3
     have mo : ∀ a, (a + 8 * q < (s.x 31).toNat + 8 * p ∨ (s.x 31).toNat + 8 * p ≤ a) → s3.m a = s2.m a := by
       intro a ha; rw [hm3]; exact Mc_out _ _ _ q (by omega) q (Nat.le_refl _) a ha
-    refine ⟨s3, ((SStarX.of hr1).trans r2).trans (SStarX.of hr3), ?_, ?_, by rw [p3], l2, ?_, ?_, ?_, A2, ?_⟩
+    refine ⟨s3, ((hr1).trans r2).trans (hr3), ?_, ?_, by rw [p3], l2, ?_, ?_, ?_, A2, ?_⟩
     · apply hIG s2 s3 I2.1 (hx3 28 (by decide) (by decide) (by decide) (by decide) (by decide))
         (hx3 29 (by decide) (by decide) (by decide) (by decide) (by decide)) b3 hr3.star.w
       intro a ha; apply mo
