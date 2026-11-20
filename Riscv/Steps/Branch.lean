@@ -165,7 +165,7 @@ set_option hygiene false in
 /-- `step_word_core` for a word `wB .. o` / `wJ .. o` with a symbolic offset `o` -/
 macro "bstep_core" : tactic => `(tactic| (
   · intro s h hpc hi hQ
-    simp only [Proven.getX_eq] at hQ
+    try simp only [Proven.getX_eq] at hQ
     have hok' := hok; obtain ⟨_, _, _⟩ := hok'
     have hf := Proven.fetch_cfg h hpc hok hi (by first | with_reducible exact Proven.rvc_wB .. | with_reducible exact Proven.rvc_wJ ..)
     rw [Proven.bytes_eq] at hf; simp only [Proven.wB, Proven.wJ] at hf
