@@ -1026,4 +1026,53 @@ theorem arm_step (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {a b : 
           (by simp [blockJ, body, ea, eb]) h1 h2 h3 h4
         exact ⟨s', r, by simpa [condV] using m⟩
 
+/-! ## the laws -/
+
+theorem kept_out (r : Nat) (hr : r ∈ armMapping.kept) :
+    (∀ j, 0 < j → j < 32 → armReg j ≠ r) ∧ r ∉ armScratch := by
+  have h : ∀ j, j < 32 → 0 < j → armReg j ≠ r := by
+    simp only [armMapping, List.mem_cons, List.not_mem_nil, or_false] at hr
+    rcases hr with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;> decide
+  refine ⟨fun j h0 h32 => h j h32 h0, ?_⟩
+  simp only [armMapping, List.mem_cons, List.not_mem_nil, or_false] at hr
+  simp only [armScratch, List.mem_cons, List.not_mem_nil, or_false]; omega
+
+/-- **the ARM adapter's laws, from the abstract A64 steps** -/
+theorem armLaws (S : A64Sem M) : (armTarget M).Laws where
+  blk_pos := by show 0 < 4; decide
+  enc_len := blk_len
+  reg_map := by
+    have hm : (armTarget M).M.mapping = armMapping := S.map
+    rw [hm]; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  kept_map r hr := by
+    have hr' : r ∈ armMapping.kept := by have := hr; show r ∈ armMapping.kept; rw [← S.map]; exact this
+    exact Or.inr (kept_out r hr')
+  ram := S.ram
+  lay_init K C h _ hv := by
+    have e : 4 * (armTarget M).blockLen * C.length = 16 * C.length := by show 4 * 4 * C.length = _; omega
+    rw [e] at h; exact ⟨h, hv⟩
+  m0_obs s a _ := by
+    show (M.observe s).memory (UInt64.ofNat a) = (((M.observe s).memory (UInt64.ofNat a)).map UInt8.toBitVec).map _
+    cases (M.observe s).memory (UInt64.ofNat a) <;> rfl
+  inv_init _ _ _ := trivial
+  step_ok := arm_step S
+  addi_ok := by
+    intro K C s0 pc st s rd rs imm hl hR hC h1 h2 h3 h4
+    have hB : K.base + 16 * C.length ≤ 2 ^ 32 := by have := hl.1.bhi; have := S.ram.2; omega
+    have hpcl : pc < C.length := (List.getElem?_eq_some_iff.1 hC).1
+    have hok := progOK_at hl.2 hC
+    simp only [armOK, imm12, Bool.and_eq_true, decide_eq_true_eq] at hok
+    obtain ⟨s', r, m⟩ := blk_addi S (mid_of_rel hR) hC hB hpcl hok.1.2 hok.1.1 h3 h4
+    exact ⟨s', r, rel_of_mid m⟩
+  ret_ok := by
+    intro K C s0 pc st s hl hR hC h4
+    have hB : K.base + 16 * C.length ≤ 2 ^ 32 := by have := hl.1.bhi; have := S.ram.2; omega
+    have hpcl : pc < C.length := (List.getElem?_eq_some_iff.1 hC).1
+    have hM := mid_of_rel hR
+    have hw := word_pc hM hC hB hpcl (by decide) (w := brR 30) (by simp [blockJ, body, pad4]; rfl)
+    obtain ⟨s', r, c, o⟩ := S.br s 30 hM.cfg (by decide) hw
+    refine ⟨s', r, ?_, fun r' => by show (M.observe s').register r' = _; rw [o]; rfl,
+      by show (M.observe s').memory = _; rw [o]; rfl, c⟩
+    show (M.observe s').programCounter = _; rw [o]; exact hM.x 1 (by decide) (by decide)
+
 end JT
