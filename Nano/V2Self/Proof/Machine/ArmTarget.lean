@@ -9,6 +9,7 @@ PROOF NOTES (per J kind: block, relation, lemmas) — Testing/nano/v2self/arm/PR
 * per block: the words from `Mid.word`, the A64Sem fields in sequence, `mid_regs` after each. -/
 import Nano.V2Self.Proof.Machine.A64Sem
 import Nano.V2Self.Proof.Machine.HostOn
+import Nano.V2Self.Proof.Machine.StartCode
 namespace JT
 open Proven.Top SimW CallProbe ArmEnc
 
@@ -553,5 +554,103 @@ theorem blk_shift (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : 
       simp [blockJ, hbody, pad4, hd, hs, zpre]
     exact tail 0 s (Nat.zero_le _) hM (by rw [hb]; rfl) (by rw [hb]; rfl)
       (fun i h1 h2 => by rcases (by omega : i = 2 ∨ i = 3) with rfl | rfl <;> rw [hb] <;> rfl) (fun e => absurd e hs)
+
+/-! ## memory -/
+
+theorem toUInt64_inj8 {a b : UInt8} (h : a.toUInt64 = b.toUInt64) : a = b := by
+  apply UInt8.toNat_inj.1; have := congrArg UInt64.toNat h; simpa using this
+
+/-- a byte store, seen in the cell `c` that holds byte `c + k` -/
+theorem cbyte_sbm (m : Nat → UInt64) (a c k : Nat) (v : UInt64) (hc : c % 8 = 0) (hk : k < 8) :
+    cbyte (CallProbe.sbm m a v c) k = if c + k = a then v.toUInt8 else cbyte (m c) k := by
+  have e1 := lbm_cbyte (CallProbe.sbm m a v) (c + k)
+  have e2 := lbm_cbyte m (c + k)
+  rw [show c + k - (c + k) % 8 = c by omega, show (c + k) % 8 = k by omega] at e1 e2
+  split
+  · rename_i h; subst h
+    rw [CallProbe.lbm_sbm_same] at e1
+    apply toUInt64_inj8; rw [← e1]
+    apply UInt64.toNat_inj.1
+    simp [UInt64.toNat_and, Nat.and_two_pow_sub_one_eq_mod _ 8]
+  · rename_i h
+    rw [CallProbe.lbm_sbm_other _ _ _ _ h, e2] at e1
+    exact (toUInt64_inj8 e1).symm
+
+theorem toNat_ofNat_lt {q : Nat} (h : q < 2 ^ 64) : (UInt64.ofNat q).toNat = q := by simp; omega
+
+/-- an 8-byte store to the work cell `a` with J's new value -/
+theorem mid_store8 {K : LayW} {C : List J} {s0 s : M.State} {pc k : Nat} {st : CallProbe.St}
+    (hM : Mid K C s0 (pc, st) k s) (hL : JTarget.LayOK M (16 * C.length) K) (hR : M.ramEnd ≤ 2 ^ 32)
+    (hpcl : pc < C.length) (hk : k < 4) {a : Nat} (ha : wok K a) {v : UInt64}
+    (hg : Goes M s (store8 (M.observe s) a v)) :
+    ∃ s', Runs M s s' ∧ Mid K C s0 (pc, { st with m := CallProbe.upd st.m a v }) (k + 1) s' := by
+  obtain ⟨s', r, c, o⟩ := hg
+  have hpc := hM.pc
+  have hwa := hL.wlo; have hwb := hL.whi; have hcw := hL.cw; have hbh := hL.bhi
+  have hib := hL.ibh; have hob := hL.obh; have hil := hL.ibl; have hol := hL.obl
+  unfold wok at ha
+  refine ⟨s', r, ⟨c, by rw [o]; simp only [store8]; rw [hpc, ofNat_add4]; congr 1, ?_, hM.x0, hM.bb, hM.ww,
+    fun j h0 h32 => by rw [o]; exact hM.x j h0 h32, fun r' h1 h2 => by rw [o]; exact hM.keep r' h1 h2, ?_, ?_, ?_⟩⟩
+  · intro i h k' hk' b hb
+    rw [o]; simp only [store8]
+    rw [blk_len] at hk'
+    have hq : K.base + 4 * 4 * i + 4 * k' + b < 2 ^ 64 := by omega
+    rw [toNat_ofNat_lt hq, if_neg (by omega)]
+    exact hM.code i h k' (by rw [blk_len]; exact hk') b hb
+  · intro c' hc' k' hk'
+    unfold wok at hc'
+    rw [o]; simp only [store8]
+    rw [toNat_ofNat_lt (by omega)]
+    by_cases e : c' = a
+    · subst e; rw [if_pos (by omega)]; simp [CallProbe.upd]
+    · rw [if_neg (by omega)]; rw [hM.w c' (by unfold wok; omega) k' hk']; simp [CallProbe.upd, e]
+  · intro x hx
+    have hx64 : x < 2 ^ 64 := by unfold io outB at hx; omega
+    rw [o]; simp only [store8]; rw [toNat_ofNat_lt hx64]
+    by_cases e : a ≤ x ∧ x < a + 8
+    · rw [if_pos e, show x - x % 8 = a by omega, show x - a = x % 8 by omega]; simp [CallProbe.upd]
+    · rw [if_neg e, hM.bw x hx]; simp [CallProbe.upd, show x - x % 8 ≠ a by omega]
+  · intro x hx h1 h2
+    rw [o]; simp only [store8]; rw [toNat_ofNat_lt hx]
+    rw [if_neg (fun e => h1 (by unfold wok; omega))]; exact hM.fr x hx h1 h2
+
+/-- a byte store to a `sok` byte `a` (a work cell's byte or an output byte) with J's new memory -/
+theorem mid_store1 {K : LayW} {C : List J} {s0 s : M.State} {pc k : Nat} {st : CallProbe.St}
+    (hM : Mid K C s0 (pc, st) k s) (hL : JTarget.LayOK M (16 * C.length) K) (hR : M.ramEnd ≤ 2 ^ 32)
+    (hpcl : pc < C.length) (hk : k < 4) {a : Nat} (ha : sok K a) {v : UInt64}
+    (hg : Goes M s (store1 (M.observe s) a v)) :
+    ∃ s', Runs M s s' ∧ Mid K C s0 (pc, { st with m := CallProbe.sbm st.m a v }) (k + 1) s' := by
+  obtain ⟨s', r, c, o⟩ := hg
+  have hpc := hM.pc
+  have hwa := hL.wlo; have hwb := hL.whi; have hcw := hL.cw; have hbh := hL.bhi; have hoc := hL.oc
+  have hib := hL.ibh; have hob := hL.obh; have hil := hL.ibl; have hol := hL.obl
+  have ha' : (K.lo ≤ a - a % 8 ∧ a - a % 8 + 8 ≤ K.hi) ∨ (K.ob ≤ a ∧ a < K.ob + K.ol) := by
+    unfold sok wok outB at ha; omega
+  refine ⟨s', r, ⟨c, by rw [o]; simp only [store1]; rw [hpc, ofNat_add4]; congr 1, ?_, hM.x0, hM.bb, hM.ww,
+    fun j h0 h32 => by rw [o]; exact hM.x j h0 h32, fun r' h1 h2 => by rw [o]; exact hM.keep r' h1 h2, ?_, ?_, ?_⟩⟩
+  · intro i h k' hk' b hb
+    rw [o]; simp only [store1]
+    rw [blk_len] at hk'
+    have hq : K.base + 4 * 4 * i + 4 * k' + b < 2 ^ 64 := by omega
+    rw [toNat_ofNat_lt hq, if_neg (by omega)]
+    exact hM.code i h k' (by rw [blk_len]; exact hk') b hb
+  · intro c' hc' k' hk'
+    have hc8 : c' % 8 = 0 := hc'.2.2
+    unfold wok at hc'
+    rw [o]; simp only [store1]
+    rw [toNat_ofNat_lt (by omega), hM.w c' (by unfold wok; omega) k' hk', cbyte_sbm _ _ _ _ _ hc8 hk']
+    by_cases e : c' + k' = a
+    · rw [if_pos e, if_pos e]
+    · rw [if_neg e, if_neg e]
+  · intro x hx
+    have hx64 : x < 2 ^ 64 := by unfold io outB at hx; omega
+    rw [o]; simp only [store1]; rw [toNat_ofNat_lt hx64, hM.bw x hx]
+    rw [cbyte_sbm _ _ _ _ _ (by omega) (Nat.mod_lt _ (by decide)), show x - x % 8 + x % 8 = x by omega]
+    by_cases e : x = a
+    · rw [if_pos e, if_pos e]
+    · rw [if_neg e, if_neg e]
+  · intro x hx h1 h2
+    rw [o]; simp only [store1]; rw [toNat_ofNat_lt hx]
+    rw [if_neg (fun e => by subst e; unfold sok at ha; exact ha.elim h1 h2)]; exact hM.fr x hx h1 h2
 
 end JT
