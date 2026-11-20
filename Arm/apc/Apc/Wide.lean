@@ -7,7 +7,7 @@ cset`); `bini`: no immediate forms (`immOK = false`: the lowering puts the const
 `ldS/stS` = `ldr/str [x28, #8(j+1)]`; `enter`/`leave` as `apcF`. -/
 import Apc.Frame
 import Apc.WideDec
-import Compiler.Opt.BFn
+import Nano.Base.Compiler.Opt.BFn
 namespace Proven.Apc
 open Proven Proven.Mach
 

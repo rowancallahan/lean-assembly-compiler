@@ -1,6 +1,6 @@
-import Nano.ProofSrc
-import Nano.StackRec
-import Nano.SelfHost
+import Legacy.Nano.ProofSrc
+import Legacy.Nano.StackRec
+import Legacy.Nano.SelfHost
 #print axioms Nano.nano_compile_correct
 #print axioms Nano.nano_compile_runs
 #print axioms Nano.lower_ok

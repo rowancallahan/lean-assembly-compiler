@@ -1,4 +1,4 @@
-import Riscv.Frontx.ConLecheHard
+import Legacy.Riscv.Frontx.ConLecheHard
 #print axioms Proven.Frontx.ConLecheHard.lift1.implements1
 #print axioms Proven.Frontx.ConLecheHard.abs0.implements1
 #print axioms ConLeche.Expr.isStrLit.implements1

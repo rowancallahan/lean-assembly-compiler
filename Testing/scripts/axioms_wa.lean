@@ -1,7 +1,7 @@
-import Riscv.Frontx.WaMul
-import Riscv.Frontx.MulExamples
-import Riscv.Frontx.IntExamples
-import Riscv.Frontx.WaInt
+import Legacy.Riscv.Frontx.WaMul
+import Legacy.Riscv.Frontx.MulExamples
+import Legacy.Riscv.Frontx.IntExamples
+import Legacy.Riscv.Frontx.WaInt
 #print axioms Proven.Mach.Riscv.implements1_of_execO
 #print axioms Proven.WA.implements1_wa
 #print axioms Proven.WA.implements1_waA

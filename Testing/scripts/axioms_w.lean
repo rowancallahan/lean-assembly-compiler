@@ -1,6 +1,6 @@
-import Riscv.Frontx.NameExamples
-import Riscv.Frontx.StringExamples
-import Riscv.Frontx.IndMem
+import Legacy.Riscv.Frontx.NameExamples
+import Legacy.Riscv.Frontx.StringExamples
+import Legacy.Riscv.Frontx.IndMem
 #print axioms Proven.Frontx.IndEx.Pos.mul.implements1
 #print axioms Proven.Frontx.IndEx.NonTail.reverse.implements1
 #print axioms Proven.Frontx.IndEx.eqBinTree.implements1

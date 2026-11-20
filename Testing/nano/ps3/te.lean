@@ -1,5 +1,5 @@
 import Lean
-import Compiler.Ir.Syntax
+import Legacy.Compiler.Ir.Syntax
 open Lean
 deriving instance ToExpr for Proven.Op
 deriving instance ToExpr for Proven.Mach.MOp

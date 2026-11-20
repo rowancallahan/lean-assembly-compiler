@@ -1,5 +1,5 @@
 import Nano.InlQ
-import Nano.WpSpill
+import Legacy.Nano.WpSpill
 open Proven Proven.WA Proven.Mach Proven.Mach.Riscv
 namespace Nano.IP
 def onlyM (xs : ByteArray) : Array Nat := mnQ (Array.replicate (CAP + 0 * xs.size) 0) xs 0 0 0 0 0 0 0 0 0

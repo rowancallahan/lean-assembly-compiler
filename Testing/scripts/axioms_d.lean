@@ -1,5 +1,5 @@
 -- non-vacuity / mutation theorems, expression side (imports LoopExamples: separate from axioms_e)
-import Riscv.Examples.MutationExp
+import Legacy.Riscv.Examples.MutationExp
 #print axioms Proven.Vacuity.cfg_nonvacuous
 #print axioms Proven.Vacuity.compile_ok_concrete
 #print axioms Proven.Vacuity.gcd_ok_concrete

@@ -1,5 +1,5 @@
 import Nano.InlR
-import Nano.WpSpill
+import Legacy.Nano.WpSpill
 open Proven Proven.WA Proven.Mach Proven.Mach.Riscv
 namespace Nano.IR
 open Nano.IP

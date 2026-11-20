@@ -1,13 +1,13 @@
 /- FUZZ10 reference: executes the Lean entries (the same `f` the emitters in Testing/asm/emit_{int,struct,wa,frontx}.lean
 apply to the same inputs) on stdin lines `name hex` (`-` = empty input), prints the result bytes as hex (`-` = empty).
 Run: lean --run Testing/asm/fuzz10/ref10.lean < in.txt -/
-import Riscv.Frontx.IntExamples
-import Riscv.Frontx.WaInt
-import Riscv.Frontx.StructExamples
-import Riscv.Frontx.WaStruct
-import Riscv.Frontx.MonadExamples
-import Riscv.Frontx.MixHash
-import Riscv.Frontx.WaMul
+import Legacy.Riscv.Frontx.IntExamples
+import Legacy.Riscv.Frontx.WaInt
+import Legacy.Riscv.Frontx.StructExamples
+import Legacy.Riscv.Frontx.WaStruct
+import Legacy.Riscv.Frontx.MonadExamples
+import Legacy.Riscv.Frontx.MixHash
+import Legacy.Riscv.Frontx.WaMul
 open Proven Proven.Frontx Proven.Frontx.IntEx
 open Proven.Frontx.Mon
 open Proven.WA.MixHash

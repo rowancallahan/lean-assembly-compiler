@@ -1,7 +1,7 @@
 /- Words and cases of the lean-svg entry points of `Riscv/Frontx/SvgS2.lean` for `frontx_test.py`
 (`frontx-words/<name>.words` / `.cases`, same format as `emit_struct.lean`).
 Run: `lake env lean --tstack=400000 Testing/asm/emit_svg_s2.lean`. -/
-import Riscv.Frontx.SvgS2
+import Legacy.Riscv.Frontx.SvgS2
 open Proven Proven.Frontx Proven.Frontx.Structs Proven.Frontx.SvgS2
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
 def hex2 (b : UInt8) : String := let s := String.ofList (Nat.toDigits 16 b.toNat); if s.length < 2 then "0" ++ s else s

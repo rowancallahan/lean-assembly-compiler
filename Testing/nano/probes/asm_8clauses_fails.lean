@@ -1,6 +1,6 @@
-import Riscv.Frontx.ListOutExamples
-import Riscv.Frontx.Impl1
-import Riscv.Frontx.Checked
+import Legacy.Riscv.Frontx.ListOutExamples
+import Legacy.Riscv.Frontx.Impl1
+import Legacy.Riscv.Frontx.Checked
 namespace P4
 open Proven Proven.Frontx
 

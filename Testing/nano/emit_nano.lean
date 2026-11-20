@@ -1,5 +1,5 @@
-import Nano.AsmSelf
-import Nano.Gen
+import Legacy.Nano.AsmSelf
+import Legacy.Nano.Gen
 /- usage (repo root): NANO_DIR=DIR lake env lean Testing/nano/emit_nano.lean   (DIR holds the *.nano sources)
    writes Testing/asm/frontx-words/nanoasm.{words,cases}: the machine-theorem binary of the assembler stage and,
    per source, the record bytes (nanoElab + genR) with the result of executed Lean `asm`; and DIR/index.txt:

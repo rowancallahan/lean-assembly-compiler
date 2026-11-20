@@ -15,18 +15,18 @@ step() {  # step <timeout> <target>
   /usr/bin/time -v timeout $1 lake build $2 > >(grep -E "error|✖|Build completed" >> $OUT) 2> >(grep -E "Elapsed|Maximum resident|Exit status" >> $OUT)
 }
 # dependencies of the first heavy module (light modules, lake's default parallelism)
-step 40m "Nano.ParseS3B Compiler.S3.Front Nano.S3Stage Nano.TokS3Enc"
-step 10m Nano.ParseS3BSelf
-step 10m Nano.ParseS3BAllocA
-step 10m Nano.ParseS3BAllocB
-step 10m Nano.ParseS3BStage
-step 40m "Nano.LexS3 Nano.InlS3"
-step 10m Nano.LexS3Self
-step 10m Nano.LexS3Stage
-step 10m Nano.InlS3Self
-step 10m Nano.InlS3Stage
-step 40m Nano.ExpandMSelf
-step 40m Nano.ParseBSelfHost
-step 40m Nano.LeanLimits
-step 10m Nano.SelfHostFinal
+step 40m "Legacy.Nano.ParseS3B Legacy.Compiler.S3.Front Legacy.Nano.S3Stage Legacy.Nano.TokS3Enc"
+step 10m Legacy.Nano.ParseS3BSelf
+step 10m Legacy.Nano.ParseS3BAllocA
+step 10m Legacy.Nano.ParseS3BAllocB
+step 10m Legacy.Nano.ParseS3BStage
+step 40m "Legacy.Nano.LexS3 Legacy.Nano.InlS3"
+step 10m Legacy.Nano.LexS3Self
+step 10m Legacy.Nano.LexS3Stage
+step 10m Legacy.Nano.InlS3Self
+step 10m Legacy.Nano.InlS3Stage
+step 40m Legacy.Nano.ExpandMSelf
+step 40m Legacy.Nano.ParseBSelfHost
+step 40m Legacy.Nano.LeanLimits
+step 10m Legacy.Nano.SelfHostFinal
 echo "TOTAL wall $(( $(date +%s) - T0 )) s; peak system memory (RAM+swap used, GB): $(sort -g $MEM | tail -1)" >> $OUT

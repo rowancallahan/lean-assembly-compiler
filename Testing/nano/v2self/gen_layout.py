@@ -3,7 +3,7 @@
 y15 = the heap initialisation with the total size as a NUMERAL: fuel arguments cannot be constants).  tokens are appended after the last region."""
 import sys, re
 mode = sys.argv[1]
-f_in = sys.argv[2] if len(sys.argv) > 2 else "Nano/V2Self/Legacy/C/Par0.lean"
+f_in = sys.argv[2] if len(sys.argv) > 2 else "Legacy/Nano/V2Self/Legacy/C/Par0.lean"
 f_out = sys.argv[3] if len(sys.argv) > 3 else f_in
 caps = {"real": (12288, 4096, 16384 * 8, 32768, 4096), "small": (1536, 512, 1024 * 8, 12288, 1024)}[mode]   # task stack (3 words/task), operands, nodes*8, defs+shapes+flatten (Par1 needs >= 8192 + 3 * shapes), bindings (4 words each)
 c = dict(zip(["d2", "d4", "d6", "d8", "d10"], caps))

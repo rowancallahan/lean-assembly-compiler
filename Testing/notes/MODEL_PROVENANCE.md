@@ -198,7 +198,7 @@ Single-file hashes, such as the partitioned definition dump `76a23330…` (ARM_F
 ## 4. Regenerated RISC-V model for Lean 4.34 (used by `release-434`)
 
 The release builds every RISC-V theorem against this model instead of §1's. **It is not the trusted §1 model.**
-The full record is `Riscv/gen/PROVENANCE.md` (branch `rv-regen-434`, merged into `release-434`). Summary:
+The full record is `Testing/riscv/gen/PROVENANCE.md` (branch `rv-regen-434`, merged into `release-434`). Summary:
 
 * **Generator:** `rems-project/sail` branch `sail2` @ `97aa617dcd4d01575f773cb58ea1e8686858c8c2` (2026-11-17).
   * Not a tagged release: the newest tag `0.20.3` predates the Lean 4.34 port `31342bdb`.
@@ -210,12 +210,12 @@ The full record is `Riscv/gen/PROVENANCE.md` (branch `rv-regen-434`, merged into
   regenerated.
 * **Lean toolchain:** 4.34.1. **lean-sail:** `v10` = `e4745c8`, as in §2.
 * **Where:** orphan branch `deps-rv-regen434` @ `4cf120c8` of this repo, checked out at `../deps/sail-riscv-lean`.
-  Reproduce with `Riscv/gen/regen434/regen.sh`.
+  Reproduce with `Testing/riscv/gen/regen434/regen.sh`.
 * **Content hash** (`model_hash.sh`): `6ac35da94bf8af379ce9160b39bf3f93b28dd463b0356b6803d40316dcb8bfae`, 161 files.
   This was recomputed independently (O, 2026-11-20) on a fresh worktree of `4cf120c8`.
 * **Diff against §1:** `Testing/notes/rvregen434/model.diff.gz` (164 files, +14,511/−31,093). The definition-level
-  comparison and its classification are in the `Riscv/gen/regen434/` tools and `RV_REGEN_434.md`.
+  comparison and its classification are in the `Testing/riscv/gen/regen434/` tools and `RV_REGEN_434.md`.
 * **Theorems on it in `release-434`:** all of §1's (REVIEW `C_correctLO` / `C_runsO` / self theorems, the `Riscv` lib).
   Their axioms are pinned in `review_axioms.txt` of `release-434`.
-* **Not the same thing:** `rv434-experiment` is the RISC-V model **hand-edited** for 4.34.1 (`Riscv/gen/patch_434.sh`,
+* **Not the same thing:** `rv434-experiment` is the RISC-V model **hand-edited** for 4.34.1 (`Testing/riscv/gen/patch_434.sh`,
   inverse check `verify_434.py`). It is experimental and untrusted, and no result counts from it (`BRANCHES.md`).

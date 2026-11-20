@@ -1,5 +1,5 @@
-import Riscv.Examples.Implements1Opt
-import Riscv.Examples.MsortBOpt
+import Legacy.Riscv.Examples.Implements1Opt
+import Legacy.Riscv.Examples.MsortBOpt
 #print axioms Proven.compileAFO_okK
 #print axioms Proven.compileBFO_okK
 #print axioms Proven.Mach.Riscv.implements1_of_execO

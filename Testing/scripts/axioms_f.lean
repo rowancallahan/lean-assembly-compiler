@@ -1,7 +1,7 @@
-import Compiler.BStmt
-import Riscv.Back.SortMerge
-import Riscv.Examples.Implements1Ex
-import Riscv.Examples.Crc
+import Nano.Base.Compiler.BStmt
+import Nano.Base.Riscv.Back.SortMerge
+import Nano.Base.Riscv.Examples.Implements1Ex
+import Nano.Base.Riscv.Examples.Crc
 #print axioms Proven.Mach.MachineF.compBF_ok
 #print axioms Proven.Mach.Riscv.compileBF_ok'
 #print axioms Proven.msortCode_implements_m

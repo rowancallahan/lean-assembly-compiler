@@ -1,7 +1,7 @@
-import Nano.InlPProof
-import Nano.PgStage
-import Nano.SelfHostB
-import Nano.WpSpill
+import Legacy.Nano.InlPProof
+import Legacy.Nano.PgStage
+import Legacy.Nano.SelfHostB
+import Legacy.Nano.WpSpill
 #print axioms Nano.IP.inlP_eq
 #print axioms Nano.IP.mn_main
 #print axioms Nano.Link.pg_stage

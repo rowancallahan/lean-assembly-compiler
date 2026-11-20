@@ -1,8 +1,8 @@
 /- Words and cases of the structure entry points (NOTES section 32: `Riscv/Frontx/StructExamples.lean`,
 `Riscv/Frontx/WaStruct.lean`) for `frontx_test.py` (`frontx-words/<name>.words` / `.cases`, see `emit_frontx.lean`
 and `emit_wa.lean`).  Run: `lake env lean --tstack=400000 Testing/asm/emit_struct.lean`. -/
-import Riscv.Frontx.StructExamples
-import Riscv.Frontx.WaStruct
+import Legacy.Riscv.Frontx.StructExamples
+import Legacy.Riscv.Frontx.WaStruct
 open Proven Proven.Frontx Proven.Frontx.Structs Proven.WA Proven.WA.Struct
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
 def hex2 (b : UInt8) : String := let s := String.ofList (Nat.toDigits 16 b.toNat); if s.length < 2 then "0" ++ s else s

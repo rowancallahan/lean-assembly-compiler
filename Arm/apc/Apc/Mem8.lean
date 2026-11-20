@@ -1,7 +1,7 @@
 /- 8-byte memory on DeepMind's `Arm64.Memory`: `read64`/`write64` against our byte view `memV` (`Mem.wr`, `le8`),
 permissions kept by stores, and the one-word laws for `ldr`/`str` (64-bit, unsigned immediate offset). -/
 import Apc.Mach
-import Compiler.Frame
+import Nano.Base.Compiler.Frame
 namespace Proven.Apc
 open Proven Proven.Mach
 

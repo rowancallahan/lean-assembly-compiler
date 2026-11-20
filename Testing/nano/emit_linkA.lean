@@ -1,5 +1,5 @@
 import Nano.SelfHostedA
-import Nano.Ser
+import Legacy.Nano.Ser
 /- usage (repo root): NANO_DIR=DIR lake env lean --tstack=400000 Testing/nano/emit_linkA.lean
    Linked-binary test data (nano-closeA) for Testing/asm/frontx_test.py:
    * `nanolexlink` = `link vBE.code eBE.code` (theorem: `link_stage` + `eB_vB`: computes `lexB`), per file: input =

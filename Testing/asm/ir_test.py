@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""IR back-end tests (`Compiler/Ir/`, `Riscv/Back/IrTop.lean`; words and cases from `Testing/asm/emit_ir.lean` in `Testing/asm/ir-words/`): every case twice, on QEMU and on the Sail C emulator,
+"""IR back-end tests (`Compiler/Ir/`, `Legacy/Riscv/Back/IrTop.lean`; words and cases from `Testing/asm/emit_ir.lean` in `Testing/asm/ir-words/`): every case twice, on QEMU and on the Sail C emulator,
 in the `StartCorrect` calling convention (a0 = input, a1 = length, a2 = work base (8-aligned), a3 = output,
 sp = work end):
 * with a work block of exactly `memoryNeeded` bytes: output = Lean's result, a0 = the input address (not the flag),

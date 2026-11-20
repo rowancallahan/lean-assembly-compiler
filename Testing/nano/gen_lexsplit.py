@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generates the step macros of the split lexer (Nano/ElabBSplit.lean, branch nano-closeA) from the templates of
+"""Generates the step macros of the split lexer (Legacy/Nano/ElabBSplit.lean, branch nano-closeA) from the templates of
 `Nano.B.lx` (Testing/nano/elabb_{step,end}.tmpl; see gen_elabb.py):
   V (`lv`):   the validator: passes 5 and 0 of `lx`, every emitting alternative `if m == 0 then REC else BYTES :: REC`
               resolved to `REC`; the end of pass 0 restarts in mode 1 = copy the source (output `ty :: source`).

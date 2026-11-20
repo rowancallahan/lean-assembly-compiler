@@ -5,7 +5,7 @@ Generates N random programs (seed S) in the accepted subset, runs
   (2) `frontElabK 64` + `Prog.eval` (Testing/nano/v2f/run.lean);
 and asserts: every program is accepted by nano and the outputs are identical.  With EMIT=1 also writes
 Testing/asm/ir-words/nv2f_*.words/.cases for Testing/nano/v2b_test.py (QEMU + Sail).
-usage: fuzz.py N SEED      (from the repo root; needs the Nano.V2.Front/Gen oleans: lake build Nano.V2.Front Nano.V2.Gen)
+usage: fuzz.py N SEED      (from the repo root; needs the Legacy.Nano.V2.Front/Gen oleans: lake build Legacy.Nano.V2.Front Nano.Base.V2.Gen)
 Also runs the hand cases Testing/nano/v2f/p*.lean and the negative cases Testing/nano/v2f/neg*.lean (nano must reject)."""
 import os, random, subprocess, sys, glob
 LEAN = os.environ.get("LEANCMD", "lake env lean").split()

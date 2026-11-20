@@ -4,8 +4,8 @@ result, length in `a1`, status in `a0`), `pgs_<name>.cases` (input, result bytes
 per input the work block of exactly `memoryNeeded` bytes (`8192 * (pk 0 E + 1)`, `E` the run's page events computed
 by `Pg.evRun`, equal to `memoryNeeded` by `memoryNeeded_eval`; `oom = 0`: the result, `a0 = 0`) and one page less
 (`oom = 1`: `a0 = a1 = 2^64 - 1`, output untouched).  Run: `lake env lean Testing/asm/emit_pg2.lean`. -/
-import Riscv.Frontx.WpLeanZip2
-import Riscv.Frontx.WpRun
+import Legacy.Riscv.Frontx.WpLeanZip2
+import Legacy.Riscv.Frontx.WpRun
 open Proven Proven.WA Proven.WA.LeanZip2 Proven.Top.Alloc
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
 def hex2 (b : UInt8) : String := let s := String.ofList (Nat.toDigits 16 b.toNat); if s.length < 2 then "0" ++ s else s

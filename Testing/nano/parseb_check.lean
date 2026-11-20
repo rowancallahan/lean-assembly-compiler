@@ -1,6 +1,6 @@
-import Nano.ParseBGas
-import Nano.ElabB
-import Nano.ElabU
+import Legacy.Nano.ParseBGas
+import Legacy.Nano.ElabB
+import Legacy.Nano.ElabU
 /- `lake env lean Testing/nano/parseb_check.lean` after `python3 Testing/nano/elabb_inputs.py N SEED >
 Testing/nano/work/parseb_in.txt`: layer A (`parseA` on stage 1's decoded tokens) == `(Nano.U.nanoElabU x).map Nano.U.serU` -/
 open Nano Nano.B Nano.PB

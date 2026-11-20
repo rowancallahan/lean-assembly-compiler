@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reference check of the parser's AST against Nano/V2/Front.lean's independent typing: per def (in order) kind (fn/loop), parameter WORDS (loop: +1 for the fuel slot) and result words.
+"""Reference check of the parser's AST against Legacy/Nano/V2/Front.lean's independent typing: per def (in order) kind (fn/loop), parameter WORDS (loop: +1 for the fuel slot) and result words.
 usage: ref_check.py AST.bin SIGS.txt   (SIGS from: lean --run Testing/nano/v2self/ref_sigs.lean TEXT > SIGS.txt)   exit 1 on any mismatch"""
 import struct, sys
 d = open(sys.argv[1], 'rb').read(); w = struct.unpack('<%dQ' % (len(d) // 8), d)

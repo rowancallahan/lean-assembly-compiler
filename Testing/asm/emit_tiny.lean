@@ -1,5 +1,5 @@
-import Riscv.Frontx.TinySelf
-import Riscv.Frontx.TinySmall
+import Legacy.Riscv.Frontx.TinySelf
+import Legacy.Riscv.Frontx.TinySmall
 open Proven Proven.Frontx Proven.Frontx.Tiny
 def hex2 (b : UInt8) : String := let s := String.ofList (Nat.toDigits 16 b.toNat); if s.length < 2 then "0" ++ s else s
 def hx (xs : List UInt8) : String := if xs.isEmpty then "-" else String.join (xs.map hex2)

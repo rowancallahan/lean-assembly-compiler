@@ -3,7 +3,7 @@
 by Lean, work bytes, `oom`): per input the work block of exactly `memoryNeeded` bytes (the pages of the run, one page for
 the frame; `oom = 0`: the code returns the result) and one page less (`oom = 1`: `a1 = 2^64 - 1`, output untouched).
 Run: `lake env lean Testing/asm/emit_pg.lean`. -/
-import Riscv.Frontx.WpLeanZip
+import Legacy.Riscv.Frontx.WpLeanZip
 open Proven Proven.WA Proven.WA.PgEx Proven.WA.LeanZip
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
 def hex2 (b : UInt8) : String := let s := String.ofList (Nat.toDigits 16 b.toNat); if s.length < 2 then "0" ++ s else s

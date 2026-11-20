@@ -1,7 +1,7 @@
 /- Words and cases of the BookS4 entry points (`Riscv/Frontx/BookS4.lean`, BOOK_S4.md) for `frontx_test.py`
 (`s4_<name>.words`: first line the slots, `s4_<name>.cases`: input, result bytes computed by Lean).
 Run: `lake env lean --tstack=400000 Testing/asm/emit_s4.lean`. -/
-import Riscv.Frontx.BookS4
+import Legacy.Riscv.Frontx.BookS4
 open Proven Proven.Frontx Proven.Frontx.IntEx Proven.Frontx.BookS4
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
 def hex2 (b : UInt8) : String := let s := String.ofList (Nat.toDigits 16 b.toNat); if s.length < 2 then "0" ++ s else s

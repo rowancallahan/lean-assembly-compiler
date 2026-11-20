@@ -1,6 +1,6 @@
 /- PROBE 2 (nano-int, 2026-11-17): steps that do NOT consume input in the paged front end (`wp_compile`): a copy mode
    with a counter and a lexicographic measure.  PASSES (3 min, Sail axioms only).  Run: `lake env lean Testing/nano/wp_copy_probe.lean`. -/
-import Riscv.Frontx.WpCmd
+import Legacy.Riscv.Frontx.WpCmd
 namespace NanoW
 open Proven.WA
 

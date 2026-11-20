@@ -1,4 +1,4 @@
-import Riscv.Frontx.WpCmd
+import Legacy.Riscv.Frontx.WpCmd
 namespace NanoCB
 open Proven.WA
 

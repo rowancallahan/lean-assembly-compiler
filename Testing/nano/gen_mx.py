@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Generates the record table of `Nano.MX.mx` (Nano/ExpandM.lean, Nano/ExpandMSelf.lean) from `mexp`'s arms
-(Nano/Expand.lean): per micro-op m and record number k a UInt64 code (bytes 0-3; bit 32: byte 3 is the argument x,
+"""Generates the record table of `Nano.MX.mx` (Legacy/Nano/ExpandM.lean, Legacy/Nano/ExpandMSelf.lean) from `mexp`'s arms
+(Legacy/Nano/Expand.lean): per micro-op m and record number k a UInt64 code (bytes 0-3; bit 32: byte 3 is the argument x,
 bit 33: byte 0 is x, bit 34: last record).  `python3 gen_mx.py LEAF` prints the decision tree on (m, k) with every
 leaf `LEAF (code)`; m and k are the names `m`, `k` (the view side substitutes `B[i]` for `m`)."""
 import sys

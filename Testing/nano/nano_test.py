@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """(6) nanoGen output vs `Prog.eval` on QEMU (qemu-riscv64 user mode) and on the Sail C simulator.
 usage: nano_test.py [N_random_programs] [seed]
-Programs = CORPUS + N random ones; per program 6 input vectors.  Lean (`Nano.Gen`) elaborates, compiles and evaluates."""
+Programs = CORPUS + N random ones; per program 6 input vectors.  Lean (`Legacy.Nano.Gen`) elaborates, compiles and evaluates."""
 import os, random, re, subprocess, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from nanolib import *
@@ -16,7 +16,7 @@ progs = list(base); g = GI(rng, "Int64") if INT else G(rng)
 while len(progs) < len(base) + N: progs.append(g.program())
 cases = [(s, [[a % M for a in v] for v in inputs_i(rng, entry_arity(s))] if INT else inputs(rng, entry_arity(s))) for s in progs]
 lit = lambda s: '"' + s.replace("\\", "\\\\").replace("\n", "\\n") + '"'
-lean = ["import Nano.Gen", "open Nano", "def hex (xs : List UInt8) : String := String.join (xs.map fun b => (if b < 16 then \"0\" else \"\") ++ String.ofList (Nat.toDigits 16 b.toNat))",
+lean = ["import Legacy.Nano.Gen", "open Nano", "def hex (xs : List UInt8) : String := String.join (xs.map fun b => (if b < 16 then \"0\" else \"\") ++ String.ofList (Nat.toDigits 16 b.toNat))",
         "def run (src : String) (ins : List (List UInt64)) : IO Unit := do",
         "  match nanoCompile src.toUTF8.toList with",
         "  | none => IO.println \"REJECT\"",

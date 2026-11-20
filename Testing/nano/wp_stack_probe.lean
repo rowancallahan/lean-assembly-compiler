@@ -1,7 +1,7 @@
 /- PROBE (nano-int, 2026-11-17): does the paged front end (`wp_compile`) accept an explicit-stack machine?  YES, in this
    shape (6.5 min, `umE.compiles` / `umE.computes`, Sail axioms only).  Not part of the `Nano` lib (slow); run with
    `lake env lean Testing/nano/wp_stack_probe.lean`.  Findings in Testing/notes/NANO_INT.md. -/
-import Riscv.Frontx.WpCmd
+import Legacy.Riscv.Frontx.WpCmd
 namespace NanoW
 open Proven.WA
 

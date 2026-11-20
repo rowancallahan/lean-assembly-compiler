@@ -1,7 +1,7 @@
-import Nano.InlP
-import Nano.PgStage
-import Riscv.Frontx.WpBridge
-import Nano.WpSpill
+import Legacy.Nano.InlP
+import Legacy.Nano.PgStage
+import Legacy.Riscv.Frontx.WpBridge
+import Legacy.Nano.WpSpill
 set_option linter.unusedSimpArgs false
 
 namespace Nano.IRs

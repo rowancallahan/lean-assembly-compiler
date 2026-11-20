@@ -3,7 +3,7 @@ from the existing Sail-RV simulation (SimW/SimX `sim_stepX`, RvStep `sim_ret` / 
 import Nano.V2Self.Proof.Machine.Target
 import Nano.V2Self.Proof.Machine.SimX
 import Nano.V2Self.Proof.Machine.RvStep
-import Riscv.Back.LinkL
+import Nano.Base.Riscv.Back.LinkL
 namespace JT
 open Proven Proven.Top SimW CallProbe
 

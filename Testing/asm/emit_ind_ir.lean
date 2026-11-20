@@ -5,13 +5,13 @@ input, Lean's result and `memoryNeeded` (8 bytes times the peak of the Lin run's
 frame, from the IR interpreter; the interpreter's output is checked against Lean's).  Run:
 `lake env lean --tstack=4000000 Testing/asm/emit_ind_ir.lean`, then `python3 Testing/asm/ir_test.py check 50 <name>`
 (QEMU + Sail at `memoryNeeded` and `memoryNeeded - 1`). -/
-import Riscv.Back.IrTarget
-import Compiler.Ir.Lin
-import Compiler.Ir.IndLowMain
-import Riscv.Frontx.IndExamples
-import Riscv.Frontx.Ind2Examples
-import Riscv.Frontx.IndCmpExamples
-import Riscv.Frontx.ExprExamples
+import Legacy.Riscv.Back.IrTarget
+import Legacy.Compiler.Ir.Lin
+import Legacy.Compiler.Ir.IndLowMain
+import Legacy.Riscv.Frontx.IndExamples
+import Legacy.Riscv.Frontx.Ind2Examples
+import Legacy.Riscv.Frontx.IndCmpExamples
+import Legacy.Riscv.Frontx.ExprExamples
 open Proven.Frontx
 open Proven (leN)
 open Proven.Ir Proven.Mach.Riscv Proven.Top.Alloc

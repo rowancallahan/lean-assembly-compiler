@@ -1,10 +1,10 @@
-import Nano.Link
-import Nano.SelfHost
-import Nano.SelfHostAsm
-import Nano.LinkPg
-import Nano.ElabU
-import Nano.SerU
-import Nano.SelfHostChain
+import Legacy.Nano.Link
+import Legacy.Nano.SelfHost
+import Legacy.Nano.SelfHostAsm
+import Legacy.Nano.LinkPg
+import Legacy.Nano.ElabU
+import Legacy.Nano.SerU
+import Legacy.Nano.SelfHostChain
 #print axioms Nano.Link.link_implements
 #print axioms Nano.Link.link_stage
 #print axioms Nano.SelfHost.selfHosted_of

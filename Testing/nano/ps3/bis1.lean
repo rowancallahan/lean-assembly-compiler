@@ -2,7 +2,7 @@
 certificates) through the adapter (`Nano.S3Stage.stage`). The IR compiler's acceptance and the code length are
 kernel-checked on literals (`irLit%`, `layLit%`: the allocated program and the layout, elaborated by evaluation and
 checked by the kernel; see Nano/S3Stage.lean). -/
-import Nano.ParseS3BSelf
+import Legacy.Nano.ParseS3BSelf
 
 namespace Nano.PS
 open Proven Proven.S3 Proven.Ir Proven.Mach.Riscv Nano.S3Stage

@@ -1,4 +1,4 @@
-import Riscv.Frontx.S3IO
+import Legacy.Riscv.Frontx.S3IO
 theorem u8_mk_sw (x : BitVec 64) : (⟨x.setWidth 8⟩ : UInt8) = UInt8.ofNat x.toNat := by
   apply UInt8.toNat_inj.mp; simp; omega
 theorem u64_toUInt8_ofNat (y : UInt64) : y.toUInt8 = UInt8.ofNat y.toNat := rfl

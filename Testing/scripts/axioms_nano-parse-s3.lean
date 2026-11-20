@@ -1,5 +1,5 @@
-import Nano.ParseS3BStage
-import Nano.InlS3Stage
+import Legacy.Nano.ParseS3BStage
+import Legacy.Nano.InlS3Stage
 #print axioms Proven.S3.implements1
 #print axioms Proven.S3.implements1_spaceOf
 #print axioms Nano.PS.stage2S_eq

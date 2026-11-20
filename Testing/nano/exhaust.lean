@@ -1,5 +1,5 @@
 import Lean
-import Nano.Elab
+import Legacy.Nano.Elab
 /- EXHAUSTIVE subset check: every body of 1..L tokens over a 15-token alphabet, as `def f (x y : UInt64) : UInt64 := <body>` after
    `def g (a b) := a - b; def h (a) := a * 3; def k := 7`.  nanoElab runs on all of them (fast); every text nano ACCEPTS is also run through
    Lean's real frontend, and the results on 4 input vectors must be equal.  usage:

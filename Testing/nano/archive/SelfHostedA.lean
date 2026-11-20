@@ -2,10 +2,10 @@
 stage 1a `vBE` (validator), stage 1b `eBE` (emitter), the expander `nanoExpM` (= `mexp` via `mexp_eq_mx`) and the
 assembler `nanoAsm`, all compiled by our front end with their machine theorems.  What remains: stage 2 and the
 inliner (box nano-closeB). -/
-import Nano.SelfHostSplit
+import Legacy.Nano.SelfHostSplit
 import NanoSlow.ElabBVSelf
 import NanoSlow.ElabBESelf
-import Nano.ExpandMSelf
+import Legacy.Nano.ExpandMSelf
 
 set_option linter.unusedVariables false
 

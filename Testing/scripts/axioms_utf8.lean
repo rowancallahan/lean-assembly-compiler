@@ -1,4 +1,4 @@
-import Riscv.Frontx.NameExamples
+import Legacy.Riscv.Frontx.NameExamples
 #print axioms Proven.Mach.Ind.dStr_ok
 #print axioms Proven.Mach.Ind.eStr_ok
 #print axioms Proven.Mach.Ind.dec_ok

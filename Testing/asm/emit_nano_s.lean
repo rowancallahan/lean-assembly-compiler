@@ -4,7 +4,7 @@ sources through `nanoElab`), their words (`nanoGen` = `Ir.compile ∘ lower`) an
 `Testing/asm/ir-words/nano_<i>.{words,cases}`.  Run:
 `lake env lean Testing/asm/emit_nano.lean`, then `for i in ...; python3 Testing/asm/ir_test.py check 8 nano_$i`
 (QEMU + Sail at `memoryNeeded` and `memoryNeeded - 1`), or `Testing/asm/nano_test.sh`. -/
-import Nano.Gen
+import Legacy.Nano.Gen
 open Nano
 
 def leN (n v : Nat) : List UInt8 := (List.range n).map fun i => (v / 256 ^ i % 256).toUInt8

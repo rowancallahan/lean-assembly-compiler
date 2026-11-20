@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Int64 nano programs through the proved generator `nanoGenIR` (= code of `nanoCompileIR`, Nano/ProofTop.lean) on QEMU and
+"""Int64 nano programs through the proved generator `nanoGenIR` (= code of `nanoCompileIR`, Legacy/Nano/ProofTop.lean) on QEMU and
 on the Sail C simulator: Testing/nano/nanolib.INT_CORPUS + R random Int64 programs (GI), 8 signed / overflow / edge input
 vectors each.  The Lean emitter (generated: Testing/nano/work/emit_int.lean) elaborates with nanoElabT (type must be
 Int64), writes `nanoGenIR p` words and per case input = `encIs args`, expected = `nanoRun p input`, and CHECKS
@@ -14,7 +14,7 @@ R = int(sys.argv[1]) if len(sys.argv) > 1 else 12
 rng = random.Random(int(sys.argv[2]) if len(sys.argv) > 2 else 5); g = GI(rng, "Int64")
 progs = list(INT_CORPUS) + [g.program() for _ in range(R)]
 lit = lambda s: '"' + s.replace("\\", "\\\\").replace("\n", "\\n") + '"'
-L = ["import Nano.ProofTop", "import Nano.Int", "import Nano.Elab", "open Proven (leN)", "open Proven.Ir Proven.Top.Alloc Nano",
+L = ["import Legacy.Nano.ProofTop", "import Legacy.Nano.Int", "import Legacy.Nano.Elab", "open Proven (leN)", "open Proven.Ir Proven.Top.Alloc Nano",
      "set_option linter.unusedVariables false", "set_option maxRecDepth 10000",
      "def hex2 (b : UInt8) : String := let s := String.ofList (Nat.toDigits 16 b.toNat); if s.length < 2 then \"0\" ++ s else s",
      "def hx (xs : List UInt8) : String := if xs.isEmpty then \"-\" else String.join (xs.map hex2)",
