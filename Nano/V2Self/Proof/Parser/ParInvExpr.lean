@@ -6,14 +6,14 @@ namespace ParInv
 open C BufL ParSpec ParRun
 
 theorem rep_bounds {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs) :
-    (bget h 7).toNat < 2 ^ 32 ∧ 184384 ≤ h.length ∧ st.arena.length ≤ 16384 := by
+    (bget h 7).toNat < 2 ^ 32 ∧ LAY_HASH ≤ h.length ∧ st.arena.length ≤ 16384 := by
   obtain ⟨rT, rts, _, _, _, _, _, rA, _, _, _, _, rO, _⟩ := r
   exact ⟨by rw [rT.2.2.2]; simp; omega, by rw [rO.1]; omega, rA.2.1⟩
 
 /-- two pushes on top of a popped stack: the cells outside h[5] and the two new records are unchanged -/
-theorem push2_cells (h : Buf) (c1 a1 b1 c2 a2 b2 : UInt64) (hg : (bget h 5).toNat + 1 < 4096) (hl : 12352 ≤ h.length) :
+theorem push2_cells (h : Buf) (c1 a1 b1 c2 a2 b2 : UInt64) (hg : (bget h 5).toNat + 1 < 4096) (hl : LAY_D3 ≤ h.length) :
     let h' := v1 (v1 h c1 a1 b1) c2 a2 b2
-    h'.length = h.length ∧ (∀ i : UInt64, i.toNat ≠ 5 → (i.toNat < 64 ∨ 12352 ≤ i.toNat) → bget h' i = bget h i) := by
+    h'.length = h.length ∧ (∀ i : UInt64, i.toNat ≠ 5 → (i.toNat < 64 ∨ LAY_D3 ≤ i.toNat) → bget h' i = bget h i) := by
   intro h'
   obtain ⟨L1, _, E1, U1⟩ := v1_eff h c1 a1 b1 (by omega) hl
   have e1 : (bget (v1 h c1 a1 b1) 5).toNat = (bget h 5).toNat + 1 := by rw [E1, tn_add _ _ (by simp; omega)]; simp
@@ -29,7 +29,7 @@ theorem push2_cells (h : Buf) (c1 a1 b1 c2 a2 b2 : UInt64) (hg : (bget h 5).toNa
     · exact Or.inr (by omega)
   rw [U2 i h5 q1, U1 i h5 q2]
 
-theorem drop_v1 (h : Buf) (c a b : UInt64) (hl : 184384 ≤ h.length) : (v1 h c a b).drop 184384 = h.drop 184384 := by
+theorem drop_v1 (h : Buf) (c a b : UInt64) (hl : LAY_HASH ≤ h.length) : (v1 h c a b).drop LAY_HASH = h.drop LAY_HASH := by
   unfold v1
   split
   · rename_i hg
@@ -55,7 +55,7 @@ theorem h_expr {h ts : Buf} {st : St} {m md : Nat} {fs : List Frame} (r : Rep h 
   generalize (taskAt h fs.length).b = b at E eb
   have ev : step h = v1 (v1 (bset h 5 fs.length.toUInt64) 2 a 0) 3 0 b := by rw [E]; simp [v96, v100]
   rw [ev] at hs ⊢
-  have l1 : 12352 ≤ (bset h 5 fs.length.toUInt64).length := by simp [length_bset]; omega
+  have l1 : LAY_D3 ≤ (bset h 5 fs.length.toUInt64).length := by simp [length_bset]; omega
   have o2 := v1_ok _ _ _ _ hs
   have o1 : (bget (bset h 5 fs.length.toUInt64) 5).toNat < 4096 :=
     v1_ok _ 2 a 0 (fun z => hs (v1_zero _ _ _ _ z))

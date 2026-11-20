@@ -4,13 +4,13 @@ import Nano.V2Self.Proof.Parser.ParInvAtom
 namespace ParInv
 open C BufL ParSpec ParRun
 
-theorem v6_eff (g : Buf) (x s w : UInt64) (n : Nat) (hn : bget g 4 = n.toUInt64) (hn2 : n < 1024) (hl : 184384 ≤ g.length) :
+theorem v6_eff (g : Buf) (x s w : UInt64) (n : Nat) (hn : bget g 4 = n.toUInt64) (hn2 : n < 1024) (hl : LAY_HASH ≤ g.length) :
     let g' := v6 g x s w
     g'.length = g.length ∧ bget g' 4 = (n + 1).toUInt64 ∧
     bget g' (d9 + 4 * n.toUInt64) = x ∧ bget g' (d9 + 4 * n.toUInt64 + 1) = s ∧ bget g' (d9 + 4 * n.toUInt64 + 2) = w ∧
     bget g' (d9 + 4 * n.toUInt64 + 3) = 0 ∧
-    (∀ i : UInt64, i.toNat ≠ 4 → (i.toNat < 180288 + 4 * n ∨ 180288 + 4 * n + 4 ≤ i.toNat) → bget g' i = bget g i) ∧
-    g'.drop 184384 = g.drop 184384 := by
+    (∀ i : UInt64, i.toNat ≠ 4 → (i.toNat < LAY_D9 + 4 * n ∨ LAY_D9 + 4 * n + 4 ≤ i.toNat) → bget g' i = bget g i) ∧
+    g'.drop LAY_HASH = g.drop LAY_HASH := by
   intro g'
   have c0 := rowCell n hn2 0 (by decide); have c1 := rowCell n hn2 1 (by decide)
   have c2 := rowCell n hn2 2 (by decide); have c3 := rowCell n hn2 3 (by decide)
@@ -58,7 +58,7 @@ theorem rep_v6 {g ts : Buf} {st : St} {fs : List Frame} (R : Rep g ts st fs) (x 
   rw [b4] at hlt
   have hn : bget g 4 = st.binds.length.toUInt64 := by rw [← b4]; simp
   obtain ⟨L, e4, c0, c1, c2, c3, U, D⟩ := v6_eff g x s w st.binds.length hn hlt hl
-  have e : ∀ i : UInt64, i.toNat ≠ 4 → (i.toNat < 180288 ∨ 184384 ≤ i.toNat) → bget (v6 g x s w) i = bget g i :=
+  have e : ∀ i : UInt64, i.toNat ≠ 4 → (i.toNat < LAY_D9 ∨ LAY_HASH ≤ i.toNat) → bget (v6 g x s w) i = bget g i :=
     fun i a b => U i a (by omega)
   have et : TokAgree g (v6 g x s w) := ⟨e 7 (by decide) (Or.inl (by decide)), fun i hi => e i (by omega) (Or.inr hi)⟩
   have es : ShTabAgree g (v6 g x s w) := fun i a _ => e i (by omega) (Or.inl (by omega))

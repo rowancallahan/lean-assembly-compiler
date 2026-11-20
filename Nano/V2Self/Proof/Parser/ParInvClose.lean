@@ -6,7 +6,7 @@ namespace ParInv
 open C BufL ParSpec ParRun
 
 theorem shRows_frame {g g1 : Buf} (r : ShRows g) (e26 : bget g1 26 = bget g 26)
-    (e : ∀ i : UInt64, 155712 ≤ i.toNat → bget g1 i = bget g i) : ShRows g1 := by
+    (e : ∀ i : UInt64, LAY_SHP ≤ i.toNat → bget g1 i = bget g i) : ShRows g1 := by
   have es : ShTabAgree g g1 := fun i a _ => e i a
   obtain ⟨r1, r2, r3⟩ := r
   have ek : ∀ k : Nat, k < 8192 → ∀ q : UInt64, q.toNat < 3 →
@@ -71,8 +71,8 @@ theorem defsRep_close {g g1 : Buf} {st : St} (rD : DefsRep g st true) (e12 : bge
 
 /-- the between-defs representation ignores h[5] and the task region -/
 theorem repZ_frameT {h h' ts : Buf} {st : St} (r : RepZ h ts st)
-    (e : ∀ i : UInt64, i.toNat ≠ 5 → (i.toNat < 64 ∨ 12352 ≤ i.toNat) → bget h' i = bget h i)
-    (ed : h'.drop 184384 = h.drop 184384) : RepZ h' ts st := by
+    (e : ∀ i : UInt64, i.toNat ≠ 5 → (i.toNat < 64 ∨ LAY_D3 ≤ i.toNat) → bget h' i = bget h i)
+    (ed : h'.drop LAY_HASH = h.drop LAY_HASH) : RepZ h' ts st := by
   obtain ⟨rT, rts, r0, r3, r11, rB, rD, rA, r25, r29, r30, r32, rO⟩ := r
   have hn : (bget h 7).toNat < 2 ^ 32 := by rw [rT.2.2.2]; simp; omega
   have c : ∀ n : UInt64, n.toNat < 64 → n.toNat ≠ 5 → bget h' n = bget h n := fun n a b => e n b (Or.inl a)

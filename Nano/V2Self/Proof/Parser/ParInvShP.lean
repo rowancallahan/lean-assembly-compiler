@@ -37,7 +37,7 @@ theorem KidsR.frameP {h h' : Buf} {f : UInt64} {ns : List ParRun.RN} {ids : List
 end
 
 theorem arena_frameP {h h' : Buf} {arena vals : List RN} (r : ArenaRep h arena vals) (e8 : bget h' 8 = bget h 8)
-    (e9 : bget h' 9 = bget h 9) (er : RegAgree h h' 12352 147520) (es : ShPres h h') : ArenaRep h' arena vals := by
+    (e9 : bget h' 9 = bget h 9) (er : RegAgree h h' LAY_D3 LAY_D7) (es : ShPres h h') : ArenaRep h' arena vals := by
   obtain ⟨r9, ral, r8, rvl, I, hI, hR, hD, hX⟩ := r
   have ea : ArenaAgree h h' := fun i a b => er i (by omega) b
   have op : ∀ k, k < 4096 → opAt h' k = opAt h k := fun k hk => er _ (by rw [d3k k hk]; omega) (by rw [d3k k hk]; omega)
@@ -83,7 +83,7 @@ theorem tasks_frameP {h h' : Buf} {arena : List RN} {fs : List Frame} (r : Tasks
   simp only [tk]
   exact ⟨(rk k hk).1, frameArgs_frameP et hn es ea har _ _ _ (rk k hk).2⟩
 
-theorem binds_frameP {h h' : Buf} {bs : List Bd} (r : BindsRep h bs) (e4 : bget h' 4 = bget h 4) (er : RegAgree h h' 180288 184384)
+theorem binds_frameP {h h' : Buf} {bs : List Bd} (r : BindsRep h bs) (e4 : bget h' 4 = bget h 4) (er : RegAgree h h' LAY_D9 LAY_HASH)
     (et : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShPres h h') : BindsRep h' bs := by
   obtain ⟨r4, rl, rk⟩ := r
   refine ⟨by rw [e4]; exact r4, rl, fun i hi => ?_⟩
@@ -94,7 +94,7 @@ theorem binds_frameP {h h' : Buf} {bs : List Bd} (r : BindsRep h bs) (e4 : bget 
   exact ⟨by rw [c0]; exact nameAt_frame et (by omega) a0, by rw [c 1 (by decide)]; exact a1, by rw [c 2 (by decide)]; exact a2.pres es,
     by rw [c 3 (by decide)]; exact a3⟩
 
-theorem row_frameP {h h' : Buf} {j : Nat} {d : DefR} (hj : j < 512) (r : RowRep h j d) (er : RegAgree h h' 147520 155712)
+theorem row_frameP {h h' : Buf} {j : Nat} {d : DefR} (hj : j < 512) (r : RowRep h j d) (er : RegAgree h h' LAY_D7 LAY_SHP)
     (et : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShPres h h') : RowRep h' j d := by
   have c : ∀ k : UInt64, k.toNat < 8 → bget h' (d7 + 8 * j.toUInt64 + k) = bget h (d7 + 8 * j.toUInt64 + k) :=
     fun k hk => er _ (by rw [defCell j hj k hk]; omega) (by rw [defCell j hj k hk]; omega)
@@ -108,7 +108,7 @@ theorem row_frameP {h h' : Buf} {j : Nat} {d : DefR} (hj : j < 512) (r : RowRep 
 
 /-- the def table (all but the pair-table part) under shape-code preservation -/
 theorem defs_frameP {h h' : Buf} {st : St} {b : Bool} (r : DefsRep h st b) (e12 : bget h' 12 = bget h 12) (e27 : bget h' 27 = bget h 27)
-    (er : RegAgree h h' 147520 155712) (et : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShPres h h') (hsr : ShRows h') :
+    (er : RegAgree h h' LAY_D7 LAY_SHP) (et : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShPres h h') (hsr : ShRows h') :
     DefsRep h' st b := by
   have hlen := r.len
   obtain ⟨r12, rl, r27, rd, rc, rz, r0, _, rH⟩ := r
@@ -132,7 +132,7 @@ theorem defs_frameP {h h' : Buf} {st : St} {b : Bool} (r : DefsRep h st b) (e12 
 /-- **allocation frame**: if the pair rows below `n` are unchanged and every row from `n` on had a zero left cell, all shape codes
 keep their meaning (no code can refer to a row ≥ n: its left component would be code 0) -/
 theorem shPres_alloc {g G : Buf} (n : Nat) (hz : ∀ k : Nat, n ≤ k → k < 8192 → bget g (d7 + 8192 + 3 * k.toUInt64) = 0)
-    (hag : ∀ i : UInt64, 155712 ≤ i.toNat → i.toNat < 155712 + 3 * n → bget G i = bget g i) : ShPres g G := by
+    (hag : ∀ i : UInt64, LAY_SHP ≤ i.toNat → i.toNat < LAY_SHP + 3 * n → bget G i = bget g i) : ShPres g G := by
   intro c s r
   induction r with
   | uw => exact .uw

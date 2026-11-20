@@ -151,13 +151,13 @@ theorem zd4_ok {h ts : Buf} {st : St} {fs : List Frame} (R : Rep h ts st fs) (hs
     exact ⟨r, et, rep_push (.armBind true 1) 1 1 R2 rfl ⟨rfl, rfl⟩ hs⟩
   · rw [if_neg c] at hs; exact absurd (stat0 _ (by omega)) hs
 
-theorem zd4_zero (h : Buf) (hl : 12352 ≤ h.length) (h0 : bget h 0 = 0) : bget (zd4 h) 0 = 0 := by
+theorem zd4_zero (h : Buf) (hl : LAY_D3 ≤ h.length) (h0 : bget h 0 = 0) : bget (zd4 h) 0 = 0 := by
   unfold zd4
   split
   · exact v1_zero _ _ _ _ (by rw [bget_bset' _ _ _ _ (by decide), bget_bset' _ _ _ _ (by decide)]; exact h0)
   · exact stat0 _ (by omega)
 
-theorem zd3_zero (h : Buf) (hl : 12352 ≤ h.length) (h0 : bget h 0 = 0) : bget (zd3 h) 0 = 0 := by
+theorem zd3_zero (h : Buf) (hl : LAY_D3 ≤ h.length) (h0 : bget h 0 = 0) : bget (zd3 h) 0 = 0 := by
   unfold zd3
   split
   · split
@@ -167,7 +167,7 @@ theorem zd3_zero (h : Buf) (hl : 12352 ≤ h.length) (h0 : bget h 0 = 0) : bget 
     · exact stat0 _ (by unfold v87; simp only [length_bset]; omega)
   · exact stat0 _ (by omega)
 
-theorem zd2_zero (h : Buf) (hl : 12352 ≤ h.length) (h0 : bget h 0 = 0) : bget (zd2 h) 0 = 0 := by
+theorem zd2_zero (h : Buf) (hl : LAY_D3 ≤ h.length) (h0 : bget h 0 = 0) : bget (zd2 h) 0 = 0 := by
   unfold zd2
   split
   · exact zd3_zero _ (by simp only [length_bset]; exact hl) (by rw [bget_bset' _ _ _ _ (by decide)]; exact h0)
@@ -236,7 +236,7 @@ theorem zd1_ok {h ts : Buf} {st : St} {fs : List Frame} (R : Rep h ts st fs) (hs
       exact ⟨by rw [bget_bset' _ _ _ _ (by decide), bget_bset' _ _ _ _ (by decide)],
         fun j hj => by rw [bget_bset' _ _ _ _ (by simp; omega), bget_bset' _ _ _ _ (by simp; omega)]⟩
     have hx : NameAt g (bget h 3) (nm.map UInt64.toNat) := nameAt_frame etg (by omega) ⟨nm, hNm, rfl⟩
-    have lg : 12352 ≤ g.length := by rw [← hg]; simp only [length_bset]; omega
+    have lg : LAY_D3 ≤ g.length := by rw [← hg]; simp only [length_bset]; omega
     have hs6 : bget (v6 g (bget h 3) 0 4) 0 ≠ 0 := fun z => hs (zd2_zero _ (by
       by_cases q : bget g 4 < d14
       · unfold v6; simp only [q, if_true, length_bset]; exact lg
@@ -369,7 +369,7 @@ theorem rep_flag {g ts : Buf} {st : St} {fs : List Frame} (R : Rep g ts st fs) (
   have ci := rowCell bs.length (by omega) 3 (by decide)
   simp only [show (3 : UInt64).toNat = 3 from rfl] at ci
   generalize hG : bset g (d9 + 4 * bs.length.toUInt64 + 3) (b01 f) = G
-  have e : ∀ i : UInt64, i.toNat ≠ 180288 + 4 * bs.length + 3 → bget G i = bget g i :=
+  have e : ∀ i : UInt64, i.toNat ≠ LAY_D9 + 4 * bs.length + 3 → bget G i = bget g i :=
     fun i a => by rw [← hG]; exact bget_bset' _ _ _ _ (by rw [ci]; omega)
   have et : TokAgree g G := ⟨e 7 (by simp; omega), fun i hi => e i (by omega)⟩
   have es : ShTabAgree g G := fun i a _ => e i (by omega)
@@ -403,7 +403,7 @@ theorem rep_flag {g ts : Buf} {st : St} {fs : List Frame} (R : Rep g ts st fs) (
     exact ⟨by rw [c0']; exact nameAt_frame et (by omega) a0, by rw [c 1 (by decide)]; exact a1,
       by rw [c 2 (by decide)]; exact a2.frame es, by rw [← hG]; exact bget_bset_eq _ _ _ _ rfl (by rw [ci]; omega)⟩
 
-theorem ab2_zero (h : Buf) (a b z : UInt64) (h0 : bget h 0 = 0) (hl : 12352 ≤ h.length) : bget (ab2 h a b z) 0 = 0 := by
+theorem ab2_zero (h : Buf) (a b z : UInt64) (h0 : bget h 0 = 0) (hl : LAY_D3 ≤ h.length) : bget (ab2 h a b z) 0 = 0 := by
   have e3 : bget (bset h 3 (bget h 3 + 1)) 0 = 0 := by rw [bget_bset' _ _ _ _ (by decide)]; exact h0
   have fl : bget (bset (bset h 3 (bget h 3 + 1)) 0 0) 0 = 0 := stat0 _ (by simp [length_bset]; omega)
   unfold ab2

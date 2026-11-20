@@ -50,8 +50,8 @@ theorem h_selfArgs {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.s
   simp only [show (bget G1 21 == 0) = false from by simpa using h21', Bool.false_eq_true, if_false, hi1] at hs ⊢
   obtain ⟨_, _, hBr⟩ := hB
   obtain ⟨_, _, hsh, _⟩ := hBr i hi
-  have ic : (d9 + 4 * i.toUInt64 + 2).toNat = 180288 + 4 * i + 2 := by
-    rw [UInt64.toNat_add, UInt64.toNat_add, UInt64.toNat_mul]; simp [show d9.toNat = 180288 from rfl]
+  have ic : (d9 + 4 * i.toUInt64 + 2).toNat = LAY_D9 + 4 * i + 2 := by
+    rw [UInt64.toNat_add, UInt64.toNat_add, UInt64.toNat_mul]; simp [show d9.toNat = LAY_D9 from rfl]
     omega
   have hk : bget G1 (d9 + 4 * i.toUInt64 + 2) = bget g (d9 + 4 * i.toUInt64 + 2) := hS.2 _ (by rw [ic]; omega) (by rw [ic]; omega)
   rw [hk] at hs ⊢
@@ -85,7 +85,7 @@ theorem h_selfArgs {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.s
   obtain ⟨⟨⟨_, _, _, _, _, c6, c57, _⟩, _⟩, d512⟩ := dcur
   have hj : bget g 12 = st.defs.length.toUInt64 := by apply UInt64.toNat_inj.mp; rw [d12]; simp; omega
   have r12 : bget G2 12 = st.defs.length.toUInt64 := by rw [e2 12 (by decide) (by decide) (by decide), hj]
-  have ic6 : (d7 + 8 * st.defs.length.toUInt64 + 6).toNat = 147520 + 8 * st.defs.length + 6 := defCell _ (by omega) 6 (by decide)
+  have ic6 : (d7 + 8 * st.defs.length.toUInt64 + 6).toNat = LAY_D7 + 8 * st.defs.length + 6 := defCell _ (by omega) 6 (by decide)
   have r6 : bget G2 (d7 + 8 * st.defs.length.toUInt64 + 6) = bget g (d7 + 8 * st.defs.length.toUInt64 + 6) :=
     e2 _ (by rw [ic6]; omega) (by rw [ic6]; omega) (by rw [ic6]; omega)
   rw [r12, r6] at hs ⊢
@@ -115,7 +115,7 @@ theorem rep_v5_hi {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs)
     (n t A B : Nat) (sh : Option Sh) (p : Bool) (w : UInt64) (hw : ShOpt h w sh) (ht : t < 2 ^ 64)
     (hab : t ≠ 2 → t ≠ 5 → A < 2 ^ 64 ∧ B < 2 ^ 64) (hn : n ≤ 4096)
     (hs : bget (v5 h t.toUInt64 A.toUInt64 B.toUInt64 w (b01 p) n.toUInt64) 0 ≠ 0) :
-    ∀ i : UInt64, 147520 ≤ i.toNat → bget (v5 h t.toUInt64 A.toUInt64 B.toUInt64 w (b01 p) n.toUInt64) i = bget h i := by
+    ∀ i : UInt64, LAY_D7 ≤ i.toNat → bget (v5 h t.toUInt64 A.toUInt64 B.toUInt64 w (b01 p) n.toUInt64) i = bget h i := by
   obtain ⟨hn7, hl, har⟩ := rep_bounds r
   have rA := r.2.2.2.2.2.2.2.1
   obtain ⟨g1, g2, g3⟩ := v5_guards _ _ _ _ _ _ _ (by omega) hs

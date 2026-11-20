@@ -49,14 +49,14 @@ theorem v10_dead (g : Buf) (x y : UInt64) (n : Nat) (hn : bget g 26 = n.toUInt64
       exact q
   simp only [hx, hy, hc, if_false]; exact stat0 _ hl
 
-theorem alloc_eff (g : Buf) (x y zx zy : UInt64) (n : Nat) (hcap : n < 8192) (hl : 184384 ≤ g.length) :
+theorem alloc_eff (g : Buf) (x y zx zy : UInt64) (n : Nat) (hcap : n < 8192) (hl : LAY_HASH ≤ g.length) :
     ∀ G, G = allocHeap g x y zx zy n →
     G.length = g.length ∧ bget G 25 = n.toUInt64 + 5 ∧ bget G 26 = n.toUInt64 + 1 ∧
     bget G (d7 + 8192 + 3 * n.toUInt64) = x ∧ bget G (d7 + 8192 + 3 * n.toUInt64 + 1) = y ∧
     bget G (d7 + 8192 + 3 * n.toUInt64 + 2) = zx + zy ∧
-    (∀ j : UInt64, j.toNat ≠ 25 → j.toNat ≠ 26 → j.toNat ≠ 31 → (j.toNat < 155712 + 3 * n ∨ 155712 + 3 * n + 3 ≤ j.toNat) →
+    (∀ j : UInt64, j.toNat ≠ 25 → j.toNat ≠ 26 → j.toNat ≠ 31 → (j.toNat < LAY_SHP + 3 * n ∨ LAY_SHP + 3 * n + 3 ≤ j.toNat) →
       bget G j = bget g j) ∧
-    G.drop 184384 = g.drop 184384 := by
+    G.drop LAY_HASH = g.drop LAY_HASH := by
   intro G hG
   subst hG
   have b0 := shRow0 n hcap
@@ -143,9 +143,9 @@ theorem rep_intern {g ts : Buf} {st : St} {fs : List Frame} (R : Rep g ts st fs)
     obtain ⟨rT, rts, r0, r3, r11, rB, rD, rA, r25, r29, r30, r32, rO, rK⟩ := R
     have cS : ∀ j : UInt64, j.toNat < 64 → j.toNat ≠ 25 → j.toNat ≠ 26 → j.toNat ≠ 31 → bget G j = bget g j :=
       fun j a b c d => U j b c d (Or.inl (by omega))
-    have cLo : ∀ j : UInt64, 64 ≤ j.toNat → j.toNat < 155712 → bget G j = bget g j :=
+    have cLo : ∀ j : UInt64, 64 ≤ j.toNat → j.toNat < LAY_SHP → bget G j = bget g j :=
       fun j a b => U j (by omega) (by omega) (by omega) (Or.inl (by omega))
-    have cHi : ∀ j : UInt64, 180288 ≤ j.toNat → bget G j = bget g j :=
+    have cHi : ∀ j : UInt64, LAY_D9 ≤ j.toNat → bget G j = bget g j :=
       fun j a => U j (by omega) (by omega) (by omega) (Or.inr (by omega))
     have et : TokAgree g G := ⟨cS 7 (by decide) (by decide) (by decide) (by decide), fun j hj => cHi j (by omega)⟩
     have es : ShPres g G := shPres_alloc n sz (fun j a b => U j (by omega) (by omega) (by omega) (Or.inl b))

@@ -116,13 +116,13 @@ def ChainAt (h : Buf) (tab : List (UInt64 × List UInt64)) (B : UInt64) : Prop :
   ∀ i, i < tab.length → bkt (tab.getD i (0, [])).2 = B →
     bget h (d7 + 8 * i.toUInt64 + 7) = (topR (fun k => bkt (tab.getD k (0, [])).2 = B) i).toUInt64
 
-theorem chainAt_same {r : Nat} {h h' : Buf} (s : Same r h h') (hr : r < 147520) {tab : List (UInt64 × List UInt64)} {B : UInt64}
+theorem chainAt_same {r : Nat} {h h' : Buf} (s : Same r h h') (hr : r < LAY_D7) {tab : List (UInt64 × List UInt64)} {B : UInt64}
     (hl : tab.length < 2 ^ 20) (c : ChainAt h tab B) : ChainAt h' tab B := fun i hi hb => by
-  have q : (d7 + 8 * i.toUInt64 + 7).toNat = 147520 + 8 * i + 7 := by
+  have q : (d7 + 8 * i.toUInt64 + 7).toNat = LAY_D7 + 8 * i + 7 := by
     rw [UInt64.toNat_add, UInt64.toNat_add, UInt64.toNat_mul, d7v]; simp [UInt64.toNat_ofNat']; omega
   rw [s.2 _ (by rw [q]; omega) (by rw [q]; omega)]; exact c i hi hb
 
-theorem row_cell (i : Nat) (hi : i < 2 ^ 20) : (d7 + 8 * i.toUInt64).toNat = 147520 + 8 * i := by
+theorem row_cell (i : Nat) (hi : i < 2 ^ 20) : (d7 + 8 * i.toUInt64).toNat = LAY_D7 + 8 * i := by
   rw [UInt64.toNat_add, UInt64.toNat_mul, d7v]; simp [UInt64.toNat_ofNat']; omega
 
 /-- **the chain walk**: started at the newest row below `m` of the name's bucket, `v83` finds the last match among the first
@@ -221,10 +221,10 @@ theorem v8_lookup (tab : List (UInt64 × List UInt64)) (x : UInt64) (nx : List U
   rwa [show min jn tab.length = jn by omega] at w
 
 /-! ## the bucket chains as part of `DefsRep` -/
-theorem bktCell (b : UInt64) (hb : b.toNat < 1024) : (d9 + d10 + b).toNat = 184384 + b.toNat := by
-  rw [UInt64.toNat_add, show (d9 + d10 : UInt64).toNat = 184384 from rfl]; omega
+theorem bktCell (b : UInt64) (hb : b.toNat < 1024) : (d9 + d10 + b).toNat = LAY_HASH + b.toNat := by
+  rw [UInt64.toNat_add, show (d9 + d10 : UInt64).toNat = LAY_HASH from rfl]; omega
 
-theorem slot7Cell (i : Nat) (hi : i < 512) : (d7 + 8 * i.toUInt64 + 7).toNat = 147520 + 8 * i + 7 := by
+theorem slot7Cell (i : Nat) (hi : i < 512) : (d7 + 8 * i.toUInt64 + 7).toNat = LAY_D7 + 8 * i + 7 := by
   rw [UInt64.toNat_add, row_cell i (by omega)]; simp; omega
 
 theorem bktN_map (l : List UInt64) : bktN (l.map UInt64.toNat) = bkt l := by
@@ -232,13 +232,13 @@ theorem bktN_map (l : List UInt64) : bktN (l.map UInt64.toNat) = bkt l := by
 
 /-- `HashRep` reads the bucket cells and slot 7 of the rows only -/
 theorem hashRep_frame {h h' : Buf} {ns : List (List Nat)} (hl : ns.length ≤ 512) (r : HashRep h ns)
-    (eb : ∀ i : UInt64, 184384 ≤ i.toNat → i.toNat < 185408 → bget h' i = bget h i)
+    (eb : ∀ i : UInt64, LAY_HASH ≤ i.toNat → i.toNat < LAY_TOK → bget h' i = bget h i)
     (e7 : ∀ i, i < 512 → bget h' (d7 + 8 * i.toUInt64 + 7) = bget h (d7 + 8 * i.toUInt64 + 7)) : HashRep h' ns :=
   ⟨fun b hb => by rw [eb _ (by rw [bktCell b hb]; omega) (by rw [bktCell b hb]; omega)]; exact r.1 b hb,
    fun i hi => by rw [e7 i (by omega)]; exact r.2 i hi⟩
 
 /-- no rows: all buckets empty -/
-theorem hashRep_nil {h : Buf} (z : ∀ i : UInt64, 184384 ≤ i.toNat → i.toNat < 185408 → bget h i = 0) : HashRep h [] :=
+theorem hashRep_nil {h : Buf} (z : ∀ i : UInt64, LAY_HASH ≤ i.toNat → i.toNat < LAY_TOK → bget h i = 0) : HashRep h [] :=
   ⟨fun b hb => by rw [z _ (by rw [bktCell b hb]; omega) (by rw [bktCell b hb]; omega)]; rfl, fun i hi => absurd hi (by simp)⟩
 
 /-- **registering a row**: its slot 7 takes the old head of its bucket, the bucket cell the new row -/

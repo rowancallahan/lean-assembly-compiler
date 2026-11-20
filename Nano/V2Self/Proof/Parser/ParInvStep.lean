@@ -1,5 +1,5 @@
 /- Nano/V2Self/Proof/Parser/ParInvStep: infrastructure for the Layer-3 handler lemmas (box C; shared with box D).
-* region frame lemmas for every component of `Rep` (`TokAgree`: cell 7 and the token region ≥ 184384; …);
+* region frame lemmas for every component of `Rep` (`TokAgree`: cell 7 and the token region ≥ LAY_HASH; …);
 * `v1_eff` / `tasks_push`: pushing a task record; `step_top`: the machine step pops the top record of `TasksRep`. -/
 import Nano.V2Self.Proof.Parser.ParInvState
 namespace ParInv
@@ -7,12 +7,12 @@ open C BufL ParSpec ParRun
 
 /-! ## the token region -/
 /-- cell 7 (token count) and every cell from the token region on agree -/
-def TokAgree (h h' : Buf) : Prop := bget h' 7 = bget h 7 ∧ ∀ i : UInt64, 184384 ≤ i.toNat → bget h' i = bget h i
+def TokAgree (h h' : Buf) : Prop := bget h' 7 = bget h 7 ∧ ∀ i : UInt64, LAY_HASH ≤ i.toNat → bget h' i = bget h i
 
 /-- the NARROW agreement the frame lemmas need: cell 7 and the token cells, the sentinel and the IRV word
-`[185408, 185410 + h[7])` — it survives an output append `H ++ ws` (`TokAgree` is the wide form; it coerces) -/
+`[LAY_TOK, LAY_TOK2 + h[7])` — it survives an output append `H ++ ws` (`TokAgree` is the wide form; it coerces) -/
 def TokAgreeN (h h' : Buf) : Prop :=
-  bget h' 7 = bget h 7 ∧ ∀ i : UInt64, 185408 ≤ i.toNat → i.toNat < 185410 + (bget h 7).toNat → bget h' i = bget h i
+  bget h' 7 = bget h 7 ∧ ∀ i : UInt64, LAY_TOK ≤ i.toNat → i.toNat < LAY_TOK2 + (bget h 7).toNat → bget h' i = bget h i
 
 theorem TokAgree.n {h h' : Buf} (e : TokAgree h h') : TokAgreeN h h' := ⟨e.1, fun i a _ => e.2 i (by omega)⟩
 
@@ -95,8 +95,8 @@ theorem tokAt_frame {h h' : Buf} (e : TokAgree h h') (hn : (bget h 7).toNat < 2 
     (r : TokAt h p toks) : TokAt h' p toks := tokAt_frameN e.n hn r
 
 /-! ## the arena region -/
-/-- the arena records [16448, 147520) agree -/
-def ArenaAgree (h h' : Buf) : Prop := ∀ i : UInt64, 16448 ≤ i.toNat → i.toNat < 147520 → bget h' i = bget h i
+/-- the arena records [LAY_D5, LAY_D7) agree -/
+def ArenaAgree (h h' : Buf) : Prop := ∀ i : UInt64, LAY_D5 ≤ i.toNat → i.toNat < LAY_D7 → bget h' i = bget h i
 
 theorem recAgree_of {h h' : Buf} (e : ArenaAgree h h') {ids : List UInt64} (hb : ∀ v ∈ ids, v.toNat < 16384) : RecAgree h h' ids := by
   intro v hv k hk
@@ -135,7 +135,7 @@ theorem taskCell (g : Nat) (hg : g < 4096) (k : UInt64) (hk : k.toNat < 3) : (d1
   have e3 : (3 * g.toUInt64).toNat = 3 * g := by rw [UInt64.toNat_mul]; simp; omega
   rw [UInt64.toNat_add, UInt64.toNat_add, e3]; simp [show d1.toNat = 64 from rfl]; omega
 
-theorem v1_eff (h : Buf) (c a b : UInt64) (hg : (bget h 5).toNat < 4096) (hl : 12352 ≤ h.length) :
+theorem v1_eff (h : Buf) (c a b : UInt64) (hg : (bget h 5).toNat < 4096) (hl : LAY_D3 ≤ h.length) :
     let g := (bget h 5).toNat
     let h' := v1 h c a b
     h'.length = h.length ∧ taskAt h' g = ⟨c, a, b⟩ ∧ bget h' 5 = bget h 5 + 1 ∧
@@ -190,7 +190,7 @@ theorem tasks_frame {h h' : Buf} {arena : List RN} {fs : List Frame} (r : TasksR
     (et : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShTabAgree h h') (ea : ArenaAgree h h') (har : arena.length ≤ 16384) :
     TasksRep h' arena fs := tasks_frameN r e5 er et.n hn es ea har
 
-theorem v1_agree (h : Buf) (c a b : UInt64) (hg : (bget h 5).toNat < 4096) (hl : 12352 ≤ h.length) :
+theorem v1_agree (h : Buf) (c a b : UInt64) (hg : (bget h 5).toNat < 4096) (hl : LAY_D3 ≤ h.length) :
     TokAgree h (v1 h c a b) ∧ ShTabAgree h (v1 h c a b) ∧ ArenaAgree h (v1 h c a b) := by
   obtain ⟨_, _, _, U⟩ := v1_eff h c a b hg hl
   refine ⟨⟨U 7 (by decide) (Or.inl (by simp; omega)), fun i hi => U i (by omega) (Or.inr (by omega))⟩,
@@ -198,7 +198,7 @@ theorem v1_agree (h : Buf) (c a b : UInt64) (hg : (bget h 5).toNat < 4096) (hl :
 
 /-- **push**: `v1` with a frame's code and arguments extends the task-stack representation -/
 theorem tasks_push {h : Buf} {arena : List RN} {fs : List Frame} (f : Frame) (a b : UInt64) (r : TasksRep h arena fs)
-    (hfs : fs.length < 4096) (hl : 12352 ≤ h.length) (hn : (bget h 7).toNat < 2 ^ 32) (har : arena.length ≤ 16384)
+    (hfs : fs.length < 4096) (hl : LAY_D3 ≤ h.length) (hn : (bget h 7).toNat < 2 ^ 32) (har : arena.length ≤ 16384)
     (hf : FrameArgs h arena f a b) : TasksRep (v1 h f.code.toUInt64 a b) arena (f :: fs) := by
   have hg : (bget h 5).toNat < 4096 := by rw [r.1]; exact hfs
   obtain ⟨L, T, E5, U⟩ := v1_eff h f.code.toUInt64 a b hg hl
@@ -220,7 +220,7 @@ theorem tasks_push {h : Buf} {arena : List RN} {fs : List Frame} (f : Frame) (a 
     exact ⟨(rk k (by omega)).1, frameArgs_frame et hn es ea har _ _ _ (rk k (by omega)).2⟩
 
 /-- **pop**: a running machine with `Rep` on `f :: fs` steps into the handler of `f` with the decoded arguments -/
-theorem step_top {h ts : Buf} {st : St} {f : Frame} {fs : List Frame} (r : TasksRep h st.arena (f :: fs)) (hl : 12352 ≤ h.length)
+theorem step_top {h ts : Buf} {st : St} {f : Frame} {fs : List Frame} (r : TasksRep h st.arena (f :: fs)) (hl : LAY_D3 ≤ h.length)
     (hn : (bget h 7).toNat < 2 ^ 32) (har : st.arena.length ≤ 16384) :
     let t := taskAt h fs.length
     step h = v96 (bset h 5 fs.length.toUInt64) f.code.toUInt64 t.a t.b ∧ FrameArgs h st.arena f t.a t.b ∧
@@ -252,11 +252,11 @@ theorem step_top {h ts : Buf} {st : St} {f : Frame} {fs : List Frame} (r : Tasks
 /-- cells in `[lo, hi)` agree -/
 def RegAgree (h h' : Buf) (lo hi : Nat) : Prop := ∀ i : UInt64, lo ≤ i.toNat → i.toNat < hi → bget h' i = bget h i
 
-theorem rowCell (i : Nat) (hi : i < 1024) (k : UInt64) (hk : k.toNat < 4) : (d9 + 4 * i.toUInt64 + k).toNat = 180288 + 4 * i + k.toNat := by
+theorem rowCell (i : Nat) (hi : i < 1024) (k : UInt64) (hk : k.toNat < 4) : (d9 + 4 * i.toUInt64 + k).toNat = LAY_D9 + 4 * i + k.toNat := by
   have e4 : (4 * i.toUInt64).toNat = 4 * i := by rw [UInt64.toNat_mul]; simp; omega
-  rw [UInt64.toNat_add, UInt64.toNat_add, e4]; simp [show d9.toNat = 180288 from rfl]; omega
+  rw [UInt64.toNat_add, UInt64.toNat_add, e4]; simp [show d9.toNat = LAY_D9 from rfl]; omega
 
-theorem binds_frameN {h h' : Buf} {bs : List Bd} (r : BindsRep h bs) (e4 : bget h' 4 = bget h 4) (er : RegAgree h h' 180288 184384)
+theorem binds_frameN {h h' : Buf} {bs : List Bd} (r : BindsRep h bs) (e4 : bget h' 4 = bget h 4) (er : RegAgree h h' LAY_D9 LAY_HASH)
     (et : TokAgreeN h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShTabAgree h h') : BindsRep h' bs := by
   obtain ⟨r4, rl, rk⟩ := r
   refine ⟨by rw [e4]; exact r4, rl, fun i hi => ?_⟩
@@ -267,24 +267,24 @@ theorem binds_frameN {h h' : Buf} {bs : List Bd} (r : BindsRep h bs) (e4 : bget 
   exact ⟨by rw [c0]; exact nameAt_frameN et (by omega) a0, by rw [c 1 (by decide)]; exact a1, by rw [c 2 (by decide)]; exact a2.frame es,
     by rw [c 3 (by decide)]; exact a3⟩
 
-theorem binds_frame {h h' : Buf} {bs : List Bd} (r : BindsRep h bs) (e4 : bget h' 4 = bget h 4) (er : RegAgree h h' 180288 184384)
+theorem binds_frame {h h' : Buf} {bs : List Bd} (r : BindsRep h bs) (e4 : bget h' 4 = bget h 4) (er : RegAgree h h' LAY_D9 LAY_HASH)
     (et : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShTabAgree h h') : BindsRep h' bs := binds_frameN r e4 er et.n hn es
 
-theorem defCell (j : Nat) (hj : j < 512) (k : UInt64) (hk : k.toNat < 8) : (d7 + 8 * j.toUInt64 + k).toNat = 147520 + 8 * j + k.toNat := by
+theorem defCell (j : Nat) (hj : j < 512) (k : UInt64) (hk : k.toNat < 8) : (d7 + 8 * j.toUInt64 + k).toNat = LAY_D7 + 8 * j + k.toNat := by
   have e8 : (8 * j.toUInt64).toNat = 8 * j := by rw [UInt64.toNat_mul]; simp; omega
-  rw [UInt64.toNat_add, UInt64.toNat_add, e8]; simp [show d7.toNat = 147520 from rfl]; omega
+  rw [UInt64.toNat_add, UInt64.toNat_add, e8]; simp [show d7.toNat = LAY_D7 from rfl]; omega
 
-theorem parCell (s : UInt64) (i : Nat) (hs : s.toNat + i < 4096) : (d7 + 4096 + s + i.toUInt64).toNat = 151616 + s.toNat + i := by
-  rw [UInt64.toNat_add, UInt64.toNat_add, show (d7 + 4096 : UInt64).toNat = 151616 from rfl]; simp; omega
+theorem parCell (s : UInt64) (i : Nat) (hs : s.toNat + i < 4096) : (d7 + 4096 + s + i.toUInt64).toNat = LAY_FLAT + s.toNat + i := by
+  rw [UInt64.toNat_add, UInt64.toNat_add, show (d7 + 4096 : UInt64).toNat = LAY_FLAT from rfl]; simp; omega
 
-theorem parCell0 (i : Nat) (hi : i < 4096) : (d7 + 4096 + i.toUInt64).toNat = 151616 + i := by
-  rw [UInt64.toNat_add, show (d7 + 4096 : UInt64).toNat = 151616 from rfl]; simp; omega
+theorem parCell0 (i : Nat) (hi : i < 4096) : (d7 + 4096 + i.toUInt64).toNat = LAY_FLAT + i := by
+  rw [UInt64.toNat_add, show (d7 + 4096 : UInt64).toNat = LAY_FLAT from rfl]; simp; omega
 
-theorem shRow0 (k : Nat) (hk : k < 8192) : (d7 + 8192 + 3 * k.toUInt64).toNat = 155712 + 3 * k := by
+theorem shRow0 (k : Nat) (hk : k < 8192) : (d7 + 8192 + 3 * k.toUInt64).toNat = LAY_SHP + 3 * k := by
   have e3 : (3 * k.toUInt64).toNat = 3 * k := by rw [UInt64.toNat_mul]; simp; omega
-  rw [UInt64.toNat_add, e3, show (d7 + 8192 : UInt64).toNat = 155712 from rfl]; omega
+  rw [UInt64.toNat_add, e3, show (d7 + 8192 : UInt64).toNat = LAY_SHP from rfl]; omega
 
-theorem row_frameN {h h' : Buf} {j : Nat} {d : DefR} (hj : j < 512) (r : RowRep h j d) (er : RegAgree h h' 147520 180288)
+theorem row_frameN {h h' : Buf} {j : Nat} {d : DefR} (hj : j < 512) (r : RowRep h j d) (er : RegAgree h h' LAY_D7 LAY_D9)
     (et : TokAgreeN h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShTabAgree h h') : RowRep h' j d := by
   have c : ∀ k : UInt64, k.toNat < 8 → bget h' (d7 + 8 * j.toUInt64 + k) = bget h (d7 + 8 * j.toUInt64 + k) :=
     fun k hk => er _ (by rw [defCell j hj k hk]; omega) (by rw [defCell j hj k hk]; omega)
@@ -296,18 +296,18 @@ theorem row_frameN {h h' : Buf} {j : Nat} {d : DefR} (hj : j < 512) (r : RowRep 
   rw [c 5 (by decide), er _ (by rw [parCell _ _ (by omega)]; omega) (by rw [parCell _ _ (by omega)]; omega)]
   exact (ap i hi).frame es
 
-theorem rowZero_frame {h h' : Buf} {j : Nat} (hj : j < 512) (r : RowZero h j) (er : RegAgree h h' 147520 180288) : RowZero h' j :=
+theorem rowZero_frame {h h' : Buf} {j : Nat} (hj : j < 512) (r : RowZero h j) (er : RegAgree h h' LAY_D7 LAY_D9) : RowZero h' j :=
   fun k hk => by rw [er _ (by rw [defCell j hj k hk]; omega) (by rw [defCell j hj k hk]; omega)]; exact r k hk
 
 theorem shRowK (i : Nat) (hi : i < 8192) (k : UInt64) (hk : k.toNat < 3) :
-    (d7 + 8192 + 3 * i.toUInt64 + k).toNat = 155712 + 3 * i + k.toNat := by
+    (d7 + 8192 + 3 * i.toUInt64 + k).toNat = LAY_SHP + 3 * i + k.toNat := by
   have e3 : (3 * i.toUInt64).toNat = 3 * i := by rw [UInt64.toNat_mul]; simp; omega
-  rw [UInt64.toNat_add, UInt64.toNat_add, e3, show (d7 + 8192 : UInt64).toNat = 155712 from rfl]; omega
+  rw [UInt64.toNat_add, UInt64.toNat_add, e3, show (d7 + 8192 : UInt64).toNat = LAY_SHP from rfl]; omega
 
 theorem defs_frameN {h h' : Buf} {st : St} {b : Bool} (r : DefsRep h st b) (e12 : bget h' 12 = bget h 12) (e27 : bget h' 27 = bget h 27)
     (e26 : bget h' 26 = bget h 26)
-    (er : RegAgree h h' 147520 180288) (et : TokAgreeN h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShTabAgree h h')
-    (eb : RegAgree h h' 184384 185408) : DefsRep h' st b := by
+    (er : RegAgree h h' LAY_D7 LAY_D9) (et : TokAgreeN h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShTabAgree h h')
+    (eb : RegAgree h h' LAY_HASH LAY_TOK) : DefsRep h' st b := by
   have hlen := r.len
   obtain ⟨r12, rl, r27, rd, rc, rz, r0, ⟨rs26, rs, rsd⟩, rH⟩ := r
   have c5 : ∀ j, j < 512 → bget h' (d7 + 8 * j.toUInt64 + 5) = bget h (d7 + 8 * j.toUInt64 + 5) :=
@@ -335,11 +335,11 @@ theorem defs_frameN {h h' : Buf} {st : St} {b : Bool} (r : DefsRep h st b) (e12 
 
 theorem defs_frame {h h' : Buf} {st : St} {b : Bool} (r : DefsRep h st b) (e12 : bget h' 12 = bget h 12) (e27 : bget h' 27 = bget h 27)
     (e26 : bget h' 26 = bget h 26)
-    (er : RegAgree h h' 147520 180288) (et : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShTabAgree h h') :
+    (er : RegAgree h h' LAY_D7 LAY_D9) (et : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShTabAgree h h') :
     DefsRep h' st b := defs_frameN r e12 e27 e26 er et.n hn es (fun i a _ => et.2 i a)
 
 theorem arena_frame {h h' : Buf} {arena vals : List RN} (r : ArenaRep h arena vals) (e8 : bget h' 8 = bget h 8)
-    (e9 : bget h' 9 = bget h 9) (er : RegAgree h h' 12352 147520) (es : ShTabAgree h h') : ArenaRep h' arena vals := by
+    (e9 : bget h' 9 = bget h 9) (er : RegAgree h h' LAY_D3 LAY_D7) (es : ShTabAgree h h') : ArenaRep h' arena vals := by
   obtain ⟨r9, ral, r8, rvl, I, hI, hR, hD, hX⟩ := r
   have ea : ArenaAgree h h' := fun i a b => er i (by omega) b
   have op : ∀ k, k < 4096 → opAt h' k = opAt h k := fun k hk => er _ (by rw [d3k k hk]; omega) (by rw [d3k k hk]; omega)
@@ -356,32 +356,32 @@ theorem arena_frame {h h' : Buf} {arena vals : List RN} (r : ArenaRep h arena va
   · rw [op _ (by omega), op _ (by omega)] at e; exact hD k1 k2 h1 h2 e
   · rw [op _ (by omega), op _ (by omega)]; exact hX k1 k2 h1 h2 h12
 
-theorem out_frame {h h' ts : Buf} {out : List UInt64} (r : OutRep h ts out) (e : h'.drop 184384 = h.drop 184384) :
+theorem out_frame {h h' ts : Buf} {out : List UInt64} (r : OutRep h ts out) (e : h'.drop LAY_HASH = h.drop LAY_HASH) :
     OutRep h' ts out := by
   obtain ⟨rl, rk⟩ := r
   have l1 : h'.length = h.length := by
     have := congrArg List.length e; simp at this; omega
   refine ⟨by rw [l1]; exact rl, ?_⟩
-  have d1 : ∀ l : Buf, l.drop (185408 + ts.length + 1) = (l.drop 184384).drop (1024 + ts.length + 1) := by
+  have d1 : ∀ l : Buf, l.drop (LAY_TOK + ts.length + 1) = (l.drop LAY_HASH).drop (1024 + ts.length + 1) := by
     intro l; rw [List.drop_drop]; congr 1; omega
   rw [d1, e, ← d1]; exact rk
 
-theorem drop_up {a b : Buf} (e : a.drop 184384 = b.drop 184384) : a.drop 185408 = b.drop 185408 := by
+theorem drop_up {a b : Buf} (e : a.drop LAY_HASH = b.drop LAY_HASH) : a.drop LAY_TOK = b.drop LAY_TOK := by
   have := congrArg (List.drop 1024) e
   simpa [List.drop_drop] using this
 
-theorem out_frameT {h h' ts : Buf} {out : List UInt64} (r : OutRep h ts out) (e : h'.drop 185408 = h.drop 185408) :
+theorem out_frameT {h h' ts : Buf} {out : List UInt64} (r : OutRep h ts out) (e : h'.drop LAY_TOK = h.drop LAY_TOK) :
     OutRep h' ts out := by
   obtain ⟨rl, rk⟩ := r
   have l1 : h'.length = h.length := by
     have := congrArg List.length e; simp at this; omega
   refine ⟨by rw [l1]; exact rl, ?_⟩
-  have d1 : ∀ l : Buf, l.drop (185408 + ts.length + 1) = (l.drop 185408).drop (ts.length + 1) := by
+  have d1 : ∀ l : Buf, l.drop (LAY_TOK + ts.length + 1) = (l.drop LAY_TOK).drop (ts.length + 1) := by
     intro l; rw [List.drop_drop, Nat.add_assoc]
   rw [d1, e, ← d1]; exact rk
 
 /-- a write below the token region leaves the high part of the heap as a list -/
-theorem drop_bset (h : Buf) (i v : UInt64) (hi : i.toNat < 184384) : (bset h i v).drop 184384 = h.drop 184384 := by
+theorem drop_bset (h : Buf) (i v : UInt64) (hi : i.toNat < LAY_HASH) : (bset h i v).drop LAY_HASH = h.drop LAY_HASH := by
   simp only [bset]; exact List.drop_set_of_lt hi
 
 theorem tokensAt_frameN {h h' ts : Buf} (r : TokensAt h ts) (et : TokAgreeN h h') (hts : ts.length < 2 ^ 24) : TokensAt h' ts := by
@@ -397,8 +397,8 @@ theorem tokensAt_frame {h h' ts : Buf} (r : TokensAt h ts) (et : TokAgree h h') 
 
 /-! ## Rep when only the task stack changed -/
 theorem rep_tasks {h h' ts : Buf} {st : St} {fs fs' : List Frame} (r : Rep h ts st fs) (hl : h'.length = h.length)
-    (e : ∀ i : UInt64, i.toNat ≠ 5 → (i.toNat < 64 ∨ 12352 ≤ i.toNat) → bget h' i = bget h i)
-    (ed : h'.drop 184384 = h.drop 184384) (hT : TasksRep h' st.arena fs') (hd : inDefF fs' = inDefF fs) : Rep h' ts st fs' := by
+    (e : ∀ i : UInt64, i.toNat ≠ 5 → (i.toNat < 64 ∨ LAY_D3 ≤ i.toNat) → bget h' i = bget h i)
+    (ed : h'.drop LAY_HASH = h.drop LAY_HASH) (hT : TasksRep h' st.arena fs') (hd : inDefF fs' = inDefF fs) : Rep h' ts st fs' := by
   obtain ⟨rT, rts, r0, r3, r11, rB, rD, rA, r25, r29, r30, r32, rO, _⟩ := r
   have hn : (bget h 7).toNat < 2 ^ 32 := by rw [rT.2.2.2]; simp; omega
   have et : TokAgree h h' := ⟨e 7 (by decide) (Or.inl (by decide)), fun i hi => e i (by omega) (Or.inr (by omega))⟩
@@ -450,8 +450,8 @@ theorem tok_kw {h ts : Buf} {p t : UInt64} {toks : List Tok} (r : TokAt h p toks
 
 /-- Rep when only the cursor h[3], h[5] and task records changed (the cursor now represents `toks'`) -/
 theorem rep_tok {h h' ts : Buf} {st : St} {fs fs' : List Frame} {toks' : List Tok} (r : Rep h ts st fs) (hl : h'.length = h.length)
-    (e : ∀ i : UInt64, i.toNat ≠ 5 → i.toNat ≠ 3 → (i.toNat < 64 ∨ 12352 ≤ i.toNat) → bget h' i = bget h i)
-    (ed : h'.drop 184384 = h.drop 184384) (hK : TokAt h' (bget h' 3) toks') (hT : TasksRep h' st.arena fs')
+    (e : ∀ i : UInt64, i.toNat ≠ 5 → i.toNat ≠ 3 → (i.toNat < 64 ∨ LAY_D3 ≤ i.toNat) → bget h' i = bget h i)
+    (ed : h'.drop LAY_HASH = h.drop LAY_HASH) (hK : TokAt h' (bget h' 3) toks') (hT : TasksRep h' st.arena fs')
     (hd : inDefF fs' = inDefF fs) : Rep h' ts { st with toks := toks' } fs' := by
   obtain ⟨rT, rts, r0, r3, r11, rB, rD, rA, r25, r29, r30, r32, rO, _⟩ := r
   have hn : (bget h 7).toNat < 2 ^ 32 := by rw [rT.2.2.2]; simp; omega

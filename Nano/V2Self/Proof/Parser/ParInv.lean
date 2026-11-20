@@ -11,13 +11,30 @@ import Nano.V2Self.Proof.Parser.ParSpec
 namespace ParInv
 open C BufL
 
-/-! ## layout -/
+/-! ## layout
+The ONE place where the proofs name layout numbers. Each `LAY_*` is notation for a numeral (so `omega`/`simp` see a literal);
+the `example`s below tie every one to `Par1`'s `d*` constants, so after a layout change (gen_layout.py) only this block is edited,
+and a wrong edit fails here. -/
+notation "LAY_D3" => 12352      -- operand stack base (d3)
+notation "LAY_D5" => 16448      -- arena base (d5)
+notation "LAY_D7" => 147520     -- defs base (d7)
+notation "LAY_FLAT" => 151616   -- d7 + 4096
+notation "LAY_SHP" => 155712    -- d7 + 8192
+notation "LAY_D9" => 180288     -- bindings base (d9)
+notation "LAY_HASH" => 184384   -- hash buckets base (d9 + d10)
+notation "LAY_TOKm1" => 185407  -- d11 - 1
+notation "LAY_TOK" => 185408    -- tokens base (d11)
+notation "LAY_TOK1" => 185409   -- d11 + 1
+notation "LAY_TOK2" => 185410   -- d11 + 2
 theorem d1v : d1 = 64 := rfl
-theorem d3v : d3 = 12352 := rfl
-theorem d5v : d5 = 16448 := rfl
-theorem d7v : d7 = 147520 := rfl
-theorem d9v : d9 = 180288 := rfl
-theorem d11v : d11 = 185408 := rfl
+theorem d3v : d3 = LAY_D3 := rfl
+theorem d5v : d5 = LAY_D5 := rfl
+theorem d7v : d7 = LAY_D7 := rfl
+theorem d9v : d9 = LAY_D9 := rfl
+theorem d11v : d11 = LAY_TOK := rfl
+example : (d1 + d2).toNat = LAY_D3 ∧ (d3 + d4).toNat = LAY_D5 ∧ (d5 + d6).toNat = LAY_D7 ∧ (d7 + d8).toNat = LAY_D9 := ⟨rfl, rfl, rfl, rfl⟩
+example : (d7 + 4096).toNat = LAY_FLAT ∧ (d7 + 8192).toNat = LAY_SHP ∧ (d9 + d10).toNat = LAY_HASH ∧ LAY_HASH + 1024 = LAY_TOK := ⟨rfl, rfl, rfl, rfl⟩
+example : LAY_TOKm1 + 1 = LAY_TOK ∧ LAY_TOK + 1 = LAY_TOK1 ∧ LAY_TOK + 2 = LAY_TOK2 := ⟨rfl, rfl, rfl⟩
 
 /-! ## loading: y5 zero-fills, y14 copies the tokens -/
 theorem y5_eq : ∀ (n : Nat) (h : Buf), y5 n h = h ++ List.replicate n 0
@@ -27,7 +44,7 @@ theorem y5_eq : ∀ (n : Nat) (h : Buf), y5 n h = h ++ List.replicate n 0
     rw [y5_eq n (h ++ [0]), List.replicate_succ]
     simp
 
-theorem y15_nil : y15 bnew = List.replicate 185408 0 := by
+theorem y15_nil : y15 bnew = List.replicate LAY_TOK 0 := by
   unfold y15
   rw [y5_eq]
   rfl
@@ -55,7 +72,7 @@ theorem y14_eq (x : Buf) (hx : x.length < 2 ^ 64) :
 
 /-- the heap right after loading: 185,408 zero cells (the layout), the tokens, h[7] = their number, h[0] = 1, then the sentinel 0 and the IRV word 2 -/
 def entryHeap (x : Buf) : Buf :=
-  bpush (bpush (bset (bset (List.replicate 185408 0 ++ x) 7 (bsize x)) 0 1) 0) 2
+  bpush (bpush (bset (bset (List.replicate LAY_TOK 0 ++ x) 7 (bsize x)) 0 1) 0) 2
 
 /-- the tail of `v99`: the acceptance checks and the output extraction, as a function of the final heap -/
 def fin (x : Buf) (b : UInt64) (h : Buf) : Buf :=
@@ -83,11 +100,11 @@ def fin (x : Buf) (b : UInt64) (h : Buf) : Buf :=
 theorem v99_eq (x : Buf) (b : UInt64) (hx : x.length ≤ 16777216) :
     v99 x b = fin x b (v97 16777216 (v1 (entryHeap x) 60 0 0)) := by
   have h0 : (0 : UInt64).toNat = 0 := rfl
-  have hy : y14 16777216 x 0 (y15 bnew) = List.replicate 185408 0 ++ x := by
+  have hy : y14 16777216 x 0 (y15 bnew) = List.replicate LAY_TOK 0 ++ x := by
     rw [y14_eq x (by omega) 16777216 0 _ (by rw [h0]; omega) (by rw [h0]; omega), y15_nil, h0, List.drop_zero]
-  have hsz : bsize (List.replicate 185408 0 ++ x) = d11 + bsize x := by
+  have hsz : bsize (List.replicate LAY_TOK 0 ++ x) = d11 + bsize x := by
     apply UInt64.toNat_inj.mp
-    have e : (185408 : UInt64).toNat = 185408 := rfl
+    have e : (LAY_TOK : UInt64).toNat = LAY_TOK := rfl
     rw [d11v]
     simp only [bsize, List.length_append, List.length_replicate, UInt64.toNat_add, UInt64.toNat_ofNat', e]
     omega
@@ -196,13 +213,13 @@ theorem Same.trans {r : Nat} {h h' h'' : Buf} (a : Same r h h') (b : Same r h' h
 theorem same_bset (r : Nat) (h : Buf) (i v : UInt64) (hi : i.toNat = r ∨ i.toNat = 31) : Same r h (bset h i v) :=
   ⟨by simp [bset], fun j j1 j2 => by rw [bget_bset_other _ _ _ _ (by omega)]⟩
 
-theorem d11a (a : UInt64) (ha : a.toNat < 2 ^ 40) : (d11 + a).toNat = 185408 + a.toNat := by
+theorem d11a (a : UInt64) (ha : a.toNat < 2 ^ 40) : (d11 + a).toNat = LAY_TOK + a.toNat := by
   rw [UInt64.toNat_add, d11v]; simp; omega
 
-theorem d11a1 (a : UInt64) (ha : a.toNat < 2 ^ 40) : (d11 + a + 1).toNat = 185408 + a.toNat + 1 := by
+theorem d11a1 (a : UInt64) (ha : a.toNat < 2 ^ 40) : (d11 + a + 1).toNat = LAY_TOK + a.toNat + 1 := by
   rw [UInt64.toNat_add, d11a a ha]; simp; omega
 
-theorem nameSeq_same {r : Nat} {h h' : Buf} (s : Same r h h') (hr : r < 184384) :
+theorem nameSeq_same {r : Nat} {h h' : Buf} (s : Same r h h') (hr : r < LAY_HASH) :
     ∀ (l : List UInt64) (a : UInt64), a.toNat + 2 * l.length + 1 < 2 ^ 40 → NameSeq h a l → NameSeq h' a l
   | [], a, ha, e => by
     simp only [NameSeq] at e ⊢
@@ -215,7 +232,7 @@ theorem nameSeq_same {r : Nat} {h h' : Buf} (s : Same r h h') (hr : r < 184384) 
     · rw [s.2 _ (by rw [d11a a (by omega)]; omega) (by rw [d11a a (by omega)]; omega)]; exact e1
     · rw [s.2 _ (by rw [d11a1 a (by omega)]; omega) (by rw [d11a1 a (by omega)]; omega)]; exact e2
 
-theorem nameOK_same {r : Nat} {h h' : Buf} (s : Same r h h') (hr : 7 < r ∧ r < 184384) (hn : (bget h 7).toNat < 2 ^ 40) {pos : UInt64} {n : List UInt64}
+theorem nameOK_same {r : Nat} {h h' : Buf} (s : Same r h h') (hr : 7 < r ∧ r < LAY_HASH) (hn : (bget h 7).toNat < 2 ^ 40) {pos : UInt64} {n : List UInt64}
     (e : NameOK h pos n) : NameOK h' pos n := by
   obtain ⟨e1, e2, e3⟩ := e
   have p1 : (pos + 1).toNat = pos.toNat + 1 := by rw [UInt64.toNat_add]; simp; omega
@@ -227,12 +244,12 @@ theorem nameOK_same {r : Nat} {h h' : Buf} (s : Same r h h') (hr : 7 < r ∧ r <
 def TabRep (h : Buf) (tab : List (UInt64 × List UInt64)) : Prop :=
   ∀ (i : Nat) (hi : i < tab.length), bget h (d9 + 4 * i.toUInt64) = (tab[i]).1 ∧ NameOK h (tab[i]).1 (tab[i]).2 ∧ (tab[i]).2.length < 2 ^ 24
 
-theorem tabRep_same {r : Nat} {h h' : Buf} (s : Same r h h') (hr : 7 < r ∧ r < 180288) (hn : (bget h 7).toNat < 2 ^ 40) {tab : List (UInt64 × List UInt64)}
+theorem tabRep_same {r : Nat} {h h' : Buf} (s : Same r h h') (hr : 7 < r ∧ r < LAY_D9) (hn : (bget h 7).toNat < 2 ^ 40) {tab : List (UInt64 × List UInt64)}
     (hlen : tab.length < 2 ^ 20) (e : TabRep h tab) : TabRep h' tab := by
   intro i hi
   obtain ⟨e1, e2, e3⟩ := e i hi
   have hi' : i < 2 ^ 20 := by omega
-  have q : (d9 + 4 * i.toUInt64).toNat = 180288 + 4 * i := by
+  have q : (d9 + 4 * i.toUInt64).toNat = LAY_D9 + 4 * i := by
     rw [UInt64.toNat_add, UInt64.toNat_mul, d9v]; simp [UInt64.toNat_ofNat']; omega
   refine ⟨?_, nameOK_same s ⟨hr.1, by omega⟩ hn e2, e3⟩
   rw [s.2 _ (by rw [q]; omega) (by rw [q]; omega)]; exact e1
@@ -305,12 +322,12 @@ theorem v7_lookup (tab : List (UInt64 × List UInt64)) (x : UInt64) (nx : List U
 def DefTabRep (h : Buf) (tab : List (UInt64 × List UInt64)) : Prop :=
   ∀ (i : Nat) (hi : i < tab.length), bget h (d7 + 8 * i.toUInt64) = (tab[i]).1 ∧ NameOK h (tab[i]).1 (tab[i]).2 ∧ (tab[i]).2.length < 2 ^ 24
 
-theorem defTabRep_same {r : Nat} {h h' : Buf} (s : Same r h h') (hr : 7 < r ∧ r < 147520) (hn : (bget h 7).toNat < 2 ^ 40) {tab : List (UInt64 × List UInt64)}
+theorem defTabRep_same {r : Nat} {h h' : Buf} (s : Same r h h') (hr : 7 < r ∧ r < LAY_D7) (hn : (bget h 7).toNat < 2 ^ 40) {tab : List (UInt64 × List UInt64)}
     (hlen : tab.length < 2 ^ 20) (e : DefTabRep h tab) : DefTabRep h' tab := by
   intro i hi
   obtain ⟨e1, e2, e3⟩ := e i hi
   have hi' : i < 2 ^ 20 := by omega
-  have q : (d7 + 8 * i.toUInt64).toNat = 147520 + 8 * i := by
+  have q : (d7 + 8 * i.toUInt64).toNat = LAY_D7 + 8 * i := by
     rw [UInt64.toNat_add, UInt64.toNat_mul, d7v]; simp [UInt64.toNat_ofNat']; omega
   refine ⟨?_, nameOK_same s ⟨hr.1, by omega⟩ hn e2, e3⟩
   rw [s.2 _ (by rw [q]; omega) (by rw [q]; omega)]; exact e1

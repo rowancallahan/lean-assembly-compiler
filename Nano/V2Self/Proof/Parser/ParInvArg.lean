@@ -9,7 +9,7 @@ open C BufL ParSpec ParRun
 /-- `Rep` ignores the scratch cells 21 and 31 -/
 theorem rep_scratch {h h' ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs)
     (e : ∀ i : UInt64, i.toNat ≠ 21 → i.toNat ≠ 31 → bget h' i = bget h i)
-    (ed : h'.drop 184384 = h.drop 184384) : Rep h' ts st fs := by
+    (ed : h'.drop LAY_HASH = h.drop LAY_HASH) : Rep h' ts st fs := by
   obtain ⟨rT, rts, r0, r3, r11, rB, rD, rA, r25, r29, r30, r32, rO, rK⟩ := r
   have hn : (bget h 7).toNat < 2 ^ 32 := by rw [rT.2.2.2]; simp; omega
   have et : TokAgree h h' := ⟨e 7 (by decide) (by decide), fun i hi => e i (by omega) (by omega)⟩
@@ -58,7 +58,7 @@ theorem arG_get (g : Buf) (a b i : UInt64) (hi : i.toNat ≠ 31) : bget (arG g a
 
 theorem arG_len (g : Buf) (a b : UInt64) : (arG g a b).length = g.length := by simp [arG, length_bset]
 
-theorem arG_drop (g : Buf) (a b : UInt64) : (arG g a b).drop 184384 = g.drop 184384 := by
+theorem arG_drop (g : Buf) (a b : UInt64) : (arG g a b).drop LAY_HASH = g.drop LAY_HASH := by
   unfold arG; rw [drop_bset _ _ _ (by decide), drop_bset _ _ _ (by decide)]
 
 theorem ShapeCode.ne0 {h : Buf} {c : UInt64} {s : Sh} (r : ShapeCode h c s) : c ≠ 0 := by
@@ -142,12 +142,12 @@ theorem operand_fld {g : Buf} {arena vals : List RN} (rA : ArenaRep g arena vals
     (eb : b.toNat = k + 1) :
     ∃ t A B sh p ks, vals[k]? = some (RN.mk t A B sh p ks) ∧ fld g (bget g (d3 + bget g 8 - b)) 0 = t.toUInt64 ∧
       fld g (bget g (d3 + bget g 8 - b)) 1 = A.toUInt64 ∧ ShOpt g (fld g (bget g (d3 + bget g 8 - b)) 3) sh ∧ t < 2 ^ 64 ∧ (t ≠ 2 → t ≠ 5 → A < 2 ^ 64) ∧
-      (bget g (d3 + bget g 8 - b)).toNat < 16384 ∧ (d3 + bget g 8 - b).toNat = 12352 + (vals.length - 1 - k) := by
+      (bget g (d3 + bget g 8 - b)).toNat < 16384 ∧ (d3 + bget g 8 - b).toNat = LAY_D3 + (vals.length - 1 - k) := by
   obtain ⟨h9, hal, h8, hvl, I, hI, hR, _, _⟩ := rA
   obtain ⟨hr, earr, _⟩ := hR k hk
   have ecell : d3 + bget g 8 - b = d3 + (vals.length - 1 - k).toUInt64 := by
     apply UInt64.toNat_inj.mp
-    have e1 : (d3 + bget g 8).toNat = 12352 + vals.length := by rw [tn_add _ _ (by simp [d3v]; omega)]; simp [d3v]; omega
+    have e1 : (d3 + bget g 8).toNat = LAY_D3 + vals.length := by rw [tn_add _ _ (by simp [d3v]; omega)]; simp [d3v]; omega
     rw [d3k _ (by omega), UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr (by omega)), e1, eb]; omega
   have eop : bget g (d3 + bget g 8 - b) = opAt g (vals.length - 1 - k) := by rw [ecell]; rfl
   rw [eop, ecell]

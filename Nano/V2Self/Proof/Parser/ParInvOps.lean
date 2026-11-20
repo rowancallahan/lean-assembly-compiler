@@ -17,29 +17,29 @@ theorem bget_bset' (b : Buf) (i j v : UInt64) (h : i.toNat ≠ j.toNat) : bget (
 theorem bget_bset_eq (b : Buf) (i j v : UInt64) (h : i.toNat = j.toNat) (hl : i.toNat < b.length) : bget (bset b i v) j = v := by
   rw [bget_bset]; simp [h, show j.toNat < b.length by omega]
 
-theorem d3k (k : Nat) (hk : k < 4096) : (d3 + k.toUInt64).toNat = 12352 + k := by
+theorem d3k (k : Nat) (hk : k < 4096) : (d3 + k.toUInt64).toNat = LAY_D3 + k := by
   rw [tn_add _ _ (by simp [d3v]; omega)]; simp [d3v]; omega
 
-theorem recNext (u : UInt64) (hu : u.toNat < 16384) : (d5 + 8 * u + 7).toNat = 16448 + 8 * u.toNat + 7 := by
+theorem recNext (u : UInt64) (hu : u.toNat < 16384) : (d5 + 8 * u + 7).toNat = LAY_D5 + 8 * u.toNat + 7 := by
   rw [tn_add _ _ (by rw [tn_add _ _ (by rw [tn_mul8 _ (by omega)]; simp [d5v]; omega)]; rw [tn_mul8 _ (by omega)]; simp [d5v]; omega),
     tn_add _ _ (by rw [tn_mul8 _ (by omega)]; simp [d5v]; omega), tn_mul8 _ (by omega)]; simp [d5v]
 
-theorem recK (u k : UInt64) (hu : u.toNat < 16384) (hk : k.toNat < 8) : (d5 + 8 * u + k).toNat = 16448 + 8 * u.toNat + k.toNat := by
+theorem recK (u k : UInt64) (hu : u.toNat < 16384) (hk : k.toNat < 8) : (d5 + 8 * u + k).toNat = LAY_D5 + 8 * u.toNat + k.toNat := by
   rw [tn_add _ _ (by rw [tn_add _ _ (by rw [tn_mul8 _ (by omega)]; simp [d5v]; omega)]; rw [tn_mul8 _ (by omega)]; simp [d5v]; omega),
     tn_add _ _ (by rw [tn_mul8 _ (by omega)]; simp [d5v]; omega), tn_mul8 _ (by omega)]; simp [d5v]
 
-theorem drop_bset0 (h : Buf) (i v : UInt64) (hi : i.toNat < 184384) : (bset h i v).drop 184384 = h.drop 184384 := by
+theorem drop_bset0 (h : Buf) (i v : UInt64) (hi : i.toNat < LAY_HASH) : (bset h i v).drop LAY_HASH = h.drop LAY_HASH := by
   simp only [bset]; exact List.drop_set_of_lt hi
 
 /-! ## v2: sibling linking -/
 /-- `v2 N h j z c` sets next(op[j+k]) := op[j+k+1] for k < c and nothing else (operand ids in the arena, the written ids distinct) -/
-theorem v2_eff : ∀ (N : Nat) (h : Buf) (j : Nat) (z c : UInt64), c.toNat < N → j + c.toNat < 4096 → 16448 + 8 * 16384 ≤ h.length →
+theorem v2_eff : ∀ (N : Nat) (h : Buf) (j : Nat) (z c : UInt64), c.toNat < N → j + c.toNat < 4096 → LAY_D5 + 8 * 16384 ≤ h.length →
     (∀ k, k ≤ c.toNat → (opAt h (j + k)).toNat < 16384) →
     ((List.range c.toNat).map fun k => (opAt h (j + k)).toNat).Nodup →
     (v2 N h j.toUInt64 z c).length = h.length ∧
-    (∀ i : UInt64, (∀ k, k < c.toNat → i.toNat ≠ 16448 + 8 * (opAt h (j + k)).toNat + 7) → bget (v2 N h j.toUInt64 z c) i = bget h i) ∧
+    (∀ i : UInt64, (∀ k, k < c.toNat → i.toNat ≠ LAY_D5 + 8 * (opAt h (j + k)).toNat + 7) → bget (v2 N h j.toUInt64 z c) i = bget h i) ∧
     (∀ k, k < c.toNat → bget (v2 N h j.toUInt64 z c) (d5 + 8 * opAt h (j + k) + 7) = opAt h (j + k + 1)) ∧
-    (v2 N h j.toUInt64 z c).drop 184384 = h.drop 184384
+    (v2 N h j.toUInt64 z c).drop LAY_HASH = h.drop LAY_HASH
   | 0, h, j, z, c, hc, hj, hl, ho, hd => absurd hc (by omega)
   | N + 1, h, j, z, c, hc, hj, hl, ho, hd => by
     by_cases c0 : c = 0
@@ -53,7 +53,7 @@ theorem v2_eff : ∀ (N : Nat) (h : Buf) (j : Nat) (z c : UInt64), c.toNat < N �
         rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr (by simp; omega))]; simp
       have hx := ho 0 (by omega)
       simp only [Nat.add_zero] at hx
-      have wa : (d5 + 8 * opAt h j + 7).toNat = 16448 + 8 * (opAt h j).toNat + 7 := recNext _ hx
+      have wa : (d5 + 8 * opAt h j + 7).toNat = LAY_D5 + 8 * (opAt h j).toNat + 7 := recNext _ hx
       have hv : v2 (N + 1) h j.toUInt64 z c = v2 N (bset h (d5 + 8 * opAt h j + 7) (opAt h (j + 1))) (j + 1).toUInt64 z (c - 1) := by
         simp only [v2, c0, beq_iff_eq, if_false, opAt, e1]
         congr 2
@@ -102,7 +102,7 @@ theorem v2_eff : ∀ (N : Nat) (h : Buf) (j : Nat) (z c : UInt64), c.toNat < N �
 /-! ## v5: the node builder -/
 /-- `v5 h c a b w t n` (guards passing): node z = h[9] gets fields (c, a, b, w, t, first = op[J], n) with J = h[8] − n, the popped
 operands op[J..J+n-1] are linked as siblings, op[J] := z, h[8] := J + 1, h[9] := z + 1; no other cell changes -/
-theorem v5_eff (h : Buf) (c a b w t n : UInt64) (hl : 147520 ≤ h.length) (hz : (bget h 9).toNat < 16384)
+theorem v5_eff (h : Buf) (c a b w t n : UInt64) (hl : LAY_D7 ≤ h.length) (hz : (bget h 9).toNat < 16384)
     (hm : (bget h 8).toNat ≤ 4096) (hn : n.toNat ≤ (bget h 8).toNat) (hJ : (bget h 8).toNat - n.toNat < 4096)
     (hb : ∀ i, i < n.toNat → (opAt h ((bget h 8).toNat - n.toNat + i)).toNat < (bget h 9).toNat)
     (hd : ((List.range n.toNat).map fun i => (opAt h ((bget h 8).toNat - n.toNat + i)).toNat).Nodup) :
@@ -113,10 +113,10 @@ theorem v5_eff (h : Buf) (c a b w t n : UInt64) (hl : 147520 ≤ h.length) (hz :
     fld h' z 0 = c ∧ fld h' z 1 = a ∧ fld h' z 2 = b ∧ fld h' z 3 = w ∧ fld h' z 4 = t ∧ fld h' z 5 = opAt h J ∧ fld h' z 6 = n ∧
     (∀ i, i + 1 < n.toNat → fld h' (opAt h (J + i)) 7 = opAt h (J + i + 1)) ∧
     opAt h' J = z ∧ bget h' 8 = J.toUInt64 + 1 ∧ bget h' 9 = z + 1 ∧
-    (∀ i : UInt64, i.toNat ≠ 8 → i.toNat ≠ 9 → i.toNat ≠ 12352 + J →
-      (i.toNat < 16448 + 8 * z.toNat ∨ 16448 + 8 * z.toNat + 7 ≤ i.toNat) →
-      (∀ k, k + 1 < n.toNat → i.toNat ≠ 16448 + 8 * (opAt h (J + k)).toNat + 7) → bget h' i = bget h i) ∧
-    h'.drop 184384 = h.drop 184384 := by
+    (∀ i : UInt64, i.toNat ≠ 8 → i.toNat ≠ 9 → i.toNat ≠ LAY_D3 + J →
+      (i.toNat < LAY_D5 + 8 * z.toNat ∨ LAY_D5 + 8 * z.toNat + 7 ≤ i.toNat) →
+      (∀ k, k + 1 < n.toNat → i.toNat ≠ LAY_D5 + 8 * (opAt h (J + k)).toNat + 7) → bget h' i = bget h i) ∧
+    h'.drop LAY_HASH = h.drop LAY_HASH := by
   intro J z h'
   have hz' : z.toNat < 16384 := hz
   have hb' : ∀ i, i < n.toNat → (opAt h (J + i)).toNat < z.toNat := hb
@@ -126,14 +126,14 @@ theorem v5_eff (h : Buf) (c a b w t n : UInt64) (hl : 147520 ≤ h.length) (hz :
   have ej : bget h 8 - n = J.toUInt64 := by
     apply UInt64.toNat_inj.mp; rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr hn)]; simp; omega
   have g3 : bget h 8 - n < d4 := by rw [ej]; exact UInt64.lt_iff_toNat_lt.mpr (by simp [show d4.toNat = 4096 from rfl]; omega)
-  have eq : ∀ k : UInt64, k.toNat < 8 → (d5 + 8 * z + k).toNat = 16448 + 8 * z.toNat + k.toNat := fun k hk => recK z k hz hk
-  have ed : (d3 + J.toUInt64).toNat = 12352 + J := d3k J hJ
+  have eq : ∀ k : UInt64, k.toNat < 8 → (d5 + 8 * z + k).toNat = LAY_D5 + 8 * z.toNat + k.toNat := fun k hk => recK z k hz hk
+  have ed : (d3 + J.toUInt64).toNat = LAY_D3 + J := d3k J hJ
   -- the 7 field writes
   obtain ⟨H1, e1⟩ : ∃ H1, H1 = bset (bset (bset (bset (bset (bset (bset h (d5 + 8 * z) c) (d5 + 8 * z + 1) a) (d5 + 8 * z + 2) b)
       (d5 + 8 * z + 3) w) (d5 + 8 * z + 4) t) (d5 + 8 * z + 5) (opAt h J)) (d5 + 8 * z + 6) n := ⟨_, rfl⟩
-  have q0 : (d5 + 8 * z).toNat = 16448 + 8 * z.toNat := by have := eq 0 (by decide); simpa using this
+  have q0 : (d5 + 8 * z).toNat = LAY_D5 + 8 * z.toNat := by have := eq 0 (by decide); simpa using this
   have L1 : H1.length = h.length := by rw [e1]; simp [length_bset]
-  have U1 : ∀ i : UInt64, (i.toNat < 16448 + 8 * z.toNat ∨ 16448 + 8 * z.toNat + 7 ≤ i.toNat) → bget H1 i = bget h i := by
+  have U1 : ∀ i : UInt64, (i.toNat < LAY_D5 + 8 * z.toNat ∨ LAY_D5 + 8 * z.toNat + 7 ≤ i.toNat) → bget H1 i = bget h i := by
     intro i hi
     rw [e1]
     repeat rw [bget_bset' _ _ _ _ (by first | rw [q0]; omega | rw [eq _ (by decide)]; simp; omega)]
@@ -151,9 +151,9 @@ theorem v5_eff (h : Buf) (c a b w t n : UInt64) (hl : 147520 ≤ h.length) (hz :
   -- the sibling links
   obtain ⟨H2, e2⟩ : ∃ H2, H2 = (if n == 0 then H1 else v2 16777216 H1 J.toUInt64 z (n - 1)) := ⟨_, rfl⟩
   have P2 : H2.length = h.length ∧
-      (∀ i : UInt64, (∀ k, k + 1 < n.toNat → i.toNat ≠ 16448 + 8 * (opAt h (J + k)).toNat + 7) → bget H2 i = bget H1 i) ∧
+      (∀ i : UInt64, (∀ k, k + 1 < n.toNat → i.toNat ≠ LAY_D5 + 8 * (opAt h (J + k)).toNat + 7) → bget H2 i = bget H1 i) ∧
       (∀ k, k + 1 < n.toNat → bget H2 (d5 + 8 * opAt h (J + k) + 7) = opAt h (J + k + 1)) ∧
-      H2.drop 184384 = H1.drop 184384 := by
+      H2.drop LAY_HASH = H1.drop LAY_HASH := by
     by_cases n0 : n = 0
     · subst n0; simp [e2, L1]
     · have n1 : 1 ≤ n.toNat := by
@@ -178,7 +178,7 @@ theorem v5_eff (h : Buf) (c a b w t n : UInt64) (hl : 147520 ≤ h.length) (hz :
       have := W k (by rw [en]; omega)
       rw [O1 _ (by omega), O1 _ (by omega)] at this; exact this
   obtain ⟨L2, U2, W2, D2⟩ := P2
-  have D1 : H1.drop 184384 = h.drop 184384 := by
+  have D1 : H1.drop LAY_HASH = h.drop LAY_HASH := by
     rw [e1]
     repeat rw [drop_bset0 _ _ _ (by first | rw [q0]; omega | rw [eq _ (by decide)]; simp; omega)]
   have hv : h' = bset (bset (bset H2 (d3 + J.toUInt64) z) 8 (J.toUInt64 + 1)) 9 (z + 1) := by
@@ -187,8 +187,8 @@ theorem v5_eff (h : Buf) (c a b w t n : UInt64) (hl : 147520 ≤ h.length) (hz :
     have g3' : J.toUInt64 < d4 := by rw [← ej]; exact g3
     simp only [g1, g2, ej, g3', if_true, e2, e1]
     rfl
-  have l2 : 147520 ≤ H2.length := by omega
-  have top : ∀ i : UInt64, i.toNat ≠ 8 → i.toNat ≠ 9 → i.toNat ≠ 12352 + J → bget h' i = bget H2 i := by
+  have l2 : LAY_D7 ≤ H2.length := by omega
+  have top : ∀ i : UInt64, i.toNat ≠ 8 → i.toNat ≠ 9 → i.toNat ≠ LAY_D3 + J → bget h' i = bget H2 i := by
     intro i a1 a2 a3
     rw [hv, bget_bset' _ _ _ _ (by simp; omega), bget_bset' _ _ _ _ (by simp; omega), bget_bset' _ _ _ _ (by rw [ed]; omega)]
   have fz : ∀ k : UInt64, k.toNat < 7 → fld h' z k = [c, a, b, w, t, opAt h J, n].getD k.toNat 0 := by
@@ -258,13 +258,13 @@ theorem mem_flat_range {Is : Nat → List UInt64} {m : Nat} {v : UInt64} (h : v 
 open ParRun in
 /-- **node builder**: `v5` with the fields of a Layer-2 node realises `mkNode` on the arena representation -/
 theorem arena_v5g (h : Buf) (arena vals : List RN) (n : Nat) (t A B : Nat) (sh : Option Sh) (p : Bool) (w : UInt64)
-    (hA : ArenaRep h arena vals) (hn : n ≤ vals.length) (hl : 147520 ≤ h.length) (hz : arena.length < 16384)
+    (hA : ArenaRep h arena vals) (hn : n ≤ vals.length) (hl : LAY_D7 ≤ h.length) (hz : arena.length < 16384)
     (hJ : vals.length - n < 4096) (hw : ShOpt h w sh) (ht : t < 2 ^ 64) (hab : t ≠ 2 → t ≠ 5 → A < 2 ^ 64 ∧ B < 2 ^ 64) :
     let nd := RN.mk t A B sh p (vals.take n).reverse
     let h' := v5 h t.toUInt64 A.toUInt64 B.toUInt64 w (if p then 1 else 0) n.toUInt64
     h'.length = h.length ∧ ShTabAgree h h' ∧ ArenaRep h' (arena ++ [nd]) (nd :: vals.drop n) ∧
-    (∀ i : UInt64, i.toNat < 12352 → i.toNat ≠ 8 → i.toNat ≠ 9 → bget h' i = bget h i) ∧
-    (∀ i : UInt64, 147520 ≤ i.toNat → bget h' i = bget h i) ∧ h'.drop 184384 = h.drop 184384 := by
+    (∀ i : UInt64, i.toNat < LAY_D3 → i.toNat ≠ 8 → i.toNat ≠ 9 → bget h' i = bget h i) ∧
+    (∀ i : UInt64, LAY_D7 ≤ i.toNat → bget h' i = bget h i) ∧ h'.drop LAY_HASH = h.drop LAY_HASH := by
   intro nd h'
   obtain ⟨h9, hal, h8, hvl, I, hI, hR, hD, hX⟩ := hA
   have en : n.toUInt64.toNat = n := by simp; omega

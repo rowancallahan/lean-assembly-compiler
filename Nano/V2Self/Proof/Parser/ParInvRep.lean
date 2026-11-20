@@ -55,16 +55,16 @@ theorem RNRep.head {h : Buf} {u : UInt64} {n : ParRun.RN} {ids : List UInt64} (r
 /-- cells of the records `ids` (all 8 fields) agree -/
 def RecAgree (h h' : Buf) (ids : List UInt64) : Prop := ∀ v ∈ ids, ∀ k : UInt64, k.toNat < 8 → fld h' v k = fld h v k
 
-/-- the shape table region `[155712, 155712 + 3·8192)` agrees -/
-def ShTabAgree (h h' : Buf) : Prop := ∀ i : UInt64, 155712 ≤ i.toNat → i.toNat < 155712 + 3 * 8192 → bget h' i = bget h i
+/-- the shape table region `[LAY_SHP, LAY_SHP + 3·8192)` agrees -/
+def ShTabAgree (h h' : Buf) : Prop := ∀ i : UInt64, LAY_SHP ≤ i.toNat → i.toNat < LAY_SHP + 3 * 8192 → bget h' i = bget h i
 
 theorem shapeRow (c : UInt64) (h1 : 5 ≤ c.toNat) (h2 : c.toNat < 5 + 8192) (k : UInt64) (hk : k.toNat < 3) :
-    (d7 + 8192 + 3 * (c - 5) + k).toNat = 155712 + 3 * (c.toNat - 5) + k.toNat := by
+    (d7 + 8192 + 3 * (c - 5) + k).toNat = LAY_SHP + 3 * (c.toNat - 5) + k.toNat := by
   have e5 : (c - 5).toNat = c.toNat - 5 := by rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr (by simp; omega))]; simp
   have e3 : (3 * (c - 5)).toNat = 3 * (c.toNat - 5) := by
     rw [UInt64.toNat_mul, e5, show (3 : UInt64).toNat = 3 from rfl]; exact Nat.mod_eq_of_lt (by omega)
-  have a1 : (d7 + 8192 : UInt64).toNat = 155712 := rfl
-  have a2 : (d7 + 8192 + 3 * (c - 5)).toNat = 155712 + 3 * (c.toNat - 5) := by
+  have a1 : (d7 + 8192 : UInt64).toNat = LAY_SHP := rfl
+  have a2 : (d7 + 8192 + 3 * (c - 5)).toNat = LAY_SHP + 3 * (c.toNat - 5) := by
     rw [UInt64.toNat_add, a1, e3]; exact Nat.mod_eq_of_lt (by omega)
   rw [UInt64.toNat_add, a2]; exact Nat.mod_eq_of_lt (by omega)
 

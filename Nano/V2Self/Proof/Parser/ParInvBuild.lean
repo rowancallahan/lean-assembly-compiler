@@ -42,8 +42,8 @@ theorem tasks_arena_ext {h : Buf} {arena arena' : List RN} {fs : List Frame} (r 
 /-- Rep when only h[5], the task records, h[8], h[9], the operand stack and the arena changed -/
 theorem rep_arena {h h' ts : Buf} {st : St} {fs fs' : List Frame} {arena' vals' : List RN} (r : Rep h ts st fs)
     (hl : h'.length = h.length)
-    (e : ∀ i : UInt64, i.toNat ≠ 5 → i.toNat ≠ 8 → i.toNat ≠ 9 → (i.toNat < 64 ∨ 147520 ≤ i.toNat) → bget h' i = bget h i)
-    (ed : h'.drop 184384 = h.drop 184384) (hA : ArenaRep h' arena' vals') (hT : TasksRep h' arena' fs')
+    (e : ∀ i : UInt64, i.toNat ≠ 5 → i.toNat ≠ 8 → i.toNat ≠ 9 → (i.toNat < 64 ∨ LAY_D7 ≤ i.toNat) → bget h' i = bget h i)
+    (ed : h'.drop LAY_HASH = h.drop LAY_HASH) (hA : ArenaRep h' arena' vals') (hT : TasksRep h' arena' fs')
     (hd : inDefF fs' = inDefF fs) : Rep h' ts { st with vals := vals', arena := arena' } fs' := by
   obtain ⟨rT, rts, r0, r3, r11, rB, rD, rA, r25, r29, r30, r32, rO, _⟩ := r
   have hn : (bget h 7).toNat < 2 ^ 32 := by rw [rT.2.2.2]; simp; omega
@@ -111,7 +111,7 @@ theorem rep_v5g {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs) (h
   refine ⟨{ st with vals := RN.mk t A B sh p (st.vals.take n).reverse :: st.vals.drop n, arena := st.arena ++ [RN.mk t A B sh p (st.vals.take n).reverse] },
     by simp [mkNode, hle], ?_⟩
   have rT := r.2.2.2.2.2.2.2.2.2.2.2.2.2
-  have e : ∀ i : UInt64, i.toNat ≠ 5 → i.toNat ≠ 8 → i.toNat ≠ 9 → (i.toNat < 64 ∨ 147520 ≤ i.toNat) →
+  have e : ∀ i : UInt64, i.toNat ≠ 5 → i.toNat ≠ 8 → i.toNat ≠ 9 → (i.toNat < 64 ∨ LAY_D7 ≤ i.toNat) →
       bget (v5 h t.toUInt64 A.toUInt64 B.toUInt64 w (if p = true then 1 else 0) n.toUInt64) i = bget h i := by
     intro i a5 a8 a9 hi
     rcases hi with hi | hi

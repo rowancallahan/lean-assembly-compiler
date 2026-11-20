@@ -129,7 +129,7 @@ theorem DefsRep.len {h : Buf} {st : St} {b : Bool} (r : DefsRep h st b) :
 
 /-- the emitted words follow the token sentinel 0 at the end of the heap -/
 def OutRep (h : Buf) (ts : Buf) (out : List UInt64) : Prop :=
-  h.length = 185408 + ts.length + 1 + out.length ∧ h.drop (185408 + ts.length + 1) = out
+  h.length = LAY_TOK + ts.length + 1 + out.length ∧ h.drop (LAY_TOK + ts.length + 1) = out
 
 def _root_.ParRun.Frame.isDefs : Frame → Bool
   | .defs => true

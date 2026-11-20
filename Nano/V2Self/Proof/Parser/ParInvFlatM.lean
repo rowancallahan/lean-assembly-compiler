@@ -31,7 +31,7 @@ theorem taskIdx (g : UInt64) (hg : g < d12) :
   · rw [UInt64.toNat_add, e0]; simp; omega
 
 /-- the task push writes only the task region and h[5] -/
-theorem v1_append (h ws : Buf) (c a b : UInt64) (hl : 147520 ≤ h.length) : v1 (h ++ ws) c a b = v1 h c a b ++ ws := by
+theorem v1_append (h ws : Buf) (c a b : UInt64) (hl : LAY_D7 ≤ h.length) : v1 (h ++ ws) c a b = v1 h c a b ++ ws := by
   have h5 : bget (h ++ ws) 5 = bget h 5 := bget_append_lt _ _ _ (by simp; omega)
   unfold v1
   rw [h5]
@@ -51,7 +51,7 @@ theorem v1_length (h : Buf) (c a b : UInt64) : (v1 h c a b).length = h.length :=
   unfold v1; split <;> simp [length_bset]
 
 /-- **task 83** (`v144`, close the def): `21`, def count + 1, then the next def (task 60) -/
-theorem v144_eq (h : Buf) (a b : UInt64) (hl : 147520 ≤ h.length) :
+theorem v144_eq (h : Buf) (a b : UInt64) (hl : LAY_D7 ≤ h.length) :
     v144 h a b = v1 (bset h 12 (bget h 12 + 1)) 60 0 0 ++ [21] := by
   unfold v144
   simp only [bpush_eq]
@@ -92,7 +92,7 @@ theorem pushes_eq (h : Buf) (t x y n6 c8 : UInt64) :
   split <;> simp
 
 /-- **task 81** (`v142`, flatten node `a`): `t x y z n` = tag, payloads, first child, child count; `c` = input-local children -/
-theorem v142_eq (h : Buf) (a b : UInt64) (hl : 147520 ≤ h.length) (t x y z n c : UInt64)
+theorem v142_eq (h : Buf) (a b : UInt64) (hl : LAY_D7 ≤ h.length) (t x y z n c : UInt64)
     (ht : bget h ((d5 + 8*a) + 0) = t) (hx : bget h ((d5 + 8*a) + 1) = x) (hy : bget h ((d5 + 8*a) + 2) = y)
     (hz : bget h ((d5 + 8*a) + 5) = z) (hn : bget h ((d5 + 8*a) + 6) = n) (hc : v205 16777216 h z n 0 = c) :
     v142 h a b =
@@ -128,7 +128,7 @@ def cwC (h : Buf) (c : UInt64) : UInt64 := if c < 5 then 1 else bget h ((d7 + 81
 
 /-- **task 80** (`v141`, FINISH a def): exactly one operand `z` whose shape code is the def's result code and which is not the input
 local; then the header `20, def id, npw, nslots, loop flag, result width` and the tasks 81 (body) above 83 (close) -/
-theorem v141_eq (h : Buf) (a b : UInt64) (hl : 147520 ≤ h.length) :
+theorem v141_eq (h : Buf) (a b : UInt64) (hl : LAY_D7 ≤ h.length) :
     v141 h a b =
       let z := bget h (d3 + bget h 8 - 1)
       let f := d7 + 8 * bget h 12

@@ -7,7 +7,7 @@ import Nano.V2Self.Proof.Parser.ParInvBind
 namespace ParInv
 open C BufL ParSpec ParRun
 
-theorem v85_drop : ∀ (n : Nat) (h : Buf) (a b : UInt64), (v85 n h a b).drop 184384 = h.drop 184384
+theorem v85_drop : ∀ (n : Nat) (h : Buf) (a b : UInt64), (v85 n h a b).drop LAY_HASH = h.drop LAY_HASH
   | 0, h, a, b => by rw [v85]; exact drop_bset _ _ _ (by decide)
   | n + 1, h, a, b => by
     rw [v85]
@@ -17,7 +17,7 @@ theorem v85_drop : ∀ (n : Nat) (h : Buf) (a b : UInt64), (v85 n h a b).drop 18
       | exact drop_bset _ _ _ (by decide)
       | exact v85_drop n h _ _
 
-theorem v8_drop (h : Buf) (j x : UInt64) : (v8 h j x).drop 184384 = h.drop 184384 := drop_v8 h j x
+theorem v8_drop (h : Buf) (j x : UInt64) : (v8 h j x).drop LAY_HASH = h.drop LAY_HASH := drop_v8 h j x
 
 /-- **def lookup, value**: h[22] = index + 1 of the innermost finished def with this name, 0 if none -/
 theorem v8_val {h : Buf} {st : St} {bb : Bool} {p : UInt64} {nm : List UInt64} (hD : DefsRep h st bb)
@@ -27,7 +27,7 @@ theorem v8_val {h : Buf} {st : St} {bb : Bool} {p : UInt64} {nm : List UInt64} (
 
 /-- `Rep` ignores the scratch cells 21, 22 and 31 -/
 theorem rep_same {r : Nat} {h h' ts : Buf} {st : St} {fs : List Frame} (R : Rep h ts st fs) (s : Same r h h')
-    (hr : r = 21 ∨ r = 22) (ed : h'.drop 184384 = h.drop 184384) : Rep h' ts st fs := by
+    (hr : r = 21 ∨ r = 22) (ed : h'.drop LAY_HASH = h.drop LAY_HASH) : Rep h' ts st fs := by
   obtain ⟨rT, rts, r0, r3, r11, rB, rD, rA, r25, r29, r30, r32, rO, rK⟩ := R
   have hn : (bget h 7).toNat < 2 ^ 32 := by rw [rT.2.2.2]; simp; omega
   have e : ∀ i : UInt64, i.toNat ≠ 21 → i.toNat ≠ 22 → i.toNat ≠ 31 → bget h' i = bget h i :=
@@ -51,7 +51,7 @@ theorem rep_same {r : Nat} {h h' ts : Buf} {st : St} {fs : List Frame} (R : Rep 
       (fun i a _ => e i (by omega) (by omega) (by omega)) rA.2.1⟩
 
 /-! ## binding lookup: v7 ↔ `findB` -/
-theorem v7_drop : ∀ (n : Nat) (h : Buf) (j x : UInt64), (v7 n h j x).drop 184384 = h.drop 184384
+theorem v7_drop : ∀ (n : Nat) (h : Buf) (j x : UInt64), (v7 n h j x).drop LAY_HASH = h.drop LAY_HASH
   | 0, h, j, x => by rw [v7]; exact drop_bset _ _ _ (by decide)
   | n + 1, h, j, x => by
     rw [v7]

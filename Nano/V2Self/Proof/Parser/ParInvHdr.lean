@@ -24,10 +24,10 @@ theorem rowRep_frame'' {h h' : Buf} {j : Nat} {d : DefR} (hj : j < 512) (r : Row
 theorem rep_cur {h h' ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs) (hD : inDefF fs = true) (cur' : DefR) (k : Nat)
     (hname : cur'.name = st.cur.name) (hpre : ∀ i (hi : i < st.cur.params.length), ∃ hi' : i < cur'.params.length, cur'.params[i] = st.cur.params[i])
     (hk : cur'.params.length = st.cur.params.length + k) (hJ : (bget h 27).toNat + k ≤ 4096) (hl : h'.length = h.length)
-    (ed : h'.drop 184384 = h.drop 184384)
+    (ed : h'.drop LAY_HASH = h.drop LAY_HASH)
     (e : ∀ i : UInt64, i.toNat ≠ 27 →
-      (i.toNat < 147520 + 8 * st.defs.length + 1 ∨ 147520 + 8 * st.defs.length + 7 ≤ i.toNat ∨ i.toNat = 147520 + 8 * st.defs.length + 5) →
-      (i.toNat < 151616 + (bget h 27).toNat ∨ 151616 + (bget h 27).toNat + k ≤ i.toNat) → bget h' i = bget h i)
+      (i.toNat < LAY_D7 + 8 * st.defs.length + 1 ∨ LAY_D7 + 8 * st.defs.length + 7 ≤ i.toNat ∨ i.toNat = LAY_D7 + 8 * st.defs.length + 5) →
+      (i.toNat < LAY_FLAT + (bget h 27).toNat ∨ LAY_FLAT + (bget h 27).toNat + k ≤ i.toNat) → bget h' i = bget h i)
     (e27 : (bget h' 27).toNat = (bget h 27).toNat + k)
     (r1 : bget h' (d7 + 8 * st.defs.length.toUInt64 + 1) = cur'.npw.toUInt64)
     (r2 : (bget h' (d7 + 8 * st.defs.length.toUInt64 + 2)).toNat = cur'.nni)
@@ -43,14 +43,14 @@ theorem rep_cur {h h' ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs)
   simp only [if_true] at dH
   simp only [if_true] at dcur
   obtain ⟨⟨⟨c0, c1, c2, c3, c4, c6, c5, cc⟩, cs⟩, dlt⟩ := dcur
-  have big : ∀ i : UInt64, 155712 ≤ i.toNat → bget h' i = bget h i := fun i hi => e i (by omega) (by omega) (by omega)
-  have low : ∀ i : UInt64, i.toNat < 147520 → i.toNat ≠ 27 → bget h' i = bget h i := fun i hi a => e i a (by omega) (by omega)
+  have big : ∀ i : UInt64, LAY_SHP ≤ i.toNat → bget h' i = bget h i := fun i hi => e i (by omega) (by omega) (by omega)
+  have low : ∀ i : UInt64, i.toNat < LAY_D7 → i.toNat ≠ 27 → bget h' i = bget h i := fun i hi a => e i a (by omega) (by omega)
   have et : TokAgree h h' := ⟨low 7 (by decide) (by decide), fun i hi => big i (by omega)⟩
   have es : ShTabAgree h h' := fun i a _ => big i a
-  have rowc : ∀ k' : UInt64, k'.toNat < 8 → (d7 + 8 * st.defs.length.toUInt64 + k').toNat = 147520 + 8 * st.defs.length + k'.toNat :=
+  have rowc : ∀ k' : UInt64, k'.toNat < 8 → (d7 + 8 * st.defs.length.toUInt64 + k').toNat = LAY_D7 + 8 * st.defs.length + k'.toNat :=
     fun k' hk' => defCell _ dlt k' hk'
-  have rc5 : (d7 + 8 * st.defs.length.toUInt64 + 5).toNat = 147520 + 8 * st.defs.length + 5 := rowc 5 (by decide)
-  have rc0 : (d7 + 8 * st.defs.length.toUInt64 + 0).toNat = 147520 + 8 * st.defs.length := rowc 0 (by decide)
+  have rc5 : (d7 + 8 * st.defs.length.toUInt64 + 5).toNat = LAY_D7 + 8 * st.defs.length + 5 := rowc 5 (by decide)
+  have rc0 : (d7 + 8 * st.defs.length.toUInt64 + 0).toNat = LAY_D7 + 8 * st.defs.length := rowc 0 (by decide)
   have c5' : bget h' (d7 + 8 * st.defs.length.toUInt64 + 5) = bget h (d7 + 8 * st.defs.length.toUInt64 + 5) :=
     e _ (by rw [rc5]; omega) (Or.inr (Or.inr rc5)) (Or.inl (by rw [rc5]; omega))
   have c0' : bget h' (d7 + 8 * st.defs.length.toUInt64) = bget h (d7 + 8 * st.defs.length.toUInt64) := by
@@ -107,15 +107,15 @@ theorem rep_cur {h h' ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs)
       exact dz j h1 h2 k' hk'
   · intro i hi1 hi2
     rw [e27] at hi1
-    have eidx : (d7 + 4096 + i.toUInt64).toNat = 151616 + i := by
-      rw [UInt64.toNat_add]; simp [Nat.toUInt64, show (d7 + 4096 : UInt64).toNat = 151616 from rfl]; omega
+    have eidx : (d7 + 4096 + i.toUInt64).toNat = LAY_FLAT + i := by
+      rw [UInt64.toNat_add]; simp [Nat.toUInt64, show (d7 + 4096 : UInt64).toNat = LAY_FLAT from rfl]; omega
     rw [e _ (by rw [eidx]; omega) (Or.inr (Or.inl (by rw [eidx]; omega))) (Or.inr (by rw [eidx]; omega))]
     exact d0 i (by omega) hi2
 
   · refine ⟨by rw [low 26 (by decide) (by decide)]; exact dsr.1, fun k' h1 h2 => ?_, fun k' hk' => ?_⟩
     · rw [low 26 (by decide) (by decide)] at h1
-      have ek : (d7 + 8192 + 3 * k'.toUInt64).toNat = 155712 + 3 * k' := by
-        rw [UInt64.toNat_add, UInt64.toNat_mul, show (d7 + 8192 : UInt64).toNat = 155712 from rfl]; simp; omega
+      have ek : (d7 + 8192 + 3 * k'.toUInt64).toNat = LAY_SHP + 3 * k' := by
+        rw [UInt64.toNat_add, UInt64.toNat_mul, show (d7 + 8192 : UInt64).toNat = LAY_SHP from rfl]; simp; omega
       rw [big _ (by omega)]; exact dsr.2.1 k' h1 h2
     · rw [low 26 (by decide) (by decide)] at hk'
       obtain ⟨l, r, sa, sb, sw⟩ := dsr.2.2 k' hk'
@@ -156,20 +156,20 @@ theorem plain_core {g ts : Buf} {st : St} {fs : List Frame} (R1 : Rep g ts st fs
   · simp only [h4, beq_self_eq_true, if_true] at hs; exact absurd (status_bset0 g) hs
   have hw : w ≠ .nt := fun e => by subst e; exact h4 sw.nt_eq
   simp only [show (bget g 25 == 4) = false from by simpa using h4, Bool.false_eq_true, if_false] at hs ⊢
-  have rk : ∀ k : UInt64, k.toNat < 8 → (d7 + 8 * st.defs.length.toUInt64 + k).toNat = 147520 + 8 * st.defs.length + k.toNat :=
+  have rk : ∀ k : UInt64, k.toNat < 8 → (d7 + 8 * st.defs.length.toUInt64 + k).toNat = LAY_D7 + 8 * st.defs.length + k.toNat :=
     fun k hk => defCell _ dlt k hk
-  have f1 : ∀ (b : Buf) (v i : UInt64), i.toNat < 147520 → bget (bset b (d7 + 8 * st.defs.length.toUInt64 + 1) v) i = bget b i :=
+  have f1 : ∀ (b : Buf) (v i : UInt64), i.toNat < LAY_D7 → bget (bset b (d7 + 8 * st.defs.length.toUInt64 + 1) v) i = bget b i :=
     fun b v i hi => bget_bset' _ _ _ _ (by rw [rk 1 (by decide)]; simp; omega)
-  have f3 : ∀ (b : Buf) (v i : UInt64), i.toNat < 147520 → bget (bset b (d7 + 8 * st.defs.length.toUInt64 + 3) v) i = bget b i :=
+  have f3 : ∀ (b : Buf) (v i : UInt64), i.toNat < LAY_D7 → bget (bset b (d7 + 8 * st.defs.length.toUInt64 + 3) v) i = bget b i :=
     fun b v i hi => bget_bset' _ _ _ _ (by rw [rk 3 (by decide)]; simp; omega)
-  have f4 : ∀ (b : Buf) (v i : UInt64), i.toNat < 147520 → bget (bset b (d7 + 8 * st.defs.length.toUInt64 + 4) v) i = bget b i :=
+  have f4 : ∀ (b : Buf) (v i : UInt64), i.toNat < LAY_D7 → bget (bset b (d7 + 8 * st.defs.length.toUInt64 + 4) v) i = bget b i :=
     fun b v i hi => bget_bset' _ _ _ _ (by rw [rk 4 (by decide)]; simp; omega)
   rw [hj] at hs ⊢
   simp (disch := decide) only [f1, f3, f4, hj, r11] at hs ⊢
   generalize hH : bset (bset (bset g (d7 + 8 * st.defs.length.toUInt64 + 1) st.nx.toUInt64)
     (d7 + 8 * st.defs.length.toUInt64 + 3) (bget g 25)) (d7 + 8 * st.defs.length.toUInt64 + 4) 0 = H at hs ⊢
-  have eH : ∀ i : UInt64, i.toNat ≠ 147520 + 8 * st.defs.length + 1 → i.toNat ≠ 147520 + 8 * st.defs.length + 3 →
-      i.toNat ≠ 147520 + 8 * st.defs.length + 4 → bget H i = bget g i := by
+  have eH : ∀ i : UInt64, i.toNat ≠ LAY_D7 + 8 * st.defs.length + 1 → i.toNat ≠ LAY_D7 + 8 * st.defs.length + 3 →
+      i.toNat ≠ LAY_D7 + 8 * st.defs.length + 4 → bget H i = bget g i := by
     intro i a1 a3 a4; rw [← hH]
     rw [bget_bset' _ _ _ _ (by rw [rk 4 (by decide)]; simp; omega), bget_bset' _ _ _ _ (by rw [rk 3 (by decide)]; simp; omega),
       bget_bset' _ _ _ _ (by rw [rk 1 (by decide)]; simp; omega)]
@@ -229,9 +229,9 @@ theorem h_afterColon {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (
   have ev : step h = v135 (bset h 5 fs.length.toUInt64) (taskAt h fs.length).a (taskAt h fs.length).b := by rw [E]; rfl
   have hp : (bget h 3).toNat ≤ (bget h 7).toNat := r.2.2.2.1.le
   have hn7 := (rep_bounds r).1
-  have ip : (d11 + bget h 3 - 1).toNat = 185407 + (bget h 3).toNat := by
-    rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr (by rw [UInt64.toNat_add]; simp [show d11.toNat = 185408 from rfl]; omega)),
-      UInt64.toNat_add]; simp [show d11.toNat = 185408 from rfl]; omega
+  have ip : (d11 + bget h 3 - 1).toNat = LAY_TOKm1 + (bget h 3).toNat := by
+    rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr (by rw [UInt64.toNat_add]; simp [show d11.toNat = LAY_TOK from rfl]; omega)),
+      UInt64.toNat_add]; simp [show d11.toNat = LAY_TOK from rfl]; omega
   have hprev' : bget (bset h 5 fs.length.toUInt64) (d11 + bget (bset h 5 fs.length.toUInt64) 3 - 1) = 35 → prevTok st = some (.k 35) := by
     intro e; apply hprev
     rw [show bget (bset h 5 fs.length.toUInt64) 3 = bget h 3 from bget_bset' _ _ _ _ (by decide)] at e
@@ -280,14 +280,14 @@ theorem h_afterColon {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (
   simp only [if_true] at dcur
   obtain ⟨⟨⟨_, _, c2, c3, _, c6, c5, _⟩, cs⟩, dlt⟩ := dcur
   have hj : bget g 12 = st.defs.length.toUInt64 := by apply UInt64.toNat_inj.mp; rw [d12]; simp [Nat.toUInt64]; omega
-  have rk : ∀ k : UInt64, k.toNat < 8 → (d7 + 8 * st.defs.length.toUInt64 + k).toNat = 147520 + 8 * st.defs.length + k.toNat :=
+  have rk : ∀ k : UInt64, k.toNat < 8 → (d7 + 8 * st.defs.length.toUInt64 + k).toNat = LAY_D7 + 8 * st.defs.length + k.toNat :=
     fun k hk => defCell _ dlt k hk
   rw [hj] at hs ⊢
   generalize hG1 : bset g 3 (bget g 3 + 1) = G1 at R2 hs ⊢
   have e1 : ∀ i : UInt64, i.toNat ≠ 3 → bget G1 i = bget g i := fun i hi => by rw [← hG1]; exact bget_bset' _ _ _ _ (by simp; omega)
   have l1 : G1.length = g.length := by rw [← hG1, length_bset]
   generalize hH0 : bset (bset G1 (d7 + 8 * st.defs.length.toUInt64 + 1) 1) (d7 + 8 * st.defs.length.toUInt64 + 4) 1 = H0 at hs ⊢
-  have e0 : ∀ i : UInt64, i.toNat ≠ 147520 + 8 * st.defs.length + 1 → i.toNat ≠ 147520 + 8 * st.defs.length + 4 → bget H0 i = bget G1 i := by
+  have e0 : ∀ i : UInt64, i.toNat ≠ LAY_D7 + 8 * st.defs.length + 1 → i.toNat ≠ LAY_D7 + 8 * st.defs.length + 4 → bget H0 i = bget G1 i := by
     intro i a1 a4; rw [← hH0, bget_bset' _ _ _ _ (by rw [rk 4 (by decide)]; (try (try simp) <;> omega) <;> omega), bget_bset' _ _ _ _ (by rw [rk 1 (by decide)]; (try (try simp) <;> omega) <;> omega)]
   have r12 : bget H0 12 = st.defs.length.toUInt64 := by rw [e0 12 (by (try (try simp) <;> omega) <;> omega) (by (try (try simp) <;> omega) <;> omega), e1 12 (by decide), hj]
   have r27 : bget H0 27 = bget g 27 := by rw [e0 27 (by (try (try simp) <;> omega) <;> omega) (by (try (try simp) <;> omega) <;> omega), e1 27 (by decide)]
@@ -304,20 +304,20 @@ theorem h_afterColon {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (
   have hJn : (bget g 27).toNat < 4096 := UInt64.lt_iff_toNat_lt.mp hJ
   have g27 : bget G1 27 = bget g 27 := e1 27 (by decide)
   have g5 : bget G1 (d7 + 8 * st.defs.length.toUInt64 + 5) = bget g (d7 + 8 * st.defs.length.toUInt64 + 5) := e1 _ (by rw [rk 5 (by decide)]; (try simp) <;> omega)
-  have ip : (d7 + 4096 + bget g 27).toNat = 151616 + (bget g 27).toNat := by
-    rw [UInt64.toNat_add, show (d7 + 4096 : UInt64).toNat = 151616 from rfl]; omega
+  have ip : (d7 + 4096 + bget g 27).toNat = LAY_FLAT + (bget g 27).toNat := by
+    rw [UInt64.toNat_add, show (d7 + 4096 : UInt64).toNat = LAY_FLAT from rfl]; omega
   generalize hH : bset (bset (bset (bset H0 (d7 + 4096 + bget g 27) 4) 27 (bget g 27 + 1))
       (d7 + 8 * st.defs.length.toUInt64 + 2) (bget g (d7 + 8 * st.defs.length.toUInt64 + 2) + 1 - k0))
       (d7 + 8 * st.defs.length.toUInt64 + 6) (bget g (d7 + 8 * st.defs.length.toUInt64 + 6) + 1) = H at hs ⊢
   have lH : H.length = G1.length := by rw [← hH, ← hH0]; simp [length_bset]
-  have eH : ∀ i : UInt64, i.toNat ≠ 147520 + 8 * st.defs.length + 2 → i.toNat ≠ 147520 + 8 * st.defs.length + 6 → i.toNat ≠ 27 →
-      i.toNat ≠ 151616 + (bget g 27).toNat → bget H i = bget H0 i := by
+  have eH : ∀ i : UInt64, i.toNat ≠ LAY_D7 + 8 * st.defs.length + 2 → i.toNat ≠ LAY_D7 + 8 * st.defs.length + 6 → i.toNat ≠ 27 →
+      i.toNat ≠ LAY_FLAT + (bget g 27).toNat → bget H i = bget H0 i := by
     intro i a2 a6 a27 ap
     rw [← hH, bget_bset' _ _ _ _ (by rw [rk 6 (by decide)]; (try simp) <;> omega), bget_bset' _ _ _ _ (by rw [rk 2 (by decide)]; (try simp) <;> omega),
       bget_bset' _ _ _ _ (by (try simp) <;> omega), bget_bset' _ _ _ _ (by rw [ip]; omega)]
-  have cH : ∀ i : UInt64, i.toNat ≠ 147520 + 8 * st.defs.length + 1 → i.toNat ≠ 147520 + 8 * st.defs.length + 4 →
-      i.toNat ≠ 147520 + 8 * st.defs.length + 2 → i.toNat ≠ 147520 + 8 * st.defs.length + 6 → i.toNat ≠ 27 →
-      i.toNat ≠ 151616 + (bget g 27).toNat → bget H i = bget G1 i := fun i a1 a4 a2 a6 a27 ap => by
+  have cH : ∀ i : UInt64, i.toNat ≠ LAY_D7 + 8 * st.defs.length + 1 → i.toNat ≠ LAY_D7 + 8 * st.defs.length + 4 →
+      i.toNat ≠ LAY_D7 + 8 * st.defs.length + 2 → i.toNat ≠ LAY_D7 + 8 * st.defs.length + 6 → i.toNat ≠ 27 →
+      i.toNat ≠ LAY_FLAT + (bget g 27).toNat → bget H i = bget G1 i := fun i a1 a4 a2 a6 a27 ap => by
     rw [eH i a2 a6 a27 ap, e0 i a1 a4]
   have es : ShTabAgree G1 H := fun i a _ => cH i (by omega) (by omega) (by omega) (by omega) (by omega) (by omega)
   have es' : ShTabAgree g G1 := fun i a _ => e1 i (by omega)
@@ -342,7 +342,7 @@ theorem h_afterColon {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (
   have q3 : bget H (d7 + 8 * st.defs.length.toUInt64 + 3) = bget g (d7 + 8 * st.defs.length.toUInt64 + 3) := by
     rw [cH _ (by rw [rk 3 (by decide)]; (try simp) <;> omega) (by rw [rk 3 (by decide)]; (try simp) <;> omega) (by rw [rk 3 (by decide)]; (try simp) <;> omega)
       (by rw [rk 3 (by decide)]; (try simp) <;> omega) (by rw [rk 3 (by decide)]; (try simp) <;> omega) (by rw [rk 3 (by decide)]; (try simp) <;> omega), e1 _ (by rw [rk 3 (by decide)]; (try simp) <;> omega)]
-  have ed : H.drop 184384 = G1.drop 184384 := by
+  have ed : H.drop LAY_HASH = G1.drop LAY_HASH := by
     rw [← hH, ← hH0, drop_bset _ _ _ (by rw [rk 6 (by decide)]; (try simp) <;> omega), drop_bset _ _ _ (by rw [rk 2 (by decide)]; (try simp) <;> omega),
       drop_bset _ _ _ (by decide), drop_bset _ _ _ (by rw [ip]; (try simp) <;> omega), drop_bset _ _ _ (by rw [rk 4 (by decide)]; (try simp) <;> omega),
       drop_bset _ _ _ (by rw [rk 1 (by decide)]; (try simp) <;> omega)]
@@ -432,7 +432,7 @@ theorem h_stateTy {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.st
   simp only [if_true] at dcur
   obtain ⟨⟨⟨_, c1, c2, c3, c4, c6, c5, cp⟩, cs⟩, dlt⟩ := dcur
   have hj : bget g 12 = st.defs.length.toUInt64 := by apply UInt64.toNat_inj.mp; rw [d12]; simp [Nat.toUInt64]; omega
-  have rk : ∀ k : UInt64, k.toNat < 8 → (d7 + 8 * st.defs.length.toUInt64 + k).toNat = 147520 + 8 * st.defs.length + k.toNat :=
+  have rk : ∀ k : UInt64, k.toNat < 8 → (d7 + 8 * st.defs.length.toUInt64 + k).toNat = LAY_D7 + 8 * st.defs.length + k.toNat :=
     fun k hk => defCell _ dlt k hk
   unfold v136 at hs ⊢
   simp only [hj] at hs ⊢
@@ -500,7 +500,7 @@ theorem h_stateTy {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.st
       omega
     · simp only [if_true] at hle; omega
   generalize hH0 : bset G1 (d7 + 8 * st.defs.length.toUInt64 + 1) Q = H0 at hs ⊢
-  have e0 : ∀ i : UInt64, i.toNat ≠ 147520 + 8 * st.defs.length + 1 → bget H0 i = bget G1 i := by
+  have e0 : ∀ i : UInt64, i.toNat ≠ LAY_D7 + 8 * st.defs.length + 1 → bget H0 i = bget G1 i := by
     intro i a1; rw [← hH0, bget_bset' _ _ _ _ (by rw [rk 1 (by decide)]; (try simp) <;> omega)]
   have r12 : bget H0 12 = st.defs.length.toUInt64 := by rw [e0 12 (by (try simp) <;> omega), e1 12 (by decide), hj]
   have r27 : bget H0 27 = bget g 27 := by rw [e0 27 (by (try simp) <;> omega), e1 27 (by decide)]
@@ -515,21 +515,21 @@ theorem h_stateTy {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.st
   have hJ : bget g 27 < 4096 := Decidable.of_not_not hJ
   simp only [hJ, if_true] at hs ⊢
   have hJn : (bget g 27).toNat < 4096 := UInt64.lt_iff_toNat_lt.mp hJ
-  have ip : (d7 + 4096 + bget g 27).toNat = 151616 + (bget g 27).toNat := by
-    rw [UInt64.toNat_add, show (d7 + 4096 : UInt64).toNat = 151616 from rfl]; omega
+  have ip : (d7 + 4096 + bget g 27).toNat = LAY_FLAT + (bget g 27).toNat := by
+    rw [UInt64.toNat_add, show (d7 + 4096 : UInt64).toNat = LAY_FLAT from rfl]; omega
   have g27 : bget G1 27 = bget g 27 := e1 27 (by decide)
   generalize hH : bset (bset (bset (bset H0 (d7 + 4096 + bget g 27) (bget g 25)) 27 (bget g 27 + 1))
       (d7 + 8 * st.defs.length.toUInt64 + 2) (bget g (d7 + 8 * st.defs.length.toUInt64 + 2) + 1 - b01 n1))
       (d7 + 8 * st.defs.length.toUInt64 + 6) (bget g (d7 + 8 * st.defs.length.toUInt64 + 6) + 1) = H at hs ⊢
   have lH : H.length = G1.length := by rw [← hH, ← hH0]; simp [length_bset]
-  have eH : ∀ i : UInt64, i.toNat ≠ 147520 + 8 * st.defs.length + 2 → i.toNat ≠ 147520 + 8 * st.defs.length + 6 → i.toNat ≠ 27 →
-      i.toNat ≠ 151616 + (bget g 27).toNat → bget H i = bget H0 i := by
+  have eH : ∀ i : UInt64, i.toNat ≠ LAY_D7 + 8 * st.defs.length + 2 → i.toNat ≠ LAY_D7 + 8 * st.defs.length + 6 → i.toNat ≠ 27 →
+      i.toNat ≠ LAY_FLAT + (bget g 27).toNat → bget H i = bget H0 i := by
     intro i a2 a6 a27 ap
     rw [← hH, bget_bset' _ _ _ _ (by rw [rk 6 (by decide)]; (try simp) <;> omega), bget_bset' _ _ _ _ (by rw [rk 2 (by decide)]; (try simp) <;> omega),
       bget_bset' _ _ _ _ (by (try simp) <;> omega), bget_bset' _ _ _ _ (by rw [ip]; omega)]
-  have cH : ∀ i : UInt64, i.toNat ≠ 147520 + 8 * st.defs.length + 1 →
-      i.toNat ≠ 147520 + 8 * st.defs.length + 2 → i.toNat ≠ 147520 + 8 * st.defs.length + 6 → i.toNat ≠ 27 →
-      i.toNat ≠ 151616 + (bget g 27).toNat → bget H i = bget G1 i := fun i a1 a2 a6 a27 ap => by
+  have cH : ∀ i : UInt64, i.toNat ≠ LAY_D7 + 8 * st.defs.length + 1 →
+      i.toNat ≠ LAY_D7 + 8 * st.defs.length + 2 → i.toNat ≠ LAY_D7 + 8 * st.defs.length + 6 → i.toNat ≠ 27 →
+      i.toNat ≠ LAY_FLAT + (bget g 27).toNat → bget H i = bget G1 i := fun i a1 a2 a6 a27 ap => by
     rw [eH i a2 a6 a27 ap, e0 i a1]
   have es : ShTabAgree G1 H := fun i a _ => cH i (by omega) (by omega) (by omega) (by omega) (by omega)
   have es' : ShTabAgree g G1 := fun i a _ => e1 i (by omega)
@@ -553,7 +553,7 @@ theorem h_stateTy {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.st
   have q4 : bget H (d7 + 8 * st.defs.length.toUInt64 + 4) = bget g (d7 + 8 * st.defs.length.toUInt64 + 4) := by
     rw [cH _ (by rw [rk 4 (by decide)]; (try simp) <;> omega) (by rw [rk 4 (by decide)]; (try simp) <;> omega) (by rw [rk 4 (by decide)]; (try simp) <;> omega)
       (by rw [rk 4 (by decide)]; (try simp) <;> omega) (by rw [rk 4 (by decide)]; (try simp) <;> omega), e1 _ (by rw [rk 4 (by decide)]; (try simp) <;> omega)]
-  have ed : H.drop 184384 = G1.drop 184384 := by
+  have ed : H.drop LAY_HASH = G1.drop LAY_HASH := by
     rw [← hH, ← hH0, drop_bset _ _ _ (by rw [rk 6 (by decide)]; (try simp) <;> omega), drop_bset _ _ _ (by rw [rk 2 (by decide)]; (try simp) <;> omega),
       drop_bset _ _ _ (by decide), drop_bset _ _ _ (by rw [ip]; (try simp) <;> omega), drop_bset _ _ _ (by rw [rk 1 (by decide)]; (try simp) <;> omega)]
   have RC := rep_cur (h := G1) (h' := H) R2 hfs
@@ -583,8 +583,8 @@ theorem h_stateTy {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.st
       simp
       exact (sw.frame es').frame es)
   have hp7 : (bget g 3).toNat ≤ (bget g 7).toNat := hK.le
-  have it : (d11 + bget g 3).toNat = 185408 + (bget g 3).toNat := by
-    rw [UInt64.toNat_add, show d11.toNat = 185408 from rfl]; omega
+  have it : (d11 + bget g 3).toNat = LAY_TOK + (bget g 3).toNat := by
+    rw [UInt64.toNat_add, show d11.toNat = LAY_TOK from rfl]; omega
   have p3 : bget H 3 = bget g 3 := by
     rw [cH 3 (by (try simp) <;> omega) (by (try simp) <;> omega) (by (try simp) <;> omega) (by decide) (by (try simp) <;> omega),
       e1 3 (by decide)]
@@ -607,7 +607,7 @@ theorem h_stateTy {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.st
 /-- writes to the scratch cells 21 / 31 and to h[11] (nx) and h[32] (sslot) -/
 theorem rep_nxss {h h' ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs) (nx' ss' : Nat)
     (e : ∀ i : UInt64, i.toNat ≠ 11 → i.toNat ≠ 21 → i.toNat ≠ 31 → i.toNat ≠ 32 → bget h' i = bget h i)
-    (ed : h'.drop 184384 = h.drop 184384) (h11 : bget h' 11 = nx'.toUInt64) (h32 : bget h' 32 = ss'.toUInt64) :
+    (ed : h'.drop LAY_HASH = h.drop LAY_HASH) (h11 : bget h' 11 = nx'.toUInt64) (h32 : bget h' 32 = ss'.toUInt64) :
     Rep h' ts { st with nx := nx', sslot := ss' } fs := by
   obtain ⟨rT, rts, r0, r3, r11, rB, rD, rA, r25, r29, r30, r32, rO, rK⟩ := r
   have hn : (bget h 7).toNat < 2 ^ 32 := by rw [rT.2.2.2]; simp; omega
@@ -646,7 +646,7 @@ theorem h_armsStart {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.
   simp only [if_true] at dcur
   obtain ⟨⟨⟨_, c1, c2, c3, c4, c6, c5, cp⟩, cs⟩, dlt⟩ := dcur
   have hj : bget g 12 = st.defs.length.toUInt64 := by apply UInt64.toNat_inj.mp; rw [d12]; simp [Nat.toUInt64]; omega
-  have rk : ∀ k : UInt64, k.toNat < 8 → (d7 + 8 * st.defs.length.toUInt64 + k).toNat = 147520 + 8 * st.defs.length + k.toNat :=
+  have rk : ∀ k : UInt64, k.toNat < 8 → (d7 + 8 * st.defs.length.toUInt64 + k).toNat = LAY_D7 + 8 * st.defs.length + k.toNat :=
     fun k hk => defCell _ dlt k hk
   unfold v137 at hs ⊢
   by_cases w4 : bget g 25 = 4
@@ -654,7 +654,7 @@ theorem h_armsStart {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.
   simp only [show (bget g 25 == 4) = false from by simpa using w4, Bool.false_eq_true, if_false] at hs ⊢
   have hw : w ≠ .nt := fun e => by subst e; exact w4 sw.nt_eq
   simp only [hj] at hs ⊢
-  have f3 : ∀ (b : Buf) (v i : UInt64), i.toNat < 147520 → bget (bset b (d7 + 8 * st.defs.length.toUInt64 + 3) v) i = bget b i :=
+  have f3 : ∀ (b : Buf) (v i : UInt64), i.toNat < LAY_D7 → bget (bset b (d7 + 8 * st.defs.length.toUInt64 + 3) v) i = bget b i :=
     fun b v i hi => bget_bset' _ _ _ _ (by rw [rk 3 (by decide)]; (try simp) <;> omega)
   simp (disch := decide) only [f3, hj] at hs ⊢
   have ex : ∀ (b : Buf) (k : UInt64) (v i : UInt64), i.toNat ≠ k.toNat → bget (bset b k v) i = bget b i :=
@@ -663,7 +663,7 @@ theorem h_armsStart {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.
     rw [ex _ _ _ _ (by rw [rk 1 (by decide), rk 3 (by decide)]; (try simp) <;> omega), c1]
   rw [q1] at hs ⊢
   generalize hH1 : bset g (d7 + 8 * st.defs.length.toUInt64 + 3) (bget g 25) = H1 at hs ⊢
-  have e1 : ∀ i : UInt64, i.toNat ≠ 147520 + 8 * st.defs.length + 3 → bget H1 i = bget g i := fun i hi => by
+  have e1 : ∀ i : UInt64, i.toNat ≠ LAY_D7 + 8 * st.defs.length + 3 → bget H1 i = bget g i := fun i hi => by
     rw [← hH1, ex _ _ _ _ (by rw [rk 3 (by decide)]; (try simp) <;> omega)]
   have q3 : bget H1 (d7 + 8 * st.defs.length.toUInt64 + 3) = bget g 25 := by
     rw [← hH1, bget_bset_eq _ _ _ _ rfl (by rw [rk 3 (by decide)]; (try simp) <;> omega)]
