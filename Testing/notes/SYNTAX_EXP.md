@@ -247,3 +247,24 @@ is unchanged (`DsTok.ds_id`).
    interacts with shadowing.
 2. **Accept the `pOf` change** for `match` (above), or keep only construct 1.
 3. `match` programs need about 8 MiB more work memory. Packing the cell stack into one word (depth ≤ 31) would halve that.
+
+## Work memory of `match` programs (+8 MiB)
+- **Where it comes from.**
+  - The generated code allocates every buffer (`bnew`) at the full capacity κ = 2^19 words = 4 MiB and never frees it.
+  - `t10` allocates two buffers: the cell stack `s` (one word per paren depth) and the output `o`. The lexer's buffer `t`
+    stays live while `o` is written.
+  - Measured: `sum.lean` needs 73–76 MiB with the old B2. With match code it needs 81–84 MiB, above the 80 MiB
+    default of nanorun, the shims and selfrun.
+  - Match-free texts take the `t11` shortcut and allocate nothing, so their need is unchanged; the self-compile passes
+    at 80 MiB.
+- **Can it be avoided?**
+  - *Cell stack (−4 MiB, cheap).* Pack the cells into one UInt64 (2 bits per depth, depth ≤ 31; reject deeper `(`).
+    Spec change: `(` fails when `cs.length = 32`. The proof needs bit-field lemmas for `Rep`, about +100 lines.
+  - *Output buffer (−4 MiB, larger).* In place is impossible, because the output is longer than the input
+    (`| 3 =>` 11 words becomes `else if $ == 3 then` 17 words). But the desugaring is a **streaming** transduction:
+    output order is input order with insertions, and the scrutinee is emitted once where it stands. So it could be
+    fused into the lexer's emit loop (`s9`), which writes the lexer's single buffer directly. Cost:
+    - the trivia/cell state moves into `s9`;
+    - `s10_sound` would state `LexesD` directly (Lexes composed with `ds`);
+    - this is a restructuring of the Lex2Sound proof (est. M, about 1 day).
+  - With both changes, match programs would need no extra memory.
