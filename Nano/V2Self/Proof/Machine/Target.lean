@@ -36,6 +36,8 @@ structure JTarget where
   inv : LayW → M.State → Prop
   /-- the code words the layout records (`LayW.W`; RISC-V: the RV64 words) -/
   words : List J → List Nat
+  /-- the programs the target encodes faithfully (its translator's validation; RISC-V: all) -/
+  valid : List J → Prop
 
 namespace JTarget
 variable (T : JTarget)
@@ -93,7 +95,8 @@ structure Laws : Prop where
   /-- the RAM window lies in [2048, 2^32) -/
   ram : 2048 ≤ T.M.ramStart ∧ T.M.ramEnd ≤ 2 ^ 32
   /-- the generic layout conditions give the target's -/
-  lay_init : ∀ (K : LayW) (C : List J), LayOK T.M (4 * T.blockLen * C.length) K → K.W = T.words C → T.lay K C
+  lay_init : ∀ (K : LayW) (C : List J), LayOK T.M (4 * T.blockLen * C.length) K → K.W = T.words C → T.valid C →
+    T.lay K C
   /-- `m0` is what `observe` shows -/
   m0_obs : ∀ (s : T.M.State) a, a < 2 ^ 64 → (T.M.observe s).memory (UInt64.ofNat a) = (T.m0 s a).map UInt8.ofBitVec
   /-- the invariant holds at entry, for the entry memory -/
