@@ -60,8 +60,8 @@ theorem sim_all (W : WCx) : (n : Nd) → WFN n → SimOK W n
 theorem sim_allL (W : WCx) : (cs : List Nd) → WFL cs → ∀ c ∈ cs, SimOK W c
   | [], _ => fun _ hc => absurd hc (List.not_mem_nil)
   | n :: r, h => fun c hc => by
-    rcases List.mem_cons.mp hc with rfl | hc
-    · exact sim_all W c h.1
+    rcases List.mem_cons.mp hc with heq | hc
+    · exact heq ▸ sim_all W n h.1
     · exact sim_allL W r h.2 c hc
 end
 

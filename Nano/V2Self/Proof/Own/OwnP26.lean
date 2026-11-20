@@ -86,9 +86,9 @@ theorem o35_ok {W : WCx} {s f v : Buf} {i0 : Nat} (hP : Pre W s f v i0) {b : Nd}
   obtain ⟨hS, hF, hV, hT, hB⟩ := hSk
   have r := regs hS
   simp only [lit] at r
-  have g1 : bget (bset sk 5 1) 1 = 0 := by rw [ag_get (ag_b5 sk) (k := 1) (by decide)]; simpa using r.2.1
+  have g1 : bget (bset sk 5 1) 1 = 0 := by rw [ag_get (ag_b5 sk) (k := 1) (by decide)]; exact (by simpa using r.2.1 : bget sk (u 1) = u 0)
   have g7 : bget (bset sk 5 1) 7 = u en.length := by
-    rw [ag_get (ag_b5 sk) (k := 7) (by decide)]; simpa [A0] using r.2.2.2.2.2.2.1
+    rw [ag_get (ag_b5 sk) (k := 7) (by decide)]; exact (by simpa [A0] using r.2.2.2.2.2.2.1 : bget sk (u 7) = u en.length)
   simp only [g1, g7, show ((0 : UInt64) == 1) = false from rfl, Bool.false_eq_true, if_false] at e
   have hag := o15_ag 16777216 (bset sk 5 1) sk fk vk 0 (u en.length) (ag_b5 sk)
   have hesl : ({ A0 i0 W.ns with i := i0 + b.ser.length, F := F', es := (A0 i0 W.ns).es ++ en, ph := 1 } : AS).es.length
