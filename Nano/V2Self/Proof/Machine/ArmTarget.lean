@@ -21,18 +21,17 @@ def DataK (K : LayW) (a : Nat) : Prop :=
 def PermOK {M : Machine} (X W : M.State → Nat → Prop) (K : LayW) (n : Nat) (s : M.State) : Prop :=
   (∀ a, K.base ≤ a → a < K.base + n → X s a) ∧ (∀ a, DataK K a → W s a)
 
-/-- **the ARM target** over a machine `M` with permissions `X` (executable), `W` (readable/writable); `K.W` holds one
-entry per J instruction (its length is the code size) -/
+/-- **the ARM target** over a machine `M` with permissions `X` (executable), `W` (readable/writable); the code size
+(`16 * C.length` bytes) comes from the program `C` that `lay` and `inv` take -/
 def armTarget (M : Machine) (X W : M.State → Nat → Prop) : JTarget where
   M := M
   blockLen := 4
   enc := blk
   reg := armReg
   scratch := armScratch
-  lay K C := JTarget.LayOK M (16 * C.length) K ∧ progOK C = true ∧ K.W.length = C.length
+  lay K C := JTarget.LayOK M (16 * C.length) K ∧ progOK C = true
   m0 s a := ((M.observe s).memory (UInt64.ofNat a)).map UInt8.toBitVec
-  inv K s := PermOK X W K (16 * K.W.length) s
-  words C := C.map fun _ => 0
+  inv K C s := PermOK X W K (16 * C.length) s
   valid C := progOK C = true
   loader := ArmLoader X W
 
@@ -87,12 +86,12 @@ structure Mid (X W : M.State → Nat → Prop) (K : LayW) (C : List J) (s0 : M.S
 theorem mid_of_rel {K : LayW} {C : List J} {s0 s : M.State} {p : Nat × CallProbe.St}
     (hl : (armTarget M X W).lay K C) (h : (armTarget M X W).Rel K C s0 p s) : Mid X W K C s0 p 0 s :=
   ⟨h.cfg, by have := h.pc; simp only [JTarget.addr, armTarget] at this; rw [this]; congr 1, h.code, h.x0, h.bb, h.ww, h.x, h.keep, h.w, h.bw, h.fr, hl.1,
-    by have := h.inv; simp only [armTarget] at this; rw [hl.2.2] at this; exact this⟩
+    h.inv⟩
 
 theorem rel_of_mid {K : LayW} {C : List J} {s0 s : M.State} {p : Nat × CallProbe.St}
     (hl : (armTarget M X W).lay K C) (h : Mid X W K C s0 p 0 s) : (armTarget M X W).Rel K C s0 p s :=
   ⟨h.cfg, by show (M.observe s).programCounter = _; rw [h.pc]; simp only [JTarget.addr, armTarget]; congr 1, h.code, h.x0, h.bb, h.ww, h.x, h.keep, h.w, h.bw, h.fr,
-    by show PermOK X W K (16 * K.W.length) s; rw [hl.2.2]; exact h.pm⟩
+    h.pm⟩
 
 theorem perm_keep {K : LayW} {n : Nat} {s s' : M.State} (h : PermOK X W K n s) (hk : Keep X W s s') :
     PermOK X W K n s' :=
@@ -989,7 +988,7 @@ theorem arm_step (S : A64Sem M X W) {K : LayW} {C : List J} {s0 s : M.State} {a 
     (hl : (armTarget M X W).lay K C) (hR : (armTarget M X W).Rel K C s0 a s) (hS : SafeX K C a)
     (hs : CallProbe.step C a = some b) : ∃ s', Runs M s s' ∧ (armTarget M X W).Rel K C s0 b s' := by
   obtain ⟨pc, st⟩ := a
-  have hL := hl.1; have hP := hl.2.1
+  have hL := hl.1; have hP := hl.2
   have hM := mid_of_rel hl hR
   have hR2 := S.ram.2
   have hB : K.base + 16 * C.length ≤ 2 ^ 32 := by have := hL.bhi; omega
@@ -1099,20 +1098,18 @@ theorem armLaws (S : A64Sem M X W) : (armTarget M X W).Laws where
     have hr' : r ∈ armMapping.kept := by have := hr; show r ∈ armMapping.kept; rw [← S.map]; exact this
     exact Or.inr (kept_out r hr')
   ram := S.ram
-  lay_init K C h hW hv := by
+  lay_init K C h hv := by
     have e : 4 * (armTarget M X W).blockLen * C.length = 16 * C.length := by show 4 * 4 * C.length = _; omega
-    rw [e] at h; exact ⟨h, hv, by rw [hW]; simp [armTarget]⟩
+    rw [e] at h; exact ⟨h, hv⟩
   m0_obs s a _ := by
     show (M.observe s).memory (UInt64.ofNat a) = (((M.observe s).memory (UInt64.ofNat a)).map UInt8.toBitVec).map _
     cases (M.observe s).memory (UInt64.ofNat a) <;> rfl
-  inv_init K C s call code x sc hld hlen hb hW _ hlo hhi hib hil hob hol := by
+  inv_init K C s call code x sc hld hlen hb _ hlo hhi hib hil hob hol := by
     obtain ⟨hx, hw⟩ := hld
-    have hn : K.W.length = C.length := by rw [hW]; simp [armTarget]
     have hl4 : code.length = 16 * C.length := by rw [hlen]; show 4 * 4 * C.length = _; omega
     have hxl := sc.inputLength
     have hb' : K.base = (M.observe s).programCounter.toNat := hb
-    show PermOK X W K (16 * K.W.length) s
-    rw [hn]
+    show PermOK X W K (16 * C.length) s
     refine ⟨fun a h1 h2 => hx a (by omega) (by omega), fun a ha => hw a ?_⟩
     unfold DataK at ha; unfold InBlocks; omega
   step_ok := arm_step S
@@ -1120,7 +1117,7 @@ theorem armLaws (S : A64Sem M X W) : (armTarget M X W).Laws where
     intro K C s0 pc st s rd rs imm hl hR hC h1 h2 h3 h4
     have hB : K.base + 16 * C.length ≤ 2 ^ 32 := by have := hl.1.bhi; have := S.ram.2; omega
     have hpcl : pc < C.length := (List.getElem?_eq_some_iff.1 hC).1
-    have hok := progOK_at hl.2.1 hC
+    have hok := progOK_at hl.2 hC
     simp only [armOK, imm12, Bool.and_eq_true, decide_eq_true_eq] at hok
     obtain ⟨s', r, m⟩ := blk_addi S (mid_of_rel hl hR) hC hB hpcl hok.1.2 hok.1.1 h3 h4
     exact ⟨s', r, rel_of_mid hl m⟩
