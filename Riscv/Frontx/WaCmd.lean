@@ -1116,7 +1116,7 @@ elab_rules : command
             $(← good rest)⟩)
     let pf ← good stages.toList
     let goodN := mkIdent (`_root_ ++ fn ++ `good)
-    elabCommand (← `(set_option maxRecDepth 100000 in
+    elabCommand (← `(set_option maxRecDepth 100000 in set_option backward.isDefEq.respectTransparency false in
       theorem $goodN:ident : ∀ (xs : ByteArray), xs.size < 2 ^ 32 → ($wa).Good (xs, ()) ($fI xs) := by
         intro xs hx
         have hds : xs.data.size = xs.size := rfl
@@ -1139,14 +1139,14 @@ elab_rules : command
         choice (← `(waPick $wa (Proven.Frontx.Res.k $βT)))
         elabCommand (← `(def $code:ident : List (BitVec 32) :=
           waCodeC $wa (Proven.Frontx.Res.k $βT) (waTbl $tblI) $splI))
-        elabCommand (← `(set_option maxRecDepth 100000 in
+        elabCommand (← `(set_option maxRecDepth 100000 in set_option backward.isDefEq.respectTransparency false in
           theorem $impl:ident : Proven.Implements1With (fun xs : ByteArray => xs.data.toList) Proven.Frontx.Res.enc $code
               $fI (fun _ => 8 * wholeW $wa [inLoc] + 8 * (wholeN $wa (Proven.Frontx.Res.k $βT) + 1) + 7) :=
             implements1_waC (β := $βT) $fI $wa id (fun _ => rfl) (by decide) (by decide +kernel) (by decide +kernel)
               (waTbl $tblI) $splI (by decide +kernel) (by decide +kernel) (fun xs hx => ⟨_, $goodN xs hx, rfl⟩)))
         return
       elabCommand (← `(def $code:ident : List (BitVec 32) := waCode $wa (Proven.Frontx.Res.k $βT)))
-      elabCommand (← `(set_option maxRecDepth 100000 in
+      elabCommand (← `(set_option maxRecDepth 100000 in set_option backward.isDefEq.respectTransparency false in
         theorem $impl:ident : Proven.Implements1With (fun xs : ByteArray => xs.data.toList) Proven.Frontx.Res.enc $code
             $fI (fun _ => 8 * wholeW $wa [inLoc] + 8 * (wholeN $wa (Proven.Frontx.Res.k $βT) + 1) + 7) :=
           implements1_wa (β := $βT) $fI $wa id (fun _ => rfl) (by decide) (by decide +kernel) (by decide +kernel)
@@ -1156,14 +1156,14 @@ elab_rules : command
       if ← liftTermElabM (evalBoolW (← `(MS.hasMop (wholeProgA $wa)))) then
         choice (← `(waPickA $wa))
         elabCommand (← `(def $code:ident : List (BitVec 32) := waCodeAC $wa (waTbl $tblI) $splI))
-        elabCommand (← `(set_option maxRecDepth 100000 in
+        elabCommand (← `(set_option maxRecDepth 100000 in set_option backward.isDefEq.respectTransparency false in
           theorem $impl:ident : Proven.Implements1With (fun xs : ByteArray => xs.data.toList) (encArr $kT) $code
               $fI (fun _ => 8 * wholeW $wa [inLoc] + 8 * (wholeNA $wa + 1) + 7) (retLen := true) :=
             implements1_waAC (k := $kT) $fI $wa (by decide) (by decide +kernel) (waTbl $tblI) $splI
               (by decide +kernel) (by decide +kernel) (by decide +kernel) $goodN))
         return
       elabCommand (← `(def $code:ident : List (BitVec 32) := waCodeA $wa))
-      elabCommand (← `(set_option maxRecDepth 100000 in
+      elabCommand (← `(set_option maxRecDepth 100000 in set_option backward.isDefEq.respectTransparency false in
         theorem $impl:ident : Proven.Implements1With (fun xs : ByteArray => xs.data.toList) (encArr $kT) $code
             $fI (fun _ => 8 * wholeW $wa [inLoc] + 8 * (wholeNA $wa + 1) + 7) (retLen := true) :=
           implements1_waA (k := $kT) $fI $wa (by decide) (by decide +kernel) (by decide +kernel)
