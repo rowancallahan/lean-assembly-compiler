@@ -112,7 +112,8 @@ theorem localRoom {KL : LayW} {C : List J} {p nl hb E0 : Nat} {Inv G : St → Pr
     have hs1 := local1XS (KL := KL) (nl := nl) (k := k) (W := fun _ => False) (E0 := E0) hI hp hnl (by omega) hC.left
     rw [← oW_leaf] at hs1
     have c1 := local1Room (KL := KL) (E0 := E0) hI hG hp hnl (by omega) hC.left h1 hC18 (by omega)
-    have c2 := localRoom (KL := KL) (E0 := E0) hI hG hp hnl h1 hC18 w (k + 1) (pc + 5) (by omega) (by simpa using hC.right) (by omega)
+    have c2 := localRoom (KL := KL) (E0 := E0) hI hG hp hnl h1 hC18 w (k + 1) (pc + 5) (by omega)
+      (by have hr := hC.right; rwa [show (localT 1 p k pc 1).length = 5 from rfl] at hr) (by omega) -- 4.34.1-portable
     exact (pairCap hs1 c1 c2 (fun _ _ h => h)).mono (fun j q => by rcases q with e | ⟨e1, e2⟩ <;> constructor <;> omega)
 
 
