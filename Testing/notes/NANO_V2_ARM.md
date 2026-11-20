@@ -167,6 +167,55 @@ written once. **Wrapping RV costs ≈ 250 lines.** The existing RV host files (H
 HostTiny/RunsTop glue) are retired once the generic lift reproves `C_correctLO`/`C_runsO` as `rvTarget`
 corollaries.
 
+### 0-impl. The generic layer AS BUILT (box E, 2026-11-20; branch nano-v2-src @ 02d3a9c)
+`C_correctLO : CompileCorrect riscv compileC` and `C_runsO : CompileRuns riscv compileC` are now corollaries of the
+generic theorems. Their statements are unchanged (checked by `rfl` against the old proofs) and their axioms are
+unchanged (the 77-axiom Sail extern set). The old RV host chain (HostLift/HostMain/CapHost/HostTiny/GenImpl/RunsThr/
+GenStageE/RunsTop/MainTop/MainTopE) is deleted.
+
+**Generic (any target; Sail-free imports; axioms propext/Classical.choice/Quot.sound), 997 lines:**
+| file | lines | content |
+|---|---|---|
+| Machine/JLay | 105 | `LayW`, `wok`/`io`/`bok`/`sok`, `SafeX`, `SStarX` |
+| Machine/Target | 133 | `JTarget`, `Rel` (through `observe`), `LayOK`, `Laws`, `sim_star` |
+| Machine/HostOn | 117 | `jOfT` (J view of a machine state), `rel_entry`, `fin_on` (the return) |
+| Machine/HostGen | 164 | `tbytes T C` (code bytes), `read_some`, `blocks_of`, `enter` (StartCorrect ⇒ layout + Rel), `jregs` |
+| Machine/HostOk | 112 | `host_ok` (normal return) |
+| Machine/HostOom | 224 | `stub_run`, `host_room`, `host_tiny` (status −1) |
+| Main/TopOn | 142 | `compileOn enc`, `EncOK T enc`, **`C_correct_on`**, **`C_runs_on`** |
+Plus the following machine-independent splits: Machine/SemCases (`SemCases`, `gen_HD`) and Main/Compile (`SrcC`,
+`srcRun`, `spaceC`, `compileC`, `compiler_correctG`, `DBStage`, `spaceC_le`). GenRunS/GenMain no longer import Sail.
+
+**RISC-V adapter, 305 lines:** Machine/RvTarget (187: `rvTarget`, the `RelW ↔ Rel` bridge, `rvLaws`), Machine/RvStep
+(67: `sim_ret`, `sim_addiN`, `le4`, `g40_bytes`), Main/RvTop (51: `rv_enc`, `compileOn id = compileC`, the two
+corollaries, `C_runs`). Its step lemmas are the existing Sail library SimW/SimX (887 lines).
+
+**What a target supplies** (`JTarget` fields + `Laws`):
+* `M`, `blockLen`, `enc : J → List (BitVec 32)`, `reg`, `scratch`, `lay`, `m0`, `inv`, `words`;
+* `Laws`:
+  * `enc_len` (every block is `blockLen` words);
+  * `reg_map` (x1/x2/x10–x13 ↦ the mapping, status = x10, length = x11);
+  * `kept_map`;
+  * `ram` (2048 ≤ ramStart, ramEnd ≤ 2^32);
+  * `lay_init`, `m0_obs`, `inv_init`;
+  * **`step_ok`** (one SafeX J step = a machine run; this is the per-instruction-kind work);
+  * **`addi_ok`** (addi with the wrapping sum: the stubs' a0 = −1);
+  * **`ret_ok`** (`jalr x0, 0(x1)` to any 4-aligned x1);
+* `EncOK T enc`: `enc` turns Gen's bytes for its J program `Cj` into `tbytes T Cj`. For ARM, `enc` = decode Gen's
+  words, re-encode by `armTarget.enc`. That is the translator, and `EncOK` is its correctness lemma.
+
+**Open for ARM (not adapter work):**
+1. **Window:** `C_correct_on`/`C_runs_on` take `hwin : 2^31 ≤ T.M.ramStart`. The cause is that `GoodU`/`thr`/`Msp`,
+   `ShiftInv`/`shiftInv`, `no_room`/`lt_room` and `gen_HD`'s use quantify over work positions `hb ≥ 2^31`. ARM's
+   window [2^28, 2^29) needs those lowered (e.g. to 2048). This is proof-only work in D's `ShiftInv` area. RV's
+   `spaceC` is unchanged if the threshold stays position-independent.
+2. **Link width:** `enc` is position-independent, so the internal `jalr 0 r` and the host return `jalr 0 1` share one
+   block. That rules out §0a V1 (special-cased host returns) and requires **V2**: J's `jal` links `b + W·(pc+1)` with
+   W = 4·blockLen, and `jalr` divides by W (`Rel.pc` already uses `4·blockLen·pc`). Until then `blockLen` must be 1.
+3. **Instruction kinds** for ARM `step_ok` (no Gen change): §3's mapping. slli/srli become `movz x16` + lslv/lsrv,
+   negative addi from x0 becomes movz + sub, and padding is `add x16, x16, #0`. Missing Arm/proofs lemmas: reg-ALU ×8
+   (incl. madd), cmp-reg, br.
+
 ### 0a. Is J abstract enough for the lift?
 J (`Machine/Call.lean`) is a small abstract machine: registers `x : Nat → UInt64`, memory as 8-byte cells
 `m : Nat → UInt64` (bytes via `lbm`/`sbm`, little-endian), the code base `b`, a `pc : Nat` in instructions.
