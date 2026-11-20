@@ -255,7 +255,7 @@ set_option hygiene false in
 `hlow : f.extractLsb' 0 2 = 0` must be provable by `gfield` -/
 macro "gstep_core" : tactic => `(tactic| (
   · intro s h hpc hi hQ
-    simp only [Proven.getX_eq] at hQ
+    try simp only [Proven.getX_eq] at hQ
     have hok' := hok; obtain ⟨_, _, _⟩ := hok'
     have hf := Proven.fetch_cfg h hpc hok hi (Proven.G.rvc_or (by decide) (by first | with_reducible exact Proven.G.fR_low2 .. | with_reducible exact Proven.G.fI_low2 .. | with_reducible exact Proven.G.fSh_low2 .. | with_reducible exact Proven.G.fU_low2 .. | with_reducible exact Proven.G.fS_low2 .. | with_reducible exact Proven.G.fB_low2 .. | with_reducible exact Proven.G.fJ_low2 ..))
     rw [Proven.bytes_eq] at hf
