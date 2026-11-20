@@ -20,7 +20,8 @@ ARM = os.path.join(V, 'arm')
 QEMU = os.environ.get('QEMU') or shutil.which('qemu-aarch64-static') or shutil.which('qemu-aarch64')
 TIMEOUT = 60
 CAP = 524288
-NANORUN = SHIM = None   # set in main()
+NANORUN = SHIM = SHIMRV = None   # set in main()
+QRV = shutil.which('qemu-riscv64-static') or shutil.which('qemu-riscv64')
 
 # ---------------------------------------------------------------- generator
 NUMS = [0, 1, 2, 3, 7, 8, 15, 16, 127, 128, 255, 256, 257, 1000, 65535, 2**32 - 1, 2**63, 2**64 - 1]
@@ -152,19 +153,21 @@ def parse_nano(err):
     m = re.search(r'a0 = (-?\d+).*a1 = (\d+) output bytes', err)
     return (int(m.group(1)), int(m.group(2))) if m else (None, None)
 
-def parse_arm(err):
-    m = re.search(r'status (-?\d+), (\d+) output bytes', err)
+def parse_shim(err, name):
+    m = re.search(name + r': status (-?\d+), (\d+) output bytes', err)
     return (int(m.group(1)), int(m.group(2))) if m else (None, None)
 
 def pipeline(T, prog, inputs, tag):
-    """returns (kind, detail). kind 'ok' or a failure kind. T: scratch dir with tools built."""
-    src = os.path.join(T, 'p.src'); open(src, 'w').write(prog)
+    """returns (kind, detail). Reference = qemu-riscv64 + shim_rv on the RISC-V code (B2 compiles via the same);
+    ARM = rv2arm.sh (qemu-aarch64 + shim_arm) then shim_arm under qemu-aarch64; nanorun = third opinion."""
     rv = os.path.join(T, 'p.rv'); arm = os.path.join(T, 'p.arm')
-    rc, out, err = sh([NANORUN, os.path.join(V, 'B2.bin'), src, rv], timeout=TIMEOUT)
-    if rc is None: return 'hang-compile', err
-    if rc != 0 and 'Assertion' in err: return 'crash-compile', err[-300:]
-    code = open(rv, 'rb').read() if os.path.exists(rv) else b''
-    if not code: return 'rejected', err.strip()[-200:]
+    rc, code, err = sh([QRV, SHIMRV, os.path.join(V, 'B2.bin')], inp=prog.encode())
+    if rc is None: return 'hang-compile', ''
+    cs, _ = parse_shim(err, 'shim_rv')
+    if cs is None: return 'crash-compile', err[-300:]
+    if cs not in (0, 1): return 'compile-status', f'status {cs}'
+    if not code: return 'rejected', ''
+    open(rv, 'wb').write(code)
     # translator
     env = dict(os.environ, RUN=f"{QEMU} {SHIM} {os.path.join(ARM, 'rv2arm_arm.bin')}")
     rc, out, err = sh(['sh', os.path.join(ARM, 'rv2arm.sh'), rv], env=env)
@@ -174,19 +177,29 @@ def pipeline(T, prog, inputs, tag):
     rc, orc, _ = sh(['python3', os.path.join(ARM, 'rv2arm.py'), rv])
     if rc != 0 or orc != out: return 'translator-vs-oracle', f'rc={rc}'
     for k, inp in enumerate(inputs):
+        # reference: RISC-V under qemu-riscv64
+        rc, ref, rerr = sh([QRV, SHIMRV, rv], inp=inp)
+        if rc is None: return 'hang-riscv', f'input {k}'
+        rs, rn = parse_shim(rerr, 'shim_rv')
+        if rs is None: return 'crash-riscv', f'input {k}: {rerr[-200:]}'
+        if rs in (0, 1) and len(ref) != rn: return 'riscv-length', f'input {k}: a1={rn}, wrote {len(ref)}'
+        # third opinion: nanorun on the same code
         ip = os.path.join(T, f'in{k}'); open(ip, 'wb').write(inp)
         op = os.path.join(T, f'o{k}')
         if os.path.exists(op): os.remove(op)
         rc, _, nerr = sh([NANORUN, rv, ip, op])
         if rc is None: return 'hang-nanorun', f'input {k}'
-        rs, rn = parse_nano(nerr)
-        if rs is None: return 'crash-nanorun', f'input {k}: {nerr[-200:]}'
-        ref = open(op, 'rb').read() if os.path.exists(op) else b''
+        ns, _ = parse_nano(nerr)
+        if ns is None: return 'crash-nanorun', f'input {k}: {nerr[-200:]}'
+        nout = open(op, 'rb').read() if os.path.exists(op) else b''
+        if ns != rs or (rs in (0, 1) and nout != ref):
+            return 'nanorun-vs-qemu', f'input {k}: qemu {rs} {len(ref)}B, nanorun {ns} {len(nout)}B'
+        # ARM under qemu-aarch64
         rc, aout, aerr = sh([QEMU, SHIM, arm], inp=inp)
         if rc is None: return 'hang-arm', f'input {k}'
-        as_, an = parse_arm(aerr)
+        as_, an = parse_shim(aerr, 'shim_arm')
         if as_ is None: return 'crash-arm', f'input {k}: {aerr[-200:]}'
-        if as_ != rs: return 'status-mismatch', f'input {k}: nanorun {rs}, arm {as_}'
+        if as_ != rs: return 'status-mismatch', f'input {k}: riscv {rs}, arm {as_}'
         if rs in (0, 1):
             if aout != ref: return 'output-mismatch', f'input {k}: status {rs}, {len(ref)} vs {len(aout)} bytes'
         elif aout:
@@ -215,12 +228,14 @@ def main():
     out = sys.argv[3] if len(sys.argv) > 3 else os.path.join(os.getcwd(), 'bufdiff_out')
     os.makedirs(os.path.join(out, 'fail'), exist_ok=True)
     assert QEMU, 'qemu-aarch64 not found'
-    global NANORUN, SHIM
+    global NANORUN, SHIM, SHIMRV
     T = os.path.join(out, 'tools'); os.makedirs(T, exist_ok=True)
-    NANORUN, SHIM = os.path.join(T, 'nanorun'), os.path.join(T, 'shim_arm')
+    NANORUN, SHIM, SHIMRV = (os.path.join(T, n) for n in ('nanorun', 'shim_arm', 'shim_rv'))
     sh(['cc', '-O2', os.path.join(V, 'run', 'nanorun.c'), '-o', NANORUN])
     sh(['aarch64-linux-gnu-gcc', '-O2', '-static', os.path.join(V, 'run', 'shim', 'shim_arm.c'), '-o', SHIM])
-    assert os.path.exists(NANORUN) and os.path.exists(SHIM), 'tool build failed'
+    sh(['riscv64-linux-gnu-gcc', '-O2', '-static', os.path.join(V, 'run', 'shim', 'shim_rv.c'), '-o', SHIMRV])
+    assert all(os.path.exists(x) for x in (NANORUN, SHIM, SHIMRV)), 'tool build failed'
+    assert QRV, 'qemu-riscv64 not found'
     counts = {}; log = open(os.path.join(out, 'log.txt'), 'a')
     for seed in range(first, first + count):
         R = random.Random(seed)
