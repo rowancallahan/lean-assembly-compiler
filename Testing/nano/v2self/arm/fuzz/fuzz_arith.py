@@ -18,6 +18,7 @@ V2 = os.path.abspath(os.path.join(HERE, '..', '..'))      # Testing/nano/v2self
 ARM = os.path.join(V2, 'arm')
 M = (1 << 64) - 1
 QEMU = '/usr/bin/qemu-aarch64-static'
+QEMU_RV = '/usr/bin/qemu-riscv64-static'
 CONSTS = [0, 1, 2, 3, 5, 7, 8, 15, 16, 31, 32, 33, 63, 64, 65, 70, 127, 128, 255, 256, 2047, 2048, 4095, 4096,
           65535, 65536, 2**31 - 1, 2**31, 2**32 - 1, 2**32, 2**52, 2**63 - 1, 2**63, 2**64 - 2, 2**64 - 1]
 SHIFT_AMTS = list(range(0, 71))
@@ -154,6 +155,11 @@ def check(lets, xs, W):
         exp = expected(lets, x)
         if not (o_rv == aout == exp and str(a0) == st):
             return 'mismatch'
+        src_rc, sout, serr = run([QEMU_RV, W + '/shim_rv', rv], stdin=x)   # RISC-V reference: shim_rv under qemu
+        if src_rc == 'HANG':
+            return 'HANG-shim_rv'
+        if 'status ' not in serr or sout != exp or serr.split('status ')[1].split(',')[0] != str(a0):
+            return 'shim_rv-mismatch'
     return None
 
 
@@ -193,6 +199,8 @@ def main():
     subprocess.run(['cc', '-O2', os.path.join(V2, 'run', 'nanorun.c'), '-o', W + '/nanorun'], check=True)
     subprocess.run(['aarch64-linux-gnu-gcc', '-O2', '-static', os.path.join(V2, 'run', 'shim', 'shim_arm.c'),
                     '-o', W + '/shim_arm'], check=True)
+    subprocess.run(['riscv64-linux-gnu-gcc', '-O2', '-static', os.path.join(V2, 'run', 'shim', 'shim_rv.c'),
+                    '-o', W + '/shim_rv'], check=True)
     stats = {'ok': 0, 'fail': 0}
     for n in range(count):
         k = r.randint(1, 4)
