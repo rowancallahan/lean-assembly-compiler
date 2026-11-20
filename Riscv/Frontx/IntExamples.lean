@@ -3,6 +3,8 @@
 through `frontx_implementsC` (signed `div` / `rem` are M-extension words: checked words `compBFC`). -/
 import Riscv.Frontx.MulExamples
 import Riscv.Frontx.LeanSvgFixed
+-- Lean 4.34.1: the generated proofs compare instance arguments (old check)
+set_option backward.isDefEq.respectTransparency false
 
 /-! ## glue: signed words from the input (two's complement, little-endian, `0` past the end) -/
 
