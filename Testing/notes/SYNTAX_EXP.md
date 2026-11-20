@@ -268,3 +268,18 @@ is unchanged (`DsTok.ds_id`).
     - `s10_sound` would state `LexesD` directly (Lexes composed with `ds`);
     - this is a restructuring of the Lex2Sound proof (est. M, about 1 day).
   - With both changes, match programs would need no extra memory.
+
+## 3. Index notation (`a[i]!`, `a.size`, `a.push`): not started; estimate and blockers
+- **Semantics gap (needs an owner decision first).** nano's `Buf` is `List UInt64` and `bget b i = b.getD i.toNat 0`.
+  - Real Lean `a[i]!` needs `a : Array _` (or a `List` with a Nat index) and panics out of range; `bget` returns 0.
+  - `a.size` exists for `Array` only (`List` has `.length`).
+  - Verbatim Lean source over `Array UInt64` would need either a second prelude, in which `Buf := Array UInt64`
+    (B1's BootPrelude already does this), or a spec saying "`a[i]!` means `bget a i` (0 when out of range)", which
+    differs from Lean's panic default only on programs that would panic.
+- **Mechanics, once decided.**
+  - Lexer: `!` and `.` (field access) as new tokens. This is a `LexSpec.step` change, like construct 1; a `.` inside
+    an identifier affects qualified names (see the open decisions).
+  - Desugar stage (as for match): `x [ e ] !` becomes `bget x (e)`, `x . size` becomes `bsize x`, and `x . push v`
+    becomes `bpush x v`. This is a local token rewrite with a one-token lookbehind (an identifier) and bracket matching.
+- **Estimate:** C about +80 lines in Dsg; proof about +600 lines (the same pattern as `t9_sound`, with fewer cases),
+  plus the lexer cases (about +150). Roughly 4–6 h, after the semantics decision.
