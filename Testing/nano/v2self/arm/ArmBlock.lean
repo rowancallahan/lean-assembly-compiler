@@ -3,8 +3,8 @@
 The proof plan is in PROOF_NOTES.md. It is to be proved once the ARM model builds, with `M := Spec's arm`.
 
 Contents: `blockJ` = rv2arm's block of a J instruction at the J level (the same words as rv2arm.lean/.py; the
-`#guard`s in ArmBlockCheck.lean compare it with the oracle on every distinct instruction of B2); `stepW` = J with
-link width W (NANO_V2_ARM.md §0a, V2; `stepW 4` = `CallProbe.step`); `RelA` = the register/memory/code relation;
+`#guard`s in ArmBlockCheck.lean compare it with the oracle on every distinct instruction of B2); J's own `step` at
+link width 16 (`s.wk = 3`); `AccOK` = accesses in D, no wrap; `RelA` = the register/memory/code relation;
 `BlockOK M` = one J step is matched by a run of ≤ 4 machine steps (A64 block) from `RelA` to `RelA`. -/
 import Spec.Top
 import Nano.V2Self.Proof.Machine.Call
@@ -102,15 +102,11 @@ def validJ (n pc : Nat) : J → Prop
   | .slli rd rs sh | .srli rd rs sh => sh < 64 ∧ rdOK rs ∧ wrOK rd
   | .beq a b o | .bne a b o | .bltu a b o | .bgeu a b o =>
     rdOK a ∧ rdOK b ∧ 0 ≤ (pc : Int) + o ∧ (pc : Int) + o < n ∧ -65535 ≤ o ∧ o ≤ 65535
-  | .jal rd o => (rd = 0 ∨ rd = 1) ∧ 0 ≤ (pc : Int) + o ∧ (pc : Int) + o < n
+  | .jal rd o => (rd = 0 ∨ rd = 1) ∧ 0 ≤ (pc : Int) + o ∧ (pc : Int) + o < n ∧ -2 ^ 23 < o ∧ o < 2 ^ 23   -- b/bl imm26 reach (rv2arm c3)
   | .jalr rd rs => rd = 0 ∧ rs ≠ 0 ∧ pi rs < 31
 
-/-! ## J with link width W (V2). `stepW 4 = CallProbe.step` (same text with 4 replaced by W). -/
-def stepW (W : Nat) (C : List J) : Nat × St → Option (Nat × St)
-  | (pc, s) => match C[pc]? with
-    | some (.jal rd off) => some (((pc : Int) + off).toNat, wr s rd (UInt64.ofNat (s.b + W * (pc + 1))))
-    | some (.jalr rd rs) => some (((s.x rs).toNat - s.b) / W, wr s rd (UInt64.ofNat (s.b + W * (pc + 1))))
-    | _ => step C (pc, s)
+/-! ## J with link width W: no definition needed any more. J's state carries `wk` (7536764), `step` links with
+`s.w = 4·(s.wk + 1)`, and the ARM blocks are `step` at `s.wk = 3` (w = 16; `BlockOK` assumes it). -/
 
 /-! ## the relation -/
 /-- little-endian bytes of the code words -/
@@ -135,21 +131,28 @@ structure RelA (M : Machine) (C : List J) (D : Nat → Prop) (K : Nat → UInt64
   dCode : ∀ a, D a → a + 8 ≤ ps.2.b ∨ ps.2.b + (codeA C).length ≤ a
   ram : ps.2.b + (codeA C).length ≤ M.ramEnd ∧ ∀ a, D a → a + 8 ≤ M.ramEnd
 
-/-- the J step's memory accesses hit D (8-byte: the cell itself; byte: its cell), and a `jalr` target is a block -/
+/-- the J step's memory accesses hit D (8-byte: the cell itself; byte: its cell), and a `jalr` target is a block.
+Also no wrap (the no-wrap part of `JLay.SafeX`): J's `ea` clamps `x[rs] + imm` with `Int.toNat`, while the A64
+add/sub (and the x16 address forms) wrap mod 2^64, so the two agree only for 0 ≤ x[rs] + imm < 2^64. In particular
+`addi rd x0 imm` with imm < 0 (J: 0; A64: 2^64 + imm) is excluded here; that wrapping case is the separate
+`JTarget.addi_ok`. -/
+def NoWrap (v : UInt64) (i : Int) : Prop := 0 ≤ (v.toNat : Int) + i ∧ (v.toNat : Int) + i < 2 ^ 64
 def AccOK (C : List J) (D : Nat → Prop) : Nat × St → Prop
   | (pc, s) => match C[pc]? with
-    | some (.ld _ rs off) => D (ea (s.x rs) off)
-    | some (.sd _ r1 off) => D (ea (s.x r1) off)
-    | some (.lbu _ rs off) => D (ea (s.x rs) off - ea (s.x rs) off % 8)
-    | some (.sb _ r1 off) => D (ea (s.x r1) off - ea (s.x r1) off % 8)
+    | some (.addi _ rs imm) => NoWrap (s.x rs) imm
+    | some (.ld _ rs off) => NoWrap (s.x rs) off ∧ D (ea (s.x rs) off)
+    | some (.sd _ r1 off) => NoWrap (s.x r1) off ∧ D (ea (s.x r1) off)
+    | some (.lbu _ rs off) => NoWrap (s.x rs) off ∧ D (ea (s.x rs) off - ea (s.x rs) off % 8)
+    | some (.sb _ r1 off) => NoWrap (s.x r1) off ∧ D (ea (s.x r1) off - ea (s.x r1) off % 8)
     | some (.jalr _ rs) => s.b ≤ (s.x rs).toNat ∧ ((s.x rs).toNat - s.b) % 16 = 0
     | _ => True
 
 /-- **Block correctness** (the statement to prove for `M := arm`): if the J instruction at pc is valid, its accesses
-are in D, and t represents (pc, s), then the A64 block runs (≤ 4 steps) to a state representing J's next state. -/
+are in D and do not wrap, J's link width is 16 (`s.wk = 3`), and t represents (pc, s), then the A64 block runs
+(≤ 4 steps) to a state representing J's next state. -/
 def BlockOK (M : Machine) : Prop :=
   ∀ (C : List J) (D : Nat → Prop) (K : Nat → UInt64) (pc : Nat) (s : St) (j : J) (t : M.State) (ps' : Nat × St),
-    C[pc]? = some j → validJ C.length pc j → AccOK C D (pc, s) → RelA M C D K (pc, s) t →
-    stepW 16 C (pc, s) = some ps' → ∃ t', Runs M t t' ∧ RelA M C D K ps' t'
+    C[pc]? = some j → validJ C.length pc j → s.wk = 3 → AccOK C D (pc, s) → RelA M C D K (pc, s) t →
+    step C (pc, s) = some ps' → ∃ t', Runs M t t' ∧ RelA M C D K ps' t'
 
 end ArmBlock

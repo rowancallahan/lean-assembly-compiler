@@ -22,8 +22,20 @@ PROOF NOTES (owner rule: semantics, conventions, which lemma covers it):
   "outside the image of reg and outside scratch" disjunct.
 * `armOK` = rv2arm's validation (ArmBlock.validJ) PLUS the encoding ranges that rv2arm takes for granted because its
   input is RV code: |imm| < 2048 (RV I/S immediates) for addi / ld / sd / lbu / sb, so `add`/`sub` imm12 and the x16
-  address forms fit; shift < 64; branch offsets within ±65535 J instructions (b.cond / cbz reach ±1 MiB).
-* Per-block lemmas (`armTarget.step_ok`): Testing/nano/v2self/arm/PROOF_NOTES.md, one row per J kind. -/
+  address forms fit; shift < 64; branch offsets within ±65535 J instructions (b.cond / cbz reach ±1 MiB); jal offsets
+  within ±(2^23 − 1) J instructions (b / bl imm26; rv2arm b400ca6).
+* `armOK` ⇒ every range premise of `JT.A64Sem` (Machine/A64Sem.lean, E aba0345 / 9ddb1d4); ArmTarget derives them from
+  `progOK` (`progOK_at`):
+  * movz imm < 2^16: `addi` from x0 emits `#imm` (0 ≤ imm < 2048) or `#(65536 − |imm|)` (1 ≤ |imm| ≤ 2048); slli/srli
+    emit `movz x16, #sh` with sh < 64; `movz x17, #0`.
+  * add/sub imm < 4096: `addi` |imm| < 2048 (imm12) and `addr16` |off| < 2048.
+  * ldr/str off ≡ 0 mod 8 and < 32768, ldrb/strb off < 4096: by `body`'s own case split (else via x16, offset 0).
+  * b.cond/cbz f ∈ [−2^18, 2^18): f = 4o − k with |o| ≤ 65535 and k ≤ 2, so |f| ≤ 262142 < 262144.
+  * b/bl f ∈ [−2^25, 2^25): f = 4o or 4o − 3 with |o| < 2^23.
+  * register fields < 31: armReg's image on π's domain is {0..15} ∪ {30}, and scratch is 16/17.
+  Addresses (code, data, pc) in the RAM window [0x8000_0000, 0xC000_0000) are the layout's part (`JT.LayOK`), not
+  `armOK`'s: no instruction field depends on the window.
+* Per-block lemmas (`armTarget.step_ok`): Machine/ArmTarget.lean (E); plan in Testing/nano/v2self/arm/PROOF_NOTES.md. -/
 import Nano.V2Self.Proof.Machine.Call
 namespace ArmEnc
 open CallProbe
@@ -131,7 +143,7 @@ def armOK (n pc : Nat) : J → Bool
   | .slli rd rs sh | .srli rd rs sh => sh < 64 && mapped rs && mapped rd
   | .beq a b o | .bne a b o | .bltu a b o | .bgeu a b o =>
     mapped a && mapped b && 0 ≤ (pc : Int) + o && (pc : Int) + o < n && -65535 ≤ o && o ≤ 65535
-  | .jal rd o => (rd == 0 || rd == 1) && 0 ≤ (pc : Int) + o && (pc : Int) + o < n
+  | .jal rd o => (rd == 0 || rd == 1) && 0 ≤ (pc : Int) + o && (pc : Int) + o < n && -2 ^ 23 < o && o < 2 ^ 23
   | .jalr rd rs => rd == 0 && rs != 0 && mapped rs
 
 /-- every instruction of the program is encodable -/

@@ -22,6 +22,17 @@ plan for a proved version (`armTarget`, `Testing/notes/NANO_V2_ARM.md`).
 
 ## Use on a Mac (Apple Silicon), from this directory
 
+Quick start (all on ARM; Mac native, Linux via qemu-aarch64):
+```
+./compile.sh prog.lean > prog.arm          # compile a Lean program to ARM code
+./run.sh prog.arm input.txt output.txt     # run it (prog.lean also works: compiles first)
+./try_arm.sh                               # self-check + all examples
+./cross_check.sh                           # Linux: RISC-V and ARM (QEMU) build each other's compiler; all = self-compile
+./try_arm.sh prog.lean input.txt           # compile + run, print the output as hex and as text
+```
+`output.txt` from `run.sh` is the raw output bytes, so `cat output.txt` shows text output directly; `xxd output.txt`
+shows hex, and `xxd -r -p hex.txt > bytes` turns hex back into bytes.
+
 ```
 cc -O2 ../run/shim/shim_arm.c -o shim_arm
 grep -v '^--' prog.lean > prog.src                     # the compiler accepts no comments
@@ -94,7 +105,7 @@ Emitted instructions follow `NANO_V2_ARM.md` §0-min, the set the proof will cov
 | `jalr x0 r` | `br r` |
 | rd = x0 (no-op) | 4 × padding |
 
-## Tests (Linux x86-64, qemu-riscv64 + qemu-aarch64, 2026-11-20): `test_arm.sh`, 73/73 OK (also with `NANORUN=1`)
+## Tests (Linux x86-64, qemu-riscv64 + qemu-aarch64, 2026-11-20): `test_arm.sh`, 74/74 OK (also with `NANORUN=1`)
 
 * Every RISC-V run is on qemu-riscv64 (`shim_rv`), every ARM run on qemu-aarch64 (`shim_arm`). `NANORUN=1`
   also runs each RISC-V program with nanorun and requires the same status and output: all agree.
@@ -112,4 +123,8 @@ Emitted instructions follow `NANO_V2_ARM.md` §0-min, the set the proof will cov
   Also 9 range cases: branch/jal targets past the end or before 0, misaligned offsets, a shift field with bit 26,
   srai, and `jal x5`. The in-range edge cases are accepted (= oracle).
 * `arm/fuzz/fuzz.py`, 40 seeds: 120 runs agree with nanorun.
+* Semantic certificate (by G, `Nano/V2Self/Proof/CertArm`, lake-built, no sorry): `CertArm.sem_rv2arm`, i.e. the nano
+  semantics of `rv2arm.lean`'s text equals the Lean function `RA.m` (unless a buffer hits the cap). It says nothing
+  about the ARM code being right. `test_arm.sh` fails if the certificate is about an older `rv2arm.lean`; after any
+  edit, regenerate it with the 4 commands in `../cert/gen_cert.py` (target `arm`).
 * `check_lean.sh`: `ArmBlock.lean` elaborates, and `blockJ` = the oracle on 13,539 distinct J instructions.

@@ -58,7 +58,8 @@ def run_q(qemu, shim, code, inp_bytes, tag):
 def nano_run(bn, inp_bytes, tag):
     ip = os.path.join(WORK, tag + '.in'); op = os.path.join(WORK, tag + '.out')
     with open(ip, 'wb') as f: f.write(inp_bytes)
-    p = subprocess.run([os.path.join(WORK, 'nanorun'), bn, ip, op], capture_output=True, text=True)
+    # 1 GiB work memory, the same as shim_rv and shim_arm (run/shim, commit de0a30db)
+    p = subprocess.run([os.path.join(WORK, 'nanorun'), bn, ip, op, '1024'], capture_output=True, text=True)
     st = status_of(p.stderr)
     return st, (open(op, 'rb').read() if st in (0, 1) else None)
 
@@ -124,7 +125,7 @@ def main():
             rs, ro = nano_run(b2_out, inp, f'{name}.n{k}')
             qs, qo = run_q(QR, SR, b2_out, inp, f'{name}.q{k}')
             if refok and qs == -1 and (rs, ro) == (qs, qo):   # resource limit at 80 MiB: not compared to the reference
-                cnt['rv oom at 80 MiB (ref OK; nanorun agrees)'] += 1
+                cnt['rv oom at 1 GiB (ref OK; nanorun agrees)'] += 1
                 continue
             ok = (qs, qo) == (rs, ro) and ((refok and qs in (0, 1) and qo == rout) or (not refok and qs not in (0, 1)))
             if ok: cnt['rv qemu == ref'] += 1
@@ -147,7 +148,7 @@ def main():
             j = [kk for kk, _ in short_of[name]].index(k)
             rst, rout = refs[(name, j)]
             if rst == 'OK' and as_ == -1:
-                cnt['arm oom at 80 MiB (ref OK; rv agrees)'] += 1
+                cnt['arm oom at 1 GiB (ref OK; rv agrees)'] += 1
                 continue
             if rst == 'OK':
                 ok = as_ in (0, 1) and ao == rout

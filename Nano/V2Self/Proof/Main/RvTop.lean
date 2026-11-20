@@ -25,7 +25,7 @@ theorem flat_rv : ∀ (Cj : List CallProbe.J), (Cj.map CallProbe.encG).map UInt6
 
 /-- Gen's bytes are the RISC-V code bytes of its J program -/
 theorem rv_enc : EncOK rvTarget id := by
-  intro c Cj hc hw
+  refine ⟨rfl, fun c Cj hc hw _ => ⟨?_, trivial⟩⟩
   have e0 : (0 : UInt64) = UInt64.ofNat 0 := rfl
   rw [id, e0, SimW.g40_bytes c _ (by rw [List.length_map]; omega) 16777216 0 [] (by rw [List.length_map]; omega)
     (by omega)]

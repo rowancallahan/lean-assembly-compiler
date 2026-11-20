@@ -96,6 +96,7 @@ def block(j, pc):
     if k in ('addi', 'ld', 'lbu', 'sd', 'sb'): assert -2048 <= j[3] < 2048, j   # imm12 (= ArmEnc.armOK)
     if k in ('slli', 'srli'): assert 0 <= j[3] < 64, j
     if k in ('beq', 'bne', 'bltu', 'bgeu'): assert -65535 <= j[3] <= 65535, j     # b.cond / cbz reach
+    if k == 'jal': assert -2 ** 23 < j[2] < 2 ** 23, j                             # b / bl reach (= c3)
     if k == 'addi':
         _, rd, rs, imm = j
         R(rd); R(rs)                                     # validate (also when rd = x0)

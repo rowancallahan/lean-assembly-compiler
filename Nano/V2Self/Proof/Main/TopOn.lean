@@ -10,14 +10,16 @@ open Proven.Top Proven.Top.Alloc ParSpec Templates JT
 
 /-- C as a compiler whose code bytes are `enc` of Gen's bytes -/
 noncomputable def compileOn (enc : List UInt8 → List UInt8) (s : SrcC) : Option CompiledA :=
-  if mC s.text ≠ [] ∧ s.text.length ≤ 2 ^ 20 then some ⟨enc (mC s.text), 1, fun inp => [.alloc (spaceC s.text inp)]⟩
+  if enc (mC s.text) ≠ [] ∧ s.text.length ≤ 2 ^ 20 then some ⟨enc (mC s.text), 1, fun inp => [.alloc (spaceC s.text inp)]⟩
   else none
 
 /-- `enc` turns Gen's bytes for its J program `Cj` into the target's code bytes for `Cj` -/
 def EncOK (T : JTarget) (enc : List UInt8 → List UInt8) : Prop :=
+  enc [] = [] ∧
   ∀ (c : List UInt8) (Cj : List CallProbe.J), Cj.length < 2 ^ 18 →
     (Cj.map CallProbe.encG).map UInt64.toNat = Cj.map SimW.encJX →
-    enc (C.g40 16777216 c (Cj.map CallProbe.encG) 0 []) = tbytes T Cj
+    enc (C.g40 16777216 c (Cj.map CallProbe.encG) 0 []) ≠ [] →
+    enc (C.g40 16777216 c (Cj.map CallProbe.encG) 0 []) = tbytes T Cj ∧ T.valid Cj
 
 /-- the facts codegen provides for Gen's bytes `B` of program `p` -/
 def GenFacts (B : List UInt8) (p : List DefA) : Prop :=
@@ -38,6 +40,9 @@ theorem src_facts {x : List UInt8} (hne : mC x ≠ []) (hx : x.length ≤ 2 ^ 20
   simp only [srcRun, hpo, Option.bind_some] at this
   exact toOption_some this
 
+theorem mC_ne {T : JTarget} {enc : List UInt8 → List UInt8} (hE : EncOK T enc) {x : List UInt8}
+    (h : enc (mC x) ≠ []) : mC x ≠ [] := fun e => h (by rw [e]; exact hE.1)
+
 theorem ok_ne_oom (y : List UInt8) : (if y = [] then (1 : UInt64) else 0) ≠ oomFlag := by
   split <;> decide
 
@@ -46,7 +51,7 @@ variable {T : JTarget}
 /-- the normal return when the work block holds at least `Msp` bytes -/
 theorem run_ok (L : T.Laws) {enc : List UInt8 → List UInt8} (hE : EncOK T enc) (hwin : 2 ^ 31 ≤ T.M.ramStart)
     {B : List UInt8} {p : List DefA} (hG : GenFacts B p) {s : T.M.State} {call : Call} {x y : List UInt8}
-    (sc : StartCorrect T.M s call (enc B) x) (hSem : Sem κC p x = .ok y) (hy : y.length ≤ call.outputLength)
+    (hne : enc B ≠ []) (sc : StartCorrect T.M s call (enc B) x) (hSem : Sem κC p x = .ok y) (hy : y.length ≤ call.outputLength)
     (hmem : max 16 (Msp p x) ≤ call.workLength) :
     ∃ s', Runs T.M s s' ∧ (T.M.observe s').programCounter = call.returnAddress ∧
       (T.M.observe s').register T.M.mapping.status ≠ oomFlag ∧
@@ -67,7 +72,7 @@ theorem run_ok (L : T.Laws) {enc : List UInt8 → List UInt8} (hE : EncOK T enc)
   · rw [hSem] at hS'; cases hS'
     obtain ⟨s', r, pc, st, ol, rd, fr, kp, cf⟩ := host_ok L c hP Ks hO hK2 (ParSerLen.ser_lt hP hts) h
       (dbStage capStage c ts p hP hts ⟨Ks, hO, hK2⟩ h) _
-      (fun Cj hc hg hw => by rw [hg]; exact hE c Cj hc hw) sc y hSem hy (by omega) hS
+      (fun Cj hc hg hw => by rw [hg]; exact hE.2 c Cj hc hw (by rw [← hg]; exact hne)) sc y hSem hy (by omega) hS
     exact ⟨s', r, pc, by rw [st]; exact ok_ne_oom y, rd, ol, fr, kp, cf⟩
   · rw [hSem] at hS'; cases hS'
   · omega
@@ -82,10 +87,10 @@ theorem C_correct_on (L : T.Laws) (enc : List UInt8 → List UInt8) (hE : EncOK 
   split at compiles
   · rename_i hc
     cases Option.some.inj compiles
-    obtain ⟨p, hG, hsp, hSem⟩ := src_facts hc.1 hc.2 computes argument
+    obtain ⟨p, hG, hsp, hSem⟩ := src_facts (mC_ne hE hc.1) hc.2 computes argument
     have hmem : max 16 (Msp p (encodeInput argument)) ≤ call.workLength := by
       have := enough; simp only [memoryNeeded, peak, inUse, hsp] at this; simpa using this
-    exact run_ok L hE hwin hG startsRight hSem outputFits hmem
+    exact run_ok L hE hwin hG hc.1 startsRight hSem outputFits hmem
   · cases compiles
 
 /-- **C runs correctly on any target, with any work block** (owner's `CompileRuns`) -/
@@ -97,7 +102,7 @@ theorem C_runs_on (L : T.Laws) (enc : List UInt8 → List UInt8) (hE : EncOK T e
   split at compiles
   · rename_i hc
     cases Option.some.inj compiles
-    obtain ⟨p, hG, hsp, hSem⟩ := src_facts hc.1 hc.2 computes argument
+    obtain ⟨p, hG, hsp, hSem⟩ := src_facts (mC_ne hE hc.1) hc.2 computes argument
     have hMN : memoryNeeded ⟨enc (mC x), 1, fun inp => [.alloc (spaceC x inp)]⟩ (encodeInput argument) =
         max 16 (Msp p (encodeInput argument)) := by simp [memoryNeeded, peak, inUse, hsp]
     unfold OutOfMemory; rw [hMN]
@@ -107,8 +112,8 @@ theorem C_runs_on (L : T.Laws) (enc : List UInt8 → List UInt8) (hE : EncOK T e
       obtain ⟨Ks, hO, hK2⟩ := hL
       have hBe : ∀ Cj : List CallProbe.J, Cj.length < 2 ^ 18 →
           C.g41 c (serialize p) = C.g40 16777216 c (Cj.map CallProbe.encG) 0 [] →
-          (Cj.map CallProbe.encG).map UInt64.toNat = Cj.map SimW.encJX → enc (mC x) = tbytes T Cj :=
-        fun Cj hc hg hw => by rw [hB, hg]; exact hE c Cj hc hw
+          (Cj.map CallProbe.encG).map UInt64.toNat = Cj.map SimW.encJX → enc (mC x) = tbytes T Cj ∧ T.valid Cj :=
+        fun Cj hc' hg hw => by rw [hB, hg]; exact hE.2 c Cj hc' hw (by rw [← hg, ← hB]; exact hc.1)
       obtain ⟨-, -, -, -, c1, c2, -, -, -, -, -, -, -, -, -⟩ := blocks_of L startsRight
       have r32 := L.ram.2
       have wa := startsRight.workAligned
@@ -135,7 +140,7 @@ theorem C_runs_on (L : T.Laws) (enc : List UInt8 → List UInt8) (hE : EncOK T e
             unfold RS at this; rw [e]; exact this)
         exact ⟨s', r, pc, (fin s' st fr).2, (fin s' st fr).1, kp, cf⟩
     · -- at or above the bound: the normal return
-      obtain ⟨s', r, pc, st, -, -, fr, kp, cf⟩ := run_ok L hE hwin hG startsRight hSem outputFits (by omega)
+      obtain ⟨s', r, pc, st, -, -, fr, kp, cf⟩ := run_ok L hE hwin hG hc.1 startsRight hSem outputFits (by omega)
       exact ⟨s', r, pc, fr, ⟨fun h => absurd h st, fun h => absurd h hlt⟩, kp, cf⟩
   · cases compiles
 

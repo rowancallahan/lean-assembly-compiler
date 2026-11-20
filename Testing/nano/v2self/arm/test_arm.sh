@@ -80,6 +80,17 @@ if command -v aarch64-linux-gnu-objdump > /dev/null; then
   done
 fi
 
+# G's semantic certificate (Nano/V2Self/Proof/CertArm, CertArm.sem_rv2arm: the nano meaning of rv2arm's text = the Lean
+# function RA.m) is generated from rv2arm.lean; it must be about the CURRENT text. All of CertArm comes from the same
+# comment-stripped text as Src.lean, so compare that. Regenerate: the 4 commands in ../cert/gen_cert.py (target arm).
+CA="$V/../../../Nano/V2Self/Proof/CertArm/Src.lean"
+if [ -f "$CA" ]; then
+  sed -n '/^namespace RA$/,/^end RA$/p' "$CA" | sed '1d;$d' > "$T/ca.src"
+  { grep -v '^--' "$D/rv2arm.lean"; echo; } > "$T/now.src"   # gen_cert keeps the empty last line of split("\n")
+  cmp -s "$T/ca.src" "$T/now.src" && ok "CertArm certificate is about the current rv2arm.lean" \
+    || bad "CertArm is STALE (about an older rv2arm.lean): regenerate with ../cert/gen_cert.py (target arm), commit"
+else bad "CertArm/Src.lean missing"; fi
+
 # rare forms (x0 operands, mul, x2, far offsets, x0 stores): nano translator = oracle
 python3 "$D/synth_rv.py" > "$T/synth.rv"
 RUN="$ARM" "$D/rv2arm.sh" "$T/synth.rv" > "$T/synth.arm" || true

@@ -342,7 +342,8 @@ theorem arena_v5g (h : Buf) (arena vals : List RN) (n : Nat) (t A B : Nat) (sh :
     exact (hI _ (rootAt i hi).1).2.2 v hv
   have newRep : RNRep h' (bget h 9) nd (bget h 9 :: ids) := by
     have K := kidsR_chain h' (vals.take n).reverse (fun i => opAt h (vals.length - n + i)) (fun i => I (opAt h (vals.length - n + i)).toNat)
-      (fun i hi => by simp at hi; have := Elink i (by omega); rw [← Nat.add_assoc]; exact this)
+      -- Lean 4.34.1: rw then exact; Lean 4.29: simpa (the target is not yet beta-reduced there)
+      (fun i hi => by simp at hi; have := Elink i (by omega); first | (rw [← Nat.add_assoc]; exact this) | simpa using this)
       (fun i hi => kidRep i (by simp at hi; omega))
     simp only [List.length_reverse, List.length_take, Nat.min_eq_left hn, Nat.add_zero] at K
     refine .mk F0 F1 F2 (by rw [F3]; exact hw.frame shtab) F4 (by rw [F6]; simp [Nat.min_eq_left hn]) ht hab (by rw [F5]; exact K)

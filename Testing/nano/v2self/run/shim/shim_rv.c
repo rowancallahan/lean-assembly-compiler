@@ -2,7 +2,7 @@
    Build: riscv64-linux-gnu-gcc -O2 -static shim_rv.c -o shim_rv.   UNPROVEN GLUE, no bounds checks. */
 #include <stdio.h>
 #include <sys/mman.h>
-enum { CODE = 4 << 20, IN = 1 << 20, OUT = 2 << 20, WORK = 80 << 20 };          /* fixed sizes, bytes */
+enum { CODE = 4 << 20, IN = 1 << 20, OUT = 2 << 20, WORK = 1 << 30 };          /* fixed sizes, bytes */
 static unsigned char in[IN + 1], out[OUT];                                      /* +1: detect too long */
 static long work[WORK / 8];                                                      /* 8-aligned, zero */
 

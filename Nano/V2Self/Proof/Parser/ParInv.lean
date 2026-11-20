@@ -93,7 +93,7 @@ theorem v99_eq (x : Buf) (b : UInt64) (hx : x.length ≤ 16777216) :
     omega
   unfold v99
   simp only [hy, hsz, beq_self_eq_true, if_true, fin, entryHeap]
-  rfl
+  try rfl -- Lean 4.34.1 leaves an rfl goal here; 4.29 closes it in simp
 
 /-! ## decoded view of the machine state -/
 structure Task where

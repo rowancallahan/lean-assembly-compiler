@@ -110,14 +110,14 @@ theorem enter (L : T.Laws) {s : T.M.State} {call : Call} {C : List J} {x : List 
     (hb : K.base = (T.M.observe s).programCounter.toNat) (hW : K.W = T.words C) (hm0 : K.m0 = T.m0 s)
     (hlo : K.lo = call.workAddress.toNat) (hhi : K.hi ≤ call.workAddress.toNat + call.workLength)
     (hib : K.ib = call.inputAddress.toNat) (hil : K.il = x.length)
-    (hob : K.ob = call.outputAddress.toNat) (hol : K.ol ≤ call.outputLength) :
+    (hob : K.ob = call.outputAddress.toNat) (hol : K.ol ≤ call.outputLength) (hv : T.valid C) :
     T.lay K C ∧ T.Rel K C s (0, jOfT T s K.base) s := by
   obtain ⟨a1, a2, b1, b2, c1, c2, d1, d2, e1, e2, e3, f1, f2, g1, r32⟩ := blocks_of L sc
   have hn := tbytes_len L C
   have ilen := sc.inputLength
   have b4 := sc.codeAligned
   rw [hn] at d2 e3 f2 g1
-  refine ⟨L.lay_init K C ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ hW, rel_entry L sc.configured ?_ ?_ ?_ ?_ hm0⟩
+  refine ⟨L.lay_init K C ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ hW hv, rel_entry L sc.configured ?_ ?_ ?_ ?_ hm0⟩
   all_goals try (rw [hb] <;> omega)
   all_goals try omega
   · rw [hb]; simp

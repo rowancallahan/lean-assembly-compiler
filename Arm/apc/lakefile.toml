@@ -5,7 +5,7 @@ defaultTargets = ["Apc"]
 [[lean_lib]]
 name = "Spec"
 srcDir = "../.."
-globs = ["Spec.Code", "Spec.ArrCode", "Spec.Encode", "Spec.Tree"]
+globs = ["Spec.Code", "Spec.ArrCode", "Spec.Encode", "Spec.Tree", "Spec.Machines", "Spec.Top"]
 
 [[lean_lib]]
 name = "Compiler"
@@ -34,3 +34,15 @@ globs = ["Apc.Small", "Apc.Flags", "Apc.Sym", "Apc.Mach", "Apc.Mem8", "Apc.Frame
 [[require]]
 name = "arm64"
 path = "../../../deps/code-verification/arm64-semantics/Arm64"
+
+# per-instruction-form step lemmas and the rv2arm block proof on DeepMind's model (interim target; Blocks/NOTES.md)
+[[lean_lib]]
+name = "Blocks"
+globs = ["Blocks.+"]
+
+# J (the nano V2 jump-machine semantics, pure Lean): CallProbe.step, the source side of BlockOK
+[[lean_lib]]
+name = "Nano"
+srcDir = "../.."
+globs = ["Nano.V2.Gen", "Nano.V2.Lang", "Nano.V2.Sem", "Nano.V2Self.C.Base", "Nano.V2Self.C.Gen", "Nano.V2Self.Prelude", "Nano.V2Self.Proof.Gen.BufL", "Nano.V2Self.Proof.Gen.Fixup", "Nano.V2Self.Proof.Gen.GenAll", "Nano.V2Self.Proof.Gen.GenRef", "Nano.V2Self.Proof.Gen.GenTop", "Nano.V2Self.Proof.Gen.GenWidth", "Nano.V2Self.Proof.Lex.Lex2Spec", "Nano.V2Self.Proof.Machine.A64Sem", "Nano.V2Self.Proof.Machine.ArmEnc", "Nano.V2Self.Proof.Machine.Bridge", "Nano.V2Self.Proof.Machine.Call", "Nano.V2Self.Proof.Machine.CallA", "Nano.V2Self.Proof.Machine.CallExact", "Nano.V2Self.Proof.Machine.EVX", "Nano.V2Self.Proof.Machine.EVXC", "Nano.V2Self.Proof.Machine.EVXF", "Nano.V2Self.Proof.Machine.EVXL", "Nano.V2Self.Proof.Machine.EVXP", "Nano.V2Self.Proof.Machine.EVXT", "Nano.V2Self.Proof.Machine.Expr", "Nano.V2Self.Proof.Machine.ExprBridge", "Nano.V2Self.Proof.Machine.ExprEV", "Nano.V2Self.Proof.Machine.ExprExact", "Nano.V2Self.Proof.Machine.Heap", "Nano.V2Self.Proof.Machine.HeapEV", "Nano.V2Self.Proof.Machine.JLay", "Nano.V2Self.Proof.Machine.Loop", "Nano.V2Self.Proof.Machine.MachExact", "Nano.V2Self.Proof.Machine.NdCG", "Nano.V2Self.Proof.Machine.NdCGm", "Nano.V2Self.Proof.Machine.NdCGt", "Nano.V2Self.Proof.Machine.NdCGv", "Nano.V2Self.Proof.Machine.NdCGw", "Nano.V2Self.Proof.Machine.NdDef", "Nano.V2Self.Proof.Machine.NdProg", "Nano.V2Self.Proof.Machine.NdProgW", "Nano.V2Self.Proof.Machine.NdRun", "Nano.V2Self.Proof.Machine.NdSem", "Nano.V2Self.Proof.Machine.NdTop", "Nano.V2Self.Proof.Machine.NdTop2", "Nano.V2Self.Proof.Machine.NdWidth", "Nano.V2Self.Proof.Machine.NdWidthB", "Nano.V2Self.Proof.Machine.NoW", "Nano.V2Self.Proof.Machine.RvEnc", "Nano.V2Self.Proof.Machine.StartCode", "Nano.V2Self.Proof.Machine.Target", "Nano.V2Self.Proof.Machine.Templates", "Nano.V2Self.Proof.Parser.ParSpec"]
+moreLeanArgs = ["-Dweak.backward.isDefEq.respectTransparency=false"]

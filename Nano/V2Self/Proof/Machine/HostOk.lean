@@ -38,7 +38,7 @@ theorem host_ok (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List DefA}
     (hXl : (serialize p).length < 2 ^ 31) (h : C.g41 c (serialize p) ≠ []) (hdb : ∀ d ∈ p, DB d)
     (B : List UInt8) (hB : ∀ Cj : List J, Cj.length < 2 ^ 18 →
       C.g41 c (serialize p) = C.g40 16777216 c (Cj.map encG) 0 [] →
-      (Cj.map encG).map UInt64.toNat = Cj.map SimW.encJX → B = tbytes T Cj)
+      (Cj.map encG).map UInt64.toNat = Cj.map SimW.encJX → B = tbytes T Cj ∧ T.valid Cj)
     {s : T.M.State} {call : Call} {x : List UInt8} (sc : StartCorrect T.M s call B x)
     (y : List UInt8) (hSem : NanoMain.Sem NanoMain.κC p x = .ok y) (hy : y.length ≤ call.outputLength)
     (h16 : call.workAddress.toNat + 16 ≤ (call.workAddress.toNat + call.workLength) / 8 * 8)
@@ -68,7 +68,7 @@ theorem host_ok (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List DefA}
     rw [lbm_wordT, j10]; unfold gbT; rw [hr i hi, List.getElem?_eq_getElem hi]
     simp [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem hi]
   obtain ⟨Cj, pr, S0, Tb, hg, hc18, -, -, -, hwd, hrun⟩ := gen_main c hP Ks hO hK2 hXl h hdb s0 x hx11 hxl hxm
-  have hBe := hB Cj hc18 hg hwd
+  obtain ⟨hBe, hv⟩ := hB Cj hc18 hg hwd
   subst hBe
   have hn := tbytes_len L Cj
   rw [hn] at d2 e3 f2 g1
@@ -97,7 +97,7 @@ theorem host_ok (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List DefA}
   rw [hSem] at hSem'; cases hSem'
   obtain ⟨s3, h3, c31, kp, -, e1, e8, e10, e11, hby⟩ := hcont (by rw [x13]; omega) (by rw [x13, x12]; omega)
     (fun i hi => by rw [x13]; exact Or.inr ⟨by simp [KL], by simp [KL]; omega⟩)
-  obtain ⟨hl, hR0⟩ := enter L sc KL rfl rfl rfl rfl (by simp [KL, E0]; omega) rfl rfl rfl hy
+  obtain ⟨hl, hR0⟩ := enter L sc KL rfl rfl rfl rfl (by simp [KL, E0]; omega) rfl rfl rfl hy hv
   obtain ⟨s', r1, R1⟩ := sim_star L hl h3 hR0
   have hra : (s3.x 1).toNat % 4 = 0 := by rw [e1, j1]; exact sc.returnAligned
   obtain ⟨s4, r2, pc4, q10, q11, kept, bytes, frame, cfg⟩ := fin_on L hl R1 c31 hra kp e8 rfl wb
