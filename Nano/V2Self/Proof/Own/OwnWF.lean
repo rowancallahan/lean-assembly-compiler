@@ -45,7 +45,7 @@ theorem dropInp_len : ∀ (ps : List Ps) (xs : List Nd), xs.length = ps.length �
   | p :: ps, x :: xs, h => by
     have ih := dropInp_len ps xs (by simpa using h)
     simp only [dropInp, List.zip_cons_cons, List.filterMap_cons] at ih ⊢
-    cases p <;> simp [notInp, ih]
+    cases p <;> simp [ih] <;> rfl
 
 theorem ar_dropInp {xs : List Nd} (h : ∀ x ∈ xs, NdAr x) (ps : List Ps) : NdArL (dropInp ps xs) :=
   (ndArL_iff _).2 fun x hx => h x (dropInp_mem ps xs x hx)
