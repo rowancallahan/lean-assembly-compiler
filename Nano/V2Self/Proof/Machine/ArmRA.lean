@@ -737,7 +737,7 @@ theorem jal_V (rd : Nat) (off : Int) (hd : rd < 32) :
   rw [g5_sum _ _ (by rw [tU (by omega)]; omega), CallProbe.iu_toNat, tU (show rd < 2 ^ 64 by omega)]
   omega
 
-theorem t0_jal (x o : List UInt8) (rd : Nat) (off : Int) (hd : rd < 32) (h1 : -2 ^ 18 < off) (h2 : off < 2 ^ 18) :
+theorem t0_jal (x o : List UInt8) (rd : Nat) (off : Int) (hd : rd < 32) (h1 : -2 ^ 18 ≤ off) (h2 : off < 2 ^ 18) :
     RA.t0 x o (encG (.jal rd off)) = emit o (body (.jal rd off)) := by
   have hV := jal_V rd off hd
   obtain ⟨q0, q1, q2, q3⟩ := J_fields hd (by omega) (by omega) (by omega) hV

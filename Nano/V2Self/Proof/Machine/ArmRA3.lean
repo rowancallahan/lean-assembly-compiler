@@ -4,7 +4,7 @@ one chunk (`m_eq`), the chunks concatenated (`chunks`). -/
 import Nano.V2Self.Proof.Machine.ArmRA2
 set_option linter.unusedSimpArgs false
 namespace ArmRA
-open CallProbe ArmEnc
+open CallProbe ArmEnc SimW
 
 theorem orB {a b : Nat} (k : Nat) (ha : a < 2 ^ k) (hb : b % 2 ^ k = 0) : a ||| b = a + b := by
   rw [Nat.or_comm, orA k hb ha, Nat.add_comm]

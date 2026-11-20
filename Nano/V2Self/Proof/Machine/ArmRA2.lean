@@ -1,13 +1,11 @@
 /- rv2arm (`RA`) on Gen's words, per J instruction `j` with `JOK j` (GoodX, jal offsets within ±2^18): `t0_ok`: on an
 `armOK` instruction `RA.t0` appends the bytes of `ArmEnc.blockJ j`; `c0_ok`: rv2arm's validation `RA.c0` accepts only
 `armOK` instructions (with the target inside the program). -/
-import Nano.V2Self.Proof.Machine.ArmRA
+import Nano.V2Self.Proof.Machine.JNorm
 set_option linter.unusedSimpArgs false
 namespace ArmRA
-open CallProbe ArmEnc
+open CallProbe ArmEnc SimW
 
-/-- Gen's instructions that rv2arm reads back exactly: `GoodX` with jal offsets inside ±2^18 J instructions -/
-def JOK (j : J) : Prop := GoodX j ∧ ∀ rd o, j = .jal rd o → -2 ^ 18 < o ∧ o < 2 ^ 18
 
 theorem t0_ok (x o : List UInt8) (j : J) (n i : Nat) (hj : JOK j) (hok : armOK n i j = true) :
     RA.t0 x o (encG j) = emit o (body j) := by
@@ -222,7 +220,7 @@ theorem c0_br (f3 : Nat) (hf : f3 = 0 ∨ f3 = 1 ∨ f3 = 6 ∨ f3 = 7) (a b : N
   by_cases e0 : mapped a = true <;> by_cases e1 : mapped b = true <;>
     by_cases e2 : 0 ≤ (i : Int) + off ∧ (i : Int) + off < n <;> simp_all
 
-theorem c0_jal (rd : Nat) (off : Int) (i n : Nat) (hd : rd < 32) (h1 : -2 ^ 18 < off) (h2 : off < 2 ^ 18)
+theorem c0_jal (rd : Nat) (off : Int) (i n : Nat) (hd : rd < 32) (h1 : -2 ^ 18 ≤ off) (h2 : off < 2 ^ 18)
     (hi : i < n) (hn : n ≤ 2 ^ 18) (h : RA.c0 (encG (.jal rd off)) i.toUInt64 n.toUInt64 = 1) :
     rd < 2 ∧ 0 ≤ (i : Int) + off ∧ (i : Int) + off < n := by
   have hV := jal_V rd off hd
