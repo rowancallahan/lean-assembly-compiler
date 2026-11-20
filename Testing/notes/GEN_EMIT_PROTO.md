@@ -48,6 +48,11 @@ ARM blocks: size 4, `pos q = 4q`. x86-64: `size` per J shape, jumps always rel32
 What changed when porting the three proofs: `bpush o (g13 …)` → `o ++ E.jmp …`, `g14 … == 1` → `E.rng …`, the
 constant 21 → `E.cb`, one extra bound (`jl < 2^32`) for `big`. Two compile fixes, nothing structural.
 
+Premises: there is no sorry and no unproved statement. The generic theorems take `S.OK E` and `E.OK` (Emit.lean) and
+`T.OK`, `Exact E T`, `GLay T pos C` (Lay.lean) as hypotheses; for RISC-V all of them are proved (`rvSrc_ok`, `rvEm_ok`,
+`rvT_ok`, `rv_exact`; `GLay` is a premise about the final program's layout, discharged for RV by `pos_rv`). For any
+other target they are open obligations.
+
 ## Not prototyped / blockers
 
 * **Fixups (IF, tail exits, LOOP).** Not done. Needs `hole`/`patch` in `Em` and a multi-cell splice lemma in place of
