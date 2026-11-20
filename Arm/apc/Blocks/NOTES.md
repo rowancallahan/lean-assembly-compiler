@@ -85,3 +85,5 @@ Second gap: `validJ` does not bound `jal`'s offset; `b`/`bl` reach ±2^23 J inst
 | bne / bltu / bgeu (`subs x16; b.ne/lo/hs`, x17 prefix for x0) | `blk_bne`, `blk_bltu`, `blk_bgeu` | proved |
 | jal x0 (`b`) / jal x1 (3 PAD, `bl`) | `blk_jal` | proved, extra premise `-2^23 < o < 2^23` |
 | jalr x0, rs (`br`) | `blk_jalr` | proved, premise = ArmBlock's `AccOK` for jalr |
+| ld (`ldr [xn, #off]` or `add/sub x16; ldr [x16]`) | `blk_ld` | proved; premises `AccOK` (cell in D), `0 ≤ x[rs] + off` |
+| sd (same forms; x0 stored from x17 after `movz x17, #0`) | `blk_sd` | proved; same premises. Stores keep the code: `CodeOK.w8` (DeepMind's `canWrite` = w ∧ ¬x) |
