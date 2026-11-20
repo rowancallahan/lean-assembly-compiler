@@ -117,7 +117,7 @@ theorem treeProg_computes : Computes treeProg 0 treeF (fun x => (∃ t : Tree, x
     (fun n => 16 + (32 + 32 * n)) := by
   rintro x env w0 ⟨⟨t, rfl⟩, hlt⟩ henv
   obtain ⟨σ₁, h₁, -, -, hH, hW, hv⟩ := ev_spec t [] [] (encB t) [[w0]] (callEnv ((callEnv env []).set 5 0) [])
-    (by simp) (by simpa [encB] using hlt) rfl rfl
+    (by simp) (by simp [encB]; exact hlt) rfl rfl
   obtain ⟨e1, H1, W1⟩ := σ₁
   dsimp only at hH hW hv
   subst hH; subst hW

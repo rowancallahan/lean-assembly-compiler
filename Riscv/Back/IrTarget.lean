@@ -20,7 +20,7 @@ def rvT : Target where
   encT d := encK (.getTop d)
   t_top hd h16 hA := by
     have := law_getTop hd (by unfold frameBase; omega) hA
-    simpa [frameBase] using this
+    exact this
   top_keepF h := by
     show (getX _ 2).toNat / 8 * 8 = (getX _ 2).toNat / 8 * 8
     rw [h 2 phys_ne2 (by decide)]
