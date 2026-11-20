@@ -1,27 +1,15 @@
-/- **`A64Sem armDM XD WD`**: the abstract AArch64 interface of the ARM adapter, instantiated on DeepMind's model
-(`armDM`; `XD` executable bytes, `WD` readable+writable bytes). Every field is proved from the `dm_*` lemmas except
-`perm_init`, which is a HYPOTHESIS: Spec's `StartCorrect` constrains only what `observe` shows, and DeepMind's
-permissions are not observable (W^X: no byte is both executable and writable), so "the loader mapped the code r-x
-and the data blocks rw-" cannot follow from it.
-WARNING: `PermInit` quantifies over ALL `StartCorrect` states, and some of them map the code non-executable, so
-`PermInit` is FALSE for `armDM` and `a64DM` must not be composed as is: it shows that every per-form field of
-`A64Sem` holds on DeepMind exactly as stated. The usable form needs `perm_init` as a per-start-state premise of the
-ARM top theorem (sent to E): the loader's r-x / rw- layout is an assumption about the start state on a W^X model. -/
+/- **`A64Sem armDM XD WD`**: the abstract AArch64 interface of the ARM adapter (`Nano/V2Self/Proof/Machine/A64Sem.lean`),
+instantiated on DeepMind's model (`armDM`; `XD` executable bytes, `WD` readable+writable bytes). Every field from the
+`dm_*` lemmas. The loader's permission layout is not a field: it is `JT.LoaderPerm armDM XD WD`, a premise of the ARM
+top theorems (DeepMind permissions are not observable, so it cannot follow from `StartCorrect`). -/
 import Blocks.A64DM
 set_option linter.unusedVariables false
 namespace Proven.Apc.Blocks
 open Proven.Top
 
-/-- the loader's permission layout at a call's start (the `perm_init` field of `A64Sem`) -/
-def PermInit : Prop :=
-  ∀ (s : armDM.State) (call : Call) (code x : List UInt8), StartCorrect armDM s call code x →
-    (∀ a, (armDM.observe s).programCounter.toNat ≤ a → a < (armDM.observe s).programCounter.toNat + code.length → XD s a) ∧
-    (∀ a, JT.InBlocks call a → WD s a)
-
-theorem a64DM (hinit : PermInit) : JT.A64Sem armDM XD WD where
+theorem a64DM : JT.A64Sem armDM XD WD where
   map := rfl
   ram := by decide
-  perm_init := hinit
   movz s d i hc hp hx hd hi hw := F_movz s d i hc hp hx hd hi hw
   movk s d i h hc hp hx hd hi hh hw := F_movk s d i h hc hp hx hd hi hh hw
   addi s d n i hc hp hx hd hn hi hw := F_addi s d n i hc hp hx hd hn hi hw

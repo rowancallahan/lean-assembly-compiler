@@ -112,12 +112,12 @@ Permissions for `A64Sem`'s W^X split: `XD s a` = byte executable, `WD s a` = rea
 Per-form fields, in `A64Sem`'s exact statement (`GoesK`, `FetchX`, `PcOK`): `F_movz`, `F_movk`, `F_addi`,
 `F_subi`, `F_alu` (8 ops, madd with general x17), `F_cmpbr` (subs + b.cond, two steps), `F_cbz`, `F_b`, `F_bl`,
 `F_br`, `F_ldr`, `F_str`, `F_ldrb`, `F_strb` (stores: observed memory = `store8`/`store1`, permissions kept).
-`a64DM : PermInit → A64Sem armDM XD WD` type-checks against a verbatim copy of `A64Sem` (`A64Defs.lean`,
-`check_copy.sh`). **`perm_init` is not provable on DeepMind** (permissions are not observable; `StartCorrect` only
-constrains `observe`), and `PermInit` (∀ start states) is false for `armDM`, so `a64DM` is a shape check, not a
-usable instance: the ARM top theorem needs the loader's r-x / rw- layout as a premise on the start state.
+`a64DM : A64Sem armDM XD WD` (`A64Inst.lean`), against the real `Nano/V2Self/Proof/Machine/A64Sem.lean` (its closure
+builds on 4.34.1 since 12ddcd53; the earlier verbatim copy is gone). The loader layout is `JT.LoaderPerm`, a premise
+of the ARM top theorems (f8e28ee), not a field.
 
-Why a copy of `A64Sem`: its import closure (`Machine/Target`, 54 Nano modules) must build on Lean 4.34 next to
-DeepMind's package; 52/54 do with `-Dweak.backward.isDefEq.respectTransparency=false`, `EVXP.lean:100` and
-`GenWidth.lean:744/981` fail on 4.34 only (reported to the lead). Once they build, import the real file and drop
-`A64Defs.lean`.
+**Caveat on `LoaderPerm` for `armDM`.** It quantifies over ALL `StartCorrect` states. `StartCorrect` sees only
+`observe`, so some of them map an input byte read-only (or the code rw-): `LoaderPerm armDM XD WD` is FALSE, and a
+theorem taking it as a hypothesis is vacuous for `armDM`. The non-vacuous DeepMind statement needs the layout as a
+premise on the START STATE (CompileCorrect with an extra per-start-state hypothesis), or a Spec-level loaded-predicate
+(owner decision).
