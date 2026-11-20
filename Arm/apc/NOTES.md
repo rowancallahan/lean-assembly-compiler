@@ -304,3 +304,15 @@ any relation between the two memories beyond the instruction word.
 | E QEMU tests | sort 300, gcd 300, sum 300 inputs: 0 mismatches (gcd/sum also on the Lean Sail model) | - | - |
 Reproduce: `apc/stage.sh && (cd apc && lake build Apc.Axioms Apc.Stack)`; `apc/bridge.sh`; `apc/test/*.py`.
 Their code is referenced by path (`../deps/code-verification` at b0f729a), not copied.
+
+## 2026-11-20: repaired to build at `nano-v2-src` head (Lean 4.34.1)
+
+Per `Testing/notes/lean435/S8b.md`: `lakefile.toml` globs add `Compiler.MOp`, `Compiler.Opt.{Flow,Hoist,Peep}`;
+the `Compiler` lib gets `-Dweak.backward.isDefEq.respectTransparency=false` (Flow's 5 sites, 4.29 -> 4.34, no source
+edit; the non-`weak.` name is refused by `-D`); `stage.sh` adds `import Compiler.MOp` to `Apc/Src/Arr2Code.lean`.
+**Left out of the build:** `Apc.Wide`, `Apc.Opt`, `Apc.Emit2`, `Apc.Src.Search` (and so `apcw`, `apcwF`,
+`compBFOA_ok`, `msortO_apc`, `crc*_apc` drop out of `Apc/Axioms.lean`). Reason: `Wide.w_mop` (mul/divu/remu/div/rem,
+any registers, unconditional) is not provable for `apcw` as defined: `keepS` keeps every non-abstract register, so
+there is no scratch, and `remu d a b` with `d = a ≠ b` needs `a` and `a / b` live at once with `b` kept (divu/div
+need only `cmp; udiv/sdiv; csinv`). Fix = let `keepS` drop x16 (or another non-abstract register) for `apcw` and use
+it in `udiv x16, a, b; msub d, x16, b, a`. Not done. Full `lake build`: 291 s wall (4 cores).

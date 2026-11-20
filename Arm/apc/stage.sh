@@ -16,7 +16,7 @@ cut_before() { awk -v pat="$2" 'index($0, pat) == 1 { exit } { print }' "$1"; }
   echo "end Proven"; } > $O/ArrEx.lean
 sed 's/^import Riscv.Examples.ArrExamples$/import Apc.Src.ArrEx/; s/(by simpa using hi)/(by simpa [AExp.denote] using hi)/' $R/Riscv/Direct/SortIns.lean > $O/SortIns.lean   # second edit: Lean 4.34
 # the spill-slot language and the merge sorts (source level only)
-{ echo "import Spec.ArrCode"; echo "namespace Proven"
+{ echo "import Spec.ArrCode"; echo "import Compiler.MOp"; echo "namespace Proven"
   sed -n '/^\/-! ## Expressions over variables/,$p' $R/Riscv/Direct/Arr2Code.lean | cut_before /dev/stdin "/-! ## Words"
   echo "end Proven"; } > $O/Arr2Code.lean
 sed 's/^import Riscv.Direct.Arr2Code$/import Apc.Src.Arr2Code/' $R/Riscv/Direct/Arr2Src.lean > $O/Arr2Src.lean
