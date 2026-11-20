@@ -112,3 +112,35 @@ for ex1 on input `[5]`, with a start state, 1 byte of output space and 4,194,416
 `ra`, status ≠ oomFlag, output `Ex1.m [5]`. Remaining hypotheses: `StartCorrect` (abstract) and the native-only parser run
 (finding B). Finding A's loophole (always-OOM code admitted) is closed by the explicit `spaceC` as far as the top
 statement goes; `ImplementsC` (the existential form) is still satisfiable by always-OOM code wherever it is used alone.
+
+## SelfIn non-vacuity (`Nonempty SelfIn`) — PAUSED, plan of remaining steps
+
+Goal: `Sem κC Cert.PC.all [] = .ok []`, hence `≠ .error .cap`, hence `⟨[], …⟩ : SelfIn`.
+Status: no `sorry`; everything below "done" is pushed and builds (each file < 1 min).
+
+Done
+- `Proof/Tests/SelfInCapFree.lean`: push-free code never returns `.cap` (`ev_nocap`, `defMean_nocap`).
+- `Proof/Tests/SelfInQuiet.lean`: 169 of 234 defs are push-free (`S`, `quiet`); `Pre`, `F`, `pre_get`.
+- `Proof/Tests/SelfInPath.lean`: exact results on input `[]` for the callees on the path
+  (`X8 X13 X14 X15 X16 X26 X31 X38 X56 X95 X160 X181 X231 X232`), generic path lemmas over
+  abstract callees `g117` (v96 at task 60), `g118` (v97, one task then stop), `g120` (v99),
+  heap facts (`H0`, `HA`, `H5_eq`, `H5_0/5/64/65/66`, `HT_z`), `v127_cases`, `R_facts`.
+
+Remaining (est. 100–150 lines, all in the same style)
+1. Instantiate: `X117 := g117 _ _ C.v127 (cal 95 117 PC.d95 rfl) X95`;
+   `X118` from `g118` at `h := C.v1 HA 60 0 0` using `X16` (+ `C.d1 = 64` by decide), `X117`,
+   `H5_0/5/64/65/66`, `R_facts.1`;
+   `X120` from `g120` with `Z := H0`, `V1 := C.v1`, `X26` (+ `C.d11 = 184384`), `X31`, `X38 H0`,
+   `X56`, `X118`, `R_facts.2`. Result: `F [] 120 PC.d120 [.b [], .w 1] = .ok [.b []]`.
+2. `g122` (y16 = `.call 120 [.loc 0 1, .const 1]`) and `g233`
+   (m = `.call 232 [.call 160 [.call 122 [.call 14 []]]]`) over abstract callees, then
+   `X233 : F [] 233 PC.d233 [] = .ok [.b []]` from `X14 X122 X160 X232`.
+3. Glue: `Sem κC PC.all []` unfolds to the last entry of `means [] κC [] PC.all` applied to `[]`;
+   identify it with `F [] 233 PC.d233` via `pre_get`/`means_prefix` at `j = 234`.
+4. New file `Proof/Tests/SelfInWitness.lean` importing `Main.SelfLink` + `Tests.SelfInPath`:
+   `theorem selfIn_nonempty : Nonempty SelfIn := ⟨⟨[], by decide, by rw [sem_nil]; nofun⟩⟩`.
+   Check `#print axioms`, time the build.
+
+Traps already hit (keep the style): never let `simp`/the kernel see `loopRun` with literal fuel,
+`List.replicate 184384`, or a concrete callee `F [] i d` inside a body being evaluated — state
+each body lemma over abstract `ms`/`G…` with hypotheses, then instantiate with `cal`.
