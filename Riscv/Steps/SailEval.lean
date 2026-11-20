@@ -242,6 +242,14 @@ partial def normPure (d : Expr) (fuel : Nat := 16) : M Simp.Result := do
     let br := if b then args[3]! else args[4]!
     let d' := (if d.isAppOf ``ite then br else mkApp br h).headBeta
     return ← trans { expr := d', proof? := pf } (← normPure d' (fuel - 1))
+  -- `toBool b` from `<&&>` / `<||>` (Sail 97aa617dc): a projection out of an instance constant
+  if let .proj _ i st := d.getAppFn then
+    if let some f ← projectCore? (← whnf st) i then
+      let d' := (mkAppN f d.getAppArgs).headBeta
+      -- simp only: unfolding `and`/`or` further gives `Bool.rec`, which neither simp nor omega decides
+      let r' ← if let some d'' ← kernelWhnf? d' then normPure d'' 0 else simpE d'
+      let r'' ← trans { expr := d', proof? := ← mkExpectedTypeHint (← mkEqRefl d') (← mkEq d d') } r'
+      return r''
   let d' ← withReducible (whnfCore d)
   if d' != d then
     return ← trans { expr := d', proof? := ← mkExpectedTypeHint (← mkEqRefl d') (← mkEq d d') }
@@ -326,6 +334,15 @@ partial def evalCore (e : Expr) : M Simp.Result := do
           let d := args[i]!
           let isRes := (← whnfR (← inferType d)).isAppOf ``EStateM.Result
           let r ← if isRes then eval d else normPure d
+          -- a Bool discriminant that simp leaves open (`toBool b` of `<&&>`/`<||>`, Sail 97aa617dc):
+          -- decide `b = true` like an `if` condition (simp, then omega)
+          let r ← if !isRes && !(← isCtorApp r.expr) && (← whnfR (← inferType d)).isConstOf ``Bool then
+              let c := r.expr
+              let (b, h) ← decideProp (← mkEq c (mkConst ``Bool.true))
+                (mkApp2 (mkConst ``instDecidableEqBool) c (mkConst ``Bool.true))
+              let pf ← if b then pure h else mkAppM ``eq_false_of_ne_true #[h]
+              trans r { expr := mkConst (if b then ``Bool.true else ``Bool.false), proof? := pf }
+            else pure r
           if r.expr != d then
             changed := true
             let ctxLam ← withLocalDeclD `d (← inferType d) fun x =>
@@ -333,7 +350,11 @@ partial def evalCore (e : Expr) : M Simp.Result := do
             let step ← mkCongrArg ctxLam (← r.getProof)
             args' := args'.set! i r.expr
             pf? := some (← match pf? with | none => pure step | some p => mkEqTrans p step)
-        unless changed do return ← stuck e
+        unless changed do
+          -- e.g. `match 4 with | 0 | 1 | n.succ` (lean-sail v10 `readBytes`): literal discriminant, default transparency
+          return ← match ← reduceMatcher? e with
+            | .reduced e' => do trans (← rflStep e e') (← eval e')
+            | _ => stuck e
         let e' := mkAppN fn args'
         match ← withReducible (reduceMatcher? e') with
         | .reduced e'' =>
