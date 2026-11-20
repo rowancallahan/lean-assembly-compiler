@@ -319,14 +319,16 @@ theorem pass_exec (hsd : src ≠ dst) (hs : src < H.length) (hd : dst < H.length
         run_exec src dst S H Done i w hsd hs hd hS hn hi hw hw' hDone τ rest hl eh e1 e12 e13
       refine ⟨σ₁, hex, ⟨k1.trans e1, k13.trans e13, _, _, rest', k12, by omega, hh', by simp; omega, hl', ?_⟩, ?_⟩
       · rw [runs_min hw, List.append_assoc, ← runs_step leB hi hw, hr]
-      · dsimp only; rw [k12, e12, toNat_ofNat' (by omega), toNat_ofNat' (by omega)]; omega)
+      · try dsimp only
+        rw [k12, e12, toNat_ofNat' (by omega), toNat_ofNat' (by omega)]; omega)
     (fun τ ⟨e1, e13, i, Done, rest, e12, hin, eh, hDone, hl, hr⟩ hc => by
       have hi : ¬ i < S.length := by
         simp only [ltE, BExp.denote, e12, e1, ult_ofNat (show i < 2 ^ 64 by omega) (show S.length < 2 ^ 64 by omega)] at hc
         intro h; simp [h] at hc
       have hr0 : rest = [] := List.eq_nil_of_length_eq_zero (by simp at hl; omega)
       rw [runs_end leB (by omega), List.append_nil] at hr
-      dsimp only; rw [eh, hr0, List.append_nil, hr])
+      try dsimp only
+      rw [eh, hr0, List.append_nil, hr])
     ⟨σ.env.set 12 0, σ.heap⟩ ⟨by simp [BEnv.set, h1], by simp [BEnv.set, h13], 0, [], H[dst], by simp [BEnv.set],
       by omega, by rw [hh, List.nil_append, List.set_getElem_self], rfl, by simpa using hD, by simp⟩
   exact ⟨σ', .seq (BExec.assign' rfl) hl, hq⟩
