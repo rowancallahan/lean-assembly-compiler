@@ -1,5 +1,5 @@
 name = "proven"
-defaultTargets = ["Chain434"]
+defaultTargets = ["Spec", "Compiler", "Riscv", "Arm", "Frontx"]  # main's set; Chain434 (ARM chain etc.) and REVIEW are built explicitly
 moreLeanArgs = ["--tstack=400000", "--threads=2"]
 
 # Module names follow the folders; no lib root files (globs only).
