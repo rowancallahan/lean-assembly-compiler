@@ -66,9 +66,9 @@ theorem br_ldrb (imm : BitVec 12) (n d : BitVec 5) (hn : n.toNat < 31) (hd : d.t
   have hK : (aiW 0x0E5#10 imm n d : BitVec 32) &&& 0xFFC00000#32 = 0x39400000#32 := by rw [aiW_K]; decide
   obtain ⟨hlt, hb⟩ := hM _ (.inl hp)
   have hx := abs_x t hn
-  obtain ⟨s', h1, h2, h3, h4, h5⟩ := full_ldrb hR.full hR.abs hR.pc hW.lt hW.al hW.sail hK
+  obtain ⟨s', h1, h2, h3, h4, h5⟩ := full_ldrb hR.full hR.abs hR.pc (va29 hW.lt) hW.al hW.sail hK
     (by rw [sl_ext, aiW_d]; exact hd) (by rw [sl_ext, aiW_n]; exact hn)
-    (by rw [sl_ext, sl_ext, aiW_n, aiW_imm, hx]; exact hlt) (by rw [sl_ext, sl_ext, aiW_n, aiW_imm, hx]; exact hb)
+    (by rw [sl_ext, sl_ext, aiW_n, aiW_imm, hx]; exact va29 hlt) (by rw [sl_ext, sl_ext, aiW_n, aiW_imm, hx]; exact hb)
   rw [sl_ext, aiW_d] at h2
   refine bridgedM_of (bridge_of (dec_ldrb' imm n d (ne31 hn) (ne31 hd)) hR hW ⟨s', h1, ?_, h3, ?_, h5⟩ ?_ ?_) hM
   all_goals simp only [Pg, Arm64.Program.evalInst, Arm64.execInstWithSvc, Arm64.execLdr, Arm64.checkAddrSPAligned,
@@ -122,9 +122,9 @@ theorem br_strb (imm : BitVec 12) (n d : BitVec 5) (hn : n.toNat < 31) (hd : d.t
   let ea := t.regs.read n + imm.zeroExtend 64
   obtain ⟨hlt, -⟩ := hM ea (.inr hp)
   have hx := abs_x t hn
-  obtain ⟨s', h1, h2, h3, h4, h5⟩ := full_strb hR.full hR.abs hR.pc hW.lt hW.al hW.sail hK
+  obtain ⟨s', h1, h2, h3, h4, h5⟩ := full_strb hR.full hR.abs hR.pc (va29 hW.lt) hW.al hW.sail hK
     (by rw [sl_ext, aiW_d]; exact hd) (by rw [sl_ext, aiW_n]; exact hn)
-    (by rw [sl_ext, sl_ext, aiW_n, aiW_imm, hx]; exact hlt)
+    (by rw [sl_ext, sl_ext, aiW_n, aiW_imm, hx]; exact va29 hlt)
   rw [sl_ext, sl_ext, sl_ext, aiW_n, aiW_imm, aiW_d, hx, abs_x t hd] at h5
   have hev : Pg.evalInst (.str .B8 (.gpr d) (.Offset (.gpr n) (imm.zeroExtend 64 <<< 0))) t =
       (t.setMem (t.mem.write8 ea ((t.regs.read d).truncate 8))).advancePC := by

@@ -64,7 +64,7 @@ theorem cycleEnd_ok {c : Int} (h : s.regs.get? .__cycle_count = some c) :
     BranchRecordAllowed, CurrentSecurityState, __EndCycle]
   gsimp
 
-theorem ie_ok (pc : BitVec 64) (w : BitVec 32) (hpc : s.regs.get? ._PC = some pc) (hlt : pc.toNat < 2 ^ 29)
+theorem ie_ok (pc : BitVec 64) (w : BitVec 32) (hpc : s.regs.get? ._PC = some pc) (hlt : VaOK pc.toNat)
     (hal : pc.toNat % 4 = 0) (hw : MemWord s.mem pc.toNat w) (s1 : St)
     (hdec : __DecodeA64 pc.toNat w { s with regs := preRegs s.regs w } = .ok () s1) (hc1 : Pins s1.regs)
     {p1 : ProcState} {bt : Bool} {pc1 : BitVec 64} {btn : BitVec 2}
@@ -99,7 +99,7 @@ theorem ie_ok (pc : BitVec 64) (w : BitVec 32) (hpc : s.regs.get? ._PC = some pc
 /-- **one full machine step** (`stepModel`, i.e. `step_model`) around a decode+execute result `s1`: if the
 decode of the fetched word on the state `__InstructionExecute` has prepared succeeds with `s1`, the whole step
 succeeds with `s1` plus the post-execute bookkeeping and the cycle count. -/
-theorem step_ok (pc : BitVec 64) (w : BitVec 32) (hpc : s.regs.get? ._PC = some pc) (hlt : pc.toNat < 2 ^ 29)
+theorem step_ok (pc : BitVec 64) (w : BitVec 32) (hpc : s.regs.get? ._PC = some pc) (hlt : VaOK pc.toNat)
     (hal : pc.toNat % 4 = 0) (hw : MemWord s.mem pc.toNat w) {b : BranchType}
     (hb : s.regs.get? .Branchtypetaken = some b) (hbr : (b == .BranchType_RESET) = false) (s1 : St)
     (hdec : __DecodeA64 pc.toNat w { s with regs := preRegs (s.regs.insert .SEE (-1 : Int)) w } = .ok () s1)

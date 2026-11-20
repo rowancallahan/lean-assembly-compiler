@@ -168,9 +168,9 @@ theorem bigend_ok : BigEndian .AccessType_GPR s = .ok false s := by
     _get_SCTLRType_E0E]
   gsimp
 
-theorem memreadG1 (va : BitVec 64) (b : BitVec 8) (hva : va.toNat < 2 ^ 29) (hw : s.mem.get? va.toNat = some b) :
+theorem memreadG1 (va : BitVec 64) (b : BitVec 8) (hva : VaOK va.toNat) (hw : s.mem.get? va.toNat = some b) :
     Mem_read va 1 (accG true) s = .ok b { s with regs := s.regs.insert .InGuardedPage false } := by
-  obtain ⟨r, hr, h1, h2, h3⟩ := trG_ok hc true va (by omega) 1
+  obtain ⟨r, hr, h1, h2, h3⟩ := trG_ok hc true va hva.1 1
   have := dev_ne va hva; have := setw56 va hva; have := u_PhysMemRetStatus
   have := readBytes1 (s := { s with regs := s.regs.insert .InGuardedPage false }) hw
   have : (accG true).acctype = .AccessType_GPR := rfl; have : (accG true).tagchecked = true := rfl
@@ -187,9 +187,9 @@ theorem memreadG1 (va : BitVec 64) (b : BitVec 8) (hva : va.toNat < 2 ^ 29) (hw 
   esimp
 
 
-theorem memsetG1 (va : BitVec 64) (v : BitVec 8) (hva : va.toNat < 2 ^ 29) :
+theorem memsetG1 (va : BitVec 64) (v : BitVec 8) (hva : VaOK va.toNat) :
     Mem_set va 1 (accG false) v s = .ok () { s with regs := s.regs.insert .InGuardedPage false, mem := s.mem.insert va.toNat v } := by
-  obtain ⟨r, hr, h1, h2, h3⟩ := trG_ok hc false va (by omega) 1
+  obtain ⟨r, hr, h1, h2, h3⟩ := trG_ok hc false va hva.1 1
   have := dev_ne va hva; have := setw56 va hva; have := u_PhysMemRetStatus
   have : (accG false).acctype = .AccessType_GPR := rfl; have : (accG false).tagchecked = true := rfl
   have : (accG false).exclusive = false := rfl; have : (accG false).atomicop = false := rfl; have : (accG false).acqsc = false := rfl
@@ -208,7 +208,7 @@ theorem memsetG1 (va : BitVec 64) (v : BitVec 8) (hva : va.toNat < 2 ^ 29) :
 
 
 theorem ldrb_exec {t n : Nat} (ht : t < 31) (hn : n < 31) (imm : BitVec 12) {a : BitVec 64} (ha : xget s.regs n = some a)
-    {b : BitVec 8} (hlt : (a + imm.setWidth 64).toNat < 2 ^ 29) (hb : s.mem.get? (a + imm.setWidth 64).toNat = some b) :
+    {b : BitVec 8} (hlt : VaOK (a + imm.setWidth 64).toNat) (hb : s.mem.get? (a + imm.setWidth 64).toNat = some b) :
     decode_ldrb_imm_aarch64_instrs_memory_single_general_immediate_unsigned (BitVec.ofNat 5 t) (BitVec.ofNat 5 n) imm 1#2 0#2 s =
       .ok () { s with regs := xset (s.regs.insert .InGuardedPage false) t (b.setWidth 64) } := by
   idx t; idx n
@@ -233,7 +233,7 @@ theorem ldrb_exec {t n : Nat} (ht : t < 31) (hn : n < 31) (imm : BitVec 12) {a :
 
 
 theorem strb_exec {t n : Nat} (ht : t < 31) (hn : n < 31) (imm : BitVec 12) {a v : BitVec 64} (ha : xget s.regs n = some a)
-    (hv : xget s.regs t = some v) (hlt : (a + imm.setWidth 64).toNat < 2 ^ 29) :
+    (hv : xget s.regs t = some v) (hlt : VaOK (a + imm.setWidth 64).toNat) :
     decode_strb_imm_aarch64_instrs_memory_single_general_immediate_unsigned (BitVec.ofNat 5 t) (BitVec.ofNat 5 n) imm 0#2 0#2 s =
       .ok () { s with regs := s.regs.insert .InGuardedPage false, mem := s.mem.insert (a + imm.setWidth 64).toNat (v.setWidth 8) } := by
   idx t; idx n
@@ -257,10 +257,10 @@ theorem strb_exec {t n : Nat} (ht : t < 31) (hn : n < 31) (imm : BitVec 12) {a v
   esimp
 
 
-theorem memreadG8 (va : BitVec 64) (v : BitVec 64) (hva : va.toNat < 2 ^ 29) (hal : va.toNat % 8 = 0)
+theorem memreadG8 (va : BitVec 64) (v : BitVec 64) (hva : VaOK va.toNat) (hal : va.toNat % 8 = 0)
     (hw : MemD s.mem va.toNat v) :
     Mem_read va 8 (accG true) s = .ok v { s with regs := s.regs.insert .InGuardedPage false } := by
-  obtain ⟨r, hr, h1, h2, h3⟩ := trG_ok hc true va (by omega) 8
+  obtain ⟨r, hr, h1, h2, h3⟩ := trG_ok hc true va hva.1 8
   have := dev_ne va hva; have := setw56 va hva; have := u_PhysMemRetStatus
   have := readBytes8 (s := { s with regs := s.regs.insert .InGuardedPage false }) hw
   have : (accG true).acctype = .AccessType_GPR := rfl; have : (accG true).tagchecked = true := rfl
@@ -276,9 +276,9 @@ theorem memreadG8 (va : BitVec 64) (v : BitVec 64) (hva : va.toNat < 2 ^ 29) (ha
   simp only [ConcurrencyInterfaceV1.sail_mem_read, PreSail.sail_mem_read, read_request, CreatePhysMemRetStatus] at *
   esimp
 
-theorem memsetG8 (va : BitVec 64) (v : BitVec 64) (hva : va.toNat < 2 ^ 29) (hal : va.toNat % 8 = 0) :
+theorem memsetG8 (va : BitVec 64) (v : BitVec 64) (hva : VaOK va.toNat) (hal : va.toNat % 8 = 0) :
     Mem_set va 8 (accG false) v s = .ok () { s with regs := s.regs.insert .InGuardedPage false, mem := wrD s.mem va.toNat v } := by
-  obtain ⟨r, hr, h1, h2, h3⟩ := trG_ok hc false va (by omega) 8
+  obtain ⟨r, hr, h1, h2, h3⟩ := trG_ok hc false va hva.1 8
   have := dev_ne va hva; have := setw56 va hva; have := u_PhysMemRetStatus
   have : (accG false).acctype = .AccessType_GPR := rfl; have : (accG false).tagchecked = true := rfl
   have : (accG false).exclusive = false := rfl; have : (accG false).atomicop = false := rfl; have : (accG false).acqsc = false := rfl
@@ -296,7 +296,7 @@ theorem memsetG8 (va : BitVec 64) (v : BitVec 64) (hva : va.toNat < 2 ^ 29) (hal
 
 
 theorem ldr_exec {t n : Nat} (ht : t < 31) (hn : n < 31) (imm : BitVec 12) {a : BitVec 64} (ha : xget s.regs n = some a)
-    {v : BitVec 64} (hlt : (a + imm.setWidth 64 <<< 3).toNat < 2 ^ 29) (hal : (a + imm.setWidth 64 <<< 3).toNat % 8 = 0)
+    {v : BitVec 64} (hlt : VaOK (a + imm.setWidth 64 <<< 3).toNat) (hal : (a + imm.setWidth 64 <<< 3).toNat % 8 = 0)
     (hv : MemD s.mem (a + imm.setWidth 64 <<< 3).toNat v) :
     decode_ldr_imm_gen_aarch64_instrs_memory_single_general_immediate_unsigned (BitVec.ofNat 5 t) (BitVec.ofNat 5 n) imm 1#2 3#2 s =
       .ok () { s with regs := xset (s.regs.insert .InGuardedPage false) t v } := by
@@ -321,7 +321,7 @@ theorem ldr_exec {t n : Nat} (ht : t < 31) (hn : n < 31) (imm : BitVec 12) {a : 
   esimp
 
 theorem str_exec {t n : Nat} (ht : t < 31) (hn : n < 31) (imm : BitVec 12) {a v : BitVec 64} (ha : xget s.regs n = some a)
-    (hv : xget s.regs t = some v) (hlt : (a + imm.setWidth 64 <<< 3).toNat < 2 ^ 29)
+    (hv : xget s.regs t = some v) (hlt : VaOK (a + imm.setWidth 64 <<< 3).toNat)
     (hal : (a + imm.setWidth 64 <<< 3).toNat % 8 = 0) :
     decode_str_imm_gen_aarch64_instrs_memory_single_general_immediate_unsigned (BitVec.ofNat 5 t) (BitVec.ofNat 5 n) imm 0#2 3#2 s =
       .ok () { s with regs := s.regs.insert .InGuardedPage false, mem := wrD s.mem (a + imm.setWidth 64 <<< 3).toNat v } := by
@@ -346,7 +346,7 @@ theorem str_exec {t n : Nat} (ht : t < 31) (hn : n < 31) (imm : BitVec 12) {a v 
   esimp
 
 theorem stur_exec {t n : Nat} (ht : t < 31) (hn : n < 31) (imm : BitVec 9) {a v : BitVec 64} (ha : xget s.regs n = some a)
-    (hv : xget s.regs t = some v) (hlt : (a + imm.signExtend 64).toNat < 2 ^ 29)
+    (hv : xget s.regs t = some v) (hlt : VaOK (a + imm.signExtend 64).toNat)
     (hal : (a + imm.signExtend 64).toNat % 8 = 0) :
     decode_stur_gen_aarch64_instrs_memory_single_general_immediate_signed_offset_normal (BitVec.ofNat 5 t) (BitVec.ofNat 5 n) imm 0#2 3#2 s =
       .ok () { s with regs := s.regs.insert .InGuardedPage false, mem := wrD s.mem (a + imm.signExtend 64).toNat v } := by
@@ -373,8 +373,8 @@ theorem stur_exec {t n : Nat} (ht : t < 31) (hn : n < 31) (imm : BitVec 9) {a v 
 end
 
 section
-variable {w : BitVec 32} {s : St} {a : AState} (hf : ArmFull s) (ha : Abs s a) {pc : BitVec 64}
-  (hpc : s.regs.get? ._PC = some pc) (hlt : pc.toNat < 2 ^ 29) (hal : pc.toNat % 4 = 0) (hm : MemWord s.mem pc.toNat w)
+variable {w : BitVec 32} {s : St} {a : AState} {nb : BitVec 2} (hf : ArmFullB s nb) (ha : Abs s a) {pc : BitVec 64}
+  (hpc : s.regs.get? ._PC = some pc) (hlt : VaOK pc.toNat) (hal : pc.toNat % 4 = 0) (hm : MemWord s.mem pc.toNat w)
   (heret : BitVec.ofNat 20 (w.toNat >>> 12) ≠ 879088#20)
 include hf ha hpc hlt hal hm heret
 
@@ -383,7 +383,7 @@ theorem s0_igp : (s0of s w).regs.get? .InGuardedPage = some false := by simp [s0
 /-- full step for a load: `X[d] := v`, `InGuardedPage := false` (already false), memory unchanged -/
 theorem full_ld {k : Int} {d : Nat} (hd : d < 31) {v : BitVec 64}
     (hdec : __DecodeA64 pc.toNat w (s0of s w) = .ok () { s0of s w with regs := xset (((s0of s w).regs.insert .SEE k).insert .InGuardedPage false) d v }) :
-    ∃ s', stepModel s = .ok () s' ∧ Abs s' (a.setX d v) ∧ ArmFull s' ∧ s'.regs.get? ._PC = some (pc + 4) ∧
+    ∃ s', stepModel s = .ok () s' ∧ Abs s' (a.setX d v) ∧ ArmFullB s' nb ∧ s'.regs.get? ._PC = some (pc + 4) ∧
       s'.mem = s.mem := by
   obtain ⟨b0, hb0, hbr0⟩ := hf.bt
   have hx : ∀ r : Register, (∀ i < 31, xreg i ≠ r) → r ≠ .SEE →
@@ -405,7 +405,7 @@ theorem full_ld {k : Int} {d : Nat} (hd : d < 31) {v : BitVec 64}
 /-- full step for a store: memory := `M`, `InGuardedPage := false` (already false), registers unchanged -/
 theorem full_st {k : Int} {M : Std.ExtHashMap Nat (BitVec 8)}
     (hdec : __DecodeA64 pc.toNat w (s0of s w) = .ok () { s0of s w with regs := ((s0of s w).regs.insert .SEE k).insert .InGuardedPage false, mem := M }) :
-    ∃ s', stepModel s = .ok () s' ∧ Abs s' a ∧ ArmFull s' ∧ s'.regs.get? ._PC = some (pc + 4) ∧ s'.mem = M := by
+    ∃ s', stepModel s = .ok () s' ∧ Abs s' a ∧ ArmFullB s' nb ∧ s'.regs.get? ._PC = some (pc + 4) ∧ s'.mem = M := by
   obtain ⟨b0, hb0, hbr0⟩ := hf.bt
   have hx : ∀ r : Register, r ≠ .SEE →
       (((s0of s w).regs.insert .SEE k).insert .InGuardedPage false).get? r = (s0of s w).regs.get? r := fun r h2 => by
@@ -427,16 +427,16 @@ end
 theorem s0_mem (s : St) (w : BitVec 32) (k : Int) : ({ s0of s w with regs := (s0of s w).regs.insert .SEE k } : St).mem = s.mem := rfl
 
 section
-variable {w : BitVec 32} {s : St} {a : AState} (hf : ArmFull s) (ha : Abs s a) {pc : BitVec 64}
-  (hpc : s.regs.get? ._PC = some pc) (hlt : pc.toNat < 2 ^ 29) (hal : pc.toNat % 4 = 0) (hm : MemWord s.mem pc.toNat w)
+variable {w : BitVec 32} {s : St} {a : AState} {nb : BitVec 2} (hf : ArmFullB s nb) (ha : Abs s a) {pc : BitVec 64}
+  (hpc : s.regs.get? ._PC = some pc) (hlt : VaOK pc.toNat) (hal : pc.toNat % 4 = 0) (hm : MemWord s.mem pc.toNat w)
 include hf ha hpc hlt hal hm
 
 /-- **`ldrb wt, [xn, #imm12]`** (`t n < 31`, address below `2^29`) -/
 theorem full_ldrb (hK : w &&& 0xFFC00000#32 = 0x39400000#32) (ht : (Sail.BitVec.slice w 0 5).toNat < 31)
     (hn : (Sail.BitVec.slice w 5 5).toNat < 31) {b : BitVec 8}
-    (hA : (a.x (Sail.BitVec.slice w 5 5).toNat + (Sail.BitVec.slice w 10 12).setWidth 64).toNat < 2 ^ 29)
+    (hA : VaOK (a.x (Sail.BitVec.slice w 5 5).toNat + (Sail.BitVec.slice w 10 12).setWidth 64).toNat)
     (hb : s.mem.get? (a.x (Sail.BitVec.slice w 5 5).toNat + (Sail.BitVec.slice w 10 12).setWidth 64).toNat = some b) :
-    ∃ s', stepModel s = .ok () s' ∧ Abs s' (a.setX (Sail.BitVec.slice w 0 5).toNat (b.setWidth 64)) ∧ ArmFull s' ∧
+    ∃ s', stepModel s = .ok () s' ∧ Abs s' (a.setX (Sail.BitVec.slice w 0 5).toNat (b.setWidth 64)) ∧ ArmFullB s' nb ∧
       s'.regs.get? ._PC = some (pc + 4) ∧ s'.mem = s.mem := by
   have hd := dec_ldrbsym (s0of s w) pc.toNat (-1) (by decide) (s0_see s w) hK
   rw [← ofNat_toNat5 (Sail.BitVec.slice w 0 5), ← ofNat_toNat5 (Sail.BitVec.slice w 5 5),
@@ -446,8 +446,8 @@ theorem full_ldrb (hK : w &&& 0xFFC00000#32 = 0x39400000#32) (ht : (Sail.BitVec.
 /-- **`strb wt, [xn, #imm12]`** -/
 theorem full_strb (hK : w &&& 0xFFC00000#32 = 0x39000000#32) (ht : (Sail.BitVec.slice w 0 5).toNat < 31)
     (hn : (Sail.BitVec.slice w 5 5).toNat < 31)
-    (hA : (a.x (Sail.BitVec.slice w 5 5).toNat + (Sail.BitVec.slice w 10 12).setWidth 64).toNat < 2 ^ 29) :
-    ∃ s', stepModel s = .ok () s' ∧ Abs s' a ∧ ArmFull s' ∧ s'.regs.get? ._PC = some (pc + 4) ∧
+    (hA : VaOK (a.x (Sail.BitVec.slice w 5 5).toNat + (Sail.BitVec.slice w 10 12).setWidth 64).toNat) :
+    ∃ s', stepModel s = .ok () s' ∧ Abs s' a ∧ ArmFullB s' nb ∧ s'.regs.get? ._PC = some (pc + 4) ∧
       s'.mem = s.mem.insert (a.x (Sail.BitVec.slice w 5 5).toNat + (Sail.BitVec.slice w 10 12).setWidth 64).toNat
         ((a.x (Sail.BitVec.slice w 0 5).toNat).setWidth 8) := by
   have hd := dec_strbsym (s0of s w) pc.toNat (-1) (by decide) (s0_see s w) hK
@@ -458,10 +458,10 @@ theorem full_strb (hK : w &&& 0xFFC00000#32 = 0x39000000#32) (ht : (Sail.BitVec.
 /-- **`ldr xt, [xn, #8*imm12]`** (aligned) -/
 theorem full_ldr (hK : w &&& 0xFFC00000#32 = 0xF9400000#32) (ht : (Sail.BitVec.slice w 0 5).toNat < 31)
     (hn : (Sail.BitVec.slice w 5 5).toNat < 31) {v : BitVec 64}
-    (hA : (a.x (Sail.BitVec.slice w 5 5).toNat + (Sail.BitVec.slice w 10 12).setWidth 64 <<< 3).toNat < 2 ^ 29)
+    (hA : VaOK (a.x (Sail.BitVec.slice w 5 5).toNat + (Sail.BitVec.slice w 10 12).setWidth 64 <<< 3).toNat)
     (hA8 : (a.x (Sail.BitVec.slice w 5 5).toNat + (Sail.BitVec.slice w 10 12).setWidth 64 <<< 3).toNat % 8 = 0)
     (hv : MemD s.mem (a.x (Sail.BitVec.slice w 5 5).toNat + (Sail.BitVec.slice w 10 12).setWidth 64 <<< 3).toNat v) :
-    ∃ s', stepModel s = .ok () s' ∧ Abs s' (a.setX (Sail.BitVec.slice w 0 5).toNat v) ∧ ArmFull s' ∧
+    ∃ s', stepModel s = .ok () s' ∧ Abs s' (a.setX (Sail.BitVec.slice w 0 5).toNat v) ∧ ArmFullB s' nb ∧
       s'.regs.get? ._PC = some (pc + 4) ∧ s'.mem = s.mem := by
   have hd := dec_ldrsym (s0of s w) pc.toNat (-1) (by decide) (s0_see s w) hK
   rw [← ofNat_toNat5 (Sail.BitVec.slice w 0 5), ← ofNat_toNat5 (Sail.BitVec.slice w 5 5),
@@ -471,9 +471,9 @@ theorem full_ldr (hK : w &&& 0xFFC00000#32 = 0xF9400000#32) (ht : (Sail.BitVec.s
 /-- **`str xt, [xn, #8*imm12]`** (aligned) -/
 theorem full_str (hK : w &&& 0xFFC00000#32 = 0xF9000000#32) (ht : (Sail.BitVec.slice w 0 5).toNat < 31)
     (hn : (Sail.BitVec.slice w 5 5).toNat < 31)
-    (hA : (a.x (Sail.BitVec.slice w 5 5).toNat + (Sail.BitVec.slice w 10 12).setWidth 64 <<< 3).toNat < 2 ^ 29)
+    (hA : VaOK (a.x (Sail.BitVec.slice w 5 5).toNat + (Sail.BitVec.slice w 10 12).setWidth 64 <<< 3).toNat)
     (hA8 : (a.x (Sail.BitVec.slice w 5 5).toNat + (Sail.BitVec.slice w 10 12).setWidth 64 <<< 3).toNat % 8 = 0) :
-    ∃ s', stepModel s = .ok () s' ∧ Abs s' a ∧ ArmFull s' ∧ s'.regs.get? ._PC = some (pc + 4) ∧
+    ∃ s', stepModel s = .ok () s' ∧ Abs s' a ∧ ArmFullB s' nb ∧ s'.regs.get? ._PC = some (pc + 4) ∧
       s'.mem = wrD s.mem (a.x (Sail.BitVec.slice w 5 5).toNat + (Sail.BitVec.slice w 10 12).setWidth 64 <<< 3).toNat
         (a.x (Sail.BitVec.slice w 0 5).toNat) := by
   have hd := dec_strsym (s0of s w) pc.toNat (-1) (by decide) (s0_see s w) hK
@@ -484,9 +484,9 @@ theorem full_str (hK : w &&& 0xFFC00000#32 = 0xF9000000#32) (ht : (Sail.BitVec.s
 /-- **`stur xt, [xn, #simm9]`** (aligned) -/
 theorem full_stur (hK : w &&& 0xFFE00C00#32 = 0xF8000000#32) (ht : (Sail.BitVec.slice w 0 5).toNat < 31)
     (hn : (Sail.BitVec.slice w 5 5).toNat < 31)
-    (hA : (a.x (Sail.BitVec.slice w 5 5).toNat + (Sail.BitVec.slice w 12 9).signExtend 64).toNat < 2 ^ 29)
+    (hA : VaOK (a.x (Sail.BitVec.slice w 5 5).toNat + (Sail.BitVec.slice w 12 9).signExtend 64).toNat)
     (hA8 : (a.x (Sail.BitVec.slice w 5 5).toNat + (Sail.BitVec.slice w 12 9).signExtend 64).toNat % 8 = 0) :
-    ∃ s', stepModel s = .ok () s' ∧ Abs s' a ∧ ArmFull s' ∧ s'.regs.get? ._PC = some (pc + 4) ∧
+    ∃ s', stepModel s = .ok () s' ∧ Abs s' a ∧ ArmFullB s' nb ∧ s'.regs.get? ._PC = some (pc + 4) ∧
       s'.mem = wrD s.mem (a.x (Sail.BitVec.slice w 5 5).toNat + (Sail.BitVec.slice w 12 9).signExtend 64).toNat
         (a.x (Sail.BitVec.slice w 0 5).toNat) := by
   have hd := dec_stursym (s0of s w) pc.toNat (-1) (by decide) (s0_see s w) hK
