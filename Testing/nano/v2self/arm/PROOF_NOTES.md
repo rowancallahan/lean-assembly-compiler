@@ -119,7 +119,7 @@ Open for the proof:
 
 ## Translator-level facts for the Lean equation
 
-* The output is `(C.map block).flatten` as little-endian bytes, emitted in chunks of 32000 RV words, because a nano
+* The output is `(C.map block).flatten` as little-endian bytes, emitted in chunks of CHUNK_WORDS = `z0` = 32000 RV words, because a nano
   list holds < 2^19 elements. `rv2arm.sh` concatenates the chunks. A Lean statement can be made about `l0` over the
   whole range directly.
 * Validation `c1` runs over the whole program before any byte is emitted. An invalid program gives the EMPTY output

@@ -1,8 +1,13 @@
 -- rv2arm (nano): RISC-V code bytes as C emits them (J programs, RvEnc.encJX) -> AArch64 code bytes. UNPROVEN GLUE.
 -- Lines starting with -- are removed before B2 compiles this file (grep -v '^--'); the rest is nano and valid Lean.
 -- Input: a 4-byte little-endian chunk index c, then the RV code. Output: the A64 blocks (4 words each) of RV words
--- 32000c .. 32000c+31999. rv2arm.sh runs all chunks. Any word outside the J encodings, or out of range: EMPTY output.
+-- z0*c .. z0*c + z0 - 1 (z0 = CHUNK_WORDS below). rv2arm.sh runs all chunks. Any word outside the J encodings, or out of range: EMPTY output.
 -- Register map, block table and proof notes: PROOF_NOTES.md. Test oracle: rv2arm.py (same bytes).
+--
+-- CHUNK_WORDS = z0: RV words translated per call. A nano List holds < 2^19 elements, and every RV word gives 16
+-- output bytes, so one call can take at most 2^19 / 16 = 32768 words; 32000 leaves a margin. rv2arm.sh reads this
+-- line (keep the form `def z0 : UInt64 := N`).
+def z0 : UInt64 := 32000
 --
 -- u0: RV register -> A64 register (0 -> xzr 31, 2 (sp) -> 99 = not a register operand, unknown -> 99)
 def u0 (r : UInt64) : UInt64 :=
@@ -208,11 +213,10 @@ def l0 : Nat → List UInt8 → UInt64 → UInt64 → UInt64 → List UInt8 → 
   | 0, x, i, e, n, o => o
   | k + 1, x, i, e, n, o =>
     if i < e then l0 k x (i + 1) e n (t0 x o (w x i)) else o
--- chunk c (input bytes 0..3) covers RV words 32000c .. 32000c+31999: at most 512000 output bytes, below the
--- capacity of a nano list (2^19). Every chunk validates the WHOLE program; invalid: empty output.
+-- chunk c (input bytes 0..3) covers RV words z0*c .. z0*c + z0 - 1: at most 16*z0 output bytes (see z0). Every chunk validates the WHOLE program; invalid: empty output.
 def l1 (x : List UInt8) (c n : UInt64) : List UInt8 :=
-  let s := c * 32000;
-  let e := (if s + 32000 < n then s + 32000 else n);
+  let s := c * z0;
+  let e := (if s + z0 < n then s + z0 else n);
   if c1 (len' x) x 0 n == 1 then l0 (len' x) x s e n [] else []
 def m (x : List UInt8) : List UInt8 :=
   if len x < 4 then [] else

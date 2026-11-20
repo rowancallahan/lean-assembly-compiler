@@ -8,7 +8,7 @@ plan for a proved version (`armTarget`, `Testing/notes/NANO_V2_ARM.md`).
 | file | what |
 |---|---|
 | `rv2arm.lean` | the translator (nano subset, also valid Lean: `cat ../../../../Nano/V2Self/Prelude.lean rv2arm.lean` + `#eval m …`) |
-| `rv2arm.sh` | driver: runs the translator once per 32000-word chunk (a nano list holds < 2^19 bytes) and concatenates |
+| `rv2arm.sh` | driver: runs the translator once per chunk of CHUNK_WORDS RV words (see Chunking) and concatenates |
 | `rv2arm_rv.bin` | `rv2arm.lean` compiled by B2 (RISC-V) |
 | `rv2arm_arm.bin` | `rv2arm_rv.bin` translated by itself (AArch64). It translates itself to itself |
 | `B2_arm.bin` | the compiler `../B2.bin` translated (AArch64). It compiles the compiler's source to `B2.bin` |
@@ -42,6 +42,17 @@ grep -v '^--' rv2arm.lean > rv2arm.src && ./nanorun ../B2.bin rv2arm.src rv2arm_
 RUN="./nanorun rv2arm_rv.bin /dev/stdin /dev/stdout" ./rv2arm.sh rv2arm_rv.bin > rv2arm_arm.bin
 ./rv2arm.sh ../B2.bin > B2_arm.bin
 ```
+
+## Chunking
+
+A nano `List` holds fewer than 2^19 elements; a larger one stops the program with status −2. The translator emits 16
+bytes per RV word, so one call can translate at most 2^19 / 16 = 32,768 words. B2 alone is 84,464 words (1.35 MB of
+ARM code). So the input to one call is `[4-byte chunk index c][RV code]`, and the call emits the blocks of RV words
+`CHUNK_WORDS·c … CHUNK_WORDS·(c+1) − 1`. `CHUNK_WORDS` is `def z0 : UInt64 := 32000` at the top of `rv2arm.lean`
+(32,000 leaves a margin below 32,768); `rv2arm.sh` reads it from there and concatenates the chunks.
+Every call validates the WHOLE program first (an invalid program gives the empty output in every call). So the
+translation work per call is one full pass plus one chunk, and B2 costs 3 validation passes.
+Removing the chunking needs a larger list capacity in C: a compiler change, not done.
 
 ## Translation (details and per-block proof notes: `PROOF_NOTES.md`)
 
