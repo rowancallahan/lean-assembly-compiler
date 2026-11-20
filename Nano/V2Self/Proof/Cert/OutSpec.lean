@@ -46,7 +46,7 @@ theorem g40_map : ∀ (n : Nat) (c : List UInt8) (w : Buf) (i : UInt64) (o : Buf
 theorem g42_map (c : List UInt8) (x : Buf) (u : UInt64) : (g42 c x u).map UInt64.toUInt8 = C.g42 c x u := by
   unfold g42 C.g42
   -- keep the fuel opaque: `simp` must not unfold the loops
-  generalize (16777216 : Nat) = N
+  generalize hN : (16777216 : Nat) = N; revert N; apply id; intro N hN
   by_cases h0 : 2147483647 < bsize x
   · simp only [h0, if_true]; rfl
   simp only [h0, if_false]
