@@ -91,10 +91,11 @@ measured or not recorded in the repo; none is estimated.
   Lean 4.34.1, standard 3 axioms (`propext`, `Classical.choice`, `Quot.sound`); `Reduce__1` prints as an `opaque`
   (a generated `partial def`). `lake build ArmSail ArmSail.Axioms`: 431 jobs. It needs the partitioned model **by path**
   (`../../../armv9-lean`, see `Arm/sail/NOTES.md`), so it is not part of the root `lake build`. `Spec/` is unchanged:
-  `armSail` lives outside `Spec/`. The sailv-fable notes and `NonVacuous.lean`: TBD (not on the branches this entry was
-  written from).
-  - **Owner-approved temporary `sp` exception on Sail ARM:** TBD, wording and scope to be filled in from the owner's
-    approval (not recorded in the repo at this commit). Until then the exception is not described here.
+  `armSail` lives outside `Spec/`. The sailv-fable notes and `NonVacuous.lean` are on `origin/sailv-fable` (8929e5fc).
+  - **Temporary exception (owner-approved, 2026-11-20):** on Sail ARM, register 31 (sp) is in `armMapping.kept` but `obsS`
+    reads it as 0, so `C_correct_armSail` makes no meaningful claim that sp is preserved; every other kept register is proved
+    unchanged. DeepMind ARM (`C_correct_armDM`) does observe sp and proves it unchanged. To be restored by exporting
+    SP_EL0/SP_EL3/PSTATE.SP from the full_* lemmas (ROADMAP).
   - Also in the release: the DeepMind AArch64 theorem `C_correct_armDM` / `C_runs_armDM` (`Arm/apc/Blocks/ArmDMTop`,
     `AxiomsDM`), now stated per start state meeting `ArmLoader X W` (37939cd1, f7f03b98, 6d85ab8c; rebuilt after 0d06146f:
     507 jobs, standard 3 axioms).
