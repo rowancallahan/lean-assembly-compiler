@@ -1,7 +1,9 @@
 /- **`A64Sem armDM XD WD`**: the abstract AArch64 interface of the ARM adapter (`Nano/V2Self/Proof/Machine/A64Sem.lean`),
 instantiated on DeepMind's model (`armDM`; `XD` executable bytes, `WD` readable+writable bytes). Every field from the
-`dm_*` lemmas. The loader's permission layout is not a field: it is `JT.LoaderPerm armDM XD WD`, a premise of the ARM
-top theorems (DeepMind permissions are not observable, so it cannot follow from `StartCorrect`). -/
+`dm_*` lemmas. The loader's permission layout is not a field: it is the per-start-state predicate `JT.ArmLoader XD WD`
+(code bytes executable, input/output/work blocks readable+writable), the extra premise on the start state in
+`CompileCorrectP` / `CompileRunsP` (`ArmDMTop.lean`). DeepMind's permissions are not observable, so it cannot follow
+from `StartCorrect`. -/
 import Blocks.A64DM
 set_option linter.unusedVariables false
 namespace Proven.Apc.Blocks
