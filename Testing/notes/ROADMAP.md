@@ -598,3 +598,9 @@ Order (each: measure on BENCH.md programs + self-compile, then prove; proofs gre
   Sail model (Spec Implements-style contract + the compiler's register/stack/heap/OOM convention)}; the compiler
   copies the words verbatim, the source semantics sees only f, the correctness proof gets one new case. No unproved
   blocks accepted. ARM: free if the block uses only rv2arm-supported forms, else an ARM block + its own proof.
+- x86-64 backend (owner, 2026-11-20; later): preferred model = Sail x86 (REMS sail-x86-from-acl2, translated from
+  ACL2 x86isa) via the existing Sail→Lean pipeline; alternatives ACL2 x86isa directly, K x86-64 semantics (no Lean
+  backend). No vendor-official model exists: record in MODEL_PROVENANCE.md exactly where the model comes from, which
+  commit, how it is generated (commands, toolchain, patches), and that it is community/translated. Re-adapt when the
+  model updates. Approach as for ARM: an X86Sem-style interface over the few dozen instruction forms the compiler
+  emits, a RISC-V→x86 translator first, native generation later.
