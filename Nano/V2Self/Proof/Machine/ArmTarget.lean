@@ -169,4 +169,46 @@ theorem ofNat_addInt (a : Nat) (f : Int) (h : 0 ≤ (a : Int) + 4 * f) (h2 : (a 
   simp only [UInt64.toNat_add, UInt64.toNat_mul, UInt64.toNat_ofNat', ofInt_toNat']
   simp; omega
 
+/-! ## common block steps -/
+
+theorem mid_next {K : LayW} {C : List J} {s0 s : M.State} {p : Nat × CallProbe.St}
+    (hM : Mid K C s0 p 4 s) : Mid K C s0 (p.1 + 1, p.2) 0 s :=
+  { hM with pc := by rw [hM.pc]; congr 1 }
+
+/-- the remaining words `k..3` of the block are PAD: fall through to the next block -/
+theorem run_pads (S : A64Sem M) {K : LayW} {C : List J} {s0 : M.State} {p : Nat × CallProbe.St} {j : J}
+    (hC : C[p.1]? = some j) (hB : K.base + 16 * C.length ≤ 2 ^ 32) (hpcl : p.1 < C.length) :
+    ∀ n k (s : M.State), k + n = 4 → Mid K C s0 p k s → (∀ i, k ≤ i → i < 4 → (blockJ j).getD i 0 = PAD) →
+      ∃ s', Runs M s s' ∧ Mid K C s0 (p.1 + 1, p.2) 0 s'
+  | 0, k, s, hk, hM, _ => ⟨s, .stop, mid_next (by rw [show k = 4 by omega] at hM; exact hM)⟩
+  | n + 1, k, s, hk, hM, hpad => by
+    have hw := mid_word hM hC k (by omega)
+    rw [hpad k (Nat.le_refl _) (by omega), ← mid_pcN hM (by omega)] at hw
+    obtain ⟨s1, r1, M1⟩ := mid_scr hM (Or.inl rfl) (S.addi s 16 16 0 hM.cfg (by decide) (by decide) (by decide) hw)
+    obtain ⟨s2, r2, M2⟩ := run_pads S hC hB hpcl n (k + 1) s1 (by omega) M1 (fun i h1 h2 => hpad i (by omega) h2)
+    exact ⟨s2, Runs.trans r1 r2, M2⟩
+
+/-- a jump that changes no register, to block `pc'` -/
+theorem mid_jump {K : LayW} {C : List J} {s0 s : M.State} {p : Nat × CallProbe.St} {k : Nat}
+    (hM : Mid K C s0 p k s) {pc' : Nat} (hg : Goes M s (jumpTo (M.observe s) (UInt64.ofNat (K.base + 16 * pc')))) :
+    ∃ s', Runs M s s' ∧ Mid K C s0 (pc', p.2) 0 s' := by
+  obtain ⟨s', r, c, o⟩ := hg
+  exact ⟨s', r, mid_regs hM c (by rw [o]; rfl) (by rw [o]; rfl) (fun j h0 h32 => by rw [o]; exact hM.x j h0 h32)
+    (fun r' _ _ => by rw [o]; rfl) hM.x0 rfl rfl rfl⟩
+
+/-! ## the blocks, one per J kind -/
+
+/-- `jal x0, o`: `b 4o` -/
+theorem blk_jal0 (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : Nat} {st : CallProbe.St} {o : Int}
+    (hM : Mid K C s0 (pc, st) 0 s) (hC : C[pc]? = some (.jal 0 o)) (hB : K.base + 16 * C.length ≤ 2 ^ 32)
+    (hpcl : pc < C.length) (h1 : -2 ^ 18 ≤ o) (h2 : o < 2 ^ 18) (h3 : 0 ≤ (pc : Int) + o) (h4 : (pc : Int) + o < C.length) :
+    ∃ s', Runs M s s' ∧ Mid K C s0 (((pc : Int) + o).toNat, st) 0 s' := by
+  have hw := mid_word hM hC 0 (by decide)
+  simp only [blockJ, body, pad4, if_true] at hw
+  rw [show K.base + 16 * pc + 4 * 0 = K.base + 16 * pc + 4 * 0 from rfl, ← mid_pcN hM (by omega)] at hw
+  have g := S.b s (4 * o) hM.cfg (by omega) (by omega) (by simpa using hw)
+  rw [hM.pc, show K.base + 16 * pc + 4 * 0 = K.base + 16 * pc by omega, ofNat_addInt _ _ (by omega) (by omega),
+    show ((K.base + 16 * pc : Nat) + 4 * (4 * o) : Int).toNat = K.base + 16 * ((pc : Int) + o).toNat by omega] at g
+  exact mid_jump hM g
+
 end JT
