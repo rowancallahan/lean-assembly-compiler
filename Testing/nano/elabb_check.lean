@@ -1,4 +1,4 @@
-import Nano.ElabB
+import Legacy.Nano.ElabB
 /- run with `lake env lean Testing/nano/elabb_check.lean` after writing Testing/nano/work/elabb_in.txt
 (elabb_inputs.py): stage 1 (`lexB`, decoded) == `lexT` on every input -/
 open Nano Nano.B

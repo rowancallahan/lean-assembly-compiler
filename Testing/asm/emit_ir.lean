@@ -2,9 +2,9 @@
 `Ir.compile` (`compileW`), and per case the input, the IR interpreter's output and `memoryNeeded` (8 bytes times the
 peak of the Lin run's events and the stub's and `main`'s frame).  Run: `lake env lean --tstack=4000000 Testing/asm/emit_ir.lean`,
 then `python3 Testing/asm/ir_test.py check 60 <name>` (QEMU + Sail at `memoryNeeded` and `memoryNeeded - 1`). -/
-import Riscv.Back.IrTarget
-import Compiler.Ir.Lin
-import Compiler.Ir.Examples
+import Legacy.Riscv.Back.IrTarget
+import Legacy.Compiler.Ir.Lin
+import Legacy.Compiler.Ir.Examples
 open Proven.Ir Proven.Mach.Riscv Proven.Top.Alloc
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
 def hex2 (b : UInt8) : String := let s := String.ofList (Nat.toDigits 16 b.toNat); if s.length < 2 then "0" ++ s else s

@@ -1,6 +1,6 @@
-import Nano.AsmSelf
-import Nano.Link
-import Nano.Gen
+import Legacy.Nano.AsmSelf
+import Legacy.Nano.Link
+import Legacy.Nano.Gen
 /- usage (repo root): NANO_DIR=DIR lake env lean --tstack=400000 Testing/nano/emit_link.lean   (DIR holds *.nano sources)
    Linker test data: the binary `Nano.Link.link nanoAsm.code nanoAsm.code` (two compiled stages linked by the 18-word
    stub; theorem `Nano.Link.link_stage`: it computes `asm ∘ asm`) -> Testing/asm/frontx-words/nanolink.{words,cases};

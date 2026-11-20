@@ -1,11 +1,11 @@
 -- differential test: the nano-subset stages (Nano/V2Self) against the Nano/V2S stages
 -- (run: lake env lean Testing/nano/v2self/diff_test.lean; every #eval prints the number of MISMATCHES, 0 expected)
-import Nano.V2Self.Legacy.Lex
-import Nano.V2Self.Legacy.Inl
-import Nano.V2Self.Legacy.Parse
-import Nano.V2S.Lex
-import Nano.V2S.InlT
-import Nano.V2S.Parse
+import Legacy.Nano.V2Self.Legacy.Lex
+import Legacy.Nano.V2Self.Legacy.Inl
+import Legacy.Nano.V2Self.Legacy.Parse
+import Legacy.Nano.V2S.Lex
+import Legacy.Nano.V2S.InlT
+import Legacy.Nano.V2S.Parse
 open Nano
 def lcg (s : Nat) : Nat := (s * 6364136223846793005 + 1442695040888963407) % 2^64
 -- lexer: random strings from token pieces

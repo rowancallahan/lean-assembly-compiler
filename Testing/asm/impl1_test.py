@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests of the `Implements1` examples (`Riscv/Examples/Implements1Ex.lean`, `Crc.lean`, and their optimised
+"""Tests of the `Implements1` examples (`Nano/Base/Riscv/Examples/Implements1Ex.lean`, `Crc.lean`, and their optimised
 versions `Implements1Opt.lean`; words from `Testing/asm/emit_impl1.lean` in `Testing/asm/$WDIR/NAME.words`,
 WDIR = impl1-words (default) or impl1-opt-words) on QEMU and on the Sail C emulator, in the `Implements1`
 calling convention (`Spec/Implements1.lean`): a0 = input, a1 = length, a2 = work base (8-aligned), a3 = output,

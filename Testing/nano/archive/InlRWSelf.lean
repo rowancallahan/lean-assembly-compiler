@@ -1,7 +1,7 @@
 import Nano.InlRP
-import Riscv.Frontx.ListOutExamples
-import Riscv.Frontx.Impl1
-import Nano.CheckedSpill
+import Legacy.Riscv.Frontx.ListOutExamples
+import Legacy.Riscv.Frontx.Impl1
+import Legacy.Nano.CheckedSpill
 /- the inliner's last stage `W` (`Nano.IR.ww`, Nano/InlRP.lean) compiled by OUR compiler (front end `frontx_compile`,
 list view, hand-written view equation: the machine has non-consuming calls), with a machine theorem
 `Nano.Self.inlW.implements1` -/

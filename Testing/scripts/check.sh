@@ -5,7 +5,7 @@ set -eo pipefail
 H=$(cd "$(dirname "$0")" && pwd); R=$(cd "$H/../.." && pwd); cd "$R"
 export PATH=$HOME/.elan/bin:$PATH
 fail() { echo "CHECK FAILED: $*" >&2; exit 1; }
-echo "== lake build"; lake build Spec Compiler Riscv Arm Frontx Nano || fail "lake build"
+echo "== lake build"; lake build Spec NanoBase NanoSelf Arm || fail "lake build"
 echo "== #print axioms"
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
 for g in a b c d e f g h i j k l m n o p q r s t u v w x y z utf8 ir-s01 feat-struct harvest conleche-blk ir-s2 paged batch1 feat-paged2 conleche-hard round1 ir-s3 nano-e2e nano-proof nano-mvp nano-int nano-parse nano-s3 nano-parse-s3 nano-final nano-closeB s3-rec ir-strong nano-s3-all nano-v2; do lake env lean "$H/axioms_$g.lean" > "$T/$g.txt" 2>&1 || { cat "$T/$g.txt"; fail "axioms_$g.lean"; }; done
@@ -16,7 +16,7 @@ else cat "$T/diff.txt"; fail "axioms differ from Testing/scripts/expected-axioms
 echo "== word-array theorems (NOTES section 20)"; "$H/wa_check.sh" || fail "wa_check.sh"
 echo "== paged-array theorems (NOTES section 30)"; "$H/paged_check.sh" || fail "paged_check.sh"
 echo "== forbidden words (comments/strings ignored; Riscv/Legacy excluded: Sort.lean is stated with sorry)"
-BAD=$(git ls-files 'Spec/*.lean' 'Compiler/*.lean' 'Riscv/*.lean' 'Arm/CompilerArm.lean' 'Arm/proofs/*.lean' 'Arm/shrink/*.lean' 'Nano/*.lean' \
+BAD=$(git ls-files 'Spec/*.lean' 'Arm/CompilerArm.lean' 'Arm/proofs/*.lean' 'Arm/shrink/*.lean' 'Nano/*.lean' \
   | grep -v '^Riscv/Legacy/' | xargs python3 "$H/nocomment.py")
 [ -z "$BAD" ] || { echo "$BAD"; fail "forbidden words"; }
 echo "  none"

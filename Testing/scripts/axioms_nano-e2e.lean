@@ -1,5 +1,5 @@
-import Nano.Agree
-import Nano.AsmSelf
+import Legacy.Nano.Agree
+import Legacy.Nano.AsmSelf
 #print axioms Nano.Self.nanoAsm.implements1
 #print axioms Nano.Agree.P0.agree
 #print axioms Nano.Agree.P1.agree

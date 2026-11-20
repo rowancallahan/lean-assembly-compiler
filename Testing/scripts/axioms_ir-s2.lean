@@ -1,7 +1,7 @@
-import Riscv.Back.IrTop
-import Riscv.Frontx.IndIr
-import Compiler.Ir.StructOk
-import Compiler.Ir.Examples
+import Legacy.Riscv.Back.IrTop
+import Legacy.Riscv.Frontx.IndIr
+import Legacy.Compiler.Ir.StructOk
+import Legacy.Compiler.Ir.Examples
 #print axioms Proven.Ir.ir_compile_runs
 #print axioms Proven.Ir.ir_compile_correct
 #print axioms Proven.Ir.Ctx.emit_ok

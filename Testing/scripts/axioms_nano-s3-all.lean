@@ -1,4 +1,4 @@
-import Nano.SelfHostS3
+import Legacy.Nano.SelfHostS3
 #print axioms Nano.AS.asmS_eq
 #print axioms Nano.XS.ExpS3.computes
 #print axioms Nano.AS.AsmS3.computes

@@ -1,5 +1,5 @@
-import Riscv.Frontx.ConstExamples
-import Riscv.Frontx.MonoExamples
+import Legacy.Riscv.Frontx.ConstExamples
+import Legacy.Riscv.Frontx.MonoExamples
 #print axioms ConLeche.natName.data.implements1
 #print axioms ConLeche.natPredName.data.implements1
 #print axioms ConLeche.natAddName.data.implements1

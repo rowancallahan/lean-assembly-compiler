@@ -1,5 +1,5 @@
-import Riscv.Frontx.StructExamples
-import Riscv.Frontx.WaStruct
+import Legacy.Riscv.Frontx.StructExamples
+import Legacy.Riscv.Frontx.WaStruct
 #print axioms Proven.Frontx.Structs.rgbaE.implements1
 #print axioms Proven.Frontx.Structs.hdrE.implements1
 #print axioms Proven.Frontx.Structs.rgbaGE.implements1

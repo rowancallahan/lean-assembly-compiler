@@ -1,6 +1,6 @@
-import Compiler.S3.Front
-import Nano.LexS3
-import Nano.S3Stage
+import Legacy.Compiler.S3.Front
+import Legacy.Nano.LexS3
+import Legacy.Nano.S3Stage
 
 s3_enc Nano.Tok
 namespace Nano.LS

@@ -1,4 +1,4 @@
-import Nano.InlP
+import Legacy.Nano.InlP
 open Nano Nano.IP Nano.U
 -- random micro-op streams with defs and calls, compare inlP with inlB
 def lcg (s : Nat) : Nat := (s * 6364136223846793005 + 1442695040888963407) % 2^64

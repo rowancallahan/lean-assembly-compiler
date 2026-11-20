@@ -1,6 +1,6 @@
-import Nano.Gen
-import Riscv.Frontx.ListOutExamples
-import Riscv.Frontx.IndCmd
+import Legacy.Nano.Gen
+import Legacy.Riscv.Frontx.ListOutExamples
+import Legacy.Riscv.Frontx.IndCmd
 open Proven Proven.Frontx
 -- probe: what does the front end say about the elaborator / generator pieces as written?
 frontx_view Nano.lex

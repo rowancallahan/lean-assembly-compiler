@@ -1,5 +1,5 @@
-import Nano.InlP
-import Riscv.Frontx.WpCmd
+import Legacy.Nano.InlP
+import Legacy.Riscv.Frontx.WpCmd
 namespace Nano.IP
 open Proven.WA
 def inlM (xs : ByteArray) : Array Nat := mn (Array.replicate (CAP + 0 * xs.size) 0) xs 0 0 0 0 0 0 0 0 0

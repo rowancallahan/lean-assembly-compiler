@@ -1,5 +1,5 @@
 -- differential test of lexV against lexA (run: lake env lean Testing/nano/v2s_lex_test.lean)
-import Nano.V2S.Lex
+import Legacy.Nano.V2S.Lex
 open Nano Nano.V2S Nano.LS
 def lcg (s : Nat) : Nat := (s * 6364136223846793005 + 1442695040888963407) % 2^64
 def pieces : List String := ["def ", "f", " (x y : UInt64) : UInt64 := ", "x", " + ", "y", " * ", "(", ")", "let ", "z", " := ", "; ", "\n", "\n ", "12", "007", "-", "--", ":", "=", ":=", "Int64", "UInt64", "a_1", "A", "g(", ")x", " ", "\ndef", "\ndefx", "\nx", "18446744073709551617", "_", "letx", "\t", "q9"]

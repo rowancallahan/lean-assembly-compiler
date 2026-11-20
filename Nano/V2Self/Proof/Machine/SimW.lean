@@ -3,8 +3,8 @@ against the Sail model.  `RelW`: J state ↔ Sail state, code = a list of 32-bit
 the work block's 8-aligned cells as 8 LE bytes.  One J step on a word that is the matching encoding = one retired
 Sail instruction, keeping `RelW`.  Immediates are in range and address arithmetic does not wrap (side conditions the
 template proofs discharge). -/
-import Nano.V2.Sim
-import Nano.V2.Enc
+import Nano.Base.V2.Sim
+import Nano.Base.V2.Enc
 import Nano.V2Self.Proof.Machine.Call
 import Nano.V2Self.Proof.Machine.JLay
 import Nano.V2Self.Proof.Machine.RvEnc

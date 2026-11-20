@@ -1,7 +1,7 @@
 import Nano.InlRP
-import Riscv.Frontx.ListOutExamples
-import Riscv.Frontx.Impl1
-import Nano.CheckedSpill
+import Legacy.Riscv.Frontx.ListOutExamples
+import Legacy.Riscv.Frontx.Impl1
+import Legacy.Nano.CheckedSpill
 namespace Nano.IR
 def wwT (xs : List UInt8) (ph k : Nat) : List UInt8 :=
   match xs with

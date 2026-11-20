@@ -1,6 +1,6 @@
-import Compiler.Front.Reify
-import Riscv.Examples.LoopExamples
-import Riscv.Direct.MemCompiler
+import Legacy.Compiler.Front.Reify
+import Nano.Base.Riscv.Examples.LoopExamples
+import Nano.Base.Riscv.Direct.MemCompiler
 #print axioms Proven.compile_ok
 #print axioms Proven.compileS_ok
 #print axioms Proven.gcd_ok

@@ -1,4 +1,4 @@
-import Nano.ParseS3BSelf
+import Legacy.Nano.ParseS3BSelf
 open Proven Proven.S3 Proven.Ir Proven.Mach.Riscv Nano.S3Stage Nano.PS
 def Q0 : Ir.Prog Nat := (Ir.alloc (lowerP Stage2B.P)).getD ⟨[], 0⟩
 def L2 : Ir.Lay := rvT.layout Q0 2 ⟨[], [], 0⟩

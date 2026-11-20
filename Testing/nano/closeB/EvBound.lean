@@ -1,6 +1,6 @@
-import Nano.InlP
-import Riscv.Frontx.WpCmd
-import Riscv.Frontx.WpBridge
+import Legacy.Nano.InlP
+import Legacy.Riscv.Frontx.WpCmd
+import Legacy.Riscv.Frontx.WpBridge
 namespace Nano.IP
 open Proven Proven.WA Proven.WP Proven.Top.Alloc
 

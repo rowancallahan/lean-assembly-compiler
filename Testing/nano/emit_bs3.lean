@@ -2,12 +2,12 @@
 nano-s3-all; helpers copied from Testing/nano/emit_ps3_inl.lean (header below kept). Driver: Testing/nano/bs3_test.py.
 Words = `Ir.compile (S3.lowerP P)` (the code the machine theorems are about); per case: input, the SPEC function
 executed in Lean (`mexp`, `asm`), `memoryNeeded` (IR interpreter). -/
-import Riscv.Back.IrTarget
-import Compiler.Ir.Lin
-import Nano.ExpS3Self
-import Nano.AsmS3Self
-import Nano.SerU
-import Nano.ParseBGas
+import Legacy.Riscv.Back.IrTarget
+import Legacy.Compiler.Ir.Lin
+import Legacy.Nano.ExpS3Self
+import Legacy.Nano.AsmS3Self
+import Legacy.Nano.SerU
+import Legacy.Nano.ParseBGas
 open Proven.Ir Proven.Mach.Riscv Proven.Top.Alloc
 open Proven.S3
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# nano STACK generator (`nanoGen`, Nano/Gen.lean) on QEMU + Sail in the StartCorrect convention: emit with
+# nano STACK generator (`nanoGen`, Legacy/Nano/Gen.lean) on QEMU + Sail in the StartCorrect convention: emit with
 # Testing/asm/emit_nano_s.lean, then each program's 8 cases with ir_test.py (work = memoryNeeded = 8 * depth, and
 # one byte less: a0 = -1), aligned and with misaligned input / output blocks (MIS).  Removes Testing/asm/ctest.
 set -eo pipefail

@@ -1,5 +1,5 @@
-import Riscv.Frontx.ExprExamples
-import Riscv.Frontx.TinyRepro
+import Legacy.Riscv.Frontx.ExprExamples
+import Legacy.Riscv.Frontx.TinyRepro
 #print axioms ConLeche.Expr.hasFvar.implements1
 #print axioms Proven.Frontx.ExprEx.closed0.implements1
 #print axioms Proven.Frontx.ExprEx.inst1.implements1

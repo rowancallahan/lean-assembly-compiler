@@ -1,5 +1,5 @@
-import Nano.V2.Front
-import Nano.V2.Gen
+import Legacy.Nano.V2.Front
+import Nano.Base.V2.Gen
 /- `lean --run selfcompile.lean KAPPA OUTDIR FILE...`: strip + concatenate FILEs (as check.lean), compile with
 `frontElabK KAPPA` + `gen`; writes OUTDIR/src.txt (the text = program input) and OUTDIR/P.words (hex words, v2b format). -/
 open Nano.V2B

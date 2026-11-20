@@ -2,7 +2,7 @@
 `I.enc` words (Nano/V2/Gen.lean), which Nano/V2/Enc.lean + Sim.lean already tie to the Sail step lemmas.  Sail-free (the one Sail-word lemma
 `g5_wJ` lives in SimW).
 Immediates: C passes a UInt64 two's-complement value `v`; the instruction's signed immediate is `sI v`. -/
-import Nano.V2.Gen
+import Nano.Base.V2.Gen
 import Nano.V2Self.C.Gen
 
 namespace Bridge

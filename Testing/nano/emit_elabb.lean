@@ -1,5 +1,5 @@
 import Nano.ElabBSelf
-import Nano.ElabBProof
+import Legacy.Nano.ElabBProof
 /- usage (repo root): lake env lean Testing/nano/emit_elabb.lean   after Testing/nano/elabb_inputs.py N SEED >
    Testing/nano/work/elabb_in.txt.  Writes Testing/asm/frontx-words/lexbe.{words,cases}: the machine-theorem binary of
    stage 1 (`Nano.Self.lexBE`) and per input the bytes computed by executed Lean `lexBE`; checks on the Lean side that

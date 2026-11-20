@@ -1,4 +1,4 @@
-import Riscv.Frontx.WpLeanZip
+import Legacy.Riscv.Frontx.WpLeanZip
 #print axioms Proven.Mach.Riscv.implements1_of_execO
 #print axioms Proven.Mach.Riscv.pg_core
 #print axioms Proven.Mach.Riscv.pg_of_spec

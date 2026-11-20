@@ -1,5 +1,5 @@
-import Riscv.Back.Boot
-import Riscv.Examples.BootEx
+import Legacy.Riscv.Back.Boot
+import Legacy.Riscv.Examples.BootEx
 #print axioms Proven.Boot.bootStart_ok
 #print axioms Proven.Boot.boot_start
 #print axioms Proven.Boot.boot_correct

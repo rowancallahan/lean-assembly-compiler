@@ -2,7 +2,7 @@
 against executed Lean: `lake env lean --tstack=4000000 Testing/asm/emit_const.lean`, then
 `python3 Testing/asm/frontx_test.py check 60 cst_<name>`.  Input: any `TExpr` tree (ignored) or raw bytes (ignored);
 work block 15 bytes (the theorem's space). -/
-import Riscv.Frontx.ConstExamples
+import Legacy.Riscv.Frontx.ConstExamples
 
 open Proven Proven.Frontx.ExprEx
 

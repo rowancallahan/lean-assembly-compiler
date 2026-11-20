@@ -1,14 +1,14 @@
-import Riscv.Frontx.Machine
-import Riscv.Frontx.RecExamples
-import Riscv.Frontx.PairExamples
-import Riscv.Frontx.ExceptExamples
-import Riscv.Frontx.ExceptBook
-import Riscv.Frontx.IndExamples
-import Riscv.Frontx.Ind2Examples
-import Riscv.Frontx.NameExamples
-import Riscv.Frontx.ScalarExamples
-import Riscv.Frontx.HofExamples
-import Riscv.Frontx.MonadExamples
+import Legacy.Riscv.Frontx.Machine
+import Legacy.Riscv.Frontx.RecExamples
+import Legacy.Riscv.Frontx.PairExamples
+import Legacy.Riscv.Frontx.ExceptExamples
+import Legacy.Riscv.Frontx.ExceptBook
+import Legacy.Riscv.Frontx.IndExamples
+import Legacy.Riscv.Frontx.Ind2Examples
+import Legacy.Riscv.Frontx.NameExamples
+import Legacy.Riscv.Frontx.ScalarExamples
+import Legacy.Riscv.Frontx.HofExamples
+import Legacy.Riscv.Frontx.MonadExamples
 open Proven Proven.Frontx Proven.Frontx.Ex
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
 def hex2 (b : UInt8) : String := let s := String.ofList (Nat.toDigits 16 b.toNat); if s.length < 2 then "0" ++ s else s

@@ -1,4 +1,4 @@
-import Riscv.Frontx.RecExamples
+import Legacy.Riscv.Frontx.RecExamples
 #print axioms Proven.Mach.rec_ok
 #print axioms Proven.Mach.Riscv.implements1_of_cexec
 #print axioms Proven.Frontx.implements1_rec

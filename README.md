@@ -8,19 +8,21 @@ CPU models. No `sorry`, no extra axioms beyond the models' own, no `native_decid
 
 | Folder | Contents |
 |---|---|
-| `Spec/` | what is proved: byte encodings, source languages and their meaning, the machine-level `Implements` statement (`Spec/Riscv.lean`) |
-| `Compiler/` | machine-independent middle layer (interface + Hoare logic) and the front end (`Pipe`, `reify%`, `compile%`) |
-| `Riscv/` | RISC-V back end: step lemmas (`Steps/`), direct proofs (`Direct/`), interface instance (`Back/`), `Examples/`, `Legacy/` |
-| `Arm/` | ARM v9.4-A Sail model (`model/`), its generator (`gen/`), proofs (`proofs/`), `shrink/`, the AArch64 code generator |
-| `Testing/` | QEMU / Sail-emulator harnesses (`asm/`), box setup, check scripts, `notes/` |
+| `Spec/` | what is proved: byte encodings, machines, `CompileCorrect` / `CompileRuns` (frozen: `Spec/FROZEN.sha256`) |
+| `Nano/` | **the compiler**: the self-hosted nano compiler C and its proofs (`Nano/V2Self`, start at `Nano/V2Self/REVIEW.lean`), and the support it builds on (`Nano/Base`: memory/Hoare logic, RISC-V step lemmas, the nano language) |
+| `Arm/` | AArch64: the Sail ARM v9.4-A model (`model/`, `gen/`), Sail proofs (`proofs/`, `sail/`), DeepMind-model proofs (`apc/`) |
+| `Legacy/` | earlier compilers and chains, kept for reference only: NOT built (old `Compiler/`, `Riscv/`, `Nano/` layout) |
+| `Testing/` | check scripts (`scripts/`: `release_check.sh`, `review_axioms.sh`, `bigbox/`), the self-compile fixpoint and examples (`nano/v2self/`), notes |
 
-Build and check (Lean 4.29.0, RISC-V model at `../deps/sail-riscv-lean`; ~1 h from clean):
+Build and check (Lean 4.34.1; RISC-V model at `../deps/sail-riscv-lean`, see `Testing/notes/MODEL_PROVENANCE.md`):
 
 ```
-lake build                     # Spec, Compiler, Riscv, Arm.CompilerArm
-Testing/scripts/check.sh       # build + #print axioms of the main theorems + forbidden-tactic grep
-Arm/proofs/check.sh            # ARM proofs (Lean 4.34.1, needs the built model in /home/user/armv9-lean)
+lake build                         # Spec, Nano (Base + V2Self), Arm.CompilerArm
+Testing/scripts/review_axioms.sh   # the final theorems' axioms against the pinned list
+Testing/scripts/release_check.sh   # every gate: build, axioms, ARM (DeepMind, Sail), model hashes, fixpoint, cross check
 ```
+
+The sections below describe the earlier compilers (now under `Legacy/`; module names gained the `Legacy.` prefix).
 
 Proved on RISC-V: expressions (`compile_ok`), loops (`compileS_ok`, `gcd_ok`), byte arrays and memory
 (`compileStore_ok`, `compileAF_ok`), sorting equal to `List.mergeSort` (`sortCode_implements`,

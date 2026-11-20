@@ -1,4 +1,4 @@
-import Nano.Gen
+import Legacy.Nano.Gen
 /- usage: lake env lean --run Testing/nano/show.lean file...   prints, per nano source file, `n P` as Lean terms -/
 namespace Nano
 def Ex.show : Ex → String

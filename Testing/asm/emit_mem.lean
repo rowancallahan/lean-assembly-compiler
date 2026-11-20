@@ -4,10 +4,10 @@ Lean's result, and `memoryNeeded` (8 bytes times the peak of the run's events, c
 source run `TExec`, `Compiler/MemRun.lean`).  Run: `lake env lean --tstack=4000000 Testing/asm/emit_mem.lean`, then
 `python3 Testing/asm/mem_test.py check 50 <name>` (QEMU + Sail: the run at `memoryNeeded` succeeds, at
 `memoryNeeded - 1` it returns `a0 = -1` and writes nothing outside the output and work blocks). -/
-import Riscv.Frontx.IndMem
-import Riscv.Frontx.IndExamples
-import Riscv.Frontx.Ind2Examples
-import Riscv.Frontx.IndCmpExamples
+import Legacy.Riscv.Frontx.IndMem
+import Legacy.Riscv.Frontx.IndExamples
+import Legacy.Riscv.Frontx.Ind2Examples
+import Legacy.Riscv.Frontx.IndCmpExamples
 open Proven.Frontx
 open Proven (leN)
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s

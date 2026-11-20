@@ -1,5 +1,5 @@
-import Riscv.Frontx.S3Examples
-import Nano.S3Stage
+import Legacy.Riscv.Frontx.S3Examples
+import Legacy.Nano.S3Stage
 open Proven Proven.S3
 set_option maxRecDepth 100000
 set_option maxHeartbeats 0

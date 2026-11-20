@@ -1,5 +1,5 @@
 import Nano.InlPSelf
-import Nano.ElabU
+import Legacy.Nano.ElabU
 /- usage (repo root): NANO_DIR=DIR lake env lean --tstack=400000 Testing/nano/emit_inl.lean   (DIR holds *.nano sources)
    Inliner stage test data (branch nano-closeB): the compiled paged inliner `Nano.IP.inlP.pg.body` (theorem
    `Nano.IP.inlP_implements`, work space 8192 * 601) -> Testing/asm/frontx-words/nanoinl.{words,cases}; per source:

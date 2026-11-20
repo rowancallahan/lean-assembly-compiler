@@ -1,5 +1,5 @@
 #!/bin/bash
-# nano v2 increment 1 (`if` + comparisons, Nano/V2Gen.lean) on QEMU + Sail in the StartCorrect convention: emit with
+# nano v2 increment 1 (`if` + comparisons, Legacy/Nano/V2Gen.lean) on QEMU + Sail in the StartCorrect convention: emit with
 # Testing/asm/emit_nano_v2.lean, then each program's 8 cases with ir_test.py (work = memoryNeeded = 8 * depth, and one
 # byte less: a0 = -1), aligned and with misaligned input / output blocks (MIS).  Removes Testing/asm/ctest.
 set -eo pipefail

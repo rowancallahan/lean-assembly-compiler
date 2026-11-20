@@ -5,7 +5,7 @@ import os, random, subprocess, sys
 cmp_py, armrun, W = sys.argv[1:4]; N = int(sys.argv[4]) if len(sys.argv) > 4 else 300
 os.makedirs(W, exist_ok=True); M = 2**64
 words = dict(l.split(None, 1) for l in open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "words.txt")))
-def gcd_sub(a, b):          # gcdSub of Riscv/Examples/LoopExamples.lean
+def gcd_sub(a, b):          # gcdSub of Nano/Base/Riscv/Examples/LoopExamples.lean
     while a and b:
         if a < b: b -= a
         else: a -= b

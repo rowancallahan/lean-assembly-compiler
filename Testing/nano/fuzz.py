@@ -11,7 +11,7 @@ N = int(sys.argv[1]) if len(sys.argv) > 1 else 200
 rng = random.Random(int(sys.argv[2]) if len(sys.argv) > 2 else 7); g = G(rng)
 progs = [g.program() for _ in range(N)]
 lit = lambda s: '"' + s.replace("\\", "\\\\").replace("\n", "\\n") + '"'
-L = ["import Nano.Gen", "open Nano", "set_option linter.unusedVariables false", ""]
+L = ["import Legacy.Nano.Gen", "open Nano", "set_option linter.unusedVariables false", ""]
 calls = []
 for i, s in enumerate(progs):
     k = entry_arity(s); name = re.findall(r"^def\s+(\w+)", s, re.M)[-1]

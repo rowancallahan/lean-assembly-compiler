@@ -1,5 +1,5 @@
-import Riscv.Frontx.ExceptExamples
-import Riscv.Frontx.ExceptBook
+import Legacy.Riscv.Frontx.ExceptExamples
+import Legacy.Riscv.Frontx.ExceptBook
 #print axioms Proven.Frontx.Exc.readBitE.implements1
 #print axioms Proven.Frontx.Exc.readBitsE.implements1
 #print axioms Proven.Frontx.Exc.readBits2E.implements1

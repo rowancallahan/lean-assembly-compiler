@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bare-metal test of the boot stub (`Riscv/Back/Boot.lean`, words from `Testing/asm/emit_boot.lean`) on
+"""Bare-metal test of the boot stub (`Legacy/Riscv/Back/Boot.lean`, words from `Testing/asm/emit_boot.lean`) on
 `qemu-system-riscv64 -M virt -bios none` (reset ROM jumps to 0x80000000).
 Image: stub at 0x80000000, code at 0x80001000, input length (8 bytes LE) at 0x80100000, input at 0x80200000;
 output and work blocks pre-filled with 0x55 (the stub must zero them).  Checked: pc = 0x80000050 (halt),
