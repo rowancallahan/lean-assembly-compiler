@@ -34,7 +34,7 @@ theorem means_get (inp : List UInt8) (κ : Nat) : ∀ (ds : List ParSpec.DefA) (
     have hl := means_len inp κ r (ms ++ [defMean inp κ ms d])
     have e1 : (means inp κ (ms ++ [defMean inp κ ms d]) r)[ms.length]? = some (defMean inp κ ms d) := by
       have := congrArg (·[ms.length]?) ht
-      simp only at this
+      try simp only at this -- Lean 4.29 needs the beta step; 4.34.1 has already reduced
       rw [List.getElem?_take_of_lt (by simp)] at this
       rw [this]; simp
     have e2 : (means inp κ (ms ++ [defMean inp κ ms d]) r).take ms.length = ms := by
@@ -168,7 +168,7 @@ theorem prog_ok (P : Templates.PC) (ds : List ParSpec.DefA) (sigs : List Sig) (K
           cases h : K[s]? with
           | none => simp
           | some k => exact hK2 K hKmem k (List.mem_of_getElem? h))
-        ds[n] sigs[n] R ⟨t1, t2, t3, t4⟩ hd rfl (by simp only [scAt, hda]; rfl)
+        ds[n] sigs[n] R ⟨t1, t2, t3, t4⟩ hd rfl (by simp only [scAt, hda]; try rfl) -- 4.34.1: simp closes it
       refine ⟨ps ++ [K.take ds[n].npw], rs ++ [R], by simp [hl1], by simp [hl2], ?_, fun i hi => ?_⟩
       · have e1 : Ks.drop (n + 1) = Ks' := by
           have := congrArg List.tail hK; simpa [List.tail_drop] using this
@@ -179,7 +179,7 @@ theorem prog_ok (P : Templates.PC) (ds : List ParSpec.DefA) (sigs : List Sig) (K
             by rw [List.getElem?_append_left (by omega)]; exact c, rest⟩
         · have hin : i = n := by omega
           subst hin
-          refine ⟨R, by simp [hl2], hR1, by rw [hda]; exact hRl, by simp [hl1, hda]; rw [← hKn]; simp [List.getD_eq_getElem?_getD]; rfl, ?_⟩
+          refine ⟨R, by simp [hl2], hR1, by rw [hda]; exact hRl, by simp [hl1, hda]; rw [← hKn]; simp [List.getD_eq_getElem?_getD]; try rfl, ?_⟩
           have hmg := means_get inp P.κ ds [] i (by omega)
           simp only [List.length_nil, Nat.zero_add] at hmg
           refine ⟨_, hmg, ?_⟩
