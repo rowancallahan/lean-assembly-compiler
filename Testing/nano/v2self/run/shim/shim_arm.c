@@ -11,17 +11,17 @@ static void pthread_jit_write_protect_np(int on) { (void)on; }
 static void sys_icache_invalidate(void *p, long n) { __builtin___clear_cache((char *)p, (char *)p + n); }
 #endif
 enum { CODE = 4 << 20, IN = 1 << 20, OUT = 2 << 20, WORK = 80 << 20 };
-static unsigned char in[IN], out[OUT];
+static unsigned char in[IN + 1], out[OUT];                                      /* +1: detect too long */
 static long work[WORK / 8] __attribute__((aligned(16)));                        /* AArch64: sp must be 16-aligned */
 
 int main(int argc, char **argv) {
     FILE *f = argc == 2 ? fopen(argv[1], "rb") : 0;
     if (!f) return fprintf(stderr, "usage: shim_arm CODE.bin < input > output\n"), 2;
-    unsigned char *code = mmap(0, CODE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT, -1, 0);
+    unsigned char *code = mmap(0, CODE + 1, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT, -1, 0);
     if (code == MAP_FAILED) return fprintf(stderr, "shim_arm: the host refuses writable+executable memory\n"), 2;
     pthread_jit_write_protect_np(0);
-    long code_len = fread(code, 1, CODE, f), in_len = fread(in, 1, IN, stdin);
-    if (code_len == CODE || in_len == IN) return fprintf(stderr, "shim_arm: code or input too large\n"), 2;
+    long code_len = fread(code, 1, CODE + 1, f), in_len = fread(in, 1, IN + 1, stdin);   /* limits: <= CODE, <= IN */
+    if (code_len > CODE || in_len > IN) return fprintf(stderr, "shim_arm: code > 4 MiB or input > 2^20 bytes\n"), 2;
     pthread_jit_write_protect_np(1);
     sys_icache_invalidate(code, code_len);
 
@@ -36,6 +36,6 @@ int main(int argc, char **argv) {
 
     fprintf(stderr, "shim_arm: status %ld, %ld output bytes\n", x0, x1);
     if ((x0 != 0 && x0 != 1) || x1 < 0 || x1 > OUT) return 1;
-    fwrite(out, 1, x1, stdout);
+    if (fwrite(out, 1, x1, stdout) != (size_t)x1 || fclose(stdout)) return fprintf(stderr, "shim_arm: write failed\n"), 3;
     return 0;
 }
