@@ -124,3 +124,45 @@ Testing/nano/v2self/bench/run_bench.sh        # riscv.csv, scaling.csv (about 2 
 Testing/nano/v2self/bench/profile_self.sh     # self_S_regions.txt (about 15 s)
 ```
 Needs a C compiler (no QEMU). Inputs are generated, not stored.
+
+## Follow-up 1: which parts grow as K^2 (flat defs, K = 80 vs 320)
+
+`results/flat_growth_80_320.txt` (made by `bench/profile_growth.py`; profiles by `NANORUN_PROF`, total 72.1 M -> 641.9 M,
+factor 8.9 for K x4, so quadratic in total). Factor = instructions at K=320 / K=80. "~16x" = K^2, "~4x" = linear.
+
+- **Grow about K^2** (factor 11.7-16.4; call counts grow 12-15x, instructions per call constant for the stubs):
+  - entry 8055, 442 words (words 8055-8496): calls 10,200 -> 156,000, factor 16.4. Per call 412 -> 440 instructions.
+  - the 11 return stubs: 6049 (24 w), 6073 (40 w), 6113 (26 w), 6139 (40 w), 6179 (26 w), 6205 (40 w), 6245 (26 w),
+    6271 (40 w), 6311 (26 w), 6337 (40 w), 6377 (26 w). Calls grow 11.7-14.9x; instructions per call stay 36 (40-word
+    stubs), 23 (26-word), 20 (24-word). So the K^2 comes from the number of calls, not from the stubs getting longer.
+  - entry 14382, 298 words: calls 241 -> 961 (4x) but instructions per call 7,440 -> 29,280 (4x): a loop whose trip count
+    grows with K, run a number of times that also grows with K, so its total is K^2. Factor 15.7.
+- **Grow linearly** (factor 4.0): 42037 (1515 w, 7,231 -> 28,831 calls, 372 instr/call), 45541 (94 w), 43552 (335 w, once),
+  12535 (275 w), 60831 (231 w), 3494 (942 w), 4436 (711 w), 58872 (1803 w), 130, 322, 79722 (211 w, once). Per call constant.
+- Totals: the K^2 entries together are about 70% of the large run's instructions (the 11 stubs alone about 48%).
+  So the K^2 part of the compile cost is the call count times a per-call cost, and the call count is the number of call
+  sites that the generated code runs. The compiler's own `m` makes K calls and the per-def work is paid once per call.
+
+## Follow-up 2: chain-640 rejection: the limit is 512 defs
+
+Bisection on `chain_K` (each def calls the previous): K=480 ok, 511 ok, **512 rejected** (status 1, 0 bytes). Confirmed with
+other families (not only chains): the same cut-off at exactly 512 for:
+- `unused_K`: K defs with 2 args, bodies not called, `m` calls only `h0`: 511 ok, 512 rejected, 600 rejected, 1000 rejected.
+- `one_K` (1 arg) and `three_K` (3 args): 511 ok, 512 rejected. So it does not depend on the parameter count.
+- `flat_nocall_K`: 511 ok, 512 rejected.
+
+Source of the constant: `Testing/nano/v2self/self_S.lean` line 919: `if (bget h 12) < 512 then` guards `v86` (the def
+registration; `h[12]` counts defs). The same file uses id 512 + j for the j-th def (`v1 h 45 (512 + j)`, lines 413-414) and
+`if a < 512` to separate builtin ids from def ids (lines 396-400). So names live in a 10-bit id space: 0-511 builtins and
+locals, 512-1023 defs. The def table itself has room for 1024 entries (`d14 := 1024`, line 153), so the binding limit is
+the id space, not the table size.
+
+Checked and not the limit: the node cap (`d13 = 16384`, Par1: `bget h 9 < d13`) and the output buffer (`g_999 = 524288`,
+`262143 < bsize o`): the failure is the same for tiny and for large bodies at exactly 512 defs, and the 512-def program
+has far fewer nodes than 16384 in all the tests above. The `d12` (tasks, 4096), `d15` (8192) and `d13` limits were not
+measured separately. Whether constant defs (`def k : UInt64 := ...`) also count toward the 512 was not tested.
+
+Practical consequence: the self-compile (234 defs) is well under the cap, but any program with more than 511 defs is rejected
+silently (empty output, no error message).
+
+Reproduce: `Testing/nano/v2self/bench/synth_scaling.py` (chain/flat/expr families); bisect by hand with `nanorun B2.bin src`.
