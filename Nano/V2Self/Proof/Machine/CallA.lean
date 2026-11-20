@@ -23,7 +23,7 @@ theorem pro_runA {C : List J} {f r tgt : Nat} {s : St} (hC : At C f (proA tgt f 
   have lt : (s.x 31).toNat < 2 ^ 64 := (s.x 31).toNat_lt
   have t8 : (UInt64.ofNat ((s.x 31).toNat - 8)).toNat = (s.x 31).toNat - 8 := by simp; omega
   have t16 : (UInt64.ofNat ((s.x 31).toNat - 8 - 8)).toNat = (s.x 31).toNat - 16 := by simp; omega
-  have r2 := push_run (s := ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)), upd s.m ((s.x 31).toNat - 8) (s.x 1), s.b, s.w⟩) A2 (by decide) (by decide)
+  have r2 := push_run (s := ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)), upd s.m ((s.x 31).toNat - 8) (s.x 1), s.b, s.wk⟩) A2 (by decide) (by decide)
     (by simp [upd, t8]; omega)
   simp only [upd_same, upd_other _ _ (show (30:Nat) ≠ 31 by decide), upd_other _ _ (show (8:Nat) ≠ 31 by decide), t8] at r2
   have r12 := run_add (l := 3) r1
@@ -36,7 +36,7 @@ theorem pro_runA {C : List J} {f r tgt : Nat} {s : St} (hC : At C f (proA tgt f 
   rw [e16] at r12
   refine ⟨⟨upd (upd (upd (upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8))) 31 (UInt64.ofNat ((s.x 31).toNat - 16)))
       8 (UInt64.ofNat ((s.x 31).toNat - 16))) 31 (UInt64.ofNat ((s.x 31).toNat - 16 - 8 * r)),
-    upd (upd s.m ((s.x 31).toNat - 8) (s.x 1)) ((s.x 31).toNat - 16) (s.x 8), s.b, s.w⟩, ?_, ?_, ?_, ?_, rfl⟩
+    upd (upd s.m ((s.x 31).toNat - 8) (s.x 1)) ((s.x 31).toNat - 16) (s.x 8), s.b, s.wk⟩, ?_, ?_, ?_, ?_, rfl⟩
   · rw [show 9 = (3 + 3) + 3 by rfl, run_add r12]
     have ea1 : ea (UInt64.ofNat ((s.x 31).toNat - 16)) 0 = (s.x 31).toNat - 16 := by simp [ea, t16']
     have ea2 : ea (UInt64.ofNat ((s.x 31).toNat - 16)) (-8 * (r : Int)) = (s.x 31).toNat - 16 - 8 * r := by
@@ -54,7 +54,7 @@ theorem pro_runA {C : List J} {f r tgt : Nat} {s : St} (hC : At C f (proA tgt f 
 theorem call_liveA {C : List J} {c f e p q r tgt : Nat} {off : Int} (Bd : St → St → Prop)
     (hj : C[c]? = some (.jal 1 off)) (hf : ((c : Int) + off).toNat = f)
     (hP : At C f (proA tgt f r)) (hE : At C e (epi p q)) (s : St)
-    (hT : (s.x 31).toNat + 8 * p < 2 ^ 62) (hc : s.b + 4 * (c + 1) < 2 ^ 64)
+    (hT : (s.x 31).toNat + 8 * p < 2 ^ 62) (hc : s.b + s.w * (c + 1) < 2 ^ 64)
     (hh : (s.x 30).toNat + 16 + 8 * r ≤ (s.x 31).toNat)
     (hB : ∀ s1, (s1.x 31).toNat = (s.x 31).toNat - 16 - 8 * r → (s1.x 8).toNat = (s.x 31).toNat - 16 →
       s1.x 30 = s.x 30 → ∃ s2, Bd s1 s2 ∧ Star C (f + 12, s1) (e, s2) ∧ s2.x 8 = s1.x 8 ∧
@@ -65,11 +65,11 @@ theorem call_liveA {C : List J} {c f e p q r tgt : Nat} {off : Int} (Bd : St →
       (∀ a, (s.x 31).toNat + 8 * p ≤ a → s3.m a = s.m a) ∧
       ∀ i, i < q → s3.m ((s.x 31).toNat + 8 * p - 8 * (i + 1)) = s2.m ((s2.x 31).toNat + 8 * (q - 1 - i)) := by
   -- the call
-  let sj := wr s 1 (UInt64.ofNat (s.b + 4 * (c + 1)))
+  let sj := wr s 1 (UInt64.ofNat (s.b + s.w * (c + 1)))
   have sj1 : step C (c, s) = some (f, sj) := by rw [s_jal hj, hf]
   have sjx : ∀ i, i ≠ 1 → sj.x i = s.x i := by intro i hi; simp [sj, wr, upd, hi]
   have sjm : sj.m = s.m := by simp [sj, wr]
-  have sjr : sj.x 1 = UInt64.ofNat (s.b + 4 * (c + 1)) := by simp [sj, wr, upd]
+  have sjr : sj.x 1 = UInt64.ofNat (s.b + s.w * (c + 1)) := by simp [sj, wr, upd]
   have sjb : sj.b = s.b := wr_b _ _ _
   have j31 := sjx 31 (by decide); have j30 := sjx 30 (by decide); have j8 := sjx 8 (by decide)
   -- the prologue
@@ -84,12 +84,13 @@ theorem call_liveA {C : List J} {c f e p q r tgt : Nat} {off : Int} (Bd : St →
   have b2 : s2.b = s.b := by
     exact hst.b.trans ((run_star hr1).b.trans sjb)
   have S8 : (s2.x 8).toNat = (s.x 31).toNat - 16 := by rw [k8, h8]
-  have ra : s2.m ((s2.x 8).toNat + 8) = UInt64.ofNat (s.b + 4 * (c + 1)) := by
+  have ra : s2.m ((s2.x 8).toNat + 8) = UInt64.ofNat (s.b + s.w * (c + 1)) := by
     rw [S8, kmem _ (Or.inl ⟨by omega, by omega⟩), hm1, upd_other _ _ (by omega),
       show (s.x 31).toNat - 16 + 8 = (s.x 31).toNat - 8 by omega, upd_same, sjr]
-  have pc3 : ((s2.m ((s2.x 8).toNat + 8)).toNat - s2.b) / 4 = c + 1 := by
-    have tn : (UInt64.ofNat (s.b + 4 * (c + 1))).toNat = s.b + 4 * (c + 1) := by simp; omega
-    rw [ra, b2, tn]; omega
+  have w2 : s2.w = s.w := St.w_eq (hst.w.trans ((run_star hr1).w.trans (wr_w _ _ _)))
+  have pc3 : ((s2.m ((s2.x 8).toNat + 8)).toNat - s2.b) / s2.w = c + 1 := by
+    have tn : (UInt64.ofNat (s.b + s.w * (c + 1))).toNat = s.b + s.w * (c + 1) := by simp; omega
+    rw [ra, b2, w2, tn, link_div]
   rw [pc3] at hr3
   refine ⟨s1, s2, s3, hb, ?_, ?_, ?_, ?_, ?_⟩
   · exact (Star.one sj1).trans ((run_star hr1).trans (hst.trans (run_star hr3)))

@@ -51,6 +51,8 @@ structure Rel (K : LayW) (C : List J) (s0 : T.M.State) (p : Nat × CallProbe.St)
     (T.M.observe s).memory (UInt64.ofNat (T.addr K.base i + 4 * k + b)) = some (wbyte (T.enc C[i])[k] b)
   x0 : p.2.x 0 = 0
   bb : p.2.b = K.base
+  /-- the link width is the block size: `w = 4·blockLen` -/
+  ww : p.2.wk = T.blockLen - 1
   x : ∀ j, 0 < j → j < 32 → (T.M.observe s).register (T.reg j) = p.2.x j
   keep : ∀ r, (∀ j, 0 < j → j < 32 → T.reg j ≠ r) → r ∉ T.scratch →
     (T.M.observe s).register r = (T.M.observe s0).register r
@@ -76,6 +78,8 @@ structure LayOK (M : Machine) (n : Nat) (K : LayW) : Prop where
 
 /-- **the laws a target proves** (per instruction kind, against the generic `Rel`) -/
 structure Laws : Prop where
+  /-- at least one machine word per J instruction -/
+  blk_pos : 0 < T.blockLen
   /-- every J instruction is `blockLen` machine words -/
   enc_len : ∀ j, (T.enc j).length = T.blockLen
   /-- the calling convention's registers, as J registers (a0..a3 = x10..x13, ra = x1, sp = x2) -/

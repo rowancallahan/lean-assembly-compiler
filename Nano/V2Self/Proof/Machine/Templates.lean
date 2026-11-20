@@ -50,7 +50,7 @@ theorem if_eq {C : List J} {pc la lb lt le nA nB nT nE N : Nat} {VA VB VT VE : S
     have ea0 : ea (s2.x 31) 0 = (s.x 31).toNat - 8 - 8 := by simp [ea, p2]
     have ea8 : ea (s2.x 31) 8 = (s.x 31).toNat - 8 := by simp [ea, p2]; omega
     have ea16 : ea (s2.x 31) 16 = (s.x 31).toNat := by simp [ea, p2]; omega
-    let s3 : St := ⟨upd (upd (upd s2.x 6 (VB s)) 5 (VA s)) 31 (UInt64.ofNat (s.x 31).toNat), s2.m, s2.b, s2.w⟩
+    let s3 : St := ⟨upd (upd (upd s2.x 6 (VB s)) 5 (VA s)) 31 (UInt64.ofNat (s.x 31).toNat), s2.m, s2.b, s2.wk⟩
     have r3 : run C 3 (pc + la + lb, s2) = some (pc + la + lb + 3, s3) := by
       simp [run, step, c0, c1, c2, wr, ea0, ea8, va, vb, upd_other _ _ (show (31:Nat) ≠ 6 by decide),
         upd_other _ _ (show (31:Nat) ≠ 5 by decide), ea16, s3]
@@ -70,9 +70,9 @@ theorem if_eq {C : List J} {pc la lb lt le nA nB nT nE N : Nat} {VA VB VT VE : S
         simp [step, c3, x5, x6, hc]; omega
       obtain ⟨s4, r4, p4, v4, e84, e304, m4⟩ := hT.run s3 (by rw [x30, x31]; omega) (by rw [x31]; exact lim)
       have sj : step C (pc + la + lb + 5 + lt, s4) =
-          some (pc + (la + lb + 6 + lt + le), wr s4 0 (UInt64.ofNat (s4.b + 4 * (pc + la + lb + 5 + lt + 1)))) := by
+          some (pc + (la + lb + 6 + lt + le), wr s4 0 (UInt64.ofNat (s4.b + s4.w * (pc + la + lb + 5 + lt + 1)))) := by
         simp [step, hJ]; omega
-      refine ⟨wr s4 0 (UInt64.ofNat (s4.b + 4 * (pc + la + lb + 5 + lt + 1))), ?_, ?_, ?_, ?_, ?_, ?_⟩
+      refine ⟨wr s4 0 (UInt64.ofNat (s4.b + s4.w * (pc + la + lb + 5 + lt + 1))), ?_, ?_, ?_, ?_, ?_, ?_⟩
       · exact (st3.tail sb |>.trans r4).tail sj
       · simp [wr]; rw [p4, x31]
       · simp [wr]; rw [x31] at v4; rw [v4, hT.stable s s3 x8 mm, if_pos hc]
@@ -83,9 +83,9 @@ theorem if_eq {C : List J} {pc la lb lt le nA nB nT nE N : Nat} {VA VB VT VE : S
       have sb : step C (pc + la + lb + 3, s3) = some (pc + la + lb + 4, s3) := by
         simp [step, c3, x5, x6, hc]
       have sj0 : step C (pc + la + lb + 4, s3) =
-          some (pc + la + lb + 6 + lt, wr s3 0 (UInt64.ofNat (s3.b + 4 * (pc + la + lb + 4 + 1)))) := by
+          some (pc + la + lb + 6 + lt, wr s3 0 (UInt64.ofNat (s3.b + s3.w * (pc + la + lb + 4 + 1)))) := by
         simp [step, c4]; omega
-      have w3 : wr s3 0 (UInt64.ofNat (s3.b + 4 * (pc + la + lb + 4 + 1))) = s3 := by simp [wr]
+      have w3 : wr s3 0 (UInt64.ofNat (s3.b + s3.w * (pc + la + lb + 4 + 1))) = s3 := by simp [wr]
       rw [w3] at sj0
       obtain ⟨s5, r5, p5, v5, e85, e305, m5⟩ := hE.run s3 (by rw [x30, x31]; omega) (by rw [x31]; exact lim)
       refine ⟨s5, ?_, ?_, ?_, ?_, ?_, ?_⟩
@@ -127,7 +127,7 @@ theorem if_lt {C : List J} {pc la lb lt le nA nB nT nE N : Nat} {VA VB VT VE : S
     have ea0 : ea (s2.x 31) 0 = (s.x 31).toNat - 8 - 8 := by simp [ea, p2]
     have ea8 : ea (s2.x 31) 8 = (s.x 31).toNat - 8 := by simp [ea, p2]; omega
     have ea16 : ea (s2.x 31) 16 = (s.x 31).toNat := by simp [ea, p2]; omega
-    let s3 : St := ⟨upd (upd (upd s2.x 6 (VB s)) 5 (VA s)) 31 (UInt64.ofNat (s.x 31).toNat), s2.m, s2.b, s2.w⟩
+    let s3 : St := ⟨upd (upd (upd s2.x 6 (VB s)) 5 (VA s)) 31 (UInt64.ofNat (s.x 31).toNat), s2.m, s2.b, s2.wk⟩
     have r3 : run C 3 (pc + la + lb, s2) = some (pc + la + lb + 3, s3) := by
       simp [run, step, c0, c1, c2, wr, ea0, ea8, va, vb, upd_other _ _ (show (31:Nat) ≠ 6 by decide),
         upd_other _ _ (show (31:Nat) ≠ 5 by decide), ea16, s3]
@@ -147,9 +147,9 @@ theorem if_lt {C : List J} {pc la lb lt le nA nB nT nE N : Nat} {VA VB VT VE : S
         simp [step, c3, x5, x6, hc]; omega
       obtain ⟨s4, r4, p4, v4, e84, e304, m4⟩ := hT.run s3 (by rw [x30, x31]; omega) (by rw [x31]; exact lim)
       have sj : step C (pc + la + lb + 5 + lt, s4) =
-          some (pc + (la + lb + 6 + lt + le), wr s4 0 (UInt64.ofNat (s4.b + 4 * (pc + la + lb + 5 + lt + 1)))) := by
+          some (pc + (la + lb + 6 + lt + le), wr s4 0 (UInt64.ofNat (s4.b + s4.w * (pc + la + lb + 5 + lt + 1)))) := by
         simp [step, hJ]; omega
-      refine ⟨wr s4 0 (UInt64.ofNat (s4.b + 4 * (pc + la + lb + 5 + lt + 1))), ?_, ?_, ?_, ?_, ?_, ?_⟩
+      refine ⟨wr s4 0 (UInt64.ofNat (s4.b + s4.w * (pc + la + lb + 5 + lt + 1))), ?_, ?_, ?_, ?_, ?_, ?_⟩
       · exact (st3.tail sb |>.trans r4).tail sj
       · simp [wr]; rw [p4, x31]
       · simp [wr]; rw [x31] at v4; rw [v4, hT.stable s s3 x8 mm, if_pos hc]
@@ -160,9 +160,9 @@ theorem if_lt {C : List J} {pc la lb lt le nA nB nT nE N : Nat} {VA VB VT VE : S
       have sb : step C (pc + la + lb + 3, s3) = some (pc + la + lb + 4, s3) := by
         simp [step, c3, x5, x6, hc]
       have sj0 : step C (pc + la + lb + 4, s3) =
-          some (pc + la + lb + 6 + lt, wr s3 0 (UInt64.ofNat (s3.b + 4 * (pc + la + lb + 4 + 1)))) := by
+          some (pc + la + lb + 6 + lt, wr s3 0 (UInt64.ofNat (s3.b + s3.w * (pc + la + lb + 4 + 1)))) := by
         simp [step, c4]; omega
-      have w3 : wr s3 0 (UInt64.ofNat (s3.b + 4 * (pc + la + lb + 4 + 1))) = s3 := by simp [wr]
+      have w3 : wr s3 0 (UInt64.ofNat (s3.b + s3.w * (pc + la + lb + 4 + 1))) = s3 := by simp [wr]
       rw [w3] at sj0
       obtain ⟨s5, r5, p5, v5, e85, e305, m5⟩ := hE.run s3 (by rw [x30, x31]; omega) (by rw [x31]; exact lim)
       refine ⟨s5, ?_, ?_, ?_, ?_, ?_, ?_⟩
@@ -242,7 +242,7 @@ theorem let1 {C : List J} {pc lv lb n p nl k0 : Nat} {Inv : St → Prop} {Rv Wv 
     have ea8 : ea (s1.x 31) 8 = (s.x 31).toNat := by simp [ea, p1]; omega
     have eaK : ea (s1.x 8) (slotOff p k0) = slotAddr p (s.x 8).toNat k0 := by simp [ea, slotAddr, e81]
     let s2 : St := ⟨upd (upd s1.x 5 (Vv env)) 31 (UInt64.ofNat (s.x 31).toNat),
-      upd s1.m (slotAddr p (s.x 8).toNat k0) (Vv env), s1.b, s1.w⟩
+      upd s1.m (slotAddr p (s.x 8).toNat k0) (Vv env), s1.b, s1.wk⟩
     have r2 : run C 3 (pc + lv, s1) = some (pc + lv + 3, s2) := by
       simp [run, step, c0, c1, c2, wr, ea0, v1, ea8, upd_other _ _ (show (31:Nat) ≠ 5 by decide),
         upd_other _ _ (show (8:Nat) ≠ 31 by decide), upd_other _ _ (show (8:Nat) ≠ 5 by decide), eaK, s2,
@@ -322,7 +322,7 @@ theorem ifE_eq {C : List J} {pc la lb lt le n p nl : Nat} {Inv : St → Prop} {R
     have ea0 : ea (s2.x 31) 0 = (s.x 31).toNat - 8 - 8 := by simp [ea, p2]
     have ea8 : ea (s2.x 31) 8 = (s.x 31).toNat - 8 := by simp [ea, p2]; omega
     have ea16 : ea (s2.x 31) 16 = (s.x 31).toNat := by simp [ea, p2]; omega
-    let s3 : St := ⟨upd (upd (upd s2.x 6 (VB env)) 5 (VA env)) 31 (UInt64.ofNat (s.x 31).toNat), s2.m, s2.b, s2.w⟩
+    let s3 : St := ⟨upd (upd (upd s2.x 6 (VB env)) 5 (VA env)) 31 (UInt64.ofNat (s.x 31).toNat), s2.m, s2.b, s2.wk⟩
     have r3 : run C 3 (pc + la + lb, s2) = some (pc + la + lb + 3, s3) := by
       simp [run, step, c0, c1, c2, wr, ea0, ea8, va, vb, upd_other _ _ (show (31:Nat) ≠ 6 by decide),
         upd_other _ _ (show (31:Nat) ≠ 5 by decide), ea16, s3]
@@ -350,7 +350,7 @@ theorem ifE_eq {C : List J} {pc la lb lt le n p nl : Nat} {Inv : St → Prop} {R
         simp [step, c3, x5, x6, hc]; omega
       obtain ⟨s4, env4, r4, I4, z4, p4, v4, e84, e304, F4, ag4, m4⟩ :=
         hT.run s3 env2 I3 z3 F3 O3 (by rw [x30, x31]; omega)
-      let s5 := wr s4 0 (UInt64.ofNat (s4.b + 4 * (pc + la + lb + 5 + lt + 1)))
+      let s5 := wr s4 0 (UInt64.ofNat (s4.b + s4.w * (pc + la + lb + 5 + lt + 1)))
       have w5 : s5 = s4 := by simp [s5, wr]
       have sj : step C (pc + la + lb + 5 + lt, s4) = some (pc + (la + lb + 6 + lt + le), s5) := by
         simp [step, hJ, s5]; omega
@@ -366,7 +366,7 @@ theorem ifE_eq {C : List J} {pc la lb lt le n p nl : Nat} {Inv : St → Prop} {R
         exact mm a ha (fun k hk wk => hw k hk (by rcases wk with w | w <;> simp [w]))
     · have sb : step C (pc + la + lb + 3, s3) = some (pc + la + lb + 4, s3) := by
         simp [step, c3, x5, x6, hc]
-      let s5 := wr s3 0 (UInt64.ofNat (s3.b + 4 * (pc + la + lb + 4 + 1)))
+      let s5 := wr s3 0 (UInt64.ofNat (s3.b + s3.w * (pc + la + lb + 4 + 1)))
       have w5 : s5 = s3 := by simp [s5, wr]
       have sj0 : step C (pc + la + lb + 4, s3) = some (pc + la + lb + 6 + lt, s5) := by
         simp [step, c4, s5]; omega
@@ -418,7 +418,7 @@ theorem ifE_lt {C : List J} {pc la lb lt le n p nl : Nat} {Inv : St → Prop} {R
     have ea0 : ea (s2.x 31) 0 = (s.x 31).toNat - 8 - 8 := by simp [ea, p2]
     have ea8 : ea (s2.x 31) 8 = (s.x 31).toNat - 8 := by simp [ea, p2]; omega
     have ea16 : ea (s2.x 31) 16 = (s.x 31).toNat := by simp [ea, p2]; omega
-    let s3 : St := ⟨upd (upd (upd s2.x 6 (VB env)) 5 (VA env)) 31 (UInt64.ofNat (s.x 31).toNat), s2.m, s2.b, s2.w⟩
+    let s3 : St := ⟨upd (upd (upd s2.x 6 (VB env)) 5 (VA env)) 31 (UInt64.ofNat (s.x 31).toNat), s2.m, s2.b, s2.wk⟩
     have r3 : run C 3 (pc + la + lb, s2) = some (pc + la + lb + 3, s3) := by
       simp [run, step, c0, c1, c2, wr, ea0, ea8, va, vb, upd_other _ _ (show (31:Nat) ≠ 6 by decide),
         upd_other _ _ (show (31:Nat) ≠ 5 by decide), ea16, s3]
@@ -446,7 +446,7 @@ theorem ifE_lt {C : List J} {pc la lb lt le n p nl : Nat} {Inv : St → Prop} {R
         simp [step, c3, x5, x6, hc]; omega
       obtain ⟨s4, env4, r4, I4, z4, p4, v4, e84, e304, F4, ag4, m4⟩ :=
         hT.run s3 env2 I3 z3 F3 O3 (by rw [x30, x31]; omega)
-      let s5 := wr s4 0 (UInt64.ofNat (s4.b + 4 * (pc + la + lb + 5 + lt + 1)))
+      let s5 := wr s4 0 (UInt64.ofNat (s4.b + s4.w * (pc + la + lb + 5 + lt + 1)))
       have w5 : s5 = s4 := by simp [s5, wr]
       have sj : step C (pc + la + lb + 5 + lt, s4) = some (pc + (la + lb + 6 + lt + le), s5) := by
         simp [step, hJ, s5]; omega
@@ -462,7 +462,7 @@ theorem ifE_lt {C : List J} {pc la lb lt le n p nl : Nat} {Inv : St → Prop} {R
         exact mm a ha (fun k hk wk => hw k hk (by rcases wk with w | w <;> simp [w]))
     · have sb : step C (pc + la + lb + 3, s3) = some (pc + la + lb + 4, s3) := by
         simp [step, c3, x5, x6, hc]
-      let s5 := wr s3 0 (UInt64.ofNat (s3.b + 4 * (pc + la + lb + 4 + 1)))
+      let s5 := wr s3 0 (UInt64.ofNat (s3.b + s3.w * (pc + la + lb + 4 + 1)))
       have w5 : s5 = s3 := by simp [s5, wr]
       have sj0 : step C (pc + la + lb + 4, s3) = some (pc + la + lb + 6 + lt, s5) := by
         simp [step, c4, s5]; omega
@@ -494,7 +494,7 @@ theorem popN_len (p k0 : Nat) : ∀ w, (popN p k0 w).length = 3 * w
 theorem popSlot_run {C : List J} {pc p k : Nat} (s : St) (hS : At C pc (popSlot p k))
     (hlt : (s.x 31).toNat + 8 < 2 ^ 64) :
     run C 3 (pc, s) = some (pc + 3, ⟨upd (upd s.x 5 (s.m (s.x 31).toNat)) 31 (UInt64.ofNat ((s.x 31).toNat + 8)),
-      upd s.m (slotAddr p (s.x 8).toNat k) (s.m (s.x 31).toNat), s.b, s.w⟩) := by
+      upd s.m (slotAddr p (s.x 8).toNat k) (s.m (s.x 31).toNat), s.b, s.wk⟩) := by
   have c0 := hS.at 0 (by simp [popSlot]); have c1 := hS.at 1 (by simp [popSlot]); have c2 := hS.at 2 (by simp [popSlot])
   simp [popSlot] at c0 c1 c2
   have ea0 : ea (s.x 31) 0 = (s.x 31).toNat := by simp [ea]
@@ -523,7 +523,7 @@ theorem popN_run {C : List J} {p k0 : Nat} : ∀ (w pc : Nat) (s : St), At C pc 
     have A2 : At C (pc + 3) (popN p k0 w) := by have := hC'.right; simpa [popSlot] using this
     have r1 := popSlot_run (k := k0 + w) s A1 (by omega)
     generalize hs1 : (⟨upd (upd s.x 5 (s.m (s.x 31).toNat)) 31 (UInt64.ofNat ((s.x 31).toNat + 8)),
-      upd s.m (slotAddr p (s.x 8).toNat (k0 + w)) (s.m (s.x 31).toNat), s.b, s.w⟩ : St) = s1 at r1
+      upd s.m (slotAddr p (s.x 8).toNat (k0 + w)) (s.m (s.x 31).toNat), s.b, s.wk⟩ : St) = s1 at r1
     have t1 : (s1.x 31).toNat = (s.x 31).toNat + 8 := by subst hs1; simp [upd]; omega
     have x81 : s1.x 8 = s.x 8 := by subst hs1; simp [upd]
     have m1 : ∀ a, s1.m a = if a = slotAddr p (s.x 8).toNat (k0 + w) then s.m (s.x 31).toNat else s.m a := by

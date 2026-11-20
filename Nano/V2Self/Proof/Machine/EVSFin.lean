@@ -64,7 +64,7 @@ theorem finTailS {KL : LayW} {C : List J} {pc q lu t p nl hb : Nat} {Inv : St �
   have q8 : s3.x 8 = s.x 8 := by rw [qx 8 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide), e81]
   refine ⟨s3, env1, by rw [← hq]; exact r1.trans st3, ?_, ?_, by rw [p3], rfl, ?_, q8, ?_, ag1, R3, A3, ?_⟩
   · apply hI s1 s3 I1 (by rw [q8, e81]) (qx 28 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide))
-      (qx 29 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)) st3.star.b
+      (qx 29 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)) st3.star.b st3.star.w
     intro a ha
     apply qm
     · intro e; apply ha; rw [e, e81]; constructor
@@ -473,7 +473,7 @@ theorem bnew_EVHS {KL : LayW} {C : List J} {pc tgt κ p nl hb E0 : Nat} {Inv : S
         hxr 8 (by decide) (by decide) (by decide) (by decide) (by decide), ?_, fun _ _ => rfl, ?_, ?_, ?_⟩
       · apply hI s s' I0 (hxr 8 (by decide) (by decide) (by decide) (by decide) (by decide))
           (hxr 28 (by decide) (by decide) (by decide) (by decide) (by decide))
-          (hxr 29 (by decide) (by decide) (by decide) (by decide) (by decide)) hb'
+          (hxr 29 (by decide) (by decide) (by decide) (by decide) (by decide)) hb' hk'.star.w
         intro a ha
         rw [hm, upd_other _ _ (by omega), upd_other _ _ (by omega), upd_other _ _ (by omega)]
       · rw [hm, upd_same, e30]; exact hv

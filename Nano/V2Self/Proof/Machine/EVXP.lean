@@ -31,7 +31,7 @@ theorem leafX {C : List J} {pc len p nl hb : Nat} {Inv : St → Prop} {R W : Nat
     have hne : ∀ k, k < nl → slotAddr p (s.x 8).toNat k ≠ (s.x 31).toNat - 8 := fun k hk => by
       have := slotAddr_ge (T := (s.x 31).toNat) (by omega) o2 hk; omega
     refine ⟨s', env, r, ?_, by rw [e0, z0], by rw [p31], rfl, ?_, e8, ?_, fun _ _ => rfl, ?_, ?_⟩
-    · apply hI s s' I0 e8 e28 e29 r.b
+    · apply hI s s' I0 e8 e28 e29 r.b r.w
       intro a ha; rw [hm]; apply upd_other; intro e; apply ha; rw [e]
       exact ⟨by have := R0.2.1; omega, by omega⟩
     · intro i hi; have : i = 0 := by omega
@@ -138,7 +138,7 @@ theorem finTail {C : List J} {pc q lu t p nl hb : Nat} {Inv : St → Prop} {W : 
   have q8 : s3.x 8 = s.x 8 := by rw [qx 8 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide), e81]
   refine ⟨s3, env1, by rw [← hq]; exact r1.trans st3, ?_, ?_, by rw [p3], rfl, ?_, q8, ?_, ag1, R3, ?_⟩
   · apply hI s1 s3 I1 (by rw [q8, e81]) (qx 28 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide))
-      (qx 29 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)) st3.b
+      (qx 29 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)) st3.b st3.w
     intro a ha
     apply qm
     · intro e; apply ha; rw [e, e81]; constructor

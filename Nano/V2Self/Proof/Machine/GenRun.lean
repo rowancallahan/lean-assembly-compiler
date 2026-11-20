@@ -31,7 +31,7 @@ theorem gen_C (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length < 2
           OkV (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body ∧
           wd (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body = (dA ds k).nres) ∧
         ∀ (C : List J) (IG : St → Prop) (E0 : Nat) (c28 : UInt64), IGOK hb E0 IG → E0 < 2 ^ 62 →
-          (∀ s, IG s → s.b + 4 * C.length < 2 ^ 64) → InpOK IG c28 c29 inp →
+          (∀ s, IG s → s.b + s.w * C.length < 2 ^ 64) → InpOK IG c28 c29 inp →
           At C (g34 bnew).length (defsJ (pcOf 524288 hb c29 inp T) ds 0 hs.length) →
           (∀ k, k < hs.length → (dA ds k).npw < 2 ^ 20 ∧ (dA ds k).npw ≤ (dA ds k).nslots ∧
             ScV (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body ∧ ∀ j, rd (dA ds k).body j → j < (dA ds k).npw) →
@@ -72,7 +72,7 @@ theorem gen_C (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length < 2
 /-- the start code's global invariant: input registers and bytes, the ra / s0 save slots, the code base -/
 def IGs (s0 : St) (inp : Nat → UInt64) : St → Prop := fun s =>
   s.x 28 = s0.x 10 ∧ s.x 29 = s0.x 11 ∧ (∀ i, i < (s0.x 11).toNat → lbm s.m ((s0.x 10).toNat + i) = inp i) ∧
-  s.m (s0.x 12).toNat = s0.x 1 ∧ s.m ((s0.x 12).toNat + 8) = s0.x 8 ∧ s.b = s0.b
+  s.m (s0.x 12).toNat = s0.x 1 ∧ s.m ((s0.x 12).toNat + 8) = s0.x 8 ∧ s.b = s0.b ∧ s.wk = s0.wk
 
 theorem lbm_eq {m m' : Nat → UInt64} {a : Nat} (h : m' (a - a % 8) = m (a - a % 8)) : lbm m' a = lbm m a := by
   unfold lbm; rw [h]
@@ -80,9 +80,9 @@ theorem lbm_eq {m m' : Nat → UInt64} {a : Nat} (h : m' (a - a % 8) = m (a - a 
 theorem IGs_ok (s0 : St) (inp : Nat → UInt64) (E0 : Nat) (hE8 : E0 % 8 = 0)
     (hin : (s0.x 10).toNat + (s0.x 11).toNat ≤ (s0.x 12).toNat ∨ E0 ≤ (s0.x 10).toNat) :
     IGOK ((s0.x 12).toNat + 16) E0 (IGs s0 inp) := by
-  intro s s' ⟨i28, i29, iin, ira, is8, ib⟩ e28 e29 eb hm
+  intro s s' ⟨i28, i29, iin, ira, is8, ib, iw⟩ e28 e29 eb ew hm
   refine ⟨by rw [e28, i28], by rw [e29, i29], fun i hi => ?_, by rw [hm _ (by omega), ira],
-    by rw [hm _ (by omega), is8], by rw [eb, ib]⟩
+    by rw [hm _ (by omega), is8], by rw [eb, ib], by rw [ew, iw]⟩
   rw [lbm_eq (hm _ (by have := Nat.mod_lt ((s0.x 10).toNat + i) (show 8 > 0 by omega); omega)), iin i hi]
 
 end Templates

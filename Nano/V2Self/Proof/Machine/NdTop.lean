@@ -51,7 +51,7 @@ theorem gen_words (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length
 
 /-- **every def runs per its semantics** on a J program holding the def templates (Gen's words, by `gen_words`) -/
 theorem gen_defs_run (P : PC) (ds : List DefA) (C : List J) (IG : St → Prop) (E0 : Nat) (c28 : UInt64) (n h : Nat)
-    (hig : IGOK P.hb E0 IG) (he : E0 < 2 ^ 62) (hcb : ∀ s, IG s → s.b + 4 * C.length < 2 ^ 64)
+    (hig : IGOK P.hb E0 IG) (he : E0 < 2 ^ 62) (hcb : ∀ s, IG s → s.b + s.w * C.length < 2 ^ 64)
     (hinp : InpOK IG c28 P.c29 P.inp) (hC : At C h (defsJ P ds 0 n))
     (hT : ∀ j, j < n → P.T j = h + (defsJ P ds 0 j).length)
     (hd : ∀ k, k < n → (dA ds k).npw < 2 ^ 20 ∧ (dA ds k).npw ≤ (dA ds k).nslots ∧ OkV (scAt P ds k) (dA ds k).body ∧

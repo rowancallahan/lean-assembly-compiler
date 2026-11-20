@@ -21,7 +21,7 @@ def HRel (hb : Nat) (s : St) (H : Hp) : Prop :=
 /-- `Inv` reads only s0, x28, x29, the code base and memory outside [hb, frame top) (the code base never changes
 along a run: `Star.b`; the machine bridge's global invariant bounds it for return addresses) -/
 def InvOKH (hb p : Nat) (Inv : St → Prop) : Prop :=
-  ∀ s s' : St, Inv s → s'.x 8 = s.x 8 → s'.x 28 = s.x 28 → s'.x 29 = s.x 29 → s'.b = s.b →
+  ∀ s s' : St, Inv s → s'.x 8 = s.x 8 → s'.x 28 = s.x 28 → s'.x 29 = s.x 29 → s'.b = s.b → s'.wk = s.wk →
     (∀ a, ¬ (hb ≤ a ∧ a < (s.x 8).toNat + 8 * p + 16) → s'.m a = s.m a) → Inv s'
 
 structure EVH (C : List J) (pc len p nl : Nat) (Inv : St → Prop) (hb : Nat) (R W : Nat → Prop)
@@ -105,7 +105,7 @@ theorem bin_gen_EVH {C : List J} {pc la lb lu p nl hb : Nat} {F : UInt64 → UIn
     have I3 : Inv s3 := by
       apply hI s2 s3 I2 (by rw [q8, e82, e81])
         (qx 28 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide))
-        (qx 29 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)) st3.b
+        (qx 29 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)) st3.b st3.w
       intro a ha
       apply qm
       · intro e; apply ha; rw [e, e2', e82, e81]; constructor
@@ -168,7 +168,7 @@ theorem un_gen_EVH {C : List J} {pc la lu p nl hb : Nat} {F : UInt64 → Nat →
     have I3 : Inv s3 := by
       apply hI s1 s3 I1 (by rw [q8, e81])
         (qx 28 (by decide) (by decide) (by decide) (by decide) (by decide))
-        (qx 29 (by decide) (by decide) (by decide) (by decide) (by decide)) st3.b
+        (qx 29 (by decide) (by decide) (by decide) (by decide) (by decide)) st3.b st3.w
       intro a' ha
       apply qm
       · intro e; apply ha; rw [e, p1, e81]; constructor
@@ -263,7 +263,7 @@ theorem tri_gen_EVH {C : List J} {pc la lb lc lu p nl hb : Nat}
     have I4 : Inv s4 := by
       apply hI s3 s4 I3 (by rw [q8, e83, e82, e81])
         (qx 28 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide))
-        (qx 29 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)) st4.b
+        (qx 29 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)) st4.b st4.w
       intro a' ha
       apply qm
       · intro e; apply ha; rw [e, e83, e82, e81]; constructor
@@ -571,7 +571,7 @@ theorem bnew_EVH {C : List J} {pc tgt κ p nl hb : Nat} {Inv : St → Prop} (hI 
         hxr 8 (by decide) (by decide) (by decide) (by decide) (by decide), ?_, fun _ _ => rfl, ?_, ?_⟩
       · apply hI s s' I0 (hxr 8 (by decide) (by decide) (by decide) (by decide) (by decide))
           (hxr 28 (by decide) (by decide) (by decide) (by decide) (by decide))
-          (hxr 29 (by decide) (by decide) (by decide) (by decide) (by decide)) (run_star hk').b
+          (hxr 29 (by decide) (by decide) (by decide) (by decide) (by decide)) (run_star hk').b (run_star hk').w
         intro a ha
         rw [hm, upd_other _ _ (by omega), upd_other _ _ (by omega), upd_other _ _ (by omega)]
       · rw [hm, upd_same, e30]; exact hv

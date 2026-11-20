@@ -11,7 +11,7 @@ theorem start_runX {KL : LayW} {C : List J} {S w hb E0 : Nat} {IG : St → Prop}
     (hC : C.all dstOk = true) (h0 : At C 0 (stubJ S)) (hS : At C S (startJ S w)) (hM : DefXS KL C w 0 1 IG hb E0 Sd)
     (s0 : St) (z0 : s0.x 0 = 0) (hhb : hb = (s0.x 12).toNat + 16) (ha8 : (s0.x 12).toNat % 8 = 0)
     (hE0 : ((s0.x 2 >>> 3) <<< 3).toNat = E0) (hroom : hb ≤ E0) (hE62 : E0 < 2 ^ 62)
-    (hret : s0.b + 4 * (S + 12) < 2 ^ 64)
+    (hret : s0.b + s0.w * (S + 12) < 2 ^ 64)
     (hIG : ∀ s1, Entry s0 s1 S → IG s1)
     (hIGm : ∀ s, IG s → s.m (s0.x 12).toNat = s0.x 1 ∧ s.m ((s0.x 12).toNat + 8) = s0.x 8)
     {vs : List UInt64} {H' : Hp} (hSd : Sd [] E0 ⟨hb, fun _ => none⟩ = some (vs, H'))
@@ -32,11 +32,12 @@ theorem start_runX {KL : LayW} {C : List J} {S w hb E0 : Nat} {IG : St → Prop}
   obtain ⟨s1, h1, en⟩ := start_setupX (K := KL) h0 hS s0 z0 (by omega) hroom ⟨hlo, by omega, ha8⟩
     ⟨by omega, by omega, by omega⟩ hCl hC18 hwl
   have b1 : s1.b = s0.b := by rw [h1.star.b]
+  have w1 : s1.w = s0.w := St.w_eq h1.star.w
   have R1 : HRel ((s0.x 12).toNat + 16) s1 ⟨(s0.x 12).toNat + 16, fun _ => none⟩ := by
     refine ⟨by omega, Nat.le_refl _, by rw [en.x31]; exact hroom, by simp; omega, ?_, fun _ _ _ _ h => by simp at h⟩
     rw [en.x30]; simp; omega
   obtain ⟨s2, h2, I2, z2, x31, vl, vv, x8, R2, A2, -⟩ := hM.run s1 [] _ vs H' (S + 12) (hIG s1 en) en.x0 R1 rfl
-    (fun _ h => absurd h (Nat.not_lt_zero _)) (by rw [en.x31]; omega) hE62 (by rw [en.x1, b1]) (by rw [b1]; exact hret)
+    (fun _ h => absurd h (Nat.not_lt_zero _)) (by rw [en.x31]; omega) hE62 (by rw [en.x1, b1, w1]) (by rw [b1, w1]; exact hret)
     (by omega) hhi (by rw [b1, hbase]) (by rw [en.x31]; omega) (fun _ _ h => by simp at h)
     (by rw [en.x31]; exact hSd)
   have b2 : s2.b = s0.b := by rw [h2.star.b, b1]

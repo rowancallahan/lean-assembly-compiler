@@ -45,10 +45,15 @@ structure RelW (K : LayW) (p : Nat × CallProbe.St) (t : Proven.St) : Prop where
   code : ∀ i (h : i < K.W.length), instrAt t (BitVec.ofNat 64 (K.base + 4 * i)) (BitVec.ofNat 32 K.W[i])
   x0 : p.2.x 0 = 0
   bb : p.2.b = K.base
+  /-- RISC-V: one word per J instruction, link width 4 -/
+  ww : p.2.wk = 0
   x : ∀ j : Fin 32, getX t j = (p.2.x j.val).toBitVec
   w : ∀ a, wok K a → ∀ k < 8, t.mem[a + k]? = some ((p.2.m a).toBitVec.extractLsb' (8 * k) 8)
   bw : ∀ a, io K a → t.mem[a]? = some ((p.2.m (a - a % 8)).toBitVec.extractLsb' (8 * (a % 8)) 8)
   fr : ∀ a, ¬ wok K (a - a % 8) → ¬ outB K a → t.mem[a]? = K.m0 a
+
+theorem RelW.w4 {K : LayW} {p : Nat × CallProbe.St} {t : Proven.St} (hR : RelW K p t) : p.2.w = 4 := by
+  unfold CallProbe.St.w; rw [hR.ww]
 
 theorem pcOKW {K : LayW} (hK : K.Ok) {pc : Nat} (h : pc < K.W.length) : pcOK (BitVec.ofNat 64 (K.base + 4 * pc)) := by
   have := hK.bhi; have := hK.blo; have := hK.b4
@@ -67,6 +72,7 @@ theorem rel_regW {K : LayW} {pc : Nat} {s : CallProbe.St} {t t' : Proven.St} (hR
     RelW K (pc + 1, CallProbe.wr s rd.val v) t' where
   cfg := hN.cfg
   bb := by rw [CallProbe.wr_b]; exact hR.bb
+  ww := by rw [CallProbe.wr_w]; exact hR.ww
   pc := by rw [hN.pc, ofNat_pc4]
   code := fun i h => by have := hR.code i h; unfold instrAt at this ⊢; rw [hN.mem]; exact this
   x0 := by
@@ -182,6 +188,7 @@ theorem sim_sd {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K.
         by rw [store8_out _ _ _ _ (by omega)]; exact c2, by rw [store8_out _ _ _ _ (by omega)]; exact c3⟩
     x0 := hR.x0
     bb := hR.bb
+    ww := hR.ww
     x := fun j => by
       rw [hN.x j]; simp only [show ¬ (j = 0 ∧ j ≠ 0) from fun h => h.2 h.1, if_false]; exact hR.x j
     w := fun c hc k hk => by
@@ -215,6 +222,7 @@ theorem rel_jumpW {K : LayW} {pc pc' : Nat} {s : CallProbe.St} {t t' : Proven.St
     RelW K (pc', CallProbe.wr s rd.val v) t' where
   cfg := hN.cfg
   bb := by rw [CallProbe.wr_b]; exact hR.bb
+  ww := by rw [CallProbe.wr_w]; exact hR.ww
   pc := hN.pc
   code := fun i h => by have := hR.code i h; unfold instrAt at this ⊢; rw [hN.mem]; exact this
   x0 := by
@@ -383,7 +391,7 @@ theorem sim_jal {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K
     {d : Nat} {off : Int} (hd : d < 32) (hC : K.W[pc]? = some (C.g5 (UInt64.ofNat d) (UInt64.ofInt (4 * off))).toNat)
     (ho1 : -2 ^ 18 ≤ off) (ho2 : off < 2 ^ 18) (ht0 : 0 ≤ (pc : Int) + off) (ht1 : ((pc : Int) + off) < K.W.length) :
     ∃ t', Retires t t' ∧
-      RelW K (((pc : Int) + off).toNat, CallProbe.wr s d (UInt64.ofNat (s.b + 4 * (pc + 1)))) t' := by
+      RelW K (((pc : Int) + off).toNat, CallProbe.wr s d (UInt64.ofNat (s.b + s.w * (pc + 1)))) t' := by
   obtain ⟨hi, hok⟩ := codeW hK hR hC
   have hdN : (UInt64.ofNat d).toNat = d := by simp; omega
   have hd' : (UInt64.ofNat d).toNat < 32 := by omega
@@ -398,8 +406,8 @@ theorem sim_jal {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K
       BitVec.ofNat 64 (K.base + 4 * ((pc : Int) + off).toNat) := by
     apply BitVec.eq_of_toNat_eq
     simp only [BitVec.toNat_add, BitVec.toNat_ofNat, BitVec.toNat_ofInt]; omega
-  have e2 : BitVec.ofNat 64 (K.base + 4 * pc) + 4 = (UInt64.ofNat (s.b + 4 * (pc + 1))).toBitVec := by
-    rw [hR.bb]; apply BitVec.eq_of_toNat_eq; simp [BitVec.toNat_add]; omega
+  have e2 : BitVec.ofNat 64 (K.base + 4 * pc) + 4 = (UInt64.ofNat (s.b + s.w * (pc + 1))).toBitVec := by
+    rw [hR.bb, hR.w4]; apply BitVec.eq_of_toNat_eq; simp [BitVec.toNat_add]; omega
   rw [e1, e2] at hN
   have := rel_jumpW hR D _ hN
   simp only [D, hdN] at this
@@ -576,9 +584,9 @@ theorem sim_stepW {K : LayW} {C : List CallProbe.J} (hK : K.Ok) (hW : K.W = C.ma
       obtain ⟨rfl, h2, j, hj⟩ := hS
       have hb : s.b = K.base := hR.bb
       simp only [Option.some.injEq] at hs; subst hs
-      obtain ⟨t', ht, hr⟩ := sim_jalr hK hR h2 (hWpc _ hc) hj
+      obtain ⟨t', ht, hr⟩ := sim_jalr hK hR h2 (hWpc _ hc) (by rw [hj, hR.w4])
       refine ⟨t', ht, ?_⟩
-      have : ((s.x rs).toNat - s.b) / 4 = j := by rw [hj, hb]; omega
+      have : ((s.x rs).toNat - s.b) / s.w = j := by rw [hj, hb, hR.w4]; omega
       simp [this, CallProbe.wr]; exact hr
     | beq a' b' o =>
       obtain ⟨h1, h2, rfl⟩ := hS

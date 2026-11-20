@@ -34,7 +34,7 @@ structure DefOKS (P : PC) (ds : List DefA) (C : List J) (k : Nat) : Prop where
   q : (dA ds k).nres < 251
 
 theorem progRunS (P : PC) (ds : List DefA) (C : List J) (IG : St → Prop) (E0 : Nat) (c28 : UInt64) (KL : LayW)
-    (hig : IGOK P.hb E0 IG) (he : E0 < 2 ^ 62) (hcb : ∀ s, IG s → s.b + 4 * C.length < 2 ^ 64)
+    (hig : IGOK P.hb E0 IG) (he : E0 < 2 ^ 62) (hcb : ∀ s, IG s → s.b + s.w * C.length < 2 ^ 64)
     (hinp : InpOK IG c28 P.c29 P.inp) (hinw : InpW KL IG) (hc18 : C.length < 2 ^ 18) (N : Nat)
     (hd : ∀ k, k < N → DefOKS P ds C k) :
     ∀ k, k < N → DefXS KL C (P.T k) (dA ds k).npw (dA ds k).nres IG P.hb E0 (semAt P ds k) := by
@@ -61,7 +61,7 @@ theorem progRunS (P : PC) (ds : List DefA) (C : List J) (IG : St → Prop) (E0 :
 
 theorem gen_defs_runS (P : PC) (ds : List DefA) (C : List J) (IG : St → Prop) (E0 : Nat) (c28 : UInt64)
     (KL : LayW) (n h : Nat)
-    (hig : IGOK P.hb E0 IG) (he : E0 < 2 ^ 62) (hcb : ∀ s, IG s → s.b + 4 * C.length < 2 ^ 64)
+    (hig : IGOK P.hb E0 IG) (he : E0 < 2 ^ 62) (hcb : ∀ s, IG s → s.b + s.w * C.length < 2 ^ 64)
     (hinp : InpOK IG c28 P.c29 P.inp) (hinw : InpW KL IG) (hc18 : C.length < 2 ^ 18)
     (hC : At C h (defsJ P ds 0 n))
     (hT : ∀ j, j < n → P.T j = h + (defsJ P ds 0 j).length)

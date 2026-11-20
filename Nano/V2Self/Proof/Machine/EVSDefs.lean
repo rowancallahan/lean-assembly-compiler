@@ -96,7 +96,7 @@ structure DefXS (KL : LayW) (C : List J) (f p q : Nat) (IG : St → Prop) (hb E0
     (Sd : List UInt64 → Nat → Hp → Option (List UInt64 × Hp)) : Prop where
   run : ∀ (s : St) (args : List UInt64) (H : Hp) (vs : List UInt64) (H' : Hp) (ret : Nat), IG s → s.x 0 = 0 →
     HRel hb s H → args.length = p → (∀ i, i < p → s.m ((s.x 31).toNat + 8 * (p - 1 - i)) = args.getD i 0) →
-    (s.x 31).toNat + 8 * p ≤ E0 → E0 < 2 ^ 62 → s.x 1 = UInt64.ofNat (s.b + 4 * ret) → s.b + 4 * ret < 2 ^ 64 →
+    (s.x 31).toNat + 8 * p ≤ E0 → E0 < 2 ^ 62 → s.x 1 = UInt64.ofNat (s.b + s.w * ret) → s.b + s.w * ret < 2 ^ 64 →
     KL.lo ≤ hb → E0 ≤ KL.hi → s.b = KL.base → (s.x 31).toNat % 8 = 0 → HAl H →
     Sd args (s.x 31).toNat H = some (vs, H') →
     ∃ s', SStarX KL C (f, s) (ret, s') ∧ IG s' ∧ s'.x 0 = 0 ∧ (s'.x 31).toNat = (s.x 31).toNat + 8 * p - 8 * q ∧

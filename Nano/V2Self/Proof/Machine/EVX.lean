@@ -200,7 +200,7 @@ theorem ifX {C : List J} {pc lp lt le p nl hb w cmp : Nat} {Inv : St → Prop} {
     have ea0 : ea (s1.x 31) 0 = (s.x 31).toNat - 8 - 8 := by simp [ea, p1]; omega
     have ea8 : ea (s1.x 31) 8 = (s.x 31).toNat - 8 := by simp [ea, p1]; omega
     have ea16 : ea (s1.x 31) 16 = (s.x 31).toNat := by simp [ea, p1]; omega
-    let s2 : St := ⟨upd (upd (upd s1.x 6 b) 5 a) 31 (UInt64.ofNat (s.x 31).toNat), s1.m, s1.b, s1.w⟩
+    let s2 : St := ⟨upd (upd (upd s1.x 6 b) 5 a) 31 (UInt64.ofNat (s.x 31).toNat), s1.m, s1.b, s1.wk⟩
     have r2 : run C 3 (pc + lp, s1) = some (pc + lp + 3, s2) := by
       simp [run, step, c0, c1, c2, wr, ea0, ea8, va, vb, upd_other _ _ (show (31:Nat) ≠ 6 by decide),
         upd_other _ _ (show (31:Nat) ≠ 5 by decide), ea16, s2]
@@ -210,7 +210,7 @@ theorem ifX {C : List J} {pc lp lt le p nl hb w cmp : Nat} {Inv : St → Prop} {
     have x5 : s2.x 5 = a := by simp [s2, upd]
     have x6 : s2.x 6 = b := by simp [s2, upd]
     have z2 : s2.x 0 = 0 := by simp [s2, upd, z1]
-    have I2 : Inv s2 := hI s1 s2 I1 (by simp [s2, upd]) (by simp [s2, upd]) (by simp [s2, upd]) rfl (fun _ _ => rfl)
+    have I2 : Inv s2 := hI s1 s2 I1 (by simp [s2, upd]) (by simp [s2, upd]) (by simp [s2, upd]) rfl rfl (fun _ _ => rfl)
     have F2 : Frame p nl s2 env1 := by
       intro k hk; show s1.m (slotAddr p (s2.x 8).toNat k) = env1 k; rw [x8, ← e81]; exact F1 k hk
     have O2 : FrameOK p nl s2 := ⟨by rw [x31, x8]; omega, o2, by rw [x8]; omega⟩
@@ -226,9 +226,9 @@ theorem ifX {C : List J} {pc lp lt le p nl hb w cmp : Nat} {Inv : St → Prop} {
         rw [x31, hT.stable env1 env _ _ (fun k hk => ag1 k (sT k hk))]; exact hS
       obtain ⟨s4, env4, r4, I4, z4, p4, l4, v4, e84, F4, ag4, R4, m4⟩ := hT.run s2 env1 H1 vs H' I2 z2 F2 O2 R2 hST
       have sj : step C (pc + lp + 5 + lt, s4) =
-          some (pc + (lp + 6 + lt + le), wr s4 0 (UInt64.ofNat (s4.b + 4 * (pc + lp + 5 + lt + 1)))) := by
+          some (pc + (lp + 6 + lt + le), wr s4 0 (UInt64.ofNat (s4.b + s4.w * (pc + lp + 5 + lt + 1)))) := by
         simp [step, hJ]; omega
-      have w4 : wr s4 0 (UInt64.ofNat (s4.b + 4 * (pc + lp + 5 + lt + 1))) = s4 := by simp [wr]
+      have w4 : wr s4 0 (UInt64.ofNat (s4.b + s4.w * (pc + lp + 5 + lt + 1))) = s4 := by simp [wr]
       rw [w4] at sj
       refine ⟨s4, env4, (st2.tail sc |>.trans r4).tail sj, I4, z4, by rw [p4, x31], l4, ?_, by rw [e84, x8], F4, ?_,
         R4, ?_⟩
@@ -241,9 +241,9 @@ theorem ifX {C : List J} {pc lp lt le p nl hb w cmp : Nat} {Inv : St → Prop} {
       have hSE : SE env1 (s2.x 31).toNat H1 = some (vs, H') := by
         rw [x31, hE.stable env1 env _ _ (fun k hk => ag1 k (sE k hk))]; exact hS
       have sj0 : step C (pc + lp + 4, s2) =
-          some (pc + lp + 6 + lt, wr s2 0 (UInt64.ofNat (s2.b + 4 * (pc + lp + 4 + 1)))) := by
+          some (pc + lp + 6 + lt, wr s2 0 (UInt64.ofNat (s2.b + s2.w * (pc + lp + 4 + 1)))) := by
         simp [step, c4]; omega
-      have w2 : wr s2 0 (UInt64.ofNat (s2.b + 4 * (pc + lp + 4 + 1))) = s2 := by simp [wr]
+      have w2 : wr s2 0 (UInt64.ofNat (s2.b + s2.w * (pc + lp + 4 + 1))) = s2 := by simp [wr]
       rw [w2] at sj0
       obtain ⟨s5, env5, r5, I5, z5, p5, l5, v5, e85, F5, ag5, R5, m5⟩ := hE.run s2 env1 H1 vs H' I2 z2 F2 O2 R2 hSE
       refine ⟨s5, env5, ?_, I5, z5, by rw [p5, x31], l5, ?_, by rw [e85, x8], F5, ?_, R5, ?_⟩
@@ -318,7 +318,7 @@ theorem letX {C : List J} {pc lv lb p nl hb k0 w wb : Nat} {Inv : St → Prop} {
         slotAddr p (s.x 8).toNat (k0 + j) < (s.x 8).toNat + 8 * p + 16 := fun j hj =>
       ⟨slotAddr_ge (T := (s.x 31).toNat) (k := k0 + j) (by omega) o2 (by omega), slotAddr_lt (nl := nl) (by omega) (by omega)⟩
     have I2 : Inv s2 := by
-      apply hI s1 s2 I1 (by rw [e82]) (ex2 28 (by decide) (by decide)) (ex2 29 (by decide) (by decide)) eb2
+      apply hI s1 s2 I1 (by rw [e82]) (ex2 28 (by decide) (by decide)) (ex2 29 (by decide) (by decide)) eb2 (run_star r2).w
       intro a ha
       apply mo2 a; intro j hj e; apply ha; rw [e81, e]
       have hh := slot_hi j hj; have := R1.1; have := R1.2.1; have := R1.2.2.1

@@ -194,7 +194,7 @@ theorem gen_top (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length <
           OkV (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body ∧
           wd (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body = (dA ds k).nres) ∧
         ∀ (C : List J) (IG : St → Prop) (E0 : Nat) (c28 : UInt64), IGOK hb E0 IG → E0 < 2 ^ 62 →
-          (∀ s, IG s → s.b + 4 * C.length < 2 ^ 64) → InpOK IG c28 c29 inp →
+          (∀ s, IG s → s.b + s.w * C.length < 2 ^ 64) → InpOK IG c28 c29 inp →
           At C (g34 bnew).length (defsJ (pcOf 524288 hb c29 inp T) ds 0 hs.length) →
           (∀ k, k < hs.length → (dA ds k).npw < 2 ^ 20 ∧ (dA ds k).npw ≤ (dA ds k).nslots ∧
             ScV (scAt (pcOf 524288 hb c29 inp T) ds k) (dA ds k).body ∧ ∀ j, rd (dA ds k).body j → j < (dA ds k).npw) →
