@@ -65,8 +65,8 @@ theorem compileBFO_okK (N : Nat) (bv : List Nat) (hbv : ∀ x ∈ bv, x < 8 + N)
       obtain ⟨r', hr', rfl⟩ := toR_mem hr; exact hcd r' (List.mem_cons_of_mem _ hr')
     · simp only [List.mem_singleton] at hr; subst hr; exact hcd _ (List.mem_cons_self ..)
   have hheap' : HeapI rvwF.toWide bv [] (R.map toR) [] (toMSt σ) s :=
-    ⟨by simpa using hheap.hlen, by simpa using hheap.bvlen, fun b hb => by simpa [toR] using hheap.base b (by simpa using hb),
-      fun b hb => by simpa [toR] using hheap.blen b (by simpa using hb),
+    ⟨by simp; exact hheap.hlen, by simpa using hheap.bvlen, fun b hb => by simp [toR]; exact hheap.base b (by simpa using hb),
+      fun b hb => by simp [toR]; exact hheap.blen b (by simpa using hb),
       fun b hb => by
         have hb' : b < R.length := by simpa using hb
         rw [getR hb']; exact (Mach.Riscv.bytes_eq s _ _).trans (hheap.bytes b hb'), rfl, rfl,
@@ -79,7 +79,7 @@ theorem compileBFO_okK (N : Nat) (bv : List Nat) (hbv : ∀ x ∈ bv, x < 8 + N)
     (fun i => by show getX s (phys (avar i)) = _; rw [phys_avar]; exact hreg i) hslot hheap' hra) ?_
   rintro s' ⟨p1, p2, p3, p4, p5, p6⟩
   refine ⟨p1, fun i => by have := p2 i; rwa [show rvwF.get s' (avar i) = getX s' (A8 i) by
-      show getX s' (phys (avar i)) = _; rw [phys_avar]] at this, ⟨by simpa using p3.hlen, by simpa using p3.bvlen,
+      show getX s' (phys (avar i)) = _; rw [phys_avar]] at this, ⟨by have h := p3.hlen; simp at h; exact h, by simpa using p3.bvlen,
       fun b hb => by have := p3.base b (by simpa using hb); rw [getR hb] at this; exact this,
       fun b hb => by have := p3.blen b (by simpa using hb); rw [getR hb] at this; exact this,
       fun b hb => by
@@ -154,7 +154,7 @@ theorem implements1_of_spec {α β : Type} (encA : α → List UInt8) (encB : β
       (by simp [bytesAt])
     exact ⟨ws, hl, by rw [hw]; exact bytesAt_hosted fun i hi => hmapW i (by omega)⟩
   obtain ⟨σ', out', hexec, hh, htk, hdr, hrl⟩ := hex a out0 tbl0 (envOf s)
-    (by simpa [envOf] using getX_of (h.x11.symm.trans h11) rfl) (fun j hj => by simp [envOf]; omega)
+    (by simp [envOf]; exact getX_of (h.x11.symm.trans h11) rfl) (fun j hj => by simp [envOf]; omega)
     hmax (by show x.length < 2 ^ 32; omega) (by show y.length ≤ out0.length; omega) (by omega) htl
   -- the layout
   let R : List Region := [⟨input.base, x.length⟩, ⟨output.base, output.len⟩]
@@ -200,8 +200,8 @@ theorem implements1_of_spec {α β : Type} (encA : α → List UInt8) (encB : β
     refine ⟨rfl, rfl, fun b hb => ?_, fun b hb => ?_, fun b hb => ?_, rfl, rfl, fun b hb => ?_, fun b hb => ?_,
       fun b hb => ?_⟩
     · obtain _ | _ | b := b
-      · simpa [envOf] using getX_of (h.x10.symm.trans h10) rfl
-      · simpa [envOf] using getX_of (h.x13.symm.trans h13) rfl
+      · simp [envOf]; exact getX_of (h.x10.symm.trans h10) rfl
+      · simp [envOf]; exact getX_of (h.x13.symm.trans h13) rfl
       · exact absurd hb (by show ¬(b + 1 + 1 < 2); omega)
     · obtain _ | _ | b := b
       · simp [R]
@@ -214,7 +214,7 @@ theorem implements1_of_spec {α β : Type} (encA : α → List UInt8) (encB : β
         exact (bytes_eq s _ _).trans (by simpa using ho)
       · exact absurd hb (by show ¬(b + 1 + 1 < 2); omega)
     · obtain _ | b := b
-      · simpa [envOf] using getX_of (h.x12.symm.trans h12) rfl
+      · simp [envOf]; exact getX_of (h.x12.symm.trans h12) rfl
       · exact absurd hb (by show ¬(b + 1 < 1); omega)
     · obtain _ | b := b
       · show 8 * tbl0.length = 8 * wn x.length; rw [htl]
@@ -231,9 +231,9 @@ theorem implements1_of_spec {α β : Type} (encA : α → List UInt8) (encB : β
   have e0 := p3.rbytes 0 (by simp [R]); have e1 := p3.rbytes 1 (by simp [R])
   simp only [hh] at e0 e1
   have e0' : bytesAt s' input.base x.length = (x.map (·.toBitVec)).map some := by
-    have := (bytes_eq s' _ _).symm.trans e0; simpa using this
+    have := (bytes_eq s' _ _).symm.trans e0; simp at this ⊢; exact this
   have e1' : bytesAt s' output.base output.len = out'.map some := by
-    have := (bytes_eq s' _ _).symm.trans e1; simpa using this
+    have := (bytes_eq s' _ _).symm.trans e1; simp at this ⊢; exact this
   refine ⟨by rw [← hra']; exact p1, ?_, ?_, abi_of_keep h p5 p6, p5, fun hr => ?_⟩
   · rw [← bytesAt_take' s' output.base hol', e1', ← List.map_take, htk]; simp [List.map_map, y]
   · intro q hq
