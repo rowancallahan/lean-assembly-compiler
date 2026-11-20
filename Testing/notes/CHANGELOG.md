@@ -68,7 +68,10 @@ Built/checked on the B1 toolchains:
   Proof changes: new `Proof/Parser/ParInvHash.lean` (`v8_lookup`: the chain walk = the linear `idxOf`; `HashRep`, kept in
   `DefsRep`); the Parser frame lemmas carry `HashRep`; `TokAgreeN` covers the token region only; `Cert/` and `SrcLink/`
   regenerated (both generators reproduce the committed files exactly from the old text first).
-- Lean 4.34.1 (`Arm/apc`: `Blocks.ArmDMTop`, `Blocks.AxiomsDM`, the Parser folder): PENDING.
+- Lean 4.34.1 (`Arm/apc`, DeepMind code-verification @ b0f729a): `lake build Blocks.ArmDMTop Blocks.AxiomsDM` OK (509 jobs,
+  9.7 min cold; includes `Main.TopOn` and every Parser module ArmDMTop needs, `ParInvHash` included); `C_correct_armDM`,
+  `C_runs_armDM`: [propext, Classical.choice, Quot.sound]; `lake build Nano` (all of apc's Nano globs, the whole Parser
+  folder) OK. No 4.34-specific edits were needed.
 - Fixpoint (nanorun): B1 → B2 → B3, B3 = B2 = 340,296 B, sha256 24759aa0f757e50e92e67d498a84f28ec7a0b13da6f2c9fc3d76cd0679699ed4.
   ARM: `arm/B2_arm.bin` regenerated (translator run under nanorun; the same procedure reproduces the old B2_arm.bin byte for
   byte). `cross_check.sh` not run: no qemu / aarch64 toolchain on this box (RISC-V checked with nanorun only).
