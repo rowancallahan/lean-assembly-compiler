@@ -84,14 +84,14 @@ theorem sl_ext {w : BitVec 32} (a b : Nat) : Sail.BitVec.slice w a b = w.extract
 theorem br_b (imm : BitVec 26) {s : St} {t : Arm64.State} (hR : Rel s t) (hW : WordAt s t (0x05#6 ++ imm)) :
     Bridged s t := by
   have hK : (0x05#6 ++ imm : BitVec 32) &&& 0xFC000000#32 = 0x14000000#32 := by rw [bW_K]; decide
-  obtain ⟨s', h1, h2, h3, h4, h5⟩ := full_b hR.full hR.abs hR.pc hW.lt hW.al hW.sail hK
+  obtain ⟨s', h1, h2, h3, h4, h5⟩ := full_b hR.full hR.abs hR.pc (va29 hW.lt) hW.al hW.sail hK
   refine bridge_of (Proven.Apc.dec_bsym imm) hR hW ⟨s', h1, h2, h3, ?_, h5⟩ rfl rfl
   rw [h4, sl_ext, bW_imm, sx2 imm (by decide)]; rfl
 
 theorem br_bl (imm : BitVec 26) {s : St} {t : Arm64.State} (hR : Rel s t) (hW : WordAt s t (0x25#6 ++ imm)) :
     Bridged s t := by
   have hK : (0x25#6 ++ imm : BitVec 32) &&& 0xFC000000#32 = 0x94000000#32 := by rw [bW_K]; decide
-  obtain ⟨s', h1, h2, h3, h4, h5⟩ := full_bl hR.full hR.abs hR.pc hW.lt hW.al hW.sail hK
+  obtain ⟨s', h1, h2, h3, h4, h5⟩ := full_bl hR.full hR.abs hR.pc (va29 hW.lt) hW.al hW.sail hK
   refine bridge_of (Proven.Apc.dec_blsym imm) hR hW ⟨s', h1, ?_, h3, ?_, h5⟩ rfl rfl
   · show Abs s' (Proven.Apc.abs ((t.writeReg64 (.gpr 30#5) (t.pc + 4#64)).setPC _))
     rw [abs_setPC, abs_wr t (by decide)]; exact h2
@@ -103,7 +103,7 @@ theorem br_cbz (imm : BitVec 19) (rt : BitVec 5) (hr : rt.toNat < 31) {s : St} {
   have hK : (0xB4#8 ++ imm ++ rt : BitVec 32) &&& 0xFF000000#32 = 0xB4000000#32 := by rw [cbzW_K]; decide
   have e0 : Sail.BitVec.slice (0xB4#8 ++ imm ++ rt) 0 5 = rt := by rw [sl_ext, cbzW_rt]
   have e5 : Sail.BitVec.slice (0xB4#8 ++ imm ++ rt) 5 19 = imm := by rw [sl_ext, cbzW_imm]
-  obtain ⟨s', h1, h2, h3, h4, h5⟩ := full_cbz hR.full hR.abs hR.pc hW.lt hW.al hW.sail hK (by rw [e0]; exact hr)
+  obtain ⟨s', h1, h2, h3, h4, h5⟩ := full_cbz hR.full hR.abs hR.pc (va29 hW.lt) hW.al hW.sail hK (by rw [e0]; exact hr)
   refine bridge_of (Proven.Apc.dec_cbzsym imm rt (ne31 hr)) hR hW ⟨s', h1, ?_, h3, ?_, h5⟩ ?_ ?_
   all_goals simp only [Pg, Arm64.Program.evalInst, Arm64.execInstWithSvc, Arm64.State.readReg, Arm64.State.readReg64,
     ne31 hr, Bool.false_eq_true, if_false]
@@ -129,7 +129,7 @@ theorem br_bc (imm : BitVec 19) (c : BitVec 4)
     rw [sl_ext, BitVec.extractLsb'_append_eq_of_add_le (by decide)]; simp
   have e5 : Sail.BitVec.slice (0x54#8 ++ imm ++ 0#1 ++ c) 5 19 = imm := by rw [sl_ext, bcW_imm]
   obtain ⟨p, hp, hN, hZ, hC, hV⟩ := hR.abs.p
-  obtain ⟨s', h1, h2, h3, h4, h5⟩ := full_bc hR.full hR.abs hR.pc hW.lt hW.al hW.sail hK hp
+  obtain ⟨s', h1, h2, h3, h4, h5⟩ := full_bc hR.full hR.abs hR.pc (va29 hW.lt) hW.al hW.sail hK hp
   have hca := cond_agree c p t.pstate hN hZ hC hV
   rw [e0, hca, e5, sx2 imm (by decide)] at h4
   refine bridge_of (Proven.Apc.dec_bcsym imm c hc) hR hW ⟨s', h1, ?_, h3, ?_, h5⟩ ?_ ?_
@@ -143,7 +143,7 @@ theorem br_bc (imm : BitVec 19) (c : BitVec 4)
 theorem dec_ret' : Arm64.decode 0xD65F03C0#32 = some (.ret (.gpr 30#5)) := by decide
 
 theorem br_ret {s : St} {t : Arm64.State} (hR : Rel s t) (hW : WordAt s t 0xD65F03C0#32) : Bridged s t := by
-  obtain ⟨s', h1, h2, h3, h4, h5⟩ := full_ret hR.full hR.abs hR.pc hW.lt hW.al hW.sail
+  obtain ⟨s', h1, h2, h3, h4, h5⟩ := full_ret hR.full hR.abs hR.pc (va29 hW.lt) hW.al hW.sail
   refine bridge_of dec_ret' hR hW ⟨s', h1, h2, h3, ?_, h5⟩ rfl rfl
   rw [h4, show (30 : Nat) = (30#5 : BitVec 5).toNat from rfl, abs_x t (by decide)]; rfl
 
@@ -151,7 +151,7 @@ theorem br_ret {s : St} {t : Arm64.State} (hR : Rel s t) (hW : WordAt s t 0xD65F
 theorem br_movz (hw : BitVec 2) (imm : BitVec 16) (d : BitVec 5) (hd : d.toNat < 31) {s : St} {t : Arm64.State}
     (hR : Rel s t) (hW : WordAt s t (movW 0x1A5#9 hw imm d)) : Bridged s t := by
   have hK : (movW 0x1A5#9 hw imm d : BitVec 32) &&& 0xFF800000#32 = 0xD2800000#32 := by rw [movW_K]; decide
-  obtain ⟨s', h1, h2, h3, h4, h5⟩ := full_movz hR.full hR.abs hR.pc hW.lt hW.al hW.sail hK (by rw [sl_ext, movW_d]; exact hd)
+  obtain ⟨s', h1, h2, h3, h4, h5⟩ := full_movz hR.full hR.abs hR.pc (va29 hW.lt) hW.al hW.sail hK (by rw [sl_ext, movW_d]; exact hd)
   rw [sl_ext, sl_ext, sl_ext, movW_d, movW_imm, movW_hw] at h2
   refine bridge_of (Proven.Apc.dec_movz hw imm d (ne31 hd)) hR hW ⟨s', h1, ?_, h3, h4, h5⟩ rfl rfl
   show Abs s' (Proven.Apc.abs ((t.writeReg64 (.gpr d) _).advancePC))
@@ -160,7 +160,7 @@ theorem br_movz (hw : BitVec 2) (imm : BitVec 16) (d : BitVec 5) (hd : d.toNat <
 theorem br_movk (hw : BitVec 2) (imm : BitVec 16) (d : BitVec 5) (hd : d.toNat < 31) {s : St} {t : Arm64.State}
     (hR : Rel s t) (hW : WordAt s t (movW 0x1E5#9 hw imm d)) : Bridged s t := by
   have hK : (movW 0x1E5#9 hw imm d : BitVec 32) &&& 0xFF800000#32 = 0xF2800000#32 := by rw [movW_K]; decide
-  obtain ⟨s', h1, h2, h3, h4, h5⟩ := full_movk hR.full hR.abs hR.pc hW.lt hW.al hW.sail hK (by rw [sl_ext, movW_d]; exact hd)
+  obtain ⟨s', h1, h2, h3, h4, h5⟩ := full_movk hR.full hR.abs hR.pc (va29 hW.lt) hW.al hW.sail hK (by rw [sl_ext, movW_d]; exact hd)
   rw [sl_ext, sl_ext, sl_ext, movW_d, movW_imm, movW_hw, abs_x t hd] at h2
   refine bridge_of (Proven.Apc.dec_movk hw imm d (ne31 hd)) hR hW ⟨s', h1, ?_, h3, h4, h5⟩ rfl rfl
   show Abs s' (Proven.Apc.abs ((t.writeReg64 (.gpr d) _).advancePC))
@@ -213,7 +213,7 @@ theorem add_res12 (x : BitVec 64) (y : BitVec 12) :
 theorem br_addi (imm : BitVec 12) (n d : BitVec 5) (hn : n.toNat < 31) (hd : d.toNat < 31) {s : St} {t : Arm64.State}
     (hR : Rel s t) (hW : WordAt s t (aiW 0x244#10 imm n d)) : Bridged s t := by
   have hK : (aiW 0x244#10 imm n d : BitVec 32) &&& 0xFFC00000#32 = 0x91000000#32 := by rw [aiW_K]; decide
-  obtain ⟨s', h1, h2, h3, h4, h5⟩ := full_addi hR.full hR.abs hR.pc hW.lt hW.al hW.sail hK
+  obtain ⟨s', h1, h2, h3, h4, h5⟩ := full_addi hR.full hR.abs hR.pc (va29 hW.lt) hW.al hW.sail hK
     (by rw [sl_ext, aiW_d]; exact hd) (by rw [sl_ext, aiW_n]; exact hn)
   rw [sl_ext, sl_ext, sl_ext, aiW_d, aiW_n, aiW_imm, abs_x t hn] at h2
   refine bridge_of (dec_addi imm n d (ne31 hn) (ne31 hd)) hR hW ⟨s', h1, ?_, h3, h4, h5⟩ rfl rfl
@@ -224,7 +224,7 @@ theorem br_addi (imm : BitVec 12) (n d : BitVec 5) (hn : n.toNat < 31) (hd : d.t
 theorem br_subi (imm : BitVec 12) (n d : BitVec 5) (hn : n.toNat < 31) (hd : d.toNat < 31) {s : St} {t : Arm64.State}
     (hR : Rel s t) (hW : WordAt s t (aiW 0x344#10 imm n d)) : Bridged s t := by
   have hK : (aiW 0x344#10 imm n d : BitVec 32) &&& 0xFFC00000#32 = 0xD1000000#32 := by rw [aiW_K]; decide
-  obtain ⟨s', h1, h2, h3, h4, h5⟩ := full_subi hR.full hR.abs hR.pc hW.lt hW.al hW.sail hK
+  obtain ⟨s', h1, h2, h3, h4, h5⟩ := full_subi hR.full hR.abs hR.pc (va29 hW.lt) hW.al hW.sail hK
     (by rw [sl_ext, aiW_d]; exact hd) (by rw [sl_ext, aiW_n]; exact hn)
   rw [sl_ext, sl_ext, sl_ext, aiW_d, aiW_n, aiW_imm, abs_x t hn] at h2
   refine bridge_of (dec_subi imm n d (ne31 hn) (ne31 hd)) hR hW ⟨s', h1, ?_, h3, h4, h5⟩ rfl rfl
@@ -256,7 +256,7 @@ theorem dec_mov' (m d : BitVec 5) (hm : (m == 31#5) = false) (hd : (d == 31#5) =
 theorem br_mov (m d : BitVec 5) (hm : m.toNat < 31) (hd : d.toNat < 31) {s : St} {t : Arm64.State}
     (hR : Rel s t) (hW : WordAt s t (mvW m d)) : Bridged s t := by
   have hK : (mvW m d : BitVec 32) &&& 0xFFE0FFE0#32 = 0xAA0003E0#32 := by rw [mvW_K]; decide
-  obtain ⟨s', h1, h2, h3, h4, h5⟩ := full_mov hR.full hR.abs hR.pc hW.lt hW.al hW.sail hK
+  obtain ⟨s', h1, h2, h3, h4, h5⟩ := full_mov hR.full hR.abs hR.pc (va29 hW.lt) hW.al hW.sail hK
     (by rw [sl_ext, mvW_d]; exact hd) (by rw [sl_ext, mvW_m]; exact hm)
   rw [sl_ext, sl_ext, mvW_d, mvW_m, abs_x t hm] at h2
   refine bridge_of (dec_mov' m d (ne31 hm) (ne31 hd)) hR hW ⟨s', h1, ?_, h3, h4, h5⟩ rfl rfl
@@ -346,7 +346,7 @@ theorem t_subi {w : BitVec 32} (hK : w &&& 0xFFC00000#32 = 0xD1000000#32) :
 theorem br_emitted {w : BitVec 32} (hw : w ∈ emitted) {s : St} {t : Arm64.State} (hR : Rel s t) (hW : WordAt s t w) :
     Bridged s t := by
   obtain ⟨i, hd, hag⟩ := agree_emitted w hw
-  obtain ⟨s', h1, h2, h3, h4, h5⟩ := full_word hw hR.full hR.abs hR.pc hW.lt hW.al hW.sail
+  obtain ⟨s', h1, h2, h3, h4, h5⟩ := full_word hw hR.full hR.abs hR.pc (va29 hW.lt) hW.al hW.sail
   obtain ⟨g1, g2, g3, -, g5⟩ := hag t
   exact bridge_of hd hR hW ⟨s', h1, by rw [g1]; exact h2, h3, by rw [g2]; exact h4, h5⟩ g3 g5
 

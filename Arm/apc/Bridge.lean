@@ -15,7 +15,7 @@ theorem apc_eq_sail {w : BitVec 32} (hw : w ∈ emitted) {s : St} {t : Arm64.Sta
     ∃ s' t', stepModel s = .ok () s' ∧ Arm64.Step Pg t t' ∧ Abs s' (Proven.Apc.abs t') ∧ ArmFull s' ∧
       s'.regs.get? ._PC = some t'.pc ∧ s'.mem = s.mem ∧ t'.mem = t.mem := by
   obtain ⟨i, hd, hag⟩ := agree_emitted w hw
-  obtain ⟨s', h1, h2, h3, h4, h5⟩ := full_word hw hf ha hpc hlt hal hm
+  obtain ⟨s', h1, h2, h3, h4, h5⟩ := full_word hw hf ha hpc (va29 hlt) hal hm
   obtain ⟨g1, g2, g3, -, -⟩ := hag t
   refine ⟨s', Pg.evalInst i t, h1, ?_, by rw [g1]; exact h2, h3, by rw [g2]; exact h4, h5, g3⟩
   refine .exec hrun ?_
