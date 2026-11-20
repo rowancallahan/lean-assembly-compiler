@@ -13,11 +13,14 @@ SHIM_SRC = os.path.join(ARM, '..', 'run', 'shim', 'shim_arm.c')
 W, SECONDS, SEED = sys.argv[1], float(sys.argv[2]), int(sys.argv[3])
 FAILDIR = sys.argv[4] if len(sys.argv) > 4 else os.path.join(W, 'fail')
 os.makedirs(W, exist_ok=True); os.makedirs(FAILDIR, exist_ok=True)
-NANORUN, SHIM = os.path.join(W, 'nanorun'), os.path.join(W, 'shim_arm')
+NANORUN, SHIM, SHIM_RV = os.path.join(W, 'nanorun'), os.path.join(W, 'shim_arm'), os.path.join(W, 'shim_rv')
 if not os.path.exists(NANORUN):
     subprocess.run(['cc', '-O2', NANO_SRC, '-o', NANORUN], check=True)
 if not os.path.exists(SHIM):
     subprocess.run(['aarch64-linux-gnu-gcc', '-O2', '-static', SHIM_SRC, '-o', SHIM], check=True)
+if not os.path.exists(SHIM_RV):
+    subprocess.run(['riscv64-linux-gnu-gcc', '-O2', '-static', os.path.join(ARM, '..', 'run', 'shim', 'shim_rv.c'), '-o', SHIM_RV], check=True)
+QEMU_RV = shutil.which('qemu-riscv64-static') or shutil.which('qemu-riscv64')
 QEMU = shutil.which('qemu-aarch64-static') or shutil.which('qemu-aarch64')
 CASE = os.path.join(W, 'case.rv')
 
@@ -36,6 +39,11 @@ MASKS = [
 OBJ_OK = {'mov', 'add', 'sub', 'neg', 'and', 'orr', 'eor', 'lsl', 'lsr', 'mul', 'cmp', 'b', 'bl', 'br', 'ldr', 'str', 'ldur',
           'ldrb', 'strb', 'b.eq', 'b.ne', 'b.cs', 'b.cc', 'b.hs', 'b.lo', 'movk', 'cbz'}
 
+# register fields (bit positions of Rd / Rn / Rm / Rt / Ra) per class: none may be 31 (no xzr, no sp)
+FIELDS = {'movz': (0,), 'movk': (0,), 'add-imm': (0, 5), 'sub-imm': (0, 5), 'add': (0, 5, 16), 'sub': (0, 5, 16),
+          'cmp': (5, 16), 'and': (0, 5, 16), 'orr': (0, 5, 16), 'eor': (0, 5, 16), 'lslv': (0, 5, 16), 'lsrv': (0, 5, 16),
+          'madd': (0, 5, 16, 10), 'ldr': (0, 5), 'str': (0, 5), 'ldrb': (0, 5), 'strb': (0, 5), 'cbz': (0,), 'br': (5,)}
+
 def sx(v, bits): return v - (1 << bits) if v >> (bits - 1) & 1 else v
 
 def run(cmd, env=None):
@@ -46,11 +54,13 @@ def translators(data):
     with open(CASE, 'wb') as f: f.write(data)
     rc_o, out_o = run(['python3', os.path.join(ARM, 'rv2arm.py'), CASE])
     env = dict(os.environ)
-    env['RUN'] = f'{NANORUN} {os.path.join(ARM, "rv2arm_rv.bin")} /dev/stdin /dev/stdout'
-    rc_n, out_n = run(['sh', os.path.join(ARM, 'rv2arm.sh'), CASE], env)
-    env['RUN'] = f'{QEMU} {SHIM} {os.path.join(ARM, "rv2arm_arm.bin")}'
+    env['RUN'] = f'{QEMU_RV} {SHIM_RV} {os.path.join(ARM, "rv2arm_rv.bin")}'          # RISC-V reference
+    rc_r, out_r = run(['sh', os.path.join(ARM, 'rv2arm.sh'), CASE], env)
+    env['RUN'] = f'{QEMU} {SHIM} {os.path.join(ARM, "rv2arm_arm.bin")}'               # the A64 translator under qemu
     rc_q, out_q = run(['sh', os.path.join(ARM, 'rv2arm.sh'), CASE], env)
-    return (rc_o, out_o), (rc_n, out_n), (rc_q, out_q)
+    env['RUN'] = f'{NANORUN} {os.path.join(ARM, "rv2arm_rv.bin")} /dev/stdin /dev/stdout'   # third opinion
+    rc_n, out_n = run(['sh', os.path.join(ARM, 'rv2arm.sh'), CASE], env)
+    return (rc_o, out_o), (rc_r, out_r), (rc_q, out_q), (rc_n, out_n)
 
 def objcheck(o):
     """Returns a list of violations of the A64 output rules (empty = OK)."""
@@ -65,13 +75,11 @@ def objcheck(o):
         rd = w & 31
         if dest in ('imm', 'reg') and name not in ('str', 'strb', 'stur') and 18 <= rd <= 29:
             bad.append(f'word {idx}: {name} writes x{rd}')
-        if dest == 'imm' and rd == 31: bad.append(f'word {idx}: {name} writes sp')
-        if dest == 'imm' and w >> 5 & 31 == 31: bad.append(f'word {idx}: {name} reads sp')
-        if name in ('ldr', 'str', 'ldrb', 'strb') and w >> 5 & 31 == 31: bad.append(f'word {idx}: {name} base sp')
-        if name in ('str', 'strb') and rd == 31: bad.append(f'word {idx}: {name} stores xzr')
-        if name == 'madd' and (w >> 10 & 31) not in (31, 17): bad.append(f'word {idx}: madd Ra not xzr/x17')
-        if name == 'madd' and (w >> 10 & 31) == 17 and (idx == 0 or ws[idx - 1] != 0xD2800011):
-            bad.append(f'word {idx}: madd uses x17 without movz x17,#0 just before')
+        for sh in FIELDS.get(name, ()):
+            if w >> sh & 31 == 31: bad.append(f'word {idx}: {name} field at bit {sh} is 31 (xzr or sp)')
+        if name == 'madd' and (w >> 10 & 31) != 17: bad.append(f'word {idx}: madd addend not x17')
+        if name == 'madd' and (idx == 0 or ws[idx - 1] != 0xD2800011):
+            bad.append(f'word {idx}: madd without movz x17,#0 just before')
         if dest in ('b', 'bl', 'bc', 'cbz'):
             imm = sx((w >> 5 & 0x7FFFF) if dest in ('bc', 'cbz') else (w & 0x3FFFFFF), 19 if dest in ('bc', 'cbz') else 26)
             if dest == 'bc' and (w & 15) > 3: bad.append(f'word {idx}: b.cond cond {w & 15}')
@@ -88,14 +96,14 @@ def objcheck(o):
 
 def check(data):
     """Returns (signature or None, detail)."""
-    (rc_o, o), (rc_n, n), (rc_q, q) = translators(data)
+    (rc_o, o), (rc_r, r), (rc_q, q), (rc_n, n) = translators(data)
     if rc_o == 0:
-        if n != o: return 'nano!=oracle', f'nano {len(n)} B vs oracle {len(o)} B'
-        if q != o: return 'qemu!=oracle', f'qemu {len(q)} B vs oracle {len(o)} B'
+        for name, out in (('rvref-qemu', r), ('arm-qemu', q), ('nanorun', n)):
+            if out != o: return f'{name}!=oracle', f'{name} {len(out)} B vs oracle {len(o)} B'
         bad = objcheck(o)
         if bad: return 'objcheck', '; '.join(bad[:3])
         return None, ''
-    if n or q: return 'oracle-refuses-but-emits', f'nano {len(n)} B, qemu {len(q)} B'
+    if r or q or n: return 'oracle-refuses-but-emits', f'rvref {len(r)} B, arm-qemu {len(q)} B, nanorun {len(n)} B'
     return None, ''
 
 def minimize(data, sig):

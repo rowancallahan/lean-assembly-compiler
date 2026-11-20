@@ -1,8 +1,8 @@
 # Example programs for the nano compiler
 
 Eight small programs in the nano subset, and a script that compiles each with the self-compiled compiler `B2`, runs the
-result, and compares the output with the reference semantics. **Unproven glue**: the script and `nanorun` are not part
-of the correctness theorem.
+result on QEMU's RISC-V model (`qemu-riscv64` + `run/shim/shim_rv.c`), and compares the output with the reference
+semantics. **Unproven glue**: the script and the shim are not part of the correctness theorem.
 
 | program | computes |
 |---|---|
@@ -22,25 +22,31 @@ Testing/nano/v2self/examples/run_examples.sh              # all examples; NOSEM=
 Testing/nano/v2self/examples/run_examples.sh my.lean      # your own program
 ```
 
-One line per program: input and output in hex, `nanorun`'s exit status and status line (`a0 = 0` ok, `1` ok with empty
-output, `-1` out of work memory, `-2` buffer capacity), then `exp:OK` (output = the program's `-- expect` line) and
+One line per program: input and output in hex, the run's exit status and status line (`status 0` ok, `1` ok with
+empty output, `-1` out of work memory, `-2` buffer capacity), then `exp:OK` (output = the program's `-- expect` line) and
 `sem:OK` (output = `semrun`'s output). Exit status 1 if anything differs.
 
-Needs: a C compiler. For the `sem` column also Lean 4.29.0 and, once, `lake build Nano.V2Self.Proof.Main.Main`
+Needs: `riscv64-linux-gnu-gcc` and `qemu-riscv64` (Debian/Ubuntu: `gcc-riscv64-linux-gnu qemu-user-static`).
+`NANORUN=1` uses the interpreter `run/nanorun.c` instead (needs only a C compiler; optional cross-check, e.g. on a
+Mac). For the `sem` column also Lean 4.29.0 and, once, `lake build Nano.V2Self.Proof.Main.Main`
 (needs the Sail model at `../deps/sail-riscv-lean`, see the top-level README).
 
 ## The two steps by hand
 
+On QEMU's RISC-V model (Linux; Debian/Ubuntu packages `gcc-riscv64-linux-gnu qemu-user-static`):
 ```
-cc -O2 Testing/nano/v2self/run/nanorun.c -o nanorun
-grep -v '^--' prog.lean > prog.src                        # the compiler accepts no comments
-./nanorun Testing/nano/v2self/B2.bin prog.src prog.bin    # (a) compile: source text in, RISC-V code out
-./nanorun prog.bin input.bin output.bin                   # (b) run the compiled program
+riscv64-linux-gnu-gcc -O2 -static Testing/nano/v2self/run/shim/shim_rv.c -o shim_rv
+grep -v '^--' prog.lean > prog.src                                 # the compiler accepts no comments
+qemu-riscv64 ./shim_rv Testing/nano/v2self/B2.bin < prog.src > prog.bin   # (a) compile: source in, RISC-V code out
+qemu-riscv64 ./shim_rv prog.bin < input.bin > output.bin           # (b) run the compiled program
 od -An -tx1 output.bin
 ```
+Natively on an ARM machine (Apple Silicon): see `Testing/nano/v2self/arm/README.md`. Without either, the
+interpreter `run/nanorun.c` does the same (`nanorun B2.bin prog.src prog.bin`, `nanorun prog.bin input.bin
+output.bin`). It is an optional cross-check, not the default path.
 
 A rejected program is **not** an error message: the compiler writes empty code (status line `a0 = 1 (ok, empty
-output)`, `prog.bin` has 0 bytes). There is no diagnostic saying which construct was refused.
+output)` / `status 1`, `prog.bin` has 0 bytes). There is no diagnostic saying which construct was refused.
 
 Reference semantics for the same source and input (a Lean error names the stage on a rejection):
 `SRC=prog.src INP=input.bin OUT=sem.bin lake env lean Testing/nano/v2self/semrun/semrun.lean`
@@ -59,7 +65,7 @@ on QEMU that `B2` compiles the source to `B2` again. Without QEMU, the same chec
   (input bytes in, output bytes out).
 - For the script, add two comment lines: `-- input  (hex): 68 69` and `-- expect (hex): …` (bytes separated by spaces).
 - Names: one lowercase letter, then digits (`f`, `s1`, `g_3`).
-- Scalars are `UInt64` (wrapping). Operators: `+ - *`, `&&& ||| ^^^`, `<<< k`, `>>> k` (k a numeral), and in `if`
+- Scalars are `UInt64` (wrapping). Operators: `+ - *`, `&&& |||` (not `^^^`: the lexer rejects it), `<<< k`, `>>> k` (k a numeral), and in `if`
   conditions `==` and `<`.
 - `if c then a else b`, `let v := e;` (with the `;`), calls of earlier defs with all arguments.
 - Input: `rd x i` (byte i, 0 past the end), `len x`. Output: `put o b` appends the low byte of `b`; start from `[]`.
@@ -70,7 +76,8 @@ on QEMU that `B2` compiles the source to `B2` again. Without QEMU, the same chec
     | 0, x, i, o => o
     | n + 1, x, i, o => f n x (i + 1) (put o (rd x i))
   ```
-  Fuel is a numeral or `len' x` (sums and products of these).
+  Fuel is a numeral or `len' x` (not `len' x + k` or `len' x * k`: both are rejected). The accumulator passed to the
+  self call must not be a bare parameter reused elsewhere (the ownership stage rejects it).
 - The programs are also Lean: `cat Nano/V2Self/Prelude.lean prog.lean > t.lean && lean t.lean` checks one.
 
 ## What gets rejected (tried with B2, 2026-11-19)

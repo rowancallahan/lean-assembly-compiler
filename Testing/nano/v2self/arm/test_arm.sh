@@ -1,24 +1,41 @@
 #!/usr/bin/env bash
-# Linux test of the nano translator rv2arm.lean (UNPROVEN glue). Needs: cc, aarch64-linux-gnu-gcc, qemu-aarch64(-static),
-# python3 (oracle rv2arm.py only).  usage: test_arm.sh [prog.lean ...]   (default: all examples)
-#  1. B2 compiles rv2arm.lean -> rv2arm_rv.bin; nanorun runs it on itself -> rv2arm_arm.bin; under qemu the ARM
-#     translator translates itself to itself (fixpoint) and both equal the Python oracle; the checked-in binaries match.
-#  2. every example: compiled by B2, translated by the ARM translator (= oracle), run with shim_arm under qemu on
-#     6 inputs: output and status equal nanorun's.
+# Linux test of the nano translator rv2arm.lean (UNPROVEN glue). All code runs on QEMU's machine models: RISC-V code
+# with qemu-riscv64 shim_rv, ARM code with qemu-aarch64 shim_arm. NANORUN=1 adds the interpreter nanorun as a
+# cross-check of every RISC-V run. Needs: riscv64-linux-gnu-gcc, aarch64-linux-gnu-gcc, qemu-user-static, python3
+# (oracle rv2arm.py only); cc only with NANORUN=1.  usage: test_arm.sh [prog.lean ...]   (default: all examples)
+#  1. B2 compiles rv2arm.lean -> rv2arm_rv.bin; it runs on itself (RISC-V) -> rv2arm_arm.bin; the ARM translator
+#     translates itself to itself (fixpoint) and both equal the Python oracle; the checked-in binaries match.
+#  2. every example: compiled by B2, translated by the ARM translator (= oracle), run on 6 inputs as RISC-V and as
+#     ARM: output and status agree.
 #  3. B2 translated by the ARM translator = B2_arm.bin; ARM-B2 on the compiler's source = B2.bin byte for byte.
 #  4. invalid input (an ecall word, an odd size) is refused.
 set -euo pipefail
 D=$(cd "$(dirname "$0")" && pwd); V=$D/..; T=$(mktemp -d)
 QEMU=${QEMU:-$(command -v qemu-aarch64-static || command -v qemu-aarch64)}
-cc -O2 "$V/run/nanorun.c" -o "$T/nanorun"
+QRV=${QRV:-$(command -v qemu-riscv64-static || command -v qemu-riscv64)}
 aarch64-linux-gnu-gcc -O2 -static "$V/run/shim/shim_arm.c" -o "$T/shim_arm"
+riscv64-linux-gnu-gcc -O2 -static "$V/run/shim/shim_rv.c" -o "$T/shim_rv"
+[ -z "${NANORUN:-}" ] || cc -O2 "$V/run/nanorun.c" -o "$T/nanorun"
+# rvrun CODE IN OUT LOG: the RISC-V code on qemu-riscv64 (status line in LOG); with NANORUN=1 also nanorun, which
+# must agree (status and output)
+rvrun() {
+  local rc=0; "$QRV" "$T/shim_rv" "$1" < "$2" > "$3" 2> "$4" || rc=$?
+  if [ -n "${NANORUN:-}" ]; then
+    local nr=0; "$T/nanorun" "$1" "$2" "$T/nr.out" 2> "$T/nr.log" || nr=$?
+    [ $nr -eq 0 ] || : > "$T/nr.out"
+    [ "$(st "$4")" = "$(sed -n 's/.*a0 = \(-\?[0-9]*\).*/\1/p' "$T/nr.log")" ] && cmp -s "$3" "$T/nr.out" \
+      || bad "nanorun disagrees with qemu-riscv64 on $(basename "$1") < $(basename "$2")"
+  fi
+  return $rc
+}
+st() { sed -n 's/.*status \(-\?[0-9]*\).*/\1/p' "$1"; }
 ok() { echo "OK   $1"; }
 bad() { echo "FAIL $1"; fail=1; }
 fail=0
 
 grep -v '^--' "$D/rv2arm.lean" > "$T/rv2arm.src"
-"$T/nanorun" "$V/B2.bin" "$T/rv2arm.src" "$T/rv2arm_rv.bin" 2> /dev/null
-RUN="$T/nanorun $T/rv2arm_rv.bin /dev/stdin /dev/stdout" "$D/rv2arm.sh" "$T/rv2arm_rv.bin" > "$T/rv2arm_arm.bin"
+rvrun "$V/B2.bin" "$T/rv2arm.src" "$T/rv2arm_rv.bin" "$T/l"
+RUN="$QRV $T/shim_rv $T/rv2arm_rv.bin" "$D/rv2arm.sh" "$T/rv2arm_rv.bin" > "$T/rv2arm_arm.bin"
 ARM="$QEMU $T/shim_arm $T/rv2arm_arm.bin"
 RUN="$ARM" "$D/rv2arm.sh" "$T/rv2arm_rv.bin" | cmp -s - "$T/rv2arm_arm.bin" && ok "ARM translator fixpoint" || bad "fixpoint"
 python3 "$D/rv2arm.py" "$T/rv2arm_rv.bin" | cmp -s - "$T/rv2arm_arm.bin" && ok "= oracle on itself" || bad "oracle on itself"
@@ -31,15 +48,14 @@ printf '\x00\xff\x10\x10\x10\x7f\x80zzzA' > "$T/i3"; head -c 3000 /dev/urandom >
 for p in "$@"; do
   n=$(basename "$p" .lean)
   grep -v '^--' "$p" > "$T/$n.src"
-  "$T/nanorun" "$V/B2.bin" "$T/$n.src" "$T/$n.rv" 2> /dev/null
+  rvrun "$V/B2.bin" "$T/$n.src" "$T/$n.rv" "$T/l" || true
   [ -s "$T/$n.rv" ] || { bad "$n: REJECTED by B2"; continue; }
   RUN="$ARM" "$D/rv2arm.sh" "$T/$n.rv" > "$T/$n.arm"
   python3 "$D/rv2arm.py" "$T/$n.rv" | cmp -s - "$T/$n.arm" || bad "$n: translator != oracle"
   for i in "$T"/i?; do
-    rs=0; "$T/nanorun" "$T/$n.rv" "$i" "$T/o.rv" 2> "$T/l.rv" || rs=$?
-    [ $rs -eq 0 ] || : > "$T/o.rv"
+    rvrun "$T/$n.rv" "$i" "$T/o.rv" "$T/l.rv" || true
     "$QEMU" "$T/shim_arm" "$T/$n.arm" < "$i" > "$T/o.arm" 2> "$T/l.arm" || true
-    a=$(sed -n 's/.*status \(-\?[0-9]*\).*/\1/p' "$T/l.arm"); r=$(sed -n 's/.*a0 = \(-\?[0-9]*\).*/\1/p' "$T/l.rv")
+    a=$(st "$T/l.arm"); r=$(st "$T/l.rv")
     if cmp -s "$T/o.rv" "$T/o.arm" && [ "$a" = "$r" ]; then ok "$n $(basename "$i") (status $a, $(wc -c < "$T/o.arm") B)"
     else bad "$n $(basename "$i"): rv a0=$r, arm status=$a"; fi
   done
@@ -49,6 +65,8 @@ RUN="$ARM" "$D/rv2arm.sh" "$V/B2.bin" > "$T/B2_arm.bin"
 cmp -s "$T/B2_arm.bin" "$D/B2_arm.bin" && ok "B2 translated by the ARM translator = B2_arm.bin" || bad "B2_arm.bin"
 "$QEMU" "$T/shim_arm" "$T/B2_arm.bin" < "$V/self_S_input.txt" > "$T/self.bin" 2> /dev/null
 cmp -s "$T/self.bin" "$V/B2.bin" && ok "ARM-B2 self-compile = B2.bin" || bad "ARM-B2 self-compile"
+rvrun "$V/B2.bin" "$V/self_S_input.txt" "$T/self_rv.bin" "$T/l" || true
+cmp -s "$T/self_rv.bin" "$V/B2.bin" && ok "RISC-V B2 self-compile (qemu-riscv64) = B2.bin" || bad "RISC-V B2 self-compile"
 
 # instruction set (§0-min): only these mnemonics (objdump aliases), no register field 31 (xzr/wzr/sp), never x18..x29
 if command -v aarch64-linux-gnu-objdump > /dev/null; then
