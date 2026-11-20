@@ -15,17 +15,12 @@ import Nano.V2Self.Proof.Machine.Heap
 namespace SafeRun
 open CallProbe SimW
 
-theorem _root_.SimW.SStar.trans {K : LayW} {C : List J} {a b c : Nat × St} (h1 : SStar K C a b) (h2 : SStar K C b c) : SStar K C a c := by
-  induction h1 with
-  | refl => exact h2
-  | head hs st _ ih => exact .head hs st (ih h2)
-
-theorem _root_.SimW.SStar.one {K : LayW} {C : List J} {a b : Nat × St} (hs : Safe K C a) (st : step C a = some b) : SStar K C a b :=
+theorem _root_.SimW.SStarX.one {K : LayW} {C : List J} {a b : Nat × St} (hs : SafeX K C a) (st : step C a = some b) : SStarX K C a b :=
   .head hs st (.refl b)
 
 /-- a deterministic run whose every intermediate state is safe -/
 theorem sstar_of_run {K : LayW} {C : List J} : ∀ {k : Nat} {a b : Nat × St}, run C k a = some b →
-    (∀ j, j < k → ∀ c, run C j a = some c → Safe K C c) → SStar K C a b
+    (∀ j, j < k → ∀ c, run C j a = some c → SafeX K C c) → SStarX K C a b
   | 0, a, b, h, _ => by simp [run] at h; subst h; exact .refl _
   | k + 1, a, b, h, hs => by
     simp only [run] at h
@@ -36,7 +31,7 @@ theorem sstar_of_run {K : LayW} {C : List J} : ∀ {k : Nat} {a b : Nat × St}, 
       refine .head (hs 0 (by omega) a rfl) e (sstar_of_run h fun j hj d hd => hs (j + 1) (by omega) d ?_)
       simp [run, e, hd]
 
-theorem _root_.SimW.SStar.star {K : LayW} {C : List J} {a b : Nat × St} (h : SStar K C a b) : Star C a b := by
+theorem _root_.SimW.SStarX.star {K : LayW} {C : List J} {a b : Nat × St} (h : SStarX K C a b) : Star C a b := by
   induction h with
   | refl => exact .refl _
   | head _ st _ ih => exact (Star.one st).trans ih
@@ -44,7 +39,7 @@ theorem _root_.SimW.SStar.star {K : LayW} {C : List J} {a b : Nat × St} (h : SS
 /-! ## push -/
 
 /-- every state of the first k steps from a is safe -/
-def SR (K : LayW) (C : List J) (k : Nat) (a : Nat × St) : Prop := ∀ j, j < k → ∀ c, run C j a = some c → Safe K C c
+def SR (K : LayW) (C : List J) (k : Nat) (a : Nat × St) : Prop := ∀ j, j < k → ∀ c, run C j a = some c → SafeX K C c
 
 theorem SR.add {K : LayW} {C : List J} {k1 k2 : Nat} {a b : Nat × St} (h1 : SR K C k1 a) (hr : run C k1 a = some b)
     (h2 : SR K C k2 b) : SR K C (k1 + k2) a := fun j hj c hc => by
@@ -54,7 +49,7 @@ theorem SR.add {K : LayW} {C : List J} {k1 k2 : Nat} {a b : Nat × St} (h1 : SR 
     rw [show k1 + (j - k1) = j by omega, hc] at this
     exact h2 (j - k1) (by omega) c this.symm
 
-theorem SR.one {K : LayW} {C : List J} {a : Nat × St} (h : Safe K C a) : SR K C 1 a := fun j hj c hc => by
+theorem SR.one {K : LayW} {C : List J} {a : Nat × St} (h : SafeX K C a) : SR K C 1 a := fun j hj c hc => by
   have : j = 0 := by omega
   subst this; simp [run] at hc; subst hc; exact h
 
@@ -69,30 +64,30 @@ theorem push_sr {K : LayW} {C pc s r oom} (hC : At C pc (push r oom)) (hr32 : r 
   have e : ea (s.x 31) (-8) = (s.x 31).toNat - 8 := by simp [ea]; omega
   have t6' : (UInt64.ofNat ((s.x 31).toNat - 8)).toNat = (s.x 31).toNat - 8 := by simp [UInt64.toNat_ofNat]; omega
   rcases (by omega : j = 0 ∨ j = 1 ∨ j = 2) with rfl | rfl | rfl
-  · simp [run] at hc; subst hc; simp [Safe, h0]; omega
-  · simp [run, step, h0] at hc; subst hc; simp [Safe, h1]
+  · simp [run] at hc; subst hc; simp [SafeX, h0]; omega
+  · simp [run, step, h0] at hc; subst hc; simp [SafeX, h1]
   · have c2 : (s.x 30).toNat ≤ (s.x 31).toNat - 8 := by omega
     simp [run, step, h0, h1, wr, e, upd_same, upd_other _ _ (show (30:Nat) ≠ 31 by decide), t6', c2,
       show ((pc : Int) + 1 + 2).toNat = pc + 3 by omega] at hc
     subst hc
-    simp [Safe, h3, hr32, ea, upd_same, t6']; exact hw
+    simp [SafeX, h3, hr32, ea, upd_same, t6']; exact hw
 
 theorem push_srun {K : LayW} {C pc s r oom} (hC : At C pc (push r oom)) (hr : r ≠ 31) (hr0 : r ≠ 0) (hr32 : r < 32)
     (hh : (s.x 30).toNat + 8 ≤ (s.x 31).toNat) (hw : wok K ((s.x 31).toNat - 8)) :
-    SStar K C (pc, s) (pc + 4, ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)),
+    SStarX K C (pc, s) (pc + 4, ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)),
                                  upd s.m ((s.x 31).toNat - 8) (s.x r), s.b, s.wk⟩) :=
   sstar_of_run (push_run hC hr hr0 hh) (push_sr hC hr32 hh hw)
 
 theorem len_srun {K : LayW} {C pc tgt} (s : St) (hC : At C pc (lenT tgt pc)) (hh : (s.x 30).toNat + 8 ≤ (s.x 31).toNat)
     (hw : wok K ((s.x 31).toNat - 8)) :
-    SStar K C (pc, s) (pc + 4, ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)), upd s.m ((s.x 31).toNat - 8) (s.x 29), s.b, s.wk⟩) :=
+    SStarX K C (pc, s) (pc + 4, ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)), upd s.m ((s.x 31).toNat - 8) (s.x 29), s.b, s.wk⟩) :=
   push_srun (by simpa [lenT, pushA] using hC) (by decide) (by decide) (by decide) hh hw
 
 /-! ## BIN -/
 
 theorem bin_srun {K : LayW} {C pc op} (s : St) (hC : At C pc (binT op)) (hlt : (s.x 31).toNat + 16 < 2 ^ 63)
     (hop : 1 ≤ op ∧ op ≤ 8) (w0 : wok K (s.x 31).toNat) (w8 : wok K ((s.x 31).toNat + 8)) :
-    SStar K C (pc, s) (pc + 5,
+    SStarX K C (pc, s) (pc + 5,
       ⟨upd (upd (upd (upd s.x 6 (s.m (s.x 31).toNat)) 5 (s.m ((s.x 31).toNat + 8))) 31 (UInt64.ofNat ((s.x 31).toNat + 8))) 5
           (aluf op (s.m ((s.x 31).toNat + 8)) (s.m (s.x 31).toNat)),
        upd s.m ((s.x 31).toNat + 8) (aluf op (s.m ((s.x 31).toNat + 8)) (s.m (s.x 31).toNat)), s.b, s.wk⟩) := by
@@ -106,17 +101,17 @@ theorem bin_srun {K : LayW} {C pc op} (s : St) (hC : At C pc (binT op)) (hlt : (
   have e8'' : ea (s.x 31 + 8) 0 = (s.x 31).toNat + 8 := by simp only [ea, t8']; omega
   have t8 : (UInt64.ofNat ((s.x 31).toNat + 8)).toNat = (s.x 31).toNat + 8 := by simp only [UInt64.toNat_ofNat']; omega
   rcases (by omega : j = 0 ∨ j = 1 ∨ j = 2 ∨ j = 3 ∨ j = 4) with rfl | rfl | rfl | rfl | rfl
-  · simp [run] at hc; subst hc; simp [Safe, h0, e0]; exact w0
+  · simp [run] at hc; subst hc; simp [SafeX, h0, e0]; exact w0
   · simp [run, step, h0, wr, upd_other _ _ (show (31:Nat) ≠ 6 by decide)] at hc; subst hc
-    simp [Safe, h1, upd_other _ _ (show (31:Nat) ≠ 6 by decide), e8]; exact ⟨by omega, w8⟩
+    simp [SafeX, h1, upd_other _ _ (show (31:Nat) ≠ 6 by decide), e8]; exact ⟨by omega, w8⟩
   · simp [run, step, h0, h1, wr, upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide)] at hc
     subst hc
-    simp [Safe, h2, upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide)]; omega
-  · simp [run, step, h0, h1, h2, wr] at hc; subst hc; simp [Safe, h3]; omega
+    simp [SafeX, h2, upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide)]; omega
+  · simp [run, step, h0, h1, h2, wr] at hc; subst hc; simp [SafeX, h3]; omega
   · simp [run, step, h0, h1, h2, h3, wr, e0, e8, upd_same, upd_other _ _ (show (31:Nat) ≠ 6 by decide),
       upd_other _ _ (show (31:Nat) ≠ 5 by decide)] at hc
     subst hc
-    simp [Safe, h4, upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_same, ea, t8]
+    simp [SafeX, h4, upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_same, ea, t8]
     refine ⟨by omega, ?_⟩
     have : ((((s.x 31).toNat : Int) + 8) % 18446744073709551616).toNat = (s.x 31).toNat + 8 := by omega
     rw [this]; exact w8
@@ -125,15 +120,15 @@ theorem bin_srun {K : LayW} {C pc op} (s : St) (hC : At C pc (binT op)) (hlt : (
 
 theorem bsize_srun {K : LayW} {C pc} (s : St) (hC : At C pc bsizeT) (w0 : wok K (s.x 31).toNat)
     (w1 : wok K (s.m (s.x 31).toNat).toNat) :
-    SStar K C (pc, s) (pc + 3, ⟨upd s.x 5 (s.m (s.m (s.x 31).toNat).toNat), upd s.m (s.x 31).toNat (s.m (s.m (s.x 31).toNat).toNat), s.b, s.wk⟩) := by
+    SStarX K C (pc, s) (pc + 3, ⟨upd s.x 5 (s.m (s.m (s.x 31).toNat).toNat), upd s.m (s.x 31).toNat (s.m (s.m (s.x 31).toNat).toNat), s.b, s.wk⟩) := by
   refine sstar_of_run (bsize_run s hC) fun j hj c hc => ?_
   have h0 := hC.at 0 (by simp [bsizeT]); have h1 := hC.at 1 (by simp [bsizeT]); have h2 := hC.at 2 (by simp [bsizeT])
   simp [bsizeT] at h0 h1 h2
   rcases (by omega : j = 0 ∨ j = 1 ∨ j = 2) with rfl | rfl | rfl
-  · simp [run] at hc; subst hc; simp [Safe, h0, ea]; exact w0
-  · simp [run, step, h0, wr] at hc; subst hc; simp [Safe, h1, ea, upd_same]; exact w1
+  · simp [run] at hc; subst hc; simp [SafeX, h0, ea]; exact w0
+  · simp [run, step, h0, wr] at hc; subst hc; simp [SafeX, h1, ea, upd_same]; exact w1
   · simp [run, step, h0, h1, wr, upd_same] at hc; subst hc
-    simp [Safe, h2, ea, upd_other _ _ (show (31:Nat) ≠ 5 by decide)]; exact w0
+    simp [SafeX, h2, ea, upd_other _ _ (show (31:Nat) ≠ 5 by decide)]; exact w0
 
 /-! ## li -/
 
@@ -145,13 +140,13 @@ theorem li_sr {K : LayW} {C pc d} {v : UInt64} (s : St) (hd : d ≠ 0) (hd32 : d
     simp [liT, hv] at h0
     rw [liT_len_small d v hv] at hi
     have : i = 0 := by omega
-    subst this; simp [run] at hc; subst hc; simp [Safe, h0, hd32, hx0]; omega
+    subst this; simp [run] at hc; subst hc; simp [SafeX, h0, hd32, hx0]; omega
   rw [liT_len_big d v hv] at hi
   have hC' : At C pc (.addi d 0 0 :: liB d v.toNat 8) := by simpa [liT, hv] using hC
   have hT : At C (pc + 1) (liB d v.toNat 8) := hC'.cons_tail
   rcases Nat.eq_zero_or_pos i with rfl | hpos
   · have h0 := hC'.at 0 (by simp); simp at h0
-    simp [run] at hc; subst hc; simp [Safe, h0, hd32, hx0]
+    simp [run] at hc; subst hc; simp [SafeX, h0, hd32, hx0]
   obtain ⟨j, hj⟩ : ∃ j, i = 1 + 2 * j ∨ i = 2 + 2 * j := ⟨(i - 1) / 2, by omega⟩
   have hj7 : j ≤ 7 := by omega
   have hA := liB_at hT (show j + 1 ≤ 8 by omega)
@@ -162,10 +157,10 @@ theorem li_sr {K : LayW} {C pc d} {v : UInt64} (s : St) (hd : d ≠ 0) (hd32 : d
     simp [liB, liJ, liB_len] at this; rw [← Nat.add_assoc] at this; exact this
   obtain ⟨sj, hrj, hxj, -, -⟩ := li_loop s hd hx0 hv hC j (by omega)
   rcases hj with rfl | rfl
-  · rw [hrj] at hc; simp at hc; subst hc; simp [Safe, h0, hd32]
+  · rw [hrj] at hc; simp at hc; subst hc; simp [SafeX, h0, hd32]
   · rw [show 2 + 2 * j = (1 + 2 * j) + 1 by omega, run_add hrj] at hc
     simp [run, step, h0, wr, hd] at hc; subst hc
-    simp only [Safe, show pc + 1 + 2 * j + 1 = pc + 1 + 2 * j + 1 from rfl, h1, upd_same, hxj]
+    simp only [SafeX, show pc + 1 + 2 * j + 1 = pc + 1 + 2 * j + 1 from rfl, h1, upd_same, hxj]
     have hAlt : v.toNat / 2 ^ (64 - 8 * j) < 2 ^ 56 := by
       rw [Nat.div_lt_iff_lt_mul (Nat.two_pow_pos _)]
       calc v.toNat < 2 ^ 64 := v.toNat_lt
@@ -178,7 +173,7 @@ theorem li_sr {K : LayW} {C pc d} {v : UInt64} (s : St) (hd : d ≠ 0) (hd32 : d
 
 theorem li_srun {K : LayW} {C pc d} {v : UInt64} (s : St) (hd : d ≠ 0) (hd32 : d < 32) (hx0 : s.x 0 = 0)
     (hC : At C pc (liT d v)) :
-    ∃ s', SStar K C (pc, s) (pc + (liT d v).length, s') ∧ s'.x = upd s.x d v ∧ s'.m = s.m ∧ s'.b = s.b := by
+    ∃ s', SStarX K C (pc, s) (pc + (liT d v).length, s') ∧ s'.x = upd s.x d v ∧ s'.m = s.m ∧ s'.b = s.b := by
   obtain ⟨s', hr, hx, hm, hb⟩ := li_run s hd hx0 hC
   exact ⟨s', sstar_of_run hr (li_sr s hd hd32 hx0 hC), hx, hm, hb⟩
 
@@ -186,7 +181,7 @@ theorem li_srun {K : LayW} {C pc d} {v : UInt64} (s : St) (hd : d ≠ 0) (hd32 :
 
 theorem const_srun {K : LayW} {C pc tgt} {v : UInt64} (s : St) (hx0 : s.x 0 = 0) (hC : At C pc (constT tgt pc v))
     (hh : (s.x 30).toNat + 8 ≤ (s.x 31).toNat) (hw : wok K ((s.x 31).toNat - 8)) :
-    ∃ s', SStar K C (pc, s) (pc + (liT 5 v).length + 4, s') ∧
+    ∃ s', SStarX K C (pc, s) (pc + (liT 5 v).length + 4, s') ∧
       s'.x = upd (upd s.x 5 v) 31 (UInt64.ofNat ((s.x 31).toNat - 8)) ∧
       s'.m = upd s.m ((s.x 31).toNat - 8) v ∧ s'.b = s.b := by
   obtain ⟨s1, hr1, hx1, hm1, hb1⟩ := li_srun (K := K) (d := 5) s (by decide) (by decide) hx0 hC.left
@@ -210,7 +205,7 @@ theorem local_srun {K : LayW} {C tgt p} : ∀ (w k pc : Nat) (st : St), At C pc 
     (st.x 30).toNat + 8 * w ≤ (st.x 31).toNat →
     (∀ i, i < w → wok K (slotAddr p (k + i) (st.x 8).toNat) ∧ wok K ((st.x 31).toNat - 8 * (i + 1)) ∧
       -2048 ≤ offOf p (k + i) ∧ offOf p (k + i) < 2048) →
-    ∀ b, run C (4 * w) (pc, st) = some b → SStar K C (pc, st) b
+    ∀ b, run C (4 * w) (pc, st) = some b → SStarX K C (pc, st) b
   | 0, k, pc, st, _, _, _, _, _, _, b, hb => by simp [run] at hb; subst hb; exact .refl _
   | w + 1, k, pc, st, hC, hs0, hp, hsl, hh, hw, b, hb => by
     have hA : At C pc ([.ld 5 8 (offOf p k)] ++ pushA tgt (pc + 1) 5 ++ localT tgt p (k + 1) (pc + 5) w) := hC
@@ -236,8 +231,8 @@ theorem local_srun {K : LayW} {C tgt p} : ∀ (w k pc : Nat) (st : St), At C pc 
     have r2 := push_run (s := st1) (by simpa [pushA] using hP) (by decide) (by decide) hh1
     have q2 := push_srun (K := K) (s := st1) (by simpa [pushA] using hP) (by decide) (by decide) (by decide) hh1
       (by rw [x31]; simpa using w1)
-    have safe0 : Safe K C (pc, st) := by
-      simp only [Safe, l0]
+    have safe0 : SafeX K C (pc, st) := by
+      simp only [SafeX, l0]
       refine ⟨by decide, by decide, o1, o2, ?_, ?_⟩
       · unfold offOf; split <;> omega
       · rw [ea0]; exact w0
@@ -262,7 +257,7 @@ theorem local_srun {K : LayW} {C tgt p} : ∀ (w k pc : Nat) (st : St), At C pc 
       rw [show (st.x 31).toNat - 8 - 8 * (i + 1) = (st.x 31).toNat - 8 * (i + 1 + 1) by omega]; exact a2
     rw [show 4 * (w + 1) = 1 + (3 + 4 * w) by omega, run_add r1, run_add r2] at hb
     have ih := local_srun w (k + 1) (pc + 5) st2 hR (by rw [x8'']; exact hs0) hp hsl2 hh2 hw2 b hb
-    exact (SStar.one safe0 s1).trans (q2.trans ih)
+    exact (SStarX.one safe0 s1).trans (q2.trans ih)
 
 /-! ## popSlot / popN (LET, the epilogue's argument pops) -/
 
@@ -270,17 +265,17 @@ theorem popSlot_srun {K : LayW} {C : List J} {pc p k : Nat} (s : St) (hS : At C 
     (hlt : (s.x 31).toNat + 8 < 2 ^ 64) (w0 : wok K (s.x 31).toNat)
     (o1 : -2048 ≤ Templates.slotOff p k) (o2 : Templates.slotOff p k < 2048)
     (hn : 0 ≤ ((s.x 8).toNat : Int) + Templates.slotOff p k) (ws : wok K (Templates.slotAddr p (s.x 8).toNat k)) :
-    SStar K C (pc, s) (pc + 3, ⟨upd (upd s.x 5 (s.m (s.x 31).toNat)) 31 (UInt64.ofNat ((s.x 31).toNat + 8)),
+    SStarX K C (pc, s) (pc + 3, ⟨upd (upd s.x 5 (s.m (s.x 31).toNat)) 31 (UInt64.ofNat ((s.x 31).toNat + 8)),
       upd s.m (Templates.slotAddr p (s.x 8).toNat k) (s.m (s.x 31).toNat), s.b, s.wk⟩) := by
   refine sstar_of_run (Templates.popSlot_run s hS hlt) fun j hj c hc => ?_
   have c0 := hS.at 0 (by simp [Templates.popSlot]); have c1 := hS.at 1 (by simp [Templates.popSlot])
   have c2 := hS.at 2 (by simp [Templates.popSlot])
   simp [Templates.popSlot] at c0 c1 c2
   rcases (by omega : j = 0 ∨ j = 1 ∨ j = 2) with rfl | rfl | rfl
-  · simp [run] at hc; subst hc; simp [Safe, c0, ea]; exact w0
-  · simp [run, step, c0, wr] at hc; subst hc; simp [Safe, c1, upd]; omega
+  · simp [run] at hc; subst hc; simp [SafeX, c0, ea]; exact w0
+  · simp [run, step, c0, wr] at hc; subst hc; simp [SafeX, c1, upd]; omega
   · simp [run, step, c0, c1, wr] at hc; subst hc
-    simp only [Safe, c2]
+    simp only [SafeX, c2]
     refine ⟨by decide, by decide, o1, o2, by simpa [upd] using hn, ?_⟩
     simpa [ea, upd, Templates.slotAddr] using ws
 
@@ -290,7 +285,7 @@ theorem popN_srun {K : LayW} {C : List J} {p k0 : Nat} : ∀ (w pc : Nat) (s : S
     (∀ j, j < w → wok K ((s.x 31).toNat + 8 * j) ∧ wok K (Templates.slotAddr p (s.x 8).toNat (k0 + j)) ∧
       -2048 ≤ Templates.slotOff p (k0 + j) ∧ Templates.slotOff p (k0 + j) < 2048 ∧
       0 ≤ ((s.x 8).toNat : Int) + Templates.slotOff p (k0 + j)) →
-    ∀ b, run C (3 * w) (pc, s) = some b → SStar K C (pc, s) b
+    ∀ b, run C (3 * w) (pc, s) = some b → SStarX K C (pc, s) b
   | 0, pc, s, _, _, _, b, hb => by simp [run] at hb; subst hb; exact .refl _
   | w + 1, pc, s, hC, hlt, hw, b, hb => by
     have hC' : At C pc (Templates.popSlot p (k0 + w) ++ Templates.popN p k0 w) := hC
@@ -316,7 +311,7 @@ theorem popN_srun {K : LayW} {C : List J} {p k0 : Nat} : ∀ (w pc : Nat) (s : S
 theorem pro_srun {K : LayW} {C : List J} {f r tgt : Nat} {s : St} (hC : At C f (proA tgt f r))
     (hlt : (s.x 31).toNat < 2 ^ 63) (hh : (s.x 30).toNat + 16 + 8 * r ≤ (s.x 31).toNat) (hr : r ≤ 256)
     (w1 : wok K ((s.x 31).toNat - 8)) (w2 : wok K ((s.x 31).toNat - 16)) :
-    ∃ s1, SStar K C (f, s) (f + 12, s1) ∧
+    ∃ s1, SStarX K C (f, s) (f + 12, s1) ∧
       (s1.x 31).toNat = (s.x 31).toNat - 16 - 8 * r ∧ (s1.x 8).toNat = (s.x 31).toNat - 16 ∧
       (∀ i, i ≠ 31 → i ≠ 8 → s1.x i = s.x i) ∧
       s1.m = upd (upd s.m ((s.x 31).toNat - 8) (s.x 1)) ((s.x 31).toNat - 16) (s.x 8) := by
@@ -347,13 +342,13 @@ theorem pro_srun {K : LayW} {C : List J} {f r tgt : Nat} {s : St} (hC : At C f (
   have q3 : SR K C 3 (f + 8, sB) := by
     intro j hj c hc
     rcases (by omega : j = 0 ∨ j = 1 ∨ j = 2) with rfl | rfl | rfl
-    · simp [run] at hc; subst hc; simp [Safe, b0]; omega
+    · simp [run] at hc; subst hc; simp [SafeX, b0]; omega
     · simp [run, step, b0] at hc; subst hc
-      simp [Safe, b1, wr]
+      simp [SafeX, b1, wr]
       rw [upd_other _ _ (show (31:Nat) ≠ 8 by decide), xB31]
       have := (s.x 31).toNat_lt
       omega
-    · simp [run, step, b0, b1] at hc; subst hc; simp [Safe, b2]
+    · simp [run, step, b0, b1] at hc; subst hc; simp [SafeX, b2]
   have hsum := (q1.add r1 (q2.add r2 q3))
   exact hsum
 
@@ -380,12 +375,12 @@ theorem copy_sr {K : LayW} {C pc p q} (s : St) (hq : ∀ k, k ≤ q → At C pc 
       intro j hj c hc
       rcases (by omega : j = 0 ∨ j = 1) with rfl | rfl
       · simp [run] at hc; subst hc
-        simp only [Safe, h0, x31]
+        simp only [SafeX, h0, x31]
         refine ⟨by decide, by decide, by omega, by omega, by omega, ?_⟩
         have : ea (s.x 31) (8 * ((q - 1 - k : Nat) : Int)) = (s.x 31).toNat + 8 * (q - 1 - k) := by simp only [ea]; omega
         rw [this]; exact w1
       · simp [run, step, h0] at hc; subst hc
-        simp only [Safe, h1, wr, show (5 : Nat) ≠ 0 by decide, if_false, upd_other _ _ (show (8:Nat) ≠ 5 by decide), x8]
+        simp only [SafeX, h1, wr, show (5 : Nat) ≠ 0 by decide, if_false, upd_other _ _ (show (8:Nat) ≠ 5 by decide), x8]
         refine ⟨by decide, by decide, by omega, by omega, by omega, ?_⟩
         have : ea (s.x 8) (8 * (p : Int) + 16 - 8 * ((k + 1 : Nat) : Int)) = (s.x 8).toNat + 8 * p + 16 - 8 * (k + 1) := by
           simp only [ea]; omega
@@ -398,7 +393,7 @@ theorem epi_srun {K : LayW} {C e p q} (s : St) (hC : At C e (epi p q))
     (hp : 8 * p + 16 < 2048) (hqb : 8 * q < 2048) (wa : wok K ((s.x 8).toNat + 8)) (wb : wok K (s.x 8).toNat)
     (hw : ∀ k, k < q → wok K ((s.x 31).toNat + 8 * (q - 1 - k)) ∧ wok K ((s.x 8).toNat + 8 * p + 16 - 8 * (k + 1)))
     (hra : ∃ j, (s.m ((s.x 8).toNat + 8)).toNat = K.base + s.w * j) :
-    ∃ s3, SStar K C (e, s) (((s.m ((s.x 8).toNat + 8)).toNat - s.b) / s.w, s3) ∧ s3.b = s.b ∧
+    ∃ s3, SStarX K C (e, s) (((s.m ((s.x 8).toNat + 8)).toNat - s.b) / s.w, s3) ∧ s3.b = s.b ∧
       (s3.x 31).toNat = (s.x 8).toNat + 8 * p + 16 - 8 * q ∧ s3.x 8 = s.m (s.x 8).toNat ∧
       (∀ i, i ≠ 31 → i ≠ 8 → i ≠ 5 → i ≠ 14 → i ≠ 15 → s3.x i = s.x i) ∧
       s3.m = Mc s.m (s.x 31).toNat ((s.x 8).toNat + 8 * p + 16) q q := by
@@ -420,9 +415,9 @@ theorem epi_srun {K : LayW} {C e p q} (s : St) (hC : At C e (epi p q))
   have q1 : SR K C 2 (e, s) := by
     intro j hj c hc
     rcases (by omega : j = 0 ∨ j = 1) with rfl | rfl
-    · simp [run] at hc; subst hc; simp only [Safe, a0, e8]; exact ⟨by decide, by decide, by decide, by decide, by omega, wa⟩
+    · simp [run] at hc; subst hc; simp only [SafeX, a0, e8]; exact ⟨by decide, by decide, by decide, by decide, by omega, wa⟩
     · simp [run, step, a0, wr, e8] at hc; subst hc
-      simp [Safe, a1, upd_other _ _ (show (8:Nat) ≠ 14 by decide), e0]; exact wb
+      simp [SafeX, a1, upd_other _ _ (show (8:Nat) ≠ 14 by decide), e0]; exact wb
   have x31 : s'.x 31 = s.x 31 := by simp [s', upd]
   have x8 : s'.x 8 = s.x 8 := by simp [s', upd]
   have hD' : (s'.x 31).toNat + 8 * q ≤ (s'.x 8).toNat + 8 * p + 16 := by rw [x31, x8]; exact hD
@@ -435,13 +430,13 @@ theorem epi_srun {K : LayW} {C e p q} (s : St) (hC : At C e (epi p q))
   have q3 : SR K C 3 (e + 2 + 2 * q, s'') := by
     intro j hj c hc
     rcases (by omega : j = 0 ∨ j = 1 ∨ j = 2) with rfl | rfl | rfl
-    · simp [run] at hc; subst hc; simp only [Safe, c0, y8]
+    · simp [run] at hc; subst hc; simp only [SafeX, c0, y8]
       refine ⟨by decide, by decide, by omega, by omega, by omega, by omega⟩
-    · simp [run, step, c0] at hc; subst hc; simp [Safe, c1]
+    · simp [run, step, c0] at hc; subst hc; simp [SafeX, c1]
       generalize (wr s'' 31 _).x 15 = z
       have := z.toNat_lt; omega
     · simp [run, step, c0, c1] at hc; subst hc
-      simp only [Safe, c2, wr, show (31 : Nat) ≠ 0 by decide, show (8 : Nat) ≠ 0 by decide, if_false,
+      simp only [SafeX, c2, wr, show (31 : Nat) ≠ 0 by decide, show (8 : Nat) ≠ 0 by decide, if_false,
         upd_other _ _ (show (14:Nat) ≠ 8 by decide), upd_other _ _ (show (14:Nat) ≠ 31 by decide), y14]
       obtain ⟨j0, hj0⟩ := hra
       have wk2 : s''.wk = s.wk := (run_star hr').w
@@ -458,7 +453,7 @@ theorem bpush_srun {K : LayW} {C : List J} {pc tgt : Nat} (s : St) (hC : At C pc
     (w0 : wok K (s.x 31).toNat) (w1 : wok K ((s.x 31).toNat + 8)) (w2 : wok K (s.m ((s.x 31).toNat + 8)).toNat)
     (w3 : wok K ((s.m ((s.x 31).toNat + 8)).toNat + 8))
     (w4 : wok K ((s.m ((s.x 31).toNat + 8)).toNat + 16 + 8 * (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat)) :
-    ∃ s', SStar K C (pc, s) (pc + 12, s') ∧
+    ∃ s', SStarX K C (pc, s) (pc + 12, s') ∧
       s'.m = upd (upd s.m ((s.m ((s.x 31).toNat + 8)).toNat + 16 + 8 * (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat)
                   (s.m (s.x 31).toNat))
               (s.m ((s.x 31).toNat + 8)).toNat ((s.m (s.m ((s.x 31).toNat + 8)).toNat) + 1) ∧
@@ -496,27 +491,27 @@ theorem bpush_srun {K : LayW} {C : List J} {pc tgt : Nat} (s : St) (hC : At C pc
     apply UInt64.toNat.inj; simp [ea, UInt64.toNat_add]
   rcases (by omega : j = 0 ∨ j = 1 ∨ j = 2 ∨ j = 3 ∨ j = 4 ∨ j = 5 ∨ j = 6 ∨ j = 7 ∨ j = 8 ∨ j = 9 ∨ j = 10) with
     rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl
-  · simp [run] at hc; subst hc; simp [Safe, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+  · simp [run] at hc; subst hc; simp [SafeX, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
   · simp [run, step, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 2).toNat = pc + 7 by omega] at hc; subst hc
-    simp [Safe, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+    simp [SafeX, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
   · simp [run, step, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 2).toNat = pc + 7 by omega] at hc; subst hc
-    simp [Safe, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+    simp [SafeX, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
   · simp [run, step, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 2).toNat = pc + 7 by omega] at hc; subst hc
-    simp [Safe, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+    simp [SafeX, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
   · simp [run, step, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 2).toNat = pc + 7 by omega] at hc; subst hc
-    simp [Safe, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+    simp [SafeX, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
   · simp [run, step, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 2).toNat = pc + 7 by omega] at hc; subst hc
-    simp [Safe, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+    simp [SafeX, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
   · simp [run, step, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 2).toNat = pc + 7 by omega] at hc; subst hc
-    simp [Safe, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+    simp [SafeX, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
   · simp [run, step, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 2).toNat = pc + 7 by omega] at hc; subst hc
-    simp [Safe, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+    simp [SafeX, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
   · simp [run, step, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 2).toNat = pc + 7 by omega] at hc; subst hc
-    simp [Safe, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+    simp [SafeX, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
   · simp [run, step, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 2).toNat = pc + 7 by omega] at hc; subst hc
-    simp [Safe, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+    simp [SafeX, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
   · simp [run, step, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 2).toNat = pc + 7 by omega] at hc; subst hc
-    simp [Safe, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+    simp [SafeX, h0, h1, h2, h3, h4, h5, h7, h8, h9, h10, h11, wr, e0, e8, eb0, ebuf8, t8, eL, hx0, aluf, ea16, upd_same, upd_upd, upd_ne, hlt'] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
 
 /-! ## BSET -/
 
@@ -528,7 +523,7 @@ theorem bset_srun {K : LayW} {C : List J} {pc : Nat} (s : St) (hC : At C pc bset
     (w3 : wok K (s.m ((s.x 31).toNat + 16)).toNat)
     (w4 : (s.m ((s.x 31).toNat + 8)).toNat < (s.m (s.m ((s.x 31).toNat + 16)).toNat).toNat →
       wok K ((s.m ((s.x 31).toNat + 16)).toNat + 16 + 8 * (s.m ((s.x 31).toNat + 8)).toNat)) :
-    ∃ s', SStar K C (pc, s) (pc + 9, s') ∧
+    ∃ s', SStarX K C (pc, s) (pc + 9, s') ∧
       s'.m = (if (s.m ((s.x 31).toNat + 8)).toNat < (s.m (s.m ((s.x 31).toNat + 16)).toNat).toNat
               then upd s.m ((s.m ((s.x 31).toNat + 16)).toNat + 16 + 8 * (s.m ((s.x 31).toNat + 8)).toNat) (s.m (s.x 31).toNat)
               else s.m) ∧
@@ -565,38 +560,38 @@ theorem bset_srun {K : LayW} {C : List J} {pc : Nat} (s : St) (hC : At C pc bset
     simp only [if_pos hi] at hj
     rcases (by omega : j = 0 ∨ j = 1 ∨ j = 2 ∨ j = 3 ∨ j = 4 ∨ j = 5 ∨ j = 6 ∨ j = 7 ∨ j = 8) with
       rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl
-    · simp [run] at hc; subst hc; simp [Safe, h0, h1, h2, h3, h4, h5, h6, h7, h8, wr, e0, e8, e16, t16, eb0, aluf, ea16, hcc, hi, upd_ne, upd_same] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+    · simp [run] at hc; subst hc; simp [SafeX, h0, h1, h2, h3, h4, h5, h6, h7, h8, wr, e0, e8, e16, t16, eb0, aluf, ea16, hcc, hi, upd_ne, upd_same] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, h6, h7, h8, wr, e0, e8, e16, t16, eb0, aluf, ea16, hcc, hi, upd_ne, upd_same] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, h6, h7, h8, wr, e0, e8, e16, t16, eb0, aluf, ea16, hcc, hi, upd_ne, upd_same] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, h6, h7, h8, wr, e0, e8, e16, t16, eb0, aluf, ea16, hcc, hi, upd_ne, upd_same] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, h6, h7, h8, wr, e0, e8, e16, t16, eb0, aluf, ea16, hcc, hi, upd_ne, upd_same] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, h6, h7, h8, wr, e0, e8, e16, t16, eb0, aluf, ea16, hcc, hi, upd_ne, upd_same] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, h6, h7, h8, wr, e0, e8, e16, t16, eb0, aluf, ea16, hcc, hi, upd_ne, upd_same] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, h6, h7, h8, wr, e0, e8, e16, t16, eb0, aluf, ea16, hcc, hi, upd_ne, upd_same] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, h6, h7, h8, wr, e0, e8, e16, t16, eb0, aluf, ea16, hcc, hi, upd_ne, upd_same] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, h6, h7, h8, wr, e0, e8, e16, t16, eb0, aluf, ea16, hcc, hi, upd_ne, upd_same] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, h6, h7, h8, wr, e0, e8, e16, t16, eb0, aluf, ea16, hcc, hi, upd_ne, upd_same] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, h6, h7, h8, wr, e0, e8, e16, t16, eb0, aluf, ea16, hcc, hi, upd_ne, upd_same] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, h6, h7, h8, wr, e0, e8, e16, t16, eb0, aluf, ea16, hcc, hi, upd_ne, upd_same] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, h6, h7, h8, wr, e0, e8, e16, t16, eb0, aluf, ea16, hcc, hi, upd_ne, upd_same] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, h6, h7, h8, wr, e0, e8, e16, t16, eb0, aluf, ea16, hcc, hi, upd_ne, upd_same] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, h6, h7, h8, wr, e0, e8, e16, t16, eb0, aluf, ea16, hcc, hi, upd_ne, upd_same] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, h6, h7, h8, wr, e0, e8, e16, t16, eb0, aluf, ea16, hcc, hi, upd_ne, upd_same] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, h6, h7, h8, wr, e0, e8, e16, t16, eb0, aluf, ea16, hcc, hi, upd_ne, upd_same] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, h6, h7, h8, wr, e0, e8, e16, t16, eb0, aluf, ea16, hcc, hi, upd_ne, upd_same] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, h6, h7, h8, wr, e0, e8, e16, t16, eb0, aluf, ea16, hcc, hi, upd_ne, upd_same] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, h6, h7, h8, wr, e0, e8, e16, t16, eb0, aluf, ea16, hcc, hi, upd_ne, upd_same] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, h6, h7, h8, wr, e0, e8, e16, t16, eb0, aluf, ea16, hcc, hi, upd_ne, upd_same] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, h6, h7, h8, wr, e0, e8, e16, t16, eb0, aluf, ea16, hcc, hi, upd_ne, upd_same] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, h6, h7, h8, wr, e0, e8, e16, t16, eb0, aluf, ea16, hcc, hi, upd_ne, upd_same] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, h6, h7, h8, wr, e0, e8, e16, t16, eb0, aluf, ea16, hcc, hi, upd_ne, upd_same] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
   · have hcc : (s.m (s.m ((s.x 31).toNat + 16)).toNat).toNat ≤ (s.m ((s.x 31).toNat + 8)).toNat := by omega
     simp only [if_neg hi] at hj
     rcases (by omega : j = 0 ∨ j = 1 ∨ j = 2 ∨ j = 3 ∨ j = 4 ∨ j = 5) with
       rfl | rfl | rfl | rfl | rfl | rfl
-    · simp [run] at hc; subst hc; simp [Safe, h0, h1, h2, h3, h4, h5, wr, e0, e8, e16, t16, eb0, hcc, hi, upd_ne, upd_same] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+    · simp [run] at hc; subst hc; simp [SafeX, h0, h1, h2, h3, h4, h5, wr, e0, e8, e16, t16, eb0, hcc, hi, upd_ne, upd_same] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, wr, e0, e8, e16, t16, eb0, hcc, hi, upd_ne, upd_same] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, wr, e0, e8, e16, t16, eb0, hcc, hi, upd_ne, upd_same] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, wr, e0, e8, e16, t16, eb0, hcc, hi, upd_ne, upd_same] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, wr, e0, e8, e16, t16, eb0, hcc, hi, upd_ne, upd_same] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, wr, e0, e8, e16, t16, eb0, hcc, hi, upd_ne, upd_same] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, wr, e0, e8, e16, t16, eb0, hcc, hi, upd_ne, upd_same] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, wr, e0, e8, e16, t16, eb0, hcc, hi, upd_ne, upd_same] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, wr, e0, e8, e16, t16, eb0, hcc, hi, upd_ne, upd_same] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, wr, e0, e8, e16, t16, eb0, hcc, hi, upd_ne, upd_same] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, wr, e0, e8, e16, t16, eb0, hcc, hi, upd_ne, upd_same] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, wr, e0, e8, e16, t16, eb0, hcc, hi, upd_ne, upd_same] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, wr, e0, e8, e16, t16, eb0, hcc, hi, upd_ne, upd_same] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, wr, e0, e8, e16, t16, eb0, hcc, hi, upd_ne, upd_same] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, wr, e0, e8, e16, t16, eb0, hcc, hi, upd_ne, upd_same] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, wr, e0, e8, e16, t16, eb0, hcc, hi, upd_ne, upd_same] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
 
 /-! ## BGET -/
 
@@ -606,7 +601,7 @@ theorem bget_srun {K : LayW} {C pc} (s : St) (hC : At C pc bgetT) (hx0 : s.x 0 =
     (w0 : wok K (s.x 31).toNat) (w1 : wok K ((s.x 31).toNat + 8)) (w2 : wok K (s.m ((s.x 31).toNat + 8)).toNat)
     (w3 : (s.m (s.x 31).toNat).toNat < (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat →
       wok K ((s.m ((s.x 31).toNat + 8)).toNat + 16 + 8 * (s.m (s.x 31).toNat).toNat)) :
-    ∃ s', SStar K C (pc, s) (pc + 10, s') ∧
+    ∃ s', SStarX K C (pc, s) (pc + 10, s') ∧
       s'.m = upd s.m ((s.x 31).toNat + 8)
         (if (s.m (s.x 31).toNat).toNat < (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat
          then s.m ((s.m ((s.x 31).toNat + 8)).toNat + 16 + 8 * (s.m (s.x 31).toNat).toNat) else 0) ∧
@@ -641,41 +636,41 @@ theorem bget_srun {K : LayW} {C pc} (s : St) (hC : At C pc bgetT) (hx0 : s.x 0 =
         = (s.m ((s.x 31).toNat + 8)).toNat + 16 + 8 * (s.m (s.x 31).toNat).toNat := by
       simp only [ea, sa]; omega
     rcases (by omega : j = 0 ∨ j = 1 ∨ j = 2 ∨ j = 3 ∨ j = 4 ∨ j = 5 ∨ j = 6 ∨ j = 7 ∨ j = 8 ∨ j = 9) with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl
-    · simp [run] at hc; subst hc; simp [Safe, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', s3, ea16] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+    · simp [run] at hc; subst hc; simp [SafeX, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', s3, ea16] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', s3, ea16] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', s3, ea16] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', s3, ea16] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', s3, ea16] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', s3, ea16] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', s3, ea16] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', s3, ea16] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', s3, ea16] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', s3, ea16] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', s3, ea16] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', s3, ea16] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', s3, ea16] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', s3, ea16] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', s3, ea16] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', s3, ea16] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', s3, ea16] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', s3, ea16] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', s3, ea16] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', s3, ea16] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', s3, ea16] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', s3, ea16] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', s3, ea16] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', s3, ea16] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', s3, ea16] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', s3, ea16] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', s3, ea16] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', s3, ea16] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
   · simp only [if_neg hi] at hj
     have hcc : (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat ≤ (s.m (s.x 31).toNat).toNat := by omega
     rcases (by omega : j = 0 ∨ j = 1 ∨ j = 2 ∨ j = 3 ∨ j = 4 ∨ j = 5 ∨ j = 6) with rfl | rfl | rfl | rfl | rfl | rfl | rfl
-    · simp [run] at hc; subst hc; simp [Safe, h0, h1, h2, h3, h4, h5, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 4).toNat = pc + 9 by omega] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+    · simp [run] at hc; subst hc; simp [SafeX, h0, h1, h2, h3, h4, h5, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 4).toNat = pc + 9 by omega] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 4).toNat = pc + 9 by omega] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 4).toNat = pc + 9 by omega] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 4).toNat = pc + 9 by omega] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 4).toNat = pc + 9 by omega] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 4).toNat = pc + 9 by omega] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 4).toNat = pc + 9 by omega] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 4).toNat = pc + 9 by omega] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 4).toNat = pc + 9 by omega] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 4).toNat = pc + 9 by omega] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 4).toNat = pc + 9 by omega] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 4).toNat = pc + 9 by omega] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 4).toNat = pc + 9 by omega] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 4).toNat = pc + 9 by omega] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 4).toNat = pc + 9 by omega] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 4).toNat = pc + 9 by omega] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 4).toNat = pc + 9 by omega] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 4).toNat = pc + 9 by omega] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, h9, wr, e0, e8, e8'', e1, hx0, aluf, upd_same, upd_upd, upd_ne, hi, hcc, t8, t8', show ((pc : Int) + 1 + 1 + 1 + 1 + 1 + 4).toNat = pc + 9 by omega] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
 
 /-! ## RD -/
 
@@ -683,7 +678,7 @@ theorem rd_srun {K : LayW} {C pc} (s : St) (hC : At C pc rdT) (hx0 : s.x 0 = 0) 
     (w0 : wok K (s.x 31).toNat)
     (w1 : (s.m (s.x 31).toNat).toNat < (s.x 29).toNat →
       bok K ((s.x 28).toNat + (s.m (s.x 31).toNat).toNat)) :
-    SStar K C (pc, s) (pc + 6,
+    SStarX K C (pc, s) (pc + 6,
       ⟨upd (upd s.x 6 (s.m (s.x 31).toNat)) 5
           (if (s.m (s.x 31).toNat).toNat < (s.x 29).toNat then lbm s.m ((s.x 28).toNat + (s.m (s.x 31).toNat).toNat) else 0),
        upd s.m (s.x 31).toNat
@@ -702,27 +697,27 @@ theorem rd_srun {K : LayW} {C pc} (s : St) (hC : At C pc rdT) (hx0 : s.x 0 = 0) 
       rw [UInt64.toNat_add]; simp; omega
     have hcc : ¬ (s.x 29).toNat ≤ (s.m (s.x 31).toNat).toNat := by omega
     rcases (by omega : j = 0 ∨ j = 1 ∨ j = 2 ∨ j = 3 ∨ j = 4 ∨ j = 5) with rfl | rfl | rfl | rfl | rfl | rfl
-    · simp [run] at hc; subst hc; simp [Safe, h0, h1, h2, h3, h4, h5, wr, e0, e1, hcc, hs, hi, hx0, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (28:Nat) ≠ 5 by decide), upd_other _ _ (show (28:Nat) ≠ 6 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 6 by decide)] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+    · simp [run] at hc; subst hc; simp [SafeX, h0, h1, h2, h3, h4, h5, wr, e0, e1, hcc, hs, hi, hx0, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (28:Nat) ≠ 5 by decide), upd_other _ _ (show (28:Nat) ≠ 6 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 6 by decide)] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, wr, e0, e1, hcc, hs, hi, hx0, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (28:Nat) ≠ 5 by decide), upd_other _ _ (show (28:Nat) ≠ 6 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 6 by decide)] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, wr, e0, e1, hcc, hs, hi, hx0, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (28:Nat) ≠ 5 by decide), upd_other _ _ (show (28:Nat) ≠ 6 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 6 by decide)] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, wr, e0, e1, hcc, hs, hi, hx0, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (28:Nat) ≠ 5 by decide), upd_other _ _ (show (28:Nat) ≠ 6 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 6 by decide)] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, wr, e0, e1, hcc, hs, hi, hx0, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (28:Nat) ≠ 5 by decide), upd_other _ _ (show (28:Nat) ≠ 6 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 6 by decide)] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, wr, e0, e1, hcc, hs, hi, hx0, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (28:Nat) ≠ 5 by decide), upd_other _ _ (show (28:Nat) ≠ 6 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 6 by decide)] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, wr, e0, e1, hcc, hs, hi, hx0, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (28:Nat) ≠ 5 by decide), upd_other _ _ (show (28:Nat) ≠ 6 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 6 by decide)] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, wr, e0, e1, hcc, hs, hi, hx0, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (28:Nat) ≠ 5 by decide), upd_other _ _ (show (28:Nat) ≠ 6 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 6 by decide)] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, wr, e0, e1, hcc, hs, hi, hx0, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (28:Nat) ≠ 5 by decide), upd_other _ _ (show (28:Nat) ≠ 6 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 6 by decide)] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, wr, e0, e1, hcc, hs, hi, hx0, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (28:Nat) ≠ 5 by decide), upd_other _ _ (show (28:Nat) ≠ 6 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 6 by decide)] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, wr, e0, e1, hcc, hs, hi, hx0, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (28:Nat) ≠ 5 by decide), upd_other _ _ (show (28:Nat) ≠ 6 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 6 by decide)] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, wr, e0, e1, hcc, hs, hi, hx0, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (28:Nat) ≠ 5 by decide), upd_other _ _ (show (28:Nat) ≠ 6 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 6 by decide)] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, wr, e0, e1, hcc, hs, hi, hx0, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (28:Nat) ≠ 5 by decide), upd_other _ _ (show (28:Nat) ≠ 6 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 6 by decide)] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h3, h4, h5, wr, e0, e1, hcc, hs, hi, hx0, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (28:Nat) ≠ 5 by decide), upd_other _ _ (show (28:Nat) ≠ 6 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 6 by decide)] at hc; subst hc
-      simp [Safe, h0, h1, h2, h3, h4, h5, wr, e0, e1, hcc, hs, hi, hx0, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (28:Nat) ≠ 5 by decide), upd_other _ _ (show (28:Nat) ≠ 6 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 6 by decide)] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h3, h4, h5, wr, e0, e1, hcc, hs, hi, hx0, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (28:Nat) ≠ 5 by decide), upd_other _ _ (show (28:Nat) ≠ 6 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (29:Nat) ≠ 6 by decide)] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
   · simp only [if_neg hi] at hj
     have hcc : (s.x 29).toNat ≤ (s.m (s.x 31).toNat).toNat := by omega
     rcases (by omega : j = 0 ∨ j = 1 ∨ j = 2 ∨ j = 3) with rfl | rfl | rfl | rfl
-    · simp [run] at hc; subst hc; simp [Safe, h0, h1, h2, h5, wr, e0, e1, hcc, hi, hx0, ea, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (29:Nat) ≠ 6 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), show ((pc : Int) + 1 + 1 + 3).toNat = pc + 5 by omega] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+    · simp [run] at hc; subst hc; simp [SafeX, h0, h1, h2, h5, wr, e0, e1, hcc, hi, hx0, ea, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (29:Nat) ≠ 6 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), show ((pc : Int) + 1 + 1 + 3).toNat = pc + 5 by omega] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h5, wr, e0, e1, hcc, hi, hx0, ea, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (29:Nat) ≠ 6 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), show ((pc : Int) + 1 + 1 + 3).toNat = pc + 5 by omega] at hc; subst hc
-      simp [Safe, h0, h1, h2, h5, wr, e0, e1, hcc, hi, hx0, ea, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (29:Nat) ≠ 6 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), show ((pc : Int) + 1 + 1 + 3).toNat = pc + 5 by omega] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h5, wr, e0, e1, hcc, hi, hx0, ea, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (29:Nat) ≠ 6 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), show ((pc : Int) + 1 + 1 + 3).toNat = pc + 5 by omega] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h5, wr, e0, e1, hcc, hi, hx0, ea, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (29:Nat) ≠ 6 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), show ((pc : Int) + 1 + 1 + 3).toNat = pc + 5 by omega] at hc; subst hc
-      simp [Safe, h0, h1, h2, h5, wr, e0, e1, hcc, hi, hx0, ea, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (29:Nat) ≠ 6 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), show ((pc : Int) + 1 + 1 + 3).toNat = pc + 5 by omega] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h5, wr, e0, e1, hcc, hi, hx0, ea, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (29:Nat) ≠ 6 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), show ((pc : Int) + 1 + 1 + 3).toNat = pc + 5 by omega] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
     · simp [run, step, h0, h1, h2, h5, wr, e0, e1, hcc, hi, hx0, ea, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (29:Nat) ≠ 6 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), show ((pc : Int) + 1 + 1 + 3).toNat = pc + 5 by omega] at hc; subst hc
-      simp [Safe, h0, h1, h2, h5, wr, e0, e1, hcc, hi, hx0, ea, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (29:Nat) ≠ 6 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), show ((pc : Int) + 1 + 1 + 3).toNat = pc + 5 by omega] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
+      simp [SafeX, h0, h1, h2, h5, wr, e0, e1, hcc, hi, hx0, ea, aluf, upd_same, upd_upd, upd_other _ _ (show (0:Nat) ≠ 6 by decide), upd_other _ _ (show (0:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 5 by decide), upd_other _ _ (show (31:Nat) ≠ 6 by decide), upd_other _ _ (show (29:Nat) ≠ 6 by decide), upd_other _ _ (show (29:Nat) ≠ 5 by decide), upd_other _ _ (show (6:Nat) ≠ 5 by decide), show ((pc : Int) + 1 + 1 + 3).toNat = pc + 5 by omega] <;> first | omega | assumption | exact ⟨by omega, by assumption⟩
 
 /-! ## BNEW -/
 
@@ -730,7 +725,7 @@ theorem bnew_srun {L : LayW} {C : List J} {pc tgt κ : Nat} (s : St) (hC : At C 
     (hκ : κ < 2 ^ 40) (hsp : (s.x 31).toNat < 2 ^ 62)
     (hroom : (s.x 30).toNat + 8 * (κ + 2) + 8 ≤ (s.x 31).toNat)
     (w0 : wok L (s.x 30).toNat) (w1 : wok L ((s.x 30).toNat + 8)) (w2 : wok L ((s.x 31).toNat - 8)) :
-    ∃ s', SStar L C (pc, s) (pc + (bnewT tgt pc κ).length, s') ∧
+    ∃ s', SStarX L C (pc, s) (pc + (bnewT tgt pc κ).length, s') ∧
       (s'.x 31).toNat = (s.x 31).toNat - 8 ∧ (s'.x 30).toNat = (s.x 30).toNat + 8 * (κ + 2) ∧ s'.x 5 = s.x 30 ∧
       s'.m = upd (upd (upd s.m (s.x 30).toNat 0) ((s.x 30).toNat + 8) (UInt64.ofNat κ)) ((s.x 31).toNat - 8) (s.x 30) ∧
       s'.b = s.b ∧ (∀ r, r ≠ 5 → r ≠ 6 → r ≠ 7 → r ≠ 30 → r ≠ 31 → s'.x r = s.x r) := by
@@ -822,18 +817,18 @@ theorem bnew_srun {L : LayW} {C : List J} {pc tgt κ : Nat} (s : St) (hC : At C 
     rw [y30, y31, hsum]; omega
   have r4' : run C 1 (pc + 1 + (liT 6 W).length + 1, s3) = some (pc + 1 + (liT 6 W).length + 3, s3) := by simp [run, r4]
   have r9 := push_run (s := s8) (by simpa [pushA] using p6) (by decide) (by decide) hh8
-  have q1 : SR L C 1 (pc, s) := SR.one (by simp [Safe, h1]; have := (s.x 30).toNat_lt; omega)
+  have q1 : SR L C 1 (pc, s) := SR.one (by simp [SafeX, h1]; have := (s.x 30).toNat_lt; omega)
   have q2 := li_sr (K := L) (d := 6) (v := W) s1 (by decide) (by decide) z1 p2
-  have q3 : SR L C 1 (pc + 1 + (liT 6 W).length, s2) := SR.one (by simp [Safe, h3])
-  have q4 : SR L C 1 (pc + 1 + (liT 6 W).length + 1, s3) := SR.one (by simp [Safe, h4])
+  have q3 : SR L C 1 (pc + 1 + (liT 6 W).length, s2) := SR.one (by simp [SafeX, h3])
+  have q4 : SR L C 1 (pc + 1 + (liT 6 W).length + 1, s3) := SR.one (by simp [SafeX, h4])
   have q5 := li_sr (K := L) (d := 7) (v := K) s3 (by decide) (by decide) z3 p4
   have q6 : SR L C 3 (pc + 1 + (liT 6 W).length + 3 + (liT 7 K).length, s5) := by
     intro j hj c hc
     rcases (by omega : j = 0 ∨ j = 1 ∨ j = 2) with rfl | rfl | rfl
-    · simp [run] at hc; subst hc; simp only [Safe, h6, eT0]; exact ⟨by decide, by decide, by decide, by decide, by omega, w0⟩
-    · simp [run, step, h6, eT0] at hc; subst hc; simp only [Safe, h7, eT8]; exact ⟨by decide, by decide, by decide, by decide, by omega, w1⟩
+    · simp [run] at hc; subst hc; simp only [SafeX, h6, eT0]; exact ⟨by decide, by decide, by decide, by decide, by omega, w0⟩
+    · simp [run, step, h6, eT0] at hc; subst hc; simp only [SafeX, h7, eT8]; exact ⟨by decide, by decide, by decide, by decide, by omega, w1⟩
     · simp [run, step, h6, h7, eT0, eT8] at hc; subst hc
-      simp only [Safe, h8, b6]
+      simp only [SafeX, h8, b6]
       refine ⟨by decide, by decide, by decide, by decide, by omega, ?_⟩
       rw [hsum]; omega
   have q9 := push_sr (K := L) (s := s8) (by simpa [pushA] using p6) (by decide) hh8 (by rw [y31]; exact w2)

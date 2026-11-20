@@ -103,11 +103,4 @@ structure DefXS (KL : LayW) (C : List J) (f p q : Nat) (IG : St → Prop) (hb E0
       vs.length = q ∧ (∀ i, i < q → s'.m ((s.x 31).toNat + 8 * p - 8 * (i + 1)) = vs.getD i 0) ∧ s'.x 8 = s.x 8 ∧
       HRel hb s' H' ∧ HAl H' ∧ ∀ a, (s.x 31).toNat + 8 * p ≤ a → s'.m a = s.m a
 
-/-! ## forgetting safety -/
-
-theorem _root_.SimW.SStarX.star {KL : LayW} {C : List J} {a b : Nat × St} (h : SStarX KL C a b) : Star C a b := by
-  induction h with
-  | refl => exact .refl _
-  | head _ st _ ih => exact (Star.one st).trans ih
-
 end Templates

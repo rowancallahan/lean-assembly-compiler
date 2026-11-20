@@ -179,7 +179,7 @@ theorem fin2_aluS {KL : LayW} {C : List J} {q op : Nat} {Inv : St → Prop} {hb 
   have h31 : hb ≤ (s2.x 31).toNat := by have := hR.2.1; have := hR.2.2.1; omega
   have hr := bin_srun (K := KL) s2 hC hl hop (by simpa using K2.wok h31 (i := 0) (by omega)) (K2.wok h31 (i := 1) (by omega))
   have t8' : (s2.x 31 + 8).toNat = (s2.x 31).toNat + 8 := by rw [UInt64.toNat_add]; simp; omega
-  refine ⟨_, SStarX.of hr, ?_, ?_, ?_, A2, ?_, ?_⟩
+  refine ⟨_, hr, ?_, ?_, ?_, A2, ?_, ?_⟩
   · simp [upd, t8']
   · simp [upd_same]
   · refine HRel_stack hR (by simp [upd_ne]) (by simp [upd, t8']; have := hR.2.2.1; omega) ?_
@@ -205,7 +205,7 @@ theorem fin1_rdS {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {hb E0 :
     · simp only [hi, if_true]; rw [hin _ hi]
     · simp only [hi, if_false]
   rw [ev] at hk
-  refine ⟨_, SStarX.of hk, ?_, ?_, ?_, A1, ?_, ?_⟩
+  refine ⟨_, hk, ?_, ?_, ?_, A1, ?_, ?_⟩
   · simp [upd_ne]
   · simp [upd_same]
   · refine HRel_stack hR (by simp [upd_ne]) (by simp [upd_ne]; exact hR.2.2.1) ?_
@@ -243,7 +243,7 @@ theorem fin1_bsizeS {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {hb E
   have h31 : hb ≤ (s1.x 31).toNat := by have := hR.2.1; have := hR.2.2.1; omega
   have hr := bsize_srun (K := KL) s1 hC (by simpa using K1.wok h31 (i := 0) (by omega)) (hread_wok hR K1 A1 hl)
   have := hread_lt hl
-  refine ⟨_, SStarX.of hr, ?_, ?_, ?_, A1, ?_, ?_⟩
+  refine ⟨_, hr, ?_, ?_, ?_, A1, ?_, ?_⟩
   · simp [upd_ne]
   · simp [hm, upd_same]
   · refine HRel_stack hR (by simp [upd_ne]) (by simp; exact hR.2.2.1) ?_
@@ -303,7 +303,7 @@ theorem fin2_bgetS {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {hb E0
     · simp only [hi, if_false, Option.some.injEq, Prod.mk.injEq] at hF; exact hF.2.symm
   subst hH
   have x31 : (s3.x 31).toNat = (s2.x 31).toNat + 8 := by rw [hx]; simp only [UInt64.toNat_ofNat']; omega
-  refine ⟨s3, SStarX.of hk, x31, hv, ?_, A2, ?_, ?_⟩
+  refine ⟨s3, hk, x31, hv, ?_, A2, ?_, ?_⟩
   · refine HRel_stack hR (hxr 30 (by decide) (by decide) (by decide) (by decide) (by decide)) (by rw [x31]; have := hR.2.2.1; omega) ?_
     intro a h1 h2; rw [hm]; apply upd_other; have := hR.2.2.1; omega
   · intro r h5 h6 h7 h14 h15 h31; exact hxr r h5 h6 h7 h14 h31
@@ -339,7 +339,7 @@ theorem fin2_bpushS {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {hb E
     have hcT : c + 8 ≤ H2.top := by omega
     have hne : buf.toNat ≠ c := by omega
     have e30 := hxr 30 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)
-    refine ⟨s3, SStarX.of hk, x31, ?_, ?_, ?_, ?_, ?_⟩
+    refine ⟨s3, hk, x31, ?_, ?_, ?_, ?_, ?_⟩
     · rw [hm, upd_other _ _ (by omega), upd_other _ _ (by omega), hbuf, hv]
     · refine ⟨hR.1, hR.2.1, (by show H2.top ≤ (s3.x 31).toNat; omega), hR.2.2.2.1, by rw [e30]; exact hR.2.2.2.2.1, ?_⟩
       intro a w h1 h2 hw
@@ -410,7 +410,7 @@ theorem fin3_bsetS {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {hb E0
     subst hH
     have hcT : buf.toNat + 16 + 8 * idx.toNat + 8 ≤ H3.top := by omega
     rw [if_pos hi] at hm
-    refine ⟨s4, SStarX.of hk, x31, ?_, ?_, ?_, ?_, ?_⟩
+    refine ⟨s4, hk, x31, ?_, ?_, ?_, ?_, ?_⟩
     · rw [hm, upd_other _ _ (by omega), hbuf, hv]
     · refine ⟨hR.1, hR.2.1, (by show H3.top ≤ (s4.x 31).toNat; omega), hR.2.2.2.1, by rw [e30]; exact hR.2.2.2.2.1, ?_⟩
       intro a y h1 h2 hy
@@ -433,7 +433,7 @@ theorem fin3_bsetS {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {hb E0
     obtain ⟨hv, hH⟩ := hF
     subst hH
     rw [if_neg hi] at hm
-    refine ⟨s4, SStarX.of hk, x31, ?_, ?_, A3, ?_, ?_⟩
+    refine ⟨s4, hk, x31, ?_, ?_, A3, ?_, ?_⟩
     · rw [hm, hbuf, hv]
     · refine ⟨hR.1, hR.2.1, (by show H3.top ≤ (s4.x 31).toNat; omega), hR.2.2.2.1, by rw [e30]; exact hR.2.2.2.2.1, ?_⟩
       intro a y h1 h2 hy
@@ -469,7 +469,7 @@ theorem bnew_EVHS {KL : LayW} {C : List J} {pc tgt κ p nl hb E0 : Nat} {Inv : S
       have sl : ∀ k, k < nl → (s.x 31).toNat ≤ slotAddr p (s.x 8).toNat k := fun k hk => slotAddr_ge hf1 hf2 hk
       rw [hx30] at hm
       have hne1 : ∀ a, a < (s.x 31).toNat - 8 → a ≠ (s.x 31).toNat - 8 := fun a h => by omega
-      refine ⟨s', env, SStarX.of hk', ?_, hxr 0 (by decide) (by decide) (by decide) (by decide) (by decide) ▸ hx0, x31, ?_,
+      refine ⟨s', env, hk', ?_, hxr 0 (by decide) (by decide) (by decide) (by decide) (by decide) ▸ hx0, x31, ?_,
         hxr 8 (by decide) (by decide) (by decide) (by decide) (by decide), ?_, fun _ _ => rfl, ?_, ?_, ?_⟩
       · apply hI s s' I0 (hxr 8 (by decide) (by decide) (by decide) (by decide) (by decide))
           (hxr 28 (by decide) (by decide) (by decide) (by decide) (by decide))

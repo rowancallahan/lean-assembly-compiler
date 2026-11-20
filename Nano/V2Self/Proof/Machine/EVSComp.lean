@@ -281,7 +281,7 @@ theorem letXS {KL : LayW} {C : List J} {pc lv lb p nl hb E0 k0 w wb : Nat} {Inv 
       (fun j i hj hi => by
         rw [e81]; have := slotAddr_ge (T := (s.x 31).toNat) (k := k0 + j) (by omega) o2 (by omega); omega)
     have L1 : Lay KL hb E0 p s1 := L0.post e81 r1.star.b p1 (by have := R1.1; have := R1.2.1; have := R1.2.2.1; omega)
-    have ss2 : SStarX KL C (pc + lv, s1) (pc + lv + 3 * w, s2) := SStarX.of (popN_srun w (pc + lv) s1 hS (by omega)
+    have ss2 : SStarX KL C (pc + lv, s1) (pc + lv + 3 * w, s2) := (popN_srun w (pc + lv) s1 hS (by omega)
       (fun j hj => by
         have hk : k0 + j < nl := by omega
         obtain ⟨g1, g2, g3, g4⟩ := slotT_wok (k := k0 + j) L1 ⟨by rw [p1, e81]; omega, o2, by rw [e81]; omega⟩
