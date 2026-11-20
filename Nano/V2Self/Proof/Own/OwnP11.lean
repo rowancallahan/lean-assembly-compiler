@@ -59,7 +59,7 @@ theorem o18_len (f v t : Buf) : ∀ (n : Nat) (s : Buf) (q b : UInt64), (o18 n s
     · rfl
 
 theorem o29_len (s f v t : Buf) : (o29 s f v t).1.length = s.length := by
-  unfold o29; dsimp only
+  unfold o29; generalize hN : 16777216 = N; revert N; apply id; intro N hN; dsimp only
   repeat' split
   all_goals simp [o18_len, o17_len, bset]
 
@@ -88,7 +88,7 @@ theorem fin_bin {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : A.ph
   have hdrop : A.es.drop r.vb = acc := by rw [hes, ← hpre]; simp
   apply reach_one hS
   rw [stp_eq, o30_ph2 hS hp]
-  unfold o33
+  unfold o33; generalize hN : 16777216 = N; revert N; apply id; intro N hN
   have r4 := (regs hS).2.2.2.1
   simp only [lit] at r4 ⊢
   simp only [ph2_done_pre hS hB hΦ hc, if_false, f0, hg, r4]

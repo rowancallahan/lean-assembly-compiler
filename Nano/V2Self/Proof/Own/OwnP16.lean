@@ -13,7 +13,7 @@ theorem ph2_pop {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : A.ph
   have g0 := hsm 0 (by omega); simp only [Fr.fld] at g0
   apply reach_one hS
   rw [stp_eq, o30_ph2 hS hp]
-  unfold o33
+  unfold o33; generalize hN : 16777216 = N; revert N; apply id; intro N hN
   have r4 := (regs hS).2.2.2.1
   simp only [lit] at r4 ⊢
   simp only [ph2_done_pre hS hB hΦ hc, if_false, f0, r4]
@@ -46,7 +46,7 @@ theorem ph2_if_cond {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : 
   have hds : dsOf W r = some [0, 0] := by simp [dsOf, hd]
   apply reach_one hS
   rw [stp_eq, o30_ph2 hS hp]
-  unfold o33
+  unfold o33; generalize hN : 16777216 = N; revert N; apply id; intro N hN
   have r4 := (regs hS).2.2.2.1
   have r6 := (regs hS).2.2.2.2.2.1
   simp only [lit] at r4 r6 ⊢
@@ -73,6 +73,7 @@ theorem ph2_if_cond {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : 
       have hS4 := o2_eq hS3 (Φ0 := Φ0) (r := r) hΦ hb30 (k := 5) (by omega) r.vb
       have hS5 := o2_eq hS4 (Φ0 := Φ0) (r := r.set 5 r.vb) rfl (by simpa [hΦ] using hb30) (k := 7) (by omega) A.sn.length
       have hF3 := rf_snap (A := { A with F := F2 }) hF2 hB
+      rw [hN] at hF3
       have hsm5 := small_set hsm (k := 5) (by omega) (show r.vb < 2 ^ 60 by have := hsm 4 (by omega); simpa [Fr.fld] using this)
       have hsm7 := small_set hsm5 (k := 7) (by omega) (show A.sn.length < 2 ^ 60 by omega)
       refine ⟨hS5, hF3, rv_prefix (A := { A with F := F2 }) hV hes, hT, ?_⟩
@@ -142,14 +143,14 @@ theorem ph1_if_then {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : 
   have hns := hB.1
   apply reach_one hS
   rw [stp_eq, o30_ph1 hS hp]
-  unfold o32
+  unfold o32; generalize hN : 16777216 = N; revert N; apply id; intro N hN
   have r7 := (regs hS).2.2.2.2.2.2.1
   have r6 := (regs hS).2.2.2.2.2.1
   simp only [lit] at r7 r6 ⊢
   simp only [nfr_ne hS hB hΦ, Bool.false_eq_true, if_false, f0, f2, f5, r7, r6, hg, hc,
     show (u 4 == u 4) = true from rfl, if_true, show (u 2 < u 2) = False from by rw [u_lt' (by omega) (by omega)]; simp,
     if_false, show (u 2 == u 2) = true from rfl]
-  rcases o15_ok 16777216 A f v r.vc hS hF hV hB (by omega) with ⟨Ft, kt, f', v', htr, ho15, hF1, hV1⟩ | herr
+  rcases o15_ok N A f v r.vc hS hF hV hB (by omega) with ⟨Ft, kt, f', v', htr, ho15, hF1, hV1⟩ | herr
   · rw [ho15]; simp only
     have hdrop : A.es.drop r.vc = et := by rw [hes, ← hpre]; simp
     have htake : A.es.take r.vc = pre := by rw [hes, ← hpre]; simp
@@ -166,6 +167,7 @@ theorem ph1_if_then {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : 
     have hS2 := o2_eq hS1 (Φ0 := Φ0) (r := r) hΦ hb30 (k := 6) (by omega) A.es.length
     have hS3 := o2_eq hS2 (Φ0 := Φ0) (r := r.set 6 A.es.length) rfl (by simpa [hΦ] using hb30) (k := 2) (by omega) 3
     have hF2 := rf_swap (A := { A with F := Ft }) hF1 hB hsn
+    rw [hN] at hF2
     have hsm6 := small_set hsm (k := 6) (by omega) (show A.es.length < 2 ^ 60 by omega)
     have hsm2 := small_set hsm6 (k := 2) (by omega) (show 3 < 2 ^ 60 by omega)
     refine ⟨rs_congr hS3 rfl rfl rfl (by simp [hsn]) rfl, hF2, hV1, hT, ?_⟩
@@ -182,7 +184,7 @@ theorem ph1_if_then {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : 
       · simp at h; subst h; exact hsm2
     · show 2 < 3; omega
   · right
-    revert herr; generalize o15 16777216 s f v (u r.vc) (u A.es.length) = z; obtain ⟨s1, f1, v1⟩ := z; intro herr
+    revert herr; generalize o15 N s f v (u r.vc) (u A.es.length) = z; obtain ⟨s1, f1, v1⟩ := z; intro herr
     simp only at herr ⊢
     exact o2_err (o2_err (err_bset (by decide) herr) (by omega) (by omega) _) (by omega) (by omega) _
 

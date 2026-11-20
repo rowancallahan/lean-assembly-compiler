@@ -7,7 +7,7 @@ theorem err_set1' {s : Buf} (h : bget s 1 = 1) : bget (bset s 1 1) 1 = 1 := by
   simp only [bget, bset] at h ⊢; rw [show (1 : UInt64).toNat = 1 from rfl] at h ⊢; rw [getD_set]; split <;> simp_all
 
 theorem o28_err {s v : Buf} {a m b : UInt64} (h : bget s 1 = 1) : bget (o28 s v a m b).1 1 = 1 := by
-  unfold o28
+  unfold o28; generalize hN : 16777216 = N; revert N; apply id; intro N hN
   split
   · exact h
   · split
@@ -31,14 +31,14 @@ theorem ph1_if_else {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : 
   have hns := hB.1
   apply reach_one hS
   rw [stp_eq, o30_ph1 hS hp]
-  unfold o32
+  unfold o32; generalize hN : 16777216 = N; revert N; apply id; intro N hN
   have r7 := (regs hS).2.2.2.2.2.2.1
   have r6 := (regs hS).2.2.2.2.2.1
   simp only [lit] at r7 r6 ⊢
   simp only [nfr_ne hS hB hΦ, Bool.false_eq_true, if_false, f0, f2, f5, r7, r6, hg, hc,
     show (u 4 == u 4) = true from rfl, if_true, show (u 3 < u 2) = False from by rw [u_lt' (by omega) (by omega)]; simp,
     if_false, show (u 3 == u 2) = false from rfl]
-  rcases o15_ok 16777216 A f v r.vc hS hF hV hB (by omega) with ⟨Fe, ke, f', v', htr, ho15, hF1, hV1⟩ | herr
+  rcases o15_ok N A f v r.vc hS hF hV hB (by omega) with ⟨Fe, ke, f', v', htr, ho15, hF1, hV1⟩ | herr
   · rw [ho15]; simp only [f4, f6, f7, hb]
     have hdrop : A.es.drop r.vc = ee := by rw [hes, ← hvc, ← List.length_append, List.drop_left]
     have htake : A.es.take r.vc = pre ++ kt := by rw [hes, ← hvc, ← List.length_append, List.take_left]
@@ -66,6 +66,7 @@ theorem ph1_if_else {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : 
         (by simp [regL]) rfl
       have hS4 := o2_eq hS3 (Φ0 := Φ0) (r := r) hΦ hB.2.2.2.2.2.1 (k := 2) (by omega) 4
       have hF2 := rf_or (A := { A with F := Fe }) hF1 hB hsn
+      rw [hN] at hF2
       have hsm2 := small_set hsm (k := 2) (by omega) (show 4 < 2 ^ 60 by omega)
       refine ⟨hS4, hF2, hV2, hT, ?_⟩
       refine bnd_gen hB2 rfl ?_ hB2.2.2.2.2.2.2.1 hB2.2.2.2.2.2.2.2.1 hB2.2.2.2.2.2.2.2.2.1 ?_ (show 2 < 3 by omega)
@@ -75,7 +76,7 @@ theorem ph1_if_else {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : 
         · simp at h; subst h; exact hsm2
     · right; exact o2_err (err_bset (by decide) herr) (by omega) (by omega) _
   · right
-    revert herr; generalize o15 16777216 s f v (u r.vc) (u A.es.length) = z; obtain ⟨s1, f1, v1⟩ := z; intro herr
+    revert herr; generalize o15 N s f v (u r.vc) (u A.es.length) = z; obtain ⟨s1, f1, v1⟩ := z; intro herr
     simp only at herr ⊢
     exact o2_err (err_bset (by decide) (o28_err (err_bset (by decide) herr))) (by omega) (by omega) _
 
