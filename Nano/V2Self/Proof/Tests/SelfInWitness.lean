@@ -128,4 +128,86 @@ theorem g232 (ms : List Fn) (G181 G231 : Fn) (u : UInt64) (h181 : ms[181]? = som
 theorem X232 : F [] 232 PC.d232 [.b []] = .ok [.b []] :=
   g232 _ _ _ _ (cal 181 232 PC.d181 rfl) (cal 231 232 PC.d231 rfl) X181 (X231 _)
 
+/-! ### the parser on no tokens -/
+theorem X16 : F [] 16 PC.d16 [] = .ok [.w C.d1] :=
+  exact (ok_16 [] _ (by decide) (good 16 (by decide))) (quiet [] 16 (by decide) (by decide) _)
+theorem X26 : F [] 26 PC.d26 [] = .ok [.w C.d11] :=
+  exact (ok_26 [] _ (by decide) (good 26 (by decide))) (quiet [] 26 (by decide) (by decide) _)
+theorem X56 (h : List UInt64) (c a b : UInt64) : F [] 56 PC.d56 [.b h, .w c, .w a, .w b] = .ok [.b (C.v1 h c a b)] :=
+  exact (ok_56 [] _ (by decide) (good 56 (by decide)) h c a b) (quiet [] 56 (by decide) (by decide) _)
+theorem X95 (h : List UInt64) (a b : UInt64) : F [] 95 PC.d95 [.b h, .w a, .w b] = .ok [.b (C.v127 h a b)] :=
+  exact (ok_95 [] _ (by decide) (good 95 (by decide)) h a b) (quiet [] 95 (by decide) (by decide) _)
+
+/-- a plain def's meaning from its body's value -/
+theorem defMean_plain_ok {ms : List Fn} {d : DefA} {e : Nd} {ps v : List W} (hb : d.body = e) (hlen : ps.length = d.npw)
+    (hk : d.npw ≤ d.nslots) (hv : v.length = d.nres)
+    (hr : ev ⟨[], κC, ms⟩ e (ps ++ List.replicate (d.nslots - d.npw) (.w 0)) = .ok (.inl v)) : defMean [] κC ms d ps = .ok v := by
+  unfold defMean
+  rw [if_pos ⟨hlen, hk⟩, hb]
+  simp only [hr, NanoMain.val, bind, Except.bind, pure, Except.pure, hv, if_true]
+
+/-- an `==` test that fails / succeeds: step into the branch without looking at the other one -/
+theorem ev_ite_ne {cx : Ctx} {a b t e : Nd} {env : List W} {x y : UInt64} (ha : ev cx a env = .ok (.inl [.w x]))
+    (hb : ev cx b env = .ok (.inl [.w y])) (hxy : x ≠ y) : ev cx (.ite 1 a b t e) env = ev cx e env := by
+  simp [ev, ha, hb, hxy, NanoMain.val, bind, Except.bind]
+theorem ev_ite_eq {cx : Ctx} {a b t e : Nd} {env : List W} {x y : UInt64} (ha : ev cx a env = .ok (.inl [.w x]))
+    (hb : ev cx b env = .ok (.inl [.w y])) (hxy : x = y) : ev cx (.ite 1 a b t e) env = ev cx t env := by
+  simp [ev, ha, hb, hxy, NanoMain.val, bind, Except.bind]
+theorem ev_const (cx : Ctx) (c : UInt64) (env : List W) : ev cx (.const c) env = .ok (.inl [.w c]) := by simp [ev]
+
+/-- the dispatcher at task 60 calls `v127` (id 95) -/
+theorem g117 (ms : List Fn) (G95 : Fn) (V : List UInt64 → UInt64 → UInt64 → List UInt64) (h95 : ms[95]? = some G95)
+    (e95 : ∀ h a b, G95 [.b h, .w a, .w b] = .ok [.b (V h a b)]) (h : List UInt64) (a b : UInt64) :
+    defMean [] κC ms PC.d117 [.b h, .w 60, .w a, .w b] = .ok [.b (V h a b)] := by
+  have hc : ev ⟨[], κC, ms⟩ (.loc 1 1) [.b h, .w 60, .w a, .w b] = .ok (.inl [.w 60]) := by simp [ev]
+  refine defMean_plain_ok (e := PC.b117) rfl rfl (by decide) rfl ?_
+  show ev _ PC.b117 [.b h, .w 60, .w a, .w b] = _
+  unfold PC.b117
+  repeat rw [ev_ite_ne hc (ev_const _ _ _) (by decide)]
+  rw [ev_ite_eq hc (ev_const _ _ _) rfl]
+  simp [ev, evL, NanoMain.val, h95, e95, bind, Except.bind, pure, Except.pure]
+
+/-- the task loop: one task (60) is pending; after it the status is not 1, so the loop returns -/
+theorem g118 (ms : List Fn) (G16 G117 : Fn) (V : List UInt64 → UInt64 → UInt64 → List UInt64) (h16 : ms[16]? = some G16)
+    (h117 : ms[117]? = some G117) (e16 : G16 [] = .ok [.w 64])
+    (e117 : ∀ h a b, G117 [.b h, .w 60, .w a, .w b] = .ok [.b (V h a b)]) (h : List UInt64)
+    (h0 : h[0]?.getD 0 = 1) (h5 : h[5]?.getD 0 = 1) (h64 : h[64]?.getD 0 = 60) (h65 : h[65]?.getD 0 = 0)
+    (h66 : h[66]?.getD 0 = 0) (hR : (V (h.set 5 0) 0 0)[0]?.getD 0 ≠ 1) :
+    defMean [] κC ms PC.d118 [.w 16777216, .b h] = .ok [.b (V (h.set 5 0) 0 0)] := by
+  refine defMean_loop_ok (z := PC.z118) (s := PC.s118) rfl rfl (by decide) rfl ?_
+  show loopRun _ _ 16777216 _ = _
+  rw [loopRun_big]
+  simp [loopRun_big2, PC.z118, PC.s118, PC.d118, ev, evL, NanoMain.val, prim, binop, setSlots, h16, h117, e16, e117, h0, h5, h64,
+    h65, h66, hR, bind, Except.bind, pure, Except.pure]
+
+/-- `v99` on no tokens: whatever task 60 answers, no def was parsed (cell 12 is 0), so the result is empty -/
+theorem g120 (ms : List Fn) (G26 G31 G38 G56 G118 : Fn) (V1 : List UInt64 → UInt64 → UInt64 → UInt64 → List UInt64)
+    (Z R : List UInt64) (hZ : Z.length = 184384)
+    (h26 : ms[26]? = some G26) (h31 : ms[31]? = some G31) (h38 : ms[38]? = some G38) (h56 : ms[56]? = some G56)
+    (h118 : ms[118]? = some G118) (e26 : G26 [] = .ok [.w 184384]) (e31 : G31 [.b []] = .ok [.b Z])
+    (e38 : G38 [.w 16777216, .b [], .w 0, .b Z] = .ok [.b Z])
+    (e56 : ∀ h c a b, G56 [.b h, .w c, .w a, .w b] = .ok [.b (V1 h c a b)])
+    (e118 : G118 [.w 16777216, .b (V1 ((Z.set 7 0).set 0 1 ++ [0, 2]) 60 0 0)] = .ok [.b R])
+    (hR12 : R[12]?.getD 0 = 0) : defMean [] κC ms PC.d120 [.b [], .w 1] = .ok [.b []] := by
+  refine defMean_plain_ok (e := PC.b120) rfl rfl (by decide) rfl ?_
+  simp [PC.b120, PC.d120, ev, evL, NanoMain.val, prim, binop, push, setSlots, κC, h26, h31, h38, h56, h118, e26, e31, e38, e56,
+    e118, hR12, hZ, bind, Except.bind, pure, Except.pure]
+
+/-! Lean facts about the heap the task loop starts from -/
+theorem bget_eq (h : List UInt64) (i : UInt64) : bget h i = h[i.toNat]?.getD 0 := by simp [bget]
+
+/-- the heap after `v99`'s set-up, before the first task is pushed -/
+def HA : List UInt64 := (H0.set 7 0).set 0 1 ++ [0, 2]
+theorem HA_len : HA.length = 184386 := by simp [HA, H0_len]
+theorem HA_0 : HA[0]?.getD 0 = 1 := by
+  simp [HA, List.getElem?_append, H0_len, List.getElem?_set]
+theorem HA_z (i : Nat) (h1 : 0 < i) (h2 : i < 184384) : HA[i]?.getD 0 = 0 := by
+  have := H0_get i
+  simp only [HA, List.getElem?_append, List.length_set, H0_len, h2, if_true, List.getElem?_set]
+  split
+  · omega
+  · split
+    · split <;> rfl
+    · exact this
+
 end Cert.CapFree
