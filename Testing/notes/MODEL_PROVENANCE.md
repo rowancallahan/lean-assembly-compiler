@@ -6,10 +6,10 @@ toolchain changes.
 
 | model | repo @ commit | release? | Lean / lean-sail | patches | used by |
 |---|---|---|---|---|---|
-| Sail RISC-V (trusted) | `opencompl/sail-riscv-lean` @ `51c635c` | no (nightly bot output) | 4.29.0 / lean-sail `v5` = `0794631` | none | RISC-V theorems (`nano-v2-src`, `main`) |
+| Sail RISC-V (old, Lean 4.29) | `opencompl/sail-riscv-lean` @ `51c635c` | no (nightly bot output) | 4.29.0 / lean-sail `v5` = `0794631` | none | RISC-V theorems before release-434 (Lean 4.29 branches) |
 | Sail ARM | `rems-project/sail-arm` @ `5416ef6`, generator `rems-project/sail` @ `ef5dca5` | no | 4.34.1 / lean-sail `v10` = `e4745c8` | 1 generator patch + 1 generator flag; ARM sources unmodified | `Arm/proofs`, `Arm/apc` bridges |
 | DeepMind arm64 | `google-deepmind/code-verification` @ `b0f729a` | no | ours: 4.34.1 (theirs: 4.34.0) / no lean-sail | none | `Arm/apc` (`Apc`, `Blocks`: `C_correct_armDM`) |
-| RISC-V regenerated (§4) | `riscv/sail-riscv` @ `b7d1357`, generator Sail @ `97aa617` (no patches); repo branch `deps-rv-regen434` @ `4cf120c8` | no | 4.34.1 / lean-sail `v10` = `e4745c8` | none (banner comment only) | RISC-V theorems on `release-434` |
+| RISC-V regenerated (§4), used by `main` | `riscv/sail-riscv` @ `b7d1357`, generator Sail @ `97aa617` (no patches); repo branch `deps-rv-regen434` @ `4cf120c8` | no | 4.34.1 / lean-sail `v10` = `e4745c8` | none (banner comment only) | RISC-V theorems on `release-434` |
 
 ## Content hashes (one command for every model)
 
@@ -197,7 +197,7 @@ Single-file hashes, such as the partitioned definition dump `76a23330…` (ARM_F
 
 ## 4. Regenerated RISC-V model for Lean 4.34 (used by `release-434`)
 
-The release builds every RISC-V theorem against this model instead of §1's. **It is not the trusted §1 model.**
+The release builds every RISC-V theorem against this model instead of §1's. Since release-434 was merged (main a3f41e1f and later) this regenerated model IS the RISC-V model `main` uses; §1's 51c635c is the old Lean 4.29 one and does not build on 4.34.
 The full record is `Testing/riscv/gen/PROVENANCE.md` (branch `rv-regen-434`, merged into `release-434`). Summary:
 
 * **Generator:** `rems-project/sail` branch `sail2` @ `97aa617dcd4d01575f773cb58ea1e8686858c8c2` (2026-11-17).
