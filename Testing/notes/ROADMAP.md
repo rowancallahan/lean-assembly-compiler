@@ -538,5 +538,5 @@ ARM proof and the larger code work.
 - LATER (fuzz finding, 2026-11-20): each fresh list reserves a fixed 4 MiB (2^19 x 8 B) of work memory that is never
   reused, so ~20 fresh lists exhaust 80 MiB. Correct (OOM is reported, never a wrong answer) but wasteful. Fix together
   with the capacity work: growable lists or reuse.
-- ARM MEMORY (owner, 2026-11-20): target a 1 GiB ARM work window (e.g. [2^30, 2^31)) if it is a one-point parameter; 256 MB acceptable otherwise; expand later if
+- ARM MEMORY (owner, 2026-11-20): ARM RAM window = 1 GiB at [2^31, 3*2^30) (E, 9ddb1d4); meets the existing 2^31 bound, so no window proof change; avoids GIC/UART device pages; expand later if
   easy. The shims give 1 GiB of work memory (unproven glue); the ARM theorem will cover runs whose work fits the window.
