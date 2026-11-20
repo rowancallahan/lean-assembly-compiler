@@ -845,4 +845,66 @@ theorem blk_sd (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : Nat
         (by rw [hb]; rfl) (fun i h1 h2 => by rcases (by omega : i = 2 ∨ i = 3) with rfl | rfl <;> rw [hb] <;> rfl)
       exact ⟨s2, Runs.trans rr1 rr2, M2⟩
 
+/-- `sb r2, off(r1)` to the byte `ea` (sok): [`movz x17, #0`] `strb` (direct or via x16), then PADs -/
+theorem blk_sb (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : Nat} {st : CallProbe.St}
+    {r1 r2 : Nat} {off : Int}
+    (hM : Mid K C s0 (pc, st) 0 s) (hC : C[pc]? = some (.sb r2 r1 off)) (hB : K.base + 16 * C.length ≤ 2 ^ 32)
+    (hpcl : pc < C.length) (hL : JTarget.LayOK M (16 * C.length) K) (hR : M.ramEnd ≤ 2 ^ 32)
+    (hr1 : mapped r1 = true) (r10 : r1 ≠ 0) (hr2 : mapped r2 = true) (hf1 : -2048 ≤ off) (hf2 : off < 2048)
+    (h0 : 0 ≤ ((st.x r1).toNat : Int) + off) (hwk : sok K (CallProbe.ea (st.x r1) off)) :
+    ∃ s', Runs M s s' ∧
+      Mid K C s0 (pc + 1, { st with m := CallProbe.sbm st.m (CallProbe.ea (st.x r1) off) (st.x r2) }) 0 s' := by
+  have hsl := armReg_lt hr1 r10
+  have wl := hL.wlo; have wh := hL.whi; have ol := hL.obl; have oh := hL.obh
+  have hwk' := hwk
+  unfold sok wok outB at hwk'
+  have st_at : ∀ k (s1 : M.State) (n f : Nat), Mid K C s0 (pc, st) k s1 → k < 4 → n < 31 → f < 4096 →
+      ((M.observe s1).register n).toNat + f = CallProbe.ea (st.x r1) off →
+      (M.observe s1).register (opR r2) = st.x r2 →
+      (blockJ (.sb r2 r1 off)).getD k 0 = strb (opR r2) n f →
+      (∀ i, k + 1 ≤ i → i < 4 → (blockJ (.sb r2 r1 off)).getD i 0 = PAD) →
+      ∃ s', Runs M s1 s' ∧
+        Mid K C s0 (pc + 1, { st with m := CallProbe.sbm st.m (CallProbe.ea (st.x r1) off) (st.x r2) }) 0 s' := by
+    intro k s1 n f M1 hk hn hf hea hv e1 e2
+    have w := word_pc M1 hC hB hpcl hk e1
+    have g := S.strb s1 _ n f M1.cfg (opR_lt hr2) hn hf (by omega) (by omega) (by omega) w
+    rw [hea, hv] at g
+    obtain ⟨s2, r2', M2⟩ := mid_store1 M1 hL hR hpcl hk hwk g
+    obtain ⟨s3, r3, M3⟩ := run_pads S hC hB hpcl (4 - (k + 1)) (k + 1) s2 (by omega) M2 e2
+    exact ⟨s3, Runs.trans r2' r3, M3⟩
+  have xr := hM.x r1 (by omega) (mapped_lt hr1)
+  by_cases e : r2 = 0
+  · subst e
+    have w0 := word_pc hM hC hB hpcl (by decide) (w := movz 17 0) (by
+      simp only [blockJ, body, zpre, if_true, pad4]; split <;> rfl)
+    obtain ⟨s1, rr1, M1, o1⟩ := mid_scr hM (Or.inr rfl) (S.movz s 17 0 hM.cfg (by decide) (by decide) w0)
+    have z1 : (M.observe s1).register 17 = 0 := by rw [o1]; simp [setReg]
+    by_cases d : 0 ≤ off ∧ off < 4096
+    · have hb : blockJ (.sb 0 r1 off) = [movz 17 0, strb 17 (armReg r1) off.toNat, PAD, PAD] := by
+        simp [blockJ, body, pad4, zpre, d, opR]
+      obtain ⟨s2, rr2, M2⟩ := st_at 1 s1 (armReg r1) off.toNat M1 (by decide) hsl (by omega)
+        (by rw [M1.x r1 (by omega) (mapped_lt hr1)]; simp [CallProbe.ea]; omega) (opR_val M1 hr2 (fun _ => z1))
+        (by rw [hb]; rfl) (fun i h1 h2 => by rcases (by omega : i = 2 ∨ i = 3) with rfl | rfl <;> rw [hb] <;> rfl)
+      exact ⟨s2, Runs.trans rr1 rr2, M2⟩
+    · have hb : blockJ (.sb 0 r1 off) = [movz 17 0, addr16 r1 off, strb 17 16 0, PAD] := by
+        simp [blockJ, body, pad4, zpre, d, opR]
+      obtain ⟨s2, rr2, M2, x16, x17⟩ := addr_x16 S M1 hC hB hpcl (by decide) hr1 r10 hf1 hf2 (by rw [hb]; rfl) h0
+      obtain ⟨s3, rr3, M3⟩ := st_at 2 s2 16 0 M2 (by decide) (by decide) (by decide)
+        (by rw [x16, toNat_ofNat_lt (by omega), Nat.add_zero]) (opR_val M2 hr2 (fun _ => by rw [x17, z1]))
+        (by rw [hb]; rfl) (fun i h1 h2 => by rw [show i = 3 by omega, hb]; rfl)
+      exact ⟨s3, Runs.trans rr1 (Runs.trans rr2 rr3), M3⟩
+  · by_cases d : 0 ≤ off ∧ off < 4096
+    · have hb : blockJ (.sb r2 r1 off) = [strb (opR r2) (armReg r1) off.toNat, PAD, PAD, PAD] := by
+        simp [blockJ, body, pad4, zpre, d, e]
+      exact st_at 0 s (armReg r1) off.toNat hM (by decide) hsl (by omega)
+        (by rw [xr]; simp [CallProbe.ea]; omega) (opR_val hM hr2 (fun h => absurd h e))
+        (by rw [hb]; rfl) (fun i h1 h2 => by rcases (by omega : i = 1 ∨ i = 2 ∨ i = 3) with rfl | rfl | rfl <;> rw [hb] <;> rfl)
+    · have hb : blockJ (.sb r2 r1 off) = [addr16 r1 off, strb (opR r2) 16 0, PAD, PAD] := by
+        simp [blockJ, body, pad4, zpre, d, e]
+      obtain ⟨s1, rr1, M1, x16, -⟩ := addr_x16 S hM hC hB hpcl (by decide) hr1 r10 hf1 hf2 (by rw [hb]; rfl) h0
+      obtain ⟨s2, rr2, M2⟩ := st_at 1 s1 16 0 M1 (by decide) (by decide) (by decide)
+        (by rw [x16, toNat_ofNat_lt (by omega), Nat.add_zero]) (opR_val M1 hr2 (fun h => absurd h e))
+        (by rw [hb]; rfl) (fun i h1 h2 => by rcases (by omega : i = 2 ∨ i = 3) with rfl | rfl <;> rw [hb] <;> rfl)
+      exact ⟨s2, Runs.trans rr1 rr2, M2⟩
+
 end JT
