@@ -468,4 +468,90 @@ theorem blk_addi (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : N
         (fun i h1 h2 => by rcases (by omega : i = 1 ∨ i = 2 ∨ i = 3) with rfl | rfl | rfl <;> rw [hb] <;> rfl)
       exact ⟨s2, Runs.trans r1 r2, M2⟩
 
+theorem aluV_eq (op : Nat) (a b z : UInt64) (h : op ≠ 3 ∨ z = 0) : aluV op a b z = CallProbe.aluf op a b := by
+  unfold aluV CallProbe.aluf
+  by_cases h3 : op = 3
+  · subst h3; simp at h; simp [h]
+  · simp [h3]
+
+/-- `alu op rd a b` (rd ≠ x0): [`movz x17, #0`] `add/sub/madd/and/orr/lslv/lsrv/eor` -/
+theorem blk_alu (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : Nat} {st : CallProbe.St}
+    {op rd a b : Nat}
+    (hM : Mid K C s0 (pc, st) 0 s) (hC : C[pc]? = some (.alu op rd a b)) (hB : K.base + 16 * C.length ≤ 2 ^ 32)
+    (hpcl : pc < C.length) (h1 : 1 ≤ op) (h8 : op ≤ 8) (hrd : mapped rd = true) (hd : rd ≠ 0) (ha : mapped a = true)
+    (hb : mapped b = true) :
+    ∃ s', Runs M s s' ∧ Mid K C s0 (pc + 1, CallProbe.wr st rd (CallProbe.aluf op (st.x a) (st.x b))) 0 s' := by
+  have hdl := armReg_lt hrd hd
+  by_cases hz : a = 0 ∨ b = 0 ∨ op = 3
+  · have hbk : blockJ (.alu op rd a b) = [movz 17 0, rr (aluC op) (armReg rd) (opR a) (opR b), PAD, PAD] := by
+      simp [blockJ, body, pad4, hd, hz, zpre]
+    have w0 := word_pc hM hC hB hpcl (by decide) (w := movz 17 0) (by rw [hbk]; rfl)
+    obtain ⟨s1, r1, M1, o1⟩ := mid_scr hM (Or.inr rfl) (S.movz s 17 0 hM.cfg (by decide) (by decide) w0)
+    have r17 : (M.observe s1).register 17 = 0 := by rw [o1]; simp [setReg]
+    have w1 := word_pc M1 hC hB hpcl (by decide) (w := rr (aluC op) (armReg rd) (opR a) (opR b)) (by rw [hbk]; rfl)
+    have g := S.alu s1 op _ _ _ M1.cfg h1 h8 hdl (opR_lt ha) (opR_lt hb) w1
+    rw [opR_val M1 ha (fun _ => r17), opR_val M1 hb (fun _ => r17), r17, aluV_eq _ _ _ _ (Or.inr rfl)] at g
+    obtain ⟨s2, r2, M2⟩ := mid_set M1 hrd hd g
+    obtain ⟨s3, r3, M3⟩ := run_pads S hC hB hpcl 2 2 s2 (by decide) M2
+      (fun i h1 h2 => by rcases (by omega : i = 2 ∨ i = 3) with rfl | rfl <;> rw [hbk] <;> rfl)
+    exact ⟨s3, Runs.trans r1 (Runs.trans r2 r3), M3⟩
+  · have a0 : a ≠ 0 := fun e => hz (Or.inl e)
+    have b0 : b ≠ 0 := fun e => hz (Or.inr (Or.inl e))
+    have o3 : op ≠ 3 := fun e => hz (Or.inr (Or.inr e))
+    have hbk : blockJ (.alu op rd a b) = [rr (aluC op) (armReg rd) (opR a) (opR b), PAD, PAD, PAD] := by
+      simp [blockJ, body, pad4, hd, hz, zpre]
+    have w0 := word_pc hM hC hB hpcl (by decide) (w := rr (aluC op) (armReg rd) (opR a) (opR b)) (by rw [hbk]; rfl)
+    have g := S.alu s op _ _ _ hM.cfg h1 h8 hdl (opR_lt ha) (opR_lt hb) w0
+    rw [opR_val hM ha (fun e => absurd e a0), opR_val hM hb (fun e => absurd e b0), aluV_eq _ _ _ _ (Or.inl o3)] at g
+    obtain ⟨s1, r1, M1⟩ := mid_set hM hrd hd g
+    obtain ⟨s2, r2, M2⟩ := run_pads S hC hB hpcl 3 1 s1 (by decide) M1
+      (fun i h1 h2 => by rcases (by omega : i = 1 ∨ i = 2 ∨ i = 3) with rfl | rfl | rfl <;> rw [hbk] <;> rfl)
+    exact ⟨s2, Runs.trans r1 r2, M2⟩
+
+/-- a shift by `sh` (`slli` op 6, `srli` op 7): [`movz x17, #0`] `movz x16, #sh; lslv/lsrv d, s, x16`; PADs for x0 -/
+theorem blk_shift (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : Nat} {st : CallProbe.St}
+    {rd rs sh op : Nat} {j : J}
+    (hM : Mid K C s0 (pc, st) 0 s) (hC : C[pc]? = some j) (hB : K.base + 16 * C.length ≤ 2 ^ 32)
+    (hpcl : pc < C.length) (hop : op = 6 ∨ op = 7)
+    (hbody : body j = if rd = 0 then [] else zpre rs ++ [movz 16 sh, rr (aluC op) (armReg rd) (opR rs) 16])
+    (hrd : mapped rd = true) (hrs : mapped rs = true) (hsh : sh < 64) :
+    ∃ s', Runs M s s' ∧ Mid K C s0 (pc + 1, CallProbe.wr st rd (aluV op (st.x rs) (UInt64.ofNat sh) 0)) 0 s' := by
+  by_cases hd : rd = 0
+  · subst hd; rw [wr_zero]
+    have hb : blockJ j = [PAD, PAD, PAD, PAD] := by simp [blockJ, hbody, pad4]
+    exact run_pads S hC hB hpcl 4 0 s (by decide) hM (fun i _ h2 => by
+      rcases (by omega : i = 0 ∨ i = 1 ∨ i = 2 ∨ i = 3) with rfl | rfl | rfl | rfl <;> rw [hb] <;> rfl)
+  have hdl := armReg_lt hrd hd
+  have hv : ∀ z : UInt64, aluV op (st.x rs) (UInt64.ofNat sh) z = aluV op (st.x rs) (UInt64.ofNat sh) 0 := by
+    intro z; unfold aluV; rcases hop with rfl | rfl <;> simp
+  -- the shift itself, from word k (x16 := sh first)
+  have tail : ∀ k (s1 : M.State), k ≤ 1 → Mid K C s0 (pc, st) k s1 →
+      (blockJ j).getD k 0 = movz 16 sh → (blockJ j).getD (k + 1) 0 = rr (aluC op) (armReg rd) (opR rs) 16 →
+      (∀ i, k + 2 ≤ i → i < 4 → (blockJ j).getD i 0 = PAD) →
+      (rs = 0 → (M.observe s1).register 17 = 0) →
+      ∃ s', Runs M s1 s' ∧ Mid K C s0 (pc + 1, CallProbe.wr st rd (aluV op (st.x rs) (UInt64.ofNat sh) 0)) 0 s' := by
+    intro k s1 hk M1 e1 e2 e3 z17
+    have w1 := word_pc M1 hC hB hpcl (by omega) e1
+    obtain ⟨s2, r2, M2, o2⟩ := mid_scr M1 (Or.inl rfl) (S.movz s1 16 sh M1.cfg (by decide) (by omega) w1)
+    have w2 := word_pc M2 hC hB hpcl (by omega) e2
+    have g := S.alu s2 op _ _ _ M2.cfg (by omega) (by omega) hdl (opR_lt hrs) (by decide) w2
+    have r16 : (M.observe s2).register 16 = UInt64.ofNat sh := by rw [o2]; simp [setReg]
+    have z2 : rs = 0 → (M.observe s2).register 17 = 0 := fun e => by rw [o2]; simp [setReg]; exact z17 e
+    rw [opR_val M2 hrs z2, r16, hv] at g
+    obtain ⟨s3, r3, M3⟩ := mid_set M2 hrd hd g
+    obtain ⟨s4, r4, M4⟩ := run_pads S hC hB hpcl (4 - (k + 2)) (k + 2) s3 (by omega) M3 e3
+    exact ⟨s4, Runs.trans r2 (Runs.trans r3 r4), M4⟩
+  by_cases hs : rs = 0
+  · have hb : blockJ j = [movz 17 0, movz 16 sh, rr (aluC op) (armReg rd) (opR rs) 16, PAD] := by
+      simp [blockJ, hbody, pad4, hd, hs, zpre]
+    have w0 := word_pc hM hC hB hpcl (by decide) (w := movz 17 0) (by rw [hb]; rfl)
+    obtain ⟨s1, r1, M1, o1⟩ := mid_scr hM (Or.inr rfl) (S.movz s 17 0 hM.cfg (by decide) (by decide) w0)
+    obtain ⟨s2, r2, M2⟩ := tail 1 s1 (Nat.le_refl _) M1 (by rw [hb]; rfl) (by rw [hb]; rfl)
+      (fun i h1 h2 => by rw [show i = 3 by omega, hb]; rfl) (fun _ => by rw [o1]; simp [setReg])
+    exact ⟨s2, Runs.trans r1 r2, M2⟩
+  · have hb : blockJ j = [movz 16 sh, rr (aluC op) (armReg rd) (opR rs) 16, PAD, PAD] := by
+      simp [blockJ, hbody, pad4, hd, hs, zpre]
+    exact tail 0 s (Nat.zero_le _) hM (by rw [hb]; rfl) (by rw [hb]; rfl)
+      (fun i h1 h2 => by rcases (by omega : i = 2 ∨ i = 3) with rfl | rfl <;> rw [hb] <;> rfl) (fun e => absurd e hs)
+
 end JT
