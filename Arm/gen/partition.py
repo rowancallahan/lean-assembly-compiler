@@ -10,7 +10,8 @@ Every declaration is moved as verbatim text; nothing is renamed and no namespace
   * core: for every module M that imports Armv9.V8Base, the declarations of M reachable from ROOTS (closure stops at
     `__Decode*`), in original order, as module Armv9Core.M. Modules not above V8Base are shared unchanged.
   * rest: Armv9.M keeps M's other declarations in original order and imports Armv9Core.M.
-  * Armv9.V8Base's rest is cut into Armv9.V8Base.P<i> along its dependency graph; Armv9.V8Base imports all parts.
+  * a rest over SPLIT_MIN lines (V8Base, SysregsAutogen, Instrs*, DecodeEnd) is cut into Armv9.M.P<i> along its
+    dependency graph; Armv9.M then only imports its parts, so every importer of Armv9.M is unchanged.
 The full model is core ∪ rest: the same constants under the same names. check_hashes.lean compares it with an
 unpartitioned build. Anything wrong in the cut is a compile error or a hash difference, never silent.
 """
@@ -18,7 +19,9 @@ import os, re, shutil, sys
 from collections import defaultdict, deque
 
 SRC, OUT, PROOFS = sys.argv[1], sys.argv[2], sys.argv[3]
-PART_LINES = int(sys.argv[4]) if len(sys.argv) > 4 else 12000
+PART_LINES = int(sys.argv[4]) if len(sys.argv) > 4 else 12000  # target lines per part
+SPLIT_MIN = 20000  # split a module's rest when it has more lines than this
+BIG = 500          # a declaration this long gets its own part
 assert not os.path.exists(OUT), OUT
 
 INSTRS = """movz_aarch64_instrs_integer_ins_ext_insert_movewide movk_aarch64_instrs_integer_ins_ext_insert_movewide
@@ -167,10 +170,12 @@ for m in sorted(above):
         write(core_name(m), ci, other, c, foot)
     ri = imp[m] + ([core_name(m)] if c else [])
     stats.append((m, len(c), sum(t.count("\n") + 1 for _, t in c), len(r), sum(t.count("\n") + 1 for _, t in r)))
-    if m != "Armv9.V8Base":
+    nl = lambda n: text[n].count("\n") + 1
+    if sum(nl(n) for n, _ in r) <= SPLIT_MIN:
         write(m, ri, other, r, foot)
         continue
-    # (b) split V8Base's rest along its dependency graph: depth = longest path to a leaf inside the rest.
+    # (b) split a large rest along its dependency graph: depth = longest dependency path inside the rest. Sorting by
+    # (depth, original position) is a topological order; a declaration of BIG lines or more gets a part of its own.
     rest = [n for n, _ in r]
     rs = set(rest)
     depth = {}
@@ -178,19 +183,25 @@ for m in sorted(above):
         assert all(d in depth for d in deps[n] & rs), ("forward reference", n)
         depth[n] = 1 + max((depth[d] for d in deps[n] & rs), default=-1)
     order = sorted(range(len(rest)), key=lambda i: (depth[rest[i]], i))
-    parts, cur, size = [], [], 0
+    parts, cur, size, big = [], [], 0, []  # big: solo parts waiting to be emitted after cur
+    def flush():
+        global cur, size, big
+        if cur: parts.append(cur)
+        parts.extend([b] for b in big)
+        cur, size, big = [], 0, []
     for i in order:
-        k = text[rest[i]].count("\n") + 1
-        if cur and size + k > PART_LINES: parts.append(cur); cur, size = [], 0
-        cur.append(rest[i]); size += k
-    if cur: parts.append(cur)
+        n = rest[i]
+        if nl(n) >= BIG: big.append(n); continue
+        if (cur and size + nl(n) > PART_LINES) or deps[n] & set(big): flush()
+        cur.append(n); size += nl(n)
+    flush()
     part_of = {n: p for p, ns in enumerate(parts) for n in ns}
-    pnames = [f"Armv9.V8Base.P{p:02d}" for p in range(len(parts))]
+    pnames = [f"{m}.P{p:02d}" for p in range(len(parts))]
     for p, ns in enumerate(parts):
         need = sorted({part_of[d] for n in ns for d in deps[n] & rs} - {p})
         assert all(x < p for x in need)
         write(pnames[p], ri + [pnames[x] for x in need], other, [(n, text[n]) for n in ns], foot)
-        stats.append((pnames[p], 0, 0, len(ns), sum(text[n].count("\n") + 1 for n in ns), [pnames[x][-3:] for x in need]))
+        stats.append((pnames[p], 0, 0, len(ns), sum(nl(n) for n in ns), [pnames[x][-3:] for x in need]))
     write(m, ri + pnames, other, [], foot)
 
 lf = os.path.join(OUT, "lakefile.toml")
@@ -207,7 +218,7 @@ for d, _, fs in os.walk(OUT):
     for f in fs:
         if ".lake" in d or not f.endswith(".lean"): continue
         m = os.path.relpath(os.path.join(d, f), OUT)[:-5].replace("/", ".")
-        if m in above or m.startswith("Armv9Core.") or m.startswith("Armv9.V8Base."):
+        if m in above or m.startswith("Armv9Core.") or re.fullmatch(r"Armv9\.\w+\.P\d+", m) is not None:
             for n, t in parse(os.path.join(d, f))[2]:
                 assert n not in back, ("twice", n)
                 back[n] = t
