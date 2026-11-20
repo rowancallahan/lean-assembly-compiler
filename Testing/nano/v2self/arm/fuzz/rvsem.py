@@ -59,8 +59,13 @@ def build_run(d, asm, gcc, qemu, out):
     r = subprocess.run([qemu, out + '.elf'], cwd=d, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     return r.returncode, r.stdout
 
+SHIM_RV = os.path.join(W, 'shim_rv')
+if not os.path.exists(SHIM_RV):
+    subprocess.run(['riscv64-linux-gnu-gcc', '-O2', '-static', os.path.join(ARM, '..', 'run', 'shim', 'shim_rv.c'), '-o', SHIM_RV], check=True)
+
 def translate(d, rvbin):
-    env = dict(os.environ, RUN=f'{NANORUN} {os.path.join(ARM, "rv2arm_rv.bin")} /dev/stdin /dev/stdout')
+    # RISC-V translator under qemu-riscv64 + shim_rv (the reference)
+    env = dict(os.environ, RUN=f'{shutil.which("qemu-riscv64-static")} {SHIM_RV} {os.path.join(ARM, "rv2arm_rv.bin")}')
     return subprocess.run(['sh', os.path.join(ARM, 'rv2arm.sh'), rvbin], env=env, stdout=subprocess.PIPE,
                           stderr=subprocess.DEVNULL).stdout
 
