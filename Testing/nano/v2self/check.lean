@@ -1,4 +1,4 @@
-import Nano.V2.Front
+import Legacy.Nano.V2.Front
 /- `lake env lean --run Testing/nano/v2self/check.lean FILE...`: per FILE, strip comments/imports, then (a) the whole text
 + a stub `m` is run through `frontElabK 256`; (b) on reject, defs are added one at a time and the FIRST def whose prefix
 is rejected is reported (a def calling a missing earlier def is also rejected: files are checked in dependency order

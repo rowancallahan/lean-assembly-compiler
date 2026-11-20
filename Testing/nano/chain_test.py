@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""FULL-CHAIN test, mirroring Nano/Chain.lean (`nano_chain`, `nano_chain_int`) stage by stage, for UInt64 and Int64 sources
+"""FULL-CHAIN test, mirroring Legacy/Nano/Chain.lean (`nano_chain`, `nano_chain_int`) stage by stage, for UInt64 and Int64 sources
 (corpus + random + adversarial edge cases, accepted and rejected):
  L  Lean's REAL elaborator: every source as its own root-level file + `#eval` of the entry on the inputs (plain `lean`).
  E  `nanoElabT` (the spec, run in Lean; no compiled binary of it exists yet): accept => Lean accepts, same type, same
@@ -75,7 +75,7 @@ for b in bad: print("FAIL", b)
 assert not bad
 # ---- P: proved route on QEMU + Sail (StartCorrect convention), expected = Lean's real values
 lit = lambda s: '"' + s.replace("\\", "\\\\").replace("\n", "\\n").replace("\t", "\\t").replace("\r", "\\r") + '"'
-E = ["import Nano.ProofTop", "import Nano.Elab", "import Nano.Gen", "open Proven (leN)", "open Proven.Ir Proven.Top.Alloc Nano",
+E = ["import Legacy.Nano.ProofTop", "import Legacy.Nano.Elab", "import Legacy.Nano.Gen", "open Proven (leN)", "open Proven.Ir Proven.Top.Alloc Nano",
      "def hex2 (b : UInt8) : String := let s := String.ofList (Nat.toDigits 16 b.toNat); if s.length < 2 then \"0\" ++ s else s",
      "def hx (xs : List UInt8) : String := if xs.isEmpty then \"-\" else String.join (xs.map hex2)",
      "def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); \"\".pushn '0' (8 - s.length) ++ s",
@@ -118,7 +118,7 @@ print(f"P (proved nanoCompileIR, code from Lean): {len(acc)} programs, {nP} (pro
 # ---- S: stack route `nanoCompile = asm ∘ genR` (nano-e2e), `asm` stage as our compiler's binary
 S = os.path.join(W, "sel"); os.makedirs(S)
 for i in acc: shutil.copy(f"{W}/p{i:03}.nano", f"{S}/p{i:03}.nano")
-DEP = ["import Nano.Gen", "open Nano", "#eval show IO Unit from do"]
+DEP = ["import Legacy.Nano.Gen", "open Nano", "#eval show IO Unit from do"]
 for i in acc: DEP.append(f"  IO.println s!\"{i} {{(nanoElab {lit(progs[i][0])}.toUTF8.toList).map depth}}\"")
 open(f"{W}/dep.lean", "w").write("\n".join(DEP) + "\n")
 dep = {int(l.split()[0]): int(re.findall(r"\d+", l)[-1]) for l in subprocess.run(f"{lean_env} lake env lean {W}/dep.lean", shell=True, check=True,

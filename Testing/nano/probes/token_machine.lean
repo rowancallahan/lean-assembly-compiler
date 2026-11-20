@@ -1,6 +1,6 @@
-import Riscv.Frontx.ListOutExamples
-import Riscv.Frontx.Impl1
-import Riscv.Frontx.Checked
+import Legacy.Riscv.Frontx.ListOutExamples
+import Legacy.Riscv.Frontx.Impl1
+import Legacy.Riscv.Frontx.Checked
 namespace Q1
 open Proven Proven.Frontx
 /-- token machine with a depth scalar: tag, arg -> records (push: 5 records, binop: 5, letend: 3, ldv: 1) -/

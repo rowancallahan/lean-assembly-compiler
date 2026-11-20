@@ -1,5 +1,5 @@
 import Nano.V2Self.C.Lex2
-import Nano.V2Self.Legacy.C.Par0
+import Legacy.Nano.V2Self.Legacy.C.Par0
 import Nano.V2Self.C.Gen
 /- Formal ACCEPTANCE witnesses for C (non-vacuity): kernel-checked (`decide +kernel`) runs of the whole chain
 lexer `C.s10` → parser `C.y13` → (+ hand-written main AST) → code generator `C.g41` on a small source, with the exact

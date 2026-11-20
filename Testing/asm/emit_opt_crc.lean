@@ -1,6 +1,6 @@
 /- CRC-32 words, old (`rvF.compBF`) and optimised (`compBFO`); program copied from `Riscv/Examples/Crc.lean`
 on main (definitions only). -/
-import Riscv.Back.OptB
+import Nano.Base.Riscv.Back.OptB
 open Proven Proven.Mach Proven.Mach.Riscv
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
 def poly : BitVec 64 := 0xEDB88320

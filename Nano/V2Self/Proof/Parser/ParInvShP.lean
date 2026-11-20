@@ -110,7 +110,8 @@ theorem row_frameP {h h' : Buf} {j : Nat} {d : DefR} (hj : j < 512) (r : RowRep 
 theorem defs_frameP {h h' : Buf} {st : St} {b : Bool} (r : DefsRep h st b) (e12 : bget h' 12 = bget h 12) (e27 : bget h' 27 = bget h 27)
     (er : RegAgree h h' 147520 155712) (et : TokAgree h h') (hn : (bget h 7).toNat < 2 ^ 32) (es : ShPres h h') (hsr : ShRows h') :
     DefsRep h' st b := by
-  obtain ⟨r12, rl, r27, rd, rc, rz, r0, _⟩ := r
+  have hlen := r.len
+  obtain ⟨r12, rl, r27, rd, rc, rz, r0, _, rH⟩ := r
   have c5 : ∀ j, j < 512 → bget h' (d7 + 8 * j.toUInt64 + 5) = bget h (d7 + 8 * j.toUInt64 + 5) :=
     fun j hj => er _ (by rw [defCell j hj 5 (by decide), show (5 : UInt64).toNat = 5 from rfl]; omega)
       (by rw [defCell j hj 5 (by decide), show (5 : UInt64).toNat = 5 from rfl]; omega)
@@ -119,7 +120,8 @@ theorem defs_frameP {h h' : Buf} {st : St} {b : Bool} (r : DefsRep h st b) (e12 
   refine ⟨by rw [e12]; exact r12, rl, by rw [e27]; exact r27, fun j hj => ⟨row_frameP (by omega) (rd j hj).1 er et hn es,
     by rw [c5 j (by omega), e27]; exact (rd j hj).2⟩, ?_, fun j h1 h2 => zr j h2 (rz j h1 h2),
     fun i h1 h2 => by rw [er _ (by rw [parCell0 i h2]; omega) (by rw [parCell0 i h2]; omega)]; exact r0 i (by rw [← e27]; exact h1) h2,
-    hsr⟩
+    hsr, hashRep_frame hlen rH (fun i a _ => et.2 i a)
+      (fun i hi => er _ (by rw [slot7Cell i hi]; omega) (by rw [slot7Cell i hi]; omega))⟩
   cases b with
   | true =>
     simp only [if_true] at rc ⊢

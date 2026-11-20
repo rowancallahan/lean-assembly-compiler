@@ -3,10 +3,10 @@
 them, and `memoryNeeded` (from the IR interpreter, which is checked against Lean's result).  Run:
 `lake env lean --tstack=4000000 Testing/asm/emit_s3rec.lean`, then `python3 Testing/asm/ir_test.py check 50 s3_<name>`
 (QEMU + Sail at `memoryNeeded` and `memoryNeeded - 1`).  Helpers copied from `Testing/asm/emit_ind_ir.lean`. -/
-import Riscv.Back.IrTarget
-import Compiler.Ir.Lin
-import Riscv.Frontx.S3RecExamples
-import Riscv.Frontx.S3RecExamplesB
+import Legacy.Riscv.Back.IrTarget
+import Legacy.Compiler.Ir.Lin
+import Legacy.Riscv.Frontx.S3RecExamples
+import Legacy.Riscv.Frontx.S3RecExamplesB
 open Proven.Ir Proven.Mach.Riscv Proven.Top.Alloc
 open Proven.S3 Proven.S3.Ex Proven.S3.Rec Proven.Frontx.IndEx
 

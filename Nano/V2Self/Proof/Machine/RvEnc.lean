@@ -3,7 +3,7 @@ nano-v2's `I.enc` and C's encoders g2–g5), `ropOf`/`aluf_eval` (J's BIN number
 SimW/SimX; names stay in namespace `SimW`. -/
 import Nano.V2Self.Proof.Machine.Call
 import Nano.V2Self.Proof.Machine.Bridge
-import Nano.V2.Sem
+import Nano.Base.V2.Sem
 
 namespace SimW
 open Nano.V2B

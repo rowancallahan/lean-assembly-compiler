@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Linker test (nano-int): the binary `Nano.Link.link cf cg` (stub ++ cg ++ cf, `Nano/Link.lean`) on QEMU and on the
+"""Linker test (nano-int): the binary `Legacy.Nano.Link.link cf cg` (stub ++ cg ++ cf, `Legacy/Nano/Link.lean`) on QEMU and on the
 Sail C simulator vs executed Lean.  Stages: the compiled assembler twice (`asm ∘ asm` on the records of every corpus
 program + N random ones): what is tested is the 18-word stub (work-block split, frame, `jal` to the first stage,
 fall-through into the second with the caller's ra / a3 / sp), with the theorem's work space `4 K + 96`.

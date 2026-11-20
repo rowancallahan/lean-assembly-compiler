@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run-time memory tests of the inductive path (`Riscv/Frontx/IndMem.lean`; words and cases from
+"""Run-time memory tests of the inductive path (`Legacy/Riscv/Frontx/IndMem.lean`; words and cases from
 `Testing/asm/emit_mem.lean` in `Testing/asm/mem-words/`): every case twice, on QEMU and on the Sail C emulator,
 in the `StartCorrect` calling convention (a0 = input, a1 = length, a2 = work base (8-aligned), a3 = output,
 sp = work end):

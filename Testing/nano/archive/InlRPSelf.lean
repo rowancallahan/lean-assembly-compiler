@@ -1,7 +1,7 @@
 import Nano.InlRP
-import Riscv.Frontx.ListOutExamples
-import Riscv.Frontx.Impl1
-import Nano.CheckedSpill
+import Legacy.Riscv.Frontx.ListOutExamples
+import Legacy.Riscv.Frontx.Impl1
+import Legacy.Nano.CheckedSpill
 /- the inliner's first stage `P` (`Nano.IR.pr`, Nano/InlRP.lean) compiled by OUR compiler (front end
 `frontx_compile`, list view), with a machine theorem `Nano.Self.inlPR.implements1` -/
 namespace Nano.Self

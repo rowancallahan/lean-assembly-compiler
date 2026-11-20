@@ -130,20 +130,20 @@ def y5 : Nat → Buf → Buf
 
 def d1 : UInt64 := 64
 def d2 : UInt64 := 12288
-def d3 : UInt64 := d1 + d2
+def d3 : UInt64 := 12352
 def d4 : UInt64 := 4096
-def d5 : UInt64 := d3 + d4
+def d5 : UInt64 := 16448
 def d6 : UInt64 := 131072
-def d7 : UInt64 := d5 + d6
+def d7 : UInt64 := 147520
 def d8 : UInt64 := 32768
-def d9 : UInt64 := d7 + d8
+def d9 : UInt64 := 180288
 def d10 : UInt64 := 4096
-def d11 : UInt64 := d9 + d10
+def d11 : UInt64 := 185408
 def d12 : UInt64 := 4096
 def d13 : UInt64 := 16384
 def d14 : UInt64 := 1024
 def d15 : UInt64 := 8192
-def y15 (h : Buf) : Buf := y5 184384 h
+def y15 (h : Buf) : Buf := y5 185408 h
 
 def y0 : Nat → Buf → UInt64 → UInt64
   | 0, h, q => 0
@@ -340,14 +340,22 @@ def v7 : Nat → Buf → UInt64 → UInt64 → Buf
     let f := bget h2 31;
     if f == 1 then bset h2 21 j else v7 n h2 (j - 1) x
 
-def v8 : Nat → Buf → UInt64 → UInt64 → Buf
-  | 0, h, j, x => bset h 0 0
-  | n + 1, h, j, x =>
-    if j == 0 then bset h 22 0 else
-    let s := bget h (d7 + 8*(j - 1));
-    let h2 := v85 16777216 h (s + 1) (x + 1);
-    let f := bget h2 31;
-    if f == 1 then bset h2 22 j else v8 n h2 (j - 1) x
+def v84 : Nat → Buf → UInt64 → UInt64 → UInt64
+  | 0, h, a, s => s
+  | n + 1, h, a, s =>
+    if bget h (d11 + a) == 1 then v84 n h (a + 2) (s * 33 + bget h (d11 + a + 1)) else s
+
+def v83 : Nat → Buf → UInt64 → UInt64 → UInt64 → Buf
+  | 0, h, j, x, c => bset h 0 0
+  | n + 1, h, j, x, c =>
+    if c == 0 then bset h 22 0 else
+    let r := d7 + 8 * (c - 1);
+    if j < c then v83 n h j x (bget h (r + 7)) else
+    let h2 := v85 16777216 h (bget h r + 1) (x + 1);
+    if bget h2 31 == 1 then bset h2 22 c else v83 n h2 j x (bget h2 (r + 7))
+
+def v8 (h : Buf) (j x : UInt64) : Buf :=
+  v83 16777216 h j x (bget h (d9 + d10 + (v84 16777216 h (x + 1) 0 &&& 1023)))
 
 def v9 (h : Buf) (s : UInt64) : Buf :=
   let z9 := if s < 5 then 1 else bget h ((d7 + 8192) + 3*(s - 5) + 2);
@@ -486,7 +494,7 @@ def v104b (h : Buf) (a b : UInt64) : Buf :=
             let z40 := (bget h 4);
             let h := v7 16777216 h z40 x;
             let z40 := ((bget h 12) + 1);
-            let h := v8 16777216 h z40 x;
+            let h := v8 h z40 x;
             let z40 := ((bget h 3) + 1);
             let h := v86 16777216 h z40;
             if (bget h 21) == 0 then
@@ -862,7 +870,7 @@ def v126 (h : Buf) (a b : UInt64) : Buf :=
   let t := bget h (d11+p);
   if t == 14 then
     let f := bget h 12;
-    let h := v8 16777216 h f p;
+    let h := v8 h f p;
     let j := bget h 22;
     if j == 0 then bset h 0 0 else
     if bget h (d7+8*(j-1)+6) == 0 then
@@ -894,13 +902,17 @@ def v127 (h : Buf) (a b : UInt64) : Buf :=
       if (bget h (d11 + (bget h 3) + 0)) == 14 then
         let x := (bget h 3);
         let z40 := (bget h 12);
-        let h := v8 16777216 h z40 x;
+        let h := v8 h z40 x;
         if (bget h 22) == 0 then
           if (bget h 12) < 512 then
             let z40 := ((bget h 3) + 1);
             let h := v86 16777216 h z40;
             let z40 := (d7 + 8 * ((bget h 12)) + 0);
             let h := bset h z40 (x);
+            let z41 := d9 + d10 + (v84 16777216 h (x + 1) 0 &&& 1023);
+            let z40 := (d7 + 8 * ((bget h 12)) + 7);
+            let h := bset h z40 (bget h z41);
+            let h := bset h z41 ((bget h 12) + 1);
             let z40 := (d7 + 8 * ((bget h 12)) + 5);
             let z41 := ((bget h 27));
             let h := bset h z40 z41;

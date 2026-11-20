@@ -1,5 +1,5 @@
 import Nano.InlQ
-import Nano.WpSpill
+import Legacy.Nano.WpSpill
 open Proven Proven.WA Proven.Mach Proven.Mach.Riscv
 namespace Nano.IP
 set_option maxHeartbeats 0 in

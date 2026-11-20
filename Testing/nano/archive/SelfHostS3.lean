@@ -7,12 +7,12 @@ The domain also states the limits of Lean's own elaborator (owner's request, NAN
 on ≥ 512 nested `let`s, ≥ 256 nested calls, chains of ≥ ~3000 operands): `LeanLimits src` bounds the elaborated
 program's nesting (lets, calls at cost 2, right-nested operands) by 400 and its left operator chains by 2500. It only
 narrows the domain (`SelfHosted.mono`); `nanoElab` (the spec) is unchanged. -/
-import Nano.SelfHostSplit5
-import Nano.ParseS3BStage
-import Nano.InlS3Stage
-import Nano.ExpandMSelf
-import Nano.ParseBSelfHost
-import Nano.LeanLimits
+import Legacy.Nano.SelfHostSplit5
+import Legacy.Nano.ParseS3BStage
+import Legacy.Nano.InlS3Stage
+import Legacy.Nano.ExpandMSelf
+import Legacy.Nano.ParseBSelfHost
+import Legacy.Nano.LeanLimits
 
 set_option linter.unusedVariables false
 

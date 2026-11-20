@@ -1,5 +1,5 @@
-import Riscv.Frontx.IndCmpExamples
-import Riscv.Frontx.ScalarExamples
+import Legacy.Riscv.Frontx.IndCmpExamples
+import Legacy.Riscv.Frontx.ScalarExamples
 #print axioms Proven.Frontx.IndCmp.contains5.implements1
 #print axioms Proven.Frontx.IndCmp.insert5.implements1
 #print axioms Proven.Frontx.IndCmp.elem5.implements1

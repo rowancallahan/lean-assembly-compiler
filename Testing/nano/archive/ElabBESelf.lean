@@ -1,7 +1,7 @@
-import Nano.ElabBSplitE
-import Riscv.Frontx.ListOutExamples
-import Riscv.Frontx.Impl1
-import Nano.CheckedSpill
+import Legacy.Nano.ElabBSplitE
+import Legacy.Riscv.Frontx.ListOutExamples
+import Legacy.Riscv.Frontx.Impl1
+import Legacy.Nano.CheckedSpill
 /- stage 1b of the split lexer (`Nano.B.eB`, the emitter, Nano/ElabBSplit.lean) compiled by OUR compiler (front end
 `frontx_compile`, list view), with a machine theorem `Nano.Self.eBE.implements1` -/
 namespace Nano.Self

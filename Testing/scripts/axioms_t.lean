@@ -1,4 +1,4 @@
-import Riscv.Frontx.IndExamples
+import Legacy.Riscv.Frontx.IndExamples
 #print axioms Proven.Mach.Ind.ind_ok
 #print axioms Proven.Frontx.IndEx.BinTree.count.implements1
 #print axioms Proven.Frontx.IndEx.BinTree.mirror.implements1

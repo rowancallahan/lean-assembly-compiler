@@ -1,0 +1,17 @@
+LeanRV64D.Functions.encdec_forwards._sparseCasesOn_4	LeanRV64D.PlatformConfig	def
+LeanRV64D.Functions.encdec_forwards.match_4	LeanRV64D.PlatformConfig	def
+LeanRV64D.Functions.encdec_forwards_matches._sparseCasesOn_4	LeanRV64D.InstsEnd	def
+LeanRV64D.Functions.encdec_forwards_matches.match_4	LeanRV64D.InstsEnd	def
+LeanRV64D.Functions.fence_bits_forwards.match_1	LeanRV64D.PlatformConfig	def
+LeanRV64D.Functions.fence_bits_forwards_matches.match_1	LeanRV64D.BaseInsts	def
+LeanRV64D.Functions.is_CSR_accessible.match_3	LeanRV64D.SysControl	def
+LeanRV64D.Functions.is_CSR_accessible.match_5	LeanRV64D.SysControl	def
+LeanRV64D.Functions.is_CSR_accessible.match_7	LeanRV64D.SysControl	def
+LeanRV64D.Functions.read_CSR.match_1	LeanRV64D.ZicsrInsts	def
+LeanRV64D.Functions.read_CSR.match_3	LeanRV64D.ZicsrInsts	def
+LeanRV64D.Functions.read_CSR.match_5	LeanRV64D.ZicsrInsts	def
+LeanRV64D.Functions.write_CSR.match_1	LeanRV64D.ZicsrInsts	def
+LeanRV64D.Functions.write_CSR.match_3	LeanRV64D.ZicsrInsts	def
+LeanRV64D.Functions.write_CSR.match_5	LeanRV64D.ZicsrInsts	def
+LeanRV64D.Functions.write_CSR.match_7	LeanRV64D.ZicsrInsts	def
+LeanRV64D.assert	LeanRV64D.SpecializationV1	def

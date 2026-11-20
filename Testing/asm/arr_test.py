@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Test of the byte-array compiler output (`Riscv/Examples/ArrExamples.lean`, `Riscv/Direct/SortIns.lean`; words printed by
+"""Test of the byte-array compiler output (`Nano/Base/Riscv/Examples/ArrExamples.lean`, `Nano/Base/Riscv/Direct/SortIns.lean`; words printed by
 `Testing/asm/emit_arr.lean` into `Testing/asm/arr-words/`) on QEMU and on the Sail C emulator.
 For each input: a0 = &in (bytes xs), a1 = len xs, a2 = n, a3 = &out (128-byte slot pre-filled with 0x55);
 after the call the driver stores a2.  Checked against a Python model: the whole output slot (result bytes,

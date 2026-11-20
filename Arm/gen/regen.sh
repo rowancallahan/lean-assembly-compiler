@@ -13,6 +13,6 @@ for p in "$G"/patches/sail/*.patch; do [ -e "$p" ] && git -C sail apply "$p"; do
 eval $(opam env); (cd sail && opam install . --deps-only --yes && make install)
 (cd sail-arm/arm-v9.4-a && make clean && make gen_lean VERBOSE_FLAG= SAIL_FLAGS='--lean-partial-function Reduce__1')
 rm -rf "$OUT"; cp -r sail-arm/arm-v9.4-a/lean/armv9 "$OUT"
-find "$OUT" -name '*.lean' | sort | xargs sha256sum | sha256sum
+bash "$G/../../Testing/scripts/model_hash.sh" "$OUT"   # compare with MODEL_PROVENANCE.md (Arm/model: 8f79d6b2…)
 # Partition (ARM_FAST.md A1 + option 4): core layer Armv9Core.* + rest, V8Base rest cut into parts. Verbatim text.
 python3 "$G/partition.py" "$OUT" "$OUT-part" "$G/../proofs/Arm"

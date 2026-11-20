@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests of the compiled merge sort (`Riscv/Direct/SortMergeMachine.lean`, words from `Testing/asm/emit_arr2.lean` in
+"""Tests of the compiled merge sort (`Nano/Base/Riscv/Direct/SortMergeMachine.lean`, words from `Testing/asm/emit_arr2.lean` in
 `Testing/asm/arr-words/msort.words`) on QEMU and on the Sail C emulator, and instruction counts.
 
 check N: N random inputs (lengths 0..3, 2^k +- 1 up to 2^11 + 1, random up to 3000).  Each case gets its own

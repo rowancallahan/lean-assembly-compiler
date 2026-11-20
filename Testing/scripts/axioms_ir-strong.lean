@@ -1,4 +1,4 @@
-import Riscv.Back.S3Top
+import Legacy.Riscv.Back.S3Top
 #print axioms Proven.Top.Alloc.CompileCorrect.weak
 #print axioms Proven.Top.Alloc.CompileRuns.weak
 #print axioms Proven.Ir.machine_runL

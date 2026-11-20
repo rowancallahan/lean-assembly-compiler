@@ -1,4 +1,4 @@
-{"version": "1.1.0",
+{"version": "1.2.0",
  "packagesDir": ".lake/packages",
  "packages":
  [{"type": "path",
@@ -12,11 +12,12 @@
    "type": "git",
    "subDir": null,
    "scope": "",
-   "rev": "079463134b9c50450b8393e1566a09fc492a34d9",
+   "rev": "e4745c82fe329f162700020dcd31da6b342473b9",
    "name": "Sail",
    "manifestFile": "lake-manifest.json",
-   "inputRev": "v5",
+   "inputRev": "v10",
    "inherited": true,
    "configFile": "lakefile.toml"}],
  "name": "proven",
- "lakeDir": ".lake"}
+ "lakeDir": ".lake",
+ "fixedToolchain": false}

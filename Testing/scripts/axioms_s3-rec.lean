@@ -1,5 +1,5 @@
-import Riscv.Frontx.S3RecExamples
-import Riscv.Frontx.S3RecExamplesB
+import Legacy.Riscv.Frontx.S3RecExamples
+import Legacy.Riscv.Frontx.S3RecExamplesB
 #print axioms Proven.S3.acc_of_ev
 #print axioms Proven.S3.wfCert_of_good
 #print axioms Proven.S3.Rec.S3Incs.correct

@@ -553,3 +553,66 @@ nano-v2-src: the same ARM theorem on the official Sail ARM model (C_correct_armS
 with the official Sail tool on 4.34.1.
 NEXT (owner, 2026-11-20), in order: (1) expected total program size (code vs source, where the 512 KB / 1 MB limits
 bite); (2) speed of compiled programs; (3) grow the parser's accepted syntax until it can express con-leche.
+- ORDER + RULES (owner, 2026-11-20): (a) all machines on ONE Lean version (RISC-V regenerated model + ARM on 4.34.1);
+  (b) basic speed work, measured by exact executed-instruction counts (Testing/notes/BENCH.md baseline);
+  (c) THEN grow the accepted syntax toward con-leche, one construct at a time. Every growth step must keep all proofs
+  green (REVIEW axioms as pinned, RISC-V + ARM theorems build) AND must not regress the benchmark baseline
+  (self-compile instruction count and the example table); each step gets a CHANGELOG entry.
+  Also per step: a short code check: total code size per area (compiler source, proofs, glue) does not grow
+  without reason, no dead code (deadcode tool), shared abstractions reused instead of duplicated (e.g. one generic
+  machine adapter, one block table). Size table kept in Testing/notes/CODE_SIZE.md.
+
+## Later (owner, 2026-11-20)
+- Sail ARM: the theorem temporarily makes no claim about sp (register 31; Sail-local mapping, see Arm/sail/NOTES.md).
+  Later: restore sp (prove it unchanged / reset on exit) by exporting SP_EL0/SP_EL3/PSTATE.SP from the full_* lemmas.
+- Later: reset the memory chunks (work/scratch regions) on exit, so the caller gets them back in a defined state.
+
+## Order after release-434 (owner, 2026-11-20)
+1. Cleanup (low risk) that also prepares optimization: archive dead code, prune dead decls, dedupe the rv2arm table,
+   and factor the Gen proofs so the room/OOM check and branch offsets sit behind a few shared lemmas
+   (CODEGEN_SPEED.md: that is what makes the speedups PERVASIVE today).
+2. Core codegen optimizations, bounded (target ~2x fewer executed instructions on BENCH, then stop): one overflow
+   check per function, small-immediate operands, maybe top-of-stack in a register.
+3. ARM-specific speed so ARM is not much slower than RISC-V (shorter rv2arm sequences; later a native ARM backend).
+4. Before growing: assess four target programs — con-leche (Lean checker), LeanZip, Lean SVG, Lean Align — for what
+   each needs from the language/compiler (features, def count, sizes, memory) and what is easy vs hard.
+5. Syntax growth toward those four, starting with con-leche (raise the 511-def cap, parser node cap, clear errors),
+   proofs green, no speed regression.
+
+## Generated-code speed (analysis only for now)
+Goal: no obviously slow patterns in the code the compiler emits.
+Evidence (B2.bin disassembly): stack-machine codegen; every push = addi + bgeu + j + sd; `x < 65` ≈ 15 instructions
+(good code: 2). B2 has ~10.9k per-push overflow checks and ~14k sd.
+Order (each: measure on BENCH.md programs + self-compile, then prove; proofs green, no regression):
+1. one stack-overflow check per function (max depth) instead of per push
+2. small-immediate operands for ALU ops and compares
+3. direct conditional branch when the target is in range (else branch-over-jal)
+4. inline constant defs (zero-arg defs returning a literal)
+5. top-of-stack in a register (drops push/pop pairs) — biggest win, most proof work
+6. ARM: shorter rv2arm sequences for common forms (currently fixed 4-word blocks, ~3.6x)
+
+## Later (owner, 2026-11-20), after con-leche syntax
+- Native ARM backend: generate AArch64 directly from the IR (no rv2arm translation) for speed; proved against the
+  same A64 machine interface (A64Sem / Sail ARM), RISC-V path unchanged.
+- Verified inline assembly ("skip through the compiler"): a Lean value {words, f, proof : code implements f on the
+  Sail model (Spec Implements-style contract + the compiler's register/stack/heap/OOM convention)}; the compiler
+  copies the words verbatim, the source semantics sees only f, the correctness proof gets one new case. No unproved
+  blocks accepted. ARM: free if the block uses only rv2arm-supported forms, else an ARM block + its own proof.
+- x86-64 backend (owner, 2026-11-20; later): preferred model = Sail x86 (REMS sail-x86-from-acl2, translated from
+  ACL2 x86isa) via the existing Sail→Lean pipeline; alternatives ACL2 x86isa directly, K x86-64 semantics (no Lean
+  backend). No vendor-official model exists: record in MODEL_PROVENANCE.md exactly where the model comes from, which
+  commit, how it is generated (commands, toolchain, patches), and that it is community/translated. Re-adapt when the
+  model updates. Approach as for ARM: an X86Sem-style interface over the few dozen instruction forms the compiler
+  emits, a RISC-V→x86 translator first, native generation later.
+- Spec strengthening, read confinement (owner, 2026-11-20; later, needs owner-approved Spec change + re-freeze):
+  add to CompileCorrect/CompileRuns that the compiled code never READS memory outside its code, input, output and
+  work blocks (today only writes are confined: memory outside the output prefix + work block is proved unchanged).
+  Out-of-memory remains the only failure mode. Process isolation is out of scope (bare-machine model; the OS is a
+  separate layer).
+
+## ARM in the spec (owner-approved 2026-11-20; after the reorg-nano merge)
+- Define the ARM machine(s) in `Spec/` (as `riscv` is), so `C_correct_armSail` is stated against a reviewed `Spec/`
+  machine, not one defined in `Arm/sail`. Owner reviews the new `Spec/` text; re-freeze FROZEN.sha256 only after approval.
+- DeepMind's `ArmLoader` precondition (code executable, data blocks readable+writable) is met by any normal loader /
+  shim mapping; state that in the shim notes. Memory wiping on exit is the separate "reset memory chunks" item.
+- Later: native ARM backend (no RISC-V translation); notes in TRUST.md say how the current ARM theorems are built.

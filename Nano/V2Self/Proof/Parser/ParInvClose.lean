@@ -26,7 +26,8 @@ theorem shRows_frame {g g1 : Buf} (r : ShRows g) (e26 : bget g1 26 = bget g 26)
 theorem defsRep_close {g g1 : Buf} {st : St} (rD : DefsRep g st true) (e12 : bget g1 12 = bget g 12 + 1)
     (e : ∀ i : UInt64, i.toNat ≠ 12 → bget g1 i = bget g i) (et : TokAgree g g1) (hn : (bget g 7).toNat < 2 ^ 32) :
     DefsRep g1 { st with defs := st.defs ++ [st.cur] } false := by
-  obtain ⟨d12, dle, d27, drows, dcur, dz, d0, dsr⟩ := rD
+  have hlen := rD.len
+  obtain ⟨d12, dle, d27, drows, dcur, dz, d0, dsr, dH⟩ := rD
   simp only [if_true] at dcur
   obtain ⟨⟨crow, cs⟩, clt⟩ := dcur
   have es : ShTabAgree g g1 := fun i a _ => e i (by omega)
@@ -36,7 +37,7 @@ theorem defsRep_close {g g1 : Buf} {st : St} (rD : DefsRep g st true) (e12 : bge
       (fun i hi => e _ (by
         have := r.2.2.2.2.2.2.1
         rw [parCell _ i (by omega)]; omega)) et hn es
-  refine ⟨?_, by simp; omega, by rw [c27]; exact d27, fun j hj => ?_, ?_, fun j h1 h2 => ?_, fun i h1 h2 => ?_, ?_⟩
+  refine ⟨?_, by simp; omega, by rw [c27]; exact d27, fun j hj => ?_, ?_, fun j h1 h2 => ?_, fun i h1 h2 => ?_, ?_, ?_⟩
   · rw [e12]; simp only [List.length_append, List.length_singleton]
     rw [UInt64.toNat_add]; simp; omega
   · have hj' : j < st.defs.length + 1 := by simpa using hj
@@ -62,6 +63,10 @@ theorem defsRep_close {g g1 : Buf} {st : St} (rD : DefsRep g st true) (e12 : bge
     rw [e _ (by rw [parCell0 i (by omega)]; omega)]
     exact d0 i h1 h2
   · exact shRows_frame dsr (e 26 (by decide)) (fun i hi => e i (by omega))
+  · simp only [if_true] at dH hlen
+    simp only [Bool.false_eq_true, if_false]
+    exact hashRep_frame (by simpa [rows] using hlen) dH (fun i a _ => e i (by omega))
+      (fun i hi => e _ (by rw [slot7Cell i hi]; omega))
 
 
 /-- the between-defs representation ignores h[5] and the task region -/

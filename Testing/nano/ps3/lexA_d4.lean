@@ -1,8 +1,8 @@
 /- **The front stage (lexer + parser 2a) compiled through S3**: `lexA` (Nano/LexS3.lean, box nano-final;
 `lexA_eq : lexA xs = stage2a (lexB xs)` on every input) compiled by `s3_compileF` (program, kernel-checked
 certificates, `computes`). The stage theorem: Nano/LexS3Stage.lean. -/
-import Compiler.S3.Front
-import Nano.LexS3
+import Legacy.Compiler.S3.Front
+import Legacy.Nano.LexS3
 
 s3_enc Nano.Tok
 

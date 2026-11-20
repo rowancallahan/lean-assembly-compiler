@@ -14,7 +14,7 @@ NU = int(sys.argv[3]) if len(sys.argv) > 3 else 50
 gi, gu = GI(rng, "Int64"), GI(rng, "UInt64")
 progs = [("Int64", gi.program()) for _ in range(N)] + [("UInt64", gu.program()) for _ in range(NU)]
 lit = lambda s: '"' + s.replace("\\", "\\\\").replace("\n", "\\n") + '"'
-L = ["import Nano.Int", "import Nano.Elab", "open Nano", "set_option linter.unusedVariables false", "set_option maxRecDepth 10000", ""]
+L = ["import Legacy.Nano.Int", "import Legacy.Nano.Elab", "open Nano", "set_option linter.unusedVariables false", "set_option maxRecDepth 10000", ""]
 for i, (T, s) in enumerate(progs): L += [f"namespace Q{i}", s, f"end Q{i}"]
 L += ["def chkI (src : String) (real : List Int64 → Int64) (ins : List (List Int64)) : IO (Nat × Nat) := do",
       "  let mut ok := 0; let mut bad := 0",

@@ -1,0 +1,48 @@
+name = "armsail"
+defaultTargets = ["ArmSail"]
+
+# The Sail ARM v9.4-A model, partitioned and built in /home/user/armv9-lean (Arm/gen/partition.py + build_part.sh;
+# Testing/notes/ARM_FAST.md §9). Sail is required by path from that build, so lake reuses its oleans.
+[[require]]
+name = "Sail"
+path = "../../../armv9-lean/.lake/packages/Sail"
+
+[[require]]
+name = "armv9"
+path = "../../../armv9-lean"
+
+# our interface and the nano proof (C → RISC-V → rv2arm, generic over `A64Sem`), from the repo root, unchanged
+[[lean_lib]]
+name = "Spec"
+srcDir = "../.."
+roots = ["Spec"]
+
+[[lean_lib]]
+name = "Compiler"
+srcDir = "../.."
+roots = ["Nano.Base.Compiler"]
+# Lean 4.34: `Nano/Base/Compiler/Opt/Flow.lean` (written on 4.29) needs the old isDefEq transparency (as in Arm/apc)
+moreLeanArgs = ["-Dweak.backward.isDefEq.respectTransparency=false"]
+
+[[lean_lib]]
+name = "Nano"
+srcDir = "../.."
+roots = ["Nano.V2Self", "Nano.Base.V2", "Nano.Base.Riscv"]
+
+# the Sail step lemmas (Arm/proofs/Arm, built by check.sh there; here as a lake library)
+[[lean_lib]]
+name = "Arm"
+srcDir = "../proofs"
+roots = ["Arm"]
+moreLeanArgs = ["--tstack=400000"]
+
+# `Proven.CompilerArm` = Arm/CompilerArm.lean (symlink; the Arm proofs import it under this name)
+[[lean_lib]]
+name = "Proven"
+srcDir = "src"
+roots = ["Proven"]
+
+# armSail, a64Sail, C_correct_armSail / C_runs_armSail
+[[lean_lib]]
+name = "ArmSail"
+moreLeanArgs = ["--tstack=400000"]

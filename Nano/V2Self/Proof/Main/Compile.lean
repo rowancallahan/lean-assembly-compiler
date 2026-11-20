@@ -5,7 +5,7 @@ program). -/
 import Nano.V2Self.Proof.Parser.MainTyP
 import Nano.V2Self.Proof.Parser.ParInvRun
 import Nano.V2Self.Proof.Own.OwnStage
-import Compiler.AllocSpec
+import Nano.Base.Compiler.AllocSpec
 import Nano.V2Self.Proof.Machine.RunsDef
 namespace NanoMain
 open Proven.Top Proven.Top.Alloc ParSpec

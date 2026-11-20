@@ -1,7 +1,7 @@
-import Riscv.Frontx.ConLecheS1
-import Riscv.Frontx.ConLecheS2
-import Riscv.Frontx.ConLecheS3
-import Riscv.Frontx.BookS1
+import Legacy.Riscv.Frontx.ConLecheS1
+import Legacy.Riscv.Frontx.ConLecheS2
+import Legacy.Riscv.Frontx.ConLecheS3
+import Legacy.Riscv.Frontx.BookS1
 #print axioms ConLeche.Expr.beqIsApp.implements1
 #print axioms ConLeche.Cached.whnfCoreEasy.implements1
 #print axioms ConLeche.Expr.isCompound.implements1

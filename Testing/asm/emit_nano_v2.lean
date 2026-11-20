@@ -3,9 +3,9 @@ nodes of every comparison kind, and sources (UInt64 and Int64) through `Nano.V2.
 (`Nano.V2.nanoGen` = `asm ∘ Nano.V2.genR`) and per case the input (arguments as 8-byte LE words), `Prog.eval`'s
 result (8 LE bytes) and `memoryNeeded = 8 * depth`.  Only programs in the proved domain (`ScE`, `depth ≤ 256`) are
 emitted.  Writes `Testing/asm/ir-words/nanov2_<i>.{words,cases}`; run with `Testing/asm/nano_v2_test.sh`. -/
-import Nano.V2Elab
-import Nano.V2Gen
-import Nano.V2Rec
+import Legacy.Nano.V2Elab
+import Legacy.Nano.V2Gen
+import Legacy.Nano.V2Rec
 open Nano.V2
 
 def leN (n v : Nat) : List UInt8 := (List.range n).map fun i => (v / 256 ^ i % 256).toUInt8

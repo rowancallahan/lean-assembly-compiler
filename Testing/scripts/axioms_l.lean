@@ -1,4 +1,4 @@
-import Riscv.Examples.PipeExamples
+import Legacy.Riscv.Examples.PipeExamples
 #print axioms Proven.relB_exec
 #print axioms Proven.progI_exec
 #print axioms Proven.implements1_of_execB

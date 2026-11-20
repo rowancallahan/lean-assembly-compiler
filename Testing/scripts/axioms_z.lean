@@ -1,4 +1,4 @@
-import Riscv.Frontx.MonadExamples
+import Legacy.Riscv.Frontx.MonadExamples
 #print axioms Proven.Frontx.Mon.countGt3.implements1
 #print axioms Proven.Frontx.Mon.countGt3.mon
 #print axioms Proven.Frontx.Mon.countNotGt3.implements1

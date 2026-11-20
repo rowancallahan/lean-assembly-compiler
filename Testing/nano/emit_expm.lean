@@ -1,5 +1,5 @@
-import Nano.ExpandMSelf
-import Nano.Ser
+import Legacy.Nano.ExpandMSelf
+import Legacy.Nano.Ser
 /- usage (repo root): NANO_DIR=DIR NANO_STAGE=expm|lex lake env lean --tstack=400000 Testing/nano/emit_expm.lean
    Stage test data (nano-closeA) for Testing/asm/frontx_test.py: the compiled stage's words and per case input /
    expected result, the result computed by executed Lean on the SPEC function (`Nano.mexp` resp. `Nano.B.lexB`), not

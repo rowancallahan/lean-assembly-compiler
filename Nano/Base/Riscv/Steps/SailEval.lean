@@ -1,0 +1,491 @@
+/-
+`sail_eval`: call-by-value symbolic executor for Sail's `EStateM` programs.
+
+Goal `m s = rhs`.  Evaluates `m s` in program order: binds left to right, `if` by deciding the
+condition, `match` by iota, calls by unfolding, leaves by `simp` with the supplied lemmas.
+Plain `simp` normalises continuations before their argument is known, which is hopeless on the
+27k-line decoder; this never looks at code that does not run.  Fails loudly where it gets stuck.
+-/
+import Lean
+open Lean Meta Elab Tactic
+
+namespace SailEval
+universe u
+
+theorem bind_ok {ε σ α β : Type u} {x : EStateM ε σ α} (f : α → EStateM ε σ β) {s s' : σ} {a : α}
+    (h : x s = .ok a s') : (x >>= f) s = f a s' := by
+  show EStateM.bind x f s = _
+  unfold EStateM.bind; rw [h]
+
+/-- `x <&&> y` is `false` when `y` gives `false` without changing the state, whatever `x` returned
+(Sail 97aa617dc short-circuit; used when `x`'s result cannot be decided) -/
+theorem andM_ok_false {ε σ : Type} {x y : EStateM ε σ Bool} {s s₁ : σ} {a : Bool}
+    (hx : x s = .ok a s₁) (hy : y s₁ = .ok false s₁) : (x <&&> y) s = .ok false s₁ := by
+  show EStateM.bind x _ s = _
+  unfold EStateM.bind; rw [hx]; cases a <;> simp [toBool, hy] <;> rfl
+/-- `x <||> y` is `true` when `y` gives `true` without changing the state -/
+theorem orM_ok_true {ε σ : Type} {x y : EStateM ε σ Bool} {s s₁ : σ} {a : Bool}
+    (hx : x s = .ok a s₁) (hy : y s₁ = .ok true s₁) : (x <||> y) s = .ok true s₁ := by
+  show EStateM.bind x _ s = _
+  unfold EStateM.bind; rw [hx]; cases a <;> simp [toBool, hy] <;> rfl
+
+/-- `andM_ok_false` in `ExceptT ε (EStateM ..)` (`SailME`, e.g. `jump_to`) -/
+theorem andM_ok_falseE {ε ε' σ : Type} {x y : ExceptT ε (EStateM ε' σ) Bool} {s s₁ : σ} {a : Bool}
+    (hx : x.run s = .ok (.ok a) s₁) (hy : y.run s₁ = .ok (.ok false) s₁) :
+    (x <&&> y).run s = .ok (.ok false) s₁ := by
+  show EStateM.bind x _ s = _
+  unfold EStateM.bind; rw [show x s = _ from hx]; cases a <;> simp [toBool, ExceptT.run] at hy ⊢ <;> first | rfl | exact hy
+theorem orM_ok_trueE {ε ε' σ : Type} {x y : ExceptT ε (EStateM ε' σ) Bool} {s s₁ : σ} {a : Bool}
+    (hx : x.run s = .ok (.ok a) s₁) (hy : y.run s₁ = .ok (.ok true) s₁) :
+    (x <||> y).run s = .ok (.ok true) s₁ := by
+  show EStateM.bind x _ s = _
+  unfold EStateM.bind; rw [show x s = _ from hx]; cases a <;> simp [toBool, ExceptT.run] at hy ⊢ <;> first | rfl | exact hy
+
+theorem bind_err {ε σ α β : Type u} {x : EStateM ε σ α} (f : α → EStateM ε σ β) {s s' : σ} {e : ε}
+    (h : x s = .error e s') : (x >>= f) s = .error e s' := by
+  show EStateM.bind x f s = _
+  unfold EStateM.bind; rw [h]
+
+theorem add_neg_lit {w : Nat} (x c : BitVec w) (m : Nat) (h : c + BitVec.ofNat w m = 0) :
+    x + c = x - BitVec.ofNat w m := by
+  have hc : c = 0 - BitVec.ofNat w m := by rw [← h, BitVec.add_sub_cancel]
+  rw [hc, BitVec.sub_eq_add_neg, BitVec.sub_eq_add_neg]; simp
+
+/-- trace output goes straight to a file: Lean captures stderr until the command ends -/
+def traceLine (s : String) : IO Unit :=
+  IO.FS.withFile "/tmp/sail_eval.trace" .append fun h => h.putStrLn s
+
+register_option sail_eval.trace : Bool := { defValue := false, descr := "trace sail_eval steps" }
+register_option sail_eval.maxSteps : Nat := { defValue := 200000, descr := "sail_eval fuel" }
+
+structure Ctx where
+  /-- default simp set + user lemmas: conditions and `match` discriminants -/
+  simp : Simp.Context
+  /-- user lemmas only: tried at the root of every call (summaries, register reads) -/
+  simpRoot : Simp.Context
+  simprocs : Simp.SimprocsArray
+  /-- constants never unfolded (treated as stuck unless a simp lemma rewrites them) -/
+  noUnfold : NameSet := {}
+
+abbrev M := ReaderT Ctx <| StateRefT Nat MetaM
+
+def tick (what : String) (e : Expr) : M Unit := do
+  modify (· + 1)
+  if (← get) > sail_eval.maxSteps.get (← getOptions) then throwError "sail_eval: out of fuel"
+  if sail_eval.trace.get (← getOptions) then
+    traceLine s!"[{← get}] {what}: {e.getAppFn}"
+
+/-- `e.appArg!` that fails with a tagged error instead of a PANIC -/
+def argOf (tag : String) (e : Expr) : MetaM Expr := do
+  let .app _ a := e | throwError "sail_eval internal: {tag}: not an application{indentExpr e}"
+  return a
+
+/-- weak-head normalise a closed term with the kernel (defeq, so no proof needed) -/
+def kernelWhnf? (e : Expr) : MetaM (Option Expr) := do
+  if e.hasFVar || e.hasMVar then return none
+  match Lean.Kernel.whnf (← getEnv) {} e with
+  | .ok r => return some r
+  | .error _ => return none
+
+/-- simp pre-pass: evaluate closed `Bool` terms and closed decidable `Prop`s with the kernel
+(handles `_get_Mstatus_MIE 0x..#64 == 1#1`, enum `==`, ... that simp lemmas cannot). -/
+def closedPre : Simp.Simproc := fun e => do
+  -- `x + c` with a closed "negative" `c` becomes `x - m`: a sum of a symbolic value and a
+  -- 64-bit literal `≥ 2^63` makes the kernel recurse deeply (`Nat.add` unfolds its literal arg)
+  -- nested `if`s: on Lean 4.34.1 the interpreter evaluated `e.appArg!` in `isAppOfArity .. && !e.appArg!..`
+  -- even when the guard was false (PANIC: application expected)
+  if e.isAppOfArity ``HAdd.hAdd 6 then
+   if !(← argOf "hadd" e).hasFVar && !(← argOf "hadd" e).hasMVar then
+    let ty ← whnfR (← inferType e)
+    if ty.isAppOfArity ``BitVec 1 then
+      if let some (.lit (.natVal w)) ← kernelWhnf? (← argOf "bvty" ty) then
+        if let some (.lit (.natVal n)) ← kernelWhnf? (mkApp2 (mkConst ``BitVec.toNat) (← argOf "bvty2" ty) (← argOf "hadd2" e)) then
+          if 2 ^ w < 2 * n then
+            let m := mkNatLit (2 ^ w - n)
+            let c ← argOf "hadd3" e
+            let h ← mkDecideProof (← mkEq (← mkAppM ``HAdd.hAdd #[c, mkApp2 (mkConst ``BitVec.ofNat) (mkNatLit w) m])
+              (← mkAppOptM ``OfNat.ofNat #[ty, mkNatLit 0, none]))
+            let e' ← mkAppM ``HSub.hSub #[(← argOf "hadd4" e.appFn!), mkApp2 (mkConst ``BitVec.ofNat) (mkNatLit w) m]
+            return .visit { expr := e', proof? := ← mkAppM ``add_neg_lit #[(← argOf "hadd4" e.appFn!), c, m, h] }
+  if e.hasFVar || e.hasMVar || e.hasLooseBVars || e.isConstOf ``true || e.isConstOf ``false
+    || e.isConstOf ``True || e.isConstOf ``False then return .continue
+  let ty ← inferType e
+  if sail_eval.trace.get (← getOptions) then traceLine s!"closedPre {e.getAppFn} : {ty.getAppFn}"
+  -- the replacement `r` comes with a `decide` proof of `e = r`: the kernel then evaluates both
+  -- sides (fast, GMP) instead of a lazy-delta defeq check (which can recurse deeply on `BitVec`)
+  let byDecide (r : Expr) : MetaM Simp.Step := do
+    return .done { expr := r, proof? := ← mkDecideProof (← mkEq e r) }
+  if ty.isConstOf ``Bool then
+    if let some r ← kernelWhnf? e then
+      if r.isConstOf ``true || r.isConstOf ``false then return ← byDecide r
+    return .continue
+  if ty.isConstOf ``Nat then
+    if e.nat?.isSome || e.rawNatLit?.isSome then return .continue
+    if let some (.lit (.natVal n)) ← kernelWhnf? e then return ← byDecide (mkNatLit n)
+    return .continue
+  if ty.isConstOf ``Int then
+    if e.int?.isSome then return .continue
+    if let some r ← kernelWhnf? e then
+      match r with
+      | .app (.const ``Int.ofNat _) (.lit (.natVal n)) => return ← byDecide (toExpr (n : Int))
+      | .app (.const ``Int.negSucc _) (.lit (.natVal n)) => return ← byDecide (toExpr (Int.negSucc n))
+      | _ => pure ()
+    return .continue
+  if ty.isAppOfArity ``BitVec 1 then
+    if e.isAppOfArity ``BitVec.ofNat 2 && (e.getArg! 1).nat?.isSome then return .continue
+    if e.isAppOfArity ``OfNat.ofNat 3 then return .continue
+    let some (.lit (.natVal w)) ← kernelWhnf? (← argOf "bvty" ty) | return .continue
+    if let some (.lit (.natVal n)) ← kernelWhnf? (mkApp2 (mkConst ``BitVec.toNat) (← argOf "bvty3" ty) e) then
+      -- explicit `BitVec w` equality and instance: the width of `e`'s type may be a closed term
+      -- (`(regidx_bit_width -i 1).toNat - 0 + 1`) that 4.34 instance synthesis does not unify with `w`
+      let bw := mkApp (mkConst ``BitVec) (mkNatLit w)
+      let r := mkApp2 (mkConst ``BitVec.ofNat) (mkNatLit w) (mkNatLit n)
+      let p := mkApp3 (mkConst ``Eq [1]) bw e r
+      let inst := mkApp3 (mkConst ``instDecidableEqBitVec) (mkNatLit w) e r
+      return .done { expr := r, proof? := mkApp3 (mkConst ``of_decide_eq_true) p inst (mkApp2 (mkConst ``Eq.refl [1]) (mkConst ``Bool) (mkConst ``true)) }
+    return .continue
+  unless ty.isProp do return .continue
+  let some inst ← (try synthInstance? (mkApp (mkConst ``Decidable) e) catch _ => pure none) | return .continue
+  let some r ← kernelWhnf? (mkApp2 (mkConst ``Decidable.decide) e inst) | return .continue
+  if r.isConstOf ``true then
+    let pf ← mkEqTrue (mkApp3 (mkConst ``of_decide_eq_true) e inst (← mkEqRefl (mkConst ``true)))
+    return .done { expr := mkConst ``True, proof? := pf }
+  if r.isConstOf ``false then
+    let pf ← mkEqFalse (mkApp3 (mkConst ``of_decide_eq_false) e inst (← mkEqRefl (mkConst ``false)))
+    return .done { expr := mkConst ``False, proof? := pf }
+  return .continue
+
+def simpE (e : Expr) (root := false) : M Simp.Result := do
+  let c ← read
+  let m := Simp.mkDefaultMethodsCore c.simprocs
+  let m := { m with pre := fun e => do
+    match ← closedPre e with
+    | .continue none => m.pre e
+    | r => return r }
+  let (r, _) ← tryCatchRuntimeEx (Simp.main e (if root then c.simpRoot else c.simp) (methods := m)) fun ex =>
+    throwError "sail_eval: simp failed on{indentExpr e}\n{ex.toMessageData}"
+  return r
+
+/-- prove `p` by `omega` from the local context, if it can -/
+def omega? (p : Expr) : MetaM (Option Expr) := do
+  let g ← mkFreshExprSyntheticOpaqueMVar p
+  try
+    let gs ← Term.TermElabM.run' (Tactic.run g.mvarId! (evalTactic (← `(tactic| omega))))
+    unless gs.isEmpty do return none
+    return some (← instantiateMVars g)
+  catch _ => return none
+
+/-- decide a proposition: returns `(true, proof of c)` or `(false, proof of ¬c)` -/
+register_option sail_eval.aux : Bool := { defValue := false, descr := "kernel-check each leaf proof separately (debugging)" }
+
+/-- debugging: kernel-check `pf : ty` now, as an auxiliary theorem -/
+def auxCheck (what : Unit → String) (ty pf : Expr) : MetaM Expr := do
+  unless sail_eval.aux.get (← getOptions) do return pf
+  traceLine s!"aux check {what ()}: {← ppExpr ty}"
+  -- synchronous kernel check (`addDecl` may defer the kernel to a background task)
+  let fvars := (← getLCtx).getFVars
+  let ty' ← instantiateMVars (← mkForallFVars fvars ty)
+  let pf' ← instantiateMVars (← mkLambdaFVars fvars pf)
+  let decl := Declaration.thmDecl { name := ← mkFreshUserName `sailEvalAux, levelParams := [], type := ty', value := pf' }
+  match Kernel.Environment.addDecl (← getEnv).toKernelEnv (← getOptions) decl none with
+  | .ok _ => traceLine "  ok"; return pf
+  | .error ex => throwError "sail_eval.aux: kernel rejects {what ()}{indentExpr ty}\n{ex.toMessageData (← getOptions)}"
+
+def decideProp (c inst : Expr) : M (Bool × Expr) := do
+  let (b, pf) ← decidePropCore c inst
+  return (b, ← auxCheck (fun _ => "decision") (if b then c else mkNot c) pf)
+where decidePropCore (c inst : Expr) : M (Bool × Expr) := do
+  if sail_eval.trace.get (← getOptions) then traceLine s!"decide: {← ppExpr c}"
+  if let some r ← kernelWhnf? (mkApp2 (mkConst ``Decidable.decide) c inst) then
+    if r.isConstOf ``true then
+      return (true, mkApp3 (mkConst ``of_decide_eq_true) c inst (← mkEqRefl (mkConst ``true)))
+    if r.isConstOf ``false then
+      return (false, mkApp3 (mkConst ``of_decide_eq_false) c inst (← mkEqRefl (mkConst ``false)))
+  let r ← simpE c
+  if r.expr.isTrue then return (true, ← mkOfEqTrue (← r.getProof))
+  if r.expr.isFalse then return (false, ← mkAppM ``of_eq_false #[← r.getProof])
+  -- linear arithmetic over the goal's hypotheses
+  if sail_eval.trace.get (← getOptions) then traceLine s!"omega on: {← ppExpr r.expr}"
+  if let some p ← omega? r.expr then return (true, ← mkAppM ``Eq.mpr #[← r.getProof, p])
+  if let some p ← omega? (mkNot r.expr) then
+    return (false, ← mkAppM ``Eq.mpr #[← mkAppM ``congrArg #[mkConst ``Not, ← r.getProof], p])
+  throwError "sail_eval: cannot decide condition{indentExpr c}\nsimplified to{indentExpr r.expr}"
+
+def isEStateM (m : Expr) : MetaM Bool := do
+  let m ← whnfR m
+  return m.getAppFn.isConstOf ``EStateM
+
+def isExceptTEStateM (m : Expr) : MetaM Bool := do
+  let m ← whnfR m
+  unless m.isAppOfArity ``ExceptT 2 do return false
+  isEStateM (← argOf "exceptT" m)
+
+/-- unfold a recursive definition with its unfolding equation -/
+def unfoldEqn? (e : Expr) : MetaM (Option Simp.Result) := do
+  let f := e.getAppFn
+  let .const n _ := f | return none
+  let some thmName ← getUnfoldEqnFor? n (nonRec := false) | return none
+  let thm ← mkConstWithFreshMVarLevels thmName
+  let (ms, _, ty) ← forallMetaTelescope (← inferType thm)
+  let some (_, lhs, rhs) := ty.eq? | return none
+  let k := lhs.getAppNumArgs
+  let args := e.getAppArgs
+  if args.size < k then return none
+  unless ← isDefEq lhs (mkAppN f args[:k]) do return none
+  let mut pf := mkAppN thm ms
+  let mut rhs ← instantiateMVars rhs
+  for a in args[k:] do
+    pf ← mkCongrFun pf a
+    rhs := mkApp rhs a
+  return some { expr := rhs.headBeta, proof? := ← instantiateMVars pf }
+
+def stuck (e : Expr) : M Simp.Result := do
+  let s := toString (← ppExpr e)
+  throwError "sail_eval: stuck at\n{(s.take 3000).toString}"
+
+def isResult (e : Expr) : Option Bool :=
+  if e.isAppOf ``EStateM.Result.ok then some true
+  else if e.isAppOf ``EStateM.Result.error then some false else none
+
+def trans (r₁ r₂ : Simp.Result) : MetaM Simp.Result := r₁.mkEqTrans r₂
+
+/-- debugging: kernel-check one rewrite `e = r.expr` (only with `sail_eval.aux`) -/
+def checkR (what : String) (e : Expr) (r : Simp.Result) : MetaM Simp.Result := do
+  match r.proof? with
+  | none => return r
+  | some p => return { r with proof? := ← auxCheck (fun _ => what) (← mkEq e r.expr) p }
+
+/-- `e = e'` by `rfl`, stated: keeps every definitional step local, so the kernel compares
+adjacent terms only (merged defeq gaps made it evaluate discriminants, e.g. `Nat.add` on a
+symbolic value and a 64-bit literal, and hit "deep recursion") -/
+def rflStep (e e' : Expr) : MetaM Simp.Result := do
+  return { expr := e', proof? := ← mkExpectedTypeHint (← mkEqRefl e') (← mkEq e e') }
+
+def isCtorApp (e : Expr) : MetaM Bool := do
+  if e.isRawNatLit || e.nat?.isSome then return true
+  let .const n _ := e.getAppFn | return false
+  return (← getEnv).isConstructor n
+
+/-- normalise a pure (non-monadic) term towards constructor form: kernel whnf if closed, else
+simp, else unfold the head one step and retry (bounded). -/
+partial def normPure (d : Expr) (fuel : Nat := 16) : M Simp.Result := do
+  if ← isCtorApp d then return { expr := d }
+  if let some d' ← kernelWhnf? d then
+    let ty ← mkEq d d'
+    return { expr := d', proof? := ← auxCheck (fun _ => "closed whnf") ty (← mkExpectedTypeHint (← mkEqRefl d') ty) }
+  let r ← simpE d
+  if r.expr != d then
+    return ← trans r (← normPure r.expr (fuel - 1))
+  if fuel == 0 then return r
+  if d.isAppOf ``ite || d.isAppOf ``dite then
+    let args := d.getAppArgs
+    let (b, h) ← decideProp args[1]! args[2]!
+    let pf ← mkAppOptM (if b then (if d.isAppOf ``ite then ``if_pos else ``dif_pos)
+      else (if d.isAppOf ``ite then ``if_neg else ``dif_neg)) #[args[1]!, args[2]!, h, args[0]!, args[3]!, args[4]!]
+    let br := if b then args[3]! else args[4]!
+    let d' := (if d.isAppOf ``ite then br else mkApp br h).headBeta
+    return ← trans { expr := d', proof? := pf } (← normPure d' (fuel - 1))
+  -- `toBool b` from `<&&>` / `<||>` (Sail 97aa617dc): a projection out of an instance constant
+  if let .proj _ i st := d.getAppFn then
+    if let some f ← projectCore? (← whnf st) i then
+      let d' := (mkAppN f d.getAppArgs).headBeta
+      -- simp only: unfolding `and`/`or` further gives `Bool.rec`, which neither simp nor omega decides
+      let r' ← if let some d'' ← kernelWhnf? d' then normPure d'' 0 else simpE d'
+      let r'' ← trans { expr := d', proof? := ← mkExpectedTypeHint (← mkEqRefl d') (← mkEq d d') } r'
+      return r''
+  let d' ← withReducible (whnfCore d)
+  if d' != d then
+    return ← trans { expr := d', proof? := ← mkExpectedTypeHint (← mkEqRefl d') (← mkEq d d') }
+      (← normPure d' (fuel - 1))
+  if let .const n _ := d.getAppFn then
+    if (← read).noUnfold.contains n then return r
+  if let some r ← unfoldEqn? d then return ← trans r (← normPure r.expr (fuel - 1))
+  if let some d' ← delta? d then
+    return ← trans { expr := d', proof? := ← mkExpectedTypeHint (← mkEqRefl d') (← mkEq d d') }
+      (← normPure d'.headBeta (fuel - 1))
+  return r
+
+/-- can `a : Bool` be decided (simp with the hypotheses, then omega)? does not throw -/
+def decidableBool (a : Expr) : M Bool := do
+  if (← kernelWhnf? a).isSome then return true
+  -- simp only (as for the `toBool` discriminant): `normPure` would unfold `&&` to `Bool.rec`
+  let c ← simpE (← mkEq a (mkConst ``Bool.true))
+  if c.expr.isTrue || c.expr.isFalse then return true
+  if (← omega? c.expr).isSome then return true
+  return (← omega? (mkNot c.expr)).isSome
+
+mutual
+/-- evaluate `e : EStateM.Result ε σ α` to `.ok a s'` / `.error e s'` -/
+partial def eval (e : Expr) : M Simp.Result := do
+  let r ← evalCore e
+  match r.proof? with
+  | none => return r
+  | some p =>
+    let ty ← mkEq e r.expr
+    return { r with proof? := ← auxCheck (fun _ => s!"step {e.getAppFn.constName?}") ty (← mkExpectedTypeHint p ty) }
+
+partial def evalCore (e : Expr) : M Simp.Result := do
+  -- `headBeta` does not re-reduce a head that becomes a lambda after substitution: iterate
+  let mut e := e
+  while e.isHeadBetaTarget do e := e.headBeta
+  if (isResult e).isSome then return { expr := e }
+  let fn := e.getAppFn
+  let args := e.getAppArgs
+  match fn with
+  | .mdata _ b => eval (mkAppN b args)
+  | .letE _ _ v b _ => let e' := mkAppN (b.instantiate1 v) args; trans (← rflStep e e') (← eval e')
+  | .proj .. =>
+    let fn' ← whnfCore fn
+    if fn' == fn then stuck e else
+      let e' := mkAppN fn' args; trans (← rflStep e e') (← eval e')
+  | .const n _ =>
+    if n == ``Bind.bind && args.size == 7 && (← (if args.size == 7 then isEStateM args[0]! else pure false)) then
+      tick "bind" args[4]!
+      let x := args[4]!; let f := args[5]!; let s := args[6]!
+      let r ← eval (mkApp x s)
+      match isResult r.expr with
+      | some true =>
+        let pf ← mkAppOptM ``bind_ok #[none, none, none, none, x, f, s, none, none, ← r.getProof]
+        let a := r.expr.getAppArgs[3]!; let s' := r.expr.getAppArgs[4]!
+        trans { expr := mkApp2 f a s', proof? := pf } (← eval (mkApp2 f a s'))
+      | some false =>
+        let pf ← mkAppOptM ``bind_err #[none, none, none, none, x, f, s, none, none, ← r.getProof]
+        let er := r.expr.getAppArgs[3]!; let s' := r.expr.getAppArgs[4]!
+        let ty ← inferType e
+        let res := mkAppN (mkConst ``EStateM.Result.error ty.getAppFn.constLevels!) (ty.getAppArgs ++ #[er, s'])
+        return { expr := res, proof? := pf }
+      | none => stuck r.expr
+    else if n == ``ite && args.size ≥ 5 then
+      tick "ite" args[1]!
+      let (b, h) ← decideProp args[1]! args[2]!
+      let mut pf ← mkAppOptM (if b then ``if_pos else ``if_neg)
+        #[args[1]!, args[2]!, h, args[0]!, args[3]!, args[4]!]
+      for a in args[5:] do pf ← mkCongrFun pf a
+      let e' := mkAppN (if b then args[3]! else args[4]!) args[5:]
+      trans { expr := e', proof? := pf } (← eval e')
+    else if n == ``dite && args.size ≥ 5 then
+      tick "dite" args[1]!
+      let (b, h) ← decideProp args[1]! args[2]!
+      let mut pf ← mkAppOptM (if b then ``dif_pos else ``dif_neg)
+        #[args[1]!, args[2]!, h, args[0]!, args[3]!, args[4]!]
+      for a in args[5:] do pf ← mkCongrFun pf a
+      let e' := mkAppN (mkApp (if b then args[3]! else args[4]!) h) args[5:]
+      trans { expr := e', proof? := pf } (← eval e')
+    else if let some info ← getMatcherInfo? n then
+      tick "match" (mkAppN fn (args.extract info.getFirstDiscrPos (info.getFirstDiscrPos + info.numDiscrs)))
+      -- reducible transparency only: default `whnf` on e.g. 64-bit `BitVec` arithmetic in a
+      -- discriminant can take forever / blow the recursion limit
+      match ← withReducible (reduceMatcher? e) with
+      | .reduced e' => trans (← rflStep e e') (← eval e')
+      | _ =>
+        -- normalise discriminants: kernel whnf if closed, `eval` if a monadic result, else simp
+        let mut args' := args
+        let mut pf? : Option Expr := none
+        let mut changed := false
+        for i in [info.getFirstDiscrPos : info.getFirstDiscrPos + info.numDiscrs] do
+          let d := args[i]!
+          let isRes := (← whnfR (← inferType d)).isAppOf ``EStateM.Result
+          let r ← if isRes then eval d else normPure d
+          -- a Bool discriminant that simp leaves open (`toBool b` of `<&&>`/`<||>`, Sail 97aa617dc):
+          -- decide `b = true` like an `if` condition (simp, then omega)
+          let r ← if !isRes && !(← isCtorApp r.expr) && (← whnfR (← inferType d)).isConstOf ``Bool then
+              let c := r.expr
+              let (b, h) ← decideProp (← mkEq c (mkConst ``Bool.true))
+                (mkApp2 (mkConst ``instDecidableEqBool) c (mkConst ``Bool.true))
+              let pf ← if b then pure h else mkAppM ``eq_false_of_ne_true #[h]
+              trans r { expr := mkConst (if b then ``Bool.true else ``Bool.false), proof? := pf }
+            else pure r
+          if r.expr != d then
+            changed := true
+            let ctxLam ← withLocalDeclD `d (← inferType d) fun x =>
+              mkLambdaFVars #[x] (mkAppN fn (args'.set! i x))
+            let step ← mkCongrArg ctxLam (← r.getProof)
+            args' := args'.set! i r.expr
+            pf? := some (← match pf? with | none => pure step | some p => mkEqTrans p step)
+        unless changed do
+          -- e.g. `match 4 with | 0 | 1 | n.succ` (lean-sail v10 `readBytes`): literal discriminant, default transparency
+          return ← match ← reduceMatcher? e with
+            | .reduced e' => do trans (← rflStep e e') (← eval e')
+            | _ => stuck e
+        let e' := mkAppN fn args'
+        match ← withReducible (reduceMatcher? e') with
+        | .reduced e'' =>
+          let r₁ ← checkR "discriminants" e { expr := e', proof? := pf? }
+          trans r₁ (← trans (← rflStep e' e'') (← eval e''))
+        | _ => match ← reduceMatcher? e' with
+          | .reduced e'' => trans { expr := e', proof? := pf? } (← trans (← rflStep e' e'') (← eval e''))
+          | _ => stuck e'
+    else
+      -- nested: a `(← ..)` inside `&&` is evaluated before the `&&`, so guard `args[0]!` by a separate `if`
+      if (n == ``andM || n == ``orM) && args.size == 7 then
+        if (← isEStateM args[0]!) || (← isExceptTEStateM args[0]!) then
+          if let some r ← evalShortcut? n args then return r
+      tick "call" (mkAppN fn (args.extract 0 (args.size - 1)))
+      -- 1. user lemma / simp at the root
+      let r ← checkR "root simp" e (← simpE e (root := true))
+      if r.expr != e then return ← trans r (← eval r.expr)
+      if (← read).noUnfold.contains n then return ← stuck e
+      -- 2. unfold
+      if let some r ← unfoldEqn? e then return ← trans r (← eval r.expr)
+      if let some e' ← withDefault (unfoldDefinition? e) then return ← trans (← rflStep e e') (← eval e')
+      if let some e' ← delta? e then return ← trans (← rflStep e e') (← eval e')
+      stuck e
+  | _ => stuck e
+
+/-- `x <&&> y` (`x <||> y`) where `x`'s result cannot be decided: if `y` gives `false` (`true`)
+without changing the state, so does the whole term (`andM_ok_false`, `orM_ok_true`) -/
+partial def evalShortcut? (n : Name) (args : Array Expr) : M (Option Simp.Result) := do
+  let x := args[4]!; let y := args[5]!; let s := args[6]!
+  let rx ← eval (mkApp x s)
+  unless isResult rx.expr == some true do return none
+  let exc ← isExceptTEStateM args[0]!
+  -- in `ExceptT`, the value is `Except.ok a` (an `Except.error` is not a short-circuit case)
+  let okVal (v : Expr) : Option Expr :=
+    if !exc then some v else match v with | .app (.app (.app (.const ``Except.ok _) _) _) a => some a | _ => none
+  let some a := okVal rx.expr.getAppArgs[3]! | return none
+  let s₁ := rx.expr.getAppArgs[4]!
+  if ← decidableBool a then return none
+  tick "shortcut" (mkAppN (mkConst n) (args.extract 0 6))
+  let ry ← eval (mkApp y s₁)
+  let absorb := if n == ``andM then ``Bool.false else ``Bool.true
+  unless isResult ry.expr == some true && ((okVal ry.expr.getAppArgs[3]!).map (·.isConstOf absorb) == some true) &&
+      ry.expr.getAppArgs[4]! == s₁ do
+    throwError "sail_eval: undecided {a} in {n}, and the second operand does not give {absorb} in the same state{indentExpr ry.expr}"
+  let lem := if n == ``andM then (if exc then ``andM_ok_falseE else ``andM_ok_false)
+    else (if exc then ``orM_ok_trueE else ``orM_ok_true)
+  let pf ← mkAppM lem #[← rx.getProof, ← ry.getProof]
+  return some { expr := ry.expr, proof? := pf }
+end
+
+syntax (name := sailEvalStx) "sail_eval" (" frozen" "[" ident,* "]")? (Parser.Tactic.simpArgs)? : tactic
+
+@[tactic sailEvalStx] def evalSailEval : Tactic := fun stx => do
+  -- map lookups are leaves: a missing hypothesis should show up as `s.regs.get? r`, not its guts
+  let base : NameSet := [``Std.ExtDHashMap.get?, ``Std.ExtHashMap.get?, ``GetElem?.getElem?,
+    ``Std.ExtDHashMap.contains].foldl (·.insert ·) {}
+  let opq : NameSet ← match stx[1].getArgs with
+    | #[_, _, ids, _] => ids.getSepArgs.foldlM (fun acc i => do
+        return acc.insert (← realizeGlobalConstNoOverloadWithInfo i)) base
+    | _ => pure base
+  -- map updates are always unfolded by lookups
+  let dflt ← `(Parser.Tactic.simpArgs| [Std.ExtDHashMap.get?_insert, Std.ExtHashMap.getElem?_insert])
+  let user := if stx[2].getNumArgs == 0 then #[] else stx[2][0][1].getSepArgs
+  let items := dflt.raw[1].getSepArgs ++ user
+  let args := mkNullNode #[mkAtom "[", Syntax.mkSep items (mkAtom ","), mkAtom "]"]
+  let mk (only : Bool) := mkNode ``Parser.Tactic.simp
+    #[mkAtom "simp", mkNullNode, mkNullNode, (if only then mkNullNode #[mkAtom "only"] else mkNullNode),
+      args, mkNullNode]
+  let { ctx, simprocs, .. } ← withMainContext <| mkSimpContext (mk false) (eraseLocal := false)
+  let { ctx := ctxRoot, .. } ← withMainContext <| mkSimpContext (mk true) (eraseLocal := false)
+  withMainContext do
+    let g ← getMainGoal
+    let some (_, lhs, rhs) := (← instantiateMVars (← g.getType)).consumeMData.eq? | throwError "sail_eval: goal is not an equation"
+    let (r, steps) ← (eval lhs).run { simp := ctx, simpRoot := ctxRoot, simprocs, noUnfold := opq } |>.run 0
+    if sail_eval.trace.get (← getOptions) then logInfo m!"sail_eval: {steps} steps"
+    let gNew ← mkFreshExprSyntheticOpaqueMVar (← mkEq r.expr rhs) (← g.getTag)
+    g.assign (← mkEqTrans (← r.getProof) gNew)
+    replaceMainGoal [gNew.mvarId!]
+    -- reducible only: a default-transparency `rfl` on symbolic `BitVec` arithmetic can run away
+    try evalTactic (← `(tactic| with_reducible rfl)) catch _ => pure ()
+
+end SailEval

@@ -1,4 +1,4 @@
-import Riscv.Examples.PipeExamples
+import Legacy.Riscv.Examples.PipeExamples
 open Proven Proven.PipeEx
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
 /-- words, and the table `Pipe.space p n` for `n = 0..64`; the `Implements1` words `code1` and `XPipe.extra` -/

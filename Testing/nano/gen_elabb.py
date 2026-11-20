@@ -1,4 +1,4 @@
-"""Generates the two step macros of Nano/ElabB.lean from Testing/nano/elabb_step.tmpl (STEPN: a byte `c` with a next
+"""Generates the two step macros of Legacy/Nano/ElabB.lean from Testing/nano/elabb_step.tmpl (STEPN: a byte `c` with a next
 byte `n` = @N) and Testing/nano/elabb_end.tmpl (STEPE: the last byte).  REC(st, sp, d, d0, w, ty, cz) is the recursive
 call on the rest (STEPN) or the end of the pass (STEPE)."""
 import re, sys

@@ -9,10 +9,10 @@ lexA. `binary` is noncomputable (`S3.words`); `binaryC` below is a computable de
 * nano_s2b.words, nano_sinl.words: the 2b and inliner components of `binaryC` (memoryNeeded of these two is found on
   QEMU by the driver: the interpreted IR interpreter takes minutes per KB of input).
 Driver: Testing/nano/selfrun/selfrun_test.py. The Fast interpreter below is copied from Testing/nano/emit_ps3_p2.lean. -/
-import Riscv.Back.IrTarget
-import Compiler.Ir.Lin
-import Nano.SelfHostFinal
-import Riscv.Back.S3Top
+import Legacy.Riscv.Back.IrTarget
+import Legacy.Compiler.Ir.Lin
+import Legacy.Nano.SelfHostFinal
+import Legacy.Riscv.Back.S3Top
 open Proven.Ir Proven.Mach.Riscv Proven.Top.Alloc
 open Proven.S3
 

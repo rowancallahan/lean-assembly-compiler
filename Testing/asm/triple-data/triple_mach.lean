@@ -1,7 +1,7 @@
 -- as triple.lean, but the RV64 code is the interface route `Mach.Riscv.rv.code (Mach.mcompile e)` (asserted equal to `compile e`)
 import Arm.CompilerArm
-import Compiler.Front.Reify
-import Riscv.Back.Exp
+import Legacy.Compiler.Front.Reify
+import Nano.Base.Riscv.Back.Exp
 open Proven
 def hex (w : Nat) : String := String.ofList (Nat.toDigits 16 w)
 def rnd (i j : Nat) : Nat := (i * 0x9E3779B97F4A7C15 + j * 0xD1B54A32D192ED03 + i * i * j) % 2^64

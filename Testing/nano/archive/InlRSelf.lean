@@ -1,9 +1,9 @@
 /- The inliner's paged stage `Q` (`Nano.IR.inlQ`, Nano/InlR.lean) compiled by OUR paged front end (`wp_compileS`,
 spill-first register choice), branch nano-final. -/
 import Nano.InlR
-import Nano.PgStage
-import Riscv.Frontx.WpBridge
-import Nano.WpSpill
+import Legacy.Nano.PgStage
+import Legacy.Riscv.Frontx.WpBridge
+import Legacy.Nano.WpSpill
 
 namespace Nano.IR
 open Proven Proven.WA Proven.WP Proven.Top.Alloc Nano.IP

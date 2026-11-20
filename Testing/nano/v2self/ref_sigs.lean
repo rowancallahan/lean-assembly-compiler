@@ -1,4 +1,4 @@
-import Nano.V2.Front
+import Legacy.Nano.V2.Front
 /- reference signatures from Nano/V2/Front.lean (independent typing): per def (oldest first) `name hasInput kind(0 fn / 1 loop) nparams-words result-words`,
 words: w/out/buf = 1, prod = sum.  run: lean --run ref_sigs.lean FILE > sigs.txt -/
 open Nano.V2B

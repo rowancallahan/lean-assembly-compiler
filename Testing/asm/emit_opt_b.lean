@@ -1,5 +1,5 @@
-import Riscv.Back.OptB
-import Riscv.Direct.SortMergeMachine
+import Nano.Base.Riscv.Back.OptB
+import Nano.Base.Riscv.Direct.SortMergeMachine
 open Proven
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
 #eval show IO Unit from do

@@ -1,5 +1,5 @@
 import Lean
-import Nano.ParseS3
+import Legacy.Nano.ParseS3
 open Lean Meta Elab Command in
 elab "#find_symm " n:ident : command => do
   let env ← getEnv

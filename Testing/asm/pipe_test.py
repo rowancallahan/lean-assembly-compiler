@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Test of the `compile%` examples (`Riscv/Examples/PipeExamples.lean`; words and space tables printed by
+"""Test of the `compile%` examples (`Legacy/Riscv/Examples/PipeExamples.lean`; words and space tables printed by
 `Testing/asm/emit_pipe.lean` into `Testing/asm/pipe-words/`) on QEMU and on the Sail C emulator.
 For each input: a0 = &in (bytes xs), a1 = len xs, a2 = junk (scratch is unused), a3 = &out (128-byte slot
 pre-filled with 0x55).  Checked against a Python model of the Lean function: the first |result| output bytes
@@ -45,7 +45,7 @@ MODEL = {
     "mid": lambda xs: sorted(xs)[1:4],
     "foldsorted": lambda xs: [fold(lambda a, x: ((a - x) & 255) ^ 1, 7, sorted(xs)[::-1][:4])],
     "twosort": lambda xs: sorted((x | 1) if x >= 0x80 else (0xff - x) for x in sorted(xs[3:])[:10][::-1]),
-    # standard-library functions (Compiler/Front/PipeStd.lean); Bool/UInt8 = 1 byte, BitVec 64 = 8 bytes LE,
+    # standard-library functions (Nano/Base/Compiler/Front/PipeStd.lean); Bool/UInt8 = 1 byte, BitVec 64 = 8 bytes LE,
     # Option UInt8 = [0] or [1, v]
     "len": lambda xs: le8(len(xs)),
     "sum8": lambda xs: [sum(xs) & 255],

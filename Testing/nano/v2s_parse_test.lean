@@ -1,6 +1,6 @@
 -- differential test of the nano v2 source parser p2bV against stage2b (run: lake env lean Testing/nano/v2s_parse_test.lean)
-import Nano.V2S.Parse
-import Nano.V2S.Lex
+import Legacy.Nano.V2S.Parse
+import Legacy.Nano.V2S.Lex
 open Nano Nano.V2S Nano.PS Nano.LS Nano.B
 def lcg (s : Nat) : Nat := (s * 6364136223846793005 + 1442695040888963407) % 2^64
 def good : List String := [

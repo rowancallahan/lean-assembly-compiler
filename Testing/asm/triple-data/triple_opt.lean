@@ -1,6 +1,6 @@
 import Arm.CompilerArm
-import Compiler.Front.Reify
-import Riscv.Back.Opt
+import Legacy.Compiler.Front.Reify
+import Legacy.Riscv.Back.Opt
 open Proven
 def optW (e : Exp) : List (BitVec 32) := match compileOpt e with | .ok ws => ws | .error _ => compile e
 def hex (w : Nat) : String := String.ofList (Nat.toDigits 16 w)

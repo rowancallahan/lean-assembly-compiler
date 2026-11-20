@@ -1,7 +1,7 @@
 -- separate files: LoopExamples/ArrExamples (sumProg_wf) and Pipe/Arr2Code (BExp) clash when imported together
-import Riscv.Direct.SortMergeMachine
-import Riscv.Back.Arr
-import Riscv.Steps.GenUse
+import Nano.Base.Riscv.Direct.SortMergeMachine
+import Nano.Base.Riscv.Back.Arr
+import Nano.Base.Riscv.Steps.GenUse
 #print axioms Proven.compileAF_ok
 #print axioms Proven.sortCode_implements
 #print axioms Proven.msortCode_implements

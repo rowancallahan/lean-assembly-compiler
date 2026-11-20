@@ -1,5 +1,5 @@
-import Nano.Chain
-import Nano.AgreeInt
+import Legacy.Nano.Chain
+import Legacy.Nano.AgreeInt
 #print axioms Nano.nano_chain
 #print axioms Nano.nano_chain_int
 #print axioms Nano.nano_chain_runs

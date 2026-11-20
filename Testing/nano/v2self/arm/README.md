@@ -115,7 +115,7 @@ Emitted instructions follow `NANO_V2_ARM.md` §0-min, the set the proof will cov
   qemu on 6 inputs (empty, 1 byte, text, edge bytes, 3000 random bytes, 0x14). Output and status equal the RISC-V run's:
   **48/48**.
 * B2 translated by the ARM translator = `B2_arm.bin`. ARM-B2 on `../self_S_input.txt` = `B2.bin` byte for byte
-  (337,856 bytes, sha256 `bb5558a5…`), 1.3 s under qemu-aarch64. The RISC-V B2 under qemu-riscv64 gives the same
+  (337,856 bytes, sha256 `bb5558a5…`; since perf-names 340,296 bytes, `24759aa0…`, checked with nanorun only), 1.3 s under qemu-aarch64. The RISC-V B2 under qemu-riscv64 gives the same
   bytes (0.9 s; nanorun: 11.8 s). Translating B2: 0.5 s under qemu.
 * The instruction set of `B2_arm.bin` and `rv2arm_arm.bin` is §0-min's (objdump check).
 * `synth_rv.py`'s program of rare forms (x0/x2 operands, mul, far offsets, x0 stores): translator = oracle.

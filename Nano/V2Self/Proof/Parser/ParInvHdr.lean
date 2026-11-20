@@ -39,7 +39,8 @@ theorem rep_cur {h h' ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs)
   obtain ⟨hn, hlen, har⟩ := rep_bounds r
   obtain ⟨rT, rts, r0, r3', r11, rB, rD, rA, r25, r29, r30, r32, rO, rK⟩ := r
   rw [hD] at rD
-  obtain ⟨d12, dle, d27, drows, dcur, dz, d0, dsr⟩ := rD
+  obtain ⟨d12, dle, d27, drows, dcur, dz, d0, dsr, dH⟩ := rD
+  simp only [if_true] at dH
   simp only [if_true] at dcur
   obtain ⟨⟨⟨c0, c1, c2, c3, c4, c6, c5, cc⟩, cs⟩, dlt⟩ := dcur
   have big : ∀ i : UInt64, 155712 ≤ i.toNat → bget h' i = bget h i := fun i hi => e i (by omega) (by omega) (by omega)
@@ -67,7 +68,7 @@ theorem rep_cur {h h' ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs)
       (fun i a b => low i b (by omega)) har⟩
   show DefsRep h' { st with cur := cur' } (inDefF fs)
   rw [hD]
-  refine ⟨by rw [low 12 (by decide) (by decide)]; exact d12, dle, by rw [e27]; omega, fun j hj => ?_, ?_, fun j h1 h2 => ?_, ?_, ?_⟩
+  refine ⟨by rw [low 12 (by decide) (by decide)]; exact d12, dle, by rw [e27]; omega, fun j hj => ?_, ?_, fun j h1 h2 => ?_, ?_, ?_, ?_⟩
   · have hj : j < st.defs.length := hj
     obtain ⟨rr, rs⟩ := drows j hj
     have a5 := rr.2.2.2.2.2.2.1
@@ -122,6 +123,18 @@ theorem rep_cur {h h' ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st fs)
         fun q hq => big _ (by have := dsr.1; rw [shRowK k' (by omega) q hq]; omega)
       have cq0 := cq 0 (by decide); simp only [UInt64.add_zero] at cq0
       exact ⟨l, r, by rw [cq0]; exact sa.frame es, by rw [cq 1 (by decide)]; exact sb.frame es, by rw [cq 2 (by decide)]; exact sw⟩
+  · -- the bucket chains: same names, cells untouched
+    simp only [if_true]
+    have rn : ∀ s : St, s.defs = st.defs → s.cur.name = st.cur.name → (rows s).map DefR.name = (rows st).map DefR.name :=
+      fun s a b => rows_names a b
+    rw [rn]
+    · exact hashRep_frame (by simp [rows]; omega) dH (fun i a _ => big i (by omega)) (fun i hi => by
+        have c7 := slot7Cell i hi
+        by_cases q : i < st.defs.length
+        · exact e _ (by rw [c7]; omega) (Or.inl (by rw [c7]; omega)) (Or.inl (by rw [c7]; omega))
+        · exact e _ (by rw [c7]; omega) (Or.inr (Or.inl (by rw [c7]; omega))) (Or.inl (by rw [c7]; omega)))
+    · rfl
+    · exact hname
 
 theorem ShapeCode.nt_eq {h : Buf} {c : UInt64} (r : ShapeCode h c .nt) : c = 4 := by cases r; rfl
 
@@ -216,9 +229,9 @@ theorem h_afterColon {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (
   have ev : step h = v135 (bset h 5 fs.length.toUInt64) (taskAt h fs.length).a (taskAt h fs.length).b := by rw [E]; rfl
   have hp : (bget h 3).toNat ≤ (bget h 7).toNat := r.2.2.2.1.le
   have hn7 := (rep_bounds r).1
-  have ip : (d11 + bget h 3 - 1).toNat = 184383 + (bget h 3).toNat := by
-    rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr (by rw [UInt64.toNat_add]; simp [show d11.toNat = 184384 from rfl]; omega)),
-      UInt64.toNat_add]; simp [show d11.toNat = 184384 from rfl]; omega
+  have ip : (d11 + bget h 3 - 1).toNat = 185407 + (bget h 3).toNat := by
+    rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr (by rw [UInt64.toNat_add]; simp [show d11.toNat = 185408 from rfl]; omega)),
+      UInt64.toNat_add]; simp [show d11.toNat = 185408 from rfl]; omega
   have hprev' : bget (bset h 5 fs.length.toUInt64) (d11 + bget (bset h 5 fs.length.toUInt64) 3 - 1) = 35 → prevTok st = some (.k 35) := by
     intro e; apply hprev
     rw [show bget (bset h 5 fs.length.toUInt64) 3 = bget h 3 from bget_bset' _ _ _ _ (by decide)] at e
@@ -570,8 +583,8 @@ theorem h_stateTy {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.st
       simp
       exact (sw.frame es').frame es)
   have hp7 : (bget g 3).toNat ≤ (bget g 7).toNat := hK.le
-  have it : (d11 + bget g 3).toNat = 184384 + (bget g 3).toNat := by
-    rw [UInt64.toNat_add, show d11.toNat = 184384 from rfl]; omega
+  have it : (d11 + bget g 3).toNat = 185408 + (bget g 3).toNat := by
+    rw [UInt64.toNat_add, show d11.toNat = 185408 from rfl]; omega
   have p3 : bget H 3 = bget g 3 := by
     rw [cH 3 (by (try simp) <;> omega) (by (try simp) <;> omega) (by (try simp) <;> omega) (by decide) (by (try simp) <;> omega),
       e1 3 (by decide)]

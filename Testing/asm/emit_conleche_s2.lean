@@ -2,7 +2,7 @@
 `lake env lean --tstack=4000000 Testing/asm/emit_expr.lean`, then `bash Testing/scripts/frontx_tests.sh`.
 Each `.words`: first line `indw <retLen>`, then the code; each `.cases` line: input bytes, Lean's result bytes, the
 work block (`Ind.spaceA m nl (fun _ => cells)` with this input's cells; the theorem's `cellsSup` is at least that). -/
-import Riscv.Frontx.ConLecheS2
+import Legacy.Riscv.Frontx.ConLecheS2
 
 open Proven Proven.Frontx.ExprEx
 

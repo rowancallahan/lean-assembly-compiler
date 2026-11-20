@@ -1,6 +1,6 @@
-import Riscv.Back.OptArr
-import Riscv.Examples.InsB
-import Riscv.Direct.SortMachine
+import Nano.Base.Riscv.Back.OptArr
+import Legacy.Riscv.Examples.InsB
+import Nano.Base.Riscv.Direct.SortMachine
 open Proven
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
 def put (name : String) (r : Except String (List (BitVec 32))) : IO Unit :=

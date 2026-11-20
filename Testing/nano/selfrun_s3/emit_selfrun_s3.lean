@@ -7,10 +7,10 @@ allocation `*_hQ`, layout fixpoint `*_hL`/`*_fix`, `2 ≤ rounds`). Writes, unde
   intermediate results `stage2a (lexB src)`, `serU u`, `inlB (serU u)`;
 * nano_s2b.words, nano_sinl.words: the 2b and inliner components (their memoryNeeded is found on QEMU by the driver).
 Driver: Testing/nano/selfrun_s3/selfrun_s3_test.py. -/
-import Riscv.Back.IrTarget
-import Compiler.Ir.Lin
-import Nano.SelfHostS3
-import Riscv.Back.S3Top
+import Legacy.Riscv.Back.IrTarget
+import Legacy.Compiler.Ir.Lin
+import Legacy.Nano.SelfHostS3
+import Legacy.Riscv.Back.S3Top
 open Proven.Ir Proven.Mach.Riscv Proven.Top.Alloc
 open Proven.S3
 
