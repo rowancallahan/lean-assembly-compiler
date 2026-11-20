@@ -22,7 +22,12 @@ plan for a proved version (`armTarget`, `Testing/notes/NANO_V2_ARM.md`).
 
 ## Use on a Mac (Apple Silicon), from this directory
 
-Quick start: `./try_arm.sh` (self-check + all examples) or `./try_arm.sh prog.lean input.bin` (compile and run one program).
+Quick start (all on ARM; Mac native, Linux via qemu-aarch64):
+```
+./compile.sh prog.lean > prog.arm          # compile a Lean program to ARM code
+./run.sh prog.arm input.txt output.txt     # run it (prog.lean also works: compiles first)
+./try_arm.sh                               # self-check + all examples
+```
 
 ```
 cc -O2 ../run/shim/shim_arm.c -o shim_arm
