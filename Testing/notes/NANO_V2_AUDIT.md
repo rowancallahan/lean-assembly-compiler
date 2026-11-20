@@ -113,7 +113,14 @@ for ex1 on input `[5]`, with a start state, 1 byte of output space and 4,194,416
 (finding B). Finding A's loophole (always-OOM code admitted) is closed by the explicit `spaceC` as far as the top
 statement goes; `ImplementsC` (the existential form) is still satisfiable by always-OOM code wherever it is used alone.
 
-## SelfIn non-vacuity (`Nonempty SelfIn`) — PAUSED, plan of remaining steps
+## SelfIn non-vacuity (`Nonempty SelfIn`) — PROVED
+
+`selfIn_nonempty : Nonempty SelfIn` (Proof/Tests/SelfInWitness.lean), witness `[]`, via `Cert.CapFree.sem_nil :
+Sem κC PC.all [] = .ok []` (Tests/SelfInPath.lean). Axioms: propext, Classical.choice, Quot.sound. The "Remaining" list
+below is done; kept as the proof outline. Limit: this shows the type is inhabited by the EMPTY input only (output empty);
+it does not show a cap-free run on a real program such as C's own source.
+
+### outline (was: plan of remaining steps)
 
 Goal: `Sem κC Cert.PC.all [] = .ok []`, hence `≠ .error .cap`, hence `⟨[], …⟩ : SelfIn`.
 Status: no `sorry`; everything below "done" is pushed and builds (each file < 1 min).

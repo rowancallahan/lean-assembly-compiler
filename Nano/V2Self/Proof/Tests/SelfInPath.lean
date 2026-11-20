@@ -262,4 +262,49 @@ theorem R_facts : (C.v127 ((C.v1 HA 60 0 0).set 5 0) 0 0)[0]?.getD 0 ≠ 1 ∧ (
   have hl := HT_len
   rcases v127_cases HT 0 0 e37 with h | h <;> rw [h] <;> simp [bset, hl] <;> simpa [hl] using h12
 
+/-! ### the path, instantiated -/
+theorem X117 (h : List UInt64) (a b : UInt64) : F [] 117 PC.d117 [.b h, .w 60, .w a, .w b] = .ok [.b (C.v127 h a b)] :=
+  g117 _ _ C.v127 (cal 95 117 PC.d95 rfl) X95 h a b
+
+theorem X118 : F [] 118 PC.d118 [.w 16777216, .b (C.v1 HA 60 0 0)] = .ok [.b (C.v127 ((C.v1 HA 60 0 0).set 5 0) 0 0)] :=
+  g118 _ _ _ C.v127 (cal 16 118 PC.d16 rfl) (cal 117 118 PC.d117 rfl) (X16.trans (by rw [show C.d1 = 64 from by decide]))
+    X117 _ H5_0 H5_5 H5_64 H5_65 H5_66 R_facts.1
+
+theorem X120 : F [] 120 PC.d120 [.b [], .w 1] = .ok [.b []] :=
+  g120 _ _ _ _ _ _ C.v1 H0 _ H0_len (cal 26 120 PC.d26 rfl) (cal 31 120 PC.d31 rfl) (cal 38 120 PC.d38 rfl)
+    (cal 56 120 PC.d56 rfl) (cal 118 120 PC.d118 rfl) (X26.trans (by rw [show C.d11 = 184384 from by decide])) X31 (X38 H0)
+    X56 X118 R_facts.2
+
+theorem g122 (ms : List Fn) (G120 : Fn) (h120 : ms[120]? = some G120) (e120 : G120 [.b [], .w 1] = .ok [.b []]) :
+    defMean [] κC ms PC.d122 [.b []] = .ok [.b []] := by
+  refine defMean_plain_ok (e := PC.b122) rfl rfl (by decide) rfl ?_
+  simp [PC.b122, ev, evL, NanoMain.val, h120, e120, bind, Except.bind, pure, Except.pure]
+theorem X122 : F [] 122 PC.d122 [.b []] = .ok [.b []] := g122 _ _ (cal 120 122 PC.d120 rfl) X120
+
+theorem g233 (ms : List Fn) (G14 G122 G160 G232 : Fn) (h14 : ms[14]? = some G14) (h122 : ms[122]? = some G122)
+    (h160 : ms[160]? = some G160) (h232 : ms[232]? = some G232) (e14 : G14 [] = .ok [.b []])
+    (e122 : G122 [.b []] = .ok [.b []]) (e160 : G160 [.b []] = .ok [.b []]) (e232 : G232 [.b []] = .ok [.b []]) :
+    defMean [] κC ms PC.d233 [] = .ok [.b []] := by
+  refine defMean_plain_ok (e := PC.b233) rfl rfl (by decide) rfl ?_
+  simp [PC.b233, ev, evL, NanoMain.val, h14, h122, h160, h232, e14, e122, e160, e232, bind, Except.bind, pure, Except.pure]
+theorem X233 : F [] 233 PC.d233 [] = .ok [.b []] :=
+  g233 _ _ _ _ _ (cal 14 233 PC.d14 rfl) (cal 122 233 PC.d122 rfl) (cal 160 233 PC.d160 rfl) (cal 232 233 PC.d232 rfl)
+    X14 X122 X160 X232
+
+theorem sem_last {κ : Nat} {p : List DefA} {inp : List UInt8} {f : Fn} {l : List UInt64}
+    (h : (means inp κ [] p).getLast? = some f) (hf : f [] = .ok [.b l]) : Sem κ p inp = .ok (l.map UInt64.toUInt8) := by
+  unfold Sem; rw [h]; simp only [hf]
+
+theorem pre_all : Pre [] 234 = means [] κC [] PC.all := by
+  unfold Pre; rw [List.take_of_length_le (by decide)]
+
+theorem last_all : (means [] κC [] PC.all).getLast? = some (F [] 233 PC.d233) := by
+  have h := cal 233 234 PC.d233 rfl
+  have hn := pre_length [] 234 (by decide)
+  rw [pre_all] at h hn
+  rw [List.getLast?_eq_getElem?, hn]; exact h
+
+/-- **C's text on the empty input** returns the empty output (in particular: no buffer reaches its capacity) -/
+theorem sem_nil : Sem κC PC.all [] = .ok [] := sem_last last_all X233
+
 end Cert.CapFree
