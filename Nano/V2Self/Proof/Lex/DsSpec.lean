@@ -86,10 +86,19 @@ def go : Nat → List UInt64 → List Nat → Bool → Option (List UInt64)
       if cs.length = 1 ∧ cs.head? ≠ some 1 then (go f r [0] false).map (1 :: ·) else none
     else (go f r cs false).map (a ++ ·)
 
-/-- **the desugaring**: fewer than 2^24 words in and out -/
+/-- every token is well formed and none is `match` -/
+def noMatch : Nat → List UInt64 → Bool
+  | 0, _ => false
+  | _ + 1, [] => true
+  | f + 1, ts => match splitTok ts with
+    | none => false
+    | some (a, r) => a != MATCH && noMatch f r
+
+/-- **the desugaring**: fewer than 2^24 words in and out; a text without `match` is unchanged -/
 def ds (ts : List UInt64) : Option (List UInt64) :=
   if ts.length < 2 ^ 24 then
-    (go (ts.length + 1) ts [0] false).bind fun o => if o.length < 2 ^ 24 then some o else none
+    if noMatch (ts.length + 1) ts then some ts
+    else (go (ts.length + 1) ts [0] false).bind fun o => if o.length < 2 ^ 24 then some o else none
   else none
 
 end DsSpec

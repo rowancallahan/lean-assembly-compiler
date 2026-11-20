@@ -5,7 +5,8 @@ Token words in, token words out (or the EMPTY Buf: reject).  `match E with | 3 =
 name); `| _ =>` becomes `else`; a first arm `| (x, y) =>` becomes `let (x, y) := μ;`.  `match` and `with` are the
 identifiers with those spellings (Lean keywords).  Per paren depth d one cell: 0 no match, 1 a match still needing a
 catch-all arm, 2 a match with its catch-all arm.  A match ends at the `)` of its depth, at the next `def` or at the end;
-it must have its catch-all arm by then.  `|` at a depth whose cell is 1 is an arm, 2 is rejected, 0 is copied. -/
+it must have its catch-all arm by then.  `|` at a depth whose cell is 1 is an arm, 2 is rejected, 0 is copied.
+A text with no `match` token (`t11`) is passed through unchanged, without allocating (same memory as before). -/
 import Nano.V2Self.C.Base
 namespace C
 
@@ -91,8 +92,13 @@ def t9 : Nat → Buf → UInt64 → UInt64 → Buf → UInt64 → Buf → Buf
       else t9 n t e d s 0 (t6 16777216 t i e o)
     else if c == 1 then bnew else if d == 0 then if bget s 0 == 1 then bnew else o else bnew
 
+def t11 : Nat → Buf → UInt64 → UInt64
+  | 0, t, i => 0
+  | n + 1, t, i => if i < bsize t then if t0 t i == 0 then 0 else if t2 t i (t0 t i) == 1 then 0 else t11 n t (t0 t i) else 1
+
 def t10 (t : Buf) : Buf :=
   if bsize t < 16777216 then
+    if t11 16777216 t 0 == 1 then t else
     let o := t9 16777216 t 0 0 (bpush bnew 0) 0 bnew;
     if bsize o < 16777216 then o else bnew
   else bnew

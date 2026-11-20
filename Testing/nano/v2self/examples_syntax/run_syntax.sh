@@ -12,7 +12,7 @@ fail=0
 for p in "$@"; do
   n=$(basename "$p" .lean)
   : > "$T/$n.in"; for b in $(sed -n 's/^-- input *(hex): *//p' "$p"); do printf "\\x$b" >> "$T/$n.in"; done
-  "$T/nanorun" "$B2" "$p" "$T/$n.bin" 2> "$T/$n.clog" || true
+  "$T/nanorun" "$B2" "$p" "$T/$n.bin" ${WORK:-120} 2> "$T/$n.clog" || true   # match needs about 8 MiB more than 80
   [ -s "$T/$n.bin" ] || { echo "$n: REJECTED"; fail=1; continue; }
   : > "$T/$n.out"; "$T/nanorun" "$T/$n.bin" "$T/$n.in" "$T/$n.out" 2> "$T/$n.rlog" || true
   got=$(hex "$T/$n.out"); r=OK; [ "$got" = "$(field expect "$p")" ] || { r=FAIL; fail=1; }
