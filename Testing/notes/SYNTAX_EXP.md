@@ -5,6 +5,10 @@ Base: `origin/release-434` @ 56e2584. Toolchain: Lean 4.34.1. RISC-V model: `dep
 model (as on `rv-regen-434`); that change is **not committed** (release-434 still pins v5).
 
 ## Morning summary (SYNTAX-EXP, 2026-11-20)
+Both branches include `origin/release-434` @234d4ff5 (which now contains rv-regen-434). The merge changed no file under
+`Nano/V2Self`, `Testing/nano/v2self` or the build configuration, so the results below carry over; runner confirmation on
+variants `exp/session_01MfKuVZhKYKcG9vX6rNdYPV/{trivia3,match3}`.
+
 | branch | content | 4.34.1 REVIEW | review_axioms | non-Legacy Nano/V2Self | fixpoint (nanorun, 80 MiB) |
 |---|---|---|---|---|---|
 | `exp-syntax` | (1) comments/docstrings/attributes/namespace…/private; release-434 + rv-regen-434 | OK | OK (8 theorems, as pinned) | 691 jobs OK | B2 = B3, `395f0b9d…` |
