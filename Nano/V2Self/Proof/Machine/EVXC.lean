@@ -1,12 +1,9 @@
-/- Machine bridge (Opus box E): defs and calls under the heap contract.
+/- Machine bridge (Opus box E): defs and calls, shared definitions.
 * `IG` = the GLOBAL invariant (input registers / bytes, code-base bound …): reads only x28, x29, the code base and
   memory outside the work area [hb, E0) (`IGOK`); inside a def with p parameter words the contract invariant is
-  `IGp IG E0 p` (also: the frame top s0 + 8p + 16 is at most E0), which is `InvOKH`.
-* `DefX C f p q IG hb E0 Sd`: entered at word f with the p argument words on the stack (argument i at t6 + 8(p−1−i)),
-  ra in x1: if `Sd args sp H` succeeds the def returns to ra with the q result words in place of the arguments, s0 kept,
-  memory at or above the old argument top unchanged.
-* `defX`: prologue (`proA 1 f r`, Gen's g38) ++ body (EVHw) ++ epilogue (`epi p q`) is a `DefX`.
-* `callX`: argument words (EVHw p) then `jal ra f` is an EVHw q fragment of the caller. -/
+  `IGp IG E0 p` (also: the frame top s0 + 8p + 16 is at most E0), which is `InvOKH` (`invOKH_IGp`).
+* semantics `defS`, `callS`, `argEnv`; helpers `Mc_out`, `slotAddr_param`.
+The def contract and the run theorems are `DefXS` (EVSDefs.lean), `defXS` / `callXS` (EVSCall.lean). -/
 import Nano.V2Self.Proof.Machine.EVXF
 import Nano.V2Self.Proof.Machine.CallA
 namespace Templates

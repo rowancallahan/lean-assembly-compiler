@@ -1,7 +1,5 @@
-/- Machine bridge (Opus box E): leaves and prim closings as `EVHw` fragments.
-`leafX` (one checked push: CONST, LOCAL 1, LEN/ISIZE), `localX` (LOCAL of width w = w single pushes),
-`fin1X` / `fin2X` / `fin3X` (an operand block of 1/2/3 words, then a closing fragment `Fin1/2/3`: BIN, RD, BSIZE,
-BGET, BPUSH/PUT, BSET), `bnewX` (BNEW). -/
+/- Machine bridge (Opus box E): semantics of leaves and prim closings: `leafS`, `localS` (+ `localT_succ`),
+`fin1S` / `fin2S` / `fin3S`.  Run theorems: EVSLeaf.lean / EVSFin.lean. -/
 import Nano.V2Self.Proof.Machine.EVXC
 import Nano.V2Self.Proof.Machine.ExprEV
 namespace Templates

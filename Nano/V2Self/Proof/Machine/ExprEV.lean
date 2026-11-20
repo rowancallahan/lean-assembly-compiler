@@ -1,5 +1,5 @@
-/- The expression leaves as instances of Opus's environment contract `Templates.EV` (Proof/Templates.lean), so that IF/LET/BIN
-compose over them.  `leaf_EV` turns "one push, memory changes only at t6−8" into an EV; `const_EV`, `local_EV`, `len_EV` are the leaves. -/
+/- Two helpers for LOCAL kept from the former plain leaf layer: `slotAddr_eq` and `local1_run` (one slot push as a
+plain `run`), used by EVSLeaf.lean. -/
 import Nano.V2Self.Proof.Machine.Templates
 import Nano.V2Self.Proof.Machine.Expr
 namespace Templates

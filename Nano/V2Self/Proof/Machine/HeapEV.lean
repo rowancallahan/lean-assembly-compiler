@@ -1,7 +1,7 @@
-/- The HEAP environment contract `EVH` (success path first): fragments that may allocate / write heap buffers.
-`Hp` = heap image (top + known cells); `HRel hb s H` ties it to the machine: t5 = top, hb ≤ top ≤ t6, 8-aligned, and every known
-cell [hb, top) equals memory.  `EVH` is `Templates.EV` plus the heap: the semantic function threads the heap image
-(`S env sp H = some (v, H')` is the success case).  `lift_EV` makes every non-heap EV leaf an EVH. -/
+/- The heap side of the fragment contracts, shared definitions.  `Hp` = heap image (top + known cells);
+`HRel hb s H` ties it to the machine: t5 = top, hb ≤ top ≤ t6, 8-aligned, and every known cell [hb, top) equals memory
+(`HRel_stack`, `hread`).  `InvOKH`, the closing-fragment shapes `Fin1`/`Fin2`/`Fin3`, and the heap prim semantics
+`bsizeF`, `bgetF`, `bpushF`, `bsetF`, `bnewS` (`bufInfo`).  Run theorems: EVSFin.lean, EVSLeaf.lean. -/
 import Nano.V2Self.Proof.Machine.Templates
 import Nano.V2Self.Proof.Machine.Heap
 namespace Templates

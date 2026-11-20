@@ -1,5 +1,5 @@
-/- Machine bridge (Opus box E): the remaining closing fragments under the heap contract (HeapEV's Fin1/Fin2):
-BIN (`binT op`, all 8 ops) and RD (`rdT`, input bytes kept by `Inv`). -/
+/- Machine bridge (Opus box E): semantics of the closing fragments BIN (`aluF2`) and RD (`rdF1`), and the input
+invariant `InpOK`.  Run theorems: EVSFin.lean. -/
 import Nano.V2Self.Proof.Machine.EVXL
 namespace Templates
 open CallProbe

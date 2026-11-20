@@ -1,6 +1,6 @@
-/- Machine bridge (Opus box E): the start code on the J machine.  `start_setup`: from word 0 (the jump to the start
-code) to main's entry: heap base t5 = a2 + 16, expression stack t6 = sp rounded down to 8, ra / s0 saved at a2 / a2 + 8,
-input registers t3 / t4, `jal ra main`. -/
+/- Machine bridge (Opus box E): the start code on the J machine, shared definitions: `Entry` (the state at main's
+entry: heap base t5 = a2 + 16, expression stack t6 = sp rounded down to 8, ra / s0 saved at a2 / a2 + 8, input
+registers t3 / t4), the copy loop `loopJ`, `KeepT`, `At` helpers.  Run theorems: StartSafe.lean / StartAllS.lean. -/
 import Nano.V2Self.Proof.Machine.StartCode
 namespace Templates
 open CallProbe
@@ -32,9 +32,6 @@ theorem At.dt {C : List J} {p : Nat} {l : List J} (h : At C p l) (k n : Nat) (hk
   simp only [List.length_take, List.length_drop] at hi
   rw [Nat.add_assoc, h (k + i) (by omega)]
   simp [List.getElem?_take, show i < n by omega]
-
-theorem Star.pc {C : List J} {a : Nat × St} {p p' : Nat} {t : St} (h : Star C a (p, t)) (e : p = p') :
-    Star C a (p', t) := e ▸ h
 
 theorem Star.pc_step {C : List J} {a : Nat × St} {p p' : Nat} {t : St} (h : step C a = some (p, t)) (e : p = p') :
     step C a = some (p', t) := e ▸ h
