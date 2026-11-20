@@ -10,13 +10,15 @@ PROOF NOTES (owner rule: semantics, conventions, which lemma covers it):
   `wk = blockLen − 1`, so w = 16 here: `jal x1` links `b + 16·(pc+1)` = the address after the block's last word `bl`,
   and `jalr x0, r` = `br π r` jumps to `(x − b)/16` (SafeX: `x = base + 16·j`).
 * Registers `armReg` (π, = ArmBlock.pi): J 1 ↦ x30 (ra), 2 ↦ x4 (work top; Spec armMapping.workTop = 4, 1437a980),
-  10..13 ↦ x0..x3, 28..31 ↦ x12, x13, x10, x11, and 5..8, 14, 15 ↦ the same number. Every other J register ↦ 99, a
-  number that is no AArch64 register (observe reads it as 0; Gen never writes those, `armOK` refuses them).
+  10..13 ↦ x0..x3, 28..31 ↦ x12, x13, x10, x11, and 5..8, 14, 15 ↦ the same number. Every other J register (3, 4, 9,
+  16..27: Gen's keepR, never written) ↦ x18, which no block writes (E, 2026-11-20). So `Rel.x` holds for them through
+  jOfT, and `reg` need not be injective there; `armOK` refuses them in every field.
   π avoids 16..29 and 31: no emitted word has a register field 31 (no xzr, wzr or sp anywhere).
 * Scratch `armScratch = [16, 17]`: x16 = address / shift amount / `subs` destination, x17 = the zero for an x0 operand
   and `madd`'s addend. Both are dead at block boundaries; NZCV is written only by `subs` and read by the `b.cond` of the
   same block.
-* Kept: x18..x29 and sp are never written or read (`armMapping.kept` = x19..x29, sp). `Laws.kept_map` holds by the
+* Kept: no block writes x18..x29 or sp (x18 is the image of the unused J registers, so it is only "read" by `Rel.x`;
+  `armMapping.kept` = x19..x29, sp). `Laws.kept_map` holds by the
   "outside the image of reg and outside scratch" disjunct.
 * `armOK` = rv2arm's validation (ArmBlock.validJ) PLUS the encoding ranges that rv2arm takes for granted because its
   input is RV code: |imm| < 2048 (RV I/S immediates) for addi / ld / sd / lbu / sb, so `add`/`sub` imm12 and the x16
@@ -28,17 +30,17 @@ open CallProbe
 
 /-! ## registers -/
 
-/-- π: J register ↦ AArch64 register number (99 = not a register) -/
+/-- π: J register ↦ AArch64 register number (x18 for the J registers outside π's domain) -/
 def armReg (r : Nat) : Nat :=
   match r with
   | 0 => 31 | 1 => 30 | 2 => 4 | 10 => 0 | 11 => 1 | 12 => 2 | 13 => 3 | 28 => 12 | 29 => 13 | 30 => 10 | 31 => 11
-  | 5 => 5 | 6 => 6 | 7 => 7 | 8 => 8 | 14 => 14 | 15 => 15 | _ => 99
+  | 5 => 5 | 6 => 6 | 7 => 7 | 8 => 8 | 14 => 14 | 15 => 15 | _ => 18
 
 /-- the registers the blocks may clobber -/
 def armScratch : List Nat := [16, 17]
 
-/-- a J register rv2arm accepts (mapped; x0 included) -/
-def mapped (r : Nat) : Bool := armReg r < 32
+/-- a J register rv2arm accepts (π's domain, x0 included) -/
+def mapped (r : Nat) : Bool := r ∈ [0, 1, 2, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 28, 29, 30, 31]
 
 /-! ## A64 words (64-bit forms; register fields are 5 bits, never 31) -/
 def movz (d i : Nat) : Nat := 0xD2800000 + i * 2^5 + d
@@ -130,7 +132,7 @@ def armOK (n pc : Nat) : J → Bool
   | .beq a b o | .bne a b o | .bltu a b o | .bgeu a b o =>
     mapped a && mapped b && 0 ≤ (pc : Int) + o && (pc : Int) + o < n && -65535 ≤ o && o ≤ 65535
   | .jal rd o => (rd == 0 || rd == 1) && 0 ≤ (pc : Int) + o && (pc : Int) + o < n
-  | .jalr rd rs => rd == 0 && rs != 0 && armReg rs < 31
+  | .jalr rd rs => rd == 0 && rs != 0 && mapped rs
 
 /-- every instruction of the program is encodable -/
 def progOK (C : List J) : Bool := (List.range C.length).all fun i => match C[i]? with
