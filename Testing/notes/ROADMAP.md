@@ -522,3 +522,7 @@ ARM proof and the larger code work.
 - GOAL: compile con-leche (leanprover/con-leche, the Lean kernel checker; ~22k lines in the checker core's import closure,
   see Testing/notes/CONLECHE_*.md). Needs (a) a much larger nano subset: user inductives incl. Expr (>2 recursive fields),
   structures, Name/String/Char, Array, HashMap, Except/state monads, partial; (b) the larger capacities above.
+- INTERIM (owner, 2026-11-20): while the full Sail ARM model does not build on 15 GB boxes, prove the ARM blocks against
+  DeepMind's arm64 Lean model (Arm/apc), with lemmas stated in the same shape as the Sail full_* lemmas.
+  LATER: the DeepMind <-> Sail equivalence (per instruction form we use) on a big-memory machine (e.g. a large cloud box),
+  so the final theorem is against Sail.
