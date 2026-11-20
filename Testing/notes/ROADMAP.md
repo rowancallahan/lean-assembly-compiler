@@ -583,3 +583,11 @@ Order (each: measure on BENCH.md programs + self-compile, then prove; proofs gre
 4. inline constant defs (zero-arg defs returning a literal)
 5. top-of-stack in a register (drops push/pop pairs) — biggest win, most proof work
 6. ARM: shorter rv2arm sequences for common forms (currently fixed 4-word blocks, ~3.6x)
+
+## Later (owner, 2026-11-20), after con-leche syntax
+- Native ARM backend: generate AArch64 directly from the IR (no rv2arm translation) for speed; proved against the
+  same A64 machine interface (A64Sem / Sail ARM), RISC-V path unchanged.
+- Verified inline assembly ("skip through the compiler"): a Lean value {words, f, proof : code implements f on the
+  Sail model (Spec Implements-style contract + the compiler's register/stack/heap/OOM convention)}; the compiler
+  copies the words verbatim, the source semantics sees only f, the correctness proof gets one new case. No unproved
+  blocks accepted. ARM: free if the block uses only rv2arm-supported forms, else an ARM block + its own proof.
