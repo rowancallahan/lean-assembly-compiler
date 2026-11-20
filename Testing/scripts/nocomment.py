@@ -1,6 +1,6 @@
 """Print `file:line: text` for forbidden words in Lean sources, ignoring comments and string literals."""
 import re, sys
-BAD = re.compile(r'\bsorry\b|native_decide|bv_decide|^\s*axiom\b|\bsorryAx\b')
+BAD = re.compile(r'\bsorry\b|\badmit\b|native_decide|bv_decide|^\s*axiom\b|\bsorryAx\b')
 for path in sys.argv[1:]:
     src = open(path).read(); out = []; i = 0; depth = 0; n = len(src)
     while i < n:
