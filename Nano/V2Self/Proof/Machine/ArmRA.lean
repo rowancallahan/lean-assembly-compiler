@@ -390,4 +390,205 @@ theorem d3_eq (x o : List UInt8) (c : Nat) (hc : c = 0 ∨ c = 1) {t s : Nat} {z
     rw [a7_eq _ _ _ _ _ hk hC (by rw [tU (by omega)]; omega) (by decide) (by decide),
       y2_eq x o (by omega), hW]; simp only [tU (show opR t < 2 ^ 64 by omega), tU (show armReg s < 2 ^ 64 by omega), tU (show z.toNat < 2 ^ 64 by omega), show (Nat.toUInt64 16).toNat = 16 from rfl, show (Nat.toUInt64 0).toNat = 0 from rfl]
 
+/-! ## t0 per J kind: memory, ALU, shifts -/
+
+theorem I_V (p f3 rd rs : Nat) (imm : Int) (hp : p < 128) (hf : f3 < 8) (hd : rd < 32) (hs : rs < 32) :
+    (C.g2 p.toUInt64 f3.toUInt64 rd.toUInt64 rs.toUInt64 (iu imm)).toNat =
+      (imm % 4096).toNat * 2 ^ 20 + rs * 2 ^ 15 + f3 * 2 ^ 12 + rd * 2 ^ 7 + p := by
+  rw [g2_sum _ _ _ _ _ (by rw [tU (by omega)]; omega) (by rw [tU (by omega)]; omega) (by rw [tU (by omega)]; omega)
+    (by rw [tU (by omega)]; omega), CallProbe.iu_toNat, tU (by omega), tU (by omega), tU (by omega), tU (by omega)]
+  omega
+theorem S_V (f3 r2 r1 : Nat) (imm : Int) (hf : f3 < 8) (h2 : r2 < 32) (h1 : r1 < 32) :
+    (C.g3 f3.toUInt64 r2.toUInt64 r1.toUInt64 (iu imm)).toNat =
+      (imm % 4096).toNat / 32 * 2 ^ 25 + r2 * 2 ^ 20 + r1 * 2 ^ 15 + f3 * 2 ^ 12 + (imm % 4096).toNat % 32 * 2 ^ 7 + 35 := by
+  rw [g3_sum _ _ _ _ (by rw [tU (by omega)]; omega) (by rw [tU (by omega)]; omega) (by rw [tU (by omega)]; omega),
+    CallProbe.iu_toNat, tU (by omega), tU (by omega), tU (by omega)]
+  omega
+
+theorem t0_ld (x o : List UInt8) (rd rs : Nat) (f : Int) (hd : rd < 32) (hs : rs < 32) (h1 : -2048 ≤ f)
+    (h2 : f < 2048) (md : mapped rd = true) (ms : mapped rs = true) :
+    RA.t0 x o (encG (.ld rd rs f)) = emit o (body (.ld rd rs f)) := by
+  have hV := I_V 3 3 rd rs f (by omega) (by omega) hd hs
+  simp only [encG, C.g11, show C.g_3 = (3 : Nat).toUInt64 from rfl, show (3 : UInt64) = (3 : Nat).toUInt64 from rfl]
+  generalize C.g2 _ _ _ _ _ = v at hV ⊢
+  simp only [RA.t0]
+  rw [o0_eq (r := 3) (by omega), o2_eq (r := 3) (by omega), o1_eq (r := rd) (by omega), o3_eq (r := rs) (by omega),
+    o5_eq h1 h2 (by omega), beq0 (by omega)]
+  simp only [show ((3:Nat).toUInt64 == 19) = false from rfl, show ((3:Nat).toUInt64 == 3) = true from rfl,
+    Bool.false_eq_true, if_false, if_true]
+  by_cases hrd : rd = 0
+  · simp [hrd, body, e0_eq]
+  · rw [beq0 (r := rd) (by omega)]
+    simp only [hrd, decide_false, Bool.false_eq_true, if_false]
+    rw [show (1 : UInt64) = (1 : Nat).toUInt64 from rfl, d2_eq x o 1 (by omega) md ms h1 h2 ldr (fun _ _ _ => by simp [ldr])]
+    simp [body, hrd, zpre, opR]
+
+theorem t0_lbu (x o : List UInt8) (rd rs : Nat) (f : Int) (hd : rd < 32) (hs : rs < 32) (h1 : -2048 ≤ f)
+    (h2 : f < 2048) (md : mapped rd = true) (ms : mapped rs = true) :
+    RA.t0 x o (encG (.lbu rd rs f)) = emit o (body (.lbu rd rs f)) := by
+  have hV := I_V 3 4 rd rs f (by omega) (by omega) hd hs
+  simp only [encG, show C.g_3 = (3 : Nat).toUInt64 from rfl, show (4 : UInt64) = (4 : Nat).toUInt64 from rfl]
+  generalize C.g2 _ _ _ _ _ = v at hV ⊢
+  simp only [RA.t0]
+  rw [o0_eq (r := 3) (by omega), o2_eq (r := 4) (by omega), o1_eq (r := rd) (by omega), o3_eq (r := rs) (by omega),
+    o5_eq h1 h2 (by omega)]
+  simp only [show ((3:Nat).toUInt64 == 19) = false from rfl, show ((3:Nat).toUInt64 == 3) = true from rfl,
+    show ((4:Nat).toUInt64 == 3) = false from rfl, Bool.false_eq_true, if_false, if_true]
+  by_cases hrd : rd = 0
+  · simp [hrd, body, e0_eq]
+  · rw [beq0 (r := rd) (by omega)]
+    simp only [hrd, decide_false, Bool.false_eq_true, if_false]
+    rw [show (1 : UInt64) = (1 : Nat).toUInt64 from rfl, d3_eq x o 1 (by omega) md ms h1 h2 ldrb (fun _ _ _ => by simp [ldrb])]
+    simp [body, hrd, zpre, opR]
+
+theorem t0_sd (x o : List UInt8) (r2 r1 : Nat) (f : Int) (hd : r2 < 32) (hs : r1 < 32) (h1 : -2048 ≤ f)
+    (h2 : f < 2048) (md : mapped r2 = true) (ms : mapped r1 = true) :
+    RA.t0 x o (encG (.sd r2 r1 f)) = emit o (body (.sd r2 r1 f)) := by
+  have hV := S_V 3 r2 r1 f (by omega) hd hs
+  simp only [encG, C.g12, show (3 : UInt64) = (3 : Nat).toUInt64 from rfl]
+  generalize C.g3 _ _ _ _ = v at hV ⊢
+  simp only [RA.t0]
+  rw [o0_eq (r := 35) (by omega), o2_eq (r := 3) (by omega), o4_eq (r := r2) (by omega), o3_eq (r := r1) (by omega),
+    o6_eq h1 h2 (by omega) (by omega)]
+  simp only [show ((35:Nat).toUInt64 == 19) = false from rfl, show ((35:Nat).toUInt64 == 3) = false from rfl,
+    show ((35:Nat).toUInt64 == 35) = true from rfl, show ((3:Nat).toUInt64 == 3) = true from rfl,
+    Bool.false_eq_true, if_false, if_true]
+  rw [show (0 : UInt64) = (0 : Nat).toUInt64 from rfl, d2_eq x o 0 (by omega) md ms h1 h2 str (fun _ _ _ => by simp [str])]
+  simp [body]
+
+theorem t0_sb (x o : List UInt8) (r2 r1 : Nat) (f : Int) (hd : r2 < 32) (hs : r1 < 32) (h1 : -2048 ≤ f)
+    (h2 : f < 2048) (md : mapped r2 = true) (ms : mapped r1 = true) :
+    RA.t0 x o (encG (.sb r2 r1 f)) = emit o (body (.sb r2 r1 f)) := by
+  have hV := S_V 0 r2 r1 f (by omega) hd hs
+  simp only [encG, show (0 : UInt64) = (0 : Nat).toUInt64 from rfl]
+  generalize C.g3 _ _ _ _ = v at hV ⊢
+  simp only [RA.t0]
+  rw [o0_eq (r := 35) (by omega), o2_eq (r := 0) (by omega), o4_eq (r := r2) (by omega), o3_eq (r := r1) (by omega),
+    o6_eq h1 h2 (by omega) (by omega)]
+  simp only [show ((35:Nat).toUInt64 == 19) = false from rfl, show ((35:Nat).toUInt64 == 3) = false from rfl,
+    show ((35:Nat).toUInt64 == 35) = true from rfl, show ((0:Nat).toUInt64 == 3) = false from rfl,
+    Bool.false_eq_true, if_false, if_true]
+  rw [show (0 : UInt64) = (0 : Nat).toUInt64 from rfl, d3_eq x o 0 (by omega) md ms h1 h2 strb (fun _ _ _ => by simp [strb])]
+  simp [body]
+
+theorem alu_facts (op : Nat) (h1 : 1 ≤ op) (h2 : op ≤ 8) :
+    RA.b1 (aluF op).2 (aluF op).1 = op.toUInt64 ∧ RA.b2 op.toUInt64 = (aluC op).toUInt64 ∧ aluC op % 1024 = 0 ∧
+    aluC op < 2 ^ 32 ∧ (aluF op).1.toNat < 128 ∧ (aluF op).2.toNat < 8 ∧ aluC op % 2 ^ 21 < 65536 := by
+  have : op = 1 ∨ op = 2 ∨ op = 3 ∨ op = 4 ∨ op = 5 ∨ op = 6 ∨ op = 7 ∨ op = 8 := by omega
+  rcases this with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;> decide
+
+theorem t0_alu (x o : List UInt8) (op rd a b : Nat) (ho1 : 1 ≤ op) (ho2 : op ≤ 8) (hd : rd < 32) (ha : a < 32)
+    (hb : b < 32) (md : mapped rd = true) (ma : mapped a = true) (mb : mapped b = true) :
+    RA.t0 x o (encG (.alu op rd a b)) = emit o (body (.alu op rd a b)) := by
+  obtain ⟨f1, f2, f3, f4, f5, f6, f7⟩ := alu_facts op ho1 ho2
+  have hV := g1_sum (aluF op).1 (aluF op).2 rd.toUInt64 a.toUInt64 b.toUInt64 f5 f6 (by rw [tU (by omega)]; omega)
+    (by rw [tU (by omega)]; omega) (by rw [tU (by omega)]; omega)
+  rw [tU (by omega), tU (by omega), tU (by omega)] at hV
+  simp only [encG]
+  generalize C.g1 _ _ _ _ _ = v at hV ⊢
+  simp only [RA.t0, RA.d6]
+  rw [o0_eq (r := 51) (by omega), o2_eq (r := (aluF op).2.toNat) (by omega), o1_eq (r := rd) (by omega),
+    o3_eq (r := a) (by omega), o4_eq (r := b) (by omega),
+    show (25 : UInt64) = (25 : Nat).toUInt64 from rfl, shr_eq (r := (aluF op).1.toNat) (by omega) (by omega)]
+  simp only [show ((51:Nat).toUInt64 == 19) = false from rfl, show ((51:Nat).toUInt64 == 3) = false from rfl,
+    show ((51:Nat).toUInt64 == 35) = false from rfl, show ((51:Nat).toUInt64 == 51) = true from rfl,
+    Bool.false_eq_true, if_false, if_true]
+  rw [show (aluF op).2.toNat.toUInt64 = (aluF op).2 from u64 (tU (by omega)),
+    show (aluF op).1.toNat.toUInt64 = (aluF op).1 from u64 (tU (by omega)), f1, f2, u0_eq md, z1_eq ma, z1_eq mb,
+    a3_eq _ _ _ _ (aluC op / 2 ^ 21) (aluC op % 2 ^ 21 / 2 ^ 10) (by rw [tU (by omega)]; omega) (by omega) (by omega)
+      (by rw [tU (by have := armReg_lt rd; omega)]; have := armReg_lt rd; omega)
+      (by rw [tU (by have := opR_lt a; omega)]; have := opR_lt a; omega)
+      (by rw [tU (by have := opR_lt b; omega)]; have := opR_lt b; omega),
+    beq0 (r := rd) (by omega), beq0 (r := a) (by omega), beq0 (r := b) (by omega), show (3 : UInt64) = (3 : Nat).toUInt64 from rfl, beq_u 3 (by omega) (by omega)]
+  have := armReg_lt rd; have := opR_lt a; have := opR_lt b
+  simp only [tU (show aluC op < 2 ^ 64 by omega), tU (show armReg rd < 2 ^ 64 by omega),
+    tU (show opR a < 2 ^ 64 by omega), tU (show opR b < 2 ^ 64 by omega)]
+  by_cases hrd : rd = 0
+  · simp [hrd, body, e0_eq]
+  simp only [hrd, decide_false, Bool.false_eq_true, if_false, body, zpre, movz17]
+  by_cases h0 : a = 0
+  · simp [h0, e2_eq]
+  by_cases h1 : b = 0
+  · simp [h0, h1, e2_eq]
+  by_cases h3 : op = 3
+  · simp [h0, h1, h3, e2_eq]
+  · simp [h0, h1, h3, e1_eq]
+
+theorem a3N (c : UInt64) (d n b : Nat) (H M : Nat) (hc : c.toNat = H * 2 ^ 21 + M * 2 ^ 10) (hH : H < 2048)
+    (hM : M < 64) (hd : d < 32) (hn : n < 32) (hb : b < 32) :
+    RA.a3 c d.toUInt64 n.toUInt64 b.toUInt64 = (rr c.toNat d n b).toUInt64 := by
+  rw [a3_eq c _ _ _ H M hc hH hM (by rw [tU (by omega)]; omega) (by rw [tU (by omega)]; omega)
+    (by rw [tU (by omega)]; omega), tU (by omega), tU (by omega), tU (by omega)]
+theorem a0_16 {sh : Nat} (hh : sh < 64) : RA.a0 16 sh.toUInt64 = (movz 16 sh).toUInt64 := by
+  rw [show (16 : UInt64) = (16 : Nat).toUInt64 from rfl, a0_eq _ _ (by decide) (by rw [tU (by omega)]; omega),
+    tU (show sh < 2 ^ 64 by omega)]; rfl
+
+theorem d7_eq (x o : List UInt8) (v : UInt64) (c : Nat) (hc : c = 0 ∨ c = 1) (rd rs sh : Nat) (hd : rd < 32) (hs : rs < 32)
+    (hh : sh < 64) (md : mapped rd = true) (ms : mapped rs = true)
+    (h1 : v.toNat / 128 % 32 = rd) (h2 : v.toNat / 32768 % 32 = rs) (h3 : v.toNat / 2 ^ 20 % 64 = sh) :
+    RA.d7 x o v c.toUInt64 = emit o (if rd = 0 then [] else
+      zpre rs ++ [movz 16 sh, rr (if c = 1 then 0x9AC02000 else 0x9AC02400) (armReg rd) (opR rs) 16]) := by
+  have hk : (if c.toUInt64 == 1 then RA.k13 else RA.k14).toNat =
+      (if c = 1 then 0x9AC02000 else 0x9AC02400 : Nat) := by
+    rcases hc with rfl | rfl <;> rfl
+  have hK : (if c = 1 then 0x9AC02000 else 0x9AC02400 : Nat) = 1238 * 2 ^ 21 + (8 + (if c = 1 then 0 else 1)) * 2 ^ 10 := by
+    split <;> decide
+  have hm : 8 + (if c = 1 then 0 else 1) < 64 := by split <;> omega
+  have := armReg_lt rd; have := opR_lt rs; have := armReg_lt rs
+  unfold RA.d7; simp only []
+  generalize (if c.toUInt64 == 1 then RA.k13 else RA.k14) = g at hk ⊢
+  have hsh : (v >>> 20) &&& 63 = sh.toUInt64 := u64 (by wnorm; omega)
+  rw [o1_eq h1, o3_eq h2, hsh, beq0 (r := rd) (by omega), beq0 (r := rs) (by omega)]
+  by_cases hrd : rd = 0
+  · simp [hrd, e0_eq]
+  simp only [hrd, decide_false, Bool.false_eq_true, if_false]
+  rw [u0_eq md, a0_16 hh, show (16 : UInt64) = (16 : Nat).toUInt64 from rfl]
+  by_cases hrs : rs = 0
+  · simp only [hrs, decide_true, if_true, movz17]
+    rw [show (17 : UInt64) = (17 : Nat).toUInt64 from rfl,
+      a3N g _ _ _ 1238 (8 + (if c = 1 then 0 else 1)) (by rw [hk]; omega) (by omega) hm (by omega) (by omega) (by omega),
+      e3_eq, hk]
+    simp [zpre, opR]
+  · simp only [hrs, decide_false, Bool.false_eq_true, if_false]
+    rw [u0_eq ms,
+      a3N g _ _ _ 1238 (8 + (if c = 1 then 0 else 1)) (by rw [hk]; omega) (by omega) hm (by omega) (by omega) (by omega),
+      e2_eq, hk]
+    simp [zpre, opR, hrs]
+
+theorem sh_V (f3 rd rs sh : Nat) (hf : f3 < 8) (hd : rd < 32) (hs : rs < 32) (hh : sh < 64) :
+    (C.g2 C.g_19 f3.toUInt64 rd.toUInt64 rs.toUInt64 sh.toUInt64).toNat =
+      sh * 2 ^ 20 + rs * 2 ^ 15 + f3 * 2 ^ 12 + rd * 2 ^ 7 + 19 := by
+  rw [g2_sum _ _ _ _ _ (by decide) (by rw [tU (by omega)]; omega) (by rw [tU (by omega)]; omega)
+    (by rw [tU (by omega)]; omega), tU (show sh < 2 ^ 64 by omega), tU (show rs < 2 ^ 64 by omega),
+    tU (show f3 < 2 ^ 64 by omega), tU (show rd < 2 ^ 64 by omega)]
+  rw [show C.g_19.toNat = 19 from rfl]; omega
+
+theorem t0_slli (x o : List UInt8) (rd rs sh : Nat) (hd : rd < 32) (hs : rs < 32) (hh : sh < 64)
+    (md : mapped rd = true) (ms : mapped rs = true) :
+    RA.t0 x o (encG (.slli rd rs sh)) = emit o (body (.slli rd rs sh)) := by
+  have hV := sh_V 1 rd rs sh (by omega) hd hs hh
+  simp only [encG, show (1 : UInt64) = (1 : Nat).toUInt64 from rfl]
+  generalize C.g2 _ _ _ _ _ = v at hV ⊢
+  simp only [RA.t0]
+  rw [o0_eq (r := 19) (by omega), o2_eq (r := 1) (by omega)]
+  simp only [show ((19:Nat).toUInt64 == 19) = true from rfl, show ((1:Nat).toUInt64 == 0) = false from rfl,
+    show ((1:Nat).toUInt64 == 1) = true from rfl, Bool.false_eq_true, if_false, if_true]
+  rw [show (1 : UInt64) = (1 : Nat).toUInt64 from rfl,
+    d7_eq x o v 1 (by omega) rd rs sh hd hs hh md ms (by omega) (by omega) (by omega)]
+  simp [body]
+
+theorem t0_srli (x o : List UInt8) (rd rs sh : Nat) (hd : rd < 32) (hs : rs < 32) (hh : sh < 64)
+    (md : mapped rd = true) (ms : mapped rs = true) :
+    RA.t0 x o (encG (.srli rd rs sh)) = emit o (body (.srli rd rs sh)) := by
+  have hV := sh_V 5 rd rs sh (by omega) hd hs hh
+  simp only [encG, show (5 : UInt64) = (5 : Nat).toUInt64 from rfl]
+  generalize C.g2 _ _ _ _ _ = v at hV ⊢
+  simp only [RA.t0]
+  rw [o0_eq (r := 19) (by omega), o2_eq (r := 5) (by omega)]
+  simp only [show ((19:Nat).toUInt64 == 19) = true from rfl, show ((5:Nat).toUInt64 == 0) = false from rfl,
+    show ((5:Nat).toUInt64 == 1) = false from rfl, Bool.false_eq_true, if_false, if_true]
+  rw [show (0 : UInt64) = (0 : Nat).toUInt64 from rfl,
+    d7_eq x o v 0 (by omega) rd rs sh hd hs hh md ms (by omega) (by omega) (by omega)]
+  simp [body]
+
 end ArmRA
