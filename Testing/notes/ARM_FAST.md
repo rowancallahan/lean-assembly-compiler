@@ -261,3 +261,80 @@ the path of the main theorem.
   through the decoder layer today). Their model references are in the slice's roots.
 * Peak memory of the sliced `V8Base` build was not recorded (2.4 GB after 60 of 170 s).
 * Parallel wall times in §4 and §7 are estimates.
+
+## 9. Implemented: partition (A1) and split (option 4), measured 2026-11-20
+
+Same box class (4 cores, 15 GB, no swap), Lean 4.34.1, model = `Arm/model` as committed. Scripts in `Arm/gen`:
+`partition.py` (regen step, called from `regen.sh`), `build_part.sh`, `rssmon.py` (peak RSS = `VmHWM` per `lean`
+process), `scope_check.py`, `dump_hashes.lean` + `dump_summary.py`. Nothing generated is committed: the partitioned
+tree is regenerated in 3 s.
+
+**Layout.**
+* Core: `Armv9Core.{V8Base,Instrs64,Fetch,Interrupts,Devices}` = the declarations reachable from the 39 `decode_*`
+  functions, `__FetchInstr`, `__CycleEnd` and the 761 model names used by `Arm/proofs/Arm/{Base,Exec,Flags,Hooks,
+  Fetch,Mem,Branch,BrFull,Ret}.lean`. The closure stops at `__Decode*`. Two proof names depend on a decoder
+  (`__DecodeA64`, `__DecodeA64_BranchExcSys`), so they are not roots. Result: 2,117 declarations, 29k lines.
+  `Reduce__1` is not in the core (asserted).
+* Rest: `Armv9.M` keeps M's other declarations and imports `Armv9Core.M`. Module names are unchanged, so every
+  importer is unchanged.
+* Split: every rest over 20k lines is cut into `Armv9.M.Pnn` along its dependency graph, sorted by (depth, original
+  position). That order is topological. A declaration of 500 lines or more gets a part of its own; other parts are
+  about 12k lines. `Armv9.M` then only imports its parts. Parts per module: V8Base 12, SysregsAutogen 23,
+  DecodeEnd 26, Instrs64Sve 7, Instrs64 4, Instrs32 3, Instrs64Sme 3. 118 model modules in all.
+* `partition.py` asserts:
+  * every declaration is written exactly once, with its original text (re-read and compared);
+  * `partial def Reduce__1` occurs exactly once in the output;
+  * file order is topological (no forward reference);
+  * every split part imports only earlier parts.
+
+**Soundness (the A1 argument, checked statically).** The (name, type hash, value hash) diff against an unpartitioned
+build was **not run**: no complete unpartitioned build exists. ARM-R1 has 27 of 34 modules; its SysregsAutogen runs
+out of memory. The unsplit SysregsAutogen was also killed here, at 13.2 GB after 427 s.
+In its place, `scope_check.py` checks the only way a verbatim move can change a definition: a token that names a
+model declaration resolving differently. In the new layout every mentioned declaration is in scope (closure). The
+check confirms that none of the 33,682 moved declarations mentions a model name that was **not** in scope at its
+original position (0 forward tokens, string literals excluded). It also confirms that each core module sees the same
+lower modules as the original. There are no attributes, instances or dotted names above V8Base (all 45 instances
+are in `Defs`), so nothing else can see the change of scope.
+The dump of the partitioned build is ready for the diff: 45,241 `Armv9.*` constants, sha256 `76a23330…`. There
+are no `Armv9Core.*` or private names: constants are named by declaration, not by module.
+
+**Build (measured).** All 118 modules compile with 0 errors. Serial sum of module times: 6,907 s. No clean wall-clock
+total: the container restarted once mid-build, and one module was rerun after an OOM kill.
+
+| module | one declaration | peak RSS | time |
+|---|---|--:|--:|
+| `SysregsAutogen.P19` | `AArch64_AutoGen_SysRegRead` (6.5 MB of text) | 12.3 GB | 101 s |
+| `DecodeEnd.P01` | `__DecodeA64_SME` | 10.6 GB | 461 s |
+| `DecodeEnd.P06` | `__DecodeA64_DataProcFPSIMD` | 9.0 GB | 385 s |
+| `DecodeEnd.P11` | `__DecodeT32` | 7.1 GB | 429 s |
+| `SysregsAutogen.P20` | `AArch64_AutoGen_SysRegWrite` | 6.7 GB | 51 s |
+| `V8Base.P07` / `P10` | `AArch32/AArch64_AutoGen_ArchitectureReset` | 4.5 / 4.2 GB | 287 / 514 s |
+| `Armv9Core.V8Base` | (core, 26.6k lines) | not recorded | 179 s |
+| every other part | | ≤ 3.7 GB, most about 2 GB | ≤ 138 s |
+
+The split meets the goal for V8Base: every part is at or under 4.5 GB, against 13 GB or more unsplit. The worst
+modules of the model are single huge definitions, which no partition can shrink. On 15 GB those three must not
+overlap. With `LEAN_NUM_THREADS=2`, P01 and P06 of DecodeEnd ran together and P01 was killed; with 1 it passed.
+So the cache-filling build on this box class is `build_part.sh DIR 1` (serial, about 6,900 s), or 2 jobs on a
+32 GB box. `LEAN_NUM_THREADS` bounds lake's concurrent jobs (observed).
+
+Oleans: full model 907 MB raw, **187 MB** as `tar | zstd -3` (§0.1 estimated 250 MB). Core with `Defs` and the lower
+modules (20 modules): 183 MB raw, **36.5 MB** compressed.
+
+**Axioms (full model).** `#print axioms` of `__DecodeA64`, `ArmProof.stepModel`, `__TopLevel` and `Reduce__1` gives
+`propext, Classical.choice, Quot.sound`. No `sorryAx`.
+
+**Proofs against the new layout.** `Arm/proofs/check.sh`, unchanged, with `/home/user/armv9-lean` pointing at the
+partitioned build: all 20 files pass in 897 s. Words 548 s, Witness 94 s, Exec 34 s, SymDec 34 s, BrFull 32 s,
+Base 31 s; `Axioms` prints the three standard axioms for every listed theorem.
+Against the **core alone**, with one import line changed each (`Base`: `Armv9.DecodeEnd` → `Armv9Core.Instrs64` +
+`Armv9Core.Fetch`; `Hooks`: `Armv9.Fetch` → `Armv9Core.Fetch`), these pass: Base 31 s, Exec 36 s, Flags 1 s,
+Hooks 20 s, Fetch 6 s. `Small` needs `__DecodeA64`, and everything that imports it goes through the full model.
+`Words.lean` does not need to move for the layout. Moving it to a non-default target remains the 548 s saving
+of §4; that is not done here.
+
+**Open.**
+* The hash diff, on a box that can build the unpartitioned model (about 32 GB).
+* A clean, uninterrupted wall-clock measurement of `build_part.sh`.
+* The proof-file import cut (K/G layers, §3) is not done. Proof files were not changed.
