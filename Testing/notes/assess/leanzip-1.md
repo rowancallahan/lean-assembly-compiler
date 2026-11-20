@@ -84,7 +84,7 @@ Biggest Spec files in the slice:
 | Attributes `@[inline]`, `@[specialize]`, `@[noinline]` | 121 | Incidental | Ignore. |
 | macros/notation | 0 Native (1 `instance`, 0 macro in Spec) | | none |
 | Imports | `Std.Tactic.BVDecide` (5 Native, 2 Spec), `ZipCommon.*`, `ZipForStd.*`; no Mathlib, no `Lean.*` | | `BVDecide` is proofs only (CRC `bv_decide`, `Crc32.lean:~33`). |
-| Comments | very heavy (`/-- … -/`, `--`; docstrings are > 40% of Native lines) | | Must be stripped, since the compiler input accepts no comments. |
+| Comments | very heavy (`/-- … -/`, `--`; comments and docstrings are ~26% of Native lines (4,429 of 16,967)) | | Must be stripped, since the compiler input accepts no comments. |
 
 ## 3. Per-feature verdict (summary)
 
@@ -108,8 +108,8 @@ Incidental: Strings, Floats, Lists (in the production path), the externs and `im
 - Output: up to `maxOutputSize`. Output buffer limits in the compiler apply.
 - Memory: LZ77 hash table + prev chain (`Array Nat`, 32 K entries each, plus `h3tab`) ≈ 0.5 MiB at 8 B per word. Token buffer ≈ 4 B × n tokens, 8 B × n as Buf words. Output Buf is 8 B per byte. Within 1 GiB for ≤ 1 MiB inputs.
 - Def count: whole Native 582 (> 511). Realistic minimal inflate-only core is ~60 defs (`Inflate.lean`) + 20 helpers.
-- Node count vs 16,384: not measurable without running the parser (?). Rough estimate: a 1,643-line Inflate with docstrings stripped is perhaps ~900 code lines, likely 10–20 K nodes, so it probably exceeds the cap unless split. `DeflateDynamic` (4081 l) is certainly over. Treat the cap as binding.
-- Heavy computation: LZ77 match search (chain walk, up to 4096 steps per position at L7+), the DP optimal parse (L10), block splitting, entropy (Float). All are loops over input with per-position state. Fuel `n` = data.size × maxChain is large but fine.
+- Node count vs 16,384: not measurable without running the parser (?). Rough estimate: a 1,643-line Inflate with docstrings stripped is perhaps ~900 code lines, node count not measured (?), so it probably exceeds the cap unless split. `DeflateDynamic` (4081 l) is certainly over. Treat the cap as binding.
+- Heavy computation: LZ77 match search (chain walk, bounded by a `maxChain` parameter), the DP optimal parse (L10), block splitting, entropy (Float). All are loops over input with per-position state. Fuel `n` = data.size × maxChain is large but fine.
 
 ## 6. Easy wins (already close to the subset)
 
