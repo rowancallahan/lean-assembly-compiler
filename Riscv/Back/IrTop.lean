@@ -213,7 +213,7 @@ theorem machine_runL {P : Prog VReg} {compiled : CompiledA} {α β : Type} {f : 
       have h' : bytesAt startState call.inputAddress.toNat (encodeInput argument).length =
           ((encodeInput argument).map (·.toBitVec)).map some := by rw [hinput, List.map_map]; rfl
       have := mem_of_bytesAt h' (i := i) (by simpa using hi)
-      simpa using this
+      simp at this ⊢; exact this
     wr := fun s a h => by show 0x80000000 ≤ a ∧ a + 1 ≤ 0x100000000; omega
     retOK := by
       show (getX startState 1).toNat % 2 = 0
