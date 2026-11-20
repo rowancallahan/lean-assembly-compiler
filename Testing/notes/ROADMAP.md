@@ -604,3 +604,8 @@ Order (each: measure on BENCH.md programs + self-compile, then prove; proofs gre
   commit, how it is generated (commands, toolchain, patches), and that it is community/translated. Re-adapt when the
   model updates. Approach as for ARM: an X86Sem-style interface over the few dozen instruction forms the compiler
   emits, a RISC-V→x86 translator first, native generation later.
+- Spec strengthening, read confinement (owner, 2026-11-20; later, needs owner-approved Spec change + re-freeze):
+  add to CompileCorrect/CompileRuns that the compiled code never READS memory outside its code, input, output and
+  work blocks (today only writes are confined: memory outside the output prefix + work block is proved unchanged).
+  Out-of-memory remains the only failure mode. Process isolation is out of scope (bare-machine model; the OS is a
+  separate layer).
