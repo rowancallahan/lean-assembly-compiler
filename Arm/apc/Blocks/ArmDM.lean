@@ -79,10 +79,21 @@ theorem fetch {t : Arm64.State} {w : Nat} (hc : t.status = .Running) (hp : JT.Pc
       hb 2 (by omega), hb 3 (by omega)]
     exact bytes4 _
 
-/-- one DeepMind step that stays running and lands on observation `o` is `Goes` -/
-theorem goes1 {t : Arm64.State} {o : MachineState} (h : ∃ t', Arm64.Step Pg t t' ∧ t'.status = .Running ∧ obsDM t' = o) :
-    JT.Goes armDM t o :=
-  let ⟨t', hs, hr, ho⟩ := h; ⟨t', runs_one hs hr, hr, ho⟩
+/-- the permission predicates: `XD` executable byte, `WD` readable and writable byte -/
+def XD (t : Arm64.State) (a : Nat) : Prop := t.mem.canExec (ad a) 1 = true
+def WD (t : Arm64.State) (a : Nat) : Prop := t.mem.canRead (ad a) 1 = true ∧ t.mem.canWrite (ad a) 1 = true
+
+theorem keep_of_mem {t t' : Arm64.State} (h : t'.mem = t.mem) : JT.Keep (M := armDM) XD WD t t' :=
+  ⟨fun a ha => by unfold XD; rw [h]; exact ha, fun a ha => by unfold WD; rw [h]; exact ha⟩
+
+theorem keep_trans {a b c : Arm64.State} (h1 : JT.Keep (M := armDM) XD WD a b) (h2 : JT.Keep (M := armDM) XD WD b c) :
+    JT.Keep (M := armDM) XD WD a c :=
+  ⟨fun x h => h2.1 x (h1.1 x h), fun x h => h2.2 x (h1.2 x h)⟩
+
+/-- one DeepMind step that stays running, keeps memory and lands on observation `o` is `GoesK` -/
+theorem goes1 {t : Arm64.State} {o : MachineState}
+    (h : ∃ t', Arm64.Step Pg t t' ∧ t'.status = .Running ∧ obsDM t' = o ∧ t'.mem = t.mem) : JT.GoesK armDM XD WD t o :=
+  let ⟨t', hs, hr, ho, hm⟩ := h; ⟨t', runs_one hs hr, hr, ho, keep_of_mem hm⟩
 
 theorem obs_setX {t t' : Arm64.State} {d : Nat} {v : BitVec 64} (hd : d < 31) (ha : abs t' = (abs t).setX d v)
     (hpc : t'.pc = t.pc + 4) (hm : t'.mem = t.mem) (hsp : t'.sp = t.sp) :
@@ -103,13 +114,16 @@ theorem obs_jump {t t' : Arm64.State} {p : BitVec 64} (ha : abs t' = abs t) (hpc
 /-- the executable-bytes premise at the pc (what `A64Sem`'s fetch needs on DeepMind) -/
 def XAt (t : Arm64.State) : Prop := ∀ k < 4, t.mem.canExec (ad (t.pc.toNat + k)) 1 = true
 
+theorem xat {t : Arm64.State} {n : Nat} (h : JT.FetchX armDM XD t n) : ∀ k < n, t.mem.canExec (ad (t.pc.toNat + k)) 1 = true :=
+  fun k hk => by have := h k hk; simp only [XD, armDM, pc_obs] at this; exact this
+
 theorem F_movz (t : Arm64.State) (d i : Nat) (hc : armDM.configured t) (hp : JT.PcOK armDM (armDM.observe t))
-    (hx : XAt t) (hd : d < 31) (hi : i < 2 ^ 16)
+    (hx : JT.FetchX armDM XD t 4) (hd : d < 31) (hi : i < 2 ^ 16)
     (hw : JT.WordAt (armDM.observe t) (armDM.observe t).programCounter.toNat (ArmEnc.movz d i)) :
-    JT.Goes armDM t (JT.setReg (armDM.observe t) d (UInt64.ofNat i)) := by
-  have hA := fetch hc hp hw hx; simp only [ArmEnc.movz] at hA
+    JT.GoesK armDM XD WD t (JT.setReg (armDM.observe t) d (UInt64.ofNat i)) := by
+  have hA := fetch hc hp hw (xat hx); simp only [ArmEnc.movz] at hA
   obtain ⟨t', s1, a1, P1⟩ := dm_movz (by mask32) (by fldt) hA
-  refine goes1 ⟨t', s1, P1.run, ?_⟩
+  refine goes1 ⟨t', s1, P1.run, ?_, P1.mem⟩
   rw [obs_setX (d := d) hd (by rw [a1]; congr 1; fldt) P1.pc P1.mem P1.sp]
   congr 1; apply UInt64.toBitVec_inj.mp
   show _ = BitVec.ofNat 64 i

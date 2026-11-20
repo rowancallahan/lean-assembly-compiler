@@ -101,3 +101,23 @@ for `CodeOK`/`MemOK`) and replay `Frame`/`Block`/`K*` with `full_*` for `dm_*` (
 `mask32`/`fldt`, offsets `ofs19`/`ofs26`, register map, byte lanes `lb_eq`/`sb_byte` — is model-independent and
 carries over unchanged); or (3) keep DeepMind and compose with per-form bridges (`sim`/`simM` style) — needs the
 same missing `full_*` plus `ldr`/`str` bridges.
+
+## `armDM` and `A64Sem` (2026-11-20; `ArmDM.lean`, `A64DM.lean`, `A64Inst.lean`)
+
+`armDM : Proven.Top.Machine` (outside `Spec/`): `step` = DeepMind fetch/decode/eval as a function while `Running`
+(`stepDM_of`: a running `Arm64.Step Pg` is an `armDM` step; `Pg` has no extern hooks); `observe` = pc, x0..x30,
+register 31 = sp, mapped bytes (`read8`); `configured` = `Running`; `mapping = armMapping`; RAM `[2^31, 3·2^30)`.
+Permissions for `A64Sem`'s W^X split: `XD s a` = byte executable, `WD s a` = readable ∧ writable.
+
+Per-form fields, in `A64Sem`'s exact statement (`GoesK`, `FetchX`, `PcOK`): `F_movz`, `F_movk`, `F_addi`,
+`F_subi`, `F_alu` (8 ops, madd with general x17), `F_cmpbr` (subs + b.cond, two steps), `F_cbz`, `F_b`, `F_bl`,
+`F_br`, `F_ldr`, `F_str`, `F_ldrb`, `F_strb` (stores: observed memory = `store8`/`store1`, permissions kept).
+`a64DM : PermInit → A64Sem armDM XD WD` type-checks against a verbatim copy of `A64Sem` (`A64Defs.lean`,
+`check_copy.sh`). **`perm_init` is not provable on DeepMind** (permissions are not observable; `StartCorrect` only
+constrains `observe`), and `PermInit` (∀ start states) is false for `armDM`, so `a64DM` is a shape check, not a
+usable instance: the ARM top theorem needs the loader's r-x / rw- layout as a premise on the start state.
+
+Why a copy of `A64Sem`: its import closure (`Machine/Target`, 54 Nano modules) must build on Lean 4.34 next to
+DeepMind's package; 52/54 do with `-Dweak.backward.isDefEq.respectTransparency=false`, `EVXP.lean:100` and
+`GenWidth.lean:744/981` fail on 4.34 only (reported to the lead). Once they build, import the real file and drop
+`A64Defs.lean`.
