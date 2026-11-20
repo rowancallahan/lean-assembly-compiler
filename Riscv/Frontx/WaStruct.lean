@@ -6,6 +6,8 @@ Source: github.com/rowancallahan/lean-zip @ 7e10583, copied VERBATIM with `file:
 dropped, nothing else is changed.  `WaStructGlue.tbl` (a 256-slot table packed with lean-zip's own `packEntry`) and
 the entry points `…E` are glue, not library code. -/
 import Riscv.Frontx.WaCmd
+-- Lean 4.34.1: instance arguments are compared at restricted transparency; the generated proofs need the old check
+set_option backward.isDefEq.respectTransparency false
 
 namespace Zip.Native
 namespace HuffTree

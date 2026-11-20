@@ -11,18 +11,26 @@ open Proven Proven.Frontx
 
 /-! ## `set!` on the array kinds -/
 
+/-- Lean 4.34.1: `simp` does not see through `k.T` / `k.el.T` in the cases below; the array facts are stated at a
+plain element type and applied by `exact` -/
+private theorem arr_size_set {α : Type} (a : Array α) (i : Nat) (x : α) : (a.set! i x).size = a.size := by simp
+private theorem arr_get_set_eq {α : Type} [Inhabited α] (a : Array α) (i : Nat) (x : α) (h : i < a.size) :
+    (a.set! i x)[i]! = x := by simp [h]
+private theorem arr_get_set_ne {α : Type} [Inhabited α] (a : Array α) (i j : Nat) (x : α) (h : j ≠ i) :
+    (a.set! i x)[j]! = a[j]! := by simp [getElem!_def, Ne.symm h]
+
 theorem AK.size_set : ∀ (k : AK) (a : k.T) (i : Nat) (x : k.el.T), AK.size k (AK.set k a i x) = AK.size k a
-  | .ba, a, i, x => by show (a.data.set! i x).size = a.data.size; simp
+  | .ba, a, i, x => by show (a.data.set! i x).size = a.data.size; exact arr_size_set ..
   | .arr .u8, _, _, _ | .arr .u16, _, _, _ | .arr .u32, _, _, _ | .arr .u64, _, _, _ | .arr .nat, _, _, _
-  | .arr .bool, _, _, _ | .arr .int, _, _, _ => by simp [AK.size, AK.set]
+  | .arr .bool, _, _, _ | .arr .int, _, _, _ => by exact arr_size_set ..
 
 theorem AK.get_set_eq : ∀ (k : AK) (a : k.T) (i : Nat) (x : k.el.T), i < AK.size k a →
     AK.get k (AK.set k a i x) i = x
   | .ba, a, i, x, h => by
     show (ByteArray.set! a i x)[i]! = x
-    rw [← ba_data_get']; show (a.data.set! i x)[i]! = x; simp only [AK.size] at h; simp [h]
+    rw [← ba_data_get']; show (a.data.set! i x)[i]! = x; exact arr_get_set_eq _ _ _ h
   | .arr .u8, _, _, _, h | .arr .u16, _, _, _, h | .arr .u32, _, _, _, h | .arr .u64, _, _, _, h
-  | .arr .nat, _, _, _, h | .arr .bool, _, _, _, h | .arr .int, _, _, _, h => by simp only [AK.size] at h; simp [AK.get, AK.set, h]
+  | .arr .nat, _, _, _, h | .arr .bool, _, _, _, h | .arr .int, _, _, _, h => by exact arr_get_set_eq _ _ _ h
 where
   ba_data_get' (xs : ByteArray) (j : Nat) : xs.data[j]! = xs[j]! := by
     by_cases h : j < xs.size
@@ -34,9 +42,9 @@ theorem AK.get_set_ne : ∀ (k : AK) (a : k.T) (i j : Nat) (x : k.el.T), j ≠ i
   | .ba, a, i, j, x, h => by
     show (ByteArray.set! a i x)[j]! = a[j]!
     rw [← AK.get_set_eq.ba_data_get', ← AK.get_set_eq.ba_data_get']
-    show (a.data.set! i x)[j]! = a.data[j]!; simp [getElem!_def, Ne.symm h]
+    show (a.data.set! i x)[j]! = a.data[j]!; exact arr_get_set_ne _ _ _ _ h
   | .arr .u8, _, _, _, _, h | .arr .u16, _, _, _, _, h | .arr .u32, _, _, _, _, h | .arr .u64, _, _, _, _, h
-  | .arr .nat, _, _, _, _, h | .arr .bool, _, _, _, _, h | .arr .int, _, _, _, _, h => by simp [AK.get, AK.set, getElem!_def, Ne.symm h]
+  | .arr .nat, _, _, _, _, h | .arr .bool, _, _, _, _, h | .arr .int, _, _, _, _, h => by exact arr_get_set_ne _ _ _ _ h
 
 theorem AK.set_oob : ∀ (k : AK) (a : k.T) (i : Nat) (x : k.el.T), AK.size k a ≤ i → AK.set k a i x = a
   | .ba, a, i, x, h => by

@@ -1004,7 +1004,7 @@ theorem dispS_skip {fi K t : Nat} (ht : t < 256) :
       env 13 = BitVec.ofNat 64 t → CExec P K (dispS fi es i) ⟨env, H, Wh⟩ ⟨env, H, Wh⟩
   | [], i, _, _, env, H, Wh, _ => by
     have := CExec.base (P := P) (k := K) (asg_exec 12 (vE 12) ⟨env, H, Wh⟩)
-    simpa [vE, BExp.denote, set_same] using this
+    simp [vE, BExp.denote, set_same] at this; exact this
   | e :: es, i, hi, hl, env, H, Wh, he => by
     simp only [List.length_cons] at hl
     have hn := CExec.base (P := P) (k := K) (asg_exec 12 (vE 12) ⟨env, H, Wh⟩)

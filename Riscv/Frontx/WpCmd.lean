@@ -216,7 +216,7 @@ elab_rules : command
             $(← good rest), rfl⟩)
     let pf ← good stages.toList
     let goodN := mkIdent (`_root_ ++ fn ++ `goodE)
-    elabCommand (← `(set_option maxRecDepth 100000 in set_option maxHeartbeats 4000000 in
+    elabCommand (← `(set_option maxRecDepth 100000 in set_option maxHeartbeats 4000000 in set_option backward.isDefEq.respectTransparency false in
       theorem $goodN:ident : ∀ (xs : ByteArray), xs.size ≤ $N → ∃ E, ($wa).GoodE [inLocP] 9 (xs, ()) ($fI xs) E := by
         intro xs hx
         have hds : xs.data.size = xs.size := rfl
@@ -242,11 +242,11 @@ elab_rules : command
     elabCommand (← `(def $pgI:ident : PgProg := ⟨$(← liftTermElabM (slSyn R)), $wa, $N, $chT⟩))
     match R with
     | .sc _ =>
-      elabCommand (← `(set_option maxRecDepth 100000 in
+      elabCommand (← `(set_option maxRecDepth 100000 in set_option backward.isDefEq.respectTransparency false in
         theorem $pgGoodI:ident : ($pgI).Good :=
           ⟨by decide +kernel, by decide +kernel, by decide +kernel, total_of $pgI $fI $goodN⟩))
     | .ar _ =>
-      elabCommand (← `(set_option maxRecDepth 100000 in
+      elabCommand (← `(set_option maxRecDepth 100000 in set_option backward.isDefEq.respectTransparency false in
         theorem $pgGoodI:ident : ($pgI).Good :=
           ⟨by decide +kernel, by decide +kernel, by decide +kernel, by decide +kernel, total_of $pgI $fI $goodN⟩))
     elabCommand (← `(theorem $compilesI:ident : compile $pgI = some ⟨Proven.Top.wordBytes ($pgI).code, 8192, ($pgI).events⟩ :=

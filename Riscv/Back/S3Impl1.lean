@@ -179,7 +179,7 @@ theorem implements1 {P : Prog} {c : CompiledA} (hc : compile P = some c) {α : T
       have h' : bytesAt s input.base x.length = (x.map (·.toBitVec)).map some := by
         rw [hx, List.map_map]; rfl
       have := mem_of_bytesAt h' (i := i) (by simpa using hi)
-      simpa using this
+      simp at this ⊢; exact this
     wr := fun s a h => by show 0x80000000 ≤ a ∧ a + 1 ≤ 0x100000000; omega
     retOK := by show (getX s 1).toNat % 2 = 0; rw [hra']; omega
     htop := by

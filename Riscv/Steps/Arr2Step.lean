@@ -20,7 +20,7 @@ theorem page8A (s : St) {x : BitVec 64} (h : x.toNat % 8 = 0) :
 set_option hygiene false in
 macro "mem_word2_core" : tactic => `(tactic| (
   · intro s h hpc hi hQ
-    simp only [Proven.getX_eq] at hQ
+    try simp only [Proven.getX_eq] at hQ
     have hok' := hok; obtain ⟨_, _, _⟩ := hok'
     have hram := Proven.in_ram (by decide) ha.1 ha.2
     have hf := Proven.fetch_cfg h hpc hok hi (by decide)

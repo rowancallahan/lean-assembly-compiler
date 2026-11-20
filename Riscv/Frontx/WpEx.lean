@@ -1,5 +1,7 @@
 /- Paged arrays (NOTES section 30), part 12: example programs with their `Implements1Pg` theorems. -/
 import Riscv.Frontx.WpImpl
+-- Lean 4.34.1: `decide (a < b)` conditions keep the instance of the reflected term; simp needs the old instance check
+set_option backward.isDefEq.respectTransparency false
 
 set_option linter.unusedVariables false
 

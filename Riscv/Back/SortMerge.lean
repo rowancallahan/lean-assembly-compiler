@@ -31,14 +31,14 @@ theorem msortCode_ok_m {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? 
   have hsl : scr.length = xs.length := by simpa [bytesAt] using (congrArg List.length hs).symm
   have hol : out.length = xs.length := by simpa [bytesAt] using (congrArg List.length ho).symm
   obtain ⟨σ', hex, scr', hh⟩ := msortProg_mergeSort xs scr out ⟨envOf s, [xs, scr, out]⟩ rfl
-    (by simpa [envOf] using h1) hn hsl hol
+    (by simp [envOf]; exact h1) hn hsl hol
   have hheap : HeapRel [0, 2, 3] [⟨inb, xs.length⟩, ⟨scb, xs.length⟩, ⟨outb, xs.length⟩]
       ⟨envOf s, [xs, scr, out]⟩ s :=
     ⟨rfl, rfl, fun b hb => by
         obtain _ | _ | _ | b := b
-        · simpa [envOf] using h0
-        · simpa [envOf] using h2
-        · simpa [envOf] using h3
+        · simp [envOf]; exact h0
+        · simp [envOf]; exact h2
+        · simp [envOf]; exact h3
         · simp at hb; omega,
       fun b hb => by
         obtain _ | _ | _ | b := b
@@ -155,8 +155,8 @@ theorem compileBF_okK (N : Nat) (bv : List Nat) (hbv : ∀ x ∈ bv, x < 8 + N) 
       obtain ⟨r', hr', rfl⟩ := toR_mem hr; exact hcd r' (List.mem_cons_of_mem _ hr')
     · simp only [List.mem_singleton] at hr; subst hr; exact hcd _ (List.mem_cons_self ..)
   have hheap' : rvF.HeapB bv [] (R.map toR) [] (toMSt σ) s :=
-    ⟨by simpa using hheap.hlen, by simpa using hheap.bvlen, fun b hb => by simpa [toR] using hheap.base b (by simpa using hb),
-      fun b hb => by simpa [toR] using hheap.blen b (by simpa using hb),
+    ⟨by simp; exact hheap.hlen, by simpa using hheap.bvlen, fun b hb => by simp [toR]; exact hheap.base b (by simpa using hb),
+      fun b hb => by simp [toR]; exact hheap.blen b (by simpa using hb),
       fun b hb => by
         have hb' : b < R.length := by simpa using hb
         rw [getR hb']; exact (bytes_eq s _ _).trans (hheap.bytes b hb'), rfl, rfl,
@@ -165,7 +165,7 @@ theorem compileBF_okK (N : Nat) (bv : List Nat) (hbv : ∀ x ∈ bv, x < 8 + N) 
     hf hL hcd' (fun i => by show getX s (phys (avar i)) = _; rw [phys_avar]; exact hreg i) hslot hheap' hra) ?_
   rintro s' ⟨p1, p2, p3, p4, p5, p6⟩
   refine ⟨p1, fun i => by have := p2 i; rwa [show rvF.get s' (avar i) = getX s' (A8 i) by
-      show getX s' (phys (avar i)) = _; rw [phys_avar]] at this, ⟨by simpa using p3.hlen, by simpa using p3.bvlen,
+      show getX s' (phys (avar i)) = _; rw [phys_avar]] at this, ⟨by have h := p3.hlen; simp at h; exact h, by simpa using p3.bvlen,
       fun b hb => by have := p3.base b (by simpa using hb); rw [getR hb] at this; exact this,
       fun b hb => by have := p3.blen b (by simpa using hb); rw [getR hb] at this; exact this,
       fun b hb => by
@@ -201,14 +201,14 @@ theorem msortCode_ok_k {s : St} (h : Cfg s) {pc : BitVec 64} (hpc : s.regs.get? 
   have hsl : scr.length = xs.length := by simpa [bytesAt] using (congrArg List.length hs).symm
   have hol : out.length = xs.length := by simpa [bytesAt] using (congrArg List.length ho).symm
   obtain ⟨σ', hex, scr', hh⟩ := msortProg_mergeSort xs scr out ⟨envOf s, [xs, scr, out]⟩ rfl
-    (by simpa [envOf] using h1) hn hsl hol
+    (by simp [envOf]; exact h1) hn hsl hol
   have hheap : HeapRel [0, 2, 3] [⟨inb, xs.length⟩, ⟨scb, xs.length⟩, ⟨outb, xs.length⟩]
       ⟨envOf s, [xs, scr, out]⟩ s :=
     ⟨rfl, rfl, fun b hb => by
         obtain _ | _ | _ | b := b
-        · simpa [envOf] using h0
-        · simpa [envOf] using h2
-        · simpa [envOf] using h3
+        · simp [envOf]; exact h0
+        · simp [envOf]; exact h2
+        · simp [envOf]; exact h3
         · simp at hb; omega,
       fun b hb => by
         obtain _ | _ | _ | b := b

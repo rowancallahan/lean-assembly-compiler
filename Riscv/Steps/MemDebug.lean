@@ -9,7 +9,7 @@ partial def kfindAux (nm : Name) (e : Expr) (depth : Nat) : MetaM Bool := do
     unless ← isProp ty do return true
     let r ← Closure.mkValueTypeClosure ty e (zetaDelta := true)
     let decl := Declaration.thmDecl { name := nm ++ `_kfind_tmp, levelParams := r.levelParams.toList, type := r.type, value := r.value }
-    match (← getEnv).addDeclCore 0 decl none with
+    match (← getEnv).addDeclCore 0 0 decl none with
     | Except.ok _ => return true
     | Except.error ex => do
       if depth == 0 then logInfo m!"top fails: {ex.toMessageData (← getOptions)}"
