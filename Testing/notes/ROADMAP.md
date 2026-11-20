@@ -616,3 +616,29 @@ Order (each: measure on BENCH.md programs + self-compile, then prove; proofs gre
 - DeepMind's `ArmLoader` precondition (code executable, data blocks readable+writable) is met by any normal loader /
   shim mapping; state that in the shim notes. Memory wiping on exit is the separate "reset memory chunks" item.
 - Later: native ARM backend (no RISC-V translation); notes in TRUST.md say how the current ARM theorems are built.
+
+## Per-target layout (owner, 2026-11-20; after cleanup step 8)
+Top level becomes symmetric per target: `Spec/` (RISC-V + ARM machines), `Nano/` (compiler + target-independent proofs),
+`Riscv/` (model regen, step lemmas = today's Nano/Base/Riscv, RISC-V target proofs), `Arm/` (models, step lemmas, ARM
+target, later the native ARM backend), `Legacy/`, `Testing/`. Done after cleanup step 8 separates the RISC-V-specific
+parts from Nano/V2Self/Proof/Machine, so the move is complete in one go. Same checks as reorg-nano.
+- Spec/ scope (owner): Spec/ = what "correct" means (machines, CompileCorrect/Runs, Encode, memory rules). Generated Sail
+  models stay external deps; each target folder holds its regen scripts + provenance, step lemmas, codegen/target proofs.
+  Later Spec/ reorg: move the trusted SOURCE-language definitions (lexer spec, grammar/pOf, semantics; today in
+  Nano/V2Self, listed in REVIEW.lean) into Spec/, so everything to trust is in one place.
+- Per-target model files (owner): each target folder holds `gen/` with the full regeneration recipe (pinned generator +
+  model commits, patches, regen script; for DeepMind a fetch script at the pinned commit) and `MODEL.sha256`
+  (`Testing/scripts/model_hash.sh` value + file count) next to it; release_check's `hashes` gate reads those files.
+  Today: RISC-V regen in Testing/riscv/gen (moves to Riscv/gen), Sail ARM in Arm/gen, hashes only in the central
+  Testing/notes/MODEL_PROVENANCE.md, DeepMind has a pinned commit + hash but no fetch script (to add).
+- Rename Nano/V2Self by compiler stage, code + proof together (owner; same pass as the per-target move): Nano/Lexer
+  (C/Lex2 + Proof/Lex), Nano/Parser (C/Par1 + Proof/Parser), Nano/Ownership (C/Own + Proof/Own), Nano/Codegen (C/Gen +
+  Proof/Gen), Nano/Run (Proof/Machine, target-generic; RISC-V parts to Riscv/), Nano/SelfHost (Cert, CertArm, SrcLink,
+  Bridge), Nano/Main (top theorems + REVIEW.lean), Nano/Tests, Nano/Base. Module paths change; def/theorem names do not.
+  Trusted parser/grammar definition later in Spec/Source/ (Spec/ reorg); its proof stays in Nano/Parser.
+- README.md in every stage/target folder (owner): what is in the folder (one line per file or subfolder), what this
+  part does and where it sits in the whole (which stage feeds it, which uses it), design decisions made here and why
+  (with alternatives rejected), what the stage does, its input/output, the main definitions and
+  theorems (file:name), what it assumes from the stages before it and guarantees to the next, how to build/check it,
+  and known limits. Written for a human reader and for an agent starting cold. Kept short; updated in the same PR as
+  any change that makes it wrong.
