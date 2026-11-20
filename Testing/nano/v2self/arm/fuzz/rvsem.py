@@ -85,12 +85,28 @@ def check(d, words, regs, mem):
         return f'dump differs at {len(diff)} bytes, first at offset {diff[0]}'
     return None
 
+def gen_ctl(rng):
+    """Straight-line words with forward-only conditional branches (beq/bne/bltu/bgeu, incl. x0 operands). Targets are
+    forward, so every run ends; a final addi x0,x0,0 is the target sink (the translator refuses targets == n)."""
+    k = rng.choice([3, 6, 12, 24])
+    words = []
+    for i in range(k):
+        if rng.random() < 0.4:
+            t = rng.randint(i + 1, k)
+            words.append(gen.B(rng.choice(gen.BR), rng.choice(gen.SRC), rng.choice(gen.SRC), 4 * (t - i)))
+        else:
+            words.append(gen.valid_word(rng, i, k + 1, straight=True))
+    return words + [gen.I(0x13, 0, 0, 0, 0)]
+
 def main():
     rng = random.Random(SEED)
+    ctl = len(sys.argv) > 4 and sys.argv[4] == 'ctl'
     t0 = time.time(); n_ok = 0; nfail = 0; seen = set(); d = os.path.join(W, 'd'); os.makedirs(d, exist_ok=True)
     while time.time() - t0 < SECONDS:
-        k = rng.choice([1, 2, 4, 8, 16, 32])
-        words = [gen.valid_word(rng, i, k, straight=True) for i in range(k)]
+        if ctl: words = gen_ctl(rng)
+        else:
+            k = rng.choice([1, 2, 4, 8, 16, 32])
+            words = [gen.valid_word(rng, i, k, straight=True) for i in range(k)]
         regs, mem = make_state(rng)
         msg = check(d, words, regs, mem)
         if msg is None: n_ok += 1; continue
