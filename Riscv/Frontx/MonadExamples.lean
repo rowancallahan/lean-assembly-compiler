@@ -8,6 +8,8 @@ translator and add `g.prog`/`g.exec`; `frontx_implements[_bytes] g` the machine 
 itself).  Nothing is proved by hand. -/
 import Riscv.Frontx.SpecMonad
 import Riscv.Frontx.Impl1
+-- Lean 4.34.1: instance arguments are compared at restricted transparency; the generated proofs need the old check
+set_option backward.isDefEq.respectTransparency false
 
 namespace Proven.Frontx.Mon
 open Proven Proven.Frontx
