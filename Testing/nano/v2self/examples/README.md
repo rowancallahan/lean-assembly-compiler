@@ -59,7 +59,7 @@ on QEMU that `B2` compiles the source to `B2` again. Without QEMU, the same chec
   (input bytes in, output bytes out).
 - For the script, add two comment lines: `-- input  (hex): 68 69` and `-- expect (hex): …` (bytes separated by spaces).
 - Names: one lowercase letter, then digits (`f`, `s1`, `g_3`).
-- Scalars are `UInt64` (wrapping). Operators: `+ - *`, `&&& ||| ^^^`, `<<< k`, `>>> k` (k a numeral), and in `if`
+- Scalars are `UInt64` (wrapping). Operators: `+ - *`, `&&& |||` (not `^^^`: the lexer rejects it), `<<< k`, `>>> k` (k a numeral), and in `if`
   conditions `==` and `<`.
 - `if c then a else b`, `let v := e;` (with the `;`), calls of earlier defs with all arguments.
 - Input: `rd x i` (byte i, 0 past the end), `len x`. Output: `put o b` appends the low byte of `b`; start from `[]`.
@@ -70,7 +70,8 @@ on QEMU that `B2` compiles the source to `B2` again. Without QEMU, the same chec
     | 0, x, i, o => o
     | n + 1, x, i, o => f n x (i + 1) (put o (rd x i))
   ```
-  Fuel is a numeral or `len' x` (sums and products of these).
+  Fuel is a numeral or `len' x` (not `len' x + k` or `len' x * k`: both are rejected). The accumulator passed to the
+  self call must not be a bare parameter reused elsewhere (the ownership stage rejects it).
 - The programs are also Lean: `cat Nano/V2Self/Prelude.lean prog.lean > t.lean && lean t.lean` checks one.
 
 ## What gets rejected (tried with B2, 2026-11-19)
