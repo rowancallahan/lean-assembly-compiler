@@ -31,7 +31,7 @@ theorem loop_ok {C : List J} {H S E : Nat} {off0 dS : Int} {P : Env → St → P
     (hH : At C H (head off0 dS)) (hdS : ((H : Int) + 2 + dS).toNat = S) (hP : At C S (stepPre off0))
     (fuel : ∀ env s, P env s → s.m (ea (s.x 8) off0) = env 0 ∧ s.x 0 = 0)
     (hDec : ∀ env s, P env s → env 0 ≠ 0 →
-      P (dec env) ⟨upd s.x 5 (UInt64.ofNat (ea (env 0) (-1))), upd s.m (ea (s.x 8) off0) (UInt64.ofNat (ea (env 0) (-1))), s.b, s.w⟩)
+      P (dec env) ⟨upd s.x 5 (UInt64.ofNat (ea (env 0) (-1))), upd s.m (ea (s.x 8) off0) (UInt64.ofNat (ea (env 0) (-1))), s.b, s.wk⟩)
     (hZ : ∀ env s, P env s → env 0 = 0 → ∃ s', Star C (H + 3, wr s 5 (env 0)) (E, s') ∧ QZ env s')
     (hS : ∀ env s, P env s → ∃ s', (Star C (S + 2, s) (E, s') ∧ QS env s') ∨
       ∃ env', Star C (S + 2, s) (H, s') ∧ Cont env env' ∧ P env' s')
@@ -62,13 +62,13 @@ theorem loop_ok {C : List J} {H S E : Nat} {off0 dS : Int} {P : Env → St → P
     have r1 : step C (H, s) = some (H + 1, s1) := by simp [step, c0, hf, s1]
     have r2 : step C (H + 1, s1) = some (H + 2, s1) := by
       simp [step, c1, s1, wr, upd, hx0, h0]
-    let s2 := wr s1 0 (UInt64.ofNat (s1.b + 4 * (H + 2 + 1)))
+    let s2 := wr s1 0 (UInt64.ofNat (s1.b + s1.w * (H + 2 + 1)))
     have w2 : s2 = s1 := by simp [s2, wr]
     have r3 : step C (H + 2, s1) = some (S, s1) := by
       have := (show step C (H + 2, s1) = some (((H + 2 : Nat) : Int) + dS |>.toNat, s2) by simp [step, c2, s2])
       rw [w2] at this; rw [this]; congr 2; try omega
     let v := UInt64.ofNat (ea (env 0) (-1))
-    let s4 : St := ⟨upd s.x 5 v, upd s.m (ea (s.x 8) off0) v, s.b, s.w⟩
+    let s4 : St := ⟨upd s.x 5 v, upd s.m (ea (s.x 8) off0) v, s.b, s.wk⟩
     have r45 : run C 2 (S, s1) = some (S + 2, s4) := by
       simp [run, step, d0, d1, s1, wr, s4, v, upd_same, upd_other _ _ (show (8:Nat) ≠ 5 by decide), upd2]
     have hp4 := hDec env s hp h0

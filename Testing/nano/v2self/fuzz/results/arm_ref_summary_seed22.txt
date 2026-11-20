@@ -1,0 +1,9 @@
+seed=22 programs=500 b2_accepts=220 b2_rejects=280
+    500  ARM-B2 == B2 code
+   1065  arm == ref
+    475  arm oom at 80 MiB (ref OK; rv agrees)
+   1600  arm run == rv run
+    475  rv oom at 80 MiB (ref OK; nanorun agrees)
+   1065  rv qemu == ref
+    220  translator == oracle
+mismatches=0

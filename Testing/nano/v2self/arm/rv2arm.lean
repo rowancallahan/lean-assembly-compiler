@@ -88,22 +88,28 @@ def b2 (c : UInt64) : UInt64 :=
 def b3 (f3 : UInt64) : UInt64 :=
   if f3 == 0 then 0 else if f3 == 1 then 1 else if f3 == 6 then 3 else if f3 == 7 then 2 else 99
 --
--- VALIDATION: 1 iff word v at index i (of n words) is a J encoding that the blocks handle
+-- VALIDATION: 1 iff word v at index i (of n words) is a J encoding that the blocks handle. The A64 field ranges are
+-- checked explicitly (= ArmEnc.armOK), although RV's field widths already imply them: c2 = imm12 (add/sub imm12 and
+-- the x16 address forms; movz takes 65536 + imm for imm < 0); c3 = b/bl word offset |B| < 2^25; b.cond/cbz: below.
+def c2 (i : UInt64) : UInt64 := if i + 2048 < 4096 then 1 else 0
+def c3 (b : UInt64) : UInt64 := if b + 33554428 < 67108857 then 1 else 0
 def c0 (v i n : UInt64) : UInt64 :=
   let p := o0 v;
   let f := o2 v;
   if p == 19 then
-    if f == 0 then (if u2 (o3 v) == 1 then u2 (o1 v) else 0)
+    if f == 0 then (if c2 (o5 v) == 0 then 0 else if u2 (o3 v) == 1 then u2 (o1 v) else 0)
     else if f == 1 then (if (v >>> 26) == 0 then (if u2 (o3 v) == 1 then u2 (o1 v) else 0) else 0)
     else if f == 5 then (if (v >>> 26) == 0 then (if u2 (o3 v) == 1 then u2 (o1 v) else 0) else 0)
     else 0
   else if p == 3 then
     if o3 v == 0 then 0 else
     if u2 (o3 v) == 0 then 0 else
+    if c2 (o5 v) == 0 then 0 else
     if f == 3 then u2 (o1 v) else if f == 4 then u2 (o1 v) else 0
   else if p == 35 then
     if o3 v == 0 then 0 else
     if u2 (o3 v) == 0 then 0 else
+    if c2 (o6 v) == 0 then 0 else
     if f == 3 then u2 (o4 v) else if f == 0 then u2 (o4 v) else 0
   else if p == 51 then
     if b1 f (v >>> 25) == 0 then 0 else
@@ -118,7 +124,7 @@ def c0 (v i n : UInt64) : UInt64 :=
     else 0
   else if p == 111 then
     if o1 v < 2 then
-      (if (o8 v &&& 3) == 0 then (if 4 * i + o8 v < 4 * n then 1 else 0) else 0)
+      (if (o8 v &&& 3) == 0 then (if c3 (o8 v) == 0 then 0 else if 4 * i + o8 v < 4 * n then 1 else 0) else 0)
     else 0
   else if p == 103 then
     if f == 0 then

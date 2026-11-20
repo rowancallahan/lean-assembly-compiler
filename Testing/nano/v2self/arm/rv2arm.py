@@ -93,6 +93,9 @@ def block(j, pc):
     out = []
     def rel(target_pc): return target_pc * K - (pc * K + len(out))   # words from the word about to be emitted
     k = j[0]
+    if k in ('addi', 'ld', 'lbu', 'sd', 'sb'): assert -2048 <= j[3] < 2048, j   # imm12 (= ArmEnc.armOK)
+    if k in ('slli', 'srli'): assert 0 <= j[3] < 64, j
+    if k in ('beq', 'bne', 'bltu', 'bgeu'): assert -65535 <= j[3] <= 65535, j     # b.cond / cbz reach
     if k == 'addi':
         _, rd, rs, imm = j
         R(rd); R(rs)                                     # validate (also when rd = x0)

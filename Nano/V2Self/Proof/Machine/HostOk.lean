@@ -90,7 +90,7 @@ theorem host_ok (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List DefA}
   have hb4 : 4 * Cj.length ≤ 2 ^ 20 := by omega
   obtain ⟨vs, H', hSd⟩ := hS Tb
   obtain ⟨y', hSem', hcont⟩ := (hrun KL E0 hE0 j0 (by rw [x12]; exact sc.workAligned) (by rw [x12]; omega)
-    (by rw [x12]; omega) (by omega) (by rw [jb]; omega) (by rw [x10, x11']; omega)
+    (by rw [x12]; omega) (by omega) (by rw [jb, jOfT_w L]; omega) (by rw [x10, x11']; omega)
     (by rw [x10, x11', x12]; omega) (by rw [x12]; exact Nat.le_refl _) (Nat.le_refl _) jb
     (fun i hi => by rw [x11'] at hi; rw [x10]; exact Or.inr (Or.inl ⟨by simp [KL], by simp [KL]; omega⟩))).1
     vs H' (by rw [x12, hx11]; exact hSd)

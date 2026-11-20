@@ -47,7 +47,7 @@ structure DefOK (P : PC) (ds : List DefA) (C : List J) (k : Nat) : Prop where
 
 /-- **program level**: every def k < N satisfies its contract -/
 theorem progRun (P : PC) (ds : List DefA) (C : List J) (IG : St → Prop) (E0 : Nat) (c28 : UInt64)
-    (hig : IGOK P.hb E0 IG) (he : E0 < 2 ^ 62) (hcb : ∀ s, IG s → s.b + 4 * C.length < 2 ^ 64)
+    (hig : IGOK P.hb E0 IG) (he : E0 < 2 ^ 62) (hcb : ∀ s, IG s → s.b + s.w * C.length < 2 ^ 64)
     (hinp : InpOK IG c28 P.c29 P.inp) (N : Nat) (hd : ∀ k, k < N → DefOK P ds C k) :
     ∀ k, k < N → DefX C (P.T k) (dA ds k).npw (dA ds k).nres IG P.hb E0 (semAt P ds k) := by
   intro k

@@ -53,7 +53,7 @@ theorem relW_of {K : LayW} {C : List J} {s0 : Proven.St} {p : Nat × CallProbe.S
     (h : rvTarget.Rel K C s0 p t) : RelW K p t := by
   obtain ⟨hK, hW⟩ := hl
   have hb := hK.bhi; have hwh := hK.whi; have hih := hK.ibh; have hoh := hK.obh
-  refine ⟨h.cfg, ?_, ?_, h.x0, h.bb, ?_, ?_, ?_, ?_⟩
+  refine ⟨h.cfg, ?_, ?_, h.x0, h.bb, h.ww, ?_, ?_, ?_, ?_⟩
   · have hp := h.pc
     have hs := Top.isSome_of_cfg h.cfg (register := .PC) (by simp)
     have := Top.register_of hs (by simpa [rvTarget, riscv, riscvObserve] using hp)
@@ -100,7 +100,7 @@ theorem rel_of {K : LayW} {C : List J} {s0 : Proven.St} {p : Nat × CallProbe.St
     (h : RelW K p t) : rvTarget.Rel K C s0 p t := by
   obtain ⟨hK, hW⟩ := hl
   have hb := hK.bhi; have hwh := hK.whi; have hih := hK.ibh; have hoh := hK.obh
-  refine ⟨h.cfg, ?_, ?_, h.x0, h.bb, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  refine ⟨h.cfg, ?_, ?_, h.x0, h.bb, h.ww, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · show ((t.regs.get? .PC).map UInt64.ofBitVec).getD 0 = UInt64.ofNat (K.base + 4 * 1 * p.1)
     rw [h.pc]; apply UInt64.toNat_inj.1
     simp only [Option.map_some, Option.getD_some, UInt64.toNat_ofBitVec, BitVec.toNat_ofNat, UInt64.toNat_ofNat']
@@ -141,6 +141,7 @@ theorem rel_of {K : LayW} {C : List J} {s0 : Proven.St} {p : Nat × CallProbe.St
     exact h.fr a (by unfold wok; omega) (by unfold outB; omega)
 
 theorem rvLaws : rvTarget.Laws where
+  blk_pos := by decide
   enc_len _ := rfl
   reg_map := ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
   kept_map r hr := by

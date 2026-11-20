@@ -59,7 +59,7 @@ theorem bnew_runK {C : List J} {pc tgt κ : Nat} (s : St) (hC : At C pc (bnewT t
   have e30 : UInt64.ofNat (s.x 30).toNat = s.x 30 := by simp
   -- 1: t0 := t5
   have h1 := p1.at 0 (by simp); simp at h1
-  let s1 : St := ⟨upd s.x 5 (s.x 30), s.m, s.b, s.w⟩
+  let s1 : St := ⟨upd s.x 5 (s.x 30), s.m, s.b, s.wk⟩
   have r1 : run C 1 (pc, s) = some (pc + 1, s1) := by
     simp [run, step, h1, wr, ea, e30, s1]
   have z1 : s1.x 0 = 0 := by simp [s1, upd_ne, hx0]
@@ -73,7 +73,7 @@ theorem bnew_runK {C : List J} {pc tgt κ : Nat} (s : St) (hC : At C pc (bnewT t
   have mm2 : s2.m = s.m := hm2
   -- 3: t1 := t1 + t5
   have h3 := p3.at 0 (by simp); simp at h3
-  let s3 : St := ⟨upd s2.x 6 (W + s.x 30), s2.m, s2.b, s2.w⟩
+  let s3 : St := ⟨upd s2.x 6 (W + s.x 30), s2.m, s2.b, s2.wk⟩
   have r3 : run C 1 (pc + 1 + (liT 6 W).length, s2) = some (pc + 1 + (liT 6 W).length + 1, s3) := by
     simp [run, step, h3, wr, aluf, a6, a30, s3]
   -- 4: bgeu taken
@@ -100,7 +100,7 @@ theorem bnew_runK {C : List J} {pc tgt κ : Nat} (s : St) (hC : At C pc (bnewT t
   simp at h6 h7 h8
   have eT0 : ea (s5.x 5) 0 = (s.x 30).toNat := by simp [ea, b5]
   have eT8 : ea (s5.x 5) 8 = (s.x 30).toNat + 8 := by simp [ea, b5]; omega
-  let s8 : St := ⟨upd s5.x 30 (W + s.x 30), upd (upd s5.m (s.x 30).toNat 0) ((s.x 30).toNat + 8) K, s5.b, s5.w⟩
+  let s8 : St := ⟨upd s5.x 30 (W + s.x 30), upd (upd s5.m (s.x 30).toNat 0) ((s.x 30).toNat + 8) K, s5.b, s5.wk⟩
   have ea0 : ∀ b : UInt64, ea b 0 = b.toNat := fun b => by simp [ea]
   have e6 : UInt64.ofNat (ea (W + s.x 30) 0) = W + s.x 30 := by rw [ea0]; exact UInt64.ofNat_toNat
   have r678 : run C 3 (pc + 1 + (liT 6 W).length + 3 + (liT 7 K).length, s5) =
@@ -113,7 +113,7 @@ theorem bnew_runK {C : List J} {pc tgt κ : Nat} (s : St) (hC : At C pc (bnewT t
     rw [y30, y31, hsum]; omega
   have r4' : run C 1 (pc + 1 + (liT 6 W).length + 1, s3) = some (pc + 1 + (liT 6 W).length + 3, s3) := by simp [run, r4]
   have r9 := push_run (s := s8) (by simpa [pushA] using p6) (by decide) (by decide) hh8
-  refine ⟨⟨upd s8.x 31 (UInt64.ofNat ((s8.x 31).toNat - 8)), upd s8.m ((s8.x 31).toNat - 8) (s8.x 5), s8.b, s8.w⟩,
+  refine ⟨⟨upd s8.x 31 (UInt64.ofNat ((s8.x 31).toNat - 8)), upd s8.m ((s8.x 31).toNat - 8) (s8.x 5), s8.b, s8.wk⟩,
     ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · rw [run_add r1, run_add r2, run_add r3, run_add r4', run_add r5, run_add r678, r9]
     have : (bnewT tgt pc κ).length = 1 + (liT 6 W).length + 3 + (liT 7 K).length + 3 + 4 := by
@@ -181,7 +181,7 @@ theorem bnew_oom {C : List J} {pc tgt κ : Nat} (s : St) (hC : At C pc (bnewT tg
   have e30 : UInt64.ofNat (s.x 30).toNat = s.x 30 := by simp
   -- 1: t0 := t5
   have h1 := p1.at 0 (by simp); simp at h1
-  let s1 : St := ⟨upd s.x 5 (s.x 30), s.m, s.b, s.w⟩
+  let s1 : St := ⟨upd s.x 5 (s.x 30), s.m, s.b, s.wk⟩
   have r1 : run C 1 (pc, s) = some (pc + 1, s1) := by
     simp [run, step, h1, wr, ea, e30, s1]
   have z1 : s1.x 0 = 0 := by simp [s1, upd_ne, hx0]
@@ -195,7 +195,7 @@ theorem bnew_oom {C : List J} {pc tgt κ : Nat} (s : St) (hC : At C pc (bnewT tg
   have mm2 : s2.m = s.m := hm2
   -- 3: t1 := t1 + t5
   have h3 := p3.at 0 (by simp); simp at h3
-  let s3 : St := ⟨upd s2.x 6 (W + s.x 30), s2.m, s2.b, s2.w⟩
+  let s3 : St := ⟨upd s2.x 6 (W + s.x 30), s2.m, s2.b, s2.wk⟩
   have r3 : run C 1 (pc + 1 + (liT 6 W).length, s2) = some (pc + 1 + (liT 6 W).length + 1, s3) := by
     simp [run, step, h3, wr, aluf, a6, a30, s3]
   have h4 := p3.at 1 (by simp); simp at h4
@@ -223,7 +223,7 @@ theorem bnew_oom {C : List J} {pc tgt κ : Nat} (s : St) (hC : At C pc (bnewT tg
     simp at h6 h7 h8
     have eT0 : ea (s5.x 5) 0 = (s.x 30).toNat := by simp [ea, b5]
     have eT8 : ea (s5.x 5) 8 = (s.x 30).toNat + 8 := by simp [ea, b5]; omega
-    let s8 : St := ⟨upd s5.x 30 (W + s.x 30), upd (upd s5.m (s.x 30).toNat 0) ((s.x 30).toNat + 8) K, s5.b, s5.w⟩
+    let s8 : St := ⟨upd s5.x 30 (W + s.x 30), upd (upd s5.m (s.x 30).toNat 0) ((s.x 30).toNat + 8) K, s5.b, s5.wk⟩
     have ea0 : ∀ b : UInt64, ea b 0 = b.toNat := fun b => by simp [ea]
     have e6 : UInt64.ofNat (ea (W + s.x 30) 0) = W + s.x 30 := by rw [ea0]; exact UInt64.ofNat_toNat
     have r678 : run C 3 (pc + 1 + (liT 6 W).length + 3 + (liT 7 K).length, s5) =
@@ -237,12 +237,12 @@ theorem bnew_oom {C : List J} {pc tgt κ : Nat} (s : St) (hC : At C pc (bnewT tg
       rw [y30, y31, hsum]; omega
     have r9 := push_oom (s := s8) (by simpa [pushA] using p6) (by rw [y31]; omega) (by rw [y30, y31, hsum]; omega)
     have r9' : run C 3 (pc + 1 + (liT 6 W).length + 3 + (liT 7 K).length + 3, s8) =
-        some (tgt, ⟨upd s8.x 31 (UInt64.ofNat ((s8.x 31).toNat - 8)), s8.m, s8.b, s8.w⟩) := by
+        some (tgt, ⟨upd s8.x 31 (UInt64.ofNat ((s8.x 31).toNat - 8)), s8.m, s8.b, s8.wk⟩) := by
       rw [r9]; congr 2; omega
     have fr : ∀ r, r ≠ 5 → r ≠ 6 → r ≠ 7 → r ≠ 30 → r ≠ 31 → s8.x r = s.x r := by
       intro r h5 h6 h7 h30 h31
       simp [s8, upd_ne, h30, hx5, s3, h5, h6, h7, hx2, s1]
-    refine ⟨1 + ((liT 6 W).length + (1 + (1 + ((liT 7 K).length + (3 + 3))))), ⟨upd s8.x 31 (UInt64.ofNat ((s8.x 31).toNat - 8)), s8.m, s8.b, s8.w⟩,
+    refine ⟨1 + ((liT 6 W).length + (1 + (1 + ((liT 7 K).length + (3 + 3))))), ⟨upd s8.x 31 (UInt64.ofNat ((s8.x 31).toNat - 8)), s8.m, s8.b, s8.wk⟩,
       ?_, ?_, ?_, ?_, ?_, ?_⟩
     · rw [run_add r1, run_add r2, run_add r3, run_add r4', run_add r5, run_add r678, r9']
     · dsimp only; rw [upd_ne _ _ (by decide : (8:Nat) ≠ 31), fr 8 (by decide) (by decide) (by decide) (by decide) (by decide)]

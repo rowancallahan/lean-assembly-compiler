@@ -209,9 +209,11 @@ corollaries, `C_runs`). Its step lemmas are the existing Sail library SimW/SimX 
    `ShiftInv`/`shiftInv`, `no_room`/`lt_room` and `gen_HD`'s use quantify over work positions `hb ≥ 2^31`. ARM's
    window [2^28, 2^29) needs those lowered (e.g. to 2048). This is proof-only work in D's `ShiftInv` area. RV's
    `spaceC` is unchanged if the threshold stays position-independent.
-2. **Link width:** `enc` is position-independent, so the internal `jalr 0 r` and the host return `jalr 0 1` share one
-   block. That rules out §0a V1 (special-cased host returns) and requires **V2**: J's `jal` links `b + W·(pc+1)` with
-   W = 4·blockLen, and `jalr` divides by W (`Rel.pc` already uses `4·blockLen·pc`). Until then `blockLen` must be 1.
+2. **Link width: DONE (7536764).** J's state has `wk` with link width `w = 4·(wk+1)`. `jal` links `b + w·(pc+1)`,
+   `jalr` jumps to `(x − b)/w`, and SafeX's jalr condition is `x = base + w·j`. `Rel.ww : wk = blockLen − 1`, so
+   `w = 4·blockLen`, the byte size of a block: with blockLen = 4, `bl` as the LAST word of the block links the next
+   block (`base + 16·(pc+1)`) and `jalr 0 r` = `br r`, exactly the rv2arm layout (Testing/nano/v2self/arm). RISC-V:
+   `wk = 0` (`RelW.ww`), unchanged. `Laws.blk_pos : 0 < blockLen`.
 3. **Instruction kinds** for ARM `step_ok` (no Gen change): §3's mapping. slli/srli become `movz x16` + lslv/lsrv,
    negative addi from x0 becomes movz + sub, and padding is `add x16, x16, #0`. Missing Arm/proofs lemmas: reg-ALU ×8
    (incl. madd), cmp-reg, br.
@@ -224,27 +226,33 @@ its own decode (SymDec-style decode prune), never the whole decoder.
 - **Future option:** the DeepMind `Arm64.Step` surrogate plus one final `sim`/`simM` lift to Sail. The probe found it
   saves no main cost: the missing pieces are Sail-side symbolic full steps either way. Revisit it at the 4.35 cleanup.
 
-**Instruction choice:** reuse the full steps that already exist. Blocks may be longer.
-| J kind | A64 (existing lemmas preferred) | new lemma needed |
-|---|---|---|
-| `addi rd rs imm`, rs ≠ x0 | `add/sub xd, xs, #|imm|` | none |
-| `addi rd x0 imm` (constants; stubs −1/−2) | `movz` (+ `movk`×3 for negatives/wide values: −1 = 0xFFFF×4) | none |
-| `ld` / `sd` (off ≥ 0, 8-aligned) | `ldr` / `str [xn,#8k]` | none |
-| `sd` / `ld`, off < 0 (frame locals) | `stur` / `sub x16, xs, #|off|; ldr xd, [x16]` | none (ldur avoided) |
-| `lbu` / `sb` | `ldrb` / `strb` imm | none |
-| `jal 0 off` / `jal 1 off` | `b` / `bl` (V2 link width) | none |
-| `beq/bne/bltu/bgeu a b` | `subs x16, xa, xb` (or `cmp`), then `b.eq/ne/lo/hs` | **subs/cmp register** (AL4) |
-| `beq a x0` | `cbz` | none |
-| `alu add/sub/and/or/xor/sll/srl` | `add/sub/and/orr/eor/lslv/lsrv xd, xa, xb` | **reg-reg ALU** (AL1–AL3, one SymDec family) |
-| `alu mul` | `madd xd, xa, xb, xzr` (= mul) | **madd** (AL5) |
-| `slli/srli rd rs sh` | `movz x16, #sh; lslv/lsrv xd, xs, x16` | none beyond AL3 |
-| `jalr 0 r` (internal and host return) | `br xr` (V2); host return `ret` = `br x30` | **br** (AL6; generalises `full_ret`) |
-| `sd x0 …` (`str xzr`) | `movz x16, #0; str x16` | none |
-| reads of x2 = sp | x2 is mapped to an ordinary register (the start code's `srli 31 2 3` reads it), not to SP | none |
-| padding | `add x16, x16, #0` | none |
-So the NEW full-step lemmas are: register add/sub/and/orr/eor/lslv/lsrv (one family), subs/cmp register, madd,
-br. Those are D's AL1–AL6 sessions. Gaps 3 (ldur), 4 (ubfm), 6 (str xzr), 7 (SP-relative), 8 (movn) from D's list
-are avoided by the choices above.
+**Instruction choice = the translator's** (Testing/nano/v2self/arm/PROOF_NOTES.md block table, ArmBlock.lean; 5e49b62 /
+aee895b). The block table there IS the proof plan for `armTarget.step_ok`: one row per J kind, giving the A64 block,
+its scratch use, NZCV, and the lemmas (existing `full_*` or D's AL1–AL6). The new lemmas are AL1–AL3 (register
+add/sub/and/orr/eor/lslv/lsrv), AL4 (subs register), AL5 (madd) and AL6 (br). Nothing uses register field 31:
+- x0 operands and stores of x0 go through `movz x17, #0`;
+- mul is `madd d, a, b, x17`;
+- compares are `subs x16, a, b`;
+- RV x2 ↦ x4, and Spec `armMapping.workTop = 4` (1437a980).
+
+**State relation for every row** (generic `JTarget.Rel`, Machine/Target.lean):
+- PC = base + 16·pc;
+- the block bytes at base + 16·i;
+- `X[π j] = s.x j` for 0 < j < 32;
+- registers outside π's image and outside scratch [16, 17] keep their entry values;
+- the work cells, io bytes and `m0` frame are as in J;
+- `wk = 3` (link width 16).
+Each row's lemma composition must give `Runs` from `Rel (pc, s)` to `Rel (step C (pc, s))`. Taken branches leave the
+block early, and not-taken/fall-through paths run the PADs.
+
+Proof-side constraints on the adapter definitions (O):
+- `reg = π` exactly as in ArmBlock.lean, so that `EncOK` holds for the translator's bytes.
+- J registers outside π's domain (3, 4, 9, 16..27) are never written by Gen (`keepR`, `dstOk`). They may all map to
+  one never-written register, e.g. x18. `Rel.x` then holds because `jOfT` reads them from that register at entry and
+  nothing writes it. `reg` need not be injective there.
+- `kept_map`: every `armMapping.kept` register (x19..x29, x31) is outside π's image and outside scratch.
+- `lay K C` includes the translator's validation (only π-domain registers, ranges, |B| ≤ 262140), so `step_ok` only
+  sees encodable programs.
 
 **Fixed up front** (review points):
 - NZCV is dead across blocks: only the compare block sets it, and its own `b.cond` consumes it. Rel says nothing

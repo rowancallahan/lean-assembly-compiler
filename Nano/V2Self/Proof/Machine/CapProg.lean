@@ -19,7 +19,7 @@ theorem defCapRun {S : SC} {C : List J} {IG : St → Prop} {E0 : Nat} {c28 : UIn
     (by omega) hpn hR X.nl251
 
 theorem progCap (P : PC) (ds : List DefA) (C : List J) (IG : St → Prop) (E0 : Nat) (c28 : UInt64) (KL : LayW) {fk : Fail} {tg : Nat}
-    (hig : IGOK P.hb E0 IG) (he : E0 < 2 ^ 62) (hcb : ∀ s, IG s → s.b + 4 * C.length < 2 ^ 64)
+    (hig : IGOK P.hb E0 IG) (he : E0 < 2 ^ 62) (hcb : ∀ s, IG s → s.b + s.w * C.length < 2 ^ 64)
     (hinp : InpOK IG c28 P.c29 P.inp) (hinw : InpW KL IG) (hc18 : C.length < 2 ^ 18) (h6 : 6 < C.length)
     (hkS : fk ≠ .stuck) (t1 : fk = .room → tg = 1) (t6 : fk = .cap → tg = 6) (kap : P.κ < 2 ^ 40)
     (hb2k : 2048 ≤ P.hb) (N : Nat)
@@ -60,7 +60,7 @@ theorem progCap (P : PC) (ds : List DefA) (C : List J) (IG : St → Prop) (E0 : 
 
 theorem gen_defs_cap (P : PC) (ds : List DefA) (C : List J) (IG : St → Prop) (E0 : Nat) (c28 : UInt64)
     (KL : LayW) {fk : Fail} {tg : Nat} (n h : Nat)
-    (hig : IGOK P.hb E0 IG) (he : E0 < 2 ^ 62) (hcb : ∀ s, IG s → s.b + 4 * C.length < 2 ^ 64)
+    (hig : IGOK P.hb E0 IG) (he : E0 < 2 ^ 62) (hcb : ∀ s, IG s → s.b + s.w * C.length < 2 ^ 64)
     (hinp : InpOK IG c28 P.c29 P.inp) (hinw : InpW KL IG) (hc18 : C.length < 2 ^ 18) (h6 : 6 < C.length)
     (hk : fk ≠ .stuck) (t1 : fk = .room → tg = 1) (t6 : fk = .cap → tg = 6) (kap : P.κ < 2 ^ 40)
     (hb2k : 2048 ≤ P.hb) (hC : At C h (defsJ P ds 0 n))

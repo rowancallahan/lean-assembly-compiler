@@ -25,7 +25,7 @@ theorem gen_runS (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length 
         ((∀ k, k < hs.length → ScV (scAt P ds k) (dA ds k).body) → (C.map encG).map UInt64.toNat = C.map SimW.encJX) ∧
         ∀ KL : SimW.LayW, ((∀ k, k < hs.length → ScV (scAt P ds k) (dA ds k).body ∧ ∀ j, rd (dA ds k).body j → j < (dA ds k).npw) →
          ∀ E0, ((s0.x 2 >>> 3) <<< 3).toNat = E0 → s0.x 0 = 0 → (s0.x 12).toNat % 8 = 0 → 2048 ≤ (s0.x 12).toNat →
-         (s0.x 12).toNat + 16 ≤ E0 → E0 < 2 ^ 62 → s0.b + 4 * C.length < 2 ^ 64 →
+         (s0.x 12).toNat + 16 ≤ E0 → E0 < 2 ^ 62 → s0.b + s0.w * C.length < 2 ^ 64 →
          (s0.x 10).toNat + (s0.x 11).toNat < 2 ^ 63 →
          ((s0.x 10).toNat + (s0.x 11).toNat ≤ (s0.x 12).toNat ∨ E0 ≤ (s0.x 10).toNat) →
          KL.lo ≤ (s0.x 12).toNat → E0 ≤ KL.hi → s0.b = KL.base →
@@ -70,7 +70,7 @@ theorem gen_runS (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length 
   have hsl : 0 < hs.length := List.length_pos_iff.mpr hne
   have hM := gen_defs_runS P ds C (IGs s0 inp) E0 (s0.x 10) KL
     hs.length (g34 bnew).length (by rw [hPhb]; exact IGs_ok s0 _ E0 hE8 hin) hE62
-    (fun s hs => by rw [hs.2.2.2.2.2]; exact hcb)
+    (fun s hs => by rw [hs.2.2.2.2.2.1, St.w_eq hs.2.2.2.2.2.2]; exact hcb)
     (fun s hs => by rw [hPc, hPi]; exact ⟨hs.1, hs.2.1, hs.2.2.1, hin63⟩)
     (fun s hs i hi => by rw [hs.1, hs.2.1] at *; exact hinw i hi) hc18 (by rw [hDd]; exact AD)
     (fun j hj => hTp j hj)
@@ -96,13 +96,13 @@ theorem gen_runS (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length 
         rw [en.m]
         have := Nat.mod_lt ((s0.x 10).toNat + i) (show 8 > 0 by omega)
         exact (lbm_eq (by rw [upd_other _ _ (by omega), upd_other _ _ (by omega)])).trans (hinp i hi),
-      by rw [en.m, upd_other _ _ (by omega), upd_same], by rw [en.m, upd_same], en.b⟩
+      by rw [en.m, upd_other _ _ (by omega), upd_same], by rw [en.m, upd_same], en.b, en.wk⟩
   refine ⟨fun vs H' hSd N bs hN hPb hPN hbs hQ hout hwO => ?_, fun fk hk hSd => ?_⟩
   rotate_left
   · -- the capacity exit
     have hMc := gen_defs_cap P ds C (IGs s0 inp) E0 (s0.x 10) KL
       hs.length (g34 bnew).length (by rw [hPhb]; exact IGs_ok s0 _ E0 hE8 hin) hE62
-      (fun s hs => by rw [hs.2.2.2.2.2]; exact hcb)
+      (fun s hs => by rw [hs.2.2.2.2.2.1, St.w_eq hs.2.2.2.2.2.2]; exact hcb)
       (fun s hs => by rw [hPc, hPi]; exact ⟨hs.1, hs.2.1, hs.2.2.1, hin63⟩)
       (fun s hs i hi => by rw [hs.1, hs.2.1] at *; exact hinw i hi) hc18 (by omega) (fk := fk) (tg := stubW fk)
       hk (fun h => by subst h; rfl) (fun h => by subst h; rfl) (by rw [← hPd]; show 524288 < 2 ^ 40; decide) (by rw [hPhb]; omega)
@@ -115,10 +115,10 @@ theorem gen_runS (c : List UInt8) (ds : List DefA) (hXl : (serialize ds).length 
         exact ⟨by omega, c4, b1, b2, a4, hopv k hk, c2, c3⟩) (hs.length - 1) (by omega)
     rw [np] at hMc
     obtain ⟨s2, h2, I2, z2, k2, b2⟩ := start_capX (KL := KL) hok A0 AS hMc s0 z0 hPhb ha8 hE0
-      (by rw [hPhb]; exact hroom) hE62 (by have := lC; omega) hIGe (by rw [hPhb]; exact hSd) hlo hhi hbase hE8
+      (by rw [hPhb]; exact hroom) hE62 (by have := lC; have := Nat.mul_le_mul_left s0.w (show 11 + D.length + 12 ≤ C.length by omega); omega) hIGe (by rw [hPhb]; exact hSd) hlo hhi hbase hE8
       (by omega) hc18 hwl
     exact ⟨s2, h2, I2.2.2.2.1, I2.2.2.2.2.1, z2, k2, b2⟩
-  obtain ⟨s3, h3, c31, r1, r2, r3, r4, r5, r6⟩ := start_runX (KL := KL) hok A0 AS hM s0 z0 hPhb ha8 hE0 (by rw [hPhb]; exact hroom) hE62 (by have := lC; omega)
+  obtain ⟨s3, h3, c31, r1, r2, r3, r4, r5, r6⟩ := start_runX (KL := KL) hok A0 AS hM s0 z0 hPhb ha8 hE0 (by rw [hPhb]; exact hroom) hE62 (by have := lC; have := Nat.mul_le_mul_left s0.w (show 11 + D.length + 12 ≤ C.length by omega); omega)
     hIGe
     (fun s hs => ⟨hs.2.2.2.1, hs.2.2.2.2.1⟩) (by rw [hPhb]; exact hSd) hN (by rw [hPhb]; exact hPb) hPN hbs hQ hout hlo hhi hbase hE8 (by omega) hc18
     hwl hwO

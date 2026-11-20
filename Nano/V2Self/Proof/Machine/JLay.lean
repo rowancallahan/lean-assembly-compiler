@@ -43,7 +43,7 @@ def Safe (K : LayW) (C : List CallProbe.J) : Nat × CallProbe.St → Prop
     | some (.beq a b o) => a < 32 ∧ b < 32 ∧ o = 2
     | some (.bltu a b o) => a < 32 ∧ b < 32 ∧ o = 2
     | some (.jal rd off) => rd < 32 ∧ -2 ^ 18 ≤ off ∧ off < 2 ^ 18 ∧ 0 ≤ (pc : Int) + off ∧ (pc : Int) + off < C.length
-    | some (.jalr rd rs) => rd = 0 ∧ rs < 32 ∧ ∃ j, (s.x rs).toNat = K.base + 4 * j
+    | some (.jalr rd rs) => rd = 0 ∧ rs < 32 ∧ ∃ j, (s.x rs).toNat = K.base + s.w * j
     | some (.alu op rd a b) => rd < 32 ∧ a < 32 ∧ b < 32 ∧ (1 ≤ op ∧ op ≤ 8) ∧ rd ≠ 0
     | some (.slli rd rs sh) => rd < 32 ∧ rs < 32 ∧ sh < 64
     | some (.lbu rd rs off) => rd < 32 ∧ rs < 32 ∧ -2048 ≤ off ∧ off < 2048 ∧ 0 ≤ ((s.x rs).toNat : Int) + off ∧
@@ -67,7 +67,7 @@ def SafeX (K : LayW) (C : List CallProbe.J) : Nat × CallProbe.St → Prop
     | some (.beq a b o) => a < 32 ∧ b < 32 ∧ (o = 2 ∨ o = 7)
     | some (.bltu a b o) => a < 32 ∧ b < 32 ∧ o = 2
     | some (.jal rd off) => rd < 32 ∧ -2 ^ 18 ≤ off ∧ off < 2 ^ 18 ∧ 0 ≤ (pc : Int) + off ∧ (pc : Int) + off < C.length
-    | some (.jalr rd rs) => rd = 0 ∧ rs < 32 ∧ ∃ j, (s.x rs).toNat = K.base + 4 * j
+    | some (.jalr rd rs) => rd = 0 ∧ rs < 32 ∧ ∃ j, (s.x rs).toNat = K.base + s.w * j
     | some (.alu op rd a b) => rd < 32 ∧ a < 32 ∧ b < 32 ∧ (1 ≤ op ∧ op ≤ 8) ∧ rd ≠ 0
     | some (.slli rd rs sh) => rd < 32 ∧ rs < 32 ∧ sh < 64
     | some (.lbu rd rs off) => rd < 32 ∧ rs < 32 ∧ -2048 ≤ off ∧ off < 2048 ∧ 0 ≤ ((s.x rs).toNat : Int) + off ∧

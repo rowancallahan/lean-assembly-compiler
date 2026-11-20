@@ -34,7 +34,7 @@ theorem leafXS {KL : LayW} {C : List J} {pc len p nl hb E0 : Nat} {Inv : St → 
     have hne : ∀ k, k < nl → slotAddr p (s.x 8).toNat k ≠ (s.x 31).toNat - 8 := fun k hk => by
       have := slotAddr_ge (T := (s.x 31).toNat) (by omega) o2 hk; omega
     refine ⟨s', env, r, ?_, by rw [e0, z0], by rw [p31], rfl, ?_, e8, ?_, fun _ _ => rfl, ?_, A0, ?_⟩
-    · apply hI s s' I0 e8 e28 e29 r.star.b
+    · apply hI s s' I0 e8 e28 e29 r.star.b r.star.w
       intro a ha; rw [hm]; apply upd_other; intro e; apply ha; rw [e]
       exact ⟨by have := R0.2.1; omega, by omega⟩
     · intro i hi; have : i = 0 := by omega

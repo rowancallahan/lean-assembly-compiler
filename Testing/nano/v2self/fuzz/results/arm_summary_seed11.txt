@@ -1,0 +1,6 @@
+seed=11 programs=500 b2_accepts=218 b2_rejects=282
+    500  ARM-B2 == B2 code
+   1580  arm run == rv run
+   1580  rv: qemu == nanorun
+    218  translator == oracle
+mismatches=0

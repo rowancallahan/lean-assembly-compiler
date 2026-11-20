@@ -146,6 +146,7 @@ theorem sim_sbW {K : LayW} {pc : Nat} {s : CallProbe.St} {t : Proven.St} (hK : K
         (rw [Std.ExtHashMap.getElem?_insert, if_neg (by simp; omega)]; assumption)
     x0 := hR.x0
     bb := hR.bb
+    ww := hR.ww
     x := fun j => by
       rw [hN.x j]; simp only [show ¬ (j = 0 ∧ j ≠ 0) from fun h => h.2 h.1, if_false]; exact hR.x j
     w := fun c hc k hk => by
@@ -222,9 +223,9 @@ theorem sim_stepX {K : LayW} {C : List CallProbe.J} (hK : K.Ok) (hW : K.W = C.ma
       obtain ⟨rfl, h2, j, hj⟩ := hS
       have hb : s.b = K.base := hR.bb
       simp only [Option.some.injEq] at hs; subst hs
-      obtain ⟨t', ht, hr⟩ := sim_jalr hK hR h2 (hWpc _ hc) hj
+      obtain ⟨t', ht, hr⟩ := sim_jalr hK hR h2 (hWpc _ hc) (by rw [hj, hR.w4])
       refine ⟨t', ht, ?_⟩
-      have : ((s.x rs).toNat - s.b) / 4 = j := by rw [hj, hb]; omega
+      have : ((s.x rs).toNat - s.b) / s.w = j := by rw [hj, hb, hR.w4]; omega
       simp [this, CallProbe.wr]; exact hr
     | beq a' b' o =>
       obtain ⟨h1, h2, ho⟩ := hS

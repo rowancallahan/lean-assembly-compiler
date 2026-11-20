@@ -138,7 +138,9 @@ theorem runVCap (X : RunCxS K C IG E0 c28 KL) (Y : CapCx fk tg K C IG E0 fsX KL)
     have hj := At.one hC.right
     rw [tmL_len] at hj
     exact callCap X.ig hA (runLCap X Y as h oa hop hC.left (by omega)) hj (by omega) (Y.defs id hid) X.e62
-      (fun s hs => by have := X.cb s hs; omega) (X.tl id hid) X.c18
+      (fun s hs => by
+        have := X.cb s hs; have := Nat.mul_le_mul_left s.w (show h + lnL K as + 1 ≤ C.length by omega); omega)
+      (X.tl id hid) X.c18
   | .prim pn as, h, hok, hop, hC, hl => by
     simp only [tm, lnV, rd, wr, wd, sv, svF, OkV, OpV] at hok hop hC hl ⊢
     obtain ⟨oa, wa, h0⟩ := hok

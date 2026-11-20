@@ -11,7 +11,7 @@ theorem At.get {C : List J} {h : Nat} {l : List J} (hC : At C h l) (j : Nat) (hj
 /-- the state at main's entry -/
 structure Entry (s0 s1 : St) (S : Nat) : Prop where
   x0 : s1.x 0 = 0
-  x1 : s1.x 1 = UInt64.ofNat (s0.b + 4 * (S + 12))
+  x1 : s1.x 1 = UInt64.ofNat (s0.b + s0.w * (S + 12))
   x8 : s1.x 8 = s0.x 8
   x12 : s1.x 12 = s0.x 12
   x13 : s1.x 13 = s0.x 13
@@ -21,6 +21,7 @@ structure Entry (s0 s1 : St) (S : Nat) : Prop where
   x31 : s1.x 31 = (s0.x 2 >>> 3) <<< 3
   m : s1.m = upd (upd s0.m (s0.x 12).toNat (s0.x 1)) ((s0.x 12).toNat + 8) (s0.x 8)
   b : s1.b = s0.b
+  wk : s1.wk = s0.wk
 
 theorem start_setup {C : List J} {S w : Nat} (h0 : At C 0 (stubJ S)) (hS : At C S (startJ S w)) (s0 : St)
     (z0 : s0.x 0 = 0) (ha2 : (s0.x 12).toNat + 16 < 2 ^ 64)
@@ -39,7 +40,7 @@ theorem start_setup {C : List J} {S w : Nat} (h0 : At C 0 (stubJ S)) (hS : At C 
   have e8 : ea (s0.x 12) 8 = (s0.x 12).toNat + 8 := by simp [ea]; omega
   have hd : ∀ {a b c}, step C a = some b → Star C b c → Star C a c := fun h1 h2 => (Star.one h1).trans h2
   have sj : step C (0, s0) = some (S, s0) := by simp [step, j0, CallProbe.wr]
-  have jw : ∀ {s : St}, step C (S + 11, s) = some (w, CallProbe.wr s 1 (UInt64.ofNat (s.b + 4 * (S + 11 + 1)))) := by
+  have jw : ∀ {s : St}, step C (S + 11, s) = some (w, CallProbe.wr s 1 (UInt64.ofNat (s.b + s.w * (S + 11 + 1)))) := by
     intro s; rw [s_jal (by simpa using c11)]; congr; omega
   have bg : ∀ {s : St}, (s.x 30).toNat ≤ (s.x 31).toNat → step C (S + 3, s) = some (S + 7, s) := by
     intro s h; rw [s_bgeu_t (by simpa using c3) h]; congr 2
@@ -86,7 +87,7 @@ theorem copy_loop {C : List J} {L : Nat} (hL : At C L loopJ) (K : Nat → Prop) 
     let p := (s.x 6).toNat
     let q := (s.x 14).toNat
     let s5 : St := ⟨upd (upd (upd (upd s.x 15 (s.m p)) 6 (s.x 6 + 8)) 14 (s.x 14 + 1)) 7
-      (UInt64.ofNat r), sbm s.m q (s.m p), s.b, s.w⟩
+      (UInt64.ofNat r), sbm s.m q (s.m p), s.b, s.wk⟩
     have ne : s.x 7 ≠ s.x 0 := by
       rw [h7, z0]; intro h; have := congrArg UInt64.toNat h; simp at this; omega
     obtain ⟨sX, hX, eX⟩ : ∃ sX, Star C (L, s) (L, sX) ∧ sX = s5 := by
@@ -149,7 +150,7 @@ theorem start_tail {C : List J} {S w : Nat} (hS : At C S (startJ S w)) (s2 : St)
     (hdis : ∀ i, i < (s2.m (s2.m (s2.x 31).toNat).toNat).toNat →
       ¬ KeepT (s2.x 12).toNat (s2.m (s2.x 31).toNat).toNat (s2.m (s2.m (s2.x 31).toNat).toNat).toNat
         ((s2.x 13).toNat + i - ((s2.x 13).toNat + i) % 8)) :
-    ∃ s3, Star C (S + 12, s2) (((s2.m (s2.x 12).toNat).toNat - s2.b) / 4, s3) ∧ s3.b = s2.b ∧
+    ∃ s3, Star C (S + 12, s2) (((s2.m (s2.x 12).toNat).toNat - s2.b) / s2.w, s3) ∧ s3.b = s2.b ∧
       s3.x 1 = s2.m (s2.x 12).toNat ∧ s3.x 8 = s2.m ((s2.x 12).toNat + 8) ∧ s3.x 2 = s2.x 2 ∧
       s3.x 10 = (if s2.m (s2.m (s2.x 31).toNat).toNat = 0 then 1 else 0) ∧
       s3.x 11 = s2.m (s2.m (s2.x 31).toNat).toNat ∧
@@ -176,23 +177,23 @@ theorem start_tail {C : List J} {S w : Nat} (hS : At C S (startJ S w)) (s2 : St)
   generalize hPd : s2.m (s2.x 31).toNat = P at *
   generalize hNd : s2.m P.toNat = N at *
   -- the common exit: S+29 .. S+31
-  have ex : ∀ s : St, s.b = s2.b → s.x 0 = 0 → s.x 12 = s2.x 12 → s.m (s2.x 12).toNat = s2.m (s2.x 12).toNat →
+  have ex : ∀ s : St, s.b = s2.b → s.wk = s2.wk → s.x 0 = 0 → s.x 12 = s2.x 12 → s.m (s2.x 12).toNat = s2.m (s2.x 12).toNat →
       s.m ((s2.x 12).toNat + 8) = s2.m ((s2.x 12).toNat + 8) →
-      ∃ s3, Star C (S + 29, s) (((s2.m (s2.x 12).toNat).toNat - s2.b) / 4, s3) ∧ s3.b = s2.b ∧
+      ∃ s3, Star C (S + 29, s) (((s2.m (s2.x 12).toNat).toNat - s2.b) / s2.w, s3) ∧ s3.b = s2.b ∧
         s3.x 1 = s2.m (s2.x 12).toNat ∧ s3.x 8 = s2.m ((s2.x 12).toNat + 8) ∧ s3.m = s.m ∧
         ∀ k, k ≠ 1 → k ≠ 8 → s3.x k = s.x k := by
-    intro s hb _ h12 m0 m8
+    intro s hb hw _ h12 m0 m8
     refine ⟨_, Star.pc (hd (s_ld c29) (hd (s_ld (by simpa using c30)) (Star.one (s_jalr (by simpa using c31))))) ?_,
       ?_⟩
-    · simp [CallProbe.wr, upd_same, upd_other, e0, e8, h12, m0, hb]
+    · simp [CallProbe.wr, upd_same, upd_other, e0, e8, h12, m0, hb, St.w, hw]
     · simp [CallProbe.wr, upd_same, upd_other, e0, e8, h12, m0, m8, hb]
       intro k k1 k8; simp [upd, k1, k8]
-  let sa : St := ⟨upd (upd s2.x 5 P) 7 N, s2.m, s2.b, s2.w⟩
+  let sa : St := ⟨upd (upd s2.x 5 P) 7 N, s2.m, s2.b, s2.wk⟩
   obtain ⟨sX, hX, eX⟩ : ∃ sX, Star C (S + 12, s2) (S + 14, sX) ∧ sX = sa :=
     ⟨_, hd (s_ld c12) (Star.one (s_ld (by simpa using c13))), by simp [CallProbe.wr, sa, e0, hPd, upd_same, hNd]⟩
   subst eX
   by_cases hN : N = 0
-  · let sb : St := ⟨upd (upd sa.x 10 1) 11 0, s2.m, s2.b, s2.w⟩
+  · let sb : St := ⟨upd (upd sa.x 10 1) 11 0, s2.m, s2.b, s2.wk⟩
     have bn : step C (S + 14, sa) = some (S + 15, sa) := by simp [step, c14, sa, upd_same, upd_other, z0, hN]
     obtain ⟨sY, hY, eY⟩ : ∃ sY, Star C (S + 14, sa) (S + 29, sY) ∧ sY = sb := by
       refine ⟨_, hd bn (hd (s_addi (by simpa using c15))
@@ -200,13 +201,13 @@ theorem start_tail {C : List J} {S w : Nat} (hS : At C S (startJ S w)) (s2 : St)
       · omega
       · simp [CallProbe.wr, sb, sa, e0, z0, upd_other, ea]
     subst eY
-    obtain ⟨s3, h3, b3, x1, x8, -, xk⟩ := ex sb rfl (by simp [sb, sa, upd, z0]) (by simp [sb, sa, upd]) rfl rfl
+    obtain ⟨s3, h3, b3, x1, x8, -, xk⟩ := ex sb rfl rfl (by simp [sb, sa, upd, z0]) (by simp [sb, sa, upd]) rfl rfl
     refine ⟨s3, hX.trans (hY.trans h3), b3, x1, x8, ?_, ?_, ?_, fun i hi => ?_⟩
     · rw [xk 2 (by omega) (by omega)]; simp [sb, sa, upd]
     · rw [xk 10 (by omega) (by omega), if_pos hN]; simp [sb, sa, upd]
     · rw [xk 11 (by omega) (by omega), hN]; simp [sb, sa, upd]
     · subst hN; simp at hi
-  · let sc : St := ⟨upd (upd (upd sa.x 11 N) 6 (P + 16)) 14 (s2.x 13), s2.m, s2.b, s2.w⟩
+  · let sc : St := ⟨upd (upd (upd sa.x 11 N) 6 (P + 16)) 14 (s2.x 13), s2.m, s2.b, s2.wk⟩
     have bn : step C (S + 14, sa) = some (S + 18, sa) := by
       simp [step, c14, sa, upd_same, upd_other, z0, hN]; omega
     obtain ⟨sY, hY, eY⟩ : ∃ sY, Star C (S + 14, sa) (S + 21, sY) ∧ sY = sc := by
@@ -223,7 +224,7 @@ theorem start_tail {C : List J} {S w : Nat} (hS : At C S (startJ S w)) (s2 : St)
     have a28 := s_addi (s := sd) c28
     have x12 : sd.x 12 = s2.x 12 := by rw [xd 12 (by omega) (by omega) (by omega) (by omega)]; simp [sc, sa, upd]
     obtain ⟨s3, h3, b3, x1, x8, m3, xk⟩ := ex (CallProbe.wr sd 10 (UInt64.ofNat (ea (sd.x 0) 0)))
-      (by simp [CallProbe.wr, bd, sc]) (by simp [CallProbe.wr, upd]; rw [xd 0 (by omega) (by omega) (by omega) (by omega)]; simp [sc, sa, upd, z0]) (by simp [CallProbe.wr, upd, x12])
+      (by simp [CallProbe.wr, bd, sc]) (by rw [CallProbe.wr_w]; exact hD.w) (by simp [CallProbe.wr, upd]; rw [xd 0 (by omega) (by omega) (by omega) (by omega)]; simp [sc, sa, upd, z0]) (by simp [CallProbe.wr, upd, x12])
       (by simp [CallProbe.wr]; rw [md _ (Or.inl rfl)])
       (by simp [CallProbe.wr]; rw [md _ (Or.inr (Or.inl rfl))])
     refine ⟨s3, hX.trans (hY.trans (hD.trans (hd a28 h3))), b3, x1, x8, ?_, ?_, ?_, fun i hi => ?_⟩

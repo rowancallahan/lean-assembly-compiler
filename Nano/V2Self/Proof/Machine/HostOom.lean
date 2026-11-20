@@ -93,7 +93,7 @@ theorem host_room (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List Def
     0, T.m0 s⟩
   have hb4 : 4 * Cj.length ≤ 2 ^ 20 := by omega
   obtain ⟨s2, h2, m12, m8, z2, k2, -⟩ := (hrun KL E0 hE0 j0 (by rw [x12]; exact sc.workAligned) (by rw [x12]; omega)
-    (by rw [x12]; omega) (by omega) (by rw [jb]; omega) (by rw [x10, x11']; omega)
+    (by rw [x12]; omega) (by omega) (by rw [jb, jOfT_w L]; omega) (by rw [x10, x11']; omega)
     (by rw [x10, x11', x12]; omega) (by rw [x12]; exact Nat.le_refl _) (Nat.le_refl _) jb
     (fun i hi => by rw [x11'] at hi; rw [x10]; exact Or.inr (Or.inl ⟨by simp [KL], by simp [KL]; omega⟩))).2
     .room (by decide) (by rw [x12, hx11]; exact hS Tb)

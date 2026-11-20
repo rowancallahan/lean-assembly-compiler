@@ -18,7 +18,7 @@ plan for a proved version (`armTarget`, `Testing/notes/NANO_V2_ARM.md`).
 | `SHA256SUMS` | of the three binaries |
 | `PROOF_NOTES.md` | per-block proof plan, lemma map (AL1–AL6), register-31 gaps |
 | `ArmBlock.lean` | DRAFT Lean statement of block correctness (`BlockOK`), no proofs, not in the lake build |
-| `gen_check.py`, `check_lean.sh` | Lean check: `ArmBlock.lean` elaborates, and its `blockJ` = the oracle on 13,502 J instructions |
+| `gen_check.py`, `check_lean.sh` | Lean check: `ArmBlock.lean` elaborates, and its `blockJ` = the oracle on 13,539 J instructions |
 
 ## Use on a Mac (Apple Silicon), from this directory
 
@@ -94,7 +94,7 @@ Emitted instructions follow `NANO_V2_ARM.md` §0-min, the set the proof will cov
 | `jalr x0 r` | `br r` |
 | rd = x0 (no-op) | 4 × padding |
 
-## Tests (Linux x86-64, qemu-riscv64 + qemu-aarch64, 2026-11-20): `test_arm.sh`, 63/63 OK (also with `NANORUN=1`)
+## Tests (Linux x86-64, qemu-riscv64 + qemu-aarch64, 2026-11-20): `test_arm.sh`, 73/73 OK (also with `NANORUN=1`)
 
 * Every RISC-V run is on qemu-riscv64 (`shim_rv`), every ARM run on qemu-aarch64 (`shim_arm`). `NANORUN=1`
   also runs each RISC-V program with nanorun and requires the same status and output: all agree.
@@ -109,5 +109,7 @@ Emitted instructions follow `NANO_V2_ARM.md` §0-min, the set the proof will cov
 * The instruction set of `B2_arm.bin` and `rv2arm_arm.bin` is §0-min's (objdump check).
 * `synth_rv.py`'s program of rare forms (x0/x2 operands, mul, far offsets, x0 stores): translator = oracle.
 * Refused: an `ecall` word, an odd-sized file, and 4 FZ-T cases (unmapped source with rd = x0 ×3, `jalr` through x0).
+  Also 9 range cases: branch/jal targets past the end or before 0, misaligned offsets, a shift field with bit 26,
+  srai, and `jal x5`. The in-range edge cases are accepted (= oracle).
 * `arm/fuzz/fuzz.py`, 40 seeds: 120 runs agree with nanorun.
-* `check_lean.sh`: `ArmBlock.lean` elaborates, and `blockJ` = the oracle on 13,502 distinct J instructions.
+* `check_lean.sh`: `ArmBlock.lean` elaborates, and `blockJ` = the oracle on 13,539 distinct J instructions.

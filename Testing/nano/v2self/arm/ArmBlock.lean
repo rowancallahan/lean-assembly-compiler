@@ -89,11 +89,15 @@ def body : J → List Nat
 
 def blockJ (j : J) : List Nat := pad4 (body j)
 
-/-- the instructions rv2arm accepts (its validation `c0`, at the J level; `n` = program length) -/
+/-- RV I/S immediate range (12 bits signed): add/sub imm12 and the x16 address forms fit -/
+def imm12 (i : Int) : Prop := -2048 ≤ i ∧ i < 2048
+
+/-- the instructions rv2arm accepts (its validation `c0`, at the J level; `n` = program length), PLUS the encoding
+ranges rv2arm takes for granted because its input is RV code (`imm12`); the same table as `ArmEnc.armOK` -/
 def validJ (n pc : Nat) : J → Prop
-  | .addi rd rs _ => rdOK rs ∧ wrOK rd
-  | .ld rd rs _ | .lbu rd rs _ => rs ≠ 0 ∧ rdOK rs ∧ wrOK rd
-  | .sd r2 r1 _ | .sb r2 r1 _ => r1 ≠ 0 ∧ rdOK r1 ∧ wrOK r2
+  | .addi rd rs i => rdOK rs ∧ wrOK rd ∧ imm12 i
+  | .ld rd rs f | .lbu rd rs f => rs ≠ 0 ∧ rdOK rs ∧ wrOK rd ∧ imm12 f
+  | .sd r2 r1 f | .sb r2 r1 f => r1 ≠ 0 ∧ rdOK r1 ∧ wrOK r2 ∧ imm12 f
   | .alu op rd a b => 1 ≤ op ∧ op ≤ 8 ∧ rdOK a ∧ rdOK b ∧ wrOK rd
   | .slli rd rs sh | .srli rd rs sh => sh < 64 ∧ rdOK rs ∧ wrOK rd
   | .beq a b o | .bne a b o | .bltu a b o | .bgeu a b o =>

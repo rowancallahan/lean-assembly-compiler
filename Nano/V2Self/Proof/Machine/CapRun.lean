@@ -151,7 +151,7 @@ theorem fin2Cap_bpush {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {G 
         (hread_wok hR K2 A2 hrl) (hread_wok hR K2 A2 hrc) h6 hC18
       refine ⟨s3, st3, hG _ <| hI s2 s3 I2 (x3 8 (by decide) (by decide) (by decide) (by decide) (by decide))
         (x3 28 (by decide) (by decide) (by decide) (by decide) (by decide))
-        (x3 29 (by decide) (by decide) (by decide) (by decide) (by decide)) b3 (fun a _ => by rw [m3]), z3⟩
+        (x3 29 (by decide) (by decide) (by decide) (by decide) (by decide)) b3 st3.star.w (fun a _ => by rw [m3]), z3⟩
 
 theorem fin2Cap {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {pc lp p nl hb E0 : Nat} {Inv : St → Prop} {G : St → Prop} {R W : Nat → Prop} {SP : SemWX}
     {F : UInt64 → UInt64 → Nat → Hp → Except Fail (UInt64 × Hp)}
@@ -235,7 +235,7 @@ theorem ifHeadS {KL : LayW} {C : List J} {q lt p nl hb E0 cmp : Nat} {Inv : St �
   have ea0 : ea (s1.x 31) 0 = (s.x 31).toNat - 8 - 8 := by simp [ea, p1]; omega
   have ea8 : ea (s1.x 31) 8 = (s.x 31).toNat - 8 := by simp [ea, p1]; omega
   have ea16 : ea (s1.x 31) 16 = (s.x 31).toNat := by simp [ea, p1]; omega
-  let s2 : St := ⟨upd (upd (upd s1.x 6 b) 5 a) 31 (UInt64.ofNat (s.x 31).toNat), s1.m, s1.b, s1.w⟩
+  let s2 : St := ⟨upd (upd (upd s1.x 6 b) 5 a) 31 (UInt64.ofNat (s.x 31).toNat), s1.m, s1.b, s1.wk⟩
   have r2 : CallProbe.run C 3 (q, s1) = some (q + 3, s2) := by
     simp [CallProbe.run, CallProbe.step, c0, c1, c2, CallProbe.wr, ea0, ea8, va, vb, upd_other _ _ (show (31:Nat) ≠ 6 by decide),
       upd_other _ _ (show (31:Nat) ≠ 5 by decide), ea16, s2]
@@ -245,7 +245,7 @@ theorem ifHeadS {KL : LayW} {C : List J} {q lt p nl hb E0 cmp : Nat} {Inv : St �
   have x5 : s2.x 5 = a := by simp [s2, upd]
   have x6 : s2.x 6 = b := by simp [s2, upd]
   have z2 : s2.x 0 = 0 := by simp [s2, upd, z1]
-  have I2 : Inv s2 := hI s1 s2 I1 (by simp [s2, upd]) (by simp [s2, upd]) (by simp [s2, upd]) rfl (fun _ _ => rfl)
+  have I2 : Inv s2 := hI s1 s2 I1 (by simp [s2, upd]) (by simp [s2, upd]) (by simp [s2, upd]) rfl rfl (fun _ _ => rfl)
   have F2 : Frame p nl s2 env1 := by
     intro k hk; show s1.m (slotAddr p (s2.x 8).toNat k) = env1 k; rw [x8, ← e81]; exact F1 k hk
   have O2 : FrameOK p nl s2 := ⟨by rw [x31, x8]; omega, o2, by rw [x8]; omega⟩
@@ -274,9 +274,9 @@ theorem ifHeadS {KL : LayW} {C : List J} {q lt p nl hb E0 cmp : Nat} {Inv : St �
   · rw [if_pos hc] at sc ⊢
     exact ⟨s2, st2.trans (.head safe3 sc (.refl _)), I2, z2, x31, x8, rfl, eb, F2, O2, R2, L2⟩
   · rw [if_neg hc] at sc ⊢
-    have sj0 : CallProbe.step C (q + 4, s2) = some (q + 6 + lt, CallProbe.wr s2 0 (UInt64.ofNat (s2.b + 4 * (q + 4 + 1)))) := by
+    have sj0 : CallProbe.step C (q + 4, s2) = some (q + 6 + lt, CallProbe.wr s2 0 (UInt64.ofNat (s2.b + s2.w * (q + 4 + 1)))) := by
       simp [CallProbe.step, c4]; omega
-    have w2 : CallProbe.wr s2 0 (UInt64.ofNat (s2.b + 4 * (q + 4 + 1))) = s2 := by simp [CallProbe.wr]
+    have w2 : CallProbe.wr s2 0 (UInt64.ofNat (s2.b + s2.w * (q + 4 + 1))) = s2 := by simp [CallProbe.wr]
     rw [w2] at sj0
     have sj2 : SafeX KL C (q + 4, s2) := by simp only [SafeX, c4]; simp; omega
     exact ⟨s2, st2.trans (.head safe3 sc (.head sj2 sj0 (.refl _))), I2, z2, x31, x8, rfl, eb, F2, O2, R2, L2⟩
@@ -376,7 +376,7 @@ theorem letMidS {KL : LayW} {C : List J} {q p nl hb E0 k0 w : Nat} {Inv : St →
       slotAddr p (s.x 8).toNat (k0 + j) < (s.x 8).toNat + 8 * p + 16 := fun j hj =>
     ⟨slotAddr_ge (T := (s.x 31).toNat) (k := k0 + j) (by omega) o2 (by omega), slotAddr_lt (nl := nl) (by omega) (by omega)⟩
   have I2 : Inv s2 := by
-    apply hI s1 s2 I1 (by rw [e82]) (ex2 28 (by decide) (by decide)) (ex2 29 (by decide) (by decide)) eb2
+    apply hI s1 s2 I1 (by rw [e82]) (ex2 28 (by decide) (by decide)) (ex2 29 (by decide) (by decide)) eb2 (run_star r2).w
     intro a ha
     apply mo2 a; intro j hj e; apply ha; rw [e81, e]
     have hh := slot_hi j hj; have := R1.1; have := R1.2.1; have := R1.2.2.1
@@ -541,7 +541,7 @@ theorem loopCap {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {h S len p nl hb
     intro s v I
     have e : CallProbe.wr s 5 v = { s with x := upd s.x 5 v } := by simp [CallProbe.wr]
     rw [e]
-    exact ⟨hI s _ I (by simp [upd]) (by simp [upd]) (by simp [upd]) rfl (fun _ _ => rfl), by simp [upd], by simp [upd],
+    exact ⟨hI s _ I (by simp [upd]) (by simp [upd]) (by simp [upd]) rfl rfl (fun _ _ => rfl), by simp [upd], by simp [upd],
       by simp [upd], by simp [upd], rfl, by simp [upd]⟩
   have fuel : ∀ (s : St) (env : Env), Frame p nl s env → s.m (ea (s.x 8) (slotOff p 0)) = env 0 := by
     intro s env F; exact F 0 (by omega)
@@ -607,7 +607,7 @@ theorem loopCap {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {h S len p nl hb
       simp [CallProbe.step, c2, CallProbe.wr]; omega
     let v := env_m 0 - 1
     let a0 := slotAddr p (s.x 8).toNat 0
-    let s4 : St := ⟨upd s.x 5 v, upd s.m a0 v, s.b, s.w⟩
+    let s4 : St := ⟨upd s.x 5 v, upd s.m a0 v, s.b, s.wk⟩
     have ev : UInt64.ofNat (ea ((CallProbe.wr s 5 (env_m 0)).x 5) (-1)) = v := by rw [x51]; exact ea_dec _ hz'
     have st45 : CallProbe.run C 2 (S, CallProbe.wr s 5 (env_m 0)) = some (S + 2, s4) := by
       have q : ea ((CallProbe.wr (CallProbe.wr s 5 (env_m 0)) 5 v).x 8) (slotOff p 0) = a0 := by
@@ -616,7 +616,7 @@ theorem loopCap {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {h S len p nl hb
       simp [CallProbe.wr, s4, LoopT.upd2, upd_same]
     have a0lo : (s.x 31).toNat ≤ a0 := slotAddr_ge (T := (s.x 31).toNat) o1 o2 (by omega)
     have a0hi : a0 < (s.x 8).toNat + 8 * p + 16 := slotAddr_lt (nl := nl) (by omega) (by omega)
-    have I4 : Inv s4 := hI s s4 I0 (by simp [s4, upd]) (by simp [s4, upd]) (by simp [s4, upd]) rfl (fun a ha => by
+    have I4 : Inv s4 := hI s s4 I0 (by simp [s4, upd]) (by simp [s4, upd]) (by simp [s4, upd]) rfl rfl (fun a ha => by
       simp only [s4, upd]; split
       · rename_i e; subst e; exfalso; apply ha; have := R0.1; have := R0.2.1; have := R0.2.2.1; omega
       · rfl)
@@ -739,7 +739,7 @@ theorem loopWCap {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {h S len p nl h
 structure CapD (fk : Fail) (tg : Nat) (KL : LayW) (C : List J) (f p : Nat) (IG : St → Prop) (hb E0 : Nat) (Sd : SemDX) : Prop where
   cap : ∀ (s : St) (args : List UInt64) (H : Hp) (ret : Nat), IG s → s.x 0 = 0 →
     HRel hb s H → args.length = p → (∀ i, i < p → s.m ((s.x 31).toNat + 8 * (p - 1 - i)) = args.getD i 0) →
-    (s.x 31).toNat + 8 * p ≤ E0 → E0 < 2 ^ 62 → s.x 1 = UInt64.ofNat (s.b + 4 * ret) → s.b + 4 * ret < 2 ^ 64 →
+    (s.x 31).toNat + 8 * p ≤ E0 → E0 < 2 ^ 62 → s.x 1 = UInt64.ofNat (s.b + s.w * ret) → s.b + s.w * ret < 2 ^ 64 →
     KL.lo ≤ hb → E0 ≤ KL.hi → s.b = KL.base → (s.x 31).toNat % 8 = 0 → HAl H →
     Sd args (s.x 31).toNat H = .error fk → ∃ s', SStarX KL C (f, s) (tg, s') ∧ IG s' ∧ s'.x 0 = 0
 
@@ -767,7 +767,7 @@ theorem defCap {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {f p nl hb E0 : N
       intro a h1 h2; rw [hm1, upd_other _ _ h2, upd_other _ _ h1]
     have b1 : s1.b = s.b := hr1.star.b
     have I1 : IGp IG E0 p s1 := by
-      refine ⟨hIG s s1 I0 (hx 28 (by decide) (by decide)) (hx 29 (by decide) (by decide)) b1 (fun a ha => ?_), ?_⟩
+      refine ⟨hIG s s1 I0 (hx 28 (by decide) (by decide)) (hx 29 (by decide) (by decide)) b1 hr1.star.w (fun a ha => ?_), ?_⟩
       · apply m1 <;> intro e <;> apply ha <;> have := R0.2.1 <;> omega
       · rw [h8]; omega
     have z1 : s1.x 0 = 0 := by rw [hx 0 (by decide) (by decide), z0]
@@ -789,7 +789,7 @@ theorem callCap {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {pc la p nl pa f
     (cA : CapW fk tg KL C pc p nl (IGp IG E0 p) IG hb E0 RA SA)
     (hj : C[pc + la]? = some (.jal 1 off)) (hf : ((pc + la : Nat) : Int) + off = (f : Int))
     (hD : CapD fk tg KL C f pa IG hb E0 Sd) (hE62 : E0 < 2 ^ 62)
-    (hcb : ∀ s, IG s → s.b + 4 * (pc + la + 1) < 2 ^ 64) (hfl : f < C.length) (hC18 : C.length < 2 ^ 18) :
+    (hcb : ∀ s, IG s → s.b + s.w * (pc + la + 1) < 2 ^ 64) (hfl : f < C.length) (hC18 : C.length < 2 ^ 18) :
     CapW fk tg KL C pc p nl (IGp IG E0 p) IG hb E0 RA (callF pa SA Sd) where
   stable := fun env env' sp H h => by
     simp only [callF]; rw [cA.stable env env' sp H h]
@@ -806,17 +806,17 @@ theorem callCap {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {pc la p nl pa f
       · exact h
       · rw [List.getElem?_eq_none h] at hj; cases hj
     have hf' : (((pc + la : Nat) : Int) + off).toNat = f := by rw [hf]; simp
-    let sj := CallProbe.wr s1 1 (UInt64.ofNat (s1.b + 4 * (pc + la + 1)))
+    let sj := CallProbe.wr s1 1 (UInt64.ofNat (s1.b + s1.w * (pc + la + 1)))
     have stj : CallProbe.step C (pc + la, s1) = some (f, sj) := by rw [s_jal hj, hf']
     have saj : SafeX KL C (pc + la, s1) := by
       simp only [SafeX, hj]; refine ⟨by decide, ?_, ?_, ?_, ?_⟩ <;> omega
-    have ej : sj = { s1 with x := upd s1.x 1 (UInt64.ofNat (s1.b + 4 * (pc + la + 1))) } := by simp [sj, CallProbe.wr]
+    have ej : sj = { s1 with x := upd s1.x 1 (UInt64.ofNat (s1.b + s1.w * (pc + la + 1))) } := by simp [sj, CallProbe.wr]
     have jx : ∀ i, i ≠ 1 → sj.x i = s1.x i := by intro i hi; rw [ej]; simp [upd, hi]
     have jm : sj.m = s1.m := by rw [ej]
     have jb : sj.b = s1.b := by rw [ej]
     have b1 : s1.b = s.b := r1.star.b
     have L1 : Lay KL hb E0 p s1 := L0.post e81 b1 p1 (by have := R1.1; have := R1.2.1; have := R1.2.2.1; omega)
-    have Ij : IG sj := hIG s1 sj I1.1 (jx 28 (by decide)) (jx 29 (by decide)) jb (fun a _ => by rw [jm])
+    have Ij : IG sj := hIG s1 sj I1.1 (jx 28 (by decide)) (jx 29 (by decide)) jb (wr_w _ _ _) (fun a _ => by rw [jm])
     have Rj : HRel hb sj H1 := HRel_stack R1 (jx 30 (by decide)) (by rw [jx 31 (by decide)]; exact R1.2.2.1)
       (fun a _ _ => by rw [jm])
     have j31 : (sj.x 31).toNat = (s.x 31).toNat - 8 * pa := by rw [jx 31 (by decide), p1]
@@ -824,8 +824,9 @@ theorem callCap {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {pc la p nl pa f
       intro i hi; rw [jm, j31, show (s.x 31).toNat - 8 * pa + 8 * (pa - 1 - i) = (s.x 31).toNat - 8 * (i + 1) by omega]
       exact v1 i hi
     have htop : (sj.x 31).toNat + 8 * pa ≤ E0 := by have := I0.2; rw [j31]; omega
-    have hx1 : sj.x 1 = UInt64.ofNat (sj.b + 4 * (pc + la + 1)) := by rw [ej]; simp [upd]
-    have hret : sj.b + 4 * (pc + la + 1) < 2 ^ 64 := by rw [jb, b1]; exact hcb s I0.1
+    have hx1 : sj.x 1 = UInt64.ofNat (sj.b + sj.w * (pc + la + 1)) := by rw [ej]; simp [upd, St.w]
+    have wj : sj.w = s.w := St.w_eq ((wr_w _ _ _).trans r1.star.w)
+    have hret : sj.b + sj.w * (pc + la + 1) < 2 ^ 64 := by rw [jb, b1, wj]; exact hcb s I0.1
     have hSd' : Sd u (sj.x 31).toNat H1 = .error fk := by rw [j31]; exact hSd
     have ja : (sj.x 31).toNat % 8 = 0 := by rw [jx 31 (by decide)]; exact L1.a31
     obtain ⟨s', st', I', z'⟩ :=

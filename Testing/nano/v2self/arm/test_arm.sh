@@ -89,7 +89,26 @@ python3 "$D/rv2arm.py" "$T/synth.rv" | cmp -s - "$T/synth.arm" && ok "synthetic 
 printf '\x73\x00\x00\x00' > "$T/bad1"; printf '\x13\x05\xf0' > "$T/bad2"
 printf '\x13\x80\x01\x00' > "$T/bad3"; printf '\x03\xb0\x01\x00' > "$T/bad4"
 printf '\x33\x80\x41\x00' > "$T/bad5"; printf '\x67\x00\x00\x00' > "$T/bad6"
-for b in bad1 bad2 bad3 bad4 bad5 bad6; do
+# limits an RV word can exceed (immediates beyond imm12 cannot be encoded in RV words; their checks are defensive):
+# branch/jal target past the end or before 0, misaligned branch/jal offsets, slli shift field with bit 26, jal rd = x5,
+# branch and jal reaching only the end of a 2-word program
+python3 - "$T" <<'EOF'
+import struct, sys
+T = sys.argv[1]
+def I(op, f3, rd, rs, imm): return (imm & 4095) << 20 | rs << 15 | f3 << 12 | rd << 7 | op
+def B(f3, a, b, o):
+    return ((o >> 12) & 1) << 31 | ((o >> 5) & 63) << 25 | b << 20 | a << 15 | f3 << 12 | ((o >> 1) & 15) << 8 | ((o >> 11) & 1) << 7 | 0x63
+def J(rd, o): return ((o >> 20) & 1) << 31 | ((o >> 1) & 1023) << 21 | ((o >> 11) & 1) << 20 | ((o >> 12) & 255) << 12 | rd << 7 | 0x6f
+nop = I(0x13, 0, 0, 0, 0)
+cases = {'lim1': [B(0, 5, 6, 8), nop], 'lim2': [nop, B(1, 5, 6, -8)], 'lim3': [J(0, 8), nop], 'lim4': [nop, J(1, -8)],
+         'lim5': [B(7, 5, 6, 2), nop], 'lim6': [J(0, 2), nop], 'lim7': [I(0x13, 1, 5, 6, 64 | 3), nop],
+         'lim8': [J(5, 4), nop], 'lim9': [I(0x13, 5, 5, 6, 1024 | 3), nop]}
+for k, ws in cases.items(): open('%s/%s' % (T, k), 'wb').write(struct.pack('<%dI' % len(ws), *ws))
+open('%s/okl' % T, 'wb').write(struct.pack('<4I', B(0, 5, 6, 12), J(0, 8), J(1, -8), nop))   # in range: accepted
+EOF
+RUN="$ARM" "$D/rv2arm.sh" "$T/okl" > "$T/okl.arm" && python3 "$D/rv2arm.py" "$T/okl" | cmp -s - "$T/okl.arm" \
+  && ok "in-range branch/jal at the program edges accepted (= oracle)" || bad "in-range edge branches"
+for b in bad1 bad2 bad3 bad4 bad5 bad6 lim1 lim2 lim3 lim4 lim5 lim6 lim7 lim8 lim9; do
   if python3 "$D/rv2arm.py" "$T/$b" > /dev/null 2>&1; then bad "$b accepted by the oracle"; fi
   if RUN="$ARM" "$D/rv2arm.sh" "$T/$b" > /dev/null 2>&1; then bad "$b accepted"; else ok "$b refused"; fi
 done

@@ -34,7 +34,10 @@ theorem cbyte_wordT (s : T.M.State) (a k : Nat) (hk : k < 8) : cbyte (wordT T s 
 
 /-- J's view of a machine state: the J registers through `reg`, the little-endian cells, the code base `b` -/
 def jOfT (T : JTarget) (s : T.M.State) (b : Nat) : CallProbe.St :=
-  ⟨fun j => if 0 < j ∧ j < 32 then (T.M.observe s).register (T.reg j) else 0, wordT T s, b, 4 * T.blockLen⟩
+  ⟨fun j => if 0 < j ∧ j < 32 then (T.M.observe s).register (T.reg j) else 0, wordT T s, b, T.blockLen - 1⟩
+
+theorem jOfT_w (L : T.Laws) (s : T.M.State) (b : Nat) : (jOfT T s b).w = 4 * T.blockLen := by
+  have := L.blk_pos; simp only [jOfT, CallProbe.St.w]; omega
 
 theorem gbT_some {s : T.M.State} {a : Nat} (h : ((T.M.observe s).memory (UInt64.ofNat a)).isSome) :
     (T.M.observe s).memory (UInt64.ofNat a) = some (gbT T s a) := by
@@ -56,6 +59,7 @@ theorem rel_entry (L : T.Laws) {K : LayW} {C : List J} {s : T.M.State} (hc : T.M
   code := hcode
   x0 := by simp [jOfT]
   bb := rfl
+  ww := rfl
   x := fun j h0 h32 => by simp [jOfT, h0, h32]
   keep := fun _ _ _ => rfl
   w := fun a ha k hk => by rw [gbT_some (hw a ha k hk)]; simp only [jOfT]; rw [cbyte_wordT s a k hk]

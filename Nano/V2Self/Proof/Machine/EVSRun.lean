@@ -12,7 +12,7 @@ open CallProbe SimW SafeRun ParSpec
 structure RunCxS (K : SC) (C : List J) (IG : St → Prop) (E0 : Nat) (c28 : UInt64) (KL : LayW) : Prop where
   ig : IGOK K.hb E0 IG
   e62 : E0 < 2 ^ 62
-  cb : ∀ s, IG s → s.b + 4 * C.length < 2 ^ 64
+  cb : ∀ s, IG s → s.b + s.w * C.length < 2 ^ 64
   p20 : K.p < 2 ^ 20
   inp : InpOK IG c28 K.c29 K.inp
   inw : InpW KL IG
@@ -100,7 +100,9 @@ theorem runVS (X : RunCxS K C IG E0 c28 KL) : ∀ (e : Nd) (h : Nat), OkV K e �
     have hj := At.one hC.right
     rw [tmL_len] at hj
     exact callXS X.ig hA hj (by omega) (X.defs id hid) X.e62
-      (fun s hs => by have := X.cb s hs; omega) (X.tl id hid) X.c18
+      (fun s hs => by
+        have := X.cb s hs; have := Nat.mul_le_mul_left s.w (show h + lnL K as + 1 ≤ C.length by omega); omega)
+      (X.tl id hid) X.c18
   | .prim pn as, h, hok, hop, hC, hl => by
     simp only [tm, lnV, rd, wr, wd, sv, OkV, OpV] at hok hop hC hl ⊢
     obtain ⟨oa, wa, h0⟩ := hok

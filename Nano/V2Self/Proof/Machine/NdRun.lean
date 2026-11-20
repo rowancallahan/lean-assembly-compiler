@@ -43,7 +43,7 @@ end
 structure RunCx (K : SC) (C : List J) (IG : St → Prop) (E0 : Nat) (c28 : UInt64) : Prop where
   ig : IGOK K.hb E0 IG
   e62 : E0 < 2 ^ 62
-  cb : ∀ s, IG s → s.b + 4 * C.length < 2 ^ 64
+  cb : ∀ s, IG s → s.b + s.w * C.length < 2 ^ 64
   p20 : K.p < 2 ^ 20
   inp : InpOK IG c28 K.c29 K.inp
   defs : ∀ id, id < K.nd → DefX C (K.T id) (K.npwOf id) (K.nresOf id) IG K.hb E0 (K.fs id)
@@ -121,7 +121,8 @@ theorem runV (X : RunCx K C IG E0 c28) : ∀ (e : Nd) (h : Nat), OkV K e → At 
       · exact q
       · rw [List.getElem?_eq_none q] at hj; simp at hj
     exact callX X.ig hA hj (by omega) (X.defs id hid) X.e62
-      (fun s hs => by have := X.cb s hs; omega)
+      (fun s hs => by
+        have := X.cb s hs; have := Nat.mul_le_mul_left s.w (show h + lnL K as + 1 ≤ C.length by omega); omega)
   | .prim pn as, h, hok, hC => by
     simp only [tm, lnV, rd, wr, wd, sv, OkV] at hok hC ⊢
     obtain ⟨oa, wa, h0⟩ := hok

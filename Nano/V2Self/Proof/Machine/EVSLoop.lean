@@ -30,7 +30,7 @@ theorem loop_passS {KL : LayW} {C : List J} {h S len p nl hb E0 w : Nat} {Inv : 
     intro s v I
     have e : wr s 5 v = { s with x := upd s.x 5 v } := by simp [wr]
     rw [e]
-    exact ⟨hI s _ I (by simp [upd]) (by simp [upd]) (by simp [upd]) rfl (fun _ _ => rfl), by simp [upd], by simp [upd],
+    exact ⟨hI s _ I (by simp [upd]) (by simp [upd]) (by simp [upd]) rfl rfl (fun _ _ => rfl), by simp [upd], by simp [upd],
       by simp [upd], by simp [upd], rfl, by simp [upd]⟩
   have fuel : ∀ (s : St) (env : Env), Frame p nl s env → s.m (ea (s.x 8) (slotOff p 0)) = env 0 := by
     intro s env F; exact F 0 (by omega)
@@ -107,7 +107,7 @@ theorem loop_passS {KL : LayW} {C : List J} {h S len p nl hb E0 w : Nat} {Inv : 
       simp [step, c2, wr]; omega
     let v := env_m 0 - 1
     let a0 := slotAddr p (s.x 8).toNat 0
-    let s4 : St := ⟨upd s.x 5 v, upd s.m a0 v, s.b, s.w⟩
+    let s4 : St := ⟨upd s.x 5 v, upd s.m a0 v, s.b, s.wk⟩
     have ev : UInt64.ofNat (ea ((wr s 5 (env_m 0)).x 5) (-1)) = v := by rw [x51]; exact ea_dec _ hz'
     have st45 : run C 2 (S, wr s 5 (env_m 0)) = some (S + 2, s4) := by
       have q : ea ((wr (wr s 5 (env_m 0)) 5 v).x 8) (slotOff p 0) = a0 := by
@@ -116,7 +116,7 @@ theorem loop_passS {KL : LayW} {C : List J} {h S len p nl hb E0 w : Nat} {Inv : 
       simp [wr, s4, LoopT.upd2, upd_same]
     have a0lo : (s.x 31).toNat ≤ a0 := slotAddr_ge (T := (s.x 31).toNat) o1 o2 (by omega)
     have a0hi : a0 < (s.x 8).toNat + 8 * p + 16 := slotAddr_lt (nl := nl) (by omega) (by omega)
-    have I4 : Inv s4 := hI s s4 I0 (by simp [s4, upd]) (by simp [s4, upd]) (by simp [s4, upd]) rfl (fun a ha => by
+    have I4 : Inv s4 := hI s s4 I0 (by simp [s4, upd]) (by simp [s4, upd]) (by simp [s4, upd]) rfl rfl (fun a ha => by
       simp only [s4, upd]; split
       · rename_i e; subst e; exfalso; apply ha; have := R0.1; have := R0.2.1; have := R0.2.2.1; omega
       · rfl)
