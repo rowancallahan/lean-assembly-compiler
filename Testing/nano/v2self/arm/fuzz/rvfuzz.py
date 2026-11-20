@@ -69,7 +69,9 @@ def objcheck(o):
         if dest == 'imm' and w >> 5 & 31 == 31: bad.append(f'word {idx}: {name} reads sp')
         if name in ('ldr', 'str', 'ldrb', 'strb') and w >> 5 & 31 == 31: bad.append(f'word {idx}: {name} base sp')
         if name in ('str', 'strb') and rd == 31: bad.append(f'word {idx}: {name} stores xzr')
-        if name == 'madd' and (w >> 10 & 31) != 31: bad.append(f'word {idx}: madd with Ra != xzr')
+        if name == 'madd' and (w >> 10 & 31) not in (31, 17): bad.append(f'word {idx}: madd Ra not xzr/x17')
+        if name == 'madd' and (w >> 10 & 31) == 17 and (idx == 0 or ws[idx - 1] != 0xD2800011):
+            bad.append(f'word {idx}: madd uses x17 without movz x17,#0 just before')
         if dest in ('b', 'bl', 'bc', 'cbz'):
             imm = sx((w >> 5 & 0x7FFFF) if dest in ('bc', 'cbz') else (w & 0x3FFFFFF), 19 if dest in ('bc', 'cbz') else 26)
             if dest == 'bc' and (w & 15) > 3: bad.append(f'word {idx}: b.cond cond {w & 15}')
