@@ -616,3 +616,9 @@ Order (each: measure on BENCH.md programs + self-compile, then prove; proofs gre
 - DeepMind's `ArmLoader` precondition (code executable, data blocks readable+writable) is met by any normal loader /
   shim mapping; state that in the shim notes. Memory wiping on exit is the separate "reset memory chunks" item.
 - Later: native ARM backend (no RISC-V translation); notes in TRUST.md say how the current ARM theorems are built.
+
+## Per-target layout (owner, 2026-11-20; after cleanup step 8)
+Top level becomes symmetric per target: `Spec/` (RISC-V + ARM machines), `Nano/` (compiler + target-independent proofs),
+`Riscv/` (model regen, step lemmas = today's Nano/Base/Riscv, RISC-V target proofs), `Arm/` (models, step lemmas, ARM
+target, later the native ARM backend), `Legacy/`, `Testing/`. Done after cleanup step 8 separates the RISC-V-specific
+parts from Nano/V2Self/Proof/Machine, so the move is complete in one go. Same checks as reorg-nano.
