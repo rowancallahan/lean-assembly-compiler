@@ -3,18 +3,9 @@ tiny work block) assembled into `ImplementsCW`, given the semantic case split `H
 (for each input and work size: Sem ok and semAt succeeds, or Sem cap and the kinded semantics fails with cap, or the
 kinded semantics fails with room below the work bound `R x`). -/
 import Nano.V2Self.Proof.Machine.HostTiny
+import Nano.V2Self.Proof.Machine.SemCases
 namespace SimW
 open Proven Nano.V2B Templates CallProbe C GenRef ParSpec
-
-/-- the semantic case split the machine theorem needs, for input `x`, work block `[wb, wb + wl)` (8-aligned base, at
-least 16 usable bytes) and every code-position table `T` -/
-def SemCases (p : List DefA) (R : List UInt8 → Nat) (x : List UInt8) (wb wl : Nat) : Prop :=
-  (∃ y, NanoMain.Sem NanoMain.κC p x = .ok y ∧ ∀ T, ∃ vs H', semAt (pcOf 524288 (wb + 16) (UInt64.ofNat x.length)
-      (NanoMain.inpW x) T) p (p.length - 1) [] ((wb + wl) / 8 * 8) ⟨wb + 16, fun _ => none⟩ = some (vs, H')) ∨
-  (NanoMain.Sem NanoMain.κC p x = .error .cap ∧ ∀ T, semAtF (pcOf 524288 (wb + 16) (UInt64.ofNat x.length)
-      (NanoMain.inpW x) T) p (p.length - 1) [] ((wb + wl) / 8 * 8) ⟨wb + 16, fun _ => none⟩ = .error .cap) ∨
-  ((∀ T, semAtF (pcOf 524288 (wb + 16) (UInt64.ofNat x.length) (NanoMain.inpW x) T) p (p.length - 1) []
-      ((wb + wl) / 8 * 8) ⟨wb + 16, fun _ => none⟩ = .error .room) ∧ wl < R x)
 
 theorem gen_implements (c : List UInt8) {ts : List UInt64} {p : List DefA} (hP : ParsesProgram ts p)
     (Ks : List (List Nat)) (hO : OwnSpec.progOk [] [] Ks p = true) (hK2 : ∀ K ∈ Ks, ∀ k ∈ K, k ≤ 2)

@@ -3,7 +3,7 @@ least number of usable bytes (above the 16-byte reserve) with which main does no
 8-aligned work position; `Msp p x` rounds `16 + thr` up to the 8-byte granularity.  Room ⇒ below the bound (no
 hypothesis); below the bound ⇒ room at every position (given `ShiftInv`); `Msp_le`: at most D's work bound + 30. -/
 import Nano.V2Self.Proof.Machine.RunsShift
-import Nano.V2Self.Proof.Main.GenStageE
+import Nano.V2Self.Proof.Machine.SemCases
 namespace NanoMain
 open Templates ParSpec Classical
 
@@ -129,13 +129,5 @@ theorem Msp_le {ts : List UInt64} {p : List DefA} (hp : ParsesProgram ts p) (x :
       unfold thr; exact lfind_le (GoodU p x) (2 ^ 32) 0 (2 ^ 32) (Nat.zero_le _) (by omega)
         (fun _ hb _ h31 h32 => by omega)
     unfold Msp; omega
-
-/-- **Gen's code implements `Sem` with the exact work bound** (given the field bounds `DB`) -/
-theorem gen_implementsMD (c : List UInt8) {ts : List UInt64} {p : List DefA} (hp : ParsesProgram ts p)
-    (hts : ts.length < 2 ^ 24) (hL : LinearK p) (h : C.g41 c (serialize p) ≠ []) (hdb : ∀ d ∈ p, DB d) :
-    ImplementsCW (C.g41 c (serialize p)) (Sem κC p) (fun x => max 16 (Msp p x)) := by
-  obtain ⟨Ks, hO, hK2⟩ := hL
-  exact SimW.gen_implements c hp Ks hO hK2 (ParSerLen.ser_lt hp hts) h hdb (Msp p)
-    (fun x hx wb wl h8 h31 h32 h16 => gen_HDM hp ⟨Ks, hO, hK2⟩ x hx wb wl h8 h31 h32 h16)
 
 end NanoMain

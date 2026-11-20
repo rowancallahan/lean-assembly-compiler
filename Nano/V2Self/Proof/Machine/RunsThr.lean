@@ -2,7 +2,9 @@
 `max 16 ∘ Msp`, no hypothesis), `gen_runs_ok` (at or above `Msp`: the normal return), `gen_runs_oom` (below `Msp`:
 the definite out-of-memory return, given `ShiftInv`). -/
 import Nano.V2Self.Proof.Machine.RunsDef
+import Nano.V2Self.Proof.Main.GenStageE
 import Nano.V2Self.Proof.Main.ParCapBnd
+import Nano.V2Self.Proof.Main.MainTop
 namespace NanoMain
 open Templates ParSpec Classical
 
@@ -94,5 +96,13 @@ theorem spaceC_le {x : List UInt8} {ts : List UInt64} {p : List DefA} (hpo : pOf
     exact ⟨fun y hy => by obtain ⟨a, l, H', e, -⟩ := h1 y hy; exact ⟨_, _, e⟩, h2⟩
   have h16 := Msp_ge p inp
   unfold spaceC; rw [hpo]; simp only; omega
+
+/-- **Gen's code implements `Sem` with the exact work bound** (given the field bounds `DB`) -/
+theorem gen_implementsMD (c : List UInt8) {ts : List UInt64} {p : List DefA} (hp : ParsesProgram ts p)
+    (hts : ts.length < 2 ^ 24) (hL : LinearK p) (h : C.g41 c (serialize p) ≠ []) (hdb : ∀ d ∈ p, DB d) :
+    ImplementsCW (C.g41 c (serialize p)) (Sem κC p) (fun x => max 16 (Msp p x)) := by
+  obtain ⟨Ks, hO, hK2⟩ := hL
+  exact SimW.gen_implements c hp Ks hO hK2 (ParSerLen.ser_lt hp hts) h hdb (Msp p)
+    (fun x hx wb wl h8 h31 h32 h16 => gen_HDM hp ⟨Ks, hO, hK2⟩ x hx wb wl h8 h31 h32 h16)
 
 end NanoMain

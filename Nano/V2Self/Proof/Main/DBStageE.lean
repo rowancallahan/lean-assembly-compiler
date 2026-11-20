@@ -1,5 +1,5 @@
 /- Opus box E: Gen's field bounds `DB` for parsed programs, given the width cap (nslots, nres < 2^32; O's parsed_bnd).
-`dbStage` then turns `C_correctLE` into a theorem with `BndStage` and that cap as the only premises. -/
+`dbStage`: `DBStage` from that cap. -/
 import Nano.V2Self.Proof.Parser.DBPar
 namespace Templates
 open ParSpec NanoMain
@@ -50,7 +50,6 @@ theorem parsed_DB {ts : List UInt64} {p : List DefA} (hp : ParsesProgram ts p) (
     · rw [h1, hl]; simp
 end Templates
 
-open LeanRV64D
 namespace NanoMain
 open Proven.Top Proven.Top.Alloc
 
@@ -59,8 +58,5 @@ def CapStage : Prop := ∀ (ts : List UInt64) (p : List ParSpec.DefA), ParSpec.P
   ∀ d ∈ p, d.nslots < 2 ^ 32 ∧ d.nres < 2 ^ 32
 
 theorem dbStage (HC : CapStage) : DBStage := fun _ ts p hp hts _ _ => Templates.parsed_DB hp hts (HC ts p hp hts)
-
-/-- **C is correct**, given the size bounds and the width cap -/
-theorem C_correctLC (HB : BndStage) (HC : CapStage) : CompileCorrect riscv compileC := C_correctLE HB (dbStage HC)
 
 end NanoMain

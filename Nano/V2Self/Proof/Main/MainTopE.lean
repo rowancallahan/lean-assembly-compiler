@@ -6,10 +6,6 @@ open LeanRV64D
 namespace NanoMain
 open ParSpec Proven.Top Proven.Top.Alloc LeanRV64D
 
-/-- the field bounds `DB` (fields < 2^32, `NB`) for every program Gen accepts -/
-def DBStage : Prop := ∀ (c : List UInt8) (ts : List UInt64) (p : List DefA), ParsesProgram ts p →
-  ts.length < 2 ^ 24 → LinearK p → C.g41 c (serialize p) ≠ [] → ∀ d ∈ p, Templates.DB d
-
 theorem genStage (HDB : DBStage) : GenStage := SimW.gen_stage HDB
 
 /-- codegen with the explicit exact work bound -/

@@ -13,6 +13,7 @@ import Nano.V2Self.Proof.Own.OwnStage
 import Riscv.Back.Top
 import Compiler.AllocSpec
 import Nano.V2Self.Proof.Machine.RunsDef
+import Nano.V2Self.Proof.Main.Compile
 
 open LeanRV64D
 namespace NanoMain
@@ -27,40 +28,6 @@ theorem compiler_correct' (HP : ParStage) (HO : OwnStage) (HB : BndStage) (HG : 
   obtain ⟨ts, p, h1, h2, hl, h3⟩ := compiler_correct HP HO HB HG x hx h
   exact ⟨ts, p, h1, h2, hl, h3, parsed_not_stuck h2 κC⟩
 
-theorem lexes_det : ∀ {x : List UInt8} {t t' : List UInt64}, LexSpec.Lexes x t → LexSpec.Lexes x t' → t = t'
-  | _, _, _, .nil, h => by
-    cases h with
-    | nil => rfl
-    | cons hs _ => simp [LexSpec.step] at hs
-  | _, _, _, .cons hs h1, h => by
-    cases h with
-    | nil => simp [LexSpec.step] at hs
-    | cons hs' h2 =>
-      rw [hs] at hs'; simp only [Option.some.injEq, Prod.mk.injEq] at hs'; obtain ⟨rfl, rfl⟩ := hs'
-      rw [lexes_det h1 h2]
-
-/-- a source text -/
-structure SrcC where
-  text : List UInt8
-
-open Classical in
-/-- the program a text denotes (Lex2Spec, then ParSpec) -/
-noncomputable def pOf (x : List UInt8) : Option (List DefA) :=
-  if h : ∃ p, ∃ ts, LexSpec.Lexes x ts ∧ ParsesProgram ts p then some (Classical.choose h) else none
-
-theorem pOf_eq {x : List UInt8} {ts : List UInt64} {p : List DefA} (hl : LexSpec.Lexes x ts) (hp : ParsesProgram ts p) :
-    pOf x = some p := by
-  have h : ∃ p, ∃ ts, LexSpec.Lexes x ts ∧ ParsesProgram ts p := ⟨p, ts, hl, hp⟩
-  unfold pOf; rw [dif_pos h]
-  obtain ⟨ts', hl', hp'⟩ := Classical.choose_spec h
-  rw [lexes_det hl hl'] at hp
-  unfold ParsesProgram at hp hp'; rw [hp'] at hp; cases hp; rfl
-
-/-- **the meaning of a text** on an input -/
-noncomputable def srcRun (s : SrcC) (inp : List UInt8) : Option (List UInt8) :=
-  (pOf s.text).bind fun p => (Sem κC p inp).toOption
-
-noncomputable instance : Program SrcC := ⟨srcRun⟩
 
 /-- the definite out-of-memory return: a0 = −1, a1 = 0, only the work block changed (output untouched) -/
 def OomOutM (s : St) (ra : BitVec 64) (output work : Region) (s' : St) : Prop :=
@@ -87,57 +54,11 @@ def ExactCW (B : List UInt8) (f : List UInt8 → Except Stop (List UInt8)) (spac
     Mapped s output → Mapped s work →
     ∀ y, f x = .ok y → work.len < space x → runsTo s (OomOutM s ra output work)
 
-/-- **the work bound of C's code for a text**: EXPLICIT, the exact threshold `Msp` (RunsDef: the least work size with
-which main never runs out of room, at least 16), bounded by `Msp_le` -/
-noncomputable def spaceC (x : List UInt8) : List UInt8 → Nat :=
-  match pOf x with
-  | some p => fun inp => max 16 (Msp p inp)
-  | none => fun _ => 0
-
 /-- codegen with C's explicit work bound -/
 def GenStageM : Prop :=
   ∀ (c : List UInt8) (ts : List UInt64) (p : List DefA), ParsesProgram ts p → ts.length < 2 ^ 24 → LinearK p →
     C.g41 c (serialize p) ≠ [] → ImplementsCW (C.g41 c (serialize p)) (Sem κC p) (fun x => max 16 (Msp p x))
 
-/-- **C as a compiler** -/
-noncomputable def compileC (s : SrcC) : Option CompiledA :=
-  if mC s.text ≠ [] ∧ s.text.length ≤ 2 ^ 20 then some ⟨mC s.text, 1, fun inp => [.alloc (spaceC s.text inp)]⟩
-  else none
-
-theorem g40_len : ∀ (n : Nat) (c : List UInt8) (w : Buf) (i : UInt64) (o : List UInt8), o.length % 4 = 0 →
-    (C.g40 n c w i o).length % 4 = 0
-  | 0, _, _, _, _, h => by simpa [C.g40] using h
-  | n + 1, c, w, i, o, h => by
-    simp only [C.g40]
-    split
-    · exact g40_len n c w _ _ (by simp [put]; omega)
-    · exact h
-
-theorem mC_len (x : List UInt8) : (mC x).length % 4 = 0 := by
-  unfold mC C.g41 C.g42
-  generalize C.o41 (C.y16 (C.s10 x)) = a
-  split
-  · rfl
-  split
-  · generalize C.g53 a = q
-    obtain ⟨x2, w⟩ := q
-    simp only
-    split
-    · rfl
-    · generalize C.g39 _ _ _ _ _ _ _ = q2
-      obtain ⟨r1, o⟩ := q2
-      simp only
-      split
-      · rfl
-      · split
-        · rfl
-        · split
-          · rfl
-          · exact g40_len _ _ _ _ _ rfl
-  · rfl
-
-theorem toOption_some {r : Except Stop (List UInt8)} {y : List UInt8} (h : r.toOption = some y) : r = .ok y := by
-  cases r <;> simp [Except.toOption] at h; rw [h]
 
 theorem a0Ok_ne (y : List UInt8) : UInt64.ofBitVec (a0Ok y) ≠ oomFlag := by
   unfold a0Ok oomFlag; split <;> decide
@@ -151,36 +72,6 @@ theorem kept_of {s s' : St} (hkept : abiSavedKept s s') : KeptRegisters riscv s 
   obtain ⟨k2, k3, k4, k8, k9, k18, k19, k20, k21, k22, k23, k24, k25, k26, k27⟩ := hkept
   rcases hnumber with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
     simp only [riscvObserve, riscvRegister, k2, k3, k4, k8, k9, k18, k19, k20, k21, k22, k23, k24, k25, k26, k27]
-
-/-- the parser stage, discharged (F) -/
-theorem parStage : ParStage := fun _ hW hts => ParInv.parserSound hW hts
-
-/-- the ownership stage, discharged (O) -/
-theorem ownStage : OwnStage := fun _ _ hp hb hl h => OwnP.own_stage hp hb hl h
-
-/-- as `compiler_correct`, for any property `Q` of Gen's code and the program that codegen provides -/
-theorem compiler_correctG (HB : BndStage) (Q : List UInt8 → List DefA → Prop)
-    (HG : ∀ (c : List UInt8) (ts : List UInt64) (p : List DefA), ParsesProgram ts p → ts.length < 2 ^ 24 → LinearK p →
-      C.g41 c (serialize p) ≠ [] → Q (C.g41 c (serialize p)) p)
-    (x : List UInt8) (hx : x.length ≤ 2 ^ 20) (h : mC x ≠ []) :
-    ∃ ts p, LexSpec.Lexes x ts ∧ ParsesProgram ts p ∧ LinearK p ∧ Q (mC x) p := by
-  have hy0 : C.o41 (C.y16 (C.s10 x)) ≠ [] := fun e => h (by simp only [mC, e, g41_nil])
-  have hoe := o41_ne _ hy0
-  have hy : C.y16 (C.s10 x) ≠ [] := by rw [← hoe]; exact hy0
-  by_cases h0 : C.s10 x = []
-  · obtain ⟨p, hp, -⟩ := parStage _ ⟨[], by rw [h0]; exact ParSpec.TokL.nil⟩ (by simp [h0]) hy
-    rw [h0] at hp; simp [ParsesProgram, refParse_nil] at hp
-  · have hL := LexSpec.s10_sound x (by omega) _ rfl h0
-    have hb := lexes_len hL
-    obtain ⟨p, hp, he⟩ := parStage _ (lexes_tokWF hL) (by omega) hy
-    have hg : C.g41 x (serialize p) ≠ [] := by rw [← he, ← hoe]; exact h
-    have hts : (C.s10 x).length < 2 ^ 24 := by omega
-    have hbd := HB x _ p hp hts hg
-    have hsl : (serialize p).length < 2 ^ 64 := by have := ParSerLen.ser_lt hp hts; omega
-    have hlin : LinearK p := ownStage _ p hp hbd hsl (by rw [← he]; exact hy0)
-    refine ⟨_, p, hL, hp, hlin, ?_⟩
-    have := HG x _ p hp hts hlin hg
-    rw [mC, hoe, he]; exact this
 
 /-- as `compiler_correct`, with the explicit work bound -/
 theorem compiler_correctM (HB : BndStage) (HG : GenStageM) (x : List UInt8) (hx : x.length ≤ 2 ^ 20) (h : mC x ≠ []) :
