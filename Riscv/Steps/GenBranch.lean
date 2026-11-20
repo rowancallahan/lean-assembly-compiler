@@ -37,36 +37,30 @@ macro "genb" : tactic => `(tactic| (
   first | rw [Proven.G.wB_eq] at hi | rw [Proven.G.wJ_eq] at hi | rw [Proven.G.encI_eq] at hi
   try simp only [Nat.reduceShiftLeft, Nat.reduceOr, BitVec.reduceAppend] at hi))
 
-set_option hygiene false in
-/-- `gstep` for a taken branch / `jal` to `pc + sext (o ++ 0)`. The regenerated model tests bit 1 of the target
-before `Ext_Zca` (short-circuit `&&`); the bit is unknown here and both cases reach the same state. -/
-macro "gstepJ" : tactic => `(tactic| (
-  by_cases hb1 : bit_to_bool (BitVec.access (pc + BitVec.signExtend 64 (o +++ 0#1)) 1) = true <;> gstep))
-
 /-! ## Conditional branches: taken / not taken -/
 
 theorem beq_t (rs1 rs2 : Fin 32) (o : BitVec 12) (hi : instrAt s pc (wB 0 (.ofFin rs1) (.ofFin rs2) o))
-    (hc : getX s rs1 = getX s rs2) : ∃ s', Next s s' (pc + boff o) 0 0 s.mem := by genb; gstepJ
+    (hc : getX s rs1 = getX s rs2) : ∃ s', Next s s' (pc + boff o) 0 0 s.mem := by genb; gstep
 theorem beq_n (rs1 rs2 : Fin 32) (o : BitVec 12) (hi : instrAt s pc (wB 0 (.ofFin rs1) (.ofFin rs2) o))
     (hc : ¬getX s rs1 = getX s rs2) : ∃ s', Next s s' (pc + 4) 0 0 s.mem := by genb; gstep
 theorem bne_t (rs1 rs2 : Fin 32) (o : BitVec 12) (hi : instrAt s pc (wB 1 (.ofFin rs1) (.ofFin rs2) o))
-    (hc : ¬getX s rs1 = getX s rs2) : ∃ s', Next s s' (pc + boff o) 0 0 s.mem := by genb; gstepJ
+    (hc : ¬getX s rs1 = getX s rs2) : ∃ s', Next s s' (pc + boff o) 0 0 s.mem := by genb; gstep
 theorem bne_n (rs1 rs2 : Fin 32) (o : BitVec 12) (hi : instrAt s pc (wB 1 (.ofFin rs1) (.ofFin rs2) o))
     (hc : getX s rs1 = getX s rs2) : ∃ s', Next s s' (pc + 4) 0 0 s.mem := by genb; gstep
 theorem blt_t (rs1 rs2 : Fin 32) (o : BitVec 12) (hi : instrAt s pc (wB 4 (.ofFin rs1) (.ofFin rs2) o))
-    (hc : (getX s rs1).toInt < (getX s rs2).toInt) : ∃ s', Next s s' (pc + boff o) 0 0 s.mem := by genb; gstepJ
+    (hc : (getX s rs1).toInt < (getX s rs2).toInt) : ∃ s', Next s s' (pc + boff o) 0 0 s.mem := by genb; gstep
 theorem blt_n (rs1 rs2 : Fin 32) (o : BitVec 12) (hi : instrAt s pc (wB 4 (.ofFin rs1) (.ofFin rs2) o))
     (hc : ¬(getX s rs1).toInt < (getX s rs2).toInt) : ∃ s', Next s s' (pc + 4) 0 0 s.mem := by genb; gstep
 theorem bge_t (rs1 rs2 : Fin 32) (o : BitVec 12) (hi : instrAt s pc (wB 5 (.ofFin rs1) (.ofFin rs2) o))
-    (hc : ¬(getX s rs1).toInt < (getX s rs2).toInt) : ∃ s', Next s s' (pc + boff o) 0 0 s.mem := by genb; gstepJ
+    (hc : ¬(getX s rs1).toInt < (getX s rs2).toInt) : ∃ s', Next s s' (pc + boff o) 0 0 s.mem := by genb; gstep
 theorem bge_n (rs1 rs2 : Fin 32) (o : BitVec 12) (hi : instrAt s pc (wB 5 (.ofFin rs1) (.ofFin rs2) o))
     (hc : (getX s rs1).toInt < (getX s rs2).toInt) : ∃ s', Next s s' (pc + 4) 0 0 s.mem := by genb; gstep
 theorem bltu_t (rs1 rs2 : Fin 32) (o : BitVec 12) (hi : instrAt s pc (wB 6 (.ofFin rs1) (.ofFin rs2) o))
-    (hc : (getX s rs1).toNat < (getX s rs2).toNat) : ∃ s', Next s s' (pc + boff o) 0 0 s.mem := by genb; gstepJ
+    (hc : (getX s rs1).toNat < (getX s rs2).toNat) : ∃ s', Next s s' (pc + boff o) 0 0 s.mem := by genb; gstep
 theorem bltu_n (rs1 rs2 : Fin 32) (o : BitVec 12) (hi : instrAt s pc (wB 6 (.ofFin rs1) (.ofFin rs2) o))
     (hc : ¬(getX s rs1).toNat < (getX s rs2).toNat) : ∃ s', Next s s' (pc + 4) 0 0 s.mem := by genb; gstep
 theorem bgeu_t (rs1 rs2 : Fin 32) (o : BitVec 12) (hi : instrAt s pc (wB 7 (.ofFin rs1) (.ofFin rs2) o))
-    (hc : ¬(getX s rs1).toNat < (getX s rs2).toNat) : ∃ s', Next s s' (pc + boff o) 0 0 s.mem := by genb; gstepJ
+    (hc : ¬(getX s rs1).toNat < (getX s rs2).toNat) : ∃ s', Next s s' (pc + boff o) 0 0 s.mem := by genb; gstep
 theorem bgeu_n (rs1 rs2 : Fin 32) (o : BitVec 12) (hi : instrAt s pc (wB 7 (.ofFin rs1) (.ofFin rs2) o))
     (hc : (getX s rs1).toNat < (getX s rs2).toNat) : ∃ s', Next s s' (pc + 4) 0 0 s.mem := by genb; gstep
 
@@ -74,7 +68,7 @@ theorem bgeu_n (rs1 rs2 : Fin 32) (o : BitVec 12) (hi : instrAt s pc (wB 7 (.ofF
 
 /-- `jal rd, 2*o`: `x[rd] := pc + 4` -/
 theorem step_jal (rd : Fin 32) (o : BitVec 20) (hi : instrAt s pc (wJ (.ofFin rd) o)) :
-    ∃ s', Next s s' (pc + joff o) rd (pc + 4) s.mem := by genb; gstepJ
+    ∃ s', Next s s' (pc + joff o) rd (pc + 4) s.mem := by genb; gstep
 
 /-- `jalr rd, imm(rs1)` to an even target (`x[rd] := pc + 4`; `rd = rs1` is fine: `rs1` is read first) -/
 theorem step_jalr (rd rs1 : Fin 32) (imm : BitVec 12) (hi : instrAt s pc (BitVec.ofNat 32 (imm.toNat <<< 20 |||
@@ -83,7 +77,7 @@ theorem step_jalr (rd rs1 : Fin 32) (imm : BitVec 12) (hi : instrAt s pc (BitVec
     ∃ s', Next s s' (getX s rs1 + imm.signExtend 64) rd (pc + 4) s.mem := by
   rw [jalr_eq] at hi
   replace he : evenB (getX s rs1 + imm.signExtend 64) := he
-  by_cases hb1 : bit_to_bool (BitVec.access (BitVec.update (getX s rs1 + BitVec.signExtend 64 imm) 0 0#1) 1) = true <;> gstep
+  gstep
 
 end G
 end Proven

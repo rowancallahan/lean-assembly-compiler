@@ -17,6 +17,30 @@ theorem bind_ok {ε σ α β : Type u} {x : EStateM ε σ α} (f : α → EState
   show EStateM.bind x f s = _
   unfold EStateM.bind; rw [h]
 
+/-- `x <&&> y` is `false` when `y` gives `false` without changing the state, whatever `x` returned
+(Sail 97aa617dc short-circuit; used when `x`'s result cannot be decided) -/
+theorem andM_ok_false {ε σ : Type} {x y : EStateM ε σ Bool} {s s₁ : σ} {a : Bool}
+    (hx : x s = .ok a s₁) (hy : y s₁ = .ok false s₁) : (x <&&> y) s = .ok false s₁ := by
+  show EStateM.bind x _ s = _
+  unfold EStateM.bind; rw [hx]; cases a <;> simp [toBool, hy] <;> rfl
+/-- `x <||> y` is `true` when `y` gives `true` without changing the state -/
+theorem orM_ok_true {ε σ : Type} {x y : EStateM ε σ Bool} {s s₁ : σ} {a : Bool}
+    (hx : x s = .ok a s₁) (hy : y s₁ = .ok true s₁) : (x <||> y) s = .ok true s₁ := by
+  show EStateM.bind x _ s = _
+  unfold EStateM.bind; rw [hx]; cases a <;> simp [toBool, hy] <;> rfl
+
+/-- `andM_ok_false` in `ExceptT ε (EStateM ..)` (`SailME`, e.g. `jump_to`) -/
+theorem andM_ok_falseE {ε ε' σ : Type} {x y : ExceptT ε (EStateM ε' σ) Bool} {s s₁ : σ} {a : Bool}
+    (hx : x.run s = .ok (.ok a) s₁) (hy : y.run s₁ = .ok (.ok false) s₁) :
+    (x <&&> y).run s = .ok (.ok false) s₁ := by
+  show EStateM.bind x _ s = _
+  unfold EStateM.bind; rw [show x s = _ from hx]; cases a <;> simp [toBool, ExceptT.run] at hy ⊢ <;> first | rfl | exact hy
+theorem orM_ok_trueE {ε ε' σ : Type} {x y : ExceptT ε (EStateM ε' σ) Bool} {s s₁ : σ} {a : Bool}
+    (hx : x.run s = .ok (.ok a) s₁) (hy : y.run s₁ = .ok (.ok true) s₁) :
+    (x <||> y).run s = .ok (.ok true) s₁ := by
+  show EStateM.bind x _ s = _
+  unfold EStateM.bind; rw [show x s = _ from hx]; cases a <;> simp [toBool, ExceptT.run] at hy ⊢ <;> first | rfl | exact hy
+
 theorem bind_err {ε σ α β : Type u} {x : EStateM ε σ α} (f : α → EStateM ε σ β) {s s' : σ} {e : ε}
     (h : x s = .error e s') : (x >>= f) s = .error e s' := by
   show EStateM.bind x f s = _
@@ -182,6 +206,10 @@ def isEStateM (m : Expr) : MetaM Bool := do
   let m ← whnfR m
   return m.getAppFn.isConstOf ``EStateM
 
+def isExceptTEStateM (m : Expr) : MetaM Bool := do
+  let m ← whnfR m
+  return m.isAppOfArity ``ExceptT 2 && (← isEStateM m.appArg!)
+
 /-- unfold a recursive definition with its unfolding equation -/
 def unfoldEqn? (e : Expr) : MetaM (Option Simp.Result) := do
   let f := e.getAppFn
@@ -266,6 +294,14 @@ partial def normPure (d : Expr) (fuel : Nat := 16) : M Simp.Result := do
     return ← trans { expr := d', proof? := ← mkExpectedTypeHint (← mkEqRefl d') (← mkEq d d') }
       (← normPure d'.headBeta (fuel - 1))
   return r
+
+/-- can `a : Bool` be decided (simp with the hypotheses, then omega)? does not throw -/
+def decidableBool (a : Expr) : M Bool := do
+  if (← kernelWhnf? a).isSome then return true
+  -- simp only (as for the `toBool` discriminant): `normPure` would unfold `&&` to `Bool.rec`
+  let c ← simpE (← mkEq a (mkConst ``Bool.true))
+  if c.expr.isTrue || c.expr.isFalse then return true
+  return (← omega? c.expr).isSome || (← omega? (mkNot c.expr)).isSome
 
 mutual
 /-- evaluate `e : EStateM.Result ε σ α` to `.ok a s'` / `.error e s'` -/
@@ -369,6 +405,8 @@ partial def evalCore (e : Expr) : M Simp.Result := do
           | .reduced e'' => trans { expr := e', proof? := pf? } (← trans (← rflStep e' e'') (← eval e''))
           | _ => stuck e'
     else
+      if (n == ``andM || n == ``orM) && args.size == 7 && ((← isEStateM args[0]!) || (← isExceptTEStateM args[0]!)) then
+        if let some r ← evalShortcut? n args then return r
       tick "call" (mkAppN fn (args.extract 0 (args.size - 1)))
       -- 1. user lemma / simp at the root
       let r ← checkR "root simp" e (← simpE e (root := true))
@@ -380,6 +418,30 @@ partial def evalCore (e : Expr) : M Simp.Result := do
       if let some e' ← delta? e then return ← trans (← rflStep e e') (← eval e')
       stuck e
   | _ => stuck e
+
+/-- `x <&&> y` (`x <||> y`) where `x`'s result cannot be decided: if `y` gives `false` (`true`)
+without changing the state, so does the whole term (`andM_ok_false`, `orM_ok_true`) -/
+partial def evalShortcut? (n : Name) (args : Array Expr) : M (Option Simp.Result) := do
+  let x := args[4]!; let y := args[5]!; let s := args[6]!
+  let rx ← eval (mkApp x s)
+  unless isResult rx.expr == some true do return none
+  let exc ← isExceptTEStateM args[0]!
+  -- in `ExceptT`, the value is `Except.ok a` (an `Except.error` is not a short-circuit case)
+  let okVal (v : Expr) : Option Expr :=
+    if !exc then some v else if v.isAppOfArity ``Except.ok 3 then some v.appArg! else none
+  let some a := okVal rx.expr.getAppArgs[3]! | return none
+  let s₁ := rx.expr.getAppArgs[4]!
+  if ← decidableBool a then return none
+  tick "shortcut" (mkAppN (mkConst n) (args.extract 0 6))
+  let ry ← eval (mkApp y s₁)
+  let absorb := if n == ``andM then ``Bool.false else ``Bool.true
+  unless isResult ry.expr == some true && ((okVal ry.expr.getAppArgs[3]!).map (·.isConstOf absorb) == some true) &&
+      ry.expr.getAppArgs[4]! == s₁ do
+    throwError "sail_eval: undecided {a} in {n}, and the second operand does not give {absorb} in the same state{indentExpr ry.expr}"
+  let lem := if n == ``andM then (if exc then ``andM_ok_falseE else ``andM_ok_false)
+    else (if exc then ``orM_ok_trueE else ``orM_ok_true)
+  let pf ← mkAppM lem #[← rx.getProof, ← ry.getProof]
+  return some { expr := ry.expr, proof? := pf }
 end
 
 syntax (name := sailEvalStx) "sail_eval" (" frozen" "[" ident,* "]")? (Parser.Tactic.simpArgs)? : tactic
