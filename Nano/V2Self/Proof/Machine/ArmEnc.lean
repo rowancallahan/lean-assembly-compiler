@@ -6,9 +6,9 @@ Testing/nano/v2self/arm/ArmBlock.lean `blockJ` (checked there against the Python
 PROOF NOTES (owner rule: semantics, conventions, which lemma covers it):
 * Shape: `blockLen = 4`. J instruction pc ↦ byte `base + 16·pc`. The real words come first, then
   `PAD = add x16, x16, #0`, except `jal x1`, which is PAD, PAD, PAD, `bl`.
-* Links (design V2, NANO_V2_ARM.md §0a): **needs J with link width W = 16** (`jal` links `b + 16·(pc+1)`, `jalr` jumps
-  to `(x − b)/16`). With today's `CallProbe.step` (W = 4) a uniform 4-word block cannot be related by `JT.Rel`
-  (E, 2026-11-20). The W-refactor of J is a separate unit.
+* Links (design V2, NANO_V2_ARM.md §0a): J's link width is `St.w = 4·(wk+1)` (E, 2656e8d) and `JT.Rel.ww` fixes
+  `wk = blockLen − 1`, so w = 16 here: `jal x1` links `b + 16·(pc+1)` = the address after the block's last word `bl`,
+  and `jalr x0, r` = `br π r` jumps to `(x − b)/16` (SafeX: `x = base + 16·j`).
 * Registers `armReg` (π, = ArmBlock.pi): J 1 ↦ x30 (ra), 2 ↦ x4 (work top; Spec armMapping.workTop = 4, 1437a980),
   10..13 ↦ x0..x3, 28..31 ↦ x12, x13, x10, x11, and 5..8, 14, 15 ↦ the same number. Every other J register ↦ 99, a
   number that is no AArch64 register (observe reads it as 0; Gen never writes those, `armOK` refuses them).
