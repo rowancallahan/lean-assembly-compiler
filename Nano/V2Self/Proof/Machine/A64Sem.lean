@@ -68,6 +68,15 @@ def store8 (o : MachineState) (a : Nat) (v : UInt64) : MachineState :=
 def store1 (o : MachineState) (a : Nat) (v : UInt64) : MachineState :=
   ⟨o.programCounter + 4, o.register, fun u => if u.toNat = a then some v.toUInt8 else o.memory u⟩
 
+/-- **the loader contract** (an ASSUMPTION about the loader / shim, not a machine fact): at a call's start the code
+bytes are executable and the input, output and work blocks are readable and writable.  `StartCorrect` constrains only
+what `observe` shows, so on a machine with unobservable permissions (DeepMind's W^X model) this is a premise of the
+top theorems; for Sail (X = W = True) it holds trivially. -/
+def LoaderPerm (M : Machine) (X W : M.State → Nat → Prop) : Prop :=
+  ∀ (s : M.State) (call : Call) (code x : List UInt8), StartCorrect M s call code x →
+    (∀ a, (M.observe s).programCounter.toNat ≤ a → a < (M.observe s).programCounter.toNat + code.length → X s a) ∧
+    (∀ a, InBlocks call a → W s a)
+
 /-- **the A64 step facts the ARM blocks need** (all register fields < 31), over permission predicates `X`
 (byte executable) and `W` (byte readable and writable): fetches need `X` at the pc, loads and stores need `W` on the
 bytes they touch, and every step keeps both (W^X models such as DeepMind's; Sail: both `True`) -/
@@ -75,10 +84,6 @@ structure A64Sem (M : Machine) (X W : M.State → Nat → Prop) : Prop where
   /-- the calling convention and the RAM window -/
   map : M.mapping = armMapping
   ram : 2048 ≤ M.ramStart ∧ M.ramEnd ≤ 2 ^ 32
-  /-- at a call's start the code is executable and the data blocks are readable and writable -/
-  perm_init : ∀ (s : M.State) (call : Call) (code x : List UInt8), StartCorrect M s call code x →
-    (∀ a, (M.observe s).programCounter.toNat ≤ a → a < (M.observe s).programCounter.toNat + code.length → X s a) ∧
-    (∀ a, InBlocks call a → W s a)
   /-- `movz xd, #i` -/
   movz : ∀ (s : M.State) (d i : Nat), M.configured s → PcOK M (M.observe s) → FetchX M X s 4 → d < 31 → i < 2 ^ 16 →
     WordAt (M.observe s) (M.observe s).programCounter.toNat (ArmEnc.movz d i) →

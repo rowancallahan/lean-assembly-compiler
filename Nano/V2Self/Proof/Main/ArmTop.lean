@@ -10,25 +10,27 @@ import Nano.V2Self.Proof.Machine.ArmEncOK
 namespace NanoMain
 open Proven.Top Proven.Top.Alloc JT
 
-/-- **C is correct on AArch64** (given the A64 steps, the translator's `EncOK` and the work window) -/
-theorem C_correct_arm {M : Machine} {X W : M.State → Nat → Prop} (S : A64Sem M X W) (enc : List UInt8 → List UInt8) (hE : EncOK (armTarget M X W) enc)
+/-- **C is correct on AArch64** (given the A64 steps, the LOADER CONTRACT `hperm` — code mapped executable, data
+blocks read-write at the start; an assumption about the loader, trivial for Sail — the translator's `EncOK` and the
+work window) -/
+theorem C_correct_arm {M : Machine} {X W : M.State → Nat → Prop} (S : A64Sem M X W) (hperm : LoaderPerm M X W) (enc : List UInt8 → List UInt8) (hE : EncOK (armTarget M X W) enc)
     (hwin : 2 ^ 31 ≤ M.ramStart) : CompileCorrect M (compileOn enc) :=
-  C_correct_on (armLaws S) enc hE hwin
+  C_correct_on (armLaws S hperm) enc hE hwin
 
 /-- **C runs correctly on AArch64, with any work block** -/
-theorem C_runs_arm {M : Machine} {X W : M.State → Nat → Prop} (S : A64Sem M X W) (enc : List UInt8 → List UInt8) (hE : EncOK (armTarget M X W) enc)
+theorem C_runs_arm {M : Machine} {X W : M.State → Nat → Prop} (S : A64Sem M X W) (hperm : LoaderPerm M X W) (enc : List UInt8 → List UInt8) (hE : EncOK (armTarget M X W) enc)
     (hwin : 2 ^ 31 ≤ M.ramStart) : CompileRuns M (compileOn enc) :=
-  C_runs_on (armLaws S) enc hE hwin
+  C_runs_on (armLaws S hperm) enc hE hwin
 
-/-- **C then rv2arm is correct on AArch64**: the compiler `compileOn rv2arm` (Gen's RISC-V bytes translated by the
+/-- **C then rv2arm is correct on AArch64** (assuming the loader contract `hperm`, see `LoaderPerm`): the compiler `compileOn rv2arm` (Gen's RISC-V bytes translated by the
 rv2arm translator, as a Lean function, `ArmRA.rv2arm`), for any machine with the A64 steps and the work window -/
-theorem C_correct_rv2arm {M : Machine} {X W : M.State → Nat → Prop} (S : A64Sem M X W) (hwin : 2 ^ 31 ≤ M.ramStart) :
+theorem C_correct_rv2arm {M : Machine} {X W : M.State → Nat → Prop} (S : A64Sem M X W) (hperm : LoaderPerm M X W) (hwin : 2 ^ 31 ≤ M.ramStart) :
     CompileCorrect M (compileOn ArmRA.rv2arm) :=
-  C_correct_arm S _ rv2arm_enc hwin
+  C_correct_arm S hperm _ rv2arm_enc hwin
 
 /-- **C then rv2arm runs correctly on AArch64, with any work block** -/
-theorem C_runs_rv2arm {M : Machine} {X W : M.State → Nat → Prop} (S : A64Sem M X W) (hwin : 2 ^ 31 ≤ M.ramStart) :
+theorem C_runs_rv2arm {M : Machine} {X W : M.State → Nat → Prop} (S : A64Sem M X W) (hperm : LoaderPerm M X W) (hwin : 2 ^ 31 ≤ M.ramStart) :
     CompileRuns M (compileOn ArmRA.rv2arm) :=
-  C_runs_arm S _ rv2arm_enc hwin
+  C_runs_arm S hperm _ rv2arm_enc hwin
 
 end NanoMain
