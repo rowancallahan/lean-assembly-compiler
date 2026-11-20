@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # try_arm.sh: compile nano Lean programs ON ARM and run them in shim_arm. UNPROVEN glue (see README.md).
 #   ./try_arm.sh                     self-check + every example (checks the "-- expect (hex)" line)
-#   ./try_arm.sh prog.lean [input]   compile prog.lean, run it on the input file (default: empty), print hex output
+#   ./try_arm.sh prog.lean [input]   compile prog.lean, run it on the input file (default: empty), print output as hex and text
 # Apple Silicon Mac: runs natively. Linux x86-64: needs aarch64-linux-gnu-gcc + qemu-aarch64 (static build).
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -23,7 +23,9 @@ compile() {                                                      # compile $1 (L
 
 if [ $# -ge 1 ]; then                                            # one program
   compile "$1" "$T/prog"
-  run "$T/prog" < "${2:-/dev/null}" | hex; echo; cat "$T/err" >&2
+  run "$T/prog" < "${2:-/dev/null}" > "$T/out"; cat "$T/err" >&2
+  echo "hex:  $(hex < "$T/out")"
+  echo "text: $(LC_ALL=C tr -c '\11\12\15\40-\176\200-\377' '.' < "$T/out")"   # raw bytes as text, control bytes shown as .
   exit 0
 fi
 
