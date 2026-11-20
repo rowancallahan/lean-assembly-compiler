@@ -216,6 +216,47 @@ corollaries, `C_runs`). Its step lemmas are the existing Sail library SimW/SimX 
    negative addi from x0 becomes movz + sub, and padding is `add x16, x16, #0`. Missing Arm/proofs lemmas: reg-ALU ×8
    (incl. madd), cmp-reg, br.
 
+### 0-min. Minimal-instruction plan and route (owner priority, 2026-11-20: "a proof that works on ARM and RISC-V", code quality later)
+**Route: the DIRECT Sail route** (lead decision, 23:39). armTarget's `step_ok`/`addi_ok`/`ret_ok` are proved
+against the Sail ARM model with one full-step lemma per A64 instruction kind, composed per J block. Each lemma does
+its own decode (SymDec-style decode prune), never the whole decoder.
+- Only scalar integer instructions are used (no SIMD/FP), so the lemmas can avoid the model's partial `Reduce__1`.
+- **Future option:** the DeepMind `Arm64.Step` surrogate plus one final `sim`/`simM` lift to Sail. The probe found it
+  saves no main cost: the missing pieces are Sail-side symbolic full steps either way. Revisit it at the 4.35 cleanup.
+
+**Instruction choice:** reuse the full steps that already exist. Blocks may be longer.
+| J kind | A64 (existing lemmas preferred) | new lemma needed |
+|---|---|---|
+| `addi rd rs imm`, rs ≠ x0 | `add/sub xd, xs, #|imm|` | none |
+| `addi rd x0 imm` (constants; stubs −1/−2) | `movz` (+ `movk`×3 for negatives/wide values: −1 = 0xFFFF×4) | none |
+| `ld` / `sd` (off ≥ 0, 8-aligned) | `ldr` / `str [xn,#8k]` | none |
+| `sd` / `ld`, off < 0 (frame locals) | `stur` / `sub x16, xs, #|off|; ldr xd, [x16]` | none (ldur avoided) |
+| `lbu` / `sb` | `ldrb` / `strb` imm | none |
+| `jal 0 off` / `jal 1 off` | `b` / `bl` (V2 link width) | none |
+| `beq/bne/bltu/bgeu a b` | `subs x16, xa, xb` (or `cmp`), then `b.eq/ne/lo/hs` | **subs/cmp register** (AL4) |
+| `beq a x0` | `cbz` | none |
+| `alu add/sub/and/or/xor/sll/srl` | `add/sub/and/orr/eor/lslv/lsrv xd, xa, xb` | **reg-reg ALU** (AL1–AL3, one SymDec family) |
+| `alu mul` | `madd xd, xa, xb, xzr` (= mul) | **madd** (AL5) |
+| `slli/srli rd rs sh` | `movz x16, #sh; lslv/lsrv xd, xs, x16` | none beyond AL3 |
+| `jalr 0 r` (internal and host return) | `br xr` (V2); host return `ret` = `br x30` | **br** (AL6; generalises `full_ret`) |
+| `sd x0 …` (`str xzr`) | `movz x16, #0; str x16` | none |
+| reads of x2 = sp | x2 is mapped to an ordinary register (the start code's `srli 31 2 3` reads it), not to SP | none |
+| padding | `add x16, x16, #0` | none |
+So the NEW full-step lemmas are: register add/sub/and/orr/eor/lslv/lsrv (one family), subs/cmp register, madd,
+br. Those are D's AL1–AL6 sessions. Gaps 3 (ldur), 4 (ubfm), 6 (str xzr), 7 (SP-relative), 8 (movn) from D's list
+are avoided by the choices above.
+
+**Fixed up front** (review points):
+- NZCV is dead across blocks: only the compare block sets it, and its own `b.cond` consumes it. Rel says nothing
+  about NZCV, and `step_ok` for every other kind may clobber it.
+- Register 31 never appears as a data register. J x0 ↦ xzr only in ALU/compare operand positions; never as a base
+  or add-imm operand.
+- `scratch = [16, 17]`.
+- The instruction set is derived from the J emitter mechanically: the table above covers every J constructor
+  `CallProbe.J` (addi ld sd jal jalr bgeu beq bltu bne alu slli srli lbu sb).
+- **Blocking J-level item:** the uniform block plus `br` needs the link-width refactor (§0a V2). Without it,
+  blockLen must be 1 (§0-impl item 2).
+
 ### 0a. Is J abstract enough for the lift?
 J (`Machine/Call.lean`) is a small abstract machine: registers `x : Nat → UInt64`, memory as 8-byte cells
 `m : Nat → UInt64` (bytes via `lbm`/`sbm`, little-endian), the code base `b`, a `pc : Nat` in instructions.
