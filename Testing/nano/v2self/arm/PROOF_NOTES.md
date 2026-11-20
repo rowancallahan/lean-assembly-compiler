@@ -143,6 +143,16 @@ Open for the proof:
 * The output is `(C.map block).flatten` as little-endian bytes, emitted in chunks of CHUNK_WORDS = `z0` = 32000 RV words, because a nano
   list holds < 2^19 elements. `rv2arm.sh` concatenates the chunks. A Lean statement can be made about `l0` over the
   whole range directly.
+* Validation `c0` = `ArmEnc.armOK` = `validJ`, with the A64 field ranges checked explicitly:
+  * `c2` = imm12 on addi / ld / sd / lbu / sb;
+  * shift < 64 (bits 26.. zero);
+  * b.cond/cbz |B| ≤ 262140 (±65535 J instructions);
+  * `c3` = b/bl |B| ≤ 2^25 − 4;
+  * targets inside the program.
+
+  RV field widths already imply the immediate limits, so `c2`/`c3` are defensive and cannot be hit by an RV word.
+  `test_arm.sh` has refusal tests for every limit an RV word can exceed: targets out of the program, misaligned
+  offsets, a shift field with bit 26, srai, and jal rd ∉ {0, 1}.
 * Validation `c1` runs over the whole program before any byte is emitted. An invalid program gives the EMPTY output
   (so `compileC_arm` would return `none`).
 * Decode facts needed: `o7 (encJX (branch a b o)) = 4·o` (sign-extended), `o8 (encJX (.jal rd o)) = 4·o`,
