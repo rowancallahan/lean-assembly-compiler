@@ -1,0 +1,147 @@
+name: Build RISCV For Lean
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+env:
+  OPAMVERBOSE: 1
+  CLEAR_GLOBS_FILE: .github/workflows/clear-globs.txt
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        version: [5.2.1]
+        os: [ubuntu-latest]
+
+    runs-on: [grosser-desktop]
+    container: ubuntu:24.04
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: System dependencies (ubuntu)
+      if: startsWith(matrix.os, 'ubuntu')
+      run: |
+        apt update
+        apt install -y build-essential pkg-config libgmp-dev cmake z3 cvc4 opam curl bash wget
+
+    - name: Checkout SAIL
+      run: |
+        git clone https://github.com/rems-project/sail.git
+
+    - name: Restore cached opam
+      id: cache-opam-restore
+      uses: actions/cache/restore@v4
+      with:
+        path: ~/.opam
+        key: ${{ matrix.os }}-${{ matrix.version }}
+
+    - name: Setup opam
+      if: steps.cache-opam-restore.outputs.cache-hit != 'true'
+      run: |
+        opam init --yes --no-setup --shell=sh --compiler=${{ matrix.version }}
+        opam update --yes
+        opam upgrade --yes
+
+    - name: Install Sail dependences
+      if: steps.cache-opam-restore.outputs.cache-hit != 'true'
+      run: |
+        eval $(opam env)
+        (cd sail; opam install sail --deps-only --yes)
+
+    - name: Save cached opam
+      if: steps.cache-opam-restore.outputs.cache-hit != 'true'
+      id: cache-opam-save
+      uses: actions/cache/save@v4
+      with:
+        path: ~/.opam
+        key: ${{ steps.cache-opam-restore.outputs.cache-primary-key }}
+
+    - name: Install Sail
+      run: |
+        eval $(opam env)
+        (cd sail; make install)
+
+    - name: Build the Sail RISCV Model for Lean
+      run: |
+        git clone https://github.com/riscv/sail-riscv.git
+        cd sail-riscv
+        eval $(opam config env)
+        cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo
+        cmake --build build/ --target generated_lean_rv64d
+        cd ..
+
+    - name: Restore cached lake directory
+      id: cache-lake-restore
+      uses: actions/cache/restore@v4
+      with:
+        path: sail-riscv/build/model/Lean_RV64D/.lake
+        key: ${{ matrix.os }}-${{ matrix.version }}
+
+
+    - name: Install elan
+      run: |
+        wget https://elan.lean-lang.org/elan-init.sh
+        bash elan-init.sh -y
+
+    - name: Send status to zulip
+      uses: zulip/github-actions-zulip/send-message@v1
+      with:
+        api-key: ${{ secrets.ZULIP_API_KEY }}
+        email: "riscv-sail-lean-bot@leanprover.zulipchat.com"
+        organization-url: "https://leanprover.zulipchat.com"
+        to: "462675"
+        type: "stream"
+        topic: "Automated RISC-V build"
+        content: "Starting build of the RISC-V model"
+
+    - name: Use Lean to build the model and record errors
+      id: run-lake
+      run: |
+        . ~/.profile
+        cp README.md sail-riscv/build/model/Lean_RV64D
+        cp report.py sail-riscv/build/model/Lean_RV64D
+        cd sail-riscv/build/model/Lean_RV64D
+        (lake update || true)
+        (lake build | tee build_log.txt || true)
+        sed -i '/Statistics/,$d' README.md
+
+        ./report.py >> README.md
+
+        {
+          echo 'report<<EOF'
+          ./report.py
+          echo EOF
+        } >> "$GITHUB_OUTPUT"
+
+        cd ../../../..
+
+    - name: Save cached lake
+      id: cache-lake-save
+      uses: actions/cache/save@v4
+      with:
+        path: sail-riscv/build/model/Lean_RV64D/.lake
+        key: ${{ steps.cache-lake-restore.outputs.cache-primary-key }}
+
+    - name: Send status to zulip
+      uses: zulip/github-actions-zulip/send-message@v1
+      with:
+        api-key: ${{ secrets.ZULIP_API_KEY }}
+        email: "riscv-sail-lean-bot@leanprover.zulipchat.com"
+        organization-url: "https://leanprover.zulipchat.com"
+        to: "462675"
+        type: "stream"
+        topic: "Automated RISC-V build"
+        content: ${{ steps.run-lake.outputs.report }}
+
+    - name: Deploy
+      uses: s0/git-publish-subdir-action@develop
+      env:
+        REPO: self
+        BRANCH: main
+        FOLDER: sail-riscv/build/model/Lean_RV64D
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TARGET_DIR: .

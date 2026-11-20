@@ -1,0 +1,18 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - "main"
+  pull_request:
+
+jobs:
+  build:
+    runs-on: [ubuntu-latest]
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: leanprover/lean-action@v1
+      with:
+        use-github-cache: "false"
+        reinstall-transient-toolchain: "true"
