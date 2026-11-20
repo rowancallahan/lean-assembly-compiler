@@ -325,4 +325,57 @@ theorem cmp_tail (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc k :
     obtain ⟨s3, r3, M3⟩ := run_pads S hC hB hpcl (4 - (k + 2)) (k + 2) s2 (by omega) M2 hpad
     exact ⟨s3, Runs.trans r2 r3, M3⟩
 
+/-- the compare-branch block `compBr c a b o` (with `movz x17, #0` first when an operand is x0) -/
+theorem blk_cmp (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : Nat} {st : CallProbe.St} {j : J}
+    (hM : Mid K C s0 (pc, st) 0 s) (hC : C[pc]? = some j) (hB : K.base + 16 * C.length ≤ 2 ^ 32)
+    (hpcl : pc < C.length) {c a b : Nat} {o : Int} (hc : c < 4) (ha : mapped a = true) (hb : mapped b = true)
+    (hblk : blockJ j = pad4 (compBr c a b o))
+    (h1 : -65535 ≤ o) (h2 : o ≤ 65535) (h3 : 0 ≤ (pc : Int) + o) (h4 : (pc : Int) + o < C.length) :
+    ∃ s', Runs M s s' ∧
+      Mid K C s0 (if condV c (st.x a) (st.x b) = true then ((pc : Int) + o).toNat else pc + 1, st) 0 s' := by
+  unfold compBr at hblk
+  by_cases hz : a = 0 ∨ b = 0
+  · rw [if_pos hz] at hblk
+    have w0 := word_pc hM hC hB hpcl (by decide) (w := movz 17 0) (by rw [hblk]; rfl)
+    obtain ⟨s1, r1, M1, o1⟩ := mid_scr hM (Or.inr rfl) (S.movz s 17 0 hM.cfg (by decide) (by decide) w0)
+    have r17 : (M.observe s1).register 17 = 0 := by rw [o1]; simp [setReg]
+    obtain ⟨s2, r2, M2⟩ := cmp_tail S M1 (Nat.le_refl _) hC hB hpcl hc (opR_lt ha) (opR_lt hb)
+      (by rw [hblk]; rfl) (by rw [hblk]; show bc c (4 * o - 2) = _; congr 1; omega)
+      (fun i h1 h2 => by rw [show i = 3 by omega, hblk]; rfl)
+      (opR_val M1 ha (fun _ => r17)) (opR_val M1 hb (fun _ => r17)) h1 h2 h3 h4
+    exact ⟨s2, Runs.trans r1 r2, M2⟩
+  · rw [if_neg hz] at hblk
+    have a0 : a ≠ 0 := fun e => hz (Or.inl e)
+    have b0 : b ≠ 0 := fun e => hz (Or.inr e)
+    exact cmp_tail S hM (Nat.zero_le _) hC hB hpcl hc (armReg_lt ha a0) (armReg_lt hb b0)
+      (by rw [hblk]; rfl) (by rw [hblk]; show bc c (4 * o - 1) = _; congr 1; omega)
+      (fun i h1 h2 => by rcases (by omega : i = 2 ∨ i = 3) with rfl | rfl <;> rw [hblk] <;> rfl)
+      (hM.x a (by omega) (mapped_lt ha)) (hM.x b (by omega) (mapped_lt hb)) h1 h2 h3 h4
+
+/-- `cbz xt, 4o` (a J `beq` against x0), then PADs -/
+theorem blk_cbz (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : Nat} {st : CallProbe.St} {j : J}
+    (hM : Mid K C s0 (pc, st) 0 s) (hC : C[pc]? = some j) (hB : K.base + 16 * C.length ≤ 2 ^ 32)
+    (hpcl : pc < C.length) {a : Nat} {o : Int} (ha : mapped a = true) (a0 : a ≠ 0)
+    (hblk : blockJ j = [cbz (armReg a) (4 * o), PAD, PAD, PAD])
+    (h1 : -65535 ≤ o) (h2 : o ≤ 65535) (h3 : 0 ≤ (pc : Int) + o) (h4 : (pc : Int) + o < C.length) :
+    ∃ s', Runs M s s' ∧ Mid K C s0 (if st.x a = 0 then ((pc : Int) + o).toNat else pc + 1, st) 0 s' := by
+  have w0 := word_pc hM hC hB hpcl (by decide) (w := cbz (armReg a) (4 * o)) (by rw [hblk]; rfl)
+  obtain ⟨s1, r1, c1, o1⟩ := S.cbz s (armReg a) (4 * o) hM.cfg (armReg_lt ha a0) (by omega) (by omega) w0
+  rw [hM.x a (by omega) (mapped_lt ha)] at o1
+  have hpcA := hM.pc
+  by_cases hz : st.x a = 0
+  · rw [if_pos hz]
+    refine ⟨s1, r1, mid_regs hM c1 ?_ (by rw [o1]; rfl) (fun j h0 h32 => by rw [o1]; exact hM.x j h0 h32)
+      (fun r _ _ => by rw [o1]; rfl) hM.x0 rfl rfl rfl⟩
+    rw [o1]; simp only [jumpTo, if_pos hz]
+    rw [hpcA, ofNat_addInt _ _ (by omega) (by omega)]; congr 1; omega
+  · rw [if_neg hz]
+    have M1 : Mid K C s0 (pc, st) 1 s1 := by
+      refine mid_regs hM c1 ?_ (by rw [o1]; rfl) (fun j h0 h32 => by rw [o1]; exact hM.x j h0 h32)
+        (fun r _ _ => by rw [o1]; rfl) hM.x0 rfl rfl rfl
+      rw [o1]; simp only [jumpTo, if_neg hz]; rw [hpcA, ofNat_add4]
+    obtain ⟨s2, r2, M2⟩ := run_pads S hC hB hpcl 3 1 s1 (by decide) M1
+      (fun i h1 h2 => by rcases (by omega : i = 1 ∨ i = 2 ∨ i = 3) with rfl | rfl | rfl <;> rw [hblk] <;> rfl)
+    exact ⟨s2, Runs.trans r1 r2, M2⟩
+
 end JT
