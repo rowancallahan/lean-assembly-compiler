@@ -105,6 +105,12 @@ New `step` cases, emitting **no tokens**:
   - A program with `match` needs about 8 MiB more (two buffers at κ capacity). `examples_syntax/run_syntax.sh` uses
     120 MiB; the nanorun default is 80.
 
+### Verification (4.34.1, exp-syntax-match = exp-syntax with rv-regen-434 + match)
+- `lake build Nano.V2Self.REVIEW` plus Tests.SelfInPath / MainCert / AuditWitness and Main.ArmTop: all OK.
+- `Testing/scripts/review_axioms.sh`: **`OK: 8 theorems, axioms as pinned`**.
+- `t10_sound` and `hsrc_C`: [propext, Classical.choice, Quot.sound].
+- No `sorry`, `native_decide` or `bv_decide`. `decide +kernel` is used for C's own token list and the witnesses.
+
 ### Statement change (owner decision)
 - `pOf` (`Proof/Main/Compile.lean`): `∃ ts, Lexes x ts ∧ ParsesProgram ts p` becomes
   `∃ ts, DsSpec.LexesD x ts ∧ ParsesProgram ts p`, where `LexesD x ts := ∃ t0, Lexes x t0 ∧ ds t0 = some ts`.
