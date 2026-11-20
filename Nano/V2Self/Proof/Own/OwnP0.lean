@@ -28,7 +28,9 @@ theorem u_beq {a b : Nat} (ha : a < 2 ^ 64) (hb : b < 2 ^ 64) : (u a == u b) = d
   · have : u a ≠ u b := fun e => h ((u_inj ha hb).mp e)
     simp [h, this]
 /-- every UInt64 literal as `u n` -/
-theorem lit (n : Nat) : (no_index (OfNat.ofNat n : UInt64)) = u n := rfl
+-- not a bare `rfl`: as a `rfl` (dsimp) lemma `simp only [lit]` leaves the `Decidable` instances of the `if`s
+-- unrewritten on Lean 4.34 (ill-typed `rw` motives, kernel deep recursion); `id rfl` makes it a proper rewrite
+theorem lit (n : Nat) : (no_index (OfNat.ofNat n : UInt64)) = u n := id rfl
 theorem u_lt' {a b : Nat} (ha : a < 2 ^ 64) (hb : b < 2 ^ 64) : (u a < u b) = (a < b) := propext (u_lt ha hb)
 theorem u_and3 {a : Nat} (ha : a < 2 ^ 64) : u a &&& u 3 = u (a % 4) := by
   apply UInt64.toNat_inj.mp

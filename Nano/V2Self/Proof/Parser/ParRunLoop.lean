@@ -2,6 +2,7 @@
 `arrows_spec`: the state types (`tyAtom`/`stateTy` loop, 61/74) are `pArrows`; the def row grows by `stAdd` per state. -/
 import Nano.V2Self.Proof.Parser.ParRunHdr
 import Nano.V2Self.Proof.Parser.ParRunSelf
+set_option backward.isDefEq.respectTransparency false
 namespace ParRun
 open ParSpec
 
@@ -74,7 +75,7 @@ theorem arrows_spec : ∀ n {ks : List Frame} {st fin : St}, StarN n (.tyAtom ::
     by_cases hp : st.cur.params.length = 1
     · simp [hp] at hs
     · simp only [hp, if_false, Option.some.injEq, Prod.mk.injEq] at hs; obtain ⟨rfl, rfl⟩ := hs
-      obtain ⟨ts, res, r2, n', hn', h'⟩ := hfin [] (by simp) hp (by simpa using h2) rfl hs0
+      obtain ⟨ts, res, r2, n', hn', h'⟩ := hfin [] (by simp) hp (by simpa [St.withTy] using h2) rfl hs0
       exact ⟨ts, res, r2, n', by omega, h'⟩
   | cons tk r1 =>
     by_cases h17 : tk = .k 17

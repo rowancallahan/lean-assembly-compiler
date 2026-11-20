@@ -326,7 +326,7 @@ theorem binders_spec : ∀ (n : Nat) {ks : List Frame} {st fin : St} (b : Bool),
       cases h1
       refine ⟨[], r0, n, st.ty, st.cur.nni, by omega, by rw [ht0]; simp, fun f hf => ?_, by simp [bindSlots_nil], trivial, ?_, ?_⟩
       · obtain ⟨f, rfl⟩ : ∃ g, f = g + 1 := ⟨f - 1, by omega⟩
-        rw [ht0]; rw [pBinders.eq_def]
+        rw [ht0]; rw [pBinders.eq_def]; try rfl -- 4.34.1 needs the rfl; on 4.29 rw closes the goal
       · simp only [bindSlots_nil, List.map_nil, List.append_nil]
         simpa using hs1
       · simp only [bindSlots_nil, List.map_nil, List.append_nil]

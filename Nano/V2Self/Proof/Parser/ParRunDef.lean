@@ -236,7 +236,7 @@ theorem plainB_spec {n : Nat} {ks : List Frame} {st0 fin : St} {x : List Nat} {d
       have hw20 : (trRes resT).width < 2 ^ 20 := by
         have := hcap2; rw [hP.cur] at this; simpa [cw] using this
       simp [hok, hcap1, hw20]
-      refine ⟨fun p hp => by simpa using List.any_eq_false.mp hN2 p hp, ?_⟩
+      refine ⟨fun p hp => by have h := List.any_eq_false.mp hN2 p hp; cases p <;> simpa using h, ?_⟩
       cases resT <;> rfl
   · have eo := (Star.noOut hstar (by simp [isD, isOutF])).1
     dsimp only at eo

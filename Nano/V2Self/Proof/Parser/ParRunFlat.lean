@@ -2,6 +2,7 @@
 the arena tree `n` (input locals skipped everywhere, the first child of rd/len/len' skipped, a CONTINUE state tuple with one
 non-input component flattened away).  `flat_run`: the frame `flat n` always runs to its continuation with `out ++ n.words`. -/
 import Nano.V2Self.Proof.Parser.ParRunStar
+set_option backward.isDefEq.respectTransparency false
 namespace ParRun
 open ParSpec
 

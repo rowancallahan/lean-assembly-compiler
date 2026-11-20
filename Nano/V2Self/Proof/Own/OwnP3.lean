@@ -197,7 +197,7 @@ theorem o15_ok {W : WCx} {s : Buf} : ∀ (n : Nat) (A : AS) (f v : Buf) (q : Nat
         rcases this with ⟨F', ks, f', v', h1, h2', h3, h4⟩ | h
         · left; refine ⟨F', 1 :: ks, f', v', ?_, h2', h3, ?_⟩
           · simp [tr, e4, k0, k1, consume1, show dead A.F (e / 4 - 1) = false by simpa using hd, h1]
-          · rw [set_take hqb] at h4; simpa using h4
+          · rw [set_take hqb] at h4; simp at h4; exact h4
         · right; exact h
     · simp only [k0, k1, decide_false, Bool.false_eq_true, if_false]
       right; rw [if_pos (by decide)]; rw [← lit 1]; exact err_set1 (by omega)

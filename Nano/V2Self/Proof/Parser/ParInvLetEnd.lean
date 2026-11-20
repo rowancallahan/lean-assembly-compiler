@@ -89,7 +89,6 @@ theorem h_letEnd {h ts : Buf} {st : St} {s d : Nat} {fs : List Frame} (r : Rep h
   rw [ew] at fb; rw [et] at fb; rw [ez] at fv
   simp only [evs, List.getElem_cons_zero, List.getElem_cons_succ] at fb fv
   have W := v9_cw fv.2.2.2.1
-  simp only [show d7 + 8192 + 3 * (zV - 5) + 2 = (d7 + 8192) + 3 * (zV - 5) + 2 from rfl] at W
   rw [W] at hs ⊢
   have R2 := rep_take (rep_31 R1 (cw v.sh).toUInt64) d hd
   have hw : ShOpt (bset (bset h1 31 (cw v.sh).toUInt64) 4 d.toUInt64) wB body.sh := by

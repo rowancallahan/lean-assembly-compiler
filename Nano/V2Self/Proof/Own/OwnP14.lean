@@ -17,7 +17,7 @@ theorem o31_call {W : WCx} {s f v : Buf} {A : AS} (hS : RS W s A) (hB : Bnd W A)
   have h2 := hdr0 hB hx (k := 2) (by simp [Nd.ser])
   rw [show u A.i + u 0 = u A.i from u_add _ 0] at h0
   simp only [Nd.ser, List.getD_cons_zero, List.getD_cons_succ] at h0 h1 h2
-  unfold o31
+  unfold o31; generalize hN : 16777216 = N; revert N; apply id; intro N hN
   have r0 := (regs hS).1
   have r13 := (regs hS).2.2.2.2.2.2.2.2.2.2
   have hnd := hT.2.1
@@ -70,7 +70,7 @@ theorem o31_prim {W : WCx} {s f v : Buf} {A : AS} (hS : RS W s A) (hB : Bnd W A)
   have h1 := hdr0 hB hx (k := 1) (by simp [Nd.ser])
   rw [show u A.i + u 0 = u A.i from u_add _ 0] at h0
   simp only [Nd.ser, List.getD_cons_zero, List.getD_cons_succ] at h0 h1
-  unfold o31
+  unfold o31; generalize hN : 16777216 = N; revert N; apply id; intro N hN
   have r0 := (regs hS).1
   simp only [lit] at r0 h0 h1 ⊢
   rw [u_add, show p.toUInt64 = u p from rfl] at h1
@@ -119,7 +119,7 @@ theorem o31_cont {W : WCx} {s f v : Buf} {A : AS} (hS : RS W s A) (hB : Bnd W A)
   have h1 := hdr0 hB hx (k := 1) (by have := ser_len_pos e; simp [Nd.ser]; omega)
   rw [show u A.i + u 0 = u A.i from u_add _ 0] at h0
   simp only [Nd.ser, List.getD_cons_zero, List.getD_cons_succ] at h0 h1
-  unfold o31
+  unfold o31; generalize hN : 16777216 = N; revert N; apply id; intro N hN
   have r0 := (regs hS).1
   simp only [lit] at r0 h0 h1 ⊢
   rw [u_add] at h1
@@ -197,7 +197,7 @@ theorem sim_cont {W : WCx} {e : Nd} (hsimE : SimOK W e) (hsimP : ∀ cs, e = .pa
       have hchk' : chk W.oc e A.F = some (F', acc) := hchk
       rw [hchk']; simp only [Option.bind_some, WCx.oc]
       have hok' : okAll (some (stD W.K W.npw)) F' 0 acc = true := hok
-      rw [if_pos hok', hfin2]; rfl
+      simp only [hok', if_true]; rw [hfin2]; rfl
     · have e1 : A.i + (Nd.cont e).ser.length = A.i + 1 + (serL [e]).length := by rw [hel]; simp [Nd.ser]; omega
       rw [e1]; exact hσ
 

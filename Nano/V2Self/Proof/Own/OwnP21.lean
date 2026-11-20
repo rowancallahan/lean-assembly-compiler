@@ -15,7 +15,7 @@ theorem sim_loop_in {W : WCx} {z st : Nd} {A : AS} {s f v : Buf} {rest : List UI
   rw [show u A.i + u 0 = u A.i from u_add _ 0] at h0
   simp only [Nd.ser, List.getD_cons_zero] at h0
   have hn := nfr_ne hS hB hΦ
-  unfold o31
+  unfold o31; generalize hN : 16777216 = N; revert N; apply id; intro N hN
   have r0 := (regs hS).1
   simp only [lit] at r0 h0 hn ⊢
   simp only [r0, h0, hn]
@@ -60,8 +60,8 @@ theorem sim_all (W : WCx) : (n : Nd) → WFN n → SimOK W n
 theorem sim_allL (W : WCx) : (cs : List Nd) → WFL cs → ∀ c ∈ cs, SimOK W c
   | [], _ => fun _ hc => absurd hc (List.not_mem_nil)
   | n :: r, h => fun c hc => by
-    rcases List.mem_cons.mp hc with rfl | hc
-    · exact sim_all W c h.1
+    rcases List.mem_cons.mp hc with heq | hc
+    · exact heq ▸ sim_all W n h.1
     · exact sim_allL W r h.2 c hc
 end
 

@@ -25,7 +25,7 @@ theorem o31_bin {W : WCx} {s f v : Buf} {A : AS} (hS : RS W s A) (hB : Bnd W A) 
   have h0 := hdr0 hB hx (k := 0) (by simp [Nd.ser])
   rw [show u A.i + u 0 = u A.i from u_add _ 0] at h0
   simp only [Nd.ser, List.getD_cons_zero] at h0
-  unfold o31
+  unfold o31; generalize hN : 16777216 = N; revert N; apply id; intro N hN
   have r0 := (regs hS).1
   simp only [lit] at r0 h0 ⊢
   simp only [r0, h0, u_add]

@@ -102,7 +102,8 @@ theorem localXS {KL : LayW} {C : List J} {p nl hb E0 : Nat} {Inv : St → Prop}
   | w + 1, k, pc, hk, hC => by
     rw [localT_succ] at hC
     have h1 := local1XS (KL := KL) (nl := nl) (k := k) (W := fun _ => False) (E0 := E0) hI hp hnl (by omega) hC.left
-    have h2 := localXS (KL := KL) (nl := nl) (E0 := E0) hI hp hnl w (k + 1) (pc + 5) (by omega) (by simpa using hC.right)
+    have h2 := localXS (KL := KL) (nl := nl) (E0 := E0) hI hp hnl w (k + 1) (pc + 5) (by omega)
+      (by have hr := hC.right; rwa [show (localT 1 p k pc 1).length = 5 from rfl] at hr)
     exact ((pairXS h1 h2 (fun _ _ h => h)).mono (R' := fun j => k ≤ j ∧ j < k + (w + 1)) (W' := fun _ => False)
       (fun j q => by rcases q with e | ⟨e1, e2⟩ <;> constructor <;> omega)
       (fun j q => by rcases q with e | e <;> exact e)).len (len' := 5 * (w + 1)) (by omega) |>.wid (by omega)

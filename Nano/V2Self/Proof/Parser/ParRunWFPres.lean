@@ -1,6 +1,7 @@
 /- Nano/V2Self/Proof/Parser/ParRunWFPres: `wf_step`: one step of a WF configuration is WF; `wf_star`: every configuration reachable from
 `([defs], init toks)` is WF. -/
 import Nano.V2Self.Proof.Parser.ParRunWFFr
+set_option backward.isDefEq.respectTransparency false
 namespace ParRun
 open ParSpec
 

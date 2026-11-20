@@ -17,7 +17,7 @@ theorem fin_pair {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : A.p
   have hdrop : A.es.drop r.vb = acc := by rw [hes, ← hpre]; simp
   apply reach_one hS
   rw [stp_eq, o30_ph2 hS hp]
-  unfold o33
+  unfold o33; generalize hN : 16777216 = N; revert N; apply id; intro N hN
   have r4 := (regs hS).2.2.2.1
   have r7 := (regs hS).2.2.2.2.2.2.1
   have r8 := (regs hS).2.2.2.2.2.2.2.1
@@ -28,7 +28,7 @@ theorem fin_pair {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : A.p
   · rw [ho29]; simp only [r8, f4, show (u 0 == u 0) = true from rfl, if_true]
     left
     refine ⟨F2, by rw [hdrop] at hfin; exact hfin, ?_⟩
-    have hst := o19_ok (W := W) 16777216 A v r.vb hV hB (by omega) (by omega)
+    have hst := o19_ok (W := W) N A v r.vb hV hB (by omega) (by omega)
     have htk : A.es.take r.vb ++ strip (A.es.drop r.vb) = pre ++ strip acc := by rw [hdrop, hes, ← hpre]; simp
     rw [htk] at hst
     have hlen : (pre ++ strip acc).length = A.es.length := by simp [strip, hesl]
@@ -52,7 +52,7 @@ theorem fin_cont {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : A.p
   have hdrop : A.es.drop r.vb = acc := by rw [hes, ← hpre]; simp
   apply reach_one hS
   rw [stp_eq, o30_ph2 hS hp]
-  unfold o33
+  unfold o33; generalize hN : 16777216 = N; revert N; apply id; intro N hN
   have r4 := (regs hS).2.2.2.1
   simp only [lit] at r4 ⊢
   simp only [ph2_done_pre hS hB hΦ hc, if_false, f0, hg, r4]
@@ -90,7 +90,7 @@ theorem fin_prim {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : A.p
   have hdrop : A.es.drop r.vb = acc := by rw [hes, ← hpre]; simp
   apply reach_one hS
   rw [stp_eq, o30_ph2 hS hp]
-  unfold o33
+  unfold o33; generalize hN : 16777216 = N; revert N; apply id; intro N hN
   have r4 := (regs hS).2.2.2.1
   simp only [lit] at r4 ⊢
   simp only [ph2_done_pre hS hB hΦ hc, if_false, f0, hg, r4]
@@ -131,7 +131,7 @@ theorem fin_call {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : A.p
   have ht := hT.2.2.1
   apply reach_one hS
   rw [stp_eq, o30_ph2 hS hp]
-  unfold o33
+  unfold o33; generalize hN : 16777216 = N; revert N; apply id; intro N hN
   have r4 := (regs hS).2.2.2.1
   simp only [lit] at r4 ⊢
   simp only [ph2_done_pre hS hB hΦ hc, if_false, f0, hg, r4]
@@ -150,7 +150,7 @@ theorem fin_call {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : A.p
     have hB1 := bnd_prefix (A := { A with F := F2 }) hB hes
     rw [← hpre]
     rcases o20_ok (W := W) (a := off + 2 + 2 * (W.ps.getD r.a []).length) (L := W.rs.getD r.a []) hR hRv (by omega)
-      16777216 { A with F := F2, es := pre } _ v 0 hS1 hV1 hB1 (by omega) with ⟨s', v', h1, h2, h3, h4⟩ | herr
+      N { A with F := F2, es := pre } _ v 0 hS1 hV1 hB1 (by omega) with ⟨s', v', h1, h2, h3, h4⟩ | herr
     · rw [h1]; left
       refine ⟨F2, by rw [hdrop] at hfin; exact hfin, ?_⟩
       unfold Fin; simp only [List.drop_zero] at h2 h3 h4
@@ -160,6 +160,6 @@ theorem fin_call {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : A.p
     have hl6 : 6 ≤ (bset (o29 s f v W.t).1 (u 7) (o1 (o29 s f v W.t).1 (u 4))).length := by
       rw [len_bset, o29_len]; have := hS.1; omega
     have he1 : bget (bset (o29 s f v W.t).1 (u 7) (o1 (o29 s f v W.t).1 (u 4))) 1 = 1 := err_bset (by decide) herr
-    exact err_pop (o20_err' _ _ _ hl6 he1) _ _
+    exact err_pop (o20_err _ _ _ N _ _ _ hl6 he1) _ _
 
 end OwnP

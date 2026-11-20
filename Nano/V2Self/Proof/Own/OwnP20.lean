@@ -11,7 +11,7 @@ theorem o31_let {W : WCx} {s f v : Buf} {A : AS} (hS : RS W s A) (hB : Bnd W A) 
   have h2 := hdr0 hB hx (k := 2) (by simp [Nd.ser])
   rw [show u A.i + u 0 = u A.i from u_add _ 0] at h0
   simp only [Nd.ser, List.getD_cons_zero, List.getD_cons_succ] at h0 h1 h2
-  unfold o31
+  unfold o31; generalize hN : 16777216 = N; revert N; apply id; intro N hN
   have r0 := (regs hS).1
   simp only [lit] at r0 h0 h1 h2 ⊢
   rw [u_add, show sl.toUInt64 = u sl from rfl] at h1

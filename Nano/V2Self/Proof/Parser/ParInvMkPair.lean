@@ -99,7 +99,7 @@ theorem h_mkPair {h ts : Buf} {st : St} {fs : List Frame} (r : Rep h ts st (.mkP
         R2.2.2.2.2.2.2.2.2.1 _ rfl
       obtain ⟨st', em, R3⟩ := rep_v5g R2 hnf 2 6 2 0 (some (.p l rr)) false _ w2 (by decide) (fun _ _ => ⟨by decide, by decide⟩)
         (by decide) hs
-      refine ⟨[], st', ?_, by simpa using R3⟩
+      refine ⟨[], st', ?_, R3⟩
       simp only [stepF, evs, hxl, hyr, hpx, hpy, Bool.or_false, Bool.false_eq_true, if_false, nl, nr, or_self,
         show ¬ 2 ^ 20 ≤ l.width + rr.width by omega]
       rw [show (vy :: vx :: rest) = st.vals from evs.symm, em]; rfl

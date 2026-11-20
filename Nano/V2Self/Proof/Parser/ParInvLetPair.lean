@@ -107,7 +107,7 @@ theorem h_letPairSemi {h ts : Buf} {st : St} {y : List Nat} {tl : Bool} {fs : Li
     have l4 := (rep_bounds R4).2.1
     have ft4 : ShOpt H4 w top.sh := ft.frame sh24
     have eW := v9_cw ft4
-    rw [eW] at hs ⊢
+    simp only [eW] at hs ⊢
     rw [bget_bset_eq _ _ _ _ rfl (by rw [show (31 : UInt64).toNat = 31 from rfl]; omega)] at hs ⊢
     have R5 := rep_31 R4 (cw top.sh).toUInt64
     have en : st.nx.toUInt64 + (cw top.sh).toUInt64 = (st.nx + cw top.sh).toUInt64 := by

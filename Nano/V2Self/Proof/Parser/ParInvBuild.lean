@@ -162,7 +162,7 @@ theorem RNRep.fields {h : Buf} {u : UInt64} {n : RN} {ids : List UInt64} (r : RN
     fld h u 0 = n.tag.toUInt64 ∧ fld h u 1 = n.a.toUInt64 ∧ fld h u 2 = n.b.toUInt64 ∧ ShOpt h (fld h u 3) n.sh ∧
     fld h u 4 = b01 n.pend := by
   cases r with
-  | mk a0 a1 a2 a3 a4 => exact ⟨a0, a1, a2, a3, by simp [b01, a4, RN.pend]⟩
+  | mk a0 a1 a2 a3 a4 => exact ⟨a0, a1, a2, a3, by rw [a4]; rfl⟩
 
 /-! ## task 5: `mkBin op` (v103) -/
 theorem h_mkBin {h ts : Buf} {st : St} {op : Nat} {fs : List Frame} (r : Rep h ts st (.mkBin op :: fs))

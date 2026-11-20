@@ -66,7 +66,7 @@ theorem o31_rloop {W : WCx} {s f v : Buf} {A : AS} (hS : RS W s A) (hB : Bnd W A
   simp only [Nd.ser, List.getD_cons_zero] at h0
   have r4 := (regs hS).2.2.2.1
   rw [hΦ] at r4
-  unfold o31
+  unfold o31; generalize hN : 16777216 = N; revert N; apply id; intro N hN
   have r0 := (regs hS).1
   simp only [lit] at r0 h0 r4 ⊢
   simp only [r0, h0, r4, u_add]

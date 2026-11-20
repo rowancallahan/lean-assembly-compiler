@@ -116,7 +116,7 @@ theorem kids_ok (ds : List DefR) : ∀ ks : List RN, (∀ k ∈ ks, ∀ m ∈ no
   | k0 :: r, h => by
     intro k hk
     rcases List.mem_cons.mp hk with e | e
-    · subst e; exact ok_of_nodes ds k (h k (by simp))
+    · rw [e]; exact ok_of_nodes ds k0 (h k0 (by simp))
     · exact kids_ok ds r (fun k hk => h k (by simp [hk])) k e
 end
 

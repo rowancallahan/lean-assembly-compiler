@@ -34,7 +34,7 @@ theorem ph2_next {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : A.p
   have hesl := hB.2.2.2.2.2.2.2.1
   apply reach_one hS
   rw [stp_eq, o30_ph2 hS hp]
-  unfold o33
+  unfold o33; generalize hN : 16777216 = N; revert N; apply id; intro N hN
   have r7 := (regs hS).2.2.2.2.2.2.1
   simp only [lit] at r7 ⊢
   have g0 := hsm 0 (by omega); have g1 := hsm 1 (by omega); have g2 := hsm 2 (by omega)
@@ -77,7 +77,7 @@ theorem ph1_arg {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : A.ph
   obtain ⟨f0, f1, f2, -, -, f5, -, -, hsm⟩ := frame_facts hS hB hΦ
   apply reach_one hS
   rw [stp_eq, o30_ph1 hS hp]
-  unfold o32
+  unfold o32; generalize hN : 16777216 = N; revert N; apply id; intro N hN
   have r7 := (regs hS).2.2.2.2.2.2.1
   simp only [lit] at r7 ⊢
   have g0 := hsm 0 (by omega); have g2 := hsm 2 (by omega)
@@ -85,9 +85,9 @@ theorem ph1_arg {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : A.ph
   simp only [nfr_ne hS hB hΦ, Bool.false_eq_true, if_false, f0, f2, f5, r7]
   have e : ∀ k : Nat, k < 20 → (u r.g == u k) = decide (r.g = k) := fun k hk => u_beq (by omega) (by omega)
   simp only [e 4 (by omega), e 5 (by omega), e 10 (by omega), hg5, hg10, decide_false, Bool.false_eq_true, if_false]
-  have key : (∃ z, o14 16777216 s f v W.t (u r.vc) (u A.es.length) = z ∧
+  have key : (∃ z, o14 N s f v W.t (u r.vc) (u A.es.length) = z ∧
       ((z = (s, f) ∧ okAll (dsOf W r) A.F (r.vc - r.vb) (A.es.drop r.vc) = true) ∨ bget z.1 1 = 1)) :=
-    ⟨_, rfl, o14_ok ⟨hS, hF, hV, hT, hB⟩ hΦ hr 16777216 r.vc hvb hvc⟩
+    ⟨_, rfl, o14_ok ⟨hS, hF, hV, hT, hB⟩ hΦ hr N r.vc hvb hvc⟩
   obtain ⟨z, hz, hz2⟩ := key
   have hbr : ∀ X Y : Buf × (Buf × Buf), (if decide (r.g = 4) = true then (if u r.c < u 2 then X else Y) else X) = X := by
     intro X Y

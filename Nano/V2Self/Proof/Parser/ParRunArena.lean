@@ -3,6 +3,7 @@
 * `CallInv` : every CALL node in the arena targets a FINISHED def (`a < |defs|`), an invariant of every reachable state (with B's `WF`). -/
 import Nano.V2Self.Proof.Parser.ParTreeOK
 import Nano.V2Self.Proof.Parser.ParRunWFPres
+set_option backward.isDefEq.respectTransparency false
 namespace ParRun
 open ParSpec
 
