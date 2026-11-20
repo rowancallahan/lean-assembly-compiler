@@ -531,3 +531,10 @@ ARM proof and the larger code work.
   ARM on 4.34.1/4.35 with the machine-independent chain. Wanted: RISC-V on 4.34; ideal: both on 4.35. Route for
   RISC-V: regenerate with the official Sail Lean backend (same sail-riscv commit), show the owner the generated diff
   and a definition-level comparison, re-run the RISC-V conformance tests; no hand patches.
+- BRANCHES (owner, 2026-11-20): nano-v2-src = Lean 4.29, RISC-V proven, unmodified RISC-V model.
+  lean-4.34 = Lean 4.34.1, machine-independent chain + ARM (RISC-V model not built there).
+  rv434-experiment = both on 4.34.1 with a HAND-EDITED RISC-V model (clearly marked; never merged without owner review).
+  See Testing/notes/BRANCHES.md.
+- LATER (fuzz finding, 2026-11-20): each fresh list reserves a fixed 4 MiB (2^19 x 8 B) of work memory that is never
+  reused, so ~20 fresh lists exhaust 80 MiB. Correct (OOM is reported, never a wrong answer) but wasteful. Fix together
+  with the capacity work: growable lists or reuse.
