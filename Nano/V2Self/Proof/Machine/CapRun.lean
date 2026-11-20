@@ -1,4 +1,4 @@
-/- Opus box E: the capacity exit as SAFE runs.  `bpush_capS`: BPUSH on a full buffer reaches the cap stub (word 6)
+/- Opus box E: the capacity exit as SAFE runs.  `bpush_cap`: BPUSH on a full buffer reaches the cap stub (word 6)
 on safe steps, memory untouched. -/
 import Nano.V2Self.Proof.Bridge.SemX
 import Nano.V2Self.Proof.Machine.EVSFin
@@ -9,7 +9,7 @@ import Nano.V2Self.Proof.Machine.EVSCall
 namespace Templates
 open CallProbe SimW SafeRun
 
-theorem bpush_capS {K : LayW} {C : List J} {pc : Nat} (s : St) (hC : At C pc (bpushT 6 pc)) (hx0 : s.x 0 = 0)
+theorem bpush_cap {K : LayW} {C : List J} {pc : Nat} (s : St) (hC : At C pc (bpushT 6 pc)) (hx0 : s.x 0 = 0)
     (hsp : (s.x 31).toNat + 16 < 2 ^ 62)
     (hlen : (s.m ((s.m ((s.x 31).toNat + 8)).toNat + 8)).toNat ≤ (s.m (s.m ((s.x 31).toNat + 8)).toNat).toNat)
     (hb : (s.m ((s.x 31).toNat + 8)).toNat + 16 < 2 ^ 62)
@@ -105,7 +105,7 @@ theorem noCap {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {pc p nl hb E0 : N
   ⟨fun s env H _ _ _ _ _ _ _ h => absurd h (hn _ _ _), hs⟩
 
 /-- the two-operand closing at the capacity exit -/
-def Fin2CapS (fk : Fail) (tg : Nat) (KL : LayW) (C : List J) (q : Nat) (Inv G : St → Prop) (hb E0 : Nat)
+def Fin2Cap (fk : Fail) (tg : Nat) (KL : LayW) (C : List J) (q : Nat) (Inv G : St → Prop) (hb E0 : Nat)
     (F : UInt64 → UInt64 → Nat → Hp → Except Fail (UInt64 × Hp)) : Prop :=
   ∀ (s2 : St) (H2 : Hp), Inv s2 → s2.x 0 = 0 → HRel hb s2 H2 → (s2.x 31).toNat + 16 < 2 ^ 63 →
     StkOK KL hb E0 2 s2 → HAl H2 →
@@ -120,14 +120,14 @@ theorem map_ne_cap {α β : Type} {fk : Fail} {x : Except Fail α} (f : α → �
 
 theorem fin2Cap_ofO {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {q : Nat} {Inv : St → Prop} {G : St → Prop} {hb E0 : Nat}
     (hk : fk ≠ .stuck) (F : UInt64 → UInt64 → Nat → Hp → Option (UInt64 × Hp)) :
-    Fin2CapS fk tg KL C q Inv G hb E0 (fun a b sp H => ofO .stuck (F a b sp H)) := by
+    Fin2Cap fk tg KL C q Inv G hb E0 (fun a b sp H => ofO .stuck (F a b sp H)) := by
   intro s2 H2 _ _ _ _ _ _ h
   exact absurd h (ofO_ne_cap hk _)
 
 theorem fin2Cap_bpush {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {G : St → Prop} {hb E0 pI : Nat} (hI : InvOKH hb pI Inv)
     (hG : ∀ s, Inv s → G s) (hC : At C q (bpushT 6 q)) (h6 : 6 < C.length) (hC18 : C.length < 2 ^ 18)
     (he : E0 < 2 ^ 62) :
-    Fin2CapS .cap 6 KL C q Inv G hb E0 (bpushFF hb) := by
+    Fin2Cap .cap 6 KL C q Inv G hb E0 (bpushFF hb) := by
   intro s2 H2 I2 z2 hR hl K2 A2 hF
   simp only [bpushFF] at hF
   split at hF
@@ -145,7 +145,7 @@ theorem fin2Cap_bpush {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {G 
       have hbT := (hread_lt hrl).2
       have htop := hR.2.2.1
       have kt := K2.top
-      obtain ⟨s3, st3, m3, b3, z3, x3⟩ := bpush_capS (K := KL) s2 hC z2 (by have := K2.top; have := K2.hi; omega)
+      obtain ⟨s3, st3, m3, b3, z3, x3⟩ := bpush_cap (K := KL) s2 hC z2 (by have := K2.top; have := K2.hi; omega)
         (by rw [ml, mc]; simp at hlt; omega) (by omega)
         (by simpa using K2.wok h31 (i := 0) (by omega)) (K2.wok h31 (i := 1) (by omega))
         (hread_wok hR K2 A2 hrl) (hread_wok hR K2 A2 hrc) h6 hC18
@@ -156,7 +156,7 @@ theorem fin2Cap_bpush {KL : LayW} {C : List J} {q : Nat} {Inv : St → Prop} {G 
 theorem fin2Cap {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {pc lp p nl hb E0 : Nat} {Inv : St → Prop} {G : St → Prop} {R W : Nat → Prop} {SP : SemWX}
     {F : UInt64 → UInt64 → Nat → Hp → Except Fail (UInt64 × Hp)}
     (hP : EVHwS KL C pc lp p nl Inv hb E0 R W 2 (oW SP)) (cP : CapW fk tg KL C pc p nl Inv G hb E0 R SP)
-    (hU : Fin2CapS fk tg KL C (pc + lp) Inv G hb E0 F) :
+    (hU : Fin2Cap fk tg KL C (pc + lp) Inv G hb E0 F) :
     CapW fk tg KL C pc p nl Inv G hb E0 R (fin2F SP F) where
   stable := fun env env' sp H h => by unfold fin2F; rw [cP.stable env env' sp H h]
   cap := fun s env H I0 z0 F0 O0 R0 L0 A0 hS => by
@@ -329,7 +329,7 @@ theorem ifCap {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {pc lp lt p nl hb 
 
 /-! ## LET: the value's words into the slots, as a lemma -/
 
-theorem letMidS {KL : LayW} {C : List J} {q p nl hb E0 k0 w : Nat} {Inv : St → Prop} (hI : InvOKH hb p Inv)
+theorem letMid {KL : LayW} {C : List J} {q p nl hb E0 k0 w : Nat} {Inv : St → Prop} (hI : InvOKH hb p Inv)
     (hS : At C q (popN p k0 w)) (hk0 : k0 + w ≤ nl) (hnl : nl < 251)
     (s s1 : St) (env1 : Env) (H1 : Hp) (u : List UInt64) (O0 : FrameOK p nl s) (L0 : Lay KL hb E0 p s)
     (I1 : Inv s1) (z1 : s1.x 0 = 0) (p1 : (s1.x 31).toNat = (s.x 31).toNat - 8 * w) (lu : u.length = w)
@@ -413,7 +413,7 @@ theorem letCap {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {pc lv p nl hb E0
     obtain ⟨s1, env1, r1, I1, z1, p1, lu, v1, e81, F1, ag1, R1, A1, m1⟩ :=
       hv.run s env H u H1 I0 z0 F0 O0 R0 L0 A0 (by simp [oW, hSV])
     obtain ⟨s2, ss2, I2, z2, x31, x8, _, F2, O2, R2, L2, _⟩ :=
-      letMidS hI hS hk0 hnl s s1 env1 H1 u O0 L0 I1 z1 p1 lu v1 e81 F1 R1 r1.star.b
+      letMid hI hS hk0 hnl s s1 env1 H1 u O0 L0 I1 z1 p1 lu v1 e81 F1 R1 r1.star.b
     have hSB2 : SB (setW env1 k0 w u) (s2.x 31).toNat H1 = .error fk := by
       rw [x31]; rw [← h2]; apply cb.stable; intro k hk
       simp only [setW]
@@ -470,7 +470,7 @@ theorem ifTCap {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {pc lp lt p nl hb
     | [a, b], _, h2, hSP =>
     dsimp only at h2
     obtain ⟨s2, env2, st2, I2, z2, x31, x8, F2, O2, R2, L2, A2, ag2, _⟩ :=
-      ifPreS hI hP hH s env H a b H1 I0 z0 F0 O0 R0 L0 A0 (by simp [oW, hSP]) hCl hC18
+      ifPre hI hP hH s env H a b H1 I0 z0 F0 O0 R0 L0 A0 (by simp [oW, hSP]) hCl hC18
     by_cases hc : cmpF cmp a b
     · rw [if_pos hc] at h2 st2
       have hST : ST env2 (s2.x 31).toNat H1 = .error fk := by
@@ -506,7 +506,7 @@ theorem letTCap {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {pc lv p nl hb E
     rcases bind_cap hS' with h1 | ⟨⟨u, H1⟩, hSV, h2⟩
     · exact cv.cap s env H I0 z0 F0 O0 R0 L0 A0 h1
     obtain ⟨s2, env1, st2, I2, z2, x31, x8, F2, O2, R2, L2, A2, ag1, _⟩ :=
-      letPreS hI hv hS hk0 hnl s env H u H1 I0 z0 F0 O0 R0 L0 A0 (by simp [oW, hSV])
+      letPre hI hv hS hk0 hnl s env H u H1 I0 z0 F0 O0 R0 L0 A0 (by simp [oW, hSV])
     have hSB2 : SB (setW env1 k0 w u) (s2.x 31).toNat H1 = .error fk := by
       rw [x31]; rw [← h2]; apply cb.stable; intro k hk
       simp only [setW]

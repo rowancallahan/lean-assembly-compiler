@@ -35,7 +35,7 @@ theorem localF_stable : ∀ (w k : Nat) (env env' : Env) (sp : Nat) (H : Hp), (�
 theorem fin2_bpushK {KL : LayW} {fk : Fail} {tg : Nat} {C : List J} {q : Nat} {Inv G : St → Prop} {hb E0 pI : Nat}
     (hk : fk ≠ .stuck) (t6 : fk = .cap → tg = 6) (hI : InvOKH hb pI Inv) (hG : ∀ s, Inv s → G s)
     (hC : At C q (bpushT 6 q)) (h6 : 6 < C.length) (hC18 : C.length < 2 ^ 18) (he : E0 < 2 ^ 62) :
-    Fin2CapS fk tg KL C q Inv G hb E0 (bpushFF hb) := by
+    Fin2Cap fk tg KL C q Inv G hb E0 (bpushFF hb) := by
   cases fk with
   | cap => rw [t6 rfl]; exact fin2Cap_bpush hI hG hC h6 hC18 he
   | stuck => exact absurd rfl hk
@@ -93,7 +93,7 @@ theorem runVCap (X : RunCxS K C IG E0 c28 KL) (Y : CapCx fk tg K C IG E0 fsX KL)
     rw [tm_len] at cb cu; rw [tm_len] at cu
     have hA := (runVS X a h oa pa ca (by omega)).wid wa
     have hB := (runVS X b _ ob pb cb (by omega)).wid wb
-    have hP := (pairXS hA hB sc).wid (show 1 + 1 = 2 from rfl)
+    have hP := (pairX hA hB sc).wid (show 1 + 1 = 2 from rfl)
     rw [← ovS Y a, ← ovS Y b, ← oW_pair] at hP
     rw [← ovS Y a] at hA
     have cP := pairCap hA (runVCap X Y a h oa pa ca (by omega)) (runVCap X Y b _ ob pb cb (by omega)) sc
@@ -110,7 +110,7 @@ theorem runVCap (X : RunCxS K C IG E0 c28 KL) (Y : CapCx fk tg K C IG E0 fsX KL)
     simp only [List.length_append, tm_len, ifHeadG, List.length_cons, List.length_nil] at cB cH cT cE
     have hA := (runVS X a h oa pa cA (by omega)).wid wa
     have hB := (runVS X b _ ob pb cB (by omega)).wid wb
-    have hP := (pairXS hA hB sb).wid (show 1 + 1 = 2 from rfl)
+    have hP := (pairX hA hB sb).wid (show 1 + 1 = 2 from rfl)
     rw [← ovS Y a, ← ovS Y b, ← oW_pair] at hP
     rw [← ovS Y a] at hA
     have cP := pairCap hA (runVCap X Y a h oa pa cA (by omega)) (runVCap X Y b _ ob pb cB (by omega)) sb
@@ -233,7 +233,7 @@ theorem runTCap (X : RunCxS K C IG E0 c28 KL) (Y : CapCx fk tg K C IG E0 fsX KL)
     have l1 := lnT_pos K e
     have hA := (runVS X a h oa pa cA (by omega)).wid wa
     have hB := (runVS X b _ ob pb cB (by omega)).wid wb
-    have hP := (pairXS hA hB sb).wid (show 1 + 1 = 2 from rfl)
+    have hP := (pairX hA hB sb).wid (show 1 + 1 = 2 from rfl)
     rw [← ovS Y a, ← ovS Y b, ← oW_pair] at hP
     rw [← ovS Y a] at hA
     have cP := pairCap hA (runVCap X Y a h oa pa cA (by omega)) (runVCap X Y b _ ob pb cB (by omega)) sb

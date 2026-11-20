@@ -3,7 +3,7 @@ import Nano.V2Self.Proof.Machine.EVSFin
 namespace Templates
 open CallProbe SimW SafeRun
 
-theorem valTS {KL : LayW} {C : List J} {pc lc p nl hb E0 w X Hd : Nat} {Inv : St → Prop} {R W : Nat → Prop} {S : SemW}
+theorem valT {KL : LayW} {C : List J} {pc lc p nl hb E0 w X Hd : Nat} {Inv : St → Prop} {R W : Nat → Prop} {S : SemW}
     (h : EVHwS KL C pc lc p nl Inv hb E0 R W w S) (hJ : C[pc + lc]? = some (.jal 0 ((X : Int) - ((pc + lc : Nat) : Int))))
     (hX : X < C.length) (hpc : pc + lc < C.length) (hC18 : C.length < 2 ^ 18) :
     EVHtS KL C pc p nl Inv hb E0 R W w X Hd (exitS S) where
@@ -23,7 +23,7 @@ theorem valTS {KL : LayW} {C : List J} {pc lc p nl hb E0 w X Hd : Nat} {Inv : St
     have sx : SafeX KL C (pc + lc, s') := by simp only [SafeX, hJ]; simp; omega
     exact ⟨s', env', r.trans (.head sx sj (.refl _)), I, z, p31, l, v, e8, F, ag, hR, hA, mm⟩
 
-theorem contTS {KL : LayW} {C : List J} {pc le p nl hb E0 w X Hd : Nat} {Inv : St → Prop} {R W : Nat → Prop} {S : SemW}
+theorem contT {KL : LayW} {C : List J} {pc le p nl hb E0 w X Hd : Nat} {Inv : St → Prop} {R W : Nat → Prop} {S : SemW}
     (hI : InvOKH hb p Inv)
     (he : EVHwS KL C pc le p nl Inv hb E0 R W (p - 1) S) (hS : At C (pc + le) (popN p 1 (p - 1)))
     (hJ : C[pc + le + 3 * (p - 1)]? = some (.jal 0 ((Hd : Int) - ((pc + le + 3 * (p - 1) : Nat) : Int))))
@@ -95,7 +95,7 @@ theorem contTS {KL : LayW} {C : List J} {pc le p nl hb E0 w X Hd : Nat} {Inv : S
     exact m1 a ha (fun k hk wk => hW k hk (Or.inl wk))
 
 
-theorem ifPreS {KL : LayW} {C : List J} {pc lp lt p nl hb E0 cmp : Nat} {Inv : St → Prop} {RP WP : Nat → Prop} {SP : SemW}
+theorem ifPre {KL : LayW} {C : List J} {pc lp lt p nl hb E0 cmp : Nat} {Inv : St → Prop} {RP WP : Nat → Prop} {SP : SemW}
     (hI : InvOKH hb p Inv) (hP : EVHwS KL C pc lp p nl Inv hb E0 RP WP 2 SP) (hH : At C (pc + lp) (ifHeadG cmp lt))
     (s : St) (env : Env) (H : Hp) (a b : UInt64) (H1 : Hp) (I0 : Inv s) (z0 : s.x 0 = 0) (F0 : Frame p nl s env)
     (O0 : FrameOK p nl s) (R0 : HRel hb s H) (L0 : Lay KL hb E0 p s) (A0 : HAl H)
@@ -170,7 +170,7 @@ theorem ifPreS {KL : LayW} {C : List J} {pc lp lt p nl hb E0 cmp : Nat} {Inv : S
     exact ⟨s2, env1, st2.trans (.head safe3 sc (.head sj2 sj0 (.refl _))), I2, z2, x31, x8, F2, O2, R2, L2, A1, ag1,
       fun a' h1 h2 => m1 a' h1 h2⟩
 
-theorem ifTS' {KL : LayW} {C : List J} {pc lp lt p nl hb E0 w cmp X Hd : Nat} {Inv : St → Prop} {RP WP RT WT RE WE : Nat → Prop}
+theorem ifT {KL : LayW} {C : List J} {pc lp lt p nl hb E0 w cmp X Hd : Nat} {Inv : St → Prop} {RP WP RT WT RE WE : Nat → Prop}
     {SP : SemW} {ST SE : SemT} (hI : InvOKH hb p Inv)
     (hP : EVHwS KL C pc lp p nl Inv hb E0 RP WP 2 SP) (hH : At C (pc + lp) (ifHeadG cmp lt))
     (hT : EVHtS KL C (pc + lp + 5) p nl Inv hb E0 RT WT w X Hd ST)
@@ -194,7 +194,7 @@ theorem ifTS' {KL : LayW} {C : List J} {pc lp lt p nl hb E0 w cmp X Hd : Nat} {I
     | [a, b], _, hS, hSP =>
     dsimp only at hS
     obtain ⟨s2, env1, st2, I2, z2, x31, x8, F2, O2, R2, L2, A1, ag1, mm⟩ :=
-      ifPreS hI hP hH s env H a b H1 I0 z0 F0 O0 R0 L0 A0 hSP hCl hC18
+      ifPre hI hP hH s env H a b H1 I0 z0 F0 O0 R0 L0 A0 hSP hCl hC18
     by_cases hc : cmpF cmp a b
     · rw [if_pos hc] at hS st2
       have h2 : ST env1 (s2.x 31).toNat H1 = some (.inl vs, H') := by
@@ -224,7 +224,7 @@ theorem ifTS' {KL : LayW} {C : List J} {pc lp lt p nl hb E0 w cmp X Hd : Nat} {I
     | [a, b], _, hS, hSP =>
     dsimp only at hS
     obtain ⟨s2, env1, st2, I2, z2, x31, x8, F2, O2, R2, L2, A1, ag1, mm⟩ :=
-      ifPreS hI hP hH s env H a b H1 I0 z0 F0 O0 R0 L0 A0 hSP hCl hC18
+      ifPre hI hP hH s env H a b H1 I0 z0 F0 O0 R0 L0 A0 hSP hCl hC18
     by_cases hc : cmpF cmp a b
     · rw [if_pos hc] at hS st2
       have h2 : ST env1 (s2.x 31).toNat H1 = some (.inr vs, H') := by
@@ -248,7 +248,7 @@ theorem ifTS' {KL : LayW} {C : List J} {pc lp lt p nl hb E0 w cmp X Hd : Nat} {I
           mm a' ha (fun k hk wk => hW k hk (Or.inl (Or.inl wk)))]
 
 
-theorem letPreS {KL : LayW} {C : List J} {pc lv p nl hb E0 k0 w : Nat} {Inv : St → Prop} {Rv Wv : Nat → Prop} {SV : SemW}
+theorem letPre {KL : LayW} {C : List J} {pc lv p nl hb E0 k0 w : Nat} {Inv : St → Prop} {Rv Wv : Nat → Prop} {SV : SemW}
     (hI : InvOKH hb p Inv) (hv : EVHwS KL C pc lv p nl Inv hb E0 Rv Wv w SV) (hS : At C (pc + lv) (popN p k0 w))
     (hk0 : k0 + w ≤ nl) (hnl : nl < 251)
     (s : St) (env : Env) (H : Hp) (u : List UInt64) (H1 : Hp) (I0 : Inv s) (z0 : s.x 0 = 0) (F0 : Frame p nl s env)
@@ -312,7 +312,7 @@ theorem letPreS {KL : LayW} {C : List J} {pc lv p nl hb E0 k0 w : Nat} {Inv : St
   exact m1 a ha (fun k hk wk => hW k hk (Or.inl wk))
 
 /-- **CT.lett**: value; pop; body (tail) -/
-theorem letTS' {KL : LayW} {C : List J} {pc lv p nl hb E0 k0 w wb X Hd : Nat} {Inv : St → Prop} {Rv Wv Rb Wb : Nat → Prop}
+theorem letT {KL : LayW} {C : List J} {pc lv p nl hb E0 k0 w wb X Hd : Nat} {Inv : St → Prop} {Rv Wv Rb Wb : Nat → Prop}
     {SV : SemW} {SB : SemT} (hI : InvOKH hb p Inv)
     (hv : EVHwS KL C pc lv p nl Inv hb E0 Rv Wv w SV) (hS : At C (pc + lv) (popN p k0 w))
     (hb' : EVHtS KL C (pc + lv + 3 * w) p nl Inv hb E0 Rb Wb wb X Hd SB)
@@ -335,7 +335,7 @@ theorem letTS' {KL : LayW} {C : List J} {pc lv p nl hb E0 k0 w wb X Hd : Nat} {I
     simp only [letTS, Option.bind_eq_some_iff] at hS'
     obtain ⟨⟨u, H1⟩, hSV, hSB⟩ := hS'
     obtain ⟨s2, env1, r2, I2, z2, x31, x8, F2, O2, R2, L2, A2, ag1, mm⟩ :=
-      letPreS hI hv hS hk0 hnl s env H u H1 I0 z0 F0 O0 R0 L0 A0 hSV
+      letPre hI hv hS hk0 hnl s env H u H1 I0 z0 F0 O0 R0 L0 A0 hSV
     have h2 : SB (setW env1 k0 w u) (s2.x 31).toNat H1 = some (.inl vs, H') := by
       rw [x31, ← hSB]; exact hb'.stable _ _ _ _ (setW_agree ag1 hsc)
     obtain ⟨s3, env3, r3, I3, z3, p3, l3, v3, e83, F3, ag3, R3, A3, m3⟩ := hb'.exit s2 _ H1 vs H' I2 z2 F2 O2 R2 L2 A2 h2
@@ -350,7 +350,7 @@ theorem letTS' {KL : LayW} {C : List J} {pc lv p nl hb E0 k0 w wb X Hd : Nat} {I
     simp only [letTS, Option.bind_eq_some_iff] at hS'
     obtain ⟨⟨u, H1⟩, hSV, hSB⟩ := hS'
     obtain ⟨s2, env1, r2, I2, z2, x31, x8, F2, O2, R2, L2, A2, ag1, mm⟩ :=
-      letPreS hI hv hS hk0 hnl s env H u H1 I0 z0 F0 O0 R0 L0 A0 hSV
+      letPre hI hv hS hk0 hnl s env H u H1 I0 z0 F0 O0 R0 L0 A0 hSV
     have h2 : SB (setW env1 k0 w u) (s2.x 31).toNat H1 = some (.inr vs, H') := by
       rw [x31, ← hSB]; exact hb'.stable _ _ _ _ (setW_agree ag1 hsc)
     obtain ⟨s3, env3, r3, I3, z3, p3, l3, e83, F3, ag3, R3, A3, m3⟩ := hb'.cont s2 _ H1 vs H' I2 z2 F2 O2 R2 L2 A2 h2

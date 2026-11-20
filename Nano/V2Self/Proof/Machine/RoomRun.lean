@@ -109,7 +109,7 @@ theorem localRoom {KL : LayW} {C : List J} {p nl hb E0 : Nat} {Inv G : St → Pr
   | 0, k, pc, _, _, _ => noCap (fun _ _ _ => by simp [localF, nilF]) (fun _ _ _ _ _ => rfl)
   | w + 1, k, pc, hk, hC, hl => by
     rw [localT_succ] at hC
-    have hs1 := local1XS (KL := KL) (nl := nl) (k := k) (W := fun _ => False) (E0 := E0) hI hp hnl (by omega) hC.left
+    have hs1 := local1X (KL := KL) (nl := nl) (k := k) (W := fun _ => False) (E0 := E0) hI hp hnl (by omega) hC.left
     rw [← oW_leaf] at hs1
     have c1 := local1Room (KL := KL) (E0 := E0) hI hG hp hnl (by omega) hC.left h1 hC18 (by omega)
     have c2 := localRoom (KL := KL) (E0 := E0) hI hG hp hnl h1 hC18 w (k + 1) (pc + 5) (by omega)

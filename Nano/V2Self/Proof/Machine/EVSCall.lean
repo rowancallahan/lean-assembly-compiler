@@ -5,7 +5,7 @@ import Nano.V2Self.Proof.Machine.EVSComp
 namespace Templates
 open CallProbe SimW SafeRun
 
-/-- **a def**, safe twin of `defX` -/
+/-- **a def**: prologue (`proA 1 f r`, Gen's g38) ++ body ++ epilogue (`epi p q`) satisfies `DefXS` -/
 theorem defXS {KL : LayW} {C : List J} {f lb p nl q hb E0 : Nat} {IG : St → Prop} {Rb Wb : Nat → Prop} {Sb : SemW}
     (hIG : IGOK hb E0 IG) (hP : At C f (proA 1 f (nl - p)))
     (hB : EVHwS KL C (f + 12) lb p nl (IGp IG E0 p) hb E0 Rb Wb q Sb) (hE : At C (f + 12 + lb) (epi p q))
@@ -96,7 +96,7 @@ theorem defXS {KL : LayW} {C : List J} {f lb p nl q hb E0 : Nat} {IG : St → Pr
       rw [mo a (Or.inr ha), m2 a (by omega) (fun k hk _ => by rw [h8]; have := (slot_ne k hk).2.2; omega)]
       exact m1 a (by omega) (by omega)
 
-/-- **CALL**, safe twin of `callX`: the jal lands on the callee entry `f` (an Int equation, so the target is
+/-- **CALL** (argument words, then `jal ra f`): the jal lands on the callee entry `f` (an Int equation, so the target is
 non-negative), inside the code -/
 theorem callXS {KL : LayW} {C : List J} {pc la p nl pa q f hb E0 : Nat} {IG : St → Prop} {RA WA : Nat → Prop} {SA : SemW}
     {Sd : List UInt64 → Nat → Hp → Option (List UInt64 × Hp)} {off : Int}

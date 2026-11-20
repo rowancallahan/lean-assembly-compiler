@@ -1,5 +1,5 @@
-/- Safe retrofit (EVS), shared definitions (Opus box E).  The Safe twins of the contracts EVH / EVHw / EVHt / DefX:
-the same statements with `SimW.SStarX KL C` runs, plus
+/- The fragment contracts (Opus box E): `EVHwS` (w result words), `EVHS` (one word), `EVHtS` (tail mode), `DefXS`
+(a def).  Runs are `SimW.SStarX KL C` runs; the only contracts since the plain `Star` ones were removed.  Premises:
   * `Lay KL hb E0 p s` — the per-state layout: work region [KL.lo, KL.hi) ⊇ [hb, E0) (heap … stack … frames),
     code base = KL.base, this frame's top s0 + 8p + 16 ≤ E0, t6 and s0 8-aligned.  Contracts preserve it (s0 and the
     code base are kept, t6 moves by 8w), so it is a premise of every run and needs no conclusion;

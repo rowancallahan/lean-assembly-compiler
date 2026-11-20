@@ -4,7 +4,7 @@ import Nano.V2Self.Proof.Machine.EVSLeaf
 namespace Templates
 open CallProbe SimW SafeRun
 
-theorem ofEVHS {KL : LayW} {C : List J} {pc len p nl hb E0 : Nat} {Inv : St → Prop} {R W : Nat → Prop}
+theorem ofEVH {KL : LayW} {C : List J} {pc len p nl hb E0 : Nat} {Inv : St → Prop} {R W : Nat → Prop}
     {S : Env → Nat → Hp → Option (UInt64 × Hp)} (h : EVHS KL C pc len p nl Inv hb E0 R W S) :
     EVHwS KL C pc len p nl Inv hb E0 R W 1 (one S) where
   stable := fun env env' sp H hk => by simp only [one]; rw [h.stable env env' sp H hk]
@@ -46,7 +46,7 @@ theorem EVHwS.wid {KL : LayW} {C : List J} {pc len p nl hb E0 w w' : Nat} {Inv :
     {S : SemW} (h : EVHwS KL C pc len p nl Inv hb E0 R W w S) (e : w = w') :
     EVHwS KL C pc len p nl Inv hb E0 R W w' S := e ▸ h
 
-theorem nilXS {KL : LayW} {C : List J} {pc p nl hb E0 : Nat} {Inv : St → Prop} :
+theorem nilX {KL : LayW} {C : List J} {pc p nl hb E0 : Nat} {Inv : St → Prop} :
     EVHwS KL C pc 0 p nl Inv hb E0 (fun _ => False) (fun _ => False) 0 nilS where
   stable := fun _ _ _ _ _ => rfl
   run := fun s env H vs H' I0 z0 F0 _ R0 _ A0 hS => by
@@ -54,7 +54,7 @@ theorem nilXS {KL : LayW} {C : List J} {pc p nl hb E0 : Nat} {Inv : St → Prop}
     exact ⟨s, env, by simpa using SStarX.refl (K := KL) (C := C) (pc, s), I0, z0, by omega, rfl,
       fun i hi => absurd hi (by omega), rfl, F0, fun _ _ => rfl, R0, A0, fun _ _ _ => rfl⟩
 
-theorem pairXS {KL : LayW} {C : List J} {pc la lb p nl hb E0 wa wb : Nat} {Inv : St → Prop}
+theorem pairX {KL : LayW} {C : List J} {pc la lb p nl hb E0 wa wb : Nat} {Inv : St → Prop}
     {RA WA RB WB : Nat → Prop} {SA SB : SemW}
     (hA : EVHwS KL C pc la p nl Inv hb E0 RA WA wa SA) (hB : EVHwS KL C (pc + la) lb p nl Inv hb E0 RB WB wb SB)
     (sB : ∀ k, RB k → ¬ WA k) :
@@ -93,18 +93,18 @@ theorem pairXS {KL : LayW} {C : List J} {pc la lb p nl hb E0 wa wb : Nat} {Inv :
     · intro a ha hw
       rw [m2 a (by omega) (fun k hk wk => hw k hk (Or.inr wk)), m1 a ha (fun k hk wk => hw k hk (Or.inl wk))]
 
-theorem localXS {KL : LayW} {C : List J} {p nl hb E0 : Nat} {Inv : St → Prop}
+theorem localX {KL : LayW} {C : List J} {p nl hb E0 : Nat} {Inv : St → Prop}
     (hI : InvOKH hb p Inv) (hp : p < 2 ^ 20) (hnl : nl < 251) :
     ∀ w k pc, k + w ≤ nl → At C pc (localT 1 p k pc w) →
       EVHwS KL C pc (5 * w) p nl Inv hb E0 (fun j => k ≤ j ∧ j < k + w) (fun _ => False) w (localS k w)
-  | 0, k, pc, _, _ => (nilXS (KL := KL) (C := C) (pc := pc) (p := p) (nl := nl) (hb := hb) (E0 := E0)
+  | 0, k, pc, _, _ => (nilX (KL := KL) (C := C) (pc := pc) (p := p) (nl := nl) (hb := hb) (E0 := E0)
       (Inv := Inv)).mono (fun _ h => h.elim) (fun _ h => h)
   | w + 1, k, pc, hk, hC => by
     rw [localT_succ] at hC
-    have h1 := local1XS (KL := KL) (nl := nl) (k := k) (W := fun _ => False) (E0 := E0) hI hp hnl (by omega) hC.left
-    have h2 := localXS (KL := KL) (nl := nl) (E0 := E0) hI hp hnl w (k + 1) (pc + 5) (by omega)
+    have h1 := local1X (KL := KL) (nl := nl) (k := k) (W := fun _ => False) (E0 := E0) hI hp hnl (by omega) hC.left
+    have h2 := localX (KL := KL) (nl := nl) (E0 := E0) hI hp hnl w (k + 1) (pc + 5) (by omega)
       (by have hr := hC.right; rwa [show (localT 1 p k pc 1).length = 5 from rfl] at hr)
-    exact ((pairXS h1 h2 (fun _ _ h => h)).mono (R' := fun j => k ≤ j ∧ j < k + (w + 1)) (W' := fun _ => False)
+    exact ((pairX h1 h2 (fun _ _ h => h)).mono (R' := fun j => k ≤ j ∧ j < k + (w + 1)) (W' := fun _ => False)
       (fun j q => by rcases q with e | ⟨e1, e2⟩ <;> constructor <;> omega)
       (fun j q => by rcases q with e | e <;> exact e)).len (len' := 5 * (w + 1)) (by omega) |>.wid (by omega)
 
@@ -121,7 +121,7 @@ theorem sstarX_of_run {KL : LayW} {C : List J} : ∀ {k : Nat} {a b : Nat × St}
       refine .head (hs 0 (by omega) a rfl) e (sstarX_of_run h fun j hj d hd => hs (j + 1) (by omega) d ?_)
       simp [run, e, hd]
 
-theorem ifXS {KL : LayW} {C : List J} {pc lp lt le p nl hb E0 w cmp : Nat} {Inv : St → Prop} {RP WP RT WT RE WE : Nat → Prop}
+theorem ifX {KL : LayW} {C : List J} {pc lp lt le p nl hb E0 w cmp : Nat} {Inv : St → Prop} {RP WP RT WT RE WE : Nat → Prop}
     {SP ST SE : SemW} (hI : InvOKH hb p Inv)
     (hP : EVHwS KL C pc lp p nl Inv hb E0 RP WP 2 SP) (hH : At C (pc + lp) (ifHeadG cmp lt))
     (hT : EVHwS KL C (pc + lp + 5) lt p nl Inv hb E0 RT WT w ST)
@@ -249,7 +249,7 @@ theorem slotT_wok {KL : LayW} {hb E0 p nl k : Nat} {s : St} (L : Lay KL hb E0 p 
   · refine ⟨L.wok (by omega) (by omega) (by omega), by omega, by omega, by omega⟩
   · refine ⟨L.wok (by omega) (by omega) (by omega), by omega, by omega, by omega⟩
 
-theorem letXS {KL : LayW} {C : List J} {pc lv lb p nl hb E0 k0 w wb : Nat} {Inv : St → Prop} {Rv Wv Rb Wb : Nat → Prop}
+theorem letX {KL : LayW} {C : List J} {pc lv lb p nl hb E0 k0 w wb : Nat} {Inv : St → Prop} {Rv Wv Rb Wb : Nat → Prop}
     {SV SB : SemW} (hI : InvOKH hb p Inv)
     (hv : EVHwS KL C pc lv p nl Inv hb E0 Rv Wv w SV) (hS : At C (pc + lv) (popN p k0 w))
     (hb' : EVHwS KL C (pc + lv + 3 * w) lb p nl Inv hb E0 Rb Wb wb SB)

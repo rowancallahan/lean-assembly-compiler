@@ -1,7 +1,7 @@
 /- Machine bridge (Opus box E): multi-word value semantics.  `SemW` = a fragment's semantics (environment, stack
 pointer, heap ↦ result words and heap); combinators `one`/`hd1`, `nilS`, `pairS`, `ifS`, `letS` (+ `setW`), the IF head
 `ifHeadG`/`cmpJ` with `step_cmp`, and `hrel_sp`.  The fragment contract and its run theorems are the safe ones:
-`EVHwS` (EVSDefs.lean), `nilXS`/`pairXS`/`ifXS`/`letXS` (EVSComp.lean). -/
+`EVHwS` (EVSDefs.lean), `nilX`/`pairX`/`ifX`/`letX` (EVSComp.lean). -/
 import Nano.V2Self.Proof.Machine.HeapEV
 namespace Templates
 open CallProbe
