@@ -60,3 +60,19 @@ DeepMind `read64`/`write64` against `MemRel` (8 bytes; `Apc/Mem8.lean` has the b
 Memory premises differ: Sail needs address `< 2^29` (and `% 8 = 0` for 8 bytes) and the bytes present; DeepMind needs
 `canRead`/`canWrite`. `MemRel` (readable/writable DeepMind bytes lie below `2^29` and agree with Sail) turns the
 DeepMind premise into the Sail one; alignment must come from the block invariant.
+
+## Block correctness (`Frame.lean`, `Block.lean`, `K*.lean`)
+
+`ArmBlockDefs.lean` = verbatim copy of ArmBlock's definitions (`check_copy.sh`). `RelD C D K (pc, s) t` = ArmBlock's
+`RelA` on DeepMind's state (`abs` for registers, `Memory.canExec`/`read32` for code, `canRead`/`canWrite`/`read8` for
+the cells of `D`; x16/x17/NZCV free; x18..x29 and sp kept). `blk_<kind>`: `C[pc]? = some j`, `validJ`, `RelD` at
+`(pc, s)` ⟹ `Reach t (RelD … (J's next state))` in ≤ 4 DeepMind steps.
+
+**Statement fix needed in ArmBlock.lean.** Its `BlockOK` is false for `addi` when `x[rs] + imm ∉ [0, 2^64)`: J's
+`ea` clamps (`Int.toNat`, so `addi rd x0 -1` gives 0) while the block wraps (`movz/movk` give 2^64 − 1). `blk_addi`
+takes JLay's `SafeX` premise `0 ≤ x[rs] + imm < 2^64`; the wrapping case is `JTarget.addi_ok` (a different J value),
+not a `BlockOK` instance. The same premise belongs on ld/sd/lbu/sb (as in `SafeX`).
+
+| J kind | theorem | status |
+|---|---|---|
+| addi (rd = 0: 4 PAD; rs = 0: movz; add/sub imm) | `blk_addi` | proved |

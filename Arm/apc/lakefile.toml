@@ -39,3 +39,9 @@ path = "../../../deps/code-verification/arm64-semantics/Arm64"
 [[lean_lib]]
 name = "Blocks"
 globs = ["Blocks.+"]
+
+# J (the nano V2 jump-machine semantics, pure Lean): CallProbe.step, the source side of BlockOK
+[[lean_lib]]
+name = "Nano"
+srcDir = "../.."
+globs = ["Nano.V2Self.Proof.Machine.Call"]

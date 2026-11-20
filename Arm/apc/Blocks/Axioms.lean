@@ -2,6 +2,7 @@ import Blocks.Imm
 import Blocks.Reg
 import Blocks.Branch
 import Blocks.Mem
+import Blocks.KAddi
 open Proven.Apc.Blocks
 #print axioms dm_movz
 #print axioms dm_movk
@@ -25,3 +26,4 @@ open Proven.Apc.Blocks
 #print axioms dm_str
 #print axioms dm_ldrb
 #print axioms dm_strb
+#print axioms blk_addi
