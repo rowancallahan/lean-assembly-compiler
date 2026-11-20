@@ -3,6 +3,8 @@
 per block; doc comments dropped, nothing else changed. -/
 import Riscv.Frontx.IntExamples
 import Riscv.Frontx.StructExamples
+-- Lean 4.34.1: as IntExamples (the generated proofs compare instance arguments, old check)
+set_option backward.isDefEq.respectTransparency false
 
 namespace LeanSvg
 
