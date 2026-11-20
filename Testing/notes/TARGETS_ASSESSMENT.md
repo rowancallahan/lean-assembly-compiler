@@ -129,3 +129,12 @@ Cap-related fixes, ranked by how many programs they unblock: (a) defs cap 511 �
 - Part boundaries overlapped by one straddling file in each split; totals are ±1 file.
 - CL hash assumption (`Expr.data` mixer replaceable): marked uncertain by assess-01.
 - Disagreement: SVG whole-repo def count (assess-06 "2,000+", assess-07 "> 1,500"); the table above uses ≥ 1,750 (sum of slice greps).
+
+## Owner decision (2026-11-20): syntax growth order
+1. Comments / `namespace` / `open` / attributes (skip) — biggest single unlock.
+2. `match` with patterns.
+3. The convenience / speed features: index notation and Array ops, `structure` + `with`, enum `inductive`, `do` / `let mut` / `for`.
+4. Then the hard ones: `Option`/`Except` (monads), mutual recursion, inductives with payloads, typeclasses/closures, bignum `Nat`.
+Small integer types (item 6): do NOT start with "store every UInt8/16/32 in a 64-bit word". Scalars in registers cost nothing
+extra, but arrays of them must be PACKED (bytes/halfwords/words per element) so memory goes down, not up. Defer until a
+packed-array primitive exists (byte/word Buf variants), rather than masking 64-bit cells.
