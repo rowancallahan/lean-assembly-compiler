@@ -3,6 +3,27 @@
 Last stage: joins the front end (lexer, parser, ownership), Gen's codegen facts and the machine layer into the
 owner's `CompileCorrect` / `CompileRuns` (Spec), for RISC-V and for any other `JT.JTarget`.
 
+## Files
+* `Sem.lean` — driver `mC`, meaning `Sem` of a resolved program, stage hypotheses (no machine model).
+* `Compile.lean` — source texts `SrcC`, `srcRun`, work bound `spaceC`, `compileC`, `compiler_correctG`.
+* `DBStageE.lean` — Gen's field bounds for parsed programs (`dbStage`).
+* `ParCapBnd.lean` — parser width cap ⇒ `bndStage`, `capStage`.
+* `TopOn.lean` — generic top theorems over a target and a generator (`GenOK`, `C_correct_on`, `C_runs_on`).
+* `RvTop.lean` — RISC-V instance (REVIEW roots `C_correctLO`, `C_runsO`, `C_runs`).
+* `ArmTop.lean` — AArch64 instance over `A64Sem` (used by Arm/apc and Arm/sail).
+* `SelfC.lean`, `SelfLink.lean`, `RunsTopO.lean` — the theorems for C's own source text.
+
+## Design decisions
+* The top theorems quantify over a generator `gen : source → code bytes` (`GenOK`), not over a re-encoding of
+  Gen's RV bytes (`EncOK`): a native generator need not be a post-translator of RV output. Rejected: keeping only
+  `EncOK` (forces every backend through RV bytes).
+* `compileOn enc` and `EncOK` are kept with their definitions unchanged, as the instance `gen = enc ∘ mC`
+  (`compileOn_gen` is `rfl`), so the statements in ArmTop, Arm/apc and Arm/sail are unchanged. Rejected:
+  redefining `compileOn` over `gen` (same text `compileOn rv2arm` would silently mean something else).
+* `GenOK` carries no width, block-size or jump-range condition; those stay in the target (`tbytes`, `valid`,
+  `Laws`), so a target with other encodings changes `JTarget`, not this interface.
+* `GenOK` includes `gen x ≠ [] → mC x ≠ []` because the front-end theorem `compiler_correctG` is stated for `mC`.
+
 ## Input (from earlier stages)
 * `Compile.lean:compiler_correctG` (front end): an accepted text's RV bytes `mC x` are Gen's bytes for a parsed
   linear program (`TopOn.lean:GenFacts`).
