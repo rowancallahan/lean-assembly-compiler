@@ -7,6 +7,7 @@ import Blocks.KAlu
 import Blocks.KShift
 import Blocks.KBr
 import Blocks.KMem
+import Blocks.BlockOK
 open Proven.Apc.Blocks
 #print axioms dm_movz
 #print axioms dm_movk
@@ -42,3 +43,6 @@ open Proven.Apc.Blocks
 #print axioms blk_jalr
 #print axioms blk_ld
 #print axioms blk_sd
+#print axioms blk_lbu
+#print axioms blk_sb
+#print axioms blockOKD

@@ -68,13 +68,10 @@ DeepMind premise into the Sail one; alignment must come from the block invariant
 the cells of `D`; x16/x17/NZCV free; x18..x29 and sp kept). `blk_<kind>`: `C[pc]? = some j`, `validJ`, `RelD` at
 `(pc, s)` ⟹ `Reach t (RelD … (J's next state))` in ≤ 4 DeepMind steps.
 
-**Statement fix needed in ArmBlock.lean.** Its `BlockOK` is false for `addi` when `x[rs] + imm ∉ [0, 2^64)`: J's
-`ea` clamps (`Int.toNat`, so `addi rd x0 -1` gives 0) while the block wraps (`movz/movk` give 2^64 − 1). `blk_addi`
-takes JLay's `SafeX` premise `0 ≤ x[rs] + imm < 2^64`; the wrapping case is `JTarget.addi_ok` (a different J value),
-not a `BlockOK` instance. The same premise belongs on ld/sd/lbu/sb (as in `SafeX`).
-Second gap: `validJ` does not bound `jal`'s offset; `b`/`bl` reach ±2^23 J instructions, so for programs longer than
-2^23 a far `jal` is not encodable. `blk_jal` takes `-2^23 < o < 2^23` (rv2arm's validation should check it, or
-`C.length ≤ 2^23`).
+**Statement fixes (found here, applied upstream in `ArmBlock.lean` by the lead: df4e635, b400ca6).** The first draft
+of `BlockOK` was false for `addi` when `x[rs] + imm ∉ [0, 2^64)` (J's `ea` clamps with `Int.toNat`; the block wraps:
+`addi rd x0 -1` is 0 in J, 2^64 − 1 on A64); `AccOK` now carries `NoWrap` for addi/ld/sd/lbu/sb (the wrapping addi
+is `JTarget.addi_ok`). `validJ` did not bound `jal`'s offset (b/bl reach ±2^23 J instructions); it now does.
 
 | J kind | theorem | status |
 |---|---|---|
@@ -87,3 +84,20 @@ Second gap: `validJ` does not bound `jal`'s offset; `b`/`bl` reach ±2^23 J inst
 | jalr x0, rs (`br`) | `blk_jalr` | proved, premise = ArmBlock's `AccOK` for jalr |
 | ld (`ldr [xn, #off]` or `add/sub x16; ldr [x16]`) | `blk_ld` | proved; premises `AccOK` (cell in D), `0 ≤ x[rs] + off` |
 | sd (same forms; x0 stored from x17 after `movz x17, #0`) | `blk_sd` | proved; same premises. Stores keep the code: `CodeOK.w8` (DeepMind's `canWrite` = w ∧ ¬x) |
+| lbu (`ldrb [xn, #off]` or via x16) | `blk_lbu` (`lb_eq`: byte lane = J's `lbm`) | proved |
+| sb (`strb`, x0 via x17) | `blk_sb` (`sb_byte`, `memOK_w8`: = J's `sbm`) | proved |
+
+**`blockOKD : BlockOKD`** (`BlockOK.lean`): ArmBlock's `BlockOK` verbatim in its premises (`C[pc]? = some j`,
+`validJ`, `s.wk = 3`, `AccOK`), with `RelD` for `RelA` and DeepMind steps (`Reach`, ≤ 4) for `Runs`, all 14 J kinds.
+`lake build Blocks.Axioms`: 37 s from clean Blocks oleans (4 cores); 37 theorems, axioms `propext, Classical.choice,
+Quot.sound`.
+
+### Transfer to Sail
+
+`blockOKD` uses each DeepMind form lemma only through its `dm_*` statement (word mask + fields → `abs` effect +
+`Post`). To get BlockOK on Sail: (1) the Sail `full_*` for every form (missing: symbolic-register AL1–AL6:
+add/sub/and/orr/eor/lslv/lsrv/subs reg, madd, br); (2) restate `RelD` on Sail (`Abs`/`ArmFull`, Sail memory map
+for `CodeOK`/`MemOK`) and replay `Frame`/`Block`/`K*` with `full_*` for `dm_*` (the block arithmetic — encodings
+`mask32`/`fldt`, offsets `ofs19`/`ofs26`, register map, byte lanes `lb_eq`/`sb_byte` — is model-independent and
+carries over unchanged); or (3) keep DeepMind and compose with per-form bridges (`sim`/`simM` style) — needs the
+same missing `full_*` plus `ldr`/`str` bridges.

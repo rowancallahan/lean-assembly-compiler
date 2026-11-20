@@ -222,12 +222,11 @@ theorem blk_beq {C : List J} {D K} {pc : Nat} {s : St} {t : Arm64.State} {a b : 
   · have := blk_cmp (c := 0) hj (by simp [blockJ, body, ha, hb]) (by decide) hra hrb h3 h4 h1 h2 hR
     simpa [jc] using this
 
-/-- `jal rd o` (rd ∈ {x0, x1}). Premise beyond `validJ`: the offset fits `b`/`bl` (±2^23 J instructions) -/
+/-- `jal rd o` (rd ∈ {x0, x1}; `validJ` bounds the offset to the `b`/`bl` reach, ±2^23 J instructions) -/
 theorem blk_jal {C : List J} {D K} {pc : Nat} {s : St} {t : Arm64.State} {rd : Nat} {o : Int}
-    (hj : C[pc]? = some (.jal rd o)) (hv : validJ C.length pc (.jal rd o)) (ho1 : -2 ^ 23 < o) (ho2 : o < 2 ^ 23)
-    (hR : RelD C D K (pc, s) t) :
+    (hj : C[pc]? = some (.jal rd o)) (hv : validJ C.length pc (.jal rd o)) (hR : RelD C D K (pc, s) t) :
     Reach t (RelD C D K (((pc : Int) + o).toNat, wr s rd (UInt64.ofNat (s.b + s.w * (pc + 1))))) := by
-  obtain ⟨hrd, h1, h2⟩ := hv
+  obtain ⟨hrd, h1, h2, ho1, ho2⟩ := hv
   rcases hrd with rfl | rfl
   · simp only [wr, ite_true]
     exact b_blk hj (by simp [blockJ, body, pad4]) (by omega) ho2 h1 h2 hR

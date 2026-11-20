@@ -207,4 +207,194 @@ theorem blk_sd {C : List J} {D K} {pc : Nat} {s : St} {t : Arm64.State} {r2 r1 :
         (by omega) (by omega) (by rw [setX_eq _ (by decide), BitVec.add_zero]) (by rw [setX_ne _ (pi_rng hl2).1, x2])
         (by rw [bw_of hb]; rfl) (pads2 hb) p1 q1)
 
+/-! ## bytes -/
+theorem get255 (j : Nat) : (255#64).getLsbD j = decide (j < 64 ∧ j < 8) := by
+  rw [show (255#64) = BitVec.ofNat 64 (2 ^ 8 - 1) from rfl, BitVec.getLsbD_ofNat, Nat.testBit_two_pow_sub_one]
+  simp
+theorem lb_eq (x : UInt64) (k : Nat) (hk : k < 8) :
+    ((x.toBitVec.extractLsb' (8 * k) 8).setWidth 64) = ((x >>> (8 * k).toUInt64) &&& 255).toBitVec := by
+  apply BitVec.eq_of_getLsbD_eq; intro i hi
+  simp [UInt64.toBitVec_shiftRight, BitVec.getLsbD_setWidth, BitVec.getLsbD_extractLsb', get255,
+    show 8 * k % 64 = 8 * k by omega]
+  by_cases h : i < 8 <;> simp [h, hi]
+theorem sb_byte (x v : UInt64) (k k' : Nat) (hk : k < 8) (hk' : k' < 8) :
+    ((x &&& ~~~((255 : UInt64) <<< (8 * k).toUInt64)) ||| ((v &&& 255) <<< (8 * k).toUInt64)).toBitVec.extractLsb' (8 * k') 8
+      = if k' = k then v.toBitVec.setWidth 8 else x.toBitVec.extractLsb' (8 * k') 8 := by
+  apply BitVec.eq_of_getLsbD_eq; intro i hi
+  simp [UInt64.toBitVec_shiftLeft, BitVec.getLsbD_extractLsb', get255, show 8 * k % 64 = 8 * k by omega]
+  by_cases h3 : k' = k
+  · subst h3; simp [hi, show 8 * k' + i < 64 by omega, show ¬ (8 * k' + i < 8 * k') by omega, show i < 64 by omega]
+  · simp only [h3, ite_false, BitVec.getLsbD_extractLsb', hi, decide_true, Bool.true_and]
+    by_cases h1 : 8 * k' + i < 8 * k
+    · simp [h1, show 8 * k' + i < 64 by omega]
+    · simp [h1, show 8 * k' + i < 64 by omega, show ¬ (8 * k' + i - 8 * k < 8) by omega]
+
+/-- the byte at `e`, from the cell `e - e % 8 ∈ D` -/
+theorem byte_cell {D : Nat → Prop} {m : Nat → UInt64} {mem : Arm64.Memory} (h : MemOK D m mem) {e : Nat}
+    (he : D (e - e % 8)) : e < 2 ^ 64 ∧ mem.canRead (ad e) 1 = true ∧ mem.canWrite (ad e) 1 = true ∧
+      (mem.read8 (ad e)).setWidth 64 = (lbm m e).toBitVec := by
+  obtain ⟨h8, hl, hb⟩ := h _ he
+  have e1 : e - e % 8 + e % 8 = e := by omega
+  obtain ⟨r, w, v⟩ := hb (e % 8) (by omega)
+  rw [e1] at r w v
+  exact ⟨by omega, r, w, by rw [v, lb_eq _ _ (by omega)]; rfl⟩
+
+/-- a byte store at `e` (cell `e - e % 8 ∈ D`): the cells are J's `sbm m e v` -/
+theorem memOK_w8 {D : Nat → Prop} {m : Nat → UInt64} {mem : Arm64.Memory} (h : MemOK D m mem) {e : Nat}
+    (he : D (e - e % 8)) (v : UInt64) : MemOK D (sbm m e v) (mem.write8 (ad e) (v.toBitVec.setWidth 8)) := by
+  obtain ⟨hc8, hcl, -⟩ := h _ he
+  intro a ha
+  obtain ⟨ha8, hal, hab⟩ := h a ha
+  refine ⟨ha8, hal, fun k hk => ⟨canRead_w8 _ _ _ _ (hab k hk).1, by rw [canWrite_w8]; exact (hab k hk).2.1, ?_⟩⟩
+  rw [read_w8]
+  by_cases hac : a = e - e % 8
+  · subst hac
+    simp only [sbm, ite_true]
+    rw [sb_byte _ _ _ _ (by omega) hk]
+    by_cases hk' : k = e % 8
+    · rw [if_pos (by rw [hk']; congr 1; omega), if_pos hk']
+    · rw [if_neg (ad_ne (by omega) (by omega) (by omega)), if_neg hk']; exact (hab k hk).2.2
+  · rw [if_neg (ad_ne (by omega) (by omega) (by omega))]
+    simp only [sbm, hac, ite_false]; exact (hab k hk).2.2
+
+/-- `ldrb wd, [xn, #f']` with `x[n] + f' = e` -/
+theorem ldrb_ok {t : Arm64.State} {D} {m : Nat → UInt64} {d n f' e : Nat} (hm : MemOK D m t.mem) (he : D (e - e % 8))
+    (hd : d < 31) (hn : n < 31) (hf2 : f' < 4096) (hx : (abs t).x n + BitVec.ofNat 64 f' = ad e)
+    (hA : At t (wd (ldrb d n f'))) :
+    ∃ t', Arm64.Step Pg t t' ∧ abs t' = (abs t).setX d (lbm m e).toBitVec ∧ Post t t' (t.pc + 4) t.mem := by
+  simp only [ldrb] at hA
+  have ea' : Blocks.ea t (wd (0x39400000 + f' * 2 ^ 10 + n * 2 ^ 5 + d)) 0 = ad e := by
+    unfold Blocks.ea
+    rw [show ((wd (0x39400000 + f' * 2 ^ 10 + n * 2 ^ 5 + d)).extractLsb' 5 5).toNat = n by fldt,
+      show ((wd (0x39400000 + f' * 2 ^ 10 + n * 2 ^ 5 + d)).extractLsb' 10 12).setWidth 64 <<< 0 =
+        BitVec.ofNat 64 f' by apply BitVec.eq_of_toNat_eq; simp [Nat.shiftRight_eq_div_pow]; omega, hx]
+  obtain ⟨-, hr, -, hv⟩ := byte_cell hm he
+  have := dm_ldrb (by mask32) (by fldt) (by fldt) (by rw [ea']; exact hr) hA
+  rwa [ea', hv, show ((wd (0x39400000 + f' * 2 ^ 10 + n * 2 ^ 5 + d)).extractLsb' 0 5).toNat = d by fldt] at this
+
+/-- `strb wd, [xn, #f']` with `x[n] + f' = e` -/
+theorem strb_ok {t : Arm64.State} {D} {m : Nat → UInt64} {d n f' e : Nat} {V : UInt64} (hm : MemOK D m t.mem)
+    (he : D (e - e % 8)) (hd : d < 31) (hn : n < 31) (hf2 : f' < 4096) (hx : (abs t).x n + BitVec.ofNat 64 f' = ad e)
+    (hv : (abs t).x d = V.toBitVec) (hA : At t (wd (strb d n f'))) :
+    ∃ t', Arm64.Step Pg t t' ∧ abs t' = abs t ∧ Post t t' (t.pc + 4) (t.mem.write8 (ad e) (V.toBitVec.setWidth 8)) := by
+  simp only [strb] at hA
+  have ea' : Blocks.ea t (wd (0x39000000 + f' * 2 ^ 10 + n * 2 ^ 5 + d)) 0 = ad e := by
+    unfold Blocks.ea
+    rw [show ((wd (0x39000000 + f' * 2 ^ 10 + n * 2 ^ 5 + d)).extractLsb' 5 5).toNat = n by fldt,
+      show ((wd (0x39000000 + f' * 2 ^ 10 + n * 2 ^ 5 + d)).extractLsb' 10 12).setWidth 64 <<< 0 =
+        BitVec.ofNat 64 f' by apply BitVec.eq_of_toNat_eq; simp [Nat.shiftRight_eq_div_pow]; omega, hx]
+  obtain ⟨-, -, hw, -⟩ := byte_cell hm he
+  have := dm_strb (by mask32) (by fldt) (by fldt) (by rw [ea']; exact hw) hA
+  rwa [ea', show ((wd (0x39000000 + f' * 2 ^ 10 + n * 2 ^ 5 + d)).extractLsb' 0 5).toNat = d by fldt, hv] at this
+
+theorem blk_lbu {C : List J} {D K} {pc : Nat} {s : St} {t : Arm64.State} {rd rs : Nat} {f : Int}
+    (hj : C[pc]? = some (.lbu rd rs f)) (hv : validJ C.length pc (.lbu rd rs f))
+    (hacc : D (CallProbe.ea (s.x rs) f - CallProbe.ea (s.x rs) f % 8))
+    (hnw : 0 ≤ ((s.x rs).toNat : Int) + f) (hR : RelD C D K (pc, s) t) :
+    Reach t (RelD C D K (pc + 1, wr s rd (lbm s.m (CallProbe.ea (s.x rs) f)))) := by
+  obtain ⟨hs0, hrs, hrd, hf1, hf2⟩ := hv
+  have hm := hR.mid hj
+  have hsl := live_of_rd hrs hs0
+  have hmem : MemOK D s.m t.mem := hR.mem
+  obtain ⟨hel, -⟩ := byte_cell hmem hacc
+  have hup : ((s.x rs).toNat : Int) + f < 2 ^ 64 := by unfold CallProbe.ea at hel; omega
+  by_cases h0 : rd = 0
+  · subst h0
+    have hb : blockJ (.lbu 0 rs f) = [PAD, PAD, PAD, PAD] := by simp [blockJ, body, pad4]
+    refine (pads 4 0 rfl hm (pads4 hb)).mono fun t' ⟨m', a', p', q'⟩ => ?_
+    simp only [wr, ite_true]
+    exact relD_next hR m' (a' ▸ hR.regs) p' (q' ▸ hR.mem) rfl hR.zero rfl
+  have hl := live_of_wr hrd h0
+  by_cases hdir : 0 ≤ f ∧ f < 4096
+  · have hb : blockJ (.lbu rd rs f) = [ldrb (pi rd) (pi rs) f.toNat, PAD, PAD, PAD] := by
+      simp [blockJ, body, pad4, h0, hdir]
+    refine (word_pads (A := (abs t).setX (pi rd) (lbm s.m (CallProbe.ea (s.x rs) f)).toBitVec) hm (by omega)
+      (fun hA => ?_) (pads3 hb)).mono fun t' ⟨m', a', p', q'⟩ => fin_wr hR hl m' hR.regs a' p' q'
+    rw [bw_of hb] at hA; simp only [List.getD_cons_zero] at hA
+    exact ldrb_ok hmem hacc hl.1 hsl.1 (by omega) (by rw [hR.regs.1 rs hsl]; exact ea_pos _ _ hdir.1 hup) hA
+  · have hb : blockJ (.lbu rd rs f) = [addr16 rs f, ldrb (pi rd) 16 0, PAD, PAD] := by
+      simp [blockJ, body, pad4, h0, hdir]
+    have hA0 := hm.at (by omega); rw [bw_of hb] at hA0; simp only [List.getD_cons_zero] at hA0
+    obtain ⟨t1, s1, m1, a1, p1, q1⟩ := seq1 hm (by omega) (addr16_ok hR.regs hsl hf1 hf2 hnw hup hA0)
+    refine Reach.cons s1 ((word_pads (A := ((abs t).setX 16 (ad (CallProbe.ea (s.x rs) f))).setX (pi rd)
+      (lbm s.m (CallProbe.ea (s.x rs) f)).toBitVec) m1 (by omega) (fun hA => ?_) (pads2 hb)).mono
+      fun t' ⟨m', a', p', q'⟩ => fin_wr hR hl m' (regs_scr hR.regs (.inl rfl) _) a' (p'.trans p1) (q'.trans q1))
+    rw [bw_of hb] at hA; simp only [List.getD_cons_succ, List.getD_cons_zero] at hA
+    have := ldrb_ok (q1 ▸ hmem) hacc hl.1 (by decide) (by decide)
+      (by rw [a1, setX_eq _ (by decide), BitVec.add_zero]) hA
+    rwa [a1] at this
+
+/-- the byte-store word at `k`, then PADs -/
+theorem sb_tail {C : List J} {D K} {pc : Nat} {s : St} {t : Arm64.State} {j : J} {k d n f' e : Nat} {V : UInt64}
+    {t1 : Arm64.State} {A1 : Proven.Arm.AState} (hR : RelD C D K (pc, s) t) (hk : k < 4) (m1 : Mid C s.b pc j k t1)
+    (a1 : abs t1 = A1) (r1 : RegsOK A1 s K) (he : D (e - e % 8)) (hd : d < 31) (hn : n < 31) (hf2 : f' < 4096)
+    (hx : A1.x n + BitVec.ofNat 64 f' = ad e) (hv : A1.x d = V.toBitVec) (w0 : bw j k = wd (strb d n f'))
+    (hp : PadsFrom j (k + 1)) (p1 : t1.sp = t.sp) (q1 : t1.mem = t.mem) :
+    Reach t1 (RelD C D K (pc + 1, { s with m := sbm s.m e V })) := by
+  have hmem : MemOK D s.m t1.mem := q1 ▸ hR.mem
+  have hA := m1.at hk; rw [w0] at hA
+  obtain ⟨-, -, hw, -⟩ := byte_cell hmem he
+  have hc : CodeOK C s.b (t1.mem.write8 (ad e) (V.toBitVec.setWidth 8)) := m1.code.w8 hw _
+  obtain ⟨t2, s2, m2, a2, p2, q2⟩ := seqM m1 hc (strb_ok hmem he hd hn hf2 (a1 ▸ hx) (a1 ▸ hv) hA)
+  refine Reach.cons s2 ((pads (3 - k) (k + 1) (by omega) m2 hp).mono fun t' ⟨m', a', p', q'⟩ => ?_)
+  refine relD_next hR m' (by rw [a', a2, a1]; exact r1) (p'.trans (p2.trans p1)) ?_ rfl hR.zero rfl
+  rw [q', q2]; exact memOK_w8 hmem he V
+
+theorem blk_sb {C : List J} {D K} {pc : Nat} {s : St} {t : Arm64.State} {r2 r1 : Nat} {f : Int}
+    (hj : C[pc]? = some (.sb r2 r1 f)) (hv : validJ C.length pc (.sb r2 r1 f))
+    (hacc : D (CallProbe.ea (s.x r1) f - CallProbe.ea (s.x r1) f % 8))
+    (hnw : 0 ≤ ((s.x r1).toNat : Int) + f) (hR : RelD C D K (pc, s) t) :
+    Reach t (RelD C D K (pc + 1, { s with m := sbm s.m (CallProbe.ea (s.x r1) f) (s.x r2) })) := by
+  obtain ⟨hs0, hrs, hrd, hf1, hf2⟩ := hv
+  have hm := hR.mid hj
+  have hz : s.x 0 = 0 := hR.zero
+  have hsl := live_of_rd hrs hs0
+  have hmem : MemOK D s.m t.mem := hR.mem
+  obtain ⟨hel, -⟩ := byte_cell hmem hacc
+  have hup : ((s.x r1).toNat : Int) + f < 2 ^ 64 := by unfold CallProbe.ea at hel; omega
+  have ea_d : ∀ (hdir : 0 ≤ f ∧ f < 4096), (s.x r1).toBitVec + BitVec.ofNat 64 f.toNat =
+      ad (CallProbe.ea (s.x r1) f) := fun hdir => ea_pos _ _ hdir.1 hup
+  have x1 := hR.regs.1 r1 hsl
+  have p16 := (pi_rng hsl).1; have p17 := (pi_rng hsl).2.1
+  by_cases h0 : r2 = 0
+  · subst h0
+    have hA0 := hm.at (by omega)
+    by_cases hdir : 0 ≤ f ∧ f < 4096
+    · have hb : blockJ (.sb 0 r1 f) = [movz 17 0, strb 17 (pi r1) f.toNat, PAD, PAD] := by
+        simp [blockJ, body, pad4, zpre, dat, hdir]
+      rw [bw_of hb] at hA0
+      obtain ⟨t1, s1, m1, a1, p1, q1⟩ := seq1 hm (by omega) (movz_ok (by decide) (by decide) hA0)
+      exact Reach.cons s1 (sb_tail hR (k := 1) (d := 17) (n := pi r1) (f' := f.toNat)
+        (e := CallProbe.ea (s.x r1) f) (V := s.x 0) (by omega) m1 a1 (regs_scr hR.regs (.inr rfl) _) hacc (by decide)
+        hsl.1 (by omega) (by rw [setX_ne _ p17, x1]; exact ea_d hdir)
+        (by rw [setX_eq _ (by decide), hz]; rfl) (by rw [bw_of hb]; rfl) (pads2 hb) p1 q1)
+    · have hb : blockJ (.sb 0 r1 f) = [movz 17 0, addr16 r1 f, strb 17 16 0, PAD] := by
+        simp [blockJ, body, pad4, zpre, dat, hdir]
+      rw [bw_of hb] at hA0
+      obtain ⟨t1, s1, m1, a1, p1, q1⟩ := seq1 hm (by omega) (movz_ok (by decide) (by decide) hA0)
+      have r1' := regs_scr hR.regs (.inr rfl) (BitVec.ofNat 64 0)
+      have hA1 := m1.at (by omega); rw [bw_of hb] at hA1
+      obtain ⟨t2, s2, m2, a2, p2, q2⟩ := seq1 m1 (by omega) (addr16_ok (a1 ▸ r1') hsl hf1 hf2 hnw hup hA1)
+      exact Reach.cons s1 (Reach.cons s2 (sb_tail hR (k := 2) (d := 17) (n := 16) (f' := 0)
+        (e := CallProbe.ea (s.x r1) f) (V := s.x 0) (by omega) m2 a2 (regs_scr (a1 ▸ r1') (.inl rfl) _) hacc
+        (by decide) (by decide) (by omega) (by rw [setX_eq _ (by decide), BitVec.add_zero])
+        (by rw [setX_ne _ (by decide), a1, setX_eq _ (by decide), hz]; rfl) (by rw [bw_of hb]; rfl) (pads1 hb)
+        (p2.trans p1) (q2.trans q1)))
+  · have hl2 := live_of_wr hrd h0
+    have x2 := hR.regs.1 r2 hl2
+    by_cases hdir : 0 ≤ f ∧ f < 4096
+    · have hb : blockJ (.sb r2 r1 f) = [strb (pi r2) (pi r1) f.toNat, PAD, PAD, PAD] := by
+        simp [blockJ, body, pad4, zpre, dat, hdir, h0]
+      exact sb_tail hR (k := 0) (d := pi r2) (n := pi r1) (f' := f.toNat) (e := CallProbe.ea (s.x r1) f)
+        (V := s.x r2) (by omega) hm rfl hR.regs hacc hl2.1 hsl.1 (by omega)
+        (by rw [x1]; exact ea_d hdir) x2 (by rw [bw_of hb]; rfl) (pads3 hb) rfl rfl
+    · have hb : blockJ (.sb r2 r1 f) = [addr16 r1 f, strb (pi r2) 16 0, PAD, PAD] := by
+        simp [blockJ, body, pad4, zpre, dat, hdir, h0]
+      have hA0 := hm.at (by omega); rw [bw_of hb] at hA0
+      obtain ⟨t1, s1, m1, a1, p1, q1⟩ := seq1 hm (by omega) (addr16_ok hR.regs hsl hf1 hf2 hnw hup hA0)
+      exact Reach.cons s1 (sb_tail hR (k := 1) (d := pi r2) (n := 16) (f' := 0) (e := CallProbe.ea (s.x r1) f)
+        (V := s.x r2) (by omega) m1 a1 (regs_scr hR.regs (.inl rfl) _) hacc hl2.1 (by decide) (by omega)
+        (by rw [setX_eq _ (by decide), BitVec.add_zero]) (by rw [setX_ne _ (pi_rng hl2).1, x2])
+        (by rw [bw_of hb]; rfl) (pads2 hb) p1 q1)
+
 end Proven.Apc.Blocks
