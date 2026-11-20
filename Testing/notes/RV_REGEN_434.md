@@ -71,7 +71,31 @@ Not checked in the kernel: no `rfl`/bisimulation proof that old and new compute 
 FakeReal classes are not equal in general. They are behaviour fixes in Sail's Lean output.
 
 ## 4. Repo modules against the regenerated model (Lean 4.34.1)
-See §5 (filled in when the build finishes).
+**`lake build Nano.V2Self.REVIEW` succeeds** (665 jobs; 65 s incremental; peak RSS 11.8 GB for a cold parallel build)
+at `98efd458`, against the regenerated model, with the root `lean-toolchain` at 4.34.1.
+**`Testing/scripts/review_axioms.sh`: "OK: 8 theorems, axioms as pinned"**: `C_correctLO`, `C_runsO`, `C_runs`,
+`self_correct_C`, `self_runs_C`, `Cert.sem_C`, `shiftInv` and `spaceC_ex1_eq` have exactly the axioms pinned for the 4.29
+trusted model: the model's opaque externs + `propext`, `Classical.choice`, `Quot.sound`. No `sorry` in the build log.
+`Spec/` is unchanged. No theorem statement changed (all edits are inside proofs or proof tactics).
+FABLE-PERF also builds `Arm` and `Proof/Tests/{AuditWitness,SelfInWitness}` (axioms `[propext, Classical.choice, Quot.sound]`).
+
+Proof-side changes vs `lean-4.34` (56 `.lean` files, +303/-174). Two causes:
+1. **Regenerated model**, fixed once in the shared tactic `Riscv/Steps/SailEval.lean` (`sail_eval`):
+   - `x <&&> y` / `x <||> y` (Sail `e55d89e7`): the `toBool` instance projection is unfolded. An open Bool match
+     discriminant is decided like an `if` condition (simp, then omega), so the hypotheses that used to close a whole
+     `&&` now close each conjunct. When `x` cannot be decided but `y` returns the absorbing value in the same state,
+     the term is evaluated by `andM_ok_false`/`orM_ok_true` (EStateM) and `…E` (`SailME` = `ExceptT`). This covers
+     `jump_to`'s `target[1] && !Zca` with a symbolic branch offset. New lemma `access1` (bit 1 of a 4-aligned pc) for `fetch`.
+   - lean-sail v10 `readBytes` matches a literal (`match 4 with | 0 | 1 | n.succ`), which reduces at default transparency.
+   - `GenMul`: `wX_bits_mul` for the new `execute_MUL` shape (FABLE-RV). `BootReset.resetSysWith` re-synced (below).
+2. **Lean 4.34.1 port** (would also be needed for the old model): `simpa using h` → `simp at h; exact h`, because simpa's
+   closing check is reducible now; `decide p = true` left with a stale `Decidable` instance → `of_decide_eq_true`;
+   `rw [if_pos h]` → `simp only [h, ↓reduceIte]`; `simp only … at hQ` with `hQ : True` → `try`; goals differing only
+   in `Decidable` instances → `rfl`. In `sail_eval`, the closed-`BitVec` simproc builds `instDecidableEqBitVec w`
+   explicitly, and guards are nested (on 4.34.1 a hoisted `(← …)`/`appArg!` inside `&&` ran unguarded: PANICs).
+
+Built by me only along the REVIEW closure. Remaining default-target modules (lib `Riscv` outside the REVIEW closure:
+`Examples/Implements1Opt`, `Back/MemTop`, `Back/IrTop`, `Examples/BootEx`, …) were in progress with the helpers when this was written.
 - `Riscv/Back/BootReset.lean`: `resetSysWith` is a hand copy of `reset_sys` with the reservation hook as a parameter. **Hand copy
   re-synced with the model REGENERATED with Sail 97aa617dc**: the `Ext_Zicfilp` branch is now `let _ ← ((do if … ) : SailM Unit)`
   as in the model. With the old copy `reset_eq : reset () = resetWith (cancel_reservation ()) := rfl` did not terminate (>150 s);
