@@ -6,6 +6,8 @@ Start with `Nano/V2Self/README.md` (layout, final theorems, how to rebuild) and 
 | note | what |
 |---|---|
 | NANO_V2_REVIEW.md | owner review: the final theorems, what to trust, caveats, axioms |
+| MODEL_PROVENANCE.md | the machine models (Sail RISC-V, Sail ARM, DeepMind arm64): commits, generators, patches, toolchains, which theorems use which |
+| BRANCHES.md | branches, Lean versions, what is proven and trusted where |
 | NANO_V2_AUDIT.md | soundness / loophole audit (G). Finding A is fixed; finding B (acceptance not kernel-proved) is open |
 | NANO_V2_MAIN.md | the end-to-end statement and the stage structure (D) |
 | NANO_V2_SPRINT.md | open sprint units (pruning O-P1..P5, others) |
