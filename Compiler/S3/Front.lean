@@ -68,9 +68,12 @@ def isRecursive (n : Name) : MetaM Bool := do
   if (← getEnv).contains (n ++ `_unary) || (← getEnv).contains (n.str "brecOn") then return true
   if let some ci := (← getEnv).find? n then
     if ci.all.length > 1 then return true
-    -- structural recursion (compiled through `brecOn`): it has an unfolding equation as a recursive definition
+    -- structural / well-founded recursion: registered as a recursive definition by the elaborator.  (Lean 4.34:
+    -- `getUnfoldEqnFor? (nonRec := false)` also answers for a non-recursive definition whose `eq_def` already
+    -- exists, e.g. `StateT.run`, so it no longer tells the two apart.)
     if ci.isDefinition && !(← isMatcher n) then
-      if (← try getUnfoldEqnFor? n (nonRec := false) catch _ => pure none).isSome then return true
+      if (Lean.Elab.Structural.eqnInfoExt.find? (← getEnv) n).isSome ||
+          (Lean.Elab.WF.eqnInfoExt.find? (← getEnv) n).isSome then return true
   return false
 
 /-- a `Nat` literal (raw or `OfNat.ofNat Nat n _`) -/
