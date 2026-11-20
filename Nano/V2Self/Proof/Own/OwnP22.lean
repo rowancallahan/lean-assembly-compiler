@@ -13,7 +13,7 @@ theorem ph2_loop {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : A.p
   have hesl := hB.2.2.2.2.2.2.2.1
   apply reach_one hS
   rw [stp_eq, o30_ph2 hS hp]
-  unfold o33
+  unfold o33; generalize hN : 16777216 = N; revert N; apply id; intro N hN
   have r7 := (regs hS).2.2.2.2.2.2.1
   have r6 := (regs hS).2.2.2.2.2.1
   simp only [lit] at r7 r6 ⊢
@@ -25,7 +25,7 @@ theorem ph2_loop {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : A.p
     (by simp [regL]) rfl
   have hS2 := o2_eq hS1 (Φ0 := Φ0) (r := r) hΦ hB.2.2.2.2.2.1 (k := 5) (by omega) A.es.length
   left
-  exact ⟨hS2, rf_zero hF hB, hV, hT, bnd_frame (A := { A with F := List.replicate W.ns false }) hB hΦ
+  exact ⟨hS2, (by rw [← hN]; exact rf_zero hF hB), hV, hT, bnd_frame (A := { A with F := List.replicate W.ns false }) hB hΦ
     (small_set hsm (by omega) (by omega)) (by omega)⟩
 
 /-- after the zero arm: transfer, a := entries end, done := 1 -/
@@ -40,13 +40,13 @@ theorem ph1_loop_z {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : A
   have hesb := hB.2.2.2.2.2.2.2.1
   apply reach_one hS
   rw [stp_eq, o30_ph1 hS hp]
-  unfold o32
+  unfold o32; generalize hN : 16777216 = N; revert N; apply id; intro N hN
   have r7 := (regs hS).2.2.2.2.2.2.1
   simp only [lit] at r7 ⊢
   simp only [nfr_ne hS hB hΦ, Bool.false_eq_true, if_false, f0, f2, f5, r7, hg, hc,
     show (u 10 == u 4) = false from rfl, show (u 10 == u 5) = false from rfl, show (u 10 == u 10) = true from rfl,
     if_true, show (u 0 == u 0) = true from rfl]
-  rcases o15_ok 16777216 A f v r.vc hS hF hV hB (by omega) with ⟨Fz, kz, f', v', htr, ho15, hF1, hV1⟩ | herr
+  rcases o15_ok N A f v r.vc hS hF hV hB (by omega) with ⟨Fz, kz, f', v', htr, ho15, hF1, hV1⟩ | herr
   · rw [ho15]; simp only
     have hdrop : A.es.drop r.vc = ez := by rw [hes, ← hpre]; simp
     have htake : A.es.take r.vc = pre := by rw [hes, ← hpre]; simp
@@ -72,7 +72,7 @@ theorem ph1_loop_z {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : A
       · exact hB.2.2.2.2.2.2.2.2.2.1 x (by rw [hΦ]; simp [h])
       · simp at h; subst h; exact hsm2
   · right
-    revert herr; generalize o15 16777216 s f v (u r.vc) (u A.es.length) = z; obtain ⟨s1, f1, v1⟩ := z; intro herr
+    revert herr; generalize o15 N s f v (u r.vc) (u A.es.length) = z; obtain ⟨s1, f1, v1⟩ := z; intro herr
     simp only at herr ⊢
     exact o2_err (o2_err (err_bset (by decide) herr) (by omega) (by omega) _) (by omega) (by omega) _
 
@@ -88,13 +88,13 @@ theorem ph1_loop_s {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : A
   have hesb := hB.2.2.2.2.2.2.2.1
   apply reach_one hS
   rw [stp_eq, o30_ph1 hS hp]
-  unfold o32
+  unfold o32; generalize hN : 16777216 = N; revert N; apply id; intro N hN
   have r7 := (regs hS).2.2.2.2.2.2.1
   simp only [lit] at r7 ⊢
   simp only [nfr_ne hS hB hΦ, Bool.false_eq_true, if_false, f0, f2, f5, r7, hg, hc,
     show (u 10 == u 4) = false from rfl, show (u 10 == u 5) = false from rfl, show (u 10 == u 10) = true from rfl,
     if_true, show (u 1 == u 0) = false from rfl]
-  rcases o15_ok 16777216 A f v r.vc hS hF hV hB (by omega) with ⟨Fs, ks, f', v', htr, ho15, hF1, hV1⟩ | herr
+  rcases o15_ok N A f v r.vc hS hF hV hB (by omega) with ⟨Fs, ks, f', v', htr, ho15, hF1, hV1⟩ | herr
   · rw [ho15]; simp only [f4, f6]
     have hdrop : A.es.drop r.vc = es := by rw [hes, ← hvc, ← List.length_append, List.drop_left]
     have htake : A.es.take r.vc = pre ++ kz := by rw [hes, ← hvc, ← List.length_append, List.take_left]
@@ -127,7 +127,7 @@ theorem ph1_loop_s {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : A
         · simp at h; subst h; exact hsm2
     · right; exact o2_err (err_bset (by decide) herr) (by omega) (by omega) _
   · right
-    revert herr; generalize o15 16777216 s f v (u r.vc) (u A.es.length) = z; obtain ⟨s1, f1, v1⟩ := z; intro herr
+    revert herr; generalize o15 N s f v (u r.vc) (u A.es.length) = z; obtain ⟨s1, f1, v1⟩ := z; intro herr
     simp only at herr ⊢
     exact o2_err (err_bset (by decide) (o28_err herr)) (by omega) (by omega) _
 

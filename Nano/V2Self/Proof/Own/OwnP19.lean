@@ -16,12 +16,12 @@ theorem ph1_let_body {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp :
   have hesb := hB.2.2.2.2.2.2.2.1
   apply reach_one hS
   rw [stp_eq, o30_ph1 hS hp]
-  unfold o32
+  unfold o32; generalize hN : 16777216 = N; revert N; apply id; intro N hN
   have r7 := (regs hS).2.2.2.2.2.2.1
   simp only [lit] at r7 ⊢
   simp only [nfr_ne hS hB hΦ, Bool.false_eq_true, if_false, f0, f2, f5, r7, hg, hc,
     show (u 5 == u 4) = false from rfl, show (u 5 == u 5) = true from rfl, if_true, show (u 1 == u 0) = false from rfl]
-  rcases o15_ok 16777216 A f v r.vc hS hF hV hB (by omega) with ⟨F', kb, f', v', htr, ho15, hF1, hV1⟩ | herr
+  rcases o15_ok N A f v r.vc hS hF hV hB (by omega) with ⟨F', kb, f', v', htr, ho15, hF1, hV1⟩ | herr
   · rw [ho15]; simp only
     have hdrop : A.es.drop r.vc = eb := by rw [hes, ← hpre]; simp
     have htake : A.es.take r.vc = pre := by rw [hes, ← hpre]; simp
@@ -44,7 +44,7 @@ theorem ph1_let_body {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp :
       · exact hB.2.2.2.2.2.2.2.2.2.1 x (by rw [hΦ]; simp [h])
       · simp at h; subst h; exact hsm2
   · right
-    revert herr; generalize o15 16777216 s f v (u r.vc) (u A.es.length) = z; obtain ⟨s1, f1, v1⟩ := z; intro herr
+    revert herr; generalize o15 N s f v (u r.vc) (u A.es.length) = z; obtain ⟨s1, f1, v1⟩ := z; intro herr
     simp only at herr ⊢
     exact o2_err (err_bset (by decide) herr) (by omega) (by omega) _
 
@@ -92,7 +92,7 @@ theorem ph1_let_val {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : 
   have hnsK : W.ns = W.K.length := rfl
   apply reach_one hS
   rw [stp_eq, o30_ph1 hS hp]
-  unfold o32
+  unfold o32; generalize hN : 16777216 = N; revert N; apply id; intro N hN
   have r7 := (regs hS).2.2.2.2.2.2.1
   have r6 := (regs hS).2.2.2.2.2.1
   have r2 := (regs hS).2.2.1
@@ -101,7 +101,7 @@ theorem ph1_let_val {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : 
   simp only [nfr_ne hS hB hΦ, Bool.false_eq_true, if_false, f0, f2, f5, f6, f7, r7, r6, r2, r8, hg, hc,
     show (u 5 == u 4) = false from rfl, show (u 5 == u 5) = true from rfl, if_true, show (u 0 == u 0) = true from rfl,
     show (u 0 == u 1) = false from rfl]
-  rcases o15_ok 16777216 A f v r.vc hS hF hV hB (by omega) with ⟨F2, kv, f', v', htr, ho15, hF1, hV1⟩ | herr
+  rcases o15_ok N A f v r.vc hS hF hV hB (by omega) with ⟨F2, kv, f', v', htr, ho15, hF1, hV1⟩ | herr
   · rw [ho15]; simp only
     have hdrop : A.es.drop r.vc = ev := by rw [hes, ← hpre]; simp
     have htake : A.es.take r.vc = pre := by rw [hes, ← hpre]; simp
@@ -138,7 +138,7 @@ theorem ph1_let_val {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : 
       intro e he; simp at he; rcases he with he | he
       · exact hB.2.2.2.2.2.2.2.2.1 e (by rw [hes]; simp [he])
       · have := hkv e he; omega
-    have h26 := o26_ok hS0 hF1 hV1 hB0 (pre := pre) (kv := kv) rfl (x := r.a) (by omega) 16777216 0 (by omega)
+    have h26 := o26_ok hS0 hF1 hV1 hB0 (pre := pre) (kv := kv) rfl (x := r.a) (by omega) N 0 (by omega)
     rw [← hkb, ← hpre]
     rcases h26 with ⟨h1, h2⟩ | herr
     · rw [h1]; left
@@ -159,11 +159,11 @@ theorem ph1_let_val {W : WCx} {s f v : Buf} {A : AS} (hSt : St W s f v A) (hp : 
         · exact hB.2.2.2.2.2.2.2.2.2.1 x (by rw [hΦ]; simp [h])
         · simp at h; subst h; exact hsm2
     · right
-      revert herr; generalize o26 16777216 s f' v' (u r.a) (u 0) (u kv.length) (u pre.length) = z; obtain ⟨s2, f2⟩ := z
+      revert herr; generalize o26 N s f' v' (u r.a) (u 0) (u kv.length) (u pre.length) = z; obtain ⟨s2, f2⟩ := z
       intro herr; simp only at herr ⊢
       exact o2_err (err_bset (by decide) (err_bset (by decide) herr)) (by omega) (by omega) _
   · right
-    revert herr; generalize o15 16777216 s f v (u r.vc) (u A.es.length) = z; obtain ⟨s1, f1, v1⟩ := z; intro herr
+    revert herr; generalize o15 N s f v (u r.vc) (u A.es.length) = z; obtain ⟨s1, f1, v1⟩ := z; intro herr
     simp only at herr ⊢
     repeat' split
     all_goals (refine o2_err ?_ (k := 2) (by omega) (by omega) _

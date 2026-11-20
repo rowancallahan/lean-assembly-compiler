@@ -15,7 +15,7 @@ theorem sim_loop_in {W : WCx} {z st : Nd} {A : AS} {s f v : Buf} {rest : List UI
   rw [show u A.i + u 0 = u A.i from u_add _ 0] at h0
   simp only [Nd.ser, List.getD_cons_zero] at h0
   have hn := nfr_ne hS hB hΦ
-  unfold o31
+  unfold o31; generalize hN : 16777216 = N; revert N; apply id; intro N hN
   have r0 := (regs hS).1
   simp only [lit] at r0 h0 hn ⊢
   simp only [r0, h0, hn]
