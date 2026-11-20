@@ -378,4 +378,94 @@ theorem blk_cbz (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : Na
       (fun i h1 h2 => by rcases (by omega : i = 1 ∨ i = 2 ∨ i = 3) with rfl | rfl | rfl <;> rw [hblk] <;> rfl)
     exact ⟨s2, Runs.trans r1 r2, M2⟩
 
+/-! ## constants and immediates -/
+
+/-- `movz d, #(65536 − n); movk d, #0xFFFF, lsl 16/32/48` builds −n (1 ≤ n ≤ 2048) -/
+theorem movk_chain : ∀ n, n < 2049 → 1 ≤ n →
+    movkV (movkV (movkV (UInt64.ofNat (65536 - n)) 65535 1) 65535 2) 65535 3 = UInt64.ofInt (-(n : Int)) := by
+  decide +kernel
+
+theorem ofNat_imm {imm : Int} (h : 0 ≤ imm) : UInt64.ofNat imm.toNat = UInt64.ofInt imm := by
+  apply UInt64.toNat_inj.1; rw [ofInt_toNat']; simp; omega
+
+theorem sub_imm (x : UInt64) {imm : Int} (h : imm < 0) (h2 : -2048 ≤ imm) :
+    x - UInt64.ofNat imm.natAbs = x + UInt64.ofInt imm := by
+  apply UInt64.toNat_inj.1
+  rw [UInt64.toNat_sub, UInt64.toNat_add, ofInt_toNat']; simp; omega
+
+theorem wr_wr (s : CallProbe.St) (r : Nat) (a b : UInt64) : CallProbe.wr (CallProbe.wr s r a) r b = CallProbe.wr s r b := by
+  unfold CallProbe.wr; split
+  · rfl
+  · simp only; congr 1; funext i; unfold CallProbe.upd; split <;> rfl
+
+theorem wr_same (s : CallProbe.St) {r : Nat} (h : r ≠ 0) (v : UInt64) : (CallProbe.wr s r v).x r = v := by
+  simp [CallProbe.wr, h, CallProbe.upd]
+
+theorem wr_zero (s : CallProbe.St) (v : UInt64) : CallProbe.wr s 0 v = s := by simp [CallProbe.wr]
+
+/-- `addi rd, rs, imm` with the machine's wrapping sum (`movz`/`movk`, `add`/`sub` imm, or PADs for rd = x0) -/
+theorem blk_addi (S : A64Sem M) {K : LayW} {C : List J} {s0 s : M.State} {pc : Nat} {st : CallProbe.St}
+    {rd rs : Nat} {imm : Int}
+    (hM : Mid K C s0 (pc, st) 0 s) (hC : C[pc]? = some (.addi rd rs imm)) (hB : K.base + 16 * C.length ≤ 2 ^ 32)
+    (hpcl : pc < C.length) (hrd : mapped rd = true) (hrs : mapped rs = true) (hi1 : -2048 ≤ imm) (hi2 : imm < 2048) :
+    ∃ s', Runs M s s' ∧ Mid K C s0 (pc + 1, CallProbe.wr st rd (st.x rs + UInt64.ofInt imm)) 0 s' := by
+  by_cases hd : rd = 0
+  · subst hd; rw [wr_zero]
+    have hb : blockJ (.addi 0 rs imm) = [PAD, PAD, PAD, PAD] := rfl
+    exact run_pads S hC hB hpcl 4 0 s (by decide) hM (fun i _ h2 => by
+      rcases (by omega : i = 0 ∨ i = 1 ∨ i = 2 ∨ i = 3) with rfl | rfl | rfl | rfl <;> rw [hb] <;> rfl)
+  have hdl := armReg_lt hrd hd
+  by_cases hs : rs = 0
+  · subst hs; rw [hM.x0, UInt64.zero_add]
+    by_cases hn : imm < 0
+    · have hb : blockJ (.addi rd 0 imm) = [movz (armReg rd) (65536 - imm.natAbs), movk (armReg rd) 65535 1,
+          movk (armReg rd) 65535 2, movk (armReg rd) 65535 3] := by simp [blockJ, body, pad4, hd, hn]
+      have w0 := word_pc hM hC hB hpcl (by decide) (w := movz (armReg rd) (65536 - imm.natAbs)) (by rw [hb]; rfl)
+      obtain ⟨s1, r1, M1⟩ := mid_set hM hrd hd (S.movz s _ _ hM.cfg hdl (by omega) w0)
+      have w1 := word_pc M1 hC hB hpcl (by decide) (w := movk (armReg rd) 65535 1) (by rw [hb]; rfl)
+      have g1 := S.movk s1 _ _ _ M1.cfg hdl (by decide) (by decide) w1
+      rw [M1.x rd (by omega) (mapped_lt hrd)] at g1
+      obtain ⟨s2, r2, M2⟩ := mid_set M1 hrd hd g1
+      have w2 := word_pc M2 hC hB hpcl (by decide) (w := movk (armReg rd) 65535 2) (by rw [hb]; rfl)
+      have g2 := S.movk s2 _ _ _ M2.cfg hdl (by decide) (by decide) w2
+      rw [M2.x rd (by omega) (mapped_lt hrd)] at g2
+      obtain ⟨s3, r3, M3⟩ := mid_set M2 hrd hd g2
+      have w3 := word_pc M3 hC hB hpcl (by decide) (w := movk (armReg rd) 65535 3) (by rw [hb]; rfl)
+      have g3 := S.movk s3 _ _ _ M3.cfg hdl (by decide) (by decide) w3
+      rw [M3.x rd (by omega) (mapped_lt hrd)] at g3
+      obtain ⟨s4, r4, M4⟩ := mid_set M3 hrd hd g3
+      refine ⟨s4, Runs.trans r1 (Runs.trans r2 (Runs.trans r3 r4)), ?_⟩
+      have M5 := mid_next M4
+      simp only [wr_wr, wr_same _ hd] at M5
+      rw [movk_chain imm.natAbs (by omega) (by omega), show (-(imm.natAbs : Int)) = imm by omega] at M5
+      exact M5
+    · have hb : blockJ (.addi rd 0 imm) = [movz (armReg rd) imm.toNat, PAD, PAD, PAD] := by
+        simp [blockJ, body, pad4, hd, hn]
+      have w0 := word_pc hM hC hB hpcl (by decide) (w := movz (armReg rd) imm.toNat) (by rw [hb]; rfl)
+      obtain ⟨s1, r1, M1⟩ := mid_set hM hrd hd (S.movz s _ _ hM.cfg hdl (by omega) w0)
+      obtain ⟨s2, r2, M2⟩ := run_pads S hC hB hpcl 3 1 s1 (by decide) M1
+        (fun i h1 h2 => by rcases (by omega : i = 1 ∨ i = 2 ∨ i = 3) with rfl | rfl | rfl <;> rw [hb] <;> rfl)
+      rw [ofNat_imm (by omega)] at M2
+      exact ⟨s2, Runs.trans r1 r2, M2⟩
+  · have hsl := armReg_lt hrs hs
+    by_cases hn : imm < 0
+    · have hb : blockJ (.addi rd rs imm) = [subi (armReg rd) (armReg rs) imm.natAbs, PAD, PAD, PAD] := by
+        simp [blockJ, body, pad4, hd, hs, hn]
+      have w0 := word_pc hM hC hB hpcl (by decide) (w := subi (armReg rd) (armReg rs) imm.natAbs) (by rw [hb]; rfl)
+      have g := S.subi s _ _ _ hM.cfg hdl hsl (by omega) w0
+      rw [hM.x rs (by omega) (mapped_lt hrs), sub_imm _ hn hi1] at g
+      obtain ⟨s1, r1, M1⟩ := mid_set hM hrd hd g
+      obtain ⟨s2, r2, M2⟩ := run_pads S hC hB hpcl 3 1 s1 (by decide) M1
+        (fun i h1 h2 => by rcases (by omega : i = 1 ∨ i = 2 ∨ i = 3) with rfl | rfl | rfl <;> rw [hb] <;> rfl)
+      exact ⟨s2, Runs.trans r1 r2, M2⟩
+    · have hb : blockJ (.addi rd rs imm) = [addi (armReg rd) (armReg rs) imm.toNat, PAD, PAD, PAD] := by
+        simp [blockJ, body, pad4, hd, hs, hn]
+      have w0 := word_pc hM hC hB hpcl (by decide) (w := addi (armReg rd) (armReg rs) imm.toNat) (by rw [hb]; rfl)
+      have g := S.addi s _ _ _ hM.cfg hdl hsl (by omega) w0
+      rw [hM.x rs (by omega) (mapped_lt hrs), ofNat_imm (by omega)] at g
+      obtain ⟨s1, r1, M1⟩ := mid_set hM hrd hd g
+      obtain ⟨s2, r2, M2⟩ := run_pads S hC hB hpcl 3 1 s1 (by decide) M1
+        (fun i h1 h2 => by rcases (by omega : i = 1 ∨ i = 2 ∨ i = 3) with rfl | rfl | rfl <;> rw [hb] <;> rfl)
+      exact ⟨s2, Runs.trans r1 r2, M2⟩
+
 end JT
