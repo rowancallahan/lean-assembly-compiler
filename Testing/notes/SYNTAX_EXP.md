@@ -289,3 +289,14 @@ is unchanged (`DsTok.ds_id`).
     becomes `bpush x v`. This is a local token rewrite with a one-token lookbehind (an identifier) and bracket matching.
 - **Estimate:** C about +80 lines in Dsg; proof about +600 lines (the same pattern as `t9_sound`, with fewer cases),
   plus the lexer cases (about +150). Roughly 4–6 h, after the semantics decision.
+
+### Index notation: semantics options (owner decision; nothing implemented)
+In Lean's logic, `a[i]!` out of range **is `default`** (0 for UInt64). The panic is only a runtime message outside the
+logic, so a silent 0 agrees with Lean's meaning and with `bget`. Options:
+- (i) **Silent default**: `a[i]!` desugars to `bget a i`. Equal to Lean's logical meaning; out-of-range reads give 0
+  without notice.
+- (ii) **Loud failure**: out of range traps or returns an error status, as the existing `cap` stop does. This is closer
+  to the owner's "fail loudly" preference, but it differs from Lean's logical value, so the meaning (`Sem`) would get a
+  new stop reason. That is a trusted-definition change and needs proof work in Gen/Machine (a new stop path).
+- (iii) **Only proven-in-bounds forms**: accept `a[i]'h` or `if h : i < a.size then a[i] else …` and reject `a[i]!`.
+  No semantic gap. The desugar stage drops `h` (a proof term), and the bound check becomes an ordinary `if`.
