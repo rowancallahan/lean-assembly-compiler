@@ -140,7 +140,7 @@ factor 8.9 for K x4, so quadratic in total). Factor = instructions at K=320 / K=
 - **Grow linearly** (factor 4.0): 42037 (1515 w, 7,231 -> 28,831 calls, 372 instr/call), 45541 (94 w), 43552 (335 w, once),
   12535 (275 w), 60831 (231 w), 3494 (942 w), 4436 (711 w), 58872 (1803 w), 130, 322, 79722 (211 w, once). Per call constant.
 - Totals: the K^2 entries (8055, the 11 stubs, 14382) are about 80% of the K=320 run's instructions (the 11 stubs alone 65%;
-  in the self-compile they are 48% and 6% respectively).
+  in the self-compile the same entries are 6.8% (8055), 48% (stubs) and 4.1% (14382)).
   So the K^2 part of the compile cost is the call count times a per-call cost, and the call count is the number of call
   sites that the generated code runs. The compiler's own `m` makes K calls and the per-def work is paid once per call.
 
