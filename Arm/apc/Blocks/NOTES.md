@@ -72,9 +72,16 @@ the cells of `D`; x16/x17/NZCV free; x18..x29 and sp kept). `blk_<kind>`: `C[pc]
 `ea` clamps (`Int.toNat`, so `addi rd x0 -1` gives 0) while the block wraps (`movz/movk` give 2^64 − 1). `blk_addi`
 takes JLay's `SafeX` premise `0 ≤ x[rs] + imm < 2^64`; the wrapping case is `JTarget.addi_ok` (a different J value),
 not a `BlockOK` instance. The same premise belongs on ld/sd/lbu/sb (as in `SafeX`).
+Second gap: `validJ` does not bound `jal`'s offset; `b`/`bl` reach ±2^23 J instructions, so for programs longer than
+2^23 a far `jal` is not encodable. `blk_jal` takes `-2^23 < o < 2^23` (rv2arm's validation should check it, or
+`C.length ≤ 2^23`).
 
 | J kind | theorem | status |
 |---|---|---|
 | addi (rd = 0: 4 PAD; rs = 0: movz; add/sub imm) | `blk_addi` | proved |
 | alu (8 ops; `movz x17, #0` first for an x0 operand or mul; `madd …, x17`) | `blk_alu` (+ `alu_word`) | proved |
 | slli / srli (`[movz x17, #0]`, `movz x16, #sh`, `lslv`/`lsrv`) | `blk_slli`, `blk_srli` (`blk_shift`) | proved |
+| beq (x0,x0: `b`; one x0: `cbz`; else `subs x16; b.eq`) | `blk_beq` (`b_blk`, `cbz_blk`, `blk_cmp`, `cmp_tail`) | proved |
+| bne / bltu / bgeu (`subs x16; b.ne/lo/hs`, x17 prefix for x0) | `blk_bne`, `blk_bltu`, `blk_bgeu` | proved |
+| jal x0 (`b`) / jal x1 (3 PAD, `bl`) | `blk_jal` | proved, extra premise `-2^23 < o < 2^23` |
+| jalr x0, rs (`br`) | `blk_jalr` | proved, premise = ArmBlock's `AccOK` for jalr |
