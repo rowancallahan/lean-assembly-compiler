@@ -120,6 +120,10 @@ theorem Star.w {C : List J} {a c : Nat × St} (h : Star C a c) : c.2.wk = a.2.wk
   | refl => rfl
   | tail _ hs ih => rw [step_w hs, ih]
 
+/-- `l` sits in `C` at `pos` -/
+def At (C : List J) (pos : Nat) (l : List J) : Prop := ∀ i, i < l.length → C[pos + i]? = l[i]?
+
+/-! ## UInt64 arithmetic without wrap -/
 /-! ## one-instruction lemmas -/
 section
 variable {C : List J} {pc : Nat} {s : St}
