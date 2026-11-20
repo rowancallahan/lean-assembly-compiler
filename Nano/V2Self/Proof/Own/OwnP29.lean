@@ -61,6 +61,13 @@ theorem bget_bset (y : Buf) (k k' w : UInt64) :
     bget (bset y k w) k' = if k.toNat = k'.toNat ∧ k.toNat < y.length then w else bget y k' := by
   simp only [bget, bset]; rw [getD_set]
 
+/- Lean 4.34.1: the kernel re-checks a `dsimp` step by unfolding both sides, which runs the fuel of these functions
+(deep recursion). `fuel_hide` replaces them by variables under a binder the kernel sees; `fuel_show` puts them back. -/
+set_option hygiene false in
+local macro "fuel_hide" : tactic => `(tactic| (generalize hFo35 : o35 = Fo35; generalize hFo36 : o36 = Fo36; generalize hFo37 : o37 = Fo37; generalize hFo42 : o42 = Fo42; generalize hFo22 : o22 = Fo22; revert Fo35 Fo36 Fo37 Fo42 Fo22; apply id; intro Fo35 hFo35 Fo36 hFo36 Fo37 hFo37 Fo42 hFo42 Fo22 hFo22))
+set_option hygiene false in
+local macro "fuel_show" : tactic => `(tactic| (subst hFo35 hFo36 hFo37 hFo42 hFo22))
+
 theorem o38_ok {x s f v a b c t : Buf} {ps rs : List (List Nat)} {i : Nat} (hI : VInv x ps rs a b c t i) {d : DefA}
     {rest : List UInt64} (hx : x.drop i = d.ser ++ rest) (hw : WFD d)
     (hok : bget (o38 x s f v a b c t).2.2.2.1 1 ≠ 1) :
@@ -80,7 +87,7 @@ theorem o38_ok {x s f v a b c t : Buf} {ps rs : List (List Nat)} {i : Nat} (hI :
   generalize hO : o38 x s f v a b c t = O at hok ⊢
   unfold o38 at hO
   rw [h0] at hO
-  dsimp only at hO
+  revert hO; fuel_hide; intro hO; dsimp only at hO; fuel_show
   rw [x2, x3, x5, h13] at hO
   have c1 : ((1048575 : UInt64) < u d.npw) = (1048575 < d.npw) := u_lt' (a := 1048575) (by omega) wp
   have c2 : ((1048575 : UInt64) < u d.nslots) = (1048575 < d.nslots) := u_lt' (a := 1048575) (by omega) wn
@@ -109,7 +116,7 @@ theorem o38_ok {x s f v a b c t : Buf} {ps rs : List (List Nat)} {i : Nat} (hI :
   generalize hZ : o36 1000 x (bset (bset (bset (bset (bset (bset s 1 0) 2 (u d.npw)) 3 (u d.nres)) 6 (u d.nslots)) 12
     (u i + 6)) 13 (u ps.length)) (o22 16777216 (o22 16777216 f 0 0 0 (2 * u d.nslots) 3) 0 0 0 (u d.npw) 4) v t = Z at hO
   obtain ⟨s2, f2, v2⟩ := Z
-  dsimp only at hO
+  revert hO; fuel_hide; intro hO; dsimp only at hO; fuel_show
   generalize hT1 : o37 16777216 (bpush (bpush (bset t (u ps.length) (bsize t)) (u d.npw)) (u d.nres)) f2 0 (u d.npw) 1
     = T1 at hO
   generalize hB1 : o42 2097152 b f2 0 (u d.nslots) = B1 at hO
