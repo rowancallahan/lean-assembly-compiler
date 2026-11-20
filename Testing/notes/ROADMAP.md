@@ -558,3 +558,6 @@ bite); (2) speed of compiled programs; (3) grow the parser's accepted syntax unt
   (c) THEN grow the accepted syntax toward con-leche, one construct at a time. Every growth step must keep all proofs
   green (REVIEW axioms as pinned, RISC-V + ARM theorems build) AND must not regress the benchmark baseline
   (self-compile instruction count and the example table); each step gets a CHANGELOG entry.
+  Also per step: a short code check: total code size per area (compiler source, proofs, glue) does not grow
+  without reason, no dead code (deadcode tool), shared abstractions reused instead of duplicated (e.g. one generic
+  machine adapter, one block table). Size table kept in Testing/notes/CODE_SIZE.md.
