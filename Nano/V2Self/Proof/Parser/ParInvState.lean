@@ -4,6 +4,7 @@ Every `St` field has its cells (see ParRun's header); frames ↔ task records (c
 Preservation lemmas have the shape `Rep h ts st (f :: fs) → bget (step h) 0 ≠ 0 → ∃ k st', stepF f st = some (k, st') ∧
 Rep (step h) ts st' (k ++ fs)` (machine success ⇒ Layer-2 success, soundness direction only). -/
 import Nano.V2Self.Proof.Parser.ParInvOps
+import Nano.V2Self.Proof.Parser.ParInvHash
 namespace ParInv
 open C BufL ParSpec ParRun
 
@@ -107,13 +108,28 @@ def DefsRep (h : Buf) (st : St) (inDef : Bool) : Prop :=
     else st.defs.length < 512 → RowZero h st.defs.length) ∧
   (∀ j, st.defs.length < j → j < 512 → RowZero h j) ∧
   (∀ i : Nat, (bget h 27).toNat ≤ i → i < 4096 → bget h (d7 + 4096 + i.toUInt64) = 0) ∧
-  ShRows h
+  ShRows h ∧
+  HashRep h ((if inDef then rows st else st.defs).map DefR.name)
+
+theorem rows_names {s s' : St} (a : s.defs = s'.defs) (b : s.cur.name = s'.cur.name) :
+    (rows s).map DefR.name = (rows s').map DefR.name := by simp [rows, a, b]
+
+theorem DefsRep.hash {h : Buf} {st : St} {b : Bool} (r : DefsRep h st b) :
+    HashRep h ((if b then rows st else st.defs).map DefR.name) := by
+  obtain ⟨_, _, _, _, _, _, _, _, hH⟩ := r; exact hH
+
+theorem DefsRep.len {h : Buf} {st : St} {b : Bool} (r : DefsRep h st b) :
+    ((if b then rows st else st.defs).map DefR.name).length ≤ 512 := by
+  obtain ⟨_, rl, _, _, rc, _⟩ := r
+  cases b
+  · simpa using rl
+  · simp only [if_true] at rc; simp [rows]; omega
 
 
 
 /-- the emitted words follow the token sentinel 0 at the end of the heap -/
 def OutRep (h : Buf) (ts : Buf) (out : List UInt64) : Prop :=
-  h.length = 184384 + ts.length + 1 + out.length ∧ h.drop (184384 + ts.length + 1) = out
+  h.length = 185408 + ts.length + 1 + out.length ∧ h.drop (185408 + ts.length + 1) = out
 
 def _root_.ParRun.Frame.isDefs : Frame → Bool
   | .defs => true

@@ -17,7 +17,7 @@ theorem d3v : d3 = 12352 := rfl
 theorem d5v : d5 = 16448 := rfl
 theorem d7v : d7 = 147520 := rfl
 theorem d9v : d9 = 180288 := rfl
-theorem d11v : d11 = 184384 := rfl
+theorem d11v : d11 = 185408 := rfl
 
 /-! ## loading: y5 zero-fills, y14 copies the tokens -/
 theorem y5_eq : ∀ (n : Nat) (h : Buf), y5 n h = h ++ List.replicate n 0
@@ -27,7 +27,7 @@ theorem y5_eq : ∀ (n : Nat) (h : Buf), y5 n h = h ++ List.replicate n 0
     rw [y5_eq n (h ++ [0]), List.replicate_succ]
     simp
 
-theorem y15_nil : y15 bnew = List.replicate 184384 0 := by
+theorem y15_nil : y15 bnew = List.replicate 185408 0 := by
   unfold y15
   rw [y5_eq]
   rfl
@@ -53,9 +53,9 @@ theorem y14_eq (x : Buf) (hx : x.length < 2 ^ 64) :
       simp only [y14, hlt, if_false]
       simp [List.drop_eq_nil_of_le (show x.length ≤ i.toNat by omega)]
 
-/-- the heap right after loading: 184,384 zero cells (the layout), the tokens, h[7] = their number, h[0] = 1, then the sentinel 0 and the IRV word 2 -/
+/-- the heap right after loading: 185,408 zero cells (the layout), the tokens, h[7] = their number, h[0] = 1, then the sentinel 0 and the IRV word 2 -/
 def entryHeap (x : Buf) : Buf :=
-  bpush (bpush (bset (bset (List.replicate 184384 0 ++ x) 7 (bsize x)) 0 1) 0) 2
+  bpush (bpush (bset (bset (List.replicate 185408 0 ++ x) 7 (bsize x)) 0 1) 0) 2
 
 /-- the tail of `v99`: the acceptance checks and the output extraction, as a function of the final heap -/
 def fin (x : Buf) (b : UInt64) (h : Buf) : Buf :=
@@ -83,11 +83,11 @@ def fin (x : Buf) (b : UInt64) (h : Buf) : Buf :=
 theorem v99_eq (x : Buf) (b : UInt64) (hx : x.length ≤ 16777216) :
     v99 x b = fin x b (v97 16777216 (v1 (entryHeap x) 60 0 0)) := by
   have h0 : (0 : UInt64).toNat = 0 := rfl
-  have hy : y14 16777216 x 0 (y15 bnew) = List.replicate 184384 0 ++ x := by
+  have hy : y14 16777216 x 0 (y15 bnew) = List.replicate 185408 0 ++ x := by
     rw [y14_eq x (by omega) 16777216 0 _ (by rw [h0]; omega) (by rw [h0]; omega), y15_nil, h0, List.drop_zero]
-  have hsz : bsize (List.replicate 184384 0 ++ x) = d11 + bsize x := by
+  have hsz : bsize (List.replicate 185408 0 ++ x) = d11 + bsize x := by
     apply UInt64.toNat_inj.mp
-    have e : (184384 : UInt64).toNat = 184384 := rfl
+    have e : (185408 : UInt64).toNat = 185408 := rfl
     rw [d11v]
     simp only [bsize, List.length_append, List.length_replicate, UInt64.toNat_add, UInt64.toNat_ofNat', e]
     omega
@@ -196,10 +196,10 @@ theorem Same.trans {r : Nat} {h h' h'' : Buf} (a : Same r h h') (b : Same r h' h
 theorem same_bset (r : Nat) (h : Buf) (i v : UInt64) (hi : i.toNat = r ∨ i.toNat = 31) : Same r h (bset h i v) :=
   ⟨by simp [bset], fun j j1 j2 => by rw [bget_bset_other _ _ _ _ (by omega)]⟩
 
-theorem d11a (a : UInt64) (ha : a.toNat < 2 ^ 40) : (d11 + a).toNat = 184384 + a.toNat := by
+theorem d11a (a : UInt64) (ha : a.toNat < 2 ^ 40) : (d11 + a).toNat = 185408 + a.toNat := by
   rw [UInt64.toNat_add, d11v]; simp; omega
 
-theorem d11a1 (a : UInt64) (ha : a.toNat < 2 ^ 40) : (d11 + a + 1).toNat = 184384 + a.toNat + 1 := by
+theorem d11a1 (a : UInt64) (ha : a.toNat < 2 ^ 40) : (d11 + a + 1).toNat = 185408 + a.toNat + 1 := by
   rw [UInt64.toNat_add, d11a a ha]; simp; omega
 
 theorem nameSeq_same {r : Nat} {h h' : Buf} (s : Same r h h') (hr : r < 184384) :
@@ -314,63 +314,5 @@ theorem defTabRep_same {r : Nat} {h h' : Buf} (s : Same r h h') (hr : 7 < r ∧ 
     rw [UInt64.toNat_add, UInt64.toNat_mul, d7v]; simp [UInt64.toNat_ofNat']; omega
   refine ⟨?_, nameOK_same s ⟨hr.1, by omega⟩ hn e2, e3⟩
   rw [s.2 _ (by rw [q]; omega) (by rw [q]; omega)]; exact e1
-
-/-- **v8 = innermost-def lookup**: scanning the first `j` bindings for the spelling of the token at `x`, the result cell h[22] holds `idxOf`,
-and only the scratch cells h[22], h[31] change -/
-theorem v8_lookup (tab : List (UInt64 × List UInt64)) (x : UInt64) (nx : List UInt64) :
-    ∀ (jn n : Nat) (h : Buf) (j : UInt64), j.toNat = jn → jn ≤ tab.length → tab.length < 2 ^ 20 → jn + 1 ≤ n →
-      31 < h.length → (bget h 7).toNat < 2 ^ 40 → DefTabRep h tab → NameOK h x nx → nx.length < 2 ^ 24 →
-      Same 22 h (v8 n h j x) ∧ bget (v8 n h j x) 22 = (idxOf tab nx jn).toUInt64
-  | 0, n + 1, h, j, hj, _, _, _, h31, _, _, _, _ => by
-    have : j = 0 := UInt64.toNat_inj.mp (by simpa using hj)
-    subst this
-    simp only [v8, beq_self_eq_true, if_true, idxOf]
-    refine ⟨same_bset 22 h 22 0 (Or.inl rfl), ?_⟩
-    rw [bget_bset_same _ _ _ (by simpa using (by omega : 22 < h.length))]; rfl
-  | m + 1, n + 1, h, j, hj, hjt, hl, hn, h31, h7, tr, nm, nl => by
-    have hj0 : (j == 0) = false := by
-      have : j ≠ 0 := fun e => by subst e; simp at hj
-      simpa using this
-    have hjm : j - 1 = m.toUInt64 := by
-      apply UInt64.toNat_inj.mp
-      rw [UInt64.toNat_sub_of_le _ _ (by rw [UInt64.le_iff_toNat_le]; simp [hj])]; simp [hj, UInt64.toNat_ofNat']; omega
-    obtain ⟨t1, t2, t3⟩ := tr m (by omega)
-    have hcell : bget h (d7 + 8 * (j - 1)) = (tab[m]'(by omega)).1 := by rw [hjm]; exact t1
-    obtain ⟨n1, n2, n3⟩ := nm
-    obtain ⟨u1, u2, u3⟩ := t2
-    have p1 : (x + 1).toNat = x.toNat + 1 := by rw [UInt64.toNat_add]; simp; omega
-    have q1 : ((tab[m]'(by omega)).1 + 1).toNat = (tab[m]'(by omega)).1.toNat + 1 := by
-      rw [UInt64.toNat_add]; simp; omega
-    have eq85 := v85_name (tab[m]'(by omega)).2 nx 16777216 h ((tab[m]'(by omega)).1 + 1) (x + 1) (by omega) u2 n2
-      (by rw [q1]; omega) (by rw [p1]; omega)
-    have getD : tab.getD m (0, []) = tab[m]'(by omega) := by simp [List.getD, show m < tab.length by omega]
-    have l31 : (31 : UInt64).toNat < h.length := h31
-    have l21 : (22 : UInt64).toNat < h.length := by show 22 < h.length; omega
-    by_cases hq : (tab[m]'(by omega)).2 = nx
-    · have eq85' : v85 16777216 h ((tab[m]'(by omega)).1 + 1) (x + 1) = bset h 31 1 := by rw [eq85, if_pos hq]
-      have e31 : bget (bset h 31 1) 31 = 1 := bget_bset_same h 31 1 l31
-      have stp : v8 (n + 1) h j x = bset (bset h 31 1) 22 j := by
-        simp only [v8, hj0, Bool.false_eq_true, if_false, hcell, eq85', e31, beq_self_eq_true, if_true]
-      rw [stp]
-      have s1 := same_bset 22 h 31 1 (Or.inr rfl)
-      have s2 := same_bset 22 (bset h 31 1) 22 j (Or.inl rfl)
-      refine ⟨s1.trans s2, ?_⟩
-      have l21' : (22 : UInt64).toNat < (bset h 31 1).length := by simpa [bset] using l21
-      rw [bget_bset_same _ _ _ l21']
-      simp only [idxOf, getD, hq, if_true]
-      apply UInt64.toNat_inj.mp; simp [UInt64.toNat_ofNat', hj]; omega
-    · have eq85' : v85 16777216 h ((tab[m]'(by omega)).1 + 1) (x + 1) = bset h 31 0 := by rw [eq85, if_neg hq]
-      have e31 : bget (bset h 31 0) 31 = 0 := bget_bset_same h 31 0 l31
-      have stp : v8 (n + 1) h j x = v8 n (bset h 31 0) (j - 1) x := by
-        simp only [v8, hj0, Bool.false_eq_true, if_false, hcell, eq85', e31]
-        have : ((0 : UInt64) == 1) = false := by decide
-        simp [this]
-      rw [stp]
-      have s1 := same_bset 22 h 31 0 (Or.inr rfl)
-      have ih := v8_lookup tab x nx m n (bset h 31 0) (j - 1) (by rw [hjm]; simp [UInt64.toNat_ofNat']; omega) (by omega) hl (by omega)
-        (by simpa [bset] using h31) (by rw [(s1.2 7 (by decide) (by decide))]; exact h7)
-        (defTabRep_same s1 ⟨by omega, by omega⟩ h7 hl tr) (nameOK_same s1 ⟨by omega, by omega⟩ h7 ⟨n1, n2, n3⟩) nl
-      refine ⟨s1.trans ih.1, ?_⟩
-      rw [ih.2]; simp only [idxOf, getD, hq, if_false]
 
 end ParInv

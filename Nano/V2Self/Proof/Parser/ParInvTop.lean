@@ -22,11 +22,11 @@ structure RepAPI (ts : Buf) (toks : List Tok) (Rep : Buf → List Frame → St �
   step : ∀ {h f fs st}, Rep h (f :: fs) st → bget (step h) 0 = 1 →
     ∃ k st', stepF f st = some (k, st') ∧ Rep (step h) (k ++ fs) st'
   /-- the accepting step (status 2): `stepF` accepts with nothing left, and the final heap is
-  184384 layout cells, the tokens, the sentinel 0, then the output words; its main-def cells are `mainOK` -/
+  185408 layout cells, the tokens, the sentinel 0, then the output words; its main-def cells are `mainOK` -/
   accept : ∀ {h f fs st}, Rep h (f :: fs) st → bget (ParInv.step h) 0 = 2 →
     ∃ st', stepF f st = some ([], st') ∧ fs = [] ∧ st'.acc = true ∧
-      (ParInv.step h).length = 184385 + ts.length + st'.out.length ∧
-      ((ParInv.step h).length < 2 ^ 64 → (ParInv.step h).drop (184385 + ts.length) = st'.out) ∧
+      (ParInv.step h).length = 185409 + ts.length + st'.out.length ∧
+      ((ParInv.step h).length < 2 ^ 64 → (ParInv.step h).drop (185409 + ts.length) = st'.out) ∧
       (0 < bget (ParInv.step h) 12 → MainCells (ParInv.step h) → mainOK st' = true)
 
 theorem status_bset0 (h : Buf) : bget (bset h 0 0) 0 = 0 := by
@@ -37,8 +37,8 @@ final heap carries the output and main facts -/
 theorem run_sim {ts : Buf} {toks : List Tok} {Rep : Buf → List Frame → St → Prop} (api : RepAPI ts toks Rep) :
     ∀ (N : Nat) (h : Buf) (fs : List Frame) (st : St), Rep h fs st → bget (v97 N h) 0 = 2 →
       ∃ m st', m ≤ N ∧ StarN m (fs, st) ([], st') ∧ st'.acc = true ∧
-        (v97 N h).length = 184385 + ts.length + st'.out.length ∧
-        ((v97 N h).length < 2 ^ 64 → (v97 N h).drop (184385 + ts.length) = st'.out) ∧
+        (v97 N h).length = 185409 + ts.length + st'.out.length ∧
+        ((v97 N h).length < 2 ^ 64 → (v97 N h).drop (185409 + ts.length) = st'.out) ∧
         (0 < bget (v97 N h) 12 → MainCells (v97 N h) → mainOK st' = true)
   | 0, h, fs, st, _, h2 => by
     rw [show v97 0 h = bset h 0 0 from rfl, status_bset0] at h2; exact absurd h2 (by decide)
@@ -82,7 +82,7 @@ theorem parserSound_of {ts : Buf} {toks : List Tok} {Rep : Buf → List Frame �
   have hob : st'.out.length ≤ 1 + 6 * m := by
     have := hs.out_le
     simpa [ParRun.init] using this
-  have hj : (d11 + bsize ts + 1).toNat = 184385 + ts.length := by
+  have hj : (d11 + bsize ts + 1).toNat = 185409 + ts.length := by
     have e1 : (bsize ts).toNat = ts.length := by simp [bsize, Nat.toUInt64]; omega
     rw [UInt64.toNat_add, UInt64.toNat_add, d11v, e1]; simp; omega
   have hHl : H.length < 2 ^ 64 := by rw [hlen]; omega

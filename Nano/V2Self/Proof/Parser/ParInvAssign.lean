@@ -259,7 +259,8 @@ theorem rep_asg {g ts : Buf} {st : St} {fs : List Frame} (R : Rep g ts st fs) (h
   obtain ⟨rT, rts, r0, r3, r11, rB, rD, rA, r25, r29, r30, r32, rO, rK⟩ := R
   rw [hD] at rD
   obtain ⟨b4, bl, brows⟩ := rB
-  obtain ⟨d12, dl, d27, drows, dcur, dzero, dz0, ds26, dsz, dsd⟩ := rD
+  obtain ⟨d12, dl, d27, drows, dcur, dzero, dz0, ⟨ds26, dsz, dsd⟩, dH⟩ := rD
+  simp only [if_true] at dH
   simp only [if_true] at dcur
   obtain ⟨⟨⟨k0, k1, k2, k3, k4, k6, k5, kp⟩, kJ⟩, dl'⟩ := dcur
   have i1024 : i0 < 1024 := by omega
@@ -341,7 +342,7 @@ theorem rep_asg {g ts : Buf} {st : St} {fs : List Frame} (R : Rep g ts st fs) (h
         rw [U _ (by rw [c]; omega) (by rw [c]; omega) (by rw [c]; omega) (by rw [c]; omega) (by rw [c]; omega) (by rw [c]; omega)
           (Or.inl (by rw [c]; omega))]
         exact dz0 i (by omega) h2,
-      by rw [cS 26 (by decide) (by decide) (by decide) (by decide)]; exact ds26,
+      ⟨by rw [cS 26 (by decide) (by decide) (by decide) (by decide)]; exact ds26,
       fun k h1 h2 => by
         rw [cS 26 (by decide) (by decide) (by decide) (by decide)] at h1
         have c := pairCell0 k h2
@@ -352,7 +353,15 @@ theorem rep_asg {g ts : Buf} {st : St} {fs : List Frame} (R : Rep g ts st fs) (h
         have cq : ∀ q : UInt64, q.toNat < 3 → bget G (d7 + 8192 + 3 * k.toUInt64 + q) = bget g (d7 + 8192 + 3 * k.toUInt64 + q) :=
           fun q hq => cSh _ (by rw [shRowK k (by omega) q hq]; omega) (by rw [shRowK k (by omega) q hq]; omega)
         have cq0 := cq 0 (by decide); simp only [UInt64.add_zero] at cq0
-        exact ⟨l, r, by rw [cq0]; exact sa.frame es, by rw [cq 1 (by decide)]; exact sb.frame es, by rw [cq 2 (by decide)]; exact sw⟩⟩
+        exact ⟨l, r, by rw [cq0]; exact sa.frame es, by rw [cq 1 (by decide)]; exact sb.frame es, by rw [cq 2 (by decide)]; exact sw⟩⟩,
+      by
+        simp only [if_true]
+        have rn : ∀ s : St, s.defs = st.defs → s.cur.name = st.cur.name → (rows s).map DefR.name = (rows st).map DefR.name :=
+          fun s a b => rows_names a b
+        rw [rn _ (by rfl) (by rfl)]
+        exact hashRep_frame (by simp [rows]; omega) dH (fun j a _ => cHi j a) (fun i hi => by
+          have c := cDef i hi 7 (by decide) (Or.inr ⟨by decide, by decide⟩)
+          simpa using c)⟩
     · have hb := (drows j hj).2
       refine ⟨row_frame' (drows j hj).1 (fun k hk => cDef j (by omega) k hk (Or.inl (by omega)))
         (fun i hi' => cPar _ i (by omega) (by omega)) et hn7 es, ?_⟩
