@@ -22,6 +22,8 @@ plan for a proved version (`armTarget`, `Testing/notes/NANO_V2_ARM.md`).
 
 ## Use on a Mac (Apple Silicon), from this directory
 
+Quick start: `./try_arm.sh` (self-check + all examples) or `./try_arm.sh prog.lean input.bin` (compile and run one program).
+
 ```
 cc -O2 ../run/shim/shim_arm.c -o shim_arm
 grep -v '^--' prog.lean > prog.src                     # the compiler accepts no comments
