@@ -26,9 +26,9 @@ Where it sits: fed by the parser (the buffer `x` it serialized, `x.length < 2^31
 | `GenRef.lean:em` | the words an append-only emitter adds at position `h` |
 | `GenRef.lean:Cx`, `JOk` | per-def constants (AST, npw, nslots, def-start table); `JOk a b`: Gen's jump range check `g14` passes |
 | `GenRef.lean:CG`, `CT`, `CGs` | words of a value node / a tail node / an operand sequence: `CG K d i h c i' E` = node at AST index `i`, code position `h`, emits `c`, ends at `i'`, exits `E` |
-| `GenRef.lean:Inv`, `Bnd` | invariant between items; state at a def boundary |
+| `GenRef.lean:Inv`, `Bnd`, `DefC` | invariant between items; state at a def boundary; the code of one def |
 | `GenRef.lean` `v_*`, `t_*`, `g36_*`, `g37_t*` | per node kind: the visit / the item runs to a state satisfying `CG`/`CT` |
-| `GenTop.lean:def_run`, `DefC`, `DefsC`, `prog_run` | one def (header `g38`, root visit, ENDDEF) and the chain of defs |
+| `GenTop.lean:def_run`, `DefsC`, `prog_run` | one def (header `g38`, root visit, ENDDEF) and the chain of defs |
 | `GenTop.lean:startW`, `gen_ok`, `gen41_ok` | start code; non-empty `g42`/`g41` output = stubs ++ defs' code (`DefsC`) ++ start code |
 | `GenWidth.lean:W`, `Ws`, `WDefs`, `g53_ok` | stack-width relation per node and per def chain; `g53` accepting gives `WDefs` |
 | `GenAll.lean:Sk`, `sk_det`, `chains` | AST spans are deterministic, so `DefsC` and `WDefs` describe the same defs |
