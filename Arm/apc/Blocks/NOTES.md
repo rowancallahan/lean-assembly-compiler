@@ -77,3 +77,4 @@ not a `BlockOK` instance. The same premise belongs on ld/sd/lbu/sb (as in `SafeX
 |---|---|---|
 | addi (rd = 0: 4 PAD; rs = 0: movz; add/sub imm) | `blk_addi` | proved |
 | alu (8 ops; `movz x17, #0` first for an x0 operand or mul; `madd …, x17`) | `blk_alu` (+ `alu_word`) | proved |
+| slli / srli (`[movz x17, #0]`, `movz x16, #sh`, `lslv`/`lsrv`) | `blk_slli`, `blk_srli` (`blk_shift`) | proved |

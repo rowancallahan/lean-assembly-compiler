@@ -4,6 +4,7 @@ import Blocks.Branch
 import Blocks.Mem
 import Blocks.KAddi
 import Blocks.KAlu
+import Blocks.KShift
 open Proven.Apc.Blocks
 #print axioms dm_movz
 #print axioms dm_movk
@@ -29,3 +30,5 @@ open Proven.Apc.Blocks
 #print axioms dm_strb
 #print axioms blk_addi
 #print axioms blk_alu
+#print axioms blk_slli
+#print axioms blk_srli
