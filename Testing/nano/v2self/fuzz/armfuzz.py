@@ -67,7 +67,7 @@ def main():
         subprocess.run(tool, check=True)
     QA = ['qemu-aarch64-static']; QR = ['qemu-riscv64-static']
     SA = os.path.join(WORK, 'shim_arm'); SR = os.path.join(WORK, 'shim_rv')
-    B2 = os.path.join(V2, 'B2.bin'); B2ARM = os.path.join(ARM, 'B2_arm.bin')
+    B2ARM = os.path.join(ARM, 'B2_arm.bin')
     cnt = collections.Counter(); mism = []
 
     def record(kind, name, detail, files):
@@ -76,6 +76,8 @@ def main():
         for suffix, data in files.items():
             with open(os.path.join(WORK, 'mismatch', name + suffix), 'wb') as f: f.write(data)
 
+    # pass 1: generate, B2 compile, ARM-B2 compile (accepted and rejected)
+    acc = []   # (name, text, b2 bin path, inputs)
     for i in range(N):
         text = open(os.path.join(gdir, f'g{i}.src')).read()
         name = f'g{i}'
@@ -85,28 +87,40 @@ def main():
         src = os.path.join(WORK, name + '.lean')
         with open(src, 'w') as f: f.write(text)
         cnt['programs'] += 1
-        # 3 (rejected programs too): ARM-B2 must produce what B2 produces
         b2_out = os.path.join(WORK, name + '.bin')
         cs, _ = nf.b2_compile(name, text)
         code = open(b2_out, 'rb').read() if os.path.exists(b2_out) else b''
         ab = os.path.join(WORK, name + '.armb2.bin')
-        p = subprocess.run([*QA, SA, B2ARM], stdin=open(src, 'rb'), stdout=open(ab, 'wb'), stderr=subprocess.PIPE, text=True)
-        if open(ab, 'rb').read() == code:
-            cnt['ARM-B2 == B2 code'] += 1
-        else:
-            record('ARM-B2 code', name, 'B2 vs ARM-B2 code differ', {'.src': text.encode(), '.b2.bin': code, '.armb2.bin': open(ab, 'rb').read()})
+        subprocess.run([*QA, SA, B2ARM], stdin=open(src, 'rb'), stdout=open(ab, 'wb'), stderr=subprocess.PIPE, text=True)
+        armb2 = open(ab, 'rb').read()
+        if armb2 == code: cnt['ARM-B2 == B2 code'] += 1
+        else: record('ARM-B2 code', name, 'B2 vs ARM-B2 code differ', {'.src': text.encode(), '.b2.bin': code, '.armb2.bin': armb2})
         if cs != 'acc':
             cnt['b2 rejects'] += 1
             continue
         cnt['b2 accepts'] += 1
-        inputs = edge_inputs()
-        # 1. RISC-V: qemu vs nanorun
-        for k, inp in enumerate(inputs):
+        acc.append((name, text, b2_out, edge_inputs()))
+
+    # pass 2: reference (semrun pipeline) on the inputs of at most 4 KB; longer inputs are ARM-vs-RV only
+    short_of = {nm: [(k, inp) for k, inp in enumerate(ins) if len(inp) <= 4096] for nm, _, _, ins in acc}
+    for nm, _, _, ins in acc:
+        for j, (k, inp) in enumerate(short_of[nm]):
+            with open(os.path.join(WORK, f'{nm}.in{j}'), 'wb') as f: f.write(inp)
+    refs = nf.ref_batch([nm for nm, _, _, _ in acc], {nm: [inp for _, inp in short_of[nm]] for nm in short_of}) if acc else {}
+
+    # pass 3: RISC-V (qemu, nanorun) and ARM (translator, qemu) against the reference and each other
+    for name, text, b2_out, inputs in acc:
+        for j, (k, inp) in enumerate(short_of[name]):
+            rst, rout = refs[(name, j)]
+            refok = rst == 'OK'
             rs, ro = nano_run(b2_out, inp, f'{name}.n{k}')
             qs, qo = run_q(QR, SR, b2_out, inp, f'{name}.q{k}')
-            if (rs, ro) == (qs, qo): cnt['rv: qemu == nanorun'] += 1
-            else: record('rv qemu/nanorun', name, f'input {k} ({len(inp)} B): nanorun {rs}, qemu {qs}', {'.bin': open(b2_out, 'rb').read(), f'.in{k}': inp})
-        # 2. translate, oracle check
+            if refok and qs == -1 and (rs, ro) == (qs, qo):   # resource limit at 80 MiB: not compared to the reference
+                cnt['rv oom at 80 MiB (ref OK; nanorun agrees)'] += 1
+                continue
+            ok = (qs, qo) == (rs, ro) and ((refok and qs in (0, 1) and qo == rout) or (not refok and qs not in (0, 1)))
+            if ok: cnt['rv qemu == ref'] += 1
+            else: record('rv qemu vs ref', name, f'input {k} ({len(inp)} B): ref {rst}, qemu {qs}, nanorun {rs}', {'.bin': open(b2_out, 'rb').read(), f'.in{k}': inp})
         armbin = os.path.join(WORK, name + '.arm.bin')
         env = dict(os.environ, RUN=f"qemu-aarch64-static {SA} {ARM}/rv2arm_arm.bin")
         tr = subprocess.run(['sh', os.path.join(ARM, 'rv2arm.sh'), b2_out], env=env, capture_output=True)
@@ -116,12 +130,23 @@ def main():
         orc = subprocess.run([sys.executable, os.path.join(ARM, 'rv2arm.py'), b2_out], capture_output=True)
         if orc.stdout == tr.stdout: cnt['translator == oracle'] += 1
         else: record('translator != oracle', name, 'rv2arm.sh output differs from rv2arm.py', {'.bin': open(b2_out, 'rb').read()})
-        # 2b. ARM code run vs RISC-V run
         for k, inp in enumerate(inputs):
             rs, ro = nano_run(b2_out, inp, f'{name}.n{k}')
             as_, ao = run_q(QA, SA, armbin, inp, f'{name}.a{k}')
             if (rs, ro) == (as_, ao): cnt['arm run == rv run'] += 1
             else: record('arm run vs rv run', name, f'input {k} ({len(inp)} B): rv {rs}, arm {as_}', {'.arm.bin': open(armbin, 'rb').read(), f'.in{k}': inp})
+            if len(inp) > 4096: continue
+            j = [kk for kk, _ in short_of[name]].index(k)
+            rst, rout = refs[(name, j)]
+            if rst == 'OK' and as_ == -1:
+                cnt['arm oom at 80 MiB (ref OK; rv agrees)'] += 1
+                continue
+            if rst == 'OK':
+                ok = as_ in (0, 1) and ao == rout
+            else:
+                ok = as_ not in (0, 1)
+            if ok: cnt['arm == ref'] += 1
+            else: record('arm vs ref', name, f'input {k}: ref {rst}, arm {as_}', {'.arm.bin': open(armbin, 'rb').read(), f'.in{k}': inp})
     with open(os.path.join(WORK, 'summary.txt'), 'w') as f:
         f.write(f'seed={SEED} programs={cnt["programs"]} b2_accepts={cnt["b2 accepts"]} b2_rejects={cnt["b2 rejects"]}\n')
         for k, v in sorted(cnt.items()):
