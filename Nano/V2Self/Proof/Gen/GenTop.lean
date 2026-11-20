@@ -244,7 +244,11 @@ theorem prog_run (X : Buf) (u : UInt64) (hX : X.length < 2 ^ 31) : ∀ n s i, X.
 
 /-! g35/g56 bind g19/g20 results with `match`; the kernel unfolds such a matcher (abbrev) before the enclosing def
 and then evaluates g14's range test on a 2^21 literal (deep recursion).  So g35 is unfolded at function level
-(`g35_fun`: both sides are lambdas, the bodies are the same term) and its matches are only met on pairs. -/
+(`g35_fun`: both sides are lambdas, the bodies are the same term) and its matches are only met on pairs.
+Lean 4.34: the statement keeps its `let`s (`cleanup.letToHave false`: the header's let→have rewrite leaves the
+proof type a let form the kernel must reconcile by unfolding the match on `g19 …`), and the statement's own matcher
+(`g35_fun.match_1`, not `g28.match_1`) is met only with `g19` generalized, behind `id` so the kernel checks the `rfl`
+with `G` abstract and never whnf's `g19` (→ g14's 2^21 test). -/
 def stT (o3 : Buf) : Buf :=
   let o4 := bpush (bpush (bpush o3 (g11 5 31 0)) (g11 7 5 0)) (g4 1 7 0 16);
   let h4 := bsize o4;
@@ -260,6 +264,7 @@ def stH (o : Buf) : Buf :=
   let o2 := bpush (bpush (bpush (bpush o1 (g4 7 31 30 16)) (g10 10 0 g_901)) (g10 11 0 0)) (g2 g_103 0 0 1 0);
   bpush (bpush (bpush (bpush o2 (g12 1 12 0)) (g12 8 12 8)) (g10 28 10 0)) (g10 29 11 0)
 
+set_option cleanup.letToHave false in
 theorem g35_fun : g35 = fun r o w =>
   let o1 := bpush (bpush (bpush o (g10 30 12 16)) (g2 g_19 5 31 2 3)) (g2 g_19 1 31 31 3);
   let o2 := bpush (bpush (bpush (bpush o1 (g4 7 31 30 16)) (g10 10 0 g_901)) (g10 11 0 0)) (g2 g_103 0 0 1 0);
@@ -275,6 +280,10 @@ theorem g35_fun : g35 = fun r o w =>
   let o8 := bpush (bpush o7 (g13 0 h7 (h7 - 6))) (g10 10 0 0);
   (r1, bpush (bpush (bpush o8 (g11 1 12 0)) (g11 8 12 8)) (g2 g_103 0 0 1 0)) := by
   delta g35
+  generalize g19 = G
+  revert G
+  apply id
+  intro G
   exact rfl
 
 /-- g35: the call to main (a jal, error flag if out of range) between the start code's two parts -/
