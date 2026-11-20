@@ -19,7 +19,10 @@ V2 = os.path.abspath(os.path.join(HERE, '..'))
 ARM = os.path.join(V2, 'arm')
 SEED, N, WORK = int(sys.argv[1]), int(sys.argv[2]), os.path.abspath(sys.argv[3])
 MUT = float(sys.argv[4]) if len(sys.argv) > 4 else 0.5
+BIG = os.environ.get('BIG') == '1'   # far-address mode: big buffers (nanobig.py), inputs up to 4 KB for the reference
 R = random.Random(SEED)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import nanobig
 
 # nanofuzz reads its arguments at import; give it neutral ones, then use its mutate() and B2 helpers
 _argv = sys.argv
@@ -38,6 +41,8 @@ def edge_inputs():
     """empty, 1 byte, 0x00/0xFF, mixed, deep (fuel-sized), and one long input (> 64 KB) with probability 1/4"""
     ins = [b'', b'\x00', b'\xff', b'\x01', bytes([0xff] * 37), bytes(range(256)) * 2]
     ins.append(bytes(R.randrange(256) for _ in range(R.choice([2, 3, 5, 8, 13, 40, 255]))))
+    if BIG:
+        ins.append(bytes(R.randrange(256) for _ in range(R.randrange(1000, 4001))))
     if R.random() < 0.25:
         ins.append(bytes(R.randrange(256) for _ in range(65536 + R.randrange(0, 4096))))
     return ins
@@ -81,7 +86,10 @@ def main():
     for i in range(N):
         text = open(os.path.join(gdir, f'g{i}.src')).read()
         name = f'g{i}'
-        if R.random() < MUT: text = nf.mutate(text); name = f'm{i}'
+        if BIG and R.random() < 0.8:
+            text = nanobig.program(R); name = f'b{i}'
+        elif R.random() < MUT:
+            text = nf.mutate(text); name = f'm{i}'
         if R.random() < 0.3:   # deep recursion: large fuel numeral in the entry
             text = re.sub(r"(:= \w+ )(\(len' x\)|\d+)( x 0 \[\])", lambda mm: mm.group(1) + str(R.randrange(100, 256)) + mm.group(3), text)
         src = os.path.join(WORK, name + '.lean')
