@@ -626,3 +626,8 @@ parts from Nano/V2Self/Proof/Machine, so the move is complete in one go. Same ch
   models stay external deps; each target folder holds its regen scripts + provenance, step lemmas, codegen/target proofs.
   Later Spec/ reorg: move the trusted SOURCE-language definitions (lexer spec, grammar/pOf, semantics; today in
   Nano/V2Self, listed in REVIEW.lean) into Spec/, so everything to trust is in one place.
+- Per-target model files (owner): each target folder holds `gen/` with the full regeneration recipe (pinned generator +
+  model commits, patches, regen script; for DeepMind a fetch script at the pinned commit) and `MODEL.sha256`
+  (`Testing/scripts/model_hash.sh` value + file count) next to it; release_check's `hashes` gate reads those files.
+  Today: RISC-V regen in Testing/riscv/gen (moves to Riscv/gen), Sail ARM in Arm/gen, hashes only in the central
+  Testing/notes/MODEL_PROVENANCE.md, DeepMind has a pinned commit + hash but no fetch script (to add).
