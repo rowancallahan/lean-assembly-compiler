@@ -265,6 +265,30 @@ Proof-side constraints on the adapter definitions (O):
 - **Blocking J-level item:** the uniform block plus `br` needs the link-width refactor (§0a V2). Without it,
   blockLen must be 1 (§0-impl item 2).
 
+### 0-arm. The ARM adapter AS BUILT, against the abstract steps (box E, 2026-11-20; nano-v2-src @ 1666351)
+No sorry; axioms propext/Classical.choice/Quot.sound; the imports are Sail-free.
+| file | lines | content |
+|---|---|---|
+| Machine/A64Sem | 132 | `A64Sem M`: one field per rv2arm form, through `observe` (`WordAt` at the pc ⇒ `Goes` to the stated state); `cmpbr` = `subs x16` + `b.cond` as one field |
+| Machine/ArmTarget | 1078 | `armTarget M` (O's `blk`, `armReg`, scratch [16,17], `lay` = layout ∧ `progOK`); the mid-block relation `Mid`; one lemma per block; `armLaws S : (armTarget M).Laws` |
+| Main/ArmTop | 22 | `C_correct_arm` / `C_runs_arm` : `CompileCorrect M (compileOn enc)` / `CompileRuns M (compileOn enc)` |
+
+Block lemmas, each composed from the A64Sem fields, with `Mid` re-established after every word:
+- `blk_addi`: wrapping sum; the `movz` + 3×`movk` chain for negative constants is proved by `decide +kernel`; `add`/`sub` imm; PADs for x0.
+- `blk_ld` / `blk_sd`: `ldr`/`str`, direct or via x16. A store to x0 goes through x17 = 0. `mid_store8` keeps the cells, the io bytes, the frame and the code.
+- `blk_lbu` / `blk_sb`: `ldrb`/`strb`, with `mid_store1` and `cbyte_sbm`.
+- `blk_alu`: `madd` with x17 = 0.
+- `blk_shift`: `movz x16` + `lslv`/`lsrv`.
+- `blk_cmp`: `subs x16` + `b.cond`, with x17 = 0 first for an x0 operand.
+- `blk_cbz`; `blk_b` (`jal x0`, `beq x0 x0`).
+- `blk_jal1`: PAD×3, then `bl` links base + 16·(pc+1).
+- `blk_jalr`: `br`.
+
+Remaining for a concrete ARM theorem:
+1. **An `A64Sem` instance** from a model: the DeepMind surrogate, then Sail.
+2. **`EncOK` for a Lean byte translator:** decode Gen's RV words to J, then `blk`. `valid` = `progOK`, and empty output when the translator rejects.
+3. **`hwin`,** until D's `shiftInvL`; after that it follows from `A64Sem.ram`.
+
 ### 0a. Is J abstract enough for the lift?
 J (`Machine/Call.lean`) is a small abstract machine: registers `x : Nat → UInt64`, memory as 8-byte cells
 `m : Nat → UInt64` (bytes via `lbm`/`sbm`, little-endian), the code base `b`, a `pc : Nat` in instructions.
