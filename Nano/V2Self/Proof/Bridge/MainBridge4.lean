@@ -81,7 +81,8 @@ theorem resI_loc {σ : AH} {Kk : List Nat} {F : List Bool} {Γ : List (Option Kd
         hk s (Nat.le_refl _) (by omega)⟩
     · have := resI_loc (σ := σ) (F := F) (env := env) (ew := ew) hK2 w (s + 1) (by omega)
         (fun j h1 h2 => hk j (by omega) (by omega))
-      simpa [Function.comp, Nat.add_assoc, Nat.add_comm 1] using this
+      rwa [show (fun j => ew (s + 1 + j)) = (fun j => ew (s + j)) ∘ Nat.succ from
+        funext fun j => congrArg ew (by omega)] at this
 
 theorem node_loc (cx : Ctx) (K : SC) (oc : OwnSpec.Cx) (D : List Sig) (s w : Nat) :
     NodeOK cx K oc D (ParSpec.Nd.loc s w) := by
