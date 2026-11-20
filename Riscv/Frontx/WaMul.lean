@@ -7,6 +7,7 @@ Sources, copied VERBATIM with `file:line` per block (doc comments and proofs not
 The entry points (`…E : ByteArray → β`) fix the other arguments; they are not library code. -/
 import Riscv.Frontx.WaLeanZip
 
+set_option backward.isDefEq.respectTransparency false
 namespace Zip.Native
 -- Zip/Native/Inflate.lean:555@7e10583
 def kraftSumFast (count : Array Nat) (maxBits : Nat) : Nat :=
