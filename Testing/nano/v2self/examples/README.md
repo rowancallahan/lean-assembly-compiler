@@ -1,8 +1,8 @@
 # Example programs for the nano compiler
 
 Eight small programs in the nano subset, and a script that compiles each with the self-compiled compiler `B2`, runs the
-result, and compares the output with the reference semantics. **Unproven glue**: the script and `nanorun` are not part
-of the correctness theorem.
+result on QEMU's RISC-V model (`qemu-riscv64` + `run/shim/shim_rv.c`), and compares the output with the reference
+semantics. **Unproven glue**: the script and the shim are not part of the correctness theorem.
 
 | program | computes |
 |---|---|
@@ -22,25 +22,31 @@ Testing/nano/v2self/examples/run_examples.sh              # all examples; NOSEM=
 Testing/nano/v2self/examples/run_examples.sh my.lean      # your own program
 ```
 
-One line per program: input and output in hex, `nanorun`'s exit status and status line (`a0 = 0` ok, `1` ok with empty
-output, `-1` out of work memory, `-2` buffer capacity), then `exp:OK` (output = the program's `-- expect` line) and
+One line per program: input and output in hex, the run's exit status and status line (`status 0` ok, `1` ok with
+empty output, `-1` out of work memory, `-2` buffer capacity), then `exp:OK` (output = the program's `-- expect` line) and
 `sem:OK` (output = `semrun`'s output). Exit status 1 if anything differs.
 
-Needs: a C compiler. For the `sem` column also Lean 4.29.0 and, once, `lake build Nano.V2Self.Proof.Main.Main`
+Needs: `riscv64-linux-gnu-gcc` and `qemu-riscv64` (Debian/Ubuntu: `gcc-riscv64-linux-gnu qemu-user-static`).
+`NANORUN=1` uses the interpreter `run/nanorun.c` instead (needs only a C compiler; optional cross-check, e.g. on a
+Mac). For the `sem` column also Lean 4.29.0 and, once, `lake build Nano.V2Self.Proof.Main.Main`
 (needs the Sail model at `../deps/sail-riscv-lean`, see the top-level README).
 
 ## The two steps by hand
 
+On QEMU's RISC-V model (Linux; Debian/Ubuntu packages `gcc-riscv64-linux-gnu qemu-user-static`):
 ```
-cc -O2 Testing/nano/v2self/run/nanorun.c -o nanorun
-grep -v '^--' prog.lean > prog.src                        # the compiler accepts no comments
-./nanorun Testing/nano/v2self/B2.bin prog.src prog.bin    # (a) compile: source text in, RISC-V code out
-./nanorun prog.bin input.bin output.bin                   # (b) run the compiled program
+riscv64-linux-gnu-gcc -O2 -static Testing/nano/v2self/run/shim/shim_rv.c -o shim_rv
+grep -v '^--' prog.lean > prog.src                                 # the compiler accepts no comments
+qemu-riscv64 ./shim_rv Testing/nano/v2self/B2.bin < prog.src > prog.bin   # (a) compile: source in, RISC-V code out
+qemu-riscv64 ./shim_rv prog.bin < input.bin > output.bin           # (b) run the compiled program
 od -An -tx1 output.bin
 ```
+Natively on an ARM machine (Apple Silicon): see `Testing/nano/v2self/arm/README.md`. Without either, the
+interpreter `run/nanorun.c` does the same (`nanorun B2.bin prog.src prog.bin`, `nanorun prog.bin input.bin
+output.bin`). It is an optional cross-check, not the default path.
 
 A rejected program is **not** an error message: the compiler writes empty code (status line `a0 = 1 (ok, empty
-output)`, `prog.bin` has 0 bytes). There is no diagnostic saying which construct was refused.
+output)` / `status 1`, `prog.bin` has 0 bytes). There is no diagnostic saying which construct was refused.
 
 Reference semantics for the same source and input (a Lean error names the stage on a rejection):
 `SRC=prog.src INP=input.bin OUT=sem.bin lake env lean Testing/nano/v2self/semrun/semrun.lean`

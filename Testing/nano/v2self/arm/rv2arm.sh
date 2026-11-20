@@ -1,9 +1,18 @@
 #!/bin/sh
 # rv2arm.sh prog_rv.bin > prog_arm.bin : runs the nano translator once per chunk of CHUNK_WORDS RV words (UNPROVEN glue).
-# RUN = a command that runs the translator from stdin to stdout; default: shim_arm + rv2arm_arm.bin next to this script.
-# Linux without ARM: RUN="nanorun rv2arm_rv.bin /dev/stdin /dev/stdout".
+# RUN = a command that runs the translator from stdin to stdout. Default: the ARM translator rv2arm_arm.bin with
+# shim_arm next to this script, natively on an ARM64 host, else under qemu-aarch64 (shim_arm then a static
+# aarch64-linux-gnu-gcc build). Bootstrap with the RISC-V translator: RUN="qemu-riscv64 shim_rv rv2arm_rv.bin".
 set -eu
-D=$(dirname "$0"); RUN=${RUN:-"$D/shim_arm $D/rv2arm_arm.bin"}
+D=$(dirname "$0")
+if [ -z "${RUN:-}" ]; then
+  case $(uname -m) in
+    arm64|aarch64) RUN="$D/shim_arm $D/rv2arm_arm.bin" ;;
+    *) Q=$(command -v qemu-aarch64-static || command -v qemu-aarch64) \
+         || { echo "rv2arm: not an ARM64 host and no qemu-aarch64; set RUN" >&2; exit 1; }
+       RUN="$Q $D/shim_arm $D/rv2arm_arm.bin" ;;
+  esac
+fi
 Z=$(sed -n 's/^def z0 : UInt64 := \([0-9]*\)$/\1/p' "$D/rv2arm.lean")   # CHUNK_WORDS, from the translator source
 [ -n "$Z" ] || { echo "rv2arm: CHUNK_WORDS (def z0) not found in $D/rv2arm.lean" >&2; exit 1; }
 n=$(wc -c < "$1"); w=$((n / 4))

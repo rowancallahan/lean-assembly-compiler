@@ -1,5 +1,11 @@
 # nanorun — run the nano compiler on a machine without RISC-V
 
+**Optional cross-check, not the default run path.** By default, code runs on QEMU's machine models:
+* RISC-V: `qemu-riscv64` + `shim/shim_rv.c`, built with `riscv64-linux-gnu-gcc -static`;
+* ARM: `qemu-aarch64` + `shim/shim_arm.c`, or natively on Apple Silicon (see `../arm/README.md`).
+
+The scripts `../examples/run_examples.sh` and `../arm/test_arm.sh` take `NANORUN=1` to use or add nanorun.
+
 **Unproven glue.** Nothing here is part of the correctness theorem. The theorem is about the compiler's RISC-V code on
 the Sail RISC-V model; `nanorun` is a small interpreter written by hand so that code can be run on a Mac or any other
 host. If `nanorun` has a bug, results are wrong and no proof notices.

@@ -133,8 +133,8 @@ Open for the proof:
 * `M := arm` (Spec's machine, after the 4.35 migration);
 * the bridge from `RelA` to Arm/proofs' `Abs`/`ArmFull`;
 * x18 is in `keep` although `armMapping.kept` lists x19..x29 + sp: an extra, stronger guarantee, for macOS;
-* the calling convention: RV sp ↦ x4, so `armMapping.workTop` must become 4 (it is 31 = sp now). That is a Spec
-  (owner) change. The shim passes the work top in x4 and still sets sp.
+* the calling convention: RV sp ↦ x4 = `armMapping.workTop` (Spec, owner-approved, 1437a98). The shim passes the
+  work top in x4 and still sets sp.
 
 ## Translator-level facts for the Lean equation
 

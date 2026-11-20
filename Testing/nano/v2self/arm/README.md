@@ -36,13 +36,20 @@ if a chunk fails, e.g. when the input is not compiler output.
 Not yet run on a real Mac (none here). `shim_arm.c` uses `MAP_JIT` + `pthread_jit_write_protect_np` there. If macOS
 refuses the mapping, the binary may need the `com.apple.security.cs.allow-jit` entitlement (`codesign`).
 
-Rebuild the binaries without Python, using only the checked-in `B2.bin` and the portable interpreter:
+Rebuild the binaries without Python, from the checked-in `B2.bin` alone. The RISC-V code runs on QEMU's RISC-V
+model. On Linux (x86-64), with `gcc-riscv64-linux-gnu gcc-aarch64-linux-gnu qemu-user-static`:
 ```
-cc -O2 ../run/nanorun.c -o nanorun
-grep -v '^--' rv2arm.lean > rv2arm.src && ./nanorun ../B2.bin rv2arm.src rv2arm_rv.bin
-RUN="./nanorun rv2arm_rv.bin /dev/stdin /dev/stdout" ./rv2arm.sh rv2arm_rv.bin > rv2arm_arm.bin
-./rv2arm.sh ../B2.bin > B2_arm.bin
+riscv64-linux-gnu-gcc -O2 -static ../run/shim/shim_rv.c -o shim_rv
+aarch64-linux-gnu-gcc -O2 -static ../run/shim/shim_arm.c -o shim_arm      # rv2arm.sh runs it under qemu-aarch64
+grep -v '^--' rv2arm.lean > rv2arm.src && qemu-riscv64 ./shim_rv ../B2.bin < rv2arm.src > rv2arm_rv.bin
+RUN="qemu-riscv64 ./shim_rv rv2arm_rv.bin" ./rv2arm.sh rv2arm_rv.bin > rv2arm_arm.bin   # bootstrap: RISC-V translator
+./rv2arm.sh ../B2.bin > B2_arm.bin                                                      # ARM translator from now on
 ```
+On a Mac there is no RISC-V machine (qemu-riscv64 user mode is Linux-only). Use the checked-in `rv2arm_arm.bin`.
+Or, as a fallback only, bootstrap with the interpreter:
+`RUN="./nanorun rv2arm_rv.bin /dev/stdin /dev/stdout"` (`cc -O2 ../run/nanorun.c -o nanorun`).
+Default runs need no nanorun: `test_arm.sh` uses qemu-riscv64/qemu-aarch64, and `NANORUN=1` adds nanorun as a
+cross-check of every RISC-V run.
 
 ## Chunking
 
@@ -86,15 +93,18 @@ Emitted instructions follow `NANO_V2_ARM.md` §0-min, the set the proof will cov
 | `jalr x0 r` | `br r` |
 | rd = x0 (no-op) | 4 × padding |
 
-## Tests (Linux x86-64, qemu-aarch64, 2026-11-20): `test_arm.sh`, 62/62 OK
+## Tests (Linux x86-64, qemu-riscv64 + qemu-aarch64, 2026-11-20): `test_arm.sh`, 63/63 OK (also with `NANORUN=1`)
 
-* B2 compiles `rv2arm.lean`, and nanorun runs the result on itself to give `rv2arm_arm.bin`. Under qemu,
+* Every RISC-V run is on qemu-riscv64 (`shim_rv`), every ARM run on qemu-aarch64 (`shim_arm`). `NANORUN=1`
+  also runs each RISC-V program with nanorun and requires the same status and output: all agree.
+* B2 compiles `rv2arm.lean`, and the result translates itself (RISC-V, qemu) to give `rv2arm_arm.bin`. Under qemu,
   `rv2arm_arm.bin` translates its own RISC-V code to itself (fixpoint). Both translators equal the Python oracle.
 * All 8 examples: compiled by B2, translated by the ARM translator (= oracle), run with a static `shim_arm` under
-  qemu on 6 inputs (empty, 1 byte, text, edge bytes, 3000 random bytes, 0x14). Output and status equal nanorun's:
+  qemu on 6 inputs (empty, 1 byte, text, edge bytes, 3000 random bytes, 0x14). Output and status equal the RISC-V run's:
   **48/48**.
 * B2 translated by the ARM translator = `B2_arm.bin`. ARM-B2 on `../self_S_input.txt` = `B2.bin` byte for byte
-  (337,856 bytes, sha256 `bb5558a5…`), 1.3 s under qemu (nanorun: 11.8 s). Translating B2: 0.5 s under qemu.
+  (337,856 bytes, sha256 `bb5558a5…`), 1.3 s under qemu-aarch64. The RISC-V B2 under qemu-riscv64 gives the same
+  bytes (0.9 s; nanorun: 11.8 s). Translating B2: 0.5 s under qemu.
 * The instruction set of `B2_arm.bin` and `rv2arm_arm.bin` is §0-min's (objdump check).
 * `synth_rv.py`'s program of rare forms (x0/x2 operands, mul, far offsets, x0 stores): translator = oracle.
 * Refused: an `ecall` word, an odd-sized file, and 4 FZ-T cases (unmapped source with rd = x0 ×3, `jalr` through x0).
