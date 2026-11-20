@@ -31,7 +31,9 @@ theorem rv_enc : EncOK rvTarget id := by
     (by omega)]
   simpa using flat_rv Cj (Templates.words_encJX (fun j hj => (hw j hj).1))
 
-theorem rv_gen : GenOK rvTarget mC := genOK_of_enc rv_enc
+theorem rv_gen : GenOK rvTarget mC := by
+  have h := genOK_of_enc rv_enc
+  rwa [Function.id_comp] at h
 
 theorem compileGen_mC : compileGen mC = compileC := rfl
 
