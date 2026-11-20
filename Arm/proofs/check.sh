@@ -15,7 +15,7 @@ cp "$R/Arm/CompilerArm.lean" "$D/build/src/Proven/CompilerArm.lean"
 cd /home/user/armv9-lean
 BASE=$(lake env printenv LEAN_PATH)
 export LEAN_PATH="$D/build:$BASE"
-for f in ${@:-Spec/Code Proven/CompilerArm Arm/Base Arm/Exec Arm/Flags Arm/Small Arm/Words Arm/Compiler Arm/Ret Arm/Hooks Arm/Fetch Arm/Step Arm/Full Arm/Machine Arm/Witness Arm/Branch Arm/SymDec Arm/BrFull Arm/Mem Arm/Axioms}; do
+for f in ${@:-Spec/Code Proven/CompilerArm Arm/Base Arm/Exec Arm/Flags Arm/Small Arm/Words Arm/Compiler Arm/Ret Arm/Hooks Arm/Fetch Arm/Step Arm/Full Arm/Machine Arm/Witness Arm/Branch Arm/SymDec Arm/BrFull Arm/Mem Arm/FullAluAdd Arm/FullAluLogic Arm/FullAluShift Arm/FullCmp Arm/FullSubs Arm/FullMul Arm/FullBrLdur Arm/Axioms}; do
   case $f in Proven/*|Spec/*) root="$D/build/src";; *) root="$D";; esac
   echo "== $f"; S=$(date +%s.%N); lean --root="$root" --tstack=400000 -o "$D/build/$f.olean" "$root/$f.lean"; echo "  $(echo "$(date +%s.%N) - $S" | bc) s"
 done
