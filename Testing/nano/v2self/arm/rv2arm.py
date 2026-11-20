@@ -64,10 +64,10 @@ def movz(d, imm): assert 0 <= imm < 65536; return 0xD2800000 | imm << 5 | d
 def movk(d, imm, hw): assert 0 <= imm < 65536; return 0xF2800000 | hw << 21 | imm << 5 | d
 def addi(d, n, imm): assert 0 <= imm < 4096 and d != 31 and n != 31; return 0x91000000 | imm << 10 | n << 5 | d
 def subi(d, n, imm): assert 0 <= imm < 4096 and d != 31 and n != 31; return 0xD1000000 | imm << 10 | n << 5 | d
-def rr(base, d, n, m): return base | m << 16 | n << 5 | d                                     # 31 is xzr
+def rr(base, d, n, m): assert 31 not in (d, n, m); return base | m << 16 | n << 5 | d
 ADD, SUB, AND, ORR, EOR, LSLV, LSRV, MUL = 0x8B000000, 0xCB000000, 0x8A000000, 0xAA000000, 0xCA000000, \
-    0x9AC02000, 0x9AC02400, 0x9B007C00                                                     # MUL = madd .., xzr
-def cmp(n, m): return rr(0xEB000000, 31, n, m)                                           # subs xzr, n, m
+    0x9AC02000, 0x9AC02400, 0x9B004400                                                     # MUL = madd .., x17 (= 0)
+def subs(n, m): return rr(0xEB000000, S0, n, m)                                          # subs x16, n, m (sets NZCV)
 def ldr(t, n, off): assert off % 8 == 0 and 0 <= off < 32768 and t != 31; return 0xF9400000 | off // 8 << 10 | n << 5 | t
 def str_(t, n, off): assert off % 8 == 0 and 0 <= off < 32768 and t != 31; return 0xF9000000 | off // 8 << 10 | n << 5 | t
 def ldrb(t, n, off): assert 0 <= off < 4096 and t != 31; return 0x39400000 | off << 10 | n << 5 | t
@@ -77,6 +77,12 @@ def bl(o): assert -(1 << 25) <= o < 1 << 25; return 0x94000000 | o & 0x3FFFFFF
 def bcond(c, o): assert -(1 << 18) <= o < 1 << 18; return 0x54000000 | (o & 0x7FFFF) << 5 | c
 def cbz(t, o): assert -(1 << 18) <= o < 1 << 18 and t != 31; return 0xB4000000 | (o & 0x7FFFF) << 5 | t
 def br(n): assert n != 31; return 0xD61F0000 | n << 5
+
+def Z(r, out):
+    """A64 register holding RV register r as an operand: x0 is x17, zeroed once by a leading `movz x17, #0`"""
+    if r != 0: return R(r)
+    if movz(S1, 0) not in out: out.insert(0, movz(S1, 0))
+    return S1
 
 def addr(rs, off, out):
     """x16 := x[rs] + off (add/sub imm); the access then uses [x16, #0]"""
@@ -89,6 +95,7 @@ def block(j, pc):
     k = j[0]
     if k == 'addi':
         _, rd, rs, imm = j
+        R(rd); R(rs)                                     # validate (also when rd = x0)
         if rd != 0:
             if rs == 0 and imm >= 0: out.append(movz(R(rd), imm))
             elif rs == 0:                                # 2^64 + imm: low half-word 65536 + imm, the rest 0xFFFF
@@ -97,6 +104,7 @@ def block(j, pc):
             else: out.append(subi(R(rd), N(rs), -imm))
     elif k in ('ld', 'lbu'):
         _, rd, rs, off = j
+        R(rd); N(rs)
         if rd != 0:
             if k == 'ld':
                 if off % 8 == 0 and 0 <= off < 32768: out.append(ldr(R(rd), N(rs), off))
@@ -106,25 +114,30 @@ def block(j, pc):
                 else: out.append(ldrb(R(rd), addr(rs, off, out), 0))
     elif k in ('sd', 'sb'):
         _, r2, rs, off = j
-        if r2 == 0: out.append(movz(S1, 0)); t = S1      # never store xzr: store a zeroed x17
-        else: t = R(r2)
+        t = Z(r2, out)                                   # never store xzr: store a zeroed x17
         st = str_ if k == 'sd' else strb
         if (off % 8 == 0 and 0 <= off < 32768) if k == 'sd' else (0 <= off < 4096): out.append(st(t, N(rs), off))
         else: out.append(st(t, addr(rs, off, out), 0))
     elif k == 'alu':
         _, op, rd, a, bb = j
+        R(rd); R(a); R(bb)
         if rd != 0:
-            out.append(rr({1: ADD, 2: SUB, 3: MUL, 4: AND, 5: ORR, 6: LSLV, 7: LSRV, 8: EOR}[op], R(rd), R(a), R(bb)))
+            if op == 3: Z(0, out)                        # madd's addend: x17 = 0
+            out.append(rr({1: ADD, 2: SUB, 3: MUL, 4: AND, 5: ORR, 6: LSLV, 7: LSRV, 8: EOR}[op], R(rd), Z(a, out), Z(bb, out)))
     elif k in ('slli', 'srli'):
         _, rd, rs, sh = j
+        R(rd); R(rs)
         if rd != 0:
-            out += [movz(S0, sh), rr(LSLV if k == 'slli' else LSRV, R(rd), R(rs), S0)]
+            n = Z(rs, out)
+            out += [movz(S0, sh), rr(LSLV if k == 'slli' else LSRV, R(rd), n, S0)]
     elif k in ('beq', 'bne', 'bltu', 'bgeu'):
         _, a, bb, o = j
+        R(a); R(bb)
         if k == 'beq' and a == 0 and bb == 0: out.append(b(rel(pc + o)))
         elif k == 'beq' and (a == 0 or bb == 0): out.append(cbz(R(a if bb == 0 else bb), rel(pc + o)))
         else:
-            out.append(cmp(R(a), R(bb)))
+            na, nb = Z(a, out), Z(bb, out)
+            out.append(subs(na, nb))
             out.append(bcond({'beq': 0, 'bne': 1, 'bgeu': 2, 'bltu': 3}[k], rel(pc + o)))
     elif k == 'jal':
         _, rd, o = j
@@ -135,6 +148,7 @@ def block(j, pc):
             out.append(bl(rel(pc + o)))                  # last word: links the next block
     elif k == 'jalr':
         _, rd, rs = j
+        assert rs != 0, 'jalr through x0'
         out.append(br(R(rs)))
     else: raise AssertionError(k)
     assert len(out) <= K, (j, out)

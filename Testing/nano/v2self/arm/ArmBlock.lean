@@ -12,7 +12,8 @@ import Nano.V2Self.Proof.Machine.Call
 namespace ArmBlock
 open CallProbe Proven.Top
 
-/-! ## register map π (RV → A64; 31 = xzr, used only as an ALU/compare operand; RV sp (x2) ↦ x4) -/
+/-! ## register map π (RV → A64; RV sp (x2) ↦ x4; x0 ↦ 31, but no emitted word has a register field 31: an x0
+operand is read from x17 after `movz x17, #0`) -/
 def pi (r : Nat) : Nat :=
   match r with
   | 0 => 31 | 1 => 30 | 2 => 4 | 10 => 0 | 11 => 1 | 12 => 2 | 13 => 3 | 28 => 12 | 29 => 13 | 30 => 10 | 31 => 11
@@ -29,7 +30,7 @@ def movk (d i h : Nat) : Nat := 0xF2800000 + h * 2^21 + i * 2^5 + d
 def addi (d n i : Nat) : Nat := 0x91000000 + i * 2^10 + n * 2^5 + d
 def subi (d n i : Nat) : Nat := 0xD1000000 + i * 2^10 + n * 2^5 + d
 def rr (c d n m : Nat) : Nat := c + m * 2^16 + n * 2^5 + d
-def cmpR (n m : Nat) : Nat := 0xEB000000 + m * 2^16 + n * 2^5 + 31
+def subsR (n m : Nat) : Nat := 0xEB000000 + m * 2^16 + n * 2^5 + 16
 def mo (f : Int) (k : Nat) : Nat := (f % ((2 ^ k : Nat) : Int)).toNat
 def ldr (t n f : Nat) : Nat := 0xF9400000 + (f / 8) * 2^10 + n * 2^5 + t
 def str (t n f : Nat) : Nat := 0xF9000000 + (f / 8) * 2^10 + n * 2^5 + t
@@ -43,15 +44,19 @@ def brR (n : Nat) : Nat := 0xD61F0000 + n * 2^5
 def PAD : Nat := addi 16 16 0
 def aluC (op : Nat) : Nat :=
   match op with
-  | 1 => 0x8B000000 | 2 => 0xCB000000 | 3 => 0x9B007C00 | 4 => 0x8A000000 | 5 => 0xAA000000
+  | 1 => 0x8B000000 | 2 => 0xCB000000 | 3 => 0x9B004400 | 4 => 0x8A000000 | 5 => 0xAA000000
   | 6 => 0x9AC02000 | 7 => 0x9AC02400 | _ => 0xCA000000
 /-- x16 := x[rs] + f (rs ≠ x0) -/
 def addr16 (rs : Nat) (f : Int) : Nat := if f < 0 then subi 16 (pi rs) f.natAbs else addi 16 (pi rs) f.toNat
 def pad4 (l : List Nat) : List Nat := l ++ List.replicate (4 - l.length) PAD
-/-- a store of x0 stores a zeroed x17 (xzr is never stored) -/
+/-- `movz x17, #0` when r = x0 (a store of x0 stores the zeroed x17; xzr is never used) -/
 def zpre (r : Nat) : List Nat := if r = 0 then [movz 17 0] else []
 def dat (r : Nat) : Nat := if r = 0 then 17 else pi r
-def cmpBr (c a b : Nat) (o : Int) : List Nat := [cmpR (pi a) (pi b), bc c (4 * o - 1)]
+/-- an operand: x0 is read from x17 (zeroed by the block first) -/
+def opR (r : Nat) : Nat := if r = 0 then 17 else pi r
+def compBr (c a b : Nat) (o : Int) : List Nat :=
+  if a = 0 ∨ b = 0 then [movz 17 0, subsR (opR a) (opR b), bc c (4 * o - 2)]
+  else [subsR (pi a) (pi b), bc c (4 * o - 1)]
 
 /-- the real words of the block of J instruction `j` (before padding) -/
 def body : J → List Nat
@@ -69,15 +74,16 @@ def body : J → List Nat
     if rd = 0 then [] else if 0 ≤ f ∧ f < 4096 then [ldrb (pi rd) (pi rs) f.toNat] else [addr16 rs f, ldrb (pi rd) 16 0]
   | .sb r2 r1 f =>
     zpre r2 ++ if 0 ≤ f ∧ f < 4096 then [strb (dat r2) (pi r1) f.toNat] else [addr16 r1 f, strb (dat r2) 16 0]
-  | .alu op rd a b => if rd = 0 then [] else [rr (aluC op) (pi rd) (pi a) (pi b)]
-  | .slli rd rs sh => if rd = 0 then [] else [movz 16 sh, rr 0x9AC02000 (pi rd) (pi rs) 16]
-  | .srli rd rs sh => if rd = 0 then [] else [movz 16 sh, rr 0x9AC02400 (pi rd) (pi rs) 16]
+  | .alu op rd a b =>
+    if rd = 0 then [] else zpre (if a = 0 ∨ b = 0 ∨ op = 3 then 0 else 1) ++ [rr (aluC op) (pi rd) (opR a) (opR b)]
+  | .slli rd rs sh => if rd = 0 then [] else zpre rs ++ [movz 16 sh, rr 0x9AC02000 (pi rd) (opR rs) 16]
+  | .srli rd rs sh => if rd = 0 then [] else zpre rs ++ [movz 16 sh, rr 0x9AC02400 (pi rd) (opR rs) 16]
   | .beq a b o =>
     if a = 0 ∧ b = 0 then [bB (4 * o)] else if b = 0 then [cbz (pi a) (4 * o)] else if a = 0 then [cbz (pi b) (4 * o)]
-    else cmpBr 0 a b o
-  | .bne a b o => cmpBr 1 a b o
-  | .bltu a b o => cmpBr 3 a b o
-  | .bgeu a b o => cmpBr 2 a b o
+    else compBr 0 a b o
+  | .bne a b o => compBr 1 a b o
+  | .bltu a b o => compBr 3 a b o
+  | .bgeu a b o => compBr 2 a b o
   | .jal rd o => if rd = 0 then [bB (4 * o)] else [PAD, PAD, PAD, blB (4 * o - 3)]
   | .jalr _ rs => [brR (pi rs)]
 
@@ -93,7 +99,7 @@ def validJ (n pc : Nat) : J → Prop
   | .beq a b o | .bne a b o | .bltu a b o | .bgeu a b o =>
     rdOK a ∧ rdOK b ∧ 0 ≤ (pc : Int) + o ∧ (pc : Int) + o < n ∧ -65535 ≤ o ∧ o ≤ 65535
   | .jal rd o => (rd = 0 ∨ rd = 1) ∧ 0 ≤ (pc : Int) + o ∧ (pc : Int) + o < n
-  | .jalr rd rs => rd = 0 ∧ pi rs < 31
+  | .jalr rd rs => rd = 0 ∧ rs ≠ 0 ∧ pi rs < 31
 
 /-! ## J with link width W (V2). `stepW 4 = CallProbe.step` (same text with 4 replaced by W). -/
 def stepW (W : Nat) (C : List J) : Nat × St → Option (Nat × St)

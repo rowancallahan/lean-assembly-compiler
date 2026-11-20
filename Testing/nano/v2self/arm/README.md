@@ -14,10 +14,11 @@ plan for a proved version (`armTarget`, `Testing/notes/NANO_V2_ARM.md`).
 | `B2_arm.bin` | the compiler `../B2.bin` translated (AArch64). It compiles the compiler's source to `B2.bin` |
 | `rv2arm.py` | test oracle only (same bytes as the nano translator) |
 | `test_arm.sh` | the Linux/qemu test below |
+| `synth_rv.py` | a synthetic RV program of rare forms (translator vs oracle) |
 | `SHA256SUMS` | of the three binaries |
 | `PROOF_NOTES.md` | per-block proof plan, lemma map (AL1–AL6), register-31 gaps |
 | `ArmBlock.lean` | DRAFT Lean statement of block correctness (`BlockOK`), no proofs, not in the lake build |
-| `gen_check.py`, `check_lean.sh` | Lean check: `ArmBlock.lean` elaborates, and its `blockJ` = the oracle on 13,315 J instructions |
+| `gen_check.py`, `check_lean.sh` | Lean check: `ArmBlock.lean` elaborates, and its `blockJ` = the oracle on 13,502 J instructions |
 
 ## Use on a Mac (Apple Silicon), from this directory
 
@@ -61,31 +62,31 @@ Each RV word is decoded back to its J instruction (`Nano/V2Self/Proof/Machine/Ca
 offset 16·pc. A first pass validates the whole program; any other word, register or out-of-range branch gives the
 empty output.
 
-Registers (RV → A64): x0 → xzr (only as an ALU/compare operand), x1 (ra) → x30, x2 (RV sp) → x4, x10..x13 → x0..x3,
+Registers (RV → A64): x0 → none (read from x17 after `movz x17, #0`), x1 (ra) → x30, x2 (RV sp) → x4, x10..x13 → x0..x3,
 x28 → x12, x29 → x13, x30 → x10, x31 → x11, x5..x8, x14, x15 → the same number. Scratch: x16, x17.
 Never touched: sp, x18, x19..x29.
 Convention (mirrors RV): x0 input, x1 length, x2 work base, x3 output, **x4 = work top** (RV sp), return via x30;
 status in x0, length in x1. `../run/shim/shim_arm.c` passes the work top in x4, and also still sets sp to it.
 Emitted instructions follow `NANO_V2_ARM.md` §0-min, the set the proof will cover:
-* movz/movk, add/sub (imm, reg), and/orr/eor, lslv/lsrv, madd, cmp, b.cond, cbz, b, bl, br, ldr/str (unsigned
-  offset), ldrb/strb;
-* no ldur/stur, no sp, no store of xzr. `test_arm.sh` checks this with objdump.
+* movz/movk, add/sub (imm, reg), subs (Rd = x16), and/orr/eor, lslv/lsrv, madd, b.cond, cbz, b, bl, br, ldr/str
+  (unsigned offset), ldrb/strb;
+* no register field is ever 31: no xzr, wzr or sp. No ldur/stur. `test_arm.sh` checks this with objdump.
 
 | J | A64 block (then padding) |
 |---|---|
 | `addi rd rs imm` | `add/sub d, s, #abs`; rs = x0: `movz d, #imm`, or (imm < 0) `movz d, #(65536+imm); movk d, #0xFFFF, lsl 16/32/48` |
 | `ld` / `sd` | `ldr`/`str [s, #off]` (off ∈ 8ℕ, < 32768), else `add/sub x16, s, #abs` + `[x16]` |
 | `lbu` / `sb` | `ldrb`/`strb [s, #off]` (0 ≤ off < 4096), else via x16 |
-| `sd x0` / `sb x0` | `movz x17, #0` first, then store x17 |
-| `alu op rd a b` | `add/sub/mul/and/orr/lslv/lsrv/eor d, a, b` |
+| x0 as an operand or stored value | `movz x17, #0` first, then x17 |
+| `alu op rd a b` | `add/sub/and/orr/lslv/lsrv/eor d, a, b`; mul = `movz x17, #0; madd d, a, b, x17` |
 | `slli/srli rd rs sh` | `movz x16, #sh; lslv/lsrv d, s, x16` |
 | `beq a x0` (either side) | `cbz a, 4·o` |
-| `beq/bne/bltu/bgeu a b o` | `cmp a, b; b.eq/ne/lo/hs 4·o − 1` |
+| `beq/bne/bltu/bgeu a b o` | `subs x16, a, b; b.eq/ne/lo/hs 4·o − 1` (− 2 after a `movz x17, #0`) |
 | `jal x0 o` / `jal x1 o` | `b 4·o` / `pad; pad; pad; bl 4·o − 3` (x30 = the next block) |
 | `jalr x0 r` | `br r` |
 | rd = x0 (no-op) | 4 × padding |
 
-## Tests (Linux x86-64, qemu-aarch64, 2026-11-20): `test_arm.sh`, 57/57 OK
+## Tests (Linux x86-64, qemu-aarch64, 2026-11-20): `test_arm.sh`, 62/62 OK
 
 * B2 compiles `rv2arm.lean`, and nanorun runs the result on itself to give `rv2arm_arm.bin`. Under qemu,
   `rv2arm_arm.bin` translates its own RISC-V code to itself (fixpoint). Both translators equal the Python oracle.
@@ -95,5 +96,7 @@ Emitted instructions follow `NANO_V2_ARM.md` §0-min, the set the proof will cov
 * B2 translated by the ARM translator = `B2_arm.bin`. ARM-B2 on `../self_S_input.txt` = `B2.bin` byte for byte
   (337,856 bytes, sha256 `bb5558a5…`), 1.3 s under qemu (nanorun: 11.8 s). Translating B2: 0.5 s under qemu.
 * The instruction set of `B2_arm.bin` and `rv2arm_arm.bin` is §0-min's (objdump check).
-* An `ecall` word and an odd-sized file are refused.
-* `check_lean.sh`: `ArmBlock.lean` elaborates, and `blockJ` = the oracle on 13,315 distinct J instructions.
+* `synth_rv.py`'s program of rare forms (x0/x2 operands, mul, far offsets, x0 stores): translator = oracle.
+* Refused: an `ecall` word, an odd-sized file, and 4 FZ-T cases (unmapped source with rd = x0 ×3, `jalr` through x0).
+* `arm/fuzz/fuzz.py`, 40 seeds: 120 runs agree with nanorun.
+* `check_lean.sh`: `ArmBlock.lean` elaborates, and `blockJ` = the oracle on 13,502 distinct J instructions.

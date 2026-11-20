@@ -54,12 +54,12 @@ def k11 : UInt64 := 960495616
 def k12 : UInt64 := 956301312
 def k13 : UInt64 := 2596282368
 def k14 : UInt64 := 2596283392
--- A64 encoders (64-bit forms). a0 movz; a1 add imm; a2 sub imm; a3 register form (base op); a4 cmp (subs xzr)
+-- A64 encoders (64-bit forms). a0 movz; a1 add imm; a2 sub imm; a3 register form (base op); a4 subs x16, n, b
 def a0 (d i : UInt64) : UInt64 := k1 ||| (i <<< 5) ||| d
 def a1 (d n i : UInt64) : UInt64 := k2 ||| (i <<< 10) ||| (n <<< 5) ||| d
 def a2 (d n i : UInt64) : UInt64 := k3 ||| (i <<< 10) ||| (n <<< 5) ||| d
 def a3 (c d n b : UInt64) : UInt64 := c ||| (b <<< 16) ||| (n <<< 5) ||| d
-def a4 (n b : UInt64) : UInt64 := k4 ||| (b <<< 16) ||| (n <<< 5) ||| 31
+def a4 (n b : UInt64) : UInt64 := k4 ||| (b <<< 16) ||| (n <<< 5) ||| 16
 -- a5 ldr/str (unsigned offset /8) base c; a7 ldrb/strb base c
 def a5 (c t n f : UInt64) : UInt64 := c ||| ((f >>> 3) <<< 10) ||| (n <<< 5) ||| t
 def a7 (c t n f : UInt64) : UInt64 := c ||| (f <<< 10) ||| (n <<< 5) ||| t
@@ -81,7 +81,7 @@ def b1 (f3 f7 : UInt64) : UInt64 :=
   else if f7 == 1 then (if f3 == 0 then 3 else 0) else 0
 -- the A64 register-form base of ALU op c
 def b2 (c : UInt64) : UInt64 :=
-  if c == 1 then 2332033024 else if c == 2 then 3405774848 else if c == 3 then 2600500224
+  if c == 1 then 2332033024 else if c == 2 then 3405774848 else if c == 3 then 2600485888
   else if c == 4 then 2315255808 else if c == 5 then 2852126720 else if c == 6 then 2596282368
   else if c == 7 then 2596283392 else 3388997632
 -- b.cond condition of an RV branch funct3 (beq 0 -> eq 0, bne 1 -> ne 1, bltu 6 -> lo 3, bgeu 7 -> hs 2), 99 if none
@@ -168,29 +168,41 @@ def d2 (x : List UInt8) (o : List UInt8) (c t s f : UInt64) : List UInt8 :=
 def d3 (x : List UInt8) (o : List UInt8) (c t s f : UInt64) : List UInt8 :=
   let g := (if c == 1 then k11 else k12);
   if f < 4096 then y1 x o t (a7 g (y0 t) (u0 s) f) else y2 x o t (d1 s f) (a7 g (y0 t) 16 0)
--- J alu op rd a b
+-- an operand register: x0 is x17, which the block zeroes first (`movz x17, #0`); register 31 is never emitted
+def z1 (r : UInt64) : UInt64 := if r == 0 then 17 else u0 r
+-- J alu op rd a b (mul = madd d, a, b, x17 with x17 = 0)
 def d6 (x : List UInt8) (o : List UInt8) (v : UInt64) : List UInt8 :=
   let r := o1 v;
   let a := o3 v;
   let b := o4 v;
+  let p := b1 (o2 v) (v >>> 25);
+  let w1 := a3 (b2 p) (u0 r) (z1 a) (z1 b);
   if r == 0 then e0 x o else
-  e1 x o (a3 (b2 (b1 (o2 v) (v >>> 25))) (u0 r) (u0 a) (u0 b))
+  if a == 0 then e2 x o (a0 17 0) w1 else
+  if b == 0 then e2 x o (a0 17 0) w1 else
+  if p == 3 then e2 x o (a0 17 0) w1 else e1 x o w1
 -- J slli / srli rd rs sh (c = 1 left): movz x16,#sh; lslv/lsrv xd, xs, x16
 def d7 (x : List UInt8) (o : List UInt8) (v c : UInt64) : List UInt8 :=
   let r := o1 v;
   let s := o3 v;
   let g := (if c == 1 then k13 else k14);
   if r == 0 then e0 x o else
-  e2 x o (a0 16 ((v >>> 20) &&& 63)) (a3 g (u0 r) (u0 s) 16)
--- J beq/bne/bltu/bgeu a b B: cmp xa, xb; b.cond (B - 1). beq against x0: cbz (B); beq x0 x0: b (B)
+  if s == 0 then e3 x o (a0 17 0) (a0 16 ((v >>> 20) &&& 63)) (a3 g (u0 r) 17 16)
+  else e2 x o (a0 16 ((v >>> 20) &&& 63)) (a3 g (u0 r) (u0 s) 16)
+-- compare-branch: subs x16, a, b; b.cond c (B - 1), after `movz x17, #0` (then B - 2) if an operand is x0
+def d9 (x : List UInt8) (o : List UInt8) (a b c f : UInt64) : List UInt8 :=
+  if a == 0 then e3 x o (a0 17 0) (a4 (z1 a) (z1 b)) (a9 c (f - 2)) else
+  if b == 0 then e3 x o (a0 17 0) (a4 (z1 a) (z1 b)) (a9 c (f - 2)) else
+  e2 x o (a4 (u0 a) (u0 b)) (a9 c (f - 1))
+-- J beq/bne/bltu/bgeu a b B. beq against x0: cbz (B); beq x0 x0: b (B)
 def d8 (x : List UInt8) (o : List UInt8) (v : UInt64) : List UInt8 :=
   let a := o3 v;
   let b := o4 v;
   if o2 v == 0 then
     (if a == 0 then (if b == 0 then e1 x o (a8 335544320 (o7 v)) else e1 x o (b5 (u0 b) (o7 v)))
      else if b == 0 then e1 x o (b5 (u0 a) (o7 v))
-     else e2 x o (a4 (u0 a) (u0 b)) (a9 0 (o7 v - 1)))
-  else e2 x o (a4 (u0 a) (u0 b)) (a9 (b3 (o2 v)) (o7 v - 1))
+     else d9 x o a b 0 (o7 v))
+  else d9 x o a b (b3 (o2 v)) (o7 v)
 -- one block for the RV word v (already validated)
 def t0 (x : List UInt8) (o : List UInt8) (v : UInt64) : List UInt8 :=
   let p := o0 v;

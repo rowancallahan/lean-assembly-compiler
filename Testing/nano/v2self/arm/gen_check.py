@@ -8,7 +8,7 @@ def lean(j):
     a = ' '.join('(%d)' % v if v < 0 else str(v) for v in j[1:])
     return '.%s %s' % (j[0], a)
 seen = {}
-for f in sys.argv[1:]:
+for f in sys.argv[1:]:  # (synth_rv.py's program is passed as one of them by check_lean.sh)
     d = open(f, 'rb').read()
     for w in struct.unpack('<%dI' % (len(d) // 4), d):
         j = rv2arm.decode(w)

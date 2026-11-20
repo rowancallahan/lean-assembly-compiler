@@ -15,6 +15,7 @@ cc -O2 "$V/run/nanorun.c" -o "$T/nanorun"
 for e in "$V"/examples/*.lean; do
   grep -v '^--' "$e" > "$T/e.src"; "$T/nanorun" "$V/B2.bin" "$T/e.src" "$T/$(basename "$e" .lean).rv" 2> /dev/null
 done
+python3 "$D/synth_rv.py" > "$T/synth.rv"
 python3 "$D/gen_check.py" "$V/B2.bin" "$D/rv2arm_rv.bin" "$T"/*.rv > "$T/ArmBlockCheck.lean"
 lean "$T/ArmBlockCheck.lean"
 echo "OK ArmBlock.lean elaborates; $(head -1 "$T/ArmBlockCheck.lean" | grep -o '[0-9]* distinct') J instructions: blockJ = oracle"
