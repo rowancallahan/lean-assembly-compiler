@@ -104,7 +104,12 @@ def closedPre : Simp.Simproc := fun e => do
     if e.isAppOfArity ``OfNat.ofNat 3 then return .continue
     let some (.lit (.natVal w)) ← kernelWhnf? ty.appArg! | return .continue
     if let some (.lit (.natVal n)) ← kernelWhnf? (mkApp2 (mkConst ``BitVec.toNat) ty.appArg! e) then
-      return ← byDecide (mkApp2 (mkConst ``BitVec.ofNat) (mkNatLit w) (mkNatLit n))
+      -- Lean 4.34.1: `Decidable (e = r)` is not synthesized when the width of `e` is not a literal
+      -- (e.g. `regidx_bit_width - 1 - 0 + 1`): give the instance at the literal width
+      let r := mkApp2 (mkConst ``BitVec.ofNat) (mkNatLit w) (mkNatLit n)
+      let p ← mkEq e r
+      let inst := mkApp3 (mkConst ``instDecidableEqBitVec) (mkNatLit w) e r
+      return .done { expr := r, proof? := mkApp3 (mkConst ``of_decide_eq_true) p inst (← mkEqRefl (mkConst ``true)) }
     return .continue
   unless ty.isProp do return .continue
   let some inst ← (try synthInstance? (mkApp (mkConst ``Decidable) e) catch _ => pure none) | return .continue

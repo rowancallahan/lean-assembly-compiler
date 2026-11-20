@@ -353,7 +353,7 @@ set_option hygiene false in
 /-- the `run_hart_active` part of `step_word` -/
 macro "step_word_core" : tactic => `(tactic| (
   · intro s h hpc hi hQ
-    simp only [Proven.getX_eq] at hQ
+    try simp only [Proven.getX_eq] at hQ
     have hok' := hok; obtain ⟨_, _, _⟩ := hok'
     have hf := Proven.fetch_cfg h hpc hok hi (by decide)
     have hd := Proven.dispatch_cfg h
