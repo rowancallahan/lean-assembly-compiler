@@ -62,6 +62,6 @@ theorem asim_jalr (S : A64SemN M X W) {rs : Nat} (hok : (NTm.jalr rs).ok = true)
     simpa [NTm.a] using hA 0 (by simp [NTm.alen, NTm.a])
   obtain ⟨s', r, N⟩ := n_br S hM hB a0 hm hn0 hv
   exact ⟨0, _, v, s', Nat.zero_le _, hrest, r, by dsimp only; rw [hj']; exact N,
-    hag.mono (fun r hr => Or.inl ⟨hr, rfl⟩), rfl, rfl, Or.inr (Or.inr (by dsimp only; rw [hj']; exact hlt))⟩
+    hag.mono (fun r hr => Or.inl ⟨hr, rfl⟩), rfl, rfl, Or.inr (Or.inr ⟨by dsimp only; rw [hj']; exact hlt, _, rfl⟩)⟩
 
 end JT

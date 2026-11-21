@@ -91,7 +91,7 @@ def ASim (M : Machine) (X W : M.State → Nat → Prop) (t : NTm) : Prop :=
     SRunN K C (n + 1) (q, st) z → (∀ i, 0 < i → i < t.j.length → z.1 ≠ q + i) →
     ∃ m c v' s', m ≤ n ∧ SRunN K C (n - m) c z ∧ Runs M s s' ∧ NMid X W K A s0 v' (π c.1) s' ∧
       Agree (outD t D) v' c.2 ∧ c.2.b = st.b ∧ c.2.ly = st.ly ∧
-      ((c.1 = q + t.j.length ∧ t.ft = true) ∨ c.1 ∈ t.tg q ∨ c.2.lo c.1 < 2 ^ 64)
+      ((c.1 = q + t.j.length ∧ t.ft = true) ∨ c.1 ∈ t.tg q ∨ (c.2.lo c.1 < 2 ^ 64 ∧ ∃ rs, t = .jalr rs))
 
 /-- a register write on both sides keeps the agreement (the written register is live afterwards) -/
 theorem agree_wr {D : Nat → Prop} {v st : CallProbe.St} (h : Agree D v st) (d : Nat) (x : UInt64) :
@@ -133,7 +133,7 @@ theorem asim_alu (S : A64SemN M X W) {op d x y : Nat} (hok : (NTm.alu op d x y).
       CallProbe.wr_b _ _ _, CallProbe.wr_w _ _ _, Or.inl ⟨rfl, rfl⟩⟩ :
       ∃ m c v' s', m ≤ n ∧ SRunN K C (n - m) c z ∧ Runs M s s' ∧ NMid X W K A s0 v' (π c.1) s' ∧
         Agree (outD (NTm.alu op d x y) D) v' c.2 ∧ c.2.b = st.b ∧ c.2.ly = st.ly ∧
-        ((c.1 = q + (NTm.alu op d x y).j.length ∧ (NTm.alu op d x y).ft = true) ∨ c.1 ∈ (NTm.alu op d x y).tg q ∨ c.2.lo c.1 < 2 ^ 64))
+        ((c.1 = q + (NTm.alu op d x y).j.length ∧ (NTm.alu op d x y).ft = true) ∨ c.1 ∈ (NTm.alu op d x y).tg q ∨ (c.2.lo c.1 < 2 ^ 64 ∧ ∃ rs, NTm.alu op d x y = .jalr rs)))
   by_cases h3 : op = 3
   · subst h3
     have a0 : A[h]? = some (ArmEnc.movz 17 0) := by simpa [NTm.a] using hA 0 (by simp [NTm.alen, NTm.a])
