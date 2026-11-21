@@ -218,19 +218,20 @@ def emitDef (defs : List DefI) (di : DefI) (da : DefA) : M (X × X) := do
     let (bx, _) ← emit cx (binders 0 di.params []) (some di.res) b
     pure (ty, lamX di.params bx)
 
-/-- the S text of a program: one `D name type value` line per def -/
-def emitProg (src : List UInt8) : Except String String := do
+/-- the Exprs of a program: (name, type, value) per def -/
+def emitXs (src : List UInt8) : Except String (List (String × X × X)) := do
   let some ws := lexAll (src.length + 1) src | throw "lex"
   let some toks := tokens ws | throw "tokens"
   let some (ds, as) := pDefs (8 * toks.length + 8) (toks.length + 1) [] toks | throw "parse"
-  let go : M String := do
-    let mut out := ""
-    for (di, da) in ds.zip as do
-      let (t, v) ← emitDef ds di da
-      out := out ++ s!"D {nameS di.name} {t.ser} {v.ser}\n"
-    pure out
+  let go : M (List (String × X × X)) := (ds.zip as).mapM fun (di, da) => do
+    let (t, v) ← emitDef ds di da
+    pure (nameS di.name, t, v)
   let (o, st) ← go.run { lets := sideLets toks, nils := sideNils toks }
   if !st.lets.isEmpty || !st.nils.isEmpty then throw "side info left over"
   pure o
+
+/-- the S text of a program: one `D name type value` line per def -/
+def emitProg (src : List UInt8) : Except String String := do
+  pure (String.join ((← emitXs src).map fun (n, t, v) => s!"D {n} {t.ser} {v.ser}\n"))
 
 end ExprSpec

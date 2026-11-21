@@ -138,17 +138,26 @@ def e21 : Nat → Buf → UInt64 → UInt64 → Buf
 def e22 (k u c : UInt64) : UInt64 × UInt64 :=
   if k == 3 then (if u == 0 then (if c == 1 then (7, 1) else (6, u)) else (6, u)) else (2 * k, u)
 
-/-- binder groups from p (at `(`): (g, (h, (s, (p, (u, count))))) -/
+/-- one binder group at p (`(`): (g, (h, (s, (p, (u, count))))) -/
+def e28 (t : Buf) (p : UInt64) (g h s : Buf) (u : UInt64) : Buf × (Buf × (Buf × (UInt64 × (UInt64 × UInt64)))) :=
+  let (p1, c) := e20 16777216 t (p + 1) 0;
+  let (h1, z) := e19 t (p1 + 1) s h;
+  let (k, z1) := z;
+  let (p2, s1) := z1;
+  let (j, u1) := e22 k u c;
+  (e21 16777216 g j c, (h1, (s1, (p2 + 1, (u1, c)))))
+
+/-- binder groups from p: (g, (h, (s, (p, count)))) -/
 def e23 : Nat → Buf → UInt64 → Buf → Buf → Buf → UInt64 → UInt64 → Buf × (Buf × (Buf × (UInt64 × UInt64)))
   | 0, t, p, g, h, s, u, m => (g, (h, (s, (p, m))))
   | n + 1, t, p, g, h, s, u, m =>
     if bget t p == 6 then
-      let (p1, c) := e20 16777216 t (p + 1) 0;
-      let (h1, z) := e19 t (p1 + 1) s h;
-      let (k, z1) := z;
-      let (p2, s1) := z1;
-      let (j, u1) := e22 k u c;
-      e23 n t (p2 + 1) (e21 16777216 g j c) h1 s1 u1 (m + c)
+      (let (g1, z) := e28 t p g h s u;
+       let (h1, z1) := z;
+       let (s1, z2) := z1;
+       let (p1, z3) := z2;
+       let (u1, c) := z3;
+       e23 n t p1 g1 h1 s1 u1 (m + c))
     else (g, (h, (s, (p, m))))
 
 /-- arrow types from p: states until `|`: (g, (h, (s, (p, (u, (count, result)))))) -/
@@ -460,26 +469,37 @@ def e54 (r f g a : Buf) (s : Buf) (i p : UInt64) : Buf × UInt64 :=
       (q2 + 24) 1 5 0 0, q2 + 28)
   else (e41 (e41 s2 q2 3 (p + 6) (bget f (4 * i + 3)) m) (q2 + 4) 1 5 0 0, q2 + 8)
 
+/-- def i at IR position p (tag 20): (h, (s, (a, (l, (c, (n, (next p, o))))))) -/
+def e58 (x : List UInt8) (r t f g h s a l : Buf) (i p c n : UInt64) (o : List UInt8) : Buf × (Buf × (Buf × (Buf × (UInt64 × (UInt64 × (UInt64 × List UInt8)))))) :=
+  let m := bget f (4 * i + 2);
+  let l1 := e52 1048576 g h (bset (bset (bset (e51 1073741824 l 0 (8 + 3 * bget r (p + 3))) 1 (m + 1)) 2 i) 0 0) (bget f (4 * i + 1)) 0 m 0;
+  let (s0, y) := e38 r t s a (p + 6) 0 c n;
+  let (a0, y1) := y;
+  let (c0, n0) := y1;
+  let (s1, z) := e37 1073741824 r t f (p + 6 + e30 r (p + 6)) s0 2 a0 l1 h c0 n0;
+  let (a1, z1) := z;
+  let (l2, z2) := z1;
+  let (h1, z3) := z2;
+  let (c1, n1) := z3;
+  let e := bget a1 (3 * (p + 6));
+  let (s2, q2) := e54 r f g a1 s1 i p;
+  let (s3, z4) := e50 1073741824 x r t f g a1 h1 (e42 1048576 s2 0 (q2 - 4)) q2 l2 o;
+  let (l3, o1) := z4;
+  (h1, (s3, (a1, (l3, (c1, (n1, (e + 1, o1)))))))
+
 /-- every def from IR position p (tag 20): o -/
 def e55 : Nat → List UInt8 → Buf → Buf → Buf → Buf → Buf → Buf → Buf → Buf → UInt64 → UInt64 → UInt64 → UInt64 → List UInt8 → List UInt8
   | 0, x, r, t, f, g, h, s, a, l, i, p, c, n, o => o
   | k + 1, x, r, t, f, g, h, s, a, l, i, p, c, n, o =>
     if bget r p == 20 then
-      (let m := bget f (4 * i + 2);
-       let l1 := e52 1048576 g h (bset (bset (bset (e51 1073741824 l 0 (8 + 3 * bget r (p + 3))) 1 (m + 1)) 2 i) 0 0) (bget f (4 * i + 1)) 0 m 0;
-       let (s0, y) := e38 r t s a (p + 6) 0 c n;
-       let (a0, y1) := y;
-       let (c0, n0) := y1;
-       let (s1, z) := e37 1073741824 r t f (p + 6 + e30 r (p + 6)) s0 2 a0 l1 h c0 n0;
-       let (a1, z1) := z;
-       let (l2, z2) := z1;
-       let (h1, z3) := z2;
-       let (c1, n1) := z3;
-       let e := bget a1 (3 * (p + 6));
-       let (s2, q2) := e54 r f g a1 s1 i p;
-       let (s3, z4) := e50 1073741824 x r t f g a1 h1 (e42 1048576 s2 0 (q2 - 4)) q2 l2 o;
-       let (l3, o1) := z4;
-       e55 k x r t f g h1 s3 a1 l3 (i + 1) (e + 1) c1 n1 o1)
+      (let (h1, z) := e58 x r t f g h s a l i p c n o;
+       let (s1, z1) := z;
+       let (a1, z2) := z1;
+       let (l1, z3) := z2;
+       let (c1, z4) := z3;
+       let (n1, z5) := z4;
+       let (p1, o1) := z5;
+       e55 k x r t f g h1 s1 a1 l1 (i + 1) p1 c1 n1 o1)
     else o
 
 def e99 (x : List UInt8) : List UInt8 :=

@@ -94,7 +94,12 @@ Mismatch categories:
   operands default to Nat), a literal-only value later used as UInt64. Repros: `def m (x : List UInt8) : List UInt8 := let t := []; put [] 1`, `.. := put [] (35 <<< 51)`.
   To fix in the parser (reject), a proven step on C.
 
+Lean-side cost: Lean's `eq_def` for a fuel loop with many states and a big body can take minutes (E's first `e55`, with 15
+parameters, did not finish). E keeps its loop bodies small: the per-def work is the non-recursive `e58`.
+
 ## 6. Proof plan
+Started: `Nano/Expr/Eval.lean`, `evalX` (total, fuel-bounded) over `emitXs`'s Exprs, with a closed constant table.
+`#guard`s: the sum example and a pair/let program compute their known outputs through the emitted Expr.
 1. `evalX : X → env → Option Val` for the fragment: a closed table of the constants above (each with its Lean
    meaning), user defs by name, `Nat.casesOn` on the fuel (structural, so `evalX` is total with fuel).
 2. `eval_emit : evalX (emitSpec p) = Sem κC p` (by induction on `Nd`, slot env ↔ de Bruijn env).

@@ -2,7 +2,9 @@
 """build_E.py OUT : E's source text in nano's self-language: C's base + lexer + parser text (as build_self_S.py),
 the phrase table, the emitter, and the driver `m x = e99 x`. Lean-only lines (imports, namespace, set_option,
 comments) are dropped, as in boot/fixpoint.sh."""
-import re, sys
+import os, re, sys
+OUT = os.path.abspath(sys.argv[1])
+os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../.."))
 parts = ["Nano/Main/Chain", "Nano/Lexer/Lex2", "Nano/Parser/Par1", "Nano/Expr/EmitStr", "Nano/Expr/Emit"]
 out = []
 for p in parts:
@@ -13,4 +15,4 @@ for p in parts:
 out.append("def m (x : List UInt8) : List UInt8 := e99 x\n")
 s = re.sub(r"\n\n+", "\n\n", "\n".join(out))
 assert "--" not in s and "/-" not in s
-open(sys.argv[1], "w").write(s)
+open(OUT, "w").write(s)
