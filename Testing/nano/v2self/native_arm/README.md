@@ -59,6 +59,9 @@ generic J-run proof and needs one lemma per template on the A64 side (see the pr
 * GA_arm compiles C's RISC-V source to B2_na (B2 as native A64, 311 KB; rv2arm's B2_arm: 1361 KB; B2: 340 KB);
   B2_na compiles C's source to **B2.bin exactly**.
 * examples + edge, 5 inputs each: identical status and output. Fuzz (`fuzz_native.py`, final version): 4000 cases (1763 accepted and run on 6–7 inputs each, 2237 rejected by both), 0 mismatches; earlier version 6000 cases, 0 real mismatches.
+* Big fuzz (2026-11-21, GenArm d6db803): 21,000 cases, **0 mismatches**: gen 6000 (3265 accepted and run, 2735
+  rejected by both), arith 6000 (all also equal to the Python UInt64 model), calls 6000, big 3000 (inputs to 64 KB).
+* `cross_native.sh`: 14 sources × 3 host builds × 2 compilers byte-identical; both fixpoints hold.
 * Static code words: native A64 = 0.74–0.96 × RISC-V (rv2arm 4.0 ×). Dynamic, examples: native 1.00–1.06 × RISC-V
   (rv2arm 3.6 ×); B2 compiling rle.lean: RISC-V 7.77 M, rv2arm 27.9 M, native 7.70 M instructions.
 
@@ -68,6 +71,21 @@ generic J-run proof and needs one lemma per template on the A64 side (see the pr
 | hex | 327 / 1308 / 283 | 9177 / 33134 / 9684 |
 | rle | 412 / 1648 / 365 | 10059 / 36275 / 10585 |
 | upper | 274 / 1096 / 235 | 6692 / 23816 / 7072 |
+
+## Benchmarks (`bench.sh`, QEMU 8.2.2 user mode; dynamic = generated code only, 300-byte input)
+
+| example | static RV / rv2arm / native | dynamic RV / rv2arm / native | wall s (400 KB in) RV / rv2arm / native |
+|---|---|---|---|
+| count | 123 / 492 / 91 | 103 / 372 / 76 | 0.02 / 0.02 / 0.02 |
+| fib | 311 / 1244 / 271 | 2435 / 8769 / 2517 | 0.02 / 0.03 / 0.03 |
+| hex | 327 / 1308 / 283 | 61913 / 223598 / 65492 | 0.02 / 0.04 / 0.03 |
+| maxbyte | 246 / 984 / 209 | 14550 / 52442 / 15131 | 0.02 / 0.02 / 0.02 |
+| reverse | 206 / 824 / 170 | 19912 / 73294 / 19891 | 0.03 / 0.03 / 0.03 |
+| rle | 412 / 1648 / 365 | 52536 / 189785 / 55172 | 0.02 / 0.03 / 0.03 |
+| sum | 207 / 828 / 171 | 13335 / 49079 / 13613 | 0.02 / 0.02 / 0.03 |
+| upper | 274 / 1096 / 235 | 33111 / 117923 / 35067 | 0.02 / 0.02 / 0.03 |
+
+Example wall times are QEMU start-up (~0.02 s). Self-compile (C compiling C's source, 3 runs): see below.
 
 ## Uniform (U) vs variable (V) blocks: what the non-uniform proof buys
 The proof's layout layer assumes one fixed-size block per J instruction. GenArm is V (variable, per template).
