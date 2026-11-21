@@ -23,6 +23,8 @@ def ldp (t u n : Nat) : Nat := 0xA9400000 + u * 2^10 + n * 2^5 + t
 def ldrbR (t n m : Nat) : Nat := 0x38606800 + m * 2^16 + n * 2^5 + t
 /-- `add xd, xn, xm, lsl #3` -/
 def addLsl3 (d n m : Nat) : Nat := 0x8B000C00 + m * 2^16 + n * 2^5 + d
+/-- `lsl xd, xn, #sh` (`ubfm xd, xn, #((64 - sh) % 64), #(63 - sh)`, 64-bit) -/
+def lslI (d n sh : Nat) : Nat := 0xD3400000 + ((64 - sh) % 64) * 2^16 + (63 - sh) * 2^10 + n * 2^5 + d
 
 end ArmEnc
 namespace JT
@@ -84,5 +86,10 @@ structure A64SemN (M : Machine) (X W : M.State → Nat → Prop) : Prop extends 
   addLsl3 : ∀ (s : M.State) (d n m : Nat), M.configured s → PcOK M (M.observe s) → FetchX M X s 4 → d < 31 → n < 31 → m < 31 →
     WordAt (M.observe s) (M.observe s).programCounter.toNat (ArmEnc.addLsl3 d n m) →
     GoesK M X W s (setReg (M.observe s) d ((M.observe s).register n + ((M.observe s).register m <<< 3)))
+  /-- `lsl xd, xn, #sh` (`0 < sh < 64`) -/
+  lslI : ∀ (s : M.State) (d n sh : Nat), M.configured s → PcOK M (M.observe s) → FetchX M X s 4 → d < 31 → n < 31 →
+    0 < sh → sh < 64 →
+    WordAt (M.observe s) (M.observe s).programCounter.toNat (ArmEnc.lslI d n sh) →
+    GoesK M X W s (setReg (M.observe s) d ((M.observe s).register n <<< sh.toUInt64))
 
 end JT

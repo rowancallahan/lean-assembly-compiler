@@ -60,6 +60,8 @@ inductive NTm where
   | align8 (d n : Nat)
   /-- `sb s n 0` ↔ `strb ws, [xn]` -/
   | sb (s n : Nat)
+  /-- `slli d n sh` ↔ `lsl xd, xn, #sh` (the array index scaling of BGET / BSET, register-exact) -/
+  | slli (d n sh : Nat)
   deriving DecidableEq
 
 namespace NTm
@@ -85,6 +87,7 @@ def j : NTm → List J
   | .bpushI => [.slli 15 7 3, .alu 1 15 15 5]
   | .align8 d n => [.srli d n 3, .slli d d 3]
   | .sb s n => [.sb s n 0]
+  | .slli d n sh => [.slli d n sh]
 
 /-- the J pc `q + off` -/
 def jt (q : Nat) (off : Int) : Nat := ((q : Int) + off).toNat
@@ -145,6 +148,7 @@ def a (π : Nat → Nat) (q h : Nat) : NTm → List Nat
   | .align8 d n => [ArmEnc.movz 16 3, ArmEnc.rr 0x9AC02400 (armReg d) (armReg n) 16,
       ArmEnc.rr 0x9AC02000 (armReg d) (armReg d) 16]
   | .sb s n => [ArmEnc.strb (armReg s) (armReg n) 0]
+  | .slli d n sh => [ArmEnc.lslI (armReg d) (armReg n) sh]
 
 /-- the number of A64 words of an atom (it does not depend on `π`, `q`, `h`) -/
 def alen (t : NTm) : Nat := (t.a (fun _ => 0) 0 0).length
@@ -175,6 +179,7 @@ def ok : NTm → Bool
   | .bpushI => true
   | .align8 d n => mr d && mr n
   | .sb s n => mr s && mr n
+  | .slli d n sh => mr d && mr n && decide (0 < sh ∧ sh < 64)
 
 /-- the atom reads J register `r` before writing it -/
 def reads (r : Nat) : NTm → Bool
@@ -197,6 +202,7 @@ def reads (r : Nat) : NTm → Bool
   | .bpushI => r == 5 || r == 7
   | .align8 _ n => n == r
   | .sb s n => s == r || n == r
+  | .slli _ n _ => n == r
 
 /-- on every exit of the atom, J register `r` holds a value the machine code computes too -/
 def writes (r : Nat) : NTm → Bool
@@ -209,6 +215,7 @@ def writes (r : Nat) : NTm → Bool
   | .bgetI => r == 14
   | .bpushI => r == 15
   | .align8 d _ => d == r
+  | .slli d _ _ => d == r
   | _ => false
 
 /-- after the atom, J register `r` differs from its machine register -/

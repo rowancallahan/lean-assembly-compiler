@@ -22,6 +22,7 @@ import Nano.Run.NatA.Ldrbx
 import Nano.Run.NatA.Li
 import Nano.Run.NatA.Mem
 import Nano.Run.NatA.Start
+import Nano.Run.NatA.Slli
 namespace JT
 open Proven.Top SimW CallProbe ArmEnc
 
@@ -48,6 +49,7 @@ theorem asim_all (S : A64SemN M X W) : ∀ t : NTm, t.ok = true → ASim M X W t
   | .bpushI, h => asim_bpushI S h
   | .align8 _ _, h => asim_align8 S h
   | .sb _ _, h => asim_sb S h
+  | .slli _ _ _, h => asim_slli S h
 
 /-- an anchor inside the program is the start of an atom -/
 theorem vis_at {tl : List NAt} {p : Nat} (hv : nVis tl p) (hp : p < (jOf tl).length) :
