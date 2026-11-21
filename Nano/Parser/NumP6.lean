@@ -70,4 +70,98 @@ theorem u47_ok : ∀ (n : Nat) (L W g s : Buf), W ++ L <+: s → s.length < 2 ^ 
     rw [r1, e2, e3] at h ⊢
     rw [u47_ok n L (W ++ [w]) _ s (by simpa using hv) hl h]; simp [bpush]
 
+/-- POPM: back to an outer chain -/
+theorem m_popm {x d : Buf} {Q : MO → Prop} (hQ : QM Q) {b bs bs0 t ts g s S a2 c gb}
+    (h0 : bs0 <+: bs) (hI : MI b bs t (ts ++ [(5, u (encB bs0).length, a2)]) g s S)
+    (hP : MI b bs0 t ts g s S → GM x d Q b (u (encB bs0).length) t (u ts.length) c g s (u S.length) gb) :
+    GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) c g s (u S.length) gb := by
+  apply gm_top hQ hI
+  intro _ n
+  have hts := hI.lts; simp at hts
+  rw [M40_5, upred _ (by omega)]
+  exact hP ⟨(encB_prefix h0).trans hI.pb, hI.lb, fun r hr => hI.sb r (h0.subset hr), hI.pop.pt, hI.lt, hI.lg, hI.ps, hI.ls⟩ n
+
+/-- COLAT pos: COL 1 at pos -/
+theorem m_colat {x d : Buf} {Q : MO → Prop} (hQ : QM Q) {b bs t ts g s S a2 c gb} {pos : Nat}
+    (hI : MI b bs t (ts ++ [(8, u pos, a2)]) g s S)
+    (hP : ∀ t', MI b bs t' (ts ++ [(0, 1, 0)]) g s S →
+      GM x d Q b (u (encB bs).length) t' (u (ts.length + 1)) (u pos) g s (u S.length) gb) :
+    GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) c g s (u S.length) gb := by
+  apply gm_top hQ hI
+  intro hsz n
+  have hts := hI.lts; simp at hts
+  rw [M40_8, upred _ (by omega)]
+  have hp := u27_ok hI.pop.pt (by have := hsz.2.1; omega) (by omega) 0 1 0
+  have hl : (u27 t (u ts.length) 0 1 0).length < 2 ^ 42 := by
+    have := hp.2; have := hsz.2.1; have := hI.pop.pt.length_le; rw [encT_len] at *; omega
+  exact hP _ ⟨hI.pb, hI.lb, hI.sb, hp.1, hl, hI.lg, hI.ps, hI.ls⟩ n
+
+/-- COLSEQ: none left -/
+theorem m_colseq0 {x d : Buf} {Q : MO → Prop} (hQ : QM Q) {b bs t ts g s S a2 c gb}
+    (hI : MI b bs t (ts ++ [(7, u 0, a2)]) g s S)
+    (hP : MI b bs t ts g s S → GM x d Q b (u (encB bs).length) t (u ts.length) c g s (u S.length) gb) :
+    GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) c g s (u S.length) gb := by
+  apply gm_top hQ hI
+  intro _ n
+  have hts := hI.lts; simp at hts
+  rw [M40_7, if_pos (keq (show (u 0 == 0) = true from rfl)), upred _ (by omega)]
+  exact hP hI.pop n
+
+/-- COLSEQ m+1: COL 1 on the next node, then COLSEQ m -/
+theorem m_colseq1 {x d : Buf} {Q : MO → Prop} (hQ : QM Q) {b bs t ts g s S a2 c gb} {m : Nat} (hm : m < 2 ^ 32)
+    (hI : MI b bs t (ts ++ [(7, u (m + 1), a2)]) g s S)
+    (hP : ∀ t', MI b bs t' (ts ++ [(7, u m, a2), (0, 1, 0)]) g s S →
+      GM x d Q b (u (encB bs).length) t' (u (ts.length + 2)) c g s (u S.length) gb) :
+    GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) c g s (u S.length) gb := by
+  apply gm_top hQ hI
+  intro hsz n
+  have hts := hI.lts; simp at hts
+  have hm0 : (u (m + 1) == 0) = false := by rw [u0, ueq (by omega) (by omega)]; simp
+  rw [M40_7, if_neg (kne hm0)]
+  obtain ⟨q1, q2⟩ := bset_top hI.pt (by have := hI.lt; omega) (u (m + 1) - 1)
+  rw [upred _ (by omega)] at q1 q2 ⊢
+  have hp := u27_ok (ts := ts ++ [(7, u m, a2)]) q1 (by have := hsz.2.1; omega) (by simp; omega) 0 1 0
+  simp only [List.length_append, List.length_singleton] at hp
+  rw [show u (ts.length + 1) + 1 = u (ts.length + 2) by rw [u1, uadd]]
+  refine hP _ ⟨hI.pb, hI.lb, hI.sb, by simpa using hp.1, ?_, hI.lg, hI.ps, hI.ls⟩ n
+  have h2 := hp.2; rw [q2] at h2; have h3 := hI.pt.length_le; simp [encT_len] at h3; have := hsz.2.1; omega
+
+/-- CLOSE d gbp: the innermost open group becomes a group record -/
+theorem m_close {x d : Buf} {Q : MO → Prop} (hQ : QM Q) {b bs t ts g s c} {S0 : List UInt64} {ar : Bool} {SL : List Nat}
+    {dd : Nat} {gbp : UInt64} (hdd : dd < 2 ^ 32)
+    (hI : MI b bs t (ts ++ [(4, u dd, gbp)]) g s (S0 ++ w2 ar :: SL.map u))
+    (hP : MI b bs t ts (g ++ encGr ⟨SL, dd, ar⟩) s S0 →
+      GM x d Q b (u (encB bs).length) t (u ts.length) c (g ++ encGr ⟨SL, dd, ar⟩) s (u S0.length) gbp) :
+    GM x d Q b (u (encB bs).length) t (u (ts.length + 1)) c g s (u (S0 ++ w2 ar :: SL.map u).length) (u S0.length) := by
+  apply gm_top hQ hI
+  intro hsz n
+  have hts := hI.lts; simp at hts
+  have hSl := hI.ps.length_le; simp at hSl
+  have hsl := hI.ls
+  rw [M40_4]
+  have e1 : u (S0 ++ w2 ar :: SL.map u).length - u S0.length - 1 = u SL.length := by
+    simp only [List.length_append, List.length_cons, List.length_map]
+    rw [usub (by omega) (by omega), u1, usub (by omega) (by omega)]; congr 1; omega
+  have e2 : bget s (u S0.length) = w2 ar := by
+    rw [bget_pre hI.ps (by simp) (by omega)]; simp [List.getD_eq_getElem?_getD, List.getElem?_append_right]
+  have e3 : u S0.length + 1 = u (S0 ++ [w2 ar]).length := by simp [u1, uadd]
+  have e4 : u (S0 ++ w2 ar :: SL.map u).length = u ((S0 ++ [w2 ar]).length + (SL.map u).length) := by
+    simp only [List.length_append, List.length_cons, List.length_map, List.length_nil]; congr 1; omega
+  rw [e1, e2, e3, e4]
+  have hc := u47_ok 16777216 (SL.map u) (S0 ++ [w2 ar]) (bpush (bpush (bpush g (u SL.length)) (u dd)) (w2 ar)) s
+    (by simpa using hI.ps) (by omega)
+  generalize u47 16777216 _ s _ _ = R at hc ⊢
+  obtain ⟨g1, ok⟩ := R
+  by_cases hok : ok = 1
+  · subst hok
+    have hg := hc rfl
+    simp only at hg
+    rw [if_pos (keq (show ((1 : UInt64) == 1) = true from rfl))]
+    have hge : g1 = g ++ encGr ⟨SL, dd, ar⟩ := by rw [hg]; simp [bpush, encGr]
+    rw [hge, upred _ (by omega)]
+    have hgl : (g ++ encGr ⟨SL, dd, ar⟩).length < 2 ^ 42 := by
+      have := hsz.2.2.1; have := hsz.2.2.2; simp [encGr]; omega
+    exact hP ⟨hI.pb, hI.lb, hI.sb, hI.pop.pt, hI.lt, hgl, (List.prefix_append _ _).trans hI.ps, hI.ls⟩ n
+  · rw [if_neg (by simpa using hok)]; exact hQ _ (show u 0 ≠ 1 by decide)
+
 end NumP
