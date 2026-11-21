@@ -2,9 +2,9 @@
 `Proven.Top.armDM` (Spec/ARM/DeepMind.lean) as `CompileCorrectLoaded` / `CompileRunsLoaded` (Spec/Loader.lean): for
 start states whose loader maps the code executable and the data blocks readable+writable (DeepMind's W^X permissions
 are not observable through `Spec`). Proved on the proof-side `armDM` (Blocks/ArmDM.lean) from E's
-`C_correct_rv2arm` / `C_runs_rv2arm` (Nano/V2Self/Proof/Main/ArmTop.lean) and `a64DM`, then moved to the Spec
+`C_correct_rv2arm` / `C_runs_rv2arm` (Nano/Main/ArmTop.lean) and `a64DM`, then moved to the Spec
 machine (`obs_spec`: the observations agree). Interim target: the final theorem is on Sail. -/
-import Nano.V2Self.Proof.Main.ArmTop
+import Nano.Main.ArmTop
 import Blocks.A64Inst
 import Spec.ARM.DeepMind
 import Spec.Loader
