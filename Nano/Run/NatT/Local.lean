@@ -31,6 +31,8 @@ def lstep (st : CallProbe.St) (a : Nat) : CallProbe.St :=
 /-- the push is out of room -/
 def lroom (st : CallProbe.St) (a : Nat) : Prop := ((lw st a).x 31).toNat < ((lw st a).x 30).toNat
 
+instance (st : CallProbe.St) (a : Nat) : Decidable (lroom st a) := by unfold lroom; infer_instance
+
 @[simp] theorem lw_x31 (st : CallProbe.St) (a : Nat) : (lw st a).x 31 = st.x 31 - 8 := by
   simp [lw, CallProbe.wr, CallProbe.upd]
 @[simp] theorem lw_x30 (st : CallProbe.St) (a : Nat) : (lw st a).x 30 = st.x 30 := by
@@ -101,7 +103,9 @@ theorem n_local (S : A64SemN M X W) (T : SlotLdStmt M X W) (hB : K.base + 4 * A.
     have hsp8 : (st.x 31 - 8).toNat = (st.x 31).toNat - 8 := sp8 (by omega)
     obtain ⟨s', r1, N⟩ := n_localWord S T hM hB hL h1 hS a0 a1 a2 a3 (a := laddr st off)
       (by unfold laddr; omega) hwa
-      (fun hn => hstk _ (by simp at hn ⊢; omega) (by simp; omega))
+      (fun hn => by
+        unfold lroom at hn; simp only [lw_x31, lw_x30] at hn
+        exact hstk _ (by simp only [lw_x31]; omega) (by simp only [lw_x31]; omega))
     by_cases hlr : lroom st (laddr st off)
     · rw [if_pos hlr] at N
       exact ⟨s', r1, Or.inr ⟨[], off, n, r, rfl, hlr, N⟩⟩
