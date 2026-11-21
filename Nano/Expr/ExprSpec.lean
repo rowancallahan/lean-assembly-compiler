@@ -178,6 +178,17 @@ structure Cx where
 
 def nameS (n : List Nat) : String := String.ofList (n.map Char.ofNat)
 
+/-- leading input parameters: their count and the rest -/
+def leadInp : List Ps → Nat × List Ps
+  | .inp :: ps => let (n, r) := leadInp ps; (n + 1, r)
+  | ps => (0, ps)
+
+/-- the arguments of a parameter list that is all input parameters -/
+def inps (bs : Bs) : List Ps → Option (List X)
+  | [] => some []
+  | .inp :: ps => do some ((← inpX bs) :: (← inps bs ps))
+  | _ => none
+
 mutual
 /-- emit `e` at expected shape `exp` (none: no expected type, as for a `let` value): the Expr and the shape of its
 value (none for a CONTINUE). Every typing / slot fact the correctness proof uses is CHECKED here (none = reject):
@@ -247,18 +258,19 @@ def emit (cx : Cx) (bs : Bs) (exp : Option Sh) : Na → Option (X × Option Sh)
       match e with
       | .pair cs => do some (apps (.c n []) (.bv fi :: (← args cx bs sps cs)), none)
       | _ => none
-termination_by e => (sizeOf e, 0)
 
-/-- arguments for parameter kinds `ps` (the input re-inserted), each of its parameter's shape -/
+/-- arguments for parameter kinds `ps` (the input re-inserted), each of its parameter's shape; structural on the
+argument nodes (leading input parameters are taken first, see `leadInp`) -/
 def args (cx : Cx) (bs : Bs) : List Ps → List Na → Option (List X)
-  | [], [] => some []
-  | .inp :: ps, as => do some ((← inpX bs) :: (← args cx bs ps as))
-  | p :: ps, a :: as => do
-    let (x, sx) ← emit cx bs (some (psSh p)) a
-    if sx ≠ some (psSh p) then none else
-    some (x :: (← args cx bs ps as))
-  | _, _ => none
-termination_by ps as => (sizeOf as, ps.length)
+  | ps, [] => inps bs ps
+  | ps, a :: as =>
+    match leadInp ps with
+    | (n, p :: ps') => do
+      let ix ← if n = 0 then some (.bv 0) else inpX bs
+      let (x, sx) ← emit cx bs (some (psSh p)) a
+      if sx ≠ some (psSh p) then none else
+      some (List.replicate n ix ++ x :: (← args cx bs ps' as))
+    | (_, []) => none
 end
 
 /-- parameter binders from slot `s` -/

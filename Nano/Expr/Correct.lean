@@ -479,58 +479,85 @@ theorem let_ok {P cx cxe res k Kont pr s w v b} (hv : NodeOK P cx cxe res k Kont
 
 theorem evL_nil {cx env r} (h : evL cx [] env = .ok r) : r = [] := by simp [evL] at h; exact h
 
+theorem leadInp_spec : ∀ (ps : List Ps) n p ps', leadInp ps = (n, p :: ps') →
+    ps = List.replicate n .inp ++ p :: ps' ∧ p ≠ .inp
+  | .inp :: ps, n, p, ps', h => by
+    simp only [leadInp] at h
+    rcases h' : leadInp ps with ⟨m, r⟩
+    rw [h'] at h; simp at h; obtain ⟨rfl, rfl⟩ := h
+    obtain ⟨h1, h2⟩ := leadInp_spec ps m p ps' h'
+    exact ⟨by rw [h1]; simp [List.replicate_succ], h2⟩
+  | [], n, p, ps', h => by simp [leadInp] at h
+  | .fuel :: ps, n, p, ps', h => by simp [leadInp] at h; obtain ⟨rfl, rfl, rfl⟩ := h; exact ⟨rfl, by simp⟩
+  | .sh sh :: ps, n, p, ps', h => by simp [leadInp] at h; obtain ⟨rfl, rfl, rfl⟩ := h; exact ⟨rfl, by simp⟩
+
+theorem ArgsR.inps {inp} : ∀ (n : Nat) {ps vs ws}, ArgsR inp ps vs ws →
+    ArgsR inp (List.replicate n .inp ++ ps) (List.replicate n (.l inp) ++ vs) ws
+  | 0, _, _, _, h => by simpa using h
+  | n + 1, _, _, _, h => by simpa [List.replicate_succ] using ArgsR.inp (ArgsR.inps n h)
+
+theorem EvL.app {P env} : ∀ {as bs vs ws}, EvL P env as vs → EvL P env bs ws → EvL P env (as ++ bs) (vs ++ ws)
+  | _, _, _, _, .nil, h => h
+  | _, _, _, _, .cons ha h1, h2 => .cons ha (EvL.app h1 h2)
+
+theorem EvL.rep {P env x v} (h : Ev P env x v) : ∀ (n : Nat), EvL P env (List.replicate n x) (List.replicate n v)
+  | 0 => .nil
+  | n + 1 => by simpa [List.replicate_succ] using EvL.cons h (EvL.rep h n)
+
+theorem inps_ok {P inp env venv bs} (hr : EnvR inp env bs venv) :
+    ∀ (ps : List Ps) xs, inps bs ps = some xs → ∃ vs, EvL P venv xs vs ∧ ArgsR inp ps vs []
+  | [], xs, h => by simp [inps] at h; subst h; exact ⟨[], .nil, .nil⟩
+  | .inp :: ps, xs, h => by
+    simp only [inps, bind, Option.bind] at h
+    rcases h1 : inpX bs with _ | y <;> rw [h1] at h <;> simp only at h
+    · cases h
+    rcases h2 : inps bs ps with _ | ys <;> rw [h2] at h <;> simp at h
+    subst h
+    obtain ⟨i, rfl, hv⟩ := inpX_R hr h1
+    obtain ⟨vs, hvs, hA⟩ := inps_ok hr ps ys h2
+    exact ⟨_, .cons (.bv hv) hvs, .inp hA⟩
+  | .fuel :: ps, xs, h => by simp [inps] at h
+  | .sh _ :: ps, xs, h => by simp [inps] at h
+
 theorem args_ok {P cx cxe res k Kont} : ∀ (ps : List Ps) (as : List Na), (∀ a ∈ as, NodeOK P cx cxe res k Kont a) →
     ∀ bs xs env venv, args cxe bs ps as = some xs → EnvR cx.inp env bs venv → FuelAt bs venv k →
     ∀ ws, evL cx (Na.eraseL as) env = .ok ws → ∃ vs, EvL P venv xs vs ∧ ArgsR cx.inp ps vs ws
-  | [], [], _, bs, xs, env, venv, he, _, _, ws, hw => by
-    unfold args at he; simp at he; subst he
-    simp [Na.eraseL] at hw; rw [evL_nil hw]; exact ⟨[], .nil, .nil⟩
-  | [], _ :: _, _, bs, xs, env, venv, he, _, _, ws, hw => by unfold args at he; simp at he
-  | .inp :: ps, as, hall, bs, xs, env, venv, he, hr, hfu, ws, hw => by
+  | ps, [], _, bs, xs, env, venv, he, hr, _, ws, hw => by
     unfold args at he
-    rcases hi : inpX bs with _ | xi <;> rw [hi] at he <;> simp only [bind, Option.bind] at he
+    simp [Na.eraseL] at hw; rw [evL_nil hw]; exact inps_ok hr ps xs he
+  | ps, a :: as, hall, bs, xs, env, venv, he, hr, hfu, ws, hw => by
+    unfold args at he
+    rcases hl : leadInp ps with ⟨n, _ | ⟨p, ps'⟩⟩ <;> rw [hl] at he <;> simp only at he
     · cases he
-    rcases hrest : args cxe bs ps as with _ | xs' <;> rw [hrest] at he <;> simp only [bind, Option.bind] at he
+    obtain ⟨hps, hp⟩ := leadInp_spec ps n p ps' hl
+    obtain ⟨ix, hix, he⟩ : ∃ ix, (n ≠ 0 → inpX bs = some ix) ∧ (do
+        let (x, sx) ← emit cxe bs (some (psSh p)) a
+        if sx ≠ some (psSh p) then none else
+        some (List.replicate n ix ++ x :: (← args cxe bs ps' as))) = some xs := by
+      by_cases hn : n = 0
+      · subst hn; exact ⟨.bv 0, fun h => absurd rfl h, by simpa using he⟩
+      · rw [if_neg hn] at he
+        rcases hi : inpX bs with _ | ix <;> rw [hi] at he <;> simp only [bind, Option.bind] at he
+        · cases he
+        exact ⟨ix, fun _ => rfl, he⟩
+    rcases hea : emit cxe bs (some (psSh p)) a with _ | ⟨x, sx⟩ <;> rw [hea] at he <;> simp only [bind, Option.bind] at he
     · cases he
-    simp at he; subst he
-    obtain ⟨i, rfl, hv⟩ := inpX_R hr hi
-    obtain ⟨vs, hvs, hA⟩ := args_ok ps as hall bs xs' env venv hrest hr hfu ws hw
-    exact ⟨_, .cons (.bv hv) hvs, .inp hA⟩
-  | (.fuel :: ps), [], _, bs, xs, env, venv, he, _, _, _, _ => by unfold args at he; simp at he
-  | (.sh _ :: ps), [], _, bs, xs, env, venv, he, _, _, _, _ => by unfold args at he; simp at he
-  | (p :: ps), (a :: as), hall, bs, xs, env, venv, he, hr, hfu, ws, hw => by
-    have hp : p ≠ .inp ∨ p = .inp := by by_cases h : p = .inp <;> simp [h]
-    rcases hp with hp | rfl
-    · have he' : (do
-          let (x, sx) ← emit cxe bs (some (psSh p)) a
-          if sx ≠ some (psSh p) then none else
-          some (x :: (← args cxe bs ps as))) = some xs := by
-        cases p with
-        | inp => exact absurd rfl hp
-        | fuel => unfold args at he; exact he
-        | sh _ => unfold args at he; exact he
-      rcases hea : emit cxe bs (some (psSh p)) a with _ | ⟨x, sx⟩ <;> rw [hea] at he' <;> simp only [bind, Option.bind] at he'
-      · cases he'
-      split at he'
-      · cases he'
-      rename_i hsx; have hsx := Decidable.not_not.mp hsx
-      rcases hrest : args cxe bs ps as with _ | xs' <;> rw [hrest] at he' <;> simp only at he'
-      · cases he'
-      simp at he'; subst he'; subst hsx
-      obtain ⟨wa, wr, h1, h2, rfl⟩ := evL_cons (by simpa [Na.eraseL] using hw)
-      obtain ⟨va, s', hs', hva, hRa⟩ := (hall a (by simp) bs _ _ _ env venv hea hr hfu).1 _ h1
-      cases hs'
-      obtain ⟨vs, hvs, hA⟩ := args_ok ps as (fun a' h' => hall a' (by simp [h'])) bs xs' env venv hrest hr hfu wr h2
-      exact ⟨va :: vs, .cons hva hvs, .sh hp hRa hA⟩
-    · unfold args at he
-      rcases hi : inpX bs with _ | xi <;> rw [hi] at he <;> simp only [bind, Option.bind] at he
-      · cases he
-      rcases hrest : args cxe bs ps (a :: as) with _ | xs' <;> rw [hrest] at he <;> simp only [bind, Option.bind] at he
-      · cases he
-      simp at he; subst he
-      obtain ⟨i, rfl, hv⟩ := inpX_R hr hi
-      obtain ⟨vs, hvs, hA⟩ := args_ok ps (a :: as) hall bs xs' env venv hrest hr hfu ws hw
-      exact ⟨_, .cons (.bv hv) hvs, .inp hA⟩
+    split at he
+    · cases he
+    rename_i hsx; have hsx := Decidable.not_not.mp hsx; subst hsx
+    rcases hrest : args cxe bs ps' as with _ | xs' <;> rw [hrest] at he <;> simp at he
+    subst he
+    obtain ⟨wa, wr, h1, h2, rfl⟩ := evL_cons (by simpa [Na.eraseL] using hw)
+    obtain ⟨va, s', hs', hva, hRa⟩ := (hall a (by simp) bs _ _ _ env venv hea hr hfu).1 _ h1
+    cases hs'
+    obtain ⟨vs, hvs, hA⟩ := args_ok ps' as (fun a' h' => hall a' (by simp [h'])) bs xs' env venv hrest hr hfu wr h2
+    have hix' : n ≠ 0 → Ev P venv ix (.l cx.inp) := fun hn => by
+      obtain ⟨i, rfl, hv⟩ := inpX_R hr (hix hn); exact .bv hv
+    refine ⟨List.replicate n (.l cx.inp) ++ va :: vs, ?_, by rw [hps]; exact ArgsR.inps n (.sh hp hRa hA)⟩
+    refine EvL.app ?_ (.cons hva hvs)
+    by_cases hn : n = 0
+    · subst hn; exact .nil
+    · exact EvL.rep (hix' hn) n
 
 theorem pair_ok {P cx cxe res k Kont a b} (ha : NodeOK P cx cxe res k Kont a) (hb : NodeOK P cx cxe res k Kont b) :
     NodeOK P cx cxe res k Kont (.pair [a, b]) := by
