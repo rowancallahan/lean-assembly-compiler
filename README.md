@@ -9,7 +9,7 @@ CPU models. No `sorry`, no extra axioms beyond the models' own, no `native_decid
 | Folder | Contents |
 |---|---|
 | `Spec/` | what is proved: byte encodings, machines, `CompileCorrect` / `CompileRuns` (frozen: `Spec/FROZEN.sha256`) |
-| `Nano/` | **the compiler**: the self-hosted nano compiler C and its proofs (`Nano/V2Self`, start at `Nano/V2Self/REVIEW.lean`), and the support it builds on (`Nano/Base`: memory/Hoare logic, RISC-V step lemmas, the nano language) |
+| `Nano/` | **the compiler**: the self-hosted nano compiler C and its proofs (`Nano/V2Self`, start at `Nano/Main/REVIEW.lean`), and the support it builds on (`Nano/Base`: memory/Hoare logic, RISC-V step lemmas, the nano language) |
 | `Arm/` | AArch64: the Sail ARM v9.4-A model (`model/`, `gen/`), Sail proofs (`proofs/`, `sail/`), DeepMind-model proofs (`apc/`) |
 | `Legacy/` | earlier compilers and chains, kept for reference only: NOT built (old `Compiler/`, `Riscv/`, `Nano/` layout) |
 | `Testing/` | check scripts (`scripts/`: `release_check.sh`, `review_axioms.sh`, `bigbox/`), the self-compile fixpoint and examples (`nano/v2self/`), notes |
@@ -17,7 +17,7 @@ CPU models. No `sorry`, no extra axioms beyond the models' own, no `native_decid
 Build and check (Lean 4.34.1; RISC-V model at `../deps/sail-riscv-lean`, see `Testing/notes/MODEL_PROVENANCE.md`):
 
 ```
-lake build                         # Spec, Nano (Base + V2Self), Arm.CompilerArm
+lake build                         # Spec, Nano (Base + stage folders), Arm.CompilerArm
 Testing/scripts/review_axioms.sh   # the final theorems' axioms against the pinned list
 Testing/scripts/release_check.sh   # every gate: build, axioms, ARM (DeepMind, Sail), model hashes, fixpoint, cross check
 ```

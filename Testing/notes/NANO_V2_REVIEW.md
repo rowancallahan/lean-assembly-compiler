@@ -1,7 +1,7 @@
 # NANO v2 self-hosted compiler C: owner review
 
-What has to be trusted in C's correctness theorem. Companion file: `Nano/V2Self/REVIEW.lean`
-(`lake build Nano.V2Self.REVIEW`, about 1 min warm), which `#check`s the items below and `#print`s the axioms. No new proofs.
+What has to be trusted in C's correctness theorem. Companion file: `Nano/Main/REVIEW.lean`
+(`lake build Nano.Main.REVIEW`, about 1 min warm), which `#check`s the items below and `#print`s the axioms. No new proofs.
 [UNSURE] marks claims the author (O) has not checked against a proof.
 
 ## 1. The theorems
@@ -19,7 +19,7 @@ What has to be trusted in C's correctness theorem. Companion file: `Nano/V2Self/
   untouched, kept registers and configuration intact). It never gives a wrong answer and never crashes or runs off.
 - `Spec/` is frozen including `Spec/Alloc.lean` (owner, 4dd99338; `Spec/FROZEN.sha256`).
 
-**`NanoMain.C_correctLO : CompileCorrect riscv compileC`**, at `Nano/V2Self/Proof/Main/RvTop.lean:38`. It has no
+**`NanoMain.C_correctLO : CompileCorrect riscv compileC`**, at `Nano/Main/RvTop.lean:38`. It has no
 premises. It is the RISC-V instance of the generic `C_correct_on` (Main/TopOn.lean:76) over a target adapter
 (`JTarget` + `Laws`, Machine/Target.lean). The adapter is proved, not trusted.
 
@@ -39,13 +39,13 @@ the code returns. Out of memory (a0 = −1) is reported exactly when `workLength
 block changes. `C_runs` (RvTop.lean:49) is the same statement with the former premise `ShiftInv`, which D proved as
 `shiftInv`.
 
-**`Cert.sem_C`**, at `Nano/V2Self/Proof/Cert/All.lean:288`. For every input of fewer than 2^64 bytes,
+**`Cert.sem_C`**, at `Nano/SelfHost/Cert/All.lean:288`. For every input of fewer than 2^64 bytes,
 `Ref (Sem κC PC.all inp) (Sh.mLean inp)`. That is, C's own source text, parsed (`PC.all`, generated) and run under
 `Sem`, agrees with the Lean function `Sh.mLean` (= `mC`, per E: `rfl`) up to buffer capacity. `Ref r v` (Cert/Rules.lean:12)
 is `r = .error .cap ∨ r = .ok v`: either a buffer overflowed, or the result is exactly the Lean function's. `stuck` is
 excluded.
 
-**C compiled by itself** (E, `Nano/V2Self/Proof/Main/SelfC.lean`; the generic versions with `hsrc` as a hypothesis are in
+**C compiled by itself** (E, `Nano/Main/SelfC.lean`; the generic versions with `hsrc` as a hypothesis are in
 `SelfLink.lean`). `SrcGen.X0` is the byte list of `Testing/nano/v2self/self_S_input.txt`: D's generator checks that its
 chunks concatenate to exactly those bytes. D's kernel-checked `SrcGen.link_pc` says `X0` lexes and parses to
 `Cert.PC.all`.
@@ -89,13 +89,13 @@ chunks concatenate to exactly those bytes. D's kernel-checked `SrcGen.link_pc` s
 - `Spec/Alloc.lean` is frozen: the owner re-froze Spec/ with it in `Spec/FROZEN.sha256` (4dd99338).
 
 ### Source language: lexer and parser
-- `LexSpec.step`, `LexSpec.Lexes` (Nano/V2Self/Proof/Lex/Lex2Spec.lean:49, :65): maximal-munch lexing, one token per step.
+- `LexSpec.step`, `LexSpec.Lexes` (Nano/Lexer/Lex2Spec.lean:49, :65): maximal-munch lexing, one token per step.
   - Spaces and newlines are skipped; tabs and CR are rejected.
   - Operators are matched longest first; words are `[A-Za-z0-9_']+`.
   - Keywords and prims come from a table; other words are identifiers.
   - A digit-led word must be all digits and is a number taken **mod 2^64** (no overflow error).
   - Any other byte is rejected.
-- `ParSpec.tokens`, `pDef`, `pDefs`, `refParse`, `ParsesProgram` (Nano/V2Self/Proof/Parser/ParSpec.lean:49, :379, :438, :447,
+- `ParSpec.tokens`, `pDef`, `pDefs`, `refParse`, `ParsesProgram` (Nano/Parser/ParSpec.lean:49, :379, :438, :447,
   :455): the reference grammar. The file header (lines 1–19) is the summary:
   - first-order defs and fuel loops;
   - `UInt64` / `Buf` / `List UInt8` / tuples, where the first `List UInt8` parameter is the implicit input;
@@ -108,7 +108,7 @@ chunks concatenate to exactly those bytes. D's kernel-checked `SrcGen.link_pc` s
   ran out, the text would be rejected, not mis-parsed. [UNSURE] The header calls the bound "never reached"; O has not
   seen a proof of that. It only matters for completeness, i.e. whether the theorem covers a text, never for soundness.
 
-### Source language: semantics (Nano/V2Self/Proof/Main/Sem.lean)
+### Source language: semantics (Nano/Main/Sem.lean)
 - `Stop` (:29): `cap` means a buffer reached capacity κ. `stuck` means an ill-formed AST, which never happens for a
   parsed program (per NANO_V2_MAIN.md).
 - `ev`, `evL`, `loopRun`, `prim`, `binop`, `setSlots` (:79, :70, :53, :44, :41): a word-level evaluator over slots.
@@ -121,7 +121,7 @@ chunks concatenate to exactly those bytes. D's kernel-checked `SrcGen.link_pc` s
   The output is the **low byte of each word**.
 - `κC = 524288` (:136): buffer capacity in words. Exceeding it gives `.error .cap`.
 
-### The compiler as a function (Nano/V2Self/Proof/Main/Compile.lean)
+### The compiler as a function (Nano/Main/Compile.lean)
 - `SrcC` (:26) is a text. `pOf` (:31) is the program the text denotes, chosen with `Classical.choose`. It is still
   determined: lexing is deterministic (`lexes_det`) and `refParse` is a function (`pOf_eq`).
 - `srcRun` (:43): `pOf`, then `Sem κC`. `.cap` and `.stuck` both become `none`. This is the `Program SrcC` instance (:46).

@@ -2,7 +2,7 @@
 
 ## Where to start
 - `REVIEW.lean`: the final theorems, their `#print axioms`, and every definition you have to trust.
-  Build it with `lake build Nano.V2Self.REVIEW` (about 1 min warm). The notes for it are
+  Build it with `lake build Nano.Main.REVIEW` (about 1 min warm). The notes for it are
   `Testing/notes/NANO_V2_REVIEW.md`.
 - The final theorems, all in the `NanoMain` namespace:
 

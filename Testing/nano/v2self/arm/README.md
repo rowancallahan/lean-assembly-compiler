@@ -7,7 +7,7 @@ plan for a proved version (`armTarget`, `Testing/notes/NANO_V2_ARM.md`).
 
 | file | what |
 |---|---|
-| `rv2arm.lean` | the translator (nano subset, also valid Lean: `cat ../../../../Nano/V2Self/Prelude.lean rv2arm.lean` + `#eval m …`) |
+| `rv2arm.lean` | the translator (nano subset, also valid Lean: `cat ../../../../Nano/Main/Prelude.lean rv2arm.lean` + `#eval m …`) |
 | `rv2arm.sh` | driver: runs the translator once per chunk of CHUNK_WORDS RV words (see Chunking) and concatenates |
 | `rv2arm_rv.bin` | `rv2arm.lean` compiled by B2 (RISC-V) |
 | `rv2arm_arm.bin` | `rv2arm_rv.bin` translated by itself (AArch64). It translates itself to itself |
@@ -76,7 +76,7 @@ Removing the chunking needs a larger list capacity in C: a compiler change, not 
 
 ## Translation (details and per-block proof notes: `PROOF_NOTES.md`)
 
-Each RV word is decoded back to its J instruction (`Nano/V2Self/Proof/Machine/Call.lean`, encoded by
+Each RV word is decoded back to its J instruction (`Nano/Run/Call.lean`, encoded by
 `RvEnc.encJX`) and becomes a fixed block of **4** A64 words, padded with `add x16, x16, #0`. J index pc ↦ A64 byte
 offset 16·pc. A first pass validates the whole program; any other word, register or out-of-range branch gives the
 empty output.
@@ -123,7 +123,7 @@ Emitted instructions follow `NANO_V2_ARM.md` §0-min, the set the proof will cov
   Also 9 range cases: branch/jal targets past the end or before 0, misaligned offsets, a shift field with bit 26,
   srai, and `jal x5`. The in-range edge cases are accepted (= oracle).
 * `arm/fuzz/fuzz.py`, 40 seeds: 120 runs agree with nanorun.
-* Semantic certificate (by G, `Nano/V2Self/Proof/CertArm`, lake-built, no sorry): `CertArm.sem_rv2arm`, i.e. the nano
+* Semantic certificate (by G, `Nano/SelfHost/CertArm`, lake-built, no sorry): `CertArm.sem_rv2arm`, i.e. the nano
   semantics of `rv2arm.lean`'s text equals the Lean function `RA.m` (unless a buffer hits the cap). It says nothing
   about the ARM code being right. `test_arm.sh` fails if the certificate is about an older `rv2arm.lean`; after any
   edit, regenerate it with the 4 commands in `../cert/gen_cert.py` (target `arm`).

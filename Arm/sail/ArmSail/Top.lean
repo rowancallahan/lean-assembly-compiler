@@ -1,8 +1,8 @@
 /- **The C compiler (C → RISC-V words → rv2arm) is correct on the official Sail ARM v9.4-A model** (`armSail`), as
 `Spec`'s `CompileCorrect` / `CompileRuns` (no loader premise: Sail's permission predicates are `True`, so
-`ArmLoader TT TT` always holds). From `C_correct_rv2arm` / `C_runs_rv2arm` (Nano/V2Self/Proof/Main/ArmTop.lean) and
+`ArmLoader TT TT` always holds). From `C_correct_rv2arm` / `C_runs_rv2arm` (Nano/Main/ArmTop.lean) and
 `a64Sail`; the same route as `cc_of_P` / `cr_of_P` (TopOn.lean), with the loader premise discharged. -/
-import Nano.V2Self.Proof.Main.ArmTop
+import Nano.Main.ArmTop
 import ArmSail.A64
 namespace ArmSail
 open Proven.Top Proven.Top.Alloc NanoMain

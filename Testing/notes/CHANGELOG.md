@@ -62,7 +62,7 @@ What changed (compiler C, parser stage Par1 only; lexer, Own, Gen, the machine a
 - Tokens start at `d11 = 185408` (was 184384). The 512-def cap (def ids 512 + j) is unchanged.
 
 Built/checked on the B1 toolchains:
-- Lean 4.29.0: `lake build Nano.V2Self.REVIEW` OK (13 min warm); `Testing/scripts/review_axioms.sh` -> `OK: 8 theorems, axioms as
+- Lean 4.29.0: `lake build Nano.Main.REVIEW` OK (13 min warm); `Testing/scripts/review_axioms.sh` -> `OK: 8 theorems, axioms as
   pinned`; every `Nano/V2Self` module builds (Tests included). Full REVIEW run at the tip; commit (a) differs from it only in
   the generated Cert/SrcLink/B2 for the summed layout constants.
   Proof changes: new `Proof/Parser/ParInvHash.lean` (`v8_lookup`: the chain walk = the linear `idxOf`; `HashRep`, kept in
@@ -174,6 +174,6 @@ Inputs:
 * In its place, every module's messages were checked. Lean reports "declaration uses 'sorry'" for every declaration
   that contains `sorry`, including goals admitted during error recovery. The logs checked:
   * the cold default build;
-  * a replay of `lake build Nano.V2Self.REVIEW Chain434` (687 jobs, stored messages replayed);
+  * a replay of `lake build Nano.Main.REVIEW Chain434` (687 jobs, stored messages replayed);
   * the Arm/sail and Arm/apc builds.
 * Result: **0 occurrences**. Every pinned top theorem's `#print axioms` is free of `sorryAx`.

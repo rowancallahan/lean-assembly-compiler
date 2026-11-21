@@ -34,7 +34,7 @@ Common rules for every unit:
   `#print axioms` lines must be byte-identical.
 - Only delete declarations and now-unused imports. Delete in reverse dependency order, because a dead lemma may be used
   only by another dead lemma.
-- Build the touched modules plus `Nano.V2Self.REVIEW`. One folder per agent, so units do not conflict.
+- Build the touched modules plus `Nano.Main.REVIEW`. One folder per agent, so units do not conflict.
 
 | id | folder | dead decls (files) | largest | build check |
 |---|---|---|---|---|

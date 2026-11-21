@@ -1,6 +1,6 @@
-import Nano.V2Self.C.Lex2
+import Nano.Lexer.Lex2
 import Legacy.Nano.V2Self.Legacy.C.Par0
-import Nano.V2Self.C.Gen
+import Nano.Codegen.Gen
 /- Chain test: random scalar defs (generator copied from par0_test.lean) → text → C.s10 (lex) → C.y13 (Par0) → append a
 hand-written main (args from input bytes, 8 result bytes out) → C.g41 [] → RV64 code.  Expected outputs = native evaluation
 of the tree.  Writes Testing/asm/ir-words/cgc_K.{words,cases}; run each with NOSAIL=1 cg_test.py cgc_K.

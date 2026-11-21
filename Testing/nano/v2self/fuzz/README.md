@@ -11,7 +11,7 @@ Unproven glue, like `examples/run_examples.sh`. Not part of the correctness theo
   `lexAll → refParse → C.o41 → Sem κC`).
 - `results/summary_*.txt`: the summaries of the runs reported below.
 
-Run (Lean 4.29.0 on PATH, `lake build Nano.V2Self.Proof.Main.Sem` done, `../deps/sail-riscv-lean` at opencompl/sail-riscv-lean 51c635c):
+Run (Lean 4.29.0 on PATH, `lake build Nano.Main.Sem` done, `../deps/sail-riscv-lean` at opencompl/sail-riscv-lean 51c635c):
 
 ```
 python3 Testing/nano/v2self/fuzz/nanofuzz.py 2 400 /tmp/work
@@ -31,7 +31,7 @@ python3 Testing/nano/v2self/fuzz/nanofuzz.py 2 400 /tmp/work
 
 Base `origin/nano-v2-src` 79aa662 (seeds 1–6, B2 sha256 `bb5558a5…`): 2240 programs, 4 inputs each, 0 alarms, 0 gaps.
 Base e60e0ce (seeds 7–8, the branch tip when this was pushed; B2 unchanged): 1000 programs, 0 alarms, 0 gaps.
-Reference: `semrun_batch.lean` imports `Nano.V2Self.Proof.Main.Sem` (as `semrun.lean` now does).
+Reference: `semrun_batch.lean` imports `Nano.Main.Sem` (as `semrun.lean` now does).
 
 | outcome (seeds 1–6, 2240 programs) | programs |
 |---|---|

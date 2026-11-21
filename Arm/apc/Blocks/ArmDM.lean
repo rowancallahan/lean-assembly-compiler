@@ -2,7 +2,7 @@
 DeepMind's `Arm64.Step Pg` made a function (`Pg` has no extern hooks, so a running `Step` is the `exec` case);
 `observe` shows the pc, x0..x30 (register 31 = sp) and the mapped bytes. -/
 import Spec.Top
-import Nano.V2Self.Proof.Machine.A64Sem
+import Nano.Run.A64Sem
 import Blocks.MemLem
 import Blocks.Imm
 import Blocks.Reg

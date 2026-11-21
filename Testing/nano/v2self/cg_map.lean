@@ -1,4 +1,4 @@
-import Nano.V2Self.C.Gen
+import Nano.Codegen.Gen
 /- Def map of g41's code: a copy of C.g39 that also returns `t` (def entry word offsets).  Prints `id word_offset`
 per def, so a QEMU pc (base + 4·offset of `func`) can be traced to its def.  run: lean --run cg_map.lean AST.bin -/
 def rdw (b : ByteArray) (i : Nat) : UInt64 :=

@@ -1,5 +1,5 @@
-import Nano.V2Self.C.Gen
-/- The vertical example of Astra round 8 for the fused code generator `C.g41` (Nano/V2Self/C/Gen.lean): a fuel loop
+import Nano.Codegen.Gen
+/- The vertical example of Astra round 8 for the fused code generator `C.g41` (Nano/Codegen/Gen.lean): a fuel loop
 copying the input into a buffer, a helper with its own loop returning a pair (sum, count), and the output.
 The AST is written by hand in the NANO_V2_IR.md v2 format (tags as in Gen.lean).  Writes
 Testing/asm/ir-words/cg_vertical.{words,cases} for Testing/nano/v2self/cg_test.py. -/

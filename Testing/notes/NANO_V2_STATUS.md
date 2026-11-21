@@ -1,6 +1,6 @@
 # NANO v2 notes: index and status (2026-11-19)
 
-Start with `Nano/V2Self/README.md` (layout, final theorems, how to rebuild) and `Nano/V2Self/REVIEW.lean`.
+Start with `Nano/V2Self/README.md` (layout, final theorems, how to rebuild) and `Nano/Main/REVIEW.lean`.
 
 ## Current: read these
 | note | what |

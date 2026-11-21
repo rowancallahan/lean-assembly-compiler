@@ -28,7 +28,7 @@ empty output, `-1` out of work memory, `-2` buffer capacity), then `exp:OK` (out
 
 Needs: `riscv64-linux-gnu-gcc` and `qemu-riscv64` (Debian/Ubuntu: `gcc-riscv64-linux-gnu qemu-user-static`).
 `NANORUN=1` uses the interpreter `run/nanorun.c` instead (needs only a C compiler; optional cross-check, e.g. on a
-Mac). For the `sem` column also Lean 4.29.0 and, once, `lake build Nano.V2Self.Proof.Main.Main`
+Mac). For the `sem` column also Lean 4.29.0 and, once, `lake build Nano.Main.Main`
 (needs the Sail model at `../deps/sail-riscv-lean`, see the top-level README).
 
 ## The two steps by hand
@@ -78,7 +78,7 @@ on QEMU that `B2` compiles the source to `B2` again. Without QEMU, the same chec
   ```
   Fuel is a numeral or `len' x` (not `len' x + k` or `len' x * k`: both are rejected). The accumulator passed to the
   self call must not be a bare parameter reused elsewhere (the ownership stage rejects it).
-- The programs are also Lean: `cat Nano/V2Self/Prelude.lean prog.lean > t.lean && lean t.lean` checks one.
+- The programs are also Lean: `cat Nano/Main/Prelude.lean prog.lean > t.lean && lean t.lean` checks one.
 
 ## What gets rejected (tried with B2, 2026-11-19)
 

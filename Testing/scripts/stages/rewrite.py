@@ -41,7 +41,7 @@ SKIP = ("Testing/scripts/stages/", "Testing/scripts/reorg_move.py", "Legacy/")
 ST_FIND = "Nano/Lexer Nano/Parser Nano/Ownership Nano/Codegen Nano/Run Nano/SelfHost Nano/Main Nano/Tests"
 ST_GLOBS = ", ".join('"Nano.%s.+"' % s for s in STAGES)
 EXPL = [
- ("lakefile.toml", '["Nano.V2Self.Prelude", "Nano.V2Self.C.+", "Nano.V2Self.Proof.+", "Nano.V2Self.REVIEW"]', "[" + ST_GLOBS + "]"),
+ ("lakefile.toml", '["Nano.Main.Prelude", "Nano.V2Self.C.+", "Nano.V2Self.Proof.+", "Nano.Main.REVIEW"]', "[" + ST_GLOBS + "]"),
  ("Arm/sail/lakefile.toml", '"Nano.V2Self"', ", ".join('"Nano.%s"' % s for s in STAGES)),
  ("Testing/scripts/deadcode.sh", 'find Nano/V2Self -name', 'find ' + ST_FIND + ' -name'),
  ("Testing/scripts/bigbox/verify.sh", 'find Nano/V2Self -name', 'find ' + ST_FIND + ' -name'),
@@ -53,6 +53,11 @@ EXPL = [
 ]
 BARE = re.compile(r"Nano/V2Self(?:/C|/Proof)?(?![A-Za-z0-9_/.])")
 EXPL += [
+ ("lakefile.toml", "(Nano/V2Self: source C/, proofs Proof/, REVIEW.lean)", "(Nano/{Lexer,Parser,Ownership,Codegen,Run,SelfHost,Main,Tests}: source and proof together per stage, Main/REVIEW.lean)"),
+ ("lakefile.toml", "Roots = every Nano/V2Self module", "Roots = every stage-folder module"),
+ ("lakefile.toml", "minus Nano/V2Self/Legacy (the old", "(Legacy/ is not a root; the old"),
+ ("Testing/nano/v2self/build_self_S.py", 'open(f"Nano/V2Self/C/{p}.lean")',
+  'open("Nano/" + {"Base": "Main/Chain", "Lex2": "Lexer/Lex2", "Par1": "Parser/Par1", "Own": "Ownership/Own", "Gen": "Codegen/Gen"}[p] + ".lean")'),
  ("Testing/nano/v2self/ast_dump.lean", "ast.txt Nano/V2Self/Proof 20", "ast.txt Nano/SelfHost 20"),
  ("Nano/Tests/MainCert.lean", "Nano/V2Self/Proof/MainCert", "Nano/Tests/MainCert"),
  ("README.md", "(`Nano/V2Self`, start at `Nano/V2Self/REVIEW.lean`)", "(`Nano/{Lexer,Parser,Ownership,Codegen,Run,SelfHost,Main,Tests}`, start at `Nano/Main/REVIEW.lean`)"),
@@ -85,7 +90,9 @@ def main():
     d = "Testing/scripts/stages/readmes"
     if os.path.isdir(d):
         for st in STAGES:
-            if os.path.exists(f"{d}/{st}.md"): subprocess.check_call(["cp", f"{d}/{st}.md", f"Nano/{st}/README.md"])
+            subprocess.check_call(["cp", f"{d}/{st}.md", f"Nano/{st}/README.md"])
+        subprocess.check_call(["cp", f"{d}/Nano.md", "Nano/README.md"])
+        if os.path.exists("Nano/V2Self/README.md"): subprocess.check_call(["git", "rm", "-qf", "Nano/V2Self/README.md"])
     # 3. asserts: explicit edits all applied; no mapped old path left; no file left in Nano/V2Self except Legacy-free READMEs
     for ef, old, _ in EXPL:
         assert old not in open(ef).read(), "explicit edit not applied: %s: %s" % (ef, old)

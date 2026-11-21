@@ -1,8 +1,8 @@
-/- differential test: the reference grammar (Nano/V2Self/Proof/Parser/ParSpec.lean) against Par1.  usage:
+/- differential test: the reference grammar (Nano/Parser/ParSpec.lean) against Par1.  usage:
    B1 parse < self_S_input.txt > ast.bin   (B1 from boot/build_B1.py, `parse` mode)
    lake env lean --tstack=1000000 --run Testing/nano/v2self/parspec_diff.lean self_S_input.txt ast.bin
    prints whether serialize (refParse (lex src)) equals Par1's word stream (result 2026-11-18: 190 defs, 27,979 words, equal). -/
-import Nano.V2Self.Proof.Parser.ParSpec
+import Nano.Parser.ParSpec
 open ParSpec
 def readWords (p : String) : IO (List UInt64) := do
   let b ← IO.FS.readBinFile p

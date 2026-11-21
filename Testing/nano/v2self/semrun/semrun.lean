@@ -4,7 +4,7 @@
    pipeline = the objects of `compiler_correct`: lexAll (sound for Lex2Spec.Lexes, SrcLink.lexAll_sound) → refParse
    (ParsesProgram) → C.o41 on `serialize p` (≠ [] certifies LinearK, OwnStage) → `Sem κC p INP`.
    OUT: the output bytes on success (a file: #eval would capture stdout as text).  A rejection / Stop is a Lean error (nonzero exit) naming the stage. -/
-import Nano.V2Self.Proof.Main.Sem
+import Nano.Main.Sem
 open ParSpec NanoMain
 
 def semrun : IO Unit := do
