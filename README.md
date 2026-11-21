@@ -9,7 +9,7 @@ CPU models. No `sorry`, no extra axioms beyond the models' own, no `native_decid
 | Folder | Contents |
 |---|---|
 | `Spec/` | what is proved: byte encodings, machines, `CompileCorrect` / `CompileRuns` (frozen: `Spec/FROZEN.sha256`) |
-| `Nano/` | **the compiler**: the self-hosted nano compiler C and its proofs (`Nano/V2Self`, start at `Nano/Main/REVIEW.lean`), and the support it builds on (`Nano/Base`: memory/Hoare logic, RISC-V step lemmas, the nano language) |
+| `Nano/` | **the compiler**: the self-hosted nano compiler C and its proofs (`Nano/{Lexer,Parser,Ownership,Codegen,Run,SelfHost,Main,Tests}`, start at `Nano/Main/REVIEW.lean`), and the support it builds on (`Nano/Base`: memory/Hoare logic, RISC-V step lemmas, the nano language) |
 | `Arm/` | AArch64: the Sail ARM v9.4-A model (`model/`, `gen/`), Sail proofs (`proofs/`, `sail/`), DeepMind-model proofs (`apc/`) |
 | `Legacy/` | earlier compilers and chains, kept for reference only: NOT built (old `Compiler/`, `Riscv/`, `Nano/` layout) |
 | `Testing/` | check scripts (`scripts/`: `release_check.sh`, `review_axioms.sh`, `bigbox/`), the self-compile fixpoint and examples (`nano/v2self/`), notes |

@@ -7,10 +7,10 @@ moreLeanArgs = ["--tstack=400000", "--threads=2"]
 name = "Spec"
 globs = ["Spec.+"]
 
-# the self-hosted nano compiler C (Nano/V2Self: source C/, proofs Proof/, REVIEW.lean): THE compiler of this repo
+# the self-hosted nano compiler C (Nano/{Lexer,Parser,Ownership,Codegen,Run,SelfHost,Main,Tests}: source and proof together per stage, Main/REVIEW.lean): THE compiler of this repo
 [[lean_lib]]
 name = "NanoSelf"
-globs = ["Nano.Main.Prelude", "Nano.V2Self.C.+", "Nano.V2Self.Proof.+", "Nano.Main.REVIEW"]
+globs = ["Nano.Lexer.+", "Nano.Parser.+", "Nano.Ownership.+", "Nano.Codegen.+", "Nano.Run.+", "Nano.SelfHost.+", "Nano.Main.+", "Nano.Tests.+"]
 
 # support it builds on (moved 2026-11-20 from Compiler/, Riscv/, Nano/V2/; module = path): memory/Hoare logic, Opt,
 # the RISC-V step lemmas, the nano V2 language/semantics/encoder
@@ -39,8 +39,8 @@ name = "Legacy"
 globs = ["Legacy.+"]
 
 # lean-4.34 (Lean 4.34.1): the default build is the machine-independent chain WITHOUT the RISC-V Sail model, which is
-# not built on this branch (Testing/notes/BRANCHES.md). Roots = every Nano/V2Self module whose import closure does not
-# reach LeanRV64D, minus Nano/V2Self/Legacy (the old compiler chain: not part of the proof; it pulls in old Nano modules
+# not built on this branch (Testing/notes/BRANCHES.md). Roots = every stage-folder module whose import closure does not
+# reach LeanRV64D, (Legacy/ is not a root; the old compiler chain: not part of the proof; it pulls in old Nano modules
 # Legacy.Nano.V2S.Asm / Legacy.Nano.ElabBProof that are not ported to 4.34). Generated; exclusions in BRANCHES.md, files untouched.
 [[lean_lib]]
 name = "Chain434"
