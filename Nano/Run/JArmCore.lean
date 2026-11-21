@@ -205,7 +205,6 @@ theorem atomize_tr : ∀ (ts : List NTm) (q k : Nat), Tr Cj q ts → Cj.length -
     have ih := atomize_tr ts (q + T'.j.length) (k - 1) tr' (by omega)
     have ed : (Cj.drop q).drop T'.j.length = Cj.drop (q + T'.j.length) := by
       rw [List.drop_drop]
-      first | rfl | (congr 1; omega)
     cases hd : Cj.drop q with
     | nil =>
       have := congrArg List.length hd
