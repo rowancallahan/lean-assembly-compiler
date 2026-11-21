@@ -8,7 +8,7 @@
 # Exit: 0 all PASS, 1 any FAIL, 2 no FAIL but some SKIP.  Nothing is pushed, no tracked file is changed (a gate that
 # regenerates tracked files must leave them identical, or it FAILs). Reuses existing scripts; reimplements none.
 #
-# Gates (ids): toolchain spec words build review dm sail hashes fix23 fix1 examples cross
+# Gates (ids): toolchain spec words build review dm sail hashes fix23 fix1 examples cross selfhost
 # Knobs: WORK (default ~/relcheck), GATES="spec words ..." (subset), DRY=1 (list gates and commands, run nothing),
 #   TC (expected toolchain, default leanprover/lean4:v4.34.1), CV (DeepMind code-verification @ b0f729a, default
 #   /home/user/deps/code-verification), ARMV9 (partitioned Sail ARM model, default /home/user/armv9-lean; Arm/sail's
@@ -25,7 +25,7 @@ export PATH=$HOME/.elan/bin:$PATH
 C=$(git rev-parse --short=10 HEAD)
 DIRTY=$(git status --porcelain --untracked-files=no | wc -l)
 OUT=$WORK/results/$C; mkdir -p "$OUT/status"
-ALL="toolchain spec words build review dm sail hashes fix23 fix1 examples cross"
+ALL="toolchain spec words build review dm sail hashes fix23 fix1 examples cross selfhost"
 V=$R/Testing/nano/v2self
 echo "commit $C ($(git log -1 --format=%s | cut -c1-70)); tracked changes: $DIRTY; WORK=$WORK; expected toolchain $TC"
 
@@ -127,6 +127,12 @@ g_cross() {       # RISC-V and ARM compilers build each other under QEMU (8 chec
   [ "$(grep -c '^OK' "$OUT/cross.out")" = 8 ] && ! grep -q '^FAIL' "$OUT/cross.out"
   echo "cross_check.sh 8/8" > "$NOTE"
 }
+g_selfhost() {    # the self-hosting gate: proofs regenerate identically, RISC-V and native-ARM fixpoints, 3-host matrix
+  miss lean leanc python3 qemu-aarch64 qemu-riscv64 aarch64-linux-gnu-gcc riscv64-linux-gnu-gcc
+  Testing/scripts/selfhost_gate.sh "$OUT/selfhost" | tee "$OUT/selfhost.out"
+  grep -q '^SELFHOST GATE PASSED' "$OUT/selfhost.out"
+  echo "selfhost_gate.sh: $(grep -c '^PASS' "$OUT/selfhost.out") PASS, $(grep -c '^SKIP' "$OUT/selfhost.out") SKIP" > "$NOTE"
+}
 # cross_check.sh and run_examples.sh accept qemu-X or qemu-X-static; the gates' tool check wants the plain name
 for q in qemu-aarch64 qemu-riscv64; do
   if ! command -v $q > /dev/null && command -v $q-static > /dev/null; then mkdir -p "$OUT/bin"; ln -sf "$(command -v $q-static)" "$OUT/bin/$q"; fi
@@ -145,6 +151,7 @@ run fix23     "fixpoint B2 -> B3 (nanorun), B2.sha256" g_fix23
 run fix1      "fixpoint B1 -> B2 -> B3 (boot/fixpoint.sh)" g_fix1
 run examples  "examples"                         g_examples
 run cross     "cross_check.sh (8 checks)"        g_cross
+run selfhost  "selfhost_gate.sh (self-hosting)"  g_selfhost
 
 [ -z "${DRY:-}" ] || { echo "dry run: $(ls "$OUT/status" | grep -c '^dry\.') gates listed, nothing executed"; rm -f "$OUT"/status/dry.*; exit 0; }
 echo; echo "== release check for $C ($OUT)" | tee "$OUT/summary.txt"
