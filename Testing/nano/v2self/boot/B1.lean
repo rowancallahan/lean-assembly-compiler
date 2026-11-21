@@ -2823,6 +2823,9 @@ def g41 (c : Array UInt8) (x : Buf) : Array UInt8 := g42 c x g_999
 -- set word j (j ≤ size)
 def u20 (b : Buf) (j v : UInt64) : Buf := if j < bsize b then bset b j v else bpush b v
 
+-- the identity (keeps a buffer owned)
+def u62 (b : Buf) : Buf := if bsize b == 0 then b else b
+
 -- the end of k consecutive nodes from position i (0: error)
 def u12 : Nat → Buf → UInt64 → UInt64 → UInt64
   | 0, x, i, k => 0
@@ -3108,7 +3111,7 @@ def u42 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb e
   else if g == 11 then (b, (bt, (u27 t tt 0 1 0, (tt + 1, (c + 1, (s, (st, (gb, 1))))))))
   else if g == 1 then (b, (bt, (t, (tt, (c + 2, (s, (st, (gb, 1))))))))
   else if g == 2 then (b, (bt, (t, (tt, (c + 3, (s, (st, (gb, 1))))))))
-  else (b, (bt, (t, (tt, (c, (s, (st, (gb, 0))))))))
+  else (b, (bt, (t, (tt, (c, (u62 s, (st, (gb, 0))))))))
 
 -- COL d at the cursor
 def u41 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb e : UInt64) :
@@ -3119,7 +3122,7 @@ def u41 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb e
   else u42 x d b1 bt t tt c s st gb e
 
 -- LIT at the cursor
-def u44 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb : UInt64) :
+def u44 (x b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb : UInt64) :
     Buf × (UInt64 × (Buf × (UInt64 × (UInt64 × (Buf × (UInt64 × (UInt64 × UInt64))))))) :=
   let g := bget x c;
   if g == 2 then (b, (bt, (t, (tt, (c + 3, (u20 s st (bget x (c + 1)), (st + 1, (gb, 1))))))))
@@ -3132,7 +3135,7 @@ def u44 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb :
        (tt + 4, (c + 3, (s, (st, (gb, 1)))))))))
   else
     (let e := u15 x c;
-     (b, (bt, (t, (tt, (e, (s, (st, (gb, (if e == 0 then 0 else 1))))))))))
+     (u62 b, (bt, (t, (tt, (e, (s, (st, (gb, (if e == 0 then 0 else 1))))))))))
 
 -- CMP: the operands at the cursor
 def u45 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb : UInt64) :
@@ -3184,7 +3187,7 @@ def u39 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb l
 def u49 (x d b : Buf) (bt : UInt64) (t : Buf) (tt c : UInt64) (s : Buf) (st gb k a a2 : UInt64) :
     Buf × (UInt64 × (Buf × (UInt64 × (UInt64 × (Buf × (UInt64 × (UInt64 × UInt64))))))) :=
   if k == 0 then u41 x d b bt t tt c s st gb a
-  else if k == 1 then u44 x d b bt t tt c s st gb
+  else if k == 1 then u44 x b bt t tt c s st gb
   else if k == 2 then u45 x d b bt t tt c s st gb
   else if k == 3 then u46 x d b bt t tt c s st gb a
   else if k == 9 then u39 x d b bt t tt c s st gb a a2
