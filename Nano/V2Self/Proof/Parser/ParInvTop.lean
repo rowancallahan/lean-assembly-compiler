@@ -32,6 +32,12 @@ structure RepAPI (ts : Buf) (toks : List Tok) (Rep : Buf → List Frame → St �
 theorem status_bset0 (h : Buf) : bget (bset h 0 0) 0 = 0 := by
   rw [bget_bset]; by_cases hl : 0 < h.length <;> simp [hl, bget, List.getD]
 
+theorem ite0 (c : Prop) [Decidable c] (A B : Buf) (ha : bget A 0 = 0) (hb : bget B 0 = 0) :
+    bget (if c then A else B) 0 = 0 := by
+  split
+  · exact ha
+  · exact hb
+
 /-- **the run**: if the task machine ends with status 2, the Layer-2 configuration runs to the empty stack, is accepted, and the
 final heap carries the output and main facts -/
 theorem run_sim {ts : Buf} {toks : List Tok} {Rep : Buf → List Frame → St → Prop} (api : RepAPI ts toks Rep) :

@@ -17,9 +17,6 @@ def VR (σ : AH) : W → UInt64 → Prop
   | .w x, u => u = x
   | .b l, u => σ u.toNat = some l
 
-def VRs (σ : AH) (v : List W) (u : List UInt64) : Prop :=
-  v.length = u.length ∧ ∀ i (h1 : i < v.length) (h2 : i < u.length), VR σ v[i] u[i]
-
 def upd (σ : AH) (a : Nat) (l : List UInt64) : AH := fun x => if x = a then some l else σ x
 
 theorem bufAt_frame {hb κ : Nat} {H H' : Hp} {a : UInt64} {l : List UInt64} (h : BufAt hb κ H a l)

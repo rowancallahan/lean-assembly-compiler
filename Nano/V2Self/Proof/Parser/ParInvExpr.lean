@@ -39,9 +39,9 @@ theorem drop_v1 (h : Buf) (c a b : UInt64) (hl : 184384 ≤ h.length) : (v1 h c 
     have c2 := taskCell (bget h 5).toNat hgN 2 (by decide)
     simp only [UInt64.add_zero, show (0 : UInt64).toNat = 0 from rfl, show (1 : UInt64).toNat = 1 from rfl,
       show (2 : UInt64).toNat = 2 from rfl, UInt64.ofNat_toNat] at c0 c1 c2
-    rw [drop_bset _ _ _ (by simp), drop_bset _ _ _ (by rw [c2]; omega), drop_bset _ _ _ (by rw [c1]; omega),
-      drop_bset _ _ _ (by rw [c0]; omega)]
-  · exact drop_bset _ _ _ (by simp)
+    rw [drop_bset0 _ _ _ (by simp), drop_bset0 _ _ _ (by rw [c2]; omega), drop_bset0 _ _ _ (by rw [c1]; omega),
+      drop_bset0 _ _ _ (by rw [c0]; omega)]
+  · exact drop_bset0 _ _ _ (by simp)
 
 /-! ## task 1: `expr m md` (v100 pushes binLoop m, then prim md) -/
 theorem h_expr {h ts : Buf} {st : St} {m md : Nat} {fs : List Frame} (r : Rep h ts st (.expr m md :: fs))
@@ -76,7 +76,7 @@ theorem h_expr {h ts : Buf} {st : St} {m md : Nat} {fs : List Frame} (r : Rep h 
   refine rep_tasks r (by rw [PL]; simp [length_bset]) (fun i h5 hi => by rw [PU i h5 hi, bget_bset' _ _ _ _ (by simp; omega)]) ?_ T3
     (by simp [inDefF, Frame.isDefs])
   rw [drop_v1 _ _ _ _ (by obtain ⟨L, _⟩ := v1_eff _ 2 a 0 o1 l1; rw [L]; simp [length_bset]; omega),
-    drop_v1 _ _ _ _ (by simp [length_bset]; omega), drop_bset _ _ _ (by simp)]
+    drop_v1 _ _ _ _ (by simp [length_bset]; omega), drop_bset0 _ _ _ (by simp)]
 
 /-! ## tasks 4 / 8: expect `)` / `else` -/
 theorem stat0 (h : Buf) (hl : 0 < h.length) : bget (bset h 0 0) 0 = 0 := bget_bset_eq _ _ _ _ rfl (by simpa using hl)
@@ -112,7 +112,7 @@ theorem expect_tok {h ts : Buf} {st : St} {f : Frame} {fs : List Frame} (T : UIn
       fun i a b => by rw [bget_bset' _ _ _ _ (by rw [u3]; omega), bget_bset' _ _ _ _ (by rw [u5]; omega)]
     have et' : TokAgree h (bset (bset h 5 fs.length.toUInt64) 3 (bget h 3 + 1)) :=
       ⟨cells 7 (by decide) (by decide), fun i hi => cells i (by omega) (by omega)⟩
-    refine rep_tok r (by simp [length_bset]) (fun i a b _ => cells i a b) (by rw [drop_bset _ _ _ (by decide), drop_bset _ _ _ (by decide)])
+    refine rep_tok r (by simp [length_bset]) (fun i a b _ => cells i a b) (by rw [drop_bset0 _ _ _ (by decide), drop_bset0 _ _ _ (by decide)])
       (by rw [bget_bset_eq _ _ _ _ rfl (by rw [l1, u3]; omega)]; exact tokAt_frame et' hn tr) ?_ (by simp [inDefF, hf])
     refine tasks_frame T1 (by rw [bget_bset' _ _ _ _ (by decide)]) (fun i a b => bget_bset' _ _ _ _ (by rw [u3]; omega))
       ⟨by rw [bget_bset' _ _ _ _ (by decide), bget_bset' _ _ _ _ (by decide)], fun i hi => bget_bset' _ _ _ _ (by rw [u3]; omega)⟩

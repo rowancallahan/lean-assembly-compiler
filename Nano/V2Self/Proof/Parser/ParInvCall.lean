@@ -16,7 +16,7 @@ theorem rep_pop {h ts : Buf} {st : St} {f : Frame} {fs : List Frame} (r : Rep h 
   intro t
   obtain ⟨hn, hl, har⟩ := rep_bounds r
   obtain ⟨E, A, T1⟩ := step_top (ts := ts) r.2.2.2.2.2.2.2.2.2.2.2.2.2 (by omega) hn har
-  refine ⟨E, A, rep_tasks r (by simp [length_bset]) (fun i h5 _ => bget_bset' _ _ _ _ (by simp; omega)) (drop_bset _ _ _ (by simp)) T1 hD⟩
+  refine ⟨E, A, rep_tasks r (by simp [length_bset]) (fun i h5 _ => bget_bset' _ _ _ _ (by simp; omega)) (drop_bset0 _ _ _ (by simp)) T1 hD⟩
 
 /-- **push**: a `v1` that leaves the status nonzero extends the represented stack by its frame -/
 theorem rep_push {h ts : Buf} {st : St} {fs : List Frame} (f : Frame) (a b : UInt64) (r : Rep h ts st fs)

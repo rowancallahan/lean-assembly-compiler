@@ -59,7 +59,7 @@ theorem arG_get (g : Buf) (a b i : UInt64) (hi : i.toNat ≠ 31) : bget (arG g a
 theorem arG_len (g : Buf) (a b : UInt64) : (arG g a b).length = g.length := by simp [arG, length_bset]
 
 theorem arG_drop (g : Buf) (a b : UInt64) : (arG g a b).drop 184384 = g.drop 184384 := by
-  unfold arG; rw [drop_bset _ _ _ (by decide), drop_bset _ _ _ (by decide)]
+  unfold arG; rw [drop_bset0 _ _ _ (by decide), drop_bset0 _ _ _ (by decide)]
 
 theorem ShapeCode.ne0 {h : Buf} {c : UInt64} {s : Sh} (r : ShapeCode h c s) : c ≠ 0 := by
   cases r <;> first | decide | (intro z; subst z; simp at *)
