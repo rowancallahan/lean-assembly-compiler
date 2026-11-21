@@ -4,6 +4,7 @@
 Fields.lean: `pre`, encoding facts (`mask32`, `fldt`, `immt`, offsets), `goes_set` / `goes_jump` / `goes1`. -/
 import ArmSail.Fields
 import Arm.FullNative
+import Nano.Run.A64SemN
 set_option linter.unusedVariables false
 set_option linter.unusedSimpArgs false
 set_option maxHeartbeats 4000000
@@ -26,14 +27,14 @@ theorem F_movzH (s : St) (d i h : Nat) (hc : armSail.configured s) (hp : JT.PcOK
     show (Sail.BitVec.slice (wd (0xD2800000 + h * 2 ^ 21 + i * 2 ^ 5 + d)) 5 16).setWidth 64 = BitVec.ofNat 64 i by immt] at this
   refine goes_set hd P.obs this ?_
   apply UInt64.toBitVec_inj.mp
-  simp [UInt64.toBitVec_shiftLeft, Nat.mul_comm, show 16 * h % 64 = 16 * h by omega]
+  simp [UInt64.toBitVec_shiftLeft, Nat.mul_comm, show 16 * h % 64 = 16 * h by omega, show h * 16 % 64 = h * 16 by omega]
   rfl
 
 /-- `movn`'s value, as `A64SemN` writes it -/
 theorem movn_val (i h : Nat) (hh : h < 4) :
     UInt64.ofBitVec (~~~(BitVec.ofNat 64 i <<< (h * 16))) = JT.movnV i h := by
   apply UInt64.toBitVec_inj.mp
-  simp [JT.movnV, UInt64.toBitVec_shiftLeft, Nat.mul_comm, show 16 * h % 64 = 16 * h by omega]
+  simp [JT.movnV, UInt64.toBitVec_shiftLeft, Nat.mul_comm, show 16 * h % 64 = 16 * h by omega, show h * 16 % 64 = h * 16 by omega]
   rfl
 
 theorem F_movn (s : St) (d i h : Nat) (hc : armSail.configured s) (hp : JT.PcOK armSail (armSail.observe s))
@@ -71,6 +72,8 @@ theorem F_lslI (s : St) (d n sh : Nat) (hc : armSail.configured s) (hp : JT.PcOK
     JT.GoesK armSail TT TT s (JT.setReg (armSail.observe s) d ((armSail.observe s).register n <<< sh.toUInt64)) := by
   obtain ⟨nb, a, pc, P⟩ := pre hc hp hw
   have hm := P.hm; simp only [ArmEnc.lslI] at hm
+  have : (64 - sh) % 64 < 64 := Nat.mod_lt _ (by decide)
+  have : 63 - sh < 64 := by omega
   have := full_ubfm P.hf P.ha P.hpc P.va P.al hm (by mask32) (by fldt) (by fldt) sh h1 h2
     (by apply BitVec.eq_of_toNat_eq; rw [fld, BitVec.toNat_ofNat]; omega)
     (by apply BitVec.eq_of_toNat_eq; rw [fld, BitVec.toNat_ofNat]; omega)
@@ -145,6 +148,7 @@ theorem F_ldur (s : St) (r n a : Nat) (f : Int) (v : UInt64) (hc : armSail.confi
   change ∀ k < 8, (obsS s).memory (UInt64.ofNat (a + k)) = some (JT.cbyte v k) at hv
   rw [er] at ha
   have hm := P.hm; simp only [ArmEnc.ldur] at hm
+  have hmo9 := mo_lt f 9
   have ee := eauS (c := 0xF8400000) (d := r) (n := n) (a := a) (f := f) (a'.x n) (by decide) (by decide) (by omega) (by omega)
     hf1 hf2 ha (by omega)
   have en : (Sail.BitVec.slice (wd (0xF8400000 + ArmEnc.mo f 9 * 2 ^ 12 + n * 2 ^ 5 + r)) 5 5).toNat = n := by
@@ -171,6 +175,7 @@ theorem F_stur (s : St) (r n e : Nat) (f : Int) (hc : armSail.configured s) (hp 
   rw [er] at ha
   rw [regS P hr]
   have hm := P.hm; simp only [ArmEnc.stur] at hm
+  have hmo9 := mo_lt f 9
   have ee := eauS (c := 0xF8000000) (d := r) (n := n) (a := e) (f := f) (a.x n) (by decide) (by decide) (by omega) (by omega)
     hf1 hf2 ha (by omega)
   have en : (Sail.BitVec.slice (wd (0xF8000000 + ArmEnc.mo f 9 * 2 ^ 12 + n * 2 ^ 5 + r)) 5 5).toNat = n := by
@@ -251,14 +256,16 @@ theorem F_ldp (s : St) (t u n : Nat) (v1 v2 : UInt64) (hc : armSail.configured s
     show (Sail.BitVec.slice (wd (0xA9400000 + u * 2 ^ 10 + n * 2 ^ 5 + t)) 10 5).toNat = u by fldt] at this
   obtain ⟨s', h1, h2, h3, h4, h5⟩ := this
   refine goes1 h1 h3 h4 ?_
-  rw [obs_eq h2 h4, h5, P.obs]
+  rw [obs_eq h2 h4, h5]
+  change _ = JT.setReg2 (obsS s) t u v1 v2
+  rw [P.obs]
   simp only [obsA, JT.setReg2]
   congr 1
   · funext r
     by_cases eu : r = u
     · subst eu; simp [hu, AState.setX, show r ≠ 31 by omega]
     · by_cases et : r = t
-      · subst et; simp [ht, eu, AState.setX, show r ≠ 31 by omega]
+      · subst et; simp [ht, eu, AState.setX, show r ≠ 31 by omega, show u ≠ 31 by omega]
       · simp only [eu, et, ite_false, AState.setX, show u ≠ 31 by omega, show t ≠ 31 by omega]
 
 end ArmSail
