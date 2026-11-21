@@ -28,6 +28,13 @@ real A64 return address. GenArm is emitted per **template**, not per J instructi
 Total ≈ 10–15 sessions, after CLEANUP steps 5–9. Order: A (independent, can start now on DM), B (needs only A64Sem),
 then C → D → E → F (need the cleaned-up generic layer).
 
+## Status
+* A (DeepMind): DONE. `Proof/Machine/A64SemN.lean` (`A64SemN` = `A64Sem` + the 7 forms, a separate structure so the
+  rv2arm instances `a64DM` / `a64Sail` are untouched); `Arm/apc/Blocks/A64DMN.lean` (`a64DMN : A64SemN armDM XD WD`,
+  axioms propext / Classical.choice / Quot.sound, `Blocks/AxiomsDMN.lean`). The DeepMind model decodes all seven.
+  Side conditions found: `ldp` needs `t ≠ u` (the model rejects equal load targets); `ldur`/`stur`/`ldp` are stated
+  with 8-aligned addresses like `ldr`/`str`. Sail ARM instance of `A64SemN`: not started.
+
 ## What in the current interface blocks it (cross-ref Testing/notes/CLEANUP_PLAN.md)
 * step 7 `EncOK`: code must be `enc` of Gen's RV bytes → native generator not expressible. Needed (F).
 * step 9 GenRef's `CG` over raw RV words: needed for E (lockstep), the largest item.
