@@ -18,6 +18,4 @@ theorem leBytes_eq_enc (w : BitVec 64) : leBytes w 8 = enc w := by
   simp only [leBytes, List.range, List.range.loop, List.map, leN, leByte]
   simp [Nat.div_div_eq_div_mul]
 
-theorem byte_eq_enc (b : UInt8) : [b] = enc b := rfl
-
 end Proven

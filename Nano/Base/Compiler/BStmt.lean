@@ -46,9 +46,6 @@ theorem bytes_of_mem {m : Mem} {a n : Nat} {l : List (BitVec 8)} (hl : l.length 
   rw [length_bytes] at h1
   rw [h j h1, List.getElem?_eq_getElem (by omega)]
 
-theorem le8_get {w : BitVec 64} {j : Nat} (hj : j < 8) : ∃ b, (le8 w)[j]? = some b :=
-  ⟨_, List.getElem?_eq_getElem (by rw [length_le8]; exact hj)⟩
-
 /-- the 8 bytes of word `i` -/
 theorem bytes_word {m : Mem} {a : Nat} {ws : List (BitVec 64)} (h : bytes m a (8 * ws.length) = (wbytes ws).map some)
     {i : Nat} (hi : i < ws.length) : bytes m (a + 8 * i) 8 = (le8 ws[i]).map some := by
@@ -244,11 +241,6 @@ theorem setV_ok {N fp : Nat} (hF : M.Frm N fp) {bv wv : List Nat} {R W : List Re
     · have := hL.fr _ (List.getElem_mem hb); unfold disjoint at this; dsimp only at this; omega
     · have := hL.fw _ (List.getElem_mem hb); unfold disjoint at this; dsimp only at this; omega
 
-/-- code outside the regions survives -/
-theorem codeAt_outF {s s' : M.S} {pc ws} {R : List Region} (hc : M.codeAt s pc ws) (hok : M.codeOK pc ws.length)
-    (hd : ∀ r ∈ R, disjoint ⟨pc.toNat, 4 * ws.length⟩ r) (hu : Out R (M.mem s) (M.mem s')) : M.codeAt s' pc ws :=
-  M.toMachine.codeAt_out hc hok hd hu
-
 /-- the value of an in-bounds byte address -/
 theorem addrB_ok {N fp bv wv R W σ} {s : M.S} (r : M.RelB N fp bv wv R W σ s) (hL : M.Lay N fp R W) {b : Nat}
     (hb : b < σ.heap.length) {i : BExp} (hi : (i.denote σ.env).toNat < σ.heap[b].length) :
@@ -304,30 +296,6 @@ theorem code_loopB (bv wv : List Nat) (c : BExp) (b : BStmt) : M.codeF (M.compB 
 theorem len_loopB (bv wv : List Nat) (c : BExp) (b : BStmt) : (M.codeF (M.compB bv wv (.loop c b))).length =
     (M.codeF (mgenB c 0)).length + M.lenBz + (M.codeF (M.compB bv wv b)).length + M.lenJmp := by
   rw [code_loopB]; simp only [List.length_append, M.len_bz, M.len_jmp]
-
-theorem regionR_disj {N fp : Nat} {R W : List Region} (hL : M.Lay N fp R W) {b : Nat} (hb : b < R.length) :
-    ∀ r ∈ AllR N fp R W, r ≠ R[b] → disjoint R[b] r := by
-  intro r hr hne
-  rcases List.mem_append.1 hr with hr | hr
-  · rcases List.mem_append.1 hr with hr | hr
-    · obtain ⟨b', hb', rfl⟩ := List.getElem_of_mem hr
-      have hbb : b' ≠ b := fun e => hne (by subst e; rfl)
-      exact pairwise_get hL.rp hb hb' (Ne.symm hbb)
-    · exact hL.rw _ (List.getElem_mem hb) r hr
-  · obtain ⟨j, hj, rfl⟩ := mem_slots hr
-    have := hL.fr _ (List.getElem_mem hb); unfold disjoint at this ⊢; dsimp only at this ⊢; omega
-
-theorem regionW_disj {N fp : Nat} {R W : List Region} (hL : M.Lay N fp R W) {b : Nat} (hb : b < W.length) :
-    ∀ r ∈ AllR N fp R W, r ≠ W[b] → disjoint W[b] r := by
-  intro r hr hne
-  rcases List.mem_append.1 hr with hr | hr
-  · rcases List.mem_append.1 hr with hr | hr
-    · exact disj_symm (hL.rw r hr _ (List.getElem_mem hb))
-    · obtain ⟨b', hb', rfl⟩ := List.getElem_of_mem hr
-      have hbb : b' ≠ b := fun e => hne (by subst e; rfl)
-      exact pairwise_get hL.wp hb hb' (Ne.symm hbb)
-  · obtain ⟨j, hj, rfl⟩ := mem_slots hr
-    have := hL.fw _ (List.getElem_mem hb); unfold disjoint at this ⊢; dsimp only at this ⊢; omega
 
 theorem execB_ok {N fp : Nat} (hF : M.Frm N fp) (bv wv : List Nat) (hbv : ∀ x ∈ bv, x < 8 + N)
     (hwv : ∀ x ∈ wv, x < 8 + N) {R W : List Region} (hL : M.Lay N fp R W) :

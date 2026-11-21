@@ -83,8 +83,6 @@ theorem codeC_append : ∀ (a b : List YOp), M.codeC (a ++ b) = M.codeC a ++ M.c
 
 theorem codeC_one (o : YOp) : M.codeC [o] = M.encY o := List.append_nil _
 
-theorem codeC_cons (o : YOp) (os : List YOp) : M.codeC (o :: os) = M.encY o ++ M.codeC os := rfl
-
 /-- call-free abstract code embeds with the same words -/
 theorem codeC_map (os : List XOp) : M.codeC (os.map .x) = M.codeF os := by
   induction os with
