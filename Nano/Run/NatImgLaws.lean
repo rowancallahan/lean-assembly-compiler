@@ -148,8 +148,11 @@ theorem at_bnd_end (e : tl = pre ++ x :: suf) :
     ((jOf pre).length + x.t.j.length, alenL pre + x.t.alen) ∈ bnd tl 0 0 := by
   subst e
   have := bnd_mem_append (pre ++ [x]) suf 0 0
-  simpa only [Nat.zero_add, List.append_assoc, List.singleton_append, jOf_append, jOf_cons, List.length_append,
-    alenL_append, alenL, jOf, List.flatMap_nil, List.length_nil, Nat.add_zero] using this
+  have e1 : (jOf (pre ++ [x])).length = (jOf pre).length + x.t.j.length := by
+    rw [jOf_append, List.length_append, jOf_cons]; simp [jOf]
+  have e2 : alenL (pre ++ [x]) = alenL pre + x.t.alen := by rw [alenL_append]; simp [alenL]
+  rw [e1, e2, Nat.zero_add, Nat.zero_add, List.append_assoc, List.singleton_append] at this
+  exact this
 
 theorem at_widx (e : tl = pre ++ x :: suf) : widx (bnd tl 0 0) (jOf pre).length = alenL pre :=
   widx_eq (at_bnd e) fun _ h => bnd_fun _ _ _ _ _ _ h (at_bnd e)
