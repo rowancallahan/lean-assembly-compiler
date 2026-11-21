@@ -102,23 +102,70 @@ def sideNils : List Tok → List Bool
   | _ :: r => sideNils r
   | [] => []
 
+/-! ## annotated nodes: the IR plus what it erases (`let` form, nil form), from the token side info -/
+inductive Na
+  | const (v : UInt64) | loc (slot w : Nat) | bin (op : Nat) (a b : Na) | ite (cmp : Nat) (a b t e : Na)
+  | letE (pr : Bool) (slot w : Nat) (v b : Na) | pair (cs : List Na) | call (id : Nat) (args : List Na)
+  | prim (p : Nat) (args : List Na) | nil (lst : Bool) | loop (z s : Na) | cont (e : Na)
+
+mutual
+def Na.erase : Na → Nd
+  | .const v => .const v | .loc s w => .loc s w | .bin op a b => .bin op a.erase b.erase
+  | .ite c a b t e => .ite c a.erase b.erase t.erase e.erase | .letE _ s w v b => .letE s w v.erase b.erase
+  | .pair cs => .pair (Na.eraseL cs) | .call i as => .call i (Na.eraseL as) | .prim p as => .prim p (Na.eraseL as)
+  | .nil _ => .prim 5 [] | .loop z s => .loop z.erase s.erase | .cont e => .cont e.erase
+def Na.eraseL : List Na → List Nd
+  | [] => [] | a :: as => a.erase :: Na.eraseL as
+end
+
+/-- side info state: the remaining `let` and nil flags -/
+abbrev Sd := List Bool × List Bool
+
+mutual
+/-- annotate in pre-order, consuming the side flags -/
+def annot : Nd → Sd → Option (Na × Sd)
+  | .const v, st => some (.const v, st)
+  | .loc s w, st => some (.loc s w, st)
+  | .bin op a b, st => do let (a', st) ← annot a st; let (b', st) ← annot b st; pure (.bin op a' b', st)
+  | .ite c a b t e, st => do
+    let (a', st) ← annot a st; let (b', st) ← annot b st; let (t', st) ← annot t st; let (e', st) ← annot e st
+    pure (.ite c a' b' t' e', st)
+  | .letE s w v b, (pr :: ls, ns) => do
+    let (v', st) ← annot v (ls, ns); let (b', st) ← annot b st; pure (.letE pr s w v' b', st)
+  | .letE _ _ _ _, ([], _) => none
+  | .pair cs, st => do let (cs', st) ← annotL cs st; pure (.pair cs', st)
+  | .call i as, st => do let (as', st) ← annotL as st; pure (.call i as', st)
+  | .prim 5 [], (ls, n :: ns) => some (.nil n, (ls, ns))
+  | .prim 5 [], (_, []) => none
+  | .prim p as, st => do let (as', st) ← annotL as st; pure (.prim p as', st)
+  | .loop z s, st => do let (z', st) ← annot z st; let (s', st) ← annot s st; pure (.loop z' s', st)
+  | .cont e, st => do let (e', st) ← annot e st; pure (.cont e', st)
+def annotL : List Nd → Sd → Option (List Na × Sd)
+  | [], st => some ([], st)
+  | a :: as, st => do let (a', st) ← annot a st; let (as', st) ← annotL as st; pure (a' :: as', st)
+end
+
 /-- binder stack (innermost first; position = de Bruijn index): slot and kind -/
 abbrev Bs := List (Nat × Ps)
-structure St where
-  lets : List Bool
-  nils : List Bool
-abbrev M := StateT St (Except String)
 
-def find (bs : Bs) (p : Nat × Ps → Bool) (what : String) : M X :=
-  match bs.findIdx? p with | some i => pure (.bv i) | none => throw s!"no binder: {what}"
-def inpX (bs : Bs) : M X := find bs (fun b => b.2 == .inp) "input"
+/-- the innermost binder satisfying q: its index -/
+def findB (q : Nat × Ps → Bool) : Bs → Option Nat
+  | [] => none
+  | b :: bs => if q b then some 0 else (findB q bs).map (· + 1)
 
-def popLet : M Bool := do
-  let s ← get
-  match s.lets with | b :: r => set { s with lets := r }; pure b | [] => throw "side info: lets"
-def popNil : M Bool := do
-  let s ← get
-  match s.nils with | b :: r => set { s with nils := r }; pure b | [] => throw "side info: nils"
+/-- the innermost value binder of slot s: (index, shape) -/
+def findSlot (s : Nat) : Bs → Option (Nat × Sh)
+  | [] => none
+  | (s', .sh sh) :: bs => if s' = s then some (0, sh) else (findSlot s bs).map fun (i, sh) => (i + 1, sh)
+  | _ :: bs => (findSlot s bs).map fun (i, sh) => (i + 1, sh)
+
+def inpX (bs : Bs) : Option X := (findB (fun b => b.2 == .inp) bs).map .bv
+
+/-- a slot s is fresh: every binder ends at or below it -/
+def fresh (s : Nat) (bs : Bs) : Bool := bs.all fun b => b.1 + b.2.width ≤ s
+
+/-- an inferred shape agrees with the claimed one (a CONTINUE has none) -/
+def agree (r : Sh) : Option Sh → Bool | none => true | some t => t == r
 
 structure Cx where
   defs : List DefI
@@ -127,80 +174,85 @@ structure Cx where
 def nameS (n : List Nat) : String := String.ofList (n.map Char.ofNat)
 
 mutual
-/-- emit `e` at expected shape `exp` (none: no expected type, as for a `let` value); returns the Expr and the
-shape Lean infers (none for a CONTINUE) -/
-def emit (cx : Cx) (bs : Bs) (exp : Option Sh) : Nd → M (X × Option Sh)
-  | .const v => let s := match exp with | some .nt => Sh.nt | _ => .uw; pure (lit s v.toNat, some s)
-  | .loc s w =>
-    if w = 0 then do pure ((← inpX bs), some .ls)
-    else do
-      match (bs.zipIdx.find? fun (b, _) => b.1 == s && b.2 != .inp) with
-      | some ((_, p), i) => pure (.bv i, some (psSh p))
-      | none => throw s!"slot {s}"
+/-- emit `e` at expected shape `exp` (none: no expected type, as for a `let` value): the Expr and the shape of its
+value (none for a CONTINUE). Every typing / slot fact the correctness proof uses is CHECKED here (none = reject):
+operand and argument shapes, binder widths, fresh `let` slots, branch shapes. -/
+def emit (cx : Cx) (bs : Bs) (exp : Option Sh) : Na → Option (X × Option Sh)
+  | .const v => let s := (match exp with | some .nt => Sh.nt | _ => .uw); some (lit s v.toNat, some s)
+  | .loc s w => do
+    let (i, sh) ← findSlot s bs
+    if w = sh.width ∧ 0 < w then some (.bv i, some sh) else none
   | .bin op a b => do
-    let (x, _) ← emit cx bs (some .uw) a
-    let (y, _) ← emit cx bs (some .uw) b
-    pure (binX op x y, some .uw)
+    let (x, sa) ← emit cx bs (some .uw) a
+    let (y, sb) ← emit cx bs (some .uw) b
+    if sa = some .uw ∧ sb = some .uw ∧ 1 ≤ op ∧ op ≤ 7 then some (binX op x y, some .uw) else none
   | .ite cmp a b t e => do
-    let (x, _) ← emit cx bs (some .uw) a
-    let (y, _) ← emit cx bs (some .uw) b
+    let (x, sa) ← emit cx bs (some .uw) a
+    let (y, sb) ← emit cx bs (some .uw) b
     let (tx, ts) ← emit cx bs exp t
     let (ex, es) ← emit cx bs exp e
-    let r ← match exp <|> ts <|> es with | some r => pure r | none => throw "ite type"
-    pure (iteX r cmp x y tx ex, some r)
-  | .letE s _ v b => do
-    let pr ← popLet
+    let r ← exp <|> ts <|> es
+    if sa = some .uw ∧ sb = some .uw ∧ (cmp = 1 ∨ cmp = 2) ∧ agree r ts ∧ agree r es then
+      some (iteX r cmp x y tx ex, some r) else none
+  | .letE pr s w v b => do
     let (vx, vs) ← emit cx bs none v
-    let some vs := vs | throw "let of CONTINUE"
+    let vsh ← vs
+    if ¬ (vsh.width = w ∧ fresh s bs) then none else
     if pr then
-      let .p l r := vs | throw "pair let of a non-pair"
-      let (bx, bsh) ← emit cx ((s + l.width, .sh r) :: (s, .sh l) :: bs) exp b
-      let some R := exp <|> bsh | throw "let body type"
-      pure (apps (.c "Prod.casesOn" [1, 0, 0]) [shTy l, shTy r, .lam (shTy vs) (shTy R), vx,
-        .lam (shTy l) (.lam (shTy r) bx)], some R)
-    else
-      let (bx, bsh) ← emit cx ((s, .sh vs) :: bs) exp b
-      pure (.lt true (shTy vs) vx bx, bsh)
-  | .pair cs => do
-    let [a, b] := cs | throw "pair arity"
+      match vsh with
+      | .p l r => do
+        let (bx, bsh) ← emit cx ((s + l.width, .sh r) :: (s, .sh l) :: bs) exp b
+        let R ← exp <|> bsh
+        if agree R bsh then
+          some (apps (.c "Prod.casesOn" [1, 0, 0]) [shTy l, shTy r, .lam (shTy vsh) (shTy R), vx,
+            .lam (shTy l) (.lam (shTy r) bx)], some R) else none
+      | _ => none
+    else do
+      let (bx, bsh) ← emit cx ((s, .sh vsh) :: bs) exp b
+      some (.lt true (shTy vsh) vx bx, bsh)
+  | .pair [a, b] => do
     let (ea, eb) := match exp with | some (.p x y) => (some x, some y) | _ => (none, none)
-    let (ax, as) ← emit cx bs ea a
-    let (bx, bs') ← emit cx bs eb b
-    let some A := ea <|> as | throw "pair type"
-    let some B := eb <|> bs' | throw "pair type"
-    pure (apps (.c "Prod.mk" [0, 0]) [shTy A, shTy B, ax, bx], some (.p A B))
+    let (ax, sa) ← emit cx bs ea a
+    let (bx, sb) ← emit cx bs eb b
+    let A ← sa
+    let B ← sb
+    if agree A ea ∧ agree B eb then some (apps (.c "Prod.mk" [0, 0]) [shTy A, shTy B, ax, bx], some (.p A B))
+    else none
+  | .pair _ => none
   | .call i as => do
-    let some d := cx.defs[i]? | throw "callee"
+    let d ← cx.defs[i]?
     let xs ← args cx bs d.params as
-    pure (apps (.c (nameS d.name) []) xs, some d.res)
-  | .prim 5 [] => do
-    if ← popNil then pure (.app (.c "List.nil" [0]) (.c "UInt8" []), some .ls) else pure (.c "bnew" [], some .bf)
+    some (apps (.c (nameS d.name) []) xs, some d.res)
+  | .nil lst => some (if lst then (.app (.c "List.nil" [0]) (.c "UInt8" []), some .ls) else (.c "bnew" [], some .bf))
   | .prim p as => do
+    if p = 5 ∨ p = 0 ∨ 9 < p then none else
     let (n, ps, r) := primInfo p
-    pure (apps (.c n []) (← args cx bs ps as), some r)
-  | .loop _ _ => throw "nested loop"
+    some (apps (.c n []) (← args cx bs ps as), some r)
+  | .loop _ _ => none
   | .cont e => do
     let (n, sps) := cx.self
-    let fx ← find bs (fun b => b.2 == .fuel) "fuel"
+    let fi ← findB (fun b => b.2 == .fuel) bs
     if (sps.filter (· != .inp)).length = 1 then
-      let some p := sps.find? (· != .inp) | throw "CONTINUE state"
-      let (x, _) ← emit cx bs (some (psSh p)) e
-      let xs ← sps.mapM fun q => if q == .inp then inpX bs else pure x
-      pure (apps (.c n []) (fx :: xs), none)
+      let p ← sps.find? (· != .inp)
+      let (x, sx) ← emit cx bs (some (psSh p)) e
+      if sx ≠ some (psSh p) then none else
+      let xs ← sps.mapM fun q => if q == .inp then inpX bs else some x
+      some (apps (.c n []) (.bv fi :: xs), none)
     else
       match e with
-      | .pair cs => do pure (apps (.c n []) (fx :: (← args cx bs sps cs)), none)
-      | _ => throw "CONTINUE payload"
+      | .pair cs => do some (apps (.c n []) (.bv fi :: (← args cx bs sps cs)), none)
+      | _ => none
 termination_by e => (sizeOf e, 0)
 
-/-- arguments for parameter kinds `ps` (the input re-inserted) -/
-def args (cx : Cx) (bs : Bs) : List Ps → List Nd → M (List X)
-  | [], [] => pure []
-  | .inp :: ps, as => do pure ((← inpX bs) :: (← args cx bs ps as))
+/-- arguments for parameter kinds `ps` (the input re-inserted), each of its parameter's shape -/
+def args (cx : Cx) (bs : Bs) : List Ps → List Na → Option (List X)
+  | [], [] => some []
+  | .inp :: ps, as => do some ((← inpX bs) :: (← args cx bs ps as))
   | p :: ps, a :: as => do
-    let (x, _) ← emit cx bs (some (psSh p)) a
-    pure (x :: (← args cx bs ps as))
-  | _, _ => throw "arity"
+    let (x, sx) ← emit cx bs (some (psSh p)) a
+    if sx ≠ some (psSh p) then none else
+    some (x :: (← args cx bs ps as))
+  | _, _ => none
 termination_by ps as => (sizeOf as, ps.length)
 end
 
@@ -212,33 +264,46 @@ def binders (s : Nat) : List Ps → Bs → Bs
 def piX (ps : List Ps) (r : X) : X := ps.foldr (fun p a => .pi (shTy (psSh p)) a) r
 def lamX (ps : List Ps) (b : X) : X := ps.foldr (fun p a => .lam (shTy (psSh p)) a) b
 
-/-- one def: (type, value) -/
-def emitDef (defs : List DefI) (di : DefI) (da : DefA) : M (X × X) := do
+/-- one def: (type, value); the body's shape must be the result shape -/
+def emitDef (defs : List DefI) (di : DefI) (b : Na) : Option (X × X) := do
   let ty := piX di.params (shTy di.res)
   let cx : Cx := { defs, self := (nameS di.name, di.params.drop 1) }
-  match da.body with
+  let bs := binders 0 di.params []
+  match b with
   | .loop z s =>
-    let bs := binders 0 di.params []
-    let (zx, _) ← emit cx bs (some di.res) z
-    let (sx, _) ← emit cx ((0, .fuel) :: bs) (some di.res) s
-    let k := bs.length - 1
-    pure (ty, lamX di.params (apps (.c "Nat.casesOn" [1]) [.lam (.c "Nat" []) (shTy di.res), .bv k, zx,
-      .lam (.c "Nat" []) sx]))
+    if di.params.head? ≠ some .fuel then none else
+    let (zx, zs) ← emit cx bs (some di.res) z
+    let (sx, ss) ← emit cx ((0, .fuel) :: bs) (some di.res) s
+    if agree di.res zs ∧ agree di.res ss ∧ zs.isSome then
+      some (ty, lamX di.params (apps (.c "Nat.casesOn" [1]) [.lam (.c "Nat" []) (shTy di.res), .bv (bs.length - 1), zx,
+        .lam (.c "Nat" []) sx])) else none
   | b =>
-    let (bx, _) ← emit cx (binders 0 di.params []) (some di.res) b
-    pure (ty, lamX di.params bx)
+    let (bx, bsh) ← emit cx bs (some di.res) b
+    if bsh = some di.res then some (ty, lamX di.params bx) else none
 
-/-- the Exprs of a program: (name, type, value) per def -/
+/-- names a program may not use for its defs: the fragment's fixed constants -/
+def reserved (n : String) : Bool :=
+  n.any (· == '.') || n ∈ ["ite", "rd", "len", "len'", "put", "bnew", "bsize", "bget", "bset", "bpush"]
+
+/-- the Exprs of a parsed program (defs `ds`, bodies `as`, side flags `st`): (name, type, value) per def -/
+def emitAll (ds : List DefI) : List DefA → Sd → Option (List (String × X × X))
+  | [], ([], []) => some []
+  | [], _ => none
+  | (da :: as), st => do
+    let (b, st) ← annot da.body st
+    let di ← ds[da.id]?
+    let (t, v) ← emitDef ds di b
+    let rest ← emitAll ds as st
+    some ((nameS di.name, t, v) :: rest)
+
+/-- the Exprs of a program text -/
 def emitXs (src : List UInt8) : Except String (List (String × X × X)) := do
   let some ws := lexAll (src.length + 1) src | throw "lex"
   let some toks := tokens ws | throw "tokens"
   let some (ds, as) := pDefs (8 * toks.length + 8) (toks.length + 1) [] toks | throw "parse"
-  let go : M (List (String × X × X)) := (ds.zip as).mapM fun (di, da) => do
-    let (t, v) ← emitDef ds di da
-    pure (nameS di.name, t, v)
-  let (o, st) ← go.run { lets := sideLets toks, nils := sideNils toks }
-  if !st.lets.isEmpty || !st.nils.isEmpty then throw "side info left over"
-  pure o
+  let some o := emitAll ds as (sideLets toks, sideNils toks) | throw "emit"
+  let ns := o.map (·.1)
+  if ns.eraseDups.length ≠ ns.length ∨ ns.any reserved then throw "names" else pure o
 
 /-- the S text of a program: one `D name type value` line per def -/
 def emitProg (src : List UInt8) : Except String String := do
