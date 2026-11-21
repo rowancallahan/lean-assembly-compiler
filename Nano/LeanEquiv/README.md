@@ -18,6 +18,7 @@ state machines) can appear in a kernel-checked statement; the rest stays with th
 | | `ite_lean` | `termIfThenElse` = `if ` term `then` term `else ` term, keywords = nano tags 32 33 34 |
 | `Numeral.lean` | `numeral_sub_toNat?` | a nano numeral word is read by `String.toNat?` with the same value (`decVal w`) |
 | | `numVal_eq`, `numVal_eq_lean` | `UInt64.ofNat (numVal w)` is Lean's `UInt64` literal of the digits' decimal value |
+| `BinSem.lean` | `binop_eq_lean`, `binFns_eq_lean` | every operator tag's op id evaluates (`NanoMain.binop`) to Lean's `UInt64` function for that notation; imports `Nano.Main.Sem` (heavy), so it is not in `REVIEW.lean` and prints its own axioms |
 | `REVIEW.lean` | | `#print axioms` of all 17: `propext`, `Quot.sound`, `Classical.choice` (one theorem, from Std) |
 
 Limits: the theorems are about tables and character sets. How Lean's tokenizer and Pratt loop *use* them is `partial`

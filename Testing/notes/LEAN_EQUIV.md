@@ -28,7 +28,7 @@ Proofs: `Nano/LeanEquiv/` (README there). Mismatch numbers M1–M14 are those of
 | 18 | `let`, `match`, tuples, parens, `def`, binders | `pExpr`, `pAtom`, `pTup`, `pDef`, `DsSpec` | `Term.let` Parser/Term.lean:551, `Term.match` :331, `matchAlts` :280, `tuple` :187, `paren` :201, Command.lean | P (`leading_parser` = closures over `ParserFn`) | fuzz (LEAN-DIFF) | — |
 | 19 | layout (columns) | none | `checkColGe` Basic.lean:1496 + `withPosition` | P | M9/M10 open; fuzz + rejection | — |
 | 20 | doc comment / `@[…]` / `private` position, namespaces | `declNext`, `attrEnd`, `lineOk` | `declModifiers` Parser/Command.lean:114; Elab/BuiltinCommand.lean | P / M | fuzz; M4, M5, M13 open | — |
-| 21 | operator meaning on UInt64 | `Sem` (Nano/Main) | `UInt64.add` … `instHAdd` etc. | T | definitional: `NanoMain.binop` (Nano/Main/Sem.lean:45) is written with Lean's own `+ - * &&& \|\|\| <<< >>>` on `UInt64`; nothing to prove | none |
+| 21 | operator meaning on UInt64 | `Sem` (Nano/Main) | `UInt64.add` … `instHAdd` etc. | T | **proved** `binop_eq_lean`, `binFns_eq_lean` (`BinSem.lean`): tag → `opInfo` op id → `NanoMain.binop` = Lean's `HAdd.hAdd` … on `UInt64`. Checked here against a copy of `binop` only (Sem's import chain not built in this container); runner build requested | done, build pending |
 
 ## Result
 T and done: rows 1, 2, 4, 5, 11 (adjacent function), 12, 14, 15, 17 (17 theorems; axioms `propext`, `Quot.sound`, and `Classical.choice` in `numeral_sub_toNat?` via Std's lemmas; `Nano/LeanEquiv/REVIEW.lean`).
@@ -48,7 +48,7 @@ Per construct: **proved** = kernel theorem against a Lean 4.34.1 definition (nam
 | operator tokens | spelling of the 7 binary operators, `==`, `<`, `×` = Lean's notation symbols (`binOps_eq_lean`, `cmp_prod_lean`) | longest match over Lean's whole token table (`Trie.matchPrefix`) | — |
 | binary expressions | precedence numbers and left associativity equal Lean's declarations, no operator missing (`binOps_eq_lean`, `binOps_complete`) | that Lean's Pratt loop (`trailingLoop`) and nano's `pLoop` build the same tree from equal tables; shift rhs restriction | operand typing, unification order (M12) |
 | `if … then … else` | Lean's syntax is the three keywords around three `term:0` slots; keywords are nano's tags (`ite_lean`); comparison operators at 50 with operands at 51 (`cmp_prod_lean`) | that nano's `pExpr` condition form `A (==\|<) B` is parsed the same by Lean's term parser | `Decidable` instance choice, `Bool` vs `Prop` condition |
-| operator meaning | definitional (nano's `binop` uses Lean's `UInt64` operators) | — | — |
+| operator meaning | each operator tag evaluates to the Lean function its notation names, on `UInt64` (`binop_eq_lean`, `binFns_eq_lean`) | that Lean's macro for the symbol yields that function (`macro_rules` code) | instance choice (`UInt64` vs `Nat`: M1) |
 | `let`, tuples, parens, application | nothing (Lean: `leading_parser` closures) | all | layout columns (M10) |
 | `match` | nothing | desugaring `DsSpec.ds` vs Lean's `match` | arm layout (M9), redundancy (M11) |
 | `def`, binders, types | `×` precedence/right assoc (`cmp_prod_lean`) | header and binder grammar | modifiers, attributes (M13) |
