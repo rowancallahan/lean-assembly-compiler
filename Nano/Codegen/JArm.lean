@@ -69,6 +69,7 @@ def e15 (f3 f7 : UInt64) : UInt64 :=
 def e25 (v : UInt64) : UInt64 :=
   let p := e1 v;
   let f := e3 v;
+  if 4294967295 < v then 0 else
   if p == 19 then
     (if f == 0 then 1 else if f == 1 then (if (v >>> 26) == 0 then 2 else 0)
      else if f == 5 then (if (v >>> 26) == 0 then 3 else 0) else 0)
