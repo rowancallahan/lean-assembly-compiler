@@ -52,6 +52,18 @@ then C → D → E → F (need the cleaned-up generic layer).
   BPUSH/PUT), IF head, LOOP head/step/exit/CONTINUE, call, prologue, epilogue, stubs, start code; then the native
   `GTarget` instance (image + anchors from the template list) and its `seg` law from these lemmas and the J template
   runs.
+* B, final form (M3 DONE, `Nano/Run/`): the image is a list of ATOMS (`NatImg.lean`: 19 kinds `NTm`, J
+  instructions `.j`, A64 words `.a`, dead flags for t0/t1). Per atom one simulation `ASim` (`NatSim.lean`, cases in
+  `NatA/*.lean`, dispatch `asim_all`). `NatSeg.lean`: `nat_seg` (segment law), `nat_addi`, `nat_ret`, and
+  `natLawsOK : A64SemN M X W → NatLawsOK M X W NatV` (standard axioms; no model mentioned, so Sail only needs an
+  `A64SemN` instance). The whole-template lemmas in `ArmNatTm.lean` / `NatT/` are checks, not on the proof path.
+* Layout facts fixed while assembling: (1) only RETURN POINTS (pc after a `jal 1`) get a link value (`nOff` < 2^64);
+  every other pc gets 2^64·(1+pc) + 4·word index, the same machine address modulo 2^64. J's `jalr` (SafeX: the
+  target's offset is below 2^64) therefore only reaches return points, which is what makes dead registers at a
+  return sound (`NWf.ret`). (2) `GTarget.Laws`: `entry` is `off 0 % 2^64 = 0`, `off_le` only at return points,
+  `addi_ok` only for `addi a0/a1, x0, imm`.
+* M4 remaining: `GenOKG (natTarget M X W NatV) genNative` (GenArm's output is `imgOf tl` of a well-formed atom list
+  whose J program is Gen's), then the unconditional top.
 * Findings: after BGET/BSET the J temporaries t0/t1 differ from x5/x6 (dead at the boundary; hence `Img.dead`);
   start code is 34 A64 words for 32 J instructions; li is 1..4 words, slot access 1 or 2 words (locals ≥ 33).
 
