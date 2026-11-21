@@ -151,4 +151,75 @@ theorem rnd_ok (q' : Nat) (hq : q' < 3) (X : List NumSpec.G) (N : Nat) (hN : N <
         · exact ⟨h1, Or.inl (Or.inr h3)⟩
         · exact ⟨h1, Or.inr ⟨G', hG', h3⟩⟩
 
+theorem inv_ri {q' : Nat} {X : List NumSpec.G} {N K : Nat} {f : Buf} (h : INV q' X N K f) :
+    RI q' X N K f (fun _ => False) := by
+  refine ⟨h.1, fun v hv => ?_⟩
+  obtain ⟨j, hj, hf, hm⟩ := h.2 v hv
+  refine ⟨j, by omega, hf, ⟨fun h1 => hm.1 h1.1, fun h1 => ⟨hm.2 h1, by omega⟩⟩, ⟨fun h1 => by omega, fun h1 => h1.2.elim⟩⟩
+
+theorem ri_inv {q' : Nat} {X : List NumSpec.G} {N K : Nat} {f : Buf}
+    (h : RI q' X N K f (fun v => False ∨ ∃ G ∈ X, (G.d = q' ∨ ∃ w ∈ G.vs, w ∈ NumSpec.marked q' X K []) ∧ v ∈ G.vs)) :
+    INV q' X N (K + 1) f := by
+  refine ⟨h.1, fun v hv => ?_⟩
+  obtain ⟨j, hj, hf, h1, h2⟩ := h.2 v hv
+  refine ⟨j, hj, hf, ?_⟩
+  rw [marked_succ, mem_mstep]
+  constructor
+  · intro hj0
+    rcases Nat.lt_or_ge j (K + 1) with hlt | hge
+    · exact Or.inl (h1.1 ⟨hj0, hlt⟩)
+    · obtain ⟨-, hS⟩ := h2.1 (by omega)
+      rcases hS with hS | hS
+      · exact hS.elim
+      · exact Or.inr hS
+  · rintro (hm | hS)
+    · exact (h1.2 hm).1
+    · by_cases hm : v ∈ NumSpec.marked q' X K []
+      · exact (h1.2 hm).1
+      · have := h2.2 ⟨hm, Or.inr hS⟩; omega
+
+theorem rndsN_ok (q' : Nat) (hq : q' < 3) (X : List NumSpec.G) (N : Nat) (hN : N < 2 ^ 24)
+    (hX : ∀ G ∈ X, G.d < 3 ∧ ∀ v ∈ G.vs, v < N) : ∀ (n K : Nat) (f : Buf), K + n < 2 ^ 24 → INV q' X N K f →
+    INV q' X N (K + n) (rndsN (u q') X n f (K + 1))
+  | 0, K, f, _, h => h
+  | n + 1, K, f, hK, h => by
+    have h1 := ri_inv (rnd_ok q' hq X N hN K (by omega) X f _ hX (inv_ri h))
+    have := rndsN_ok q' hq X N hN hX n (K + 1) _ (by omega) h1
+    rw [show K + 1 + n = K + (n + 1) by omega] at this
+    exact this
+
+theorem inv_zero (q' : Nat) (X : List NumSpec.G) (N : Nat) : INV q' X N 0 (List.replicate N 0) := by
+  refine ⟨by simp, fun v hv => ⟨0, Nat.le_refl _, ?_, ?_⟩⟩
+  · simp [List.getD_eq_getElem?_getD, hv]; rfl
+  · simp [NumSpec.marked]
+
+/-- the machine's rule on the final buffers is the spec's rule -/
+theorem gok_spec {X : List NumSpec.G} {N : Nat} (hN : N < 2 ^ 24) {f h : Buf}
+    (hf : INV 1 X N (N + 1) f) (hh : INV 2 X N (N + 1) h) {G : NumSpec.G} (hG : G.d < 3 ∧ ∀ v ∈ G.vs, v < N) :
+    gok f h G = gspec (NumSpec.marked 1 X (N + 1) []) (NumSpec.marked 2 X (N + 1) []) G := by
+  have ea : ((G.vs.map u).any fun w => bget f w != 0) = G.vs.any (NumSpec.marked 1 X (N + 1) []).contains := by
+    apply Bool.eq_iff_iff.2
+    simp only [List.any_map, List.any_eq_true, Function.comp, bne_iff_ne, ne_eq, List.contains_iff_mem]
+    apply exists_congr; intro w; apply and_congr_right; intro hw
+    obtain ⟨j, hj, hfj, hm⟩ := hf.2 w (hG.2 w hw)
+    rw [bget_slot (by have := hG.2 w hw; omega), hfj, ← hm]
+    constructor
+    · intro h1 h2; exact h1 (by rw [h2]; rfl)
+    · intro h1 h2; apply h1; have := congrArg UInt64.toNat h2; rw [u_toNat (by omega)] at this; simpa using this
+  have eo : ((G.vs.map u).any fun w => bget h w != 0) = G.vs.any (NumSpec.marked 2 X (N + 1) []).contains := by
+    apply Bool.eq_iff_iff.2
+    simp only [List.any_map, List.any_eq_true, Function.comp, bne_iff_ne, ne_eq, List.contains_iff_mem]
+    apply exists_congr; intro w; apply and_congr_right; intro hw
+    obtain ⟨j, hj, hfj, hm⟩ := hh.2 w (hG.2 w hw)
+    rw [bget_slot (by have := hG.2 w hw; omega), hfj, ← hm]
+    constructor
+    · intro h1 h2; exact h1 (by rw [h2]; rfl)
+    · intro h1 h2; apply h1; have := congrArg UInt64.toNat h2; rw [u_toNat (by omega)] at this; simpa using this
+  have e1 : (u G.d == 1) = (G.d == 1) := by
+    rw [u1, ueq (by omega) (by omega)]; by_cases h : G.d = 1 <;> simp [h]
+  have e2 : (u G.d == 2) = (G.d == 2) := by
+    rw [u2, ueq (by omega) (by omega)]; by_cases h : G.d = 2 <;> simp [h]
+  simp only [gok, gspec, ea, eo, e1, e2]
+  cases G.ar <;> simp
+
 end NumP
