@@ -668,3 +668,14 @@ The compiler's OWN source stays in the bootstrap subset (the language as of rele
 compiler accepts more (owner, 2026-11-21: avoids confusion). New syntax is for user programs only; a check script fails
 if Nano/{Lexer,Parser,Ownership,Codegen,Main} compiler source uses anything outside the subset. Exception (owner,
 2026-11-21): comments are allowed in the compiler source once the comments feature is merged (they change no code). Syntax and optimization PRs merge one at a time; the second one re-regenerates SelfHost and re-checks.
+
+## Native ARM route and IR plan (owner, 2026-11-21)
+- Release (combined-2 / #17): native ARM via option E — the compiler runs Gen, takes its J program, and a thin J → ARM
+  atom translator (fusing J steps into rich A64 instructions, variable length) emits the code. The translator is written
+  in nano's bootstrap subset as part of the compiler, so the native compiler self-hosts; proven on DeepMind ARM
+  (generic over A64SemN, so Sail needs only its instruction facts). GenArm.lean stays as a test oracle.
+- Next after the release: make J an explicit, target-neutral IR that the generator emits (instead of RISC-V words),
+  with RISC-V, ARM (and later x86) as thin proven encoders; grow J with target-friendly ops so encoders can use each
+  ISA's features; do optimizations on J (proven once). Hyper-optimized per-ISA back ends can come later on top.
+- Syntax: accepting some texts Lean rejects (misplaced docstrings/attributes; no Lean meaning) is documented as a
+  known superset.
