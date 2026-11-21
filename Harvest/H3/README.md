@@ -4,7 +4,7 @@ Standalone (imports only Lean core), branch `harvest-3` off `lean-equiv`, Lean 4
 a nano-style candidate (interval table / byte guard + arithmetic decode / string shape) and a theorem against Lean's own total
 definition. Lean paths are under `src/lean/`. All files check locally with `lean`; `REVIEW.lean` prints the axioms (only `propext`,
 `Quot.sound`, `Classical.choice`; two theorems use none). No `sorry`, no `native_decide`; `decide +kernel` only on bounded ranges.
-Build: `lake build Harvest.H3.REVIEW` (lakefile entry `Harvest` added on this branch only).
+Runner build (slot 3, sha 67cd30f): PASS, axioms as pinned. Build: `lake build Harvest.H3.REVIEW` (lakefile entry `Harvest` added on this branch only).
 
 | feature | Lean def (file:line) | candidate nano rule | theorem | status | value for nano | effort |
 |---|---|---|---|---|---|---|
