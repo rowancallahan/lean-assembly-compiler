@@ -3,14 +3,15 @@ is not one fixed-size block per J instruction (the native AArch64 generator `C/G
 * `Img`: a program image, supplied per program by the target's `valid`: the machine code BYTES (no word size), the
   byte offset `off pc` of each J instruction (no `blockLen`), and the ANCHOR pcs `vis` (the J pcs at which the machine
   state is related to the J state; a fused template, e.g. `subs; b.cond` for `bgeu; jal`, has J pcs with no machine
-  state of their own).
+  state of their own), and the J registers `dead pc j` that are not related at anchor `pc`.
 * `GTarget.Rel`: `JTarget.Rel` with the pc through `off`, the code as bytes, and the J link layout = the image's (`lk`).
 * `GTarget.Laws.seg`: the SEGMENT law, replacing the one-step `step_ok`: from an anchor, along a safe J run that ends
   at an anchor, the machine runs to a later anchor of that run.  Instruction width and branch reach are the
   target's business (`lay` / `valid`); nothing here mentions them.
 * `gsim`: a safe J run between anchors is a machine run (proved once).
-* `JTarget.toG`, `rel_toG`, `laws_toG`: every uniform target is a general one (RISC-V and rv2arm need nothing new). -/
-import Nano.V2Self.Proof.Machine.HostGen
+* `JTarget.toG`, `rel_toG`, `laws_toG` (GUniform.lean): every uniform target is a general one (RISC-V and rv2arm need
+  nothing new).  The host lift (`Host*.lean`) and the top theorems (Main/TopOn.lean) are proved over `GTarget` only. -/
+import Nano.V2Self.Proof.Machine.Target
 namespace JT
 open Proven.Top SimW CallProbe
 
@@ -40,6 +41,9 @@ structure Img where
   code : List UInt8
   ly : CallProbe.LinkLay
   vis : Nat → Prop
+  /-- `dead pc j`: J register `j` is not related at anchor `pc` (a temporary that is dead at a template boundary and
+  that the machine code does not compute as J does) -/
+  dead : Nat → Nat → Prop
 
 /-- the byte offset of J instruction `pc` -/
 def Img.off (I : Img) (pc : Nat) : Nat := I.ly.off pc
@@ -72,7 +76,7 @@ structure Rel (K : LayW) (C : List J) (I : Img) (s0 : T.M.State) (p : Nat × Cal
   x0 : p.2.x 0 = 0
   bb : p.2.b = K.base
   lk : p.2.ly = I.ly
-  x : ∀ j, 0 < j → j < 32 → (T.M.observe s).register (T.reg j) = p.2.x j
+  x : ∀ j, 0 < j → j < 32 → ¬ I.dead p.1 j → (T.M.observe s).register (T.reg j) = p.2.x j
   keep : ∀ r, (∀ j, 0 < j → j < 32 → T.reg j ≠ r) → r ∉ T.scratch →
     (T.M.observe s).register r = (T.M.observe s0).register r
   w : ∀ a, wok K a → ∀ k < 8, (T.M.observe s).memory (UInt64.ofNat (a + k)) = some (cbyte (p.2.m a) k)
@@ -101,6 +105,17 @@ structure Laws : Prop where
     T.inv K C I s
   /-- the entry is an anchor at offset 0 -/
   entry : ∀ (C : List J) (I : Img), T.valid C I → I.vis 0 ∧ I.off 0 = 0
+  /-- every anchor's offset lies in the code (a non-anchor pc may have an offset outside it) -/
+  off_le : ∀ (C : List J) (I : Img), T.valid C I → ∀ n, n ≤ C.length → I.vis n → I.off n ≤ I.code.length
+  /-- every return point is an anchor (with `off_le`: return addresses do not wrap, `LinkOK`) -/
+  vis_link : ∀ (C : List J) (I : Img) (n : Nat) (off : Int), T.valid C I → C[n]? = some (.jal 1 off) → I.vis (n + 1)
+  /-- every `jalr x0, 0(x1)` (return to the host, function return) is an anchor -/
+  vis_ret : ∀ (C : List J) (I : Img) (pc : Nat), T.valid C I → C[pc]? = some (.jalr 0 1) → I.vis pc
+  /-- at a `jalr x0, 0(x1)` every J register is related -/
+  live_ret : ∀ (C : List J) (I : Img) (pc : Nat), T.valid C I → C[pc]? = some (.jalr 0 1) → ∀ j, ¬ I.dead pc j
+  /-- the error-status pair `addi a0, x0, imm; addi a1, x0, 0` and its successor are anchors (stubs, start check) -/
+  vis_err : ∀ (C : List J) (I : Img) (pc : Nat) (imm : Int), T.valid C I → C[pc]? = some (.addi 10 0 imm) →
+    C[pc + 1]? = some (.addi 11 0 0) → I.vis pc ∧ I.vis (pc + 1) ∧ I.vis (pc + 2)
   /-- **the segment law**: from an anchor `a`, along a safe J run of `n + 1` steps that ends at an anchor `z`, the
   machine runs to an anchor `c` of that run, `m + 1` steps in -/
   seg : ∀ {K : LayW} {C : List J} {I : Img} {s0 : T.M.State} {a z : Nat × CallProbe.St} {s : T.M.State} {n : Nat},
@@ -136,126 +151,5 @@ theorem gsim {T : GTarget} (L : T.Laws) {K : LayW} {C : List J} {I : Img} (hl : 
     (hR : T.Rel K C I s0 a s) : ∃ s', Runs T.M s s' ∧ T.Rel K C I s0 z s' := by
   obtain ⟨n, hn⟩ := sstar_toN h
   exact gsimN L hl hz n n (Nat.le_refl _) hn ha hR
-
-/-! ## every uniform target is a general one -/
-
-/-- the image of a uniform target: its blocks' bytes, the uniform layout, every pc an anchor -/
-def JTarget.uimg (T : JTarget) (C : List J) : Img := ⟨tbytes T C, CallProbe.LinkLay.lin (T.blockLen - 1), fun _ => True⟩
-
-def JTarget.toG (T : JTarget) : GTarget where
-  M := T.M
-  reg := T.reg
-  scratch := T.scratch
-  lay K C I := I = T.uimg C ∧ T.lay K C
-  m0 := T.m0
-  inv K C _ s := T.inv K C s
-  valid C I := I = T.uimg C ∧ T.valid C
-  loader := T.loader
-
-variable {T : JTarget}
-
-/-- the uniform code relation (words of blocks) from the bytes -/
-theorem ucode_of (L : T.Laws) {K : LayW} {C : List J} {o : MachineState}
-    (h : ∀ a (h : a < (tbytes T C).length), o.memory (UInt64.ofNat (K.base + a)) = some (tbytes T C)[a]) :
-    ∀ i (h : i < C.length) k (hk : k < (T.enc C[i]).length) b, b < 4 →
-      o.memory (UInt64.ofNat (T.addr K.base i + 4 * k + b)) = some (wbyte (T.enc C[i])[k] b) := by
-  intro i hi k hk b hb
-  rw [L.enc_len] at hk
-  have hlt : 4 * T.blockLen * i + 4 * k + b < (tbytes T C).length := by
-    rw [tbytes_len L C]
-    have := Nat.mul_le_mul_left (4 * T.blockLen) (show i + 1 ≤ C.length by omega)
-    rw [Nat.mul_succ] at this; omega
-  have e := tbytes_get L C i hi k hk b hb
-  rw [List.getElem?_eq_getElem hlt, List.getElem?_eq_getElem (by rw [L.enc_len]; exact hk)] at e
-  rw [JTarget.addr, show K.base + 4 * T.blockLen * i + 4 * k + b = K.base + (4 * T.blockLen * i + 4 * k + b) by omega,
-    h _ hlt]
-  exact e
-
-/-- the bytes from the uniform code relation -/
-theorem bytes_of (L : T.Laws) {K : LayW} {C : List J} {o : MachineState}
-    (h : ∀ i (h : i < C.length) k (hk : k < (T.enc C[i]).length) b, b < 4 →
-      o.memory (UInt64.ofNat (T.addr K.base i + 4 * k + b)) = some (wbyte (T.enc C[i])[k] b)) :
-    ∀ a (h : a < (tbytes T C).length), o.memory (UInt64.ofNat (K.base + a)) = some (tbytes T C)[a] := by
-  intro a ha
-  have hp := L.blk_pos
-  have hn := tbytes_len L C
-  have hq : 0 < 4 * T.blockLen := by omega
-  have hi : a / (4 * T.blockLen) < C.length := by
-    rw [Nat.div_lt_iff_lt_mul hq, Nat.mul_comm]; omega
-  have hr := Nat.mod_lt a hq
-  have hk : a % (4 * T.blockLen) / 4 < T.blockLen := by rw [Nat.div_lt_iff_lt_mul (by decide)]; omega
-  have hb := Nat.mod_lt (a % (4 * T.blockLen)) (show 0 < 4 by decide)
-  have ea : 4 * T.blockLen * (a / (4 * T.blockLen)) + 4 * (a % (4 * T.blockLen) / 4) + a % (4 * T.blockLen) % 4 = a := by
-    have := Nat.div_add_mod a (4 * T.blockLen); have := Nat.div_add_mod (a % (4 * T.blockLen)) 4; omega
-  have e := tbytes_get L C _ hi _ hk _ hb
-  rw [ea, List.getElem?_eq_getElem ha, List.getElem?_eq_getElem (by rw [L.enc_len]; exact hk)] at e
-  have := h _ hi _ (by rw [L.enc_len]; exact hk) _ hb
-  rw [JTarget.addr, show K.base + 4 * T.blockLen * (a / (4 * T.blockLen)) + 4 * (a % (4 * T.blockLen) / 4) +
-    a % (4 * T.blockLen) % 4 = K.base + a by omega] at this
-  rw [this]; exact e.symm
-
-theorem uoff (L : T.Laws) (C : List J) (pc : Nat) : (T.uimg C).off pc = 4 * T.blockLen * pc := by
-  have := L.blk_pos
-  show 4 * (T.blockLen - 1 + 1) * pc = _; rw [show T.blockLen - 1 + 1 = T.blockLen by omega]
-
-theorem rel_toG (L : T.Laws) {K : LayW} {C : List J} {s0 : T.M.State} {p : Nat × CallProbe.St} {s : T.M.State}
-    (h : T.Rel K C s0 p s) : T.toG.Rel K C (T.uimg C) s0 p s where
-  cfg := h.cfg
-  pc := (h.pc : _ = UInt64.ofNat (T.addr K.base p.1)).trans (by rw [uoff L]; rfl)
-  code := bytes_of L h.code
-  x0 := h.x0
-  bb := h.bb
-  lk := h.ww
-  x := h.x
-  keep := h.keep
-  w := h.w
-  bw := h.bw
-  fr := h.fr
-  inv := h.inv
-
-theorem rel_ofG (L : T.Laws) {K : LayW} {C : List J} {s0 : T.M.State} {p : Nat × CallProbe.St} {s : T.M.State}
-    (h : T.toG.Rel K C (T.uimg C) s0 p s) : T.Rel K C s0 p s where
-  cfg := h.cfg
-  pc := (h.pc : (T.M.observe s).programCounter = _).trans (by rw [uoff L]; rfl)
-  code := ucode_of L h.code
-  x0 := h.x0
-  bb := h.bb
-  ww := h.lk
-  x := h.x
-  keep := h.keep
-  w := h.w
-  bw := h.bw
-  fr := h.fr
-  inv := h.inv
-
-/-- **a uniform target's laws give the general laws** -/
-theorem laws_toG (L : T.Laws) : T.toG.Laws where
-  reg_map := L.reg_map
-  kept_map := L.kept_map
-  ram := L.ram
-  lay_init K C I hK hv := by
-    obtain ⟨rfl, hv⟩ := hv
-    exact ⟨rfl, L.lay_init K C (by rw [← tbytes_len L C]; exact hK) hv⟩
-  m0_obs := L.m0_obs
-  inv_init K C I s call x sc hld hv hb hm0 hlo hhi hib hil hob hol := by
-    obtain ⟨rfl, hv⟩ := hv
-    exact L.inv_init K C s call _ x sc hld (tbytes_len L C) hb hm0 hlo hhi hib hil hob hol
-  entry C I hv := by obtain ⟨rfl, -⟩ := hv; exact ⟨trivial, by rw [uoff L]; rfl⟩
-  seg := by
-    intro K C I s0 a z s n hl hR _ hrun _
-    obtain ⟨rfl, hl⟩ := hl
-    cases hrun with
-    | head hS hs hrest =>
-      obtain ⟨s', r, R⟩ := L.step_ok hl (rel_ofG L hR) hS hs
-      exact ⟨0, _, s', Nat.zero_le _, hrest, trivial, r, rel_toG L R⟩
-  addi_ok := by
-    intro K C I s0 pc st s rd rs imm hl hR _ _ hc h1 h2 h3 h4
-    obtain ⟨rfl, hl⟩ := hl
-    obtain ⟨s', r, R⟩ := L.addi_ok hl (rel_ofG L hR) hc h1 h2 h3 h4
-    exact ⟨s', r, rel_toG L R⟩
-  ret_ok := by
-    intro K C I s0 pc st s hl hR _ hc h4
-    obtain ⟨rfl, hl⟩ := hl
-    exact L.ret_ok hl (rel_ofG L hR) hc h4
 
 end JT
