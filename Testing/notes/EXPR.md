@@ -192,17 +192,54 @@ rejects (`<<<`). With big Nat, nano types literal-only terms as Nat, exactly lik
 Recommendation: start with step (1) and then (2) with `+` and `<` on RISC-V, as the lead suggested. In C's source,
 rewrite o32/o38 as `k1`/`k0` constants or leave them: after step (1) Lean and nano agree on their typing.
 
-### Step 1 exact proposal (ParSpec; for owner review, not implemented)
-Lean's rule is not syntactic. A numeral with no expected type is POSTPONED and defaults to Nat only when nothing
-constrains it later. `let t := 17709; .. rd x t ..` gives `t : UInt64` (Lean accepts; fuzz repro c), while o32's
-`let k := (if .. then 1 else 0); if k == 1` gives `k : Nat` (no constraint). So step 1 is:
-* `Ty.lit` is kept for let-bound slots: `tyShape .lit = some .uw` becomes a "numeral slot" `Ps.sh .lit`, width 1.
-  Reading the slot gives `Ty.lit` again. A slot's final type is decided by its uses (any UInt64 position → UInt64)
-  and otherwise defaults to Nat. The IR is unchanged (values are words), so C's AST and Sem are unchanged. Only the
-  typing judgment and the emitted Expr differ (`have k : Nat`, `instOfNatNat`, `BEq Nat`, `Nat.decLt`).
-* Literal-only arithmetic or comparison (`1 + 2`, `3 < 5`, `35 <<< 51`) that ends up at Nat: comparisons are
-  accepted at Nat (values agree, both are < 2^64). Arithmetic is REJECTED until bignum (step 2). This also removes
-  the fuzz "Lean rejects" cases `put [] (35 <<< 51)`. `let t := []` (no element type) is rejected separately.
-* Implementation: Par1 (C's source) and ParRun/ParInv (the parser refinement, ~23K lines) follow. Then C's text
-  changes, so B2/B3, Cert, SrcLink and GA_arm regenerate behind the gate. The parser owner (SYNTAX-EXP) should own the
-  Par1/ParInv part; emitSpec, E and `Ev` get the Nat instances here.
+### Step 1 spec: Nat by Lean's default rule (owner-approved; HAND-OFF to SYNTAX-EXP, which owns the parser)
+Scope (owner): literal-only terms are typed by Lean's rule. Nat is storable and comparable; Nat ARITHMETIC is
+rejected until bignum lands. This REPLACES the "reject literal-only" rules of SYNTAX-EXP's literal-typing check
+(keep_round1_syntax-1), so it is one parser change, not two.
+
+**Lean's rule** (Lean 4.34.1 sources):
+* A numeral `n` elaborates to `@OfNat.ofNat ?α n ?inst` with a fresh type metavariable. When ?α is still open at the
+  end of elaboration, the default instance `instOfNatNat` (`@[default_instance 100]`, Init/Prelude.lean:1280) sets
+  ?α := Nat. Defaulting runs LAST, so any later unification (anywhere in the def body) wins.
+* `+ - * &&& |||` are `binop%` (Init/Notation.lean:302-309). The whole operator tree gets one "max type"
+  (Lean/Elab/Extra.lean, `binop%` elaborator). A literal leaf takes the type of a typed leaf; if every leaf is a
+  literal (or a still-open numeral), the tree stays at ?α and defaults to Nat.
+* `<<< >>>` are plain `infixl` (Notation.lean:289-290), NOT `binop%`. With a UInt64 left operand they elaborate as
+  in C (`HShiftLeft UInt64 UInt64 UInt64` via `instHShiftLeftOfShiftLeft`). With a literal left operand Lean fails
+  (`35 <<< 51` at type UInt64: fuzz repro `repro_lean_rejects_shift.src`).
+* `==` is `binrel_no_prop%` (394), `<` is `binrel%` (390): the operands get a common type. Two literal-only operands
+  give Nat (`instDecidableEqNat`, `instLTNat`/`Nat.decLt`, as in o32).
+* `let x := v`: v is elaborated with no expected type. If v is literal-only, x's type is the open ?α, and uses of x
+  in the body can still fix it: `let t := 17709; rd x t` gives `t : UInt64` (Lean accepts), while
+  `let k := (if .. then 1 else 0); if k == 1 ..` gives `k : Nat` (o32, o38). `if`/tuples pass the expected type down
+  (`ite ?α`, `Prod.mk`); literal-only branches with no expected type stay open.
+
+**Rule for nano (a CHECK added after typing; the IR, `Sem`, Gen and Own are unchanged)**
+* Numeral classes: every let slot whose value has type `Ty.lit`, and every literal-only operator tree, comparison
+  operand pair or `if`, is a class. Classes are merged by `binop%` trees, by `==`/`<` operand pairs, by `if` branches
+  and by `let x := (class)`.
+* A class is UInt64 if any member meets a UInt64 position: an operand of a binop/comparison with a UInt64 leaf, a
+  UInt64 parameter or prim argument, a UInt64 result or tuple field, a shift's left operand. A class is Nat if it meets
+  a fuel argument, and Nat by default otherwise. A class with both a UInt64 and a Nat demand is REJECTED (Lean fails).
+* REJECTED as well: a Nat class used as a binop operand (Nat arithmetic: `1 + 2` with no UInt64 leaf, `let t := 7;
+  .. t * 2 ..` with no UInt64 use), and a shift whose left operand is a numeral class. Nat comparisons (`==`, `<`) and
+  Nat `let`/`if` are ACCEPTED. Their values are literals < 2^64 (8-byte numerals), so the word values agree with Lean's Nat.
+* ParSpec change: a new per-def check `numOk : DefI list → DefA → Bool` (classes over the resolved `Nd`, with the
+  defs' parameter shapes), called in `pDef` after the body parses (`none` on failure). Par1 (C's source) gets the same
+  check, then ParRun/ParInv follow. C's own AST stays byte-identical (C has no Nat arithmetic); C's text changes, so B2/B3,
+  Cert, SrcLink and GA_arm regenerate behind `selfhost_gate.sh`.
+
+**emitSpec / E / proof (EXPR-1 side, after the parser change lands)**
+* emitSpec: the same class pass per def (it already sees the resolved AST). A Nat-class `let` emits `h c Nat ..`,
+  its literals `OfNat Nat .. instOfNatNat`; comparisons of Nat classes emit `BEq.beq Nat (instBEqOfDecidableEq Nat
+  instDecidableEqNat)` / `LT.lt Nat instLTNat` + `Nat.decLt`; `ite` at Nat when no expected type. New shape `.nt` in
+  let binders. E: the same pass in E's pass 1 (one class word per slot), plus 6 new phrases in `gen_emitstr.py`.
+* Proof: `Ev`/`EvB` gain Nat comparisons on `.n` values; `R .nt` (value ↔ one word, `u.toNat = k`) already exists.
+  `node_ok`'s ite/let cases get the Nat shape. `eval_emit`/`C_expr` must re-prove with no new hypotheses.
+
+**Acceptance test**
+* `spot_check.sh`: C **236/236** exact (o32, o38 now match), E 184/184, examples 19/19; fuzz **literal-typing → 0**:
+  each former literal-typing def now matches or is rejected by nano. Lean-rejects falls to the `let t := []` class
+  only (a separate SYNTAX-EXP item).
+* `check_E.sh`: E.bin = emitSpec byte for byte on C, E, examples, fuzz. `eval_emit`/`C_expr` build with
+  standard axioms. `selfhost_gate.sh` PASS. `regress_fuzz.py`: no regression except programs Lean rejects.
