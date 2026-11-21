@@ -354,4 +354,126 @@ theorem u16_ok {x : Buf} {np : Nat} (hxl : x.length < 2 ^ 23) {e : Nd} {f q : Na
   rw [u16, show (1 : UInt64) = u ([(e, f, q)] : List (Nd × Nat × Nat)).length from rfl]
   intro h; rw [this h]; simp [lvS]
 
+/-- the shape rules, left to right (l: an earlier operand is literal-only) -/
+def shR (f : Nat) (ws : List Nat) (env : List Bool) : Bool → List Nd → Bool
+  | _, [] => true
+  | l, e :: es => !NumSpec.spineLet f e && !(shN e && l) && shR f ws env (l || NumSpec.isL f ws env e) es
+
+theorem shR_shapeOk (f : Nat) (ws : List Nat) (env : List Bool) :
+    ∀ (ls : List Nd) (l : Bool), shR f ws env l ls = true →
+      (!ls.any (NumSpec.spineLet f)) = true ∧
+      ∀ j, j < ls.length → shN (ls.getD j (.const 0)) = true → (l || (ls.take j).any (NumSpec.isL f ws env)) = false
+  | [], _, _ => by simp
+  | e :: es, l, h => by
+    simp only [shR, Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true] at h
+    obtain ⟨⟨h1, h2⟩, h3⟩ := h
+    have ih := shR_shapeOk f ws env es _ h3
+    refine ⟨by simp only [List.any_cons, h1, Bool.false_or]; exact ih.1, ?_⟩
+    intro j hj hs
+    cases j with
+    | zero =>
+      simp only [List.getD_cons_zero] at hs
+      simp only [hs, Bool.true_and] at h2
+      simp [h2]
+    | succ j =>
+      have := ih.2 j (by simpa using hj) (by simpa using hs)
+      simp only [Bool.or_eq_false_iff] at this
+      simp only [List.take_succ_cons, List.any_cons, Bool.or_eq_false_iff]
+      exact ⟨this.1.1, this.1.2, this.2⟩
+
+theorem shapeOk_of {f : Nat} {ws : List Nat} {env : List Bool} {ls : List Nd} (h : shR f ws env false ls = true) :
+    NumSpec.shapeOk f ws env ls = true := by
+  obtain ⟨h1, h2⟩ := shR_shapeOk f ws env ls false h
+  unfold NumSpec.shapeOk
+  simp only [h1, Bool.true_and, Bool.not_eq_eq_eq_not, Bool.not_true, List.any_eq_false]
+  intro j hj
+  simp only [List.mem_range] at hj
+  have := h2 j hj
+  generalize ls.getD j (Nd.const 0) = y at this ⊢
+  cases y with
+  | bin op a b =>
+    cases hs : NumSpec.isShift op
+    · simp [hs]
+    · have := this (by simp [shN, hs]); simp [hs] at this ⊢; exact this
+  | _ => simp
+
+theorem u33_succ (n : Nat) (x d b : Buf) (bt : UInt64) (p : Buf) (j e l : UInt64) : u33 (n + 1) x d b bt p j e l =
+    if j < e then
+      (let q := bget p j;
+       if u17 x q == 0 then
+         (let (b1, r) := u32 x d b bt q;
+          if r == 2 then (b1, 0)
+          else if u34 x q == 1 then (if l == 1 then (b1, 0) else u33 n x d b1 bt p (j + 1) e (l ||| r))
+          else u33 n x d b1 bt p (j + 1) e (l ||| r))
+       else (b, 0))
+    else (b, 1) := rfl
+
+theorem w2_or (p q : Bool) : w2 p ||| w2 q = w2 (p || q) := by cases p <;> cases q <;> rfl
+
+/-- `u33`: shapeOk of the leaves (positions p[j .. e)) -/
+theorem u33_ok {x d : Buf} {np : Nat} {ws : List Nat} (hC : LC x d ws) {f : Nat} {bs : List (Nat × List Bool)}
+    (hs : ∀ r ∈ bs, r.1 < 2 ^ 32) : ∀ (n : Nat) (ls : List (Nd × Nat)) (W : Buf) (l : Bool) (b : Buf),
+    (∀ q ∈ ls, (∃ r, x.drop q.2 = q.1.ser ++ r) ∧ q.1.ser.length ≤ f ∧ NB np q.1 ∧ 0 < q.2) →
+    encB bs <+: b → b.length < 2 ^ 42 → W.length + ls.length < 2 ^ 40 →
+    (u33 n x d b (u (encB bs).length) (W ++ ls.map (fun q => u q.2)) (u W.length) (u (W.length + ls.length)) (w2 l)).2 = 1 →
+    shR f ws (envOf bs) l (ls.map Prod.fst) = true ∧
+      encB bs <+: (u33 n x d b (u (encB bs).length) (W ++ ls.map (fun q => u q.2)) (u W.length) (u (W.length + ls.length)) (w2 l)).1 ∧
+      (u33 n x d b (u (encB bs).length) (W ++ ls.map (fun q => u q.2)) (u W.length) (u (W.length + ls.length)) (w2 l)).1.length < 2 ^ 42
+  | 0, _, _, _, _, _, _, _, _, h => by simp [u33] at h
+  | n + 1, [], W, l, b, _, hb, hbl, _, _ => by
+    have : (u W.length < u (W.length + 0)) = False := by rw [ult (by omega) (by omega)]; simp
+    simp [u33_succ, this, shR, hb, hbl]
+  | n + 1, (e, q) :: ls, W, l, b, hls, hb, hbl, hWl, h => by
+    revert h
+    have hxl := hC.xl
+    obtain ⟨⟨r, hx⟩, hf, hnb, hq⟩ := hls (e, q) (by simp)
+    simp only at hx hf hnb hq
+    simp only [List.length_cons] at hWl
+    have hcl := drop_len hx (ser_pos e)
+    have hc1 : (u W.length < u (W.length + ((e, q) :: ls).length)) = True := by
+      rw [ult (by omega) (by simp; omega)]; simp
+    have hrd : bget (W ++ ((e, q) :: ls).map (fun q => u q.2)) (u W.length) = u q := by
+      rw [bget_u _ (by omega)]; simp [List.getD_eq_getElem?_getD, List.getElem?_append_right]
+    rw [u33_succ]
+    simp only [hc1, if_true, hrd]
+    rcases u17_ok hxl hx hf hnb hq with h2 | hsl
+    · rw [h2]; simp
+    rw [hsl]
+    cases hsp : NumSpec.spineLet f e
+    · simp only [show w2 false = 0 from rfl, show ((0 : UInt64) == 0) = true from rfl, if_true]
+      have hL := u32_ok hC hf hnb hx hq hb hbl hs
+      generalize u32 x d b _ _ = R at hL ⊢
+      obtain ⟨b1, rr⟩ := R
+      simp only at hL ⊢
+      by_cases hr2 : rr = 2
+      · subst hr2; simp
+      obtain ⟨hr, hb1, hbl1⟩ := hL hr2
+      subst hr
+      have hr2' : (w2 (NumSpec.isL f ws (envOf bs) e) == 2) = false := by
+        cases NumSpec.isL f ws (envOf bs) e <;> rfl
+      simp only [hr2', Bool.false_eq_true, if_false]
+      rw [u34_ok hx (by omega) hnb]
+      have hW : u W.length + 1 = u (W ++ [u q]).length := by simp [u1, uadd]
+      have hE : u (W.length + ((e, q) :: ls).length) = u ((W ++ [u q]).length + ls.length) := by
+        simp; congr 1; omega
+      have hP : W ++ ((e, q) :: ls).map (fun q => u q.2) = (W ++ [u q]) ++ ls.map (fun q => u q.2) := by simp
+      rw [hW, hE, hP, w2_or]
+      have hrec := u33_ok hC hs n ls (W ++ [u q]) (l || NumSpec.isL f ws (envOf bs) e) b1
+        (fun q hq => hls q (by simp [hq])) hb1 hbl1 (by simp; omega)
+      cases hsh : shN e
+      · simp only [show w2 false = 0 from rfl, show ((0 : UInt64) == 1) = false from rfl, Bool.false_eq_true, if_false]
+        intro h
+        obtain ⟨r1, r2, r3⟩ := hrec h
+        refine ⟨?_, r2, r3⟩
+        simp [shR, hsp, hsh, r1]
+      · simp only [show w2 true = 1 from rfl, show ((1 : UInt64) == 1) = true from rfl, if_true]
+        cases l
+        · simp only [show w2 false = 0 from rfl, show ((0 : UInt64) == 1) = false from rfl, Bool.false_eq_true, if_false]
+          intro h
+          obtain ⟨r1, r2, r3⟩ := hrec h
+          refine ⟨?_, r2, r3⟩
+          simp [shR, hsp, hsh]; simpa using r1
+        · simp [show w2 true = 1 from rfl]
+    · simp [show w2 true = 1 from rfl]
+
 end NumP
