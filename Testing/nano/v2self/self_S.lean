@@ -176,10 +176,11 @@ def s15 : Nat → List UInt8 → UInt64 → UInt64
   | n + 1, x, i => if i < len x then
       if rd x i == 32 then s15 n x (i + 1)
       else if rd x i == 10 then s15 n x (i + 1)
-      else if rd x i == 13 then if rd x (i + 1) == 10 then s15 n x (i + 1) else i
+      else if rd x i == 13 then if rd x (i + 1) == 10 then s15 n x (i + 1) else 0
+      else if rd x i == 9 then 0
       else if rd x i == 45 then if rd x (i + 1) == 45 then s15 n x (s12 (len' x) x (i + 1) 10) else i
       else if rd x i == 47 then if rd x (i + 1) == 45 then if rd x (i + 2) == 45 then i else if rd x (i + 2) == 33 then i
-        else if s11 (len' x) x (i + 2) 0 == 0 then 0 else s15 n x (s11 (len' x) x (i + 2) 0) else i
+        else if s11 (len' x) x (i + 3) 0 == 0 then 0 else s15 n x (s11 (len' x) x (i + 3) 0) else i
       else i
     else i
 
@@ -210,7 +211,7 @@ def s9 : Nat → List UInt8 → UInt64 → Buf → Buf
     else if k == 92 then if s13 (len' x) x (s5 x p k) == 1 then s9 n x (s12 (len' x) x (s5 x p k) 10) o else bnew
     else if k == 93 then if s17 x (s5 x p k) 0 == 1 then s9 n x (s5 x p k) o else bnew
     else if k == 95 then
-      let b := if rd x (p + 2) == 45 then s15 (len' x) x (p + 3) else if rd x (p + 2) == 33 then s15 (len' x) x (p + 3) else p + 2;
+      let b := if rd x (p + 2) == 45 then s15 (len' x) x (p + 3) else if rd x (p + 2) == 33 then s15 (len' x) x (p + 3) else p + 3;
       if b == 0 then bnew else if s11 (len' x) x b 0 == 0 then bnew
       else if rd x (p + 2) == 45 then if s17 x (s11 (len' x) x b 0) 2 == 1 then s9 n x (s11 (len' x) x b 0) o else bnew
       else s9 n x (s11 (len' x) x b 0) o

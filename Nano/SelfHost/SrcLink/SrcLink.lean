@@ -195,6 +195,9 @@ theorem docWs_app : ∀ (F F' : Nat) (l m t : List UInt8), F ≤ F' → l.getLas
       exact ⟨a, b.trans sr⟩
     rename_i h1; rw [if_neg h1]
     split at h
+    · cases h
+    rename_i h1'; rw [if_neg h1']
+    split at h
     · rename_i h2; rw [if_pos h2]
       have h10 : (10 : UInt8) ∈ r := List.mem_of_getLast? hlr
       obtain ⟨-, d2⟩ := takeWhile_app (p := (· != 10)) r m ⟨10, h10, by decide⟩
@@ -208,11 +211,13 @@ theorem docWs_app : ∀ (F F' : Nat) (l m t : List UInt8), F ≤ F' → l.getLas
     split at h
     · rename_i h3
       rw [hh2 h3.2.1, if_pos h3]
+      have htt : (r.tail ++ m).tail = r.tail.tail ++ m := List.tail_append_of_ne_nil (t45 h3.2.1)
+      rw [htt]
       obtain ⟨u, hu, hd⟩ := Option.bind_eq_some_iff.1 h
-      obtain ⟨b1, b2⟩ := blockEnd_app 0 r.tail m u hu
+      obtain ⟨b1, b2⟩ := blockEnd_app 0 r.tail.tail m u hu
       rw [b1, Option.bind_some]
       have hne : u ≠ [] := fun e => by rw [e] at hd; exact ht (docWs_nil f t hd)
-      have su : u <:+ c :: r := b2.trans ((List.tail_suffix r).trans sr)
+      have su : u <:+ c :: r := b2.trans ((List.tail_suffix _).trans ((List.tail_suffix r).trans sr))
       obtain ⟨a, b⟩ := docWs_app f f' u m t (by omega) (by rw [← hl]; exact last_of_suffix su hne) hd ht
       exact ⟨a, b.trans su⟩
     · rename_i h3
@@ -332,13 +337,15 @@ theorem step_app {l m : List UInt8} {e : List UInt64} {r : List UInt8} (hl : l.g
       · rw [if_neg hc]
         have hc' : (r1.head? == some 45 || r1.head? == some 33) = false := by simpa using hc
         simp only [hc', Bool.false_eq_true, ite_false] at hb
-        obtain ⟨b1, b2⟩ := blockEnd_app 0 r1 m t hb
+        have htl : (r1 ++ m).tail = r1.tail ++ m := List.tail_append_of_ne_nil hr1
+        rw [htl]
+        obtain ⟨b1, b2⟩ := blockEnd_app 0 r1.tail m t hb
         have n45 : (r1.head? == some 45) = false := by
           cases e : r1.head? == some 45
           · rfl
           · exact absurd (by simp [e]) hc
         rw [b1, Option.bind_some]; simp only [n45, Bool.false_and, Bool.false_eq_true, if_false]
-        exact ⟨trivial, suf _ (b2.trans sr1)⟩
+        exact ⟨trivial, suf _ (b2.trans ((List.tail_suffix _).trans sr1))⟩
     rename_i h47; rw [if_neg h47]
     split at h
     · rename_i h64; rw [if_pos h64]

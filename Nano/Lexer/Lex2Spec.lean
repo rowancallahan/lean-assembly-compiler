@@ -63,15 +63,19 @@ def blockEnd : Nat → List UInt8 → Option (List UInt8)
     else blockEnd d (c' :: r)
 
 /-- Lean's whitespace after a doc-comment opener (fuel `f`): spaces, newlines (CR LF too), dash-dash lines and plain
-nested block comments; the rest from the comment body's first byte -/
+nested block comments; the rest from the comment body's first byte.  A tab or an isolated CR is an error, as in Lean's
+`whitespace` (Lean/Parser/Basic.lean: "tabs are not allowed", "isolated carriage returns are not allowed"); a plain block
+comment skips the byte after its opener before its body, as Lean's `whitespace` does (`s.next` before
+`finishCommentBlock`), so slash-dash-slash-dash does not nest -/
 def docWs : Nat → List UInt8 → Option (List UInt8)
   | 0, _ => none
   | _ + 1, [] => some []
   | f + 1, c :: r =>
     if c = 32 ∨ c = 10 ∨ (c = 13 ∧ r.head? = some 10) then docWs f r
+    else if c = 9 ∨ c = 13 then none
     else if c = 45 ∧ r.head? = some 45 then docWs f (r.dropWhile (· != 10))
     else if c = 47 ∧ r.head? = some 45 ∧ r.tail.head? ≠ some 45 ∧ r.tail.head? ≠ some 33 then
-      (blockEnd 0 r.tail).bind (docWs f)
+      (blockEnd 0 r.tail.tail).bind (docWs f)
     else some (c :: r)
 
 /-- `in` as a word: after a space, followed by the end, a space or a newline -/
@@ -128,7 +132,7 @@ def step : List UInt8 → Option (List UInt64 × List UInt8)
     else if c == 45 && r.head? == some 45 then some ([], r.tail.dropWhile (· != 10))
     else if c == 47 && r.head? == some 45 then
       (if r.tail.head? == some 45 || r.tail.head? == some 33 then (docWs r.length r.tail.tail).bind (blockEnd 0)
-       else blockEnd 0 r.tail).bind fun t =>
+       else blockEnd 0 r.tail.tail).bind fun t =>
         if r.tail.head? == some 45 && !declNext 2 t then none else some ([], t)
     else if c == 64 && r.head? == some 91 then
       (attrEnd r.tail [] false).bind fun t => if declNext 1 t then some ([], t) else none

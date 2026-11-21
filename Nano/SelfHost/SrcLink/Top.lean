@@ -1573,44 +1573,44 @@ theorem len20 : T20.length = 31749 := by
   show (S20 ++ T21).length = 31749; rw [List.length_append, len21]; rfl
 theorem len19 : T19.length = 31817 := by
   show (S19 ++ T20).length = 31817; rw [List.length_append, len20]; rfl
-theorem len18 : T18.length = 32035 := by
-  show (S18 ++ T19).length = 32035; rw [List.length_append, len19]; rfl
-theorem len17 : T17.length = 32211 := by
-  show (S17 ++ T18).length = 32211; rw [List.length_append, len18]; rfl
-theorem len16 : T16.length = 32440 := by
-  show (S16 ++ T17).length = 32440; rw [List.length_append, len17]; rfl
-theorem len15 : T15.length = 32613 := by
-  show (S15 ++ T16).length = 32613; rw [List.length_append, len16]; rfl
-theorem len14 : T14.length = 32673 := by
-  show (S14 ++ T15).length = 32673; rw [List.length_append, len15]; rfl
-theorem len13 : T13.length = 32817 := by
-  show (S13 ++ T14).length = 32817; rw [List.length_append, len14]; rfl
-theorem len12 : T12.length = 32891 := by
-  show (S12 ++ T13).length = 32891; rw [List.length_append, len13]; rfl
-theorem len11 : T11.length = 32964 := by
-  show (S11 ++ T12).length = 32964; rw [List.length_append, len12]; rfl
-theorem len10 : T10.length = 33033 := by
-  show (S10 ++ T11).length = 33033; rw [List.length_append, len11]; rfl
-theorem len9 : T9.length = 33255 := by
-  show (S9 ++ T10).length = 33255; rw [List.length_append, len10]; rfl
-theorem len8 : T8.length = 33648 := by
-  show (S8 ++ T9).length = 33648; rw [List.length_append, len9]; rfl
-theorem len7 : T7.length = 35142 := by
-  show (S7 ++ T8).length = 35142; rw [List.length_append, len8]; rfl
-theorem len6 : T6.length = 35210 := by
-  show (S6 ++ T7).length = 35210; rw [List.length_append, len7]; rfl
-theorem len5 : T5.length = 35266 := by
-  show (S5 ++ T6).length = 35266; rw [List.length_append, len6]; rfl
-theorem len4 : T4.length = 35333 := by
-  show (S4 ++ T5).length = 35333; rw [List.length_append, len5]; rfl
-theorem len3 : T3.length = 35355 := by
-  show (S3 ++ T4).length = 35355; rw [List.length_append, len4]; rfl
-theorem len2 : T2.length = 35361 := by
-  show (S2 ++ T3).length = 35361; rw [List.length_append, len3]; rfl
-theorem len1 : T1.length = 35367 := by
-  show (S1 ++ T2).length = 35367; rw [List.length_append, len2]; rfl
-theorem len0 : T0.length = 35373 := by
-  show (S0 ++ T1).length = 35373; rw [List.length_append, len1]; rfl
+theorem len18 : T18.length = 32044 := by
+  show (S18 ++ T19).length = 32044; rw [List.length_append, len19]; rfl
+theorem len17 : T17.length = 32220 := by
+  show (S17 ++ T18).length = 32220; rw [List.length_append, len18]; rfl
+theorem len16 : T16.length = 32449 := by
+  show (S16 ++ T17).length = 32449; rw [List.length_append, len17]; rfl
+theorem len15 : T15.length = 32622 := by
+  show (S15 ++ T16).length = 32622; rw [List.length_append, len16]; rfl
+theorem len14 : T14.length = 32682 := by
+  show (S14 ++ T15).length = 32682; rw [List.length_append, len15]; rfl
+theorem len13 : T13.length = 32826 := by
+  show (S13 ++ T14).length = 32826; rw [List.length_append, len14]; rfl
+theorem len12 : T12.length = 32900 := by
+  show (S12 ++ T13).length = 32900; rw [List.length_append, len13]; rfl
+theorem len11 : T11.length = 32973 := by
+  show (S11 ++ T12).length = 32973; rw [List.length_append, len12]; rfl
+theorem len10 : T10.length = 33042 := by
+  show (S10 ++ T11).length = 33042; rw [List.length_append, len11]; rfl
+theorem len9 : T9.length = 33264 := by
+  show (S9 ++ T10).length = 33264; rw [List.length_append, len10]; rfl
+theorem len8 : T8.length = 33657 := by
+  show (S8 ++ T9).length = 33657; rw [List.length_append, len9]; rfl
+theorem len7 : T7.length = 35151 := by
+  show (S7 ++ T8).length = 35151; rw [List.length_append, len8]; rfl
+theorem len6 : T6.length = 35219 := by
+  show (S6 ++ T7).length = 35219; rw [List.length_append, len7]; rfl
+theorem len5 : T5.length = 35275 := by
+  show (S5 ++ T6).length = 35275; rw [List.length_append, len6]; rfl
+theorem len4 : T4.length = 35342 := by
+  show (S4 ++ T5).length = 35342; rw [List.length_append, len5]; rfl
+theorem len3 : T3.length = 35364 := by
+  show (S3 ++ T4).length = 35364; rw [List.length_append, len4]; rfl
+theorem len2 : T2.length = 35370 := by
+  show (S2 ++ T3).length = 35370; rw [List.length_append, len3]; rfl
+theorem len1 : T1.length = 35376 := by
+  show (S1 ++ T2).length = 35376; rw [List.length_append, len2]; rfl
+theorem len0 : T0.length = 35382 := by
+  show (S0 ++ T1).length = 35382; rw [List.length_append, len1]; rfl
 theorem hF : 8 * T0.length + 8 = F := by rw [len0]; rfl
 theorem hK : 262 ≤ T0.length + 1 := by rw [len0]; decide
 theorem hM : (D261.getLast?.map isMain) = some true := by decide +kernel

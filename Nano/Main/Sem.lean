@@ -202,11 +202,13 @@ theorem docWs_len : ∀ (f : Nat) (l t : List UInt8), LexSpec.docWs f l = some t
     split at h
     · have := docWs_len f r t h; simp; omega
     split at h
+    · cases h
+    split at h
     · have := docWs_len f _ t h; have := (List.dropWhile_suffix (· != 10) (l := r)).length_le; simp; omega
     split at h
     · obtain ⟨u, hu, hd⟩ := Option.bind_eq_some_iff.1 h
       have := docWs_len f u t hd; have := blockEnd_len 0 _ _ hu
-      have : r.tail.length ≤ r.length := by cases r <;> simp
+      have : r.tail.tail.length ≤ r.length := by simp only [List.length_tail]; omega
       simp; omega
     · cases h; simp
 
