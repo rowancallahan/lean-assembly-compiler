@@ -13,10 +13,6 @@ def ExC {α : Type} (S : Nat → Hp → Except Fail α) (H : Hp) : Prop :=
 theorem ok_of_toO {α : Type} {x : Except Fail α} {r : α} (h : toO x = some r) : x = .ok r := by
   cases x <;> simp_all [toO]
 
-theorem exc_left {α β : Type} {S : Nat → Hp → Except Fail α} {f : Nat → α → Except Fail β} {H : Hp} (h : ExC S H) :
-    ExC (fun sp H => (S sp H).bind (f sp)) H := by
-  obtain ⟨N, hN⟩ := h; exact ⟨N, fun sp a b => by dsimp only; rw [hN sp a b]; rfl⟩
-
 theorem exc_map {α β : Type} {S : Nat → Hp → Except Fail α} {f : α → β} {H : Hp} (h : ExC S H) :
     ExC (fun sp H => (S sp H).map f) H := by
   obtain ⟨N, hN⟩ := h; exact ⟨N, fun sp a b => by dsimp only; rw [hN sp a b]; rfl⟩
@@ -47,14 +43,6 @@ theorem val_cap {r : Out} (h : val r = .error .cap) : r = .error .cap := by
 section
 variable (K : SC) (fsX : Nat → SemDX) (hf : ∀ n, K.fs n = oD (fsX n))
 include hf
-
-theorem svF_ok {e : ParSpec.Nd} {env : Env} {sp : Nat} {H : Hp} {r : List UInt64 × Hp} (h : sv K e env sp H = some r) :
-    svF K fsX e env sp H = .ok r := by
-  rw [← oW_sv K fsX hf] at h; exact ok_of_toO h
-
-theorem svLF_ok {cs : List ParSpec.Nd} {env : Env} {sp : Nat} {H : Hp} {r : List UInt64 × Hp}
-    (h : svL K cs env sp H = some r) : svLF K fsX cs env sp H = .ok r := by
-  rw [← oW_svL K fsX hf] at h; exact ok_of_toO h
 
 theorem svF_eq (e : ParSpec.Nd) (env : Env) (sp : Nat) (H : Hp) : toO (svF K fsX e env sp H) = sv K e env sp H :=
   congrFun (congrFun (congrFun (oW_sv K fsX hf e) env) sp) H
@@ -97,8 +85,6 @@ theorem exc_loc (cx : Ctx) (K : SC) (fsX : Nat → SemDX) (oc : OwnSpec.Cx) (D :
     NodeExC cx K fsX oc D (.loc s w) := by
   intro _ _ Γ ks F F' es env ew σ H _ _ _ _ _ _ _ hev
   simp only [ev] at hev; split at hev <;> simp_all
-
-theorem err_inj {e : Stop} (h : (Except.error e : Except Stop (List W)) = .error .cap) : e = .cap := by cases h; rfl
 
 theorem pairF_excL {wa : Nat} {SA SB : SemWX} {env : Env} {H : Hp} (h : ExC (SA env) H) : ExC (pairF wa SA SB env) H := by
   obtain ⟨N, hN⟩ := h; exact ⟨N, fun sp a b => by simp only [pairF, hN sp a b]; rfl⟩
