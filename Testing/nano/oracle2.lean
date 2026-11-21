@@ -1,5 +1,5 @@
 import Lean
-import Nano.V2Elab
+import Legacy.Nano.V2Elab
 /- Subset oracle (nano v2: if + comparisons): for each case (JSON line `{"src":..,"name":..,"ty":"UInt64"|"Int64","ins":[["1","2"],..]}` on stdin) run
    Lean's REAL frontend on the text (header-less file = `import Init` only) and `Nano.V2.nanoElab` + `Nano.V2.Prog.eval`.  Output per case one line
    `real=R|A[v,..] nano=R|A[v,..]` (outputs as decimals of the result bits; `A?` = accepted but not evaluable).

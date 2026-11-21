@@ -1,7 +1,7 @@
-import Riscv.Frontx.ExceptBook
-import Riscv.Frontx.PairExamples
-import Riscv.Frontx.TinySelf
-import Riscv.Frontx.TinySmall
+import Legacy.Riscv.Frontx.ExceptBook
+import Legacy.Riscv.Frontx.PairExamples
+import Legacy.Riscv.Frontx.TinySelf
+import Legacy.Riscv.Frontx.TinySmall
 #print axioms Proven.Mach.Riscv.implements1_of_execC
 #print axioms Proven.Frontx.implements1_listC
 #print axioms Proven.Frontx.ExcBook.optFirstThirdFifthE.implements1

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Self-run of `Nano.SelfHost.binaryS3` (all five stages through S3; NANO_MANIFEST "nano v2-design"), adapted from
+"""Self-run of `Legacy.Nano.SelfHost.binaryS3` (all five stages through S3; NANO_MANIFEST "nano v2-design"), adapted from
 Testing/nano/selfrun/selfrun_test.py. Sources: the nano corpus (CORPUS + INT_CORPUS), R random
 UInt64 and R random Int64 programs, B large random programs. `emit_selfrun_s3.lean` writes the PROVEN words (`binaryS3C`,
 `binaryS3C_eq : binaryS3 = binaryS3C`), the words of its 2b and inliner components, and per source: expected = code of
 `nanoCompileA (nanoElab src)`, the intermediate results, K0.
 1. 2b and inliner alone on QEMU (input/expected from Lean): work W doubled until the stage's OOM flag is clear (the IR
    stages' flag is exact at memoryNeeded, Testing/asm/ir_test.py); then output, a1, a0, gp/sp, guards checked.
-2. The linked binary on QEMU, work space5 K (Nano/SelfHostS3.lean), K = max(K0, W(2b), W(inliner)): output = expected,
+2. The linked binary on QEMU, work space5 K (Legacy/Nano/SelfHostS3.lean), K = max(K0, W(2b), W(inliner)): output = expected,
    a1 = its length, a0 != -1, gp/sp restored, guards intact. One run per source (no retry).
 3. Sail smoke on S sources (also: every write lands in the output or work block).
 usage (repo root): python3 Testing/nano/selfrun_s3/selfrun_s3_test.py [R] [B] [S] [seed]   (S = Sail smoke cases)"""

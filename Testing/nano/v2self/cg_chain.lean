@@ -1,5 +1,5 @@
 import Nano.V2Self.C.Lex2
-import Nano.V2Self.Legacy.C.Par0
+import Legacy.Nano.V2Self.Legacy.C.Par0
 import Nano.V2Self.C.Gen
 /- Chain test: random scalar defs (generator copied from par0_test.lean) → text → C.s10 (lex) → C.y13 (Par0) → append a
 hand-written main (args from input bytes, 8 result bytes out) → C.g41 [] → RV64 code.  Expected outputs = native evaluation

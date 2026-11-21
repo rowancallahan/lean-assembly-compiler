@@ -1,4 +1,4 @@
-import Riscv.Frontx.ConLecheBlk
+import Legacy.Riscv.Frontx.ConLecheBlk
 #print axioms ConLeche.natName.cst.implements1
 #print axioms ConLeche.natPredName.cst.implements1
 #print axioms ConLeche.natAddName.cst.implements1

@@ -1,5 +1,5 @@
 -- differential test of the tail-only inliner inlTV against inlB (run: lake env lean Testing/nano/v2s_inlT_test.lean)
-import Nano.V2S.InlT
+import Legacy.Nano.V2S.InlT
 open Nano Nano.V2S Nano.U
 -- random generator: LCG
 def lcg (s : Nat) : Nat := (s * 6364136223846793005 + 1442695040888963407) % 2^64

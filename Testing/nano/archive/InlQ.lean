@@ -4,7 +4,7 @@ loop body's code stays within the conditional-branch range that `optB` checks (`
 4187 words (spill-all), which no register choice can accept.  Closing a def (`13 a`) takes three steps (`ph` = 1,
 2, 3) instead of one step with three writes.  The step lemmas of `Nano/InlPProof.lean` hold for `mnQ` with the
 same statements (`Nano/InlQProof.lean`), so `inlQ_eq` follows by close B's proof. -/
-import Nano.InlP
+import Legacy.Nano.InlP
 
 set_option linter.unusedSimpArgs false
 

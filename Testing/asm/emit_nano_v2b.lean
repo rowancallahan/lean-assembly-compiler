@@ -1,4 +1,4 @@
-import Nano.V2.Copy
+import Legacy.Nano.V2.Copy
 /- nano v2 small backend: words and cases for Testing/nano/v2_test.py (Testing/asm/ir-words/nv2_*, gitignored).
 cases line: input hex, status, expected output hex ("-" = empty). Expected = `Prog.eval` (the backend's meaning),
 checked equal to the ordinary-Lean `copyLean`. -/

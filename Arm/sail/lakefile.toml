@@ -20,14 +20,14 @@ roots = ["Spec"]
 [[lean_lib]]
 name = "Compiler"
 srcDir = "../.."
-roots = ["Compiler"]
-# Lean 4.34: `Compiler/Opt/Flow.lean` (written on 4.29) needs the old isDefEq transparency (as in Arm/apc)
+roots = ["Nano.Base.Compiler"]
+# Lean 4.34: `Nano/Base/Compiler/Opt/Flow.lean` (written on 4.29) needs the old isDefEq transparency (as in Arm/apc)
 moreLeanArgs = ["-Dweak.backward.isDefEq.respectTransparency=false"]
 
 [[lean_lib]]
 name = "Nano"
 srcDir = "../.."
-roots = ["Nano"]
+roots = ["Nano.V2Self", "Nano.Base.V2", "Nano.Base.Riscv"]
 
 # the Sail step lemmas (Arm/proofs/Arm, built by check.sh there; here as a lake library)
 [[lean_lib]]

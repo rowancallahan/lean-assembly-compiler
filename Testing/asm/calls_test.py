@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests of the call compiler's clients (`Riscv/Examples/CallExamples.lean`; words from `Testing/asm/emit_calls.lean`
+"""Tests of the call compiler's clients (`Nano/Base/Riscv/Examples/CallExamples.lean`; words from `Testing/asm/emit_calls.lean`
 in `Testing/asm/calls-words/`) on QEMU and on the Sail C emulator.
 
 Each case: its own input bytes, 8-aligned 8-byte output, and a stack of exactly `space` bytes (the bound of the

@@ -1,6 +1,6 @@
-import Riscv.Frontx.S3IO
-import Riscv.Back.S3Top
-import Nano.ParseS3
+import Legacy.Riscv.Frontx.S3IO
+import Legacy.Riscv.Back.S3Top
+import Legacy.Nano.ParseS3
 namespace P
 open Nano Nano.PB Nano.PS
 def dl (bs : List UInt8) : List UInt8 := match decLS bs with | some (_, ts) => [u8N ts.length] | none => []

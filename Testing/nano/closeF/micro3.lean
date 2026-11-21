@@ -1,7 +1,7 @@
-import Nano.InlP
-import Nano.PgStage
-import Riscv.Frontx.WpBridge
-import Nano.WpSpill
+import Legacy.Nano.InlP
+import Legacy.Nano.PgStage
+import Legacy.Riscv.Frontx.WpBridge
+import Legacy.Nano.WpSpill
 namespace Nano.Mic
 open Proven Proven.WA Proven.WP Proven.Top.Alloc
 -- 8: guard i + 2 < size, 3 reads

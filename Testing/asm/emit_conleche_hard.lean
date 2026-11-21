@@ -3,7 +3,7 @@ Lean: `lake env lean --tstack=4000000 Testing/asm/emit_conleche_hard.lean`, then
 `python3 Testing/asm/frontx_test.py check 50 hard_<name>`.  Expressions from `emit_expr.lean`'s generator plus the
 cases each function distinguishes (the constants it compares with, nested literals, `∀` chains).  Work block:
 the theorem's bound with this input's cells (`Pg.al`). -/
-import Riscv.Frontx.ConLecheHard
+import Legacy.Riscv.Frontx.ConLecheHard
 
 open Proven Proven.Frontx.ExprEx Proven.Frontx.ConLecheHard Proven.Frontx.IndEx
 

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Self-run of `Nano.SelfHost.binary` (NANO_MANIFEST "Self-run"). Sources: the nano corpus (CORPUS + INT_CORPUS), R random
+"""Self-run of `Legacy.Nano.SelfHost.binary` (NANO_MANIFEST "Self-run"). Sources: the nano corpus (CORPUS + INT_CORPUS), R random
 UInt64 and R random Int64 programs, B large random programs. `emit_selfrun.lean` writes the PROVEN words (`binaryC`,
 `binaryC_eq : binary = binaryC`), the words of its 2b and inliner components, and per source: expected = code of
 `nanoCompileA (nanoElab src)`, the intermediate results, K0.
 1. 2b and inliner alone on QEMU (input/expected from Lean): work W doubled until the stage's OOM flag is clear (the IR
    stages' flag is exact at memoryNeeded, Testing/asm/ir_test.py); then output, a1, a0, gp/sp, guards checked.
-2. The linked binary on QEMU, work space5 K (Nano/SelfHostFinal.lean), K = max(K0, W(2b), W(inliner)): output = expected,
+2. The linked binary on QEMU, work space5 K (Legacy/Nano/SelfHostFinal.lean), K = max(K0, W(2b), W(inliner)): output = expected,
    a1 = its length, a0 != -1, gp/sp restored, guards intact. One run per source (no retry).
 3. Sail smoke on S sources (also: every write lands in the output or work block).
 4. lexA alone (`nano_lexA`, expected `stage2a (lexB src)`, exact memoryNeeded) through ir_test.py: QEMU bulk + Sail.

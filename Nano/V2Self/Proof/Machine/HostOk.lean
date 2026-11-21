@@ -85,7 +85,7 @@ theorem host_ok (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List DefA}
       rw [Nat.mod_eq_of_lt (show call.workLength < 2 ^ 64 by omega), Nat.mod_eq_of_lt (by omega)]
     simp only [UInt64.toNat_shiftLeft, UInt64.toNat_shiftRight, this]
     simp [Nat.shiftLeft_eq, Nat.shiftRight_eq_div_pow, E0]; omega
-  let KL : LayW := ⟨base, T.words Cj, wb, E0, call.inputAddress.toNat, x.length, call.outputAddress.toNat,
+  let KL : LayW := ⟨base, wb, E0, call.inputAddress.toNat, x.length, call.outputAddress.toNat,
     y.length, T.m0 s⟩
   have hb4 : 4 * Cj.length ≤ 2 ^ 20 := by omega
   obtain ⟨vs, H', hSd⟩ := hS Tb
@@ -97,7 +97,7 @@ theorem host_ok (L : T.Laws) (c : List UInt8) {ts : List UInt64} {p : List DefA}
   rw [hSem] at hSem'; cases hSem'
   obtain ⟨s3, h3, c31, kp, -, e1, e8, e10, e11, hby⟩ := hcont (by rw [x13]; omega) (by rw [x13, x12]; omega)
     (fun i hi => by rw [x13]; exact Or.inr ⟨by simp [KL], by simp [KL]; omega⟩)
-  obtain ⟨hl, hR0⟩ := enter L sc hld KL rfl rfl rfl rfl (by simp [KL, E0]; omega) rfl rfl rfl hy hv
+  obtain ⟨hl, hR0⟩ := enter L sc hld KL rfl rfl rfl (by simp [KL, E0]; omega) rfl rfl rfl hy hv
   obtain ⟨s', r1, R1⟩ := sim_star L hl h3 hR0
   have hra : (s3.x 1).toNat % 4 = 0 := by rw [e1, j1]; exact sc.returnAligned
   obtain ⟨s4, r2, pc4, q10, q11, kept, bytes, frame, cfg⟩ := fin_on L hl R1 c31 hra kp e8 rfl wb

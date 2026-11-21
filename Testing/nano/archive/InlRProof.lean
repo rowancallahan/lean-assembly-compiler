@@ -3,7 +3,7 @@ table stays below `2^17 - 1` bytes (`inlFitsR`).  `Q`'s main loop simulates clos
 state) record by record; the invariant is close B's `Inv` with cells packed as `start · 2^17 + length`. -/
 import Nano.InlR
 import Nano.InlRP
-import Nano.InlPProof
+import Legacy.Nano.InlPProof
 
 set_option linter.unusedSimpArgs false
 

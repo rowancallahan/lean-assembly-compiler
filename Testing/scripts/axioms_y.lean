@@ -1,4 +1,4 @@
-import Riscv.Frontx.HofExamples
+import Legacy.Riscv.Frontx.HofExamples
 #print axioms Proven.Frontx.Hof.nonFindGt3.implements1
 #print axioms Proven.Frontx.Hof.nonFindGt3.hof
 #print axioms Proven.Frontx.Hof.findGt3.implements1

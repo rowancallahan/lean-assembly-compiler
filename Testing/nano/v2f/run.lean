@@ -1,5 +1,5 @@
-import Nano.V2.Front
-import Nano.V2.Gen
+import Legacy.Nano.V2.Front
+import Nano.Base.V2.Gen
 /- nano v2 front end test runner: `lake env lean --run Testing/nano/v2f/run.lean INPUTS OUTDIR? FILE...`
 Per FILE: `frontElabK 64`; prints `name REJECT` or `name i hex` per input (hex of the output, `E<status>` on error);
 with OUTDIR ≠ "-": writes OUTDIR/nv2f_<name>.words/.cases for Testing/nano/v2b_test.py. -/

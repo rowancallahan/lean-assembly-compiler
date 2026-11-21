@@ -1,7 +1,7 @@
-import Compiler.S3.Front
-import Riscv.Back.S3Top
-import Nano.ParseS3B
-import Compiler.S3.CertBytes
+import Legacy.Compiler.S3.Front
+import Legacy.Riscv.Back.S3Top
+import Legacy.Nano.ParseS3B
+import Legacy.Compiler.S3.CertBytes
 namespace P
 open Proven.S3
 def lm (bs : List UInt8) : List UInt8 := match bs with | a :: _ => Nano.PS.le8 (a.toUInt64 * 77777) | [] => []

@@ -20,14 +20,14 @@ built nor used.
 
 | file | what |
 |---|---|
-| `Apc/Mach.lean` | `apc (L : Lay) : Machine`: all 9 laws of `Compiler/Iface.lean` on their `Arm64.Step` (`runsTo` = `Steps` to a state; `ok` = Running + code range executable + data range readable/writable; `writable` = data range; `keep` = sp and every register outside the abstract ones x0..x7, x9..x15, i.e. x8, x16..x30). `li` = `movz` (+ 3 `movk`), `bz` = `cbz` (`n < 2^18`), `jmp` = `b` (`0 < n ≤ 2^25`) |
+| `Apc/Mach.lean` | `apc (L : Lay) : Machine`: all 9 laws of `Nano/Base/Compiler/Iface.lean` on their `Arm64.Step` (`runsTo` = `Steps` to a state; `ok` = Running + code range executable + data range readable/writable; `writable` = data range; `keep` = sp and every register outside the abstract ones x0..x7, x9..x15, i.e. x8, x16..x30). `li` = `movz` (+ 3 `movk`), `bz` = `cbz` (`n < 2^18`), `jmp` = `b` (`0 < n ≤ 2^25`) |
 | `Apc/Sym.lean` | symbolic-immediate decoding: a template word (literal opcode bits ++ symbolic fields) is decoded by `simp`, each opcode test decided from the known bits (`tst_false`/`tst_true`/`tst_eq`); `movz`/`movk` (any chunk), `b`/`bl` (26-bit), `cbz`/`b.cond` (19-bit); `li4` (`movz`+3 `movk` = the constant), `off_fwd`/`off_back` |
 | `Apc/Mem8.lean` | 8-byte memory: `read64`/`write64` against our byte view (`Mem.wr`, `le8`), `Pres` (stores keep permissions), stores never touch executable bytes (`w64_code`) |
 | `Apc/Frame.lean` | `apcF L : MachineF` (frame register x28; `enter n` = `sub x9, sp, #8(n+1); str x28, [x9]; mov x28, x9; str xzr, [x28, #8(j+1)]…`, `leave` = `ldr x28, [x28]`, slots `[x28, #8(j+1)]`, `ld`/`sd` = `ldr`/`str [xa]`; frame `[sp - 8(n+1), sp)`, `enterOK`: n ≤ 16, sp 8-aligned, frame in the data range) |
-| `Apc/Msort.lean` | `msort_apc`: the branchy merge sort `msortProgB` (`Riscv/Examples/MsortB.lean`, source proof staged unchanged) = `List.mergeSort`, through `MachineF.compBF_ok` |
+| `Apc/Msort.lean` | `msort_apc`: the branchy merge sort `msortProgB` (`Nano/Base/Riscv/Examples/MsortB.lean`, source proof staged unchanged) = `List.mergeSort`, through `MachineF.compBF_ok` |
 | `Apc/Call.lean`, `Apc/Calls.lean` | `apcC L : MachineC` (`call` = `bl` (±2^25 words), link x30; `enterC` = `sub x28, x28, #8(n+1); str x30, [x28]`; `leaveC` = `ldr x30, [x28]; add x28, …`; `stA` = `stur [x28, #-8m]`); `ImplementsA` (the ARM analogue of `ImplementsW`), `callsCode_implements_apc`, `sumTo_apc`, `fib_apc`, `isEven_apc`, `treeEval_apc` (source proofs of `Riscv/Examples/{CallExamples,TreeEval}.lean` staged unchanged; `wf_apc` checks well-formedness by evaluation) |
 | `Apc/WideDec.lean`, `Apc/Wide.lean` | `apcw L : Wide`, `apcwF L : WideF`: every wide operation with ARBITRARY registers (register fields decoded by enumeration, `decide +kernel`, ≈ 5 min; branch offsets symbolic). `immOK = false` (immediates go through the scratch register), `offOK off := off = 0` (the only offset the selection emits), `br` = `cmp; b.cond` (fwd `1 ≤ n ≤ 2^18`, back `n < 2^18`), `jmp` = `b` |
-| `Apc/Opt.lean` | `compBFOA L N bv wv p` = the optimised words (`WideF.optB` over `apcwF`, register assignment by the untrusted search of `Riscv/Back/OptB.lean`, staged) or the `compBF` words; `compBFOA_ok` (conclusion of `compBF_ok`); `optB_L` (optimised words independent of the layout); `msortO_apc`; CRC-32: `crc_apc_of`, `crc_apc` (unoptimised), `crcO_apc` (optimised; source proof `crcP_exec` staged) |
+| `Apc/Opt.lean` | `compBFOA L N bv wv p` = the optimised words (`WideF.optB` over `apcwF`, register assignment by the untrusted search of `Nano/Base/Riscv/Back/OptB.lean`, staged) or the `compBF` words; `compBFOA_ok` (conclusion of `compBF_ok`); `optB_L` (optimised words independent of the layout); `msortO_apc`; CRC-32: `crc_apc_of`, `crc_apc` (unoptimised), `crcO_apc` (optimised; source proof `crcP_exec` staged) |
 | `cut.py` | stage helper: drops the RISC-V-only `_wf`/`_implements` theorems of an example file |
 | `Apc/Stack.lean` | `compile_apc` (expressions), `gcd_apc` (loop), `sort_apc` (insertion sort = `List.mergeSort`, region form) from `Machine.compile_ok` / `compF_ok` / `compAF_ok` |
 | `Apc/Flags.lean`, `Apc/Agree.lean`, `Apc/AgreeAll.lean` | `agree_emitted`: on each of the 216 words of `emitted`, their `evalInst` = our small machine `armStep` (x0..x30, NZCV), PC + 4, mem/sp/status unchanged. NZCV identities by hand (no `bv_decide`) |
@@ -105,7 +105,7 @@ Instances: **`gcd_sail`** (33 words) and **`sort_sail`** (92 words, `ldrb`/`strb
 | `Proven.Apc.apcw`, `apcwF` | `Wide`, `WideF` (any registers) | same three |
 | `Proven.Apc.compBFOA_ok` | the optimising spill-slot compiler (search + `optB`, fallback `compBF`) | same three |
 | `Proven.Apc.msortO_apc` | optimised branchy merge sort = `List.mergeSort` | same three |
-| `Proven.Apc.crc_apc_of`, `crc_apc`, `crcO_apc` | CRC-32 (`crc32` of `Riscv/Examples/Crc.lean`), unoptimised and optimised words | same three |
+| `Proven.Apc.crc_apc_of`, `crc_apc`, `crcO_apc` | CRC-32 (`crc32` of `Nano/Base/Riscv/Examples/Crc.lean`), unoptimised and optimised words | same three |
 
 **The interface change (upstream since 2026-11-15; was `mid.patch`).** DeepMind's memory refuses stores to bytes that are not `w ∧ ¬x`
 (`Memory.canWrite`), so code bytes are never writable. The store laws of `MachineF` (`law_stS`, `law_sd`), `MachineC`

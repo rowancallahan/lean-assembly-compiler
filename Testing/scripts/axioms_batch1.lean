@@ -1,5 +1,5 @@
-import Riscv.Frontx.SvgS2
-import Riscv.Frontx.BookS4
+import Legacy.Riscv.Frontx.SvgS2
+import Legacy.Riscv.Frontx.BookS4
 #print axioms Proven.Frontx.SvgS2.ptNegE.implements1
 #print axioms Proven.Frontx.SvgS2.ptAddXE.implements1
 #print axioms Proven.Frontx.SvgS2.ptAddYE.implements1

@@ -1,5 +1,5 @@
-import Nano.InlP
-import Riscv.Frontx.WpCmd
+import Legacy.Nano.InlP
+import Legacy.Riscv.Frontx.WpCmd
 namespace Nano.IP
 open Proven.WA
 def inlE (xs : ByteArray) : ByteArray :=

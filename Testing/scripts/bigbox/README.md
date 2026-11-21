@@ -29,7 +29,6 @@ Knobs (environment variables):
 | `JOBS` | RAM in GB / 14 | concurrent Lean processes for the ARM model builds (one V8Base or SysregsAutogen process needs about 12–13 GB) |
 | `NOSVE` | 1 if RAM ≥ 48 GB | run step 3b |
 | `STEPS` | all | subset, e.g. `STEPS="1 6a 6b"` |
-| `RV_CACHE` | 0 | 1 = take the RISC-V model's oleans from the repo's `build-cache` branch instead of building it (faster, but trusts those oleans) |
 | `OCAML` | `ocaml-base-compiler.4.14.2` | the OCaml for the Sail opam switch (`OPAMSWITCH`, default `bigbox-sail`) |
 | `REPO_URL` | the GitHub repo | where to clone from |
 
@@ -40,14 +39,14 @@ The header of `verify.sh` lists every directory.
 ## The steps
 | step | what it does | PASS means |
 |---|---|---|
-| 1 | Installs elan, Lean 4.34.1 and 4.29.0, and an opam switch. Clones `opencompl/sail-riscv-lean` @ `51c635c` and `google-deepmind/code-verification` @ `b0f729a`. Asserts that the Sail / sail-arm pins in `Arm/gen/regen.sh` and the dependency pins are the ones in `MODEL_PROVENANCE.md`. | toolchains present; all pins agree |
+| 1 | Installs elan, Lean 4.34.1 and an opam switch. Clones the regenerated RISC-V model (this repo's branch `deps-rv-regen434` @ `4cf120c8`, MODEL_PROVENANCE §4) and `google-deepmind/code-verification` @ `b0f729a`. Asserts that the Sail / sail-arm pins in `Arm/gen/regen.sh` and the dependency pins are the ones in `MODEL_PROVENANCE.md`. | toolchains present; all pins agree |
 | 2 | Runs `Arm/gen/regen.sh`: Sail @ `ef5dca5` + `patches/sail/0001-lean-backend-fixes.patch`, built with opam; sail-arm @ `5416ef6`; `make gen_lean` with `--lean-partial-function Reduce__1`. Byte-compares every generated `.lean` with the committed `Arm/model`. | the committed model is exactly what the pinned generator produces |
 | 3 | Builds the committed `Arm/model` as generated: no partition, every module, with `rssmon.py`. | the unsplit model compiles; `rss-unsplit.txt` has time and peak RSS per module |
 | 3b | (optional, ≥ 48 GB) Same generator with the SVE if-chain split disabled (`if_chain_min = max_int`). Rebuilds the changed modules (expected: `DecodeEnd`) and dumps their fingerprints. | the split is not needed to compile; `dump-nosve.txt` against `dump-unsplit.txt` shows what the split changes (expected: the 11 `__DecodeA64_SVE_tail*` helpers and `__DecodeA64_SVE`'s value) |
 | 4 | Against the unsplit model, with no proof edits: `Arm/proofs/check.sh`, `Arm/apc/check.sh` (the Sail↔DeepMind bridges), and `Arm/sail` (`C_correct_armSail` / `C_runs_armSail`) if that directory exists at the commit. Checks every `#print axioms`. | all build; every axiom set ⊆ {propext, Classical.choice, Quot.sound}; a missing `Arm/sail` is stated in the note |
 | 5 | Partitions the committed model (`Arm/gen/partition.py`, the layout the ARM proofs normally use), builds it, and dumps (name, kind, universes, type hash, value hash) of every `Armv9.*` constant from both builds (`Arm/gen/dump_hashes.lean`). | the two dumps are identical, so the partition changed no definition. ARM_FAST.md §9 recorded the partitioned dump as 45,241 rows, sha256 `76a23330…`; the note prints this run's |
 | 6a | DeepMind model: `lake build Blocks.ArmDMTop Blocks.AxiomsDM` in `Arm/apc` (Lean 4.34.1). | `C_correct_armDM` / `C_runs_armDM` use only the standard axioms |
-| 6b | RISC-V: builds the Sail RISC-V model from source (4.29.0), then all of `Nano/V2Self`, then `Testing/scripts/review_axioms.sh`. | the REVIEW theorems' axioms equal the pinned list (standard + the RISC-V model's platform/float opaques) |
+| 6b | RISC-V: builds the regenerated RISC-V model from source (4.34.1), then all of `Nano/V2Self`, then `Testing/scripts/review_axioms.sh`. | the REVIEW theorems' axioms equal the pinned list (standard + the RISC-V model's platform/float opaques) |
 
 Order of execution: 1, 6a, 6b, 2, 3, 3b, 4, 5. A step whose input step did not PASS is SKIPped and names that step.
 Steps 3 and 3b move `armv9-lean` to point at the unsplit build. That is the point of step 4: the proofs, normally
@@ -65,3 +64,7 @@ checked against the partitioned model, are rechecked against the model exactly a
 See the commit message of the kit and `Testing/notes/MODEL_PROVENANCE.md`. Steps 3, 3b, 4 and 5 need the full ARM
 model build, which does not fit in 15 GB (`SysregsAutogen` unsplit was killed at 13.2 GB, ARM_FAST.md §9). Only their
 script logic was reviewed, not run.
+
+**Since `release-434`** (everything on Lean 4.34.1): step 1 pins the regenerated RISC-V model (`deps-rv-regen434` @
+`4cf120c8`), and step 6b runs on 4.34.1. `RV_CACHE` was removed, because `build-cache` holds 4.29 oleans of the old
+model. The dry run on `nano-v2-src` (d0487860) used the old layout: steps 1, 2, 6a and 6b PASS there.

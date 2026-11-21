@@ -1,5 +1,5 @@
-import Riscv.Frontx.Machine
-import Riscv.Frontx.PairExamples
+import Legacy.Riscv.Frontx.Machine
+import Legacy.Riscv.Frontx.PairExamples
 #print axioms Proven.Frontx.implements1_of_frontx
 #print axioms Proven.Frontx.implements1_res
 #print axioms Proven.Frontx.Ex.crcRaw.implements1

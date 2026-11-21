@@ -3,10 +3,10 @@
 code the machine theorems are about), per case: input, the SPEC function executed in Lean (`stage2`, `inlB`, not
 the S3 forms), `memoryNeeded` (the IR interpreter, its output checked against the spec). Driver:
 `python3 Testing/nano/ps3_test.py`. Helpers copied from `Testing/asm/emit_s3rec.lean`. -/
-import Riscv.Back.IrTarget
-import Compiler.Ir.Lin
-import Nano.InlS3Self
-import Nano.ParseBGas
+import Legacy.Riscv.Back.IrTarget
+import Legacy.Compiler.Ir.Lin
+import Legacy.Nano.InlS3Self
+import Legacy.Nano.ParseBGas
 open Proven.Ir Proven.Mach.Riscv Proven.Top.Alloc
 open Proven.S3
 

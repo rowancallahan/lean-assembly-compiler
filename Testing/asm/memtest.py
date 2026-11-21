@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Test of `compileStore` (Riscv/Direct/MemCompiler.lean). Input: output of memtest-data/memtest.lean.
+"""Test of `compileStore` (Nano/Base/Riscv/Direct/MemCompiler.lean). Input: output of memtest-data/memtest.lean.
 For every case and input, the code is called with a0..a3 = inputs and s1 = &slot[i] (16-byte slots,
 pre-filled with 0x55): Lean `e.denote` == the 8 bytes stored by the code on QEMU == on the Sail C emulator,
 the 8 guard bytes after each slot stay 0x55 (QEMU), and the Sail emulator's only data writes are the slots.

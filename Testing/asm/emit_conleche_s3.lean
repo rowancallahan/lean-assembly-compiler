@@ -2,7 +2,7 @@
 executed Lean: `lake env lean --tstack=4000000 Testing/asm/emit_conleche_s3.lean`, then
 `python3 Testing/asm/frontx_test.py check 50 s3_classbinder` (and `s3_whnfeasy`). The generators are those of
 `Testing/asm/emit_expr.lean`. -/
-import Riscv.Frontx.ConLecheS3
+import Legacy.Riscv.Frontx.ConLecheS3
 
 open Proven Proven.Frontx.ExprEx
 

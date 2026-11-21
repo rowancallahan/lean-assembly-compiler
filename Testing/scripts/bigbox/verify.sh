@@ -6,7 +6,7 @@
 # Layout (WORK, default ~/bigbox). The repo's lakefiles reach their dependencies by RELATIVE paths, so the checkout
 # must sit next to them:
 #   WORK/repo                 clone of the repo, detached at COMMIT (lakefile.toml: ../deps/sail-riscv-lean)
-#   WORK/deps/sail-riscv-lean opencompl/sail-riscv-lean @ 51c635c, built from source on 4.29.0
+#   WORK/deps/sail-riscv-lean the regenerated RISC-V model: this repo's branch deps-rv-regen434 @ 4cf120c8, built on 4.34.1
 #   WORK/deps/code-verification  google-deepmind/code-verification @ b0f729a (Arm/apc: ../../../deps/...)
 #   WORK/regen-work, WORK/regen/armv9   step 2 (Sail + sail-arm checkouts, regenerated model)
 #   WORK/armv9-unsplit        step 3: the committed Arm/model, built as is (no partition)
@@ -23,8 +23,7 @@
 # Quot.sound, and at least one such line must exist (step 6 RISC-V: the pinned list, review_axioms.sh instead).
 #
 # Knobs: WORK, JOBS (concurrent lean processes for model builds; default = GB of RAM / 14, at least 1),
-# NOSVE=0|1 (step 3b; default 1 if RAM >= 48 GB), STEPS (default "1 2 3 3b 4 5 6a 6b"), REPO_URL, RV_CACHE=1 (take the RISC-V model's oleans from the
-# repo's build-cache branch instead of building it; faster, but trusts those oleans).
+# NOSVE=0|1 (step 3b; default 1 if RAM >= 48 GB), STEPS (default "1 2 3 3b 4 5 6a 6b"), REPO_URL.
 set -euo pipefail
 [ $# -eq 1 ] || { echo "usage: $0 COMMIT" >&2; exit 2; }
 COMMIT=$1
@@ -34,7 +33,7 @@ MEM_GB=$(awk '/MemTotal/ {print int($2/1048576)}' /proc/meminfo)
 JOBS=${JOBS:-$(( MEM_GB / 14 > 0 ? MEM_GB / 14 : 1 ))}
 NOSVE=${NOSVE:-$([ "$MEM_GB" -ge 48 ] && echo 1 || echo 0)}
 # pins (asserted against MODEL_PROVENANCE.md / the repo's scripts in step 1)
-RV_REPO=https://github.com/opencompl/sail-riscv-lean; RV_REV=51c635c460125ac87955d061fcd902ce03b8011f
+RV_BRANCH=deps-rv-regen434; RV_REV=4cf120c8ea5cccd46b488b00f7a0335d17e43c51   # MODEL_PROVENANCE.md §4 (release-434)
 CV_REPO=https://github.com/google-deepmind/code-verification; CV_REV=b0f729accbc21a0413e7ca4e1da43fa45b5f2e1b
 export PATH=$HOME/.elan/bin:$PATH
 export OPAMSWITCH=${OPAMSWITCH:-bigbox-sail} OPAMYES=1
@@ -74,20 +73,20 @@ axioms() { python3 "$K/axioms.py" "$@"; }   # axioms.py LOG...: FAIL unless ever
 # ---- 1. toolchains, dependency checkouts, pin assertions
 s1() {
   command -v elan || { curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none; }
-  elan toolchain install leanprover/lean4:v4.34.1; elan toolchain install leanprover/lean4:v4.29.0
+  elan toolchain install leanprover/lean4:v4.34.1
   # pins: regen.sh is the single source of the ARM ones; MODEL_PROVENANCE.md must name the same commits
   local P=$R/Testing/notes/MODEL_PROVENANCE.md
   SAIL_REV=$(sed -n 's/^SAIL_REV=\([0-9a-f]*\).*/\1/p' "$G/regen.sh"); ARM_REV=$(sed -n 's/^ARM_REV=\([0-9a-f]*\).*/\1/p' "$G/regen.sh")
   for h in "$SAIL_REV" "$ARM_REV" "$RV_REV" "$CV_REV"; do grep -q "${h:0:7}" "$P" || { echo "pin $h not in MODEL_PROVENANCE.md"; exit 1; }; done
   grep -q "${CV_REV:0:7}" "$R/Arm/apc/check.sh"
-  [ "$(cat "$R/lean-toolchain")" = leanprover/lean4:v4.29.0 ]; [ "$(cat "$R/Arm/model/lean-toolchain")" = leanprover/lean4:v4.34.1 ]
+  [ "$(cat "$R/lean-toolchain")" = leanprover/lean4:v4.34.1 ]; [ "$(cat "$R/Arm/model/lean-toolchain")" = leanprover/lean4:v4.34.1 ]
   # opam switch for Sail (OCaml from opam; Sail's own deps are installed by regen.sh)
   command -v opam || { echo "install opam, z3, libgmp-dev, pkg-config, build-essential first (README)"; exit 1; }
   command -v z3
   [ -d "$HOME/.opam" ] || opam init --bare --disable-sandboxing -n
   opam switch list -s | grep -qx "$OPAMSWITCH" || opam switch create "$OPAMSWITCH" "${OCAML:-ocaml-base-compiler.4.14.2}"
   # dependency checkouts at their pins (full clones; the checkout is verified, not trusted)
-  [ -d "$WORK/deps/sail-riscv-lean/.git" ] || git clone -q "$RV_REPO" "$WORK/deps/sail-riscv-lean"
+  [ -e "$WORK/deps/sail-riscv-lean/.git" ] || git clone -q -b "$RV_BRANCH" --single-branch "$REPO_URL" "$WORK/deps/sail-riscv-lean"
   git -C "$WORK/deps/sail-riscv-lean" checkout -q "$RV_REV"
   [ -d "$WORK/deps/code-verification/.git" ] || git clone -q --filter=blob:none "$CV_REPO" "$WORK/deps/code-verification"
   git -C "$WORK/deps/code-verification" checkout -q "$CV_REV"
@@ -186,7 +185,7 @@ s5() {
   echo "identical: $nu constants; $ref" > "$NOTE"
 }
 
-# ---- 6. cheap: DeepMind ArmDMTop axioms (4.34.1), RISC-V REVIEW axioms against the pinned list (4.29.0)
+# ---- 6. cheap: DeepMind ArmDMTop axioms, RISC-V REVIEW axioms against the pinned list (all Lean 4.34.1)
 s6a() {
   need 1
   ( cd "$WORK/deps/code-verification/arm64-semantics/Arm64" && lake build -q )
@@ -196,20 +195,17 @@ s6a() {
 }
 s6b() {
   need 1
-  if [ "${RV_CACHE:-0}" = 1 ]; then
-    git -C "$R" fetch -q origin build-cache
-    git -C "$R" show origin/build-cache:sail-riscv-lean.tar.zst | zstd -dc | tar xf - -C "$WORK/deps"
-    git -C "$WORK/deps/sail-riscv-lean" checkout -q "$RV_REV"
-  fi
-  ( cd "$WORK/deps/sail-riscv-lean" && lake build )            # the model, from source unless RV_CACHE=1
+  [ -z "${RV_CACHE:-}" ] || { echo "RV_CACHE is gone: build-cache holds Lean 4.29 oleans of the old model"; exit 1; }
+  [ "$(git -C "$WORK/deps/sail-riscv-lean" rev-parse HEAD)" = "$RV_REV" ]
+  ( cd "$WORK/deps/sail-riscv-lean" && lake build )            # the regenerated model, from source
   ( cd "$R" && lake build $(cd "$R" && find Nano/V2Self -name '*.lean' | sed 's|/|.|g; s|\.lean$||') )
   ( cd "$R" && Testing/scripts/review_axioms.sh ) | tee "$OUT/s6b-review.log"
-  grep -q '^OK:' "$OUT/s6b-review.log"; echo "$(grep '^OK:' "$OUT/s6b-review.log")$([ "${RV_CACHE:-0}" = 1 ] && echo ' (model oleans from build-cache)')" > "$NOTE"
+  grep -q '^OK:' "$OUT/s6b-review.log"; echo "$(grep '^OK:' "$OUT/s6b-review.log") (model $(Testing/scripts/model_hash.sh "$WORK/deps/sail-riscv-lean" | cut -c1-8)…)" > "$NOTE"
 }
 
 run 1   "toolchains + pins"                 s1
 run 6a  "DeepMind ArmDMTop axioms (4.34.1)" s6a
-run 6b  "RISC-V review_axioms (4.29.0)"     s6b
+run 6b  "RISC-V review_axioms (4.34.1)"     s6b
 run 2   "ARM model regeneration, byte-compare" s2
 run 3   "unsplit ARM model build (time/RSS)"  s3
 run 3b  "variant without SVE split"         s3b

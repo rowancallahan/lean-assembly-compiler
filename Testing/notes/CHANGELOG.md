@@ -41,7 +41,7 @@ previous baseline's toolchain(s) and on the new one.
 
 ## Benchmark entry (vs baseline B1, no compiler/shim/Spec change)
 
-- Added `Testing/notes/BENCH.md` and `Testing/nano/v2self/bench/` (run_bench.sh, profile_self.sh, nanorun_prof.c = run/nanorun.c
+- Added `Testing/notes/BENCH.md` and `Testing/bench/nano-compile/` (run_bench.sh, profile_self.sh, nanorun_prof.c = run/nanorun.c
   plus an optional `NANORUN_PROF` per-word count, make_inputs.py, profile_regions.py, synth_scaling.py, results/).
 - Checked: self-compile = 1,454,349,112 instructions (plain and profiling build), output = B2.bin byte for byte.
 - Findings: run costs are linear in input size (no superlinear growth); compile cost is superlinear in the number of defs
@@ -104,7 +104,7 @@ measured or not recorded in the repo; none is estimated.
     507 jobs, standard 3 axioms).
 - **B. RISC-V model regenerated on 4.34.1** (branch `rv-regen-434`): Sail `97aa617dc` on sail-riscv `b7d1357`, lean-sail `v10`.
   All 160 modules build on 4.34.1 (598 s serial, peak 2.9 GB). `C_correctLO` / `C_runsO` (REVIEW) and
-  `Testing/scripts/review_axioms.sh` on this model: TBD (result of the merged tree, see the check below). The generated source
+  `Testing/scripts/review_axioms.sh` on this model: PASS on the merged tree (`OK: 8 theorems, axioms as pinned`; release check below). The generated source
   differs in substance from the trusted model: 842 constants changed vs the 4.29 model (raw), 222 values differ after
   normalization (160 short-circuit `&&`/`||` with effects, `read_CSR`/`write_CSR` match to if-chain, `round_down`/`round_up`),
   no kernel proof that old and new compute the same function (`Testing/notes/RV_REGEN_434.md` §3). Repo-side proof fixes:
@@ -137,10 +137,43 @@ measured or not recorded in the repo; none is estimated.
 - `Arm/sail` needs the partitioned model at a fixed relative path, built by `Arm/gen/partition.py` + `build_part.sh`
   (about 2 h on a 15 GB box). Do not run `lake update` there.
 - The regenerated RISC-V model is not the trusted model of B1; the 4.29 model stays on `main` until part B is merged.
-- The REVIEW axiom lists (`review_axioms.txt`) include the RISC-V model's opaque platform/float declarations (B1: pinned); the list on the regenerated model: TBD.
+- The REVIEW axiom lists (`review_axioms.txt`) include the RISC-V model's opaque platform/float declarations (B1: pinned); on the regenerated model the list is the same: 77 names (74 model opaques + the standard 3), `review_axioms.txt` unchanged from B1.
 - Unproven glue as before: shims, `nanorun`, `rv2arm.sh`, the QEMU runs.
 
 ### Release check
 `Testing/scripts/release_check.sh` runs every gate (toolchain files, `Spec/` hash, forbidden words including `admit`, `lake build`,
 REVIEW axioms, ArmDMTop, ArmSail, model hashes, fixpoint B2 -> B3 and B1 -> B2 -> B3, examples, `cross_check.sh`) and prints a
-PASS/FAIL/SKIP table; a SKIP is not a pass. Result on the release tree: TBD.
+PASS/FAIL/SKIP table; a SKIP is not a pass.
+
+**Result (O, independent, 2026-11-20).** Fresh clone of `234d4ff5`, Lean 4.34.1, one 15 GB / 4-core container.
+Inputs:
+* models: RISC-V = `deps-rv-regen434` @ `4cf120c8` (`model_hash` `6ac35da9…`, 161 files, recomputed);
+  DeepMind = `b0f729a`; Sail ARM = partitioned model built from scratch here (131 jobs, 6,387 s, peak 12.3 GB;
+  tree identical to the Sail agent's);
+* tools: qemu-user and gcc-aarch64 installed from Ubuntu packages.
+
+| gate | 234d4ff5 | note |
+|---|---|---|
+| toolchain | PASS | 4 `lean-toolchain` files = 4.34.1 |
+| spec | PASS | `Spec/` = FROZEN.sha256 (11 files) |
+| words | PASS | 950 files, no sorry/admit/native_decide/bv_decide |
+| build | PASS | `lake build` default targets, cold, 3,489 s |
+| review | PASS | `OK: 8 theorems, axioms as pinned` (918 s) |
+| dm | PASS | `C_correct_armDM` / `C_runs_armDM`: standard 3 axioms |
+| sail | PASS | `C_correct_armSail` / `C_runs_armSail`: standard 3 axioms (1,325 s) |
+| hashes | **FAIL** → PASS at `f82172c6` | the regenerated RISC-V hash `6ac35da9…` was missing from MODEL_PROVENANCE.md; added in f82172c6 (docs only), where the gate passes with 4/4 models |
+| fix23 | PASS | B3 == B2 == checked-in B3 (sha256 `24759aa0…`, 340,296 B) |
+| fix1 | PASS | B1 → B2 == checked-in B2.bin, B3 == B2, regenerated files identical |
+| examples | PASS | 8 examples via QEMU (semrun not run) |
+| cross | PASS | `cross_check.sh` 8/8 |
+
+**sorryAx scan.**
+* A whole-environment scan (`Testing/scripts/sorry_scan.sh`) cannot import all modules at once:
+  * `Riscv.Examples.*` and `Cert`/`CertArm` define the same names;
+  * the CertArm run was killed by the 15 GB memory limit.
+* In its place, every module's messages were checked. Lean reports "declaration uses 'sorry'" for every declaration
+  that contains `sorry`, including goals admitted during error recovery. The logs checked:
+  * the cold default build;
+  * a replay of `lake build Nano.V2Self.REVIEW Chain434` (687 jobs, stored messages replayed);
+  * the Arm/sail and Arm/apc builds.
+* Result: **0 occurrences**. Every pinned top theorem's `#print axioms` is free of `sorryAx`.

@@ -1,5 +1,5 @@
-import Riscv.Back.S3Top
-import Riscv.Frontx.S3Examples
+import Legacy.Riscv.Back.S3Top
+import Legacy.Riscv.Frontx.S3Examples
 #print axioms Proven.S3.compile_runs
 #print axioms Proven.S3.compile_correct
 #print axioms Proven.S3.lower_meaning

@@ -5,7 +5,7 @@
 mode `cp`/`rem`); `2`: table cell `x` := the current body (`pk` = start · 2^21 + length, the length counting the
 arity byte); `3`: header cell `HD` := the current body, the next body starts here.  One step = one record or one
 copied byte; every step reads `ob` once and writes one cell (a call writes cell `x` its own value). -/
-import Nano.InlP
+import Legacy.Nano.InlP
 
 set_option linter.unusedSimpArgs false
 

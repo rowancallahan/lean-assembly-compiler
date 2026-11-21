@@ -3,7 +3,7 @@
 `Testing/asm/frontx-words/<name>.{words,cases}` in the format of `emit_frontx.lean` (`ind A B L` first line).
 Run: `lake env lean Testing/asm/emit_books1.lean`, then `python3 Testing/asm/frontx_test.py check 50 <name>`
 (QEMU + Sail; pending: run at merge). -/
-import Riscv.Frontx.BookS1
+import Legacy.Riscv.Frontx.BookS1
 open Proven Proven.Frontx
 
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s

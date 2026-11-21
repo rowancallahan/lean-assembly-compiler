@@ -2,8 +2,8 @@
 `frontx_test.py`: `wa_<name>.words` (first line `wa A N B L`: `8 (A + B n) + 8 (N + 1) + 7` work bytes, `L = 1`:
 byte-list result with its length in `a1`), `wa_<name>.cases` (input, result bytes computed by Lean).
 Run: `lake env lean --tstack=400000 Testing/asm/emit_wa.lean`. -/
-import Riscv.Frontx.WaMul
-import Riscv.Frontx.MixHash
+import Legacy.Riscv.Frontx.WaMul
+import Legacy.Riscv.Frontx.MixHash
 open Proven Proven.WA Proven.WA.LeanZip
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
 def hex2 (b : UInt8) : String := let s := String.ofList (Nat.toDigits 16 b.toNat); if s.length < 2 then "0" ++ s else s

@@ -1,8 +1,8 @@
-import Nano.V2Top
-import Nano.V2Agree
-import Nano.V2.Comp
-import Nano.V2.ABI
-import Nano.V2.Buf
+import Legacy.Nano.V2Top
+import Legacy.Nano.V2Agree
+import Legacy.Nano.V2.Comp
+import Legacy.Nano.V2.ABI
+import Legacy.Nano.V2.Buf
 #print axioms Nano.V2.nano_stack_correct
 #print axioms Nano.V2.nano_stack_runs
 #print axioms Nano.V2.eval_ofEx

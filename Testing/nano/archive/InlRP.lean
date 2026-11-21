@@ -7,7 +7,7 @@ def number of each closed def.  `[m, x]` (plain) ↦ `[0,0,m] [0,0,x]`; `[13, a]
 (the table record only for `n < 65536`); `[14, h]` ↦ nothing; `[15, l]` ↦ `[1, hi, l]` if the callee exists.
 
 `W`: `Q`'s output `a :: body` (or `[]`) to `wrap a body` (or `wrap 0 []`). -/
-import Nano.SerU
+import Legacy.Nano.SerU
 
 namespace Nano.IR
 open Nano Nano.U

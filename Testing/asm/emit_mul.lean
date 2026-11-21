@@ -1,7 +1,7 @@
 /- Words and cases of the list-front-end entry points with multiply / divide (`Riscv/Frontx/MulExamples.lean`,
 NOTES section 22) for `frontx_test.py` (`fx_<name>.words`: first line the slots, `fx_<name>.cases`).
 Run: `lake env lean --tstack=400000 Testing/asm/emit_mul.lean`. -/
-import Riscv.Frontx.MulExamples
+import Legacy.Riscv.Frontx.MulExamples
 open Proven Proven.Frontx Proven.Frontx.Mul
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
 def hex2 (b : UInt8) : String := let s := String.ofList (Nat.toDigits 16 b.toNat); if s.length < 2 then "0" ++ s else s

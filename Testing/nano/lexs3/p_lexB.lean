@@ -1,6 +1,6 @@
-import Compiler.S3.Front
-import Nano.ElabB
-import Nano.S3Stage
+import Legacy.Compiler.S3.Front
+import Legacy.Nano.ElabB
+import Legacy.Nano.S3Stage
 namespace Nano.LS
 set_option maxRecDepth 20000 in
 set_option maxHeartbeats 0 in

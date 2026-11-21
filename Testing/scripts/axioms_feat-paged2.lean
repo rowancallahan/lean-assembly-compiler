@@ -1,7 +1,7 @@
-import Riscv.Frontx.PgTop
-import Riscv.Frontx.WpLeanZip2
-import Riscv.Frontx.WpLeanZip3
-import Riscv.Frontx.WpRun
+import Legacy.Riscv.Frontx.PgTop
+import Legacy.Riscv.Frontx.WpLeanZip2
+import Legacy.Riscv.Frontx.WpLeanZip3
+import Legacy.Riscv.Frontx.WpRun
 #print axioms Proven.Mach.Riscv.stub_run
 #print axioms Proven.Top.stub_top
 #print axioms Proven.WA.body_ok

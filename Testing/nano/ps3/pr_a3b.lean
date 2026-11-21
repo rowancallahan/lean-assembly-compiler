@@ -1,6 +1,6 @@
-import Riscv.Frontx.S3IO
-import Riscv.Back.S3Top
-import Nano.ParseBGas
+import Legacy.Riscv.Frontx.S3IO
+import Legacy.Riscv.Back.S3Top
+import Legacy.Nano.ParseBGas
 namespace P
 @[simp] theorem u64_toUInt8_bv (y : UInt64) : (y.toUInt8).toBitVec.setWidth 64 = y.toBitVec &&& 255 := by
   apply BitVec.eq_of_toNat_eq

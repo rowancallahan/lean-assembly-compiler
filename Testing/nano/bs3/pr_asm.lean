@@ -1,5 +1,5 @@
-import Compiler.S3.Front
-import Nano.AsmS3
+import Legacy.Compiler.S3.Front
+import Legacy.Nano.AsmS3
 namespace Nano.AS
 #print axioms asmS_eq
 set_option maxRecDepth 20000 in

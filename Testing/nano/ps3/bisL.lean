@@ -1,4 +1,4 @@
-import Nano.ParseS3BSelf
+import Legacy.Nano.ParseS3BSelf
 open Proven Proven.S3 Proven.Ir Proven.Mach.Riscv Nano.S3Stage Nano.PS
 set_option maxRecDepth 100000
 set_option maxHeartbeats 0

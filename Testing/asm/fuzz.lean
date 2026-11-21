@@ -2,7 +2,7 @@
    (the Sail model already defines a root `main`, so this uses #eval + env vars)
    Emits the format read by Testing/asm/triple.py (plus an `exp` line per case). Reproducible from SEED. -/
 import Arm.CompilerArm
-import Compiler.Front.Reify
+import Legacy.Compiler.Front.Reify
 open Proven
 
 abbrev G := StateM UInt64

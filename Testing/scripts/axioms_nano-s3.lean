@@ -1,4 +1,4 @@
-import Nano.S3Top
+import Legacy.Nano.S3Top
 #print axioms Nano.S3.tr1_eval
 #print axioms Nano.S3.tr2_eval
 #print axioms Nano.S3.tr3_ok

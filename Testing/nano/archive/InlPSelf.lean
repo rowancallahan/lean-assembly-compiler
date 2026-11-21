@@ -2,10 +2,10 @@
 in the linker's form: `Nano.IP.inlP_implements` (work space `8192 · 601` bytes, inputs up to `2^20` bytes, result
 length in `a1`) and `inlP_code_len`.  With `inlP_eq` (`Nano/InlPProof.lean`) the stage computes `inlB` on every input
 whose inliner table fits (`inlFits`).  Compiled with `wp_compileS` (`Nano/WpSpill.lean`: spill-first register choice). -/
-import Nano.InlPProof
-import Nano.PgStage
-import Riscv.Frontx.WpBridge
-import Nano.WpSpill
+import Legacy.Nano.InlPProof
+import Legacy.Nano.PgStage
+import Legacy.Riscv.Frontx.WpBridge
+import Legacy.Nano.WpSpill
 
 namespace Nano.IP
 open Proven Proven.WA Proven.WP Proven.Top.Alloc

@@ -1,5 +1,5 @@
-import Compiler.S3.Front
-import Nano.Expand
+import Legacy.Compiler.S3.Front
+import Legacy.Nano.Expand
 namespace Nano.XS
 set_option maxRecDepth 20000 in
 set_option maxHeartbeats 0 in

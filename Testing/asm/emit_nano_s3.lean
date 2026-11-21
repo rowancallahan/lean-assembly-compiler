@@ -6,10 +6,10 @@ L1 `(tr1P p).eval = p.eval`, L2 `(tr2P (tr1P p)).eval = p.eval`, L3 (a test eval
 `tr3 (idVars n)`) = `p.eval`, L4 (the test evaluator on `main` of `nanoToS3 p`, bytes in, bytes out) = `nanoRun p`,
 and the IR interpreter of `lowerP (nanoToS3 p)` = `nanoRun p`.  Then the words (`Ir.compile`) and cases (input, result,
 `memoryNeeded`: the peak of the fast interpreter's events, copied from `emit_s3.lean`, which records call frames) go to `Testing/asm/ir-words/nano_s3_<i>.{words,cases}` for QEMU / Sail. Exits 1 on any mismatch. -/
-import Nano.S3Top
-import Nano.Elab
-import Riscv.Back.IrTarget
-import Compiler.Ir.Lin
+import Legacy.Nano.S3Top
+import Legacy.Nano.Elab
+import Legacy.Riscv.Back.IrTarget
+import Legacy.Compiler.Ir.Lin
 open Proven (leN)
 open Proven.Ir Proven.Mach.Riscv Proven.Top.Alloc Nano Nano.S3
 open Proven.S3 (V Var Vars Expr Ty Sig bytesV bytesOut lowerP)

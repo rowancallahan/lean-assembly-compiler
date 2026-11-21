@@ -4,8 +4,8 @@ sources through `nanoElab`), their words (`nanoGenIR` = `Ir.compile ∘ lower`) 
 `Testing/asm/ir-words/nano_<i>.{words,cases}`.  Run:
 `lake env lean Testing/asm/emit_nano.lean`, then `for i in ...; python3 Testing/asm/ir_test.py check 8 nano_$i`
 (QEMU + Sail at `memoryNeeded` and `memoryNeeded - 1`), or `Testing/asm/nano_test.sh`. -/
-import Nano.ProofTop
-import Nano.Elab
+import Legacy.Nano.ProofTop
+import Legacy.Nano.Elab
 open Proven (leN)
 open Proven.Ir Proven.Top.Alloc Nano
 

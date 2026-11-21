@@ -1,5 +1,5 @@
-import Compiler.S3.Front
-import Nano.S3Stage
+import Legacy.Compiler.S3.Front
+import Legacy.Nano.S3Stage
 namespace Nano.LT
 def uniC : UInt64 → List UInt64 → UInt64
   | t, [] => t

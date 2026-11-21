@@ -6,10 +6,10 @@ toolchain changes.
 
 | model | repo @ commit | release? | Lean / lean-sail | patches | used by |
 |---|---|---|---|---|---|
-| Sail RISC-V (trusted) | `opencompl/sail-riscv-lean` @ `51c635c` | no (nightly bot output) | 4.29.0 / lean-sail `v5` = `0794631` | none | RISC-V theorems (`nano-v2-src`, `main`) |
+| Sail RISC-V (old, Lean 4.29) | `opencompl/sail-riscv-lean` @ `51c635c` | no (nightly bot output) | 4.29.0 / lean-sail `v5` = `0794631` | none | RISC-V theorems before release-434 (Lean 4.29 branches) |
 | Sail ARM | `rems-project/sail-arm` @ `5416ef6`, generator `rems-project/sail` @ `ef5dca5` | no | 4.34.1 / lean-sail `v10` = `e4745c8` | 1 generator patch + 1 generator flag; ARM sources unmodified | `Arm/proofs`, `Arm/apc` bridges |
 | DeepMind arm64 | `google-deepmind/code-verification` @ `b0f729a` | no | ours: 4.34.1 (theirs: 4.34.0) / no lean-sail | none | `Arm/apc` (`Apc`, `Blocks`: `C_correct_armDM`) |
-| RISC-V regenerated (`rv-regen-434`) | not yet on origin | n/a | target 4.34.1 / `v10` | n/a | nothing yet |
+| RISC-V regenerated (§4), used by `main` | `riscv/sail-riscv` @ `b7d1357`, generator Sail @ `97aa617` (no patches); repo branch `deps-rv-regen434` @ `4cf120c8` | no | 4.34.1 / lean-sail `v10` = `e4745c8` | none (banner comment only) | RISC-V theorems on `release-434` |
 
 ## Content hashes (one command for every model)
 
@@ -20,7 +20,8 @@ excluded. It prints the hash and the file count.
 
 | model | DIR | hash | files | old value (other command) |
 |---|---|---|---:|---|
-| Sail RISC-V @ 51c635c | `../deps/sail-riscv-lean` | `aa2a82c9e3ad746da34678c0405250a1a7b35e6a413e82f5137e32d40d338059` | 161 | `d6dbd722…` = `find LeanRV64D LeanRV64D.lean …` run in DIR |
+| Sail RISC-V regenerated (§4, `release-434`) @ `deps-rv-regen434` 4cf120c8 | `../deps/sail-riscv-lean` | `6ac35da94bf8af379ce9160b39bf3f93b28dd463b0356b6803d40316dcb8bfae` | 161 | none |
+| Sail RISC-V @ 51c635c (§1, Lean 4.29 branches) | `../deps/sail-riscv-lean` | `aa2a82c9e3ad746da34678c0405250a1a7b35e6a413e82f5137e32d40d338059` | 161 | `d6dbd722…` = `find LeanRV64D LeanRV64D.lean …` run in DIR |
 | Sail ARM, committed | `Arm/model` | `8f79d6b294568b8d6e8d4916be6c8a67bfe475717513dd5b0535c69ff2e7344f` | 35 | `cbfbcd50…` = `find Arm/model/Armv9 …` at the repo root (no `Armv9.lean`) |
 | Sail ARM, partitioned (`partition.py` output) | the partition's output dir | `a4b93808fc510f6413a7bdcec606b866a43f11f23a94a93eef094189524cef46` | 118 | `389f6d21…` (Sail agent, `find Armv9 Armv9Core Armv9.lean …`) |
 | DeepMind arm64 @ b0f729a | `code-verification/arm64-semantics/Arm64` | `82094c4a51657bcc084fd3136a4741d94154e0ce018771c1e182fad164a6d9d4` | 134 | none recorded |
@@ -194,15 +195,27 @@ Single-file hashes, such as the partitioned definition dump `76a23330…` (ARM_F
     are model-free: they quantify over any `A64Sem` / `JTarget` instance.
   * The bridges in §2 use both ARM models.
 
-## 4. Regenerated RISC-V model for Lean 4.34 (`rv-regen-434`, upcoming)
+## 4. Regenerated RISC-V model for Lean 4.34 (used by `release-434`)
 
-* **Status:** no branch `rv-regen-434` on origin as of 2026-11-20 (`git branch -r`). Nothing depends on it.
-* **Plan, per `RV_MODEL_434.md` "Regeneration route":** regenerate with the official Sail Lean backend, Sail ≥ `31342bdb`
-  (2026-11-09; targets 4.34.1 and lean-sail v10).
-  * Risk: sail-riscv `4f8ce82` (2026-10-01) moved to concurrency interface v2, which changes the API used by
-    `Spec/Riscv*` and `Riscv/Steps`.
-  * Regenerating the old sail-riscv `b7d1357` with new Sail is untested upstream.
-* **When it lands, record here:** Sail commit, sail-riscv commit, any patches or flags (with a DIFFS file),
-  lean-sail tag and commit, toolchain, content hash, a regeneration command, and which theorems move to it.
-* **Not the same thing:** `rv434-experiment` is the RISC-V model **hand-edited** for 4.34.1 (`Riscv/gen/patch_434.sh`,
+The release builds every RISC-V theorem against this model instead of §1's. Since release-434 was merged (main a3f41e1f and later) this regenerated model IS the RISC-V model `main` uses; §1's 51c635c is the old Lean 4.29 one and does not build on 4.34.
+The full record is `Testing/riscv/gen/PROVENANCE.md` (branch `rv-regen-434`, merged into `release-434`). Summary:
+
+* **Generator:** `rems-project/sail` branch `sail2` @ `97aa617dcd4d01575f773cb58ea1e8686858c8c2` (2026-11-17).
+  * Not a tagged release: the newest tag `0.20.3` predates the Lean 4.34 port `31342bdb`.
+  * No patches. OCaml 5.2.1 via opam; Z3 4.8.12.
+* **Input:** `riscv/sail-riscv` @ `b7d13572fcd4a87d0999eb6303652cd05a47881e` (2026-08-19). This is the same
+  specification input inferred for §1, from before the concurrency-interface-v2 move.
+* **Base:** `opencompl/sail-riscv-lean` @ `51c635c` (README, `report.py`, `build_log.txt` kept). The generated files
+  replace the model. The only hand edit is a one-line banner comment at the top of each file, naming the model as
+  regenerated.
+* **Lean toolchain:** 4.34.1. **lean-sail:** `v10` = `e4745c8`, as in §2.
+* **Where:** orphan branch `deps-rv-regen434` @ `4cf120c8` of this repo, checked out at `../deps/sail-riscv-lean`.
+  Reproduce with `Testing/riscv/gen/regen434/regen.sh`.
+* **Content hash** (`model_hash.sh`): `6ac35da94bf8af379ce9160b39bf3f93b28dd463b0356b6803d40316dcb8bfae`, 161 files.
+  This was recomputed independently (O, 2026-11-20) on a fresh worktree of `4cf120c8`.
+* **Diff against §1:** `Testing/notes/rvregen434/model.diff.gz` (164 files, +14,511/−31,093). The definition-level
+  comparison and its classification are in the `Testing/riscv/gen/regen434/` tools and `RV_REGEN_434.md`.
+* **Theorems on it in `release-434`:** all of §1's (REVIEW `C_correctLO` / `C_runsO` / self theorems, the `Riscv` lib).
+  Their axioms are pinned in `review_axioms.txt` of `release-434`.
+* **Not the same thing:** `rv434-experiment` is the RISC-V model **hand-edited** for 4.34.1 (`Testing/riscv/gen/patch_434.sh`,
   inverse check `verify_434.py`). It is experimental and untrusted, and no result counts from it (`BRANCHES.md`).

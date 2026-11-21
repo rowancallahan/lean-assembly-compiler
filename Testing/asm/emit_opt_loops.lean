@@ -1,6 +1,6 @@
-import Riscv.Back.Opt
-import Riscv.Examples.GcdOpt
-import Compiler.Front.Reify
+import Legacy.Riscv.Back.Opt
+import Legacy.Riscv.Examples.GcdOpt
+import Legacy.Compiler.Front.Reify
 open Proven
 def hex8 (w : BitVec 32) : String := let s := String.ofList (Nat.toDigits 16 w.toNat); "".pushn '0' (8 - s.length) ++ s
 def put (name : String) (r : Except String (List (BitVec 32))) : IO Unit :=

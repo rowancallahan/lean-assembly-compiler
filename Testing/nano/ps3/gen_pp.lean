@@ -1,6 +1,6 @@
-import Riscv.Frontx.S3IO
-import Riscv.Back.S3Top
-import Nano.ParseS3
+import Legacy.Riscv.Frontx.S3IO
+import Legacy.Riscv.Back.S3Top
+import Legacy.Nano.ParseS3
 s3_enc Nano.Tok
 s3_enc Nano.PB.Fr
 s3_enc Nano.PB.Ctl

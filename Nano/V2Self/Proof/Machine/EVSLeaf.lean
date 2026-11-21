@@ -51,7 +51,7 @@ theorem constXS {KL : LayW} {C : List J} {pc p nl hb E0 : Nat} {Inv : St → Pro
   leafXS hI (fun _ _ _ => rfl) (fun s env _ hx0 _ _ room hw _ _ => by
     obtain ⟨s', hr, hx, hm, hb⟩ := const_srun (K := KL) s hx0 hC room hw
     have lt64 := (s.x 31).toNat_lt
-    refine ⟨s', SStarX.of hr, ?_, hm, ?_, ?_, ?_, ?_, ?_⟩
+    refine ⟨s', hr, ?_, hm, ?_, ?_, ?_, ?_, ?_⟩
     · rw [hx]; simp only [upd_same]; simp only [UInt64.toNat_ofNat']; omega
     all_goals rw [hx]; simp [upd_ne])
 
@@ -62,7 +62,7 @@ theorem lenXS {KL : LayW} {C : List J} {pc p nl hb E0 : Nat} {Inv : St → Prop}
   leafXS hI (fun _ _ _ => rfl) (fun s env I0 hx0 _ _ room hw _ _ => by
     have lt64 := (s.x 31).toNat_lt
     have hr := len_srun (K := KL) s hC room hw
-    refine ⟨_, SStarX.of hr, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+    refine ⟨_, hr, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
     · simp only [upd_same, UInt64.toNat_ofNat']; omega
     · simp [hInv s I0]
     all_goals simp [upd_ne])
@@ -85,7 +85,7 @@ theorem local1XS {KL : LayW} {C : List J} {pc p nl hb E0 k : Nat} {Inv : St → 
     have hv : CallProbe.slotAddr p k (s.x 8).toNat = slotAddr p (s.x 8).toNat k := slotAddr_eq (by omega) o2 hk
     have hkp : k < p ∨ 8 * (k - p + 1) ≤ (s.x 8).toNat := by omega
     obtain ⟨s', hr, hx, hm⟩ := local1_run s hC (by omega) hp hkp room
-    have ss : SStarX KL C (pc, s) (pc + 5, s') := SStarX.of (local_srun 1 k pc s hC (by omega) hp
+    have ss : SStarX KL C (pc, s) (pc + 5, s') := (local_srun 1 k pc s hC (by omega) hp
       (fun i hi => by
         have : i = 0 := by omega
         subst this; refine ⟨hkp, ?_⟩; simp only [Nat.add_zero]; rw [hv]

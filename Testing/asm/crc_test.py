@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests of the proved CRC-32 (`Riscv/Examples/Crc.lean`, `crcCode`, words from `Testing/asm/emit_crc.lean` in
+"""Tests of the proved CRC-32 (`Nano/Base/Riscv/Examples/Crc.lean`, `crcCode`, words from `Testing/asm/emit_crc.lean` in
 `Testing/asm/arr-words/crc.words`) on QEMU and on the Sail C emulator, in the `Implements1` calling convention
 (`Spec/Implements1.lean`): a0 = input, a1 = length, a2 = work base (8-aligned), a3 = output, sp = work end.
 

@@ -1,7 +1,7 @@
 /- Decoding facts for the wide operations with ARBITRARY abstract registers (`Apc/Wide.lean`), checked by
 enumeration (`decide +kernel`): every register triple / pair (branch offsets: symbolic, `Apc/Sym.lean`). -/
 import Apc.Mach
-import Compiler.Wide
+import Nano.Base.Compiler.Wide
 namespace Proven.Apc
 open Proven Proven.Mach
 
