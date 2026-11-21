@@ -44,6 +44,20 @@ theorem F_movn (t : Arm64.State) (d i h : Nat) (hc : armDM.configured t) (hp : J
   apply UInt64.toBitVec_inj.mp
   simp [JT.movnV, UInt64.toBitVec_shiftLeft, Nat.mul_comm, show h * 16 % 64 = h * 16 by omega]; rfl
 
+theorem F_movzH (t : Arm64.State) (d i h : Nat) (hc : armDM.configured t) (hp : JT.PcOK armDM (O t)) (hx : JT.FetchX armDM XD t 4)
+    (hd : d < 31) (hi : i < 2 ^ 16) (hh : h < 4)
+    (hw : JT.WordAt (O t) (O t).programCounter.toNat (ArmEnc.movzH d i h)) :
+    JT.GoesK armDM XD WD t (JT.setReg (O t) d ((UInt64.ofNat i) <<< (16 * h).toUInt64)) := by
+  have hA := fetch hc hp hw (xat hx); simp only [ArmEnc.movzH] at hA
+  have := dm_movz (by mask32) (by fldt) hA
+  rw [show ((wd (0xD2800000 + h * 2 ^ 21 + i * 2 ^ 5 + d)).extractLsb' 0 5).toNat = d by fldt,
+    show ((wd (0xD2800000 + h * 2 ^ 21 + i * 2 ^ 5 + d)).extractLsb' 21 2).toNat = h by fldt,
+    show ((wd (0xD2800000 + h * 2 ^ 21 + i * 2 ^ 5 + d)).extractLsb' 5 16).setWidth 64 = BitVec.ofNat 64 i by immt]
+    at this
+  refine goes_set hd this ?_
+  apply UInt64.toBitVec_inj.mp
+  simp [UInt64.toBitVec_shiftLeft, Nat.mul_comm, show h * 16 % 64 = h * 16 by omega]; rfl
+
 /-! ## cbnz -/
 theorem dec_cbnzW (hK : w &&& 0xFF000000#32 = 0xB5000000#32) (ht : (w.extractLsb' 0 5).toNat < 31) :
     Arm64.decode w = some (.cbz .W64 true (.gpr (w.extractLsb' 0 5)) (((w.extractLsb' 5 19).signExtend 64) <<< 2)) := by
@@ -397,6 +411,7 @@ theorem F_ldp (t : Arm64.State) (r u n : Nat) (v1 v2 : UInt64) (hc : armDM.confi
 theorem a64DMN : JT.A64SemN armDM XD WD where
   toA64Sem := a64DM
   movn s d i h hc hp hx hd hi hh hw := F_movn s d i h hc hp hx hd hi hh hw
+  movzH s d i h hc hp hx hd hi hh hw := F_movzH s d i h hc hp hx hd hi hh hw
   cbnz s r f hc hp hx hr hf1 hf2 hw := F_cbnz s r f hc hp hx hr hf1 hf2 hw
   ldur s r n a f v hc hp hx hr hn hf1 hf2 ha hal hlo hhi hW hv hw := F_ldur s r n a f v hc hp hx hr hn hf1 hf2 ha hal hlo hhi hW hv hw
   stur s r n a f hc hp hx hr hn hf1 hf2 ha hal hlo hhi hW hw := F_stur s r n a f hc hp hx hr hn hf1 hf2 ha hal hlo hhi hW hw
