@@ -7,7 +7,7 @@ open Templates (NB NBL)
 def colat (p : List UInt64) : List T3 := p.reverse.map fun q => (8, q, 0)
 
 theorem u43_ok (p : Buf) (hp : p.length < 2 ^ 32) : ∀ (n j : Nat) (ts : List T3) (t : Buf), j ≤ p.length → j < n →
-    encT ts <+: t → t.length < 2 ^ 41 → ts.length + j < 2 ^ 38 →
+    encT ts <+: t → t.length < 2 ^ 41 → 3 * (ts.length + j) < 2 ^ 41 →
     (u43 n t (u ts.length) p (u j)).2.2 = 1 ∧
     encT (ts ++ colat (p.take j)) <+: (u43 n t (u ts.length) p (u j)).1 ∧
     (∀ L, t.length ≤ L → 3 * (ts.length + j) ≤ L → (u43 n t (u ts.length) p (u j)).1.length ≤ L) ∧
