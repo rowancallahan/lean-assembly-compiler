@@ -126,9 +126,10 @@ structure Cx where
 
 def nameS (n : List Nat) : String := String.ofList (n.map Char.ofNat)
 
+mutual
 /-- emit `e` at expected shape `exp` (none: no expected type, as for a `let` value); returns the Expr and the
 shape Lean infers (none for a CONTINUE) -/
-partial def emit (cx : Cx) (bs : Bs) (exp : Option Sh) : Nd → M (X × Option Sh)
+def emit (cx : Cx) (bs : Bs) (exp : Option Sh) : Nd → M (X × Option Sh)
   | .const v => let s := match exp with | some .nt => Sh.nt | _ => .uw; pure (lit s v.toNat, some s)
   | .loc s w =>
     if w = 0 then do pure ((← inpX bs), some .ls)
@@ -180,19 +181,28 @@ partial def emit (cx : Cx) (bs : Bs) (exp : Option Sh) : Nd → M (X × Option S
   | .loop _ _ => throw "nested loop"
   | .cont e => do
     let (n, sps) := cx.self
-    let k := (sps.filter (· != .inp)).length
-    let es ← if k = 1 then pure [e] else match e with | .pair cs => pure cs | _ => throw "CONTINUE payload"
     let fx ← find bs (fun b => b.2 == .fuel) "fuel"
-    pure (apps (.c n []) (fx :: (← args cx bs sps es)), none)
-where
-  /-- arguments for parameter kinds `ps` (the input re-inserted) -/
-  args (cx : Cx) (bs : Bs) : List Ps → List Nd → M (List X)
-    | [], [] => pure []
-    | .inp :: ps, as => do pure ((← inpX bs) :: (← args cx bs ps as))
-    | p :: ps, a :: as => do
-      let (x, _) ← emit cx bs (some (psSh p)) a
-      pure (x :: (← args cx bs ps as))
-    | _, _ => throw "arity"
+    if (sps.filter (· != .inp)).length = 1 then
+      let some p := sps.find? (· != .inp) | throw "CONTINUE state"
+      let (x, _) ← emit cx bs (some (psSh p)) e
+      let xs ← sps.mapM fun q => if q == .inp then inpX bs else pure x
+      pure (apps (.c n []) (fx :: xs), none)
+    else
+      match e with
+      | .pair cs => do pure (apps (.c n []) (fx :: (← args cx bs sps cs)), none)
+      | _ => throw "CONTINUE payload"
+termination_by e => (sizeOf e, 0)
+
+/-- arguments for parameter kinds `ps` (the input re-inserted) -/
+def args (cx : Cx) (bs : Bs) : List Ps → List Nd → M (List X)
+  | [], [] => pure []
+  | .inp :: ps, as => do pure ((← inpX bs) :: (← args cx bs ps as))
+  | p :: ps, a :: as => do
+    let (x, _) ← emit cx bs (some (psSh p)) a
+    pure (x :: (← args cx bs ps as))
+  | _, _ => throw "arity"
+termination_by ps as => (sizeOf as, ps.length)
+end
 
 /-- parameter binders from slot `s` -/
 def binders (s : Nat) : List Ps → Bs → Bs
