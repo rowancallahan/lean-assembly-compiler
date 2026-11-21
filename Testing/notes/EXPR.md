@@ -37,9 +37,13 @@ computes the meaning of the matched Lean `Expr`.
   AST `Cert.PC.all` (`decide +kernel`, 10 s; emitSpec is structurally recursive so the kernel can evaluate it), and
   for every input on which C's meaning has a result, `mC inp` is the meaning `Ev` of C's emitted Expr of `m`.
 * `NanoMain.self_expr_C` (`Nano/Expr/CExprTop.lean`; it imports the RISC-V model, so it is built only on the runner:
-  slot 6, build-slot-6-expr @b83eecd, PASS, 675 jobs, axioms as pinned): for every `SelfIn` input, C's RISC-V code writes `mC a`, and `mC a` is that Expr's meaning. That Expr text equals
-Lean's elaborated Expr on 234/236 defs (an executable check; the 2 others differ only as above). The theorem does not
-yet say "equals Lean's Expr": that link is the spot check, which is a test and not a proof (§6, step 3).
+  slot 6, build-slot-6-expr @b83eecd, PASS, 675 jobs, axioms as pinned): for every `SelfIn` input, C's RISC-V code writes `mC a`, and `mC a` is that Expr's meaning. * `ExprSpec.C_lean` (`Nano/Expr/CLean.lean`, kernel-checked, `decide +kernel` ~3.5 min, axioms: propext): for every
+  def of C except `o32`, `o38`, nano's emitted (name, type, value) IS Lean's normalized elaborated Expr
+  (`ExprLeanC.defs`). TRUSTED step: `ExprLeanC.defs` is generated from Lean's environment by `lean_expr.lean`
+  (normalization N1-N4, §3) and copied verbatim into Lean syntax by `gen_leanc.py` (`XOUT=true lean_side.sh ..`).
+  With `C_expr`/`self_expr_C`: C's machine code computes the meaning of an Expr that is Lean's own Expr for 234 of 236
+  defs. After Nat step 1, `exC = []` should give all 236, and then `progOf oC` is Lean's table and `Ev` of Lean's own
+  Expr of C = `mC`.
 
 ## 1. The Expr fragment `X`
 Lean's `Expr` restricted to: `bvar i`, `const n ls` (levels: closed numerals only), `app`, `lam` (binder type, body),
