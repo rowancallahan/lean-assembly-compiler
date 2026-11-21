@@ -36,8 +36,8 @@ computes the meaning of the matched Lean `Expr`.
 * `ExprSpec.C_expr` (`Nano/Expr/CExpr.lean`, built locally, standard axioms): `emitAll` succeeds on C's certified
   AST `Cert.PC.all` (`decide +kernel`, 10 s; emitSpec is structurally recursive so the kernel can evaluate it), and
   for every input on which C's meaning has a result, `mC inp` is the meaning `Ev` of C's emitted Expr of `m`.
-* `NanoMain.self_expr_C` (`Nano/Expr/CExprTop.lean`; it imports the RISC-V model, so it is built only on the runner,
-  slot-6 request pending): for every `SelfIn` input, C's RISC-V code writes `mC a`, and `mC a` is that Expr's meaning. That Expr text equals
+* `NanoMain.self_expr_C` (`Nano/Expr/CExprTop.lean`; it imports the RISC-V model, so it is built only on the runner:
+  slot 6, build-slot-6-expr @b83eecd, PASS, 675 jobs, axioms as pinned): for every `SelfIn` input, C's RISC-V code writes `mC a`, and `mC a` is that Expr's meaning. That Expr text equals
 Lean's elaborated Expr on 234/236 defs (an executable check; the 2 others differ only as above). The theorem does not
 yet say "equals Lean's Expr": that link is the spot check, which is a test and not a proof (§6, step 3).
 
