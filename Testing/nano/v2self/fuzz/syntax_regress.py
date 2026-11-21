@@ -2,7 +2,7 @@
 """syntax_regress.py: regression cases for the syntax-1 reject rules (owner rule: nano accepts only what Lean accepts).
 Each case is a program text and whether Lean 4.34.1 accepts it (checked by hand with `lake env lean`). Both compilers
 (RISC-V B2.bin under qemu-riscv64, native ARM GA_arm.bin under qemu-aarch64) must accept exactly the Lean-accepted
-ones. Exit 1 on any difference.   usage: syntax_regress.py [--lean]   (--lean: also check each verdict with `lean`, Init only)
+ones. Exit 1 on any difference.   usage: syntax_regress.py [--lean]   (--lean: also check each verdict with `lake env lean`, with Nano.Main.Prelude for the prims)
 env RV / ARM: other compiler binaries (default: the checked-in B2.bin, native_arm/GA_arm.bin)."""
 import os, subprocess, sys, tempfile
 R = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', '..'))
@@ -40,6 +40,7 @@ CASES = [  # (name, text, Lean accepts)
     ('E namespace two names', 'namespace Fz1 Fz2\n' + M, False),
     ('E module doc mid-expression', 'def g (n : UInt64) : UInt64 := n /-! x -/ + 1\n' + M, False),
     ('M2 numeral 2^64 - 1', 'def g (n : UInt64) : UInt64 := 18446744073709551615\n' + M, True),
+    ('M17 let x := [] unused', 'def m (x : List UInt8) : List UInt8 := let t := []; put [] 1\n', False),
     ('A protected def at the root', 'protected ' + M, False),
     ('E module doc before def', 'def g (n : UInt64) : UInt64 := n\n/-! x -/\n' + M, True),
 ]
@@ -53,6 +54,7 @@ REJ_NANO_ONLY = [  # Lean accepts, nano rejects (stricter, allowed): the frame r
     ('E open', 'open Nat\n' + M),
     ('E module doc at the end', M + '/-! d -/\n'),
     ('A partial def', 'partial ' + M),
+    ('M17 let x := [] used (Lean infers it)', 'def m (x : List UInt8) : List UInt8 := let t := []; put t 1\n'),
     ('M2 numeral 2^64 (Lean: wraps as UInt64, is 2^64 as fuel)', 'def g (n : UInt64) : UInt64 := 18446744073709551616\n' + M),
     ('M2 numeral 10^20', 'def g (n : UInt64) : UInt64 := 100000000000000000000\n' + M),
     ('A unsafe def', 'unsafe ' + M),
@@ -77,8 +79,8 @@ COMP = [('rv', ['qemu-riscv64', f'{W}/shim_rv', os.environ.get('RV', f'{V}/B2.bi
 bad = 0
 if '--lean' in sys.argv:
     for name, text, lean in CASES + [(n, s, True) for n, s in REJ_NANO_ONLY]:
-        open(f'{W}/l.lean', 'w').write(text)
-        acc = subprocess.run(['lean', f'{W}/l.lean'], capture_output=True).returncode == 0
+        open(f'{W}/l.lean', 'w').write('import Nano.Main.Prelude\n' + text)
+        acc = subprocess.run(['lake', 'env', 'lean', f'{W}/l.lean'], capture_output=True, cwd=R).returncode == 0
         if acc != lean: bad += 1; print(f'FAIL lean: {name}: Lean {"accepts" if acc else "rejects"}, table says otherwise')
 for name, text in REJ_NANO_ONLY: CASES.append((name, text, False))
 for name, text, lean in CASES:

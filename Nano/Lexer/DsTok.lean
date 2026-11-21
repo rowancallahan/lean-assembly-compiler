@@ -226,6 +226,8 @@ theorem ds0_tokWF {ts ts' : List UInt64} (ht : TokWF ts) (h : ds0 ts = some ts')
   obtain ⟨toks, ht⟩ := ht
   unfold ds0 at h
   split at h
+  · cases h
+  split at h
   · split at h
     · cases h; exact ⟨⟨toks, ht⟩, by omega⟩
     · split at h
@@ -429,10 +431,10 @@ theorem frame_id {ts : List UInt64} {toks : List Tok} (ht : TokL ts toks) :
       show ¬ ((14 : UInt64) = 5) by decide, if_true, List.append_eq, identTok_flat, Option.map_some]
     rw [ih f (by simp at hf; omega) 1 (.inr rfl) st]; simp
 
-/-- a token buffer without the name `match` desugars to itself -/
-theorem ds_id {ts : List UInt64} {toks : List Tok} (ht : TokL ts toks) (hm : matchTok ∉ toks) (hl : ts.length < 2 ^ 24) :
-    ds ts = some ts := by
+/-- a token buffer without the name `match` and without `let x := []` desugars to itself -/
+theorem ds_id {ts : List UInt64} {toks : List Tok} (ht : TokL ts toks) (hm : matchTok ∉ toks) (hl : ts.length < 2 ^ 24)
+    (hn : noNilLet (ts.length + 1) ts = true) : ds ts = some ts := by
   unfold ds; rw [frame_id ht _ (by omega) 0 (.inl rfl) [], Option.bind_some]
-  unfold ds0; rw [if_pos hl, if_pos (noMatch_tok ht hm _ (by omega))]
+  unfold ds0; rw [hn, if_neg (by simp), if_pos hl, if_pos (noMatch_tok ht hm _ (by omega))]
 
 end DsSpec

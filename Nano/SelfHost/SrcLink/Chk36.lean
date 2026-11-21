@@ -5,20 +5,20 @@ open ParSpec SrcLink
 
 set_option maxRecDepth 100000
 
-theorem lex269 : lexAll (x269.length + 1) x269 = some w269 := by decide +kernel
-theorem tok269 : tokens w269 = some S269 := by decide +kernel
-theorem nl269 : x269.getLast? = some 10 := by decide +kernel
-theorem chk269 : chkDef (pDef F D269 T269) di269 d269 T270 = true := by decide +kernel
-theorem lex270 : lexAll (x270.length + 1) x270 = some w270 := by decide +kernel
-theorem tok270 : tokens w270 = some S270 := by decide +kernel
-theorem nl270 : x270.getLast? = some 10 := by decide +kernel
-theorem chk270 : chkDef (pDef F D270 T270) di270 d270 T271 = true := by decide +kernel
 theorem lex271 : lexAll (x271.length + 1) x271 = some w271 := by decide +kernel
 theorem tok271 : tokens w271 = some S271 := by decide +kernel
 theorem nl271 : x271.getLast? = some 10 := by decide +kernel
 theorem chk271 : chkDef (pDef F D271 T271) di271 d271 T272 = true := by decide +kernel
 theorem lex272 : lexAll (x272.length + 1) x272 = some w272 := by decide +kernel
 theorem tok272 : tokens w272 = some S272 := by decide +kernel
+theorem nl272 : x272.getLast? = some 10 := by decide +kernel
 theorem chk272 : chkDef (pDef F D272 T272) di272 d272 T273 = true := by decide +kernel
+theorem lex273 : lexAll (x273.length + 1) x273 = some w273 := by decide +kernel
+theorem tok273 : tokens w273 = some S273 := by decide +kernel
+theorem nl273 : x273.getLast? = some 10 := by decide +kernel
+theorem chk273 : chkDef (pDef F D273 T273) di273 d273 T274 = true := by decide +kernel
+theorem lex274 : lexAll (x274.length + 1) x274 = some w274 := by decide +kernel
+theorem tok274 : tokens w274 = some S274 := by decide +kernel
+theorem chk274 : chkDef (pDef F D274 T274) di274 d274 T275 = true := by decide +kernel
 
 end SrcGen

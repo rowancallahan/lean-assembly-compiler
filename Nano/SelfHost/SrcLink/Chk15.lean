@@ -5,14 +5,6 @@ open ParSpec SrcLink
 
 set_option maxRecDepth 100000
 
-theorem lex125 : lexAll (x125.length + 1) x125 = some w125 := by decide +kernel
-theorem tok125 : tokens w125 = some S125 := by decide +kernel
-theorem nl125 : x125.getLast? = some 10 := by decide +kernel
-theorem chk125 : chkDef (pDef F D125 T125) di125 d125 T126 = true := by decide +kernel
-theorem lex126 : lexAll (x126.length + 1) x126 = some w126 := by decide +kernel
-theorem tok126 : tokens w126 = some S126 := by decide +kernel
-theorem nl126 : x126.getLast? = some 10 := by decide +kernel
-theorem chk126 : chkDef (pDef F D126 T126) di126 d126 T127 = true := by decide +kernel
 theorem lex127 : lexAll (x127.length + 1) x127 = some w127 := by decide +kernel
 theorem tok127 : tokens w127 = some S127 := by decide +kernel
 theorem nl127 : x127.getLast? = some 10 := by decide +kernel
@@ -25,5 +17,13 @@ theorem lex129 : lexAll (x129.length + 1) x129 = some w129 := by decide +kernel
 theorem tok129 : tokens w129 = some S129 := by decide +kernel
 theorem nl129 : x129.getLast? = some 10 := by decide +kernel
 theorem chk129 : chkDef (pDef F D129 T129) di129 d129 T130 = true := by decide +kernel
+theorem lex130 : lexAll (x130.length + 1) x130 = some w130 := by decide +kernel
+theorem tok130 : tokens w130 = some S130 := by decide +kernel
+theorem nl130 : x130.getLast? = some 10 := by decide +kernel
+theorem chk130 : chkDef (pDef F D130 T130) di130 d130 T131 = true := by decide +kernel
+theorem lex131 : lexAll (x131.length + 1) x131 = some w131 := by decide +kernel
+theorem tok131 : tokens w131 = some S131 := by decide +kernel
+theorem nl131 : x131.getLast? = some 10 := by decide +kernel
+theorem chk131 : chkDef (pDef F D131 T131) di131 d131 T132 = true := by decide +kernel
 
 end SrcGen

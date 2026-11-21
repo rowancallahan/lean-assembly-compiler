@@ -413,7 +413,23 @@ def t11 : Nat → Buf → UInt64 → UInt64
   | 0, t, i => 0
   | n + 1, t, i => if i < bsize t then if t0 t i == 0 then 0 else if t2 t i (t0 t i) == 1 then 0 else t11 n t (t0 t i) else 1
 
+def t22 (t : Buf) (j : UInt64) : UInt64 :=
+  if bget t j == 9 then if bget t (j + 1) == 30 then if bget t (j + 2) == 31 then 1
+    else 0 else if bget t (j + 1) == 6 then if bget t (j + 2) == 30 then if bget t (j + 3) == 31 then if bget t (j + 4) == 7 then 1
+    else 0 else 0 else 0 else 0 else 0
+
+def t21 : Nat → Buf → UInt64 → UInt64
+  | 0, t, i => 0
+  | n + 1, t, i => if i < bsize t then if t0 t i == 0 then 0
+      else if bget t i == 2 then
+        if t0 t i < bsize t then if bget t (t0 t i) == 14 then if t0 t (t0 t i) == 0 then 0
+          else if t22 t (t0 t (t0 t i)) == 1 then 0 else t21 n t (t0 t i)
+        else t21 n t (t0 t i) else t21 n t (t0 t i)
+      else t21 n t (t0 t i)
+    else 1
+
 def t20 (t : Buf) : Buf :=
+  if t21 16777216 t 0 == 0 then bnew else
   if bsize t < 16777216 then
     if t11 16777216 t 0 == 1 then t else
     if t12 16777216 t 0 0 (bpush bnew 0) bnew 0 0 == 0 then bnew else

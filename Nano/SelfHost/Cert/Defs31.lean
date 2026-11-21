@@ -8,42 +8,26 @@ set_option linter.unusedVariables false
 namespace Cert
 open NanoMain ParSpec
 
-theorem ok_159 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 159) :
-    Spec159 inp (defMean inp κC ms PC.d159) := by
-  intro a0 a1
-  refine defMean_den (C.v99 a0 a1) PC.b159 ([.b a0, .w a1] ++ List.replicate 10 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b159
-  den_unfold
-  den
-
-theorem ok_160 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 160) :
-    Spec160 inp (defMean inp κC ms PC.d160) := by
-  intro a0
-  refine defMean_den (C.y13 a0) PC.b160 ([.b a0]) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b160
-  den_unfold
-  den
-
 theorem ok_161 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 161) :
     Spec161 inp (defMean inp κC ms PC.d161) := by
-  intro a0
-  refine defMean_den (C.y16 a0) PC.b161 ([.b a0]) rfl rfl (by decide) rfl rfl rfl ?_
+  intro a0 a1
+  refine defMean_den (C.v99 a0 a1) PC.b161 ([.b a0, .w a1] ++ List.replicate 10 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b161
   den_unfold
   den
 
 theorem ok_162 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 162) :
     Spec162 inp (defMean inp κC ms PC.d162) := by
-  intro a0 a1 a2
-  refine defMean_den (C.o0 a0 a1 a2) PC.b162 ([.b a0, .w a1, .w a2]) rfl rfl (by decide) rfl rfl rfl ?_
+  intro a0
+  refine defMean_den (C.y13 a0) PC.b162 ([.b a0]) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b162
   den_unfold
   den
 
 theorem ok_163 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 163) :
     Spec163 inp (defMean inp κC ms PC.d163) := by
-  intro a0 a1
-  refine defMean_den (C.o1 a0 a1) PC.b163 ([.b a0, .w a1]) rfl rfl (by decide) rfl rfl rfl ?_
+  intro a0
+  refine defMean_den (C.y16 a0) PC.b163 ([.b a0]) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b163
   den_unfold
   den
@@ -51,56 +35,72 @@ theorem ok_163 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073
 theorem ok_164 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 164) :
     Spec164 inp (defMean inp κC ms PC.d164) := by
   intro a0 a1 a2
-  refine defMean_den (C.o2 a0 a1 a2) PC.b164 ([.b a0, .w a1, .w a2]) rfl rfl (by decide) rfl rfl rfl ?_
+  refine defMean_den (C.o0 a0 a1 a2) PC.b164 ([.b a0, .w a1, .w a2]) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b164
   den_unfold
   den
 
 theorem ok_165 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 165) :
     Spec165 inp (defMean inp κC ms PC.d165) := by
-  intro a0 a1 a2 a3 a4 a5
-  refine defMean_den (C.o3 a0 a1 a2 a3 a4 a5) PC.b165 ([.b a0, .w a1, .w a2, .w a3, .w a4, .w a5] ++ List.replicate 3 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  intro a0 a1
+  refine defMean_den (C.o1 a0 a1) PC.b165 ([.b a0, .w a1]) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b165
   den_unfold
   den
 
 theorem ok_166 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 166) :
     Spec166 inp (defMean inp κC ms PC.d166) := by
-  intro a0
-  refine defMean_den (C.o5 a0) PC.b166 ([.b a0]) rfl rfl (by decide) rfl rfl rfl ?_
+  intro a0 a1 a2
+  refine defMean_den (C.o2 a0 a1 a2) PC.b166 ([.b a0, .w a1, .w a2]) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b166
   den_unfold
   den
 
 theorem ok_167 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 167) :
     Spec167 inp (defMean inp κC ms PC.d167) := by
-  intro a0 a1 a2
-  refine defMean_den (C.o6 a0 a1 a2) PC.b167 ([.b a0, .b a1, .w a2] ++ List.replicate 1 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  intro a0 a1 a2 a3 a4 a5
+  refine defMean_den (C.o3 a0 a1 a2 a3 a4 a5) PC.b167 ([.b a0, .w a1, .w a2, .w a3, .w a4, .w a5] ++ List.replicate 3 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b167
   den_unfold
   den
 
 theorem ok_168 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 168) :
     Spec168 inp (defMean inp κC ms PC.d168) := by
-  intro a0 a1 a2
-  refine defMean_den (C.o7 a0 a1 a2) PC.b168 ([.b a0, .b a1, .w a2] ++ List.replicate 1 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  intro a0
+  refine defMean_den (C.o5 a0) PC.b168 ([.b a0]) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b168
   den_unfold
   den
 
 theorem ok_169 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 169) :
     Spec169 inp (defMean inp κC ms PC.d169) := by
-  intro a0 a1
-  refine defMean_den (C.o10 a0 a1) PC.b169 ([.w a0, .w a1]) rfl rfl (by decide) rfl rfl rfl ?_
+  intro a0 a1 a2
+  refine defMean_den (C.o6 a0 a1 a2) PC.b169 ([.b a0, .b a1, .w a2] ++ List.replicate 1 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b169
   den_unfold
   den
 
 theorem ok_170 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 170) :
     Spec170 inp (defMean inp κC ms PC.d170) := by
-  intro a0
-  refine defMean_den (C.o11 a0) PC.b170 ([.w a0]) rfl rfl (by decide) rfl rfl rfl ?_
+  intro a0 a1 a2
+  refine defMean_den (C.o7 a0 a1 a2) PC.b170 ([.b a0, .b a1, .w a2] ++ List.replicate 1 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b170
+  den_unfold
+  den
+
+theorem ok_171 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 171) :
+    Spec171 inp (defMean inp κC ms PC.d171) := by
+  intro a0 a1
+  refine defMean_den (C.o10 a0 a1) PC.b171 ([.w a0, .w a1]) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b171
+  den_unfold
+  den
+
+theorem ok_172 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 172) :
+    Spec172 inp (defMean inp κC ms PC.d172) := by
+  intro a0
+  refine defMean_den (C.o11 a0) PC.b172 ([.w a0]) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b172
   den_unfold
   den
 

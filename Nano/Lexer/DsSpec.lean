@@ -150,16 +150,32 @@ def frame : Nat → List UInt64 → Nat → List (List UInt64) → Option (List 
       | some (a, r') => (frame f r' 1 st).map (a ++ ·)
       | none => none
 
+/-- `let x := []` or `let x := ([])` (LEAN_DIFF M17): Lean infers `[]`'s element type only from a later use and rejects the
+def when nothing fixes it (`don't know how to synthesize implicit argument α`); nano rejects every such let (stricter).
+`r`: the tokens after the let's name -/
+def nilAt (r : List UInt64) : Bool := r.take 3 == [9, 30, 31] || r.take 5 == [9, 6, 30, 31, 7]
+
+/-- no token `let`, name, `:= []` -/
+def noNilLet : Nat → List UInt64 → Bool
+  | 0, _ => false
+  | _ + 1, [] => true
+  | f + 1, ts => match splitTok ts with
+    | none => false
+    | some (a, r) =>
+      !(a == [2] && (match splitTok r with | some (n, r') => n.head? == some 14 && nilAt r' | none => false)) &&
+        noNilLet f r
+
 /-- the match desugaring of the framed tokens -/
 def ds0 (ts : List UInt64) : Option (List UInt64) :=
+  if !noNilLet (ts.length + 1) ts then none else
   if ts.length < 2 ^ 24 then
     if noMatch (ts.length + 1) ts then some ts
     else if !dupOk (ts.length + 1) ts [0] [] 0 false then none
     else (go (ts.length + 1) ts [0] false).bind fun o => if o.length < 2 ^ 24 then some o else none
   else none
 
-/-- **the desugaring**: the scope frame (`frame`), then fewer than 2^24 words in and out; a text without `match` is
-unchanged; no redundant arm -/
+/-- **the desugaring**: the scope frame (`frame`), then no `let x := []` (`noNilLet`), fewer than 2^24 words in and
+out; a text without `match` is unchanged; no redundant arm -/
 def ds (ts : List UInt64) : Option (List UInt64) := (frame (ts.length + 1) ts 0 []).bind ds0
 
 /-- **the token words a text means**: it lexes (`LexSpec.Lexes`) and the lexer's words desugar (`ds`) to `ts` -/

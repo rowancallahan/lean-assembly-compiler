@@ -8,27 +8,27 @@ set_option linter.unusedVariables false
 namespace Cert
 open NanoMain ParSpec
 
-theorem ok_153 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 153) :
-    Spec153 inp (defMean inp κC ms PC.d153) := by
-  intro a0 a1 a2
-  refine defMean_den (C.v143 a0 a1 a2) PC.b153 ([.b a0, .w a1, .w a2] ++ List.replicate 3 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b153
-  den_unfold
-  den
-
-theorem ok_154 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 154) :
-    Spec154 inp (defMean inp κC ms PC.d154) := by
-  intro a0 a1 a2
-  refine defMean_den (C.v144 a0 a1 a2) PC.b154 ([.b a0, .w a1, .w a2] ++ List.replicate 4 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b154
-  den_unfold
-  den
-
 theorem ok_155 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 155) :
     Spec155 inp (defMean inp κC ms PC.d155) := by
   intro a0 a1 a2
-  refine defMean_den (C.v204 a0 a1 a2) PC.b155 ([.b a0, .w a1, .w a2] ++ List.replicate 3 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  refine defMean_den (C.v143 a0 a1 a2) PC.b155 ([.b a0, .w a1, .w a2] ++ List.replicate 3 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b155
+  den_unfold
+  den
+
+theorem ok_156 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 156) :
+    Spec156 inp (defMean inp κC ms PC.d156) := by
+  intro a0 a1 a2
+  refine defMean_den (C.v144 a0 a1 a2) PC.b156 ([.b a0, .w a1, .w a2] ++ List.replicate 4 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b156
+  den_unfold
+  den
+
+theorem ok_157 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 157) :
+    Spec157 inp (defMean inp κC ms PC.d157) := by
+  intro a0 a1 a2
+  refine defMean_den (C.v204 a0 a1 a2) PC.b157 ([.b a0, .w a1, .w a2] ++ List.replicate 3 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b157
   den_unfold
   den
 

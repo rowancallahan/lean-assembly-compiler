@@ -1636,12 +1636,91 @@ theorem rep0 : Rep (bpush bnew 0) 0 [0] := ⟨rfl, by simp [bpush, bnew], fun k 
 
 /-- **the match desugaring is sound**: if `C.t10` accepts a token buffer (below 2^24 words), its output is the
 specification's `ds` -/
+theorem t21_01 : ∀ (n : Nat) (t : Buf) (i : UInt64), t21 n t i = 0 ∨ t21 n t i = 1
+  | 0, _, _ => .inl rfl
+  | n + 1, t, i => by
+    simp only [t21]; repeat' split
+    all_goals first | exact .inl rfl | exact .inr rfl | exact t21_01 n t _
+
+theorem t22_nil (t : Buf) (j : UInt64) (hj : j.toNat ≤ t.length) (ht : t.length < 16777216) (h : t22 t j ≠ 1) :
+    nilAt (t.drop j.toNat) = false := by
+  have g : ∀ k : UInt64, k.toNat < 5 → bget t (j + k) = (t.drop j.toNat).getD k.toNat 0 := fun k hk => by
+    rw [bget_eq, addU (by omega) (by omega)]; simp [List.getD_eq_getElem?_getD]
+  have g0 : bget t j = (t.drop j.toNat).getD 0 0 := by rw [bget_eq]; simp [List.getD_eq_getElem?_getD]
+  have g1 := g 1 (by decide); have g2 := g 2 (by decide); have g3 := g 3 (by decide); have g4 := g 4 (by decide)
+  unfold t22 at h
+  rw [g0, g1, g2, g3, g4] at h
+  generalize t.drop j.toNat = l at h ⊢
+  unfold nilAt
+  rcases l with _ | ⟨a, _ | ⟨b, _ | ⟨c, _ | ⟨d, _ | ⟨e, r⟩⟩⟩⟩⟩ <;> simp at h ⊢ <;> (try refine ⟨?_, ?_⟩) <;> (try intros) <;> simp_all
+
+theorem t21_sound : ∀ (n f : Nat) (t : Buf) (i : UInt64), t.length < 16777216 → i.toNat ≤ t.length →
+    t.length - i.toNat < f → t21 n t i = 1 → noNilLet f (t.drop i.toNat) = true
+  | 0, _, _, _, _, _, _, h => by simp [t21] at h
+  | n + 1, f, t, i, ht, hi, hf, h => by
+    obtain ⟨f, rfl⟩ : ∃ f', f = f' + 1 := ⟨f - 1, by omega⟩
+    simp only [t21] at h
+    by_cases hlt : i < bsize t
+    · rw [if_pos hlt] at h
+      have hl := (lt_bsize ht).1 hlt
+      have c1 : t0 t i ≠ 0 := by intro e'; rw [if_pos (by simpa using e')] at h; cases h
+      rw [if_neg (by simpa using c1)] at h
+      obtain ⟨e1, e2, e3⟩ := t0_sound t i ht hl c1
+      have ih : t21 n t (t0 t i) = 1 → noNilLet f (t.drop (t0 t i).toNat) = true := fun h' =>
+        t21_sound n f t (t0 t i) ht e2 (by omega) h'
+      rw [drop_cons' hl] at e3 ⊢
+      simp only [noNilLet, e3]
+      by_cases k2 : bget t i = 2
+      · rw [if_pos (by simpa using k2)] at h
+        have a1 : slice t i.toNat (t0 t i).toNat = [2] := (tok_single t i ht hl c1 2 (by decide) (by decide)).2 k2
+        rw [a1]
+        by_cases hj : t0 t i < bsize t
+        · rw [if_pos hj] at h
+          have hjl := (lt_bsize ht).1 hj
+          by_cases k14 : bget t (t0 t i) = 14
+          · rw [if_pos (by simpa using k14)] at h
+            have c2 : t0 t (t0 t i) ≠ 0 := by intro e'; rw [if_pos (by simpa using e')] at h; cases h
+            rw [if_neg (by simpa using c2)] at h
+            obtain ⟨f1, f2, f3⟩ := t0_sound t (t0 t i) ht hjl c2
+            have n22 : t22 t (t0 t (t0 t i)) ≠ 1 := by intro e'; rw [if_pos (by simpa using e')] at h; cases h
+            rw [if_neg (by simpa using n22)] at h
+            have hn := t22_nil t _ f2 ht n22
+            have hh : (slice t (t0 t i).toNat (t0 t (t0 t i)).toNat).head? = some 14 := by
+              rw [slice_head t _ _ f1 f2, ← bget_eq, k14]
+            simp [f3, hh, hn, ih h]
+          · rw [if_neg (by simpa using k14)] at h
+            have hh : ∀ n r', splitTok (t.drop (t0 t i).toNat) = some (n, r') → n.head? ≠ some 14 := fun n r' e => by
+              have := splitTok_head e
+              rw [this, List.head?_drop]; simp only [List.getElem?_eq_getElem hjl, Option.some.injEq]
+              intro e2; apply k14; rw [bget_eq, List.getD_eq_getElem?_getD, List.getElem?_eq_getElem hjl]; simpa using e2
+            cases hs : splitTok (t.drop (t0 t i).toNat) with
+            | none => simp [ih h]
+            | some nr => obtain ⟨n', r'⟩ := nr; simp [hh n' r' hs, ih h]
+        · rw [if_neg hj] at h
+          have : (t0 t i).toNat = t.length := by have := (not_congr (lt_bsize ht)).1 hj; omega
+          rw [this] at ih ⊢
+          obtain ⟨g, rfl⟩ : ∃ g, f = g + 1 := ⟨f - 1, by omega⟩
+          simp [splitTok, noNilLet]
+      · rw [if_neg (by simpa using k2)] at h
+        have a1 : slice t i.toNat (t0 t i).toNat ≠ [2] := fun e => k2 ((tok_single t i ht hl c1 2 (by decide) (by decide)).1 e)
+        simp [a1, ih h]
+    · have : i.toNat = t.length := by have := (not_congr (lt_bsize ht)).1 hlt; omega
+      rw [this]; simp [noNilLet]
+
 theorem t20_sound (t : Buf) (ht : t.length < 16777216) (h : t20 t ≠ []) : ds0 t = some (t20 t) := by
   have hb : bsize t < 16777216 := by
     rw [UInt64.lt_iff_toNat_lt, bsize_toNat ht]; simpa using ht
+  have h21 : t21 16777216 t 0 = 1 := by
+    rcases t21_01 16777216 t 0 with e | e
+    · unfold t20 at h; rw [if_pos (by simp [e])] at h; exact absurd rfl h
+    · exact e
+  have hnil := t21_sound 16777216 (t.length + 1) t 0 ht (by simp) (by simp) h21
+  simp only [UInt64.toNat_zero, List.drop_zero] at hnil
   unfold t20 at h ⊢
+  rw [if_neg (by simp [h21])] at h ⊢
   rw [if_pos hb] at h ⊢
   unfold ds0
+  rw [hnil, if_neg (by simp)]
   rw [if_pos (by simpa using ht)]
   by_cases h11 : t11 16777216 t 0 = 1
   · rw [if_pos (bT h11)]

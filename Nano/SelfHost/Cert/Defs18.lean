@@ -8,26 +8,10 @@ set_option linter.unusedVariables false
 namespace Cert
 open NanoMain ParSpec
 
-theorem ok_111 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 111) :
-    Spec111 inp (defMean inp κC ms PC.d111) := by
-  intro a0 a1 a2
-  refine defMean_den (C.v104 a0 a1 a2) PC.b111 ([.b a0, .w a1, .w a2] ++ List.replicate 1 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b111
-  den_unfold
-  den
-
-theorem ok_112 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 112) :
-    Spec112 inp (defMean inp κC ms PC.d112) := by
-  intro a0 a1 a2
-  refine defMean_den (C.v105 a0 a1 a2) PC.b112 ([.b a0, .w a1, .w a2] ++ List.replicate 7 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b112
-  den_unfold
-  den
-
 theorem ok_113 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 113) :
     Spec113 inp (defMean inp κC ms PC.d113) := by
   intro a0 a1 a2
-  refine defMean_den (C.v106 a0 a1 a2) PC.b113 ([.b a0, .w a1, .w a2] ++ List.replicate 2 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  refine defMean_den (C.v104 a0 a1 a2) PC.b113 ([.b a0, .w a1, .w a2] ++ List.replicate 1 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b113
   den_unfold
   den
@@ -35,7 +19,7 @@ theorem ok_113 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073
 theorem ok_114 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 114) :
     Spec114 inp (defMean inp κC ms PC.d114) := by
   intro a0 a1 a2
-  refine defMean_den (C.v107 a0 a1 a2) PC.b114 ([.b a0, .w a1, .w a2] ++ List.replicate 4 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  refine defMean_den (C.v105 a0 a1 a2) PC.b114 ([.b a0, .w a1, .w a2] ++ List.replicate 7 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b114
   den_unfold
   den
@@ -43,7 +27,7 @@ theorem ok_114 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073
 theorem ok_115 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 115) :
     Spec115 inp (defMean inp κC ms PC.d115) := by
   intro a0 a1 a2
-  refine defMean_den (C.v108 a0 a1 a2) PC.b115 ([.b a0, .w a1, .w a2] ++ List.replicate 6 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  refine defMean_den (C.v106 a0 a1 a2) PC.b115 ([.b a0, .w a1, .w a2] ++ List.replicate 2 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b115
   den_unfold
   den
@@ -51,7 +35,7 @@ theorem ok_115 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073
 theorem ok_116 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 116) :
     Spec116 inp (defMean inp κC ms PC.d116) := by
   intro a0 a1 a2
-  refine defMean_den (C.v109 a0 a1 a2) PC.b116 ([.b a0, .w a1, .w a2] ++ List.replicate 6 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  refine defMean_den (C.v107 a0 a1 a2) PC.b116 ([.b a0, .w a1, .w a2] ++ List.replicate 4 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b116
   den_unfold
   den
@@ -59,8 +43,24 @@ theorem ok_116 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073
 theorem ok_117 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 117) :
     Spec117 inp (defMean inp κC ms PC.d117) := by
   intro a0 a1 a2
-  refine defMean_den (C.v110 a0 a1 a2) PC.b117 ([.b a0, .w a1, .w a2] ++ List.replicate 2 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  refine defMean_den (C.v108 a0 a1 a2) PC.b117 ([.b a0, .w a1, .w a2] ++ List.replicate 6 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b117
+  den_unfold
+  den
+
+theorem ok_118 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 118) :
+    Spec118 inp (defMean inp κC ms PC.d118) := by
+  intro a0 a1 a2
+  refine defMean_den (C.v109 a0 a1 a2) PC.b118 ([.b a0, .w a1, .w a2] ++ List.replicate 6 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b118
+  den_unfold
+  den
+
+theorem ok_119 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 119) :
+    Spec119 inp (defMean inp κC ms PC.d119) := by
+  intro a0 a1 a2
+  refine defMean_den (C.v110 a0 a1 a2) PC.b119 ([.b a0, .w a1, .w a2] ++ List.replicate 2 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b119
   den_unfold
   den
 

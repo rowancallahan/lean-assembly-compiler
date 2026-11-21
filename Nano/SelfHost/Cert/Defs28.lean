@@ -8,27 +8,27 @@ set_option linter.unusedVariables false
 namespace Cert
 open NanoMain ParSpec
 
-theorem ok_150 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 150) :
-    Spec150 inp (defMean inp κC ms PC.d150) := by
-  intro a0 a1 a2
-  refine defMean_den (C.v140 a0 a1 a2) PC.b150 ([.b a0, .w a1, .w a2] ++ List.replicate 1 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b150
-  den_unfold
-  den
-
-theorem ok_151 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 151) :
-    Spec151 inp (defMean inp κC ms PC.d151) := by
-  intro a0 a1 a2
-  refine defMean_den (C.v141 a0 a1 a2) PC.b151 ([.b a0, .w a1, .w a2] ++ List.replicate 18 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
-  unfold PC.b151
-  den_unfold
-  den
-
 theorem ok_152 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 152) :
     Spec152 inp (defMean inp κC ms PC.d152) := by
   intro a0 a1 a2
-  refine defMean_den (C.v142 a0 a1 a2) PC.b152 ([.b a0, .w a1, .w a2] ++ List.replicate 16 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  refine defMean_den (C.v140 a0 a1 a2) PC.b152 ([.b a0, .w a1, .w a2] ++ List.replicate 1 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
   unfold PC.b152
+  den_unfold
+  den
+
+theorem ok_153 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 153) :
+    Spec153 inp (defMean inp κC ms PC.d153) := by
+  intro a0 a1 a2
+  refine defMean_den (C.v141 a0 a1 a2) PC.b153 ([.b a0, .w a1, .w a2] ++ List.replicate 18 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b153
+  den_unfold
+  den
+
+theorem ok_154 (inp : List UInt8) (ms : List Fn) (hin : inp.length < 18446744073709551616) (G : Good (specs inp) ms 154) :
+    Spec154 inp (defMean inp κC ms PC.d154) := by
+  intro a0 a1 a2
+  refine defMean_den (C.v142 a0 a1 a2) PC.b154 ([.b a0, .w a1, .w a2] ++ List.replicate 16 (.w 0)) rfl rfl (by decide) rfl rfl rfl ?_
+  unfold PC.b154
   den_unfold
   den
 

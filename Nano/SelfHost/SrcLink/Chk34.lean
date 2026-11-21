@@ -5,14 +5,6 @@ open ParSpec SrcLink
 
 set_option maxRecDepth 100000
 
-theorem lex256 : lexAll (x256.length + 1) x256 = some w256 := by decide +kernel
-theorem tok256 : tokens w256 = some S256 := by decide +kernel
-theorem nl256 : x256.getLast? = some 10 := by decide +kernel
-theorem chk256 : chkDef (pDef F D256 T256) di256 d256 T257 = true := by decide +kernel
-theorem lex257 : lexAll (x257.length + 1) x257 = some w257 := by decide +kernel
-theorem tok257 : tokens w257 = some S257 := by decide +kernel
-theorem nl257 : x257.getLast? = some 10 := by decide +kernel
-theorem chk257 : chkDef (pDef F D257 T257) di257 d257 T258 = true := by decide +kernel
 theorem lex258 : lexAll (x258.length + 1) x258 = some w258 := by decide +kernel
 theorem tok258 : tokens w258 = some S258 := by decide +kernel
 theorem nl258 : x258.getLast? = some 10 := by decide +kernel
@@ -45,5 +37,13 @@ theorem lex265 : lexAll (x265.length + 1) x265 = some w265 := by decide +kernel
 theorem tok265 : tokens w265 = some S265 := by decide +kernel
 theorem nl265 : x265.getLast? = some 10 := by decide +kernel
 theorem chk265 : chkDef (pDef F D265 T265) di265 d265 T266 = true := by decide +kernel
+theorem lex266 : lexAll (x266.length + 1) x266 = some w266 := by decide +kernel
+theorem tok266 : tokens w266 = some S266 := by decide +kernel
+theorem nl266 : x266.getLast? = some 10 := by decide +kernel
+theorem chk266 : chkDef (pDef F D266 T266) di266 d266 T267 = true := by decide +kernel
+theorem lex267 : lexAll (x267.length + 1) x267 = some w267 := by decide +kernel
+theorem tok267 : tokens w267 = some S267 := by decide +kernel
+theorem nl267 : x267.getLast? = some 10 := by decide +kernel
+theorem chk267 : chkDef (pDef F D267 T267) di267 d267 T268 = true := by decide +kernel
 
 end SrcGen
