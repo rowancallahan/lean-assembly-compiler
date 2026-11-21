@@ -23,6 +23,7 @@ How nano constructs map (the emitter produces exactly this):
 | `let x := v; b` | `have T v b` (Lean 4.34 elaborates `let` in these bodies as non-dependent `letE`) |
 | `let (a, b) := v; b` | `Prod.casesOn A B (λ A×B, R) v (λ A, λ B, b)` |
 | `if a == b` / `if a < b` | `ite R (Eq Bool (BEq.beq ..) true) (instDecidableEqBool ..)` / `ite R (LT.lt ..) (UInt64.decLt ..)` |
+| (`<` only) | `UInt64.decLt`'s copies of the operands lose their LEADING unused `have`s (Lean's instance term; found by fuzz) |
 | literal k at type T | `OfNat.ofNat T (lit k) (inst T k)`, T = UInt64, or Nat for a fuel argument |
 | slot `loc s w` | `bvar` of the binder that owns slot s |
 
@@ -62,6 +63,22 @@ Nothing else is normalized: `have`/`let` flag, universe levels, literal types ar
 `lean_side.sh SRC OUT`: elaborates `import Lean` + `Nano/Main/Prelude.lean` + SRC, writes N1-N4 normal forms in S.
 `run_check.sh`: emitter output vs Lean side, per def: exact-match count and a category per mismatch
 (literal typing, let form, matcher shape, other). Targets: C's source, E's source, `v2self/examples`, fuzz programs.
+
+Results (2026-11-21, `spot_check.sh`; emitter = `emitSpec`, the nano port of E is next):
+| set | defs | exact match | literal-typing | Lean rejects | other |
+|---|---|---|---|---|---|
+| C's source (`self_S_input.txt`) | 236 | 234 | 2 (`o32`, `o38`) | 0 | 0 |
+| examples (8 programs) | 19 | 19 | 0 | 0 | 0 |
+| fuzz seed 1 (300 programs, 34 rejected by nano) | 939 | 785 | 69 | 85 | 0 |
+| fuzz seed 2 (300 programs, 37 rejected by nano) | 908 | 730 | 81 | 97 | 0 |
+Mismatch categories:
+* literal-typing: a literal-only subterm (`let k := (if .. then 1 else 0)`, `if 3 < 5`, `let t := 7; ..`) gets type
+  Nat in Lean, UInt64 in nano. The values agree here (small, compared with literals), but the Expr differs, so nothing
+  is claimed for these defs. Fix options: nano rejects literal-only lets/comparisons, or C's source spells `k1`/`k0`.
+* lean-rejects: nano (ParSpec, so C) ACCEPTS, Lean REJECTS: invariant 1 violations. Main forms: `let t := []` (Lean
+  cannot infer the element type), a shift with literal operands `put [] (35 <<< 51)` (`<<<` is not `binop%`, the
+  operands default to Nat), a literal-only value later used as UInt64. Repros: `def m (x : List UInt8) : List UInt8 := let t := []; put [] 1`, `.. := put [] (35 <<< 51)`.
+  To fix in the parser (reject), a proven step on C.
 
 ## 6. Proof plan
 1. `evalX : X → env → Option Val` for the fragment: a closed table of the constants above (each with its Lean

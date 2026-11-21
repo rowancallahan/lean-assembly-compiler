@@ -25,7 +25,7 @@ partial def unfoldMatchers (e : Expr) : MetaM Expr :=
 /-- S format (EXPR.md): prefix tokens; binder names erased (N3) -/
 partial def ser : Expr → String
   | .bvar i => s!"#{i}"
-  | .const n ls => s!"c {n}" ++ (if ls.isEmpty then "" else ".{" ++ ",".intercalate (ls.map lvl) ++ "}")
+  | .const n ls => s!"c {strip n}" ++ (if ls.isEmpty then "" else ".{" ++ ",".intercalate (ls.map lvl) ++ "}")
   | .app f a => s!"@ {ser f} {ser a}"
   | .lam _ t b bi => assert! bi == .default; s!"\\ {ser t} {ser b}"
   | .forallE _ t b bi => assert! bi == .default; s!"> {ser t} {ser b}"
@@ -33,10 +33,16 @@ partial def ser : Expr → String
   | .lit (.natVal k) => s!"n{k}"
   | .sort l => s!"s {lvl l}"
   | e => panic! s!"outside the fragment: {e}"
-where lvl (l : Level) : String := match l.toNat with | some k => toString k | none => panic! s!"level {l}"
+where
+  /-- several sources in one file: source i is wrapped in `namespace P<i>`; the prefix is not part of the name -/
+  strip (n : Name) : Name := if (n.getRoot.toString.drop 1).all Char.isDigit && n.getRoot.toString.startsWith "P"
+    && n.getRoot != n then n.replacePrefix n.getRoot .anonymous else n
+  lvl (l : Level) : String := match l.toNat with | some k => toString k | none => panic! s!"level {l}"
 
 -- `srcDefs` (the source's def names, in order) is written by run_check.sh
 #eval show MetaM Unit from do
   for n in srcDefs do
+    if !(← getEnv).contains n then IO.println s!"X {n}"; continue
     let e ← Core.betaReduce (← unfoldMatchers (← instantiateMVars (← rhsOf n)))
+    if e.hasSorry then IO.println s!"X {n}"; continue  -- elaborated with errors
     IO.println s!"D {n} {ser (← getConstInfo n).type} {ser e}"
