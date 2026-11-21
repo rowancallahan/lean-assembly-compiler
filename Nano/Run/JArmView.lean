@@ -1,0 +1,176 @@
+/- E4, the program proof of the nano J → AArch64 translator (Nano/Codegen/JArm.lean, `C.e64` / `C.e45`) against the
+specification `natEncJ` (Nano/Run/NatEnc.lean): THE SHARED STATEMENTS.
+* The J VIEW the translator's accessor layer computes: `jk` (kind code 1..14), `jA` / `jB` / `jC` (fields, UInt64 two's
+  complement), `acode` (atom code of `e35`).
+* `JArmBits`: the bit-level facts (NATIVE-ARM-PROOF proves the instance `jArmBits` in Nano/Run/JArmBits.lean):
+  L1 bytes → words (`e68`), L6 words → bytes (`e49`), L2 the accessor layer on `encG j` for `JOK j`, L4 the A64 word
+  encoders `e50` … `e63`, `e42`, `e56` (li), `e57` (memW), `e58` (aluC) against `ArmEnc`'s `Nat` encoders.
+  Every field is a small lemma with explicit ranges; if one is false as stated, change the statement and tell FABLE-M4.
+The structural layers (L3 `e35`/`e36`/`e37` = `cand` / length / `ok`; L5 the two passes; L7 the glue to the top
+theorem) are proved from `JArmBits` in JArmCand.lean / JArmPass.lean (FABLE-M4). -/
+import Nano.Codegen.JArm
+import Nano.Run.NatEnc
+import Nano.Run.ArmEncOK
+namespace JT
+open Proven.Top SimW CallProbe ArmEnc C
+
+/-- the kind code of a J instruction (`e20` / `e25`) -/
+def jk : J → UInt64
+  | .addi _ _ _ => 1
+  | .slli _ _ _ => 2
+  | .srli _ _ _ => 3
+  | .ld _ _ _ => 4
+  | .sd _ _ _ => 5
+  | .sb _ _ _ => 6
+  | .lbu _ _ _ => 7
+  | .alu _ _ _ _ => 8
+  | .beq _ _ _ => 9
+  | .bne _ _ _ => 10
+  | .bltu _ _ _ => 11
+  | .bgeu _ _ _ => 12
+  | .jal _ _ => 13
+  | .jalr _ _ => 14
+
+/-- field A (`e21`): the destination; the source register of `sd` / `sb`; the first operand of a branch -/
+def jA : J → UInt64
+  | .addi d _ _ => d.toUInt64
+  | .slli d _ _ => d.toUInt64
+  | .srli d _ _ => d.toUInt64
+  | .ld d _ _ => d.toUInt64
+  | .sd s _ _ => s.toUInt64
+  | .sb s _ _ => s.toUInt64
+  | .lbu d _ _ => d.toUInt64
+  | .alu _ d _ _ => d.toUInt64
+  | .beq x _ _ => x.toUInt64
+  | .bne x _ _ => x.toUInt64
+  | .bltu x _ _ => x.toUInt64
+  | .bgeu x _ _ => x.toUInt64
+  | .jal rd _ => rd.toUInt64
+  | .jalr rd _ => rd.toUInt64
+
+/-- field B (`e22`): the base / first source; the second operand of a branch (unspecified for `jal`: 0 here) -/
+def jB : J → UInt64
+  | .addi _ n _ => n.toUInt64
+  | .slli _ n _ => n.toUInt64
+  | .srli _ n _ => n.toUInt64
+  | .ld _ n _ => n.toUInt64
+  | .sd _ n _ => n.toUInt64
+  | .sb _ n _ => n.toUInt64
+  | .lbu _ n _ => n.toUInt64
+  | .alu _ _ x _ => x.toUInt64
+  | .beq _ y _ => y.toUInt64
+  | .bne _ y _ => y.toUInt64
+  | .bltu _ y _ => y.toUInt64
+  | .bgeu _ y _ => y.toUInt64
+  | .jal _ _ => 0
+  | .jalr _ rs => rs.toUInt64
+
+/-- field C (`e23`): immediate / shift / offset (two's complement, branch offsets in J instructions); the second
+source of `alu` -/
+def jC : J → UInt64
+  | .addi _ _ imm => iu imm
+  | .slli _ _ sh => sh.toUInt64
+  | .srli _ _ sh => sh.toUInt64
+  | .ld _ _ off => iu off
+  | .sd _ _ off => iu off
+  | .sb _ _ off => iu off
+  | .lbu _ _ off => iu off
+  | .alu _ _ _ y => y.toUInt64
+  | .beq _ _ off => iu off
+  | .bne _ _ off => iu off
+  | .bltu _ _ off => iu off
+  | .bgeu _ _ off => iu off
+  | .jal _ off => iu off
+  | .jalr _ _ => 0
+
+/-- the ALU op (`e24`), 0 for other instructions -/
+def jop : J → UInt64
+  | .alu op _ _ _ => op.toUInt64
+  | _ => 0
+
+/-- the atom code of `e35` -/
+def acode : NTm → UInt64
+  | .li _ _ => 1
+  | .addi _ _ _ => 2
+  | .alu _ _ _ _ => 3
+  | .ld _ _ _ => 4
+  | .sd _ _ _ => 5
+  | .ldp _ _ _ sw => if sw then 7 else 6
+  | .cj .geu _ _ _ => 8
+  | .cj .ltu _ _ _ => 9
+  | .cj .eq _ _ _ => 10
+  | .lpz _ _ => 11
+  | .bgeu _ _ _ => 12
+  | .beqz _ _ => 13
+  | .bnez _ _ => 14
+  | .ldrbx _ _ _ => 15
+  | .slli _ _ _ => 16
+  | .bgetI => 0
+  | .bsetI => 0
+  | .bpushI => 18
+  | .align8 _ _ => 19
+  | .jal _ _ => 20
+  | .jalr _ => 21
+  | .sb _ _ => 22
+
+/-- **the bit-level facts about the translator** -/
+structure JArmBits : Prop where
+  /-! L1 / L6: bytes ↔ words -/
+  /-- the words of Gen's bytes -/
+  l1_words : ∀ ws : Buf, ws.length < 2 ^ 32 → (∀ w ∈ ws, w.toNat < 2 ^ 32) →
+    e68 (len' (ws.flatMap ArmRA.le4)) (ws.flatMap ArmRA.le4) 0 bnew = ws
+  l1_len : ∀ ws : Buf, ws.length < 2 ^ 32 → (len (ws.flatMap ArmRA.le4) &&& e_5) = 0
+  /-- the bytes of the A64 words -/
+  l6_bytes : ∀ (k : Nat) (c : List UInt8) (w : Buf), w.length ≤ k → w.length < 2 ^ 32 →
+    e49 k c w 0 [] = w.flatMap ArmRA.le4
+  /-! L2: the accessor layer -/
+  /-- a J word is below 2^32 -/
+  l2_lt : ∀ j : J, JOK j → (encG j).toNat < 2 ^ 32
+  /-- a word of 2^32 or more is no J instruction -/
+  l2_big : ∀ v : UInt64, 4294967295 < v → e25 v = 0
+  l2_kind : ∀ j : J, JOK j → e25 (encG j) = jk j
+  l2_A : ∀ (c : Buf) (i : UInt64) (j : J), bget c i = encG j → JOK j → e21 c i = jA j
+  l2_B : ∀ (c : Buf) (i : UInt64) (j : J), bget c i = encG j → JOK j → jk j ≠ 13 → e22 c i = jB j
+  l2_C : ∀ (c : Buf) (i : UInt64) (j : J), bget c i = encG j → JOK j → e23 c i = jC j
+  l2_op : ∀ (c : Buf) (i : UInt64) (op d x y : Nat), bget c i = encG (.alu op d x y) → JOK (.alu op d x y) →
+    e24 c i = op.toUInt64
+  /-! L4: signs and registers -/
+  /-- the sign test -/
+  l4_neg : ∀ z : Int, -2 ^ 63 ≤ z → z < 2 ^ 63 → e14 (iu z) = if z < 0 then 1 else 0
+  l4_reg : ∀ r : Nat, mapped r = true → e42 r.toUInt64 = (armReg r).toUInt64
+  l4_mapped : ∀ r : Nat, r < 32 → e38 r.toUInt64 = if mapped r = true then 1 else 0
+  /-- the alignment test of `ld` / `sd` -/
+  l4_al : ∀ off : Int, -2048 ≤ off → off < 2048 → e41 (iu off) = if 0 ≤ off → off % 8 = 0 then 1 else 0
+  /-! L4: the word encoders (register fields < 32) -/
+  /-- `c ||| v << 10 ||| n << 5 ||| d` as a sum (add / sub imm, ldr / str, strb, ldp, br) -/
+  l4_e50 : ∀ cN d n v : Nat, cN < 2 ^ 32 → cN % 2 ^ 22 = 0 → d < 32 → n < 32 → v < 4096 →
+    e50 cN.toUInt64 d.toUInt64 n.toUInt64 v.toUInt64 = (cN + v * 2 ^ 10 + n * 2 ^ 5 + d).toUInt64
+  l4_br : ∀ n : Nat, n < 32 → e50 3592355840 0 n.toUInt64 0 = (ArmEnc.brR n).toUInt64
+  l4_lsl : ∀ d n sh : Nat, d < 32 → n < 32 → 0 < sh → sh < 64 →
+    e50 3544186880 d.toUInt64 n.toUInt64 (63 - sh.toUInt64) ||| (((64 - sh.toUInt64) &&& e_4) <<< 16)
+      = (ArmEnc.lslI d n sh).toUInt64
+  /-- three registers: `c ||| m << 16 ||| n << 5 ||| d` -/
+  l4_e51 : ∀ cN d n m : Nat, cN < 2 ^ 32 → cN % 2 ^ 10 = 0 → cN / 2 ^ 16 % 32 = 0 → d < 32 → n < 32 → m < 32 →
+    e51 cN.toUInt64 d.toUInt64 n.toUInt64 m.toUInt64 = (ArmEnc.rr cN d n m).toUInt64
+  l4_alu : ∀ p : Nat, p < 2 ^ 64 → e58 p.toUInt64 = (aluC p).toUInt64
+  /-- movz / movk / movn: `c ||| j << 21 ||| v << 5 ||| d` -/
+  l4_e52 : ∀ cN d v j : Nat, cN < 2 ^ 32 → cN % 2 ^ 23 = 0 → d < 32 → v < 65536 → j < 4 →
+    e52 cN.toUInt64 d.toUInt64 v.toUInt64 j.toUInt64 = (cN + j * 2 ^ 21 + v * 2 ^ 5 + d).toUInt64
+  /-- b.cond / cbz / cbnz: the 19-bit word offset `δ` -/
+  l4_e53 : ∀ (cN : Nat) (δ : Int), cN < 2 ^ 32 → cN / 32 % 2 ^ 19 = 0 →
+    e53 cN.toUInt64 (iu δ) = (cN + mo δ 19 * 2 ^ 5).toUInt64
+  l4_cb : ∀ (cN r : Nat) (δ : Int), cN < 2 ^ 32 → cN % 2 ^ 24 = 0 → r < 32 →
+    e53 cN.toUInt64 (iu δ) ||| r.toUInt64 = (cN + mo δ 19 * 2 ^ 5 + r).toUInt64
+  /-- b / bl: the 26-bit word offset -/
+  l4_e63 : ∀ (cN : Nat) (δ : Int), cN < 2 ^ 32 → cN % 2 ^ 26 = 0 → e63 cN.toUInt64 (iu δ) = (cN + mo δ 26).toUInt64
+  /-- ldur / stur: the signed 9-bit byte offset -/
+  l4_e62 : ∀ (cN t n : Nat) (f : Int), cN < 2 ^ 32 → cN % 2 ^ 21 = 0 → t < 32 → n < 32 →
+    e62 cN.toUInt64 t.toUInt64 n.toUInt64 (iu f) = (cN + mo f 9 * 2 ^ 12 + n * 2 ^ 5 + t).toUInt64
+  /-- `li` -/
+  l4_li : ∀ (o : Buf) (d : Nat) (v : UInt64), d < 32 → e56 o d.toUInt64 v = o ++ (liL d v.toNat).map Nat.toUInt64
+  /-- `memW` (the offsets `NTm.ok` allows) -/
+  l4_mem : ∀ (o : Buf) (st : Bool) (t n : Nat) (off : Int), t < 32 → n < 32 → -4096 < off → off < 32768 →
+    (0 ≤ off → off % 8 = 0) →
+    e57 o (if st then 1 else 0) t.toUInt64 n.toUInt64 (iu off) = o ++ (NTm.memW st t n off).map Nat.toUInt64
+
+end JT
