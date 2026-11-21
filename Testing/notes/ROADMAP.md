@@ -8,6 +8,10 @@ Goal of each row: `ImplementsMapped code f` for the named Lean function `f`, RIS
    same results (fuzz: nano-accepts ⇒ Lean-accepts and agrees; any violation is a FAIL).
 2. Strict self-hosting: the compiler (all stages, every target incl. native ARM) is written in nano's bootstrap
    subset and compiles itself; Testing/scripts/selfhost_gate.sh must pass on every merge.
+   Self-hosting is the PRIMARY goal (owner, 2026-11-21): the aim is a Lean proof about the compiler itself. New
+   features (con-leche's inductives, casesOn, recursion, classes, big Nat, Expr input) are implemented in
+   bootstrap-subset nano. The bootstrap subset grows only slowly and in proven steps: each step regenerates the
+   self-hosted binaries, re-proves the fixpoints and passes the gate.
 3. No @[implemented_by] / @[extern] (or other attributes/keywords that let run-time code differ from the logical
    definition: export, csimp, unsafe, opaque): attributes are a whitelist of meaning-preserving ones only. (Owner: implemented_by may be supported LATER —
    then nano compiles the implementation, as Lean's runtime does; banned for now.)
