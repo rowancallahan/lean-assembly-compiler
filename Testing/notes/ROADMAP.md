@@ -12,6 +12,19 @@ Goal of each row: `ImplementsMapped code f` for the named Lean function `f`, RIS
    definition: export, csimp, unsafe, opaque): attributes are a whitelist of meaning-preserving ones only. (Owner: implemented_by may be supported LATER —
    then nano compiles the implementation, as Lean's runtime does; banned for now.)
 
+## LONG-TERM GOAL (owner, 2026-11-21): close the loop with con-leche
+Compile con-leche (the CONsistent LEan CHEcker, proven: accepts ⇒ the declarations have a ZFC+inaccessibles model)
+with self-hosted nano to proved ARM and RISC-V code. Then: con-leche's consistency proof + nano's compiler theorem ⇒
+the BINARY only accepts consistent developments, with no trust in Lean's compiler or runtime. Next, use that binary to
+re-check nano's own proofs and con-leche's proofs, so Lean's C++ kernel is no longer the only checker. Remaining trust:
+the ISA models (Sail / DeepMind) + hardware, ZFC + inaccessibles, the mixHashLean port (see con-leche hashing below),
+and the first kernel check of the bootstrap. Steps:
+- after the release, re-check the release theorems with con-leche;
+- an Expr spot check: nano emits Expr, compared with Lean's elaborated Expr; then an evaluator proof tied to
+  con-leche's model;
+- syntax growth driven by con-leche's blocker list (CONLECHE_DEPTH2 / BLOCKER_YIELD), now via the self-hosted front
+  end (the earlier Legacy/Frontx con-leche route is shelved with the Lean-hosted mode).
+
 ## Fits the current language (or nearly)
 | Target | Lean reference | Needs |
 |---|---|---|
