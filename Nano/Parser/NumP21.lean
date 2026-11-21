@@ -130,4 +130,109 @@ theorem u55_ok {g : Buf} (q k : UInt64) (hl : g.length < 2 ^ 62) : ∀ (m : Nat)
           simp [rnd, hs]
         · rw [if_neg (by simpa using hok)] at h; exact absurd h (show (0 : UInt64) ≠ 1 by decide)
 
+/-- n rounds from round K -/
+def rndsN (q : UInt64) (X : List NumSpec.G) : Nat → Buf → Nat → Buf
+  | 0, f, _ => f
+  | n + 1, f, K => rndsN q X n (rnd q (u K) f X) (K + 1)
+
+theorem u56_ok {g : Buf} {X : List NumSpec.G} (hg : g = encG X) (hl : g.length < 2 ^ 62) (q : UInt64) (R : Nat)
+    (hR : R < 2 ^ 62) : ∀ (m K : Nat) (f : Buf), K ≤ R + 1 →
+    (u56 m f g q (u K) (u R)).2 = 1 → (u56 m f g q (u K) (u R)).1 = rndsN q X (R + 1 - K) f K
+  | 0, _, _, _, h => by simp [u56] at h
+  | m + 1, K, f, hK, h => by
+    rw [u56] at h ⊢
+    by_cases hlt : R < K
+    · have : u R < u K := by rw [ult (by omega) (by omega)]; exact hlt
+      rw [if_pos this]; rw [show R + 1 - K = 0 by omega]; rfl
+    · have : ¬ u R < u K := by rw [ult (by omega) (by omega)]; exact hlt
+      rw [if_neg this] at h ⊢
+      have h55 := u55_ok q (u K) hl 16777216 [] X f (by simpa using hg)
+      simp only [encG, List.flatMap_nil, List.length_nil] at h55
+      rw [show (0 : UInt64) = u 0 from rfl]
+      rw [show (0 : UInt64) = u 0 from rfl] at h
+      generalize u55 16777216 f g (u 0) q (u K) = U at h h55 ⊢
+      obtain ⟨f1, ok⟩ := U
+      iota_only at h ⊢
+      by_cases hok : ok = 1
+      · subst hok
+        rw [if_pos (keq (show ((1 : UInt64) == 1) = true from rfl))] at h ⊢
+        have h1 := h55 rfl; simp only at h1
+        rw [show u K + 1 = u (K + 1) by rw [u1, uadd]] at h ⊢
+        rw [u56_ok hg hl q R hR m (K + 1) f1 (by omega) h, show R + 1 - K = (R + 1 - (K + 1)) + 1 by omega, h1]
+        rfl
+      · rw [if_neg (by simpa using hok)] at h; exact absurd h (show (0 : UInt64) ≠ 1 by decide)
+
+/-- the per-group class rule, on the marking buffers -/
+def gok (f h : Buf) (G : NumSpec.G) : Bool :=
+  let a := (u G.d == 1) || (G.vs.map u).any fun w => bget f w != 0
+  let o := (u G.d == 2) || (G.vs.map u).any fun w => bget h w != 0
+  !(a && o) && !(!a && G.ar)
+
+theorem u58_ok {g : Buf} (f h : Buf) (hl : g.length < 2 ^ 62) : ∀ (m : Nat) (A B : List NumSpec.G), g = encG (A ++ B) →
+    u58 m f h g (u (encG A).length) = 1 → ∀ G ∈ B, gok f h G = true
+  | 0, _, _, _, hr => by simp [u58] at hr
+  | m + 1, A, [], _, _ => by simp
+  | m + 1, A, G :: B, hg, hr => by
+    obtain ⟨r0, r1, r2, hpre, e3, e4, e5, hlt⟩ := rec_rd hg hl
+    rw [u58] at hr
+    zeta_at at hr
+    rw [if_pos (glt hl hlt), r0, r1, r2, e3, e4] at hr
+    have ih := u58_ok f h hl m (A ++ [G]) B (by simpa using hg)
+    have hfa := u59_ok f 16777216 _ _ g hpre hl
+    have hha := u59_ok h 16777216 _ _ g hpre hl
+    generalize u59 16777216 f g (u (encG A ++ ghd G).length) (u ((encG A ++ ghd G).length + (G.vs.map u).length)) = a
+      at hr hfa
+    generalize u59 16777216 h g (u (encG A ++ ghd G).length) (u ((encG A ++ ghd G).length + (G.vs.map u).length)) = o
+      at hr hha
+    rw [e5] at hr
+    have hA : (if (u G.d == 1) = true then (1 : UInt64) else a) = 2 ∨
+        (if (u G.d == 1) = true then (1 : UInt64) else a) =
+          w2 ((u G.d == 1) || (G.vs.map u).any fun w => bget f w != 0) := by
+      by_cases hq : (u G.d == 1) = true
+      · rw [if_pos hq]; right; simp [hq, w2]
+      · rw [if_neg hq]; rcases hfa with h1 | h1
+        · exact Or.inl h1
+        · right; rw [h1]; simp [hq]
+    have hO : (if (u G.d == 2) = true then (1 : UInt64) else o) = 2 ∨
+        (if (u G.d == 2) = true then (1 : UInt64) else o) =
+          w2 ((u G.d == 2) || (G.vs.map u).any fun w => bget h w != 0) := by
+      by_cases hq : (u G.d == 2) = true
+      · rw [if_pos hq]; right; simp [hq, w2]
+      · rw [if_neg hq]; rcases hha with h1 | h1
+        · exact Or.inl h1
+        · right; rw [h1]; simp [hq]
+    generalize (if (u G.d == 1) = true then (1 : UInt64) else a) = A' at hr hA
+    generalize (if (u G.d == 2) = true then (1 : UInt64) else o) = O' at hr hO
+    rcases hA with hA | hA
+    · subst hA; rw [if_pos (keq (show ((2 : UInt64) == 2) = true from rfl))] at hr; exact absurd hr (by decide)
+    subst hA
+    rw [if_neg (kne (w2_eq2 _))] at hr
+    rcases hO with hO | hO
+    · subst hO; rw [if_pos (keq (show ((2 : UInt64) == 2) = true from rfl))] at hr
+      exact absurd hr (by decide)
+    subst hO
+    rw [if_neg (kne (w2_eq2 _)), w2_eq1, w2_eq1] at hr
+    intro G' hG'
+    simp only [List.mem_cons] at hG'
+    rcases hG' with rfl | hG'
+    · unfold gok
+      generalize ((u G'.d == 1) || (G'.vs.map u).any fun w => bget f w != 0) = pa at hr
+      generalize ((u G'.d == 2) || (G'.vs.map u).any fun w => bget h w != 0) = po at hr
+      cases pa <;> cases po <;> simp at hr ⊢
+      · cases har : G'.ar
+        · rfl
+        · simp [har, w2] at hr
+      · cases har : G'.ar
+        · rfl
+        · simp [har, w2] at hr
+    · by_cases ha : ((u G.d == 1) || (G.vs.map u).any fun w => bget f w != 0) = true
+      · rw [if_pos ha] at hr
+        by_cases ho : ((u G.d == 2) || (G.vs.map u).any fun w => bget h w != 0) = true
+        · rw [if_pos ho] at hr; exact absurd hr (by decide)
+        · rw [if_neg ho] at hr; exact ih hr G' hG'
+      · rw [if_neg ha, w2_eq1] at hr
+        by_cases har : G.ar = true
+        · rw [if_pos har] at hr; exact absurd hr (by decide)
+        · rw [if_neg har] at hr; exact ih hr G' hG'
+
 end NumP
