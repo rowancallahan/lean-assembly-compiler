@@ -191,5 +191,158 @@ theorem n_b {q' : Nat} (hA : A[q]? = some (ArmEnc.bB ((q' : Int) - q))) (hq' : q
     Int.toNat_natCast] at this
   exact nmid_jump hM this
 
+/-- `add/sub/and/orr/lslv/lsrv/eor xd, xn, xm` (not `madd`: op ≠ 3) -/
+theorem n_alu {op d n m : Nat} (hA : A[q]? = some (ArmEnc.rr (ArmEnc.aluC op) (armReg d) (armReg n) (armReg m)))
+    (h1 : 1 ≤ op) (h2 : op ≤ 8) (h3 : op ≠ 3) (hd : mapped d = true) (h0 : d ≠ 0) (hn : mapped n = true) (hn0 : n ≠ 0)
+    (hm : mapped m = true) (hm0 : m ≠ 0) :
+    ∃ s', Runs M s s' ∧ NMid X W K A s0 (CallProbe.wr st d (CallProbe.aluf op (st.x n) (st.x m))) (q + 1) s' := by
+  have hq := (List.getElem?_eq_some_iff.1 hA).1
+  have := S.alu s op _ _ _ hM.cfg (nmid_pcok hM hB hq) (nmid_fx hM hB (by omega) (by omega)) h1 h2
+    (armReg_lt hd h0) (armReg_lt hn hn0) (armReg_lt hm hm0) (nmid_word hM hA hB)
+  rw [hM.x n (by omega) (mapped_lt hn), hM.x m (by omega) (mapped_lt hm), aluV_eq op _ _ _ (Or.inl h3)] at this
+  exact nmid_set hM hd h0 this
+
+/-- `cbz xt, f` to word `q'` -/
+theorem n_cbz {t q' : Nat} (hA : A[q]? = some (ArmEnc.cbz (armReg t) ((q' : Int) - q))) (ht : mapped t = true)
+    (ht0 : t ≠ 0) (hq' : q' ≤ A.length) (hL : A.length < 2 ^ 18) :
+    ∃ s', Runs M s s' ∧ NMid X W K A s0 st (if st.x t = 0 then q' else q + 1) s' := by
+  have hq := (List.getElem?_eq_some_iff.1 hA).1
+  have := S.cbz s _ ((q' : Int) - q) hM.cfg (nmid_pcok hM hB hq) (nmid_fx hM hB (by omega) (by omega))
+    (armReg_lt ht ht0) (by omega) (by omega) (nmid_word hM hA hB)
+  rw [hM.x t (by omega) (mapped_lt ht), hM.pc, ofNat_addInt _ _ (by omega) (by omega),
+    show ((K.base + 4 * q : Nat) : Int) + 4 * ((q' : Int) - q) = ((K.base + 4 * q' : Nat) : Int) by omega,
+    Int.toNat_natCast, ofNat_add4] at this
+  split
+  · rename_i h; rw [if_pos h] at this; exact nmid_jump hM this
+  · rename_i h; rw [if_neg h] at this; exact nmid_jump hM (by rw [show K.base + 4 * (q + 1) = K.base + 4 * q + 4 by omega]; exact this)
+
+/-- `cbnz xt, f` to word `q'` -/
+theorem n_cbnz {t q' : Nat} (hA : A[q]? = some (ArmEnc.cbnz (armReg t) ((q' : Int) - q))) (ht : mapped t = true)
+    (ht0 : t ≠ 0) (hq' : q' ≤ A.length) (hL : A.length < 2 ^ 18) :
+    ∃ s', Runs M s s' ∧ NMid X W K A s0 st (if st.x t = 0 then q + 1 else q') s' := by
+  have hq := (List.getElem?_eq_some_iff.1 hA).1
+  have := S.cbnz s _ ((q' : Int) - q) hM.cfg (nmid_pcok hM hB hq) (nmid_fx hM hB (by omega) (by omega))
+    (armReg_lt ht ht0) (by omega) (by omega) (nmid_word hM hA hB)
+  rw [hM.x t (by omega) (mapped_lt ht), hM.pc, ofNat_addInt _ _ (by omega) (by omega),
+    show ((K.base + 4 * q : Nat) : Int) + 4 * ((q' : Int) - q) = ((K.base + 4 * q' : Nat) : Int) by omega,
+    Int.toNat_natCast, ofNat_add4] at this
+  split
+  · rename_i h; rw [if_pos h] at this; exact nmid_jump hM (by rw [show K.base + 4 * (q + 1) = K.base + 4 * q + 4 by omega]; exact this)
+  · rename_i h; rw [if_neg h] at this; exact nmid_jump hM this
+
+/-- `subs x16, xn, xm; b.cond f` (c: EQ 0, NE 1, HS 2, LO 3) to word `q'` (offset from the `b.cond`) -/
+theorem n_cmpbr {c n m q' : Nat} (hA : A[q]? = some (ArmEnc.subsR (armReg n) (armReg m)))
+    (hA1 : A[q + 1]? = some (ArmEnc.bc c ((q' : Int) - (q + 1)))) (hc : c < 4) (hn : mapped n = true) (hn0 : n ≠ 0)
+    (hm : mapped m = true) (hm0 : m ≠ 0) (hq' : q' ≤ A.length) (hL : A.length < 2 ^ 18) :
+    ∃ s', Runs M s s' ∧ NMid X W K A s0 st (if condV c (st.x n) (st.x m) then q' else q + 2) s' := by
+  have hq1 := (List.getElem?_eq_some_iff.1 hA1).1
+  have hR := S.ram.2; have hbh := hM.lay.bhi
+  have hg := S.cmpbr s c _ _ ((q' : Int) - (q + 1)) hM.cfg (nmid_pcok hM hB (by omega)) (nmid_fx hM hB (by omega) (by omega))
+    hc (armReg_lt hn hn0) (armReg_lt hm hm0) (by omega) (by omega)
+    (by rw [nmid_pcN hM hB (by omega)]; omega) (nmid_word hM hA hB) (nmid_word1 hM hA1 hB)
+  rw [hM.x n (by omega) (mapped_lt hn), hM.x m (by omega) (mapped_lt hm)] at hg
+  obtain ⟨s', r, cf, o, kp⟩ := hg
+  refine ⟨s', r, nmid_regs hM cf kp ?_ (by rw [o]) (fun j h0 h32 => ?_) (fun r' _ hr => ?_) hM.x0 rfl⟩
+  · rw [o]; simp only []
+    split
+    · rw [hM.pc, ofNat_add4, ofNat_addInt _ _ (by omega) (by omega),
+        show ((K.base + 4 * q + 4 : Nat) : Int) + 4 * ((q' : Int) - (q + 1)) = ((K.base + 4 * q' : Nat) : Int) by omega,
+        Int.toNat_natCast]
+    · rw [hM.pc]; apply UInt64.toNat_inj.1; simp; omega
+  · rw [o]; simp only []
+    have := @armReg_ne_scr j
+    rw [if_neg (by omega)]; exact hM.x j h0 h32
+  · rw [o]; simp only []
+    rw [if_neg (by intro e; subst e; simp [armScratch] at hr)]
+
+/-- an 8-byte store to the work cell `a` -/
+theorem nmid_store8 {a : Nat} (ha : wok K a) {v : UInt64} (hg : GoesK M X W s (store8 (M.observe s) a v)) :
+    ∃ s', Runs M s s' ∧ NMid X W K A s0 { st with m := CallProbe.upd st.m a v } (q + 1) s' := by
+  obtain ⟨s', r, c, o, kp⟩ := hg
+  have hL := hM.lay; have hR := S.ram.2
+  have hwa := hL.wlo; have hwb := hL.whi; have hcw := hL.cw; have hbh := hL.bhi
+  have hib := hL.ibh; have hob := hL.obh; have hil := hL.ibl; have hol := hL.obl
+  unfold wok at ha
+  refine ⟨s', r, ⟨c, by rw [o]; simp only [store8]; rw [hM.pc, ofNat_add4]; congr 1, ?_, hM.x0,
+    fun j h0 h32 => by rw [o]; exact hM.x j h0 h32, fun r' h1 h2 => by rw [o]; exact hM.keep r' h1 h2, ?_, ?_, ?_,
+    hM.lay, perm_keep hM.pm kp⟩⟩
+  · intro i h b hb
+    rw [o]; simp only [store8]
+    rw [toNat_ofNat_lt (by omega), if_neg (by omega)]
+    exact hM.code i h b hb
+  · intro c' hc' k' hk'
+    unfold wok at hc'
+    rw [o]; simp only [store8]
+    rw [toNat_ofNat_lt (by omega)]
+    by_cases e : c' = a
+    · subst e; rw [if_pos (by omega)]; simp [CallProbe.upd]
+    · rw [if_neg (by omega)]; rw [hM.w c' (by unfold wok; omega) k' hk']; simp [CallProbe.upd, e]
+  · intro x hx
+    have hx64 : x < 2 ^ 64 := by unfold io outB at hx; omega
+    rw [o]; simp only [store8]; rw [toNat_ofNat_lt hx64]
+    by_cases e : a ≤ x ∧ x < a + 8
+    · rw [if_pos e, show x - x % 8 = a by omega, show x - a = x % 8 by omega]; simp [CallProbe.upd]
+    · rw [if_neg e, hM.bw x hx]; simp [CallProbe.upd, show x - x % 8 ≠ a by omega]
+  · intro x hx h1 h2
+    rw [o]; simp only [store8]; rw [toNat_ofNat_lt hx]
+    rw [if_neg (fun e => h1 (by unfold wok; omega))]; exact hM.fr x hx h1 h2
+
+/-- `ldr xd, [xb, #f]` from the work cell `a = x[b] + f` (`nb`: any register < 31 holding `bv`, e.g. x16) -/
+theorem n_ldr {d nb f a : Nat} {bv : UInt64} (hA : A[q]? = some (ArmEnc.ldr (armReg d) nb f)) (hd : mapped d = true)
+    (h0 : d ≠ 0) (hnb : nb < 31) (hbv : (M.observe s).register nb = bv) (hf8 : f % 8 = 0) (hf : f < 32768)
+    (ha : a = bv.toNat + f) (hw : wok K a) :
+    ∃ s', Runs M s s' ∧ NMid X W K A s0 (CallProbe.wr st d (st.m a)) (q + 1) s' := by
+  have hq := (List.getElem?_eq_some_iff.1 hA).1
+  have hL := hM.lay; have hR := S.ram.2; have hwa := hL.wlo; have hwb := hL.whi
+  have hw' := hw; unfold wok at hw'
+  subst ha
+  exact nmid_set hM hd h0 (S.ldr s _ nb f (st.m (bv.toNat + f)) hM.cfg (nmid_pcok hM hB hq)
+    (nmid_fx hM hB (by omega) (by omega)) (armReg_lt hd h0) hnb hf8 hf (by rw [hbv]; omega) (by rw [hbv]; omega)
+    (by rw [hbv]; omega) (by rw [hbv]; omega)
+    (fun k hk => by rw [hbv]; exact hM.pm.2 _ (Or.inl (by omega)))
+    (fun k hk => by rw [hbv]; exact hM.w _ hw k hk) (nmid_word hM hA hB))
+
+/-- `str xt, [xb, #f]` to the work cell `a = x[b] + f` (`nt`, `nb`: any registers < 31 holding `v`, `bv`) -/
+theorem n_str {nt nb f a : Nat} {v bv : UInt64} (hA : A[q]? = some (ArmEnc.str nt nb f)) (hnt : nt < 31)
+    (hv : (M.observe s).register nt = v) (hnb : nb < 31) (hbv : (M.observe s).register nb = bv) (hf8 : f % 8 = 0)
+    (hf : f < 32768) (ha : a = bv.toNat + f) (hw : wok K a) :
+    ∃ s', Runs M s s' ∧ NMid X W K A s0 { st with m := CallProbe.upd st.m a v } (q + 1) s' := by
+  have hq := (List.getElem?_eq_some_iff.1 hA).1
+  have hL := hM.lay; have hR := S.ram.2; have hwa := hL.wlo; have hwb := hL.whi
+  have hw' := hw; unfold wok at hw'
+  subst ha
+  have := S.str s nt nb f hM.cfg (nmid_pcok hM hB hq) (nmid_fx hM hB (by omega) (by omega)) hnt hnb hf8 hf
+    (by rw [hbv]; omega) (by rw [hbv]; omega) (by rw [hbv]; omega) (by rw [hbv]; omega)
+    (fun k hk => by rw [hbv]; exact hM.pm.2 _ (Or.inl (by omega))) (nmid_word hM hA hB)
+  rw [hbv, hv] at this
+  exact nmid_store8 S hM hB hw this
+
+/-- `ldur xd, [xb, #f]` (−256 ≤ f < 256) from the work cell `a = x[b] + f` -/
+theorem n_ldur {d nb a : Nat} {f : Int} {bv : UInt64} (hA : A[q]? = some (ArmEnc.ldur (armReg d) nb f))
+    (hd : mapped d = true) (h0 : d ≠ 0) (hnb : nb < 31) (hbv : (M.observe s).register nb = bv) (hf1 : -256 ≤ f)
+    (hf2 : f < 256) (ha : (a : Int) = bv.toNat + f) (hw : wok K a) :
+    ∃ s', Runs M s s' ∧ NMid X W K A s0 (CallProbe.wr st d (st.m a)) (q + 1) s' := by
+  have hq := (List.getElem?_eq_some_iff.1 hA).1
+  have hL := hM.lay; have hR := S.ram.2; have hwa := hL.wlo; have hwb := hL.whi
+  have hw' := hw; unfold wok at hw'
+  exact nmid_set hM hd h0 (S.ldur s _ nb a f (st.m a) hM.cfg (nmid_pcok hM hB hq)
+    (nmid_fx hM hB (by omega) (by omega)) (armReg_lt hd h0) hnb hf1 hf2 (by rw [hbv]; exact ha) hw'.2.2
+    (by omega) (by omega) (fun k hk => hM.pm.2 _ (Or.inl (by omega))) (fun k hk => hM.w _ hw k hk)
+    (nmid_word hM hA hB))
+
+/-- `stur xt, [xb, #f]` to the work cell `a = x[b] + f` -/
+theorem n_stur {nt nb a : Nat} {f : Int} {v bv : UInt64} (hA : A[q]? = some (ArmEnc.stur nt nb f)) (hnt : nt < 31)
+    (hv : (M.observe s).register nt = v) (hnb : nb < 31) (hbv : (M.observe s).register nb = bv) (hf1 : -256 ≤ f)
+    (hf2 : f < 256) (ha : (a : Int) = bv.toNat + f) (hw : wok K a) :
+    ∃ s', Runs M s s' ∧ NMid X W K A s0 { st with m := CallProbe.upd st.m a v } (q + 1) s' := by
+  have hq := (List.getElem?_eq_some_iff.1 hA).1
+  have hL := hM.lay; have hR := S.ram.2; have hwa := hL.wlo; have hwb := hL.whi
+  have hw' := hw; unfold wok at hw'
+  have := S.stur s nt nb a f hM.cfg (nmid_pcok hM hB hq) (nmid_fx hM hB (by omega) (by omega)) hnt hnb hf1 hf2
+    (by rw [hbv]; exact ha) hw'.2.2 (by omega) (by omega) (fun k hk => hM.pm.2 _ (Or.inl (by omega)))
+    (nmid_word hM hA hB)
+  rw [hv] at this
+  exact nmid_store8 S hM hB hw this
+
 end
 end JT
