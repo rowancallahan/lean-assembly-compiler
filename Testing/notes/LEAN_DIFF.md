@@ -1,12 +1,12 @@
 # LEAN_DIFF: standing differential campaign, nano vs real Lean 4.34.1 (branch lean-diff)
 
-Generated 2026-11-21 08:51Z. Harness: `Testing/nano/v2self/fuzz/lean_diff/` (UNPROVEN glue). Oracle: `lean` 4.34.1 on `import Nano.Main.Prelude` + program + `#eval m input`; nano = B2.bin via nanorun (RV) and GA_arm.bin under qemu-aarch64 (sampled). Classes M1–M14: `LEAN_RULES.md` §0; `cls` is an auto-classification of the *minimized* program (heuristic; `NEW?` = needs manual triage).
+Generated 2026-11-21 09:25Z. Harness: `Testing/nano/v2self/fuzz/lean_diff/` (UNPROVEN glue). Oracle: `lean` 4.34.1 on `import Nano.Main.Prelude` + program + `#eval m input`; nano = B2.bin via nanorun (RV) and GA_arm.bin under qemu-aarch64 (sampled). Classes M1–M14: `LEAN_RULES.md` §0; `cls` is an auto-classification of the *minimized* program (heuristic; `NEW?` = needs manual triage).
 
 ## cur
 ```
-cur iters=104 seed=130901669 t=5112s {"x": 10969, "same": 4248, "NANO-ACCEPTS-LEAN-REJECTS": 239, "cls:M9/M10": 126, "RESULT-DIFF": 144, "cls:M1": 144, "cls:M9": 75, "cls:M12": 38}
+cur iters=28 seed=857420176 t=2026s {"x": 2998, "same": 1108, "NANO-ACCEPTS-LEAN-REJECTS": 72, "cls:M9": 29, "cls:M9/M10": 29, "RESULT-DIFF": 22, "cls:M1": 22, "cls:M12": 12, "cls:NEW?": 1, "cls:M10?": 1}
 ```
-distinct minimized divergences by class: {"M12": 97, "M9/M10": 222, "M9": 141, "NEW?": 114, "M1": 136}
+distinct minimized divergences by class: {"M12": 109, "M9/M10": 252, "M9": 170, "NEW?": 115, "M1": 158, "M10?": 1}
 
 * **M12** (NANO-ACCEPTS-LEAN-REJECTS): `'def m (x : List UInt8) : List UInt8\n    := put [] ((320 <<< 1) &&& rd x 1 &&& 256)'` input `00020203` nano `ACCEPT out=00` lean `REJECT /tmp/tmpa039frl5/p.lean:3:15: error(lean.synthInstanceFailed): failed `
 * **M9/M10** (NANO-ACCEPTS-LEAN-REJECTS): `'def m (x : List UInt8) : List UInt8\n  := put [] ((let v0\n    := rd x 0; 257))'` input `7fff03ffff00` nano `ACCEPT out=01` lean `REJECT expected ';' or line break`
@@ -126,12 +126,14 @@ distinct minimized divergences by class: {"M12": 97, "M9/M10": 222, "M9": 141, "
 * **NEW?** (RESULT-DIFF): `'def m (x : List UInt8) : List UInt8\n    := put [] (let (a, b) := (64, (128 - 255)); if a < b\n    then 1 else 2)'` input `01` nano `ACCEPT out=01` lean `ACCEPT out=02`
 * **NEW?** (RESULT-DIFF): `'def m (x : List UInt8) : List UInt8 := put [] (if (let (a0, b0) := ((4294967297 ), (if 7 == 128 then 18446744073709551616 else 100000000000000000000)); b0) < ((65 * 18446744073709551614) &&& (4294967295 * 4294967295)) then 1 else 2)'` input `80010300ff01ff61` nano `ACCEPT out=01` lean `ACCEPT out=02`
 * **M1** (RESULT-DIFF): `'def m (x : List UInt8) : List UInt8 := put [] (if ((18446744073709551617 ) ||| (4294967296 + 4294967296)) < (3 + 63 + (4294967297 * 256)) then 1 else 2)'` input `` nano `ACCEPT out=01` lean `ACCEPT out=02`
+* **NEW?** (NANO-ACCEPTS-LEAN-REJECTS): `'def m (x : List UInt8) : List UInt8 := put [] ((let v0 := ((if rd x 0 < rd x 4 then rd x 1 else rd x 5) * (255 + rd x 0) - (if (let v1 := 0; v1) < (65 * 2147483648) then (rd x 5 + rd x 3) else (let (a2, b2) := (7, rd x 5); a2 * b2))); (let v2 := rd x 2; (127 - v2 * (rd x 5 * rd x 0)))))'` input `ff020280` nano `ACCEPT out=7f` lean `REJECT /tmp/tmp4dyntai7/p.lean:2:107: error(lean.synthInstanceFailed): failed`
+* **M10?** (NANO-ACCEPTS-LEAN-REJECTS): `'def m (x : List UInt8) : List UInt8 := put [] ((((let v0 := rd x 3; v0) - rd x 2 ||| rd x 2) &&& (if 64 < (let (a1, b1) := (rd x 0, rd x 3); a1 ||| b1) then (rd x 1 + rd x 1) else (let (a1, b1) := (65535, 64); a1 ||| b1))))'` input `807fa60303026180` nano `ACCEPT out=fe` lean `REJECT Type mismatch`
 
 ## syn
 ```
-syn iters=16 seed=75177390 t=1533s {"x": 1432, "same": 877, "RESULT-DIFF": 26, "cls:M1": 26, "NANO-ACCEPTS-LEAN-REJECTS": 64, "cls:M9/M10": 28, "cls:M9": 22, "ARM-ONLY-REJ": 1, "cls:ARM": 1, "cls:M7": 4, "cls:M12": 9, "cls:M10?": 1}
+syn iters=28 seed=129721661 t=2026s {"x": 3096, "same": 1002, "NANO-ACCEPTS-LEAN-REJECTS": 91, "cls:M9": 31, "cls:M9/M10": 45, "cls:M12": 12, "RESULT-DIFF": 11, "cls:M1": 11, "cls:M7": 1, "cls:M10?": 2}
 ```
-distinct minimized divergences by class: {"M12": 37, "M5": 85, "M4": 123, "M9": 103, "M9/M10": 145, "M7": 23, "NEW?": 48, "M11": 8, "M13/M14": 3, "M1": 74, "ARM": 1, "M10?": 1}
+distinct minimized divergences by class: {"M12": 49, "M5": 85, "M4": 123, "M9": 134, "M9/M10": 190, "M7": 24, "NEW?": 49, "M11": 8, "M13/M14": 3, "M1": 86, "ARM": 1, "M10?": 3}
 
 * **M12** (NANO-ACCEPTS-LEAN-REJECTS): `'def m (x : List UInt8) : List UInt8 := put [] (if 63 < ((100000000000000000000 >>> 130) * (rd x 0 ||| rd x 3)) then 1 else 2)'` input `7f7f617f8a0d61` nano `ACCEPT out=01` lean `REJECT /tmp/tmpiuugqx5l/p.lean:2:56: error(lean.synthInstanceFailed): failed `
 * **M5** (NANO-ACCEPTS-LEAN-REJECTS): `'namespace A\n@[inline] def m (x : List UInt8) : List UInt8 := put [] (rd x 5)\nend B'` input `61016180808001` nano `ACCEPT out=80` lean `REJECT Invalid name after `end`: Expected `A`, but found `B``
@@ -192,4 +194,12 @@ distinct minimized divergences by class: {"M12": 37, "M5": 85, "M4": 123, "M9": 
 * **M1** (RESULT-DIFF): `'def m (x : List UInt8) : List UInt8 := put [] ((if (if (match 255 with | 1 => 4294967295 | _ => 7) < 128 then 9223372036854775809 else 1 * 100000000000000000000) < (let v0 := (9223372036854775809 + 18446744073709551615); (match 9223372036854775809 with | 2 => 64 | _ => 100000000000000000000)) then ('` input `61ff7f7400010380` nano `ACCEPT out=81` lean `ACCEPT out=80`
 * **ARM** (ARM-ONLY): `'def m (x : List UInt8) : List UInt8\n:= put [] (if (match (127 + 100000000000000000000) with\n  | 4294967296 => (if 65 < rd x 1\nthen rd x 0\nelse rd x 0)\n| 18446744073709551617\n  => (let v0\n    := rd x 4; 3)\n| _\n=> rd x 2) == rd x 2\n    then 1\n  else 2)'` input `2503ff43` nano `ACCEPT out=01` lean `REJECT unexpected token '|'; expected ')', ',' or ':'`
 * **M10?** (NANO-ACCEPTS-LEAN-REJECTS): `'def f : Nat → List UInt8 → UInt64 → UInt64 → UInt64\n  | 0, x, i, a => a\n  | n + 1, x, i, a => f n x (i + 1) ((if (let v0 := 65; 9223372036854775807) == (let (a1, b1) := (rd x 5, rd x 2); a1 ||| b1) then 257 * 256 else (let v1 := 2; rd x 5)))\ndef m (x : List UInt8) : List UInt8 := put [] (f 0 x 0 1)'` input `7f0002` nano `ACCEPT out=01` lean `REJECT Type mismatch`
+* **M10?** (NANO-ACCEPTS-LEAN-REJECTS): `'def m (x : List UInt8) : List UInt8 := put [] ((let (a0, b0) := ((if (7) == (let (a0, b0) := (rd x 0, 3); a0 ) then (let (a0, b0) := (rd x 5, 4294967295); b0) else 18446744073709551615), 0); a0 ))'` input `03` nano `ACCEPT out=ff` lean `REJECT Type mismatch`
+* **M10?** (NANO-ACCEPTS-LEAN-REJECTS): `'def m (x : List UInt8) : List UInt8\n:= put [] (if 0 == (if 318 &&& rd x 5 < rd x 4 then (rd x 2)\n    else (let (a0, b0) := (127, 2); a0 ))\nthen 1 else 2)'` input `005701030261` nano `ACCEPT out=02` lean `REJECT Type mismatch`
+* **NEW?** (NANO-ACCEPTS-LEAN-REJECTS): `'def m (x : List UInt8) : List UInt8 := let a := (let (a0, b0) := (rd x 0, (if 65536 < rd x 2 then 257 else 4294967296)); a0 + b0); let b := (let (a0, b0) := (18446744073709551615, rd x 1); a0 - b0) * (let v0 := a; v0); put [] (if a < b then 1 else 2)'` input `` nano `ACCEPT out=01` lean `REJECT maximum recursion depth has been reached`
 
+
+## New class M15 (reported to lead + SYNTAX-EXP)
+nano accepts, Lean 4.34.1 rejects ("Type mismatch"/synthInstanceFailed): a tuple-pattern `let (a, b) := ..; e` (a `match`) anywhere inside an operand of `==`/`<`/binop that has a numeral-only sibling leaf, e.g. `if 2 == (let (a, b) := (6, rd x 0); b) then 1 else 2`, also nested in an `if` branch and inside loop-def args. Plain `let b := ..; b` is fine. Rule: reject tuple-let/match inside comparison/binop operands.
+Verified on syntax-1 4418bc5f: M4 (123), M5 (85), M11 (8) minimized hits all rejected. combined-2 303159f random runs: value mismatches all M1 (216); Lean-rejects M9/M10, M12, M15.
+Campaigns PAUSED by owner request (lead message); resume = rerun campaign.py per supervisor.sh.
