@@ -4,6 +4,19 @@ Base: `origin/release-434` @ 56e2584. Toolchain: Lean 4.34.1. RISC-V model: `dep
 `6ac35da9… 161`, checked). Locally the root `lake-manifest.json` was switched to lean-sail v10 to build the regenerated
 model (as on `rv-regen-434`); that change is **not committed** (release-434 still pins v5).
 
+## PAUSED (2026-11-21, owner): where SYNTAX-EXP stopped (branch keep_round1_syntax-1 @ this commit)
+Done and verified (lake build 781 OK, review_axioms 8 OK, selfhost_gate PASS at 90c30921): A, C, F1/F2, E (frame rule,
+`open` rejected, `/-!` follow check, F3), M2 (numerals ≥ 2^64), M13 (attribute whitelist), the s9 compiler-source rewrite,
+the merge of main 92a36d78 (native-release statements use the t10 driver). Regress: fuzz/syntax_regress.py (46 counted
+cases, 4 pending-B).
+B (literal typing): rules fixed in the prototype fuzz/litcheck.lean (test glue), see "B: literal typing" below; C's source
+273/273 and examples+edge 12/12 pass it; nothing of B is in the compiler yet.
+Next steps, in order: (1) B: the trusted predicate (litcheck's `chk`, as a spec) in `pOf`; the checker in C after `y16`
+(bootstrap subset); soundness proof; regenerate + gate; move the pending-B regress cases into CASES; restrict
+fuzz_syntax.py's generator to the B rules; fuzz to 20k (RISC-V, native ARM, Lean strict). (2) D (layout / offside).
+(3) The syntax PR to main (report the real-code reject rates; list the s9 rewrite and the trusted-spec diffs).
+Not started, noted: rule-(5) refinement (mark desugared matches); M3 `<--`; M6/M7/M8 names.
+
 ## syntax-1 (2026-11-21): exp-syntax + exp-syntax-match combined, on combined-2 (stage rename), fuzzed
 
 ### Owner decisions (2026-11-21)
