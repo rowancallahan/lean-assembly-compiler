@@ -16,7 +16,7 @@ Interface
 - `MOp.lean`: multiply/divide ops (compiler side only; `Spec` `Op` is unchanged)
 - `AllocSpec.lean`: lemmas about `Spec/Alloc.lean`
 Plain compiler (one source language per layer)
-- `Exp.lean`: `Exp`/`AExp` → ops, `compE_ok`-style theorems; `Stmt.lean`: `while` statements; `Arr.lean`: `AStmt` byte arrays
+- `Exp.lean`: `Exp`/`AExp` → ops (`compile_ok`); `Stmt.lean`: `while` statements (`execS_ok`, `compF_ok`); `Arr.lean`: `AStmt` byte arrays (`execA_ok`, `compAF_ok`)
 - `BLang.lean`: model-free `BExp`/`BStmt`/`BExec` (byte + word arrays, spill slots); `BExp.lean`, `BStmt.lean`: their compilers (`execB_ok`, `compBF_ok`)
 - `CLang.lean`, `CStmt.lean`: functions/programs (`CStmt`, `Fn`, `Prog`) and call compilation; `CProg.lean`: function table layout, entry stub, `compP_ok`
 Optimising back end (`Opt/`; IR over virtual registers, untrusted choices checked by decidable tests)
