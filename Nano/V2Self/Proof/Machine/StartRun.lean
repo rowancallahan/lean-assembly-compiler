@@ -11,7 +11,7 @@ theorem At.get {C : List J} {h : Nat} {l : List J} (hC : At C h l) (j : Nat) (hj
 /-- the state at main's entry -/
 structure Entry (s0 s1 : St) (S : Nat) : Prop where
   x0 : s1.x 0 = 0
-  x1 : s1.x 1 = UInt64.ofNat (s0.b + s0.w * (S + 12))
+  x1 : s1.x 1 = UInt64.ofNat (s0.b + s0.lo (S + 12))
   x8 : s1.x 8 = s0.x 8
   x12 : s1.x 12 = s0.x 12
   x13 : s1.x 13 = s0.x 13
@@ -21,7 +21,7 @@ structure Entry (s0 s1 : St) (S : Nat) : Prop where
   x31 : s1.x 31 = (s0.x 2 >>> 3) <<< 3
   m : s1.m = upd (upd s0.m (s0.x 12).toNat (s0.x 1)) ((s0.x 12).toNat + 8) (s0.x 8)
   b : s1.b = s0.b
-  wk : s1.wk = s0.wk
+  ly : s1.ly = s0.ly
 
 /-- the copy loop of the start code (words S+21 .. S+27) -/
 def loopJ : List J := [.beq 7 0 7, .ld 15 6 0, .sb 15 14 0, .addi 6 6 8, .addi 14 14 1, .addi 7 7 (-1), .jal 0 (-6)]

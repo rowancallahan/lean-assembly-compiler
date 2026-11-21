@@ -10,7 +10,7 @@ namespace Templates
 open CallProbe
 
 def IGOK (hb E0 : Nat) (IG : St → Prop) : Prop :=
-  ∀ s s' : St, IG s → s'.x 28 = s.x 28 → s'.x 29 = s.x 29 → s'.b = s.b → s'.wk = s.wk →
+  ∀ s s' : St, IG s → s'.x 28 = s.x 28 → s'.x 29 = s.x 29 → s'.b = s.b → s'.ly = s.ly →
     (∀ a, ¬ (hb ≤ a ∧ a < E0) → s'.m a = s.m a) → IG s'
 
 def IGp (IG : St → Prop) (E0 p : Nat) : St → Prop := fun s => IG s ∧ (s.x 8).toNat + 8 * p + 16 ≤ E0

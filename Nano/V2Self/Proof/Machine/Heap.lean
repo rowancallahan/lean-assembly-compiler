@@ -59,7 +59,7 @@ theorem bnew_runK {C : List J} {pc tgt κ : Nat} (s : St) (hC : At C pc (bnewT t
   have e30 : UInt64.ofNat (s.x 30).toNat = s.x 30 := by simp
   -- 1: t0 := t5
   have h1 := p1.at 0 (by simp); simp at h1
-  let s1 : St := ⟨upd s.x 5 (s.x 30), s.m, s.b, s.wk⟩
+  let s1 : St := ⟨upd s.x 5 (s.x 30), s.m, s.b, s.ly⟩
   have r1 : run C 1 (pc, s) = some (pc + 1, s1) := by
     simp [run, step, h1, wr, ea, e30, s1]
   have z1 : s1.x 0 = 0 := by simp [s1, upd_ne, hx0]
@@ -73,7 +73,7 @@ theorem bnew_runK {C : List J} {pc tgt κ : Nat} (s : St) (hC : At C pc (bnewT t
   have mm2 : s2.m = s.m := hm2
   -- 3: t1 := t1 + t5
   have h3 := p3.at 0 (by simp); simp at h3
-  let s3 : St := ⟨upd s2.x 6 (W + s.x 30), s2.m, s2.b, s2.wk⟩
+  let s3 : St := ⟨upd s2.x 6 (W + s.x 30), s2.m, s2.b, s2.ly⟩
   have r3 : run C 1 (pc + 1 + (liT 6 W).length, s2) = some (pc + 1 + (liT 6 W).length + 1, s3) := by
     simp [run, step, h3, wr, aluf, a6, a30, s3]
   -- 4: bgeu taken
@@ -100,7 +100,7 @@ theorem bnew_runK {C : List J} {pc tgt κ : Nat} (s : St) (hC : At C pc (bnewT t
   simp at h6 h7 h8
   have eT0 : ea (s5.x 5) 0 = (s.x 30).toNat := by simp [ea, b5]
   have eT8 : ea (s5.x 5) 8 = (s.x 30).toNat + 8 := by simp [ea, b5]; omega
-  let s8 : St := ⟨upd s5.x 30 (W + s.x 30), upd (upd s5.m (s.x 30).toNat 0) ((s.x 30).toNat + 8) K, s5.b, s5.wk⟩
+  let s8 : St := ⟨upd s5.x 30 (W + s.x 30), upd (upd s5.m (s.x 30).toNat 0) ((s.x 30).toNat + 8) K, s5.b, s5.ly⟩
   have ea0 : ∀ b : UInt64, ea b 0 = b.toNat := fun b => by simp [ea]
   have e6 : UInt64.ofNat (ea (W + s.x 30) 0) = W + s.x 30 := by rw [ea0]; exact UInt64.ofNat_toNat
   have r678 : run C 3 (pc + 1 + (liT 6 W).length + 3 + (liT 7 K).length, s5) =
@@ -113,7 +113,7 @@ theorem bnew_runK {C : List J} {pc tgt κ : Nat} (s : St) (hC : At C pc (bnewT t
     rw [y30, y31, hsum]; omega
   have r4' : run C 1 (pc + 1 + (liT 6 W).length + 1, s3) = some (pc + 1 + (liT 6 W).length + 3, s3) := by simp [run, r4]
   have r9 := push_run (s := s8) (by simpa [pushA] using p6) (by decide) (by decide) hh8
-  refine ⟨⟨upd s8.x 31 (UInt64.ofNat ((s8.x 31).toNat - 8)), upd s8.m ((s8.x 31).toNat - 8) (s8.x 5), s8.b, s8.wk⟩,
+  refine ⟨⟨upd s8.x 31 (UInt64.ofNat ((s8.x 31).toNat - 8)), upd s8.m ((s8.x 31).toNat - 8) (s8.x 5), s8.b, s8.ly⟩,
     ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · rw [run_add r1, run_add r2, run_add r3, run_add r4', run_add r5, run_add r678, r9]
     have : (bnewT tgt pc κ).length = 1 + (liT 6 W).length + 3 + (liT 7 K).length + 3 + 4 := by

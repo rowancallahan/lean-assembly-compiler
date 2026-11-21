@@ -16,9 +16,9 @@ theorem valT {KL : LayW} {C : List J} {pc lc p nl hb E0 w X Hd : Nat} {Inv : St 
     obtain ⟨⟨u, H1⟩, hS, e⟩ := hS
     simp only [Prod.mk.injEq, Sum.inl.injEq] at e; obtain ⟨rfl, rfl⟩ := e
     obtain ⟨s', env', r, I, z, p31, l, v, e8, F, ag, hR, hA, mm⟩ := h.run s env H u H1 I0 z0 F0 O0 R0 L0 A0 hS
-    have sj : step C (pc + lc, s') = some (X, wr s' 0 (UInt64.ofNat (s'.b + s'.w * (pc + lc + 1)))) := by
+    have sj : step C (pc + lc, s') = some (X, wr s' 0 (UInt64.ofNat (s'.b + s'.lo (pc + lc + 1)))) := by
       simp [step, hJ]; omega
-    have w0 : wr s' 0 (UInt64.ofNat (s'.b + s'.w * (pc + lc + 1))) = s' := by simp [wr]
+    have w0 : wr s' 0 (UInt64.ofNat (s'.b + s'.lo (pc + lc + 1))) = s' := by simp [wr]
     rw [w0] at sj
     have sx : SafeX KL C (pc + lc, s') := by simp only [SafeX, hJ]; simp; omega
     exact ⟨s', env', r.trans (.head sx sj (.refl _)), I, z, p31, l, v, e8, F, ag, hR, hA, mm⟩
@@ -121,7 +121,7 @@ theorem ifPre {KL : LayW} {C : List J} {pc lp lt p nl hb E0 cmp : Nat} {Inv : St
   have ea0 : ea (s1.x 31) 0 = (s.x 31).toNat - 8 - 8 := by simp [ea, p1]; omega
   have ea8 : ea (s1.x 31) 8 = (s.x 31).toNat - 8 := by simp [ea, p1]; omega
   have ea16 : ea (s1.x 31) 16 = (s.x 31).toNat := by simp [ea, p1]; omega
-  let s2 : St := ⟨upd (upd (upd s1.x 6 b) 5 a) 31 (UInt64.ofNat (s.x 31).toNat), s1.m, s1.b, s1.wk⟩
+  let s2 : St := ⟨upd (upd (upd s1.x 6 b) 5 a) 31 (UInt64.ofNat (s.x 31).toNat), s1.m, s1.b, s1.ly⟩
   have r2 : run C 3 (pc + lp, s1) = some (pc + lp + 3, s2) := by
     simp [run, step, c0, c1, c2, wr, ea0, ea8, va, vb, upd_other _ _ (show (31:Nat) ≠ 6 by decide),
       upd_other _ _ (show (31:Nat) ≠ 5 by decide), ea16, s2]
@@ -162,9 +162,9 @@ theorem ifPre {KL : LayW} {C : List J} {pc lp lt p nl hb E0 cmp : Nat} {Inv : St
       fun a' h1 h2 => m1 a' h1 h2⟩
   · rw [if_neg hc] at sc ⊢
     have sj0 : step C (pc + lp + 4, s2) =
-        some (pc + lp + 6 + lt, wr s2 0 (UInt64.ofNat (s2.b + s2.w * (pc + lp + 4 + 1)))) := by
+        some (pc + lp + 6 + lt, wr s2 0 (UInt64.ofNat (s2.b + s2.lo (pc + lp + 4 + 1)))) := by
       simp [step, c4]; omega
-    have w2 : wr s2 0 (UInt64.ofNat (s2.b + s2.w * (pc + lp + 4 + 1))) = s2 := by simp [wr]
+    have w2 : wr s2 0 (UInt64.ofNat (s2.b + s2.lo (pc + lp + 4 + 1))) = s2 := by simp [wr]
     rw [w2] at sj0
     have sj2 : SafeX KL C (pc + lp + 4, s2) := by simp only [SafeX, c4]; simp; omega
     exact ⟨s2, env1, st2.trans (.head safe3 sc (.head sj2 sj0 (.refl _))), I2, z2, x31, x8, F2, O2, R2, L2, A1, ag1,

@@ -25,7 +25,7 @@ theorem defRunO {S : SC} {C : List J} {IG : St → Prop} {E0 : Nat} {c28 : UInt6
 
 /-- **program level, all outcomes**: every def k < N satisfies `DefO` (strong induction on k = call-graph order) -/
 theorem progRunO (P : PC) (ds : List DefA) (C : List J) (IG : St → Prop) (E0 : Nat) (c28 : UInt64) (KL : LayW)
-    (hig : IGOK P.hb E0 IG) (he : E0 < 2 ^ 62) (hcb : ∀ s, IG s → s.b + s.w * C.length < 2 ^ 64)
+    (hig : IGOK P.hb E0 IG) (he : E0 < 2 ^ 62) (hcb : ∀ s, IG s → LinkOK C s)
     (hinp : InpOK IG c28 P.c29 P.inp) (hinw : InpW KL IG) (hc18 : C.length < 2 ^ 18) (h6 : 6 < C.length)
     (kap : P.κ < 2 ^ 40) (hb2k : 2048 ≤ P.hb) (N : Nat) (hd : ∀ k, k < N → DefOKS P ds C k) :
     ∀ k, k < N → DefO KL C (P.T k) (dA ds k).npw (dA ds k).nres IG P.hb E0 (semAt P ds k) (semAtF P ds k) := by
@@ -64,7 +64,7 @@ theorem progRunO (P : PC) (ds : List DefA) (C : List J) (IG : St → Prop) (E0 :
 /-- on any J program holding Gen's def templates: every def, all outcomes -/
 theorem gen_defs_runO (P : PC) (ds : List DefA) (C : List J) (IG : St → Prop) (E0 : Nat) (c28 : UInt64)
     (KL : LayW) (n h : Nat)
-    (hig : IGOK P.hb E0 IG) (he : E0 < 2 ^ 62) (hcb : ∀ s, IG s → s.b + s.w * C.length < 2 ^ 64)
+    (hig : IGOK P.hb E0 IG) (he : E0 < 2 ^ 62) (hcb : ∀ s, IG s → LinkOK C s)
     (hinp : InpOK IG c28 P.c29 P.inp) (hinw : InpW KL IG) (hc18 : C.length < 2 ^ 18) (h6 : 6 < C.length)
     (kap : P.κ < 2 ^ 40) (hb2k : 2048 ≤ P.hb) (hC : At C h (defsJ P ds 0 n))
     (hT : ∀ j, j < n → P.T j = h + (defsJ P ds 0 j).length)

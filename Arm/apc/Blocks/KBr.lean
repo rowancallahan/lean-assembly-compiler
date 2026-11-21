@@ -41,7 +41,7 @@ theorem ofs26 (f : Int) (h1 : -2 ^ 25 ≤ f) (h2 : f < 2 ^ 25) (A : Nat) (hA : 0
 theorem relD_jump {C : List J} {D K} {pc npc : Nat} {s : St} {t t' : Arm64.State} (h : RelD C D K (pc, s) t)
     (hrun : t'.status = .Running) (hpc : t'.pc = ad (s.b + 16 * npc)) (hm : t'.mem = t.mem) (hr : RegsOK (abs t') s K)
     (hsp : t'.sp = t.sp) : RelD C D K (npc, s) t' :=
-  ⟨hrun, hpc, hm ▸ h.code, hr, h.zero, hsp.trans h.sp, h.wk, hm ▸ h.mem⟩
+  ⟨hrun, hpc, hm ▸ h.code, hr, h.zero, hsp.trans h.sp, h.ly, hm ▸ h.mem⟩
 
 /-- J's compare for the condition codes rv2arm uses: 0 eq, 1 ne, 2 hs (bgeu), 3 lo (bltu) -/
 def jc (c : Nat) (x y : UInt64) : Bool :=
@@ -225,7 +225,7 @@ theorem blk_beq {C : List J} {D K} {pc : Nat} {s : St} {t : Arm64.State} {a b : 
 /-- `jal rd o` (rd ∈ {x0, x1}; `validJ` bounds the offset to the `b`/`bl` reach, ±2^23 J instructions) -/
 theorem blk_jal {C : List J} {D K} {pc : Nat} {s : St} {t : Arm64.State} {rd : Nat} {o : Int}
     (hj : C[pc]? = some (.jal rd o)) (hv : validJ C.length pc (.jal rd o)) (hR : RelD C D K (pc, s) t) :
-    Reach t (RelD C D K (((pc : Int) + o).toNat, wr s rd (UInt64.ofNat (s.b + s.w * (pc + 1))))) := by
+    Reach t (RelD C D K (((pc : Int) + o).toNat, wr s rd (UInt64.ofNat (s.b + s.lo (pc + 1))))) := by
   obtain ⟨hrd, h1, h2, ho1, ho2⟩ := hv
   rcases hrd with rfl | rfl
   · simp only [wr, ite_true]
@@ -244,7 +244,7 @@ theorem blk_jal {C : List J} {D K} {pc : Nat} {s : St} {t : Arm64.State} {rd : N
     apply BitVec.eq_of_toNat_eq; simp [Nat.shiftRight_eq_div_pow]; omega] at P4
   have hlt := m3.lt (by omega)
   have hcl : s.b + 16 * C.length < 2 ^ 64 := hR.code.lt
-  have hw : s.w = 16 := by have : s.wk = 3 := hR.wk; unfold St.w; omega
+  have hw : ∀ n, s.lo n = 16 * n := fun n => by rw [St.lo_lin hR.ly]
   have hpc : pc < C.length := by
     rcases Nat.lt_or_ge pc C.length with h | h
     · exact h
@@ -254,20 +254,20 @@ theorem blk_jal {C : List J} {D K} {pc : Nat} {s : St} {t : Arm64.State} {rd : N
     simp only [wr, show (1 : Nat) ≠ 0 by decide, ite_false]; congr 1; omega
   · simp only [wr, show (1 : Nat) ≠ 0 by decide, ite_false]; rw [P4.mem, q3, q2, q1]; exact hR.code
   · rw [a4, a3, a2, a1, m3.pc]
-    have := regs_wr hR.regs (rd := 1) ⟨by decide, by decide⟩ (UInt64.ofNat (s.b + s.w * (pc + 1)))
-    have e : ad (s.b + 16 * pc + 4 * (0 + 1 + 1 + 1)) + 4 = (UInt64.ofNat (s.b + s.w * (pc + 1))).toBitVec := by
+    have := regs_wr hR.regs (rd := 1) ⟨by decide, by decide⟩ (UInt64.ofNat (s.b + s.lo (pc + 1)))
+    have e : ad (s.b + 16 * pc + 4 * (0 + 1 + 1 + 1)) + 4 = (UInt64.ofNat (s.b + s.lo (pc + 1))).toBitVec := by
       rw [hw]; apply BitVec.eq_of_toNat_eq; simp; omega
     rw [e]; exact this
   · simp [wr, upd]; exact hR.zero
   · rw [P4.sp, p3, p2, p1]; exact hR.sp
-  · simp only [wr, show (1 : Nat) ≠ 0 by decide, ite_false]; exact hR.wk
+  · simp only [wr, show (1 : Nat) ≠ 0 by decide, ite_false]; exact hR.ly
   · simp only [wr, show (1 : Nat) ≠ 0 by decide, ite_false]; rw [P4.mem, q3, q2, q1]; exact hR.mem
 
 /-- `jalr x0, rs`. Premise (ArmBlock's `AccOK`): the target is a block address -/
 theorem blk_jalr {C : List J} {D K} {pc : Nat} {s : St} {t : Arm64.State} {rd rs : Nat}
     (hj : C[pc]? = some (.jalr rd rs)) (hv : validJ C.length pc (.jalr rd rs))
     (hacc : s.b ≤ (s.x rs).toNat ∧ ((s.x rs).toNat - s.b) % 16 = 0) (hR : RelD C D K (pc, s) t) :
-    Reach t (RelD C D K (((s.x rs).toNat - s.b) / s.w, wr s rd (UInt64.ofNat (s.b + s.w * (pc + 1))))) := by
+    Reach t (RelD C D K (s.ly.un ((s.x rs).toNat - s.b), wr s rd (UInt64.ofNat (s.b + s.lo (pc + 1))))) := by
   obtain ⟨rfl, hs0, hs31⟩ := hv
   simp only [wr, ite_true]
   have hl : live rs := ⟨hs31, hs0⟩
@@ -276,9 +276,8 @@ theorem blk_jalr {C : List J} {D K} {pc : Nat} {s : St} {t : Arm64.State} {rd rs
   have hA := hm.at (by omega); rw [bw_of hb] at hA; simp only [List.getD_cons_zero, brR] at hA
   obtain ⟨t1, s1, a1, P1⟩ := dm_br (by mask32) (by fldt) hA
   rw [show ((wd (0xD61F0000 + pi rs * 2 ^ 5)).extractLsb' 5 5).toNat = pi rs by fldt, hR.regs.1 rs hl] at P1
-  have hw : s.w = 16 := by have : s.wk = 3 := hR.wk; unfold St.w; omega
   refine Reach.cons s1 (Reach.done (relD_jump hR P1.run ?_ P1.mem (a1 ▸ hR.regs) P1.sp))
-  rw [P1.pc, hw]; apply BitVec.eq_of_toNat_eq
+  rw [P1.pc, St.un_lin hR.ly]; apply BitVec.eq_of_toNat_eq
   have := (s.x rs).toNat_lt
   simp; omega
 

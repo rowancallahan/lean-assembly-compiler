@@ -11,7 +11,7 @@ open CallProbe SimW SafeRun ParSpec
 structure RunCxS (K : SC) (C : List J) (IG : St → Prop) (E0 : Nat) (c28 : UInt64) (KL : LayW) : Prop where
   ig : IGOK K.hb E0 IG
   e62 : E0 < 2 ^ 62
-  cb : ∀ s, IG s → s.b + s.w * C.length < 2 ^ 64
+  cb : ∀ s, IG s → LinkOK C s
   p20 : K.p < 2 ^ 20
   inp : InpOK IG c28 K.c29 K.inp
   inw : InpW KL IG

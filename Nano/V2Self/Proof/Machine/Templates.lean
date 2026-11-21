@@ -81,7 +81,7 @@ theorem popN_len (p k0 : Nat) : ∀ w, (popN p k0 w).length = 3 * w
 theorem popSlot_run {C : List J} {pc p k : Nat} (s : St) (hS : At C pc (popSlot p k))
     (hlt : (s.x 31).toNat + 8 < 2 ^ 64) :
     run C 3 (pc, s) = some (pc + 3, ⟨upd (upd s.x 5 (s.m (s.x 31).toNat)) 31 (UInt64.ofNat ((s.x 31).toNat + 8)),
-      upd s.m (slotAddr p (s.x 8).toNat k) (s.m (s.x 31).toNat), s.b, s.wk⟩) := by
+      upd s.m (slotAddr p (s.x 8).toNat k) (s.m (s.x 31).toNat), s.b, s.ly⟩) := by
   have c0 := hS.at 0 (by simp [popSlot]); have c1 := hS.at 1 (by simp [popSlot]); have c2 := hS.at 2 (by simp [popSlot])
   simp [popSlot] at c0 c1 c2
   have ea0 : ea (s.x 31) 0 = (s.x 31).toNat := by simp [ea]
@@ -107,7 +107,7 @@ theorem popN_run {C : List J} {p k0 : Nat} : ∀ (w pc : Nat) (s : St), At C pc 
     have A2 : At C (pc + 3) (popN p k0 w) := by have := hC'.right; simpa [popSlot] using this
     have r1 := popSlot_run (k := k0 + w) s A1 (by omega)
     generalize hs1 : (⟨upd (upd s.x 5 (s.m (s.x 31).toNat)) 31 (UInt64.ofNat ((s.x 31).toNat + 8)),
-      upd s.m (slotAddr p (s.x 8).toNat (k0 + w)) (s.m (s.x 31).toNat), s.b, s.wk⟩ : St) = s1 at r1
+      upd s.m (slotAddr p (s.x 8).toNat (k0 + w)) (s.m (s.x 31).toNat), s.b, s.ly⟩ : St) = s1 at r1
     have t1 : (s1.x 31).toNat = (s.x 31).toNat + 8 := by subst hs1; simp [upd]; omega
     have x81 : s1.x 8 = s.x 8 := by subst hs1; simp [upd]
     have m1 : ∀ a, s1.m a = if a = slotAddr p (s.x 8).toNat (k0 + w) then s.m (s.x 31).toNat else s.m a := by

@@ -149,7 +149,7 @@ theorem ifX {KL : LayW} {C : List J} {pc lp lt le p nl hb E0 w cmp : Nat} {Inv :
     have ea0 : ea (s1.x 31) 0 = (s.x 31).toNat - 8 - 8 := by simp [ea, p1]; omega
     have ea8 : ea (s1.x 31) 8 = (s.x 31).toNat - 8 := by simp [ea, p1]; omega
     have ea16 : ea (s1.x 31) 16 = (s.x 31).toNat := by simp [ea, p1]; omega
-    let s2 : St := ⟨upd (upd (upd s1.x 6 b) 5 a) 31 (UInt64.ofNat (s.x 31).toNat), s1.m, s1.b, s1.wk⟩
+    let s2 : St := ⟨upd (upd (upd s1.x 6 b) 5 a) 31 (UInt64.ofNat (s.x 31).toNat), s1.m, s1.b, s1.ly⟩
     have r2 : run C 3 (pc + lp, s1) = some (pc + lp + 3, s2) := by
       simp [run, step, c0, c1, c2, wr, ea0, ea8, va, vb, upd_other _ _ (show (31:Nat) ≠ 6 by decide),
         upd_other _ _ (show (31:Nat) ≠ 5 by decide), ea16, s2]
@@ -192,9 +192,9 @@ theorem ifX {KL : LayW} {C : List J} {pc lp lt le p nl hb E0 w cmp : Nat} {Inv :
       have L2 : Lay KL hb E0 p s2 := L0.post' x8 r1.star.b (by rw [x31])
       obtain ⟨s4, env4, r4, I4, z4, p4, l4, v4, e84, F4, ag4, R4, A4, m4⟩ := hT.run s2 env1 H1 vs H' I2 z2 F2 O2 R2 L2 A1 hST
       have sj : step C (pc + lp + 5 + lt, s4) =
-          some (pc + (lp + 6 + lt + le), wr s4 0 (UInt64.ofNat (s4.b + s4.w * (pc + lp + 5 + lt + 1)))) := by
+          some (pc + (lp + 6 + lt + le), wr s4 0 (UInt64.ofNat (s4.b + s4.lo (pc + lp + 5 + lt + 1)))) := by
         simp [step, hJ]; omega
-      have w4 : wr s4 0 (UInt64.ofNat (s4.b + s4.w * (pc + lp + 5 + lt + 1))) = s4 := by simp [wr]
+      have w4 : wr s4 0 (UInt64.ofNat (s4.b + s4.lo (pc + lp + 5 + lt + 1))) = s4 := by simp [wr]
       rw [w4] at sj
       have sj4 : SafeX KL C (pc + lp + 5 + lt, s4) := by simp only [SafeX, hJ]; simp; omega
       refine ⟨s4, env4, st2.trans (.head safe3 sc (r4.trans (.head sj4 sj (.refl _)))), I4, z4, by rw [p4, x31], l4, ?_,
@@ -208,9 +208,9 @@ theorem ifX {KL : LayW} {C : List J} {pc lp lt le p nl hb E0 w cmp : Nat} {Inv :
       have hSE : SE env1 (s2.x 31).toNat H1 = some (vs, H') := by
         rw [x31, hE.stable env1 env _ _ (fun k hk => ag1 k (sE k hk))]; exact hS
       have sj0 : step C (pc + lp + 4, s2) =
-          some (pc + lp + 6 + lt, wr s2 0 (UInt64.ofNat (s2.b + s2.w * (pc + lp + 4 + 1)))) := by
+          some (pc + lp + 6 + lt, wr s2 0 (UInt64.ofNat (s2.b + s2.lo (pc + lp + 4 + 1)))) := by
         simp [step, c4]; omega
-      have w2 : wr s2 0 (UInt64.ofNat (s2.b + s2.w * (pc + lp + 4 + 1))) = s2 := by simp [wr]
+      have w2 : wr s2 0 (UInt64.ofNat (s2.b + s2.lo (pc + lp + 4 + 1))) = s2 := by simp [wr]
       rw [w2] at sj0
       have L2 : Lay KL hb E0 p s2 := L0.post' x8 r1.star.b (by rw [x31])
       obtain ⟨s5, env5, r5, I5, z5, p5, l5, v5, e85, F5, ag5, R5, A5, m5⟩ := hE.run s2 env1 H1 vs H' I2 z2 F2 O2 R2 L2 A1 hSE

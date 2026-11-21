@@ -23,7 +23,7 @@ theorem pro_runA {C : List J} {f r tgt : Nat} {s : St} (hC : At C f (proA tgt f 
   have lt : (s.x 31).toNat < 2 ^ 64 := (s.x 31).toNat_lt
   have t8 : (UInt64.ofNat ((s.x 31).toNat - 8)).toNat = (s.x 31).toNat - 8 := by simp; omega
   have t16 : (UInt64.ofNat ((s.x 31).toNat - 8 - 8)).toNat = (s.x 31).toNat - 16 := by simp; omega
-  have r2 := push_run (s := ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)), upd s.m ((s.x 31).toNat - 8) (s.x 1), s.b, s.wk⟩) A2 (by decide) (by decide)
+  have r2 := push_run (s := ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)), upd s.m ((s.x 31).toNat - 8) (s.x 1), s.b, s.ly⟩) A2 (by decide) (by decide)
     (by simp [upd, t8]; omega)
   simp only [upd_same, upd_other _ _ (show (30:Nat) ≠ 31 by decide), upd_other _ _ (show (8:Nat) ≠ 31 by decide), t8] at r2
   have r12 := run_add (l := 3) r1
@@ -36,7 +36,7 @@ theorem pro_runA {C : List J} {f r tgt : Nat} {s : St} (hC : At C f (proA tgt f 
   rw [e16] at r12
   refine ⟨⟨upd (upd (upd (upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8))) 31 (UInt64.ofNat ((s.x 31).toNat - 16)))
       8 (UInt64.ofNat ((s.x 31).toNat - 16))) 31 (UInt64.ofNat ((s.x 31).toNat - 16 - 8 * r)),
-    upd (upd s.m ((s.x 31).toNat - 8) (s.x 1)) ((s.x 31).toNat - 16) (s.x 8), s.b, s.wk⟩, ?_, ?_, ?_, ?_, rfl⟩
+    upd (upd s.m ((s.x 31).toNat - 8) (s.x 1)) ((s.x 31).toNat - 16) (s.x 8), s.b, s.ly⟩, ?_, ?_, ?_, ?_, rfl⟩
   · rw [show 9 = (3 + 3) + 3 by rfl, run_add r12]
     have ea1 : ea (UInt64.ofNat ((s.x 31).toNat - 16)) 0 = (s.x 31).toNat - 16 := by simp [ea, t16']
     have ea2 : ea (UInt64.ofNat ((s.x 31).toNat - 16)) (-8 * (r : Int)) = (s.x 31).toNat - 16 - 8 * r := by

@@ -21,7 +21,7 @@ def HRel (hb : Nat) (s : St) (H : Hp) : Prop :=
 /-- `Inv` reads only s0, x28, x29, the code base and memory outside [hb, frame top) (the code base never changes
 along a run: `Star.b`; the machine bridge's global invariant bounds it for return addresses) -/
 def InvOKH (hb p : Nat) (Inv : St → Prop) : Prop :=
-  ∀ s s' : St, Inv s → s'.x 8 = s.x 8 → s'.x 28 = s.x 28 → s'.x 29 = s.x 29 → s'.b = s.b → s'.wk = s.wk →
+  ∀ s s' : St, Inv s → s'.x 8 = s.x 8 → s'.x 28 = s.x 28 → s'.x 29 = s.x 29 → s'.b = s.b → s'.ly = s.ly →
     (∀ a, ¬ (hb ≤ a ∧ a < (s.x 8).toNat + 8 * p + 16) → s'.m a = s.m a) → Inv s'
 
 /-- the closing fragment of a two-operand step (pops two words, pushes the result over the new top) -/

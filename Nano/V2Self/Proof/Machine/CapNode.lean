@@ -198,8 +198,7 @@ theorem runVO (X : RunCxS K C IG E0 c28 KL) (Y0 : OCx K C IG E0 fsX KL) :
     have hA := rA.ok.wid wa
     have hj := At.one hC.right
     rw [tmL_len] at hj
-    have hcb : ∀ s, IG s → s.b + s.w * (h + lnL K as + 1) < 2 ^ 64 := fun s hs => by
-      have := X.cb s hs; have := Nat.mul_le_mul_left s.w (show h + lnL K as + 1 ≤ C.length by omega); omega
+    have hcb : ∀ s, IG s → s.b + s.lo (h + lnL K as + 1) < 2 ^ 64 := fun s hs => X.cb s hs _ _ hj
     refine ⟨callXS X.ig hA hj (by omega) (X.defs id hid) X.e62 hcb (X.tl id hid) X.c18, fun fk hk => ?_⟩
     have Y := Y0.cx fk hk
     rw [← olS Y as] at hA

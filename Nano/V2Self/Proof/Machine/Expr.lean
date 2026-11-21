@@ -14,7 +14,7 @@ theorem upd_upd {α} (f : Nat → α) (k : Nat) (a b : α) : upd (upd f k a) k b
 /-- push to the capacity exit: t6 − 8 < t5 ⇒ the third instruction (`jal x0 oom`) transfers to the stub -/
 theorem push_oom {C pc s r oom} (hC : At C pc (push r oom)) (h8 : 8 ≤ (s.x 31).toNat)
     (hh : (s.x 31).toNat < (s.x 30).toNat + 8) :
-    run C 3 (pc, s) = some (((pc : Int) + 2 + oom).toNat, ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)), s.m, s.b, s.wk⟩) := by
+    run C 3 (pc, s) = some (((pc : Int) + 2 + oom).toNat, ⟨upd s.x 31 (UInt64.ofNat ((s.x 31).toNat - 8)), s.m, s.b, s.ly⟩) := by
   have lt : (s.x 31).toNat < 2 ^ 64 := (s.x 31).toNat_lt
   have e : ea (s.x 31) (-8) = (s.x 31).toNat - 8 := by simp [ea]; omega
   have t6' : (UInt64.ofNat ((s.x 31).toNat - 8)).toNat = (s.x 31).toNat - 8 := by
@@ -62,13 +62,13 @@ theorem li_loop {C pc d} {v : UInt64} (s : St) (hd : d ≠ 0) (hx0 : s.x 0 = 0) 
   | 0, _ => by
       have h0 := hC.at 0 (by simp [liT_len_big d v hv])
       simp [liT, hv] at h0
-      refine ⟨⟨upd s.x d 0, s.m, s.b, s.wk⟩, ?_, ?_, rfl, rfl⟩
+      refine ⟨⟨upd s.x d 0, s.m, s.b, s.ly⟩, ?_, ?_, rfl, rfl⟩
       · simp [run, step, h0, wr, hd, ea, hx0]
       · have : v.toNat / 2 ^ 64 = 0 := Nat.div_eq_of_lt v.toNat_lt
         simp [this]
   | j + 1, hj => by
       obtain ⟨sj, hr, hx, hm, hbb⟩ := li_loop s hd hx0 hv hC j (by omega)
-      have hww : sj.wk = s.wk := (run_star hr).w
+      have hww : sj.ly = s.ly := (run_star hr).w
       have hC' : At C pc (.addi d 0 0 :: liB d v.toNat 8) := by simpa [liT, hv] using hC
       have hT : At C (pc + 1) (liB d v.toNat 8) := hC'.cons_tail
       have hA := liB_at hT (show j + 1 ≤ 8 by omega)
@@ -107,7 +107,7 @@ theorem li_loop {C pc d} {v : UInt64} (s : St) (hd : d ≠ 0) (hx0 : s.x 0 = 0) 
       have t : (UInt64.ofNat (A * 256)).toNat = A * 256 := by simp; omega
       have eb : ea (UInt64.ofNat (A * 256)) (b : Int) = A * 256 + b := by simp only [ea, t]; omega
       have eb2 : UInt64.ofNat (ea (UInt64.ofNat (A * 256)) (b : Int)) = UInt64.ofNat (A * 256 + b) := by rw [eb]
-      refine ⟨⟨upd s.x d (UInt64.ofNat (A * 256 + b)), s.m, s.b, s.wk⟩, ?_, ?_, rfl, rfl⟩
+      refine ⟨⟨upd s.x d (UInt64.ofNat (A * 256 + b)), s.m, s.b, s.ly⟩, ?_, ?_, rfl, rfl⟩
       · rw [show 1 + 2 * (j + 1) = (1 + 2 * j) + 2 by omega, run_add hr]
         simp only [run, step, h0, h1, wr, if_neg hd, Option.bind_some, hxd, hm, hshift, eb2, show pc + 1 + 2 * j + 1 + 1 = pc + 1 + 2 * (j + 1) by omega]
         rw [upd_same, eb2]
@@ -122,7 +122,7 @@ theorem li_run {C pc d} {v : UInt64} (s : St) (hd : d ≠ 0) (hx0 : s.x 0 = 0) (
   by_cases hv : v.toNat < 2048
   · have h0 := hC.at 0 (by simp [liT_len_small d v hv])
     simp [liT, hv] at h0
-    refine ⟨⟨upd s.x d v, s.m, s.b, s.wk⟩, ?_, rfl, rfl, rfl⟩
+    refine ⟨⟨upd s.x d v, s.m, s.b, s.ly⟩, ?_, rfl, rfl, rfl⟩
     rw [liT_len_small d v hv]
     simp [run, step, h0, wr, hd, ea, hx0]
   · obtain ⟨s', hr, hx, hm, hbb⟩ := li_loop s hd hx0 hv hC 8 (by omega)
@@ -143,7 +143,7 @@ theorem bin_run {C pc op} (s : St) (hC : At C pc (binT op)) (hlt : (s.x 31).toNa
     run C 5 (pc, s) = some (pc + 5,
       ⟨upd (upd (upd (upd s.x 6 (s.m (s.x 31).toNat)) 5 (s.m ((s.x 31).toNat + 8))) 31 (UInt64.ofNat ((s.x 31).toNat + 8))) 5
           (aluf op (s.m ((s.x 31).toNat + 8)) (s.m (s.x 31).toNat)),
-       upd s.m ((s.x 31).toNat + 8) (aluf op (s.m ((s.x 31).toNat + 8)) (s.m (s.x 31).toNat)), s.b, s.wk⟩) := by
+       upd s.m ((s.x 31).toNat + 8) (aluf op (s.m ((s.x 31).toNat + 8)) (s.m (s.x 31).toNat)), s.b, s.ly⟩) := by
   have h0 := hC.at 0 (by simp [binT]); have h1 := hC.at 1 (by simp [binT]); have h2 := hC.at 2 (by simp [binT])
   have h3 := hC.at 3 (by simp [binT]); have h4 := hC.at 4 (by simp [binT])
   simp [binT] at h0 h1 h2 h3 h4
@@ -166,7 +166,7 @@ def lenT (tgt q : Nat) : List J := pushA tgt q 29
 def bsizeT : List J := [.ld 5 31 0, .ld 5 5 0, .sd 5 31 0]
 
 theorem bsize_run {C pc} (s : St) (hC : At C pc bsizeT) :
-    run C 3 (pc, s) = some (pc + 3, ⟨upd s.x 5 (s.m (s.m (s.x 31).toNat).toNat), upd s.m (s.x 31).toNat (s.m (s.m (s.x 31).toNat).toNat), s.b, s.wk⟩) := by
+    run C 3 (pc, s) = some (pc + 3, ⟨upd s.x 5 (s.m (s.m (s.x 31).toNat).toNat), upd s.m (s.x 31).toNat (s.m (s.m (s.x 31).toNat).toNat), s.b, s.ly⟩) := by
   have h0 := hC.at 0 (by simp [bsizeT]); have h1 := hC.at 1 (by simp [bsizeT]); have h2 := hC.at 2 (by simp [bsizeT])
   simp [bsizeT] at h0 h1 h2
   have e0 : ea (s.x 31) 0 = (s.x 31).toNat := by simp [ea]
@@ -182,7 +182,7 @@ theorem rd_runK {C pc} (s : St) (hC : At C pc rdT) (hx0 : s.x 0 = 0) (hb : (s.x 
       ⟨upd (upd s.x 6 (s.m (s.x 31).toNat)) 5
           (if (s.m (s.x 31).toNat).toNat < (s.x 29).toNat then lbm s.m ((s.x 28).toNat + (s.m (s.x 31).toNat).toNat) else 0),
        upd s.m (s.x 31).toNat
-          (if (s.m (s.x 31).toNat).toNat < (s.x 29).toNat then lbm s.m ((s.x 28).toNat + (s.m (s.x 31).toNat).toNat) else 0), s.b, s.wk⟩) := by
+          (if (s.m (s.x 31).toNat).toNat < (s.x 29).toNat then lbm s.m ((s.x 28).toNat + (s.m (s.x 31).toNat).toNat) else 0), s.b, s.ly⟩) := by
   have h0 := hC.at 0 (by simp [rdT]); have h1 := hC.at 1 (by simp [rdT]); have h2 := hC.at 2 (by simp [rdT])
   have h3 := hC.at 3 (by simp [rdT]); have h4 := hC.at 4 (by simp [rdT]); have h5 := hC.at 5 (by simp [rdT])
   simp [rdT] at h0 h1 h2 h3 h4 h5
